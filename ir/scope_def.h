@@ -10,6 +10,8 @@
 struct Module;
 
 namespace ir {
+// TODO Calls to EvaluateAs should probably take this as const, so we can be
+// sure no one modifies blocks_ and invalidates pointers.
 struct ScopeDef {
   explicit ScopeDef(Module const *mod): mod_(mod) {}
 
@@ -24,6 +26,7 @@ struct ScopeDef {
   Module const *mod_ = nullptr;
   std::vector<AnyFunc> inits_, dones_;
   absl::flat_hash_map<std::string_view, BlockDef> blocks_;
+  std::function<void()> *work_item = nullptr;
 };
 }  // namespace ir
 

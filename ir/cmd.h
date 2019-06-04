@@ -265,6 +265,15 @@ struct Cmd {
     }
   };
 
+  struct CreateScopeDef {
+    ::Module *mod_;
+    ScopeDef *scope_def_;
+    inline friend std::ostream &operator<<(std::ostream &os,
+                                           CreateScopeDef const &c) {
+      return os << c.mod_ << " " << c.scope_def_;
+    }
+  };
+
   union {
     Empty empty_;
     Reg reg_;
@@ -274,6 +283,7 @@ struct Cmd {
     LoadSymbol load_sym_;
     BlockDef const *block_def_;
     ast::BlockLiteral const *block_lit_;
+    CreateScopeDef create_scope_def_;
     AddScopeDefInit add_scope_def_init_;
     AddScopeDefDone add_scope_def_done_;
 
@@ -663,7 +673,7 @@ ir::TypedRegister<type::Interface const *> FinalizeInterface(Reg r);
 
 Reg ArgumentCache(ast::StructLiteral const *sl);
 
-Reg CreateScopeDef(::Module const *mod);
+Reg CreateScopeDef(::Module const *mod, ScopeDef *scope_def);
 void AddScopeDefInit(Reg reg, RegisterOr<AnyFunc> f);
 void AddScopeDefDone(Reg reg,  RegisterOr<AnyFunc> f);
 void FinishScopeDef();

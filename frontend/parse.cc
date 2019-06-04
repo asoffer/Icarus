@@ -138,7 +138,8 @@ std::unique_ptr<ast::Node> EmptyBraces(
   return stmts;
 }
 
-std::unique_ptr<ast::Node> BuildJump(std::unique_ptr<ast::Node> node) {
+std::unique_ptr<ast::Node> BuildControlHandler(
+    std::unique_ptr<ast::Node> node) {
   using ::frontend::Operator;
   auto &tk              = node->as<frontend::Token>().token;
   frontend::Operator op = [&] {
@@ -174,7 +175,7 @@ std::unique_ptr<ast::Node> BracedStatementsSameLineEnd(
 std::unique_ptr<ast::Node> BracedStatementsJumpSameLineEnd(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  nodes[2] = BuildJump(std::move(nodes[2]));
+  nodes[2] = BuildControlHandler(std::move(nodes[2]));
   return BracedStatementsSameLineEnd(std::move(nodes), mod, error_log);
 }
 
@@ -626,14 +627,14 @@ std::unique_ptr<ast::Node> OneBracedJump(
     error::Log *error_log) {
   auto stmts  = std::make_unique<Statements>();
   stmts->span = TextSpan(nodes[0]->span, nodes[2]->span);
-  stmts->append(BuildJump(std::move(nodes[1])));
+  stmts->append(BuildControlHandler(std::move(nodes[1])));
   ValidateStatementSyntax(stmts->content_.back().get(), mod, error_log);
   return stmts;
 }
 
-std::unique_ptr<ast::Node> BuildJump(
+std::unique_ptr<ast::Node> BuildControlHandler(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *, error::Log *) {
-  return BuildJump(std::move(nodes[0]));
+  return BuildControlHandler(std::move(nodes[0]));
 }
 
 std::unique_ptr<ast::Node> BuildScopeNode(
@@ -1185,7 +1186,7 @@ auto Rules = std::array{
     Rule(stmts, {stmts, newline}, drop_all_but<0>),
 
     Rule(expr, {EXPR, op_l, EXPR}, ErrMsg::NonBinop),
-    Rule(stmts, {op_lt}, BuildJump),
+    Rule(stmts, {op_lt}, BuildControlHandler),
     Rule(block_expr, {expr, braced_stmts}, BuildBlockNode),
     Rule(scope_expr, {fn_call_expr, block_expr}, BuildScopeNode),
     Rule(scope_expr, {scope_expr, block_expr}, ExtendScopeNode),

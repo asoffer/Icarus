@@ -283,6 +283,7 @@ struct BuiltinFn : public Expression {
 #include "ast/function_literal.h"
 #include "ast/hashtag.h"
 #include "ast/identifier.h"
+#include "ast/terminal.h"
 
 namespace ast {
 // Import:
@@ -385,7 +386,20 @@ struct Jump : public Node {
   explicit Jump(TextSpan span, std::vector<std::unique_ptr<Call>> calls)
       : Node(std::move(span)) {
     for (auto &call : calls) {
-      options_.emplace_back(std::move(call->fn_), std::move(call->args_));
+      // TODO ensure that fn_ is an identifier.
+      if (auto *term = call->fn_->if_as<Terminal>()) {
+        if (term->results_.get<ir::BlockDef *>(0).val_ ==
+            ir::BlockDef::Start()) {
+          options_.emplace_back("start", std::move(call->args_));
+        } else if (term->results_.get<ir::BlockDef *>(0).val_ ==
+                   ir::BlockDef::Exit()) {
+          options_.emplace_back("exit", std::move(call->args_));
+        } else {
+          UNREACHABLE();
+        }
+      } else if (auto *id = call->fn_->if_as<Identifier>()) {
+        options_.emplace_back(std::move(id->token), std::move(call->args_));
+      }
     }
   }
 
@@ -400,15 +414,15 @@ struct Jump : public Node {
   // Otherwise, the option is dicarded and the next option in the `options_`
   // container is chosen.
   struct JumpOption {
-    explicit JumpOption(std::unique_ptr<Expression> b,
+    explicit JumpOption(std::string name,
                         core::FnArgs<std::unique_ptr<Expression>> a)
-        : block(std::move(b)), args(std::move(a)) {}
+        : block(std::move(name)), args(std::move(a)) {}
     JumpOption(JumpOption const &)     = default;
     JumpOption(JumpOption &&) noexcept = default;
     JumpOption &operator=(JumpOption const &) = default;
     JumpOption &operator=(JumpOption &&) noexcept = default;
 
-    std::unique_ptr<Expression> block;
+    std::string block;
     core::FnArgs<std::unique_ptr<Expression>> args;
   };
   // A jump will evaluate at compile-time to the first option for which the
@@ -512,7 +526,6 @@ struct ScopeNode : public Expression {
 #include "ast/struct_literal.h"
 #include "ast/struct_type.h"
 #include "ast/switch.h"
-#include "ast/terminal.h"
 #include "ast/unop.h"
 
 #endif  // ICARUS_AST_AST_H

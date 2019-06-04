@@ -15,9 +15,10 @@
 namespace ir {
 thread_local BlockIndex BasicBlock::Current;
 
-Reg CreateScopeDef(::Module const *mod) {
+Reg CreateScopeDef(::Module const *mod, ScopeDef*scope_def) {
   auto &cmd = MakeCmd(type::Scope, Op::CreateScopeDef);
-  cmd.mod_  = const_cast<::Module *>(mod);
+  // TODO you don't need the module.
+  cmd.create_scope_def_ = {const_cast<::Module *>(mod), scope_def};
   return cmd.result;
 }
 

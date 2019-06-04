@@ -105,7 +105,6 @@ void DependentDecls::operator()(ast::Interface const *node,
 void DependentDecls::operator()(ast::Jump const *node,
                                 ast::Declaration const *d) {
   for (auto const &opt : node->options_) {
-    opt.block->DependentDecls(this, d);
     opt.args.Apply(
         [this, d](auto const &expr) { expr->DependentDecls(this, d); });
   }

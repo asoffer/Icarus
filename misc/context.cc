@@ -71,7 +71,7 @@ visitor::VerifyResult Context::set_result(ast::ExprPtr expr,
 }
 
 ir::ScopeDef *Context::scope_def(ast::ScopeLiteral const *scope_lit) const {
-  return constants_->second.scope_defs_.at(scope_lit);
+  return &constants_->second.scope_defs_.at(scope_lit);
 }
 
 void Context::set_dispatch_table(ast::ExprPtr expr,

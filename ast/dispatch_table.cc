@@ -444,12 +444,12 @@ visitor::VerifyResult VerifyDispatch(
   for (ir::AnyFunc overload : overload_set) {
     auto expected_row = OverloadParams(overload, args, ctx);
     if (!expected_row.has_value()) {
-      NOT_YET();
+      NOT_YET(expected_row.error());
       continue;
     }
     auto match = MatchArgsToParams(expected_row->params, args);
     if (!match.has_value()) {
-      NOT_YET();
+      NOT_YET(match.error());
       continue;
     }
 

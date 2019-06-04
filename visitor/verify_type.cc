@@ -6,6 +6,7 @@
 #include "backend/eval.h"
 #include "error/inference_failure_reason.h"
 #include "frontend/operators.h"
+#include "ir/compiled_fn.h"
 #include "misc/context.h"
 #include "type/cast.h"
 #include "type/generic_struct.h"
@@ -445,7 +446,9 @@ VerifyResult VerifyType::operator()(ast::Binop const *node,
 
 VerifyResult VerifyType::operator()(ast::BlockLiteral const *node,
                                     Context *ctx) const {
-  base::Log() << node << "\n" << DumpAst::ToString(node);
+  // TODO consider not verifying the types of the bodies. They almost certainly
+  // contain circular references in the jump statements, and if the functions
+  // require verifying the body upfront, things can maybe go wrong?
   for (auto *b : node->before()) { b->VerifyType(this, ctx); }
   for (auto *a : node->after()) { a->VerifyType(this, ctx); }
 
@@ -1617,51 +1620,39 @@ VerifyResult VerifyType::operator()(ast::Interface const *node,
 }
 
 VerifyResult VerifyType::operator()(ast::Jump const *node, Context *ctx) const {
-  std::vector<VerifyResult> block_results;
   std::vector<core::FnArgs<VerifyResult>> arg_results;
-  block_results.reserve(node->options_.size());
   arg_results.reserve(node->options_.size());
   bool err = false;
   for (auto const &opt : node->options_) {
-    auto result = opt.block->VerifyType(this, ctx);
-    if (!result.ok()) { err = true; }
-    block_results.push_back(std::move(result));
     auto [arg_result, arg_err] = VerifyFnArgs(this, opt.args, ctx);
     err |= arg_err;
     arg_results.push_back(std::move(arg_result));
   }
   if (err) { NOT_YET(); }
   for (auto const &opt : node->options_) {
-    base::Log() << node->scope_->Containing<core::ScopeLitScope>()->scope_lit_;
-    base::Log() << DumpAst::ToString(
-        node->scope_->Containing<core::ScopeLitScope>()->scope_lit_);
-    // TODO cache these. :/
-    auto x = backend::EvaluateAs<ir::ScopeDef *>(
+    auto scope_def = backend::EvaluateAs<ir::ScopeDef *>(
         node->scope_->Containing<core::ScopeLitScope>()->scope_lit_, ctx);
-    /*
-    base::Log() << opt.block.get() << "\n" << DumpAst::ToString(opt.block.get());
-    auto block_def = backend::EvaluateAs<ir::BlockDef *>(
-        type::Typed<ast::Expression const *>(opt.block.get(), type::Block),
-        ctx);
-    if (block_def == ir::BlockDef::Start()) {
-    } else if (block_def == ir::BlockDef::Exit()) {
+    if (scope_def->work_item) { (*scope_def->work_item)(); }
+
+    if (opt.block == "start") {
+    } else if (opt.block == "exit") {
     } else {
+      auto iter = scope_def->blocks_.find(opt.block);
+      if (iter == scope_def->blocks_.end()) { NOT_YET(opt.block); }
+      auto block_def = &iter->second;
       // TODO you're re-verifying each unnecessarily.
       auto args = opt.args.Transform(
           [ctx, this](std::unique_ptr<ast::Expression> const &arg)
               -> std::pair<ast::Expression const *, VerifyResult> {
             return std::pair{arg.get(), arg->VerifyType(this, ctx)};
           });
-      base::Log() << *block_def;
       auto *lit = block_def->parent_;
-      base::Log() << lit << "\n" << DumpAst::ToString(lit);
       ast::VerifyDispatch(ast::ExprPtr{lit, 0x01}, block_def->before_, args,
                           ctx);
       // TODO args for after? Actually why are you even verifying dispatch for
       // it here?
       ast::VerifyDispatch(ast::ExprPtr{lit, 0x02}, block_def->after_, {}, ctx);
     }
-    */
   }
   return VerifyResult::Constant(type::Void());
 }
@@ -1798,10 +1789,7 @@ void VerifyBlockNode(VerifyType const *visitor, ast::BlockNode const *node,
   node->VerifyType(visitor, ctx);
 
   auto yields = extract_visitor.jumps(visitor::ExtractJumps::Kind::Yield);
-  if (yields.empty()) {
-      base::Log() << scope_def->blocks_.at(node->name());
-      base::Log() << "no yields";
-  } else {
+  if (!yields.empty()) {
     for (auto *yield : yields) {
       // TODO actually fill a fnargs
       std::vector<type::Type const *> yield_types;
@@ -1812,8 +1800,8 @@ void VerifyBlockNode(VerifyType const *visitor, ast::BlockNode const *node,
       // TODO if i knew what scope i came from, i'd be able to find the correct
       // blockdef which would tell me the exit handlers that are relevant which
       // i could pass to VerifyDispatch.
-      base::Log() << scope_def->blocks_.at(node->name());
-      base::Log() << type::Tup(std::move(yield_types))->to_string();
+      // base::Log() << scope_def->blocks_.at(node->name());
+      // base::Log() << type::Tup(std::move(yield_types))->to_string();
     }
   }
 }
@@ -1838,14 +1826,16 @@ VerifyResult VerifyType::operator()(ast::ScopeNode const *node,
 
   bool err = false;
   auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(node->name_.get(), ctx);
+  if (scope_def->work_item) { (*scope_def->work_item)(); }
   for (auto &block : node->blocks_) {
     VerifyBlockNode(this, &block, scope_def, ctx);
     auto const &block_def = scope_def->blocks_.at(block.name());
     err |= !ast::VerifyDispatch(ast::ExprPtr{&block, 0x02}, block_def.after_,
-                                arg_results, ctx)
+                                /* TODO block args */ {}, ctx)
                 .ok();
+
     err |= !ast::VerifyDispatch(ast::ExprPtr{&block, 0x01}, block_def.before_,
-                                {}, ctx)
+                                /* TODO yields */ {}, ctx)
                 .ok();
   }
   if (err) { return VerifyResult::Error(); }

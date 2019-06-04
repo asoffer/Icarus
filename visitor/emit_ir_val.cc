@@ -2,6 +2,7 @@
 
 #include "ast/ast.h"
 #include "backend/eval.h"
+#include "backend/exec.h"
 #include "base/guarded.h"
 #include "ir/builtin_ir.h"
 #include "ir/cmd.h"
@@ -108,6 +109,17 @@ TypedRegister<type::Type const *> FinalizeEnum(ast::EnumLiteral::Kind kind,
 namespace visitor {
 using ::matcher::InheritsFrom;
 
+template <typename NodeType>
+static std::function<void()> *DeferWork(NodeType const *node,
+                                        EmitIr const *visitor, Context *ctx) {
+  return &ctx->mod_->deferred_work_.emplace(
+      [constants{ctx->constants_}, node, visitor, mod{ctx->mod_}]() mutable {
+        Context ctx(mod);
+        ctx.constants_ = constants;
+        CompleteBody(visitor, node, &ctx);
+      });
+}
+
 static void MakeAllStackAllocations(core::FnScope const *fn_scope,
                                     Context *ctx) {
   for (auto *scope : fn_scope->innards_) {
@@ -166,6 +178,47 @@ static void EmitIrForStatements(EmitIr const *visitor,
     }
     to_destroy.clear();
   }
+}
+
+static void CompleteBody(EmitIr const *visitor, ast::ScopeLiteral const *node,
+                         Context *ctx) {
+  ir::ScopeDef *scope_def = ctx->scope_def(node);
+  if (!scope_def->work_item) { return; }
+
+  ir::CompiledFn fn(ctx->mod_, type::Func({}, {}),
+                    core::FnParams<type::Typed<ast::Expression const *>>{});
+
+  CURRENT_FUNC(&fn) {
+    ir::BasicBlock::Current = fn.entry();
+    // Leave space for allocas that will come later (added to the entry
+    // block).
+
+    auto start_block = ir::BasicBlock::Current =
+        ir::CompiledFn::Current->AddBlock();
+
+    auto reg = ir::CreateScopeDef(node->scope_->module(), scope_def);
+    for (auto *decl : node->decls()) {
+      if (decl->id_ == "init") {
+        ir::AddScopeDefInit(reg, decl->EmitIr(visitor, ctx).get<ir::AnyFunc>(0));
+      } else if (decl->id_ == "done") {
+        ir::AddScopeDefDone(reg, decl->EmitIr(visitor, ctx).get<ir::AnyFunc>(0));
+      } else {
+        ASSERT(decl->init_val != nullptr);
+        // TODO what if there's a conversion like from A to A|B?
+        decl->init_val->EmitIr(visitor, ctx);
+        ir::FinishBlockDef(decl->id_);
+      }
+    }
+    ir::FinishScopeDef();
+
+    ir::ReturnJump();
+
+    ir::BasicBlock::Current = fn.entry();
+    ir::UncondJump(start_block);
+  }
+
+  backend::ExecContext exec_context;
+  backend::Execute(&fn, base::untyped_buffer(0), {}, &exec_context);
 }
 
 static void CompleteBody(EmitIr const *visitor,
@@ -1151,13 +1204,7 @@ ir::Results EmitIr::Val(ast::FunctionLiteral const *node, Context *ctx) const {
   // TODO Use correct constants
   ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[node];
   if (!ir_func) {
-    std::function<void()> *work_item_ptr = nullptr;
-    work_item_ptr                        = &ctx->mod_->deferred_work_.emplace(
-        [constants{ctx->constants_}, node, this, mod{ctx->mod_}]() mutable {
-          Context ctx(mod);
-          ctx.constants_ = constants;
-          CompleteBody(this, node, &ctx);
-        });
+    std::function<void()> *work_item_ptr = DeferWork(node, this, ctx);
 
     auto *fn_type = &ctx->type_of(node)->as<type::Function>();
 
@@ -1216,12 +1263,21 @@ ir::Results EmitIr::Val(ast::Interface const *node, Context *ctx) const {
 
 ir::Results EmitIr::Val(ast::Jump const *node, Context *ctx) const {
   // TODO pick the best place to jump.
-  auto *called_expr =
-      node->options_.at(0).block.get();  // TODO remove this line.
+  auto scope_def = backend::EvaluateAs<ir::ScopeDef *>(
+      node->scope_->Containing<core::ScopeLitScope>()->scope_lit_, ctx);
+  if (scope_def->work_item) { (*scope_def->work_item)(); }
 
-  // TODO stop calculating this so many times.
-  ir::JumpPlaceholder(backend::EvaluateAs<ir::BlockDef const *>(
-      type::Typed<ast::Expression const *>(called_expr, type::Block), ctx));
+  if (node->options_.at(0).block == "start") {
+    ir::JumpPlaceholder(ir::BlockDef::Start());
+  } else if (node->options_.at(0).block == "exit") {
+    ir::JumpPlaceholder(ir::BlockDef::Exit());
+  } else {
+    auto iter = scope_def->blocks_.find(node->options_.at(0).block);
+    if (iter == scope_def->blocks_.end()) {
+      NOT_YET(node->options_.at(0).block);
+    }
+    ir::JumpPlaceholder(&iter->second);
+  }
   return ir::Results{};
 }
 
@@ -1285,6 +1341,7 @@ ir::Results EmitIr::Val(ast::RepeatedUnop const *node, Context *ctx) const {
       for (size_t i = 0; i < arg_vals.size(); ++i) {
         ctx->yields_stack_.back().emplace_back(node->expr(i), arg_vals[i]);
       }
+
       ctx->more_stmts_allowed_ = false;
       return ir::Results{};
     }
@@ -1310,31 +1367,14 @@ ir::Results EmitIr::Val(ast::RepeatedUnop const *node, Context *ctx) const {
 }
 
 ir::Results EmitIr::Val(ast::ScopeLiteral const *node, Context *ctx) const {
-  ir::ScopeDef *&scope_def= ctx->constants_->second.scope_defs_[node];
-  if (!scope_def) {}
-  auto reg = ir::CreateScopeDef(node->scope_->module());
-  for (auto *decl : node->decls()) {
-    if (decl->id_ == "init") {
-      ir::AddScopeDefInit(reg, decl->EmitIr(this, ctx).get<ir::AnyFunc>(0));
-    } else if (decl->id_ == "done") {
-      ir::AddScopeDefDone(reg, decl->EmitIr(this, ctx).get<ir::AnyFunc>(0));
-    } else {
-      // TODO reverse containment. you need to compute this as
-      // get<ir::BlockDef> and then assert that it's only one and extract
-      // it? What if someone types
-      //
-      //  `my_block ::= my_block2 | my_block3`
-      //
-      // We really just want it as a sequence. no matter what and we want to
-      // make sure `exit` and `start` are not in it.
-      ASSERT(decl->init_val != nullptr);
-      // TODO what if there's a conversion like from A to A|B?
-      decl->init_val->EmitIr(this, ctx);
-      ir::FinishBlockDef(decl->id_);
-    }
+  auto [scope_def_iter, inserted] =
+      ctx->constants_->second.scope_defs_.try_emplace(node,
+                                                      node->scope_->module());
+  if (inserted) {
+    auto work_item_ptr   = DeferWork(node, this, ctx);
+    scope_def_iter->second.work_item = work_item_ptr;
   }
-  ir::FinishScopeDef();
-  return ir::Results{reg};
+  return ir::Results{&scope_def_iter->second};
 }
 
 ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
@@ -1352,6 +1392,7 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
       name_to_block;
 
   auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(node->name_.get(), ctx);
+  if (scope_def->work_item) { (*scope_def->work_item)(); }
   for (auto const &[name, block] : scope_def->blocks_) {
     name_to_block.emplace(std::piecewise_construct, std::forward_as_tuple(name),
                           std::forward_as_tuple(&block, nullptr));
@@ -1450,12 +1491,7 @@ ir::Results EmitIr::Val(ast::StructLiteral const *node, Context *ctx) const {
   // (which is single-threaded).
   ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[node];
   if (!ir_func) {
-    auto &work_item = ctx->mod_->deferred_work_.emplace(
-        [constants{ctx->constants_}, node, this, mod{ctx->mod_}]() mutable {
-          Context ctx(mod);
-          ctx.constants_ = constants;
-          CompleteBody(this, node, &ctx);
-        });
+    auto &work_item = *DeferWork(node, this, ctx);
 
     auto const &arg_types = ctx->type_of(node)->as<type::GenericStruct>().deps_;
 

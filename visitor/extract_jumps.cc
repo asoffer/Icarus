@@ -90,7 +90,6 @@ void ExtractJumps::operator()(ast::Interface const *node) {
 void ExtractJumps::operator()(ast::Jump const *node) {
   // TODO Can you return or yield or jump from inside a jump block?!
   for (auto const &opt : node->options_) {
-    opt.block->ExtractJumps(this);
     opt.args.Apply([this](std::unique_ptr<ast::Expression> const &expr) {
       expr->ExtractJumps(this);
     });

@@ -288,9 +288,7 @@ void DumpAst::operator()(ast::Interface const *node) {
 void DumpAst::operator()(ast::Jump const *node) {
   absl::StrAppend(out_, "jump ");
   for (auto const &opt : node->options_) {
-    absl::StrAppend(out_, "(");
-    opt.block->DumpAst(this);
-    absl::StrAppend(out_, ")(");
+    absl::StrAppend(out_, opt.block, "(");
     DumpFnArgs(this, opt.args);
     absl::StrAppend(out_, ")");
   }

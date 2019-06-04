@@ -1141,18 +1141,13 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       // time we create one it's because we expect it to live forever. I suppose
       // we could ref-count the results of functions and delete these if they're
       // unused?
-      auto *scope_def = new ir::ScopeDef(cmd.mod_);
-      call_stack.top().scope_defs_.push(scope_def);
-      save(scope_def);
+      call_stack.top().scope_defs_.push(cmd.create_scope_def_.scope_def_);
+      save(cmd.create_scope_def_.scope_def_);
     } break;
     case ir::Op::FinishScopeDef: {
       ASSERT(call_stack.top().scope_defs_.size() != 0u);
       ASSERT(call_stack.top().block_defs_.size() == 0u);
-      base::Log() << "Finished " << call_stack.top().scope_defs_.top()->blocks_;
-
-      std::stringstream ss;
-      ss << *call_stack.top().fn_;
-      base::Log() << ss.str();
+      call_stack.top().scope_defs_.top()->work_item = nullptr;
       call_stack.top().scope_defs_.pop();
     } break;
     case ir::Op::AddScopeDefInit:

@@ -155,7 +155,6 @@ void AssignScope::operator()(ast::Interface *node, core::Scope *scope) {
 void AssignScope::operator()(ast::Jump *node, core::Scope *scope) {
   node->scope_ = scope;
   for (auto &opt : node->options_) {
-    opt.block->assign_scope(this, scope);
     opt.args.Apply(
         [this, scope](auto &expr) { expr->assign_scope(this, scope); });
   }
