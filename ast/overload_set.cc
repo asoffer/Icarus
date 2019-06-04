@@ -29,11 +29,11 @@ OverloadSet::OverloadSet(NodeSpan<Declaration const> decls, Context *ctx) {
 }
 
 // TODO only hold functions?
-OverloadSet::OverloadSet(core::Scope *scope, std::string const &id, Context *ctx) {
+OverloadSet::OverloadSet(core::Scope *scope, std::string_view id, Context *ctx) {
   EmplaceDecls(this, scope->AllDeclsWithId(id), ctx);
 }
 
-void OverloadSet::add_adl(std::string const &id, type::Type const *t) {
+void OverloadSet::add_adl(std::string_view id, type::Type const *t) {
   absl::flat_hash_set<::Module const *> modules;
   t->defining_modules(&modules);
 

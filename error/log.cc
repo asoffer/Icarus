@@ -4,7 +4,6 @@
 #include <iostream>
 
 #include "ast/ast.h"
-#include "ast/identifier.h"
 #include "base/interval.h"
 #include "frontend/source.h"
 
@@ -125,7 +124,7 @@ void WriteSource(
 }  // namespace
 namespace error {
 void Log::UndeclaredIdentifier(ast::Identifier const *id) {
-  undeclared_ids_[id->token].push_back(id);
+  undeclared_ids_[std::string{id->token()}].push_back(id);
 }
 
 void Log::PostconditionNeedsBool(TextSpan const &span, std::string_view type) {
@@ -426,7 +425,7 @@ void Log::Dump() const {
     std::cerr << "Found a cyclic dependency:\n\n";
 
     absl::flat_hash_map<ast::Declaration const *, size_t> decls;
-    for (auto const *id : cycle) { decls.emplace(id->decl_, decls.size()); }
+    for (auto const *id : cycle) { decls.emplace(id->decl(), decls.size()); }
 
     base::IntervalSet<size_t> iset;
     std::vector<std::pair<TextSpan, DisplayAttrs>> underlines;
@@ -436,19 +435,19 @@ void Log::Dump() const {
       // TODO handle case where it's 1 mod 7 and so adjacent entries show up
       // with the same color
 
-      TextSpan decl_id_span      = id->decl_->span;
-      decl_id_span.finish.offset = decl_id_span.start.offset + id->token.size();
+      TextSpan decl_id_span      = id->decl()->span;
+      decl_id_span.finish.offset = decl_id_span.start.offset + id->token().size();
       underlines.emplace_back(
           decl_id_span,
           DisplayAttrs{static_cast<DisplayAttrs::Color>(
                            DisplayAttrs::RED +
-                           static_cast<char>(decls.at(id->decl_) % 7)),
+                           static_cast<char>(decls.at(id->decl()) % 7)),
                        DisplayAttrs::UNDERLINE});
       underlines.emplace_back(
           id->span,
           DisplayAttrs{static_cast<DisplayAttrs::Color>(
                            DisplayAttrs::RED +
-                           static_cast<char>(decls.at(id->decl_) % 7)),
+                           static_cast<char>(decls.at(id->decl()) % 7)),
                        DisplayAttrs::UNDERLINE});
     }
 

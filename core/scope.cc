@@ -1,7 +1,6 @@
 #include "core/scope.h"
 
 #include "ast/declaration.h"
-#include "ast/identifier.h"
 #include "misc/module.h"
 
 namespace core {

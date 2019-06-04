@@ -282,10 +282,27 @@ struct BuiltinFn : public Expression {
 #include "ast/enum_literal.h"
 #include "ast/function_literal.h"
 #include "ast/hashtag.h"
-#include "ast/identifier.h"
 #include "ast/terminal.h"
 
 namespace ast {
+// Identifier:
+// Represents any user-defined identifier.
+struct Identifier : public Expression {
+  Identifier(TextSpan span, std::string token)
+      : Expression(std::move(span)), token_(std::move(token)) {}
+  ~Identifier() override {}
+
+#include "visitor/visitors.xmacro.h"
+
+  std::string_view token() const { return token_; }
+  Declaration const *decl() const { return decl_; }
+  void set_decl(Declaration const *decl) { decl_ = decl; }
+
+ private:
+  std::string token_;
+  Declaration const *decl_ = nullptr;
+};
+
 // Import:
 // Represents a request from one module to use parts of a different module.
 //
@@ -398,7 +415,7 @@ struct Jump : public Node {
           UNREACHABLE();
         }
       } else if (auto *id = call->fn_->if_as<Identifier>()) {
-        options_.emplace_back(std::move(id->token), std::move(call->args_));
+        options_.emplace_back(std::string{id->token()}, std::move(call->args_));
       }
     }
   }

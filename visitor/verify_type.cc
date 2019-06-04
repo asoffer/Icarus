@@ -471,7 +471,7 @@ VerifyResult VerifyType::operator()(ast::BuiltinFn const *node,
 }
 
 static ast::OverloadSet FindOverloads(
-    core::Scope *scope, std::string const &token,
+    core::Scope *scope, std::string_view token,
     core::FnArgs<type::Type const *> arg_types, Context *ctx) {
   ast::OverloadSet os(scope, token, ctx);
   arg_types.Apply([&](type::Type const *t) { os.add_adl(token, t); });
@@ -630,7 +630,7 @@ VerifyResult VerifyType::operator()(ast::Call const *node, Context *ctx) const {
   ast::OverloadSet overload_set = [&]() {
     if (auto *id = node->fn_->if_as<ast::Identifier>()) {
       return FindOverloads(
-          node->scope_, id->token,
+          node->scope_, id->token(),
           arg_results.Transform([](VerifyResult const &p) { return p.type_; }),
           ctx);
     } else {
@@ -1480,22 +1480,22 @@ VerifyResult VerifyType::operator()(ast::Identifier const *node,
   ctx->cyc_deps_.push_back(node);
   base::defer d([&] { ctx->cyc_deps_.pop_back(); });
 
-  // `node->decl_` is not necessarily null. Because we may call VerifyType many
+  // `node->decl()` is not necessarily null. Because we may call VerifyType many
   // times in multiple contexts, it is null the first time, but not on future
   // iterations.
   //
   // TODO that means we should probably resolve identifiers ahead of
   // type verification, but I think we rely on type information to figure it out
   // for now so you'll have to undo that first.
-  if (node->decl_ == nullptr) {
-    auto potential_decls = node->scope_->AllDeclsWithId(node->token);
+  if (node->decl() == nullptr) {
+    auto potential_decls = node->scope_->AllDeclsWithId(node->token());
     switch (potential_decls.size()) {
       case 1: {
         // TODO could it be that evn though there is only one declaration,
         // there's a bound constant of the same name? If so, we need to deal
         // with node case.
-        node->decl_ = potential_decls[0];
-        if (node->decl_ == nullptr) { return VerifyResult::Error(); }
+        const_cast<ast::Identifier *>(node)->set_decl(potential_decls[0]);
+        if (node->decl() == nullptr) { return VerifyResult::Error(); }
       } break;
       case 0:
         ctx->error_log()->UndeclaredIdentifier(node);
@@ -1506,11 +1506,11 @@ VerifyResult VerifyType::operator()(ast::Identifier const *node,
         return VerifyResult::Error();
     }
 
-    if (!node->decl_->const_ &&
-        (node->span.start.line_num < node->decl_->span.start.line_num ||
-         (node->span.start.line_num == node->decl_->span.start.line_num &&
-          node->span.start.offset < node->decl_->span.start.offset))) {
-      ctx->error_log()->DeclOutOfOrder(node->decl_, node);
+    if (!node->decl()->const_ &&
+        (node->span.start.line_num < node->decl()->span.start.line_num ||
+         (node->span.start.line_num == node->decl()->span.start.line_num &&
+          node->span.start.offset < node->decl()->span.start.offset))) {
+      ctx->error_log()->DeclOutOfOrder(node->decl(), node);
     }
   }
 
@@ -1518,10 +1518,10 @@ VerifyResult VerifyType::operator()(ast::Identifier const *node,
   // a different generic setup but not bound the type for node context. But node
   // is wrong in the sense that the declaration bound is possibly dependent on
   // the context.
-  type::Type const *t = ctx->type_of(node->decl_);
+  type::Type const *t = ctx->type_of(node->decl());
 
   if (t == nullptr) { return VerifyResult::Error(); }
-  return ctx->set_result(node, VerifyResult(t, node->decl_->const_));
+  return ctx->set_result(node, VerifyResult(t, node->decl()->const_));
 }
 
 VerifyResult VerifyType::operator()(ast::Import const *node,

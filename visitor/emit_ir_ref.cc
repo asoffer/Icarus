@@ -41,10 +41,10 @@ std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::CommaList const *node,
 
 std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::Identifier const *node,
                                                   Context *ctx) const {
-  ASSERT(node->decl_ != nullptr);
-  ASSERT(node->decl_->const_ == false);
-  ASSERT(node->decl_->is_fn_param_ == false);
-  return {ctx->addr(node->decl_)};
+  ASSERT(node->decl() != nullptr);
+  ASSERT(node->decl()->const_ == false);
+  ASSERT(node->decl()->is_fn_param_ == false);
+  return {ctx->addr(node->decl())};
 }
 
 std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::Index const *node,

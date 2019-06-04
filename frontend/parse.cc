@@ -217,7 +217,7 @@ std::unique_ptr<ast::Node> BuildCall(
           last_named_span_before_error = b->lhs()->span;
         }
         auto [lhs, rhs] = std::move(*b).extract();
-        call->args_.named_emplace(std::move(lhs->as<ast::Identifier>().token),
+        call->args_.named_emplace(std::string{lhs->as<ast::Identifier>().token()},
                                   std::move(rhs));
       } else {
         if (last_named_span_before_error.has_value()) {
@@ -235,7 +235,7 @@ std::unique_ptr<ast::Node> BuildCall(
     if (ast::Binop *b = nodes[2]->if_as<ast::Binop>();
         b && b->op() == frontend::Operator::Assign) {
       auto [lhs, rhs] = std::move(*b).extract();
-      call->args_.named_emplace(std::move(lhs->as<ast::Identifier>().token),
+      call->args_.named_emplace(std::string{lhs->as<ast::Identifier>().token()},
                                 std::move(rhs));
     } else {
       call->args_.pos_emplace(move_as<ast::Expression>(nodes[2]));
@@ -377,7 +377,7 @@ std::unique_ptr<ast::Node> BuildAccess(
 
   return std::make_unique<ast::Access>(
       span, std::move(operand),
-      std::move(nodes[2]->as<ast::Identifier>().token));
+      std::string{nodes[2]->as<ast::Identifier>().token()});
 }
 
 std::unique_ptr<ast::Node> BuildIndexOperator(
@@ -466,7 +466,7 @@ std::unique_ptr<ast::Node> BuildDeclaration(
   ASSERT(nodes[0]->span.source != nullptr);
   decl->span = TextSpan(nodes[0]->span, nodes[2]->span);
   if (nodes[0]->is<ast::Identifier>()) {
-    decl->id_ = std::move(nodes[0]->as<ast::Identifier>().token);
+    decl->id_ = std::string{nodes[0]->as<ast::Identifier>().token()};
   }
   decl->mod_ = mod;
 
@@ -655,7 +655,7 @@ std::unique_ptr<ast::Node> BuildBlockNode(
     error::Log *error_log) {
   auto span = TextSpan(nodes.front()->span, nodes.back()->span);
   return std::make_unique<ast::BlockNode>(
-      std::move(span), std::move(nodes[0]->as<ast::Identifier>().token),
+      std::move(span), std::string{nodes[0]->as<ast::Identifier>().token()},
       std::move(nodes[1]->as<Statements>()).extract());
 }
 
@@ -681,7 +681,7 @@ std::unique_ptr<ast::Node> SugaredExtendScopeNode(
   block_stmt_nodes.push_back(std::move(nodes[2]));
   // TODO span
   extension_point->blocks_.emplace_back(
-      TextSpan{}, std::move(nodes[1]->as<ast::Identifier>().token),
+      TextSpan{}, std::string{nodes[1]->as<ast::Identifier>().token()},
       std::move(block_stmt_nodes));
   return std::move(nodes[0]);
 }

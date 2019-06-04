@@ -27,7 +27,6 @@ cc_lib_target(
         ":enum_literal",
         ":expression",
         ":function_literal",
-        ":identifier",
         ":node",
         ":node_span",
         ":struct_literal",
@@ -56,7 +55,6 @@ icarus_ast_node(name = "function_literal", deps = [
     "//base:graph",
     "//core:fn_params",
 ])
-icarus_ast_node(name = "identifier", deps = [":expression"])
 icarus_ast_node(name = "node", deps = [
     "//base:util",
     "//visitor:visitors",

@@ -1,7 +1,7 @@
 #ifndef ICARUS_AST_OVERLOAD_SET_H
 #define ICARUS_AST_OVERLOAD_SET_H
 
-#include <string>
+#include <string_view>
 
 #include "ast/node.h"
 #include "ast/node_span.h"
@@ -27,10 +27,10 @@ struct Overload {
 
 struct OverloadSet : public base::bag<Overload> {
   OverloadSet() = default;
-  OverloadSet(core::Scope *scope, std::string const &id, Context *ctx);
+  OverloadSet(core::Scope *scope, std::string_view id, Context *ctx);
   OverloadSet(NodeSpan<Declaration const> decls, Context *ctx);
 
-  void add_adl(std::string const &id, type::Type const *t);
+  void add_adl(std::string_view id, type::Type const *t);
 };
 }  // namespace ast
 

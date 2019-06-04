@@ -83,7 +83,7 @@ void DependentDecls::operator()(ast::FunctionLiteral const *node,
 
 void DependentDecls::operator()(ast::Identifier const *node,
                                 ast::Declaration const *d) {
-  decl_graph_.ids_[node->token].push_back(d);
+  decl_graph_.ids_[node->token()].push_back(d);
 }
 
 void DependentDecls::operator()(ast::Import const *node,

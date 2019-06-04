@@ -1177,7 +1177,7 @@ ir::Results EmitIr::Val(ast::EnumLiteral const *node, Context *ctx) const {
   auto reg = ir::CreateEnum(node->kind_, ctx->mod_);
   for (auto &elem : node->elems_) {
     if (auto *id = elem->if_as<ast::Identifier>()) {
-      ir::AddEnumerator(node->kind_, reg, id->token);
+      ir::AddEnumerator(node->kind_, reg, id->token());
     } else if (auto *decl = elem->if_as<ast::Declaration>()) {
       ir::AddEnumerator(node->kind_, reg, decl->id_);
       if (!decl->IsCustomInitialized()) {
@@ -1222,11 +1222,11 @@ ir::Results EmitIr::Val(ast::FunctionLiteral const *node, Context *ctx) const {
 }
 
 ir::Results EmitIr::Val(ast::Identifier const *node, Context *ctx) const {
-  ASSERT(node->decl_ != nullptr) << DumpAst::ToString(node);
-  if (node->decl_->const_) { return node->decl_->EmitIr(this, ctx); }
-  if (node->decl_->is_fn_param_) {
+  ASSERT(node->decl() != nullptr) << DumpAst::ToString(node);
+  if (node->decl()->const_) { return node->decl()->EmitIr(this, ctx); }
+  if (node->decl()->is_fn_param_) {
     auto *t     = ctx->type_of(node);
-    ir::Reg reg = ctx->addr(node->decl_);
+    ir::Reg reg = ctx->addr(node->decl());
     if (ctx->inline_) {
       ir::Results reg_results = (*ctx->inline_)[reg];
       if (!reg_results.is_reg(0)) { return reg_results; }
@@ -1234,7 +1234,7 @@ ir::Results EmitIr::Val(ast::Identifier const *node, Context *ctx) const {
     }
 
     return ir::Results{
-        node->decl_->is_output_ && !t->is_big() ? ir::Load(reg, t) : reg};
+        node->decl()->is_output_ && !t->is_big() ? ir::Load(reg, t) : reg};
   } else {
     auto *t   = ASSERT_NOT_NULL(ctx->type_of(node));
     auto lval = node->EmitLVal(this, ctx)[0];

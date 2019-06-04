@@ -256,7 +256,7 @@ void DumpAst::operator()(ast::FunctionLiteral const *node) {
 }
 
 void DumpAst::operator()(ast::Identifier const *node) {
-  absl::StrAppend(out_, node->token);
+  absl::StrAppend(out_, node->token());
 }
 
 void DumpAst::operator()(ast::Import const *node) {
