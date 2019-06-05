@@ -122,7 +122,7 @@ static bool Covers(
   for (size_t i = args.pos().size(); i < params.size(); ++i) {
     auto const &param = params.at(i);
     if (param.flags & core::HAS_DEFAULT) { continue; }
-    if (args.at_or_null(std::string{param.name}) == nullptr) { return false; }
+    if (args.at_or_null(param.name) == nullptr) { return false; }
   }
 
   return true;
@@ -159,7 +159,7 @@ MatchArgsToParams(
   // errors.
   for (size_t i = param_index; i < params.size(); ++i) {
     auto const &param            = params.at(i);
-    auto *expr_and_verify_result = args.at_or_null(std::string{param.name});
+    auto *expr_and_verify_result = args.at_or_null(param.name);
     if (expr_and_verify_result == nullptr) {
       if ((param.flags & core::HAS_DEFAULT) == 0) {
         if (param.name.empty()) {
@@ -443,15 +443,9 @@ visitor::VerifyResult VerifyDispatch(
   absl::flat_hash_map<Expression const *, std::string> failure_reasons;
   for (ir::AnyFunc overload : overload_set) {
     auto expected_row = OverloadParams(overload, args, ctx);
-    if (!expected_row.has_value()) {
-      NOT_YET(expected_row.error());
-      continue;
-    }
+    if (!expected_row.has_value()) { continue; }
     auto match = MatchArgsToParams(expected_row->params, args);
-    if (!match.has_value()) {
-      NOT_YET(match.error());
-      continue;
-    }
+    if (!match.has_value()) { continue; }
 
     expected_row->params = *std::move(match);
     table.bindings_.push_back(*std::move(expected_row));
@@ -649,11 +643,11 @@ static bool EmitOneCall(
 
   for (; i < row.params.size(); ++i) {
     auto const &param = row.params.at(i);
-    auto *arg         = args.at_or_null(std::string{param.name});
+    auto *arg         = args.at_or_null(param.name);
     if (!arg && (param.flags & core::HAS_DEFAULT)) {
       arg_results.append(param.value.get()->EmitIr(&visitor, ctx));
     } else {
-      auto const &[expr, results] = *arg;
+      auto const &[expr, results] = *ASSERT_NOT_NULL(arg);
       arg_results.append(PrepArg(&visitor, param.value.type(),
                                  ctx->type_of(expr), results, ctx));
     }

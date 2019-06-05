@@ -35,12 +35,12 @@ struct FnArgs {
   T &at(std::string const &s) { return named_.at(s); }
   T const &at(std::string const &s) const { return named_.at(s); }
 
-  T *at_or_null(std::string const &s) {
+  T *at_or_null(std::string_view s) {
     auto iter = named_.find(s);
     if (iter == named_.end()) { return nullptr; }
     return &iter->second;
   }
-  T const *at_or_null(std::string const &s) const {
+  T const *at_or_null(std::string_view s) const {
     auto iter = named_.find(s);
     if (iter == named_.end()) { return nullptr; }
     return &iter->second;

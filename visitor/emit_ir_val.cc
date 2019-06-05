@@ -177,6 +177,7 @@ static void EmitIrForStatements(EmitIr const *visitor,
       iter->type()->EmitDestroy(visitor, iter->get(), ctx);
     }
     to_destroy.clear();
+    if (!ctx->more_stmts_allowed_) { break; }
   }
 }
 
@@ -677,8 +678,29 @@ ir::Results EmitIr::Val(ast::BlockLiteral const *node, Context *ctx) const {
 }
 
 ir::Results EmitIr::Val(ast::BlockNode const *node, Context *ctx) const {
+  ctx->yields_stack_.emplace_back();
+  base::defer d([&]() { ctx->yields_stack_.pop_back(); });
+
   EmitIrForStatements(this, node->stmts(), ctx);
+
+  // TODO yield args can just be this pair type, making this conversion
+  // unnecessary.
+  std::vector<std::pair<ast::Expression const *, ir::Results>> yield_args;
+  for (auto &arg : ctx->yields_stack_.back()) {
+    yield_args.emplace_back(arg.expr_, arg.val_);
+  }
+
+  // TODO this is tricky. We can easily destroy parameters that we're trying to
+  // pass to the next scope. Need to really treat these like function args and
+  // destroy them at the end of the inline call.
   MakeAllDestructions(this, node->body_scope(), ctx);
+
+  ASSERT_NOT_NULL(ctx->dispatch_table(ast::ExprPtr{node, 0x02}))
+      ->EmitInlineCall(
+          core::FnArgs<std::pair<ast::Expression const *, ir::Results>>{
+              std::move(yield_args), {}},
+          *ctx->block_map, ctx);
+
   return ir::Results{};
 }
 
@@ -1378,14 +1400,14 @@ ir::Results EmitIr::Val(ast::ScopeLiteral const *node, Context *ctx) const {
 }
 
 ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
-  ctx->yields_stack_.emplace_back();
-  base::defer d([&]() { ctx->yields_stack_.pop_back(); });
-
   auto init_block = ir::CompiledFn::Current->AddBlock();
   auto land_block = ir::CompiledFn::Current->AddBlock();
 
   absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> block_map{
       {ir::BlockDef::Start(), init_block}, {ir::BlockDef::Exit(), land_block}};
+  auto *old_block_map = ctx->block_map;
+  ctx->block_map      = &block_map;
+  base::defer d([&] { ctx->block_map = old_block_map; });
 
   absl::flat_hash_map<std::string_view,
                       std::tuple<ir::BlockDef const *, ast::BlockNode const *>>
@@ -1419,17 +1441,14 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
 
   for (auto [block_name, block_and_node] : name_to_block) {
     if (block_name == "init" || block_name == "done") { continue; }
-    auto &[block, node] = block_and_node;
+    auto &[block, block_node] = block_and_node;
     auto iter           = block_map.find(block);
     if (iter == block_map.end()) { continue; }
     ir::BasicBlock::Current = iter->second;
-    ASSERT_NOT_NULL(ctx->dispatch_table(ast::ExprPtr{node, 0x01}))
+    ASSERT_NOT_NULL(ctx->dispatch_table(ast::ExprPtr{block_node, 0x01}))
         ->EmitInlineCall({}, block_map, ctx);
 
-    ASSERT_NOT_NULL(node)->EmitIr(this, ctx);
-
-    ASSERT_NOT_NULL(ctx->dispatch_table(ast::ExprPtr{node, 0x02}))
-        ->EmitInlineCall({}, block_map, ctx);
+    ASSERT_NOT_NULL(block_node)->EmitIr(this, ctx);
   }
 
   ir::BasicBlock::Current = land_block;

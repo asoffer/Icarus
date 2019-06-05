@@ -1779,8 +1779,9 @@ VerifyResult VerifyType::operator()(ast::ScopeLiteral const *node,
   return ctx->set_result(node, VerifyResult::Constant(type::Scope));
 }
 
-void VerifyBlockNode(VerifyType const *visitor, ast::BlockNode const *node,
-                     ir::ScopeDef *scope_def, Context *ctx) {
+std::vector<std::pair<ast::Expression const *, VerifyResult>> VerifyBlockNode(
+    VerifyType const *visitor, ast::BlockNode const *node,
+    ir::ScopeDef *scope_def, Context *ctx) {
   visitor::ExtractJumps extract_visitor;
   for (auto const &stmt : node->stmts()){
     stmt->ExtractJumps(&extract_visitor);
@@ -1789,20 +1790,24 @@ void VerifyBlockNode(VerifyType const *visitor, ast::BlockNode const *node,
   node->VerifyType(visitor, ctx);
 
   auto yields = extract_visitor.jumps(visitor::ExtractJumps::Kind::Yield);
-  if (!yields.empty()) {
+  if (yields.empty()) {
+    return {};
+  } else {
+    std::vector<
+        std::pair<ast::Expression const *, std::vector<type::Type const *>>>
+        yield_results;
     for (auto *yield : yields) {
       // TODO actually fill a fnargs
-      std::vector<type::Type const *> yield_types;
-      for (auto yield_expr : yields[0]->as<ast::RepeatedUnop>().exprs()) {
-        yield_types.push_back(ctx->type_of(yield_expr));
+      std::vector<std::pair<ast::Expression const *, VerifyResult>>
+          local_yields;
+      for (auto *yield_expr : yields[0]->as<ast::RepeatedUnop>().exprs()) {
+        local_yields.emplace_back(
+            yield_expr,
+            *ASSERT_NOT_NULL(ctx->prior_verification_attempt(yield_expr)));
       }
-
-      // TODO if i knew what scope i came from, i'd be able to find the correct
-      // blockdef which would tell me the exit handlers that are relevant which
-      // i could pass to VerifyDispatch.
-      // base::Log() << scope_def->blocks_.at(node->name());
-      // base::Log() << type::Tup(std::move(yield_types))->to_string();
+      return local_yields;
     }
+    NOT_YET();
   }
 }
 
@@ -1828,14 +1833,17 @@ VerifyResult VerifyType::operator()(ast::ScopeNode const *node,
   auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(node->name_.get(), ctx);
   if (scope_def->work_item) { (*scope_def->work_item)(); }
   for (auto &block : node->blocks_) {
-    VerifyBlockNode(this, &block, scope_def, ctx);
+    auto block_results = VerifyBlockNode(this, &block, scope_def, ctx);
     auto const &block_def = scope_def->blocks_.at(block.name());
-    err |= !ast::VerifyDispatch(ast::ExprPtr{&block, 0x02}, block_def.after_,
-                                /* TODO block args */ {}, ctx)
+    err |= !ast::VerifyDispatch(
+                ast::ExprPtr{&block, 0x02}, block_def.after_,
+                core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>{
+                    std::move(block_results), {}},
+                ctx)
                 .ok();
 
     err |= !ast::VerifyDispatch(ast::ExprPtr{&block, 0x01}, block_def.before_,
-                                /* TODO yields */ {}, ctx)
+                                /* TODO block args */ {}, ctx)
                 .ok();
   }
   if (err) { return VerifyResult::Error(); }
