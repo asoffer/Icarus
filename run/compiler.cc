@@ -11,6 +11,7 @@
 #include "misc/context.h"
 #include "misc/module.h"
 #include "opt/combine_blocks.h"
+#include "opt/combine_prints.h"
 
 std::vector<std::string> files;
 
@@ -49,6 +50,7 @@ int RunCompiler() {
 
     // TODO All the functions? In all the modules?
     opt::CombineBlocks(main_fn);
+    opt::CombinePrints(main_fn);
 
     backend::ExecContext exec_ctx;
     backend::Execute(main_fn, base::untyped_buffer(0), {}, &exec_ctx);

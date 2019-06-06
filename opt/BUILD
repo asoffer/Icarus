@@ -7,7 +7,10 @@ sources()
 cc_group_target(
     name = "impl",
     cfgs = ["match", "compile"],
-    deps = [":combine_blocks-impl"])
+    deps = [
+        ":combine_blocks-impl",
+        ":combine_prints-impl",
+    ])
 
 cc_lib_target(
     name = "combine_blocks",
@@ -16,6 +19,19 @@ cc_lib_target(
     impl_deps = [
         "//base:log",
         "//ir:compiled_fn",
+    ],
+    test_deps = None,
+)
+
+cc_lib_target(
+    name = "combine_prints",
+    cfgs = ["match", "compile"],
+    intf_deps = [],
+    impl_deps = [
+        "//ir:compiled_fn",
+        "//ir:cmd",
+        "//ir:str",
+        "@com_google_absl//absl/strings",
     ],
     test_deps = None,
 )

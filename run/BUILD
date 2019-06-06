@@ -15,6 +15,7 @@ cc_lib_target(
         "//misc:context",
         "//misc:module",
         "//opt:combine_blocks",
+        "//opt:combine_prints",
     ],
     test_deps = None,
 )
