@@ -34,8 +34,69 @@ void Combine(ir::Cmd** target, ir::Cmd* source, ir::RegisterOr<T> r) {
           absl::StrCat((*target)->byte_view_arg_.val_, r.val_));
     }
     source->op_code_ = ir::Op::Death;
+  } else if ((*target)->op_code_ == ir::Op::PrintBool) {
+    (*target)->op_code_ = ir::Op::PrintByteView;
+    (*target)->byte_view_arg_.val_ =
+        (*target)->bool_arg_.val_ ? "true" : "false";
+    Combine(target, source, r);
+ 
+  } else if ((*target)->op_code_ == ir::Op::PrintNat8) {
+    (*target)->op_code_ = ir::Op::PrintByteView;
+    (*target)->byte_view_arg_.val_ =
+        ir::SaveStringGlobally(absl::StrCat((*target)->u8_arg_.val_));
+    Combine(target, source, r);
+  } else if ((*target)->op_code_ == ir::Op::PrintNat16) {
+    (*target)->op_code_ = ir::Op::PrintByteView;
+    (*target)->byte_view_arg_.val_ =
+        ir::SaveStringGlobally(absl::StrCat((*target)->u16_arg_.val_));
+    Combine(target, source, r);
+  } else if ((*target)->op_code_ == ir::Op::PrintNat32) {
+    (*target)->op_code_ = ir::Op::PrintByteView;
+    (*target)->byte_view_arg_.val_ =
+        ir::SaveStringGlobally(absl::StrCat((*target)->u32_arg_.val_));
+    Combine(target, source, r);
+  } else if ((*target)->op_code_ == ir::Op::PrintNat64) {
+    (*target)->op_code_ = ir::Op::PrintByteView;
+    (*target)->byte_view_arg_.val_ =
+        ir::SaveStringGlobally(absl::StrCat((*target)->u64_arg_.val_));
+    Combine(target, source, r);
+  } else if ((*target)->op_code_ == ir::Op::PrintInt8) {
+    (*target)->op_code_ = ir::Op::PrintByteView;
+    (*target)->byte_view_arg_.val_ =
+        ir::SaveStringGlobally(absl::StrCat((*target)->i8_arg_.val_));
+    Combine(target, source, r);
+  } else if ((*target)->op_code_ == ir::Op::PrintInt16) {
+    (*target)->op_code_ = ir::Op::PrintByteView;
+    (*target)->byte_view_arg_.val_ =
+        ir::SaveStringGlobally(absl::StrCat((*target)->i16_arg_.val_));
+    Combine(target, source, r);
+  } else if ((*target)->op_code_ == ir::Op::PrintInt32) {
+    (*target)->op_code_ = ir::Op::PrintByteView;
+    (*target)->byte_view_arg_.val_ =
+        ir::SaveStringGlobally(absl::StrCat((*target)->i32_arg_.val_));
+    Combine(target, source, r);
+  } else if ((*target)->op_code_ == ir::Op::PrintInt64) {
+    (*target)->op_code_ = ir::Op::PrintByteView;
+    (*target)->byte_view_arg_.val_ =
+        ir::SaveStringGlobally(absl::StrCat((*target)->i64_arg_.val_));
+    Combine(target, source, r);
+  } else if ((*target)->op_code_ == ir::Op::PrintFloat32) {
+    (*target)->op_code_ = ir::Op::PrintByteView;
+    (*target)->byte_view_arg_.val_ =
+        ir::SaveStringGlobally(absl::StrCat((*target)->float32_arg_.val_));
+    Combine(target, source, r);
+  } else if ((*target)->op_code_ == ir::Op::PrintFloat64) {
+    (*target)->op_code_ = ir::Op::PrintByteView;
+    (*target)->byte_view_arg_.val_ =
+        ir::SaveStringGlobally(absl::StrCat((*target)->float64_arg_.val_));
+    Combine(target, source, r);
+  } else if ((*target)->op_code_ == ir::Op::PrintType) {
+    (*target)->op_code_ = ir::Op::PrintByteView;
+    (*target)->byte_view_arg_.val_ =
+        ir::SaveStringGlobally((*target)->type_arg_.val_->to_string());
+    Combine(target, source, r);
   } else {
-    NOT_YET((*target)->op_code_);
+    NOT_YET(static_cast<int>((*target)->op_code_));
   }
 }
 }  // namespace
@@ -60,13 +121,14 @@ void CombinePrints(ir::CompiledFn* fn) {
         case ir::Op::PrintFloat32: Combine(&print_cmd, &cmd, cmd.float32_arg_); break;
         case ir::Op::PrintFloat64: Combine(&print_cmd, &cmd, cmd.float64_arg_); break;
         case ir::Op::PrintType: Combine(&print_cmd, &cmd, cmd.type_arg_); break;
-        case ir::Op::PrintEnum: NOT_YET();
-        case ir::Op::PrintFlags: NOT_YET();
-        case ir::Op::PrintAddr: NOT_YET();
+        case ir::Op::PrintEnum: /* not yet */ print_cmd = nullptr; break;
+        case ir::Op::PrintFlags: /* not yet */ print_cmd = nullptr; break;
+        case ir::Op::PrintAddr: /* not yet */ print_cmd = nullptr; break;
         case ir::Op::PrintByteView:
           Combine(&print_cmd, &cmd, cmd.byte_view_arg_);
-          break;
-        case ir::Op::PrintInterface: NOT_YET();
+         break;
+        case ir::Op::PrintInterface: /* not yet */ print_cmd = nullptr; break;
+        case ir::Op::Call: print_cmd = nullptr; break;
         default: break;
       }
     }
