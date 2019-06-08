@@ -152,7 +152,7 @@ struct RetrieveArgs<N, T, Ts...> {
       auto addr = arguments.get<ir::Addr>(*index);
       void *ptr = nullptr;
       switch (addr.kind) {
-        case ir::Addr::Kind::Stack: NOT_YET();
+        case ir::Addr::Kind::Stack: NOT_YET(addr.as_stack);
         case ir::Addr::Kind::Heap:
           ptr = static_cast<void *>(addr.as_heap);
           break;
@@ -253,7 +253,7 @@ void CallForeignFn(ir::Foreign const &f, base::untyped_buffer const &arguments,
              fn_type->input[0]->is<type::Pointer>()) {
     FfiCall<void, void *>(f, arguments, &ret_slots, stack);
   } else {
-    UNREACHABLE(fn_type);
+    UNREACHABLE(fn_type->to_string());
   }
 }
 

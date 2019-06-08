@@ -28,7 +28,7 @@ struct Arguments {
   std::vector<type::Type const *> const &input_types() const;
   Results const &results() const { return results_; }
 
- private:
+ // private:
   type::Callable const *type_ = nullptr;
   Results results_;
 };

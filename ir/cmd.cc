@@ -649,7 +649,7 @@ std::pair<Results, bool> CallInline(
 
   // 3. Ignoring phi-nodes, iterate over commands in blocks, skipping to the
   //    next one whenever you get stuck.
-  base::bag<std::pair<BlockIndex, size_t>> blocks;
+  std::queue<std::pair<BlockIndex, size_t>> blocks;
   // TODO block relocation is much simpler: 0 -> 0, 1 -> current block, all
   // others are now add are just their index + current size
   absl::flat_hash_map<BlockIndex, BlockIndex> block_relocs;
@@ -663,8 +663,8 @@ std::pair<Results, bool> CallInline(
 
   std::vector<std::pair<GenericPhiArgs *, CmdIndex>> deferred_phis;
   while (!blocks.empty()) {
-    auto iter           = blocks.begin();
-    auto [block, index] = *iter;
+    auto [block, index] = blocks.front();
+    blocks.pop();
     BasicBlock::Current = block_relocs.at(block);
     // TODO could just as easily be a ref
     auto const &block_ref = f->block(block);
@@ -743,9 +743,21 @@ std::pair<Results, bool> CallInline(
           CASE(LoadType, Load, type::Type const *);
           CASE(LoadEnum, Load, EnumVal);
           CASE(LoadFlags, Load, FlagsVal);
-          CASE(LoadAddr, Load, ir::Addr);
           CASE(LoadFunc, Load, AnyFunc);
 #undef CASE
+        case Op::LoadAddr: {
+          RegisterOr<Addr> r;
+          if (cmd.addr_arg_.is_reg_) {
+            auto iter = reg_relocs.find(cmd.addr_arg_.reg_);
+            if (iter == reg_relocs.end()) { goto next_block; }
+            // TODO I don't actually care what type I pass in here as long as
+            // it's big enough to hold an address. Fix this hack.
+            r = Load<Addr>(iter->second.get<Addr>(0), type::Ptr(type::Int64));
+          } else {
+            r = cmd.addr_arg_;
+          }
+          reg_relocs.emplace(cmd.result, r);
+        } break;
 
 #define CASE(op_code, op_fn, type, arg)                                        \
   case Op::op_code: {                                                          \
@@ -819,14 +831,14 @@ std::pair<Results, bool> CallInline(
 #define CASE(op_code, op_fn, type, args)                                       \
   case Op::op_code: {                                                          \
     RegisterOr<type> r0, r1;                                                   \
-    if (cmd.args.args_[0].is_reg_) {                                          \
+    if (cmd.args.args_[0].is_reg_) {                                           \
       auto iter0 = reg_relocs.find(cmd.args.args_[0].reg_);                    \
       if (iter0 == reg_relocs.end()) { goto next_block; }                      \
       r0 = iter0->second.get<type>(0);                                         \
     } else {                                                                   \
       r0 = cmd.args.args_[0];                                                  \
     }                                                                          \
-    if (cmd.args.args_[1].is_reg_) {                                          \
+    if (cmd.args.args_[1].is_reg_) {                                           \
       auto iter1 = reg_relocs.find(cmd.args.args_[1].reg_);                    \
       if (iter1 == reg_relocs.end()) { goto next_block; }                      \
       r1 = iter1->second.get<type>(0);                                         \
@@ -835,7 +847,7 @@ std::pair<Results, bool> CallInline(
     }                                                                          \
     reg_relocs.emplace(cmd.result, op_fn(r0, r1));                             \
   } break
-              CASE(AddNat8, Add, uint8_t, u8_args_);
+          CASE(AddNat8, Add, uint8_t, u8_args_);
           CASE(AddNat16, Add, uint16_t, u16_args_);
           CASE(AddNat32, Add, uint32_t, u32_args_);
           CASE(AddNat64, Add, uint64_t, u64_args_);
@@ -1057,15 +1069,80 @@ std::pair<Results, bool> CallInline(
         case Op::CreateContext: UNREACHABLE();
         case Op::AddBoundConstant: UNREACHABLE();
         case Op::DestroyContext: UNREACHABLE();
+        case Op::Call: {
+          RegisterOr<AnyFunc> r_fn;
+          if (cmd.call_.fn_.is_reg_) {
+            auto iter = reg_relocs.find(cmd.call_.fn_.reg_);
+            if (iter == reg_relocs.end()) { goto next_block; }
+            r_fn = iter->second.get<AnyFunc>(0).reg_;
+          } else {
+            r_fn = cmd.call_.fn_;
+          }
+
+          Results new_arg_results;
+          for (size_t i = 0; i < cmd.call_.arguments_->results().size(); ++i) {
+            if (cmd.call_.arguments_->results().is_reg(i)) {
+              auto iter =
+                  reg_relocs.find(cmd.call_.arguments_->results().get<Reg>(i));
+              if (iter == reg_relocs.end()) { goto next_block; }
+              new_arg_results.append(iter->second.GetResult(0));
+            } else {
+              new_arg_results.append(
+                  cmd.call_.arguments_->results().GetResult(i));
+            }
+          }
+          Arguments new_args(cmd.call_.arguments_->type_,
+                             std::move(new_arg_results));
+
+          if (cmd.call_.outs_) {
+            OutParams outs;
+            for (size_t i = 0; i < cmd.call_.outs_->regs_.size(); ++i) {
+              if (cmd.call_.outs_->is_loc_[i]) {
+                auto old_r = cmd.call_.outs_->regs_[i];
+                auto iter  = reg_relocs.find(old_r);
+                if (iter == reg_relocs.end()) { goto next_block; }
+                // TODO reg_relocs.emplace(, op_fn(r0, r1));
+              } else {
+                auto r =
+                    Reserve(type::Int64);  // TODO this type is probably wrong.
+                outs.is_loc_.push_back(false);
+                outs.regs_.push_back(r);
+                reg_relocs.emplace(cmd.call_.outs_->regs_[i], r);
+              }
+            }
+            Call(r_fn, std::move(new_args), std::move(outs));
+          } else {
+            Call(r_fn, std::move(new_args));
+          }
+        } break;
+        case Op::PtrIncr: {
+          RegisterOr<Addr> r_ptr;
+          if (cmd.ptr_incr_.ptr_.is_reg_) {
+            auto iter = reg_relocs.find(cmd.ptr_incr_.ptr_.reg_);
+            if (iter == reg_relocs.end()) { goto next_block; }
+            r_ptr = iter->second.get<Addr>(0);
+          } else {
+            r_ptr = cmd.ptr_incr_.ptr_.val_;
+          }
+          RegisterOr<int64_t> r_inc;
+          if (cmd.ptr_incr_.ptr_.is_reg_) {
+            auto iter = reg_relocs.find(cmd.ptr_incr_.incr_.reg_);
+            if (iter == reg_relocs.end()) { goto next_block; }
+            r_inc = iter->second.get<int64_t>(0);
+          } else {
+            r_inc = cmd.ptr_incr_.incr_.val_;
+          }
+          reg_relocs.emplace(
+              cmd.result,
+              PtrIncr(r_ptr, r_inc, type::Ptr(cmd.ptr_incr_.pointee_type_)));
+        } break;
         default:; NOT_YET(static_cast<int>(cmd.op_code_));
       }
       continue;
-
     next_block:
       blocks.emplace(block, index);
       break;
     }
-    blocks.erase(iter);
   }
 
   // 4. Go back with a second pass over phi-nodes.

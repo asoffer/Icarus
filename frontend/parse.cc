@@ -392,9 +392,14 @@ std::unique_ptr<ast::Node> BuildIndexOperator(
     error_log->IndexingDeclaration(index->lhs()->span);
   }
 
-  if (index->rhs()->is<ast::Declaration>()) {
-    error_log->DeclarationInIndex(index->rhs()->span);
-  }
+  // TODO This check is correct except that we're using indexes as a temporary
+  // state for building args in block nodes. Also this needs to check deeper.
+  // For example, commalists could have declarations in them and we wouldn't
+  // catch it. Probably we should have a frontend-only temporary node that
+  // converts to an index or block node once we're sure we know which it is.
+  // if (index->rhs()->is<ast::Declaration>()) {
+  //   error_log->DeclarationInIndex(index->rhs()->span);
+  // }
 
   return index;
 }
@@ -654,9 +659,28 @@ std::unique_ptr<ast::Node> BuildBlockNode(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
   auto span = TextSpan(nodes.front()->span, nodes.back()->span);
-  return std::make_unique<ast::BlockNode>(
-      std::move(span), std::string{nodes[0]->as<ast::Identifier>().token()},
-      std::move(nodes[1]->as<Statements>()).extract());
+  if (auto *id = nodes.front()->if_as<ast::Identifier>()) {
+    return std::make_unique<ast::BlockNode>(
+        std::move(span), std::string{id->token()},
+        std::move(nodes.back()->as<Statements>()).extract());
+  } else if (auto *index = nodes.front()->if_as<ast::Index>()) {
+    auto [lhs, rhs] = std::move(*index).extract();
+    std::vector<std::unique_ptr<ast::Expression>> args;
+    if (auto *cl = rhs->if_as<ast::CommaList>()) {
+      args = std::move(*cl).extract();
+    } else {
+      args.push_back(std::move(rhs));
+    }
+    return std::make_unique<ast::BlockNode>(
+        std::move(span), std::string{lhs->as<ast::Identifier>().token()},
+        std::move(args), std::move(nodes.back()->as<Statements>()).extract());
+
+  } else {
+    for (auto const &n : nodes) {
+      base::Log() << visitor::DumpAst::ToString(n.get());
+    }
+    NOT_YET("log an error");
+  }
 }
 
 std::unique_ptr<ast::Node> ExtendScopeNode(

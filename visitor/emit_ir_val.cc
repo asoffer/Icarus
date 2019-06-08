@@ -1399,6 +1399,29 @@ ir::Results EmitIr::Val(ast::ScopeLiteral const *node, Context *ctx) const {
   return ir::Results{&scope_def_iter->second};
 }
 
+ir::Results InitializeAndEmitBlockNode(ir::Results const &results,
+                                       ast::BlockNode const *block_node,
+                                       EmitIr const *visitor, Context *ctx) {
+  // TODO this initialization should be the same as what's done with function
+  // calls, so you should share that code. It's tricky because you need to worry
+  // about conversions to/from variants.
+  ASSERT(block_node->args().size() == results.size());
+  size_t i = 0;
+  for (auto *arg : block_node->args()) {
+    ASSERT(arg->is<ast::Declaration>() == true);
+    auto *t   = ctx->type_of(arg->if_as<ast::Declaration>());
+    auto addr = ctx->addr(arg->if_as<ast::Declaration>());
+    type::ApplyTypes<bool, uint8_t, uint16_t, uint32_t, uint64_t, int8_t,
+                     int16_t, int32_t, int64_t, float, double>(
+        t, [&](auto type_holder) {
+          using T = typename decltype(type_holder)::type;
+          ir::Store(results.get<T>(i), addr);
+        });
+    i++;
+  }
+  return block_node->EmitIr(visitor, ctx);
+}
+
 ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
   auto init_block = ir::CompiledFn::Current->AddBlock();
   auto land_block = ir::CompiledFn::Current->AddBlock();
@@ -1445,10 +1468,10 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
     auto iter           = block_map.find(block);
     if (iter == block_map.end()) { continue; }
     ir::BasicBlock::Current = iter->second;
-    ASSERT_NOT_NULL(ctx->dispatch_table(ast::ExprPtr{block_node, 0x01}))
-        ->EmitInlineCall({}, block_map, ctx);
-
-    ASSERT_NOT_NULL(block_node)->EmitIr(this, ctx);
+    auto results =
+        ASSERT_NOT_NULL(ctx->dispatch_table(ast::ExprPtr{block_node, 0x01}))
+            ->EmitInlineCall({}, block_map, ctx);
+    InitializeAndEmitBlockNode(results, block_node, this, ctx);
   }
 
   ir::BasicBlock::Current = land_block;

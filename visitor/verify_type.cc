@@ -459,7 +459,7 @@ VerifyResult VerifyType::operator()(ast::BlockLiteral const *node,
 
 VerifyResult VerifyType::operator()(ast::BlockNode const *node,
                                     Context *ctx) const {
-
+  for (auto *arg : node->args()) { arg->VerifyType(this, ctx); }
   for (auto *stmt : node->stmts()) { stmt->VerifyType(this, ctx); }
   return ctx->set_result(node, VerifyResult::Constant(type::Block));
 }
