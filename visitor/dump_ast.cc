@@ -11,7 +11,12 @@ namespace visitor {
 std::string DumpAst::ToString(ast::Node const *node) {
   std::string result;
   DumpAst d(&result);
-  node->DumpAst(&d);
+  // TODO figure out what's going wrong here.
+  if (auto *tok = node->if_as<frontend::Token>()) {
+    d(tok);
+  } else {
+    node->DumpAst(&d);
+  }
   return result;
 }
 
@@ -141,7 +146,12 @@ void DumpAst::operator()(ast::BlockLiteral const *node) {
 }
 
 void DumpAst::operator()(ast::BlockNode const *node) {
-  absl::StrAppend(out_, node->name(), " {\n");
+  absl::StrAppend(out_, node->name());
+  if (!node->args().empty()) {
+    absl::StrAppend(out_, " [", absl::StrJoin(node->args(), ", ", Joiner{this}),
+                    "]");
+  }
+  absl::StrAppend(out_, " {\n");
   ++indentation_;
   for (auto *stmt : node->stmts()) {
     absl::StrAppend(out_, "\n", indent());
@@ -356,7 +366,7 @@ void DumpAst::operator()(ast::Switch const *node) {
   }
   absl::StrAppend(out_, "{\n");
   ++indentation_;
-  for (auto const & [ body, cond ] : node->cases_) {
+  for (auto const &[body, cond] : node->cases_) {
     absl::StrAppend(out_, indent());
     body->DumpAst(this);
     absl::StrAppend(out_, " when ");

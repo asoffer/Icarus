@@ -85,6 +85,9 @@ struct ArrayLiteral : public Expression {
   // TODO hide the unique_ptr here.
   NodeSpan<Expression const> elems() const { return exprs_; }
   NodeSpan<Expression> elems() { return exprs_; }
+  std::vector<std::unique_ptr<Expression>> &&extract() && {
+    return std::move(exprs_);
+  }
 
 #include "visitor/visitors.xmacro.h"
 
@@ -218,13 +221,20 @@ struct BlockLiteral : public ScopeExpr<core::DeclScope> {
 // Represents a block in a scope at the usage-site (as opposed to where the
 // author of the scope defined the block).
 //
-// Example:
+// Example (with no arguments):
 //  ```
 //  if (some_condition) then {
 //    do_something()
 //    do_another_thing()
 //  } else {
 //    do_something_else()
+//  }
+//  ```
+//
+// Example (with arguments):
+//  ```
+//  for_each (array_of_bools) do [elem: bool] {
+//    if (elem) then { print "It's true!" } else { print "It's not so true." }
 //  }
 //  ```
 //
@@ -241,6 +251,13 @@ struct BlockNode : public ScopeExpr<core::ExecScope> {
       : ScopeExpr<core::ExecScope>(std::move(span)),
         name_(std::move(name)),
         stmts_(std::move(stmts)) {}
+  explicit BlockNode(TextSpan span, std::string name,
+                     std::vector<std::unique_ptr<Expression>> args,
+                     std::vector<std::unique_ptr<Node>> stmts)
+      : ScopeExpr<core::ExecScope>(std::move(span)),
+        name_(std::move(name)),
+        args_(std::move(args)),
+        stmts_(std::move(stmts)) {}
   ~BlockNode() override {}
   BlockNode(BlockNode &&) noexcept = default;
   BlockNode &operator=(BlockNode &&) noexcept = default;
@@ -248,11 +265,14 @@ struct BlockNode : public ScopeExpr<core::ExecScope> {
   std::string_view name() const { return name_; }
   NodeSpan<Node> stmts() { return stmts_; }
   NodeSpan<Node const> stmts() const { return stmts_; }
+  NodeSpan<Expression> args() { return args_; }
+  NodeSpan<Expression const> args() const { return args_; }
 
 #include "visitor/visitors.xmacro.h"
 
  private:
   std::string name_;
+  std::vector<std::unique_ptr<Expression>> args_;
   std::vector<std::unique_ptr<Node>> stmts_;
 };
 
@@ -369,6 +389,10 @@ struct Index : public Expression {
   Expression* lhs() { return lhs_.get(); }
   Expression const* rhs() const { return rhs_.get(); }
   Expression* rhs() { return rhs_.get(); }
+  std::pair<std::unique_ptr<Expression>, std::unique_ptr<Expression>> extract()
+      && {
+    return std::pair(std::move(lhs_), std::move(rhs_));
+  }
 
 #include "visitor/visitors.xmacro.h"
 

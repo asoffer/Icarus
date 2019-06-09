@@ -681,7 +681,7 @@ static bool EmitOneCall(
         ir::Reg reg = std::get<ir::Reg>(outputs->at(j++));
         // TODO this seems like something that should be shareable with the
         // type-based assignment/initialization code.
-        NOT_YET(reg);
+        NOT_YET(reg, ret_type->to_string());
       } else {
         std::visit(
             [&](auto out) {

@@ -42,6 +42,7 @@ void AssignScope::operator()(ast::BlockLiteral *node, core::Scope *scope) {
 void AssignScope::operator()(ast::BlockNode *node, core::Scope *scope) {
   node->scope_ = scope;
   node->set_body_with_parent(scope);
+  SetAllScopes(this, node->args(), node->body_scope());
   SetAllScopes(this, node->stmts(), node->body_scope());
 }
 
