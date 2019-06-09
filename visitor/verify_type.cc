@@ -801,8 +801,13 @@ not_blocks:
               ctx);
         }
 
-        if (lhs_result.type_ != rhs_result.type_) {
-          NOT_YET("Log an error", lhs_result.type_, rhs_result.type_, node);
+        if (lhs_result.type_ != rhs_result.type_ &&
+            !(lhs_result.type_->is<type::Pointer>() &&
+              rhs_result.type_ == type::NullPtr) &&
+            !(rhs_result.type_->is<type::Pointer>() &&
+              lhs_result.type_ == type::NullPtr)) {
+          NOT_YET("Log an error", lhs_result.type_->to_string(),
+                  rhs_result.type_->to_string(), node);
 
         } else {
           auto cmp = Comparator(lhs_result.type_);
@@ -1649,9 +1654,6 @@ VerifyResult VerifyType::operator()(ast::Jump const *node, Context *ctx) const {
       auto *lit = block_def->parent_;
       ast::VerifyDispatch(ast::ExprPtr{lit, 0x01}, block_def->before_, args,
                           ctx);
-      // TODO args for after? Actually why are you even verifying dispatch for
-      // it here?
-      ast::VerifyDispatch(ast::ExprPtr{lit, 0x02}, block_def->after_, {}, ctx);
     }
   }
   return VerifyResult::Constant(type::Void());
@@ -1833,7 +1835,7 @@ VerifyResult VerifyType::operator()(ast::ScopeNode const *node,
   auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(node->name_.get(), ctx);
   if (scope_def->work_item) { (*scope_def->work_item)(); }
   for (auto &block : node->blocks_) {
-    auto block_results = VerifyBlockNode(this, &block, scope_def, ctx);
+    auto block_results    = VerifyBlockNode(this, &block, scope_def, ctx);
     auto const &block_def = scope_def->blocks_.at(block.name());
     err |= !ast::VerifyDispatch(
                 ast::ExprPtr{&block, 0x02}, block_def.after_,
@@ -1846,12 +1848,12 @@ VerifyResult VerifyType::operator()(ast::ScopeNode const *node,
                                 /* TODO block args */ {}, ctx)
                 .ok();
   }
+
+  err |= !ast::VerifyDispatch(ast::ExprPtr{node, 0x02}, scope_def->inits_,
+                              arg_results, ctx)
+              .ok();
+
   if (err) { return VerifyResult::Error(); }
-
-  ASSIGN_OR(return _, std::ignore,
-                   ast::VerifyDispatch(ast::ExprPtr{node, 0x02},
-                                       scope_def->inits_, arg_results, ctx));
-
   return ast::VerifyDispatch(node, scope_def->dones_, /* TODO */ {}, ctx);
 }
 

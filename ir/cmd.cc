@@ -843,7 +843,7 @@ std::pair<Results, bool> CallInline(
       if (iter1 == reg_relocs.end()) { goto next_block; }                      \
       r1 = iter1->second.get<type>(0);                                         \
     } else {                                                                   \
-      r1 = cmd.args.args_[0];                                                  \
+      r1 = cmd.args.args_[1];                                                  \
     }                                                                          \
     reg_relocs.emplace(cmd.result, op_fn(r0, r1));                             \
   } break

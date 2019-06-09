@@ -1412,7 +1412,7 @@ ir::Results InitializeAndEmitBlockNode(ir::Results const &results,
     auto *t   = ctx->type_of(arg->if_as<ast::Declaration>());
     auto addr = ctx->addr(arg->if_as<ast::Declaration>());
     type::ApplyTypes<bool, uint8_t, uint16_t, uint32_t, uint64_t, int8_t,
-                     int16_t, int32_t, int64_t, float, double>(
+                     int16_t, int32_t, int64_t, float, double, ir::Addr>(
         t, [&](auto type_holder) {
           using T = typename decltype(type_holder)::type;
           ir::Store(results.get<T>(i), addr);
