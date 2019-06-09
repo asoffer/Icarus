@@ -172,9 +172,9 @@ void DumpAst::operator()(ast::Call const *node) {
 
 void DumpAst::operator()(ast::Cast const *node) {
   absl::StrAppend(out_, "(");
-  node->expr_->DumpAst(this);
+  node->expr()->DumpAst(this);
   absl::StrAppend(out_, ") as (");
-  node->type_->DumpAst(this);
+  node->type()->DumpAst(this);
   absl::StrAppend(out_, ")");
 }
 

@@ -20,7 +20,6 @@ cc_lib_target(
     name = "ast",
     intf_deps = [
         ":call",
-        ":cast",
         ":chainop",
         ":comma_list",
         ":declaration",
@@ -42,7 +41,6 @@ cc_lib_target(
 )
 
 icarus_ast_node(name = "call", deps = [":expression"])
-icarus_ast_node(name = "cast", deps = [":expression"])
 icarus_ast_node(name = "chainop",
                 deps = [":expression", "//frontend:operators"])
 icarus_ast_node(name = "comma_list", deps = [":expression"])

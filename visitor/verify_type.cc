@@ -656,8 +656,8 @@ VerifyResult VerifyType::operator()(ast::Call const *node, Context *ctx) const {
 }
 
 VerifyResult VerifyType::operator()(ast::Cast const *node, Context *ctx) const {
-  auto expr_result = node->expr_->VerifyType(this, ctx);
-  auto type_result = node->type_->VerifyType(this, ctx);
+  auto expr_result = node->expr()->VerifyType(this, ctx);
+  auto type_result = node->type()->VerifyType(this, ctx);
   if (!expr_result.ok() || !type_result.ok()) { return VerifyResult::Error(); }
 
   if (type_result.type_ != type::Type_) {
@@ -669,7 +669,7 @@ VerifyResult VerifyType::operator()(ast::Cast const *node, Context *ctx) const {
     return VerifyResult::Error();
   }
   auto *t = ASSERT_NOT_NULL(
-      backend::EvaluateAs<type::Type const *>(node->type_.get(), ctx));
+      backend::EvaluateAs<type::Type const *>(node->type(), ctx));
   if (t->is<type::Struct>()) {
     ast::OverloadSet os(node->scope_, "as", ctx);
     os.add_adl("as", t);
@@ -678,7 +678,7 @@ VerifyResult VerifyType::operator()(ast::Cast const *node, Context *ctx) const {
     return ast::VerifyDispatch(
         node, os,
         core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>(
-            {std::pair(node->expr_.get(), expr_result)}, {}),
+            {std::pair(node->expr(), expr_result)}, {}),
         ctx);
   } else {
     if (!type::CanCast(expr_result.type_, t)) {

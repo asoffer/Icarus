@@ -273,10 +273,37 @@ struct BuiltinFn : public Expression {
   core::Builtin val_;
 };
 
+// Cast:
+// Represents a type-conversion. These can be either builtin conversion (for
+// example, between integral types) or user-defined conversion via overloading
+// the `as` operator. In either case, syntactically, they are represented by
+// `<expr> as <type-expr>`.
+//
+// Examples:
+// `3 ast nat32`
+// `null as *int64`
+struct Cast : public Expression {
+  explicit Cast(TextSpan span, std::unique_ptr<Expression> expr,
+       std::unique_ptr<Expression> type_expr)
+      : Expression(std::move(span)),
+        expr_(std::move(expr)),
+        type_(std::move(type_expr)) {}
+  ~Cast() override {}
+
+  Expression const *expr() const { return expr_.get(); }
+  Expression *expr() { return expr_.get(); }
+  Expression const *type() const { return type_.get(); }
+  Expression *type() { return type_.get(); }
+
+#include "visitor/visitors.xmacro.h"
+
+ private:
+  std::unique_ptr<Expression> expr_, type_;
+};
+
 }  // namespace ast
 
 #include "ast/call.h"
-#include "ast/cast.h"
 #include "ast/chainop.h"
 #include "ast/comma_list.h"
 #include "ast/enum_literal.h"

@@ -775,14 +775,14 @@ ir::Results EmitIr::Val(ast::Cast const *node, Context *ctx) const {
   if (auto *dispatch_table = ctx->dispatch_table(node)) {
     return dispatch_table->EmitCall(
         core::FnArgs<std::pair<ast::Expression const *, ir::Results>>(
-            {std::pair(node->expr_.get(), node->expr_->EmitIr(this, ctx)),
-             std::pair(node->type_.get(), node->type_->EmitIr(this, ctx))},
+            {std::pair(node->expr(), node->expr()->EmitIr(this, ctx)),
+             std::pair(node->type(), node->type()->EmitIr(this, ctx))},
             {}),
         ctx);
   }
 
   auto *this_type = ASSERT_NOT_NULL(ctx->type_of(node));
-  auto results    = node->expr_->EmitIr(this, ctx);
+  auto results    = node->expr()->EmitIr(this, ctx);
   if (this_type == type::Type_) {
     std::vector<type::Type const *> entries;
     entries.reserve(results.size());
@@ -792,7 +792,7 @@ ir::Results EmitIr::Val(ast::Cast const *node, Context *ctx) const {
     }
     return ir::Results{type::Tup(entries)};
   }
-  return ir::Cast(ctx->type_of(node->expr_.get()), this_type, results);
+  return ir::Cast(ctx->type_of(node->expr()), this_type, results);
 }
 
 static base::guarded<absl::flat_hash_map<

@@ -796,11 +796,9 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
                                           move_as<ast::Expression>(nodes[2]));
     }
   } else if (tk == "as") {
-    auto cast   = std::make_unique<ast::Cast>();
-    cast->span  = TextSpan(nodes[0]->span, nodes[2]->span);
-    cast->expr_ = move_as<ast::Expression>(nodes[0]);
-    cast->type_ = move_as<ast::Expression>(nodes[2]);
-    return cast;
+    return std::make_unique<ast::Cast>(TextSpan(nodes[0]->span, nodes[2]->span),
+                                       move_as<ast::Expression>(nodes[0]),
+                                       move_as<ast::Expression>(nodes[2]));
   } else if (tk == "when") {
     auto when  = std::make_unique<SwitchWhen>();
     when->span = TextSpan(nodes[0]->span, nodes[2]->span);

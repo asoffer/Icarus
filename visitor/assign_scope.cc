@@ -57,8 +57,8 @@ void AssignScope::operator()(ast::Call *node, core::Scope *scope) {
 
 void AssignScope::operator()(ast::Cast *node, core::Scope *scope) {
   node->scope_ = scope;
-  node->expr_->assign_scope(this, scope);
-  node->type_->assign_scope(this, scope);
+  node->expr()->assign_scope(this, scope);
+  node->type()->assign_scope(this, scope);
 }
 
 void AssignScope::operator()(ast::ChainOp *node, core::Scope *scope) {

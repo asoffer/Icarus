@@ -49,8 +49,8 @@ void DependentDecls::operator()(ast::Call const *node,
 
 void DependentDecls::operator()(ast::Cast const *node,
                                 ast::Declaration const *d) {
-  node->expr_->DependentDecls(this, d);
-  node->type_->DependentDecls(this, d);
+  node->expr()->DependentDecls(this, d);
+  node->type()->DependentDecls(this, d);
 }
 
 void DependentDecls::operator()(ast::ChainOp const *node,

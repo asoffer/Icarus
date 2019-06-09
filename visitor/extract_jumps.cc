@@ -46,8 +46,8 @@ void ExtractJumps::operator()(ast::Call const *node) {
 }
 
 void ExtractJumps::operator()(ast::Cast const *node) {
-  node->expr_->ExtractJumps(this);
-  node->type_->ExtractJumps(this);
+  node->expr()->ExtractJumps(this);
+  node->type()->ExtractJumps(this);
 }
 
 void ExtractJumps::operator()(ast::ChainOp const *node) {
