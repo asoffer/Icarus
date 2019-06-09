@@ -1620,7 +1620,7 @@ ir::Results EmitIr::Val(ast::Switch const *node, Context *ctx) const {
 }
 
 ir::Results EmitIr::Val(ast::Terminal const *node, Context *ctx) const {
-  return node->results_;
+  return node->value();
 }
 
 ir::Results EmitIr::Val(ast::Unop const *node, Context *ctx) const {

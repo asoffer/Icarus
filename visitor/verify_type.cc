@@ -2000,7 +2000,7 @@ VerifyResult VerifyType::operator()(ast::Switch const *node,
 
 VerifyResult VerifyType::operator()(ast::Terminal const *node,
                                     Context *ctx) const {
-  return ctx->set_result(node, VerifyResult::Constant(node->type_));
+  return ctx->set_result(node, VerifyResult::Constant(node->type()));
 }
 
 VerifyResult VerifyType::operator()(ast::Unop const *node, Context *ctx) const {

@@ -378,33 +378,21 @@ void DumpAst::operator()(ast::Switch const *node) {
 }
 
 void DumpAst::operator()(ast::Terminal const *node) {
-  if (node->type_ == type::Bool) {
-    absl::StrAppend(out_, node->results_.get<bool>(0).val_ ? "true" : "false");
-  } else if (node->type_ == type::Int64) {
-    absl::StrAppend(out_, node->results_.get<int64_t>(0).val_, "_i64");
-  } else if (node->type_ == type::Nat64) {
-    absl::StrAppend(out_, node->results_.get<uint64_t>(0).val_, "_u64");
-  } else if (node->type_ == type::Int32) {
-    absl::StrAppend(out_, node->results_.get<int32_t>(0).val_, "_i32");
-  } else if (node->type_ == type::Nat32) {
-    absl::StrAppend(out_, node->results_.get<uint32_t>(0).val_, "_u32");
-  } else if (node->type_ == type::Int16) {
-    absl::StrAppend(out_, node->results_.get<int16_t>(0).val_, "_i16");
-  } else if (node->type_ == type::Nat16) {
-    absl::StrAppend(out_, node->results_.get<uint16_t>(0).val_, "_u16");
-  } else if (node->type_ == type::Int8) {
-    absl::StrAppend(out_, node->results_.get<int8_t>(0).val_, "_i8");
-  } else if (node->type_ == type::Nat8) {
-    absl::StrAppend(out_, node->results_.get<uint8_t>(0).val_, "_u8");
-  } else if (node->type_ == type::Type_) {
-    absl::StrAppend(
-        out_, node->results_.get<type::Type const *>(0).val_->to_string());
-  } else if (node->type_ == type::Block) {
-    absl::StrAppend(
-        out_, base::stringify(node->results_.get<ir::BlockDef *>(0).val_));
-  } else {
-    absl::StrAppend(out_, "<<terminal: ", node->type_->to_string(), ">>");
-  }
+  type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                   uint32_t, uint64_t, float, double, bool, type::Type const *>(
+      node->type(), [&](auto type_holder) {
+        using T = typename decltype(type_holder)::type;
+        if constexpr (std::is_same_v<T, bool>) {
+          absl::StrAppend(out_, node->template as<T>() ? "true" : "false");
+        } else if constexpr (std::is_same_v<T, type::Type const *>) {
+          absl::StrAppend(out_, node->template as<T>()->to_string());
+        } else if constexpr (std::is_same_v<T, ir::BlockDef *>) {
+          absl::StrAppend(
+              out_, base::stringify(node->value().get<ir::BlockDef *>(0).val_));
+        } else {
+          absl::StrAppend(out_, node->template as<T>(), "_", typeid(T).name());
+        }
+      });
 }
 
 void DumpAst::operator()(ast::Unop const *node) {

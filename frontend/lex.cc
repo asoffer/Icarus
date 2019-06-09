@@ -106,8 +106,8 @@ Lexeme NextWord(SrcCursor *cursor, Src *src) {
 
   if (auto iter = Reserved.find(token); iter != Reserved.end()) {
     auto const &[results, type] = iter->second;
-    return Lexeme(
-        std::make_unique<ast::Terminal>(span, std::move(results), type));
+    return Lexeme(std::make_unique<ast::Terminal>(std::move(span),
+                                                  std::move(results), type));
   }
   static absl::flat_hash_map<std::string_view, core::Builtin> const BuiltinFns{
 #define ICARUS_CORE_BUILTIN_X(enumerator, str, t)                              \
@@ -174,12 +174,12 @@ Lexeme NextNumber(SrcCursor *cursor, Src *src, error::Log *error_log) {
     // TODO should you do something with guessing the type?
     error_log->InvalidNumber(span, num.error().to_string());
     return Lexeme(
-        std::make_unique<ast::Terminal>(span, ir::Results{0}, type::Int32));
+        std::make_unique<ast::Terminal>(std::move(span), ir::Results{0}, type::Int32));
   }
   return std::visit(
       [&span](auto x) {
         return Lexeme(std::make_unique<ast::Terminal>(
-            span, ir::Results{x}, type::Get<decltype(x)>()));
+            std::move(span), ir::Results{x}, type::Get<decltype(x)>()));
       },
       *num);
 }
@@ -446,7 +446,8 @@ restart:
       auto [span, str] =
           NextStringLiteral(&state->cursor_, state->src_, state->error_log_);
       return Lexeme(std::make_unique<ast::Terminal>(
-          span, ir::Results{ir::SaveStringGlobally(str)}, type::ByteView));
+          std::move(span), ir::Results{ir::SaveStringGlobally(str)},
+          type::ByteView));
 
     } break;
     case '#': return NextHashtag(&state->cursor_, state->src_);

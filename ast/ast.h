@@ -15,6 +15,9 @@
 #include "core/fn_args.h"
 #include "core/scope.h"
 #include "frontend/operators.h"
+#include "ir/block.h"
+#include "ir/results.h"
+#include "type/primitive.h"
 
 namespace ast {
 
@@ -329,9 +332,31 @@ struct Cast : public Expression {
 #include "ast/enum_literal.h"
 #include "ast/function_literal.h"
 #include "ast/hashtag.h"
-#include "ast/terminal.h"
 
 namespace ast {
+// Terminal:
+// Represents any node that is not an identifier but has no sub-parts. These are
+// typically numeric literals, or expressions that are also keywords such as
+// `true`, `false`, or `null`.
+struct Terminal : public Expression {
+  explicit Terminal(TextSpan span, ir::Results results, type::Type const *t)
+      : Expression(std::move(span)), results_(std::move(results)), type_(t) {}
+  ~Terminal() override {}
+
+  type::Type const *type() const { return type_; }
+  ir::Results const &value() const { return results_; }
+  template <typename T>
+  T as() const {
+    return results_.get<T>(0).val_;
+  }
+
+#include "visitor/visitors.xmacro.h"
+
+ private:
+  ir::Results results_;
+  type::Type const *type_;
+};
+
 // Identifier:
 // Represents any user-defined identifier.
 struct Identifier : public Expression {
@@ -456,11 +481,9 @@ struct Jump : public Node {
     for (auto &call : calls) {
       // TODO ensure that fn_ is an identifier.
       if (auto *term = call->fn_->if_as<Terminal>()) {
-        if (term->results_.get<ir::BlockDef *>(0).val_ ==
-            ir::BlockDef::Start()) {
+        if (term->as<ir::BlockDef *>() == ir::BlockDef::Start()) {
           options_.emplace_back("start", std::move(call->args_));
-        } else if (term->results_.get<ir::BlockDef *>(0).val_ ==
-                   ir::BlockDef::Exit()) {
+        } else if (term->as<ir::BlockDef *>() == ir::BlockDef::Exit()) {
           options_.emplace_back("exit", std::move(call->args_));
         } else {
           UNREACHABLE();

@@ -31,10 +31,11 @@ cc_lib_target(
         ":struct_literal",
         ":struct_type",
         ":switch",
-        ":terminal",
         ":unop",
         "//core:builtin",
         "//core:scope",
+        "//ir:block",
+        "//type:primitive",
     ],
     impl_deps = None,
     test_deps = None,
@@ -62,8 +63,6 @@ icarus_ast_node(name = "node", deps = [
 icarus_ast_node(name = "struct_literal", deps = [":declaration", ":expression"])
 icarus_ast_node(name = "struct_type", deps = [":expression"])
 icarus_ast_node(name = "switch", deps = [":expression"])
-icarus_ast_node(name = "terminal",
-                deps = [":expression", "//ir:results", "//type:primitive"])
 icarus_ast_node(name = "unop", deps = [":expression", "//frontend:operators"])
 
 cc_lib_target(name = "node_span", intf_deps = [], impl_deps = None, test_deps = None)
