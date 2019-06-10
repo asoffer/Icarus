@@ -202,10 +202,8 @@ std::unique_ptr<ast::Node> BuildRightUnop(
 std::unique_ptr<ast::Node> BuildCall(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  auto call  = std::make_unique<ast::Call>();
-  call->span = TextSpan(nodes.front()->span, nodes.back()->span);
-  call->fn_  = move_as<ast::Expression>(nodes[0]);
-
+  TextSpan span(nodes.front()->span, nodes.back()->span);
+  std::vector<std::pair<std::string, std::unique_ptr<ast::Expression>>> args;
   if (auto *cl = nodes[2]->if_as<ast::CommaList>()) {
     std::optional<TextSpan> last_named_span_before_error = std::nullopt;
     std::vector<TextSpan> positional_error_spans;
@@ -217,13 +215,13 @@ std::unique_ptr<ast::Node> BuildCall(
           last_named_span_before_error = b->lhs()->span;
         }
         auto [lhs, rhs] = std::move(*b).extract();
-        call->args_.named_emplace(std::string{lhs->as<ast::Identifier>().token()},
-                                  std::move(rhs));
+        args.emplace_back(std::string{lhs->as<ast::Identifier>().token()},
+                          std::move(rhs));
       } else {
         if (last_named_span_before_error.has_value()) {
           positional_error_spans.push_back(expr->span);
         }
-        call->args_.pos_emplace(std::move(expr));
+        args.emplace_back("", std::move(expr));
       }
     }
 
@@ -235,17 +233,20 @@ std::unique_ptr<ast::Node> BuildCall(
     if (ast::Binop *b = nodes[2]->if_as<ast::Binop>();
         b && b->op() == frontend::Operator::Assign) {
       auto [lhs, rhs] = std::move(*b).extract();
-      call->args_.named_emplace(std::string{lhs->as<ast::Identifier>().token()},
-                                std::move(rhs));
+      args.emplace_back(std::string{lhs->as<ast::Identifier>().token()},
+                        std::move(rhs));
     } else {
-      call->args_.pos_emplace(move_as<ast::Expression>(nodes[2]));
+      args.emplace_back("", move_as<ast::Expression>(nodes[2]));
     }
   }
 
-  if (call->fn_->is<ast::Declaration>()) {
-    error_log->CallingDeclaration(call->fn_->span);
+  if (nodes[0]->is<ast::Declaration>()) {
+    error_log->CallingDeclaration(nodes[0]->span);
   }
-  return call;
+
+  return std::make_unique<ast::Call>(
+      std::move(span), move_as<ast::Expression>(nodes[0]),
+      core::OrderedFnArgs<ast::Expression>(std::move(args)));
 }
 
 std::unique_ptr<ast::Node> BuildLeftUnop(
@@ -645,12 +646,12 @@ std::unique_ptr<ast::Node> BuildControlHandler(
 std::unique_ptr<ast::Node> BuildScopeNode(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  auto scope_node   = std::make_unique<ast::ScopeNode>();
-  auto call         = move_as<ast::Call>(nodes[0]);
-  scope_node->name_ = std::move(call->fn_);
-  scope_node->args_ = std::move(call->args_);
-
-  scope_node->span = TextSpan(scope_node->name_->span, nodes[1]->span);
+  auto scope_node = std::make_unique<ast::ScopeNode>();
+  auto [callee, ordered_fn_args] =
+      std::move(nodes[0]->as<ast::Call>()).extract();
+  scope_node->name_ = std::move(callee);
+  scope_node->args_ = std::move(ordered_fn_args).DropOrder();
+  scope_node->span  = TextSpan(scope_node->name_->span, nodes[1]->span);
   scope_node->blocks_.push_back(std::move(nodes[1]->as<ast::BlockNode>()));
   return scope_node;
 }
@@ -1031,14 +1032,13 @@ std::unique_ptr<ast::Node> Parenthesize(
 std::unique_ptr<ast::Node> BuildEmptyParen(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  auto call  = std::make_unique<ast::Call>();
-  call->span = TextSpan(nodes[0]->span, nodes[2]->span);
-  call->fn_  = move_as<ast::Expression>(nodes[0]);
-
-  if (call->fn_->is<ast::Declaration>()) {
-    error_log->CallingDeclaration(call->fn_->span);
+  if (nodes[0]->is<ast::Declaration>()) {
+    error_log->CallingDeclaration(nodes[0]->span);
   }
-  return call;
+  TextSpan span(nodes[0]->span, nodes[2]->span);
+  return std::make_unique<ast::Call>(std::move(span),
+                                     move_as<ast::Expression>(nodes[0]),
+                                     core::OrderedFnArgs<ast::Expression>{});
 }
 
 template <size_t N>

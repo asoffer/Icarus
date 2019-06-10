@@ -35,7 +35,7 @@ cc_lib_target(
         "@com_google_absl//absl/container:flat_hash_map",
     ],
     impl_deps = None,
-    test_deps = ["//base:untyped_buffer"],
+    test_deps = [],
 )
 
 cc_lib_target(
@@ -46,7 +46,19 @@ cc_lib_target(
         "@com_google_absl//absl/container:flat_hash_map",
     ],
     impl_deps = None,
-    test_deps = ["//base:untyped_buffer"],
+    test_deps = [],
+)
+
+cc_lib_target(
+    name = "ordered_fn_args",
+    intf_deps = [
+        ":fn_args",
+        "//base:stringify",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/types:span",
+    ],
+    impl_deps = None,
+    test_deps = [],
 )
 
 cc_lib_target(

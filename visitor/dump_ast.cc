@@ -79,11 +79,11 @@ struct Joiner {
   DumpAst *d_ = nullptr;
 };
 
-void DumpFnArgs(DumpAst *d,
-                core::FnArgs<std::unique_ptr<ast::Expression>> const &fnargs) {
+template <typename EPtr, typename StrType>
+void DumpFnArgs(DumpAst *d, core::FnArgs<EPtr, StrType> const &fnargs) {
   bool seen_one = false;
   fnargs.ApplyWithIndex(
-      [&](auto &&index, std::unique_ptr<ast::Expression> const &expr) {
+      [&](auto &&index, EPtr const &expr) {
         absl::StrAppend(d->out_, seen_one ? ", " : "");
         if constexpr (!std::is_same_v<std::decay_t<decltype(index)>, size_t>) {
           absl::StrAppend(d->out_, index, " = ");
@@ -174,9 +174,9 @@ void DumpAst::operator()(ast::BuiltinFn const *node) {
 }
 
 void DumpAst::operator()(ast::Call const *node) {
-  node->fn_->DumpAst(this);
+  node->callee()->DumpAst(this);
   absl::StrAppend(out_, "(");
-  DumpFnArgs(this, node->args_);
+  DumpFnArgs(this, node->args());
   absl::StrAppend(out_, ")");
 }
 
@@ -379,20 +379,22 @@ void DumpAst::operator()(ast::Switch const *node) {
 
 void DumpAst::operator()(ast::Terminal const *node) {
   type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                   uint32_t, uint64_t, float, double, bool, type::Type const *>(
-      node->type(), [&](auto type_holder) {
-        using T = typename decltype(type_holder)::type;
-        if constexpr (std::is_same_v<T, bool>) {
-          absl::StrAppend(out_, node->template as<T>() ? "true" : "false");
-        } else if constexpr (std::is_same_v<T, type::Type const *>) {
-          absl::StrAppend(out_, node->template as<T>()->to_string());
-        } else if constexpr (std::is_same_v<T, ir::BlockDef *>) {
-          absl::StrAppend(
-              out_, base::stringify(node->value().get<ir::BlockDef *>(0).val_));
-        } else {
-          absl::StrAppend(out_, node->template as<T>(), "_", typeid(T).name());
-        }
-      });
+                   uint32_t, uint64_t, float, double, bool, type::Type const *,
+                   std::string_view>(node->type(), [&](auto type_holder) {
+    using T = typename decltype(type_holder)::type;
+    if constexpr (std::is_same_v<T, bool>) {
+      absl::StrAppend(out_, node->template as<T>() ? "true" : "false");
+    } else if constexpr (std::is_same_v<T, type::Type const *>) {
+      absl::StrAppend(out_, node->template as<T>()->to_string());
+    } else if constexpr (std::is_same_v<T, ir::BlockDef *>) {
+      absl::StrAppend(
+          out_, base::stringify(node->value().get<ir::BlockDef *>(0).val_));
+    } else if constexpr (std::is_same_v<T, std::string_view>) {
+      absl::StrAppend(out_, node->template as<T>());
+    } else {
+      absl::StrAppend(out_, node->template as<T>(), "_", typeid(T).name());
+    }
+  });
 }
 
 void DumpAst::operator()(ast::Unop const *node) {

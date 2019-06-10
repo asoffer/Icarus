@@ -478,10 +478,11 @@ static ast::OverloadSet FindOverloads(
   return os;
 }
 
-static VerifyResult VerifyCall(
-    ast::BuiltinFn const *b,
-    core::FnArgs<std::unique_ptr<ast::Expression>> const &args,
-    core::FnArgs<VerifyResult> const &arg_results, Context *ctx) {
+template <typename EPtr, typename StrType>
+static VerifyResult VerifyCall(ast::BuiltinFn const *b,
+                               core::FnArgs<EPtr, StrType> const &args,
+                               core::FnArgs<VerifyResult> const &arg_results,
+                               Context *ctx) {
   switch (b->value()) {
     case core::Builtin::Foreign: {
       bool err = false;
@@ -526,7 +527,7 @@ static VerifyResult VerifyCall(
         }
       }
       return visitor::VerifyResult::Constant(
-          backend::EvaluateAs<type::Type const *>(args.at(1).get(), ctx));
+          backend::EvaluateAs<type::Type const *>(args.at(1), ctx));
     } break;
     case core::Builtin::Opaque:
       if (!arg_results.empty()) {
@@ -597,46 +598,42 @@ static VerifyResult VerifyCall(
   UNREACHABLE();
 }
 
-static std::pair<core::FnArgs<VerifyResult>, bool> VerifyFnArgs(
-    VerifyType const *visitor,
-    core::FnArgs<std::unique_ptr<ast::Expression>> const &args, Context *ctx) {
+template <typename EPtr, typename StrType>
+static std::pair<core::FnArgs<VerifyResult, StrType>, bool> VerifyFnArgs(
+    VerifyType const *visitor, core::FnArgs<EPtr, StrType> const &args,
+    Context *ctx) {
   bool err = false;
-  auto arg_results =
-      args.Transform([&](std::unique_ptr<ast::Expression> const &expr) {
-        auto expr_result = expr->VerifyType(visitor, ctx);
-        err |= !expr_result.ok();
-        return expr_result;
-      });
+  auto arg_results = args.Transform([&](EPtr const &expr) {
+    auto expr_result = expr->VerifyType(visitor, ctx);
+    err |= !expr_result.ok();
+    return expr_result;
+  });
 
   return std::pair{std::move(arg_results), err};
 }
 
 VerifyResult VerifyType::operator()(ast::Call const *node, Context *ctx) const {
-  auto [arg_results, err] = VerifyFnArgs(this, node->args_, ctx);
+  auto [arg_results, err] = VerifyFnArgs(this, node->args(), ctx);
   // TODO handle cyclic dependencies in call arguments.
   if (err) { return VerifyResult::Error(); }
 
-  if (auto *b = node->fn_->if_as<ast::BuiltinFn>()) {
+  if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
     // TODO: Should we allow these to be overloaded?
     ASSIGN_OR(return VerifyResult::Error(), auto result,
-                     VerifyCall(b, node->args_, arg_results, ctx));
+                     VerifyCall(b, node->args(), arg_results, ctx));
     return ctx->set_result(node, VerifyResult(result.type_, result.const_));
   }
 
-  core::FnArgs<ast::Expression const *> args = node->args_.Transform(
-      [](std::unique_ptr<ast::Expression> const &arg)
-          -> ast::Expression const * { return arg.get(); });
-
   ast::OverloadSet overload_set = [&]() {
-    if (auto *id = node->fn_->if_as<ast::Identifier>()) {
+    if (auto *id = node->callee()->if_as<ast::Identifier>()) {
       return FindOverloads(
           node->scope_, id->token(),
           arg_results.Transform([](VerifyResult const &p) { return p.type_; }),
           ctx);
     } else {
-      auto results = node->fn_->VerifyType(this, ctx);
+      auto results = node->callee()->VerifyType(this, ctx);
       ast::OverloadSet os;
-      os.emplace(node->fn_.get(), results);
+      os.emplace(node->callee(), results);
       // TODO ADL for node?
       return os;
     }
@@ -644,12 +641,12 @@ VerifyResult VerifyType::operator()(ast::Call const *node, Context *ctx) const {
 
   core::FnArgs<std::pair<ast::Expression const *, VerifyResult>> arg_expr_result;
   for (size_t i = 0; i < arg_results.pos().size(); ++i) {
-    arg_expr_result.pos_emplace(node->args_.at(i).get(), arg_results.at(i));
+    arg_expr_result.pos_emplace(node->args().at(i), arg_results.at(i));
   }
   for (auto const &[name, res] : arg_results.named()) {
     arg_expr_result.named_emplace(
         std::piecewise_construct, std::forward_as_tuple(name),
-        std::forward_as_tuple(node->args_.at(name).get(), res));
+        std::forward_as_tuple(node->args().at(name), res));
   }
 
   return ast::VerifyDispatch(node, overload_set, arg_expr_result, ctx);

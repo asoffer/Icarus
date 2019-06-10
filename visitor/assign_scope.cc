@@ -52,8 +52,10 @@ void AssignScope::operator()(ast::BuiltinFn *node, core::Scope *scope) {
 
 void AssignScope::operator()(ast::Call *node, core::Scope *scope) {
   node->scope_ = scope;
-  node->fn_->assign_scope(this, scope);
-  node->args_.Apply([this, scope](auto &expr) { expr->assign_scope(this, scope); });
+  node->callee()->assign_scope(this, scope);
+  node->Apply([this, scope](ast::Expression *expr) {
+    expr->assign_scope(this, scope);
+  });
 }
 
 void AssignScope::operator()(ast::Cast *node, core::Scope *scope) {

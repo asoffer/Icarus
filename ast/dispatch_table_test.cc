@@ -2,7 +2,7 @@
 
 #include <string_view>
 
-#include "ast/call.h"
+#include "ast/ast.h"
 #include "misc/context.h"
 #include "test/catch.h"
 #include "test/util.h"
@@ -11,72 +11,91 @@
 
 namespace ast {
 namespace {
-
 core::FnArgs<std::pair<Expression const*, visitor::VerifyResult>>
-ResultsForArgs(core::FnArgs<std::unique_ptr<Expression>> const& args,
-               Context* ctx) {
-  return args.Transform([ctx](std::unique_ptr<Expression> const& expr) {
+ResultsForArgs(core::FnArgs<Expression const*> const& args, Context* ctx) {
+  return args.Transform([ctx](Expression const* expr) {
     return std::pair<Expression const*, visitor::VerifyResult>(
-        expr.get(),
-        *ASSERT_NOT_NULL(ctx->prior_verification_attempt(expr.get())));
+        expr, *ASSERT_NOT_NULL(ctx->prior_verification_attempt(expr)));
   });
 }
 
-core::FnArgs<std::unique_ptr<Expression>> MakeFnArgs(
+core::OrderedFnArgs<Expression> MakeFnArgs(
     std::vector<std::string> pos_args,
     absl::flat_hash_map<std::string, std::string> named_args, Context* ctx) {
-  core::FnArgs<std::string> arg_strs(std::move(pos_args),
-                                     std::move(named_args));
-  return arg_strs.Transform([&](std::string const& expr_str) {
-    return test::MakeVerified<Expression>(expr_str, ctx);
-  });
+  std::vector<std::pair<std::string, std::unique_ptr<Expression>>> vec;
+  for (auto pos_arg : pos_args) {
+    vec.emplace_back("",
+                     test::MakeVerified<Expression>(std::move(pos_arg), ctx));
+  }
+  for (auto& [name, arg] : named_args) {
+    vec.emplace_back(std::move(name),
+                     test::MakeVerified<Expression>(std::move(arg), ctx));
+  }
+  return core::OrderedFnArgs<Expression>(std::move(vec));
+}
+
+std::pair<OverloadSet, std::unique_ptr<Call>> MakeCall(
+    std::string fn, std::vector<std::string> pos_args,
+    absl::flat_hash_map<std::string, std::string> named_args, Context* ctx) {
+  auto call_expr = std::make_unique<Call>(
+      TextSpan{}, test::MakeVerified<Expression>(std::move(fn), ctx),
+      MakeFnArgs(std::move(pos_args), std::move(named_args), ctx));
+  OverloadSet os;
+  os.emplace(call_expr->callee(),
+             visitor::VerifyResult::Constant(type::Func({}, {})));
+
+  return std::pair(std::move(os), std::move(call_expr));
 }
 
 // TODO you're not really handling const-ness correctly in any of these tests.
 TEST_CASE("() -> ()") {
   Module mod;
   Context ctx(&mod);
-
-  Call call_expr(test::MakeVerified<Expression>("() -> () {}", &ctx));
-  REQUIRE(call_expr.fn_ != nullptr);
-
-  OverloadSet os;
-  os.emplace(call_expr.fn_.get(),
-             visitor::VerifyResult::Constant(type::Func({}, {})));
+  auto call_with = [&ctx](
+                       std::vector<std::string>&& pos,
+                       absl::flat_hash_map<std::string, std::string>&& named) {
+    return MakeCall("() -> () {}", std::move(pos), std::move(named), &ctx);
+  };
 
   SECTION("without args") {
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
-                         &ctx) ==
+    auto [os, call_expr] = call_with({}, {});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx), &ctx) ==
           visitor::VerifyResult::Constant(type::Void()));
   }
 
   SECTION("with positional arg") {
-    call_expr.args_ = MakeFnArgs({"true"}, {}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({"true"}, {});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with multiple positional args") {
-    call_expr.args_ = MakeFnArgs({"true", "3"}, {}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({"true", "3"}, {});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with named arg") {
-    call_expr.args_ = MakeFnArgs({}, {{"b", "true"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({}, {{"b", "true"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with multiple named args") {
-    call_expr.args_ = MakeFnArgs({}, {{"b", "true"}, {"n", "3"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({}, {{"b", "true"}, {"n", "3"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with both positional and named args") {
-    call_expr.args_ = MakeFnArgs({"true"}, {{"n", "3"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({"true"}, {{"n", "3"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 }
@@ -85,83 +104,94 @@ TEST_CASE("(b: bool) -> ()") {
   Module mod;
   Context ctx(&mod);
 
-  Call call_expr(test::MakeVerified<Expression>("(b: bool) -> () {}", &ctx));
-  REQUIRE(call_expr.fn_ != nullptr);
-
-  OverloadSet os;
-  os.emplace(call_expr.fn_.get(),
-             visitor::VerifyResult::Constant(type::Func({type::Bool}, {})));
+  auto call_with = [&ctx](
+                       std::vector<std::string>&& pos,
+                       absl::flat_hash_map<std::string, std::string>&& named) {
+    return MakeCall("(b: bool) -> () {}", std::move(pos), std::move(named),
+                    &ctx);
+  };
 
   SECTION("without args") {
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({}, {});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with one positional arg - correct type") {
-    call_expr.args_ = MakeFnArgs({"true"}, {}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
-                         &ctx) ==
+    auto [os, call_expr] = call_with({"true"}, {});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx), &ctx) ==
           visitor::VerifyResult::Constant(type::Void()));
   }
 
   SECTION("with one positional arg - incorrect type") {
-    call_expr.args_ = MakeFnArgs({"3"}, {}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({"3"}, {});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with one named arg - correct type, correct name") {
-    call_expr.args_ = MakeFnArgs({}, {{"b", "true"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
-                         &ctx) ==
+    auto [os, call_expr] = call_with({}, {{"b", "true"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx), &ctx) ==
           visitor::VerifyResult::Constant(type::Void()));
   }
 
   SECTION("with one named arg - incorrect type, correct name") {
-    call_expr.args_ = MakeFnArgs({}, {{"b", "3"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({}, {{"b", "3"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with one named arg - correct type, incorrect name") {
-    call_expr.args_ = MakeFnArgs({}, {{"n", "true"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({}, {{"n", "true"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with one named arg - incorrect type, incorrect name") {
-    call_expr.args_ = MakeFnArgs({}, {{"n", "3"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({}, {{"n", "3"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with multiple positional args") {
-    call_expr.args_ = MakeFnArgs({"true", "3"}, {}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({"true", "3"}, {});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with multiple named args") {
-    call_expr.args_ = MakeFnArgs({}, {{"b", "true"}, {"n", "3"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({}, {{"b", "true"}, {"n", "3"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with both positional and named args") {
-    call_expr.args_ = MakeFnArgs({"true"}, {{"n", "3"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({"true"}, {{"n", "3"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with named arg shadowing positional arg - correct type") {
-    call_expr.args_ = MakeFnArgs({"true"}, {{"b", "false"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({"true"}, {{"b", "false"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with named arg shadowing positional arg - incorrect type") {
-    call_expr.args_ = MakeFnArgs({"true"}, {{"b", "3"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({"true"}, {{"b", "3"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 }
@@ -170,84 +200,94 @@ TEST_CASE("(b := true) -> ()") {
   Module mod;
   Context ctx(&mod);
 
-  Call call_expr(test::MakeVerified<Expression>("(b := true) -> () {}", &ctx));
-  REQUIRE(call_expr.fn_ != nullptr);
-
-  OverloadSet os;
-  os.emplace(call_expr.fn_.get(),
-             visitor::VerifyResult::Constant(type::Func({type::Bool}, {})));
+  auto call_with = [&ctx](
+                       std::vector<std::string>&& pos,
+                       absl::flat_hash_map<std::string, std::string>&& named) {
+    return MakeCall("(b := true) -> () {}", std::move(pos), std::move(named),
+                    &ctx);
+  };
 
   SECTION("without args") {
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
-                         &ctx) ==
+    auto [os, call_expr] = call_with({}, {});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx), &ctx) ==
           visitor::VerifyResult::Constant(type::Void()));
   }
 
   SECTION("with one positional arg - correct type") {
-    call_expr.args_ = MakeFnArgs({"true"}, {}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
-                         &ctx) ==
+    auto [os, call_expr] = call_with({"true"}, {});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx), &ctx) ==
           visitor::VerifyResult::Constant(type::Void()));
   }
 
   SECTION("with one positional arg - incorrect type") {
-    call_expr.args_ = MakeFnArgs({"3"}, {}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({"3"}, {});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with one named arg - correct type, correct name") {
-    call_expr.args_ = MakeFnArgs({}, {{"b", "true"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
-                         &ctx) ==
+    auto [os, call_expr] = call_with({}, {{"b", "true"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx), &ctx) ==
           visitor::VerifyResult::Constant(type::Void()));
   }
 
   SECTION("with one named arg - incorrect type, correct name") {
-    call_expr.args_ = MakeFnArgs({}, {{"b", "3"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({}, {{"b", "3"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with one named arg - correct type, incorrect name") {
-    call_expr.args_ = MakeFnArgs({}, {{"n", "true"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({}, {{"n", "true"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with one named arg - incorrect type, incorrect name") {
-    call_expr.args_ = MakeFnArgs({}, {{"n", "3"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({}, {{"n", "3"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with multiple positional args") {
-    call_expr.args_ = MakeFnArgs({"true", "3"}, {}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({"true", "3"}, {});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with multiple named args") {
-    call_expr.args_ = MakeFnArgs({}, {{"b", "true"}, {"n", "3"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({}, {{"b", "true"}, {"n", "3"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with both positional and named args") {
-    call_expr.args_ = MakeFnArgs({"true"}, {{"n", "3"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({"true"}, {{"n", "3"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with named arg shadowing positional arg - correct type") {
-    call_expr.args_ = MakeFnArgs({"true"}, {{"b", "false"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({"true"}, {{"b", "false"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with named arg shadowing positional arg - incorrect type") {
-    call_expr.args_ = MakeFnArgs({"true"}, {{"b", "3"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({"true"}, {{"b", "3"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 }
@@ -256,99 +296,109 @@ TEST_CASE("(n: int64, b: bool) -> ()") {
   Module mod;
   Context ctx(&mod);
 
-  Call call_expr(
-      test::MakeVerified<Expression>("(n: int64, b: bool) -> () {}", &ctx));
-  REQUIRE(call_expr.fn_ != nullptr);
-
-  OverloadSet os;
-  os.emplace(call_expr.fn_.get(),
-             visitor::VerifyResult::Constant(
-                 type::Func({type::Int64, type::Bool}, {})));
+  auto call_with = [&ctx](
+                       std::vector<std::string>&& pos,
+                       absl::flat_hash_map<std::string, std::string>&& named) {
+    return MakeCall("(n: int64, b: bool) -> () {}", std::move(pos),
+                    std::move(named), &ctx);
+  };
 
   SECTION("without args") {
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({}, {});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with one positional arg - correct type") {
-    call_expr.args_ = MakeFnArgs({"true"}, {}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({"true"}, {});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with one positional arg - incorrect type") {
-    call_expr.args_ = MakeFnArgs({"3"}, {}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({"3"}, {});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with multiple positional args - incorrect order") {
-    call_expr.args_ = MakeFnArgs({"true", "3"}, {}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({"true", "3"}, {});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with multiple positional args - correct order") {
-    call_expr.args_ = MakeFnArgs({"3", "true"}, {}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
-                         &ctx) ==
+    auto [os, call_expr] = call_with({"3", "true"}, {});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx), &ctx) ==
           visitor::VerifyResult::Constant(type::Void()));
   }
 
   SECTION("with one named arg") {
-    call_expr.args_ = MakeFnArgs({}, {{"b", "true"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({}, {{"b", "true"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with multiple named args - correct types, correct names ") {
-    call_expr.args_ = MakeFnArgs({}, {{"b", "true"}, {"n", "3"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
-                         &ctx) ==
+    auto [os, call_expr] = call_with({}, {{"b", "true"}, {"n", "3"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx), &ctx) ==
           visitor::VerifyResult::Constant(type::Void()));
   }
 
   SECTION("with multiple named args - incorrect types, correct names") {
-    call_expr.args_ = MakeFnArgs({}, {{"b", "true"}, {"n", "true"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({}, {{"b", "true"}, {"n", "true"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with multiple named args - correct types, incorrect names") {
-    call_expr.args_ = MakeFnArgs({}, {{"B", "true"}, {"n", "3"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({}, {{"B", "true"}, {"n", "3"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with multiple named args - incorrect types, incorrect names") {
-    call_expr.args_ = MakeFnArgs({}, {{"B", "true"}, {"n", "true"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({}, {{"B", "true"}, {"n", "true"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with both positional and named args") {
-    call_expr.args_ = MakeFnArgs({"3"}, {{"b", "true"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
-                         &ctx) ==
+    auto [os, call_expr] = call_with({"3"}, {{"b", "true"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx), &ctx) ==
           visitor::VerifyResult::Constant(type::Void()));
   }
 
   SECTION("with both positional and named args - named has incorrect type") {
-    call_expr.args_ = MakeFnArgs({"3"}, {{"b", "3"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({"3"}, {{"b", "3"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION(
       "with both positional and named args - positional has incorrect type") {
-    call_expr.args_ = MakeFnArgs({"true"}, {{"b", "true"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({"true"}, {{"b", "true"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with both positional and named args - both have  incorrect type") {
-    call_expr.args_ = MakeFnArgs({"true"}, {{"b", "3"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({"true"}, {{"b", "3"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 }
@@ -357,54 +407,59 @@ TEST_CASE("(T :: type) -> *T") {
   Module mod;
   Context ctx(&mod);
 
-  Call call_expr(test::MakeVerified<Expression>("(T :: type) -> *T {}", &ctx));
-  REQUIRE(call_expr.fn_ != nullptr);
-
-  OverloadSet os;
-  os.emplace(call_expr.fn_.get(),
-             visitor::VerifyResult::Constant(type::Generic));
+  auto call_with = [&ctx](
+                       std::vector<std::string>&& pos,
+                       absl::flat_hash_map<std::string, std::string>&& named) {
+    return MakeCall("(T :: type) -> *T {}", std::move(pos), std::move(named),
+                    &ctx);
+  };
 
   SECTION("without args") {
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({}, {});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with one positional arg - (bool)") {
-    call_expr.args_ = MakeFnArgs({"bool"}, {}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
-                         &ctx) ==
+    auto [os, call_expr] = call_with({"bool"}, {});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx), &ctx) ==
           visitor::VerifyResult::Constant(type::Ptr(type::Bool)));
   }
 
   SECTION("with one positional arg - (int64)") {
-    call_expr.args_ = MakeFnArgs({"int64"}, {}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
-                         &ctx) ==
+    auto [os, call_expr] = call_with({"int64"}, {});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx), &ctx) ==
           visitor::VerifyResult::Constant(type::Ptr(type::Int64)));
   }
 
   SECTION("with one named arg - (T = bool)") {
-    call_expr.args_ = MakeFnArgs({}, {{"T", "bool"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
-                         &ctx) ==
+    auto [os, call_expr] = call_with({}, {{"T", "bool"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx), &ctx) ==
           visitor::VerifyResult::Constant(type::Ptr(type::Bool)));
   }
 
   SECTION("with one named arg - (t = bool)") {
-    call_expr.args_ = MakeFnArgs({}, {{"t", "bool"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({}, {{"t", "bool"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with one named arg - (T = true)") {
-    call_expr.args_ = MakeFnArgs({}, {{"T", "true"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({}, {{"T", "true"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with one named arg - (t = true)") {
-    call_expr.args_ = MakeFnArgs({}, {{"t", "true"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({}, {{"t", "true"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 }
@@ -413,55 +468,59 @@ TEST_CASE("(T ::= bool) -> *T") {
   Module mod;
   Context ctx(&mod);
 
-  Call call_expr(test::MakeVerified<Expression>("(T ::= bool) -> *T {}", &ctx));
-  REQUIRE(call_expr.fn_ != nullptr);
-
-  OverloadSet os;
-  os.emplace(call_expr.fn_.get(),
-             visitor::VerifyResult::Constant(type::Generic));
+  auto call_with = [&ctx](
+                       std::vector<std::string>&& pos,
+                       absl::flat_hash_map<std::string, std::string>&& named) {
+    return MakeCall("(T ::= bool) -> *T {}", std::move(pos), std::move(named),
+                    &ctx);
+  };
 
   SECTION("without args") {
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
-                         &ctx) ==
+    auto [os, call_expr] = call_with({}, {});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx), &ctx) ==
           visitor::VerifyResult::Constant(type::Ptr(type::Bool)));
   }
 
   SECTION("with one positional arg - correct type") {
-    call_expr.args_ = MakeFnArgs({"bool"}, {}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
-                         &ctx) ==
+    auto [os, call_expr] = call_with({"bool"}, {});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx), &ctx) ==
           visitor::VerifyResult::Constant(type::Ptr(type::Bool)));
   }
 
   SECTION("with one positional arg - incorrect type") {
-    call_expr.args_ = MakeFnArgs({"int64"}, {}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
-                         &ctx) ==
+    auto [os, call_expr] = call_with({"int64"}, {});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx), &ctx) ==
           visitor::VerifyResult::Constant(type::Ptr(type::Int64)));
   }
 
   SECTION("with one named arg - correct type, correct name") {
-    call_expr.args_ = MakeFnArgs({}, {{"T", "bool"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
-                         &ctx) ==
+    auto [os, call_expr] = call_with({}, {{"T", "bool"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx), &ctx) ==
           visitor::VerifyResult::Constant(type::Ptr(type::Bool)));
   }
 
   SECTION("with one named arg - correct type, incorrect name") {
-    call_expr.args_ = MakeFnArgs({}, {{"t", "bool"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({}, {{"t", "bool"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with one named arg - incorrect type, correct name") {
-    call_expr.args_ = MakeFnArgs({}, {{"T", "true"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({}, {{"T", "true"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with one named arg - incorrect type, incorrect name") {
-    call_expr.args_ = MakeFnArgs({}, {{"t", "true"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({}, {{"t", "true"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 }
@@ -471,100 +530,112 @@ TEST_CASE("(val: T, T ::= bool) -> *T") {
   Context ctx(&mod);
 
   Call call_expr(
-      test::MakeVerified<Expression>("(val: T, T ::= bool) -> *T {}", &ctx));
-  REQUIRE(call_expr.fn_ != nullptr);
+      TextSpan{},
+      test::MakeVerified<Expression>("(val: T, T ::= bool) -> *T {}", &ctx),
+      core::OrderedFnArgs<Expression>{});
+  REQUIRE(call_expr.callee() != nullptr);
 
-  OverloadSet os;
-  os.emplace(call_expr.fn_.get(),
-             visitor::VerifyResult::Constant(type::Generic));
-
+  auto call_with = [&ctx](
+                       std::vector<std::string>&& pos,
+                       absl::flat_hash_map<std::string, std::string>&& named) {
+    return MakeCall("(val: T, T ::= bool) -> *T {}", std::move(pos),
+                    std::move(named), &ctx);
+  };
   SECTION("without args") {
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({}, {});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with one positional arg - correct type") {
-    call_expr.args_ = MakeFnArgs({"true"}, {}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
-                         &ctx) ==
+    auto [os, call_expr] = call_with({"true"}, {});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx), &ctx) ==
           visitor::VerifyResult::Constant(type::Ptr(type::Bool)));
   }
 
   SECTION("with one positional arg - incorrect type") {
-    call_expr.args_ = MakeFnArgs({"3"}, {}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({"3"}, {});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with one named arg - correct type, correct name") {
-    call_expr.args_ = MakeFnArgs({}, {{"val", "true"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
-                         &ctx) ==
+    auto [os, call_expr] = call_with({}, {{"val", "true"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx), &ctx) ==
           visitor::VerifyResult::Constant(type::Ptr(type::Bool)));
   }
 
   SECTION("with one named arg - correct type, incorrect name") {
-    call_expr.args_ = MakeFnArgs({}, {{"x", "true"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({}, {{"x", "true"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with one named arg - incorrect type, correct name") {
-    call_expr.args_ = MakeFnArgs({}, {{"val", "3"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({}, {{"val", "3"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with one named arg - incorrect type, incorrect name") {
-    call_expr.args_ = MakeFnArgs({}, {{"x", "3"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({}, {{"x", "3"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with multiple positional arguments - (bool)") {
-    call_expr.args_ = MakeFnArgs({"true", "bool"}, {}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
-                         &ctx) ==
+    auto [os, call_expr] = call_with({"true", "bool"}, {});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx), &ctx) ==
           visitor::VerifyResult::Constant(type::Ptr(type::Bool)));
   }
 
   SECTION("with multiple positional arguments - (int64)") {
-    call_expr.args_ = MakeFnArgs({"3", "int64"}, {}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
-                         &ctx) ==
+    auto [os, call_expr] = call_with({"3", "int64"}, {});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx), &ctx) ==
           visitor::VerifyResult::Constant(type::Ptr(type::Int64)));
   }
 
   SECTION("with multiple positional arguments - type mismatch") {
-    call_expr.args_ = MakeFnArgs({"3", "bool"}, {}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({"3", "bool"}, {});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("with multiple named arguments - (bool)") {
-    call_expr.args_ = MakeFnArgs({}, {{"val", "true"}, {"T", "bool"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
-                         &ctx) ==
+    auto [os, call_expr] = call_with({}, {{"val", "true"}, {"T", "bool"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx), &ctx) ==
           visitor::VerifyResult::Constant(type::Ptr(type::Bool)));
   }
 
   SECTION("with multiple named arguments - (int64)") {
-    call_expr.args_ = MakeFnArgs({}, {{"val", "3"}, {"T", "int64"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
-                         &ctx) ==
+    auto [os, call_expr] = call_with({}, {{"val", "3"}, {"T", "int64"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx), &ctx) ==
           visitor::VerifyResult::Constant(type::Ptr(type::Int64)));
   }
 
   SECTION("with both positional and named args - correct types") {
-    call_expr.args_ = MakeFnArgs({"3"}, {{"T", "int64"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
-                         &ctx) ==
+    auto [os, call_expr] = call_with({"3"}, {{"T", "int64"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx), &ctx) ==
           visitor::VerifyResult::Constant(type::Ptr(type::Int64)));
   }
 
   SECTION("with both positional and named args - incorrect types") {
-    call_expr.args_ = MakeFnArgs({"true"}, {{"T", "int64"}}, &ctx);
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    auto [os, call_expr] = call_with({"true"}, {{"T", "int64"}});
+    CHECK(VerifyDispatch(call_expr.get(), os,
+                         ResultsForArgs(call_expr->args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 }
@@ -585,76 +656,72 @@ TEST_CASE("overload set") {
              visitor::VerifyResult::Constant(type::Generic));
 
   SECTION("without args") {
-    Call call_expr(test::MakeUnverified<Expression>("f", &ctx),
+    Call call_expr(TextSpan{}, test::MakeUnverified<Expression>("f", &ctx),
                    MakeFnArgs({}, {}, &ctx));
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("without one positional arg - bool") {
-    Call call_expr(test::MakeUnverified<Expression>("f", &ctx),
+    Call call_expr(TextSpan{}, test::MakeUnverified<Expression>("f", &ctx),
                    MakeFnArgs({"true"}, {}, &ctx));
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
-                         &ctx) ==
-          visitor::VerifyResult::Constant(type::Bool));
+    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args(), &ctx),
+                         &ctx) == visitor::VerifyResult::Constant(type::Bool));
   }
 
   SECTION("without one positional arg - int64") {
-    Call call_expr(test::MakeUnverified<Expression>("f", &ctx),
+    Call call_expr(TextSpan{}, test::MakeUnverified<Expression>("f", &ctx),
                    MakeFnArgs({"3"}, {}, &ctx));
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
-                         &ctx) ==
-          visitor::VerifyResult::Constant(type::Int64));
+    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args(), &ctx),
+                         &ctx) == visitor::VerifyResult::Constant(type::Int64));
   }
 
   SECTION("without one positional arg - no matching type") {
-    Call call_expr(test::MakeUnverified<Expression>("f", &ctx),
+    Call call_expr(TextSpan{}, test::MakeUnverified<Expression>("f", &ctx),
                    MakeFnArgs({"3.0"}, {}, &ctx));
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("without one named arg - bool") {
-    Call call_expr(test::MakeUnverified<Expression>("f", &ctx),
+    Call call_expr(TextSpan{}, test::MakeUnverified<Expression>("f", &ctx),
                    MakeFnArgs({}, {{"val", "true"}}, &ctx));
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
-                         &ctx) ==
-          visitor::VerifyResult::Constant(type::Bool));
+    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args(), &ctx),
+                         &ctx) == visitor::VerifyResult::Constant(type::Bool));
   }
 
   SECTION("without one named arg - int64") {
-    Call call_expr(test::MakeUnverified<Expression>("f", &ctx),
+    Call call_expr(TextSpan{}, test::MakeUnverified<Expression>("f", &ctx),
                    MakeFnArgs({}, {{"val", "3"}}, &ctx));
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
-                         &ctx) ==
-          visitor::VerifyResult::Constant(type::Int64));
+    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args(), &ctx),
+                         &ctx) == visitor::VerifyResult::Constant(type::Int64));
   }
 
   SECTION("without one named arg - no matching type") {
-    Call call_expr(test::MakeUnverified<Expression>("f", &ctx),
+    Call call_expr(TextSpan{}, test::MakeUnverified<Expression>("f", &ctx),
                    MakeFnArgs({}, {{"val", "3.0"}}, &ctx));
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("without variant - matching one") {
     auto variant =
         test::MakeVerified<Expression>("v: bool | float32 = true", &ctx);
-    Call call_expr(test::MakeUnverified<Expression>("f", &ctx),
+    Call call_expr(TextSpan{}, test::MakeUnverified<Expression>("f", &ctx),
                    MakeFnArgs({"v"}, {}, &ctx));
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
+    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args(), &ctx),
                          &ctx) == visitor::VerifyResult::Error());
   }
 
   SECTION("without variant - matching both") {
     auto variant =
         test::MakeVerified<Expression>("v: bool | int64 = true", &ctx);
-    Call call_expr(test::MakeUnverified<Expression>("f", &ctx),
+    Call call_expr(TextSpan{}, test::MakeUnverified<Expression>("f", &ctx),
                    MakeFnArgs({"v"}, {}, &ctx));
-    CHECK(VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args_, &ctx),
-                         &ctx) ==
-          visitor::VerifyResult::Constant(
-              type::Var({type::Bool, type::Int64})));
+    CHECK(
+        VerifyDispatch(&call_expr, os, ResultsForArgs(call_expr.args(), &ctx),
+                       &ctx) ==
+        visitor::VerifyResult::Constant(type::Var({type::Bool, type::Int64})));
   }
 }
 

@@ -709,13 +709,13 @@ ir::Results EmitIr::Val(ast::BuiltinFn const *node, Context *ctx) const {
 }
 
 ir::Results EmitIr::Val(ast::Call const *node, Context *ctx) const {
-  if (auto *b = node->fn_->if_as<ast::BuiltinFn>()) {
+  if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
     switch (b->value()) {
       case core::Builtin::Foreign: {
         auto name =
-            backend::EvaluateAs<std::string_view>(node->args_.at(0).get(), ctx);
-        auto *foreign_type = backend::EvaluateAs<type::Type const *>(
-            node->args_.at(1).get(), ctx);
+            backend::EvaluateAs<std::string_view>(node->args().at(0), ctx);
+        auto *foreign_type =
+            backend::EvaluateAs<type::Type const *>(node->args().at(1), ctx);
         return ir::Results{ir::LoadSymbol(name, foreign_type).get()};
       } break;
 
@@ -725,7 +725,8 @@ ir::Results EmitIr::Val(ast::Call const *node, Context *ctx) const {
       case core::Builtin::Bytes: {
         auto const &fn_type =
             ir::BuiltinType(core::Builtin::Bytes)->as<type::Function>();
-        ir::Arguments call_args{&fn_type, node->args_.at(0)->EmitIr(this, ctx)};
+        ir::Arguments call_args{&fn_type,
+                                node->args().at(0)->EmitIr(this, ctx)};
 
         ir::OutParams outs;
         auto reg = outs.AppendReg(fn_type.output.at(0));
@@ -737,7 +738,8 @@ ir::Results EmitIr::Val(ast::Call const *node, Context *ctx) const {
       case core::Builtin::Alignment: {
         auto const &fn_type =
             ir::BuiltinType(core::Builtin::Alignment)->as<type::Function>();
-        ir::Arguments call_args{&fn_type, node->args_.at(0)->EmitIr(this, ctx)};
+        ir::Arguments call_args{&fn_type,
+                                node->args().at(0)->EmitIr(this, ctx)};
 
         ir::OutParams outs;
         auto reg = outs.AppendReg(fn_type.output.at(0));
@@ -760,10 +762,10 @@ ir::Results EmitIr::Val(ast::Call const *node, Context *ctx) const {
   // TODO an opmitimazion we can do is merging all the allocas for results
   // into a single variant buffer, because we know we need something that big
   // anyway, and their use cannot overlap.
-  auto args = node->args_.Transform(
-      [this, ctx](std::unique_ptr<ast::Expression> const &expr)
+  auto args = node->args().Transform(
+      [this, ctx](ast::Expression const *expr)
           -> std::pair<ast::Expression const *, ir::Results> {
-        return std::pair(expr.get(), expr->EmitIr(this, ctx));
+        return std::pair(expr, expr->EmitIr(this, ctx));
       });
 
   return dispatch_table.EmitCall(

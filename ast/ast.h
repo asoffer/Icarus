@@ -13,6 +13,7 @@
 #include "ast/node_span.h"
 #include "core/builtin.h"
 #include "core/fn_args.h"
+#include "core/ordered_fn_args.h"
 #include "core/scope.h"
 #include "frontend/operators.h"
 #include "ir/block.h"
@@ -296,6 +297,44 @@ struct BuiltinFn : public Expression {
   core::Builtin val_;
 };
 
+// Call:
+// Represents a function call, or call to any other callable object.
+//
+// Examples:
+//  `f(a, b, c = 3)`
+//  `arg'func`
+struct Call : public Expression {
+  explicit Call(TextSpan span, std::unique_ptr<Expression> callee,
+                core::OrderedFnArgs<Expression> args)
+      : Expression(std::move(span)),
+        callee_(std::move(callee)),
+        args_(std::move(args)) {}
+
+  ~Call() override {}
+
+  Expression const *callee() const { return callee_.get(); }
+  Expression *callee() { return callee_.get(); }
+  core::FnArgs<Expression const *, std::string_view> const &args() const {
+    return args_.args();
+  }
+
+  template <typename Fn>
+  void Apply(Fn &&fn) {
+    args_.Apply(std::forward<Fn>(fn));
+  }
+
+  std::pair<std::unique_ptr<Expression>, core::OrderedFnArgs<Expression>>
+  extract() && {
+    return std::pair{std::move(callee_), std::move(args_)};
+  }
+
+#include "visitor/visitors.xmacro.h"
+
+ private:
+  std::unique_ptr<Expression> callee_;
+  core::OrderedFnArgs<Expression> args_;
+};
+
 // Cast:
 // Represents a type-conversion. These can be either builtin conversion (for
 // example, between integral types) or user-defined conversion via overloading
@@ -303,7 +342,7 @@ struct BuiltinFn : public Expression {
 // `<expr> as <type-expr>`.
 //
 // Examples:
-// `3 ast nat32`
+// `3 as nat32`
 // `null as *int64`
 struct Cast : public Expression {
   explicit Cast(TextSpan span, std::unique_ptr<Expression> expr,
@@ -326,7 +365,6 @@ struct Cast : public Expression {
 
 }  // namespace ast
 
-#include "ast/call.h"
 #include "ast/chainop.h"
 #include "ast/comma_list.h"
 #include "ast/enum_literal.h"
@@ -479,17 +517,18 @@ struct Jump : public Node {
   explicit Jump(TextSpan span, std::vector<std::unique_ptr<Call>> calls)
       : Node(std::move(span)) {
     for (auto &call : calls) {
-      // TODO ensure that fn_ is an identifier.
-      if (auto *term = call->fn_->if_as<Terminal>()) {
+      auto [callee, ordered_args] = std::move(*call).extract();
+      if (auto *term = call->callee()->if_as<Terminal>()) {
         if (term->as<ir::BlockDef *>() == ir::BlockDef::Start()) {
-          options_.emplace_back("start", std::move(call->args_));
+          options_.emplace_back("start", std::move(ordered_args).DropOrder());
         } else if (term->as<ir::BlockDef *>() == ir::BlockDef::Exit()) {
-          options_.emplace_back("exit", std::move(call->args_));
+          options_.emplace_back("exit", std::move(ordered_args).DropOrder());
         } else {
           UNREACHABLE();
         }
-      } else if (auto *id = call->fn_->if_as<Identifier>()) {
-        options_.emplace_back(std::string{id->token()}, std::move(call->args_));
+      } else if (auto *id = call->callee()->if_as<Identifier>()) {
+        options_.emplace_back(std::string{id->token()},
+                              std::move(ordered_args).DropOrder());
       }
     }
   }

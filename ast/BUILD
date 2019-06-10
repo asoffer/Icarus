@@ -19,7 +19,6 @@ cc_lib_target(
 cc_lib_target(
     name = "ast",
     intf_deps = [
-        ":call",
         ":chainop",
         ":comma_list",
         ":declaration",
@@ -33,6 +32,8 @@ cc_lib_target(
         ":switch",
         ":unop",
         "//core:builtin",
+        "//core:fn_args",
+        "//core:ordered_fn_args",
         "//core:scope",
         "//ir:block",
         "//type:primitive",
@@ -41,7 +42,6 @@ cc_lib_target(
     test_deps = None,
 )
 
-icarus_ast_node(name = "call", deps = [":expression"])
 icarus_ast_node(name = "chainop",
                 deps = [":expression", "//frontend:operators"])
 icarus_ast_node(name = "comma_list", deps = [":expression"])
@@ -79,7 +79,6 @@ cc_lib_target(
     ],
     impl_deps = [
         ":ast",
-        ":call",
         ":function_literal",
         "//backend:eval",
         "//ir:block",

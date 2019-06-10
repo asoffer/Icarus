@@ -42,9 +42,10 @@ void DependentDecls::operator()(ast::BuiltinFn const *node,
 
 void DependentDecls::operator()(ast::Call const *node,
                                 ast::Declaration const *d) {
-  node->fn_->DependentDecls(this, d);
-  node->args_.Apply(
-      [this, d](auto const &expr) { expr->DependentDecls(this, d); });
+  node->callee()->DependentDecls(this, d);
+  node->args().Apply([this, d](ast::Expression const *expr) {
+    expr->DependentDecls(this, d);
+  });
 }
 
 void DependentDecls::operator()(ast::Cast const *node,

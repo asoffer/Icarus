@@ -39,10 +39,9 @@ void ExtractJumps::operator()(ast::BlockNode const *node) {
 void ExtractJumps::operator()(ast::BuiltinFn const *node) {}
 
 void ExtractJumps::operator()(ast::Call const *node) {
-  node->fn_->ExtractJumps(this);
-  node->args_.Apply([this](std::unique_ptr<ast::Expression> const &expr) {
-    expr->ExtractJumps(this);
-  });
+  node->callee()->ExtractJumps(this);
+  node->args().Apply(
+      [this](ast::Expression const *expr) { expr->ExtractJumps(this); });
 }
 
 void ExtractJumps::operator()(ast::Cast const *node) {

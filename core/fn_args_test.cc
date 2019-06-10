@@ -29,8 +29,8 @@ TEST_CASE("mutable access") {
   FnArgs<int> args({1, 4, 9}, {{"hello", -3}, {"world", -5}});
   CHECK(args.pos() == std::vector<int>{1, 4, 9});
   CHECK_THAT(args.named(),
-             ElementsAre(std::pair<std::string, int>{"hello", -3},
-                         std::pair<std::string, int>{"world", -5}));
+             ElementsAre(std::pair<std::string_view, int>{"hello", -3},
+                         std::pair<std::string_view, int>{"world", -5}));
   CHECK(args.at_or_null("world!") == nullptr);
 }
 
@@ -38,8 +38,8 @@ TEST_CASE("const access") {
   FnArgs<int> const args({1, 4, 9}, {{"hello", -3}, {"world", -5}});
   CHECK(args.pos() == std::vector<int>{1, 4, 9});
   CHECK_THAT(args.named(),
-             ElementsAre(std::pair<std::string, int>{"hello", -3},
-                         std::pair<std::string, int>{"world", -5}));
+             ElementsAre(std::pair<std::string_view, int>{"hello", -3},
+                         std::pair<std::string_view, int>{"world", -5}));
   CHECK(args.at_or_null("world!") == nullptr);
 }
 
@@ -48,8 +48,8 @@ TEST_CASE("transform") {
                      .Transform([](int n) { return n * n; });
   CHECK(squared.pos() == std::vector<int>{1, 4, 9});
   CHECK_THAT(squared.named(),
-             ElementsAre(std::pair<std::string, int>{"hello", 9},
-                         std::pair<std::string, int>{"world", 25}));
+             ElementsAre(std::pair<std::string_view, int>{"hello", 9},
+                         std::pair<std::string_view, int>{"world", 25}));
 }
 
 TEST_CASE("apply") {
