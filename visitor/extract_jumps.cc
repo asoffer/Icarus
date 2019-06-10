@@ -50,7 +50,7 @@ void ExtractJumps::operator()(ast::Cast const *node) {
 }
 
 void ExtractJumps::operator()(ast::ChainOp const *node) {
-  for (auto &expr : node->exprs) { expr->ExtractJumps(this); }
+  for (auto *expr : node->exprs()) { expr->ExtractJumps(this); }
 }
 
 void ExtractJumps::operator()(ast::CommaList const *node) {

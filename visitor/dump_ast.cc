@@ -190,11 +190,11 @@ void DumpAst::operator()(ast::Cast const *node) {
 
 void DumpAst::operator()(ast::ChainOp const *node) {
   absl::StrAppend(out_, "(");
-  for (size_t i = 0; i < node->ops.size(); ++i) {
-    node->exprs[i]->DumpAst(this);
-    absl::StrAppend(out_, OpStr(node->ops[i]));
+  for (size_t i = 0; i < node->ops().size(); ++i) {
+    node->exprs()[i]->DumpAst(this);
+    absl::StrAppend(out_, OpStr(node->ops()[i]));
   }
-  node->exprs.back()->DumpAst(this);
+  node->exprs().back()->DumpAst(this);
 }
 
 void DumpAst::operator()(ast::CommaList const *node) {

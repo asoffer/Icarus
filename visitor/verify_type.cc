@@ -690,21 +690,21 @@ VerifyResult VerifyType::operator()(ast::Cast const *node, Context *ctx) const {
 VerifyResult VerifyType::operator()(ast::ChainOp const *node,
                                     Context *ctx) const {
   std::vector<VerifyResult> results;
-  results.reserve(node->exprs.size());
-  for (auto &expr : node->exprs) {
+  results.reserve(node->exprs().size());
+  for (auto *expr : node->exprs()) {
     results.push_back(expr->VerifyType(this, ctx));
   }
   if (absl::c_any_of(results, [](VerifyResult const &v) { return !v.ok(); })) {
     return VerifyResult::Error();
   }
 
-  if (node->ops[0] == frontend::Operator::Or) {
+  if (node->ops()[0] == frontend::Operator::Or) {
     bool found_err = false;
     for (size_t i = 0; i < results.size() - 1; ++i) {
       if (results[i].type_ == type::Block) {
         if (!results[i].const_) { NOT_YET("log an error: non const block"); }
 
-        ctx->error_log()->EarlyRequiredBlock(node->exprs[i]->span);
+        ctx->error_log()->EarlyRequiredBlock(node->exprs()[i]->span);
         found_err = true;
       } else if (results[i].type_ == type::OptBlock) {
         if (!results[i].const_) { NOT_YET("log an error: non const block"); }
@@ -730,7 +730,7 @@ not_blocks:
 
   // Safe to just check first because to be on the same chain they must all have
   // the same precedence, and ^, &, and | uniquely hold a given precedence.
-  switch (node->ops[0]) {
+  switch (node->ops()[0]) {
     case frontend::Operator::Or:
     case frontend::Operator::And:
     case frontend::Operator::Xor: {
@@ -742,7 +742,7 @@ not_blocks:
         // TODO node collection of error messages could be greatly improved.
         if (result.type_ != first_expr_type) {
           auto op_str = [node] {
-            switch (node->ops[0]) {
+            switch (node->ops()[0]) {
               case frontend::Operator::Or: return "|";
               case frontend::Operator::And: return "&";
               case frontend::Operator::Xor: return "^";
@@ -761,8 +761,8 @@ not_blocks:
     } break;
     default: {
       bool is_const = results[0].const_;
-      ASSERT(node->exprs.size() >= 2u);
-      for (size_t i = 0; i < node->exprs.size() - 1; ++i) {
+      ASSERT(node->exprs().size() >= 2u);
+      for (size_t i = 0; i + 1 < node->exprs().size(); ++i) {
         VerifyResult const &lhs_result = results[i];
         VerifyResult const &rhs_result = results[i + 1];
         is_const &= rhs_result.const_;
@@ -771,7 +771,7 @@ not_blocks:
         // struct too, or perhaps a variant containing a struct?) need to
         // figure out the details here.
         const char *token = nullptr;
-        switch (node->ops[i]) {
+        switch (node->ops()[i]) {
           case frontend::Operator::Lt: token = "<"; break;
           case frontend::Operator::Le: token = "<="; break;
           case frontend::Operator::Eq: token = "=="; break;
@@ -788,12 +788,10 @@ not_blocks:
           os.add_adl(token, lhs_result.type_);
           os.add_adl(token, rhs_result.type_);
           return ast::VerifyDispatch(
-              reinterpret_cast<ast::Expression const *>(
-                  reinterpret_cast<uintptr_t>(node->exprs[i].get()) | 0x1),
-              os,
+              ast::ExprPtr{node->exprs()[i], 0x01}, os,
               core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>(
-                  {std::pair(node->exprs[i].get(), lhs_result),
-                   std::pair(node->exprs[i + 1].get(), rhs_result)},
+                  {std::pair(node->exprs()[i], lhs_result),
+                   std::pair(node->exprs()[i + 1], rhs_result)},
                   {}),
               ctx);
         }
@@ -809,7 +807,7 @@ not_blocks:
         } else {
           auto cmp = Comparator(lhs_result.type_);
 
-          switch (node->ops[i]) {
+          switch (node->ops()[i]) {
             case frontend::Operator::Eq:
             case frontend::Operator::Ne: {
               switch (cmp) {
@@ -819,7 +817,8 @@ not_blocks:
                   ctx->error_log()->ComparingIncomparables(
                       lhs_result.type_->to_string(),
                       rhs_result.type_->to_string(),
-                      TextSpan(node->exprs[i]->span, node->exprs[i + 1]->span));
+                      TextSpan(node->exprs()[i]->span,
+                               node->exprs()[i + 1]->span));
                   return VerifyResult::Error();
               }
             } break;
@@ -834,7 +833,8 @@ not_blocks:
                   ctx->error_log()->ComparingIncomparables(
                       lhs_result.type_->to_string(),
                       rhs_result.type_->to_string(),
-                      TextSpan(node->exprs[i]->span, node->exprs[i + 1]->span));
+                      TextSpan(node->exprs()[i]->span,
+                               node->exprs()[i + 1]->span));
                   return VerifyResult::Error();
               }
             } break;

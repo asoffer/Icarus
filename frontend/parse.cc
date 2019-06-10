@@ -320,10 +320,6 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
   return unop;
 }
 
-// Input guarantees
-// [expr] [chainop] [expr]
-//
-// Internal checks: None
 std::unique_ptr<ast::Node> BuildChainOp(
     std::vector<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
@@ -333,18 +329,16 @@ std::unique_ptr<ast::Node> BuildChainOp(
   // Add to a chain so long as the precedence levels match. The only thing at
   // that precedence level should be the operators which can be chained.
   if (nodes[0]->is<ast::ChainOp>() &&
-      precedence(nodes[0]->as<ast::ChainOp>().ops.front()) == precedence(op)) {
+      precedence(nodes[0]->as<ast::ChainOp>().ops().front()) == precedence(op)) {
     chain = move_as<ast::ChainOp>(nodes[0]);
 
   } else {
-    chain       = std::make_unique<ast::ChainOp>();
-    chain->span = TextSpan(nodes[0]->span, nodes[2]->span);
-
-    chain->exprs.push_back(move_as<ast::Expression>(nodes[0]));
+    TextSpan span(nodes[0]->span, nodes[2]->span);
+    chain = std::make_unique<ast::ChainOp>(std::move(span),
+                                           move_as<ast::Expression>(nodes[0]));
   }
 
-  chain->ops.push_back(op);
-  chain->exprs.push_back(move_as<ast::Expression>(nodes[2]));
+  chain->append(op, move_as<ast::Expression>(nodes[2]));
   return chain;
 }
 

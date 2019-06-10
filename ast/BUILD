@@ -19,7 +19,6 @@ cc_lib_target(
 cc_lib_target(
     name = "ast",
     intf_deps = [
-        ":chainop",
         ":comma_list",
         ":declaration",
         ":enum_literal",
@@ -42,8 +41,6 @@ cc_lib_target(
     test_deps = None,
 )
 
-icarus_ast_node(name = "chainop",
-                deps = [":expression", "//frontend:operators"])
 icarus_ast_node(name = "comma_list", deps = [":expression"])
 icarus_ast_node(name = "declaration", deps = [":expression"])
 icarus_ast_node(name = "enum_literal", deps = [":expression"])

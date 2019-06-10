@@ -363,9 +363,47 @@ struct Cast : public Expression {
   std::unique_ptr<Expression> expr_, type_;
 };
 
+// ChainOp:
+// Represents a sequence of operators all of the same precedence. In may other
+// languages these would be characterized as compositions of binary operators.
+// Allowing chaining gives us more flexibility and enables us to treat some
+// user-defined operators as variadic. The canonical example in this space is
+// `+` for string concatenation. Today, `+` is treated as a binary operator, but
+// we intend to move all of the Binop nodes into ChainOp.
+//
+// Example:
+//  `a < b == c < d`
+struct ChainOp : public Expression {
+  // TODO consider having a construct-or-append static function.
+  explicit ChainOp(TextSpan span, std::unique_ptr<Expression> expr)
+      : Expression(std::move(span)) {
+    exprs_.push_back(std::move(expr));
+  }
+  ~ChainOp() override {}
+
+  void append(frontend::Operator op, std::unique_ptr<Expression> expr) {
+    ops_.push_back(op);
+    exprs_.push_back(std::move(expr));
+  }
+
+  NodeSpan<Expression const> exprs() const { return exprs_; }
+  NodeSpan<Expression> exprs() { return exprs_; }
+  absl::Span<frontend::Operator const> ops() const { return ops_; }
+  absl::Span<frontend::Operator> ops() { return absl::MakeSpan(ops_); }
+
+  std::vector<std::unique_ptr<Expression>> &&extract() && {
+    return std::move(exprs_);
+  }
+
+#include "visitor/visitors.xmacro.h"
+
+ private:
+  std::vector<frontend::Operator> ops_;
+  std::vector<std::unique_ptr<Expression>> exprs_;
+};
+
 }  // namespace ast
 
-#include "ast/chainop.h"
 #include "ast/comma_list.h"
 #include "ast/enum_literal.h"
 #include "ast/function_literal.h"

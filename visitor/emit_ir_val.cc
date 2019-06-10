@@ -890,9 +890,9 @@ static ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp const *chain_op,
                                             ir::Results const &lhs_ir,
                                             ir::Results const &rhs_ir,
                                             Context *ctx) {
-  auto *lhs_type = ctx->type_of(chain_op->exprs[index].get());
-  auto *rhs_type = ctx->type_of(chain_op->exprs[index + 1].get());
-  auto op        = chain_op->ops[index];
+  auto *lhs_type = ctx->type_of(chain_op->exprs()[index]);
+  auto *rhs_type = ctx->type_of(chain_op->exprs()[index + 1]);
+  auto op        = chain_op->ops()[index];
 
   if (lhs_type->is<type::Array>() && rhs_type->is<type::Array>()) {
     using ::matcher::Eq;
@@ -905,12 +905,11 @@ static ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp const *chain_op,
     auto results =
         ASSERT_NOT_NULL(
             ctx->dispatch_table(reinterpret_cast<ast::Expression *>(
-                reinterpret_cast<uintptr_t>(chain_op->exprs[index].get()) |
-                0x1)))
+                reinterpret_cast<uintptr_t>(chain_op->exprs()[index]) | 0x1)))
             ->EmitCall(
                 core::FnArgs<std::pair<ast::Expression const *, ir::Results>>(
-                    {std::pair(chain_op->exprs[index].get(), lhs_ir),
-                     std::pair(chain_op->exprs[index + 1].get(), rhs_ir)},
+                    {std::pair(chain_op->exprs()[index], lhs_ir),
+                     std::pair(chain_op->exprs()[index + 1], rhs_ir)},
                     {}),
                 ctx);
     ASSERT(results.size() == 1u);
@@ -986,19 +985,20 @@ static ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp const *chain_op,
 
 ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) const {
   auto *t = ctx->type_of(node);
-  if (node->ops[0] == frontend::Operator::Xor) {
+  if (node->ops()[0] == frontend::Operator::Xor) {
     if (t == type::Bool) {
       return ir::Results{std::accumulate(
-          node->exprs.begin(), node->exprs.end(), ir::RegisterOr<bool>(false),
-          [&](ir::RegisterOr<bool> acc, auto &expr) {
+          node->exprs().begin(), node->exprs().end(),
+          ir::RegisterOr<bool>(false),
+          [&](ir::RegisterOr<bool> acc, auto *expr) {
             return ir::XorBool(acc,
                                expr->EmitIr(this, ctx).template get<bool>(0));
           })};
     } else if (t->is<type::Flags>()) {
       return ir::Results{std::accumulate(
-          node->exprs.begin(), node->exprs.end(),
+          node->exprs().begin(), node->exprs().end(),
           ir::RegisterOr<ir::FlagsVal>(ir::FlagsVal{0}),
-          [&](ir::RegisterOr<ir::FlagsVal> acc, auto &expr) {
+          [&](ir::RegisterOr<ir::FlagsVal> acc, auto *expr) {
             return ir::XorFlags(
                 &t->as<type::Flags>(), acc,
                 expr->EmitIr(this, ctx).template get<ir::FlagsVal>(0));
@@ -1007,43 +1007,43 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) const {
       UNREACHABLE();
     }
 
-  } else if (node->ops[0] == frontend::Operator::Or && t->is<type::Flags>()) {
-    auto iter = node->exprs.begin();
+  } else if (node->ops()[0] == frontend::Operator::Or && t->is<type::Flags>()) {
+    auto iter = node->exprs().begin();
     auto val  = (*iter)->EmitIr(this, ctx).get<ir::FlagsVal>(0);
-    while (++iter != node->exprs.end()) {
+    while (++iter != node->exprs().end()) {
       val = ir::OrFlags(&t->as<type::Flags>(), val,
                         (*iter)->EmitIr(this, ctx).get<ir::FlagsVal>(0));
     }
     return ir::Results{val};
-  } else if (node->ops[0] == frontend::Operator::And && t->is<type::Flags>()) {
-    auto iter = node->exprs.begin();
+  } else if (node->ops()[0] == frontend::Operator::And && t->is<type::Flags>()) {
+    auto iter = node->exprs().begin();
     auto val  = (*iter)->EmitIr(this, ctx).get<ir::FlagsVal>(0);
-    while (++iter != node->exprs.end()) {
+    while (++iter != node->exprs().end()) {
       val = ir::AndFlags(&t->as<type::Flags>(), val,
                          (*iter)->EmitIr(this, ctx).get<ir::FlagsVal>(0));
     }
     return ir::Results{val};
-  } else if (node->ops[0] == frontend::Operator::Or && t == type::Type_) {
+  } else if (node->ops()[0] == frontend::Operator::Or && t == type::Type_) {
     // TODO probably want to check that each expression is a type? What if I
     // overload | to take my own stuff and have it return a type?
     std::vector<ir::RegisterOr<type::Type const *>> args;
-    args.reserve(node->exprs.size());
-    for (const auto &expr : node->exprs) {
+    args.reserve(node->exprs().size());
+    for (auto const *expr : node->exprs()) {
       args.push_back(expr->EmitIr(this, ctx).get<type::Type const *>(0));
     }
     auto reg_or_type = ir::Variant(args);
     return ir::Results{reg_or_type};
-  } else if (node->ops[0] == frontend::Operator::Or &&
+  } else if (node->ops()[0] == frontend::Operator::Or &&
              (t == type::Block || t == type::OptBlock)) {
     NOT_YET();
-  } else if (node->ops[0] == frontend::Operator::And ||
-             node->ops[0] == frontend::Operator::Or) {
+  } else if (node->ops()[0] == frontend::Operator::And ||
+             node->ops()[0] == frontend::Operator::Or) {
     auto land_block = ir::CompiledFn::Current->AddBlock();
 
     absl::flat_hash_map<ir::BlockIndex, ir::RegisterOr<bool>> phi_args;
-    bool is_or = (node->ops[0] == frontend::Operator::Or);
-    for (size_t i = 0; i + 1 < node->exprs.size(); ++i) {
-      auto val = node->exprs[i]->EmitIr(this, ctx).get<bool>(0);
+    bool is_or = (node->ops()[0] == frontend::Operator::Or);
+    for (size_t i = 0; i + 1 < node->exprs().size(); ++i) {
+      auto val = node->exprs()[i]->EmitIr(this, ctx).get<bool>(0);
 
       auto next_block = ir::CompiledFn::Current->AddBlock();
       ir::CondJump(val, is_or ? land_block : next_block,
@@ -1054,7 +1054,7 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) const {
     }
 
     phi_args.emplace(ir::BasicBlock::Current,
-                     node->exprs.back()->EmitIr(this, ctx).get<bool>(0));
+                     node->exprs().back()->EmitIr(this, ctx).get<bool>(0));
     ir::UncondJump(land_block);
 
     ir::BasicBlock::Current = land_block;
@@ -1062,17 +1062,17 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) const {
     return ir::Results{ir::MakePhi<bool>(ir::Phi(type::Bool), phi_args)};
 
   } else {
-    if (node->ops.size() == 1) {
-      auto lhs_ir = node->exprs[0]->EmitIr(this, ctx);
-      auto rhs_ir = node->exprs[1]->EmitIr(this, ctx);
+    if (node->ops().size() == 1) {
+      auto lhs_ir = node->exprs()[0]->EmitIr(this, ctx);
+      auto rhs_ir = node->exprs()[1]->EmitIr(this, ctx);
       return ir::Results{EmitChainOpPair(node, 0, lhs_ir, rhs_ir, ctx)};
 
     } else {
       absl::flat_hash_map<ir::BlockIndex, ir::RegisterOr<bool>> phi_args;
-      auto lhs_ir     = node->exprs.front()->EmitIr(this, ctx);
+      auto lhs_ir     = node->exprs().front()->EmitIr(this, ctx);
       auto land_block = ir::CompiledFn::Current->AddBlock();
-      for (size_t i = 0; i < node->ops.size() - 1; ++i) {
-        auto rhs_ir = node->exprs[i + 1]->EmitIr(this, ctx);
+      for (size_t i = 0; i + 1 < node->ops().size(); ++i) {
+        auto rhs_ir = node->exprs()[i + 1]->EmitIr(this, ctx);
         auto cmp    = EmitChainOpPair(node, i, lhs_ir, rhs_ir, ctx);
 
         phi_args.emplace(ir::BasicBlock::Current, false);
@@ -1083,10 +1083,10 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) const {
       }
 
       // Once more for the last element, but don't do a conditional jump.
-      auto rhs_ir = node->exprs.back()->EmitIr(this, ctx);
+      auto rhs_ir = node->exprs().back()->EmitIr(this, ctx);
       phi_args.emplace(
           ir::BasicBlock::Current,
-          EmitChainOpPair(node, node->exprs.size() - 2, lhs_ir, rhs_ir, ctx));
+          EmitChainOpPair(node, node->exprs().size() - 2, lhs_ir, rhs_ir, ctx));
       ir::UncondJump(land_block);
 
       ir::BasicBlock::Current = land_block;

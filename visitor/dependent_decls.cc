@@ -56,7 +56,7 @@ void DependentDecls::operator()(ast::Cast const *node,
 
 void DependentDecls::operator()(ast::ChainOp const *node,
                                 ast::Declaration const *d) {
-  for (auto const &expr : node->exprs) { expr->DependentDecls(this, d); }
+  for (auto const *expr : node->exprs()) { expr->DependentDecls(this, d); }
 }
 
 void DependentDecls::operator()(ast::CommaList const *node,

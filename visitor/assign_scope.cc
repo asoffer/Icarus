@@ -66,7 +66,7 @@ void AssignScope::operator()(ast::Cast *node, core::Scope *scope) {
 
 void AssignScope::operator()(ast::ChainOp *node, core::Scope *scope) {
   node->scope_ = scope;
-  for (auto &expr : node->exprs) { expr->assign_scope(this, scope); }
+  for (auto *expr : node->exprs()) { expr->assign_scope(this, scope); }
 }
 
 void AssignScope::operator()(ast::CommaList *node, core::Scope *scope) {
