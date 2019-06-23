@@ -65,6 +65,17 @@ cc_lib_target(
     test_deps = None)
 
 cc_lib_target(
+    name = "parse_rule",
+    intf_deps = [
+        ":tag",
+        "//ast:node",
+        "@com_google_absl//absl/types:span",
+    ],
+    impl_deps = [],
+    test_deps = None,
+)
+
+cc_lib_target(
     name = "parse",
     intf_deps = None,
     impl_deps = [
@@ -72,6 +83,7 @@ cc_lib_target(
         ":source",
         ":tagged_node",
         ":token",
+        ":parse_rule-impl",
         "//ast:ast",
         "//base:guarded",
         "//error:log-impl",

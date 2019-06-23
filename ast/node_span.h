@@ -46,10 +46,18 @@ struct NodeSpan {
   T *front() const { return ptr_->get(); }
   T *back() const { return ptr_[size_ - 1].get(); }
 
+  std::unique_ptr<T> &get(size_t n) { return ptr_[n]; }
+  std::unique_ptr<T> &get_front() { return get(0); }
+  std::unique_ptr<T> &get_back() { return get(this->size() - 1); }
+
   T *operator[](size_t n) const { return ptr_[n].get(); }
 
   template <typename Container>
   NodeSpan(Container &&c) : ptr_(&c[0]), size_(c.size()) {}
+  template <typename Iter>
+  NodeSpan(Iter b, Iter e)
+      : ptr_(std::addressof(*b)),
+        size_(std::addressof(*e) - std::addressof(*b)) {}
 
  private:
   pointer_type *ptr_ = nullptr;
