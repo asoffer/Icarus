@@ -1,5 +1,8 @@
 #include "type/flags.h"
 
+#include "absl/random/distributions.h"
+#include "absl/random/random.h"
+
 struct Module;
 struct Context;
 
@@ -18,14 +21,13 @@ Flags::Flags(
   }
   // TODO we can highly optimize this in a number of ways. One simple thing is
   // removing members as we used them above.
+  absl::BitGen gen;
   for (auto const &[s, v] : members) {
     if (v.has_value()) { continue; }
-    std::random_device rd;
-    std::uniform_int_distribution<int> dist(0, 31);
     int32_t x;
     {
     try_again:
-      x            = dist(rd);
+      x            = absl::Uniform(absl::IntervalClosedOpen, gen, 0, 32);
       bool success = taken.insert(x).second;
       if (!success) { goto try_again; }
     }

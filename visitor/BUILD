@@ -150,6 +150,7 @@ cc_lib_target(
         "//misc:context",
         "//type:type",
         "//type:typed_value",
+        "@com_google_absl//absl/random",
     ],
     test_deps = None,
 )
@@ -168,6 +169,7 @@ cc_lib_target(
         "//misc:context",
         "//type:type",
         "//type:typed_value",
+        "@com_google_absl//absl/random",
     ],
     test_deps = None,
 )
@@ -185,6 +187,7 @@ cc_lib_target(
         "//misc:context",
         "//type:type",
         "//type:typed_value",
+        "@com_google_absl//absl/random",
     ],
     test_deps = None,
 )

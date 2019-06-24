@@ -1,3 +1,4 @@
+#include "absl/random/random.h"
 #include "ast/declaration.h"
 #include "base/permutation.h"
 #include "ir/cmd.h"
@@ -90,7 +91,7 @@ void EmitIr::Destroy(type::Tuple const *t, ir::Reg reg, Context *ctx) const {
       ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
       auto var                = ir::Reg::Arg(0);
 
-      for (size_t i : base::make_random_permutation(t->entries_.size())) {
+      for (size_t i : base::make_random_permutation(absl::BitGen{}, t->entries_.size())) {
         t->entries_.at(i)->EmitDestroy(this, ir::Field(var, t, i).get(), ctx);
       }
 

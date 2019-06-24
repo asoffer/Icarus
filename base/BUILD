@@ -35,7 +35,10 @@ cc_lib_target(name = "matchers",
               intf_deps = [":tuple"],
               impl_deps = None,
               test_deps = None)
-cc_lib_target(name = "permutation", impl_deps = None, test_deps = None)
+cc_lib_target(name = "permutation", 
+              intf_deps = ["@com_google_absl//absl/random"],
+              impl_deps = None,
+              test_deps = None)
 cc_lib_target(name = "owned_ptr", impl_deps = None, test_deps = None)
 cc_lib_target(name = "stringify",
               intf_deps = [":tuple"],

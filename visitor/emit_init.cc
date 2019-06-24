@@ -1,3 +1,4 @@
+#include "absl/random/random.h"
 #include "ast/ast.h"
 #include "base/permutation.h"
 #include "ir/compiled_fn.h"
@@ -72,7 +73,7 @@ void EmitIr::DefaultInit(type::Tuple const *t, ir::Reg reg,
       ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
       auto var                = ir::Reg::Arg(0);
 
-      for (size_t i : base::make_random_permutation(t->entries_.size())) {
+      for (size_t i : base::make_random_permutation(absl::BitGen{}, t->entries_.size())) {
         t->entries_.at(i)->EmitDefaultInit(this, ir::Field(var, t, i).get(), ctx);
       }
 

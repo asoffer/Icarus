@@ -1,3 +1,4 @@
+#include "absl/random/random.h"
 #include "ast/ast.h"
 #include "base/permutation.h"
 #include "ir/compiled_fn.h"
@@ -214,7 +215,7 @@ void EmitIr::CopyAssign(type::Tuple const *t, ir::RegisterOr<ir::Addr> to,
       auto val                = ir::Reg::Arg(0);
       auto var                = ir::Reg::Arg(1);
 
-      for (size_t i : base::make_random_permutation(t->entries_.size())) {
+      for (size_t i : base::make_random_permutation(absl::BitGen{}, t->entries_.size())) {
         auto *entry = t->entries_.at(i);
         entry->EmitCopyAssign(
             this, entry,
@@ -245,7 +246,7 @@ void EmitIr::MoveAssign(type::Tuple const *t, ir::RegisterOr<ir::Addr> to,
       auto val                = ir::Reg::Arg(0);
       auto var                = ir::Reg::Arg(1);
 
-      for (size_t i : base::make_random_permutation(t->entries_.size())) {
+      for (size_t i : base::make_random_permutation(absl::BitGen{}, t->entries_.size())) {
         auto *entry = t->entries_.at(i);
         entry->EmitMoveAssign(
             this, entry,

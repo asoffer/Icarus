@@ -102,6 +102,8 @@ cc_lib_target(
         ":typed_value",
         "//ir:flags_val",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/random",
+        "@com_google_absl//absl/random:distributions",
     ],
     impl_deps = [],
     test_deps = None,
@@ -139,6 +141,8 @@ cc_lib_target(
         ":enum",
         "//misc:module",
         "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/random",
+        "@com_google_absl//absl/random:distributions",
     ],
     test_deps = None,
 )
@@ -150,8 +154,10 @@ cc_lib_target(
     ],
     impl_deps = [
         ":flags",
+        "//base:permutation",
         "//ir:flags_val",
         "//misc:module",
+        "@com_google_absl//absl/random",
     ],
     test_deps = None,
 )

@@ -1,9 +1,10 @@
 #include "type/incomplete_enum.h"
 
-#include <random>
 #include <utility>
 
 #include "absl/container/flat_hash_set.h"
+#include "absl/random/random.h"
+#include "absl/random/distributions.h"
 #include "misc/module.h"
 #include "type/enum.h"
 
@@ -30,15 +31,14 @@ Enum const *IncompleteEnum::finalize() && {
   }
   // TODO we can highly optimize this in a number of ways. One simple thing is
   // removing members as we used them above.
+  absl::BitGen gen;
   for (auto const & [ s, v ] : entries_) {
     if (v.has_value()) { continue; }
-    std::random_device rd;
-    std::uniform_int_distribution<int> dist(std::numeric_limits<int32_t>::lowest(),
-                                            std::numeric_limits<int32_t>::max());
     int32_t x;
     {
     try_again:
-      x            = dist(rd);
+      x            = absl::Uniform(gen, std::numeric_limits<int32_t>::lowest(),
+                        std::numeric_limits<int32_t>::max());
       bool success = taken.insert(x).second;
       if (!success) { goto try_again; }
     }

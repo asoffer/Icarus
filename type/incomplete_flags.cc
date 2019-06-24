@@ -1,5 +1,8 @@
 #include "type/incomplete_flags.h"
 
+#include "absl/random/distributions.h"
+#include "absl/random/random.h"
+#include "base/permutation.h"
 #include "misc/module.h"
 #include "type/flags.h"
 
@@ -31,8 +34,7 @@ Flags const *IncompleteFlags::finalize() && {
   // TODO we can highly optimize this in a number of ways. One simple thing is
   // removing members as we used them above.
 
-  std::random_device rd;
-  std::shuffle(available.begin(), available.end(), std::mt19937(rd()));
+  base::Shuffle(absl::BitGen{}, absl::MakeSpan(&available.front(), available.size()));
   for (auto const & [ s, v ] : entries_) {
     if (v.has_value()) { continue; }
     int32_t x = available.back();
