@@ -161,6 +161,18 @@ void DumpAst::operator()(ast::BlockNode const *node) {
   absl::StrAppend(out_, indent(), "}\n");
 }
 
+void DumpAst::operator()(ast::JumpHandler const *node) {
+  absl::StrAppend(out_, "jump (",
+                  absl::StrJoin(node->input(), ", ", Joiner{this}), ") {\n");
+  ++indentation_;
+  for (auto *stmt : node->stmts()) {
+    absl::StrAppend(out_, "\n", indent());
+    stmt->DumpAst(this);
+  }
+  --indentation_;
+  absl::StrAppend(out_, indent(), "}\n");
+}
+
 void DumpAst::operator()(ast::BuiltinFn const *node) {
   switch (node->value()) {
 #define ICARUS_CORE_BUILTIN_X(enumerator, str, t)                              \

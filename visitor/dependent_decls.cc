@@ -111,6 +111,12 @@ void DependentDecls::operator()(ast::Jump const *node,
   }
 }
 
+void DependentDecls::operator()(ast::JumpHandler const *node,
+                                ast::Declaration const *d) {
+  for (auto const *in : node->input()) { in->DependentDecls(this, d); }
+  for (auto const *stmt : node->stmts()) { stmt->DependentDecls(this, d); }
+}
+
 void DependentDecls::operator()(ast::RepeatedUnop const *node,
                                 ast::Declaration const *d) {
   for (auto *expr : node->exprs()) { expr->DependentDecls(this, d); }

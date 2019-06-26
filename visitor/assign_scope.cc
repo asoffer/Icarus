@@ -163,6 +163,13 @@ void AssignScope::operator()(ast::Jump *node, core::Scope *scope) {
   }
 }
 
+void AssignScope::operator()(ast::JumpHandler *node, core::Scope *scope) {
+  node->scope_ = scope;
+  node->set_body_with_parent(scope);
+  SetAllScopes(this, node->input(), node->body_scope());
+  SetAllScopes(this, node->stmts(), node->body_scope());
+}
+
 void AssignScope::operator()(ast::RepeatedUnop *node, core::Scope *scope) {
   node->scope_ = scope;
   SetAllScopes(this, node->exprs(), scope);

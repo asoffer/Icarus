@@ -63,15 +63,15 @@ SrcCursor NextSimpleWord(SrcCursor *cursor) {
 
 static absl::flat_hash_map<std::string_view,
                            std::variant<Operator, Syntax>> const Keywords = {
-    {"which", {Operator::Which}},       {"print", {Operator::Print}},
-    {"ensure", {Operator::Ensure}},     {"needs", {Operator::Needs}},
-    {"import", {Operator::Import}},     {"flags", {Syntax::Flags}},
-    {"enum", {Syntax::Enum}},           {"struct", {Syntax::Struct}},
-    {"return", {Operator::Return}},     {"yield", {Operator::Yield}},
-    {"jump", {Operator::Jump}},         {"switch", {Syntax::Switch}},
-    {"when", {Operator::When}},         {"as", {Operator::As}},
-    {"interface", {Syntax::Interface}}, {"copy", {Operator::Copy}},
-    {"move", {Operator::Move}}};
+    {"which", {Operator::Which}},   {"print", {Operator::Print}},
+    {"ensure", {Operator::Ensure}}, {"needs", {Operator::Needs}},
+    {"import", {Operator::Import}}, {"flags", {Syntax::Flags}},
+    {"enum", {Syntax::Enum}},       {"struct", {Syntax::Struct}},
+    {"return", {Operator::Return}}, {"yield", {Operator::Yield}},
+    {"jump", {Operator::Jump}},     {"jump_handler", {Syntax::JumpHandler}},
+    {"switch", {Syntax::Switch}},   {"when", {Operator::When}},
+    {"as", {Operator::As}},         {"interface", {Syntax::Interface}},
+    {"copy", {Operator::Copy}},     {"move", {Operator::Move}}};
 
 Lexeme NextWord(SrcCursor *cursor, Src *src) {
   // Match [a-zA-Z_][a-zA-Z0-9_]*

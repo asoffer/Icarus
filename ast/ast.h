@@ -598,6 +598,36 @@ struct Jump : public Node {
   std::vector<JumpOption> options_;
 };
 
+// JumpHandler:
+// TODO figure out a good name for this node and the precise syntax/semantics it
+// is going to have.
+//
+// Example:
+//  ```
+//  jump_handler (b: bool) {
+//    if (b) then { jump next() }
+//    jump exit()
+//  }
+//  ```
+struct JumpHandler : ScopeExpr<core::FnScope> {
+  explicit JumpHandler(TextSpan span,
+                       std::vector<std::unique_ptr<Declaration>> input,
+                       std::vector<std::unique_ptr<Node>> stmts)
+      : ScopeExpr<core::FnScope>(std::move(span)),
+        input_(std::move(input)),
+        stmts_(std::move(stmts)) {}
+
+#include "visitor/visitors.xmacro.h"
+  NodeSpan<Declaration const> input() const { return input_; }
+  NodeSpan<Declaration> input() { return input_; }
+  NodeSpan<Node> stmts() { return stmts_; }
+  NodeSpan<Node const> stmts() const { return stmts_; }
+
+ private:
+  std::vector<std::unique_ptr<Declaration>> input_;
+  std::vector<std::unique_ptr<Node>> stmts_;
+};
+
 // RepeatedUnop:
 // Represents a statement where arbitrarily many expressions can be passed, and
 // are all treated as arguments to the same unary operator (for a very loose

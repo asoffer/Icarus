@@ -10,6 +10,7 @@ struct Flags;
 struct Function;
 struct GenericFunction;
 struct GenericStruct;
+struct Jump;
 struct Opaque;
 struct Pointer;
 struct Primitive;

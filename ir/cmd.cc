@@ -10,6 +10,7 @@
 #include "ir/compiled_fn.h"
 #include "ir/phi.h"
 #include "type/generic_struct.h"
+#include "type/jump.h"
 #include "type/typed_value.h"
 
 namespace ir {

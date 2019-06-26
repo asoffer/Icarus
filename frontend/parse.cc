@@ -897,6 +897,26 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
     auto sw   = BuildSwitch(move_as<Statements>(nodes[4]), mod, error_log);
     sw->expr_ = move_as<ast::Expression>(nodes[2]);
     return sw;
+  } else if (tk == "jump_handler") {
+    TextSpan span(nodes.front()->span, nodes.back()->span);
+    std::vector<std::unique_ptr<ast::Declaration>> params;
+    if (nodes[2]->is<ast::CommaList>()) {
+      for (auto &expr : nodes[2]->as<ast::CommaList>().exprs_) {
+        ASSERT(expr, InheritsFrom<ast::Declaration>());  // TODO handle failure
+        auto decl          = move_as<ast::Declaration>(expr);
+        decl->is_fn_param_ = true;
+        params.push_back(std::move(decl));
+      }
+    } else {
+      auto decl          = move_as<ast::Declaration>(nodes[2]);
+      decl->is_fn_param_ = true;
+      params.push_back(std::move(decl));
+    }
+
+    return std::make_unique<ast::JumpHandler>(
+        std::move(span), std::move(params),
+        std::move(nodes.back()->as<Statements>()).extract());
+
   } else if (tk == "struct") {
     auto result = BuildStructLiteral(
         std::move(nodes[4]->as<Statements>()),

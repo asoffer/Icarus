@@ -4,6 +4,7 @@
 #include "type/callable.h"
 #include "type/function.h"
 #include "type/generic_struct.h"
+#include "type/jump.h"
 #include "type/util.h"
 
 namespace ir {

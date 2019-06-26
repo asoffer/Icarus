@@ -10,6 +10,7 @@
 #include "misc/context.h"
 #include "type/cast.h"
 #include "type/generic_struct.h"
+#include "type/jump.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 #include "type/util.h"
@@ -1654,6 +1655,29 @@ VerifyResult VerifyType::operator()(ast::Jump const *node, Context *ctx) const {
     }
   }
   return VerifyResult::Constant(type::Void());
+}
+
+VerifyResult VerifyType::operator()(ast::JumpHandler const *node,
+                                    Context *ctx) const {
+  bool err = false;
+  bool is_const = true;
+  std::vector<type::Type const *> arg_types;
+  arg_types.reserve(node->input().size());
+  for (auto const &input : node->input()) {
+    auto v = input->VerifyType(this, ctx);
+    if (!v.ok()) {
+      err = false;
+    } else {
+      arg_types.push_back(v.type_);
+    }
+  }
+
+  if (err) {
+    return ctx->set_result(node, VerifyResult::Error());
+  } else {
+    return ctx->set_result(
+        node, VerifyResult::Constant(type::Jmp(arg_types)));
+  }
 }
 
 VerifyResult VerifyType::operator()(ast::RepeatedUnop const *node,

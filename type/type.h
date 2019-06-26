@@ -139,7 +139,7 @@ bool Compare(::type::Type const *t) {
   } else if constexpr (std::is_same_v<T, ::type::Struct const *>) {
     return t->is<::type::Struct>();
   } else if constexpr (std::is_same_v<T, ir::AnyFunc>) {
-    return t->is<::type::Function>();
+    return t->is<::type::Function>() || t->is<::type::Jump>();
   } else if constexpr (std::is_same_v<T, ast::FunctionLiteral *>) {
     return t == ::type::Generic;
   } else if constexpr (std::is_same_v<T, ::Module *> ||

@@ -41,6 +41,7 @@ cc_group_target(
         ":function",
         ":incomplete_enum",
         ":incomplete_flags",
+        ":jump",
         ":opaque",
         ":pointer",
         ":primitive",
@@ -61,6 +62,7 @@ cc_group_target(
         ":incomplete_enum-impl",
         ":incomplete_flags-impl",
         ":interface-impl",
+        ":jump-impl",
         ":opaque-impl",
         ":pointer-impl",
         ":primitive-impl",
@@ -174,6 +176,21 @@ cc_lib_target(
         "//base:guarded",
         "//core:arch",
         "//misc:module",
+    ],
+    test_deps = None,
+)
+
+cc_lib_target(
+    name = "jump",
+    intf_deps = [
+        ":type",
+        ":function",
+        "@com_google_absl//absl/types:span",
+    ],
+    impl_deps = [
+        "//base:guarded",
+        "@com_google_absl//absl/container:node_hash_set",
+        "@com_google_absl//absl/strings",
     ],
     test_deps = None,
 )

@@ -11,6 +11,7 @@
 #include "ir/register.h"
 #include "misc/context.h"
 #include "type/generic_struct.h"
+#include "type/jump.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 
@@ -357,6 +358,58 @@ static void CompleteBody(EmitIr const *visitor, ast::StructLiteral const *node,
     ir::BasicBlock::Current = land_block;
     ir::SetRet(0, static_cast<ir::RegisterOr<type::Type const *>>(cache_slot));
     ir::ReturnJump();
+  }
+}
+
+static void CompleteBody(EmitIr const *visitor, ast::JumpHandler const *node,
+                         Context *ctx) {
+  // TODO have validate return a bool distinguishing if there are errors and
+  // whether or not we can proceed.
+
+  auto *t = ctx->type_of(node);
+
+  ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[node];
+
+  CURRENT_FUNC(ir_func) {
+    ir::BasicBlock::Current = ir_func->entry();
+    // Leave space for allocas that will come later (added to the entry
+    // block).
+    auto start_block        = ir::CompiledFn::Current->AddBlock();
+    ir::BasicBlock::Current = start_block;
+
+    // TODO arguments should be renumbered to not waste space on const values
+    for (int32_t i = 0; i < static_cast<int32_t>(node->input().size()); ++i) {
+      ctx->set_addr(node->input()[i], ir::Reg::Arg(i));
+    }
+
+    MakeAllStackAllocations(node->body_scope(), ctx);
+
+    {
+      std::vector<type::Typed<ir::Reg>> to_destroy;
+      auto *old_tmp_ptr =
+          std::exchange(ctx->temporaries_to_destroy_, &to_destroy);
+      bool old_more_stmts_allowed =
+          std::exchange(ctx->more_stmts_allowed_, true);
+      base::defer d([&] {
+        ctx->temporaries_to_destroy_ = old_tmp_ptr;
+        ctx->more_stmts_allowed_     = old_more_stmts_allowed;
+      });
+      for (auto *stmt : node->stmts()) {
+        stmt->EmitIr(visitor, ctx);
+        for (int i = static_cast<int>(to_destroy.size()) - 1; i >= 0; --i) {
+          auto &reg = to_destroy.at(i);
+          reg.type()->EmitDestroy(visitor, reg.get(), ctx);
+        }
+        to_destroy.clear();
+      }
+    }
+
+    MakeAllDestructions(visitor, node->body_scope(), ctx);
+
+    ir::ReturnJump();
+    ir::BasicBlock::Current = ir_func->entry();
+    ir::UncondJump(start_block);
+    ir_func->work_item = nullptr;
   }
 }
 
@@ -1305,6 +1358,28 @@ ir::Results EmitIr::Val(ast::Jump const *node, Context *ctx) const {
   return ir::Results{};
 }
 
+ir::Results EmitIr::Val(ast::JumpHandler const *node, Context *ctx) const {
+  // TODO handle constant inputs
+  // TODO Use correct constants
+  ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[node];
+  if (!ir_func) {
+    std::function<void()> *work_item_ptr = DeferWork(node, this, ctx);
+    auto *jmp_type = &ctx->type_of(node)->as<type::Jump>();
+
+    core::FnParams<type::Typed<ast::Expression const *>> params(node->input().size());
+    for (size_t i = 0; i < node->input().size(); ++i) {
+      auto const *decl = node->input()[i];
+      params.set(
+          i, core::Param<type::Typed<ast::Expression const *>>{
+                 decl->id_, type::Typed<ast::Expression const *>{
+                                decl->init_val.get(), jmp_type->args()[i]}});
+    }
+    ir_func = ctx->mod_->AddFunc(jmp_type->ToFunction(), std::move(params));
+    if (work_item_ptr) { ir_func->work_item = work_item_ptr; }
+  }
+
+  return ir::Results{ir_func};
+}
 ir::Results EmitIr::Val(ast::RepeatedUnop const *node, Context *ctx) const {
   std::vector<ir::Results> arg_vals;
   // TODO expansion

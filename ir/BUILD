@@ -191,6 +191,7 @@ cc_lib_target(
         "//type:enum",
         "//type:flags",
         "//type:function",
+        "//type:jump",
         "//type:pointer",
         "//type:struct",
     ],

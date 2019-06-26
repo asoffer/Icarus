@@ -96,6 +96,12 @@ void ExtractJumps::operator()(ast::Jump const *node) {
   data_[static_cast<std::underlying_type_t<Kind>>(Kind::Jump)].push_back(node);
 }
 
+void ExtractJumps::operator()(ast::JumpHandler const *node) {
+  // TODO Can you return or yield or jump from inside a jump block?!
+  for (auto const *in : node->input()) { in->ExtractJumps(this); }
+  for (auto const *stmt : node->stmts()) { stmt->ExtractJumps(this); }
+}
+
 void ExtractJumps::operator()(ast::RepeatedUnop const *node) {
   for (auto *expr : node->exprs()) { expr->ExtractJumps(this); }
   switch (node->op()) {

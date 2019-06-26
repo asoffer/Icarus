@@ -3,6 +3,7 @@
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"
+#include "type/jump.h"
 #include "type/pointer.h"
 #include "type/struct.h"
 
