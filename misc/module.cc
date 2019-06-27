@@ -10,6 +10,7 @@
 #include "ir/compiled_fn.h"
 #endif  // ICARUS_VISITOR_EMIT_IR
 #include "type/function.h"
+#include "type/jump.h"
 
 // Can't declare this in header because unique_ptr's destructor needs to know
 // the size of ir::CompiledFn which we want to forward declare.
@@ -25,6 +26,15 @@ ir::CompiledFn *Module::AddFunc(
   return fns_
       .emplace_back(
           std::make_unique<ir::CompiledFn>(this, fn_type, std::move(params)))
+      .get();
+}
+
+ir::CompiledFn *Module::AddJump(
+    type::Jump const *jump_type,
+    core::FnParams<type::Typed<ast::Expression const *>> params) {
+  return fns_
+      .emplace_back(std::make_unique<ir::CompiledFn>(
+          this, jump_type->ToFunction(), std::move(params)))
       .get();
 }
 

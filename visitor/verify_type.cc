@@ -1632,11 +1632,12 @@ VerifyResult VerifyType::operator()(ast::Jump const *node, Context *ctx) const {
     arg_results.push_back(std::move(arg_result));
   }
   if (err) { NOT_YET(); }
-  for (auto const &opt : node->options_) {
-    auto scope_def = backend::EvaluateAs<ir::ScopeDef *>(
-        node->scope_->Containing<core::ScopeLitScope>()->scope_lit_, ctx);
-    if (scope_def->work_item) { (*scope_def->work_item)(); }
 
+  auto scope_def = backend::EvaluateAs<ir::ScopeDef *>(
+      node->scope_->Containing<core::ScopeLitScope>()->scope_lit_, ctx);
+  if (scope_def->work_item) { (*scope_def->work_item)(); }
+
+  for (auto const &opt : node->options_) {
     if (opt.block == "start") {
     } else if (opt.block == "exit") {
     } else {
@@ -1660,13 +1661,12 @@ VerifyResult VerifyType::operator()(ast::Jump const *node, Context *ctx) const {
 VerifyResult VerifyType::operator()(ast::JumpHandler const *node,
                                     Context *ctx) const {
   bool err = false;
-  bool is_const = true;
   std::vector<type::Type const *> arg_types;
   arg_types.reserve(node->input().size());
   for (auto const &input : node->input()) {
     auto v = input->VerifyType(this, ctx);
     if (!v.ok()) {
-      err = false;
+      err = true;
     } else {
       arg_types.push_back(v.type_);
     }
@@ -1675,8 +1675,10 @@ VerifyResult VerifyType::operator()(ast::JumpHandler const *node,
   if (err) {
     return ctx->set_result(node, VerifyResult::Error());
   } else {
-    return ctx->set_result(
-        node, VerifyResult::Constant(type::Jmp(arg_types)));
+    auto result =
+        ctx->set_result(node, VerifyResult::Constant(type::Jmp(arg_types)));
+    for (auto const *stmt : node->stmts()) { stmt->VerifyType(this, ctx); }
+    return result;
   }
 }
 
@@ -1752,6 +1754,8 @@ static type::Pointer const *StatePtrTypeOrLogError(
 
 VerifyResult VerifyType::operator()(ast::ScopeLiteral const *node,
                                     Context *ctx) const {
+  auto verify_result =
+      ctx->set_result(node, VerifyResult::Constant(type::Scope));
   if (node->is_stateful()) {
     absl::flat_hash_map<type::Pointer const *,
                         std::vector<ast::Declaration const *>>
@@ -1799,7 +1803,7 @@ VerifyResult VerifyType::operator()(ast::ScopeLiteral const *node,
     }
     if (error) { return VerifyResult::Error(); }
   }
-  return ctx->set_result(node, VerifyResult::Constant(type::Scope));
+  return verify_result;
 }
 
 std::vector<std::pair<ast::Expression const *, VerifyResult>> VerifyBlockNode(

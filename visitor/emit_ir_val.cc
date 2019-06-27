@@ -233,7 +233,7 @@ static void CompleteBody(EmitIr const *visitor,
   ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[node];
 
   CURRENT_FUNC(ir_func) {
-    ir::BasicBlock::Current = ir_func->entry();
+   ir::BasicBlock::Current = ir_func->entry();
     // Leave space for allocas that will come later (added to the entry
     // block).
     auto start_block        = ir::CompiledFn::Current->AddBlock();
@@ -269,15 +269,19 @@ static void CompleteBody(EmitIr const *visitor,
           std::exchange(ctx->temporaries_to_destroy_, &to_destroy);
       bool old_more_stmts_allowed =
           std::exchange(ctx->more_stmts_allowed_, true);
+
       base::defer d([&] {
         ctx->temporaries_to_destroy_ = old_tmp_ptr;
         ctx->more_stmts_allowed_     = old_more_stmts_allowed;
       });
-      for (auto &stmt : node->statements_) {
+
+     for (auto &stmt : node->statements_) {
         stmt->EmitIr(visitor, ctx);
+
         for (int i = static_cast<int>(to_destroy.size()) - 1; i >= 0; --i) {
           auto &reg = to_destroy.at(i);
           reg.type()->EmitDestroy(visitor, reg.get(), ctx);
+
         }
         to_destroy.clear();
       }
@@ -378,6 +382,7 @@ static void CompleteBody(EmitIr const *visitor, ast::JumpHandler const *node,
     ir::BasicBlock::Current = start_block;
 
     // TODO arguments should be renumbered to not waste space on const values
+    base::Log() << node->input().size();
     for (int32_t i = 0; i < static_cast<int32_t>(node->input().size()); ++i) {
       ctx->set_addr(node->input()[i], ir::Reg::Arg(i));
     }
@@ -394,8 +399,10 @@ static void CompleteBody(EmitIr const *visitor, ast::JumpHandler const *node,
         ctx->temporaries_to_destroy_ = old_tmp_ptr;
         ctx->more_stmts_allowed_     = old_more_stmts_allowed;
       });
+
       for (auto *stmt : node->stmts()) {
         stmt->EmitIr(visitor, ctx);
+
         for (int i = static_cast<int>(to_destroy.size()) - 1; i >= 0; --i) {
           auto &reg = to_destroy.at(i);
           reg.type()->EmitDestroy(visitor, reg.get(), ctx);
@@ -410,6 +417,7 @@ static void CompleteBody(EmitIr const *visitor, ast::JumpHandler const *node,
     ir::BasicBlock::Current = ir_func->entry();
     ir::UncondJump(start_block);
     ir_func->work_item = nullptr;
+
   }
 }
 
@@ -1361,8 +1369,10 @@ ir::Results EmitIr::Val(ast::Jump const *node, Context *ctx) const {
 ir::Results EmitIr::Val(ast::JumpHandler const *node, Context *ctx) const {
   // TODO handle constant inputs
   // TODO Use correct constants
+
   ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[node];
   if (!ir_func) {
+
     std::function<void()> *work_item_ptr = DeferWork(node, this, ctx);
     auto *jmp_type = &ctx->type_of(node)->as<type::Jump>();
 
@@ -1374,8 +1384,10 @@ ir::Results EmitIr::Val(ast::JumpHandler const *node, Context *ctx) const {
                  decl->id_, type::Typed<ast::Expression const *>{
                                 decl->init_val.get(), jmp_type->args()[i]}});
     }
-    ir_func = ctx->mod_->AddFunc(jmp_type->ToFunction(), std::move(params));
+
+    ir_func = ctx->mod_->AddJump(jmp_type, std::move(params));
     if (work_item_ptr) { ir_func->work_item = work_item_ptr; }
+
   }
 
   return ir::Results{ir_func};
@@ -1672,6 +1684,7 @@ ir::Results EmitIr::Val(ast::Switch const *node, Context *ctx) const {
     } else {
       // It must be a jump/yield/return, which we've verified in VerifyType.
       body->EmitIr(this, ctx);
+
       if (!all_paths_jump) { ctx->more_stmts_allowed_ = true; }
     }
 
@@ -1693,7 +1706,7 @@ ir::Results EmitIr::Val(ast::Switch const *node, Context *ctx) const {
     return ir::Results{};
   } else {
     return ir::MakePhi(t, ir::Phi(t->is_big() ? type::Ptr(t) : t), phi_args);
-  }
+ }
 }
 
 ir::Results EmitIr::Val(ast::Terminal const *node, Context *ctx) const {

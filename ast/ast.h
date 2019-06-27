@@ -555,8 +555,8 @@ struct Jump : public Node {
   explicit Jump(TextSpan span, std::vector<std::unique_ptr<Call>> calls)
       : Node(std::move(span)) {
     for (auto &call : calls) {
-      auto [callee, ordered_args] = std::move(*call).extract();
-      if (auto *term = call->callee()->if_as<Terminal>()) {
+      auto[callee, ordered_args] = std::move(*call).extract();
+      if (auto *term = callee->if_as<Terminal>()) {
         if (term->as<ir::BlockDef *>() == ir::BlockDef::Start()) {
           options_.emplace_back("start", std::move(ordered_args).DropOrder());
         } else if (term->as<ir::BlockDef *>() == ir::BlockDef::Exit()) {
@@ -564,9 +564,11 @@ struct Jump : public Node {
         } else {
           UNREACHABLE();
         }
-      } else if (auto *id = call->callee()->if_as<Identifier>()) {
+      } else if (auto *id = callee->if_as<Identifier>()) {
         options_.emplace_back(std::string{id->token()},
                               std::move(ordered_args).DropOrder());
+      } else {
+        UNREACHABLE();
       }
     }
   }

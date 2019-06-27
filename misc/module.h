@@ -29,6 +29,7 @@
 namespace type {
 struct Type;
 struct Function;
+struct Jump;
 }  // namespace type
 
 namespace ir {
@@ -46,8 +47,13 @@ struct Module {
   // We take pointers to the module, so it cannot be moved.
   Module(Module &&) = delete;
 
-  ir::CompiledFn *AddFunc(type::Function const *fn_type,
-                    core::FnParams<type::Typed<ast::Expression const *>> params);
+  ir::CompiledFn *AddFunc(
+      type::Function const *fn_type,
+      core::FnParams<type::Typed<ast::Expression const *>> params);
+  ir::CompiledFn *AddJump(
+      type::Jump const *jump_type,
+      core::FnParams<type::Typed<ast::Expression const *>> params);
+
   // TODO this ifdef needs to disappear it's not long-term sustainable
 #ifdef ICARUS_VISITOR_EMIT_IR
   type::Type const *GetType(std::string_view name) const;

@@ -77,6 +77,7 @@ COMMON_MODULE_IMPL_TARGETS = [
     "//base:guarded",
     "//frontend:source-impl",
     "//type:function",
+    "//type:jump",
 ]
 
 cc_group_target(
