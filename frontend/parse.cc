@@ -200,12 +200,12 @@ std::unique_ptr<ast::Node> BuildRightUnop(
   }
 }
 
-std::unique_ptr<ast::Node> BuildCall(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
+std::unique_ptr<ast::Node> BuildCallImpl(
+    TextSpan span, std::unique_ptr<ast::Expression> callee,
+    std::unique_ptr<ast::Expression> args_expr, Module *mod,
     error::Log *error_log) {
-  TextSpan span(nodes.front()->span, nodes.back()->span);
   std::vector<std::pair<std::string, std::unique_ptr<ast::Expression>>> args;
-  if (auto *cl = nodes.back()->if_as<ast::CommaList>()) {
+  if (auto *cl = args_expr ? args_expr->if_as<ast::CommaList>() : nullptr) {
     std::optional<TextSpan> last_named_span_before_error = std::nullopt;
     std::vector<TextSpan> positional_error_spans;
 
@@ -231,23 +231,31 @@ std::unique_ptr<ast::Node> BuildCall(
           positional_error_spans, *last_named_span_before_error);
     }
   } else {
-    if (ast::Binop *b = nodes.back()->if_as<ast::Binop>();
+    if (ast::Binop *b = args_expr ? args_expr->if_as<ast::Binop>() : nullptr;
         b && b->op() == frontend::Operator::Assign) {
       auto[lhs, rhs] = std::move(*b).extract();
       args.emplace_back(std::string{lhs->as<ast::Identifier>().token()},
                         std::move(rhs));
     } else {
-      args.emplace_back("", move_as<ast::Expression>(nodes.back()));
+      args.emplace_back("", std::move(args_expr));
     }
   }
 
-  if (nodes[0]->is<ast::Declaration>()) {
-    error_log->CallingDeclaration(nodes[0]->span);
+  if (callee->is<ast::Declaration>()) {
+    error_log->CallingDeclaration(callee->span);
   }
 
   return std::make_unique<ast::Call>(
-      std::move(span), move_as<ast::Expression>(nodes[0]),
+      std::move(span), std::move(callee),
       core::OrderedFnArgs<ast::Expression>(std::move(args)));
+}
+
+std::unique_ptr<ast::Node> BuildCall(
+    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
+    error::Log *error_log) {
+  TextSpan span(nodes.front()->span, nodes.back()->span);
+  return BuildCallImpl(std::move(span), move_as<ast::Expression>(nodes[0]),
+                       move_as<ast::Expression>(nodes[2]), mod, error_log);
 }
 
 std::unique_ptr<ast::Node> BuildLeftUnop(
@@ -295,10 +303,9 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
     return std::make_unique<ast::RepeatedUnop>(std::move(span), op,
                                                std::move(exprs));
   } else if (tk == "'") {
-    std::swap(nodes[0], nodes[1]);
-    nodes[1]       = std::make_unique<ast::CommaList>();
-    nodes[1]->span = nodes[0]->span;
-    return BuildCall(nodes, mod, error_log);
+    TextSpan span(nodes.front()->span, nodes.back()->span);
+    return BuildCallImpl(std::move(span), move_as<ast::Expression>(nodes[1]),
+                         nullptr, mod, error_log);
   }
 
   auto unop     = std::make_unique<ast::Unop>();
@@ -774,13 +781,10 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
     when->body = move_as<ast::Node>(nodes[0]);
     when->cond = move_as<ast::Expression>(nodes[2]);
     return when;
-  }
-
-  if (tk == "(") {  // TODO these should just generate BuildCall directly.
-    return BuildCall(nodes, mod, error_log);
   } else if (tk == "'") {
-    std::swap(nodes[0], nodes[2]);
-    return BuildCall(nodes, mod, error_log);
+    TextSpan span(nodes.front()->span, nodes.back()->span);
+    return BuildCallImpl(std::move(span), move_as<ast::Expression>(nodes[2]),
+                         move_as<ast::Expression>(nodes[0]), mod, error_log);
   }
 
   static absl::flat_hash_map<std::string_view, frontend::Operator> const

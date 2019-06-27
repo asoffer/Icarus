@@ -162,7 +162,7 @@ void DumpAst::operator()(ast::BlockNode const *node) {
 }
 
 void DumpAst::operator()(ast::JumpHandler const *node) {
-  absl::StrAppend(out_, "jump (",
+  absl::StrAppend(out_, "jump_handler (",
                   absl::StrJoin(node->input(), ", ", Joiner{this}), ") {\n");
   ++indentation_;
   for (auto *stmt : node->stmts()) {
@@ -392,21 +392,22 @@ void DumpAst::operator()(ast::Switch const *node) {
 void DumpAst::operator()(ast::Terminal const *node) {
   type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                    uint32_t, uint64_t, float, double, bool, type::Type const *,
-                   std::string_view>(node->type(), [&](auto type_holder) {
-    using T = typename decltype(type_holder)::type;
-    if constexpr (std::is_same_v<T, bool>) {
-      absl::StrAppend(out_, node->template as<T>() ? "true" : "false");
-    } else if constexpr (std::is_same_v<T, type::Type const *>) {
-      absl::StrAppend(out_, node->template as<T>()->to_string());
-    } else if constexpr (std::is_same_v<T, ir::BlockDef *>) {
-      absl::StrAppend(
-          out_, base::stringify(node->value().get<ir::BlockDef *>(0).val_));
-    } else if constexpr (std::is_same_v<T, std::string_view>) {
-      absl::StrAppend(out_, node->template as<T>());
-    } else {
-      absl::StrAppend(out_, node->template as<T>(), "_", typeid(T).name());
-    }
-  });
+                   std::string_view, ir::BlockDef *>(
+      node->type(), [&](auto type_holder) {
+        using T = typename decltype(type_holder)::type;
+        if constexpr (std::is_same_v<T, bool>) {
+          absl::StrAppend(out_, node->template as<T>() ? "true" : "false");
+        } else if constexpr (std::is_same_v<T, type::Type const *>) {
+          absl::StrAppend(out_, node->template as<T>()->to_string());
+        } else if constexpr (std::is_same_v<T, ir::BlockDef *>) {
+          absl::StrAppend(
+              out_, base::stringify(node->value().get<ir::BlockDef *>(0).val_));
+        } else if constexpr (std::is_same_v<T, std::string_view>) {
+          absl::StrAppend(out_, node->template as<T>());
+        } else {
+          absl::StrAppend(out_, node->template as<T>(), "_", typeid(T).name());
+        }
+      });
 }
 
 void DumpAst::operator()(ast::Unop const *node) {

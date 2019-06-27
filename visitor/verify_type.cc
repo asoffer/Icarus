@@ -1262,13 +1262,12 @@ VerifyResult VerifyType::operator()(ast::EnumLiteral const *node,
 
 // TODO there's not that much shared between the inferred and uninferred cases,
 // so probably break them out.
-static visitor::VerifyResult VerifyBody(VerifyType const *visitor,
-                                        ast::FunctionLiteral const *node,
-                                        Context *ctx) {
+static VerifyResult VerifyBody(VerifyType const *visitor,
+                               ast::FunctionLiteral const *node, Context *ctx) {
   for (auto const &stmt : node->statements_) { stmt->VerifyType(visitor, ctx); }
   // TODO propogate cyclic dependencies.
 
-  visitor::ExtractJumps extract_visitor;
+  ExtractJumps extract_visitor;
   for (auto const &stmt : node->statements_){
     stmt->ExtractJumps(&extract_visitor);
   }
@@ -1278,7 +1277,7 @@ static visitor::VerifyResult VerifyBody(VerifyType const *visitor,
   absl::flat_hash_set<type::Type const *> types;
   absl::flat_hash_map<ast::RepeatedUnop const *, type::Type const*> saved_ret_types;
   for (auto const *n :
-       extract_visitor.jumps(visitor::ExtractJumps::Kind::Return)) {
+       extract_visitor.jumps(ExtractJumps::Kind::Return)) {
     if (auto const *rep_node = n->if_as<ast::RepeatedUnop>()) {
       std::vector<type::Type const *> ret_types;
       for (auto const *expr : rep_node->exprs()) {
@@ -1306,7 +1305,7 @@ static visitor::VerifyResult VerifyBody(VerifyType const *visitor,
 
     if (types.size() > 1) { NOT_YET("log an error"); }
     auto f = type::Func(std::move(input_type_vec), std::move(output_type_vec));
-    return ctx->set_result(node, visitor::VerifyResult::Constant(f));
+    return ctx->set_result(node, VerifyResult::Constant(f));
 
   } else {
     auto *node_type  = ctx->type_of(node);
@@ -1315,7 +1314,7 @@ static visitor::VerifyResult VerifyBody(VerifyType const *visitor,
       case 0: {
         bool err = false;
         for (auto *n :
-             extract_visitor.jumps(visitor::ExtractJumps::Kind::Return)) {
+             extract_visitor.jumps(ExtractJumps::Kind::Return)) {
           if (auto *rep_node = n->if_as<ast::RepeatedUnop>()) {
             if (!rep_node->exprs().empty()) {
               ctx->error_log()->NoReturnTypes(rep_node);
@@ -1325,13 +1324,12 @@ static visitor::VerifyResult VerifyBody(VerifyType const *visitor,
             UNREACHABLE(); // TODO
           }
         }
-        return err ? visitor::VerifyResult::Error()
-                   : visitor::VerifyResult::Constant(node_type);
+        return err ? VerifyResult::Error() : VerifyResult::Constant(node_type);
       } break;
       case 1: {
         bool err = false;
         for (auto *n :
-             extract_visitor.jumps(visitor::ExtractJumps::Kind::Return)) {
+             extract_visitor.jumps(ExtractJumps::Kind::Return)) {
           if (auto *rep_node = n->if_as<ast::RepeatedUnop>()) {
             auto *t = ASSERT_NOT_NULL(saved_ret_types.at(rep_node));
             if (t == outs[0]) { continue; }
@@ -1342,12 +1340,11 @@ static visitor::VerifyResult VerifyBody(VerifyType const *visitor,
             UNREACHABLE(); // TODO
           }
         }
-        return err ? visitor::VerifyResult::Error()
-                   : visitor::VerifyResult::Constant(node_type);
+        return err ? VerifyResult::Error() : VerifyResult::Constant(node_type);
       } break;
       default: {
         for (auto *n:
-             extract_visitor.jumps(visitor::ExtractJumps::Kind::Return)) {
+             extract_visitor.jumps(ExtractJumps::Kind::Return)) {
           if (auto *rep_node = n->if_as<ast::RepeatedUnop>()) {
             auto *expr_type = ASSERT_NOT_NULL(saved_ret_types.at(rep_node));
             if (expr_type->is<type::Tuple>()) {
@@ -1359,7 +1356,7 @@ static visitor::VerifyResult VerifyBody(VerifyType const *visitor,
                          ? expr_type->as<type::Tuple>().size()
                          : 1),
                     outs.size());
-                return visitor::VerifyResult::Error();
+                return VerifyResult::Error();
               } else {
                 bool err = false;
                 for (size_t i = 0; i < tup_entries.size(); ++i) {
@@ -1376,7 +1373,7 @@ static visitor::VerifyResult VerifyBody(VerifyType const *visitor,
                     err = true;
                   }
                 }
-                if (err) { return visitor::VerifyResult::Error(); }
+                if (err) { return VerifyResult::Error(); }
               }
             } else {
               ctx->error_log()->ReturningWrongNumber(
@@ -1385,15 +1382,24 @@ static visitor::VerifyResult VerifyBody(VerifyType const *visitor,
                        ? expr_type->as<type::Tuple>().size()
                        : 1),
                   outs.size());
-              return visitor::VerifyResult::Error();
+              return VerifyResult::Error();
             }
           } else {
             UNREACHABLE();  // TODO
           }
         }
-        return visitor::VerifyResult::Constant(node_type);
+        return VerifyResult::Constant(node_type);
       } break;
     }
+  }
+}
+
+static void VerifyBody(VerifyType const *visitor, ast::JumpHandler const *node,
+                       Context *ctx) {
+  ExtractJumps extract_visitor;
+  for (auto const *stmt : node->stmts()) {
+    stmt->VerifyType(visitor, ctx);
+    stmt->ExtractJumps(&extract_visitor);
   }
 }
 
@@ -1675,10 +1681,14 @@ VerifyResult VerifyType::operator()(ast::JumpHandler const *node,
   if (err) {
     return ctx->set_result(node, VerifyResult::Error());
   } else {
-    auto result =
-        ctx->set_result(node, VerifyResult::Constant(type::Jmp(arg_types)));
-    for (auto const *stmt : node->stmts()) { stmt->VerifyType(this, ctx); }
-    return result;
+    ctx->mod_->deferred_work_.emplace(
+        [ constants{ctx->constants_}, node, this, mod{ctx->mod_} ]() mutable {
+          Context ctx(mod);
+          ctx.constants_ = constants;
+          VerifyBody(this, node, &ctx);
+        });
+
+    return ctx->set_result(node, VerifyResult::Constant(type::Jmp(arg_types)));
   }
 }
 

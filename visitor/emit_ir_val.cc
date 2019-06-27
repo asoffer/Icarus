@@ -382,7 +382,6 @@ static void CompleteBody(EmitIr const *visitor, ast::JumpHandler const *node,
     ir::BasicBlock::Current = start_block;
 
     // TODO arguments should be renumbered to not waste space on const values
-    base::Log() << node->input().size();
     for (int32_t i = 0; i < static_cast<int32_t>(node->input().size()); ++i) {
       ctx->set_addr(node->input()[i], ir::Reg::Arg(i));
     }
