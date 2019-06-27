@@ -148,15 +148,7 @@ Lexeme NextWord(SrcCursor *cursor, Src *src) {
     }
     return Lexeme(Syntax::Block, span);
   } else if (token == "scope") {
-    if (cursor->view()[0] == '!') {
-      cursor->remove_prefix(1);
-      span = ToSpan(word_cursor, src);
-      ++span.finish.offset;
-      token = "scope!";
-      return Lexeme(Syntax::StatefulScope, span);
-    } else {
-      return Lexeme(Syntax::Scope, span);
-    }
+    return Lexeme(Syntax::Scope, span);
   }
 
   return Lexeme(std::make_unique<ast::Identifier>(span, std::string{token}));

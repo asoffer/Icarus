@@ -102,7 +102,6 @@ void EmitIr::Print(type::Primitive const *t, ir::Results const &val,
       break;
     case type::PrimType::Ctx:
     case type::PrimType::Scope:
-    case type::PrimType::StatefulScope:
     case type::PrimType::NullPtr:
     case type::PrimType::EmptyArray:
     case type::PrimType::Module:

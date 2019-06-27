@@ -81,11 +81,6 @@ MAKE_LOG_ERROR(EarlyRequiredBlock,
 
 MAKE_LOG_ERROR(UnspecifiedOverload,
                "Attempting to access an overloaded function by name.")
-// TODO this error message is truly terrible.
-MAKE_LOG_ERROR(StatefulScopeWithoutStateArg,
-               "Stateful scope has no handlers whose first argument is a "
-               "pointer (to the state object). Did you mean to make this "
-               "stateless?")
 MAKE_LOG_ERROR(ArrayDataTypeNotAType,
                "Array type has underlying data type specified as a value which "
                "is not a type.")

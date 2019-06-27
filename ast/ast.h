@@ -690,14 +690,11 @@ struct RepeatedUnop : public Node {
 //  }
 //  ```
 struct ScopeLiteral : public ScopeExpr<core::ScopeLitScope> {
-  ScopeLiteral(TextSpan span, std::vector<std::unique_ptr<Declaration>> decls,
-               bool stateful)
+  ScopeLiteral(TextSpan span, std::vector<std::unique_ptr<Declaration>> decls)
       : ScopeExpr<core::ScopeLitScope>(std::move(span)),
-        decls_(std::move(decls)),
-        stateful_(stateful) {}
+        decls_(std::move(decls)) {}
   ~ScopeLiteral() override {}
 
-  bool is_stateful() const { return stateful_; }
   NodeSpan<Declaration const> decls() const { return decls_; }
   NodeSpan<Declaration> decls() { return decls_; }
 
@@ -705,7 +702,6 @@ struct ScopeLiteral : public ScopeExpr<core::ScopeLitScope> {
 
  private:
   std::vector<std::unique_ptr<Declaration>> decls_;
-  bool stateful_ = false;
 };
 
 

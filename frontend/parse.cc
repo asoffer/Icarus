@@ -831,7 +831,6 @@ std::unique_ptr<ast::Node> BuildInterfaceLiteral(
   return std::make_unique<ast::Interface>(stmts->span, std::move(decls));
 }
 
-template <bool Stateful>
 std::unique_ptr<ast::Node> BuildScopeLiteral(std::unique_ptr<Statements> stmts,
                                              TextSpan span) {
   std::vector<std::unique_ptr<ast::Declaration>> decls;
@@ -842,8 +841,7 @@ std::unique_ptr<ast::Node> BuildScopeLiteral(std::unique_ptr<Statements> stmts,
       NOT_YET(stmt);
     }
   }
-  return std::make_unique<ast::ScopeLiteral>(std::move(span), std::move(decls),
-                                             Stateful);
+  return std::make_unique<ast::ScopeLiteral>(std::move(span), std::move(decls));
 }
 
 std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
@@ -968,11 +966,7 @@ std::unique_ptr<ast::Node> BuildKWBlock(
 
     } else if (tk == "scope") {
       TextSpan span(nodes.front()->span, nodes.back()->span);
-      return BuildScopeLiteral<false>(move_as<Statements>(nodes[1]), span);
-
-    } else if (tk == "scope!") {
-      TextSpan span(nodes.front()->span, nodes.back()->span);
-      return BuildScopeLiteral<true>(move_as<Statements>(nodes[1]), span);
+      return BuildScopeLiteral(move_as<Statements>(nodes[1]), span);
 
     } else if (tk == "interface") {
       return BuildInterfaceLiteral(move_as<Statements>(nodes[1]), mod,

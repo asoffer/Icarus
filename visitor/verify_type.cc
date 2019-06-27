@@ -1746,73 +1746,19 @@ VerifyResult VerifyType::operator()(ast::RepeatedUnop const *node,
   return VerifyResult(type::Void(), is_const);
 }
 
-static type::Pointer const *StatePtrTypeOrLogError(
-    ast::ScopeLiteral const *node, type::Type const *t) {
-  if (!t->is<type::Function>()) {
-    NOT_YET("log an error");
-    return nullptr;
-  }
-  auto &input_types = t->as<type::Function>().input;
-  if (input_types.empty()) { return nullptr; }
-
-  if (!input_types.at(0)->is<type::Pointer>()) {
-    NOT_YET("log an error");
-    return nullptr;
-  }
-  return &input_types.at(0)->as<type::Pointer>();
-}
-
 VerifyResult VerifyType::operator()(ast::ScopeLiteral const *node,
                                     Context *ctx) const {
   auto verify_result =
       ctx->set_result(node, VerifyResult::Constant(type::Scope));
-  if (node->is_stateful()) {
-    absl::flat_hash_map<type::Pointer const *,
-                        std::vector<ast::Declaration const *>>
-        state_types;
-    bool error = false;
-    for (auto const *decl : node->decls()) {
-      // TODO handle errors.
-      auto result = decl->VerifyType(this, ctx);
-      if (decl->id_ == "done") {
-        ASSIGN_OR(continue, auto &state_type,
-                  StatePtrTypeOrLogError(node, result.type_));
-        state_types[&state_type].push_back(decl);
-      } else if (result.type_ == type::Block ||
-                 result.type_ == type::OptBlock ||
-                 result.type_ == type::RepBlock) {
-        // TODO add these types to the state_types map.
-      }
-
-      if (!result.const_) {
-        error = true;
-        NOT_YET("log an error");
-      }
+  bool error = false;
+  for (auto const *decl : node->decls()) {
+    auto result = decl->VerifyType(this, ctx);
+    if (!result.const_) {
+      error = true;
+      NOT_YET("log an error");
     }
-
-    if (error) { return VerifyResult::Error(); }
-
-    switch (state_types.size()) {
-      case 0: {
-        TextSpan block_title_span = node->span;
-        block_title_span.finish   = block_title_span.start;
-        block_title_span.finish.offset += sizeof("scope!") - 1;
-        ctx->error_log()->StatefulScopeWithoutStateArg(block_title_span);
-      } break;
-      case 1: break;
-      default: NOT_YET("Inconsistent"); break;
-    }
-  } else {
-    bool error = false;
-    for (auto const *decl : node->decls()) {
-      auto result = decl->VerifyType(this, ctx);
-      if (!result.const_) {
-        error = true;
-        NOT_YET("log an error");
-      }
-    }
-    if (error) { return VerifyResult::Error(); }
   }
+  if (error) { return VerifyResult::Error(); }
   return verify_result;
 }
 

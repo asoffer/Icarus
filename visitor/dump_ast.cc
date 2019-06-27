@@ -322,7 +322,7 @@ void DumpAst::operator()(ast::RepeatedUnop const *node) {
 }
 
 void DumpAst::operator()(ast::ScopeLiteral const *node) {
-  absl::StrAppend(out_, "scope ", (node->is_stateful() ? "!" : ""), "{\n");
+  absl::StrAppend(out_, "scope {\n");
   ++indentation_;
   for (auto const *decl : node->decls()) {
     absl::StrAppend(out_, indent());
