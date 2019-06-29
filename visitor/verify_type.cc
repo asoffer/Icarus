@@ -1043,7 +1043,6 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
   } else if (node->IsCustomInitialized()) {
     dk |= CUSTOM_INIT;
   }
-
   type::Type const *node_type = nullptr;
   switch (dk) {
     case 0 /* Default initailization */: {
@@ -1096,6 +1095,7 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
       ASSIGN_OR(return ctx->set_result(node, VerifyResult::Error()),
                        auto init_val_result,
                        node->init_val()->VerifyType(this, ctx));
+
       auto reason = Inferrable(init_val_result.type_);
       if (reason != InferenceFailureReason::Inferrable) {
         ctx->error_log()->UninferrableType(reason, node->init_val()->span);
@@ -1299,14 +1299,13 @@ static VerifyResult VerifyBody(VerifyType const *visitor,
     }
   }
 
-  if (!node->outputs_) {
-    std::vector<type::Type const *> input_type_vec;
-    input_type_vec.reserve(node->inputs_.size());
-    for (auto &input : node->inputs_) {
-      input_type_vec.push_back(
-          ASSERT_NOT_NULL(ctx->type_of(input.value.get())));
-    }
+  std::vector<type::Type const *> input_type_vec;
+  input_type_vec.reserve(node->inputs_.size());
+  for (auto &input : node->inputs_) {
+    input_type_vec.push_back(ASSERT_NOT_NULL(ctx->type_of(input.value.get())));
+  }
 
+  if (!node->outputs_) {
     std::vector<type::Type const *> output_type_vec(
         std::make_move_iterator(types.begin()),
         std::make_move_iterator(types.end()));
@@ -1447,7 +1446,9 @@ VerifyResult VerifyType::ConcreteFnLit(ast::FunctionLiteral const *node,
   // TODO need a better way to say if there was an error recorded in a
   // particular section of compilation. Right now we just have the grad total
   // count.
-  if (ctx->num_errors() > 0) { return visitor::VerifyResult::Error(); }
+  if (ctx->num_errors() > 0) {
+    ctx->error_log()->Dump();
+    return visitor::VerifyResult::Error(); }
 
   if (node->outputs_) {
     for (size_t i = 0; i < output_type_vec.size(); ++i) {

@@ -886,17 +886,20 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
   } else if (tk == "jump_handler") {
     TextSpan span(nodes.front()->span, nodes.back()->span);
     std::vector<std::unique_ptr<ast::Declaration>> params;
-    if (nodes[2]->is<ast::CommaList>()) {
-      for (auto &expr : nodes[2]->as<ast::CommaList>().exprs_) {
-        ASSERT(expr, InheritsFrom<ast::Declaration>());  // TODO handle failure
-        auto decl          = move_as<ast::Declaration>(expr);
+    if (nodes.size() == 5) {
+      if (nodes[2]->is<ast::CommaList>()) {
+        for (auto &expr : nodes[2]->as<ast::CommaList>().exprs_) {
+          ASSERT(expr,
+                 InheritsFrom<ast::Declaration>());  // TODO handle failure
+          auto decl = move_as<ast::Declaration>(expr);
+          decl->flags() |= ast::Declaration::f_IsFnParam;
+          params.push_back(std::move(decl));
+        }
+      } else {
+        auto decl = move_as<ast::Declaration>(nodes[2]);
         decl->flags() |= ast::Declaration::f_IsFnParam;
         params.push_back(std::move(decl));
       }
-    } else {
-      auto decl = move_as<ast::Declaration>(nodes[2]);
-      decl->flags() |= ast::Declaration::f_IsFnParam;
-      params.push_back(std::move(decl));
     }
 
     return std::make_unique<ast::JumpHandler>(
@@ -1141,6 +1144,8 @@ auto Rules = std::array{
     ParseRule(stmts, {stmts, (EXPR | stmts), newline | eof},
               BuildMoreStatements),
     ParseRule(expr, {kw_struct, l_paren, expr, r_paren, braced_stmts},
+              BuildParameterizedKeywordScope),
+    ParseRule(expr, {kw_struct, l_paren, r_paren, braced_stmts},
               BuildParameterizedKeywordScope),
     ParseRule(expr, {KW_BLOCK, braced_stmts}, BuildKWBlock),
     ParseRule(expr, {KW_BLOCK, newline}, drop_all_but<0>),
