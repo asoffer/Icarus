@@ -56,13 +56,13 @@ visitor::VerifyResult VerifyDispatch(
     ExprPtr expr, absl::Span<ir::AnyFunc const> overload_set,
     core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
         &args,
-    Context *ctx);
+    Context *ctx, std::optional<std::string_view> block_name = std::nullopt);
 
 visitor::VerifyResult VerifyDispatch(
     ExprPtr expr, OverloadSet const &overload_set,
     core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
         &args,
-    Context *ctx);
+    Context *ctx, std::optional<std::string_view> block_name = std::nullopt);
 
 }  // namespace ast
 

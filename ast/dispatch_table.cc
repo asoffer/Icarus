@@ -438,7 +438,7 @@ visitor::VerifyResult VerifyDispatch(
     ExprPtr expr, absl::Span<ir::AnyFunc const> overload_set,
     core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
         &args,
-    Context *ctx) {
+    Context *ctx, std::optional<std::string_view> block_name) {
   DispatchTable table;
   absl::flat_hash_map<Expression const *, std::string> failure_reasons;
   for (ir::AnyFunc overload : overload_set) {
@@ -477,7 +477,13 @@ visitor::VerifyResult VerifyDispatch(
     return visitor::VerifyResult::Error();
   }
 
-  ctx->set_dispatch_table(expr, std::move(table));
+  if (block_name) {
+    DEBUG_LOG("ScopeNode")
+    ("Inserting into jump table keyed on (", expr, ", \"", *block_name, "\")");
+    ctx->set_jump_table(expr, *block_name, std::move(table));
+  } else {
+    ctx->set_dispatch_table(expr, std::move(table));
+  }
 
   // TODO this assumes we only have one return value or that we're returning a
   // tuple. So, e.g., you don't get the benefit of A -> (A, A) and B -> (A, B)
@@ -489,7 +495,7 @@ visitor::VerifyResult VerifyDispatch(
     ExprPtr expr, OverloadSet const &overload_set,
     core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
         &args,
-    Context *ctx) {
+    Context *ctx, std::optional<std::string_view> block_name) {
   DispatchTable table;
   bool is_const = true;
   absl::flat_hash_map<Expression const *, std::string> failure_reasons;
@@ -538,7 +544,13 @@ visitor::VerifyResult VerifyDispatch(
     return visitor::VerifyResult::Error();
   }
 
-  ctx->set_dispatch_table(expr, std::move(table));
+  if (block_name) {
+    DEBUG_LOG("ScopeNode")
+    ("Inserting into jump table keyed on (", expr, ", \"", *block_name, "\")");
+    ctx->set_jump_table(expr, *block_name, std::move(table));
+  } else {
+    ctx->set_dispatch_table(expr, std::move(table));
+  }
 
   // TODO this assumes we only have one return value or that we're returning a
   // tuple. So, e.g., you don't get the benefit of A -> (A, A) and B -> (A, B)

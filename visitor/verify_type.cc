@@ -1830,23 +1830,24 @@ VerifyResult VerifyType::operator()(ast::ScopeNode const *node,
   auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(node->name_.get(), ctx);
   if (scope_def->work_item) { (*scope_def->work_item)(); }
   for (auto &block : node->blocks_) {
+    DEBUG_LOG("ScopeNode")("Verifying dispatch for block ", block.name());
+
     auto block_results    = VerifyBlockNode(this, &block, scope_def, ctx);
     auto const &block_def = scope_def->blocks_.at(block.name());
     err |= !ast::VerifyDispatch(
-                ast::ExprPtr{&block, 0x02}, block_def.after_,
+                node, block_def.after_,
                 core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>{
                     std::move(block_results), {}},
-                ctx)
+                ctx, "")
                 .ok();
-
-    err |= !ast::VerifyDispatch(ast::ExprPtr{&block, 0x01}, block_def.before_,
-                                /* TODO block args */ {}, ctx)
-                .ok();
+    DEBUG_LOG("ScopeNode")("    ... done.");
   }
 
-  err |= !ast::VerifyDispatch(ast::ExprPtr{node, 0x02}, scope_def->inits_,
-                              arg_results, ctx)
+  DEBUG_LOG("ScopeNode")("Verifying dispatch for entry");
+  err |= !ast::VerifyDispatch(node, scope_def->inits_,
+                              arg_results, ctx, "")
               .ok();
+  DEBUG_LOG("ScopeNode")("    ... done.");
 
   if (err) { return VerifyResult::Error(); }
   return ast::VerifyDispatch(node, scope_def->dones_, /* TODO */ {}, ctx);

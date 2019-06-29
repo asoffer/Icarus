@@ -760,7 +760,7 @@ ir::Results EmitIr::Val(ast::BlockNode const *node, Context *ctx) const {
   // destroy them at the end of the inline call.
   MakeAllDestructions(this, node->body_scope(), ctx);
 
-  ASSERT_NOT_NULL(ctx->dispatch_table(ast::ExprPtr{node, 0x02}))
+  ASSERT_NOT_NULL(ctx->jump_table(node, ""))
       ->EmitInlineCall(
           core::FnArgs<std::pair<ast::Expression const *, ir::Results>>{
               std::move(yield_args), {}},
@@ -1558,9 +1558,8 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
   ir::UncondJump(init_block);
   ir::BasicBlock::Current = init_block;
 
-  DEBUG_LOG("ScopeNode")("Inlining entry handler");
-  // TODO this lambda thing is an awful hack.
-  ASSERT_NOT_NULL(ctx->dispatch_table(ast::ExprPtr{node, 0x02}))
+  DEBUG_LOG("ScopeNode")("Inlining entry handler at ", ast::ExprPtr{node});
+  ASSERT_NOT_NULL(ctx->jump_table(node, ""))
       ->EmitInlineCall(
           node->args_.Transform(
               [this, ctx](std::unique_ptr<ast::Expression> const &expr) {

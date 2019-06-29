@@ -324,6 +324,8 @@ struct BlockLiteral : public ScopeExpr<core::DeclScope> {
 // Note: Today blocks have names and statements but cannot take any arguments.
 // This will likely change in the future so that blocks can take arguments
 // (likely in the form of `core::FnArgs<std::unique_ptr<ast::Expression>>`).
+//
+// TODO: `args` should be renamed to `params`.
 struct BlockNode : public ScopeExpr<core::ExecScope> {
   explicit BlockNode(TextSpan span, std::string name,
                      std::vector<std::unique_ptr<Node>> stmts)

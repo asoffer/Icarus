@@ -92,3 +92,40 @@ ast::DispatchTable const *Context::dispatch_table(ast::ExprPtr expr) const {
   }
   return nullptr;
 }
+
+void Context::set_jump_table(ast::ExprPtr expr, std::string_view s,
+                             ast::DispatchTable &&table) {
+  DEBUG_LOG("JumpTableConstants")
+  ("jump table addr = ", &constants_->second.jump_tables_);
+  DEBUG_LOG("JumpTableConstants")
+  ("       map addr = ", &constants_->second.jump_tables_[expr]);
+
+  constants_->second.jump_tables_[expr].emplace(s, std::move(table));
+  // TODO in some situations you may be trying to set the dispatch table more
+  // than once. This has come up with generic structs and you should
+  // investigate.
+  //
+  // static_cast<void>(iter);
+  // ASSERT(success) << expr;
+
+  DEBUG_LOG("JumpTableConstants")
+  ("            map = ", constants_->second.jump_tables_[expr]);
+}
+
+ast::DispatchTable const *Context::jump_table(ast::ExprPtr expr,
+                                              std::string_view s) const {
+  DEBUG_LOG("JumpTableConstants")
+  ("jump table addr = ", &constants_->second.jump_tables_);
+  DEBUG_LOG("JumpTableConstants")
+  ("       map addr = ", &constants_->second.jump_tables_[expr]);
+  DEBUG_LOG("JumpTableConstants")
+  ("            map = ", constants_->second.jump_tables_[expr]);
+
+  auto &table = constants_->second.jump_tables_;
+  if (auto iter1 = table.find(expr); iter1 != table.end()) {
+    if (auto iter2 = iter1->second.find(s); iter2 != iter1->second.end()) {
+      return &iter2->second;
+    }
+  }
+  return nullptr;
+}

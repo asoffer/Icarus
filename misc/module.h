@@ -101,6 +101,13 @@ struct Module {
     absl::flat_hash_map<ast::ExprPtr, visitor::VerifyResult> verify_results_;
 
     absl::flat_hash_map<ast::ExprPtr, ast::DispatchTable> dispatch_tables_;
+
+    // Similar to dispatch tables, but specifically for `jump_handler`s. The
+    // tables are keyed first on the pointer to the ScopeLiteral expression and
+    // then by the block name (or "" in the case of scope entry).
+    absl::flat_hash_map<
+        ast::ExprPtr, absl::node_hash_map<std::string_view, ast::DispatchTable>>
+        jump_tables_;
     absl::node_hash_map<ast::ScopeLiteral const*, ir::ScopeDef> scope_defs_;
 
 #endif  // ICARUS_VISITOR_EMIT_IR
