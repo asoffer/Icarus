@@ -618,7 +618,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::DebugIr: {
       std::stringstream ss;
       ss << *call_stack.top().fn_;
-      base::Log() << ss.str();
+      DEBUG_LOG()(ss.str());
     } break;
     case ir::Op::Alloca: {
       auto arch = core::Interpretter();

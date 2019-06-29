@@ -1212,7 +1212,7 @@ ir::Results EmitIr::Val(ast::Declaration const *node, Context *ctx) const {
     } else {
       auto *t = ctx->type_of(node);
       if (!t) {
-        base::Log() << DumpAst::ToString(node);
+        DEBUG_LOG()(DumpAst::ToString(node));
         UNREACHABLE();
       }
 
@@ -1523,6 +1523,7 @@ ir::Results InitializeAndEmitBlockNode(ir::Results const &results,
 }
 
 ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
+  DEBUG_LOG("ScopeNode")("Emitting IR for ScopeNode");
   auto init_block = ir::CompiledFn::Current->AddBlock();
   auto land_block = ir::CompiledFn::Current->AddBlock();
 
@@ -1536,13 +1537,18 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
                       std::tuple<ir::BlockDef const *, ast::BlockNode const *>>
       name_to_block;
 
+  DEBUG_LOG("ScopeNode")("scope_def ... evaluating.");
   auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(node->name_.get(), ctx);
+  DEBUG_LOG("ScopeNode")("          ... completing work.");
   if (scope_def->work_item) { (*scope_def->work_item)(); }
-  for (auto const &[name, block] : scope_def->blocks_) {
+  DEBUG_LOG("ScopeNode")("          ... done.");
+
+  for (auto const & [ name, block ] : scope_def->blocks_) {
     name_to_block.emplace(std::piecewise_construct, std::forward_as_tuple(name),
                           std::forward_as_tuple(&block, nullptr));
   }
 
+  DEBUG_LOG("ScopeNode")("Constructing block_map");
   for (auto &block_node : node->blocks_) {
     auto &block        = name_to_block.at(block_node.name());
     std::get<1>(block) = &block_node;
@@ -1552,6 +1558,7 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
   ir::UncondJump(init_block);
   ir::BasicBlock::Current = init_block;
 
+  DEBUG_LOG("ScopeNode")("Inlining entry handler");
   // TODO this lambda thing is an awful hack.
   ASSERT_NOT_NULL(ctx->dispatch_table(ast::ExprPtr{node, 0x02}))
       ->EmitInlineCall(
@@ -1562,10 +1569,12 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
               }),
           block_map, ctx);
 
-  for (auto [block_name, block_and_node] : name_to_block) {
+  DEBUG_LOG("ScopeNode")("Emit each block:");
+  for (auto[block_name, block_and_node] : name_to_block) {
     if (block_name == "init" || block_name == "done") { continue; }
-    auto &[block, block_node] = block_and_node;
-    auto iter           = block_map.find(block);
+    DEBUG_LOG("ScopeNode")("... ", block_name);
+    auto & [ block, block_node ] = block_and_node;
+    auto iter                    = block_map.find(block);
     if (iter == block_map.end()) { continue; }
     ir::BasicBlock::Current = iter->second;
     auto results =
@@ -1580,18 +1589,22 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
   // you should end up, but that's not necessarily well-defined for things that
   // end up jumping to more than one possible location.
 
-  return ASSERT_NOT_NULL([&] {
-           auto *mod       = const_cast<Module *>(scope_def->module());
-           bool swap_bc    = ctx->mod_ != mod;
-           Module *old_mod = std::exchange(ctx->mod_, mod);
-           if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
-           base::defer d([&] {
-             ctx->mod_ = old_mod;
-             if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
-           });
-           return ctx->dispatch_table(node);
-         }())
-      ->EmitInlineCall({}, {}, ctx);
+  DEBUG_LOG("ScopeNode")("Inlining exit handler");
+  {
+    auto *mod       = const_cast<Module *>(scope_def->module());
+    bool swap_bc    = ctx->mod_ != mod;
+    Module *old_mod = std::exchange(ctx->mod_, mod);
+    if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
+    base::defer d([&] {
+      ctx->mod_ = old_mod;
+      if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
+    });
+  }
+  auto result =
+      ASSERT_NOT_NULL(ctx->dispatch_table(node))->EmitInlineCall({}, {}, ctx);
+
+  DEBUG_LOG("ScopeNode")("Done emitting IR for ScopeNode");
+  return result;
 }
 
 static ir::TypedRegister<type::Type const *> GenerateStruct(

@@ -27,8 +27,13 @@ cc_lib_target(name = "hash", impl_deps = None, test_deps = None)
 cc_lib_target(name = "interval", impl_deps = None, test_deps = None)
 cc_lib_target(name = "lazy", impl_deps = None, test_deps = None)
 cc_lib_target(name = "log",
-              intf_deps = [":stringify"],
-              impl_deps = None,
+              intf_deps = [
+                  ":guarded",
+                  ":stringify",
+                  "@com_google_absl//absl/container:flat_hash_map",
+                  "@com_google_absl//absl/container:flat_hash_set",
+                  ],
+              impl_deps = [],
               test_deps = None)
 cc_lib_target(name = "macros", impl_deps = None, test_deps = None)
 cc_lib_target(name = "matchers",

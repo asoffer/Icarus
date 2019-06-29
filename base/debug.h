@@ -93,8 +93,8 @@ struct Asserter {
 
 #define UNREACHABLE(...)                                                       \
   do {                                                                         \
-    base::Log() << "Unreachable code-path.\n"                                  \
-                << std::forward_as_tuple(__VA_ARGS__);                         \
+    DEBUG_LOG()                                                                \
+    ("Unreachable code-path.\n", std::forward_as_tuple(__VA_ARGS__));          \
     std::abort();                                                              \
   } while (false)
 
@@ -111,8 +111,7 @@ struct Asserter {
 
 #define NOT_YET(...)                                                           \
   do {                                                                         \
-    base::Log() << "Not yet implemented\n"                                     \
-                << std::forward_as_tuple(__VA_ARGS__);                         \
+    DEBUG_LOG()("Not yet implemented.\n", std::forward_as_tuple(__VA_ARGS__)); \
     std::abort();                                                              \
   } while (false)
 

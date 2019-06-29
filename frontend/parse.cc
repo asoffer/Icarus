@@ -665,7 +665,7 @@ std::unique_ptr<ast::Node> BuildBlockNode(
 
   } else {
     for (auto const &n : nodes) {
-      base::Log() << visitor::DumpAst::ToString(n.get());
+      DEBUG_LOG()(visitor::DumpAst::ToString(n.get()));
     }
     NOT_YET("log an error");
   }

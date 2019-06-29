@@ -131,11 +131,11 @@ void CompiledFn::CheckInvariants() {
 
       prop::BoolProp prop = prop_copy.Returns();
       if (!prop.can_be_true_) {
-        base::Log() << "Provably false!";
+        DEBUG_LOG()("Provably false!");
       } else if (prop.can_be_false_) {
-        base::Log() << "Not provably true!";
+        DEBUG_LOG()("Not provably true!");
       } else {
-        base::Log() << "Okay";
+        DEBUG_LOG()("Okay");
       }
     }
   }

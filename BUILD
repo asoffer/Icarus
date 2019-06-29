@@ -11,6 +11,7 @@ cc_binary(
         "//misc:compile-impl-compile",
         "//run:repl-impl-compile",
         "//run:compiler-impl-compile",
+        "@com_google_absl//absl/strings",
     ],
 )
 
@@ -47,6 +48,7 @@ cc_binary(
 COMMON_IMPL_DEPS = [
         "//ast:dispatch_table-impl",
         "//ast:overload_set-impl",
+        "//base:log-impl",
         "//base:untyped_buffer-impl",
         "//backend:eval-impl",
         "//backend:exec-impl",

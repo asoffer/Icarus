@@ -70,7 +70,7 @@ static void DeleteDeadBlocks(ir::CompiledFn* fn) {
         processing.push(cmd.cond_jump_.blocks_[1]);
       } break;
       case ir::Op::ReturnJump: break;
-      default: base::Log() << *fn; UNREACHABLE();
+      default: DEBUG_LOG()(*fn); UNREACHABLE();
     }
   }
 
@@ -163,7 +163,7 @@ void CombineBlocks(ir::CompiledFn* fn) {
         }
       } break;
       case ir::Op::ReturnJump: break;
-      default: base::Log() << *fn; UNREACHABLE();
+      default: DEBUG_LOG()(*fn); UNREACHABLE();
     }
   }
 }

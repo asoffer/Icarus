@@ -1952,7 +1952,7 @@ VerifyResult VerifyType::operator()(ast::Switch const *node,
     auto body_result = body->VerifyType(this, ctx);
     err |= !cond_result || !body_result;
     if (err) {
-      base::Log() << DumpAst::ToString(body.get());
+      DEBUG_LOG()(DumpAst::ToString(body.get()));
       NOT_YET();
       continue;
     }
@@ -1987,7 +1987,7 @@ VerifyResult VerifyType::operator()(ast::Switch const *node,
     // TODO node might be a constant.
     return ctx->set_result(node, VerifyResult(some_type, is_const));
   } else {
-    for (auto &t : types) { base::Log() << (!t ? "<>" : t->to_string()); }
+    for (auto &t : types) { DEBUG_LOG()(!t ? "<>" : t->to_string()); }
     NOT_YET("handle type error");
     return VerifyResult::Error();
   }

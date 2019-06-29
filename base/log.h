@@ -4,10 +4,23 @@
 #include <experimental/source_location>
 #include <iostream>
 #include <mutex>
+
+#include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
+#include "base/guarded.h"
 #include "base/stringify.h"
 
 namespace base {
+namespace internal {
+extern base::guarded<
+    absl::flat_hash_map<std::string_view, std::vector<std::atomic<bool> *>>>
+    log_switches;
+extern base::guarded<absl::flat_hash_set<std::string_view>> on_logs;
+
 inline std::recursive_mutex logger_mtx_;
+}  // namespace base_internal
+
+void EnableLogging(std::string_view key);
 
 struct Logger {
   Logger(std::string (*fmt)(std::experimental::source_location const &src),
@@ -15,7 +28,7 @@ struct Logger {
          std::experimental::source_location src_loc =
              std::experimental::source_location::current())
       : fn_(fn) {
-    logger_mtx_.lock();
+        internal::logger_mtx_.lock();
     std::cerr << fmt(src_loc);
   }
 
@@ -26,7 +39,7 @@ struct Logger {
   mutable bool locked_ = false;
 
   ~Logger() {
-    logger_mtx_.unlock();
+    internal::logger_mtx_.unlock();
     std::cerr << "\n";
     if (fn_) { fn_(); }
   }
@@ -53,10 +66,42 @@ inline std::string DefaultLogFormatter(
          "] \033[0m";
 }
 
-inline Logger Log(std::experimental::source_location src_loc =
-                      std::experimental::source_location::current()) {
-  return Logger{DefaultLogFormatter, nullptr, src_loc};
+template <typename... Ts>
+void LogForMacro(Logger const &log, Ts &&... ts) {
+  (log << ... << std::forward<Ts>(ts));
 }
+
+#ifdef DBG
+#define DEBUG_LOG(...)                                                         \
+  if ([]() -> bool {                                                           \
+        static std::atomic<bool> log_switch(false);                            \
+        static int registration = [] {                                         \
+          for (std::string_view key :                                          \
+               std::initializer_list<std::string_view>{__VA_ARGS__}) {         \
+            auto handle = ::base::internal::log_switches.lock();               \
+            if (::base::internal::on_logs.lock()->contains(key)) {             \
+              log_switch = true;                                               \
+            };                                                                 \
+            (*handle)[key].push_back(&log_switch);                             \
+          }                                                                    \
+          return 0;                                                            \
+        }();                                                                   \
+        return log_switch;                                                     \
+      }()) {                                                                   \
+  DEBUG_LOG_IMPL
+
+#define DEBUG_LOG_IMPL(...)                                                    \
+  LogForMacro(base::Logger{base::DefaultLogFormatter, nullptr,                 \
+                           std::experimental::source_location::current()},     \
+              __VA_ARGS__);                                                    \
+  }                                                                            \
+  do {                                                                         \
+  } while (false)
+
+#else
+#define DEBUG_LOG(...) DEBUG_LOG_IMPL
+#define DEBUG_LOG_IMPL(...)
+#endif
 
 }  // namespace base
 
