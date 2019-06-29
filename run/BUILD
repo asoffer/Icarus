@@ -25,7 +25,7 @@ cc_lib_target(
     cfgs = ["compile"],
     intf_deps = None,
     impl_deps = [
-        "//ast:declaration",
+        "//ast:ast",
         "//ast:expression",
         "//backend:exec",
         "//base:untyped_buffer",

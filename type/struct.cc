@@ -1,7 +1,7 @@
 #include "type/struct.h"
 
 #include "core/arch.h"
-#include "ast/declaration.h"
+#include "ast/hashtag.h"
 #include "ast/struct_literal.h"
 #include "base/guarded.h"
 #include "misc/module.h"

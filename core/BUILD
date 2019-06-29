@@ -76,12 +76,13 @@ cc_lib_target(
 cc_lib_target(
     name = "scope",
     intf_deps = [
+        "//ast:ast_fwd",
         "//base:util",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
     impl_deps = [
-        "//ast:declaration",
+        "//ast:ast",
         "//misc:module", # TODO get rid of hard dependency here?
     ],
 )

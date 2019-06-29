@@ -43,6 +43,7 @@ struct ScopeDef;
 
 namespace type {
 
+struct Jump;
 struct Function;
 struct Struct;
 struct GenericStruct;

@@ -126,7 +126,10 @@ static void MakeAllStackAllocations(core::FnScope const *fn_scope,
   for (auto *scope : fn_scope->innards_) {
     for (const auto &[key, val] : scope->decls_) {
       for (auto *decl : val) {
-        if (decl->const_ || decl->is_fn_param_) { continue; }
+        if (decl->flags() &
+            (ast::Declaration::f_IsConst | ast::Declaration::f_IsFnParam)) {
+          continue;
+        }
 
         // TODO it's wrong to use a default BoundConstants, but it's even more
         // wrong to store the address on the declaration, so you can fix those
@@ -200,15 +203,15 @@ static void CompleteBody(EmitIr const *visitor, ast::ScopeLiteral const *node,
 
     auto reg = ir::CreateScopeDef(node->scope_->module(), scope_def);
     for (auto *decl : node->decls()) {
-      if (decl->id_ == "init") {
+      if (decl->id() == "init") {
         ir::AddScopeDefInit(reg, decl->EmitIr(visitor, ctx).get<ir::AnyFunc>(0));
-      } else if (decl->id_ == "done") {
+      } else if (decl->id() == "done") {
         ir::AddScopeDefDone(reg, decl->EmitIr(visitor, ctx).get<ir::AnyFunc>(0));
       } else {
-        ASSERT(decl->init_val != nullptr);
+        ASSERT(decl->init_val() != nullptr);
         // TODO what if there's a conversion like from A to A|B?
-        decl->init_val->EmitIr(visitor, ctx);
-        ir::FinishBlockDef(decl->id_);
+        decl->init_val()->EmitIr(visitor, ctx);
+        ir::FinishBlockDef(decl->id());
       }
     }
     ir::FinishScopeDef();
@@ -258,7 +261,7 @@ static void CompleteBody(EmitIr const *visitor,
         out_decl_type->EmitDefaultInit(visitor, alloc, ctx);
       } else {
         out_decl_type->EmitCopyAssign(visitor, out_decl_type,
-                                      out_decl->init_val->EmitIr(visitor, ctx),
+                                      out_decl->init_val()->EmitIr(visitor, ctx),
                                       alloc, ctx);
       }
     }
@@ -335,10 +338,10 @@ static void CompleteBody(EmitIr const *visitor, ast::StructLiteral const *node,
 
       // TODO exit early if verifytype fails.
 
-      auto type_reg = ir::EvaluateAsType(field.type_expr.get(), ctx_reg);
+      auto type_reg = ir::EvaluateAsType(field.type_expr(), ctx_reg);
 
       ir::CreateStructField(struct_reg, type_reg);
-      ir::SetStructFieldName(struct_reg, field.id_);
+      ir::SetStructFieldName(struct_reg, field.id());
 
       for (auto const &hashtag : field.hashtags_) {
         ir::AddHashtagToField(struct_reg, hashtag);
@@ -1192,9 +1195,9 @@ ir::Results EmitIr::Val(ast::Declaration const *node, Context *ctx) const {
     if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
   });
 
-  if (node->const_) {
+  if (node->flags() & ast::Declaration::f_IsConst) {
     // TODO
-    if (node->is_fn_param_) {
+    if (node->flags() & ast::Declaration::f_IsFnParam) {
       if (auto result = ctx->current_constants_.get_constant(node);
           !result.empty()) {
         return result;
@@ -1225,7 +1228,7 @@ ir::Results EmitIr::Val(ast::Declaration const *node, Context *ctx) const {
         // returned. In reality, we could write directly to the buffer and only
         // copy once if Evaluate* took an out-parameter.
         base::untyped_buffer buf = backend::EvaluateToBuffer(
-            type::Typed<ast::Expression const *>(node->init_val.get(), t), ctx);
+            type::Typed<ast::Expression const *>(node->init_val(), t), ctx);
         if (ctx->num_errors() > 0u) { return ir::Results{}; }
         return ctx->constants_->second.constants_.set_slot(
             data_offset, buf.raw(0), num_bytes);
@@ -1248,9 +1251,11 @@ ir::Results EmitIr::Val(ast::Declaration const *node, Context *ctx) const {
     auto *t   = ctx->type_of(node);
     auto addr = ctx->addr(node);
     if (node->IsCustomInitialized()) {
-      node->init_val->EmitMoveInit(this, type::Typed(addr, type::Ptr(t)), ctx);
+      node->init_val()->EmitMoveInit(this, type::Typed(addr, type::Ptr(t)), ctx);
     } else {
-      if (!node->is_fn_param_) { t->EmitDefaultInit(this, addr, ctx); }
+      if (!(node->flags() & ast::Declaration::f_IsFnParam)) {
+        t->EmitDefaultInit(this, addr, ctx);
+      }
     }
     return ir::Results{addr};
   }
@@ -1263,10 +1268,10 @@ ir::Results EmitIr::Val(ast::EnumLiteral const *node, Context *ctx) const {
     if (auto *id = elem->if_as<ast::Identifier>()) {
       ir::AddEnumerator(node->kind_, reg, id->token());
     } else if (auto *decl = elem->if_as<ast::Declaration>()) {
-      ir::AddEnumerator(node->kind_, reg, decl->id_);
+      ir::AddEnumerator(node->kind_, reg, decl->id());
       if (!decl->IsCustomInitialized()) {
         ir::SetEnumerator(reg,
-                          decl->init_val->EmitIr(this, ctx).get<int32_t>(0));
+                          decl->init_val()->EmitIr(this, ctx).get<int32_t>(0));
       }
     }
   }
@@ -1276,7 +1281,8 @@ ir::Results EmitIr::Val(ast::EnumLiteral const *node, Context *ctx) const {
 ir::Results EmitIr::Val(ast::FunctionLiteral const *node, Context *ctx) const {
   for (auto const &param : node->inputs_) {
     auto *p = param.value.get();
-    if (p->const_ && !ctx->constants_->first.contains(p)) {
+    if ((p->flags() & ast::Declaration::f_IsConst) &&
+        !ctx->constants_->first.contains(p)) {
       return ir::Results{node};
     }
 
@@ -1297,7 +1303,7 @@ ir::Results EmitIr::Val(ast::FunctionLiteral const *node, Context *ctx) const {
                      [fn_type, i = 0](
                          std::unique_ptr<ast::Declaration> const &e) mutable {
                        return type::Typed<ast::Expression const *>(
-                           e->init_val.get(), fn_type->input.at(i++));
+                           e->init_val(), fn_type->input.at(i++));
                      }));
     if (work_item_ptr) { ir_func->work_item = work_item_ptr; }
   }
@@ -1307,8 +1313,10 @@ ir::Results EmitIr::Val(ast::FunctionLiteral const *node, Context *ctx) const {
 
 ir::Results EmitIr::Val(ast::Identifier const *node, Context *ctx) const {
   ASSERT(node->decl() != nullptr) << DumpAst::ToString(node);
-  if (node->decl()->const_) { return node->decl()->EmitIr(this, ctx); }
-  if (node->decl()->is_fn_param_) {
+  if (node->decl()->flags() & ast::Declaration::f_IsConst) {
+    return node->decl()->EmitIr(this, ctx);
+  }
+  if (node->decl()->flags() & ast::Declaration::f_IsFnParam) {
     auto *t     = ctx->type_of(node);
     ir::Reg reg = ctx->addr(node->decl());
     if (ctx->inline_) {
@@ -1317,8 +1325,10 @@ ir::Results EmitIr::Val(ast::Identifier const *node, Context *ctx) const {
       reg = reg_results.get<ir::Reg>(0);
     }
 
-    return ir::Results{
-        node->decl()->is_output_ && !t->is_big() ? ir::Load(reg, t) : reg};
+    return ir::Results{(node->decl()->flags() & ast::Declaration::f_IsOutput) &&
+                               !t->is_big()
+                           ? ir::Load(reg, t)
+                           : reg};
   } else {
     auto *t   = ASSERT_NOT_NULL(ctx->type_of(node));
     auto lval = node->EmitLVal(this, ctx)[0];
@@ -1378,10 +1388,10 @@ ir::Results EmitIr::Val(ast::JumpHandler const *node, Context *ctx) const {
     core::FnParams<type::Typed<ast::Expression const *>> params(node->input().size());
     for (size_t i = 0; i < node->input().size(); ++i) {
       auto const *decl = node->input()[i];
-      params.set(
-          i, core::Param<type::Typed<ast::Expression const *>>{
-                 decl->id_, type::Typed<ast::Expression const *>{
-                                decl->init_val.get(), jmp_type->args()[i]}});
+      params.set(i,
+                 core::Param<type::Typed<ast::Expression const *>>{
+                     decl->id(), type::Typed<ast::Expression const *>{
+                                     decl->init_val(), jmp_type->args()[i]}});
     }
 
     ir_func = ctx->mod_->AddJump(jmp_type, std::move(params));
@@ -1593,8 +1603,8 @@ static ir::TypedRegister<type::Type const *> GenerateStruct(
     // a subsequent call to CreateStructField.
     ir::CreateStructField(
         struct_reg,
-        field.type_expr->EmitIr(visitor, ctx).get<type::Type const *>(0));
-    ir::SetStructFieldName(struct_reg, field.id_);
+        field.type_expr()->EmitIr(visitor, ctx).get<type::Type const *>(0));
+    ir::SetStructFieldName(struct_reg, field.id());
     for (auto const &hashtag : field.hashtags_) {
       ir::AddHashtagToField(struct_reg, hashtag);
     }
@@ -1629,8 +1639,8 @@ ir::Results EmitIr::Val(ast::StructLiteral const *node, Context *ctx) const {
     params.reserve(node->args_.size());
     size_t i = 0;
     for (auto const &d : node->args_) {
-      params.append(d.id_, type::Typed<ast::Expression const *>(
-                               d.init_val.get(), arg_types.at(i++)));
+      params.append(d.id(), type::Typed<ast::Expression const *>(
+                               d.init_val(), arg_types.at(i++)));
     }
 
     ir_func = node->mod_->AddFunc(type::Func(arg_types, {type::Type_}),

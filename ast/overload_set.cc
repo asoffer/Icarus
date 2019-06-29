@@ -1,7 +1,7 @@
 #include "ast/overload_set.h"
 
 #include "absl/container/flat_hash_set.h"
-#include "ast/declaration.h"
+#include "ast/ast.h"
 #include "ast/node_span.h"
 #include "core/scope.h"
 #include "misc/context.h"

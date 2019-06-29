@@ -1,5 +1,5 @@
 #include "visitor/special_function.h"
-#include "ast/declaration.h"
+#include "ast/ast.h"
 #include "ir/any_func.h"
 #include "misc/context.h"
 #include "type/pointer.h"

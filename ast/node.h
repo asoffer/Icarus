@@ -3,7 +3,6 @@
 
 #include <utility>
 
-#include "absl/container/flat_hash_map.h"
 #include "base/util.h"
 #include "frontend/text_span.h"
 

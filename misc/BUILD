@@ -40,7 +40,7 @@ cc_lib_target(
     ],
     impl_deps = [
         "//ast:expression",
-        "//ast:declaration",
+        "//ast:ast",
         "//ast:dispatch_table",
     ],
 )
@@ -70,7 +70,7 @@ cc_group_target(
 
 COMMON_MODULE_IMPL_TARGETS = [
     ":module",
-    "//ast:declaration",
+    "//ast:ast",
     "//ast:expression",
     "//ast:function_literal",
     "//ast:struct_literal",
@@ -97,7 +97,7 @@ cc_lib_target(
     impl_deps = [
         ":context",
         ":module",
-        "//ast:declaration",
+        "//ast:ast",
         "//backend:eval",
         "//frontend:source",
         "//ir:compiled_fn",

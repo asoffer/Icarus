@@ -470,23 +470,25 @@ template <bool IsConst>
 std::unique_ptr<ast::Node> BuildDeclaration(
     absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  auto op   = nodes[1]->as<frontend::Token>().op;
-  auto decl = std::make_unique<ast::Declaration>(IsConst);
+  auto op = nodes[1]->as<frontend::Token>().op;
+  TextSpan span(nodes.front()->span, nodes.back()->span);
   ASSERT(nodes[0]->span.source != nullptr);
-  decl->span = TextSpan(nodes[0]->span, nodes[2]->span);
+  std::string id;
   if (nodes[0]->is<ast::Identifier>()) {
-    decl->id_ = std::string{nodes[0]->as<ast::Identifier>().token()};
+    id = std::string{nodes[0]->as<ast::Identifier>().token()};
   }
-  decl->mod_ = mod;
 
+  std::unique_ptr<ast::Expression> type_expr, init_val;
   if (op == frontend::Operator::Colon ||
       op == frontend::Operator::DoubleColon) {
-    decl->type_expr = move_as<ast::Expression>(nodes[2]);
+    type_expr = move_as<ast::Expression>(nodes[2]);
   } else {
-    decl->init_val = move_as<ast::Expression>(nodes[2]);
+    init_val = move_as<ast::Expression>(nodes[2]);
   }
 
-  return decl;
+  return std::make_unique<ast::Declaration>(
+      std::move(span), std::move(id), std::move(type_expr), std::move(init_val),
+      mod, IsConst ? ast::Declaration::f_IsConst : 0);
 }
 
 std::vector<std::unique_ptr<ast::Declaration>> ExtractInputs(
@@ -518,13 +520,13 @@ std::unique_ptr<ast::Node> BuildFunctionLiteral(
   auto fn     = std::make_unique<ast::FunctionLiteral>();
   fn->module_ = ASSERT_NOT_NULL(mod);
   for (auto &input : inputs) {
-    input->is_fn_param_ = true;
+    input->flags() |= ast::Declaration::f_IsFnParam;
     // NOTE: This is safe because the declaration is behind a unique_ptr so the
     // string is never moved. You need to be careful if you ever decide to use
     // make this declaration inline because SSO might mean moving the
     // declaration (which can happen if core::FnParams internal vector gets
     // reallocated) could invalidate the string_view unintentionally.
-    std::string_view name = input->id_;
+    std::string_view name = input->id();
 
     // Note the weird naming here: A declaration which is default initialized
     // means there is no `=` as part of the declaration. This means that the
@@ -544,15 +546,15 @@ std::unique_ptr<ast::Node> BuildFunctionLiteral(
   } else if (output->is<ast::CommaList>()) {
     for (auto &expr : output->as<ast::CommaList>().exprs_) {
       if (auto *decl = expr->if_as<ast::Declaration>()) {
-        decl->is_fn_param_ = true;
-        decl->is_output_   = true;
+        decl->flags() |=
+            (ast::Declaration::f_IsFnParam | ast::Declaration::f_IsOutput);
       }
       fn->outputs_.push_back(std::move(expr));
     }
   } else {
-    if (auto decl = output->if_as<ast::Declaration>()) {
-      decl->is_fn_param_ = true;
-      decl->is_output_   = true;
+    if (auto* decl = output->if_as<ast::Declaration>()) {
+      decl->flags() |=
+          (ast::Declaration::f_IsFnParam | ast::Declaration::f_IsOutput);
     }
     fn->outputs_.push_back(std::move(output));
   }
@@ -762,8 +764,8 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
         return move_as<ast::Declaration>(nodes[0]);
       }
 
-      auto decl      = move_as<ast::Declaration>(nodes[0]);
-      decl->init_val = move_as<ast::Expression>(nodes[2]);
+      auto decl = move_as<ast::Declaration>(nodes[0]);
+      decl->set_initial_value(move_as<ast::Expression>(nodes[2]));
       return decl;
 
     } else {
@@ -853,9 +855,9 @@ std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
   std::vector<std::unique_ptr<ast::Declaration>> before, after;
   for (auto &stmt : stmts->content_) {
     if (auto *decl = stmt->if_as<ast::Declaration>()) {
-      if (decl->id_ == "before") {
+      if (decl->id() == "before") {
         before.push_back(move_as<ast::Declaration>(stmt));
-      } else if (decl->id_ == "after") {
+      } else if (decl->id() == "after") {
         after.push_back(move_as<ast::Declaration>(stmt));
       } else {
         NOT_YET(visitor::DumpAst::ToString(stmt.get()));
@@ -906,12 +908,12 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
       for (auto &expr : nodes[2]->as<ast::CommaList>().exprs_) {
         ASSERT(expr, InheritsFrom<ast::Declaration>());  // TODO handle failure
         auto decl          = move_as<ast::Declaration>(expr);
-        decl->is_fn_param_ = true;
+        decl->flags() |= ast::Declaration::f_IsFnParam;
         params.push_back(std::move(decl));
       }
     } else {
-      auto decl          = move_as<ast::Declaration>(nodes[2]);
-      decl->is_fn_param_ = true;
+      auto decl = move_as<ast::Declaration>(nodes[2]);
+      decl->flags() |= ast::Declaration::f_IsFnParam;
       params.push_back(std::move(decl));
     }
 
@@ -927,12 +929,12 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
       for (auto &expr : nodes[2]->as<ast::CommaList>().exprs_) {
         ASSERT(expr, InheritsFrom<ast::Declaration>());  // TODO handle failure
         auto decl          = move_as<ast::Declaration>(expr);
-        decl->is_fn_param_ = true;
+        decl->flags() |= ast::Declaration::f_IsFnParam;
         result->args_.push_back(std::move(*decl));
       }
     } else {
-      auto decl          = move_as<ast::Declaration>(nodes[2]);
-      decl->is_fn_param_ = true;
+      auto decl = move_as<ast::Declaration>(nodes[2]);
+      decl->flags() |= ast::Declaration::f_IsFnParam;
       result->args_.push_back(std::move(*decl));
     }
     return result;

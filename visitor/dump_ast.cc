@@ -219,18 +219,21 @@ void DumpAst::operator()(ast::CommaList const *node) {
 }
 
 void DumpAst::operator()(ast::Declaration const *node) {
-  absl::StrAppend(out_, node->id_);
-  if (node->type_expr) {
-    absl::StrAppend(out_, node->const_ ? " :: " : ": ");
-    node->type_expr->DumpAst(this);
-    if (node->init_val) {
+  absl::StrAppend(out_, node->id());
+  if (node->type_expr()) {
+    absl::StrAppend(
+        out_, (node->flags() & ast::Declaration::f_IsConst) ? " :: " : ": ");
+    node->type_expr()->DumpAst(this);
+    if (node->init_val()) {
       absl::StrAppend(out_, " = ");
-      node->init_val->DumpAst(this);
+      node->init_val()->DumpAst(this);
     }
   } else {
-    if (node->init_val) {
-      absl::StrAppend(out_, node->const_ ? " ::= " : " := ");
-      node->init_val->DumpAst(this);
+    if (node->init_val()) {
+      absl::StrAppend(out_, (node->flags() & ast::Declaration::f_IsConst)
+                                ? " ::= "
+                                : " := ");
+      node->init_val()->DumpAst(this);
     }
   }
 }

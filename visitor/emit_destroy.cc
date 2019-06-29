@@ -1,5 +1,5 @@
 #include "absl/random/random.h"
-#include "ast/declaration.h"
+#include "ast/ast.h"
 #include "base/permutation.h"
 #include "ir/cmd.h"
 #include "ir/compiled_fn.h"

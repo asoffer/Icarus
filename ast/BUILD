@@ -20,7 +20,6 @@ cc_lib_target(
     name = "ast",
     intf_deps = [
         ":comma_list",
-        ":declaration",
         ":enum_literal",
         ":expression",
         ":function_literal",
@@ -42,11 +41,9 @@ cc_lib_target(
 )
 
 icarus_ast_node(name = "comma_list", deps = [":expression"])
-icarus_ast_node(name = "declaration", deps = [":expression"])
 icarus_ast_node(name = "enum_literal", deps = [":expression"])
 icarus_ast_node(name = "expression", deps = [":hashtag", ":node"])
 icarus_ast_node(name = "function_literal", deps = [
-    ":declaration",
     ":expression",
     "//base:graph",
     "//core:fn_params",
@@ -57,7 +54,7 @@ icarus_ast_node(name = "node", deps = [
     "//frontend:text_span",
     "//ir:results",
 ])
-icarus_ast_node(name = "struct_literal", deps = [":declaration", ":expression"])
+icarus_ast_node(name = "struct_literal", deps = [":expression"])
 icarus_ast_node(name = "struct_type", deps = [":expression"])
 icarus_ast_node(name = "switch", deps = [":expression"])
 icarus_ast_node(name = "unop", deps = [":expression", "//frontend:operators"])
@@ -113,7 +110,7 @@ cc_lib_target(
         "//type:function",
     ],
     impl_deps = [
-        ":declaration",
+        ":ast",
         "//misc:context",
         "//core:scope",
         "@com_google_absl//absl/container:flat_hash_set",

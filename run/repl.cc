@@ -1,7 +1,7 @@
 #include <cstdio>
 #include <memory>
 
-#include "ast/declaration.h"
+#include "ast/ast.h"
 #include "ast/expression.h"
 #include "core/fn_params.h"
 #include "backend/exec.h"

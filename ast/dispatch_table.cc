@@ -279,7 +279,7 @@ static base::expected<DispatchTable::Row> OverloadParams(
         auto result = decl->VerifyType(&visitor, ctx);
         if (!result.ok()) { NOT_YET(); }
 
-        if (!param.value->const_) {
+        if (!(param.value->flags() & Declaration::f_IsConst)) {
           params.set(param_index, core::Param<type::Typed<Expression const *>>{
                                       param.name,
                                       type::Typed<Expression const *>(
@@ -315,7 +315,7 @@ static base::expected<DispatchTable::Row> OverloadParams(
                                                            decl_type),
                            param.flags});
           } else {
-            if (auto *arg = args.at_or_null(param.value->id_)) {
+            if (auto *arg = args.at_or_null(param.value->id())) {
               type::Type const *decl_type = ctx->type_of(param.value.get());
               if (!type::CanCast(arg->second.type_, decl_type)) {
                 return base::unexpected(
@@ -347,10 +347,10 @@ static base::expected<DispatchTable::Row> OverloadParams(
                 type::Type const *decl_type = ctx->type_of(param.value.get());
 
                 // TODO you haven't done the cast from init_val to declared type
-                auto buf = backend::EvaluateToBuffer(
-                    type::Typed<ast::Expression const *>(decl->init_val.get(),
-                                                         decl_type),
-                    ctx);
+                auto buf =
+                    backend::EvaluateToBuffer(type::Typed<Expression const *>(
+                                                  decl->init_val(), decl_type),
+                                              ctx);
                 auto [data_offset, num_bytes] =
                     std::get<std::pair<size_t, core::Bytes>>(
                         ctx->current_constants_.reserve_slot(param.value.get(),
@@ -362,8 +362,8 @@ static base::expected<DispatchTable::Row> OverloadParams(
                 params.set(param_index,
                            core::Param<type::Typed<Expression const *>>{
                                param.name,
-                               type::Typed<Expression const *>(
-                                   decl->init_val.get(), decl_type),
+                               type::Typed<Expression const *>(decl->init_val(),
+                                                               decl_type),
                                param.flags});
               } else {
                 return base::unexpected(

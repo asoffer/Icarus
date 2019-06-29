@@ -78,8 +78,8 @@ void AssignScope::operator()(ast::Declaration *node, core::Scope *scope) {
   ASSERT(scope != nullptr);
   node->scope_ = scope;
   node->scope_->InsertDecl(node);
-  if (node->type_expr) { node->type_expr->assign_scope(this, scope); }
-  if (node->init_val) { node->init_val->assign_scope(this, scope); }
+  if (node->type_expr()) { node->type_expr()->assign_scope(this, scope); }
+  if (node->init_val()) { node->init_val()->assign_scope(this, scope); }
 }
 
 void AssignScope::operator()(ast::EnumLiteral *node, core::Scope *scope) {
@@ -105,17 +105,17 @@ void AssignScope::operator()(ast::FunctionLiteral *node,
   DependentDecls visitor;
   for (auto const &in : node->inputs_) {
     visitor.decl_graph_.graph_.add_node(in.value.get());
-    if (in.value->type_expr) {
-      in.value->type_expr->DependentDecls(&visitor, in.value.get());
+    if (in.value->type_expr()) {
+      in.value->type_expr()->DependentDecls(&visitor, in.value.get());
     }
-    if (in.value->init_val) {
-      in.value->init_val->DependentDecls(&visitor, in.value.get());
+    if (in.value->init_val()) {
+      in.value->init_val()->DependentDecls(&visitor, in.value.get());
     }
   }
 
   absl::flat_hash_map<std::string_view, ast::Declaration *> decls_by_id;
   for (auto const &param : node->inputs_) {
-    decls_by_id.emplace(param.value->id_, param.value.get());
+    decls_by_id.emplace(param.value->id(), param.value.get());
   }
 
   node->param_dep_graph_ = std::move(visitor.decl_graph_.graph_);

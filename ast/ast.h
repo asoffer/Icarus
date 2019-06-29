@@ -7,7 +7,6 @@
 #include <vector>
 
 #include "absl/types/span.h"
-#include "ast/declaration.h"
 #include "ast/expression.h"
 #include "ast/node.h"
 #include "ast/node_span.h"
@@ -106,14 +105,14 @@ struct ArrayLiteral : public Expression {
 // expressions.
 //
 // Examples:
-//  * `[5; int32]`      -- Represnts the type of an array that can hold five
+//  * `[5; int32]`     ... Represnts the type of an array that can hold five
 //                         32-bit integers
-//  * `[0; bool]`       -- Represents the type of an array that can hold zero
+//  * `[0; bool]`      ... Represents the type of an array that can hold zero
 //                         booleans.
-//  * `[3; [2; int8]]`  -- Represents the type of an array that can hold three
+//  * `[3; [2; int8]]` ... Represents the type of an array that can hold three
 //                         elements, each of which is an array that can hold two
 //                         8-bit integers.
-//  * `[3, 2; int8]`    -- A shorthand syntax for `[3; [2; int8]]`
+//  * `[3, 2; int8]`   ... A shorthand syntax for `[3; [2; int8]]`
 struct ArrayType : public Expression {
   explicit ArrayType(TextSpan span, std::unique_ptr<Expression> length,
                      std::unique_ptr<Expression> data_type)
@@ -178,6 +177,80 @@ struct Binop : public Expression {
  private:
   frontend::Operator op_;
   std::unique_ptr<Expression> lhs_, rhs_;
+};
+
+// Declaration:
+//
+// Represents a declaration of a new identifier. The declaration may be for a
+// local variable, global variable, function input parameter or return
+// parameter. It may be const or metable.
+//
+// Examples:
+//  * `a: int32`
+//  * `b: bool = true`
+//  * `c := 17`
+//  * `d: float32 = --`
+//  * `DAYS_PER_WEEK :: int32 = 7`
+//  * `HOURS_PER_DAY ::= 24`
+//  * `some_constant :: bool` ... This approach only makes sense when
+//                                `some_constant` is a (generic) function
+//                                parmaeter
+//
+struct Declaration : public Expression {
+  using Flags                         = uint8_t;
+  static constexpr Flags f_IsFnParam  = 0x01;
+  static constexpr Flags f_IsOutput   = 0x02;
+  static constexpr Flags f_IsConst    = 0x04;
+  static constexpr Flags f_InitIsHole = 0x08;
+
+  explicit Declaration(TextSpan span, std::string id,
+                       std::unique_ptr<Expression> type_expression,
+                       std::unique_ptr<Expression> initial_val, ::Module *mod,
+                       Flags flags)
+      : Expression(std::move(span)),
+        id_(std::move(id)),
+        type_expr_(std::move(type_expression)),
+        init_val_(std::move(initial_val)),
+        mod_(mod),
+        flags_(flags) {}
+  Declaration(Declaration &&) noexcept = default;
+  Declaration &operator=(Declaration &&) noexcept = default;
+  ~Declaration() override {}
+
+  // TODO: These functions are confusingly named. They look correct in normal
+  // declarations, but in function arguments, IsDefaultInitialized() is true iff
+  // there is no default value provided.
+  bool IsInferred() const { return !type_expr_; }
+  bool IsDefaultInitialized() const { return !init_val_ && !IsUninitialized(); }
+  bool IsCustomInitialized() const { return init_val_.get(); }
+  bool IsUninitialized() const { return (flags_ & f_InitIsHole); }
+
+  std::string_view id() const { return id_; }
+  Expression const *type_expr() const { return type_expr_.get(); }
+  Expression *type_expr() { return type_expr_.get(); }
+  Expression const *init_val() const { return init_val_.get(); }
+  Expression *init_val() { return init_val_.get(); }
+
+  Flags flags() const { return flags_; }
+  Flags &flags() { return flags_; }
+
+  void set_initial_value(std::unique_ptr<Expression> expr) {
+    init_val_ = std::move(expr);
+  }
+
+#include "visitor/visitors.xmacro.h"
+
+ private:
+  std::string id_;
+  std::unique_ptr<Expression> type_expr_, init_val_;
+
+ public:
+  Module *mod_ = nullptr;
+  Flags flags_;
+
+  // TODO privatize
+  // Field in a function, whether or not it's an input our output.
+  bool is_fn_param_  = false;
 };
 
 // BlockLiteral:
@@ -301,8 +374,8 @@ struct BuiltinFn : public Expression {
 // Represents a function call, or call to any other callable object.
 //
 // Examples:
-//  `f(a, b, c = 3)`
-//  `arg'func`
+//  * `f(a, b, c = 3)`
+//  * `arg'func`
 struct Call : public Expression {
   explicit Call(TextSpan span, std::unique_ptr<Expression> callee,
                 core::OrderedFnArgs<Expression> args)
@@ -342,8 +415,8 @@ struct Call : public Expression {
 // `<expr> as <type-expr>`.
 //
 // Examples:
-// `3 as nat32`
-// `null as *int64`
+//  * `3 as nat32`
+//  * `null as *int64`
 struct Cast : public Expression {
   explicit Cast(TextSpan span, std::unique_ptr<Expression> expr,
        std::unique_ptr<Expression> type_expr)
@@ -410,6 +483,37 @@ struct ChainOp : public Expression {
 #include "ast/hashtag.h"
 
 namespace ast {
+struct FunctionLiteral : public Expression {
+  // Represents a function with all constants bound to some value.
+  FunctionLiteral() {}
+  FunctionLiteral(FunctionLiteral &&) noexcept = default;
+  ~FunctionLiteral() override {}
+
+#include "visitor/visitors.xmacro.h"
+
+  std::unique_ptr<core::FnScope> fn_scope_;
+
+  // Note this field is computed, but it is independent of any type or
+  // context-specific information. It holds a topologically sorted list of
+  // function parameters such that earlier parameters never depend on later
+  // ones. It's filled in assign_scope because that's when we have enough
+  // information to do so and it guarantees it's only called once.
+  //
+  // TODO rename assign_scope.
+  std::vector<Declaration const *> sorted_params_;
+  absl::flat_hash_map<Declaration const *, size_t> decl_to_param_;
+  base::Graph<Declaration const *> param_dep_graph_;
+
+  // TODO This is storing both the name in the declaration and pulls the
+  // string_view of the name out in core::FnParams::Param.
+  core::FnParams<std::unique_ptr<Declaration>> inputs_;
+  std::vector<std::unique_ptr<Expression>> outputs_;
+  std::vector<std::unique_ptr<Node>> statements_;
+
+  bool return_type_inferred_ = false;
+  Module *module_            = nullptr;
+};
+
 // Terminal:
 // Represents any node that is not an identifier but has no sub-parts. These are
 // typically numeric literals, or expressions that are also keywords such as
@@ -716,8 +820,22 @@ struct ScopeNode : public Expression {
   ScopeNode *sugared_ = nullptr;
 };
 
-}  // namespace ast
+// TODO
+struct StructLiteral : public Expression {
+  StructLiteral()                          = default;
+  StructLiteral(StructLiteral &&) noexcept = default;
+  ~StructLiteral() override {}
 
+  StructLiteral &operator=(StructLiteral &&) noexcept = default;
+
+#include "visitor/visitors.xmacro.h"
+
+  std::unique_ptr<core::DeclScope> type_scope;
+  std::vector<Declaration> fields_, args_;
+  Module *mod_ = nullptr;
+};
+
+}  // namespace ast
 
 #include "ast/struct_literal.h"
 #include "ast/struct_type.h"

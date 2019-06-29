@@ -78,6 +78,8 @@ void Match::MatchExpr(ast::Interface const *node, MatchState *state) {}
 
 void Match::MatchExpr(ast::Jump const *node, MatchState *state) {}
 
+void Match::MatchExpr(ast::JumpHandler const *node, MatchState *state) {}
+
 void Match::MatchExpr(ast::RepeatedUnop const *node, MatchState *state) {}
 
 void Match::MatchExpr(ast::ScopeLiteral const *node, MatchState *state) {}

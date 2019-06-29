@@ -58,8 +58,8 @@ void ExtractJumps::operator()(ast::CommaList const *node) {
 }
 
 void ExtractJumps::operator()(ast::Declaration const *node) {
-  if (node->type_expr) { node->type_expr->ExtractJumps(this); }
-  if (node->init_val) { node->init_val->ExtractJumps(this); }
+  if (node->type_expr()) { node->type_expr()->ExtractJumps(this); }
+  if (node->init_val()) { node->init_val()->ExtractJumps(this); }
 }
 
 void ExtractJumps::operator()(ast::EnumLiteral const *node) {

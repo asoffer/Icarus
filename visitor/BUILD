@@ -360,7 +360,7 @@ cc_lib_target(
     intf_deps = [],
     impl_deps = [
         ":emit_ir",
-        "//ast:declaration",
+        "//ast:ast",
         "//ir:any_func",
         "//misc:context",
         "//type:pointer",
@@ -374,7 +374,7 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = ["//type:type_fwd"],
     impl_deps = [
-        "//ast:declaration",
+        "//ast:ast",
         "//misc:context",
         "//type:all_types",
         "@com_google_absl//absl/algorithm:container",

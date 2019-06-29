@@ -67,8 +67,8 @@ void DependentDecls::operator()(ast::CommaList const *node,
 void DependentDecls::operator()(ast::Declaration const *node,
                                 ast::Declaration const *d) {
   decl_graph_.graph_.add_edge(d, node);
-  if (node->type_expr) { node->type_expr->DependentDecls(this, node); }
-  if (node->init_val) { node->init_val->DependentDecls(this, node); }
+  if (node->type_expr()) { node->type_expr()->DependentDecls(this, node); }
+  if (node->init_val()) { node->init_val()->DependentDecls(this, node); }
 }
 
 void DependentDecls::operator()(ast::EnumLiteral const *node,

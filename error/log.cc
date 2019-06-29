@@ -479,7 +479,7 @@ void Log::Dump() const {
   }
 
   for (auto const &[decl, ids] : out_of_order_decls_) {
-    std::cerr << "Variable `" << decl->id_
+    std::cerr << "Variable `" << decl->id()
               << "` is used before it is defined (which is only allowed for "
                  "constants).\n\n";
 

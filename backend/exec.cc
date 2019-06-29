@@ -599,8 +599,8 @@ ir::BlockIndex ExecContext::ExecuteCmd(
         for (auto const &field : s->parent_->fields_) {
           auto ir_field = ir::Field(var, s, i);
           visitor::EmitIr visitor;
-          if (field.init_val) {
-            field.init_val->EmitCopyInit(&visitor, ir_field, &ctx);
+          if (field.init_val()) {
+            field.init_val()->EmitCopyInit(&visitor, ir_field, &ctx);
           } else {
             s->fields_.at(i).type->EmitDefaultInit(&visitor, ir_field.get(),
                                                    &ctx);

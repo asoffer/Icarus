@@ -1,7 +1,6 @@
 #include "misc/module.h"
 
-#include "ast/declaration.h"
-#include "ast/expression.h"
+#include "ast/ast.h"
 #include "ast/function_literal.h"
 #include "ast/struct_literal.h"
 #include "base/guarded.h"
@@ -47,7 +46,7 @@ type::Type const *Module::GetType(std::string_view name) const {
 ast::Declaration *Module::GetDecl(std::string_view name) const {
   for (auto const &stmt : statements_) {
     ASSIGN_OR(continue, auto &decl, stmt->if_as<ast::Declaration>());
-    if (decl.id_ != name) { continue; }
+    if (decl.id() != name) { continue; }
     auto &hashtags = decl.hashtags_;
     bool exported =
         std::any_of(hashtags.begin(), hashtags.end(), [](ast::Hashtag h) {

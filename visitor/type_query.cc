@@ -1,7 +1,7 @@
 #include "visitor/type_query.h"
 
 #include "absl/algorithm/container.h"
-#include "ast/declaration.h"
+#include "ast/ast.h"
 #include "misc/context.h"
 #include "type/array.h"
 #include "type/enum.h"

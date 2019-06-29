@@ -1,4 +1,4 @@
-#include "ast/declaration.h"
+#include "ast/ast.h"
 #include "backend/eval.h"
 #include "base/debug.h"
 #include "frontend/source.h"
@@ -76,8 +76,8 @@ Module *CompileModule(Module *mod, std::filesystem::path const *path) {
 
   for (auto const &stmt : mod->statements_) {
     if (auto *decl = stmt->if_as<ast::Declaration>()) {
-      if (decl->id_ != "main") { continue; }
-      auto f = backend::EvaluateAs<ir::AnyFunc>(decl->init_val.get(), &ctx);
+      if (decl->id() != "main") { continue; }
+      auto f = backend::EvaluateAs<ir::AnyFunc>(decl->init_val(), &ctx);
       ASSERT(f.is_fn() == true);
       auto ir_fn = f.func();
 

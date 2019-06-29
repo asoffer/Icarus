@@ -869,7 +869,7 @@ VerifyResult VerifyType::operator()(ast::CommaList const *node,
 static visitor::VerifyResult VerifySpecialFunctions(
     ast::Declaration const *decl, type::Type const *decl_type, Context *ctx) {
   bool error = false;
-  if (decl->id_ == "copy") {
+  if (decl->id() == "copy") {
     if (auto *f = decl_type->if_as<type::Function>()) {
       if (!f->output.empty()) {
         error = true;
@@ -903,7 +903,7 @@ static visitor::VerifyResult VerifySpecialFunctions(
       error = true;
       NOT_YET("log an error. (copy) must be a function.");
     }
-  } else if (decl->id_ == "move") {
+  } else if (decl->id() == "move") {
     if (auto *f = decl_type->if_as<type::Function>()) {
       if (!f->output.empty()) {
         error = true;
@@ -941,7 +941,9 @@ static visitor::VerifyResult VerifySpecialFunctions(
   }
   if (error) { ctx->set_result(decl, VerifyResult::Error()); }
 
-  return ctx->set_result(decl, VerifyResult(decl_type, decl->const_));
+  return ctx->set_result(
+      decl,
+      VerifyResult(decl_type, decl->flags() & ast::Declaration::f_IsConst));
 }
 
 // TODO what about shadowing of symbols across module boundaries imported with
@@ -954,8 +956,10 @@ bool Shadow(type::Typed<ast::Declaration const *> decl1,
     return false;
   }
 
-  auto ExtractParams = +[](bool is_const, ast::Expression const *expr,
+  auto ExtractParams = +[](ast::Declaration const *decl,
                            Context *ctx) -> core::FnParams<type::Type const *> {
+    bool is_const               = (decl->flags() & ast::Declaration::f_IsConst);
+    ast::Expression const *expr = decl->init_val();
     if (!is_const) {
       return ctx->type_of(expr)
           ->as<type::Function>()
@@ -972,8 +976,7 @@ bool Shadow(type::Typed<ast::Declaration const *> decl1,
     NOT_YET();
   };
   return core::AmbiguouslyCallable(
-      ExtractParams(decl1.get()->const_, (*decl1)->init_val.get(), ctx),
-      ExtractParams(decl2.get()->const_, (*decl2)->init_val.get(), ctx),
+      ExtractParams(*decl1, ctx), ExtractParams(*decl2, ctx),
       [](type::Type const *lhs, type::Type const *rhs) {
         return type::Meet(lhs, rhs) != nullptr;
       });
@@ -1046,7 +1049,7 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
     case 0 /* Default initailization */: {
       ASSIGN_OR(return ctx->set_result(node, VerifyResult::Error()),
                        auto type_expr_result,
-                       node->type_expr->VerifyType(this, ctx));
+                       node->type_expr()->VerifyType(this, ctx));
       if (!type_expr_result.const_) {
         // Hmm, not necessarily an error. Example (not necessarily minimal):
         //
@@ -1062,10 +1065,11 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
         node_type = ASSERT_NOT_NULL(
             ctx->set_result(node, VerifyResult::Constant(
                                       backend::EvaluateAs<type::Type const *>(
-                                          node->type_expr.get(), ctx)))
+                                          node->type_expr(), ctx)))
                 .type_);
 
-        if (!node->is_fn_param_ && !node_type->IsDefaultInitializable()) {
+        if (!(node->flags() & ast::Declaration::f_IsFnParam) &&
+            !node_type->IsDefaultInitializable()) {
           ctx->error_log()->TypeMustBeInitialized(node->span,
                                                   node_type->to_string());
         }
@@ -1078,11 +1082,11 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
           node_type =
               ctx->set_result(node, VerifyResult::Constant(
                                         backend::EvaluateAs<type::Type const *>(
-                                            node->type_expr.get(), ctx)))
+                                            node->type_expr(), ctx)))
                   .type_;
         }
       } else {
-        ctx->error_log()->NotAType(node->type_expr->span,
+        ctx->error_log()->NotAType(node->type_expr()->span,
                                    type_expr_type->to_string());
         return ctx->set_result(node, VerifyResult::Error());
       }
@@ -1091,10 +1095,10 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
     case INFER | CUSTOM_INIT: {
       ASSIGN_OR(return ctx->set_result(node, VerifyResult::Error()),
                        auto init_val_result,
-                       node->init_val->VerifyType(this, ctx));
+                       node->init_val()->VerifyType(this, ctx));
       auto reason = Inferrable(init_val_result.type_);
       if (reason != InferenceFailureReason::Inferrable) {
-        ctx->error_log()->UninferrableType(reason, node->init_val->span);
+        ctx->error_log()->UninferrableType(reason, node->init_val()->span);
         return ctx->set_result(node, VerifyResult::Error());
       }
 
@@ -1104,22 +1108,26 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
         return ctx->set_result(node, VerifyResult::Error());
       }
 
-      node_type = ctx->set_result(node, VerifyResult(init_val_result.type_,
-                                                     node->const_))
-                      .type_;
+      node_type =
+          ctx->set_result(node, VerifyResult(init_val_result.type_,
+                                             (node->flags() &
+                                              ast::Declaration::f_IsConst)))
+              .type_;
     } break;
     case INFER | UNINITIALIZED: {
       ctx->error_log()->UninferrableType(InferenceFailureReason::Hole,
-                                         node->init_val->span);
-      if (node->const_) { ctx->error_log()->UninitializedConstant(node->span); }
+                                         node->init_val()->span);
+      if (node->flags() & ast::Declaration::f_IsConst) {
+        ctx->error_log()->UninitializedConstant(node->span);
+      }
       return ctx->set_result(node, VerifyResult::Error());
     } break;
     case CUSTOM_INIT: {
-      auto init_val_result = node->init_val->VerifyType(this, ctx);
+      auto init_val_result = node->init_val()->VerifyType(this, ctx);
       bool error           = !init_val_result.ok();
 
-      auto *init_val_type   = node->init_val->VerifyType(this, ctx).type_;
-      auto type_expr_result = node->type_expr->VerifyType(this, ctx);
+      auto *init_val_type   = node->init_val()->VerifyType(this, ctx).type_;
+      auto type_expr_result = node->type_expr()->VerifyType(this, ctx);
       auto *type_expr_type  = type_expr_result.type_;
 
       if (type_expr_type == nullptr) {
@@ -1132,7 +1140,7 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
           node_type =
               ctx->set_result(node, VerifyResult::Constant(
                                         backend::EvaluateAs<type::Type const *>(
-                                            node->type_expr.get(), ctx)))
+                                            node->type_expr(), ctx)))
                   .type_;
         }
 
@@ -1145,7 +1153,7 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
         node_type =
             ctx->set_result(node, VerifyResult::Constant(type::Generic)).type_;
       } else {
-        ctx->error_log()->NotAType(node->type_expr->span,
+        ctx->error_log()->NotAType(node->type_expr()->span,
                                    type_expr_type->to_string());
         error = true;
       }
@@ -1155,7 +1163,7 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
     case UNINITIALIZED: {
       ASSIGN_OR(return ctx->set_result(node, VerifyResult::Error()),
                        auto type_expr_result,
-                       node->type_expr->VerifyType(this, ctx));
+                       node->type_expr()->VerifyType(this, ctx));
       auto *type_expr_type = type_expr_result.type_;
       if (type_expr_type == type::Type_) {
         if (!type_expr_result.const_) {
@@ -1165,18 +1173,18 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
         node_type =
             ctx->set_result(node, VerifyResult::Constant(
                                       backend::EvaluateAs<type::Type const *>(
-                                          node->type_expr.get(), ctx)))
+                                          node->type_expr(), ctx)))
                 .type_;
       } else if (type_expr_type == type::Intf) {
         node_type =
             ctx->set_result(node, VerifyResult::Constant(type::Generic)).type_;
       } else {
-        ctx->error_log()->NotAType(node->type_expr->span,
+        ctx->error_log()->NotAType(node->type_expr()->span,
                                    type_expr_type->to_string());
         return ctx->set_result(node, VerifyResult::Error());
       }
 
-      if (node->const_) {
+      if (node->flags() & ast::Declaration::f_IsConst) {
         ctx->error_log()->UninitializedConstant(node->span);
         return ctx->set_result(node, VerifyResult::Error());
       }
@@ -1185,12 +1193,12 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
     default: UNREACHABLE(dk);
   }
 
-  if (node->id_.empty()) {
+  if (node->id().empty()) {
     if (node_type == type::Module) {
       // TODO check shadowing against other modules?
       // TODO what if no init val is provded? what if not constant?
       node->scope_->embedded_modules_.insert(
-          backend::EvaluateAs<Module const *>(node->init_val.get(), ctx));
+          backend::EvaluateAs<Module const *>(node->init_val(), ctx));
       return ctx->set_result(node, VerifyResult::Constant(type::Module));
     } else if (node_type->is<type::Tuple>()) {
       NOT_YET(node_type, DumpAst::ToString(node));
@@ -1203,9 +1211,9 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
   ASSERT(node_type != nullptr) << DumpAst::ToString(node);
   std::vector<type::Typed<ast::Declaration const *>> decls_to_check;
   {
-    auto good_decls_to_check = node->scope_->AllDeclsWithId(node->id_);
+    auto good_decls_to_check = node->scope_->AllDeclsWithId(node->id());
     size_t num_total         = good_decls_to_check.size();
-    auto iter                = node->scope_->child_decls_.find(node->id_);
+    auto iter                = node->scope_->child_decls_.find(node->id());
 
     bool has_children = (iter != node->scope_->child_decls_.end());
     if (has_children) { num_total += iter->second.size(); }
@@ -1251,7 +1259,7 @@ VerifyResult VerifyType::operator()(ast::EnumLiteral const *node,
                                     Context *ctx) const {
   for (auto const &elem : node->elems_) {
     if (auto *decl = elem->if_as<ast::Declaration>()) {
-      auto *t = decl->init_val->VerifyType(this, ctx).type_;
+      auto *t = decl->init_val()->VerifyType(this, ctx).type_;
       ASSERT(t == type::Int32);
       // TODO determine what is allowed here and how to generate errors.
     }
@@ -1468,7 +1476,8 @@ VerifyResult VerifyType::ConcreteFnLit(ast::FunctionLiteral const *node,
 VerifyResult VerifyType::operator()(ast::FunctionLiteral const *node,
                                     Context *ctx) const {
   for (auto const &p : node->inputs_) {
-    if (p.value->const_ || !node->param_dep_graph_.at(p.value.get()).empty()) {
+    if ((p.value->flags() & ast::Declaration::f_IsConst) ||
+        !node->param_dep_graph_.at(p.value.get()).empty()) {
       return ctx->set_result(node, VerifyResult::Constant(type::Generic));
     }
   }
@@ -1515,7 +1524,7 @@ VerifyResult VerifyType::operator()(ast::Identifier const *node,
         return VerifyResult::Error();
     }
 
-    if (!node->decl()->const_ &&
+    if (!(node->decl()->flags() & ast::Declaration::f_IsConst) &&
         (node->span.start.line_num < node->decl()->span.start.line_num ||
          (node->span.start.line_num == node->decl()->span.start.line_num &&
           node->span.start.offset < node->decl()->span.start.offset))) {
@@ -1530,7 +1539,9 @@ VerifyResult VerifyType::operator()(ast::Identifier const *node,
   type::Type const *t = ctx->type_of(node->decl());
 
   if (t == nullptr) { return VerifyResult::Error(); }
-  return ctx->set_result(node, VerifyResult(t, node->decl()->const_));
+  return ctx->set_result(
+      node,
+      VerifyResult(t, node->decl()->flags() & ast::Declaration::f_IsConst));
 }
 
 VerifyResult VerifyType::operator()(ast::Import const *node,
@@ -1623,7 +1634,7 @@ VerifyResult VerifyType::operator()(ast::Interface const *node,
                                     Context *ctx) const {
   for (auto const *decl : node->decls()) {
     decl->VerifyType(this, ctx);
-    if (decl->init_val != nullptr) { NOT_YET(); }
+    if (decl->init_val() != nullptr) { NOT_YET(); }
   }
   return ctx->set_result(node, VerifyResult::Constant(type::Intf));
 }
@@ -1851,19 +1862,19 @@ VerifyResult VerifyType::operator()(ast::StructLiteral const *node,
     bool is_const = true;
     bool err = false;
     for (auto const& field : node->fields_) {
-      if (!field.type_expr) { continue; }
-      auto result = field.type_expr->VerifyType(this, ctx);
+      if (!field.type_expr()) { continue; }
+      auto result = field.type_expr()->VerifyType(this, ctx);
       if (!result) {
         err = true;
         continue;
       }
       is_const &= result.const_;
-      if (field.init_val) {
+      if (field.init_val()) {
         if (result.const_) {
-          auto init_val_result = field.init_val->VerifyType(this, ctx);
+          auto init_val_result = field.init_val()->VerifyType(this, ctx);
           if (!init_val_result.const_) {
             ctx->error_log()->NonConstantStructFieldDefaultValue(
-                field.init_val->span);
+                field.init_val()->span);
             err = true;
           }
 
@@ -1892,13 +1903,13 @@ VerifyResult VerifyType::operator()(ast::StructLiteral const *node,
                                                 ast::Declaration const &field) {
       // TODO you should verify each field no matter what.
       field.VerifyType(this, ctx);
-      if (!field.init_val ||
-          ASSERT_NOT_NULL(ctx->prior_verification_attempt(field.init_val.get()))
+      if (!field.init_val() ||
+          ASSERT_NOT_NULL(ctx->prior_verification_attempt(field.init_val()))
               ->const_) {
         return true;
       }
       ctx->error_log()->NonConstantStructFieldDefaultValue(
-          field.init_val->span);
+          field.init_val()->span);
       return false;
     });
     // TODO so in fact we could recover here and just not emit ir but we're no
