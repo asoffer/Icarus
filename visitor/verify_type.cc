@@ -1299,7 +1299,7 @@ static VerifyResult VerifyBody(VerifyType const *visitor,
     }
   }
 
-  if (node->return_type_inferred_) {
+  if (!node->outputs_) {
     std::vector<type::Type const *> input_type_vec;
     input_type_vec.reserve(node->inputs_.size());
     for (auto &input : node->inputs_) {
@@ -1421,16 +1421,18 @@ VerifyResult VerifyType::ConcreteFnLit(ast::FunctionLiteral const *node,
   }
 
   std::vector<type::Type const *> output_type_vec;
-  output_type_vec.reserve(node->outputs_.size());
   bool error = false;
-  for (auto &output : node->outputs_) {
-    auto result = output->VerifyType(this, ctx);
-    output_type_vec.push_back(result.type_);
-    if (result.type_ != nullptr && !result.const_) {
-      // TODO this feels wrong because output could be a decl. And that decl
-      // being a const decl isn't what I care about.
-      NOT_YET("log an error");
-      error = true;
+  if (node->outputs_) {
+    output_type_vec.reserve(node->outputs_->size());
+    for (auto &output : *node->outputs_) {
+      auto result = output->VerifyType(this, ctx);
+      output_type_vec.push_back(result.type_);
+      if (result.type_ != nullptr && !result.const_) {
+        // TODO this feels wrong because output could be a decl. And that decl
+        // being a const decl isn't what I care about.
+        NOT_YET("log an error");
+        error = true;
+      }
     }
   }
 
@@ -1447,14 +1449,14 @@ VerifyResult VerifyType::ConcreteFnLit(ast::FunctionLiteral const *node,
   // count.
   if (ctx->num_errors() > 0) { return visitor::VerifyResult::Error(); }
 
-  if (!node->return_type_inferred_) {
+  if (node->outputs_) {
     for (size_t i = 0; i < output_type_vec.size(); ++i) {
-      if (auto *decl = node->outputs_.at(i)->if_as<ast::Declaration>()) {
+      if (auto *decl = node->outputs_->at(i)->if_as<ast::Declaration>()) {
         output_type_vec.at(i) = ctx->type_of(decl);
       } else {
         ASSERT(output_type_vec.at(i) == type::Type_);
         output_type_vec.at(i) = backend::EvaluateAs<type::Type const *>(
-            node->outputs_.at(i).get(), ctx);
+            node->outputs_->at(i).get(), ctx);
       }
     }
 

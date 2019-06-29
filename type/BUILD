@@ -238,7 +238,7 @@ cc_lib_target(
     impl_deps = [
         ":function",
         ":pointer",
-        "//ast:struct_literal",
+        "//ast:ast",
         "//base:guarded",
         "//core:arch",
         "//misc:module",

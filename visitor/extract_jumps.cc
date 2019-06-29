@@ -68,7 +68,9 @@ void ExtractJumps::operator()(ast::EnumLiteral const *node) {
 
 void ExtractJumps::operator()(ast::FunctionLiteral const *node) {
   for (auto &in : node->inputs_) { in.value->ExtractJumps(this); }
-  for (auto &out : node->outputs_) { out->ExtractJumps(this); }
+  if (node->outputs_) {
+    for (auto &out : *node->outputs_) { out->ExtractJumps(this); }
+  }
 }
 
 void ExtractJumps::operator()(ast::Identifier const *node) {}

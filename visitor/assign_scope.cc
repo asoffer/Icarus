@@ -98,7 +98,11 @@ void AssignScope::operator()(ast::FunctionLiteral *node,
   for (auto &in : node->inputs_) {
     in.value->assign_scope(this, node->fn_scope_.get());
   }
-  for (auto &out : node->outputs_) { out->assign_scope(this, node->fn_scope_.get()); }
+  if (node->outputs_) {
+    for (auto &out : *node->outputs_) {
+      out->assign_scope(this, node->fn_scope_.get());
+    }
+  }
   SetAllScopes(this, ast::NodeSpan<ast::Node>{node->statements_},
                node->fn_scope_.get());
 

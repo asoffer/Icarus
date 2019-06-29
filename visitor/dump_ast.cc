@@ -266,9 +266,9 @@ void DumpAst::operator()(ast::FunctionLiteral const *node) {
             p.value->DumpAst(&dump);
           }),
       ") -> ");
-  if (!node->return_type_inferred_) {
+  if (node->outputs_) {
     absl::StrAppend(out_, "(",
-                    absl::StrJoin(node->outputs_, ", ", Joiner{this}), ")");
+                    absl::StrJoin(*node->outputs_, ", ", Joiner{this}), ")");
   }
   absl::StrAppend(out_, "{");
   ++indentation_;

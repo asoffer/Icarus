@@ -1,8 +1,6 @@
 #include "misc/module.h"
 
 #include "ast/ast.h"
-#include "ast/function_literal.h"
-#include "ast/struct_literal.h"
 #include "base/guarded.h"
 #include "frontend/source.h"
 #ifdef ICARUS_VISITOR_EMIT_IR

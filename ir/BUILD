@@ -152,7 +152,7 @@ cc_lib_target(
     name = "compiled_fn",
     cfgs = ["match", "compile"],
     intf_deps = [
-        "//ast:function_literal",
+        "//ast:ast",
         "//base:bag",
         "//core:fn_params",
         "//ir:basic_block",
@@ -162,7 +162,7 @@ cc_lib_target(
     ],
     impl_deps = [
         ":arguments",
-        "//ast:function_literal",
+        "//ast:ast",
         "//core:arch",
         "//property:property",
         "//property:property_map",

@@ -1,6 +1,6 @@
 #include "ir/compiled_fn.h"
 
-#include "ast/function_literal.h"
+#include "ast/ast.h"
 #include "core/arch.h"
 #include "ir/arguments.h"
 #include "property/property.h"

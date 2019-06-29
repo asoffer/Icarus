@@ -72,8 +72,6 @@ COMMON_MODULE_IMPL_TARGETS = [
     ":module",
     "//ast:ast",
     "//ast:expression",
-    "//ast:function_literal",
-    "//ast:struct_literal",
     "//base:guarded",
     "//frontend:source-impl",
     "//type:function",

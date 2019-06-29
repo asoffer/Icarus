@@ -22,15 +22,15 @@ cc_lib_target(
         ":comma_list",
         ":enum_literal",
         ":expression",
-        ":function_literal",
         ":node",
         ":node_span",
-        ":struct_literal",
         ":struct_type",
         ":switch",
         ":unop",
+        "//base:graph",
         "//core:builtin",
         "//core:fn_args",
+        "//core:fn_params",
         "//core:ordered_fn_args",
         "//core:scope",
         "//ir:block",
@@ -43,18 +43,12 @@ cc_lib_target(
 icarus_ast_node(name = "comma_list", deps = [":expression"])
 icarus_ast_node(name = "enum_literal", deps = [":expression"])
 icarus_ast_node(name = "expression", deps = [":hashtag", ":node"])
-icarus_ast_node(name = "function_literal", deps = [
-    ":expression",
-    "//base:graph",
-    "//core:fn_params",
-])
 icarus_ast_node(name = "node", deps = [
     "//base:util",
     "//visitor:visitors",
     "//frontend:text_span",
     "//ir:results",
 ])
-icarus_ast_node(name = "struct_literal", deps = [":expression"])
 icarus_ast_node(name = "struct_type", deps = [":expression"])
 icarus_ast_node(name = "switch", deps = [":expression"])
 icarus_ast_node(name = "unop", deps = [":expression", "//frontend:operators"])
@@ -73,7 +67,6 @@ cc_lib_target(
     ],
     impl_deps = [
         ":ast",
-        ":function_literal",
         "//backend:eval",
         "//ir:block",
         "//ir:cmd",

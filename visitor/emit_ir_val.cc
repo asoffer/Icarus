@@ -249,20 +249,22 @@ static void CompleteBody(EmitIr const *visitor,
 
     MakeAllStackAllocations(node->fn_scope_.get(), ctx);
 
-    for (size_t i = 0; i < node->outputs_.size(); ++i) {
-      auto *out_decl = node->outputs_[i]->if_as<ast::Declaration>();
-      if (!out_decl) { continue; }
-      auto *out_decl_type = ASSERT_NOT_NULL(ctx->type_of(out_decl));
-      auto alloc = out_decl_type->is_big() ? ir::GetRet(i, out_decl_type)
-                                           : ir::Alloca(out_decl_type);
+    if (node->outputs_) {
+      for (size_t i = 0; i < node->outputs_->size(); ++i) {
+        auto *out_decl = node->outputs_->at(i)->if_as<ast::Declaration>();
+        if (!out_decl) { continue; }
+        auto *out_decl_type = ASSERT_NOT_NULL(ctx->type_of(out_decl));
+        auto alloc = out_decl_type->is_big() ? ir::GetRet(i, out_decl_type)
+                                             : ir::Alloca(out_decl_type);
 
-      ctx->set_addr(out_decl, alloc);
-      if (out_decl->IsDefaultInitialized()) {
-        out_decl_type->EmitDefaultInit(visitor, alloc, ctx);
-      } else {
-        out_decl_type->EmitCopyAssign(visitor, out_decl_type,
-                                      out_decl->init_val()->EmitIr(visitor, ctx),
-                                      alloc, ctx);
+        ctx->set_addr(out_decl, alloc);
+        if (out_decl->IsDefaultInitialized()) {
+          out_decl_type->EmitDefaultInit(visitor, alloc, ctx);
+        } else {
+          out_decl_type->EmitCopyAssign(
+              visitor, out_decl_type,
+              out_decl->init_val()->EmitIr(visitor, ctx), alloc, ctx);
+        }
       }
     }
 

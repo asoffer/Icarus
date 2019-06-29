@@ -10,8 +10,10 @@
 #include "ast/expression.h"
 #include "ast/node.h"
 #include "ast/node_span.h"
+#include "base/graph.h"
 #include "core/builtin.h"
 #include "core/fn_args.h"
+#include "core/fn_params.h"
 #include "core/ordered_fn_args.h"
 #include "core/scope.h"
 #include "frontend/operators.h"
@@ -479,13 +481,39 @@ struct ChainOp : public Expression {
 
 #include "ast/comma_list.h"
 #include "ast/enum_literal.h"
-#include "ast/function_literal.h"
 #include "ast/hashtag.h"
 
 namespace ast {
 struct FunctionLiteral : public Expression {
   // Represents a function with all constants bound to some value.
-  FunctionLiteral() {}
+  FunctionLiteral(TextSpan span, Module *mod,
+                  std::vector<std::unique_ptr<Declaration>> in_params,
+                  std::vector<std::unique_ptr<Node>> statements,
+                  std::optional<std::vector<std::unique_ptr<Expression>>>
+                      out_params = std::nullopt)
+      : Expression(std::move(span)),
+        outputs_(std::move(out_params)),
+        statements_(std::move(statements)),
+        module_(mod) {
+    for (auto &input : in_params) {
+      input->flags() |= Declaration::f_IsFnParam;
+      // NOTE: This is safe because the declaration is behind a unique_ptr so
+      // the string is never moved. You need to be careful if you ever decide to
+      // use make this declaration inline because SSO might mean moving the
+      // declaration (which can happen if core::FnParams internal vector gets
+      // reallocated) could invalidate the string_view unintentionally.
+      std::string_view name = input->id();
+
+      // Note the weird naming here: A declaration which is default initialized
+      // means there is no `=` as part of the declaration. This means that the
+      // declaration, when thougth of as a parameter to a function, has no
+      // default value.
+      core::FnParamFlags flags{};
+      if (!input->IsDefaultInitialized()) { flags = core::HAS_DEFAULT; }
+
+      inputs_.append(name, std::move(input), flags);
+    }
+  }
   FunctionLiteral(FunctionLiteral &&) noexcept = default;
   ~FunctionLiteral() override {}
 
@@ -507,10 +535,9 @@ struct FunctionLiteral : public Expression {
   // TODO This is storing both the name in the declaration and pulls the
   // string_view of the name out in core::FnParams::Param.
   core::FnParams<std::unique_ptr<Declaration>> inputs_;
-  std::vector<std::unique_ptr<Expression>> outputs_;
+  std::optional<std::vector<std::unique_ptr<Expression>>> outputs_;
   std::vector<std::unique_ptr<Node>> statements_;
 
-  bool return_type_inferred_ = false;
   Module *module_            = nullptr;
 };
 
@@ -837,7 +864,6 @@ struct StructLiteral : public Expression {
 
 }  // namespace ast
 
-#include "ast/struct_literal.h"
 #include "ast/struct_type.h"
 #include "ast/switch.h"
 #include "ast/unop.h"

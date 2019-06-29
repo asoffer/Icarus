@@ -1,9 +1,9 @@
 #include "type/struct.h"
 
-#include "core/arch.h"
+#include "ast/ast.h"
 #include "ast/hashtag.h"
-#include "ast/struct_literal.h"
 #include "base/guarded.h"
+#include "core/arch.h"
 #include "misc/module.h"
 #include "type/function.h"
 #include "type/pointer.h"

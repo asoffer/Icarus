@@ -517,49 +517,31 @@ std::unique_ptr<ast::Node> BuildFunctionLiteral(
     TextSpan span, std::vector<std::unique_ptr<ast::Declaration>> inputs,
     std::unique_ptr<ast::Expression> output, Statements &&stmts, Module *mod,
     error::Log *error_log) {
-  auto fn     = std::make_unique<ast::FunctionLiteral>();
-  fn->module_ = ASSERT_NOT_NULL(mod);
-  for (auto &input : inputs) {
-    input->flags() |= ast::Declaration::f_IsFnParam;
-    // NOTE: This is safe because the declaration is behind a unique_ptr so the
-    // string is never moved. You need to be careful if you ever decide to use
-    // make this declaration inline because SSO might mean moving the
-    // declaration (which can happen if core::FnParams internal vector gets
-    // reallocated) could invalidate the string_view unintentionally.
-    std::string_view name = input->id();
-
-    // Note the weird naming here: A declaration which is default initialized
-    // means there is no `=` as part of the declaration. This means that the
-    // declaration, when thougth of as a parameter to a function, has no default
-    // value.
-    core::FnParamFlags flags{};
-    if (!input->IsDefaultInitialized()) { flags = core::HAS_DEFAULT; }
-
-    fn->inputs_.append(name, std::move(input), flags);
+  if (output == nullptr) {
+    return std::make_unique<ast::FunctionLiteral>(
+        std::move(span), ASSERT_NOT_NULL(mod), std::move(inputs),
+        std::move(stmts).extract());
   }
 
-  fn->span        = std::move(span);
-  fn->statements_ = std::move(stmts).extract();
-
-  if (output == nullptr) {
-    fn->return_type_inferred_ = true;
-  } else if (output->is<ast::CommaList>()) {
-    for (auto &expr : output->as<ast::CommaList>().exprs_) {
+  std::vector<std::unique_ptr<ast::Expression>> outputs;
+  if (auto *cl = output->if_as<ast::CommaList>()) {
+    for (auto &expr : cl->exprs_) {
       if (auto *decl = expr->if_as<ast::Declaration>()) {
         decl->flags() |=
             (ast::Declaration::f_IsFnParam | ast::Declaration::f_IsOutput);
       }
-      fn->outputs_.push_back(std::move(expr));
+      outputs.push_back(std::move(expr));
     }
   } else {
     if (auto* decl = output->if_as<ast::Declaration>()) {
       decl->flags() |=
           (ast::Declaration::f_IsFnParam | ast::Declaration::f_IsOutput);
     }
-    fn->outputs_.push_back(std::move(output));
+    outputs.push_back(std::move(output));
   }
-
-  return fn;
+  return std::make_unique<ast::FunctionLiteral>(
+      std::move(span), ASSERT_NOT_NULL(mod), std::move(inputs),
+      std::move(stmts).extract(), std::move(outputs));
 }
 
 std::unique_ptr<ast::Node> BuildNormalFunctionLiteral(
