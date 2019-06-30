@@ -1,6 +1,5 @@
 package(default_visibility = ["//visibility:public"])
 load("//:defs.bzl", "cc_lib_target", "sources")
-load(":defs.bzl", "icarus_ast_node")
 
 sources()
 
@@ -19,19 +18,16 @@ cc_lib_target(
 cc_lib_target(
     name = "ast",
     intf_deps = [
-        ":comma_list",
         ":expression",
         ":node",
         ":node_span",
-        ":struct_type",
-        ":switch",
-        ":unop",
         "//base:graph",
         "//core:builtin",
         "//core:fn_args",
         "//core:fn_params",
         "//core:ordered_fn_args",
         "//core:scope",
+        "//frontend:operators",
         "//ir:block",
         "//type:primitive",
     ],
@@ -39,17 +35,20 @@ cc_lib_target(
     test_deps = None,
 )
 
-icarus_ast_node(name = "comma_list", deps = [":expression"])
-icarus_ast_node(name = "expression", deps = [":hashtag", ":node"])
-icarus_ast_node(name = "node", deps = [
-    "//base:util",
-    "//visitor:visitors",
-    "//frontend:text_span",
-    "//ir:results",
-])
-icarus_ast_node(name = "struct_type", deps = [":expression"])
-icarus_ast_node(name = "switch", deps = [":expression"])
-icarus_ast_node(name = "unop", deps = [":expression", "//frontend:operators"])
+cc_lib_target(name = "expression",
+              intf_deps = [":hashtag", ":node"],
+              impl_deps = None,
+              test_deps = None)
+
+cc_lib_target(
+    name = "node",
+    intf_deps = [
+        "//base:util",
+        "//visitor:visitors",
+        "//frontend:text_span",
+        "//ir:results",
+    ],
+)
 
 cc_lib_target(name = "node_span", intf_deps = [], impl_deps = None, test_deps = None)
 

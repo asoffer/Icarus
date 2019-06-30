@@ -7,7 +7,6 @@
 #include <vector>
 
 #include "absl/types/span.h"
-#include "ast/comma_list.h"
 #include "ast/expression.h"
 #include "ast/hashtag.h"
 #include "ast/node.h"
@@ -481,6 +480,26 @@ struct ChainOp : public Expression {
   std::vector<std::unique_ptr<Expression>> exprs_;
 };
 
+// TODO
+struct CommaList : public Expression {
+  CommaList() = default;
+  ~CommaList() override {}
+
+  CommaList(CommaList const &) noexcept = default;
+  CommaList(CommaList &&) noexcept      = default;
+  CommaList &operator=(CommaList const &) noexcept = default;
+  CommaList &operator=(CommaList &&) noexcept = default;
+
+#include "visitor/visitors.xmacro.h"
+
+  std::vector<std::unique_ptr<Expression>> &&extract() && {
+    return std::move(exprs_);
+  }
+  bool needs_expansion() const override { return !parenthesized_; }
+
+  std::vector<std::unique_ptr<Expression>> exprs_;
+};
+
 // EnumLiteral:
 //
 // Represents the literal expression evaluating to an enum-type or flags-type.
@@ -533,6 +552,7 @@ struct EnumLiteral : ScopeExpr<core::DeclScope> {
   Kind kind_;
 };
 
+// TODO
 struct FunctionLiteral : public Expression {
   // Represents a function with all constants bound to some value.
   FunctionLiteral(TextSpan span, Module *mod,
@@ -884,7 +904,7 @@ struct ScopeLiteral : public ScopeExpr<core::ScopeLitScope> {
   std::vector<std::unique_ptr<Declaration>> decls_;
 };
 
-
+// TODO
 struct ScopeNode : public Expression {
   ~ScopeNode() override {}
 
@@ -911,10 +931,43 @@ struct StructLiteral : public Expression {
   Module *mod_ = nullptr;
 };
 
-}  // namespace ast
+// TODO
+struct StructType : public Expression {
+  StructType(TextSpan span) : Expression(span) {}
+  ~StructType() override {}
 
-#include "ast/struct_type.h"
-#include "ast/switch.h"
-#include "ast/unop.h"
+#include "visitor/visitors.xmacro.h"
+
+  std::vector<std::unique_ptr<Expression>> args_;
+};
+
+// TODO comment
+// TODO consider separating this into two classes given that we know when we
+// parse if it has parens or not.
+struct Switch : public Expression {
+  ~Switch() override {}
+
+#include "visitor/visitors.xmacro.h"
+
+  std::unique_ptr<Expression> expr_;
+  std::vector<std::pair<std::unique_ptr<Node>, std::unique_ptr<Expression>>>
+      cases_;
+};
+
+// TODO
+struct Unop : public Expression {
+  ~Unop() override {}
+
+#include "visitor/visitors.xmacro.h"
+
+  bool needs_expansion() const override {
+    return !parenthesized_ && op == frontend::Operator::Expand;
+  }
+
+  std::unique_ptr<Expression> operand;
+  frontend::Operator op;
+};
+
+}  // namespace ast
 
 #endif  // ICARUS_AST_AST_H
