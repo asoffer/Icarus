@@ -31,6 +31,7 @@ cc_binary(
     srcs = ["fmt.cc"],
     deps = [
         "//ast:ast-format",
+        "//base:log-impl-format",
         "//core:impl-format",
         "//frontend:parse-impl-format",
         "//frontend:lex-impl-format",
