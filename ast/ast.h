@@ -904,16 +904,65 @@ struct ScopeLiteral : public ScopeExpr<core::ScopeLitScope> {
   std::vector<std::unique_ptr<Declaration>> decls_;
 };
 
-// TODO
+// ScopeNode:
+// 
+// Represents the usage of a scope such as `if`, `while`, or any other
+// user-defined scope. This encompasses all blocks (e.g., in the case of `if`,
+// it encompasses the `then` and `else` blocks if they are present.
+//
+// Examples:
+//  ```
+//  if (condition1) then {
+//    do_something()
+//  } else if (condition2) then {
+//    do_something_else()
+//  } else {
+//    do_third_thing()
+//  }
+//  ```
+//
+//  `unwrap (maybe_object) or { return -1 }`
+//
 struct ScopeNode : public Expression {
+  ScopeNode(TextSpan span, std::unique_ptr<Expression> name,
+            core::OrderedFnArgs<Expression> args, std::vector<BlockNode> blocks)
+      : Expression(std::move(span)),
+        name_(std::move(name)),
+        args_(std::move(args)),
+        blocks_(std::move(blocks)) {}
+
   ~ScopeNode() override {}
+
+  Expression const *name() const { return name_.get(); }
+  Expression *name() { return name_.get(); }
+  core::FnArgs<Expression const *, std::string_view> const &args() const {
+    return args_.args();
+  }
+
+  template <typename Fn>
+  void Apply(Fn &&fn) {
+    args_.Apply(std::forward<Fn>(fn));
+  }
+
+  absl::Span<BlockNode const> blocks() const { return blocks_; }
+  absl::Span<BlockNode> blocks() { return absl::MakeSpan(blocks_); }
+
+  // Appends the given block not necessarily to this ScopeNode, but to the scope
+  // that makes sense syntactically. For instance, in the first example above,
+  // the inner `if` ScopeNode checking `condition2` would be appended to.
+  void append_block_syntactically(BlockNode block, ScopeNode *updated_last_scope_node = nullptr) {
+    auto * scope_node = (last_scope_node_ ? last_scope_node_ : this);
+    scope_node->blocks_.push_back(std::move(block));
+    if (updated_last_scope_node) { last_scope_node_ = updated_last_scope_node; }
+  }
 
 #include "visitor/visitors.xmacro.h"
 
+ private:
   std::unique_ptr<Expression> name_;
-  core::FnArgs<std::unique_ptr<Expression>> args_;
+  core::OrderedFnArgs<Expression> args_;
   std::vector<BlockNode> blocks_;
-  ScopeNode *sugared_ = nullptr;
+  ScopeNode *last_scope_node_ = nullptr;
 };
 
 // TODO

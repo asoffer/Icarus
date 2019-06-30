@@ -633,14 +633,14 @@ std::unique_ptr<ast::Node> BuildControlHandler(
 std::unique_ptr<ast::Node> BuildScopeNode(
     absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  auto scope_node = std::make_unique<ast::ScopeNode>();
+  TextSpan span(nodes.front()->span, nodes.back()->span);
   auto[callee, ordered_fn_args] =
       std::move(nodes[0]->as<ast::Call>()).extract();
-  scope_node->name_ = std::move(callee);
-  scope_node->args_ = std::move(ordered_fn_args).DropOrder();
-  scope_node->span  = TextSpan(scope_node->name_->span, nodes[1]->span);
-  scope_node->blocks_.push_back(std::move(nodes[1]->as<ast::BlockNode>()));
-  return scope_node;
+  std::vector<ast::BlockNode> blocks;
+  blocks.push_back(std::move(nodes[1]->as<ast::BlockNode>()));
+  return std::make_unique<ast::ScopeNode>(std::move(span), std::move(callee),
+                                          std::move(ordered_fn_args),
+                                          std::move(blocks));
 }
 
 std::unique_ptr<ast::Node> BuildBlockNode(
@@ -674,27 +674,24 @@ std::unique_ptr<ast::Node> BuildBlockNode(
 std::unique_ptr<ast::Node> ExtendScopeNode(
     absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  auto &scope_node = nodes[0]->as<ast::ScopeNode>();
-  (scope_node.sugared_ ? scope_node.sugared_ : &scope_node)
-      ->blocks_.push_back(std::move(nodes[1]->as<ast::BlockNode>()));
+  nodes[0]->as<ast::ScopeNode>().append_block_syntactically(
+      std::move(nodes[1]->as<ast::BlockNode>()));
   return std::move(nodes[0]);
 }
 
 std::unique_ptr<ast::Node> SugaredExtendScopeNode(
     absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  auto *scope_node      = &nodes[0]->as<ast::ScopeNode>();
-  auto *extension_point = (scope_node->sugared_ != nullptr)
-                              ? scope_node->sugared_
-                              : &nodes[0]->as<ast::ScopeNode>();
-
-  scope_node->sugared_ = &nodes[2]->as<ast::ScopeNode>();
+  TextSpan span(nodes.front()->span, nodes.back()->span);
+  auto *updated_last_scope_node = &nodes[2]->as<ast::ScopeNode>();
   std::vector<std::unique_ptr<ast::Node>> block_stmt_nodes;
   block_stmt_nodes.push_back(std::move(nodes[2]));
-  // TODO span
-  extension_point->blocks_.emplace_back(
-      TextSpan{}, std::string{nodes[1]->as<ast::Identifier>().token()},
-      std::move(block_stmt_nodes));
+
+  nodes[0]->as<ast::ScopeNode>().append_block_syntactically(
+      ast::BlockNode(std::move(span),
+                     std::string{nodes[1]->as<ast::Identifier>().token()},
+                     std::move(block_stmt_nodes)),
+      updated_last_scope_node);
   return std::move(nodes[0]);
 }
 

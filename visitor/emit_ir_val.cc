@@ -1538,7 +1538,7 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
       name_to_block;
 
   DEBUG_LOG("ScopeNode")("scope_def ... evaluating.");
-  auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(node->name_.get(), ctx);
+  auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(node->name(), ctx);
   DEBUG_LOG("ScopeNode")("          ... completing work.");
   if (scope_def->work_item) { (*scope_def->work_item)(); }
   DEBUG_LOG("ScopeNode")("          ... done.");
@@ -1549,7 +1549,7 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
   }
 
   DEBUG_LOG("ScopeNode")("Constructing block_map");
-  for (auto &block_node : node->blocks_) {
+  for (auto const &block_node : node->blocks()) {
     auto &block        = name_to_block.at(block_node.name());
     std::get<1>(block) = &block_node;
     block_map.emplace(std::get<0>(block), ir::CompiledFn::Current->AddBlock());
@@ -1561,11 +1561,9 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
   DEBUG_LOG("ScopeNode")("Inlining entry handler at ", ast::ExprPtr{node});
   ASSERT_NOT_NULL(ctx->jump_table(node, ""))
       ->EmitInlineCall(
-          node->args_.Transform(
-              [this, ctx](std::unique_ptr<ast::Expression> const &expr) {
-                return std::pair<ast::Expression const *, ir::Results>(
-                    expr.get(), expr->EmitIr(this, ctx));
-              }),
+          node->args().Transform([this, ctx](ast::Expression const *expr) {
+            return std::pair(expr, expr->EmitIr(this, ctx));
+          }),
           block_map, ctx);
 
   DEBUG_LOG("ScopeNode")("Emit each block:");

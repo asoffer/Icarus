@@ -337,15 +337,16 @@ void DumpAst::operator()(ast::ScopeLiteral const *node) {
 }
 
 void DumpAst::operator()(ast::ScopeNode const *node) {
-  node->name_->DumpAst(this);
+  node->name()->DumpAst(this);
   absl::StrAppend(out_, " ");
 
-  if (!node->args_.empty()) {
+  auto const &args = node->args();
+  if (!args.empty()) {
     absl::StrAppend(out_, "(");
-    DumpFnArgs(this, node->args_);
+    DumpFnArgs(this, args);
     absl::StrAppend(out_, ")");
   }
-  for (auto const &block : node->blocks_) { block.DumpAst(this); }
+  for (auto const &block : node->blocks()) { block.DumpAst(this); }
 }
 
 void DumpAst::operator()(ast::StructLiteral const *node) {

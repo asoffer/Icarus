@@ -1810,26 +1810,25 @@ std::vector<std::pair<ast::Expression const *, VerifyResult>> VerifyBlockNode(
 
 VerifyResult VerifyType::operator()(ast::ScopeNode const *node,
                                     Context *ctx) const {
-  ASSIGN_OR(return _, auto name_result, node->name_->VerifyType(this, ctx));
+  ASSIGN_OR(return _, auto name_result, node->name()->VerifyType(this, ctx));
 
-  auto arg_results = node->args_.Transform(
-      [ctx, this](std::unique_ptr<ast::Expression> const &arg) {
-        return std::pair<ast::Expression const *, VerifyResult>{
-            arg.get(), arg->VerifyType(this, ctx)};
+  auto arg_results =
+      node->args().Transform([ctx, this](ast::Expression const *arg) {
+        return std::pair{arg, arg->VerifyType(this, ctx)};
       });
 
   // TODO type check
 
   // TODO check the scope type makes sense.
   if (!name_result.const_) {
-    ctx->error_log()->NonConstantScopeName(node->name_->span);
+    ctx->error_log()->NonConstantScopeName(node->name()->span);
     return VerifyResult::Error();
   }
 
-  bool err = false;
-  auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(node->name_.get(), ctx);
+  bool err        = false;
+  auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(node->name(), ctx);
   if (scope_def->work_item) { (*scope_def->work_item)(); }
-  for (auto &block : node->blocks_) {
+  for (auto const &block : node->blocks()) {
     DEBUG_LOG("ScopeNode")("Verifying dispatch for block ", block.name());
 
     auto block_results    = VerifyBlockNode(this, &block, scope_def, ctx);
@@ -1844,9 +1843,8 @@ VerifyResult VerifyType::operator()(ast::ScopeNode const *node,
   }
 
   DEBUG_LOG("ScopeNode")("Verifying dispatch for entry");
-  err |= !ast::VerifyDispatch(node, scope_def->inits_,
-                              arg_results, ctx, "")
-              .ok();
+  err |=
+      !ast::VerifyDispatch(node, scope_def->inits_, arg_results, ctx, "").ok();
   DEBUG_LOG("ScopeNode")("    ... done.");
 
   if (err) { return VerifyResult::Error(); }
