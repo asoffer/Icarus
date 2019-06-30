@@ -20,7 +20,6 @@ cc_lib_target(
     name = "ast",
     intf_deps = [
         ":comma_list",
-        ":enum_literal",
         ":expression",
         ":node",
         ":node_span",
@@ -41,7 +40,6 @@ cc_lib_target(
 )
 
 icarus_ast_node(name = "comma_list", deps = [":expression"])
-icarus_ast_node(name = "enum_literal", deps = [":expression"])
 icarus_ast_node(name = "expression", deps = [":hashtag", ":node"])
 icarus_ast_node(name = "node", deps = [
     "//base:util",

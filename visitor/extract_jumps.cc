@@ -63,7 +63,7 @@ void ExtractJumps::operator()(ast::Declaration const *node) {
 }
 
 void ExtractJumps::operator()(ast::EnumLiteral const *node) {
-  for (auto &elem : node->elems_) { elem->ExtractJumps(this); }
+  for (auto const *elem : node->elems()) { elem->ExtractJumps(this); }
 }
 
 void ExtractJumps::operator()(ast::FunctionLiteral const *node) {

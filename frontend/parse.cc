@@ -786,8 +786,9 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
 }
 
 std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, bool is_enum, Module *mod,
+    absl::Span<std::unique_ptr<ast::Node>> nodes,ast::EnumLiteral::Kind kind, Module *mod,
     error::Log *error_log) {
+  TextSpan span(nodes[0]->span, nodes[1]->span);
   std::vector<std::unique_ptr<ast::Expression>> elems;
   if (auto *stmts = nodes[1]->if_as<Statements>()) {
     // TODO if you want these values to depend on compile-time parameters,
@@ -798,8 +799,8 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
     }
   }
 
-  return std::make_unique<ast::EnumLiteral>(
-      std::move(elems), TextSpan(nodes[0]->span, nodes[1]->span), is_enum);
+  return std::make_unique<ast::EnumLiteral>(std::move(span), std::move(elems),
+                                            kind);
 }
 
 std::unique_ptr<ast::Node> BuildInterfaceLiteral(
@@ -943,7 +944,10 @@ std::unique_ptr<ast::Node> BuildKWBlock(
     std::string const &tk = nodes[0]->as<frontend::Token>().token;
 
     if (bool is_enum = (tk == "enum"); is_enum || tk == "flags") {
-      return BuildEnumOrFlagLiteral(std::move(nodes), is_enum, mod, error_log);
+      return BuildEnumOrFlagLiteral(std::move(nodes),
+                                    is_enum ? ast::EnumLiteral::Kind::Enum
+                                            : ast::EnumLiteral::Kind::Flags,
+                                    mod, error_log);
 
     } else if (tk == "struct") {
       return BuildConcreteStruct(std::move(nodes), mod, error_log);

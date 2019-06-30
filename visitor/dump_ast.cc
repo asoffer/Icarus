@@ -239,14 +239,14 @@ void DumpAst::operator()(ast::Declaration const *node) {
 }
 
 void DumpAst::operator()(ast::EnumLiteral const *node) {
-  switch (node->kind_) {
+  switch (node->kind()) {
     case ast::EnumLiteral::Kind::Enum: absl::StrAppend(out_, "enum {\n"); break;
     case ast::EnumLiteral::Kind::Flags:
       absl::StrAppend(out_, "flags {\n");
       break;
   }
   ++indentation_;
-  for (auto &elem : node->elems_) {
+  for (auto const *elem : node->elems()) {
     absl::StrAppend(out_, indent());
     elem->DumpAst(this);
     absl::StrAppend(out_, "\n");

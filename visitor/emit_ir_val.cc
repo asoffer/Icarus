@@ -1265,19 +1265,19 @@ ir::Results EmitIr::Val(ast::Declaration const *node, Context *ctx) const {
 }
 
 ir::Results EmitIr::Val(ast::EnumLiteral const *node, Context *ctx) const {
-  auto reg = ir::CreateEnum(node->kind_, ctx->mod_);
-  for (auto &elem : node->elems_) {
+  auto reg = ir::CreateEnum(node->kind(), ctx->mod_);
+  for (auto const *elem : node->elems()) {
     if (auto *id = elem->if_as<ast::Identifier>()) {
-      ir::AddEnumerator(node->kind_, reg, id->token());
+      ir::AddEnumerator(node->kind(), reg, id->token());
     } else if (auto *decl = elem->if_as<ast::Declaration>()) {
-      ir::AddEnumerator(node->kind_, reg, decl->id());
+      ir::AddEnumerator(node->kind(), reg, decl->id());
       if (!decl->IsCustomInitialized()) {
         ir::SetEnumerator(reg,
                           decl->init_val()->EmitIr(this, ctx).get<int32_t>(0));
       }
     }
   }
-  return ir::Results{ir::FinalizeEnum(node->kind_, reg)};
+  return ir::Results{ir::FinalizeEnum(node->kind(), reg)};
 }
 
 ir::Results EmitIr::Val(ast::FunctionLiteral const *node, Context *ctx) const {

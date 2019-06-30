@@ -1257,7 +1257,7 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
 
 VerifyResult VerifyType::operator()(ast::EnumLiteral const *node,
                                     Context *ctx) const {
-  for (auto const &elem : node->elems_) {
+  for (auto const &elem : node->elems()) {
     if (auto *decl = elem->if_as<ast::Declaration>()) {
       auto *t = decl->init_val()->VerifyType(this, ctx).type_;
       ASSERT(t == type::Int32);

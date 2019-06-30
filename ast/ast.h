@@ -7,7 +7,9 @@
 #include <vector>
 
 #include "absl/types/span.h"
+#include "ast/comma_list.h"
 #include "ast/expression.h"
+#include "ast/hashtag.h"
 #include "ast/node.h"
 #include "ast/node_span.h"
 #include "base/graph.h"
@@ -479,13 +481,58 @@ struct ChainOp : public Expression {
   std::vector<std::unique_ptr<Expression>> exprs_;
 };
 
-}  // namespace ast
+// EnumLiteral:
+//
+// Represents the literal expression evaluating to an enum-type or flags-type.
+// The body consists of a collection of declarations of the enumerators. Each of
+// which may be assigned a specific value.
+//
+// Example:
+//  ```
+//  Suit ::= enum {
+//    CLUB
+//    DIAMOND
+//    HEART
+//    SPADE
+//  }
+//  ```
+//
+//  `Color ::= flags { RED \\ BLUE \\ GREEN }`
+//
+//  ```
+//  errno_values ::= enum {
+//    SUCCESS ::=  0
+//    EPERM   ::=  1  // Operation not permitted
+//    ENOENT  ::=  2  // No such file or directory
+//    ESRCH   ::=  3  // No such process
+//    EINTR   ::=  4  // Interrupted system call
+//    EIO     ::=  5  // I/O error
+//    // ...
+//  }
+//  ```
+//
+struct EnumLiteral : ScopeExpr<core::DeclScope> {
+  enum Kind : char { Enum, Flags };
 
-#include "ast/comma_list.h"
-#include "ast/enum_literal.h"
-#include "ast/hashtag.h"
+  EnumLiteral(TextSpan span, std::vector<std::unique_ptr<Expression>> elems,
+              Kind kind)
+      : ScopeExpr<core::DeclScope>(std::move(span)),
+        elems_(std::move(elems)),
+        kind_(kind) {}
 
-namespace ast {
+  ~EnumLiteral() override {}
+
+  NodeSpan<Expression> elems() { return elems_; }
+  NodeSpan<Expression const> elems() const { return elems_; }
+  Kind kind() const { return kind_; }
+
+#include "visitor/visitors.xmacro.h"
+
+ private:
+  std::vector<std::unique_ptr<Expression>> elems_;
+  Kind kind_;
+};
+
 struct FunctionLiteral : public Expression {
   // Represents a function with all constants bound to some value.
   FunctionLiteral(TextSpan span, Module *mod,

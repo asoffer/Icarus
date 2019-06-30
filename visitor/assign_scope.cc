@@ -83,10 +83,9 @@ void AssignScope::operator()(ast::Declaration *node, core::Scope *scope) {
 }
 
 void AssignScope::operator()(ast::EnumLiteral *node, core::Scope *scope) {
-  node->enum_scope_ = scope->add_child<core::DeclScope>();
-  for (auto &elem : node->elems_) {
-    elem->assign_scope(this, node->enum_scope_.get());
-  }
+  node->scope_ = scope;
+  node->set_body_with_parent(scope);
+  SetAllScopes(this, node->elems(), node->body_scope());
 }
 
 void AssignScope::operator()(ast::FunctionLiteral *node,
