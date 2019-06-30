@@ -434,14 +434,15 @@ static std::vector<type::Type const *> ReturnTypes(
   return result;
 }
 
-visitor::VerifyResult VerifyDispatch(
-    ExprPtr expr, absl::Span<ir::AnyFunc const> overload_set,
+template <typename Container>
+std::pair<DispatchTable, visitor::VerifyResult> VerifyDispatchImpl(
+    ExprPtr expr, Container &&overload_set,
     core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
         &args,
-    Context *ctx, std::optional<std::string_view> block_name) {
+    Context *ctx) {
   DispatchTable table;
   absl::flat_hash_map<Expression const *, std::string> failure_reasons;
-  for (ir::AnyFunc overload : overload_set) {
+  for (auto &&overload : overload_set) {
     auto expected_row = OverloadParams(overload, args, ctx);
     if (!expected_row.has_value()) { continue; }
     auto match = MatchArgsToParams(expected_row->params, args);
@@ -453,7 +454,8 @@ visitor::VerifyResult VerifyDispatch(
 
   size_t num_outputs = NumOutputs(table.bindings_);
   if (num_outputs == std::numeric_limits<size_t>::max()) {
-    return ctx->set_result(expr, visitor::VerifyResult::Error());
+    return std::pair{std::move(table),
+                     ctx->set_result(expr, visitor::VerifyResult::Error())};
   }
   table.return_types_ = ReturnTypes(num_outputs, table.bindings_);
   auto *tup           = type::Tup(table.return_types_);
@@ -474,88 +476,45 @@ visitor::VerifyResult VerifyDispatch(
     // ctx->error_log()->MissingDispatchContingency(node->span,
     // expanded_fnargs.Transform([](type::Type const *arg) { return
     // arg->to_string(); }));
-    return visitor::VerifyResult::Error();
-  }
-
-  if (block_name) {
-    DEBUG_LOG("ScopeNode")
-    ("Inserting into jump table keyed on (", expr, ", \"", *block_name, "\")");
-    ctx->set_jump_table(expr, *block_name, std::move(table));
-  } else {
-    ctx->set_dispatch_table(expr, std::move(table));
+    return std::pair{std::move(table), visitor::VerifyResult::Error()};
   }
 
   // TODO this assumes we only have one return value or that we're returning a
   // tuple. So, e.g., you don't get the benefit of A -> (A, A) and B -> (A, B)
   // combining into (A | B) -> (A, A | B).
-  return ctx->set_result(expr, visitor::VerifyResult::Constant(tup));
+  return std::pair{std::move(table),
+                   ctx->set_result(expr, visitor::VerifyResult::Constant(tup))};
+}
+
+visitor::VerifyResult VerifyDispatch(
+    ExprPtr expr, absl::Span<ir::AnyFunc const> overload_set,
+    core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
+        &args,
+    Context *ctx) {
+  auto[table, result] = VerifyDispatchImpl(expr, overload_set, args, ctx);
+  ctx->set_dispatch_table(expr, std::move(table));
+  return result;
 }
 
 visitor::VerifyResult VerifyDispatch(
     ExprPtr expr, OverloadSet const &overload_set,
     core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
         &args,
-    Context *ctx, std::optional<std::string_view> block_name) {
-  DispatchTable table;
-  bool is_const = true;
-  absl::flat_hash_map<Expression const *, std::string> failure_reasons;
-  for (Overload const &overload : overload_set) {
-    is_const &= overload.result.const_;
-    auto expected_row = OverloadParams(overload, args, ctx);
-    if (!expected_row.has_value()) {
-      failure_reasons.emplace(overload.expr,
-                              std::move(expected_row).error().to_string());
-      continue;
-    }
-    auto match = MatchArgsToParams(expected_row->params, args);
-    if (!match.has_value()) {
-      failure_reasons.emplace(overload.expr,
-                              std::move(match).error().to_string());
-      continue;
-    }
+    Context *ctx) {
+  auto[table, result] = VerifyDispatchImpl(expr, overload_set, args, ctx);
+  ctx->set_dispatch_table(expr, std::move(table));
+  return result;
+}
 
-    expected_row->params = *std::move(match);
-    table.bindings_.push_back(*std::move(expected_row));
-  }
-
-  size_t num_outputs = NumOutputs(table.bindings_);
-  if (num_outputs == std::numeric_limits<size_t>::max()) {
-    return ctx->set_result(expr, visitor::VerifyResult::Error());
-  }
-  table.return_types_ = ReturnTypes(num_outputs, table.bindings_);
-  auto *tup           = type::Tup(table.return_types_);
-
-  auto expanded_fnargs = ExpandAllFnArgs(args);
-  expanded_fnargs.erase(
-      std::remove_if(expanded_fnargs.begin(), expanded_fnargs.end(),
-                     [&](core::FnArgs<type::Type const *> const &fnargs) {
-                       return absl::c_any_of(
-                           table.bindings_,
-                           [&fnargs](DispatchTable::Row const &row) {
-                             return Covers(row.params, fnargs);
-                           });
-                     }),
-      expanded_fnargs.end());
-  if (!expanded_fnargs.empty()) {
-    // TODO log an error
-    // ctx->error_log()->MissingDispatchContingency(node->span,
-    // expanded_fnargs.Transform([](type::Type const *arg) { return
-    // arg->to_string(); }));
-    return visitor::VerifyResult::Error();
-  }
-
-  if (block_name) {
-    DEBUG_LOG("ScopeNode")
-    ("Inserting into jump table keyed on (", expr, ", \"", *block_name, "\")");
-    ctx->set_jump_table(expr, *block_name, std::move(table));
-  } else {
-    ctx->set_dispatch_table(expr, std::move(table));
-  }
-
-  // TODO this assumes we only have one return value or that we're returning a
-  // tuple. So, e.g., you don't get the benefit of A -> (A, A) and B -> (A, B)
-  // combining into (A | B) -> (A, A | B).
-  return ctx->set_result(expr, visitor::VerifyResult(tup, is_const));
+visitor::VerifyResult VerifyJumpDispatch(
+    ExprPtr expr, absl::Span<ir::AnyFunc const> overload_set,
+    core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
+        &args,
+    Context *ctx) {
+  auto[table, result] = VerifyDispatchImpl(expr, overload_set, args, ctx);
+  DEBUG_LOG("ScopeNode")("Inserting into jump table");
+  ctx->set_jump_table(expr, nullptr, std::move(table));
+  return result;
 }
 
 static ir::RegisterOr<bool> EmitVariantMatch(ir::Reg needle,

@@ -35,8 +35,9 @@ struct Context {
   ast::DispatchTable const *dispatch_table(ast::ExprPtr expr) const;
   void set_dispatch_table(ast::ExprPtr expr, ast::DispatchTable &&table);
 
-  ast::DispatchTable const *jump_table(ast::ExprPtr expr, std::string_view s) const;
-  void set_jump_table(ast::ExprPtr expr, std::string_view s,
+  ast::DispatchTable const *jump_table(ast::ExprPtr jump_expr,
+                                       ast::ExprPtr node) const;
+  void set_jump_table(ast::ExprPtr jump_expr, ast::ExprPtr node,
                       ast::DispatchTable &&table);
 
   ir::Reg addr(ast::Declaration const *decl) const;

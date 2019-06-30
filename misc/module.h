@@ -103,10 +103,10 @@ struct Module {
     absl::flat_hash_map<ast::ExprPtr, ast::DispatchTable> dispatch_tables_;
 
     // Similar to dispatch tables, but specifically for `jump_handler`s. The
-    // tables are keyed first on the pointer to the ScopeLiteral expression and
-    // then by the block name (or "" in the case of scope entry).
-    absl::flat_hash_map<
-        ast::ExprPtr, absl::node_hash_map<std::string_view, ast::DispatchTable>>
+    // tables are keyed on both the scope/block node as well as the actual jump
+    // expression.
+    absl::flat_hash_map<std::pair<ast::ExprPtr, ast::ExprPtr>,
+                        ast::DispatchTable>
         jump_tables_;
     absl::node_hash_map<ast::ScopeLiteral const*, ir::ScopeDef> scope_defs_;
 

@@ -748,24 +748,25 @@ ir::Results EmitIr::Val(ast::BlockNode const *node, Context *ctx) const {
 
   EmitIrForStatements(this, node->stmts(), ctx);
 
-  // TODO yield args can just be this pair type, making this conversion
-  // unnecessary.
-  std::vector<std::pair<ast::Expression const *, ir::Results>> yield_args;
-  for (auto &arg : ctx->yields_stack_.back()) {
-    yield_args.emplace_back(arg.expr_, arg.val_);
-  }
-
-  // TODO this is tricky. We can easily destroy parameters that we're trying to
-  // pass to the next scope. Need to really treat these like function args and
-  // destroy them at the end of the inline call.
-  MakeAllDestructions(this, node->body_scope(), ctx);
-
-  ASSERT_NOT_NULL(ctx->jump_table(node, ""))
-      ->EmitInlineCall(
-          core::FnArgs<std::pair<ast::Expression const *, ir::Results>>{
-              std::move(yield_args), {}},
-          *ctx->block_map, ctx);
-
+//   // TODO yield args can just be this pair type, making this conversion
+//   // unnecessary.
+//   std::vector<std::pair<ast::Expression const *, ir::Results>> yield_args;
+//   for (auto &arg : ctx->yields_stack_.back()) {
+//     yield_args.emplace_back(arg.expr_, arg.val_);
+//   }
+// 
+//   // TODO this is tricky. We can easily destroy parameters that we're trying to
+//   // pass to the next scope. Need to really treat these like function args and
+//   // destroy them at the end of the inline call.
+//   MakeAllDestructions(this, node->body_scope(), ctx);
+// 
+//   ASSERT_NOT_NULL(ctx->jump_table(node, ""))
+//       ->EmitInlineCall(
+//           core::FnArgs<std::pair<ast::Expression const *, ir::Results>>{
+//               std::move(yield_args), {}},
+//           *ctx->block_map, ctx);
+// 
+  NOT_YET();
   return ir::Results{};
 }
 
@@ -1524,84 +1525,85 @@ ir::Results InitializeAndEmitBlockNode(ir::Results const &results,
 
 ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) const {
   DEBUG_LOG("ScopeNode")("Emitting IR for ScopeNode");
-  auto init_block = ir::CompiledFn::Current->AddBlock();
-  auto land_block = ir::CompiledFn::Current->AddBlock();
-
-  absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> block_map{
-      {ir::BlockDef::Start(), init_block}, {ir::BlockDef::Exit(), land_block}};
-  auto *old_block_map = ctx->block_map;
-  ctx->block_map      = &block_map;
-  base::defer d([&] { ctx->block_map = old_block_map; });
-
-  absl::flat_hash_map<std::string_view,
-                      std::tuple<ir::BlockDef const *, ast::BlockNode const *>>
-      name_to_block;
-
-  DEBUG_LOG("ScopeNode")("scope_def ... evaluating.");
-  auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(node->name(), ctx);
-  DEBUG_LOG("ScopeNode")("          ... completing work.");
-  if (scope_def->work_item) { (*scope_def->work_item)(); }
-  DEBUG_LOG("ScopeNode")("          ... done.");
-
-  for (auto const & [ name, block ] : scope_def->blocks_) {
-    name_to_block.emplace(std::piecewise_construct, std::forward_as_tuple(name),
-                          std::forward_as_tuple(&block, nullptr));
-  }
-
-  DEBUG_LOG("ScopeNode")("Constructing block_map");
-  for (auto const &block_node : node->blocks()) {
-    auto &block        = name_to_block.at(block_node.name());
-    std::get<1>(block) = &block_node;
-    block_map.emplace(std::get<0>(block), ir::CompiledFn::Current->AddBlock());
-  }
-
-  ir::UncondJump(init_block);
-  ir::BasicBlock::Current = init_block;
-
-  DEBUG_LOG("ScopeNode")("Inlining entry handler at ", ast::ExprPtr{node});
-  ASSERT_NOT_NULL(ctx->jump_table(node, ""))
-      ->EmitInlineCall(
-          node->args().Transform([this, ctx](ast::Expression const *expr) {
-            return std::pair(expr, expr->EmitIr(this, ctx));
-          }),
-          block_map, ctx);
-
-  DEBUG_LOG("ScopeNode")("Emit each block:");
-  for (auto[block_name, block_and_node] : name_to_block) {
-    if (block_name == "init" || block_name == "done") { continue; }
-    DEBUG_LOG("ScopeNode")("... ", block_name);
-    auto & [ block, block_node ] = block_and_node;
-    auto iter                    = block_map.find(block);
-    if (iter == block_map.end()) { continue; }
-    ir::BasicBlock::Current = iter->second;
-    auto results =
-        ASSERT_NOT_NULL(ctx->dispatch_table(ast::ExprPtr{block_node, 0x01}))
-            ->EmitInlineCall({}, block_map, ctx);
-    InitializeAndEmitBlockNode(results, block_node, this, ctx);
-  }
-
-  ir::BasicBlock::Current = land_block;
-
-  // TODO currently the block you end up on here is where EmitInlineCall thinks
-  // you should end up, but that's not necessarily well-defined for things that
-  // end up jumping to more than one possible location.
-
-  DEBUG_LOG("ScopeNode")("Inlining exit handler");
-  {
-    auto *mod       = const_cast<Module *>(scope_def->module());
-    bool swap_bc    = ctx->mod_ != mod;
-    Module *old_mod = std::exchange(ctx->mod_, mod);
-    if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
-    base::defer d([&] {
-      ctx->mod_ = old_mod;
-      if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
-    });
-  }
-  auto result =
-      ASSERT_NOT_NULL(ctx->dispatch_table(node))->EmitInlineCall({}, {}, ctx);
-
-  DEBUG_LOG("ScopeNode")("Done emitting IR for ScopeNode");
-  return result;
+//   auto init_block = ir::CompiledFn::Current->AddBlock();
+//   auto land_block = ir::CompiledFn::Current->AddBlock();
+// 
+//   absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> block_map{
+//       {ir::BlockDef::Start(), init_block}, {ir::BlockDef::Exit(), land_block}};
+//   auto *old_block_map = ctx->block_map;
+//   ctx->block_map      = &block_map;
+//   base::defer d([&] { ctx->block_map = old_block_map; });
+// 
+//   absl::flat_hash_map<std::string_view,
+//                       std::tuple<ir::BlockDef const *, ast::BlockNode const *>>
+//       name_to_block;
+// 
+//   DEBUG_LOG("ScopeNode")("scope_def ... evaluating.");
+//   auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(node->name(), ctx);
+//   DEBUG_LOG("ScopeNode")("          ... completing work.");
+//   if (scope_def->work_item) { (*scope_def->work_item)(); }
+//   DEBUG_LOG("ScopeNode")("          ... done.");
+// 
+//   for (auto const & [ name, block ] : scope_def->blocks_) {
+//     name_to_block.emplace(std::piecewise_construct, std::forward_as_tuple(name),
+//                           std::forward_as_tuple(&block, nullptr));
+//   }
+// 
+//   DEBUG_LOG("ScopeNode")("Constructing block_map");
+//   for (auto const &block_node : node->blocks()) {
+//     auto &block        = name_to_block.at(block_node.name());
+//     std::get<1>(block) = &block_node;
+//     block_map.emplace(std::get<0>(block), ir::CompiledFn::Current->AddBlock());
+//   }
+// 
+//   ir::UncondJump(init_block);
+//   ir::BasicBlock::Current = init_block;
+// 
+//   DEBUG_LOG("ScopeNode")("Inlining entry handler at ", ast::ExprPtr{node});
+//   ASSERT_NOT_NULL(ctx->jump_table(node, ""))
+//       ->EmitInlineCall(
+//           node->args().Transform([this, ctx](ast::Expression const *expr) {
+//             return std::pair(expr, expr->EmitIr(this, ctx));
+//           }),
+//           block_map, ctx);
+// 
+//   DEBUG_LOG("ScopeNode")("Emit each block:");
+//   for (auto[block_name, block_and_node] : name_to_block) {
+//     if (block_name == "init" || block_name == "done") { continue; }
+//     DEBUG_LOG("ScopeNode")("... ", block_name);
+//     auto & [ block, block_node ] = block_and_node;
+//     auto iter                    = block_map.find(block);
+//     if (iter == block_map.end()) { continue; }
+//     ir::BasicBlock::Current = iter->second;
+//     auto results =
+//         ASSERT_NOT_NULL(ctx->dispatch_table(ast::ExprPtr{block_node, 0x01}))
+//             ->EmitInlineCall({}, block_map, ctx);
+//     InitializeAndEmitBlockNode(results, block_node, this, ctx);
+//   }
+// 
+//   ir::BasicBlock::Current = land_block;
+// 
+//   // TODO currently the block you end up on here is where EmitInlineCall thinks
+//   // you should end up, but that's not necessarily well-defined for things that
+//   // end up jumping to more than one possible location.
+// 
+//   DEBUG_LOG("ScopeNode")("Inlining exit handler");
+//   {
+//     auto *mod       = const_cast<Module *>(scope_def->module());
+//     bool swap_bc    = ctx->mod_ != mod;
+//     Module *old_mod = std::exchange(ctx->mod_, mod);
+//     if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
+//     base::defer d([&] {
+//       ctx->mod_ = old_mod;
+//       if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
+//     });
+//   }
+//   auto result =
+//       ASSERT_NOT_NULL(ctx->dispatch_table(node))->EmitInlineCall({}, {}, ctx);
+// 
+//   DEBUG_LOG("ScopeNode")("Done emitting IR for ScopeNode");
+//   return result;
+  return ir::Results{};
 }
 
 static ir::TypedRegister<type::Type const *> GenerateStruct(

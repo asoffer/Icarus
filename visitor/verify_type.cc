@@ -527,7 +527,7 @@ static VerifyResult VerifyCall(ast::BuiltinFn const *b,
               b->span, "Second argument to `foreign` must be a constant.");
         }
       }
-      return visitor::VerifyResult::Constant(
+      return VerifyResult::Constant(
           backend::EvaluateAs<type::Type const *>(args.at(1), ctx));
     } break;
     case core::Builtin::Opaque:
@@ -535,10 +535,9 @@ static VerifyResult VerifyCall(ast::BuiltinFn const *b,
         ctx->error_log()->BuiltinError(
             b->span, "Built-in function `opaque` takes no arguments.");
       }
-      return visitor::VerifyResult::Constant(
-          ir::BuiltinType(core::Builtin::Opaque)
-              ->as<type::Function>()
-              .output[0]);
+      return VerifyResult::Constant(ir::BuiltinType(core::Builtin::Opaque)
+                                        ->as<type::Function>()
+                                        .output[0]);
 
     case core::Builtin::Bytes: {
       size_t size = arg_results.size();
@@ -558,10 +557,9 @@ static VerifyResult VerifyCall(ast::BuiltinFn const *b,
             "`type` (You provided a(n) " +
                 arg_results.at(0).type_->to_string() + ").");
       }
-      return visitor::VerifyResult::Constant(
-          ir::BuiltinType(core::Builtin::Bytes)
-              ->as<type::Function>()
-              .output[0]);
+      return VerifyResult::Constant(ir::BuiltinType(core::Builtin::Bytes)
+                                        ->as<type::Function>()
+                                        .output[0]);
     }
     case core::Builtin::Alignment: {
       size_t size = arg_results.size();
@@ -583,17 +581,16 @@ static VerifyResult VerifyCall(ast::BuiltinFn const *b,
             "type `type` (you provided a(n) " +
                 arg_results.at(0).type_->to_string() + ")");
       }
-      return visitor::VerifyResult::Constant(
-          ir::BuiltinType(core::Builtin::Alignment)
-              ->as<type::Function>()
-              .output[0]);
+      return VerifyResult::Constant(ir::BuiltinType(core::Builtin::Alignment)
+                                        ->as<type::Function>()
+                                        .output[0]);
     }
 #ifdef DBG
     case core::Builtin::DebugIr:
       // This is for debugging the compiler only, so there's no need to write
       // decent errors here.
       ASSERT(arg_results, matcher::IsEmpty());
-      return visitor::VerifyResult::Constant(type::Void());
+      return VerifyResult::Constant(type::Void());
 #endif  // DBG
   }
   UNREACHABLE();
@@ -866,8 +863,9 @@ VerifyResult VerifyType::operator()(ast::CommaList const *node,
                          VerifyResult(type::Tup(std::move(ts)), is_const));
 }
 
-static visitor::VerifyResult VerifySpecialFunctions(
-    ast::Declaration const *decl, type::Type const *decl_type, Context *ctx) {
+static VerifyResult VerifySpecialFunctions(ast::Declaration const *decl,
+                                           type::Type const *decl_type,
+                                           Context *ctx) {
   bool error = false;
   if (decl->id() == "copy") {
     if (auto *f = decl_type->if_as<type::Function>()) {
@@ -1440,7 +1438,7 @@ VerifyResult VerifyType::ConcreteFnLit(ast::FunctionLiteral const *node,
                      [](type::Type const *t) { return t == nullptr; }) ||
       absl::c_any_of(output_type_vec,
                      [](type::Type const *t) { return t == nullptr; })) {
-    return visitor::VerifyResult::Error();
+    return VerifyResult::Error();
   }
 
   // TODO need a better way to say if there was an error recorded in a
@@ -1448,7 +1446,7 @@ VerifyResult VerifyType::ConcreteFnLit(ast::FunctionLiteral const *node,
   // count.
   if (ctx->num_errors() > 0) {
     ctx->error_log()->Dump();
-    return visitor::VerifyResult::Error(); }
+    return VerifyResult::Error(); }
 
   if (node->outputs_) {
     for (size_t i = 0; i < output_type_vec.size(); ++i) {
@@ -1469,8 +1467,8 @@ VerifyResult VerifyType::ConcreteFnLit(ast::FunctionLiteral const *node,
         });
 
     return ctx->set_result(
-        node, visitor::VerifyResult::Constant(type::Func(
-                  std::move(input_type_vec), std::move(output_type_vec))));
+        node, VerifyResult::Constant(type::Func(std::move(input_type_vec),
+                                                std::move(output_type_vec))));
   } else {
     return VerifyBody(this, node, ctx);
   }
@@ -1680,6 +1678,7 @@ VerifyResult VerifyType::operator()(ast::Jump const *node, Context *ctx) const {
 
 VerifyResult VerifyType::operator()(ast::JumpHandler const *node,
                                     Context *ctx) const {
+  DEBUG_LOG("JumpHandler")(DumpAst::ToString(node));
   bool err = false;
   std::vector<type::Type const *> arg_types;
   arg_types.reserve(node->input().size());
@@ -1700,7 +1699,21 @@ VerifyResult VerifyType::operator()(ast::JumpHandler const *node,
           Context ctx(mod);
           ctx.constants_ = constants;
           VerifyBody(this, node, &ctx);
+
+          ExtractJumps extract_visitor;
+          for (auto const &stmt : node->stmts()) {
+            stmt->ExtractJumps(&extract_visitor);
+          }
+
+          auto jumps = extract_visitor.jumps(ExtractJumps::Kind::Jump);
+          for (auto const *jump : jumps) {
+            DEBUG_LOG("JumpHandler")(DumpAst::ToString(&jump->as<ast::Jump>()));
+            for (auto const& jump_opt : jump->as<ast::Jump>().options_) {
+            DEBUG_LOG("JumpHandler")(jump_opt.block, " args=(", jump_opt.args, ")");
+            }
+          }
         });
+
 
     return ctx->set_result(node, VerifyResult::Constant(type::Jmp(arg_types)));
   }
@@ -1779,14 +1792,14 @@ VerifyResult VerifyType::operator()(ast::ScopeLiteral const *node,
 std::vector<std::pair<ast::Expression const *, VerifyResult>> VerifyBlockNode(
     VerifyType const *visitor, ast::BlockNode const *node,
     ir::ScopeDef *scope_def, Context *ctx) {
-  visitor::ExtractJumps extract_visitor;
+  ExtractJumps extract_visitor;
   for (auto const &stmt : node->stmts()){
     stmt->ExtractJumps(&extract_visitor);
   }
 
   node->VerifyType(visitor, ctx);
 
-  auto yields = extract_visitor.jumps(visitor::ExtractJumps::Kind::Yield);
+  auto yields = extract_visitor.jumps(ExtractJumps::Kind::Yield);
   if (yields.empty()) {
     return {};
   } else {
@@ -1810,6 +1823,7 @@ std::vector<std::pair<ast::Expression const *, VerifyResult>> VerifyBlockNode(
 
 VerifyResult VerifyType::operator()(ast::ScopeNode const *node,
                                     Context *ctx) const {
+  // TODO how do you determine the type of this?
   ASSIGN_OR(return _, auto name_result, node->name()->VerifyType(this, ctx));
 
   auto arg_results =
@@ -1823,32 +1837,38 @@ VerifyResult VerifyType::operator()(ast::ScopeNode const *node,
   if (!name_result.const_) {
     ctx->error_log()->NonConstantScopeName(node->name()->span);
     return VerifyResult::Error();
+  } else if (name_result.type_ != type::Scope) {
+    NOT_YET("Log an error");
+    return VerifyResult::Error();
   }
 
-  bool err        = false;
   auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(node->name(), ctx);
   if (scope_def->work_item) { (*scope_def->work_item)(); }
+
+  // TODO check that the names of each BlockNode actually exist on the scope def
+
+  bool err = false;
   for (auto const &block : node->blocks()) {
     DEBUG_LOG("ScopeNode")("Verifying dispatch for block ", block.name());
 
     auto block_results    = VerifyBlockNode(this, &block, scope_def, ctx);
     auto const &block_def = scope_def->blocks_.at(block.name());
-    err |= !ast::VerifyDispatch(
+    err |= !ast::VerifyJumpDispatch(
                 node, block_def.after_,
                 core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>{
                     std::move(block_results), {}},
-                ctx, "")
+                ctx)
                 .ok();
     DEBUG_LOG("ScopeNode")("    ... done.");
-  }
+   }
 
-  DEBUG_LOG("ScopeNode")("Verifying dispatch for entry");
-  err |=
-      !ast::VerifyDispatch(node, scope_def->inits_, arg_results, ctx, "").ok();
-  DEBUG_LOG("ScopeNode")("    ... done.");
-
-  if (err) { return VerifyResult::Error(); }
-  return ast::VerifyDispatch(node, scope_def->dones_, /* TODO */ {}, ctx);
+   DEBUG_LOG("ScopeNode")("Verifying dispatch for entry");
+   auto init_result =
+       ast::VerifyJumpDispatch(node, scope_def->inits_, arg_results, ctx);
+   err |= !init_result.ok();
+   DEBUG_LOG("ScopeNode")("    ... done: ", init_result);
+   if (err) { return VerifyResult::Error(); }
+   return ast::VerifyDispatch(node, scope_def->dones_, /* TODO */ {}, ctx);
 }
 
 VerifyResult VerifyType::operator()(ast::StructLiteral const *node,

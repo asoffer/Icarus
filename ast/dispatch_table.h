@@ -52,17 +52,23 @@ struct DispatchTable {
   std::vector<type::Type const*> return_types_;
 };
 
+visitor::VerifyResult VerifyJumpDispatch(
+    ExprPtr expr, absl::Span<ir::AnyFunc const> overload_set,
+    core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
+        &args,
+    Context *ctx);
+
 visitor::VerifyResult VerifyDispatch(
     ExprPtr expr, absl::Span<ir::AnyFunc const> overload_set,
     core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
         &args,
-    Context *ctx, std::optional<std::string_view> block_name = std::nullopt);
+    Context *ctx);
 
 visitor::VerifyResult VerifyDispatch(
     ExprPtr expr, OverloadSet const &overload_set,
     core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
         &args,
-    Context *ctx, std::optional<std::string_view> block_name = std::nullopt);
+    Context *ctx);
 
 }  // namespace ast
 
