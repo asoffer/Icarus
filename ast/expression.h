@@ -3,6 +3,7 @@
 
 #include "ast/hashtag.h"
 #include "ast/node.h"
+#include "core/scope.h"
 
 namespace ast {
 
@@ -15,6 +16,8 @@ struct Expression : public Node {
   Expression &operator=(Expression const &) noexcept = default;
 
   virtual ~Expression() {}
+
+  Module *module() const { return scope_->module(); }
 
   virtual bool needs_expansion() const { return false; }
   std::vector<Hashtag> hashtags_;

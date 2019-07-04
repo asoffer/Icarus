@@ -26,6 +26,7 @@ struct Scope : public base::Cast<Scope> {
       std::string_view id) const;
 
   Module const *module() const;
+  Module *module();
 
   void InsertDecl(ast::Declaration *decl);
 

@@ -1190,8 +1190,8 @@ ir::Results EmitIr::Val(ast::CommaList const *node, Context *ctx) const {
 }
 
 ir::Results EmitIr::Val(ast::Declaration const *node, Context *ctx) const {
-  bool swap_bc    = ctx->mod_ != node->mod_;
-  Module *old_mod = std::exchange(ctx->mod_, node->mod_);
+  bool swap_bc    = ctx->mod_ != node->module();
+  Module *old_mod = std::exchange(ctx->mod_, node->module());
   if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
   base::defer d([&] {
     ctx->mod_ = old_mod;
@@ -1657,8 +1657,8 @@ ir::Results EmitIr::Val(ast::StructLiteral const *node, Context *ctx) const {
                                d.init_val(), arg_types.at(i++)));
     }
 
-    ir_func = node->mod_->AddFunc(type::Func(arg_types, {type::Type_}),
-                                  std::move(params));
+    ir_func = node->module()->AddFunc(type::Func(arg_types, {type::Type_}),
+                                      std::move(params));
 
     ir_func->work_item = &work_item;
   }

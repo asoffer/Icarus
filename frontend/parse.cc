@@ -488,7 +488,7 @@ std::unique_ptr<ast::Node> BuildDeclaration(
 
   return std::make_unique<ast::Declaration>(
       std::move(span), std::move(id), std::move(type_expr), std::move(init_val),
-      mod, IsConst ? ast::Declaration::f_IsConst : 0);
+      IsConst ? ast::Declaration::f_IsConst : 0);
 }
 
 std::vector<std::unique_ptr<ast::Declaration>> ExtractInputs(
@@ -855,7 +855,6 @@ std::unique_ptr<ast::StructLiteral> BuildStructLiteral(Statements &&stmts,
                                                        Module *mod,
                                                        error::Log *error_log) {
   auto struct_lit  = std::make_unique<ast::StructLiteral>();
-  struct_lit->mod_ = mod;
   struct_lit->span = std::move(span);
   for (auto &&stmt : std::move(stmts).content_) {
     if (stmt->is<ast::Declaration>()) {

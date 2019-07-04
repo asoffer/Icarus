@@ -12,6 +12,11 @@ void Scope::InsertDecl(ast::Declaration *decl) {
   }
 }
 
+Module *Scope::module() {
+  if (auto *ds = this->if_as<ModuleScope>()) { return ds->module_; }
+  return parent->module();
+}
+
 Module const *Scope::module() const {
   if (auto *ds = this->if_as<ModuleScope>()) { return ds->module_; }
   return parent->module();

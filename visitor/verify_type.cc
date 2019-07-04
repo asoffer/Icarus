@@ -1015,8 +1015,8 @@ static InferenceFailureReason Inferrable(type::Type const *t) {
 
 VerifyResult VerifyType::operator()(ast::Declaration const *node,
                                     Context *ctx) const {
-  bool swap_bc    = ctx->mod_ != node->mod_;
-  Module *old_mod = std::exchange(ctx->mod_, node->mod_);
+  bool swap_bc    = ctx->mod_ != node->module();
+  Module *old_mod = std::exchange(ctx->mod_, node->module());
   if (swap_bc) {
     // TODO constants
   }

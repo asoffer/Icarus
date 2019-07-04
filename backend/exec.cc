@@ -1109,7 +1109,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       for (uint64_t i = 0; i < cmd.sl_->args_.size(); ++i) {
         cached_vals.push_back(resolve<type::Type const *>(ir::Reg{i}));
       }
-      auto &cache = cmd.sl_->mod_->generic_struct_cache_[cmd.sl_];
+      auto &cache = cmd.sl_->module()->generic_struct_cache_[cmd.sl_];
       auto iter = cache.fwd_.try_emplace(std::move(cached_vals), nullptr).first;
       type::Type const **cache_slot = &iter->second;
       // Backwards direction set in FinalizeStruct

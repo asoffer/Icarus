@@ -88,7 +88,6 @@ struct ArrayLiteral : public Expression {
   bool empty() const { return exprs_.empty(); }
   size_t size() const { return exprs_.size(); }
   Expression const *elem(size_t i) const { return exprs_[i].get(); }
-  // TODO hide the unique_ptr here.
   NodeSpan<Expression const> elems() const { return exprs_; }
   NodeSpan<Expression> elems() { return exprs_; }
   std::vector<std::unique_ptr<Expression>> &&extract() && {
@@ -208,13 +207,11 @@ struct Declaration : public Expression {
 
   explicit Declaration(TextSpan span, std::string id,
                        std::unique_ptr<Expression> type_expression,
-                       std::unique_ptr<Expression> initial_val, ::Module *mod,
-                       Flags flags)
+                       std::unique_ptr<Expression> initial_val, Flags flags)
       : Expression(std::move(span)),
         id_(std::move(id)),
         type_expr_(std::move(type_expression)),
         init_val_(std::move(initial_val)),
-        mod_(mod),
         flags_(flags) {}
   Declaration(Declaration &&) noexcept = default;
   Declaration &operator=(Declaration &&) noexcept = default;
@@ -246,14 +243,7 @@ struct Declaration : public Expression {
  private:
   std::string id_;
   std::unique_ptr<Expression> type_expr_, init_val_;
-
- public:
-  Module *mod_ = nullptr;
   Flags flags_;
-
-  // TODO privatize
-  // Field in a function, whether or not it's an input our output.
-  bool is_fn_param_  = false;
 };
 
 // BlockLiteral:
@@ -977,7 +967,6 @@ struct StructLiteral : public Expression {
 
   std::unique_ptr<core::DeclScope> type_scope;
   std::vector<Declaration> fields_, args_;
-  Module *mod_ = nullptr;
 };
 
 // TODO
