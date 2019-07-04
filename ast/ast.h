@@ -807,7 +807,9 @@ struct JumpHandler : ScopeExpr<core::FnScope> {
                        std::vector<std::unique_ptr<Node>> stmts)
       : ScopeExpr<core::FnScope>(std::move(span)),
         input_(std::move(input)),
-        stmts_(std::move(stmts)) {}
+        stmts_(std::move(stmts)) {
+    for (auto &input : input_) { input->flags() |= Declaration::f_IsFnParam; }
+  }
 
 #include "visitor/visitors.xmacro.h"
   NodeSpan<Declaration const> input() const { return input_; }

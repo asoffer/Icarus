@@ -510,9 +510,20 @@ visitor::VerifyResult VerifyJumpDispatch(
     ExprPtr expr, absl::Span<ir::AnyFunc const> overload_set,
     core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
         &args,
-    Context *ctx) {
-  auto[table, result] = VerifyDispatchImpl(expr, overload_set, args, ctx);
+    Context *ctx, std::vector<ir::BlockDef const *> *block_defs) {
+  auto [table, result] = VerifyDispatchImpl(expr, overload_set, args, ctx);
   DEBUG_LOG("ScopeNode")("Inserting into jump table");
+  for (ir::AnyFunc f : overload_set) {
+    // TODO some of these may be entirely discarded at compile-time. We really
+    // only want to iterate through the jumps possible at run-time.
+    if (!f.func()) { continue; }
+    // TODO do you know this work is safe to do right now?
+    auto *work = f.func()->work_item;
+    if (work) { (*work)(); }
+    DEBUG_LOG("ScopeNode")("    ... jumps = ", f.func()->jumps_);
+    block_defs->insert(block_defs->end(), f.func()->jumps_.begin(),
+                       f.func()->jumps_.end());
+  }
   ctx->set_jump_table(expr, nullptr, std::move(table));
   return result;
 }

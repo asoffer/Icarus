@@ -4,7 +4,7 @@
 
 namespace visitor {
 
-std::vector<ast::Node const *> const &ExtractJumps::jumps(
+absl::Span<ast::Node const *const> ExtractJumps::jumps(
     ExtractJumps::Kind k) const {
   return data_[static_cast<std::underlying_type_t<Kind>>(k)];
 }

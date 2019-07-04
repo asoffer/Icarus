@@ -56,7 +56,7 @@ visitor::VerifyResult VerifyJumpDispatch(
     ExprPtr expr, absl::Span<ir::AnyFunc const> overload_set,
     core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
         &args,
-    Context *ctx);
+    Context *ctx, std::vector<ir::BlockDef const *> *block_defs);
 
 visitor::VerifyResult VerifyDispatch(
     ExprPtr expr, absl::Span<ir::AnyFunc const> overload_set,

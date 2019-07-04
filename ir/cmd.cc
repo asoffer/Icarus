@@ -139,6 +139,8 @@ RegisterOr<int64_t> Align(RegisterOr<type::Type const *> r) {
 void JumpPlaceholder(BlockDef const *block_def) {
   auto &cmd                         = MakeCmd(nullptr, Op::JumpPlaceholder);
   cmd.block_def_                    = block_def;
+  CompiledFn::Current->jumps_.push_back(block_def);
+  // TODO implied by jumps_ being non-empty.
   CompiledFn::Current->must_inline_ = true;
 }
 

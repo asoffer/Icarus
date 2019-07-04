@@ -16,7 +16,7 @@ struct ExtractJumps {
 #undef ICARUS_AST_NODE_X
 
   enum class Kind { Return, Yield, Jump };
-  std::vector<ast::Node const *> const &jumps(Kind k) const;
+  absl::Span<ast::Node const *const> jumps(Kind k) const;
 
  private:
   std::array<std::vector<ast::Node const *>, 3> data_;

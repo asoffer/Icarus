@@ -98,6 +98,12 @@ struct CompiledFn {
   // execution. It is only valid for core::Host().
   absl::flat_hash_map<ir::Reg, size_t> compiler_reg_to_offset_;
   bool must_inline_ = false;
+
+  // TODO this is a hack until you figure out how to handle scoping/jump
+  // handlers/etc. correctly. For now, jump_handlers fill this out and regular
+  // functions do not. Probably this means these two things should be separated
+  // into different types.
+  std::vector<ir::BlockDef const *> jumps_;
 };
 
 static_assert(alignof(CompiledFn) > 1);

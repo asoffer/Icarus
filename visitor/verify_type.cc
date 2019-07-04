@@ -1401,6 +1401,7 @@ static VerifyResult VerifyBody(VerifyType const *visitor,
 
 static void VerifyBody(VerifyType const *visitor, ast::JumpHandler const *node,
                        Context *ctx) {
+  DEBUG_LOG("JumpHandler")(DumpAst::ToString(node));
   ExtractJumps extract_visitor;
   for (auto const *stmt : node->stmts()) {
     stmt->VerifyType(visitor, ctx);
@@ -1695,7 +1696,7 @@ VerifyResult VerifyType::operator()(ast::JumpHandler const *node,
     return ctx->set_result(node, VerifyResult::Error());
   } else {
     ctx->mod_->deferred_work_.emplace(
-        [ constants{ctx->constants_}, node, this, mod{ctx->mod_} ]() mutable {
+        [constants{ctx->constants_}, node, this, mod{ctx->mod_}]() mutable {
           Context ctx(mod);
           ctx.constants_ = constants;
           VerifyBody(this, node, &ctx);
@@ -1709,11 +1710,11 @@ VerifyResult VerifyType::operator()(ast::JumpHandler const *node,
           for (auto const *jump : jumps) {
             DEBUG_LOG("JumpHandler")(DumpAst::ToString(&jump->as<ast::Jump>()));
             for (auto const& jump_opt : jump->as<ast::Jump>().options_) {
-            DEBUG_LOG("JumpHandler")(jump_opt.block, " args=(", jump_opt.args, ")");
+              DEBUG_LOG("JumpHandler")
+              (jump_opt.block, " args=(", jump_opt.args, ")");
             }
           }
         });
-
 
     return ctx->set_result(node, VerifyResult::Constant(type::Jmp(arg_types)));
   }
@@ -1789,86 +1790,134 @@ VerifyResult VerifyType::operator()(ast::ScopeLiteral const *node,
   return verify_result;
 }
 
-std::vector<std::pair<ast::Expression const *, VerifyResult>> VerifyBlockNode(
-    VerifyType const *visitor, ast::BlockNode const *node,
-    ir::ScopeDef *scope_def, Context *ctx) {
+static std::vector<
+    core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>>
+VerifyBlockNode(VerifyType const *visitor, ast::BlockNode const *node,
+                Context *ctx) {
+  node->VerifyType(visitor, ctx);
+
   ExtractJumps extract_visitor;
-  for (auto const &stmt : node->stmts()){
+  for (auto const *stmt : node->stmts()) {
     stmt->ExtractJumps(&extract_visitor);
   }
 
-  node->VerifyType(visitor, ctx);
-
   auto yields = extract_visitor.jumps(ExtractJumps::Kind::Yield);
-  if (yields.empty()) {
-    return {};
-  } else {
-    std::vector<
-        std::pair<ast::Expression const *, std::vector<type::Type const *>>>
-        yield_results;
-    for (auto *yield : yields) {
-      // TODO actually fill a fnargs
-      std::vector<std::pair<ast::Expression const *, VerifyResult>>
-          local_yields;
-      for (auto *yield_expr : yields[0]->as<ast::RepeatedUnop>().exprs()) {
-        local_yields.emplace_back(
-            yield_expr,
-            *ASSERT_NOT_NULL(ctx->prior_verification_attempt(yield_expr)));
-      }
-      return local_yields;
+  // TODO this setup is definitely wrong because it doesn't account for
+  // multiple yields correctly. For example,
+  //
+  // ```
+  //  result: int32 | bool = if (cond) then {
+  //    yield 3
+  //  } else if (other_cond) then {
+  //    yield 4
+  //  } else {
+  //    yield true
+  //  }
+  //  ```
+  std::vector<core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>>
+      result;
+  for (auto *yield : yields) {
+    auto &back = result.emplace_back();
+    // TODO actually fill a fnargs
+    std::vector<std::pair<ast::Expression const *, VerifyResult>>
+        local_pos_yields;
+    for (auto *yield_expr : yields[0]->as<ast::RepeatedUnop>().exprs()) {
+      back.pos_emplace(
+          yield_expr,
+          *ASSERT_NOT_NULL(ctx->prior_verification_attempt(yield_expr)));
     }
-    NOT_YET();
   }
+  return result;
 }
 
 VerifyResult VerifyType::operator()(ast::ScopeNode const *node,
                                     Context *ctx) const {
   // TODO how do you determine the type of this?
   ASSIGN_OR(return _, auto name_result, node->name()->VerifyType(this, ctx));
+  static_cast<void>(name_result);
 
   auto arg_results =
       node->args().Transform([ctx, this](ast::Expression const *arg) {
         return std::pair{arg, arg->VerifyType(this, ctx)};
       });
 
-  // TODO type check
-
-  // TODO check the scope type makes sense.
-  if (!name_result.const_) {
-    ctx->error_log()->NonConstantScopeName(node->name()->span);
-    return VerifyResult::Error();
-  } else if (name_result.type_ != type::Scope) {
-    NOT_YET("Log an error");
-    return VerifyResult::Error();
-  }
-
+  // TODO later on you'll want to allow dynamic dispatch. Calling a scope on an
+  // argument of type `A | B` where there are two scope objects (one of type `A`
+  // and one of type `B`) should work. But this necessitates evaluating not as a
+  // ScopeDef but as an overload set.
+  //
+  // Then on each possibility, you should first check that all the block names
+  // are available on all possible scopes.
+  //
+  // TODO you may not be able to compute this ahead of time. It relies on
+  // computing all the block handlers which may be generics.
   auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(node->name(), ctx);
   if (scope_def->work_item) { (*scope_def->work_item)(); }
 
-  // TODO check that the names of each BlockNode actually exist on the scope def
-
   bool err = false;
+  std::vector<ir::BlockDef const *> block_defs;
   for (auto const &block : node->blocks()) {
     DEBUG_LOG("ScopeNode")("Verifying dispatch for block ", block.name());
-
-    auto block_results    = VerifyBlockNode(this, &block, scope_def, ctx);
+    auto block_results = VerifyBlockNode(this, &block, ctx);
     auto const &block_def = scope_def->blocks_.at(block.name());
-    err |= !ast::VerifyJumpDispatch(
-                node, block_def.after_,
-                core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>{
-                    std::move(block_results), {}},
-                ctx)
-                .ok();
+    DEBUG_LOG("ScopeNode")("    ", block_results);
+    if (block_results.empty()) {
+      DEBUG_LOG("ScopeNode")("    ... empty block results");
+      auto result =
+          ast::VerifyJumpDispatch(node, block_def.after_, {}, ctx, &block_defs);
+      DEBUG_LOG("ScopeNode")("    ... dispatch result = ", result);
+    } else {
+      for (auto const &fn_args : block_results) {
+        auto result = ast::VerifyDispatch(node, block_def.after_, fn_args, ctx);
+        DEBUG_LOG("ScopeNode")("    ... dispatch result = ", result);
+      }}
     DEBUG_LOG("ScopeNode")("    ... done.");
-   }
+  }
+  auto init_result = ast::VerifyJumpDispatch(node, scope_def->inits_,
+                                             arg_results, ctx, &block_defs);
+  DEBUG_LOG("ScopeNode")("    ... init_result = ", init_result);
+  DEBUG_LOG("ScopeNode")("    ... block_defs = ", block_defs);
 
-   DEBUG_LOG("ScopeNode")("Verifying dispatch for entry");
-   auto init_result =
-       ast::VerifyJumpDispatch(node, scope_def->inits_, arg_results, ctx);
-   err |= !init_result.ok();
-   DEBUG_LOG("ScopeNode")("    ... done: ", init_result);
-   if (err) { return VerifyResult::Error(); }
-   return ast::VerifyDispatch(node, scope_def->dones_, /* TODO */ {}, ctx);
+  /*
+    // TODO type check
+
+    // TODO check the scope type makes sense.
+    if (!name_result.const_) {
+      ctx->error_log()->NonConstantScopeName(node->name()->span);
+      return VerifyResult::Error();
+    } else if (name_result.type_ != type::Scope) {
+      NOT_YET("Log an error");
+      return VerifyResult::Error();
+    }
+
+    auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(node->name(), ctx);
+    if (scope_def->work_item) { (*scope_def->work_item)(); }
+
+    // TODO check that the names of each BlockNode actually exist on the scope
+    def
+
+    bool err = false;
+    for (auto const &block : node->blocks()) {
+      DEBUG_LOG("ScopeNode")("Verifying dispatch for block ", block.name());
+
+      auto block_results    = VerifyBlockNode(this, &block, scope_def, ctx);
+      auto const &block_def = scope_def->blocks_.at(block.name());
+      err |= !ast::VerifyJumpDispatch(
+                  node, block_def.after_,
+                  core::FnArgs<std::pair<ast::Expression const *,
+    VerifyResult>>{ std::move(block_results), {}}, ctx) .ok();
+      DEBUG_LOG("ScopeNode")("    ... done.");
+     }
+
+     DEBUG_LOG("ScopeNode")("Verifying dispatch for entry");
+     auto init_result =
+         ast::VerifyJumpDispatch(node, scope_def->inits_, arg_results, ctx);
+     err |= !init_result.ok();
+     DEBUG_LOG("ScopeNode")("    ... done: ", init_result);
+     if (err) { return VerifyResult::Error(); }
+     return ast::VerifyDispatch(node, scope_def->dones_, * TODO * {}, ctx);
+    */
+  return VerifyResult::Constant(type::Void());
 }
 
 VerifyResult VerifyType::operator()(ast::StructLiteral const *node,
