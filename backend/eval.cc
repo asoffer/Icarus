@@ -89,7 +89,4 @@ ir::Results Evaluate(type::Typed<ast::Expression const *> typed_expr,
   return ir::Results::FromUntypedBuffer(std::move(offsets), std::move(buf));
 }
 
-ir::Results Evaluate(ast::Expression const *expr, Context *ctx) {
-  return Evaluate({expr, ASSERT_NOT_NULL(ctx->type_of(expr))}, ctx);
-}
 }  // namespace backend

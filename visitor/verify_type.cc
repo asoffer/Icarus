@@ -164,8 +164,9 @@ VerifyResult VerifyType::operator()(ast::Access const *node, Context *ctx) {
     // TODO We may not be allowed to evaluate node:
     //    f ::= (T: type) => T.key
     // We need to know that T is const
-    auto *evaled_type =
-        backend::EvaluateAs<type::Type const *>(node->operand(), ctx);
+    auto *t = ctx->type_of(node->operand());
+    auto *evaled_type = backend::EvaluateAs<type::Type const *>(
+        type::Typed{node->operand(), t}, ctx);
 
     // For enums and flags, regardless of whether we can get the value, it's
     // clear that node is supposed to be a member so we should emit an error but
@@ -214,7 +215,8 @@ VerifyResult VerifyType::operator()(ast::Access const *node, Context *ctx) {
       return VerifyResult::Error();
     }
 
-    auto *t = backend::EvaluateAs<Module const *>(node->operand(), ctx)
+    auto *t = backend::EvaluateAs<Module const *>(
+                  type::Typed{node->operand(), operand_result.type_}, ctx)
                   ->GetType(node->member_name());
     if (t == nullptr) {
       ctx->error_log()->NoExportedSymbol(node->span);
@@ -533,8 +535,8 @@ static VerifyResult VerifyCall(ast::BuiltinFn const *b,
               b->span, "Second argument to `foreign` must be a constant.");
         }
       }
-      return VerifyResult::Constant(
-          backend::EvaluateAs<type::Type const *>(args.at(1), ctx));
+      return VerifyResult::Constant(backend::EvaluateAs<type::Type const *>(
+          type::Typed<ast::Expression const *>{args.at(1), type::Type_}, ctx));
     } break;
     case core::Builtin::Opaque:
       if (!arg_results.empty()) {
@@ -670,8 +672,8 @@ VerifyResult VerifyType::operator()(ast::Cast const *node, Context *ctx) {
     ctx->error_log()->CastToNonConstantType(node->span);
     return VerifyResult::Error();
   }
-  auto *t = ASSERT_NOT_NULL(
-      backend::EvaluateAs<type::Type const *>(node->type(), ctx));
+  auto *t = ASSERT_NOT_NULL(backend::EvaluateAs<type::Type const *>(
+      type::Typed<ast::Expression const *>(node->type(), type::Type_), ctx));
   if (t->is<type::Struct>()) {
     ast::OverloadSet os(node->scope_, "as", ctx);
     os.add_adl("as", t);
@@ -1065,9 +1067,12 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
       auto *type_expr_type = type_expr_result.type_;
       if (type_expr_type == type::Type_) {
         node_type = ASSERT_NOT_NULL(
-            ctx->set_result(node, VerifyResult::Constant(
-                                      backend::EvaluateAs<type::Type const *>(
-                                          node->type_expr(), ctx)))
+            ctx->set_result(node,
+                            VerifyResult::Constant(
+                                backend::EvaluateAs<type::Type const *>(
+                                    type::Typed<ast::Expression const *>(
+                                        node->type_expr(), type_expr_type),
+                                    ctx)))
                 .type_);
 
         if (!(node->flags() & ast::Declaration::f_IsFnParam) &&
@@ -1081,11 +1086,13 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
           NOT_YET("log an error");
           return ctx->set_result(node, VerifyResult::Error());
         } else {
-          node_type =
-              ctx->set_result(node, VerifyResult::Constant(
-                                        backend::EvaluateAs<type::Type const *>(
-                                            node->type_expr(), ctx)))
-                  .type_;
+          node_type = ctx->set_result(
+                             node, VerifyResult::Constant(
+                                       backend::EvaluateAs<type::Type const *>(
+                                           type::Typed<ast::Expression const *>(
+                                               node->type_expr(), type::Type_),
+                                           ctx)))
+                          .type_;
         }
       } else {
         ctx->error_log()->NotAType(node->type_expr()->span,
@@ -1140,11 +1147,13 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
           NOT_YET("log an error");
           error = true;
         } else {
-          node_type =
-              ctx->set_result(node, VerifyResult::Constant(
-                                        backend::EvaluateAs<type::Type const *>(
-                                            node->type_expr(), ctx)))
-                  .type_;
+          node_type = ctx->set_result(
+                             node, VerifyResult::Constant(
+                                       backend::EvaluateAs<type::Type const *>(
+                                           type::Typed<ast::Expression const *>(
+                                               node->type_expr(), type::Type_),
+                                           ctx)))
+                          .type_;
         }
 
         // TODO initialization, not assignment. Error messages will be
@@ -1176,7 +1185,9 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
         node_type =
             ctx->set_result(node, VerifyResult::Constant(
                                       backend::EvaluateAs<type::Type const *>(
-                                          node->type_expr(), ctx)))
+                                          type::Typed<ast::Expression const *>(
+                                              node->type_expr(), type::Type_),
+                                          ctx)))
                 .type_;
       } else if (type_expr_type == type::Intf) {
         node_type =
@@ -1201,7 +1212,10 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
       // TODO check shadowing against other modules?
       // TODO what if no init val is provded? what if not constant?
       node->scope_->embedded_modules_.insert(
-          backend::EvaluateAs<Module const *>(node->init_val(), ctx));
+          backend::EvaluateAs<Module const *>(
+              type::Typed<ast::Expression const *>(node->init_val(),
+                                                   type::Module),
+              ctx));
       return ctx->set_result(node, VerifyResult::Constant(type::Module));
     } else if (node_type->is<type::Tuple>()) {
       NOT_YET(node_type, DumpAst::ToString(node));
@@ -1468,7 +1482,9 @@ VerifyResult VerifyType::ConcreteFnLit(ast::FunctionLiteral const *node,
       } else {
         ASSERT(output_type_vec.at(i) == type::Type_);
         output_type_vec.at(i) = backend::EvaluateAs<type::Type const *>(
-            node->outputs_->at(i).get(), ctx);
+            type::Typed<ast::Expression const *>(node->outputs_->at(i).get(),
+                                                 type::Type_),
+            ctx);
       }
     }
 
@@ -1568,7 +1584,9 @@ VerifyResult VerifyType::operator()(ast::Import const *node, Context *ctx) {
 
   if (err) { return VerifyResult::Error(); }
   // TODO storing node might not be safe.
-  auto src = backend::EvaluateAs<std::string_view>(node->operand(), ctx);
+  auto src = backend::EvaluateAs<std::string_view>(
+      type::Typed<ast::Expression const *>(node->operand(), type::ByteView),
+      ctx);
   ASSIGN_OR(ctx->error_log()->MissingModule(src, *ctx->mod_->path_);
             return VerifyResult::Error(),  //
                    auto pending_mod,
@@ -1608,7 +1626,8 @@ VerifyResult VerifyType::operator()(ast::Index const *node, Context *ctx) {
     }
 
     int64_t index = [&]() -> int64_t {
-      auto results = backend::Evaluate(node->rhs(), ctx);
+      auto results =
+          backend::Evaluate(type::Typed{node->rhs(), index_type}, ctx);
       if (index_type == type::Int8) { return results.get<int8_t>(0).val_; }
       if (index_type == type::Int16) { return results.get<int16_t>(0).val_; }
       if (index_type == type::Int32) { return results.get<int32_t>(0).val_; }
@@ -1656,7 +1675,10 @@ VerifyResult VerifyType::operator()(ast::Jump const *node, Context *ctx) {
   if (err) { NOT_YET(); }
 
   auto scope_def = backend::EvaluateAs<ir::ScopeDef *>(
-      node->scope_->Containing<core::ScopeLitScope>()->scope_lit_, ctx);
+      type::Typed<ast::Expression const *>(
+          node->scope_->Containing<core::ScopeLitScope>()->scope_lit_,
+          type::Scope),
+      ctx);
   if (scope_def->work_item) { (*scope_def->work_item)(); }
 
   for (auto const &opt : node->options_) {
@@ -1832,7 +1854,10 @@ VerifyResult VerifyType::operator()(ast::ScopeNode const *node, Context *ctx) {
   //
   // TODO you may not be able to compute this ahead of time. It relies on
   // computing all the block handlers which may be generics.
-  auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(node->name(), ctx);
+  //
+  // TODO is the scope type correct here?
+  auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(
+      type::Typed<ast::Expression const *>{node->name(), type::Scope}, ctx);
   if (scope_def->work_item) { (*scope_def->work_item)(); }
 
   bool err = false;

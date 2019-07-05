@@ -74,7 +74,8 @@ std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::Index const *node,
         index, type::Ptr(type::Nat8))};
   } else if (auto *tup = lhs_type->if_as<type::Tuple>()) {
     auto index =
-        ir::Cast(rhs_type, type::Int64, backend::Evaluate(node->rhs(), ctx))
+        ir::Cast(rhs_type, type::Int64,
+                 backend::Evaluate(type::Typed{node->rhs(), rhs_type}, ctx))
             .get<int64_t>(0)
             .val_;
     return {ir::Field(node->lhs()->EmitLVal(this, ctx)[0], tup, index).get()};

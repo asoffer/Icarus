@@ -75,9 +75,10 @@ Module *CompileModule(Module *mod, std::filesystem::path const *path) {
   for (auto &fn : mod->fns_) { fn->CheckInvariants(); }
 
   for (auto const &stmt : mod->statements_) {
-    if (auto *decl = stmt->if_as<ast::Declaration>()) {
+    if (auto const *decl = stmt->if_as<ast::Declaration>()) {
       if (decl->id() != "main") { continue; }
-      auto f = backend::EvaluateAs<ir::AnyFunc>(decl->init_val(), &ctx);
+      auto f = backend::EvaluateAs<ir::AnyFunc>(
+          type::Typed{decl->init_val(), ctx.type_of(decl->init_val())}, &ctx);
       ASSERT(f.is_fn() == true);
       auto ir_fn = f.func();
 

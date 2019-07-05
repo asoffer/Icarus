@@ -18,7 +18,6 @@ struct Expression;
 struct Context;
 
 namespace backend {
-ir::Results Evaluate(ast::Expression const *expr, Context *ctx);
 ir::Results Evaluate(type::Typed<ast::Expression const *> typed_expr,
                      Context *ctx);
 base::untyped_buffer EvaluateToBuffer(
@@ -36,12 +35,6 @@ T EvaluateAs(type::Typed<ast::Expression const *> typed_expr, Context *ctx) {
   base::untyped_buffer result_buf = EvaluateToBuffer(typed_expr, ctx);
   ASSERT(result_buf.size() == sizeof(T));
   return result_buf.get<T>(0);
-}
-
-template <typename T>
-T EvaluateAs(ast::Expression const *expr, Context *ctx) {
-  static_assert(!std::is_same_v<T, ir::BlockDef *>, "");
-  return EvaluateAs<T>({expr, ctx->type_of(expr)}, ctx);
 }
 
 }  // namespace backend

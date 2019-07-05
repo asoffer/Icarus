@@ -433,7 +433,10 @@ ir::Results EmitIr::Val(ast::Access const *node, Context *ctx) {
   if (ctx->type_of(node->operand()) == type::Module) {
     // TODO we already did this evaluation in type verification. Can't we just
     // save and reuse it?
-    return backend::EvaluateAs<Module const *>(node->operand(), ctx)
+    return backend::EvaluateAs<Module const *>(
+               type::Typed<ast::Expression const *>(node->operand(),
+                                                    type::Module),
+               ctx)
         ->GetDecl(node->member_name())
         ->EmitIr(this, ctx);
   }
@@ -780,10 +783,14 @@ ir::Results EmitIr::Val(ast::Call const *node, Context *ctx) {
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
     switch (b->value()) {
       case core::Builtin::Foreign: {
-        auto name =
-            backend::EvaluateAs<std::string_view>(node->args().at(0), ctx);
-        auto *foreign_type =
-            backend::EvaluateAs<type::Type const *>(node->args().at(1), ctx);
+        auto name = backend::EvaluateAs<std::string_view>(
+            type::Typed<ast::Expression const *>(node->args().at(0),
+                                                 type::ByteView),
+            ctx);
+        auto *foreign_type = backend::EvaluateAs<type::Type const *>(
+            type::Typed<ast::Expression const *>(node->args().at(1),
+                                                 type::Type_),
+            ctx);
         return ir::Results{ir::LoadSymbol(name, foreign_type).get()};
       } break;
 
@@ -884,11 +891,10 @@ ir::Results ArrayCompare(type::Array const *lhs_type, ir::Results const &lhs_ir,
   if (success) {
     auto *fn = ctx->mod_->AddFunc(
         type::Func({type::Ptr(lhs_type), type::Ptr(rhs_type)}, {type::Bool}),
-        core::FnParams(core::Param{"",
-                                   type::Typed<ast::Expression const *>{
-                                       nullptr, type::Ptr(lhs_type)}},
-                       core::Param{"", type::Typed<ast::Expression const *>{
-                                           nullptr, type::Ptr(rhs_type)}}));
+        core::FnParams(core::Param{"", type::Typed<ast::Expression const *>(
+                                           nullptr, type::Ptr(lhs_type))},
+                       core::Param{"", type::Typed<ast::Expression const *>(
+                                           nullptr, type::Ptr(rhs_type))}));
 
     CURRENT_FUNC(fn) {
       ir::BasicBlock::Current = fn->entry();
@@ -1364,7 +1370,10 @@ ir::Results EmitIr::Val(ast::Interface const *node, Context *ctx) {
 ir::Results EmitIr::Val(ast::Jump const *node, Context *ctx) {
   // TODO pick the best place to jump.
   auto scope_def = backend::EvaluateAs<ir::ScopeDef *>(
-      node->scope_->Containing<core::ScopeLitScope>()->scope_lit_, ctx);
+      type::Typed<ast::Expression const *>(
+          node->scope_->Containing<core::ScopeLitScope>()->scope_lit_,
+          type::Scope),
+      ctx);
   if (scope_def->work_item) { (*scope_def->work_item)(); }
 
   if (node->options_.at(0).block == "start") {
@@ -1396,8 +1405,8 @@ ir::Results EmitIr::Val(ast::JumpHandler const *node, Context *ctx) {
       auto const *decl = node->input()[i];
       params.set(i,
                  core::Param<type::Typed<ast::Expression const *>>{
-                     decl->id(), type::Typed<ast::Expression const *>{
-                                     decl->init_val(), jmp_type->args()[i]}});
+                     decl->id(), type::Typed<ast::Expression const *>(
+                                     decl->init_val(), jmp_type->args()[i])});
     }
 
     ir_func = ctx->mod_->AddJump(jmp_type, std::move(params));
@@ -1805,7 +1814,10 @@ ir::Results EmitIr::Val(ast::Unop const *node, Context *ctx) {
     case frontend::Operator::Eval: {
       // Guaranteed to be constant by VerifyType
       // TODO what if there's an error during evaluation?
-      return backend::Evaluate(node->operand.get(), ctx);
+      return backend::Evaluate(
+          type::Typed<ast::Expression const *>(
+              node->operand.get(), ctx->type_of(node->operand.get())),
+          ctx);
     }
     case frontend::Operator::Mul:
       return ir::Results{

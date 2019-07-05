@@ -265,8 +265,9 @@ static base::expected<DispatchTable::Row> OverloadParams(
 
   if (result.const_) {
     if (result.type_ == type::Generic) {
-      auto *fn_lit =
-          backend::EvaluateAs<ast::FunctionLiteral *>(overload.expr, ctx);
+      auto *fn_lit = backend::EvaluateAs<ast::FunctionLiteral *>(
+          type::Typed<ast::Expression const *>{overload.expr, result.type_},
+          ctx);
 
       core::FnParams<type::Typed<Expression const *>> params(
           fn_lit->inputs_.size());
@@ -384,12 +385,16 @@ static base::expected<DispatchTable::Row> OverloadParams(
       auto *fn_type =
           ASSERT_NOT_NULL(visitor.ConcreteFnLit(fn_lit, ctx).type_);
       visitor.CompleteDeferredBodies();
-      return DispatchTable::Row{std::move(params),
-                                &fn_type->as<type::Function>(),
-                                backend::EvaluateAs<ir::AnyFunc>(fn_lit, ctx)};
+      return DispatchTable::Row{
+          std::move(params), &fn_type->as<type::Function>(),
+          backend::EvaluateAs<ir::AnyFunc>(
+              type::Typed<ast::Expression const *>{fn_lit, fn_type}, ctx)};
     } else {
       return OverloadParams(
-          backend::EvaluateAs<ir::AnyFunc>(overload.expr, ctx), args, ctx);
+          backend::EvaluateAs<ir::AnyFunc>(
+              type::Typed<ast::Expression const *>{overload.expr, result.type_},
+              ctx),
+          args, ctx);
     }
   } else {
     if (result.type_ == type::Generic) {
