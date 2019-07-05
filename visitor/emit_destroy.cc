@@ -12,7 +12,7 @@
 
 namespace visitor {
 
-void EmitIr::Destroy(type::Struct const *t, ir::Reg reg, Context *ctx) const {
+void EmitIr::Destroy(type::Struct const *t, ir::Reg reg, Context *ctx) {
   if (!t->HasDestructor()) { return; }
   t->destroy_func_.init([=]() {
     if (auto fn = SpecialFunction(this, t, "~", ctx)) { return *fn; }
@@ -39,7 +39,7 @@ void EmitIr::Destroy(type::Struct const *t, ir::Reg reg, Context *ctx) const {
   ir::Destroy(t, reg);
 }
 
-void EmitIr::Destroy(type::Variant const *t, ir::Reg reg, Context *ctx) const {
+void EmitIr::Destroy(type::Variant const *t, ir::Reg reg, Context *ctx) {
   if (!t->HasDestructor()) { return; }
   // TODO design and build a jump table?
   // TODO remove these casts in favor of something easier to track properties on
@@ -80,7 +80,7 @@ void EmitIr::Destroy(type::Variant const *t, ir::Reg reg, Context *ctx) const {
            ir::Arguments(t->destroy_func_->type_, ir::Results{reg}));
 }
 
-void EmitIr::Destroy(type::Tuple const *t, ir::Reg reg, Context *ctx) const {
+void EmitIr::Destroy(type::Tuple const *t, ir::Reg reg, Context *ctx) {
   if (!t->HasDestructor()) { return; }
   t->destroy_func_.init([=]() {
     auto *fn = ctx->mod_->AddFunc(
@@ -103,7 +103,7 @@ void EmitIr::Destroy(type::Tuple const *t, ir::Reg reg, Context *ctx) const {
   ir::Destroy(t, reg);
 }
 
-void EmitIr::Destroy(type::Array const* t, ir::Reg reg, Context *ctx) const {
+void EmitIr::Destroy(type::Array const* t, ir::Reg reg, Context *ctx) {
   if (!t->HasDestructor()) { return; }
   t->destroy_func_.init([=]() {
     // TODO special function?

@@ -24,7 +24,7 @@ constexpr char const *Name() {
   if constexpr (Cat == Copy) { return "copy"; }
 }
 
-std::optional<ir::AnyFunc> SpecialFunction(EmitIr const *visitor,
+std::optional<ir::AnyFunc> SpecialFunction(EmitIr *visitor,
                                            type::Struct const *s,
                                            char const *symbol, Context *ctx);
 

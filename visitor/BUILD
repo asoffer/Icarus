@@ -196,6 +196,7 @@ cc_lib_target(
     name = "emit_ir",
     cfgs = ["match", "compile"],
     intf_deps = [
+        ":deferred_body",
         "//ast:ast_fwd",
         "//ir:addr",
         "//ir:register",
@@ -334,6 +335,7 @@ cc_lib_target(
     name = "verify_type",
     cfgs = ["match", "compile"],
     intf_deps = [
+        ":deferred_body",
         "//ast:ast_fwd",
         "//ast:node_xmacro",
     ],
@@ -379,5 +381,15 @@ cc_lib_target(
         "//type:all_types",
         "@com_google_absl//absl/algorithm:container",
     ],
+    test_deps = None,
+)
+
+cc_lib_target(
+    name = "deferred_body",
+    cfgs = ["match", "compile"],
+    intf_deps = [
+        "@com_google_absl//absl/container:node_hash_map",
+    ],
+    impl_deps = None,
     test_deps = None,
 )

@@ -60,9 +60,6 @@ struct Module {
 #endif  // ICARUS_VISITOR_EMIT_IR
   ast::Declaration *GetDecl(std::string_view name) const;
 
-  std::queue<std::function<void()>> deferred_work_;
-  void CompleteAllDeferredWork();
-
   error::Log error_log_;
 
   core::ModuleScope scope_;

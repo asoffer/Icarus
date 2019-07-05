@@ -3,8 +3,9 @@
 
 #include <iostream>
 
-#include "base/debug.h"
 #include "ast/ast_fwd.h"
+#include "base/debug.h"
+#include "visitor/deferred_body.h"
 
 struct Context;
 
@@ -45,16 +46,16 @@ constexpr bool operator!=(VerifyResult lhs, VerifyResult rhs) {
   return !(lhs == rhs);
 }
 
-struct VerifyType {
+struct VerifyType : public DeferredBody<VerifyType> {
   VerifyResult operator()(ast::Node const *node, Context *ctx) const {
     UNREACHABLE();
   }
-#define ICARUS_AST_NODE_X(name)\
-  VerifyResult operator()(ast::name const *node, Context *ctx) const;
+#define ICARUS_AST_NODE_X(name)                                                \
+  VerifyResult operator()(ast::name const *node, Context *ctx);
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
 
-  VerifyResult ConcreteFnLit(ast::FunctionLiteral const*node, Context *ctx) const;
+  VerifyResult ConcreteFnLit(ast::FunctionLiteral const *node, Context *ctx);
 };
 
 }  // namespace visitor

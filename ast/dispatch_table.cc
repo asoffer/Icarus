@@ -29,7 +29,7 @@ std::pair<DispatchTable, type::Type const *> DispatchTable::Make(
   NOT_YET();
 }
 
-static ir::Results PrepArg(visitor::EmitIr const *visitor, type::Type const *to,
+static ir::Results PrepArg(visitor::EmitIr *visitor, type::Type const *to,
                            type::Type const *from, ir::Results const &val,
                            Context *ctx) {
   if (to == from) { return val; }
@@ -277,6 +277,7 @@ static base::expected<DispatchTable::Row> OverloadParams(
 
         visitor::VerifyType visitor;
         auto result = decl->VerifyType(&visitor, ctx);
+        visitor.CompleteDeferredBodies();
         if (!result.ok()) { NOT_YET(); }
 
         if (!(param.value->flags() & Declaration::f_IsConst)) {
@@ -382,6 +383,7 @@ static base::expected<DispatchTable::Row> OverloadParams(
       visitor::VerifyType visitor;
       auto *fn_type =
           ASSERT_NOT_NULL(visitor.ConcreteFnLit(fn_lit, ctx).type_);
+      visitor.CompleteDeferredBodies();
       return DispatchTable::Row{std::move(params),
                                 &fn_type->as<type::Function>(),
                                 backend::EvaluateAs<ir::AnyFunc>(fn_lit, ctx)};
@@ -634,6 +636,8 @@ static bool EmitOneCall(
                                  ctx->type_of(expr), results, ctx));
     }
   }
+
+  visitor.CompleteDeferredBodies();
 
   if constexpr (Inline) {
     ASSERT(fn.is_reg_ == false);

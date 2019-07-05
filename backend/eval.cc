@@ -43,6 +43,7 @@ static ir::CompiledFn ExprFn(type::Typed<ast::Expression const *> typed_expr,
 
     ir::BasicBlock::Current = fn.entry();
     ir::UncondJump(start_block);
+    visitor.CompleteDeferredBodies();
   }
   return fn;
 }

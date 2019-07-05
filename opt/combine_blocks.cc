@@ -60,6 +60,7 @@ static void DeleteDeadBlocks(ir::CompiledFn* fn) {
     ir::BlockIndex current = processing.front();
     processing.pop();
     if (!alive.insert(current).second) { continue; }
+    ASSERT(fn->block(current).cmds_.empty() == false);
     auto const& cmd = fn->block(current).cmds_.back();
     switch (cmd.op_code_) {
       case ir::Op::UncondJump: {

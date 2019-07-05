@@ -14,7 +14,7 @@ namespace visitor {
 using ::matcher::InheritsFrom;
 
 std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::Access const *node,
-                                                  Context *ctx) const {
+                                                  Context *ctx) {
   auto reg = node->operand()->EmitLVal(this, ctx)[0];
   auto *t  = ctx->type_of(node->operand());
 
@@ -30,7 +30,7 @@ std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::Access const *node,
 }
 
 std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::CommaList const *node,
-                                                  Context *ctx) const {
+                                                  Context *ctx) {
   std::vector<ir::RegisterOr<ir::Addr>> results;
   results.reserve(node->exprs_.size());
   for (auto &expr : node->exprs_) {
@@ -40,13 +40,13 @@ std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::CommaList const *node,
 }
 
 std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::Identifier const *node,
-                                                  Context *ctx) const {
+                                                  Context *ctx) {
   ASSERT(node->decl() != nullptr);
   return {ctx->addr(node->decl())};
 }
 
 std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::Index const *node,
-                                                  Context *ctx) const {
+                                                  Context *ctx) {
   auto *lhs_type = ctx->type_of(node->lhs());
   auto *rhs_type = ctx->type_of(node->rhs());
 
@@ -56,8 +56,7 @@ std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::Index const *node,
 
     auto lval = node->lhs()->EmitLVal(this, ctx)[0];
     if (!lval.is_reg_) { NOT_YET(this, ctx->type_of(node)); }
-    return {
-        ir::Index(type::Ptr(ctx->type_of(node->lhs())), lval.reg_, index)};
+    return {ir::Index(type::Ptr(ctx->type_of(node->lhs())), lval.reg_, index)};
   } else if (auto *buf_ptr_type = lhs_type->if_as<type::BufferPointer>()) {
     auto index = ir::Cast(rhs_type, type::Int64, node->rhs()->EmitIr(this, ctx))
                      .get<int64_t>(0);
@@ -84,7 +83,7 @@ std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::Index const *node,
 }
 
 std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::Unop const *node,
-                                                  Context *ctx) const {
+                                                  Context *ctx) {
   ASSERT(node->op == frontend::Operator::At);
   return {node->operand->EmitIr(this, ctx).get<ir::Reg>(0)};
 }

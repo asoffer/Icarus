@@ -29,7 +29,10 @@ std::unique_ptr<T> MakeNode(std::string s, ::Context *ctx, core::Scope *scope) {
       cast_ptr->assign_scope(&visitor, scope);
     }
     visitor::VerifyType visitor;
-    if (Verify && !cast_ptr->VerifyType(&visitor, ctx)) { return nullptr; }
+    if (Verify) {
+      if (!cast_ptr->VerifyType(&visitor, ctx)) { return nullptr; }
+      visitor.CompleteDeferredBodies();
+    }
     stmts[0].release();
     return std::unique_ptr<T>{cast_ptr};
 

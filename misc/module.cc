@@ -55,12 +55,3 @@ ast::Declaration *Module::GetDecl(std::string_view name) const {
   }
   return nullptr;
 }
-
-void Module::CompleteAllDeferredWork() {
-  while (!deferred_work_.empty()) {
-    auto &work = deferred_work_.front();
-    if (work == nullptr) { continue; }
-    work();
-    deferred_work_.pop();
-  }
-}

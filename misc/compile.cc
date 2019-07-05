@@ -46,8 +46,8 @@ Module *CompileModule(Module *mod, std::filesystem::path const *path) {
     for (auto const &stmt : mod->statements_) {
       stmt->VerifyType(&visitor, &ctx);
     }
+    visitor.CompleteDeferredBodies();
   }
-  mod->CompleteAllDeferredWork();
 
   if (ctx.num_errors() > 0) {
     // TODO Is this right?
@@ -61,8 +61,8 @@ Module *CompileModule(Module *mod, std::filesystem::path const *path) {
     for (auto const &stmt : mod->statements_) {
       stmt->EmitIr(&visitor, &ctx);
     }
+    visitor.CompleteDeferredBodies();
   }
-  mod->CompleteAllDeferredWork();
 
   if (ctx.num_errors() > 0) {
     // TODO Is this right?

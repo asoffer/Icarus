@@ -7,7 +7,7 @@
 #include "visitor/emit_ir.h"
 
 namespace visitor {
-std::optional<ir::AnyFunc> SpecialFunction(EmitIr const *visitor,
+std::optional<ir::AnyFunc> SpecialFunction(EmitIr *visitor,
                                            type::Struct const *s,
                                            char const *symbol, Context *ctx) {
   auto *ptr_to_s = type::Ptr(s);

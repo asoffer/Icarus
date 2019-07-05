@@ -11,8 +11,7 @@
 
 namespace visitor {
 
-void EmitIr::Print(type::Array const *t, ir::Results const &val,
-                   Context *ctx) const {
+void EmitIr::Print(type::Array const *t, ir::Results const &val, Context *ctx) {
   t->repr_func_.init([=]() {
     // TODO special function?
     ir::CompiledFn *fn = ctx->mod_->AddFunc(
@@ -65,26 +64,23 @@ void EmitIr::Print(type::Array const *t, ir::Results const &val,
            ir::Arguments{t->repr_func_.get()->type_, val});
 }
 
-
-void EmitIr::Print(type::Enum const *t, ir::Results const &val,
-                   Context *ctx) const {
+void EmitIr::Print(type::Enum const *t, ir::Results const &val, Context *ctx) {
   // TODO print something friendlier
   ir::Print(val.get<ir::EnumVal>(0), t);
 }
 
-void EmitIr::Print(type::Flags const *t, ir::Results const &val,
-                   Context *ctx) const {
+void EmitIr::Print(type::Flags const *t, ir::Results const &val, Context *ctx) {
   // TODO print something friendlier
   ir::Print(val.get<ir::FlagsVal>(0), t);
 }
 
 void EmitIr::Print(type::Pointer const *t, ir::Results const &val,
-                   Context *ctx) const {
+                   Context *ctx) {
   ir::Print(val.get<ir::Addr>(0));
 }
 
 void EmitIr::Print(type::Primitive const *t, ir::Results const &val,
-                   Context *ctx) const {
+                   Context *ctx) {
   switch (t->type_) {
     case type::PrimType::Bool: ir::Print(val.get<bool>(0)); break;
     case type::PrimType::Int8: ir::Print(val.get<int8_t>(0)); break;
@@ -117,8 +113,7 @@ void EmitIr::Print(type::Primitive const *t, ir::Results const &val,
   }
 }
 
-void EmitIr::Print(type::Tuple const *t, ir::Results const &val,
-                   Context *ctx) const {
+void EmitIr::Print(type::Tuple const *t, ir::Results const &val, Context *ctx) {
   auto reg = val.get<ir::Reg>(0);
   ir::Print(std::string_view{"("});
   for (int i = 0; i < static_cast<int>(t->entries_.size()) - 1; ++i) {
@@ -130,7 +125,8 @@ void EmitIr::Print(type::Tuple const *t, ir::Results const &val,
   }
 
   if (!t->entries_.empty()) {
-    t->entries_.back()->EmitPrint(this, 
+    t->entries_.back()->EmitPrint(
+        this,
         ir::Results{ir::PtrFix(ir::Field(reg, t, t->entries_.size() - 1).get(),
                                t->entries_.back())},
         ctx);
@@ -139,7 +135,7 @@ void EmitIr::Print(type::Tuple const *t, ir::Results const &val,
 }
 
 void EmitIr::Print(type::Variant const *t, ir::Results const &val,
-                   Context *ctx) const {
+                   Context *ctx) {
   // TODO design and build a jump table?
   // TODO repr_func_
   // TODO remove these casts in favor of something easier to track properties on
@@ -148,8 +144,8 @@ void EmitIr::Print(type::Variant const *t, ir::Results const &val,
   if (!t->repr_func_) {
     t->repr_func_ = ctx->mod_->AddFunc(
         type::Func({t}, {}),
-        core::FnParams(core::Param{
-            "", type::Typed<ast::Expression const *>{nullptr, t}}));
+        core::FnParams(
+            core::Param{"", type::Typed<ast::Expression const *>{nullptr, t}}));
 
     CURRENT_FUNC(t->repr_func_) {
       ir::BasicBlock::Current = t->repr_func_->entry();

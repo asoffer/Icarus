@@ -33,6 +33,7 @@ static void ReplEval(ast::Expression *expr) {
       ctx.DumpErrors();
       return;
     }
+    visitor.CompleteDeferredBodies();
     auto *expr_type = ctx.type_of(expr);
     if (expr_type != type::Void()) {
       expr_type->EmitPrint(&visitor, expr_val, &ctx);
@@ -70,11 +71,13 @@ repl_start:;
         {
           visitor::VerifyType visitor;
           decl->VerifyType(&visitor, &ctx);
+          visitor.CompleteDeferredBodies();
         }
 
         {
           visitor::EmitIr visitor;
           decl->EmitIr(&visitor, &ctx);
+          visitor.CompleteDeferredBodies();
         }
         if (ctx.num_errors() != 0) {
           ctx.DumpErrors();

@@ -468,6 +468,7 @@ void SetRet(size_t n, type::Typed<Results> const &r, Context *ctx) {
         // TODO guaranteed move-elision
         visitor::EmitIr visitor;
         t->EmitMoveAssign(&visitor, t, r.get(), GetRet(n, t), ctx);
+        visitor.CompleteDeferredBodies();
       } else {
         SetRet(n, r->get<T>(0));
       }

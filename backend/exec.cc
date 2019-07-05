@@ -596,9 +596,9 @@ ir::BlockIndex ExecContext::ExecuteCmd(
         ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
         auto var                = ir::Reg::Arg(0);
         size_t i                = 0;
+        visitor::EmitIr visitor;
         for (auto const &field : s->parent_->fields_) {
           auto ir_field = ir::Field(var, s, i);
-          visitor::EmitIr visitor;
           if (field.init_val()) {
             field.init_val()->EmitCopyInit(&visitor, ir_field, &ctx);
           } else {
@@ -607,6 +607,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
           }
           ++i;
         }
+        visitor.CompleteDeferredBodies();
 
         ir::ReturnJump();
       }
@@ -1123,6 +1124,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::VerifyType: {
       visitor::VerifyType visitor;
       cmd.ast_.node_->VerifyType(&visitor, resolve<Context *>(cmd.ast_.ctx_));
+      visitor.CompleteDeferredBodies();
     } break;
     case ir::Op::EvaluateAsType: {
       // TODO, you don't have a parent context... that could be problematic.
