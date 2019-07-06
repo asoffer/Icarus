@@ -222,8 +222,8 @@ static base::expected<DispatchTable::Row> OverloadParams(
   // respectively.
 
   if (overload.is_fn()) {
-    return DispatchTable::Row{overload.func()->params_, overload.func()->type_,
-                              overload};
+    auto &fn = *ASSERT_NOT_NULL(overload.func());
+    return DispatchTable::Row{fn.params_, fn.type_, overload};
   } else {
     if (auto *fn_type = overload.foreign().type()->if_as<type::Function>()) {
       // TODO foreign functions should be allowed named and default
@@ -278,7 +278,6 @@ static base::expected<DispatchTable::Row> OverloadParams(
 
         visitor::VerifyType visitor;
         auto result = decl->VerifyType(&visitor, ctx);
-        visitor.CompleteDeferredBodies();
         if (!result.ok()) { NOT_YET(); }
 
         if (!(param.value->flags() & Declaration::f_IsConst)) {
@@ -384,7 +383,6 @@ static base::expected<DispatchTable::Row> OverloadParams(
       visitor::VerifyType visitor;
       auto *fn_type =
           ASSERT_NOT_NULL(visitor.ConcreteFnLit(fn_lit, ctx).type_);
-      visitor.CompleteDeferredBodies();
       return DispatchTable::Row{
           std::move(params), &fn_type->as<type::Function>(),
           backend::EvaluateAs<ir::AnyFunc>(
@@ -526,7 +524,7 @@ visitor::VerifyResult VerifyJumpDispatch(
     if (!f.func()) { continue; }
     // TODO do you know this work is safe to do right now?
     auto *work = f.func()->work_item;
-    if (work) { (*work)(); }
+    if (work) { std::move(*work)(); }
     DEBUG_LOG("ScopeNode")("    ... jumps = ", f.func()->jumps_);
     block_defs->insert(block_defs->end(), f.func()->jumps_.begin(),
                        f.func()->jumps_.end());
@@ -650,7 +648,7 @@ static bool EmitOneCall(
       auto *prev_inline_map = std::exchange(ctx->inline_, nullptr);
       base::defer d([&]() { ctx->inline_ = prev_inline_map; });
       auto *func = ASSERT_NOT_NULL(fn.val_.func());
-      if (func->work_item != nullptr) { (*func->work_item)(); }
+      if (func->work_item != nullptr) { std::move(*func->work_item)(); }
       ASSERT(func->work_item == nullptr);
 
       bool is_jump;

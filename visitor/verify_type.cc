@@ -133,16 +133,6 @@ type::Type const *DereferenceAll(type::Type const *t) {
   return t;
 }
 
-template <typename NodeType>
-void DeferBody(VerifyType *visitor, NodeType const *node, Context *ctx) {
-  visitor->AddWork(node, [constants{ctx->constants_}, node, visitor]() mutable {
-    Context ctx(node->module());
-    ctx.constants_ = std::move(constants);
-    VerifyBody(visitor, node, &ctx);
-    visitor->EraseWork(node);
-  });
-}
-
 }  // namespace
 
 std::ostream &operator<<(std::ostream &os, VerifyResult r) {
@@ -1287,8 +1277,8 @@ VerifyResult VerifyType::operator()(ast::EnumLiteral const *node,
 
 // TODO there's not that much shared between the inferred and uninferred cases,
 // so probably break them out.
-static VerifyResult VerifyBody(VerifyType *visitor,
-                               ast::FunctionLiteral const *node, Context *ctx) {
+VerifyResult VerifyBody(VerifyType *visitor, ast::FunctionLiteral const *node,
+                        Context *ctx) {
   for (auto const &stmt : node->statements_) { stmt->VerifyType(visitor, ctx); }
   // TODO propogate cyclic dependencies.
 
@@ -1415,8 +1405,8 @@ static VerifyResult VerifyBody(VerifyType *visitor,
   }
 }
 
-static void VerifyBody(VerifyType *visitor, ast::JumpHandler const *node,
-                       Context *ctx) {
+void VerifyBody(VerifyType *visitor, ast::JumpHandler const *node,
+                Context *ctx) {
   DEBUG_LOG("JumpHandler")(DumpAst::ToString(node));
   ExtractJumps extract_visitor;
   for (auto const *stmt : node->stmts()) {
@@ -1487,8 +1477,6 @@ VerifyResult VerifyType::ConcreteFnLit(ast::FunctionLiteral const *node,
             ctx);
       }
     }
-
-    DeferBody(this, node, ctx);
 
     return ctx->set_result(
         node, VerifyResult::Constant(type::Func(std::move(input_type_vec),
@@ -1679,7 +1667,9 @@ VerifyResult VerifyType::operator()(ast::Jump const *node, Context *ctx) {
           node->scope_->Containing<core::ScopeLitScope>()->scope_lit_,
           type::Scope),
       ctx);
-  if (scope_def->work_item) { (*scope_def->work_item)(); }
+  if (scope_def->work_item && *scope_def->work_item) {
+    (std::move(*scope_def->work_item))();
+  }
 
   for (auto const &opt : node->options_) {
     if (opt.block == "start") {
@@ -1720,7 +1710,6 @@ VerifyResult VerifyType::operator()(ast::JumpHandler const *node,
   if (err) {
     return ctx->set_result(node, VerifyResult::Error());
   } else {
-    DeferBody(this, node, ctx);
     return ctx->set_result(node, VerifyResult::Constant(type::Jmp(arg_types)));
   }
 }
@@ -1858,7 +1847,9 @@ VerifyResult VerifyType::operator()(ast::ScopeNode const *node, Context *ctx) {
   // TODO is the scope type correct here?
   auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(
       type::Typed<ast::Expression const *>{node->name(), type::Scope}, ctx);
-  if (scope_def->work_item) { (*scope_def->work_item)(); }
+  if (scope_def->work_item && *scope_def->work_item) {
+    (std::move(*scope_def->work_item))();
+  }
 
   bool err = false;
   std::vector<ir::BlockDef const *> block_defs;
@@ -1899,6 +1890,7 @@ VerifyResult VerifyType::operator()(ast::ScopeNode const *node, Context *ctx) {
 
     auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(node->name(), ctx);
     if (scope_def->work_item) { (*scope_def->work_item)(); }
+    scope_def->work_item = nullptr;
 
     // TODO check that the names of each BlockNode actually exist on the scope
     def

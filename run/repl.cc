@@ -68,10 +68,10 @@ repl_start:;
           visitor::AssignScope visitor;
           decl->assign_scope(&visitor, &ctx.mod_->scope_);
         }
+
         {
           visitor::VerifyType visitor;
           decl->VerifyType(&visitor, &ctx);
-          visitor.CompleteDeferredBodies();
         }
 
         {

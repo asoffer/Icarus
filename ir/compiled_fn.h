@@ -6,6 +6,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "base/bag.h"
+#include "base/move_func.h"
 #include "core/fn_params.h"
 #include "ir/basic_block.h"
 #include "property/property_map.h"
@@ -77,7 +78,7 @@ struct CompiledFn {
 
   int32_t num_regs_ = 0;
   std::vector<BasicBlock> blocks_;
-  std::function<void()> *work_item = nullptr;
+  base::move_func<void()> *work_item = nullptr;
 
   Module *mod_;
 

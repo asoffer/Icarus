@@ -111,14 +111,20 @@ namespace visitor {
 using ::matcher::InheritsFrom;
 
 template <typename NodeType>
-static std::function<void()> *DeferBody(EmitIr *visitor, NodeType const *node,
-                                        Context *ctx) {
+static base::move_func<void()> *DeferBody(EmitIr *visitor, NodeType const *node,
+                                          Context *ctx) {
   return visitor->AddWork(
       node, [constants{ctx->constants_}, node, visitor]() mutable {
         Context ctx(node->module());
         ctx.constants_ = std::move(constants);
+
+        VerifyType verify_type;
+        if constexpr (std::is_same_v<NodeType, ast::FunctionLiteral> ||
+                      std::is_same_v<NodeType, ast::JumpHandler>) {
+          VerifyBody(&verify_type, node, &ctx);
+        }
+
         CompleteBody(visitor, node, &ctx);
-        visitor->EraseWork(node);
       });
 }
 
@@ -1306,7 +1312,7 @@ ir::Results EmitIr::Val(ast::FunctionLiteral const *node, Context *ctx) {
   // TODO Use correct constants
   ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[node];
   if (!ir_func) {
-    std::function<void()> *work_item_ptr = DeferBody(this, node, ctx);
+    auto *work_item_ptr = DeferBody(this, node, ctx);
 
     auto *fn_type = &ctx->type_of(node)->as<type::Function>();
 
@@ -1374,7 +1380,9 @@ ir::Results EmitIr::Val(ast::Jump const *node, Context *ctx) {
           node->scope_->Containing<core::ScopeLitScope>()->scope_lit_,
           type::Scope),
       ctx);
-  if (scope_def->work_item) { (*scope_def->work_item)(); }
+  if (scope_def->work_item && *scope_def->work_item) {
+    (std::move(*scope_def->work_item))();
+  }
 
   if (node->options_.at(0).block == "start") {
     ir::JumpPlaceholder(ir::BlockDef::Start());
@@ -1396,7 +1404,7 @@ ir::Results EmitIr::Val(ast::JumpHandler const *node, Context *ctx) {
 
   ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[node];
   if (!ir_func) {
-    std::function<void()> *work_item_ptr = DeferBody(this, node, ctx);
+    auto work_item_ptr = DeferBody(this, node, ctx);
     auto *jmp_type = &ctx->type_of(node)->as<type::Jump>();
 
     core::FnParams<type::Typed<ast::Expression const *>> params(
@@ -1505,8 +1513,7 @@ ir::Results EmitIr::Val(ast::ScopeLiteral const *node, Context *ctx) {
       ctx->constants_->second.scope_defs_.try_emplace(node,
                                                       node->scope_->module());
   if (inserted) {
-    auto work_item_ptr               = DeferBody(this, node, ctx);
-    scope_def_iter->second.work_item = work_item_ptr;
+    scope_def_iter->second.work_item = DeferBody(this, node, ctx);
   }
   return ir::Results{&scope_def_iter->second};
 }
@@ -1664,7 +1671,7 @@ ir::Results EmitIr::Val(ast::StructLiteral const *node, Context *ctx) {
   // (which is single-threaded).
   ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[node];
   if (!ir_func) {
-    auto &work_item = *DeferBody(this, node, ctx);
+    auto work_item_ptr = DeferBody(this, node, ctx);
 
     auto const &arg_types = ctx->type_of(node)->as<type::GenericStruct>().deps_;
 
@@ -1679,7 +1686,7 @@ ir::Results EmitIr::Val(ast::StructLiteral const *node, Context *ctx) {
     ir_func = node->module()->AddFunc(type::Func(arg_types, {type::Type_}),
                                       std::move(params));
 
-    ir_func->work_item = &work_item;
+    ir_func->work_item = work_item_ptr;
   }
 
   return ir::Results{ir::AnyFunc{ir_func}};

@@ -53,9 +53,10 @@ struct NodeSpan {
   T *operator[](size_t n) const { return ptr_[n].get(); }
 
   template <typename Container>
-  NodeSpan(Container &&c) : ptr_(&c[0]), size_(c.size()) {}
+  NodeSpan(Container &&c)
+      : ptr_(c.empty() ? nullptr : &c[0]), size_(c.size()) {}
   template <typename Iter>
-  NodeSpan(Iter b, Iter e)
+  explicit NodeSpan(Iter b, Iter e)
       : ptr_(std::addressof(*b)),
         size_(std::addressof(*e) - std::addressof(*b)) {}
 

@@ -34,6 +34,7 @@ struct untyped_buffer {
   }
 
   untyped_buffer &operator=(untyped_buffer &&that) noexcept {
+    free(data_);
     size_     = std::exchange(that.size_, 0);
     capacity_ = std::exchange(that.capacity_, 0);
     data_     = std::exchange(that.data_, nullptr);
@@ -41,6 +42,7 @@ struct untyped_buffer {
   }
 
   untyped_buffer &operator=(untyped_buffer const &that) noexcept {
+    free(data_);
     size_     = that.size_;
     capacity_ = that.size_;
     data_     = static_cast<char *>(malloc(capacity_));

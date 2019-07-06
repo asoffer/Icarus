@@ -335,7 +335,6 @@ cc_lib_target(
     name = "verify_type",
     cfgs = ["match", "compile"],
     intf_deps = [
-        ":deferred_body",
         "//ast:ast_fwd",
         "//ast:node_xmacro",
     ],
@@ -388,6 +387,8 @@ cc_lib_target(
     name = "deferred_body",
     cfgs = ["match", "compile"],
     intf_deps = [
+        "//base:guarded",
+        "//base:move_func",
         "@com_google_absl//absl/container:node_hash_map",
     ],
     impl_deps = None,

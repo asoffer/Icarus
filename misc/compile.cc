@@ -46,7 +46,6 @@ Module *CompileModule(Module *mod, std::filesystem::path const *path) {
     for (auto const &stmt : mod->statements_) {
       stmt->VerifyType(&visitor, &ctx);
     }
-    visitor.CompleteDeferredBodies();
   }
 
   if (ctx.num_errors() > 0) {

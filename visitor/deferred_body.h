@@ -1,37 +1,43 @@
 #ifndef ICARUS_VISITOR_DEFERRED_BODY_H
 #define ICARUS_VISITOR_DEFERRED_BODY_H
 
+#include <atomic>
+
 #include "absl/container/node_hash_map.h"
 #include "ast/ast_fwd.h"
+#include "base/guarded.h"
+#include "base/move_func.h"
 
 namespace visitor {
 
 template <typename Visitor>
 struct DeferredBody {
-  void CompleteBody(ast::Node const *node) {
-    auto iter = deferred_work_.find(node);
-    if (iter == deferred_work_.end()) { return; }
-    iter->second();
-  }
-
   void CompleteDeferredBodies() {
-    while (!deferred_work_.empty()) { deferred_work_.begin()->second(); }
+    base::move_func<void()> f;
+    while (true) {
+      {
+        auto handle = deferred_work_.lock();
+        if (handle->empty()) { return; }
+        auto nh = handle->extract(handle->begin());
+        f       = std::move(nh.mapped());
+      }
+      std::move(f)();
+    }
   }
 
   template <typename Fn>
-  std::function<void()>* AddWork(ast::Node const *node, Fn &&fn) {
-    auto [iter, success] = deferred_work_.emplace(node, std::forward<Fn>(fn));
+  base::move_func<void()> *AddWork(ast::Node const *node, Fn &&fn) {
+    auto [iter, success] =
+        deferred_work_.lock()->emplace(node, std::forward<Fn>(fn));
     ASSERT(success == true);
     return &iter->second;
   }
-  void EraseWork(ast::Node const *node) { deferred_work_.erase(node); }
 
-  ~DeferredBody() { ASSERT(deferred_work_.empty() == true); }
+  ~DeferredBody() { ASSERT(deferred_work_.lock()->empty() == true); }
 
  private:
-  // TODO should we lock access here so deferred work can be done on multiple
-  // threads?
-  absl::node_hash_map<ast::Node const *, std::function<void()>> deferred_work_;
+  base::guarded<absl::node_hash_map<ast::Node const *, base::move_func<void()>>>
+      deferred_work_;
 };
 
 }  // namespace visitor

@@ -3,6 +3,7 @@
 
 #include <string_view>
 
+#include "base/move_func.h"
 #include "core/scope.h"
 #include "ir/any_func.h"
 #include "ir/block.h"
@@ -26,7 +27,7 @@ struct ScopeDef {
   Module const *mod_ = nullptr;
   std::vector<AnyFunc> inits_, dones_;
   absl::flat_hash_map<std::string_view, BlockDef> blocks_;
-  std::function<void()> *work_item = nullptr;
+  base::move_func<void()> *work_item = nullptr;
 };
 }  // namespace ir
 

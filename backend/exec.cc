@@ -42,8 +42,7 @@ void Execute(ir::CompiledFn *fn, const base::untyped_buffer &arguments,
   // explanation here. I'm quite confident this is really possible with the
   // generics model I have, but I can't quite articulate exactly why it only
   // happens for generics and nothing else.
-  if (fn->work_item != nullptr) { (*fn->work_item)(); }
-  ASSERT(fn->work_item == nullptr);
+  if (fn->work_item && *fn->work_item) { (std::move(*fn->work_item))(); }
 
   // TODO what about bound constants?
   exec_ctx->call_stack.emplace(fn, arguments);
@@ -1124,7 +1123,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::VerifyType: {
       visitor::VerifyType visitor;
       cmd.ast_.node_->VerifyType(&visitor, resolve<Context *>(cmd.ast_.ctx_));
-      visitor.CompleteDeferredBodies();
     } break;
     case ir::Op::EvaluateAsType: {
       // TODO, you don't have a parent context... that could be problematic.

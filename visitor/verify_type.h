@@ -5,7 +5,6 @@
 
 #include "ast/ast_fwd.h"
 #include "base/debug.h"
-#include "visitor/deferred_body.h"
 
 struct Context;
 
@@ -46,7 +45,7 @@ constexpr bool operator!=(VerifyResult lhs, VerifyResult rhs) {
   return !(lhs == rhs);
 }
 
-struct VerifyType : public DeferredBody<VerifyType> {
+struct VerifyType {
   VerifyResult operator()(ast::Node const *node, Context *ctx) const {
     UNREACHABLE();
   }
@@ -57,6 +56,11 @@ struct VerifyType : public DeferredBody<VerifyType> {
 
   VerifyResult ConcreteFnLit(ast::FunctionLiteral const *node, Context *ctx);
 };
+
+VerifyResult VerifyBody(VerifyType *visitor, ast::FunctionLiteral const *node,
+                        Context *ctx);
+void VerifyBody(VerifyType *visitor, ast::JumpHandler const *node,
+                Context *ctx);
 
 }  // namespace visitor
 
