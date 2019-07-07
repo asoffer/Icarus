@@ -4,7 +4,7 @@
 
 namespace base {
 namespace {
-/*
+
 TEST_CASE("Default constructor invariants") {
   untyped_buffer buf;
   CHECK(buf.size() == 0);
@@ -18,7 +18,7 @@ TEST_CASE("Append") {
   CHECK(buf.size() == 2 * sizeof(int));
   CHECK_FALSE(buf.empty());
 }
-*/
+
 TEST_CASE("Assignment") {
   untyped_buffer buf1, buf2;
   buf1.append(3);
@@ -27,7 +27,7 @@ TEST_CASE("Assignment") {
   buf1 = std::move(buf2);
   CHECK(buf1.empty());
 }
-/*
+
 TEST_CASE("Access") {
   untyped_buffer buf;
 
@@ -71,6 +71,6 @@ TEST_CASE("to_string") {
           "    0c");
   }
 }
-*/
+
 }  // namespace
 }  // namespace base

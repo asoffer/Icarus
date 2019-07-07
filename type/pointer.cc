@@ -7,18 +7,25 @@
 
 namespace type {
 
-static base::guarded<absl::flat_hash_map<Type const *, Pointer const *>>
+static base::guarded<
+    absl::flat_hash_map<Type const *, std::unique_ptr<Pointer const>>>
     pointers_;
 Pointer const *Ptr(Type const *t) {
-  return pointers_.lock()->emplace(t, new Pointer(t)).first->second;
+  auto handle = pointers_.lock();
+  auto &p    = (*handle)[t];
+  if (!p) { p = std::make_unique<Pointer>(t); }
+  return p.get();
 }
 
-static base::guarded<absl::flat_hash_map<Type const *, BufferPointer const *>>
+static base::guarded<
+    absl::flat_hash_map<Type const *, std::unique_ptr<BufferPointer const>>>
     buffer_pointers_;
 BufferPointer const *BufPtr(Type const *t) {
-  return buffer_pointers_.lock()
-      ->emplace(t, new BufferPointer(t))
-      .first->second;
+  auto handle = buffer_pointers_.lock();
+  auto &p    = (*handle)[t];
+  if (!p) { p = std::make_unique<BufferPointer>(t); }
+  return p.get();
+
 }
 
 void Pointer::defining_modules(
