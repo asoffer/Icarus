@@ -822,38 +822,72 @@ struct JumpHandler : ScopeExpr<core::FnScope> {
   std::vector<std::unique_ptr<Node>> stmts_;
 };
 
-// RepeatedUnop:
-// Represents a statement where arbitrarily many expressions can be passed, and
-// are all treated as arguments to the same unary operator (for a very loose
-// definition of operator).
+// PrintStmt:
+// Represents a print statement. Arbitrarily many expressions can be passed.
 //
 // Example:
 //  ```
 //  print "hello", 42
-//  return 3, 4, 5
 //  ```
 //
-//  Both `print` and `return` are repeated unary operators.
-//
-//  Note: This node would probably be better expressed as a JumpNode and a
-//  PrintNode separately. And perhaps get rid of print altogether because you
-//  can use the foreign funtion `puts`. Also, right now import nodes can't be
-//  repeated, but maybe they should be?
-struct RepeatedUnop : public Node {
-  explicit RepeatedUnop(TextSpan span, frontend::Operator op,
-                        std::vector<std::unique_ptr<Expression>> exprs)
-      : Node(std::move(span)), op_(op), exprs_(std::move(exprs)) {}
-  ~RepeatedUnop() override {}
+struct PrintStmt : public Node {
+  explicit PrintStmt(TextSpan span,
+                     std::vector<std::unique_ptr<Expression>> exprs)
+      : Node(std::move(span)), exprs_(std::move(exprs)) {}
+  ~PrintStmt() override {}
 
-  frontend::Operator op() const { return op_; }
   NodeSpan<Expression> exprs() { return exprs_; }
   NodeSpan<Expression const> exprs() const { return exprs_; }
-  Expression const *expr(size_t i) const { return exprs_[i].get(); }
 
 #include "visitor/visitors.xmacro.h"
 
  private:
-  frontend::Operator op_;
+  std::vector<std::unique_ptr<Expression>> exprs_;
+};
+
+// ReturnStmt:
+// Represents a return statement. Arbitrarily many expressions can be passed.
+//
+// Example:
+//  ```
+//  return "hello", 42
+//  ```
+//
+struct ReturnStmt : public Node {
+  explicit ReturnStmt(TextSpan span,
+                     std::vector<std::unique_ptr<Expression>> exprs = {})
+      : Node(std::move(span)), exprs_(std::move(exprs)) {}
+  ~ReturnStmt() override {}
+
+  NodeSpan<Expression> exprs() { return exprs_; }
+  NodeSpan<Expression const> exprs() const { return exprs_; }
+
+#include "visitor/visitors.xmacro.h"
+
+ private:
+  std::vector<std::unique_ptr<Expression>> exprs_;
+};
+
+// YieldStmt:
+// Represents a yield statement. Arbitrarily many expressions can be passed.
+//
+// Example:
+//  ```
+//  yield "hello", 42
+//  ```
+//
+struct YieldStmt : public Node {
+  explicit YieldStmt(TextSpan span,
+                     std::vector<std::unique_ptr<Expression>> exprs = {})
+      : Node(std::move(span)), exprs_(std::move(exprs)) {}
+  ~YieldStmt() override {}
+
+  NodeSpan<Expression> exprs() { return exprs_; }
+  NodeSpan<Expression const> exprs() const { return exprs_; }
+
+#include "visitor/visitors.xmacro.h"
+
+ private:
   std::vector<std::unique_ptr<Expression>> exprs_;
 };
 

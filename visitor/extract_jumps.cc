@@ -104,19 +104,20 @@ void ExtractJumps::operator()(ast::JumpHandler const *node) {
   for (auto const *stmt : node->stmts()) { stmt->ExtractJumps(this); }
 }
 
-void ExtractJumps::operator()(ast::RepeatedUnop const *node) {
+void ExtractJumps::operator()(ast::PrintStmt const *node) {
   for (auto *expr : node->exprs()) { expr->ExtractJumps(this); }
-  switch (node->op()) {
-    case frontend::Operator::Return:
-      data_[static_cast<std::underlying_type_t<Kind>>(Kind::Return)].push_back(
-          node);
-      break;
-    case frontend::Operator::Yield:
-      data_[static_cast<std::underlying_type_t<Kind>>(Kind::Yield)].push_back(
-          node);
-      break;
-    default: break;
-  }
+}
+
+void ExtractJumps::operator()(ast::ReturnStmt const *node) {
+  for (auto *expr : node->exprs()) { expr->ExtractJumps(this); }
+  constexpr auto key = static_cast<std::underlying_type_t<Kind>>(Kind::Return);
+  data_[key].push_back(node);
+}
+
+void ExtractJumps::operator()(ast::YieldStmt const *node) {
+  for (auto *expr : node->exprs()) { expr->ExtractJumps(this); }
+  constexpr auto key = static_cast<std::underlying_type_t<Kind>>(Kind::Yield);
+  data_[key].push_back(node);
 }
 
 void ExtractJumps::operator()(ast::ScopeLiteral const *node) {

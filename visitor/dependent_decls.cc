@@ -119,7 +119,17 @@ void DependentDecls::operator()(ast::JumpHandler const *node,
   for (auto const *stmt : node->stmts()) { stmt->DependentDecls(this, d); }
 }
 
-void DependentDecls::operator()(ast::RepeatedUnop const *node,
+void DependentDecls::operator()(ast::PrintStmt const *node,
+                                ast::Declaration const *d) {
+  for (auto *expr : node->exprs()) { expr->DependentDecls(this, d); }
+}
+
+void DependentDecls::operator()(ast::ReturnStmt const *node,
+                                ast::Declaration const *d) {
+  for (auto *expr : node->exprs()) { expr->DependentDecls(this, d); }
+}
+
+void DependentDecls::operator()(ast::YieldStmt const *node,
                                 ast::Declaration const *d) {
   for (auto *expr : node->exprs()) { expr->DependentDecls(this, d); }
 }

@@ -1423,89 +1423,79 @@ ir::Results EmitIr::Val(ast::JumpHandler const *node, Context *ctx) {
 
   return ir::Results{ir_func};
 }
-ir::Results EmitIr::Val(ast::RepeatedUnop const *node, Context *ctx) {
-  std::vector<ir::Results> arg_vals;
+
+static std::vector<std::pair<ast::Expression const *, ir::Results>>
+EmitIrWithExpand(EmitIr *v, ast::NodeSpan<ast::Expression const> exprs,
+                 Context *ctx) {
   // TODO expansion
-  // if (node->args_.needs_expansion()) {
-  //   for (auto &expr : node->args_.exprs_) {
-  //     auto vals = expr->EmitIr(this, ctx);
-  //     for (size_t i = 0; i < vals.size(); ++i) {
-  //       arg_vals.push_back(vals.GetResult(i));
-  //     }
-  //   }
-  // } else {
-  for (auto *expr : node->exprs()) {
-    arg_vals.push_back(expr->EmitIr(this, ctx));
-  }
-  //}
+  std::vector<std::pair<ast::Expression const *, ir::Results>> results;
+  for (auto *expr : exprs) { results.emplace_back(expr, expr->EmitIr(v, ctx)); }
+  return results;
+}
 
-  switch (node->op()) {
-    case frontend::Operator::Return: {
-      size_t offset = 0;
-      auto *fn_scope =
-          ASSERT_NOT_NULL(node->scope_->Containing<core::FnScope>());
-      auto *fn_lit = ASSERT_NOT_NULL(fn_scope->fn_lit_);
-
-      auto *fn_type =
-          &ASSERT_NOT_NULL(ctx->type_of(fn_lit))->as<type::Function>();
-      for (size_t i = 0; i < arg_vals.size(); ++i) {
-        // TODO return type maybe not the same as type actually returned?
-        ir::SetRet(i, type::Typed{arg_vals[i], fn_type->output.at(i)}, ctx);
-      }
-
-      // Rather than doing this on each block it'd be better to have each
-      // scope's destructors jump you to the correct next block for destruction.
-      auto *scope = node->scope_;
-      while (auto *exec = scope->if_as<core::ExecScope>()) {
-        MakeAllDestructions(this, exec, ctx);
-        scope = exec->parent;
-      }
-
-      ctx->more_stmts_allowed_ = false;
-      ir::ReturnJump();
-      return ir::Results{};
+ir::Results EmitIr::Val(ast::PrintStmt const *node, Context *ctx) {
+  auto results = EmitIrWithExpand(this, node->exprs(), ctx);
+  for (auto &result : results) {
+    if (auto const *dispatch_table =
+            ctx->dispatch_table(ast::ExprPtr{result.first, 0x01})) {
+      dispatch_table->EmitCall(
+          core::FnArgs<std::pair<ast::Expression const *, ir::Results>>(
+              {std::move(result)}, {}),
+          ctx);
+    } else {
+      ctx->type_of(result.first)->EmitPrint(this, result.second, ctx);
     }
-    case frontend::Operator::Yield: {
-      // TODO store this as an exec_scope.
-      MakeAllDestructions(this, &node->scope_->as<core::ExecScope>(), ctx);
-      // TODO pretty sure this is all wrong.
-
-      // Can't return these because we need to pass them up at least through the
-      // containing statements this and maybe further if we allow labelling
-      // scopes to be yielded to.
-      ctx->yields_stack_.back().clear();
-      ctx->yields_stack_.back().reserve(arg_vals.size());
-      // TODO one problem with this setup is that we look things up in a context
-      // after returning, so the `after` method has access to a different
-      // (smaller) collection of bound constants. This can change the meaning of
-      // things or at least make them not compile if the `after` function takes
-      // a compile-time constant argument.
-      for (size_t i = 0; i < arg_vals.size(); ++i) {
-        ctx->yields_stack_.back().emplace_back(node->expr(i), arg_vals[i]);
-      }
-
-      ctx->more_stmts_allowed_ = false;
-      return ir::Results{};
-    }
-    case frontend::Operator::Print: {
-      size_t index = 0;
-      // TODO this is wrong if you use the <<(...) spread operator.
-      for (auto &val : arg_vals) {
-        if (auto const *dispatch_table =
-                ctx->dispatch_table(ast::ExprPtr{node->expr(index), 0x01})) {
-          dispatch_table->EmitCall(
-              core::FnArgs<std::pair<ast::Expression const *, ir::Results>>(
-                  {std::pair(node->expr(index), std::move(val))}, {}),
-              ctx);
-        } else {
-          ctx->type_of(node->expr(index))->EmitPrint(this, val, ctx);
-        }
-        ++index;
-      }
-      return ir::Results{};
-    } break;
-    default: UNREACHABLE("Operator is ", static_cast<int>(node->op()));
   }
+  return ir::Results{};
+}
+
+ir::Results EmitIr::Val(ast::ReturnStmt const *node, Context *ctx) {
+  auto arg_vals  = EmitIrWithExpand(this, node->exprs(), ctx);
+  auto *fn_scope = ASSERT_NOT_NULL(node->scope_->Containing<core::FnScope>());
+  auto *fn_lit   = ASSERT_NOT_NULL(fn_scope->fn_lit_);
+
+  auto *fn_type = &ASSERT_NOT_NULL(ctx->type_of(fn_lit))->as<type::Function>();
+  for (size_t i = 0; i < arg_vals.size(); ++i) {
+    // TODO return type maybe not the same as type actually returned?
+    ir::SetRet(i, type::Typed{arg_vals[i].second, fn_type->output.at(i)}, ctx);
+  }
+
+  // Rather than doing this on each block it'd be better to have each
+  // scope's destructors jump you to the correct next block for destruction.
+  auto *scope = node->scope_;
+  while (auto *exec = scope->if_as<core::ExecScope>()) {
+    MakeAllDestructions(this, exec, ctx);
+    scope = exec->parent;
+  }
+
+  ctx->more_stmts_allowed_ = false;
+  ir::ReturnJump();
+  return ir::Results{};
+}
+
+ir::Results EmitIr::Val(ast::YieldStmt const *node, Context *ctx) {
+  auto arg_vals = EmitIrWithExpand(this, node->exprs(), ctx);
+  // TODO store this as an exec_scope.
+  MakeAllDestructions(this, &node->scope_->as<core::ExecScope>(), ctx);
+  // TODO pretty sure this is all wrong.
+
+  // Can't return these because we need to pass them up at least through the
+  // containing statements this and maybe further if we allow labelling
+  // scopes to be yielded to.
+  ctx->yields_stack_.back().clear();
+  ctx->yields_stack_.back().reserve(arg_vals.size());
+  // TODO one problem with this setup is that we look things up in a context
+  // after returning, so the `after` method has access to a different
+  // (smaller) collection of bound constants. This can change the meaning of
+  // things or at least make them not compile if the `after` function takes
+  // a compile-time constant argument.
+  for (size_t i = 0; i < arg_vals.size(); ++i) {
+    ctx->yields_stack_.back().emplace_back(node->exprs()[i],
+                                           arg_vals[i].second);
+  }
+
+  ctx->more_stmts_allowed_ = false;
+  return ir::Results{};
 }
 
 ir::Results EmitIr::Val(ast::ScopeLiteral const *node, Context *ctx) {

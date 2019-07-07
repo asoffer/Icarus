@@ -141,19 +141,10 @@ std::unique_ptr<ast::Node> EmptyBraces(
 
 std::unique_ptr<ast::Node> BuildControlHandler(
     std::unique_ptr<ast::Node> node) {
-  using ::frontend::Operator;
-  auto &tk              = node->as<frontend::Token>().token;
-  frontend::Operator op = [&] {
-    if (tk == "return") { return Operator::Return; }
-    if (tk == "yield") { return Operator::Yield; }
-    UNREACHABLE();
-  }();
-
-  auto stmts = std::make_unique<Statements>();
-  stmts->append(std::make_unique<ast::RepeatedUnop>(
-      node->span, op, std::vector<std::unique_ptr<ast::Expression>>{}));
-  stmts->span = node->span;
-  return stmts;
+  auto &tk = node->as<frontend::Token>().token;
+  if (tk == "return") { return std::make_unique<ast::ReturnStmt>(node->span); }
+  if (tk == "yield") { return std::make_unique<ast::YieldStmt>(node->span); }
+  UNREACHABLE();
 }
 
 std::unique_ptr<ast::Node> BracedStatementsSameLineEnd(
@@ -285,13 +276,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
       call_exprs.push_back(move_as<ast::Call>(nodes[1]));
     }
     return std::make_unique<ast::Jump>(std::move(span), std::move(call_exprs));
-  } else if (tk == "return" || tk == "yield" || tk == "print") {
-    auto op = [&] {
-      if (tk == "return") { return Operator::Return; }
-      if (tk == "yield") { return Operator::Yield; }
-      if (tk == "print") { return Operator::Print; }
-      UNREACHABLE();
-    }();
+  } else if (tk == "print") {
     auto span = TextSpan(nodes.front()->span, nodes.back()->span);
     std::vector<std::unique_ptr<ast::Expression>> exprs;
     if (auto *cl = nodes[1]->if_as<ast::CommaList>();
@@ -300,8 +285,27 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
     } else {
       exprs.push_back(move_as<ast::Expression>(nodes[1]));
     }
-    return std::make_unique<ast::RepeatedUnop>(std::move(span), op,
-                                               std::move(exprs));
+    return std::make_unique<ast::PrintStmt>(std::move(span), std::move(exprs));
+  } else if (tk == "return") {
+    auto span = TextSpan(nodes.front()->span, nodes.back()->span);
+    std::vector<std::unique_ptr<ast::Expression>> exprs;
+    if (auto *cl = nodes[1]->if_as<ast::CommaList>();
+        cl && !cl->parenthesized_) {
+      exprs = std::move(*cl).extract();
+    } else {
+      exprs.push_back(move_as<ast::Expression>(nodes[1]));
+    }
+    return std::make_unique<ast::ReturnStmt>(std::move(span), std::move(exprs));
+  } else if (tk == "yield") {
+    auto span = TextSpan(nodes.front()->span, nodes.back()->span);
+    std::vector<std::unique_ptr<ast::Expression>> exprs;
+    if (auto *cl = nodes[1]->if_as<ast::CommaList>();
+        cl && !cl->parenthesized_) {
+      exprs = std::move(*cl).extract();
+    } else {
+      exprs.push_back(move_as<ast::Expression>(nodes[1]));
+    }
+    return std::make_unique<ast::YieldStmt>(std::move(span), std::move(exprs));
   } else if (tk == "'") {
     TextSpan span(nodes.front()->span, nodes.back()->span);
     return BuildCallImpl(std::move(span), move_as<ast::Expression>(nodes[1]),
@@ -571,7 +575,6 @@ std::unique_ptr<ast::Node> BuildShortFunctionLiteral(
   auto span   = TextSpan(args->span, body->span);
   auto inputs = ExtractInputs(std::move(args));
 
-  std::unique_ptr<ast::RepeatedUnop> ret;
   std::vector<std::unique_ptr<ast::Expression>> ret_vals;
   if (auto *cl = body->if_as<ast::CommaList>()) {
     ret_vals = std::move(*cl).extract();
@@ -580,8 +583,8 @@ std::unique_ptr<ast::Node> BuildShortFunctionLiteral(
   }
 
   Statements stmts;
-  stmts.append(std::make_unique<ast::RepeatedUnop>(
-      std::move(span), frontend::Operator::Return, std::move(ret_vals)));
+  stmts.append(
+      std::make_unique<ast::ReturnStmt>(std::move(span), std::move(ret_vals)));
   return BuildFunctionLiteral(std::move(span), std::move(inputs), nullptr,
                               std::move(stmts), mod, error_log);
 }

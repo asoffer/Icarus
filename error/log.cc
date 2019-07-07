@@ -257,7 +257,7 @@ void Log::ReturnTypeMismatch(std::string_view expected_type,
   errors_.push_back(ss.str());
 }
 
-void Log::NoReturnTypes(ast::RepeatedUnop const *ret_expr) {
+void Log::NoReturnTypes(ast::ReturnStmt const *ret_expr) {
   std::stringstream ss;
   // TODO allow "return foo(...)" when foo: ??? -> ().
 

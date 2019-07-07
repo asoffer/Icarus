@@ -154,7 +154,7 @@ VerifyResult VerifyType::operator()(ast::Access const *node, Context *ctx) {
     // TODO We may not be allowed to evaluate node:
     //    f ::= (T: type) => T.key
     // We need to know that T is const
-    auto *t = ctx->type_of(node->operand());
+    auto *t           = ctx->type_of(node->operand());
     auto *evaled_type = backend::EvaluateAs<type::Type const *>(
         type::Typed{node->operand(), t}, ctx);
 
@@ -1290,17 +1290,17 @@ VerifyResult VerifyBody(VerifyType *visitor, ast::FunctionLiteral const *node,
   // TODO we can have yields and returns, or yields and jumps, but not jumps and
   // returns. Check this.
   absl::flat_hash_set<type::Type const *> types;
-  absl::flat_hash_map<ast::RepeatedUnop const *, type::Type const *>
+  absl::flat_hash_map<ast::ReturnStmt const *, type::Type const *>
       saved_ret_types;
   for (auto const *n : extract_visitor.jumps(ExtractJumps::Kind::Return)) {
-    if (auto const *rep_node = n->if_as<ast::RepeatedUnop>()) {
+    if (auto const *ret_node = n->if_as<ast::ReturnStmt>()) {
       std::vector<type::Type const *> ret_types;
-      for (auto const *expr : rep_node->exprs()) {
+      for (auto const *expr : ret_node->exprs()) {
         ret_types.push_back(ctx->type_of(expr));
       }
       auto *t = Tup(std::move(ret_types));
       types.emplace(t);
-      saved_ret_types.emplace(rep_node, t);
+      saved_ret_types.emplace(ret_node, t);
     } else {
       UNREACHABLE();  // TODO
     }
@@ -1328,9 +1328,9 @@ VerifyResult VerifyBody(VerifyType *visitor, ast::FunctionLiteral const *node,
       case 0: {
         bool err = false;
         for (auto *n : extract_visitor.jumps(ExtractJumps::Kind::Return)) {
-          if (auto *rep_node = n->if_as<ast::RepeatedUnop>()) {
-            if (!rep_node->exprs().empty()) {
-              ctx->error_log()->NoReturnTypes(rep_node);
+          if (auto *ret_node = n->if_as<ast::ReturnStmt>()) {
+            if (!ret_node->exprs().empty()) {
+              ctx->error_log()->NoReturnTypes(ret_node);
               err = true;
             }
           } else {
@@ -1342,11 +1342,11 @@ VerifyResult VerifyBody(VerifyType *visitor, ast::FunctionLiteral const *node,
       case 1: {
         bool err = false;
         for (auto *n : extract_visitor.jumps(ExtractJumps::Kind::Return)) {
-          if (auto *rep_node = n->if_as<ast::RepeatedUnop>()) {
-            auto *t = ASSERT_NOT_NULL(saved_ret_types.at(rep_node));
+          if (auto *ret_node = n->if_as<ast::ReturnStmt>()) {
+            auto *t = ASSERT_NOT_NULL(saved_ret_types.at(ret_node));
             if (t == outs[0]) { continue; }
             ctx->error_log()->ReturnTypeMismatch(
-                outs[0]->to_string(), t->to_string(), rep_node->span);
+                outs[0]->to_string(), t->to_string(), ret_node->span);
             err = true;
           } else {
             UNREACHABLE();  // TODO
@@ -1356,13 +1356,13 @@ VerifyResult VerifyBody(VerifyType *visitor, ast::FunctionLiteral const *node,
       } break;
       default: {
         for (auto *n : extract_visitor.jumps(ExtractJumps::Kind::Return)) {
-          if (auto *rep_node = n->if_as<ast::RepeatedUnop>()) {
-            auto *expr_type = ASSERT_NOT_NULL(saved_ret_types.at(rep_node));
+          if (auto *ret_node = n->if_as<ast::ReturnStmt>()) {
+            auto *expr_type = ASSERT_NOT_NULL(saved_ret_types.at(ret_node));
             if (expr_type->is<type::Tuple>()) {
               auto const &tup_entries = expr_type->as<type::Tuple>().entries_;
               if (tup_entries.size() != outs.size()) {
                 ctx->error_log()->ReturningWrongNumber(
-                    rep_node->span,
+                    ret_node->span,
                     (expr_type->is<type::Tuple>()
                          ? expr_type->as<type::Tuple>().size()
                          : 1),
@@ -1380,7 +1380,7 @@ VerifyResult VerifyBody(VerifyType *visitor, ast::FunctionLiteral const *node,
                     // hard if it's splatted.
                     ctx->error_log()->IndexedReturnTypeMismatch(
                         outs.at(i)->to_string(), tup_entries.at(i)->to_string(),
-                        rep_node->span, i);
+                        ret_node->span, i);
                     err = true;
                   }
                 }
@@ -1388,7 +1388,7 @@ VerifyResult VerifyBody(VerifyType *visitor, ast::FunctionLiteral const *node,
               }
             } else {
               ctx->error_log()->ReturningWrongNumber(
-                  rep_node->span,
+                  ret_node->span,
                   (expr_type->is<type::Tuple>()
                        ? expr_type->as<type::Tuple>().size()
                        : 1),
@@ -1714,58 +1714,80 @@ VerifyResult VerifyType::operator()(ast::JumpHandler const *node,
   }
 }
 
-VerifyResult VerifyType::operator()(ast::RepeatedUnop const *node,
-                                    Context *ctx) {
-  std::vector<type::Type const *> expr_types;
-  expr_types.reserve(node->exprs().size());
-  bool is_const = true;
-  bool err      = false;
-  for (auto *expr : node->exprs()) {
-    auto result = expr->VerifyType(this, ctx);
-    if (result == VerifyResult::Error()) {
-      err = true;
-    } else {
-      auto *tup = result.type_->if_as<type::Tuple>();
-      expr_types.push_back(result.type_);
-      is_const &= result.const_;
-    }
+static std::optional<
+    std::vector<std::pair<ast::Expression const *, VerifyResult>>>
+VerifySpan(visitor::VerifyType *v, ast::NodeSpan<ast::Expression const> exprs,
+           Context *ctx) {
+  // TODO expansion
+  std::vector<std::pair<ast::Expression const *, VerifyResult>> results;
+  bool err = false;
+  for (auto *expr : exprs) {
+    results.emplace_back(expr, expr->VerifyType(v, ctx));
+    err |= !results.back().second.ok();
   }
-  if (err) { return VerifyResult::Error(); }
+  if (err) { return std::nullopt; }
+  return results;
+}
 
-  if (node->op() == frontend::Operator::Print) {
-    // TODO what's the actual size given expansion of tuples and stuff?
-    for (size_t i = 0; i < node->exprs().size(); ++i) {
-      auto *expr      = node->expr(i);
-      auto *expr_type = expr_types[i];
-      if (expr_type->is<type::Primitive>() || expr_type->is<type::Pointer>() ||
-          expr_type == type::ByteView || expr_type->is<type::Enum>() ||
-          expr_type->is<type::Flags>() || expr_type->is<type::Array>()) {
-        continue;
-      } else {
-        ast::OverloadSet os(node->scope_, "print", ctx);
-        os.add_adl("print", expr_type);
+enum class Constness { Error, Const, NonConst };
+static Constness VerifyAndGetConstness(
+    visitor::VerifyType *v, ast::NodeSpan<ast::Expression const> exprs,
+    Context *ctx) {
+  bool err      = false;
+  bool is_const = true;
+  for (auto *expr : exprs) {
+    auto r = expr->VerifyType(v, ctx);
+    err |= !r.ok();
+    if (!err) { is_const &= r.const_; }
+  }
+  if (err) { return Constness::Error; }
+  return is_const ? Constness::Const : Constness::NonConst;
+}
 
-        // TODO I need finer-grained const-ness here: Currently all members are
-        // const or all are non-const.
-        //
-        // TODO using expr.get() for the dispatch table is super janky. node is
-        // used so we don't collide with the table for the actual expression as
-        // `print f(x)` needs a table both for the printing and for the call to
-        // `f`. Test node thoroughly.
-        auto dispatch_result = ast::VerifyDispatch(
-            ast::ExprPtr{expr, 0x01}, os,
-            core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>(
-                {std::pair(expr, VerifyResult(expr_type, is_const))}, {}),
-            ctx);
-        if (dispatch_result.type_ && dispatch_result.type_ != type::Void()) {
-          ctx->error_log()->PrintMustReturnVoid(
-              dispatch_result.type_->to_string(), node->span);
-          return VerifyResult::Error();
-        }
+VerifyResult VerifyType::operator()(ast::PrintStmt const *node, Context *ctx) {
+  auto verify_results = VerifySpan(this, node->exprs(), ctx);
+  if (!verify_results) { return VerifyResult::Error(); }
+  for (auto &verify_result : *verify_results) {
+    auto *expr_type = verify_result.second.type_;
+    // TODO print arrays?
+    if (expr_type->is<type::Primitive>() || expr_type->is<type::Pointer>() ||
+        expr_type == type::ByteView || expr_type->is<type::Enum>() ||
+        expr_type->is<type::Flags>()) {
+      continue;
+    } else {
+      ast::OverloadSet os(node->scope_, "print", ctx);
+      os.add_adl("print", expr_type);
+      // TODO using expr.get() for the dispatch table is super janky. node is
+      // used so we don't collide with the table for the actual expression as
+      // `print f(x)` needs a table both for the printing and for the call to
+      // `f`. Test node thoroughly.
+      auto dispatch_result = ast::VerifyDispatch(
+          ast::ExprPtr{verify_result.first, 0x01}, os,
+          core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>(
+              {verify_result}, {}),
+          ctx);
+      if (dispatch_result.type_ && dispatch_result.type_ != type::Void()) {
+        ctx->error_log()->PrintMustReturnVoid(
+            dispatch_result.type_->to_string(), node->span);
+        return VerifyResult::Error();
       }
     }
   }
-  return VerifyResult(type::Void(), is_const);
+  return VerifyResult::NonConstant(type::Void());
+}
+
+VerifyResult VerifyType::operator()(ast::ReturnStmt const *node, Context *ctx) {
+  auto c = VerifyAndGetConstness(this, node->exprs(), ctx);
+  if (c == Constness::Error) { return VerifyResult::Error(); }
+  return c == Constness::Const ? VerifyResult::Constant(type::Void())
+                               : VerifyResult::NonConstant(type::Void());
+}
+
+VerifyResult VerifyType::operator()(ast::YieldStmt const *node, Context *ctx) {
+  auto c = VerifyAndGetConstness(this, node->exprs(), ctx);
+  if (c == Constness::Error) { return VerifyResult::Error(); }
+  return c == Constness::Const ? VerifyResult::Constant(type::Void())
+                               : VerifyResult::NonConstant(type::Void());
 }
 
 VerifyResult VerifyType::operator()(ast::ScopeLiteral const *node,
@@ -1814,7 +1836,7 @@ VerifyBlockNode(VerifyType *visitor, ast::BlockNode const *node, Context *ctx) {
     // TODO actually fill a fnargs
     std::vector<std::pair<ast::Expression const *, VerifyResult>>
         local_pos_yields;
-    for (auto *yield_expr : yields[0]->as<ast::RepeatedUnop>().exprs()) {
+    for (auto *yield_expr : yields[0]->as<ast::YieldStmt>().exprs()) {
       back.pos_emplace(
           yield_expr,
           *ASSERT_NOT_NULL(ctx->prior_verification_attempt(yield_expr)));

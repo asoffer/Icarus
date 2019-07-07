@@ -319,9 +319,19 @@ void DumpAst::operator()(ast::Jump const *node) {
   }
 }
 
-void DumpAst::operator()(ast::RepeatedUnop const *node) {
-  absl::StrAppend(out_, OpStr(node->op()));
-  for (auto *expr : node->exprs()) { expr->DumpAst(this); }
+void DumpAst::operator()(ast::PrintStmt const *node) {
+  absl::StrAppend(out_, "print ",
+                  absl::StrJoin(node->exprs(), ", ", Joiner{this}));
+}
+
+void DumpAst::operator()(ast::ReturnStmt const *node) {
+  absl::StrAppend(out_, "return ",
+                  absl::StrJoin(node->exprs(), ", ", Joiner{this}));
+}
+
+void DumpAst::operator()(ast::YieldStmt const *node) {
+  absl::StrAppend(out_, "yield ",
+                  absl::StrJoin(node->exprs(), ", ", Joiner{this}));
 }
 
 void DumpAst::operator()(ast::ScopeLiteral const *node) {

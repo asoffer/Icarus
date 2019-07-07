@@ -6,18 +6,11 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "ast/ast_fwd.h"
 #include "base/debug.h"
 #include "core/fn_args.h"
 #include "error/inference_failure_reason.h"
 #include "frontend/text_span.h"
-
-namespace ast {
-struct Declaration;
-struct Expression;
-struct Identifier;
-struct Node;
-struct RepeatedUnop;
-}  // namespace ast
 
 namespace error {
 struct Log {
@@ -54,7 +47,7 @@ struct Log {
                                  TextSpan const &span, size_t index);
   void ReturningWrongNumber(TextSpan const &span, size_t actual,
                             size_t expected);
-  void NoReturnTypes(ast::RepeatedUnop const *ret_expr);
+  void NoReturnTypes(ast::ReturnStmt const *ret_expr);
   void DeclarationUsedInUnop(std::string const &unop,
                              TextSpan const &decl_span);
   void MissingMember(TextSpan const &span, std::string_view member_name,
