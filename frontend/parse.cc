@@ -322,13 +322,14 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
   unop->span    = TextSpan(nodes[0]->span, unop->operand->span);
 
   static absl::flat_hash_map<std::string_view, Operator> const UnopMap{
-      {"*", Operator::Mul},     {"[*]", Operator::BufPtr},
-      {"@", Operator::At},      {"import", Operator::Import},
-      {"&", Operator::And},     {"which", Operator::Which},
-      {"-", Operator::Sub},     {"needs", Operator::Needs},
-      {"!", Operator::Not},     {"ensure", Operator::Ensure},
-      {"<<", Operator::Expand}, {"copy", frontend::Operator::Copy},
-      {"$", Operator::Eval},    {"move", frontend::Operator::Move}};
+      {"*", Operator::Mul},          {"[*]", Operator::BufPtr},
+      {"@", Operator::At},           {"import", Operator::Import},
+      {"&", Operator::And},          {"which", Operator::Which},
+      {"-", Operator::Sub},          {"needs", Operator::Needs},
+      {"!", Operator::Not},          {"ensure", Operator::Ensure},
+      {"<<", Operator::Expand},      {"copy", frontend::Operator::Copy},
+      {"$", Operator::Eval},         {"move", frontend::Operator::Move},
+      {"..", Operator::VariadicPack}};
   unop->op = UnopMap.at(tk);
 
   if (unop->operand->is<ast::Declaration>()) {

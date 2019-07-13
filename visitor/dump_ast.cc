@@ -59,6 +59,7 @@ char const *OpStr(frontend::Operator op) {
     case frontend::Operator::Needs: return "needs ";
     case frontend::Operator::Ensure: return "ensure ";
     case frontend::Operator::Expand: return "<< ";
+    case frontend::Operator::VariadicPack: return "..";
     case frontend::Operator::BufPtr: return "[*]";
     case frontend::Operator::Copy: return "copy ";
     case frontend::Operator::Move: return "move ";

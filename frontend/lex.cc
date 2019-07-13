@@ -269,7 +269,7 @@ static bool BeginsWith(std::string_view prefix, std::string_view s) {
 }
 
 static const std::array<
-    std::pair<std::string_view, std::variant<Operator, Syntax>>, 44>
+    std::pair<std::string_view, std::variant<Operator, Syntax>>, 45>
     Ops = {{
         {"@", {Operator::At}},
         {",", {Operator::Comma}},
@@ -299,6 +299,7 @@ static const std::array<
         {":?", {Operator::TypeOf}},
         {":", {Operator::Colon}},
         {"<<", {Operator::Expand}},
+        {"..", {Operator::VariadicPack}},
         {"<=", {Operator::Le}},
         {"<", {Operator::Lt}},
         {"!=", {Operator::Ne}},

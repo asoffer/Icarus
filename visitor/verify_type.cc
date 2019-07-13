@@ -2145,6 +2145,7 @@ VerifyResult VerifyType::operator()(ast::Unop const *node, Context *ctx) {
       }
       if (!result.const_) { NOT_YET(); }
       return ctx->set_result(node, VerifyResult::Constant(type::Void()));
+    case frontend::Operator::VariadicPack: NOT_YET(*node);
     default: UNREACHABLE(*node);
   }
 }
