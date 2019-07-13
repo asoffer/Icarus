@@ -1867,6 +1867,9 @@ ir::Results EmitIr::Val(ast::Unop const *node, Context *ctx) {
       }
       return results;
     }
+    case frontend::Operator::VariadicPack: {
+      NOT_YET();
+    } break;
     default: UNREACHABLE("Operator is ", static_cast<int>(node->op));
   }
 }

@@ -11,6 +11,7 @@
 #include "type/cast.h"
 #include "type/generic_struct.h"
 #include "type/jump.h"
+#include "type/parameter_pack.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 #include "type/util.h"
@@ -2145,7 +2146,16 @@ VerifyResult VerifyType::operator()(ast::Unop const *node, Context *ctx) {
       }
       if (!result.const_) { NOT_YET(); }
       return ctx->set_result(node, VerifyResult::Constant(type::Void()));
-    case frontend::Operator::VariadicPack: NOT_YET(*node);
+    case frontend::Operator::VariadicPack:  {
+      if (!result.const_) { NOT_YET("Log an error"); }
+      // TODO could be a type, or a function returning a ty
+      if (result.type_ == type::Type_) {
+        return ctx->set_result(node, VerifyResult::Constant(type::Type_));
+      } else if (result.type_->is<type::Function>()) {
+        NOT_YET();
+      }
+      NOT_YET(*node);
+    }
     default: UNREACHABLE(*node);
   }
 }

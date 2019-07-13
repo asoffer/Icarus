@@ -43,6 +43,7 @@ cc_group_target(
         ":incomplete_flags",
         ":jump",
         ":opaque",
+        ":parameter_pack",
         ":pointer",
         ":primitive",
         ":struct",
@@ -64,6 +65,7 @@ cc_group_target(
         ":interface-impl",
         ":jump-impl",
         ":opaque-impl",
+        ":parameter_pack-impl",
         ":pointer-impl",
         ":primitive-impl",
         ":struct-impl",
@@ -210,6 +212,16 @@ cc_lib_target(
         "//base:guarded",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
+    ],
+    test_deps = None,
+)
+
+cc_lib_target(
+    name = "parameter_pack",
+    intf_deps = [":type"],
+    impl_deps = [
+        "//base:guarded",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
     test_deps = None,
 )

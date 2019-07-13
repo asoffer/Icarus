@@ -1,7 +1,7 @@
 #ifndef ICARUS_TYPE_POINTER_H
 #define ICARUS_TYPE_POINTER_H
 
-#include "type.h"
+#include "type/type.h"
 
 namespace type {
 struct Pointer : public Type {
