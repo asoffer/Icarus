@@ -459,8 +459,8 @@ ir::Results EmitIr::Val(ast::Access const *node, Context *ctx) {
     auto *t  = ctx->type_of(node->operand());
 
     if (t->is<type::Pointer>()) { t = t->as<type::Pointer>().pointee; }
-    while (t->is<type::Pointer>()) {
-      t   = t->as<type::Pointer>().pointee;
+    while (auto *p = t->if_as<type::Pointer>()) {
+      t   = p->pointee;
       reg = ir::Load<ir::Addr>(reg, t);
     }
 
@@ -1012,8 +1012,7 @@ static ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp const *chain_op,
           return ir::Le(lhs_ir.get<T>(0), rhs_ir.get<T>(0));
         });
       case frontend::Operator::Eq:
-        if (lhs_type == type::Block || lhs_type == type::OptBlock ||
-            lhs_type == type::RepBlock) {
+        if (lhs_type == type::Block) {
           auto val1 = lhs_ir.get<ir::BlockDef *>(0);
           auto val2 = rhs_ir.get<ir::BlockDef *>(0);
           if (!val1.is_reg_ && !val2.is_reg_) { return val1.val_ == val2.val_; }
@@ -1027,8 +1026,7 @@ static ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp const *chain_op,
               return ir::Eq(lhs_ir.get<T>(0), rhs_ir.get<T>(0));
             });
       case frontend::Operator::Ne:
-        if (lhs_type == type::Block || lhs_type == type::OptBlock ||
-            lhs_type == type::RepBlock) {
+        if (lhs_type == type::Block) {
           auto val1 = lhs_ir.get<ir::BlockDef *>(0);
           auto val2 = rhs_ir.get<ir::BlockDef *>(0);
           if (!val1.is_reg_ && !val2.is_reg_) { return val1.val_ == val2.val_; }
@@ -1113,8 +1111,7 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
     }
     auto reg_or_type = ir::Variant(args);
     return ir::Results{reg_or_type};
-  } else if (node->ops()[0] == frontend::Operator::Or &&
-             (t == type::Block || t == type::OptBlock)) {
+  } else if (node->ops()[0] == frontend::Operator::Or && t == type::Block) {
     NOT_YET();
   } else if (node->ops()[0] == frontend::Operator::And ||
              node->ops()[0] == frontend::Operator::Or) {
@@ -1375,15 +1372,8 @@ ir::Results EmitIr::Val(ast::Interface const *node, Context *ctx) {
 
 ir::Results EmitIr::Val(ast::Jump const *node, Context *ctx) {
   // TODO pick the best place to jump.
-  auto scope_def = backend::EvaluateAs<ir::ScopeDef *>(
-      type::Typed<ast::Expression const *>(
-          node->scope_->Containing<core::ScopeLitScope>()->scope_lit_,
-          type::Scope),
-      ctx);
-  if (scope_def->work_item && *scope_def->work_item) {
-    (std::move(*scope_def->work_item))();
-  }
-
+  auto *scope_def = ctx->scope_def(
+      node->scope_->Containing<core::ScopeLitScope>()->scope_lit_);
   if (node->options_.at(0).block == "start") {
     ir::JumpPlaceholder(ir::BlockDef::Start());
   } else if (node->options_.at(0).block == "exit") {
@@ -1422,6 +1412,7 @@ ir::Results EmitIr::Val(ast::JumpHandler const *node, Context *ctx) {
   }
 
   return ir::Results{ir_func};
+
 }
 
 static std::vector<std::pair<ast::Expression const *, ir::Results>>
@@ -1502,8 +1493,13 @@ ir::Results EmitIr::Val(ast::ScopeLiteral const *node, Context *ctx) {
   auto [scope_def_iter, inserted] =
       ctx->constants_->second.scope_defs_.try_emplace(node,
                                                       node->scope_->module());
-  if (inserted) {
+  if (inserted && !scope_def_iter->second.work_item) {
     scope_def_iter->second.work_item = DeferBody(this, node, ctx);
+  }
+
+  for (auto *decl : node->decls()) {
+    if (decl->id() == "init" || decl->id() == "done") { continue; }
+    scope_def_iter->second.blocks_[decl->id()];
   }
   return ir::Results{&scope_def_iter->second};
 }
@@ -1531,56 +1527,79 @@ ir::Results InitializeAndEmitBlockNode(ir::Results const &results,
   return block_node->EmitIr(visitor, ctx);
 }
 
+// Represents the data extracted from a scope literal ready for application
+// locally to a scope node.
+struct LocalScopeInterpretation {
+  LocalScopeInterpretation(
+      absl::flat_hash_map<std::string_view, ir::BlockDef> const &block_defs,
+      ast::ScopeNode const *node)
+      : node_(node) {
+    for (auto const &[name, block] : block_defs) {
+      blocks_.emplace(std::piecewise_construct, std::forward_as_tuple(name),
+                      std::forward_as_tuple(&block, nullptr));
+    }
+
+    block_indices_.emplace(ir::BlockDef::Start(),
+                           ir::CompiledFn::Current->AddBlock());
+    block_indices_.emplace(ir::BlockDef::Exit(),
+                           ir::CompiledFn::Current->AddBlock());
+
+    for (auto const &block_node : node->blocks()) {
+      auto &block        = blocks_.at(block_node.name());
+      std::get<1>(block) = &block_node;
+      block_indices_.emplace(std::get<0>(block),
+                            ir::CompiledFn::Current->AddBlock());
+    }
+  }
+
+  ir::BlockIndex init_block() const {
+    return block_indices_.at(ir::BlockDef::Start());
+  }
+  ir::BlockIndex land_block() const {
+    return block_indices_.at(ir::BlockDef::Exit());
+  }
+
+  ast::ScopeNode const *node_;
+  absl::flat_hash_map<std::string_view,
+                      std::tuple<ir::BlockDef const *, ast::BlockNode const *>>
+      blocks_;
+  absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> block_indices_;
+};
+
 ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) {
   DEBUG_LOG("ScopeNode")("Emitting IR for ScopeNode");
-  //   auto init_block = ir::CompiledFn::Current->AddBlock();
-  //   auto land_block = ir::CompiledFn::Current->AddBlock();
-  //
-  //   absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> block_map{
-  //       {ir::BlockDef::Start(), init_block}, {ir::BlockDef::Exit(),
-  //       land_block}};
-  //   auto *old_block_map = ctx->block_map;
-  //   ctx->block_map      = &block_map;
-  //   base::defer d([&] { ctx->block_map = old_block_map; });
-  //
-  //   absl::flat_hash_map<std::string_view,
-  //                       std::tuple<ir::BlockDef const *, ast::BlockNode const
-  //                       *>>
-  //       name_to_block;
-  //
-  //   DEBUG_LOG("ScopeNode")("scope_def ... evaluating.");
-  //   auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(node->name(), ctx);
-  //   DEBUG_LOG("ScopeNode")("          ... completing work.");
-  //   if (scope_def->work_item) { (*scope_def->work_item)(); }
-  //   DEBUG_LOG("ScopeNode")("          ... done.");
-  //
-  //   for (auto const & [ name, block ] : scope_def->blocks_) {
-  //     name_to_block.emplace(std::piecewise_construct,
-  //     std::forward_as_tuple(name),
-  //                           std::forward_as_tuple(&block, nullptr));
-  //   }
-  //
-  //   DEBUG_LOG("ScopeNode")("Constructing block_map");
-  //   for (auto const &block_node : node->blocks()) {
-  //     auto &block        = name_to_block.at(block_node.name());
-  //     std::get<1>(block) = &block_node;
-  //     block_map.emplace(std::get<0>(block),
-  //     ir::CompiledFn::Current->AddBlock());
-  //   }
-  //
-  //   ir::UncondJump(init_block);
-  //   ir::BasicBlock::Current = init_block;
-  //
-  //   DEBUG_LOG("ScopeNode")("Inlining entry handler at ", ast::ExprPtr{node});
-  //   ASSERT_NOT_NULL(ctx->jump_table(node, ""))
-  //       ->EmitInlineCall(
-  //           node->args().Transform([this, ctx](ast::Expression const *expr) {
-  //             return std::pair(expr, expr->EmitIr(this, ctx));
-  //           }),
-  //           block_map, ctx);
+
+  DEBUG_LOG("ScopeNode")("scope_def ... evaluating.");
+  auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(
+      type::Typed{node->name(), type::Scope}, ctx);
+  DEBUG_LOG("ScopeNode")("          ... completing work.");
+  if (scope_def->work_item) { std::move(*scope_def->work_item)(); }
+  DEBUG_LOG("ScopeNode")("          ... done.");
+
+  DEBUG_LOG("ScopeNode")("Constructing interpretation");
+  LocalScopeInterpretation interp(scope_def->blocks_, node);
+  DEBUG_LOG("ScopeNode")("          ... done");
+
+  auto init_block = interp.init_block();
+  auto land_block = interp.land_block();
+
+  auto *old_block_map = ctx->block_map;
+  ctx->block_map      = &interp.block_indices_;
+  base::defer d([&] { ctx->block_map = old_block_map; });
+
+  ir::UncondJump(init_block);
+  ir::BasicBlock::Current = init_block;
+
+  // DEBUG_LOG("ScopeNode")("Inlining entry handler at ", ast::ExprPtr{node});
+  // ASSERT_NOT_NULL(ctx->jump_table(node, ""))
+  //     ->EmitInlineCall(
+  //         node->args().Transform([this, ctx](ast::Expression const *expr) {
+  //           return std::pair(expr, expr->EmitIr(this, ctx));
+  //         }),
+  //         block_map, ctx);
   //
   //   DEBUG_LOG("ScopeNode")("Emit each block:");
-  //   for (auto[block_name, block_and_node] : name_to_block) {
+  //   for (auto[block_name, block_and_node] : interp.blocks_) {
   //     if (block_name == "init" || block_name == "done") { continue; }
   //     DEBUG_LOG("ScopeNode")("... ", block_name);
   //     auto & [ block, block_node ] = block_and_node;
@@ -1594,12 +1613,12 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) {
   //     InitializeAndEmitBlockNode(results, block_node, this, ctx);
   //   }
   //
-  //   ir::BasicBlock::Current = land_block;
+  ir::BasicBlock::Current = land_block;
   //
   //   // TODO currently the block you end up on here is where EmitInlineCall
   //   thinks
-  //   // you should end up, but that's not necessarily well-defined for things
-  //   that
+  //   // you should end up, but that's not necessarily well-defined for
+  //   things that
   //   // end up jumping to more than one possible location.
   //
   //   DEBUG_LOG("ScopeNode")("Inlining exit handler");

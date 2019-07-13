@@ -195,8 +195,13 @@ std::unique_ptr<ast::Node> BuildCallImpl(
     TextSpan span, std::unique_ptr<ast::Expression> callee,
     std::unique_ptr<ast::Expression> args_expr, Module *mod,
     error::Log *error_log) {
+  if (!args_expr) {
+    return std::make_unique<ast::Call>(std::move(span), std::move(callee),
+                                       core::OrderedFnArgs<ast::Expression>{});
+  }
+
   std::vector<std::pair<std::string, std::unique_ptr<ast::Expression>>> args;
-  if (auto *cl = args_expr ? args_expr->if_as<ast::CommaList>() : nullptr) {
+  if (auto *cl = args_expr->if_as<ast::CommaList>()) {
     std::optional<TextSpan> last_named_span_before_error = std::nullopt;
     std::vector<TextSpan> positional_error_spans;
 
@@ -222,12 +227,12 @@ std::unique_ptr<ast::Node> BuildCallImpl(
           positional_error_spans, *last_named_span_before_error);
     }
   } else {
-    if (ast::Binop *b = args_expr ? args_expr->if_as<ast::Binop>() : nullptr;
+    if (ast::Binop *b = args_expr->if_as<ast::Binop>();
         b && b->op() == frontend::Operator::Assign) {
-      auto[lhs, rhs] = std::move(*b).extract();
+      auto [lhs, rhs] = std::move(*b).extract();
       args.emplace_back(std::string{lhs->as<ast::Identifier>().token()},
                         std::move(rhs));
-    } else {
+    } else if (b) {
       args.emplace_back("", std::move(args_expr));
     }
   }

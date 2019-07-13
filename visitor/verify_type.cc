@@ -453,9 +453,7 @@ VerifyResult VerifyType::operator()(ast::BlockLiteral const *node,
   for (auto *b : node->before()) { b->VerifyType(this, ctx); }
   for (auto *a : node->after()) { a->VerifyType(this, ctx); }
 
-  return ctx->set_result(
-      node, VerifyResult::Constant(node->is_required() ? type::Block
-                                                       : type::OptBlock));
+  return ctx->set_result(node, VerifyResult::Constant(type::Block));
 }
 
 VerifyResult VerifyType::operator()(ast::BlockNode const *node, Context *ctx) {
@@ -702,17 +700,13 @@ VerifyResult VerifyType::operator()(ast::ChainOp const *node, Context *ctx) {
 
         ctx->error_log()->EarlyRequiredBlock(node->exprs()[i]->span);
         found_err = true;
-      } else if (results[i].type_ == type::OptBlock) {
-        if (!results[i].const_) { NOT_YET("log an error: non const block"); }
-
-        continue;
       } else {
         goto not_blocks;
       }
     }
     if (found_err) { return VerifyResult::Error(); }
     auto &last = results.back();
-    if (last.type_ != type::Block && last.type_ != type::OptBlock) {
+    if (last.type_ != type::Block) {
       goto not_blocks;
     } else if (!results.back().const_) {
       NOT_YET("log an error: non const block");
@@ -1652,6 +1646,7 @@ VerifyResult VerifyType::operator()(ast::Interface const *node, Context *ctx) {
 }
 
 VerifyResult VerifyType::operator()(ast::Jump const *node, Context *ctx) {
+  DEBUG_LOG("JumpHandler")(DumpAst::ToString(node));
   std::vector<core::FnArgs<VerifyResult>> arg_results;
   arg_results.reserve(node->options_.size());
   bool err = false;
@@ -1661,16 +1656,9 @@ VerifyResult VerifyType::operator()(ast::Jump const *node, Context *ctx) {
     arg_results.push_back(std::move(arg_result));
   }
   if (err) { NOT_YET(); }
-
-  auto scope_def = backend::EvaluateAs<ir::ScopeDef *>(
-      type::Typed<ast::Expression const *>(
-          node->scope_->Containing<core::ScopeLitScope>()->scope_lit_,
-          type::Scope),
-      ctx);
-  if (scope_def->work_item && *scope_def->work_item) {
-    (std::move(*scope_def->work_item))();
-  }
-
+  ir::ScopeDef *scope_def = ctx->scope_def(
+      node->scope_->Containing<core::ScopeLitScope>()->scope_lit_);
+  DEBUG_LOG("JumpHandler")(scope_def->blocks_);
   for (auto const &opt : node->options_) {
     if (opt.block == "start") {
     } else if (opt.block == "exit") {
@@ -1897,47 +1885,6 @@ VerifyResult VerifyType::operator()(ast::ScopeNode const *node, Context *ctx) {
                                              arg_results, ctx, &block_defs);
   DEBUG_LOG("ScopeNode")("    ... init_result = ", init_result);
   DEBUG_LOG("ScopeNode")("    ... block_defs = ", block_defs);
-
-  /*
-    // TODO type check
-
-    // TODO check the scope type makes sense.
-    if (!name_result.const_) {
-      ctx->error_log()->NonConstantScopeName(node->name()->span);
-      return VerifyResult::Error();
-    } else if (name_result.type_ != type::Scope) {
-      NOT_YET("Log an error");
-      return VerifyResult::Error();
-    }
-
-    auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(node->name(), ctx);
-    if (scope_def->work_item) { (*scope_def->work_item)(); }
-    scope_def->work_item = nullptr;
-
-    // TODO check that the names of each BlockNode actually exist on the scope
-    def
-
-    bool err = false;
-    for (auto const &block : node->blocks()) {
-      DEBUG_LOG("ScopeNode")("Verifying dispatch for block ", block.name());
-
-      auto block_results    = VerifyBlockNode(this, &block, scope_def, ctx);
-      auto const &block_def = scope_def->blocks_.at(block.name());
-      err |= !ast::VerifyJumpDispatch(
-                  node, block_def.after_,
-                  core::FnArgs<std::pair<ast::Expression const *,
-    VerifyResult>>{ std::move(block_results), {}}, ctx) .ok();
-      DEBUG_LOG("ScopeNode")("    ... done.");
-     }
-
-     DEBUG_LOG("ScopeNode")("Verifying dispatch for entry");
-     auto init_result =
-         ast::VerifyJumpDispatch(node, scope_def->inits_, arg_results, ctx);
-     err |= !init_result.ok();
-     DEBUG_LOG("ScopeNode")("    ... done: ", init_result);
-     if (err) { return VerifyResult::Error(); }
-     return ast::VerifyDispatch(node, scope_def->dones_, * TODO * {}, ctx);
-    */
   return VerifyResult::Constant(type::Void());
 }
 

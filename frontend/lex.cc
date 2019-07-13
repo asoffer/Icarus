@@ -134,22 +134,8 @@ Lexeme NextWord(SrcCursor *cursor, Src *src) {
   // and prefering (B). Users can specifically add parentheses to get (A), but
   // this requires tagging "block" differently from the other block-head
   // keywords.
-  if (token == "block") {
-    if (cursor->view()[0] == '?') {
-      cursor->remove_prefix(1);
-      span = ToSpan(word_cursor, src);
-      ++span.finish.offset;
-      return Lexeme(Syntax::OptBlock, span);
-    } else if (cursor->view()[0] == '~') {
-      cursor->remove_prefix(1);
-      span = ToSpan(word_cursor, src);
-      ++span.finish.offset;
-      return Lexeme(Syntax::RepBlock, span);
-    }
-    return Lexeme(Syntax::Block, span);
-  } else if (token == "scope") {
-    return Lexeme(Syntax::Scope, span);
-  }
+  if (token == "block") { return Lexeme(Syntax::Block, span); }
+  if (token == "scope") { return Lexeme(Syntax::Scope, span); }
 
   return Lexeme(std::make_unique<ast::Identifier>(span, std::string{token}));
 }

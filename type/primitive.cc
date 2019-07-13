@@ -62,8 +62,6 @@ core::Bytes Primitive::bytes(core::Arch const &a) const {
     case PrimType::Module: return core::Host().ptr_bytes;
     case PrimType::Scope: return core::Host().ptr_bytes;
     case PrimType::Block: return core::Host().ptr_bytes;
-    case PrimType::OptBlock: return core::Host().ptr_bytes;
-    case PrimType::RepBlock: return core::Host().ptr_bytes;
     case PrimType::ByteView:
       // TODO generalize to other architectures.
       return core::Bytes{sizeof(std::string_view)};
@@ -92,8 +90,6 @@ core::Alignment Primitive::alignment(core::Arch const &a) const {
     case PrimType::Module: return core::Host().ptr_alignment;
     case PrimType::Scope: return core::Host().ptr_alignment;
     case PrimType::Block: return core::Host().ptr_alignment;
-    case PrimType::OptBlock: return core::Host().ptr_alignment;
-    case PrimType::RepBlock: return core::Host().ptr_alignment;
     case PrimType::ByteView:
       // TODO generalize to other architectures.
       return core::Alignment{alignof(std::string_view)};

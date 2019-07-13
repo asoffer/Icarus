@@ -75,17 +75,21 @@ void LogForMacro(Logger const &log, Ts &&... ts) {
 #define DEBUG_LOG(...)                                                         \
   if ([]() -> bool {                                                           \
         static std::atomic<bool> log_switch(false);                            \
-        static int registration = [] {                                         \
-          for (std::string_view key :                                          \
-               std::initializer_list<std::string_view>{__VA_ARGS__}) {         \
-            auto handle = ::base::internal::log_switches.lock();               \
-            if (::base::internal::on_logs.lock()->contains(key)) {             \
-              log_switch = true;                                               \
-            };                                                                 \
-            (*handle)[key].push_back(&log_switch);                             \
-          }                                                                    \
-          return 0;                                                            \
-        }();                                                                   \
+        static int registration =                                              \
+            [](std::initializer_list<std::string_view> keys) {                 \
+              if (keys.size() == 0) {                                          \
+                log_switch = true;                                             \
+                return 0;                                                      \
+              }                                                                \
+              for (std::string_view key : keys) {                              \
+                auto handle = ::base::internal::log_switches.lock();           \
+                if (::base::internal::on_logs.lock()->contains(key)) {         \
+                  log_switch = true;                                           \
+                };                                                             \
+                (*handle)[key].push_back(&log_switch);                         \
+              }                                                                \
+              return 0;                                                        \
+            }({__VA_ARGS__});                                                  \
         return log_switch;                                                     \
       }()) {                                                                   \
   DEBUG_LOG_IMPL

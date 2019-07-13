@@ -101,9 +101,7 @@ void EmitIr::Print(type::Primitive const *t, ir::Results const &val,
     case type::PrimType::NullPtr:
     case type::PrimType::EmptyArray:
     case type::PrimType::Module:
-    case type::PrimType::Block:
-    case type::PrimType::OptBlock:
-    case type::PrimType::RepBlock: UNREACHABLE();
+    case type::PrimType::Block: UNREACHABLE();
     case type::PrimType::Intf:
       ir::Print(val.get<type::Interface const *>(0));
       break;

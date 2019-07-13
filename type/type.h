@@ -147,7 +147,7 @@ bool Compare(::type::Type const *t) {
                        std::is_same_v<T, ::Module const *>) {
     return t == ::type::Module;
   } else if constexpr (std::is_same_v<T, ir::BlockDef *>) {
-    return t == ::type::OptBlock || t == ::type::Block || t == ::type::RepBlock;
+    return t == ::type::Block;
   } else {
     UNREACHABLE(t->to_string(), " vs ", typeid(T).name());
   }

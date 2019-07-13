@@ -254,8 +254,7 @@ static base::expected<DispatchTable::Row> OverloadParams(
   auto result =
       *ASSERT_NOT_NULL(ctx->prior_verification_attempt(overload.expr));
   if (!result.type_->is<type::Callable>() && result.type_ != type::Generic &&
-      result.type_ != type::Block && result.type_ != type::OptBlock &&
-      result.type_ != type::RepBlock) {
+      result.type_ != type::Block) {
     // Figure out who should have verified this. Is it guaranteed to be
     // covered by shadowing checks? What if the overload isn't a declaration
     // so there aren't any shadowing checks?
