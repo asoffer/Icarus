@@ -127,7 +127,6 @@ void CombinePrints(ir::CompiledFn* fn) {
         case ir::Op::PrintByteView:
           Combine(&print_cmd, &cmd, cmd.byte_view_arg_);
          break;
-        case ir::Op::PrintInterface: /* not yet */ print_cmd = nullptr; break;
         case ir::Op::Call: print_cmd = nullptr; break;
         default: break;
       }

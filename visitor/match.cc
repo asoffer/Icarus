@@ -74,8 +74,6 @@ void Match::MatchExpr(ast::Import const *node, MatchState *state) {}
 
 void Match::MatchExpr(ast::Index const *node, MatchState *state) {}
 
-void Match::MatchExpr(ast::Interface const *node, MatchState *state) {}
-
 void Match::MatchExpr(ast::Jump const *node, MatchState *state) {}
 
 void Match::MatchExpr(ast::JumpHandler const *node, MatchState *state) {}

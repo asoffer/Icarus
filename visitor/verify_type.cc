@@ -1066,19 +1066,6 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
                                                   node_type->to_string());
         }
 
-      } else if (type_expr_type == type::Intf) {
-        if (!type_expr_result.const_) {
-          NOT_YET("log an error");
-          return ctx->set_result(node, VerifyResult::Error());
-        } else {
-          node_type = ctx->set_result(
-                             node, VerifyResult::Constant(
-                                       backend::EvaluateAs<type::Type const *>(
-                                           type::Typed<ast::Expression const *>(
-                                               node->type_expr(), type::Type_),
-                                           ctx)))
-                          .type_;
-        }
       } else {
         ctx->error_log()->NotAType(node->type_expr()->span,
                                    type_expr_type->to_string());
@@ -1146,9 +1133,6 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
         if (node_type != nullptr && init_val_type != nullptr) {
           error |= !VerifyAssignment(node->span, node_type, init_val_type, ctx);
         }
-      } else if (type_expr_type == type::Intf) {
-        node_type =
-            ctx->set_result(node, VerifyResult::Constant(type::Generic)).type_;
       } else {
         ctx->error_log()->NotAType(node->type_expr()->span,
                                    type_expr_type->to_string());
@@ -1174,9 +1158,6 @@ VerifyResult VerifyType::operator()(ast::Declaration const *node,
                                               node->type_expr(), type::Type_),
                                           ctx)))
                 .type_;
-      } else if (type_expr_type == type::Intf) {
-        node_type =
-            ctx->set_result(node, VerifyResult::Constant(type::Generic)).type_;
       } else {
         ctx->error_log()->NotAType(node->type_expr()->span,
                                    type_expr_type->to_string());
@@ -1636,14 +1617,6 @@ VerifyResult VerifyType::operator()(ast::Index const *node, Context *ctx) {
                                       lhs_result.type_->to_string());
     return VerifyResult::Error();
   }
-}
-
-VerifyResult VerifyType::operator()(ast::Interface const *node, Context *ctx) {
-  for (auto const *decl : node->decls()) {
-    decl->VerifyType(this, ctx);
-    if (decl->init_val() != nullptr) { NOT_YET(); }
-  }
-  return ctx->set_result(node, VerifyResult::Constant(type::Intf));
 }
 
 VerifyResult VerifyType::operator()(ast::Jump const *node, Context *ctx) {

@@ -70,8 +70,8 @@ static absl::flat_hash_map<std::string_view,
     {"return", {Operator::Return}}, {"yield", {Operator::Yield}},
     {"jump", {Operator::Jump}},     {"jump_handler", {Syntax::JumpHandler}},
     {"switch", {Syntax::Switch}},   {"when", {Operator::When}},
-    {"as", {Operator::As}},         {"interface", {Syntax::Interface}},
-    {"copy", {Operator::Copy}},     {"move", {Operator::Move}}};
+    {"as", {Operator::As}},         {"copy", {Operator::Copy}},
+    {"move", {Operator::Move}}};
 
 Lexeme NextWord(SrcCursor *cursor, Src *src) {
   // Match [a-zA-Z_][a-zA-Z0-9_]*

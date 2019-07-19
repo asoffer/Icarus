@@ -24,7 +24,6 @@ COMMON_LEX_IMPL_TARGETS = [
     "//type:primitive",
     "//type:type",
     "//type:util",
-    "//visitor:dump_ast-impl",
     "@com_google_absl//absl/container:flat_hash_map",
 ]
 

@@ -1361,15 +1361,6 @@ ir::Results EmitIr::Val(ast::Index const *node, Context *ctx) {
       ir::PtrFix(node->EmitLVal(this, ctx)[0].reg_, ctx->type_of(node))};
 }
 
-ir::Results EmitIr::Val(ast::Interface const *node, Context *ctx) {
-  // TODO this needs to be serialized as instructions so that we can evaluate
-  // functions which return interfaces. For example,
-  // HasFoo ::= (T: type) => interface {
-  //   foo: T
-  // }
-  return ir::Results{ir::FinalizeInterface(ir::CreateInterface(node->scope_))};
-}
-
 ir::Results EmitIr::Val(ast::Jump const *node, Context *ctx) {
   // TODO pick the best place to jump.
   auto *scope_def = ctx->scope_def(
@@ -1530,7 +1521,7 @@ ir::Results InitializeAndEmitBlockNode(ir::Results const &results,
 // Represents the data extracted from a scope literal ready for application
 // locally to a scope node.
 struct LocalScopeInterpretation {
-  LocalScopeInterpretation(
+  explicit LocalScopeInterpretation(
       absl::flat_hash_map<std::string_view, ir::BlockDef> const &block_defs,
       ast::ScopeNode const *node)
       : node_(node) {
@@ -1583,6 +1574,7 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) {
   auto init_block = interp.init_block();
   auto land_block = interp.land_block();
 
+  // TODO not sure this part is necessary
   auto *old_block_map = ctx->block_map;
   ctx->block_map      = &interp.block_indices_;
   base::defer d([&] { ctx->block_map = old_block_map; });
@@ -1590,15 +1582,15 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) {
   ir::UncondJump(init_block);
   ir::BasicBlock::Current = init_block;
 
-  // DEBUG_LOG("ScopeNode")("Inlining entry handler at ", ast::ExprPtr{node});
-  // ASSERT_NOT_NULL(ctx->jump_table(node, ""))
+  DEBUG_LOG("ScopeNode")("Inlining entry handler at ", ast::ExprPtr{node});
+  // ASSERT_NOT_NULL(ctx->jump_table(node, nullptr))
   //     ->EmitInlineCall(
   //         node->args().Transform([this, ctx](ast::Expression const *expr) {
   //           return std::pair(expr, expr->EmitIr(this, ctx));
   //         }),
-  //         block_map, ctx);
-  //
-  //   DEBUG_LOG("ScopeNode")("Emit each block:");
+  //         *ctx->block_map, ctx);
+
+  DEBUG_LOG("ScopeNode")("Emit each block:");
   //   for (auto[block_name, block_and_node] : interp.blocks_) {
   //     if (block_name == "init" || block_name == "done") { continue; }
   //     DEBUG_LOG("ScopeNode")("... ", block_name);

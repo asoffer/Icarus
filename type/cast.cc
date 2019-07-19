@@ -8,7 +8,6 @@
 #include "type/flags.h"
 #include "type/function.h"
 #include "type/generic_struct.h"
-#include "type/interface.h"
 #include "type/opaque.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
@@ -76,15 +75,6 @@ bool CanCast(Type const *from, Type const *to) {
 Type const *Meet(Type const *lhs, Type const *rhs) {
   if (lhs == rhs) { return lhs; }
   if (lhs == nullptr || rhs == nullptr) { return nullptr; }
-
-  // TODO should this be a part of Meet or done externally first?
-  if (auto *intf = rhs->if_as<type::Interface>()) {
-    if (intf->matches(lhs)) {
-      return lhs;
-    } else {
-      return nullptr;
-    }
-  }
 
   if (lhs == NullPtr || rhs == NullPtr) {
     // TODO It's not obvious to me that this is what I want to do.

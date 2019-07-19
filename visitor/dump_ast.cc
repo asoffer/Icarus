@@ -297,20 +297,6 @@ void DumpAst::operator()(ast::Index const *node) {
   absl::StrAppend(out_, "]");
 }
 
-void DumpAst::operator()(ast::Interface const *node) {
-  absl::StrAppend(out_, "interface {");
-  if (!node->decls().empty()) {
-    ++indentation_;
-    for (auto const *decl : node->decls()) {
-      absl::StrAppend(out_, indent());
-      decl->DumpAst(this);
-      absl::StrAppend(out_, "\n");
-    }
-    --indentation_;
-  }
-  absl::StrAppend(out_, "}");
-}
-
 void DumpAst::operator()(ast::Jump const *node) {
   absl::StrAppend(out_, "jump ");
   for (auto const &opt : node->options_) {

@@ -152,12 +152,6 @@ void AssignScope::operator()(ast::Index *node, core::Scope *scope) {
   node->rhs()->assign_scope(this, scope);
 }
 
-void AssignScope::operator()(ast::Interface *node, core::Scope *scope) {
-  node->scope_ = scope;
-  node->set_body_with_parent(scope);
-  for (auto *d : node->decls()) { d->assign_scope(this, node->body_scope()); }
-}
-
 void AssignScope::operator()(ast::Jump *node, core::Scope *scope) {
   node->scope_ = scope;
   for (auto &opt : node->options_) {

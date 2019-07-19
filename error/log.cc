@@ -346,9 +346,8 @@ void Log::NotBinary(TextSpan const &span, std::string const &token) {
 
 void Log::NotAType(TextSpan const &span, std::string_view type) {
   std::stringstream ss;
-  ss << "Expression was expected to be a type or interface, but instead it was "
-        "a(n) "
-     << type << ".\n\n";
+  ss << "Expression was expected to be a type, but instead it was a(n) " << type
+     << ".\n\n";
   WriteSource(
       ss, span.source, {span.lines()},
       {{span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});

@@ -6,7 +6,6 @@
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"
-#include "type/interface.h"
 #include "type/opaque.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
@@ -56,8 +55,6 @@ constexpr type::Type const *Get() {
     return type::Block; // Maybe opt-block?
   } else if constexpr (std::is_same_v<T, type::Type const *>) {
     return type::Type_;
-  } else if constexpr (std::is_same_v<T, type::Interface const *>) {
-    return type::Intf;
   } else if constexpr (std::is_same_v<T, ::Module *> ||
                        std::is_same_v<T, ::Module const *>) {
     return type::Module;

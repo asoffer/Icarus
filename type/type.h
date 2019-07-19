@@ -48,7 +48,6 @@ struct Function;
 struct Struct;
 struct GenericStruct;
 struct Pointer;
-struct Interface;
 
 struct Type : public base::Cast<Type> {
  public:
@@ -135,8 +134,6 @@ bool Compare(::type::Type const *t) {
     return t->is<::type::Pointer>();
   } else if constexpr (std::is_same_v<T, ir::ScopeDef *>) {
     return t == ::type::Scope;
-  } else if constexpr (std::is_same_v<T, ::type::Interface const *>) {
-    return t == ::type::Intf;
   } else if constexpr (std::is_same_v<T, ::type::Struct const *>) {
     return t->is<::type::Struct>();
   } else if constexpr (std::is_same_v<T, ir::AnyFunc>) {
@@ -193,9 +190,8 @@ auto Apply(Type const *t, Fn &&fn, Args &&... args) {
                     uint32_t, uint64_t, float, double, type::Type const *,
                     ir::EnumVal, ir::FlagsVal, ir::Addr, std::string_view,
                     ::Module *, type::Struct const *, ir::ScopeDef *,
-                    ir::AnyFunc, ir::BlockDef *, type::Interface const *,
-                    ast::FunctionLiteral *>(t, std::forward<Fn>(fn),
-                                            std::forward<Args>(args)...);
+                    ir::AnyFunc, ir::BlockDef *, ast::FunctionLiteral *>(
+      t, std::forward<Fn>(fn), std::forward<Args>(args)...);
 }
 
 // TODO lay these out adjacent in memory so the tests can be faster.

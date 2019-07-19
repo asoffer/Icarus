@@ -62,7 +62,6 @@ cc_group_target(
         ":generic_struct-impl",
         ":incomplete_enum-impl",
         ":incomplete_flags-impl",
-        ":interface-impl",
         ":jump-impl",
         ":opaque-impl",
         ":parameter_pack-impl",
@@ -82,7 +81,6 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     impl_deps = [
         ":all_types",
-        ":interface",
         "@com_google_absl//absl/algorithm:container",
     ],
     test_deps = ["//:impl"],
@@ -162,22 +160,6 @@ cc_lib_target(
         "//ir:flags_val",
         "//misc:module",
         "@com_google_absl//absl/random",
-    ],
-    test_deps = None,
-)
-
-cc_lib_target(
-    name = "interface",
-    intf_deps = [
-        ":type",
-        "//core:scope",
-    ],
-    impl_deps = [
-        ":function",
-        ":pointer",
-        "//base:guarded",
-        "//core:arch",
-        "//misc:module",
     ],
     test_deps = None,
 )
@@ -303,7 +285,7 @@ cc_lib_target(
 
 cc_lib_target(
     name = "util",
-    intf_deps = [":concrete_types", ":interface"],
+    intf_deps = [":concrete_types"],
     impl_deps = None,
     test_deps = None)
 

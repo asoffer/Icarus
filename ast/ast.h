@@ -691,36 +691,6 @@ struct Index : public Expression {
   std::unique_ptr<Expression> lhs_, rhs_;
 };
 
-// Interface:
-// Represents a literal defining an interface that a type may adhere to. Types
-// which satisfy all the constraints specified in an interface may be passed
-// into any function accepting an object of that interface.
-//
-// Example:
-//  ```
-//  comparable ::= interface {
-//    (<)  :: (self, self) -> bool
-//    (==) :: (self, self) -> bool
-//  }
-//  ```
-//
-// TODO this is a work in progress. The semantics of the declarations in this
-// node have not been decided upon yet.
-struct Interface : public ScopeExpr<core::DeclScope> {
-  explicit Interface(TextSpan span,
-                     std::vector<std::unique_ptr<Declaration>> decls)
-      : ScopeExpr<core::DeclScope>(std::move(span)), decls_(std::move(decls)) {}
-  ~Interface() override {}
-
-  NodeSpan<Declaration const> decls() const { return decls_; }
-  NodeSpan<Declaration> decls() { return decls_; }
-
-#include "visitor/visitors.xmacro.h"
-
- private:
-  std::vector<std::unique_ptr<Declaration>> decls_;
-};
-
 // Jump:
 // Represents a statement describing where a block should jump after completion.
 //

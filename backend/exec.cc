@@ -300,7 +300,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       CASE(ir::Op::LoadFlags, size_t);
       CASE(ir::Op::LoadAddr, ir::Addr);
       CASE(ir::Op::LoadFunc, ir::AnyFunc);
-      CASE(ir::Op::LoadInterface, type::Interface const *);
 #undef CASE
 
 #define CASE(op, member, fn)                                                   \
@@ -759,7 +758,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::PrintByteView:
       std::cerr << resolve(cmd.byte_view_arg_);
       break;
-    case ir::Op::PrintInterface: std::cerr << resolve(cmd.intf_arg_); break;
     case ir::Op::Call: {
       // NOTE: This is a hack using heap address slots to represent registers
       // since they are both void* and are used identically in the
@@ -835,12 +833,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       auto *f = resolve<type::IncompleteFlags *>(cmd.reg_);
       save(std::move(*f).finalize());
       delete f;
-    } break;
-    case ir::Op::CreateInterface: {
-      save(new type::Interface(cmd.scope_, cmd.scope_->module()));
-    } break;
-    case ir::Op::FinalizeInterface: {
-      save(resolve<type::Interface *>(cmd.reg_));
     } break;
     case ir::Op::CreateTuple: {
       save(new type::Tuple(std::vector<type::Type const *>{}));
@@ -981,10 +973,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::SetRetBlock:
       StoreValue(resolve(cmd.set_ret_block_.val_),
                  ret_slots.at(cmd.set_ret_block_.ret_num_), &stack_);
-      break;
-    case ir::Op::SetRetInterface:
-      StoreValue(resolve(cmd.set_ret_intf_.val_),
-                 ret_slots.at(cmd.set_ret_intf_.ret_num_), &stack_);
       break;
     case ir::Op::StoreBool:
       StoreValue(resolve(cmd.store_bool_.val_),

@@ -102,9 +102,6 @@ void EmitIr::Print(type::Primitive const *t, ir::Results const &val,
     case type::PrimType::EmptyArray:
     case type::PrimType::Module:
     case type::PrimType::Block: UNREACHABLE();
-    case type::PrimType::Intf:
-      ir::Print(val.get<type::Interface const *>(0));
-      break;
     case type::PrimType::ByteView:
       ir::Print(val.get<std::string_view>(0));
       break;

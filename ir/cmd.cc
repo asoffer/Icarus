@@ -377,12 +377,7 @@ Reg CreateStruct(core::Scope const *scope, ast::StructLiteral const *parent) {
   return cmd.result;
 }
 
-TypedRegister<type::Interface const *> CreateInterface(
-    core::Scope const *scope) {
-  auto &cmd  = MakeCmd(type::Type_, Op::CreateInterface);
-  cmd.scope_ = scope;
-  return cmd.result;
-}
+
 
 Reg ArgumentCache(ast::StructLiteral const *sl) {
   auto &cmd = MakeCmd(type::Ptr(type::Type_), Op::ArgumentCache);
@@ -392,12 +387,6 @@ Reg ArgumentCache(ast::StructLiteral const *sl) {
 
 Reg FinalizeStruct(Reg r) {
   auto &cmd = MakeCmd(type::Type_, Op::FinalizeStruct);
-  cmd.reg_  = r;
-  return cmd.result;
-}
-
-TypedRegister<type::Interface const *> FinalizeInterface(Reg r) {
-  auto &cmd = MakeCmd(type::Type_, Op::FinalizeInterface);
   cmd.reg_  = r;
   return cmd.result;
 }
@@ -829,7 +818,6 @@ std::pair<Results, bool> CallInline(
           // TODO CASE(PrintFlags, Print, FlagsVal, print_flags_)
           CASE(PrintAddr, Print, ir::Addr, addr_arg_)
           CASE(PrintByteView, Print, std::string_view, byte_view_arg_)
-          CASE(PrintInterface, Print, type::Interface const *, intf_arg_)
 #undef CASE
 
 #define CASE(op_code, op_fn, type, args)                                       \
@@ -1059,7 +1047,6 @@ std::pair<Results, bool> CallInline(
           CASE(SetRetGeneric, set_ret_generic_);
           CASE(SetRetModule, set_ret_module_);
           CASE(SetRetBlock, set_ret_block_);
-          CASE(SetRetInterface, set_ret_intf_);
 #undef CASE
         case Op::ArgumentCache: NOT_YET();
         case Op::NewOpaqueType: NOT_YET();

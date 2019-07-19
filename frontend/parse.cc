@@ -809,19 +809,6 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
                                             kind);
 }
 
-std::unique_ptr<ast::Node> BuildInterfaceLiteral(
-    std::unique_ptr<Statements> stmts, Module *mod, error::Log *error_log) {
-  std::vector<std::unique_ptr<ast::Declaration>> decls;
-  for (auto &stmt : stmts->content_) {
-    if (stmt->is<ast::Declaration>()) {
-      decls.push_back(move_as<ast::Declaration>(stmt));
-    } else {
-      NOT_YET(stmt);
-    }
-  }
-  return std::make_unique<ast::Interface>(stmts->span, std::move(decls));
-}
-
 std::unique_ptr<ast::Node> BuildScopeLiteral(std::unique_ptr<Statements> stmts,
                                              TextSpan span) {
   std::vector<std::unique_ptr<ast::Declaration>> decls;
@@ -964,9 +951,6 @@ std::unique_ptr<ast::Node> BuildKWBlock(
       TextSpan span(nodes.front()->span, nodes.back()->span);
       return BuildScopeLiteral(move_as<Statements>(nodes[1]), span);
 
-    } else if (tk == "interface") {
-      return BuildInterfaceLiteral(move_as<Statements>(nodes[1]), mod,
-                                   error_log);
     } else if (tk == "block") {
       return BuildBlock(move_as<Statements>(nodes[1]), true, mod, error_log);
     } else if (tk == "block?") {

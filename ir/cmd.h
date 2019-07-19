@@ -321,7 +321,6 @@ struct Cmd {
     RegisterOr<type::Type const *> type_arg_;
     RegisterOr<std::string_view> byte_view_arg_;
     RegisterOr<Addr> addr_arg_;
-    RegisterOr<type::Interface const *> intf_arg_;
 
     SpecialMember<1> special1_;
     SpecialMember<2> special2_;
@@ -383,7 +382,6 @@ struct Cmd {
     SetRet<ast::FunctionLiteral *> set_ret_generic_;
     SetRet<Module *> set_ret_module_;
     SetRet<BlockDef *> set_ret_block_;
-    SetRet<type::Interface const *> set_ret_intf_;
 
     PhiArgs<bool> *phi_bool_;
     PhiArgs<int8_t> *phi_i8_;
@@ -666,10 +664,6 @@ void AddBoundConstant(Reg ctx, ast::Declaration const *decl,
                       RegisterOr<type::Type const *> type);
 void DestroyContext(Reg r);
 void JumpPlaceholder(BlockDef const *block_def);
-
-TypedRegister<type::Interface const *> CreateInterface(
-    core::Scope const *scope);
-ir::TypedRegister<type::Interface const *> FinalizeInterface(Reg r);
 
 Reg ArgumentCache(ast::StructLiteral const *sl);
 

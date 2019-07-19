@@ -84,10 +84,6 @@ void ExtractJumps::operator()(ast::Index const *node) {
   node->rhs()->ExtractJumps(this);
 }
 
-void ExtractJumps::operator()(ast::Interface const *node) {
-  for (auto const *d : node->decls()) { d->ExtractJumps(this); }
-}
-
 void ExtractJumps::operator()(ast::Jump const *node) {
   // TODO Can you return or yield or jump from inside a jump block?!
   for (auto const &opt : node->options_) {

@@ -100,11 +100,6 @@ void DependentDecls::operator()(ast::Index const *node,
   node->rhs()->DependentDecls(this, d);
 }
 
-void DependentDecls::operator()(ast::Interface const *node,
-                                ast::Declaration const *d) {
-  NOT_YET();
-}
-
 void DependentDecls::operator()(ast::Jump const *node,
                                 ast::Declaration const *d) {
   for (auto const &opt : node->options_) {
