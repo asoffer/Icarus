@@ -823,8 +823,7 @@ std::unique_ptr<ast::Node> BuildScopeLiteral(std::unique_ptr<Statements> stmts,
 }
 
 std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
-                                      bool required, Module *mod,
-                                      error::Log *error_log) {
+                                      Module *mod, error::Log *error_log) {
   auto span = stmts->span;  // TODO it's really bigger than this because it
                             // involves the keyword too.
 
@@ -843,7 +842,7 @@ std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
     }
   }
   return std::make_unique<ast::BlockLiteral>(span, std::move(before),
-                                             std::move(after), required);
+                                             std::move(after));
 }
 
 std::unique_ptr<ast::StructLiteral> BuildStructLiteral(Statements &&stmts,
@@ -952,9 +951,7 @@ std::unique_ptr<ast::Node> BuildKWBlock(
       return BuildScopeLiteral(move_as<Statements>(nodes[1]), span);
 
     } else if (tk == "block") {
-      return BuildBlock(move_as<Statements>(nodes[1]), true, mod, error_log);
-    } else if (tk == "block?") {
-      return BuildBlock(move_as<Statements>(nodes[1]), false, mod, error_log);
+      return BuildBlock(move_as<Statements>(nodes[1]), mod, error_log);
     } else {
       UNREACHABLE(tk);
     }

@@ -129,7 +129,7 @@ void DumpAst::operator()(ast::Binop const *node) {
 }
 
 void DumpAst::operator()(ast::BlockLiteral const *node) {
-  absl::StrAppend(out_, "block", (node->is_required() ? "" : "?"), " {\n");
+  absl::StrAppend(out_, "block {\n");
 
   ++indentation_;
   for (auto const *b : node->before()) {

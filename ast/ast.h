@@ -264,12 +264,10 @@ struct Declaration : public Expression {
 struct BlockLiteral : public ScopeExpr<core::DeclScope> {
   explicit BlockLiteral(TextSpan span,
                         std::vector<std::unique_ptr<Declaration>> before,
-                        std::vector<std::unique_ptr<Declaration>> after,
-                        bool required)
+                        std::vector<std::unique_ptr<Declaration>> after)
       : ScopeExpr<core::DeclScope>(std::move(span)),
         before_(std::move(before)),
-        after_(std::move(after)),
-        required_(required) {}
+        after_(std::move(after)) {}
   ~BlockLiteral() override {}
 
   NodeSpan<Declaration const> before() const { return before_; }
@@ -277,13 +275,10 @@ struct BlockLiteral : public ScopeExpr<core::DeclScope> {
   NodeSpan<Declaration const> after() const { return after_; }
   NodeSpan<Declaration> after() { return after_; }
 
-  bool is_required() const { return required_; }
-
 #include "visitor/visitors.xmacro.h"
 
  private:
   std::vector<std::unique_ptr<Declaration>> before_, after_;
-  bool required_;
 };
 
 // BlockNode:
