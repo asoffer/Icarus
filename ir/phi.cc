@@ -37,7 +37,7 @@ CmdIndex Phi(type::Type const *t) {
           CompiledFn::Current->block(BasicBlock::Current).cmds_.size())};
   ASSERT_NOT_NULL(CompiledFn::Current)
       ->block(BasicBlock::Current)
-      .cmds_.emplace_back(t, Op::Death);
+      .cmds_.push_back(std::make_unique<Cmd>(t, Op::Death));
   return cmd_index;
 }
 

@@ -105,9 +105,9 @@ Reg EvaluateAsType(ast::Node const *node, Reg ctx) {
 }
 
 Cmd &MakeCmd(type::Type const *t, Op op) {
-  auto &cmd = ASSERT_NOT_NULL(CompiledFn::Current)
-                  ->block(BasicBlock::Current)
-                  .cmds_.emplace_back(t, op);
+  auto &cmd = *ASSERT_NOT_NULL(CompiledFn::Current)
+                   ->block(BasicBlock::Current)
+                   .cmds_.emplace_back(std::make_unique<Cmd>(t, op));
   return cmd;
 }
 
@@ -426,9 +426,10 @@ void AddHashtagToStruct(Reg struct_type, ast::Hashtag hashtag) {
 }
 
 TypedRegister<Addr> Alloca(type::Type const *t) {
-  auto &cmd = ASSERT_NOT_NULL(CompiledFn::Current)
-                  ->block(CompiledFn::Current->entry())
-                  .cmds_.emplace_back(type::Ptr(t), Op::Alloca);
+  auto &cmd =
+      *ASSERT_NOT_NULL(CompiledFn::Current)
+          ->block(CompiledFn::Current->entry())
+          .cmds_.emplace_back(std::make_unique<Cmd>(type::Ptr(t), Op::Alloca));
   cmd.type_ = t;
   return cmd.result;
 }
@@ -631,9 +632,9 @@ std::pair<Results, bool> CallInline(
 
   // 2. Initialize block 0.
   for (auto const &cmd : f->block(f->entry()).cmds_) {
-    switch (cmd.op_code_) {
+    switch (cmd->op_code_) {
       case Op::Alloca:
-        reg_relocs.emplace(cmd.result, ir::Results{Alloca(cmd.type_)});
+        reg_relocs.emplace(cmd->result, ir::Results{Alloca(cmd->type_)});
         continue;
       case Op::UncondJump: continue;
       default: UNREACHABLE();
@@ -662,7 +663,7 @@ std::pair<Results, bool> CallInline(
     // TODO could just as easily be a ref
     auto const &block_ref = f->block(block);
     for (; index < block_ref.cmds_.size(); ++index) {
-      auto const &cmd = block_ref.cmds_.at(index);
+      auto const &cmd = *block_ref.cmds_.at(index);
       switch (cmd.op_code_) {
         case Op::Death: UNREACHABLE();
         case Op::Bytes: {

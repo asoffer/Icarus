@@ -54,7 +54,7 @@ struct CompiledFn {
   }
 
   Cmd const &Command(CmdIndex cmd_index) const {
-    return blocks_.at(cmd_index.block.value).cmds_.at(cmd_index.cmd);
+    return *blocks_.at(cmd_index.block.value).cmds_.at(cmd_index.cmd);
   }
 
   Cmd const *Command(Reg reg) const;

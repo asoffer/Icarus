@@ -15,7 +15,7 @@ void RemoveEverythingAfterFirstJump(ir::BasicBlock* block) {
   auto& cmds = block->cmds_;
   auto iter  = cmds.begin();
   for (; iter != cmds.end(); ++iter) {
-    switch (iter->op_code_) {
+    switch ((*iter)->op_code_) {
       case ir::Op::JumpPlaceholder: UNREACHABLE();
       case ir::Op::UncondJump:
       case ir::Op::CondJump:
@@ -36,15 +36,15 @@ IncomingMap(ir::CompiledFn* fn) {
   for (int32_t i = 0; i < static_cast<int32_t>(fn->blocks_.size()); ++i) {
     auto& cmds = fn->blocks_.at(i).cmds_;
     if (cmds.empty()) { continue; }
-    switch (cmds.back().op_code_) {
+    switch (cmds.back()->op_code_) {
       case ir::Op::UncondJump: {
-        auto& [num, incoming_block] = incoming[cmds.back().block_index_];
+        auto& [num, incoming_block] = incoming[cmds.back()->block_index_];
         ++num;
         incoming_block = ir::BlockIndex{i};
       } break;
       case ir::Op::CondJump:
-        ++incoming[cmds.back().cond_jump_.blocks_[0]].first;
-        ++incoming[cmds.back().cond_jump_.blocks_[1]].first;
+        ++incoming[cmds.back()->cond_jump_.blocks_[0]].first;
+        ++incoming[cmds.back()->cond_jump_.blocks_[1]].first;
         break;
       default:;
     }
@@ -61,7 +61,7 @@ static void DeleteDeadBlocks(ir::CompiledFn* fn) {
     processing.pop();
     if (!alive.insert(current).second) { continue; }
     ASSERT(fn->block(current).cmds_.empty() == false);
-    auto const& cmd = fn->block(current).cmds_.back();
+    auto const& cmd = *fn->block(current).cmds_.back();
     switch (cmd.op_code_) {
       case ir::Op::UncondJump: {
         processing.push(cmd.block_index_);
@@ -146,7 +146,7 @@ void CombineBlocks(ir::CompiledFn* fn) {
   for (auto& block : fn->blocks_) {
     if (block.cmds_.empty()) { continue; }
     ASSERT(block.cmds_.empty() == false);
-    auto& cmd = block.cmds_.back();
+    auto& cmd = *block.cmds_.back();
     switch (cmd.op_code_) {
       case ir::Op::UncondJump: {
         if (auto iter = remap.find(cmd.block_index_); iter != remap.end()) {

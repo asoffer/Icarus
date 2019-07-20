@@ -101,11 +101,11 @@ PropertyMap PropertyMap::AssumingReturnsTrue() const {
   absl::flat_hash_set<Entry> stale_up;
   for (auto const &block : fn_->blocks_) {
     for (auto const &cmd : block.cmds_) {
-      if (cmd.op_code_ != ir::Op::SetRetBool) { continue; }
+      if (cmd->op_code_ != ir::Op::SetRetBool) { continue; }
 
-      result.lookup(&block, cmd.result)
+      result.lookup(&block, cmd->result)
           .add(base::make_owned<prop::BoolProp>(true));
-      stale_up.emplace(&block, cmd.result);
+      stale_up.emplace(&block, cmd->result);
     }
   }
 
@@ -147,7 +147,7 @@ void PropertyMap::MarkReferencesStale(Entry const &e,
     stale_down->emplace(e.viewing_block_, reg);
   }
 
-  auto &last_cmd = e.viewing_block_->cmds_.back();
+  auto &last_cmd = *e.viewing_block_->cmds_.back();
   switch (last_cmd.op_code_) {
     case ir::Op::UncondJump:
       stale_down->emplace(&fn_->block(last_cmd.block_index_), e.reg_);
@@ -336,7 +336,7 @@ BoolProp PropertyMap::Returns() const {
     const auto &block = fn_->blocks_[i];
     int32_t num_cmds      = static_cast<int32_t>(block.cmds_.size());
     for (int32_t j = 0; j < num_cmds; ++j) {
-      const auto &cmd = block.cmds_[j];
+      const auto &cmd = *block.cmds_[j];
       if (cmd.op_code_ == ir::Op::SetRetBool) {
         rets.push_back(ir::CmdIndex{ir::BlockIndex{i}, j});
         regs.push_back(cmd.result);

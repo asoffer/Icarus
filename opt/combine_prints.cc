@@ -108,25 +108,25 @@ void CombinePrints(ir::CompiledFn* fn) {
   for (auto& block : fn->blocks_) {
     ir::Cmd* print_cmd = nullptr;
     for (auto& cmd : block.cmds_) {
-      switch (cmd.op_code_) {
-        case ir::Op::PrintBool: Combine(&print_cmd, &cmd, cmd.bool_arg_); break;
-        case ir::Op::PrintInt8: Combine(&print_cmd, &cmd, cmd.i8_arg_); break;
-        case ir::Op::PrintInt16: Combine(&print_cmd, &cmd, cmd.i16_arg_); break;
-        case ir::Op::PrintInt32: Combine(&print_cmd, &cmd, cmd.i32_arg_); break;
-        case ir::Op::PrintInt64: Combine(&print_cmd, &cmd, cmd.i64_arg_); break;
-        case ir::Op::PrintNat8: Combine(&print_cmd, &cmd, cmd.u8_arg_); break;
-        case ir::Op::PrintNat16: Combine(&print_cmd, &cmd, cmd.u16_arg_); break;
-        case ir::Op::PrintNat32: Combine(&print_cmd, &cmd, cmd.u32_arg_); break;
-        case ir::Op::PrintNat64: Combine(&print_cmd, &cmd, cmd.u64_arg_); break;
-        case ir::Op::PrintFloat32: Combine(&print_cmd, &cmd, cmd.float32_arg_); break;
-        case ir::Op::PrintFloat64: Combine(&print_cmd, &cmd, cmd.float64_arg_); break;
-        case ir::Op::PrintType: Combine(&print_cmd, &cmd, cmd.type_arg_); break;
+      switch (cmd->op_code_) {
+        case ir::Op::PrintBool: Combine(&print_cmd, cmd.get(), cmd->bool_arg_); break;
+        case ir::Op::PrintInt8: Combine(&print_cmd, cmd.get(), cmd->i8_arg_); break;
+        case ir::Op::PrintInt16: Combine(&print_cmd, cmd.get(), cmd->i16_arg_); break;
+        case ir::Op::PrintInt32: Combine(&print_cmd, cmd.get(), cmd->i32_arg_); break;
+        case ir::Op::PrintInt64: Combine(&print_cmd, cmd.get(), cmd->i64_arg_); break;
+        case ir::Op::PrintNat8: Combine(&print_cmd, cmd.get(), cmd->u8_arg_); break;
+        case ir::Op::PrintNat16: Combine(&print_cmd, cmd.get(), cmd->u16_arg_); break;
+        case ir::Op::PrintNat32: Combine(&print_cmd, cmd.get(), cmd->u32_arg_); break;
+        case ir::Op::PrintNat64: Combine(&print_cmd, cmd.get(), cmd->u64_arg_); break;
+        case ir::Op::PrintFloat32: Combine(&print_cmd, cmd.get(), cmd->float32_arg_); break;
+        case ir::Op::PrintFloat64: Combine(&print_cmd, cmd.get(), cmd->float64_arg_); break;
+        case ir::Op::PrintType: Combine(&print_cmd, cmd.get(), cmd->type_arg_); break;
         case ir::Op::PrintEnum: /* not yet */ print_cmd = nullptr; break;
         case ir::Op::PrintFlags: /* not yet */ print_cmd = nullptr; break;
         case ir::Op::PrintAddr: /* not yet */ print_cmd = nullptr; break;
         case ir::Op::PrintByteView:
-          Combine(&print_cmd, &cmd, cmd.byte_view_arg_);
-         break;
+          Combine(&print_cmd, cmd.get(), cmd->byte_view_arg_);
+          break;
         case ir::Op::Call: print_cmd = nullptr; break;
         default: break;
       }
@@ -134,9 +134,10 @@ void CombinePrints(ir::CompiledFn* fn) {
 
     // TODO probably best to have a no-op instead of reusing death.
     block.cmds_.erase(
-        std::remove_if(
-            std::begin(block.cmds_), std::end(block.cmds_),
-            [](ir::Cmd const& cmd) { return cmd.op_code_ == ir::Op::Death; }),
+        std::remove_if(std::begin(block.cmds_), std::end(block.cmds_),
+                       [](std::unique_ptr<ir::Cmd> const& cmd) {
+                         return cmd->op_code_ == ir::Op::Death;
+                       }),
         std::end(block.cmds_));
   }
 }

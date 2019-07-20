@@ -27,7 +27,7 @@ struct BasicBlock {
   void Append(BasicBlock &&b);
 
   CompiledFn *fn_;  // Containing function
-  std::vector<Cmd> cmds_;
+  std::vector<std::unique_ptr<Cmd>> cmds_;
 
   // These containers are append-only and we separately store pointers to these
   // elments so we never traverse. We just need pointer stabiltiy. In the long

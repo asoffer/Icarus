@@ -51,7 +51,7 @@ CompiledFn::GetIncomingBlocks() const {
       incoming;
   for (auto const &b : blocks_) {
     ASSERT(b.cmds_.size() > 0u);
-    auto const &last = b.cmds_.back();
+    auto const &last = *b.cmds_.back();
     switch (last.op_code_) {
       case Op::UncondJump:
         incoming[&block(last.block_index_)].insert(&b);
@@ -107,15 +107,15 @@ void CompiledFn::CheckInvariants() {
   std::vector<std::pair<BasicBlock const *, ir::Cmd const *>> cmds;
   for (const auto &block : blocks_) {
     for (const auto &cmd : block.cmds_) {
-      if (cmd.op_code_ != Op::Call) { continue; }
+      if (cmd->op_code_ != Op::Call) { continue; }
       // If it's a register it isn't known at compile time and therefore is not
       // allowed to have preconditions. If it's a foreign function we also don't
       // allow preconditions. This can be handled correctly by declaring the
       // foreign function locally and wrapping it.
-      if (cmd.call_.fn_.is_reg_) { continue; }
-      if (!cmd.call_.fn_.val_.is_fn()) { continue; }
-      if (cmd.call_.fn_.val_.func()->preconditions_.empty()) { continue; }
-      cmds.emplace_back(&block, &cmd);
+      if (cmd->call_.fn_.is_reg_) { continue; }
+      if (!cmd->call_.fn_.val_.is_fn()) { continue; }
+      if (cmd->call_.fn_.val_.func()->preconditions_.empty()) { continue; }
+      cmds.emplace_back(&block, cmd.get());
     }
   }
   if (cmds.empty()) { return; }

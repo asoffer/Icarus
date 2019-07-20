@@ -95,7 +95,7 @@ ir::BlockIndex ExecContext::ExecuteBlock(
       << call_stack.top().current_ << "  " << *call_stack.top().fn_;
   auto cmd_iter = current_block().cmds_.begin();
   do {
-    result = ExecuteCmd(*cmd_iter++, ret_slots);
+    result = ExecuteCmd(**cmd_iter++, ret_slots);
   } while (result == ir::BlockIndex{-2});
   return result;
 }
