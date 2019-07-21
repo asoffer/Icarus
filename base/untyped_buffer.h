@@ -1,6 +1,7 @@
 #ifndef ICARUS_BASE_UNTYPED_BUFFER_H
 #define ICARUS_BASE_UNTYPED_BUFFER_H
 
+#include <cstddef>
 #include <cstring>
 #include <string>
 #include <utility>
@@ -12,7 +13,7 @@ struct untyped_buffer {
   untyped_buffer(size_t starting_capacity = 0)
       : size_(0),
         capacity_(starting_capacity),
-        data_(static_cast<char *>(malloc(starting_capacity))) {}
+        data_(static_cast<std::byte *>(malloc(starting_capacity))) {}
 
   static untyped_buffer MakeFull(size_t starting_size) {
     untyped_buffer result(starting_size);
@@ -29,7 +30,7 @@ struct untyped_buffer {
   untyped_buffer(untyped_buffer const &that) noexcept
       : size_(that.size_),
         capacity_(that.size_),
-        data_(static_cast<char *>(malloc(size_))) {
+        data_(static_cast<std::byte *>(malloc(size_))) {
     std::memcpy(data_, that.data_, size_);
   }
 
@@ -45,15 +46,61 @@ struct untyped_buffer {
     free(data_);
     size_     = that.size_;
     capacity_ = that.size_;
-    data_     = static_cast<char *>(malloc(capacity_));
+    data_     = static_cast<std::byte *>(malloc(capacity_));
     std::memcpy(data_, that.data_, size_);
     return *this;
   }
 
   ~untyped_buffer() { free(data_); }
 
-  size_t size() const { return size_; }
-  bool empty() const { return size_ == 0; }
+  struct iterator {
+    template <typename T>
+    T &read() {
+      ptr_ = reinterpret_cast<std::byte *>(
+          ((reinterpret_cast<uintptr_t>(ptr_) - 1) | (alignof(T) - 1)) + 1);
+      T &result = *reinterpret_cast<T *>(ptr_);
+      ptr_ += sizeof(T);
+      return result;
+    }
+
+   private:
+    friend struct untyped_buffer;
+    constexpr iterator(std::byte *ptr) : ptr_(ptr) {}
+
+    std::byte *ptr_;
+  };
+  struct const_iterator {
+    template <typename T>
+    T const &read() {
+      ptr_ = reinterpret_cast<std::byte const *>(
+          ((reinterpret_cast<uintptr_t>(ptr_) - 1) | (alignof(T) - 1)) + 1);
+      T const &result = *reinterpret_cast<T const *>(ptr_);
+      ptr_ += sizeof(T);
+      return result;
+    }
+
+   private:
+    friend struct untyped_buffer;
+    constexpr const_iterator(std::byte const *ptr) : ptr_(ptr) {}
+
+    std::byte const *ptr_;
+  };
+
+  constexpr iterator begin() { return iterator(data_); }
+  constexpr const_iterator begin() const { return const_iterator(data_); }
+
+  constexpr iterator end() { return iterator(data_ + size()); }
+  constexpr const_iterator end() const { return const_iterator(data_ + size()); }
+
+  constexpr std::pair<iterator, iterator> bounds() {
+    return std::pair(begin(), end());
+  }
+  constexpr std::pair<const_iterator, const_iterator> bounds() const{
+    return std::pair(begin(), end());
+  }
+
+  constexpr size_t size() const { return size_; }
+  constexpr bool empty() const { return size_ == 0; }
 
   template <typename T>
   T get(size_t offset) const {
@@ -115,7 +162,7 @@ struct untyped_buffer {
  private:
   void reallocate(size_t num) {
     size_t new_cap = std::max<size_t>(num, capacity_ * 2);
-    char *new_data = static_cast<char *>(malloc(new_cap));
+    std::byte *new_data = static_cast<std::byte *>(malloc(new_cap));
     std::memcpy(new_data, data_, size_);
     capacity_ = new_cap;
     free(data_);
@@ -124,7 +171,7 @@ struct untyped_buffer {
 
   size_t size_     = 0;
   size_t capacity_ = 0;
-  char *data_      = 0;
+  std::byte *data_ = 0;
 };
 }  // namespace base
 

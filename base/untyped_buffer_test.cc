@@ -72,5 +72,31 @@ TEST_CASE("to_string") {
   }
 }
 
+TEST_CASE("iterator") {
+  untyped_buffer buf;
+  buf.append(123);
+  buf.append(true);
+  buf.append(456);
+  buf.append(false);
+  auto iter = buf.begin();
+  CHECK(iter.read<int>() == 123);
+  CHECK(iter.read<int>());
+  CHECK(iter.read<int>() == 456);
+  CHECK_FALSE(iter.read<int>());
+}
+
+TEST_CASE("const_iterator") {
+  untyped_buffer buf;
+  buf.append(123);
+  buf.append(true);
+  buf.append(456);
+  buf.append(false);
+  auto iter = static_cast<untyped_buffer const&>(buf).begin();
+  CHECK(iter.read<int>() == 123);
+  CHECK(iter.read<int>());
+  CHECK(iter.read<int>() == 456);
+  CHECK_FALSE(iter.read<int>());
+}
+
 }  // namespace
 }  // namespace base
