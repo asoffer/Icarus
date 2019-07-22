@@ -563,31 +563,6 @@ RegisterOr<bool> Ne(Lhs lhs, Rhs rhs) {
   return internal::HandleBinop<Cmd::NeTag, std::not_equal_to>(lhs, rhs);
 }
 
-template <typename Lhs, typename Rhs>
-auto Add(Lhs lhs, Rhs rhs) {
-  return internal::HandleBinop<Cmd::AddTag, std::plus>(lhs, rhs);
-}
-
-template <typename Lhs, typename Rhs>
-auto Mod(Lhs lhs, Rhs rhs) {
-  return internal::HandleBinop<Cmd::ModTag, std::modulus>(lhs, rhs);
-}
-
-template <typename Lhs, typename Rhs>
-auto Sub(Lhs lhs, Rhs rhs) {
-  return internal::HandleBinop<Cmd::SubTag, std::minus>(lhs, rhs);
-}
-
-template <typename Lhs, typename Rhs>
-auto Mul(Lhs lhs, Rhs rhs) {
-  return internal::HandleBinop<Cmd::MulTag, std::multiplies>(lhs, rhs);
-}
-
-template <typename Lhs, typename Rhs>
-auto Div(Lhs lhs, Rhs rhs) {
-  return internal::HandleBinop<Cmd::DivTag, std::divides>(lhs, rhs);
-}
-
 template <typename T, typename... Args>
 void Print(T r, Args &&... args) {
   if constexpr (IsRegOr<T>::value) {

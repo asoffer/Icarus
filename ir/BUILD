@@ -12,6 +12,7 @@ cc_group_target(
         ":block-impl",
         ":builtin_ir-impl",
         ":cmd-impl",
+        ":cmd_buffer-impl",
         ":compiled_fn-impl",
         ":components-impl",
         ":flags_val-impl",
@@ -68,6 +69,7 @@ cc_lib_target(
     intf_deps = [
         ":arguments",
         ":cmd",
+        ":cmd_buffer",
         ":out_params",
         "//base:untyped_buffer",
     ],
@@ -115,6 +117,23 @@ cc_lib_target(
         "//core:arch",
         "//type:typed_value",
         "//type:generic_struct",
+    ],
+    test_deps = None,
+)
+
+cc_lib_target(
+    name = "cmd_buffer",
+    cfgs = ["match", "compile"],
+    intf_deps = [
+        ":cmd",
+        "//backend:exec",
+        "//base:untyped_buffer",
+        "//core:arch",
+    ],
+    impl_deps = [
+        "//ir:compiled_fn",
+        "//ir/cmd:arithmetic",
+        "//ir/cmd:print",
     ],
     test_deps = None,
 )
@@ -207,8 +226,8 @@ cc_lib_target(
     name = "results",
     intf_deps = [
         ":register",
-        "//core:bytes",
         "//base:untyped_buffer",
+        "//core:bytes",
     ],
     impl_deps = ["//base:untyped_buffer-impl"],
     test_deps = [],

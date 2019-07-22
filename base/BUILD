@@ -62,9 +62,10 @@ cc_lib_target(
     name = "untyped_buffer",
     intf_deps = [
         ":debug",
+    ],
+    impl_deps = [
         "@com_google_absl//absl/strings",
     ],
-    impl_deps = [],
     test_deps = [])
 
 cc_lib_target(

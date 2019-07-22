@@ -96,6 +96,13 @@ template <typename T>
 constexpr bool always_false() {
   return false;
 }
+
+template <typename T>
+struct Tag {
+  using type = T;
+};
+
+constexpr size_t Log2(size_t n) { return n == 1 ? 0 : 1 + Log2(n / 2); }
 }  // namespace base
 #undef STATIC_ASSERT_RELATED
 #endif  // ICARUS_BASE_UTIL_H

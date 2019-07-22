@@ -28,8 +28,9 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = [
         "//base:untyped_buffer",
-        "//ir:basic_block",
-        "//ir:cmd",
+        "//ir:addr",
+        "//ir:block",
+        "//ir:register",
     ],
     impl_deps = [
         ":eval",

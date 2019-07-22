@@ -104,10 +104,15 @@ Reg EvaluateAsType(ast::Node const *node, Reg ctx) {
   return cmd.result;
 }
 
+BasicBlock &GetBlock() {
+  return ASSERT_NOT_NULL(CompiledFn::Current)->block(BasicBlock::Current);
+}
+
 Cmd &MakeCmd(type::Type const *t, Op op) {
-  auto &cmd = *ASSERT_NOT_NULL(CompiledFn::Current)
-                   ->block(BasicBlock::Current)
-                   .cmds_.emplace_back(std::make_unique<Cmd>(t, op));
+  auto &blk = ASSERT_NOT_NULL(CompiledFn::Current)->block(BasicBlock::Current);
+  auto &cmd = *blk.cmds_.emplace_back(std::make_unique<Cmd>(t, op));
+  blk.cmd_buffer_.append_index<LegacyCmd>();
+  blk.cmd_buffer_.append(&cmd);
   return cmd;
 }
 
@@ -341,6 +346,7 @@ type::Typed<Reg> Field(RegisterOr<Addr> r, type::Struct const *t, size_t n) {
 }
 
 Reg Reserve(type::Type const *t) {
+  DEBUG_LOG("reserve")("Reserving t = ", t->to_string());
   auto arch   = core::Interpretter();
   auto offset = FwdAlign(CompiledFn::Current->reg_size_, t->alignment(arch));
   CompiledFn::Current->reg_size_ = offset + t->bytes(arch);
@@ -365,10 +371,17 @@ Cmd::Cmd(type::Type const *t, Op op) : op_code_(op) {
     return;
   }
 
-  result = Reserve(t);
-  CompiledFn::Current->references_[result];  // Guarantee it exists.
+  result = MakeResult(t);
+  // TODO this isn't done for cmd-buffer commands and needs to be eventually, at
+  // least for phi nodes. properties want it to.
   // TODO for implicitly declared out-params of a Call, map them to the call.
   CompiledFn::Current->reg_to_cmd_.emplace(result, cmd_index);
+}
+
+Reg MakeResult(type::Type const *t) {
+  Reg result = Reserve(t);
+  CompiledFn::Current->references_[result];  // Guarantee it exists.
+  return result;
 }
 
 Reg CreateStruct(core::Scope const *scope, ast::StructLiteral const *parent) {
@@ -376,8 +389,6 @@ Reg CreateStruct(core::Scope const *scope, ast::StructLiteral const *parent) {
   cmd.create_struct_ = {scope, parent};
   return cmd.result;
 }
-
-
 
 Reg ArgumentCache(ast::StructLiteral const *sl) {
   auto &cmd = MakeCmd(type::Ptr(type::Type_), Op::ArgumentCache);
@@ -426,10 +437,13 @@ void AddHashtagToStruct(Reg struct_type, ast::Hashtag hashtag) {
 }
 
 TypedRegister<Addr> Alloca(type::Type const *t) {
+  DEBUG_LOG("alloca")("alloca ", t->to_string());
+  auto &blk =
+      ASSERT_NOT_NULL(CompiledFn::Current)->block(CompiledFn::Current->entry());
   auto &cmd =
-      *ASSERT_NOT_NULL(CompiledFn::Current)
-          ->block(CompiledFn::Current->entry())
-          .cmds_.emplace_back(std::make_unique<Cmd>(type::Ptr(t), Op::Alloca));
+      *blk.cmds_.emplace_back(std::make_unique<Cmd>(type::Ptr(t), Op::Alloca));
+  blk.cmd_buffer_.append_index<LegacyCmd>();
+  blk.cmd_buffer_.append(&cmd);
   cmd.type_ = t;
   return cmd.result;
 }
@@ -803,22 +817,10 @@ std::pair<Results, bool> CallInline(
     }                                                                          \
     op_fn(r);                                                                  \
   } break;
-          CASE(PrintBool, Print, bool, bool_arg_)
-          CASE(PrintInt8, Print, int8_t, i8_arg_)
-          CASE(PrintInt16, Print, int16_t, i16_arg_)
-          CASE(PrintInt32, Print, int32_t, i32_arg_)
-          CASE(PrintInt64, Print, int64_t, i64_arg_)
-          CASE(PrintNat8, Print, uint8_t, u8_arg_)
-          CASE(PrintNat16, Print, uint16_t, u16_arg_)
-          CASE(PrintNat32, Print, uint32_t, u32_arg_)
-          CASE(PrintNat64, Print, uint64_t, u64_arg_)
-          CASE(PrintFloat32, Print, float, float32_arg_)
-          CASE(PrintFloat64, Print, double, float64_arg_)
           CASE(PrintType, Print, type::Type const *, type_arg_)
           // TODO CASE(PrintEnum, Print, EnumVal, print_enum_)
           // TODO CASE(PrintFlags, Print, FlagsVal, print_flags_)
           CASE(PrintAddr, Print, ir::Addr, addr_arg_)
-          CASE(PrintByteView, Print, std::string_view, byte_view_arg_)
 #undef CASE
 
 #define CASE(op_code, op_fn, type, args)                                       \
@@ -840,54 +842,6 @@ std::pair<Results, bool> CallInline(
     }                                                                          \
     reg_relocs.emplace(cmd.result, op_fn(r0, r1));                             \
   } break
-          CASE(AddNat8, Add, uint8_t, u8_args_);
-          CASE(AddNat16, Add, uint16_t, u16_args_);
-          CASE(AddNat32, Add, uint32_t, u32_args_);
-          CASE(AddNat64, Add, uint64_t, u64_args_);
-          CASE(AddInt8, Add, int8_t, i8_args_);
-          CASE(AddInt16, Add, int16_t, i16_args_);
-          CASE(AddInt32, Add, int32_t, i32_args_);
-          CASE(AddInt64, Add, int64_t, i64_args_);
-          CASE(AddFloat32, Add, float, float32_args_);
-          CASE(AddFloat64, Add, double, float64_args_);
-          CASE(SubNat8, Sub, uint8_t, u8_args_);
-          CASE(SubNat16, Sub, uint16_t, u16_args_);
-          CASE(SubNat32, Sub, uint32_t, u32_args_);
-          CASE(SubNat64, Sub, uint64_t, u64_args_);
-          CASE(SubInt8, Sub, int8_t, i8_args_);
-          CASE(SubInt16, Sub, int16_t, i16_args_);
-          CASE(SubInt32, Sub, int32_t, i32_args_);
-          CASE(SubInt64, Sub, int64_t, i64_args_);
-          CASE(SubFloat32, Sub, float, float32_args_);
-          CASE(SubFloat64, Sub, double, float64_args_);
-          CASE(MulNat8, Mul, uint8_t, u8_args_);
-          CASE(MulNat16, Mul, uint16_t, u16_args_);
-          CASE(MulNat32, Mul, uint32_t, u32_args_);
-          CASE(MulNat64, Mul, uint64_t, u64_args_);
-          CASE(MulInt8, Mul, int8_t, i8_args_);
-          CASE(MulInt16, Mul, int16_t, i16_args_);
-          CASE(MulInt32, Mul, int32_t, i32_args_);
-          CASE(MulInt64, Mul, int64_t, i64_args_);
-          CASE(MulFloat32, Mul, float, float32_args_);
-          CASE(MulFloat64, Mul, double, float64_args_);
-          CASE(DivNat8, Div, uint8_t, u8_args_);
-          CASE(DivNat16, Div, uint16_t, u16_args_);
-          CASE(DivNat32, Div, uint32_t, u32_args_);
-          CASE(DivNat64, Div, uint64_t, u64_args_);
-          CASE(DivInt8, Div, int8_t, i8_args_);
-          CASE(DivInt16, Div, int16_t, i16_args_);
-          CASE(DivInt32, Div, int32_t, i32_args_);
-          CASE(DivInt64, Div, int64_t, i64_args_);
-          CASE(DivFloat32, Div, float, float32_args_);
-          CASE(DivFloat64, Div, double, float64_args_);
-          CASE(ModNat8, Mod, uint8_t, u8_args_);
-          CASE(ModNat16, Mod, uint16_t, u16_args_);
-          CASE(ModNat32, Mod, uint32_t, u32_args_);
-          CASE(ModNat64, Mod, uint64_t, u64_args_);
-          CASE(ModInt8, Mod, int8_t, i8_args_);
-          CASE(ModInt16, Mod, int16_t, i16_args_);
-          CASE(ModInt32, Mod, int32_t, i32_args_);
-          CASE(ModInt64, Mod, int64_t, i64_args_);
           CASE(LtInt8, Lt, int8_t, i8_args_);
           CASE(LtInt16, Lt, int16_t, i16_args_);
           CASE(LtInt32, Lt, int32_t, i32_args_);

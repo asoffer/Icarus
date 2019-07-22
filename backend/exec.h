@@ -6,8 +6,16 @@
 #include <stack>
 
 #include "base/untyped_buffer.h"
-#include "ir/basic_block.h"
-#include "ir/cmd.h"
+#include "ir/addr.h"
+#include "ir/block.h"
+#include "ir/register.h"
+
+namespace ir {
+struct Cmd;
+struct BasicBlock;
+struct CompiledFn;
+struct ScopeDef;
+}  // namespace ir
 
 namespace backend {
 struct ExecContext {
@@ -37,9 +45,9 @@ struct ExecContext {
 
   std::stack<Frame> call_stack;
 
-  ir::BlockIndex ExecuteBlock(const std::vector<ir::Addr> &ret_slots);
-  ir::BlockIndex ExecuteCmd(const ir::Cmd &cmd,
-                            const std::vector<ir::Addr> &ret_slots);
+  ir::BlockIndex ExecuteBlock(std::vector<ir::Addr> const &ret_slots);
+  ir::BlockIndex ExecuteCmd(ir::Cmd const &cmd,
+                            std::vector<ir::Addr> const &ret_slots);
 
   template <typename T>
   T resolve(ir::Reg val) const;
@@ -52,7 +60,7 @@ struct ExecContext {
   base::untyped_buffer stack_;
 };
 
-void Execute(ir::CompiledFn *fn, const base::untyped_buffer &arguments,
-             const std::vector<ir::Addr> &ret_slots, ExecContext *ctx);
+void Execute(ir::CompiledFn *fn, base::untyped_buffer const &arguments,
+             std::vector<ir::Addr> const &ret_slots, ExecContext *ctx);
 }  // namespace backend
 #endif  // ICARUS_BACKEND_EXEC_H

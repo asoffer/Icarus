@@ -6,6 +6,7 @@
 #include "base/guarded.h"
 #include "ir/builtin_ir.h"
 #include "ir/cmd.h"
+#include "ir/cmd/arithmetic.h"
 #include "ir/components.h"
 #include "ir/phi.h"
 #include "ir/register.h"

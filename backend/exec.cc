@@ -15,6 +15,8 @@
 #include "core/arch.h"
 #include "error/log.h"
 #include "ir/arguments.h"
+#include "ir/basic_block.h"
+#include "ir/cmd.h"
 #include "ir/compiled_fn.h"
 #include "misc/module.h"
 #include "type/incomplete_enum.h"
@@ -93,11 +95,7 @@ ir::BlockIndex ExecContext::ExecuteBlock(
   ir::BlockIndex result;
   ASSERT(current_block().cmds_.size() > 0u)
       << call_stack.top().current_ << "  " << *call_stack.top().fn_;
-  auto cmd_iter = current_block().cmds_.begin();
-  do {
-    result = ExecuteCmd(**cmd_iter++, ret_slots);
-  } while (result == ir::BlockIndex{-2});
-  return result;
+  return current_block().cmd_buffer_.Execute(ret_slots, this);
 }
 
 template <typename T>
@@ -306,59 +304,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
   case op: {                                                                   \
     save(fn(resolve(cmd.member.args_[0]), resolve(cmd.member.args_[1])));      \
   } break
-      CASE(ir::Op::AddInt8, i8_args_, std::plus<int8_t>{});
-      CASE(ir::Op::AddInt16, i16_args_, std::plus<int16_t>{});
-      CASE(ir::Op::AddInt32, i32_args_, std::plus<int32_t>{});
-      CASE(ir::Op::AddInt64, i64_args_, std::plus<int64_t>{});
-      CASE(ir::Op::AddNat8, u8_args_, std::plus<uint8_t>{});
-      CASE(ir::Op::AddNat16, u16_args_, std::plus<uint16_t>{});
-      CASE(ir::Op::AddNat32, u32_args_, std::plus<uint32_t>{});
-      CASE(ir::Op::AddNat64, u64_args_, std::plus<uint64_t>{});
-      CASE(ir::Op::AddFloat32, float32_args_, std::plus<float>{});
-      CASE(ir::Op::AddFloat64, float64_args_, std::plus<double>{});
-
-      CASE(ir::Op::SubInt8, i8_args_, std::minus<int8_t>{});
-      CASE(ir::Op::SubInt16, i16_args_, std::minus<int16_t>{});
-      CASE(ir::Op::SubInt32, i32_args_, std::minus<int32_t>{});
-      CASE(ir::Op::SubInt64, i64_args_, std::minus<int64_t>{});
-      CASE(ir::Op::SubNat8, u8_args_, std::minus<uint8_t>{});
-      CASE(ir::Op::SubNat16, u16_args_, std::minus<uint16_t>{});
-      CASE(ir::Op::SubNat32, u32_args_, std::minus<uint32_t>{});
-      CASE(ir::Op::SubNat64, u64_args_, std::minus<uint64_t>{});
-      CASE(ir::Op::SubFloat32, float32_args_, std::minus<float>{});
-      CASE(ir::Op::SubFloat64, float64_args_, std::minus<double>{});
-
-      CASE(ir::Op::MulInt8, i8_args_, std::multiplies<int8_t>{});
-      CASE(ir::Op::MulInt16, i16_args_, std::multiplies<int16_t>{});
-      CASE(ir::Op::MulInt32, i32_args_, std::multiplies<int32_t>{});
-      CASE(ir::Op::MulInt64, i64_args_, std::multiplies<int64_t>{});
-      CASE(ir::Op::MulNat8, u8_args_, std::multiplies<uint8_t>{});
-      CASE(ir::Op::MulNat16, u16_args_, std::multiplies<uint16_t>{});
-      CASE(ir::Op::MulNat32, u32_args_, std::multiplies<uint32_t>{});
-      CASE(ir::Op::MulNat64, u64_args_, std::multiplies<uint64_t>{});
-      CASE(ir::Op::MulFloat32, float32_args_, std::multiplies<float>{});
-      CASE(ir::Op::MulFloat64, float64_args_, std::multiplies<double>{});
-
-      CASE(ir::Op::DivInt8, i8_args_, std::divides<int8_t>{});
-      CASE(ir::Op::DivInt16, i16_args_, std::divides<int16_t>{});
-      CASE(ir::Op::DivInt32, i32_args_, std::divides<int32_t>{});
-      CASE(ir::Op::DivInt64, i64_args_, std::divides<int64_t>{});
-      CASE(ir::Op::DivNat8, u8_args_, std::divides<uint8_t>{});
-      CASE(ir::Op::DivNat16, u16_args_, std::divides<uint16_t>{});
-      CASE(ir::Op::DivNat32, u32_args_, std::divides<uint32_t>{});
-      CASE(ir::Op::DivNat64, u64_args_, std::divides<uint64_t>{});
-      CASE(ir::Op::DivFloat32, float32_args_, std::divides<float>{});
-      CASE(ir::Op::DivFloat64, float64_args_, std::divides<double>{});
-
-      CASE(ir::Op::ModInt8, i8_args_, std::modulus<int8_t>{});
-      CASE(ir::Op::ModInt16, i16_args_, std::modulus<int16_t>{});
-      CASE(ir::Op::ModInt32, i32_args_, std::modulus<int32_t>{});
-      CASE(ir::Op::ModInt64, i64_args_, std::modulus<int64_t>{});
-      CASE(ir::Op::ModNat8, u8_args_, std::modulus<uint8_t>{});
-      CASE(ir::Op::ModNat16, u16_args_, std::modulus<uint16_t>{});
-      CASE(ir::Op::ModNat32, u32_args_, std::modulus<uint32_t>{});
-      CASE(ir::Op::ModNat64, u64_args_, std::modulus<uint64_t>{});
-
       CASE(ir::Op::LtInt8, i8_args_, std::less<int8_t>{});
       CASE(ir::Op::LtInt16, i16_args_, std::less<int16_t>{});
       CASE(ir::Op::LtInt32, i32_args_, std::less<int32_t>{});
@@ -698,23 +643,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       }
       save(addr);
     } break;
-    case ir::Op::PrintBool:
-      std::cerr << (resolve(cmd.bool_arg_) ? "true" : "false");
-      break;
-    case ir::Op::PrintInt8:
-      std::cerr << static_cast<int32_t>(resolve(cmd.i8_arg_));
-      break;
-    case ir::Op::PrintInt16: std::cerr << resolve(cmd.i16_arg_); break;
-    case ir::Op::PrintInt32: std::cerr << resolve(cmd.i32_arg_); break;
-    case ir::Op::PrintInt64: std::cerr << resolve(cmd.i64_arg_); break;
-    case ir::Op::PrintNat8:
-      std::cerr << static_cast<int32_t>(resolve(cmd.u8_arg_));
-      break;
-    case ir::Op::PrintNat16: std::cerr << resolve(cmd.u16_arg_); break;
-    case ir::Op::PrintNat32: std::cerr << resolve(cmd.u32_arg_); break;
-    case ir::Op::PrintNat64: std::cerr << resolve(cmd.u64_arg_); break;
-    case ir::Op::PrintFloat32: std::cerr << resolve(cmd.float32_arg_); break;
-    case ir::Op::PrintFloat64: std::cerr << resolve(cmd.float64_arg_); break;
     case ir::Op::PrintType:
       std::cerr << resolve(cmd.type_arg_)->to_string();
       break;
@@ -754,9 +682,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     } break;
     case ir::Op::PrintAddr:
       std::cerr << resolve(cmd.addr_arg_).to_string();
-      break;
-    case ir::Op::PrintByteView:
-      std::cerr << resolve(cmd.byte_view_arg_);
       break;
     case ir::Op::Call: {
       // NOTE: This is a hack using heap address slots to represent registers
