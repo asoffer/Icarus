@@ -68,16 +68,6 @@ struct Cmd {
     RegisterOr<T> val_;
   };
 
-  struct PrintEnum {
-    RegisterOr<EnumVal> arg_;
-    type::Enum const *enum_type_;
-  };
-
-  struct PrintFlags {
-    RegisterOr<FlagsVal> arg_;
-    type::Flags const *flags_type_;
-  };
-
   struct Array {
     RegisterOr<int64_t> len_;
     RegisterOr<type::Type const *> type_;
@@ -388,9 +378,6 @@ struct Cmd {
     PhiArgs<ir::FlagsVal> *phi_flags_;
     PhiArgs<ir::AnyFunc> *phi_func_;
 
-    PrintEnum print_enum_;
-    PrintFlags print_flags_;
-
     RegisterOr<AnyFunc> any_fn_;
     type::Typed<Reg> typed_reg_;
 #define OP_MACRO(...)
@@ -457,23 +444,6 @@ void SetRet(size_t n, T t) {
   }
 }
 void SetRet(size_t n, type::Typed<Results> const &v2, Context *ctx = nullptr);
-
-template <typename T, typename... Args>
-void Print(T r, Args &&... args) {
-  if constexpr (IsRegOr<T>::value) {
-    using type = typename T::type;
-    auto &cmd  = MakeCmd(nullptr, Cmd::OpCode<Cmd::PrintTag, type>());
-    if constexpr (std::is_same_v<type, EnumVal> ||
-                  std::is_same_v<type, FlagsVal>) {
-      cmd.template set<Cmd::PrintTag, type>(r, std::forward<Args>(args)...);
-    } else {
-      static_assert(sizeof...(Args) == 0);
-      cmd.template get<Cmd::PrintTag, type>() = r;
-    }
-  } else {
-    return Print(RegisterOr<T>(r), std::forward<Args>(args)...);
-  }
-}
 
 template <typename T, typename... Args>
 void Store(T r, Args &&... args) {

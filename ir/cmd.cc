@@ -789,24 +789,6 @@ std::pair<Results, bool> CallInline(
           CASE(StoreAddr, Store, ir::Addr, store_addr_);
 #undef CASE
 
-#define CASE(op_code, op_fn, type, arg)                                        \
-  case Op::op_code: {                                                          \
-    RegisterOr<type> r;                                                        \
-    if (cmd.arg.is_reg_) {                                                     \
-      auto iter = reg_relocs.find(cmd.arg.reg_);                               \
-      if (iter == reg_relocs.end()) { goto next_block; }                       \
-      r = iter->second.get<type>(0);                                           \
-    } else {                                                                   \
-      r = cmd.arg;                                                             \
-    }                                                                          \
-    op_fn(r);                                                                  \
-  } break;
-          CASE(PrintType, Print, type::Type const *, type_arg_)
-          // TODO CASE(PrintEnum, Print, EnumVal, print_enum_)
-          // TODO CASE(PrintFlags, Print, FlagsVal, print_flags_)
-          CASE(PrintAddr, Print, ir::Addr, addr_arg_)
-#undef CASE
-
         case Op::CondJump: {
           auto iter = reg_relocs.find(cmd.cond_jump_.cond_);
           if (iter == reg_relocs.end()) { goto next_block; }
@@ -1089,14 +1071,6 @@ std::ostream &operator<<(std::ostream &os, Cmd::Args<T> const &a) {
 template <typename T>
 static std::ostream &operator<<(std::ostream &os, Cmd::SetRet<T> const &s) {
   return os << s.ret_num_ << " " << Stringify(s.val_);
-}
-
-static std::ostream &operator<<(std::ostream &os, Cmd::PrintEnum const &p) {
-  return os << p.arg_;
-}
-
-static std::ostream &operator<<(std::ostream &os, Cmd::PrintFlags const &p) {
-  return os << p.arg_;
 }
 
 static std::ostream &operator<<(std::ostream &os, Cmd::PtrIncr const &p) {

@@ -4,6 +4,11 @@
 #include <type_traits>
 
 #include "base/util.h"
+#include "ir/addr.h"
+
+namespace type {
+struct Type;
+}  // namespace type
 
 namespace ir {
 using cmd_index_t = uint8_t;
@@ -18,6 +23,14 @@ constexpr cmd_index_t PrimitiveIndex() {
     return 0x0a;
   } else if constexpr (std::is_same_v<T, std::string_view>) {
     return 0x0b;
+  } else if constexpr (std::is_same_v<T, type::Type const *>) {
+    return 0x0c;
+  } else if constexpr (std::is_same_v<T, Addr>) {
+    return 0x0d;
+  } else if constexpr (std::is_same_v<T, EnumVal>) {
+    return 0x0e;
+  } else if constexpr (std::is_same_v<T, FlagsVal>) {
+    return 0x0f;
   } else if constexpr (std::is_integral_v<T>) {
     return base::Log2(sizeof(T)) * 2 + std::is_signed_v<T>;
   } else {
@@ -51,6 +64,14 @@ auto PrimitiveDispatch(cmd_index_t primitive_type, Fn&& fn) {
       return std::forward<Fn>(fn)(base::Tag<double>{});
     case PrimitiveIndex<std::string_view>():
       return std::forward<Fn>(fn)(base::Tag<std::string_view>{});
+    case PrimitiveIndex<type::Type const *>():
+      return std::forward<Fn>(fn)(base::Tag<type::Type const *>{});
+    case PrimitiveIndex<Addr>():
+      return std::forward<Fn>(fn)(base::Tag<Addr>{});
+    case PrimitiveIndex<EnumVal>():
+      return std::forward<Fn>(fn)(base::Tag<EnumVal>{});
+    case PrimitiveIndex<FlagsVal>():
+      return std::forward<Fn>(fn)(base::Tag<FlagsVal>{});
   }
 }
 namespace internal {

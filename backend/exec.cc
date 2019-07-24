@@ -557,46 +557,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       }
       save(addr);
     } break;
-    case ir::Op::PrintType:
-      std::cerr << resolve(cmd.type_arg_)->to_string();
-      break;
-    case ir::Op::PrintEnum: {
-      auto numeric_value = resolve(cmd.print_enum_.arg_).value;
-      auto iter = cmd.print_enum_.enum_type_->members_.find(numeric_value);
-      if (iter == cmd.print_enum_.enum_type_->members_.end()) {
-        std::cerr << numeric_value;
-      } else {
-        std::cerr << iter->second;
-      }
-    } break;
-    case ir::Op::PrintFlags: {
-      size_t val = resolve(cmd.print_flags_.arg_).value;
-      std::vector<std::string> vals;
-
-      auto const &members = cmd.print_flags_.flags_type_->members_;
-
-      while (val != 0) {
-        size_t mask = (val & ((~val) + 1));
-        val -= mask;
-        auto iter = members.find(mask);
-        if (iter == members.end()) {
-          vals.emplace_back(std::to_string(mask));
-        } else {
-          vals.emplace_back(iter->second);
-        }
-      }
-
-      if (vals.empty()) {
-        std::cerr << "(empty)";
-      } else {
-        auto iter = vals.begin();
-        std::cerr << *iter++;
-        while (iter != vals.end()) { std::cerr << " | " << *iter++; }
-      }
-    } break;
-    case ir::Op::PrintAddr:
-      std::cerr << resolve(cmd.addr_arg_).to_string();
-      break;
     case ir::Op::Call: {
       // NOTE: This is a hack using heap address slots to represent registers
       // since they are both void* and are used identically in the
