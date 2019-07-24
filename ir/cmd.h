@@ -324,21 +324,8 @@ struct Cmd {
 
     SpecialMember<1> special1_;
     SpecialMember<2> special2_;
-    Args<bool> bool_args_;
-    Args<int8_t> i8_args_;
-    Args<int16_t> i16_args_;
-    Args<int32_t> i32_args_;
-    Args<int64_t> i64_args_;
-    Args<uint8_t> u8_args_;
-    Args<uint16_t> u16_args_;
-    Args<uint32_t> u32_args_;
-    Args<uint64_t> u64_args_;
-    Args<float> float32_args_;
-    Args<double> float64_args_;
-    Args<EnumVal> enum_args_;
     Args<FlagsVal> flags_args_;
     Args<type::Type const *> type_args_;
-    Args<Addr> addr_args_;
 
     AstData ast_;
 
@@ -418,8 +405,6 @@ RegisterOr<int64_t> Bytes(RegisterOr<type::Type const *> r);
 RegisterOr<int64_t> Align(RegisterOr<type::Type const *> r);
 RegisterOr<bool> Not(RegisterOr<bool> r);
 RegisterOr<FlagsVal> Not(type::Typed<RegisterOr<FlagsVal>, type::Flags> r);
-RegisterOr<int32_t> ModInt(RegisterOr<int32_t> v1, RegisterOr<int32_t> v2);
-RegisterOr<bool> XorBool(RegisterOr<bool> v1, RegisterOr<bool> v2);
 RegisterOr<FlagsVal> XorFlags(type::Flags const *type,
                               RegisterOr<FlagsVal> const &lhs,
                               RegisterOr<FlagsVal> const &rhs);
@@ -469,56 +454,6 @@ type::Typed<Reg> Field(RegisterOr<Addr> r, type::Tuple const *t, size_t n);
 
 Cmd &MakeCmd(type::Type const *t, Op op);
 
-namespace internal {
-template <typename Tag, template <typename> typename F, typename Lhs,
-          typename Rhs>
-auto HandleBinop(Lhs lhs, Rhs rhs) {
-  if constexpr (!IsRegOr<Lhs>::value) {
-    // Can't use std::conditional_t because it evaluates both sides and so
-    // calling ::type is no good. You get a cryptic error message "'foo' is not
-    // a class, struct, or union type."
-    if constexpr (IsTypedReg<Lhs>::value) {
-      return HandleBinop<Tag, F>(RegisterOr<typename Lhs::type>(lhs), rhs);
-    } else {
-      return HandleBinop<Tag, F>(RegisterOr<Lhs>(lhs), rhs);
-    }
-  } else if constexpr (!IsRegOr<Rhs>::value) {
-    return HandleBinop<Tag, F>(lhs, RegisterOr<typename Lhs::type>(rhs));
-  } else {
-    static_assert(std::is_same_v<Lhs, Rhs>);
-    using result_type = decltype(F<typename Lhs::type>{}(lhs.val_, rhs.val_));
-    using ret_type    = ir::RegisterOr<result_type>;
-    return [&]() -> ret_type {
-      if (!lhs.is_reg_ && !rhs.is_reg_) {
-        return F<typename Lhs::type>{}(lhs.val_, rhs.val_);
-      }
-
-      if constexpr (std::is_same_v<Tag, Cmd::EqTag> &&
-                    std::is_same_v<typename Lhs::type, bool>) {
-        // Replace:
-        // * `x == true` with `x`
-        // * `x == false` with `!x`
-        // * `true == x` with `x`
-        // * `false == x` with `!x`
-        if (lhs.is_reg_) { return rhs.val_ ? lhs : Not(lhs); }
-        return lhs.val_ ? rhs : Not(rhs);
-      }
-
-      auto &cmd = MakeCmd(type::Get<result_type>(),
-                          Cmd::OpCode<Tag, typename Lhs::type>());
-      cmd.template set<Tag, typename Lhs::type>(lhs, rhs);
-      /* TODO reenable
-      auto &refs = CompiledFn::Current->references_;
-      if (lhs.is_reg_) { refs[lhs.reg_].insert(cmd.result); }
-      if (rhs.is_reg_) { refs[rhs.reg_].insert(cmd.result); }
-      */
-      return cmd.result;
-    }();
-  }
-}
-
-}  // namespace internal
-
 template <typename T>
 void SetRet(size_t n, T t) {
   if constexpr (!IsRegOr<T>::value) {
@@ -532,36 +467,6 @@ void SetRet(size_t n, T t) {
   }
 }
 void SetRet(size_t n, type::Typed<Results> const &v2, Context *ctx = nullptr);
-
-template <typename Lhs, typename Rhs>
-RegisterOr<bool> Lt(Lhs lhs, Rhs rhs) {
-  return internal::HandleBinop<Cmd::LtTag, std::less>(lhs, rhs);
-}
-
-template <typename Lhs, typename Rhs>
-RegisterOr<bool> Gt(Lhs lhs, Rhs rhs) {
-  return internal::HandleBinop<Cmd::GtTag, std::greater>(lhs, rhs);
-}
-
-template <typename Lhs, typename Rhs>
-RegisterOr<bool> Le(Lhs lhs, Rhs rhs) {
-  return internal::HandleBinop<Cmd::LeTag, std::less>(lhs, rhs);
-}
-
-template <typename Lhs, typename Rhs>
-RegisterOr<bool> Ge(Lhs lhs, Rhs rhs) {
-  return internal::HandleBinop<Cmd::GeTag, std::greater>(lhs, rhs);
-}
-
-template <typename Lhs, typename Rhs>
-RegisterOr<bool> Eq(Lhs lhs, Rhs rhs) {
-  return internal::HandleBinop<Cmd::EqTag, std::equal_to>(lhs, rhs);
-}
-
-template <typename Lhs, typename Rhs>
-RegisterOr<bool> Ne(Lhs lhs, Rhs rhs) {
-  return internal::HandleBinop<Cmd::NeTag, std::not_equal_to>(lhs, rhs);
-}
 
 template <typename T, typename... Args>
 void Print(T r, Args &&... args) {

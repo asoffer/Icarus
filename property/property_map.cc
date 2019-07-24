@@ -63,26 +63,22 @@ PropertySet Not(PropertySet prop_set) {
   return prop_set;
 }
 
-PropertySet EqBool(PropertySet const &lhs, PropertySet const &rhs) {
-  return {};  // TODO
-}
-
-PropertySet LtInt(PropertySet const &lhs, int rhs) {
-  auto b = base::make_owned<BoolProp>();
-  lhs.props_.for_each([&b, rhs](base::owned_ptr<Property> const *prop) {
-    if (!(**prop).is<IntProp>()) { return; }
-    auto p = &(**prop).as<IntProp>();
-
-    if (p->lower_) {
-      if (p->bound_ >= rhs) { *b = BoolProp(false); }
-    } else {
-      if (p->bound_ <= rhs) { *b = BoolProp(true); }
-    }
-  });
-  PropertySet ps;
-  ps.add(b);
-  return ps;
-}
+// PropertySet LtInt(PropertySet const &lhs, int rhs) {
+//   auto b = base::make_owned<BoolProp>();
+//   lhs.props_.for_each([&b, rhs](base::owned_ptr<Property> const *prop) {
+//     if (!(**prop).is<IntProp>()) { return; }
+//     auto p = &(**prop).as<IntProp>();
+// 
+//     if (p->lower_) {
+//       if (p->bound_ >= rhs) { *b = BoolProp(false); }
+//     } else {
+//       if (p->bound_ <= rhs) { *b = BoolProp(true); }
+//     }
+//   });
+//   PropertySet ps;
+//   ps.add(b);
+//   return ps;
+// }
 
 }  // namespace
 
@@ -188,21 +184,6 @@ bool PropertyMap::UpdateEntryFromAbove(Entry const &e) {
     case ir::Op::ReturnJump: return /* TODO */ false;
     case ir::Op::Call: return /* TODO */ false;
     case ir::Op::NotBool: return prop_set.add(Not(block_view.at(cmd.reg_)));
-    case ir::Op::EqBool:
-      return prop_set.add(EqBool(block_view.at(cmd.bool_args_.args_[0].reg_),
-                                 block_view.at(cmd.bool_args_.args_[1].reg_)));
-    case ir::Op::LtInt32:
-      if (cmd.i32_args_.args_[0].is_reg_) {
-        if (cmd.i32_args_.args_[1].is_reg_) {
-          NOT_YET();
-        } else {
-          return prop_set.add(LtInt(block_view.at(cmd.i32_args_.args_[0].reg_),
-                                    cmd.i32_args_.args_[1].val_));
-        }
-      } else {
-        NOT_YET();
-      }
-
     case ir::Op::SetRetBool:
       if (cmd.set_ret_bool_.val_.is_reg_) {
         prop_set.add(block_view.at(cmd.set_ret_bool_.val_.reg_));

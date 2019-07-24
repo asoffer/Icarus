@@ -5,18 +5,22 @@
 
 #include "base/debug.h"
 #include "ir/cmd/arithmetic.h"
+#include "ir/cmd/compare.h"
 #include "ir/cmd/print.h"
 #include "ir/compiled_fn.h"
 
 namespace ir {
+
 BlockIndex CmdBuffer::Execute(std::vector<ir::Addr> const& ret_slots,
                               backend::ExecContext* ctx) {
   auto iter = buf_.begin();
   while (true) {
+    DEBUG_LOG("dbg")(buf_.begin(), buf_.size());
     ASSERT(iter < buf_.end());
     switch (iter.read<uint8_t>()) {
 #define CASE(type)                                                             \
   case type::index: {                                                          \
+    DEBUG_LOG("dbg")(#type);                                                   \
     auto result = type::Execute(&iter, ret_slots, ctx);                        \
     if (result.has_value()) { return *result; }                                \
   } break
@@ -27,6 +31,12 @@ BlockIndex CmdBuffer::Execute(std::vector<ir::Addr> const& ret_slots,
       CASE(MulCmd);
       CASE(DivCmd);
       CASE(ModCmd);
+      CASE(LtCmd);
+      CASE(LeCmd);
+      CASE(EqCmd);
+      CASE(NeCmd);
+      CASE(GeCmd);
+      CASE(GtCmd);
 #undef CASE
     }
   }

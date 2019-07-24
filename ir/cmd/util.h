@@ -1,5 +1,5 @@
-#ifndef ICARUS_CMD_UTIL_H
-#define ICARUS_CMD_UTIL_H
+#ifndef ICARUS_IR_CMD_UTIL_H
+#define ICARUS_IR_CMD_UTIL_H
 
 #include <type_traits>
 
@@ -53,7 +53,26 @@ auto PrimitiveDispatch(cmd_index_t primitive_type, Fn&& fn) {
       return std::forward<Fn>(fn)(base::Tag<std::string_view>{});
   }
 }
+namespace internal {
+template <typename T>
+struct UnwrapType {
+  using type = T;
+};
 
+template <typename T>
+struct UnwrapType<RegisterOr<T>> {
+  using type = T;
+};
+
+template <typename T>
+struct UnwrapType<TypedRegister<T>> {
+  using type = T;
+};
+
+template <typename T>
+using UnwrapTypeT = typename UnwrapType<T>::type;
+
+}  // namespace internal
 }  // namespace ir
 
-#endif  // ICARUS_CMD_UTIL_H
+#endif  // ICARUS_IR_CMD_UTIL_H

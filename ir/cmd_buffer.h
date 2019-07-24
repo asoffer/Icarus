@@ -21,7 +21,7 @@ struct LegacyCmd {
   }
 
  private:
-  Cmd *ptr_;
+  Cmd* ptr_;
 };
 
 struct CmdBuffer {

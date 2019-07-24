@@ -15,6 +15,18 @@ cc_lib_target(
 )
 
 cc_lib_target(
+    name = "compare",
+    cfgs = ["match", "compile"],
+    intf_deps = [
+        ":util",
+        "//ir:basic_block",
+        "//type:util",
+    ],
+    impl_deps = None,
+    test_deps = None,
+)
+
+cc_lib_target(
     name = "print",
     cfgs = ["match", "compile"],
     intf_deps = [

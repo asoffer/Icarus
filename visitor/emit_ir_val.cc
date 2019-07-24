@@ -720,7 +720,7 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
       if (lhs_type == type::Bool) {
         auto lhs_lval = node->lhs()->EmitLVal(this, ctx)[0];
         auto rhs_ir   = node->rhs()->EmitIr(this, ctx).get<bool>(0);
-        ir::Store(ir::XorBool(ir::Load<bool>(lhs_lval), rhs_ir), lhs_lval);
+        ir::Store(ir::Ne(ir::Load<bool>(lhs_lval), rhs_ir), lhs_lval);
       } else if (lhs_type->is<type::Flags>()) {
         auto *flags_type = &lhs_type->as<type::Flags>();
         auto lhs_lval    = node->lhs()->EmitLVal(this, ctx)[0];
@@ -1031,10 +1031,8 @@ static ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp const *chain_op,
           auto val1 = lhs_ir.get<ir::BlockDef *>(0);
           auto val2 = rhs_ir.get<ir::BlockDef *>(0);
           if (!val1.is_reg_ && !val2.is_reg_) { return val1.val_ == val2.val_; }
-        } else if (lhs_type == type::Bool) {
-          return ir::XorBool(lhs_ir.get<bool>(0), rhs_ir.get<bool>(0));
         }
-        return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
+        return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
                                 uint16_t, uint32_t, uint64_t, float, double,
                                 type::Type const *, ir::EnumVal, ir::FlagsVal,
                                 ir::Addr>(lhs_type, [&](auto type_holder) {
@@ -1069,8 +1067,7 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
           node->exprs().begin(), node->exprs().end(),
           ir::RegisterOr<bool>(false),
           [&](ir::RegisterOr<bool> acc, auto *expr) {
-            return ir::XorBool(acc,
-                               expr->EmitIr(this, ctx).template get<bool>(0));
+            return ir::Ne(acc, expr->EmitIr(this, ctx).template get<bool>(0));
           })};
     } else if (t->is<type::Flags>()) {
       return ir::Results{std::accumulate(

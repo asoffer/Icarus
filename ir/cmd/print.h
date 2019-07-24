@@ -13,8 +13,8 @@ struct PrintCmd {
   constexpr static cmd_index_t index = 0;
 
   struct control_bits {
-    unsigned primitive_type : 6;
-    unsigned reg : 1;
+    uint8_t primitive_type : 6;
+    uint8_t reg : 1;
   };
   template <typename T>
   static control_bits MakeControlBits(bool reg) {

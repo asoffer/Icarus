@@ -112,6 +112,7 @@ Cmd &MakeCmd(type::Type const *t, Op op) {
   auto &blk = ASSERT_NOT_NULL(CompiledFn::Current)->block(BasicBlock::Current);
   auto &cmd = *blk.cmds_.emplace_back(std::make_unique<Cmd>(t, op));
   blk.cmd_buffer_.append_index<LegacyCmd>();
+  DEBUG_LOG("LegacyCmd")(&cmd);
   blk.cmd_buffer_.append(&cmd);
   return cmd;
 }
@@ -321,14 +322,6 @@ RegisterOr<type::Type const *> Variant(
   ir::Reg var = ir::CreateVariant();
   for (auto const &val : vals) { ir::AppendToVariant(var, val); }
   return ir::FinalizeVariant(var);
-}
-
-RegisterOr<bool> XorBool(RegisterOr<bool> v1, RegisterOr<bool> v2) {
-  if (!v1.is_reg_) { return v1.val_ ? Not(v2) : v2; }
-  if (!v2.is_reg_) { return v2.val_ ? Not(v1) : v1; }
-  auto &cmd = MakeCmd(type::Bool, Op::XorBool);
-  cmd.set<Cmd::XorTag, bool>(v1, v2);
-  return cmd.result;
 }
 
 type::Typed<Reg> Field(RegisterOr<Addr> r, type::Tuple const *t, size_t n) {
@@ -821,100 +814,6 @@ std::pair<Results, bool> CallInline(
           // TODO CASE(PrintEnum, Print, EnumVal, print_enum_)
           // TODO CASE(PrintFlags, Print, FlagsVal, print_flags_)
           CASE(PrintAddr, Print, ir::Addr, addr_arg_)
-#undef CASE
-
-#define CASE(op_code, op_fn, type, args)                                       \
-  case Op::op_code: {                                                          \
-    RegisterOr<type> r0, r1;                                                   \
-    if (cmd.args.args_[0].is_reg_) {                                           \
-      auto iter0 = reg_relocs.find(cmd.args.args_[0].reg_);                    \
-      if (iter0 == reg_relocs.end()) { goto next_block; }                      \
-      r0 = iter0->second.get<type>(0);                                         \
-    } else {                                                                   \
-      r0 = cmd.args.args_[0];                                                  \
-    }                                                                          \
-    if (cmd.args.args_[1].is_reg_) {                                           \
-      auto iter1 = reg_relocs.find(cmd.args.args_[1].reg_);                    \
-      if (iter1 == reg_relocs.end()) { goto next_block; }                      \
-      r1 = iter1->second.get<type>(0);                                         \
-    } else {                                                                   \
-      r1 = cmd.args.args_[1];                                                  \
-    }                                                                          \
-    reg_relocs.emplace(cmd.result, op_fn(r0, r1));                             \
-  } break
-          CASE(LtInt8, Lt, int8_t, i8_args_);
-          CASE(LtInt16, Lt, int16_t, i16_args_);
-          CASE(LtInt32, Lt, int32_t, i32_args_);
-          CASE(LtInt64, Lt, int64_t, i64_args_);
-          CASE(LtNat8, Lt, uint8_t, u8_args_);
-          CASE(LtNat16, Lt, uint16_t, u16_args_);
-          CASE(LtNat32, Lt, uint32_t, u32_args_);
-          CASE(LtNat64, Lt, uint64_t, u64_args_);
-          CASE(LtFloat32, Lt, float, float32_args_);
-          CASE(LtFloat64, Lt, double, float64_args_);
-          CASE(LtFlags, Lt, FlagsVal, flags_args_);
-          CASE(LeInt8, Le, int8_t, i8_args_);
-          CASE(LeInt16, Le, int16_t, i16_args_);
-          CASE(LeInt32, Le, int32_t, i32_args_);
-          CASE(LeInt64, Le, int64_t, i64_args_);
-          CASE(LeNat8, Le, uint8_t, u8_args_);
-          CASE(LeNat16, Le, uint16_t, u16_args_);
-          CASE(LeNat32, Le, uint32_t, u32_args_);
-          CASE(LeNat64, Le, uint64_t, u64_args_);
-          CASE(LeFloat32, Le, float, float32_args_);
-          CASE(LeFloat64, Le, double, float64_args_);
-          CASE(LeFlags, Le, FlagsVal, flags_args_);
-          CASE(GtInt8, Gt, int8_t, i8_args_);
-          CASE(GtInt16, Gt, int16_t, i16_args_);
-          CASE(GtInt32, Gt, int32_t, i32_args_);
-          CASE(GtInt64, Gt, int64_t, i64_args_);
-          CASE(GtNat8, Gt, uint8_t, u8_args_);
-          CASE(GtNat16, Gt, uint16_t, u16_args_);
-          CASE(GtNat32, Gt, uint32_t, u32_args_);
-          CASE(GtNat64, Gt, uint64_t, u64_args_);
-          CASE(GtFloat32, Gt, float, float32_args_);
-          CASE(GtFloat64, Gt, double, float64_args_);
-          CASE(GtFlags, Gt, FlagsVal, flags_args_);
-          CASE(GeInt8, Ge, int8_t, i8_args_);
-          CASE(GeInt16, Ge, int16_t, i16_args_);
-          CASE(GeInt32, Ge, int32_t, i32_args_);
-          CASE(GeInt64, Ge, int64_t, i64_args_);
-          CASE(GeNat8, Ge, uint8_t, u8_args_);
-          CASE(GeNat16, Ge, uint16_t, u16_args_);
-          CASE(GeNat32, Ge, uint32_t, u32_args_);
-          CASE(GeNat64, Ge, uint64_t, u64_args_);
-          CASE(GeFloat32, Ge, float, float32_args_);
-          CASE(GeFloat64, Ge, double, float64_args_);
-          CASE(GeFlags, Ge, FlagsVal, flags_args_);
-          CASE(EqBool, Eq, bool, bool_args_);
-          CASE(EqInt8, Eq, int8_t, i8_args_);
-          CASE(EqInt16, Eq, int16_t, i16_args_);
-          CASE(EqInt32, Eq, int32_t, i32_args_);
-          CASE(EqInt64, Eq, int64_t, i64_args_);
-          CASE(EqNat8, Eq, uint8_t, u8_args_);
-          CASE(EqNat16, Eq, uint16_t, u16_args_);
-          CASE(EqNat32, Eq, uint32_t, u32_args_);
-          CASE(EqNat64, Eq, uint64_t, u64_args_);
-          CASE(EqFloat32, Eq, float, float32_args_);
-          CASE(EqFloat64, Eq, double, float64_args_);
-          CASE(EqType, Eq, type::Type const *, type_args_);
-          CASE(EqEnum, Eq, EnumVal, enum_args_);
-          CASE(EqFlags, Eq, FlagsVal, flags_args_);
-          CASE(EqAddr, Eq, ir::Addr, addr_args_);
-          CASE(NeInt8, Ne, int8_t, i8_args_);
-          CASE(NeInt16, Ne, int16_t, i16_args_);
-          CASE(NeInt32, Ne, int32_t, i32_args_);
-          CASE(NeInt64, Ne, int64_t, i64_args_);
-          CASE(NeNat8, Ne, uint8_t, u8_args_);
-          CASE(NeNat16, Ne, uint16_t, u16_args_);
-          CASE(NeNat32, Ne, uint32_t, u32_args_);
-          CASE(NeNat64, Ne, uint64_t, u64_args_);
-          CASE(NeFloat32, Ne, float, float32_args_);
-          CASE(NeFloat64, Ne, double, float64_args_);
-          CASE(NeType, Ne, type::Type const *, type_args_);
-          CASE(NeEnum, Ne, EnumVal, enum_args_);
-          CASE(NeFlags, Ne, FlagsVal, flags_args_);
-          CASE(NeAddr, Ne, ir::Addr, addr_args_);
 #undef CASE
 
         case Op::CondJump: {

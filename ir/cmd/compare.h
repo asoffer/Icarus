@@ -1,8 +1,9 @@
-#ifndef ICARUS_IR_CMD_ARITHMETIC_H
-#define ICARUS_IR_CMD_ARITHMETIC_H
+#ifndef ICARUS_IR_CMD_COMPARE_H
+#define ICARUS_IR_CMD_COMPARE_H
 
 #include <functional>
 #include <optional>
+#include <type_traits>
 
 #include "ir/basic_block.h"
 #include "ir/cmd/util.h"
@@ -11,11 +12,10 @@
 
 namespace ir {
 
-template <uint8_t Index, typename Fn, bool SupportsFloatingPoint = true>
-struct BinaryArithmeticCmd {
-  using fn_type                                 = Fn;
-  constexpr static bool supports_floating_point = SupportsFloatingPoint;
-  constexpr static uint8_t index                = Index;
+template <uint8_t Index, typename Fn>
+struct CompareCmd {
+  using fn_type                  = Fn;
+  constexpr static uint8_t index = Index;
 
   struct control_bits {
     uint8_t reg0 : 1;
@@ -35,11 +35,10 @@ struct BinaryArithmeticCmd {
   template <typename T>
   static T Apply(base::untyped_buffer::iterator* iter, bool reg0, bool reg1,
                  backend::ExecContext* ctx) {
-    if constexpr (std::is_arithmetic_v<T> && !std::is_same_v<T, bool> &&
-                  (SupportsFloatingPoint || !std::is_floating_point_v<T>)) {
+    if constexpr (std::is_arithmetic_v<T> && !std::is_same_v<T, bool>) {
       auto lhs = reg0 ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>();
       auto rhs = reg1 ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>();
-      return Fn{}(lhs, rhs);
+      return Fn{}(lhs,rhs);
     } else {
       return T{};
     }
@@ -59,15 +58,16 @@ struct BinaryArithmeticCmd {
   }
 };
 
-using AddCmd = BinaryArithmeticCmd<1, std::plus<>>;
-using SubCmd = BinaryArithmeticCmd<2, std::minus<>>;
-using MulCmd = BinaryArithmeticCmd<3, std::multiplies<>>;
-using DivCmd = BinaryArithmeticCmd<4, std::divides<>>;
-using ModCmd = BinaryArithmeticCmd<5, std::modulus<>, false>;
+using LtCmd  = CompareCmd<6, std::less<>>;
+using LeCmd  = CompareCmd<7, std::less_equal<>>;
+using EqCmd  = CompareCmd<8, std::equal_to<>>;
+using NeCmd  = CompareCmd<9, std::not_equal_to<>>;
+using GeCmd  = CompareCmd<10, std::greater_equal<>>;
+using GtCmd  = CompareCmd<11, std::greater<>>;
 
 namespace internal {
 template <typename CmdType>
-struct BinaryArithmeticHandler {
+struct CompareHandler {
   template <typename... Args,
             typename std::enable_if_t<!std::conjunction_v<std::is_same<
                 Args, RegisterOr<UnwrapTypeT<Args>>>...>>* = nullptr>
@@ -77,16 +77,10 @@ struct BinaryArithmeticHandler {
   }
 
   template <typename T>
-  auto operator()(RegisterOr<T> lhs, RegisterOr<T> rhs) const {
+  RegisterOr<bool> operator()(RegisterOr<T> lhs, RegisterOr<T> rhs) const {
     auto& blk = GetBlock();
     using fn_type     = typename CmdType::fn_type;
-    using result_type = decltype(fn_type{}(lhs.val_, rhs.val_));
-    if constexpr (CmdType::supports_floating_point ||
-                  !std::is_floating_point_v<T>) {
-      if (!lhs.is_reg_ && !rhs.is_reg_) {
-        return RegisterOr<result_type>{fn_type{}(lhs.val_, rhs.val_)};
-      }
-    }
+    if (!lhs.is_reg_ && !rhs.is_reg_) { return fn_type{}(lhs.val_, rhs.val_); }
 
     blk.cmd_buffer_.append_index<CmdType>();
     blk.cmd_buffer_.append(
@@ -105,26 +99,20 @@ struct BinaryArithmeticHandler {
 
     Reg result = MakeResult(type::Get<T>());
     blk.cmd_buffer_.append(result);
-    DEBUG_LOG("arithmetic")(typeid(T).name());
-    auto x = CmdType::template MakeControlBits<T>(lhs.is_reg_, rhs.is_reg_);
-
-    DEBUG_LOG("arithmetic")
-    ((bool)x.reg0, (bool)x.reg1, (uint32_t)x.primitive_type);
-    DEBUG_LOG("arithmetic")
-    (static_cast<uint16_t>(*reinterpret_cast<uint8_t*>(&x)));
-    DEBUG_LOG("arithmetic")(blk.cmd_buffer_.to_string());
-    return RegisterOr<result_type>{result};
+    DEBUG_LOG("compare")(blk.cmd_buffer_.to_string());
+    return result;
   }
 };
 
 }  // namespace internal
 
-constexpr inline auto Add = internal::BinaryArithmeticHandler<AddCmd>{};
-constexpr inline auto Sub = internal::BinaryArithmeticHandler<SubCmd>{};
-constexpr inline auto Mul = internal::BinaryArithmeticHandler<MulCmd>{};
-constexpr inline auto Div = internal::BinaryArithmeticHandler<DivCmd>{};
-constexpr inline auto Mod = internal::BinaryArithmeticHandler<ModCmd>{};
+constexpr inline auto Lt = internal::CompareHandler<LtCmd>{};
+constexpr inline auto Le = internal::CompareHandler<LeCmd>{};
+constexpr inline auto Eq = internal::CompareHandler<EqCmd>{};
+constexpr inline auto Ne = internal::CompareHandler<NeCmd>{};
+constexpr inline auto Ge = internal::CompareHandler<GeCmd>{};
+constexpr inline auto Gt = internal::CompareHandler<GtCmd>{};
 
 }  // namespace ir
 
-#endif  // ICARUS_IR_CMD_ARITHMETIC_H
+#endif  // ICARUS_IR_CMD_COMPARE_H
