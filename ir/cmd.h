@@ -417,16 +417,6 @@ RegisterOr<FlagsVal> AndFlags(type::Flags const *type,
 
 void DebugIr();
 
-template <typename T>
-RegisterOr<T> Neg(RegisterOr<T> r) {
-  if (!r.is_reg_) { return -r.val_; }
-  auto &cmd = MakeCmd(type::Get<T>(), Cmd::OpCode<Cmd::NegTag, T>());
-  cmd.reg_  = r.reg_;
-  // TODO reenable
-  // CompiledFn::Current->references_[cmd.neg_int_.reg_].insert(cmd.result);
-  return cmd.result;
-}
-
 template <typename T, typename... Args>
 TypedRegister<T> Load(RegisterOr<Addr> r,
                       type::Type const *t = type::Get<T>()) {

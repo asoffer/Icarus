@@ -274,12 +274,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       save(ir::NotFlags(resolve<ir::FlagsVal>(cmd.typed_reg_.get()),
                         &cmd.typed_reg_.type()->as<type::Flags>()));
     } break;
-    case ir::Op::NegInt8: save(-resolve<int8_t>(cmd.reg_)); break;
-    case ir::Op::NegInt16: save(-resolve<int16_t>(cmd.reg_)); break;
-    case ir::Op::NegInt32: save(-resolve<int32_t>(cmd.reg_)); break;
-    case ir::Op::NegInt64: save(-resolve<int64_t>(cmd.reg_)); break;
-    case ir::Op::NegFloat32: save(-resolve<double>(cmd.reg_)); break;
-    case ir::Op::NegFloat64: save(-resolve<double>(cmd.reg_)); break;
 #define CASE(op, ty)                                                           \
   case op: save(LoadValue<ty>(resolve<ir::Addr>(cmd.reg_), stack_)); break
       CASE(ir::Op::LoadBool, bool);

@@ -695,13 +695,11 @@ std::pair<Results, bool> CallInline(
           }
           reg_relocs.emplace(cmd.result, Align(r));
         } break;
-#define CASE(op_code, op_fn, type, args)                                       \
-  case Op::op_code: {                                                          \
-    auto iter = reg_relocs.find(cmd.args);                                     \
-    if (iter == reg_relocs.end()) { goto next_block; }                         \
-    reg_relocs.emplace(cmd.result, op_fn(iter->second.get<type>(0)));          \
-  } break
-          CASE(NotBool, Not, bool, reg_);
+        case Op::NotBool: {
+          auto iter = reg_relocs.find(cmd.reg_);
+          if (iter == reg_relocs.end()) { goto next_block; }
+          reg_relocs.emplace(cmd.result, Not(iter->second.get<bool>(0)));
+        } break;
         case Op::NotFlags: {
           auto iter = reg_relocs.find(cmd.typed_reg_.get());
           if (iter == reg_relocs.end()) { goto next_block; }
@@ -710,13 +708,6 @@ std::pair<Results, bool> CallInline(
                                  iter->second.get<FlagsVal>(0),
                                  &cmd.typed_reg_.type()->as<type::Flags>()}));
         } break;
-          CASE(NegInt8, Neg, int8_t, reg_);
-          CASE(NegInt16, Neg, int16_t, reg_);
-          CASE(NegInt32, Neg, int32_t, reg_);
-          CASE(NegInt64, Neg, int64_t, reg_);
-          CASE(NegFloat32, Neg, float, reg_);
-          CASE(NegFloat64, Neg, double, reg_);
-#undef CASE
 
 #define CASE(op_code, op_fn, type)                                             \
   case Op::op_code: {                                                          \
