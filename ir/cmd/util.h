@@ -5,6 +5,7 @@
 
 #include "base/util.h"
 #include "ir/addr.h"
+#include "ir/reg.h"
 
 namespace type {
 struct Type;
@@ -81,7 +82,7 @@ struct UnwrapType {
 };
 
 template <typename T>
-struct UnwrapType<RegisterOr<T>> {
+struct UnwrapType<RegOr<T>> {
   using type = T;
 };
 

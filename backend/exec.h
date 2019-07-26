@@ -8,6 +8,7 @@
 #include "base/untyped_buffer.h"
 #include "ir/addr.h"
 #include "ir/block.h"
+#include "ir/reg.h"
 #include "ir/register.h"
 
 namespace ir {
@@ -53,7 +54,7 @@ struct ExecContext {
   T resolve(ir::Reg val) const;
 
   template <typename T>
-  T resolve(ir::RegisterOr<T> val) const {
+  T resolve(ir::RegOr<T> val) const {
     return val.is_reg_ ? resolve<T>(val.reg_) : val.val_;
   }
 

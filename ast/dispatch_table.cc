@@ -14,6 +14,7 @@
 #include "ir/compiled_fn.h"
 #include "ir/components.h"
 #include "ir/phi.h"
+#include "ir/reg.h"
 #include "misc/context.h"
 #include "misc/module.h"
 #include "type/cast.h"
@@ -533,7 +534,7 @@ visitor::VerifyResult VerifyJumpDispatch(
   return result;
 }
 
-static ir::RegisterOr<bool> EmitVariantMatch(ir::Reg needle,
+static ir::RegOr<bool> EmitVariantMatch(ir::Reg needle,
                                              type::Type const *haystack) {
   auto runtime_type = ir::Load<type::Type const *>(ir::VariantType(needle));
 
@@ -543,7 +544,7 @@ static ir::RegisterOr<bool> EmitVariantMatch(ir::Reg needle,
     // other.
     auto landing = ir::CompiledFn::Current->AddBlock();
 
-    absl::flat_hash_map<ir::BlockIndex, ir::RegisterOr<bool>> phi_map;
+    absl::flat_hash_map<ir::BlockIndex, ir::RegOr<bool>> phi_map;
     for (type::Type const *v : haystack_var->variants_) {
       phi_map.emplace(ir::BasicBlock::Current, true);
 
@@ -597,8 +598,8 @@ static bool EmitOneCall(
     absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> const &block_map,
     ir::Results *inline_results, Context *ctx) {
   // TODO look for matches
-  ir::RegisterOr<ir::AnyFunc> fn = std::visit(
-      [&](auto f) -> ir::RegisterOr<ir::AnyFunc> {
+  ir::RegOr<ir::AnyFunc> fn = std::visit(
+      [&](auto f) -> ir::RegOr<ir::AnyFunc> {
         using T = std::decay_t<decltype(f)>;
         if constexpr (std::is_same_v<T, ir::AnyFunc>) {
           return f;
@@ -668,6 +669,7 @@ static bool EmitOneCall(
     for (type::Type const *ret_type : row.type->output) {
       if (ret_type->is_big()) {
         ir::Reg reg = std::get<ir::Reg>(outputs->at(j++));
+        static_cast<void>(reg);
         // TODO this seems like something that should be shareable with the
         // type-based assignment/initialization code.
         NOT_YET(reg, ret_type->to_string());

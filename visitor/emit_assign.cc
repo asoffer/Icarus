@@ -33,7 +33,7 @@ static ir::CompiledFn *CreateAssign(EmitIr *visitor, type::Array const *a,
     auto from_end_ptr = ir::PtrIncr(from_ptr, a->len, data_ptr_type);
     auto to_ptr       = ir::Index(ptr_type, var, 0);
 
-    using tup = std::tuple<ir::RegisterOr<ir::Addr>, ir::RegisterOr<ir::Addr>>;
+    using tup = std::tuple<ir::RegOr<ir::Addr>, ir::RegOr<ir::Addr>>;
     ir::CreateLoop(
         [&](tup const &phis) {
           return ir::Eq(std::get<0>(phis), from_end_ptr);
@@ -100,52 +100,52 @@ static ir::AnyFunc CreateAssign(EmitIr *visitor, type::Struct const *s,
   return fn;
 }
 
-void EmitIr::CopyAssign(type::Array const *t, ir::RegisterOr<ir::Addr> to,
+void EmitIr::CopyAssign(type::Array const *t, ir::RegOr<ir::Addr> to,
                         type::Typed<ir::Results> const &from, Context *ctx) {
   t->copy_assign_func_.init([=]() { return CreateAssign<Copy>(this, t, ctx); });
   ir::Copy(t, from->get<ir::Reg>(0), to);
 }
 
-void EmitIr::MoveAssign(type::Array const *t, ir::RegisterOr<ir::Addr> to,
+void EmitIr::MoveAssign(type::Array const *t, ir::RegOr<ir::Addr> to,
                         type::Typed<ir::Results> const &from, Context *ctx) {
   t->move_assign_func_.init([=]() { return CreateAssign<Move>(this, t, ctx); });
   ir::Move(t, from->get<ir::Reg>(0), to);
 }
 
-void EmitIr::CopyAssign(type::Enum const *t, ir::RegisterOr<ir::Addr> to,
+void EmitIr::CopyAssign(type::Enum const *t, ir::RegOr<ir::Addr> to,
                         type::Typed<ir::Results> const &from, Context *ctx) {
   ASSERT(t == from.type());
   ir::Store(from->get<ir::EnumVal>(0), to);
 }
 
-void EmitIr::MoveAssign(type::Enum const *t, ir::RegisterOr<ir::Addr> to,
+void EmitIr::MoveAssign(type::Enum const *t, ir::RegOr<ir::Addr> to,
                         type::Typed<ir::Results> const &from, Context *ctx) {
   CopyAssign(t, to, from, ctx);
 }
 
-void EmitIr::CopyAssign(type::Flags const *t, ir::RegisterOr<ir::Addr> to,
+void EmitIr::CopyAssign(type::Flags const *t, ir::RegOr<ir::Addr> to,
                         type::Typed<ir::Results> const &from, Context *ctx) {
   ASSERT(t == from.type());
   ir::Store(from->get<ir::FlagsVal>(0), to);
 }
 
-void EmitIr::MoveAssign(type::Flags const *t, ir::RegisterOr<ir::Addr> to,
+void EmitIr::MoveAssign(type::Flags const *t, ir::RegOr<ir::Addr> to,
                         type::Typed<ir::Results> const &from, Context *ctx) {
   CopyAssign(t, to, from, ctx);
 }
 
-void EmitIr::CopyAssign(type::Function const *t, ir::RegisterOr<ir::Addr> to,
+void EmitIr::CopyAssign(type::Function const *t, ir::RegOr<ir::Addr> to,
                         type::Typed<ir::Results> const &from, Context *ctx) {
   ASSERT(t == from.type());
   ir::Store(from->get<ir::AnyFunc>(0), to);
 }
 
-void EmitIr::MoveAssign(type::Function const *t, ir::RegisterOr<ir::Addr> to,
+void EmitIr::MoveAssign(type::Function const *t, ir::RegOr<ir::Addr> to,
                         type::Typed<ir::Results> const &from, Context *ctx) {
   CopyAssign(t, to, from, ctx);
 }
 
-void EmitIr::CopyAssign(type::Pointer const *t, ir::RegisterOr<ir::Addr> to,
+void EmitIr::CopyAssign(type::Pointer const *t, ir::RegOr<ir::Addr> to,
                         type::Typed<ir::Results> const &from, Context *ctx) {
   if (t == from.type()) {
     ir::Store(from->get<ir::Addr>(0), to);
@@ -156,12 +156,12 @@ void EmitIr::CopyAssign(type::Pointer const *t, ir::RegisterOr<ir::Addr> to,
   }
 }
 
-void EmitIr::MoveAssign(type::Pointer const *t, ir::RegisterOr<ir::Addr> to,
+void EmitIr::MoveAssign(type::Pointer const *t, ir::RegOr<ir::Addr> to,
                         type::Typed<ir::Results> const &from, Context *ctx) {
   CopyAssign(t, to, from, ctx);
 }
 
-void EmitIr::CopyAssign(type::Primitive const *t, ir::RegisterOr<ir::Addr> to,
+void EmitIr::CopyAssign(type::Primitive const *t, ir::RegOr<ir::Addr> to,
                         type::Typed<ir::Results> const &from, Context *ctx) {
   ASSERT(t == from.type());
   switch (t->type_) {
@@ -185,12 +185,12 @@ void EmitIr::CopyAssign(type::Primitive const *t, ir::RegisterOr<ir::Addr> to,
   }
 }
 
-void EmitIr::MoveAssign(type::Primitive const *t, ir::RegisterOr<ir::Addr> to,
+void EmitIr::MoveAssign(type::Primitive const *t, ir::RegOr<ir::Addr> to,
                         type::Typed<ir::Results> const &from, Context *ctx) {
   CopyAssign(t, to, from, ctx);
 }
 
-void EmitIr::CopyAssign(type::Tuple const *t, ir::RegisterOr<ir::Addr> to,
+void EmitIr::CopyAssign(type::Tuple const *t, ir::RegOr<ir::Addr> to,
                         type::Typed<ir::Results> const &from, Context *ctx) {
   t->copy_assign_func_.init([=]() {
     type::Pointer const *p = type::Ptr(t);
@@ -221,7 +221,7 @@ void EmitIr::CopyAssign(type::Tuple const *t, ir::RegisterOr<ir::Addr> to,
   ir::Copy(t, from->get<ir::Reg>(0), to);
 }
 
-void EmitIr::MoveAssign(type::Tuple const *t, ir::RegisterOr<ir::Addr> to,
+void EmitIr::MoveAssign(type::Tuple const *t, ir::RegOr<ir::Addr> to,
                         type::Typed<ir::Results> const &from, Context *ctx) {
   t->move_assign_func_.init([=]() {
     type::Pointer const *p = type::Ptr(t);
@@ -252,7 +252,7 @@ void EmitIr::MoveAssign(type::Tuple const *t, ir::RegisterOr<ir::Addr> to,
   ir::Move(t, from->get<ir::Reg>(0), to);
 }
 
-void EmitIr::CopyAssign(type::Variant const *t, ir::RegisterOr<ir::Addr> to,
+void EmitIr::CopyAssign(type::Variant const *t, ir::RegOr<ir::Addr> to,
                         type::Typed<ir::Results> const &from, Context *ctx) {
   // TODO full destruction is only necessary if the type is changing.
   ASSERT(to.is_reg_ == true);
@@ -286,7 +286,7 @@ void EmitIr::CopyAssign(type::Variant const *t, ir::RegisterOr<ir::Addr> to,
   }
 }
 
-void EmitIr::MoveAssign(type::Variant const *t, ir::RegisterOr<ir::Addr> to,
+void EmitIr::MoveAssign(type::Variant const *t, ir::RegOr<ir::Addr> to,
                         type::Typed<ir::Results> const &from, Context *ctx) {
   // TODO full destruction is only necessary if the type is changing.
   ASSERT(to.is_reg_ == true);
@@ -320,13 +320,13 @@ void EmitIr::MoveAssign(type::Variant const *t, ir::RegisterOr<ir::Addr> to,
   }
 }
 
-void EmitIr::CopyAssign(type::Struct const *t, ir::RegisterOr<ir::Addr> to,
+void EmitIr::CopyAssign(type::Struct const *t, ir::RegOr<ir::Addr> to,
                         type::Typed<ir::Results> const &from, Context *ctx) {
   t->copy_assign_func_.init([=]() { return CreateAssign<Copy>(this, t, ctx); });
   ir::Copy(t, from->get<ir::Reg>(0), to);
 }
 
-void EmitIr::MoveAssign(type::Struct const *t, ir::RegisterOr<ir::Addr> to,
+void EmitIr::MoveAssign(type::Struct const *t, ir::RegOr<ir::Addr> to,
                         type::Typed<ir::Results> const &from, Context *ctx) {
   t->move_assign_func_.init([=]() { return CreateAssign<Move>(this, t, ctx); });
   ir::Move(t, from->get<ir::Reg>(0), to);

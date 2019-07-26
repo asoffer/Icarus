@@ -19,6 +19,7 @@
 #include "core/scope.h"
 #include "frontend/operators.h"
 #include "ir/block.h"
+#include "ir/reg.h"
 #include "ir/results.h"
 #include "type/primitive.h"
 

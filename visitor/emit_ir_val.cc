@@ -41,17 +41,17 @@ type::Type const *BuiltinType(core::Builtin);
 // some point we should switch to a buffer-chunk system so that one won't bloat
 // another.
 Reg CreateStruct(core::Scope const *scope, ast::StructLiteral const *parent);
-void CreateStructField(Reg struct_type, RegisterOr<type::Type const *> type);
+void CreateStructField(Reg struct_type, RegOr<type::Type const *> type);
 void SetStructFieldName(Reg struct_type, std::string_view field_name);
 void AddHashtagToField(Reg struct_type, ast::Hashtag hashtag);
 void AddHashtagToStruct(Reg struct_type, ast::Hashtag hashtag);
 Reg FinalizeStruct(Reg r);
 
-RegisterOr<type::Type const *> Variant(
-    std::vector<RegisterOr<type::Type const *>> const &vals);
+RegOr<type::Type const *> Variant(
+    std::vector<RegOr<type::Type const *>> const &vals);
 
-RegisterOr<type::Type const *> Tup(
-    std::vector<RegisterOr<type::Type const *>> const &entries);
+RegOr<type::Type const *> Tup(
+    std::vector<RegOr<type::Type const *>> const &entries);
 
 // TODO as a general rule we let ast reach into ir but not the other direction.
 // Fix this.
@@ -86,7 +86,7 @@ void AddEnumerator(ast::EnumLiteral::Kind kind, Reg reg,
   }
 }
 
-void SetEnumerator(Reg reg, RegisterOr<int32_t> val) {
+void SetEnumerator(Reg reg, RegOr<int32_t> val) {
   auto &cmd           = MakeCmd(type::Type_, Op::SetEnumerator);
   cmd.set_enumerator_ = {reg, val};
 }
@@ -337,11 +337,11 @@ static void CompleteBody(EmitIr *visitor, ast::StructLiteral const *node,
     auto ctx_reg    = ir::CreateContext(ctx->mod_);
     auto struct_reg = ir::CreateStruct(node->scope_, node);
 
-    // TODO why isn't implicit TypedRegister -> RegisterOr cast working on
+    // TODO why isn't implicit TypedRegister -> RegOr cast working on
     // either of these? On the first it's clear because we don't even return a
     // typedRegister, but this is a note to remind you to make that work. On the
     // second... I don't know.
-    ir::Store(static_cast<ir::RegisterOr<type::Type const *>>(struct_reg),
+    ir::Store(static_cast<ir::RegOr<type::Type const *>>(struct_reg),
               cache_slot_addr);
     for (auto &arg : node->args_) {  // TODO const-ref
       ir::AddBoundConstant(ctx_reg, &arg, ctx->addr(&arg));
@@ -366,18 +366,18 @@ static void CompleteBody(EmitIr *visitor, ast::StructLiteral const *node,
       ir::AddHashtagToStruct(struct_reg, hashtag);
     }
 
-    ir::RegisterOr<type::Type const *> result = ir::FinalizeStruct(struct_reg);
+    ir::RegOr<type::Type const *> result = ir::FinalizeStruct(struct_reg);
     ir::DestroyContext(ctx_reg);
 
     // Exit path from creating a new struct.
-    ir::SetRet(0, static_cast<ir::RegisterOr<type::Type const *>>(result));
-    ir::Store(static_cast<ir::RegisterOr<type::Type const *>>(result),
+    ir::SetRet(0, static_cast<ir::RegOr<type::Type const *>>(result));
+    ir::Store(static_cast<ir::RegOr<type::Type const *>>(result),
               cache_slot_addr);
     ir::ReturnJump();
 
     // Exit path from finding the cache
     ir::BasicBlock::Current = land_block;
-    ir::SetRet(0, static_cast<ir::RegisterOr<type::Type const *>>(cache_slot));
+    ir::SetRet(0, static_cast<ir::RegOr<type::Type const *>>(cache_slot));
     ir::ReturnJump();
   }
 }
@@ -570,7 +570,7 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
     } break;
     case frontend::Operator::Arrow: {
       // TODO ugly hack.
-      std::vector<ir::RegisterOr<type::Type const *>> lhs_vals, rhs_vals;
+      std::vector<ir::RegOr<type::Type const *>> lhs_vals, rhs_vals;
       if (auto *l = node->lhs()->if_as<ast::CommaList>()) {
         for (auto &e : l->exprs_) {
           lhs_vals.push_back(e->EmitIr(this, ctx).get<type::Type const *>(0));
@@ -938,7 +938,7 @@ ir::Results ArrayCompare(type::Array const *lhs_type, ir::Results const &lhs_ir,
       auto lhs_phi_reg = ir::CompiledFn::Current->Command(lhs_phi_index).result;
       auto rhs_phi_reg = ir::CompiledFn::Current->Command(rhs_phi_index).result;
 
-      ir::CondJump(ir::Eq(ir::RegisterOr<ir::Addr>(lhs_phi_reg), lhs_end),
+      ir::CondJump(ir::Eq(ir::RegOr<ir::Addr>(lhs_phi_reg), lhs_end),
                    true_block, body_block);
 
       ir::BasicBlock::Current = body_block;
@@ -967,7 +967,7 @@ ir::Results ArrayCompare(type::Array const *lhs_type, ir::Results const &lhs_ir,
   return ir::Results{result};
 }
 
-static ir::RegisterOr<bool> EmitChainOpPair(ast::ChainOp const *chain_op,
+static ir::RegOr<bool> EmitChainOpPair(ast::ChainOp const *chain_op,
                                             size_t index,
                                             ir::Results const &lhs_ir,
                                             ir::Results const &rhs_ir,
@@ -1066,15 +1066,15 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
     if (t == type::Bool) {
       return ir::Results{std::accumulate(
           node->exprs().begin(), node->exprs().end(),
-          ir::RegisterOr<bool>(false),
-          [&](ir::RegisterOr<bool> acc, auto *expr) {
+          ir::RegOr<bool>(false),
+          [&](ir::RegOr<bool> acc, auto *expr) {
             return ir::Ne(acc, expr->EmitIr(this, ctx).template get<bool>(0));
           })};
     } else if (t->is<type::Flags>()) {
       return ir::Results{std::accumulate(
           node->exprs().begin(), node->exprs().end(),
-          ir::RegisterOr<ir::FlagsVal>(ir::FlagsVal{0}),
-          [&](ir::RegisterOr<ir::FlagsVal> acc, auto *expr) {
+          ir::RegOr<ir::FlagsVal>(ir::FlagsVal{0}),
+          [&](ir::RegOr<ir::FlagsVal> acc, auto *expr) {
             return ir::XorFlags(
                 &t->as<type::Flags>(), acc,
                 expr->EmitIr(this, ctx).template get<ir::FlagsVal>(0));
@@ -1103,7 +1103,7 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
   } else if (node->ops()[0] == frontend::Operator::Or && t == type::Type_) {
     // TODO probably want to check that each expression is a type? What if I
     // overload | to take my own stuff and have it return a type?
-    std::vector<ir::RegisterOr<type::Type const *>> args;
+    std::vector<ir::RegOr<type::Type const *>> args;
     args.reserve(node->exprs().size());
     for (auto const *expr : node->exprs()) {
       args.push_back(expr->EmitIr(this, ctx).get<type::Type const *>(0));
@@ -1116,7 +1116,7 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
              node->ops()[0] == frontend::Operator::Or) {
     auto land_block = ir::CompiledFn::Current->AddBlock();
 
-    absl::flat_hash_map<ir::BlockIndex, ir::RegisterOr<bool>> phi_args;
+    absl::flat_hash_map<ir::BlockIndex, ir::RegOr<bool>> phi_args;
     bool is_or = (node->ops()[0] == frontend::Operator::Or);
     for (size_t i = 0; i + 1 < node->exprs().size(); ++i) {
       auto val = node->exprs()[i]->EmitIr(this, ctx).get<bool>(0);
@@ -1144,7 +1144,7 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
       return ir::Results{EmitChainOpPair(node, 0, lhs_ir, rhs_ir, ctx)};
 
     } else {
-      absl::flat_hash_map<ir::BlockIndex, ir::RegisterOr<bool>> phi_args;
+      absl::flat_hash_map<ir::BlockIndex, ir::RegOr<bool>> phi_args;
       auto lhs_ir     = node->exprs().front()->EmitIr(this, ctx);
       auto land_block = ir::CompiledFn::Current->AddBlock();
       for (size_t i = 0; i + 1 < node->ops().size(); ++i) {
@@ -1719,7 +1719,7 @@ ir::Results EmitIr::Val(ast::Switch const *node, Context *ctx) {
     auto expr_block          = ir::CompiledFn::Current->AddBlock();
 
     ir::Results match_val = match_cond->EmitIr(this, ctx);
-    ir::RegisterOr<bool> cond =
+    ir::RegOr<bool> cond =
         node->expr_ ? ir::EmitEq(ctx->type_of(match_cond.get()), match_val,
                                  expr_type, expr_results)
                     : match_val.get<bool>(0);
@@ -1796,7 +1796,7 @@ ir::Results EmitIr::Val(ast::Unop const *node, Context *ctx) {
             ir::Not(node->operand->EmitIr(this, ctx).get<bool>(0))};
       } else if (t->is<type::Flags>()) {
         return ir::Results{
-            ir::Not(type::Typed<ir::RegisterOr<ir::FlagsVal>, type::Flags>(
+            ir::Not(type::Typed<ir::RegOr<ir::FlagsVal>, type::Flags>(
                 node->operand->EmitIr(this, ctx).get<ir::FlagsVal>(0),
                 &t->as<type::Flags>()))};
       } else {

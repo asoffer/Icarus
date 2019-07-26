@@ -9,9 +9,9 @@
 
 namespace ir {
 template <typename T>
-static absl::flat_hash_map<BlockIndex, RegisterOr<T>> ConvertMap(
+static absl::flat_hash_map<BlockIndex, RegOr<T>> ConvertMap(
     absl::flat_hash_map<BlockIndex, Results> const &val_map) {
-  absl::flat_hash_map<BlockIndex, RegisterOr<T>> result;
+  absl::flat_hash_map<BlockIndex, RegOr<T>> result;
 
   for (auto const & [ block, val ] : val_map) {
     result.emplace(block, val.template get<T>(0));

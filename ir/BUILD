@@ -26,7 +26,7 @@ cc_group_target(
 
 cc_lib_target(
     name = "addr",
-    intf_deps = ["//base:untyped_buffer"],
+    intf_deps = [],
     impl_deps = ["//base:debug"],
     test_deps = None,
 )
@@ -224,8 +224,17 @@ cc_lib_target(
 )
 
 cc_lib_target(
+    name = "reg",
+    intf_deps = [],
+)
+
+# TODO break up this target further.
+cc_lib_target(
     name = "register",
-    intf_deps = ["//base:strong_types"],
+    intf_deps = [
+        ":reg",
+        "//base:strong_types",
+    ],
 )
 
 cc_lib_target(
@@ -251,6 +260,7 @@ cc_lib_target(
     intf_deps = [":addr"],
     impl_deps = [
         "//base:guarded",
+        "//base:untyped_buffer",
         "@com_google_absl//absl/container:node_hash_map",
     ],
     test_deps = None,

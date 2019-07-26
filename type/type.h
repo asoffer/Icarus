@@ -9,6 +9,7 @@
 #include "core/arch.h"
 #include "ir/addr.h"
 #include "ir/block.h"
+#include "ir/reg.h"
 #include "ir/register.h"
 #include "ir/results.h"
 

@@ -32,27 +32,23 @@ struct Entry {
   Entry(const ir::BasicBlock *viewing_block, ir::Reg reg)
       : viewing_block_(viewing_block), reg_(reg) {}
 
+  template <typename H>
+  friend H AbslHashValue(H h, Entry e) {
+    return H::combine(std::move(h), e.viewing_block_, e.reg_);
+  }
+
   const ir::BasicBlock *viewing_block_;
   ir::Reg reg_;
 };
 
 inline std::ostream &operator<<(std::ostream &os, const Entry &e) {
-  return os << "{" << e.viewing_block_ << ", " << e.reg_ << "}";
+  return os << "{" << e.viewing_block_ << ", " << stringify(e.reg_) << "}";
 }
 
 inline bool operator==(const Entry &lhs, const Entry &rhs) {
   return lhs.viewing_block_ == rhs.viewing_block_ && lhs.reg_ == rhs.reg_;
 }
 }  // namespace prop
-
-namespace std {
-template <>
-struct hash<prop::Entry> {
-  size_t operator()(const prop::Entry &e) const {
-    return base::hash_args(e.viewing_block_, e.reg_);
-  }
-};
-}  // namespace std
 
 namespace prop {
 struct PropertyMap {

@@ -268,7 +268,7 @@ cc_lib_target(
         "//base:util",
         "//ir:addr",
         "//ir:block",
-        "//ir:register",
+        "//ir:reg",
         "//ir:results",
         "//core:arch",
         "//visitor:type_visitors",

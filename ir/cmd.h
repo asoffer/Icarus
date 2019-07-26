@@ -5,6 +5,7 @@
 #include "ast/hashtag.h"
 #include "base/untyped_buffer.h"
 #include "ir/block.h"
+#include "ir/reg.h"
 #include "ir/register.h"
 #include "ir/results.h"
 #include "misc/context.h"
@@ -49,7 +50,7 @@ struct GenericPhiArgs : public base::Cast<GenericPhiArgs> {
 template <typename T>
 struct PhiArgs : GenericPhiArgs {
   ~PhiArgs() override {}
-  absl::flat_hash_map<BlockIndex, RegisterOr<T>> map_;
+  absl::flat_hash_map<BlockIndex, RegOr<T>> map_;
   virtual std::ostream &print(std::ostream &os) const {
     return os << base::stringify(map_);
   }
@@ -58,38 +59,38 @@ struct PhiArgs : GenericPhiArgs {
 struct Cmd {
   template <typename T>
   struct Store {
-    RegisterOr<Addr> addr_;
-    RegisterOr<T> val_;
+    RegOr<Addr> addr_;
+    RegOr<T> val_;
   };
 
   template <typename T>
   struct SetRet {
     size_t ret_num_;
-    RegisterOr<T> val_;
+    RegOr<T> val_;
   };
 
   struct Array {
-    RegisterOr<int64_t> len_;
-    RegisterOr<type::Type const *> type_;
+    RegOr<int64_t> len_;
+    RegOr<type::Type const *> type_;
   };
 
   struct PtrIncr {
     // TODO maybe store the type here rather than on the cmd because most cmds
     // don't need it.
-    RegisterOr<Addr> ptr_;
+    RegOr<Addr> ptr_;
     type::Type const *pointee_type_;
-    RegisterOr<int64_t> incr_;
+    RegOr<int64_t> incr_;
   };
   struct Field {
-    RegisterOr<Addr> ptr_;
+    RegOr<Addr> ptr_;
     type::Type const *type_;  // Struct or Tuple
     size_t num_;
   };
 
   struct Call {
-    Call(RegisterOr<AnyFunc> f, Arguments *args, OutParams *outs)
+    Call(RegOr<AnyFunc> f, Arguments *args, OutParams *outs)
         : fn_(f), arguments_(args), outs_(outs) {}
-    RegisterOr<AnyFunc> fn_;
+    RegOr<AnyFunc> fn_;
     Arguments *arguments_;
     OutParams *outs_;
   };
@@ -132,7 +133,7 @@ struct Cmd {
 
   template <typename T>
   struct Args {
-    std::array<RegisterOr<T>, 2> args_;
+    std::array<RegOr<T>, 2> args_;
   };
 
   struct Empty {
@@ -143,19 +144,19 @@ struct Cmd {
 
   struct AddScopeDefInit {
     Reg reg_;
-    RegisterOr<AnyFunc> f_;
+    RegOr<AnyFunc> f_;
     inline friend std::ostream &operator<<(std::ostream &os,
                                            AddScopeDefInit a) {
-      return os << a.reg_ << " " << a.f_;
+      return os << stringify(a.reg_) << " " << a.f_;
     }
   };
 
   struct AddScopeDefDone {
     Reg reg_;
-    RegisterOr<AnyFunc> f_;
+    RegOr<AnyFunc> f_;
     inline friend std::ostream &operator<<(std::ostream &os,
                                            AddScopeDefDone a) {
-      return os << a.reg_ << " " << a.f_;
+      return os << stringify(a.reg_) << " " << a.f_;
     }
   };
 
@@ -171,14 +172,14 @@ struct Cmd {
 
   struct CreateStructField {
     Reg struct_;
-    RegisterOr<type::Type const *> type_;
+    RegOr<type::Type const *> type_;
 
     inline friend std::ostream &operator<<(std::ostream &os,
                                            CreateStructField const &c) {
       if (c.type_.is_reg_) {
-        return os << c.struct_ << " " << c.type_.reg_;
+        return os << stringify(c.struct_) << " " << stringify(c.type_.reg_);
       } else {
-        return os << c.struct_ << " " << c.type_.val_->to_string();
+        return os << stringify(c.struct_) << " " << c.type_.val_->to_string();
       }
     }
   };
@@ -189,7 +190,7 @@ struct Cmd {
     std::string_view name_;
     inline friend std::ostream &operator<<(std::ostream &os,
                                            SetStructFieldName const &s) {
-      return os << s.struct_ << " " << s.name_;
+      return os << stringify(s.struct_) << " " << s.name_;
     };
   };
 
@@ -199,7 +200,8 @@ struct Cmd {
 
     inline friend std::ostream &operator<<(std::ostream &os,
                                            AddHashtag const &a) {
-      return os << a.struct_ << " " << static_cast<int>(a.hashtag_.kind_);
+      return os << stringify(a.struct_) << " "
+                << static_cast<int>(a.hashtag_.kind_);
     }
   };
 
@@ -220,13 +222,13 @@ struct Cmd {
 
   struct SetEnumerator {
     Reg enum_;
-    RegisterOr<int32_t> val_;
+    RegOr<int32_t> val_;
   };
 
   template <size_t N>
   struct SpecialMember {
     type::Type const *type_;
-    std::array<RegisterOr<Addr>, N> regs_;
+    std::array<RegOr<Addr>, N> regs_;
 
     inline friend std::ostream &operator<<(std::ostream &os,
                                            SpecialMember<N> const &sm) {
@@ -241,17 +243,17 @@ struct Cmd {
     Reg ctx_;
 
     inline friend std::ostream &operator<<(std::ostream &os, AstData ast) {
-      return os << ast.node_ << " ctx=" << ast.ctx_;
+      return os << ast.node_ << " ctx=" << stringify(ast.ctx_);
     }
   };
 
   struct AddBc {
     Reg ctx_;
     ast::Declaration const *decl_;
-    RegisterOr<type::Type const *> type_;
+    RegOr<type::Type const *> type_;
 
     inline friend std::ostream &operator<<(std::ostream &os, AddBc const &a) {
-      return os << a.ctx_ << " " << a.decl_ << " " << a.type_;
+      return os << stringify(a.ctx_) << " " << a.decl_ << " " << a.type_;
     }
   };
 
@@ -295,22 +297,22 @@ struct Cmd {
     AddBc add_bc_;
 
     // TODO names of these are easily mis-spellable and would lead to UB.
-    RegisterOr<bool> bool_arg_;
-    RegisterOr<int8_t> i8_arg_;
-    RegisterOr<int16_t> i16_arg_;
-    RegisterOr<int32_t> i32_arg_;
-    RegisterOr<int64_t> i64_arg_;
-    RegisterOr<uint8_t> u8_arg_;
-    RegisterOr<uint16_t> u16_arg_;
-    RegisterOr<uint32_t> u32_arg_;
-    RegisterOr<uint64_t> u64_arg_;
-    RegisterOr<float> float32_arg_;
-    RegisterOr<double> float64_arg_;
-    RegisterOr<EnumVal> enum_arg_;
-    RegisterOr<FlagsVal> flags_arg_;
-    RegisterOr<type::Type const *> type_arg_;
-    RegisterOr<std::string_view> byte_view_arg_;
-    RegisterOr<Addr> addr_arg_;
+    RegOr<bool> bool_arg_;
+    RegOr<int8_t> i8_arg_;
+    RegOr<int16_t> i16_arg_;
+    RegOr<int32_t> i32_arg_;
+    RegOr<int64_t> i64_arg_;
+    RegOr<uint8_t> u8_arg_;
+    RegOr<uint16_t> u16_arg_;
+    RegOr<uint32_t> u32_arg_;
+    RegOr<uint64_t> u64_arg_;
+    RegOr<float> float32_arg_;
+    RegOr<double> float64_arg_;
+    RegOr<EnumVal> enum_arg_;
+    RegOr<FlagsVal> flags_arg_;
+    RegOr<type::Type const *> type_arg_;
+    RegOr<std::string_view> byte_view_arg_;
+    RegOr<Addr> addr_arg_;
 
     SpecialMember<1> special1_;
     SpecialMember<2> special2_;
@@ -361,7 +363,7 @@ struct Cmd {
     PhiArgs<ir::FlagsVal> *phi_flags_;
     PhiArgs<ir::AnyFunc> *phi_func_;
 
-    RegisterOr<AnyFunc> any_fn_;
+    RegOr<AnyFunc> any_fn_;
     type::Typed<Reg> typed_reg_;
 #define OP_MACRO(...)
 #include "ir/op.xmacro.h"
@@ -371,44 +373,44 @@ struct Cmd {
   Reg result;
 };
 
-RegisterOr<int64_t> Bytes(RegisterOr<type::Type const *> r);
-RegisterOr<int64_t> Align(RegisterOr<type::Type const *> r);
-RegisterOr<bool> Not(RegisterOr<bool> r);
-RegisterOr<FlagsVal> Not(type::Typed<RegisterOr<FlagsVal>, type::Flags> r);
-RegisterOr<FlagsVal> XorFlags(type::Flags const *type,
-                              RegisterOr<FlagsVal> const &lhs,
-                              RegisterOr<FlagsVal> const &rhs);
-RegisterOr<FlagsVal> OrFlags(type::Flags const *type,
-                             RegisterOr<FlagsVal> const &lhs,
-                             RegisterOr<FlagsVal> const &rhs);
-RegisterOr<FlagsVal> AndFlags(type::Flags const *type,
-                              RegisterOr<FlagsVal> const &lhs,
-                              RegisterOr<FlagsVal> const &rhs);
+RegOr<int64_t> Bytes(RegOr<type::Type const *> r);
+RegOr<int64_t> Align(RegOr<type::Type const *> r);
+RegOr<bool> Not(RegOr<bool> r);
+RegOr<FlagsVal> Not(type::Typed<RegOr<FlagsVal>, type::Flags> r);
+RegOr<FlagsVal> XorFlags(type::Flags const *type,
+                              RegOr<FlagsVal> const &lhs,
+                              RegOr<FlagsVal> const &rhs);
+RegOr<FlagsVal> OrFlags(type::Flags const *type,
+                             RegOr<FlagsVal> const &lhs,
+                             RegOr<FlagsVal> const &rhs);
+RegOr<FlagsVal> AndFlags(type::Flags const *type,
+                              RegOr<FlagsVal> const &lhs,
+                              RegOr<FlagsVal> const &rhs);
 
 void DebugIr();
 
-RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> in,
-                                     RegisterOr<type::Type const *> out);
-RegisterOr<type::Type const *> Ptr(RegisterOr<type::Type const *> r);
-RegisterOr<type::Type const *> BufPtr(RegisterOr<type::Type const *> r);
+RegOr<type::Type const *> Arrow(RegOr<type::Type const *> in,
+                                     RegOr<type::Type const *> out);
+RegOr<type::Type const *> Ptr(RegOr<type::Type const *> r);
+RegOr<type::Type const *> BufPtr(RegOr<type::Type const *> r);
 
-RegisterOr<type::Type const *> Array(RegisterOr<int64_t> len,
-                                     RegisterOr<type::Type const *> data_type);
-Reg VariantType(RegisterOr<Addr> r);
-Reg VariantValue(const type::Type *t, RegisterOr<Addr> r);
+RegOr<type::Type const *> Array(RegOr<int64_t> len,
+                                     RegOr<type::Type const *> data_type);
+Reg VariantType(RegOr<Addr> r);
+Reg VariantValue(const type::Type *t, RegOr<Addr> r);
 // Type repreesents the type of `ptr`
-TypedRegister<Addr> PtrIncr(RegisterOr<Addr> ptr, RegisterOr<int64_t> inc,
+TypedRegister<Addr> PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
                             type::Pointer const *t);
-type::Typed<Reg> Field(RegisterOr<Addr> r, type::Struct const *t,
+type::Typed<Reg> Field(RegOr<Addr> r, type::Struct const *t,
                             size_t n);
-type::Typed<Reg> Field(RegisterOr<Addr> r, type::Tuple const *t, size_t n);
+type::Typed<Reg> Field(RegOr<Addr> r, type::Tuple const *t, size_t n);
 
 Cmd &MakeCmd(type::Type const *t, Op op);
 
 template <typename T>
 void SetRet(size_t n, T t) {
   if constexpr (!IsRegOr<T>::value) {
-    return SetRet(n, RegisterOr<T>(t));
+    return SetRet(n, RegOr<T>(t));
   } else {
     auto &cmd =
         MakeCmd(nullptr, Cmd::OpCode<Cmd::SetRetTag, typename T::type>());
@@ -419,19 +421,19 @@ void SetRet(size_t n, T t) {
 }
 void SetRet(size_t n, type::Typed<Results> const &v2, Context *ctx = nullptr);
 
-void Call(RegisterOr<AnyFunc> const &f, Arguments arguments);
-void Call(RegisterOr<AnyFunc> const &f, Arguments arguments, OutParams outs);
+void Call(RegOr<AnyFunc> const &f, Arguments arguments);
+void Call(RegOr<AnyFunc> const &f, Arguments arguments, OutParams outs);
 std::pair<Results, bool> CallInline(
     CompiledFn *f, Arguments const &arguments,
     absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> const &block_map);
 
 Reg CreateTuple();
-void AppendToTuple(Reg tup, RegisterOr<type::Type const *> entry);
+void AppendToTuple(Reg tup, RegOr<type::Type const *> entry);
 Reg FinalizeTuple(Reg tup);
 Reg CreateVariant();
-void AppendToVariant(Reg tup, RegisterOr<type::Type const *> entry);
+void AppendToVariant(Reg tup, RegOr<type::Type const *> entry);
 Reg FinalizeVariant(Reg var);
-void CondJump(RegisterOr<bool> cond, BlockIndex true_block,
+void CondJump(RegOr<bool> cond, BlockIndex true_block,
               BlockIndex false_block);
 void UncondJump(BlockIndex block);
 void ReturnJump();
@@ -441,7 +443,7 @@ TypedRegister<type::Type const *> NewOpaqueType(::Module *mod);
 Results Cast(type::Type const *from, type::Type const *to, Results const &val);
 
 TypedRegister<Addr> Index(type::Pointer const *t, Reg array_ptr,
-                          RegisterOr<int64_t> offset);
+                          RegOr<int64_t> offset);
 TypedRegister<Addr> Alloca(type::Type const *t);
 TypedRegister<Addr> TmpAlloca(type::Type const *t, Context *ctx);
 
@@ -451,8 +453,8 @@ TypedRegister<Addr> GetRet(size_t n, type::Type const *t);
 
 std::ostream &operator<<(std::ostream &os, Cmd const &cmd);
 
-void Move(type::Type const *t, Reg from, RegisterOr<Addr> to);
-void Copy(type::Type const *t, Reg from, RegisterOr<Addr> to);
+void Move(type::Type const *t, Reg from, RegOr<Addr> to);
+void Copy(type::Type const *t, Reg from, RegOr<Addr> to);
 void Destroy(type::Type const *t, Reg r);
 void Init(type::Type const *t, Reg r);
 
@@ -461,20 +463,20 @@ Reg EvaluateAsType(ast::Node const *node, Reg ctx);
 
 Reg CreateContext(Module *mod);
 void AddBoundConstant(Reg ctx, ast::Declaration const *decl,
-                      RegisterOr<type::Type const *> type);
+                      RegOr<type::Type const *> type);
 void DestroyContext(Reg r);
 void JumpPlaceholder(BlockDef const *block_def);
 
 Reg ArgumentCache(ast::StructLiteral const *sl);
 
 Reg CreateScopeDef(::Module const *mod, ScopeDef *scope_def);
-void AddScopeDefInit(Reg reg, RegisterOr<AnyFunc> f);
-void AddScopeDefDone(Reg reg,  RegisterOr<AnyFunc> f);
+void AddScopeDefInit(Reg reg, RegOr<AnyFunc> f);
+void AddScopeDefDone(Reg reg,  RegOr<AnyFunc> f);
 void FinishScopeDef();
 
 Reg CreateBlockDef(ast::BlockLiteral const *parent);
-void AddBlockDefBefore(RegisterOr<AnyFunc> f);
-void AddBlockDefAfter(RegisterOr<AnyFunc> f);
+void AddBlockDefBefore(RegOr<AnyFunc> f);
+void AddBlockDefAfter(RegOr<AnyFunc> f);
 void FinishBlockDef(std::string_view name);
 }  // namespace ir
 #endif  // ICARUS_IR_CMD_H

@@ -2,6 +2,7 @@
 
 #include "absl/container/node_hash_map.h"
 #include "base/guarded.h"
+#include "base/untyped_buffer.h"
 
 // TODO this ifdef needs to disappear it's not long-term sustainable
 #ifdef ICARUS_VISITOR_EMIT_IR

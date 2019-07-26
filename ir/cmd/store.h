@@ -6,6 +6,7 @@
 #include "ir/basic_block.h"
 #include "ir/cmd/util.h"
 #include "ir/cmd_buffer.h"
+#include "ir/reg.h"
 
 namespace ir {
 
@@ -52,7 +53,7 @@ struct StoreCmd {
 };
 
 template <typename T>
-void Store(T r, RegisterOr<Addr> addr) {
+void Store(T r, RegOr<Addr> addr) {
   auto& blk = GetBlock();
   if constexpr (ir::IsRegOr<T>::value) {
     blk.cmd_buffer_.append_index<StoreCmd>();
@@ -70,7 +71,7 @@ void Store(T r, RegisterOr<Addr> addr) {
       blk.cmd_buffer_.append(addr.val_);
     }
   } else {
-    Store(RegisterOr<T>(r), addr);
+    Store(RegOr<T>(r), addr);
   }
   DEBUG_LOG("store")(blk.cmd_buffer_.to_string());
 }

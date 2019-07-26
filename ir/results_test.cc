@@ -1,5 +1,6 @@
 #include "ir/results.h"
 
+#include "ir/reg.h"
 #include "test/catch.h"
 
 namespace ir {
@@ -17,9 +18,9 @@ TEST_CASE("Args pass through unchanged") {
 
 TEST_CASE("access values") {
   Results r{3, true, 4};
-  CHECK(r.get<int>(0) == RegisterOr{3});
-  CHECK(r.get<bool>(1) == RegisterOr{true});
-  CHECK(r.get<int>(2) == RegisterOr{4});
+  CHECK(r.get<int>(0) == RegOr{3});
+  CHECK(r.get<bool>(1) == RegOr{true});
+  CHECK(r.get<int>(2) == RegOr{4});
 }
 
 TEST_CASE("access registers") {
@@ -27,7 +28,7 @@ TEST_CASE("access registers") {
   r.append(3);
   r.append(Reg{17});
   r.append(true);
-  CHECK(r.get<int>(1) == RegisterOr<int>{Reg{17}});
+  CHECK(r.get<int>(1) == RegOr<int>{Reg{17}});
   CHECK(r.get<Reg>(1) == Reg{17});
 }
 
@@ -42,13 +43,13 @@ TEST_CASE("is reg") {
 TEST_CASE("get result") {
   Results r{3.14, Reg{4}, Reg{17}, true};
   REQUIRE(r.GetResult(0).size() == 1u);
-  CHECK(r.GetResult(0).get<double>(0) == RegisterOr{3.14});
+  CHECK(r.GetResult(0).get<double>(0) == RegOr{3.14});
   REQUIRE(r.GetResult(1).size() == 1u);
   CHECK(r.GetResult(1).get<Reg>(0) == Reg{4});
   REQUIRE(r.GetResult(2).size() == 1u);
   CHECK(r.GetResult(2).get<Reg>(0) == Reg{17});
   REQUIRE(r.GetResult(3).size() == 1u);
-  CHECK(r.GetResult(3).get<bool>(0) == RegisterOr{true});
+  CHECK(r.GetResult(3).get<bool>(0) == RegOr{true});
 }
 
 TEST_CASE("get result starting with reg") {
@@ -56,7 +57,7 @@ TEST_CASE("get result starting with reg") {
   REQUIRE(r.GetResult(0).size() == 1u);
   CHECK(r.GetResult(0).get<Reg>(0) == Reg{1});
   REQUIRE(r.GetResult(1).size() == 1u);
-  CHECK(r.GetResult(1).get<int64_t>(0) == RegisterOr{static_cast<int64_t>(4)});
+  CHECK(r.GetResult(1).get<int64_t>(0) == RegOr{static_cast<int64_t>(4)});
 }
 
 TEST_CASE("append results") {
@@ -65,9 +66,9 @@ TEST_CASE("append results") {
   r1.append(r2);
 
   REQUIRE(r1.size() == 4u);
-  CHECK(r1.get<bool>(0) == RegisterOr{true});
+  CHECK(r1.get<bool>(0) == RegOr{true});
   CHECK(r1.get<Reg>(1) == Reg{17});
-  CHECK(r1.get<int>(2) == RegisterOr{3});
+  CHECK(r1.get<int>(2) == RegOr{3});
   CHECK(r1.get<Reg>(3) == Reg{34});
 }
 
@@ -75,7 +76,7 @@ TEST_CASE("FromRaw") {
   int n = 0xdeadbeef;
   auto results = Results::FromRaw(static_cast<void *>(&n), core::Bytes{4});
   CHECK(results.size() == 1);
-  CHECK(results.get<int>(0) == RegisterOr{n});
+  CHECK(results.get<int>(0) == RegOr{n});
 }
 
 TEST_CASE("FromUntypedBuffer") {
@@ -88,9 +89,9 @@ TEST_CASE("FromUntypedBuffer") {
   auto results = Results::FromUntypedBuffer({0, sizeof(int), 2 * sizeof(int)},
                                             std::move(buf));
   CHECK(results.size() == 3);
-  CHECK(results.get<int>(0) == RegisterOr{1234});
-  CHECK(results.get<bool>(1) == RegisterOr{true});
-  CHECK(results.get<int>(2) == RegisterOr{5678});
+  CHECK(results.get<int>(0) == RegOr{1234});
+  CHECK(results.get<bool>(1) == RegOr{true});
+  CHECK(results.get<int>(2) == RegOr{5678});
 }
 
 }  // namespace

@@ -8,6 +8,7 @@
 #include "ir/basic_block.h"
 #include "ir/cmd/util.h"
 #include "ir/cmd_buffer.h"
+#include "ir/reg.h"
 #include "type/util.h"
 
 namespace ir {
@@ -70,14 +71,14 @@ template <typename CmdType>
 struct CompareHandler {
   template <typename... Args,
             typename std::enable_if_t<!std::conjunction_v<std::is_same<
-                Args, RegisterOr<UnwrapTypeT<Args>>>...>>* = nullptr>
+                Args, RegOr<UnwrapTypeT<Args>>>...>>* = nullptr>
   auto operator()(Args... args) const {
     return operator()(
-        RegisterOr<UnwrapTypeT<Args>>(std::forward<Args>(args))...);
+        RegOr<UnwrapTypeT<Args>>(std::forward<Args>(args))...);
   }
 
   template <typename T>
-  RegisterOr<bool> operator()(RegisterOr<T> lhs, RegisterOr<T> rhs) const {
+  RegOr<bool> operator()(RegOr<T> lhs, RegOr<T> rhs) const {
     auto& blk = GetBlock();
     using fn_type     = typename CmdType::fn_type;
     if (!lhs.is_reg_ && !rhs.is_reg_) { return fn_type{}(lhs.val_, rhs.val_); }

@@ -14,7 +14,7 @@
 namespace visitor {
 using ::matcher::InheritsFrom;
 
-std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::Access const *node,
+std::vector<ir::RegOr<ir::Addr>> EmitIr::Ref(ast::Access const *node,
                                                   Context *ctx) {
   auto reg = node->operand()->EmitLVal(this, ctx)[0];
   auto *t  = ctx->type_of(node->operand());
@@ -30,9 +30,9 @@ std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::Access const *node,
               .get()};
 }
 
-std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::CommaList const *node,
+std::vector<ir::RegOr<ir::Addr>> EmitIr::Ref(ast::CommaList const *node,
                                                   Context *ctx) {
-  std::vector<ir::RegisterOr<ir::Addr>> results;
+  std::vector<ir::RegOr<ir::Addr>> results;
   results.reserve(node->exprs_.size());
   for (auto &expr : node->exprs_) {
     results.push_back(expr->EmitLVal(this, ctx)[0]);
@@ -40,13 +40,13 @@ std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::CommaList const *node,
   return results;
 }
 
-std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::Identifier const *node,
+std::vector<ir::RegOr<ir::Addr>> EmitIr::Ref(ast::Identifier const *node,
                                                   Context *ctx) {
   ASSERT(node->decl() != nullptr);
   return {ctx->addr(node->decl())};
 }
 
-std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::Index const *node,
+std::vector<ir::RegOr<ir::Addr>> EmitIr::Ref(ast::Index const *node,
                                                   Context *ctx) {
   auto *lhs_type = ctx->type_of(node->lhs());
   auto *rhs_type = ctx->type_of(node->rhs());
@@ -84,7 +84,7 @@ std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::Index const *node,
   UNREACHABLE(*this);
 }
 
-std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::Unop const *node,
+std::vector<ir::RegOr<ir::Addr>> EmitIr::Ref(ast::Unop const *node,
                                                   Context *ctx) {
   ASSERT(node->op == frontend::Operator::At);
   return {node->operand->EmitIr(this, ctx).get<ir::Reg>(0)};

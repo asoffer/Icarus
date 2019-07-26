@@ -7,6 +7,7 @@
 #include "ir/basic_block.h"
 #include "ir/cmd/util.h"
 #include "ir/cmd_buffer.h"
+#include "ir/reg.h"
 #include "type/util.h"
 
 namespace ir {
@@ -70,21 +71,21 @@ template <typename CmdType>
 struct BinaryArithmeticHandler {
   template <typename... Args,
             typename std::enable_if_t<!std::conjunction_v<std::is_same<
-                Args, RegisterOr<UnwrapTypeT<Args>>>...>>* = nullptr>
+                Args, RegOr<UnwrapTypeT<Args>>>...>>* = nullptr>
   auto operator()(Args... args) const {
     return operator()(
-        RegisterOr<UnwrapTypeT<Args>>(std::forward<Args>(args))...);
+        RegOr<UnwrapTypeT<Args>>(std::forward<Args>(args))...);
   }
 
   template <typename T>
-  auto operator()(RegisterOr<T> lhs, RegisterOr<T> rhs) const {
+  auto operator()(RegOr<T> lhs, RegOr<T> rhs) const {
     auto& blk = GetBlock();
     using fn_type     = typename CmdType::fn_type;
     using result_type = decltype(fn_type{}(lhs.val_, rhs.val_));
     if constexpr (CmdType::supports_floating_point ||
                   !std::is_floating_point_v<T>) {
       if (!lhs.is_reg_ && !rhs.is_reg_) {
-        return RegisterOr<result_type>{fn_type{}(lhs.val_, rhs.val_)};
+        return RegOr<result_type>{fn_type{}(lhs.val_, rhs.val_)};
       }
     }
 
@@ -105,7 +106,7 @@ struct BinaryArithmeticHandler {
 
     Reg result = MakeResult(type::Get<T>());
     blk.cmd_buffer_.append(result);
-    return RegisterOr<result_type>{result};
+    return RegOr<result_type>{result};
   }
 };
 
@@ -168,21 +169,21 @@ template <typename CmdType>
 struct UnaryArithmeticHandler {
   template <typename... Args,
             typename std::enable_if_t<!std::conjunction_v<std::is_same<
-                Args, RegisterOr<UnwrapTypeT<Args>>>...>>* = nullptr>
+                Args, RegOr<UnwrapTypeT<Args>>>...>>* = nullptr>
   auto operator()(Args... args) const {
     return operator()(
-        RegisterOr<UnwrapTypeT<Args>>(std::forward<Args>(args))...);
+        RegOr<UnwrapTypeT<Args>>(std::forward<Args>(args))...);
   }
 
   template <typename T>
-  auto operator()(RegisterOr<T> operand) const {
+  auto operator()(RegOr<T> operand) const {
     auto& blk = GetBlock();
     using fn_type     = typename CmdType::fn_type;
     using result_type = decltype(fn_type{}(operand.val_));
     if constexpr (CmdType::supports_floating_point ||
                   !std::is_floating_point_v<T>) {
       if (!operand.is_reg_) {
-        return RegisterOr<result_type>{fn_type{}(operand.val_)};
+        return RegOr<result_type>{fn_type{}(operand.val_)};
       }
     }
 
@@ -198,7 +199,7 @@ struct UnaryArithmeticHandler {
 
     Reg result = MakeResult(type::Get<T>());
     blk.cmd_buffer_.append(result);
-    return RegisterOr<result_type>{result};
+    return RegOr<result_type>{result};
   }
 };
 

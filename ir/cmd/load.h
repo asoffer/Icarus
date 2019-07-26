@@ -6,6 +6,7 @@
 #include "ir/basic_block.h"
 #include "ir/cmd/util.h"
 #include "ir/cmd_buffer.h"
+#include "ir/reg.h"
 #include "type/util.h"
 
 namespace ir {
@@ -53,7 +54,7 @@ struct LoadCmd {
 };
 
 template <typename T>
-TypedRegister<T> Load(RegisterOr<Addr> addr) {
+TypedRegister<T> Load(RegOr<Addr> addr) {
   auto& blk = GetBlock();
   blk.cmd_buffer_.append_index<LoadCmd>();
   blk.cmd_buffer_.append(LoadCmd::MakeControlBits<T>(addr.is_reg_));
@@ -68,7 +69,7 @@ TypedRegister<T> Load(RegisterOr<Addr> addr) {
   return result;
 }
 
-inline Reg Load(RegisterOr<Addr> r, type::Type const* t) {
+inline Reg Load(RegOr<Addr> r, type::Type const* t) {
   if (t->is<type::Function>()) { return Load<AnyFunc>(r); }
   return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
                           uint16_t, uint32_t, uint64_t, float, double,

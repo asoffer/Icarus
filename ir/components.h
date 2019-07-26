@@ -6,11 +6,12 @@
 #include "ir/cmd/load.h"
 #include "ir/compiled_fn.h"
 #include "ir/phi.h"
+#include "ir/reg.h"
 #include "ir/register.h"
 
 namespace ir {
 template <bool B>
-BlockIndex EarlyExitOn(BlockIndex exit_block, RegisterOr<bool> cond) {
+BlockIndex EarlyExitOn(BlockIndex exit_block, RegOr<bool> cond) {
   auto continue_block = CompiledFn::Current->AddBlock();
   if constexpr (B) {
     CondJump(cond, exit_block, continue_block);
@@ -25,13 +26,13 @@ inline Reg PtrFix(Reg r, type::Type const *desired_type) {
 }
 
 // TODO: Typed<Results>
-RegisterOr<bool> EmitEq(type::Type const *lhs_type, ir::Results const &lhs_val,
+RegOr<bool> EmitEq(type::Type const *lhs_type, ir::Results const &lhs_val,
                         type::Type const *rhs_type, ir::Results const &rhs_val);
 
 template <typename LoopPhiFn, typename LoopBodyFn, typename TypeTup,
           typename... Ts>
 void CreateLoop(LoopPhiFn &&loop_phi_fn, LoopBodyFn &&loop_body_fn,
-                TypeTup &&types, std::tuple<ir::RegisterOr<Ts>...> entry_vals) {
+                TypeTup &&types, std::tuple<ir::RegOr<Ts>...> entry_vals) {
   auto entry_block = ir::BasicBlock::Current;
 
   auto loop_phi   = ir::CompiledFn::Current->AddBlock();
@@ -74,7 +75,7 @@ void OnEachArrayElement(type::Array const *t, ir::CompiledFn *fn, F &&fn_to_appl
     auto end_ptr =
         ir::PtrIncr(ptr, static_cast<int32_t>(t->len), data_ptr_type);
 
-    using tup = std::tuple<ir::RegisterOr<ir::Addr>>;
+    using tup = std::tuple<ir::RegOr<ir::Addr>>;
     ir::CreateLoop(
         [&](tup const &phis) { return ir::Eq(std::get<0>(phis), end_ptr); },
         [&](tup const &phis) {

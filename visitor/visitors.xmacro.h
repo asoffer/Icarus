@@ -12,7 +12,7 @@ ICARUS_AST_VISITOR(void match_expr(visitor::Match *visitor,
 ICARUS_AST_VISITOR(ir::Results EmitIr(visitor::EmitIr *visitor, Context *ctx)
                        const,
                    { return visitor->Val(this, ctx); });
-ICARUS_AST_VISITOR(std::vector<ir::RegisterOr<ir::Addr>> EmitLVal(
+ICARUS_AST_VISITOR(std::vector<ir::RegOr<ir::Addr>> EmitLVal(
                        visitor::EmitIr *visitor, Context *ctx) const,
                    { return visitor->Ref(this, ctx); });
 ICARUS_AST_VISITOR(void EmitCopyInit(visitor::EmitIr *visitor,

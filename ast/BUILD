@@ -29,6 +29,7 @@ cc_lib_target(
         "//core:scope",
         "//frontend:operators",
         "//ir:block",
+        "//ir:reg",
         "//type:primitive",
     ],
     impl_deps = None,

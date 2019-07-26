@@ -6,6 +6,7 @@
 #include "ir/basic_block.h"
 #include "ir/cmd/util.h"
 #include "ir/cmd_buffer.h"
+#include "ir/reg.h"
 
 namespace ir {
 
@@ -94,7 +95,7 @@ void Print(T r) {
       blk.cmd_buffer_.append(r.val_);
     }
   } else {
-    Print(RegisterOr<T>(r));
+    Print(RegOr<T>(r));
   }
   DEBUG_LOG("print")(blk.cmd_buffer_.to_string());
 }
@@ -102,7 +103,7 @@ void Print(T r) {
 template <typename T,
           typename std::enable_if_t<std::is_same_v<T, EnumVal> ||
                                     std::is_same_v<T, FlagsVal>>* = nullptr>
-void Print(RegisterOr<T> r, type::Type const* t) {
+void Print(RegOr<T> r, type::Type const* t) {
   auto& blk = GetBlock();
   blk.cmd_buffer_.append_index<PrintCmd>();
   blk.cmd_buffer_.append(

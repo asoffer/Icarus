@@ -67,7 +67,7 @@ void EmitIr::Destroy(type::Variant const *t, ir::Reg reg, Context *ctx) {
 
         ir::BasicBlock::Current = old_block;
         ir::BasicBlock::Current = ir::EarlyExitOn<true>(
-            found_block, ir::Eq(ir::RegisterOr<type::Type const *>(type), v));
+            found_block, ir::Eq(ir::RegOr<type::Type const *>(type), v));
       }
 
       ir::UncondJump(landing);

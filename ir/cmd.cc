@@ -9,6 +9,7 @@
 #include "core/arch.h"
 #include "ir/compiled_fn.h"
 #include "ir/phi.h"
+#include "ir/reg.h"
 #include "type/generic_struct.h"
 #include "type/jump.h"
 #include "type/typed_value.h"
@@ -36,32 +37,32 @@ void FinishBlockDef(std::string_view name) {
   cmd.byte_view_arg_ = name;
 }
 
-void AddBlockDefBefore(RegisterOr<AnyFunc> f) {
+void AddBlockDefBefore(RegOr<AnyFunc> f) {
   auto &cmd   = MakeCmd(nullptr, Op::AddBlockDefBefore);
   cmd.any_fn_ = f;
 }
 
-void AddBlockDefAfter(RegisterOr<AnyFunc> f) {
+void AddBlockDefAfter(RegOr<AnyFunc> f) {
   auto &cmd   = MakeCmd(nullptr, Op::AddBlockDefAfter);
   cmd.any_fn_ = f;
 }
 
-void AddScopeDefInit(Reg reg, RegisterOr<AnyFunc> f) {
+void AddScopeDefInit(Reg reg, RegOr<AnyFunc> f) {
   auto &cmd               = MakeCmd(nullptr, Op::AddScopeDefInit);
   cmd.add_scope_def_init_ = {reg, f};
 }
 
-void AddScopeDefDone(Reg reg, RegisterOr<AnyFunc> f) {
+void AddScopeDefDone(Reg reg, RegOr<AnyFunc> f) {
   auto &cmd               = MakeCmd(nullptr, Op::AddScopeDefDone);
   cmd.add_scope_def_done_ = {reg, f};
 }
 
-void Move(type::Type const *t, Reg from, RegisterOr<Addr> to) {
+void Move(type::Type const *t, Reg from, RegOr<Addr> to) {
   auto &cmd     = MakeCmd(nullptr, Op::Move);
   cmd.special2_ = {t, from, to};
 }
 
-void Copy(type::Type const *t, Reg from, RegisterOr<Addr> to) {
+void Copy(type::Type const *t, Reg from, RegOr<Addr> to) {
   auto &cmd     = MakeCmd(nullptr, Op::Copy);
   cmd.special2_ = {t, from, to};
 }
@@ -88,7 +89,7 @@ Reg CreateContext(Module *mod) {
 }
 
 void AddBoundConstant(Reg ctx, ast::Declaration const *decl,
-                      RegisterOr<type::Type const *> type) {
+                      RegOr<type::Type const *> type) {
   auto &cmd   = MakeCmd(nullptr, Op::AddBoundConstant);
   cmd.add_bc_ = {ctx, decl, type};
 }
@@ -130,13 +131,13 @@ Reg CastPtr(Reg r, type::Pointer const *t) {
   return cmd.result;
 }
 
-RegisterOr<int64_t> Bytes(RegisterOr<type::Type const *> r) {
+RegOr<int64_t> Bytes(RegOr<type::Type const *> r) {
   auto &cmd     = MakeCmd(type::Int64, Op::Bytes);
   cmd.type_arg_ = r;
   return cmd.result;
 }
 
-RegisterOr<int64_t> Align(RegisterOr<type::Type const *> r) {
+RegOr<int64_t> Align(RegOr<type::Type const *> r) {
   auto &cmd     = MakeCmd(type::Int64, Op::Align);
   cmd.type_arg_ = r;
   return cmd.result;
@@ -209,7 +210,7 @@ Results Cast(type::Type const *from, type::Type const *to, Results const &val) {
       });
 }
 
-RegisterOr<bool> Not(RegisterOr<bool> r) {
+RegOr<bool> Not(RegOr<bool> r) {
   if (!r.is_reg_) { return !r.val_; }
   auto &cmd = MakeCmd(type::Bool, Op::NotBool);
   cmd.reg_  = r.reg_;
@@ -217,29 +218,29 @@ RegisterOr<bool> Not(RegisterOr<bool> r) {
   return cmd.result;
 }
 
-RegisterOr<FlagsVal> Not(type::Typed<RegisterOr<FlagsVal>, type::Flags> r) {
+RegOr<FlagsVal> Not(type::Typed<RegOr<FlagsVal>, type::Flags> r) {
   if (!r->is_reg_) { return NotFlags(r->val_, r.type()); }
   auto &cmd      = MakeCmd(r.type(), Op::NotFlags);
   cmd.typed_reg_ = type::Typed<Reg>(r->reg_, r.type());
   return cmd.result;
 }
 
-RegisterOr<type::Type const *> Ptr(RegisterOr<type::Type const *> r) {
+RegOr<type::Type const *> Ptr(RegOr<type::Type const *> r) {
   if (!r.is_reg_) { return type::Ptr(r.val_); }
   auto &cmd = MakeCmd(type::Type_, Op::Ptr);
   cmd.reg_  = r.reg_;
   return cmd.result;
 }
 
-RegisterOr<type::Type const *> BufPtr(RegisterOr<type::Type const *> r) {
+RegOr<type::Type const *> BufPtr(RegOr<type::Type const *> r) {
   if (!r.is_reg_) { return type::BufPtr(r.val_); }
   auto &cmd = MakeCmd(type::Type_, Op::BufPtr);
   cmd.reg_  = r.reg_;
   return cmd.result;
 }
 
-RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> v1,
-                                     RegisterOr<type::Type const *> v2) {
+RegOr<type::Type const *> Arrow(RegOr<type::Type const *> v1,
+                                     RegOr<type::Type const *> v2) {
   if (!v1.is_reg_ && !v2.is_reg_) {
     std::vector<type::Type const *> ins =
         v1.val_->is<type::Tuple>() ? v1.val_->as<type::Tuple>().entries_
@@ -257,8 +258,8 @@ RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> v1,
   return cmd.result;
 }
 
-RegisterOr<type::Type const *> Array(RegisterOr<int64_t> len,
-                                     RegisterOr<type::Type const *> data_type) {
+RegOr<type::Type const *> Array(RegOr<int64_t> len,
+                                     RegOr<type::Type const *> data_type) {
   if (!data_type.is_reg_ && !len.is_reg_) {
     return type::Arr(len.val_, data_type.val_);
   }
@@ -270,7 +271,7 @@ RegisterOr<type::Type const *> Array(RegisterOr<int64_t> len,
 
 Reg CreateTuple() { return MakeCmd(type::Type_, Op::CreateTuple).result; }
 
-void AppendToTuple(Reg tup, RegisterOr<type::Type const *> entry) {
+void AppendToTuple(Reg tup, RegOr<type::Type const *> entry) {
   auto &cmd       = MakeCmd(nullptr, Op::AppendToTuple);
   cmd.store_type_ = {tup, entry};
 }
@@ -281,11 +282,11 @@ Reg FinalizeTuple(Reg r) {
   return cmd.result;
 }
 
-RegisterOr<type::Type const *> Tup(
-    std::vector<RegisterOr<type::Type const *>> const &entries) {
+RegOr<type::Type const *> Tup(
+    std::vector<RegOr<type::Type const *>> const &entries) {
   if (std::all_of(
           entries.begin(), entries.end(),
-          [](RegisterOr<type::Type const *> r) { return !r.is_reg_; })) {
+          [](RegOr<type::Type const *> r) { return !r.is_reg_; })) {
     std::vector<type::Type const *> types;
     for (auto const &val : entries) { types.push_back(val.val_); }
     return type::Tup(std::move(types));
@@ -298,7 +299,7 @@ RegisterOr<type::Type const *> Tup(
 
 Reg CreateVariant() { return MakeCmd(type::Type_, Op::CreateVariant).result; }
 
-void AppendToVariant(Reg var, RegisterOr<type::Type const *> entry) {
+void AppendToVariant(Reg var, RegOr<type::Type const *> entry) {
   auto &cmd       = MakeCmd(nullptr, Op::AppendToVariant);
   cmd.store_type_ = {var, entry};
 }
@@ -309,11 +310,11 @@ Reg FinalizeVariant(Reg r) {
   return cmd.result;
 }
 
-RegisterOr<type::Type const *> Variant(
-    std::vector<RegisterOr<type::Type const *>> const &vals) {
+RegOr<type::Type const *> Variant(
+    std::vector<RegOr<type::Type const *>> const &vals) {
   if (std::all_of(
           vals.begin(), vals.end(),
-          [](RegisterOr<type::Type const *> const &v) { return !v.is_reg_; })) {
+          [](RegOr<type::Type const *> const &v) { return !v.is_reg_; })) {
     std::vector<type::Type const *> types;
     types.reserve(vals.size());
     for (auto const &v : vals) { types.push_back(v.val_); }
@@ -324,14 +325,14 @@ RegisterOr<type::Type const *> Variant(
   return ir::FinalizeVariant(var);
 }
 
-type::Typed<Reg> Field(RegisterOr<Addr> r, type::Tuple const *t, size_t n) {
+type::Typed<Reg> Field(RegOr<Addr> r, type::Tuple const *t, size_t n) {
   auto *p    = type::Ptr(t->entries_.at(n));
   auto &cmd  = MakeCmd(p, Op::Field);
   cmd.field_ = {r, t, n};
   return type::Typed<Reg>(cmd.result, p);
 }
 
-type::Typed<Reg> Field(RegisterOr<Addr> r, type::Struct const *t, size_t n) {
+type::Typed<Reg> Field(RegOr<Addr> r, type::Struct const *t, size_t n) {
   auto *p    = type::Ptr(t->fields().at(n).type);
   auto &cmd  = MakeCmd(p, Op::Field);
   cmd.field_ = {r, t, n};
@@ -397,19 +398,19 @@ Reg FinalizeStruct(Reg r) {
 
 void DebugIr() { MakeCmd(nullptr, Op::DebugIr); }
 
-Reg VariantType(RegisterOr<Addr> r) {
+Reg VariantType(RegOr<Addr> r) {
   auto &cmd     = MakeCmd(Ptr(type::Type_), Op::VariantType);
   cmd.addr_arg_ = r;
   return cmd.result;
 }
 
-Reg VariantValue(type::Type const *t, RegisterOr<Addr> r) {
+Reg VariantValue(type::Type const *t, RegOr<Addr> r) {
   auto &cmd     = MakeCmd(type::Ptr(t), Op::VariantValue);
   cmd.addr_arg_ = r;
   return cmd.result;
 }
 
-void CreateStructField(Reg struct_type, RegisterOr<type::Type const *> type) {
+void CreateStructField(Reg struct_type, RegOr<type::Type const *> type) {
   auto &cmd                = MakeCmd(nullptr, Op::CreateStructField);
   cmd.create_struct_field_ = {struct_type, std::move(type)};
 }
@@ -473,7 +474,7 @@ void SetRet(size_t n, type::Typed<Results> const &r, Context *ctx) {
   }
 }
 
-TypedRegister<Addr> PtrIncr(RegisterOr<Addr> ptr, RegisterOr<int64_t> inc,
+TypedRegister<Addr> PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
                             type::Pointer const *t) {
   if (!inc.is_reg_ && inc.val_ == 0 &&
       /* TODO get rid of this last condition */ ptr.is_reg_) {
@@ -484,21 +485,21 @@ TypedRegister<Addr> PtrIncr(RegisterOr<Addr> ptr, RegisterOr<int64_t> inc,
   return cmd.result;
 }
 
-RegisterOr<FlagsVal> XorFlags(type::Flags const *type,
-                              RegisterOr<FlagsVal> const &lhs,
-                              RegisterOr<FlagsVal> const &rhs) {
+RegOr<FlagsVal> XorFlags(type::Flags const *type,
+                              RegOr<FlagsVal> const &lhs,
+                              RegOr<FlagsVal> const &rhs) {
   if (!lhs.is_reg_ && !rhs.is_reg_) { return lhs.val_ ^ rhs.val_; }
   if (!lhs.is_reg_) {
     if (lhs.val_.value == 0) { return rhs; }
     if (lhs.val_.value == (1ull << type->members_.size()) - 1) {
-      return Not(type::Typed<RegisterOr<FlagsVal>, type::Flags>(rhs, type));
+      return Not(type::Typed<RegOr<FlagsVal>, type::Flags>(rhs, type));
     }
   }
 
   if (!rhs.is_reg_) {
     if (rhs.val_.value == 0) { return rhs; }
     if (rhs.val_.value == (1ull << type->members_.size()) - 1) {
-      return Not(type::Typed<RegisterOr<FlagsVal>, type::Flags>(lhs, type));
+      return Not(type::Typed<RegOr<FlagsVal>, type::Flags>(lhs, type));
     }
   }
 
@@ -507,9 +508,9 @@ RegisterOr<FlagsVal> XorFlags(type::Flags const *type,
   return cmd.result;
 }
 
-RegisterOr<FlagsVal> OrFlags(type::Flags const *type,
-                             RegisterOr<FlagsVal> const &lhs,
-                             RegisterOr<FlagsVal> const &rhs) {
+RegOr<FlagsVal> OrFlags(type::Flags const *type,
+                             RegOr<FlagsVal> const &lhs,
+                             RegOr<FlagsVal> const &rhs) {
   if (!lhs.is_reg_ && !rhs.is_reg_) { return lhs.val_ | rhs.val_; }
   if (!lhs.is_reg_) {
     if (lhs.val_.value == 0) { return rhs; }
@@ -530,9 +531,9 @@ RegisterOr<FlagsVal> OrFlags(type::Flags const *type,
   return cmd.result;
 }
 
-RegisterOr<FlagsVal> AndFlags(type::Flags const *type,
-                              RegisterOr<FlagsVal> const &lhs,
-                              RegisterOr<FlagsVal> const &rhs) {
+RegOr<FlagsVal> AndFlags(type::Flags const *type,
+                              RegOr<FlagsVal> const &lhs,
+                              RegOr<FlagsVal> const &rhs) {
   if (!lhs.is_reg_ && !rhs.is_reg_) { return lhs.val_ & rhs.val_; }
   if (!lhs.is_reg_) {
     if (lhs.val_.value == 0) { return FlagsVal{0}; }
@@ -550,7 +551,7 @@ RegisterOr<FlagsVal> AndFlags(type::Flags const *type,
 }
 
 TypedRegister<Addr> Index(type::Pointer const *t, Reg array_ptr,
-                          RegisterOr<int64_t> offset) {
+                          RegOr<int64_t> offset) {
   auto *array_type = &t->pointee->as<type::Array>();
   // TODO this works but generates worse ir (both here and in llvm). It's worth
   // figuring out how to do this better. Is this still true without
@@ -558,7 +559,7 @@ TypedRegister<Addr> Index(type::Pointer const *t, Reg array_ptr,
   return PtrIncr(array_ptr, offset, type::Ptr(array_type->data_type));
 }
 
-void Call(RegisterOr<AnyFunc> const &f, Arguments arguments) {
+void Call(RegOr<AnyFunc> const &f, Arguments arguments) {
   auto &block     = CompiledFn::Current->block(BasicBlock::Current);
   Arguments *args = &block.arguments_.emplace_back(std::move(arguments));
 
@@ -566,7 +567,7 @@ void Call(RegisterOr<AnyFunc> const &f, Arguments arguments) {
   cmd.call_ = Cmd::Call(f, args, nullptr);
 }
 
-void Call(RegisterOr<AnyFunc> const &f, Arguments arguments, OutParams outs) {
+void Call(RegOr<AnyFunc> const &f, Arguments arguments, OutParams outs) {
   auto &block    = CompiledFn::Current->block(BasicBlock::Current);
   auto *args     = &block.arguments_.emplace_back(std::move(arguments));
   auto *outs_ptr = &block.outs_.emplace_back(std::move(outs));
@@ -581,11 +582,11 @@ static void InlinePhiNode(
     PhiArgs<T> const &phi_args,
     absl::flat_hash_map<BlockIndex, BlockIndex> const &block_relocs,
     absl::flat_hash_map<Reg, Results> const &reg_relocs) {
-  absl::flat_hash_map<BlockIndex, RegisterOr<T>> phi_map;
+  absl::flat_hash_map<BlockIndex, RegOr<T>> phi_map;
   for (auto [block, val] : phi_args.map_) {
     phi_map.emplace(block_relocs.at(block),
                     val.is_reg_ ? reg_relocs.at(val.reg_).template get<T>(0)
-                                : RegisterOr<T>{val.val_});
+                                : RegOr<T>{val.val_});
   }
   MakePhi(cmd_index, std::move(phi_map));
 }
@@ -660,7 +661,7 @@ std::pair<Results, bool> CallInline(
       switch (cmd.op_code_) {
         case Op::Death: UNREACHABLE();
         case Op::Bytes: {
-          RegisterOr<type::Type const *> r;
+          RegOr<type::Type const *> r;
           if (cmd.type_arg_.is_reg_) {
             auto iter = reg_relocs.find(cmd.type_arg_.reg_);
             if (iter == reg_relocs.end()) { goto next_block; }
@@ -671,7 +672,7 @@ std::pair<Results, bool> CallInline(
           reg_relocs.emplace(cmd.result, Bytes(r));
         } break;
         case Op::Align: {
-          RegisterOr<type::Type const *> r;
+          RegOr<type::Type const *> r;
           if (cmd.type_arg_.is_reg_) {
             auto iter = reg_relocs.find(cmd.type_arg_.reg_);
             if (iter == reg_relocs.end()) { goto next_block; }
@@ -690,7 +691,7 @@ std::pair<Results, bool> CallInline(
           auto iter = reg_relocs.find(cmd.typed_reg_.get());
           if (iter == reg_relocs.end()) { goto next_block; }
           reg_relocs.emplace(cmd.result,
-                             Not(type::Typed<RegisterOr<FlagsVal>, type::Flags>{
+                             Not(type::Typed<RegOr<FlagsVal>, type::Flags>{
                                  iter->second.get<FlagsVal>(0),
                                  &cmd.typed_reg_.type()->as<type::Flags>()}));
         } break;
@@ -793,7 +794,7 @@ std::pair<Results, bool> CallInline(
         case Op::AddBoundConstant: UNREACHABLE();
         case Op::DestroyContext: UNREACHABLE();
         case Op::Call: {
-          RegisterOr<AnyFunc> r_fn;
+          RegOr<AnyFunc> r_fn;
           if (cmd.call_.fn_.is_reg_) {
             auto iter = reg_relocs.find(cmd.call_.fn_.reg_);
             if (iter == reg_relocs.end()) { goto next_block; }
@@ -839,7 +840,7 @@ std::pair<Results, bool> CallInline(
           }
         } break;
         case Op::PtrIncr: {
-          RegisterOr<Addr> r_ptr;
+          RegOr<Addr> r_ptr;
           if (cmd.ptr_incr_.ptr_.is_reg_) {
             auto iter = reg_relocs.find(cmd.ptr_incr_.ptr_.reg_);
             if (iter == reg_relocs.end()) { goto next_block; }
@@ -847,7 +848,7 @@ std::pair<Results, bool> CallInline(
           } else {
             r_ptr = cmd.ptr_incr_.ptr_.val_;
           }
-          RegisterOr<int64_t> r_inc;
+          RegOr<int64_t> r_inc;
           if (cmd.ptr_incr_.ptr_.is_reg_) {
             auto iter = reg_relocs.find(cmd.ptr_incr_.incr_.reg_);
             if (iter == reg_relocs.end()) { goto next_block; }
@@ -902,7 +903,7 @@ std::pair<Results, bool> CallInline(
   return std::pair{results, is_jump};
 }
 
-void CondJump(RegisterOr<bool> cond, BlockIndex true_block,
+void CondJump(RegOr<bool> cond, BlockIndex true_block,
               BlockIndex false_block) {
   if (!cond.is_reg_) {
     UncondJump(cond.val_ ? true_block : false_block);
@@ -926,7 +927,7 @@ TypedRegister<type::Type const *> NewOpaqueType(::Module *mod) {
 
 template <typename T>
 static std::ostream &operator<<(std::ostream &os,
-                                std::array<RegisterOr<T>, 2> r) {
+                                std::array<RegOr<T>, 2> r) {
   return os << r[0] << " " << r[1];
 }
 
@@ -946,10 +947,10 @@ static auto Stringify(T &&val) {
   if constexpr (std::is_same_v<std::decay_t<T>, type::Type const *>) {
     return val->to_string();
   } else if constexpr (std::is_same_v<std::decay_t<T>,
-                                      RegisterOr<type::Type const *>>) {
+                                      RegOr<type::Type const *>>) {
     std::stringstream ss;
     if (val.is_reg_) {
-      ss << val.reg_;
+      ss << stringify(val.reg_);
     } else {
       if (val.val_ == nullptr) {
         ss << "0x0";
@@ -958,6 +959,8 @@ static auto Stringify(T &&val) {
       }
     }
     return ss.str();
+  } else if constexpr (std::is_same_v<std::decay_t<T>, Reg>) {
+    return stringify(val);
   } else {
     return val;
   }
@@ -965,7 +968,7 @@ static auto Stringify(T &&val) {
 
 template <typename T>
 static std::ostream &operator<<(std::ostream &os, Cmd::Store<T> const &s) {
-  return os << s.addr_ << " <- " << Stringify(s.val_);
+  return os << stringify(s.addr_) << " <- " << Stringify(s.val_);
 }
 
 template <typename T>
@@ -991,7 +994,7 @@ static std::ostream &operator<<(std::ostream &os, Cmd::Field const &f) {
 }
 
 static std::ostream &operator<<(std::ostream &os, Cmd::CondJump const &j) {
-  return os << j.cond_ << " false -> " << j.blocks_[0] << " true -> "
+  return os << stringify(j.cond_) << " false -> " << j.blocks_[0] << " true -> "
             << j.blocks_[1];
 }
 
@@ -1001,7 +1004,7 @@ static std::ostream &operator<<(std::ostream &os, Cmd::LoadSymbol const &ls) {
 
 static std::ostream &operator<<(std::ostream &os, Cmd::Call const &call) {
   if (call.fn_.is_reg_) {
-    os << call.fn_.reg_;
+    os << stringify(call.fn_.reg_);
   } else if (call.fn_.val_.is_fn()) {
     os << call.fn_.val_.func();
   } else {
@@ -1013,7 +1016,7 @@ static std::ostream &operator<<(std::ostream &os, Cmd::Call const &call) {
   if (call.outs_) {
     for (size_t i = 0; i < call.outs_->size(); ++i) {
       if (call.outs_->is_loc_[i]) { os << "*"; }
-      os << call.outs_->regs_[i];
+      os << stringify( call.outs_->regs_[i]);
     }
   }
 
@@ -1021,15 +1024,15 @@ static std::ostream &operator<<(std::ostream &os, Cmd::Call const &call) {
 }
 
 static std::ostream &operator<<(std::ostream &os, Cmd::AddEnumerator const &s) {
-  return os << s.enum_ << " " << s.name_;
+  return os << stringify(s.enum_) << " " << s.name_;
 }
 
 static std::ostream &operator<<(std::ostream &os, Cmd::SetEnumerator const &s) {
-  return os << s.enum_ << " " << s.val_;
+  return os << stringify(s.enum_) << " " << s.val_;
 }
 
 std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
-  if (cmd.result != Reg{}) { os << cmd.result << " = "; }
+  if (cmd.result != Reg{}) { os << stringify(cmd.result) << " = "; }
   os << OpCodeStr(cmd.op_code_) << " ";
    if (cmd.op_code_ == Op::PhiBool) { return cmd.phi_bool_->print(os); }
    if (cmd.op_code_ == Op::PhiInt8) { return cmd.phi_i8_->print(os); }

@@ -1,9 +1,7 @@
 #ifndef ICARUS_IR_ADDR_H
 #define ICARUS_IR_ADDR_H
 
-#include <iosfwd>
-
-#include "base/untyped_buffer.h"
+#include <string>
 
 namespace ir {
 struct Addr {
@@ -42,15 +40,8 @@ struct Addr {
   std::string to_string() const;
 };
 
-std::ostream &operator<<(std::ostream &os, Addr addr);
-
 bool operator==(Addr lhs, Addr rhs);
 inline bool operator!=(Addr lhs, Addr rhs) { return !(lhs == rhs); }
-
-bool operator<(Addr lhs, Addr rhs);
-inline bool operator<=(Addr lhs, Addr rhs) { return !(rhs < lhs); }
-inline bool operator>(Addr lhs, Addr rhs) { return rhs < lhs; }
-inline bool operator>=(Addr lhs, Addr rhs) { return !(lhs < rhs); }
 
 }  // namespace ir
 

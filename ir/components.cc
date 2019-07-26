@@ -1,7 +1,7 @@
 #include "ir/components.h"
 
 namespace ir {
-RegisterOr<bool> EmitEq(type::Type const *lhs_type, ir::Results const &lhs_val,
+RegOr<bool> EmitEq(type::Type const *lhs_type, ir::Results const &lhs_val,
                         type::Type const *rhs_type,
                         ir::Results const &rhs_val) {
   // You may already assume that there exists a valid comparison between these

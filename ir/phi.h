@@ -3,6 +3,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "ir/compiled_fn.h"
+#include "ir/reg.h"
 
 namespace ir {
 CmdIndex Phi(type::Type const *);
@@ -11,8 +12,8 @@ ir::Results MakePhi(type::Type const *type, CmdIndex phi_index,
             absl::flat_hash_map<BlockIndex, ir::Results> const &val_map);
 
 template <typename T>
-RegisterOr<T> MakePhi(CmdIndex phi_index,
-                      absl::flat_hash_map<BlockIndex, RegisterOr<T>> val_map) {
+RegOr<T> MakePhi(CmdIndex phi_index,
+                      absl::flat_hash_map<BlockIndex, RegOr<T>> val_map) {
   auto &cmd = ir::CompiledFn::Current->Command(phi_index);
 
   auto phi_args  = std::make_unique<PhiArgs<T>>();

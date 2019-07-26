@@ -34,7 +34,7 @@ void EmitIr::Print(type::Array const *t, ir::Results const &val, Context *ctx) {
       t->data_type->EmitPrint(this, ir::Results{ir::PtrFix(ptr, t->data_type)},
                               ctx);
 
-      using tup = std::tuple<ir::RegisterOr<ir::Addr>, ir::RegisterOr<int32_t>>;
+      using tup = std::tuple<ir::RegOr<ir::Addr>, ir::RegOr<int32_t>>;
       ir::CreateLoop(
           [&](tup const &phis) { return ir::Eq(std::get<1>(phis), 0); },
           [&](tup const &phis) {
@@ -48,7 +48,7 @@ void EmitIr::Print(type::Array const *t, ir::Results const &val, Context *ctx) {
 
             return std::make_tuple(
                 elem_ptr,
-                ir::Sub(ir::RegisterOr<int32_t>(std::get<1>(phis)), 1));
+                ir::Sub(ir::RegOr<int32_t>(std::get<1>(phis)), 1));
           },
           std::tuple{type::Ptr(t->data_type), type::Int32},
           tup{ptr, t->len - 1});
@@ -163,7 +163,7 @@ void EmitIr::Print(type::Variant const *t, ir::Results const &val,
 
         ir::BasicBlock::Current = old_block;
         ir::BasicBlock::Current = ir::EarlyExitOn<true>(
-            found_block, ir::Eq(ir::RegisterOr<type::Type const *>(type), v));
+            found_block, ir::Eq(ir::RegOr<type::Type const *>(type), v));
       }
 
       ir::UncondJump(landing);

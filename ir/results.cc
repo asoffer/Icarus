@@ -48,7 +48,7 @@ std::string Results::to_string() const {
   auto iter       = offset_.begin();
   uint64_t offset = *iter;
   if (offset & is_reg_mask) {
-    ss << Reg{offset & ~is_reg_mask};
+    ss << stringify(Reg{offset & ~is_reg_mask});
   } else {
     ss << "offset(" << offset << ")";
   }
@@ -56,7 +56,7 @@ std::string Results::to_string() const {
   for (; iter != offset_.end(); ++iter) {
     uint64_t offset = *iter;
     if (offset & is_reg_mask) {
-      ss << ", " << Reg{offset & ~is_reg_mask};
+      ss << ", " << stringify(Reg{offset & ~is_reg_mask});
     } else {
       ss << ", offset(" << offset << ")";
     }

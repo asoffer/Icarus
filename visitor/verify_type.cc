@@ -1846,10 +1846,12 @@ VerifyResult VerifyType::operator()(ast::ScopeNode const *node, Context *ctx) {
       DEBUG_LOG("ScopeNode")("    ... empty block results");
       auto result =
           ast::VerifyJumpDispatch(node, block_def.after_, {}, ctx, &block_defs);
+      static_cast<void>(result);
       DEBUG_LOG("ScopeNode")("    ... dispatch result = ", result);
     } else {
       for (auto const &fn_args : block_results) {
         auto result = ast::VerifyDispatch(node, block_def.after_, fn_args, ctx);
+        static_cast<void>(result);
         DEBUG_LOG("ScopeNode")("    ... dispatch result = ", result);
       }
     }
@@ -1857,6 +1859,7 @@ VerifyResult VerifyType::operator()(ast::ScopeNode const *node, Context *ctx) {
   }
   auto init_result = ast::VerifyJumpDispatch(node, scope_def->inits_,
                                              arg_results, ctx, &block_defs);
+  static_cast<void>(init_result);
   DEBUG_LOG("ScopeNode")("    ... init_result = ", init_result);
   DEBUG_LOG("ScopeNode")("    ... block_defs = ", block_defs);
   return VerifyResult::Constant(type::Void());

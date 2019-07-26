@@ -50,7 +50,8 @@ struct Typed {
 
 template <typename V>
 std::ostream& operator<<(std::ostream& os, Typed<V> const& t) {
-  return os << t.get() << ": " << t.type()->to_string();
+  using base::stringify;
+  return os << stringify(t.get()) << ": " << t.type()->to_string();
 }
 
 template <typename T>
