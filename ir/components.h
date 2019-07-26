@@ -3,6 +3,7 @@
 
 #include "ir/cmd/arithmetic.h"
 #include "ir/cmd/compare.h"
+#include "ir/cmd/load.h"
 #include "ir/compiled_fn.h"
 #include "ir/phi.h"
 #include "ir/register.h"

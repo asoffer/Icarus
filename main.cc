@@ -26,7 +26,7 @@ void cli::Usage() {
                        << [](bool b = false) { debug::parser = b; };
 
   Flag("opt-ir") << "Opmitize intermediate representation"
-                 << [](bool b = true) { debug::optimize_ir = b; };
+                 << [](bool b = false) { debug::optimize_ir = b; };
 
   Flag("debug-validation", "v") << "Step through validator for debugging." <<
       [](bool b = false) { debug::validation = b; };

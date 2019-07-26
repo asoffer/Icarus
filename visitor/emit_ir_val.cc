@@ -7,6 +7,8 @@
 #include "ir/builtin_ir.h"
 #include "ir/cmd.h"
 #include "ir/cmd/arithmetic.h"
+#include "ir/cmd/load.h"
+#include "ir/cmd/store.h"
 #include "ir/components.h"
 #include "ir/phi.h"
 #include "ir/register.h"
@@ -462,7 +464,7 @@ ir::Results EmitIr::Val(ast::Access const *node, Context *ctx) {
     if (t->is<type::Pointer>()) { t = t->as<type::Pointer>().pointee; }
     while (auto *p = t->if_as<type::Pointer>()) {
       t   = p->pointee;
-      reg = ir::Load<ir::Addr>(reg, t);
+      reg = ir::Load<ir::Addr>(reg);
     }
 
     ASSERT(t, InheritsFrom<type::Struct>());
@@ -605,7 +607,7 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
         auto lhs_lval = node->lhs()->EmitLVal(this, ctx)[0];
         ir::Store(
             ir::OrFlags(&this_type->as<type::Flags>(),
-                        ir::Load<ir::FlagsVal>(lhs_lval, this_type),
+                        ir::Load<ir::FlagsVal>(lhs_lval),
                         node->rhs()->EmitIr(this, ctx).get<ir::FlagsVal>(0)),
             lhs_lval);
         return ir::Results{};
@@ -634,7 +636,7 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
         auto lhs_lval = node->lhs()->EmitLVal(this, ctx)[0];
         ir::Store(
             ir::AndFlags(&this_type->as<type::Flags>(),
-                         ir::Load<ir::FlagsVal>(lhs_lval, this_type),
+                         ir::Load<ir::FlagsVal>(lhs_lval),
                          node->rhs()->EmitIr(this, ctx).get<ir::FlagsVal>(0)),
             lhs_lval);
         return ir::Results{};
@@ -726,8 +728,7 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
         auto lhs_lval    = node->lhs()->EmitLVal(this, ctx)[0];
         auto rhs_ir      = node->rhs()->EmitIr(this, ctx).get<ir::FlagsVal>(0);
         ir::Store(
-            ir::XorFlags(flags_type,
-                         ir::Load<ir::FlagsVal>(lhs_lval, flags_type), rhs_ir),
+            ir::XorFlags(flags_type, ir::Load<ir::FlagsVal>(lhs_lval), rhs_ir),
             lhs_lval);
       } else {
         UNREACHABLE(lhs_type);
@@ -942,8 +943,8 @@ ir::Results ArrayCompare(type::Array const *lhs_type, ir::Results const &lhs_ir,
 
       ir::BasicBlock::Current = body_block;
       // TODO what if data type is an array?
-      ir::CondJump(ir::Eq(ir::Load<ir::Addr>(lhs_phi_reg, lhs_type->data_type),
-                          ir::Load<ir::Addr>(rhs_phi_reg, rhs_type->data_type)),
+      ir::CondJump(ir::Eq(ir::Load<ir::Addr>(lhs_phi_reg),
+                          ir::Load<ir::Addr>(rhs_phi_reg)),
                    incr_block, false_block);
 
       ir::BasicBlock::Current = incr_block;

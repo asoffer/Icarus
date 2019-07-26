@@ -5,6 +5,7 @@
 #include "backend/eval.h"
 #include "ir/addr.h"
 #include "ir/cmd.h"
+#include "ir/cmd/load.h"
 #include "ir/register.h"
 #include "ir/str.h"
 #include "type/type.h"
@@ -20,7 +21,7 @@ std::vector<ir::RegisterOr<ir::Addr>> EmitIr::Ref(ast::Access const *node,
 
   while (auto *tp = t->if_as<type::Pointer>()) {
     t   = tp->pointee;
-    reg = ir::Load<ir::Addr>(reg, t);
+    reg = ir::Load<ir::Addr>(reg);
   }
 
   ASSERT(t, InheritsFrom<type::Struct>());

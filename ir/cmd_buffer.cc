@@ -7,6 +7,8 @@
 #include "ir/cmd/arithmetic.h"
 #include "ir/cmd/compare.h"
 #include "ir/cmd/print.h"
+#include "ir/cmd/store.h"
+#include "ir/cmd/load.h"
 #include "ir/compiled_fn.h"
 
 namespace ir {
@@ -38,6 +40,8 @@ BlockIndex CmdBuffer::Execute(std::vector<ir::Addr> const& ret_slots,
       CASE(NeCmd);
       CASE(GeCmd);
       CASE(GtCmd);
+      CASE(StoreCmd);
+      CASE(LoadCmd);
 #undef CASE
     }
   }

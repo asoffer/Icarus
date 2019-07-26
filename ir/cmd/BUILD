@@ -27,7 +27,30 @@ cc_lib_target(
 )
 
 cc_lib_target(
+    name = "load",
+    cfgs = ["match", "compile"],
+    intf_deps = [
+        ":util",
+        "//ir:basic_block",
+        "//type:util",
+    ],
+    impl_deps = None,
+    test_deps = None,
+)
+
+cc_lib_target(
     name = "print",
+    cfgs = ["match", "compile"],
+    intf_deps = [
+        ":util",
+        "//ir:basic_block",
+    ],
+    impl_deps = None,
+    test_deps = None,
+)
+
+cc_lib_target(
+    name = "store",
     cfgs = ["match", "compile"],
     intf_deps = [
         ":util",

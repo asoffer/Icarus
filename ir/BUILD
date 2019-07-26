@@ -134,7 +134,9 @@ cc_lib_target(
         "//ir:compiled_fn",
         "//ir/cmd:arithmetic",
         "//ir/cmd:compare",
+        "//ir/cmd:load",
         "//ir/cmd:print",
+        "//ir/cmd:store",
     ],
     test_deps = None,
 )
@@ -148,6 +150,7 @@ cc_lib_target(
         ":register",
         "//ir/cmd:arithmetic",
         "//ir/cmd:compare",
+        "//ir/cmd:load",
     ],
     impl_deps = [],
     test_deps = None,

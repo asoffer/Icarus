@@ -274,26 +274,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       save(ir::NotFlags(resolve<ir::FlagsVal>(cmd.typed_reg_.get()),
                         &cmd.typed_reg_.type()->as<type::Flags>()));
     } break;
-#define CASE(op, ty)                                                           \
-  case op: save(LoadValue<ty>(resolve<ir::Addr>(cmd.reg_), stack_)); break
-      CASE(ir::Op::LoadBool, bool);
-      CASE(ir::Op::LoadInt8, int8_t);
-      CASE(ir::Op::LoadInt16, int16_t);
-      CASE(ir::Op::LoadInt32, int32_t);
-      CASE(ir::Op::LoadInt64, int64_t);
-      CASE(ir::Op::LoadNat8, uint8_t);
-      CASE(ir::Op::LoadNat16, uint16_t);
-      CASE(ir::Op::LoadNat32, uint32_t);
-      CASE(ir::Op::LoadNat64, uint64_t);
-      CASE(ir::Op::LoadFloat32, float);
-      CASE(ir::Op::LoadFloat64, double);
-      CASE(ir::Op::LoadType, type::Type const *);
-      CASE(ir::Op::LoadEnum, size_t);
-      CASE(ir::Op::LoadFlags, size_t);
-      CASE(ir::Op::LoadAddr, ir::Addr);
-      CASE(ir::Op::LoadFunc, ir::AnyFunc);
-#undef CASE
-
 #define CASE(op, member, fn)                                                   \
   case op: {                                                                   \
     save(fn(resolve(cmd.member.args_[0]), resolve(cmd.member.args_[1])));      \
@@ -772,70 +752,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::SetRetBlock:
       StoreValue(resolve(cmd.set_ret_block_.val_),
                  ret_slots.at(cmd.set_ret_block_.ret_num_), &stack_);
-      break;
-    case ir::Op::StoreBool:
-      StoreValue(resolve(cmd.store_bool_.val_),
-                 resolve<ir::Addr>(cmd.store_bool_.addr_), &stack_);
-      break;
-    case ir::Op::StoreInt8:
-      StoreValue(resolve(cmd.store_i8_.val_),
-                 resolve<ir::Addr>(cmd.store_i8_.addr_), &stack_);
-      break;
-    case ir::Op::StoreInt16:
-      StoreValue(resolve(cmd.store_i16_.val_),
-                 resolve<ir::Addr>(cmd.store_i16_.addr_), &stack_);
-      break;
-    case ir::Op::StoreInt32:
-      StoreValue(resolve(cmd.store_i32_.val_),
-                 resolve<ir::Addr>(cmd.store_i32_.addr_), &stack_);
-      break;
-    case ir::Op::StoreInt64:
-      StoreValue(resolve(cmd.store_i64_.val_),
-                 resolve<ir::Addr>(cmd.store_i64_.addr_), &stack_);
-      break;
-    case ir::Op::StoreNat8:
-      StoreValue(resolve(cmd.store_u8_.val_),
-                 resolve<ir::Addr>(cmd.store_u8_.addr_), &stack_);
-      break;
-    case ir::Op::StoreNat16:
-      StoreValue(resolve(cmd.store_u16_.val_),
-                 resolve<ir::Addr>(cmd.store_u16_.addr_), &stack_);
-      break;
-    case ir::Op::StoreNat32:
-      StoreValue(resolve(cmd.store_u32_.val_),
-                 resolve<ir::Addr>(cmd.store_u32_.addr_), &stack_);
-      break;
-    case ir::Op::StoreNat64:
-      StoreValue(resolve(cmd.store_u64_.val_),
-                 resolve<ir::Addr>(cmd.store_u64_.addr_), &stack_);
-      break;
-    case ir::Op::StoreFloat32:
-      StoreValue(resolve(cmd.store_float32_.val_),
-                 resolve<ir::Addr>(cmd.store_float32_.addr_), &stack_);
-      break;
-    case ir::Op::StoreFloat64:
-      StoreValue(resolve(cmd.store_float64_.val_),
-                 resolve<ir::Addr>(cmd.store_float64_.addr_), &stack_);
-      break;
-    case ir::Op::StoreType:
-      StoreValue(resolve(cmd.store_type_.val_),
-                 resolve<ir::Addr>(cmd.store_type_.addr_), &stack_);
-      break;
-    case ir::Op::StoreEnum:
-      StoreValue(resolve(cmd.store_enum_.val_),
-                 resolve<ir::Addr>(cmd.store_enum_.addr_), &stack_);
-      break;
-    case ir::Op::StoreFunc:
-      StoreValue(resolve(cmd.store_func_.val_),
-                 resolve<ir::Addr>(cmd.store_func_.addr_), &stack_);
-      break;
-    case ir::Op::StoreFlags:
-      StoreValue(resolve(cmd.store_flags_.val_),
-                 resolve<ir::Addr>(cmd.store_flags_.addr_), &stack_);
-      break;
-    case ir::Op::StoreAddr:
-      StoreValue(resolve(cmd.store_addr_.val_),
-                 resolve<ir::Addr>(cmd.store_addr_.addr_), &stack_);
       break;
     case ir::Op::PhiBool:
       save(resolve(cmd.phi_bool_->map_.at(call_stack.top().prev_)));

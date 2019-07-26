@@ -549,20 +549,6 @@ RegisterOr<FlagsVal> AndFlags(type::Flags const *type,
   return cmd.result;
 }
 
-Reg Load(RegisterOr<Addr> r, type::Type const *t) {
-  if (t->is<type::Function>()) { return Load<AnyFunc>(r, t); }
-  return type::Apply(t, [&](auto type_holder) -> Reg {
-    using T = typename decltype(type_holder)::type;
-    if constexpr (std::is_same_v<T, ir::Addr> ||
-                  std::is_same_v<T, ir::EnumVal> ||
-                  std::is_same_v<T, ir::FlagsVal>) {
-      return Load<T>(r, t);
-    } else {
-      return Load<T>(r);
-    }
-  });
-}
-
 TypedRegister<Addr> Index(type::Pointer const *t, Reg array_ptr,
                           RegisterOr<int64_t> offset) {
   auto *array_type = &t->pointee->as<type::Array>();
@@ -708,87 +694,6 @@ std::pair<Results, bool> CallInline(
                                  iter->second.get<FlagsVal>(0),
                                  &cmd.typed_reg_.type()->as<type::Flags>()}));
         } break;
-
-#define CASE(op_code, op_fn, type)                                             \
-  case Op::op_code: {                                                          \
-    RegisterOr<Addr> r;                                                        \
-    if (cmd.addr_arg_.is_reg_) {                                               \
-      auto iter = reg_relocs.find(cmd.addr_arg_.reg_);                         \
-      if (iter == reg_relocs.end()) { goto next_block; }                       \
-      r = op_fn<type>(iter->second.get<Addr>(0));                              \
-    } else {                                                                   \
-      r = cmd.addr_arg_;                                                       \
-    }                                                                          \
-    reg_relocs.emplace(cmd.result, r);                                         \
-  } break;
-          CASE(LoadBool, Load, bool);
-          CASE(LoadInt8, Load, int8_t);
-          CASE(LoadInt16, Load, int16_t);
-          CASE(LoadInt32, Load, int32_t);
-          CASE(LoadInt64, Load, int64_t);
-          CASE(LoadNat8, Load, uint8_t);
-          CASE(LoadNat16, Load, uint16_t);
-          CASE(LoadNat32, Load, uint32_t);
-          CASE(LoadNat64, Load, uint64_t);
-          CASE(LoadFloat32, Load, float);
-          CASE(LoadFloat64, Load, double);
-          CASE(LoadType, Load, type::Type const *);
-          CASE(LoadEnum, Load, EnumVal);
-          CASE(LoadFlags, Load, FlagsVal);
-          CASE(LoadFunc, Load, AnyFunc);
-#undef CASE
-        case Op::LoadAddr: {
-          RegisterOr<Addr> r;
-          if (cmd.addr_arg_.is_reg_) {
-            auto iter = reg_relocs.find(cmd.addr_arg_.reg_);
-            if (iter == reg_relocs.end()) { goto next_block; }
-            // TODO I don't actually care what type I pass in here as long as
-            // it's big enough to hold an address. Fix this hack.
-            r = Load<Addr>(iter->second.get<Addr>(0), type::Ptr(type::Int64));
-          } else {
-            r = cmd.addr_arg_;
-          }
-          reg_relocs.emplace(cmd.result, r);
-        } break;
-
-#define CASE(op_code, op_fn, type, arg)                                        \
-  case Op::op_code: {                                                          \
-    RegisterOr<Addr> r0;                                                       \
-    RegisterOr<type> r1;                                                       \
-    if (cmd.arg.addr_.is_reg_) {                                               \
-      auto iter0 = reg_relocs.find(cmd.arg.addr_.reg_);                        \
-      if (iter0 == reg_relocs.end()) { goto next_block; }                      \
-      r0 = iter0->second.get<Addr>(0);                                         \
-    } else {                                                                   \
-      r0 = cmd.arg.addr_;                                                      \
-    }                                                                          \
-    if (cmd.arg.val_.is_reg_) {                                                \
-      auto iter1 = reg_relocs.find(cmd.arg.val_.reg_);                         \
-      if (iter1 == reg_relocs.end()) { goto next_block; }                      \
-      r1 = iter1->second.get<type>(0);                                         \
-    } else {                                                                   \
-      r1 = cmd.arg.val_;                                                       \
-    }                                                                          \
-    op_fn(r1, r0);                                                             \
-  } break
-          CASE(StoreBool, Store, bool, store_bool_);
-          CASE(StoreInt8, Store, int8_t, store_i8_);
-          CASE(StoreInt16, Store, int16_t, store_i16_);
-          CASE(StoreInt32, Store, int32_t, store_i32_);
-          CASE(StoreInt64, Store, int64_t, store_i64_);
-          CASE(StoreNat8, Store, uint8_t, store_u8_);
-          CASE(StoreNat16, Store, uint16_t, store_u16_);
-          CASE(StoreNat32, Store, uint32_t, store_u32_);
-          CASE(StoreNat64, Store, uint64_t, store_u64_);
-          CASE(StoreFloat32, Store, float, store_float32_);
-          CASE(StoreFloat64, Store, double, store_float64_);
-          CASE(StoreType, Store, type::Type const *, store_type_);
-          CASE(StoreEnum, Store, EnumVal, store_enum_);
-          CASE(StoreFunc, Store, ir::AnyFunc, store_func_);
-          CASE(StoreFlags, Store, FlagsVal, store_flags_);
-          CASE(StoreAddr, Store, ir::Addr, store_addr_);
-#undef CASE
-
         case Op::CondJump: {
           auto iter = reg_relocs.find(cmd.cond_jump_.cond_);
           if (iter == reg_relocs.end()) { goto next_block; }

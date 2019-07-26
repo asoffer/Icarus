@@ -319,24 +319,7 @@ struct Cmd {
 
     AstData ast_;
 
-    // TODO rename these since some of them are used for things other than
-    // storage (e.g., block appending).
-    Store<bool> store_bool_;
-    Store<int8_t> store_i8_;
-    Store<int16_t> store_i16_;
-    Store<int32_t> store_i32_;
-    Store<int64_t> store_i64_;
-    Store<uint8_t> store_u8_;
-    Store<uint16_t> store_u16_;
-    Store<uint32_t> store_u32_;
-    Store<uint64_t> store_u64_;
-    Store<float> store_float32_;
-    Store<double> store_float64_;
     Store<type::Type const *> store_type_;
-    Store<EnumVal> store_enum_;
-    Store<AnyFunc> store_func_;
-    Store<FlagsVal> store_flags_;
-    Store<Addr> store_addr_;
 
     SetRet<bool> set_ret_bool_;
     SetRet<int8_t> set_ret_i8_;
@@ -404,15 +387,6 @@ RegisterOr<FlagsVal> AndFlags(type::Flags const *type,
 
 void DebugIr();
 
-template <typename T, typename... Args>
-TypedRegister<T> Load(RegisterOr<Addr> r,
-                      type::Type const *t = type::Get<T>()) {
-  auto &cmd     = MakeCmd(t, Cmd::OpCode<Cmd::LoadTag, T>());
-  cmd.addr_arg_ = r;
-  return cmd.result;
-}
-Reg Load(RegisterOr<Addr> r, type::Type const *t);
-
 RegisterOr<type::Type const *> Arrow(RegisterOr<type::Type const *> in,
                                      RegisterOr<type::Type const *> out);
 RegisterOr<type::Type const *> Ptr(RegisterOr<type::Type const *> r);
@@ -444,20 +418,6 @@ void SetRet(size_t n, T t) {
   }
 }
 void SetRet(size_t n, type::Typed<Results> const &v2, Context *ctx = nullptr);
-
-template <typename T, typename... Args>
-void Store(T r, Args &&... args) {
-  if constexpr (IsRegOr<T>::value) {
-    using type = typename T::type;
-    auto &cmd  = MakeCmd(nullptr, Cmd::OpCode<Cmd::StoreTag, type>());
-    // TODO reverse all call sites
-    cmd.template set<Cmd::StoreTag, type>(std::forward<Args>(args)..., r);
-  } else if constexpr (IsTypedReg<T>::value) {
-    return Store(RegisterOr<typename T::type>(r), std::forward<Args>(args)...);
-  } else {
-    return Store(RegisterOr<T>(r), std::forward<Args>(args)...);
-  }
-}
 
 void Call(RegisterOr<AnyFunc> const &f, Arguments arguments);
 void Call(RegisterOr<AnyFunc> const &f, Arguments arguments, OutParams outs);

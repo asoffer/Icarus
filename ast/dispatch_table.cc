@@ -10,6 +10,7 @@
 #include "core/scope.h"
 #include "ir/block.h"
 #include "ir/cmd.h"
+#include "ir/cmd/store.h"
 #include "ir/compiled_fn.h"
 #include "ir/components.h"
 #include "ir/phi.h"
