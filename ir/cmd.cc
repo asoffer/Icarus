@@ -217,25 +217,6 @@ RegOr<FlagsVal> NotFlags(type::Typed<RegOr<FlagsVal>, type::Flags> r) {
   return cmd.result;
 }
 
-RegOr<type::Type const *> Arrow(RegOr<type::Type const *> v1,
-                                     RegOr<type::Type const *> v2) {
-  if (!v1.is_reg_ && !v2.is_reg_) {
-    std::vector<type::Type const *> ins =
-        v1.val_->is<type::Tuple>() ? v1.val_->as<type::Tuple>().entries_
-                                   : std::vector<type::Type const *>{v1.val_};
-    std::vector<type::Type const *> outs =
-        v2.val_->is<type::Tuple>() ? v2.val_->as<type::Tuple>().entries_
-                                   : std::vector<type::Type const *>{v2.val_};
-    return type::Func(std::move(ins), std::move(outs));
-  }
-  auto &cmd = MakeCmd(type::Type_, Op::Arrow);
-  cmd.set<Cmd::ArrowTag, type::Type const *>(v1, v2);
-  auto &refs = CompiledFn::Current->references_;
-  if (v1.is_reg_) { refs[v1.reg_].insert(cmd.result); }
-  if (v2.is_reg_) { refs[v2.reg_].insert(cmd.result); }
-  return cmd.result;
-}
-
 RegOr<type::Type const *> Array(RegOr<int64_t> len,
                                      RegOr<type::Type const *> data_type) {
   if (!data_type.is_reg_ && !len.is_reg_) {

@@ -278,10 +278,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       CASE(ir::Op::XorFlags, flags_args_, std::bit_xor{});
       CASE(ir::Op::OrFlags, flags_args_, std::bit_or{});
       CASE(ir::Op::AndFlags, flags_args_, std::bit_and{});
-      CASE(ir::Op::Arrow, type_args_, [](auto &&lhs, auto &&rhs) {
-        return type::Func({std::forward<std::decay_t<decltype(lhs)>>(lhs)},
-                          {std::forward<std::decay_t<decltype(rhs)>>(rhs)});
-      });
 #undef CASE
     case ir::Op::Move: {
       auto *t = cmd.special2_.type_;

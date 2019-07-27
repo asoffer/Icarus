@@ -46,7 +46,7 @@ BlockIndex CmdBuffer::Execute(std::vector<ir::Addr> const& ret_slots,
       CASE(LoadCmd);
       CASE(VariantCmd);
       CASE(TupleCmd);
-      // CASE(ArrowCmd);
+      CASE(ArrowCmd);
       CASE(PtrCmd);
       CASE(BufPtrCmd);
       CASE(JumpCmd);

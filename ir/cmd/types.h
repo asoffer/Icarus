@@ -54,7 +54,6 @@ using BufPtrCmd = internal::UnaryCmd<
     internal::Functor<type::BufferPointer const *,
                       std::tuple<type::Type const *>, type::BufPtr>,
     type::Type const *>;
-// using ArrowCmd   = internal::BinaryCmd<18, /*std::equal_to<>*/, type::Type const*>;
 
 inline RegOr<type::Type const *> Var(
     absl::Span<RegOr<type::Type const *> const> types) {
@@ -69,8 +68,50 @@ inline RegOr<type::Type const *> Tup(
 constexpr inline auto Ptr    = internal::UnaryHandler<PtrCmd>{};
 constexpr inline auto BufPtr = internal::UnaryHandler<BufPtrCmd>{};
 
-// struct EnumCmd {
-//   constexpr static cmd_index_t index = 15;
+struct ArrowCmd {
+  constexpr static cmd_index_t index = 22;
+  static std::optional<BlockIndex> Execute(base::untyped_buffer::iterator *iter,
+                                           std::vector<Addr> const &ret_slots,
+                                           backend::ExecContext *ctx) {
+    std::vector<type::Type const *> ins =
+        internal::DeserializeAndResolve<uint16_t, type::Type const *>(iter,
+                                                                      ctx);
+    std::vector<type::Type const *> outs =
+        internal::DeserializeAndResolve<uint16_t, type::Type const *>(iter,
+                                                                      ctx);
+    auto &frame = ctx->call_stack.top();
+    frame.regs_.set(GetOffset(frame.fn_, iter->read<Reg>()),
+                    type::Func(std::move(ins), std::move(outs)));
+
+    return std::nullopt;
+  }
+};
+
+inline RegOr<type::Function const *> Arrow(
+    absl::Span<RegOr<type::Type const *> const> ins,
+    absl::Span<RegOr<type::Type const *> const> outs) {
+  if (absl::c_all_of(ins,
+                     [](RegOr<type::Type const *> r) { return !r.is_reg_; }) &&
+      absl::c_all_of(outs,
+                     [](RegOr<type::Type const *> r) { return !r.is_reg_; })) {
+    std::vector<type::Type const *> in_vec, out_vec;
+    in_vec.reserve(ins.size());
+    for (auto in : ins) { in_vec.push_back(in.val_); }
+    out_vec.reserve(outs.size());
+    for (auto out : outs) { out_vec.push_back(out.val_); }
+    return type::Func(std::move(in_vec), std::move(out_vec));
+  }
+
+  auto &blk = GetBlock();
+  blk.cmd_buffer_.append_index<ArrowCmd>();
+  internal::Serialize<uint16_t>(&blk.cmd_buffer_, ins);
+  internal::Serialize<uint16_t>(&blk.cmd_buffer_, outs);
+
+  Reg result = MakeResult(type::Get<type::Type const *>());
+  blk.cmd_buffer_.append(result);
+  return RegOr<type::Function const *>{result};
+}
+
 // 
 //   enum class : uint8_t ValueKind{kIsReg, kIsVal, kNone};
 // 

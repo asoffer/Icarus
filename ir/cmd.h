@@ -310,7 +310,6 @@ struct Cmd {
     SpecialMember<1> special1_;
     SpecialMember<2> special2_;
     Args<FlagsVal> flags_args_;
-    Args<type::Type const *> type_args_;
 
     AstData ast_;
 
@@ -381,8 +380,6 @@ RegOr<FlagsVal> AndFlags(type::Flags const *type,
 
 void DebugIr();
 
-RegOr<type::Type const *> Arrow(RegOr<type::Type const *> in,
-                                     RegOr<type::Type const *> out);
 RegOr<type::Type const *> Array(RegOr<int64_t> len,
                                      RegOr<type::Type const *> data_type);
 Reg VariantType(RegOr<Addr> r);

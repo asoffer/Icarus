@@ -583,8 +583,7 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
             node->rhs()->EmitIr(this, ctx).get<type::Type const *>(0));
       }
 
-      auto reg_or_type = ir::Arrow(ir::Tup(lhs_vals), ir::Tup(rhs_vals));
-      return ir::Results{reg_or_type};
+      return ir::Results{ir::Arrow(lhs_vals, rhs_vals)};
     } break;
     case frontend::Operator::Assign: {
       // TODO support splatting.
