@@ -204,11 +204,6 @@ struct Cmd {
     }
   };
 
-  struct CondJump {
-    Reg cond_;
-    BlockIndex blocks_[2];
-  };
-
   struct LoadSymbol {
     std::string_view name_;
     type::Type const *type_;
@@ -284,7 +279,6 @@ struct Cmd {
     AddHashtag add_hashtag_;
     AddEnumerator add_enumerator_;
     SetEnumerator set_enumerator_;
-    CondJump cond_jump_;
     BlockIndex block_index_;
     Call call_;
     PtrIncr ptr_incr_;
@@ -421,11 +415,6 @@ void Call(RegOr<AnyFunc> const &f, Arguments arguments, OutParams outs);
 std::pair<Results, bool> CallInline(
     CompiledFn *f, Arguments const &arguments,
     absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> const &block_map);
-
-void CondJump(RegOr<bool> cond, BlockIndex true_block,
-              BlockIndex false_block);
-void UncondJump(BlockIndex block);
-void ReturnJump();
 
 TypedRegister<type::Type const *> NewOpaqueType(::Module *mod);
 

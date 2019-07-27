@@ -70,9 +70,6 @@ Module *CompileModule(Module *mod, std::filesystem::path const *path) {
     return mod;
   }
 
-  for (auto &fn : mod->fns_) { fn->ComputeInvariants(); }
-  for (auto &fn : mod->fns_) { fn->CheckInvariants(); }
-
   for (auto const &stmt : mod->statements_) {
     if (auto const *decl = stmt->if_as<ast::Declaration>()) {
       if (decl->id() != "main") { continue; }

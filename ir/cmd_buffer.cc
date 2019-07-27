@@ -5,6 +5,7 @@
 
 #include "base/debug.h"
 #include "ir/cmd/basic.h"
+#include "ir/cmd/jumps.h"
 #include "ir/cmd/load.h"
 #include "ir/cmd/print.h"
 #include "ir/cmd/store.h"
@@ -48,7 +49,9 @@ BlockIndex CmdBuffer::Execute(std::vector<ir::Addr> const& ret_slots,
       // CASE(ArrowCmd);
       CASE(PtrCmd);
       CASE(BufPtrCmd);
+      CASE(JumpCmd);
 #undef CASE
+      default: UNREACHABLE();
     }
   }
 }

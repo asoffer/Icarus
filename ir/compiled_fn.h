@@ -9,7 +9,6 @@
 #include "base/move_func.h"
 #include "core/fn_params.h"
 #include "ir/basic_block.h"
-#include "property/property_map.h"
 
 namespace type {
 struct Function;
@@ -38,9 +37,6 @@ struct CompiledFn {
 
   CompiledFn(Module *mod, type::Function const *fn_type,
              core::FnParams<type::Typed<ast::Expression const *>> params);
-
-  void ComputeInvariants();
-  void CheckInvariants();
 
   std::string name() const;
 
@@ -84,15 +80,8 @@ struct CompiledFn {
 
   core::Bytes reg_size_ = core::Bytes{0};
 
-  std::vector<ast::Expression *> precondition_exprs_, postcondition_exprs_;
-  std::vector<std::pair<ir::CompiledFn, prop::PropertyMap>> preconditions_,
-      postconditions_;
   absl::flat_hash_map<Reg, base::bag<Reg>> references_;
   absl::flat_hash_map<Reg, CmdIndex> reg_to_cmd_;
-
-  absl::flat_hash_map<BasicBlock const *,
-                      absl::flat_hash_set<BasicBlock const *>>
-  GetIncomingBlocks() const;
 
   // This vector is indexed by ir::Reg and stores the value which is the offset
   // into the base::untyped_buffer holding all registers during compile-time

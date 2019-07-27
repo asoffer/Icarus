@@ -1830,16 +1830,10 @@ ir::Results EmitIr::Val(ast::Unop const *node, Context *ctx) {
           ir::Load(node->operand->EmitIr(this, ctx).get<ir::Reg>(0), t)};
     }
     case frontend::Operator::Needs: {
-      // TODO validate requirements are well-formed?
-      ir::CompiledFn::Current->precondition_exprs_.push_back(
-          node->operand.get());
-      return ir::Results{};
+      NOT_YET();
     } break;
     case frontend::Operator::Ensure: {
-      // TODO validate requirements are well-formed?
-      ir::CompiledFn::Current->postcondition_exprs_.push_back(
-          node->operand.get());
-      return ir::Results{};
+      NOT_YET();
     } break;
     case frontend::Operator::Expand: {
       ir::Results tuple_val = node->operand->EmitIr(this, ctx);

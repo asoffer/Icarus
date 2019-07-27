@@ -28,9 +28,6 @@ void cli::Usage() {
   Flag("opt-ir") << "Opmitize intermediate representation"
                  << [](bool b = false) { debug::optimize_ir = b; };
 
-  Flag("debug-validation", "v") << "Step through validator for debugging." <<
-      [](bool b = false) { debug::validation = b; };
-
   Flag("log") << "Comma-separated list of log keys" << [](char const *keys) {
     for (std::string_view key : absl::StrSplit(keys, ',')) {
       base::EnableLogging(key);

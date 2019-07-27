@@ -93,7 +93,11 @@ cc_lib_target(
     name = "builtin_ir",
     cfgs = ["match", "compile"],
     intf_deps = [],
-    impl_deps = [":any_func", ":compiled_fn"],
+    impl_deps = [
+        ":any_func",
+        ":compiled_fn",
+        "//ir/cmd:jumps",
+    ],
     test_deps = None,
 )
 
@@ -133,6 +137,7 @@ cc_lib_target(
     impl_deps = [
         "//ir:compiled_fn",
         "//ir/cmd:basic",
+        "//ir/cmd:jumps",
         "//ir/cmd:load",
         "//ir/cmd:print",
         "//ir/cmd:store",
@@ -149,6 +154,7 @@ cc_lib_target(
         ":phi",
         ":register",
         "//ir/cmd:basic",
+        "//ir/cmd:jumps",
         "//ir/cmd:load",
         "//ir/cmd:types",
     ],
@@ -181,7 +187,6 @@ cc_lib_target(
         "//base:bag",
         "//core:fn_params",
         "//ir:basic_block",
-        "//property:property_map",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
@@ -189,8 +194,6 @@ cc_lib_target(
         ":arguments",
         "//ast:ast",
         "//core:arch",
-        "//property:property",
-        "//property:property_map",
         "//type:function",
         "//type:pointer",
     ],

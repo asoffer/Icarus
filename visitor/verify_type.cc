@@ -645,8 +645,6 @@ VerifyResult VerifyType::operator()(ast::Call const *node, Context *ctx) {
         std::forward_as_tuple(node->args().at(name), res));
   }
 
-  DEBUG_LOG("verify_dispatch")(DumpAst::ToString(node));
-  DEBUG_LOG("verify_dispatch")(node->args().size());
   return ast::VerifyDispatch(node, overload_set, arg_expr_result, ctx);
 }
 

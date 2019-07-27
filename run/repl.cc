@@ -1,13 +1,14 @@
 #include <cstdio>
 #include <memory>
 
+#include <vector>
 #include "ast/ast.h"
 #include "ast/expression.h"
-#include "core/fn_params.h"
 #include "backend/exec.h"
-#include <vector>
 #include "base/untyped_buffer.h"
+#include "core/fn_params.h"
 #include "frontend/source.h"
+#include "ir/cmd/jumps.h"
 #include "ir/compiled_fn.h"
 #include "misc/context.h"
 #include "misc/module.h"

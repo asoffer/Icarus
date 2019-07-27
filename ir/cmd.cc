@@ -552,7 +552,6 @@ std::pair<Results, bool> CallInline(
       case Op::Alloca:
         reg_relocs.emplace(cmd->result, ir::Results{Alloca(cmd->type_)});
         continue;
-      case Op::UncondJump: continue;
       default: UNREACHABLE();
     }
   }
@@ -612,27 +611,12 @@ std::pair<Results, bool> CallInline(
                                  iter->second.get<FlagsVal>(0),
                                  &cmd.typed_reg_.type()->as<type::Flags>()}));
         } break;
-        case Op::CondJump: {
-          auto iter = reg_relocs.find(cmd.cond_jump_.cond_);
-          if (iter == reg_relocs.end()) { goto next_block; }
-          CondJump(iter->second.get<bool>(0),
-                   block_relocs.at(cmd.cond_jump_.blocks_[true]),
-                   block_relocs.at(cmd.cond_jump_.blocks_[false]));
-        } break;
-        case Op::UncondJump: {
-          auto block_index = block_relocs.at(cmd.block_index_);
-          UncondJump(block_index);
-          ir::BasicBlock::Current = block_index;
-        } break;
-        case Op::ReturnJump: {
-          // TODO jump to landing block
-        } break;
         case Op::JumpPlaceholder: {
           // TODO multiple blocks
           auto iter = block_map.find(cmd.block_def_);
           if (iter != block_map.end()) {
             is_jump = true;
-            UncondJump(iter->second);
+            NOT_YET("UncondJump(iter->second);");
             ir::BasicBlock::Current = iter->second;
             goto found_valid_jump;
           }
@@ -820,22 +804,6 @@ std::pair<Results, bool> CallInline(
   return std::pair{results, is_jump};
 }
 
-void CondJump(RegOr<bool> cond, BlockIndex true_block,
-              BlockIndex false_block) {
-  if (!cond.is_reg_) {
-    UncondJump(cond.val_ ? true_block : false_block);
-    return;
-  }
-  auto &cmd      = MakeCmd(nullptr, Op::CondJump);
-  cmd.cond_jump_ = Cmd::CondJump{cond.reg_, {false_block, true_block}};
-}
-
-void UncondJump(BlockIndex block) {
-  MakeCmd(nullptr, Op::UncondJump).block_index_ = block;
-}
-
-void ReturnJump() { auto &cmd = MakeCmd(nullptr, Op::ReturnJump); }
-
 TypedRegister<type::Type const *> NewOpaqueType(::Module *mod) {
   auto &cmd = MakeCmd(type::Type_, Op::NewOpaqueType);
   cmd.mod_  = mod;
@@ -908,11 +876,6 @@ static std::ostream &operator<<(std::ostream &os, Cmd::Array const &a) {
 
 static std::ostream &operator<<(std::ostream &os, Cmd::Field const &f) {
   return os << f.ptr_ << " " << f.type_->to_string() << " " << f.num_;
-}
-
-static std::ostream &operator<<(std::ostream &os, Cmd::CondJump const &j) {
-  return os << stringify(j.cond_) << " false -> " << j.blocks_[0] << " true -> "
-            << j.blocks_[1];
 }
 
 static std::ostream &operator<<(std::ostream &os, Cmd::LoadSymbol const &ls) {

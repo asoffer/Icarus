@@ -60,9 +60,6 @@ COMMON_IMPL_DEPS = [
         "//ir:impl",
         "//misc:impl",
         "//opt:impl",
-        "//property:property_map-impl",
-        "//property:property_set-impl",
-        "//property:property-impl",
         "//type:impl",
         "//type:cast-impl",
         "//visitor:visitors-impl",
@@ -95,7 +92,6 @@ filegroup(name = "sources", srcs = ["main.cc"])
 #         "//ir:sources",
 #         "//misc:sources",
 #         "//opt:sources",
-#         "//property:sources",
 #         "//run:sources",
 #         "//type:sources",
 #     ],
@@ -112,7 +108,6 @@ filegroup(name = "sources", srcs = ["main.cc"])
 #            " $(locations //ir:sources)" +
 #            " $(locations //misc:sources)" +
 #            " $(locations //opt:sources)" +
-#            " $(locations //property:sources)" +
 #            " $(locations //run:sources)" +
 #            " $(locations //type:sources)" +
 #            " > $@"),

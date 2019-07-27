@@ -17,6 +17,7 @@
 #include "ir/arguments.h"
 #include "ir/basic_block.h"
 #include "ir/cmd.h"
+#include "ir/cmd/jumps.h"
 #include "ir/compiled_fn.h"
 #include "misc/module.h"
 #include "type/incomplete_enum.h"
@@ -92,9 +93,6 @@ ExecContext::Frame::Frame(ir::CompiledFn *fn, const base::untyped_buffer &argume
 
 ir::BlockIndex ExecContext::ExecuteBlock(
     const std::vector<ir::Addr> &ret_slots) {
-  ir::BlockIndex result;
-  ASSERT(current_block().cmds_.size() > 0u)
-      << call_stack.top().current_ << "  " << *call_stack.top().fn_;
   return current_block().cmd_buffer_.Execute(ret_slots, this);
 }
 
@@ -804,10 +802,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
           type::Typed(&cmd.ast_.node_->as<ast::Expression const>(), type::Type_),
           resolve<Context *>(cmd.ast_.ctx_)));
     } break;
-    case ir::Op::CondJump:
-      return cmd.cond_jump_.blocks_[resolve<bool>(cmd.cond_jump_.cond_)];
-    case ir::Op::UncondJump: return cmd.block_index_;
-    case ir::Op::ReturnJump: return ir::BlockIndex{-1};
     case ir::Op::JumpPlaceholder: UNREACHABLE(call_stack.top().fn_);
     case ir::Op::CreateScopeDef: {
       // TODO consider the implications of leaking this. I'm not convinced there

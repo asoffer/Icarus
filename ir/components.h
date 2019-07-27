@@ -2,6 +2,7 @@
 #define ICARUS_IR_COMPONENTS_H
 
 #include "ir/cmd/basic.h"
+#include "ir/cmd/jumps.h"
 #include "ir/cmd/load.h"
 #include "ir/cmd/types.h"
 #include "ir/compiled_fn.h"

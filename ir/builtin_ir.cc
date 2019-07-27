@@ -2,6 +2,7 @@
 
 #include "core/fn_params.h"
 #include "ir/cmd.h"
+#include "ir/cmd/jumps.h"
 #include "ir/compiled_fn.h"
 #include "type/function.h"
 #include "type/typed_value.h"
