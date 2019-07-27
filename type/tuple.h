@@ -24,8 +24,6 @@ struct Tuple : public Type {
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;
 
-  Type const *finalize();
-
   std::vector<Type const *> entries_;
 
   base::lazy<ir::CompiledFn *> destroy_func_;

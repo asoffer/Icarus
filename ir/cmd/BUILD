@@ -49,6 +49,17 @@ cc_lib_target(
 )
 
 cc_lib_target(
+    name = "types",
+    cfgs = ["match", "compile"],
+    intf_deps = [
+        ":util",
+        "//ir:basic_block",
+    ],
+    impl_deps = None,
+    test_deps = None,
+)
+
+cc_lib_target(
     name = "util",
     cfgs = ["match", "compile"],
     intf_deps = [

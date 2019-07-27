@@ -274,6 +274,7 @@ cc_lib_target(
         "//ir/cmd:basic",
         "//ir/cmd:load",
         "//ir/cmd:store",
+        "//ir/cmd:types",
         "//type:jump",
         "//type:type",
         "//type:typed_value",

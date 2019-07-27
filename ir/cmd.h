@@ -23,7 +23,6 @@ struct GenericStruct;
 struct Pointer;
 struct Struct;
 struct Tuple;
-struct Variant;
 }  // namespace type
 
 namespace ast {
@@ -426,12 +425,6 @@ std::pair<Results, bool> CallInline(
     CompiledFn *f, Arguments const &arguments,
     absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> const &block_map);
 
-Reg CreateTuple();
-void AppendToTuple(Reg tup, RegOr<type::Type const *> entry);
-Reg FinalizeTuple(Reg tup);
-Reg CreateVariant();
-void AppendToVariant(Reg tup, RegOr<type::Type const *> entry);
-Reg FinalizeVariant(Reg var);
 void CondJump(RegOr<bool> cond, BlockIndex true_block,
               BlockIndex false_block);
 void UncondJump(BlockIndex block);

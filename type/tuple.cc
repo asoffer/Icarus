@@ -24,13 +24,6 @@ Type const *Tup(std::vector<Type const *> entries) {
   return &iter->second;
 }
 
-Type const *Tuple::finalize() {
-  auto *result = Tup(std::move(entries_));
-  ASSERT(this != result);
-  delete this;
-  return result;
-}
-
 core::Bytes Tuple::offset(size_t field_num, core::Arch const &a) const {
   auto offset = core::Bytes{0};
   for (size_t i = 0; i < field_num; ++i) {

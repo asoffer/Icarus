@@ -261,62 +261,6 @@ RegOr<type::Type const *> Array(RegOr<int64_t> len,
   return cmd.result;
 }
 
-Reg CreateTuple() { return MakeCmd(type::Type_, Op::CreateTuple).result; }
-
-void AppendToTuple(Reg tup, RegOr<type::Type const *> entry) {
-  auto &cmd       = MakeCmd(nullptr, Op::AppendToTuple);
-  cmd.store_type_ = {tup, entry};
-}
-
-Reg FinalizeTuple(Reg r) {
-  auto &cmd = MakeCmd(type::Type_, Op::FinalizeTuple);
-  cmd.reg_  = r;
-  return cmd.result;
-}
-
-RegOr<type::Type const *> Tup(
-    std::vector<RegOr<type::Type const *>> const &entries) {
-  if (std::all_of(
-          entries.begin(), entries.end(),
-          [](RegOr<type::Type const *> r) { return !r.is_reg_; })) {
-    std::vector<type::Type const *> types;
-    for (auto const &val : entries) { types.push_back(val.val_); }
-    return type::Tup(std::move(types));
-  }
-
-  Reg tup = CreateTuple();
-  for (auto const &val : entries) { AppendToTuple(tup, val); }
-  return FinalizeTuple(tup);
-}
-
-Reg CreateVariant() { return MakeCmd(type::Type_, Op::CreateVariant).result; }
-
-void AppendToVariant(Reg var, RegOr<type::Type const *> entry) {
-  auto &cmd       = MakeCmd(nullptr, Op::AppendToVariant);
-  cmd.store_type_ = {var, entry};
-}
-
-Reg FinalizeVariant(Reg r) {
-  auto &cmd = MakeCmd(type::Type_, Op::FinalizeVariant);
-  cmd.reg_  = r;
-  return cmd.result;
-}
-
-RegOr<type::Type const *> Variant(
-    std::vector<RegOr<type::Type const *>> const &vals) {
-  if (std::all_of(
-          vals.begin(), vals.end(),
-          [](RegOr<type::Type const *> const &v) { return !v.is_reg_; })) {
-    std::vector<type::Type const *> types;
-    types.reserve(vals.size());
-    for (auto const &v : vals) { types.push_back(v.val_); }
-    return type::Var(std::move(types));
-  }
-  ir::Reg var = ir::CreateVariant();
-  for (auto const &val : vals) { ir::AppendToVariant(var, val); }
-  return ir::FinalizeVariant(var);
-}
-
 type::Typed<Reg> Field(RegOr<Addr> r, type::Tuple const *t, size_t n) {
   auto *p    = type::Ptr(t->entries_.at(n));
   auto &cmd  = MakeCmd(p, Op::Field);

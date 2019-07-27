@@ -612,28 +612,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       save(std::move(*f).finalize());
       delete f;
     } break;
-    case ir::Op::CreateTuple: {
-      save(new type::Tuple(std::vector<type::Type const *>{}));
-    } break;
-    case ir::Op::AppendToTuple: {
-      auto *tuple_to_modify =
-          ASSERT_NOT_NULL(resolve<type::Tuple *>(cmd.store_type_.addr_.reg_));
-      tuple_to_modify->entries_.push_back(resolve(cmd.store_type_.val_));
-    } break;
-    case ir::Op::FinalizeTuple:
-      save(resolve<type::Tuple *>(cmd.reg_)->finalize());
-      break;
-    case ir::Op::CreateVariant: {
-      save(new type::Variant(std::vector<type::Type const *>{}));
-    } break;
-    case ir::Op::AppendToVariant: {
-      auto *variant_to_modify =
-          ASSERT_NOT_NULL(resolve<type::Variant *>(cmd.store_type_.addr_.reg_));
-      variant_to_modify->variants_.push_back(resolve(cmd.store_type_.val_));
-    } break;
-    case ir::Op::FinalizeVariant:
-      save(resolve<type::Variant *>(cmd.reg_)->finalize());
-      break;
     case ir::Op::CastToInt8: {
       save(static_cast<int8_t>(resolve<int8_t>(cmd.typed_reg_.get())));
     } break;

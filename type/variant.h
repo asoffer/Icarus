@@ -15,13 +15,6 @@ struct Variant : public Type {
 
 #include "visitor/type_visitors.xmacro.h"
 
-  Type const *finalize() {
-    auto *result = Var(std::move(variants_));
-    ASSERT(this != result);
-    delete this;
-    return result;
-  }
-
   // TODO can do better with a pair of iterators and checking if one is a subset
   // of the other.
   bool contains(type::Type const *t) const;

@@ -9,6 +9,7 @@
 #include "ir/cmd/basic.h"
 #include "ir/cmd/load.h"
 #include "ir/cmd/store.h"
+#include "ir/cmd/types.h"
 #include "ir/components.h"
 #include "ir/phi.h"
 #include "ir/register.h"
@@ -46,12 +47,6 @@ void SetStructFieldName(Reg struct_type, std::string_view field_name);
 void AddHashtagToField(Reg struct_type, ast::Hashtag hashtag);
 void AddHashtagToStruct(Reg struct_type, ast::Hashtag hashtag);
 Reg FinalizeStruct(Reg r);
-
-RegOr<type::Type const *> Variant(
-    std::vector<RegOr<type::Type const *>> const &vals);
-
-RegOr<type::Type const *> Tup(
-    std::vector<RegOr<type::Type const *>> const &entries);
 
 // TODO as a general rule we let ast reach into ir but not the other direction.
 // Fix this.
@@ -588,7 +583,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
             node->rhs()->EmitIr(this, ctx).get<type::Type const *>(0));
       }
 
-      auto reg_or_type = ir::Arrow(ir::Tup(lhs_vals), ir::Tup(rhs_vals));
+      auto reg_or_type =
+          ir::Arrow(ir::MakeTuple(lhs_vals), ir::MakeTuple(rhs_vals));
       return ir::Results{reg_or_type};
     } break;
     case frontend::Operator::Assign: {
@@ -1108,7 +1104,7 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
     for (auto const *expr : node->exprs()) {
       args.push_back(expr->EmitIr(this, ctx).get<type::Type const *>(0));
     }
-    auto reg_or_type = ir::Variant(args);
+    auto reg_or_type = ir::MakeVariant(args);
     return ir::Results{reg_or_type};
   } else if (node->ops()[0] == frontend::Operator::Or && t == type::Block) {
     NOT_YET();

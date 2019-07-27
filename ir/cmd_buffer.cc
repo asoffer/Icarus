@@ -5,9 +5,10 @@
 
 #include "base/debug.h"
 #include "ir/cmd/basic.h"
+#include "ir/cmd/load.h"
 #include "ir/cmd/print.h"
 #include "ir/cmd/store.h"
-#include "ir/cmd/load.h"
+#include "ir/cmd/types.h"
 #include "ir/compiled_fn.h"
 
 namespace ir {
@@ -42,6 +43,8 @@ BlockIndex CmdBuffer::Execute(std::vector<ir::Addr> const& ret_slots,
       CASE(GtCmd);
       CASE(StoreCmd);
       CASE(LoadCmd);
+      CASE(VariantCmd);
+      CASE(TupleCmd);
 #undef CASE
     }
   }

@@ -136,6 +136,7 @@ cc_lib_target(
         "//ir/cmd:load",
         "//ir/cmd:print",
         "//ir/cmd:store",
+        "//ir/cmd:types",
     ],
     test_deps = None,
 )
