@@ -15,117 +15,59 @@
 #include "ir/reg.h"
 #include "type/tuple.h"
 #include "type/variant.h"
+#include "type/pointer.h"
 
 struct Module;
 
 namespace ir {
+namespace internal {
 
-template <cmd_index_t Index, typename T, T (*Fn)(std::vector<T>)>
-struct VariadicCmd {
-  constexpr static cmd_index_t index = Index;
-  using type                         = T;
-  constexpr static auto* fn_ptr      = Fn;
+template <typename R, typename ArgTup>
+struct FunctionPointer {};
+template <typename R, typename... Args>
+struct FunctionPointer<R, std::tuple<Args...>> {
+  using type = R (*)(Args...);
+};
 
-  static std::optional<BlockIndex> Execute(base::untyped_buffer::iterator* iter,
-                                           std::vector<Addr> const& ret_slots,
-                                           backend::ExecContext* ctx) {
-    uint16_t num    = iter->read<uint16_t>();
-    uint8_t current = 0;
+template <typename R, typename ArgTup>
+using FunctionPointerT = typename FunctionPointer<R, ArgTup>::type;
 
-    std::vector<T> vals;
-    vals.reserve(num);
-    {
-      std::vector<bool> bits;
-      bits.reserve(num);
-      for (uint16_t i = 0; i < num; ++i) {
-        if (i % 8 == 0) { current = ReverseByte(iter->read<uint8_t>()); }
-        bits.push_back(current & 1);
-        current >>= 1;
-      }
-
-      for (bool b : bits) {
-        vals.push_back(b ? ctx->resolve<T>(iter->read<Reg>())
-                         : iter->read<T>());
-      }
-      DEBUG_LOG("variadic")(vals);
-    }
-
-    auto& frame = ctx->call_stack.top();
-    frame.regs_.set(GetOffset(frame.fn_, iter->read<Reg>()),
-                    Fn(std::move(vals)));
-
-    return std::nullopt;
-  }
-
- private:
-  static constexpr uint8_t ReverseByte(uint8_t byte) {
-    byte = ((byte & 0b11110000) >> 4) | ((byte & 0b00001111) << 4);
-    byte = ((byte & 0b11001100) >> 2) | ((byte & 0b00110011) << 2);
-    byte = ((byte & 0b10101010) >> 1) | ((byte & 0b01010101) << 1);
-    return byte;
+template <typename R, typename ArgTup, FunctionPointerT<R, ArgTup> FnPtr>
+struct Functor {
+  template <typename... Args>
+  R operator()(Args... args) const {
+    return FnPtr(std::forward<Args>(args)...);
   }
 };
 
-using VariantCmd = VariadicCmd<16, type::Type const*, type::Var>;
-using TupleCmd   = VariadicCmd<17, type::Type const*, type::Tup>;
-using ArrowCmd   = internal::BinaryCmd<18, /*std::equal_to<>*/, type::Type const*>;
-using PtrCmd     = internal::UnaryCmd<19, type::Ptr, type::Type const*>;
-namespace internal {
-
-template <typename CmdType>
-RegOr<typename CmdType::type> MakeVariadicImpl(
-    absl::Span<RegOr<typename CmdType::type> const> vals) {
-  using T = typename CmdType::type;
-  {
-    std::vector<T> vs;
-    vs.reserve(vals.size());
-    if (absl::c_all_of(vals, [&](RegOr<T> t) {
-          if (t.is_reg_) { return false; }
-          vs.push_back(t.val_);
-          return true;
-        })) {
-      return CmdType::fn_ptr(vs);
-    }
-  }
-
-  auto& blk = GetBlock();
-  blk.cmd_buffer_.append_index<VariantCmd>();
-  blk.cmd_buffer_.append<uint16_t>(vals.size());
-  uint8_t reg_mask = 0;
-  for (size_t i = 0; i < vals.size(); ++i) {
-    if (vals[i].is_reg_) { reg_mask |= (1 << (7 - (i % 8))); }
-    if (i % 8 == 7) {
-      blk.cmd_buffer_.append(reg_mask);
-      reg_mask = 0;
-    }
-  }
-  if (vals.size() % 8 != 0) { blk.cmd_buffer_.append(reg_mask); }
-
-  absl::c_for_each(vals, [&](RegOr<T> t) {
-    if (t.is_reg_) {
-      blk.cmd_buffer_.append(t.reg_);
-    } else {
-      blk.cmd_buffer_.append(t.val_);
-    }
-  });
-
-  Reg result = MakeResult(type::Get<T>());
-  blk.cmd_buffer_.append(result);
-  DEBUG_LOG("variadic")(blk.cmd_buffer_.to_string());
-  return RegOr<T>{result};
-}
-
 }  // namespace internal
 
-inline RegOr<type::Type const*> MakeVariant(
-    absl::Span<RegOr<type::Type const*> const> types) {
+using VariantCmd = internal::VariadicCmd<16, type::Type const*, type::Var>;
+using TupleCmd   = internal::VariadicCmd<17, type::Type const *, type::Tup>;
+using PtrCmd     = internal::UnaryCmd<
+    18,
+    internal::Functor<type::Pointer const *, std::tuple<type::Type const *>,
+                      type::Ptr>,
+    type::Type const *>;
+using BufPtrCmd = internal::UnaryCmd<
+    19,
+    internal::Functor<type::BufferPointer const *,
+                      std::tuple<type::Type const *>, type::BufPtr>,
+    type::Type const *>;
+// using ArrowCmd   = internal::BinaryCmd<18, /*std::equal_to<>*/, type::Type const*>;
+
+inline RegOr<type::Type const *> Var(
+    absl::Span<RegOr<type::Type const *> const> types) {
   return internal::MakeVariadicImpl<VariantCmd>(types);
 }
 
-inline RegOr<type::Type const*> MakeTuple(
-    absl::Span<RegOr<type::Type const*> const> types) {
+inline RegOr<type::Type const *> Tup(
+    absl::Span<RegOr<type::Type const *> const> types) {
   return internal::MakeVariadicImpl<TupleCmd>(types);
 }
+
+constexpr inline auto Ptr    = internal::UnaryHandler<PtrCmd>{};
+constexpr inline auto BufPtr = internal::UnaryHandler<BufPtrCmd>{};
 
 // struct EnumCmd {
 //   constexpr static cmd_index_t index = 15;

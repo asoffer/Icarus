@@ -80,9 +80,9 @@ TEST_CASE("iterator") {
   buf.append(false);
   auto iter = buf.begin();
   CHECK(iter.read<int>() == 123);
-  CHECK(iter.read<int>());
+  CHECK(iter.read<bool>());
   CHECK(iter.read<int>() == 456);
-  CHECK_FALSE(iter.read<int>());
+  CHECK_FALSE(iter.read<bool>());
 }
 
 TEST_CASE("const_iterator") {
@@ -93,9 +93,9 @@ TEST_CASE("const_iterator") {
   buf.append(false);
   auto iter = static_cast<untyped_buffer const&>(buf).begin();
   CHECK(iter.read<int>() == 123);
-  CHECK(iter.read<int>());
+  CHECK(iter.read<bool>());
   CHECK(iter.read<int>() == 456);
-  CHECK_FALSE(iter.read<int>());
+  CHECK_FALSE(iter.read<bool>());
 }
 
 }  // namespace

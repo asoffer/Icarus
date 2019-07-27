@@ -23,8 +23,6 @@ OP_MACRO(DebugIr,              DebugIr,             void,                    emp
 OP_MACRO(Alloca,               Alloca,              type::Type const*,       type_)
 OP_MACRO(PtrIncr,              PtrIncr,             void,                    ptr_incr_)
 OP_MACRO(Field,                Field,               void,                    field_)
-OP_MACRO(BufPtr,               BufPtr,              void,                    reg_)
-OP_MACRO(Ptr,                  Ptr,                 void,                    reg_)
 OP_MACRO(Arrow,                Arrow,               type::Type const*,       type_args_)
 OP_MACRO(Array,                Array,               void,                    array_)
 OP_MACRO(CondJump,             Jump,                bool,                    cond_jump_)

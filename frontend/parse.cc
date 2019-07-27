@@ -232,7 +232,7 @@ std::unique_ptr<ast::Node> BuildCallImpl(
       auto [lhs, rhs] = std::move(*b).extract();
       args.emplace_back(std::string{lhs->as<ast::Identifier>().token()},
                         std::move(rhs));
-    } else if (b) {
+    } else {
       args.emplace_back("", std::move(args_expr));
     }
   }

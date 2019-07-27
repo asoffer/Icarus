@@ -583,8 +583,7 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
             node->rhs()->EmitIr(this, ctx).get<type::Type const *>(0));
       }
 
-      auto reg_or_type =
-          ir::Arrow(ir::MakeTuple(lhs_vals), ir::MakeTuple(rhs_vals));
+      auto reg_or_type = ir::Arrow(ir::Tup(lhs_vals), ir::Tup(rhs_vals));
       return ir::Results{reg_or_type};
     } break;
     case frontend::Operator::Assign: {
@@ -1104,7 +1103,7 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
     for (auto const *expr : node->exprs()) {
       args.push_back(expr->EmitIr(this, ctx).get<type::Type const *>(0));
     }
-    auto reg_or_type = ir::MakeVariant(args);
+    auto reg_or_type = ir::Var(args);
     return ir::Results{reg_or_type};
   } else if (node->ops()[0] == frontend::Operator::Or && t == type::Block) {
     NOT_YET();

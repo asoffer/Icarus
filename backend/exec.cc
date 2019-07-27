@@ -468,12 +468,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
                           cmd.type_->alignment(arch).value());
 
     } break;
-    case ir::Op::Ptr:
-      save(type::Ptr(resolve<type::Type const *>(cmd.reg_)));
-      break;
-    case ir::Op::BufPtr:
-      save(type::BufPtr(resolve<type::Type const *>(cmd.reg_)));
-      break;
     case ir::Op::Array: {
       save(type::Arr(resolve(cmd.array_.len_), resolve(cmd.array_.type_)));
     } break;

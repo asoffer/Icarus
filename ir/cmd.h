@@ -389,9 +389,6 @@ void DebugIr();
 
 RegOr<type::Type const *> Arrow(RegOr<type::Type const *> in,
                                      RegOr<type::Type const *> out);
-RegOr<type::Type const *> Ptr(RegOr<type::Type const *> r);
-RegOr<type::Type const *> BufPtr(RegOr<type::Type const *> r);
-
 RegOr<type::Type const *> Array(RegOr<int64_t> len,
                                      RegOr<type::Type const *> data_type);
 Reg VariantType(RegOr<Addr> r);

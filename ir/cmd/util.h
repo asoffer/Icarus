@@ -272,6 +272,95 @@ struct BinaryHandler {
   }
 };
 
+template <cmd_index_t Index, typename T, T (*Fn)(std::vector<T>)>
+struct VariadicCmd {
+  constexpr static cmd_index_t index = Index;
+  using type                         = T;
+  constexpr static auto* fn_ptr      = Fn;
+
+  static std::optional<BlockIndex> Execute(base::untyped_buffer::iterator* iter,
+                                           std::vector<Addr> const& ret_slots,
+                                           backend::ExecContext* ctx) {
+    uint16_t num    = iter->read<uint16_t>();
+    uint8_t current = 0;
+
+    std::vector<T> vals;
+    vals.reserve(num);
+    {
+      std::vector<bool> bits;
+      bits.reserve(num);
+      for (uint16_t i = 0; i < num; ++i) {
+        if (i % 8 == 0) { current = ReverseByte(iter->read<uint8_t>()); }
+        bits.push_back(current & 1);
+        current >>= 1;
+      }
+
+      for (bool b : bits) {
+        vals.push_back(b ? ctx->resolve<T>(iter->read<Reg>())
+                         : iter->read<T>());
+      }
+      DEBUG_LOG("variadic")(vals);
+    }
+
+    auto& frame = ctx->call_stack.top();
+    frame.regs_.set(GetOffset(frame.fn_, iter->read<Reg>()),
+                    Fn(std::move(vals)));
+
+    return std::nullopt;
+  }
+
+ private:
+  static constexpr uint8_t ReverseByte(uint8_t byte) {
+    byte = ((byte & 0b11110000) >> 4) | ((byte & 0b00001111) << 4);
+    byte = ((byte & 0b11001100) >> 2) | ((byte & 0b00110011) << 2);
+    byte = ((byte & 0b10101010) >> 1) | ((byte & 0b01010101) << 1);
+    return byte;
+  }
+};
+
+template <typename CmdType>
+RegOr<typename CmdType::type> MakeVariadicImpl(
+    absl::Span<RegOr<typename CmdType::type> const> vals) {
+  using T = typename CmdType::type;
+  {
+    std::vector<T> vs;
+    vs.reserve(vals.size());
+    if (absl::c_all_of(vals, [&](RegOr<T> t) {
+          if (t.is_reg_) { return false; }
+          vs.push_back(t.val_);
+          return true;
+        })) {
+      return CmdType::fn_ptr(vs);
+    }
+  }
+
+  auto& blk = GetBlock();
+  blk.cmd_buffer_.append_index<CmdType>();
+  blk.cmd_buffer_.append<uint16_t>(vals.size());
+  uint8_t reg_mask = 0;
+  for (size_t i = 0; i < vals.size(); ++i) {
+    if (vals[i].is_reg_) { reg_mask |= (1 << (7 - (i % 8))); }
+    if (i % 8 == 7) {
+      blk.cmd_buffer_.append(reg_mask);
+      reg_mask = 0;
+    }
+  }
+  if (vals.size() % 8 != 0) { blk.cmd_buffer_.append(reg_mask); }
+
+  absl::c_for_each(vals, [&](RegOr<T> t) {
+    if (t.is_reg_) {
+      blk.cmd_buffer_.append(t.reg_);
+    } else {
+      blk.cmd_buffer_.append(t.val_);
+    }
+  });
+
+  Reg result = MakeResult(type::Get<T>());
+  blk.cmd_buffer_.append(result);
+  DEBUG_LOG("variadic")(blk.cmd_buffer_.to_string());
+  return RegOr<T>{result};
+}
+
 }  // namespace internal
 }  // namespace ir
 

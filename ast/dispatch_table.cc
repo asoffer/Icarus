@@ -447,13 +447,23 @@ std::pair<DispatchTable, visitor::VerifyResult> VerifyDispatchImpl(
         &args,
     Context *ctx) {
   DispatchTable table;
+  DEBUG_LOG("verify_dispatch")("Verify: ", expr);
   absl::flat_hash_map<Expression const *, std::string> failure_reasons;
   for (auto &&overload : overload_set) {
     auto expected_row = OverloadParams(overload, args, ctx);
-    if (!expected_row.has_value()) { continue; }
+    if (!expected_row.has_value()) {
+      DEBUG_LOG("verify_dispatch")
+      ("  skipping failed row -- ", expected_row.error());
+      continue;
+    }
     auto match = MatchArgsToParams(expected_row->params, args);
-    if (!match.has_value()) { continue; }
+    if (!match.has_value()) {
+      DEBUG_LOG("verify_dispatch")
+      ("  skipping failed match -- ", match.error());
+      continue;
+    }
 
+    DEBUG_LOG("verify_dispatch")("  adding a row");
     expected_row->params = *std::move(match);
     table.bindings_.push_back(*std::move(expected_row));
   }
@@ -713,6 +723,8 @@ static ir::Results EmitFnCall(
     core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
     absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> const &block_map,
     Context *ctx) {
+  ASSERT(table->bindings_.size() != 0u);
+
   // If an output to the function fits in a register we will create a phi node
   // for it on the landing block. Otherwise, we'll temporarily allocate stack
   // space for it and pass in an output pointer.

@@ -217,20 +217,6 @@ RegOr<FlagsVal> NotFlags(type::Typed<RegOr<FlagsVal>, type::Flags> r) {
   return cmd.result;
 }
 
-RegOr<type::Type const *> Ptr(RegOr<type::Type const *> r) {
-  if (!r.is_reg_) { return type::Ptr(r.val_); }
-  auto &cmd = MakeCmd(type::Type_, Op::Ptr);
-  cmd.reg_  = r.reg_;
-  return cmd.result;
-}
-
-RegOr<type::Type const *> BufPtr(RegOr<type::Type const *> r) {
-  if (!r.is_reg_) { return type::BufPtr(r.val_); }
-  auto &cmd = MakeCmd(type::Type_, Op::BufPtr);
-  cmd.reg_  = r.reg_;
-  return cmd.result;
-}
-
 RegOr<type::Type const *> Arrow(RegOr<type::Type const *> v1,
                                      RegOr<type::Type const *> v2) {
   if (!v1.is_reg_ && !v2.is_reg_) {

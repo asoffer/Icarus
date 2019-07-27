@@ -150,6 +150,7 @@ cc_lib_target(
         ":register",
         "//ir/cmd:basic",
         "//ir/cmd:load",
+        "//ir/cmd:types",
     ],
     impl_deps = [],
     test_deps = None,
