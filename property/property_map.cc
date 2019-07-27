@@ -53,16 +53,16 @@ void until_empty(SetContainer *container, Fn &&fn) {
   }
 }
 
-PropertySet Not(PropertySet prop_set) {
-  prop_set.props_.for_each([](base::owned_ptr<Property> *prop) {
-    if (!(**prop).is<BoolProp>()) { return; }
-    auto p           = &(**prop).as<BoolProp>();
-    p->can_be_true_  = !p->can_be_true_;
-    p->can_be_false_ = !p->can_be_false_;
-  });
-  return prop_set;
-}
-
+// PropertySet Not(PropertySet prop_set) {
+//   prop_set.props_.for_each([](base::owned_ptr<Property> *prop) {
+//     if (!(**prop).is<BoolProp>()) { return; }
+//     auto p           = &(**prop).as<BoolProp>();
+//     p->can_be_true_  = !p->can_be_true_;
+//     p->can_be_false_ = !p->can_be_false_;
+//   });
+//   return prop_set;
+// }
+// 
 // PropertySet LtInt(PropertySet const &lhs, int rhs) {
 //   auto b = base::make_owned<BoolProp>();
 //   lhs.props_.for_each([&b, rhs](base::owned_ptr<Property> const *prop) {
@@ -183,7 +183,6 @@ bool PropertyMap::UpdateEntryFromAbove(Entry const &e) {
     case ir::Op::CondJump: return /* TODO */ false;
     case ir::Op::ReturnJump: return /* TODO */ false;
     case ir::Op::Call: return /* TODO */ false;
-    case ir::Op::NotBool: return prop_set.add(Not(block_view.at(cmd.reg_)));
     case ir::Op::SetRetBool:
       if (cmd.set_ret_bool_.val_.is_reg_) {
         prop_set.add(block_view.at(cmd.set_ret_bool_.val_.reg_));
@@ -232,12 +231,12 @@ void PropertyMap::UpdateEntryFromBelow(Entry const &e,
     case ir::Op::SetRetModule: DEFINE_CASE(set_ret_module_);
     case ir::Op::SetRetBlock: DEFINE_CASE(set_ret_block_);
 #undef DEFINE_CASE
+                              /*
     case ir::Op::NotBool: {
       // Not works in both directions. Huzzah!
       bool changed = view.at(cmd.reg_).add(Not(view.at(e.reg_)));
       if (changed) { stale_up->emplace(e.viewing_block_, cmd.reg_); }
     } break;
-                              /*
     case ir::Op::LtInt: {
       auto &prop_set = view.at(e.reg_).props_;
       prop_set.for_each([&](base::owned_ptr<Property> *prop) {

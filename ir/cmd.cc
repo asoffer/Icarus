@@ -210,15 +210,7 @@ Results Cast(type::Type const *from, type::Type const *to, Results const &val) {
       });
 }
 
-RegOr<bool> Not(RegOr<bool> r) {
-  if (!r.is_reg_) { return !r.val_; }
-  auto &cmd = MakeCmd(type::Bool, Op::NotBool);
-  cmd.reg_  = r.reg_;
-  CompiledFn::Current->references_[cmd.reg_].insert(cmd.result);
-  return cmd.result;
-}
-
-RegOr<FlagsVal> Not(type::Typed<RegOr<FlagsVal>, type::Flags> r) {
+RegOr<FlagsVal> NotFlags(type::Typed<RegOr<FlagsVal>, type::Flags> r) {
   if (!r->is_reg_) { return NotFlags(r->val_, r.type()); }
   auto &cmd      = MakeCmd(r.type(), Op::NotFlags);
   cmd.typed_reg_ = type::Typed<Reg>(r->reg_, r.type());
@@ -492,14 +484,14 @@ RegOr<FlagsVal> XorFlags(type::Flags const *type,
   if (!lhs.is_reg_) {
     if (lhs.val_.value == 0) { return rhs; }
     if (lhs.val_.value == (1ull << type->members_.size()) - 1) {
-      return Not(type::Typed<RegOr<FlagsVal>, type::Flags>(rhs, type));
+      return NotFlags(type::Typed<RegOr<FlagsVal>, type::Flags>(rhs, type));
     }
   }
 
   if (!rhs.is_reg_) {
     if (rhs.val_.value == 0) { return rhs; }
     if (rhs.val_.value == (1ull << type->members_.size()) - 1) {
-      return Not(type::Typed<RegOr<FlagsVal>, type::Flags>(lhs, type));
+      return NotFlags(type::Typed<RegOr<FlagsVal>, type::Flags>(lhs, type));
     }
   }
 
@@ -682,16 +674,11 @@ std::pair<Results, bool> CallInline(
           }
           reg_relocs.emplace(cmd.result, Align(r));
         } break;
-        case Op::NotBool: {
-          auto iter = reg_relocs.find(cmd.reg_);
-          if (iter == reg_relocs.end()) { goto next_block; }
-          reg_relocs.emplace(cmd.result, Not(iter->second.get<bool>(0)));
-        } break;
         case Op::NotFlags: {
           auto iter = reg_relocs.find(cmd.typed_reg_.get());
           if (iter == reg_relocs.end()) { goto next_block; }
           reg_relocs.emplace(cmd.result,
-                             Not(type::Typed<RegOr<FlagsVal>, type::Flags>{
+                             NotFlags(type::Typed<RegOr<FlagsVal>, type::Flags>{
                                  iter->second.get<FlagsVal>(0),
                                  &cmd.typed_reg_.type()->as<type::Flags>()}));
         } break;

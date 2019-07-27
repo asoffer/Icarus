@@ -375,8 +375,7 @@ struct Cmd {
 
 RegOr<int64_t> Bytes(RegOr<type::Type const *> r);
 RegOr<int64_t> Align(RegOr<type::Type const *> r);
-RegOr<bool> Not(RegOr<bool> r);
-RegOr<FlagsVal> Not(type::Typed<RegOr<FlagsVal>, type::Flags> r);
+RegOr<FlagsVal> NotFlags(type::Typed<RegOr<FlagsVal>, type::Flags> r);
 RegOr<FlagsVal> XorFlags(type::Flags const *type,
                               RegOr<FlagsVal> const &lhs,
                               RegOr<FlagsVal> const &rhs);

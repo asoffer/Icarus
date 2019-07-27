@@ -4,8 +4,7 @@
 #include <type_traits>
 
 #include "base/debug.h"
-#include "ir/cmd/arithmetic.h"
-#include "ir/cmd/compare.h"
+#include "ir/cmd/basic.h"
 #include "ir/cmd/print.h"
 #include "ir/cmd/store.h"
 #include "ir/cmd/load.h"
@@ -34,6 +33,7 @@ BlockIndex CmdBuffer::Execute(std::vector<ir::Addr> const& ret_slots,
       CASE(DivCmd);
       CASE(ModCmd);
       CASE(NegCmd);
+      CASE(NotCmd);
       CASE(LtCmd);
       CASE(LeCmd);
       CASE(EqCmd);

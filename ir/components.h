@@ -1,8 +1,7 @@
 #ifndef ICARUS_IR_COMPONENTS_H
 #define ICARUS_IR_COMPONENTS_H
 
-#include "ir/cmd/arithmetic.h"
-#include "ir/cmd/compare.h"
+#include "ir/cmd/basic.h"
 #include "ir/cmd/load.h"
 #include "ir/compiled_fn.h"
 #include "ir/phi.h"

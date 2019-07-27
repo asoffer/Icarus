@@ -1,7 +1,6 @@
 OP_MACRO(Death,                Death,               void,                    empty_)
 OP_MACRO(Bytes,                Bytes,               type::Type const*,       type_arg_)
 OP_MACRO(Align,                Align,               type::Type const*,       type_arg_)
-OP_MACRO(NotBool,              Not,                 bool,                    reg_)
 OP_MACRO(NotFlags,             Not,                 FlagsVal,                typed_reg_)
 OP_MACRO(XorFlags,             Xor,                 FlagsVal,                flags_args_)
 OP_MACRO(OrFlags,              Or,                  FlagsVal,                flags_args_)

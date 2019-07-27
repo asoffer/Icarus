@@ -3,19 +3,7 @@ load("//:defs.bzl", "sources", "cc_lib_target")
 sources()
 
 cc_lib_target(
-    name = "arithmetic",
-    cfgs = ["match", "compile"],
-    intf_deps = [
-        ":util",
-        "//ir:basic_block",
-        "//type:util",
-    ],
-    impl_deps = None,
-    test_deps = None,
-)
-
-cc_lib_target(
-    name = "compare",
+    name = "basic",
     cfgs = ["match", "compile"],
     intf_deps = [
         ":util",

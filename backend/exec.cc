@@ -269,7 +269,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::Align:
       save(resolve(cmd.type_arg_)->alignment(core::Interpretter()));
       break;
-    case ir::Op::NotBool: save(!resolve<bool>(cmd.reg_)); break;
     case ir::Op::NotFlags: {
       save(ir::NotFlags(resolve<ir::FlagsVal>(cmd.typed_reg_.get()),
                         &cmd.typed_reg_.type()->as<type::Flags>()));

@@ -6,7 +6,7 @@
 #include "base/guarded.h"
 #include "ir/builtin_ir.h"
 #include "ir/cmd.h"
-#include "ir/cmd/arithmetic.h"
+#include "ir/cmd/basic.h"
 #include "ir/cmd/load.h"
 #include "ir/cmd/store.h"
 #include "ir/components.h"
@@ -1796,7 +1796,7 @@ ir::Results EmitIr::Val(ast::Unop const *node, Context *ctx) {
             ir::Not(node->operand->EmitIr(this, ctx).get<bool>(0))};
       } else if (t->is<type::Flags>()) {
         return ir::Results{
-            ir::Not(type::Typed<ir::RegOr<ir::FlagsVal>, type::Flags>(
+            ir::NotFlags(type::Typed<ir::RegOr<ir::FlagsVal>, type::Flags>(
                 node->operand->EmitIr(this, ctx).get<ir::FlagsVal>(0),
                 &t->as<type::Flags>()))};
       } else {
