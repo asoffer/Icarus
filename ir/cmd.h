@@ -367,17 +367,6 @@ struct Cmd {
 
 RegOr<int64_t> Bytes(RegOr<type::Type const *> r);
 RegOr<int64_t> Align(RegOr<type::Type const *> r);
-RegOr<FlagsVal> NotFlags(type::Typed<RegOr<FlagsVal>, type::Flags> r);
-RegOr<FlagsVal> XorFlags(type::Flags const *type,
-                              RegOr<FlagsVal> const &lhs,
-                              RegOr<FlagsVal> const &rhs);
-RegOr<FlagsVal> OrFlags(type::Flags const *type,
-                             RegOr<FlagsVal> const &lhs,
-                             RegOr<FlagsVal> const &rhs);
-RegOr<FlagsVal> AndFlags(type::Flags const *type,
-                              RegOr<FlagsVal> const &lhs,
-                              RegOr<FlagsVal> const &rhs);
-
 void DebugIr();
 
 RegOr<type::Type const *> Array(RegOr<int64_t> len,

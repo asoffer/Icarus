@@ -50,6 +50,9 @@ BlockIndex CmdBuffer::Execute(std::vector<ir::Addr> const& ret_slots,
       CASE(PtrCmd);
       CASE(BufPtrCmd);
       CASE(JumpCmd);
+      CASE(XorFlagsCmd);
+      CASE(AndFlagsCmd);
+      CASE(OrFlagsCmd);
 #undef CASE
       default: UNREACHABLE();
     }

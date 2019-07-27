@@ -600,8 +600,7 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
       if (this_type->is<type::Flags>()) {
         auto lhs_lval = node->lhs()->EmitLVal(this, ctx)[0];
         ir::Store(
-            ir::OrFlags(&this_type->as<type::Flags>(),
-                        ir::Load<ir::FlagsVal>(lhs_lval),
+            ir::OrFlags(ir::Load<ir::FlagsVal>(lhs_lval),
                         node->rhs()->EmitIr(this, ctx).get<ir::FlagsVal>(0)),
             lhs_lval);
         return ir::Results{};
@@ -629,8 +628,7 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
       if (this_type->is<type::Flags>()) {
         auto lhs_lval = node->lhs()->EmitLVal(this, ctx)[0];
         ir::Store(
-            ir::AndFlags(&this_type->as<type::Flags>(),
-                         ir::Load<ir::FlagsVal>(lhs_lval),
+            ir::AndFlags(ir::Load<ir::FlagsVal>(lhs_lval),
                          node->rhs()->EmitIr(this, ctx).get<ir::FlagsVal>(0)),
             lhs_lval);
         return ir::Results{};
@@ -721,9 +719,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
         auto *flags_type = &lhs_type->as<type::Flags>();
         auto lhs_lval    = node->lhs()->EmitLVal(this, ctx)[0];
         auto rhs_ir      = node->rhs()->EmitIr(this, ctx).get<ir::FlagsVal>(0);
-        ir::Store(
-            ir::XorFlags(flags_type, ir::Load<ir::FlagsVal>(lhs_lval), rhs_ir),
-            lhs_lval);
+        ir::Store(ir::XorFlags(ir::Load<ir::FlagsVal>(lhs_lval), rhs_ir),
+                  lhs_lval);
       } else {
         UNREACHABLE(lhs_type);
       }
@@ -1070,8 +1067,7 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
           ir::RegOr<ir::FlagsVal>(ir::FlagsVal{0}),
           [&](ir::RegOr<ir::FlagsVal> acc, auto *expr) {
             return ir::XorFlags(
-                &t->as<type::Flags>(), acc,
-                expr->EmitIr(this, ctx).template get<ir::FlagsVal>(0));
+                acc, expr->EmitIr(this, ctx).template get<ir::FlagsVal>(0));
           })};
     } else {
       UNREACHABLE();
@@ -1081,8 +1077,7 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
     auto iter = node->exprs().begin();
     auto val  = (*iter)->EmitIr(this, ctx).get<ir::FlagsVal>(0);
     while (++iter != node->exprs().end()) {
-      val = ir::OrFlags(&t->as<type::Flags>(), val,
-                        (*iter)->EmitIr(this, ctx).get<ir::FlagsVal>(0));
+      val = ir::OrFlags(val, (*iter)->EmitIr(this, ctx).get<ir::FlagsVal>(0));
     }
     return ir::Results{val};
   } else if (node->ops()[0] == frontend::Operator::And &&
@@ -1090,8 +1085,7 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
     auto iter = node->exprs().begin();
     auto val  = (*iter)->EmitIr(this, ctx).get<ir::FlagsVal>(0);
     while (++iter != node->exprs().end()) {
-      val = ir::AndFlags(&t->as<type::Flags>(), val,
-                         (*iter)->EmitIr(this, ctx).get<ir::FlagsVal>(0));
+      val = ir::AndFlags(val, (*iter)->EmitIr(this, ctx).get<ir::FlagsVal>(0));
     }
     return ir::Results{val};
   } else if (node->ops()[0] == frontend::Operator::Or && t == type::Type_) {
@@ -1790,9 +1784,9 @@ ir::Results EmitIr::Val(ast::Unop const *node, Context *ctx) {
             ir::Not(node->operand->EmitIr(this, ctx).get<bool>(0))};
       } else if (t->is<type::Flags>()) {
         return ir::Results{
-            ir::NotFlags(type::Typed<ir::RegOr<ir::FlagsVal>, type::Flags>(
-                node->operand->EmitIr(this, ctx).get<ir::FlagsVal>(0),
-                &t->as<type::Flags>()))};
+            ir::XorFlags(node->operand->EmitIr(this, ctx).get<ir::FlagsVal>(0),
+                         ir::FlagsVal{t->as<type::Flags>().All})};
+
       } else {
         NOT_YET();
       }

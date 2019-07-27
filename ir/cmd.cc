@@ -210,13 +210,6 @@ Results Cast(type::Type const *from, type::Type const *to, Results const &val) {
       });
 }
 
-RegOr<FlagsVal> NotFlags(type::Typed<RegOr<FlagsVal>, type::Flags> r) {
-  if (!r->is_reg_) { return NotFlags(r->val_, r.type()); }
-  auto &cmd      = MakeCmd(r.type(), Op::NotFlags);
-  cmd.typed_reg_ = type::Typed<Reg>(r->reg_, r.type());
-  return cmd.result;
-}
-
 RegOr<type::Type const *> Array(RegOr<int64_t> len,
                                      RegOr<type::Type const *> data_type) {
   if (!data_type.is_reg_ && !len.is_reg_) {
@@ -388,71 +381,6 @@ TypedRegister<Addr> PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
   return cmd.result;
 }
 
-RegOr<FlagsVal> XorFlags(type::Flags const *type,
-                              RegOr<FlagsVal> const &lhs,
-                              RegOr<FlagsVal> const &rhs) {
-  if (!lhs.is_reg_ && !rhs.is_reg_) { return lhs.val_ ^ rhs.val_; }
-  if (!lhs.is_reg_) {
-    if (lhs.val_.value == 0) { return rhs; }
-    if (lhs.val_.value == (1ull << type->members_.size()) - 1) {
-      return NotFlags(type::Typed<RegOr<FlagsVal>, type::Flags>(rhs, type));
-    }
-  }
-
-  if (!rhs.is_reg_) {
-    if (rhs.val_.value == 0) { return rhs; }
-    if (rhs.val_.value == (1ull << type->members_.size()) - 1) {
-      return NotFlags(type::Typed<RegOr<FlagsVal>, type::Flags>(lhs, type));
-    }
-  }
-
-  auto &cmd = MakeCmd(type, Op::XorFlags);
-  cmd.set<Cmd::XorTag, FlagsVal>(lhs, rhs);
-  return cmd.result;
-}
-
-RegOr<FlagsVal> OrFlags(type::Flags const *type,
-                             RegOr<FlagsVal> const &lhs,
-                             RegOr<FlagsVal> const &rhs) {
-  if (!lhs.is_reg_ && !rhs.is_reg_) { return lhs.val_ | rhs.val_; }
-  if (!lhs.is_reg_) {
-    if (lhs.val_.value == 0) { return rhs; }
-    if (lhs.val_.value == (1ull << type->members_.size()) - 1) {
-      return FlagsVal{(1ull << type->members_.size()) - 1};
-    }
-  }
-
-  if (!rhs.is_reg_) {
-    if (rhs.val_.value == 0) { return lhs; }
-    if (rhs.val_.value == (1ull << type->members_.size()) - 1) {
-      return FlagsVal{(1ull << type->members_.size()) - 1};
-    }
-  }
-
-  auto &cmd = MakeCmd(type, Op::OrFlags);
-  cmd.set<Cmd::XorTag, FlagsVal>(lhs, rhs);
-  return cmd.result;
-}
-
-RegOr<FlagsVal> AndFlags(type::Flags const *type,
-                              RegOr<FlagsVal> const &lhs,
-                              RegOr<FlagsVal> const &rhs) {
-  if (!lhs.is_reg_ && !rhs.is_reg_) { return lhs.val_ & rhs.val_; }
-  if (!lhs.is_reg_) {
-    if (lhs.val_.value == 0) { return FlagsVal{0}; }
-    if (lhs.val_.value == (1ull << type->members_.size()) - 1) { return rhs; }
-  }
-
-  if (!rhs.is_reg_) {
-    if (rhs.val_.value == 0) { return FlagsVal{0}; }
-    if (rhs.val_.value == (1ull << type->members_.size()) - 1) { return lhs; }
-  }
-
-  auto &cmd = MakeCmd(type, Op::AndFlags);
-  cmd.set<Cmd::XorTag, FlagsVal>(lhs, rhs);
-  return cmd.result;
-}
-
 TypedRegister<Addr> Index(type::Pointer const *t, Reg array_ptr,
                           RegOr<int64_t> offset) {
   auto *array_type = &t->pointee->as<type::Array>();
@@ -583,14 +511,6 @@ std::pair<Results, bool> CallInline(
             r = cmd.type_arg_;
           }
           reg_relocs.emplace(cmd.result, Align(r));
-        } break;
-        case Op::NotFlags: {
-          auto iter = reg_relocs.find(cmd.typed_reg_.get());
-          if (iter == reg_relocs.end()) { goto next_block; }
-          reg_relocs.emplace(cmd.result,
-                             NotFlags(type::Typed<RegOr<FlagsVal>, type::Flags>{
-                                 iter->second.get<FlagsVal>(0),
-                                 &cmd.typed_reg_.type()->as<type::Flags>()}));
         } break;
         case Op::JumpPlaceholder: {
           // TODO multiple blocks

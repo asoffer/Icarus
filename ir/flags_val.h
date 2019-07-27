@@ -25,8 +25,6 @@ inline FlagsVal operator&(FlagsVal lhs, FlagsVal rhs) {
   return FlagsVal{lhs.value & rhs.value};
 }
 
-FlagsVal NotFlags(FlagsVal f, type::Flags const *t);
-
 std::ostream &operator<<(std::ostream &os, FlagsVal f);
 
 }  // namespace ir

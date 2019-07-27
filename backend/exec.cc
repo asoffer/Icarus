@@ -267,18 +267,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::Align:
       save(resolve(cmd.type_arg_)->alignment(core::Interpretter()));
       break;
-    case ir::Op::NotFlags: {
-      save(ir::NotFlags(resolve<ir::FlagsVal>(cmd.typed_reg_.get()),
-                        &cmd.typed_reg_.type()->as<type::Flags>()));
-    } break;
-#define CASE(op, member, fn)                                                   \
-  case op: {                                                                   \
-    save(fn(resolve(cmd.member.args_[0]), resolve(cmd.member.args_[1])));      \
-  } break
-      CASE(ir::Op::XorFlags, flags_args_, std::bit_xor{});
-      CASE(ir::Op::OrFlags, flags_args_, std::bit_or{});
-      CASE(ir::Op::AndFlags, flags_args_, std::bit_and{});
-#undef CASE
     case ir::Op::Move: {
       auto *t = cmd.special2_.type_;
       std::vector<ir::Addr> return_slots;
