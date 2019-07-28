@@ -588,39 +588,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       save(std::move(*f).finalize());
       delete f;
     } break;
-    case ir::Op::CastToInt8: {
-      save(static_cast<int8_t>(resolve<int8_t>(cmd.typed_reg_.get())));
-    } break;
-    case ir::Op::CastToNat8: {
-      save(static_cast<uint8_t>(resolve<int8_t>(cmd.typed_reg_.get())));
-    } break;
-    case ir::Op::CastToInt16: {
-      save(static_cast<uint16_t>(resolve<int8_t>(cmd.typed_reg_.get())));
-    } break;
-    case ir::Op::CastToNat16: {
-      save(static_cast<uint16_t>(resolve<uint8_t>(cmd.typed_reg_.get())));
-    } break;
-    case ir::Op::CastToInt32: {
-      save(static_cast<int32_t>(resolve<int8_t>(cmd.typed_reg_.get())));
-    } break;
-    case ir::Op::CastToNat32: {
-      save(static_cast<uint32_t>(resolve<uint8_t>(cmd.typed_reg_.get())));
-    } break;
-    case ir::Op::CastToInt64: {
-      save(static_cast<int64_t>(resolve<int8_t>(cmd.typed_reg_.get())));
-    } break;
-    case ir::Op::CastToNat64: {
-      save(static_cast<uint64_t>(resolve<uint8_t>(cmd.typed_reg_.get())));
-    } break;
-    case ir::Op::CastToFloat32: {
-      save(static_cast<float>(resolve<int8_t>(cmd.typed_reg_.get())));
-    } break;
-    case ir::Op::CastToFloat64: {
-      save(static_cast<double>(resolve<int8_t>(cmd.typed_reg_.get())));
-    } break;
-    case ir::Op::CastToEnum: save(ir::EnumVal(resolve<int32_t>(cmd.reg_))); break;
-    case ir::Op::CastToFlags: save(ir::FlagsVal(resolve<int32_t>(cmd.reg_))); break;
-    case ir::Op::CastPtr: save(resolve<ir::Addr>(cmd.typed_reg_.get())); break;
     case ir::Op::GetRet: save(ret_slots.at(cmd.get_ret_)); break;
     case ir::Op::SetRetBool:
       StoreValue(resolve(cmd.set_ret_bool_.val_),

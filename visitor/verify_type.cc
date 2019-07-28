@@ -668,6 +668,7 @@ VerifyResult VerifyType::operator()(ast::Cast const *node, Context *ctx) {
     os.add_adl("as", t);
     os.add_adl("as", expr_result.type_);
     os.keep([t](ast::Overload const &o) { return o.result.type_ == t; });
+
     return ast::VerifyDispatch(
         node, os,
         core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>(
@@ -679,7 +680,8 @@ VerifyResult VerifyType::operator()(ast::Cast const *node, Context *ctx) {
                                     t->to_string(), node->span);
       NOT_YET("log an error", expr_result.type_, t);
     }
-    return VerifyResult(t, expr_result.const_);
+
+    return ctx->set_result(node, VerifyResult(t, expr_result.const_));
   }
 }
 

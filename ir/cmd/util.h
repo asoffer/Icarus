@@ -15,7 +15,7 @@ namespace ir {
 using cmd_index_t = uint8_t;
 
 template <typename T>
-constexpr cmd_index_t PrimitiveIndex() {
+constexpr uint8_t PrimitiveIndex() {
   if constexpr (std::is_same_v<T, bool>) {
     return 0x08;
   } else if constexpr (std::is_same_v<T, float>) {
@@ -40,7 +40,7 @@ constexpr cmd_index_t PrimitiveIndex() {
 }
 
 template <typename Fn>
-auto PrimitiveDispatch(cmd_index_t primitive_type, Fn&& fn) {
+auto PrimitiveDispatch(uint8_t primitive_type, Fn&& fn) {
   switch (primitive_type) {
     case PrimitiveIndex<uint8_t>():
       return std::forward<Fn>(fn)(base::Tag<uint8_t>{});

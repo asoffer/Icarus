@@ -5,6 +5,7 @@
 #include "backend/eval.h"
 #include "ir/addr.h"
 #include "ir/cmd.h"
+#include "ir/cmd/cast.h"
 #include "ir/cmd/load.h"
 #include "ir/register.h"
 #include "ir/str.h"
@@ -52,33 +53,29 @@ std::vector<ir::RegOr<ir::Addr>> EmitIr::Ref(ast::Index const *node,
   auto *rhs_type = ctx->type_of(node->rhs());
 
   if (lhs_type->is<type::Array>()) {
-    auto index = ir::Cast(rhs_type, type::Int64, node->rhs()->EmitIr(this, ctx))
-                     .get<int64_t>(0);
+    auto index = ir::CastTo<int64_t>(rhs_type, node->rhs()->EmitIr(this, ctx));
 
     auto lval = node->lhs()->EmitLVal(this, ctx)[0];
     if (!lval.is_reg_) { NOT_YET(this, ctx->type_of(node)); }
     return {ir::Index(type::Ptr(ctx->type_of(node->lhs())), lval.reg_, index)};
   } else if (auto *buf_ptr_type = lhs_type->if_as<type::BufferPointer>()) {
-    auto index = ir::Cast(rhs_type, type::Int64, node->rhs()->EmitIr(this, ctx))
-                     .get<int64_t>(0);
+    auto index = ir::CastTo<int64_t>(rhs_type, node->rhs()->EmitIr(this, ctx));
 
     return {ir::PtrIncr(node->lhs()->EmitIr(this, ctx).get<ir::Reg>(0), index,
                         type::Ptr(buf_ptr_type->pointee))};
   } else if (lhs_type == type::ByteView) {
     // TODO interim until you remove string_view and replace it with Addr
     // entirely.
-    auto index = ir::Cast(rhs_type, type::Int64, node->rhs()->EmitIr(this, ctx))
-                     .get<int64_t>(0);
+    auto index = ir::CastTo<int64_t>(rhs_type, node->rhs()->EmitIr(this, ctx));
     return {ir::PtrIncr(
         ir::GetString(
             node->lhs()->EmitIr(this, ctx).get<std::string_view>(0).val_),
         index, type::Ptr(type::Nat8))};
   } else if (auto *tup = lhs_type->if_as<type::Tuple>()) {
-    auto index =
-        ir::Cast(rhs_type, type::Int64,
-                 backend::Evaluate(type::Typed{node->rhs(), rhs_type}, ctx))
-            .get<int64_t>(0)
-            .val_;
+    auto index = ir::CastTo<int64_t>(
+                     rhs_type,
+                     backend::Evaluate(type::Typed{node->rhs(), rhs_type}, ctx))
+                     .val_;
     return {ir::Field(node->lhs()->EmitLVal(this, ctx)[0], tup, index).get()};
   }
   UNREACHABLE(*this);

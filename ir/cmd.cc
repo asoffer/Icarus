@@ -124,13 +124,6 @@ type::Typed<Reg> LoadSymbol(std::string_view name, type::Type const *t) {
   return type::Typed<Reg>{cmd.result, t};
 }
 
-// TODO pass atyped_reg? not sure that's right.
-Reg CastPtr(Reg r, type::Pointer const *t) {
-  auto &cmd      = MakeCmd(t, Op::CastPtr);
-  cmd.typed_reg_ = type::Typed<Reg>(r, t);
-  return cmd.result;
-}
-
 RegOr<int64_t> Bytes(RegOr<type::Type const *> r) {
   auto &cmd     = MakeCmd(type::Int64, Op::Bytes);
   cmd.type_arg_ = r;
@@ -149,65 +142,6 @@ void JumpPlaceholder(BlockDef const *block_def) {
   CompiledFn::Current->jumps_.push_back(block_def);
   // TODO implied by jumps_ being non-empty.
   CompiledFn::Current->must_inline_ = true;
-}
-
-template <typename T>
-static Results CastTo(type::Type const *from, Results const &val) {
-  if (val.is_reg(0)) {
-    auto *to       = type::Get<T>();
-    auto &cmd      = MakeCmd(to, Cmd::OpCode<Cmd::CastTag, T>());
-    cmd.typed_reg_ = type::Typed<Reg>(val.get<Reg>(0), from);
-    return Results{cmd.result};
-  } else {
-    return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
-                            uint16_t, uint32_t, uint64_t, float>(
-        from, [&](auto type_holder) {
-          using FromType = typename decltype(type_holder)::type;
-          return Results{static_cast<T>(val.get<FromType>(0).val_)};
-        });
-  }
-  UNREACHABLE("To ", type::Get<T>(), " from ", from);
-}
-
-Results Cast(type::Type const *from, type::Type const *to, Results const &val) {
-  if (from == type::NullPtr) { return val; }
-
-  // Note: ir::Cast is called with types associated IR commands and registers.
-  // Because arrays are considered big, they would never be stored directly in
-  // a register, so we would not see an empty array but rather a pointer to an
-  // empty arry.
-  if (from == type::Ptr(type::EmptyArray)) { return val; }
-
-  if (to->is<type::Enum>()) {
-    ASSERT(from == type::Int32);
-    auto x = val.get<int32_t>(0);
-    if (x.is_reg_) {
-      auto &cmd = MakeCmd(to, Op::CastToEnum);
-      cmd.reg_  = x.reg_;
-      return Results{cmd.result};
-    } else {
-      return Results{EnumVal(x.val_)};
-    }
-  } else if (to->is<type::Flags>()) {
-    ASSERT(from == type::Int32);
-    auto x = val.get<int32_t>(0);
-    if (x.is_reg_) {
-      auto &cmd = MakeCmd(to, Op::CastToFlags);
-      cmd.reg_  = x.reg_;
-      return Results{cmd.result};
-    } else {
-      return Results{FlagsVal(x.val_)};
-    }
-  }
-
-  // TODO We only need to include int8_t and uint8_t here for supporting loose
-  // casting. If that disappears, we can remove those types.
-  return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                          uint32_t, uint64_t, float, double>(
-      to, [&](auto type_holder) {
-        using ToType = typename decltype(type_holder)::type;
-        return CastTo<ToType>(from, val);
-      });
 }
 
 RegOr<type::Type const *> Array(RegOr<int64_t> len,

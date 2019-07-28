@@ -137,6 +137,7 @@ cc_lib_target(
     impl_deps = [
         "//ir:compiled_fn",
         "//ir/cmd:basic",
+        "//ir/cmd:cast",
         "//ir/cmd:jumps",
         "//ir/cmd:load",
         "//ir/cmd:print",

@@ -356,10 +356,6 @@ struct Cmd {
     PhiArgs<ir::AnyFunc> *phi_func_;
 
     RegOr<AnyFunc> any_fn_;
-    type::Typed<Reg> typed_reg_;
-#define OP_MACRO(...)
-#include "ir/op.xmacro.h"
-#undef OP_MACRO
   };
 
   Reg result;
@@ -403,8 +399,6 @@ std::pair<Results, bool> CallInline(
     absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> const &block_map);
 
 TypedRegister<type::Type const *> NewOpaqueType(::Module *mod);
-
-Results Cast(type::Type const *from, type::Type const *to, Results const &val);
 
 TypedRegister<Addr> Index(type::Pointer const *t, Reg array_ptr,
                           RegOr<int64_t> offset);

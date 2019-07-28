@@ -5,6 +5,7 @@
 
 #include "base/debug.h"
 #include "ir/cmd/basic.h"
+#include "ir/cmd/cast.h"
 #include "ir/cmd/jumps.h"
 #include "ir/cmd/load.h"
 #include "ir/cmd/print.h"
@@ -53,13 +54,14 @@ BlockIndex CmdBuffer::Execute(std::vector<ir::Addr> const& ret_slots,
       CASE(XorFlagsCmd);
       CASE(AndFlagsCmd);
       CASE(OrFlagsCmd);
+      CASE(CastCmd);
 #undef CASE
       default: UNREACHABLE();
     }
   }
 }
 
-std::string CmdBuffer::to_string() {
+std::string CmdBuffer::to_string() const {
   // Come up with a better/more-permanent solution here.
   return buf_.to_string();
 }

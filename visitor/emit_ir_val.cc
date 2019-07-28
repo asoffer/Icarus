@@ -7,6 +7,7 @@
 #include "ir/builtin_ir.h"
 #include "ir/cmd.h"
 #include "ir/cmd/basic.h"
+#include "ir/cmd/cast.h"
 #include "ir/cmd/load.h"
 #include "ir/cmd/store.h"
 #include "ir/cmd/types.h"
@@ -857,9 +858,9 @@ ir::Results EmitIr::Val(ast::Cast const *node, Context *ctx) {
         ctx);
   }
 
-  auto *this_type = ASSERT_NOT_NULL(ctx->type_of(node));
-  auto results    = node->expr()->EmitIr(this, ctx);
-  if (this_type == type::Type_) {
+  auto *to_type = ASSERT_NOT_NULL(ctx->type_of(node));
+  auto results  = node->expr()->EmitIr(this, ctx);
+  if (to_type == type::Type_) {
     std::vector<type::Type const *> entries;
     entries.reserve(results.size());
     for (size_t i = 0; i < results.size(); ++i) {
@@ -868,7 +869,14 @@ ir::Results EmitIr::Val(ast::Cast const *node, Context *ctx) {
     }
     return ir::Results{type::Tup(entries)};
   }
-  return ir::Cast(ctx->type_of(node->expr()), this_type, results);
+  auto *from_type = ctx->type_of(node->expr());
+  // TODO enum, flags, ptrs?
+  return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                          uint32_t, uint64_t, float, double>(
+      to_type, [&](auto type_holder) {
+        return ir::Results{ir::CastTo<typename decltype(type_holder)::type>(
+            from_type, results)};
+      });
 }
 
 static base::guarded<absl::flat_hash_map<

@@ -40,7 +40,7 @@ struct CmdBuffer {
                      backend::ExecContext* ctx);
 
 
-  std::string to_string();
+  std::string to_string() const;
 
  private:
   base::untyped_buffer buf_;
