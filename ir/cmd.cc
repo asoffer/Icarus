@@ -7,6 +7,8 @@
 #include "ast/ast.h"
 #include "base/bag.h"
 #include "core/arch.h"
+#include "ir/cmd/jumps.h"
+#include "ir/cmd/register.h"
 #include "ir/compiled_fn.h"
 #include "ir/phi.h"
 #include "ir/reg.h"
@@ -360,279 +362,67 @@ std::pair<Results, bool> CallInline(
     CompiledFn *f, Arguments const &arguments,
     absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> const
         &block_map) {
-  bool is_jump = false;
+  bool is_jump = false; // TODO remove this
   std::vector<Results> return_vals;
   return_vals.resize(f->type_->output.size());
 
-  // In order to inline the entire function, we have to be careful because
-  // reading the blocks in numeric order may not yield registers in an order
-  // such that we only see registers depending on previously seen registers.
-  // Such an ordering cannot exist because phi-nodes could depend on values
-  // determined later in the same block. It is conceivable that phi-nodes are
-  // the only exception, but relying on this puts some strange limitations on
-  // how we build the IR (cannot jump to another block and then back), so we
-  // would rather not enforce that.
-  //
-  // We do know that block 0 consists entirely of allocas and an unconditional
-  // jump to block 1.
-  //
-  // 1. Map parameter registers to arguments.
-  // 2. Initialize block 0.
-  // 3. Ignoring phi-nodes, iterate over commands in blocks, skipping to the
-  //    next one whenever you get stuck.
-  // 4. After all such blocks are handled, go back with a second pass over
-  //    phi-nodes.
-  absl::flat_hash_map<ir::Reg, ir::Results> reg_relocs;
-
-  // 1. Map parameter registers to arguments.
+  std::vector<Reg> arg_regs;
+  arg_regs.reserve(f->type_->input.size());
   for (size_t i = 0; i < f->type_->input.size(); ++i) {
-    reg_relocs.emplace(Reg::Arg(i), arguments.results().GetResult(i));
+    arg_regs.push_back(
+        type::Apply(f->type_->input[i], [&](auto type_holder) -> Reg {
+          using T = typename decltype(type_holder)::type;
+          return MakeReg(arguments.results().get<T>(i));
+        }));
   }
 
-  // 2. Initialize block 0.
+  BlockIndex start(CompiledFn::Current->blocks_.size());
+  auto inliner = CompiledFn::Current->inliner();
+
+  for (size_t i = 1; i < f->blocks_.size(); ++i) {
+    auto &block = CompiledFn::Current->block(CompiledFn::AddBlock());
+    block       = f->blocks_.at(i);
+    block.cmd_buffer_.UpdateForInlining(inliner);
+  }
+
+  UncondJump(start);
+  BasicBlock::Current = inliner.landing();
+
   for (auto const &cmd : f->block(f->entry()).cmds_) {
     switch (cmd->op_code_) {
-      case Op::Alloca:
-        reg_relocs.emplace(cmd->result, ir::Results{Alloca(cmd->type_)});
-        continue;
+      case Op::Alloca: NOT_YET(); continue;
       default: UNREACHABLE();
     }
   }
 
-  // 3. Ignoring phi-nodes, iterate over commands in blocks, skipping to the
-  //    next one whenever you get stuck.
-  std::queue<std::pair<BlockIndex, size_t>> blocks;
-  // TODO block relocation is much simpler: 0 -> 0, 1 -> current block, all
-  // others are now add are just their index + current size
-  absl::flat_hash_map<BlockIndex, BlockIndex> block_relocs;
-  block_relocs.emplace(BlockIndex{1}, BasicBlock::Current);
-  blocks.emplace(BlockIndex{1}, 0);
-
-  for (size_t i = 2; i < f->blocks_.size(); ++i) {
-    blocks.emplace(BlockIndex(i), 0);
-    block_relocs.emplace(BlockIndex(i), CompiledFn::AddBlock());
-  }
-
-  std::vector<std::pair<GenericPhiArgs *, CmdIndex>> deferred_phis;
-  while (!blocks.empty()) {
-    auto [block, index] = blocks.front();
-    blocks.pop();
-    BasicBlock::Current = block_relocs.at(block);
-    // TODO could just as easily be a ref
-    auto const &block_ref = f->block(block);
-    for (; index < block_ref.cmds_.size(); ++index) {
-      auto const &cmd = *block_ref.cmds_.at(index);
-      switch (cmd.op_code_) {
-        case Op::Death: UNREACHABLE();
-        case Op::Bytes: {
-          RegOr<type::Type const *> r;
-          if (cmd.type_arg_.is_reg_) {
-            auto iter = reg_relocs.find(cmd.type_arg_.reg_);
-            if (iter == reg_relocs.end()) { goto next_block; }
-            r = iter->second.get<type::Type const *>(0).reg_;
-          } else {
-            r = cmd.type_arg_;
-          }
-          reg_relocs.emplace(cmd.result, Bytes(r));
-        } break;
-        case Op::Align: {
-          RegOr<type::Type const *> r;
-          if (cmd.type_arg_.is_reg_) {
-            auto iter = reg_relocs.find(cmd.type_arg_.reg_);
-            if (iter == reg_relocs.end()) { goto next_block; }
-            r = iter->second.get<type::Type const *>(0).reg_;
-          } else {
-            r = cmd.type_arg_;
-          }
-          reg_relocs.emplace(cmd.result, Align(r));
-        } break;
-        case Op::JumpPlaceholder: {
-          // TODO multiple blocks
-          auto iter = block_map.find(cmd.block_def_);
-          if (iter != block_map.end()) {
-            is_jump = true;
-            NOT_YET("UncondJump(iter->second);");
-            ir::BasicBlock::Current = iter->second;
-            goto found_valid_jump;
-          }
-          UNREACHABLE();
-        found_valid_jump:;
-        } break;
-
-#define CASE(op_code, phi_type, args)                                          \
-  case Op::op_code: {                                                          \
-    auto cmd_index = Phi(phi_type);                                            \
-    auto reg       = CompiledFn::Current->Command(cmd_index).result;           \
-    reg_relocs.emplace(cmd.result, reg);                                       \
-    deferred_phis.emplace_back(cmd.args, cmd_index);                           \
-  } break
-          CASE(PhiBool, type::Bool, phi_bool_);
-          CASE(PhiInt8, type::Int8, phi_i8_);
-          CASE(PhiInt16, type::Int16, phi_i16_);
-          CASE(PhiInt32, type::Int32, phi_i32_);
-          CASE(PhiInt64, type::Int64, phi_i64_);
-          CASE(PhiNat8, type::Nat8, phi_u8_);
-          CASE(PhiNat16, type::Nat16, phi_u16_);
-          CASE(PhiNat32, type::Nat32, phi_u32_);
-          CASE(PhiNat64, type::Nat64, phi_u64_);
-          CASE(PhiFloat32, type::Float32, phi_float32_);
-          CASE(PhiFloat64, type::Float64, phi_float64_);
-          CASE(PhiType, type::Type_, phi_type_);
-          // TODO CASE(PhiBlock, ____, phi_block_);
-          // TODO CASE(PhiAddr, ____, phi_addr_);
-          // TODO CASE(PhiEnum, ____, phi_enum_);
-          // TODO CASE(PhiFlags, ____, phi_flags_);
-          // TODO CASE(PhiFunc, ____, phi_func_);
-#undef CASE
-        case Op::GetRet: NOT_YET();
-#define CASE(op_code, args)                                                    \
-  case Op::op_code: {                                                          \
-    if (cmd.args.val_.is_reg_) {                                               \
-      auto iter = reg_relocs.find(cmd.args.val_.reg_);                         \
-      if (iter == reg_relocs.end()) { goto next_block; }                       \
-      return_vals.at(cmd.args.ret_num_) = iter->second;                        \
-    } else {                                                                   \
-      return_vals.at(cmd.args.ret_num_) = ir::Results{cmd.args.val_.val_};     \
-    }                                                                          \
-  } break
-          CASE(SetRetBool, set_ret_bool_);
-          CASE(SetRetInt8, set_ret_i8_);
-          CASE(SetRetInt16, set_ret_i16_);
-          CASE(SetRetInt32, set_ret_i32_);
-          CASE(SetRetInt64, set_ret_i64_);
-          CASE(SetRetNat8, set_ret_u8_);
-          CASE(SetRetNat16, set_ret_u16_);
-          CASE(SetRetNat32, set_ret_u32_);
-          CASE(SetRetNat64, set_ret_u64_);
-          CASE(SetRetFloat32, set_ret_float32_);
-          CASE(SetRetFloat64, set_ret_float64_);
-          CASE(SetRetType, set_ret_type_);
-          CASE(SetRetEnum, set_ret_enum_);
-          CASE(SetRetFlags, set_ret_flags_);
-          CASE(SetRetByteView, set_ret_byte_view_);
-          CASE(SetRetAddr, set_ret_addr_);
-          CASE(SetRetFunc, set_ret_func_);
-          CASE(SetRetScope, set_ret_scope_);
-          CASE(SetRetGeneric, set_ret_generic_);
-          CASE(SetRetModule, set_ret_module_);
-          CASE(SetRetBlock, set_ret_block_);
-#undef CASE
-        case Op::ArgumentCache: NOT_YET();
-        case Op::NewOpaqueType: NOT_YET();
-        case Op::LoadSymbol: NOT_YET();
-        case Op::Init: NOT_YET();
-        case Op::Destroy: NOT_YET();
-        case Op::Move: NOT_YET();
-        case Op::Copy: NOT_YET();
-        case Op::VerifyType: UNREACHABLE();
-        case Op::EvaluateAsType: UNREACHABLE();
-        case Op::CreateContext: UNREACHABLE();
-        case Op::AddBoundConstant: UNREACHABLE();
-        case Op::DestroyContext: UNREACHABLE();
-        case Op::Call: {
-          RegOr<AnyFunc> r_fn;
-          if (cmd.call_.fn_.is_reg_) {
-            auto iter = reg_relocs.find(cmd.call_.fn_.reg_);
-            if (iter == reg_relocs.end()) { goto next_block; }
-            r_fn = iter->second.get<AnyFunc>(0).reg_;
-          } else {
-            r_fn = cmd.call_.fn_;
-          }
-
-          Results new_arg_results;
-          for (size_t i = 0; i < cmd.call_.arguments_->results().size(); ++i) {
-            if (cmd.call_.arguments_->results().is_reg(i)) {
-              auto iter =
-                  reg_relocs.find(cmd.call_.arguments_->results().get<Reg>(i));
-              if (iter == reg_relocs.end()) { goto next_block; }
-              new_arg_results.append(iter->second.GetResult(0));
-            } else {
-              new_arg_results.append(
-                  cmd.call_.arguments_->results().GetResult(i));
-            }
-          }
-          Arguments new_args(cmd.call_.arguments_->type_,
-                             std::move(new_arg_results));
-
-          if (cmd.call_.outs_) {
-            OutParams outs;
-            for (size_t i = 0; i < cmd.call_.outs_->regs_.size(); ++i) {
-              if (cmd.call_.outs_->is_loc_[i]) {
-                auto old_r = cmd.call_.outs_->regs_[i];
-                auto iter  = reg_relocs.find(old_r);
-                if (iter == reg_relocs.end()) { goto next_block; }
-                // TODO reg_relocs.emplace(, op_fn(r0, r1));
-              } else {
-                auto r =
-                    Reserve(type::Int64);  // TODO this type is probably wrong.
-                outs.is_loc_.push_back(false);
-                outs.regs_.push_back(r);
-                reg_relocs.emplace(cmd.call_.outs_->regs_[i], r);
-              }
-            }
-            Call(r_fn, std::move(new_args), std::move(outs));
-          } else {
-            Call(r_fn, std::move(new_args));
-          }
-        } break;
-        case Op::PtrIncr: {
-          RegOr<Addr> r_ptr;
-          if (cmd.ptr_incr_.ptr_.is_reg_) {
-            auto iter = reg_relocs.find(cmd.ptr_incr_.ptr_.reg_);
-            if (iter == reg_relocs.end()) { goto next_block; }
-            r_ptr = iter->second.get<Addr>(0);
-          } else {
-            r_ptr = cmd.ptr_incr_.ptr_.val_;
-          }
-          RegOr<int64_t> r_inc;
-          if (cmd.ptr_incr_.ptr_.is_reg_) {
-            auto iter = reg_relocs.find(cmd.ptr_incr_.incr_.reg_);
-            if (iter == reg_relocs.end()) { goto next_block; }
-            r_inc = iter->second.get<int64_t>(0);
-          } else {
-            r_inc = cmd.ptr_incr_.incr_.val_;
-          }
-          reg_relocs.emplace(
-              cmd.result,
-              PtrIncr(r_ptr, r_inc, type::Ptr(cmd.ptr_incr_.pointee_type_)));
-        } break;
-        default:; NOT_YET(static_cast<int>(cmd.op_code_));
-      }
-      continue;
-    next_block:
-      blocks.emplace(block, index);
-      break;
-    }
-  }
-
-  // 4. Go back with a second pass over phi-nodes.
-  for (auto [gen_phi_args, cmd_index] : deferred_phis) {
-    if (auto *phi_args = gen_phi_args->if_as<PhiArgs<bool>>()) {
-      InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
-    } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<int8_t>>()) {
-      InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
-    } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<int16_t>>()) {
-      InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
-    } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<int32_t>>()) {
-      InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
-    } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<int64_t>>()) {
-      InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
-    } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<uint8_t>>()) {
-      InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
-    } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<uint16_t>>()) {
-      InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
-    } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<uint32_t>>()) {
-      InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
-    } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<uint64_t>>()) {
-      InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
-    } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<float>>()) {
-      InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
-    } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<double>>()) {
-      InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
-    } else {
-      UNREACHABLE();
-    }
-  }
+  // // 4. Go back with a second pass over phi-nodes.
+  // for (auto [gen_phi_args, cmd_index] : deferred_phis) {
+  //   if (auto *phi_args = gen_phi_args->if_as<PhiArgs<bool>>()) {
+  //     InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
+  //   } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<int8_t>>()) {
+  //     InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
+  //   } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<int16_t>>()) {
+  //     InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
+  //   } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<int32_t>>()) {
+  //     InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
+  //   } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<int64_t>>()) {
+  //     InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
+  //   } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<uint8_t>>()) {
+  //     InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
+  //   } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<uint16_t>>()) {
+  //     InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
+  //   } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<uint32_t>>()) {
+  //     InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
+  //   } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<uint64_t>>()) {
+  //     InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
+  //   } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<float>>()) {
+  //     InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
+  //   } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<double>>()) {
+  //     InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
+  //   } else {
+  //     UNREACHABLE();
+  //   }
+  // }
 
   Results results;
   for (auto const &r : return_vals) { results.append(r); }

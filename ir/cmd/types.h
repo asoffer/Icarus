@@ -74,16 +74,28 @@ struct ArrowCmd {
                                            std::vector<Addr> const &ret_slots,
                                            backend::ExecContext *ctx) {
     std::vector<type::Type const *> ins =
-        internal::DeserializeAndResolve<uint16_t, type::Type const *>(iter,
-                                                                      ctx);
+        internal::Deserialize<uint16_t, type::Type const *>(
+            iter,
+            [ctx](Reg &reg) { return ctx->resolve<type::Type const *>(reg); });
     std::vector<type::Type const *> outs =
-        internal::DeserializeAndResolve<uint16_t, type::Type const *>(iter,
-                                                                      ctx);
+        internal::Deserialize<uint16_t, type::Type const *>(
+            iter,
+            [ctx](Reg &reg) { return ctx->resolve<type::Type const *>(reg); });
+
     auto &frame = ctx->call_stack.top();
     frame.regs_.set(GetOffset(frame.fn_, iter->read<Reg>()),
                     type::Func(std::move(ins), std::move(outs)));
 
     return std::nullopt;
+  }
+
+  static void UpdateForInlining(base::untyped_buffer::iterator *iter,
+                                Inliner const &inliner) {
+    internal::Deserialize<uint16_t, type::Type const *>(
+        iter, [&inliner](Reg &reg) { inliner.Inline(&reg); });
+    internal::Deserialize<uint16_t, type::Type const *>(
+        iter, [&inliner](Reg &reg) { inliner.Inline(&reg); });
+    inliner.Inline(&iter->read<Reg>());  // Result value
   }
 };
 

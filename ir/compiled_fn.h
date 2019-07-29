@@ -9,6 +9,7 @@
 #include "base/move_func.h"
 #include "core/fn_params.h"
 #include "ir/basic_block.h"
+#include "ir/inliner.h"
 
 namespace type {
 struct Function;
@@ -37,6 +38,13 @@ struct CompiledFn {
 
   CompiledFn(Module *mod, type::Function const *fn_type,
              core::FnParams<type::Typed<ast::Expression const *>> params);
+
+  Inliner inliner() {
+    BlockIndex index;
+    index.value = static_cast<decltype(index.value)>(blocks_.size());
+    blocks_.emplace_back(this);
+    return Inliner(compiler_reg_to_offset_.size(), blocks_.size(), index);
+  }
 
   std::string name() const;
 

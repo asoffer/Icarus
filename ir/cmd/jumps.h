@@ -30,6 +30,27 @@ struct JumpCmd {
       default: UNREACHABLE();
     }
   }
+
+  static void UpdateForInlining(base::untyped_buffer::iterator* iter,
+                                Inliner const& inliner) {
+    auto& kind  = iter->read<Kind>();
+    switch (kind) {
+      case Kind::kRet:
+        kind = Kind::kUncond;
+        // We have ensured that any return jump has enough space to hold an
+        // unconditional jump so that this write wile inlining does not need a
+        // reallocation. This ensures iterators remain valid.
+        iter->write(inliner.landing());
+        break;
+      case Kind::kUncond: inliner.Inline(&iter->read<BlockIndex>()); break;
+      case Kind::kCond: {
+        iter->read<Reg>();
+        inliner.Inline(&iter->read<BlockIndex>());
+        inliner.Inline(&iter->read<BlockIndex>());
+      } break;
+      default: UNREACHABLE();
+    }
+  }
 };
 
 inline void UncondJump(BlockIndex block) {
@@ -43,6 +64,10 @@ inline void ReturnJump() {
   auto& blk = GetBlock();
   blk.cmd_buffer_.append_index<JumpCmd>();
   blk.cmd_buffer_.append(JumpCmd::Kind::kRet);
+  // This extra block index is so that when inlined, we don't have to worry
+  // about iterator invalidation, as a return becomes an unconditional jump
+  // needing extra space.
+  blk.cmd_buffer_.append(BlockIndex{});
 }
 
 inline void CondJump(RegOr<bool> cond, BlockIndex true_block,

@@ -119,6 +119,8 @@ cc_lib_target(
         ":phi",
         "//ast:ast",
         "//core:arch",
+        "//ir/cmd:jumps",
+        "//ir/cmd:register",
         "//type:typed_value",
         "//type:generic_struct",
     ],
@@ -130,6 +132,7 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = [
         ":cmd",
+        ":inliner",
         "//backend:exec",
         "//base:untyped_buffer",
         "//core:arch",
@@ -141,6 +144,7 @@ cc_lib_target(
         "//ir/cmd:jumps",
         "//ir/cmd:load",
         "//ir/cmd:print",
+        "//ir/cmd:register",
         "//ir/cmd:store",
         "//ir/cmd:types",
     ],
@@ -198,6 +202,17 @@ cc_lib_target(
         "//type:function",
         "//type:pointer",
     ],
+    test_deps = None,
+)
+
+cc_lib_target(
+    name = "inliner",
+    cfgs = ["match", "compile"],
+    intf_deps = [
+        ":reg",
+        ":register",
+    ],
+    impl_deps = None,
     test_deps = None,
 )
 

@@ -17,13 +17,29 @@ struct CompiledFn;
 
 struct BasicBlock {
   static thread_local BlockIndex Current;
-  BasicBlock()                       = default;
-  BasicBlock(const BasicBlock &&)    = delete;
+  BasicBlock() = default;
+  explicit BasicBlock(CompiledFn *fn) : fn_(fn) {}
+
+  BasicBlock(BasicBlock const &b)
+      : fn_(b.fn_),
+        cmd_buffer_(b.cmd_buffer_),
+        arguments_(b.arguments_),
+        outs_(b.outs_) {
+    cmds_.reserve(b.cmds_.size());
+    for (size_t i = 0; i < cmds_.size(); ++i) {
+      cmds_.push_back(std::make_unique<Cmd>(*b.cmds_[i]));
+    }
+    phi_args_.reserve(b.phi_args_.size());
+    for (size_t i = 0; i < phi_args_.size(); ++i) {
+      NOT_YET();
+      // phi_args_.push_back(std::make_unique<GenericPhiArgs>(*b.phi_args_[i]));
+    }
+  }
+
   BasicBlock(BasicBlock &&) noexcept = default;
-  BasicBlock(CompiledFn *fn) : fn_(fn) {}
 
   BasicBlock &operator=(BasicBlock &&) noexcept = default;
-  BasicBlock &operator=(const BasicBlock &) = delete;
+  BasicBlock &operator=(BasicBlock const &b) { return *this = BasicBlock(b); }
 
   void Append(BasicBlock &&b);
 

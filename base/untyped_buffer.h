@@ -64,6 +64,14 @@ struct untyped_buffer {
       return result;
     }
 
+    template <typename T>
+    void write(T t) {
+      ptr_ = reinterpret_cast<char *>(
+          ((reinterpret_cast<uintptr_t>(ptr_) - 1) | (alignof(T) - 1)) + 1);
+      *reinterpret_cast<T *>(ptr_) = t;
+      ptr_ += sizeof(T);
+    }
+
    private:
     friend struct untyped_buffer;
     friend std::string stringify(untyped_buffer::iterator);

@@ -126,14 +126,10 @@ constexpr uint8_t ReverseByte(uint8_t byte) {
   return byte;
 }
 
-template <typename SizeType, typename T>
-std::vector<T> DeserializeAndResolve(base::untyped_buffer::iterator* iter,
-                                     backend::ExecContext* ctx) {
+template <typename SizeType, typename T, typename Fn>
+auto Deserialize(base::untyped_buffer::iterator* iter, Fn&& fn) {
   SizeType num    = iter->read<SizeType>();
   uint8_t current = 0;
-
-  std::vector<T> vals;
-  vals.reserve(num);
 
   std::vector<bool> bits;
   bits.reserve(num);
@@ -143,11 +139,25 @@ std::vector<T> DeserializeAndResolve(base::untyped_buffer::iterator* iter,
     current >>= 1;
   }
 
-  for (bool b : bits) {
-    vals.push_back(b ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>());
+  if constexpr (std::is_void_v<decltype(
+                    std::forward<Fn>(fn)(std::declval<Reg&>()))>) {
+    for (bool b : bits) {
+      if (b) {
+        std::forward<Fn>(fn)(iter->read<Reg>());
+      } else {
+        iter->read<T>();
+      }
+    }
+    return;
+  } else {
+    std::vector<T> vals;
+    vals.reserve(num);
+    for (bool b : bits) {
+      vals.push_back(b ? std::forward<Fn>(fn)(iter->read<Reg>())
+                       : iter->read<T>());
+    }
+    return vals;
   }
-
-  return vals;
 }
 
 template <uint8_t Index, typename Fn, typename... SupportedTypes>
@@ -184,6 +194,22 @@ struct UnaryCmd {
       frame.regs_.set(GetOffset(frame.fn_, iter->read<Reg>()), result);
     });
     return std::nullopt;
+  }
+
+  static void UpdateForInlining(base::untyped_buffer::iterator* iter,
+                                Inliner const& inliner) {
+    auto ctrl = iter->read<control_bits>();
+    if (ctrl.reg0) {
+      inliner.Inline(&iter->read<Reg>());
+    } else {
+      // TODO: Add core::LayoutRequirements so you can skip forward by the
+      // appropriate amount without instantiating so many templates.
+      PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
+        iter->read<typename std::decay_t<decltype(tag)>::type>();
+      });
+    }
+
+    inliner.Inline(&iter->read<Reg>());  // Result value
   }
 
  private:
@@ -272,6 +298,32 @@ struct BinaryCmd {
     return std::nullopt;
   }
 
+  static void UpdateForInlining(base::untyped_buffer::iterator* iter,
+                                Inliner const& inliner) {
+    auto ctrl = iter->read<control_bits>();
+    if (ctrl.reg0) {
+      inliner.Inline(&iter->read<Reg>());
+    } else {
+      // TODO: Add core::LayoutRequirements so you can skip forward by the
+      // appropriate amount without instantiating so many templates.
+      PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
+        iter->read<typename std::decay_t<decltype(tag)>::type>();
+      });
+    }
+
+    if (ctrl.reg1) {
+      inliner.Inline(&iter->read<Reg>());
+    } else {
+      // TODO: Add core::LayoutRequirements so you can skip forward by the
+      // appropriate amount without instantiating so many templates.
+      PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
+        iter->read<typename std::decay_t<decltype(tag)>::type>();
+      });
+    }
+
+    inliner.Inline(&iter->read<Reg>());  // Result value
+  }
+
  private:
   template <typename T>
   static auto Apply(base::untyped_buffer::iterator* iter, bool reg0, bool reg1,
@@ -336,13 +388,21 @@ struct VariadicCmd {
   static std::optional<BlockIndex> Execute(base::untyped_buffer::iterator* iter,
                                            std::vector<Addr> const& ret_slots,
                                            backend::ExecContext* ctx) {
-    std::vector<T> vals = DeserializeAndResolve<uint16_t, T>(iter, ctx);
+    std::vector<T> vals = Deserialize<uint16_t, T>(
+        iter, [ctx](Reg& reg) { return ctx->resolve<T>(reg); });
 
     auto& frame = ctx->call_stack.top();
     frame.regs_.set(GetOffset(frame.fn_, iter->read<Reg>()),
                     Fn(std::move(vals)));
 
     return std::nullopt;
+  }
+
+  static void UpdateForInlining(base::untyped_buffer::iterator* iter,
+                                Inliner const& inliner) {
+    Deserialize<uint16_t, T>(iter,
+                             [&inliner](Reg& reg) { inliner.Inline(&reg); });
+    inliner.Inline(&iter->read<Reg>());  // Result value
   }
 };
 

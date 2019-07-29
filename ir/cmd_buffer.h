@@ -3,10 +3,11 @@
 
 #include <cstddef>
 
+#include "backend/exec.h"
 #include "base/untyped_buffer.h"
 #include "core/arch.h"
 #include "ir/cmd.h"
-#include "backend/exec.h"
+#include "ir/inliner.h"
 
 namespace ir {
 // TODO blockindex can store its own nullopt.
@@ -19,6 +20,9 @@ struct LegacyCmd {
     if (block == ir::BlockIndex{-2}) { return std::nullopt; }
     return block;
   }
+
+  static void UpdateForInlining(base::untyped_buffer::iterator* iter,
+                                Inliner const& inliner);
 
  private:
   Cmd* ptr_;
@@ -38,6 +42,8 @@ struct CmdBuffer {
 
   BlockIndex Execute(std::vector<ir::Addr> const& ret_slots,
                      backend::ExecContext* ctx);
+
+  void UpdateForInlining(Inliner const& inliner);
 
 
   std::string to_string() const;

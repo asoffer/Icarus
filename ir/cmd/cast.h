@@ -108,6 +108,14 @@ struct CastCmd {
 
     return std::nullopt;
   }
+
+  static void UpdateForInlining(base::untyped_buffer::iterator* iter,
+                                Inliner const& inliner) {
+    iter->read<uint8_t>();
+    iter->read<uint8_t>();
+    inliner.Inline(&iter->read<Reg>());  // Input
+    inliner.Inline(&iter->read<Reg>());  // Result value
+  }
 };
 
 template <typename ToType, typename FromType>
