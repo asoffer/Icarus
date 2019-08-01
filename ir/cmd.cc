@@ -362,9 +362,17 @@ std::pair<Results, bool> CallInline(
     CompiledFn *f, Arguments const &arguments,
     absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> const
         &block_map) {
+  DEBUG_LOG("str")(CompiledFn::Current->blocks_.size());
+
   bool is_jump = false; // TODO remove this
   std::vector<Results> return_vals;
   return_vals.resize(f->type_->output.size());
+
+  // Note: It is important that the inliner is created before making registers
+  // for each of the arguments, because creating the inliner looks state on the
+  // current function (counting which register it should start on), and this
+  // should exclude the registers we create to hold the arguments.
+  auto inliner = CompiledFn::Current->inliner();
 
   std::vector<Reg> arg_regs;
   arg_regs.reserve(f->type_->input.size());
@@ -377,7 +385,6 @@ std::pair<Results, bool> CallInline(
   }
 
   BlockIndex start(CompiledFn::Current->blocks_.size());
-  auto inliner = CompiledFn::Current->inliner();
 
   for (size_t i = 1; i < f->blocks_.size(); ++i) {
     auto &block = CompiledFn::Current->block(CompiledFn::AddBlock());
@@ -385,8 +392,16 @@ std::pair<Results, bool> CallInline(
     block.cmd_buffer_.UpdateForInlining(inliner);
   }
 
+  auto &block = CompiledFn::Current->block(BasicBlock::Current);
+
   UncondJump(start);
   BasicBlock::Current = inliner.landing();
+
+  size_t i = 0;
+  for (auto const &block : CompiledFn::Current->blocks_) {
+    DEBUG_LOG("str")(i, ": ", block.cmd_buffer_.to_string());
+    i++;
+  }
 
   for (auto const &cmd : f->block(f->entry()).cmds_) {
     switch (cmd->op_code_) {

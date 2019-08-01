@@ -17,6 +17,7 @@ cc_group_target(
         ":components-impl",
         ":flags_val-impl",
         ":foreign-impl",
+        ":inliner-impl",
         ":out_params-impl",
         ":phi-impl",
         ":results-impl",
@@ -212,7 +213,7 @@ cc_lib_target(
         ":reg",
         ":register",
     ],
-    impl_deps = None,
+    impl_deps = [":compiled_fn"],
     test_deps = None,
 )
 

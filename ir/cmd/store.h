@@ -51,6 +51,35 @@ struct StoreCmd {
     return std::nullopt;
   }
 
+  static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
+    using base::stringify;
+    std::string s;
+    auto ctrl = iter->read<control_bits>();
+    if (ctrl.reg) {
+      s.append(stringify(iter->read<Reg>()));
+    } else {
+      // TODO: Add core::LayoutRequirements so you can skip forward by the
+      // appropriate amount without instantiating so many templates.
+      PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
+        s.append(stringify(
+            iter->read<typename std::decay_t<decltype(tag)>::type>()));
+      });
+    }
+
+    s.append(" ");
+    if (ctrl.reg_addr) {
+      s.append(stringify(iter->read<Reg>()));
+    } else {
+      // TODO: Add core::LayoutRequirements so you can skip forward by the
+      // appropriate amount without instantiating so many templates.
+      PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
+        s.append(stringify(
+            iter->read<typename std::decay_t<decltype(tag)>::type>()));
+      });
+    }
+    return s;
+  }
+
   static void UpdateForInlining(base::untyped_buffer::iterator* iter,
                                 Inliner const& inliner) {
     auto ctrl = iter->read<control_bits>();

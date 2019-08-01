@@ -73,7 +73,14 @@ auto PrimitiveDispatch(uint8_t primitive_type, Fn&& fn) {
       return std::forward<Fn>(fn)(base::Tag<EnumVal>{});
     case PrimitiveIndex<FlagsVal>():
       return std::forward<Fn>(fn)(base::Tag<FlagsVal>{});
+    default: UNREACHABLE();
   }
+}
+
+inline type::Type const* GetType(uint8_t primitive_type) {
+  return PrimitiveDispatch(primitive_type, [](auto tag) {
+    return type::Get<typename std::decay_t<decltype(tag)>::type>();
+  });
 }
 
 namespace internal {
@@ -196,20 +203,39 @@ struct UnaryCmd {
     return std::nullopt;
   }
 
-  static void UpdateForInlining(base::untyped_buffer::iterator* iter,
-                                Inliner const& inliner) {
+  static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
     auto ctrl = iter->read<control_bits>();
+    using base::stringify;
+    std::string s = " ";
     if (ctrl.reg0) {
-      inliner.Inline(&iter->read<Reg>());
+      s.append(stringify(iter->read<Reg>()));
     } else {
       // TODO: Add core::LayoutRequirements so you can skip forward by the
       // appropriate amount without instantiating so many templates.
       PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
-        iter->read<typename std::decay_t<decltype(tag)>::type>();
+        s.append(stringify(iter->read<typename std::decay_t<decltype(tag)>::type>()));
       });
     }
 
-    inliner.Inline(&iter->read<Reg>());  // Result value
+    s.append(" -> ");
+    s.append(stringify(iter->read<Reg>()));
+    return s;
+  }
+
+  static void UpdateForInlining(base::untyped_buffer::iterator* iter,
+                                Inliner const& inliner) {
+    auto ctrl = iter->read<control_bits>();
+    // TODO: Add core::LayoutRequirements so you can skip forward by the
+    // appropriate amount without instantiating so many templates.
+    if (ctrl.reg0) {
+      inliner.Inline(&iter->read<Reg>());
+    } else {
+      PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
+        iter->read<typename std::decay_t<decltype(tag)>::type>();
+      });
+    }
+    // Result value
+    inliner.Inline(&iter->read<Reg>(), GetType(ctrl.primitive_type));
   }
 
  private:
@@ -298,6 +324,38 @@ struct BinaryCmd {
     return std::nullopt;
   }
 
+  static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
+    auto ctrl = iter->read<control_bits>();
+    using base::stringify;
+    std::string s = " ";
+    if (ctrl.reg0) {
+      s.append(stringify(iter->read<Reg>()));
+    } else {
+      // TODO: Add core::LayoutRequirements so you can skip forward by the
+      // appropriate amount without instantiating so many templates.
+      PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
+        s.append(stringify(
+            iter->read<typename std::decay_t<decltype(tag)>::type>()));
+      });
+    }
+
+    s.append(" ");
+    if (ctrl.reg1) {
+      s.append(stringify(iter->read<Reg>()));
+    } else {
+      // TODO: Add core::LayoutRequirements so you can skip forward by the
+      // appropriate amount without instantiating so many templates.
+      PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
+        s.append(stringify(
+            iter->read<typename std::decay_t<decltype(tag)>::type>()));
+      });
+    }
+
+    s.append(" -> ");
+    s.append(stringify(iter->read<Reg>()));
+    return s;
+  }
+
   static void UpdateForInlining(base::untyped_buffer::iterator* iter,
                                 Inliner const& inliner) {
     auto ctrl = iter->read<control_bits>();
@@ -321,7 +379,8 @@ struct BinaryCmd {
       });
     }
 
-    inliner.Inline(&iter->read<Reg>());  // Result value
+    // Result value
+    inliner.Inline(&iter->read<Reg>(), GetType(ctrl.primitive_type));
   }
 
  private:
@@ -398,11 +457,16 @@ struct VariadicCmd {
     return std::nullopt;
   }
 
+  static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
+    return "NOT_YET";
+  }
+
   static void UpdateForInlining(base::untyped_buffer::iterator* iter,
                                 Inliner const& inliner) {
     Deserialize<uint16_t, T>(iter,
                              [&inliner](Reg& reg) { inliner.Inline(&reg); });
-    inliner.Inline(&iter->read<Reg>());  // Result value
+    // Result value
+    inliner.Inline(&iter->read<Reg>(), ::type::Get<T>());
   }
 };
 

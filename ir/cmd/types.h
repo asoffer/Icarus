@@ -89,13 +89,17 @@ struct ArrowCmd {
     return std::nullopt;
   }
 
+  static std::string DebugString(base::untyped_buffer::const_iterator *iter) {
+    return "NOT_YET";
+  }
+
   static void UpdateForInlining(base::untyped_buffer::iterator *iter,
                                 Inliner const &inliner) {
     internal::Deserialize<uint16_t, type::Type const *>(
         iter, [&inliner](Reg &reg) { inliner.Inline(&reg); });
     internal::Deserialize<uint16_t, type::Type const *>(
         iter, [&inliner](Reg &reg) { inliner.Inline(&reg); });
-    inliner.Inline(&iter->read<Reg>());  // Result value
+    inliner.Inline(&iter->read<Reg>(), type::Type_);  // Result value
   }
 };
 

@@ -256,7 +256,47 @@ void CmdBuffer::UpdateForInlining(Inliner const& inliner) {
 
 std::string CmdBuffer::to_string() const {
   // Come up with a better/more-permanent solution here.
-  return buf_.to_string();
+  std::string s;
+  auto iter = buf_.begin();
+  while (iter < buf_.end()) {
+    switch (iter.read<cmd_index_t>()) {
+#define CASE(type)                                                             \
+  case type::index:                                                            \
+    s.append("\n" #type ": ");                                                 \
+    s.append(type::DebugString(&iter));                                        \
+    break
+      CASE(LegacyCmd);
+      CASE(PrintCmd);
+      CASE(AddCmd);
+      CASE(SubCmd);
+      CASE(MulCmd);
+      CASE(DivCmd);
+      CASE(ModCmd);
+      CASE(NegCmd);
+      CASE(NotCmd);
+      CASE(LtCmd);
+      CASE(LeCmd);
+      CASE(EqCmd);
+      CASE(NeCmd);
+      CASE(GeCmd);
+      CASE(GtCmd);
+      CASE(StoreCmd);
+      CASE(LoadCmd);
+      CASE(VariantCmd);
+      CASE(TupleCmd);
+      CASE(ArrowCmd);
+      CASE(PtrCmd);
+      CASE(BufPtrCmd);
+      CASE(JumpCmd);
+      CASE(XorFlagsCmd);
+      CASE(AndFlagsCmd);
+      CASE(OrFlagsCmd);
+      CASE(CastCmd);
+      CASE(RegisterCmd);
+#undef CASE
+    }
+  }
+  return s;
 }
 
 size_t GetOffset(CompiledFn const* fn, Reg r) {

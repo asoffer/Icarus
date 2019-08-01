@@ -109,6 +109,10 @@ struct CastCmd {
     return std::nullopt;
   }
 
+  static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
+    return "NOT_YET";
+  }
+
   static void UpdateForInlining(base::untyped_buffer::iterator* iter,
                                 Inliner const& inliner) {
     iter->read<uint8_t>();

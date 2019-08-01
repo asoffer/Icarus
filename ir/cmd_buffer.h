@@ -24,6 +24,12 @@ struct LegacyCmd {
   static void UpdateForInlining(base::untyped_buffer::iterator* iter,
                                 Inliner const& inliner);
 
+  static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
+    std::stringstream ss;
+    ss << *iter->read<Cmd*>();
+    return ss.str();
+  }
+
  private:
   Cmd* ptr_;
 };

@@ -4,10 +4,15 @@
 #include "ir/register.h"
 #include "ir/reg.h"
 
+namespace type {
+struct Type;
+}  // namespace type
+
 namespace ir {
 
 struct Inliner {
-  constexpr void Inline(Reg *r) const { *r = Reg{r->value() + reg_offset_}; }
+  void Inline(Reg *r, type::Type const *t = nullptr) const;
+
   constexpr void Inline(BlockIndex *b) const {
     *b = BlockIndex(b->value + block_offset_);
   }

@@ -31,6 +31,24 @@ struct JumpCmd {
     }
   }
 
+  static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
+    std::string s;
+    using base::stringify;
+    switch (iter->read<Kind>()) {
+      case Kind::kRet: s.append("ret"); break;
+      case Kind::kUncond: s.append(stringify(iter->read<BlockIndex>())); break;
+      case Kind::kCond: {
+        s.append(stringify(iter->read<Reg>()));
+        s.append(" false: ");
+        s.append(stringify(iter->read<BlockIndex>()));
+        s.append(", true: ");
+        s.append(stringify(iter->read<BlockIndex>()));
+      } break;
+      default: UNREACHABLE();
+    }
+    return s;
+  }
+
   static void UpdateForInlining(base::untyped_buffer::iterator* iter,
                                 Inliner const& inliner) {
     auto& kind  = iter->read<Kind>();

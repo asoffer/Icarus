@@ -13,6 +13,8 @@ struct Reg {
 
   constexpr bool is_arg() { return val_ & arg_mask; }
   constexpr bool is_out() { return val_ & out_mask; }
+  constexpr auto arg_value() const { return val_ & ~arg_mask; }
+  constexpr auto out_value() const { return val_ & ~out_mask; }
   constexpr auto value() const { return val_; }
 
   template <typename H>

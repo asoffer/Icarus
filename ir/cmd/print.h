@@ -81,6 +81,21 @@ struct PrintCmd {
     return std::nullopt;
   }
 
+  static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
+    std::string s;
+    auto ctrl = iter->read<control_bits>();
+    if (ctrl.reg) {
+      s.append(stringify(iter->read<Reg>()));
+    } else {
+      PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
+        using T = typename std::decay_t<decltype(tag)>::type;
+        using base::stringify;
+        s.append(stringify(iter->read<T>()));
+      });
+    }
+    return s;
+  }
+
   static void UpdateForInlining(base::untyped_buffer::iterator* iter,
                                 Inliner const &inliner) {
     auto ctrl = iter->read<control_bits>();

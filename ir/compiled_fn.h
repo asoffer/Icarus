@@ -43,7 +43,7 @@ struct CompiledFn {
     BlockIndex index;
     index.value = static_cast<decltype(index.value)>(blocks_.size());
     blocks_.emplace_back(this);
-    return Inliner(compiler_reg_to_offset_.size(), blocks_.size(), index);
+    return Inliner(compiler_reg_to_offset_.size(), blocks_.size() - 1, index);
   }
 
   std::string name() const;
