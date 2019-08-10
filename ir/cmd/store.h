@@ -3,6 +3,7 @@
 
 #include <string_view>
 
+#include "backend/exec.h"
 #include "ir/basic_block.h"
 #include "ir/cmd/util.h"
 #include "ir/cmd_buffer.h"
@@ -34,11 +35,20 @@ struct StoreCmd {
     PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
       using T = typename std::decay_t<decltype(tag)>::type;
       T val   = ctrl.reg ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>();
-      Addr addr = ctrl.reg_addr ? ctx->resolve<Addr>(iter->read<Reg>())
-                                : iter->read<Addr>();
+      Addr addr = ctrl.reg_addr
+                      ? [&] {
+                      auto x = iter->read<Reg>();
+                      DEBUG_LOG("store")(x);
+                      auto y = ctx->resolve<Addr>(x);
+                      DEBUG_LOG("store")(y);
+                      return y; }()
+                      : [&] { return iter->read<Addr>(); }();
       static_assert(!std::is_same_v<T, void*>, "Not handling addresses yet");
       switch (addr.kind) {
-        case ir::Addr::Kind::Stack: ctx->stack_.set(addr.as_stack, val); break;
+        case ir::Addr::Kind::Stack:
+          DEBUG_LOG("store")(addr);
+          ctx->stack_.set(addr.as_stack, val);
+          break;
         case ir::Addr::Kind::ReadOnly:
           NOT_YET(
               "Storing into read-only data seems suspect. Is it just for "
@@ -119,14 +129,15 @@ void Store(T r, RegOr<Addr> addr) {
     }
 
     if (addr.is_reg_) {
+      DEBUG_LOG("store")(addr.reg_);
       blk.cmd_buffer_.append(addr.reg_);
     } else {
+      DEBUG_LOG("store")(addr.val_);
       blk.cmd_buffer_.append(addr.val_);
     }
   } else {
     Store(RegOr<T>(r), addr);
   }
-  DEBUG_LOG("store")(blk.cmd_buffer_.to_string());
 }
 
 }  // namespace ir

@@ -9,13 +9,18 @@ struct Type;
 }  // namespace type
 
 namespace ir {
+struct CompiledFn;
+struct StackFrameAllocations;
 
 struct Inliner {
+
   void Inline(Reg *r, type::Type const *t = nullptr) const;
 
   constexpr void Inline(BlockIndex *b) const {
     *b = BlockIndex(b->value + block_offset_);
   }
+
+  void MergeAllocations(CompiledFn *fn, StackFrameAllocations const &allocs);
 
   BlockIndex landing() const { return land_; }
 

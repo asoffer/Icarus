@@ -42,6 +42,21 @@ CompiledFn::CompiledFn(
   blocks_.emplace_back(this);
 }
 
+Reg CompiledFn::Reserve(type::Type const *t) {
+  auto arch   = core::Interpretter();
+  auto offset = core::FwdAlign(reg_size_, t->alignment(arch));
+  reg_size_   = offset + t->bytes(arch);
+  DEBUG_LOG("reserve")
+  ("Reserving t = ", t->to_string(), ". New size = ", reg_size_,
+   ", because type's size is ", t->bytes(arch));
+
+  // TODO starts at `n`, where `n` is the number of function arguments.
+  Reg r{compiler_reg_to_offset_.size()};
+  compiler_reg_to_offset_.emplace(r, offset.value());
+  ++num_regs_;
+  return r;
+}
+
 Cmd const *CompiledFn::Command(Reg reg) const {
   auto iter = reg_to_cmd_.find(reg);
   if (iter == reg_to_cmd_.end()) { return nullptr; }

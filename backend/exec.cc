@@ -48,7 +48,7 @@ void Execute(ir::CompiledFn *fn, const base::untyped_buffer &arguments,
   if (fn->work_item && *fn->work_item) { (std::move(*fn->work_item))(); }
 
   // TODO what about bound constants?
-  exec_ctx->call_stack.emplace(fn, arguments);
+  exec_ctx->call_stack.emplace(fn, arguments, exec_ctx);
 
   // TODO log an error if you're asked to execute a function that had an
   // error.
@@ -71,24 +71,34 @@ void Execute(ir::CompiledFn *fn, const base::untyped_buffer &arguments,
   }
 }
 
-template <typename T>
-T ExecContext::resolve(ir::Reg r) const {
-  return call_stack.top().regs_.get<T>(
-      call_stack.top().fn_->compiler_reg_to_offset_.at(r));
-}
-
 ExecContext::ExecContext() : stack_(50u) {}
 
 ir::BasicBlock &ExecContext::current_block() {
   return call_stack.top().fn_->block(call_stack.top().current_);
 }
 
-ExecContext::Frame::Frame(ir::CompiledFn *fn, const base::untyped_buffer &arguments)
+ExecContext::Frame::Frame(ir::CompiledFn *fn,
+                          const base::untyped_buffer &arguments,
+                          ExecContext *ctx)
     : fn_(fn),
       current_(fn_->entry()),
       prev_(fn_->entry()),
       regs_(base::untyped_buffer::MakeFull(fn_->reg_size_.value())) {
   regs_.write(0, arguments);
+
+  auto arch = core::Interpretter();
+  fn->allocs().for_each([&](type::Type const *t, ir::Reg r) {
+    DEBUG_LOG("allocs")
+    ("Allocating type = ", t->to_string(), ", reg = ", r,
+     ", offset = ", fn_->compiler_reg_to_offset_.at(r));
+    regs_.set(fn_->compiler_reg_to_offset_.at(r),
+              ir::Addr::Stack(core::FwdAlign(core::Bytes{ctx->stack_.size()},
+                                             t->alignment(arch))
+                                  .value()));
+
+    ctx->stack_.append_bytes(t->bytes(arch).value(),
+                             t->alignment(arch).value());
+  });
 }
 
 ir::BlockIndex ExecContext::ExecuteBlock(
@@ -438,17 +448,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       std::stringstream ss;
       ss << *call_stack.top().fn_;
       DEBUG_LOG()(ss.str());
-    } break;
-    case ir::Op::Alloca: {
-      auto arch = core::Interpretter();
-
-      save(ir::Addr::Stack(core::FwdAlign(core::Bytes{stack_.size()},
-                                            cmd.type_->alignment(arch))
-                               .value()));
-      // TODO simplify: just say how big you want the stack to be after this.
-      stack_.append_bytes(cmd.type_->bytes(arch).value(),
-                          cmd.type_->alignment(arch).value());
-
     } break;
     case ir::Op::Array: {
       save(type::Arr(resolve(cmd.array_.len_), resolve(cmd.array_.type_)));

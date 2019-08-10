@@ -31,6 +31,7 @@ cc_lib_target(
         "//base:untyped_buffer",
         "//ir:addr",
         "//ir:block",
+        "//ir:compiled_fn",
         "//ir:register",
     ],
     impl_deps = [

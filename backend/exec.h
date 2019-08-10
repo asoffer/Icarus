@@ -8,13 +8,13 @@
 #include "base/untyped_buffer.h"
 #include "ir/addr.h"
 #include "ir/block.h"
+#include "ir/compiled_fn.h"
 #include "ir/reg.h"
 #include "ir/register.h"
 
 namespace ir {
 struct Cmd;
 struct BasicBlock;
-struct CompiledFn;
 struct ScopeDef;
 }  // namespace ir
 
@@ -24,7 +24,8 @@ struct ExecContext {
 
   struct Frame {
     Frame() = delete;
-    Frame(ir::CompiledFn *fn, const base::untyped_buffer &arguments);
+    Frame(ir::CompiledFn *fn, const base::untyped_buffer &arguments,
+          ExecContext *ctx);
 
     void MoveTo(ir::BlockIndex block_index) {
       ASSERT(block_index.value >= 0);
@@ -51,7 +52,11 @@ struct ExecContext {
                             std::vector<ir::Addr> const &ret_slots);
 
   template <typename T>
-  T resolve(ir::Reg val) const;
+  T resolve(ir::Reg r) const {
+    DEBUG_LOG("x")(call_stack.top().regs_);
+    return call_stack.top().regs_.get<T>(
+        call_stack.top().fn_->compiler_reg_to_offset_.at(r));
+  }
 
   template <typename T>
   T resolve(ir::RegOr<T> val) const {

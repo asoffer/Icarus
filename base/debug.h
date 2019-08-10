@@ -6,6 +6,8 @@
 
 #ifdef DBG
 
+#define ICARUS_PRIVATE 
+
 #define ASSERT(...)                                                            \
   static_cast<bool>((MATCH(::debug::Asserter{}, __VA_ARGS__))) ||              \
       base::Logger(                                                            \
@@ -99,6 +101,8 @@ struct Asserter {
   } while (false)
 
 #else
+
+#define ICARUS_PRIVATE private
 
 #define ASSERT(...)                                                            \
   false && base::Logger(+[](std::experimental::source_location const &)        \

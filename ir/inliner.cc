@@ -1,6 +1,7 @@
 #include "ir/inliner.h"
 
 #include "ir/compiled_fn.h"
+#include "ir/stack_frame_allocations.h"
 
 namespace ir {
 void Inliner::Inline(Reg *r, type::Type const *t) const {
@@ -21,4 +22,7 @@ void Inliner::Inline(Reg *r, type::Type const *t) const {
     ++CompiledFn::Current->num_regs_;
   }
 }
+
+void Inliner::MergeAllocations(CompiledFn *fn,
+                               StackFrameAllocations const &allocs) {}
 }  // namespace ir

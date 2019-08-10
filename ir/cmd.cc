@@ -171,18 +171,7 @@ type::Typed<Reg> Field(RegOr<Addr> r, type::Struct const *t, size_t n) {
   return type::Typed<Reg>(cmd.result, p);
 }
 
-Reg Reserve(type::Type const *t) {
-  DEBUG_LOG("reserve")("Reserving t = ", t->to_string());
-  auto arch   = core::Interpretter();
-  auto offset = FwdAlign(CompiledFn::Current->reg_size_, t->alignment(arch));
-  CompiledFn::Current->reg_size_ = offset + t->bytes(arch);
-
-  // TODO starts at `n`, where `n` is the number of function arguments.
-  ir::Reg r{CompiledFn::Current->compiler_reg_to_offset_.size()};
-  CompiledFn::Current->compiler_reg_to_offset_.emplace(r, offset.value());
-  ++CompiledFn::Current->num_regs_;
-  return r;
-}
+Reg Reserve(type::Type const *t) { return CompiledFn::Current->Reserve(t); }
 
 Cmd::Cmd(type::Type const *t, Op op) : op_code_(op) {
   ASSERT(CompiledFn::Current != nullptr);
@@ -205,7 +194,7 @@ Cmd::Cmd(type::Type const *t, Op op) : op_code_(op) {
 }
 
 Reg MakeResult(type::Type const *t) {
-  Reg result = Reserve(t);
+  Reg result = CompiledFn::Current->Reserve(t);
   CompiledFn::Current->references_[result];  // Guarantee it exists.
   return result;
 }
@@ -263,15 +252,7 @@ void AddHashtagToStruct(Reg struct_type, ast::Hashtag hashtag) {
 }
 
 TypedRegister<Addr> Alloca(type::Type const *t) {
-  DEBUG_LOG("alloca")("alloca ", t->to_string());
-  auto &blk =
-      ASSERT_NOT_NULL(CompiledFn::Current)->block(CompiledFn::Current->entry());
-  auto &cmd =
-      *blk.cmds_.emplace_back(std::make_unique<Cmd>(type::Ptr(t), Op::Alloca));
-  blk.cmd_buffer_.append_index<LegacyCmd>();
-  blk.cmd_buffer_.append(&cmd);
-  cmd.type_ = t;
-  return cmd.result;
+  return CompiledFn::Current->Alloca(t);
 }
 
 TypedRegister<Addr> TmpAlloca(type::Type const *t, Context *ctx) {
@@ -362,7 +343,6 @@ std::pair<Results, bool> CallInline(
     CompiledFn *f, Arguments const &arguments,
     absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> const
         &block_map) {
-  DEBUG_LOG("str")(CompiledFn::Current->blocks_.size());
 
   bool is_jump = false; // TODO remove this
   std::vector<Results> return_vals;
@@ -403,9 +383,9 @@ std::pair<Results, bool> CallInline(
     i++;
   }
 
+  inliner.MergeAllocations(CompiledFn::Current, f->allocs());
   for (auto const &cmd : f->block(f->entry()).cmds_) {
     switch (cmd->op_code_) {
-      case Op::Alloca: NOT_YET(); continue;
       default: UNREACHABLE();
     }
   }

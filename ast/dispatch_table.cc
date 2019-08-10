@@ -746,7 +746,7 @@ static ir::Results EmitFnCall(
   size_t index_into_phi_args = 0;
   for (type::Type const *t : table->return_types_) {
     if (t->is_big()) {
-      outputs.emplace_back(ir::TmpAlloca(t, ctx));
+      // TODO outputs.emplace_back(ir::TmpAlloca(t, ctx));
     } else {
       outputs.emplace_back(&result_phi_args[index_into_phi_args++]);
     }

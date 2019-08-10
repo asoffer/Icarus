@@ -98,6 +98,7 @@ cc_lib_target(
     name = "util",
     cfgs = ["match", "compile"],
     intf_deps = [
+        "//backend:exec",
         "//base:util",
     ],
     impl_deps = None,

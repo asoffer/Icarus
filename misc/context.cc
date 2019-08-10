@@ -42,8 +42,8 @@ std::pair<ConstantBinding, Module::DependentData> *Context::insert_constants(
   return pair;
 }
 
-void Context::set_addr(ast::Declaration const *decl, ir::Reg r) {
-  constants_->second.addr_[decl] = r;
+void Context::set_addr(ast::Declaration const *decl, ir::Reg addr) {
+  constants_->second.addr_[decl] = addr;
 }
 
 core::PendingModule *Context::pending_module(

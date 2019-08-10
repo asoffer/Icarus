@@ -3,6 +3,7 @@
 #include <string_view>
 #include <type_traits>
 
+#include "backend/exec.h"
 #include "base/debug.h"
 #include "ir/cmd/basic.h"
 #include "ir/cmd/cast.h"
@@ -15,6 +16,14 @@
 #include "ir/compiled_fn.h"
 
 namespace ir {
+
+std::optional<BlockIndex> LegacyCmd::Execute(
+    base::untyped_buffer::iterator* iter,
+    std::vector<ir::Addr> const& ret_slots, backend::ExecContext* ctx) {
+  auto block = ctx->ExecuteCmd(*iter->read<Cmd*>(), ret_slots);
+  if (block == ir::BlockIndex{-2}) { return std::nullopt; }
+  return block;
+}
 
 void LegacyCmd::UpdateForInlining(base::untyped_buffer::iterator* iter,
                                   Inliner const& inliner) {
@@ -164,6 +173,7 @@ void LegacyCmd::UpdateForInlining(base::untyped_buffer::iterator* iter,
 BlockIndex CmdBuffer::Execute(std::vector<ir::Addr> const& ret_slots,
                               backend::ExecContext* ctx) {
   auto iter = buf_.begin();
+  DEBUG_LOG("dbg")(buf_);
   while (true) {
     DEBUG_LOG("dbg")(buf_.begin(), buf_.size());
     ASSERT(iter < buf_.end());

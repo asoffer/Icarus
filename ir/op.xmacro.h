@@ -16,7 +16,6 @@ OP_MACRO(AddFlag,              AddFlags,            void,                    add
 OP_MACRO(SetFlag,              SetFlags,            void,                    set_enumerator_)
 OP_MACRO(FinalizeFlags,        FinalizeFlags,       void,                    reg_)
 OP_MACRO(DebugIr,              DebugIr,             void,                    empty_)
-OP_MACRO(Alloca,               Alloca,              type::Type const*,       type_)
 OP_MACRO(PtrIncr,              PtrIncr,             void,                    ptr_incr_)
 OP_MACRO(Field,                Field,               void,                    field_)
 OP_MACRO(Array,                Array,               void,                    array_)

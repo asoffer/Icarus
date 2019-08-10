@@ -9,7 +9,101 @@
 #include "base/debug.h"
 
 namespace base {
+constexpr inline uint8_t kUnusedByte = 0xaa;
+
 struct untyped_buffer {
+
+  struct const_iterator {
+    template <typename T>
+    T const &read() {
+      ptr_ = reinterpret_cast<char const *>(
+          ((reinterpret_cast<uintptr_t>(ptr_) - 1) | (alignof(T) - 1)) + 1);
+      T const &result = *reinterpret_cast<T const *>(ptr_);
+      ptr_ += sizeof(T);
+      return result;
+    }
+
+   private:
+    friend struct untyped_buffer;
+    friend std::string stringify(untyped_buffer::const_iterator);
+
+    friend constexpr bool operator<(const_iterator lhs, const_iterator rhs) {
+      return lhs.ptr_ < rhs.ptr_;
+    }
+    friend constexpr bool operator>(const_iterator lhs, const_iterator rhs) {
+      return (rhs < lhs);
+    }
+    friend constexpr bool operator<=(const_iterator lhs, const_iterator rhs) {
+      return !(lhs > rhs);
+    }
+    friend constexpr bool operator>=(const_iterator lhs, const_iterator rhs) {
+      return !(rhs < lhs);
+    }
+    friend constexpr bool operator==(const_iterator lhs, const_iterator rhs) {
+      return lhs.ptr_ == rhs.ptr_;
+    }
+    friend constexpr bool operator!=(const_iterator lhs, const_iterator rhs) {
+      return !(lhs == rhs);
+    }
+
+    constexpr const_iterator(char const *ptr) : ptr_(ptr) {}
+
+    char const *ptr_;
+  };
+
+  struct iterator {
+    template <typename T>
+    T &read() {
+      ptr_ = reinterpret_cast<char *>(
+          ((reinterpret_cast<uintptr_t>(ptr_) - 1) | (alignof(T) - 1)) + 1);
+      T &result = *reinterpret_cast<T *>(ptr_);
+      ptr_ += sizeof(T);
+      return result;
+    }
+
+    template <typename T>
+    void write(T t) {
+      ptr_ = reinterpret_cast<char *>(
+          ((reinterpret_cast<uintptr_t>(ptr_) - 1) | (alignof(T) - 1)) + 1);
+      *reinterpret_cast<T *>(ptr_) = t;
+      ptr_ += sizeof(T);
+    }
+
+    operator const_iterator() { return const_iterator(ptr_); }
+
+   private:
+    friend struct untyped_buffer;
+    friend std::string stringify(untyped_buffer::iterator);
+
+    friend constexpr bool operator<(iterator lhs, iterator rhs) {
+      return lhs.ptr_ < rhs.ptr_;
+    }
+    friend constexpr bool operator>(iterator lhs, iterator rhs) {
+      return (rhs < lhs);
+    }
+    friend constexpr bool operator<=(iterator lhs, iterator rhs) {
+      return !(lhs > rhs);
+    }
+    friend constexpr bool operator>=(iterator lhs, iterator rhs) {
+      return !(rhs < lhs);
+    }
+    friend constexpr bool operator==(iterator lhs, iterator rhs) {
+      return lhs.ptr_ == rhs.ptr_;
+    }
+    friend constexpr bool operator!=(iterator lhs, iterator rhs) {
+      return !(lhs == rhs);
+    }
+
+    constexpr iterator(char *ptr) : ptr_(ptr) {}
+
+    char *ptr_;
+  };
+
+  untyped_buffer(const_iterator iter, size_t len)
+      : size_(len), capacity_(len), data_(static_cast<char *>(malloc(len))) {
+    std::memcpy(data_, iter.ptr_, size_);
+  }
+
   untyped_buffer(size_t starting_capacity = 0)
       : size_(0),
         capacity_(starting_capacity),
@@ -52,91 +146,6 @@ struct untyped_buffer {
   }
 
   ~untyped_buffer() { free(data_); }
-
-  struct iterator {
-
-    template <typename T>
-    T &read() {
-      ptr_ = reinterpret_cast<char *>(
-          ((reinterpret_cast<uintptr_t>(ptr_) - 1) | (alignof(T) - 1)) + 1);
-      T &result = *reinterpret_cast<T *>(ptr_);
-      ptr_ += sizeof(T);
-      return result;
-    }
-
-    template <typename T>
-    void write(T t) {
-      ptr_ = reinterpret_cast<char *>(
-          ((reinterpret_cast<uintptr_t>(ptr_) - 1) | (alignof(T) - 1)) + 1);
-      *reinterpret_cast<T *>(ptr_) = t;
-      ptr_ += sizeof(T);
-    }
-
-   private:
-    friend struct untyped_buffer;
-    friend std::string stringify(untyped_buffer::iterator);
-
-    friend constexpr bool operator<(iterator lhs, iterator rhs) {
-      return lhs.ptr_ < rhs.ptr_;
-    }
-    friend constexpr bool operator>(iterator lhs, iterator rhs) {
-      return (rhs < lhs);
-    }
-    friend constexpr bool operator<=(iterator lhs, iterator rhs) {
-      return !(lhs > rhs);
-    }
-    friend constexpr bool operator>=(iterator lhs, iterator rhs) {
-      return !(rhs < lhs);
-    }
-    friend constexpr bool operator==(iterator lhs, iterator rhs) {
-      return lhs.ptr_ == rhs.ptr_;
-    }
-    friend constexpr bool operator!=(iterator lhs, iterator rhs) {
-      return !(lhs == rhs);
-    }
-
-    constexpr iterator(char *ptr) : ptr_(ptr) {}
-
-    char *ptr_;
-  };
-
-  struct const_iterator {
-    template <typename T>
-    T const &read() {
-      ptr_ = reinterpret_cast<char const *>(
-          ((reinterpret_cast<uintptr_t>(ptr_) - 1) | (alignof(T) - 1)) + 1);
-      T const &result = *reinterpret_cast<T const *>(ptr_);
-      ptr_ += sizeof(T);
-      return result;
-    }
-
-   private:
-    friend struct untyped_buffer;
-    friend std::string stringify(untyped_buffer::const_iterator);
-
-    friend constexpr bool operator<(const_iterator lhs, const_iterator rhs) {
-      return lhs.ptr_ < rhs.ptr_;
-    }
-    friend constexpr bool operator>(const_iterator lhs, const_iterator rhs) {
-      return (rhs < lhs);
-    }
-    friend constexpr bool operator<=(const_iterator lhs, const_iterator rhs) {
-      return !(lhs > rhs);
-    }
-    friend constexpr bool operator>=(const_iterator lhs, const_iterator rhs) {
-      return !(rhs < lhs);
-    }
-    friend constexpr bool operator==(const_iterator lhs, const_iterator rhs) {
-      return lhs.ptr_ == rhs.ptr_;
-    }
-    friend constexpr bool operator!=(const_iterator lhs, const_iterator rhs) {
-      return !(lhs == rhs);
-    }
-
-    constexpr const_iterator(char const *ptr) : ptr_(ptr) {}
-
-    char const *ptr_;
-  };
 
   constexpr iterator begin() { return iterator(data_); }
   constexpr const_iterator begin() const { return const_iterator(data_); }
@@ -216,6 +225,9 @@ struct untyped_buffer {
     size_t new_cap = std::max<size_t>(num, capacity_ * 2);
     char *new_data = static_cast<char *>(malloc(new_cap));
     std::memcpy(new_data, data_, size_);
+#ifdef DBG
+    std::memset(new_data + size_, kUnusedByte, num - size_);
+#endif
     capacity_ = new_cap;
     free(data_);
     data_ = new_data;

@@ -10,6 +10,7 @@
 #include "core/fn_params.h"
 #include "ir/basic_block.h"
 #include "ir/inliner.h"
+#include "ir/stack_frame_allocations.h"
 
 namespace type {
 struct Function;
@@ -75,7 +76,17 @@ struct CompiledFn {
     return index;
   }
 
+  Reg Reserve(type::Type const *t);
+
+  Reg Alloca(type::Type const* t) {
+    Reg r = Reserve(type::Ptr(t));
+    allocs_.allocate(t, r);
+    return r;
+  }
+
   BlockIndex entry() const { return BlockIndex(0); }
+
+  StackFrameAllocations const &allocs() { return allocs_; }
 
   type::Function const *const type_ = nullptr;
   core::FnParams<type::Typed<ast::Expression const *>> params_;
@@ -91,22 +102,23 @@ struct CompiledFn {
   absl::flat_hash_map<Reg, base::bag<Reg>> references_;
   absl::flat_hash_map<Reg, CmdIndex> reg_to_cmd_;
 
-  // This vector is indexed by ir::Reg and stores the value which is the offset
+  // This vector is indexed by Reg and stores the value which is the offset
   // into the base::untyped_buffer holding all registers during compile-time
   // execution. It is only valid for core::Host().
-  absl::flat_hash_map<ir::Reg, size_t> compiler_reg_to_offset_;
+  absl::flat_hash_map<Reg, size_t> compiler_reg_to_offset_;
+  StackFrameAllocations allocs_;
   bool must_inline_ = false;
 
   // TODO this is a hack until you figure out how to handle scoping/jump
   // handlers/etc. correctly. For now, jump_handlers fill this out and regular
   // functions do not. Probably this means these two things should be separated
   // into different types.
-  std::vector<ir::BlockDef const *> jumps_;
+  std::vector<BlockDef const *> jumps_;
 };
 
 static_assert(alignof(CompiledFn) > 1);
 
-std::ostream &operator<<(std::ostream &, ir::CompiledFn const &);
+std::ostream &operator<<(std::ostream &, CompiledFn const &);
 
 namespace internal {
 struct FuncResetter {
@@ -125,6 +137,6 @@ struct FuncResetter {
 }  // namespace internal
 }  // namespace ir
 
-#define CURRENT_FUNC(fn) if (ir::internal::FuncResetter resetter(fn); true)
+#define CURRENT_FUNC(fn) if (::ir::internal::FuncResetter resetter(fn); true)
 
 #endif  // ICARUS_IR_COMPILED_FN_H

@@ -4,7 +4,7 @@
 namespace core {
 
 struct Bytes {
-  constexpr explicit Bytes(size_t val) : value_(val) {}
+  constexpr explicit Bytes(size_t val = 0) : value_(val) {}
 
   constexpr auto value() const { return value_; }
 

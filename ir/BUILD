@@ -134,12 +134,12 @@ cc_lib_target(
     intf_deps = [
         ":cmd",
         ":inliner",
-        "//backend:exec",
         "//base:untyped_buffer",
         "//core:arch",
     ],
     impl_deps = [
-        "//ir:compiled_fn",
+        ":compiled_fn",
+        "//backend:exec",
         "//ir/cmd:basic",
         "//ir/cmd:cast",
         "//ir/cmd:jumps",
@@ -189,10 +189,11 @@ cc_lib_target(
     name = "compiled_fn",
     cfgs = ["match", "compile"],
     intf_deps = [
+        ":basic_block",
+        ":stack_frame_allocations",
         "//ast:ast",
         "//base:bag",
         "//core:fn_params",
-        "//ir:basic_block",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
@@ -213,7 +214,10 @@ cc_lib_target(
         ":reg",
         ":register",
     ],
-    impl_deps = [":compiled_fn"],
+    impl_deps = [
+        ":compiled_fn",
+        ":stack_frame_allocations",
+    ],
     test_deps = None,
 )
 
@@ -271,6 +275,17 @@ cc_lib_target(
 cc_lib_target(
     name = "scope_def",
     intf_deps = [":any_func"],
+    impl_deps = None,
+    test_deps = None,
+)
+
+cc_lib_target(
+    name = "stack_frame_allocations",
+    intf_deps = [
+        ":addr",
+        ":reg",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
     impl_deps = None,
     test_deps = None,
 )

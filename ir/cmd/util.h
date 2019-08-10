@@ -3,6 +3,7 @@
 
 #include <type_traits>
 
+#include "backend/exec.h"
 #include "base/util.h"
 #include "ir/addr.h"
 #include "ir/reg.h"
@@ -243,7 +244,9 @@ struct UnaryCmd {
   static auto Apply(base::untyped_buffer::iterator* iter, bool reg0,
                     backend::ExecContext* ctx) {
     if constexpr (IsSupported<T>()) {
-      return Fn{}(reg0 ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>());
+      auto val = reg0 ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>();
+      DEBUG_LOG("unary")(val);
+      return Fn{}(val);
     } else {
       return T{};
     }
@@ -390,6 +393,7 @@ struct BinaryCmd {
     if constexpr (IsSupported<T>()) {
       auto lhs = reg0 ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>();
       auto rhs = reg1 ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>();
+      DEBUG_LOG("binary")(lhs, rhs);
       return Fn{}(lhs, rhs);
     } else {
       return T{};
