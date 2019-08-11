@@ -39,12 +39,12 @@ struct LoadCmd {
     PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
       using type = typename std::decay_t<decltype(tag)>::type;
       switch (addr.kind) {
-        case ir::Addr::Kind::Stack:
+        case Addr::Kind::Stack:
           frame.regs_.set(GetOffset(frame.fn_, result_reg),
                           ctx->stack_.get<type>(addr.as_stack));
           break;
-        case ir::Addr::Kind::ReadOnly: NOT_YET(); break;
-        case ir::Addr::Kind::Heap:
+        case Addr::Kind::ReadOnly: NOT_YET(); break;
+        case Addr::Kind::Heap:
           frame.regs_.set(GetOffset(frame.fn_, result_reg),
                           *static_cast<type*>(addr.as_heap));
       }
@@ -109,8 +109,8 @@ inline Reg Load(RegOr<Addr> r, type::Type const* t) {
   if (t->is<type::Function>()) { return Load<AnyFunc>(r); }
   return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
                           uint16_t, uint32_t, uint64_t, float, double,
-                          type::Type const*, ir::EnumVal, ir::FlagsVal,
-                          ir::Addr, std::string_view, ir::AnyFunc>(
+                          type::Type const*, EnumVal, FlagsVal, Addr,
+                          std::string_view, AnyFunc>(
       t, [&](auto type_holder) -> Reg {
         using T = typename decltype(type_holder)::type;
         return Load<T>(r);

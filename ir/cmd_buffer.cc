@@ -11,6 +11,7 @@
 #include "ir/cmd/load.h"
 #include "ir/cmd/print.h"
 #include "ir/cmd/register.h"
+#include "ir/cmd/set_ret.h"
 #include "ir/cmd/store.h"
 #include "ir/cmd/types.h"
 #include "ir/compiled_fn.h"
@@ -66,38 +67,6 @@ void LegacyCmd::UpdateForInlining(base::untyped_buffer::iterator* iter,
       // TODO CASE(PhiFunc, ____, phi_func_);
 #undef CASE
     case Op::GetRet: NOT_YET();
-#define CASE(op_code, args)                                                    \
-  case Op::op_code: {                                                          \
-    if (cmd.args.val_.is_reg_) {                                               \
-      inliner.Inline(&cmd.args.val_.reg_);                                     \
-      /*return_vals.at(cmd.args.ret_num_) = iter->second;*/                    \
-    } else {                                                                   \
-      /*return_vals.at(cmd.args.ret_num_) =                                    \
-        ir::Results{cmd.args.val_.val_};*/                                     \
-    }                                                                          \
-  } break
-      CASE(SetRetBool, set_ret_bool_);
-      CASE(SetRetInt8, set_ret_i8_);
-      CASE(SetRetInt16, set_ret_i16_);
-      CASE(SetRetInt32, set_ret_i32_);
-      CASE(SetRetInt64, set_ret_i64_);
-      CASE(SetRetNat8, set_ret_u8_);
-      CASE(SetRetNat16, set_ret_u16_);
-      CASE(SetRetNat32, set_ret_u32_);
-      CASE(SetRetNat64, set_ret_u64_);
-      CASE(SetRetFloat32, set_ret_float32_);
-      CASE(SetRetFloat64, set_ret_float64_);
-      CASE(SetRetType, set_ret_type_);
-      CASE(SetRetEnum, set_ret_enum_);
-      CASE(SetRetFlags, set_ret_flags_);
-      CASE(SetRetByteView, set_ret_byte_view_);
-      CASE(SetRetAddr, set_ret_addr_);
-      CASE(SetRetFunc, set_ret_func_);
-      CASE(SetRetScope, set_ret_scope_);
-      CASE(SetRetGeneric, set_ret_generic_);
-      CASE(SetRetModule, set_ret_module_);
-      CASE(SetRetBlock, set_ret_block_);
-#undef CASE
     case Op::ArgumentCache: NOT_YET();
     case Op::NewOpaqueType: NOT_YET();
     case Op::LoadSymbol: NOT_YET();
@@ -212,6 +181,7 @@ BlockIndex CmdBuffer::Execute(std::vector<ir::Addr> const& ret_slots,
       CASE(OrFlagsCmd);
       CASE(CastCmd);
       CASE(RegisterCmd);
+      CASE(SetRetCmd);
 #undef CASE
       default: UNREACHABLE();
     }

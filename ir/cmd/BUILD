@@ -73,6 +73,18 @@ cc_lib_target(
 )
 
 cc_lib_target(
+    name = "set_ret",
+    cfgs = ["match", "compile"],
+    intf_deps = [
+        ":util",
+        "//ir:basic_block",
+        "@com_google_absl//absl/strings",
+    ],
+    impl_deps = None,
+    test_deps = None,
+)
+
+cc_lib_target(
     name = "store",
     cfgs = ["match", "compile"],
     intf_deps = [

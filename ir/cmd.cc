@@ -268,25 +268,6 @@ TypedRegister<Addr> GetRet(size_t n, type::Type const *t) {
   return cmd.result;
 }
 
-void SetRet(size_t n, type::Typed<Results> const &r, Context *ctx) {
-  if (r.type()->is<type::GenericStruct>()) {
-    SetRet(n, r->get<AnyFunc>(0));
-  } else {
-    type::Apply(r.type(), [&](auto type_holder) {
-      using T = typename decltype(type_holder)::type;
-      if constexpr (std::is_same_v<T, type::Struct const *>) {
-        auto *t = ir::CompiledFn::Current->type_->output[n];
-        // TODO guaranteed move-elision
-        visitor::EmitIr visitor;
-        t->EmitMoveAssign(&visitor, t, r.get(), GetRet(n, t), ctx);
-        visitor.CompleteDeferredBodies();
-      } else {
-        SetRet(n, r->get<T>(0));
-      }
-    });
-  }
-}
-
 TypedRegister<Addr> PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
                             type::Pointer const *t) {
   if (!inc.is_reg_ && inc.val_ == 0 &&
@@ -479,11 +460,6 @@ static std::ostream &operator<<(std::ostream &os, Cmd::Store<T> const &s) {
 template <typename T>
 std::ostream &operator<<(std::ostream &os, Cmd::Args<T> const &a) {
   return os << Stringify(a.args_[0]) << " " << Stringify(a.args_[1]);
-}
-
-template <typename T>
-static std::ostream &operator<<(std::ostream &os, Cmd::SetRet<T> const &s) {
-  return os << s.ret_num_ << " " << Stringify(s.val_);
 }
 
 static std::ostream &operator<<(std::ostream &os, Cmd::PtrIncr const &p) {

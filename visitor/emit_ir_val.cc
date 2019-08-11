@@ -10,6 +10,7 @@
 #include "ir/cmd/cast.h"
 #include "ir/cmd/load.h"
 #include "ir/cmd/store.h"
+#include "ir/cmd/set_ret.h"
 #include "ir/cmd/types.h"
 #include "ir/components.h"
 #include "ir/phi.h"

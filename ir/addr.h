@@ -43,6 +43,8 @@ struct Addr {
 bool operator==(Addr lhs, Addr rhs);
 inline bool operator!=(Addr lhs, Addr rhs) { return !(lhs == rhs); }
 
+std::string stringify(Addr::Kind k);
+
 }  // namespace ir
 
 #endif  // ICARUS_IR_ADDR_H

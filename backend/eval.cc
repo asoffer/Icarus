@@ -4,6 +4,7 @@
 #include "backend/exec.h"
 #include "core/arch.h"
 #include "ir/cmd/jumps.h"
+#include "ir/cmd/set_ret.h"
 #include "ir/compiled_fn.h"
 #include "misc/context.h"
 #include "type/generic_struct.h"

@@ -23,8 +23,17 @@ bool operator==(Addr lhs, Addr rhs) {
     case Addr::Kind::Stack: return lhs.as_stack == rhs.as_stack;
     case Addr::Kind::Heap: return lhs.as_heap == rhs.as_heap;
     case Addr::Kind::ReadOnly: return lhs.as_rodata == rhs.as_rodata;
+    default: UNREACHABLE(static_cast<int>(lhs.kind));
   }
-  UNREACHABLE();
+}
+
+std::string stringify(Addr::Kind k) {
+  switch (k) {
+    case Addr::Kind::Heap: return "heap";
+    case Addr::Kind::Stack: return "stack";
+    case Addr::Kind::ReadOnly: return "readonly";
+    default: UNREACHABLE(static_cast<int>(k));
+  }
 }
 
 }  // namespace ir

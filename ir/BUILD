@@ -98,6 +98,7 @@ cc_lib_target(
         ":any_func",
         ":compiled_fn",
         "//ir/cmd:jumps",
+        "//ir/cmd:set_ret",
     ],
     test_deps = None,
 )
@@ -146,6 +147,7 @@ cc_lib_target(
         "//ir/cmd:load",
         "//ir/cmd:print",
         "//ir/cmd:register",
+        "//ir/cmd:set_ret",
         "//ir/cmd:store",
         "//ir/cmd:types",
     ],

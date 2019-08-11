@@ -62,12 +62,6 @@ struct Cmd {
     RegOr<T> val_;
   };
 
-  template <typename T>
-  struct SetRet {
-    size_t ret_num_;
-    RegOr<T> val_;
-  };
-
   struct Array {
     RegOr<int64_t> len_;
     RegOr<type::Type const *> type_;
@@ -315,28 +309,6 @@ struct Cmd {
 
     Store<type::Type const *> store_type_;
 
-    SetRet<bool> set_ret_bool_;
-    SetRet<int8_t> set_ret_i8_;
-    SetRet<int16_t> set_ret_i16_;
-    SetRet<int32_t> set_ret_i32_;
-    SetRet<int64_t> set_ret_i64_;
-    SetRet<uint8_t> set_ret_u8_;
-    SetRet<uint16_t> set_ret_u16_;
-    SetRet<uint32_t> set_ret_u32_;
-    SetRet<uint64_t> set_ret_u64_;
-    SetRet<float> set_ret_float32_;
-    SetRet<double> set_ret_float64_;
-    SetRet<type::Type const *> set_ret_type_;
-    SetRet<EnumVal> set_ret_enum_;
-    SetRet<AnyFunc> set_ret_func_;
-    SetRet<FlagsVal> set_ret_flags_;
-    SetRet<Addr> set_ret_addr_;
-    SetRet<std::string_view> set_ret_byte_view_;
-    SetRet<ScopeDef *> set_ret_scope_;
-    SetRet<ast::FunctionLiteral *> set_ret_generic_;
-    SetRet<Module *> set_ret_module_;
-    SetRet<BlockDef *> set_ret_block_;
-
     PhiArgs<bool> *phi_bool_;
     PhiArgs<int8_t> *phi_i8_;
     PhiArgs<int16_t> *phi_i16_;
@@ -377,20 +349,6 @@ type::Typed<Reg> Field(RegOr<Addr> r, type::Struct const *t,
 type::Typed<Reg> Field(RegOr<Addr> r, type::Tuple const *t, size_t n);
 
 Cmd &MakeCmd(type::Type const *t, Op op);
-
-template <typename T>
-void SetRet(size_t n, T t) {
-  if constexpr (!IsRegOr<T>::value) {
-    return SetRet(n, RegOr<T>(t));
-  } else {
-    auto &cmd =
-        MakeCmd(nullptr, Cmd::OpCode<Cmd::SetRetTag, typename T::type>());
-    cmd.template set<Cmd::SetRetTag, typename T::type>(n, t);
-    // TODO reenable if (r.is_reg_) {
-    // CompiledFn::Current->references_[r.reg_].insert(cmd.result); }
-  }
-}
-void SetRet(size_t n, type::Typed<Results> const &v2, Context *ctx = nullptr);
 
 void Call(RegOr<AnyFunc> const &f, Arguments arguments);
 void Call(RegOr<AnyFunc> const &f, Arguments arguments, OutParams outs);

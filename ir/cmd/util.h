@@ -33,10 +33,15 @@ constexpr uint8_t PrimitiveIndex() {
     return 0x0e;
   } else if constexpr (std::is_same_v<T, FlagsVal>) {
     return 0x0f;
+  } else if constexpr (std::is_same_v<T, AnyFunc>) {
+    return 0x10;
+  } else if constexpr (std::is_same_v<T, ast::FunctionLiteral*>) {
+    // TODO: FunctionLiteral is a short-term hack for generics. IR shouldn't depend on it.
+    return 0x11;
   } else if constexpr (std::is_integral_v<T>) {
     return base::Log2(sizeof(T)) * 2 + std::is_signed_v<T>;
   } else {
-    UNREACHABLE();
+    UNREACHABLE(typeid(T).name());
   }
 }
 
@@ -70,11 +75,15 @@ auto PrimitiveDispatch(uint8_t primitive_type, Fn&& fn) {
       return std::forward<Fn>(fn)(base::Tag<type::Type const *>{});
     case PrimitiveIndex<Addr>():
       return std::forward<Fn>(fn)(base::Tag<Addr>{});
+    case PrimitiveIndex<AnyFunc>():
+      return std::forward<Fn>(fn)(base::Tag<AnyFunc>{});
+    case PrimitiveIndex<ast::FunctionLiteral*>():
+      return std::forward<Fn>(fn)(base::Tag<ast::FunctionLiteral*>{});
     case PrimitiveIndex<EnumVal>():
       return std::forward<Fn>(fn)(base::Tag<EnumVal>{});
     case PrimitiveIndex<FlagsVal>():
       return std::forward<Fn>(fn)(base::Tag<FlagsVal>{});
-    default: UNREACHABLE();
+    default: UNREACHABLE(static_cast<int>(primitive_type));
   }
 }
 

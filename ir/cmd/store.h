@@ -19,6 +19,7 @@ struct StoreCmd {
     uint8_t reg : 1;
     uint8_t reg_addr : 1;
   };
+
   template <typename T>
   static control_bits MakeControlBits(bool reg, bool addr) {
     control_bits result;
@@ -35,26 +36,20 @@ struct StoreCmd {
     PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
       using T = typename std::decay_t<decltype(tag)>::type;
       T val   = ctrl.reg ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>();
-      Addr addr = ctrl.reg_addr
-                      ? [&] {
-                      auto x = iter->read<Reg>();
-                      DEBUG_LOG("store")(x);
-                      auto y = ctx->resolve<Addr>(x);
-                      DEBUG_LOG("store")(y);
-                      return y; }()
-                      : [&] { return iter->read<Addr>(); }();
+      Addr addr = ctrl.reg_addr ? ctx->resolve<Addr>(iter->read<Reg>())
+                                : iter->read<Addr>();
       static_assert(!std::is_same_v<T, void*>, "Not handling addresses yet");
       switch (addr.kind) {
-        case ir::Addr::Kind::Stack:
+        case Addr::Kind::Stack:
           DEBUG_LOG("store")(addr);
           ctx->stack_.set(addr.as_stack, val);
           break;
-        case ir::Addr::Kind::ReadOnly:
+        case Addr::Kind::ReadOnly:
           NOT_YET(
               "Storing into read-only data seems suspect. Is it just for "
               "initialization?");
           break;
-        case ir::Addr::Kind::Heap:
+        case Addr::Kind::Heap:
           *ASSERT_NOT_NULL(static_cast<T*>(addr.as_heap)) = val;
       }
     });
@@ -117,8 +112,8 @@ struct StoreCmd {
 
 template <typename T>
 void Store(T r, RegOr<Addr> addr) {
-  auto& blk = GetBlock();
-  if constexpr (ir::IsRegOr<T>::value) {
+  if constexpr (IsRegOr<T>::value) {
+    auto& blk = GetBlock();
     blk.cmd_buffer_.append_index<StoreCmd>();
     blk.cmd_buffer_.append(
         StoreCmd::MakeControlBits<typename T::type>(r.is_reg_, addr.is_reg_));
