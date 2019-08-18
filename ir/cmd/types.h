@@ -60,6 +60,57 @@ struct EnumerationCmd {
                                 Inliner const &inliner);
 };
 
+struct StructCmd {
+  constexpr static cmd_index_t index = 30;
+
+  static std::optional<BlockIndex> Execute(base::untyped_buffer::iterator *iter,
+                                           std::vector<Addr> const &ret_slots,
+                                           backend::ExecContext *ctx);
+
+  static std::string DebugString(base::untyped_buffer::const_iterator *iter);
+
+  static void UpdateForInlining(base::untyped_buffer::iterator *iter,
+                                Inliner const &inliner);
+};
+
+struct OpaqueTypeCmd {
+  constexpr static cmd_index_t index = 31;
+  static std::optional<BlockIndex> Execute(base::untyped_buffer::iterator *iter,
+                                           std::vector<Addr> const &ret_slots,
+                                           backend::ExecContext *ctx);
+
+  static std::string DebugString(base::untyped_buffer::const_iterator *iter);
+
+  static void UpdateForInlining(base::untyped_buffer::iterator *iter,
+                                Inliner const &inliner);
+};
+
+struct ArrayCmd {
+  constexpr static cmd_index_t index = 32;
+  using length_t = int64_t;
+  struct control_bits {
+    uint8_t length_is_reg : 1;
+    uint8_t type_is_reg : 1;
+  };
+
+  static control_bits MakeControlBits(bool length_is_reg, bool type_is_reg) {
+    control_bits ctrl;
+    ctrl.length_is_reg = length_is_reg;
+    ctrl.type_is_reg   = type_is_reg;
+    return ctrl;
+  }
+
+  static std::optional<BlockIndex> Execute(base::untyped_buffer::iterator *iter,
+                                           std::vector<Addr> const &ret_slots,
+                                           backend::ExecContext *ctx);
+
+  static std::string DebugString(base::untyped_buffer::const_iterator *iter);
+
+  static void UpdateForInlining(base::untyped_buffer::iterator *iter,
+                                Inliner const &inliner);
+};
+
+
 using VariantCmd = internal::VariadicCmd<16, type::Type const *, type::Var>;
 using TupleCmd   = internal::VariadicCmd<17, type::Type const *, type::Tup>;
 using PtrCmd     = internal::UnaryCmd<
@@ -92,6 +143,11 @@ Reg Flags(
     ::Module *mod, absl::Span<std::string_view const> names,
     absl::flat_hash_map<uint64_t, RegOr<EnumerationCmd::enum_t>> const
         &specified_values);
+
+// TODO handle initial values.
+Reg Struct(core::Scope const *scope, ::Module *mod,
+           std::vector<std::tuple<std::string_view, RegOr<type::Type const *>>>
+               fields);
 
 constexpr inline auto Ptr    = internal::UnaryHandler<PtrCmd>{};
 constexpr inline auto BufPtr = internal::UnaryHandler<BufPtrCmd>{};
@@ -131,30 +187,14 @@ struct ArrowCmd {
   }
 };
 
-inline RegOr<type::Function const *> Arrow(
+RegOr<type::Function const *> Arrow(
     absl::Span<RegOr<type::Type const *> const> ins,
-    absl::Span<RegOr<type::Type const *> const> outs) {
-  if (absl::c_all_of(ins,
-                     [](RegOr<type::Type const *> r) { return !r.is_reg_; }) &&
-      absl::c_all_of(outs,
-                     [](RegOr<type::Type const *> r) { return !r.is_reg_; })) {
-    std::vector<type::Type const *> in_vec, out_vec;
-    in_vec.reserve(ins.size());
-    for (auto in : ins) { in_vec.push_back(in.val_); }
-    out_vec.reserve(outs.size());
-    for (auto out : outs) { out_vec.push_back(out.val_); }
-    return type::Func(std::move(in_vec), std::move(out_vec));
-  }
+    absl::Span<RegOr<type::Type const *> const> outs);
 
-  auto &blk = GetBlock();
-  blk.cmd_buffer_.append_index<ArrowCmd>();
-  internal::Serialize<uint16_t>(&blk.cmd_buffer_, ins);
-  internal::Serialize<uint16_t>(&blk.cmd_buffer_, outs);
+RegOr<type::Type const *> Array(RegOr<ArrayCmd::length_t> len,
+                                RegOr<type::Type const *> data_type);
 
-  Reg result = MakeResult<type::Type const *>();
-  blk.cmd_buffer_.append(result);
-  return RegOr<type::Function const *>{result};
-}
+Reg OpaqueType(::Module const *mod);
 
 }  // namespace ir
 

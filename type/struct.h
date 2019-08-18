@@ -29,8 +29,8 @@ struct Struct : public Type {
   };
 
   Struct(core::Scope const *scope, ::Module const *mod,
-         ast::StructLiteral const *parent)
-      : scope_(scope), mod_(const_cast<::Module *>(mod)), parent_(parent) {}
+         absl::Span<std::tuple<std::string_view, type::Type const *> const>);
+
   ~Struct() override {}
   void WriteTo(std::string *buf) const override;
   core::Bytes bytes(core::Arch const &arch) const override;
@@ -59,7 +59,6 @@ struct Struct : public Type {
 
   core::Scope const *scope_         = nullptr;
   ::Module *mod_                    = nullptr;
-  ast::StructLiteral const *parent_ = nullptr;
 
   // `init_func_` is generated in FinalizeStruct.
   //

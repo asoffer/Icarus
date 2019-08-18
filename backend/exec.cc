@@ -369,21 +369,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
         CallForeignFn(f.foreign(), call_buf, return_slots, &stack_);
       }
     } break;
-    case ir::Op::CreateStruct:
-      save(new type::Struct(cmd.create_struct_.scope_,
-                            cmd.create_struct_.scope_->module(),
-                            cmd.create_struct_.parent_));
-      break;
-    case ir::Op::CreateStructField: {
-      auto *struct_to_modify = ASSERT_NOT_NULL(
-          resolve<type::Struct *>(cmd.create_struct_field_.struct_));
-      struct_to_modify->add_field(resolve(cmd.create_struct_field_.type_));
-    } break;
-    case ir::Op::SetStructFieldName: {
-      ASSERT_NOT_NULL(
-          resolve<type::Struct *>(cmd.set_struct_field_name_.struct_))
-          ->set_last_name(cmd.set_struct_field_name_.name_);
-    } break;
     case ir::Op::AddHashtagToField: {
       ASSERT_NOT_NULL(resolve<type::Struct *>(cmd.add_hashtag_.struct_))
           ->add_hashtag_to_last_field(cmd.add_hashtag_.hashtag_);
@@ -392,63 +377,10 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       ASSERT_NOT_NULL(resolve<type::Struct *>(cmd.add_hashtag_.struct_))
           ->add_hashtag(cmd.add_hashtag_.hashtag_);
     } break;
-    case ir::Op::FinalizeStruct: {
-
-      auto *s = resolve<type::Struct *>(cmd.reg_);
-      auto &cache = s->mod_->generic_struct_cache_[s->parent_];
-
-      // TODO this is horrendous. Find a better way to populate the back_ map.
-      std::vector<type::Type const *> const *input_vals = nullptr;
-      for (auto const &[vals, t] : cache.fwd_) {
-        if (t != s) { continue; }
-        input_vals = &vals;
-        break;
-      }
-      if (input_vals != nullptr) {
-        bool inserted = cache.back_.emplace(s, input_vals).second;
-        ASSERT(inserted == true);
-      }
-
-      s->init_func_ = s->mod_->AddFunc(
-          type::Func({type::Ptr(s)}, {}),
-          core::FnParams(core::Param{"", type::Typed<ast::Expression const *>{
-                                             nullptr, type::Ptr(s)}}));
-      CURRENT_FUNC(s->init_func_.func()) {
-        // TODO this context gets no constants which is not what we want.
-        // Probably need to store the correct bound constants pointer in the
-        // struct type when we create create it initially.
-        Context ctx(s->mod_);
-
-        ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
-        auto var                = ir::Reg::Arg(0);
-        size_t i                = 0;
-        visitor::EmitIr visitor;
-        for (auto const &field : s->parent_->fields_) {
-          auto ir_field = ir::Field(var, s, i);
-          if (field.init_val()) {
-            field.init_val()->EmitCopyInit(&visitor, ir_field, &ctx);
-          } else {
-            s->fields_.at(i).type->EmitDefaultInit(&visitor, ir_field.get(),
-                                                   &ctx);
-          }
-          ++i;
-        }
-        visitor.CompleteDeferredBodies();
-
-        ir::ReturnJump();
-      }
-
-      save(s);
-
-      // TODO set backwards map.
-    } break;
     case ir::Op::DebugIr: {
       std::stringstream ss;
       ss << *call_stack.top().fn_;
       DEBUG_LOG()(ss.str());
-    } break;
-    case ir::Op::Array: {
-      save(type::Arr(resolve(cmd.array_.len_), resolve(cmd.array_.type_)));
     } break;
     case ir::Op::VariantType: save(resolve(cmd.addr_arg_)); break;
     case ir::Op::VariantValue: {
@@ -540,7 +472,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
         CallForeignFn(f.foreign(), call_buf, return_slots, &stack_);
       }
     } break;
-    case ir::Op::NewOpaqueType: save(new type::Opaque(cmd.mod_)); break;
     case ir::Op::LoadSymbol: {
       void *sym = [&]() -> void * {
         // TODO: this is a hack for now untill we figure out why we can load
@@ -609,35 +540,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
     case ir::Op::PhiFunc:
       save(resolve(cmd.phi_func_->map_.at(call_stack.top().prev_)));
       break;
-    case ir::Op::ArgumentCache: {
-      // TODO currently cache is dependetn on all args but requires that they be
-      // types.
-      std::vector<type::Type const*> cached_vals;
-      cached_vals.reserve(cmd.sl_->args_.size());
-      for (uint64_t i = 0; i < cmd.sl_->args_.size(); ++i) {
-        cached_vals.push_back(resolve<type::Type const *>(ir::Reg{i}));
-      }
-      auto &cache = cmd.sl_->module()->generic_struct_cache_[cmd.sl_];
-      auto iter = cache.fwd_.try_emplace(std::move(cached_vals), nullptr).first;
-      type::Type const **cache_slot = &iter->second;
-      // Backwards direction set in FinalizeStruct
-      save(ir::Addr::Heap(cache_slot));
-    } break;
-    case ir::Op::CreateContext: save(new Context(cmd.mod_)); break;
-    case ir::Op::AddBoundConstant: {
-      NOT_YET();
-    } break;
-    case ir::Op::DestroyContext: delete resolve<Context *>(cmd.reg_); break;
-    case ir::Op::VerifyType: {
-      visitor::VerifyType visitor;
-      cmd.ast_.node_->VerifyType(&visitor, resolve<Context *>(cmd.ast_.ctx_));
-    } break;
-    case ir::Op::EvaluateAsType: {
-      // TODO, you don't have a parent context... that could be problematic.
-      save(EvaluateAs<type::Type const *>(
-          type::Typed(&cmd.ast_.node_->as<ast::Expression const>(), type::Type_),
-          resolve<Context *>(cmd.ast_.ctx_)));
-    } break;
     case ir::Op::JumpPlaceholder: UNREACHABLE(call_stack.top().fn_);
     case ir::Op::CreateScopeDef: {
       // TODO consider the implications of leaking this. I'm not convinced there

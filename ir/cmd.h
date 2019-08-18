@@ -54,17 +54,6 @@ struct PhiArgs : GenericPhiArgs {
 };
 
 struct Cmd {
-  template <typename T>
-  struct Store {
-    RegOr<Addr> addr_;
-    RegOr<T> val_;
-  };
-
-  struct Array {
-    RegOr<int64_t> len_;
-    RegOr<type::Type const *> type_;
-  };
-
   struct PtrIncr {
     // TODO maybe store the type here rather than on the cmd because most cmds
     // don't need it.
@@ -151,40 +140,6 @@ struct Cmd {
     }
   };
 
-  struct CreateStruct {
-    core::Scope const *scope_;
-    ast::StructLiteral const *parent_;
-
-    inline friend std::ostream &operator<<(std::ostream &os,
-                                           CreateStruct const &c) {
-      return os << c.scope_ << " " << c.parent_;
-    }
-  };
-
-  struct CreateStructField {
-    Reg struct_;
-    RegOr<type::Type const *> type_;
-
-    inline friend std::ostream &operator<<(std::ostream &os,
-                                           CreateStructField const &c) {
-      if (c.type_.is_reg_) {
-        return os << stringify(c.struct_) << " " << stringify(c.type_.reg_);
-      } else {
-        return os << stringify(c.struct_) << " " << c.type_.val_->to_string();
-      }
-    }
-  };
-
-  struct SetStructFieldName {
-    // Implicitly the last element.
-    Reg struct_;
-    std::string_view name_;
-    inline friend std::ostream &operator<<(std::ostream &os,
-                                           SetStructFieldName const &s) {
-      return os << stringify(s.struct_) << " " << s.name_;
-    };
-  };
-
   struct AddHashtag {
     Reg struct_;
     ast::Hashtag hashtag_;
@@ -214,25 +169,6 @@ struct Cmd {
     }
   };
 
-  struct AstData {
-    ast::Node const *node_;
-    Reg ctx_;
-
-    inline friend std::ostream &operator<<(std::ostream &os, AstData ast) {
-      return os << ast.node_ << " ctx=" << stringify(ast.ctx_);
-    }
-  };
-
-  struct AddBc {
-    Reg ctx_;
-    ast::Declaration const *decl_;
-    RegOr<type::Type const *> type_;
-
-    inline friend std::ostream &operator<<(std::ostream &os, AddBc const &a) {
-      return os << stringify(a.ctx_) << " " << a.decl_ << " " << a.type_;
-    }
-  };
-
   struct CreateScopeDef {
     ::Module *mod_;
     ScopeDef *scope_def_;
@@ -247,7 +183,6 @@ struct Cmd {
     Reg reg_;
     size_t get_ret_;
     type::Type const *type_;
-    ast::StructLiteral const *sl_;
     LoadSymbol load_sym_;
     BlockDef const *block_def_;
     ast::BlockLiteral const *block_lit_;
@@ -255,19 +190,13 @@ struct Cmd {
     AddScopeDefInit add_scope_def_init_;
     AddScopeDefDone add_scope_def_done_;
 
-    CreateStruct create_struct_;
-    CreateStructField create_struct_field_;
-    SetStructFieldName set_struct_field_name_;
     AddHashtag add_hashtag_;
     BlockIndex block_index_;
     Call call_;
     PtrIncr ptr_incr_;
-    Cmd::Array array_;
     Field field_;
     ::Module *mod_;
     core::Scope const *scope_;
-
-    AddBc add_bc_;
 
     // TODO names of these are easily mis-spellable and would lead to UB.
     RegOr<bool> bool_arg_;
@@ -290,10 +219,6 @@ struct Cmd {
     SpecialMember<1> special1_;
     SpecialMember<2> special2_;
     Args<FlagsVal> flags_args_;
-
-    AstData ast_;
-
-    Store<type::Type const *> store_type_;
 
     PhiArgs<bool> *phi_bool_;
     PhiArgs<int8_t> *phi_i8_;
@@ -326,8 +251,6 @@ void DebugIr();
 Reg Reserve(core::Bytes b, core::Alignment a);
 Reg Reserve(type::Type const *);
 
-RegOr<type::Type const *> Array(RegOr<int64_t> len,
-                                     RegOr<type::Type const *> data_type);
 Reg VariantType(RegOr<Addr> r);
 Reg VariantValue(const type::Type *t, RegOr<Addr> r);
 // Type repreesents the type of `ptr`
@@ -345,8 +268,6 @@ std::pair<Results, bool> CallInline(
     CompiledFn *f, Arguments const &arguments,
     absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> const &block_map);
 
-TypedRegister<type::Type const *> NewOpaqueType(::Module *mod);
-
 TypedRegister<Addr> Index(type::Pointer const *t, Reg array_ptr,
                           RegOr<int64_t> offset);
 TypedRegister<Addr> Alloca(type::Type const *t);
@@ -363,16 +284,7 @@ void Copy(type::Type const *t, Reg from, RegOr<Addr> to);
 void Destroy(type::Type const *t, Reg r);
 void Init(type::Type const *t, Reg r);
 
-void VerifyType(ast::Node const *node, Reg ctx);
-Reg EvaluateAsType(ast::Node const *node, Reg ctx);
-
-Reg CreateContext(Module *mod);
-void AddBoundConstant(Reg ctx, ast::Declaration const *decl,
-                      RegOr<type::Type const *> type);
-void DestroyContext(Reg r);
 void JumpPlaceholder(BlockDef const *block_def);
-
-Reg ArgumentCache(ast::StructLiteral const *sl);
 
 Reg CreateScopeDef(::Module const *mod, ScopeDef *scope_def);
 void AddScopeDefInit(Reg reg, RegOr<AnyFunc> f);

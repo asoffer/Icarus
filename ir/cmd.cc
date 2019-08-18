@@ -79,34 +79,6 @@ void Destroy(type::Type const *t, Reg r) {
   cmd.special1_ = {t, r};
 }
 
-void VerifyType(ast::Node const *node, Reg ctx) {
-  auto &cmd = MakeCmd(nullptr, Op::VerifyType);
-  cmd.ast_  = {node, ctx};
-}
-
-Reg CreateContext(Module *mod) {
-  auto &cmd = MakeCmd(type::Ctx, Op::CreateContext);
-  cmd.mod_  = mod;
-  return cmd.result;
-}
-
-void AddBoundConstant(Reg ctx, ast::Declaration const *decl,
-                      RegOr<type::Type const *> type) {
-  auto &cmd   = MakeCmd(nullptr, Op::AddBoundConstant);
-  cmd.add_bc_ = {ctx, decl, type};
-}
-
-void DestroyContext(Reg r) {
-  auto &cmd = MakeCmd(nullptr, Op::DestroyContext);
-  cmd.reg_  = r;
-}
-
-Reg EvaluateAsType(ast::Node const *node, Reg ctx) {
-  auto &cmd = MakeCmd(type::Type_, Op::EvaluateAsType);
-  cmd.ast_  = {node, ctx};
-  return cmd.result;
-}
-
 BasicBlock &GetBlock() {
   return ASSERT_NOT_NULL(CompiledFn::Current)->block(BasicBlock::Current);
 }
@@ -144,17 +116,6 @@ void JumpPlaceholder(BlockDef const *block_def) {
   CompiledFn::Current->jumps_.push_back(block_def);
   // TODO implied by jumps_ being non-empty.
   CompiledFn::Current->must_inline_ = true;
-}
-
-RegOr<type::Type const *> Array(RegOr<int64_t> len,
-                                     RegOr<type::Type const *> data_type) {
-  if (!data_type.is_reg_ && !len.is_reg_) {
-    return type::Arr(len.val_, data_type.val_);
-  }
-
-  auto &cmd  = MakeCmd(type::Type_, Op::Array);
-  cmd.array_ = {len, data_type};
-  return cmd.result;
 }
 
 type::Typed<Reg> Field(RegOr<Addr> r, type::Tuple const *t, size_t n) {
@@ -196,24 +157,6 @@ Cmd::Cmd(type::Type const *t, Op op) : op_code_(op) {
   CompiledFn::Current->reg_to_cmd_.emplace(result, cmd_index);
 }
 
-Reg CreateStruct(core::Scope const *scope, ast::StructLiteral const *parent) {
-  auto &cmd          = MakeCmd(type::Type_, Op::CreateStruct);
-  cmd.create_struct_ = {scope, parent};
-  return cmd.result;
-}
-
-Reg ArgumentCache(ast::StructLiteral const *sl) {
-  auto &cmd = MakeCmd(type::Ptr(type::Type_), Op::ArgumentCache);
-  cmd.sl_   = sl;
-  return cmd.result;
-}
-
-Reg FinalizeStruct(Reg r) {
-  auto &cmd = MakeCmd(type::Type_, Op::FinalizeStruct);
-  cmd.reg_  = r;
-  return cmd.result;
-}
-
 void DebugIr() { MakeCmd(nullptr, Op::DebugIr); }
 
 Reg VariantType(RegOr<Addr> r) {
@@ -226,16 +169,6 @@ Reg VariantValue(type::Type const *t, RegOr<Addr> r) {
   auto &cmd     = MakeCmd(type::Ptr(t), Op::VariantValue);
   cmd.addr_arg_ = r;
   return cmd.result;
-}
-
-void CreateStructField(Reg struct_type, RegOr<type::Type const *> type) {
-  auto &cmd                = MakeCmd(nullptr, Op::CreateStructField);
-  cmd.create_struct_field_ = {struct_type, std::move(type)};
-}
-
-void SetStructFieldName(Reg struct_type, std::string_view field_name) {
-  auto &cmd                  = MakeCmd(nullptr, Op::SetStructFieldName);
-  cmd.set_struct_field_name_ = {struct_type, field_name};
 }
 
 void AddHashtagToField(Reg struct_type, ast::Hashtag hashtag) {
@@ -402,12 +335,6 @@ std::pair<Results, bool> CallInline(
   return std::pair{results, is_jump};
 }
 
-TypedRegister<type::Type const *> NewOpaqueType(::Module *mod) {
-  auto &cmd = MakeCmd(type::Type_, Op::NewOpaqueType);
-  cmd.mod_  = mod;
-  return cmd.result;
-}
-
 template <typename T>
 static std::ostream &operator<<(std::ostream &os,
                                 std::array<RegOr<T>, 2> r) {
@@ -450,21 +377,12 @@ static auto Stringify(T &&val) {
 }
 
 template <typename T>
-static std::ostream &operator<<(std::ostream &os, Cmd::Store<T> const &s) {
-  return os << stringify(s.addr_) << " <- " << Stringify(s.val_);
-}
-
-template <typename T>
 std::ostream &operator<<(std::ostream &os, Cmd::Args<T> const &a) {
   return os << Stringify(a.args_[0]) << " " << Stringify(a.args_[1]);
 }
 
 static std::ostream &operator<<(std::ostream &os, Cmd::PtrIncr const &p) {
   return os << p.ptr_ << " " << p.pointee_type_ << " " << p.incr_;
-}
-
-static std::ostream &operator<<(std::ostream &os, Cmd::Array const &a) {
-  return os << a.type_;
 }
 
 static std::ostream &operator<<(std::ostream &os, Cmd::Field const &f) {

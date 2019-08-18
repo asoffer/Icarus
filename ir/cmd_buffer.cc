@@ -67,18 +67,11 @@ void LegacyCmd::UpdateForInlining(base::untyped_buffer::iterator* iter,
       // TODO CASE(PhiFunc, ____, phi_func_);
 #undef CASE
     case Op::GetRet: NOT_YET();
-    case Op::ArgumentCache: NOT_YET();
-    case Op::NewOpaqueType: NOT_YET();
     case Op::LoadSymbol: NOT_YET();
     case Op::Init: NOT_YET();
     case Op::Destroy: NOT_YET();
     case Op::Move: NOT_YET();
     case Op::Copy: NOT_YET();
-    case Op::VerifyType: UNREACHABLE();
-    case Op::EvaluateAsType: UNREACHABLE();
-    case Op::CreateContext: UNREACHABLE();
-    case Op::AddBoundConstant: UNREACHABLE();
-    case Op::DestroyContext: UNREACHABLE();
     case Op::Call: {
       NOT_YET();
       // RegOr<AnyFunc> r_fn;
@@ -169,7 +162,10 @@ void LegacyCmd::UpdateForInlining(base::untyped_buffer::iterator* iter,
   CASE(CastCmd);                                                               \
   CASE(RegisterCmd);                                                           \
   CASE(SetRetCmd);                                                             \
-  CASE(EnumerationCmd)
+  CASE(EnumerationCmd);                                                        \
+  CASE(StructCmd);                                                             \
+  CASE(OpaqueTypeCmd)
+
 BlockIndex CmdBuffer::Execute(std::vector<ir::Addr> const& ret_slots,
                               backend::ExecContext* ctx) {
   auto iter = buf_.begin();

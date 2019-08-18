@@ -193,4 +193,196 @@ void EnumerationCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
   iter->read<Reg>();
 }
 
+std::optional<BlockIndex> StructCmd::Execute(
+    base::untyped_buffer::iterator *iter, std::vector<Addr> const &ret_slots,
+    backend::ExecContext *ctx) {
+  std::vector<std::tuple<std::string_view, type::Type const *>> fields;
+  auto num = iter->read<uint16_t>();
+  fields.reserve(num);
+  auto *scope = iter->read<core::Scope const *>();
+  auto *mod   = iter->read<::Module *>();
+  for (uint16_t i = 0; i < num; ++i) {
+    fields.emplace_back(iter->read<std::string_view>(), nullptr);
+  }
+
+  size_t index = 0;
+  internal::Deserialize<uint16_t, type::Type const *>(iter, [&](Reg &reg) {
+    std::get<1>(fields[index++]) = ctx->resolve<type::Type const *>(reg);
+  });
+
+  auto &frame = ctx->call_stack.top();
+  frame.regs_.set(GetOffset(frame.fn_, iter->read<Reg>()),
+                  new type::Struct(scope, mod, fields));
+  return std::nullopt;
+}
+
+std::string StructCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
+  return "NOT_YET";
+}
+
+void StructCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
+                                  Inliner const &inliner) {
+  auto num = iter->read<uint16_t>();
+  iter->read<core::Scope*>();
+  iter->read<::Module *>();
+  for (uint16_t i = 0; i < num; ++i) { iter->read<std::string_view>(); }
+  internal::Deserialize<uint16_t, type::Type const *>(
+      iter, [&inliner](Reg &reg) { inliner.Inline(&reg); });
+  inliner.Inline(&iter->read<Reg>(), ::type::Type_);
+}
+
+Reg Struct(core::Scope const *scope, ::Module *mod,
+           std::vector<std::tuple<std::string_view, RegOr<type::Type const *>>>
+               fields) {
+  auto &blk = GetBlock();
+  blk.cmd_buffer_.append_index<StructCmd>();
+  blk.cmd_buffer_.append<uint16_t>(fields.size());
+  blk.cmd_buffer_.append(scope);
+  blk.cmd_buffer_.append(mod);
+  // TODO determine if order randomization makes sense here. Or perhaps you want
+  // to do it later? Or not at all?
+  std::shuffle(fields.begin(), fields.end(), absl::BitGen{});
+  for (auto &[name, t] : fields) { blk.cmd_buffer_.append(name); }
+
+  // TODO performance: Serialize requires an absl::Span here, but we'd love to
+  // not copy out the elements of `fields`.
+  std::vector<RegOr<type::Type const *>> types;
+  types.reserve(fields.size());
+  for (auto &[name, t] : fields) { types.push_back(t); }
+  internal::Serialize<uint16_t>(&blk.cmd_buffer_, absl::MakeConstSpan(types));
+
+  Reg result = MakeResult<type::Type const *>();
+  blk.cmd_buffer_.append(result);
+  DEBUG_LOG("struct")(blk.cmd_buffer_.buf_.to_string());
+  DEBUG_LOG("struct")(blk.cmd_buffer_.to_string());
+  return result;
+}
+
+std::optional<BlockIndex> OpaqueTypeCmd::Execute(
+    base::untyped_buffer::iterator *iter, std::vector<Addr> const &ret_slots,
+    backend::ExecContext *ctx) {
+  auto &frame = ctx->call_stack.top();
+  auto *mod   = iter->read<::Module const *>();
+  frame.regs_.set(GetOffset(frame.fn_, iter->read<Reg>()),
+                  new type::Opaque(mod));
+  return std::nullopt;
+
+}
+
+std::string OpaqueTypeCmd::DebugString(
+    base::untyped_buffer::const_iterator *iter) {
+  return absl::StrCat(stringify(iter->read<Reg>()), " = opaque");
+}
+
+void OpaqueTypeCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
+                                      Inliner const &inliner) {
+  iter->read<::Module const *>();
+  inliner.Inline(&iter->read<Reg>());
+}
+
+std::optional<BlockIndex> ArrayCmd::Execute(
+    base::untyped_buffer::iterator *iter, std::vector<Addr> const &ret_slots,
+    backend::ExecContext *ctx) {
+  auto &frame    = ctx->call_stack.top();
+  auto ctrl_bits = iter->read<control_bits>();
+  length_t len   = ctrl_bits.length_is_reg
+                     ? ctx->resolve<length_t>(iter->read<Reg>())
+                     : iter->read<length_t>();
+  type::Type const *data_type =
+      ctrl_bits.type_is_reg
+          ? ctx->resolve<type::Type const *>(iter->read<Reg>())
+          : iter->read<type::Type const *>();
+
+  frame.regs_.set(GetOffset(frame.fn_, iter->read<Reg>()),
+                  type::Arr(len, data_type));
+  return std::nullopt;
+}
+
+std::string ArrayCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
+  auto ctrl_bits = iter->read<control_bits>();
+  auto len       = ctrl_bits.length_is_reg ? RegOr<length_t>(iter->read<Reg>())
+                                     : RegOr<length_t>(iter->read<length_t>());
+  auto data_type =
+      ctrl_bits.type_is_reg
+          ? RegOr<type::Type const *>(iter->read<Reg>())
+          : RegOr<type::Type const *>(iter->read<type::Type const *>());
+
+  return absl::StrCat(stringify(iter->read<Reg>()), " = [", stringify(len),
+                      "; ", stringify(data_type), ")");
+}
+
+void ArrayCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
+                                 Inliner const &inliner) {
+  auto ctrl_bits = iter->read<control_bits>();
+  if (ctrl_bits.length_is_reg) {
+    inliner.Inline(&iter->read<Reg>());
+  } else {
+    iter->read<length_t>();
+  }
+
+  if (ctrl_bits.type_is_reg) {
+    inliner.Inline(&iter->read<Reg>());
+  } else {
+    iter->read<type::Type const *>();
+  }
+}
+
+RegOr<type::Function const *> Arrow(
+    absl::Span<RegOr<type::Type const *> const> ins,
+    absl::Span<RegOr<type::Type const *> const> outs) {
+  if (absl::c_all_of(ins,
+                     [](RegOr<type::Type const *> r) { return !r.is_reg_; }) &&
+      absl::c_all_of(outs,
+                     [](RegOr<type::Type const *> r) { return !r.is_reg_; })) {
+    std::vector<type::Type const *> in_vec, out_vec;
+    in_vec.reserve(ins.size());
+    for (auto in : ins) { in_vec.push_back(in.val_); }
+    out_vec.reserve(outs.size());
+    for (auto out : outs) { out_vec.push_back(out.val_); }
+    return type::Func(std::move(in_vec), std::move(out_vec));
+  }
+
+  auto &blk = GetBlock();
+  blk.cmd_buffer_.append_index<ArrowCmd>();
+  internal::Serialize<uint16_t>(&blk.cmd_buffer_, ins);
+  internal::Serialize<uint16_t>(&blk.cmd_buffer_, outs);
+
+  Reg result = MakeResult<type::Type const *>();
+  blk.cmd_buffer_.append(result);
+  return RegOr<type::Function const *>{result};
+}
+
+Reg OpaqueType(::Module const *mod) {
+  auto &blk = GetBlock();
+  blk.cmd_buffer_.append_index<OpaqueTypeCmd>();
+  blk.cmd_buffer_.append(mod);
+  Reg result = MakeResult<type::Type const *>();
+  blk.cmd_buffer_.append(result);
+  return result;
+}
+
+RegOr<type::Type const *> Array(RegOr<ArrayCmd::length_t> len,
+                                RegOr<type::Type const *> data_type) {
+  if (!len.is_reg_ && data_type.is_reg_) {
+    return type::Arr(len.val_, data_type.val_);
+  }
+  auto &blk = GetBlock();
+  blk.cmd_buffer_.append_index<ArrayCmd>();
+  blk.cmd_buffer_.append(
+      ArrayCmd::MakeControlBits(len.is_reg_, data_type.is_reg_));
+  if (len.is_reg_) {
+    blk.cmd_buffer_.append(len.reg_);
+  } else {
+    blk.cmd_buffer_.append(len.val_);
+  }
+  if (data_type.is_reg_) {
+    blk.cmd_buffer_.append(data_type.reg_);
+  } else {
+    blk.cmd_buffer_.append(data_type.val_);
+  }
+  Reg result = MakeResult<type::Type const *>();
+  blk.cmd_buffer_.append(result);
+  return result;
+}
+
 }  // namespace ir

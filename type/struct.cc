@@ -9,6 +9,21 @@
 #include "type/pointer.h"
 
 namespace type {
+Struct::Struct(
+    core::Scope const *scope, ::Module const *mod,
+    absl::Span<std::tuple<std::string_view, type::Type const *> const> fields)
+    : scope_(scope), mod_(const_cast<::Module *>(mod)) {
+  fields_.reserve(fields.size());
+  size_t i = 0;
+  for (auto [name, t] : fields) {
+    field_indices_.emplace(std::string(name), i++);
+  }
+  for (auto const &[name, t] : fields) {
+    Field f(t);
+    f.name = field_indices_.find(name)->first;
+    fields_.push_back(f);
+  }
+}
 
 core::Bytes Struct::offset(size_t field_num, core::Arch const &a) const {
   auto offset = core::Bytes{0};

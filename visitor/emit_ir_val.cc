@@ -263,69 +263,69 @@ static void CompleteBody(EmitIr *visitor, ast::FunctionLiteral const *node,
   }
 }
 
-static void CompleteBody(EmitIr *visitor, ast::StructLiteral const *node,
-                         Context *ctx) {
-  ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[node];
-  for (size_t i = 0; i < node->args_.size(); ++i) {
-    ctx->set_addr(&node->args_[i], ir::Reg::Arg(i));
-  }
-
-  CURRENT_FUNC(ir_func) {
-    ir::BasicBlock::Current = ir_func->entry();
-    auto cache_slot_addr    = ir::ArgumentCache(node);
-    auto cache_slot         = ir::Load<type::Type const *>(cache_slot_addr);
-
-    auto land_block         = ir::CompiledFn::Current->AddBlock();
-    ir::BasicBlock::Current = ir::EarlyExitOn<false>(
-        land_block,
-        ir::Eq(cache_slot, static_cast<type::Type const *>(nullptr)));
-    auto ctx_reg    = ir::CreateContext(ctx->mod_);
-    auto struct_reg = ir::CreateStruct(node->scope_, node);
-
-    // TODO why isn't implicit TypedRegister -> RegOr cast working on
-    // either of these? On the first it's clear because we don't even return a
-    // typedRegister, but this is a note to remind you to make that work. On the
-    // second... I don't know.
-    ir::Store(static_cast<ir::RegOr<type::Type const *>>(struct_reg),
-              cache_slot_addr);
-    for (auto &arg : node->args_) {  // TODO const-ref
-      ir::AddBoundConstant(ctx_reg, &arg, ctx->addr(&arg));
-    }
-
-    for (auto &field : node->fields_) {  // TODO const-ref
-      ir::VerifyType(&field, ctx_reg);
-
-      // TODO exit early if verifytype fails.
-
-      auto type_reg = ir::EvaluateAsType(field.type_expr(), ctx_reg);
-
-      ir::CreateStructField(struct_reg, type_reg);
-      ir::SetStructFieldName(struct_reg, field.id());
-
-      for (auto const &hashtag : field.hashtags_) {
-        ir::AddHashtagToField(struct_reg, hashtag);
-      }
-    }
-
-    for (auto hashtag : node->hashtags_) {
-      ir::AddHashtagToStruct(struct_reg, hashtag);
-    }
-
-    ir::RegOr<type::Type const *> result = ir::FinalizeStruct(struct_reg);
-    ir::DestroyContext(ctx_reg);
-
-    // Exit path from creating a new struct.
-    ir::SetRet(0, static_cast<ir::RegOr<type::Type const *>>(result));
-    ir::Store(static_cast<ir::RegOr<type::Type const *>>(result),
-              cache_slot_addr);
-    ir::ReturnJump();
-
-    // Exit path from finding the cache
-    ir::BasicBlock::Current = land_block;
-    ir::SetRet(0, static_cast<ir::RegOr<type::Type const *>>(cache_slot));
-    ir::ReturnJump();
-  }
-}
+// static void CompleteBody(EmitIr *visitor, ast::StructLiteral const *node,
+//                          Context *ctx) {
+//   ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[node];
+//   for (size_t i = 0; i < node->args_.size(); ++i) {
+//     ctx->set_addr(&node->args_[i], ir::Reg::Arg(i));
+//   }
+// 
+//   CURRENT_FUNC(ir_func) {
+//     ir::BasicBlock::Current = ir_func->entry();
+//     auto cache_slot_addr    = ir::ArgumentCache(node);
+//     auto cache_slot         = ir::Load<type::Type const *>(cache_slot_addr);
+// 
+//     auto land_block         = ir::CompiledFn::Current->AddBlock();
+//     ir::BasicBlock::Current = ir::EarlyExitOn<false>(
+//         land_block,
+//         ir::Eq(cache_slot, static_cast<type::Type const *>(nullptr)));
+//     auto ctx_reg    = ir::CreateContext(ctx->mod_);
+//     auto struct_reg = ir::CreateStruct(node->scope_, node);
+// 
+//     // TODO why isn't implicit TypedRegister -> RegOr cast working on
+//     // either of these? On the first it's clear because we don't even return a
+//     // typedRegister, but this is a note to remind you to make that work. On the
+//     // second... I don't know.
+//     ir::Store(static_cast<ir::RegOr<type::Type const *>>(struct_reg),
+//               cache_slot_addr);
+//     for (auto &arg : node->args_) {  // TODO const-ref
+//       ir::AddBoundConstant(ctx_reg, &arg, ctx->addr(&arg));
+//     }
+// 
+//     for (auto &field : node->fields_) {  // TODO const-ref
+//       ir::VerifyType(&field, ctx_reg);
+// 
+//       // TODO exit early if verifytype fails.
+// 
+//       auto type_reg = ir::EvaluateAsType(field.type_expr(), ctx_reg);
+// 
+//       ir::CreateStructField(struct_reg, type_reg);
+//       ir::SetStructFieldName(struct_reg, field.id());
+// 
+//       for (auto const &hashtag : field.hashtags_) {
+//         ir::AddHashtagToField(struct_reg, hashtag);
+//       }
+//     }
+// 
+//     for (auto hashtag : node->hashtags_) {
+//       ir::AddHashtagToStruct(struct_reg, hashtag);
+//     }
+// 
+//     ir::RegOr<type::Type const *> result = ir::FinalizeStruct(struct_reg);
+//     ir::DestroyContext(ctx_reg);
+// 
+//     // Exit path from creating a new struct.
+//     ir::SetRet(0, static_cast<ir::RegOr<type::Type const *>>(result));
+//     ir::Store(static_cast<ir::RegOr<type::Type const *>>(result),
+//               cache_slot_addr);
+//     ir::ReturnJump();
+// 
+//     // Exit path from finding the cache
+//     ir::BasicBlock::Current = land_block;
+//     ir::SetRet(0, static_cast<ir::RegOr<type::Type const *>>(cache_slot));
+//     ir::ReturnJump();
+//   }
+// }
 
 static void CompleteBody(EmitIr *visitor, ast::JumpHandler const *node,
                          Context *ctx) {
@@ -743,9 +743,7 @@ ir::Results EmitIr::Val(ast::Call const *node, Context *ctx) {
         return ir::Results{ir::LoadSymbol(name, foreign_type).get()};
       } break;
 
-      case core::Builtin::Opaque:
-        return ir::Results{static_cast<ir::Reg>(ir::NewOpaqueType(ctx->mod_))};
-
+      case core::Builtin::Opaque: return ir::Results{ir::OpaqueType(ctx->mod_)};
       case core::Builtin::Bytes: {
         auto const &fn_type =
             ir::BuiltinType(core::Builtin::Bytes)->as<type::Function>();
@@ -1588,64 +1586,51 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) {
   return ir::Results{};
 }
 
-static ir::TypedRegister<type::Type const *> GenerateStruct(
-    EmitIr *visitor, ast::StructLiteral const *sl, ir::Reg struct_reg,
-    Context *ctx) {
-  for (auto const &field : sl->fields_) {
-    // TODO initial values? hashatgs?
-
-    // NOTE: CreateStructField may invalidate all other struct fields, so it's
-    // not safe to access these registers returned by CreateStructField after
-    // a subsequent call to CreateStructField.
-    ir::CreateStructField(
-        struct_reg,
-        field.type_expr()->EmitIr(visitor, ctx).get<type::Type const *>(0));
-    ir::SetStructFieldName(struct_reg, field.id());
-    for (auto const &hashtag : field.hashtags_) {
-      ir::AddHashtagToField(struct_reg, hashtag);
-    }
-  }
-
-  for (auto hashtag : sl->hashtags_) {
-    ir::AddHashtagToStruct(struct_reg, hashtag);
-  }
-  return ir::FinalizeStruct(struct_reg);
-}
-
 ir::Results EmitIr::Val(ast::StructLiteral const *node, Context *ctx) {
   if (node->args_.empty()) {
-    return ir::Results{
-        GenerateStruct(this, node, ir::CreateStruct(node->scope_, node), ctx)};
-  }
-
-  // TODO A bunch of things need to be fixed here.
-  // * Lock access during creation so two requestors don't clobber each other.
-  // * Add a way way for one requestor to wait for another to have created the
-  // object and be notified.
-  //
-  // For now, it's safe to do this from within a single module compilation
-  // (which is single-threaded).
-  ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[node];
-  if (!ir_func) {
-    auto work_item_ptr = DeferBody(this, node, ctx);
-
-    auto const &arg_types = ctx->type_of(node)->as<type::GenericStruct>().deps_;
-
-    core::FnParams<type::Typed<ast::Expression const *>> params;
-    params.reserve(node->args_.size());
-    size_t i = 0;
-    for (auto const &d : node->args_) {
-      params.append(d.id(), type::Typed<ast::Expression const *>(
-                                d.init_val(), arg_types.at(i++)));
+    // TODO what about handling incomplete types?
+    std::vector<std::tuple<std::string_view, ir::RegOr<type::Type const *>>>
+        fields;
+    fields.reserve(node->fields_.size());
+    for (auto const &field : node->fields_) {
+      // TODO hashtags?
+      fields.emplace_back(
+          field.id(),
+          field.type_expr()->EmitIr(this, ctx).get<type::Type const *>(0));
     }
-
-    ir_func = node->module()->AddFunc(type::Func(arg_types, {type::Type_}),
-                                      std::move(params));
-
-    ir_func->work_item = work_item_ptr;
+    return ir::Results{ir::Struct(node->scope_, ctx->mod_, std::move(fields))};
+  } else {
+    NOT_YET();
   }
 
-  return ir::Results{ir::AnyFunc{ir_func}};
+  // // TODO A bunch of things need to be fixed here.
+  // // * Lock access during creation so two requestors don't clobber each other.
+  // // * Add a way way for one requestor to wait for another to have created the
+  // // object and be notified.
+  // //
+  // // For now, it's safe to do this from within a single module compilation
+  // // (which is single-threaded).
+  // ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[node];
+  // if (!ir_func) {
+  //   auto work_item_ptr = DeferBody(this, node, ctx);
+
+  //   auto const &arg_types = ctx->type_of(node)->as<type::GenericStruct>().deps_;
+
+  //   core::FnParams<type::Typed<ast::Expression const *>> params;
+  //   params.reserve(node->args_.size());
+  //   size_t i = 0;
+  //   for (auto const &d : node->args_) {
+  //     params.append(d.id(), type::Typed<ast::Expression const *>(
+  //                               d.init_val(), arg_types.at(i++)));
+  //   }
+
+  //   ir_func = node->module()->AddFunc(type::Func(arg_types, {type::Type_}),
+  //                                     std::move(params));
+
+  //   ir_func->work_item = work_item_ptr;
+  // }
+
+  // return ir::Results{ir::AnyFunc{ir_func}};
 }
 
 ir::Results EmitIr::Val(ast::StructType const *node, Context *ctx) {
