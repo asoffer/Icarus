@@ -65,7 +65,7 @@ struct EmitIr : public DeferredBody<EmitIr> {
   void CopyInit(ast::Unop const *, type::Typed<ir::Reg> reg, Context *ctx);
 
   // Type-related IR-emission functions
-  void DefaultInit(type::Type const *, ir::Reg, Context *) { UNREACHABLE(); }
+  void DefaultInit(type::Type const *t, ir::Reg, Context *);
   void DefaultInit(type::Array const *t, ir::Reg reg, Context *ctx);
   void DefaultInit(type::Flags const *t, ir::Reg reg, Context *ctx);
   void DefaultInit(type::Pointer const *t, ir::Reg reg, Context *ctx);

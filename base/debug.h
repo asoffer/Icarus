@@ -102,7 +102,7 @@ struct Asserter {
 
 #else
 
-#define ICARUS_PRIVATE private
+#define ICARUS_PRIVATE private:
 
 #define ASSERT(...)                                                            \
   false && base::Logger(+[](std::experimental::source_location const &)        \

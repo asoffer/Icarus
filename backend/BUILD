@@ -46,8 +46,6 @@ cc_lib_target(
         "//core:arch",
         "//misc:module",
         "//type:generic_struct",
-        "//type:incomplete_enum",
-        "//type:incomplete_flags",
         "//type:util",
     ],
     test_deps = None,

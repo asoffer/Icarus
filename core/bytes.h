@@ -4,6 +4,14 @@
 namespace core {
 
 struct Bytes {
+  // Returns the size on the host.
+  // TODO at some point we'll want a better way to spell this so the
+  // interpretter and the host can be different.
+  template <typename T>
+  static constexpr Bytes Get() {
+    return Bytes{sizeof(T)};
+  }
+
   constexpr explicit Bytes(size_t val = 0) : value_(val) {}
 
   constexpr auto value() const { return value_; }

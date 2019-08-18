@@ -16,8 +16,6 @@ struct Scope;
 }  // namespace core
 
 namespace type {
-struct Enum;
-struct Flags;
 struct Function;
 struct GenericStruct;
 struct Pointer;
@@ -203,16 +201,6 @@ struct Cmd {
     type::Type const *type_;
   };
 
-  struct AddEnumerator {
-    Reg enum_;
-    std::string_view name_;
-  };
-
-  struct SetEnumerator {
-    Reg enum_;
-    RegOr<int32_t> val_;
-  };
-
   template <size_t N>
   struct SpecialMember {
     type::Type const *type_;
@@ -271,8 +259,6 @@ struct Cmd {
     CreateStructField create_struct_field_;
     SetStructFieldName set_struct_field_name_;
     AddHashtag add_hashtag_;
-    AddEnumerator add_enumerator_;
-    SetEnumerator set_enumerator_;
     BlockIndex block_index_;
     Call call_;
     PtrIncr ptr_incr_;
@@ -336,6 +322,9 @@ struct Cmd {
 RegOr<int64_t> Bytes(RegOr<type::Type const *> r);
 RegOr<int64_t> Align(RegOr<type::Type const *> r);
 void DebugIr();
+
+Reg Reserve(core::Bytes b, core::Alignment a);
+Reg Reserve(type::Type const *);
 
 RegOr<type::Type const *> Array(RegOr<int64_t> len,
                                      RegOr<type::Type const *> data_type);

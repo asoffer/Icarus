@@ -1245,7 +1245,7 @@ VerifyResult VerifyType::operator()(ast::EnumLiteral const *node,
   for (auto const &elem : node->elems()) {
     if (auto *decl = elem->if_as<ast::Declaration>()) {
       auto *t = decl->init_val()->VerifyType(this, ctx).type_;
-      ASSERT(t == type::Int32);
+      ASSERT(type::IsIntegral(t) == true);
       // TODO determine what is allowed here and how to generate errors.
     }
   }

@@ -8,35 +8,6 @@ struct Context;
 
 namespace type {
 
-Flags::Flags(
-    absl::flat_hash_map<std::string, std::optional<int32_t>> const &members) {
-  absl::flat_hash_set<int32_t> taken;
-  for (auto const &[s, v] : members) {
-    if (v.has_value()) {
-      vals_.emplace(s, ir::FlagsVal(size_t{1} << *v));
-      members_.emplace(size_t{1} << *v, s);
-      All |= (size_t{1} << *v);
-    }
-    taken.insert(*v);
-  }
-  // TODO we can highly optimize this in a number of ways. One simple thing is
-  // removing members as we used them above.
-  absl::BitGen gen;
-  for (auto const &[s, v] : members) {
-    if (v.has_value()) { continue; }
-    int32_t x;
-    {
-    try_again:
-      x            = absl::Uniform(absl::IntervalClosedOpen, gen, 0, 32);
-      bool success = taken.insert(x).second;
-      if (!success) { goto try_again; }
-    }
-    vals_.emplace(s, ir::FlagsVal(size_t{1} << x));
-    All |= (size_t{1} << x);
-    members_.emplace(size_t{1} << x, s);
-  }
-}
-
 std::optional<ir::FlagsVal> Flags::Get(std::string_view name) const {
   if (auto iter = vals_.find(name); iter != vals_.end()) { return iter->second; }
   return std::nullopt;

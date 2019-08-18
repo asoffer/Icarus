@@ -171,6 +171,9 @@ type::Typed<Reg> Field(RegOr<Addr> r, type::Struct const *t, size_t n) {
   return type::Typed<Reg>(cmd.result, p);
 }
 
+Reg Reserve(core::Bytes b, core::Alignment a) {
+  return CompiledFn::Current->Reserve(b, a);
+}
 Reg Reserve(type::Type const *t) { return CompiledFn::Current->Reserve(t); }
 
 Cmd::Cmd(type::Type const *t, Op op) : op_code_(op) {
@@ -181,22 +184,16 @@ Cmd::Cmd(type::Type const *t, Op op) : op_code_(op) {
           CompiledFn::Current->block(BasicBlock::Current).cmds_.size())};
   if (t == nullptr) {
     result = Reg();
-    CompiledFn::Current->references_[result];  // Guarantee it exists.
     CompiledFn::Current->reg_to_cmd_.emplace(result, cmd_index);
     return;
   }
 
-  result = MakeResult(t);
+  result = Reserve(t);
+
   // TODO this isn't done for cmd-buffer commands and needs to be eventually, at
   // least for phi nodes. properties want it to.
   // TODO for implicitly declared out-params of a Call, map them to the call.
   CompiledFn::Current->reg_to_cmd_.emplace(result, cmd_index);
-}
-
-Reg MakeResult(type::Type const *t) {
-  Reg result = CompiledFn::Current->Reserve(t);
-  CompiledFn::Current->references_[result];  // Guarantee it exists.
-  return result;
 }
 
 Reg CreateStruct(core::Scope const *scope, ast::StructLiteral const *parent) {
@@ -497,14 +494,6 @@ static std::ostream &operator<<(std::ostream &os, Cmd::Call const &call) {
   }
 
   return os;
-}
-
-static std::ostream &operator<<(std::ostream &os, Cmd::AddEnumerator const &s) {
-  return os << stringify(s.enum_) << " " << s.name_;
-}
-
-static std::ostream &operator<<(std::ostream &os, Cmd::SetEnumerator const &s) {
-  return os << stringify(s.enum_) << " " << s.val_;
 }
 
 std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {

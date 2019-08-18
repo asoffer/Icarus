@@ -52,58 +52,6 @@ Reg FinalizeStruct(Reg r);
 
 // TODO as a general rule we let ast reach into ir but not the other direction.
 // Fix this.
-Reg CreateEnum(ast::EnumLiteral::Kind kind, ::Module *mod) {
-  switch (kind) {
-    case ast::EnumLiteral::Kind::Enum: {
-      auto &cmd = MakeCmd(type::Type_, Op::CreateEnum);
-      cmd.mod_  = mod;
-      return cmd.result;
-    } break;
-    case ast::EnumLiteral::Kind::Flags: {
-      auto &cmd = MakeCmd(type::Type_, Op::CreateFlags);
-      cmd.mod_  = mod;
-      return cmd.result;
-    } break;
-    default: UNREACHABLE();
-  }
-}
-
-void AddEnumerator(ast::EnumLiteral::Kind kind, Reg reg,
-                   std::string_view token) {
-  switch (kind) {
-    case ast::EnumLiteral::Kind::Enum: {
-      auto &cmd           = MakeCmd(type::Type_, Op::AddEnumerator);
-      cmd.add_enumerator_ = {reg, token};
-    } break;
-    case ast::EnumLiteral::Kind::Flags: {
-      auto &cmd           = MakeCmd(type::Type_, Op::AddFlag);
-      cmd.add_enumerator_ = {reg, token};
-    } break;
-    default: UNREACHABLE();
-  }
-}
-
-void SetEnumerator(Reg reg, RegOr<int32_t> val) {
-  auto &cmd           = MakeCmd(type::Type_, Op::SetEnumerator);
-  cmd.set_enumerator_ = {reg, val};
-}
-
-TypedRegister<type::Type const *> FinalizeEnum(ast::EnumLiteral::Kind kind,
-                                               ir::Reg reg) {
-  switch (kind) {
-    case ast::EnumLiteral::Kind::Enum: {
-      auto &cmd = MakeCmd(type::Type_, Op::FinalizeEnum);
-      cmd.reg_  = reg;
-      return cmd.result;
-    } break;
-    case ast::EnumLiteral::Kind::Flags: {
-      auto &cmd = MakeCmd(type::Type_, Op::FinalizeFlags);
-      cmd.reg_  = reg;
-      return cmd.result;
-    } break;
-    default: UNREACHABLE();
-  }
-}
 
 }  // namespace ir
 
@@ -1274,19 +1222,30 @@ ir::Results EmitIr::Val(ast::Declaration const *node, Context *ctx) {
 }
 
 ir::Results EmitIr::Val(ast::EnumLiteral const *node, Context *ctx) {
-  auto reg = ir::CreateEnum(node->kind(), ctx->mod_);
+  using enum_t = uint64_t;
+  std::vector<std::string_view> names;
+  absl::flat_hash_map<uint64_t, ir::RegOr<enum_t>> specified_values;
+
   for (auto const *elem : node->elems()) {
     if (auto *id = elem->if_as<ast::Identifier>()) {
-      ir::AddEnumerator(node->kind(), reg, id->token());
+      names.push_back(id->token());
     } else if (auto *decl = elem->if_as<ast::Declaration>()) {
-      ir::AddEnumerator(node->kind(), reg, decl->id());
+      names.push_back(decl->id());
       if (!decl->IsCustomInitialized()) {
-        ir::SetEnumerator(reg,
-                          decl->init_val()->EmitIr(this, ctx).get<int32_t>(0));
+        specified_values.emplace(
+            names.size() - 1,
+            decl->init_val()->EmitIr(this, ctx).get<enum_t>(0));
       }
     }
   }
-  return ir::Results{ir::FinalizeEnum(node->kind(), reg)};
+
+  switch (node->kind()) {
+    case ast::EnumLiteral::Kind::Enum:
+      return ir::Results{ir::Enum(ctx->mod_, names, specified_values)};
+    case ast::EnumLiteral::Kind::Flags:
+      return ir::Results{ir::Flags(ctx->mod_, names, specified_values)};
+    default: UNREACHABLE();
+  }
 }
 
 ir::Results EmitIr::Val(ast::FunctionLiteral const *node, Context *ctx) {

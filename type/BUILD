@@ -39,8 +39,6 @@ cc_group_target(
         ":enum",
         ":flags",
         ":function",
-        ":incomplete_enum",
-        ":incomplete_flags",
         ":jump",
         ":opaque",
         ":parameter_pack",
@@ -60,8 +58,6 @@ cc_group_target(
         ":flags-impl",
         ":function-impl",
         ":generic_struct-impl",
-        ":incomplete_enum-impl",
-        ":incomplete_flags-impl",
         ":jump-impl",
         ":opaque-impl",
         ":parameter_pack-impl",
@@ -131,36 +127,6 @@ cc_lib_target(
         "//core:scope",
     ],
     impl_deps = [],
-    test_deps = None,
-)
-
-cc_lib_target(
-    name = "incomplete_enum",
-    intf_deps = [
-        "//ir:register",
-    ],
-    impl_deps = [
-        ":enum",
-        "//misc:module",
-        "@com_google_absl//absl/container:flat_hash_set",
-        "@com_google_absl//absl/random",
-        "@com_google_absl//absl/random:distributions",
-    ],
-    test_deps = None,
-)
-
-cc_lib_target(
-    name = "incomplete_flags",
-    intf_deps = [
-        "//ir:register",
-    ],
-    impl_deps = [
-        ":flags",
-        "//base:permutation",
-        "//ir:flags_val",
-        "//misc:module",
-        "@com_google_absl//absl/random",
-    ],
     test_deps = None,
 )
 

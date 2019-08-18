@@ -38,7 +38,7 @@ Reg MakeReg(T t) {
       blk.cmd_buffer_.append(t.val_);
     }
 
-    Reg result = MakeResult(type::Get<typename T::type>());
+    Reg result = MakeResult<typename T::type>();
     blk.cmd_buffer_.append(result);
     return result;
 

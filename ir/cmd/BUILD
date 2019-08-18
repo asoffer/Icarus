@@ -57,7 +57,7 @@ cc_lib_target(
         ":util",
         "//ir:basic_block",
     ],
-    impl_deps = None,
+    impl_deps = [],
     test_deps = None,
 )
 
@@ -101,8 +101,14 @@ cc_lib_target(
     intf_deps = [
         ":util",
         "//ir:basic_block",
+        "//type:enum",
+        "//type:flags",
+        "//type:pointer",
+        "//type:variant",
+        "@com_google_absl//absl/random:random",
+        "@com_google_absl//absl/random:distributions",
     ],
-    impl_deps = None,
+    impl_deps = [],
     test_deps = None,
 )
 

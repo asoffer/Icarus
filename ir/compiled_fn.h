@@ -76,7 +76,13 @@ struct CompiledFn {
     return index;
   }
 
-  Reg Reserve(type::Type const *t);
+  Reg Reserve(type::Type const *t) {
+    auto arch = core::Interpretter();
+    return Reserve(t->bytes(arch), t->alignment(arch));
+  }
+
+
+  Reg Reserve(core::Bytes b, core::Alignment a);
 
   Reg Alloca(type::Type const* t) {
     Reg r = Reserve(type::Ptr(t));
@@ -99,7 +105,6 @@ struct CompiledFn {
 
   core::Bytes reg_size_ = core::Bytes{0};
 
-  absl::flat_hash_map<Reg, base::bag<Reg>> references_;
   absl::flat_hash_map<Reg, CmdIndex> reg_to_cmd_;
 
   // This vector is indexed by Reg and stores the value which is the offset

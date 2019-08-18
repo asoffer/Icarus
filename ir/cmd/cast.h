@@ -130,7 +130,7 @@ RegOr<ToType> Cast(RegOr<FromType> r) {
     blk.cmd_buffer_.append(PrimitiveIndex<ToType>());
     blk.cmd_buffer_.append(PrimitiveIndex<FromType>());
     blk.cmd_buffer_.append(r.reg_);
-    Reg result = MakeResult(type::Get<ToType>());
+    Reg result = MakeResult<ToType>();
     blk.cmd_buffer_.append(result);
     return result;
   } else {

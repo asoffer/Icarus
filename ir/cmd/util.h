@@ -292,7 +292,7 @@ struct UnaryHandler {
       blk.cmd_buffer_.append(operand.val_);
     }
 
-    Reg result = MakeResult(type::Get<T>());
+    Reg result = MakeResult<T>();
     blk.cmd_buffer_.append(result);
     return RegOr<result_type>{result};
   }
@@ -445,7 +445,7 @@ struct BinaryHandler {
       blk.cmd_buffer_.append(rhs.val_);
     }
 
-    Reg result = MakeResult(type::Get<T>());
+    Reg result = MakeResult<T>();
     blk.cmd_buffer_.append(result);
     return RegOr<result_type>{result};
   }
@@ -503,7 +503,7 @@ RegOr<typename CmdType::type> MakeVariadicImpl(
   blk.cmd_buffer_.append_index<CmdType>();
   Serialize<uint16_t>(&blk.cmd_buffer_, vals);
 
-  Reg result = MakeResult(type::Get<T>());
+  Reg result = MakeResult<T>();
   blk.cmd_buffer_.append(result);
   DEBUG_LOG("variadic")(blk.cmd_buffer_.to_string());
   return RegOr<T>{result};

@@ -139,6 +139,37 @@ void LegacyCmd::UpdateForInlining(base::untyped_buffer::iterator* iter,
   }
 }
 
+#define CASES                                                                  \
+  CASE(LegacyCmd);                                                             \
+  CASE(PrintCmd);                                                              \
+  CASE(AddCmd);                                                                \
+  CASE(SubCmd);                                                                \
+  CASE(MulCmd);                                                                \
+  CASE(DivCmd);                                                                \
+  CASE(ModCmd);                                                                \
+  CASE(NegCmd);                                                                \
+  CASE(NotCmd);                                                                \
+  CASE(LtCmd);                                                                 \
+  CASE(LeCmd);                                                                 \
+  CASE(EqCmd);                                                                 \
+  CASE(NeCmd);                                                                 \
+  CASE(GeCmd);                                                                 \
+  CASE(GtCmd);                                                                 \
+  CASE(StoreCmd);                                                              \
+  CASE(LoadCmd);                                                               \
+  CASE(VariantCmd);                                                            \
+  CASE(TupleCmd);                                                              \
+  CASE(ArrowCmd);                                                              \
+  CASE(PtrCmd);                                                                \
+  CASE(BufPtrCmd);                                                             \
+  CASE(JumpCmd);                                                               \
+  CASE(XorFlagsCmd);                                                           \
+  CASE(AndFlagsCmd);                                                           \
+  CASE(OrFlagsCmd);                                                            \
+  CASE(CastCmd);                                                               \
+  CASE(RegisterCmd);                                                           \
+  CASE(SetRetCmd);                                                             \
+  CASE(EnumerationCmd)
 BlockIndex CmdBuffer::Execute(std::vector<ir::Addr> const& ret_slots,
                               backend::ExecContext* ctx) {
   auto iter = buf_.begin();
@@ -153,35 +184,7 @@ BlockIndex CmdBuffer::Execute(std::vector<ir::Addr> const& ret_slots,
     auto result = type::Execute(&iter, ret_slots, ctx);                        \
     if (result.has_value()) { return *result; }                                \
   } break
-      CASE(LegacyCmd);
-      CASE(PrintCmd);
-      CASE(AddCmd);
-      CASE(SubCmd);
-      CASE(MulCmd);
-      CASE(DivCmd);
-      CASE(ModCmd);
-      CASE(NegCmd);
-      CASE(NotCmd);
-      CASE(LtCmd);
-      CASE(LeCmd);
-      CASE(EqCmd);
-      CASE(NeCmd);
-      CASE(GeCmd);
-      CASE(GtCmd);
-      CASE(StoreCmd);
-      CASE(LoadCmd);
-      CASE(VariantCmd);
-      CASE(TupleCmd);
-      CASE(ArrowCmd);
-      CASE(PtrCmd);
-      CASE(BufPtrCmd);
-      CASE(JumpCmd);
-      CASE(XorFlagsCmd);
-      CASE(AndFlagsCmd);
-      CASE(OrFlagsCmd);
-      CASE(CastCmd);
-      CASE(RegisterCmd);
-      CASE(SetRetCmd);
+      CASES;
 #undef CASE
       default: UNREACHABLE();
     }
@@ -199,34 +202,7 @@ void CmdBuffer::UpdateForInlining(Inliner const& inliner) {
     DEBUG_LOG("dbg")(#type ": ", iter);                                        \
     type::UpdateForInlining(&iter, inliner);                                   \
     break
-      CASE(LegacyCmd);
-      CASE(PrintCmd);
-      CASE(AddCmd);
-      CASE(SubCmd);
-      CASE(MulCmd);
-      CASE(DivCmd);
-      CASE(ModCmd);
-      CASE(NegCmd);
-      CASE(NotCmd);
-      CASE(LtCmd);
-      CASE(LeCmd);
-      CASE(EqCmd);
-      CASE(NeCmd);
-      CASE(GeCmd);
-      CASE(GtCmd);
-      CASE(StoreCmd);
-      CASE(LoadCmd);
-      CASE(VariantCmd);
-      CASE(TupleCmd);
-      CASE(ArrowCmd);
-      CASE(PtrCmd);
-      CASE(BufPtrCmd);
-      CASE(JumpCmd);
-      CASE(XorFlagsCmd);
-      CASE(AndFlagsCmd);
-      CASE(OrFlagsCmd);
-      CASE(CastCmd);
-      CASE(RegisterCmd);
+      CASES;
 #undef CASE
     }
   }
@@ -245,39 +221,14 @@ std::string CmdBuffer::to_string() const {
     s.append("\n" #type ": ");                                                 \
     s.append(type::DebugString(&iter));                                        \
     break
-      CASE(LegacyCmd);
-      CASE(PrintCmd);
-      CASE(AddCmd);
-      CASE(SubCmd);
-      CASE(MulCmd);
-      CASE(DivCmd);
-      CASE(ModCmd);
-      CASE(NegCmd);
-      CASE(NotCmd);
-      CASE(LtCmd);
-      CASE(LeCmd);
-      CASE(EqCmd);
-      CASE(NeCmd);
-      CASE(GeCmd);
-      CASE(GtCmd);
-      CASE(StoreCmd);
-      CASE(LoadCmd);
-      CASE(VariantCmd);
-      CASE(TupleCmd);
-      CASE(ArrowCmd);
-      CASE(PtrCmd);
-      CASE(BufPtrCmd);
-      CASE(JumpCmd);
-      CASE(XorFlagsCmd);
-      CASE(AndFlagsCmd);
-      CASE(OrFlagsCmd);
-      CASE(CastCmd);
-      CASE(RegisterCmd);
+      CASES;
 #undef CASE
     }
   }
   return s;
 }
+
+#undef CASES
 
 size_t GetOffset(CompiledFn const* fn, Reg r) {
   return fn->compiler_reg_to_offset_.at(r);

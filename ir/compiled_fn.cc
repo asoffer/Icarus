@@ -17,24 +17,18 @@ CompiledFn::CompiledFn(
       num_regs_(
           static_cast<int32_t>(type_->input.size() + type_->output.size())),
       mod_(mod) {
-  // Set the references for arguments and returns
-  for (int32_t i = -static_cast<int32_t>(type_->output.size());
-       i < static_cast<int32_t>(type_->input.size()); ++i) {
-    references_[Reg(i)];
-  }
-
   auto arch = core::Interpretter();
   int32_t i = 0;
   for (auto *t : type_->input) {
     auto entry = core::Bytes{0};
     if (t->is_big()) {
-      entry = core::FwdAlign(reg_size_, core::Alignment{alignof(Addr)});
+      entry = core::FwdAlign(reg_size_, core::Alignment::Get<Addr>());
     } else {
       entry = core::FwdAlign(reg_size_, t->alignment(arch));
     }
     compiler_reg_to_offset_.emplace(ir::Reg::Arg(i++), entry.value());
     reg_size_ =
-        entry + (t->is_big() ? core::Bytes{sizeof(Addr)} : t->bytes(arch));
+        entry + (t->is_big() ? core::Bytes::Get<Addr>() : t->bytes(arch));
   }
 
   ASSERT(params_.size() ==
@@ -42,13 +36,11 @@ CompiledFn::CompiledFn(
   blocks_.emplace_back(this);
 }
 
-Reg CompiledFn::Reserve(type::Type const *t) {
-  auto arch   = core::Interpretter();
-  auto offset = core::FwdAlign(reg_size_, t->alignment(arch));
-  reg_size_   = offset + t->bytes(arch);
+Reg CompiledFn::Reserve(core::Bytes b, core::Alignment a) {
+  auto offset = core::FwdAlign(reg_size_, a);
+  reg_size_   = offset + b;
   DEBUG_LOG("reserve")
-  ("Reserving t = ", t->to_string(), ". New size = ", reg_size_,
-   ", because type's size is ", t->bytes(arch));
+  ("New size = ", reg_size_, ", because type's size is ", b);
 
   // TODO starts at `n`, where `n` is the number of function arguments.
   Reg r{compiler_reg_to_offset_.size()};

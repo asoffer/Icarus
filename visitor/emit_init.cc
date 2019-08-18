@@ -10,6 +10,10 @@
 
 namespace visitor {
 
+void EmitIr::DefaultInit(type::Type const *t, ir::Reg, Context *) {
+  UNREACHABLE(t->to_string());
+}
+
 void EmitIr::DefaultInit(type::Array const *t, ir::Reg reg, Context *ctx) {
   t->init_func_.init([=]() {
     // TODO special function?

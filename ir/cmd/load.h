@@ -99,7 +99,7 @@ TypedRegister<T> Load(RegOr<Addr> addr) {
   } else {
     blk.cmd_buffer_.append(addr.val_);
   }
-  TypedRegister<T> result = MakeResult(type::Get<T>());
+  TypedRegister<T> result = MakeResult<T>();
   blk.cmd_buffer_.append(result);
   DEBUG_LOG("load")(blk.cmd_buffer_.to_string());
   return result;

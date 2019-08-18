@@ -20,8 +20,6 @@
 #include "ir/cmd/jumps.h"
 #include "ir/compiled_fn.h"
 #include "misc/module.h"
-#include "type/incomplete_enum.h"
-#include "type/incomplete_flags.h"
 #include "type/type.h"
 #include "type/util.h"
 
@@ -558,34 +556,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       } else {
         NOT_YET(cmd.load_sym_.type_);
       }
-    } break;
-    case ir::Op::CreateEnum: save(new type::IncompleteEnum(cmd.mod_)); break;
-    case ir::Op::AddEnumerator: {
-      resolve<type::IncompleteEnum *>(cmd.add_enumerator_.enum_)
-          ->add(cmd.add_enumerator_.name_);
-    } break;
-    case ir::Op::SetEnumerator: {
-      resolve<type::IncompleteEnum *>(cmd.set_enumerator_.enum_)
-          ->set_last_value(resolve(cmd.set_enumerator_.val_));
-    } break;
-    case ir::Op::FinalizeEnum: {
-      auto *e = resolve<type::IncompleteEnum *>(cmd.reg_);
-      save(std::move(*e).finalize());
-      delete e;
-    } break;
-    case ir::Op::CreateFlags: save(new type::IncompleteFlags(cmd.mod_)); break;
-    case ir::Op::AddFlag: {
-      resolve<type::IncompleteFlags *>(cmd.add_enumerator_.enum_)
-          ->add(cmd.add_enumerator_.name_);
-    } break;
-    case ir::Op::SetFlag: {
-      resolve<type::IncompleteFlags *>(cmd.add_enumerator_.enum_)
-          ->set_last_value(resolve(cmd.set_enumerator_.val_));
-    } break;
-    case ir::Op::FinalizeFlags: {
-      auto *f = resolve<type::IncompleteFlags *>(cmd.reg_);
-      save(std::move(*f).finalize());
-      delete f;
     } break;
     case ir::Op::GetRet: save(ret_slots.at(cmd.get_ret_)); break;
     case ir::Op::PhiBool:

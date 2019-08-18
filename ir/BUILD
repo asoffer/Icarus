@@ -145,7 +145,7 @@ cc_lib_target(
         "//ir/cmd:cast",
         "//ir/cmd:jumps",
         "//ir/cmd:load",
-        "//ir/cmd:print",
+        "//ir/cmd:print-impl",
         "//ir/cmd:register",
         "//ir/cmd:set_ret",
         "//ir/cmd:store",

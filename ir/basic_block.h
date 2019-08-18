@@ -57,7 +57,11 @@ struct BasicBlock {
 };
 
 BasicBlock &GetBlock();
-Reg MakeResult(type::Type const *t);
+
+template <typename T>
+Reg MakeResult() {
+  return Reserve(core::Bytes::Get<T>(), core::Alignment::Get<T>());
+}
 
 std::ostream &operator<<(std::ostream &os, BasicBlock const &b);
 
