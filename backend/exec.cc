@@ -37,8 +37,21 @@ struct Expression;
 namespace backend {
 base::untyped_buffer ReadOnlyData(0);
 
+void CallForeignFn(ir::Foreign const &f, base::untyped_buffer const &arguments,
+                   std::vector<ir::Addr> const &ret_slots,
+                   base::untyped_buffer *stack);
+
+void Execute(ir::AnyFunc fn, base::untyped_buffer const &arguments,
+             std::vector<ir::Addr> const &ret_slots, ExecContext *ctx) {
+  if (fn.is_fn()) {
+    Execute(fn.func(), arguments, ret_slots, ctx);
+  } else {
+    CallForeignFn(fn.foreign(), arguments, ret_slots, &ctx->stack_);
+  }
+}
+
 void Execute(ir::CompiledFn *fn, const base::untyped_buffer &arguments,
-             const std::vector<ir::Addr> &ret_slots, ExecContext *exec_ctx) {
+             const std::vector<ir::Addr> &ret_slots, ExecContext *ctx) {
   // TODO: Understand why and how work-items may not be complete and add an
   // explanation here. I'm quite confident this is really possible with the
   // generics model I have, but I can't quite articulate exactly why it only
@@ -46,12 +59,12 @@ void Execute(ir::CompiledFn *fn, const base::untyped_buffer &arguments,
   if (fn->work_item && *fn->work_item) { (std::move(*fn->work_item))(); }
 
   // TODO what about bound constants?
-  exec_ctx->call_stack.emplace(fn, arguments, exec_ctx);
+  ctx->call_stack.emplace(fn, arguments, ctx);
 
   // TODO log an error if you're asked to execute a function that had an
   // error.
 
-  auto arch     = core::Interpretter();
+  auto arch   = core::Interpretter();
   auto offset = core::Bytes{0};
   for (auto *t : fn->type_->output) {
     offset = core::FwdAlign(offset, t->alignment(arch)) + t->bytes(arch);
@@ -59,12 +72,12 @@ void Execute(ir::CompiledFn *fn, const base::untyped_buffer &arguments,
   base::untyped_buffer ret_buffer(offset.value());
 
   while (true) {
-    auto block_index = exec_ctx->ExecuteBlock(ret_slots);
+    auto block_index = ctx->ExecuteBlock(ret_slots);
     if (block_index.is_default()) {
-      exec_ctx->call_stack.pop();
+      ctx->call_stack.pop();
       return;
     } else {
-      exec_ctx->call_stack.top().MoveTo(block_index);
+      ctx->call_stack.top().MoveTo(block_index);
     }
   }
 }
@@ -197,7 +210,8 @@ std::tuple<Ts...> MakeTupleArgs(base::untyped_buffer const &arguments) {
 // TODO Generalize this based on calling convention.
 template <typename Out, typename... Ins>
 void FfiCall(ir::Foreign const &f, base::untyped_buffer const &arguments,
-             std::vector<ir::Addr> *ret_slots, base::untyped_buffer *stack) {
+             std::vector<ir::Addr> const *ret_slots,
+             base::untyped_buffer *stack) {
   using fn_t = Out (*)(Ins...);
   fn_t fn    = (fn_t)(f.get());
 
@@ -210,7 +224,7 @@ void FfiCall(ir::Foreign const &f, base::untyped_buffer const &arguments,
 }
 
 void CallForeignFn(ir::Foreign const &f, base::untyped_buffer const &arguments,
-                   std::vector<ir::Addr> ret_slots,
+                   std::vector<ir::Addr> const& ret_slots,
                    base::untyped_buffer *stack) {
   // TODO we can catch locally or in the same lexical scope stack if a
   // redeclaration of the same foreign symbol has a different type.
@@ -269,106 +283,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
 
   switch (cmd.op_code_) {
     case ir::Op::Death: UNREACHABLE(call_stack.top().fn_);
-    case ir::Op::Bytes:
-      save(resolve(cmd.type_arg_)->bytes(core::Interpretter()));
-      break;
-    case ir::Op::Align:
-      save(resolve(cmd.type_arg_)->alignment(core::Interpretter()));
-      break;
-    case ir::Op::Move: {
-      auto *t = cmd.special2_.type_;
-      std::vector<ir::Addr> return_slots;
-      base::untyped_buffer call_buf(sizeof(ir::Addr) * 2);
-      call_buf.append(resolve(cmd.special2_.regs_[0]));
-      call_buf.append(resolve(cmd.special2_.regs_[1]));
-
-      ir::AnyFunc f;
-      if (auto *s = t->if_as<type::Struct>()) {
-        f = s->move_assign_func_.get();
-      } else if (auto *tup = t->if_as<type::Tuple>()) {
-        f = tup->move_assign_func_.get();
-      } else if (auto *a = t->if_as<type::Array>()) {
-        f = a->move_assign_func_.get();
-      } else {
-        NOT_YET();
-      }
-
-      if (f.is_fn()) {
-        Execute(f.func(), call_buf, return_slots, this);
-      } else {
-        CallForeignFn(f.foreign(), call_buf, return_slots, &stack_);
-      }
-    } break;
-    case ir::Op::Copy: {
-      auto *t = cmd.special2_.type_;
-      std::vector<ir::Addr> return_slots;
-      base::untyped_buffer call_buf(sizeof(ir::Addr) * 2);
-      call_buf.append(resolve(cmd.special2_.regs_[0]));
-      call_buf.append(resolve(cmd.special2_.regs_[1]));
-
-      ir::AnyFunc f;
-      if (auto *s = t->if_as<type::Struct>()) {
-        f = s->copy_assign_func_.get();
-      } else if (auto *tup = t->if_as<type::Tuple>()) {
-        f = tup->copy_assign_func_.get();
-      } else if (auto *a = t->if_as<type::Array>()) {
-        f = a->copy_assign_func_.get();
-      } else {
-        NOT_YET();
-      }
-
-      if (f.is_fn()) {
-        Execute(f.func(), call_buf, return_slots, this);
-      } else {
-        CallForeignFn(f.foreign(), call_buf, return_slots, &stack_);
-      }
-    } break;
-    case ir::Op::Init: {
-      auto *t = cmd.special1_.type_;
-      std::vector<ir::Addr> return_slots;
-      base::untyped_buffer call_buf(sizeof(ir::Addr));
-      call_buf.append(resolve(cmd.special1_.regs_[0]));
-
-      ir::AnyFunc f;
-      if (auto *s = t->if_as<type::Struct>()) {
-       f = s->init_func_;
-      } else if (auto *tup = t->if_as<type::Tuple>()) {
-        f = tup->init_func_.get();
-      } else if (auto *a = t->if_as<type::Array>()) {
-        f = a->init_func_.get();
-      } else {
-        NOT_YET();
-      }
-
-      if (f.is_fn()) {
-        Execute(f.func(), call_buf, return_slots, this);
-      } else {
-        CallForeignFn(f.foreign(), call_buf, return_slots, &stack_);
-      }
-    } break;
-    case ir::Op::Destroy: {
-      auto *t = cmd.special1_.type_;
-      std::vector<ir::Addr> return_slots;
-      base::untyped_buffer call_buf(sizeof(ir::Addr));
-      call_buf.append(resolve(cmd.special1_.regs_[0]));
-
-      ir::AnyFunc f;
-      if (auto *s = t->if_as<type::Struct>()) {
-        f = s->destroy_func_.get();
-      } else if (auto *tup = t->if_as<type::Tuple>()) {
-        f = tup->destroy_func_.get();
-      } else if (auto *a = t->if_as<type::Array>()) {
-        f = a->destroy_func_.get();
-      } else {
-        NOT_YET();
-      }
-
-      if (f.is_fn()) {
-        Execute(f.func(), call_buf, return_slots, this);
-      } else {
-        CallForeignFn(f.foreign(), call_buf, return_slots, &stack_);
-      }
-    } break;
     case ir::Op::AddHashtagToField: {
       ASSERT_NOT_NULL(resolve<type::Struct *>(cmd.add_hashtag_.struct_))
           ->add_hashtag_to_last_field(cmd.add_hashtag_.hashtag_);
@@ -466,27 +380,7 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       ir::AnyFunc f = resolve(cmd.call_.fn_);
 
       // TODO you need to be able to determine how many args there are
-      if (f.is_fn()) {
-        Execute(f.func(), call_buf, return_slots, this);
-      } else {
-        CallForeignFn(f.foreign(), call_buf, return_slots, &stack_);
-      }
-    } break;
-    case ir::Op::LoadSymbol: {
-      void *sym = [&]() -> void * {
-        // TODO: this is a hack for now untill we figure out why we can load
-        // stderr as a symbol but not write to it.
-        if (cmd.load_sym_.name_ == "stderr") { return stderr; }
-        if (cmd.load_sym_.name_ == "stdout") { return stdout; }
-        return ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, cmd.load_sym_.name_.data()));
-      }();
-      if (cmd.load_sym_.type_->is<type::Function>()) {
-        save(ir::AnyFunc{ir::Foreign(sym, cmd.load_sym_.type_)});
-      } else if (cmd.load_sym_.type_->is<type::Pointer>()) {
-        save(ir::Addr::Heap(sym));
-      } else {
-        NOT_YET(cmd.load_sym_.type_);
-      }
+      Execute(f, call_buf, return_slots, this);
     } break;
     case ir::Op::GetRet: save(ret_slots.at(cmd.get_ret_)); break;
     case ir::Op::PhiBool:

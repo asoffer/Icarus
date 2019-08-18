@@ -3,6 +3,7 @@
 #include "core/fn_params.h"
 #include "ir/cmd.h"
 #include "ir/cmd/jumps.h"
+#include "ir/cmd/misc.h"
 #include "ir/cmd/set_ret.h"
 #include "ir/compiled_fn.h"
 #include "type/function.h"

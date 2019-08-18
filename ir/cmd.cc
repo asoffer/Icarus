@@ -59,26 +59,6 @@ void AddScopeDefDone(Reg reg, RegOr<AnyFunc> f) {
   cmd.add_scope_def_done_ = {reg, f};
 }
 
-void Move(type::Type const *t, Reg from, RegOr<Addr> to) {
-  auto &cmd     = MakeCmd(nullptr, Op::Move);
-  cmd.special2_ = {t, from, to};
-}
-
-void Copy(type::Type const *t, Reg from, RegOr<Addr> to) {
-  auto &cmd     = MakeCmd(nullptr, Op::Copy);
-  cmd.special2_ = {t, from, to};
-}
-
-void Init(type::Type const *t, Reg r) {
-  auto &cmd     = MakeCmd(nullptr, Op::Init);
-  cmd.special1_ = {t, r};
-}
-
-void Destroy(type::Type const *t, Reg r) {
-  auto &cmd     = MakeCmd(nullptr, Op::Destroy);
-  cmd.special1_ = {t, r};
-}
-
 BasicBlock &GetBlock() {
   return ASSERT_NOT_NULL(CompiledFn::Current)->block(BasicBlock::Current);
 }
@@ -90,24 +70,6 @@ Cmd &MakeCmd(type::Type const *t, Op op) {
   DEBUG_LOG("LegacyCmd")(&cmd);
   blk.cmd_buffer_.append(&cmd);
   return cmd;
-}
-
-type::Typed<Reg> LoadSymbol(std::string_view name, type::Type const *t) {
-  auto &cmd     = MakeCmd(t, Op::LoadSymbol);
-  cmd.load_sym_ = {name, t};
-  return type::Typed<Reg>{cmd.result, t};
-}
-
-RegOr<int64_t> Bytes(RegOr<type::Type const *> r) {
-  auto &cmd     = MakeCmd(type::Int64, Op::Bytes);
-  cmd.type_arg_ = r;
-  return cmd.result;
-}
-
-RegOr<int64_t> Align(RegOr<type::Type const *> r) {
-  auto &cmd     = MakeCmd(type::Int64, Op::Align);
-  cmd.type_arg_ = r;
-  return cmd.result;
 }
 
 void JumpPlaceholder(BlockDef const *block_def) {
@@ -387,10 +349,6 @@ static std::ostream &operator<<(std::ostream &os, Cmd::PtrIncr const &p) {
 
 static std::ostream &operator<<(std::ostream &os, Cmd::Field const &f) {
   return os << f.ptr_ << " " << f.type_->to_string() << " " << f.num_;
-}
-
-static std::ostream &operator<<(std::ostream &os, Cmd::LoadSymbol const &ls) {
-  return os << ls.name_ << ": " << ASSERT_NOT_NULL(ls.type_)->to_string();
 }
 
 static std::ostream &operator<<(std::ostream &os, Cmd::Call const &call) {

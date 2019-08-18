@@ -2,6 +2,7 @@
 #include "ast/ast.h"
 #include "base/permutation.h"
 #include "ir/cmd/store.h"
+#include "ir/cmd/misc.h"
 #include "ir/compiled_fn.h"
 #include "ir/components.h"
 #include "ir/results.h"

@@ -151,11 +151,6 @@ struct Cmd {
     }
   };
 
-  struct LoadSymbol {
-    std::string_view name_;
-    type::Type const *type_;
-  };
-
   template <size_t N>
   struct SpecialMember {
     type::Type const *type_;
@@ -183,7 +178,6 @@ struct Cmd {
     Reg reg_;
     size_t get_ret_;
     type::Type const *type_;
-    LoadSymbol load_sym_;
     BlockDef const *block_def_;
     ast::BlockLiteral const *block_lit_;
     CreateScopeDef create_scope_def_;
@@ -212,7 +206,6 @@ struct Cmd {
     RegOr<double> float64_arg_;
     RegOr<EnumVal> enum_arg_;
     RegOr<FlagsVal> flags_arg_;
-    RegOr<type::Type const *> type_arg_;
     RegOr<std::string_view> byte_view_arg_;
     RegOr<Addr> addr_arg_;
 
@@ -244,8 +237,6 @@ struct Cmd {
   Reg result;
 };
 
-RegOr<int64_t> Bytes(RegOr<type::Type const *> r);
-RegOr<int64_t> Align(RegOr<type::Type const *> r);
 void DebugIr();
 
 Reg Reserve(core::Bytes b, core::Alignment a);
@@ -273,16 +264,9 @@ TypedRegister<Addr> Index(type::Pointer const *t, Reg array_ptr,
 TypedRegister<Addr> Alloca(type::Type const *t);
 TypedRegister<Addr> TmpAlloca(type::Type const *t, Context *ctx);
 
-type::Typed<Reg> LoadSymbol(std::string_view name, type::Type const *type);
-
 TypedRegister<Addr> GetRet(size_t n, type::Type const *t);
 
 std::ostream &operator<<(std::ostream &os, Cmd const &cmd);
-
-void Move(type::Type const *t, Reg from, RegOr<Addr> to);
-void Copy(type::Type const *t, Reg from, RegOr<Addr> to);
-void Destroy(type::Type const *t, Reg r);
-void Init(type::Type const *t, Reg r);
 
 void JumpPlaceholder(BlockDef const *block_def);
 

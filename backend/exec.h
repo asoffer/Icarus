@@ -53,7 +53,6 @@ struct ExecContext {
 
   template <typename T>
   T resolve(ir::Reg r) const {
-    DEBUG_LOG("x")(call_stack.top().regs_);
     return call_stack.top().regs_.get<T>(
         call_stack.top().fn_->compiler_reg_to_offset_.at(r));
   }
@@ -67,6 +66,8 @@ struct ExecContext {
 };
 
 void Execute(ir::CompiledFn *fn, base::untyped_buffer const &arguments,
+             std::vector<ir::Addr> const &ret_slots, ExecContext *ctx);
+void Execute(ir::AnyFunc fn, base::untyped_buffer const &arguments,
              std::vector<ir::Addr> const &ret_slots, ExecContext *ctx);
 }  // namespace backend
 #endif  // ICARUS_BACKEND_EXEC_H

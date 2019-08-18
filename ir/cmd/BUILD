@@ -51,6 +51,16 @@ cc_lib_target(
 )
 
 cc_lib_target(
+    name = "misc",
+    cfgs = ["match", "compile"],
+    intf_deps = [
+        ":util",
+    ],
+    impl_deps = [],
+    test_deps = None,
+)
+
+cc_lib_target(
     name = "print",
     cfgs = ["match", "compile"],
     intf_deps = [

@@ -89,7 +89,8 @@ void SetRet(uint16_t n, T val) {
     } else {
       blk.cmd_buffer_.append(val.val_);
     }
-
+  } else if constexpr(IsTypedReg<T>::value) {
+    SetRet(n, RegOr<typename T::type>(val));
   } else {
     SetRet(n, RegOr<T>(val));
   }
