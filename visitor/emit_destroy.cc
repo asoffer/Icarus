@@ -56,14 +56,14 @@ void EmitIr::Destroy(type::Variant const *t, ir::Reg reg, Context *ctx) {
       auto type =
           ir::Load<type::Type const *>(ir::VariantType(ir::Reg::Arg(0)));
 
+      auto var_val = ir::VariantValue(t, ir::Reg::Arg(0));
       for (type::Type const *v : t->variants_) {
         if (!v->HasDestructor()) { continue; }
         auto old_block   = ir::BasicBlock::Current;
         auto found_block = ir::CompiledFn::Current->AddBlock();
 
         ir::BasicBlock::Current = found_block;
-        v->EmitDestroy(
-            this, ir::PtrFix(ir::VariantValue(v, ir::Reg::Arg(0)), v), ctx);
+        v->EmitDestroy(this, ir::PtrFix(var_val, v), ctx);
         ir::UncondJump(landing);
 
         ir::BasicBlock::Current = old_block;

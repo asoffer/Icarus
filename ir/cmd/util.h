@@ -35,9 +35,14 @@ constexpr uint8_t PrimitiveIndex() {
     return 0x0f;
   } else if constexpr (std::is_same_v<T, AnyFunc>) {
     return 0x10;
-  } else if constexpr (std::is_same_v<T, ast::FunctionLiteral*>) {
-    // TODO: FunctionLiteral is a short-term hack for generics. IR shouldn't depend on it.
+  } else if constexpr (std::is_same_v<T, core::Alignment>) {
     return 0x11;
+  } else if constexpr (std::is_same_v<T, core::Bytes>) {
+    return 0x12;
+  } else if constexpr (std::is_same_v<T, ast::FunctionLiteral*>) {
+    // TODO: FunctionLiteral is a short-term hack for generics. IR shouldn't
+    // depend on it.
+    return 0x13;
   } else if constexpr (std::is_integral_v<T>) {
     return base::Log2(sizeof(T)) * 2 + std::is_signed_v<T>;
   } else {
@@ -77,6 +82,10 @@ auto PrimitiveDispatch(uint8_t primitive_type, Fn&& fn) {
       return std::forward<Fn>(fn)(base::Tag<Addr>{});
     case PrimitiveIndex<AnyFunc>():
       return std::forward<Fn>(fn)(base::Tag<AnyFunc>{});
+    case PrimitiveIndex<core::Alignment>():
+      return std::forward<Fn>(fn)(base::Tag<core::Alignment>{});
+    case PrimitiveIndex<core::Bytes>():
+      return std::forward<Fn>(fn)(base::Tag<core::Bytes>{});
     case PrimitiveIndex<ast::FunctionLiteral*>():
       return std::forward<Fn>(fn)(base::Tag<ast::FunctionLiteral*>{});
     case PrimitiveIndex<EnumVal>():

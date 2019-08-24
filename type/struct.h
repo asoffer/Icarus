@@ -40,11 +40,6 @@ struct Struct : public Type {
 
 #include "visitor/type_visitors.xmacro.h"
 
-  void set_last_name(std::string_view s);
-  void add_hashtag(ast::Hashtag hashtag);
-  void add_hashtag_to_last_field(ast::Hashtag hashtag);
-  void add_field(type::Type const *t);
-
   // Return the type of a field, or a nullptr if it doesn't exist
   Field const *field(std::string_view name) const;
 

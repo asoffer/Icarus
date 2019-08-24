@@ -41,19 +41,6 @@ enum class Op : uint16_t {
 char const *OpCodeStr(Op op);
 
 struct Cmd {
-  struct PtrIncr {
-    // TODO maybe store the type here rather than on the cmd because most cmds
-    // don't need it.
-    RegOr<Addr> ptr_;
-    type::Type const *pointee_type_;
-    RegOr<int64_t> incr_;
-  };
-  struct Field {
-    RegOr<Addr> ptr_;
-    type::Type const *type_;  // Struct or Tuple
-    size_t num_;
-  };
-
   struct Call {
     Call(RegOr<AnyFunc> f, Arguments *args, OutParams *outs)
         : fn_(f), arguments_(args), outs_(outs) {}
@@ -127,17 +114,6 @@ struct Cmd {
     }
   };
 
-  struct AddHashtag {
-    Reg struct_;
-    ast::Hashtag hashtag_;
-
-    inline friend std::ostream &operator<<(std::ostream &os,
-                                           AddHashtag const &a) {
-      return os << stringify(a.struct_) << " "
-                << static_cast<int>(a.hashtag_.kind_);
-    }
-  };
-
   template <size_t N>
   struct SpecialMember {
     type::Type const *type_;
@@ -162,43 +138,19 @@ struct Cmd {
 
   union {
     Empty empty_;
-    Reg reg_;
     size_t get_ret_;
-    type::Type const *type_;
     BlockDef const *block_def_;
     ast::BlockLiteral const *block_lit_;
     CreateScopeDef create_scope_def_;
     AddScopeDefInit add_scope_def_init_;
     AddScopeDefDone add_scope_def_done_;
 
-    AddHashtag add_hashtag_;
     BlockIndex block_index_;
     Call call_;
-    PtrIncr ptr_incr_;
-    Field field_;
     ::Module *mod_;
     core::Scope const *scope_;
 
-    // TODO names of these are easily mis-spellable and would lead to UB.
-    RegOr<bool> bool_arg_;
-    RegOr<int8_t> i8_arg_;
-    RegOr<int16_t> i16_arg_;
-    RegOr<int32_t> i32_arg_;
-    RegOr<int64_t> i64_arg_;
-    RegOr<uint8_t> u8_arg_;
-    RegOr<uint16_t> u16_arg_;
-    RegOr<uint32_t> u32_arg_;
-    RegOr<uint64_t> u64_arg_;
-    RegOr<float> float32_arg_;
-    RegOr<double> float64_arg_;
-    RegOr<EnumVal> enum_arg_;
-    RegOr<FlagsVal> flags_arg_;
     RegOr<std::string_view> byte_view_arg_;
-    RegOr<Addr> addr_arg_;
-
-    SpecialMember<1> special1_;
-    SpecialMember<2> special2_;
-    Args<FlagsVal> flags_args_;
 
     RegOr<AnyFunc> any_fn_;
   };
@@ -206,20 +158,10 @@ struct Cmd {
   Reg result;
 };
 
-void DebugIr();
-
 Reg Reserve(core::Bytes b, core::Alignment a);
 Reg Reserve(type::Type const *);
 
-Reg VariantType(RegOr<Addr> r);
-Reg VariantValue(const type::Type *t, RegOr<Addr> r);
 // Type repreesents the type of `ptr`
-TypedRegister<Addr> PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
-                            type::Pointer const *t);
-type::Typed<Reg> Field(RegOr<Addr> r, type::Struct const *t,
-                            size_t n);
-type::Typed<Reg> Field(RegOr<Addr> r, type::Tuple const *t, size_t n);
-
 Cmd &MakeCmd(type::Type const *t, Op op);
 
 void Call(RegOr<AnyFunc> const &f, Arguments arguments);

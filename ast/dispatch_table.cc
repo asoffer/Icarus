@@ -48,7 +48,7 @@ static ir::Results PrepArg(visitor::EmitIr *visitor, type::Type const *to,
     }
   } else {
     if (auto *from_variant = from->if_as<type::Variant>()) {
-      return ir::Results{ir::VariantValue(to, val.get<ir::Reg>(0))};
+      return ir::Results{ir::VariantValue(from_variant, val.get<ir::Reg>(0))};
     } else {
       UNREACHABLE();
     }
@@ -623,11 +623,12 @@ static bool EmitOneCall(
         }
       },
       row.fn);
-  // TODO this feels super hacky. ANd wasteful to compute `fn` twice.
-  if (!Inline && !fn.is_reg_ && fn.val_.is_fn() &&
-      fn.val_.func()->must_inline_) {
-    return EmitOneCall<true>(row, args, return_types, outputs, block_map,
-                             inline_results, ctx);
+  // TODO this feels super hacky. And wasteful to compute `fn` twice.
+  if constexpr (!Inline) {
+    if (!fn.is_reg_ && fn.val_.is_fn() && fn.val_.func()->must_inline_) {
+      return EmitOneCall<true>(row, args, return_types, outputs, block_map,
+                               inline_results, ctx);
+    }
   }
 
   visitor::EmitIr visitor;
@@ -674,6 +675,9 @@ static bool EmitOneCall(
     }
 
   } else {
+    type::Variant const *var_ret_type =
+        type::Var(return_types)->if_as<type::Variant>();
+
     ir::OutParams out_params;
 
     auto call_block = ir::CompiledFn::Current->AddBlock();
@@ -698,7 +702,7 @@ static bool EmitOneCall(
                 // There is no need to call the destructor on this variant that
                 // we're overwriting because it has not been initialized yet.
                 ir::Store(ret_type, ir::VariantType(out));
-                auto val = ir::VariantValue(ret_type, out);
+                auto val = ir::VariantValue(ASSERT_NOT_NULL(var_ret_type), out);
                 out_params.AppendLoc(val);
               } else {
                 // Every function that may be dispatched to returns the same

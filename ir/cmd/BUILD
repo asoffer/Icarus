@@ -55,6 +55,7 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = [
         ":util",
+        "//base:debug",
     ],
     impl_deps = [],
     test_deps = None,

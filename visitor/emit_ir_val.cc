@@ -47,8 +47,6 @@ type::Type const *BuiltinType(core::Builtin);
 Reg CreateStruct(core::Scope const *scope, ast::StructLiteral const *parent);
 void CreateStructField(Reg struct_type, RegOr<type::Type const *> type);
 void SetStructFieldName(Reg struct_type, std::string_view field_name);
-void AddHashtagToField(Reg struct_type, ast::Hashtag hashtag);
-void AddHashtagToStruct(Reg struct_type, ast::Hashtag hashtag);
 Reg FinalizeStruct(Reg r);
 
 // TODO as a general rule we let ast reach into ir but not the other direction.
@@ -303,14 +301,14 @@ static void CompleteBody(EmitIr *visitor, ast::FunctionLiteral const *node,
 //       ir::CreateStructField(struct_reg, type_reg);
 //       ir::SetStructFieldName(struct_reg, field.id());
 // 
-//       for (auto const &hashtag : field.hashtags_) {
-//         ir::AddHashtagToField(struct_reg, hashtag);
-//       }
+//       // for (auto const &hashtag : field.hashtags_) {
+//       //   ir::AddHashtagToField(struct_reg, hashtag);
+//       // }
 //     }
 // 
-//     for (auto hashtag : node->hashtags_) {
-//       ir::AddHashtagToStruct(struct_reg, hashtag);
-//     }
+//     // for (auto hashtag : node->hashtags_) {
+//     //   ir::AddHashtagToStruct(struct_reg, hashtag);
+//     // }
 // 
 //     ir::RegOr<type::Type const *> result = ir::FinalizeStruct(struct_reg);
 //     ir::DestroyContext(ctx_reg);

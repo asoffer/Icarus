@@ -84,4 +84,10 @@ core::Alignment Variant::alignment(core::Arch const &a) const {
   return align;
 }
 
+core::Alignment Variant::alternative_alignment(core::Arch const &a) const {
+  core::Alignment align;
+  for (auto const *t : variants_) { align = std::max(align, t->alignment(a)); }
+  return align;
+}
+
 }  // namespace type

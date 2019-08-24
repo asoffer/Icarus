@@ -271,7 +271,7 @@ std::optional<BlockIndex> TypeInfoCmd::Execute(
 
 std::string TypeInfoCmd::DebugString(
     base::untyped_buffer::const_iterator *iter) {
-  auto ctrl_bits = iter->read<uint8_t>();
+  auto ctrl_bits  = iter->read<uint8_t>();
   std::string arg = (ctrl_bits & 0x01)
                         ? stringify(iter->read<Reg>())
                         : iter->read<type::Type const *>()->to_string();
@@ -294,7 +294,7 @@ void TypeInfoCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
 TypedRegister<core::Alignment> Align(RegOr<type::Type const *> r) {
   auto &blk = GetBlock();
   blk.cmd_buffer_.append_index<TypeInfoCmd>();
-  blk.cmd_buffer_.append<uint8_t>(r.is_reg_ ? 0x01: 0x00);
+  blk.cmd_buffer_.append<uint8_t>(r.is_reg_ ? 0x01 : 0x00);
   if (r.is_reg_) {
     blk.cmd_buffer_.append(r.reg_);
   } else {
@@ -309,7 +309,7 @@ TypedRegister<core::Alignment> Align(RegOr<type::Type const *> r) {
 TypedRegister<core::Bytes> Bytes(RegOr<type::Type const *> r) {
   auto &blk = GetBlock();
   blk.cmd_buffer_.append_index<TypeInfoCmd>();
-  blk.cmd_buffer_.append<uint8_t>(0x02 + (r.is_reg_ ? 0x01: 0x00));
+  blk.cmd_buffer_.append<uint8_t>(0x02 + (r.is_reg_ ? 0x01 : 0x00));
   if (r.is_reg_) {
     blk.cmd_buffer_.append(r.reg_);
   } else {
@@ -321,5 +321,198 @@ TypedRegister<core::Bytes> Bytes(RegOr<type::Type const *> r) {
   return result;
 }
 
+std::optional<BlockIndex> AccessCmd::Execute(
+    base::untyped_buffer::iterator *iter, std::vector<Addr> const &ret_slots,
+    backend::ExecContext *ctx) {
+  auto ctrl_bits   = iter->read<control_bits>();
+  auto const *type = iter->read<type::Type const *>();
+
+  Addr addr = ctrl_bits.reg_ptr ? ctx->resolve<Addr>(iter->read<Reg>())
+                                : iter->read<Addr>();
+  int64_t index = ctrl_bits.reg_index ? ctx->resolve<int64_t>(iter->read<Reg>())
+                                      : iter->read<int64_t>();
+  auto reg = iter->read<Reg>();
+
+  auto arch = core::Interpretter();
+  core::Bytes offset;
+  if (ctrl_bits.is_array) {
+    offset = core::FwdAlign(type->bytes(arch), type->alignment(arch)) * index;
+  } else if (auto *struct_type = type->if_as<type::Struct>()) {
+    offset = struct_type->offset(index, arch);
+  } else if (auto *tuple_type = type->if_as<type::Tuple>()) {
+    offset = struct_type->offset(index, arch);
+  }
+
+  auto &frame = ctx->call_stack.top();
+  frame.regs_.set(GetOffset(frame.fn_, reg), addr + offset);
+
+  return std::nullopt;
+}
+
+std::string AccessCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
+  auto ctrl_bits   = iter->read<control_bits>();
+  auto const *type = iter->read<type::Type const *>();
+
+  auto addr = ctrl_bits.reg_ptr ? RegOr<Addr>(iter->read<Reg>())
+                                : RegOr<Addr>(iter->read<Addr>());
+  auto index = ctrl_bits.reg_index ? RegOr<int64_t>(iter->read<Reg>())
+                                   : RegOr<int64_t>(iter->read<int64_t>());
+  auto reg = iter->read<Reg>();
+  return absl::StrCat(
+      stringify(reg),
+      ctrl_bits.is_array ? " = access-array " : " = access-index ",
+      type->to_string(), " ", stringify(addr), " ", stringify(index));
+}
+
+void AccessCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
+                                  Inliner const &inliner) {
+  auto ctrl_bits = iter->read<control_bits>();
+  iter->read<type::Type const *>();
+
+  if (ctrl_bits.reg_ptr) {
+    inliner.Inline(&iter->read<Reg>());
+  } else {
+    iter->read<Addr>();
+  }
+
+  if (ctrl_bits.reg_index) {
+    inliner.Inline(&iter->read<Reg>());
+  } else {
+    iter->read<int64_t>();
+  }
+
+  inliner.Inline(&iter->read<Reg>());
+}
+
+namespace {
+Reg MakeAccessCmd(RegOr<Addr> ptr, RegOr<int64_t> inc, type::Type const *t,
+                  bool is_array) {
+  auto &blk = GetBlock();
+  blk.cmd_buffer_.append_index<AccessCmd>();
+  blk.cmd_buffer_.append(
+      AccessCmd::MakeControlBits(is_array, ptr.is_reg_, inc.is_reg_));
+  blk.cmd_buffer_.append(t);
+  if (ptr.is_reg_) {
+    blk.cmd_buffer_.append(ptr.reg_);
+  } else {
+    blk.cmd_buffer_.append(ptr.val_);
+  }
+  if (inc.is_reg_) {
+    blk.cmd_buffer_.append(inc.reg_);
+  } else {
+    blk.cmd_buffer_.append(inc.val_);
+  }
+
+  Reg result = MakeResult<Addr>();
+  blk.cmd_buffer_.append(result);
+  DEBUG_LOG("access")(blk.cmd_buffer_.to_string());
+  return result;
+}
+}  // namespace
+
+TypedRegister<Addr> PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
+                            type::Pointer const *t) {
+  return TypedRegister<Addr>{MakeAccessCmd(ptr, inc, t, true)};
+}
+
+type::Typed<Reg> Field(RegOr<Addr> r, type::Tuple const *t, int64_t n) {
+  auto *p = type::Ptr(t->entries_.at(n));
+  return type::Typed<Reg>(MakeAccessCmd(r, n, t, false), p);
+}
+
+type::Typed<Reg> Field(RegOr<Addr> r, type::Struct const *t, int64_t n) {
+  auto *p = type::Ptr(t->fields().at(n).type);
+  return type::Typed<Reg>(MakeAccessCmd(r, n, t, false), p);
+}
+
+std::optional<BlockIndex> VariantAccessCmd::Execute(
+    base::untyped_buffer::iterator *iter, std::vector<Addr> const &ret_slots,
+    backend::ExecContext *ctx) {
+  auto &frame  = ctx->call_stack.top();
+  bool get_val = iter->read<bool>();
+  bool is_reg  = iter->read<bool>();
+
+  Addr addr =
+      is_reg ? ctx->resolve<Addr>(iter->read<Reg>()) : iter->read<Addr>();
+  DEBUG_LOG("variant")(addr);
+  if (get_val) {
+    auto const *variant = iter->read<type::Variant const *>();
+    DEBUG_LOG("variant")(variant);
+    DEBUG_LOG("variant")(variant->to_string());
+    auto arch = core::Interpretter();
+    addr += core::FwdAlign(type::Type_->bytes(arch),
+                           variant->alternative_alignment(arch));
+    DEBUG_LOG("variant")(variant->to_string());
+    DEBUG_LOG("variant")(addr);
+  }
+
+  Reg reg = iter->read<Reg>();
+  DEBUG_LOG("variant")(reg);
+  frame.regs_.set(GetOffset(frame.fn_, reg), addr);
+  return std::nullopt;
+}
+
+std::string VariantAccessCmd::DebugString(
+    base::untyped_buffer::const_iterator *iter) {
+  bool get_val = iter->read<bool>();
+  bool is_reg  = iter->read<bool>();
+  auto addr =
+      is_reg ? RegOr<Addr>(iter->read<Reg>()) : RegOr<Addr>(iter->read<Addr>());
+  if (get_val) {
+    auto const *variant = iter->read<type::Variant const *>();
+    Reg reg             = iter->read<Reg>();
+    return absl::StrCat(stringify(reg), "variant-value ", variant->to_string(),
+                        " ", stringify(addr));
+  } else {
+    Reg reg = iter->read<Reg>();
+    return absl::StrCat(stringify(reg), " = variant-type ", stringify(addr));
+  }
+}
+
+void VariantAccessCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
+                                         Inliner const &inliner) {
+  bool get_val = iter->read<bool>();
+  bool is_reg  = iter->read<bool>();
+
+  if (is_reg) {
+    inliner.Inline(&iter->read<Reg>());
+  } else {
+    iter->read<Addr>();
+  }
+
+  if (get_val) { iter->read<type::Variant const *>(); }
+
+  inliner.Inline(&iter->read<Reg>());
+}
+
+namespace {
+Reg MakeVariantAccessCmd(RegOr<Addr> const &r, type::Variant const *v) {
+  auto &blk = GetBlock();
+  blk.cmd_buffer_.append_index<VariantAccessCmd>();
+  bool get_val = (v != nullptr);
+  blk.cmd_buffer_.append(get_val);
+  blk.cmd_buffer_.append(r.is_reg_);
+  if (r.is_reg_) {
+    blk.cmd_buffer_.append(r.reg_);
+  } else {
+    blk.cmd_buffer_.append(r.val_);
+  }
+  if (get_val) { blk.cmd_buffer_.append(v); }
+
+  Reg result = MakeResult<Addr>();
+  blk.cmd_buffer_.append(result);
+  DEBUG_LOG("variant")(blk.cmd_buffer_.to_string());
+  DEBUG_LOG("variant")(blk.cmd_buffer_.buf_.to_string());
+  return result;
+}
+}  // namespace
+
+Reg VariantType(RegOr<Addr> const &r) {
+  return MakeVariantAccessCmd(r, nullptr);
+}
+
+Reg VariantValue(type::Variant const *v, RegOr<Addr> const &r) {
+  return MakeVariantAccessCmd(r, v);
+}
 
 }  // namespace ir

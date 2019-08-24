@@ -7,6 +7,7 @@
 #include "ir/cmd.h"
 #include "ir/cmd/cast.h"
 #include "ir/cmd/load.h"
+#include "ir/cmd/misc.h"
 #include "ir/register.h"
 #include "ir/str.h"
 #include "type/type.h"

@@ -79,20 +79,6 @@ void JumpPlaceholder(BlockDef const *block_def) {
   CompiledFn::Current->must_inline_ = true;
 }
 
-type::Typed<Reg> Field(RegOr<Addr> r, type::Tuple const *t, size_t n) {
-  auto *p    = type::Ptr(t->entries_.at(n));
-  auto &cmd  = MakeCmd(p, Op::Field);
-  cmd.field_ = {r, t, n};
-  return type::Typed<Reg>(cmd.result, p);
-}
-
-type::Typed<Reg> Field(RegOr<Addr> r, type::Struct const *t, size_t n) {
-  auto *p    = type::Ptr(t->fields().at(n).type);
-  auto &cmd  = MakeCmd(p, Op::Field);
-  cmd.field_ = {r, t, n};
-  return type::Typed<Reg>(cmd.result, p);
-}
-
 Reg Reserve(core::Bytes b, core::Alignment a) {
   return CompiledFn::Current->Reserve(b, a);
 }
@@ -118,30 +104,6 @@ Cmd::Cmd(type::Type const *t, Op op) : op_code_(op) {
   CompiledFn::Current->reg_to_cmd_.emplace(result, cmd_index);
 }
 
-void DebugIr() { MakeCmd(nullptr, Op::DebugIr); }
-
-Reg VariantType(RegOr<Addr> r) {
-  auto &cmd     = MakeCmd(Ptr(type::Type_), Op::VariantType);
-  cmd.addr_arg_ = r;
-  return cmd.result;
-}
-
-Reg VariantValue(type::Type const *t, RegOr<Addr> r) {
-  auto &cmd     = MakeCmd(type::Ptr(t), Op::VariantValue);
-  cmd.addr_arg_ = r;
-  return cmd.result;
-}
-
-void AddHashtagToField(Reg struct_type, ast::Hashtag hashtag) {
-  auto &cmd        = MakeCmd(nullptr, Op::AddHashtagToField);
-  cmd.add_hashtag_ = {struct_type, hashtag};
-}
-
-void AddHashtagToStruct(Reg struct_type, ast::Hashtag hashtag) {
-  auto &cmd        = MakeCmd(nullptr, Op::AddHashtagToStruct);
-  cmd.add_hashtag_ = {struct_type, hashtag};
-}
-
 TypedRegister<Addr> Alloca(type::Type const *t) {
   return CompiledFn::Current->Alloca(t);
 }
@@ -157,26 +119,6 @@ TypedRegister<Addr> GetRet(size_t n, type::Type const *t) {
   auto &cmd    = MakeCmd(type::Ptr(t), Op::GetRet);
   cmd.get_ret_ = n;
   return cmd.result;
-}
-
-TypedRegister<Addr> PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
-                            type::Pointer const *t) {
-  if (!inc.is_reg_ && inc.val_ == 0 &&
-      /* TODO get rid of this last condition */ ptr.is_reg_) {
-    return TypedRegister<Addr>{ptr.reg_};
-  }
-  auto &cmd     = MakeCmd(t, Op::PtrIncr);
-  cmd.ptr_incr_ = {ptr, t->pointee, inc};
-  return cmd.result;
-}
-
-TypedRegister<Addr> Index(type::Pointer const *t, Reg array_ptr,
-                          RegOr<int64_t> offset) {
-  auto *array_type = &t->pointee->as<type::Array>();
-  // TODO this works but generates worse ir (both here and in llvm). It's worth
-  // figuring out how to do this better. Is this still true without
-  // variable-length arrays?
-  return PtrIncr(array_ptr, offset, type::Ptr(array_type->data_type));
 }
 
 void Call(RegOr<AnyFunc> const &f, Arguments arguments) {
@@ -296,14 +238,6 @@ static auto Stringify(T &&val) {
 template <typename T>
 std::ostream &operator<<(std::ostream &os, Cmd::Args<T> const &a) {
   return os << Stringify(a.args_[0]) << " " << Stringify(a.args_[1]);
-}
-
-static std::ostream &operator<<(std::ostream &os, Cmd::PtrIncr const &p) {
-  return os << p.ptr_ << " " << p.pointee_type_ << " " << p.incr_;
-}
-
-static std::ostream &operator<<(std::ostream &os, Cmd::Field const &f) {
-  return os << f.ptr_ << " " << f.type_->to_string() << " " << f.num_;
 }
 
 static std::ostream &operator<<(std::ostream &os, Cmd::Call const &call) {

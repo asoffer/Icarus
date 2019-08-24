@@ -5,6 +5,7 @@
 #include "base/matchers.h"
 
 #ifdef DBG
+#define ICARUS_DEBUG
 
 #define ICARUS_PRIVATE 
 

@@ -15,7 +15,7 @@ struct ExecContext;
 namespace ir {
 // TODO blockindex can store its own nullopt.
 struct LegacyCmd {
-  constexpr static uint8_t index = std::numeric_limits<uint8_t>::max();
+  constexpr static uint8_t index = (std::numeric_limits<uint8_t>::max)() - 1;
   static std::optional<BlockIndex> Execute(
       base::untyped_buffer::iterator* iter,
       std::vector<ir::Addr> const& ret_slots, backend::ExecContext* ctx);

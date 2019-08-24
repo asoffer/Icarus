@@ -12,7 +12,7 @@ struct Alignment {
     return Alignment{alignof(T)};
   }
 
-  constexpr explicit Alignment(size_t val) : value_(val) {}
+  constexpr explicit Alignment(size_t val = 1) : value_(val) {}
 
   constexpr auto value() const { return value_; }
 

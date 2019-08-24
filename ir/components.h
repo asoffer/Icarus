@@ -4,6 +4,7 @@
 #include "ir/cmd/basic.h"
 #include "ir/cmd/jumps.h"
 #include "ir/cmd/load.h"
+#include "ir/cmd/misc.h"
 #include "ir/cmd/phi.h"
 #include "ir/cmd/types.h"
 #include "ir/compiled_fn.h"
@@ -89,6 +90,9 @@ void OnEachArrayElement(type::Array const *t, CompiledFn *fn, F &&fn_to_apply) {
     ReturnJump();
   }
 }
+
+TypedRegister<Addr> Index(type::Pointer const *t, Reg array_ptr,
+                          RegOr<int64_t> offset);
 
 }  // namespace ir
 

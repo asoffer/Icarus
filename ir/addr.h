@@ -3,6 +3,8 @@
 
 #include <string>
 
+#include "core/bytes.h"
+
 namespace ir {
 struct Addr {
   enum class Kind : uint8_t { Heap, Stack, ReadOnly } kind;
@@ -31,6 +33,8 @@ struct Addr {
     return addr;
   }
 
+  Addr &operator+=(core::Bytes b);
+
   union {
     uint64_t as_stack;
     void *as_heap;
@@ -39,6 +43,9 @@ struct Addr {
 
   std::string to_string() const;
 };
+
+inline Addr operator+(Addr a, core::Bytes b) { return a += b; }
+inline Addr operator+(core::Bytes b, Addr a) { return a += b; }
 
 bool operator==(Addr lhs, Addr rhs);
 inline bool operator!=(Addr lhs, Addr rhs) { return !(lhs == rhs); }

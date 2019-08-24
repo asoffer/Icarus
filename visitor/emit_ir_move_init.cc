@@ -2,6 +2,7 @@
 
 #include "ast/ast.h"
 #include "ir/cmd.h"
+#include "ir/cmd/misc.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 

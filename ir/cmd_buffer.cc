@@ -84,15 +84,6 @@ void LegacyCmd::UpdateForInlining(base::untyped_buffer::iterator* iter,
       //   Call(r_fn, std::move(new_args));
       // }
     } break;
-    case Op::PtrIncr: {
-      if (cmd.ptr_incr_.ptr_.is_reg_) {
-        inliner.Inline(&cmd.ptr_incr_.ptr_.reg_);
-      }
-
-      if (cmd.ptr_incr_.incr_.is_reg_) {
-        inliner.Inline(&cmd.ptr_incr_.incr_.reg_);
-      }
-    } break;
     default:; NOT_YET(static_cast<int>(cmd.op_code_));
   }
 }
@@ -131,7 +122,11 @@ void LegacyCmd::UpdateForInlining(base::untyped_buffer::iterator* iter,
   CASE(StructCmd);                                                             \
   CASE(OpaqueTypeCmd);                                                         \
   CASE(SemanticCmd);                                                           \
-  CASE(LoadSymbolCmd)
+  CASE(LoadSymbolCmd);                                                         \
+  CASE(TypeInfoCmd);                                                           \
+  CASE(AccessCmd);                                                             \
+  CASE(VariantAccessCmd);                                                      \
+  CASE(DebugIrCmd)
 
 BlockIndex CmdBuffer::Execute(std::vector<ir::Addr> const& ret_slots,
                               backend::ExecContext* ctx) {

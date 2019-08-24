@@ -36,4 +36,13 @@ std::string stringify(Addr::Kind k) {
   }
 }
 
+Addr &Addr::operator+=(core::Bytes b) {
+  switch (kind) {
+    case Kind::Stack: as_stack += b.value(); break;
+    case Kind::Heap: as_heap = static_cast<char *>(as_heap) + b.value(); break;
+    case Kind::ReadOnly: as_rodata += b.value(); break;
+  }
+  return *this;
+}
+
 }  // namespace ir

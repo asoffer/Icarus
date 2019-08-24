@@ -1,8 +1,10 @@
+#include "visitor/emit_ir.h"
+
 #include "ast/ast.h"
 #include "ir/cmd.h"
+#include "ir/cmd/misc.h"
 #include "type/type.h"
 #include "type/typed_value.h"
-#include "visitor/emit_ir.h"
 
 namespace visitor {
 

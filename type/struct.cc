@@ -49,22 +49,6 @@ void Struct::defining_modules(
   modules->insert(defining_module());
 }
 
-void Struct::set_last_name(std::string_view s) {
-  fields_.back().name = std::string(s);
-  auto[iter, success] =
-      field_indices_.emplace(fields_.back().name, fields_.size() - 1);
-  static_cast<void>(iter);
-  ASSERT(success == true);
-}
-
-void Struct::add_hashtag(ast::Hashtag hashtag) { hashtags_.push_back(hashtag); }
-
-void Struct::add_hashtag_to_last_field(ast::Hashtag hashtag) {
-  fields_.back().hashtags_.push_back(hashtag);
-}
-
-void Struct::add_field(Type const *t) { fields_.emplace_back(t); }
-
 void Struct::WriteTo(std::string *result) const {
   result->append("struct.");
   result->append(std::to_string(reinterpret_cast<uintptr_t>(this)));

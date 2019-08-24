@@ -1,6 +1,8 @@
 #ifndef ICARUS_CORE_BYTES_H
 #define ICARUS_CORE_BYTES_H
 
+#include <iostream>
+
 namespace core {
 
 struct Bytes {

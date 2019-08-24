@@ -26,7 +26,7 @@ cc_group_target(
 
 cc_lib_target(
     name = "addr",
-    intf_deps = [],
+    intf_deps = ["//core:bytes"],
     impl_deps = ["//base:debug"],
     test_deps = None,
 )
@@ -163,6 +163,7 @@ cc_lib_target(
         "//ir/cmd:basic",
         "//ir/cmd:jumps",
         "//ir/cmd:load",
+        "//ir/cmd:misc",
         "//ir/cmd:phi",
         "//ir/cmd:types",
     ],
