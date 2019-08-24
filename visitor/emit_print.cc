@@ -34,24 +34,23 @@ void EmitIr::Print(type::Array const *t, ir::Results const &val, Context *ctx) {
       t->data_type->EmitPrint(this, ir::Results{ir::PtrFix(ptr, t->data_type)},
                               ctx);
 
-      using tup = std::tuple<ir::RegOr<ir::Addr>, ir::RegOr<int32_t>>;
       ir::CreateLoop(
-          [&](tup const &phis) { return ir::Eq(std::get<1>(phis), 0); },
-          [&](tup const &phis) {
-            ASSERT(std::get<0>(phis).is_reg_ == true);
-            auto elem_ptr =
-                ir::PtrIncr(std::get<0>(phis).reg_, 1, type::Ptr(t->data_type));
+          [&](ir::RegOr<ir::Addr> const &phi0, ir::RegOr<int32_t> const &phi1) {
+            return ir::Eq(phi1, 0);
+          },
+          [&](ir::RegOr<ir::Addr> const &phi0, ir::RegOr<int32_t> const &phi1) {
+            ASSERT(phi0.is_reg_ == true);
+            auto elem_ptr = ir::PtrIncr(phi0.reg_, 1, type::Ptr(t->data_type));
 
             ir::Print(std::string_view{", "});
             t->data_type->EmitPrint(
                 this, ir::Results{ir::PtrFix(elem_ptr, t->data_type)}, ctx);
 
-            return std::make_tuple(
-                elem_ptr,
-                ir::Sub(ir::RegOr<int32_t>(std::get<1>(phis)), 1));
+            return std::make_tuple(elem_ptr,
+                                   ir::Sub(ir::RegOr<int32_t>(phi1), 1));
           },
           std::tuple{type::Ptr(t->data_type), type::Int32},
-          tup{ptr, t->len - 1});
+          std::tuple{ir::RegOr<ir::Addr>(ptr), ir::RegOr<int32_t>(t->len - 1)});
       ir::UncondJump(exit_block);
 
       ir::BasicBlock::Current = exit_block;

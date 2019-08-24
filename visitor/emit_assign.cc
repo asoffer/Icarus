@@ -34,33 +34,32 @@ static ir::CompiledFn *CreateAssign(EmitIr *visitor, type::Array const *a,
     auto from_end_ptr = ir::PtrIncr(from_ptr, a->len, data_ptr_type);
     auto to_ptr       = ir::Index(ptr_type, var, 0);
 
-    using tup = std::tuple<ir::RegOr<ir::Addr>, ir::RegOr<ir::Addr>>;
     ir::CreateLoop(
-        [&](tup const &phis) {
-          return ir::Eq(std::get<0>(phis), from_end_ptr);
+        [&](ir::RegOr<ir::Addr> const &phi, ir::RegOr<ir::Addr> const &) {
+          return ir::Eq(phi, from_end_ptr);
         },
-        [&](tup const &phis) {
-          ASSERT(std::get<0>(phis).is_reg_ == true);
-          ASSERT(std::get<1>(phis).is_reg_ == true);
+        [&](ir::RegOr<ir::Addr> const &phi0, ir::RegOr<ir::Addr> const &phi1) {
+          ASSERT(phi0.is_reg_ == true);
+          ASSERT(phi1.is_reg_ == true);
 
           auto from_val =
-              ir::Results{PtrFix(std::get<0>(phis).reg_, a->data_type)};
+              ir::Results{PtrFix(phi0.reg_, a->data_type)};
 
           if constexpr (Cat == Copy) {
             a->data_type->EmitCopyAssign(visitor, a->data_type, from_val,
-                                         std::get<1>(phis).reg_, ctx);
+                                         phi1.reg_, ctx);
           } else if constexpr (Cat == Move) {
             a->data_type->EmitMoveAssign(visitor, a->data_type, from_val,
-                                         std::get<1>(phis).reg_, ctx);
+                                         phi1.reg_, ctx);
           } else {
             UNREACHABLE();
           }
 
-          return std::tuple{
-              ir::PtrIncr(std::get<0>(phis).reg_, 1, data_ptr_type),
-              ir::PtrIncr(std::get<1>(phis).reg_, 1, data_ptr_type)};
+          return std::tuple{ir::PtrIncr(phi0.reg_, 1, data_ptr_type),
+                            ir::PtrIncr(phi1.reg_, 1, data_ptr_type)};
         },
-        std::tuple{data_ptr_type, data_ptr_type}, tup{from_ptr, to_ptr});
+        std::tuple{data_ptr_type, data_ptr_type},
+        std::tuple{ir::RegOr<ir::Addr>(from_ptr), ir::RegOr<ir::Addr>(to_ptr)});
     ir::ReturnJump();
   }
   return fn;

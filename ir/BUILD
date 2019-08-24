@@ -19,7 +19,6 @@ cc_group_target(
         ":foreign-impl",
         ":inliner-impl",
         ":out_params-impl",
-        ":phi-impl",
         ":results-impl",
         ":str-impl",
     ],
@@ -119,7 +118,6 @@ cc_lib_target(
     ],
     impl_deps = [
         ":compiled_fn",
-        ":phi",
         "//ast:ast",
         "//core:arch",
         "//ir/cmd:jumps",
@@ -161,11 +159,11 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = [
         ":compiled_fn",
-        ":phi",
         ":register",
         "//ir/cmd:basic",
         "//ir/cmd:jumps",
         "//ir/cmd:load",
+        "//ir/cmd:phi",
         "//ir/cmd:types",
     ],
     impl_deps = [],
@@ -230,24 +228,6 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = [":register"],
     impl_deps = [],
-    test_deps = None,
-)
-
-cc_lib_target(
-    name = "phi",
-    cfgs = ["match", "compile"],
-    intf_deps = [
-        ":compiled_fn",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-    impl_deps = [
-        "//type:enum",
-        "//type:flags",
-        "//type:function",
-        "//type:jump",
-        "//type:pointer",
-        "//type:struct",
-    ],
     test_deps = None,
 )
 

@@ -10,7 +10,6 @@
 #include "ir/cmd/jumps.h"
 #include "ir/cmd/register.h"
 #include "ir/compiled_fn.h"
-#include "ir/phi.h"
 #include "ir/reg.h"
 #include "type/generic_struct.h"
 #include "type/jump.h"
@@ -197,21 +196,6 @@ void Call(RegOr<AnyFunc> const &f, Arguments arguments, OutParams outs) {
   cmd.call_ = Cmd::Call(f, args, outs_ptr);
 }
 
-template <typename T>
-static void InlinePhiNode(
-    CmdIndex cmd_index,
-    PhiArgs<T> const &phi_args,
-    absl::flat_hash_map<BlockIndex, BlockIndex> const &block_relocs,
-    absl::flat_hash_map<Reg, Results> const &reg_relocs) {
-  absl::flat_hash_map<BlockIndex, RegOr<T>> phi_map;
-  for (auto [block, val] : phi_args.map_) {
-    phi_map.emplace(block_relocs.at(block),
-                    val.is_reg_ ? reg_relocs.at(val.reg_).template get<T>(0)
-                                : RegOr<T>{val.val_});
-  }
-  MakePhi(cmd_index, std::move(phi_map));
-}
-
 std::pair<Results, bool> CallInline(
     CompiledFn *f, Arguments const &arguments,
     absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> const
@@ -262,35 +246,6 @@ std::pair<Results, bool> CallInline(
       default: UNREACHABLE();
     }
   }
-
-  // // 4. Go back with a second pass over phi-nodes.
-  // for (auto [gen_phi_args, cmd_index] : deferred_phis) {
-  //   if (auto *phi_args = gen_phi_args->if_as<PhiArgs<bool>>()) {
-  //     InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
-  //   } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<int8_t>>()) {
-  //     InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
-  //   } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<int16_t>>()) {
-  //     InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
-  //   } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<int32_t>>()) {
-  //     InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
-  //   } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<int64_t>>()) {
-  //     InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
-  //   } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<uint8_t>>()) {
-  //     InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
-  //   } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<uint16_t>>()) {
-  //     InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
-  //   } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<uint32_t>>()) {
-  //     InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
-  //   } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<uint64_t>>()) {
-  //     InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
-  //   } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<float>>()) {
-  //     InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
-  //   } else if (auto *phi_args = gen_phi_args->if_as<PhiArgs<double>>()) {
-  //     InlinePhiNode(cmd_index, *phi_args, block_relocs, reg_relocs);
-  //   } else {
-  //     UNREACHABLE();
-  //   }
-  // }
 
   Results results;
   for (auto const &r : return_vals) { results.append(r); }
@@ -375,16 +330,7 @@ static std::ostream &operator<<(std::ostream &os, Cmd::Call const &call) {
 std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
   if (cmd.result != Reg{}) { os << stringify(cmd.result) << " = "; }
   os << OpCodeStr(cmd.op_code_) << " ";
-   if (cmd.op_code_ == Op::PhiBool) { return cmd.phi_bool_->print(os); }
-   if (cmd.op_code_ == Op::PhiInt8) { return cmd.phi_i8_->print(os); }
-   if (cmd.op_code_ == Op::PhiInt16) { return cmd.phi_i16_->print(os); }
-   if (cmd.op_code_ == Op::PhiInt32) { return cmd.phi_i32_->print(os); }
-   if (cmd.op_code_ == Op::PhiInt64) { return cmd.phi_i64_->print(os); }
-   if (cmd.op_code_ == Op::PhiNat8) { return cmd.phi_u8_->print(os); }
-   if (cmd.op_code_ == Op::PhiNat16) { return cmd.phi_u16_->print(os); }
-   if (cmd.op_code_ == Op::PhiNat32) { return cmd.phi_u32_->print(os); }
-   if (cmd.op_code_ == Op::PhiNat64) { return cmd.phi_u64_->print(os); }
-   switch (cmd.op_code_) {
+  switch (cmd.op_code_) {
 #define OP_MACRO(op, tag, type, field)                                         \
   case Op::op:                                                                 \
     return os << Stringify(cmd.field);

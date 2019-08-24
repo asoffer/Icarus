@@ -10,11 +10,11 @@
 #include "ir/cmd/cast.h"
 #include "ir/cmd/load.h"
 #include "ir/cmd/misc.h"
+#include "ir/cmd/phi.h"
 #include "ir/cmd/set_ret.h"
 #include "ir/cmd/store.h"
 #include "ir/cmd/types.h"
 #include "ir/components.h"
-#include "ir/phi.h"
 #include "ir/register.h"
 #include "misc/context.h"
 #include "type/generic_struct.h"
@@ -570,9 +570,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
 
       ir::BasicBlock::Current = land_block;
 
-      return ir::Results{
-          ir::MakePhi<bool>(ir::Phi(type::Bool),
-                            {{lhs_end_block, true}, {rhs_end_block, rhs_val}})};
+      return ir::Results{ir::Phi<bool>({lhs_end_block, rhs_end_block},
+                                       {ir::RegOr<bool>(true), rhs_val})};
     } break;
     case frontend::Operator::AndEq: {
       auto *this_type = ctx->type_of(node);
@@ -599,9 +598,9 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
 
       ir::BasicBlock::Current = land_block;
 
-      return ir::Results{ir::MakePhi<bool>(
-          ir::Phi(type::Bool),
-          {{lhs_end_block, rhs_val}, {rhs_end_block, false}})};
+      // TODO this looks like a bug.
+      return ir::Results{ir::Phi<bool>({lhs_end_block, rhs_end_block},
+                                       {rhs_val, ir::RegOr<bool>(false)})};
     } break;
     case frontend::Operator::AddEq: {
       auto lhs_lval = node->lhs()->EmitLVal(this, ctx)[0];
@@ -880,10 +879,9 @@ ir::Results ArrayCompare(type::Array const *lhs_type, ir::Results const &lhs_ir,
       ir::UncondJump(phi_block);
 
       ir::BasicBlock::Current = phi_block;
-      auto lhs_phi_index      = ir::Phi(Ptr(lhs_type->data_type));
-      auto rhs_phi_index      = ir::Phi(Ptr(rhs_type->data_type));
-      auto lhs_phi_reg = ir::CompiledFn::Current->Command(lhs_phi_index).result;
-      auto rhs_phi_reg = ir::CompiledFn::Current->Command(rhs_phi_index).result;
+
+      ir::Reg lhs_phi_reg = ir::MakeResult<ir::Addr>();
+      ir::Reg rhs_phi_reg = ir::MakeResult<ir::Addr>();
 
       ir::CondJump(ir::Eq(ir::RegOr<ir::Addr>(lhs_phi_reg), lhs_end),
                    true_block, body_block);
@@ -899,10 +897,10 @@ ir::Results ArrayCompare(type::Array const *lhs_type, ir::Results const &lhs_ir,
       auto rhs_incr = ir::PtrIncr(rhs_phi_reg, 1, Ptr(rhs_type->data_type));
       ir::UncondJump(phi_block);
 
-      ir::MakePhi<ir::Addr>(lhs_phi_index, {{equal_len_block, lhs_start},
-                                            {incr_block, lhs_incr}});
-      ir::MakePhi<ir::Addr>(rhs_phi_index, {{equal_len_block, rhs_start},
-                                            {incr_block, rhs_incr}});
+      ir::Phi<ir::Addr>(lhs_phi_reg, {equal_len_block, incr_block},
+                        {lhs_start, lhs_incr});
+      ir::Phi<ir::Addr>(rhs_phi_reg, {equal_len_block, incr_block},
+                        {rhs_start, rhs_incr});
     }
   }
 
@@ -1012,8 +1010,7 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
   if (node->ops()[0] == frontend::Operator::Xor) {
     if (t == type::Bool) {
       return ir::Results{std::accumulate(
-          node->exprs().begin(), node->exprs().end(),
-          ir::RegOr<bool>(false),
+          node->exprs().begin(), node->exprs().end(), ir::RegOr<bool>(false),
           [&](ir::RegOr<bool> acc, auto *expr) {
             return ir::Ne(acc, expr->EmitIr(this, ctx).template get<bool>(0));
           })};
@@ -1060,7 +1057,8 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
              node->ops()[0] == frontend::Operator::Or) {
     auto land_block = ir::CompiledFn::Current->AddBlock();
 
-    absl::flat_hash_map<ir::BlockIndex, ir::RegOr<bool>> phi_args;
+    std::vector<ir::BlockIndex> phi_blocks;
+    std::vector<ir::RegOr<bool>> phi_results;
     bool is_or = (node->ops()[0] == frontend::Operator::Or);
     for (size_t i = 0; i + 1 < node->exprs().size(); ++i) {
       auto val = node->exprs()[i]->EmitIr(this, ctx).get<bool>(0);
@@ -1068,18 +1066,19 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
       auto next_block = ir::CompiledFn::Current->AddBlock();
       ir::CondJump(val, is_or ? land_block : next_block,
                    is_or ? next_block : land_block);
-      phi_args.emplace(ir::BasicBlock::Current, is_or);
+      phi_blocks.push_back(ir::BasicBlock::Current);
+      phi_results.push_back(is_or);
 
       ir::BasicBlock::Current = next_block;
     }
 
-    phi_args.emplace(ir::BasicBlock::Current,
-                     node->exprs().back()->EmitIr(this, ctx).get<bool>(0));
+    phi_blocks.push_back(ir::BasicBlock::Current);
+    phi_results.push_back(node->exprs().back()->EmitIr(this, ctx).get<bool>(0));
     ir::UncondJump(land_block);
 
     ir::BasicBlock::Current = land_block;
 
-    return ir::Results{ir::MakePhi<bool>(ir::Phi(type::Bool), phi_args)};
+    return ir::Results{ir::Phi<bool>(phi_blocks, phi_results)};
 
   } else {
     if (node->ops().size() == 1) {
@@ -1088,14 +1087,16 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
       return ir::Results{EmitChainOpPair(node, 0, lhs_ir, rhs_ir, ctx)};
 
     } else {
-      absl::flat_hash_map<ir::BlockIndex, ir::RegOr<bool>> phi_args;
+      std::vector<ir::BlockIndex> phi_blocks;
+      std::vector<ir::RegOr<bool>> phi_values;
       auto lhs_ir     = node->exprs().front()->EmitIr(this, ctx);
       auto land_block = ir::CompiledFn::Current->AddBlock();
       for (size_t i = 0; i + 1 < node->ops().size(); ++i) {
         auto rhs_ir = node->exprs()[i + 1]->EmitIr(this, ctx);
         auto cmp    = EmitChainOpPair(node, i, lhs_ir, rhs_ir, ctx);
 
-        phi_args.emplace(ir::BasicBlock::Current, false);
+        phi_blocks.push_back(ir::BasicBlock::Current);
+        phi_values.push_back(false);
         auto next_block = ir::CompiledFn::Current->AddBlock();
         ir::CondJump(cmp, next_block, land_block);
         ir::BasicBlock::Current = next_block;
@@ -1104,14 +1105,14 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
 
       // Once more for the last element, but don't do a conditional jump.
       auto rhs_ir = node->exprs().back()->EmitIr(this, ctx);
-      phi_args.emplace(
-          ir::BasicBlock::Current,
+      phi_blocks.push_back(ir::BasicBlock::Current);
+      phi_values.push_back(
           EmitChainOpPair(node, node->exprs().size() - 2, lhs_ir, rhs_ir, ctx));
       ir::UncondJump(land_block);
 
       ir::BasicBlock::Current = land_block;
 
-      return ir::Results{ir::MakePhi<bool>(ir::Phi(type::Bool), phi_args)};
+      return ir::Results{ir::Phi<bool>(phi_blocks, phi_values)};
     }
   }
   UNREACHABLE();
@@ -1640,6 +1641,7 @@ ir::Results EmitIr::Val(ast::StructType const *node, Context *ctx) {
 
 ir::Results EmitIr::Val(ast::Switch const *node, Context *ctx) {
   absl::flat_hash_map<ir::BlockIndex, ir::Results> phi_args;
+
   auto land_block = ir::CompiledFn::Current->AddBlock();
   auto *t         = ctx->type_of(node);
   // TODO this is not precisely accurate if you have regular void.
@@ -1670,7 +1672,7 @@ ir::Results EmitIr::Val(ast::Switch const *node, Context *ctx) {
 
     ir::BasicBlock::Current = expr_block;
     if (body->is<ast::Expression>()) {
-      phi_args[ir::BasicBlock::Current] = body->EmitIr(this, ctx);
+      phi_args.emplace(ir::BasicBlock::Current, body->EmitIr(this, ctx));
       ir::UncondJump(land_block);
     } else {
       // It must be a jump/yield/return, which we've verified in VerifyType.
@@ -1683,8 +1685,8 @@ ir::Results EmitIr::Val(ast::Switch const *node, Context *ctx) {
   }
 
   if (node->cases_.back().first->is<ast::Expression>()) {
-    phi_args[ir::BasicBlock::Current] =
-        node->cases_.back().first->EmitIr(this, ctx);
+    phi_args.emplace(ir::BasicBlock::Current,
+                     node->cases_.back().first->EmitIr(this, ctx));
     ir::UncondJump(land_block);
   } else {
     // It must be a jump/yield/return, which we've verified in VerifyType.
@@ -1696,7 +1698,7 @@ ir::Results EmitIr::Val(ast::Switch const *node, Context *ctx) {
   if (t == type::Void()) {
     return ir::Results{};
   } else {
-    return ir::MakePhi(t, ir::Phi(t->is_big() ? type::Ptr(t) : t), phi_args);
+    return ir::Phi(t->is_big() ? type::Ptr(t) : t, phi_args);
   }
 }
 

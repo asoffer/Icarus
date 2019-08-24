@@ -16,9 +16,6 @@ void BasicBlock::Append(BasicBlock &&b) {
   b.cmds_.clear();
   arguments_.splice(arguments_.end(), b.arguments_);
   outs_.splice(outs_.end(), b.outs_);
-  phi_args_.insert(phi_args_.end(),
-                   std::make_move_iterator(b.phi_args_.begin()),
-                   std::make_move_iterator(b.phi_args_.end()));
 }
 
 }  // namespace ir

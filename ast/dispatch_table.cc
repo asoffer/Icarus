@@ -13,7 +13,7 @@
 #include "ir/cmd/store.h"
 #include "ir/compiled_fn.h"
 #include "ir/components.h"
-#include "ir/phi.h"
+#include "ir/cmd/phi.h"
 #include "ir/reg.h"
 #include "misc/context.h"
 #include "misc/module.h"
@@ -554,20 +554,23 @@ static ir::RegOr<bool> EmitVariantMatch(ir::Reg needle,
     // other.
     auto landing = ir::CompiledFn::Current->AddBlock();
 
-    absl::flat_hash_map<ir::BlockIndex, ir::RegOr<bool>> phi_map;
+    std::vector<ir::BlockIndex> phi_blocks;
+    std::vector<ir::RegOr<bool>> phi_results;
     for (type::Type const *v : haystack_var->variants_) {
-      phi_map.emplace(ir::BasicBlock::Current, true);
+      phi_blocks.push_back(ir::BasicBlock::Current);
+      phi_results.emplace_back(true);
 
       ir::BasicBlock::Current =
           ir::EarlyExitOn<true>(landing, ir::Eq(v, runtime_type));
     }
 
-    phi_map.emplace(ir::BasicBlock::Current, false);
+    phi_blocks.push_back(ir::BasicBlock::Current);
+    phi_results.emplace_back(false);
 
     ir::UncondJump(landing);
 
     ir::BasicBlock::Current = landing;
-    return ir::MakePhi<bool>(ir::Phi(type::Bool), phi_map);
+    return ir::Phi<bool>(phi_blocks, phi_results);
 
   } else {
     // TODO actually just implicitly convertible to haystack
@@ -790,12 +793,7 @@ static ir::Results EmitFnCall(
               // Return is small enough to fit in a register, so we need to
               // create a phi node joining all the registers from all the
               // possible dispatches.
-              type::Type const *ret_type = table->return_types_[i];
-              if (out->size() == 1) {
-                results.append(out->begin()->second);
-              } else {
-                results.append(ir::MakePhi(ret_type, ir::Phi(ret_type), *out));
-              }
+              results.append(ir::Phi(table->return_types_[i], *out));
             }
           },
           outputs[i]);

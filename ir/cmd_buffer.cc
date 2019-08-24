@@ -36,33 +36,6 @@ void LegacyCmd::UpdateForInlining(base::untyped_buffer::iterator* iter,
       NOT_YET();
     } break;
 
-#define CASE(op_code, phi_type, args)                                          \
-  case Op::op_code: {                                                          \
-    NOT_YET();                                                                 \
-    /*auto cmd_index = Phi(phi_type);                                          \
-    auto reg       = CompiledFn::Current->Command(cmd_index).result;           \
-    reg_relocs.emplace(cmd.result, reg);                                       \
-    deferred_phis.emplace_back(cmd.args, cmd_index);                           \
-    */                                                                         \
-  } break
-      CASE(PhiBool, type::Bool, phi_bool_);
-      CASE(PhiInt8, type::Int8, phi_i8_);
-      CASE(PhiInt16, type::Int16, phi_i16_);
-      CASE(PhiInt32, type::Int32, phi_i32_);
-      CASE(PhiInt64, type::Int64, phi_i64_);
-      CASE(PhiNat8, type::Nat8, phi_u8_);
-      CASE(PhiNat16, type::Nat16, phi_u16_);
-      CASE(PhiNat32, type::Nat32, phi_u32_);
-      CASE(PhiNat64, type::Nat64, phi_u64_);
-      CASE(PhiFloat32, type::Float32, phi_float32_);
-      CASE(PhiFloat64, type::Float64, phi_float64_);
-      CASE(PhiType, type::Type_, phi_type_);
-      // TODO CASE(PhiBlock, ____, phi_block_);
-      // TODO CASE(PhiAddr, ____, phi_addr_);
-      // TODO CASE(PhiEnum, ____, phi_enum_);
-      // TODO CASE(PhiFlags, ____, phi_flags_);
-      // TODO CASE(PhiFunc, ____, phi_func_);
-#undef CASE
     case Op::GetRet: NOT_YET();
     case Op::Call: {
       NOT_YET();

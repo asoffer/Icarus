@@ -4,9 +4,9 @@
 #include "ir/cmd/basic.h"
 #include "ir/cmd/jumps.h"
 #include "ir/cmd/load.h"
+#include "ir/cmd/phi.h"
 #include "ir/cmd/types.h"
 #include "ir/compiled_fn.h"
-#include "ir/phi.h"
 #include "ir/reg.h"
 #include "ir/register.h"
 
@@ -34,6 +34,8 @@ template <typename LoopPhiFn, typename LoopBodyFn, typename TypeTup,
           typename... Ts>
 void CreateLoop(LoopPhiFn &&loop_phi_fn, LoopBodyFn &&loop_body_fn,
                 TypeTup &&types, std::tuple<RegOr<Ts>...> entry_vals) {
+  NOT_YET();
+  /*
   auto entry_block = BasicBlock::Current;
 
   auto loop_phi   = CompiledFn::Current->AddBlock();
@@ -43,16 +45,16 @@ void CreateLoop(LoopPhiFn &&loop_phi_fn, LoopBodyFn &&loop_body_fn,
   UncondJump(loop_phi);
   BasicBlock::Current = loop_phi;
 
-  auto phi_indices = base::tuple::transform(Phi, types);
+  auto phi_indices = base::tuple::transform([&]() { ir::Phi(); }, types);
   auto phi_vals    = base::tuple::transform(
       [](auto &&val) { return CompiledFn::Current->Command(val).result; },
       phi_indices);
 
-  auto exit_cond = std::forward<LoopPhiFn>(loop_phi_fn)(phi_vals);
+  auto exit_cond = std::apply(std::forward<LoopPhiFn>(loop_phi_fn), phi_vals);
   CondJump(exit_cond, exit_block, loop_body);
 
   BasicBlock::Current = loop_body;
-  auto new_phis       = std::forward<LoopBodyFn>(loop_body_fn)(phi_vals);
+  auto new_phis = std::apply(std::forward<LoopBodyFn>(loop_body_fn), phi_vals);
   UncondJump(loop_phi);
 
   base::tuple::for_each(
@@ -63,6 +65,7 @@ void CreateLoop(LoopPhiFn &&loop_phi_fn, LoopBodyFn &&loop_body_fn,
       std::move(phi_indices), std::move(entry_vals), std::move(new_phis));
 
   BasicBlock::Current = exit_block;
+  */
 }
 
 template <typename F>

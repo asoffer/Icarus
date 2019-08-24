@@ -383,57 +383,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
       Execute(f, call_buf, return_slots, this);
     } break;
     case ir::Op::GetRet: save(ret_slots.at(cmd.get_ret_)); break;
-    case ir::Op::PhiBool:
-      save(resolve(cmd.phi_bool_->map_.at(call_stack.top().prev_)));
-      break;
-    case ir::Op::PhiInt8:
-      save(resolve(cmd.phi_i8_->map_.at(call_stack.top().prev_)));
-      break;
-    case ir::Op::PhiInt16:
-      save(resolve(cmd.phi_i16_->map_.at(call_stack.top().prev_)));
-      break;
-    case ir::Op::PhiInt32:
-      save(resolve(cmd.phi_i32_->map_.at(call_stack.top().prev_)));
-      break;
-    case ir::Op::PhiInt64:
-      save(resolve(cmd.phi_i64_->map_.at(call_stack.top().prev_)));
-      break;
-    case ir::Op::PhiNat8:
-      save(resolve(cmd.phi_u8_->map_.at(call_stack.top().prev_)));
-      break;
-    case ir::Op::PhiNat16:
-      save(resolve(cmd.phi_u16_->map_.at(call_stack.top().prev_)));
-      break;
-    case ir::Op::PhiNat32:
-      save(resolve(cmd.phi_u32_->map_.at(call_stack.top().prev_)));
-      break;
-    case ir::Op::PhiNat64:
-      save(resolve(cmd.phi_u64_->map_.at(call_stack.top().prev_)));
-      break;
-    case ir::Op::PhiFloat32:
-      save(resolve(cmd.phi_float32_->map_.at(call_stack.top().prev_)));
-      break;
-    case ir::Op::PhiFloat64:
-      save(resolve(cmd.phi_float64_->map_.at(call_stack.top().prev_)));
-      break;
-    case ir::Op::PhiType:
-      save(resolve(cmd.phi_type_->map_.at(call_stack.top().prev_)));
-      break;
-    case ir::Op::PhiAddr:
-      save(resolve(cmd.phi_addr_->map_.at(call_stack.top().prev_)));
-      break;
-    case ir::Op::PhiBlock:
-      save(resolve(cmd.phi_block_->map_.at(call_stack.top().prev_)));
-      break;
-    case ir::Op::PhiEnum:
-      save(resolve(cmd.phi_enum_->map_.at(call_stack.top().prev_)));
-      break;
-    case ir::Op::PhiFlags:
-      save(resolve(cmd.phi_flags_->map_.at(call_stack.top().prev_)));
-      break;
-    case ir::Op::PhiFunc:
-      save(resolve(cmd.phi_func_->map_.at(call_stack.top().prev_)));
-      break;
     case ir::Op::JumpPlaceholder: UNREACHABLE(call_stack.top().fn_);
     case ir::Op::CreateScopeDef: {
       // TODO consider the implications of leaking this. I'm not convinced there

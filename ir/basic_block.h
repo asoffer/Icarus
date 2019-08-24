@@ -29,11 +29,6 @@ struct BasicBlock {
     for (size_t i = 0; i < cmds_.size(); ++i) {
       cmds_.push_back(std::make_unique<Cmd>(*b.cmds_[i]));
     }
-    phi_args_.reserve(b.phi_args_.size());
-    for (size_t i = 0; i < phi_args_.size(); ++i) {
-      NOT_YET();
-      // phi_args_.push_back(std::make_unique<GenericPhiArgs>(*b.phi_args_[i]));
-    }
   }
 
   BasicBlock(BasicBlock &&) noexcept = default;
@@ -53,7 +48,6 @@ struct BasicBlock {
   // current setup.
   std::list<Arguments> arguments_;
   std::list<OutParams> outs_;
-  std::vector<std::unique_ptr<GenericPhiArgs>> phi_args_;
 };
 
 BasicBlock &GetBlock();

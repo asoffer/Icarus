@@ -40,19 +40,6 @@ enum class Op : uint16_t {
 };
 char const *OpCodeStr(Op op);
 
-struct GenericPhiArgs : public base::Cast<GenericPhiArgs> {
-  virtual ~GenericPhiArgs() {}
-  virtual std::ostream &print(std::ostream &os) const = 0;
-};
-template <typename T>
-struct PhiArgs : GenericPhiArgs {
-  ~PhiArgs() override {}
-  absl::flat_hash_map<BlockIndex, RegOr<T>> map_;
-  virtual std::ostream &print(std::ostream &os) const {
-    return os << base::stringify(map_);
-  }
-};
-
 struct Cmd {
   struct PtrIncr {
     // TODO maybe store the type here rather than on the cmd because most cmds
@@ -212,24 +199,6 @@ struct Cmd {
     SpecialMember<1> special1_;
     SpecialMember<2> special2_;
     Args<FlagsVal> flags_args_;
-
-    PhiArgs<bool> *phi_bool_;
-    PhiArgs<int8_t> *phi_i8_;
-    PhiArgs<int16_t> *phi_i16_;
-    PhiArgs<int32_t> *phi_i32_;
-    PhiArgs<int64_t> *phi_i64_;
-    PhiArgs<uint8_t> *phi_u8_;
-    PhiArgs<uint16_t> *phi_u16_;
-    PhiArgs<uint32_t> *phi_u32_;
-    PhiArgs<uint64_t> *phi_u64_;
-    PhiArgs<float> *phi_float32_;
-    PhiArgs<double> *phi_float64_;
-    PhiArgs<type::Type const *> *phi_type_;
-    PhiArgs<BlockDef *> *phi_block_;
-    PhiArgs<ir::Addr> *phi_addr_;
-    PhiArgs<ir::EnumVal> *phi_enum_;
-    PhiArgs<ir::FlagsVal> *phi_flags_;
-    PhiArgs<ir::AnyFunc> *phi_func_;
 
     RegOr<AnyFunc> any_fn_;
   };
