@@ -195,21 +195,15 @@ std::optional<BlockIndex> LoadSymbolCmd::Execute(
   auto name = iter->read<std::string_view>();
   auto type = iter->read<type::Type const *>();
   auto reg  = iter->read<Reg>();
-
-  void *sym = [&]() -> void * {
-    // TODO: this is a hack for now untill we figure out why we can load
-    // stderr as a symbol but not write to it.
-    if (name == "stderr") { return stderr; }
-    if (name == "stdout") { return stdout; }
-    return ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, std::string(name).c_str()));
-  }();
+  void *sym = ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, std::string(name).c_str()));
 
   auto &frame = ctx->call_stack.top();
   if (type->is<type::Function>()) {
     frame.regs_.set(GetOffset(frame.fn_, reg),
                     ir::AnyFunc{ir::Foreign(sym, type)});
   } else if (type->is<type::Pointer>()) {
-    frame.regs_.set(GetOffset(frame.fn_, reg), ir::Addr::Heap(sym));
+    frame.regs_.set(GetOffset(frame.fn_, reg),
+                    ir::Addr::Heap(*static_cast<void **>(sym)));
   } else {
     NOT_YET(type->to_string());
   }
