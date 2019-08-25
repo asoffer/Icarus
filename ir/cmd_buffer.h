@@ -24,9 +24,8 @@ struct LegacyCmd {
                                 Inliner const& inliner);
 
   static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
-    std::stringstream ss;
-    ss << *iter->read<Cmd*>();
-    return ss.str();
+    iter->read<Cmd*>();
+    return "legacy cmd";
   }
 
  private:

@@ -18,6 +18,15 @@
 namespace ir {
 thread_local BlockIndex BasicBlock::Current;
 
+Cmd &MakeCmd(type::Type const *t, Op op) {
+  auto &blk = ASSERT_NOT_NULL(CompiledFn::Current)->block(BasicBlock::Current);
+  auto &cmd = *blk.cmds_.emplace_back(std::make_unique<Cmd>(t, op));
+  blk.cmd_buffer_.append_index<LegacyCmd>();
+  DEBUG_LOG("LegacyCmd")(&cmd);
+  blk.cmd_buffer_.append(&cmd);
+  return cmd;
+}
+
 Reg CreateScopeDef(::Module const *mod, ScopeDef*scope_def) {
   auto &cmd = MakeCmd(type::Scope, Op::CreateScopeDef);
   // TODO you don't need the module.
@@ -62,23 +71,6 @@ BasicBlock &GetBlock() {
   return ASSERT_NOT_NULL(CompiledFn::Current)->block(BasicBlock::Current);
 }
 
-Cmd &MakeCmd(type::Type const *t, Op op) {
-  auto &blk = ASSERT_NOT_NULL(CompiledFn::Current)->block(BasicBlock::Current);
-  auto &cmd = *blk.cmds_.emplace_back(std::make_unique<Cmd>(t, op));
-  blk.cmd_buffer_.append_index<LegacyCmd>();
-  DEBUG_LOG("LegacyCmd")(&cmd);
-  blk.cmd_buffer_.append(&cmd);
-  return cmd;
-}
-
-void JumpPlaceholder(BlockDef const *block_def) {
-  auto &cmd                         = MakeCmd(nullptr, Op::JumpPlaceholder);
-  cmd.block_def_                    = block_def;
-  CompiledFn::Current->jumps_.push_back(block_def);
-  // TODO implied by jumps_ being non-empty.
-  CompiledFn::Current->must_inline_ = true;
-}
-
 Reg Reserve(core::Bytes b, core::Alignment a) {
   return CompiledFn::Current->Reserve(b, a);
 }
@@ -112,13 +104,6 @@ TypedRegister<Addr> TmpAlloca(type::Type const *t, Context *ctx) {
   auto reg = Alloca(t);
   ctx->temporaries_to_destroy_->emplace_back(reg, t);
   return reg;
-}
-
-TypedRegister<Addr> GetRet(size_t n, type::Type const *t) {
-  ASSERT(t->is_big() == true);
-  auto &cmd    = MakeCmd(type::Ptr(t), Op::GetRet);
-  cmd.get_ret_ = n;
-  return cmd.result;
 }
 
 std::pair<Results, bool> CallInline(
@@ -177,62 +162,4 @@ std::pair<Results, bool> CallInline(
   return std::pair{results, is_jump};
 }
 
-template <typename T>
-static std::ostream &operator<<(std::ostream &os,
-                                std::array<RegOr<T>, 2> r) {
-  return os << r[0] << " " << r[1];
-}
-
-char const *OpCodeStr(Op op) {
-  switch (op) {
-#define OP_MACRO(op, ...)                                                      \
-  case Op::op:                                                                 \
-    return #op;
-#include "ir/op.xmacro.h"
-#undef OP_MACRO
-  }
-  __builtin_unreachable();
-}
-
-template <typename T>
-static auto Stringify(T &&val) {
-  if constexpr (std::is_same_v<std::decay_t<T>, type::Type const *>) {
-    return val->to_string();
-  } else if constexpr (std::is_same_v<std::decay_t<T>,
-                                      RegOr<type::Type const *>>) {
-    std::stringstream ss;
-    if (val.is_reg_) {
-      ss << stringify(val.reg_);
-    } else {
-      if (val.val_ == nullptr) {
-        ss << "0x0";
-      } else {
-        ss << val.val_->to_string();
-      }
-    }
-    return ss.str();
-  } else if constexpr (std::is_same_v<std::decay_t<T>, Reg>) {
-    return stringify(val);
-  } else {
-    return val;
-  }
-}
-
-template <typename T>
-std::ostream &operator<<(std::ostream &os, Cmd::Args<T> const &a) {
-  return os << Stringify(a.args_[0]) << " " << Stringify(a.args_[1]);
-}
-
-std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {
-  if (cmd.result != Reg{}) { os << stringify(cmd.result) << " = "; }
-  os << OpCodeStr(cmd.op_code_) << " ";
-  switch (cmd.op_code_) {
-#define OP_MACRO(op, tag, type, field)                                         \
-  case Op::op:                                                                 \
-    return os << Stringify(cmd.field);
-#include "ir/op.xmacro.h"
-#undef OP_MACRO
-  }
-  UNREACHABLE();
-}
 }  // namespace ir

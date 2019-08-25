@@ -112,7 +112,7 @@ cc_lib_target(
 )
 
 cc_lib_target(
-    name = "set_ret",
+    name = "return",
     cfgs = ["match", "compile"],
     intf_deps = [
         ":util",

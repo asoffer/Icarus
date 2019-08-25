@@ -17,7 +17,7 @@ cc_lib_target(
         "//backend:exec",
         "//ir:compiled_fn",
         "//ir/cmd:jumps",
-        "//ir/cmd:set_ret",
+        "//ir/cmd:return",
         "//type:generic_struct",
         "//type:util",
         "//visitor:emit_ir",

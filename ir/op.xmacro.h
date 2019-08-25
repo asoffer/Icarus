@@ -1,6 +1,3 @@
-OP_MACRO(Death,                Death,               void,                    empty_)
-OP_MACRO(JumpPlaceholder,      Jump,                void,                    block_def_)
-OP_MACRO(GetRet,               GetRet,              void,                    get_ret_)
 OP_MACRO(CreateScopeDef,       CreateScopeDef,      void,                    create_scope_def_)
 OP_MACRO(AddScopeDefInit,      AddScopeDefInit,     void,                    add_scope_def_init_)
 OP_MACRO(AddScopeDefDone,      AddScopeDefDone,     void,                    add_scope_def_done_)

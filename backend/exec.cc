@@ -282,9 +282,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
   };
 
   switch (cmd.op_code_) {
-    case ir::Op::Death: UNREACHABLE(call_stack.top().fn_);
-    case ir::Op::GetRet: save(ret_slots.at(cmd.get_ret_)); break;
-    case ir::Op::JumpPlaceholder: UNREACHABLE(call_stack.top().fn_);
     case ir::Op::CreateScopeDef: {
       // TODO consider the implications of leaking this. I'm not convinced there
       // exist scenarios where we're leaking and could clean it up. I.e., every

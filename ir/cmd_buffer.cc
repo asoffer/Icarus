@@ -13,7 +13,7 @@
 #include "ir/cmd/misc.h"
 #include "ir/cmd/print.h"
 #include "ir/cmd/register.h"
-#include "ir/cmd/set_ret.h"
+#include "ir/cmd/return.h"
 #include "ir/cmd/store.h"
 #include "ir/cmd/types.h"
 #include "ir/compiled_fn.h"
@@ -63,7 +63,7 @@ void LegacyCmd::UpdateForInlining(base::untyped_buffer::iterator* iter,
   CASE(OrFlagsCmd);                                                            \
   CASE(CastCmd);                                                               \
   CASE(RegisterCmd);                                                           \
-  CASE(SetRetCmd);                                                             \
+  CASE(ReturnCmd);                                                             \
   CASE(EnumerationCmd);                                                        \
   CASE(StructCmd);                                                             \
   CASE(OpaqueTypeCmd);                                                         \

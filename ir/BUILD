@@ -101,7 +101,7 @@ cc_lib_target(
         ":compiled_fn",
         "//ir/cmd:jumps",
         "//ir/cmd:misc",
-        "//ir/cmd:set_ret",
+        "//ir/cmd:return",
     ],
     test_deps = None,
 )
@@ -151,7 +151,7 @@ cc_lib_target(
         "//ir/cmd:misc-impl",
         "//ir/cmd:print-impl",
         "//ir/cmd:register",
-        "//ir/cmd:set_ret",
+        "//ir/cmd:return",
         "//ir/cmd:store",
         "//ir/cmd:types",
     ],

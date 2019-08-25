@@ -12,7 +12,7 @@
 #include "ir/cmd/load.h"
 #include "ir/cmd/misc.h"
 #include "ir/cmd/phi.h"
-#include "ir/cmd/set_ret.h"
+#include "ir/cmd/return.h"
 #include "ir/cmd/store.h"
 #include "ir/cmd/types.h"
 #include "ir/components.h"
@@ -327,59 +327,59 @@ static void CompleteBody(EmitIr *visitor, ast::FunctionLiteral const *node,
 //   }
 // }
 
-static void CompleteBody(EmitIr *visitor, ast::JumpHandler const *node,
-                         Context *ctx) {
-  // TODO have validate return a bool distinguishing if there are errors and
-  // whether or not we can proceed.
-
-  auto *t = ctx->type_of(node);
-
-  ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[node];
-
-  CURRENT_FUNC(ir_func) {
-    ir::BasicBlock::Current = ir_func->entry();
-    // Leave space for allocas that will come later (added to the entry
-    // block).
-    auto start_block        = ir::CompiledFn::Current->AddBlock();
-    ir::BasicBlock::Current = start_block;
-
-    // TODO arguments should be renumbered to not waste space on const values
-    for (int32_t i = 0; i < static_cast<int32_t>(node->input().size()); ++i) {
-      ctx->set_addr(node->input()[i], ir::Reg::Arg(i));
-    }
-
-    MakeAllStackAllocations(node->body_scope(), ctx);
-
-    {
-      std::vector<type::Typed<ir::Reg>> to_destroy;
-      auto *old_tmp_ptr =
-          std::exchange(ctx->temporaries_to_destroy_, &to_destroy);
-      bool old_more_stmts_allowed =
-          std::exchange(ctx->more_stmts_allowed_, true);
-      base::defer d([&] {
-        ctx->temporaries_to_destroy_ = old_tmp_ptr;
-        ctx->more_stmts_allowed_     = old_more_stmts_allowed;
-      });
-
-      for (auto *stmt : node->stmts()) {
-        stmt->EmitIr(visitor, ctx);
-
-        for (int i = static_cast<int>(to_destroy.size()) - 1; i >= 0; --i) {
-          auto &reg = to_destroy.at(i);
-          reg.type()->EmitDestroy(visitor, reg.get(), ctx);
-        }
-        to_destroy.clear();
-      }
-    }
-
-    MakeAllDestructions(visitor, node->body_scope(), ctx);
-
-    ir::ReturnJump();
-    ir::BasicBlock::Current = ir_func->entry();
-    ir::UncondJump(start_block);
-    ir_func->work_item = nullptr;
-  }
-}
+// static void CompleteBody(EmitIr *visitor, ast::JumpHandler const *node,
+//                          Context *ctx) {
+//   // TODO have validate return a bool distinguishing if there are errors and
+//   // whether or not we can proceed.
+// 
+//   auto *t = ctx->type_of(node);
+// 
+//   ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[node];
+// 
+//   CURRENT_FUNC(ir_func) {
+//     ir::BasicBlock::Current = ir_func->entry();
+//     // Leave space for allocas that will come later (added to the entry
+//     // block).
+//     auto start_block        = ir::CompiledFn::Current->AddBlock();
+//     ir::BasicBlock::Current = start_block;
+// 
+//     // TODO arguments should be renumbered to not waste space on const values
+//     for (int32_t i = 0; i < static_cast<int32_t>(node->input().size()); ++i) {
+//       ctx->set_addr(node->input()[i], ir::Reg::Arg(i));
+//     }
+// 
+//     MakeAllStackAllocations(node->body_scope(), ctx);
+// 
+//     {
+//       std::vector<type::Typed<ir::Reg>> to_destroy;
+//       auto *old_tmp_ptr =
+//           std::exchange(ctx->temporaries_to_destroy_, &to_destroy);
+//       bool old_more_stmts_allowed =
+//           std::exchange(ctx->more_stmts_allowed_, true);
+//       base::defer d([&] {
+//         ctx->temporaries_to_destroy_ = old_tmp_ptr;
+//         ctx->more_stmts_allowed_     = old_more_stmts_allowed;
+//       });
+// 
+//       for (auto *stmt : node->stmts()) {
+//         stmt->EmitIr(visitor, ctx);
+// 
+//         for (int i = static_cast<int>(to_destroy.size()) - 1; i >= 0; --i) {
+//           auto &reg = to_destroy.at(i);
+//           reg.type()->EmitDestroy(visitor, reg.get(), ctx);
+//         }
+//         to_destroy.clear();
+//       }
+//     }
+// 
+//     MakeAllDestructions(visitor, node->body_scope(), ctx);
+// 
+//     ir::ReturnJump();
+//     ir::BasicBlock::Current = ir_func->entry();
+//     ir::UncondJump(start_block);
+//     ir_func->work_item = nullptr;
+//   }
+// }
 
 ir::Results EmitIr::Val(ast::Node const *node, Context *ctx) { UNREACHABLE(); }
 
@@ -1312,48 +1312,35 @@ ir::Results EmitIr::Val(ast::Index const *node, Context *ctx) {
 }
 
 ir::Results EmitIr::Val(ast::Jump const *node, Context *ctx) {
-  // TODO pick the best place to jump.
-  auto *scope_def = ctx->scope_def(
-      node->scope_->Containing<core::ScopeLitScope>()->scope_lit_);
-  if (node->options_.at(0).block == "start") {
-    ir::JumpPlaceholder(ir::BlockDef::Start());
-  } else if (node->options_.at(0).block == "exit") {
-    ir::JumpPlaceholder(ir::BlockDef::Exit());
-  } else {
-    auto iter = scope_def->blocks_.find(node->options_.at(0).block);
-    if (iter == scope_def->blocks_.end()) {
-      NOT_YET(node->options_.at(0).block);
-    }
-    ir::JumpPlaceholder(&iter->second);
-  }
+  NOT_YET();
   return ir::Results{};
 }
 
 ir::Results EmitIr::Val(ast::JumpHandler const *node, Context *ctx) {
   // TODO handle constant inputs
   // TODO Use correct constants
+  NOT_YET();
 
-  ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[node];
-  if (!ir_func) {
-    auto work_item_ptr = DeferBody(this, node, ctx);
-    auto *jmp_type = &ctx->type_of(node)->as<type::Jump>();
+  // ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[node];
+  // if (!ir_func) {
+  //   auto work_item_ptr = DeferBody(this, node, ctx);
+  //   auto *jmp_type = &ctx->type_of(node)->as<type::Jump>();
 
-    core::FnParams<type::Typed<ast::Expression const *>> params(
-        node->input().size());
-    for (size_t i = 0; i < node->input().size(); ++i) {
-      auto const *decl = node->input()[i];
-      params.set(i,
-                 core::Param<type::Typed<ast::Expression const *>>{
-                     decl->id(), type::Typed<ast::Expression const *>(
-                                     decl->init_val(), jmp_type->args()[i])});
-    }
+  //   core::FnParams<type::Typed<ast::Expression const *>> params(
+  //       node->input().size());
+  //   for (size_t i = 0; i < node->input().size(); ++i) {
+  //     auto const *decl = node->input()[i];
+  //     params.set(i,
+  //                core::Param<type::Typed<ast::Expression const *>>{
+  //                    decl->id(), type::Typed<ast::Expression const *>(
+  //                                    decl->init_val(), jmp_type->args()[i])});
+  //   }
 
-    ir_func = ctx->mod_->AddJump(jmp_type, std::move(params));
-    if (work_item_ptr) { ir_func->work_item = work_item_ptr; }
-  }
-
-  return ir::Results{ir_func};
-
+  //   ir_func = ctx->mod_->AddJump(jmp_type, std::move(params));
+  //   if (work_item_ptr) { ir_func->work_item = work_item_ptr; }
+  // }
+  // return ir::Results{ir_func};
+  return ir ::Results{};
 }
 
 static std::vector<std::pair<ast::Expression const *, ir::Results>>

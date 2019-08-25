@@ -4,7 +4,7 @@
 #include "ir/cmd.h"
 #include "ir/cmd/jumps.h"
 #include "ir/cmd/misc.h"
-#include "ir/cmd/set_ret.h"
+#include "ir/cmd/return.h"
 #include "ir/compiled_fn.h"
 #include "type/function.h"
 #include "type/typed_value.h"

@@ -45,6 +45,11 @@ Reg MakeResult() {
   return Reserve(core::Bytes::Get<T>(), core::Alignment::Get<T>());
 }
 
+inline Reg MakeResult(type::Type const *t) {
+  auto arch = core::Interpretter();
+  return Reserve(t->bytes(arch), t->alignment(arch));
+}
+
 std::ostream &operator<<(std::ostream &os, BasicBlock const &b);
 
 }  // namespace ir
