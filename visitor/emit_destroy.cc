@@ -1,7 +1,6 @@
 #include "absl/random/random.h"
 #include "ast/ast.h"
 #include "base/permutation.h"
-#include "ir/cmd.h"
 #include "ir/cmd/call.h"
 #include "ir/cmd/misc.h"
 #include "ir/compiled_fn.h"

@@ -1,8 +1,10 @@
 #ifndef ICARUS_IR_CMD_INLINER_H
 #define ICARUS_IR_CMD_INLINER_H
 
-#include "ir/register.h"
+#include "absl/container/flat_hash_map.h"
 #include "ir/reg.h"
+#include "ir/register.h"
+#include "ir/results.h"
 
 namespace type {
 struct Type;
@@ -11,6 +13,8 @@ struct Type;
 namespace ir {
 struct CompiledFn;
 struct StackFrameAllocations;
+struct Arguments;
+struct BlockDef;
 
 struct Inliner {
 
@@ -35,6 +39,10 @@ struct Inliner {
   size_t block_offset_ = 0;
   BlockIndex land_{};
 };
+
+std::pair<Results, bool> CallInline(
+    CompiledFn *f, Arguments const &arguments,
+    absl::flat_hash_map<BlockDef const *, BlockIndex> const &block_map);
 
 }  // namespace ir
 

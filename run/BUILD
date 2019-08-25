@@ -31,7 +31,6 @@ cc_lib_target(
         "//core:fn_params",
         "//frontend:source",
         "//ir:compiled_fn",
-        "//ir:cmd",
         "//ir/cmd:jumps",
         "//misc:context",
         "//misc:module",

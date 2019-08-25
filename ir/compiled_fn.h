@@ -11,6 +11,7 @@
 #include "ir/basic_block.h"
 #include "ir/inliner.h"
 #include "ir/stack_frame_allocations.h"
+#include "type/typed_value.h"
 
 namespace type {
 struct Function;
@@ -19,6 +20,8 @@ struct Function;
 struct Module;
 
 namespace ir {
+struct BlockDef;
+
 struct CmdIndex {
   BlockIndex block;
   int32_t cmd;
@@ -58,17 +61,6 @@ struct CompiledFn {
         static_cast<CompiledFn const *>(this)->block(index));
   }
 
-  Cmd const &Command(CmdIndex cmd_index) const {
-    return *blocks_.at(cmd_index.block.value).cmds_.at(cmd_index.cmd);
-  }
-
-  Cmd const *Command(Reg reg) const;
-
-  Cmd &Command(CmdIndex cmd_index) {
-    return const_cast<Cmd &>(
-        static_cast<CompiledFn const *>(this)->Command(cmd_index));
-  }
-
   static BlockIndex AddBlock() {
     BlockIndex index;
     index.value = static_cast<decltype(index.value)>(Current->blocks_.size());
@@ -76,19 +68,10 @@ struct CompiledFn {
     return index;
   }
 
-  Reg Reserve(type::Type const *t) {
-    auto arch = core::Interpretter();
-    return Reserve(t->bytes(arch), t->alignment(arch));
-  }
-
-
+  Reg Reserve(type::Type const *t);
   Reg Reserve(core::Bytes b, core::Alignment a);
 
-  Reg Alloca(type::Type const* t) {
-    Reg r = Reserve(type::Ptr(t));
-    allocs_.allocate(t, r);
-    return r;
-  }
+  Reg Alloca(type::Type const* t);
 
   BlockIndex entry() const { return BlockIndex(0); }
 

@@ -4,12 +4,13 @@
 
 #include "backend/eval.h"
 #include "ir/addr.h"
-#include "ir/cmd.h"
 #include "ir/cmd/cast.h"
 #include "ir/cmd/load.h"
 #include "ir/cmd/misc.h"
+#include "ir/components.h"
 #include "ir/register.h"
 #include "ir/str.h"
+#include "misc/context.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 

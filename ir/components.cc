@@ -1,5 +1,7 @@
 #include "ir/components.h"
 
+#include "misc/context.h"
+
 namespace ir {
 RegOr<bool> EmitEq(type::Type const *lhs_type, ir::Results const &lhs_val,
                         type::Type const *rhs_type,
@@ -23,6 +25,16 @@ TypedRegister<Addr> Index(type::Pointer const *t, Reg array_ptr,
   // variable-length arrays?
   return PtrIncr(array_ptr, offset,
                  type::Ptr(t->pointee->as<type::Array>().data_type));
+}
+
+TypedRegister<Addr> Alloca(type::Type const *t) {
+  return CompiledFn::Current->Alloca(t);
+}
+
+TypedRegister<Addr> TmpAlloca(type::Type const *t, Context *ctx) {
+  auto reg = Alloca(t);
+  ctx->temporaries_to_destroy_->emplace_back(reg, t);
+  return reg;
 }
 
 }  // namespace ir

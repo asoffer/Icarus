@@ -20,22 +20,7 @@
 
 namespace ir {
 
-std::optional<BlockIndex> LegacyCmd::Execute(
-    base::untyped_buffer::iterator* iter,
-    std::vector<ir::Addr> const& ret_slots, backend::ExecContext* ctx) {
-  auto block = ctx->ExecuteCmd(*iter->read<Cmd*>(), ret_slots);
-  if (block == ir::BlockIndex{-2}) { return std::nullopt; }
-  return block;
-}
-
-void LegacyCmd::UpdateForInlining(base::untyped_buffer::iterator* iter,
-                                  Inliner const& inliner) {
-  auto& cmd = *iter->read<Cmd*>();
-  UNREACHABLE();
-}
-
 #define CASES                                                                  \
-  CASE(LegacyCmd);                                                             \
   CASE(PrintCmd);                                                              \
   CASE(AddCmd);                                                                \
   CASE(SubCmd);                                                                \

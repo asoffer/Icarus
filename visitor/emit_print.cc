@@ -1,5 +1,4 @@
 #include "ir/arguments.h"
-#include "ir/cmd.h"
 #include "ir/cmd/basic.h"
 #include "ir/cmd/call.h"
 #include "ir/cmd/print.h"

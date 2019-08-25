@@ -7,6 +7,7 @@
 #include "ir/compiled_fn.h"
 #include "ir/components.h"
 #include "ir/results.h"
+#include "misc/context.h"
 #include "type/primitive.h"
 #include "visitor/emit_ir.h"
 #include "visitor/special_function.h"

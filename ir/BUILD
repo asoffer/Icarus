@@ -11,7 +11,6 @@ cc_group_target(
         ":basic_block-impl",
         ":block-impl",
         ":builtin_ir-impl",
-        ":cmd-impl",
         ":cmd_buffer-impl",
         ":compiled_fn-impl",
         ":components-impl",
@@ -71,12 +70,14 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = [
         ":arguments",
-        ":cmd",
         ":cmd_buffer",
         ":out_params",
         "//base:untyped_buffer",
     ],
-    impl_deps = [],
+    impl_deps = [
+        ":compiled_fn",
+        "//type:type",
+    ],
     test_deps = None,
 )
 
@@ -107,35 +108,9 @@ cc_lib_target(
 )
 
 cc_lib_target(
-    name = "cmd",
-    cfgs = ["match", "compile"],
-    textual_hdrs = ["op.xmacro.h"],
-    intf_deps = [
-        ":block",
-        ":register",
-        "//ast:hashtag",
-        "//base:untyped_buffer",
-        "//misc:context",
-        "//type:util",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-    impl_deps = [
-        ":compiled_fn",
-        "//ast:ast",
-        "//core:arch",
-        "//ir/cmd:jumps",
-        "//ir/cmd:register",
-        "//type:typed_value",
-        "//type:generic_struct",
-    ],
-    test_deps = None,
-)
-
-cc_lib_target(
     name = "cmd_buffer",
     cfgs = ["match", "compile"],
     intf_deps = [
-        ":cmd",
         ":inliner",
         "//base:untyped_buffer",
         "//core:arch",
@@ -171,7 +146,9 @@ cc_lib_target(
         "//ir/cmd:phi",
         "//ir/cmd:types",
     ],
-    impl_deps = [],
+    impl_deps = [
+        "//misc:context",
+    ],
     test_deps = None,
 )
 
@@ -220,10 +197,16 @@ cc_lib_target(
     intf_deps = [
         ":reg",
         ":register",
+        ":results",
+        "//type:type",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
     impl_deps = [
         ":compiled_fn",
         ":stack_frame_allocations",
+        "//ir/cmd:jumps",
+        "//ir/cmd:register",
+        "//type:function",
     ],
     test_deps = None,
 )

@@ -1,8 +1,1 @@
-OP_MACRO(CreateScopeDef,       CreateScopeDef,      void,                    create_scope_def_)
-OP_MACRO(AddScopeDefInit,      AddScopeDefInit,     void,                    add_scope_def_init_)
-OP_MACRO(AddScopeDefDone,      AddScopeDefDone,     void,                    add_scope_def_done_)
-OP_MACRO(FinishScopeDef,       FinishScopeDef,      void,                    empty_)
-OP_MACRO(CreateBlockDef,       CreateBlockDef,      void,                    empty_)
-OP_MACRO(FinishBlockDef,       FinishBlockDef,      void,                    byte_view_arg_)
-OP_MACRO(AddBlockDefBefore,    AddBlockDefBefore,   void,                    any_fn_)
-OP_MACRO(AddBlockDefAfter,     AddBlockDefAfter,    void,                    any_fn_)
+

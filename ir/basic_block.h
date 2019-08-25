@@ -7,7 +7,6 @@
 
 #include "base/untyped_buffer.h"
 #include "ir/arguments.h"
-#include "ir/cmd.h"
 #include "ir/cmd_buffer.h"
 #include "ir/out_params.h"
 
@@ -19,36 +18,26 @@ struct BasicBlock {
   BasicBlock() = default;
   explicit BasicBlock(CompiledFn *fn) : fn_(fn) {}
 
-  BasicBlock(BasicBlock const &b) : fn_(b.fn_), cmd_buffer_(b.cmd_buffer_) {
-    cmds_.reserve(b.cmds_.size());
-    for (size_t i = 0; i < cmds_.size(); ++i) {
-      cmds_.push_back(std::make_unique<Cmd>(*b.cmds_[i]));
-    }
-  }
-
+  BasicBlock(BasicBlock const &b)    = default;
   BasicBlock(BasicBlock &&) noexcept = default;
-
   BasicBlock &operator=(BasicBlock &&) noexcept = default;
-  BasicBlock &operator=(BasicBlock const &b) { return *this = BasicBlock(b); }
+  BasicBlock &operator=(BasicBlock const &b) = default;
 
   void Append(BasicBlock &&b);
 
   CompiledFn *fn_;  // Containing function
-  std::vector<std::unique_ptr<Cmd>> cmds_;
   CmdBuffer cmd_buffer_;
 };
 
 BasicBlock &GetBlock();
+Reg Reserve(core::Bytes b, core::Alignment a);
 
 template <typename T>
 Reg MakeResult() {
   return Reserve(core::Bytes::Get<T>(), core::Alignment::Get<T>());
 }
 
-inline Reg MakeResult(type::Type const *t) {
-  auto arch = core::Interpretter();
-  return Reserve(t->bytes(arch), t->alignment(arch));
-}
+Reg MakeResult(type::Type const *t);
 
 std::ostream &operator<<(std::ostream &os, BasicBlock const &b);
 

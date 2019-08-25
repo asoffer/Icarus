@@ -5,7 +5,6 @@
 
 #include "base/untyped_buffer.h"
 #include "core/arch.h"
-#include "ir/cmd.h"
 #include "ir/inliner.h"
 
 namespace backend {
@@ -13,24 +12,6 @@ struct ExecContext;
 }  // namespace backend
 
 namespace ir {
-// TODO blockindex can store its own nullopt.
-struct LegacyCmd {
-  constexpr static uint8_t index = (std::numeric_limits<uint8_t>::max)() - 1;
-  static std::optional<BlockIndex> Execute(
-      base::untyped_buffer::iterator* iter,
-      std::vector<ir::Addr> const& ret_slots, backend::ExecContext* ctx);
-
-  static void UpdateForInlining(base::untyped_buffer::iterator* iter,
-                                Inliner const& inliner);
-
-  static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
-    iter->read<Cmd*>();
-    return "legacy cmd";
-  }
-
- private:
-  Cmd* ptr_;
-};
 
 struct CmdBuffer {
  public:

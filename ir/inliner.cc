@@ -1,7 +1,12 @@
 #include "ir/inliner.h"
 
+#include "ir/cmd/jumps.h"
+#include "ir/cmd/register.h"
 #include "ir/compiled_fn.h"
+#include "ir/reg.h"
 #include "ir/stack_frame_allocations.h"
+#include "type/function.h"
+#include "type/type.h"
 
 namespace ir {
 void Inliner::Inline(Reg *r, type::Type const *t) const {
@@ -25,4 +30,55 @@ void Inliner::Inline(Reg *r, type::Type const *t) const {
 
 void Inliner::MergeAllocations(CompiledFn *fn,
                                StackFrameAllocations const &allocs) {}
+
+std::pair<Results, bool> CallInline(
+    CompiledFn *f, Arguments const &arguments,
+    absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> const
+        &block_map) {
+  bool is_jump = false;  // TODO remove this
+  std::vector<Results> return_vals;
+  return_vals.resize(f->type_->output.size());
+
+  // Note: It is important that the inliner is created before making registers
+  // for each of the arguments, because creating the inliner looks state on the
+  // current function (counting which register it should start on), and this
+  // should exclude the registers we create to hold the arguments.
+  auto inliner = CompiledFn::Current->inliner();
+
+  std::vector<Reg> arg_regs;
+  arg_regs.reserve(f->type_->input.size());
+  for (size_t i = 0; i < f->type_->input.size(); ++i) {
+    arg_regs.push_back(
+        type::Apply(f->type_->input[i], [&](auto type_holder) -> Reg {
+          using T = typename decltype(type_holder)::type;
+          return MakeReg(arguments.results().get<T>(i));
+        }));
+  }
+
+  BlockIndex start(CompiledFn::Current->blocks_.size());
+
+  for (size_t i = 1; i < f->blocks_.size(); ++i) {
+    auto &block = CompiledFn::Current->block(CompiledFn::AddBlock());
+    block       = f->blocks_.at(i);
+    block.cmd_buffer_.UpdateForInlining(inliner);
+  }
+
+  auto &block = CompiledFn::Current->block(BasicBlock::Current);
+
+  UncondJump(start);
+  BasicBlock::Current = inliner.landing();
+
+  size_t i = 0;
+  for (auto const &block : CompiledFn::Current->blocks_) {
+    DEBUG_LOG("str")(i, ": ", block.cmd_buffer_.to_string());
+    i++;
+  }
+
+  inliner.MergeAllocations(CompiledFn::Current, f->allocs());
+
+  Results results;
+  for (auto const &r : return_vals) { results.append(r); }
+  return std::pair{results, is_jump};
+}
+
 }  // namespace ir

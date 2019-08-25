@@ -16,7 +16,6 @@
 #include "error/log.h"
 #include "ir/arguments.h"
 #include "ir/basic_block.h"
-#include "ir/cmd.h"
 #include "ir/cmd/jumps.h"
 #include "ir/compiled_fn.h"
 #include "misc/module.h"
@@ -274,56 +273,4 @@ void CallForeignFn(ir::Foreign const &f, base::untyped_buffer const &arguments,
   }
 }
 
-ir::BlockIndex ExecContext::ExecuteCmd(
-    const ir::Cmd &cmd, const std::vector<ir::Addr> &ret_slots) {
-  auto save = [&](auto val) {
-    call_stack.top().regs_.set(
-        call_stack.top().fn_->compiler_reg_to_offset_.at(cmd.result), val);
-  };
-
-  switch (cmd.op_code_) {
-    case ir::Op::CreateScopeDef: {
-      // TODO consider the implications of leaking this. I'm not convinced there
-      // exist scenarios where we're leaking and could clean it up. I.e., every
-      // time we create one it's because we expect it to live forever. I suppose
-      // we could ref-count the results of functions and delete these if they're
-      // unused?
-      call_stack.top().scope_defs_.push(cmd.create_scope_def_.scope_def_);
-      save(cmd.create_scope_def_.scope_def_);
-    } break;
-    case ir::Op::FinishScopeDef: {
-      ASSERT(call_stack.top().scope_defs_.size() != 0u);
-      ASSERT(call_stack.top().block_defs_.size() == 0u);
-      call_stack.top().scope_defs_.top()->work_item = nullptr;
-      call_stack.top().scope_defs_.pop();
-    } break;
-    case ir::Op::AddScopeDefInit:
-      resolve<ir::ScopeDef *>(cmd.add_scope_def_init_.reg_)
-          ->AddInit(resolve(cmd.add_scope_def_init_.f_));
-      break;
-    case ir::Op::AddScopeDefDone:
-      resolve<ir::ScopeDef *>(cmd.add_scope_def_done_.reg_)
-          ->AddDone(resolve(cmd.add_scope_def_done_.f_));
-      break;
-    case ir::Op::CreateBlockDef:
-      call_stack.top().block_defs_.emplace(
-          resolve<ast::BlockLiteral const *>(cmd.block_lit_));
-      break;
-    case ir::Op::FinishBlockDef:
-      ASSERT(call_stack.top().block_defs_.size() != 0u);
-      call_stack.top().scope_defs_.top()->AddBlockDef(
-          resolve(cmd.byte_view_arg_),
-          std::move(call_stack.top().block_defs_.top()));
-      call_stack.top().block_defs_.pop();
-      break;
-    case ir::Op::AddBlockDefBefore:
-      call_stack.top().block_defs_.top().AddBefore(resolve(cmd.any_fn_));
-      break;
-    case ir::Op::AddBlockDefAfter:
-      call_stack.top().block_defs_.top().AddAfter(resolve(cmd.any_fn_));
-      break;
-  }
-
-  return ir::BlockIndex{-2};
-}
 }  // namespace backend

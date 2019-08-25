@@ -157,6 +157,8 @@ cc_lib_target(
     intf_deps = [
         "//backend:exec",
         "//base:util",
+        "//type:primitive",
+        "//type:util",
     ],
     impl_deps = None,
     test_deps = None,

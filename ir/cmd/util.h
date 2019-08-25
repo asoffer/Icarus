@@ -6,7 +6,14 @@
 #include "backend/exec.h"
 #include "base/util.h"
 #include "ir/addr.h"
+#include "ir/flags_val.h"
 #include "ir/reg.h"
+#include "type/primitive.h"
+#include "type/util.h"
+
+namespace ast {
+struct FunctionLiteral;
+}  // namespace ast
 
 namespace type {
 struct Type;

@@ -12,6 +12,11 @@
 #include "ir/register.h"
 
 namespace ir {
+TypedRegister<Addr> Index(type::Pointer const *t, Reg array_ptr,
+                          RegOr<int64_t> offset);
+TypedRegister<Addr> Alloca(type::Type const *t);
+TypedRegister<Addr> TmpAlloca(type::Type const *t, Context *ctx);
+
 template <bool B>
 BlockIndex EarlyExitOn(BlockIndex exit_block, RegOr<bool> cond) {
   auto continue_block = CompiledFn::Current->AddBlock();
@@ -90,9 +95,6 @@ void OnEachArrayElement(type::Array const *t, CompiledFn *fn, F &&fn_to_apply) {
     ReturnJump();
   }
 }
-
-TypedRegister<Addr> Index(type::Pointer const *t, Reg array_ptr,
-                          RegOr<int64_t> offset);
 
 }  // namespace ir
 

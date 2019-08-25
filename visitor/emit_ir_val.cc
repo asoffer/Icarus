@@ -5,7 +5,6 @@
 #include "backend/exec.h"
 #include "base/guarded.h"
 #include "ir/builtin_ir.h"
-#include "ir/cmd.h"
 #include "ir/cmd/basic.h"
 #include "ir/cmd/call.h"
 #include "ir/cmd/cast.h"
@@ -39,19 +38,6 @@ static type::Type const *BuiltinType(core::Builtin b) {
 // TODO moved these here because we can't have them in ir:builtin or else
 // they'll be in the formatter target. figure out what's going on here.
 type::Type const *BuiltinType(core::Builtin);
-
-// TODO: The functions here that modify struct fields typically do so by
-// modifying the last field, since we always build them in order. This saves us
-// from having to pass extra information and thereby bloating all commands. At
-// some point we should switch to a buffer-chunk system so that one won't bloat
-// another.
-Reg CreateStruct(core::Scope const *scope, ast::StructLiteral const *parent);
-void CreateStructField(Reg struct_type, RegOr<type::Type const *> type);
-void SetStructFieldName(Reg struct_type, std::string_view field_name);
-Reg FinalizeStruct(Reg r);
-
-// TODO as a general rule we let ast reach into ir but not the other direction.
-// Fix this.
 
 }  // namespace ir
 
@@ -150,34 +136,35 @@ static void CompleteBody(EmitIr *visitor, ast::ScopeLiteral const *node,
                     core::FnParams<type::Typed<ast::Expression const *>>{});
 
   CURRENT_FUNC(&fn) {
-    ir::BasicBlock::Current = fn.entry();
-    // Leave space for allocas that will come later (added to the entry
-    // block).
+    NOT_YET();
+    // ir::BasicBlock::Current = fn.entry();
+    // // Leave space for allocas that will come later (added to the entry
+    // // block).
 
-    auto start_block = ir::BasicBlock::Current =
-        ir::CompiledFn::Current->AddBlock();
+    // auto start_block = ir::BasicBlock::Current =
+    //     ir::CompiledFn::Current->AddBlock();
 
-    auto reg = ir::CreateScopeDef(node->scope_->module(), scope_def);
-    for (auto *decl : node->decls()) {
-      if (decl->id() == "init") {
-        ir::AddScopeDefInit(reg,
-                            decl->EmitIr(visitor, ctx).get<ir::AnyFunc>(0));
-      } else if (decl->id() == "done") {
-        ir::AddScopeDefDone(reg,
-                            decl->EmitIr(visitor, ctx).get<ir::AnyFunc>(0));
-      } else {
-        ASSERT(decl->init_val() != nullptr);
-        // TODO what if there's a conversion like from A to A|B?
-        decl->init_val()->EmitIr(visitor, ctx);
-        ir::FinishBlockDef(decl->id());
-      }
-    }
-    ir::FinishScopeDef();
+    // auto reg = ir::CreateScopeDef(node->scope_->module(), scope_def);
+    // for (auto *decl : node->decls()) {
+    //   if (decl->id() == "init") {
+    //     ir::AddScopeDefInit(reg,
+    //                         decl->EmitIr(visitor, ctx).get<ir::AnyFunc>(0));
+    //   } else if (decl->id() == "done") {
+    //     ir::AddScopeDefDone(reg,
+    //                         decl->EmitIr(visitor, ctx).get<ir::AnyFunc>(0));
+    //   } else {
+    //     ASSERT(decl->init_val() != nullptr);
+    //     // TODO what if there's a conversion like from A to A|B?
+    //     decl->init_val()->EmitIr(visitor, ctx);
+    //     ir::FinishBlockDef(decl->id());
+    //   }
+    // }
+    // ir::FinishScopeDef();
 
-    ir::ReturnJump();
+    // ir::ReturnJump();
 
-    ir::BasicBlock::Current = fn.entry();
-    ir::UncondJump(start_block);
+    // ir::BasicBlock::Current = fn.entry();
+    // ir::UncondJump(start_block);
   }
 
   backend::ExecContext exec_context;
@@ -681,14 +668,15 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
 }
 
 ir::Results EmitIr::Val(ast::BlockLiteral const *node, Context *ctx) {
-  ir::CreateBlockDef(node);
-  for (auto const &decl : node->before()) {
-    ir::AddBlockDefBefore(decl->EmitIr(this, ctx).get<ir::AnyFunc>(0));
-  }
+  NOT_YET();
+  // ir::CreateBlockDef(node);
+  // for (auto const &decl : node->before()) {
+  //   ir::AddBlockDefBefore(decl->EmitIr(this, ctx).get<ir::AnyFunc>(0));
+  // }
 
-  for (auto const &decl : node->after()) {
-    ir::AddBlockDefAfter(decl->EmitIr(this, ctx).get<ir::AnyFunc>(0));
-  }
+  // for (auto const &decl : node->after()) {
+  //   ir::AddBlockDefAfter(decl->EmitIr(this, ctx).get<ir::AnyFunc>(0));
+  // }
 
   return ir::Results{};
 }

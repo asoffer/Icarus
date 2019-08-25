@@ -49,10 +49,15 @@ Reg CompiledFn::Reserve(core::Bytes b, core::Alignment a) {
   return r;
 }
 
-Cmd const *CompiledFn::Command(Reg reg) const {
-  auto iter = reg_to_cmd_.find(reg);
-  if (iter == reg_to_cmd_.end()) { return nullptr; }
-  return &Command(iter->second);
+Reg CompiledFn::Reserve(type::Type const *t) {
+  auto arch = core::Interpretter();
+  return Reserve(t->bytes(arch), t->alignment(arch));
+}
+
+Reg CompiledFn::Alloca(type::Type const *t) {
+  Reg r = Reserve(type::Ptr(t));
+  allocs_.allocate(t, r);
+  return r;
 }
 
 std::ostream &operator<<(std::ostream &os, ir::CompiledFn const &f) {

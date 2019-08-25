@@ -9,7 +9,6 @@
 #include "base/expected.h"
 #include "core/scope.h"
 #include "ir/block.h"
-#include "ir/cmd.h"
 #include "ir/cmd/call.h"
 #include "ir/cmd/phi.h"
 #include "ir/cmd/store.h"

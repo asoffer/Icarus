@@ -3,6 +3,8 @@
 
 #include <string>
 
+#include "base/stringify.h"
+
 namespace ir {
 struct Reg {
  public:
