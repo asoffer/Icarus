@@ -21,7 +21,7 @@ void cli::Usage() {
   Flag("help") << "Show usage information."
                << []() { execute = cli::ShowUsage; };
 
-#ifdef DBG
+#if defined(ICARUS_DEBUG)
   Flag("debug-parser") << "Step through the parser step-by-step for debugging."
                        << [](bool b = false) { debug::parser = b; };
 
@@ -33,7 +33,7 @@ void cli::Usage() {
       base::EnableLogging(key);
     }
   };
-#endif
+#endif // defined(ICARUS_DEBUG)
 
   Flag("repl", "r") << "Run the read-eval-print-loop." << [](bool b = false) {
     if (!execute) { execute = (b ? RunRepl : RunCompiler); }

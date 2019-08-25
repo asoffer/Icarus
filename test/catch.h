@@ -2,12 +2,13 @@
 #include "base/macros.h"
 
 #define REQUIRE_ASSIGN(var, expr)                                              \
-  INTERNAL_TEST_REQUIRE_ASSIGN_(var, expr, CAT(expr__, __LINE__, __))
-#define INTERNAL_TEST_REQUIRE_ASSIGN_(var, expr, tmp)                          \
-  INTERNAL_TEST_REQUIRE_ASSIGN__(var, expr, tmp)
+  ICARUS_TEST_REQUIRE_ASSIGN_IMPL1(var, expr, ICARUS_CAT(expr__, __LINE__, __))
+
+#define ICARUS_TEST_REQUIRE_ASSIGN_IMPL1(var, expr, tmp)                       \
+  ICARUS_TEST_REQUIRE_ASSIGN_IMPL2(var, expr, tmp)
 
 // TODO the error message from here will be pretty bad.
-#define INTERNAL_TEST_REQUIRE_ASSIGN__(var, expr, temp)                        \
+#define ICARUS_TEST_REQUIRE_ASSIGN_IMPL2(var, expr, temp)                      \
   auto&& temp = (expr);                                                        \
   REQUIRE(temp);                                                               \
   var = *std::move(temp)

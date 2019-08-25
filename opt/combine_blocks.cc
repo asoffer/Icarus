@@ -3,11 +3,11 @@
 #include "base/log.h"
 #include "ir/compiled_fn.h"
 
-#ifdef DBG
+#if defined(ICARUS_DEBUG)
 namespace debug {
 bool optimize_ir = true;
 }  // namespace debug
-#endif  // DBG
+#endif  // defined(ICARUS_DEBUG)
 
 namespace opt {
 
@@ -82,9 +82,9 @@ namespace opt {
 // }
 // 
 void CombineBlocks(ir::CompiledFn* fn) {
-// #ifdef DBG
+// #if defined(ICARUS_DEBUG)
 //   if (!debug::optimize_ir) return;
-// #endif  // DBG
+// #endif  // defined(ICARUS_DEBUG)
 //   for (auto& block : fn->blocks_) { RemoveEverythingAfterFirstJump(&block); }
 //   DeleteDeadBlocks(fn);
 //   auto incoming = IncomingMap(fn);

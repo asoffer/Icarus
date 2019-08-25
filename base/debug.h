@@ -4,8 +4,7 @@
 #include "base/log.h"
 #include "base/matchers.h"
 
-#ifdef DBG
-#define ICARUS_DEBUG
+#if defined(ICARUS_DEBUG)
 
 #define ICARUS_PRIVATE 
 
@@ -101,7 +100,7 @@ struct Asserter {
     std::abort();                                                              \
   } while (false)
 
-#else
+#else // defined(ICARUS_DEBUG)
 
 #define ICARUS_PRIVATE private:
 
@@ -112,7 +111,7 @@ struct Asserter {
 #define ASSERT_NOT_NULL(...) __VA_ARGS__
 #define UNREACHABLE(...) __builtin_unreachable();
 #define DUMP(...) ""
-#endif
+#endif  // defined(ICARUS_DEBUG)
 
 #define NOT_YET(...)                                                           \
   do {                                                                         \

@@ -582,13 +582,13 @@ static VerifyResult VerifyCall(ast::BuiltinFn const *b,
                                         ->as<type::Function>()
                                         .output[0]);
     }
-#ifdef DBG
+#if defined(ICARUS_DEBUG)
     case core::Builtin::DebugIr:
       // This is for debugging the compiler only, so there's no need to write
       // decent errors here.
       ASSERT(arg_results, matcher::IsEmpty());
       return VerifyResult::Constant(type::Void());
-#endif  // DBG
+#endif  // defined(ICARUS_DEBUG)
   }
   UNREACHABLE();
 }

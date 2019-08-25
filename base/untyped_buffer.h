@@ -229,9 +229,9 @@ struct untyped_buffer {
     size_t new_cap = std::max<size_t>(num, capacity_ * 2);
     char *new_data = static_cast<char *>(malloc(new_cap));
     std::memcpy(new_data, data_, size_);
-#ifdef DBG
+#if defined(ICARUS_DEBUG)
     std::memset(new_data + size_, kUnusedByte, num - size_);
-#endif
+#endif  // defined(ICARUS_DEBUG)
     capacity_ = new_cap;
     free(data_);
     data_ = new_data;

@@ -765,9 +765,9 @@ ir::Results EmitIr::Val(ast::Call const *node, Context *ctx) {
         return ir::Results{reg};
       } break;
 
-#ifdef DBG
+#if defined(ICARUS_DEBUG)
       case core::Builtin::DebugIr: ir::DebugIr(); return ir::Results{};
-#endif  // DBG
+#endif  // defined(ICARUS_DEBUG)
     }
     UNREACHABLE();
   }

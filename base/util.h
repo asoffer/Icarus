@@ -57,22 +57,22 @@ struct Cast {
   T &&as() && {
     STATIC_ASSERT_RELATED(Base, T);
 
-#ifdef DBG
+#if defined(ICARUS_DEBUG)
     return std::move(*ASSERT_NOT_NULL(dynamic_cast<T *>(base())));
-#else
+#else   // defined(ICARUS_DEBUG)
     return std::move(*reinterpret_cast<T *>(this));
-#endif
+#endif  // defined(ICARUS_DEBUG)
   }
 
   template <typename T>
   T const &as() const {
     STATIC_ASSERT_RELATED(Base, T);
 
-#ifdef DBG
+#if defined(ICARUS_DEBUG)
     return *ASSERT_NOT_NULL(dynamic_cast<T const *>(base()));
-#else
+#else   // defined(ICARUS_DEBUG)
     return *reinterpret_cast<T const *>(this);
-#endif
+#endif  // defined(ICARUS_DEBUG)
   }
 
  private:

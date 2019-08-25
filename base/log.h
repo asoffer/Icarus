@@ -71,7 +71,7 @@ void LogForMacro(Logger const &log, Ts &&... ts) {
   (log << ... << std::forward<Ts>(ts));
 }
 
-#ifdef DBG
+#if defined(ICARUS_DEBUG)
 #define DEBUG_LOG(...)                                                         \
   if ([]() -> bool {                                                           \
         static std::atomic<bool> log_switch(false);                            \
@@ -102,10 +102,10 @@ void LogForMacro(Logger const &log, Ts &&... ts) {
   do {                                                                         \
   } while (false)
 
-#else
+#else  // defined(ICARUS_DEBUG)
 #define DEBUG_LOG(...) DEBUG_LOG_IMPL
 #define DEBUG_LOG_IMPL(...)
-#endif
+#endif  // defined(ICARUS_DEBUG)
 
 }  // namespace base
 

@@ -5,7 +5,7 @@
 
 namespace init {
 void InstallSignalHandlers() {
-#ifdef DBG
+#if defined(ICARUS_DEBUG)
   std::signal(SIGSEGV, +[](int) { std::abort(); });
   std::signal(SIGABRT, +[](int) {
     constexpr unsigned int max_frames = 20;
@@ -45,6 +45,6 @@ void InstallSignalHandlers() {
       free(symbollist);
     }
   });
-#endif
+#endif  // defined(ICARUS_DEBUG)
 }
 }  // namespace init

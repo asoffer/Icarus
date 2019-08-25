@@ -36,7 +36,7 @@ toolchain {
     mode: DBG
     compiler_flag: "-g"
     compiler_flag: "-O0"
-    compiler_flag: "-DDBG"
+    compiler_flag: "-DICARUS_DEBUG"
   }
 
   compilation_mode_flags {
