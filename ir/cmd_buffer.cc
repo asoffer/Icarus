@@ -14,6 +14,7 @@
 #include "ir/cmd/print.h"
 #include "ir/cmd/register.h"
 #include "ir/cmd/return.h"
+#include "ir/cmd/scope.h"
 #include "ir/cmd/store.h"
 #include "ir/cmd/types.h"
 #include "ir/compiled_fn.h"
@@ -58,6 +59,7 @@ namespace ir {
   CASE(AccessCmd);                                                             \
   CASE(VariantAccessCmd);                                                      \
   CASE(CallCmd);                                                               \
+  CASE(BlockCmd);                                                              \
   CASE(DebugIrCmd)
 
 BlockIndex CmdBuffer::Execute(std::vector<ir::Addr> const& ret_slots,

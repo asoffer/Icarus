@@ -12,6 +12,7 @@
 #include "ir/cmd/misc.h"
 #include "ir/cmd/phi.h"
 #include "ir/cmd/return.h"
+#include "ir/cmd/scope.h"
 #include "ir/cmd/store.h"
 #include "ir/cmd/types.h"
 #include "ir/components.h"
@@ -127,49 +128,48 @@ static void EmitIrForStatements(EmitIr *visitor,
   }
 }
 
-static void CompleteBody(EmitIr *visitor, ast::ScopeLiteral const *node,
-                         Context *ctx) {
-  ir::ScopeDef *scope_def = ctx->scope_def(node);
-  if (!scope_def->work_item) { return; }
-
-  ir::CompiledFn fn(ctx->mod_, type::Func({}, {}),
-                    core::FnParams<type::Typed<ast::Expression const *>>{});
-
-  CURRENT_FUNC(&fn) {
-    NOT_YET();
-    // ir::BasicBlock::Current = fn.entry();
-    // // Leave space for allocas that will come later (added to the entry
-    // // block).
-
-    // auto start_block = ir::BasicBlock::Current =
-    //     ir::CompiledFn::Current->AddBlock();
-
-    // auto reg = ir::CreateScopeDef(node->scope_->module(), scope_def);
-    // for (auto *decl : node->decls()) {
-    //   if (decl->id() == "init") {
-    //     ir::AddScopeDefInit(reg,
-    //                         decl->EmitIr(visitor, ctx).get<ir::AnyFunc>(0));
-    //   } else if (decl->id() == "done") {
-    //     ir::AddScopeDefDone(reg,
-    //                         decl->EmitIr(visitor, ctx).get<ir::AnyFunc>(0));
-    //   } else {
-    //     ASSERT(decl->init_val() != nullptr);
-    //     // TODO what if there's a conversion like from A to A|B?
-    //     decl->init_val()->EmitIr(visitor, ctx);
-    //     ir::FinishBlockDef(decl->id());
-    //   }
-    // }
-    // ir::FinishScopeDef();
-
-    // ir::ReturnJump();
-
-    // ir::BasicBlock::Current = fn.entry();
-    // ir::UncondJump(start_block);
-  }
-
-  backend::ExecContext exec_context;
-  backend::Execute(&fn, base::untyped_buffer(0), {}, &exec_context);
-}
+// static void CompleteBody(EmitIr *visitor, ast::ScopeLiteral const *node,
+//                          Context *ctx) {
+//   ir::ScopeDef *scope_def = ctx->scope_def(node);
+//   if (!scope_def->work_item) { return; }
+// 
+//   ir::CompiledFn fn(ctx->mod_, type::Func({}, {}),
+//                     core::FnParams<type::Typed<ast::Expression const *>>{});
+// 
+//   CURRENT_FUNC(&fn) {
+//     ir::BasicBlock::Current = fn.entry();
+//     // Leave space for allocas that will come later (added to the entry
+//     // block).
+// 
+//     auto start_block = ir::BasicBlock::Current =
+//         ir::CompiledFn::Current->AddBlock();
+// 
+//     auto reg = ir::CreateScopeDef(node->scope_->module(), scope_def);
+//     for (auto *decl : node->decls()) {
+//       if (decl->id() == "init") {
+//         ir::AddScopeDefInit(reg,
+//                             decl->EmitIr(visitor, ctx).get<ir::AnyFunc>(0));
+//       } else if (decl->id() == "done") {
+//         ir::AddScopeDefDone(reg,
+//                             decl->EmitIr(visitor, ctx).get<ir::AnyFunc>(0));
+//       } else {
+//         ASSERT(decl->init_val() != nullptr);
+//         // TODO what if there's a conversion like from A to A|B?
+//         decl->init_val()->EmitIr(visitor, ctx);
+//         ir::FinishBlockDef(decl->id());
+//       }
+//     }
+//     ir::FinishScopeDef();
+// 
+//     ir::ReturnJump();
+// 
+//     ir::BasicBlock::Current = fn.entry();
+//     ir::UncondJump(start_block);
+//   }
+// 
+//   backend::ExecContext exec_context;
+//   backend::Execute(&fn, base::untyped_buffer(0), {}, &exec_context);
+// }
 
 static void CompleteBody(EmitIr *visitor, ast::FunctionLiteral const *node,
                          Context *ctx) {
@@ -668,17 +668,19 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
 }
 
 ir::Results EmitIr::Val(ast::BlockLiteral const *node, Context *ctx) {
-  NOT_YET();
-  // ir::CreateBlockDef(node);
-  // for (auto const &decl : node->before()) {
-  //   ir::AddBlockDefBefore(decl->EmitIr(this, ctx).get<ir::AnyFunc>(0));
-  // }
+  std::vector<ir::RegOr<ir::AnyFunc>> befores, afters;
+  befores.reserve(node->before().size());
+  for (auto const &decl : node->before()) {
+    ASSERT((decl->flags() & ast::Declaration::f_IsConst) != 0);
+    befores.push_back(decl->EmitIr(this, ctx).get<ir::AnyFunc>(0));
+  }
 
-  // for (auto const &decl : node->after()) {
-  //   ir::AddBlockDefAfter(decl->EmitIr(this, ctx).get<ir::AnyFunc>(0));
-  // }
+  for (auto const &decl : node->after()) {
+    ASSERT((decl->flags() & ast::Declaration::f_IsConst) != 0);
+    afters.push_back(decl->EmitIr(this, ctx).get<ir::AnyFunc>(0));
+  }
 
-  return ir::Results{};
+  return ir::Results{ir::BlockHandler(befores, afters)};
 }
 
 ir::Results EmitIr::Val(ast::BlockNode const *node, Context *ctx) {
@@ -1406,18 +1408,19 @@ ir::Results EmitIr::Val(ast::YieldStmt const *node, Context *ctx) {
 }
 
 ir::Results EmitIr::Val(ast::ScopeLiteral const *node, Context *ctx) {
-  auto [scope_def_iter, inserted] =
-      ctx->constants_->second.scope_defs_.try_emplace(node,
-                                                      node->scope_->module());
-  if (inserted && !scope_def_iter->second.work_item) {
-    scope_def_iter->second.work_item = DeferBody(this, node, ctx);
-  }
+  NOT_YET();
+  // auto [scope_def_iter, inserted] =
+  //     ctx->constants_->second.scope_defs_.try_emplace(node,
+  //                                                     node->scope_->module());
+  // if (inserted && !scope_def_iter->second.work_item) {
+  //   scope_def_iter->second.work_item = DeferBody(this, node, ctx);
+  // }
 
-  for (auto *decl : node->decls()) {
-    if (decl->id() == "init" || decl->id() == "done") { continue; }
-    scope_def_iter->second.blocks_[decl->id()];
-  }
-  return ir::Results{&scope_def_iter->second};
+  // for (auto *decl : node->decls()) {
+  //   if (decl->id() == "init" || decl->id() == "done") { continue; }
+  //   scope_def_iter->second.blocks_[decl->id()];
+  // }
+  // return ir::Results{&scope_def_iter->second};
 }
 
 ir::Results InitializeAndEmitBlockNode(ir::Results const &results,

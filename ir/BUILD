@@ -127,6 +127,7 @@ cc_lib_target(
         "//ir/cmd:print-impl",
         "//ir/cmd:register",
         "//ir/cmd:return",
+        "//ir/cmd:scope",
         "//ir/cmd:store",
         "//ir/cmd:types",
     ],

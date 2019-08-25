@@ -124,6 +124,21 @@ cc_lib_target(
 )
 
 cc_lib_target(
+    name = "scope",
+    cfgs = ["match", "compile"],
+    intf_deps = [
+        ":util",
+        "//ir:basic_block",
+        "//ir:block",
+    ],
+    impl_deps = [
+        "//base:stringify",
+        "@com_google_absl//absl/strings",
+    ],
+    test_deps = None,
+)
+
+cc_lib_target(
     name = "store",
     cfgs = ["match", "compile"],
     intf_deps = [

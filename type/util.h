@@ -51,7 +51,7 @@ constexpr type::Type const *Get() {
     UNREACHABLE();
   } else if constexpr (std::is_same_v<T, ir::Addr>) {
     UNREACHABLE();
-  } else if constexpr (std::is_same_v<T, ir::BlockDef>) {
+  } else if constexpr (std::is_same_v<T, ir::BlockDef const *>) {
     return type::Block; // Maybe opt-block?
   } else if constexpr (std::is_same_v<T, type::Type const *>) {
     return type::Type_;

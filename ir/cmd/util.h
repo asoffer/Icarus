@@ -50,6 +50,8 @@ constexpr uint8_t PrimitiveIndex() {
     // TODO: FunctionLiteral is a short-term hack for generics. IR shouldn't
     // depend on it.
     return 0x13;
+  } else if constexpr (std::is_same_v<T, BlockDef const*>) {
+    return 0x14;
   } else if constexpr (std::is_integral_v<T>) {
     return base::Log2(sizeof(T)) * 2 + std::is_signed_v<T>;
   } else {
@@ -120,6 +122,8 @@ auto PrimitiveDispatch(uint8_t primitive_type, Fn&& fn) {
       return std::forward<Fn>(fn)(base::Tag<EnumVal>{});
     case PrimitiveIndex<FlagsVal>():
       return std::forward<Fn>(fn)(base::Tag<FlagsVal>{});
+    case PrimitiveIndex<BlockDef const*>():
+      return std::forward<Fn>(fn)(base::Tag<BlockDef const*>{});
     default: UNREACHABLE(static_cast<int>(primitive_type));
   }
 }
@@ -213,21 +217,21 @@ auto Deserialize(Iter* iter, Fn&& fn) {
                 std::is_same<Iter, base::untyped_buffer::const_iterator>>);
   auto bits = ReadBits<SizeType>(iter);
 
-  if constexpr (std::is_void_v<decltype(
-                    std::forward<Fn>(fn)(std::declval<Reg&>()))>) {
+  using result_type = std::decay_t<decltype(fn(std::declval<Reg&>()))>;
+  if constexpr (std::is_void_v<result_type>) {
     for (bool b : bits) {
       if (b) {
-        std::forward<Fn>(fn)(iter->template read<Reg>());
+        fn(iter->template read<Reg>());
       } else {
         iter->template read<T>();
       }
     }
     return;
   } else {
-    std::vector<T> vals;
+    std::vector<result_type> vals;
     vals.reserve(bits.size());
     for (bool b : bits) {
-      vals.push_back(b ? std::forward<Fn>(fn)(iter->template read<Reg>())
+      vals.push_back(b ? fn(iter->template read<Reg>())
                        : iter->template read<T>());
     }
     return vals;

@@ -284,6 +284,7 @@ cc_lib_target(
         "//ir/cmd:misc",
         "//ir/cmd:phi",
         "//ir/cmd:return",
+        "//ir/cmd:scope-impl",
         "//ir/cmd:store",
         "//ir/cmd:types-impl",
         "//type:jump",

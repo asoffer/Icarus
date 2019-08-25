@@ -6,15 +6,11 @@
 #include "base/debug.h"
 #include "ir/any_func.h"
 
-namespace ast {
-struct BlockLiteral;
-}  // namespace ast
-
 namespace ir {
 
 struct BlockDef {
-  explicit BlockDef() = default;
-  explicit BlockDef(ast::BlockLiteral const *parent) : parent_(parent) {}
+  explicit BlockDef(std::vector<AnyFunc> before, std::vector<AnyFunc> after)
+      : before_(std::move(before)), after_(std::move(after)) {}
 
   static BlockDef const *Start();
   static BlockDef const *Exit();
@@ -24,10 +20,6 @@ struct BlockDef {
               << "}";
   }
 
-  void AddBefore(AnyFunc f) { before_.push_back(f); }
-  void AddAfter(AnyFunc f) { after_.push_back(f); }
-
-  ast::BlockLiteral const *parent_;
   std::vector<AnyFunc> before_, after_;
 };
 

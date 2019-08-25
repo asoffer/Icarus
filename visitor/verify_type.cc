@@ -1622,37 +1622,38 @@ VerifyResult VerifyType::operator()(ast::Index const *node, Context *ctx) {
 }
 
 VerifyResult VerifyType::operator()(ast::Jump const *node, Context *ctx) {
-  DEBUG_LOG("JumpHandler")(DumpAst::ToString(node));
-  std::vector<core::FnArgs<VerifyResult>> arg_results;
-  arg_results.reserve(node->options_.size());
-  bool err = false;
-  for (auto const &opt : node->options_) {
-    auto [arg_result, arg_err] = VerifyFnArgs(this, opt.args, ctx);
-    err |= arg_err;
-    arg_results.push_back(std::move(arg_result));
-  }
-  if (err) { NOT_YET(); }
-  ir::ScopeDef *scope_def = ctx->scope_def(
-      node->scope_->Containing<core::ScopeLitScope>()->scope_lit_);
-  DEBUG_LOG("JumpHandler")(scope_def->blocks_);
-  for (auto const &opt : node->options_) {
-    if (opt.block == "start") {
-    } else if (opt.block == "exit") {
-    } else {
-      auto iter = scope_def->blocks_.find(opt.block);
-      if (iter == scope_def->blocks_.end()) { NOT_YET(opt.block); }
-      auto block_def = &iter->second;
-      // TODO you're re-verifying each unnecessarily.
-      auto args = opt.args.Transform(
-          [ctx, this](std::unique_ptr<ast::Expression> const &arg)
-              -> std::pair<ast::Expression const *, VerifyResult> {
-            return std::pair{arg.get(), arg->VerifyType(this, ctx)};
-          });
-      auto *lit = block_def->parent_;
-      ast::VerifyDispatch(ast::ExprPtr{lit, 0x01}, block_def->before_, args,
-                          ctx);
-    }
-  }
+  NOT_YET();
+  // DEBUG_LOG("JumpHandler")(DumpAst::ToString(node));
+  // std::vector<core::FnArgs<VerifyResult>> arg_results;
+  // arg_results.reserve(node->options_.size());
+  // bool err = false;
+  // for (auto const &opt : node->options_) {
+  //   auto [arg_result, arg_err] = VerifyFnArgs(this, opt.args, ctx);
+  //   err |= arg_err;
+  //   arg_results.push_back(std::move(arg_result));
+  // }
+  // if (err) { NOT_YET(); }
+  // ir::ScopeDef *scope_def = ctx->scope_def(
+  //     node->scope_->Containing<core::ScopeLitScope>()->scope_lit_);
+  // DEBUG_LOG("JumpHandler")(scope_def->blocks_);
+  // for (auto const &opt : node->options_) {
+  //   if (opt.block == "start") {
+  //   } else if (opt.block == "exit") {
+  //   } else {
+  //     auto iter = scope_def->blocks_.find(opt.block);
+  //     if (iter == scope_def->blocks_.end()) { NOT_YET(opt.block); }
+  //     auto block_def = &iter->second;
+  //     // TODO you're re-verifying each unnecessarily.
+  //     auto args = opt.args.Transform(
+  //         [ctx, this](std::unique_ptr<ast::Expression> const &arg)
+  //             -> std::pair<ast::Expression const *, VerifyResult> {
+  //           return std::pair{arg.get(), arg->VerifyType(this, ctx)};
+  //         });
+  //     auto *lit = block_def->parent_;
+  //     ast::VerifyDispatch(ast::ExprPtr{lit, 0x01}, block_def->before_, args,
+  //                         ctx);
+  //   }
+  // }
   return VerifyResult::Constant(type::Void());
 }
 
