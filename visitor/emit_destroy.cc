@@ -1,8 +1,9 @@
 #include "absl/random/random.h"
 #include "ast/ast.h"
 #include "base/permutation.h"
-#include "ir/cmd/misc.h"
 #include "ir/cmd.h"
+#include "ir/cmd/call.h"
+#include "ir/cmd/misc.h"
 #include "ir/compiled_fn.h"
 #include "ir/components.h"
 #include "misc/context.h"
@@ -77,8 +78,8 @@ void EmitIr::Destroy(type::Variant const *t, ir::Reg reg, Context *ctx) {
     }
   }
 
-  ir::Call(ir::AnyFunc{t->destroy_func_},
-           ir::Arguments(t->destroy_func_->type_, ir::Results{reg}));
+  ir::Call(ir::AnyFunc{t->destroy_func_}, t->destroy_func_->type_,
+           {ir::Results{reg}});
 }
 
 void EmitIr::Destroy(type::Tuple const *t, ir::Reg reg, Context *ctx) {

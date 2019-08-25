@@ -26,16 +26,16 @@ struct SetRetCmd {
   static std::optional<BlockIndex> Execute(base::untyped_buffer::iterator* iter,
                                            std::vector<Addr> const& ret_slots,
                                            backend::ExecContext* ctx) {
-    DEBUG_LOG("set_ret")(base::untyped_buffer(*iter, 32).to_string());
-    auto ctrl = iter->read<control_bits>();
-    DEBUG_LOG("set_ret")(base::untyped_buffer(*iter, 32).to_string());
-    uint16_t n = iter->read<uint16_t>();
+    auto ctrl     = iter->read<control_bits>();
+    uint16_t n    = iter->read<uint16_t>();
     Addr ret_slot = ret_slots[n];
+    DEBUG_LOG("set_ret")("return slot #", n, " = ", ret_slot);
 
     ASSERT(ret_slot.kind == Addr::Kind::Heap);
     PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
       using T = typename std::decay_t<decltype(tag)>::type;
       T val   = ctrl.reg ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>();
+      DEBUG_LOG("set_ret")("val = ", val);
       *ASSERT_NOT_NULL(static_cast<T*>(ret_slot.as_heap)) = val;
     });
     return std::nullopt;

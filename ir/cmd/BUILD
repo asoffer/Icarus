@@ -15,6 +15,23 @@ cc_lib_target(
 )
 
 cc_lib_target(
+    name = "call",
+    cfgs = ["match", "compile"],
+    intf_deps = [
+        ":util",
+        "//ir:basic_block",
+        "//ir:reg",
+        "//ir:results",
+        "//type:util",
+        "@com_google_absl//absl/strings",
+    ],
+    impl_deps = [
+        "//backend:exec",
+    ],
+    test_deps = None,
+)
+
+cc_lib_target(
     name = "cast",
     cfgs = ["match", "compile"],
     intf_deps = [

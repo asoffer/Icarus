@@ -1,6 +1,7 @@
 #include "ir/arguments.h"
 #include "ir/cmd.h"
 #include "ir/cmd/basic.h"
+#include "ir/cmd/call.h"
 #include "ir/cmd/print.h"
 #include "ir/compiled_fn.h"
 #include "ir/components.h"
@@ -61,8 +62,7 @@ void EmitIr::Print(type::Array const *t, ir::Results const &val, Context *ctx) {
     return fn;
   });
 
-  ir::Call(ir::AnyFunc{t->repr_func_.get()},
-           ir::Arguments{t->repr_func_.get()->type_, val});
+  ir::Call(ir::AnyFunc{t->repr_func_.get()}, t->repr_func_.get()->type_, {val});
 }
 
 void EmitIr::Print(type::Enum const *t, ir::Results const &val, Context *ctx) {
@@ -169,8 +169,7 @@ void EmitIr::Print(type::Variant const *t, ir::Results const &val,
     }
   }
 
-  ir::Call(ir::AnyFunc{t->repr_func_},
-           ir::Arguments{t->repr_func_->type_, val});
+  ir::Call(ir::AnyFunc{t->repr_func_}, t->repr_func_->type_, {val});
 }
 
 }  // namespace visitor

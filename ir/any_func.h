@@ -10,6 +10,11 @@ struct CompiledFn;
 
 // TODO This is a terrible name. Pick something better.
 struct AnyFunc {
+  static_assert(alignof(CompiledFn *) <= alignof(uintptr_t));
+  static_assert(alignof(Foreign) <= alignof(uintptr_t));
+  static_assert(sizeof(CompiledFn *) == sizeof(uintptr_t));
+  static_assert(sizeof(Foreign) == sizeof(uintptr_t));
+
   AnyFunc(CompiledFn *fn = nullptr) { std::memcpy(&data_, &fn, sizeof(fn)); }
   AnyFunc(Foreign foreign) {
     void *obj = foreign.get();

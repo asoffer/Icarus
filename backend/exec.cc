@@ -283,33 +283,6 @@ ir::BlockIndex ExecContext::ExecuteCmd(
 
   switch (cmd.op_code_) {
     case ir::Op::Death: UNREACHABLE(call_stack.top().fn_);
-    case ir::Op::Call: {
-      // NOTE: This is a hack using heap address slots to represent registers
-      // since they are both void* and are used identically in the
-      // interpretter.
-      std::vector<ir::Addr> return_slots;
-      if (cmd.call_.outs_ != nullptr) {
-        return_slots.reserve(cmd.call_.outs_->size());
-        for (size_t i = 0; i < cmd.call_.outs_->size(); ++i) {
-          if (cmd.call_.outs_->is_loc_[i]) {
-            return_slots.push_back(resolve<ir::Addr>(cmd.call_.outs_->regs_[i]));
-          } else {
-            auto addr = ir::Addr::Heap(call_stack.top().regs_.raw(
-                call_stack.top().fn_->compiler_reg_to_offset_.at(
-                    cmd.call_.outs_->regs_[i])));
-            return_slots.push_back(addr);
-          }
-        }
-      }
-
-      auto call_buf = cmd.call_.arguments_->PrepareCallBuffer(
-          call_stack.top().fn_->compiler_reg_to_offset_,
-          call_stack.top().regs_);
-      ir::AnyFunc f = resolve(cmd.call_.fn_);
-
-      // TODO you need to be able to determine how many args there are
-      Execute(f, call_buf, return_slots, this);
-    } break;
     case ir::Op::GetRet: save(ret_slots.at(cmd.get_ret_)); break;
     case ir::Op::JumpPlaceholder: UNREACHABLE(call_stack.top().fn_);
     case ir::Op::CreateScopeDef: {

@@ -45,6 +45,20 @@ struct CmdBuffer {
     buf_.append(t);
   }
 
+  // Reserves space for a T and returns the offset at which the space is
+  // reserved.
+  template <typename T>
+  size_t reserve() {
+    return buf_.append_bytes(sizeof(T), alignof(T));
+  }
+
+  size_t size() const { return buf_.size(); }
+
+  template <typename T>
+  void set(size_t offset, T const &t) {
+    buf_.set(offset, t);
+  }
+
   BlockIndex Execute(std::vector<ir::Addr> const& ret_slots,
                      backend::ExecContext* ctx);
 

@@ -33,7 +33,10 @@ cc_lib_target(
 
 cc_lib_target(
     name = "any_func",
-    intf_deps = [":foreign", "//base:debug"],
+    intf_deps = [
+        ":foreign",
+        "//base:debug",
+    ],
     impl_deps = None,
     test_deps = None,
 )
@@ -141,6 +144,7 @@ cc_lib_target(
         ":compiled_fn",
         "//backend:exec",
         "//ir/cmd:basic",
+        "//ir/cmd:call-impl",
         "//ir/cmd:cast",
         "//ir/cmd:jumps",
         "//ir/cmd:load",

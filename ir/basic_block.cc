@@ -3,8 +3,7 @@
 namespace ir {
 
 std::ostream &operator<<(std::ostream &os, BasicBlock const &b) {
-  for (const auto &cmd : b.cmds_) { os << "  " << *cmd << "\n"; }
-  return os;
+  return os << b.cmd_buffer_.to_string();
 }
 
 void BasicBlock::Append(BasicBlock &&b) {
@@ -14,8 +13,6 @@ void BasicBlock::Append(BasicBlock &&b) {
   cmds_.insert(cmds_.end(), std::make_move_iterator(b.cmds_.begin()),
                std::make_move_iterator(b.cmds_.end()));
   b.cmds_.clear();
-  arguments_.splice(arguments_.end(), b.arguments_);
-  outs_.splice(outs_.end(), b.outs_);
 }
 
 }  // namespace ir

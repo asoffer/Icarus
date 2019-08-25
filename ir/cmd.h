@@ -41,13 +41,6 @@ enum class Op : uint16_t {
 char const *OpCodeStr(Op op);
 
 struct Cmd {
-  struct Call {
-    Call(RegOr<AnyFunc> f, Arguments *args, OutParams *outs)
-        : fn_(f), arguments_(args), outs_(outs) {}
-    RegOr<AnyFunc> fn_;
-    Arguments *arguments_;
-    OutParams *outs_;
-  };
 
 #define OP_MACRO(op, tag, ...) struct tag##Tag;
 #include "ir/op.xmacro.h"
@@ -146,7 +139,6 @@ struct Cmd {
     AddScopeDefDone add_scope_def_done_;
 
     BlockIndex block_index_;
-    Call call_;
     ::Module *mod_;
     core::Scope const *scope_;
 
@@ -164,8 +156,6 @@ Reg Reserve(type::Type const *);
 // Type repreesents the type of `ptr`
 Cmd &MakeCmd(type::Type const *t, Op op);
 
-void Call(RegOr<AnyFunc> const &f, Arguments arguments);
-void Call(RegOr<AnyFunc> const &f, Arguments arguments, OutParams outs);
 std::pair<Results, bool> CallInline(
     CompiledFn *f, Arguments const &arguments,
     absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> const &block_map);

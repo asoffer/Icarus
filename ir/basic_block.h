@@ -2,7 +2,6 @@
 #define ICARUS_IR_BASIC_BLOCK_H
 
 #include <iostream>
-#include <list>
 #include <memory>
 #include <vector>
 
@@ -20,11 +19,7 @@ struct BasicBlock {
   BasicBlock() = default;
   explicit BasicBlock(CompiledFn *fn) : fn_(fn) {}
 
-  BasicBlock(BasicBlock const &b)
-      : fn_(b.fn_),
-        cmd_buffer_(b.cmd_buffer_),
-        arguments_(b.arguments_),
-        outs_(b.outs_) {
+  BasicBlock(BasicBlock const &b) : fn_(b.fn_), cmd_buffer_(b.cmd_buffer_) {
     cmds_.reserve(b.cmds_.size());
     for (size_t i = 0; i < cmds_.size(); ++i) {
       cmds_.push_back(std::make_unique<Cmd>(*b.cmds_[i]));
@@ -41,13 +36,6 @@ struct BasicBlock {
   CompiledFn *fn_;  // Containing function
   std::vector<std::unique_ptr<Cmd>> cmds_;
   CmdBuffer cmd_buffer_;
-
-  // These containers are append-only and we separately store pointers to these
-  // elments so we never traverse. We just need pointer stabiltiy. In the long
-  // term a single allocation is probably better but that's not easy with the
-  // current setup.
-  std::list<Arguments> arguments_;
-  std::list<OutParams> outs_;
 };
 
 BasicBlock &GetBlock();

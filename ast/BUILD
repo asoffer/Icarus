@@ -68,6 +68,7 @@ cc_lib_target(
         "//backend:eval",
         "//ir:block",
         "//ir:cmd",
+        "//ir/cmd:call",
         "//ir/cmd:phi",
         "//ir/cmd:store",
         "//ir:components",

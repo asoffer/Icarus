@@ -7,6 +7,7 @@
 #include "ir/builtin_ir.h"
 #include "ir/cmd.h"
 #include "ir/cmd/basic.h"
+#include "ir/cmd/call.h"
 #include "ir/cmd/cast.h"
 #include "ir/cmd/load.h"
 #include "ir/cmd/misc.h"
@@ -745,12 +746,10 @@ ir::Results EmitIr::Val(ast::Call const *node, Context *ctx) {
       case core::Builtin::Bytes: {
         auto const &fn_type =
             ir::BuiltinType(core::Builtin::Bytes)->as<type::Function>();
-        ir::Arguments call_args{&fn_type,
-                                node->args().at(0)->EmitIr(this, ctx)};
-
         ir::OutParams outs;
         auto reg = outs.AppendReg(fn_type.output.at(0));
-        ir::Call(ir::BytesFn(), std::move(call_args), std::move(outs));
+        ir::Call(ir::BytesFn(), &fn_type,
+                 {node->args().at(0)->EmitIr(this, ctx)}, outs);
 
         return ir::Results{reg};
       } break;
@@ -758,12 +757,10 @@ ir::Results EmitIr::Val(ast::Call const *node, Context *ctx) {
       case core::Builtin::Alignment: {
         auto const &fn_type =
             ir::BuiltinType(core::Builtin::Alignment)->as<type::Function>();
-        ir::Arguments call_args{&fn_type,
-                                node->args().at(0)->EmitIr(this, ctx)};
-
         ir::OutParams outs;
         auto reg = outs.AppendReg(fn_type.output.at(0));
-        ir::Call(ir::AlignmentFn(), std::move(call_args), std::move(outs));
+        ir::Call(ir::AlignmentFn(), &fn_type,
+                 {node->args().at(0)->EmitIr(this, ctx)}, outs);
 
         return ir::Results{reg};
       } break;
@@ -902,11 +899,11 @@ ir::Results ArrayCompare(type::Array const *lhs_type, ir::Results const &lhs_ir,
     }
   }
 
-  ir::Arguments call_args{iter->second->type_, ir::Results{lhs_ir, rhs_ir}};
   ir::OutParams outs;
   auto result = outs.AppendReg(type::Bool);
 
-  ir::Call(ir::AnyFunc{iter->second}, std::move(call_args), std::move(outs));
+  ir::Call(ir::AnyFunc{iter->second}, iter->second->type_, {lhs_ir, rhs_ir},
+           std::move(outs));
   return ir::Results{result};
 }
 

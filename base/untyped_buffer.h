@@ -23,6 +23,8 @@ struct untyped_buffer {
       return result;
     }
 
+    void skip(size_t n) { ptr_ += n; }
+
    private:
     friend struct untyped_buffer;
     friend std::string stringify(untyped_buffer::const_iterator);
@@ -68,6 +70,8 @@ struct untyped_buffer {
       *reinterpret_cast<T *>(ptr_) = t;
       ptr_ += sizeof(T);
     }
+
+    void skip(size_t n) { ptr_ += n; }
 
     operator const_iterator() { return const_iterator(ptr_); }
 

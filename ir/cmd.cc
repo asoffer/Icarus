@@ -121,23 +121,6 @@ TypedRegister<Addr> GetRet(size_t n, type::Type const *t) {
   return cmd.result;
 }
 
-void Call(RegOr<AnyFunc> const &f, Arguments arguments) {
-  auto &block     = CompiledFn::Current->block(BasicBlock::Current);
-  Arguments *args = &block.arguments_.emplace_back(std::move(arguments));
-
-  auto &cmd = MakeCmd(nullptr, Op::Call);
-  cmd.call_ = Cmd::Call(f, args, nullptr);
-}
-
-void Call(RegOr<AnyFunc> const &f, Arguments arguments, OutParams outs) {
-  auto &block    = CompiledFn::Current->block(BasicBlock::Current);
-  auto *args     = &block.arguments_.emplace_back(std::move(arguments));
-  auto *outs_ptr = &block.outs_.emplace_back(std::move(outs));
-
-  auto &cmd = MakeCmd(nullptr, Op::Call);
-  cmd.call_ = Cmd::Call(f, args, outs_ptr);
-}
-
 std::pair<Results, bool> CallInline(
     CompiledFn *f, Arguments const &arguments,
     absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> const
@@ -238,27 +221,6 @@ static auto Stringify(T &&val) {
 template <typename T>
 std::ostream &operator<<(std::ostream &os, Cmd::Args<T> const &a) {
   return os << Stringify(a.args_[0]) << " " << Stringify(a.args_[1]);
-}
-
-static std::ostream &operator<<(std::ostream &os, Cmd::Call const &call) {
-  if (call.fn_.is_reg_) {
-    os << stringify(call.fn_.reg_);
-  } else if (call.fn_.val_.is_fn()) {
-    os << call.fn_.val_.func();
-  } else {
-    os << "foreign("
-       << reinterpret_cast<uintptr_t>(call.fn_.val_.foreign().get()) << ")";
-  }
-  os << call.arguments_->to_string();
-
-  if (call.outs_) {
-    for (size_t i = 0; i < call.outs_->size(); ++i) {
-      if (call.outs_->is_loc_[i]) { os << "*"; }
-      os << stringify( call.outs_->regs_[i]);
-    }
-  }
-
-  return os;
 }
 
 std::ostream &operator<<(std::ostream &os, Cmd const &cmd) {

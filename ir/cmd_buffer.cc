@@ -6,6 +6,7 @@
 #include "backend/exec.h"
 #include "base/debug.h"
 #include "ir/cmd/basic.h"
+#include "ir/cmd/call.h"
 #include "ir/cmd/cast.h"
 #include "ir/cmd/jumps.h"
 #include "ir/cmd/load.h"
@@ -30,62 +31,7 @@ std::optional<BlockIndex> LegacyCmd::Execute(
 void LegacyCmd::UpdateForInlining(base::untyped_buffer::iterator* iter,
                                   Inliner const& inliner) {
   auto& cmd = *iter->read<Cmd*>();
-  switch (cmd.op_code_) {
-    case Op::Death: UNREACHABLE();
-    case Op::JumpPlaceholder: {
-      NOT_YET();
-    } break;
-
-    case Op::GetRet: NOT_YET();
-    case Op::Call: {
-      NOT_YET();
-      // RegOr<AnyFunc> r_fn;
-      // if (cmd.call_.fn_.is_reg_) {
-      //   auto iter = reg_relocs.find(cmd.call_.fn_.reg_);
-      //   if (iter == reg_relocs.end()) { goto next_block; }
-      //   r_fn = iter->second.get<AnyFunc>(0).reg_;
-      // } else {
-      //   r_fn = cmd.call_.fn_;
-      // }
-
-      // Results new_arg_results;
-      // for (size_t i = 0; i < cmd.call_.arguments_->results().size(); ++i) {
-      //   if (cmd.call_.arguments_->results().is_reg(i)) {
-      //     auto iter =
-      //         reg_relocs.find(cmd.call_.arguments_->results().get<Reg>(i));
-      //     if (iter == reg_relocs.end()) { goto next_block; }
-      //     new_arg_results.append(iter->second.GetResult(0));
-      //   } else {
-      //     new_arg_results.append(
-      //         cmd.call_.arguments_->results().GetResult(i));
-      //   }
-      // }
-      // Arguments new_args(cmd.call_.arguments_->type_,
-      //                    std::move(new_arg_results));
-
-      // if (cmd.call_.outs_) {
-      //   OutParams outs;
-      //   for (size_t i = 0; i < cmd.call_.outs_->regs_.size(); ++i) {
-      //     if (cmd.call_.outs_->is_loc_[i]) {
-      //       auto old_r = cmd.call_.outs_->regs_[i];
-      //       auto iter  = reg_relocs.find(old_r);
-      //       if (iter == reg_relocs.end()) { goto next_block; }
-      //       // TODO reg_relocs.emplace(, op_fn(r0, r1));
-      //     } else {
-      //       auto r =
-      //           Reserve(type::Int64);  // TODO this type is probably wrong.
-      //       outs.is_loc_.push_back(false);
-      //       outs.regs_.push_back(r);
-      //       reg_relocs.emplace(cmd.call_.outs_->regs_[i], r);
-      //     }
-      //   }
-      //   Call(r_fn, std::move(new_args), std::move(outs));
-      // } else {
-      //   Call(r_fn, std::move(new_args));
-      // }
-    } break;
-    default:; NOT_YET(static_cast<int>(cmd.op_code_));
-  }
+  UNREACHABLE();
 }
 
 #define CASES                                                                  \
@@ -126,6 +72,7 @@ void LegacyCmd::UpdateForInlining(base::untyped_buffer::iterator* iter,
   CASE(TypeInfoCmd);                                                           \
   CASE(AccessCmd);                                                             \
   CASE(VariantAccessCmd);                                                      \
+  CASE(CallCmd);                                                               \
   CASE(DebugIrCmd)
 
 BlockIndex CmdBuffer::Execute(std::vector<ir::Addr> const& ret_slots,
@@ -135,7 +82,8 @@ BlockIndex CmdBuffer::Execute(std::vector<ir::Addr> const& ret_slots,
   while (true) {
     DEBUG_LOG("dbg")(buf_.begin(), buf_.size());
     ASSERT(iter < buf_.end());
-    switch (iter.read<cmd_index_t>()) {
+    auto cmd_index = iter.read<cmd_index_t>();
+    switch (cmd_index) {
 #define CASE(type)                                                             \
   case type::index: {                                                          \
     DEBUG_LOG("dbg")(#type);                                                   \
@@ -144,7 +92,7 @@ BlockIndex CmdBuffer::Execute(std::vector<ir::Addr> const& ret_slots,
   } break
       CASES;
 #undef CASE
-      default: UNREACHABLE();
+      default: UNREACHABLE(static_cast<int>(cmd_index));
     }
   }
 }

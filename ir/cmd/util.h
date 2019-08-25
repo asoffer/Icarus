@@ -50,6 +50,27 @@ constexpr uint8_t PrimitiveIndex() {
   }
 }
 
+inline uint8_t PrimitiveIndex(type::Type const* t) {
+  if (t == type::Nat8) { return 0x00; }
+  if (t == type::Int8) { return 0x01; }
+  if (t == type::Nat16) { return 0x02; }
+  if (t == type::Int16) { return 0x03; }
+  if (t == type::Nat32) { return 0x04; }
+  if (t == type::Int32) { return 0x05; }
+  if (t == type::Nat64) { return 0x06; }
+  if (t == type::Int64) { return 0x07; }
+  if (t == type::Bool) { return 0x08; }
+  if (t == type::Float32) { return 0x09; }
+  if (t == type::Float64) { return 0x0a; }
+  if (t == type::ByteView) { return 0x0b; }
+  if (t == type::Type_) { return 0x0c; }
+  if (t->is<type::Pointer>()) { return 0x0d; }
+  if (t->is<type::Enum>()) { return 0x0e; }
+  if (t->is<type::Flags>()) { return 0x0f; }
+  if (t->is<type::Function>()) { return 0x10; }
+  UNREACHABLE();
+}
+
 template <typename Fn>
 auto PrimitiveDispatch(uint8_t primitive_type, Fn&& fn) {
   switch (primitive_type) {
@@ -121,20 +142,27 @@ struct UnwrapType<TypedRegister<T>> {
 template <typename T>
 using UnwrapTypeT = typename UnwrapType<T>::type;
 
-template <typename SizeType, typename T>
-void Serialize(CmdBuffer* buf, absl::Span<RegOr<T> const> span) {
+template <typename SizeType, typename T, typename Fn>
+void WriteBits(CmdBuffer* buf, absl::Span<T const> span, Fn&& predicate) {
   ASSERT(span.size() < std::numeric_limits<SizeType>::max());
   buf->append<SizeType>(span.size());
 
   uint8_t reg_mask = 0;
   for (size_t i = 0; i < span.size(); ++i) {
-    if (span[i].is_reg_) { reg_mask |= (1 << (7 - (i % 8))); }
+    if (predicate(span[i])) { reg_mask |= (1 << (7 - (i % 8))); }
     if (i % 8 == 7) {
       buf->append(reg_mask);
       reg_mask = 0;
     }
   }
   if (span.size() % 8 != 0) { buf->append(reg_mask); }
+
+}
+
+template <typename SizeType, typename T>
+void Serialize(CmdBuffer* buf, absl::Span<RegOr<T> const> span) {
+  WriteBits<SizeType, RegOr<T>>(buf, span,
+                                [](RegOr<T> const& r) { return r.is_reg_; });
 
   absl::c_for_each(span, [&](RegOr<T> x) {
     if (x.is_reg_) {
@@ -152,35 +180,48 @@ constexpr uint8_t ReverseByte(uint8_t byte) {
   return byte;
 }
 
-template <typename SizeType, typename T, typename Fn>
-auto Deserialize(base::untyped_buffer::iterator* iter, Fn&& fn) {
-  SizeType num    = iter->read<SizeType>();
+template <typename SizeType, typename Iter>
+std::vector<bool> ReadBits(Iter* iter) {
+  static_assert(std::disjunction_v<
+                std::is_same<Iter, base::untyped_buffer::iterator>,
+                std::is_same<Iter, base::untyped_buffer::const_iterator>>);
+  SizeType num = iter->template read<SizeType>();
+
   uint8_t current = 0;
 
   std::vector<bool> bits;
   bits.reserve(num);
   for (SizeType i = 0; i < num; ++i) {
-    if (i % 8 == 0) { current = ReverseByte(iter->read<uint8_t>()); }
+    if (i % 8 == 0) { current = ReverseByte(iter->template read<uint8_t>()); }
     bits.push_back(current & 1);
     current >>= 1;
   }
+  return bits;
+}
+
+template <typename SizeType, typename T, typename Iter, typename Fn>
+auto Deserialize(Iter* iter, Fn&& fn) {
+  static_assert(std::disjunction_v<
+                std::is_same<Iter, base::untyped_buffer::iterator>,
+                std::is_same<Iter, base::untyped_buffer::const_iterator>>);
+  auto bits = ReadBits<SizeType>(iter);
 
   if constexpr (std::is_void_v<decltype(
                     std::forward<Fn>(fn)(std::declval<Reg&>()))>) {
     for (bool b : bits) {
       if (b) {
-        std::forward<Fn>(fn)(iter->read<Reg>());
+        std::forward<Fn>(fn)(iter->template read<Reg>());
       } else {
-        iter->read<T>();
+        iter->template read<T>();
       }
     }
     return;
   } else {
     std::vector<T> vals;
-    vals.reserve(num);
+    vals.reserve(bits.size());
     for (bool b : bits) {
-      vals.push_back(b ? std::forward<Fn>(fn)(iter->read<Reg>())
-                       : iter->read<T>());
+      vals.push_back(b ? std::forward<Fn>(fn)(iter->template read<Reg>())
+                       : iter->template read<T>());
     }
     return vals;
   }

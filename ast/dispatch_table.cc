@@ -10,10 +10,11 @@
 #include "core/scope.h"
 #include "ir/block.h"
 #include "ir/cmd.h"
+#include "ir/cmd/call.h"
+#include "ir/cmd/phi.h"
 #include "ir/cmd/store.h"
 #include "ir/compiled_fn.h"
 #include "ir/components.h"
-#include "ir/cmd/phi.h"
 #include "ir/reg.h"
 #include "misc/context.h"
 #include "misc/module.h"
@@ -632,26 +633,26 @@ static bool EmitOneCall(
   }
 
   visitor::EmitIr visitor;
-  ir::Results arg_results;
+  std::vector<ir::Results> arg_results;
   size_t i = 0;
   ASSERT(row.params.size() >= args.pos().size());
   for (auto const &[expr, results] : args.pos()) {
     // TODO Don't re-lookup the type of this expression. You should know it
     // already.
-    arg_results.append(PrepArg(&visitor, row.params.at(i++).value.type(),
-                               ASSERT_NOT_NULL(ctx->type_of(expr)), results,
-                               ctx));
+    arg_results.push_back(PrepArg(&visitor, row.params.at(i++).value.type(),
+                                  ASSERT_NOT_NULL(ctx->type_of(expr)), results,
+                                  ctx));
   }
 
   for (; i < row.params.size(); ++i) {
     auto const &param = row.params.at(i);
     auto *arg         = args.at_or_null(param.name);
     if (!arg && (param.flags & core::HAS_DEFAULT)) {
-      arg_results.append(param.value.get()->EmitIr(&visitor, ctx));
+      arg_results.push_back(param.value.get()->EmitIr(&visitor, ctx));
     } else {
       auto const &[expr, results] = *ASSERT_NOT_NULL(arg);
-      arg_results.append(PrepArg(&visitor, param.value.type(),
-                                 ctx->type_of(expr), results, ctx));
+      arg_results.push_back(PrepArg(&visitor, param.value.type(),
+                                    ctx->type_of(expr), results, ctx));
     }
   }
 
@@ -666,9 +667,11 @@ static bool EmitOneCall(
       if (func->work_item != nullptr) { std::move(*func->work_item)(); }
       ASSERT(func->work_item == nullptr);
 
+      ir::Results r;
+      for (auto const &result : arg_results) { r.append(result); }
       bool is_jump;
       std::tie(*inline_results, is_jump) =
-          ir::CallInline(func, ir::Arguments{row.type, arg_results}, block_map);
+          ir::CallInline(func, ir::Arguments{row.type, r}, block_map);
       return is_jump;
     } else {
       NOT_YET();
@@ -718,8 +721,7 @@ static bool EmitOneCall(
     ir::UncondJump(call_block);
     ir::BasicBlock::Current = call_block;
 
-    ir::Call(fn, ir::Arguments{row.type, std::move(arg_results)},
-             std::move(out_params));
+    ir::Call(fn, row.type, arg_results, std::move(out_params));
     return false;
   }
 }
