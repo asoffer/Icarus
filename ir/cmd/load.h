@@ -111,8 +111,8 @@ inline Reg Load(RegOr<Addr> r, type::Type const* t) {
                           uint16_t, uint32_t, uint64_t, float, double,
                           type::Type const*, EnumVal, FlagsVal, Addr,
                           std::string_view, AnyFunc>(
-      t, [&](auto type_holder) -> Reg {
-        using T = typename decltype(type_holder)::type;
+      t, [&](auto tag) -> Reg {
+        using T = typename decltype(tag)::type;
         return Load<T>(r);
       });
 }

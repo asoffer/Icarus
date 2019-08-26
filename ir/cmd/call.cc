@@ -161,8 +161,8 @@ void CallImpl(BasicBlock *blk, RegOr<AnyFunc> const &fn,
     if (arg.is_reg(0)) {
       blk->cmd_buffer_.append(arg.get<Reg>(0));
     } else {
-      type::Apply(f->input[arg_index], [&](auto type_holder) {
-        using T = typename decltype(type_holder)::type;
+      type::Apply(f->input[arg_index], [&](auto tag) {
+        using T = typename decltype(tag)::type;
         blk->cmd_buffer_.append(arg.get<T>(0).val_);
       });
     }

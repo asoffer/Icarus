@@ -127,8 +127,8 @@ inline void SetRet(uint16_t n, type::Typed<Results> const& r, Context* ctx) {
   // if (r.type()->is<type::GenericStruct>()) {
   //   SetRet(n, r->get<AnyFunc>(0));
   // } else {
-  type::Apply(r.type(), [&](auto type_holder) {
-    using T = typename decltype(type_holder)::type;
+  type::Apply(r.type(), [&](auto tag) {
+    using T = typename decltype(tag)::type;
     // if constexpr (std::is_same_v<T, type::Struct const*>) {
     //   auto* t = CompiledFn::Current->type_->output[n];
     //   // TODO guaranteed move-elision

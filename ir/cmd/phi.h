@@ -74,8 +74,8 @@ RegOr<T> Phi(absl::Span<BlockIndex const> blocks,
 inline Results Phi(type::Type const *type,
     absl::flat_hash_map<BlockIndex, Results> const & values) {
   if (values.size() == 1) { return values.begin()->second; }
-  return type::Apply(type, [&](auto type_holder) {
-    using T = typename decltype(type_holder)::type;
+  return type::Apply(type, [&](auto tag) {
+    using T = typename decltype(tag)::type;
     std::vector<RegOr<T>> vals;
     vals.reserve(values.size());
     std::vector<BlockIndex> blocks;

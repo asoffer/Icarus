@@ -394,8 +394,8 @@ void DumpAst::operator()(ast::Terminal const *node) {
   type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                    uint32_t, uint64_t, float, double, bool, type::Type const *,
                    std::string_view, ir::BlockDef *>(
-      node->type(), [&](auto type_holder) {
-        using T = typename decltype(type_holder)::type;
+      node->type(), [&](auto tag) {
+        using T = typename decltype(tag)::type;
         if constexpr (std::is_same_v<T, bool>) {
           absl::StrAppend(out_, node->template as<T>() ? "true" : "false");
         } else if constexpr (std::is_same_v<T, type::Type const *>) {

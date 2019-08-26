@@ -12,8 +12,8 @@ RegOr<bool> EmitEq(type::Type const *lhs_type, ir::Results const &lhs_val,
 
   return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
                           uint16_t, uint32_t, uint64_t, float, double>(
-      lhs_type, [&](auto type_holder) {
-        using T = typename decltype(type_holder)::type;
+      lhs_type, [&](auto tag) {
+        using T = typename decltype(tag)::type;
         return ir::Eq(lhs_val.get<T>(0), rhs_val.get<T>(0));
       });
 }

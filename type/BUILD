@@ -231,6 +231,7 @@ cc_lib_target(
     textual_hdrs = ["primitive.xmacro.h"],
     intf_deps = [
         "//base:debug",
+        "//base:meta",
         "//base:util",
         "//ir:addr",
         "//ir:block",

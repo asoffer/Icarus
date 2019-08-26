@@ -5,6 +5,7 @@
 
 #include "absl/container/flat_hash_set.h"
 #include "base/debug.h"
+#include "base/meta.h"
 #include "base/util.h"
 #include "core/arch.h"
 #include "ir/addr.h"
@@ -93,11 +94,6 @@ Type const *Void();
 extern Type const *Generic;
 
 template <typename T>
-struct TypeHolder {
-  using type = T;
-};
-
-template <typename T>
 bool Compare(::type::Type const *t) {
   if constexpr (std::is_same_v<T, bool>) {
     return t == ::type::Bool;
@@ -153,48 +149,40 @@ bool Compare(::type::Type const *t) {
   }
 }
 
-namespace internal {
-template <typename T, typename... Ts>
-struct ConditionalApplicator {
-  template <typename Fn, typename... Args>
-  static auto Apply(type::Type const *t, Fn &&fn, Args &&... args) {
-    if constexpr (sizeof...(Ts) == 0) {
-      ASSERT(::type::Compare<T>(t) == true)
-          << DUMP(t->to_string(), typeid(T).name());
-      return std::forward<Fn>(fn)(::type::TypeHolder<T>{},
-                                  std::forward<Args>(args)...);
-    } else {
-      if (::type::Compare<T>(t)) {
-        return std::forward<Fn>(fn)(::type::TypeHolder<T>{},
-                                    std::forward<Args>(args)...);
-      } else {
-        return ::type::internal::ConditionalApplicator<Ts...>::Apply(
-            t, std::forward<Fn>(fn), std::forward<Args>(args)...);
-      }
-    }
-  }
-};
+template <typename... Ts, typename Fn>
+auto ApplyTypes(Type const *t, Fn &&fn) {
+  // TODO base::NoDestroy would be nice here.
+  using return_type =
+      decltype(std::forward<Fn>(fn)(base::Tag<base::first_t<Ts...>>{}));
 
-}  // namespace internal
+  // Create a static array of funtions that may be called depending on which
+  // type matches.
+  static auto const *kFnToCall =
+      new std::array<return_type (*)(Fn &&), sizeof...(Ts)>{
+          [](Fn &&f) { return std::forward<Fn>(f)(base::Tag<Ts>{}); }...};
 
-template <typename... Ts, typename Fn, typename... Args>
-auto ApplyTypes(Type const *t, Fn &&fn, Args &&... args) {
-  return ::type::internal::ConditionalApplicator<Ts...>::Apply(
-      t,
-      [&](auto type_holder, Args &&... as) {
-        return std::forward<Fn>(fn)(type_holder, std::forward<Args>(as)...);
-      },
-      std::forward<Args>(args)...);
+  // Using fold expressions, take the disjunction of `type::Compare<T>(t)` over
+  // all T. This will compute this boolean value until it returns true. However,
+  // in each folded expression, we actually use the comma operator to first
+  // increment `index`, which means that `index` will be incremented the number
+  // until `type::Compare<T>(t)` returns true. This means that after the
+  // computation, the value of `index` is one more than the array index for the
+  // function we want to call.
+  size_t index = 0;
+  bool found   = ((++index, type::Compare<Ts>(t)) || ...);
+  ASSERT(found == true);
+
+  return (*kFnToCall)[index - 1](std::forward<Fn>(fn));
 }
 
-template <typename Fn, typename... Args>
-auto Apply(Type const *t, Fn &&fn, Args &&... args) {
+template <typename Fn>
+auto Apply(Type const *t, Fn &&fn) {
   return ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                     uint32_t, uint64_t, float, double, type::Type const *,
                     ir::EnumVal, ir::FlagsVal, ir::Addr, std::string_view,
                     ::Module *, type::Struct const *, ir::ScopeDef *,
                     ir::AnyFunc, ir::BlockDef const *, ast::FunctionLiteral *>(
-      t, std::forward<Fn>(fn), std::forward<Args>(args)...);
+      t, std::forward<Fn>(fn));
 }
 
 // TODO lay these out adjacent in memory so the tests can be faster.

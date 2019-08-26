@@ -455,8 +455,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
       auto rhs_ir = node->rhs()->EmitIr(this, ctx);
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                               uint16_t, uint32_t, uint64_t, float, double>(
-          rhs_type, [&](auto type_holder) {
-            using T = typename decltype(type_holder)::type;
+          rhs_type, [&](auto tag) {
+            using T = typename decltype(tag)::type;
             return ir::Results{ir::Add(lhs_ir.get<T>(0), rhs_ir.get<T>(0))};
           });
     } break;
@@ -465,8 +465,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
       auto rhs_ir = node->rhs()->EmitIr(this, ctx);
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                               uint16_t, uint32_t, uint64_t, float, double>(
-          rhs_type, [&](auto type_holder) {
-            using T = typename decltype(type_holder)::type;
+          rhs_type, [&](auto tag) {
+            using T = typename decltype(tag)::type;
             return ir::Results{ir::Sub(lhs_ir.get<T>(0), rhs_ir.get<T>(0))};
           });
     } break;
@@ -475,8 +475,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
       auto rhs_ir = node->rhs()->EmitIr(this, ctx);
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                               uint16_t, uint32_t, uint64_t, float, double>(
-          rhs_type, [&](auto type_holder) {
-            using T = typename decltype(type_holder)::type;
+          rhs_type, [&](auto tag) {
+            using T = typename decltype(tag)::type;
             return ir::Results{ir::Mul(lhs_ir.get<T>(0), rhs_ir.get<T>(0))};
           });
     } break;
@@ -485,8 +485,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
       auto rhs_ir = node->rhs()->EmitIr(this, ctx);
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                               uint16_t, uint32_t, uint64_t, float, double>(
-          rhs_type, [&](auto type_holder) {
-            using T = typename decltype(type_holder)::type;
+          rhs_type, [&](auto tag) {
+            using T = typename decltype(tag)::type;
             return ir::Results{ir::Div(lhs_ir.get<T>(0), rhs_ir.get<T>(0))};
           });
     } break;
@@ -495,8 +495,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
       auto rhs_ir = node->rhs()->EmitIr(this, ctx);
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                               uint16_t, uint32_t, uint64_t>(
-          rhs_type, [&](auto type_holder) {
-            using T = typename decltype(type_holder)::type;
+          rhs_type, [&](auto tag) {
+            using T = typename decltype(tag)::type;
             return ir::Results{ir::Mod(lhs_ir.get<T>(0), rhs_ir.get<T>(0))};
           });
     } break;
@@ -593,8 +593,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
       auto rhs_ir   = node->rhs()->EmitIr(this, ctx);
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t, float, double>(
-          rhs_type, [&](auto type_holder) {
-            using T = typename decltype(type_holder)::type;
+          rhs_type, [&](auto tag) {
+            using T = typename decltype(tag)::type;
             ir::Store(ir::Add(ir::Load<T>(lhs_lval), rhs_ir.get<T>(0)),
                       lhs_lval);
           });
@@ -605,8 +605,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
       auto rhs_ir   = node->rhs()->EmitIr(this, ctx);
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t, float, double>(
-          rhs_type, [&](auto type_holder) {
-            using T = typename decltype(type_holder)::type;
+          rhs_type, [&](auto tag) {
+            using T = typename decltype(tag)::type;
             ir::Store(ir::Sub(ir::Load<T>(lhs_lval), rhs_ir.get<T>(0)),
                       lhs_lval);
           });
@@ -617,8 +617,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
       auto rhs_ir   = node->rhs()->EmitIr(this, ctx);
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t, float, double>(
-          rhs_type, [&](auto type_holder) {
-            using T = typename decltype(type_holder)::type;
+          rhs_type, [&](auto tag) {
+            using T = typename decltype(tag)::type;
             ir::Store(ir::Div(ir::Load<T>(lhs_lval), rhs_ir.get<T>(0)),
                       lhs_lval);
           });
@@ -628,8 +628,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
       auto lhs_lval = node->lhs()->EmitLVal(this, ctx)[0];
       auto rhs_ir   = node->rhs()->EmitIr(this, ctx);
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                       uint32_t, uint64_t>(rhs_type, [&](auto type_holder) {
-        using T = typename decltype(type_holder)::type;
+                       uint32_t, uint64_t>(rhs_type, [&](auto tag) {
+        using T = typename decltype(tag)::type;
         ir::Store(ir::Div(ir::Load<T>(lhs_lval), rhs_ir.get<T>(0)), lhs_lval);
       });
       return ir::Results{};
@@ -639,8 +639,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
       auto rhs_ir   = node->rhs()->EmitIr(this, ctx);
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t, float, double>(
-          rhs_type, [&](auto type_holder) {
-            using T = typename decltype(type_holder)::type;
+          rhs_type, [&](auto tag) {
+            using T = typename decltype(tag)::type;
             ir::Store(ir::Mul(ir::Load<T>(lhs_lval), rhs_ir.get<T>(0)),
                       lhs_lval);
           });
@@ -805,8 +805,8 @@ ir::Results EmitIr::Val(ast::Cast const *node, Context *ctx) {
   // TODO enum, flags, ptrs?
   return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                           uint32_t, uint64_t, float, double>(
-      to_type, [&](auto type_holder) {
-        return ir::Results{ir::CastTo<typename decltype(type_holder)::type>(
+      to_type, [&](auto tag) {
+        return ir::Results{ir::CastTo<typename decltype(tag)::type>(
             from_type, results)};
       });
 }
@@ -932,15 +932,15 @@ static ir::RegOr<bool> EmitChainOpPair(ast::ChainOp const *chain_op,
       case frontend::Operator::Lt:
         return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                                 uint16_t, uint32_t, uint64_t, float, double,
-                                ir::FlagsVal>(lhs_type, [&](auto type_holder) {
-          using T = typename decltype(type_holder)::type;
+                                ir::FlagsVal>(lhs_type, [&](auto tag) {
+          using T = typename decltype(tag)::type;
           return ir::Lt(lhs_ir.get<T>(0), rhs_ir.get<T>(0));
         });
       case frontend::Operator::Le:
         return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                                 uint16_t, uint32_t, uint64_t, float, double,
-                                ir::FlagsVal>(lhs_type, [&](auto type_holder) {
-          using T = typename decltype(type_holder)::type;
+                                ir::FlagsVal>(lhs_type, [&](auto tag) {
+          using T = typename decltype(tag)::type;
           return ir::Le(lhs_ir.get<T>(0), rhs_ir.get<T>(0));
         });
       case frontend::Operator::Eq:
@@ -953,8 +953,8 @@ static ir::RegOr<bool> EmitChainOpPair(ast::ChainOp const *chain_op,
                                 uint8_t, uint16_t, uint32_t, uint64_t, float,
                                 double, type::Type const *, ir::EnumVal,
                                 ir::FlagsVal, ir::Addr>(
-            lhs_type, [&](auto type_holder) {
-              using T = typename decltype(type_holder)::type;
+            lhs_type, [&](auto tag) {
+              using T = typename decltype(tag)::type;
               return ir::Eq(lhs_ir.get<T>(0), rhs_ir.get<T>(0));
             });
       case frontend::Operator::Ne:
@@ -966,22 +966,22 @@ static ir::RegOr<bool> EmitChainOpPair(ast::ChainOp const *chain_op,
         return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
                                 uint16_t, uint32_t, uint64_t, float, double,
                                 type::Type const *, ir::EnumVal, ir::FlagsVal,
-                                ir::Addr>(lhs_type, [&](auto type_holder) {
-          using T = typename decltype(type_holder)::type;
+                                ir::Addr>(lhs_type, [&](auto tag) {
+          using T = typename decltype(tag)::type;
           return ir::Ne(lhs_ir.get<T>(0), rhs_ir.get<T>(0));
         });
       case frontend::Operator::Ge:
         return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                                 uint16_t, uint32_t, uint64_t, float, double,
-                                ir::FlagsVal>(lhs_type, [&](auto type_holder) {
-          using T = typename decltype(type_holder)::type;
+                                ir::FlagsVal>(lhs_type, [&](auto tag) {
+          using T = typename decltype(tag)::type;
           return ir::Ge(lhs_ir.get<T>(0), rhs_ir.get<T>(0));
         });
       case frontend::Operator::Gt:
         return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                                 uint16_t, uint32_t, uint64_t, float, double,
-                                ir::FlagsVal>(lhs_type, [&](auto type_holder) {
-          using T = typename decltype(type_holder)::type;
+                                ir::FlagsVal>(lhs_type, [&](auto tag) {
+          using T = typename decltype(tag)::type;
           return ir::Gt(lhs_ir.get<T>(0), rhs_ir.get<T>(0));
         });
         // TODO case frontend::Operator::And: cmp = lhs_ir; break;
@@ -1437,8 +1437,8 @@ ir::Results InitializeAndEmitBlockNode(ir::Results const &results,
     auto addr = ctx->addr(arg->if_as<ast::Declaration>());
     type::ApplyTypes<bool, uint8_t, uint16_t, uint32_t, uint64_t, int8_t,
                      int16_t, int32_t, int64_t, float, double, ir::Addr>(
-        t, [&](auto type_holder) {
-          using T = typename decltype(type_holder)::type;
+        t, [&](auto tag) {
+          using T = typename decltype(tag)::type;
           ir::Store(results.get<T>(i), addr);
         });
     i++;
@@ -1723,8 +1723,8 @@ ir::Results EmitIr::Val(ast::Unop const *node, Context *ctx) {
     case frontend::Operator::Sub: {
       auto operand_ir = node->operand->EmitIr(this, ctx);
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, float, double>(
-          ctx->type_of(node->operand.get()), [&](auto type_holder) {
-            using T = typename decltype(type_holder)::type;
+          ctx->type_of(node->operand.get()), [&](auto tag) {
+            using T = typename decltype(tag)::type;
             return ir::Results{ir::Neg(operand_ir.get<T>(0))};
           });
     } break;

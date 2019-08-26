@@ -49,8 +49,8 @@ std::pair<Results, bool> CallInline(
   arg_regs.reserve(f->type_->input.size());
   for (size_t i = 0; i < f->type_->input.size(); ++i) {
     arg_regs.push_back(
-        type::Apply(f->type_->input[i], [&](auto type_holder) -> Reg {
-          using T = typename decltype(type_holder)::type;
+        type::Apply(f->type_->input[i], [&](auto tag) -> Reg {
+          using T = typename decltype(tag)::type;
           return MakeReg(arguments.results().get<T>(i));
         }));
   }

@@ -50,8 +50,8 @@ base::untyped_buffer Arguments::PrepareCallBuffer(
                           ? regs.get<Addr>(reg_to_offset.at(reg_or_addr.reg_))
                           : reg_or_addr.val_);
     } else {
-      type::Apply(t, [&](auto type_holder) {
-        using T = typename decltype(type_holder)::type;
+      type::Apply(t, [&](auto tag) {
+        using T = typename decltype(tag)::type;
         auto reg_or_val = results_.get<T>(i);
         call_buf.append(reg_or_val.is_reg_
                             ? regs.get<T>(reg_to_offset.at(reg_or_val.reg_))
