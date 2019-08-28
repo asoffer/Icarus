@@ -125,7 +125,7 @@ struct CastCmd {
 template <typename ToType, typename FromType>
 RegOr<ToType> Cast(RegOr<FromType> r) {
   if (r.is_reg_) {
-    auto& blk = GetBlock();
+    auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
     blk.cmd_buffer_.append_index<CastCmd>();
     blk.cmd_buffer_.append(PrimitiveIndex<ToType>());
     blk.cmd_buffer_.append(PrimitiveIndex<FromType>());

@@ -8,7 +8,7 @@ Reg EnumerationImpl(
     Module *mod, absl::Span<std::string_view const> names,
     absl::flat_hash_map<uint64_t, RegOr<EnumerationCmd::enum_t>> const
         &specified_values) {
-  auto &blk = GetBlock();
+  auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<EnumerationCmd>();
   blk.cmd_buffer_.append(IsEnumNotFlags);
   blk.cmd_buffer_.append<uint16_t>(names.size());
@@ -234,7 +234,7 @@ void StructCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
 Reg Struct(core::Scope const *scope, ::Module *mod,
            std::vector<std::tuple<std::string_view, RegOr<type::Type const *>>>
                fields) {
-  auto &blk = GetBlock();
+  auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<StructCmd>();
   blk.cmd_buffer_.append<uint16_t>(fields.size());
   blk.cmd_buffer_.append(scope);
@@ -342,7 +342,7 @@ RegOr<type::Function const *> Arrow(
     return type::Func(std::move(in_vec), std::move(out_vec));
   }
 
-  auto &blk = GetBlock();
+  auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<ArrowCmd>();
   internal::Serialize<uint16_t>(&blk.cmd_buffer_, ins);
   internal::Serialize<uint16_t>(&blk.cmd_buffer_, outs);
@@ -353,7 +353,7 @@ RegOr<type::Function const *> Arrow(
 }
 
 Reg OpaqueType(::Module const *mod) {
-  auto &blk = GetBlock();
+  auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<OpaqueTypeCmd>();
   blk.cmd_buffer_.append(mod);
   Reg result = MakeResult<type::Type const *>();
@@ -366,7 +366,7 @@ RegOr<type::Type const *> Array(RegOr<ArrayCmd::length_t> len,
   if (!len.is_reg_ && data_type.is_reg_) {
     return type::Arr(len.val_, data_type.val_);
   }
-  auto &blk = GetBlock();
+  auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<ArrayCmd>();
   blk.cmd_buffer_.append(
       ArrayCmd::MakeControlBits(len.is_reg_, data_type.is_reg_));

@@ -14,7 +14,6 @@ namespace ir {
 struct CompiledFn;
 
 struct BasicBlock {
-  static thread_local BlockIndex Current;
   BasicBlock() = default;
   explicit BasicBlock(CompiledFn *fn) : fn_(fn) {}
 
@@ -29,7 +28,6 @@ struct BasicBlock {
   CmdBuffer cmd_buffer_;
 };
 
-BasicBlock &GetBlock();
 Reg Reserve(core::Bytes b, core::Alignment a);
 
 template <typename T>

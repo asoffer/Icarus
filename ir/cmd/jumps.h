@@ -72,14 +72,14 @@ struct JumpCmd {
 };
 
 inline void UncondJump(BlockIndex block) {
-  auto& blk = GetBlock();
+  auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<JumpCmd>();
   blk.cmd_buffer_.append(JumpCmd::Kind::kUncond);
   blk.cmd_buffer_.append(block);
 }
 
 inline void ReturnJump() {
-  auto& blk = GetBlock();
+  auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<JumpCmd>();
   blk.cmd_buffer_.append(JumpCmd::Kind::kRet);
   // This extra block index is so that when inlined, we don't have to worry
@@ -90,7 +90,7 @@ inline void ReturnJump() {
 
 inline void CondJump(RegOr<bool> cond, BlockIndex true_block,
                      BlockIndex false_block) {
-  auto& blk = GetBlock();
+  auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   if (cond.is_reg_) {
     blk.cmd_buffer_.append_index<JumpCmd>();
     blk.cmd_buffer_.append(JumpCmd::Kind::kCond);

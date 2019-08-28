@@ -3,6 +3,7 @@
 #include "ast/expression.h"
 #include "backend/exec.h"
 #include "core/arch.h"
+#include "ir/builder.h"
 #include "ir/cmd/jumps.h"
 #include "ir/cmd/return.h"
 #include "ir/compiled_fn.h"
@@ -17,15 +18,10 @@ static ir::CompiledFn ExprFn(type::Typed<ast::Expression const *> typed_expr,
   ir::CompiledFn fn(ctx->mod_,
                     type::Func({}, {ASSERT_NOT_NULL(typed_expr.type())}),
                     core::FnParams<type::Typed<ast::Expression const *>>{});
-  CURRENT_FUNC(&fn) {
+  ICARUS_SCOPE(ir::SetCurrentFunc(&fn)) {
     // TODO this is essentially a copy of the body of FunctionLiteral::EmitIr
     // Factor these out together.
-    ir::BasicBlock::Current = fn.entry();
-    // Leave space for allocas that will come later (added to the entry
-    // block).
-
-    auto start_block = ir::BasicBlock::Current =
-        ir::CompiledFn::Current->AddBlock();
+    ir::GetBuilder().CurrentBlock() = fn.entry();
 
     ASSERT(ctx != nullptr);
     visitor::EmitIr visitor;
@@ -42,8 +38,6 @@ static ir::CompiledFn ExprFn(type::Typed<ast::Expression const *> typed_expr,
     }
     ir::ReturnJump();
 
-    ir::BasicBlock::Current = fn.entry();
-    ir::UncondJump(start_block);
     visitor.CompleteDeferredBodies();
   }
   return fn;

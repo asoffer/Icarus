@@ -22,8 +22,8 @@ namespace backend {
 static void ReplEval(ast::Expression *expr) {
   // TODO is nullptr for module okay here?
   ir::CompiledFn fn(nullptr, type::Func({}, {}), {});
-  CURRENT_FUNC(&fn) {
-    ir::BasicBlock::Current = fn.entry();
+  ICARUS_SCOPE(ir::SetCurrentFunc(&fn)) {
+    ir::GetBuilder().CurrentBlock() = fn.entry();
     // TODO use the right module
     Context ctx(static_cast<Module *>(nullptr));
 

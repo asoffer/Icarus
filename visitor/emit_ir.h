@@ -16,12 +16,17 @@ struct Context;
 struct Module;
 
 namespace ir {
+struct Builder;
 struct Results;
 }  // namespace ir
 
 namespace visitor {
 
 struct EmitIr : public DeferredBody<EmitIr> {
+  EmitIr();
+  EmitIr(EmitIr const &) = delete;
+  EmitIr(EmitIr &&)      = delete;
+
   // AST-related IR-emission functions
   ir::Results Val(ast::Node const *node, Context *ctx);
 #define ICARUS_AST_NODE_X(name)                                                \
@@ -29,20 +34,16 @@ struct EmitIr : public DeferredBody<EmitIr> {
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
 
-  std::vector<ir::RegOr<ir::Addr>> Ref(ast::Node const *node,
-                                            Context *ctx) {
+  std::vector<ir::RegOr<ir::Addr>> Ref(ast::Node const *node, Context *ctx) {
     UNREACHABLE(node);
   }
-  std::vector<ir::RegOr<ir::Addr>> Ref(ast::Access const *node,
-                                            Context *ctx);
+  std::vector<ir::RegOr<ir::Addr>> Ref(ast::Access const *node, Context *ctx);
   std::vector<ir::RegOr<ir::Addr>> Ref(ast::CommaList const *node,
-                                            Context *ctx);
+                                       Context *ctx);
   std::vector<ir::RegOr<ir::Addr>> Ref(ast::Identifier const *node,
-                                            Context *ctx);
-  std::vector<ir::RegOr<ir::Addr>> Ref(ast::Index const *node,
-                                            Context *ctx);
-  std::vector<ir::RegOr<ir::Addr>> Ref(ast::Unop const *node,
-                                            Context *ctx);
+                                       Context *ctx);
+  std::vector<ir::RegOr<ir::Addr>> Ref(ast::Index const *node, Context *ctx);
+  std::vector<ir::RegOr<ir::Addr>> Ref(ast::Unop const *node, Context *ctx);
 
   void MoveInit(ast::Node const *, type::Typed<ir::Reg> reg, Context *ctx) {
     UNREACHABLE();
@@ -142,6 +143,11 @@ struct EmitIr : public DeferredBody<EmitIr> {
                 type::Typed<ir::Reg> to_var, Context *ctx);
   void MoveInit(type::Type const *from_type, ir::Results const &from_val,
                 type::Typed<ir::Reg> to_var, Context *ctx);
+
+  ir::Builder &builder() { return bldr_; };
+
+ private:
+  ir::Builder &bldr_;
 };
 
 }  // namespace visitor

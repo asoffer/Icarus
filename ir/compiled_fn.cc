@@ -7,7 +7,6 @@
 #include "type/pointer.h"
 
 namespace ir {
-thread_local CompiledFn *CompiledFn::Current{nullptr};
 
 CompiledFn::CompiledFn(
     Module *mod, type::Function const *fn_type,

@@ -10,6 +10,7 @@ cc_group_target(
         ":arguments-impl",
         ":basic_block-impl",
         ":block-impl",
+        ":builder-impl",
         ":builtin_ir-impl",
         ":cmd_buffer-impl",
         ":compiled_fn-impl",
@@ -90,6 +91,21 @@ cc_lib_target(
     impl_deps = [],
     test_deps = None,
 )
+
+cc_lib_target(
+    name = "builder",
+    cfgs = ["match", "compile"],
+    intf_deps = [
+        ":basic_block",
+        "//base:debug",
+        "//base:scope",
+    ],
+    impl_deps = [
+        ":cmd_buffer",
+        ":compiled_fn",
+    ],
+    test_deps = None,
+)
    
 # TODO now that ':builtin'; doesn't need any IR, move it up to ast and rename
 # this to ':builtin'
@@ -138,6 +154,7 @@ cc_lib_target(
     name = "components",
     cfgs = ["match", "compile"],
     intf_deps = [
+        ":builder",
         ":compiled_fn",
         ":register",
         "//ir/cmd:basic",
@@ -148,6 +165,7 @@ cc_lib_target(
         "//ir/cmd:types",
     ],
     impl_deps = [
+        ":builder",
         "//misc:context",
     ],
     test_deps = None,
@@ -175,9 +193,11 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = [
         ":basic_block",
+        ":builder",
         ":stack_frame_allocations",
         "//ast:ast",
         "//base:bag",
+        "//base:scope",
         "//core:fn_params",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
@@ -203,6 +223,7 @@ cc_lib_target(
         "@com_google_absl//absl/container:flat_hash_map",
     ],
     impl_deps = [
+        ":builder",
         ":compiled_fn",
         ":stack_frame_allocations",
         "//ir/cmd:jumps",

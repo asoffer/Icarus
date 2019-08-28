@@ -1,6 +1,7 @@
 #ifndef ICARUS_IR_COMPONENTS_H
 #define ICARUS_IR_COMPONENTS_H
 
+#include "ir/builder.h"
 #include "ir/cmd/basic.h"
 #include "ir/cmd/jumps.h"
 #include "ir/cmd/load.h"
@@ -19,7 +20,7 @@ TypedRegister<Addr> TmpAlloca(type::Type const *t, Context *ctx);
 
 template <bool B>
 BlockIndex EarlyExitOn(BlockIndex exit_block, RegOr<bool> cond) {
-  auto continue_block = CompiledFn::Current->AddBlock();
+  auto continue_block = GetBuilder().AddBlock();
   if constexpr (B) {
     CondJump(cond, exit_block, continue_block);
   } else {
@@ -42,24 +43,24 @@ void CreateLoop(LoopPhiFn &&loop_phi_fn, LoopBodyFn &&loop_body_fn,
                 TypeTup &&types, std::tuple<RegOr<Ts>...> entry_vals) {
   NOT_YET();
   /*
-  auto entry_block = BasicBlock::Current;
+  auto entry_block = GetBuilder().CurrentBlock();
 
-  auto loop_phi   = CompiledFn::Current->AddBlock();
-  auto loop_body  = CompiledFn::Current->AddBlock();
-  auto exit_block = CompiledFn::Current->AddBlock();
+  auto loop_phi   = GetBuilder().AddBlock();
+  auto loop_body  = GetBuilder().AddBlock();
+  auto exit_block = GetBuilder().AddBlock();
 
   UncondJump(loop_phi);
-  BasicBlock::Current = loop_phi;
+  GetBuilder().CurrentBlock() = loop_phi;
 
   auto phi_indices = base::tuple::transform([&]() { ir::Phi(); }, types);
   auto phi_vals    = base::tuple::transform(
-      [](auto &&val) { return CompiledFn::Current->Command(val).result; },
+      [](auto &&val) { return GetBuilder().Command(val).result; },
       phi_indices);
 
   auto exit_cond = std::apply(std::forward<LoopPhiFn>(loop_phi_fn), phi_vals);
   CondJump(exit_cond, exit_block, loop_body);
 
-  BasicBlock::Current = loop_body;
+  GetBuilder().CurrentBlock() = loop_body;
   auto new_phis = std::apply(std::forward<LoopBodyFn>(loop_body_fn), phi_vals);
   UncondJump(loop_phi);
 
@@ -70,14 +71,14 @@ void CreateLoop(LoopPhiFn &&loop_phi_fn, LoopBodyFn &&loop_body_fn,
       },
       std::move(phi_indices), std::move(entry_vals), std::move(new_phis));
 
-  BasicBlock::Current = exit_block;
+  GetBuilder().CurrentBlock() = exit_block;
   */
 }
 
 template <typename F>
 void OnEachArrayElement(type::Array const *t, CompiledFn *fn, F &&fn_to_apply) {
-  CURRENT_FUNC(fn) {
-    BasicBlock::Current = fn->entry();
+  ICARUS_SCOPE(SetCurrentFunc(fn)) {
+    GetBuilder().CurrentBlock() = fn->entry();
     auto *data_ptr_type = type::Ptr(t->data_type);
 
     auto ptr     = Index(type::Ptr(t), Reg::Arg(0), 0);

@@ -177,14 +177,14 @@ void CallImpl(BasicBlock *blk, RegOr<AnyFunc> const &fn,
 
 void Call(RegOr<AnyFunc> const &fn, type::Function const *f,
           absl::Span<Results const> arguments) {
-  auto &blk = GetBlock();
+  auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   CallImpl(&blk, fn, f, arguments);
   blk.cmd_buffer_.append<uint16_t>(0);
 }
 
 void Call(RegOr<AnyFunc> const &fn, type::Function const *f,
           absl::Span<Results const> arguments, OutParams outs) {
-  auto &blk = GetBlock();
+  auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   CallImpl(&blk, fn, f, arguments);
 
   blk.cmd_buffer_.append<uint16_t>(f->output.size());

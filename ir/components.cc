@@ -1,5 +1,6 @@
 #include "ir/components.h"
 
+#include "ir/builder.h"
 #include "misc/context.h"
 
 namespace ir {
@@ -28,7 +29,8 @@ TypedRegister<Addr> Index(type::Pointer const *t, Reg array_ptr,
 }
 
 TypedRegister<Addr> Alloca(type::Type const *t) {
-  return CompiledFn::Current->Alloca(t);
+  // TODO consider adding this directly to the builder.
+  return GetBuilder().function()->Alloca(t);
 }
 
 TypedRegister<Addr> TmpAlloca(type::Type const *t, Context *ctx) {

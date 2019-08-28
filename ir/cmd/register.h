@@ -27,7 +27,7 @@ template <typename T>
 Reg MakeReg(T t) {
   static_assert(!std::is_same_v<T, Reg>);
   if constexpr (ir::IsRegOr<T>::value) {
-    auto& blk = GetBlock();
+    auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
     blk.cmd_buffer_.append_index<RegisterCmd>();
     blk.cmd_buffer_.append(
         RegisterCmd::MakeControlBits<typename T::type>(t.is_reg_));

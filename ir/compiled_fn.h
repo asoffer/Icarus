@@ -5,10 +5,11 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
-#include "base/bag.h"
 #include "base/move_func.h"
+#include "base/scope.h"
 #include "core/fn_params.h"
 #include "ir/basic_block.h"
+#include "ir/builder.h"
 #include "ir/inliner.h"
 #include "ir/stack_frame_allocations.h"
 #include "type/typed_value.h"
@@ -38,7 +39,6 @@ inline bool operator<(CmdIndex lhs, CmdIndex rhs) {
 }
 
 struct CompiledFn {
-  static thread_local CompiledFn *Current;
 
   CompiledFn(Module *mod, type::Function const *fn_type,
              core::FnParams<type::Typed<ast::Expression const *>> params);
@@ -53,19 +53,11 @@ struct CompiledFn {
   std::string name() const;
 
   BasicBlock const &block(BlockIndex index) const {
-    ASSERT(blocks_.size() > static_cast<size_t>(index.value)) << Current;
     return blocks_.at(index.value);
   }
   BasicBlock &block(BlockIndex index) {
     return const_cast<BasicBlock &>(
         static_cast<CompiledFn const *>(this)->block(index));
-  }
-
-  static BlockIndex AddBlock() {
-    BlockIndex index;
-    index.value = static_cast<decltype(index.value)>(Current->blocks_.size());
-    Current->blocks_.emplace_back(Current);
-    return index;
   }
 
   Reg Reserve(type::Type const *t);
@@ -108,23 +100,6 @@ static_assert(alignof(CompiledFn) > 1);
 
 std::ostream &operator<<(std::ostream &, CompiledFn const &);
 
-namespace internal {
-struct FuncResetter {
-  FuncResetter(CompiledFn *fn)
-      : old_fn_(CompiledFn::Current), old_block_(BasicBlock::Current) {
-    CompiledFn::Current = fn;
-  }
-  ~FuncResetter() {
-    CompiledFn::Current = old_fn_;
-    BasicBlock::Current = old_block_;
-  }
-
-  CompiledFn *old_fn_;
-  BlockIndex old_block_;
-};
-}  // namespace internal
 }  // namespace ir
-
-#define CURRENT_FUNC(fn) if (::ir::internal::FuncResetter resetter(fn); true)
 
 #endif  // ICARUS_IR_COMPILED_FN_H

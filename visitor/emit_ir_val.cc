@@ -4,6 +4,7 @@
 #include "backend/eval.h"
 #include "backend/exec.h"
 #include "base/guarded.h"
+#include "ir/builder.h"
 #include "ir/builtin_ir.h"
 #include "ir/cmd/basic.h"
 #include "ir/cmd/call.h"
@@ -44,6 +45,8 @@ type::Type const *BuiltinType(core::Builtin);
 
 namespace visitor {
 using ::matcher::InheritsFrom;
+
+EmitIr::EmitIr() : bldr_(ir::GetBuilder()) {}
 
 template <typename NodeType>
 static base::move_func<void()> *DeferBody(EmitIr *visitor, NodeType const *node,
@@ -132,18 +135,13 @@ static void EmitIrForStatements(EmitIr *visitor,
 //                          Context *ctx) {
 //   ir::ScopeDef *scope_def = ctx->scope_def(node);
 //   if (!scope_def->work_item) { return; }
-// 
+//
 //   ir::CompiledFn fn(ctx->mod_, type::Func({}, {}),
 //                     core::FnParams<type::Typed<ast::Expression const *>>{});
-// 
-//   CURRENT_FUNC(&fn) {
-//     ir::BasicBlock::Current = fn.entry();
-//     // Leave space for allocas that will come later (added to the entry
-//     // block).
-// 
-//     auto start_block = ir::BasicBlock::Current =
-//         ir::CompiledFn::Current->AddBlock();
-// 
+//
+//   ICARUS_SCOPE(ir::SetCurrentFunc(&fn)) {
+//     ir::GetBuilder().CurrentBlock() = fn.entry();
+//
 //     auto reg = ir::CreateScopeDef(node->scope_->module(), scope_def);
 //     for (auto *decl : node->decls()) {
 //       if (decl->id() == "init") {
@@ -160,13 +158,10 @@ static void EmitIrForStatements(EmitIr *visitor,
 //       }
 //     }
 //     ir::FinishScopeDef();
-// 
+//
 //     ir::ReturnJump();
-// 
-//     ir::BasicBlock::Current = fn.entry();
-//     ir::UncondJump(start_block);
 //   }
-// 
+//
 //   backend::ExecContext exec_context;
 //   backend::Execute(&fn, base::untyped_buffer(0), {}, &exec_context);
 // }
@@ -180,13 +175,7 @@ static void CompleteBody(EmitIr *visitor, ast::FunctionLiteral const *node,
 
   ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[node];
 
-  CURRENT_FUNC(ir_func) {
-    ir::BasicBlock::Current = ir_func->entry();
-    // Leave space for allocas that will come later (added to the entry
-    // block).
-    auto start_block        = ir::CompiledFn::Current->AddBlock();
-    ir::BasicBlock::Current = start_block;
-
+  ICARUS_SCOPE(ir::SetCurrentFunc(ir_func)) {
     // TODO arguments should be renumbered to not waste space on const values
     for (int32_t i = 0; i < static_cast<int32_t>(node->inputs_.size()); ++i) {
       ctx->set_addr(node->inputs_.at(i).value.get(), ir::Reg::Arg(i));
@@ -244,8 +233,6 @@ static void CompleteBody(EmitIr *visitor, ast::FunctionLiteral const *node,
       ir::ReturnJump();
     }
 
-    ir::BasicBlock::Current = ir_func->entry();
-    ir::UncondJump(start_block);
     ir_func->work_item = nullptr;
   }
 }
@@ -256,59 +243,61 @@ static void CompleteBody(EmitIr *visitor, ast::FunctionLiteral const *node,
 //   for (size_t i = 0; i < node->args_.size(); ++i) {
 //     ctx->set_addr(&node->args_[i], ir::Reg::Arg(i));
 //   }
-// 
-//   CURRENT_FUNC(ir_func) {
-//     ir::BasicBlock::Current = ir_func->entry();
+//
+//   ICARUS_SCOPE(ir::SetCurrentFunc(ir_func)) {
+//     ir::GetBuilder().CurrentBlock() = ir_func->entry();
 //     auto cache_slot_addr    = ir::ArgumentCache(node);
 //     auto cache_slot         = ir::Load<type::Type const *>(cache_slot_addr);
-// 
-//     auto land_block         = ir::CompiledFn::Current->AddBlock();
-//     ir::BasicBlock::Current = ir::EarlyExitOn<false>(
+//
+//     auto land_block         = builder().AddBlock();
+//     ir::GetBuilder().CurrentBlock() = ir::EarlyExitOn<false>(
 //         land_block,
 //         ir::Eq(cache_slot, static_cast<type::Type const *>(nullptr)));
 //     auto ctx_reg    = ir::CreateContext(ctx->mod_);
 //     auto struct_reg = ir::CreateStruct(node->scope_, node);
-// 
+//
 //     // TODO why isn't implicit TypedRegister -> RegOr cast working on
-//     // either of these? On the first it's clear because we don't even return a
-//     // typedRegister, but this is a note to remind you to make that work. On the
+//     // either of these? On the first it's clear because we don't even return
+//     a
+//     // typedRegister, but this is a note to remind you to make that work. On
+//     the
 //     // second... I don't know.
 //     ir::Store(static_cast<ir::RegOr<type::Type const *>>(struct_reg),
 //               cache_slot_addr);
 //     for (auto &arg : node->args_) {  // TODO const-ref
 //       ir::AddBoundConstant(ctx_reg, &arg, ctx->addr(&arg));
 //     }
-// 
+//
 //     for (auto &field : node->fields_) {  // TODO const-ref
 //       ir::VerifyType(&field, ctx_reg);
-// 
+//
 //       // TODO exit early if verifytype fails.
-// 
+//
 //       auto type_reg = ir::EvaluateAsType(field.type_expr(), ctx_reg);
-// 
+//
 //       ir::CreateStructField(struct_reg, type_reg);
 //       ir::SetStructFieldName(struct_reg, field.id());
-// 
+//
 //       // for (auto const &hashtag : field.hashtags_) {
 //       //   ir::AddHashtagToField(struct_reg, hashtag);
 //       // }
 //     }
-// 
+//
 //     // for (auto hashtag : node->hashtags_) {
 //     //   ir::AddHashtagToStruct(struct_reg, hashtag);
 //     // }
-// 
+//
 //     ir::RegOr<type::Type const *> result = ir::FinalizeStruct(struct_reg);
 //     ir::DestroyContext(ctx_reg);
-// 
+//
 //     // Exit path from creating a new struct.
 //     ir::SetRet(0, static_cast<ir::RegOr<type::Type const *>>(result));
 //     ir::Store(static_cast<ir::RegOr<type::Type const *>>(result),
 //               cache_slot_addr);
 //     ir::ReturnJump();
-// 
+//
 //     // Exit path from finding the cache
-//     ir::BasicBlock::Current = land_block;
+//     ir::GetBuilder().CurrentBlock() = land_block;
 //     ir::SetRet(0, static_cast<ir::RegOr<type::Type const *>>(cache_slot));
 //     ir::ReturnJump();
 //   }
@@ -318,25 +307,22 @@ static void CompleteBody(EmitIr *visitor, ast::FunctionLiteral const *node,
 //                          Context *ctx) {
 //   // TODO have validate return a bool distinguishing if there are errors and
 //   // whether or not we can proceed.
-// 
+//
 //   auto *t = ctx->type_of(node);
-// 
+//
 //   ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[node];
-// 
-//   CURRENT_FUNC(ir_func) {
-//     ir::BasicBlock::Current = ir_func->entry();
-//     // Leave space for allocas that will come later (added to the entry
-//     // block).
-//     auto start_block        = ir::CompiledFn::Current->AddBlock();
-//     ir::BasicBlock::Current = start_block;
-// 
+//
+//   ICARUS_SCOPE(ir::SetCurrentFunc(ir_func)) {
+//     ir::GetBuilder().CurrentBlock() = ir_func->entry();
+//
 //     // TODO arguments should be renumbered to not waste space on const values
-//     for (int32_t i = 0; i < static_cast<int32_t>(node->input().size()); ++i) {
+//     for (int32_t i = 0; i < static_cast<int32_t>(node->input().size()); ++i)
+//     {
 //       ctx->set_addr(node->input()[i], ir::Reg::Arg(i));
 //     }
-// 
+//
 //     MakeAllStackAllocations(node->body_scope(), ctx);
-// 
+//
 //     {
 //       std::vector<type::Typed<ir::Reg>> to_destroy;
 //       auto *old_tmp_ptr =
@@ -347,10 +333,10 @@ static void CompleteBody(EmitIr *visitor, ast::FunctionLiteral const *node,
 //         ctx->temporaries_to_destroy_ = old_tmp_ptr;
 //         ctx->more_stmts_allowed_     = old_more_stmts_allowed;
 //       });
-// 
+//
 //       for (auto *stmt : node->stmts()) {
 //         stmt->EmitIr(visitor, ctx);
-// 
+//
 //         for (int i = static_cast<int>(to_destroy.size()) - 1; i >= 0; --i) {
 //           auto &reg = to_destroy.at(i);
 //           reg.type()->EmitDestroy(visitor, reg.get(), ctx);
@@ -358,12 +344,10 @@ static void CompleteBody(EmitIr *visitor, ast::FunctionLiteral const *node,
 //         to_destroy.clear();
 //       }
 //     }
-// 
+//
 //     MakeAllDestructions(visitor, node->body_scope(), ctx);
-// 
+//
 //     ir::ReturnJump();
-//     ir::BasicBlock::Current = ir_func->entry();
-//     ir::UncondJump(start_block);
 //     ir_func->work_item = nullptr;
 //   }
 // }
@@ -542,19 +526,19 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
             lhs_lval);
         return ir::Results{};
       }
-      auto land_block = ir::CompiledFn::Current->AddBlock();
-      auto more_block = ir::CompiledFn::Current->AddBlock();
+      auto land_block = builder().AddBlock();
+      auto more_block = builder().AddBlock();
 
       auto lhs_val       = node->lhs()->EmitIr(this, ctx).get<bool>(0);
-      auto lhs_end_block = ir::BasicBlock::Current;
+      auto lhs_end_block = builder().CurrentBlock();
       ir::CondJump(lhs_val, land_block, more_block);
 
-      ir::BasicBlock::Current = more_block;
-      auto rhs_val            = node->rhs()->EmitIr(this, ctx).get<bool>(0);
-      auto rhs_end_block      = ir::BasicBlock::Current;
+      builder().CurrentBlock() = more_block;
+      auto rhs_val             = node->rhs()->EmitIr(this, ctx).get<bool>(0);
+      auto rhs_end_block       = builder().CurrentBlock();
       ir::UncondJump(land_block);
 
-      ir::BasicBlock::Current = land_block;
+      builder().CurrentBlock() = land_block;
 
       return ir::Results{ir::Phi<bool>({lhs_end_block, rhs_end_block},
                                        {ir::RegOr<bool>(true), rhs_val})};
@@ -570,19 +554,19 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
         return ir::Results{};
       }
 
-      auto land_block = ir::CompiledFn::Current->AddBlock();
-      auto more_block = ir::CompiledFn::Current->AddBlock();
+      auto land_block = builder().AddBlock();
+      auto more_block = builder().AddBlock();
 
       auto lhs_val       = node->lhs()->EmitIr(this, ctx).get<bool>(0);
-      auto lhs_end_block = ir::BasicBlock::Current;
+      auto lhs_end_block = builder().CurrentBlock();
       ir::CondJump(lhs_val, more_block, land_block);
 
-      ir::BasicBlock::Current = more_block;
-      auto rhs_val            = node->rhs()->EmitIr(this, ctx).get<bool>(0);
-      auto rhs_end_block      = ir::BasicBlock::Current;
+      builder().CurrentBlock() = more_block;
+      auto rhs_val                = node->rhs()->EmitIr(this, ctx).get<bool>(0);
+      auto rhs_end_block          = builder().CurrentBlock();
       ir::UncondJump(land_block);
 
-      ir::BasicBlock::Current = land_block;
+      builder().CurrentBlock() = land_block;
 
       // TODO this looks like a bug.
       return ir::Results{ir::Phi<bool>({lhs_end_block, rhs_end_block},
@@ -806,8 +790,8 @@ ir::Results EmitIr::Val(ast::Cast const *node, Context *ctx) {
   return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                           uint32_t, uint64_t, float, double>(
       to_type, [&](auto tag) {
-        return ir::Results{ir::CastTo<typename decltype(tag)::type>(
-            from_type, results)};
+        return ir::Results{
+            ir::CastTo<typename decltype(tag)::type>(from_type, results)};
       });
 }
 
@@ -822,7 +806,7 @@ static base::guarded<absl::flat_hash_map<
 // TODO this should early exit if the types aren't equal.
 ir::Results ArrayCompare(type::Array const *lhs_type, ir::Results const &lhs_ir,
                          type::Array const *rhs_type, ir::Results const &rhs_ir,
-                         bool equality, Context *ctx) {
+                         bool equality, EmitIr *visitor, Context *ctx) {
   auto &funcs = equality ? eq_funcs : ne_funcs;
   auto handle = funcs.lock();
 
@@ -835,35 +819,35 @@ ir::Results ArrayCompare(type::Array const *lhs_type, ir::Results const &lhs_ir,
                        core::Param{"", type::Typed<ast::Expression const *>(
                                            nullptr, type::Ptr(rhs_type))}));
 
-    CURRENT_FUNC(fn) {
-      ir::BasicBlock::Current = fn->entry();
+    ICARUS_SCOPE(ir::SetCurrentFunc(fn)) {
+      visitor->builder().CurrentBlock() = fn->entry();
 
-      auto equal_len_block = ir::CompiledFn::Current->AddBlock();
-      auto true_block      = ir::CompiledFn::Current->AddBlock();
-      auto false_block     = ir::CompiledFn::Current->AddBlock();
-      auto phi_block       = ir::CompiledFn::Current->AddBlock();
-      auto body_block      = ir::CompiledFn::Current->AddBlock();
-      auto incr_block      = ir::CompiledFn::Current->AddBlock();
+      auto equal_len_block = visitor->builder().AddBlock();
+      auto true_block      = visitor->builder().AddBlock();
+      auto false_block     = visitor->builder().AddBlock();
+      auto phi_block       = visitor->builder().AddBlock();
+      auto body_block      = visitor->builder().AddBlock();
+      auto incr_block      = visitor->builder().AddBlock();
 
       ir::CondJump(ir::Eq(lhs_type->len, rhs_type->len), equal_len_block,
                    false_block);
 
-      ir::BasicBlock::Current = true_block;
+      visitor->builder().CurrentBlock() = true_block;
       ir::SetRet(0, true);
       ir::ReturnJump();
 
-      ir::BasicBlock::Current = false_block;
+      visitor->builder().CurrentBlock() = false_block;
       ir::SetRet(0, false);
       ir::ReturnJump();
 
-      ir::BasicBlock::Current = equal_len_block;
-      auto lhs_start          = ir::Index(Ptr(lhs_type), ir::Reg::Arg(0), 0);
-      auto rhs_start          = ir::Index(Ptr(rhs_type), ir::Reg::Arg(1), 0);
+      visitor->builder().CurrentBlock() = equal_len_block;
+      auto lhs_start = ir::Index(Ptr(lhs_type), ir::Reg::Arg(0), 0);
+      auto rhs_start = ir::Index(Ptr(rhs_type), ir::Reg::Arg(1), 0);
       auto lhs_end =
           ir::PtrIncr(lhs_start, lhs_type->len, Ptr(rhs_type->data_type));
       ir::UncondJump(phi_block);
 
-      ir::BasicBlock::Current = phi_block;
+      visitor->builder().CurrentBlock() = phi_block;
 
       ir::Reg lhs_phi_reg = ir::MakeResult<ir::Addr>();
       ir::Reg rhs_phi_reg = ir::MakeResult<ir::Addr>();
@@ -871,13 +855,13 @@ ir::Results ArrayCompare(type::Array const *lhs_type, ir::Results const &lhs_ir,
       ir::CondJump(ir::Eq(ir::RegOr<ir::Addr>(lhs_phi_reg), lhs_end),
                    true_block, body_block);
 
-      ir::BasicBlock::Current = body_block;
+      visitor->builder().CurrentBlock() = body_block;
       // TODO what if data type is an array?
       ir::CondJump(ir::Eq(ir::Load<ir::Addr>(lhs_phi_reg),
                           ir::Load<ir::Addr>(rhs_phi_reg)),
                    incr_block, false_block);
 
-      ir::BasicBlock::Current = incr_block;
+      visitor->builder().CurrentBlock() = incr_block;
       auto lhs_incr = ir::PtrIncr(lhs_phi_reg, 1, Ptr(lhs_type->data_type));
       auto rhs_incr = ir::PtrIncr(rhs_phi_reg, 1, Ptr(rhs_type->data_type));
       ir::UncondJump(phi_block);
@@ -898,10 +882,9 @@ ir::Results ArrayCompare(type::Array const *lhs_type, ir::Results const &lhs_ir,
 }
 
 static ir::RegOr<bool> EmitChainOpPair(ast::ChainOp const *chain_op,
-                                            size_t index,
-                                            ir::Results const &lhs_ir,
-                                            ir::Results const &rhs_ir,
-                                            Context *ctx) {
+                                       size_t index, ir::Results const &lhs_ir,
+                                       ir::Results const &rhs_ir,
+                                       EmitIr *visitor, Context *ctx) {
   auto *lhs_type = ctx->type_of(chain_op->exprs()[index]);
   auto *rhs_type = ctx->type_of(chain_op->exprs()[index + 1]);
   auto op        = chain_op->ops()[index];
@@ -911,7 +894,7 @@ static ir::RegOr<bool> EmitChainOpPair(ast::ChainOp const *chain_op,
     ASSERT(op, Eq(frontend::Operator::Eq) || Eq(frontend::Operator::Ne));
     return ArrayCompare(&lhs_type->as<type::Array>(), lhs_ir,
                         &rhs_type->as<type::Array>(), rhs_ir,
-                        op == frontend::Operator::Eq, ctx)
+                        op == frontend::Operator::Eq, visitor, ctx)
         .get<bool>(0);
   } else if (lhs_type->is<type::Struct>() || rhs_type->is<type::Struct>()) {
     auto results =
@@ -963,13 +946,14 @@ static ir::RegOr<bool> EmitChainOpPair(ast::ChainOp const *chain_op,
           auto val2 = rhs_ir.get<ir::BlockDef *>(0);
           if (!val1.is_reg_ && !val2.is_reg_) { return val1.val_ == val2.val_; }
         }
-        return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                                uint16_t, uint32_t, uint64_t, float, double,
-                                type::Type const *, ir::EnumVal, ir::FlagsVal,
-                                ir::Addr>(lhs_type, [&](auto tag) {
-          using T = typename decltype(tag)::type;
-          return ir::Ne(lhs_ir.get<T>(0), rhs_ir.get<T>(0));
-        });
+        return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t,
+                                uint8_t, uint16_t, uint32_t, uint64_t, float,
+                                double, type::Type const *, ir::EnumVal,
+                                ir::FlagsVal, ir::Addr>(
+            lhs_type, [&](auto tag) {
+              using T = typename decltype(tag)::type;
+              return ir::Ne(lhs_ir.get<T>(0), rhs_ir.get<T>(0));
+            });
       case frontend::Operator::Ge:
         return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                                 uint16_t, uint32_t, uint64_t, float, double,
@@ -1040,7 +1024,7 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
     NOT_YET();
   } else if (node->ops()[0] == frontend::Operator::And ||
              node->ops()[0] == frontend::Operator::Or) {
-    auto land_block = ir::CompiledFn::Current->AddBlock();
+    auto land_block = builder().AddBlock();
 
     std::vector<ir::BlockIndex> phi_blocks;
     std::vector<ir::RegOr<bool>> phi_results;
@@ -1048,20 +1032,20 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
     for (size_t i = 0; i + 1 < node->exprs().size(); ++i) {
       auto val = node->exprs()[i]->EmitIr(this, ctx).get<bool>(0);
 
-      auto next_block = ir::CompiledFn::Current->AddBlock();
+      auto next_block = builder().AddBlock();
       ir::CondJump(val, is_or ? land_block : next_block,
                    is_or ? next_block : land_block);
-      phi_blocks.push_back(ir::BasicBlock::Current);
+      phi_blocks.push_back(builder().CurrentBlock());
       phi_results.push_back(is_or);
 
-      ir::BasicBlock::Current = next_block;
+      builder().CurrentBlock() = next_block;
     }
 
-    phi_blocks.push_back(ir::BasicBlock::Current);
+    phi_blocks.push_back(builder().CurrentBlock());
     phi_results.push_back(node->exprs().back()->EmitIr(this, ctx).get<bool>(0));
     ir::UncondJump(land_block);
 
-    ir::BasicBlock::Current = land_block;
+    builder().CurrentBlock() = land_block;
 
     return ir::Results{ir::Phi<bool>(phi_blocks, phi_results)};
 
@@ -1069,33 +1053,33 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
     if (node->ops().size() == 1) {
       auto lhs_ir = node->exprs()[0]->EmitIr(this, ctx);
       auto rhs_ir = node->exprs()[1]->EmitIr(this, ctx);
-      return ir::Results{EmitChainOpPair(node, 0, lhs_ir, rhs_ir, ctx)};
+      return ir::Results{EmitChainOpPair(node, 0, lhs_ir, rhs_ir, this, ctx)};
 
     } else {
       std::vector<ir::BlockIndex> phi_blocks;
       std::vector<ir::RegOr<bool>> phi_values;
       auto lhs_ir     = node->exprs().front()->EmitIr(this, ctx);
-      auto land_block = ir::CompiledFn::Current->AddBlock();
+      auto land_block = builder().AddBlock();
       for (size_t i = 0; i + 1 < node->ops().size(); ++i) {
         auto rhs_ir = node->exprs()[i + 1]->EmitIr(this, ctx);
-        auto cmp    = EmitChainOpPair(node, i, lhs_ir, rhs_ir, ctx);
+        auto cmp    = EmitChainOpPair(node, i, lhs_ir, rhs_ir, this, ctx);
 
-        phi_blocks.push_back(ir::BasicBlock::Current);
+        phi_blocks.push_back(builder().CurrentBlock());
         phi_values.push_back(false);
-        auto next_block = ir::CompiledFn::Current->AddBlock();
+        auto next_block = builder().AddBlock();
         ir::CondJump(cmp, next_block, land_block);
-        ir::BasicBlock::Current = next_block;
-        lhs_ir                  = std::move(rhs_ir);
+        builder().CurrentBlock() = next_block;
+        lhs_ir                      = std::move(rhs_ir);
       }
 
       // Once more for the last element, but don't do a conditional jump.
       auto rhs_ir = node->exprs().back()->EmitIr(this, ctx);
-      phi_blocks.push_back(ir::BasicBlock::Current);
-      phi_values.push_back(
-          EmitChainOpPair(node, node->exprs().size() - 2, lhs_ir, rhs_ir, ctx));
+      phi_blocks.push_back(builder().CurrentBlock());
+      phi_values.push_back(EmitChainOpPair(node, node->exprs().size() - 2,
+                                           lhs_ir, rhs_ir, this, ctx));
       ir::UncondJump(land_block);
 
-      ir::BasicBlock::Current = land_block;
+      builder().CurrentBlock() = land_block;
 
       return ir::Results{ir::Phi<bool>(phi_blocks, phi_values)};
     }
@@ -1323,7 +1307,8 @@ ir::Results EmitIr::Val(ast::JumpHandler const *node, Context *ctx) {
   //     params.set(i,
   //                core::Param<type::Typed<ast::Expression const *>>{
   //                    decl->id(), type::Typed<ast::Expression const *>(
-  //                                    decl->init_val(), jmp_type->args()[i])});
+  //                                    decl->init_val(),
+  //                                    jmp_type->args()[i])});
   //   }
 
   //   ir_func = ctx->mod_->AddJump(jmp_type, std::move(params));
@@ -1450,6 +1435,7 @@ ir::Results InitializeAndEmitBlockNode(ir::Results const &results,
 // locally to a scope node.
 struct LocalScopeInterpretation {
   explicit LocalScopeInterpretation(
+      ir::Builder &bldr,
       absl::flat_hash_map<std::string_view, ir::BlockDef> const &block_defs,
       ast::ScopeNode const *node)
       : node_(node) {
@@ -1458,16 +1444,13 @@ struct LocalScopeInterpretation {
                       std::forward_as_tuple(&block, nullptr));
     }
 
-    block_indices_.emplace(ir::BlockDef::Start(),
-                           ir::CompiledFn::Current->AddBlock());
-    block_indices_.emplace(ir::BlockDef::Exit(),
-                           ir::CompiledFn::Current->AddBlock());
+    block_indices_.emplace(ir::BlockDef::Start(), bldr.AddBlock());
+    block_indices_.emplace(ir::BlockDef::Exit(), bldr.AddBlock());
 
     for (auto const &block_node : node->blocks()) {
       auto &block        = blocks_.at(block_node.name());
       std::get<1>(block) = &block_node;
-      block_indices_.emplace(std::get<0>(block),
-                            ir::CompiledFn::Current->AddBlock());
+      block_indices_.emplace(std::get<0>(block), bldr.AddBlock());
     }
   }
 
@@ -1492,11 +1475,11 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) {
   auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(
       type::Typed{node->name(), type::Scope}, ctx);
   DEBUG_LOG("ScopeNode")("          ... completing work.");
-  if (scope_def->work_item) { std::move(*scope_def->work_item)(); }
+  if (scope_def->work_item) { std::move (*scope_def->work_item)(); }
   DEBUG_LOG("ScopeNode")("          ... done.");
 
   DEBUG_LOG("ScopeNode")("Constructing interpretation");
-  LocalScopeInterpretation interp(scope_def->blocks_, node);
+  LocalScopeInterpretation interp(builder(), scope_def->blocks_, node);
   DEBUG_LOG("ScopeNode")("          ... done");
 
   auto init_block = interp.init_block();
@@ -1508,7 +1491,7 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) {
   base::defer d([&] { ctx->block_map = old_block_map; });
 
   ir::UncondJump(init_block);
-  ir::BasicBlock::Current = init_block;
+  builder().CurrentBlock() = init_block;
 
   DEBUG_LOG("ScopeNode")("Inlining entry handler at ", ast::ExprPtr{node});
   // ASSERT_NOT_NULL(ctx->jump_table(node, nullptr))
@@ -1525,7 +1508,7 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) {
   //     auto & [ block, block_node ] = block_and_node;
   //     auto iter                    = block_map.find(block);
   //     if (iter == block_map.end()) { continue; }
-  //     ir::BasicBlock::Current = iter->second;
+  //     builder().CurrentBlock() = iter->second;
   //     auto results =
   //         ASSERT_NOT_NULL(ctx->dispatch_table(ast::ExprPtr{block_node,
   //         0x01}))
@@ -1533,7 +1516,7 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) {
   //     InitializeAndEmitBlockNode(results, block_node, this, ctx);
   //   }
   //
-  ir::BasicBlock::Current = land_block;
+  builder().CurrentBlock() = land_block;
   //
   //   // TODO currently the block you end up on here is where EmitInlineCall
   //   thinks
@@ -1579,8 +1562,10 @@ ir::Results EmitIr::Val(ast::StructLiteral const *node, Context *ctx) {
   }
 
   // // TODO A bunch of things need to be fixed here.
-  // // * Lock access during creation so two requestors don't clobber each other.
-  // // * Add a way way for one requestor to wait for another to have created the
+  // // * Lock access during creation so two requestors don't clobber each
+  // other.
+  // // * Add a way way for one requestor to wait for another to have created
+  // the
   // // object and be notified.
   // //
   // // For now, it's safe to do this from within a single module compilation
@@ -1589,7 +1574,8 @@ ir::Results EmitIr::Val(ast::StructLiteral const *node, Context *ctx) {
   // if (!ir_func) {
   //   auto work_item_ptr = DeferBody(this, node, ctx);
 
-  //   auto const &arg_types = ctx->type_of(node)->as<type::GenericStruct>().deps_;
+  //   auto const &arg_types =
+  //   ctx->type_of(node)->as<type::GenericStruct>().deps_;
 
   //   core::FnParams<type::Typed<ast::Expression const *>> params;
   //   params.reserve(node->args_.size());
@@ -1615,7 +1601,7 @@ ir::Results EmitIr::Val(ast::StructType const *node, Context *ctx) {
 ir::Results EmitIr::Val(ast::Switch const *node, Context *ctx) {
   absl::flat_hash_map<ir::BlockIndex, ir::Results> phi_args;
 
-  auto land_block = ir::CompiledFn::Current->AddBlock();
+  auto land_block = builder().AddBlock();
   auto *t         = ctx->type_of(node);
   // TODO this is not precisely accurate if you have regular void.
   bool all_paths_jump = (t == type::Void());
@@ -1633,19 +1619,19 @@ ir::Results EmitIr::Val(ast::Switch const *node, Context *ctx) {
 
   for (size_t i = 0; i + 1 < node->cases_.size(); ++i) {
     auto &[body, match_cond] = node->cases_[i];
-    auto expr_block          = ir::CompiledFn::Current->AddBlock();
+    auto expr_block          = builder().AddBlock();
 
     ir::Results match_val = match_cond->EmitIr(this, ctx);
-    ir::RegOr<bool> cond =
-        node->expr_ ? ir::EmitEq(ctx->type_of(match_cond.get()), match_val,
-                                 expr_type, expr_results)
-                    : match_val.get<bool>(0);
+    ir::RegOr<bool> cond  = node->expr_
+                               ? ir::EmitEq(ctx->type_of(match_cond.get()),
+                                            match_val, expr_type, expr_results)
+                               : match_val.get<bool>(0);
 
     auto next_block = ir::EarlyExitOn<true>(expr_block, cond);
 
-    ir::BasicBlock::Current = expr_block;
+    builder().CurrentBlock() = expr_block;
     if (body->is<ast::Expression>()) {
-      phi_args.emplace(ir::BasicBlock::Current, body->EmitIr(this, ctx));
+      phi_args.emplace(builder().CurrentBlock(), body->EmitIr(this, ctx));
       ir::UncondJump(land_block);
     } else {
       // It must be a jump/yield/return, which we've verified in VerifyType.
@@ -1654,11 +1640,11 @@ ir::Results EmitIr::Val(ast::Switch const *node, Context *ctx) {
       if (!all_paths_jump) { ctx->more_stmts_allowed_ = true; }
     }
 
-    ir::BasicBlock::Current = next_block;
+    builder().CurrentBlock() = next_block;
   }
 
   if (node->cases_.back().first->is<ast::Expression>()) {
-    phi_args.emplace(ir::BasicBlock::Current,
+    phi_args.emplace(builder().CurrentBlock(),
                      node->cases_.back().first->EmitIr(this, ctx));
     ir::UncondJump(land_block);
   } else {
@@ -1667,7 +1653,7 @@ ir::Results EmitIr::Val(ast::Switch const *node, Context *ctx) {
     if (!all_paths_jump) { ctx->more_stmts_allowed_ = true; }
   }
 
-  ir::BasicBlock::Current = land_block;
+  builder().CurrentBlock() = land_block;
   if (t == type::Void()) {
     return ir::Results{};
   } else {

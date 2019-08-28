@@ -16,8 +16,8 @@ AnyFunc BytesFn() {
         nullptr, type::Func({type::Type_}, {type::Int64}),
         core::FnParams(core::Param(
             "", type::Typed<ast::Expression const *>(nullptr, type::Type_))));
-    CURRENT_FUNC(fn) {
-      BasicBlock::Current = fn->entry();
+    ICARUS_SCOPE(SetCurrentFunc(fn)) {
+      GetBuilder().CurrentBlock() = fn->entry();
       SetRet(0, Bytes(Reg::Arg(0)));
       ReturnJump();
     }
@@ -33,8 +33,8 @@ AnyFunc AlignmentFn() {
         core::FnParams(core::Param(
             "", type::Typed<ast::Expression const *>(nullptr, type::Type_))));
 
-    CURRENT_FUNC(fn) {
-      BasicBlock::Current = fn->entry();
+    ICARUS_SCOPE(SetCurrentFunc(fn)) {
+      GetBuilder().CurrentBlock() = fn->entry();
       SetRet(0, Align(Reg::Arg(0)));
       ReturnJump();
     }

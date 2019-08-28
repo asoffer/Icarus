@@ -1,6 +1,7 @@
 #include "absl/random/random.h"
 #include "ast/ast.h"
 #include "base/permutation.h"
+#include "ir/builder.h"
 #include "ir/cmd/call.h"
 #include "ir/cmd/misc.h"
 #include "ir/compiled_fn.h"
@@ -24,12 +25,13 @@ void EmitIr::Destroy(type::Struct const *t, ir::Reg reg, Context *ctx) {
         core::FnParams(core::Param{
             "", type::Typed<ast::Expression const *>{nullptr, pt}}));
 
-    CURRENT_FUNC(fn.func()) {
-      ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
-      auto var                = ir::Reg::Arg(0);
+    ICARUS_SCOPE(ir::SetCurrentFunc(fn.func())) {
+      builder().CurrentBlock() = builder().function()->entry();
+      auto var                 = ir::Reg::Arg(0);
 
       for (int i = static_cast<int>(t->fields_.size()) - 1; i >= 0; --i) {
-        t->fields_.at(i).type->EmitDestroy(this, ir::Field(var, t, i).get(), ctx);
+        t->fields_.at(i).type->EmitDestroy(this, ir::Field(var, t, i).get(),
+                                           ctx);
       }
 
       ir::ReturnJump();
@@ -50,29 +52,29 @@ void EmitIr::Destroy(type::Variant const *t, ir::Reg reg, Context *ctx) {
         type::Func({t}, {}),
         core::FnParams(
             core::Param{"", type::Typed<ast::Expression const *>{nullptr, t}}));
-    CURRENT_FUNC(t->destroy_func_) {
-      ir::BasicBlock::Current = t->destroy_func_->entry();
-      auto landing            = ir::CompiledFn::Current->AddBlock();
+    ICARUS_SCOPE(ir::SetCurrentFunc(t->destroy_func_)) {
+      builder().CurrentBlock() = t->destroy_func_->entry();
+      auto landing             = builder().AddBlock();
       auto type =
           ir::Load<type::Type const *>(ir::VariantType(ir::Reg::Arg(0)));
 
       auto var_val = ir::VariantValue(t, ir::Reg::Arg(0));
       for (type::Type const *v : t->variants_) {
         if (!v->HasDestructor()) { continue; }
-        auto old_block   = ir::BasicBlock::Current;
-        auto found_block = ir::CompiledFn::Current->AddBlock();
+        auto old_block   = builder().CurrentBlock();
+        auto found_block = builder().AddBlock();
 
-        ir::BasicBlock::Current = found_block;
+        builder().CurrentBlock() = found_block;
         v->EmitDestroy(this, ir::PtrFix(var_val, v), ctx);
         ir::UncondJump(landing);
 
-        ir::BasicBlock::Current = old_block;
-        ir::BasicBlock::Current = ir::EarlyExitOn<true>(
+        builder().CurrentBlock() = old_block;
+        builder().CurrentBlock() = ir::EarlyExitOn<true>(
             found_block, ir::Eq(ir::RegOr<type::Type const *>(type), v));
       }
 
       ir::UncondJump(landing);
-      ir::BasicBlock::Current = landing;
+      builder().CurrentBlock() = landing;
       ir::ReturnJump();
     }
   }
@@ -88,11 +90,12 @@ void EmitIr::Destroy(type::Tuple const *t, ir::Reg reg, Context *ctx) {
         type::Func({Ptr(t)}, {}),
         core::FnParams(core::Param{
             "", type::Typed<ast::Expression const *>{nullptr, type::Ptr(t)}}));
-    CURRENT_FUNC(fn) {
-      ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
-      auto var                = ir::Reg::Arg(0);
+    ICARUS_SCOPE(ir::SetCurrentFunc(fn)) {
+      builder().CurrentBlock() = builder().function()->entry();
+      auto var                 = ir::Reg::Arg(0);
 
-      for (size_t i : base::make_random_permutation(absl::BitGen{}, t->entries_.size())) {
+      for (size_t i :
+           base::make_random_permutation(absl::BitGen{}, t->entries_.size())) {
         t->entries_.at(i)->EmitDestroy(this, ir::Field(var, t, i).get(), ctx);
       }
 
@@ -104,7 +107,7 @@ void EmitIr::Destroy(type::Tuple const *t, ir::Reg reg, Context *ctx) {
   ir::Destroy(t, reg);
 }
 
-void EmitIr::Destroy(type::Array const* t, ir::Reg reg, Context *ctx) {
+void EmitIr::Destroy(type::Array const *t, ir::Reg reg, Context *ctx) {
   if (!t->HasDestructor()) { return; }
   t->destroy_func_.init([=]() {
     // TODO special function?

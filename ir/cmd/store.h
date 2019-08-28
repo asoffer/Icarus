@@ -113,7 +113,7 @@ struct StoreCmd {
 template <typename T>
 void Store(T r, RegOr<Addr> addr) {
   if constexpr (IsRegOr<T>::value) {
-    auto& blk = GetBlock();
+    auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
     blk.cmd_buffer_.append_index<StoreCmd>();
     blk.cmd_buffer_.append(
         StoreCmd::MakeControlBits<typename T::type>(r.is_reg_, addr.is_reg_));

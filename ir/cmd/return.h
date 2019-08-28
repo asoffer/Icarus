@@ -106,7 +106,7 @@ struct ReturnCmd {
 template <typename T>
 void SetRet(uint16_t n, T val) {
   if constexpr (ir::IsRegOr<T>::value) {
-    auto& blk = GetBlock();
+    auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
     blk.cmd_buffer_.append_index<ReturnCmd>();
     blk.cmd_buffer_.append(
         ReturnCmd::MakeControlBits<typename T::type>(val.is_reg_, false));
@@ -130,7 +130,7 @@ inline void SetRet(uint16_t n, type::Typed<Results> const& r, Context* ctx) {
   type::Apply(r.type(), [&](auto tag) {
     using T = typename decltype(tag)::type;
     // if constexpr (std::is_same_v<T, type::Struct const*>) {
-    //   auto* t = CompiledFn::Current->type_->output[n];
+    //   auto* t = GetBuilder().function()->type_->output[n];
     //   // TODO guaranteed move-elision
     //   visitor::EmitIr visitor;
     //   t->EmitMoveAssign(&visitor, t, r.get(), GetRet(n, t), ctx);
@@ -143,7 +143,7 @@ inline void SetRet(uint16_t n, type::Typed<Results> const& r, Context* ctx) {
 }
 
 inline TypedRegister<Addr> GetRet(uint16_t n, type::Type const* t) {
-  auto& blk = GetBlock();
+  auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append(ReturnCmd::MakeControlBits<int>(false, true));
   blk.cmd_buffer_.append(n);
   Reg r = MakeResult(t);

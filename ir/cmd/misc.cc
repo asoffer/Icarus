@@ -5,7 +5,7 @@
 namespace ir {
 namespace {
 void MakeSemanticCmd(SemanticCmd::Kind k, type::Type const *t, Reg r) {
-  auto &blk = GetBlock();
+  auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<SemanticCmd>();
   blk.cmd_buffer_.append(k);
   blk.cmd_buffer_.append(t);
@@ -14,7 +14,7 @@ void MakeSemanticCmd(SemanticCmd::Kind k, type::Type const *t, Reg r) {
 
 void MakeSemanticCmd(SemanticCmd::Kind k, type::Type const *t, Reg from,
                      RegOr<Addr> to) {
-  auto &blk = GetBlock();
+  auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<SemanticCmd>();
   blk.cmd_buffer_.append(k);
   blk.cmd_buffer_.append(to.is_reg_);
@@ -228,7 +228,7 @@ void LoadSymbolCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
 }
 
 type::Typed<Reg> LoadSymbol(std::string_view name, type::Type const *type) {
-  auto &blk = GetBlock();
+  auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<LoadSymbolCmd>();
   blk.cmd_buffer_.append(name);
   blk.cmd_buffer_.append(type);
@@ -286,7 +286,7 @@ void TypeInfoCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
 }
 
 TypedRegister<core::Alignment> Align(RegOr<type::Type const *> r) {
-  auto &blk = GetBlock();
+  auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<TypeInfoCmd>();
   blk.cmd_buffer_.append<uint8_t>(r.is_reg_ ? 0x01 : 0x00);
   if (r.is_reg_) {
@@ -301,7 +301,7 @@ TypedRegister<core::Alignment> Align(RegOr<type::Type const *> r) {
 }
 
 TypedRegister<core::Bytes> Bytes(RegOr<type::Type const *> r) {
-  auto &blk = GetBlock();
+  auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<TypeInfoCmd>();
   blk.cmd_buffer_.append<uint8_t>(0x02 + (r.is_reg_ ? 0x01 : 0x00));
   if (r.is_reg_) {
@@ -381,7 +381,7 @@ void AccessCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
 namespace {
 Reg MakeAccessCmd(RegOr<Addr> ptr, RegOr<int64_t> inc, type::Type const *t,
                   bool is_array) {
-  auto &blk = GetBlock();
+  auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<AccessCmd>();
   blk.cmd_buffer_.append(
       AccessCmd::MakeControlBits(is_array, ptr.is_reg_, inc.is_reg_));
@@ -481,7 +481,7 @@ void VariantAccessCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
 
 namespace {
 Reg MakeVariantAccessCmd(RegOr<Addr> const &r, type::Variant const *v) {
-  auto &blk = GetBlock();
+  auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<VariantAccessCmd>();
   bool get_val = (v != nullptr);
   blk.cmd_buffer_.append(get_val);

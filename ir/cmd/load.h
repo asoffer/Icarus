@@ -91,7 +91,7 @@ struct LoadCmd {
 
 template <typename T>
 TypedRegister<T> Load(RegOr<Addr> addr) {
-  auto& blk = GetBlock();
+  auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<LoadCmd>();
   blk.cmd_buffer_.append(LoadCmd::MakeControlBits<T>(addr.is_reg_));
   if (addr.is_reg_) {

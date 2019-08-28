@@ -1,5 +1,6 @@
 #include "ir/inliner.h"
 
+#include "ir/builder.h"
 #include "ir/cmd/jumps.h"
 #include "ir/cmd/register.h"
 #include "ir/compiled_fn.h"
@@ -21,10 +22,12 @@ void Inliner::Inline(Reg *r, type::Type const *t) const {
   if (t) {
     DEBUG_LOG("inline_reserve")("Reserving t = ", t->to_string());
     auto arch   = core::Interpretter();
-    auto offset = FwdAlign(CompiledFn::Current->reg_size_, t->alignment(arch));
-    CompiledFn::Current->reg_size_ = offset + t->bytes(arch);
-    CompiledFn::Current->compiler_reg_to_offset_.emplace(*r, offset.value());
-    ++CompiledFn::Current->num_regs_;
+    auto offset =
+        FwdAlign(GetBuilder().function()->reg_size_, t->alignment(arch));
+    GetBuilder().function()->reg_size_ = offset + t->bytes(arch);
+    GetBuilder().function()->compiler_reg_to_offset_.emplace(*r,
+                                                             offset.value());
+    ++GetBuilder().function()->num_regs_;
   }
 }
 
@@ -43,7 +46,7 @@ std::pair<Results, bool> CallInline(
   // for each of the arguments, because creating the inliner looks state on the
   // current function (counting which register it should start on), and this
   // should exclude the registers we create to hold the arguments.
-  auto inliner = CompiledFn::Current->inliner();
+  auto inliner = GetBuilder().function()->inliner();
 
   std::vector<Reg> arg_regs;
   arg_regs.reserve(f->type_->input.size());
@@ -55,26 +58,26 @@ std::pair<Results, bool> CallInline(
         }));
   }
 
-  BlockIndex start(CompiledFn::Current->blocks_.size());
+  BlockIndex start(GetBuilder().function()->blocks_.size());
 
   for (size_t i = 1; i < f->blocks_.size(); ++i) {
-    auto &block = CompiledFn::Current->block(CompiledFn::AddBlock());
+    auto &block = GetBuilder().function()->block(GetBuilder().AddBlock());
     block       = f->blocks_.at(i);
     block.cmd_buffer_.UpdateForInlining(inliner);
   }
 
-  auto &block = CompiledFn::Current->block(BasicBlock::Current);
+  auto &block = GetBuilder().function()->block(GetBuilder().CurrentBlock());
 
   UncondJump(start);
-  BasicBlock::Current = inliner.landing();
+  GetBuilder().CurrentBlock() = inliner.landing();
 
   size_t i = 0;
-  for (auto const &block : CompiledFn::Current->blocks_) {
+  for (auto const &block : GetBuilder().function()->blocks_) {
     DEBUG_LOG("str")(i, ": ", block.cmd_buffer_.to_string());
     i++;
   }
 
-  inliner.MergeAllocations(CompiledFn::Current, f->allocs());
+  inliner.MergeAllocations(GetBuilder().function(), f->allocs());
 
   Results results;
   for (auto const &r : return_vals) { results.append(r); }

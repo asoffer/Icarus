@@ -1,4 +1,5 @@
 #include "ir/arguments.h"
+#include "ir/builder.h"
 #include "ir/cmd/basic.h"
 #include "ir/cmd/call.h"
 #include "ir/cmd/print.h"
@@ -21,15 +22,15 @@ void EmitIr::Print(type::Array const *t, ir::Results const &val, Context *ctx) {
         core::FnParams(
             core::Param{"", type::Typed<ast::Expression const *>{nullptr, t}}));
 
-    CURRENT_FUNC(fn) {
-      ir::BasicBlock::Current = fn->entry();
+    ICARUS_SCOPE(ir::SetCurrentFunc(fn)) {
+      builder().CurrentBlock() = fn->entry();
 
-      auto exit_block = fn->AddBlock();
+      auto exit_block = builder().AddBlock();
 
       ir::Print(std::string_view{"["});
 
-      ir::BasicBlock::Current = ir::EarlyExitOn<true>(exit_block, t->len == 0);
-      auto ptr                = ir::Index(type::Ptr(t), ir::Reg::Arg(0), 0);
+      builder().CurrentBlock() = ir::EarlyExitOn<true>(exit_block, t->len == 0);
+      auto ptr                 = ir::Index(type::Ptr(t), ir::Reg::Arg(0), 0);
 
       t->data_type->EmitPrint(this, ir::Results{ir::PtrFix(ptr, t->data_type)},
                               ctx);
@@ -53,7 +54,7 @@ void EmitIr::Print(type::Array const *t, ir::Results const &val, Context *ctx) {
           std::tuple{ir::RegOr<ir::Addr>(ptr), ir::RegOr<int32_t>(t->len - 1)});
       ir::UncondJump(exit_block);
 
-      ir::BasicBlock::Current = exit_block;
+      builder().CurrentBlock() = exit_block;
       ir::Print(std::string_view{"]"});
       ir::ReturnJump();
     }
@@ -142,28 +143,28 @@ void EmitIr::Print(type::Variant const *t, ir::Results const &val,
         core::FnParams(
             core::Param{"", type::Typed<ast::Expression const *>{nullptr, t}}));
 
-    CURRENT_FUNC(t->repr_func_) {
-      ir::BasicBlock::Current = t->repr_func_->entry();
-      auto landing            = ir::CompiledFn::Current->AddBlock();
+    ICARUS_SCOPE(ir::SetCurrentFunc(t->repr_func_)) {
+      builder().CurrentBlock() = t->repr_func_->entry();
+      auto landing             = builder().AddBlock();
       auto type =
           ir::Load<type::Type const *>(ir::VariantType(ir::Reg::Arg(0)));
 
       auto var_val = ir::VariantValue(t, ir::Reg::Arg(0));
       for (type::Type const *v : t->variants_) {
-        auto old_block   = ir::BasicBlock::Current;
-        auto found_block = ir::CompiledFn::Current->AddBlock();
+        auto old_block   = builder().CurrentBlock();
+        auto found_block = builder().AddBlock();
 
-        ir::BasicBlock::Current = found_block;
+        builder().CurrentBlock() = found_block;
         v->EmitPrint(this, ir::Results{ir::PtrFix(var_val, v)}, ctx);
         ir::UncondJump(landing);
 
-        ir::BasicBlock::Current = old_block;
-        ir::BasicBlock::Current = ir::EarlyExitOn<true>(
+        builder().CurrentBlock() = old_block;
+        builder().CurrentBlock() = ir::EarlyExitOn<true>(
             found_block, ir::Eq(ir::RegOr<type::Type const *>(type), v));
       }
 
       ir::UncondJump(landing);
-      ir::BasicBlock::Current = landing;
+      builder().CurrentBlock() = landing;
       ir::ReturnJump();
     }
   }

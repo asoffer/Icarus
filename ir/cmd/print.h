@@ -37,7 +37,7 @@ struct PrintCmd {
 
 template <typename T>
 void Print(T r) {
-  auto& blk = GetBlock();
+  auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   if constexpr (ir::IsRegOr<T>::value) {
     blk.cmd_buffer_.append_index<PrintCmd>();
     blk.cmd_buffer_.append(
@@ -56,7 +56,7 @@ template <typename T,
           typename std::enable_if_t<std::is_same_v<T, EnumVal> ||
                                     std::is_same_v<T, FlagsVal>>* = nullptr>
 void Print(RegOr<T> r, type::Type const* t) {
-  auto& blk = GetBlock();
+  auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<PrintCmd>();
   blk.cmd_buffer_.append(PrintCmd::MakeControlBits<T>(r.is_reg_));
   if (r.is_reg_) {

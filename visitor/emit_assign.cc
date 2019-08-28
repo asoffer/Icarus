@@ -1,6 +1,7 @@
 #include "absl/random/random.h"
 #include "ast/ast.h"
 #include "base/permutation.h"
+#include "ir/builder.h"
 #include "ir/cmd/load.h"
 #include "ir/cmd/misc.h"
 #include "ir/cmd/store.h"
@@ -26,10 +27,10 @@ static ir::CompiledFn *CreateAssign(EmitIr *visitor, type::Array const *a,
                       type::Typed<ast::Expression const *>{nullptr, ptr_type}},
           core::Param{
               "", type::Typed<ast::Expression const *>{nullptr, ptr_type}}));
-  CURRENT_FUNC(fn) {
-    ir::BasicBlock::Current = fn->entry();
-    auto val                = ir::Reg::Arg(0);
-    auto var                = ir::Reg::Arg(1);
+  ICARUS_SCOPE(ir::SetCurrentFunc(fn)) {
+    visitor->builder().CurrentBlock() = fn->entry();
+    auto val                          = ir::Reg::Arg(0);
+    auto var                          = ir::Reg::Arg(1);
 
     auto from_ptr     = ir::Index(ptr_type, val, 0);
     auto from_end_ptr = ir::PtrIncr(from_ptr, a->len, data_ptr_type);
@@ -43,8 +44,7 @@ static ir::CompiledFn *CreateAssign(EmitIr *visitor, type::Array const *a,
           ASSERT(phi0.is_reg_ == true);
           ASSERT(phi1.is_reg_ == true);
 
-          auto from_val =
-              ir::Results{PtrFix(phi0.reg_, a->data_type)};
+          auto from_val = ir::Results{PtrFix(phi0.reg_, a->data_type)};
 
           if constexpr (Cat == Copy) {
             a->data_type->EmitCopyAssign(visitor, a->data_type, from_val,
@@ -76,10 +76,10 @@ static ir::AnyFunc CreateAssign(EmitIr *visitor, type::Struct const *s,
       core::FnParams(
           core::Param{"", type::Typed<ast::Expression const *>{nullptr, pt}},
           core::Param{"", type::Typed<ast::Expression const *>{nullptr, pt}}));
-  CURRENT_FUNC(fn.func()) {
-    ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
-    auto val                = ir::Reg::Arg(0);
-    auto var                = ir::Reg::Arg(1);
+  ICARUS_SCOPE(ir::SetCurrentFunc(fn.func())) {
+    visitor->builder().CurrentBlock() = fn.func()->entry();
+    auto val                          = ir::Reg::Arg(0);
+    auto var                          = ir::Reg::Arg(1);
 
     for (size_t i = 0; i < s->fields_.size(); ++i) {
       auto *field_type = s->fields_.at(i).type;
@@ -200,10 +200,10 @@ void EmitIr::CopyAssign(type::Tuple const *t, ir::RegOr<ir::Addr> to,
         core::FnParams(
             core::Param{"", type::Typed<ast::Expression const *>{nullptr, p}},
             core::Param{"", type::Typed<ast::Expression const *>{nullptr, p}}));
-    CURRENT_FUNC(fn) {
-      ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
-      auto val                = ir::Reg::Arg(0);
-      auto var                = ir::Reg::Arg(1);
+    ICARUS_SCOPE(ir::SetCurrentFunc(fn)) {
+      builder().CurrentBlock() = fn->entry();
+      auto val                 = ir::Reg::Arg(0);
+      auto var                 = ir::Reg::Arg(1);
 
       for (size_t i :
            base::make_random_permutation(absl::BitGen{}, t->entries_.size())) {
@@ -231,10 +231,10 @@ void EmitIr::MoveAssign(type::Tuple const *t, ir::RegOr<ir::Addr> to,
         core::FnParams(
             core::Param{"", type::Typed<ast::Expression const *>{nullptr, p}},
             core::Param{"", type::Typed<ast::Expression const *>{nullptr, p}}));
-    CURRENT_FUNC(fn) {
-      ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
-      auto val                = ir::Reg::Arg(0);
-      auto var                = ir::Reg::Arg(1);
+    ICARUS_SCOPE(ir::SetCurrentFunc(fn)) {
+      builder().CurrentBlock() = fn->entry();
+      auto val                 = ir::Reg::Arg(0);
+      auto var                 = ir::Reg::Arg(1);
 
       for (size_t i :
            base::make_random_permutation(absl::BitGen{}, t->entries_.size())) {
@@ -260,23 +260,24 @@ void EmitIr::CopyAssign(type::Variant const *t, ir::RegOr<ir::Addr> to,
   // TODO have EmitDestroy take RegistorOr<Addr>
   t->EmitDestroy(this, to.reg_, ctx);
 
-  if (type::Variant const *from_var_type = from.type()->if_as<type::Variant>()) {
+  if (type::Variant const *from_var_type =
+          from.type()->if_as<type::Variant>()) {
     auto actual_type =
         ir::Load<type::Type const *>(ir::VariantType(from->get<ir::Reg>(0)));
-    auto landing = ir::CompiledFn::Current->AddBlock();
+    auto landing = builder().AddBlock();
     auto var_val = ir::VariantValue(from_var_type, from->get<ir::Reg>(0));
     for (type::Type const *v : from_var_type->variants_) {
-      auto next_block = ir::CompiledFn::Current->AddBlock();
-      ir::BasicBlock::Current =
+      auto next_block = builder().AddBlock();
+      builder().CurrentBlock() =
           ir::EarlyExitOn<false>(next_block, ir::Eq(actual_type, v));
       ir::Store(v, ir::VariantType(to));
       v->EmitCopyAssign(this, v, ir::Results{ir::PtrFix(var_val, v)},
                         ir::VariantValue(t, to), ctx);
       ir::UncondJump(landing);
-      ir::BasicBlock::Current = next_block;
+      builder().CurrentBlock() = next_block;
     }
     ir::UncondJump(landing);
-    ir::BasicBlock::Current = landing;
+    builder().CurrentBlock() = landing;
   } else {
     ir::Store(from.type(), ir::VariantType(to));
     // TODO Find the best match amongst the variants available.
@@ -297,20 +298,20 @@ void EmitIr::MoveAssign(type::Variant const *t, ir::RegOr<ir::Addr> to,
           from.type()->if_as<type::Variant>()) {
     auto actual_type =
         ir::Load<type::Type const *>(ir::VariantType(from->get<ir::Reg>(0)));
-    auto landing = ir::CompiledFn::Current->AddBlock();
+    auto landing = builder().AddBlock();
     auto var_val = ir::VariantValue(from_var_type, from->get<ir::Reg>(0));
     for (type::Type const *v : from_var_type->variants_) {
-      auto next_block = ir::CompiledFn::Current->AddBlock();
-      ir::BasicBlock::Current =
+      auto next_block = builder().AddBlock();
+      builder().CurrentBlock() =
           ir::EarlyExitOn<false>(next_block, ir::Eq(actual_type, v));
       ir::Store(v, ir::VariantType(to));
       v->EmitMoveAssign(this, v, ir::Results{ir::PtrFix(var_val, v)},
                         ir::VariantValue(t, to), ctx);
       ir::UncondJump(landing);
-      ir::BasicBlock::Current = next_block;
+      builder().CurrentBlock() = next_block;
     }
     ir::UncondJump(landing);
-    ir::BasicBlock::Current = landing;
+    builder().CurrentBlock() = landing;
   } else {
     ir::Store(from.type(), ir::VariantType(to));
     // TODO Find the best match amongst the variants available.

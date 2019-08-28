@@ -334,7 +334,7 @@ struct UnaryHandler {
 
   template <typename T>
   auto operator()(RegOr<T> operand) const {
-    auto& blk         = GetBlock();
+    auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
     using fn_type     = typename CmdType::fn_type;
     using result_type = decltype(fn_type{}(operand.val_));
     if constexpr (CmdType::template IsSupported<T>()) {
@@ -482,7 +482,7 @@ struct BinaryHandler {
 
   template <typename T>
   auto operator()(RegOr<T> lhs, RegOr<T> rhs) const {
-    auto& blk         = GetBlock();
+    auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
     using fn_type     = typename CmdType::fn_type;
     using result_type = decltype(fn_type{}(lhs.val_, rhs.val_));
     if constexpr (CmdType::template IsSupported<T>()) {
@@ -560,7 +560,7 @@ RegOr<typename CmdType::type> MakeVariadicImpl(
     }
   }
 
-  auto& blk = GetBlock();
+  auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<CmdType>();
   Serialize<uint16_t>(&blk.cmd_buffer_, vals);
 

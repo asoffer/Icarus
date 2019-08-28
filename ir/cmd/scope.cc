@@ -49,7 +49,7 @@ void BlockCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
 
 Reg BlockHandler(absl::Span<RegOr<AnyFunc> const> befores,
                  absl::Span<RegOr<AnyFunc> const> afters) {
-  auto &blk = GetBlock();
+  auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<BlockCmd>();
   internal::Serialize<uint16_t>(&blk.cmd_buffer_, befores);
   internal::Serialize<uint16_t>(&blk.cmd_buffer_, afters);

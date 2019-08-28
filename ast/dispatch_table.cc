@@ -9,6 +9,7 @@
 #include "base/expected.h"
 #include "core/scope.h"
 #include "ir/block.h"
+#include "ir/builder.h"
 #include "ir/cmd/call.h"
 #include "ir/cmd/phi.h"
 #include "ir/cmd/store.h"
@@ -230,7 +231,8 @@ static base::expected<DispatchTable::Row> OverloadParams(
     if (auto *fn_type = overload.foreign().type()->if_as<type::Function>()) {
       // TODO foreign functions should be allowed named and default
       // parameters.
-      return DispatchTable::Row{fn_type->AnonymousFnParams(), fn_type, overload};
+      return DispatchTable::Row{fn_type->AnonymousFnParams(), fn_type,
+                                overload};
     } else {
       UNREACHABLE();
     }
@@ -382,8 +384,7 @@ static base::expected<DispatchTable::Row> OverloadParams(
       base::defer d([&]() { ctx->constants_ = old_constants; });
       // TODO errors?
       visitor::VerifyType visitor;
-      auto *fn_type =
-          ASSERT_NOT_NULL(visitor.ConcreteFnLit(fn_lit, ctx).type_);
+      auto *fn_type = ASSERT_NOT_NULL(visitor.ConcreteFnLit(fn_lit, ctx).type_);
       return DispatchTable::Row{
           std::move(params), &fn_type->as<type::Function>(),
           backend::EvaluateAs<ir::AnyFunc>(
@@ -507,7 +508,7 @@ visitor::VerifyResult VerifyDispatch(
     core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
         &args,
     Context *ctx) {
-  auto[table, result] = VerifyDispatchImpl(expr, overload_set, args, ctx);
+  auto [table, result] = VerifyDispatchImpl(expr, overload_set, args, ctx);
   ctx->set_dispatch_table(expr, std::move(table));
   return result;
 }
@@ -517,7 +518,7 @@ visitor::VerifyResult VerifyDispatch(
     core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
         &args,
     Context *ctx) {
-  auto[table, result] = VerifyDispatchImpl(expr, overload_set, args, ctx);
+  auto [table, result] = VerifyDispatchImpl(expr, overload_set, args, ctx);
   ctx->set_dispatch_table(expr, std::move(table));
   return result;
 }
@@ -535,7 +536,7 @@ visitor::VerifyResult VerifyJumpDispatch(
     if (!f.func()) { continue; }
     // TODO do you know this work is safe to do right now?
     auto *work = f.func()->work_item;
-    if (work) { std::move(*work)(); }
+    if (work) { std::move (*work)(); }
     DEBUG_LOG("ScopeNode")("    ... jumps = ", f.func()->jumps_);
     block_defs->insert(block_defs->end(), f.func()->jumps_.begin(),
                        f.func()->jumps_.end());
@@ -544,32 +545,32 @@ visitor::VerifyResult VerifyJumpDispatch(
   return result;
 }
 
-static ir::RegOr<bool> EmitVariantMatch(ir::Reg needle,
-                                             type::Type const *haystack) {
+static ir::RegOr<bool> EmitVariantMatch(ir::Builder &bldr, ir::Reg needle,
+                                        type::Type const *haystack) {
   auto runtime_type = ir::Load<type::Type const *>(ir::VariantType(needle));
 
   if (auto *haystack_var = haystack->if_as<type::Variant>()) {
     // TODO I'm fairly confident this will work, but it's also overkill because
     // we may already know this type matches if one variant is a subset of the
     // other.
-    auto landing = ir::CompiledFn::Current->AddBlock();
+    auto landing = bldr.AddBlock();
 
     std::vector<ir::BlockIndex> phi_blocks;
     std::vector<ir::RegOr<bool>> phi_results;
     for (type::Type const *v : haystack_var->variants_) {
-      phi_blocks.push_back(ir::BasicBlock::Current);
+      phi_blocks.push_back(bldr.CurrentBlock());
       phi_results.emplace_back(true);
 
-      ir::BasicBlock::Current =
+      bldr.CurrentBlock() =
           ir::EarlyExitOn<true>(landing, ir::Eq(v, runtime_type));
     }
 
-    phi_blocks.push_back(ir::BasicBlock::Current);
+    phi_blocks.push_back(bldr.CurrentBlock());
     phi_results.emplace_back(false);
 
     ir::UncondJump(landing);
 
-    ir::BasicBlock::Current = landing;
+    bldr.CurrentBlock() = landing;
     return ir::Phi<bool>(phi_blocks, phi_results);
 
   } else {
@@ -579,10 +580,11 @@ static ir::RegOr<bool> EmitVariantMatch(ir::Reg needle,
 }
 
 static ir::BlockIndex EmitDispatchTest(
+    ir::Builder &bldr,
     core::FnParams<type::Typed<ast::Expression const *>> const &params,
     core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
     Context *ctx) {
-  auto next_binding = ir::CompiledFn::Current->AddBlock();
+  auto next_binding = bldr.AddBlock();
 
   for (size_t i = 0; i < params.size(); ++i) {
     const auto &param = params.at(i);
@@ -591,9 +593,9 @@ static ir::BlockIndex EmitDispatchTest(
         (i < args.pos().size()) ? args.at(i) : args.at(std::string{param.name});
     auto *expr_var = ctx->type_of(expr)->if_as<type::Variant>();
     if (!expr_var) { continue; }
-    ir::BasicBlock::Current = ir::EarlyExitOn<false>(
+    bldr.CurrentBlock() = ir::EarlyExitOn<false>(
         next_binding,
-        EmitVariantMatch(val.get<ir::Reg>(0), param.value.type()));
+        EmitVariantMatch(bldr, val.get<ir::Reg>(0), param.value.type()));
   }
   return next_binding;
 }
@@ -603,7 +605,7 @@ static ir::BlockIndex EmitDispatchTest(
 // cases.
 template <bool Inline>
 static bool EmitOneCall(
-    DispatchTable::Row const &row,
+    ir::Builder &bldr, DispatchTable::Row const &row,
     core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
     std::vector<type::Type const *> const &return_types,
     std::vector<std::variant<
@@ -626,8 +628,8 @@ static bool EmitOneCall(
   // TODO this feels super hacky. And wasteful to compute `fn` twice.
   if constexpr (!Inline) {
     if (!fn.is_reg_ && fn.val_.is_fn() && fn.val_.func()->must_inline_) {
-      return EmitOneCall<true>(row, args, return_types, outputs, block_map,
-                               inline_results, ctx);
+      return EmitOneCall<true>(bldr, row, args, return_types, outputs,
+                               block_map, inline_results, ctx);
     }
   }
 
@@ -663,7 +665,7 @@ static bool EmitOneCall(
       auto *prev_inline_map = std::exchange(ctx->inline_, nullptr);
       base::defer d([&]() { ctx->inline_ = prev_inline_map; });
       auto *func = ASSERT_NOT_NULL(fn.val_.func());
-      if (func->work_item != nullptr) { std::move(*func->work_item)(); }
+      if (func->work_item != nullptr) { std::move (*func->work_item)(); }
       ASSERT(func->work_item == nullptr);
 
       ir::Results r;
@@ -682,7 +684,7 @@ static bool EmitOneCall(
 
     ir::OutParams out_params;
 
-    auto call_block = ir::CompiledFn::Current->AddBlock();
+    auto call_block = bldr.AddBlock();
 
     size_t j = 0;
     for (type::Type const *ret_type : row.type->output) {
@@ -718,7 +720,7 @@ static bool EmitOneCall(
     }
 
     ir::UncondJump(call_block);
-    ir::BasicBlock::Current = call_block;
+    ir::GetBuilder().CurrentBlock() = call_block;
 
     ir::Call(fn, row.type, arg_results, std::move(out_params));
     return false;
@@ -727,7 +729,7 @@ static bool EmitOneCall(
 
 template <bool Inline>
 static ir::Results EmitFnCall(
-    DispatchTable const *table,
+    ir::Builder &bldr, DispatchTable const *table,
     core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
     absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> const &block_map,
     Context *ctx) {
@@ -760,26 +762,26 @@ static ir::Results EmitFnCall(
     }
   }
 
-  auto landing_block = ir::CompiledFn::Current->AddBlock();
+  auto landing_block = bldr.AddBlock();
 
   ir::Results inline_results;
   for (size_t i = 0; i + 1 < table->bindings_.size(); ++i) {
     auto const &row   = table->bindings_.at(i);
-    auto next_binding = EmitDispatchTest(row.params, args, ctx);
+    auto next_binding = EmitDispatchTest(bldr, row.params, args, ctx);
 
     bool is_jump =
-        EmitOneCall<Inline>(row, args, table->return_types_, &outputs,
+        EmitOneCall<Inline>(bldr, row, args, table->return_types_, &outputs,
                             block_map, &inline_results, ctx);
 
-    if (!is_jump) {ir::UncondJump(landing_block);}
-    ir::BasicBlock::Current = next_binding;
+    if (!is_jump) { ir::UncondJump(landing_block); }
+    bldr.CurrentBlock() = next_binding;
   }
 
-  bool is_jump =
-      EmitOneCall<Inline>(table->bindings_.back(), args, table->return_types_,
-                          &outputs, block_map, &inline_results, ctx);
+  bool is_jump = EmitOneCall<Inline>(bldr, table->bindings_.back(), args,
+                                     table->return_types_, &outputs, block_map,
+                                     &inline_results, ctx);
   if (!is_jump) { ir::UncondJump(landing_block); }
-  ir::BasicBlock::Current = landing_block;
+  bldr.CurrentBlock() = landing_block;
 
   if constexpr (Inline) {
     return inline_results;
@@ -812,14 +814,14 @@ ir::Results DispatchTable::EmitInlineCall(
     core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
     absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> const &block_map,
     Context *ctx) const {
-  return EmitFnCall<true>(this, args, block_map, ctx);
+  return EmitFnCall<true>(ir::GetBuilder(), this, args, block_map, ctx);
 }
 
 ir::Results DispatchTable::EmitCall(
     core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
     Context *ctx, bool is_inline) const {
-  return (is_inline ? EmitFnCall<true> : EmitFnCall<false>)(this, args, {},
-                                                            ctx);
+  return (is_inline ? EmitFnCall<true>
+                    : EmitFnCall<false>)(ir::GetBuilder(), this, args, {}, ctx);
 }
 
 }  // namespace ast

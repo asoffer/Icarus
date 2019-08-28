@@ -1,6 +1,7 @@
 #include "absl/random/random.h"
 #include "ast/ast.h"
 #include "base/permutation.h"
+#include "ir/builder.h"
 #include "ir/cmd/misc.h"
 #include "ir/cmd/store.h"
 #include "ir/compiled_fn.h"
@@ -70,9 +71,9 @@ void EmitIr::DefaultInit(type::Tuple const *t, ir::Reg reg, Context *ctx) {
         core::FnParams(core::Param{
             "", type::Typed<ast::Expression const *>{nullptr, type::Ptr(t)}}));
 
-    CURRENT_FUNC(fn) {
-      ir::BasicBlock::Current = ir::CompiledFn::Current->entry();
-      auto var                = ir::Reg::Arg(0);
+    ICARUS_SCOPE(ir::SetCurrentFunc(fn)) {
+      builder().CurrentBlock() = builder().function()->entry();
+      auto var                 = ir::Reg::Arg(0);
 
       for (size_t i :
            base::make_random_permutation(absl::BitGen{}, t->entries_.size())) {

@@ -53,7 +53,7 @@ RegOr<T> Phi(Reg r, absl::Span<BlockIndex const> blocks,
   ASSERT(blocks.size() == values.size());
   if (values.size() == 1u) { return values[0]; }
 
-  auto &blk = GetBlock();
+  auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<PhiCmd>();
   blk.cmd_buffer_.append(PrimitiveIndex<T>());
   blk.cmd_buffer_.append<uint16_t>(values.size());
