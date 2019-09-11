@@ -2,6 +2,7 @@
 #include "ast/ast.h"
 #include "ir/any_func.h"
 #include "misc/context.h"
+#include "type/function.h"
 #include "type/pointer.h"
 #include "type/struct.h"
 #include "visitor/emit_ir.h"

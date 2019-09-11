@@ -1,6 +1,8 @@
 #ifndef ICARUS_AST_NODE_SPAN_H
 #define ICARUS_AST_NODE_SPAN_H
 
+#include <memory>
+
 namespace ast {
 // Many AST nodes hold vectors of unique_ptrs to other nodes. We want to provide
 // access to the raw pointers without needing the user to be concerned with the

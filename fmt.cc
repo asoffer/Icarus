@@ -1,6 +1,7 @@
 #include <filesystem>
 #include <vector>
 
+#include "ast/node.h"
 #include "frontend/source.h"
 #include "init/cli.h"
 #include "init/signal.h"

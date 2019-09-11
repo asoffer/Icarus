@@ -18,6 +18,7 @@
 #include "visitor/dependent_decls.h"
 #include "visitor/emit_ir.h"
 #include "visitor/extract_jumps.h"
+#include "visitor/traditional_compilation.h"
 #include "visitor/verify_type.h"
 #endif  // ICARUS_VISITOR_EMIT_IR
 

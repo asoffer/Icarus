@@ -19,7 +19,6 @@
 #include "ir/components.h"
 #include "ir/register.h"
 #include "misc/context.h"
-#include "type/generic_struct.h"
 #include "type/jump.h"
 #include "type/type.h"
 #include "type/typed_value.h"

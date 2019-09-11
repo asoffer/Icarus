@@ -9,6 +9,11 @@ ICARUS_AST_VISITOR(void match_expr(visitor::Match *visitor,
 
 #ifdef ICARUS_VISITOR_EMIT_IR
 #define ICARUS_AST_VISITOR_ASSIGN_SCOPE
+
+ICARUS_AST_VISITOR(ir::Results TraditionalCompilation(
+                       visitor::TraditionalCompilation *visitor) const,
+                   { return visitor->EmitValue(this); });
+
 ICARUS_AST_VISITOR(ir::Results EmitIr(visitor::EmitIr *visitor, Context *ctx)
                        const,
                    { return visitor->Val(this, ctx); });

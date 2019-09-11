@@ -14,6 +14,7 @@ cc_group_target(
             ":dump_ast",
             ":extract_jumps",
             ":emit_ir",
+            ":traditional_compilation",
             ":verify_type",
         ],
         "format": [
@@ -27,6 +28,7 @@ cc_group_target(
             ":extract_jumps",
             ":emit_ir",
             ":match",
+            ":traditional_compilation",
             ":verify_type",
         ],
 
@@ -48,6 +50,7 @@ cc_group_target(
             ":emit_ir_ref-impl",
             ":emit_ir_val-impl",
             ":extract_jumps-impl",
+            ":traditional_compilation-impl",
             ":verify_type-impl",
         ],
         "format": [
@@ -64,6 +67,7 @@ cc_group_target(
             ":emit_ir_val-impl",
             ":extract_jumps-impl",
             ":match-impl",
+            ":traditional_compilation-impl",
             ":verify_type-impl",
         ],
     }
@@ -76,10 +80,12 @@ cc_group_target(
     deps = {
         "compile": [
             ":emit_ir",
+            ":traditional_compilation",
             ":type_query",
         ],
         "match": [
             ":emit_ir",
+            ":traditional_compilation",
             ":type_query",
         ]
     },
@@ -93,6 +99,7 @@ cc_group_target(
         ":emit_assign-impl",
         ":emit_destroy-impl",
         ":emit_print-impl",
+        ":traditional_compilation-impl",
         ":type_query-impl",
     ])
 
@@ -372,6 +379,7 @@ cc_lib_target(
         "//misc:context",
         "//misc:compile-impl",
         "//type:cast",
+        "//type:generic_struct",
         "//type:jump",
         "//type:parameter_pack",
         "//type:type",
@@ -390,8 +398,38 @@ cc_lib_target(
         "//ast:ast",
         "//ir:any_func",
         "//misc:context",
+        "//type:function",
         "//type:pointer",
         "//type:struct",
+    ],
+    test_deps = None,
+)
+
+cc_lib_target(
+    name = "traditional_compilation",
+    cfgs = ["match", "compile"],
+    intf_deps = [
+        ":verify_result",
+        "//misc:context",
+        "//ir:results",
+        "//ir:builder",
+        "//type:type_fwd",
+    ],
+    impl_deps = [
+        ":verify_type",
+        "//ast:ast",
+        "//ir:arguments",
+        "//ir:builder",
+        "//ir:compiled_fn",
+        "//ir:components",
+        "//ir/cmd:call",
+        "//ir/cmd:print",
+        "//ir/cmd:basic",
+        "//misc:context",
+        "//misc:module",
+        "//type:type",
+        "//type:typed_value",
+        "//type:all_types",
     ],
     test_deps = None,
 )
@@ -408,7 +446,6 @@ cc_lib_target(
     ],
     test_deps = None,
 )
-
 cc_lib_target(
     name = "deferred_body",
     cfgs = ["match", "compile"],
@@ -417,6 +454,14 @@ cc_lib_target(
         "//base:move_func",
         "@com_google_absl//absl/container:node_hash_map",
     ],
+    impl_deps = None,
+    test_deps = None,
+)
+
+cc_lib_target(
+    name = "verify_result",
+    cfgs = ["match", "compile"],
+    intf_deps = [],
     impl_deps = None,
     test_deps = None,
 )

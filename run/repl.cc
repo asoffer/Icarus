@@ -7,6 +7,7 @@
 #include "backend/exec.h"
 #include "base/untyped_buffer.h"
 #include "core/fn_params.h"
+#include "core/scope.h"
 #include "frontend/source.h"
 #include "ir/cmd/jumps.h"
 #include "ir/compiled_fn.h"
@@ -25,20 +26,18 @@ static void ReplEval(ast::Expression *expr) {
   ICARUS_SCOPE(ir::SetCurrentFunc(&fn)) {
     ir::GetBuilder().CurrentBlock() = fn.entry();
     // TODO use the right module
+    visitor::TraditionalCompilation visitor(nullptr);
     Context ctx(static_cast<Module *>(nullptr));
 
     // TODO support multiple values computed simultaneously?
-    visitor::EmitIr visitor;
-    auto expr_val = expr->EmitIr(&visitor, &ctx);
+    auto expr_val = visitor.EmitValue(expr);
     if (ctx.num_errors() != 0) {
       ctx.DumpErrors();
       return;
     }
-    visitor.CompleteDeferredBodies();
+    // TODO visitor.CompleteDeferredBodies();
     auto *expr_type = ctx.type_of(expr);
-    if (expr_type != type::Void()) {
-      expr_type->EmitPrint(&visitor, expr_val, &ctx);
-    }
+    if (expr_type != type::Void()) { visitor.EmitPrint(expr_type, expr_val); }
     ir::ReturnJump();
   }
 
@@ -65,20 +64,17 @@ repl_start:;
     for (auto &stmt : stmts) {
       if (stmt->is<ast::Declaration>()) {
         auto *decl = &stmt->as<ast::Declaration>();
+
         {
           visitor::AssignScope visitor;
-          decl->assign_scope(&visitor, &ctx.mod_->scope_);
+          decl->assign_scope(&visitor, &mod.scope_);
         }
 
         {
-          visitor::VerifyType visitor;
-          decl->VerifyType(&visitor, &ctx);
-        }
-
-        {
-          visitor::EmitIr visitor;
-          decl->EmitIr(&visitor, &ctx);
-          visitor.CompleteDeferredBodies();
+          visitor::TraditionalCompilation visitor(&mod);
+          visitor.VerifyType(decl);
+          visitor.EmitValue(decl);
+          // TODO visitor.CompleteDeferredBodies();
         }
         if (ctx.num_errors() != 0) {
           ctx.DumpErrors();

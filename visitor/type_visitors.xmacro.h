@@ -19,6 +19,11 @@ ICARUS_TYPE_VISITOR(
 ICARUS_TYPE_VISITOR(void EmitDefaultInit(visitor::EmitIr *visitor, ir::Reg reg,
                                          Context *ctx) const,
                     { visitor->DefaultInit(this, reg, ctx); });
+
+ICARUS_TYPE_VISITOR(void EmitPrint(visitor::TraditionalCompilation *visitor,
+                                   ir::Results const &val) const,
+                    { visitor->EmitPrint(this, val); });
+
 ICARUS_TYPE_VISITOR(void EmitPrint(visitor::EmitIr *visitor,
                                    ir::Results const &val, Context *ctx) const,
                     { visitor->Print(this, val, ctx); });

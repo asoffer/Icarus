@@ -3,11 +3,11 @@
 
 #include <string_view>
 
-#include "ast/node.h"
 #include "ast/node_span.h"
 #include "base/bag.h"
 #include "type/function.h"
 #include "type/typed_value.h"
+#include "visitor/verify_type.h"
 
 namespace core {
 struct Scope;
