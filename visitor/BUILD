@@ -98,7 +98,6 @@ cc_group_target(
         ":emit_init-impl",
         ":emit_assign-impl",
         ":emit_destroy-impl",
-        ":emit_print-impl",
         ":traditional_compilation-impl",
         ":type_query-impl",
     ])
@@ -324,7 +323,6 @@ cc_lib_target(
     ],
     test_deps = None,
 )
-
 
 cc_lib_target(
     name = "extract_jumps",

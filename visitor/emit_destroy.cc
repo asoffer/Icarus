@@ -14,10 +14,10 @@
 
 namespace visitor {
 
-void EmitIr::Destroy(type::Struct const *t, ir::Reg reg, Context *ctx) {
+void TraditionalCompilation::EmitDestroy(type::Struct const *t, ir::Reg reg) {
   if (!t->HasDestructor()) { return; }
   t->destroy_func_.init([=]() {
-    if (auto fn = SpecialFunction(this, t, "~", ctx)) { return *fn; }
+    if (auto fn = SpecialFunction(this, t, "~")) { return *fn; }
 
     type::Pointer const *pt = type::Ptr(t);
     ir::AnyFunc fn          = t->mod_->AddFunc(
@@ -30,8 +30,7 @@ void EmitIr::Destroy(type::Struct const *t, ir::Reg reg, Context *ctx) {
       auto var                 = ir::Reg::Arg(0);
 
       for (int i = static_cast<int>(t->fields_.size()) - 1; i >= 0; --i) {
-        t->fields_.at(i).type->EmitDestroy(this, ir::Field(var, t, i).get(),
-                                           ctx);
+        t->fields_.at(i).type->EmitDestroy(this, ir::Field(var, t, i).get());
       }
 
       ir::ReturnJump();
@@ -42,13 +41,13 @@ void EmitIr::Destroy(type::Struct const *t, ir::Reg reg, Context *ctx) {
   ir::Destroy(t, reg);
 }
 
-void EmitIr::Destroy(type::Variant const *t, ir::Reg reg, Context *ctx) {
+void TraditionalCompilation::EmitDestroy(type::Variant const *t, ir::Reg reg) {
   if (!t->HasDestructor()) { return; }
   // TODO design and build a jump table?
   // TODO remove these casts in favor of something easier to track properties on
   std::unique_lock lock(t->mtx_);
   if (!t->destroy_func_) {
-    t->destroy_func_ = ctx->mod_->AddFunc(
+    t->destroy_func_ = module()->AddFunc(
         type::Func({t}, {}),
         core::FnParams(
             core::Param{"", type::Typed<ast::Expression const *>{nullptr, t}}));
@@ -65,7 +64,7 @@ void EmitIr::Destroy(type::Variant const *t, ir::Reg reg, Context *ctx) {
         auto found_block = builder().AddBlock();
 
         builder().CurrentBlock() = found_block;
-        v->EmitDestroy(this, ir::PtrFix(var_val, v), ctx);
+        v->EmitDestroy(this, ir::PtrFix(var_val, v));
         ir::UncondJump(landing);
 
         builder().CurrentBlock() = old_block;
@@ -83,10 +82,10 @@ void EmitIr::Destroy(type::Variant const *t, ir::Reg reg, Context *ctx) {
            {ir::Results{reg}});
 }
 
-void EmitIr::Destroy(type::Tuple const *t, ir::Reg reg, Context *ctx) {
+void TraditionalCompilation::EmitDestroy(type::Tuple const *t, ir::Reg reg) {
   if (!t->HasDestructor()) { return; }
   t->destroy_func_.init([=]() {
-    auto *fn = ctx->mod_->AddFunc(
+    auto *fn = module()->AddFunc(
         type::Func({Ptr(t)}, {}),
         core::FnParams(core::Param{
             "", type::Typed<ast::Expression const *>{nullptr, type::Ptr(t)}}));
@@ -96,7 +95,7 @@ void EmitIr::Destroy(type::Tuple const *t, ir::Reg reg, Context *ctx) {
 
       for (size_t i :
            base::make_random_permutation(absl::BitGen{}, t->entries_.size())) {
-        t->entries_.at(i)->EmitDestroy(this, ir::Field(var, t, i).get(), ctx);
+        t->entries_.at(i)->EmitDestroy(this, ir::Field(var, t, i).get());
       }
 
       ir::ReturnJump();
@@ -107,17 +106,17 @@ void EmitIr::Destroy(type::Tuple const *t, ir::Reg reg, Context *ctx) {
   ir::Destroy(t, reg);
 }
 
-void EmitIr::Destroy(type::Array const *t, ir::Reg reg, Context *ctx) {
+void TraditionalCompilation::EmitDestroy(type::Array const *t, ir::Reg reg) {
   if (!t->HasDestructor()) { return; }
   t->destroy_func_.init([=]() {
     // TODO special function?
-    auto *fn = ctx->mod_->AddFunc(
+    auto *fn = module()->AddFunc(
         type::Func({type::Ptr(t)}, {}),
         core::FnParams(core::Param{
             "", type::Typed<ast::Expression const *>{nullptr, type::Ptr(t)}}));
 
     ir::OnEachArrayElement(
-        t, fn, [=](ir::Reg r) { t->data_type->EmitDestroy(this, r, ctx); });
+        t, fn, [=](ir::Reg r) { t->data_type->EmitDestroy(this, r); });
     return fn;
   });
 

@@ -74,70 +74,10 @@ struct EmitIr : public DeferredBody<EmitIr> {
   void DefaultInit(type::Struct const *t, ir::Reg reg, Context *ctx);
   void DefaultInit(type::Tuple const *t, ir::Reg reg, Context *ctx);
 
-  void CopyAssign(type::Type const *t, ir::RegOr<ir::Addr> to,
+  void EmitCopyAssign(type::Type const *t, ir::RegOr<ir::Addr> to,
                   type::Typed<ir::Results> const &from, Context *ctx) {
     UNREACHABLE();
   }
-
-  void CopyAssign(type::Array const *t, ir::RegOr<ir::Addr> to,
-                  type::Typed<ir::Results> const &from, Context *ctx);
-  void CopyAssign(type::Enum const *t, ir::RegOr<ir::Addr> to,
-                  type::Typed<ir::Results> const &from, Context *ctx);
-  void CopyAssign(type::Flags const *t, ir::RegOr<ir::Addr> to,
-                  type::Typed<ir::Results> const &from, Context *ctx);
-  void CopyAssign(type::Function const *t, ir::RegOr<ir::Addr> to,
-                  type::Typed<ir::Results> const &from, Context *ctx);
-  void CopyAssign(type::Pointer const *t, ir::RegOr<ir::Addr> to,
-                  type::Typed<ir::Results> const &from, Context *ctx);
-  void CopyAssign(type::Primitive const *t, ir::RegOr<ir::Addr> to,
-                  type::Typed<ir::Results> const &from, Context *ctx);
-  void CopyAssign(type::Struct const *t, ir::RegOr<ir::Addr> to,
-                  type::Typed<ir::Results> const &from, Context *ctx);
-  void CopyAssign(type::Tuple const *t, ir::RegOr<ir::Addr> to,
-                  type::Typed<ir::Results> const &from, Context *ctx);
-  void CopyAssign(type::Variant const *t, ir::RegOr<ir::Addr> to,
-                  type::Typed<ir::Results> const &from, Context *ctx);
-
-  void MoveAssign(type::Type const *t, ir::RegOr<ir::Addr> to,
-                  type::Typed<ir::Results> const &from, Context *ctx) {
-    UNREACHABLE();
-  }
-  void MoveAssign(type::Array const *t, ir::RegOr<ir::Addr> to,
-                  type::Typed<ir::Results> const &from, Context *ctx);
-  void MoveAssign(type::Enum const *t, ir::RegOr<ir::Addr> to,
-                  type::Typed<ir::Results> const &from, Context *ctx);
-  void MoveAssign(type::Flags const *t, ir::RegOr<ir::Addr> to,
-                  type::Typed<ir::Results> const &from, Context *ctx);
-  void MoveAssign(type::Function const *t, ir::RegOr<ir::Addr> to,
-                  type::Typed<ir::Results> const &from, Context *ctx);
-  void MoveAssign(type::Pointer const *t, ir::RegOr<ir::Addr> to,
-                  type::Typed<ir::Results> const &from, Context *ctx);
-  void MoveAssign(type::Primitive const *t, ir::RegOr<ir::Addr> to,
-                  type::Typed<ir::Results> const &from, Context *ctx);
-  void MoveAssign(type::Struct const *t, ir::RegOr<ir::Addr> to,
-                  type::Typed<ir::Results> const &from, Context *ctx);
-  void MoveAssign(type::Tuple const *t, ir::RegOr<ir::Addr> to,
-                  type::Typed<ir::Results> const &from, Context *ctx);
-  void MoveAssign(type::Variant const *t, ir::RegOr<ir::Addr> to,
-                  type::Typed<ir::Results> const &from, Context *ctx);
-
-  void Destroy(type::Type const *, ir::Reg, Context *) { UNREACHABLE(); }
-  void Destroy(type::Struct const *t, ir::Reg reg, Context *ctx);
-  void Destroy(type::Variant const *t, ir::Reg reg, Context *ctx);
-  void Destroy(type::Tuple const *t, ir::Reg reg, Context *ctx);
-  void Destroy(type::Array const *t, ir::Reg reg, Context *ctx);
-
-  void Print(type::Type const *, ir::Results const &, Context *) {
-    UNREACHABLE();
-  }
-
-  void Print(type::Array const *t, ir::Results const &val, Context *ctx);
-  void Print(type::Enum const *t, ir::Results const &val, Context *ctx);
-  void Print(type::Flags const *t, ir::Results const &val, Context *ctx);
-  void Print(type::Pointer const *t, ir::Results const &val, Context *ctx);
-  void Print(type::Primitive const *t, ir::Results const &val, Context *ctx);
-  void Print(type::Tuple const *t, ir::Results const &val, Context *ctx);
-  void Print(type::Variant const *t, ir::Results const &val, Context *ctx);
 
   void CopyInit(type::Type const *from_type, ir::Results const &from_val,
                 type::Typed<ir::Reg> to_var, Context *ctx);

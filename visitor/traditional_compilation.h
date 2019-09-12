@@ -55,6 +55,58 @@ struct TraditionalCompilation {
   void EmitPrint(type::Tuple const *t, ir::Results const &val);
   void EmitPrint(type::Variant const *t, ir::Results const &val);
 
+  void EmitDestroy(type::Type const *, ir::Reg) { UNREACHABLE(); }
+  void EmitDestroy(type::Struct const *t, ir::Reg reg);
+  void EmitDestroy(type::Variant const *t, ir::Reg reg);
+  void EmitDestroy(type::Tuple const *t, ir::Reg reg);
+  void EmitDestroy(type::Array const *t, ir::Reg reg);
+
+  void EmitCopyAssign(type::Type const *t, ir::RegOr<ir::Addr> to,
+                      type::Typed<ir::Results> const &from) {
+    UNREACHABLE();
+  }
+  void EmitCopyAssign(type::Array const *t, ir::RegOr<ir::Addr> to,
+                      type::Typed<ir::Results> const &from);
+  void EmitCopyAssign(type::Enum const *t, ir::RegOr<ir::Addr> to,
+                      type::Typed<ir::Results> const &from);
+  void EmitCopyAssign(type::Flags const *t, ir::RegOr<ir::Addr> to,
+                      type::Typed<ir::Results> const &from);
+  void EmitCopyAssign(type::Function const *t, ir::RegOr<ir::Addr> to,
+                      type::Typed<ir::Results> const &from);
+  void EmitCopyAssign(type::Pointer const *t, ir::RegOr<ir::Addr> to,
+                      type::Typed<ir::Results> const &from);
+  void EmitCopyAssign(type::Primitive const *t, ir::RegOr<ir::Addr> to,
+                      type::Typed<ir::Results> const &from);
+  void EmitCopyAssign(type::Struct const *t, ir::RegOr<ir::Addr> to,
+                      type::Typed<ir::Results> const &from);
+  void EmitCopyAssign(type::Tuple const *t, ir::RegOr<ir::Addr> to,
+                      type::Typed<ir::Results> const &from);
+  void EmitCopyAssign(type::Variant const *t, ir::RegOr<ir::Addr> to,
+                      type::Typed<ir::Results> const &from);
+
+  void EmitMoveAssign(type::Type const *t, ir::RegOr<ir::Addr> to,
+                      type::Typed<ir::Results> const &from) {
+    UNREACHABLE();
+  }
+  void EmitMoveAssign(type::Array const *t, ir::RegOr<ir::Addr> to,
+                      type::Typed<ir::Results> const &from);
+  void EmitMoveAssign(type::Enum const *t, ir::RegOr<ir::Addr> to,
+                      type::Typed<ir::Results> const &from);
+  void EmitMoveAssign(type::Flags const *t, ir::RegOr<ir::Addr> to,
+                      type::Typed<ir::Results> const &from);
+  void EmitMoveAssign(type::Function const *t, ir::RegOr<ir::Addr> to,
+                      type::Typed<ir::Results> const &from);
+  void EmitMoveAssign(type::Pointer const *t, ir::RegOr<ir::Addr> to,
+                      type::Typed<ir::Results> const &from);
+  void EmitMoveAssign(type::Primitive const *t, ir::RegOr<ir::Addr> to,
+                      type::Typed<ir::Results> const &from);
+  void EmitMoveAssign(type::Struct const *t, ir::RegOr<ir::Addr> to,
+                      type::Typed<ir::Results> const &from);
+  void EmitMoveAssign(type::Tuple const *t, ir::RegOr<ir::Addr> to,
+                      type::Typed<ir::Results> const &from);
+  void EmitMoveAssign(type::Variant const *t, ir::RegOr<ir::Addr> to,
+                      type::Typed<ir::Results> const &from);
+
   ICARUS_PRIVATE
   Module *mod_;
   Context ctx_;

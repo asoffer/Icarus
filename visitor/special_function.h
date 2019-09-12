@@ -3,18 +3,16 @@
 
 #include <optional>
 
+#include "ir/any_func.h"
+
 struct Context;
 
 namespace type {
 struct Struct;
 }  // namespace type
 
-namespace ir {
-struct AnyFunc;
-}  // namespace ir
-
 namespace visitor {
-struct EmitIr;
+struct TraditionalCompilation;
 
 enum SpecialFunctionCategory { Copy, Move };
 
@@ -24,9 +22,9 @@ constexpr char const *Name() {
   if constexpr (Cat == Copy) { return "copy"; }
 }
 
-std::optional<ir::AnyFunc> SpecialFunction(EmitIr *visitor,
+std::optional<ir::AnyFunc> SpecialFunction(TraditionalCompilation *visitor,
                                            type::Struct const *s,
-                                           char const *symbol, Context *ctx);
+                                           char const *symbol);
 
 }  // namespace visitor
 #endif  // ICARUS_VISITOR_SPECIAL_FUNCTION
