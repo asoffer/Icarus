@@ -6,7 +6,6 @@
 #include <vector>
 
 #include "base/untyped_buffer.h"
-#include "ir/arguments.h"
 #include "ir/cmd_buffer.h"
 #include "ir/out_params.h"
 

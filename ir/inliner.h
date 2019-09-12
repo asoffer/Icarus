@@ -13,7 +13,6 @@ struct Type;
 namespace ir {
 struct CompiledFn;
 struct StackFrameAllocations;
-struct Arguments;
 struct BlockDef;
 
 struct Inliner {
@@ -41,7 +40,7 @@ struct Inliner {
 };
 
 std::pair<Results, bool> CallInline(
-    CompiledFn *f, Arguments const &arguments,
+    CompiledFn *f, Results const &arguments,
     absl::flat_hash_map<BlockDef const *, BlockIndex> const &block_map);
 
 }  // namespace ir

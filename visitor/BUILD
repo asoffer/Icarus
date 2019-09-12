@@ -292,6 +292,7 @@ cc_lib_target(
         "//ir/cmd:store",
         "//ir/cmd:types-impl",
         "//type:jump",
+        "//type:generic_struct",
         "//type:type",
         "//type:typed_value",
     ],
@@ -304,7 +305,6 @@ cc_lib_target(
     intf_deps = None,
     impl_deps = [
         "//ast:ast",
-        "//ir:arguments",
         "//ir:builder",
         "//ir:compiled_fn",
         "//ir:components",
@@ -372,6 +372,7 @@ cc_lib_target(
         "//misc:context",
         "//misc:compile-impl",
         "//type:cast",
+        "//type:generic_struct",
         "//type:jump",
         "//type:parameter_pack",
         "//type:type",

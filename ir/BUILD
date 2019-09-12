@@ -7,7 +7,6 @@ cc_group_target(
     cfgs = ["match", "compile"],
     deps = [
         ":addr-impl",
-        ":arguments-impl",
         ":basic_block-impl",
         ":block-impl",
         ":builder-impl",
@@ -42,35 +41,9 @@ cc_lib_target(
 )
 
 cc_lib_target(
-    name = "arguments",
-    cfgs = ["match", "compile"],
-    intf_deps = [
-        ":register",
-        ":results",
-        "//base:untyped_buffer",
-        "//type:function",
-        "//type:generic_struct",
-        "//type:util",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-    impl_deps = [
-        "//core:arch",
-    ],
-    test_deps = [
-        ":addr-impl",
-        ":results-impl",
-        "//core:scope-impl",
-        "//misc:module-impl",
-        "//type:impl",
-        "//:impl",
-    ],
-)
-
-cc_lib_target(
     name = "basic_block",
     cfgs = ["match", "compile"],
     intf_deps = [
-        ":arguments",
         ":cmd_buffer",
         ":out_params",
         "//base:untyped_buffer",
@@ -203,7 +176,6 @@ cc_lib_target(
         "@com_google_absl//absl/container:flat_hash_set",
     ],
     impl_deps = [
-        ":arguments",
         "//ast:ast",
         "//core:arch",
         "//type:function",

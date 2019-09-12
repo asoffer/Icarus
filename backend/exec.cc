@@ -14,7 +14,6 @@
 #include "base/util.h"
 #include "core/arch.h"
 #include "error/log.h"
-#include "ir/arguments.h"
 #include "ir/basic_block.h"
 #include "ir/cmd/jumps.h"
 #include "ir/compiled_fn.h"

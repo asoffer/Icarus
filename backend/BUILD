@@ -40,7 +40,6 @@ cc_lib_target(
         "//ast:ast",
         "//base:util",
         "//error:log",
-        "//ir:arguments",
         "//ir/cmd:jumps",
         "//ir:compiled_fn",
         "//core:arch",

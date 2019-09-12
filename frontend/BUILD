@@ -95,7 +95,7 @@ cc_lib_target(
 
 cc_lib_target(name = "source",
               intf_deps = ["//base:expected"],
-              impl_deps = [],
+              impl_deps = ["@com_google_absl//absl/strings:str_format"],
               test_deps = [],
               test_data = [
                   "testdata/empty_file.txt",

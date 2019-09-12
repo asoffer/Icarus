@@ -2,7 +2,6 @@
 
 #include "ast/ast.h"
 #include "core/arch.h"
-#include "ir/arguments.h"
 #include "type/function.h"
 #include "type/pointer.h"
 

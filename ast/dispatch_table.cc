@@ -671,8 +671,7 @@ static bool EmitOneCall(
       ir::Results r;
       for (auto const &result : arg_results) { r.append(result); }
       bool is_jump;
-      std::tie(*inline_results, is_jump) =
-          ir::CallInline(func, ir::Arguments{row.type, r}, block_map);
+      std::tie(*inline_results, is_jump) = ir::CallInline(func, r, block_map);
       return is_jump;
     } else {
       NOT_YET();

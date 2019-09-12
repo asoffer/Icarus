@@ -35,7 +35,7 @@ void Inliner::MergeAllocations(CompiledFn *fn,
                                StackFrameAllocations const &allocs) {}
 
 std::pair<Results, bool> CallInline(
-    CompiledFn *f, Arguments const &arguments,
+    CompiledFn *f, Results const &arguments,
     absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> const
         &block_map) {
   bool is_jump = false;  // TODO remove this
@@ -51,11 +51,10 @@ std::pair<Results, bool> CallInline(
   std::vector<Reg> arg_regs;
   arg_regs.reserve(f->type_->input.size());
   for (size_t i = 0; i < f->type_->input.size(); ++i) {
-    arg_regs.push_back(
-        type::Apply(f->type_->input[i], [&](auto tag) -> Reg {
-          using T = typename decltype(tag)::type;
-          return MakeReg(arguments.results().get<T>(i));
-        }));
+    arg_regs.push_back(type::Apply(f->type_->input[i], [&](auto tag) -> Reg {
+      using T = typename decltype(tag)::type;
+      return MakeReg(arguments.get<T>(i));
+    }));
   }
 
   BlockIndex start(GetBuilder().function()->blocks_.size());
