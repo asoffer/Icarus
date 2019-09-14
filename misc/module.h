@@ -19,10 +19,10 @@
 #endif // ICARUS_VISITOR_EMIT_IR
 #include "ast/expression.h"
 #include "core/fn_params.h"
-#include "core/scope.h"
 #include "core/pending_module.h"
+#include "core/scope.h"
 #include "error/log.h"
-#include "ir/register.h"
+#include "ir/reg.h"
 #include "misc/constant_binding.h"
 #include "type/typed_value.h"
 

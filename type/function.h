@@ -7,6 +7,10 @@
 #include "type/callable.h"
 #include "type/typed_value.h"
 
+namespace ast {
+struct Expression;
+}  // namespace ast
+
 namespace type {
 struct GenericFunction : public Callable {
   GenericFunction() {}

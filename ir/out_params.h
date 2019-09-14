@@ -2,7 +2,7 @@
 #define ICARUS_IR_OUT_PARAMS_H
 
 #include <vector>
-#include "ir/register.h"
+#include "ir/reg.h"
 
 namespace type {
 struct Type;

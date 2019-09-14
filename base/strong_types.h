@@ -1,37 +1,43 @@
 #ifndef ICARUS_BASE_STRONG_TYPES_H
 #define ICARUS_BASE_STRONG_TYPES_H
 
-#include <cstdint>
-#include <iosfwd>
 #include <string>
-#include "base/debug.h"
+#include "absl/strings/str_cat.h"
+#include "base/stringify.h"
 
-#define DEFINE_STRONG_INT(ns, type, underlying_type, default_value)            \
-  namespace ns {                                                               \
-  struct type {                                                                \
-    constexpr type() = default;                                                \
-    constexpr explicit type(underlying_type num) : value(num) {}               \
-    std::string to_string() const {                                            \
-      return #type "." + std::to_string(value);                                \
-    }                                                                          \
-    bool is_default() const { return value == default_value; }                 \
-                                                                               \
-    underlying_type value = default_value;                                     \
-  };                                                                           \
-  inline bool operator==(type lhs, type rhs) {                                 \
-    return lhs.value == rhs.value;                                             \
-  }                                                                            \
-  inline bool operator!=(type lhs, type rhs) { return !(lhs == rhs); }         \
-  } /* namespace ns */                                                         \
-                                                                               \
-  namespace std {                                                              \
-  template <>                                                                  \
-  struct hash<ns::type> {                                                      \
-    decltype(auto) operator()(ns::type val) const noexcept {                   \
-      return std::hash<underlying_type>{}(val.value);                          \
-    }                                                                          \
-  };                                                                           \
-  } /* namespace std */                                                        \
-  struct FakeStructToAllowSemicolonAfterMacro
+namespace base  {
+template <typename Tag, typename UnderlyingType>
+struct Strong {
+  constexpr Strong() = default;
+  constexpr explicit Strong(UnderlyingType num) : value(num) {}
+  std::string to_string() const {
+    using base::stringify;
+    return stringify(value);
+  }
 
-#endif  // ICARUS_BASE_STRONG_TYPES_H
+  template <typename H>
+  friend H AbslHashValue(H h, Strong v) {
+    return H::combine(std::move(h), v.value);
+  }
+
+  friend constexpr bool operator==(Strong lhs, Strong rhs) {
+    return lhs.value == rhs.value;
+  }
+
+  friend constexpr bool operator!=(Strong lhs, Strong rhs) {
+    return !(lhs == rhs);
+  }
+
+  UnderlyingType value{};
+};
+}  // namespace base
+
+#define ICARUS_BASE_DEFINE_STRONG_TYPE(name, default_value)                    \
+  struct name : public base::Strong<name, decltype(default_value)> {           \
+    explicit constexpr name(decltype(default_value) val = default_value)       \
+        : base::Strong<name, decltype(default_value)>(val) {}                  \
+    friend std::string stringify(name val) {                                   \
+      return absl::StrCat(#name, "(", val.value, ")");                         \
+    }                                                                          \
+  }
+#endif  // ICARUS_BASE_STRONG_UnderlyingTypeS_H

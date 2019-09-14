@@ -36,7 +36,7 @@ cc_lib_target(
     intf_deps = [
         ":module",
         "//base:debug",
-        "//ir:register",
+        "//ir:reg",
     ],
     impl_deps = [
         "//ast:expression",
@@ -51,7 +51,7 @@ COMMON_MODULE_INTF_TARGETS = [
     "//core:fn_params",
     "//core:pending_module",
     "//core:scope",
-    "//ir:register",
+    "//ir:reg",
     "//error:log",
     "//type:typed_value",
     "@com_google_absl//absl/container:flat_hash_map",

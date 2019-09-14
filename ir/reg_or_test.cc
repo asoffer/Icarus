@@ -3,6 +3,7 @@
 #include "test/catch.h"
 
 namespace ir {
+namespace {
 
 TEST_CASE("implicit construction") {
   auto id = [](RegOr<int> r) { return r; };
@@ -46,4 +47,5 @@ TEST_CASE("comparison") {
   CHECK(RegOr<int>(Reg(17)) != RegOr<int>(17));
 }
 
+}  // namespace
 }  // namespace ir

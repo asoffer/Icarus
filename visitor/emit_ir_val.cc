@@ -17,7 +17,7 @@
 #include "ir/cmd/store.h"
 #include "ir/cmd/types.h"
 #include "ir/components.h"
-#include "ir/register.h"
+#include "ir/reg.h"
 #include "misc/context.h"
 #include "type/generic_struct.h"
 #include "type/jump.h"

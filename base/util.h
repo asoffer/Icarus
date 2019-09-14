@@ -80,11 +80,6 @@ struct Cast {
   Base const *base() const { return static_cast<Base const *>(this); }
 };
 
-template <typename T>
-std::unique_ptr<T> wrap_unique(T *ptr) {
-  return std::unique_ptr<T>(ptr);
-}
-
 template <typename... Ts>
 struct overloaded : Ts... {
   using Ts::operator()...;
@@ -96,11 +91,6 @@ template <typename T>
 constexpr bool always_false() {
   return false;
 }
-
-template <typename T>
-struct Tag {
-  using type = T;
-};
 
 constexpr size_t Log2(size_t n) { return n == 1 ? 0 : 1 + Log2(n / 2); }
 }  // namespace base

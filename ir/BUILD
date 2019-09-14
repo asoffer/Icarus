@@ -14,7 +14,6 @@ cc_group_target(
         ":cmd_buffer-impl",
         ":compiled_fn-impl",
         ":components-impl",
-        ":flags_val-impl",
         ":foreign-impl",
         ":inliner-impl",
         ":out_params-impl",
@@ -45,6 +44,7 @@ cc_lib_target(
     name = "basic_block",
     cfgs = ["match", "compile"],
     intf_deps = [
+        ":block_index",
         ":cmd_buffer",
         ":out_params",
         "//base:untyped_buffer",
@@ -130,7 +130,6 @@ cc_lib_target(
     intf_deps = [
         ":builder",
         ":compiled_fn",
-        ":register",
         "//ir/cmd:basic",
         "//ir/cmd:jumps",
         "//ir/cmd:load",
@@ -146,10 +145,10 @@ cc_lib_target(
 )
 
 cc_lib_target(
-    name = "flags_val",
+    name = "values",
     intf_deps = ["//base:strong_types"],
-    impl_deps = ["//type:flags"],
-    test_deps = None,
+    impl_deps = None,
+    test_deps = [],
 )
 
 cc_lib_target(
@@ -186,11 +185,19 @@ cc_lib_target(
 )
 
 cc_lib_target(
+    name = "block_index",
+    intf_deps = [
+        "//base:strong_types",
+    ],
+    impl_deps = None,
+    test_deps = None,
+)
+
+cc_lib_target(
     name = "inliner",
     cfgs = ["match", "compile"],
     intf_deps = [
         ":reg",
-        ":register",
         ":results",
         "//type:type",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -209,7 +216,7 @@ cc_lib_target(
 cc_lib_target(
     name = "out_params",
     cfgs = ["match", "compile"],
-    intf_deps = [":register"],
+    intf_deps = [":reg"],
     impl_deps = [],
     test_deps = None,
 )
@@ -226,16 +233,6 @@ cc_lib_target(
     intf_deps = [":reg"],
     impl_deps = None,
     test_deps = [":reg-impl"],
-)
-
-# TODO break up this target further.
-cc_lib_target(
-    name = "register",
-    intf_deps = [
-        ":reg",
-        ":reg_or",
-        "//base:strong_types",
-    ],
 )
 
 cc_lib_target(

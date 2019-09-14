@@ -112,8 +112,9 @@ void SetRet(uint16_t n, T val) {
         ReturnCmd::MakeControlBits<typename T::type>(val.is_reg(), false));
     blk.cmd_buffer_.append(n);
     val.apply([&](auto v) { blk.cmd_buffer_.append(v); });
-  } else if constexpr(IsTypedReg<T>::value) {
-    SetRet(n, RegOr<typename T::type>(val));
+  } else if constexpr (base::IsTaggedV<T>) {
+    static_assert(std::is_same_v<typename T::base_type, Reg>);
+    SetRet(n, RegOr<typename T::tag_type>(val));
   } else {
     SetRet(n, RegOr<T>(val));
   }
@@ -138,7 +139,7 @@ inline void SetRet(uint16_t n, type::Typed<Results> const& r, Context* ctx) {
   // }
 }
 
-inline TypedRegister<Addr> GetRet(uint16_t n, type::Type const* t) {
+inline base::Tagged<Addr, Reg> GetRet(uint16_t n, type::Type const* t) {
   auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append(ReturnCmd::MakeControlBits<int>(false, true));
   blk.cmd_buffer_.append(n);

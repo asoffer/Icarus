@@ -10,13 +10,12 @@
 #include "ir/cmd/types.h"
 #include "ir/compiled_fn.h"
 #include "ir/reg.h"
-#include "ir/register.h"
 
 namespace ir {
-TypedRegister<Addr> Index(type::Pointer const *t, Reg array_ptr,
+base::Tagged<Addr, Reg> Index(type::Pointer const *t, Reg array_ptr,
                           RegOr<int64_t> offset);
-TypedRegister<Addr> Alloca(type::Type const *t);
-TypedRegister<Addr> TmpAlloca(type::Type const *t, Context *ctx);
+base::Tagged<Addr, Reg> Alloca(type::Type const *t);
+base::Tagged<Addr, Reg> TmpAlloca(type::Type const *t, Context *ctx);
 
 template <bool B>
 BlockIndex EarlyExitOn(BlockIndex exit_block, RegOr<bool> cond) {

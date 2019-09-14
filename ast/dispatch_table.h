@@ -7,6 +7,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "ast/overload_set.h"
 #include "core/fn_args.h"
+#include "ir/block_index.h"
 #include "ir/block.h"
 #include "type/typed_value.h"
 

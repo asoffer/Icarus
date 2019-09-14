@@ -8,8 +8,10 @@
 #include "base/untyped_buffer.h"
 #include "ir/cmd_buffer.h"
 #include "ir/out_params.h"
+#include "ir/block_index.h"
 
 namespace ir {
+
 struct CompiledFn;
 
 struct BasicBlock {

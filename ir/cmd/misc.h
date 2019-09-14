@@ -96,8 +96,8 @@ struct VariantAccessCmd {
                                 Inliner const &inliner);
 };
 
-TypedRegister<core::Alignment> Align(RegOr<type::Type const *> r);
-TypedRegister<core::Bytes> Bytes(RegOr<type::Type const *> r);
+base::Tagged<core::Alignment, Reg> Align(RegOr<type::Type const *> r);
+base::Tagged<core::Bytes, Reg> Bytes(RegOr<type::Type const *> r);
 
 void Init(type::Type const *t, Reg r);
 void Destroy(type::Type const *t, Reg r);
@@ -106,8 +106,8 @@ void Copy(type::Type const *t, Reg from, RegOr<Addr> to);
 
 type::Typed<Reg> LoadSymbol(std::string_view name, type::Type const *type);
 
-TypedRegister<Addr> PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
-                            type::Pointer const *t);
+base::Tagged<Addr, Reg> PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
+                                type::Pointer const *t);
 type::Typed<Reg> Field(RegOr<Addr> r, type::Struct const *t, int64_t n);
 type::Typed<Reg> Field(RegOr<Addr> r, type::Tuple const *t, int64_t n);
 
@@ -136,7 +136,7 @@ struct DebugIrCmd {
                                 Inliner const &inliner) {}
 };
 inline void DebugIr() {}
-#endif // ICARUS_DEBUG
+#endif  // ICARUS_DEBUG
 
 }  // namespace ir
 

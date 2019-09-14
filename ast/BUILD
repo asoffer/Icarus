@@ -60,6 +60,7 @@ cc_lib_target(
         ":overload_set",
         "//core:fn_args",
         "//base:expected",
+        "//ir:block_index",
         "//ir:block",
         "@com_google_absl//absl/container:flat_hash_map",
     ],

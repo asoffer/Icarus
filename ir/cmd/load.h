@@ -91,12 +91,12 @@ struct LoadCmd {
 };
 
 template <typename T>
-TypedRegister<T> Load(RegOr<Addr> addr) {
+base::Tagged<T, Reg> Load(RegOr<Addr> addr) {
   auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<LoadCmd>();
   blk.cmd_buffer_.append(LoadCmd::MakeControlBits<T>(addr.is_reg()));
   addr.apply([&](auto v) { blk.cmd_buffer_.append(v); });
-  TypedRegister<T> result = MakeResult<T>();
+  base::Tagged<T, Reg> result = MakeResult<T>();
   blk.cmd_buffer_.append(result);
   DEBUG_LOG("load")(blk.cmd_buffer_.to_string());
   return result;

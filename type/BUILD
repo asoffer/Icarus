@@ -98,7 +98,7 @@ cc_lib_target(
     intf_deps = [
         ":type",
         ":typed_value",
-        "//ir:flags_val",
+        "//ir:values",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/random",
         "@com_google_absl//absl/random:distributions",
@@ -232,12 +232,13 @@ cc_lib_target(
     intf_deps = [
         "//base:debug",
         "//base:meta",
+        "//base:tag",
         "//base:util",
         "//ir:addr",
         "//ir:block",
         "//ir:reg",
-        "//ir:register",
         "//ir:results",
+        "//ir:values",
         "//core:arch",
         "//visitor:type_visitors",
         "@com_google_absl//absl/container:flat_hash_set",

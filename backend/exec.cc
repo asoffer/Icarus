@@ -71,7 +71,7 @@ void Execute(ir::CompiledFn *fn, const base::untyped_buffer &arguments,
 
   while (true) {
     auto block_index = ctx->ExecuteBlock(ret_slots);
-    if (block_index.is_default()) {
+    if (block_index == ir::BlockIndex{}) {
       ctx->call_stack.pop();
       return;
     } else {

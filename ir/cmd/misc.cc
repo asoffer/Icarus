@@ -281,7 +281,7 @@ void TypeInfoCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
   inliner.Inline(&iter->read<Reg>());
 }
 
-TypedRegister<core::Alignment> Align(RegOr<type::Type const *> r) {
+base::Tagged<core::Alignment, Reg> Align(RegOr<type::Type const *> r) {
   auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<TypeInfoCmd>();
   blk.cmd_buffer_.append<uint8_t>(r.is_reg() ? 0x01 : 0x00);
@@ -292,7 +292,7 @@ TypedRegister<core::Alignment> Align(RegOr<type::Type const *> r) {
   return result;
 }
 
-TypedRegister<core::Bytes> Bytes(RegOr<type::Type const *> r) {
+base::Tagged<core::Bytes, Reg> Bytes(RegOr<type::Type const *> r) {
   auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<TypeInfoCmd>();
   blk.cmd_buffer_.append<uint8_t>(0x02 + (r.is_reg() ? 0x01 : 0x00));
@@ -384,9 +384,9 @@ Reg MakeAccessCmd(RegOr<Addr> ptr, RegOr<int64_t> inc, type::Type const *t,
 }
 }  // namespace
 
-TypedRegister<Addr> PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
-                            type::Pointer const *t) {
-  return TypedRegister<Addr>{MakeAccessCmd(ptr, inc, t, true)};
+base::Tagged<Addr, Reg> PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
+                                type::Pointer const *t) {
+  return base::Tagged<Addr, Reg>{MakeAccessCmd(ptr, inc, t, true)};
 }
 
 type::Typed<Reg> Field(RegOr<Addr> r, type::Tuple const *t, int64_t n) {

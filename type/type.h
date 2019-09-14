@@ -6,13 +6,14 @@
 #include "absl/container/flat_hash_set.h"
 #include "base/debug.h"
 #include "base/meta.h"
+#include "base/tag.h"
 #include "base/util.h"
 #include "core/arch.h"
 #include "ir/addr.h"
 #include "ir/block.h"
 #include "ir/reg.h"
-#include "ir/register.h"
 #include "ir/results.h"
+#include "ir/values.h"
 
 #ifdef ICARUS_VISITOR_EMIT_IR
 #include "visitor/emit_ir.h"

@@ -53,7 +53,15 @@ cc_lib_target(name = "stringify",
               impl_deps = None,
               test_deps = [])
 cc_lib_target(name = "strong_types",
-              intf_deps = [":debug"],
+              intf_deps = [
+                  ":debug",
+                  ":stringify",
+                  "@com_google_absl//absl/strings",
+              ],
+              impl_deps = None,
+              test_deps = None)
+cc_lib_target(name = "tag",
+              intf_deps = [],
               impl_deps = None,
               test_deps = None)
 cc_lib_target(name = "tuple",

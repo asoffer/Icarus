@@ -7,7 +7,7 @@
 #include "base/debug.h"
 #include "ir/addr.h"
 #include "ir/reg.h"
-#include "ir/register.h"
+#include "ir/reg_or.h"
 #include "type/type_fwd.h"
 #include "type/typed_value.h"
 #include "visitor/deferred_body.h"

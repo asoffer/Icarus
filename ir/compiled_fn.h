@@ -14,6 +14,10 @@
 #include "ir/stack_frame_allocations.h"
 #include "type/typed_value.h"
 
+namespace ast {
+struct Expression;
+}  // namespace ast
+
 namespace type {
 struct Function;
 }  // namespace type

@@ -33,7 +33,7 @@ cc_lib_target(
         "//ir:addr",
         "//ir:block",
         "//ir:compiled_fn",
-        "//ir:register",
+        "//ir:reg",
         "//ir:reg_or",
     ],
     impl_deps = [

@@ -170,8 +170,9 @@ cc_lib_target(
     name = "util",
     cfgs = ["match", "compile"],
     intf_deps = [
+        "//ir:values",
         "//backend:exec",
-        "//base:util",
+        "//base:tag",
         "//type:primitive",
         "//type:util",
     ],

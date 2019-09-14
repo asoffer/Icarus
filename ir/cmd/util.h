@@ -6,7 +6,7 @@
 #include "backend/exec.h"
 #include "base/util.h"
 #include "ir/addr.h"
-#include "ir/flags_val.h"
+#include "ir/values.h"
 #include "ir/reg.h"
 #include "ir/reg_or.h"
 #include "type/primitive.h"
@@ -147,7 +147,7 @@ struct UnwrapType<RegOr<T>> {
 };
 
 template <typename T>
-struct UnwrapType<TypedRegister<T>> {
+struct UnwrapType<base::Tagged<T, Reg>> {
   using type = T;
 };
 

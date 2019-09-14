@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "base/debug.h"
-#include "ir/register.h"
+#include "ir/reg.h"
 #include "ir/results.h"
 #include "misc/module.h"
 

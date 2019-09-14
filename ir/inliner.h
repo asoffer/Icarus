@@ -2,8 +2,8 @@
 #define ICARUS_IR_CMD_INLINER_H
 
 #include "absl/container/flat_hash_map.h"
+#include "ir/block_index.h"
 #include "ir/reg.h"
-#include "ir/register.h"
 #include "ir/results.h"
 
 namespace type {

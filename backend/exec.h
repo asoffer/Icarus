@@ -11,7 +11,6 @@
 #include "ir/compiled_fn.h"
 #include "ir/reg.h"
 #include "ir/reg_or.h"
-#include "ir/register.h"
 
 namespace ir {
 struct Cmd;

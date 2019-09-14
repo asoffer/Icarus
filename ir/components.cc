@@ -5,8 +5,7 @@
 
 namespace ir {
 RegOr<bool> EmitEq(type::Type const *lhs_type, ir::Results const &lhs_val,
-                        type::Type const *rhs_type,
-                        ir::Results const &rhs_val) {
+                   type::Type const *rhs_type, ir::Results const &rhs_val) {
   // You may already assume that there exists a valid comparison between these
   // two types.
   if (lhs_type != rhs_type) { NOT_YET(); }
@@ -19,8 +18,8 @@ RegOr<bool> EmitEq(type::Type const *lhs_type, ir::Results const &lhs_val,
       });
 }
 
-TypedRegister<Addr> Index(type::Pointer const *t, Reg array_ptr,
-                          RegOr<int64_t> offset) {
+base::Tagged<Addr, Reg> Index(type::Pointer const *t, Reg array_ptr,
+                              RegOr<int64_t> offset) {
   // TODO this works but generates worse ir (both here and in llvm). It's worth
   // figuring out how to do this better. Is this still true without
   // variable-length arrays?
@@ -28,12 +27,12 @@ TypedRegister<Addr> Index(type::Pointer const *t, Reg array_ptr,
                  type::Ptr(t->pointee->as<type::Array>().data_type));
 }
 
-TypedRegister<Addr> Alloca(type::Type const *t) {
+base::Tagged<Addr, Reg> Alloca(type::Type const *t) {
   // TODO consider adding this directly to the builder.
   return GetBuilder().function()->Alloca(t);
 }
 
-TypedRegister<Addr> TmpAlloca(type::Type const *t, Context *ctx) {
+base::Tagged<Addr, Reg> TmpAlloca(type::Type const *t, Context *ctx) {
   auto reg = Alloca(t);
   ctx->temporaries_to_destroy_->emplace_back(reg, t);
   return reg;

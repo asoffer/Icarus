@@ -8,7 +8,6 @@
 #include "ir/cmd/load.h"
 #include "ir/cmd/misc.h"
 #include "ir/components.h"
-#include "ir/register.h"
 #include "ir/str.h"
 #include "misc/context.h"
 #include "type/type.h"
