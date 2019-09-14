@@ -30,14 +30,8 @@ Reg MakeReg(T t) {
     auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
     blk.cmd_buffer_.append_index<RegisterCmd>();
     blk.cmd_buffer_.append(
-        RegisterCmd::MakeControlBits<typename T::type>(t.is_reg_));
-
-    if (t.is_reg_) {
-      blk.cmd_buffer_.append(t.reg_);
-    } else {
-      blk.cmd_buffer_.append(t.val_);
-    }
-
+        RegisterCmd::MakeControlBits<typename T::type>(t.is_reg()));
+    t.apply([&](auto v) { blk.cmd_buffer_.append(v); });
     Reg result = MakeResult<typename T::type>();
     blk.cmd_buffer_.append(result);
     return result;

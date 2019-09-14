@@ -51,6 +51,7 @@ COMMON_MODULE_INTF_TARGETS = [
     "//core:fn_params",
     "//core:pending_module",
     "//core:scope",
+    "//ir:register",
     "//error:log",
     "//type:typed_value",
     "@com_google_absl//absl/container:flat_hash_map",

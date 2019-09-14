@@ -109,13 +109,9 @@ void SetRet(uint16_t n, T val) {
     auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
     blk.cmd_buffer_.append_index<ReturnCmd>();
     blk.cmd_buffer_.append(
-        ReturnCmd::MakeControlBits<typename T::type>(val.is_reg_, false));
+        ReturnCmd::MakeControlBits<typename T::type>(val.is_reg(), false));
     blk.cmd_buffer_.append(n);
-    if (val.is_reg_) {
-      blk.cmd_buffer_.append(val.reg_);
-    } else {
-      blk.cmd_buffer_.append(val.val_);
-    }
+    val.apply([&](auto v) { blk.cmd_buffer_.append(v); });
   } else if constexpr(IsTypedReg<T>::value) {
     SetRet(n, RegOr<typename T::type>(val));
   } else {

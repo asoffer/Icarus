@@ -7,6 +7,7 @@
 #include "ir/cmd/util.h"
 #include "ir/cmd_buffer.h"
 #include "ir/reg.h"
+#include "ir/reg_or.h"
 #include "type/util.h"
 
 namespace ir {
@@ -93,12 +94,8 @@ template <typename T>
 TypedRegister<T> Load(RegOr<Addr> addr) {
   auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<LoadCmd>();
-  blk.cmd_buffer_.append(LoadCmd::MakeControlBits<T>(addr.is_reg_));
-  if (addr.is_reg_) {
-    blk.cmd_buffer_.append(addr.reg_);
-  } else {
-    blk.cmd_buffer_.append(addr.val_);
-  }
+  blk.cmd_buffer_.append(LoadCmd::MakeControlBits<T>(addr.is_reg()));
+  addr.apply([&](auto v) { blk.cmd_buffer_.append(v); });
   TypedRegister<T> result = MakeResult<T>();
   blk.cmd_buffer_.append(result);
   DEBUG_LOG("load")(blk.cmd_buffer_.to_string());

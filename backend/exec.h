@@ -10,6 +10,7 @@
 #include "ir/block.h"
 #include "ir/compiled_fn.h"
 #include "ir/reg.h"
+#include "ir/reg_or.h"
 #include "ir/register.h"
 
 namespace ir {
@@ -63,7 +64,7 @@ struct ExecContext {
 
   template <typename T>
   T resolve(ir::RegOr<T> val) const {
-    return val.is_reg_ ? resolve<T>(val.reg_) : val.val_;
+    return val.resolve([&](ir::Reg r) { return resolve<T>(r); });
   }
 
   base::untyped_buffer stack_;

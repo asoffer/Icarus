@@ -18,6 +18,7 @@ cc_group_target(
         ":foreign-impl",
         ":inliner-impl",
         ":out_params-impl",
+        ":reg-impl",
         ":results-impl",
         ":str-impl",
     ],
@@ -215,7 +216,16 @@ cc_lib_target(
 
 cc_lib_target(
     name = "reg",
-    intf_deps = [],
+    intf_deps = ["//base:debug"],
+    impl_deps = ["@com_google_absl//absl/strings"],
+    test_deps = [],
+)
+
+cc_lib_target(
+    name = "reg_or",
+    intf_deps = [":reg"],
+    impl_deps = None,
+    test_deps = [":reg-impl"],
 )
 
 # TODO break up this target further.
@@ -223,6 +233,7 @@ cc_lib_target(
     name = "register",
     intf_deps = [
         ":reg",
+        ":reg_or",
         "//base:strong_types",
     ],
 )
@@ -230,11 +241,16 @@ cc_lib_target(
 cc_lib_target(
     name = "results",
     intf_deps = [
-        ":register",
+        ":reg",
+        ":reg_or",
         "//base:untyped_buffer",
         "//core:bytes",
     ],
-    impl_deps = ["//base:untyped_buffer-impl"],
+    impl_deps = [
+        ":reg-impl",
+        "//base:untyped_buffer-impl",
+        "@com_google_absl//absl/strings",
+    ],
     test_deps = [],
 )
 

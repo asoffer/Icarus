@@ -8,6 +8,7 @@
 #include "ir/cmd/util.h"
 #include "ir/cmd_buffer.h"
 #include "ir/reg.h"
+#include "ir/reg_or.h"
 
 namespace ir {
 
@@ -91,14 +92,14 @@ inline void ReturnJump() {
 inline void CondJump(RegOr<bool> cond, BlockIndex true_block,
                      BlockIndex false_block) {
   auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
-  if (cond.is_reg_) {
+  if (cond.is_reg()) {
     blk.cmd_buffer_.append_index<JumpCmd>();
     blk.cmd_buffer_.append(JumpCmd::Kind::kCond);
-    blk.cmd_buffer_.append(cond.reg_);
+    blk.cmd_buffer_.append(cond.reg());
     blk.cmd_buffer_.append(false_block);
     blk.cmd_buffer_.append(true_block);
   } else {
-    UncondJump(cond.val_ ? true_block : false_block);
+    UncondJump(cond.value() ? true_block : false_block);
   }
 }
 

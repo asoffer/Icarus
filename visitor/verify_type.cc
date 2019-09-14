@@ -1594,14 +1594,14 @@ VerifyResult VerifyType::operator()(ast::Index const *node, Context *ctx) {
     int64_t index = [&]() -> int64_t {
       auto results =
           backend::Evaluate(type::Typed{node->rhs(), index_type}, ctx);
-      if (index_type == type::Int8) { return results.get<int8_t>(0).val_; }
-      if (index_type == type::Int16) { return results.get<int16_t>(0).val_; }
-      if (index_type == type::Int32) { return results.get<int32_t>(0).val_; }
-      if (index_type == type::Int64) { return results.get<int64_t>(0).val_; }
-      if (index_type == type::Nat8) { return results.get<uint8_t>(0).val_; }
-      if (index_type == type::Nat16) { return results.get<uint16_t>(0).val_; }
-      if (index_type == type::Nat32) { return results.get<uint32_t>(0).val_; }
-      if (index_type == type::Nat64) { return results.get<uint64_t>(0).val_; }
+      if (index_type == type::Int8) { return results.get<int8_t>(0).value(); }
+      if (index_type == type::Int16) { return results.get<int16_t>(0).value(); }
+      if (index_type == type::Int32) { return results.get<int32_t>(0).value(); }
+      if (index_type == type::Int64) { return results.get<int64_t>(0).value(); }
+      if (index_type == type::Nat8) { return results.get<uint8_t>(0).value(); }
+      if (index_type == type::Nat16) { return results.get<uint16_t>(0).value(); }
+      if (index_type == type::Nat32) { return results.get<uint32_t>(0).value(); }
+      if (index_type == type::Nat64) { return results.get<uint64_t>(0).value(); }
       UNREACHABLE();
     }();
 

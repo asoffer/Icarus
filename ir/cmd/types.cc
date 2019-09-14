@@ -19,12 +19,8 @@ Reg EnumerationImpl(
   for (auto const &[index, val] : specified_values) {
     // TODO these could be packed much more efficiently.
     blk.cmd_buffer_.append(index);
-    blk.cmd_buffer_.append<bool>(val.is_reg_);
-    if (val.is_reg_) {
-      blk.cmd_buffer_.append(val.reg_);
-    } else {
-      blk.cmd_buffer_.append(val.val_);
-    }
+    blk.cmd_buffer_.append<bool>(val.is_reg());
+    val.apply([&](auto v) { blk.cmd_buffer_.append(v); });
   }
 
   Reg result =
@@ -331,14 +327,14 @@ RegOr<type::Function const *> Arrow(
     absl::Span<RegOr<type::Type const *> const> ins,
     absl::Span<RegOr<type::Type const *> const> outs) {
   if (absl::c_all_of(ins,
-                     [](RegOr<type::Type const *> r) { return !r.is_reg_; }) &&
+                     [](RegOr<type::Type const *> r) { return !r.is_reg(); }) &&
       absl::c_all_of(outs,
-                     [](RegOr<type::Type const *> r) { return !r.is_reg_; })) {
+                     [](RegOr<type::Type const *> r) { return !r.is_reg(); })) {
     std::vector<type::Type const *> in_vec, out_vec;
     in_vec.reserve(ins.size());
-    for (auto in : ins) { in_vec.push_back(in.val_); }
+    for (auto in : ins) { in_vec.push_back(in.value()); }
     out_vec.reserve(outs.size());
-    for (auto out : outs) { out_vec.push_back(out.val_); }
+    for (auto out : outs) { out_vec.push_back(out.value()); }
     return type::Func(std::move(in_vec), std::move(out_vec));
   }
 
@@ -363,23 +359,16 @@ Reg OpaqueType(::Module const *mod) {
 
 RegOr<type::Type const *> Array(RegOr<ArrayCmd::length_t> len,
                                 RegOr<type::Type const *> data_type) {
-  if (!len.is_reg_ && data_type.is_reg_) {
-    return type::Arr(len.val_, data_type.val_);
+  if (!len.is_reg() && data_type.is_reg()) {
+    return type::Arr(len.value(), data_type.value());
   }
   auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<ArrayCmd>();
   blk.cmd_buffer_.append(
-      ArrayCmd::MakeControlBits(len.is_reg_, data_type.is_reg_));
-  if (len.is_reg_) {
-    blk.cmd_buffer_.append(len.reg_);
-  } else {
-    blk.cmd_buffer_.append(len.val_);
-  }
-  if (data_type.is_reg_) {
-    blk.cmd_buffer_.append(data_type.reg_);
-  } else {
-    blk.cmd_buffer_.append(data_type.val_);
-  }
+      ArrayCmd::MakeControlBits(len.is_reg(), data_type.is_reg()));
+
+  len.apply([&](auto v) { blk.cmd_buffer_.append(v); });
+  data_type.apply([&](auto v) { blk.cmd_buffer_.append(v); });
   Reg result = MakeResult<type::Type const *>();
   blk.cmd_buffer_.append(result);
   return result;

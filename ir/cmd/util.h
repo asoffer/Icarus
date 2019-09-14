@@ -8,6 +8,7 @@
 #include "ir/addr.h"
 #include "ir/flags_val.h"
 #include "ir/reg.h"
+#include "ir/reg_or.h"
 #include "type/primitive.h"
 #include "type/util.h"
 
@@ -173,15 +174,10 @@ void WriteBits(CmdBuffer* buf, absl::Span<T const> span, Fn&& predicate) {
 template <typename SizeType, typename T>
 void Serialize(CmdBuffer* buf, absl::Span<RegOr<T> const> span) {
   WriteBits<SizeType, RegOr<T>>(buf, span,
-                                [](RegOr<T> const& r) { return r.is_reg_; });
+                                [](RegOr<T> const& r) { return r.is_reg(); });
 
-  absl::c_for_each(span, [&](RegOr<T> x) {
-    if (x.is_reg_) {
-      buf->append(x.reg_);
-    } else {
-      buf->append(x.val_);
-    }
-  });
+  absl::c_for_each(
+      span, [&](RegOr<T> x) { x.apply([&](auto v) { buf->append(v); }); });
 }
 
 constexpr uint8_t ReverseByte(uint8_t byte) {
@@ -336,22 +332,18 @@ struct UnaryHandler {
   auto operator()(RegOr<T> operand) const {
     auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
     using fn_type     = typename CmdType::fn_type;
-    using result_type = decltype(fn_type{}(operand.val_));
+    using result_type = decltype(fn_type{}(operand.value()));
     if constexpr (CmdType::template IsSupported<T>()) {
-      if (!operand.is_reg_) {
-        return RegOr<result_type>{fn_type{}(operand.val_)};
+      if (!operand.is_reg()) {
+        return RegOr<result_type>{fn_type{}(operand.value())};
       }
     }
 
     blk.cmd_buffer_.append_index<CmdType>();
     blk.cmd_buffer_.append(
-        CmdType::template MakeControlBits<T>(operand.is_reg_));
+        CmdType::template MakeControlBits<T>(operand.is_reg()));
 
-    if (operand.is_reg_) {
-      blk.cmd_buffer_.append(operand.reg_);
-    } else {
-      blk.cmd_buffer_.append(operand.val_);
-    }
+    operand.apply([&](auto v) { blk.cmd_buffer_.append(v); });
 
     Reg result = MakeResult<T>();
     blk.cmd_buffer_.append(result);
@@ -484,27 +476,19 @@ struct BinaryHandler {
   auto operator()(RegOr<T> lhs, RegOr<T> rhs) const {
     auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
     using fn_type     = typename CmdType::fn_type;
-    using result_type = decltype(fn_type{}(lhs.val_, rhs.val_));
+    using result_type = decltype(fn_type{}(lhs.value(), rhs.value()));
     if constexpr (CmdType::template IsSupported<T>()) {
-      if (!lhs.is_reg_ && !rhs.is_reg_) {
-        return RegOr<result_type>{fn_type{}(lhs.val_, rhs.val_)};
+      if (!lhs.is_reg() && !rhs.is_reg()) {
+        return RegOr<result_type>{fn_type{}(lhs.value(), rhs.value())};
       }
     }
 
     blk.cmd_buffer_.append_index<CmdType>();
     blk.cmd_buffer_.append(
-        CmdType::template MakeControlBits<T>(lhs.is_reg_, rhs.is_reg_));
+        CmdType::template MakeControlBits<T>(lhs.is_reg(), rhs.is_reg()));
 
-    if (lhs.is_reg_) {
-      blk.cmd_buffer_.append(lhs.reg_);
-    } else {
-      blk.cmd_buffer_.append(lhs.val_);
-    }
-    if (rhs.is_reg_) {
-      blk.cmd_buffer_.append(rhs.reg_);
-    } else {
-      blk.cmd_buffer_.append(rhs.val_);
-    }
+    lhs.apply([&](auto v) { blk.cmd_buffer_.append(v); });
+    rhs.apply([&](auto v) { blk.cmd_buffer_.append(v); });
 
     Reg result = MakeResult<T>();
     blk.cmd_buffer_.append(result);
@@ -552,8 +536,8 @@ RegOr<typename CmdType::type> MakeVariadicImpl(
     std::vector<T> vs;
     vs.reserve(vals.size());
     if (absl::c_all_of(vals, [&](RegOr<T> t) {
-          if (t.is_reg_) { return false; }
-          vs.push_back(t.val_);
+          if (t.is_reg()) { return false; }
+          vs.push_back(t.value());
           return true;
         })) {
       return CmdType::fn_ptr(vs);

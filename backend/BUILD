@@ -34,6 +34,7 @@ cc_lib_target(
         "//ir:block",
         "//ir:compiled_fn",
         "//ir:register",
+        "//ir:reg_or",
     ],
     impl_deps = [
         ":eval",

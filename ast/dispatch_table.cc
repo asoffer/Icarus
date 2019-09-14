@@ -16,6 +16,7 @@
 #include "ir/compiled_fn.h"
 #include "ir/components.h"
 #include "ir/reg.h"
+#include "ir/reg_or.h"
 #include "misc/context.h"
 #include "misc/module.h"
 #include "type/cast.h"
@@ -627,7 +628,7 @@ static bool EmitOneCall(
       row.fn);
   // TODO this feels super hacky. And wasteful to compute `fn` twice.
   if constexpr (!Inline) {
-    if (!fn.is_reg_ && fn.val_.is_fn() && fn.val_.func()->must_inline_) {
+    if (!fn.is_reg() && fn.value().is_fn() && fn.value().func()->must_inline_) {
       return EmitOneCall<true>(bldr, row, args, return_types, outputs,
                                block_map, inline_results, ctx);
     }
@@ -660,11 +661,10 @@ static bool EmitOneCall(
   visitor.CompleteDeferredBodies();
 
   if constexpr (Inline) {
-    ASSERT(fn.is_reg_ == false);
-    if (fn.val_.is_fn()) {
+    if (fn.value().is_fn()) {
       auto *prev_inline_map = std::exchange(ctx->inline_, nullptr);
       base::defer d([&]() { ctx->inline_ = prev_inline_map; });
-      auto *func = ASSERT_NOT_NULL(fn.val_.func());
+      auto *func = ASSERT_NOT_NULL(fn.value().func());
       if (func->work_item != nullptr) { std::move (*func->work_item)(); }
       ASSERT(func->work_item == nullptr);
 

@@ -39,8 +39,7 @@ void EmitIr::Print(type::Array const *t, ir::Results const &val, Context *ctx) {
             return ir::Eq(phi1, 0);
           },
           [&](ir::RegOr<ir::Addr> const &phi0, ir::RegOr<int32_t> const &phi1) {
-            ASSERT(phi0.is_reg_ == true);
-            auto elem_ptr = ir::PtrIncr(phi0.reg_, 1, type::Ptr(t->data_type));
+            auto elem_ptr = ir::PtrIncr(phi0.reg(), 1, type::Ptr(t->data_type));
 
             ir::Print(std::string_view{", "});
             t->data_type->EmitPrint(

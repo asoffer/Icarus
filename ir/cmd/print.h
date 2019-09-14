@@ -41,12 +41,8 @@ void Print(T r) {
   if constexpr (ir::IsRegOr<T>::value) {
     blk.cmd_buffer_.append_index<PrintCmd>();
     blk.cmd_buffer_.append(
-        PrintCmd::MakeControlBits<typename T::type>(r.is_reg_));
-    if (r.is_reg_) {
-      blk.cmd_buffer_.append(r.reg_);
-    } else {
-      blk.cmd_buffer_.append(r.val_);
-    }
+        PrintCmd::MakeControlBits<typename T::type>(r.is_reg()));
+    r.apply([&](auto v) { blk.cmd_buffer_.append(v); });
   } else {
     Print(RegOr<T>(r));
   }
@@ -58,12 +54,8 @@ template <typename T,
 void Print(RegOr<T> r, type::Type const* t) {
   auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<PrintCmd>();
-  blk.cmd_buffer_.append(PrintCmd::MakeControlBits<T>(r.is_reg_));
-  if (r.is_reg_) {
-    blk.cmd_buffer_.append(r.reg_);
-  } else {
-    blk.cmd_buffer_.append(r.val_);
-  }
+  blk.cmd_buffer_.append(PrintCmd::MakeControlBits<T>(r.is_reg()));
+  r.apply([&](auto v) { blk.cmd_buffer_.append(v); });
   blk.cmd_buffer_.append(t);
 }
 

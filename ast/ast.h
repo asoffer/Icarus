@@ -609,7 +609,7 @@ struct Terminal : public Expression {
   ir::Results const &value() const { return results_; }
   template <typename T>
   T as() const {
-    return results_.get<T>(0).val_;
+    return results_.get<T>(0).value();
   }
 
 #include "visitor/visitors.xmacro.h"

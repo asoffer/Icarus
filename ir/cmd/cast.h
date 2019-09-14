@@ -7,6 +7,7 @@
 #include "ir/cmd/util.h"
 #include "ir/cmd_buffer.h"
 #include "ir/reg.h"
+#include "ir/reg_or.h"
 
 namespace ir {
 
@@ -124,17 +125,17 @@ struct CastCmd {
 
 template <typename ToType, typename FromType>
 RegOr<ToType> Cast(RegOr<FromType> r) {
-  if (r.is_reg_) {
+  if (r.is_reg()) {
     auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
     blk.cmd_buffer_.append_index<CastCmd>();
     blk.cmd_buffer_.append(PrimitiveIndex<ToType>());
     blk.cmd_buffer_.append(PrimitiveIndex<FromType>());
-    blk.cmd_buffer_.append(r.reg_);
+    blk.cmd_buffer_.append(r.reg());
     Reg result = MakeResult<ToType>();
     blk.cmd_buffer_.append(result);
     return result;
   } else {
-    return ToType(r.val_);
+    return ToType(r.value());
   }
 }
 

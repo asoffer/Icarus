@@ -402,7 +402,8 @@ void DumpAst::operator()(ast::Terminal const *node) {
           absl::StrAppend(out_, node->template as<T>()->to_string());
         } else if constexpr (std::is_same_v<T, ir::BlockDef *>) {
           absl::StrAppend(
-              out_, base::stringify(node->value().get<ir::BlockDef *>(0).val_));
+              out_,
+              base::stringify(node->value().get<ir::BlockDef *>(0).value()));
         } else if constexpr (std::is_same_v<T, std::string_view>) {
           absl::StrAppend(out_, node->template as<T>());
         } else {

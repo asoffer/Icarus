@@ -10,6 +10,7 @@
 #include "base/debug.h"
 #include "ir/cmd/util.h"
 #include "ir/inliner.h"
+#include "ir/reg_or.h"
 #include "type/type.h"
 
 namespace ir {
@@ -83,7 +84,7 @@ struct AccessCmd {
 struct VariantAccessCmd {
   constexpr static cmd_index_t index = 37;
 
-  // TODO you store a bool for val vs type and a bool for addr.is_reg_. These
+  // TODO you store a bool for val vs type and a bool for addr.is_reg(). These
   // should be compresseed.
   static std::optional<BlockIndex> Execute(base::untyped_buffer::iterator *iter,
                                            std::vector<Addr> const &ret_slots,

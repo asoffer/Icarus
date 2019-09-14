@@ -6,6 +6,7 @@
 
 #if defined(ICARUS_DEBUG)
 
+#define ICARUS_CONSTEXPR inline
 #define ICARUS_PRIVATE 
 
 #define ASSERT(...)                                                            \
@@ -102,6 +103,7 @@ struct Asserter {
 
 #else // defined(ICARUS_DEBUG)
 
+#define ICARUS_CONSTEXPR constexpr
 #define ICARUS_PRIVATE private:
 
 #define ASSERT(...)                                                            \

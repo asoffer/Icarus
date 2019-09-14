@@ -3,6 +3,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "backend/exec.h"
+#include "ir/reg_or.h"
 
 namespace ir {
 namespace {
@@ -91,10 +92,10 @@ std::string CallCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
 void CallCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
                                 Inliner const &inliner) {
       // RegOr<AnyFunc> r_fn;
-      // if (cmd.call_.fn_.is_reg_) {
-      //   auto iter = reg_relocs.find(cmd.call_.fn_.reg_);
+      // if (cmd.call_.fn_.is_reg()) {
+      //   auto iter = reg_relocs.find(cmd.call_.fn_.reg());
       //   if (iter == reg_relocs.end()) { goto next_block; }
-      //   r_fn = iter->second.get<AnyFunc>(0).reg_;
+      //   r_fn = iter->second.get<AnyFunc>(0).reg();
       // } else {
       //   r_fn = cmd.call_.fn_;
       // }
@@ -143,18 +144,14 @@ void CallImpl(BasicBlock *blk, RegOr<AnyFunc> const &fn,
               type::Function const *f, absl::Span<Results const> arguments) {
   ASSERT(arguments.size() == f->input.size());
   blk->cmd_buffer_.append_index<CallCmd>();
-  blk->cmd_buffer_.append(fn.is_reg_);
+  blk->cmd_buffer_.append(fn.is_reg());
   internal::WriteBits<uint16_t, Results>(&blk->cmd_buffer_, arguments,
                                          [](Results const &r) {
                                            ASSERT(r.size() == 1u);
                                            return r.is_reg(0);
                                          });
-  if (fn.is_reg_) {
-    blk->cmd_buffer_.append(fn.reg_);
-  } else {
-    blk->cmd_buffer_.append(fn.val_);
-  }
 
+  fn.apply([&](auto v) { blk->cmd_buffer_.append(v); });
   size_t bytes_written_slot = blk->cmd_buffer_.reserve<core::Bytes>();
   size_t arg_index = 0;
   for (Results const &arg : arguments) {
@@ -163,7 +160,7 @@ void CallImpl(BasicBlock *blk, RegOr<AnyFunc> const &fn,
     } else {
       type::Apply(f->input[arg_index], [&](auto tag) {
         using T = typename decltype(tag)::type;
-        blk->cmd_buffer_.append(arg.get<T>(0).val_);
+        blk->cmd_buffer_.append(arg.get<T>(0).value());
       });
     }
     ++arg_index;

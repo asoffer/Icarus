@@ -6,22 +6,19 @@
 
 #include "base/untyped_buffer.h"
 #include "ir/reg.h"
+#include "ir/reg_or.h"
 #include "core/bytes.h"
 
 namespace ir {
-struct Val;
 
 struct Results {
- private:
-  constexpr static uint64_t is_reg_mask = 0x8000'0000'0000'0000;
-
  public:
   template <typename... Args>
   explicit Results(Args... args) {
     (append<Args>(args), ...);
   }
 
-  static Results FromUntypedBuffer(std::vector<uint64_t> offsets,
+  static Results FromUntypedBuffer(std::vector<uint32_t> offsets,
                                    base::untyped_buffer buf);
   static Results FromRaw(void const* data, core::Bytes bytes);
 
@@ -31,37 +28,32 @@ struct Results {
       return get<typename IsRegOr<T>::type>(index);
     } else {
       auto offset = offset_[index];
-      if (offset & is_reg_mask) {
-        return Reg{static_cast<uint64_t>(offset & ~is_reg_mask)};
-      }
+      if (is_reg_[index]) { return buf_.get<Reg>(offset); }
       return buf_.get<T>(offset);
     }
   }
 
-  bool is_reg(size_t index) const { return offset_[index] & is_reg_mask; }
+  bool is_reg(size_t index) const { return is_reg_[index]; }
 
   template <typename T, typename = std::enable_if_t<std::is_base_of_v<Reg, T>>>
   Reg get(size_t index) const {
     ASSERT(is_reg(index) == true);
-    return Reg{offset_[index] & ~is_reg_mask};
+    return buf_.get<Reg>(offset_[index]);
   }
 
   template <typename T>
   size_t append(T const& t) {
     if constexpr (std::is_same_v<Results, T>) {
-      uint64_t current_buf_end = buf_.size();
-      buf_.write(buf_.size(), t.buf_);
-      offset_.reserve(offset_.size() + t.offset_.size());
-      for (uint64_t off : t.offset_) {
-        offset_.push_back(!(off & is_reg_mask) ? current_buf_end + off : off);
-      }
+      uint32_t current_buf_end = buf_.size();
+      buf_.write(current_buf_end, t.buf_);
+      is_reg_.insert(is_reg_.end(), t.is_reg_.begin(), t.is_reg_.end());
+      offset_.reserve(offset_.size() + t.size());
+      for (auto off : offset_) { offset_.push_back(current_buf_end + off); }
       return offset_.back();
-    } else if constexpr (std::is_base_of_v<Reg, T>) {
-      return offset_.emplace_back(
-          static_cast<uint64_t>(is_reg_mask | t.value()));
     } else if constexpr (IsRegOr<T>::value) {
-      return t.is_reg_ ? append(t.reg_) : append(t.val_);
+      return t.apply([&](auto v) { return append(v); });
     } else {
+      is_reg_.push_back(std::is_base_of_v<Reg, T>);
       return offset_.emplace_back(buf_.append(t));
     }
   }
@@ -74,14 +66,8 @@ struct Results {
   size_t empty() const { return offset_.empty(); }
 
  private:
-  // TODO reduce indicetions by storing registers directly in the vector. Be
-  // sure to handle their bit patterns correctly.
-  //
-  // TODO documentation below is wrong.
-  // Value at position `n` is the offset of the `n`th entry in `buf_`. Negative
-  // values indicate that the value stored is a register rather than the actual
-  // value.
-  std::vector<uint64_t> offset_;
+  std::vector<bool> is_reg_;
+  std::vector<uint32_t> offset_;
   base::untyped_buffer buf_{16};
 };
 }  // namespace ir

@@ -17,14 +17,10 @@ void MakeSemanticCmd(SemanticCmd::Kind k, type::Type const *t, Reg from,
   auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<SemanticCmd>();
   blk.cmd_buffer_.append(k);
-  blk.cmd_buffer_.append(to.is_reg_);
+  blk.cmd_buffer_.append(to.is_reg());
   blk.cmd_buffer_.append(t);
   blk.cmd_buffer_.append(from);
-  if (to.is_reg_) {
-    blk.cmd_buffer_.append(to.reg_);
-  } else {
-    blk.cmd_buffer_.append(to.val_);
-  }
+  to.apply([&](auto v) { blk.cmd_buffer_.append(v); });
 }
 }  // namespace
 
@@ -288,13 +284,9 @@ void TypeInfoCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
 TypedRegister<core::Alignment> Align(RegOr<type::Type const *> r) {
   auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<TypeInfoCmd>();
-  blk.cmd_buffer_.append<uint8_t>(r.is_reg_ ? 0x01 : 0x00);
-  if (r.is_reg_) {
-    blk.cmd_buffer_.append(r.reg_);
-  } else {
-    blk.cmd_buffer_.append(r.val_);
-  }
+  blk.cmd_buffer_.append<uint8_t>(r.is_reg() ? 0x01 : 0x00);
 
+  r.apply([&](auto v) { blk.cmd_buffer_.append(v); });
   Reg result = MakeResult<core::Alignment>();
   blk.cmd_buffer_.append(result);
   return result;
@@ -303,13 +295,8 @@ TypedRegister<core::Alignment> Align(RegOr<type::Type const *> r) {
 TypedRegister<core::Bytes> Bytes(RegOr<type::Type const *> r) {
   auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<TypeInfoCmd>();
-  blk.cmd_buffer_.append<uint8_t>(0x02 + (r.is_reg_ ? 0x01 : 0x00));
-  if (r.is_reg_) {
-    blk.cmd_buffer_.append(r.reg_);
-  } else {
-    blk.cmd_buffer_.append(r.val_);
-  }
-
+  blk.cmd_buffer_.append<uint8_t>(0x02 + (r.is_reg() ? 0x01 : 0x00));
+  r.apply([&](auto v) { blk.cmd_buffer_.append(v); });
   Reg result = MakeResult<core::Bytes>();
   blk.cmd_buffer_.append(result);
   return result;
@@ -384,18 +371,11 @@ Reg MakeAccessCmd(RegOr<Addr> ptr, RegOr<int64_t> inc, type::Type const *t,
   auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
   blk.cmd_buffer_.append_index<AccessCmd>();
   blk.cmd_buffer_.append(
-      AccessCmd::MakeControlBits(is_array, ptr.is_reg_, inc.is_reg_));
+      AccessCmd::MakeControlBits(is_array, ptr.is_reg(), inc.is_reg()));
   blk.cmd_buffer_.append(t);
-  if (ptr.is_reg_) {
-    blk.cmd_buffer_.append(ptr.reg_);
-  } else {
-    blk.cmd_buffer_.append(ptr.val_);
-  }
-  if (inc.is_reg_) {
-    blk.cmd_buffer_.append(inc.reg_);
-  } else {
-    blk.cmd_buffer_.append(inc.val_);
-  }
+
+  ptr.apply([&](auto v) { blk.cmd_buffer_.append(v); });
+  inc.apply([&](auto v) { blk.cmd_buffer_.append(v); });
 
   Reg result = MakeResult<Addr>();
   blk.cmd_buffer_.append(result);
@@ -485,14 +465,8 @@ Reg MakeVariantAccessCmd(RegOr<Addr> const &r, type::Variant const *v) {
   blk.cmd_buffer_.append_index<VariantAccessCmd>();
   bool get_val = (v != nullptr);
   blk.cmd_buffer_.append(get_val);
-  blk.cmd_buffer_.append(r.is_reg_);
-  if (r.is_reg_) {
-    blk.cmd_buffer_.append(r.reg_);
-  } else {
-    blk.cmd_buffer_.append(r.val_);
-  }
-  if (get_val) { blk.cmd_buffer_.append(v); }
-
+  blk.cmd_buffer_.append(r.is_reg());
+  r.apply([&](auto v) { blk.cmd_buffer_.append(v); });
   Reg result = MakeResult<Addr>();
   blk.cmd_buffer_.append(result);
   DEBUG_LOG("variant")(blk.cmd_buffer_.to_string());

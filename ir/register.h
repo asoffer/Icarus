@@ -6,6 +6,7 @@
 
 #include "base/strong_types.h"
 #include "ir/reg.h"
+#include "ir/reg_or.h"
 
 DEFINE_STRONG_INT(ir, BlockIndex, int32_t, -1);
 DEFINE_STRONG_INT(ir, EnumVal, size_t, 0);

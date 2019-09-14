@@ -236,6 +236,7 @@ cc_lib_target(
         "//ir:addr",
         "//ir:block",
         "//ir:reg",
+        "//ir:register",
         "//ir:results",
         "//core:arch",
         "//visitor:type_visitors",

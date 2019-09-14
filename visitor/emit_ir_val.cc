@@ -677,7 +677,7 @@ ir::Results EmitIr::Val(ast::BlockNode const *node, Context *ctx) {
   //   // unnecessary.
   //   std::vector<std::pair<ast::Expression const *, ir::Results>> yield_args;
   //   for (auto &arg : ctx->yields_stack_.back()) {
-  //     yield_args.emplace_back(arg.expr_, arg.val_);
+  //     yield_args.emplace_back(arg.expr_, arg.value());
   //   }
   //
   //   // TODO this is tricky. We can easily destroy parameters that we're
@@ -781,7 +781,7 @@ ir::Results EmitIr::Val(ast::Cast const *node, Context *ctx) {
     entries.reserve(results.size());
     for (size_t i = 0; i < results.size(); ++i) {
       // TODO what about incomplete structs?
-      entries.push_back(results.get<type::Type const *>(i).val_);
+      entries.push_back(results.get<type::Type const *>(i).value());
     }
     return ir::Results{type::Tup(entries)};
   }
@@ -930,7 +930,7 @@ static ir::RegOr<bool> EmitChainOpPair(ast::ChainOp const *chain_op,
         if (lhs_type == type::Block) {
           auto val1 = lhs_ir.get<ir::BlockDef *>(0);
           auto val2 = rhs_ir.get<ir::BlockDef *>(0);
-          if (!val1.is_reg_ && !val2.is_reg_) { return val1.val_ == val2.val_; }
+          if (!val1.is_reg() && !val2.is_reg()) { return val1.value() == val2.value(); }
         }
         return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t,
                                 uint8_t, uint16_t, uint32_t, uint64_t, float,
@@ -944,7 +944,7 @@ static ir::RegOr<bool> EmitChainOpPair(ast::ChainOp const *chain_op,
         if (lhs_type == type::Block) {
           auto val1 = lhs_ir.get<ir::BlockDef *>(0);
           auto val2 = rhs_ir.get<ir::BlockDef *>(0);
-          if (!val1.is_reg_ && !val2.is_reg_) { return val1.val_ == val2.val_; }
+          if (!val1.is_reg() && !val2.is_reg()) { return val1.value() == val2.value(); }
         }
         return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t,
                                 uint8_t, uint16_t, uint32_t, uint64_t, float,
@@ -1271,8 +1271,8 @@ ir::Results EmitIr::Val(ast::Identifier const *node, Context *ctx) {
   } else {
     auto *t   = ASSERT_NOT_NULL(ctx->type_of(node));
     auto lval = node->EmitLVal(this, ctx)[0];
-    if (!lval.is_reg_) { NOT_YET(); }
-    return ir::Results{ir::PtrFix(lval.reg_, t)};
+    if (!lval.is_reg()) { NOT_YET(); }
+    return ir::Results{ir::PtrFix(lval.reg(), t)};
   }
 }
 
@@ -1282,7 +1282,7 @@ ir::Results EmitIr::Val(ast::Import const *node, Context *ctx) {
 
 ir::Results EmitIr::Val(ast::Index const *node, Context *ctx) {
   return ir::Results{
-      ir::PtrFix(node->EmitLVal(this, ctx)[0].reg_, ctx->type_of(node))};
+      ir::PtrFix(node->EmitLVal(this, ctx)[0].reg(), ctx->type_of(node))};
 }
 
 ir::Results EmitIr::Val(ast::Jump const *node, Context *ctx) {
