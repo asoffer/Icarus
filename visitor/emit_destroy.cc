@@ -54,15 +54,15 @@ void EmitIr::Destroy(type::Variant const *t, ir::Reg reg, Context *ctx) {
             core::Param{"", type::Typed<ast::Expression const *>{nullptr, t}}));
     ICARUS_SCOPE(ir::SetCurrentFunc(t->destroy_func_)) {
       builder().CurrentBlock() = t->destroy_func_->entry();
-      auto landing             = builder().AddBlock();
+      auto *landing            = builder().AddBlock();
       auto type =
           ir::Load<type::Type const *>(ir::VariantType(ir::Reg::Arg(0)));
 
       auto var_val = ir::VariantValue(t, ir::Reg::Arg(0));
       for (type::Type const *v : t->variants_) {
         if (!v->HasDestructor()) { continue; }
-        auto old_block   = builder().CurrentBlock();
-        auto found_block = builder().AddBlock();
+        auto *old_block   = builder().CurrentBlock();
+        auto *found_block = builder().AddBlock();
 
         builder().CurrentBlock() = found_block;
         v->EmitDestroy(this, ir::PtrFix(var_val, v), ctx);

@@ -1,7 +1,6 @@
 #ifndef ICARUS_IR_CMD_TYPES_H
 #define ICARUS_IR_CMD_TYPES_H
 
-#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -50,7 +49,7 @@ struct EnumerationCmd {
   using enum_t                       = uint64_t;
   constexpr static cmd_index_t index = 29;
 
-  static std::optional<BlockIndex> Execute(base::untyped_buffer::iterator *iter,
+  static BasicBlock const * Execute(base::untyped_buffer::const_iterator *iter,
                                            std::vector<Addr> const &ret_slots,
                                            backend::ExecContext *ctx);
 
@@ -63,7 +62,7 @@ struct EnumerationCmd {
 struct StructCmd {
   constexpr static cmd_index_t index = 30;
 
-  static std::optional<BlockIndex> Execute(base::untyped_buffer::iterator *iter,
+  static BasicBlock const * Execute(base::untyped_buffer::const_iterator *iter,
                                            std::vector<Addr> const &ret_slots,
                                            backend::ExecContext *ctx);
 
@@ -75,7 +74,7 @@ struct StructCmd {
 
 struct OpaqueTypeCmd {
   constexpr static cmd_index_t index = 31;
-  static std::optional<BlockIndex> Execute(base::untyped_buffer::iterator *iter,
+  static BasicBlock const * Execute(base::untyped_buffer::const_iterator *iter,
                                            std::vector<Addr> const &ret_slots,
                                            backend::ExecContext *ctx);
 
@@ -100,7 +99,7 @@ struct ArrayCmd {
     return ctrl;
   }
 
-  static std::optional<BlockIndex> Execute(base::untyped_buffer::iterator *iter,
+  static BasicBlock const * Execute(base::untyped_buffer::const_iterator *iter,
                                            std::vector<Addr> const &ret_slots,
                                            backend::ExecContext *ctx);
 
@@ -154,23 +153,23 @@ constexpr inline auto BufPtr = internal::UnaryHandler<BufPtrCmd>{};
 
 struct ArrowCmd {
   constexpr static cmd_index_t index = 22;
-  static std::optional<BlockIndex> Execute(base::untyped_buffer::iterator *iter,
+  static BasicBlock const * Execute(base::untyped_buffer::const_iterator *iter,
                                            std::vector<Addr> const &ret_slots,
                                            backend::ExecContext *ctx) {
     std::vector<type::Type const *> ins =
         internal::Deserialize<uint16_t, type::Type const *>(
             iter,
-            [ctx](Reg &reg) { return ctx->resolve<type::Type const *>(reg); });
+            [ctx](Reg reg) { return ctx->resolve<type::Type const *>(reg); });
     std::vector<type::Type const *> outs =
         internal::Deserialize<uint16_t, type::Type const *>(
             iter,
-            [ctx](Reg &reg) { return ctx->resolve<type::Type const *>(reg); });
+            [ctx](Reg reg) { return ctx->resolve<type::Type const *>(reg); });
 
     auto &frame = ctx->call_stack.top();
     frame.regs_.set(GetOffset(frame.fn_, iter->read<Reg>()),
                     type::Func(std::move(ins), std::move(outs)));
 
-    return std::nullopt;
+    return nullptr;
   }
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter) {

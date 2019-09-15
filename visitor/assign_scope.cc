@@ -5,7 +5,7 @@
 namespace visitor {
 
 template <typename T>
-void SetAllScopes(AssignScope *visitor, ast::NodeSpan<T> span,
+void SetAllScopes(AssignScope *visitor, base::PtrSpan<T> span,
                   core::Scope *scope) {
   for (auto *n : span) { n->assign_scope(visitor, scope); }
 }
@@ -102,7 +102,7 @@ void AssignScope::operator()(ast::FunctionLiteral *node,
       out->assign_scope(this, node->fn_scope_.get());
     }
   }
-  SetAllScopes(this, ast::NodeSpan<ast::Node>{node->statements_},
+  SetAllScopes(this, base::PtrSpan<ast::Node>{node->statements_},
                node->fn_scope_.get());
 
   DependentDecls visitor;

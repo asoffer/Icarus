@@ -21,4 +21,8 @@ Reg MakeResult(type::Type const *t) {
   return Reserve(t->bytes(arch), t->alignment(arch));
 }
 
+BasicBlock const *ReturnBlock() {
+  static BasicBlock b;
+  return &b;
+}
 }  // namespace ir

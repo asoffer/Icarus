@@ -25,7 +25,7 @@ struct PrintCmd {
     return result;
   }
 
-  static std::optional<BlockIndex> Execute(base::untyped_buffer::iterator* iter,
+  static BasicBlock const * Execute(base::untyped_buffer::const_iterator* iter,
                                            std::vector<Addr> const& ret_slots,
                                            backend::ExecContext* ctx);
 
@@ -37,7 +37,7 @@ struct PrintCmd {
 
 template <typename T>
 void Print(T r) {
-  auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
+  auto& blk = *GetBuilder().CurrentBlock();
   if constexpr (ir::IsRegOr<T>::value) {
     blk.cmd_buffer_.append_index<PrintCmd>();
     blk.cmd_buffer_.append(
@@ -52,7 +52,7 @@ template <typename T,
           typename std::enable_if_t<std::is_same_v<T, EnumVal> ||
                                     std::is_same_v<T, FlagsVal>>* = nullptr>
 void Print(RegOr<T> r, type::Type const* t) {
-  auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
+  auto& blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append_index<PrintCmd>();
   blk.cmd_buffer_.append(PrintCmd::MakeControlBits<T>(r.is_reg()));
   r.apply([&](auto v) { blk.cmd_buffer_.append(v); });

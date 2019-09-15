@@ -1,7 +1,6 @@
 #ifndef ICARUS_IR_CMD_MISC_H
 #define ICARUS_IR_CMD_MISC_H
 
-#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -19,9 +18,9 @@ struct SemanticCmd {
 
   enum class Kind : uint8_t { Init, Destroy, Move, Copy };
 
-  static std::optional<BlockIndex> Execute(base::untyped_buffer::iterator *iter,
-                                           std::vector<Addr> const &ret_slots,
-                                           backend::ExecContext *ctx);
+  static BasicBlock const *Execute(base::untyped_buffer::const_iterator *iter,
+                                   std::vector<Addr> const &ret_slots,
+                                   backend::ExecContext *ctx);
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
 
@@ -32,9 +31,9 @@ struct SemanticCmd {
 struct LoadSymbolCmd {
   constexpr static cmd_index_t index = 34;
 
-  static std::optional<BlockIndex> Execute(base::untyped_buffer::iterator *iter,
-                                           std::vector<Addr> const &ret_slots,
-                                           backend::ExecContext *ctx);
+  static BasicBlock const *Execute(base::untyped_buffer::const_iterator *iter,
+                                   std::vector<Addr> const &ret_slots,
+                                   backend::ExecContext *ctx);
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
 
@@ -45,9 +44,9 @@ struct LoadSymbolCmd {
 struct TypeInfoCmd {
   constexpr static cmd_index_t index = 35;
 
-  static std::optional<BlockIndex> Execute(base::untyped_buffer::iterator *iter,
-                                           std::vector<Addr> const &ret_slots,
-                                           backend::ExecContext *ctx);
+  static BasicBlock const *Execute(base::untyped_buffer::const_iterator *iter,
+                                   std::vector<Addr> const &ret_slots,
+                                   backend::ExecContext *ctx);
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
 
@@ -71,9 +70,9 @@ struct AccessCmd {
     return ctrl_bits;
   }
 
-  static std::optional<BlockIndex> Execute(base::untyped_buffer::iterator *iter,
-                                           std::vector<Addr> const &ret_slots,
-                                           backend::ExecContext *ctx);
+  static BasicBlock const *Execute(base::untyped_buffer::const_iterator *iter,
+                                   std::vector<Addr> const &ret_slots,
+                                   backend::ExecContext *ctx);
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
 
@@ -86,9 +85,9 @@ struct VariantAccessCmd {
 
   // TODO you store a bool for val vs type and a bool for addr.is_reg(). These
   // should be compresseed.
-  static std::optional<BlockIndex> Execute(base::untyped_buffer::iterator *iter,
-                                           std::vector<Addr> const &ret_slots,
-                                           backend::ExecContext *ctx);
+  static BasicBlock const *Execute(base::untyped_buffer::const_iterator *iter,
+                                   std::vector<Addr> const &ret_slots,
+                                   backend::ExecContext *ctx);
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
 
@@ -119,13 +118,13 @@ struct DebugIrCmd {
   constexpr static cmd_index_t index =
       (std::numeric_limits<cmd_index_t>::max)();
 
-  static std::optional<BlockIndex> Execute(base::untyped_buffer::iterator *iter,
-                                           std::vector<Addr> const &ret_slots,
-                                           backend::ExecContext *ctx) {
+  static BasicBlock const *Execute(base::untyped_buffer::const_iterator *iter,
+                                   std::vector<Addr> const &ret_slots,
+                                   backend::ExecContext *ctx) {
     std::stringstream ss;
     ss << *ctx->call_stack.top().fn_;
     DEBUG_LOG()(ss.str());
-    return std::nullopt;
+    return nullptr;
   }
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter) {

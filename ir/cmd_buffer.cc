@@ -5,6 +5,7 @@
 
 #include "backend/exec.h"
 #include "base/debug.h"
+#include "ir/basic_block.h"
 #include "ir/cmd/basic.h"
 #include "ir/cmd/call.h"
 #include "ir/cmd/cast.h"
@@ -21,7 +22,14 @@
 
 namespace ir {
 
+#if defined(ICARUS_DEBUG)
+#define DEBUG_CASES CASE(DebugIrCmd);
+#else
+#define DEBUG_CASES
+#endif
+
 #define CASES                                                                  \
+  DEBUG_CASES                                                                  \
   CASE(PrintCmd);                                                              \
   CASE(AddCmd);                                                                \
   CASE(SubCmd);                                                                \
@@ -59,11 +67,10 @@ namespace ir {
   CASE(AccessCmd);                                                             \
   CASE(VariantAccessCmd);                                                      \
   CASE(CallCmd);                                                               \
-  CASE(BlockCmd);                                                              \
-  CASE(DebugIrCmd)
+  CASE(BlockCmd);
 
-BlockIndex CmdBuffer::Execute(std::vector<ir::Addr> const& ret_slots,
-                              backend::ExecContext* ctx) {
+BasicBlock const* CmdBuffer::Execute(std::vector<ir::Addr> const& ret_slots,
+                                     backend::ExecContext* ctx) const {
   auto iter = buf_.begin();
   DEBUG_LOG("dbg")(buf_);
   while (true) {
@@ -75,7 +82,7 @@ BlockIndex CmdBuffer::Execute(std::vector<ir::Addr> const& ret_slots,
   case type::index: {                                                          \
     DEBUG_LOG("dbg")(#type);                                                   \
     auto result = type::Execute(&iter, ret_slots, ctx);                        \
-    if (result.has_value()) { return *result; }                                \
+    if (result) { return result; }                                             \
   } break
       CASES;
 #undef CASE
@@ -122,6 +129,7 @@ std::string CmdBuffer::to_string() const {
 }
 
 #undef CASES
+#undef DEBUG_CASES
 
 size_t GetOffset(CompiledFn const* fn, Reg r) {
   return fn->compiler_reg_to_offset_.at(r);

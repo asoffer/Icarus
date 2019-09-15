@@ -264,10 +264,10 @@ void EmitIr::CopyAssign(type::Variant const *t, ir::RegOr<ir::Addr> to,
           from.type()->if_as<type::Variant>()) {
     auto actual_type =
         ir::Load<type::Type const *>(ir::VariantType(from->get<ir::Reg>(0)));
-    auto landing = builder().AddBlock();
+    auto *landing = builder().AddBlock();
     auto var_val = ir::VariantValue(from_var_type, from->get<ir::Reg>(0));
     for (type::Type const *v : from_var_type->variants_) {
-      auto next_block = builder().AddBlock();
+      auto *next_block = builder().AddBlock();
       builder().CurrentBlock() =
           ir::EarlyExitOn<false>(next_block, ir::Eq(actual_type, v));
       ir::Store(v, ir::VariantType(to));
@@ -298,10 +298,10 @@ void EmitIr::MoveAssign(type::Variant const *t, ir::RegOr<ir::Addr> to,
           from.type()->if_as<type::Variant>()) {
     auto actual_type =
         ir::Load<type::Type const *>(ir::VariantType(from->get<ir::Reg>(0)));
-    auto landing = builder().AddBlock();
+    auto *landing = builder().AddBlock();
     auto var_val = ir::VariantValue(from_var_type, from->get<ir::Reg>(0));
     for (type::Type const *v : from_var_type->variants_) {
-      auto next_block = builder().AddBlock();
+      auto *next_block = builder().AddBlock();
       builder().CurrentBlock() =
           ir::EarlyExitOn<false>(next_block, ir::Eq(actual_type, v));
       ir::Store(v, ir::VariantType(to));

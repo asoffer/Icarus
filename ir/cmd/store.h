@@ -29,9 +29,9 @@ struct StoreCmd {
     return result;
   }
 
-  static std::optional<BlockIndex> Execute(base::untyped_buffer::iterator* iter,
-                                           std::vector<Addr> const& ret_slots,
-                                           backend::ExecContext* ctx) {
+  static BasicBlock const* Execute(base::untyped_buffer::const_iterator* iter,
+                                   std::vector<Addr> const& ret_slots,
+                                   backend::ExecContext* ctx) {
     auto ctrl = iter->read<control_bits>();
     PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
       using T = typename std::decay_t<decltype(tag)>::type;
@@ -53,7 +53,7 @@ struct StoreCmd {
           *ASSERT_NOT_NULL(static_cast<T*>(addr.as_heap)) = val;
       }
     });
-    return std::nullopt;
+    return nullptr;
   }
 
   static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
@@ -113,7 +113,7 @@ struct StoreCmd {
 template <typename T>
 void Store(T r, RegOr<Addr> addr) {
   if constexpr (IsRegOr<T>::value) {
-    auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
+    auto& blk = *GetBuilder().CurrentBlock();
     blk.cmd_buffer_.append_index<StoreCmd>();
     blk.cmd_buffer_.append(
         StoreCmd::MakeControlBits<typename T::type>(r.is_reg(), addr.is_reg()));

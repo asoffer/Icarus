@@ -6,20 +6,20 @@
 
 namespace ir {
 
-std::optional<BlockIndex> BlockCmd::Execute(
-    base::untyped_buffer::iterator *iter, std::vector<Addr> const &ret_slots,
+BasicBlock const * BlockCmd::Execute(
+    base::untyped_buffer::const_iterator *iter, std::vector<Addr> const &ret_slots,
     backend::ExecContext *ctx) {
   std::vector<AnyFunc> before_vals = internal::Deserialize<uint16_t, AnyFunc>(
-      iter, [ctx](Reg &reg) { return ctx->resolve<AnyFunc>(reg); });
+      iter, [ctx](Reg reg) { return ctx->resolve<AnyFunc>(reg); });
   std::vector<AnyFunc> after_vals = internal::Deserialize<uint16_t, AnyFunc>(
-      iter, [ctx](Reg &reg) { return ctx->resolve<AnyFunc>(reg); });
+      iter, [ctx](Reg reg) { return ctx->resolve<AnyFunc>(reg); });
   Reg result_reg = iter->read<Reg>();
 
   // TODO deal with leak.
   auto &frame = ctx->call_stack.top();
   frame.regs_.set(GetOffset(frame.fn_, result_reg),
                   new BlockDef(std::move(before_vals), std::move(after_vals)));
-  return std::nullopt;
+  return nullptr;
 }
 
 std::string BlockCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
@@ -49,7 +49,7 @@ void BlockCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
 
 Reg BlockHandler(absl::Span<RegOr<AnyFunc> const> befores,
                  absl::Span<RegOr<AnyFunc> const> afters) {
-  auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
+  auto &blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append_index<BlockCmd>();
   internal::Serialize<uint16_t>(&blk.cmd_buffer_, befores);
   internal::Serialize<uint16_t>(&blk.cmd_buffer_, afters);

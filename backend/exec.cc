@@ -70,20 +70,20 @@ void Execute(ir::CompiledFn *fn, const base::untyped_buffer &arguments,
   base::untyped_buffer ret_buffer(offset.value());
 
   while (true) {
-    auto block_index = ctx->ExecuteBlock(ret_slots);
-    if (block_index == ir::BlockIndex{}) {
+    auto const *block = ctx->ExecuteBlock(ret_slots);
+    if (block == ir::ReturnBlock()) {
       ctx->call_stack.pop();
       return;
     } else {
-      ctx->call_stack.top().MoveTo(block_index);
+      ctx->call_stack.top().MoveTo(block);
     }
   }
 }
 
 ExecContext::ExecContext() : stack_(50u) {}
 
-ir::BasicBlock &ExecContext::current_block() {
-  return call_stack.top().fn_->block(call_stack.top().current_);
+ir::BasicBlock const *ExecContext::current_block() {
+  return call_stack.top().current_;
 }
 
 ExecContext::Frame::Frame(ir::CompiledFn *fn,
@@ -110,9 +110,9 @@ ExecContext::Frame::Frame(ir::CompiledFn *fn,
   });
 }
 
-ir::BlockIndex ExecContext::ExecuteBlock(
+ir::BasicBlock const *ExecContext::ExecuteBlock(
     const std::vector<ir::Addr> &ret_slots) {
-  return current_block().cmd_buffer_.Execute(ret_slots, this);
+  return current_block()->cmd_buffer_.Execute(ret_slots, this);
 }
 
 template <typename T>

@@ -1,9 +1,9 @@
 #include "ir/cmd/print.h"
 
 namespace ir {
-std::optional<BlockIndex> PrintCmd::Execute(
-    base::untyped_buffer::iterator* iter, std::vector<Addr> const& ret_slots,
-    backend::ExecContext* ctx) {
+BasicBlock const* PrintCmd::Execute(base::untyped_buffer::const_iterator* iter,
+                                    std::vector<Addr> const& ret_slots,
+                                    backend::ExecContext* ctx) {
   auto ctrl = iter->read<control_bits>();
   PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
     using T = typename std::decay_t<decltype(tag)>::type;
@@ -49,7 +49,7 @@ std::optional<BlockIndex> PrintCmd::Execute(
       std::cerr << val;
     }
   });
-  return std::nullopt;
+  return nullptr;
 }
 
 std::string PrintCmd::DebugString(base::untyped_buffer::const_iterator* iter) {

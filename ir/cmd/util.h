@@ -257,9 +257,9 @@ struct UnaryCmd {
     return result;
   }
 
-  static std::optional<BlockIndex> Execute(base::untyped_buffer::iterator* iter,
-                                           std::vector<Addr> const& ret_slots,
-                                           backend::ExecContext* ctx) {
+  static BasicBlock const* Execute(base::untyped_buffer::const_iterator* iter,
+                                   std::vector<Addr> const& ret_slots,
+                                   backend::ExecContext* ctx) {
     auto& frame = ctx->call_stack.top();
     auto ctrl = iter->read<control_bits>();
     PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
@@ -267,7 +267,7 @@ struct UnaryCmd {
       auto result = Apply<type>(iter, ctrl.reg0, ctx);
       frame.regs_.set(GetOffset(frame.fn_, iter->read<Reg>()), result);
     });
-    return std::nullopt;
+    return nullptr;
   }
 
   static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
@@ -307,7 +307,7 @@ struct UnaryCmd {
 
  private:
   template <typename T>
-  static auto Apply(base::untyped_buffer::iterator* iter, bool reg0,
+  static auto Apply(base::untyped_buffer::const_iterator* iter, bool reg0,
                     backend::ExecContext* ctx) {
     if constexpr (IsSupported<T>()) {
       auto val = reg0 ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>();
@@ -330,7 +330,7 @@ struct UnaryHandler {
 
   template <typename T>
   auto operator()(RegOr<T> operand) const {
-    auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
+    auto& blk         = *GetBuilder().CurrentBlock();
     using fn_type     = typename CmdType::fn_type;
     using result_type = decltype(fn_type{}(operand.value()));
     if constexpr (CmdType::template IsSupported<T>()) {
@@ -376,9 +376,9 @@ struct BinaryCmd {
     return result;
   }
 
-  static std::optional<BlockIndex> Execute(base::untyped_buffer::iterator* iter,
-                                           std::vector<Addr> const& ret_slots,
-                                           backend::ExecContext* ctx) {
+  static BasicBlock const* Execute(base::untyped_buffer::const_iterator* iter,
+                                   std::vector<Addr> const& ret_slots,
+                                   backend::ExecContext* ctx) {
     auto& frame = ctx->call_stack.top();
     auto ctrl   = iter->read<control_bits>();
     PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
@@ -386,7 +386,7 @@ struct BinaryCmd {
       auto result = Apply<type>(iter, ctrl.reg0, ctrl.reg1, ctx);
       frame.regs_.set(GetOffset(frame.fn_, iter->read<Reg>()), result);
     });
-    return std::nullopt;
+    return nullptr;
   }
 
   static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
@@ -450,7 +450,7 @@ struct BinaryCmd {
 
  private:
   template <typename T>
-  static auto Apply(base::untyped_buffer::iterator* iter, bool reg0, bool reg1,
+  static auto Apply(base::untyped_buffer::const_iterator* iter, bool reg0, bool reg1,
                     backend::ExecContext* ctx) {
     if constexpr (IsSupported<T>()) {
       auto lhs = reg0 ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>();
@@ -474,7 +474,7 @@ struct BinaryHandler {
 
   template <typename T>
   auto operator()(RegOr<T> lhs, RegOr<T> rhs) const {
-    auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
+    auto& blk         = *GetBuilder().CurrentBlock();
     using fn_type     = typename CmdType::fn_type;
     using result_type = decltype(fn_type{}(lhs.value(), rhs.value()));
     if constexpr (CmdType::template IsSupported<T>()) {
@@ -502,17 +502,17 @@ struct VariadicCmd {
   using type                         = T;
   constexpr static auto* fn_ptr      = Fn;
 
-  static std::optional<BlockIndex> Execute(base::untyped_buffer::iterator* iter,
-                                           std::vector<Addr> const& ret_slots,
-                                           backend::ExecContext* ctx) {
+  static BasicBlock const* Execute(base::untyped_buffer::const_iterator* iter,
+                                   std::vector<Addr> const& ret_slots,
+                                   backend::ExecContext* ctx) {
     std::vector<T> vals = Deserialize<uint16_t, T>(
-        iter, [ctx](Reg& reg) { return ctx->resolve<T>(reg); });
+        iter, [ctx](Reg reg) { return ctx->resolve<T>(reg); });
 
     auto& frame = ctx->call_stack.top();
     frame.regs_.set(GetOffset(frame.fn_, iter->read<Reg>()),
                     Fn(std::move(vals)));
 
-    return std::nullopt;
+    return nullptr;
   }
 
   static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
@@ -544,7 +544,7 @@ RegOr<typename CmdType::type> MakeVariadicImpl(
     }
   }
 
-  auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
+  auto &blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append_index<CmdType>();
   Serialize<uint16_t>(&blk.cmd_buffer_, vals);
 

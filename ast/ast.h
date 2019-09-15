@@ -10,8 +10,8 @@
 #include "ast/expression.h"
 #include "ast/hashtag.h"
 #include "ast/node.h"
-#include "ast/node_span.h"
 #include "base/graph.h"
+#include "base/ptr_span.h"
 #include "core/builtin.h"
 #include "core/fn_args.h"
 #include "core/fn_params.h"
@@ -47,7 +47,7 @@ struct ScopeExpr : public Expression {
 // Represents member access with the `.` operator.
 //
 // Examples:
-//  * `my_pair.first_element` 
+//  * `my_pair.first_element`
 //  * `(some + computation).member`
 struct Access : public Expression {
   explicit Access(TextSpan span, std::unique_ptr<Expression> operand,
@@ -89,8 +89,8 @@ struct ArrayLiteral : public Expression {
   bool empty() const { return exprs_.empty(); }
   size_t size() const { return exprs_.size(); }
   Expression const *elem(size_t i) const { return exprs_[i].get(); }
-  NodeSpan<Expression const> elems() const { return exprs_; }
-  NodeSpan<Expression> elems() { return exprs_; }
+  base::PtrSpan<Expression const> elems() const { return exprs_; }
+  base::PtrSpan<Expression> elems() { return exprs_; }
   std::vector<std::unique_ptr<Expression>> &&extract() && {
     return std::move(exprs_);
   }
@@ -129,8 +129,8 @@ struct ArrayType : public Expression {
         data_type_(std::move(data_type)) {}
   ~ArrayType() override {}
 
-  NodeSpan<Expression const> lengths() const { return lengths_; }
-  NodeSpan<Expression> lengths() { return lengths_; }
+  base::PtrSpan<Expression const> lengths() const { return lengths_; }
+  base::PtrSpan<Expression> lengths() { return lengths_; }
   Expression *length(size_t i) { return lengths_[i].get(); }
   Expression const *length(size_t i) const { return lengths_[i].get(); }
 
@@ -164,10 +164,10 @@ struct Binop : public Expression {
         rhs_(std::move(rhs)) {}
   ~Binop() override {}
 
-  Expression const* lhs() const { return lhs_.get(); }
-  Expression* lhs() { return lhs_.get(); }
-  Expression const* rhs() const { return rhs_.get(); }
-  Expression* rhs() { return rhs_.get(); }
+  Expression const *lhs() const { return lhs_.get(); }
+  Expression *lhs() { return lhs_.get(); }
+  Expression const *rhs() const { return rhs_.get(); }
+  Expression *rhs() { return rhs_.get(); }
   frontend::Operator op() const { return op_; }
 
   std::pair<std::unique_ptr<Expression>, std::unique_ptr<Expression>> extract()
@@ -271,10 +271,10 @@ struct BlockLiteral : public ScopeExpr<core::DeclScope> {
         after_(std::move(after)) {}
   ~BlockLiteral() override {}
 
-  NodeSpan<Declaration const> before() const { return before_; }
-  NodeSpan<Declaration> before() { return before_; }
-  NodeSpan<Declaration const> after() const { return after_; }
-  NodeSpan<Declaration> after() { return after_; }
+  base::PtrSpan<Declaration const> before() const { return before_; }
+  base::PtrSpan<Declaration> before() { return before_; }
+  base::PtrSpan<Declaration const> after() const { return after_; }
+  base::PtrSpan<Declaration> after() { return after_; }
 
 #include "visitor/visitors.xmacro.h"
 
@@ -331,10 +331,10 @@ struct BlockNode : public ScopeExpr<core::ExecScope> {
   BlockNode &operator=(BlockNode &&) noexcept = default;
 
   std::string_view name() const { return name_; }
-  NodeSpan<Node> stmts() { return stmts_; }
-  NodeSpan<Node const> stmts() const { return stmts_; }
-  NodeSpan<Expression> args() { return args_; }
-  NodeSpan<Expression const> args() const { return args_; }
+  base::PtrSpan<Node> stmts() { return stmts_; }
+  base::PtrSpan<Node const> stmts() const { return stmts_; }
+  base::PtrSpan<Expression> args() { return args_; }
+  base::PtrSpan<Expression const> args() const { return args_; }
 
 #include "visitor/visitors.xmacro.h"
 
@@ -410,7 +410,7 @@ struct Call : public Expression {
 //  * `null as *int64`
 struct Cast : public Expression {
   explicit Cast(TextSpan span, std::unique_ptr<Expression> expr,
-       std::unique_ptr<Expression> type_expr)
+                std::unique_ptr<Expression> type_expr)
       : Expression(std::move(span)),
         expr_(std::move(expr)),
         type_(std::move(type_expr)) {}
@@ -450,8 +450,8 @@ struct ChainOp : public Expression {
     exprs_.push_back(std::move(expr));
   }
 
-  NodeSpan<Expression const> exprs() const { return exprs_; }
-  NodeSpan<Expression> exprs() { return exprs_; }
+  base::PtrSpan<Expression const> exprs() const { return exprs_; }
+  base::PtrSpan<Expression> exprs() { return exprs_; }
   absl::Span<frontend::Operator const> ops() const { return ops_; }
   absl::Span<frontend::Operator> ops() { return absl::MakeSpan(ops_); }
 
@@ -527,8 +527,8 @@ struct EnumLiteral : ScopeExpr<core::DeclScope> {
 
   ~EnumLiteral() override {}
 
-  NodeSpan<Expression> elems() { return elems_; }
-  NodeSpan<Expression const> elems() const { return elems_; }
+  base::PtrSpan<Expression> elems() { return elems_; }
+  base::PtrSpan<Expression const> elems() const { return elems_; }
   Kind kind() const { return kind_; }
 
 #include "visitor/visitors.xmacro.h"
@@ -593,7 +593,7 @@ struct FunctionLiteral : public Expression {
   std::optional<std::vector<std::unique_ptr<Expression>>> outputs_;
   std::vector<std::unique_ptr<Node>> statements_;
 
-  Module *module_            = nullptr;
+  Module *module_ = nullptr;
 };
 
 // Terminal:
@@ -672,10 +672,10 @@ struct Index : public Expression {
         rhs_(std::move(rhs)) {}
   ~Index() override {}
 
-  Expression const* lhs() const { return lhs_.get(); }
-  Expression* lhs() { return lhs_.get(); }
-  Expression const* rhs() const { return rhs_.get(); }
-  Expression* rhs() { return rhs_.get(); }
+  Expression const *lhs() const { return lhs_.get(); }
+  Expression *lhs() { return lhs_.get(); }
+  Expression const *rhs() const { return rhs_.get(); }
+  Expression *rhs() { return rhs_.get(); }
   std::pair<std::unique_ptr<Expression>, std::unique_ptr<Expression>> extract()
       && {
     return std::pair(std::move(lhs_), std::move(rhs_));
@@ -778,10 +778,10 @@ struct JumpHandler : ScopeExpr<core::FnScope> {
   }
 
 #include "visitor/visitors.xmacro.h"
-  NodeSpan<Declaration const> input() const { return input_; }
-  NodeSpan<Declaration> input() { return input_; }
-  NodeSpan<Node> stmts() { return stmts_; }
-  NodeSpan<Node const> stmts() const { return stmts_; }
+  base::PtrSpan<Declaration const> input() const { return input_; }
+  base::PtrSpan<Declaration> input() { return input_; }
+  base::PtrSpan<Node> stmts() { return stmts_; }
+  base::PtrSpan<Node const> stmts() const { return stmts_; }
 
  private:
   std::vector<std::unique_ptr<Declaration>> input_;
@@ -802,8 +802,8 @@ struct PrintStmt : public Node {
       : Node(std::move(span)), exprs_(std::move(exprs)) {}
   ~PrintStmt() override {}
 
-  NodeSpan<Expression> exprs() { return exprs_; }
-  NodeSpan<Expression const> exprs() const { return exprs_; }
+  base::PtrSpan<Expression> exprs() { return exprs_; }
+  base::PtrSpan<Expression const> exprs() const { return exprs_; }
 
 #include "visitor/visitors.xmacro.h"
 
@@ -821,12 +821,12 @@ struct PrintStmt : public Node {
 //
 struct ReturnStmt : public Node {
   explicit ReturnStmt(TextSpan span,
-                     std::vector<std::unique_ptr<Expression>> exprs = {})
+                      std::vector<std::unique_ptr<Expression>> exprs = {})
       : Node(std::move(span)), exprs_(std::move(exprs)) {}
   ~ReturnStmt() override {}
 
-  NodeSpan<Expression> exprs() { return exprs_; }
-  NodeSpan<Expression const> exprs() const { return exprs_; }
+  base::PtrSpan<Expression> exprs() { return exprs_; }
+  base::PtrSpan<Expression const> exprs() const { return exprs_; }
 
 #include "visitor/visitors.xmacro.h"
 
@@ -848,8 +848,8 @@ struct YieldStmt : public Node {
       : Node(std::move(span)), exprs_(std::move(exprs)) {}
   ~YieldStmt() override {}
 
-  NodeSpan<Expression> exprs() { return exprs_; }
-  NodeSpan<Expression const> exprs() const { return exprs_; }
+  base::PtrSpan<Expression> exprs() { return exprs_; }
+  base::PtrSpan<Expression const> exprs() const { return exprs_; }
 
 #include "visitor/visitors.xmacro.h"
 
@@ -887,8 +887,8 @@ struct ScopeLiteral : public ScopeExpr<core::ScopeLitScope> {
         decls_(std::move(decls)) {}
   ~ScopeLiteral() override {}
 
-  NodeSpan<Declaration const> decls() const { return decls_; }
-  NodeSpan<Declaration> decls() { return decls_; }
+  base::PtrSpan<Declaration const> decls() const { return decls_; }
+  base::PtrSpan<Declaration> decls() { return decls_; }
 
 #include "visitor/visitors.xmacro.h"
 
@@ -897,7 +897,7 @@ struct ScopeLiteral : public ScopeExpr<core::ScopeLitScope> {
 };
 
 // ScopeNode:
-// 
+//
 // Represents the usage of a scope such as `if`, `while`, or any other
 // user-defined scope. This encompasses all blocks (e.g., in the case of `if`,
 // it encompasses the `then` and `else` blocks if they are present.
@@ -942,8 +942,9 @@ struct ScopeNode : public Expression {
   // Appends the given block not necessarily to this ScopeNode, but to the scope
   // that makes sense syntactically. For instance, in the first example above,
   // the inner `if` ScopeNode checking `condition2` would be appended to.
-  void append_block_syntactically(BlockNode block, ScopeNode *updated_last_scope_node = nullptr) {
-    auto * scope_node = (last_scope_node_ ? last_scope_node_ : this);
+  void append_block_syntactically(
+      BlockNode block, ScopeNode *updated_last_scope_node = nullptr) {
+    auto *scope_node = (last_scope_node_ ? last_scope_node_ : this);
     scope_node->blocks_.push_back(std::move(block));
     if (updated_last_scope_node) { last_scope_node_ = updated_last_scope_node; }
   }

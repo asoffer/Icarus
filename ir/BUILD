@@ -44,7 +44,6 @@ cc_lib_target(
     name = "basic_block",
     cfgs = ["match", "compile"],
     intf_deps = [
-        ":block_index",
         ":cmd_buffer",
         ":out_params",
         "//base:untyped_buffer",
@@ -170,6 +169,7 @@ cc_lib_target(
         ":stack_frame_allocations",
         "//ast:ast",
         "//base:bag",
+        "//base:ptr_span",
         "//base:scope",
         "//core:fn_params",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -181,15 +181,6 @@ cc_lib_target(
         "//type:function",
         "//type:pointer",
     ],
-    test_deps = None,
-)
-
-cc_lib_target(
-    name = "block_index",
-    intf_deps = [
-        "//base:strong_types",
-    ],
-    impl_deps = None,
     test_deps = None,
 )
 

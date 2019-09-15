@@ -9,17 +9,17 @@ namespace ir {
 struct CompiledFn;
 
 struct Builder {
-  BlockIndex AddBlock();
+  BasicBlock* AddBlock();
 
   CompiledFn* function() { return ASSERT_NOT_NULL(current_.func_); }
-  BlockIndex& CurrentBlock() { return current_.index_; }
+  BasicBlock*& CurrentBlock() { return current_.block_; }
 
   ICARUS_PRIVATE
   friend struct SetCurrentFunc;
 
   struct State {
     CompiledFn* func_ = nullptr;
-    BlockIndex index_;
+    BasicBlock* block_;
   } current_;
 };
 
@@ -31,7 +31,7 @@ struct SetCurrentFunc : public base::UseWithScope {
 
   ICARUS_PRIVATE
   CompiledFn* old_fn_;
-  BlockIndex old_block_;
+  BasicBlock *old_block_;
 };
 
 }  // namespace ir

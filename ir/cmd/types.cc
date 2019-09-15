@@ -8,7 +8,7 @@ Reg EnumerationImpl(
     Module *mod, absl::Span<std::string_view const> names,
     absl::flat_hash_map<uint64_t, RegOr<EnumerationCmd::enum_t>> const
         &specified_values) {
-  auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
+  auto &blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append_index<EnumerationCmd>();
   blk.cmd_buffer_.append(IsEnumNotFlags);
   blk.cmd_buffer_.append<uint16_t>(names.size());
@@ -16,7 +16,7 @@ Reg EnumerationImpl(
   blk.cmd_buffer_.append(mod);
   for (auto name : names) { blk.cmd_buffer_.append(name); }
 
-  for (auto const &[index, val] : specified_values) {
+  for (auto const & [ index, val ] : specified_values) {
     // TODO these could be packed much more efficiently.
     blk.cmd_buffer_.append(index);
     blk.cmd_buffer_.append<bool>(val.is_reg());
@@ -44,9 +44,9 @@ Reg Flags(::Module *mod, absl::Span<std::string_view const> names,
   return EnumerationImpl<false>(mod, names, specified_values);
 }
 
-std::optional<BlockIndex> EnumerationCmd::Execute(
-    base::untyped_buffer::iterator *iter, std::vector<Addr> const &ret_slots,
-    backend::ExecContext *ctx) {
+BasicBlock const *EnumerationCmd::Execute(base::untyped_buffer::const_iterator *iter,
+                                          std::vector<Addr> const &ret_slots,
+                                          backend::ExecContext *ctx) {
   bool is_enum_not_flags   = iter->read<bool>();
   uint16_t num_enumerators = iter->read<uint16_t>();
   uint16_t num_specified   = iter->read<uint16_t>();
@@ -71,7 +71,7 @@ std::optional<BlockIndex> EnumerationCmd::Execute(
   absl::BitGen gen;
 
   if (is_enum_not_flags) {
-    for (auto& [name, maybe_val] : enumerators) {
+    for (auto & [ name, maybe_val ] : enumerators) {
       DEBUG_LOG("enum")(name, " => ", maybe_val);
 
       if (!maybe_val.has_value()) {
@@ -87,14 +87,14 @@ std::optional<BlockIndex> EnumerationCmd::Execute(
     }
     absl::flat_hash_map<std::string, EnumVal> mapping;
 
-    for (auto [name, maybe_val] : enumerators) {
+    for (auto[name, maybe_val] : enumerators) {
       ASSERT(maybe_val.has_value() == true);
       mapping.emplace(std::string(name), EnumVal{maybe_val.value()});
     }
     DEBUG_LOG("enum")(vals, ", ", mapping);
     result = new type::Enum(mod, std::move(mapping));
   } else {
-    for (auto& [name, maybe_val] : enumerators) {
+    for (auto & [ name, maybe_val ] : enumerators) {
       DEBUG_LOG("flags")(name, " => ", maybe_val);
 
       if (!maybe_val.has_value()) {
@@ -112,7 +112,7 @@ std::optional<BlockIndex> EnumerationCmd::Execute(
 
     absl::flat_hash_map<std::string, FlagsVal> mapping;
 
-    for (auto [name, maybe_val] : enumerators) {
+    for (auto[name, maybe_val] : enumerators) {
       ASSERT(maybe_val.has_value() == true);
       mapping.emplace(std::string(name),
                       FlagsVal{enum_t{1} << maybe_val.value()});
@@ -124,7 +124,7 @@ std::optional<BlockIndex> EnumerationCmd::Execute(
 
   auto &frame = ctx->call_stack.top();
   frame.regs_.set(GetOffset(frame.fn_, iter->read<Reg>()), result);
-  return std::nullopt;
+  return nullptr;
 }
 
 std::string EnumerationCmd::DebugString(
@@ -189,9 +189,9 @@ void EnumerationCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
   iter->read<Reg>();
 }
 
-std::optional<BlockIndex> StructCmd::Execute(
-    base::untyped_buffer::iterator *iter, std::vector<Addr> const &ret_slots,
-    backend::ExecContext *ctx) {
+BasicBlock const *StructCmd::Execute(base::untyped_buffer::const_iterator *iter,
+                                     std::vector<Addr> const &ret_slots,
+                                     backend::ExecContext *ctx) {
   std::vector<std::tuple<std::string_view, type::Type const *>> fields;
   auto num = iter->read<uint16_t>();
   fields.reserve(num);
@@ -202,14 +202,14 @@ std::optional<BlockIndex> StructCmd::Execute(
   }
 
   size_t index = 0;
-  internal::Deserialize<uint16_t, type::Type const *>(iter, [&](Reg &reg) {
+  internal::Deserialize<uint16_t, type::Type const *>(iter, [&](Reg reg) {
     std::get<1>(fields[index++]) = ctx->resolve<type::Type const *>(reg);
   });
 
   auto &frame = ctx->call_stack.top();
   frame.regs_.set(GetOffset(frame.fn_, iter->read<Reg>()),
                   new type::Struct(scope, mod, fields));
-  return std::nullopt;
+  return nullptr;
 }
 
 std::string StructCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
@@ -219,7 +219,7 @@ std::string StructCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
 void StructCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
                                   Inliner const &inliner) {
   auto num = iter->read<uint16_t>();
-  iter->read<core::Scope*>();
+  iter->read<core::Scope *>();
   iter->read<::Module *>();
   for (uint16_t i = 0; i < num; ++i) { iter->read<std::string_view>(); }
   internal::Deserialize<uint16_t, type::Type const *>(
@@ -230,7 +230,7 @@ void StructCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
 Reg Struct(core::Scope const *scope, ::Module *mod,
            std::vector<std::tuple<std::string_view, RegOr<type::Type const *>>>
                fields) {
-  auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
+  auto &blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append_index<StructCmd>();
   blk.cmd_buffer_.append<uint16_t>(fields.size());
   blk.cmd_buffer_.append(scope);
@@ -238,13 +238,13 @@ Reg Struct(core::Scope const *scope, ::Module *mod,
   // TODO determine if order randomization makes sense here. Or perhaps you want
   // to do it later? Or not at all?
   std::shuffle(fields.begin(), fields.end(), absl::BitGen{});
-  for (auto &[name, t] : fields) { blk.cmd_buffer_.append(name); }
+  for (auto & [ name, t ] : fields) { blk.cmd_buffer_.append(name); }
 
   // TODO performance: Serialize requires an absl::Span here, but we'd love to
   // not copy out the elements of `fields`.
   std::vector<RegOr<type::Type const *>> types;
   types.reserve(fields.size());
-  for (auto &[name, t] : fields) { types.push_back(t); }
+  for (auto & [ name, t ] : fields) { types.push_back(t); }
   internal::Serialize<uint16_t>(&blk.cmd_buffer_, absl::MakeConstSpan(types));
 
   Reg result = MakeResult<type::Type const *>();
@@ -254,15 +254,14 @@ Reg Struct(core::Scope const *scope, ::Module *mod,
   return result;
 }
 
-std::optional<BlockIndex> OpaqueTypeCmd::Execute(
-    base::untyped_buffer::iterator *iter, std::vector<Addr> const &ret_slots,
-    backend::ExecContext *ctx) {
+BasicBlock const *OpaqueTypeCmd::Execute(base::untyped_buffer::const_iterator *iter,
+                                         std::vector<Addr> const &ret_slots,
+                                         backend::ExecContext *ctx) {
   auto &frame = ctx->call_stack.top();
   auto *mod   = iter->read<::Module const *>();
   frame.regs_.set(GetOffset(frame.fn_, iter->read<Reg>()),
                   new type::Opaque(mod));
-  return std::nullopt;
-
+  return nullptr;
 }
 
 std::string OpaqueTypeCmd::DebugString(
@@ -276,9 +275,9 @@ void OpaqueTypeCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
   inliner.Inline(&iter->read<Reg>());
 }
 
-std::optional<BlockIndex> ArrayCmd::Execute(
-    base::untyped_buffer::iterator *iter, std::vector<Addr> const &ret_slots,
-    backend::ExecContext *ctx) {
+BasicBlock const *ArrayCmd::Execute(base::untyped_buffer::const_iterator *iter,
+                                    std::vector<Addr> const &ret_slots,
+                                    backend::ExecContext *ctx) {
   auto &frame    = ctx->call_stack.top();
   auto ctrl_bits = iter->read<control_bits>();
   length_t len   = ctrl_bits.length_is_reg
@@ -291,7 +290,7 @@ std::optional<BlockIndex> ArrayCmd::Execute(
 
   frame.regs_.set(GetOffset(frame.fn_, iter->read<Reg>()),
                   type::Arr(len, data_type));
-  return std::nullopt;
+  return nullptr;
 }
 
 std::string ArrayCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
@@ -338,7 +337,7 @@ RegOr<type::Function const *> Arrow(
     return type::Func(std::move(in_vec), std::move(out_vec));
   }
 
-  auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
+  auto &blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append_index<ArrowCmd>();
   internal::Serialize<uint16_t>(&blk.cmd_buffer_, ins);
   internal::Serialize<uint16_t>(&blk.cmd_buffer_, outs);
@@ -349,7 +348,7 @@ RegOr<type::Function const *> Arrow(
 }
 
 Reg OpaqueType(::Module const *mod) {
-  auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
+  auto &blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append_index<OpaqueTypeCmd>();
   blk.cmd_buffer_.append(mod);
   Reg result = MakeResult<type::Type const *>();
@@ -362,7 +361,8 @@ RegOr<type::Type const *> Array(RegOr<ArrayCmd::length_t> len,
   if (!len.is_reg() && data_type.is_reg()) {
     return type::Arr(len.value(), data_type.value());
   }
-  auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
+
+  auto &blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append_index<ArrayCmd>();
   blk.cmd_buffer_.append(
       ArrayCmd::MakeControlBits(len.is_reg(), data_type.is_reg()));

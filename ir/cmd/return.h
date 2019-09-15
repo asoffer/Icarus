@@ -31,9 +31,9 @@ struct ReturnCmd {
     return result;
   };
 
-  static std::optional<BlockIndex> Execute(base::untyped_buffer::iterator* iter,
-                                           std::vector<Addr> const& ret_slots,
-                                           backend::ExecContext* ctx) {
+  static BasicBlock const* Execute(base::untyped_buffer::const_iterator* iter,
+                                   std::vector<Addr> const& ret_slots,
+                                   backend::ExecContext* ctx) {
     auto ctrl     = iter->read<control_bits>();
     uint16_t n    = iter->read<uint16_t>();
     Addr ret_slot = ret_slots[n];
@@ -42,7 +42,7 @@ struct ReturnCmd {
       auto reg    = iter->read<Reg>();
       auto& frame = ctx->call_stack.top();
       frame.regs_.set(GetOffset(frame.fn_, reg), ret_slot);
-      return std::nullopt;
+      return nullptr;
     }
     DEBUG_LOG("return")("return slot #", n, " = ", ret_slot);
 
@@ -53,7 +53,7 @@ struct ReturnCmd {
       DEBUG_LOG("return")("val = ", val);
       *ASSERT_NOT_NULL(static_cast<T*>(ret_slot.as_heap)) = val;
     });
-    return std::nullopt;
+    return nullptr;
   }
 
   static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
@@ -106,7 +106,7 @@ struct ReturnCmd {
 template <typename T>
 void SetRet(uint16_t n, T val) {
   if constexpr (ir::IsRegOr<T>::value) {
-    auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
+    auto &blk = *GetBuilder().CurrentBlock();
     blk.cmd_buffer_.append_index<ReturnCmd>();
     blk.cmd_buffer_.append(
         ReturnCmd::MakeControlBits<typename T::type>(val.is_reg(), false));
@@ -140,7 +140,7 @@ inline void SetRet(uint16_t n, type::Typed<Results> const& r, Context* ctx) {
 }
 
 inline base::Tagged<Addr, Reg> GetRet(uint16_t n, type::Type const* t) {
-  auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
+  auto &blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append(ReturnCmd::MakeControlBits<int>(false, true));
   blk.cmd_buffer_.append(n);
   Reg r = MakeResult(t);

@@ -31,7 +31,7 @@ CompiledFn::CompiledFn(
 
   ASSERT(params_.size() ==
          fn_type->input.size());  // TODO is this still true with variadics?
-  blocks_.emplace_back(this);
+  blocks_.push_back(std::make_unique<BasicBlock>(this));
 }
 
 Reg CompiledFn::Reserve(core::Bytes b, core::Alignment a) {
@@ -61,7 +61,7 @@ Reg CompiledFn::Alloca(type::Type const *t) {
 std::ostream &operator<<(std::ostream &os, ir::CompiledFn const &f) {
   os << "\n" << f.name() << ": " << f.type_->to_string();
   for (size_t i = 0; i < f.blocks_.size(); ++i) {
-    os << "\n block #" << i << "\n" << f.blocks_[i];
+    os << "\n block #" << i << "\n" << *f.blocks_[i];
   }
   return os;
 }

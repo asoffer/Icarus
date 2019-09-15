@@ -36,8 +36,7 @@ void Inliner::MergeAllocations(CompiledFn *fn,
 
 std::pair<Results, bool> CallInline(
     CompiledFn *f, Results const &arguments,
-    absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> const
-        &block_map) {
+    absl::flat_hash_map<BlockDef const *, BasicBlock *> const &block_map) {
   bool is_jump = false;  // TODO remove this
   std::vector<Results> return_vals;
   return_vals.resize(f->type_->output.size());
@@ -57,24 +56,16 @@ std::pair<Results, bool> CallInline(
     }));
   }
 
-  BlockIndex start(GetBuilder().function()->blocks_.size());
+  size_t inlined_start = GetBuilder().function()->blocks().size();
 
   for (size_t i = 1; i < f->blocks_.size(); ++i) {
-    auto &block = GetBuilder().function()->block(GetBuilder().AddBlock());
-    block       = f->blocks_.at(i);
-    block.cmd_buffer_.UpdateForInlining(inliner);
+    auto *block = GetBuilder().AddBlock();
+    *block       = *std::move(f->blocks_.at(i));
+    block->cmd_buffer_.UpdateForInlining(inliner);
   }
 
-  auto &block = GetBuilder().function()->block(GetBuilder().CurrentBlock());
-
-  UncondJump(start);
+  UncondJump(GetBuilder().function()->blocks()[inlined_start]);
   GetBuilder().CurrentBlock() = inliner.landing();
-
-  size_t i = 0;
-  for (auto const &block : GetBuilder().function()->blocks_) {
-    DEBUG_LOG("str")(i, ": ", block.cmd_buffer_.to_string());
-    i++;
-  }
 
   inliner.MergeAllocations(GetBuilder().function(), f->allocs());
 

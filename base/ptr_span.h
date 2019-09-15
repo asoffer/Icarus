@@ -1,19 +1,25 @@
-#ifndef ICARUS_AST_NODE_SPAN_H
-#define ICARUS_AST_NODE_SPAN_H
+#ifndef ICARUS_BASE_PTR_SPAN_H
+#define ICARUS_BASE_PTR_SPAN_H
 
-namespace ast {
-// Many AST nodes hold vectors of unique_ptrs to other nodes. We want to provide
-// access to the raw pointers without needing the user to be concerned with the
-// precise ownership model. To do this, we provide the following `NodeSpan`
-// template which is much like absl::Span, but automatically calls `.get()` on
-// each contained element when accessed.
+namespace base {
+
+// PtrSpan<T>:
+// This is a utility that allows iterating over contiguous ranges of
+// `std::unique_ptr<T>`s, giving access to the underlying `T` without needing
+// the user to be concerned with the precise ownership model.  This template
+// is much like absl::Span, but automatically calls `.get()` on each contained
+// element when accessed.
 //
 // Example usage:
-//  void FrobnicateAllNodes(NodeSpan<Expression const> nodes) {
-//    for (Expression const *node : nodes) { Frobnicate(node); }
+//  void FrobnicateAllThings(base::PtrSpan<Things const> things) {
+//    for (Thing const *thing : things) { Frobnicate(thing); }
 //  }
+//
+//  std::vector<std::unique_ptr<Things>> v = GetThings();
+//  FrobnicateAllThings(v);
+//
 template <typename T>
-struct NodeSpan {
+struct PtrSpan {
  private:
   using pointer_type =
       std::conditional_t<std::is_const_v<T>,
@@ -33,7 +39,7 @@ struct NodeSpan {
     friend bool operator!=(iterator lhs, iterator rhs) { return !(lhs == rhs); }
 
    private:
-    friend struct NodeSpan<T>;
+    friend struct PtrSpan<T>;
     explicit iterator(pointer_type *ptr) : ptr_(ptr) {}
     pointer_type *ptr_ = nullptr;
   };
@@ -53,18 +59,19 @@ struct NodeSpan {
   T *operator[](size_t n) const { return ptr_[n].get(); }
 
   template <typename Container>
-  NodeSpan(Container &&c)
+  PtrSpan(Container &&c)
       : ptr_(c.empty() ? nullptr : &c[0]), size_(c.size()) {}
   template <typename Iter>
-  explicit NodeSpan(Iter b, Iter e)
+  explicit PtrSpan(Iter b, Iter e)
       : ptr_(std::addressof(*b)),
         size_(std::addressof(*e) - std::addressof(*b)) {}
 
  private:
   pointer_type *ptr_ = nullptr;
   size_t size_       = 0;
+
 };
 
-}  // namespace ast
+}  // namespace base
 
-#endif  // ICARUS_AST_NODE_SPAN_H
+#endif  // ICARUS_BASE_PTR_SPAN_H

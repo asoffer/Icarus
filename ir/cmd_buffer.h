@@ -12,6 +12,7 @@ struct ExecContext;
 }  // namespace backend
 
 namespace ir {
+struct BasicBlock;
 
 struct CmdBuffer {
  public:
@@ -39,8 +40,8 @@ struct CmdBuffer {
     buf_.set(offset, t);
   }
 
-  BlockIndex Execute(std::vector<ir::Addr> const& ret_slots,
-                     backend::ExecContext* ctx);
+  BasicBlock const* Execute(std::vector<ir::Addr> const& ret_slots,
+                            backend::ExecContext* ctx) const;
 
   void UpdateForInlining(Inliner const& inliner);
 

@@ -111,7 +111,7 @@ static void MakeAllDestructions(EmitIr *visitor,
 }
 
 static void EmitIrForStatements(EmitIr *visitor,
-                                ast::NodeSpan<ast::Node const> span,
+                                base::PtrSpan<ast::Node const> span,
                                 Context *ctx) {
   std::vector<type::Typed<ir::Reg>> to_destroy;
   auto *old_tmp_ptr = std::exchange(ctx->temporaries_to_destroy_, &to_destroy);
@@ -526,8 +526,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
             lhs_lval);
         return ir::Results{};
       }
-      auto land_block = builder().AddBlock();
-      auto more_block = builder().AddBlock();
+      auto *land_block = builder().AddBlock();
+      auto *more_block = builder().AddBlock();
 
       auto lhs_val       = node->lhs()->EmitIr(this, ctx).get<bool>(0);
       auto lhs_end_block = builder().CurrentBlock();
@@ -554,8 +554,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
         return ir::Results{};
       }
 
-      auto land_block = builder().AddBlock();
-      auto more_block = builder().AddBlock();
+      auto *land_block = builder().AddBlock();
+      auto *more_block = builder().AddBlock();
 
       auto lhs_val       = node->lhs()->EmitIr(this, ctx).get<bool>(0);
       auto lhs_end_block = builder().CurrentBlock();
@@ -822,12 +822,12 @@ ir::Results ArrayCompare(type::Array const *lhs_type, ir::Results const &lhs_ir,
     ICARUS_SCOPE(ir::SetCurrentFunc(fn)) {
       visitor->builder().CurrentBlock() = fn->entry();
 
-      auto equal_len_block = visitor->builder().AddBlock();
-      auto true_block      = visitor->builder().AddBlock();
-      auto false_block     = visitor->builder().AddBlock();
-      auto phi_block       = visitor->builder().AddBlock();
-      auto body_block      = visitor->builder().AddBlock();
-      auto incr_block      = visitor->builder().AddBlock();
+      auto *equal_len_block = visitor->builder().AddBlock();
+      auto *true_block      = visitor->builder().AddBlock();
+      auto *false_block     = visitor->builder().AddBlock();
+      auto *phi_block       = visitor->builder().AddBlock();
+      auto *body_block      = visitor->builder().AddBlock();
+      auto *incr_block      = visitor->builder().AddBlock();
 
       ir::CondJump(ir::Eq(lhs_type->len, rhs_type->len), equal_len_block,
                    false_block);
@@ -1024,15 +1024,15 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
     NOT_YET();
   } else if (node->ops()[0] == frontend::Operator::And ||
              node->ops()[0] == frontend::Operator::Or) {
-    auto land_block = builder().AddBlock();
+    auto *land_block = builder().AddBlock();
 
-    std::vector<ir::BlockIndex> phi_blocks;
+    std::vector<ir::BasicBlock *> phi_blocks;
     std::vector<ir::RegOr<bool>> phi_results;
     bool is_or = (node->ops()[0] == frontend::Operator::Or);
     for (size_t i = 0; i + 1 < node->exprs().size(); ++i) {
       auto val = node->exprs()[i]->EmitIr(this, ctx).get<bool>(0);
 
-      auto next_block = builder().AddBlock();
+      auto *next_block = builder().AddBlock();
       ir::CondJump(val, is_or ? land_block : next_block,
                    is_or ? next_block : land_block);
       phi_blocks.push_back(builder().CurrentBlock());
@@ -1056,17 +1056,17 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
       return ir::Results{EmitChainOpPair(node, 0, lhs_ir, rhs_ir, this, ctx)};
 
     } else {
-      std::vector<ir::BlockIndex> phi_blocks;
+      std::vector<ir::BasicBlock *> phi_blocks;
       std::vector<ir::RegOr<bool>> phi_values;
       auto lhs_ir     = node->exprs().front()->EmitIr(this, ctx);
-      auto land_block = builder().AddBlock();
+      auto *land_block = builder().AddBlock();
       for (size_t i = 0; i + 1 < node->ops().size(); ++i) {
         auto rhs_ir = node->exprs()[i + 1]->EmitIr(this, ctx);
         auto cmp    = EmitChainOpPair(node, i, lhs_ir, rhs_ir, this, ctx);
 
         phi_blocks.push_back(builder().CurrentBlock());
         phi_values.push_back(false);
-        auto next_block = builder().AddBlock();
+        auto *next_block = builder().AddBlock();
         ir::CondJump(cmp, next_block, land_block);
         builder().CurrentBlock() = next_block;
         lhs_ir                      = std::move(rhs_ir);
@@ -1319,7 +1319,7 @@ ir::Results EmitIr::Val(ast::JumpHandler const *node, Context *ctx) {
 }
 
 static std::vector<std::pair<ast::Expression const *, ir::Results>>
-EmitIrWithExpand(EmitIr *v, ast::NodeSpan<ast::Expression const> exprs,
+EmitIrWithExpand(EmitIr *v, base::PtrSpan<ast::Expression const> exprs,
                  Context *ctx) {
   // TODO expansion
   std::vector<std::pair<ast::Expression const *, ir::Results>> results;
@@ -1444,28 +1444,28 @@ struct LocalScopeInterpretation {
                       std::forward_as_tuple(&block, nullptr));
     }
 
-    block_indices_.emplace(ir::BlockDef::Start(), bldr.AddBlock());
-    block_indices_.emplace(ir::BlockDef::Exit(), bldr.AddBlock());
+    block_ptrs_.emplace(ir::BlockDef::Start(), bldr.AddBlock());
+    block_ptrs_.emplace(ir::BlockDef::Exit(), bldr.AddBlock());
 
     for (auto const &block_node : node->blocks()) {
       auto &block        = blocks_.at(block_node.name());
       std::get<1>(block) = &block_node;
-      block_indices_.emplace(std::get<0>(block), bldr.AddBlock());
+      block_ptrs_.emplace(std::get<0>(block), bldr.AddBlock());
     }
   }
 
-  ir::BlockIndex init_block() const {
-    return block_indices_.at(ir::BlockDef::Start());
+  ir::BasicBlock *init_block() const {
+    return block_ptrs_.at(ir::BlockDef::Start());
   }
-  ir::BlockIndex land_block() const {
-    return block_indices_.at(ir::BlockDef::Exit());
+  ir::BasicBlock *land_block() const {
+    return block_ptrs_.at(ir::BlockDef::Exit());
   }
 
   ast::ScopeNode const *node_;
   absl::flat_hash_map<std::string_view,
                       std::tuple<ir::BlockDef const *, ast::BlockNode const *>>
       blocks_;
-  absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> block_indices_;
+  absl::flat_hash_map<ir::BlockDef const *, ir::BasicBlock*> block_ptrs_;
 };
 
 ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) {
@@ -1482,12 +1482,12 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) {
   LocalScopeInterpretation interp(builder(), scope_def->blocks_, node);
   DEBUG_LOG("ScopeNode")("          ... done");
 
-  auto init_block = interp.init_block();
-  auto land_block = interp.land_block();
+  auto *init_block = interp.init_block();
+  auto *land_block = interp.land_block();
 
   // TODO not sure this part is necessary
   auto *old_block_map = ctx->block_map;
-  ctx->block_map      = &interp.block_indices_;
+  ctx->block_map      = &interp.block_ptrs_;
   base::defer d([&] { ctx->block_map = old_block_map; });
 
   ir::UncondJump(init_block);
@@ -1599,9 +1599,9 @@ ir::Results EmitIr::Val(ast::StructType const *node, Context *ctx) {
 }
 
 ir::Results EmitIr::Val(ast::Switch const *node, Context *ctx) {
-  absl::flat_hash_map<ir::BlockIndex, ir::Results> phi_args;
+  absl::flat_hash_map<ir::BasicBlock *, ir::Results> phi_args;
 
-  auto land_block = builder().AddBlock();
+  auto *land_block = builder().AddBlock();
   auto *t         = ctx->type_of(node);
   // TODO this is not precisely accurate if you have regular void.
   bool all_paths_jump = (t == type::Void());
@@ -1619,7 +1619,7 @@ ir::Results EmitIr::Val(ast::Switch const *node, Context *ctx) {
 
   for (size_t i = 0; i + 1 < node->cases_.size(); ++i) {
     auto &[body, match_cond] = node->cases_[i];
-    auto expr_block          = builder().AddBlock();
+    auto *expr_block         = builder().AddBlock();
 
     ir::Results match_val = match_cond->EmitIr(this, ctx);
     ir::RegOr<bool> cond  = node->expr_

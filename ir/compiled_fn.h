@@ -6,6 +6,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "base/move_func.h"
+#include "base/ptr_span.h"
 #include "base/scope.h"
 #include "core/fn_params.h"
 #include "ir/basic_block.h"
@@ -27,49 +28,29 @@ struct Module;
 namespace ir {
 struct BlockDef;
 
-struct CmdIndex {
-  BlockIndex block;
-  int32_t cmd;
-};
-
-inline bool operator==(CmdIndex lhs, CmdIndex rhs) {
-  return lhs.block == rhs.block && lhs.cmd == rhs.cmd;
-}
-
-inline bool operator<(CmdIndex lhs, CmdIndex rhs) {
-  if (lhs.block.value < rhs.block.value) return true;
-  if (lhs.block.value > rhs.block.value) return false;
-  return lhs.cmd < rhs.cmd;
-}
-
 struct CompiledFn {
 
   CompiledFn(Module *mod, type::Function const *fn_type,
              core::FnParams<type::Typed<ast::Expression const *>> params);
 
   Inliner inliner() {
-    BlockIndex index;
-    index.value = static_cast<decltype(index.value)>(blocks_.size());
-    blocks_.emplace_back(this);
-    return Inliner(compiler_reg_to_offset_.size(), blocks_.size() - 1, index);
+    BasicBlock *block = blocks().back();
+    blocks_.push_back(std::make_unique<BasicBlock>(this));
+    return Inliner(compiler_reg_to_offset_.size(), blocks_.size() - 1, block);
   }
 
   std::string name() const;
 
-  BasicBlock const &block(BlockIndex index) const {
-    return blocks_.at(index.value);
-  }
-  BasicBlock &block(BlockIndex index) {
-    return const_cast<BasicBlock &>(
-        static_cast<CompiledFn const *>(this)->block(index));
-  }
+  base::PtrSpan<BasicBlock const> blocks() const { return blocks_; }
+  base::PtrSpan<BasicBlock> blocks() { return blocks_; }
 
   Reg Reserve(type::Type const *t);
   Reg Reserve(core::Bytes b, core::Alignment a);
 
   Reg Alloca(type::Type const* t);
 
-  BlockIndex entry() const { return BlockIndex(0); }
+  BasicBlock const *entry() const { return blocks()[0]; }
+  BasicBlock *entry() { return blocks()[0]; }
 
   StackFrameAllocations const &allocs() { return allocs_; }
 
@@ -77,14 +58,12 @@ struct CompiledFn {
   core::FnParams<type::Typed<ast::Expression const *>> params_;
 
   int32_t num_regs_ = 0;
-  std::vector<BasicBlock> blocks_;
+  std::vector<std::unique_ptr<BasicBlock>> blocks_;
   base::move_func<void()> *work_item = nullptr;
 
   Module *mod_;
 
   core::Bytes reg_size_ = core::Bytes{0};
-
-  absl::flat_hash_map<Reg, CmdIndex> reg_to_cmd_;
 
   // This vector is indexed by Reg and stores the value which is the offset
   // into the base::untyped_buffer holding all registers during compile-time

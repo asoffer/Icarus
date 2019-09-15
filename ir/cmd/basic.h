@@ -54,22 +54,22 @@ using XorFlagsCmd = internal::BinaryCmd<23, std::bit_xor<>, FlagsVal>;
 using AndFlagsCmd = internal::BinaryCmd<24, std::bit_and<>, FlagsVal>;
 using OrFlagsCmd  = internal::BinaryCmd<25, std::bit_or<>, FlagsVal>;
 
-constexpr inline auto Add      = internal::BinaryHandler<AddCmd>{};
-constexpr inline auto Sub      = internal::BinaryHandler<SubCmd>{};
-constexpr inline auto Mul      = internal::BinaryHandler<MulCmd>{};
-constexpr inline auto Div      = internal::BinaryHandler<DivCmd>{};
-constexpr inline auto Mod      = internal::BinaryHandler<ModCmd>{};
-constexpr inline auto Lt       = internal::BinaryHandler<LtCmd>{};
-constexpr inline auto Le       = internal::BinaryHandler<LeCmd>{};
-constexpr inline auto Eq       = internal::BinaryHandler<EqCmd>{};
-constexpr inline auto Ne       = internal::BinaryHandler<NeCmd>{};
-constexpr inline auto Ge       = internal::BinaryHandler<GeCmd>{};
-constexpr inline auto Gt       = internal::BinaryHandler<GtCmd>{};
-constexpr inline auto Neg      = internal::UnaryHandler<NegCmd>{};
-constexpr inline auto Not      = internal::UnaryHandler<NotCmd>{};
-constexpr inline auto XorFlags = internal::BinaryHandler<XorFlagsCmd>{};
-constexpr inline auto AndFlags = internal::BinaryHandler<AndFlagsCmd>{};
-constexpr inline auto OrFlags  = internal::BinaryHandler<OrFlagsCmd>{};
+constexpr auto Add      = internal::BinaryHandler<AddCmd>{};
+constexpr auto Sub      = internal::BinaryHandler<SubCmd>{};
+constexpr auto Mul      = internal::BinaryHandler<MulCmd>{};
+constexpr auto Div      = internal::BinaryHandler<DivCmd>{};
+constexpr auto Mod      = internal::BinaryHandler<ModCmd>{};
+constexpr auto Lt       = internal::BinaryHandler<LtCmd>{};
+constexpr auto Le       = internal::BinaryHandler<LeCmd>{};
+constexpr auto Eq       = internal::BinaryHandler<EqCmd>{};
+constexpr auto Ne       = internal::BinaryHandler<NeCmd>{};
+constexpr auto Ge       = internal::BinaryHandler<GeCmd>{};
+constexpr auto Gt       = internal::BinaryHandler<GtCmd>{};
+constexpr auto Neg      = internal::UnaryHandler<NegCmd>{};
+constexpr auto Not      = internal::UnaryHandler<NotCmd>{};
+constexpr auto XorFlags = internal::BinaryHandler<XorFlagsCmd>{};
+constexpr auto AndFlags = internal::BinaryHandler<AndFlagsCmd>{};
+constexpr auto OrFlags  = internal::BinaryHandler<OrFlagsCmd>{};
 }  // namespace ir
 
 #endif  // ICARUS_IR_CMD_BASIC_H

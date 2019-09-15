@@ -4,8 +4,8 @@
 #include <string_view>
 
 #include "ast/node.h"
-#include "ast/node_span.h"
 #include "base/bag.h"
+#include "base/ptr_span.h"
 #include "type/function.h"
 #include "type/typed_value.h"
 
@@ -28,7 +28,7 @@ struct Overload {
 struct OverloadSet : public base::bag<Overload> {
   OverloadSet() = default;
   OverloadSet(core::Scope *scope, std::string_view id, Context *ctx);
-  OverloadSet(NodeSpan<Declaration const> decls, Context *ctx);
+  OverloadSet(base::PtrSpan<Declaration const> decls, Context *ctx);
 
   void add_adl(std::string_view id, type::Type const *t);
 };

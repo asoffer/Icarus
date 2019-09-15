@@ -14,9 +14,10 @@ type::Function const *GetType(AnyFunc f) {
 }
 
 }  // namespace
-std::optional<BlockIndex> CallCmd::Execute(base::untyped_buffer::iterator *iter,
-                                           std::vector<Addr> const &ret_slots,
-                                           backend::ExecContext *ctx) {
+
+BasicBlock const *CallCmd::Execute(base::untyped_buffer::const_iterator *iter,
+                                   std::vector<Addr> const &ret_slots,
+                                   backend::ExecContext *ctx) {
   bool fn_is_reg                = iter->read<bool>();
   std::vector<bool> is_reg_bits = internal::ReadBits<uint16_t>(iter);
 
@@ -64,7 +65,7 @@ std::optional<BlockIndex> CallCmd::Execute(base::untyped_buffer::iterator *iter,
   }
 
   backend::Execute(f, call_buf, return_slots, ctx);
-  return std::nullopt;
+  return nullptr;
 }
 
 std::string CallCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
@@ -174,14 +175,14 @@ void CallImpl(BasicBlock *blk, RegOr<AnyFunc> const &fn,
 
 void Call(RegOr<AnyFunc> const &fn, type::Function const *f,
           absl::Span<Results const> arguments) {
-  auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
+  auto &blk = *GetBuilder().CurrentBlock();
   CallImpl(&blk, fn, f, arguments);
   blk.cmd_buffer_.append<uint16_t>(0);
 }
 
 void Call(RegOr<AnyFunc> const &fn, type::Function const *f,
           absl::Span<Results const> arguments, OutParams outs) {
-  auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
+  auto &blk = *GetBuilder().CurrentBlock();
   CallImpl(&blk, fn, f, arguments);
 
   blk.cmd_buffer_.append<uint16_t>(f->output.size());

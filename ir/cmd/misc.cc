@@ -5,7 +5,7 @@
 namespace ir {
 namespace {
 void MakeSemanticCmd(SemanticCmd::Kind k, type::Type const *t, Reg r) {
-  auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
+  auto &blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append_index<SemanticCmd>();
   blk.cmd_buffer_.append(k);
   blk.cmd_buffer_.append(t);
@@ -14,7 +14,7 @@ void MakeSemanticCmd(SemanticCmd::Kind k, type::Type const *t, Reg r) {
 
 void MakeSemanticCmd(SemanticCmd::Kind k, type::Type const *t, Reg from,
                      RegOr<Addr> to) {
-  auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
+  auto &blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append_index<SemanticCmd>();
   blk.cmd_buffer_.append(k);
   blk.cmd_buffer_.append(to.is_reg());
@@ -24,9 +24,9 @@ void MakeSemanticCmd(SemanticCmd::Kind k, type::Type const *t, Reg from,
 }
 }  // namespace
 
-std::optional<BlockIndex> SemanticCmd::Execute(
-    base::untyped_buffer::iterator *iter, std::vector<Addr> const &ret_slots,
-    backend::ExecContext *ctx) {
+BasicBlock const *SemanticCmd::Execute(
+    base::untyped_buffer::const_iterator *iter,
+    std::vector<Addr> const &ret_slots, backend::ExecContext *ctx) {
   ir::AnyFunc f;
   base::untyped_buffer call_buf(sizeof(ir::Addr));
   switch (iter->read<Kind>()) {
@@ -95,7 +95,7 @@ std::optional<BlockIndex> SemanticCmd::Execute(
   }
 
   backend::Execute(f, call_buf, ret_slots, ctx);
-  return std::nullopt;
+  return nullptr;
 }
 
 std::string SemanticCmd::DebugString(
@@ -185,9 +185,9 @@ void Copy(type::Type const *t, Reg from, RegOr<Addr> to) {
   MakeSemanticCmd(SemanticCmd::Kind::Copy, t, from, to);
 }
 
-std::optional<BlockIndex> LoadSymbolCmd::Execute(
-    base::untyped_buffer::iterator *iter, std::vector<Addr> const &ret_slots,
-    backend::ExecContext *ctx) {
+BasicBlock const *LoadSymbolCmd::Execute(
+    base::untyped_buffer::const_iterator *iter,
+    std::vector<Addr> const &ret_slots, backend::ExecContext *ctx) {
   auto name = iter->read<std::string_view>();
   auto type = iter->read<type::Type const *>();
   auto reg  = iter->read<Reg>();
@@ -204,7 +204,7 @@ std::optional<BlockIndex> LoadSymbolCmd::Execute(
     NOT_YET(type->to_string());
   }
 
-  return std::nullopt;
+  return nullptr;
 }
 
 std::string LoadSymbolCmd::DebugString(
@@ -224,7 +224,7 @@ void LoadSymbolCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
 }
 
 type::Typed<Reg> LoadSymbol(std::string_view name, type::Type const *type) {
-  auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
+  auto &blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append_index<LoadSymbolCmd>();
   blk.cmd_buffer_.append(name);
   blk.cmd_buffer_.append(type);
@@ -237,9 +237,9 @@ type::Typed<Reg> LoadSymbol(std::string_view name, type::Type const *type) {
   return type::Typed<Reg>(result, type);
 }
 
-std::optional<BlockIndex> TypeInfoCmd::Execute(
-    base::untyped_buffer::iterator *iter, std::vector<Addr> const &ret_slots,
-    backend::ExecContext *ctx) {
+BasicBlock const *TypeInfoCmd::Execute(
+    base::untyped_buffer::const_iterator *iter,
+    std::vector<Addr> const &ret_slots, backend::ExecContext *ctx) {
   auto ctrl_bits = iter->read<uint8_t>();
   type::Type const *type =
       (ctrl_bits & 0x01) ? ctx->resolve<type::Type const *>(iter->read<Reg>())
@@ -256,7 +256,7 @@ std::optional<BlockIndex> TypeInfoCmd::Execute(
                     type->bytes(core::Interpretter()));
   }
 
-  return std::nullopt;
+  return nullptr;
 }
 
 std::string TypeInfoCmd::DebugString(
@@ -282,7 +282,7 @@ void TypeInfoCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
 }
 
 base::Tagged<core::Alignment, Reg> Align(RegOr<type::Type const *> r) {
-  auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
+  auto &blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append_index<TypeInfoCmd>();
   blk.cmd_buffer_.append<uint8_t>(r.is_reg() ? 0x01 : 0x00);
 
@@ -293,7 +293,7 @@ base::Tagged<core::Alignment, Reg> Align(RegOr<type::Type const *> r) {
 }
 
 base::Tagged<core::Bytes, Reg> Bytes(RegOr<type::Type const *> r) {
-  auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
+  auto &blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append_index<TypeInfoCmd>();
   blk.cmd_buffer_.append<uint8_t>(0x02 + (r.is_reg() ? 0x01 : 0x00));
   r.apply([&](auto v) { blk.cmd_buffer_.append(v); });
@@ -302,9 +302,9 @@ base::Tagged<core::Bytes, Reg> Bytes(RegOr<type::Type const *> r) {
   return result;
 }
 
-std::optional<BlockIndex> AccessCmd::Execute(
-    base::untyped_buffer::iterator *iter, std::vector<Addr> const &ret_slots,
-    backend::ExecContext *ctx) {
+BasicBlock const *AccessCmd::Execute(base::untyped_buffer::const_iterator *iter,
+                                     std::vector<Addr> const &ret_slots,
+                                     backend::ExecContext *ctx) {
   auto ctrl_bits   = iter->read<control_bits>();
   auto const *type = iter->read<type::Type const *>();
 
@@ -327,7 +327,7 @@ std::optional<BlockIndex> AccessCmd::Execute(
   auto &frame = ctx->call_stack.top();
   frame.regs_.set(GetOffset(frame.fn_, reg), addr + offset);
 
-  return std::nullopt;
+  return nullptr;
 }
 
 std::string AccessCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
@@ -368,7 +368,7 @@ void AccessCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
 namespace {
 Reg MakeAccessCmd(RegOr<Addr> ptr, RegOr<int64_t> inc, type::Type const *t,
                   bool is_array) {
-  auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
+  auto &blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append_index<AccessCmd>();
   blk.cmd_buffer_.append(
       AccessCmd::MakeControlBits(is_array, ptr.is_reg(), inc.is_reg()));
@@ -399,9 +399,9 @@ type::Typed<Reg> Field(RegOr<Addr> r, type::Struct const *t, int64_t n) {
   return type::Typed<Reg>(MakeAccessCmd(r, n, t, false), p);
 }
 
-std::optional<BlockIndex> VariantAccessCmd::Execute(
-    base::untyped_buffer::iterator *iter, std::vector<Addr> const &ret_slots,
-    backend::ExecContext *ctx) {
+BasicBlock const *VariantAccessCmd::Execute(
+    base::untyped_buffer::const_iterator *iter,
+    std::vector<Addr> const &ret_slots, backend::ExecContext *ctx) {
   auto &frame  = ctx->call_stack.top();
   bool get_val = iter->read<bool>();
   bool is_reg  = iter->read<bool>();
@@ -423,7 +423,7 @@ std::optional<BlockIndex> VariantAccessCmd::Execute(
   Reg reg = iter->read<Reg>();
   DEBUG_LOG("variant")(reg);
   frame.regs_.set(GetOffset(frame.fn_, reg), addr);
-  return std::nullopt;
+  return nullptr;
 }
 
 std::string VariantAccessCmd::DebugString(
@@ -461,7 +461,7 @@ void VariantAccessCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
 
 namespace {
 Reg MakeVariantAccessCmd(RegOr<Addr> const &r, type::Variant const *v) {
-  auto &blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
+  auto &blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append_index<VariantAccessCmd>();
   bool get_val = (v != nullptr);
   blk.cmd_buffer_.append(get_val);

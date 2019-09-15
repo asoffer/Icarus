@@ -20,8 +20,8 @@ cc_lib_target(
     intf_deps = [
         ":expression",
         ":node",
-        ":node_span",
         "//base:graph",
+        "//base:ptr_span",
         "//core:builtin",
         "//core:fn_args",
         "//core:fn_params",
@@ -51,8 +51,6 @@ cc_lib_target(
     ],
 )
 
-cc_lib_target(name = "node_span", intf_deps = [], impl_deps = None, test_deps = None)
-
 cc_lib_target(
     name = "dispatch_table",
     cfgs = ["match", "compile"],
@@ -60,7 +58,7 @@ cc_lib_target(
         ":overload_set",
         "//core:fn_args",
         "//base:expected",
-        "//ir:block_index",
+        "//ir:basic_block",
         "//ir:block",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
@@ -98,8 +96,8 @@ cc_lib_target(
     name = "overload_set",
     cfgs = ["match", "compile"],
     intf_deps = [
-        ":node_span",
         "//base:bag",
+        "//base:ptr_span",
         "//type:typed_value",
         "//type:function",
     ],

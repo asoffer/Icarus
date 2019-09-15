@@ -14,16 +14,16 @@ namespace ir {
 struct CastCmd {
   constexpr static cmd_index_t index = 26;
 
-  static std::optional<BlockIndex> Execute(base::untyped_buffer::iterator* iter,
-                                           std::vector<Addr> const& ret_slots,
-                                           backend::ExecContext* ctx) {
+  static BasicBlock const* Execute(base::untyped_buffer::const_iterator* iter,
+                                   std::vector<Addr> const& ret_slots,
+                                   backend::ExecContext* ctx) {
     auto to_type   = iter->read<uint8_t>();
     auto from_type = iter->read<uint8_t>();
     auto& frame = ctx->call_stack.top();
     PrimitiveDispatch(from_type, [&](auto from_tag) {
       using FromType = typename std::decay_t<decltype(from_tag)>::type;
-      auto val       = ctx->resolve<FromType>(iter->read<Reg>());
-      auto offset    = GetOffset(frame.fn_, iter->read<Reg>());
+      [[maybe_unused]] auto val    = ctx->resolve<FromType>(iter->read<Reg>());
+      [[maybe_unused]] auto offset = GetOffset(frame.fn_, iter->read<Reg>());
       if constexpr (std::is_integral_v<FromType>) {
         switch (to_type) {
           case PrimitiveIndex<int8_t>():
@@ -107,7 +107,7 @@ struct CastCmd {
       }
     });
 
-    return std::nullopt;
+    return nullptr;
   }
 
   static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
@@ -126,7 +126,7 @@ struct CastCmd {
 template <typename ToType, typename FromType>
 RegOr<ToType> Cast(RegOr<FromType> r) {
   if (r.is_reg()) {
-    auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
+    auto& blk = *GetBuilder().CurrentBlock();
     blk.cmd_buffer_.append_index<CastCmd>();
     blk.cmd_buffer_.append(PrimitiveIndex<ToType>());
     blk.cmd_buffer_.append(PrimitiveIndex<FromType>());

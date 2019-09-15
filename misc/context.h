@@ -78,7 +78,7 @@ struct Context {
   std::vector<std::vector<YieldResult>> yields_stack_;
   bool more_stmts_allowed_ = true;
 
-  absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> *block_map;
+  absl::flat_hash_map<ir::BlockDef const *, ir::BasicBlock *> *block_map;
 
   // Temporaries need to be destroyed at the end of each statement.
   // This is a pointer to a buffer where temporary allocations can register

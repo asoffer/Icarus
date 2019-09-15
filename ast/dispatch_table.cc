@@ -556,7 +556,7 @@ static ir::RegOr<bool> EmitVariantMatch(ir::Builder &bldr, ir::Reg needle,
     // other.
     auto landing = bldr.AddBlock();
 
-    std::vector<ir::BlockIndex> phi_blocks;
+    std::vector<ir::BasicBlock *> phi_blocks;
     std::vector<ir::RegOr<bool>> phi_results;
     for (type::Type const *v : haystack_var->variants_) {
       phi_blocks.push_back(bldr.CurrentBlock());
@@ -580,7 +580,7 @@ static ir::RegOr<bool> EmitVariantMatch(ir::Builder &bldr, ir::Reg needle,
   }
 }
 
-static ir::BlockIndex EmitDispatchTest(
+static ir::BasicBlock *EmitDispatchTest(
     ir::Builder &bldr,
     core::FnParams<type::Typed<ast::Expression const *>> const &params,
     core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
@@ -610,8 +610,10 @@ static bool EmitOneCall(
     core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
     std::vector<type::Type const *> const &return_types,
     std::vector<std::variant<
-        ir::Reg, absl::flat_hash_map<ir::BlockIndex, ir::Results> *>> *outputs,
-    absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> const &block_map,
+        ir::Reg, absl::flat_hash_map<ir::BasicBlock *, ir::Results> *>>
+        *outputs,
+    absl::flat_hash_map<ir::BlockDef const *, ir::BasicBlock *> const
+        &block_map,
     ir::Results *inline_results, Context *ctx) {
   // TODO look for matches
   ir::RegOr<ir::AnyFunc> fn = std::visit(
@@ -730,7 +732,8 @@ template <bool Inline>
 static ir::Results EmitFnCall(
     ir::Builder &bldr, DispatchTable const *table,
     core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
-    absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> const &block_map,
+    absl::flat_hash_map<ir::BlockDef const *, ir::BasicBlock *> const
+        &block_map,
     Context *ctx) {
   ASSERT(table->bindings_.size() != 0u);
 
@@ -739,7 +742,7 @@ static ir::Results EmitFnCall(
   // space for it and pass in an output pointer.
   size_t num_regs = absl::c_count_if(
       table->return_types_, [](type::Type const *t) { return !t->is_big(); });
-  absl::flat_hash_map<ir::BlockIndex, ir::Results> result_phi_args[num_regs];
+  absl::flat_hash_map<ir::BasicBlock *, ir::Results> result_phi_args[num_regs];
 
   // The vector of registers for all the outputs aggregated from all the
   // possible functions in the dispatch table.
@@ -747,8 +750,8 @@ static ir::Results EmitFnCall(
   // If the output is too big to fit in a register, the register is the address
   // of a temporarily stack-allocated slot for the return value. Otherwise,
   // this is the register corresponding to the output phi-node.
-  std::vector<
-      std::variant<ir::Reg, absl::flat_hash_map<ir::BlockIndex, ir::Results> *>>
+  std::vector<std::variant<
+      ir::Reg, absl::flat_hash_map<ir::BasicBlock *, ir::Results> *>>
       outputs;
   outputs.reserve(table->return_types_.size());
 
@@ -811,7 +814,8 @@ static ir::Results EmitFnCall(
 
 ir::Results DispatchTable::EmitInlineCall(
     core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
-    absl::flat_hash_map<ir::BlockDef const *, ir::BlockIndex> const &block_map,
+    absl::flat_hash_map<ir::BlockDef const *, ir::BasicBlock *> const
+        &block_map,
     Context *ctx) const {
   return EmitFnCall<true>(ir::GetBuilder(), this, args, block_map, ctx);
 }

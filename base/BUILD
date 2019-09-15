@@ -84,3 +84,4 @@ cc_lib_target(
     impl_deps = None,
     test_deps = None)
 
+cc_lib_target(name = "ptr_span", intf_deps = [], impl_deps = None, test_deps = None)

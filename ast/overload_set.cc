@@ -2,7 +2,7 @@
 
 #include "absl/container/flat_hash_set.h"
 #include "ast/ast.h"
-#include "ast/node_span.h"
+#include "base/ptr_span.h"
 #include "core/scope.h"
 #include "misc/context.h"
 
@@ -24,7 +24,7 @@ static void EmplaceDecls(OverloadSet *os, DeclSpan &&decls, Context *ctx) {
   }
 }
 
-OverloadSet::OverloadSet(NodeSpan<Declaration const> decls, Context *ctx) {
+OverloadSet::OverloadSet(base::PtrSpan<Declaration const> decls, Context *ctx) {
   EmplaceDecls(this, decls, ctx);
 }
 

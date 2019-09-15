@@ -27,9 +27,9 @@ struct LoadCmd {
     return result;
   }
 
-  static std::optional<BlockIndex> Execute(base::untyped_buffer::iterator* iter,
-                                           std::vector<Addr> const& ret_slots,
-                                           backend::ExecContext* ctx) {
+  static BasicBlock const* Execute(base::untyped_buffer::const_iterator* iter,
+                                   std::vector<Addr> const& ret_slots,
+                                   backend::ExecContext* ctx) {
     auto& frame = ctx->call_stack.top();
     auto ctrl   = iter->read<control_bits>();
     auto addr =
@@ -50,7 +50,7 @@ struct LoadCmd {
                           *static_cast<type*>(addr.as_heap));
       }
     });
-    return std::nullopt;
+    return nullptr;
   }
 
   static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
@@ -92,7 +92,7 @@ struct LoadCmd {
 
 template <typename T>
 base::Tagged<T, Reg> Load(RegOr<Addr> addr) {
-  auto& blk = GetBuilder().function()->block(GetBuilder().CurrentBlock());
+  auto& blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append_index<LoadCmd>();
   blk.cmd_buffer_.append(LoadCmd::MakeControlBits<T>(addr.is_reg()));
   addr.apply([&](auto v) { blk.cmd_buffer_.append(v); });
@@ -107,11 +107,10 @@ inline Reg Load(RegOr<Addr> r, type::Type const* t) {
   return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
                           uint16_t, uint32_t, uint64_t, float, double,
                           type::Type const*, EnumVal, FlagsVal, Addr,
-                          std::string_view, AnyFunc>(
-      t, [&](auto tag) -> Reg {
-        using T = typename decltype(tag)::type;
-        return Load<T>(r);
-      });
+                          std::string_view, AnyFunc>(t, [&](auto tag) -> Reg {
+    using T = typename decltype(tag)::type;
+    return Load<T>(r);
+  });
 }
 
 }  // namespace ir

@@ -224,7 +224,7 @@ VerifyResult VerifyType::operator()(ast::Access const *node, Context *ctx) {
 }
 
 static std::optional<std::vector<VerifyResult>> VerifyWithoutSetting(
-    VerifyType *visitor, ast::NodeSpan<ast::Expression const> exprs,
+    VerifyType *visitor, base::PtrSpan<ast::Expression const> exprs,
     Context *ctx) {
   std::vector<VerifyResult> results;
   results.reserve(exprs.size());
@@ -844,7 +844,7 @@ not_blocks:
 VerifyResult VerifyType::operator()(ast::CommaList const *node, Context *ctx) {
   ASSIGN_OR(return VerifyResult::Error(), auto results,
                    VerifyWithoutSetting(
-                       this, ast::NodeSpan<ast::Expression const>(node->exprs_),
+                       this, base::PtrSpan<ast::Expression const>(node->exprs_),
                        ctx));
   std::vector<type::Type const *> ts;
   ts.reserve(results.size());
@@ -1681,7 +1681,7 @@ VerifyResult VerifyType::operator()(ast::JumpHandler const *node,
 
 static std::optional<
     std::vector<std::pair<ast::Expression const *, VerifyResult>>>
-VerifySpan(visitor::VerifyType *v, ast::NodeSpan<ast::Expression const> exprs,
+VerifySpan(visitor::VerifyType *v, base::PtrSpan<ast::Expression const> exprs,
            Context *ctx) {
   // TODO expansion
   std::vector<std::pair<ast::Expression const *, VerifyResult>> results;
@@ -1696,7 +1696,7 @@ VerifySpan(visitor::VerifyType *v, ast::NodeSpan<ast::Expression const> exprs,
 
 enum class Constness { Error, Const, NonConst };
 static Constness VerifyAndGetConstness(
-    visitor::VerifyType *v, ast::NodeSpan<ast::Expression const> exprs,
+    visitor::VerifyType *v, base::PtrSpan<ast::Expression const> exprs,
     Context *ctx) {
   bool err      = false;
   bool is_const = true;

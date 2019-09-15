@@ -18,8 +18,8 @@ base::Tagged<Addr, Reg> Alloca(type::Type const *t);
 base::Tagged<Addr, Reg> TmpAlloca(type::Type const *t, Context *ctx);
 
 template <bool B>
-BlockIndex EarlyExitOn(BlockIndex exit_block, RegOr<bool> cond) {
-  auto continue_block = GetBuilder().AddBlock();
+BasicBlock *EarlyExitOn(BasicBlock *exit_block, RegOr<bool> cond) {
+  auto *continue_block = GetBuilder().AddBlock();
   if constexpr (B) {
     CondJump(cond, exit_block, continue_block);
   } else {
@@ -44,9 +44,9 @@ void CreateLoop(LoopPhiFn &&loop_phi_fn, LoopBodyFn &&loop_body_fn,
   /*
   auto entry_block = GetBuilder().CurrentBlock();
 
-  auto loop_phi   = GetBuilder().AddBlock();
-  auto loop_body  = GetBuilder().AddBlock();
-  auto exit_block = GetBuilder().AddBlock();
+  auto *loop_phi   = GetBuilder().AddBlock();
+  auto *loop_body  = GetBuilder().AddBlock();
+  auto *exit_block = GetBuilder().AddBlock();
 
   UncondJump(loop_phi);
   GetBuilder().CurrentBlock() = loop_phi;

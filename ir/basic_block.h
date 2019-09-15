@@ -8,7 +8,6 @@
 #include "base/untyped_buffer.h"
 #include "ir/cmd_buffer.h"
 #include "ir/out_params.h"
-#include "ir/block_index.h"
 
 namespace ir {
 
@@ -28,6 +27,8 @@ struct BasicBlock {
   CompiledFn *fn_;  // Containing function
   CmdBuffer cmd_buffer_;
 };
+
+BasicBlock const *ReturnBlock();
 
 Reg Reserve(core::Bytes b, core::Alignment a);
 

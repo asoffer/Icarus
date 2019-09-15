@@ -27,15 +27,14 @@ struct ExecContext {
     Frame(ir::CompiledFn *fn, const base::untyped_buffer &arguments,
           ExecContext *ctx);
 
-    void MoveTo(ir::BlockIndex block_index) {
-      ASSERT(block_index.value >= 0);
+    void MoveTo(ir::BasicBlock const *block) {
       prev_    = current_;
-      current_ = block_index;
+      current_ = block;
     }
 
     ir::CompiledFn *fn_ = nullptr;
-    ir::BlockIndex current_;
-    ir::BlockIndex prev_;
+    ir::BasicBlock const *current_;
+    ir::BasicBlock const *prev_;
 
     std::stack<ir::ScopeDef *> scope_defs_;
     std::stack<ir::BlockDef> block_defs_;
@@ -43,11 +42,11 @@ struct ExecContext {
     base::untyped_buffer regs_;
   };
 
-  ir::BasicBlock &current_block();
+  ir::BasicBlock const *current_block();
 
   std::stack<Frame> call_stack;
 
-  ir::BlockIndex ExecuteBlock(std::vector<ir::Addr> const &ret_slots);
+  ir::BasicBlock const *ExecuteBlock(std::vector<ir::Addr> const &ret_slots);
 
   template <typename T>
   T resolve(ir::Reg r) const {
