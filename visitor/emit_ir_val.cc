@@ -19,7 +19,6 @@
 #include "ir/components.h"
 #include "ir/reg.h"
 #include "misc/context.h"
-#include "type/generic_struct.h"
 #include "type/jump.h"
 #include "type/type.h"
 #include "type/typed_value.h"
@@ -106,7 +105,8 @@ static void MakeAllDestructions(EmitIr *visitor,
   for (auto *decl : ordered_decls) {
     auto *t = ASSERT_NOT_NULL(ctx->type_of(decl));
     if (!t->HasDestructor()) { continue; }
-    t->EmitDestroy(visitor, ctx->addr(decl), ctx);
+    TraditionalCompilation v(ctx->mod_);
+    t->EmitDestroy(v, ctx->addr(decl));
   }
 }
 
@@ -124,7 +124,8 @@ static void EmitIrForStatements(EmitIr *visitor,
   for (auto *stmt : span) {
     stmt->EmitIr(visitor, ctx);
     for (auto iter = to_destroy.rbegin(); iter != to_destroy.rend(); ++iter) {
-      iter->type()->EmitDestroy(visitor, iter->get(), ctx);
+      TraditionalCompilation v(ctx->mod_);
+      iter->type()->EmitDestroy(v, iter->get());
     }
     to_destroy.clear();
     if (!ctx->more_stmts_allowed_) { break; }
@@ -219,7 +220,8 @@ static void CompleteBody(EmitIr *visitor, ast::FunctionLiteral const *node,
 
         for (int i = static_cast<int>(to_destroy.size()) - 1; i >= 0; --i) {
           auto &reg = to_destroy.at(i);
-          reg.type()->EmitDestroy(visitor, reg.get(), ctx);
+          TraditionalCompilation v(ctx->mod_);
+          reg.type()->EmitDestroy(v, reg.get());
         }
         to_destroy.clear();
       }
@@ -1337,7 +1339,8 @@ ir::Results EmitIr::Val(ast::PrintStmt const *node, Context *ctx) {
               {std::move(result)}, {}),
           ctx);
     } else {
-      ctx->type_of(result.first)->EmitPrint(this, result.second, ctx);
+      TraditionalCompilation visitor(ctx->mod_);
+      ctx->type_of(result.first)->EmitPrint(&visitor, result.second);
     }
   }
   return ir::Results{};

@@ -1,6 +1,8 @@
 #ifndef ICARUS_BASE_PTR_SPAN_H
 #define ICARUS_BASE_PTR_SPAN_H
 
+#include <memory>
+
 namespace base {
 
 // PtrSpan<T>:

@@ -18,9 +18,7 @@ struct DispatchTable;
 }  // namespace ast
 
 struct Context {
-  Context(Module *mod) : mod_(ASSERT_NOT_NULL(mod)) {
-    constants_ = &mod_->dep_data_.front();
-  }
+  Context(Module *mod);
 
   error::Log *error_log() { return &mod_->error_log_; }
   size_t num_errors() { return error_log()->size(); }
@@ -43,7 +41,7 @@ struct Context {
   ir::Reg addr(ast::Declaration const *decl) const;
   void set_addr(ast::Declaration const *decl, ir::Reg);
 
-  std::pair<ConstantBinding, Module::DependentData> *insert_constants(
+  std::pair<ConstantBinding, DependentData> *insert_constants(
       ConstantBinding const &constant_binding);
 
   core::PendingModule *pending_module(ast::Import const *import_node) const;
@@ -56,7 +54,7 @@ struct Context {
 
   Module *mod_ = nullptr;
 
-  std::pair<ConstantBinding, Module::DependentData> *constants_;
+  std::pair<ConstantBinding, DependentData> *constants_;
   // We only want to generate at most one node for each set of constants in a
   // function literal, but we can't generate them all at once because, for
   // example:

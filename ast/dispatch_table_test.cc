@@ -3,9 +3,11 @@
 #include <string_view>
 
 #include "ast/ast.h"
+#include "ast/overload_set.h"
 #include "misc/context.h"
 #include "test/catch.h"
 #include "test/util.h"
+#include "type/function.h"
 #include "type/pointer.h"
 #include "type/variant.h"
 

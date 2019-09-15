@@ -13,11 +13,6 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/container/node_hash_map.h"
 // TODO this ifdef needs to disappear it's not long-term sustainable
-#ifdef ICARUS_VISITOR_EMIT_IR
-#include "ast/dispatch_table.h"
-#include "ir/scope_def.h"
-#endif // ICARUS_VISITOR_EMIT_IR
-#include "ast/expression.h"
 #include "core/fn_params.h"
 #include "core/pending_module.h"
 #include "core/scope.h"
@@ -25,6 +20,10 @@
 #include "ir/reg.h"
 #include "misc/constant_binding.h"
 #include "type/typed_value.h"
+
+#ifdef ICARUS_VISITOR_EMIT_IR
+#include "misc/dependent_data.h"
+#endif  // ICARUS_VISITOR_EMIT_IR
 
 namespace type {
 struct Type;
@@ -84,35 +83,6 @@ struct Module {
   absl::flat_hash_map<ast::StructLiteral const *, GenericStructCache>
       generic_struct_cache_;
 
-  struct DependentData {
-    absl::flat_hash_map<ast::Declaration const *, ir::Reg> addr_;
-
-    // TODO probably make these funcs constant.
-    absl::node_hash_map<ast::Expression const *, ir::CompiledFn *> ir_funcs_;
-
-    // TODO this ifdef needs to disappear it's not long-term sustainable
-#ifdef ICARUS_VISITOR_EMIT_IR
-    // TODO future optimization: the bool determining if it's const is not
-    // dependent and can therefore be stored more efficiently (though querying
-    // for both simultaneously would be more expensive I guess.
-    absl::flat_hash_map<ast::ExprPtr, visitor::VerifyResult> verify_results_;
-
-    absl::flat_hash_map<ast::ExprPtr, ast::DispatchTable> dispatch_tables_;
-
-    // Similar to dispatch tables, but specifically for `jump_handler`s. The
-    // tables are keyed on both the scope/block node as well as the actual jump
-    // expression.
-    absl::flat_hash_map<std::pair<ast::ExprPtr, ast::ExprPtr>,
-                        ast::DispatchTable>
-        jump_tables_;
-    absl::node_hash_map<ast::ScopeLiteral const*, ir::ScopeDef> scope_defs_;
-
-#endif  // ICARUS_VISITOR_EMIT_IR
-    ConstantBinding constants_;
-
-    absl::flat_hash_map<ast::Import const *, core::PendingModule> imported_module_;
-
-  };
   // TODO It's possible to have layers of constant bindings in a tree-like
   // structure. For example,
   //   f :: (a :: int64) => (b :: int64) => (c :: int64) => a + b * c
@@ -126,18 +96,13 @@ struct Module {
   //
   // Using list because we need to not invalidate pointers to elements on
   // insertion.
+
+#ifdef ICARUS_VISITOR_EMIT_IR
   std::list<std::pair<ConstantBinding, DependentData>> dep_data_;
 
   std::pair<ConstantBinding, DependentData> *insert_constants(
-      ConstantBinding const &constant_binding) {
-    for (auto iter = dep_data_.begin(); iter != dep_data_.end(); ++iter) {
-      auto &[key, val] = *iter;
-      if (key == constant_binding) { return &*iter; }
-    }
-    auto &pair = dep_data_.emplace_back(constant_binding, DependentData{});
-    pair.second.constants_ = pair.first;
-    return &pair;
-  }
+      ConstantBinding const &constant_binding);
+#endif  // ICARUS_VISITOR_EMIT_IR
 
   std::filesystem::path const *path_ = nullptr;
 };

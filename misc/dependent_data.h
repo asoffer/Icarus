@@ -9,7 +9,9 @@
 // TODO this ifdef needs to disappear it's not long-term sustainable
 #ifdef ICARUS_VISITOR_EMIT_IR
 #include "ast/dispatch_table.h"
-#include "visitor/verify_type.h"
+#include "ast/expr_ptr.h"
+#include "ir/scope_def.h"
+#include "visitor/verify_result.h"
 #endif // ICARUS_VISITOR_EMIT_IR
 
 namespace ast {
@@ -33,10 +35,21 @@ struct DependentData {
   // for both simultaneously would be more expensive I guess.
   absl::flat_hash_map<ast::ExprPtr, visitor::VerifyResult> verify_results_;
 
-// TODO this ifdef needs to disappear it's not long-term sustainable
+  // TODO this ifdef needs to disappear it's not long-term sustainable
   absl::flat_hash_map<ast::ExprPtr, ast::DispatchTable> dispatch_tables_;
+
+  // Similar to dispatch tables, but specifically for `jump_handler`s. The
+  // tables are keyed on both the scope/block node as well as the actual jump
+  // expression.
+  absl::flat_hash_map<std::pair<ast::ExprPtr, ast::ExprPtr>, ast::DispatchTable>
+      jump_tables_;
+  absl::node_hash_map<ast::ScopeLiteral const *, ir::ScopeDef> scope_defs_;
+
 #endif
   ConstantBinding constants_;
+
+  absl::flat_hash_map<ast::Import const *, core::PendingModule>
+      imported_module_;
 };
 
 #endif  // ICARUS_MISC_DEPENDENT_DATA_H

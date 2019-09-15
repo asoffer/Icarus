@@ -5,6 +5,7 @@
 #include "absl/algorithm/container.h"
 #include "absl/strings/str_cat.h"
 #include "ast/ast.h"
+#include "ast/overload_set.h"
 #include "backend/eval.h"
 #include "base/expected.h"
 #include "core/scope.h"

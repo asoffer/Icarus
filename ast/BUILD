@@ -37,7 +37,11 @@ cc_lib_target(
 )
 
 cc_lib_target(name = "expression",
-              intf_deps = [":hashtag", ":node"],
+              intf_deps = [
+                  ":expr_ptr",
+                  ":hashtag",
+                  ":node",
+              ],
               impl_deps = None,
               test_deps = None)
 
@@ -52,18 +56,27 @@ cc_lib_target(
 )
 
 cc_lib_target(
+    name = "expr_ptr",
+    intf_deps = [],
+    impl_deps = None,
+    test_deps = None,
+)
+
+cc_lib_target(
     name = "dispatch_table",
     cfgs = ["match", "compile"],
     intf_deps = [
-        ":overload_set",
         "//core:fn_args",
         "//base:expected",
         "//ir:basic_block",
         "//ir:block",
+        "//ir:results",
         "@com_google_absl//absl/container:flat_hash_map",
+        "//visitor:verify_result",
     ],
     impl_deps = [
         ":ast",
+        ":overload_set",
         "//backend:eval",
         "//ir:block",
         "//ir:builder",

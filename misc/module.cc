@@ -1,6 +1,7 @@
 #include "misc/module.h"
 
 #include "ast/ast.h"
+#include "ast/expression.h"
 #include "base/guarded.h"
 #include "frontend/source.h"
 #ifdef ICARUS_VISITOR_EMIT_IR
@@ -11,7 +12,11 @@
 
 // Can't declare this in header because unique_ptr's destructor needs to know
 // the size of ir::CompiledFn which we want to forward declare.
-Module::Module() : scope_(this) { dep_data_.emplace_back(); }
+Module::Module() : scope_(this) { 
+#ifdef ICARUS_VISITOR_EMIT_IR
+  dep_data_.emplace_back();
+#endif  // ICARUS_VISITOR_EMIT_IR
+}
 
 Module::~Module() = default;
 
@@ -39,7 +44,18 @@ type::Type const *Module::GetType(std::string_view name) const {
   ASSIGN_OR(return nullptr, auto &decl, GetDecl(name));
   return dep_data_.front().second.verify_results_.at(&decl).type_;
 }
-#endif
+
+std::pair<ConstantBinding, DependentData> *Module::insert_constants(
+    ConstantBinding const &constant_binding) {
+  for (auto iter = dep_data_.begin(); iter != dep_data_.end(); ++iter) {
+    auto &[key, val] = *iter;
+    if (key == constant_binding) { return &*iter; }
+  }
+  auto &pair = dep_data_.emplace_back(constant_binding, DependentData{});
+  pair.second.constants_ = pair.first;
+  return &pair;
+}
+#endif  //  ICARUS_VISITOR_EMIT_IR
 
 ast::Declaration *Module::GetDecl(std::string_view name) const {
   for (auto const &stmt : statements_) {

@@ -5,19 +5,24 @@
 #include <variant>
 
 #include "absl/container/flat_hash_map.h"
-#include "ast/overload_set.h"
 #include "core/fn_args.h"
+#include "core/fn_params.h"
 #include "ir/basic_block.h"
 #include "ir/block.h"
+#include "ir/reg.h"
+#include "ir/results.h"
 #include "type/typed_value.h"
+#include "visitor/verify_result.h"
 
 struct Context;
 
 namespace type {
 struct Type;
+struct Function;
 }  // namespace type
 
 namespace ast {
+struct OverloadSet;
 struct Node;
 struct Expression;
 struct ExprPtr;

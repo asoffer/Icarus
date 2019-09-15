@@ -4,6 +4,10 @@
 #include "ast/expression.h"
 #include "misc/module.h"
 
+Context::Context(Module *mod) : mod_(ASSERT_NOT_NULL(mod)) {
+  constants_ = &mod_->dep_data_.front();
+}
+
 type::Type const *Context::type_of(ast::Expression const *expr) const {
   if (auto *decl = expr->if_as<ast::Declaration>()) {
     if (auto *t = current_constants_.type_of(decl)) { return t; }
@@ -32,7 +36,7 @@ visitor::VerifyResult const *Context::prior_verification_attempt(
   return nullptr;
 }
 
-std::pair<ConstantBinding, Module::DependentData> *Context::insert_constants(
+std::pair<ConstantBinding, DependentData> *Context::insert_constants(
     ConstantBinding const &constant_binding) {
   auto *pair = mod_->insert_constants(constant_binding);
   for (auto const &[decl, binding] : constant_binding.keys_) {

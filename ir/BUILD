@@ -190,7 +190,6 @@ cc_lib_target(
     intf_deps = [
         ":reg",
         ":results",
-        "//type:type",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
     impl_deps = [
@@ -200,6 +199,7 @@ cc_lib_target(
         "//ir/cmd:jumps",
         "//ir/cmd:register",
         "//type:function",
+        "//type:type",
     ],
     test_deps = None,
 )
@@ -244,7 +244,10 @@ cc_lib_target(
 
 cc_lib_target(
     name = "scope_def",
-    intf_deps = [":any_func"],
+    intf_deps = [
+        ":any_func",
+        "//base:move_func",
+    ],
     impl_deps = None,
     test_deps = None,
 )

@@ -20,6 +20,7 @@ cc_lib_target(
     name = "constant_binding",
     intf_deps = [
         "//base:untyped_buffer",
+        "//core:bytes",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
     impl_deps = [
@@ -47,7 +48,7 @@ cc_lib_target(
 
 COMMON_MODULE_INTF_TARGETS = [
     ":constant_binding",
-    "//ast:expression",
+    "//ast:expr_ptr",
     "//core:fn_params",
     "//core:pending_module",
     "//core:scope",
@@ -63,9 +64,9 @@ cc_group_target(
     name = "module",
     hdrs = ["module.h"],
     deps = {
-        "compile": COMMON_MODULE_INTF_TARGETS + ["//ast:dispatch_table", "//ir:scope_def"],
+        "compile": COMMON_MODULE_INTF_TARGETS + [":dependent_data"],
         "format": COMMON_MODULE_INTF_TARGETS,
-        "match": COMMON_MODULE_INTF_TARGETS + ["//ast:dispatch_table", "//ir:scope_def"],
+        "match": COMMON_MODULE_INTF_TARGETS + [":dependent_data"],
     },
 )
 
@@ -101,5 +102,17 @@ cc_lib_target(
         "//frontend:source",
         "//ir:compiled_fn",
     ],
+    test_deps = None,
+)
+
+cc_lib_target(
+    name = "dependent_data",
+    cfgs = ["match", "compile"],
+    intf_deps = [
+        "//ast:dispatch_table",
+        "//ir:scope_def",
+        "//visitor:verify_result",
+    ],
+    impl_deps = None,
     test_deps = None,
 )

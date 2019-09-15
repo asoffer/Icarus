@@ -8,6 +8,7 @@
 #include "base/ptr_span.h"
 #include "type/function.h"
 #include "type/typed_value.h"
+#include "visitor/verify_type.h"
 
 namespace core {
 struct Scope;
