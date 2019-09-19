@@ -14,23 +14,21 @@ ICARUS_AST_VISITOR(
     ir::Results EmitValue(visitor::TraditionalCompilation *visitor) const,
     { return visitor->EmitValue(this); });
 
-ICARUS_AST_VISITOR(ir::Results EmitIr(visitor::EmitIr *visitor, Context *ctx)
+ICARUS_AST_VISITOR(std::vector<ir::RegOr<ir::Addr>> EmitRef(
+                       visitor::TraditionalCompilation *visitor) const,
+                   { return visitor->EmitRef(this); });
+
+ICARUS_AST_VISITOR(void EmitCopyInit(visitor::TraditionalCompilation *visitor,
+                                     type::Typed<ir::Reg> reg)
                        const,
-                   { return visitor->Val(this, ctx); });
-ICARUS_AST_VISITOR(std::vector<ir::RegOr<ir::Addr>> EmitLVal(
-                       visitor::EmitIr *visitor, Context *ctx) const,
-                   { return visitor->Ref(this, ctx); });
-ICARUS_AST_VISITOR(void EmitCopyInit(visitor::EmitIr *visitor,
-                                     type::Typed<ir::Reg> reg, Context *ctx)
+                   { visitor->EmitCopyInit(this, reg); });
+ICARUS_AST_VISITOR(void EmitMoveInit(visitor::TraditionalCompilation *visitor,
+                                     type::Typed<ir::Reg> reg)
                        const,
-                   { visitor->CopyInit(this, reg, ctx); });
-ICARUS_AST_VISITOR(void EmitMoveInit(visitor::EmitIr *visitor,
-                                     type::Typed<ir::Reg> reg, Context *ctx)
-                       const,
-                   { visitor->MoveInit(this, reg, ctx); });
+                   { visitor->EmitMoveInit(this, reg); });
 ICARUS_AST_VISITOR(visitor::VerifyResult VerifyType(
-                       visitor::VerifyType *visitor, Context *ctx) const,
-                   { return (*visitor)(this, ctx); });
+                       visitor::TraditionalCompilation *visitor) const,
+                   { return visitor->VerifyType(this); });
 ICARUS_AST_VISITOR(void ExtractJumps(visitor::ExtractJumps *visitor) const,
                    { (*visitor)(this); });
 #endif  // ICARUS_VISITOR_EMIT_IR

@@ -36,39 +36,34 @@ static type::Type const *BuiltinType(core::Builtin b) {
   UNREACHABLE();
 }
 
-// TODO moved these here because we can't have them in ir:builtin or else
-// they'll be in the formatter target. figure out what's going on here.
-type::Type const *BuiltinType(core::Builtin);
-
 }  // namespace ir
 
 namespace visitor {
 using ::matcher::InheritsFrom;
 
-EmitIr::EmitIr() : bldr_(ir::GetBuilder()) {}
-
 template <typename NodeType>
-static base::move_func<void()> *DeferBody(EmitIr *visitor, NodeType const *node,
-                                          Context *ctx) {
+static base::move_func<void()> *DeferBody(TraditionalCompilation *visitor,
+                                          NodeType const *node) {
   return visitor->AddWork(
-      node, [constants{ctx->constants_}, node, visitor]() mutable {
-        Context ctx(node->module());
-        ctx.constants_ = std::move(constants);
+      node,
+      [ constants{visitor->context().constants_}, node, visitor ]() mutable {
+        TraditionalCompilation v(node->module());
+        v.context()            = Context(node->module());
+        v.context().constants_ = std::move(constants);
 
-        VerifyType verify_type;
         if constexpr (std::is_same_v<NodeType, ast::FunctionLiteral> ||
                       std::is_same_v<NodeType, ast::JumpHandler>) {
-          VerifyBody(&verify_type, node, &ctx);
+          VerifyBody(&v, node);
         }
 
-        CompleteBody(visitor, node, &ctx);
+        CompleteBody(&v, node);
       });
 }
 
-static void MakeAllStackAllocations(core::FnScope const *fn_scope,
-                                    Context *ctx) {
+static void MakeAllStackAllocations(TraditionalCompilation *visitor,
+                                    core::FnScope const *fn_scope) {
   for (auto *scope : fn_scope->innards_) {
-    for (const auto &[key, val] : scope->decls_) {
+    for (const auto & [ key, val ] : scope->decls_) {
       for (auto *decl : val) {
         if (decl->flags() &
             (ast::Declaration::f_IsConst | ast::Declaration::f_IsFnParam)) {
@@ -78,19 +73,19 @@ static void MakeAllStackAllocations(core::FnScope const *fn_scope,
         // TODO it's wrong to use a default BoundConstants, but it's even more
         // wrong to store the address on the declaration, so you can fix those
         // together.
-        ctx->set_addr(decl, ir::Alloca(ctx->type_of(decl)));
+        visitor->context().set_addr(
+            decl, ir::Alloca(visitor->context().type_of(decl)));
       }
     }
   }
 }
 
-static void MakeAllDestructions(EmitIr *visitor,
-                                core::ExecScope const *exec_scope,
-                                Context *ctx) {
+static void MakeAllDestructions(TraditionalCompilation *visitor,
+                                core::ExecScope const *exec_scope) {
   // TODO store these in the appropriate order so we don't have to compute this?
   // Will this be faster?
   std::vector<ast::Declaration *> ordered_decls;
-  for (auto &[name, decls] : exec_scope->decls_) {
+  for (auto & [ name, decls ] : exec_scope->decls_) {
     ordered_decls.insert(ordered_decls.end(), decls.begin(), decls.end());
   }
 
@@ -103,41 +98,40 @@ static void MakeAllDestructions(EmitIr *visitor,
             });
 
   for (auto *decl : ordered_decls) {
-    auto *t = ASSERT_NOT_NULL(ctx->type_of(decl));
+    auto *t = ASSERT_NOT_NULL(visitor->context().type_of(decl));
     if (!t->HasDestructor()) { continue; }
-    TraditionalCompilation v(ctx->mod_);
-    t->EmitDestroy(v, ctx->addr(decl));
+    t->EmitDestroy(visitor, visitor->context().addr(decl));
   }
 }
 
-static void EmitIrForStatements(EmitIr *visitor,
-                                base::PtrSpan<ast::Node const> span,
-                                Context *ctx) {
+static void EmitIrForStatements(TraditionalCompilation *visitor,
+                                base::PtrSpan<ast::Node const> span) {
   std::vector<type::Typed<ir::Reg>> to_destroy;
-  auto *old_tmp_ptr = std::exchange(ctx->temporaries_to_destroy_, &to_destroy);
-  bool old_more_stmts_allowed = std::exchange(ctx->more_stmts_allowed_, true);
+  auto *old_tmp_ptr =
+      std::exchange(visitor->context().temporaries_to_destroy_, &to_destroy);
+  bool old_more_stmts_allowed =
+      std::exchange(visitor->context().more_stmts_allowed_, true);
   base::defer d([&] {
-    ctx->temporaries_to_destroy_ = old_tmp_ptr;
-    ctx->more_stmts_allowed_     = old_more_stmts_allowed;
+    visitor->context().temporaries_to_destroy_ = old_tmp_ptr;
+    visitor->context().more_stmts_allowed_     = old_more_stmts_allowed;
   });
 
   for (auto *stmt : span) {
-    stmt->EmitIr(visitor, ctx);
+    stmt->EmitValue(visitor);
     for (auto iter = to_destroy.rbegin(); iter != to_destroy.rend(); ++iter) {
-      TraditionalCompilation v(ctx->mod_);
-      iter->type()->EmitDestroy(v, iter->get());
+      iter->type()->EmitDestroy(visitor, iter->get());
     }
     to_destroy.clear();
-    if (!ctx->more_stmts_allowed_) { break; }
+    if (!visitor->context().more_stmts_allowed_) { break; }
   }
 }
 
-// static void CompleteBody(EmitIr *visitor, ast::ScopeLiteral const *node,
-//                          Context *ctx) {
-//   ir::ScopeDef *scope_def = ctx->scope_def(node);
+// static void CompleteBody(TraditionalCompilation *visitor, ast::ScopeLiteral
+//                          const *node) {
+//   ir::ScopeDef *scope_def = context().scope_def(node);
 //   if (!scope_def->work_item) { return; }
 //
-//   ir::CompiledFn fn(ctx->mod_, type::Func({}, {}),
+//   ir::CompiledFn fn(module(), type::Func({}, {}),
 //                     core::FnParams<type::Typed<ast::Expression const *>>{});
 //
 //   ICARUS_SCOPE(ir::SetCurrentFunc(&fn)) {
@@ -147,14 +141,16 @@ static void EmitIrForStatements(EmitIr *visitor,
 //     for (auto *decl : node->decls()) {
 //       if (decl->id() == "init") {
 //         ir::AddScopeDefInit(reg,
-//                             decl->EmitIr(visitor, ctx).get<ir::AnyFunc>(0));
+//                             decl->EmitValue(visitor,
+//                             ctx).get<ir::AnyFunc>(0));
 //       } else if (decl->id() == "done") {
 //         ir::AddScopeDefDone(reg,
-//                             decl->EmitIr(visitor, ctx).get<ir::AnyFunc>(0));
+//                             decl->EmitValue(visitor,
+//                             ctx).get<ir::AnyFunc>(0));
 //       } else {
 //         ASSERT(decl->init_val() != nullptr);
 //         // TODO what if there's a conversion like from A to A|B?
-//         decl->init_val()->EmitIr(visitor, ctx);
+//         decl->init_val()->EmitValue(visitor, ctx);
 //         ir::FinishBlockDef(decl->id());
 //       }
 //     }
@@ -167,67 +163,69 @@ static void EmitIrForStatements(EmitIr *visitor,
 //   backend::Execute(&fn, base::untyped_buffer(0), {}, &exec_context);
 // }
 
-static void CompleteBody(EmitIr *visitor, ast::FunctionLiteral const *node,
-                         Context *ctx) {
+static void CompleteBody(TraditionalCompilation *visitor,
+                         ast::FunctionLiteral const *node) {
   // TODO have validate return a bool distinguishing if there are errors and
   // whether or not we can proceed.
 
-  auto *t = ctx->type_of(node);
+  auto *t = visitor->context().type_of(node);
 
-  ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[node];
+  ir::CompiledFn *&ir_func =
+      visitor->context().constants_->second.ir_funcs_[node];
 
   ICARUS_SCOPE(ir::SetCurrentFunc(ir_func)) {
     // TODO arguments should be renumbered to not waste space on const values
     for (int32_t i = 0; i < static_cast<int32_t>(node->inputs_.size()); ++i) {
-      ctx->set_addr(node->inputs_.at(i).value.get(), ir::Reg::Arg(i));
+      visitor->context().set_addr(node->inputs_.at(i).value.get(),
+                                  ir::Reg::Arg(i));
     }
 
-    MakeAllStackAllocations(node->fn_scope_.get(), ctx);
+    MakeAllStackAllocations(visitor, node->fn_scope_.get());
 
     if (node->outputs_) {
       for (size_t i = 0; i < node->outputs_->size(); ++i) {
         auto *out_decl = node->outputs_->at(i)->if_as<ast::Declaration>();
         if (!out_decl) { continue; }
-        auto *out_decl_type = ASSERT_NOT_NULL(ctx->type_of(out_decl));
+        auto *out_decl_type =
+            ASSERT_NOT_NULL(visitor->context().type_of(out_decl));
         auto alloc = out_decl_type->is_big() ? ir::GetRet(i, out_decl_type)
                                              : ir::Alloca(out_decl_type);
 
-        ctx->set_addr(out_decl, alloc);
+        visitor->context().set_addr(out_decl, alloc);
         if (out_decl->IsDefaultInitialized()) {
-          out_decl_type->EmitDefaultInit(visitor, alloc, ctx);
+          out_decl_type->EmitDefaultInit(visitor, alloc);
         } else {
           out_decl_type->EmitCopyAssign(
-              visitor, out_decl_type,
-              out_decl->init_val()->EmitIr(visitor, ctx), alloc, ctx);
+              visitor, out_decl_type, out_decl->init_val()->EmitValue(visitor),
+              alloc);
         }
       }
     }
 
     {
       std::vector<type::Typed<ir::Reg>> to_destroy;
-      auto *old_tmp_ptr =
-          std::exchange(ctx->temporaries_to_destroy_, &to_destroy);
+      auto *old_tmp_ptr = std::exchange(
+          visitor->context().temporaries_to_destroy_, &to_destroy);
       bool old_more_stmts_allowed =
-          std::exchange(ctx->more_stmts_allowed_, true);
+          std::exchange(visitor->context().more_stmts_allowed_, true);
 
       base::defer d([&] {
-        ctx->temporaries_to_destroy_ = old_tmp_ptr;
-        ctx->more_stmts_allowed_     = old_more_stmts_allowed;
+        visitor->context().temporaries_to_destroy_ = old_tmp_ptr;
+        visitor->context().more_stmts_allowed_     = old_more_stmts_allowed;
       });
 
       for (auto &stmt : node->statements_) {
-        stmt->EmitIr(visitor, ctx);
+        stmt->EmitValue(visitor);
 
         for (int i = static_cast<int>(to_destroy.size()) - 1; i >= 0; --i) {
           auto &reg = to_destroy.at(i);
-          TraditionalCompilation v(ctx->mod_);
-          reg.type()->EmitDestroy(v, reg.get());
+          reg.type()->EmitDestroy(visitor, reg.get());
         }
         to_destroy.clear();
       }
     }
 
-    MakeAllDestructions(visitor, node->fn_scope_.get(), ctx);
+    MakeAllDestructions(visitor, node->fn_scope_.get());
 
     if (t->as<type::Function>().output.empty()) {
       // TODO even this is wrong. Figure out the right jumping strategy
@@ -239,11 +237,11 @@ static void CompleteBody(EmitIr *visitor, ast::FunctionLiteral const *node,
   }
 }
 
-// static void CompleteBody(EmitIr *visitor, ast::StructLiteral const *node,
-//                          Context *ctx) {
-//   ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[node];
+// static void CompleteBody(TraditionalCompilation *visitor, ast::StructLiteral
+//                          const *node) {
+//   ir::CompiledFn *&ir_func = context().constants_->second.ir_funcs_[node];
 //   for (size_t i = 0; i < node->args_.size(); ++i) {
-//     ctx->set_addr(&node->args_[i], ir::Reg::Arg(i));
+//     context().set_addr(&node->args_[i], ir::Reg::Arg(i));
 //   }
 //
 //   ICARUS_SCOPE(ir::SetCurrentFunc(ir_func)) {
@@ -255,7 +253,7 @@ static void CompleteBody(EmitIr *visitor, ast::FunctionLiteral const *node,
 //     ir::GetBuilder().CurrentBlock() = ir::EarlyExitOn<false>(
 //         land_block,
 //         ir::Eq(cache_slot, static_cast<type::Type const *>(nullptr)));
-//     auto ctx_reg    = ir::CreateContext(ctx->mod_);
+//     auto ctx_reg    = ir::CreateContext(module());
 //     auto struct_reg = ir::CreateStruct(node->scope_, node);
 //
 //     // TODO why isn't implicit TypedRegister -> RegOr cast working on
@@ -267,7 +265,7 @@ static void CompleteBody(EmitIr *visitor, ast::FunctionLiteral const *node,
 //     ir::Store(static_cast<ir::RegOr<type::Type const *>>(struct_reg),
 //               cache_slot_addr);
 //     for (auto &arg : node->args_) {  // TODO const-ref
-//       ir::AddBoundConstant(ctx_reg, &arg, ctx->addr(&arg));
+//       ir::AddBoundConstant(ctx_reg, &arg, context().addr(&arg));
 //     }
 //
 //     for (auto &field : node->fields_) {  // TODO const-ref
@@ -305,14 +303,14 @@ static void CompleteBody(EmitIr *visitor, ast::FunctionLiteral const *node,
 //   }
 // }
 
-// static void CompleteBody(EmitIr *visitor, ast::JumpHandler const *node,
-//                          Context *ctx) {
+// static void CompleteBody(TraditionalCompilation *visitor, ast::JumpHandler
+//                          const *node) {
 //   // TODO have validate return a bool distinguishing if there are errors and
 //   // whether or not we can proceed.
 //
-//   auto *t = ctx->type_of(node);
+//   auto *t = context().type_of(node);
 //
-//   ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[node];
+//   ir::CompiledFn *&ir_func = context().constants_->second.ir_funcs_[node];
 //
 //   ICARUS_SCOPE(ir::SetCurrentFunc(ir_func)) {
 //     ir::GetBuilder().CurrentBlock() = ir_func->entry();
@@ -320,7 +318,7 @@ static void CompleteBody(EmitIr *visitor, ast::FunctionLiteral const *node,
 //     // TODO arguments should be renumbered to not waste space on const values
 //     for (int32_t i = 0; i < static_cast<int32_t>(node->input().size()); ++i)
 //     {
-//       ctx->set_addr(node->input()[i], ir::Reg::Arg(i));
+//       context().set_addr(node->input()[i], ir::Reg::Arg(i));
 //     }
 //
 //     MakeAllStackAllocations(node->body_scope(), ctx);
@@ -328,16 +326,16 @@ static void CompleteBody(EmitIr *visitor, ast::FunctionLiteral const *node,
 //     {
 //       std::vector<type::Typed<ir::Reg>> to_destroy;
 //       auto *old_tmp_ptr =
-//           std::exchange(ctx->temporaries_to_destroy_, &to_destroy);
+//           std::exchange(context().temporaries_to_destroy_, &to_destroy);
 //       bool old_more_stmts_allowed =
-//           std::exchange(ctx->more_stmts_allowed_, true);
+//           std::exchange(context().more_stmts_allowed_, true);
 //       base::defer d([&] {
-//         ctx->temporaries_to_destroy_ = old_tmp_ptr;
-//         ctx->more_stmts_allowed_     = old_more_stmts_allowed;
+//         context().temporaries_to_destroy_ = old_tmp_ptr;
+//         context().more_stmts_allowed_     = old_more_stmts_allowed;
 //       });
 //
 //       for (auto *stmt : node->stmts()) {
-//         stmt->EmitIr(visitor, ctx);
+//         stmt->EmitValue(visitor, ctx);
 //
 //         for (int i = static_cast<int>(to_destroy.size()) - 1; i >= 0; --i) {
 //           auto &reg = to_destroy.at(i);
@@ -347,28 +345,26 @@ static void CompleteBody(EmitIr *visitor, ast::FunctionLiteral const *node,
 //       }
 //     }
 //
-//     MakeAllDestructions(visitor, node->body_scope(), ctx);
+//     MakeAllDestructions(visitor, node->body_scope());
 //
 //     ir::ReturnJump();
 //     ir_func->work_item = nullptr;
 //   }
 // }
 
-ir::Results EmitIr::Val(ast::Node const *node, Context *ctx) { UNREACHABLE(); }
-
-ir::Results EmitIr::Val(ast::Access const *node, Context *ctx) {
-  if (ctx->type_of(node->operand()) == type::Module) {
+ir::Results TraditionalCompilation::EmitValue(ast::Access const *node) {
+  if (context().type_of(node->operand()) == type::Module) {
     // TODO we already did this evaluation in type verification. Can't we just
     // save and reuse it?
     return backend::EvaluateAs<Module const *>(
                type::Typed<ast::Expression const *>(node->operand(),
                                                     type::Module),
-               ctx)
+               &context())
         ->GetDecl(node->member_name())
-        ->EmitIr(this, ctx);
+        ->EmitValue(this);
   }
 
-  auto *this_type = ctx->type_of(node);
+  auto *this_type = context().type_of(node);
   if (this_type->is<type::Enum>()) {
     auto lit = this_type->as<type::Enum>().EmitLiteral(node->member_name());
     return ir::Results{lit};
@@ -376,8 +372,8 @@ ir::Results EmitIr::Val(ast::Access const *node, Context *ctx) {
     auto lit = this_type->as<type::Flags>().EmitLiteral(node->member_name());
     return ir::Results{lit};
   } else {
-    auto reg = node->operand()->EmitLVal(this, ctx)[0];
-    auto *t  = ctx->type_of(node->operand());
+    auto reg = node->operand()->EmitRef(this)[0];
+    auto *t  = context().type_of(node->operand());
 
     if (t->is<type::Pointer>()) { t = t->as<type::Pointer>().pointee; }
     while (auto *p = t->if_as<type::Pointer>()) {
@@ -393,52 +389,50 @@ ir::Results EmitIr::Val(ast::Access const *node, Context *ctx) {
   }
 }
 
-ir::Results EmitIr::Val(ast::ArrayLiteral const *node, Context *ctx) {
+ir::Results TraditionalCompilation::EmitValue(ast::ArrayLiteral const *node) {
   // TODO If this is a constant we can just store it somewhere.
-  auto *this_type = ctx->type_of(node);
-  auto alloc      = ir::TmpAlloca(this_type, ctx);
+  auto *this_type = context().type_of(node);
+  auto alloc      = ir::TmpAlloca(this_type, &context());
   if (!node->empty()) {
     auto *data_type = this_type->as<type::Array>().data_type;
     for (size_t i = 0; i < node->size(); ++i) {
-      MoveInit(data_type, node->elem(i)->EmitIr(this, ctx),
-               type::Typed<ir::Reg>(ir::Index(type::Ptr(this_type), alloc,
-                                              static_cast<int32_t>(i)),
-                                    type::Ptr(data_type)),
-               ctx);
+      EmitMoveInit(data_type, node->elem(i)->EmitValue(this),
+                   type::Typed<ir::Reg>(ir::Index(type::Ptr(this_type), alloc,
+                                                  static_cast<int32_t>(i)),
+                                        type::Ptr(data_type)));
     }
   }
   return ir::Results{alloc};
 }
 
-ir::Results EmitIr::Val(ast::ArrayType const *node, Context *ctx) {
-  auto result = node->data_type()->EmitIr(this, ctx).get<type::Type const *>(0);
+ir::Results TraditionalCompilation::EmitValue(ast::ArrayType const *node) {
+  auto result = node->data_type()->EmitValue(this).get<type::Type const *>(0);
   // Size must be at least 1 by construction, so `.size() - 1` will not
   // overflow.
   for (int i = node->lengths().size() - 1; i >= 0; --i) {
     result =
-        ir::Array(node->length(i)->EmitIr(this, ctx).get<int64_t>(0), result);
+        ir::Array(node->length(i)->EmitValue(this).get<int64_t>(0), result);
   }
   return ir::Results{result};
 }
 
-ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
-  auto *lhs_type = ctx->type_of(node->lhs());
-  auto *rhs_type = ctx->type_of(node->rhs());
+ir::Results TraditionalCompilation::EmitValue(ast::Binop const *node) {
+  auto *lhs_type = context().type_of(node->lhs());
+  auto *rhs_type = context().type_of(node->rhs());
 
-  if (auto *dispatch_table = ctx->dispatch_table(node)) {
+  if (auto *dispatch_table = context().dispatch_table(node)) {
     // TODO struct is not exactly right. we really mean user-defined
     return dispatch_table->EmitCall(
-        core::FnArgs<std::pair<ast::Expression const *, ir::Results>>(
-            {std::pair(node->lhs(), node->lhs()->EmitIr(this, ctx)),
-             std::pair(node->rhs(), node->rhs()->EmitIr(this, ctx))},
-            {}),
-        ctx);
+        this, core::FnArgs<std::pair<ast::Expression const *, ir::Results>>(
+                  {std::pair(node->lhs(), node->lhs()->EmitValue(this)),
+                   std::pair(node->rhs(), node->rhs()->EmitValue(this))},
+                  {}));
   }
 
   switch (node->op()) {
     case frontend::Operator::Add: {
-      auto lhs_ir = node->lhs()->EmitIr(this, ctx);
-      auto rhs_ir = node->rhs()->EmitIr(this, ctx);
+      auto lhs_ir = node->lhs()->EmitValue(this);
+      auto rhs_ir = node->rhs()->EmitValue(this);
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                               uint16_t, uint32_t, uint64_t, float, double>(
           rhs_type, [&](auto tag) {
@@ -447,8 +441,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
           });
     } break;
     case frontend::Operator::Sub: {
-      auto lhs_ir = node->lhs()->EmitIr(this, ctx);
-      auto rhs_ir = node->rhs()->EmitIr(this, ctx);
+      auto lhs_ir = node->lhs()->EmitValue(this);
+      auto rhs_ir = node->rhs()->EmitValue(this);
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                               uint16_t, uint32_t, uint64_t, float, double>(
           rhs_type, [&](auto tag) {
@@ -457,8 +451,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
           });
     } break;
     case frontend::Operator::Mul: {
-      auto lhs_ir = node->lhs()->EmitIr(this, ctx);
-      auto rhs_ir = node->rhs()->EmitIr(this, ctx);
+      auto lhs_ir = node->lhs()->EmitValue(this);
+      auto rhs_ir = node->rhs()->EmitValue(this);
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                               uint16_t, uint32_t, uint64_t, float, double>(
           rhs_type, [&](auto tag) {
@@ -467,8 +461,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
           });
     } break;
     case frontend::Operator::Div: {
-      auto lhs_ir = node->lhs()->EmitIr(this, ctx);
-      auto rhs_ir = node->rhs()->EmitIr(this, ctx);
+      auto lhs_ir = node->lhs()->EmitValue(this);
+      auto rhs_ir = node->rhs()->EmitValue(this);
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                               uint16_t, uint32_t, uint64_t, float, double>(
           rhs_type, [&](auto tag) {
@@ -477,8 +471,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
           });
     } break;
     case frontend::Operator::Mod: {
-      auto lhs_ir = node->lhs()->EmitIr(this, ctx);
-      auto rhs_ir = node->rhs()->EmitIr(this, ctx);
+      auto lhs_ir = node->lhs()->EmitValue(this);
+      auto rhs_ir = node->rhs()->EmitValue(this);
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                               uint16_t, uint32_t, uint64_t>(
           rhs_type, [&](auto tag) {
@@ -491,52 +485,52 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
       std::vector<ir::RegOr<type::Type const *>> lhs_vals, rhs_vals;
       if (auto *l = node->lhs()->if_as<ast::CommaList>()) {
         for (auto &e : l->exprs_) {
-          lhs_vals.push_back(e->EmitIr(this, ctx).get<type::Type const *>(0));
+          lhs_vals.push_back(e->EmitValue(this).get<type::Type const *>(0));
         }
       } else {
         lhs_vals.push_back(
-            node->lhs()->EmitIr(this, ctx).get<type::Type const *>(0));
+            node->lhs()->EmitValue(this).get<type::Type const *>(0));
       }
       if (auto *r = node->rhs()->if_as<ast::CommaList>()) {
         for (auto &e : r->exprs_) {
-          rhs_vals.push_back(e->EmitIr(this, ctx).get<type::Type const *>(0));
+          rhs_vals.push_back(e->EmitValue(this).get<type::Type const *>(0));
         }
       } else {
         rhs_vals.push_back(
-            node->rhs()->EmitIr(this, ctx).get<type::Type const *>(0));
+            node->rhs()->EmitValue(this).get<type::Type const *>(0));
       }
 
       return ir::Results{ir::Arrow(lhs_vals, rhs_vals)};
     } break;
     case frontend::Operator::Assign: {
       // TODO support splatting.
-      auto lhs_lvals = node->lhs()->EmitLVal(this, ctx);
+      auto lhs_lvals = node->lhs()->EmitRef(this);
       if (lhs_lvals.size() != 1) { NOT_YET(); }
 
-      auto rhs_vals = node->rhs()->EmitIr(this, ctx);
-      lhs_type->EmitMoveAssign(this, rhs_type, rhs_vals, lhs_lvals[0], ctx);
+      auto rhs_vals = node->rhs()->EmitValue(this);
+      lhs_type->EmitMoveAssign(this, rhs_type, rhs_vals, lhs_lvals[0]);
 
       return ir::Results{};
     } break;
     case frontend::Operator::OrEq: {
-      auto *this_type = ctx->type_of(node);
+      auto *this_type = context().type_of(node);
       if (this_type->is<type::Flags>()) {
-        auto lhs_lval = node->lhs()->EmitLVal(this, ctx)[0];
+        auto lhs_lval = node->lhs()->EmitRef(this)[0];
         ir::Store(
             ir::OrFlags(ir::Load<ir::FlagsVal>(lhs_lval),
-                        node->rhs()->EmitIr(this, ctx).get<ir::FlagsVal>(0)),
+                        node->rhs()->EmitValue(this).get<ir::FlagsVal>(0)),
             lhs_lval);
         return ir::Results{};
       }
       auto *land_block = builder().AddBlock();
       auto *more_block = builder().AddBlock();
 
-      auto lhs_val       = node->lhs()->EmitIr(this, ctx).get<bool>(0);
+      auto lhs_val       = node->lhs()->EmitValue(this).get<bool>(0);
       auto lhs_end_block = builder().CurrentBlock();
       ir::CondJump(lhs_val, land_block, more_block);
 
       builder().CurrentBlock() = more_block;
-      auto rhs_val             = node->rhs()->EmitIr(this, ctx).get<bool>(0);
+      auto rhs_val             = node->rhs()->EmitValue(this).get<bool>(0);
       auto rhs_end_block       = builder().CurrentBlock();
       ir::UncondJump(land_block);
 
@@ -546,12 +540,12 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
                                        {ir::RegOr<bool>(true), rhs_val})};
     } break;
     case frontend::Operator::AndEq: {
-      auto *this_type = ctx->type_of(node);
+      auto *this_type = context().type_of(node);
       if (this_type->is<type::Flags>()) {
-        auto lhs_lval = node->lhs()->EmitLVal(this, ctx)[0];
+        auto lhs_lval = node->lhs()->EmitRef(this)[0];
         ir::Store(
             ir::AndFlags(ir::Load<ir::FlagsVal>(lhs_lval),
-                         node->rhs()->EmitIr(this, ctx).get<ir::FlagsVal>(0)),
+                         node->rhs()->EmitValue(this).get<ir::FlagsVal>(0)),
             lhs_lval);
         return ir::Results{};
       }
@@ -559,13 +553,13 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
       auto *land_block = builder().AddBlock();
       auto *more_block = builder().AddBlock();
 
-      auto lhs_val       = node->lhs()->EmitIr(this, ctx).get<bool>(0);
+      auto lhs_val       = node->lhs()->EmitValue(this).get<bool>(0);
       auto lhs_end_block = builder().CurrentBlock();
       ir::CondJump(lhs_val, more_block, land_block);
 
       builder().CurrentBlock() = more_block;
-      auto rhs_val                = node->rhs()->EmitIr(this, ctx).get<bool>(0);
-      auto rhs_end_block          = builder().CurrentBlock();
+      auto rhs_val             = node->rhs()->EmitValue(this).get<bool>(0);
+      auto rhs_end_block       = builder().CurrentBlock();
       ir::UncondJump(land_block);
 
       builder().CurrentBlock() = land_block;
@@ -575,8 +569,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
                                        {rhs_val, ir::RegOr<bool>(false)})};
     } break;
     case frontend::Operator::AddEq: {
-      auto lhs_lval = node->lhs()->EmitLVal(this, ctx)[0];
-      auto rhs_ir   = node->rhs()->EmitIr(this, ctx);
+      auto lhs_lval = node->lhs()->EmitRef(this)[0];
+      auto rhs_ir   = node->rhs()->EmitValue(this);
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t, float, double>(
           rhs_type, [&](auto tag) {
@@ -587,8 +581,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
       return ir::Results{};
     } break;
     case frontend::Operator::SubEq: {
-      auto lhs_lval = node->lhs()->EmitLVal(this, ctx)[0];
-      auto rhs_ir   = node->rhs()->EmitIr(this, ctx);
+      auto lhs_lval = node->lhs()->EmitRef(this)[0];
+      auto rhs_ir   = node->rhs()->EmitValue(this);
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t, float, double>(
           rhs_type, [&](auto tag) {
@@ -599,8 +593,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
       return ir::Results{};
     } break;
     case frontend::Operator::DivEq: {
-      auto lhs_lval = node->lhs()->EmitLVal(this, ctx)[0];
-      auto rhs_ir   = node->rhs()->EmitIr(this, ctx);
+      auto lhs_lval = node->lhs()->EmitRef(this)[0];
+      auto rhs_ir   = node->rhs()->EmitValue(this);
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t, float, double>(
           rhs_type, [&](auto tag) {
@@ -611,8 +605,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
       return ir::Results{};
     } break;
     case frontend::Operator::ModEq: {
-      auto lhs_lval = node->lhs()->EmitLVal(this, ctx)[0];
-      auto rhs_ir   = node->rhs()->EmitIr(this, ctx);
+      auto lhs_lval = node->lhs()->EmitRef(this)[0];
+      auto rhs_ir   = node->rhs()->EmitValue(this);
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t>(rhs_type, [&](auto tag) {
         using T = typename decltype(tag)::type;
@@ -621,8 +615,8 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
       return ir::Results{};
     } break;
     case frontend::Operator::MulEq: {
-      auto lhs_lval = node->lhs()->EmitLVal(this, ctx)[0];
-      auto rhs_ir   = node->rhs()->EmitIr(this, ctx);
+      auto lhs_lval = node->lhs()->EmitRef(this)[0];
+      auto rhs_ir   = node->rhs()->EmitValue(this);
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t, float, double>(
           rhs_type, [&](auto tag) {
@@ -634,13 +628,13 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
     } break;
     case frontend::Operator::XorEq: {
       if (lhs_type == type::Bool) {
-        auto lhs_lval = node->lhs()->EmitLVal(this, ctx)[0];
-        auto rhs_ir   = node->rhs()->EmitIr(this, ctx).get<bool>(0);
+        auto lhs_lval = node->lhs()->EmitRef(this)[0];
+        auto rhs_ir   = node->rhs()->EmitValue(this).get<bool>(0);
         ir::Store(ir::Ne(ir::Load<bool>(lhs_lval), rhs_ir), lhs_lval);
       } else if (lhs_type->is<type::Flags>()) {
         auto *flags_type = &lhs_type->as<type::Flags>();
-        auto lhs_lval    = node->lhs()->EmitLVal(this, ctx)[0];
-        auto rhs_ir      = node->rhs()->EmitIr(this, ctx).get<ir::FlagsVal>(0);
+        auto lhs_lval    = node->lhs()->EmitRef(this)[0];
+        auto rhs_ir      = node->rhs()->EmitValue(this).get<ir::FlagsVal>(0);
         ir::Store(ir::XorFlags(ir::Load<ir::FlagsVal>(lhs_lval), rhs_ir),
                   lhs_lval);
       } else {
@@ -653,32 +647,32 @@ ir::Results EmitIr::Val(ast::Binop const *node, Context *ctx) {
   UNREACHABLE(*node);
 }
 
-ir::Results EmitIr::Val(ast::BlockLiteral const *node, Context *ctx) {
+ir::Results TraditionalCompilation::EmitValue(ast::BlockLiteral const *node) {
   std::vector<ir::RegOr<ir::AnyFunc>> befores, afters;
   befores.reserve(node->before().size());
   for (auto const &decl : node->before()) {
     ASSERT((decl->flags() & ast::Declaration::f_IsConst) != 0);
-    befores.push_back(decl->EmitIr(this, ctx).get<ir::AnyFunc>(0));
+    befores.push_back(decl->EmitValue(this).get<ir::AnyFunc>(0));
   }
 
   for (auto const &decl : node->after()) {
     ASSERT((decl->flags() & ast::Declaration::f_IsConst) != 0);
-    afters.push_back(decl->EmitIr(this, ctx).get<ir::AnyFunc>(0));
+    afters.push_back(decl->EmitValue(this).get<ir::AnyFunc>(0));
   }
 
   return ir::Results{ir::BlockHandler(befores, afters)};
 }
 
-ir::Results EmitIr::Val(ast::BlockNode const *node, Context *ctx) {
-  ctx->yields_stack_.emplace_back();
-  base::defer d([&]() { ctx->yields_stack_.pop_back(); });
+ir::Results TraditionalCompilation::EmitValue(ast::BlockNode const *node) {
+  context().yields_stack_.emplace_back();
+  base::defer d([&]() { context().yields_stack_.pop_back(); });
 
-  EmitIrForStatements(this, node->stmts(), ctx);
+  EmitIrForStatements(this, node->stmts());
 
   //   // TODO yield args can just be this pair type, making this conversion
   //   // unnecessary.
   //   std::vector<std::pair<ast::Expression const *, ir::Results>> yield_args;
-  //   for (auto &arg : ctx->yields_stack_.back()) {
+  //   for (auto &arg : context().yields_stack_.back()) {
   //     yield_args.emplace_back(arg.expr_, arg.value());
   //   }
   //
@@ -687,45 +681,45 @@ ir::Results EmitIr::Val(ast::BlockNode const *node, Context *ctx) {
   //   // pass to the next scope. Need to really treat these like function args
   //   and
   //   // destroy them at the end of the inline call.
-  //   MakeAllDestructions(this, node->body_scope(), ctx);
+  //   MakeAllDestructions(this, node->body_scope());
   //
-  //   ASSERT_NOT_NULL(ctx->jump_table(node, ""))
+  //   ASSERT_NOT_NULL(context().jump_table(node, ""))
   //       ->EmitInlineCall(
   //           core::FnArgs<std::pair<ast::Expression const *, ir::Results>>{
   //               std::move(yield_args), {}},
-  //           *ctx->block_map, ctx);
+  //           *context().block_map, ctx);
   //
   NOT_YET();
   return ir::Results{};
 }
 
-ir::Results EmitIr::Val(ast::BuiltinFn const *node, Context *ctx) {
+ir::Results TraditionalCompilation::EmitValue(ast::BuiltinFn const *node) {
   return ir::Results{node->value()};
 }
 
-ir::Results EmitIr::Val(ast::Call const *node, Context *ctx) {
+ir::Results TraditionalCompilation::EmitValue(ast::Call const *node) {
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
     switch (b->value()) {
       case core::Builtin::Foreign: {
         auto name = backend::EvaluateAs<std::string_view>(
             type::Typed<ast::Expression const *>(node->args().at(0),
                                                  type::ByteView),
-            ctx);
+            &context());
         auto *foreign_type = backend::EvaluateAs<type::Type const *>(
             type::Typed<ast::Expression const *>(node->args().at(1),
                                                  type::Type_),
-            ctx);
+            &context());
         return ir::Results{ir::LoadSymbol(name, foreign_type).get()};
       } break;
 
-      case core::Builtin::Opaque: return ir::Results{ir::OpaqueType(ctx->mod_)};
+      case core::Builtin::Opaque: return ir::Results{ir::OpaqueType(module())};
       case core::Builtin::Bytes: {
         auto const &fn_type =
             ir::BuiltinType(core::Builtin::Bytes)->as<type::Function>();
         ir::OutParams outs;
         auto reg = outs.AppendReg(fn_type.output.at(0));
-        ir::Call(ir::BytesFn(), &fn_type,
-                 {node->args().at(0)->EmitIr(this, ctx)}, outs);
+        ir::Call(ir::BytesFn(), &fn_type, {node->args().at(0)->EmitValue(this)},
+                 outs);
 
         return ir::Results{reg};
       } break;
@@ -736,7 +730,7 @@ ir::Results EmitIr::Val(ast::Call const *node, Context *ctx) {
         ir::OutParams outs;
         auto reg = outs.AppendReg(fn_type.output.at(0));
         ir::Call(ir::AlignmentFn(), &fn_type,
-                 {node->args().at(0)->EmitIr(this, ctx)}, outs);
+                 {node->args().at(0)->EmitValue(this)}, outs);
 
         return ir::Results{reg};
       } break;
@@ -748,7 +742,7 @@ ir::Results EmitIr::Val(ast::Call const *node, Context *ctx) {
     UNREACHABLE();
   }
 
-  auto const &dispatch_table = *ASSERT_NOT_NULL(ctx->dispatch_table(node));
+  auto const &dispatch_table = *ASSERT_NOT_NULL(context().dispatch_table(node));
   // Look at all the possible calls and generate the dispatching code
   // TODO implement this with a lookup table instead of this branching insanity.
 
@@ -756,28 +750,27 @@ ir::Results EmitIr::Val(ast::Call const *node, Context *ctx) {
   // into a single variant buffer, because we know we need something that big
   // anyway, and their use cannot overlap.
   auto args = node->args().Transform(
-      [this, ctx](ast::Expression const *expr)
+      [this](ast::Expression const *expr)
           -> std::pair<ast::Expression const *, ir::Results> {
-        return std::pair(expr, expr->EmitIr(this, ctx));
+        return std::pair(expr, expr->EmitValue(this));
       });
 
   return dispatch_table.EmitCall(
-      args, ctx,
+      this, args,
       node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
 }
 
-ir::Results EmitIr::Val(ast::Cast const *node, Context *ctx) {
-  if (auto *dispatch_table = ctx->dispatch_table(node)) {
+ir::Results TraditionalCompilation::EmitValue(ast::Cast const *node) {
+  if (auto *dispatch_table = context().dispatch_table(node)) {
     return dispatch_table->EmitCall(
-        core::FnArgs<std::pair<ast::Expression const *, ir::Results>>(
-            {std::pair(node->expr(), node->expr()->EmitIr(this, ctx)),
-             std::pair(node->type(), node->type()->EmitIr(this, ctx))},
-            {}),
-        ctx);
+        this, core::FnArgs<std::pair<ast::Expression const *, ir::Results>>(
+                  {std::pair(node->expr(), node->expr()->EmitValue(this)),
+                   std::pair(node->type(), node->type()->EmitValue(this))},
+                  {}));
   }
 
-  auto *to_type = ASSERT_NOT_NULL(ctx->type_of(node));
-  auto results  = node->expr()->EmitIr(this, ctx);
+  auto *to_type = ASSERT_NOT_NULL(context().type_of(node));
+  auto results  = node->expr()->EmitValue(this);
   if (to_type == type::Type_) {
     std::vector<type::Type const *> entries;
     entries.reserve(results.size());
@@ -787,7 +780,7 @@ ir::Results EmitIr::Val(ast::Cast const *node, Context *ctx) {
     }
     return ir::Results{type::Tup(entries)};
   }
-  auto *from_type = ctx->type_of(node->expr());
+  auto *from_type = context().type_of(node->expr());
   // TODO enum, flags, ptrs?
   return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                           uint32_t, uint64_t, float, double>(
@@ -806,15 +799,16 @@ static base::guarded<absl::flat_hash_map<
     absl::flat_hash_map<type::Array const *, ir::CompiledFn *>>>
     ne_funcs;
 // TODO this should early exit if the types aren't equal.
-ir::Results ArrayCompare(type::Array const *lhs_type, ir::Results const &lhs_ir,
+ir::Results ArrayCompare(TraditionalCompilation *visitor,
+                         type::Array const *lhs_type, ir::Results const &lhs_ir,
                          type::Array const *rhs_type, ir::Results const &rhs_ir,
-                         bool equality, EmitIr *visitor, Context *ctx) {
+                         bool equality) {
   auto &funcs = equality ? eq_funcs : ne_funcs;
   auto handle = funcs.lock();
 
-  auto [iter, success] = (*handle)[lhs_type].emplace(rhs_type, nullptr);
+  auto[iter, success] = (*handle)[lhs_type].emplace(rhs_type, nullptr);
   if (success) {
-    auto *fn = ctx->mod_->AddFunc(
+    auto *fn = visitor->module()->AddFunc(
         type::Func({type::Ptr(lhs_type), type::Ptr(rhs_type)}, {type::Bool}),
         core::FnParams(core::Param{"", type::Typed<ast::Expression const *>(
                                            nullptr, type::Ptr(lhs_type))},
@@ -883,32 +877,34 @@ ir::Results ArrayCompare(type::Array const *lhs_type, ir::Results const &lhs_ir,
   return ir::Results{result};
 }
 
-static ir::RegOr<bool> EmitChainOpPair(ast::ChainOp const *chain_op,
+static ir::RegOr<bool> EmitChainOpPair(TraditionalCompilation *visitor,
+                                       ast::ChainOp const *chain_op,
                                        size_t index, ir::Results const &lhs_ir,
-                                       ir::Results const &rhs_ir,
-                                       EmitIr *visitor, Context *ctx) {
-  auto *lhs_type = ctx->type_of(chain_op->exprs()[index]);
-  auto *rhs_type = ctx->type_of(chain_op->exprs()[index + 1]);
+                                       ir::Results const &rhs_ir) {
+  auto *lhs_type = visitor->context().type_of(chain_op->exprs()[index]);
+  auto *rhs_type = visitor->context().type_of(chain_op->exprs()[index + 1]);
   auto op        = chain_op->ops()[index];
 
   if (lhs_type->is<type::Array>() && rhs_type->is<type::Array>()) {
     using ::matcher::Eq;
     ASSERT(op, Eq(frontend::Operator::Eq) || Eq(frontend::Operator::Ne));
-    return ArrayCompare(&lhs_type->as<type::Array>(), lhs_ir,
+    return ArrayCompare(visitor, &lhs_type->as<type::Array>(), lhs_ir,
                         &rhs_type->as<type::Array>(), rhs_ir,
-                        op == frontend::Operator::Eq, visitor, ctx)
+                        op == frontend::Operator::Eq)
         .get<bool>(0);
   } else if (lhs_type->is<type::Struct>() || rhs_type->is<type::Struct>()) {
     auto results =
         ASSERT_NOT_NULL(
-            ctx->dispatch_table(reinterpret_cast<ast::Expression *>(
-                reinterpret_cast<uintptr_t>(chain_op->exprs()[index]) | 0x1)))
+            visitor->context().dispatch_table(
+                reinterpret_cast<ast::Expression *>(
+                    reinterpret_cast<uintptr_t>(chain_op->exprs()[index]) |
+                    0x1)))
             ->EmitCall(
+                visitor,
                 core::FnArgs<std::pair<ast::Expression const *, ir::Results>>(
                     {std::pair(chain_op->exprs()[index], lhs_ir),
                      std::pair(chain_op->exprs()[index + 1], rhs_ir)},
-                    {}),
-                ctx);
+                    {}));
     ASSERT(results.size() == 1u);
     return results.get<bool>(0);
 
@@ -932,7 +928,9 @@ static ir::RegOr<bool> EmitChainOpPair(ast::ChainOp const *chain_op,
         if (lhs_type == type::Block) {
           auto val1 = lhs_ir.get<ir::BlockDef *>(0);
           auto val2 = rhs_ir.get<ir::BlockDef *>(0);
-          if (!val1.is_reg() && !val2.is_reg()) { return val1.value() == val2.value(); }
+          if (!val1.is_reg() && !val2.is_reg()) {
+            return val1.value() == val2.value();
+          }
         }
         return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t,
                                 uint8_t, uint16_t, uint32_t, uint64_t, float,
@@ -946,7 +944,9 @@ static ir::RegOr<bool> EmitChainOpPair(ast::ChainOp const *chain_op,
         if (lhs_type == type::Block) {
           auto val1 = lhs_ir.get<ir::BlockDef *>(0);
           auto val2 = rhs_ir.get<ir::BlockDef *>(0);
-          if (!val1.is_reg() && !val2.is_reg()) { return val1.value() == val2.value(); }
+          if (!val1.is_reg() && !val2.is_reg()) {
+            return val1.value() == val2.value();
+          }
         }
         return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t,
                                 uint8_t, uint16_t, uint32_t, uint64_t, float,
@@ -976,14 +976,14 @@ static ir::RegOr<bool> EmitChainOpPair(ast::ChainOp const *chain_op,
   }
 }
 
-ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
-  auto *t = ctx->type_of(node);
+ir::Results TraditionalCompilation::EmitValue(ast::ChainOp const *node) {
+  auto *t = context().type_of(node);
   if (node->ops()[0] == frontend::Operator::Xor) {
     if (t == type::Bool) {
       return ir::Results{std::accumulate(
           node->exprs().begin(), node->exprs().end(), ir::RegOr<bool>(false),
           [&](ir::RegOr<bool> acc, auto *expr) {
-            return ir::Ne(acc, expr->EmitIr(this, ctx).template get<bool>(0));
+            return ir::Ne(acc, expr->EmitValue(this).template get<bool>(0));
           })};
     } else if (t->is<type::Flags>()) {
       return ir::Results{std::accumulate(
@@ -991,7 +991,7 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
           ir::RegOr<ir::FlagsVal>(ir::FlagsVal{0}),
           [&](ir::RegOr<ir::FlagsVal> acc, auto *expr) {
             return ir::XorFlags(
-                acc, expr->EmitIr(this, ctx).template get<ir::FlagsVal>(0));
+                acc, expr->EmitValue(this).template get<ir::FlagsVal>(0));
           })};
     } else {
       UNREACHABLE();
@@ -999,17 +999,17 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
 
   } else if (node->ops()[0] == frontend::Operator::Or && t->is<type::Flags>()) {
     auto iter = node->exprs().begin();
-    auto val  = (*iter)->EmitIr(this, ctx).get<ir::FlagsVal>(0);
+    auto val  = (*iter)->EmitValue(this).get<ir::FlagsVal>(0);
     while (++iter != node->exprs().end()) {
-      val = ir::OrFlags(val, (*iter)->EmitIr(this, ctx).get<ir::FlagsVal>(0));
+      val = ir::OrFlags(val, (*iter)->EmitValue(this).get<ir::FlagsVal>(0));
     }
     return ir::Results{val};
   } else if (node->ops()[0] == frontend::Operator::And &&
              t->is<type::Flags>()) {
     auto iter = node->exprs().begin();
-    auto val  = (*iter)->EmitIr(this, ctx).get<ir::FlagsVal>(0);
+    auto val  = (*iter)->EmitValue(this).get<ir::FlagsVal>(0);
     while (++iter != node->exprs().end()) {
-      val = ir::AndFlags(val, (*iter)->EmitIr(this, ctx).get<ir::FlagsVal>(0));
+      val = ir::AndFlags(val, (*iter)->EmitValue(this).get<ir::FlagsVal>(0));
     }
     return ir::Results{val};
   } else if (node->ops()[0] == frontend::Operator::Or && t == type::Type_) {
@@ -1018,7 +1018,7 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
     std::vector<ir::RegOr<type::Type const *>> args;
     args.reserve(node->exprs().size());
     for (auto const *expr : node->exprs()) {
-      args.push_back(expr->EmitIr(this, ctx).get<type::Type const *>(0));
+      args.push_back(expr->EmitValue(this).get<type::Type const *>(0));
     }
     auto reg_or_type = ir::Var(args);
     return ir::Results{reg_or_type};
@@ -1032,7 +1032,7 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
     std::vector<ir::RegOr<bool>> phi_results;
     bool is_or = (node->ops()[0] == frontend::Operator::Or);
     for (size_t i = 0; i + 1 < node->exprs().size(); ++i) {
-      auto val = node->exprs()[i]->EmitIr(this, ctx).get<bool>(0);
+      auto val = node->exprs()[i]->EmitValue(this).get<bool>(0);
 
       auto *next_block = builder().AddBlock();
       ir::CondJump(val, is_or ? land_block : next_block,
@@ -1044,7 +1044,7 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
     }
 
     phi_blocks.push_back(builder().CurrentBlock());
-    phi_results.push_back(node->exprs().back()->EmitIr(this, ctx).get<bool>(0));
+    phi_results.push_back(node->exprs().back()->EmitValue(this).get<bool>(0));
     ir::UncondJump(land_block);
 
     builder().CurrentBlock() = land_block;
@@ -1053,32 +1053,32 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
 
   } else {
     if (node->ops().size() == 1) {
-      auto lhs_ir = node->exprs()[0]->EmitIr(this, ctx);
-      auto rhs_ir = node->exprs()[1]->EmitIr(this, ctx);
-      return ir::Results{EmitChainOpPair(node, 0, lhs_ir, rhs_ir, this, ctx)};
+      auto lhs_ir = node->exprs()[0]->EmitValue(this);
+      auto rhs_ir = node->exprs()[1]->EmitValue(this);
+      return ir::Results{EmitChainOpPair(this, node, 0, lhs_ir, rhs_ir)};
 
     } else {
       std::vector<ir::BasicBlock *> phi_blocks;
       std::vector<ir::RegOr<bool>> phi_values;
-      auto lhs_ir     = node->exprs().front()->EmitIr(this, ctx);
+      auto lhs_ir      = node->exprs().front()->EmitValue(this);
       auto *land_block = builder().AddBlock();
       for (size_t i = 0; i + 1 < node->ops().size(); ++i) {
-        auto rhs_ir = node->exprs()[i + 1]->EmitIr(this, ctx);
-        auto cmp    = EmitChainOpPair(node, i, lhs_ir, rhs_ir, this, ctx);
+        auto rhs_ir = node->exprs()[i + 1]->EmitValue(this);
+        auto cmp    = EmitChainOpPair(this, node, i, lhs_ir, rhs_ir);
 
         phi_blocks.push_back(builder().CurrentBlock());
         phi_values.push_back(false);
         auto *next_block = builder().AddBlock();
         ir::CondJump(cmp, next_block, land_block);
         builder().CurrentBlock() = next_block;
-        lhs_ir                      = std::move(rhs_ir);
+        lhs_ir                   = std::move(rhs_ir);
       }
 
       // Once more for the last element, but don't do a conditional jump.
-      auto rhs_ir = node->exprs().back()->EmitIr(this, ctx);
+      auto rhs_ir = node->exprs().back()->EmitValue(this);
       phi_blocks.push_back(builder().CurrentBlock());
-      phi_values.push_back(EmitChainOpPair(node, node->exprs().size() - 2,
-                                           lhs_ir, rhs_ir, this, ctx));
+      phi_values.push_back(EmitChainOpPair(this, node, node->exprs().size() - 2,
+                                           lhs_ir, rhs_ir));
       ir::UncondJump(land_block);
 
       builder().CurrentBlock() = land_block;
@@ -1089,66 +1089,59 @@ ir::Results EmitIr::Val(ast::ChainOp const *node, Context *ctx) {
   UNREACHABLE();
 }
 
-ir::Results EmitIr::Val(ast::CommaList const *node, Context *ctx) {
-  auto *tuple_type = &ctx->type_of(node)->as<type::Tuple>();
+ir::Results TraditionalCompilation::EmitValue(ast::CommaList const *node) {
+  auto *tuple_type = &context().type_of(node)->as<type::Tuple>();
   // TODO this is a hack. I'm still not sure what counts as a tuple and what
   // counts as atype
   if (tuple_type->entries_.empty()) { return ir::Results{type::Tup({})}; }
 
-  auto tuple_alloc = ir::TmpAlloca(tuple_type, ctx);
+  auto tuple_alloc = ir::TmpAlloca(tuple_type, &context());
 
   size_t index = 0;
   for (auto &expr : node->exprs_) {
     if (expr->needs_expansion()) {
-      auto results = expr->EmitIr(this, ctx);
+      auto results = expr->EmitValue(this);
       for (size_t i = 0; i < results.size(); ++i) {
-        CopyInit(tuple_type->entries_[index], results.GetResult(i),
-                 ir::Field(tuple_alloc, tuple_type, index), ctx);
+        EmitCopyInit(tuple_type->entries_[index], results.GetResult(i),
+                     ir::Field(tuple_alloc, tuple_type, index));
         ++index;
       }
     } else {
-      CopyInit(tuple_type->entries_[index], expr->EmitIr(this, ctx),
-               ir::Field(tuple_alloc, tuple_type, index), ctx);
+      EmitCopyInit(tuple_type->entries_[index], expr->EmitValue(this),
+                   ir::Field(tuple_alloc, tuple_type, index));
       ++index;
     }
   }
   return ir::Results{tuple_alloc};
 }
 
-ir::Results EmitIr::Val(ast::Declaration const *node, Context *ctx) {
-  bool swap_bc    = ctx->mod_ != node->module();
-  Module *old_mod = std::exchange(ctx->mod_, node->module());
-  if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
-  base::defer d([&] {
-    ctx->mod_ = old_mod;
-    if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
-  });
-
+ir::Results TraditionalCompilation::EmitValue(ast::Declaration const *node) {
+  // TODO swap contexts?
   if (node->flags() & ast::Declaration::f_IsConst) {
     // TODO
     if (node->flags() & ast::Declaration::f_IsFnParam) {
-      if (auto result = ctx->current_constants_.get_constant(node);
+      if (auto result = context().current_constants_.get_constant(node);
           !result.empty()) {
         return result;
-      } else if (auto result = ctx->constants_->first.get_constant(node);
+      } else if (auto result = context().constants_->first.get_constant(node);
                  !result.empty()) {
         return result;
       } else {
         UNREACHABLE();
       }
     } else {
-      auto *t = ctx->type_of(node);
+      auto *t = context().type_of(node);
       if (!t) {
         DEBUG_LOG()(DumpAst::ToString(node));
         UNREACHABLE();
       }
 
-      auto slot = ctx->constants_->second.constants_.reserve_slot(node, t);
+      auto slot = context().constants_->second.constants_.reserve_slot(node, t);
       if (auto *result = std::get_if<ir::Results>(&slot)) {
         return std::move(*result);
       }
 
-      auto &[data_offset, num_bytes] =
+      auto & [ data_offset, num_bytes ] =
           std::get<std::pair<size_t, core::Bytes>>(slot);
 
       if (node->IsCustomInitialized()) {
@@ -1157,9 +1150,10 @@ ir::Results EmitIr::Val(ast::Declaration const *node, Context *ctx) {
         // returned. In reality, we could write directly to the buffer and only
         // copy once if Evaluate* took an out-parameter.
         base::untyped_buffer buf = backend::EvaluateToBuffer(
-            type::Typed<ast::Expression const *>(node->init_val(), t), ctx);
-        if (ctx->num_errors() > 0u) { return ir::Results{}; }
-        return ctx->constants_->second.constants_.set_slot(
+            type::Typed<ast::Expression const *>(node->init_val(), t),
+            &context());
+        if (context().num_errors() > 0u) { return ir::Results{}; }
+        return context().constants_->second.constants_.set_slot(
             data_offset, buf.raw(0), num_bytes);
       } else if (node->IsDefaultInitialized()) {
         UNREACHABLE();
@@ -1171,20 +1165,19 @@ ir::Results EmitIr::Val(ast::Declaration const *node, Context *ctx) {
   } else {
     // For local variables the declaration determines where the initial value is
     // set, but the allocation has to be done much earlier. We do the allocation
-    // in FunctionLiteral::EmitIr. Declaration::EmitIr is just used to set the
-    // value.
+    // in FunctionLiteral::TraditionalCompilation.
+    // Declaration::TraditionalCompilation is just used to set the value.
     ASSERT(node->scope_->Containing<core::FnScope>() != nullptr);
 
     // TODO these checks actually overlap and could be simplified.
     if (node->IsUninitialized()) { return ir::Results{}; }
-    auto *t   = ctx->type_of(node);
-    auto addr = ctx->addr(node);
+    auto *t   = context().type_of(node);
+    auto addr = context().addr(node);
     if (node->IsCustomInitialized()) {
-      node->init_val()->EmitMoveInit(this, type::Typed(addr, type::Ptr(t)),
-                                     ctx);
+      node->init_val()->EmitMoveInit(this, type::Typed(addr, type::Ptr(t)));
     } else {
       if (!(node->flags() & ast::Declaration::f_IsFnParam)) {
-        t->EmitDefaultInit(this, addr, ctx);
+        t->EmitDefaultInit(this, addr);
       }
     }
     return ir::Results{addr};
@@ -1192,7 +1185,7 @@ ir::Results EmitIr::Val(ast::Declaration const *node, Context *ctx) {
   UNREACHABLE();
 }
 
-ir::Results EmitIr::Val(ast::EnumLiteral const *node, Context *ctx) {
+ir::Results TraditionalCompilation::EmitValue(ast::EnumLiteral const *node) {
   using enum_t = uint64_t;
   std::vector<std::string_view> names;
   absl::flat_hash_map<uint64_t, ir::RegOr<enum_t>> specified_values;
@@ -1204,64 +1197,65 @@ ir::Results EmitIr::Val(ast::EnumLiteral const *node, Context *ctx) {
       names.push_back(decl->id());
       if (!decl->IsCustomInitialized()) {
         specified_values.emplace(
-            names.size() - 1,
-            decl->init_val()->EmitIr(this, ctx).get<enum_t>(0));
+            names.size() - 1, decl->init_val()->EmitValue(this).get<enum_t>(0));
       }
     }
   }
 
   switch (node->kind()) {
     case ast::EnumLiteral::Kind::Enum:
-      return ir::Results{ir::Enum(ctx->mod_, names, specified_values)};
+      return ir::Results{ir::Enum(module(), names, specified_values)};
     case ast::EnumLiteral::Kind::Flags:
-      return ir::Results{ir::Flags(ctx->mod_, names, specified_values)};
+      return ir::Results{ir::Flags(module(), names, specified_values)};
     default: UNREACHABLE();
   }
 }
 
-ir::Results EmitIr::Val(ast::FunctionLiteral const *node, Context *ctx) {
+ir::Results TraditionalCompilation::EmitValue(
+    ast::FunctionLiteral const *node) {
   for (auto const &param : node->inputs_) {
     auto *p = param.value.get();
     if ((p->flags() & ast::Declaration::f_IsConst) &&
-        !ctx->constants_->first.contains(p)) {
+        !context().constants_->first.contains(p)) {
       return ir::Results{node};
     }
 
     for (auto *dep : node->param_dep_graph_.sink_deps(param.value.get())) {
-      if (!ctx->constants_->first.contains(dep)) { return ir::Results{node}; }
+      if (!context().constants_->first.contains(dep)) {
+        return ir::Results{node};
+      }
     }
   }
 
   // TODO Use correct constants
-  ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[node];
+  ir::CompiledFn *&ir_func = context().constants_->second.ir_funcs_[node];
   if (!ir_func) {
-    auto *work_item_ptr = DeferBody(this, node, ctx);
+    auto *work_item_ptr = DeferBody(this, node);
 
-    auto *fn_type = &ctx->type_of(node)->as<type::Function>();
+    auto *fn_type = &context().type_of(node)->as<type::Function>();
 
-    ir_func = ctx->mod_->AddFunc(
-        fn_type, node->inputs_.Transform(
-                     [fn_type, i = 0](
-                         std::unique_ptr<ast::Declaration> const &e) mutable {
-                       return type::Typed<ast::Expression const *>(
-                           e->init_val(), fn_type->input.at(i++));
-                     }));
+    ir_func = module()->AddFunc(
+        fn_type, node->inputs_.Transform([ fn_type, i = 0 ](
+                     std::unique_ptr<ast::Declaration> const &e) mutable {
+          return type::Typed<ast::Expression const *>(e->init_val(),
+                                                      fn_type->input.at(i++));
+        }));
     if (work_item_ptr) { ir_func->work_item = work_item_ptr; }
   }
 
   return ir::Results{ir_func};
 }
 
-ir::Results EmitIr::Val(ast::Identifier const *node, Context *ctx) {
+ir::Results TraditionalCompilation::EmitValue(ast::Identifier const *node) {
   ASSERT(node->decl() != nullptr) << DumpAst::ToString(node);
   if (node->decl()->flags() & ast::Declaration::f_IsConst) {
-    return node->decl()->EmitIr(this, ctx);
+    return node->decl()->EmitValue(this);
   }
   if (node->decl()->flags() & ast::Declaration::f_IsFnParam) {
-    auto *t     = ctx->type_of(node);
-    ir::Reg reg = ctx->addr(node->decl());
-    if (ctx->inline_) {
-      ir::Results reg_results = (*ctx->inline_)[reg];
+    auto *t     = context().type_of(node);
+    ir::Reg reg = context().addr(node->decl());
+    if (context().inline_) {
+      ir::Results reg_results = (*context().inline_)[reg];
       if (!reg_results.is_reg(0)) { return reg_results; }
       reg = reg_results.get<ir::Reg>(0);
     }
@@ -1271,36 +1265,36 @@ ir::Results EmitIr::Val(ast::Identifier const *node, Context *ctx) {
                            ? ir::Load(reg, t)
                            : reg};
   } else {
-    auto *t   = ASSERT_NOT_NULL(ctx->type_of(node));
-    auto lval = node->EmitLVal(this, ctx)[0];
+    auto *t   = ASSERT_NOT_NULL(context().type_of(node));
+    auto lval = node->EmitRef(this)[0];
     if (!lval.is_reg()) { NOT_YET(); }
     return ir::Results{ir::PtrFix(lval.reg(), t)};
   }
 }
 
-ir::Results EmitIr::Val(ast::Import const *node, Context *ctx) {
-  return ir::Results{ASSERT_NOT_NULL(ctx->pending_module(node))->get()};
+ir::Results TraditionalCompilation::EmitValue(ast::Import const *node) {
+  return ir::Results{ASSERT_NOT_NULL(context().pending_module(node))->get()};
 }
 
-ir::Results EmitIr::Val(ast::Index const *node, Context *ctx) {
+ir::Results TraditionalCompilation::EmitValue(ast::Index const *node) {
   return ir::Results{
-      ir::PtrFix(node->EmitLVal(this, ctx)[0].reg(), ctx->type_of(node))};
+      ir::PtrFix(node->EmitRef(this)[0].reg(), context().type_of(node))};
 }
 
-ir::Results EmitIr::Val(ast::Jump const *node, Context *ctx) {
+ir::Results TraditionalCompilation::EmitValue(ast::Jump const *node) {
   NOT_YET();
   return ir::Results{};
 }
 
-ir::Results EmitIr::Val(ast::JumpHandler const *node, Context *ctx) {
+ir::Results TraditionalCompilation::EmitValue(ast::JumpHandler const *node) {
   // TODO handle constant inputs
   // TODO Use correct constants
   NOT_YET();
 
-  // ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[node];
+  // ir::CompiledFn *&ir_func = context().constants_->second.ir_funcs_[node];
   // if (!ir_func) {
-  //   auto work_item_ptr = DeferBody(this, node, ctx);
-  //   auto *jmp_type = &ctx->type_of(node)->as<type::Jump>();
+  //   auto work_item_ptr = DeferBody(this, node);
+  //   auto *jmp_type = &context().type_of(node)->as<type::Jump>();
 
   //   core::FnParams<type::Typed<ast::Expression const *>> params(
   //       node->input().size());
@@ -1313,7 +1307,7 @@ ir::Results EmitIr::Val(ast::JumpHandler const *node, Context *ctx) {
   //                                    jmp_type->args()[i])});
   //   }
 
-  //   ir_func = ctx->mod_->AddJump(jmp_type, std::move(params));
+  //   ir_func = module()->AddJump(jmp_type, std::move(params));
   //   if (work_item_ptr) { ir_func->work_item = work_item_ptr; }
   // }
   // return ir::Results{ir_func};
@@ -1321,87 +1315,87 @@ ir::Results EmitIr::Val(ast::JumpHandler const *node, Context *ctx) {
 }
 
 static std::vector<std::pair<ast::Expression const *, ir::Results>>
-EmitIrWithExpand(EmitIr *v, base::PtrSpan<ast::Expression const> exprs,
-                 Context *ctx) {
+EmitValueWithExpand(TraditionalCompilation *v,
+                    base::PtrSpan<ast::Expression const> exprs) {
   // TODO expansion
   std::vector<std::pair<ast::Expression const *, ir::Results>> results;
-  for (auto *expr : exprs) { results.emplace_back(expr, expr->EmitIr(v, ctx)); }
+  for (auto *expr : exprs) { results.emplace_back(expr, expr->EmitValue(v)); }
   return results;
 }
 
-ir::Results EmitIr::Val(ast::PrintStmt const *node, Context *ctx) {
-  auto results = EmitIrWithExpand(this, node->exprs(), ctx);
+ir::Results TraditionalCompilation::EmitValue(ast::PrintStmt const *node) {
+  auto results = EmitValueWithExpand(this, node->exprs());
   for (auto &result : results) {
     if (auto const *dispatch_table =
-            ctx->dispatch_table(ast::ExprPtr{result.first, 0x01})) {
+            context().dispatch_table(ast::ExprPtr{result.first, 0x01})) {
       dispatch_table->EmitCall(
-          core::FnArgs<std::pair<ast::Expression const *, ir::Results>>(
-              {std::move(result)}, {}),
-          ctx);
+          this, core::FnArgs<std::pair<ast::Expression const *, ir::Results>>(
+                    {std::move(result)}, {}));
     } else {
-      TraditionalCompilation visitor(ctx->mod_);
-      ctx->type_of(result.first)->EmitPrint(&visitor, result.second);
+      context().type_of(result.first)->EmitPrint(this, result.second);
     }
   }
   return ir::Results{};
 }
 
-ir::Results EmitIr::Val(ast::ReturnStmt const *node, Context *ctx) {
-  auto arg_vals  = EmitIrWithExpand(this, node->exprs(), ctx);
+ir::Results TraditionalCompilation::EmitValue(ast::ReturnStmt const *node) {
+  auto arg_vals  = EmitValueWithExpand(this, node->exprs());
   auto *fn_scope = ASSERT_NOT_NULL(node->scope_->Containing<core::FnScope>());
   auto *fn_lit   = ASSERT_NOT_NULL(fn_scope->fn_lit_);
 
-  auto *fn_type = &ASSERT_NOT_NULL(ctx->type_of(fn_lit))->as<type::Function>();
+  auto *fn_type =
+      &ASSERT_NOT_NULL(context().type_of(fn_lit))->as<type::Function>();
   for (size_t i = 0; i < arg_vals.size(); ++i) {
     // TODO return type maybe not the same as type actually returned?
-    ir::SetRet(i, type::Typed{arg_vals[i].second, fn_type->output.at(i)}, ctx);
+    ir::SetRet(i, type::Typed{arg_vals[i].second, fn_type->output.at(i)},
+               &context());
   }
 
   // Rather than doing this on each block it'd be better to have each
   // scope's destructors jump you to the correct next block for destruction.
   auto *scope = node->scope_;
   while (auto *exec = scope->if_as<core::ExecScope>()) {
-    MakeAllDestructions(this, exec, ctx);
+    MakeAllDestructions(this, exec);
     scope = exec->parent;
   }
 
-  ctx->more_stmts_allowed_ = false;
+  context().more_stmts_allowed_ = false;
   ir::ReturnJump();
   return ir::Results{};
 }
 
-ir::Results EmitIr::Val(ast::YieldStmt const *node, Context *ctx) {
-  auto arg_vals = EmitIrWithExpand(this, node->exprs(), ctx);
+ir::Results TraditionalCompilation::EmitValue(ast::YieldStmt const *node) {
+  auto arg_vals = EmitValueWithExpand(this, node->exprs());
   // TODO store this as an exec_scope.
-  MakeAllDestructions(this, &node->scope_->as<core::ExecScope>(), ctx);
+  MakeAllDestructions(this, &node->scope_->as<core::ExecScope>());
   // TODO pretty sure this is all wrong.
 
   // Can't return these because we need to pass them up at least through the
   // containing statements this and maybe further if we allow labelling
   // scopes to be yielded to.
-  ctx->yields_stack_.back().clear();
-  ctx->yields_stack_.back().reserve(arg_vals.size());
+  context().yields_stack_.back().clear();
+  context().yields_stack_.back().reserve(arg_vals.size());
   // TODO one problem with this setup is that we look things up in a context
   // after returning, so the `after` method has access to a different
   // (smaller) collection of bound constants. This can change the meaning of
   // things or at least make them not compile if the `after` function takes
   // a compile-time constant argument.
   for (size_t i = 0; i < arg_vals.size(); ++i) {
-    ctx->yields_stack_.back().emplace_back(node->exprs()[i],
-                                           arg_vals[i].second);
+    context().yields_stack_.back().emplace_back(node->exprs()[i],
+                                                arg_vals[i].second);
   }
 
-  ctx->more_stmts_allowed_ = false;
+  context().more_stmts_allowed_ = false;
   return ir::Results{};
 }
 
-ir::Results EmitIr::Val(ast::ScopeLiteral const *node, Context *ctx) {
+ir::Results TraditionalCompilation::EmitValue(ast::ScopeLiteral const *node) {
   NOT_YET();
   // auto [scope_def_iter, inserted] =
-  //     ctx->constants_->second.scope_defs_.try_emplace(node,
+  //     context().constants_->second.scope_defs_.try_emplace(node,
   //                                                     node->scope_->module());
   // if (inserted && !scope_def_iter->second.work_item) {
-  //   scope_def_iter->second.work_item = DeferBody(this, node, ctx);
+  //   scope_def_iter->second.work_item = DeferBody(this, node);
   // }
 
   // for (auto *decl : node->decls()) {
@@ -1411,9 +1405,9 @@ ir::Results EmitIr::Val(ast::ScopeLiteral const *node, Context *ctx) {
   // return ir::Results{&scope_def_iter->second};
 }
 
-ir::Results InitializeAndEmitBlockNode(ir::Results const &results,
-                                       ast::BlockNode const *block_node,
-                                       EmitIr *visitor, Context *ctx) {
+ir::Results InitializeAndEmitBlockNode(TraditionalCompilation *visitor,
+                                       ir::Results const &results,
+                                       ast::BlockNode const *block_node) {
   // TODO this initialization should be the same as what's done with function
   // calls, so you should share that code. It's tricky because you need to worry
   // about conversions to/from variants.
@@ -1421,8 +1415,8 @@ ir::Results InitializeAndEmitBlockNode(ir::Results const &results,
   size_t i = 0;
   for (auto *arg : block_node->args()) {
     ASSERT(arg->is<ast::Declaration>() == true);
-    auto *t   = ctx->type_of(arg->if_as<ast::Declaration>());
-    auto addr = ctx->addr(arg->if_as<ast::Declaration>());
+    auto *t   = visitor->context().type_of(arg->if_as<ast::Declaration>());
+    auto addr = visitor->context().addr(arg->if_as<ast::Declaration>());
     type::ApplyTypes<bool, uint8_t, uint16_t, uint32_t, uint64_t, int8_t,
                      int16_t, int32_t, int64_t, float, double, ir::Addr>(
         t, [&](auto tag) {
@@ -1431,7 +1425,7 @@ ir::Results InitializeAndEmitBlockNode(ir::Results const &results,
         });
     i++;
   }
-  return block_node->EmitIr(visitor, ctx);
+  return block_node->EmitValue(visitor);
 }
 
 // Represents the data extracted from a scope literal ready for application
@@ -1442,7 +1436,7 @@ struct LocalScopeInterpretation {
       absl::flat_hash_map<std::string_view, ir::BlockDef> const &block_defs,
       ast::ScopeNode const *node)
       : node_(node) {
-    for (auto const &[name, block] : block_defs) {
+    for (auto const & [ name, block ] : block_defs) {
       blocks_.emplace(std::piecewise_construct, std::forward_as_tuple(name),
                       std::forward_as_tuple(&block, nullptr));
     }
@@ -1468,15 +1462,15 @@ struct LocalScopeInterpretation {
   absl::flat_hash_map<std::string_view,
                       std::tuple<ir::BlockDef const *, ast::BlockNode const *>>
       blocks_;
-  absl::flat_hash_map<ir::BlockDef const *, ir::BasicBlock*> block_ptrs_;
+  absl::flat_hash_map<ir::BlockDef const *, ir::BasicBlock *> block_ptrs_;
 };
 
-ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) {
+ir::Results TraditionalCompilation::EmitValue(ast::ScopeNode const *node) {
   DEBUG_LOG("ScopeNode")("Emitting IR for ScopeNode");
 
   DEBUG_LOG("ScopeNode")("scope_def ... evaluating.");
   auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(
-      type::Typed{node->name(), type::Scope}, ctx);
+      type::Typed{node->name(), type::Scope}, &context());
   DEBUG_LOG("ScopeNode")("          ... completing work.");
   if (scope_def->work_item) { std::move (*scope_def->work_item)(); }
   DEBUG_LOG("ScopeNode")("          ... done.");
@@ -1489,20 +1483,20 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) {
   auto *land_block = interp.land_block();
 
   // TODO not sure this part is necessary
-  auto *old_block_map = ctx->block_map;
-  ctx->block_map      = &interp.block_ptrs_;
-  base::defer d([&] { ctx->block_map = old_block_map; });
+  auto *old_block_map = context().block_map;
+  context().block_map = &interp.block_ptrs_;
+  base::defer d([&] { context().block_map = old_block_map; });
 
   ir::UncondJump(init_block);
   builder().CurrentBlock() = init_block;
 
   DEBUG_LOG("ScopeNode")("Inlining entry handler at ", ast::ExprPtr{node});
-  // ASSERT_NOT_NULL(ctx->jump_table(node, nullptr))
+  // ASSERT_NOT_NULL(context().jump_table(node, nullptr))
   //     ->EmitInlineCall(
   //         node->args().Transform([this, ctx](ast::Expression const *expr) {
-  //           return std::pair(expr, expr->EmitIr(this, ctx));
+  //           return std::pair(expr, expr->EmitValue(this));
   //         }),
-  //         *ctx->block_map, ctx);
+  //         *context().block_map, ctx);
 
   DEBUG_LOG("ScopeNode")("Emit each block:");
   //   for (auto[block_name, block_and_node] : interp.blocks_) {
@@ -1513,7 +1507,7 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) {
   //     if (iter == block_map.end()) { continue; }
   //     builder().CurrentBlock() = iter->second;
   //     auto results =
-  //         ASSERT_NOT_NULL(ctx->dispatch_table(ast::ExprPtr{block_node,
+  //         ASSERT_NOT_NULL(context().dispatch_table(ast::ExprPtr{block_node,
   //         0x01}))
   //             ->EmitInlineCall({}, block_map, ctx);
   //     InitializeAndEmitBlockNode(results, block_node, this, ctx);
@@ -1530,24 +1524,24 @@ ir::Results EmitIr::Val(ast::ScopeNode const *node, Context *ctx) {
   //   DEBUG_LOG("ScopeNode")("Inlining exit handler");
   //   {
   //     auto *mod       = const_cast<Module *>(scope_def->module());
-  //     bool swap_bc    = ctx->mod_ != mod;
-  //     Module *old_mod = std::exchange(ctx->mod_, mod);
-  //     if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
+  //     bool swap_bc    = module() != mod;
+  //     Module *old_mod = std::exchange(module(), mod);
+  //     if (swap_bc) { context().constants_ = &module()->dep_data_.front(); }
   //     base::defer d([&] {
-  //       ctx->mod_ = old_mod;
-  //       if (swap_bc) { ctx->constants_ = &ctx->mod_->dep_data_.front(); }
+  //       module() = old_mod;
+  //       if (swap_bc) { context().constants_ = &module()->dep_data_.front(); }
   //     });
   //   }
   //   auto result =
-  //       ASSERT_NOT_NULL(ctx->dispatch_table(node))->EmitInlineCall({}, {},
-  //       ctx);
+  //       ASSERT_NOT_NULL(context().dispatch_table(node))->EmitInlineCall({},
+  //       {}, ctx);
   //
   //   DEBUG_LOG("ScopeNode")("Done emitting IR for ScopeNode");
   //   return result;
   return ir::Results{};
 }
 
-ir::Results EmitIr::Val(ast::StructLiteral const *node, Context *ctx) {
+ir::Results TraditionalCompilation::EmitValue(ast::StructLiteral const *node) {
   if (node->args_.empty()) {
     // TODO what about handling incomplete types?
     std::vector<std::tuple<std::string_view, ir::RegOr<type::Type const *>>>
@@ -1557,9 +1551,9 @@ ir::Results EmitIr::Val(ast::StructLiteral const *node, Context *ctx) {
       // TODO hashtags?
       fields.emplace_back(
           field.id(),
-          field.type_expr()->EmitIr(this, ctx).get<type::Type const *>(0));
+          field.type_expr()->EmitValue(this).get<type::Type const *>(0));
     }
-    return ir::Results{ir::Struct(node->scope_, ctx->mod_, std::move(fields))};
+    return ir::Results{ir::Struct(node->scope_, module(), std::move(fields))};
   } else {
     NOT_YET();
   }
@@ -1573,12 +1567,12 @@ ir::Results EmitIr::Val(ast::StructLiteral const *node, Context *ctx) {
   // //
   // // For now, it's safe to do this from within a single module compilation
   // // (which is single-threaded).
-  // ir::CompiledFn *&ir_func = ctx->constants_->second.ir_funcs_[node];
+  // ir::CompiledFn *&ir_func = context().constants_->second.ir_funcs_[node];
   // if (!ir_func) {
   //   auto work_item_ptr = DeferBody(this, node, ctx);
 
   //   auto const &arg_types =
-  //   ctx->type_of(node)->as<type::GenericStruct>().deps_;
+  //   context().type_of(node)->as<type::GenericStruct>().deps_;
 
   //   core::FnParams<type::Typed<ast::Expression const *>> params;
   //   params.reserve(node->args_.size());
@@ -1597,15 +1591,15 @@ ir::Results EmitIr::Val(ast::StructLiteral const *node, Context *ctx) {
   // return ir::Results{ir::AnyFunc{ir_func}};
 }
 
-ir::Results EmitIr::Val(ast::StructType const *node, Context *ctx) {
+ir::Results TraditionalCompilation::EmitValue(ast::StructType const *node) {
   NOT_YET();
 }
 
-ir::Results EmitIr::Val(ast::Switch const *node, Context *ctx) {
+ir::Results TraditionalCompilation::EmitValue(ast::Switch const *node) {
   absl::flat_hash_map<ir::BasicBlock *, ir::Results> phi_args;
 
   auto *land_block = builder().AddBlock();
-  auto *t         = ctx->type_of(node);
+  auto *t          = context().type_of(node);
   // TODO this is not precisely accurate if you have regular void.
   bool all_paths_jump = (t == type::Void());
 
@@ -1616,17 +1610,17 @@ ir::Results EmitIr::Val(ast::Switch const *node, Context *ctx) {
   ir::Results expr_results;
   type::Type const *expr_type = nullptr;
   if (node->expr_) {
-    expr_results = node->expr_->EmitIr(this, ctx);
-    expr_type    = ctx->type_of(node->expr_.get());
+    expr_results = node->expr_->EmitValue(this);
+    expr_type    = context().type_of(node->expr_.get());
   }
 
   for (size_t i = 0; i + 1 < node->cases_.size(); ++i) {
-    auto &[body, match_cond] = node->cases_[i];
-    auto *expr_block         = builder().AddBlock();
+    auto & [ body, match_cond ] = node->cases_[i];
+    auto *expr_block            = builder().AddBlock();
 
-    ir::Results match_val = match_cond->EmitIr(this, ctx);
+    ir::Results match_val = match_cond->EmitValue(this);
     ir::RegOr<bool> cond  = node->expr_
-                               ? ir::EmitEq(ctx->type_of(match_cond.get()),
+                               ? ir::EmitEq(context().type_of(match_cond.get()),
                                             match_val, expr_type, expr_results)
                                : match_val.get<bool>(0);
 
@@ -1634,13 +1628,13 @@ ir::Results EmitIr::Val(ast::Switch const *node, Context *ctx) {
 
     builder().CurrentBlock() = expr_block;
     if (body->is<ast::Expression>()) {
-      phi_args.emplace(builder().CurrentBlock(), body->EmitIr(this, ctx));
+      phi_args.emplace(builder().CurrentBlock(), body->EmitValue(this));
       ir::UncondJump(land_block);
     } else {
       // It must be a jump/yield/return, which we've verified in VerifyType.
-      body->EmitIr(this, ctx);
+      body->EmitValue(this);
 
-      if (!all_paths_jump) { ctx->more_stmts_allowed_ = true; }
+      if (!all_paths_jump) { context().more_stmts_allowed_ = true; }
     }
 
     builder().CurrentBlock() = next_block;
@@ -1648,12 +1642,12 @@ ir::Results EmitIr::Val(ast::Switch const *node, Context *ctx) {
 
   if (node->cases_.back().first->is<ast::Expression>()) {
     phi_args.emplace(builder().CurrentBlock(),
-                     node->cases_.back().first->EmitIr(this, ctx));
+                     node->cases_.back().first->EmitValue(this));
     ir::UncondJump(land_block);
   } else {
     // It must be a jump/yield/return, which we've verified in VerifyType.
-    node->cases_.back().first->EmitIr(this, ctx);
-    if (!all_paths_jump) { ctx->more_stmts_allowed_ = true; }
+    node->cases_.back().first->EmitValue(this);
+    if (!all_paths_jump) { context().more_stmts_allowed_ = true; }
   }
 
   builder().CurrentBlock() = land_block;
@@ -1664,45 +1658,45 @@ ir::Results EmitIr::Val(ast::Switch const *node, Context *ctx) {
   }
 }
 
-ir::Results EmitIr::Val(ast::Terminal const *node, Context *ctx) {
+ir::Results TraditionalCompilation::EmitValue(ast::Terminal const *node) {
   return node->value();
 }
 
-ir::Results EmitIr::Val(ast::Unop const *node, Context *ctx) {
-  auto *operand_type = ctx->type_of(node->operand.get());
-  if (auto const *dispatch_table = ctx->dispatch_table(node)) {
+ir::Results TraditionalCompilation::EmitValue(ast::Unop const *node) {
+  auto *operand_type = context().type_of(node->operand.get());
+  if (auto const *dispatch_table = context().dispatch_table(node)) {
     // TODO struct is not exactly right. we really mean user-defined
     return dispatch_table->EmitCall(
+        this,
         core::FnArgs<std::pair<ast::Expression const *, ir::Results>>(
-            {std::pair(node->operand.get(), node->operand->EmitIr(this, ctx))},
-            {}),
-        ctx);
+            {std::pair(node->operand.get(), node->operand->EmitValue(this))},
+            {}));
   }
 
   switch (node->op) {
     case frontend::Operator::Copy: {
-      auto reg = ir::TmpAlloca(operand_type, ctx);
-      CopyInit(operand_type, node->operand->EmitIr(this, ctx),
-               type::Typed<ir::Reg>(reg, operand_type), ctx);
+      auto reg = ir::TmpAlloca(operand_type, &context());
+      EmitCopyInit(operand_type, node->operand->EmitValue(this),
+                   type::Typed<ir::Reg>(reg, operand_type));
       return ir::Results{reg};
     } break;
     case frontend::Operator::Move: {
-      auto reg = ir::TmpAlloca(operand_type, ctx);
-      MoveInit(operand_type, node->operand->EmitIr(this, ctx),
-               type::Typed<ir::Reg>(reg, operand_type), ctx);
+      auto reg = ir::TmpAlloca(operand_type, &context());
+      EmitMoveInit(operand_type, node->operand->EmitValue(this),
+                   type::Typed<ir::Reg>(reg, operand_type));
       return ir::Results{reg};
     } break;
     case frontend::Operator::BufPtr:
       return ir::Results{ir::BufPtr(
-          node->operand->EmitIr(this, ctx).get<type::Type const *>(0))};
+          node->operand->EmitValue(this).get<type::Type const *>(0))};
     case frontend::Operator::Not: {
-      auto *t = ctx->type_of(node->operand.get());
+      auto *t = context().type_of(node->operand.get());
       if (t == type::Bool) {
         return ir::Results{
-            ir::Not(node->operand->EmitIr(this, ctx).get<bool>(0))};
+            ir::Not(node->operand->EmitValue(this).get<bool>(0))};
       } else if (t->is<type::Flags>()) {
         return ir::Results{
-            ir::XorFlags(node->operand->EmitIr(this, ctx).get<ir::FlagsVal>(0),
+            ir::XorFlags(node->operand->EmitValue(this).get<ir::FlagsVal>(0),
                          ir::FlagsVal{t->as<type::Flags>().All})};
 
       } else {
@@ -1710,35 +1704,35 @@ ir::Results EmitIr::Val(ast::Unop const *node, Context *ctx) {
       }
     } break;
     case frontend::Operator::Sub: {
-      auto operand_ir = node->operand->EmitIr(this, ctx);
+      auto operand_ir = node->operand->EmitValue(this);
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, float, double>(
-          ctx->type_of(node->operand.get()), [&](auto tag) {
+          context().type_of(node->operand.get()), [&](auto tag) {
             using T = typename decltype(tag)::type;
             return ir::Results{ir::Neg(operand_ir.get<T>(0))};
           });
     } break;
     case frontend::Operator::TypeOf:
-      return ir::Results{ctx->type_of(node->operand.get())};
+      return ir::Results{context().type_of(node->operand.get())};
     case frontend::Operator::Which:
       return ir::Results{ir::Load<type::Type const *>(
-          ir::VariantType(node->operand->EmitIr(this, ctx).get<ir::Reg>(0)))};
+          ir::VariantType(node->operand->EmitValue(this).get<ir::Reg>(0)))};
     case frontend::Operator::And:
-      return ir::Results{node->operand->EmitLVal(this, ctx)[0]};
+      return ir::Results{node->operand->EmitRef(this)[0]};
     case frontend::Operator::Eval: {
       // Guaranteed to be constant by VerifyType
       // TODO what if there's an error during evaluation?
       return backend::Evaluate(
           type::Typed<ast::Expression const *>(
-              node->operand.get(), ctx->type_of(node->operand.get())),
-          ctx);
+              node->operand.get(), context().type_of(node->operand.get())),
+          &context());
     }
     case frontend::Operator::Mul:
       return ir::Results{
-          ir::Ptr(node->operand->EmitIr(this, ctx).get<type::Type const *>(0))};
+          ir::Ptr(node->operand->EmitValue(this).get<type::Type const *>(0))};
     case frontend::Operator::At: {
-      auto *t = ctx->type_of(node);
+      auto *t = context().type_of(node);
       return ir::Results{
-          ir::Load(node->operand->EmitIr(this, ctx).get<ir::Reg>(0), t)};
+          ir::Load(node->operand->EmitValue(this).get<ir::Reg>(0), t)};
     }
     case frontend::Operator::Needs: {
       NOT_YET();
@@ -1747,10 +1741,10 @@ ir::Results EmitIr::Val(ast::Unop const *node, Context *ctx) {
       NOT_YET();
     } break;
     case frontend::Operator::Expand: {
-      ir::Results tuple_val = node->operand->EmitIr(this, ctx);
+      ir::Results tuple_val = node->operand->EmitValue(this);
       ir::Reg tuple_reg     = tuple_val.get<ir::Reg>(0);
       type::Tuple const *tuple_type =
-          &ctx->type_of(node->operand.get())->as<type::Tuple>();
+          &context().type_of(node->operand.get())->as<type::Tuple>();
       ir::Results results;
       for (size_t i = 0; i < tuple_type->size(); ++i) {
         results.append(ir::PtrFix(ir::Field(tuple_reg, tuple_type, i).get(),

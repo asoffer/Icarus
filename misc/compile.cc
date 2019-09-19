@@ -39,33 +39,24 @@ Module *CompileModule(Module *mod, std::filesystem::path const *path) {
     }
   }
 
-  Context ctx(mod);
-
-  {
-    visitor::VerifyType visitor;
-    for (auto const &stmt : mod->statements_) {
-      stmt->VerifyType(&visitor, &ctx);
-    }
+  visitor::TraditionalCompilation visitor(mod);
+  for (auto const &stmt : mod->statements_) {
+    stmt->VerifyType(&visitor);
   }
 
-  if (ctx.num_errors() > 0) {
+  if (visitor.context().num_errors() > 0) {
     // TODO Is this right?
-    ctx.DumpErrors();
+    visitor.context().DumpErrors();
     found_errors = true;
     return mod;
   }
 
-  {
-    visitor::EmitIr visitor;
-    for (auto const &stmt : mod->statements_) {
-      stmt->EmitIr(&visitor, &ctx);
-    }
-    visitor.CompleteDeferredBodies();
-  }
+  for (auto const &stmt : mod->statements_) { stmt->EmitValue(&visitor); }
+  visitor.CompleteDeferredBodies();
 
-  if (ctx.num_errors() > 0) {
+  if (visitor.context().num_errors() > 0) {
     // TODO Is this right?
-    ctx.DumpErrors();
+    visitor.context().DumpErrors();
     found_errors = true;
     return mod;
   }
@@ -74,7 +65,9 @@ Module *CompileModule(Module *mod, std::filesystem::path const *path) {
     if (auto const *decl = stmt->if_as<ast::Declaration>()) {
       if (decl->id() != "main") { continue; }
       auto f = backend::EvaluateAs<ir::AnyFunc>(
-          type::Typed{decl->init_val(), ctx.type_of(decl->init_val())}, &ctx);
+          type::Typed{decl->init_val(),
+                      visitor.context().type_of(decl->init_val())},
+          &visitor.context());
       ASSERT(f.is_fn() == true);
       auto ir_fn = f.func();
 

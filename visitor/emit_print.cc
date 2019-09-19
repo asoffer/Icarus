@@ -1,6 +1,5 @@
 #include "ir/builder.h"
 #include "ir/results.h"
-#include "ir/arguments.h"
 #include "ir/cmd/basic.h"
 #include "ir/cmd/call.h"
 #include "ir/cmd/print.h"

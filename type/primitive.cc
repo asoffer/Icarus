@@ -3,9 +3,6 @@
 #include "type/array.h"
 #include "type/pointer.h"
 
-struct Module;
-struct Context;
-
 namespace type {
 #define PRIMITIVE_MACRO(EnumName, name)                                        \
   Type const *EnumName = new Primitive(PrimType::EnumName);

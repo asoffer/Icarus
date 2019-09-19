@@ -6,6 +6,7 @@
 #include "misc/context.h"
 #include "type/type_fwd.h"
 #include "visitor/verify_result.h"
+#include "visitor/deferred_body.h"
 
 struct Module;
 
@@ -28,23 +29,36 @@ namespace visitor {
 // surface from separation are from separating parsing from these two stages
 // rather than separating all stages. In time we will see if this belief holds
 // water.
-struct TraditionalCompilation {
+
+struct TraditionalCompilation : public DeferredBody<TraditionalCompilation> {
   TraditionalCompilation(Module *mod);
 
   Module *module() { return mod_; }
   ir::Builder &builder() { return bldr_; };
   Context &context() { return ctx_; }
+  error::Log *error_log() { return &module()->error_log_; }
 
   ir::Results EmitValue(ast::Node const *node) { UNREACHABLE(node); };
 #define ICARUS_AST_NODE_X(name) ir::Results EmitValue(ast::name const *node);
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
 
-  ir::Results VerifyType(ast::Node const *node) { UNREACHABLE(node); };
+  VerifyResult VerifyType(ast::Node const *node) { UNREACHABLE(node); };
 #define ICARUS_AST_NODE_X(name)                                                \
   VerifyResult VerifyType(ast::name const *node);
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
+
+  VerifyResult VerifyConcreteFnLit(ast::FunctionLiteral const *node);
+
+  std::vector<ir::RegOr<ir::Addr>> EmitRef(ast::Node const *node) {
+    UNREACHABLE(node);
+  }
+  std::vector<ir::RegOr<ir::Addr>> EmitRef(ast::Access const *node);
+  std::vector<ir::RegOr<ir::Addr>> EmitRef(ast::CommaList const *node);
+  std::vector<ir::RegOr<ir::Addr>> EmitRef(ast::Identifier const *node);
+  std::vector<ir::RegOr<ir::Addr>> EmitRef(ast::Index const *node);
+  std::vector<ir::RegOr<ir::Addr>> EmitRef(ast::Unop const *node);
 
   void EmitPrint(type::Type const *, ir::Results const &) { UNREACHABLE(); }
   void EmitPrint(type::Array const *t, ir::Results const &val);
@@ -107,7 +121,37 @@ struct TraditionalCompilation {
   void EmitMoveAssign(type::Variant const *t, ir::RegOr<ir::Addr> to,
                       type::Typed<ir::Results> const &from);
 
-  ICARUS_PRIVATE
+  void EmitDefaultInit(type::Type const *t, ir::Reg) { UNREACHABLE(); }
+  void EmitDefaultInit(type::Array const *t, ir::Reg reg);
+  void EmitDefaultInit(type::Flags const *t, ir::Reg reg);
+  void EmitDefaultInit(type::Pointer const *t, ir::Reg reg);
+  void EmitDefaultInit(type::Primitive const *t, ir::Reg reg);
+  void EmitDefaultInit(type::Struct const *t, ir::Reg reg);
+  void EmitDefaultInit(type::Tuple const *t, ir::Reg reg);
+
+  void EmitMoveInit(ast::Node const *, type::Typed<ir::Reg> reg) {
+    UNREACHABLE();
+  }
+  void EmitMoveInit(ast::Expression const *, type::Typed<ir::Reg> reg);
+  void EmitMoveInit(ast::ArrayLiteral const *, type::Typed<ir::Reg> reg);
+  void EmitMoveInit(ast::CommaList const *, type::Typed<ir::Reg> reg);
+  void EmitMoveInit(ast::Unop const *, type::Typed<ir::Reg> reg);
+
+  void EmitMoveInit(type::Type const *from_type, ir::Results const &from_val,
+                    type::Typed<ir::Reg> to_var);
+
+  void EmitCopyInit(ast::Node const *, type::Typed<ir::Reg> reg) {
+    UNREACHABLE();
+  }
+  void EmitCopyInit(ast::Expression const *, type::Typed<ir::Reg> reg);
+  void EmitCopyInit(ast::ArrayLiteral const *, type::Typed<ir::Reg> reg);
+  void EmitCopyInit(ast::CommaList const *, type::Typed<ir::Reg> reg);
+  void EmitCopyInit(ast::Unop const *, type::Typed<ir::Reg> reg);
+
+  void EmitCopyInit(type::Type const *from_type, ir::Results const &from_val,
+                    type::Typed<ir::Reg> to_var);
+
+ private:
   Module *mod_;
   Context ctx_;
   ir::Builder &bldr_;

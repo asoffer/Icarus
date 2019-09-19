@@ -124,7 +124,7 @@ void TraditionalCompilation::EmitCopyAssign(
 void TraditionalCompilation::EmitMoveAssign(
     type::Enum const *t, ir::RegOr<ir::Addr> to,
     type::Typed<ir::Results> const &from) {
-  CopyAssign(t, to, from);
+  EmitCopyAssign(t, to, from);
 }
 
 void TraditionalCompilation::EmitCopyAssign(
@@ -137,7 +137,7 @@ void TraditionalCompilation::EmitCopyAssign(
 void TraditionalCompilation::EmitMoveAssign(
     type::Flags const *t, ir::RegOr<ir::Addr> to,
     type::Typed<ir::Results> const &from) {
-  CopyAssign(t, to, from);
+  EmitCopyAssign(t, to, from);
 }
 
 void TraditionalCompilation::EmitCopyAssign(
@@ -150,7 +150,7 @@ void TraditionalCompilation::EmitCopyAssign(
 void TraditionalCompilation::EmitMoveAssign(
     type::Function const *t, ir::RegOr<ir::Addr> to,
     type::Typed<ir::Results> const &from) {
-  CopyAssign(t, to, from);
+  EmitCopyAssign(t, to, from);
 }
 
 void TraditionalCompilation::EmitCopyAssign(
@@ -168,7 +168,7 @@ void TraditionalCompilation::EmitCopyAssign(
 void TraditionalCompilation::EmitMoveAssign(
     type::Pointer const *t, ir::RegOr<ir::Addr> to,
     type::Typed<ir::Results> const &from) {
-  CopyAssign(t, to, from);
+  EmitCopyAssign(t, to, from);
 }
 
 void TraditionalCompilation::EmitCopyAssign(
@@ -199,7 +199,7 @@ void TraditionalCompilation::EmitCopyAssign(
 void TraditionalCompilation::EmitMoveAssign(
     type::Primitive const *t, ir::RegOr<ir::Addr> to,
     type::Typed<ir::Results> const &from) {
-  CopyAssign(t, to, from);
+  EmitCopyAssign(t, to, from);
 }
 
 void TraditionalCompilation::EmitCopyAssign(

@@ -4,8 +4,6 @@
 #include "base/lazy.h"
 #include "type/type.h"
 
-struct Context;
-
 namespace type {
 
 struct Array : public Type {

@@ -49,6 +49,7 @@ cc_group_target(
             ":emit_ir_move_init-impl",
             ":emit_ir_ref-impl",
             ":emit_ir_val-impl",
+            ":emit_print-impl",
             ":extract_jumps-impl",
             ":traditional_compilation-impl",
             ":verify_type-impl",
@@ -65,6 +66,7 @@ cc_group_target(
             ":emit_ir_move_init-impl",
             ":emit_ir_ref-impl",
             ":emit_ir_val-impl",
+            ":emit_print-impl",
             ":extract_jumps-impl",
             ":match-impl",
             ":traditional_compilation-impl",
@@ -417,7 +419,6 @@ cc_lib_target(
     impl_deps = [
         ":verify_type",
         "//ast:ast",
-        "//ir:arguments",
         "//ir:builder",
         "//ir:compiled_fn",
         "//ir:components",

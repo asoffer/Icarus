@@ -16,8 +16,8 @@ static void EmplaceDecls(OverloadSet *os, DeclSpan &&decls, Context *ctx) {
     auto const *result_ptr = ctx->prior_verification_attempt(decl);
     if (result_ptr == nullptr) {
       // TODO i'm skeptical this is the right context.
-      visitor::VerifyType vis;
-      decl->VerifyType(&vis, ctx);
+      visitor::TraditionalCompilation vis(ctx->mod_);
+      decl->VerifyType(&vis);
     }
     result_ptr = ctx->prior_verification_attempt(decl);
     if (result_ptr) { os->emplace(decl, *result_ptr); }

@@ -16,9 +16,10 @@ ICARUS_TYPE_VISITOR(
     {
       visitor->EmitMoveAssign(this, to, type::Typed{from, from_type});
     });
-ICARUS_TYPE_VISITOR(void EmitDefaultInit(visitor::EmitIr *visitor, ir::Reg reg,
-                                         Context *ctx) const,
-                    { visitor->DefaultInit(this, reg, ctx); });
+ICARUS_TYPE_VISITOR(
+    void EmitDefaultInit(visitor::TraditionalCompilation *visitor, ir::Reg reg)
+        const,
+    { visitor->EmitDefaultInit(this, reg); });
 
 ICARUS_TYPE_VISITOR(void EmitPrint(visitor::TraditionalCompilation *visitor,
                                    ir::Results const &val) const,

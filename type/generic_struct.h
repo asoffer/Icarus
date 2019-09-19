@@ -7,8 +7,6 @@
 #include "type/callable.h"
 #include "type/type.h"
 
-struct Context;
-
 namespace type {
 struct GenericStruct : public Callable {
   TYPE_FNS(GenericStruct);

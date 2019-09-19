@@ -27,6 +27,17 @@ struct VerifyResult {
   bool ok() const { return type_ != nullptr; }
   VerifyResult operator*() const { return *this; }
 };
+
+std::ostream &operator<<(std::ostream &os, VerifyResult r);
+
+constexpr bool operator==(VerifyResult lhs, VerifyResult rhs) {
+  return lhs.type_ == rhs.type_ && lhs.const_ == rhs.const_;
+}
+
+constexpr bool operator!=(VerifyResult lhs, VerifyResult rhs) {
+  return !(lhs == rhs);
+}
+
 }  // namespace visitor
 
 #endif  // ICARUS_VISITOR_VERIFY_RESULT_H

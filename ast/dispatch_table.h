@@ -16,6 +16,10 @@
 
 struct Context;
 
+namespace visitor {
+struct TraditionalCompilation;
+}  // namespace visitor
+
 namespace type {
 struct Type;
 struct Function;
@@ -46,35 +50,37 @@ struct DispatchTable {
       OverloadSet const &overload_set, Context *ctx);
 
   ir::Results EmitInlineCall(
+      visitor::TraditionalCompilation *visitor,
       core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
       absl::flat_hash_map<ir::BlockDef const *, ir::BasicBlock *> const
-          &block_map,
-      Context *ctx) const;
+          &block_map) const;
   ir::Results EmitCall(
+      visitor::TraditionalCompilation *visitor,
       core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
-      Context *ctx, bool is_inline = false) const;
+      bool is_inline = false) const;
 
   std::vector<Row> bindings_;
-  std::vector<type::Type const*> return_types_;
+  std::vector<type::Type const *> return_types_;
 };
 
 visitor::VerifyResult VerifyJumpDispatch(
-    ExprPtr expr, absl::Span<ir::AnyFunc const> overload_set,
+    visitor::TraditionalCompilation *visitor, ExprPtr expr,
+    absl::Span<ir::AnyFunc const> overload_set,
     core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
         &args,
-    Context *ctx, std::vector<ir::BlockDef const *> *block_defs);
+    std::vector<ir::BlockDef const *> *block_defs);
 
 visitor::VerifyResult VerifyDispatch(
-    ExprPtr expr, absl::Span<ir::AnyFunc const> overload_set,
+    visitor::TraditionalCompilation *visitor, ExprPtr expr,
+    absl::Span<ir::AnyFunc const> overload_set,
     core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
-        &args,
-    Context *ctx);
+        &args);
 
 visitor::VerifyResult VerifyDispatch(
-    ExprPtr expr, OverloadSet const &overload_set,
+    visitor::TraditionalCompilation *visitor, ExprPtr expr,
+    OverloadSet const &overload_set,
     core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
-        &args,
-    Context *ctx);
+        &args);
 
 }  // namespace ast
 

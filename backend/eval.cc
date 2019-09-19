@@ -13,19 +13,17 @@
 #include "visitor/emit_ir.h"
 
 namespace backend {
-static ir::CompiledFn ExprFn(type::Typed<ast::Expression const *> typed_expr,
-                             Context *ctx) {
-  ir::CompiledFn fn(ctx->mod_,
+static ir::CompiledFn ExprFn(visitor::TraditionalCompilation *visitor,
+                             type::Typed<ast::Expression const *> typed_expr) {
+  ir::CompiledFn fn(visitor->module(),
                     type::Func({}, {ASSERT_NOT_NULL(typed_expr.type())}),
                     core::FnParams<type::Typed<ast::Expression const *>>{});
   ICARUS_SCOPE(ir::SetCurrentFunc(&fn)) {
-    // TODO this is essentially a copy of the body of FunctionLiteral::EmitIr
+    // TODO this is essentially a copy of the body of FunctionLiteral::EmitValue
     // Factor these out together.
     ir::GetBuilder().CurrentBlock() = fn.entry();
 
-    ASSERT(ctx != nullptr);
-    visitor::EmitIr visitor;
-    auto vals = typed_expr.get()->EmitIr(&visitor, ctx);
+    auto vals = typed_expr.get()->EmitValue(visitor);
     // TODO wrap this up into SetRet(vector)
     std::vector<type::Type const *> extracted_types;
     if (auto *tup = typed_expr.type()->if_as<type::Tuple>()) {
@@ -34,18 +32,20 @@ static ir::CompiledFn ExprFn(type::Typed<ast::Expression const *> typed_expr,
       extracted_types = {typed_expr.type()};
     }
     for (size_t i = 0; i < vals.size(); ++i) {
-      ir::SetRet(i, type::Typed{vals.GetResult(i), extracted_types.at(i)}, ctx);
+      ir::SetRet(i, type::Typed{vals.GetResult(i), extracted_types.at(i)},
+                 &visitor->context());
     }
     ir::ReturnJump();
 
-    visitor.CompleteDeferredBodies();
+    visitor->CompleteDeferredBodies();
   }
   return fn;
 }
 
 base::untyped_buffer EvaluateToBuffer(
     type::Typed<ast::Expression const *> typed_expr, Context *ctx) {
-  auto fn = ExprFn(typed_expr, ctx);
+  visitor::TraditionalCompilation visitor(ctx->mod_);
+  auto fn = ExprFn(&visitor, typed_expr);
 
   size_t bytes_needed =
       typed_expr.type()->bytes(core::Interpretter()).value();

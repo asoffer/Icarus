@@ -30,8 +30,8 @@ std::unique_ptr<T> MakeNode(std::string s, ::Context *ctx, core::Scope *scope) {
     }
 
     if (Verify) {
-      visitor::VerifyType visitor;
-      if (!cast_ptr->VerifyType(&visitor, ctx)) { return nullptr; }
+      visitor::TraditionalCompilation visitor(ctx->mod_);
+      if (!cast_ptr->VerifyType(&visitor)) { return nullptr; }
     }
     stmts[0].release();
     return std::unique_ptr<T>{cast_ptr};
@@ -44,15 +44,15 @@ std::unique_ptr<T> MakeNode(std::string s, ::Context *ctx, core::Scope *scope) {
 }  // namespace internal
 
 template <typename T>
-std::unique_ptr<T> MakeUnverified(std::string s, ::Context *ctx,
-                                  core::Scope *scope = nullptr) {
-  return internal::MakeNode<T, false>(std::move(s), ctx, scope);
+std::unique_ptr<T> MakeUnverified(visitor::TraditionalCompilation *visitor,
+                                  std::string s, core::Scope *scope = nullptr) {
+  return internal::MakeNode<T, false>(std::move(s), &visitor->context(), scope);
 }
 
 template <typename T>
-std::unique_ptr<T> MakeVerified(std::string s, ::Context *ctx,
-                                  core::Scope *scope = nullptr) {
-  return internal::MakeNode<T, true>(std::move(s), ctx, scope);
+std::unique_ptr<T> MakeVerified(visitor::TraditionalCompilation *visitor,
+                                std::string s, core::Scope *scope = nullptr) {
+  return internal::MakeNode<T, true>(std::move(s), &visitor->context(), scope);
 }
 
 }  // namespace test

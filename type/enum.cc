@@ -3,9 +3,6 @@
 
 #include "absl/container/flat_hash_set.h"
 
-struct Module;
-struct Context;
-
 namespace type {
 
 std::optional<ir::EnumVal> Enum::Get(std::string_view name) const {

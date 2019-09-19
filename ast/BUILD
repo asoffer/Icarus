@@ -94,6 +94,7 @@ cc_lib_target(
         "//type:pointer",
         "//type:tuple",
         "//type:variant",
+        "//visitor:traditional_compilation",
     ],
     test_deps = [
         "//:impl",

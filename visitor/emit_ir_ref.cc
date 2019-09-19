@@ -16,10 +16,10 @@
 namespace visitor {
 using ::matcher::InheritsFrom;
 
-std::vector<ir::RegOr<ir::Addr>> EmitIr::Ref(ast::Access const *node,
-                                                  Context *ctx) {
-  auto reg = node->operand()->EmitLVal(this, ctx)[0];
-  auto *t  = ctx->type_of(node->operand());
+std::vector<ir::RegOr<ir::Addr>> TraditionalCompilation::EmitRef(
+    ast::Access const *node) {
+  auto reg = node->operand()->EmitRef(this)[0];
+  auto *t  = context().type_of(node->operand());
 
   while (auto *tp = t->if_as<type::Pointer>()) {
     t   = tp->pointee;
@@ -32,60 +32,60 @@ std::vector<ir::RegOr<ir::Addr>> EmitIr::Ref(ast::Access const *node,
               .get()};
 }
 
-std::vector<ir::RegOr<ir::Addr>> EmitIr::Ref(ast::CommaList const *node,
-                                                  Context *ctx) {
+std::vector<ir::RegOr<ir::Addr>> TraditionalCompilation::EmitRef(
+    ast::CommaList const *node) {
   std::vector<ir::RegOr<ir::Addr>> results;
   results.reserve(node->exprs_.size());
-  for (auto &expr : node->exprs_) {
-    results.push_back(expr->EmitLVal(this, ctx)[0]);
-  }
+  for (auto &expr : node->exprs_) { results.push_back(expr->EmitRef(this)[0]); }
   return results;
 }
 
-std::vector<ir::RegOr<ir::Addr>> EmitIr::Ref(ast::Identifier const *node,
-                                                  Context *ctx) {
+std::vector<ir::RegOr<ir::Addr>> TraditionalCompilation::EmitRef(
+    ast::Identifier const *node) {
   ASSERT(node->decl() != nullptr);
-  return {ctx->addr(node->decl())};
+  return {context().addr(node->decl())};
 }
 
-std::vector<ir::RegOr<ir::Addr>> EmitIr::Ref(ast::Index const *node,
-                                                  Context *ctx) {
-  auto *lhs_type = ctx->type_of(node->lhs());
-  auto *rhs_type = ctx->type_of(node->rhs());
+std::vector<ir::RegOr<ir::Addr>> TraditionalCompilation::EmitRef(
+    ast::Index const *node) {
+  auto *lhs_type = context().type_of(node->lhs());
+  auto *rhs_type = context().type_of(node->rhs());
 
   if (lhs_type->is<type::Array>()) {
-    auto index = ir::CastTo<int64_t>(rhs_type, node->rhs()->EmitIr(this, ctx));
+    auto index = ir::CastTo<int64_t>(rhs_type, node->rhs()->EmitValue(this));
 
-    auto lval = node->lhs()->EmitLVal(this, ctx)[0];
-    if (!lval.is_reg()) { NOT_YET(this, ctx->type_of(node)); }
-    return {ir::Index(type::Ptr(ctx->type_of(node->lhs())), lval.reg(), index)};
+    auto lval = node->lhs()->EmitRef(this)[0];
+    if (!lval.is_reg()) { NOT_YET(this, context().type_of(node)); }
+    return {ir::Index(type::Ptr(context().type_of(node->lhs())), lval.reg(),
+                      index)};
   } else if (auto *buf_ptr_type = lhs_type->if_as<type::BufferPointer>()) {
-    auto index = ir::CastTo<int64_t>(rhs_type, node->rhs()->EmitIr(this, ctx));
+    auto index = ir::CastTo<int64_t>(rhs_type, node->rhs()->EmitValue(this));
 
-    return {ir::PtrIncr(node->lhs()->EmitIr(this, ctx).get<ir::Reg>(0), index,
+    return {ir::PtrIncr(node->lhs()->EmitValue(this).get<ir::Reg>(0), index,
                         type::Ptr(buf_ptr_type->pointee))};
   } else if (lhs_type == type::ByteView) {
     // TODO interim until you remove string_view and replace it with Addr
     // entirely.
-    auto index = ir::CastTo<int64_t>(rhs_type, node->rhs()->EmitIr(this, ctx));
+    auto index = ir::CastTo<int64_t>(rhs_type, node->rhs()->EmitValue(this));
     return {ir::PtrIncr(
         ir::GetString(
-            node->lhs()->EmitIr(this, ctx).get<std::string_view>(0).value()),
+            node->lhs()->EmitValue(this).get<std::string_view>(0).value()),
         index, type::Ptr(type::Nat8))};
   } else if (auto *tup = lhs_type->if_as<type::Tuple>()) {
-    auto index = ir::CastTo<int64_t>(
-                     rhs_type,
-                     backend::Evaluate(type::Typed{node->rhs(), rhs_type}, ctx))
-                     .value();
-    return {ir::Field(node->lhs()->EmitLVal(this, ctx)[0], tup, index).get()};
+    auto index =
+        ir::CastTo<int64_t>(
+            rhs_type,
+            backend::Evaluate(type::Typed{node->rhs(), rhs_type}, &context()))
+            .value();
+    return {ir::Field(node->lhs()->EmitRef(this)[0], tup, index).get()};
   }
   UNREACHABLE(*this);
 }
 
-std::vector<ir::RegOr<ir::Addr>> EmitIr::Ref(ast::Unop const *node,
-                                                  Context *ctx) {
+std::vector<ir::RegOr<ir::Addr>> TraditionalCompilation::EmitRef(
+    ast::Unop const *node) {
   ASSERT(node->op == frontend::Operator::At);
-  return {node->operand->EmitIr(this, ctx).get<ir::Reg>(0)};
+  return {node->operand->EmitValue(this).get<ir::Reg>(0)};
 }
 
 }  // namespace visitor

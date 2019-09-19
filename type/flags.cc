@@ -3,9 +3,6 @@
 #include "absl/random/distributions.h"
 #include "absl/random/random.h"
 
-struct Module;
-struct Context;
-
 namespace type {
 
 std::optional<ir::FlagsVal> Flags::Get(std::string_view name) const {
