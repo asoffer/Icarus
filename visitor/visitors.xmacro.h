@@ -43,6 +43,6 @@ ICARUS_AST_VISITOR(void DependentDecls(visitor::DependentDecls *visitor,
 #endif  // ICARUS_AST_VISITOR_ASSIGN_SCOPE
 
 #ifdef ICARUS_VISITOR_FORMAT
-ICARUS_AST_VISITOR(void format(visitor::Format const *visitor) const,
+ICARUS_AST_VISITOR(void ExtractTokens(format::TokenExtractor *visitor) const,
                    { (*visitor)(this); });
 #endif  // ICARUS_VISITOR_FORMAT

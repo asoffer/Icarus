@@ -23,7 +23,7 @@
 #endif  // ICARUS_VISITOR_EMIT_IR
 
 #ifdef ICARUS_VISITOR_FORMAT
-#include "visitor/format.h"
+#include "format/token_extractor.h"
 #endif  // ICARUS_VISITOR_FORMAT
 
 namespace core {

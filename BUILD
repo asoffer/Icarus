@@ -26,26 +26,6 @@ cc_binary(
     ],
 )
 
-cc_binary(
-    name = "icfmt",
-    srcs = ["fmt.cc"],
-    deps = [
-        "//ast:ast-format",
-        "//base:log-impl-format",
-        "//core:impl-format",
-        "//frontend:parse-impl-format",
-        "//frontend:lex-impl-format",
-        "//frontend:source-format",
-        "//init:cli-impl-format",
-        "//init:signal-impl-format",
-        "//ir:results-impl-format",
-        "//ir:str-impl-format",
-        "//misc:module-impl-format",
-        "//type:impl-format",
-        "//visitor:format-impl-format",
-    ],
-)
-
 COMMON_IMPL_DEPS = [
         "//ast:dispatch_table-impl",
         "//ast:overload_set-impl",

@@ -19,7 +19,7 @@ cc_group_target(
         ],
         "format": [
             ":dump_ast",
-            ":format",
+            "//format:token_extractor",
         ],
         "match": [
             ":assign_scope",
@@ -56,7 +56,7 @@ cc_group_target(
         ],
         "format": [
             ":dump_ast-impl",
-            ":format-impl",
+            "//format:token_extractor-impl",
         ],
         "match": [
             ":assign_scope-impl",
@@ -335,13 +335,6 @@ cc_lib_target(
     test_deps = None,
 )
 
-
-cc_lib_target(
-    name = "format",
-    intf_deps = ["//ast:ast_fwd", "//ast:node_xmacro"],
-    impl_deps = ["//ast:ast", "//base:log"],
-    test_deps = None,
-)
 
 cc_lib_target(
     name = "match",

@@ -6,7 +6,7 @@
 #include "init/cli.h"
 #include "init/signal.h"
 #include "misc/module.h"
-#include "visitor/format.h"
+#include "format/token_extractor.h"
 
 namespace frontend {
 std::vector<std::unique_ptr<ast::Node>> Parse(Src *src, ::Module *mod);
@@ -15,11 +15,10 @@ std::vector<std::unique_ptr<ast::Node>> Parse(Src *src, ::Module *mod);
 namespace format {
 int FormatFile(std::filesystem::path const &file) {
   Module mod;
-  ASSIGN_OR(return 1, frontend::FileSrc src,
-                   frontend::FileSrc::Make(file));
+  frontend::StringSrc src("3 + abc");
   auto stmts = frontend::Parse(&src, &mod);
-  visitor::Format visitor;
-  for (auto const &stmt : stmts) { stmt->format(&visitor); }
+  TokenExtractor visitor;
+  for (auto const &stmt : stmts) { stmt->ExtractTokens(&visitor); }
   return 0;
 }
 }  // namespace format
