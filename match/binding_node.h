@@ -12,7 +12,7 @@ constexpr std::string_view kMatchPrefix = "@%";
 
 struct BindingNode : public ast::Expression {
  public:
-  explicit BindingNode(BindingId id, TextSpan span)
+  explicit BindingNode(BindingId id, frontend::SourceRange span)
       : ast::Expression(std::move(span)), id_(id) {}
   ~BindingNode() override {}
 

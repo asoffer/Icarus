@@ -3,23 +3,23 @@
 
 #include "error/log.h"
 #include "frontend/lexeme.h"
-#include "frontend/source.h"
-#include "frontend/text_span.h"
+#include "frontend/source/source.h"
+#include "frontend/source/range.h"
 
 namespace frontend {
 extern absl::flat_hash_map<std::string_view, ast::Hashtag::Builtin> const
     BuiltinHashtagMap;
 
-struct SrcCursor {
+struct SourceCursor {
  public:
-  SrcCursor(int line, int offset, std::string_view view)
+  SourceCursor(int line, int offset, std::string_view view)
       : line_(line), offset_(offset), view_(view){};
 
-  // Returns a SrcCursor prefix of the input consisting of the first contiguous
+  // Returns a SourceCursor prefix of the input consisting of the first contiguous
   // collection of characters satisfying the predicate. These characters are
   // removed `*this`.
   template <typename Fn>
-  SrcCursor ConsumeWhile(Fn &&predicate) {
+  SourceCursor ConsumeWhile(Fn &&predicate) {
     size_t pos = 0;
     for (char c : view_) {
       if (!predicate(c)) { break; }
@@ -28,10 +28,10 @@ struct SrcCursor {
     return remove_prefix(pos);
   }
 
-  SrcCursor remove_prefix(size_t len) {
+  SourceCursor remove_prefix(size_t len) {
     ASSERT(len <= view_.size());
 
-    SrcCursor removed{line_, offset_, std::string_view{view_.data(), len}};
+    SourceCursor removed{line_, offset_, std::string_view{view_.data(), len}};
     view_.remove_prefix(len);
     offset_ += len;
     return removed;
@@ -49,7 +49,7 @@ struct SrcCursor {
 };
 
 struct LexState {
-  LexState(Src *src, error::Log *log)
+  LexState(Source *src, error::Log *log)
       : src_(src),
         cursor_(1, 0, src_->ReadUntil('\n').view),
         error_log_(log) {}
@@ -59,8 +59,8 @@ struct LexState {
     return cursor_.view()[0];
   }
 
-  Src *src_;
-  SrcCursor cursor_;
+  Source *src_;
+  SourceCursor cursor_;
   error::Log *error_log_;
 };
 

@@ -33,6 +33,7 @@ cc_lib_target(
     name = "util",
     cfgs = ["compile", "match"],
     intf_deps = [
+        "//frontend/source:string",
         "//misc:context",
         "//misc:module",
         "//:impl",

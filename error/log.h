@@ -10,94 +10,119 @@
 #include "base/debug.h"
 #include "core/fn_args.h"
 #include "error/inference_failure_reason.h"
-#include "frontend/text_span.h"
+#include "frontend/source/range.h"
+
+namespace frontend {
+struct Source;
+}  // namespace frontend
 
 namespace error {
 struct Log {
-#define MAKE_LOG_ERROR(fn_name, msg) void fn_name(TextSpan const &span);
+  // TODO remove this overload
+  explicit Log() : src_(nullptr) {}
+
+  explicit Log(frontend::Source *src) : src_(ASSERT_NOT_NULL(src)) {}
+
+#define MAKE_LOG_ERROR(fn_name, msg)                                           \
+  void fn_name(frontend::SourceRange const &range);
 #include "error/errors.xmacro.h"
 #undef MAKE_LOG_ERROR
 
   // TODO most of these probably should just be replaced by a constexpr we can
   // pass into libfmt.
   void UndeclaredIdentifier(ast::Identifier const *id);
-  void PreconditionNeedsBool(TextSpan const &span, std::string_view type);
-  void PostconditionNeedsBool(TextSpan const &span, std::string_view type);
+  void PreconditionNeedsBool(frontend::SourceRange const &range,
+                             std::string_view type);
+  void PostconditionNeedsBool(frontend::SourceRange const &range,
+                              std::string_view type);
   void DeclOutOfOrder(ast::Declaration const *decl, ast::Identifier const *id);
   void RunawayMultilineComment();
-  void DoubleDeclAssignment(TextSpan const &decl_span,
-                            TextSpan const &val_span);
-  void Reserved(TextSpan const &span, std::string const &token);
-  void NotBinary(TextSpan const &span, std::string const &token);
-  void UnknownParseError(std::vector<TextSpan> const &span);
-  void PositionalArgumentFollowingNamed(std::vector<TextSpan> const &pos_spans,
-                                        TextSpan const &named_span);
-  void NotAType(TextSpan const &span, std::string_view type);
-  void ShadowingDeclaration(TextSpan const &span1, TextSpan const &span2);
+  void DoubleDeclAssignment(frontend::SourceRange const &decl_range,
+                            frontend::SourceRange const &val_range);
+  void Reserved(frontend::SourceRange const &range, std::string const &token);
+  void NotBinary(frontend::SourceRange const &range, std::string const &token);
+  void UnknownParseError(std::vector<frontend::SourceRange> const &range);
+  void PositionalArgumentFollowingNamed(
+      std::vector<frontend::SourceRange> const &pos_ranges,
+      frontend::SourceRange const &named_range);
+  void NotAType(frontend::SourceRange const &range, std::string_view type);
+  void ShadowingDeclaration(frontend::SourceRange const &span1,
+                            frontend::SourceRange const &span2);
 
-  // TODO include a source location/span/trace or whatever you decide to
+  // TODO include a source location/range/trace or whatever you decide to
   // include.
   void UserDefinedError(std::string const &err);
-  void DereferencingNonPointer(std::string_view type, TextSpan const &span);
-  void WhichNonVariant(std::string_view type, TextSpan const &span);
+  void DereferencingNonPointer(std::string_view type,
+                               frontend::SourceRange const &range);
+  void WhichNonVariant(std::string_view type,
+                       frontend::SourceRange const &range);
   void ReturnTypeMismatch(std::string_view expected_type,
-                          std::string_view actual_type, TextSpan const &span);
+                          std::string_view actual_type,
+                          frontend::SourceRange const &range);
   void IndexedReturnTypeMismatch(std::string_view expected_type,
                                  std::string_view actual_type,
-                                 TextSpan const &span, size_t index);
-  void ReturningWrongNumber(TextSpan const &span, size_t actual,
+                                 frontend::SourceRange const &range,
+                                 size_t index);
+  void ReturningWrongNumber(frontend::SourceRange const &range, size_t actual,
                             size_t expected);
   void NoReturnTypes(ast::ReturnStmt const *ret_expr);
   void DeclarationUsedInUnop(std::string const &unop,
-                             TextSpan const &decl_span);
-  void MissingMember(TextSpan const &span, std::string_view member_name,
-                     std::string_view type);
-  void NonExportedMember(TextSpan const &span, std::string_view member_name,
-                         std::string_view type);
+                             frontend::SourceRange const &decl_range);
+  void MissingMember(frontend::SourceRange const &range,
+                     std::string_view member_name, std::string_view type);
+  void NonExportedMember(frontend::SourceRange const &range,
+                         std::string_view member_name, std::string_view type);
   // TODO is this the same as `ArrayIndexType`?
-  void IndexingTupleOutOfBounds(TextSpan const &span, std::string_view tup,
-                                size_t tup_size, size_t index);
+  void IndexingTupleOutOfBounds(frontend::SourceRange const &range,
+                                std::string_view tup, size_t tup_size,
+                                size_t index);
 
-  void InvalidIndexing(TextSpan const &span, std::string_view type);
-  void InvalidIndexType(TextSpan const &span, std::string_view type,
-                        std::string_view index_type);
+  void InvalidIndexing(frontend::SourceRange const &range,
+                       std::string_view type);
+  void InvalidIndexType(frontend::SourceRange const &range,
+                        std::string_view type, std::string_view index_type);
 
-  void TypeMustBeInitialized(TextSpan const &span, std::string_view type);
+  void TypeMustBeInitialized(frontend::SourceRange const &range,
+                             std::string_view type);
 
   void ComparingIncomparables(std::string_view lhs, std::string_view rhs,
-                              TextSpan const &span);
+                              frontend::SourceRange const &range);
   void CyclicDependency(std::vector<ast::Identifier const *> cyc_deps);
 
-  void MismatchedAssignmentSize(TextSpan const &span, size_t lhs, size_t rhs);
+  void MismatchedAssignmentSize(frontend::SourceRange const &range, size_t lhs,
+                                size_t rhs);
 
-  void InvalidNumber(TextSpan const& span, std::string_view err);
+  void InvalidNumber(frontend::SourceRange const &range, std::string_view err);
 
-  void NoCallMatch(TextSpan const &span,
+  void NoCallMatch(frontend::SourceRange const &range,
                    std::vector<std::string> const &generic_failure_reasons,
                    absl::flat_hash_map<ast::Expression const *,
                                        std::string> const &failure_reasons);
-  void UninferrableType(InferenceFailureReason reason, TextSpan const &span);
+  void UninferrableType(InferenceFailureReason reason,
+                        frontend::SourceRange const &range);
 
-  void NotCopyable(TextSpan const &span, std::string_view from);
-  void NotMovable(TextSpan const &span, std::string_view from);
+  void NotCopyable(frontend::SourceRange const &range, std::string_view from);
+  void NotMovable(frontend::SourceRange const &range, std::string_view from);
 
-  void BuiltinError(TextSpan const&span, std::string_view text);
+  void BuiltinError(frontend::SourceRange const &range, std::string_view text);
 
   void MissingDispatchContingency(
-      TextSpan const &span,
+      frontend::SourceRange const &range,
       std::vector<core::FnArgs<std::string>> const &missing_dispatch);
 
   void MissingModule(std::filesystem::path const &src,
                      std::filesystem::path const &requestor);
 
-  void StatementsFollowingJump(TextSpan const &span);
+  void StatementsFollowingJump(frontend::SourceRange const &range);
 
   void MismatchedBinopArithmeticType(std::string_view lhs, std::string_view rhs,
-                                     TextSpan const &span);
+                                     frontend::SourceRange const &range);
   void InvalidCast(std::string_view lhs, std::string_view rhs,
-                   TextSpan const &span);
-  void PrintMustReturnVoid(std::string_view type, TextSpan const &span);
-  void SwitchConditionNeedsBool(std::string_view type, TextSpan const &span);
+                   frontend::SourceRange const &range);
+  void PrintMustReturnVoid(std::string_view type,
+                           frontend::SourceRange const &range);
+  void SwitchConditionNeedsBool(std::string_view type,
+                                frontend::SourceRange const &range);
 
   size_t size() const {
     return undeclared_ids_.size() + out_of_order_decls_.size() +
@@ -116,6 +141,7 @@ struct Log {
   std::vector<std::vector<ast::Identifier const *>> cyc_dep_vecs_;
 
   std::vector<std::string> errors_;
+  frontend::Source *src_;
 };
 }  // namespace error
 

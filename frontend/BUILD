@@ -7,8 +7,8 @@ cc_group_target(
     hdrs = ["lex.h"],
     deps = [
         ":lexeme",
-        ":source",
-        ":text_span",
+        "//frontend/source:source",
+        "//frontend/source:range",
         "//error:log",
     ],
 )
@@ -79,13 +79,13 @@ cc_lib_target(
     intf_deps = None,
     impl_deps = [
         ":lex",
-        ":source",
         ":tagged_node",
         ":token",
         ":parse_rule-impl",
         "//ast:ast",
         "//base:guarded",
         "//error:log-impl",
+        "//frontend/source:source",
         "//misc:module",
         "//visitor:dump_ast-impl",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -93,25 +93,10 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(name = "source",
-              intf_deps = ["//base:expected"],
-              impl_deps = ["@com_google_absl//absl/strings:str_format"],
-              test_deps = [],
-              test_data = [
-                  "testdata/empty_file.txt",
-                  "testdata/one_line_file.txt",
-                  "testdata/multi_line_file.txt",
-              ])
-
 cc_lib_target(name = "tag", impl_deps = None, test_deps = None)
 
 cc_lib_target(name = "tagged_node",
               intf_deps = [":tag", ":lexeme"],
-              impl_deps = None,
-              test_deps = None)
-
-cc_lib_target(name = "text_span",
-              intf_deps = ["//base:debug", "//base:interval"],
               impl_deps = None,
               test_deps = None)
 

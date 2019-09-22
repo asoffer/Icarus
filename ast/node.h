@@ -4,7 +4,7 @@
 #include <utility>
 
 #include "base/util.h"
-#include "frontend/text_span.h"
+#include "frontend/source/range.h"
 
 #include "visitor/dump_ast.h"
 
@@ -32,16 +32,16 @@ struct Scope;
 
 namespace ast {
 struct Node : public base::Cast<Node> {
-  Node(TextSpan span = TextSpan()) : span(std::move(span)) {}
+  Node(frontend::SourceRange span = frontend::SourceRange())
+      : span(std::move(span)) {}
   virtual ~Node() {}
 
-#define ICARUS_AST_VISITOR(signature, body)                                    \
-  virtual signature body
+#define ICARUS_AST_VISITOR(signature, body) virtual signature body
 #include "visitor/visitors.xmacro.h"
 #undef ICARUS_AST_VISITOR
 
   core::Scope *scope_ = nullptr;
-  TextSpan span;
+  frontend::SourceRange span;
 };
 
 }  // namespace ast

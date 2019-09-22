@@ -1,7 +1,7 @@
 #include "ast/ast.h"
 #include "backend/eval.h"
 #include "base/debug.h"
-#include "frontend/source.h"
+#include "frontend/source/file.h"
 #include "ir/compiled_fn.h"
 #include "misc/context.h"
 #include "misc/module.h"
@@ -10,7 +10,7 @@
 #include "visitor/verify_type.h"
 
 namespace frontend {
-std::vector<std::unique_ptr<ast::Node>> Parse(Src *src, ::Module *mod);
+std::vector<std::unique_ptr<ast::Node>> Parse(Source *src, ::Module *mod);
 }  // namespace frontend
 
 std::atomic<bool> found_errors = false;
@@ -21,9 +21,11 @@ ir::CompiledFn *main_fn        = nullptr;
 // inside this function.
 Module *CompileModule(Module *mod, std::filesystem::path const *path) {
   mod->path_ = ASSERT_NOT_NULL(path);
+
   // TODO log an error if this fails.
-  ASSIGN_OR(return nullptr, frontend::FileSrc src,
-                   frontend::FileSrc::Make(*mod->path_));
+  ASSIGN_OR(return nullptr, frontend::FileSource src,
+                   frontend::FileSource::Make(*mod->path_));
+  mod->error_log_ = error::Log(&src);
 
   mod->statements_ = frontend::Parse(&src, mod);
   if (mod->error_log_.size() > 0) {
@@ -40,9 +42,7 @@ Module *CompileModule(Module *mod, std::filesystem::path const *path) {
   }
 
   visitor::TraditionalCompilation visitor(mod);
-  for (auto const &stmt : mod->statements_) {
-    stmt->VerifyType(&visitor);
-  }
+  for (auto const &stmt : mod->statements_) { stmt->VerifyType(&visitor); }
 
   if (visitor.context().num_errors() > 0) {
     // TODO Is this right?

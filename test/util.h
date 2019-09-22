@@ -5,12 +5,12 @@
 #include <memory>
 
 #include "core/scope.h"
-#include "frontend/source.h"
+#include "frontend/source/string.h"
 #include "misc/context.h"
 #include "misc/module.h"
 
 namespace frontend {
-std::vector<std::unique_ptr<ast::Node>> Parse(Src *src, ::Module *mod);
+std::vector<std::unique_ptr<ast::Node>> Parse(Source *src, ::Module *mod);
 }  // namespace frontend
 
 namespace test {
@@ -19,7 +19,7 @@ namespace internal {
 template <typename T, bool Verify>
 std::unique_ptr<T> MakeNode(std::string s, ::Context *ctx, core::Scope *scope) {
   if (scope == nullptr) { scope = &ctx->mod_->scope_; }
-  frontend::StringSrc src(std::move(s));
+  frontend::StringSource src(std::move(s));
   auto stmts = frontend::Parse(&src, ctx->mod_);
   if (stmts.size() != 1u) { return nullptr; }
   auto *cast_ptr = stmts[0]->if_as<T>();

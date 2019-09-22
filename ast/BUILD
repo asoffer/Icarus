@@ -50,7 +50,7 @@ cc_lib_target(
     intf_deps = [
         "//base:util",
         "//visitor:visitors",
-        "//frontend:text_span",
+        "//frontend/source:range",
         "//ir:results",
     ],
 )

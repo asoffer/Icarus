@@ -24,7 +24,14 @@ cc_lib_target(
 
 cc_lib_target(name = "guarded", impl_deps = None, test_deps = None)
 cc_lib_target(name = "hash", impl_deps = None, test_deps = None)
-cc_lib_target(name = "interval", impl_deps = None, test_deps = None)
+
+cc_lib_target(
+    name = "interval",
+    intf_deps = [":debug"],
+    impl_deps = None,
+    test_deps = None,
+)
+
 cc_lib_target(name = "lazy", impl_deps = None, test_deps = None)
 cc_lib_target(name = "log",
               intf_deps = [

@@ -40,7 +40,7 @@ struct StructLiteral;
 }  // namespace ast
 
 struct Module {
-  Module();
+  explicit Module();
   ~Module();
 
   // We take pointers to the module, so it cannot be moved.

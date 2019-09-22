@@ -22,8 +22,6 @@
 #endif  // ICARUS_VISITOR_EMIT_IR
 
 struct Context;
-struct TextSpan;
-
 struct Module;
 
 namespace ast {

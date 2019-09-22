@@ -10,7 +10,7 @@
 #include "frontend/lex.h"
 #include "frontend/parse_rule.h"
 #include "frontend/operators.h"
-#include "frontend/source.h"
+#include "frontend/source/source.h"
 #include "frontend/tagged_node.h"
 #include "frontend/token.h"
 #include "misc/module.h"
@@ -125,7 +125,7 @@ std::unique_ptr<ast::Node> OneBracedStatement(
     absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
   auto stmts  = std::make_unique<Statements>();
-  stmts->span = TextSpan(nodes[0]->span, nodes[2]->span);
+  stmts->span = SourceRange(nodes[0]->span, nodes[2]->span);
   stmts->append(std::move(nodes[1]));
   ValidateStatementSyntax(stmts->content_.back().get(), mod, error_log);
   return stmts;
@@ -135,7 +135,7 @@ std::unique_ptr<ast::Node> EmptyBraces(
     absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
   auto stmts  = std::make_unique<Statements>();
-  stmts->span = TextSpan(nodes[0]->span, nodes[1]->span);
+  stmts->span = SourceRange(nodes[0]->span, nodes[1]->span);
   return stmts;
 }
 
@@ -151,7 +151,7 @@ std::unique_ptr<ast::Node> BracedStatementsSameLineEnd(
     absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
   auto stmts  = move_as<Statements>(nodes[1]);
-  stmts->span = TextSpan(nodes[0]->span, nodes[2]->span);
+  stmts->span = SourceRange(nodes[0]->span, nodes[2]->span);
   if (nodes[2]->is<Statements>()) {
     for (auto &stmt : nodes[2]->as<Statements>().content_) {
       stmts->append(std::move(stmt));
@@ -179,7 +179,7 @@ std::unique_ptr<ast::Node> BuildRightUnop(
     auto unop     = std::make_unique<ast::Unop>();
     unop->operand = move_as<ast::Expression>(nodes[0]);
     unop->op      = frontend::Operator::TypeOf;
-    unop->span    = TextSpan(unop->operand->span, nodes[1]->span);
+    unop->span    = SourceRange(unop->operand->span, nodes[1]->span);
 
     if (unop->operand->is<ast::Declaration>()) {
       error_log->DeclarationUsedInUnop(tk, unop->operand->span);
@@ -192,7 +192,7 @@ std::unique_ptr<ast::Node> BuildRightUnop(
 }
 
 std::unique_ptr<ast::Node> BuildCallImpl(
-    TextSpan span, std::unique_ptr<ast::Expression> callee,
+    SourceRange span, std::unique_ptr<ast::Expression> callee,
     std::unique_ptr<ast::Expression> args_expr, Module *mod,
     error::Log *error_log) {
   if (!args_expr) {
@@ -202,8 +202,8 @@ std::unique_ptr<ast::Node> BuildCallImpl(
 
   std::vector<std::pair<std::string, std::unique_ptr<ast::Expression>>> args;
   if (auto *cl = args_expr->if_as<ast::CommaList>()) {
-    std::optional<TextSpan> last_named_span_before_error = std::nullopt;
-    std::vector<TextSpan> positional_error_spans;
+    std::optional<SourceRange> last_named_span_before_error = std::nullopt;
+    std::vector<SourceRange> positional_error_spans;
 
     for (auto &expr : cl->exprs_) {
       if (auto *b = expr->if_as<ast::Binop>();
@@ -249,7 +249,7 @@ std::unique_ptr<ast::Node> BuildCallImpl(
 std::unique_ptr<ast::Node> BuildCall(
     absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  TextSpan span(nodes.front()->span, nodes.back()->span);
+  SourceRange span(nodes.front()->span, nodes.back()->span);
   return BuildCallImpl(std::move(span), move_as<ast::Expression>(nodes[0]),
                        move_as<ast::Expression>(nodes[2]), mod, error_log);
 }
@@ -261,11 +261,11 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
 
   using frontend::Operator;
   if (tk == "import") {
-    auto span = TextSpan(nodes[0]->span, nodes[1]->span);
+    auto span = SourceRange(nodes[0]->span, nodes[1]->span);
     return std::make_unique<ast::Import>(std::move(span),
                                          move_as<ast::Expression>(nodes[1]));
   } else if (tk == "jump") {
-    auto span = TextSpan(nodes.front()->span, nodes.back()->span);
+    auto span = SourceRange(nodes.front()->span, nodes.back()->span);
     std::vector<std::unique_ptr<ast::Expression>> exprs;
     std::vector<std::unique_ptr<ast::Call>> call_exprs;
     if (auto *c = nodes[1]->if_as<ast::ChainOp>(); c && !c->parenthesized_) {
@@ -282,7 +282,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
     }
     return std::make_unique<ast::Jump>(std::move(span), std::move(call_exprs));
   } else if (tk == "print") {
-    auto span = TextSpan(nodes.front()->span, nodes.back()->span);
+    auto span = SourceRange(nodes.front()->span, nodes.back()->span);
     std::vector<std::unique_ptr<ast::Expression>> exprs;
     if (auto *cl = nodes[1]->if_as<ast::CommaList>();
         cl && !cl->parenthesized_) {
@@ -292,7 +292,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
     }
     return std::make_unique<ast::PrintStmt>(std::move(span), std::move(exprs));
   } else if (tk == "return") {
-    auto span = TextSpan(nodes.front()->span, nodes.back()->span);
+    auto span = SourceRange(nodes.front()->span, nodes.back()->span);
     std::vector<std::unique_ptr<ast::Expression>> exprs;
     if (auto *cl = nodes[1]->if_as<ast::CommaList>();
         cl && !cl->parenthesized_) {
@@ -302,7 +302,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
     }
     return std::make_unique<ast::ReturnStmt>(std::move(span), std::move(exprs));
   } else if (tk == "yield") {
-    auto span = TextSpan(nodes.front()->span, nodes.back()->span);
+    auto span = SourceRange(nodes.front()->span, nodes.back()->span);
     std::vector<std::unique_ptr<ast::Expression>> exprs;
     if (auto *cl = nodes[1]->if_as<ast::CommaList>();
         cl && !cl->parenthesized_) {
@@ -312,14 +312,14 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
     }
     return std::make_unique<ast::YieldStmt>(std::move(span), std::move(exprs));
   } else if (tk == "'") {
-    TextSpan span(nodes.front()->span, nodes.back()->span);
+    SourceRange span(nodes.front()->span, nodes.back()->span);
     return BuildCallImpl(std::move(span), move_as<ast::Expression>(nodes[1]),
                          nullptr, mod, error_log);
   }
 
   auto unop     = std::make_unique<ast::Unop>();
   unop->operand = move_as<ast::Expression>(nodes[1]);
-  unop->span    = TextSpan(nodes[0]->span, unop->operand->span);
+  unop->span    = SourceRange(nodes[0]->span, unop->operand->span);
 
   static absl::flat_hash_map<std::string_view, Operator> const UnopMap{
       {"*", Operator::Mul},          {"[*]", Operator::BufPtr},
@@ -352,7 +352,7 @@ std::unique_ptr<ast::Node> BuildChainOp(
     chain = move_as<ast::ChainOp>(nodes[0]);
 
   } else {
-    TextSpan span(nodes[0]->span, nodes[2]->span);
+    SourceRange span(nodes[0]->span, nodes[2]->span);
     chain = std::make_unique<ast::ChainOp>(std::move(span),
                                            move_as<ast::Expression>(nodes[0]));
   }
@@ -370,18 +370,18 @@ std::unique_ptr<ast::Node> BuildCommaList(
     comma_list = move_as<ast::CommaList>(nodes[0]);
   } else {
     comma_list       = std::make_unique<ast::CommaList>();
-    comma_list->span = TextSpan(nodes[0]->span, nodes[2]->span);
+    comma_list->span = SourceRange(nodes[0]->span, nodes[2]->span);
     comma_list->exprs_.push_back(move_as<ast::Expression>(nodes[0]));
   }
   comma_list->exprs_.push_back(move_as<ast::Expression>(nodes[2]));
-  comma_list->span.finish = comma_list->exprs_.back()->span.finish;
+  comma_list->span.end() = comma_list->exprs_.back()->span.end();
   return comma_list;
 }
 
 std::unique_ptr<ast::Node> BuildAccess(
     absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  auto span      = TextSpan(nodes[0]->span, nodes[2]->span);
+  auto span      = SourceRange(nodes[0]->span, nodes[2]->span);
   auto &&operand = move_as<ast::Expression>(nodes[0]);
   if (operand->is<ast::Declaration>()) {
     error_log->DeclarationInAccess(operand->span);
@@ -397,7 +397,7 @@ std::unique_ptr<ast::Node> BuildAccess(
 std::unique_ptr<ast::Node> BuildIndexOperator(
     absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  auto span  = TextSpan(nodes[0]->span, nodes[2]->span);
+  auto span  = SourceRange(nodes[0]->span, nodes[2]->span);
   auto index = std::make_unique<ast::Index>(std::move(span),
                                             move_as<ast::Expression>(nodes[0]),
                                             move_as<ast::Expression>(nodes[2]));
@@ -422,7 +422,7 @@ std::unique_ptr<ast::Node> BuildEmptyArray(
     absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
   return std::make_unique<ast::ArrayLiteral>(
-      TextSpan(nodes.front()->span, nodes.back()->span),
+      SourceRange(nodes.front()->span, nodes.back()->span),
       std::vector<std::unique_ptr<ast::Expression>>{});
 }
 
@@ -430,7 +430,7 @@ std::unique_ptr<ast::Node> BuildEmptyCommaList(
     absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
   auto comma_list  = std::make_unique<ast::CommaList>();
-  comma_list->span = TextSpan(nodes[0]->span, nodes[1]->span);
+  comma_list->span = SourceRange(nodes[0]->span, nodes[1]->span);
   return comma_list;
 }
 
@@ -450,7 +450,7 @@ std::unique_ptr<ast::Node> BuildGenericStructType(
     absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
   auto result = std::make_unique<ast::StructType>(
-      TextSpan(nodes.front()->span, nodes.back()->span));
+      SourceRange(nodes.front()->span, nodes.back()->span));
   if (nodes[1]->is<ast::CommaList>() &&
       !nodes[1]->as<ast::CommaList>().parenthesized_) {
     result->args_ = std::move(nodes[1]->as<ast::CommaList>().exprs_);
@@ -465,7 +465,7 @@ std::unique_ptr<ast::Node> BuildArrayType(
     absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
   if (auto *cl = nodes[1]->if_as<ast::CommaList>(); cl && !cl->parenthesized_) {
-    auto span = TextSpan(nodes.front()->span, nodes.back()->span);
+    auto span = SourceRange(nodes.front()->span, nodes.back()->span);
     return std::make_unique<ast::ArrayType>(std::move(span),
                                             std::move(*cl).extract(),
                                             move_as<ast::Expression>(nodes[3]));
@@ -481,8 +481,7 @@ std::unique_ptr<ast::Node> BuildDeclaration(
     absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
   auto op = nodes[1]->as<frontend::Token>().op;
-  TextSpan span(nodes.front()->span, nodes.back()->span);
-  ASSERT(nodes[0]->span.source != nullptr);
+  SourceRange span(nodes.front()->span, nodes.back()->span);
   std::string id;
   if (nodes[0]->is<ast::Identifier>()) {
     id = std::string{nodes[0]->as<ast::Identifier>().token()};
@@ -524,7 +523,7 @@ std::vector<std::unique_ptr<ast::Declaration>> ExtractInputs(
 }
 
 std::unique_ptr<ast::Node> BuildFunctionLiteral(
-    TextSpan span, std::vector<std::unique_ptr<ast::Declaration>> inputs,
+    SourceRange span, std::vector<std::unique_ptr<ast::Declaration>> inputs,
     std::unique_ptr<ast::Expression> output, Statements &&stmts, Module *mod,
     error::Log *error_log) {
   if (output == nullptr) {
@@ -557,7 +556,7 @@ std::unique_ptr<ast::Node> BuildFunctionLiteral(
 std::unique_ptr<ast::Node> BuildNormalFunctionLiteral(
     absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  auto span      = TextSpan(nodes[0]->span, nodes.back()->span);
+  auto span      = SourceRange(nodes[0]->span, nodes.back()->span);
   auto *binop    = &nodes[0]->as<ast::Binop>();
   auto[lhs, rhs] = std::move(*binop).extract();
   return BuildFunctionLiteral(
@@ -568,7 +567,7 @@ std::unique_ptr<ast::Node> BuildNormalFunctionLiteral(
 std::unique_ptr<ast::Node> BuildInferredFunctionLiteral(
     absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  auto span = TextSpan(nodes[0]->span, nodes.back()->span);
+  auto span = SourceRange(nodes[0]->span, nodes.back()->span);
   return BuildFunctionLiteral(
       std::move(span), ExtractInputs(move_as<ast::Expression>(nodes[0])),
       nullptr, std::move(nodes[2]->as<Statements>()), mod, error_log);
@@ -578,7 +577,7 @@ std::unique_ptr<ast::Node> BuildInferredFunctionLiteral(
 std::unique_ptr<ast::Node> BuildShortFunctionLiteral(
     std::unique_ptr<ast::Expression> args,
     std::unique_ptr<ast::Expression> body, Module *mod, error::Log *error_log) {
-  auto span   = TextSpan(args->span, body->span);
+  auto span   = SourceRange(args->span, body->span);
   auto inputs = ExtractInputs(std::move(args));
 
   std::vector<std::unique_ptr<ast::Expression>> ret_vals;
@@ -599,7 +598,7 @@ std::unique_ptr<ast::Node> BuildOneElementCommaList(
     absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
   auto comma_list  = std::make_unique<ast::CommaList>();
-  comma_list->span = TextSpan(nodes[0]->span, nodes[3]->span);
+  comma_list->span = SourceRange(nodes[0]->span, nodes[3]->span);
   comma_list->exprs_.push_back(move_as<ast::Expression>(nodes[1]));
   comma_list->parenthesized_ = true;
   return comma_list;
@@ -628,7 +627,7 @@ std::unique_ptr<ast::Node> OneBracedJump(
     absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
   auto stmts  = std::make_unique<Statements>();
-  stmts->span = TextSpan(nodes[0]->span, nodes[2]->span);
+  stmts->span = SourceRange(nodes[0]->span, nodes[2]->span);
   stmts->append(BuildControlHandler(std::move(nodes[1])));
   ValidateStatementSyntax(stmts->content_.back().get(), mod, error_log);
   return stmts;
@@ -642,7 +641,7 @@ std::unique_ptr<ast::Node> BuildControlHandler(
 std::unique_ptr<ast::Node> BuildScopeNode(
     absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  TextSpan span(nodes.front()->span, nodes.back()->span);
+  SourceRange span(nodes.front()->span, nodes.back()->span);
   auto[callee, ordered_fn_args] =
       std::move(nodes[0]->as<ast::Call>()).extract();
   std::vector<ast::BlockNode> blocks;
@@ -655,7 +654,7 @@ std::unique_ptr<ast::Node> BuildScopeNode(
 std::unique_ptr<ast::Node> BuildBlockNode(
     absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  auto span = TextSpan(nodes.front()->span, nodes.back()->span);
+  auto span = SourceRange(nodes.front()->span, nodes.back()->span);
   if (auto *id = nodes.front()->if_as<ast::Identifier>()) {
     return std::make_unique<ast::BlockNode>(
         std::move(span), std::string{id->token()},
@@ -691,7 +690,7 @@ std::unique_ptr<ast::Node> ExtendScopeNode(
 std::unique_ptr<ast::Node> SugaredExtendScopeNode(
     absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
-  TextSpan span(nodes.front()->span, nodes.back()->span);
+  SourceRange span(nodes.front()->span, nodes.back()->span);
   auto *updated_last_scope_node = &nodes[2]->as<ast::ScopeNode>();
   std::vector<std::unique_ptr<ast::Node>> block_stmt_nodes;
   block_stmt_nodes.push_back(std::move(nodes[2]));
@@ -762,18 +761,18 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
                                           move_as<ast::Expression>(nodes[2]));
     }
   } else if (tk == "as") {
-    TextSpan span(nodes[0]->span, nodes[2]->span);
+    SourceRange span(nodes[0]->span, nodes[2]->span);
     return std::make_unique<ast::Cast>(std::move(span),
                                        move_as<ast::Expression>(nodes[0]),
                                        move_as<ast::Expression>(nodes[2]));
   } else if (tk == "when") {
     auto when  = std::make_unique<SwitchWhen>();
-    when->span = TextSpan(nodes[0]->span, nodes[2]->span);
+    when->span = SourceRange(nodes[0]->span, nodes[2]->span);
     when->body = move_as<ast::Node>(nodes[0]);
     when->cond = move_as<ast::Expression>(nodes[2]);
     return when;
   } else if (tk == "'") {
-    TextSpan span(nodes.front()->span, nodes.back()->span);
+    SourceRange span(nodes.front()->span, nodes.back()->span);
     return BuildCallImpl(std::move(span), move_as<ast::Expression>(nodes[2]),
                          move_as<ast::Expression>(nodes[0]), mod, error_log);
   }
@@ -795,7 +794,7 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
 std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
     absl::Span<std::unique_ptr<ast::Node>> nodes,ast::EnumLiteral::Kind kind, Module *mod,
     error::Log *error_log) {
-  TextSpan span(nodes[0]->span, nodes[1]->span);
+  SourceRange span(nodes[0]->span, nodes[1]->span);
   std::vector<std::unique_ptr<ast::Expression>> elems;
   if (auto *stmts = nodes[1]->if_as<Statements>()) {
     // TODO if you want these values to depend on compile-time parameters,
@@ -811,7 +810,7 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
 }
 
 std::unique_ptr<ast::Node> BuildScopeLiteral(std::unique_ptr<Statements> stmts,
-                                             TextSpan span) {
+                                             SourceRange span) {
   std::vector<std::unique_ptr<ast::Declaration>> decls;
   for (auto &stmt : stmts->content_) {
     if (stmt->is<ast::Declaration>()) {
@@ -847,7 +846,7 @@ std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
 }
 
 std::unique_ptr<ast::StructLiteral> BuildStructLiteral(Statements &&stmts,
-                                                       TextSpan span,
+                                                       SourceRange span,
                                                        Module *mod,
                                                        error::Log *error_log) {
   auto struct_lit  = std::make_unique<ast::StructLiteral>();
@@ -877,7 +876,7 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
     sw->expr_ = move_as<ast::Expression>(nodes[2]);
     return sw;
   } else if (tk == "jump_handler") {
-    TextSpan span(nodes.front()->span, nodes.back()->span);
+    SourceRange span(nodes.front()->span, nodes.back()->span);
     std::vector<std::unique_ptr<ast::Declaration>> params;
     if (nodes.size() == 5) {
       if (nodes[2]->is<ast::CommaList>()) {
@@ -902,7 +901,7 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
   } else if (tk == "struct") {
     auto result = BuildStructLiteral(
         std::move(nodes[4]->as<Statements>()),
-        TextSpan(nodes.front()->span, nodes.back()->span), mod, error_log);
+        SourceRange(nodes.front()->span, nodes.back()->span), mod, error_log);
     if (nodes[2]->is<ast::CommaList>()) {
       for (auto &expr : nodes[2]->as<ast::CommaList>().exprs_) {
         ASSERT(expr, InheritsFrom<ast::Declaration>());  // TODO handle failure
@@ -925,7 +924,7 @@ std::unique_ptr<ast::Node> BuildConcreteStruct(
     absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
     error::Log *error_log) {
   return BuildStructLiteral(std::move(nodes[1]->as<Statements>()),
-                            TextSpan(nodes.front()->span, nodes.back()->span),
+                            SourceRange(nodes.front()->span, nodes.back()->span),
                             mod, error_log);
 }
 
@@ -948,7 +947,7 @@ std::unique_ptr<ast::Node> BuildKWBlock(
       return BuildSwitch(move_as<Statements>(nodes[1]), mod, error_log);
 
     } else if (tk == "scope") {
-      TextSpan span(nodes.front()->span, nodes.back()->span);
+      SourceRange span(nodes.front()->span, nodes.back()->span);
       return BuildScopeLiteral(move_as<Statements>(nodes[1]), span);
 
     } else if (tk == "block") {
@@ -975,7 +974,7 @@ std::unique_ptr<ast::Node> BuildEmptyParen(
   if (nodes[0]->is<ast::Declaration>()) {
     error_log->CallingDeclaration(nodes[0]->span);
   }
-  TextSpan span(nodes[0]->span, nodes[2]->span);
+  SourceRange span(nodes[0]->span, nodes[2]->span);
   return std::make_unique<ast::Call>(std::move(span),
                                      move_as<ast::Expression>(nodes[0]),
                                      core::OrderedFnArgs<ast::Expression>{});
@@ -1164,7 +1163,7 @@ auto Rules = std::array{
 
 enum class ShiftState : char { NeedMore, EndOfExpr, MustReduce };
 struct ParseState {
-  ParseState(Src *src, Module *mod)
+  ParseState(Source *src, Module *mod)
       : mod_(mod), lex_state_{src, &mod->error_log_} {}
 
   template <size_t N>
@@ -1354,7 +1353,7 @@ void CleanUpReduction(ParseState *state) {
 }
 }  // namespace
 
-std::vector<std::unique_ptr<ast::Node>> Parse(Src *src, ::Module *mod) {
+std::vector<std::unique_ptr<ast::Node>> Parse(Source *src, ::Module *mod) {
   auto state = ParseState(src, mod);
   Shift(&state);
 
@@ -1371,9 +1370,9 @@ std::vector<std::unique_ptr<ast::Node>> Parse(Src *src, ::Module *mod) {
   // Cleanup
   CleanUpReduction(&state);
 
-  // Finish
+  // end()
   if (state.node_stack_.size() > 1) {
-    std::vector<TextSpan> lines;
+    std::vector<SourceRange> lines;
 
     for (size_t i = 0; i < state.node_stack_.size(); ++i) {
       if (state.tag_stack_[i] &

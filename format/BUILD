@@ -11,7 +11,7 @@ cc_binary(
         "//core:impl-format",
         "//frontend:parse-impl-format",
         "//frontend:lex-impl-format",
-        "//frontend:source-format",
+        "//frontend/source:string-format",
         "//init:cli-impl-format",
         "//init:signal-impl-format",
         "//ir:results-impl-format",

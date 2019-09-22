@@ -10,7 +10,7 @@ namespace frontend {
 // ast node used only for holding tokens which have been lexed but not yet
 // parsed.
 struct Token : public ast::Node {
-  Token(const TextSpan &span = TextSpan(), std::string str = "",
+  Token(const SourceRange &span = SourceRange(), std::string str = "",
         bool is_hashtag = false)
       : Node(span), token(std::move(str)) {
     if (is_hashtag) {

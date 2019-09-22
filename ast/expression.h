@@ -9,7 +9,8 @@
 namespace ast {
 
 struct Expression : public Node {
-  Expression(TextSpan const &span = TextSpan()) : Node(span) {}
+  Expression(frontend::SourceRange const &span = frontend::SourceRange())
+      : Node(span) {}
 
   Expression(Expression &&) noexcept      = default;
   Expression(Expression const &) noexcept = default;

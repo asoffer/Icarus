@@ -7,9 +7,9 @@
 #include "frontend/tag.h"
 #include "frontend/token.h"
 
-struct TextSpan;
 
 namespace frontend {
+struct SourceRange;
 
 struct TaggedNode {
   std::unique_ptr<ast::Node> node_;
@@ -54,7 +54,7 @@ struct TaggedNode {
   TaggedNode(std::unique_ptr<ast::Node> node, Tag tag)
       : node_(std::move(node)), tag_(tag) {}
 
-  TaggedNode(const TextSpan &span, const std::string &token, Tag tag);
+  TaggedNode(const SourceRange &range, const std::string &token, Tag tag);
 
   bool valid() const { return node_ != nullptr; }
   static TaggedNode Invalid() { return TaggedNode{}; }

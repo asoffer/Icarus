@@ -43,7 +43,7 @@ std::pair<OverloadSet, std::unique_ptr<Call>> MakeCall(
     std::vector<std::string> pos_args,
     absl::flat_hash_map<std::string, std::string> named_args) {
   auto call_expr = std::make_unique<Call>(
-      TextSpan{}, test::MakeVerified<Expression>(visitor, std::move(fn)),
+      frontend::SourceRange{}, test::MakeVerified<Expression>(visitor, std::move(fn)),
       MakeFnArgs(visitor, std::move(pos_args), std::move(named_args)));
   OverloadSet os;
   os.emplace(call_expr->callee(),
@@ -529,7 +529,7 @@ TEST_CASE("(val: T, T ::= bool) -> *T") {
   visitor::TraditionalCompilation v(&mod);
 
   Call call_expr(
-      TextSpan{},
+      frontend::SourceRange{},
       test::MakeVerified<Expression>(&v, "(val: T, T ::= bool) -> *T {}"),
       core::OrderedFnArgs<Expression>{});
   REQUIRE(call_expr.callee() != nullptr);
@@ -654,7 +654,7 @@ TEST_CASE("overload set") {
              visitor::VerifyResult::Constant(type::Generic));
 
   SECTION("without args") {
-    Call call_expr(TextSpan{}, test::MakeUnverified<Expression>(&v, "f"),
+    Call call_expr(frontend::SourceRange{}, test::MakeUnverified<Expression>(&v, "f"),
                    MakeFnArgs(&v, {}, {}));
     CHECK(VerifyDispatch(&v, &call_expr, os,
                          ResultsForArgs(&v, call_expr.args())) ==
@@ -662,7 +662,7 @@ TEST_CASE("overload set") {
   }
 
   SECTION("without one positional arg - bool") {
-    Call call_expr(TextSpan{}, test::MakeUnverified<Expression>(&v, "f"),
+    Call call_expr(frontend::SourceRange{}, test::MakeUnverified<Expression>(&v, "f"),
                    MakeFnArgs(&v, {"true"}, {}));
     CHECK(VerifyDispatch(&v, &call_expr, os,
                          ResultsForArgs(&v, call_expr.args())) ==
@@ -670,7 +670,7 @@ TEST_CASE("overload set") {
   }
 
   SECTION("without one positional arg - int64") {
-    Call call_expr(TextSpan{}, test::MakeUnverified<Expression>(&v, "f"),
+    Call call_expr(frontend::SourceRange{}, test::MakeUnverified<Expression>(&v, "f"),
                    MakeFnArgs(&v, {"3"}, {}));
     CHECK(VerifyDispatch(&v, &call_expr, os,
                          ResultsForArgs(&v, call_expr.args())) ==
@@ -678,7 +678,7 @@ TEST_CASE("overload set") {
   }
 
   SECTION("without one positional arg - no matching type") {
-    Call call_expr(TextSpan{}, test::MakeUnverified<Expression>(&v, "f"),
+    Call call_expr(frontend::SourceRange{}, test::MakeUnverified<Expression>(&v, "f"),
                    MakeFnArgs(&v, {"3.0"}, {}));
     CHECK(VerifyDispatch(&v, &call_expr, os,
                          ResultsForArgs(&v, call_expr.args())) ==
@@ -686,7 +686,7 @@ TEST_CASE("overload set") {
   }
 
   SECTION("without one named arg - bool") {
-    Call call_expr(TextSpan{}, test::MakeUnverified<Expression>(&v, "f"),
+    Call call_expr(frontend::SourceRange{}, test::MakeUnverified<Expression>(&v, "f"),
                    MakeFnArgs(&v, {}, {{"val", "true"}}));
     CHECK(VerifyDispatch(&v, &call_expr, os,
                          ResultsForArgs(&v, call_expr.args())) ==
@@ -694,7 +694,7 @@ TEST_CASE("overload set") {
   }
 
   SECTION("without one named arg - int64") {
-    Call call_expr(TextSpan{}, test::MakeUnverified<Expression>(&v, "f"),
+    Call call_expr(frontend::SourceRange{}, test::MakeUnverified<Expression>(&v, "f"),
                    MakeFnArgs(&v, {}, {{"val", "3"}}));
     CHECK(VerifyDispatch(&v, &call_expr, os,
                          ResultsForArgs(&v, call_expr.args())) ==
@@ -702,7 +702,7 @@ TEST_CASE("overload set") {
   }
 
   SECTION("without one named arg - no matching type") {
-    Call call_expr(TextSpan{}, test::MakeUnverified<Expression>(&v, "f"),
+    Call call_expr(frontend::SourceRange{}, test::MakeUnverified<Expression>(&v, "f"),
                    MakeFnArgs(&v, {}, {{"val", "3.0"}}));
     CHECK(VerifyDispatch(&v, &call_expr, os,
                          ResultsForArgs(&v, call_expr.args())) ==
@@ -712,7 +712,7 @@ TEST_CASE("overload set") {
   SECTION("without variant - matching one") {
     auto variant =
         test::MakeVerified<Expression>(&v, "v: bool | float32 = true");
-    Call call_expr(TextSpan{}, test::MakeUnverified<Expression>(&v, "f"),
+    Call call_expr(frontend::SourceRange{}, test::MakeUnverified<Expression>(&v, "f"),
                    MakeFnArgs(&v, {"v"}, {}));
     CHECK(VerifyDispatch(&v, &call_expr, os,
                          ResultsForArgs(&v, call_expr.args())) ==
@@ -721,7 +721,7 @@ TEST_CASE("overload set") {
 
   SECTION("without variant - matching both") {
     auto variant = test::MakeVerified<Expression>(&v, "v: bool | int64 = true");
-    Call call_expr(TextSpan{}, test::MakeUnverified<Expression>(&v, "f"),
+    Call call_expr(frontend::SourceRange{}, test::MakeUnverified<Expression>(&v, "f"),
                    MakeFnArgs(&v, {"v"}, {}));
     CHECK(
         VerifyDispatch(&v, &call_expr, os,

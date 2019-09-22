@@ -90,11 +90,9 @@ static void MakeAllDestructions(TraditionalCompilation *visitor,
   }
 
   // TODO eek, don't use line number to determine destruction order!
-  std::sort(ordered_decls.begin(), ordered_decls.end(),
+  absl::c_sort(ordered_decls,
             [](ast::Declaration *lhs, ast::Declaration *rhs) {
-              return (lhs->span.start.line_num > rhs->span.start.line_num) ||
-                     (lhs->span.start.line_num == rhs->span.start.line_num &&
-                      lhs->span.start.offset > rhs->span.start.offset);
+              return (lhs->span.begin() > rhs->span.begin());
             });
 
   for (auto *decl : ordered_decls) {

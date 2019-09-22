@@ -15,12 +15,12 @@ cc_lib_target(
         "//ast:ast_fwd",
         "//core:fn_args",
         "//base:debug",
-        "//frontend:text_span",
+        "//frontend/source:range",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
     impl_deps = [
         "//ast:ast",
         "//base:interval",
-        "//frontend:source",
+        "//frontend/source:source",
     ],
     test_deps = None)

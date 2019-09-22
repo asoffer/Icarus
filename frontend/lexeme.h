@@ -17,21 +17,14 @@ namespace frontend {
 struct Lexeme {
   explicit Lexeme(std::unique_ptr<ast::Node>&& n)
       : value_(std::move(n)),
-        span_(std::get<std::unique_ptr<ast::Node>>(value_)->span) {
-    ASSERT(span_.source != nullptr);
-  }
-  explicit Lexeme(Operator op, TextSpan const& span) : value_(op), span_(span) {
-    ASSERT(span_.source != nullptr);
-  }
-  explicit Lexeme(Syntax s, TextSpan const& span) : value_(s), span_(span) {
-    ASSERT(span_.source != nullptr);
-  }
-  explicit Lexeme(ast::Hashtag h, TextSpan const& span)
-      : value_(h), span_(span) {
-    ASSERT(span_.source != nullptr);
-  }
+        span_(std::get<std::unique_ptr<ast::Node>>(value_)->span) {}
+  explicit Lexeme(Operator op, SourceRange const& span)
+      : value_(op), span_(span) {}
+  explicit Lexeme(Syntax s, SourceRange const& span) : value_(s), span_(span) {}
+  explicit Lexeme(ast::Hashtag h, SourceRange const& span)
+      : value_(h), span_(span) {}
 
-  // Lexeme with_cursor(SrcCursor cursor) { NOT_YET(); }
+  // Lexeme with_cursor(SourceCursor cursor) { NOT_YET(); }
 
   constexpr Operator op() const { return std::get<Operator>(value_); }
 
@@ -57,12 +50,12 @@ struct Lexeme {
         value_);
   }
 
-  TextSpan span() const { return span_; }
+  SourceRange span() const { return span_; }
 
  private:
   std::variant<std::unique_ptr<ast::Node>, Operator, Syntax, ast::Hashtag>
       value_;
-  TextSpan span_;
+  SourceRange span_;
 };
 
 }  // namespace frontend

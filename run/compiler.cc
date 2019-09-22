@@ -26,7 +26,7 @@ int RunCompiler() {
   ASSERT(libc_handle != nullptr);
   base::defer d([libc_handle] { dlclose(libc_handle); });
 
-  error::Log log;
+  error::Log log(nullptr);
   for (const auto &src : files) {
     if (!core::ImportModule(std::filesystem::path{src},
                             std::filesystem::path{""}, CompileModule)) {

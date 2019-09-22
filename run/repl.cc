@@ -8,7 +8,7 @@
 #include "base/untyped_buffer.h"
 #include "core/fn_params.h"
 #include "core/scope.h"
-#include "frontend/source.h"
+#include "frontend/source/repl.h"
 #include "ir/cmd/jumps.h"
 #include "ir/compiled_fn.h"
 #include "misc/context.h"
@@ -16,7 +16,7 @@
 #include "type/function.h"
 
 namespace frontend {
-std::vector<std::unique_ptr<ast::Node>> Parse(Src *src, ::Module *mod);
+std::vector<std::unique_ptr<ast::Node>> Parse(Source *src, ::Module *mod);
 }  // namespace frontend
 
 namespace backend {
@@ -49,7 +49,7 @@ static void ReplEval(ast::Expression *expr) {
 int RunRepl() {
   std::puts("Icarus REPL (v0.1)");
 
-  frontend::ReplSrc repl;
+  frontend::ReplSource repl;
   Module mod;
   Context ctx(&mod);
 

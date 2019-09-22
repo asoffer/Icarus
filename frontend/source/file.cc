@@ -1,11 +1,11 @@
-#include "frontend/source.h"
+#include "frontend/source/file.h"
 
 #include <system_error>
 
 #include "absl/strings/str_format.h"
 
 namespace frontend {
-base::expected<FileSrc> FileSrc::Make(std::filesystem::path path) {
+base::expected<FileSource> FileSource::Make(std::filesystem::path path) {
   std::error_code ec;
   auto canonical_path = std::filesystem::canonical(path, ec);
   if (ec) {
@@ -18,7 +18,6 @@ base::expected<FileSrc> FileSrc::Make(std::filesystem::path path) {
     return base::unexpected(absl::StrFormat(R"(Unable to open file "%s")",
                                             canonical_path.string()));
   }
-  FileSrc src(std::move(path), f);
-  return src;
+  return FileSource(std::move(path), f);
 }
 }  // namespace frontend

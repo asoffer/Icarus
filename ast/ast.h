@@ -27,7 +27,7 @@ namespace ast {
 
 template <typename S>
 struct ScopeExpr : public Expression {
-  ScopeExpr(TextSpan &&span) : Expression(std::move(span)) {}
+  ScopeExpr(frontend::SourceRange &&span) : Expression(std::move(span)) {}
   ~ScopeExpr() override {}
   ScopeExpr(ScopeExpr &&) noexcept = default;
   ScopeExpr &operator=(ScopeExpr &&) noexcept = default;
@@ -50,7 +50,7 @@ struct ScopeExpr : public Expression {
 //  * `my_pair.first_element`
 //  * `(some + computation).member`
 struct Access : public Expression {
-  explicit Access(TextSpan span, std::unique_ptr<Expression> operand,
+  explicit Access(frontend::SourceRange span, std::unique_ptr<Expression> operand,
                   std::string member_name)
       : Expression(std::move(span)),
         operand_(std::move(operand)),
@@ -78,11 +78,11 @@ struct Access : public Expression {
 //  * `[im_the_only_thing]`
 //  * `[]`
 struct ArrayLiteral : public Expression {
-  explicit ArrayLiteral(TextSpan span, std::unique_ptr<Expression> expr)
+  explicit ArrayLiteral(frontend::SourceRange span, std::unique_ptr<Expression> expr)
       : Expression(std::move(span)) {
     exprs_.push_back(std::move(expr));
   }
-  ArrayLiteral(TextSpan span, std::vector<std::unique_ptr<Expression>> exprs)
+  ArrayLiteral(frontend::SourceRange span, std::vector<std::unique_ptr<Expression>> exprs)
       : Expression(std::move(span)), exprs_(std::move(exprs)) {}
   ~ArrayLiteral() override {}
 
@@ -117,12 +117,12 @@ struct ArrayLiteral : public Expression {
 //                         8-bit integers.
 //  * `[3, 2; int8]`   ... A shorthand syntax for `[3; [2; int8]]`
 struct ArrayType : public Expression {
-  explicit ArrayType(TextSpan span, std::unique_ptr<Expression> length,
+  explicit ArrayType(frontend::SourceRange span, std::unique_ptr<Expression> length,
                      std::unique_ptr<Expression> data_type)
       : Expression(std::move(span)), data_type_(std::move(data_type)) {
     lengths_.push_back(std::move(length));
   }
-  ArrayType(TextSpan span, std::vector<std::unique_ptr<Expression>> lengths,
+  ArrayType(frontend::SourceRange span, std::vector<std::unique_ptr<Expression>> lengths,
             std::unique_ptr<Expression> data_type)
       : Expression(std::move(span)),
         lengths_(std::move(lengths)),
@@ -158,7 +158,7 @@ struct ArrayType : public Expression {
 struct Binop : public Expression {
   explicit Binop(std::unique_ptr<Expression> lhs, frontend::Operator op,
                  std::unique_ptr<Expression> rhs)
-      : Expression(TextSpan(lhs->span, rhs->span)),
+      : Expression(frontend::SourceRange(lhs->span, rhs->span)),
         op_(op),
         lhs_(std::move(lhs)),
         rhs_(std::move(rhs)) {}
@@ -206,7 +206,7 @@ struct Declaration : public Expression {
   static constexpr Flags f_IsConst    = 0x04;
   static constexpr Flags f_InitIsHole = 0x08;
 
-  explicit Declaration(TextSpan span, std::string id,
+  explicit Declaration(frontend::SourceRange span, std::string id,
                        std::unique_ptr<Expression> type_expression,
                        std::unique_ptr<Expression> initial_val, Flags flags)
       : Expression(std::move(span)),
@@ -263,7 +263,7 @@ struct Declaration : public Expression {
 //  }
 //  ```
 struct BlockLiteral : public ScopeExpr<core::DeclScope> {
-  explicit BlockLiteral(TextSpan span,
+  explicit BlockLiteral(frontend::SourceRange span,
                         std::vector<std::unique_ptr<Declaration>> before,
                         std::vector<std::unique_ptr<Declaration>> after)
       : ScopeExpr<core::DeclScope>(std::move(span)),
@@ -314,12 +314,12 @@ struct BlockLiteral : public ScopeExpr<core::DeclScope> {
 //
 // TODO: `args` should be renamed to `params`.
 struct BlockNode : public ScopeExpr<core::ExecScope> {
-  explicit BlockNode(TextSpan span, std::string name,
+  explicit BlockNode(frontend::SourceRange span, std::string name,
                      std::vector<std::unique_ptr<Node>> stmts)
       : ScopeExpr<core::ExecScope>(std::move(span)),
         name_(std::move(name)),
         stmts_(std::move(stmts)) {}
-  explicit BlockNode(TextSpan span, std::string name,
+  explicit BlockNode(frontend::SourceRange span, std::string name,
                      std::vector<std::unique_ptr<Expression>> args,
                      std::vector<std::unique_ptr<Node>> stmts)
       : ScopeExpr<core::ExecScope>(std::move(span)),
@@ -349,7 +349,7 @@ struct BlockNode : public ScopeExpr<core::ExecScope> {
 // type with no known size or alignment (users can pass around pointers to
 // values of an opaque type, but not actual values).
 struct BuiltinFn : public Expression {
-  explicit BuiltinFn(TextSpan span, core::Builtin b)
+  explicit BuiltinFn(frontend::SourceRange span, core::Builtin b)
       : Expression(std::move(span)), val_(b) {}
   ~BuiltinFn() override {}
 
@@ -368,7 +368,7 @@ struct BuiltinFn : public Expression {
 //  * `f(a, b, c = 3)`
 //  * `arg'func`
 struct Call : public Expression {
-  explicit Call(TextSpan span, std::unique_ptr<Expression> callee,
+  explicit Call(frontend::SourceRange span, std::unique_ptr<Expression> callee,
                 core::OrderedFnArgs<Expression> args)
       : Expression(std::move(span)),
         callee_(std::move(callee)),
@@ -409,7 +409,7 @@ struct Call : public Expression {
 //  * `3 as nat32`
 //  * `null as *int64`
 struct Cast : public Expression {
-  explicit Cast(TextSpan span, std::unique_ptr<Expression> expr,
+  explicit Cast(frontend::SourceRange span, std::unique_ptr<Expression> expr,
                 std::unique_ptr<Expression> type_expr)
       : Expression(std::move(span)),
         expr_(std::move(expr)),
@@ -439,7 +439,7 @@ struct Cast : public Expression {
 //  `a < b == c < d`
 struct ChainOp : public Expression {
   // TODO consider having a construct-or-append static function.
-  explicit ChainOp(TextSpan span, std::unique_ptr<Expression> expr)
+  explicit ChainOp(frontend::SourceRange span, std::unique_ptr<Expression> expr)
       : Expression(std::move(span)) {
     exprs_.push_back(std::move(expr));
   }
@@ -519,7 +519,7 @@ struct CommaList : public Expression {
 struct EnumLiteral : ScopeExpr<core::DeclScope> {
   enum Kind : char { Enum, Flags };
 
-  EnumLiteral(TextSpan span, std::vector<std::unique_ptr<Expression>> elems,
+  EnumLiteral(frontend::SourceRange span, std::vector<std::unique_ptr<Expression>> elems,
               Kind kind)
       : ScopeExpr<core::DeclScope>(std::move(span)),
         elems_(std::move(elems)),
@@ -541,7 +541,7 @@ struct EnumLiteral : ScopeExpr<core::DeclScope> {
 // TODO
 struct FunctionLiteral : public Expression {
   // Represents a function with all constants bound to some value.
-  FunctionLiteral(TextSpan span, Module *mod,
+  FunctionLiteral(frontend::SourceRange span, Module *mod,
                   std::vector<std::unique_ptr<Declaration>> in_params,
                   std::vector<std::unique_ptr<Node>> statements,
                   std::optional<std::vector<std::unique_ptr<Expression>>>
@@ -601,7 +601,7 @@ struct FunctionLiteral : public Expression {
 // typically numeric literals, or expressions that are also keywords such as
 // `true`, `false`, or `null`.
 struct Terminal : public Expression {
-  explicit Terminal(TextSpan span, ir::Results results, type::Type const *t)
+  explicit Terminal(frontend::SourceRange span, ir::Results results, type::Type const *t)
       : Expression(std::move(span)), results_(std::move(results)), type_(t) {}
   ~Terminal() override {}
 
@@ -622,7 +622,7 @@ struct Terminal : public Expression {
 // Identifier:
 // Represents any user-defined identifier.
 struct Identifier : public Expression {
-  Identifier(TextSpan span, std::string token)
+  Identifier(frontend::SourceRange span, std::string token)
       : Expression(std::move(span)), token_(std::move(token)) {}
   ~Identifier() override {}
 
@@ -644,7 +644,7 @@ struct Identifier : public Expression {
 //  * `import "a_module.ic"`
 //  * `import function_returning_a_string()`
 struct Import : public Expression {
-  explicit Import(TextSpan span, std::unique_ptr<Expression> expr)
+  explicit Import(frontend::SourceRange span, std::unique_ptr<Expression> expr)
       : Expression(std::move(span)), operand_(std::move(expr)) {}
   ~Import() override {}
 
@@ -665,7 +665,7 @@ struct Import : public Expression {
 //  * `buf_ptr[3]`
 //  * `my_array[4]`
 struct Index : public Expression {
-  explicit Index(TextSpan span, std::unique_ptr<Expression> lhs,
+  explicit Index(frontend::SourceRange span, std::unique_ptr<Expression> lhs,
                  std::unique_ptr<Expression> rhs)
       : Expression(std::move(span)),
         lhs_(std::move(lhs)),
@@ -708,7 +708,7 @@ struct Index : public Expression {
 //  ```
 struct Jump : public Node {
  public:
-  explicit Jump(TextSpan span, std::vector<std::unique_ptr<Call>> calls)
+  explicit Jump(frontend::SourceRange span, std::vector<std::unique_ptr<Call>> calls)
       : Node(std::move(span)) {
     for (auto &call : calls) {
       auto[callee, ordered_args] = std::move(*call).extract();
@@ -768,7 +768,7 @@ struct Jump : public Node {
 //  }
 //  ```
 struct JumpHandler : ScopeExpr<core::FnScope> {
-  explicit JumpHandler(TextSpan span,
+  explicit JumpHandler(frontend::SourceRange span,
                        std::vector<std::unique_ptr<Declaration>> input,
                        std::vector<std::unique_ptr<Node>> stmts)
       : ScopeExpr<core::FnScope>(std::move(span)),
@@ -797,7 +797,7 @@ struct JumpHandler : ScopeExpr<core::FnScope> {
 //  ```
 //
 struct PrintStmt : public Node {
-  explicit PrintStmt(TextSpan span,
+  explicit PrintStmt(frontend::SourceRange span,
                      std::vector<std::unique_ptr<Expression>> exprs)
       : Node(std::move(span)), exprs_(std::move(exprs)) {}
   ~PrintStmt() override {}
@@ -820,7 +820,7 @@ struct PrintStmt : public Node {
 //  ```
 //
 struct ReturnStmt : public Node {
-  explicit ReturnStmt(TextSpan span,
+  explicit ReturnStmt(frontend::SourceRange span,
                       std::vector<std::unique_ptr<Expression>> exprs = {})
       : Node(std::move(span)), exprs_(std::move(exprs)) {}
   ~ReturnStmt() override {}
@@ -843,7 +843,7 @@ struct ReturnStmt : public Node {
 //  ```
 //
 struct YieldStmt : public Node {
-  explicit YieldStmt(TextSpan span,
+  explicit YieldStmt(frontend::SourceRange span,
                      std::vector<std::unique_ptr<Expression>> exprs = {})
       : Node(std::move(span)), exprs_(std::move(exprs)) {}
   ~YieldStmt() override {}
@@ -882,7 +882,7 @@ struct YieldStmt : public Node {
 //  }
 //  ```
 struct ScopeLiteral : public ScopeExpr<core::ScopeLitScope> {
-  ScopeLiteral(TextSpan span, std::vector<std::unique_ptr<Declaration>> decls)
+  ScopeLiteral(frontend::SourceRange span, std::vector<std::unique_ptr<Declaration>> decls)
       : ScopeExpr<core::ScopeLitScope>(std::move(span)),
         decls_(std::move(decls)) {}
   ~ScopeLiteral() override {}
@@ -916,7 +916,7 @@ struct ScopeLiteral : public ScopeExpr<core::ScopeLitScope> {
 //  `unwrap (maybe_object) or { return -1 }`
 //
 struct ScopeNode : public Expression {
-  ScopeNode(TextSpan span, std::unique_ptr<Expression> name,
+  ScopeNode(frontend::SourceRange span, std::unique_ptr<Expression> name,
             core::OrderedFnArgs<Expression> args, std::vector<BlockNode> blocks)
       : Expression(std::move(span)),
         name_(std::move(name)),
@@ -974,7 +974,7 @@ struct StructLiteral : public Expression {
 
 // TODO
 struct StructType : public Expression {
-  StructType(TextSpan span) : Expression(span) {}
+  StructType(frontend::SourceRange span) : Expression(span) {}
   ~StructType() override {}
 
 #include "visitor/visitors.xmacro.h"

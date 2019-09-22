@@ -77,8 +77,9 @@ Cmp Comparator(type::Type const *t) {
   }
 }
 
-bool VerifyAssignment(TraditionalCompilation *visitor, TextSpan const &span,
-                      type::Type const *to, type::Type const *from) {
+bool VerifyAssignment(TraditionalCompilation *visitor,
+                      frontend::SourceRange const &span, type::Type const *to,
+                      type::Type const *from) {
   if (to == from && to->is<type::GenericStruct>()) { return true; }
 
   // TODO this feels like the semantics are iffy. It works fine if we assign
@@ -1242,7 +1243,7 @@ not_blocks:
                   error_log()->ComparingIncomparables(
                       lhs_result.type_->to_string(),
                       rhs_result.type_->to_string(),
-                      TextSpan(node->exprs()[i]->span,
+                      frontend::SourceRange(node->exprs()[i]->span,
                                node->exprs()[i + 1]->span));
                   return VerifyResult::Error();
               }
@@ -1258,7 +1259,7 @@ not_blocks:
                   error_log()->ComparingIncomparables(
                       lhs_result.type_->to_string(),
                       rhs_result.type_->to_string(),
-                      TextSpan(node->exprs()[i]->span,
+                      frontend::SourceRange(node->exprs()[i]->span,
                                node->exprs()[i + 1]->span));
                   return VerifyResult::Error();
               }
@@ -1580,9 +1581,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Identifier const *node) {
     }
 
     if (!(node->decl()->flags() & ast::Declaration::f_IsConst) &&
-        (node->span.start.line_num < node->decl()->span.start.line_num ||
-         (node->span.start.line_num == node->decl()->span.start.line_num &&
-          node->span.start.offset < node->decl()->span.start.offset))) {
+        node->span.begin() < node->decl()->span.begin()) {
       error_log()->DeclOutOfOrder(node->decl(), node);
     }
   }

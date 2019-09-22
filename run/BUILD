@@ -29,7 +29,7 @@ cc_lib_target(
         "//backend:exec",
         "//base:untyped_buffer",
         "//core:fn_params",
-        "//frontend:source",
+        "//frontend/source:repl",
         "//ir:compiled_fn",
         "//ir/cmd:jumps",
         "//misc:context",

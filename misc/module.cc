@@ -3,7 +3,7 @@
 #include "ast/ast.h"
 #include "ast/expression.h"
 #include "base/guarded.h"
-#include "frontend/source.h"
+#include "frontend/source/source.h"
 #ifdef ICARUS_VISITOR_EMIT_IR
 #include "ir/compiled_fn.h"
 #endif  // ICARUS_VISITOR_EMIT_IR
@@ -12,7 +12,7 @@
 
 // Can't declare this in header because unique_ptr's destructor needs to know
 // the size of ir::CompiledFn which we want to forward declare.
-Module::Module() : scope_(this) { 
+Module::Module() : scope_(this) {
 #ifdef ICARUS_VISITOR_EMIT_IR
   dep_data_.emplace_back();
 #endif  // ICARUS_VISITOR_EMIT_IR
