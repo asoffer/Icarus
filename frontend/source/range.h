@@ -3,23 +3,38 @@
 
 #include <cstdint>
 
+#include "base/strong_types.h"
 #include "base/debug.h"
 #include "base/interval.h"
 
 namespace frontend {
 
+ICARUS_BASE_DEFINE_STRONG_TYPE(LineNum, uint32_t{0},  //
+                               base::EnableRawArithmetic,
+                               base::EnableComparisons);
+ICARUS_BASE_DEFINE_STRONG_TYPE(Offset, uint32_t{0},  //
+                               base::EnableRawArithmetic,
+                               base::EnableComparisons);
+
 struct SourceLoc {
   constexpr SourceLoc() = default;
-  constexpr SourceLoc(uint32_t l, uint32_t o) : line_num(l), offset(o) {}
+  constexpr SourceLoc(LineNum l, Offset o) : line_num(l), offset(o) {}
 
-  uint32_t line_num = 0;
-  uint32_t offset   = 0;
+  LineNum line_num = LineNum(0);
+  Offset offset    = Offset(0);
+
+ private:
+  constexpr uint64_t value() const {
+    return (uint64_t{line_num.value} << 32) | offset.value;
+  }
+
+  friend constexpr bool operator<(SourceLoc const &lhs, SourceLoc const &rhs) {
+    return lhs.value() < rhs.value();
+  }
+  friend constexpr bool operator==(SourceLoc const &lhs, SourceLoc const &rhs) {
+    return lhs.value() == rhs.value();
+  }
 };
-
-constexpr bool operator<(SourceLoc const &lhs, SourceLoc const &rhs) {
-  return ((uint64_t{lhs.line_num} << 32) | lhs.offset) <
-         ((uint64_t{rhs.line_num} << 32) | rhs.offset);
-}
 
 constexpr bool operator>(SourceLoc const &lhs, SourceLoc const &rhs) {
   return rhs < lhs;
@@ -31,11 +46,6 @@ constexpr bool operator<=(SourceLoc const &lhs, SourceLoc const &rhs) {
 
 constexpr bool operator>=(SourceLoc const &lhs, SourceLoc const &rhs) {
   return !(lhs < rhs);
-}
-
-constexpr bool operator==(SourceLoc const &lhs, SourceLoc const &rhs) {
-  return ((uint64_t{lhs.line_num} << 32) | lhs.offset) ==
-         ((uint64_t{rhs.line_num} << 32) | rhs.offset);
 }
 
 constexpr bool operator!=(SourceLoc const &lhs, SourceLoc const &rhs) {
@@ -50,8 +60,8 @@ struct SourceRange {
   SourceRange(SourceRange const &b, SourceRange const &e)
       : range_(b.begin(), e.end()) {}
 
-  base::Interval<size_t> lines() const {
-    return base::Interval<size_t>{begin().line_num, end().line_num + 1};
+  base::Interval<LineNum> lines() const {
+    return base::Interval<LineNum>(begin().line_num, end().line_num + 1);
   }
 
   constexpr SourceLoc begin() const { return range_.begin(); }

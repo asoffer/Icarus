@@ -22,5 +22,6 @@ cc_lib_target(
         "//ast:ast",
         "//base:interval",
         "//frontend/source:source",
+        "@com_google_absl//absl/strings:str_format",
     ],
     test_deps = None)

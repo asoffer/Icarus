@@ -62,6 +62,7 @@ cc_lib_target(name = "stringify",
 cc_lib_target(name = "strong_types",
               intf_deps = [
                   ":debug",
+                  ":meta",
                   ":stringify",
                   "@com_google_absl//absl/strings",
               ],

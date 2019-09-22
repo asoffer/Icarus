@@ -12,7 +12,7 @@ extern absl::flat_hash_map<std::string_view, ast::Hashtag::Builtin> const
 
 struct SourceCursor {
  public:
-  SourceCursor(int line, int offset, std::string_view view)
+  SourceCursor(LineNum line, Offset offset, std::string_view view)
       : line_(line), offset_(offset), view_(view){};
 
   // Returns a SourceCursor prefix of the input consisting of the first contiguous
@@ -31,27 +31,26 @@ struct SourceCursor {
   SourceCursor remove_prefix(size_t len) {
     ASSERT(len <= view_.size());
 
-    SourceCursor removed{line_, offset_, std::string_view{view_.data(), len}};
+    SourceCursor removed(line_, offset_, std::string_view(view_.data(), len));
     view_.remove_prefix(len);
-    offset_ += len;
+    offset_ = Offset(offset_.value + len);
     return removed;
   }
 
-  int line() const { return line_; }
-  int offset() const { return offset_; }
+  LineNum line() const { return line_; }
+  Offset offset() const { return offset_; }
   std::string_view view() const { return view_; }
 
  private:
-
-  int line_   = 0;
-  int offset_ = 0;
-  std::string_view view_;
+  LineNum line_          = LineNum(0);
+  Offset offset_         = Offset(0);
+  std::string_view view_ = "";
 };
 
 struct LexState {
   LexState(Source *src, error::Log *log)
       : src_(src),
-        cursor_(1, 0, src_->ReadUntil('\n').view),
+        cursor_(LineNum(1), Offset(0), src_->ReadUntil('\n').view),
         error_log_(log) {}
 
   char peek() {

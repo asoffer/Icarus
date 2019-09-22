@@ -10,7 +10,10 @@ cc_lib_target(
 
 cc_lib_target(
     name = "file",
-    intf_deps = [":source", "//base:expected"],
+    intf_deps = [
+        ":source",
+        "//base:expected",
+    ],
     impl_deps = ["@com_google_absl//absl/strings:str_format"],
     test_deps = [],
     test_data = [
@@ -36,7 +39,11 @@ cc_lib_target(
 
 cc_lib_target(
     name = "range",
-    intf_deps = ["//base:debug", "//base:interval"],
+    intf_deps = [
+        "//base:debug",
+        "//base:interval",
+        "//base:strong_types",
+    ],
     impl_deps = None,
     test_deps = None,
 )

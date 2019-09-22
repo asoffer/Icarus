@@ -29,11 +29,12 @@ struct Interval {
 
   template <typename U>
   Interval expanded(U &&val) {
-    return Interval{begin_- std::forward<U>(val), end_ + std::forward<U>(val)};
+    return Interval<T>(begin_ - std::forward<U>(val),
+                       end_ + std::forward<U>(val));
   }
 
   Interval clamped_below(T &&val) {
-    return Interval<T>{std::max<T>(std::forward<T>(val), begin_), end_};
+    return Interval<T>(std::max<T>(std::forward<T>(val), begin_), end_);
   }
 
  private:

@@ -238,7 +238,8 @@ Lexeme NextHashtag(SourceCursor *cursor, Source *src) {
     ASSERT(cursor->view().size() != 0u);
     ASSERT(cursor->view()[0] == '}');
     cursor->remove_prefix(1);
-    span = SourceRange(SourceLoc(span.begin().line_num, span.begin().offset - 1),
+    span =
+        SourceRange(SourceLoc(span.begin().line_num, span.begin().offset - 1),
                     SourceLoc(span.end().line_num, span.end().offset + 1));
   } else {
     auto word_cursor = NextSimpleWord(cursor);
@@ -391,7 +392,8 @@ restart:
   if (state->cursor_.view().empty()) {
     auto chunk = state->src_->ReadUntil('\n');
     if (chunk.more_to_read) {
-      state->cursor_ = SourceCursor{state->cursor_.line() + 1, 0, chunk.view};
+      state->cursor_ =
+          SourceCursor{state->cursor_.line() + 1, Offset(0), chunk.view};
       return Lexeme(Syntax::ImplicitNewline,
                     ToRange(state->cursor_.remove_prefix(0)));
     } else {

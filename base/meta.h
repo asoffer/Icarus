@@ -3,6 +3,13 @@
 
 namespace base {
 
+template <typename T>
+struct DeductionBlocker {
+  using type = T;
+};
+template <typename T>
+using DeductionBlockerT = typename DeductionBlocker<T>::type;
+
 template <typename... Ts>
 struct first;
 

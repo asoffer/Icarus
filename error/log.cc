@@ -3,8 +3,10 @@
 #include <iomanip>
 #include <iostream>
 
+#include "absl/strings/str_format.h"
 #include "ast/ast.h"
 #include "base/interval.h"
+#include "frontend/source/range.h"
 #include "frontend/source/source.h"
 
 using FileToLineNumMap =
@@ -32,13 +34,13 @@ inline size_t NumDigits(size_t n) {
   return counter;
 }
 
-std::string LineToDisplay(size_t line_num, const std::string &line,
+std::string LineToDisplay(frontend::LineNum line_num, const std::string &line,
                           size_t border_alignment = 0) {
-  auto num_digits = NumDigits(line_num);
+  auto num_digits = NumDigits(line_num.value);
   if (border_alignment == 0) { border_alignment = num_digits; }
   ASSERT(border_alignment >= num_digits);
-  return std::string(border_alignment - num_digits, ' ') +
-         std::to_string(line_num) + "| " + line + "\n";
+  return absl::StrFormat("%*s%d| %s\n", border_alignment - num_digits, " ",
+                         line_num.value, line);
 }
 
 struct DisplayAttrs {
@@ -62,27 +64,29 @@ std::ostream &operator<<(std::ostream &os, const DisplayAttrs &attrs) {
 
 void WriteSource(
     std::ostream &os, frontend::Source *source,
-    base::IntervalSet<size_t> const &line_intervals,
+    base::IntervalSet<frontend::LineNum> const &line_intervals,
     std::vector<std::pair<frontend::SourceRange, DisplayAttrs>> const
         &underlines) {
-  size_t border_alignment = NumDigits(line_intervals.endpoints_.back() - 1) + 2;
+  size_t border_alignment =
+      NumDigits(line_intervals.endpoints_.back().value - 1) + 2;
 
   auto iter = underlines.begin();
   for (size_t i = 0; i < line_intervals.endpoints_.size(); i += 2) {
-    size_t line_num = line_intervals.endpoints_[i];
-    size_t end_num  = line_intervals.endpoints_[i + 1];
+    auto line_num = frontend::LineNum(line_intervals.endpoints_[i]);
+    auto end_num  = frontend::LineNum(line_intervals.endpoints_[i + 1]);
     while (line_num < end_num) {
-      const auto &line = LoadLines(source).at(line_num);
+      const auto &line = LoadLines(source).at(line_num.value);
 
       // Line number
+      // TODO wrap this into a useful function.
       os << "\033[97;1m" << std::right
-         << std::setw(static_cast<int>(border_alignment)) << line_num
+         << std::setw(static_cast<int>(border_alignment)) << line_num.value
          << " | \033[0m";
 
       std::string_view line_view(line);
       iter =
           std::lower_bound(iter, underlines.end(), line_num,
-                           [](auto const &span_and_attrs, size_t n) {
+                           [](auto const &span_and_attrs, frontend::LineNum n) {
                              return span_and_attrs.first.begin().line_num < n;
                            });
 
@@ -90,19 +94,20 @@ void WriteSource(
       size_t prev_start_offset = 0;
       while (iter != underlines.end() &&
              iter->first.begin().line_num == line_num) {
-        os << line_view.substr(prev_start_offset,
-                               iter->first.begin().offset - prev_start_offset);
+        os << line_view.substr(
+            prev_start_offset,
+            (iter->first.begin().offset - prev_start_offset).value);
 
         // TODO what if it goes for multiple lines.
         ASSERT(iter->first.begin().line_num == iter->first.end().line_num);
         ASSERT(iter->first.begin().offset < iter->first.end().offset);
         os << iter->second
-           << line_view.substr(
-                  iter->first.begin().offset,
-                  iter->first.end().offset - iter->first.begin().offset)
+           << line_view.substr(iter->first.begin().offset.value,
+                               iter->first.end().offset.value -
+                                   iter->first.begin().offset.value)
            << "\033[0m";
 
-        prev_start_offset = iter->first.end().offset;
+        prev_start_offset = iter->first.end().offset.value;
         ++iter;
       }
       os << line_view.substr(prev_start_offset,
@@ -115,8 +120,8 @@ void WriteSource(
     if (i + 2 != line_intervals.endpoints_.size()) {
       if (end_num + 1 == line_intervals.endpoints_[i + 2]) {
         os << "\033[97;1m" << std::right
-           << std::setw(static_cast<int>(border_alignment)) << line_num << " | "
-           << "\033[0m" << LoadLines(source).at(end_num) << "\n";
+           << std::setw(static_cast<int>(border_alignment)) << line_num.value << " | "
+           << "\033[0m" << LoadLines(source).at(end_num.value) << "\n";
       } else {
         os << "\033[97;1m" << std::right
            << std::setw(static_cast<int>(border_alignment) + 3)
@@ -138,9 +143,7 @@ void Log::PostconditionNeedsBool(frontend::SourceRange const &range,
         "expression of type "
      << type << ".\n\n";
   WriteSource(
-      ss, src_,
-      {base::Interval<size_t>{range.begin().line_num,
-                              range.end().line_num + 1}},
+      ss, src_, {base::Interval<frontend::LineNum>{range.lines()}},
       {{range, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
@@ -161,10 +164,11 @@ void Log::PreconditionNeedsBool(frontend::SourceRange const &range,
 
 template <typename ExprContainer>
 static auto LinesToShow(ExprContainer const &exprs) {
-  base::IntervalSet<size_t> iset;
+  base::IntervalSet<frontend::LineNum> iset;
   std::vector<std::pair<frontend::SourceRange, DisplayAttrs>> underlines;
   for (auto const &expr : exprs) {
-    iset.insert(expr->span.lines().expanded(1).clamped_below(1));
+    iset.insert(
+        expr->span.lines().expanded(1).clamped_below(frontend::LineNum(1)));
     underlines.emplace_back(
         expr->span, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE});
   }
@@ -189,7 +193,7 @@ void Log::StatementsFollowingJump(frontend::SourceRange const &range) {
   std::stringstream ss;
   ss << "Statements cannot follow a `return` or `yield` statement.\n\n";
   WriteSource(
-      ss, src_, {range.lines().expanded(1).clamped_below(1)},
+      ss, src_, {range.lines().expanded(1).clamped_below(frontend::LineNum(1))},
       {{range, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
   ss << "\n\n";
   errors_.push_back(ss.str());
@@ -372,18 +376,16 @@ void Log::PositionalArgumentFollowingNamed(
     frontend::SourceRange const &named_range) {
   std::stringstream ss;
   ss << "Positional function arguments cannot follow a named argument.\n\n";
-  base::IntervalSet<size_t> iset;
+  base::IntervalSet<frontend::LineNum> iset;
 
   std::vector<std::pair<frontend::SourceRange, DisplayAttrs>> underlines;
   // TODO do you also want to show the whole function call?
-  iset.insert(base::Interval<size_t>{named_range.begin().line_num - 1,
-                                     named_range.end().line_num + 2});
+  iset.insert(named_range.lines().expanded(1));
   underlines.emplace_back(
       named_range, DisplayAttrs{DisplayAttrs::GREEN, DisplayAttrs::UNDERLINE});
 
   for (const auto &range : pos_ranges) {
-    iset.insert(base::Interval<size_t>{range.begin().line_num - 1,
-                                       range.end().line_num + 2});
+    iset.insert(named_range.lines().expanded(1));
     underlines.emplace_back(
         range, DisplayAttrs{DisplayAttrs::GREEN, DisplayAttrs::UNDERLINE});
   }
@@ -398,11 +400,8 @@ void Log::UnknownParseError(std::vector<frontend::SourceRange> const &lines) {
   // TODO source name?
   std::stringstream ss;
   ss << "Parse errors found in \"<SOME FILE>\" on the following lines:\n\n";
-  base::IntervalSet<size_t> iset;
-  for (const auto &range : lines) {
-    iset.insert(base::Interval<size_t>{range.begin().line_num - 1,
-                                       range.end().line_num + 2});
-  }
+  base::IntervalSet<frontend::LineNum> iset;
+  for (const auto &range : lines) { iset.insert(range.lines().expanded(1)); }
   WriteSource(ss, src_, iset, {{}});
   ss << "\n\n";
   errors_.push_back(ss.str());
@@ -417,10 +416,10 @@ void Log::ShadowingDeclaration(frontend::SourceRange const &span1,
   // TODO migrate away from old display.
   auto line_num1 = span1.begin().line_num;
   auto line_num2 = span2.begin().line_num;
-  auto line1     = LoadLines(src_).at(line_num1);
-  auto line2     = LoadLines(src_).at(line_num2);
+  auto line1     = LoadLines(src_).at(line_num1.value);
+  auto line2     = LoadLines(src_).at(line_num2.value);
   auto align =
-      std::max(size_t{4}, NumDigits(std::max(line_num1, line_num2)) + 2);
+      std::max(size_t{4}, NumDigits(std::max(line_num1, line_num2).value) + 2);
   std::stringstream ss;
   ss << "Ambiguous declarations:\n\n"
      << LineToDisplay(line_num1, line1, align) << '\n'
@@ -440,11 +439,10 @@ void Log::Dump() const {
     absl::flat_hash_map<ast::Declaration const *, size_t> decls;
     for (auto const *id : cycle) { decls.emplace(id->decl(), decls.size()); }
 
-    base::IntervalSet<size_t> iset;
+    base::IntervalSet<frontend::LineNum> iset;
     std::vector<std::pair<frontend::SourceRange, DisplayAttrs>> underlines;
     for (const auto *id : cycle) {
-      iset.insert(base::Interval<size_t>{id->span.begin().line_num - 1,
-                                         id->span.end().line_num + 2});
+      iset.insert(id->span.lines().expanded(1));
       // TODO handle case where it's 1 mod 7 and so adjacent entries show up
       // with the same color
 
@@ -467,25 +465,9 @@ void Log::Dump() const {
 
     std::sort(underlines.begin(), underlines.end(),
               [](auto const &lhs, auto const &rhs) {
-                if (lhs.first.begin().line_num < rhs.first.begin().line_num) {
-                  return true;
-                }
-                if (lhs.first.begin().line_num > rhs.first.begin().line_num) {
-                  return false;
-                }
-                if (lhs.first.begin().offset < rhs.first.begin().offset) {
-                  return true;
-                }
-                if (lhs.first.begin().offset > rhs.first.begin().offset) {
-                  return false;
-                }
-                if (lhs.first.end().line_num < rhs.first.end().line_num) {
-                  return true;
-                }
-                if (lhs.first.end().line_num > rhs.first.end().line_num) {
-                  return false;
-                }
-                return lhs.first.end().offset < rhs.first.end().offset;
+                if (lhs.first.begin() < rhs.first.begin()) { return true; }
+                if (lhs.first.begin() > rhs.first.begin()) { return false; }
+                return lhs.first.end() < rhs.first.end();
               });
 
     // TODO src_ is probably wrong
@@ -499,7 +481,8 @@ void Log::Dump() const {
                  "constants).\n\n";
 
     auto[iset, underlines] = LinesToShow(ids);
-    iset.insert(decl->span.lines().expanded(1).clamped_below(1));
+    iset.insert(
+        decl->span.lines().expanded(1).clamped_below(frontend::LineNum(1)));
     // TODO highlight just the identifier
     underlines.emplace_back(
         decl->span, DisplayAttrs{DisplayAttrs::GREEN, DisplayAttrs::UNDERLINE});
