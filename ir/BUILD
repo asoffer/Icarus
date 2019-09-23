@@ -1,6 +1,5 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "sources", "cc_lib", "cc_group_target", "cc_lib_target")
-sources()
+load("//:defs.bzl", "cc_group_target", "cc_lib_target", "cc_component")
 
 cc_group_target(
     name = "impl",
@@ -8,13 +7,11 @@ cc_group_target(
     deps = [
         ":addr-impl",
         ":basic_block-impl",
-        ":block-impl",
         ":builder-impl",
         ":builtin_ir-impl",
         ":cmd_buffer-impl",
         ":compiled_fn-impl",
         ":components-impl",
-        ":foreign-impl",
         ":inliner-impl",
         ":out_params-impl",
         ":reg-impl",
@@ -23,14 +20,14 @@ cc_group_target(
     ],
 )
 
-cc_lib_target(
+cc_component(
     name = "addr",
     intf_deps = ["//core:bytes"],
     impl_deps = ["//base:debug"],
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "any_func",
     intf_deps = [
         ":foreign",
@@ -55,7 +52,7 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "block",
     intf_deps = [
         ":any_func",
@@ -143,18 +140,17 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "values",
     intf_deps = ["//base:strong_types"],
     impl_deps = None,
     test_deps = [],
 )
 
-cc_lib_target(
+cc_component(
     name = "foreign",
     impl_deps = [
         "//base:guarded",
-        "//type:type",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
     test_deps = None,
@@ -204,29 +200,28 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "out_params",
-    cfgs = ["match", "compile"],
     intf_deps = [":reg"],
     impl_deps = [],
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "reg",
     intf_deps = ["//base:debug"],
     impl_deps = ["@com_google_absl//absl/strings"],
     test_deps = [],
 )
 
-cc_lib_target(
+cc_component(
     name = "reg_or",
     intf_deps = [":reg"],
     impl_deps = None,
     test_deps = [":reg-impl"],
 )
 
-cc_lib_target(
+cc_component(
     name = "results",
     intf_deps = [
         ":reg",
@@ -242,7 +237,7 @@ cc_lib_target(
     test_deps = [],
 )
 
-cc_lib_target(
+cc_component(
     name = "scope_def",
     intf_deps = [
         ":any_func",
@@ -252,7 +247,7 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "stack_frame_allocations",
     intf_deps = [
         ":addr",
@@ -263,7 +258,7 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "str",
     intf_deps = [":addr"],
     impl_deps = [

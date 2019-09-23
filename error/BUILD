@@ -1,8 +1,7 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib_target", "sources")
-sources()
+load("//:defs.bzl", "cc_lib_target", "cc_component")
 
-cc_lib_target(
+cc_component(
     name = "inference_failure_reason",
     impl_deps = None,
     test_deps = None)

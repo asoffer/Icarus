@@ -2,7 +2,6 @@
 
 #include "Catch2/single_include/catch2/catch.hpp"
 #include "base/macros.h"
-#include "base/stringify.h"
 
 #define REQUIRE_ASSIGN(var, expr)                                              \
   ICARUS_TEST_REQUIRE_ASSIGN_IMPL1(var, expr, ICARUS_CAT(expr__, __LINE__, __))

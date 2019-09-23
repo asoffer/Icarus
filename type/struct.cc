@@ -1,6 +1,5 @@
 #include "type/struct.h"
 
-#include "ast/ast.h"
 #include "ast/hashtag.h"
 #include "base/guarded.h"
 #include "core/arch.h"

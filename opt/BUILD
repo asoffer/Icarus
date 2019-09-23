@@ -1,15 +1,7 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_group_target", "cc_lib_target", "sources")
-sources()
+load("//:defs.bzl", "cc_lib_target")
 
 # Directory of things I haven't totally figured out how to organize yet.
-
-cc_group_target(
-    name = "impl",
-    cfgs = ["match", "compile"],
-    deps = [
-        ":combine_blocks-impl",
-    ])
 
 cc_lib_target(
     name = "combine_blocks",

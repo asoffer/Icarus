@@ -1,8 +1,7 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib_target", "sources")
-sources()
+load("//:defs.bzl", "cc_component")
 
-cc_lib_target(
+cc_component(
     name = "cli",
     intf_deps = [
         "//base:util",
@@ -11,4 +10,4 @@ cc_lib_target(
     impl_deps = ["//base:debug"],
     test_deps = None,
 )
-cc_lib_target(name = "signal", impl_deps = [], test_deps = None)
+cc_component(name = "signal", impl_deps = [], test_deps = None)

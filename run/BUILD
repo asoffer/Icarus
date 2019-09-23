@@ -1,6 +1,5 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib_target", "sources")
-sources()
+load("//:defs.bzl", "cc_lib_target")
 
 cc_lib_target(
     name = "compiler",

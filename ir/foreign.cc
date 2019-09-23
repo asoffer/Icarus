@@ -2,7 +2,6 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "base/guarded.h"
-#include "type/type.h"
 
 namespace ir {
 static base::guarded<absl::flat_hash_map<void *, type::Type const *>>

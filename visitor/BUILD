@@ -1,6 +1,5 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_group_target", "cc_lib_target", "sources")
-sources()
+load("//:defs.bzl", "cc_group_target", "cc_lib_target")
 
 # TODO rename ast_visitors
 # TODO hack mirroring -impl, -test
@@ -109,7 +108,6 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = [
         "//ast:ast_fwd",
-        "//ast:node_xmacro",
         "//core:scope",
     ],
     impl_deps = ["//ast:ast"],
@@ -120,7 +118,6 @@ cc_lib_target(
     name = "dump_ast",
     intf_deps = [
         "//ast:ast_fwd",
-        "//ast:node_xmacro",
     ],
     impl_deps = [
         "//base:stringify",
@@ -137,7 +134,6 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = [
         "//ast:ast_fwd",
-        "//ast:node_xmacro",
         "//base:graph",
     ],
     impl_deps = ["//ast:ast"],
@@ -330,7 +326,7 @@ cc_lib_target(
 cc_lib_target(
     name = "extract_jumps",
     cfgs = ["match", "compile"],
-    intf_deps = ["//ast:ast_fwd", "//ast:node_xmacro"],
+    intf_deps = ["//ast:ast_fwd"],
     impl_deps = ["//ast:ast"],
     test_deps = None,
 )
@@ -341,7 +337,6 @@ cc_lib_target(
     cfgs = ["match"],
     intf_deps = [
         "//ast:ast_fwd",
-        "//ast:node_xmacro",
     ],
     impl_deps = [
         ":match_state",
@@ -363,7 +358,6 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = [
         "//ast:ast_fwd",
-        "//ast:node_xmacro",
     ],
     impl_deps = [
         ":extract_jumps",

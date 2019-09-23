@@ -1,14 +1,14 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib_target", "sources")
+load("//:defs.bzl", "cc_component")
 
-cc_lib_target(
+cc_component(
     name = "source",
     intf_deps = ["//base:expected"],
     impl_deps = None,
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "file",
     intf_deps = [
         ":source",
@@ -23,21 +23,21 @@ cc_lib_target(
     ]
 )
 
-cc_lib_target(
+cc_component(
     name = "repl",
     intf_deps = [":source"],
     impl_deps = None,
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "string",
     intf_deps = [":source"],
     impl_deps = None,
     test_deps = [],
 )
 
-cc_lib_target(
+cc_component(
     name = "range",
     intf_deps = [
         "//base:debug",

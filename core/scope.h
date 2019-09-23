@@ -28,7 +28,7 @@ struct Scope : public base::Cast<Scope> {
   Module const *module() const;
   Module *module();
 
-  void InsertDecl(ast::Declaration *decl);
+  void InsertDecl(std::string const &id, ast::Declaration *decl);
 
   template <typename Sc>
   Sc *Containing() {

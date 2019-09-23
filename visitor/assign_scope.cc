@@ -77,7 +77,7 @@ void AssignScope::operator()(ast::CommaList *node, core::Scope *scope) {
 void AssignScope::operator()(ast::Declaration *node, core::Scope *scope) {
   ASSERT(scope != nullptr);
   node->scope_ = scope;
-  node->scope_->InsertDecl(node);
+  node->scope_->InsertDecl(std::string{node->id()}, node);
   if (node->type_expr()) { node->type_expr()->assign_scope(this, scope); }
   if (node->init_val()) { node->init_val()->assign_scope(this, scope); }
 }

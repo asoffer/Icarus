@@ -1,14 +1,10 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_group_target", "cc_lib_target", "sources")
-sources()
+load("//:defs.bzl", "cc_lib_target", "cc_component")
 
-cc_group_target(name = "impl",
-                deps = [":scope-impl", ":pending_module-impl"])
+cc_component(name = "alignment", impl_deps = None, test_deps = None)
+cc_component(name = "bytes", impl_deps = None, test_deps = None)
 
-cc_lib_target(name = "alignment", impl_deps = None, test_deps = None)
-cc_lib_target(name = "bytes", impl_deps = None, test_deps = None)
-
-cc_lib_target(
+cc_component(
     name = "arch",
     intf_deps = [
         ":alignment",
@@ -20,7 +16,7 @@ cc_lib_target(
     test_deps = [],
 )
 
-cc_lib_target(
+cc_component(
     name = "builtin",
     textual_hdrs = ["builtin.xmacro.h"],
     intf_deps = ["//base:debug"],
@@ -28,7 +24,7 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "fn_args",
     intf_deps = [
         "//base:stringify",
@@ -38,7 +34,7 @@ cc_lib_target(
     test_deps = [],
 )
 
-cc_lib_target(
+cc_component(
     name = "fn_params",
     intf_deps = [
         ":fn_args",
@@ -49,7 +45,7 @@ cc_lib_target(
     test_deps = [],
 )
 
-cc_lib_target(
+cc_component(
     name = "ordered_fn_args",
     intf_deps = [
         ":fn_args",
@@ -82,7 +78,6 @@ cc_lib_target(
         "@com_google_absl//absl/container:flat_hash_set",
     ],
     impl_deps = [
-        "//ast:ast",
         "//misc:module", # TODO get rid of hard dependency here?
     ],
 )

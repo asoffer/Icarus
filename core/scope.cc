@@ -1,14 +1,13 @@
 #include "core/scope.h"
 
-#include "ast/ast.h"
 #include "misc/module.h"
 
 namespace core {
 
-void Scope::InsertDecl(ast::Declaration *decl) {
-  decls_[std::string{decl->id()}].push_back(decl);
+void Scope::InsertDecl(std::string const &id, ast::Declaration *decl) {
+  decls_[id].push_back(decl);
   for (auto *scope_ptr = parent; scope_ptr; scope_ptr = scope_ptr->parent) {
-    scope_ptr->child_decls_[std::string{decl->id()}].push_back(decl);
+    scope_ptr->child_decls_[id].push_back(decl);
   }
 }
 

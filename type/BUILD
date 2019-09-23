@@ -1,6 +1,5 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_group_target", "cc_lib_target", "sources")
-sources()
+load("//:defs.bzl", "cc_group_target", "cc_lib_target", "cc_component")
 
 cc_lib_target(name = "type_fwd", impl_deps = None, test_deps = None)
 
@@ -198,7 +197,6 @@ cc_lib_target(
     impl_deps = [
         ":function",
         ":pointer",
-        "//ast:ast",
         "//base:guarded",
         "//core:arch",
         "//misc:module",
@@ -224,7 +222,7 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(name = "typed_value", impl_deps = None, test_deps = None)
+cc_component(name = "typed_value", impl_deps = None, test_deps = None)
 
 cc_lib_target(
     name = "type",

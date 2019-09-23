@@ -21,7 +21,6 @@ def make_deps(deps, cfg):
     else:
         fail()
 
-
 def cc_lib_target(name, intf_deps = [], impl_deps = None,
                   test_deps = None, test_data = [], 
                   extra_hdrs = [], extra_srcs = [],
@@ -57,10 +56,52 @@ def cc_lib_target(name, intf_deps = [], impl_deps = None,
                 name = test_name,
                 defines = defs,
                 srcs = [name + "_test.cc"],
-                deps = ([configured_dep("//test:test", cfg),
+                deps = (["//test:test",
                          impl_name if impl_deps != None else intf_name] +
                         [configured_dep(dep, cfg) for dep in test_deps]),
                 data = test_data,
+                **kwargs)
+
+def cc_component(name, intf_deps = [], impl_deps = None,
+                 test_deps = None, test_data = [], 
+                 extra_hdrs = [], **kwargs):
+    if intf_deps != None:
+        native.cc_library(
+            name = name,
+            hdrs = [name + ".h"] + extra_hdrs,
+            deps = intf_deps,
+            alwayslink = True,
+            **kwargs)
+
+    if impl_deps != None:
+        native.cc_library(
+            name = name + "-impl",
+            srcs = [name + ".cc"],
+            deps = ([name] if intf_deps != None else []) + impl_deps,
+            alwayslink = True,
+            **kwargs)
+
+    if test_deps != None:
+        native.cc_test(
+            name = name + "-test",
+            srcs = [name + "_test.cc"],
+            deps = (["//test:test",
+                     name + "-impl" if impl_deps != None else name] 
+                    + test_deps),
+            data = test_data,
+            **kwargs)
+
+    for cfg, defs in _VISITOR_DEFINES.items():
+        if intf_deps != None:
+            native.cc_library(
+                name = configured_dep(name, cfg),
+                deps = [name],
+                **kwargs)
+
+        if impl_deps != None:
+            native.cc_library(
+                name = configured_dep(name + "-impl", cfg),
+                deps = [name + "-impl"],
                 **kwargs)
 
 def cc_group_target(name, deps, cfgs = None, hdrs = [], srcs = [], **kwargs):
@@ -76,22 +117,3 @@ def cc_group_target(name, deps, cfgs = None, hdrs = [], srcs = [], **kwargs):
             defines = defs,
             alwayslink = True,
             **kwargs)
-
-def cc_lib(name, deps = [], cfgs = None, **kwargs):
-    for cfg, defs in _VISITOR_DEFINES.items():
-        if cfgs != None and cfg not in cfgs:
-            continue
-
-        native.cc_library(
-            name = configured_dep(name, cfg),
-            deps = [configured_dep(dep, cfg) for dep in deps],
-            **kwargs)
-
-def sources():
-    native.filegroup(
-        name = "sources",
-        srcs = native.glob(
-            include=["*.cc", "**/*.cc"],
-            exclude=["*_test.cc", "**/*_test.cc"],
-        ),
-    )

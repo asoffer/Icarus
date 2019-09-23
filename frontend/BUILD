@@ -1,23 +1,12 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_group_target", "cc_lib_target", "sources")
-sources()
-
-cc_group_target(
-    name = "lex",
-    hdrs = ["lex.h"],
-    deps = [
-        ":lexeme",
-        "//frontend/source:source",
-        "//frontend/source:range",
-        "//error:log",
-    ],
-)
+load("//:defs.bzl", "cc_group_target", "cc_lib_target", "cc_component")
 
 COMMON_LEX_IMPL_TARGETS = [
     ":lex",
     ":numbers-impl",
     "//ast:ast",
     "//core:builtin",
+    "//error:log",
     "//ir:block-impl",
     "//ir:results",
     "//ir:str",
@@ -26,6 +15,16 @@ COMMON_LEX_IMPL_TARGETS = [
     "//type:util",
     "@com_google_absl//absl/container:flat_hash_map",
 ]
+
+cc_group_target(
+    name = "lex",
+    hdrs = ["lex.h"],
+    deps = [
+        ":lexeme",
+        "//frontend/source:source",
+        "//frontend/source:range",
+    ],
+)
 
 cc_group_target(
     name = "lex-impl",
@@ -40,23 +39,23 @@ cc_group_target(
     },
 )
 
-cc_lib_target(name = "lexeme",
-              intf_deps = [":operators", ":syntax", ":tag"],
-              impl_deps = None,
-              test_deps = None)
+cc_component(name = "lexeme",
+             intf_deps = [":operators", ":syntax", ":tag"],
+             impl_deps = None,
+             test_deps = None)
 
-cc_lib_target(name = "numbers",
-              intf_deps = ["//base:expected"],
-              impl_deps = [],
-              test_deps = None)
+cc_component(name = "numbers",
+             intf_deps = ["//base:expected"],
+             impl_deps = [],
+             test_deps = None)
 
-cc_lib_target(name = "operators",
-              textual_hdrs = ["operators.xmacro.h"],
-              intf_deps = [":tag", "//base:debug"],
-              impl_deps = None,
-              test_deps = None)
+cc_component(name = "operators",
+             textual_hdrs = ["operators.xmacro.h"],
+             intf_deps = [":tag", "//base:debug"],
+             impl_deps = None,
+             test_deps = None)
 
-cc_lib_target(
+cc_component(
     name = "syntax",
     textual_hdrs = ["syntax.xmacro.h"],
     intf_deps = [":tag", "//base:debug"],
@@ -93,12 +92,12 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(name = "tag", impl_deps = None, test_deps = None)
+cc_component(name = "tag", impl_deps = None, test_deps = None)
 
-cc_lib_target(name = "tagged_node",
-              intf_deps = [":tag", ":lexeme"],
-              impl_deps = None,
-              test_deps = None)
+cc_component(name = "tagged_node",
+             intf_deps = [":tag", ":lexeme"],
+             impl_deps = None,
+             test_deps = None)
 
 cc_lib_target(name = "token",
               intf_deps = [":operators", "//ast:node"],

@@ -3,6 +3,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "ast/ast.h"
 #include "core/builtin.h"
+#include "error/log.h"
 #include "frontend/lex.h"
 #include "frontend/numbers.h"
 #include "frontend/operators.h"

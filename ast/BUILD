@@ -1,14 +1,9 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib_target", "sources")
+load("//:defs.bzl", "cc_lib_target", "cc_component")
 
-sources()
+cc_library(name = "node_xmacro", textual_hdrs = ["node.xmacro.h"])
 
-# TODO this is a hack
-cc_library(name = "node_xmacro-compile", textual_hdrs = ["node.xmacro.h"])
-cc_library(name = "node_xmacro-format", textual_hdrs = ["node.xmacro.h"])
-cc_library(name = "node_xmacro-match", textual_hdrs = ["node.xmacro.h"])
-
-cc_lib_target(
+cc_component(
     name = "ast_fwd",
     intf_deps = [":node_xmacro"],
     impl_deps = None,
@@ -104,7 +99,7 @@ cc_lib_target(
     ],
 )
 
-cc_lib_target(name = "hashtag")
+cc_component(name = "hashtag")
 
 cc_lib_target(
     name = "overload_set",
