@@ -4,7 +4,6 @@
 
 #include "ast/ast.h"
 #include "ast/overload_set.h"
-#include "misc/context.h"
 #include "test/catch.h"
 #include "test/util.h"
 #include "type/function.h"
@@ -18,8 +17,7 @@ ResultsForArgs(visitor::TraditionalCompilation* visitor,
                core::FnArgs<Expression const*> const& args) {
   return args.Transform([visitor](Expression const* expr) {
     return std::pair<Expression const*, visitor::VerifyResult>(
-        expr,
-        *ASSERT_NOT_NULL(visitor->context().prior_verification_attempt(expr)));
+        expr, *ASSERT_NOT_NULL(visitor->prior_verification_attempt(expr)));
   });
 }
 

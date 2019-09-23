@@ -3,7 +3,6 @@
 #include "base/debug.h"
 #include "frontend/source/file.h"
 #include "ir/compiled_fn.h"
-#include "misc/context.h"
 #include "misc/module.h"
 #include "visitor/assign_scope.h"
 #include "visitor/emit_ir.h"
@@ -44,9 +43,9 @@ Module *CompileModule(Module *mod, std::filesystem::path const *path) {
   visitor::TraditionalCompilation visitor(mod);
   for (auto const &stmt : mod->statements_) { stmt->VerifyType(&visitor); }
 
-  if (visitor.context().num_errors() > 0) {
+  if (visitor.num_errors() > 0) {
     // TODO Is this right?
-    visitor.context().DumpErrors();
+    visitor.DumpErrors();
     found_errors = true;
     return mod;
   }
@@ -54,9 +53,9 @@ Module *CompileModule(Module *mod, std::filesystem::path const *path) {
   for (auto const &stmt : mod->statements_) { stmt->EmitValue(&visitor); }
   visitor.CompleteDeferredBodies();
 
-  if (visitor.context().num_errors() > 0) {
+  if (visitor.num_errors() > 0) {
     // TODO Is this right?
-    visitor.context().DumpErrors();
+    visitor.DumpErrors();
     found_errors = true;
     return mod;
   }
@@ -65,9 +64,8 @@ Module *CompileModule(Module *mod, std::filesystem::path const *path) {
     if (auto const *decl = stmt->if_as<ast::Declaration>()) {
       if (decl->id() != "main") { continue; }
       auto f = backend::EvaluateAs<ir::AnyFunc>(
-          type::Typed{decl->init_val(),
-                      visitor.context().type_of(decl->init_val())},
-          &visitor.context());
+          type::Typed{decl->init_val(), visitor.type_of(decl->init_val())},
+          &visitor);
       ASSERT(f.is_fn() == true);
       auto ir_fn = f.func();
 

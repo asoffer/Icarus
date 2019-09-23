@@ -1,7 +1,6 @@
 #include "visitor/special_function.h"
 #include "ast/ast.h"
 #include "ir/any_func.h"
-#include "misc/context.h"
 #include "type/function.h"
 #include "type/pointer.h"
 #include "type/struct.h"
@@ -16,7 +15,7 @@ std::optional<ir::AnyFunc> SpecialFunction(TraditionalCompilation *visitor,
   for (auto const *decl : s->scope_->AllDeclsWithId(symbol)) {
     // Note: there cannot be more than one declaration with the correct type
     // because our shadowing checks would have caught it.
-    auto *t = visitor->context().type_of(decl);
+    auto *t = visitor->type_of(decl);
     if (t == nullptr) { continue; }
     auto *fn_type = t->if_as<type::Function>();
     if (fn_type == nullptr) { continue; }

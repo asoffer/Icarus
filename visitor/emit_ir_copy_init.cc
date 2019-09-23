@@ -23,12 +23,12 @@ void TraditionalCompilation::EmitCopyInit(type::Type const *from_type,
 
 void TraditionalCompilation::EmitCopyInit(ast::Expression const *node,
                                           type::Typed<ir::Reg> reg) {
-  EmitCopyInit(context().type_of(node), node->EmitValue(this), reg);
+  EmitCopyInit(type_of(node), node->EmitValue(this), reg);
 }
 
 void TraditionalCompilation::EmitCopyInit(ast::ArrayLiteral const *node,
                                           type::Typed<ir::Reg> reg) {
-  type::Array const &array_type = context().type_of(node)->as<type::Array>();
+  type::Array const &array_type = type_of(node)->as<type::Array>();
   auto *data_type_ptr           = type::Ptr(array_type.data_type);
   auto elem = ir::Index(type::Ptr(&array_type), reg.get(), 0);
   for (size_t i = 0; i + 1 < array_type.len; ++i) {
@@ -68,9 +68,7 @@ void TraditionalCompilation::EmitCopyInit(ast::Unop const *node,
     case frontend::Operator::Copy:
       node->operand->EmitCopyInit(this, reg);
       break;
-    default:
-      EmitCopyInit(context().type_of(node), node->EmitValue(this), reg);
-      break;
+    default: EmitCopyInit(type_of(node), node->EmitValue(this), reg); break;
   }
 }
 

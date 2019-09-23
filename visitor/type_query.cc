@@ -2,7 +2,6 @@
 
 #include "absl/algorithm/container.h"
 #include "ast/ast.h"
-#include "misc/context.h"
 #include "type/array.h"
 #include "type/enum.h"
 #include "type/function.h"
@@ -82,21 +81,10 @@ bool TypeQuery::HasDestructor(type::Array const *t) {
 }
 
 bool TypeQuery::HasDestructor(type::Struct const *t) {
-  // TODO is this okay? Does it work for generics? Does it need to?
-  Context ctx(t->mod_);
-  for (auto const *decl : t->scope_->AllDeclsWithId("~")) {
-    // Note: there cannot be more than one declaration with the correct type
-    // because our shadowing checks would have caught it.
-    auto *t = ctx.type_of(decl);
-    if (t == nullptr) { continue; }
-    auto *fn_type = t->if_as<type::Function>();
-    if (fn_type == nullptr) { continue; }
-    if (fn_type->input.front() != type::Ptr(t)) { continue; }
-  }
-
-  return absl::c_any_of(t->fields_, [](type::Struct::Field const &field) {
-    return field.type->HasDestructor();
-  });
+  NOT_YET();
+  // TODO Hard because we need to find a corresponding function named "~" which
+  // means we need some amount of type-checking.
+  //
   // TODO Consider adding a #{no-destroy} hashtag?
 }
 

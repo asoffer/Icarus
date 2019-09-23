@@ -1,7 +1,6 @@
 #include "ir/components.h"
 
 #include "ir/builder.h"
-#include "misc/context.h"
 
 namespace ir {
 RegOr<bool> EmitEq(type::Type const *lhs_type, ir::Results const &lhs_val,
@@ -25,17 +24,6 @@ base::Tagged<Addr, Reg> Index(type::Pointer const *t, Reg array_ptr,
   // variable-length arrays?
   return PtrIncr(array_ptr, offset,
                  type::Ptr(t->pointee->as<type::Array>().data_type));
-}
-
-base::Tagged<Addr, Reg> Alloca(type::Type const *t) {
-  // TODO consider adding this directly to the builder.
-  return GetBuilder().function()->Alloca(t);
-}
-
-base::Tagged<Addr, Reg> TmpAlloca(type::Type const *t, Context *ctx) {
-  auto reg = Alloca(t);
-  ctx->temporaries_to_destroy_->emplace_back(reg, t);
-  return reg;
 }
 
 }  // namespace ir

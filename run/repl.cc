@@ -11,7 +11,6 @@
 #include "frontend/source/repl.h"
 #include "ir/cmd/jumps.h"
 #include "ir/compiled_fn.h"
-#include "misc/context.h"
 #include "misc/module.h"
 #include "type/function.h"
 
@@ -27,16 +26,15 @@ static void ReplEval(ast::Expression *expr) {
     ir::GetBuilder().CurrentBlock() = fn.entry();
     // TODO use the right module
     visitor::TraditionalCompilation visitor(nullptr);
-    Context ctx(static_cast<Module *>(nullptr));
 
     // TODO support multiple values computed simultaneously?
     auto expr_val = visitor.EmitValue(expr);
-    if (ctx.num_errors() != 0) {
-      ctx.DumpErrors();
+    if (visitor.num_errors() != 0) {
+      visitor.DumpErrors();
       return;
     }
     // TODO visitor.CompleteDeferredBodies();
-    auto *expr_type = ctx.type_of(expr);
+    auto *expr_type = visitor.type_of(expr);
     if (expr_type != type::Void()) { visitor.EmitPrint(expr_type, expr_val); }
     ir::ReturnJump();
   }
@@ -51,7 +49,6 @@ int RunRepl() {
 
   frontend::ReplSource repl;
   Module mod;
-  Context ctx(&mod);
 
 repl_start:;
   {
@@ -75,16 +72,16 @@ repl_start:;
           visitor.VerifyType(decl);
           visitor.EmitValue(decl);
           // TODO visitor.CompleteDeferredBodies();
-        }
-        if (ctx.num_errors() != 0) {
-          ctx.DumpErrors();
-          goto repl_start;
+          if (visitor.num_errors() != 0) {
+            visitor.DumpErrors();
+            goto repl_start;
+          }
         }
 
       } else if (stmt->is<ast::Expression>()) {
         auto *expr = &stmt->as<ast::Expression>();
         visitor::AssignScope visitor;
-        expr->assign_scope(&visitor, &ctx.mod_->scope_);
+        expr->assign_scope(&visitor, &mod.scope_);
         backend::ReplEval(expr);
         fprintf(stderr, "\n");
       } else {

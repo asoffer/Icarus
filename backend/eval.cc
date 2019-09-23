@@ -7,7 +7,6 @@
 #include "ir/cmd/jumps.h"
 #include "ir/cmd/return.h"
 #include "ir/compiled_fn.h"
-#include "misc/context.h"
 #include "type/generic_struct.h"
 #include "type/util.h"
 #include "visitor/emit_ir.h"
@@ -32,8 +31,7 @@ static ir::CompiledFn ExprFn(visitor::TraditionalCompilation *visitor,
       extracted_types = {typed_expr.type()};
     }
     for (size_t i = 0; i < vals.size(); ++i) {
-      ir::SetRet(i, type::Typed{vals.GetResult(i), extracted_types.at(i)},
-                 &visitor->context());
+      ir::SetRet(i, type::Typed{vals.GetResult(i), extracted_types.at(i)});
     }
     ir::ReturnJump();
 
@@ -43,9 +41,9 @@ static ir::CompiledFn ExprFn(visitor::TraditionalCompilation *visitor,
 }
 
 base::untyped_buffer EvaluateToBuffer(
-    type::Typed<ast::Expression const *> typed_expr, Context *ctx) {
-  visitor::TraditionalCompilation visitor(ctx->mod_);
-  auto fn = ExprFn(&visitor, typed_expr);
+    type::Typed<ast::Expression const *> typed_expr,
+    visitor::TraditionalCompilation *visitor) {
+  auto fn = ExprFn(visitor, typed_expr);
 
   size_t bytes_needed =
       typed_expr.type()->bytes(core::Interpretter()).value();
@@ -60,13 +58,13 @@ base::untyped_buffer EvaluateToBuffer(
 }
 
 ir::Results Evaluate(type::Typed<ast::Expression const *> typed_expr,
-                     Context *ctx) {
+                     visitor::TraditionalCompilation *visitor) {
   // TODO is the error-case distinguishible from successfully returning void?
-  if (ctx->num_errors() != 0) { return ir::Results{}; }
+  if (visitor->num_errors() != 0) { return ir::Results{}; }
 
   ASSERT(typed_expr.type() != nullptr);
   std::vector<uint32_t> offsets;
-  auto buf = EvaluateToBuffer(typed_expr, ctx);
+  auto buf = EvaluateToBuffer(typed_expr, visitor);
 
   if (auto *tup = typed_expr.type()->if_as<type::Tuple>()) {
     offsets.reserve(tup->entries_.size());

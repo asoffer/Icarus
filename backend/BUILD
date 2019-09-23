@@ -8,7 +8,6 @@ cc_lib_target(
         ":exec",
         "//base:debug",
         "//base:untyped_buffer",
-        "//misc:context",
     ],
     impl_deps = [
         "//core:arch",

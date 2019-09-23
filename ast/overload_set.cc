@@ -4,33 +4,30 @@
 #include "ast/ast.h"
 #include "base/ptr_span.h"
 #include "core/scope.h"
-#include "misc/context.h"
 
 namespace ast {
-using ::matcher::InheritsFrom;
 
 template <typename DeclSpan>
-static void EmplaceDecls(OverloadSet *os, DeclSpan &&decls, Context *ctx) {
+static void EmplaceDecls(OverloadSet *os, DeclSpan &&decls,
+                         visitor::TraditionalCompilation *visitor) {
   os->reserve(decls.size());
   for (auto const *decl : decls) {
-    auto const *result_ptr = ctx->prior_verification_attempt(decl);
-    if (result_ptr == nullptr) {
-      // TODO i'm skeptical this is the right context.
-      visitor::TraditionalCompilation vis(ctx->mod_);
-      decl->VerifyType(&vis);
-    }
-    result_ptr = ctx->prior_verification_attempt(decl);
+    auto const *result_ptr = visitor->prior_verification_attempt(decl);
+    if (!result_ptr) { decl->VerifyType(visitor); }
+    result_ptr = visitor->prior_verification_attempt(decl);
     if (result_ptr) { os->emplace(decl, *result_ptr); }
   }
 }
 
-OverloadSet::OverloadSet(base::PtrSpan<Declaration const> decls, Context *ctx) {
-  EmplaceDecls(this, decls, ctx);
+OverloadSet::OverloadSet(base::PtrSpan<Declaration const> decls,
+                         visitor::TraditionalCompilation *visitor) {
+  EmplaceDecls(this, decls, visitor);
 }
 
 // TODO only hold functions?
-OverloadSet::OverloadSet(core::Scope *scope, std::string_view id, Context *ctx) {
-  EmplaceDecls(this, scope->AllDeclsWithId(id), ctx);
+OverloadSet::OverloadSet(core::Scope *scope, std::string_view id,
+                         visitor::TraditionalCompilation *visitor) {
+  EmplaceDecls(this, scope->AllDeclsWithId(id), visitor);
 }
 
 void OverloadSet::add_adl(std::string_view id, type::Type const *t) {
@@ -41,7 +38,6 @@ void OverloadSet::add_adl(std::string_view id, type::Type const *t) {
     ASSIGN_OR(continue, auto &d, mod->GetDecl(id));
     ASSIGN_OR(continue, auto &t, mod->GetType(id));
     // TODO handle this case. I think it's safe to just discard it.
-    ASSERT(&t, InheritsFrom<type::Callable>());
 
     for (auto const &overload : *this) {
       if (&d == overload.expr) { return; }

@@ -20,6 +20,10 @@ namespace ir {
 struct Results;
 }  // namespace ir
 
+namespace visitor {
+struct TraditionalCompilation;
+}  // namespace visitor
+
 struct ConstantBinding {
  public:
   size_t size() const { return keys_.size(); }
@@ -44,7 +48,7 @@ struct ConstantBinding {
  private:
   friend bool operator==(ConstantBinding const& lhs,
                          ConstantBinding const& rhs);
-  friend struct Context; // TODO remove me.
+  friend struct visitor::TraditionalCompilation;  // TODO remove me.
 
   struct Binding {
     type::Type const * type_;

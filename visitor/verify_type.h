@@ -7,8 +7,6 @@
 #include "base/debug.h"
 #include "visitor/verify_result.h"
 
-struct Context;
-
 namespace visitor {
 struct TraditionalCompilation;
 

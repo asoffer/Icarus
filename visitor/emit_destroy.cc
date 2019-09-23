@@ -6,7 +6,6 @@
 #include "ir/cmd/misc.h"
 #include "ir/compiled_fn.h"
 #include "ir/components.h"
-#include "misc/context.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 #include "visitor/emit_ir.h"

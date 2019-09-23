@@ -8,7 +8,6 @@ cc_group_target(
     cfgs = ["match", "compile"],
     deps = [
         ":constant_binding-impl",
-        ":context-impl",
         ":module-impl",
         "//visitor:assign_scope",
         "//visitor:emit_ir",
@@ -28,21 +27,6 @@ cc_lib_target(
         "//type:type",
     ],
     test_deps = None,
-)
-
-cc_lib_target(
-    name = "context",
-    cfgs = ["match", "compile"],
-    intf_deps = [
-        ":module",
-        "//base:debug",
-        "//ir:reg",
-    ],
-    impl_deps = [
-        "//ast:expression",
-        "//ast:ast",
-        "//ast:dispatch_table",
-    ],
 )
 
 COMMON_MODULE_INTF_TARGETS = [
@@ -94,7 +78,6 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
-        ":context",
         ":module",
         "//ast:ast",
         "//backend:eval",

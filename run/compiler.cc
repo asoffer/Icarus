@@ -8,7 +8,6 @@
 #include "base/util.h"
 #include "core/pending_module.h"
 #include "ir/compiled_fn.h"
-#include "misc/context.h"
 #include "misc/module.h"
 #include "opt/combine_blocks.h"
 

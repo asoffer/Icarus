@@ -18,7 +18,6 @@
 #include "ir/components.h"
 #include "ir/reg.h"
 #include "ir/reg_or.h"
-#include "misc/context.h"
 #include "misc/module.h"
 #include "type/cast.h"
 #include "type/function.h"
@@ -43,7 +42,7 @@ static ir::Results PrepArg(visitor::TraditionalCompilation *visitor,
     if (auto *from_variant = from->if_as<type::Variant>()) {
       return val;
     } else {
-      auto alloc = ir::TmpAlloca(to, &visitor->context());
+      auto alloc = visitor->TmpAlloca(to);
       // TODO move initialization, not move assignment.
       to->EmitMoveAssign(visitor, from, val, alloc);
       // TODO who destruction of the moved-from buffer? what if it was
@@ -256,8 +255,8 @@ static base::expected<DispatchTable::Row> OverloadParams(
   // how it actually gets called which would be with the arguments A and C
   // respectively.
 
-  auto result = *ASSERT_NOT_NULL(
-      visitor->context().prior_verification_attempt(overload.expr));
+  auto result =
+      *ASSERT_NOT_NULL(visitor->prior_verification_attempt(overload.expr));
   if (!result.type_->is<type::Callable>() && result.type_ != type::Generic &&
       result.type_ != type::Block) {
     // Figure out who should have verified this. Is it guaranteed to be
@@ -271,7 +270,7 @@ static base::expected<DispatchTable::Row> OverloadParams(
     if (result.type_ == type::Generic) {
       auto *fn_lit = backend::EvaluateAs<ast::FunctionLiteral *>(
           type::Typed<ast::Expression const *>{overload.expr, result.type_},
-          &visitor->context());
+          visitor);
 
       core::FnParams<type::Typed<Expression const *>> params(
           fn_lit->inputs_.size());
@@ -288,13 +287,12 @@ static base::expected<DispatchTable::Row> OverloadParams(
                                       param.name,
                                       type::Typed<Expression const *>(
                                           param.value.get(),
-                                          visitor->context().type_of(param.value.get())),
+                                          visitor->type_of(param.value.get())),
                                       param.flags});
         } else {
           if (param_index < args.pos().size()) {
             auto [arg_expr, verify_result] = args.pos().at(param_index);
-            type::Type const *decl_type =
-                visitor->context().type_of(param.value.get());
+            type::Type const *decl_type = visitor->type_of(param.value.get());
             if (!type::CanCast(verify_result.type_, decl_type)) {
               return base::unexpected(
                   absl::StrCat("TODO good error message couldn't match type ",
@@ -304,15 +302,15 @@ static base::expected<DispatchTable::Row> OverloadParams(
 
             auto buf = backend::EvaluateToBuffer(
                 type::Typed<Expression const *>(arg_expr, verify_result.type_),
-                &visitor->context());
-            auto[data_offset, num_bytes] =
+                visitor);
+            auto [data_offset, num_bytes] =
                 std::get<std::pair<size_t, core::Bytes>>(
-                    visitor->context().current_constants_.reserve_slot(
-                        param.value.get(), decl_type));
+                    visitor->current_constants_.reserve_slot(param.value.get(),
+                                                             decl_type));
             // TODO you haven't done the cast yet! And you didn't even check
             // about implicit casts.
-            visitor->context().current_constants_.set_slot(
-                data_offset, buf.raw(0), num_bytes);
+            visitor->current_constants_.set_slot(data_offset, buf.raw(0),
+                                                 num_bytes);
             params.set(param_index,
                        core::Param<type::Typed<Expression const *>>{
                            param.name,
@@ -321,7 +319,7 @@ static base::expected<DispatchTable::Row> OverloadParams(
                            param.flags});
           } else {
             if (auto *arg = args.at_or_null(param.value->id())) {
-              type::Type const *decl_type = visitor->context().type_of(param.value.get());
+              type::Type const *decl_type = visitor->type_of(param.value.get());
               if (!type::CanCast(arg->second.type_, decl_type)) {
                 return base::unexpected(
                     absl::StrCat("TODO good error message couldn't match type ",
@@ -330,39 +328,40 @@ static base::expected<DispatchTable::Row> OverloadParams(
               }
 
               auto buf = backend::EvaluateToBuffer(
-                  type::Typed<Expression const *>(arg->first, decl_type), &visitor->context());
-              auto[data_offset, num_bytes] =
+                  type::Typed<Expression const *>(arg->first, decl_type),
+                  visitor);
+              auto [data_offset, num_bytes] =
                   std::get<std::pair<size_t, core::Bytes>>(
-                      visitor->context().current_constants_.reserve_slot(
+                      visitor->current_constants_.reserve_slot(
                           param.value.get(), decl_type));
               // TODO you haven't done the cast yet! And you didn't even check
               // about implicit casts.
-              visitor->context().current_constants_.set_slot(
-                  data_offset, buf.raw(0), num_bytes);
+              visitor->current_constants_.set_slot(data_offset, buf.raw(0),
+                                                   num_bytes);
               params.set(param_index,
                          core::Param<type::Typed<Expression const *>>{
                              param.name,
                              type::Typed<Expression const *>(
                                  param.value.get(),
-                                 visitor->context().type_of(param.value.get())),
+                                 visitor->type_of(param.value.get())),
                              param.flags});
 
             } else {
               if (param.flags & core::HAS_DEFAULT) {
                 type::Type const *decl_type =
-                    visitor->context().type_of(param.value.get());
+                    visitor->type_of(param.value.get());
 
                 // TODO you haven't done the cast from init_val to declared type
                 auto buf =
                     backend::EvaluateToBuffer(type::Typed<Expression const *>(
                                                   decl->init_val(), decl_type),
-                                              &visitor->context());
-                auto[data_offset, num_bytes] =
+                                              visitor);
+                auto [data_offset, num_bytes] =
                     std::get<std::pair<size_t, core::Bytes>>(
-                        visitor->context().current_constants_.reserve_slot(
+                        visitor->current_constants_.reserve_slot(
                             param.value.get(), decl_type));
-                visitor->context().current_constants_.set_slot(
-                    data_offset, buf.raw(0), num_bytes);
+                visitor->current_constants_.set_slot(data_offset, buf.raw(0),
+                                                     num_bytes);
                 // TODO should I be setting this parameter?
 
                 params.set(param_index,
@@ -381,24 +380,24 @@ static base::expected<DispatchTable::Row> OverloadParams(
         }
       }
 
-      auto *old_constants =
-          std::exchange(visitor->context().constants_,
-                        visitor->context().insert_constants(
-                            visitor->context().current_constants_));
-      base::defer d([&]() { visitor->context().constants_ = old_constants; });
+      auto *old_constants = std::exchange(
+          visitor->constants_,
+          visitor->insert_constants(visitor->current_constants_));
+      base::defer d([&]() { visitor->constants_ = old_constants; });
       // TODO errors?
-      auto *fn_type = ASSERT_NOT_NULL(visitor->VerifyConcreteFnLit(fn_lit).type_);
+      auto *fn_type =
+          ASSERT_NOT_NULL(visitor->VerifyConcreteFnLit(fn_lit).type_);
       return DispatchTable::Row{
           std::move(params), &fn_type->as<type::Function>(),
           backend::EvaluateAs<ir::AnyFunc>(
               type::Typed<ast::Expression const *>{fn_lit, fn_type},
-              &visitor->context())};
+              visitor)};
     } else {
       return OverloadParams(
           visitor,
           backend::EvaluateAs<ir::AnyFunc>(
               type::Typed<ast::Expression const *>{overload.expr, result.type_},
-              &visitor->context()),
+              visitor),
           args);
     }
   } else {
@@ -478,7 +477,7 @@ std::pair<DispatchTable, visitor::VerifyResult> VerifyDispatchImpl(
   if (num_outputs == std::numeric_limits<size_t>::max()) {
     return std::pair{
         std::move(table),
-        visitor->context().set_result(expr, visitor::VerifyResult::Error())};
+        visitor->set_result(expr, visitor::VerifyResult::Error())};
   }
   table.return_types_ = ReturnTypes(num_outputs, table.bindings_);
   auto *tup           = type::Tup(table.return_types_);
@@ -506,7 +505,7 @@ std::pair<DispatchTable, visitor::VerifyResult> VerifyDispatchImpl(
   // tuple. So, e.g., you don't get the benefit of A -> (A, A) and B -> (A, B)
   // combining into (A | B) -> (A, A | B).
   return std::pair{std::move(table),
-                   visitor->context().set_result(
+                   visitor->set_result(
                        expr, visitor::VerifyResult::Constant(tup))};
 }
 
@@ -516,7 +515,7 @@ visitor::VerifyResult VerifyDispatch(
     core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
         &args) {
   auto [table, result] = VerifyDispatchImpl(visitor, expr, overload_set, args);
-  visitor->context().set_dispatch_table(expr, std::move(table));
+  visitor->set_dispatch_table(expr, std::move(table));
   return result;
 }
 
@@ -526,7 +525,7 @@ visitor::VerifyResult VerifyDispatch(
     core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
         &args) {
   auto [table, result] = VerifyDispatchImpl(visitor, expr, overload_set, args);
-  visitor->context().set_dispatch_table(expr, std::move(table));
+  visitor->set_dispatch_table(expr, std::move(table));
   return result;
 }
 
@@ -549,7 +548,7 @@ visitor::VerifyResult VerifyJumpDispatch(
     block_defs->insert(block_defs->end(), f.func()->jumps_.begin(),
                        f.func()->jumps_.end());
   }
-  visitor->context().set_jump_table(expr, nullptr, std::move(table));
+  visitor->set_jump_table(expr, nullptr, std::move(table));
   return result;
 }
 
@@ -596,9 +595,9 @@ static ir::BasicBlock *EmitDispatchTest(
   for (size_t i = 0; i < params.size(); ++i) {
     const auto &param = params.at(i);
     if (param.flags & core::HAS_DEFAULT) { continue; }
-    auto const & [ expr, val ] =
+    auto const &[expr, val] =
         (i < args.pos().size()) ? args.at(i) : args.at(std::string{param.name});
-    auto *expr_var = visitor->context().type_of(expr)->if_as<type::Variant>();
+    auto *expr_var = visitor->type_of(expr)->if_as<type::Variant>();
     if (!expr_var) { continue; }
     visitor->builder().CurrentBlock() = ir::EarlyExitOn<false>(
         next_binding, EmitVariantMatch(visitor->builder(), val.get<ir::Reg>(0),
@@ -629,8 +628,9 @@ static bool EmitOneCall(
           return f;
         } else {
           // TODO must `f` always be a declaration?
-          return ir::Load(visitor->context().addr(&f->template as<Declaration const>()),
-                          row.type);
+          return ir::Load(
+              visitor->addr(&f->template as<Declaration const>()),
+              row.type);
         }
       },
       row.fn);
@@ -645,11 +645,11 @@ static bool EmitOneCall(
   std::vector<ir::Results> arg_results;
   size_t i = 0;
   ASSERT(row.params.size() >= args.pos().size());
-  for (auto const & [ expr, results ] : args.pos()) {
+  for (auto const &[expr, results] : args.pos()) {
     // TODO Don't re-lookup the type of this expression. You should know it
     // already.
     arg_results.push_back(PrepArg(visitor, row.params.at(i++).value.type(),
-                                  ASSERT_NOT_NULL(visitor->context().type_of(expr)),
+                                  ASSERT_NOT_NULL(visitor->type_of(expr)),
                                   results));
   }
 
@@ -659,9 +659,9 @@ static bool EmitOneCall(
     if (!arg && (param.flags & core::HAS_DEFAULT)) {
       arg_results.push_back(param.value.get()->EmitValue(visitor));
     } else {
-      auto const & [ expr, results ] = *ASSERT_NOT_NULL(arg);
-      arg_results.push_back(
-          PrepArg(visitor, param.value.type(), visitor->context().type_of(expr), results));
+      auto const &[expr, results] = *ASSERT_NOT_NULL(arg);
+      arg_results.push_back(PrepArg(visitor, param.value.type(),
+                                    visitor->type_of(expr), results));
     }
   }
 
@@ -669,8 +669,9 @@ static bool EmitOneCall(
 
   if constexpr (Inline) {
     if (fn.value().is_fn()) {
-      auto *prev_inline_map = std::exchange(visitor->context().inline_, nullptr);
-      base::defer d([&]() { visitor->context().inline_ = prev_inline_map; });
+      auto *prev_inline_map =
+          std::exchange(visitor->inline_, nullptr);
+      base::defer d([&]() { visitor->inline_ = prev_inline_map; });
       auto *func = ASSERT_NOT_NULL(fn.value().func());
       if (func->work_item != nullptr) { std::move (*func->work_item)(); }
       ASSERT(func->work_item == nullptr);
@@ -762,7 +763,7 @@ static ir::Results EmitFnCall(
   size_t index_into_phi_args = 0;
   for (type::Type const *t : table->return_types_) {
     if (t->is_big()) {
-      // TODO outputs.emplace_back(ir::TmpAlloca(t ,&visitor->context()));
+      // TODO outputs.emplace_back(visitor->TmpAlloca(t));
     } else {
       outputs.emplace_back(&result_phi_args[index_into_phi_args++]);
     }
@@ -772,7 +773,7 @@ static ir::Results EmitFnCall(
 
   ir::Results inline_results;
   for (size_t i = 0; i + 1 < table->bindings_.size(); ++i) {
-    auto const &row = table->bindings_.at(i);
+    auto const &row   = table->bindings_.at(i);
     auto next_binding = EmitDispatchTest(visitor, row.params, args);
 
     bool is_jump = EmitOneCall<Inline>(visitor, row, args, table->return_types_,

@@ -5,8 +5,6 @@
 
 #include "ir/any_func.h"
 
-struct Context;
-
 namespace type {
 struct Struct;
 }  // namespace type

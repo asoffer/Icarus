@@ -12,7 +12,6 @@
 #include "type/typed_value.h"
 #include "visitor/deferred_body.h"
 
-struct Context;
 struct Module;
 
 namespace ir {

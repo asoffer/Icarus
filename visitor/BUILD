@@ -1,5 +1,5 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_group_target", "cc_lib_target")
+load("//:defs.bzl", "cc_group_target", "cc_lib_target", "cc_component")
 
 # TODO rename ast_visitors
 # TODO hack mirroring -impl, -test
@@ -154,7 +154,6 @@ cc_lib_target(
         "//ir/cmd:store",
         "//ir:compiled_fn",
         "//ir:components",
-        "//misc:context",
         "//type:type",
         "//type:typed_value",
         "@com_google_absl//absl/random",
@@ -175,7 +174,6 @@ cc_lib_target(
         "//ir/cmd:misc",
         "//ir:compiled_fn",
         "//ir:components",
-        "//misc:context",
         "//type:type",
         "//type:typed_value",
         "@com_google_absl//absl/random",
@@ -195,7 +193,6 @@ cc_lib_target(
         "//ir:builder",
         "//ir:compiled_fn",
         "//ir:components",
-        "//misc:context",
         "//type:type",
         "//type:typed_value",
         "@com_google_absl//absl/random",
@@ -228,7 +225,6 @@ cc_lib_target(
         "//ast:ast",
         "//ir:components",
         "//ir/cmd:misc",
-        "//misc:context",
         "//type:type",
         "//type:typed_value",
     ],
@@ -244,7 +240,6 @@ cc_lib_target(
         "//ast:ast",
         "//ir/cmd:misc",
         "//ir:components",
-        "//misc:context",
         "//type:type",
         "//type:typed_value",
     ],
@@ -316,7 +311,6 @@ cc_lib_target(
         "//ir/cmd:call",
         "//ir/cmd:print",
         "//ir/cmd:basic",
-        "//misc:context",
         "//type:type",
         "//type:typed_value",
     ],
@@ -364,7 +358,6 @@ cc_lib_target(
         "//ast:ast",
         "//ast:overload_set",
         "//backend:eval",
-        "//misc:context",
         "//misc:compile-impl",
         "//type:cast",
         "//type:generic_struct",
@@ -385,7 +378,6 @@ cc_lib_target(
         ":emit_ir",
         "//ast:ast",
         "//ir:any_func",
-        "//misc:context",
         "//type:function",
         "//type:pointer",
         "//type:struct",
@@ -397,8 +389,11 @@ cc_lib_target(
     name = "traditional_compilation",
     cfgs = ["match", "compile"],
     intf_deps = [
+        ":deferred_body",
         ":verify_result",
-        "//misc:context",
+        "//base:tag",
+        "//error:log",
+        "//misc:module",
         "//ir:results",
         "//ir:builder",
         "//type:type_fwd",
@@ -412,7 +407,6 @@ cc_lib_target(
         "//ir/cmd:call",
         "//ir/cmd:print",
         "//ir/cmd:basic",
-        "//misc:context",
         "//misc:module",
         "//type:type",
         "//type:typed_value",
@@ -427,15 +421,14 @@ cc_lib_target(
     intf_deps = ["//type:type_fwd"],
     impl_deps = [
         "//ast:ast",
-        "//misc:context",
         "//type:all_types",
         "@com_google_absl//absl/algorithm:container",
     ],
     test_deps = None,
 )
-cc_lib_target(
+
+cc_component(
     name = "deferred_body",
-    cfgs = ["match", "compile"],
     intf_deps = [
         "//base:guarded",
         "//base:move_func",

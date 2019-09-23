@@ -80,7 +80,6 @@ cc_lib_target(
         "//ir/cmd:store",
         "//ir:components",
         "//ir:compiled_fn",
-        "//misc:context",
         "//misc:module",
         "//core:scope",
         "//type:cast",
@@ -107,13 +106,11 @@ cc_lib_target(
     intf_deps = [
         "//base:bag",
         "//base:ptr_span",
-        "//type:typed_value",
-        "//type:function",
     ],
     impl_deps = [
         ":ast",
-        "//misc:context",
         "//core:scope",
+        "//visitor:traditional_compilation",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
     test_deps = None,

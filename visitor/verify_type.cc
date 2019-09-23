@@ -7,7 +7,6 @@
 #include "error/inference_failure_reason.h"
 #include "frontend/operators.h"
 #include "ir/compiled_fn.h"
-#include "misc/context.h"
 #include "type/cast.h"
 #include "type/generic_struct.h"
 #include "type/jump.h"
@@ -238,9 +237,9 @@ static VerifyResult VerifySpecialFunctions(TraditionalCompilation *visitor,
       NOT_YET("log an error. (move) must be a function.");
     }
   }
-  if (error) { visitor->context().set_result(decl, VerifyResult::Error()); }
+  if (error) { visitor->set_result(decl, VerifyResult::Error()); }
 
-  return visitor->context().set_result(
+  return visitor->set_result(
       decl,
       VerifyResult(decl_type, decl->flags() & ast::Declaration::f_IsConst));
 }
@@ -262,8 +261,7 @@ bool Shadow(TraditionalCompilation *visitor,
     bool is_const               = (decl->flags() & ast::Declaration::f_IsConst);
     ast::Expression const *expr = decl->init_val();
     if (!is_const) {
-      return visitor->context()
-          .type_of(expr)
+      return visitor->type_of(expr)
           ->as<type::Function>()
           .AnonymousFnParams()
           .Transform([](type::Typed<ast::Expression const *> expr) {
@@ -272,7 +270,7 @@ bool Shadow(TraditionalCompilation *visitor,
     } else if (auto *fn_lit = expr->if_as<ast::FunctionLiteral>()) {
       return fn_lit->inputs_.Transform(
           [visitor](std::unique_ptr<ast::Declaration> const &decl) {
-            return visitor->context().type_of(decl.get());
+            return visitor->type_of(decl.get());
           });
     }
     NOT_YET();
@@ -338,7 +336,7 @@ VerifyResult VerifyBody(TraditionalCompilation *visitor,
     if (auto const *ret_node = n->if_as<ast::ReturnStmt>()) {
       std::vector<type::Type const *> ret_types;
       for (auto const *expr : ret_node->exprs()) {
-        ret_types.push_back(visitor->context().type_of(expr));
+        ret_types.push_back(visitor->type_of(expr));
       }
       auto *t = Tup(std::move(ret_types));
       types.emplace(t);
@@ -352,7 +350,7 @@ VerifyResult VerifyBody(TraditionalCompilation *visitor,
   input_type_vec.reserve(node->inputs_.size());
   for (auto &input : node->inputs_) {
     input_type_vec.push_back(
-        ASSERT_NOT_NULL(visitor->context().type_of(input.value.get())));
+        ASSERT_NOT_NULL(visitor->type_of(input.value.get())));
   }
 
   if (!node->outputs_) {
@@ -362,10 +360,10 @@ VerifyResult VerifyBody(TraditionalCompilation *visitor,
 
     if (types.size() > 1) { NOT_YET("log an error"); }
     auto f = type::Func(std::move(input_type_vec), std::move(output_type_vec));
-    return visitor->context().set_result(node, VerifyResult::Constant(f));
+    return visitor->set_result(node, VerifyResult::Constant(f));
 
   } else {
-    auto *node_type  = visitor->context().type_of(node);
+    auto *node_type  = visitor->type_of(node);
     auto const &outs = ASSERT_NOT_NULL(node_type)->as<type::Function>().output;
     switch (outs.size()) {
       case 0: {
@@ -502,25 +500,25 @@ VerifyResult TraditionalCompilation::VerifyConcreteFnLit(
   // TODO need a better way to say if there was an error recorded in a
   // particular section of compilation. Right now we just have the grad total
   // count.
-  if (context().num_errors() > 0) {
-    context().error_log()->Dump();
+  if (num_errors() > 0) {
+    error_log()->Dump();
     return VerifyResult::Error();
   }
 
   if (node->outputs_) {
     for (size_t i = 0; i < output_type_vec.size(); ++i) {
       if (auto *decl = node->outputs_->at(i)->if_as<ast::Declaration>()) {
-        output_type_vec.at(i) = context().type_of(decl);
+        output_type_vec.at(i) = type_of(decl);
       } else {
         ASSERT(output_type_vec.at(i) == type::Type_);
         output_type_vec.at(i) = backend::EvaluateAs<type::Type const *>(
             type::Typed<ast::Expression const *>(node->outputs_->at(i).get(),
                                                  type::Type_),
-            &context());
+            this);
       }
     }
 
-    return context().set_result(
+    return set_result(
         node, VerifyResult::Constant(type::Func(std::move(input_type_vec),
                                                 std::move(output_type_vec))));
   } else {
@@ -590,8 +588,7 @@ VerifyBlockNode(TraditionalCompilation *visitor, ast::BlockNode const *node) {
     for (auto *yield_expr : yields[0]->as<ast::YieldStmt>().exprs()) {
       back.pos_emplace(
           yield_expr,
-          *ASSERT_NOT_NULL(
-              visitor->context().prior_verification_attempt(yield_expr)));
+          *ASSERT_NOT_NULL(visitor->prior_verification_attempt(yield_expr)));
     }
   }
   return result;
@@ -610,9 +607,9 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Access const *node) {
     // TODO We may not be allowed to evaluate node:
     //    f ::= (T: type) => T.key
     // We need to know that T is const
-    auto *t           = context().type_of(node->operand());
+    auto *t           = type_of(node->operand());
     auto *evaled_type = backend::EvaluateAs<type::Type const *>(
-        type::Typed{node->operand(), t}, &context());
+        type::Typed{node->operand(), t}, this);
 
     // For enums and flags, regardless of whether we can get the value, it's
     // clear that node is supposed to be a member so we should emit an error but
@@ -622,13 +619,13 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Access const *node) {
         error_log()->MissingMember(node->span, node->member_name(),
                                    evaled_type->to_string());
       }
-      return context().set_result(node, VerifyResult::Constant(evaled_type));
+      return set_result(node, VerifyResult::Constant(evaled_type));
     } else if (auto *f = evaled_type->if_as<type::Flags>()) {
       if (!f->Get(node->member_name()).has_value()) {
         error_log()->MissingMember(node->span, node->member_name(),
                                    evaled_type->to_string());
       }
-      return context().set_result(node, VerifyResult::Constant(evaled_type));
+      return set_result(node, VerifyResult::Constant(evaled_type));
     } else {
       // TODO what about structs? Can structs have constant members we're
       // allowed to access?
@@ -652,8 +649,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Access const *node) {
                                      s->to_string());
     }
 
-    return context().set_result(
-        node, VerifyResult(member->type, operand_result.const_));
+    return set_result(node, VerifyResult(member->type, operand_result.const_));
 
   } else if (base_type == type::Module) {
     if (!operand_result.const_) {
@@ -661,17 +657,16 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Access const *node) {
       return VerifyResult::Error();
     }
 
-    auto *t =
-        backend::EvaluateAs<Module const *>(
-            type::Typed{node->operand(), operand_result.type_}, &context())
-            ->GetType(node->member_name());
+    auto *t = backend::EvaluateAs<Module const *>(
+                  type::Typed{node->operand(), operand_result.type_}, this)
+                  ->GetType(node->member_name());
     if (t == nullptr) {
       error_log()->NoExportedSymbol(node->span);
       return VerifyResult::Error();
     }
 
     // TODO is node right?
-    return context().set_result(node, VerifyResult::Constant(t));
+    return set_result(node, VerifyResult::Constant(t));
   } else {
     error_log()->MissingMember(node->span, node->member_name(),
                                base_type->to_string());
@@ -681,7 +676,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Access const *node) {
 
 VerifyResult TraditionalCompilation::VerifyType(ast::ArrayLiteral const *node) {
   if (node->empty()) {
-    return context().set_result(node, VerifyResult::Constant(type::EmptyArray));
+    return set_result(node, VerifyResult::Constant(type::EmptyArray));
   }
 
   ASSIGN_OR(return VerifyResult::Error(), auto expr_results,
@@ -696,7 +691,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::ArrayLiteral const *node) {
       return VerifyResult::Error();
     }
   }
-  return context().set_result(node, result);
+  return set_result(node, result);
 }
 
 VerifyResult TraditionalCompilation::VerifyType(ast::ArrayType const *node) {
@@ -717,7 +712,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::ArrayType const *node) {
     error_log()->ArrayDataTypeNotAType(node->data_type()->span);
   }
 
-  return context().set_result(
+  return set_result(
       node, VerifyResult(type::Type_, data_type_result.const_ && is_const));
 }
 
@@ -744,7 +739,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Binop const *node) {
       if (lhs_result.type_ == rhs_result.type_ &&
           (lhs_result.type_ == type::Bool ||
            lhs_result.type_->is<type::Flags>())) {
-        return context().set_result(node, lhs_result);
+        return set_result(node, lhs_result);
       } else {
         error_log()->XorEqNeedsBoolOrFlags(node->span);
         return VerifyResult::Error();
@@ -753,7 +748,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Binop const *node) {
       if (lhs_result.type_ == rhs_result.type_ &&
           (lhs_result.type_ == type::Bool ||
            lhs_result.type_->is<type::Flags>())) {
-        return context().set_result(node, lhs_result);
+        return set_result(node, lhs_result);
       } else {
         error_log()->AndEqNeedsBoolOrFlags(node->span);
         return VerifyResult::Error();
@@ -762,7 +757,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Binop const *node) {
       if (lhs_result.type_ == rhs_result.type_ &&
           (lhs_result.type_ == type::Bool ||
            lhs_result.type_->is<type::Flags>())) {
-        return context().set_result(node, lhs_result);
+        return set_result(node, lhs_result);
       } else {
         error_log()->OrEqNeedsBoolOrFlags(node->span);
         return VerifyResult::Error();
@@ -774,8 +769,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Binop const *node) {
     if (type::IsNumeric(lhs_result.type_) &&                                   \
         type::IsNumeric(rhs_result.type_)) {                                   \
       if (lhs_result.type_ == rhs_result.type_) {                              \
-        return context().set_result(node,                                      \
-                                    VerifyResult((return_type), is_const));    \
+        return set_result(node, VerifyResult((return_type), is_const));        \
       } else {                                                                 \
         error_log()->MismatchedBinopArithmeticType(                            \
             lhs_result.type_->to_string(), rhs_result.type_->to_string(),      \
@@ -783,7 +777,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Binop const *node) {
         return VerifyResult::Error();                                          \
       }                                                                        \
     } else {                                                                   \
-      ast::OverloadSet os(node->scope_, symbol, &context());                   \
+      ast::OverloadSet os(node->scope_, symbol, this);                         \
       os.add_adl(symbol, lhs_result.type_);                                    \
       os.add_adl(symbol, rhs_result.type_);                                    \
       return ast::VerifyDispatch(                                              \
@@ -808,8 +802,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Binop const *node) {
       if (type::IsNumeric(lhs_result.type_) &&
           type::IsNumeric(rhs_result.type_)) {
         if (lhs_result.type_ == rhs_result.type_) {
-          return context().set_result(node,
-                                      VerifyResult(lhs_result.type_, is_const));
+          return set_result(node, VerifyResult(lhs_result.type_, is_const));
         } else {
           error_log()->MismatchedBinopArithmeticType(
               lhs_result.type_->to_string(), rhs_result.type_->to_string(),
@@ -817,7 +810,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Binop const *node) {
           return VerifyResult::Error();
         }
       } else {
-        ast::OverloadSet os(node->scope_, "+", (&context()));
+        ast::OverloadSet os(node->scope_, "+", this);
         os.add_adl("+", lhs_result.type_);
         os.add_adl("+", rhs_result.type_);
         return ast::VerifyDispatch(
@@ -833,8 +826,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Binop const *node) {
       if (type::IsNumeric(lhs_result.type_) &&
           type::IsNumeric(rhs_result.type_)) {
         if (lhs_result.type_ == rhs_result.type_) {
-          return context().set_result(node,
-                                      VerifyResult(type::Void(), is_const));
+          return set_result(node, VerifyResult(type::Void(), is_const));
         } else {
           error_log()->MismatchedBinopArithmeticType(
               lhs_result.type_->to_string(), rhs_result.type_->to_string(),
@@ -842,7 +834,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Binop const *node) {
           return VerifyResult::Error();
         }
       } else {
-        ast::OverloadSet os(node->scope_, "+=", (&context()));
+        ast::OverloadSet os(node->scope_, "+=", this);
         os.add_adl("+=", lhs_result.type_);
         os.add_adl("+=", rhs_result.type_);
         return ast::VerifyDispatch(
@@ -867,9 +859,8 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Binop const *node) {
 
       if (t == nullptr) { return VerifyResult::Error(); }
 
-      return context().set_result(
-          node,
-          VerifyResult(type::Type_, lhs_result.const_ && rhs_result.const_));
+      return set_result(node, VerifyResult(type::Type_, lhs_result.const_ &&
+                                                            rhs_result.const_));
     }
     default: UNREACHABLE();
   }
@@ -883,24 +874,24 @@ VerifyResult TraditionalCompilation::VerifyType(ast::BlockLiteral const *node) {
   for (auto *b : node->before()) { b->VerifyType(this); }
   for (auto *a : node->after()) { a->VerifyType(this); }
 
-  return context().set_result(node, VerifyResult::Constant(type::Block));
+  return set_result(node, VerifyResult::Constant(type::Block));
 }
 
 VerifyResult TraditionalCompilation::VerifyType(ast::BlockNode const *node) {
   for (auto *arg : node->args()) { arg->VerifyType(this); }
   for (auto *stmt : node->stmts()) { stmt->VerifyType(this); }
-  return context().set_result(node, VerifyResult::Constant(type::Block));
+  return set_result(node, VerifyResult::Constant(type::Block));
 }
 
 VerifyResult TraditionalCompilation::VerifyType(ast::BuiltinFn const *node) {
-  return context().set_result(
-      node, VerifyResult::Constant(ir::BuiltinType(node->value())));
+  return set_result(node,
+                    VerifyResult::Constant(ir::BuiltinType(node->value())));
 }
 
 static ast::OverloadSet FindOverloads(
     visitor::TraditionalCompilation *visitor, core::Scope *scope,
     std::string_view token, core::FnArgs<type::Type const *> arg_types) {
-  ast::OverloadSet os(scope, token, &visitor->context());
+  ast::OverloadSet os(scope, token, visitor);
   arg_types.Apply([&](type::Type const *t) { os.add_adl(token, t); });
   return os;
 }
@@ -954,8 +945,7 @@ static VerifyResult VerifyCall(TraditionalCompilation *visitor,
         }
       }
       return VerifyResult::Constant(backend::EvaluateAs<type::Type const *>(
-          type::Typed<ast::Expression const *>{args.at(1), type::Type_},
-          &visitor->context()));
+          type::Typed<ast::Expression const *>{args.at(1), type::Type_}, visitor));
     } break;
     case core::Builtin::Opaque:
       if (!arg_results.empty()) {
@@ -1041,7 +1031,7 @@ static std::pair<core::FnArgs<VerifyResult, StrType>, bool> VerifyFnArgs(
 }
 
 VerifyResult TraditionalCompilation::VerifyType(ast::Call const *node) {
-  auto[arg_results, err] = VerifyFnArgs(this, node->args());
+  auto [arg_results, err] = VerifyFnArgs(this, node->args());
   // TODO handle cyclic dependencies in call arguments.
   if (err) { return VerifyResult::Error(); }
 
@@ -1049,8 +1039,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Call const *node) {
     // TODO: Should we allow these to be overloaded?
     ASSIGN_OR(return VerifyResult::Error(), auto result,
                      VerifyCall(this, b, node->args(), arg_results));
-    return context().set_result(node,
-                                VerifyResult(result.type_, result.const_));
+    return set_result(node, VerifyResult(result.type_, result.const_));
   }
 
   ast::OverloadSet overload_set = [&]() {
@@ -1072,7 +1061,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Call const *node) {
   for (size_t i = 0; i < arg_results.pos().size(); ++i) {
     arg_expr_result.pos_emplace(node->args().at(i), arg_results.at(i));
   }
-  for (auto const & [ name, res ] : arg_results.named()) {
+  for (auto const &[name, res] : arg_results.named()) {
     arg_expr_result.named_emplace(
         std::piecewise_construct, std::forward_as_tuple(name),
         std::forward_as_tuple(node->args().at(name), res));
@@ -1095,10 +1084,9 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Cast const *node) {
     return VerifyResult::Error();
   }
   auto *t = ASSERT_NOT_NULL(backend::EvaluateAs<type::Type const *>(
-      type::Typed<ast::Expression const *>(node->type(), type::Type_),
-      (&context())));
+      type::Typed<ast::Expression const *>(node->type(), type::Type_), this));
   if (t->is<type::Struct>()) {
-    ast::OverloadSet os(node->scope_, "as", (&context()));
+    ast::OverloadSet os(node->scope_, "as", this);
     os.add_adl("as", t);
     os.add_adl("as", expr_result.type_);
     os.keep([t](ast::Overload const &o) { return o.result.type_ == t; });
@@ -1114,7 +1102,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Cast const *node) {
       NOT_YET("log an error", expr_result.type_, t);
     }
 
-    return context().set_result(node, VerifyResult(t, expr_result.const_));
+    return set_result(node, VerifyResult(t, expr_result.const_));
   }
 }
 
@@ -1147,7 +1135,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::ChainOp const *node) {
     } else if (!results.back().const_) {
       NOT_YET("log an error: non const block");
     } else {
-      return context().set_result(node, VerifyResult::Constant(last.type_));
+      return set_result(node, VerifyResult::Constant(last.type_));
     }
   }
 not_blocks:
@@ -1183,8 +1171,7 @@ not_blocks:
       }
 
       if (failed) { return VerifyResult::Error(); }
-      return context().set_result(node,
-                                  VerifyResult(first_expr_type, is_const));
+      return set_result(node, VerifyResult(first_expr_type, is_const));
     } break;
     default: {
       bool is_const = results[0].const_;
@@ -1211,7 +1198,7 @@ not_blocks:
         if (lhs_result.type_->is<type::Struct>() ||
             lhs_result.type_->is<type::Struct>()) {
           // TODO overwriting type a bunch of times?
-          ast::OverloadSet os(node->scope_, token, (&context()));
+          ast::OverloadSet os(node->scope_, token, this);
           os.add_adl(token, lhs_result.type_);
           os.add_adl(token, rhs_result.type_);
           return ast::VerifyDispatch(
@@ -1244,7 +1231,7 @@ not_blocks:
                       lhs_result.type_->to_string(),
                       rhs_result.type_->to_string(),
                       frontend::SourceRange(node->exprs()[i]->span,
-                               node->exprs()[i + 1]->span));
+                                            node->exprs()[i + 1]->span));
                   return VerifyResult::Error();
               }
             } break;
@@ -1260,7 +1247,7 @@ not_blocks:
                       lhs_result.type_->to_string(),
                       rhs_result.type_->to_string(),
                       frontend::SourceRange(node->exprs()[i]->span,
-                               node->exprs()[i + 1]->span));
+                                            node->exprs()[i + 1]->span));
                   return VerifyResult::Error();
               }
             } break;
@@ -1269,7 +1256,7 @@ not_blocks:
         }
       }
 
-      return context().set_result(node, VerifyResult(type::Bool, is_const));
+      return set_result(node, VerifyResult(type::Bool, is_const));
     }
   }
 }
@@ -1286,8 +1273,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::CommaList const *node) {
     ts.push_back(r.type_);
     is_const &= r.const_;
   }
-  return context().set_result(node,
-                              VerifyResult(type::Tup(std::move(ts)), is_const));
+  return set_result(node, VerifyResult(type::Tup(std::move(ts)), is_const));
 }
 
 VerifyResult TraditionalCompilation::VerifyType(ast::Declaration const *node) {
@@ -1296,9 +1282,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Declaration const *node) {
   // Declarations may have already been computed. Essentially the first time we
   // see an identifier (either a real identifier node, or a declaration, we need
   // to verify the type, but we only want to do node once.
-  if (auto *attempt = (&context())->prior_verification_attempt(node)) {
-    return *attempt;
-  }
+  if (auto *attempt = prior_verification_attempt(node)) { return *attempt; }
 
   int dk = 0;
   if (node->IsInferred()) { dk = INFER; }
@@ -1310,7 +1294,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Declaration const *node) {
   type::Type const *node_type = nullptr;
   switch (dk) {
     case 0 /* Default initailization */: {
-      ASSIGN_OR(return context().set_result(node, VerifyResult::Error()),
+      ASSIGN_OR(return set_result(node, VerifyResult::Error()),
                        auto type_expr_result,
                        node->type_expr()->VerifyType(this));
       if (!type_expr_result.const_) {
@@ -1321,18 +1305,16 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Declaration const *node) {
         //   }
         //
         NOT_YET("log an error", DumpAst::ToString(node));
-        return context().set_result(node, VerifyResult::Error());
+        return set_result(node, VerifyResult::Error());
       }
       auto *type_expr_type = type_expr_result.type_;
       if (type_expr_type == type::Type_) {
         node_type = ASSERT_NOT_NULL(
-            context()
-                .set_result(node,
-                            VerifyResult::Constant(
-                                backend::EvaluateAs<type::Type const *>(
-                                    type::Typed<ast::Expression const *>(
-                                        node->type_expr(), type_expr_type),
-                                    (&context()))))
+            set_result(node, VerifyResult::Constant(
+                                 backend::EvaluateAs<type::Type const *>(
+                                     type::Typed<ast::Expression const *>(
+                                         node->type_expr(), type_expr_type),
+                                     this)))
                 .type_);
 
         if (!(node->flags() & ast::Declaration::f_IsFnParam) &&
@@ -1344,32 +1326,31 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Declaration const *node) {
       } else {
         error_log()->NotAType(node->type_expr()->span,
                               type_expr_type->to_string());
-        return context().set_result(node, VerifyResult::Error());
+        return set_result(node, VerifyResult::Error());
       }
     } break;
     case INFER: UNREACHABLE(); break;
     case INFER | CUSTOM_INIT: {
-      ASSIGN_OR(return context().set_result(node, VerifyResult::Error()),
+      ASSIGN_OR(return set_result(node, VerifyResult::Error()),
                        auto init_val_result,
                        node->init_val()->VerifyType(this));
 
       auto reason = Inferrable(init_val_result.type_);
       if (reason != InferenceFailureReason::Inferrable) {
         error_log()->UninferrableType(reason, node->init_val()->span);
-        return context().set_result(node, VerifyResult::Error());
+        return set_result(node, VerifyResult::Error());
       }
 
       // TODO initialization, not assignment.
       if (!VerifyAssignment(this, node->span, init_val_result.type_,
                             init_val_result.type_)) {
-        return context().set_result(node, VerifyResult::Error());
+        return set_result(node, VerifyResult::Error());
       }
 
       node_type =
-          context()
-              .set_result(node, VerifyResult(init_val_result.type_,
-                                             (node->flags() &
-                                              ast::Declaration::f_IsConst)))
+          set_result(
+              node, VerifyResult(init_val_result.type_,
+                                 (node->flags() & ast::Declaration::f_IsConst)))
               .type_;
     } break;
     case INFER | UNINITIALIZED: {
@@ -1378,7 +1359,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Declaration const *node) {
       if (node->flags() & ast::Declaration::f_IsConst) {
         error_log()->UninitializedConstant(node->span);
       }
-      return context().set_result(node, VerifyResult::Error());
+      return set_result(node, VerifyResult::Error());
     } break;
     case CUSTOM_INIT: {
       auto init_val_result = node->init_val()->VerifyType(this);
@@ -1396,13 +1377,11 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Declaration const *node) {
           error = true;
         } else {
           node_type =
-              context()
-                  .set_result(node,
-                              VerifyResult::Constant(
-                                  backend::EvaluateAs<type::Type const *>(
-                                      type::Typed<ast::Expression const *>(
-                                          node->type_expr(), type::Type_),
-                                      (&context()))))
+              set_result(node, VerifyResult::Constant(
+                                   backend::EvaluateAs<type::Type const *>(
+                                       type::Typed<ast::Expression const *>(
+                                           node->type_expr(), type::Type_),
+                                       this)))
                   .type_;
         }
 
@@ -1418,35 +1397,34 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Declaration const *node) {
         error = true;
       }
 
-      if (error) { return context().set_result(node, VerifyResult::Error()); }
+      if (error) { return set_result(node, VerifyResult::Error()); }
     } break;
     case UNINITIALIZED: {
-      ASSIGN_OR(return context().set_result(node, VerifyResult::Error()),
+      ASSIGN_OR(return set_result(node, VerifyResult::Error()),
                        auto type_expr_result,
                        node->type_expr()->VerifyType(this));
       auto *type_expr_type = type_expr_result.type_;
       if (type_expr_type == type::Type_) {
         if (!type_expr_result.const_) {
           NOT_YET("log an error");
-          return context().set_result(node, VerifyResult::Error());
+          return set_result(node, VerifyResult::Error());
         }
         node_type =
-            context()
-                .set_result(node, VerifyResult::Constant(
-                                      backend::EvaluateAs<type::Type const *>(
-                                          type::Typed<ast::Expression const *>(
-                                              node->type_expr(), type::Type_),
-                                          (&context()))))
+            set_result(node, VerifyResult::Constant(
+                                 backend::EvaluateAs<type::Type const *>(
+                                     type::Typed<ast::Expression const *>(
+                                         node->type_expr(), type::Type_),
+                                     this)))
                 .type_;
       } else {
         error_log()->NotAType(node->type_expr()->span,
                               type_expr_type->to_string());
-        return context().set_result(node, VerifyResult::Error());
+        return set_result(node, VerifyResult::Error());
       }
 
       if (node->flags() & ast::Declaration::f_IsConst) {
         error_log()->UninitializedConstant(node->span);
-        return context().set_result(node, VerifyResult::Error());
+        return set_result(node, VerifyResult::Error());
       }
 
     } break;
@@ -1461,8 +1439,8 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Declaration const *node) {
           backend::EvaluateAs<Module const *>(
               type::Typed<ast::Expression const *>(node->init_val(),
                                                    type::Module),
-              (&context())));
-      return context().set_result(node, VerifyResult::Constant(type::Module));
+              this));
+      return set_result(node, VerifyResult::Constant(type::Module));
     } else if (node_type->is<type::Tuple>()) {
       NOT_YET(node_type, DumpAst::ToString(node));
     } else {
@@ -1483,12 +1461,12 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Declaration const *node) {
 
     decls_to_check.reserve(num_total);
     for (auto *decl : good_decls_to_check) {
-      decls_to_check.emplace_back(decl, (&context())->type_of(decl));
+      decls_to_check.emplace_back(decl, type_of(decl));
     }
 
     if (has_children) {
       for (auto *decl : iter->second) {
-        decls_to_check.emplace_back(decl, (&context())->type_of(decl));
+        decls_to_check.emplace_back(decl, type_of(decl));
       }
     }
   }
@@ -1512,7 +1490,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Declaration const *node) {
     // higher-up-the-scope-tree identifier as the shadow when something else on
     // a different branch could find it unambiguously. It's also just a hack
     // from the get-go so maybe we should just do it the right way.
-    return context().set_result(node, VerifyResult::Error());
+    return set_result(node, VerifyResult::Error());
   }
 
   return VerifySpecialFunctions(this, node, node_type);
@@ -1527,7 +1505,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::EnumLiteral const *node) {
     }
   }
 
-  return context().set_result(node, VerifyResult::Constant(type::Type_));
+  return set_result(node, VerifyResult::Constant(type::Type_));
 }
 
 VerifyResult TraditionalCompilation::VerifyType(
@@ -1535,7 +1513,7 @@ VerifyResult TraditionalCompilation::VerifyType(
   for (auto const &p : node->inputs_) {
     if ((p.value->flags() & ast::Declaration::f_IsConst) ||
         !node->param_dep_graph_.at(p.value.get()).empty()) {
-      return context().set_result(node, VerifyResult::Constant(type::Generic));
+      return set_result(node, VerifyResult::Constant(type::Generic));
     }
   }
 
@@ -1543,16 +1521,15 @@ VerifyResult TraditionalCompilation::VerifyType(
 }
 
 VerifyResult TraditionalCompilation::VerifyType(ast::Identifier const *node) {
-  for (auto iter = (&context())->cyc_deps_.begin();
-       iter != (&context())->cyc_deps_.end(); ++iter) {
+  for (auto iter = cyc_deps_.begin(); iter != cyc_deps_.end(); ++iter) {
     if (*iter == node) {
-      error_log()->CyclicDependency(std::vector<ast::Identifier const *>(
-          iter, (&context())->cyc_deps_.end()));
+      error_log()->CyclicDependency(
+          std::vector<ast::Identifier const *>(iter, cyc_deps_.end()));
       return VerifyResult::Error();
     }
   }
-  (&context())->cyc_deps_.push_back(node);
-  base::defer d([&] { (&context())->cyc_deps_.pop_back(); });
+  cyc_deps_.push_back(node);
+  base::defer d([&] { cyc_deps_.pop_back(); });
 
   // `node->decl()` is not necessarily null. Because we may call VerifyType many
   // times in multiple contexts, it is null the first time, but not on future
@@ -1590,12 +1567,11 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Identifier const *node) {
   // a different generic setup but not bound the type for node context. But node
   // is wrong in the sense that the declaration bound is possibly dependent on
   // the context.
-  type::Type const *t = (&context())->type_of(node->decl());
+  type::Type const *t = type_of(node->decl());
 
   if (t == nullptr) { return VerifyResult::Error(); }
-  return context().set_result(
-      node,
-      VerifyResult(t, node->decl()->flags() & ast::Declaration::f_IsConst));
+  return set_result(node, VerifyResult(t, node->decl()->flags() &
+                                              ast::Declaration::f_IsConst));
 }
 
 VerifyResult TraditionalCompilation::VerifyType(ast::Import const *node) {
@@ -1616,7 +1592,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Import const *node) {
   // TODO storing node might not be safe.
   auto src = backend::EvaluateAs<std::string_view>(
       type::Typed<ast::Expression const *>(node->operand(), type::ByteView),
-      (&context()));
+      this);
   ASSIGN_OR(error_log()->MissingModule(src, *module()->path_);
             return VerifyResult::Error(),  //
                    auto pending_mod,
@@ -1624,8 +1600,8 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Import const *node) {
                                       *module()->path_, CompileModule));
 
   if (!pending_mod.valid()) { return VerifyResult::Error(); }
-  (&context())->set_pending_module(node, pending_mod);
-  return context().set_result(node, VerifyResult::Constant(type::Module));
+  set_pending_module(node, pending_mod);
+  return set_result(node, VerifyResult::Constant(type::Module));
 }
 
 VerifyResult TraditionalCompilation::VerifyType(ast::Index const *node) {
@@ -1640,15 +1616,14 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Index const *node) {
   }
 
   if (lhs_result.type_ == type::ByteView) {
-    return context().set_result(node,
-                                VerifyResult(type::Nat8, rhs_result.const_));
+    return set_result(node, VerifyResult(type::Nat8, rhs_result.const_));
   } else if (auto *lhs_array_type = lhs_result.type_->if_as<type::Array>()) {
-    return context().set_result(
+    return set_result(
         node, VerifyResult(lhs_array_type->data_type, rhs_result.const_));
   } else if (auto *lhs_buf_type =
                  lhs_result.type_->if_as<type::BufferPointer>()) {
-    return context().set_result(
-        node, VerifyResult(lhs_buf_type->pointee, rhs_result.const_));
+    return set_result(node,
+                      VerifyResult(lhs_buf_type->pointee, rhs_result.const_));
   } else if (auto *tup = lhs_result.type_->if_as<type::Tuple>()) {
     if (!rhs_result.const_) {
       error_log()->NonConstantTupleIndex(node->span);
@@ -1657,7 +1632,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Index const *node) {
 
     int64_t index = [&]() -> int64_t {
       auto results =
-          backend::Evaluate(type::Typed{node->rhs(), index_type}, (&context()));
+          backend::Evaluate(type::Typed{node->rhs(), index_type}, this);
       if (index_type == type::Int8) { return results.get<int8_t>(0).value(); }
       if (index_type == type::Int16) { return results.get<int16_t>(0).value(); }
       if (index_type == type::Int32) { return results.get<int32_t>(0).value(); }
@@ -1681,8 +1656,8 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Index const *node) {
       return VerifyResult::Error();
     }
 
-    return context().set_result(
-        node, VerifyResult(tup->entries_.at(index), lhs_result.const_));
+    return set_result(node,
+                      VerifyResult(tup->entries_.at(index), lhs_result.const_));
 
   } else {
     error_log()->InvalidIndexing(node->span, lhs_result.type_->to_string());
@@ -1702,7 +1677,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Jump const *node) {
   //   arg_results.push_back(std::move(arg_result));
   // }
   // if (err) { NOT_YET(); }
-  // ir::ScopeDef *scope_def = (&context())->scope_def(
+  // ir::ScopeDef *scope_def = scope_def(
   //     node->scope_->Containing<core::ScopeLitScope>()->scope_lit_);
   // DEBUG_LOG("JumpHandler")(scope_def->blocks_);
   // for (auto const &opt : node->options_) {
@@ -1714,12 +1689,13 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Jump const *node) {
   //     auto block_def = &iter->second;
   //     // TODO you're re-verifying each unnecessarily.
   //     auto args = opt.args.Transform(
-  //         [(&context()), this](std::unique_ptr<ast::Expression> const &arg)
+  //         [this](std::unique_ptr<ast::Expression> const &arg)
   //             -> std::pair<ast::Expression const *, VerifyResult> {
   //           return std::pair{arg.get(), arg->VerifyType(this)};
   //         });
   //     auto *lit = block_def->parent_;
-  //     ast::VerifyDispatch(this, ast::ExprPtr{lit, 0x01}, block_def->before_, args);
+  //     ast::VerifyDispatch(this, ast::ExprPtr{lit, 0x01}, block_def->before_,
+  //     args);
   //   }
   // }
   return VerifyResult::Constant(type::Void());
@@ -1740,10 +1716,9 @@ VerifyResult TraditionalCompilation::VerifyType(ast::JumpHandler const *node) {
   }
 
   if (err) {
-    return context().set_result(node, VerifyResult::Error());
+    return set_result(node, VerifyResult::Error());
   } else {
-    return context().set_result(node,
-                                VerifyResult::Constant(type::Jmp(arg_types)));
+    return set_result(node, VerifyResult::Constant(type::Jmp(arg_types)));
   }
 }
 
@@ -1758,7 +1733,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::PrintStmt const *node) {
         expr_type->is<type::Flags>()) {
       continue;
     } else {
-      ast::OverloadSet os(node->scope_, "print", (&context()));
+      ast::OverloadSet os(node->scope_, "print", this);
       os.add_adl("print", expr_type);
       // TODO using expr.get() for the dispatch table is super janky. node is
       // used so we don't collide with the table for the actual expression as
@@ -1793,9 +1768,8 @@ VerifyResult TraditionalCompilation::VerifyType(ast::YieldStmt const *node) {
 }
 
 VerifyResult TraditionalCompilation::VerifyType(ast::ScopeLiteral const *node) {
-  auto verify_result =
-      context().set_result(node, VerifyResult::Constant(type::Scope));
-  bool error = false;
+  auto verify_result = set_result(node, VerifyResult::Constant(type::Scope));
+  bool error         = false;
   for (auto const *decl : node->decls()) {
     auto result = decl->VerifyType(this);
     if (!result.const_) {
@@ -1829,8 +1803,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::ScopeNode const *node) {
   //
   // TODO is the scope type correct here?
   auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(
-      type::Typed<ast::Expression const *>{node->name(), type::Scope},
-      (&context()));
+      type::Typed<ast::Expression const *>{node->name(), type::Scope}, this);
   if (scope_def->work_item && *scope_def->work_item) {
     (std::move(*scope_def->work_item))();
   }
@@ -1906,8 +1879,8 @@ VerifyResult TraditionalCompilation::VerifyType(
         }
       }
     }
-    if (err) { return context().set_result(node, VerifyResult::Error()); }
-    return context().set_result(node, VerifyResult::Constant(type::Type_));
+    if (err) { return set_result(node, VerifyResult::Error()); }
+    return set_result(node, VerifyResult::Constant(type::Type_));
     // TODO, we need to verify the body of this struct at some point, but it may
     // be dependent on things we can't evaluate yet. For example,
     //
@@ -1915,12 +1888,11 @@ VerifyResult TraditionalCompilation::VerifyType(
     //
     // I'm yet unsure exactly how we should handle this.
     /*
-    bool ok = absl::c_all_of(node->fields_, [this, (&context())](
-                                                ast::Declaration const &field) {
+    bool ok = absl::c_all_of(node->fields_, [this](ast::Declaration const &field) {
       // TODO you should verify each field no matter what.
       field.VerifyType(this);
       if (!field.init_val() ||
-          ASSERT_NOT_NULL((&context())->prior_verification_attempt(field.init_val()))
+          ASSERT_NOT_NULL(prior_verification_attempt(field.init_val()))
               ->const_) {
         return true;
       }
@@ -1931,20 +1903,20 @@ VerifyResult TraditionalCompilation::VerifyType(
     // TODO so in fact we could recover here and just not emit ir but we're no
     // longer set up to do that.
     if (ok) {
-      return context().set_result(node, VerifyResult::Constant(type::Type_));
+      return set_result(node, VerifyResult::Constant(type::Type_));
     } else {
       return VerifyResult::Error();
     }
     */
   } else {
-    return context().set_result(node, VerifyResult::Constant(type::GenStruct(
-                                          node->scope_, std::move(ts))));
+    return set_result(node, VerifyResult::Constant(
+                                type::GenStruct(node->scope_, std::move(ts))));
   }
 }
 
 VerifyResult TraditionalCompilation::VerifyType(ast::StructType const *node) {
   for (auto &arg : node->args_) { arg->VerifyType(this); }
-  return context().set_result(node, VerifyResult::Constant(type::Type_));
+  return set_result(node, VerifyResult::Constant(type::Type_));
 }
 
 VerifyResult TraditionalCompilation::VerifyType(ast::Switch const *node) {
@@ -1958,7 +1930,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Switch const *node) {
 
   absl::flat_hash_set<type::Type const *> types;
   bool err = false;
-  for (auto & [ body, cond ] : node->cases_) {
+  for (auto &[body, cond] : node->cases_) {
     auto cond_result = cond->VerifyType(this);
     auto body_result = body->VerifyType(this);
     err |= !cond_result || !body_result;
@@ -1989,13 +1961,13 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Switch const *node) {
   // TODO check to ensure that the type is either exhaustable or has a default.
 
   if (types.empty()) {
-    return context().set_result(node, VerifyResult(type::Void(), is_const));
+    return set_result(node, VerifyResult(type::Void(), is_const));
   }
   auto some_type = *types.begin();
   if (absl::c_all_of(types,
                      [&](type::Type const *t) { return t == some_type; })) {
     // TODO node might be a constant.
-    return context().set_result(node, VerifyResult(some_type, is_const));
+    return set_result(node, VerifyResult(some_type, is_const));
   } else {
     NOT_YET("handle type error");
     return VerifyResult::Error();
@@ -2003,7 +1975,7 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Switch const *node) {
 }
 
 VerifyResult TraditionalCompilation::VerifyType(ast::Terminal const *node) {
-  return context().set_result(node, VerifyResult::Constant(node->type()));
+  return set_result(node, VerifyResult::Constant(node->type()));
 }
 
 VerifyResult TraditionalCompilation::VerifyType(ast::Unop const *node) {
@@ -2017,19 +1989,15 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Unop const *node) {
         NOT_YET("log an error. not copyable");
       }
       // TODO Are copies always consts?
-      return context().set_result(node,
-                                  VerifyResult(operand_type, result.const_));
+      return set_result(node, VerifyResult(operand_type, result.const_));
     case frontend::Operator::Move:
       if (!operand_type->IsMovable()) { NOT_YET("log an error. not movable"); }
       // TODO Are copies always consts?
-      return context().set_result(node,
-                                  VerifyResult(operand_type, result.const_));
+      return set_result(node, VerifyResult(operand_type, result.const_));
     case frontend::Operator::BufPtr:
-      return context().set_result(node,
-                                  VerifyResult(type::Type_, result.const_));
+      return set_result(node, VerifyResult(type::Type_, result.const_));
     case frontend::Operator::TypeOf:
-      return context().set_result(node,
-                                  VerifyResult(type::Type_, result.const_));
+      return set_result(node, VerifyResult(type::Type_, result.const_));
     case frontend::Operator::Eval:
       if (!result.const_) {
         // TODO here you could return a correct type and just have there
@@ -2038,18 +2006,16 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Unop const *node) {
         error_log()->NonConstantEvaluation(node->operand->span);
         return VerifyResult::Error();
       } else {
-        return context().set_result(node,
-                                    VerifyResult(operand_type, result.const_));
+        return set_result(node, VerifyResult(operand_type, result.const_));
       }
     case frontend::Operator::Which:
       if (!operand_type->is<type::Variant>()) {
         error_log()->WhichNonVariant(operand_type->to_string(), node->span);
       }
-      return context().set_result(node,
-                                  VerifyResult(type::Type_, result.const_));
+      return set_result(node, VerifyResult(type::Type_, result.const_));
     case frontend::Operator::At:
       if (operand_type->is<type::Pointer>()) {
-        return context().set_result(
+        return set_result(
             node, VerifyResult(operand_type->as<type::Pointer>().pointee,
                                result.const_));
       } else {
@@ -2061,22 +2027,20 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Unop const *node) {
       // TODO  does it make sense to take the address of a constant? I think it
       // has to but it also has to have some special meaning. Things we take the
       // address of in run-time code need to be made available at run-time.
-      return context().set_result(
-          node, VerifyResult(type::Ptr(operand_type), result.const_));
+      return set_result(node,
+                        VerifyResult(type::Ptr(operand_type), result.const_));
     case frontend::Operator::Mul:
       if (operand_type != type::Type_) {
         NOT_YET("log an error, ", operand_type, node);
         return VerifyResult::Error();
       } else {
-        return context().set_result(node,
-                                    VerifyResult(type::Type_, result.const_));
+        return set_result(node, VerifyResult(type::Type_, result.const_));
       }
     case frontend::Operator::Sub:
       if (type::IsNumeric(operand_type)) {
-        return context().set_result(node,
-                                    VerifyResult(operand_type, result.const_));
+        return set_result(node, VerifyResult(operand_type, result.const_));
       } else if (operand_type->is<type::Struct>()) {
-        ast::OverloadSet os(node->scope_, "-", (&context()));
+        ast::OverloadSet os(node->scope_, "-", this);
         os.add_adl("-", operand_type);
         return ast::VerifyDispatch(
             this, node, os,
@@ -2092,19 +2056,17 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Unop const *node) {
       //
       if (operand_type->is<type::Tuple>()) {
         // TODO there should be a way to avoid copying over any of entire type
-        return context().set_result(node,
-                                    VerifyResult(operand_type, result.const_));
+        return set_result(node, VerifyResult(operand_type, result.const_));
       } else {
         NOT_YET();  // Log an error. can't expand a non-tuple.
       }
     case frontend::Operator::Not:
       if (operand_type == type::Bool || operand_type->is<type::Enum>() ||
           operand_type->is<type::Flags>()) {
-        return context().set_result(node,
-                                    VerifyResult(operand_type, result.const_));
+        return set_result(node, VerifyResult(operand_type, result.const_));
       }
       if (operand_type->is<type::Struct>()) {
-        ast::OverloadSet os(node->scope_, "!", (&context()));
+        ast::OverloadSet os(node->scope_, "!", this);
         os.add_adl("!", operand_type);
         return ast::VerifyDispatch(
             this, node, os,
@@ -2120,19 +2082,19 @@ VerifyResult TraditionalCompilation::VerifyType(ast::Unop const *node) {
                                            operand_type->to_string());
       }
       if (!result.const_) { NOT_YET(); }
-      return context().set_result(node, VerifyResult::Constant(type::Void()));
+      return set_result(node, VerifyResult::Constant(type::Void()));
     case frontend::Operator::Ensure:
       if (operand_type != type::Bool) {
         error_log()->PostconditionNeedsBool(node->operand->span,
                                             operand_type->to_string());
       }
       if (!result.const_) { NOT_YET(); }
-      return context().set_result(node, VerifyResult::Constant(type::Void()));
+      return set_result(node, VerifyResult::Constant(type::Void()));
     case frontend::Operator::VariadicPack: {
       if (!result.const_) { NOT_YET("Log an error"); }
       // TODO could be a type, or a function returning a ty
       if (result.type_ == type::Type_) {
-        return context().set_result(node, VerifyResult::Constant(type::Type_));
+        return set_result(node, VerifyResult::Constant(type::Type_));
       } else if (result.type_->is<type::Function>()) {
         NOT_YET();
       }

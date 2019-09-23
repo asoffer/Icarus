@@ -1,3 +1,8 @@
+#ifndef ICARUS_BASE_TAG_H
+#define ICARUS_BASE_TAG_H
+
+#include <type_traits>
+#include <utility>
 
 namespace base {
 template <typename T>
@@ -25,3 +30,5 @@ template <typename T>
 constexpr bool IsTaggedV = IsTagged<T>::value;
 
 }  // namespace base
+
+#endif  // ICARUS_BASE_TAG_H

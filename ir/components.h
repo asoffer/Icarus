@@ -14,8 +14,6 @@
 namespace ir {
 base::Tagged<Addr, Reg> Index(type::Pointer const *t, Reg array_ptr,
                           RegOr<int64_t> offset);
-base::Tagged<Addr, Reg> Alloca(type::Type const *t);
-base::Tagged<Addr, Reg> TmpAlloca(type::Type const *t, Context *ctx);
 
 template <bool B>
 BasicBlock *EarlyExitOn(BasicBlock *exit_block, RegOr<bool> cond) {

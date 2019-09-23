@@ -135,7 +135,6 @@ cc_lib_target(
     ],
     impl_deps = [
         ":builder",
-        "//misc:context",
     ],
     test_deps = None,
 )

@@ -9,7 +9,6 @@
 #include "ir/cmd/misc.h"
 #include "ir/components.h"
 #include "ir/str.h"
-#include "misc/context.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 
@@ -19,7 +18,7 @@ using ::matcher::InheritsFrom;
 std::vector<ir::RegOr<ir::Addr>> TraditionalCompilation::EmitRef(
     ast::Access const *node) {
   auto reg = node->operand()->EmitRef(this)[0];
-  auto *t  = context().type_of(node->operand());
+  auto *t  = type_of(node->operand());
 
   while (auto *tp = t->if_as<type::Pointer>()) {
     t   = tp->pointee;
@@ -43,21 +42,20 @@ std::vector<ir::RegOr<ir::Addr>> TraditionalCompilation::EmitRef(
 std::vector<ir::RegOr<ir::Addr>> TraditionalCompilation::EmitRef(
     ast::Identifier const *node) {
   ASSERT(node->decl() != nullptr);
-  return {context().addr(node->decl())};
+  return {addr(node->decl())};
 }
 
 std::vector<ir::RegOr<ir::Addr>> TraditionalCompilation::EmitRef(
     ast::Index const *node) {
-  auto *lhs_type = context().type_of(node->lhs());
-  auto *rhs_type = context().type_of(node->rhs());
+  auto *lhs_type = type_of(node->lhs());
+  auto *rhs_type = type_of(node->rhs());
 
   if (lhs_type->is<type::Array>()) {
     auto index = ir::CastTo<int64_t>(rhs_type, node->rhs()->EmitValue(this));
 
     auto lval = node->lhs()->EmitRef(this)[0];
-    if (!lval.is_reg()) { NOT_YET(this, context().type_of(node)); }
-    return {ir::Index(type::Ptr(context().type_of(node->lhs())), lval.reg(),
-                      index)};
+    if (!lval.is_reg()) { NOT_YET(this, type_of(node)); }
+    return {ir::Index(type::Ptr(type_of(node->lhs())), lval.reg(), index)};
   } else if (auto *buf_ptr_type = lhs_type->if_as<type::BufferPointer>()) {
     auto index = ir::CastTo<int64_t>(rhs_type, node->rhs()->EmitValue(this));
 
@@ -72,11 +70,10 @@ std::vector<ir::RegOr<ir::Addr>> TraditionalCompilation::EmitRef(
             node->lhs()->EmitValue(this).get<std::string_view>(0).value()),
         index, type::Ptr(type::Nat8))};
   } else if (auto *tup = lhs_type->if_as<type::Tuple>()) {
-    auto index =
-        ir::CastTo<int64_t>(
-            rhs_type,
-            backend::Evaluate(type::Typed{node->rhs(), rhs_type}, &context()))
-            .value();
+    auto index = ir::CastTo<int64_t>(
+                     rhs_type, backend::Evaluate(
+                                   type::Typed{node->rhs(), rhs_type}, this))
+                     .value();
     return {ir::Field(node->lhs()->EmitRef(this)[0], tup, index).get()};
   }
   UNREACHABLE(*this);

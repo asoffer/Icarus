@@ -3,7 +3,6 @@
 #include "ast/ast.h"
 #include "ir/cmd/misc.h"
 #include "ir/components.h"
-#include "misc/context.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 
@@ -25,13 +24,12 @@ void TraditionalCompilation::EmitMoveInit(type::Type const *from_type,
 
 void TraditionalCompilation::EmitMoveInit(ast::Expression const *node,
                                           type::Typed<ir::Reg> reg) {
-  EmitMoveInit(context().type_of(node), node->EmitValue(this), reg);
+  EmitMoveInit(type_of(node), node->EmitValue(this), reg);
 }
 
 void TraditionalCompilation::EmitMoveInit(ast::ArrayLiteral const *node,
-                                          type::Typed<ir::Reg> reg
-) {
-  type::Array const &array_type = context().type_of(node)->as<type::Array>();
+                                          type::Typed<ir::Reg> reg) {
+  type::Array const &array_type = type_of(node)->as<type::Array>();
   auto *data_type_ptr           = type::Ptr(array_type.data_type);
   auto elem = ir::Index(type::Ptr(&array_type), reg.get(), 0);
   for (size_t i = 0; i + 1 < array_type.len; ++i) {
@@ -71,9 +69,7 @@ void TraditionalCompilation::EmitMoveInit(ast::Unop const *node,
     case frontend::Operator::Copy:
       node->operand->EmitCopyInit(this, reg);
       break;
-    default:
-      EmitMoveInit(context().type_of(node), node->EmitValue(this), reg);
-      break;
+    default: EmitMoveInit(type_of(node), node->EmitValue(this), reg); break;
   }
 }
 

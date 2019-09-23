@@ -120,7 +120,7 @@ void SetRet(uint16_t n, T val) {
   }
 }
 
-inline void SetRet(uint16_t n, type::Typed<Results> const& r, Context* ctx) {
+inline void SetRet(uint16_t n, type::Typed<Results> const& r) {
   // if (r.type()->is<type::GenericStruct>()) {
   //   SetRet(n, r->get<AnyFunc>(0));
   // } else {

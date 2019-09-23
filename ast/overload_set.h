@@ -3,18 +3,22 @@
 
 #include <string_view>
 
-#include "ast/node.h"
 #include "base/bag.h"
 #include "base/ptr_span.h"
-#include "type/function.h"
-#include "type/typed_value.h"
-#include "visitor/verify_type.h"
+#include "visitor/traditional_compilation.h"
+#include "visitor/verify_result.h"
+
+namespace type {
+struct Type;
+}  // namespace type
 
 namespace core {
 struct Scope;
 }  // namespace core
 
-struct Context;
+namespace visitor {
+struct TraditionalCompilation;
+}  // namespace visitor
 
 namespace ast {
 struct Expression;
@@ -28,8 +32,10 @@ struct Overload {
 
 struct OverloadSet : public base::bag<Overload> {
   OverloadSet() = default;
-  OverloadSet(core::Scope *scope, std::string_view id, Context *ctx);
-  OverloadSet(base::PtrSpan<Declaration const> decls, Context *ctx);
+  OverloadSet(core::Scope *scope, std::string_view id,
+              visitor::TraditionalCompilation *visitor);
+  OverloadSet(base::PtrSpan<Declaration const> decls,
+              visitor::TraditionalCompilation *visitor);
 
   void add_adl(std::string_view id, type::Type const *t);
 };
