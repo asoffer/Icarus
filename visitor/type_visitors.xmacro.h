@@ -1,27 +1,27 @@
 #ifdef ICARUS_VISITOR_EMIT_IR
-ICARUS_TYPE_VISITOR(void EmitDestroy(visitor::TraditionalCompilation *visitor,
+ICARUS_TYPE_VISITOR(void EmitDestroy(compiler::Compiler *visitor,
                                      ir::Reg reg) const,
                     { visitor->EmitDestroy(this, reg); });
 ICARUS_TYPE_VISITOR(
-    void EmitCopyAssign(visitor::TraditionalCompilation *visitor,
+    void EmitCopyAssign(compiler::Compiler *visitor,
                         type::Type const *from_type, ir::Results const &from,
                         ir::RegOr<ir::Addr> to) const,
     {
       visitor->EmitCopyAssign(this, to, type::Typed{from, from_type});
     });
 ICARUS_TYPE_VISITOR(
-    void EmitMoveAssign(visitor::TraditionalCompilation *visitor,
+    void EmitMoveAssign(compiler::Compiler *visitor,
                         type::Type const *from_type, ir::Results const &from,
                         ir::RegOr<ir::Addr> to) const,
     {
       visitor->EmitMoveAssign(this, to, type::Typed{from, from_type});
     });
 ICARUS_TYPE_VISITOR(
-    void EmitDefaultInit(visitor::TraditionalCompilation *visitor, ir::Reg reg)
+    void EmitDefaultInit(compiler::Compiler *visitor, ir::Reg reg)
         const,
     { visitor->EmitDefaultInit(this, reg); });
 
-ICARUS_TYPE_VISITOR(void EmitPrint(visitor::TraditionalCompilation *visitor,
+ICARUS_TYPE_VISITOR(void EmitPrint(compiler::Compiler *visitor,
                                    ir::Results const &val) const,
                     { visitor->EmitPrint(this, val); });
 

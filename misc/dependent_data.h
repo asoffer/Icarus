@@ -10,8 +10,8 @@
 #ifdef ICARUS_VISITOR_EMIT_IR
 #include "ast/dispatch_table.h"
 #include "ast/expr_ptr.h"
+#include "compiler/verify_result.h"
 #include "ir/scope_def.h"
-#include "visitor/verify_result.h"
 #endif // ICARUS_VISITOR_EMIT_IR
 
 namespace ast {
@@ -33,7 +33,7 @@ struct DependentData {
   // TODO future optimization: the bool determining if it's const is not
   // dependent and can therefore be stored more efficiently (though querying
   // for both simultaneously would be more expensive I guess.
-  absl::flat_hash_map<ast::ExprPtr, visitor::VerifyResult> verify_results_;
+  absl::flat_hash_map<ast::ExprPtr, compiler::VerifyResult> verify_results_;
 
   // TODO this ifdef needs to disappear it's not long-term sustainable
   absl::flat_hash_map<ast::ExprPtr, ast::DispatchTable> dispatch_tables_;

@@ -25,7 +25,7 @@ static void ReplEval(ast::Expression *expr) {
   ICARUS_SCOPE(ir::SetCurrentFunc(&fn)) {
     ir::GetBuilder().CurrentBlock() = fn.entry();
     // TODO use the right module
-    visitor::TraditionalCompilation visitor(nullptr);
+    compiler::Compiler visitor(nullptr);
 
     // TODO support multiple values computed simultaneously?
     auto expr_val = visitor.EmitValue(expr);
@@ -68,7 +68,7 @@ repl_start:;
         }
 
         {
-          visitor::TraditionalCompilation visitor(&mod);
+          compiler::Compiler visitor(&mod);
           visitor.VerifyType(decl);
           visitor.EmitValue(decl);
           // TODO visitor.CompleteDeferredBodies();

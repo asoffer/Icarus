@@ -18,7 +18,7 @@ cc_lib_target(
         "//ir/cmd:return",
         "//type:generic_struct",
         "//type:util",
-        "//visitor:emit_ir",
+        "//compiler:compiler",
     ],
     test_deps = None,
 )

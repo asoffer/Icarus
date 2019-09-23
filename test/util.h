@@ -7,7 +7,7 @@
 #include "core/scope.h"
 #include "frontend/source/string.h"
 #include "misc/module.h"
-#include "visitor/traditional_compilation.h"
+#include "compiler/compiler.h"
 
 namespace frontend {
 std::vector<std::unique_ptr<ast::Node>> Parse(Source *src, ::Module *mod);
@@ -18,7 +18,7 @@ namespace internal {
 
 template <typename T, bool Verify>
 std::unique_ptr<T> MakeNode(std::string s,
-                            visitor::TraditionalCompilation *visitor,
+                            compiler::Compiler *visitor,
                             core::Scope *scope) {
   if (scope == nullptr) { scope = &visitor->module()->scope_; }
   frontend::StringSource src(std::move(s));
@@ -45,13 +45,13 @@ std::unique_ptr<T> MakeNode(std::string s,
 }  // namespace internal
 
 template <typename T>
-std::unique_ptr<T> MakeUnverified(visitor::TraditionalCompilation *visitor,
+std::unique_ptr<T> MakeUnverified(compiler::Compiler *visitor,
                                   std::string s, core::Scope *scope = nullptr) {
   return internal::MakeNode<T, false>(std::move(s), visitor, scope);
 }
 
 template <typename T>
-std::unique_ptr<T> MakeVerified(visitor::TraditionalCompilation *visitor,
+std::unique_ptr<T> MakeVerified(compiler::Compiler *visitor,
                                 std::string s, core::Scope *scope = nullptr) {
   return internal::MakeNode<T, true>(std::move(s), visitor, scope);
 }

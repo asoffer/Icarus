@@ -33,6 +33,7 @@ COMMON_IMPL_DEPS = [
         "//base:untyped_buffer-impl",
         "//backend:eval-impl",
         "//backend:exec-impl",
+        "//compiler:compiler-impl",
         "//core:pending_module-impl",
         "//core:scope-impl",
         "//frontend:lex-impl",
@@ -47,7 +48,6 @@ COMMON_IMPL_DEPS = [
         "//type:cast-impl",
         "//visitor:visitors-impl",
         "//visitor:type_visitors-impl",
-        "//visitor:special_function-impl",
     ]
 
 cc_group_target(

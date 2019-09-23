@@ -1,4 +1,4 @@
-#include "visitor/emit_ir.h"
+#include "compiler/compiler.h"
 
 #include "ast/ast.h"
 
@@ -12,10 +12,10 @@
 #include "type/type.h"
 #include "type/typed_value.h"
 
-namespace visitor {
+namespace compiler {
 using ::matcher::InheritsFrom;
 
-std::vector<ir::RegOr<ir::Addr>> TraditionalCompilation::EmitRef(
+std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(
     ast::Access const *node) {
   auto reg = node->operand()->EmitRef(this)[0];
   auto *t  = type_of(node->operand());
@@ -31,7 +31,7 @@ std::vector<ir::RegOr<ir::Addr>> TraditionalCompilation::EmitRef(
               .get()};
 }
 
-std::vector<ir::RegOr<ir::Addr>> TraditionalCompilation::EmitRef(
+std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(
     ast::CommaList const *node) {
   std::vector<ir::RegOr<ir::Addr>> results;
   results.reserve(node->exprs_.size());
@@ -39,13 +39,13 @@ std::vector<ir::RegOr<ir::Addr>> TraditionalCompilation::EmitRef(
   return results;
 }
 
-std::vector<ir::RegOr<ir::Addr>> TraditionalCompilation::EmitRef(
+std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(
     ast::Identifier const *node) {
   ASSERT(node->decl() != nullptr);
   return {addr(node->decl())};
 }
 
-std::vector<ir::RegOr<ir::Addr>> TraditionalCompilation::EmitRef(
+std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(
     ast::Index const *node) {
   auto *lhs_type = type_of(node->lhs());
   auto *rhs_type = type_of(node->rhs());
@@ -79,10 +79,10 @@ std::vector<ir::RegOr<ir::Addr>> TraditionalCompilation::EmitRef(
   UNREACHABLE(*this);
 }
 
-std::vector<ir::RegOr<ir::Addr>> TraditionalCompilation::EmitRef(
+std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(
     ast::Unop const *node) {
   ASSERT(node->op == frontend::Operator::At);
   return {node->operand->EmitValue(this).get<ir::Reg>(0)};
 }
 
-}  // namespace visitor
+}  // namespace compiler

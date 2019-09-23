@@ -8,12 +8,12 @@
 #include "ir/components.h"
 #include "type/type.h"
 #include "type/typed_value.h"
-#include "visitor/emit_ir.h"
-#include "visitor/special_function.h"
+#include "compiler/compiler.h"
+#include "compiler/special_function.h"
 
-namespace visitor {
+namespace compiler {
 
-void TraditionalCompilation::EmitDestroy(type::Struct const *t, ir::Reg reg) {
+void Compiler::EmitDestroy(type::Struct const *t, ir::Reg reg) {
   if (!t->HasDestructor()) { return; }
   t->destroy_func_.init([=]() {
     if (auto fn = SpecialFunction(this, t, "~")) { return *fn; }
@@ -40,7 +40,7 @@ void TraditionalCompilation::EmitDestroy(type::Struct const *t, ir::Reg reg) {
   ir::Destroy(t, reg);
 }
 
-void TraditionalCompilation::EmitDestroy(type::Variant const *t, ir::Reg reg) {
+void Compiler::EmitDestroy(type::Variant const *t, ir::Reg reg) {
   if (!t->HasDestructor()) { return; }
   // TODO design and build a jump table?
   // TODO remove these casts in favor of something easier to track properties on
@@ -81,7 +81,7 @@ void TraditionalCompilation::EmitDestroy(type::Variant const *t, ir::Reg reg) {
            {ir::Results{reg}});
 }
 
-void TraditionalCompilation::EmitDestroy(type::Tuple const *t, ir::Reg reg) {
+void Compiler::EmitDestroy(type::Tuple const *t, ir::Reg reg) {
   if (!t->HasDestructor()) { return; }
   t->destroy_func_.init([=]() {
     auto *fn = module()->AddFunc(
@@ -105,7 +105,7 @@ void TraditionalCompilation::EmitDestroy(type::Tuple const *t, ir::Reg reg) {
   ir::Destroy(t, reg);
 }
 
-void TraditionalCompilation::EmitDestroy(type::Array const *t, ir::Reg reg) {
+void Compiler::EmitDestroy(type::Array const *t, ir::Reg reg) {
   if (!t->HasDestructor()) { return; }
   t->destroy_func_.init([=]() {
     // TODO special function?
@@ -122,4 +122,4 @@ void TraditionalCompilation::EmitDestroy(type::Array const *t, ir::Reg reg) {
   ir::Destroy(t, reg);
 }
 
-}  // namespace visitor
+}  // namespace compiler

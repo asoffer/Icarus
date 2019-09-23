@@ -1,4 +1,4 @@
-#include "visitor/emit_ir.h"
+#include "compiler/compiler.h"
 
 #include "ast/ast.h"
 #include "ir/cmd/misc.h"
@@ -6,9 +6,9 @@
 #include "type/type.h"
 #include "type/typed_value.h"
 
-namespace visitor {
+namespace compiler {
 
-void TraditionalCompilation::EmitMoveInit(type::Type const *from_type,
+void Compiler::EmitMoveInit(type::Type const *from_type,
                                           ir::Results const &from_val,
                                           type::Typed<ir::Reg> to_var) {
   auto *to_type = to_var.type()->as<type::Pointer>().pointee;
@@ -22,12 +22,12 @@ void TraditionalCompilation::EmitMoveInit(type::Type const *from_type,
   to_type->EmitMoveAssign(this, from_type, from_val, to_var.get());
 }
 
-void TraditionalCompilation::EmitMoveInit(ast::Expression const *node,
+void Compiler::EmitMoveInit(ast::Expression const *node,
                                           type::Typed<ir::Reg> reg) {
   EmitMoveInit(type_of(node), node->EmitValue(this), reg);
 }
 
-void TraditionalCompilation::EmitMoveInit(ast::ArrayLiteral const *node,
+void Compiler::EmitMoveInit(ast::ArrayLiteral const *node,
                                           type::Typed<ir::Reg> reg) {
   type::Array const &array_type = type_of(node)->as<type::Array>();
   auto *data_type_ptr           = type::Ptr(array_type.data_type);
@@ -41,7 +41,7 @@ void TraditionalCompilation::EmitMoveInit(ast::ArrayLiteral const *node,
                                      type::Typed<ir::Reg>(elem, data_type_ptr));
 }
 
-void TraditionalCompilation::EmitMoveInit(ast::CommaList const *node,
+void Compiler::EmitMoveInit(ast::CommaList const *node,
                                           type::Typed<ir::Reg> reg) {
   size_t index  = 0;
   auto const &t = reg.type()->as<type::Pointer>().pointee->as<type::Tuple>();
@@ -60,7 +60,7 @@ void TraditionalCompilation::EmitMoveInit(ast::CommaList const *node,
   }
 }
 
-void TraditionalCompilation::EmitMoveInit(ast::Unop const *node,
+void Compiler::EmitMoveInit(ast::Unop const *node,
                                           type::Typed<ir::Reg> reg) {
   switch (node->op) {
     case frontend::Operator::Move:
@@ -73,4 +73,4 @@ void TraditionalCompilation::EmitMoveInit(ast::Unop const *node,
   }
 }
 
-}  // namespace visitor
+}  // namespace compiler

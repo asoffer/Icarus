@@ -1,4 +1,4 @@
-#include "visitor/emit_ir.h"
+#include "compiler/compiler.h"
 
 #include "ast/ast.h"
 #include "backend/eval.h"
@@ -37,15 +37,18 @@ static type::Type const *BuiltinType(core::Builtin b) {
 
 }  // namespace ir
 
-namespace visitor {
+namespace compiler {
 using ::matcher::InheritsFrom;
 
+VerifyResult VerifyBody(Compiler *visitor, ast::FunctionLiteral const *node);
+void VerifyBody(Compiler *visitor, ast::JumpHandler const *node);
+
 template <typename NodeType>
-static base::move_func<void()> *DeferBody(TraditionalCompilation *visitor,
+static base::move_func<void()> *DeferBody(Compiler *visitor,
                                           NodeType const *node) {
   return visitor->AddWork(
       node, [constants(visitor->constants_), node]() mutable {
-        TraditionalCompilation v(node->module());
+        Compiler v(node->module());
         v.constants_ = std::move(constants);
 
         if constexpr (std::is_same_v<NodeType, ast::FunctionLiteral> ||
@@ -57,7 +60,7 @@ static base::move_func<void()> *DeferBody(TraditionalCompilation *visitor,
       });
 }
 
-static void MakeAllStackAllocations(TraditionalCompilation *visitor,
+static void MakeAllStackAllocations(Compiler *visitor,
                                     core::FnScope const *fn_scope) {
   for (auto *scope : fn_scope->innards_) {
     for (const auto &[key, val] : scope->decls_) {
@@ -76,7 +79,7 @@ static void MakeAllStackAllocations(TraditionalCompilation *visitor,
   }
 }
 
-static void MakeAllDestructions(TraditionalCompilation *visitor,
+static void MakeAllDestructions(Compiler *visitor,
                                 core::ExecScope const *exec_scope) {
   // TODO store these in the appropriate order so we don't have to compute this?
   // Will this be faster?
@@ -97,7 +100,7 @@ static void MakeAllDestructions(TraditionalCompilation *visitor,
   }
 }
 
-static void EmitIrForStatements(TraditionalCompilation *visitor,
+static void EmitIrForStatements(Compiler *visitor,
                                 base::PtrSpan<ast::Node const> span) {
   std::vector<type::Typed<ir::Reg>> to_destroy;
   auto *old_tmp_ptr =
@@ -119,7 +122,7 @@ static void EmitIrForStatements(TraditionalCompilation *visitor,
   }
 }
 
-// static void CompleteBody(TraditionalCompilation *visitor, ast::ScopeLiteral
+// static void CompleteBody(Compiler *visitor, ast::ScopeLiteral
 //                          const *node) {
 //   ir::ScopeDef *scope_def = scope_def(node);
 //   if (!scope_def->work_item) { return; }
@@ -156,7 +159,7 @@ static void EmitIrForStatements(TraditionalCompilation *visitor,
 //   backend::Execute(&fn, base::untyped_buffer(0), {}, &exec_context);
 // }
 
-static void CompleteBody(TraditionalCompilation *visitor,
+static void CompleteBody(Compiler *visitor,
                          ast::FunctionLiteral const *node) {
   // TODO have validate return a bool distinguishing if there are errors and
   // whether or not we can proceed.
@@ -227,7 +230,7 @@ static void CompleteBody(TraditionalCompilation *visitor,
   }
 }
 
-// static void CompleteBody(TraditionalCompilation *visitor, ast::StructLiteral
+// static void CompleteBody(Compiler *visitor, ast::StructLiteral
 //                          const *node) {
 //   ir::CompiledFn *&ir_func = constants_->second.ir_funcs_[node];
 //   for (size_t i = 0; i < node->args_.size(); ++i) {
@@ -293,7 +296,7 @@ static void CompleteBody(TraditionalCompilation *visitor,
 //   }
 // }
 
-// static void CompleteBody(TraditionalCompilation *visitor, ast::JumpHandler
+// static void CompleteBody(Compiler *visitor, ast::JumpHandler
 //                          const *node) {
 //   // TODO have validate return a bool distinguishing if there are errors and
 //   // whether or not we can proceed.
@@ -342,7 +345,7 @@ static void CompleteBody(TraditionalCompilation *visitor,
 //   }
 // }
 
-ir::Results TraditionalCompilation::EmitValue(ast::Access const *node) {
+ir::Results Compiler::EmitValue(ast::Access const *node) {
   if (type_of(node->operand()) == type::Module) {
     // TODO we already did this evaluation in type verification. Can't we just
     // save and reuse it?
@@ -379,7 +382,7 @@ ir::Results TraditionalCompilation::EmitValue(ast::Access const *node) {
   }
 }
 
-ir::Results TraditionalCompilation::EmitValue(ast::ArrayLiteral const *node) {
+ir::Results Compiler::EmitValue(ast::ArrayLiteral const *node) {
   // TODO If this is a constant we can just store it somewhere.
   auto *this_type = type_of(node);
   auto alloc      = TmpAlloca(this_type);
@@ -395,7 +398,7 @@ ir::Results TraditionalCompilation::EmitValue(ast::ArrayLiteral const *node) {
   return ir::Results{alloc};
 }
 
-ir::Results TraditionalCompilation::EmitValue(ast::ArrayType const *node) {
+ir::Results Compiler::EmitValue(ast::ArrayType const *node) {
   auto result = node->data_type()->EmitValue(this).get<type::Type const *>(0);
   // Size must be at least 1 by construction, so `.size() - 1` will not
   // overflow.
@@ -406,7 +409,7 @@ ir::Results TraditionalCompilation::EmitValue(ast::ArrayType const *node) {
   return ir::Results{result};
 }
 
-ir::Results TraditionalCompilation::EmitValue(ast::Binop const *node) {
+ir::Results Compiler::EmitValue(ast::Binop const *node) {
   auto *lhs_type = type_of(node->lhs());
   auto *rhs_type = type_of(node->rhs());
 
@@ -637,7 +640,7 @@ ir::Results TraditionalCompilation::EmitValue(ast::Binop const *node) {
   UNREACHABLE(*node);
 }
 
-ir::Results TraditionalCompilation::EmitValue(ast::BlockLiteral const *node) {
+ir::Results Compiler::EmitValue(ast::BlockLiteral const *node) {
   std::vector<ir::RegOr<ir::AnyFunc>> befores, afters;
   befores.reserve(node->before().size());
   for (auto const &decl : node->before()) {
@@ -653,7 +656,7 @@ ir::Results TraditionalCompilation::EmitValue(ast::BlockLiteral const *node) {
   return ir::Results{ir::BlockHandler(befores, afters)};
 }
 
-ir::Results TraditionalCompilation::EmitValue(ast::BlockNode const *node) {
+ir::Results Compiler::EmitValue(ast::BlockNode const *node) {
   yields_stack_.emplace_back();
   base::defer d([&]() { yields_stack_.pop_back(); });
 
@@ -683,11 +686,11 @@ ir::Results TraditionalCompilation::EmitValue(ast::BlockNode const *node) {
   return ir::Results{};
 }
 
-ir::Results TraditionalCompilation::EmitValue(ast::BuiltinFn const *node) {
+ir::Results Compiler::EmitValue(ast::BuiltinFn const *node) {
   return ir::Results{node->value()};
 }
 
-ir::Results TraditionalCompilation::EmitValue(ast::Call const *node) {
+ir::Results Compiler::EmitValue(ast::Call const *node) {
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
     switch (b->value()) {
       case core::Builtin::Foreign: {
@@ -750,7 +753,7 @@ ir::Results TraditionalCompilation::EmitValue(ast::Call const *node) {
       node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
 }
 
-ir::Results TraditionalCompilation::EmitValue(ast::Cast const *node) {
+ir::Results Compiler::EmitValue(ast::Cast const *node) {
   if (auto *table = dispatch_table(node)) {
     return table->EmitCall(
         this, core::FnArgs<std::pair<ast::Expression const *, ir::Results>>(
@@ -789,7 +792,7 @@ static base::guarded<absl::flat_hash_map<
     absl::flat_hash_map<type::Array const *, ir::CompiledFn *>>>
     ne_funcs;
 // TODO this should early exit if the types aren't equal.
-ir::Results ArrayCompare(TraditionalCompilation *visitor,
+ir::Results ArrayCompare(Compiler *visitor,
                          type::Array const *lhs_type, ir::Results const &lhs_ir,
                          type::Array const *rhs_type, ir::Results const &rhs_ir,
                          bool equality) {
@@ -867,7 +870,7 @@ ir::Results ArrayCompare(TraditionalCompilation *visitor,
   return ir::Results{result};
 }
 
-static ir::RegOr<bool> EmitChainOpPair(TraditionalCompilation *visitor,
+static ir::RegOr<bool> EmitChainOpPair(Compiler *visitor,
                                        ast::ChainOp const *chain_op,
                                        size_t index, ir::Results const &lhs_ir,
                                        ir::Results const &rhs_ir) {
@@ -964,7 +967,7 @@ static ir::RegOr<bool> EmitChainOpPair(TraditionalCompilation *visitor,
   }
 }
 
-ir::Results TraditionalCompilation::EmitValue(ast::ChainOp const *node) {
+ir::Results Compiler::EmitValue(ast::ChainOp const *node) {
   auto *t = type_of(node);
   if (node->ops()[0] == frontend::Operator::Xor) {
     if (t == type::Bool) {
@@ -1077,7 +1080,7 @@ ir::Results TraditionalCompilation::EmitValue(ast::ChainOp const *node) {
   UNREACHABLE();
 }
 
-ir::Results TraditionalCompilation::EmitValue(ast::CommaList const *node) {
+ir::Results Compiler::EmitValue(ast::CommaList const *node) {
   auto *tuple_type = &type_of(node)->as<type::Tuple>();
   // TODO this is a hack. I'm still not sure what counts as a tuple and what
   // counts as atype
@@ -1103,7 +1106,7 @@ ir::Results TraditionalCompilation::EmitValue(ast::CommaList const *node) {
   return ir::Results{tuple_alloc};
 }
 
-ir::Results TraditionalCompilation::EmitValue(ast::Declaration const *node) {
+ir::Results Compiler::EmitValue(ast::Declaration const *node) {
   // TODO swap contexts?
   if (node->flags() & ast::Declaration::f_IsConst) {
     // TODO
@@ -1120,7 +1123,7 @@ ir::Results TraditionalCompilation::EmitValue(ast::Declaration const *node) {
     } else {
       auto *t = type_of(node);
       if (!t) {
-        DEBUG_LOG()(DumpAst::ToString(node));
+        DEBUG_LOG()(visitor::DumpAst::ToString(node));
         UNREACHABLE();
       }
 
@@ -1148,12 +1151,12 @@ ir::Results TraditionalCompilation::EmitValue(ast::Declaration const *node) {
         UNREACHABLE();
       }
     }
-    UNREACHABLE(DumpAst::ToString(node));
+    UNREACHABLE(visitor::DumpAst::ToString(node));
   } else {
     // For local variables the declaration determines where the initial value is
     // set, but the allocation has to be done much earlier. We do the allocation
-    // in FunctionLiteral::TraditionalCompilation.
-    // Declaration::TraditionalCompilation is just used to set the value.
+    // in FunctionLiteral::Compiler.
+    // Declaration::Compiler is just used to set the value.
     ASSERT(node->scope_->Containing<core::FnScope>() != nullptr);
 
     // TODO these checks actually overlap and could be simplified.
@@ -1172,7 +1175,7 @@ ir::Results TraditionalCompilation::EmitValue(ast::Declaration const *node) {
   UNREACHABLE();
 }
 
-ir::Results TraditionalCompilation::EmitValue(ast::EnumLiteral const *node) {
+ir::Results Compiler::EmitValue(ast::EnumLiteral const *node) {
   using enum_t = uint64_t;
   std::vector<std::string_view> names;
   absl::flat_hash_map<uint64_t, ir::RegOr<enum_t>> specified_values;
@@ -1198,7 +1201,7 @@ ir::Results TraditionalCompilation::EmitValue(ast::EnumLiteral const *node) {
   }
 }
 
-ir::Results TraditionalCompilation::EmitValue(
+ir::Results Compiler::EmitValue(
     ast::FunctionLiteral const *node) {
   for (auto const &param : node->inputs_) {
     auto *p = param.value.get();
@@ -1232,8 +1235,8 @@ ir::Results TraditionalCompilation::EmitValue(
   return ir::Results{ir_func};
 }
 
-ir::Results TraditionalCompilation::EmitValue(ast::Identifier const *node) {
-  ASSERT(node->decl() != nullptr) << DumpAst::ToString(node);
+ir::Results Compiler::EmitValue(ast::Identifier const *node) {
+  ASSERT(node->decl() != nullptr) << visitor::DumpAst::ToString(node);
   if (node->decl()->flags() & ast::Declaration::f_IsConst) {
     return node->decl()->EmitValue(this);
   }
@@ -1258,20 +1261,20 @@ ir::Results TraditionalCompilation::EmitValue(ast::Identifier const *node) {
   }
 }
 
-ir::Results TraditionalCompilation::EmitValue(ast::Import const *node) {
+ir::Results Compiler::EmitValue(ast::Import const *node) {
   return ir::Results{ASSERT_NOT_NULL(pending_module(node))->get()};
 }
 
-ir::Results TraditionalCompilation::EmitValue(ast::Index const *node) {
+ir::Results Compiler::EmitValue(ast::Index const *node) {
   return ir::Results{ir::PtrFix(node->EmitRef(this)[0].reg(), type_of(node))};
 }
 
-ir::Results TraditionalCompilation::EmitValue(ast::Jump const *node) {
+ir::Results Compiler::EmitValue(ast::Jump const *node) {
   NOT_YET();
   return ir::Results{};
 }
 
-ir::Results TraditionalCompilation::EmitValue(ast::JumpHandler const *node) {
+ir::Results Compiler::EmitValue(ast::JumpHandler const *node) {
   // TODO handle constant inputs
   // TODO Use correct constants
   NOT_YET();
@@ -1300,7 +1303,7 @@ ir::Results TraditionalCompilation::EmitValue(ast::JumpHandler const *node) {
 }
 
 static std::vector<std::pair<ast::Expression const *, ir::Results>>
-EmitValueWithExpand(TraditionalCompilation *v,
+EmitValueWithExpand(Compiler *v,
                     base::PtrSpan<ast::Expression const> exprs) {
   // TODO expansion
   std::vector<std::pair<ast::Expression const *, ir::Results>> results;
@@ -1308,7 +1311,7 @@ EmitValueWithExpand(TraditionalCompilation *v,
   return results;
 }
 
-ir::Results TraditionalCompilation::EmitValue(ast::PrintStmt const *node) {
+ir::Results Compiler::EmitValue(ast::PrintStmt const *node) {
   auto results = EmitValueWithExpand(this, node->exprs());
   for (auto &result : results) {
     if (auto const *table =
@@ -1323,7 +1326,7 @@ ir::Results TraditionalCompilation::EmitValue(ast::PrintStmt const *node) {
   return ir::Results{};
 }
 
-ir::Results TraditionalCompilation::EmitValue(ast::ReturnStmt const *node) {
+ir::Results Compiler::EmitValue(ast::ReturnStmt const *node) {
   auto arg_vals  = EmitValueWithExpand(this, node->exprs());
   auto *fn_scope = ASSERT_NOT_NULL(node->scope_->Containing<core::FnScope>());
   auto *fn_lit   = ASSERT_NOT_NULL(fn_scope->fn_lit_);
@@ -1347,7 +1350,7 @@ ir::Results TraditionalCompilation::EmitValue(ast::ReturnStmt const *node) {
   return ir::Results{};
 }
 
-ir::Results TraditionalCompilation::EmitValue(ast::YieldStmt const *node) {
+ir::Results Compiler::EmitValue(ast::YieldStmt const *node) {
   auto arg_vals = EmitValueWithExpand(this, node->exprs());
   // TODO store this as an exec_scope.
   MakeAllDestructions(this, &node->scope_->as<core::ExecScope>());
@@ -1371,7 +1374,7 @@ ir::Results TraditionalCompilation::EmitValue(ast::YieldStmt const *node) {
   return ir::Results{};
 }
 
-ir::Results TraditionalCompilation::EmitValue(ast::ScopeLiteral const *node) {
+ir::Results Compiler::EmitValue(ast::ScopeLiteral const *node) {
   NOT_YET();
   // auto [scope_def_iter, inserted] =
   //     constants_->second.scope_defs_.try_emplace(node,
@@ -1387,7 +1390,7 @@ ir::Results TraditionalCompilation::EmitValue(ast::ScopeLiteral const *node) {
   // return ir::Results{&scope_def_iter->second};
 }
 
-ir::Results InitializeAndEmitBlockNode(TraditionalCompilation *visitor,
+ir::Results InitializeAndEmitBlockNode(Compiler *visitor,
                                        ir::Results const &results,
                                        ast::BlockNode const *block_node) {
   // TODO this initialization should be the same as what's done with function
@@ -1447,7 +1450,7 @@ struct LocalScopeInterpretation {
   absl::flat_hash_map<ir::BlockDef const *, ir::BasicBlock *> block_ptrs_;
 };
 
-ir::Results TraditionalCompilation::EmitValue(ast::ScopeNode const *node) {
+ir::Results Compiler::EmitValue(ast::ScopeNode const *node) {
   DEBUG_LOG("ScopeNode")("Emitting IR for ScopeNode");
 
   DEBUG_LOG("ScopeNode")("scope_def ... evaluating.");
@@ -1523,7 +1526,7 @@ ir::Results TraditionalCompilation::EmitValue(ast::ScopeNode const *node) {
   return ir::Results{};
 }
 
-ir::Results TraditionalCompilation::EmitValue(ast::StructLiteral const *node) {
+ir::Results Compiler::EmitValue(ast::StructLiteral const *node) {
   if (node->args_.empty()) {
     // TODO what about handling incomplete types?
     std::vector<std::tuple<std::string_view, ir::RegOr<type::Type const *>>>
@@ -1573,11 +1576,11 @@ ir::Results TraditionalCompilation::EmitValue(ast::StructLiteral const *node) {
   // return ir::Results{ir::AnyFunc{ir_func}};
 }
 
-ir::Results TraditionalCompilation::EmitValue(ast::StructType const *node) {
+ir::Results Compiler::EmitValue(ast::StructType const *node) {
   NOT_YET();
 }
 
-ir::Results TraditionalCompilation::EmitValue(ast::Switch const *node) {
+ir::Results Compiler::EmitValue(ast::Switch const *node) {
   absl::flat_hash_map<ir::BasicBlock *, ir::Results> phi_args;
 
   auto *land_block = builder().AddBlock();
@@ -1640,11 +1643,11 @@ ir::Results TraditionalCompilation::EmitValue(ast::Switch const *node) {
   }
 }
 
-ir::Results TraditionalCompilation::EmitValue(ast::Terminal const *node) {
+ir::Results Compiler::EmitValue(ast::Terminal const *node) {
   return node->value();
 }
 
-ir::Results TraditionalCompilation::EmitValue(ast::Unop const *node) {
+ir::Results Compiler::EmitValue(ast::Unop const *node) {
   auto *operand_type = type_of(node->operand.get());
   if (auto const *table = dispatch_table(node)) {
     // TODO struct is not exactly right. we really mean user-defined
@@ -1741,4 +1744,4 @@ ir::Results TraditionalCompilation::EmitValue(ast::Unop const *node) {
   }
 }
 
-}  // namespace visitor
+}  // namespace compiler

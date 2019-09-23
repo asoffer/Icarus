@@ -1,11 +1,11 @@
-#ifndef ICARUS_VISITOR_VERIFY_RESULT_H
-#define ICARUS_VISITOR_VERIFY_RESULT_H
+#ifndef ICARUS_COMPILER_VERIFY_RESULT_H
+#define ICARUS_COMPILER_VERIFY_RESULT_H
 
 namespace type {
 struct Type;
 }  // namespace type
 
-namespace visitor {
+namespace compiler {
 struct VerifyResult {
   type::Type const *type_;
   bool const_;
@@ -38,6 +38,6 @@ constexpr bool operator!=(VerifyResult lhs, VerifyResult rhs) {
   return !(lhs == rhs);
 }
 
-}  // namespace visitor
+}  // namespace compiler
 
-#endif  // ICARUS_VISITOR_VERIFY_RESULT_H
+#endif  // ICARUS_COMPILER_VERIFY_RESULT_H

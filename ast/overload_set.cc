@@ -9,7 +9,7 @@ namespace ast {
 
 template <typename DeclSpan>
 static void EmplaceDecls(OverloadSet *os, DeclSpan &&decls,
-                         visitor::TraditionalCompilation *visitor) {
+                         compiler::Compiler *visitor) {
   os->reserve(decls.size());
   for (auto const *decl : decls) {
     auto const *result_ptr = visitor->prior_verification_attempt(decl);
@@ -20,13 +20,13 @@ static void EmplaceDecls(OverloadSet *os, DeclSpan &&decls,
 }
 
 OverloadSet::OverloadSet(base::PtrSpan<Declaration const> decls,
-                         visitor::TraditionalCompilation *visitor) {
+                         compiler::Compiler *visitor) {
   EmplaceDecls(this, decls, visitor);
 }
 
 // TODO only hold functions?
 OverloadSet::OverloadSet(core::Scope *scope, std::string_view id,
-                         visitor::TraditionalCompilation *visitor) {
+                         compiler::Compiler *visitor) {
   EmplaceDecls(this, scope->AllDeclsWithId(id), visitor);
 }
 
@@ -43,7 +43,7 @@ void OverloadSet::add_adl(std::string_view id, type::Type const *t) {
       if (&d == overload.expr) { return; }
     }
     // TODO const
-    emplace(&d, visitor::VerifyResult{&t, true});
+    emplace(&d, compiler::VerifyResult{&t, true});
   }
 }
 

@@ -10,8 +10,6 @@ cc_group_target(
         ":constant_binding-impl",
         ":module-impl",
         "//visitor:assign_scope",
-        "//visitor:emit_ir",
-        "//visitor:verify_type",
     ])
 
 cc_lib_target(
@@ -92,8 +90,8 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = [
         "//ast:dispatch_table",
+        "//compiler:verify_result",
         "//ir:scope_def",
-        "//visitor:verify_result",
     ],
     impl_deps = None,
     test_deps = None,

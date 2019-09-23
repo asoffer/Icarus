@@ -1,5 +1,5 @@
-#ifndef ICARUS_VISITOR_SPECIAL_FUNCTION
-#define ICARUS_VISITOR_SPECIAL_FUNCTION
+#ifndef ICARUS_COMPILER_SPECIAL_FUNCTION
+#define ICARUS_COMPILER_SPECIAL_FUNCTION
 
 #include <optional>
 
@@ -9,8 +9,8 @@ namespace type {
 struct Struct;
 }  // namespace type
 
-namespace visitor {
-struct TraditionalCompilation;
+namespace compiler {
+struct Compiler;
 
 enum SpecialFunctionCategory { Copy, Move };
 
@@ -20,9 +20,9 @@ constexpr char const *Name() {
   if constexpr (Cat == Copy) { return "copy"; }
 }
 
-std::optional<ir::AnyFunc> SpecialFunction(TraditionalCompilation *visitor,
+std::optional<ir::AnyFunc> SpecialFunction(Compiler *compiler,
                                            type::Struct const *s,
                                            char const *symbol);
 
-}  // namespace visitor
-#endif  // ICARUS_VISITOR_SPECIAL_FUNCTION
+}  // namespace compiler
+#endif  // ICARUS_COMPILER_SPECIAL_FUNCTION

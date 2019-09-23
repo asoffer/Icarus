@@ -5,6 +5,7 @@
 #include <variant>
 
 #include "absl/container/flat_hash_map.h"
+#include "compiler/verify_result.h"
 #include "core/fn_args.h"
 #include "core/fn_params.h"
 #include "ir/basic_block.h"
@@ -12,13 +13,10 @@
 #include "ir/reg.h"
 #include "ir/results.h"
 #include "type/typed_value.h"
-#include "visitor/verify_result.h"
 
-struct Context;
-
-namespace visitor {
-struct TraditionalCompilation;
-}  // namespace visitor
+namespace compiler {
+struct Compiler;
+}  // namespace compiler
 
 namespace type {
 struct Type;
@@ -45,17 +43,13 @@ struct DispatchTable {
     std::variant<Expression const *, ir::AnyFunc> fn;
   };
 
-  static std::pair<DispatchTable, type::Type const *> Make(
-      core::FnArgs<type::Typed<Expression const *>> const &args,
-      OverloadSet const &overload_set, Context *ctx);
-
   ir::Results EmitInlineCall(
-      visitor::TraditionalCompilation *visitor,
+      compiler::Compiler *visitor,
       core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
       absl::flat_hash_map<ir::BlockDef const *, ir::BasicBlock *> const
           &block_map) const;
   ir::Results EmitCall(
-      visitor::TraditionalCompilation *visitor,
+      compiler::Compiler *visitor,
       core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
       bool is_inline = false) const;
 
@@ -63,23 +57,23 @@ struct DispatchTable {
   std::vector<type::Type const *> return_types_;
 };
 
-visitor::VerifyResult VerifyJumpDispatch(
-    visitor::TraditionalCompilation *visitor, ExprPtr expr,
+compiler::VerifyResult VerifyJumpDispatch(
+    compiler::Compiler *visitor, ExprPtr expr,
     absl::Span<ir::AnyFunc const> overload_set,
-    core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
+    core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
         &args,
     std::vector<ir::BlockDef const *> *block_defs);
 
-visitor::VerifyResult VerifyDispatch(
-    visitor::TraditionalCompilation *visitor, ExprPtr expr,
+compiler::VerifyResult VerifyDispatch(
+    compiler::Compiler *visitor, ExprPtr expr,
     absl::Span<ir::AnyFunc const> overload_set,
-    core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
+    core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
         &args);
 
-visitor::VerifyResult VerifyDispatch(
-    visitor::TraditionalCompilation *visitor, ExprPtr expr,
+compiler::VerifyResult VerifyDispatch(
+    compiler::Compiler *visitor, ExprPtr expr,
     OverloadSet const &overload_set,
-    core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
+    core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
         &args);
 
 }  // namespace ast

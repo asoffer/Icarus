@@ -8,6 +8,7 @@
 #include "ast/overload_set.h"
 #include "backend/eval.h"
 #include "base/expected.h"
+#include "compiler/compiler.h"
 #include "core/scope.h"
 #include "ir/block.h"
 #include "ir/builder.h"
@@ -25,26 +26,19 @@
 #include "type/pointer.h"
 #include "type/tuple.h"
 #include "type/variant.h"
-#include "visitor/traditional_compilation.h"
 
 namespace ast {
-std::pair<DispatchTable, type::Type const *> DispatchTable::Make(
-    core::FnArgs<type::Typed<Expression const *>> const &args,
-    OverloadSet const &overload_set, Context *ctx) {
-  NOT_YET();
-}
 
-static ir::Results PrepArg(visitor::TraditionalCompilation *visitor,
-                           type::Type const *to, type::Type const *from,
-                           ir::Results const &val) {
+static ir::Results PrepArg(compiler::Compiler *compiler, type::Type const *to,
+                           type::Type const *from, ir::Results const &val) {
   if (to == from) { return val; }
   if (auto *to_variant = to->if_as<type::Variant>()) {
     if (auto *from_variant = from->if_as<type::Variant>()) {
       return val;
     } else {
-      auto alloc = visitor->TmpAlloca(to);
+      auto alloc = compiler->TmpAlloca(to);
       // TODO move initialization, not move assignment.
-      to->EmitMoveAssign(visitor, from, val, alloc);
+      to->EmitMoveAssign(compiler, from, val, alloc);
       // TODO who destruction of the moved-from buffer? what if it was
       // previously a temp-alloc and already planned to be destroyed?
       return ir::Results{alloc};
@@ -88,12 +82,12 @@ static void AddType(IndexT &&index, type::Type const *t,
 }
 
 static std::vector<core::FnArgs<type::Type const *>> ExpandAllFnArgs(
-    core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
+    core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
         &args) {
   std::vector<core::FnArgs<type::Type const *>> all_expanded_options(1);
   args.ApplyWithIndex(
       [&](auto &&index,
-          std::pair<Expression const *, visitor::VerifyResult> const &p) {
+          std::pair<Expression const *, compiler::VerifyResult> const &p) {
         if (p.first->needs_expansion()) {
           for (auto *t : p.second.type_->as<type::Tuple>().entries_) {
             AddType(index, t, &all_expanded_options);
@@ -136,7 +130,7 @@ static bool Covers(
 static base::expected<core::FnParams<type::Typed<Expression const *>>>
 MatchArgsToParams(
     core::FnParams<type::Typed<Expression const *>> const &params,
-    core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
+    core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
         &args) {
   if (args.pos().size() > params.size()) {
     return base::unexpected(absl::StrCat(
@@ -211,8 +205,8 @@ MatchArgsToParams(
 }
 
 static base::expected<DispatchTable::Row> OverloadParams(
-    visitor::TraditionalCompilation *visitor, ir::AnyFunc overload,
-    core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
+    compiler::Compiler *compiler, ir::AnyFunc overload,
+    core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
         &args) {
   // These are the parameters for the actual overload that will be potentially
   // selected. In particular, if we have two overloads:
@@ -241,8 +235,8 @@ static base::expected<DispatchTable::Row> OverloadParams(
 }
 
 static base::expected<DispatchTable::Row> OverloadParams(
-    visitor::TraditionalCompilation *visitor, Overload const &overload,
-    core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
+    compiler::Compiler *compiler, Overload const &overload,
+    core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
         &args) {
   // These are the parameters for the actual overload that will be potentially
   // selected. In particular, if we have two overloads:
@@ -256,7 +250,7 @@ static base::expected<DispatchTable::Row> OverloadParams(
   // respectively.
 
   auto result =
-      *ASSERT_NOT_NULL(visitor->prior_verification_attempt(overload.expr));
+      *ASSERT_NOT_NULL(compiler->prior_verification_attempt(overload.expr));
   if (!result.type_->is<type::Callable>() && result.type_ != type::Generic &&
       result.type_ != type::Block) {
     // Figure out who should have verified this. Is it guaranteed to be
@@ -270,7 +264,7 @@ static base::expected<DispatchTable::Row> OverloadParams(
     if (result.type_ == type::Generic) {
       auto *fn_lit = backend::EvaluateAs<ast::FunctionLiteral *>(
           type::Typed<ast::Expression const *>{overload.expr, result.type_},
-          visitor);
+          compiler);
 
       core::FnParams<type::Typed<Expression const *>> params(
           fn_lit->inputs_.size());
@@ -279,7 +273,7 @@ static base::expected<DispatchTable::Row> OverloadParams(
         size_t param_index = fn_lit->decl_to_param_.at(decl);
         auto const &param  = fn_lit->inputs_.at(param_index);
 
-        auto result = decl->VerifyType(visitor);
+        auto result = decl->VerifyType(compiler);
         if (!result.ok()) { NOT_YET(); }
 
         if (!(param.value->flags() & Declaration::f_IsConst)) {
@@ -287,12 +281,12 @@ static base::expected<DispatchTable::Row> OverloadParams(
                                       param.name,
                                       type::Typed<Expression const *>(
                                           param.value.get(),
-                                          visitor->type_of(param.value.get())),
+                                          compiler->type_of(param.value.get())),
                                       param.flags});
         } else {
           if (param_index < args.pos().size()) {
             auto [arg_expr, verify_result] = args.pos().at(param_index);
-            type::Type const *decl_type = visitor->type_of(param.value.get());
+            type::Type const *decl_type = compiler->type_of(param.value.get());
             if (!type::CanCast(verify_result.type_, decl_type)) {
               return base::unexpected(
                   absl::StrCat("TODO good error message couldn't match type ",
@@ -302,15 +296,15 @@ static base::expected<DispatchTable::Row> OverloadParams(
 
             auto buf = backend::EvaluateToBuffer(
                 type::Typed<Expression const *>(arg_expr, verify_result.type_),
-                visitor);
+                compiler);
             auto [data_offset, num_bytes] =
                 std::get<std::pair<size_t, core::Bytes>>(
-                    visitor->current_constants_.reserve_slot(param.value.get(),
-                                                             decl_type));
+                    compiler->current_constants_.reserve_slot(param.value.get(),
+                                                              decl_type));
             // TODO you haven't done the cast yet! And you didn't even check
             // about implicit casts.
-            visitor->current_constants_.set_slot(data_offset, buf.raw(0),
-                                                 num_bytes);
+            compiler->current_constants_.set_slot(data_offset, buf.raw(0),
+                                                  num_bytes);
             params.set(param_index,
                        core::Param<type::Typed<Expression const *>>{
                            param.name,
@@ -319,7 +313,8 @@ static base::expected<DispatchTable::Row> OverloadParams(
                            param.flags});
           } else {
             if (auto *arg = args.at_or_null(param.value->id())) {
-              type::Type const *decl_type = visitor->type_of(param.value.get());
+              type::Type const *decl_type =
+                  compiler->type_of(param.value.get());
               if (!type::CanCast(arg->second.type_, decl_type)) {
                 return base::unexpected(
                     absl::StrCat("TODO good error message couldn't match type ",
@@ -329,39 +324,39 @@ static base::expected<DispatchTable::Row> OverloadParams(
 
               auto buf = backend::EvaluateToBuffer(
                   type::Typed<Expression const *>(arg->first, decl_type),
-                  visitor);
+                  compiler);
               auto [data_offset, num_bytes] =
                   std::get<std::pair<size_t, core::Bytes>>(
-                      visitor->current_constants_.reserve_slot(
+                      compiler->current_constants_.reserve_slot(
                           param.value.get(), decl_type));
               // TODO you haven't done the cast yet! And you didn't even check
               // about implicit casts.
-              visitor->current_constants_.set_slot(data_offset, buf.raw(0),
-                                                   num_bytes);
+              compiler->current_constants_.set_slot(data_offset, buf.raw(0),
+                                                    num_bytes);
               params.set(param_index,
                          core::Param<type::Typed<Expression const *>>{
                              param.name,
                              type::Typed<Expression const *>(
                                  param.value.get(),
-                                 visitor->type_of(param.value.get())),
+                                 compiler->type_of(param.value.get())),
                              param.flags});
 
             } else {
               if (param.flags & core::HAS_DEFAULT) {
                 type::Type const *decl_type =
-                    visitor->type_of(param.value.get());
+                    compiler->type_of(param.value.get());
 
                 // TODO you haven't done the cast from init_val to declared type
                 auto buf =
                     backend::EvaluateToBuffer(type::Typed<Expression const *>(
                                                   decl->init_val(), decl_type),
-                                              visitor);
+                                              compiler);
                 auto [data_offset, num_bytes] =
                     std::get<std::pair<size_t, core::Bytes>>(
-                        visitor->current_constants_.reserve_slot(
+                        compiler->current_constants_.reserve_slot(
                             param.value.get(), decl_type));
-                visitor->current_constants_.set_slot(data_offset, buf.raw(0),
-                                                     num_bytes);
+                compiler->current_constants_.set_slot(data_offset, buf.raw(0),
+                                                      num_bytes);
                 // TODO should I be setting this parameter?
 
                 params.set(param_index,
@@ -381,23 +376,22 @@ static base::expected<DispatchTable::Row> OverloadParams(
       }
 
       auto *old_constants = std::exchange(
-          visitor->constants_,
-          visitor->insert_constants(visitor->current_constants_));
-      base::defer d([&]() { visitor->constants_ = old_constants; });
+          compiler->constants_,
+          compiler->insert_constants(compiler->current_constants_));
+      base::defer d([&]() { compiler->constants_ = old_constants; });
       // TODO errors?
       auto *fn_type =
-          ASSERT_NOT_NULL(visitor->VerifyConcreteFnLit(fn_lit).type_);
+          ASSERT_NOT_NULL(compiler->VerifyConcreteFnLit(fn_lit).type_);
       return DispatchTable::Row{
           std::move(params), &fn_type->as<type::Function>(),
           backend::EvaluateAs<ir::AnyFunc>(
-              type::Typed<ast::Expression const *>{fn_lit, fn_type},
-              visitor)};
+              type::Typed<ast::Expression const *>{fn_lit, fn_type}, compiler)};
     } else {
       return OverloadParams(
-          visitor,
+          compiler,
           backend::EvaluateAs<ir::AnyFunc>(
               type::Typed<ast::Expression const *>{overload.expr, result.type_},
-              visitor),
+              compiler),
           args);
     }
   } else {
@@ -446,16 +440,15 @@ static std::vector<type::Type const *> ReturnTypes(
 }
 
 template <typename Container>
-std::pair<DispatchTable, visitor::VerifyResult> VerifyDispatchImpl(
-    visitor::TraditionalCompilation *visitor, ExprPtr expr,
-    Container &&overload_set,
-    core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
+std::pair<DispatchTable, compiler::VerifyResult> VerifyDispatchImpl(
+    compiler::Compiler *compiler, ExprPtr expr, Container &&overload_set,
+    core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
         &args) {
   DispatchTable table;
   DEBUG_LOG("verify_dispatch")("Verify: ", expr);
   absl::flat_hash_map<Expression const *, std::string> failure_reasons;
   for (auto &&overload : overload_set) {
-    auto expected_row = OverloadParams(visitor, overload, args);
+    auto expected_row = OverloadParams(compiler, overload, args);
     if (!expected_row.has_value()) {
       DEBUG_LOG("verify_dispatch")
       ("  skipping failed row -- ", expected_row.error());
@@ -477,7 +470,7 @@ std::pair<DispatchTable, visitor::VerifyResult> VerifyDispatchImpl(
   if (num_outputs == std::numeric_limits<size_t>::max()) {
     return std::pair{
         std::move(table),
-        visitor->set_result(expr, visitor::VerifyResult::Error())};
+        compiler->set_result(expr, compiler::VerifyResult::Error())};
   }
   table.return_types_ = ReturnTypes(num_outputs, table.bindings_);
   auto *tup           = type::Tup(table.return_types_);
@@ -498,44 +491,43 @@ std::pair<DispatchTable, visitor::VerifyResult> VerifyDispatchImpl(
     // ctx->error_log()->MissingDispatchContingency(node->span,
     // expanded_fnargs.Transform([](type::Type const *arg) { return
     // arg->to_string(); }));
-    return std::pair{std::move(table), visitor::VerifyResult::Error()};
+    return std::pair{std::move(table), compiler::VerifyResult::Error()};
   }
 
   // TODO this assumes we only have one return value or that we're returning a
   // tuple. So, e.g., you don't get the benefit of A -> (A, A) and B -> (A, B)
   // combining into (A | B) -> (A, A | B).
-  return std::pair{std::move(table),
-                   visitor->set_result(
-                       expr, visitor::VerifyResult::Constant(tup))};
+  return std::pair{
+      std::move(table),
+      compiler->set_result(expr, compiler::VerifyResult::Constant(tup))};
 }
 
-visitor::VerifyResult VerifyDispatch(
-    visitor::TraditionalCompilation *visitor, ExprPtr expr,
+compiler::VerifyResult VerifyDispatch(
+    compiler::Compiler *compiler, ExprPtr expr,
     absl::Span<ir::AnyFunc const> overload_set,
-    core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
+    core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
         &args) {
-  auto [table, result] = VerifyDispatchImpl(visitor, expr, overload_set, args);
-  visitor->set_dispatch_table(expr, std::move(table));
+  auto [table, result] = VerifyDispatchImpl(compiler, expr, overload_set, args);
+  compiler->set_dispatch_table(expr, std::move(table));
   return result;
 }
 
-visitor::VerifyResult VerifyDispatch(
-    visitor::TraditionalCompilation *visitor, ExprPtr expr,
-    OverloadSet const &overload_set,
-    core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
+compiler::VerifyResult VerifyDispatch(
+    compiler::Compiler *compiler, ExprPtr expr, OverloadSet const &overload_set,
+    core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
         &args) {
-  auto [table, result] = VerifyDispatchImpl(visitor, expr, overload_set, args);
-  visitor->set_dispatch_table(expr, std::move(table));
+  auto [table, result] = VerifyDispatchImpl(compiler, expr, overload_set, args);
+  compiler->set_dispatch_table(expr, std::move(table));
   return result;
 }
 
-visitor::VerifyResult VerifyJumpDispatch(
-    visitor::TraditionalCompilation *visitor, ExprPtr expr,
+compiler::VerifyResult VerifyJumpDispatch(
+    compiler::Compiler *compiler, ExprPtr expr,
     absl::Span<ir::AnyFunc const> overload_set,
-    core::FnArgs<std::pair<Expression const *, visitor::VerifyResult>> const
+    core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
         &args,
     std::vector<ir::BlockDef const *> *block_defs) {
-  auto [table, result] = VerifyDispatchImpl(visitor, expr, overload_set, args);
+  auto [table, result] = VerifyDispatchImpl(compiler, expr, overload_set, args);
   DEBUG_LOG("ScopeNode")("Inserting into jump table");
   for (ir::AnyFunc f : overload_set) {
     // TODO some of these may be entirely discarded at compile-time. We really
@@ -548,7 +540,7 @@ visitor::VerifyResult VerifyJumpDispatch(
     block_defs->insert(block_defs->end(), f.func()->jumps_.begin(),
                        f.func()->jumps_.end());
   }
-  visitor->set_jump_table(expr, nullptr, std::move(table));
+  compiler->set_jump_table(expr, nullptr, std::move(table));
   return result;
 }
 
@@ -587,20 +579,20 @@ static ir::RegOr<bool> EmitVariantMatch(ir::Builder &bldr, ir::Reg needle,
 }
 
 static ir::BasicBlock *EmitDispatchTest(
-    visitor::TraditionalCompilation *visitor,
+    compiler::Compiler *compiler,
     core::FnParams<type::Typed<ast::Expression const *>> const &params,
     core::FnArgs<std::pair<Expression const *, ir::Results>> const &args) {
-  auto next_binding = visitor->builder().AddBlock();
+  auto next_binding = compiler->builder().AddBlock();
 
   for (size_t i = 0; i < params.size(); ++i) {
     const auto &param = params.at(i);
     if (param.flags & core::HAS_DEFAULT) { continue; }
     auto const &[expr, val] =
         (i < args.pos().size()) ? args.at(i) : args.at(std::string{param.name});
-    auto *expr_var = visitor->type_of(expr)->if_as<type::Variant>();
+    auto *expr_var = compiler->type_of(expr)->if_as<type::Variant>();
     if (!expr_var) { continue; }
-    visitor->builder().CurrentBlock() = ir::EarlyExitOn<false>(
-        next_binding, EmitVariantMatch(visitor->builder(), val.get<ir::Reg>(0),
+    compiler->builder().CurrentBlock() = ir::EarlyExitOn<false>(
+        next_binding, EmitVariantMatch(compiler->builder(), val.get<ir::Reg>(0),
                                        param.value.type()));
   }
   return next_binding;
@@ -611,7 +603,7 @@ static ir::BasicBlock *EmitDispatchTest(
 // cases.
 template <bool Inline>
 static bool EmitOneCall(
-    visitor::TraditionalCompilation *visitor, DispatchTable::Row const &row,
+    compiler::Compiler *compiler, DispatchTable::Row const &row,
     core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
     std::vector<type::Type const *> const &return_types,
     std::vector<std::variant<
@@ -628,16 +620,15 @@ static bool EmitOneCall(
           return f;
         } else {
           // TODO must `f` always be a declaration?
-          return ir::Load(
-              visitor->addr(&f->template as<Declaration const>()),
-              row.type);
+          return ir::Load(compiler->addr(&f->template as<Declaration const>()),
+                          row.type);
         }
       },
       row.fn);
   // TODO this feels super hacky. And wasteful to compute `fn` twice.
   if constexpr (!Inline) {
     if (!fn.is_reg() && fn.value().is_fn() && fn.value().func()->must_inline_) {
-      return EmitOneCall<true>(visitor, row, args, return_types, outputs,
+      return EmitOneCall<true>(compiler, row, args, return_types, outputs,
                                block_map, inline_results);
     }
   }
@@ -648,8 +639,8 @@ static bool EmitOneCall(
   for (auto const &[expr, results] : args.pos()) {
     // TODO Don't re-lookup the type of this expression. You should know it
     // already.
-    arg_results.push_back(PrepArg(visitor, row.params.at(i++).value.type(),
-                                  ASSERT_NOT_NULL(visitor->type_of(expr)),
+    arg_results.push_back(PrepArg(compiler, row.params.at(i++).value.type(),
+                                  ASSERT_NOT_NULL(compiler->type_of(expr)),
                                   results));
   }
 
@@ -657,21 +648,20 @@ static bool EmitOneCall(
     auto const &param = row.params.at(i);
     auto *arg         = args.at_or_null(param.name);
     if (!arg && (param.flags & core::HAS_DEFAULT)) {
-      arg_results.push_back(param.value.get()->EmitValue(visitor));
+      arg_results.push_back(param.value.get()->EmitValue(compiler));
     } else {
       auto const &[expr, results] = *ASSERT_NOT_NULL(arg);
-      arg_results.push_back(PrepArg(visitor, param.value.type(),
-                                    visitor->type_of(expr), results));
+      arg_results.push_back(PrepArg(compiler, param.value.type(),
+                                    compiler->type_of(expr), results));
     }
   }
 
-  visitor->CompleteDeferredBodies();
+  compiler->CompleteDeferredBodies();
 
   if constexpr (Inline) {
     if (fn.value().is_fn()) {
-      auto *prev_inline_map =
-          std::exchange(visitor->inline_, nullptr);
-      base::defer d([&]() { visitor->inline_ = prev_inline_map; });
+      auto *prev_inline_map = std::exchange(compiler->inline_, nullptr);
+      base::defer d([&]() { compiler->inline_ = prev_inline_map; });
       auto *func = ASSERT_NOT_NULL(fn.value().func());
       if (func->work_item != nullptr) { std::move (*func->work_item)(); }
       ASSERT(func->work_item == nullptr);
@@ -691,7 +681,7 @@ static bool EmitOneCall(
 
     ir::OutParams out_params;
 
-    auto call_block = visitor->builder().AddBlock();
+    auto call_block = compiler->builder().AddBlock();
 
     size_t j = 0;
     for (type::Type const *ret_type : row.type->output) {
@@ -736,7 +726,7 @@ static bool EmitOneCall(
 
 template <bool Inline>
 static ir::Results EmitFnCall(
-    visitor::TraditionalCompilation *visitor, DispatchTable const *table,
+    compiler::Compiler *compiler, DispatchTable const *table,
     core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
     absl::flat_hash_map<ir::BlockDef const *, ir::BasicBlock *> const
         &block_map) {
@@ -763,31 +753,32 @@ static ir::Results EmitFnCall(
   size_t index_into_phi_args = 0;
   for (type::Type const *t : table->return_types_) {
     if (t->is_big()) {
-      // TODO outputs.emplace_back(visitor->TmpAlloca(t));
+      // TODO outputs.emplace_back(compiler->TmpAlloca(t));
     } else {
       outputs.emplace_back(&result_phi_args[index_into_phi_args++]);
     }
   }
 
-  auto landing_block = visitor->builder().AddBlock();
+  auto landing_block = compiler->builder().AddBlock();
 
   ir::Results inline_results;
   for (size_t i = 0; i + 1 < table->bindings_.size(); ++i) {
     auto const &row   = table->bindings_.at(i);
-    auto next_binding = EmitDispatchTest(visitor, row.params, args);
+    auto next_binding = EmitDispatchTest(compiler, row.params, args);
 
-    bool is_jump = EmitOneCall<Inline>(visitor, row, args, table->return_types_,
-                                       &outputs, block_map, &inline_results);
+    bool is_jump =
+        EmitOneCall<Inline>(compiler, row, args, table->return_types_, &outputs,
+                            block_map, &inline_results);
 
     if (!is_jump) { ir::UncondJump(landing_block); }
-    visitor->builder().CurrentBlock() = next_binding;
+    compiler->builder().CurrentBlock() = next_binding;
   }
 
-  bool is_jump = EmitOneCall<Inline>(visitor, table->bindings_.back(), args,
+  bool is_jump = EmitOneCall<Inline>(compiler, table->bindings_.back(), args,
                                      table->return_types_, &outputs, block_map,
                                      &inline_results);
   if (!is_jump) { ir::UncondJump(landing_block); }
-  visitor->builder().CurrentBlock() = landing_block;
+  compiler->builder().CurrentBlock() = landing_block;
 
   if constexpr (Inline) {
     return inline_results;
@@ -817,19 +808,19 @@ static ir::Results EmitFnCall(
 }
 
 ir::Results DispatchTable::EmitInlineCall(
-    visitor::TraditionalCompilation *visitor,
+    compiler::Compiler *compiler,
     core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
     absl::flat_hash_map<ir::BlockDef const *, ir::BasicBlock *> const
         &block_map) const {
-  return EmitFnCall<true>(visitor, this, args, block_map);
+  return EmitFnCall<true>(compiler, this, args, block_map);
 }
 
 ir::Results DispatchTable::EmitCall(
-    visitor::TraditionalCompilation *visitor,
+    compiler::Compiler *compiler,
     core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
     bool is_inline) const {
-  return (is_inline ? EmitFnCall<true> : EmitFnCall<false>)(visitor, this, args,
-                                                            {});
+  return (is_inline ? EmitFnCall<true> : EmitFnCall<false>)(compiler, this,
+                                                            args, {});
 }
 
 }  // namespace ast

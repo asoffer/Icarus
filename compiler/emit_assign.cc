@@ -1,6 +1,8 @@
 #include "absl/random/random.h"
 #include "ast/ast.h"
 #include "base/permutation.h"
+#include "compiler/compiler.h"
+#include "compiler/special_function.h"
 #include "ir/builder.h"
 #include "ir/cmd/load.h"
 #include "ir/cmd/misc.h"
@@ -9,13 +11,11 @@
 #include "ir/components.h"
 #include "ir/results.h"
 #include "type/primitive.h"
-#include "visitor/emit_ir.h"
-#include "visitor/special_function.h"
 
-namespace visitor {
+namespace compiler {
 
 template <SpecialFunctionCategory Cat>
-static ir::CompiledFn *CreateAssign(TraditionalCompilation *visitor,
+static ir::CompiledFn *CreateAssign(Compiler *visitor,
                                     type::Array const *a) {
   type::Pointer const *ptr_type = type::Ptr(a);
   auto *data_ptr_type           = type::Ptr(a->data_type);
@@ -66,7 +66,7 @@ static ir::CompiledFn *CreateAssign(TraditionalCompilation *visitor,
 }
 
 template <SpecialFunctionCategory Cat>
-static ir::AnyFunc CreateAssign(TraditionalCompilation *visitor,
+static ir::AnyFunc CreateAssign(Compiler *visitor,
                                 type::Struct const *s) {
   if (auto fn = SpecialFunction(visitor, s, Name<Cat>())) { return *fn; }
   type::Pointer const *pt = type::Ptr(s);
@@ -100,60 +100,60 @@ static ir::AnyFunc CreateAssign(TraditionalCompilation *visitor,
   return fn;
 }
 
-void TraditionalCompilation::EmitCopyAssign(
+void Compiler::EmitCopyAssign(
     type::Array const *t, ir::RegOr<ir::Addr> to,
     type::Typed<ir::Results> const &from) {
   t->copy_assign_func_.init([=]() { return CreateAssign<Copy>(this, t); });
   ir::Copy(t, from->get<ir::Reg>(0), to);
 }
 
-void TraditionalCompilation::EmitMoveAssign(
+void Compiler::EmitMoveAssign(
     type::Array const *t, ir::RegOr<ir::Addr> to,
     type::Typed<ir::Results> const &from) {
   t->move_assign_func_.init([=]() { return CreateAssign<Move>(this, t); });
   ir::Move(t, from->get<ir::Reg>(0), to);
 }
 
-void TraditionalCompilation::EmitCopyAssign(
+void Compiler::EmitCopyAssign(
     type::Enum const *t, ir::RegOr<ir::Addr> to,
     type::Typed<ir::Results> const &from) {
   ASSERT(t == from.type());
   ir::Store(from->get<ir::EnumVal>(0), to);
 }
 
-void TraditionalCompilation::EmitMoveAssign(
+void Compiler::EmitMoveAssign(
     type::Enum const *t, ir::RegOr<ir::Addr> to,
     type::Typed<ir::Results> const &from) {
   EmitCopyAssign(t, to, from);
 }
 
-void TraditionalCompilation::EmitCopyAssign(
+void Compiler::EmitCopyAssign(
     type::Flags const *t, ir::RegOr<ir::Addr> to,
     type::Typed<ir::Results> const &from) {
   ASSERT(t == from.type());
   ir::Store(from->get<ir::FlagsVal>(0), to);
 }
 
-void TraditionalCompilation::EmitMoveAssign(
+void Compiler::EmitMoveAssign(
     type::Flags const *t, ir::RegOr<ir::Addr> to,
     type::Typed<ir::Results> const &from) {
   EmitCopyAssign(t, to, from);
 }
 
-void TraditionalCompilation::EmitCopyAssign(
+void Compiler::EmitCopyAssign(
     type::Function const *t, ir::RegOr<ir::Addr> to,
     type::Typed<ir::Results> const &from) {
   ASSERT(t == from.type());
   ir::Store(from->get<ir::AnyFunc>(0), to);
 }
 
-void TraditionalCompilation::EmitMoveAssign(
+void Compiler::EmitMoveAssign(
     type::Function const *t, ir::RegOr<ir::Addr> to,
     type::Typed<ir::Results> const &from) {
   EmitCopyAssign(t, to, from);
 }
 
-void TraditionalCompilation::EmitCopyAssign(
+void Compiler::EmitCopyAssign(
     type::Pointer const *t, ir::RegOr<ir::Addr> to,
     type::Typed<ir::Results> const &from) {
   if (t == from.type()) {
@@ -165,13 +165,13 @@ void TraditionalCompilation::EmitCopyAssign(
   }
 }
 
-void TraditionalCompilation::EmitMoveAssign(
+void Compiler::EmitMoveAssign(
     type::Pointer const *t, ir::RegOr<ir::Addr> to,
     type::Typed<ir::Results> const &from) {
   EmitCopyAssign(t, to, from);
 }
 
-void TraditionalCompilation::EmitCopyAssign(
+void Compiler::EmitCopyAssign(
     type::Primitive const *t, ir::RegOr<ir::Addr> to,
     type::Typed<ir::Results> const &from) {
   ASSERT(t == from.type());
@@ -196,13 +196,13 @@ void TraditionalCompilation::EmitCopyAssign(
   }
 }
 
-void TraditionalCompilation::EmitMoveAssign(
+void Compiler::EmitMoveAssign(
     type::Primitive const *t, ir::RegOr<ir::Addr> to,
     type::Typed<ir::Results> const &from) {
   EmitCopyAssign(t, to, from);
 }
 
-void TraditionalCompilation::EmitCopyAssign(
+void Compiler::EmitCopyAssign(
     type::Tuple const *t, ir::RegOr<ir::Addr> to,
     type::Typed<ir::Results> const &from) {
   t->copy_assign_func_.init([=]() {
@@ -234,7 +234,7 @@ void TraditionalCompilation::EmitCopyAssign(
   ir::Copy(t, from->get<ir::Reg>(0), to);
 }
 
-void TraditionalCompilation::EmitMoveAssign(
+void Compiler::EmitMoveAssign(
     type::Tuple const *t, ir::RegOr<ir::Addr> to,
     type::Typed<ir::Results> const &from) {
   t->move_assign_func_.init([=]() {
@@ -266,7 +266,7 @@ void TraditionalCompilation::EmitMoveAssign(
   ir::Move(t, from->get<ir::Reg>(0), to);
 }
 
-void TraditionalCompilation::EmitCopyAssign(
+void Compiler::EmitCopyAssign(
     type::Variant const *t, ir::RegOr<ir::Addr> to,
     type::Typed<ir::Results> const &from) {
   // TODO full destruction is only necessary if the type is changing.
@@ -301,7 +301,7 @@ void TraditionalCompilation::EmitCopyAssign(
   }
 }
 
-void TraditionalCompilation::EmitMoveAssign(
+void Compiler::EmitMoveAssign(
     type::Variant const *t, ir::RegOr<ir::Addr> to,
     type::Typed<ir::Results> const &from) {
   // TODO full destruction is only necessary if the type is changing.
@@ -336,18 +336,18 @@ void TraditionalCompilation::EmitMoveAssign(
   }
 }
 
-void TraditionalCompilation::EmitCopyAssign(
+void Compiler::EmitCopyAssign(
     type::Struct const *t, ir::RegOr<ir::Addr> to,
     type::Typed<ir::Results> const &from) {
   t->copy_assign_func_.init([=]() { return CreateAssign<Copy>(this, t); });
   ir::Copy(t, from->get<ir::Reg>(0), to);
 }
 
-void TraditionalCompilation::EmitMoveAssign(
+void Compiler::EmitMoveAssign(
     type::Struct const *t, ir::RegOr<ir::Addr> to,
     type::Typed<ir::Results> const &from) {
   t->move_assign_func_.init([=]() { return CreateAssign<Move>(this, t); });
   ir::Move(t, from->get<ir::Reg>(0), to);
 }
 
-}  // namespace visitor
+}  // namespace compiler

@@ -5,7 +5,7 @@
 
 #include "base/debug.h"
 #include "base/untyped_buffer.h"
-#include "visitor/traditional_compilation.h"
+#include "compiler/compiler.h"
 
 namespace ir {
 struct BlockDef;
@@ -17,14 +17,14 @@ struct Expression;
 
 namespace backend {
 ir::Results Evaluate(type::Typed<ast::Expression const *> typed_expr,
-                     visitor::TraditionalCompilation *visitor);
+                     compiler::Compiler *visitor);
 base::untyped_buffer EvaluateToBuffer(
     type::Typed<ast::Expression const *> typed_expr,
-    visitor::TraditionalCompilation *visitor);
+    compiler::Compiler *visitor);
 
 template <typename T>
 T EvaluateAs(type::Typed<ast::Expression const *> typed_expr,
-             visitor::TraditionalCompilation *visitor) {
+             compiler::Compiler *visitor) {
   static_assert(std::is_trivially_copyable_v<T>);
   static_assert(!std::is_same_v<T, ir::BlockDef *>, "");
   // if (visitor->num_errors() != 0u) {

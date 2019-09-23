@@ -8,11 +8,11 @@
 #include "ir/components.h"
 #include "ir/results.h"
 #include "type/primitive.h"
-#include "visitor/emit_ir.h"
+#include "compiler/compiler.h"
 
-namespace visitor {
+namespace compiler {
 
-void TraditionalCompilation::EmitDefaultInit(type::Array const *t,
+void Compiler::EmitDefaultInit(type::Array const *t,
                                              ir::Reg reg) {
   t->init_func_.init([=]() {
     // TODO special function?
@@ -28,17 +28,17 @@ void TraditionalCompilation::EmitDefaultInit(type::Array const *t,
   ir::Init(t, reg);
 }
 
-void TraditionalCompilation::EmitDefaultInit(type::Flags const *t,
+void Compiler::EmitDefaultInit(type::Flags const *t,
                                              ir::Reg reg) {
   ir::Store(ir::FlagsVal{0}, reg);
 }
 
-void TraditionalCompilation::EmitDefaultInit(type::Pointer const *t,
+void Compiler::EmitDefaultInit(type::Pointer const *t,
                                              ir::Reg reg) {
   ir::Store(ir::Addr::Null(), reg);
 }
 
-void TraditionalCompilation::EmitDefaultInit(type::Primitive const *t,
+void Compiler::EmitDefaultInit(type::Primitive const *t,
                                              ir::Reg reg) {
   switch (t->type_) {
     case type::PrimType::Type_: ir::Store(type::Void(), reg); break;
@@ -59,12 +59,12 @@ void TraditionalCompilation::EmitDefaultInit(type::Primitive const *t,
   }
 }
 
-void TraditionalCompilation::EmitDefaultInit(type::Struct const *t,
+void Compiler::EmitDefaultInit(type::Struct const *t,
                                              ir::Reg reg) {
   ir::Init(t, reg);
 }
 
-void TraditionalCompilation::EmitDefaultInit(type::Tuple const *t,
+void Compiler::EmitDefaultInit(type::Tuple const *t,
                                              ir::Reg reg) {
   t->init_func_.init([=]() {
     auto *fn = module()->AddFunc(
@@ -89,4 +89,4 @@ void TraditionalCompilation::EmitDefaultInit(type::Tuple const *t,
   ir::Init(t, reg);
 }
 
-}  // namespace visitor
+}  // namespace compiler

@@ -14,9 +14,9 @@
 #include "type/primitive.h"
 #include "type/type.h"
 
-namespace visitor {
+namespace compiler {
 
-void TraditionalCompilation::EmitPrint(type::Array const *t,
+void Compiler::EmitPrint(type::Array const *t,
                                        ir::Results const &val) {
   t->repr_func_.init([=]() {
     // TODO special function?
@@ -66,24 +66,24 @@ void TraditionalCompilation::EmitPrint(type::Array const *t,
   ir::Call(ir::AnyFunc{t->repr_func_.get()}, t->repr_func_.get()->type_, {val});
 }
 
-void TraditionalCompilation::EmitPrint(type::Enum const *t,
+void Compiler::EmitPrint(type::Enum const *t,
                                        ir::Results const &val) {
   // TODO print something friendlier
   ir::Print(val.get<ir::EnumVal>(0), t);
 }
 
-void TraditionalCompilation::EmitPrint(type::Flags const *t,
+void Compiler::EmitPrint(type::Flags const *t,
                                        ir::Results const &val) {
   // TODO print something friendlier
   ir::Print(val.get<ir::FlagsVal>(0), t);
 }
 
-void TraditionalCompilation::EmitPrint(type::Pointer const *t,
+void Compiler::EmitPrint(type::Pointer const *t,
                                        ir::Results const &val) {
   ir::Print(val.get<ir::Addr>(0));
 }
 
-void TraditionalCompilation::EmitPrint(type::Primitive const *t,
+void Compiler::EmitPrint(type::Primitive const *t,
                                        ir::Results const &val) {
   switch (t->type_) {
     case type::PrimType::Bool: ir::Print(val.get<bool>(0)); break;
@@ -112,7 +112,7 @@ void TraditionalCompilation::EmitPrint(type::Primitive const *t,
   }
 }
 
-void TraditionalCompilation::EmitPrint(type::Tuple const *t,
+void Compiler::EmitPrint(type::Tuple const *t,
                                        ir::Results const &val) {
   auto reg = val.get<ir::Reg>(0);
   ir::Print(std::string_view{"("});
@@ -132,7 +132,7 @@ void TraditionalCompilation::EmitPrint(type::Tuple const *t,
   ir::Print(std::string_view{")"});
 }
 
-void TraditionalCompilation::EmitPrint(type::Variant const *t,
+void Compiler::EmitPrint(type::Variant const *t,
                                        ir::Results const &val) {
   // TODO design and build a jump table?
   // TODO repr_func_
@@ -174,4 +174,4 @@ void TraditionalCompilation::EmitPrint(type::Variant const *t,
   ir::Call(ir::AnyFunc{t->repr_func_}, t->repr_func_->type_, {val});
 }
 
-}  // namespace visitor
+}  // namespace compiler

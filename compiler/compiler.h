@@ -1,7 +1,9 @@
-#ifndef ICARUS_VISITOR_TRADITIONAL_COMPILATION_H
-#define ICARUS_VISITOR_TRADITIONAL_COMPILATION_H
+#ifndef ICARUS_COMPILER_COMPILER_H
+#define ICARUS_COMPILER_COMPILER_H
 
 #include "base/tag.h"
+#include "compiler/deferred_body.h"
+#include "compiler/verify_result.h"
 #include "error/log.h"
 #include "ir/addr.h"
 #include "ir/builder.h"
@@ -9,10 +11,8 @@
 #include "ir/results.h"
 #include "misc/module.h"
 #include "type/type_fwd.h"
-#include "visitor/deferred_body.h"
-#include "visitor/verify_result.h"
 
-namespace visitor {
+namespace compiler {
 // TODO: Come up with a better name.
 //
 // These are the steps in a traditional compiler of verifying types and emitting
@@ -32,8 +32,8 @@ namespace visitor {
 // rather than separating all stages. In time we will see if this belief holds
 // water.
 
-struct TraditionalCompilation : public DeferredBody<TraditionalCompilation> {
-  TraditionalCompilation(Module *mod);
+struct Compiler : public DeferredBody<Compiler> {
+  Compiler(Module *mod);
 
   Module *module() { return mod_; }
   ir::Builder &builder() { return bldr_; };
@@ -47,7 +47,7 @@ struct TraditionalCompilation : public DeferredBody<TraditionalCompilation> {
   VerifyResult const *prior_verification_attempt(ast::ExprPtr expr);
   type::Type const *type_of(ast::Expression const *expr) const;
   void set_addr(ast::Declaration const *decl, ir::Reg addr);
-  visitor::VerifyResult set_result(ast::ExprPtr expr, visitor::VerifyResult r);
+  compiler::VerifyResult set_result(ast::ExprPtr expr, compiler::VerifyResult r);
 
   ir::Reg addr(ast::Declaration const *decl) const;
   void set_dispatch_table(ast::ExprPtr expr, ast::DispatchTable &&table);
@@ -70,8 +70,7 @@ struct TraditionalCompilation : public DeferredBody<TraditionalCompilation> {
 #undef ICARUS_AST_NODE_X
 
   VerifyResult VerifyType(ast::Node const *node) { UNREACHABLE(node); };
-#define ICARUS_AST_NODE_X(name)                                                \
-  VerifyResult VerifyType(ast::name const *node);
+#define ICARUS_AST_NODE_X(name) VerifyResult VerifyType(ast::name const *node);
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
 
@@ -181,7 +180,7 @@ struct TraditionalCompilation : public DeferredBody<TraditionalCompilation> {
   Module *mod_;
   ir::Builder &bldr_;
 
- public: // TODO make private
+ public:  // TODO make private
   std::pair<ConstantBinding, DependentData> *constants_;
   // We only want to generate at most one node for each set of constants in a
   // function literal, but we can't generate them all at once because, for
@@ -223,6 +222,6 @@ struct TraditionalCompilation : public DeferredBody<TraditionalCompilation> {
   // requires a deeper refactoring to have things linke ir::ResultView, etc.
   absl::flat_hash_map<ir::Reg, ir::Results> *inline_ = nullptr;
 };
-}  // namespace visitor
+}  // namespace compiler
 
-#endif  // ICARUS_VISITOR_TRADITIONAL_COMPILATION_H
+#endif  // ICARUS_COMPILER_COMPILER_H

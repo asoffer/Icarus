@@ -5,10 +5,11 @@
 
 #include "absl/container/node_hash_map.h"
 #include "ast/ast_fwd.h"
+#include "base/debug.h"
 #include "base/guarded.h"
 #include "base/move_func.h"
 
-namespace visitor {
+namespace compiler {
 
 template <typename Visitor>
 struct DeferredBody {
@@ -40,5 +41,5 @@ struct DeferredBody {
       deferred_work_;
 };
 
-}  // namespace visitor
+}  // namespace compiler
 #endif  // ICARUS_VISITOR_DEFERRED_BODY_H

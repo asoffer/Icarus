@@ -20,9 +20,9 @@ namespace ir {
 struct Results;
 }  // namespace ir
 
-namespace visitor {
-struct TraditionalCompilation;
-}  // namespace visitor
+namespace compiler {
+struct Compiler;
+}  // namespace compiler
 
 struct ConstantBinding {
  public:
@@ -48,7 +48,7 @@ struct ConstantBinding {
  private:
   friend bool operator==(ConstantBinding const& lhs,
                          ConstantBinding const& rhs);
-  friend struct visitor::TraditionalCompilation;  // TODO remove me.
+  friend struct compiler::Compiler;  // TODO remove me.
 
   struct Binding {
     type::Type const * type_;

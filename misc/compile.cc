@@ -1,12 +1,11 @@
 #include "ast/ast.h"
 #include "backend/eval.h"
 #include "base/debug.h"
+#include "compiler/compiler.h"
 #include "frontend/source/file.h"
 #include "ir/compiled_fn.h"
 #include "misc/module.h"
 #include "visitor/assign_scope.h"
-#include "visitor/emit_ir.h"
-#include "visitor/verify_type.h"
 
 namespace frontend {
 std::vector<std::unique_ptr<ast::Node>> Parse(Source *src, ::Module *mod);
@@ -40,7 +39,7 @@ Module *CompileModule(Module *mod, std::filesystem::path const *path) {
     }
   }
 
-  visitor::TraditionalCompilation visitor(mod);
+  compiler::Compiler visitor(mod);
   for (auto const &stmt : mod->statements_) { stmt->VerifyType(&visitor); }
 
   if (visitor.num_errors() > 0) {

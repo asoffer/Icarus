@@ -9,10 +9,10 @@
 #include "ir/compiled_fn.h"
 #include "type/generic_struct.h"
 #include "type/util.h"
-#include "visitor/emit_ir.h"
+#include "compiler/compiler.h"
 
 namespace backend {
-static ir::CompiledFn ExprFn(visitor::TraditionalCompilation *visitor,
+static ir::CompiledFn ExprFn(compiler::Compiler *visitor,
                              type::Typed<ast::Expression const *> typed_expr) {
   ir::CompiledFn fn(visitor->module(),
                     type::Func({}, {ASSERT_NOT_NULL(typed_expr.type())}),
@@ -42,7 +42,7 @@ static ir::CompiledFn ExprFn(visitor::TraditionalCompilation *visitor,
 
 base::untyped_buffer EvaluateToBuffer(
     type::Typed<ast::Expression const *> typed_expr,
-    visitor::TraditionalCompilation *visitor) {
+    compiler::Compiler *visitor) {
   auto fn = ExprFn(visitor, typed_expr);
 
   size_t bytes_needed =
@@ -58,7 +58,7 @@ base::untyped_buffer EvaluateToBuffer(
 }
 
 ir::Results Evaluate(type::Typed<ast::Expression const *> typed_expr,
-                     visitor::TraditionalCompilation *visitor) {
+                     compiler::Compiler *visitor) {
   // TODO is the error-case distinguishible from successfully returning void?
   if (visitor->num_errors() != 0) { return ir::Results{}; }
 

@@ -16,10 +16,9 @@
 #include "ir/results.h"
 #include "visitor/assign_scope.h"
 #include "visitor/dependent_decls.h"
-#include "visitor/emit_ir.h"
+#include "compiler/compiler.h"
 #include "visitor/extract_jumps.h"
-#include "visitor/traditional_compilation.h"
-#include "visitor/verify_type.h"
+#include "compiler/compiler.h"
 #endif  // ICARUS_VISITOR_EMIT_IR
 
 #ifdef ICARUS_VISITOR_FORMAT
