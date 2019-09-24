@@ -21,18 +21,6 @@ VerifyResult const *Compiler::prior_verification_attempt(
   return nullptr;
 }
 
-base::Tagged<ir::Addr, ir::Reg> Compiler::Alloca(
-    type::Type const *t) {
-  return builder().function()->Alloca(t);
-}
-
-base::Tagged<ir::Addr, ir::Reg> Compiler::TmpAlloca(
-    type::Type const *t) {
-  auto reg = Alloca(t);
-  temporaries_to_destroy_->emplace_back(reg, t);
-  return reg;
-}
-
 type::Type const *Compiler::type_of(ast::Expression const *expr) const {
   if (auto *decl = expr->if_as<ast::Declaration>()) {
     if (auto *t = current_constants_.type_of(decl)) { return t; }
@@ -125,4 +113,18 @@ core::PendingModule *Compiler::pending_module(
   }
   return nullptr;
 }
+
+void Compiler::CompleteDeferredBodies() {
+  base::move_func<void()> f;
+  while (true) {
+    {
+      auto handle = deferred_work_.lock();
+      if (handle->empty()) { return; }
+      auto nh = handle->extract(handle->begin());
+      f       = std::move(nh.mapped());
+    }
+    std::move(f)();
+  }
+}
+
 }  // namespace compiler

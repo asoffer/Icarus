@@ -1,8 +1,14 @@
 #ifndef ICARUS_COMPILER_COMPILER_H
 #define ICARUS_COMPILER_COMPILER_H
 
+#include <atomic>
+
+#include "absl/container/node_hash_map.h"
+#include "ast/ast_fwd.h"
+#include "base/debug.h"
+#include "base/guarded.h"
+#include "base/move_func.h"
 #include "base/tag.h"
-#include "compiler/deferred_body.h"
 #include "compiler/verify_result.h"
 #include "error/log.h"
 #include "ir/addr.h"
@@ -32,17 +38,15 @@ namespace compiler {
 // rather than separating all stages. In time we will see if this belief holds
 // water.
 
-struct Compiler : public DeferredBody<Compiler> {
+struct Compiler {
   Compiler(Module *mod);
+  ~Compiler() { ASSERT(deferred_work_.lock()->empty() == true); }
 
   Module *module() { return mod_; }
   ir::Builder &builder() { return bldr_; };
   error::Log *error_log() { return &module()->error_log_; }
   size_t num_errors() { return error_log()->size(); }
   void DumpErrors() { error_log()->Dump(); }
-
-  base::Tagged<ir::Addr, ir::Reg> Alloca(type::Type const *t);
-  base::Tagged<ir::Addr, ir::Reg> TmpAlloca(type::Type const *t);
 
   VerifyResult const *prior_verification_attempt(ast::ExprPtr expr);
   type::Type const *type_of(ast::Expression const *expr) const;
@@ -63,6 +67,16 @@ struct Compiler : public DeferredBody<Compiler> {
 
   void set_pending_module(ast::Import const *import_node,
                           core::PendingModule mod);
+
+  void CompleteDeferredBodies();
+
+  template <typename Fn>
+  base::move_func<void()> *AddWork(ast::Node const *node, Fn &&fn) {
+    auto [iter, success] =
+        deferred_work_.lock()->emplace(node, std::forward<Fn>(fn));
+    ASSERT(success == true);
+    return &iter->second;
+  }
 
   ir::Results EmitValue(ast::Node const *node) { UNREACHABLE(node); };
 #define ICARUS_AST_NODE_X(name) ir::Results EmitValue(ast::name const *node);
@@ -201,14 +215,8 @@ struct Compiler : public DeferredBody<Compiler> {
     ir::Results val_;
   };
   std::vector<std::vector<YieldResult>> yields_stack_;
-  bool more_stmts_allowed_ = true;
 
   absl::flat_hash_map<ir::BlockDef const *, ir::BasicBlock *> *block_map;
-
-  // Temporaries need to be destroyed at the end of each statement.
-  // This is a pointer to a buffer where temporary allocations can register
-  // themselves for deletion.
-  std::vector<type::Typed<ir::Reg>> *temporaries_to_destroy_ = nullptr;
 
   // During validation, when a cyclic dependency is encountered, we write it
   // down here. That way, we can bubble up from the dependency until we see it
@@ -221,6 +229,9 @@ struct Compiler : public DeferredBody<Compiler> {
   // reallocation/double-storage, but we can deal with this later. Probably
   // requires a deeper refactoring to have things linke ir::ResultView, etc.
   absl::flat_hash_map<ir::Reg, ir::Results> *inline_ = nullptr;
+
+  base::guarded<absl::node_hash_map<ast::Node const *, base::move_func<void()>>>
+      deferred_work_;
 };
 }  // namespace compiler
 

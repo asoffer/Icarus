@@ -5,14 +5,17 @@ cc_lib_target(
     name = "compiler",
     cfgs = ["match", "compile"],
     intf_deps = [
-        ":deferred_body",
         ":verify_result",
+        "//base:debug",
+        "//base:guarded",
+        "//base:move_func",
         "//base:tag",
         "//error:log",
         "//misc:module",
         "//ir:results",
         "//ir:builder",
         "//type:type_fwd",
+        "@com_google_absl//absl/container:node_hash_map",
     ],
     impl_deps = [
         "//ast:ast",
@@ -194,18 +197,6 @@ cc_lib_target(
         "//type:type",
         "//type:typed_value",
     ],
-    test_deps = None,
-)
-
-cc_component(
-    name = "deferred_body",
-    intf_deps = [
-        "//base:debug",
-        "//base:guarded",
-        "//base:move_func",
-        "@com_google_absl//absl/container:node_hash_map",
-    ],
-    impl_deps = None,
     test_deps = None,
 )
 

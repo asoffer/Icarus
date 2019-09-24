@@ -17,7 +17,7 @@
   static_assert(std::is_base_of_v<::base::UseWithScope,                        \
                                   std::decay_t<decltype(__VA_ARGS__)>>,        \
                 "If a type is to be used with ICARUS_SCOPE, it must opt-in "   \
-                "by publically extending base::UseWithScope");                 \
+                "by publicly extending base::UseWithScope");                   \
   if (auto ICARUS_CAT(icarus_temp_scope_, __LINE__, _var) = __VA_ARGS__; true)
 
 namespace base {

@@ -36,7 +36,7 @@ static ir::Results PrepArg(compiler::Compiler *compiler, type::Type const *to,
     if (auto *from_variant = from->if_as<type::Variant>()) {
       return val;
     } else {
-      auto alloc = compiler->TmpAlloca(to);
+      auto alloc = compiler->builder().TmpAlloca(to);
       // TODO move initialization, not move assignment.
       to->EmitMoveAssign(compiler, from, val, alloc);
       // TODO who destruction of the moved-from buffer? what if it was
@@ -753,7 +753,7 @@ static ir::Results EmitFnCall(
   size_t index_into_phi_args = 0;
   for (type::Type const *t : table->return_types_) {
     if (t->is_big()) {
-      // TODO outputs.emplace_back(compiler->TmpAlloca(t));
+      // TODO outputs.emplace_back(builder().TmpAlloca(t));
     } else {
       outputs.emplace_back(&result_phi_args[index_into_phi_args++]);
     }

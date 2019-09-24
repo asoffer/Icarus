@@ -28,4 +28,14 @@ SetCurrentFunc::~SetCurrentFunc() {
   GetBuilder().CurrentBlock() = old_block_;
 }
 
+base::Tagged<Addr, Reg> Builder::Alloca(type::Type const* t) {
+  return function()->Alloca(t);
+}
+
+base::Tagged<Addr, Reg> Builder::TmpAlloca(type::Type const* t) {
+  auto reg = Alloca(t);
+  current_.temporaries_to_destroy_.emplace_back(reg, t);
+  return reg;
+}
+
 }  // namespace ir

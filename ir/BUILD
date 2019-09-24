@@ -66,9 +66,12 @@ cc_lib_target(
     name = "builder",
     cfgs = ["match", "compile"],
     intf_deps = [
+        ":addr",
         ":basic_block",
+        ":reg",
         "//base:debug",
         "//base:scope",
+        "//base:tag",
     ],
     impl_deps = [
         ":cmd_buffer",
