@@ -147,7 +147,7 @@ void ExtractJumps::operator()(ast::Switch const *node) {
 void ExtractJumps::operator()(ast::Terminal const *node) {}
 
 void ExtractJumps::operator()(ast::Unop const *node) {
-  node->operand->ExtractJumps(this);
+  node->operand()->ExtractJumps(this);
 }
 
 }  // namespace visitor

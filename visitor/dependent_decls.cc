@@ -167,7 +167,7 @@ void DependentDecls::operator()(ast::Terminal const *node,
 
 void DependentDecls::operator()(ast::Unop const *node,
                                 ast::Declaration const *d) {
-  node->operand->DependentDecls(this, d);
+  node->operand()->DependentDecls(this, d);
 }
 
 }  // namespace visitor

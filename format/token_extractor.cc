@@ -149,7 +149,7 @@ void TokenExtractor::operator()(ast::Switch const *node) {
 
 void TokenExtractor::operator()(ast::Unop const *node) {
   // TODO
-  node->operand->ExtractTokens(this);
+  node->operand()->ExtractTokens(this);
 }
 
 void TokenExtractor::operator()(ast::Identifier const *node) {

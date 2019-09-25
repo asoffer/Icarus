@@ -176,13 +176,12 @@ std::unique_ptr<ast::Node> BuildRightUnop(
     error::Log *error_log) {
   const std::string &tk = nodes[1]->as<frontend::Token>().token;
   if (tk == ":?") {
-    auto unop     = std::make_unique<ast::Unop>();
-    unop->operand = move_as<ast::Expression>(nodes[0]);
-    unop->op      = frontend::Operator::TypeOf;
-    unop->span    = SourceRange(unop->operand->span, nodes[1]->span);
+    SourceRange span(nodes[0]->span, nodes[1]->span);
+    auto unop = std::make_unique<ast::Unop>(span, frontend::Operator::TypeOf,
+                                            move_as<ast::Expression>(nodes[0]));
 
-    if (unop->operand->is<ast::Declaration>()) {
-      error_log->DeclarationUsedInUnop(tk, unop->operand->span);
+    if (unop->operand()->is<ast::Declaration>()) {
+      error_log->DeclarationUsedInUnop(tk, unop->operand()->span);
     }
 
     return unop;
@@ -317,11 +316,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
                          nullptr, mod, error_log);
   }
 
-  auto unop     = std::make_unique<ast::Unop>();
-  unop->operand = move_as<ast::Expression>(nodes[1]);
-  unop->span    = SourceRange(nodes[0]->span, unop->operand->span);
-
-  static absl::flat_hash_map<std::string_view, Operator> const UnopMap{
+  static absl::flat_hash_map<std::string_view, Operator> const kUnopMap{
       {"*", Operator::Mul},          {"[*]", Operator::BufPtr},
       {"@", Operator::At},           {"import", Operator::Import},
       {"&", Operator::And},          {"which", Operator::Which},
@@ -330,10 +325,13 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
       {"<<", Operator::Expand},      {"copy", frontend::Operator::Copy},
       {"$", Operator::Eval},         {"move", frontend::Operator::Move},
       {"..", Operator::VariadicPack}};
-  unop->op = UnopMap.at(tk);
 
-  if (unop->operand->is<ast::Declaration>()) {
-    error_log->DeclarationUsedInUnop(tk, unop->operand->span);
+  SourceRange span(nodes[0]->span, nodes[1]->span);
+  auto unop = std::make_unique<ast::Unop>(span, kUnopMap.at(tk),
+                                          move_as<ast::Expression>(nodes[1]));
+
+  if (unop->operand()->is<ast::Declaration>()) {
+    error_log->DeclarationUsedInUnop(tk, unop->operand()->span);
   }
   return unop;
 }

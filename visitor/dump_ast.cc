@@ -413,13 +413,13 @@ void DumpAst::operator()(ast::Terminal const *node) {
 }
 
 void DumpAst::operator()(ast::Unop const *node) {
-  if (node->op == frontend::Operator::TypeOf) {
+  if (node->op() == frontend::Operator::TypeOf) {
     absl::StrAppend(out_, "(");
-    node->operand->DumpAst(this);
+    node->operand()->DumpAst(this);
     absl::StrAppend(out_, "):?");
   }
-  absl::StrAppend(out_, OpStr(node->op));
-  node->operand->DumpAst(this);
+  absl::StrAppend(out_, OpStr(node->op()));
+  node->operand()->DumpAst(this);
 }
 
 void DumpAst::operator()(frontend::Token const *node) {

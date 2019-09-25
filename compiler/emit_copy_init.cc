@@ -61,12 +61,12 @@ void Compiler::EmitCopyInit(ast::CommaList const *node,
 
 void Compiler::EmitCopyInit(ast::Unop const *node,
                                           type::Typed<ir::Reg> reg) {
-  switch (node->op) {
+  switch (node->op()) {
     case frontend::Operator::Move:
-      node->operand->EmitMoveInit(this, reg);
+      node->operand()->EmitMoveInit(this, reg);
       break;
     case frontend::Operator::Copy:
-      node->operand->EmitCopyInit(this, reg);
+      node->operand()->EmitCopyInit(this, reg);
       break;
     default: EmitCopyInit(type_of(node), node->EmitValue(this), reg); break;
   }

@@ -1599,40 +1599,40 @@ ir::Results Compiler::EmitValue(ast::Terminal const *node) {
 }
 
 ir::Results Compiler::EmitValue(ast::Unop const *node) {
-  auto *operand_type = type_of(node->operand.get());
+  auto *operand_type = type_of(node->operand());
   if (auto const *table = dispatch_table(node)) {
     // TODO struct is not exactly right. we really mean user-defined
     return table->EmitCall(
         this,
         core::FnArgs<std::pair<ast::Expression const *, ir::Results>>(
-            {std::pair(node->operand.get(), node->operand->EmitValue(this))},
+            {std::pair(node->operand(), node->operand()->EmitValue(this))},
             {}));
   }
 
-  switch (node->op) {
+  switch (node->op()) {
     case frontend::Operator::Copy: {
       auto reg = builder().TmpAlloca(operand_type);
-      EmitCopyInit(operand_type, node->operand->EmitValue(this),
+      EmitCopyInit(operand_type, node->operand()->EmitValue(this),
                    type::Typed<ir::Reg>(reg, operand_type));
       return ir::Results{reg};
     } break;
     case frontend::Operator::Move: {
       auto reg = builder().TmpAlloca(operand_type);
-      EmitMoveInit(operand_type, node->operand->EmitValue(this),
+      EmitMoveInit(operand_type, node->operand()->EmitValue(this),
                    type::Typed<ir::Reg>(reg, operand_type));
       return ir::Results{reg};
     } break;
     case frontend::Operator::BufPtr:
       return ir::Results{ir::BufPtr(
-          node->operand->EmitValue(this).get<type::Type const *>(0))};
+          node->operand()->EmitValue(this).get<type::Type const *>(0))};
     case frontend::Operator::Not: {
-      auto *t = type_of(node->operand.get());
+      auto *t = type_of(node->operand());
       if (t == type::Bool) {
         return ir::Results{
-            ir::Not(node->operand->EmitValue(this).get<bool>(0))};
+            ir::Not(node->operand()->EmitValue(this).get<bool>(0))};
       } else if (t->is<type::Flags>()) {
         return ir::Results{
-            ir::XorFlags(node->operand->EmitValue(this).get<ir::FlagsVal>(0),
+            ir::XorFlags(node->operand()->EmitValue(this).get<ir::FlagsVal>(0),
                          ir::FlagsVal{t->as<type::Flags>().All})};
 
       } else {
@@ -1640,35 +1640,35 @@ ir::Results Compiler::EmitValue(ast::Unop const *node) {
       }
     } break;
     case frontend::Operator::Sub: {
-      auto operand_ir = node->operand->EmitValue(this);
+      auto operand_ir = node->operand()->EmitValue(this);
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, float, double>(
-          type_of(node->operand.get()), [&](auto tag) {
+          type_of(node->operand()), [&](auto tag) {
             using T = typename decltype(tag)::type;
             return ir::Results{ir::Neg(operand_ir.get<T>(0))};
           });
     } break;
     case frontend::Operator::TypeOf:
-      return ir::Results{type_of(node->operand.get())};
+      return ir::Results{type_of(node->operand())};
     case frontend::Operator::Which:
       return ir::Results{ir::Load<type::Type const *>(
-          ir::VariantType(node->operand->EmitValue(this).get<ir::Reg>(0)))};
+          ir::VariantType(node->operand()->EmitValue(this).get<ir::Reg>(0)))};
     case frontend::Operator::And:
-      return ir::Results{node->operand->EmitRef(this)[0]};
+      return ir::Results{node->operand()->EmitRef(this)[0]};
     case frontend::Operator::Eval: {
       // Guaranteed to be constant by VerifyType
       // TODO what if there's an error during evaluation?
       return backend::Evaluate(
-          type::Typed<ast::Expression const *>(node->operand.get(),
-                                               type_of(node->operand.get())),
+          type::Typed<ast::Expression const *>(node->operand(),
+                                               type_of(node->operand())),
           this);
     }
     case frontend::Operator::Mul:
       return ir::Results{
-          ir::Ptr(node->operand->EmitValue(this).get<type::Type const *>(0))};
+          ir::Ptr(node->operand()->EmitValue(this).get<type::Type const *>(0))};
     case frontend::Operator::At: {
       auto *t = type_of(node);
       return ir::Results{
-          ir::Load(node->operand->EmitValue(this).get<ir::Reg>(0), t)};
+          ir::Load(node->operand()->EmitValue(this).get<ir::Reg>(0), t)};
     }
     case frontend::Operator::Needs: {
       NOT_YET();
@@ -1677,10 +1677,10 @@ ir::Results Compiler::EmitValue(ast::Unop const *node) {
       NOT_YET();
     } break;
     case frontend::Operator::Expand: {
-      ir::Results tuple_val = node->operand->EmitValue(this);
+      ir::Results tuple_val = node->operand()->EmitValue(this);
       ir::Reg tuple_reg     = tuple_val.get<ir::Reg>(0);
       type::Tuple const *tuple_type =
-          &type_of(node->operand.get())->as<type::Tuple>();
+          &type_of(node->operand())->as<type::Tuple>();
       ir::Results results;
       for (size_t i = 0; i < tuple_type->size(); ++i) {
         results.append(ir::PtrFix(ir::Field(tuple_reg, tuple_type, i).get(),
@@ -1691,7 +1691,7 @@ ir::Results Compiler::EmitValue(ast::Unop const *node) {
     case frontend::Operator::VariadicPack: {
       NOT_YET();
     } break;
-    default: UNREACHABLE("Operator is ", static_cast<int>(node->op));
+    default: UNREACHABLE("Operator is ", static_cast<int>(node->op()));
   }
 }
 

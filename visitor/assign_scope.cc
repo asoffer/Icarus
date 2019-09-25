@@ -227,7 +227,7 @@ void AssignScope::operator()(ast::Terminal *node, core::Scope *scope) {
 
 void AssignScope::operator()(ast::Unop *node, core::Scope *scope) {
   node->scope_ = scope;
-  node->operand->assign_scope(this, scope);
+  node->operand()->assign_scope(this, scope);
 }
 
 }  // namespace visitor

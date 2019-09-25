@@ -995,18 +995,33 @@ struct Switch : public Expression {
       cases_;
 };
 
-// TODO
+// Unop:
+//
+// Represents a call to a unary operator.
+//
+// Examples:
+//  * `-some_number`
+//  * `!some_boolean`
+//  * `what_type_am_i:?`
+//  * `@some_ptr`
 struct Unop : public Expression {
+  Unop(frontend::SourceRange span, frontend::Operator op,
+       std::unique_ptr<Expression> operand)
+      : Expression(span), operand_(std::move(operand)), op_(op) {}
   ~Unop() override {}
 
 #include "visitor/visitors.xmacro.h"
 
   bool needs_expansion() const override {
-    return !parenthesized_ && op == frontend::Operator::Expand;
+    return !parenthesized_ && op() == frontend::Operator::Expand;
   }
 
-  std::unique_ptr<Expression> operand;
-  frontend::Operator op;
+  frontend::Operator op() const { return op_; }
+  Expression const *operand() const { return operand_.get(); }
+  Expression *operand() { return operand_.get(); }
+
+  std::unique_ptr<Expression> operand_;
+  frontend::Operator op_;
 };
 
 }  // namespace ast

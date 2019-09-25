@@ -81,8 +81,8 @@ std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(
 
 std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(
     ast::Unop const *node) {
-  ASSERT(node->op == frontend::Operator::At);
-  return {node->operand->EmitValue(this).get<ir::Reg>(0)};
+  ASSERT(node->op() == frontend::Operator::At);
+  return {node->operand()->EmitValue(this).get<ir::Reg>(0)};
 }
 
 }  // namespace compiler

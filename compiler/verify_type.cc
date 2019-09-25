@@ -1977,10 +1977,10 @@ VerifyResult Compiler::VerifyType(ast::Terminal const *node) {
 
 VerifyResult Compiler::VerifyType(ast::Unop const *node) {
   ASSIGN_OR(return VerifyResult::Error(), auto result,
-                   node->operand->VerifyType(this));
+                   node->operand()->VerifyType(this));
   auto *operand_type = result.type_;
 
-  switch (node->op) {
+  switch (node->op()) {
     case frontend::Operator::Copy:
       if (!operand_type->IsCopyable()) {
         NOT_YET("log an error. not copyable");
@@ -2000,7 +2000,7 @@ VerifyResult Compiler::VerifyType(ast::Unop const *node) {
         // TODO here you could return a correct type and just have there
         // be an error regarding constness. When you do node probably worth a
         // full pass over all verification code.
-        error_log()->NonConstantEvaluation(node->operand->span);
+        error_log()->NonConstantEvaluation(node->operand()->span);
         return VerifyResult::Error();
       } else {
         return set_result(node, VerifyResult(operand_type, result.const_));
@@ -2042,7 +2042,7 @@ VerifyResult Compiler::VerifyType(ast::Unop const *node) {
         return ast::VerifyDispatch(
             this, node, os,
             core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>(
-                {std::pair(node->operand.get(), result)}, {}));
+                {std::pair(node->operand(), result)}, {}));
       }
       NOT_YET();
       return VerifyResult::Error();
@@ -2068,21 +2068,21 @@ VerifyResult Compiler::VerifyType(ast::Unop const *node) {
         return ast::VerifyDispatch(
             this, node, os,
             core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>(
-                {std::pair(node->operand.get(), result)}, {}));
+                {std::pair(node->operand(), result)}, {}));
       } else {
         NOT_YET("log an error");
         return VerifyResult::Error();
       }
     case frontend::Operator::Needs:
       if (operand_type != type::Bool) {
-        error_log()->PreconditionNeedsBool(node->operand->span,
+        error_log()->PreconditionNeedsBool(node->operand()->span,
                                            operand_type->to_string());
       }
       if (!result.const_) { NOT_YET(); }
       return set_result(node, VerifyResult::Constant(type::Void()));
     case frontend::Operator::Ensure:
       if (operand_type != type::Bool) {
-        error_log()->PostconditionNeedsBool(node->operand->span,
+        error_log()->PostconditionNeedsBool(node->operand()->span,
                                             operand_type->to_string());
       }
       if (!result.const_) { NOT_YET(); }
