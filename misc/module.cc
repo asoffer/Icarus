@@ -6,6 +6,7 @@
 #include "frontend/source/source.h"
 #ifdef ICARUS_VISITOR_EMIT_IR
 #include "ir/compiled_fn.h"
+#include "ir/scope_def.h"
 #endif  // ICARUS_VISITOR_EMIT_IR
 #include "type/function.h"
 #include "type/jump.h"
@@ -28,6 +29,15 @@ ir::CompiledFn *Module::AddFunc(
   return fns_
       .emplace_back(
           std::make_unique<ir::CompiledFn>(this, fn_type, std::move(params)))
+      .get();
+}
+
+ir::ScopeDef *Module::AddScope(
+    std::vector<ir::AnyFunc> inits, std::vector<ir::AnyFunc> dones,
+    absl::flat_hash_map<std::string_view, ir::BlockDef *> blocks) {
+  return scopes_
+      .emplace_back(std::make_unique<ir::ScopeDef>(
+          this, std::move(inits), std::move(dones), std::move(blocks)))
       .get();
 }
 

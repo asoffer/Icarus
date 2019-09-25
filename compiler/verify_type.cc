@@ -1773,6 +1773,7 @@ VerifyResult Compiler::VerifyType(ast::ScopeLiteral const *node) {
       NOT_YET("log an error");
     }
   }
+  // TODO verify that it has at least one entry and exit point each.
   if (error) { return VerifyResult::Error(); }
   return verify_result;
 }
@@ -1807,20 +1808,20 @@ VerifyResult Compiler::VerifyType(ast::ScopeNode const *node) {
   bool err = false;
   std::vector<ir::BlockDef const *> block_defs;
   for (auto const &block : node->blocks()) {
-    DEBUG_LOG("ScopeNode")("Verifying dispatch for block ", block.name());
+    DEBUG_LOG("ScopeNode")("Verifying dispatch for block `", block.name(), "`");
     auto block_results    = VerifyBlockNode(this, &block);
-    auto const &block_def = scope_def->blocks_.at(block.name());
+    auto *block_def       = scope_def->blocks_.at(block.name());
     DEBUG_LOG("ScopeNode")("    ", block_results);
     if (block_results.empty()) {
       DEBUG_LOG("ScopeNode")("    ... empty block results");
-      auto result = ast::VerifyJumpDispatch(this, node, block_def.after_, {},
+      auto result = ast::VerifyJumpDispatch(this, node, block_def->after_, {},
                                             &block_defs);
       static_cast<void>(result);
       DEBUG_LOG("ScopeNode")("    ... dispatch result = ", result);
     } else {
       for (auto const &fn_args : block_results) {
         auto result =
-            ast::VerifyDispatch(this, node, block_def.after_, fn_args);
+            ast::VerifyDispatch(this, node, block_def->after_, fn_args);
         static_cast<void>(result);
         DEBUG_LOG("ScopeNode")("    ... dispatch result = ", result);
       }

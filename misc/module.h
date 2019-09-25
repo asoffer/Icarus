@@ -33,6 +33,7 @@ struct Jump;
 
 namespace ir {
 struct CompiledFn;
+struct ScopeDef;
 }  // namespace ir
 
 namespace ast {
@@ -46,15 +47,18 @@ struct Module {
   // We take pointers to the module, so it cannot be moved.
   Module(Module &&) = delete;
 
+#ifdef ICARUS_VISITOR_EMIT_IR
   ir::CompiledFn *AddFunc(
       type::Function const *fn_type,
       core::FnParams<type::Typed<ast::Expression const *>> params);
   ir::CompiledFn *AddJump(
       type::Jump const *jump_type,
       core::FnParams<type::Typed<ast::Expression const *>> params);
+  ir::ScopeDef *AddScope(
+      std::vector<ir::AnyFunc> inits, std::vector<ir::AnyFunc> dones,
+      absl::flat_hash_map<std::string_view, ir::BlockDef *> blocks);
 
   // TODO this ifdef needs to disappear it's not long-term sustainable
-#ifdef ICARUS_VISITOR_EMIT_IR
   type::Type const *GetType(std::string_view name) const;
 #endif  // ICARUS_VISITOR_EMIT_IR
   ast::Declaration *GetDecl(std::string_view name) const;
@@ -70,6 +74,7 @@ struct Module {
   // TODO this ifdef needs to disappear it's not long-term sustainable
 #ifdef ICARUS_VISITOR_EMIT_IR
   std::vector<std::unique_ptr<ir::CompiledFn>> fns_;
+  std::vector<std::unique_ptr<ir::ScopeDef>> scopes_;
 #endif  // ICARUS_VISITOR_EMIT_IR
 
   // TODO support more than just a single type argument to generic structs.

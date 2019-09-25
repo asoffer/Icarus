@@ -67,7 +67,8 @@ namespace ir {
   CASE(AccessCmd);                                                             \
   CASE(VariantAccessCmd);                                                      \
   CASE(CallCmd);                                                               \
-  CASE(BlockCmd);
+  CASE(BlockCmd);                                                              \
+  CASE(ScopeCmd)
 
 BasicBlock const* CmdBuffer::Execute(std::vector<ir::Addr> const& ret_slots,
                                      backend::ExecContext* ctx) const {

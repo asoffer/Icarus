@@ -100,44 +100,6 @@ void EmitIrForStatements(Compiler *compiler,
   }
 }
 
-void CompleteBody(Compiler *compiler, ast::ScopeLiteral const *node) {
-  NOT_YET();
-  //   ir::ScopeDef *scope_def = scope_def(node);
-  //   if (!scope_def->work_item) { return; }
-  //
-  //   ir::CompiledFn fn(module(), type::Func({}, {}),
-  //                     core::FnParams<type::Typed<ast::Expression const
-  //                     *>>{});
-  //
-  //   ICARUS_SCOPE(ir::SetCurrentFunc(&fn)) {
-  //     ir::GetBuilder().CurrentBlock() = fn.entry();
-  //
-  //     auto reg = ir::CreateScopeDef(node->scope_->module(), scope_def);
-  //     for (auto *decl : node->decls()) {
-  //       if (decl->id() == "init") {
-  //         ir::AddScopeDefInit(reg,
-  //                             decl->EmitValue(compiler,
-  //                             ctx).get<ir::AnyFunc>(0));
-  //       } else if (decl->id() == "done") {
-  //         ir::AddScopeDefDone(reg,
-  //                             decl->EmitValue(compiler,
-  //                             ctx).get<ir::AnyFunc>(0));
-  //       } else {
-  //         ASSERT(decl->init_val() != nullptr);
-  //         // TODO what if there's a conversion like from A to A|B?
-  //         decl->init_val()->EmitValue(compiler, ctx);
-  //         ir::FinishBlockDef(decl->id());
-  //       }
-  //     }
-  //     ir::FinishScopeDef();
-  //
-  //     ir::ReturnJump();
-  //   }
-  //
-  //   backend::ExecContext exec_context;
-  //   backend::Execute(&fn, base::untyped_buffer(0), {}, &exec_context);
-}
-
 void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node) {
   // TODO have validate return a bool distinguishing if there are errors and
   // whether or not we can proceed.
@@ -1364,20 +1326,20 @@ ir::Results Compiler::EmitValue(ast::YieldStmt const *node) {
 }
 
 ir::Results Compiler::EmitValue(ast::ScopeLiteral const *node) {
-  NOT_YET();
-  // auto [scope_def_iter, inserted] =
-  //     constants_->second.scope_defs_.try_emplace(node,
-  //                                                     node->scope_->module());
-  // if (inserted && !scope_def_iter->second.work_item) {
-     // scope_def_iter->second.work_item =
-  DeferBody(this, node);
-  // }
+  absl::flat_hash_map<std::string_view, ir::Reg> blocks;
+  std::vector<ir::RegOr<ir::AnyFunc>> inits;
+  std::vector<ir::RegOr<ir::AnyFunc>> dones;
+  for (auto const *decl : node->decls()) {
+    if (decl->id() == "init") {
+      inits.push_back(decl->EmitValue(this).get<ir::AnyFunc>(0));
+    } else if (decl->id() == "done") {
+      dones.push_back(decl->EmitValue(this).get<ir::AnyFunc>(0));
+    } else {
+      blocks.emplace(decl->id(), decl->EmitValue(this).get<ir::Reg>(0));
+    }
+  }
 
-  // for (auto *decl : node->decls()) {
-  //   if (decl->id() == "init" || decl->id() == "done") { continue; }
-  //   scope_def_iter->second.blocks_[decl->id()];
-  // }
-  // return ir::Results{&scope_def_iter->second};
+  return ir::Results{ir::ScopeHandler(module(), inits, dones, blocks)};
 }
 
 ir::Results InitializeAndEmitBlockNode(Compiler *compiler,
@@ -1451,19 +1413,20 @@ ir::Results Compiler::EmitValue(ast::ScopeNode const *node) {
   DEBUG_LOG("ScopeNode")("          ... done.");
 
   DEBUG_LOG("ScopeNode")("Constructing interpretation");
-  LocalScopeInterpretation interp(builder(), scope_def->blocks_, node);
+  NOT_YET();
+  // LocalScopeInterpretation interp(builder(), scope_def->blocks_, node);
   DEBUG_LOG("ScopeNode")("          ... done");
 
-  auto *init_block = interp.init_block();
-  auto *land_block = interp.land_block();
+  // auto *init_block = interp.init_block();
+  // auto *land_block = interp.land_block();
 
-  // TODO not sure this part is necessary
-  auto *old_block_map = block_map;
-  block_map           = &interp.block_ptrs_;
-  base::defer d([&] { block_map = old_block_map; });
+  // // TODO not sure this part is necessary
+  // auto *old_block_map = block_map;
+  // block_map           = &interp.block_ptrs_;
+  // base::defer d([&] { block_map = old_block_map; });
 
-  ir::UncondJump(init_block);
-  builder().CurrentBlock() = init_block;
+  // ir::UncondJump(init_block);
+  // builder().CurrentBlock() = init_block;
 
   DEBUG_LOG("ScopeNode")("Inlining entry handler at ", ast::ExprPtr{node});
   // ASSERT_NOT_NULL(jump_table(node, nullptr))
@@ -1488,7 +1451,7 @@ ir::Results Compiler::EmitValue(ast::ScopeNode const *node) {
   //     InitializeAndEmitBlockNode(results, block_node, this);
   //   }
   //
-  builder().CurrentBlock() = land_block;
+  // builder().CurrentBlock() = land_block;
   //
   //   // TODO currently the block you end up on here is where EmitInlineCall
   //   thinks

@@ -51,8 +51,10 @@ constexpr uint8_t PrimitiveIndex() {
     // TODO: FunctionLiteral is a short-term hack for generics. IR shouldn't
     // depend on it.
     return 0x13;
-  } else if constexpr (std::is_same_v<T, BlockDef const*>) {
+  } else if constexpr (std::is_same_v<T, BlockDef*>) {
     return 0x14;
+  } else if constexpr (std::is_same_v<T, ScopeDef*>) {
+    return 0x15;
   } else if constexpr (std::is_integral_v<T>) {
     return base::Log2(sizeof(T)) * 2 + std::is_signed_v<T>;
   } else {
@@ -123,8 +125,10 @@ auto PrimitiveDispatch(uint8_t primitive_type, Fn&& fn) {
       return std::forward<Fn>(fn)(base::Tag<EnumVal>{});
     case PrimitiveIndex<FlagsVal>():
       return std::forward<Fn>(fn)(base::Tag<FlagsVal>{});
-    case PrimitiveIndex<BlockDef const*>():
-      return std::forward<Fn>(fn)(base::Tag<BlockDef const*>{});
+    case PrimitiveIndex<BlockDef*>():
+      return std::forward<Fn>(fn)(base::Tag<BlockDef*>{});
+    case PrimitiveIndex<ScopeDef*>():
+      return std::forward<Fn>(fn)(base::Tag<ScopeDef*>{});
     default: UNREACHABLE(static_cast<int>(primitive_type));
   }
 }
