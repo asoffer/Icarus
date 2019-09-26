@@ -116,6 +116,7 @@ cc_lib_target(
     intf_deps = [
         ":util",
         "//ir:basic_block",
+        "//type:jump",
         "@com_google_absl//absl/strings",
     ],
     impl_deps = None,
@@ -128,7 +129,7 @@ cc_lib_target(
     intf_deps = [
         ":util",
         "//ir:basic_block",
-        "//ir:block",
+        "//ir:block_def",
     ],
     impl_deps = [
         "//base:stringify",

@@ -10,7 +10,7 @@
 #include "base/expected.h"
 #include "compiler/compiler.h"
 #include "core/scope.h"
-#include "ir/block.h"
+#include "ir/block_def.h"
 #include "ir/builder.h"
 #include "ir/cmd/call.h"
 #include "ir/cmd/phi.h"

@@ -18,7 +18,7 @@
 #include "core/ordered_fn_args.h"
 #include "core/scope.h"
 #include "frontend/operators.h"
-#include "ir/block.h"
+#include "ir/block_def.h"
 #include "ir/reg.h"
 #include "ir/results.h"
 #include "type/primitive.h"

@@ -2,7 +2,7 @@
 #define ICARUS_IR_CMD_SCOPE_H
 
 #include "absl/types/span.h"
-#include "ir/block.h"
+#include "ir/block_def.h"
 #include "ir/cmd/util.h"
 
 namespace ir {
@@ -36,7 +36,7 @@ struct ScopeCmd {
 };
 
 // TODO "Handler" doesn't really make sense in the name for these.
-Reg BlockHandler(absl::Span<RegOr<AnyFunc> const> befores,
+Reg BlockHandler(Module *mod, absl::Span<RegOr<AnyFunc> const> befores,
                  absl::Span<RegOr<AnyFunc> const> afters);
 
 Reg ScopeHandler(Module *mod, absl::Span<RegOr<AnyFunc> const> inits,

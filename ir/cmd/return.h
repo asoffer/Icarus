@@ -4,6 +4,7 @@
 #include "absl/strings/str_cat.h"
 #include "ir/cmd/util.h"
 #include "ir/cmd_buffer.h"
+#include "type/jump.h"
 
 namespace ir {
 
@@ -123,20 +124,25 @@ void SetRet(uint16_t n, T val) {
 inline void SetRet(uint16_t n, type::Typed<Results> const& r) {
   // if (r.type()->is<type::GenericStruct>()) {
   //   SetRet(n, r->get<AnyFunc>(0));
-  // } else {
-  type::Apply(r.type(), [&](auto tag) {
-    using T = typename decltype(tag)::type;
-    // if constexpr (std::is_same_v<T, type::Struct const*>) {
-    //   auto* t = GetBuilder().function()->type_->output[n];
-    //   // TODO guaranteed move-elision
-    //   visitor::EmitIr visitor;
-    //   t->EmitMoveAssign(&visitor, t, r.get(), GetRet(n, t), ctx);
-    //   visitor.CompleteDeferredBodies();
-    // } else {
-    SetRet(n, r->get<T>(0));
-    // }
-  });
-  // }
+  if (r.type()->is<type::Jump>()) {
+    // TODO currently this has to be implemented outside type::Apply because
+    // that's in type.h which is wrong because it forces weird instantiation
+    // order issues (type/type.h can't depend on type/jump.h).
+    SetRet(n, r->get<AnyFunc>(0));
+  } else {
+    type::Apply(r.type(), [&](auto tag) {
+      using T = typename decltype(tag)::type;
+      // if constexpr (std::is_same_v<T, type::Struct const*>) {
+      //   auto* t = GetBuilder().function()->type_->output[n];
+      //   // TODO guaranteed move-elision
+      //   visitor::EmitIr visitor;
+      //   t->EmitMoveAssign(&visitor, t, r.get(), GetRet(n, t), ctx);
+      //   visitor.CompleteDeferredBodies();
+      // } else {
+      SetRet(n, r->get<T>(0));
+      // }
+    });
+   }
 }
 
 inline base::Tagged<Addr, Reg> GetRet(uint16_t n, type::Type const* t) {

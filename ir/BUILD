@@ -53,7 +53,7 @@ cc_lib_target(
 )
 
 cc_component(
-    name = "block",
+    name = "block_def",
     intf_deps = [
         ":any_func",
         "//base:debug",

@@ -1,4 +1,4 @@
-#include "ir/block.h"
+#include "ir/block_def.h"
 
 namespace ir {
 BlockDef const *BlockDef::Start() {

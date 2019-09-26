@@ -39,7 +39,7 @@ COMMON_IMPL_DEPS = [
         "//frontend:lex-impl",
         "//frontend:parse-impl",
         "//error:log-impl",
-        "//ir:block-impl",
+        "//ir:block_def-impl",
         "//ir:foreign-impl",
         "//ir:impl",
         "//misc:impl",

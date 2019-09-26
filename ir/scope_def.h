@@ -6,7 +6,7 @@
 #include "base/move_func.h"
 #include "core/scope.h"
 #include "ir/any_func.h"
-#include "ir/block.h"
+#include "ir/block_def.h"
 
 struct Module;
 

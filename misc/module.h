@@ -57,6 +57,8 @@ struct Module {
   ir::ScopeDef *AddScope(
       std::vector<ir::AnyFunc> inits, std::vector<ir::AnyFunc> dones,
       absl::flat_hash_map<std::string_view, ir::BlockDef *> blocks);
+  ir::BlockDef *AddBlock(std::vector<ir::AnyFunc> befores,
+                         std::vector<ir::AnyFunc> afters);
 
   // TODO this ifdef needs to disappear it's not long-term sustainable
   type::Type const *GetType(std::string_view name) const;
@@ -74,7 +76,8 @@ struct Module {
   // TODO this ifdef needs to disappear it's not long-term sustainable
 #ifdef ICARUS_VISITOR_EMIT_IR
   std::vector<std::unique_ptr<ir::CompiledFn>> fns_;
-  std::vector<std::unique_ptr<ir::ScopeDef>> scopes_;
+  std::vector<std::unique_ptr<ir::ScopeDef>> scope_defs_;
+  std::vector<std::unique_ptr<ir::BlockDef>> block_defs_;
 #endif  // ICARUS_VISITOR_EMIT_IR
 
   // TODO support more than just a single type argument to generic structs.

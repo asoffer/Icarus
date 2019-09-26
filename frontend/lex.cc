@@ -8,7 +8,7 @@
 #include "frontend/numbers.h"
 #include "frontend/operators.h"
 #include "frontend/syntax.h"
-#include "ir/block.h"
+#include "ir/block_def.h"
 #include "ir/results.h"
 #include "ir/str.h"
 #include "type/primitive.h"

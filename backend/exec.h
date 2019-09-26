@@ -7,7 +7,7 @@
 
 #include "base/untyped_buffer.h"
 #include "ir/addr.h"
-#include "ir/block.h"
+#include "ir/block_def.h"
 #include "ir/compiled_fn.h"
 #include "ir/reg.h"
 #include "ir/reg_or.h"

@@ -2,6 +2,7 @@
 
 #include "ast/expression.h"
 #include "backend/exec.h"
+#include "compiler/compiler.h"
 #include "core/arch.h"
 #include "ir/builder.h"
 #include "ir/cmd/jumps.h"
@@ -9,7 +10,6 @@
 #include "ir/compiled_fn.h"
 #include "type/generic_struct.h"
 #include "type/util.h"
-#include "compiler/compiler.h"
 
 namespace backend {
 static ir::CompiledFn ExprFn(compiler::Compiler *visitor,
@@ -43,6 +43,8 @@ static ir::CompiledFn ExprFn(compiler::Compiler *visitor,
 base::untyped_buffer EvaluateToBuffer(
     type::Typed<ast::Expression const *> typed_expr,
     compiler::Compiler *visitor) {
+  DEBUG_LOG("eval")(visitor::DumpAst::ToString(typed_expr.get()));
+  DEBUG_LOG("eval")(*typed_expr.type());
   auto fn = ExprFn(visitor, typed_expr);
 
   size_t bytes_needed =

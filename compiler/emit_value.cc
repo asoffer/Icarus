@@ -594,7 +594,7 @@ ir::Results Compiler::EmitValue(ast::BlockLiteral const *node) {
     afters.push_back(decl->EmitValue(this).get<ir::AnyFunc>(0));
   }
 
-  return ir::Results{ir::BlockHandler(befores, afters)};
+  return ir::Results{ir::BlockHandler(module(), befores, afters)};
 }
 
 template <typename T>
@@ -1228,31 +1228,25 @@ ir::Results Compiler::EmitValue(ast::Jump const *node) {
 }
 
 ir::Results Compiler::EmitValue(ast::JumpHandler const *node) {
-  // TODO handle constant inputs
-  // TODO Use correct constants
-  NOT_YET();
+  ir::CompiledFn *&ir_func = constants_->second.ir_funcs_[node];
+  if (!ir_func) {
+    auto work_item_ptr = DeferBody(this, node);
+    auto *jmp_type     = &type_of(node)->as<type::Jump>();
 
-  // ir::CompiledFn *&ir_func = constants_->second.ir_funcs_[node];
-  // if (!ir_func) {
-  auto work_item_ptr = DeferBody(this, node);
-  //   auto *jmp_type = &type_of(node)->as<type::Jump>();
+    core::FnParams<type::Typed<ast::Expression const *>> params(
+        node->input().size());
+    for (size_t i = 0; i < node->input().size(); ++i) {
+      auto const *decl = node->input()[i];
+      params.set(i,
+                 core::Param<type::Typed<ast::Expression const *>>{
+                     decl->id(), type::Typed<ast::Expression const *>(
+                                     decl->init_val(), jmp_type->args()[i])});
+    }
 
-  //   core::FnParams<type::Typed<ast::Expression const *>> params(
-  //       node->input().size());
-  //   for (size_t i = 0; i < node->input().size(); ++i) {
-  //     auto const *decl = node->input()[i];
-  //     params.set(i,
-  //                core::Param<type::Typed<ast::Expression const *>>{
-  //                    decl->id(), type::Typed<ast::Expression const *>(
-  //                                    decl->init_val(),
-  //                                    jmp_type->args()[i])});
-  //   }
-
-  //   ir_func = module()->AddJump(jmp_type, std::move(params));
-  //   if (work_item_ptr) { ir_func->work_item = work_item_ptr; }
-  // }
-  // return ir::Results{ir_func};
-  return ir ::Results{};
+    ir_func = module()->AddJump(jmp_type, std::move(params));
+    if (work_item_ptr) { ir_func->work_item = work_item_ptr; }
+  }
+  return ir::Results{ir_func};
 }
 
 static std::vector<std::pair<ast::Expression const *, ir::Results>>

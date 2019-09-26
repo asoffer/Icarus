@@ -9,20 +9,23 @@ namespace ir {
 BasicBlock const * BlockCmd::Execute(
     base::untyped_buffer::const_iterator *iter, std::vector<Addr> const &ret_slots,
     backend::ExecContext *ctx) {
+  auto *mod = iter->read<Module *>();
   std::vector<AnyFunc> before_vals = internal::Deserialize<uint16_t, AnyFunc>(
       iter, [ctx](Reg reg) { return ctx->resolve<AnyFunc>(reg); });
   std::vector<AnyFunc> after_vals = internal::Deserialize<uint16_t, AnyFunc>(
       iter, [ctx](Reg reg) { return ctx->resolve<AnyFunc>(reg); });
   Reg result_reg = iter->read<Reg>();
 
+
   // TODO deal with leak.
   auto &frame = ctx->call_stack.top();
   frame.regs_.set(GetOffset(frame.fn_, result_reg),
-                  new BlockDef(std::move(before_vals), std::move(after_vals)));
+                  mod->AddBlock(std::move(before_vals), std::move(after_vals)));
   return nullptr;
 }
 
 std::string BlockCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
+  iter->read<Module *>();
   std::vector<RegOr<AnyFunc>> before_vals = internal::Deserialize<uint16_t, AnyFunc>(
       iter, [](Reg reg) -> RegOr<AnyFunc> { return reg; });
   std::vector<RegOr<AnyFunc>> after_vals = internal::Deserialize<uint16_t, AnyFunc>(
@@ -47,10 +50,11 @@ std::string BlockCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
 void BlockCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
                                  Inliner const &inliner) {}
 
-Reg BlockHandler(absl::Span<RegOr<AnyFunc> const> befores,
+Reg BlockHandler(Module *mod, absl::Span<RegOr<AnyFunc> const> befores,
                  absl::Span<RegOr<AnyFunc> const> afters) {
   auto &blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append_index<BlockCmd>();
+  blk.cmd_buffer_.append(mod);
   internal::Serialize<uint16_t>(&blk.cmd_buffer_, befores);
   internal::Serialize<uint16_t>(&blk.cmd_buffer_, afters);
   Reg r = MakeResult<BlockDef const *>();
@@ -61,7 +65,7 @@ Reg BlockHandler(absl::Span<RegOr<AnyFunc> const> befores,
 BasicBlock const *ScopeCmd::Execute(base::untyped_buffer::const_iterator *iter,
                                     std::vector<Addr> const &ret_slots,
                                     backend::ExecContext *ctx) {
-  auto *mod      = iter->read<Module *>();
+  auto *mod = iter->read<Module *>();
 
   std::vector<AnyFunc> inits = internal::Deserialize<uint16_t, AnyFunc>(
       iter, [ctx](Reg reg) { return ctx->resolve<AnyFunc>(reg); });

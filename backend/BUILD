@@ -29,7 +29,7 @@ cc_lib_target(
     intf_deps = [
         "//base:untyped_buffer",
         "//ir:addr",
-        "//ir:block",
+        "//ir:block_def",
         "//ir:compiled_fn",
         "//ir:reg",
         "//ir:reg_or",

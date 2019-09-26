@@ -35,10 +35,20 @@ ir::CompiledFn *Module::AddFunc(
 ir::ScopeDef *Module::AddScope(
     std::vector<ir::AnyFunc> inits, std::vector<ir::AnyFunc> dones,
     absl::flat_hash_map<std::string_view, ir::BlockDef *> blocks) {
-  return scopes_
+  return scope_defs_
       .emplace_back(std::make_unique<ir::ScopeDef>(
           this, std::move(inits), std::move(dones), std::move(blocks)))
       .get();
+}
+
+ir::BlockDef *Module::AddBlock(std::vector<ir::AnyFunc> befores,
+                               std::vector<ir::AnyFunc> afters) {
+  auto * b =  block_defs_
+      .emplace_back(
+          std::make_unique<ir::BlockDef>(std::move(befores), std::move(afters)))
+      .get();
+  std::cerr << *b;
+  return b;
 }
 
 ir::CompiledFn *Module::AddJump(

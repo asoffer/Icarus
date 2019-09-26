@@ -233,7 +233,7 @@ cc_lib_target(
         "//base:tag",
         "//base:util",
         "//ir:addr",
-        "//ir:block",
+        "//ir:block_def",
         "//ir:reg",
         "//ir:results",
         "//ir:values",

@@ -9,7 +9,7 @@
 #include "core/fn_args.h"
 #include "core/fn_params.h"
 #include "ir/basic_block.h"
-#include "ir/block.h"
+#include "ir/block_def.h"
 #include "ir/reg.h"
 #include "ir/results.h"
 #include "type/typed_value.h"
