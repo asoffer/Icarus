@@ -1,21 +1,21 @@
-#include "visitor/dump_ast.h"
+#include "ast/methods/dump.h"
 
-#include "frontend/token.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "ast/ast.h"
 #include "base/stringify.h"
+#include "frontend/token.h"
 #include "ir/results.h"
 
-namespace visitor {
-std::string DumpAst::ToString(ast::Node const *node) {
+namespace ast {
+std::string Dump::ToString(ast::Node const *node) {
   std::string result;
-  DumpAst d(&result);
+  Dump d(&result);
   // TODO figure out what's going wrong here.
   if (auto *tok = node->if_as<frontend::Token>()) {
     d(tok);
   } else {
-    node->DumpAst(&d);
+    node->Dump(&d);
   }
   return result;
 }
@@ -68,85 +68,84 @@ char const *OpStr(frontend::Operator op) {
 }
 
 struct Joiner {
-  constexpr Joiner(DumpAst *d) : d_(d) {}
+  constexpr Joiner(Dump *d) : d_(d) {}
 
   template <typename Node>
   void operator()(std::string *out, Node &&node) {
     std::string *old_out = std::exchange(d_->out_, out);
-    node->DumpAst(d_);
+    node->Dump(d_);
     d_->out_ = old_out;
   }
 
-  DumpAst *d_ = nullptr;
+  Dump *d_ = nullptr;
 };
 
 template <typename EPtr, typename StrType>
-void DumpFnArgs(DumpAst *d, core::FnArgs<EPtr, StrType> const &fnargs) {
+void DumpFnArgs(Dump *d, core::FnArgs<EPtr, StrType> const &fnargs) {
   bool seen_one = false;
-  fnargs.ApplyWithIndex(
-      [&](auto &&index, EPtr const &expr) {
-        absl::StrAppend(d->out_, seen_one ? ", " : "");
-        if constexpr (!std::is_same_v<std::decay_t<decltype(index)>, size_t>) {
-          absl::StrAppend(d->out_, index, " = ");
-        }
-        expr->DumpAst(d);
-        seen_one = true;
-      });
+  fnargs.ApplyWithIndex([&](auto &&index, EPtr const &expr) {
+    absl::StrAppend(d->out_, seen_one ? ", " : "");
+    if constexpr (!std::is_same_v<std::decay_t<decltype(index)>, size_t>) {
+      absl::StrAppend(d->out_, index, " = ");
+    }
+    expr->Dump(d);
+    seen_one = true;
+  });
 }
 
 }  // namespace
 
-void DumpAst::operator()(ast::Access const *node) {
+void Dump::operator()(ast::Access const *node) {
   if (node->operand()->is<ast::Identifier>() ||
       node->operand()->is<ast::Index>()) {
-    node->operand()->DumpAst(this);
+    node->operand()->Dump(this);
   } else {
     absl::StrAppend(out_, "(");
-    node->operand()->DumpAst(this);
+    node->operand()->Dump(this);
     absl::StrAppend(out_, ")");
   }
   absl::StrAppend(out_, ".", node->member_name());
 }
 
-void DumpAst::operator()(ast::ArrayLiteral const *node) {
+void Dump::operator()(ast::ArrayLiteral const *node) {
   absl::StrAppend(out_, "[", absl::StrJoin(node->elems(), ", ", Joiner{this}),
                   "]");
 }
 
-void DumpAst::operator()(ast::ArrayType const *node) {
+void Dump::operator()(ast::ArrayType const *node) {
   absl::StrAppend(out_, "[", absl::StrJoin(node->lengths(), ", ", Joiner{this}),
                   "; ");
-  node->data_type()->DumpAst(this);
+  node->data_type()->Dump(this);
   absl::StrAppend(out_, "]");
 }
 
-void DumpAst::operator()(ast::Binop const *node) {
+void Dump::operator()(ast::Binop const *node) {
   absl::StrAppend(out_, "(");
-  node->lhs()->DumpAst(this);
+  node->lhs()->Dump(this);
   absl::StrAppend(out_, OpStr(node->op()));
-  node->rhs()->DumpAst(this);
+  node->rhs()->Dump(this);
   absl::StrAppend(out_, ")");
 }
 
-void DumpAst::operator()(ast::BlockLiteral const *node) {
+void Dump::operator()(ast::BlockLiteral const *node) {
   absl::StrAppend(out_, "block {\n");
 
   ++indentation_;
   for (auto const *b : node->before()) {
     absl::StrAppend(out_, indent());
-    b->DumpAst(this);
+    b->Dump(this);
     absl::StrAppend(out_, "\n");
   }
   for (auto const *a : node->after()) {
     absl::StrAppend(out_, indent());
-    a->DumpAst(this);
+    a->Dump(this);
     absl::StrAppend(out_, "\n");
   }
   --indentation_;
   absl::StrAppend(out_, indent(), "}\n");
 }
 
-void DumpAst::operator()(ast::BlockNode const *node) {
+void Dump::operator()(ast::BlockNode const *node) {
   absl::StrAppend(out_, node->name());
   if (!node->args().empty()) {
     absl::StrAppend(out_, " [", absl::StrJoin(node->args(), ", ", Joiner{this}),
@@ -156,25 +155,25 @@ void DumpAst::operator()(ast::BlockNode const *node) {
   ++indentation_;
   for (auto *stmt : node->stmts()) {
     absl::StrAppend(out_, "\n", indent());
-    stmt->DumpAst(this);
+    stmt->Dump(this);
   }
   --indentation_;
   absl::StrAppend(out_, indent(), "}\n");
 }
 
-void DumpAst::operator()(ast::JumpHandler const *node) {
+void Dump::operator()(ast::JumpHandler const *node) {
   absl::StrAppend(out_, "jump_handler (",
                   absl::StrJoin(node->input(), ", ", Joiner{this}), ") {\n");
   ++indentation_;
   for (auto *stmt : node->stmts()) {
     absl::StrAppend(out_, "\n", indent());
-    stmt->DumpAst(this);
+    stmt->Dump(this);
   }
   --indentation_;
   absl::StrAppend(out_, indent(), "}\n");
 }
 
-void DumpAst::operator()(ast::BuiltinFn const *node) {
+void Dump::operator()(ast::BuiltinFn const *node) {
   switch (node->value()) {
 #define ICARUS_CORE_BUILTIN_X(enumerator, str, t)                              \
   case core::Builtin::enumerator:                                              \
@@ -186,31 +185,31 @@ void DumpAst::operator()(ast::BuiltinFn const *node) {
   UNREACHABLE();
 }
 
-void DumpAst::operator()(ast::Call const *node) {
-  node->callee()->DumpAst(this);
+void Dump::operator()(ast::Call const *node) {
+  node->callee()->Dump(this);
   absl::StrAppend(out_, "(");
   DumpFnArgs(this, node->args());
   absl::StrAppend(out_, ")");
 }
 
-void DumpAst::operator()(ast::Cast const *node) {
+void Dump::operator()(ast::Cast const *node) {
   absl::StrAppend(out_, "(");
-  node->expr()->DumpAst(this);
+  node->expr()->Dump(this);
   absl::StrAppend(out_, ") as (");
-  node->type()->DumpAst(this);
+  node->type()->Dump(this);
   absl::StrAppend(out_, ")");
 }
 
-void DumpAst::operator()(ast::ChainOp const *node) {
+void Dump::operator()(ast::ChainOp const *node) {
   absl::StrAppend(out_, "(");
   for (size_t i = 0; i < node->ops().size(); ++i) {
-    node->exprs()[i]->DumpAst(this);
+    node->exprs()[i]->Dump(this);
     absl::StrAppend(out_, OpStr(node->ops()[i]));
   }
-  node->exprs().back()->DumpAst(this);
+  node->exprs().back()->Dump(this);
 }
 
-void DumpAst::operator()(ast::CommaList const *node) {
+void Dump::operator()(ast::CommaList const *node) {
   if (node->parenthesized_) {
     absl::StrAppend(out_, "(", absl::StrJoin(node->exprs_, ", ", Joiner{this}),
                     ")");
@@ -219,27 +218,27 @@ void DumpAst::operator()(ast::CommaList const *node) {
   }
 }
 
-void DumpAst::operator()(ast::Declaration const *node) {
+void Dump::operator()(ast::Declaration const *node) {
   absl::StrAppend(out_, node->id());
   if (node->type_expr()) {
     absl::StrAppend(
         out_, (node->flags() & ast::Declaration::f_IsConst) ? " :: " : ": ");
-    node->type_expr()->DumpAst(this);
+    node->type_expr()->Dump(this);
     if (node->init_val()) {
       absl::StrAppend(out_, " = ");
-      node->init_val()->DumpAst(this);
+      node->init_val()->Dump(this);
     }
   } else {
     if (node->init_val()) {
       absl::StrAppend(out_, (node->flags() & ast::Declaration::f_IsConst)
                                 ? " ::= "
                                 : " := ");
-      node->init_val()->DumpAst(this);
+      node->init_val()->Dump(this);
     }
   }
 }
 
-void DumpAst::operator()(ast::EnumLiteral const *node) {
+void Dump::operator()(ast::EnumLiteral const *node) {
   switch (node->kind()) {
     case ast::EnumLiteral::Kind::Enum: absl::StrAppend(out_, "enum {\n"); break;
     case ast::EnumLiteral::Kind::Flags:
@@ -249,22 +248,22 @@ void DumpAst::operator()(ast::EnumLiteral const *node) {
   ++indentation_;
   for (auto const *elem : node->elems()) {
     absl::StrAppend(out_, indent());
-    elem->DumpAst(this);
+    elem->Dump(this);
     absl::StrAppend(out_, "\n");
   }
   --indentation_;
   absl::StrAppend(out_, indent(), "}");
 }
 
-void DumpAst::operator()(ast::FunctionLiteral const *node) {
+void Dump::operator()(ast::FunctionLiteral const *node) {
   absl::StrAppend(
       out_, "(",
       absl::StrJoin(
           node->inputs_, ", ",
           [](std::string *out,
              core::Param<std::unique_ptr<ast::Declaration>> const &p) {
-            DumpAst dump(out);
-            p.value->DumpAst(&dump);
+            Dump dump(out);
+            p.value->Dump(&dump);
           }),
       ") -> ");
   if (node->outputs_) {
@@ -275,29 +274,29 @@ void DumpAst::operator()(ast::FunctionLiteral const *node) {
   ++indentation_;
   for (auto const &stmt : node->statements_) {
     absl::StrAppend(out_, "\n", indent());
-    stmt->DumpAst(this);
+    stmt->Dump(this);
   }
   --indentation_;
   absl::StrAppend(out_, "\n", indent(), "}");
 }
 
-void DumpAst::operator()(ast::Identifier const *node) {
+void Dump::operator()(ast::Identifier const *node) {
   absl::StrAppend(out_, node->token());
 }
 
-void DumpAst::operator()(ast::Import const *node) {
+void Dump::operator()(ast::Import const *node) {
   absl::StrAppend(out_, "import ");
-  node->operand()->DumpAst(this);
+  node->operand()->Dump(this);
 }
 
-void DumpAst::operator()(ast::Index const *node) {
-  node->lhs()->DumpAst(this);
+void Dump::operator()(ast::Index const *node) {
+  node->lhs()->Dump(this);
   absl::StrAppend(out_, "[");
-  node->rhs()->DumpAst(this);
+  node->rhs()->Dump(this);
   absl::StrAppend(out_, "]");
 }
 
-void DumpAst::operator()(ast::Jump const *node) {
+void Dump::operator()(ast::Jump const *node) {
   absl::StrAppend(out_, "jump ");
   for (auto const &opt : node->options_) {
     absl::StrAppend(out_, opt.block, "(");
@@ -306,35 +305,35 @@ void DumpAst::operator()(ast::Jump const *node) {
   }
 }
 
-void DumpAst::operator()(ast::PrintStmt const *node) {
+void Dump::operator()(ast::PrintStmt const *node) {
   absl::StrAppend(out_, "print ",
                   absl::StrJoin(node->exprs(), ", ", Joiner{this}));
 }
 
-void DumpAst::operator()(ast::ReturnStmt const *node) {
+void Dump::operator()(ast::ReturnStmt const *node) {
   absl::StrAppend(out_, "return ",
                   absl::StrJoin(node->exprs(), ", ", Joiner{this}));
 }
 
-void DumpAst::operator()(ast::YieldStmt const *node) {
+void Dump::operator()(ast::YieldStmt const *node) {
   absl::StrAppend(out_, "yield ",
                   absl::StrJoin(node->exprs(), ", ", Joiner{this}));
 }
 
-void DumpAst::operator()(ast::ScopeLiteral const *node) {
+void Dump::operator()(ast::ScopeLiteral const *node) {
   absl::StrAppend(out_, "scope {\n");
   ++indentation_;
   for (auto const *decl : node->decls()) {
     absl::StrAppend(out_, indent());
-    decl->DumpAst(this);
+    decl->Dump(this);
     absl::StrAppend(out_, "\n");
   }
   --indentation_;
   absl::StrAppend(out_, indent(), "}");
 }
 
-void DumpAst::operator()(ast::ScopeNode const *node) {
-  node->name()->DumpAst(this);
+void Dump::operator()(ast::ScopeNode const *node) {
+  node->name()->Dump(this);
   absl::StrAppend(out_, " ");
 
   auto const &args = node->args();
@@ -343,54 +342,54 @@ void DumpAst::operator()(ast::ScopeNode const *node) {
     DumpFnArgs(this, args);
     absl::StrAppend(out_, ")");
   }
-  for (auto const &block : node->blocks()) { block.DumpAst(this); }
+  for (auto const &block : node->blocks()) { block.Dump(this); }
 }
 
-void DumpAst::operator()(ast::StructLiteral const *node) {
+void Dump::operator()(ast::StructLiteral const *node) {
   absl::StrAppend(
       out_, "struct (",
       absl::StrJoin(node->args_, ", ",
                     [](std::string *out, ast::Declaration const &d) {
-                      DumpAst dump(out);
-                      d.DumpAst(&dump);
+                      Dump dump(out);
+                      d.Dump(&dump);
                     }),
       ") {\n");
   ++indentation_;
   for (const auto &f : node->fields_) {
     absl::StrAppend(out_, indent());
-    f.DumpAst(this);
+    f.Dump(this);
     absl::StrAppend(out_, "\n");
   }
   --indentation_;
   absl::StrAppend(out_, indent(), "}");
 }
 
-void DumpAst::operator()(ast::StructType const *node) {
+void Dump::operator()(ast::StructType const *node) {
   absl::StrAppend(out_, "[", absl::StrJoin(node->args_, ", ", Joiner{this}),
                   "; struct]");
 }
 
-void DumpAst::operator()(ast::Switch const *node) {
+void Dump::operator()(ast::Switch const *node) {
   absl::StrAppend(out_, "switch ");
   if (node->expr_) {
     absl::StrAppend(out_, "(");
-    node->expr_->DumpAst(this);
+    node->expr_->Dump(this);
     absl::StrAppend(out_, ")");
   }
   absl::StrAppend(out_, "{\n");
   ++indentation_;
   for (auto const &[body, cond] : node->cases_) {
     absl::StrAppend(out_, indent());
-    body->DumpAst(this);
+    body->Dump(this);
     absl::StrAppend(out_, " when ");
-    cond->DumpAst(this);
+    cond->Dump(this);
     absl::StrAppend(out_, "\n");
   }
   --indentation_;
   absl::StrAppend(out_, indent(), "}");
 }
 
-void DumpAst::operator()(ast::Terminal const *node) {
+void Dump::operator()(ast::Terminal const *node) {
   type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                    uint32_t, uint64_t, float, double, bool, type::Type const *,
                    std::string_view, ir::BlockDef *>(
@@ -412,17 +411,17 @@ void DumpAst::operator()(ast::Terminal const *node) {
       });
 }
 
-void DumpAst::operator()(ast::Unop const *node) {
+void Dump::operator()(ast::Unop const *node) {
   if (node->op() == frontend::Operator::TypeOf) {
     absl::StrAppend(out_, "(");
-    node->operand()->DumpAst(this);
+    node->operand()->Dump(this);
     absl::StrAppend(out_, "):?");
   }
   absl::StrAppend(out_, OpStr(node->op()));
-  node->operand()->DumpAst(this);
+  node->operand()->Dump(this);
 }
 
-void DumpAst::operator()(frontend::Token const *node) {
+void Dump::operator()(frontend::Token const *node) {
   absl::StrAppend(out_, node->token);
 }
-}  // namespace visitor
+}  // namespace ast

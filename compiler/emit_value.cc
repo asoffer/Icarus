@@ -1077,7 +1077,7 @@ ir::Results Compiler::EmitValue(ast::Declaration const *node) {
     } else {
       auto *t = type_of(node);
       if (!t) {
-        DEBUG_LOG()(visitor::DumpAst::ToString(node));
+        DEBUG_LOG()(ast::Dump::ToString(node));
         UNREACHABLE();
       }
 
@@ -1105,7 +1105,7 @@ ir::Results Compiler::EmitValue(ast::Declaration const *node) {
         UNREACHABLE();
       }
     }
-    UNREACHABLE(visitor::DumpAst::ToString(node));
+    UNREACHABLE(ast::Dump::ToString(node));
   } else {
     // For local variables the declaration determines where the initial value is
     // set, but the allocation has to be done much earlier. We do the allocation
@@ -1189,7 +1189,7 @@ ir::Results Compiler::EmitValue(ast::FunctionLiteral const *node) {
 }
 
 ir::Results Compiler::EmitValue(ast::Identifier const *node) {
-  ASSERT(node->decl() != nullptr) << visitor::DumpAst::ToString(node);
+  ASSERT(node->decl() != nullptr) << ast::Dump::ToString(node);
   if (node->decl()->flags() & ast::Declaration::f_IsConst) {
     return node->decl()->EmitValue(this);
   }

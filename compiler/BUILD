@@ -1,5 +1,11 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib_target", "cc_component")
+load("//:defs.bzl", "cc_lib_target", "cc_component", "icarus_ast_method")
+
+icarus_ast_method(
+    name = "ast_methods",
+    deps = ["//ast/methods:dump-xmacro"],
+    gen = False,
+)
 
 cc_lib_target(
     name = "compiler",
@@ -18,6 +24,7 @@ cc_lib_target(
         "@com_google_absl//absl/container:node_hash_map",
     ],
     impl_deps = [
+        ":ast_methods-xmacro",
         "//ast:ast",
         "//ir:builder",
         "//ir:compiled_fn",
@@ -48,6 +55,7 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
+        ":ast_methods-xmacro",
         ":special_function",
         "//ast:ast",
         "//base:permutation",
@@ -69,6 +77,7 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
+        ":ast_methods-xmacro",
         ":special_function",
         "//ast:ast",
         "//base:permutation",
@@ -89,6 +98,7 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
+        ":ast_methods-xmacro",
         "//ast:ast",
         "//base:permutation",
         "//ir/cmd:misc",
@@ -108,6 +118,7 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
+        ":ast_methods-xmacro",
         "//ast:ast",
         "//ir:components",
         "//ir/cmd:misc",
@@ -122,6 +133,7 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
+        ":ast_methods-xmacro",
         "//ast:ast",
         "//ir/cmd:misc",
         "//ir:components",
@@ -136,6 +148,7 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
+        ":ast_methods-xmacro",
         "//ast:ast",
         "//backend:eval",
         "//ir:addr",
@@ -156,6 +169,7 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
+        ":ast_methods-xmacro",
         "//ast:ast",
         "//backend:eval",
         "//base:guarded",
@@ -187,6 +201,7 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
+        ":ast_methods-xmacro",
         "//ast:ast",
         "//ir:builder",
         "//ir:compiled_fn",
@@ -205,6 +220,7 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
+        ":ast_methods-xmacro",
         "//ast:ast",
         "//ast:overload_set",
         "//backend:eval",
@@ -233,6 +249,7 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = [],
     impl_deps = [
+        ":ast_methods-xmacro",
         "//ast:ast",
         "//ir:any_func",
         "//type:function",

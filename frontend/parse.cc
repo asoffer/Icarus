@@ -29,7 +29,7 @@ struct Statements : public ast::Node {
   Statements(Statements &&) noexcept = default;
   Statements &operator=(Statements &&) noexcept = default;
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
   size_t size() const { return content_.size(); }
   void append(std::unique_ptr<ast::Node> &&node) {
@@ -52,7 +52,7 @@ struct Statements : public ast::Node {
 struct SwitchWhen : public ast::Node {
   ~SwitchWhen() override {}
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
   std::unique_ptr<ast::Node> body;
   std::unique_ptr<ast::Expression> cond;
@@ -511,11 +511,11 @@ std::vector<std::unique_ptr<ast::Declaration>> ExtractInputs(
       if (expr->is<ast::Declaration>()) {
         inputs.push_back(move_as<ast::Declaration>(expr));
       } else {
-        NOT_YET("log an error: ", visitor::DumpAst::ToString(args.get()));
+        NOT_YET("log an error: ", ast::Dump::ToString(args.get()));
       }
     }
   } else {
-    NOT_YET("log an error: ", visitor::DumpAst::ToString(args.get()));
+    NOT_YET("log an error: ", ast::Dump::ToString(args.get()));
   }
   return inputs;
 }
@@ -671,7 +671,7 @@ std::unique_ptr<ast::Node> BuildBlockNode(
 
   } else {
     for (auto const &n : nodes) {
-      DEBUG_LOG()(visitor::DumpAst::ToString(n.get()));
+      DEBUG_LOG()(ast::Dump::ToString(n.get()));
     }
     NOT_YET("log an error");
   }
@@ -833,7 +833,7 @@ std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
       } else if (decl->id() == "after") {
         after.push_back(move_as<ast::Declaration>(stmt));
       } else {
-        NOT_YET(visitor::DumpAst::ToString(stmt.get()));
+        NOT_YET(ast::Dump::ToString(stmt.get()));
       }
     } else {
       NOT_YET();
@@ -1296,7 +1296,7 @@ void Debug(ParseState *ps) {
   fprintf(stderr, " -> %lu\n", ps->Next().tag_);
 
   for (const auto &node_ptr : ps->node_stack_) {
-    fputs(visitor::DumpAst::ToString(node_ptr.get()).c_str(), stderr);
+    fputs(ast::Dump::ToString(node_ptr.get()).c_str(), stderr);
   }
   fgetc(stdin);
 }

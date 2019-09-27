@@ -13,6 +13,9 @@ cc_component(
 cc_lib_target(
     name = "ast",
     intf_deps = [
+        "//compiler:ast_methods-xmacro",
+        "//visitor:xvisitors-xmacro",
+        "//format:ast_methods-xmacro",
         ":expression",
         ":node",
         "//base:graph",
@@ -47,10 +50,15 @@ cc_lib_target(
         "//visitor:visitors",
         "//frontend/source:range",
         "//ir:results",
+
+        "//ast/methods:dump",
+        "//compiler:ast_methods-xmacro",
+        "//visitor:xvisitors-xmacro",
+        "//format:ast_methods-xmacro",
     ],
 )
 
-cc_lib_target(
+cc_component(
     name = "expr_ptr",
     intf_deps = [],
     impl_deps = None,

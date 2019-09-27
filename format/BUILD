@@ -1,5 +1,11 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib_target")
+load("//:defs.bzl", "cc_lib_target", "icarus_ast_method")
+
+icarus_ast_method(
+    name = "ast_methods",
+    deps = ["//ast/methods:dump-xmacro"],
+    gen = False,
+)
 
 cc_binary(
     name = "icfmt",
@@ -28,6 +34,9 @@ cc_lib_target(
         "//ast:ast_fwd",
         "//base:debug",
     ],
-    impl_deps = ["//ast:ast"],
+    impl_deps = [
+        ":ast_methods-xmacro",
+        "//ast:ast",
+    ],
     test_deps = None,
 )

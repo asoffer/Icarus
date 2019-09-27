@@ -43,7 +43,7 @@ static ir::CompiledFn ExprFn(compiler::Compiler *visitor,
 base::untyped_buffer EvaluateToBuffer(
     type::Typed<ast::Expression const *> typed_expr,
     compiler::Compiler *visitor) {
-  DEBUG_LOG("eval")(visitor::DumpAst::ToString(typed_expr.get()));
+  DEBUG_LOG("eval")(ast::Dump::ToString(typed_expr.get()));
   DEBUG_LOG("eval")(*typed_expr.type());
   auto fn = ExprFn(visitor, typed_expr);
 

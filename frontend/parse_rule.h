@@ -2,12 +2,17 @@
 #define ICARUS_FRONTEND_PARSE_RULE_H
 
 #include <memory>
+#include <utility>
+#include <vector>
 
 #include "absl/types/span.h"
-#include "ast/node.h"
 #include "frontend/tag.h"
 
 struct Module;
+
+namespace ast {
+struct Node;
+}  // namespace ast
 
 namespace error {
 struct Log;

@@ -16,7 +16,7 @@ struct BindingNode : public ast::Expression {
       : ast::Expression(std::move(span)), id_(id) {}
   ~BindingNode() override {}
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
   BindingId id() const { return id_; }
 

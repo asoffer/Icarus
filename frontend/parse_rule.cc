@@ -1,5 +1,7 @@
 #include "frontend/parse_rule.h"
 
+#include "ast/node.h"
+
 namespace frontend {
 
 bool ParseRule::Match(absl::Span<Tag const> tag_stack) const {

@@ -1,7 +1,17 @@
 _VISITOR_DEFINES = {
-    "compile": ["ICARUS_VISITOR_EMIT_IR"],
-    "format": ["ICARUS_VISITOR_FORMAT"],
-    "match": ["ICARUS_VISITOR_EMIT_IR", "ICARUS_MATCHER"],
+    "compile": [
+        "ICARUS_VISITOR_EMIT_IR",
+        "ICARUS_AST_VISITOR_METHODS=\\\"compiler/ast_methods.xmacro.h\\\"",
+    ],
+    "format": [
+        "ICARUS_VISITOR_FORMAT",
+        "ICARUS_AST_VISITOR_METHODS=\\\"format/ast_methods.xmacro.h\\\"",
+    ],
+    "match": [
+        "ICARUS_VISITOR_EMIT_IR",
+        "ICARUS_MATCHER",
+        "ICARUS_AST_VISITOR_METHODS=\\\"visitor/xvisitors.xmacro.h\\\"",
+    ],
 }
 
 def configured_dep(dep, cfg):
@@ -62,6 +72,26 @@ def cc_lib_target(name, intf_deps = [], impl_deps = None,
                 data = test_data,
                 **kwargs)
 
+def icarus_ast_method(name,
+                      intf_deps = None,
+                      impl_deps = None,
+                      deps = [],
+                      gen = True):
+    native.cc_library(
+        name = name + "-xmacro",
+        textual_hdrs = [name + ".xmacro.h"],
+        deps = deps)
+
+    if gen:
+        cc_lib_target(name,
+                      intf_deps = intf_deps,
+                      impl_deps = impl_deps)
+
+
+    for cfg, defs in _VISITOR_DEFINES.items():
+        native.alias(name = configured_dep(name + "-xmacro", cfg), actual = name + "-xmacro")
+
+
 def cc_component(name, intf_deps = [], impl_deps = None,
                  test_deps = None, test_data = [], 
                  extra_hdrs = [], **kwargs):
@@ -93,16 +123,14 @@ def cc_component(name, intf_deps = [], impl_deps = None,
 
     for cfg, defs in _VISITOR_DEFINES.items():
         if intf_deps != None:
-            native.cc_library(
+            native.alias(
                 name = configured_dep(name, cfg),
-                deps = [name],
-                **kwargs)
+                actual = name)
 
         if impl_deps != None:
-            native.cc_library(
+            native.alias(
                 name = configured_dep(name + "-impl", cfg),
-                deps = [name + "-impl"],
-                **kwargs)
+                actual = name + "-impl")
 
 def cc_group_target(name, deps, cfgs = None, hdrs = [], srcs = [], **kwargs):
     for cfg, defs in _VISITOR_DEFINES.items():

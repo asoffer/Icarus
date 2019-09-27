@@ -6,7 +6,7 @@
 #include "base/util.h"
 #include "frontend/source/range.h"
 
-#include "visitor/dump_ast.h"
+#include "ast/methods/dump.h"
 
 #ifdef ICARUS_MATCHER
 #include "visitor/match.h"
@@ -36,7 +36,7 @@ struct Node : public base::Cast<Node> {
   virtual ~Node() {}
 
 #define ICARUS_AST_VISITOR(signature, body) virtual signature body
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 #undef ICARUS_AST_VISITOR
 
   core::Scope *scope_ = nullptr;

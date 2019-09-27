@@ -1,5 +1,5 @@
-#ifndef ICARUS_VISITOR_DUMP_AST_H
-#define ICARUS_VISITOR_DUMP_AST_H
+#ifndef ICARUS_AST_METHODS_DUMP_H
+#define ICARUS_AST_METHODS_DUMP_H
 
 #include <string>
 
@@ -9,12 +9,12 @@ namespace frontend {
 struct Token;
 }  // namespace frontend
 
-namespace visitor {
+namespace ast {
 
-struct DumpAst {
+struct Dump {
   static std::string ToString(ast::Node const *);
 
-  constexpr DumpAst(std::string *out) : out_(out) {}
+  constexpr Dump(std::string *out) : out_(out) {}
   void operator()(ast::Node const *node) { out_->append("[unknown node]"); }
 #define ICARUS_AST_NODE_X(name) void operator()(ast::name const *node);
 #include "ast/node.xmacro.h"
@@ -28,6 +28,6 @@ struct DumpAst {
   size_t indentation_ = 0;
 };
 
-}  // namespace visitor
+}  // namespace ast
 
-#endif  // ICARUS_VISITOR_DUMP_AST_H
+#endif  // ICARUS_AST_METHODS_DUMP_H

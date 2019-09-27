@@ -66,10 +66,11 @@ cc_lib_target(
     name = "parse_rule",
     intf_deps = [
         ":tag",
-        "//ast:node",
         "@com_google_absl//absl/types:span",
     ],
-    impl_deps = [],
+    impl_deps = [
+        "//ast:node",
+    ],
     test_deps = None,
 )
 
@@ -86,7 +87,7 @@ cc_lib_target(
         "//error:log-impl",
         "//frontend/source:source",
         "//misc:module",
-        "//visitor:dump_ast-impl",
+        "//ast/methods:dump-impl",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
     test_deps = None,

@@ -1,27 +1,35 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_group_target", "cc_lib_target", "cc_component")
+load("//:defs.bzl", "cc_group_target", "cc_lib_target", "cc_component", "icarus_ast_method")
+
+icarus_ast_method(
+    name = "xvisitors",
+    deps = ["//ast/methods:dump-xmacro"],
+    gen = False
+)
 
 # TODO rename ast_visitors
 # TODO hack mirroring -impl, -test
 cc_group_target(
     name = "visitors",
-    textual_hdrs = ["visitors.xmacro.h"],
     deps = {
         "compile": [
+            ":xvisitors-xmacro",
             ":assign_scope",
             ":dependent_decls",
-            ":dump_ast",
+            "//ast/methods:dump",
             ":extract_jumps",
             "//compiler:compiler",
         ],
         "format": [
-            ":dump_ast",
+            ":xvisitors-xmacro",
+            "//ast/methods:dump",
             "//format:token_extractor",
         ],
         "match": [
+            ":xvisitors-xmacro",
             ":assign_scope",
             ":dependent_decls",
-            ":dump_ast",
+            "//ast/methods:dump",
             ":extract_jumps",
             ":match",
             "//compiler:compiler",
@@ -34,23 +42,25 @@ cc_group_target(
 # TODO hack mirroring -impl, -test
 cc_group_target(
     name = "visitors-impl",
-    textual_hdrs = ["visitors.xmacro.h"],
     deps = {
         "compile": [
+            ":visitors",
             ":assign_scope-impl",
             ":dependent_decls-impl",
-            ":dump_ast-impl",
+            "//ast/methods:dump-impl",
             ":extract_jumps-impl",
             "//compiler:compiler-impl",
         ],
         "format": [
-            ":dump_ast-impl",
+            ":visitors",
+            "//ast/methods:dump-impl",
             "//format:token_extractor-impl",
         ],
         "match": [
+            ":visitors",
             ":assign_scope-impl",
             ":dependent_decls-impl",
-            ":dump_ast-impl",
+            "//ast/methods:dump-impl",
             ":extract_jumps-impl",
             ":match-impl",
             "//compiler:compiler-impl",
@@ -89,21 +99,6 @@ cc_lib_target(
         "//core:scope",
     ],
     impl_deps = ["//ast:ast"],
-    test_deps = None,
-)
-
-cc_lib_target(
-    name = "dump_ast",
-    intf_deps = [
-        "//ast:ast_fwd",
-    ],
-    impl_deps = [
-        "//base:stringify",
-        "//ast:ast",
-        "//frontend:token",
-        "//ir:results",
-        "@com_google_absl//absl/strings",
-    ],
     test_deps = None,
 )
 

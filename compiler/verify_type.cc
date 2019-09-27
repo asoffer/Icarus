@@ -12,7 +12,7 @@
 #include "type/type.h"
 #include "type/typed_value.h"
 #include "type/util.h"
-#include "visitor/dump_ast.h"
+#include "ast/methods/dump.h"
 
 Module *CompileModule(Module *mod, std::filesystem::path const *path);
 
@@ -445,7 +445,7 @@ VerifyResult VerifyBody(Compiler *visitor, ast::FunctionLiteral const *node) {
 }
 
 void VerifyBody(Compiler *visitor, ast::JumpHandler const *node) {
-  DEBUG_LOG("JumpHandler")(visitor::DumpAst::ToString(node));
+  DEBUG_LOG("JumpHandler")(ast::Dump::ToString(node));
   visitor::ExtractJumps extract_visitor;
   for (auto const *stmt : node->stmts()) {
     stmt->VerifyType(visitor);
@@ -455,7 +455,7 @@ void VerifyBody(Compiler *visitor, ast::JumpHandler const *node) {
   auto jumps = extract_visitor.jumps(visitor::ExtractJumps::Kind::Jump);
   for (auto const *jump : jumps) {
     DEBUG_LOG("JumpHandler")
-    (visitor::DumpAst::ToString(&jump->as<ast::Jump>()));
+    (ast::Dump::ToString(&jump->as<ast::Jump>()));
     for (auto const &jump_opt : jump->as<ast::Jump>().options_) {
       DEBUG_LOG("JumpHandler")
       (jump_opt.block, " args=(", jump_opt.args, ")");
@@ -1301,7 +1301,7 @@ VerifyResult Compiler::VerifyType(ast::Declaration const *node) {
         //     _val: T = x
         //   }
         //
-        NOT_YET("log an error", visitor::DumpAst::ToString(node));
+        NOT_YET("log an error", ast::Dump::ToString(node));
         return set_result(node, VerifyResult::Error());
       }
       auto *type_expr_type = type_expr_result.type_;
@@ -1439,14 +1439,14 @@ VerifyResult Compiler::VerifyType(ast::Declaration const *node) {
               this));
       return set_result(node, VerifyResult::Constant(type::Module));
     } else if (node_type->is<type::Tuple>()) {
-      NOT_YET(node_type, visitor::DumpAst::ToString(node));
+      NOT_YET(node_type, ast::Dump::ToString(node));
     } else {
-      NOT_YET(node_type, visitor::DumpAst::ToString(node));
+      NOT_YET(node_type, ast::Dump::ToString(node));
     }
   }
 
   // TODO simplify now that you don't have error decls.
-  ASSERT(node_type != nullptr) << visitor::DumpAst::ToString(node);
+  ASSERT(node_type != nullptr) << ast::Dump::ToString(node);
   std::vector<type::Typed<ast::Declaration const *>> decls_to_check;
   {
     auto good_decls_to_check = node->scope_->AllDeclsWithId(node->id());
@@ -1667,7 +1667,7 @@ VerifyResult Compiler::VerifyType(ast::Jump const *node) {
 }
 
 VerifyResult Compiler::VerifyType(ast::JumpHandler const *node) {
-  DEBUG_LOG("JumpHandler")(visitor::DumpAst::ToString(node));
+  DEBUG_LOG("JumpHandler")(ast::Dump::ToString(node));
   bool err = false;
   std::vector<type::Type const *> arg_types;
   arg_types.reserve(node->input().size());

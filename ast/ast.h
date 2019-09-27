@@ -19,7 +19,6 @@
 #include "core/scope.h"
 #include "frontend/operators.h"
 #include "ir/block_def.h"
-#include "ir/reg.h"
 #include "ir/results.h"
 #include "type/primitive.h"
 
@@ -61,7 +60,7 @@ struct Access : public Expression {
   Expression const *operand() const { return operand_.get(); }
   Expression *operand() { return operand_.get(); }
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
  private:
   std::unique_ptr<Expression> operand_;
@@ -95,7 +94,7 @@ struct ArrayLiteral : public Expression {
     return std::move(exprs_);
   }
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
  private:
   std::vector<std::unique_ptr<Expression>> exprs_;
@@ -137,7 +136,7 @@ struct ArrayType : public Expression {
   Expression const *data_type() const { return data_type_.get(); }
   Expression *data_type() { return data_type_.get(); }
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
  private:
   std::vector<std::unique_ptr<Expression>> lengths_;
@@ -175,7 +174,7 @@ struct Binop : public Expression {
     return std::pair{std::move(lhs_), std::move(rhs_)};
   }
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
  private:
   frontend::Operator op_;
@@ -239,7 +238,7 @@ struct Declaration : public Expression {
     init_val_ = std::move(expr);
   }
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
  private:
   std::string id_;
@@ -276,7 +275,7 @@ struct BlockLiteral : public ScopeExpr<core::DeclScope> {
   base::PtrSpan<Declaration const> after() const { return after_; }
   base::PtrSpan<Declaration> after() { return after_; }
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
  private:
   std::vector<std::unique_ptr<Declaration>> before_, after_;
@@ -336,7 +335,7 @@ struct BlockNode : public ScopeExpr<core::ExecScope> {
   base::PtrSpan<Expression> args() { return args_; }
   base::PtrSpan<Expression const> args() const { return args_; }
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
  private:
   std::string name_;
@@ -355,7 +354,7 @@ struct BuiltinFn : public Expression {
 
   core::Builtin value() const { return val_; }
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
  private:
   core::Builtin val_;
@@ -392,7 +391,7 @@ struct Call : public Expression {
     return std::pair{std::move(callee_), std::move(args_)};
   }
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
  private:
   std::unique_ptr<Expression> callee_;
@@ -421,7 +420,7 @@ struct Cast : public Expression {
   Expression const *type() const { return type_.get(); }
   Expression *type() { return type_.get(); }
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
  private:
   std::unique_ptr<Expression> expr_, type_;
@@ -459,7 +458,7 @@ struct ChainOp : public Expression {
     return std::move(exprs_);
   }
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
  private:
   std::vector<frontend::Operator> ops_;
@@ -476,7 +475,7 @@ struct CommaList : public Expression {
   CommaList &operator=(CommaList const &) noexcept = default;
   CommaList &operator=(CommaList &&) noexcept = default;
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
   std::vector<std::unique_ptr<Expression>> &&extract() && {
     return std::move(exprs_);
@@ -531,7 +530,7 @@ struct EnumLiteral : ScopeExpr<core::DeclScope> {
   base::PtrSpan<Expression const> elems() const { return elems_; }
   Kind kind() const { return kind_; }
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
  private:
   std::vector<std::unique_ptr<Expression>> elems_;
@@ -572,7 +571,7 @@ struct FunctionLiteral : public Expression {
   FunctionLiteral(FunctionLiteral &&) noexcept = default;
   ~FunctionLiteral() override {}
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
   std::unique_ptr<core::FnScope> fn_scope_;
 
@@ -612,7 +611,7 @@ struct Terminal : public Expression {
     return results_.get<T>(0).value();
   }
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
  private:
   ir::Results results_;
@@ -626,7 +625,7 @@ struct Identifier : public Expression {
       : Expression(std::move(span)), token_(std::move(token)) {}
   ~Identifier() override {}
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
   std::string_view token() const { return token_; }
   Declaration const *decl() const { return decl_; }
@@ -651,7 +650,7 @@ struct Import : public Expression {
   Expression const *operand() const { return operand_.get(); }
   Expression *operand() { return operand_.get(); }
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
  private:
   std::unique_ptr<Expression> operand_;
@@ -681,7 +680,7 @@ struct Index : public Expression {
     return std::pair(std::move(lhs_), std::move(rhs_));
   }
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
  private:
   std::unique_ptr<Expression> lhs_, rhs_;
@@ -729,7 +728,7 @@ struct Jump : public Node {
     }
   }
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
   // TODO private:
 
@@ -777,7 +776,7 @@ struct JumpHandler : ScopeExpr<core::FnScope> {
     for (auto &input : input_) { input->flags() |= Declaration::f_IsFnParam; }
   }
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
   base::PtrSpan<Declaration const> input() const { return input_; }
   base::PtrSpan<Declaration> input() { return input_; }
   base::PtrSpan<Node> stmts() { return stmts_; }
@@ -805,7 +804,7 @@ struct PrintStmt : public Node {
   base::PtrSpan<Expression> exprs() { return exprs_; }
   base::PtrSpan<Expression const> exprs() const { return exprs_; }
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
  private:
   std::vector<std::unique_ptr<Expression>> exprs_;
@@ -828,7 +827,7 @@ struct ReturnStmt : public Node {
   base::PtrSpan<Expression> exprs() { return exprs_; }
   base::PtrSpan<Expression const> exprs() const { return exprs_; }
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
  private:
   std::vector<std::unique_ptr<Expression>> exprs_;
@@ -851,7 +850,7 @@ struct YieldStmt : public Node {
   base::PtrSpan<Expression> exprs() { return exprs_; }
   base::PtrSpan<Expression const> exprs() const { return exprs_; }
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
  private:
   std::vector<std::unique_ptr<Expression>> exprs_;
@@ -890,7 +889,7 @@ struct ScopeLiteral : public ScopeExpr<core::ScopeLitScope> {
   base::PtrSpan<Declaration const> decls() const { return decls_; }
   base::PtrSpan<Declaration> decls() { return decls_; }
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
  private:
   std::vector<std::unique_ptr<Declaration>> decls_;
@@ -949,7 +948,7 @@ struct ScopeNode : public Expression {
     if (updated_last_scope_node) { last_scope_node_ = updated_last_scope_node; }
   }
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
  private:
   std::unique_ptr<Expression> name_;
@@ -966,7 +965,7 @@ struct StructLiteral : public Expression {
 
   StructLiteral &operator=(StructLiteral &&) noexcept = default;
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
   std::unique_ptr<core::DeclScope> type_scope;
   std::vector<Declaration> fields_, args_;
@@ -977,7 +976,7 @@ struct StructType : public Expression {
   StructType(frontend::SourceRange span) : Expression(span) {}
   ~StructType() override {}
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
   std::vector<std::unique_ptr<Expression>> args_;
 };
@@ -988,7 +987,7 @@ struct StructType : public Expression {
 struct Switch : public Expression {
   ~Switch() override {}
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
   std::unique_ptr<Expression> expr_;
   std::vector<std::pair<std::unique_ptr<Node>, std::unique_ptr<Expression>>>
@@ -1010,7 +1009,7 @@ struct Unop : public Expression {
       : Expression(span), operand_(std::move(operand)), op_(op) {}
   ~Unop() override {}
 
-#include "visitor/visitors.xmacro.h"
+#include ICARUS_AST_VISITOR_METHODS
 
   bool needs_expansion() const override {
     return !parenthesized_ && op() == frontend::Operator::Expand;
