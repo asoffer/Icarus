@@ -24,6 +24,13 @@ cc_component(
 )
 
 cc_component(
+    name = "id",
+    intf_deps = [],
+    impl_deps = [],
+    test_deps = []
+)
+
+cc_component(
     name = "repl",
     intf_deps = [":source"],
     impl_deps = None,
@@ -47,5 +54,3 @@ cc_component(
     impl_deps = None,
     test_deps = None,
 )
-
-

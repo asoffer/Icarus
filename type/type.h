@@ -17,7 +17,6 @@
 
 #ifdef ICARUS_VISITOR_EMIT_IR
 #include "compiler/compiler.h"
-#include "compiler/compiler.h"
 #include "visitor/type_query.h"
 #endif  // ICARUS_VISITOR_EMIT_IR
 
