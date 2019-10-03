@@ -17,6 +17,8 @@ cc_lib_target(
         "//base:move_func",
         "//base:tag",
         "//error:log",
+        "//misc:constant_binding",
+        "//misc:dependent_data",
         "//misc:module",
         "//ir:results",
         "//ir:builder",

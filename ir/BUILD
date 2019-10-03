@@ -72,6 +72,7 @@ cc_lib_target(
         "//base:debug",
         "//base:scope",
         "//base:tag",
+        "//type:typed_value",
     ],
     impl_deps = [
         ":cmd_buffer",

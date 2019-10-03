@@ -10,9 +10,9 @@
 
 namespace compiler {
 
-Compiler::Compiler(Module *mod)
-    : mod_(mod), bldr_(ir::GetBuilder()) {
-  constants_ = &mod_->dep_data_.front();
+Compiler::Compiler(Module *mod) : mod_(mod), bldr_(ir::GetBuilder()) {
+  dep_data_.emplace_back();
+  constants_ = &dep_data_.front();
 }
 
 Compiler::~Compiler() { ASSERT(deferred_work_.lock()->empty() == true); }
@@ -33,15 +33,16 @@ type::Type const *Compiler::type_of(ast::Expression const *expr) const {
     if (iter->second.type_) { return iter->second.type_; }
   }
 
-  // When searching in embedded modules we intentionally look with no bound
-  // constants. Across module boundaries, a declaration can't be present anyway.
-  for (Module const *mod : mod_->scope_.embedded_modules_) {
-    // TODO use right constants
-    if (auto iter = mod->dep_data_.front().second.verify_results_.find(expr);
-        iter != mod->dep_data_.front().second.verify_results_.end()) {
-      return iter->second.type_;
-    }
-  }
+  // TODO reenabel once modules are all in core.
+  // // When searching in embedded modules we intentionally look with no bound
+  // // constants. Across module boundaries, a declaration can't be present anyway.
+  // for (Module const *mod : mod_->scope_.embedded_modules_) {
+  //   // TODO use right constants
+  //   if (auto iter = mod->dep_data_.front().second.verify_results_.find(expr);
+  //       iter != mod->dep_data_.front().second.verify_results_.end()) {
+  //     return iter->second.type_;
+  //   }
+  // }
   return nullptr;
 }
 
@@ -70,10 +71,15 @@ void Compiler::set_dispatch_table(ast::ExprPtr expr,
   // ASSERT(success) << expr;
 }
 
-std::pair<ConstantBinding, DependentData>
-    *Compiler::insert_constants(
-        ConstantBinding const &constant_binding) {
-  auto *pair = mod_->insert_constants(constant_binding);
+std::pair<ConstantBinding, DependentData> *Compiler::insert_constants(
+    ConstantBinding const &constant_binding) {
+  for (auto iter = dep_data_.begin(); iter != dep_data_.end(); ++iter) {
+    auto &[key, val] = *iter;
+    if (key == constant_binding) { return &*iter; }
+  }
+  auto *pair = &dep_data_.emplace_back(constant_binding, DependentData{});
+  pair->second.constants_ = pair->first;
+
   for (auto const &[decl, binding] : constant_binding.keys_) {
     pair->second.verify_results_.emplace(
         ast::ExprPtr(decl), compiler::VerifyResult::Constant(binding.type_));

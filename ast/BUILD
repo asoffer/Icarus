@@ -72,6 +72,7 @@ cc_lib_target(
         "//base:expected",
         "//compiler:verify_result",
         "//core:fn_args",
+        "//core:fn_params",
         "//ir:basic_block",
         "//ir:block_def",
         "//ir:results",

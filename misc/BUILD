@@ -27,48 +27,15 @@ cc_lib_target(
     test_deps = None,
 )
 
-COMMON_MODULE_INTF_TARGETS = [
-    ":constant_binding",
-    "//ast:expr_ptr",
-    "//core:fn_params",
-    "//core:pending_module",
-    "//core:scope",
-    "//frontend/source:source",
-    "//ir:reg",
-    "//error:log",
-    "//type:typed_value",
-    "@com_google_absl//absl/container:flat_hash_map",
-    "@com_google_absl//absl/container:flat_hash_set",
-    "@com_google_absl//absl/container:node_hash_map",
-]
-
-cc_group_target(
+cc_lib_target(
     name = "module",
-    hdrs = ["module.h"],
-    deps = {
-        "compile": COMMON_MODULE_INTF_TARGETS + [":dependent_data"],
-        "format": COMMON_MODULE_INTF_TARGETS,
-        "match": COMMON_MODULE_INTF_TARGETS + [":dependent_data"],
-    },
-)
-
-COMMON_MODULE_IMPL_TARGETS = [
-    ":module",
-    "//ast:ast",
-    "//ast:expression",
-    "//base:guarded",
-    "//type:function",
-    "//type:jump",
-]
-
-cc_group_target(
-    name = "module-impl",
-    srcs = ["module.cc"],
-    deps = {
-        "compile": COMMON_MODULE_IMPL_TARGETS,
-        "format": COMMON_MODULE_IMPL_TARGETS,
-        "match": COMMON_MODULE_IMPL_TARGETS,
-    },
+    intf_deps = [
+        "//core:pending_module",
+        "//core:scope",
+        "//error:log",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+    impl_deps = ["//ast:ast"],
 )
 
 cc_lib_target(
@@ -90,7 +57,9 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = [
         "//ast:dispatch_table",
+        "//ast:expr_ptr",
         "//compiler:verify_result",
+        "//core:pending_module",
         "//ir:scope_def",
     ],
     impl_deps = None,

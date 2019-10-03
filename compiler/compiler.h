@@ -16,6 +16,8 @@
 #include "ir/builder.h"
 #include "ir/reg.h"
 #include "ir/results.h"
+#include "misc/constant_binding.h"
+#include "misc/dependent_data.h"
 #include "misc/module.h"
 #include "type/type_fwd.h"
 
@@ -254,6 +256,22 @@ struct Compiler {
   std::vector<std::unique_ptr<ir::CompiledFn>> fns_;
   std::vector<std::unique_ptr<ir::ScopeDef>> scope_defs_;
   std::vector<std::unique_ptr<ir::BlockDef>> block_defs_;
+
+  // TODO It's possible to have layers of constant bindings in a tree-like
+  // structure. For example,
+  //   f :: (a :: int64) => (b :: int64) => (c :: int64) => a + b * c
+  // has 3 layers. Essentially the number of layers is the number of nested
+  // scopes that have constant parameters (at time of writing only functions and
+  // struct literals, though struct literals may not be specified as constants
+  // syntactically?). For now you just store them flat in this vector and check
+  // them potentially many times. Perhaps a tree-like structure would be more
+  // efficient? More cache misses, but you're already paying heavily for the
+  // equality call, so maybe it's just a simpler structure.
+  //
+  // std::list makes sense here because we never traverse them and we need
+  // pointer stability. A vector of unique_ptrs would also work, but would
+  // unnecessarily reallocate with some frequency..
+  std::list<std::pair<ConstantBinding, DependentData>> dep_data_;
 };
 }  // namespace compiler
 

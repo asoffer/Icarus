@@ -3,16 +3,12 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/node_hash_map.h"
-#include "ast/expr_ptr.h"
-#include "misc/constant_binding.h"
-
-// TODO this ifdef needs to disappear it's not long-term sustainable
-#ifdef ICARUS_VISITOR_EMIT_IR
 #include "ast/dispatch_table.h"
 #include "ast/expr_ptr.h"
 #include "compiler/verify_result.h"
+#include "core/pending_module.h"
 #include "ir/scope_def.h"
-#endif // ICARUS_VISITOR_EMIT_IR
+#include "misc/constant_binding.h"
 
 namespace ast {
 struct Declaration;

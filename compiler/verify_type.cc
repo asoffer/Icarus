@@ -654,9 +654,11 @@ VerifyResult Compiler::VerifyType(ast::Access const *node) {
       return VerifyResult::Error();
     }
 
-    auto *t = backend::EvaluateAs<Module const *>(
-                  type::Typed{node->operand(), operand_result.type_}, this)
-                  ->GetType(node->member_name());
+    auto *mod = backend::EvaluateAs<Module const *>(
+        type::Typed{node->operand(), operand_result.type_}, this);
+    // TODO remove this const_cast.
+    auto *t = Compiler(const_cast<Module *>(mod))
+                  .type_of(mod->GetDecl(node->member_name()));
 
     if (t == nullptr) {
       error_log()->NoExportedSymbol(node->span);
