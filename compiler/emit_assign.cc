@@ -15,11 +15,11 @@
 namespace compiler {
 
 template <SpecialFunctionCategory Cat>
-static ir::CompiledFn *CreateAssign(Compiler *visitor,
+static ir::CompiledFn *CreateAssign(Compiler *compiler,
                                     type::Array const *a) {
   type::Pointer const *ptr_type = type::Ptr(a);
   auto *data_ptr_type           = type::Ptr(a->data_type);
-  auto *fn                      = visitor->module()->AddFunc(
+  auto *fn                      = compiler->AddFunc(
       type::Func({ptr_type, ptr_type}, {}),
       core::FnParams(
           core::Param{"",
@@ -27,7 +27,7 @@ static ir::CompiledFn *CreateAssign(Compiler *visitor,
           core::Param{
               "", type::Typed<ast::Expression const *>{nullptr, ptr_type}}));
   ICARUS_SCOPE(ir::SetCurrentFunc(fn)) {
-    visitor->builder().CurrentBlock() = fn->entry();
+    compiler->builder().CurrentBlock() = fn->entry();
     auto val                          = ir::Reg::Arg(0);
     auto var                          = ir::Reg::Arg(1);
 
@@ -46,10 +46,10 @@ static ir::CompiledFn *CreateAssign(Compiler *visitor,
           auto from_val = ir::Results{PtrFix(phi0.reg(), a->data_type)};
 
           if constexpr (Cat == Copy) {
-            a->data_type->EmitCopyAssign(visitor, a->data_type, from_val,
+            a->data_type->EmitCopyAssign(compiler, a->data_type, from_val,
                                          phi1.reg());
           } else if constexpr (Cat == Move) {
-            a->data_type->EmitMoveAssign(visitor, a->data_type, from_val,
+            a->data_type->EmitMoveAssign(compiler, a->data_type, from_val,
                                          phi1.reg());
           } else {
             UNREACHABLE();
@@ -66,17 +66,17 @@ static ir::CompiledFn *CreateAssign(Compiler *visitor,
 }
 
 template <SpecialFunctionCategory Cat>
-static ir::AnyFunc CreateAssign(Compiler *visitor,
+static ir::AnyFunc CreateAssign(Compiler *compiler,
                                 type::Struct const *s) {
-  if (auto fn = SpecialFunction(visitor, s, Name<Cat>())) { return *fn; }
+  if (auto fn = SpecialFunction(compiler, s, Name<Cat>())) { return *fn; }
   type::Pointer const *pt = type::Ptr(s);
-  ir::AnyFunc fn          = s->mod_->AddFunc(
+  ir::AnyFunc fn          = compiler->AddFunc(
       type::Func({pt, pt}, {}),
       core::FnParams(
           core::Param{"", type::Typed<ast::Expression const *>{nullptr, pt}},
           core::Param{"", type::Typed<ast::Expression const *>{nullptr, pt}}));
   ICARUS_SCOPE(ir::SetCurrentFunc(fn.func())) {
-    visitor->builder().CurrentBlock() = fn.func()->entry();
+    compiler->builder().CurrentBlock() = fn.func()->entry();
     auto val                          = ir::Reg::Arg(0);
     auto var                          = ir::Reg::Arg(1);
 
@@ -87,9 +87,9 @@ static ir::AnyFunc CreateAssign(Compiler *visitor,
       auto to = ir::Field(var, s, i).get();
 
       if constexpr (Cat == Copy) {
-        field_type->EmitCopyAssign(visitor, field_type, from, to);
+        field_type->EmitCopyAssign(compiler, field_type, from, to);
       } else if constexpr (Cat == Move) {
-        field_type->EmitMoveAssign(visitor, field_type, from, to);
+        field_type->EmitMoveAssign(compiler, field_type, from, to);
       } else {
         UNREACHABLE();
       }
@@ -207,7 +207,7 @@ void Compiler::EmitCopyAssign(
     type::Typed<ir::Results> const &from) {
   t->copy_assign_func_.init([=]() {
     type::Pointer const *p = type::Ptr(t);
-    auto *fn               = module()->AddFunc(
+    auto *fn               = AddFunc(
         type::Func({p, p}, {}),
         core::FnParams(
             core::Param{"", type::Typed<ast::Expression const *>{nullptr, p}},
@@ -239,7 +239,7 @@ void Compiler::EmitMoveAssign(
     type::Typed<ir::Results> const &from) {
   t->move_assign_func_.init([=]() {
     type::Pointer const *p = type::Ptr(t);
-    auto *fn               = module()->AddFunc(
+    auto *fn               = AddFunc(
         type::Func({p, p}, {}),
         core::FnParams(
             core::Param{"", type::Typed<ast::Expression const *>{nullptr, p}},

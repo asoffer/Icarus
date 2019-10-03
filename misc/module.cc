@@ -4,10 +4,6 @@
 #include "ast/expression.h"
 #include "base/guarded.h"
 #include "frontend/source/source.h"
-#ifdef ICARUS_VISITOR_EMIT_IR
-#include "ir/compiled_fn.h"
-#include "ir/scope_def.h"
-#endif  // ICARUS_VISITOR_EMIT_IR
 #include "type/function.h"
 #include "type/jump.h"
 
@@ -23,42 +19,6 @@ Module::~Module() = default;
 
 // TODO this ifdef needs to disappear it's not long-term sustainable
 #ifdef ICARUS_VISITOR_EMIT_IR
-ir::CompiledFn *Module::AddFunc(
-    type::Function const *fn_type,
-    core::FnParams<type::Typed<ast::Expression const *>> params) {
-  return fns_
-      .emplace_back(
-          std::make_unique<ir::CompiledFn>(this, fn_type, std::move(params)))
-      .get();
-}
-
-ir::ScopeDef *Module::AddScope(
-    std::vector<ir::AnyFunc> inits, std::vector<ir::AnyFunc> dones,
-    absl::flat_hash_map<std::string_view, ir::BlockDef *> blocks) {
-  return scope_defs_
-      .emplace_back(std::make_unique<ir::ScopeDef>(
-          this, std::move(inits), std::move(dones), std::move(blocks)))
-      .get();
-}
-
-ir::BlockDef *Module::AddBlock(std::vector<ir::AnyFunc> befores,
-                               std::vector<ir::AnyFunc> afters) {
-  auto * b =  block_defs_
-      .emplace_back(
-          std::make_unique<ir::BlockDef>(std::move(befores), std::move(afters)))
-      .get();
-  std::cerr << *b;
-  return b;
-}
-
-ir::CompiledFn *Module::AddJump(
-    type::Jump const *jump_type,
-    core::FnParams<type::Typed<ast::Expression const *>> params) {
-  return fns_
-      .emplace_back(std::make_unique<ir::CompiledFn>(
-          this, jump_type->ToFunction(), std::move(params)))
-      .get();
-}
 
 type::Type const *Module::GetType(std::string_view name) const {
   ASSIGN_OR(return nullptr, auto &decl, GetDecl(name));

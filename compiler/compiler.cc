@@ -6,6 +6,7 @@
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
 #include "ir/results.h"
+#include "type/jump.h"
 
 namespace compiler {
 
@@ -13,6 +14,8 @@ Compiler::Compiler(Module *mod)
     : mod_(mod), bldr_(ir::GetBuilder()) {
   constants_ = &mod_->dep_data_.front();
 }
+
+Compiler::~Compiler() { ASSERT(deferred_work_.lock()->empty() == true); }
 
 VerifyResult const *Compiler::prior_verification_attempt(
     ast::ExprPtr expr) {
@@ -125,6 +128,41 @@ void Compiler::CompleteDeferredBodies() {
     }
     std::move(f)();
   }
+}
+
+ir::CompiledFn *Compiler::AddFunc(
+    type::Function const *fn_type,
+    core::FnParams<type::Typed<ast::Expression const *>> params) {
+  return fns_
+      .emplace_back(std::make_unique<ir::CompiledFn>(module(), fn_type,
+                                                     std::move(params)))
+      .get();
+}
+
+ir::CompiledFn *Compiler::AddJump(
+    type::Jump const *jump_type,
+    core::FnParams<type::Typed<ast::Expression const *>> params) {
+  return fns_
+      .emplace_back(std::make_unique<ir::CompiledFn>(
+          module(), jump_type->ToFunction(), std::move(params)))
+      .get();
+}
+
+ir::ScopeDef *Compiler::AddScope(
+    std::vector<ir::AnyFunc> inits, std::vector<ir::AnyFunc> dones,
+    absl::flat_hash_map<std::string_view, ir::BlockDef *> blocks) {
+  return scope_defs_
+      .emplace_back(std::make_unique<ir::ScopeDef>(
+          module(), std::move(inits), std::move(dones), std::move(blocks)))
+      .get();
+}
+
+ir::BlockDef *Compiler::AddBlock(std::vector<ir::AnyFunc> befores,
+                                 std::vector<ir::AnyFunc> afters) {
+  return block_defs_
+      .emplace_back(
+          std::make_unique<ir::BlockDef>(std::move(befores), std::move(afters)))
+      .get();
 }
 
 }  // namespace compiler

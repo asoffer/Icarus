@@ -2,6 +2,7 @@
 #define ICARUS_COMPILER_COMPILER_H
 
 #include <atomic>
+#include <memory>
 
 #include "absl/container/node_hash_map.h"
 #include "ast/ast_fwd.h"
@@ -18,9 +19,14 @@
 #include "misc/module.h"
 #include "type/type_fwd.h"
 
+namespace ir {
+struct CompiledFn;
+struct ScopeDef;
+struct BlockDef;
+}  // namespace ir
+
 namespace compiler {
-// TODO: Come up with a better name.
-//
+
 // These are the steps in a traditional compiler of verifying types and emitting
 // code. They're tied together because they don't necessarily happen in a
 // particular order. Certainly for any given AST node we need to verify its type
@@ -40,7 +46,7 @@ namespace compiler {
 
 struct Compiler {
   Compiler(Module *mod);
-  ~Compiler() { ASSERT(deferred_work_.lock()->empty() == true); }
+  ~Compiler();
 
   Module *module() { return mod_; }
   ir::Builder &builder() { return bldr_; };
@@ -57,6 +63,18 @@ struct Compiler {
   void set_dispatch_table(ast::ExprPtr expr, ast::DispatchTable &&table);
   void set_jump_table(ast::ExprPtr jump_expr, ast::ExprPtr node,
                       ast::DispatchTable &&table);
+
+  ir::CompiledFn *AddFunc(
+      type::Function const *fn_type,
+      core::FnParams<type::Typed<ast::Expression const *>> params);
+  ir::CompiledFn *AddJump(
+      type::Jump const *jump_type,
+      core::FnParams<type::Typed<ast::Expression const *>> params);
+  ir::ScopeDef *AddScope(
+      std::vector<ir::AnyFunc> inits, std::vector<ir::AnyFunc> dones,
+      absl::flat_hash_map<std::string_view, ir::BlockDef *> blocks);
+  ir::BlockDef *AddBlock(std::vector<ir::AnyFunc> befores,
+                         std::vector<ir::AnyFunc> afters);
 
   ast::DispatchTable const *dispatch_table(ast::ExprPtr expr) const;
 
@@ -232,6 +250,10 @@ struct Compiler {
 
   base::guarded<absl::node_hash_map<ast::Node const *, base::move_func<void()>>>
       deferred_work_;
+
+  std::vector<std::unique_ptr<ir::CompiledFn>> fns_;
+  std::vector<std::unique_ptr<ir::ScopeDef>> scope_defs_;
+  std::vector<std::unique_ptr<ir::BlockDef>> block_defs_;
 };
 }  // namespace compiler
 

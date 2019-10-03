@@ -594,7 +594,7 @@ ir::Results Compiler::EmitValue(ast::BlockLiteral const *node) {
     afters.push_back(decl->EmitValue(this).get<ir::AnyFunc>(0));
   }
 
-  return ir::Results{ir::BlockHandler(module(), befores, afters)};
+  return ir::Results{ir::BlockHandler(this, befores, afters)};
 }
 
 template <typename T>
@@ -755,7 +755,7 @@ ir::Results ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
 
   auto [iter, success] = (*handle)[lhs_type].emplace(rhs_type, nullptr);
   if (success) {
-    auto *fn = compiler->module()->AddFunc(
+    auto *fn = compiler->AddFunc(
         type::Func({type::Ptr(lhs_type), type::Ptr(rhs_type)}, {type::Bool}),
         core::FnParams(core::Param{"", type::Typed<ast::Expression const *>(
                                            nullptr, type::Ptr(lhs_type))},
@@ -1175,7 +1175,7 @@ ir::Results Compiler::EmitValue(ast::FunctionLiteral const *node) {
 
     auto *fn_type = &type_of(node)->as<type::Function>();
 
-    ir_func = module()->AddFunc(
+    ir_func = AddFunc(
         fn_type, node->inputs_.Transform(
                      [fn_type, i = 0](
                          std::unique_ptr<ast::Declaration> const &e) mutable {
@@ -1243,7 +1243,7 @@ ir::Results Compiler::EmitValue(ast::JumpHandler const *node) {
                                      decl->init_val(), jmp_type->args()[i])});
     }
 
-    ir_func = module()->AddJump(jmp_type, std::move(params));
+    ir_func = AddJump(jmp_type, std::move(params));
     if (work_item_ptr) { ir_func->work_item = work_item_ptr; }
   }
   return ir::Results{ir_func};
@@ -1333,7 +1333,7 @@ ir::Results Compiler::EmitValue(ast::ScopeLiteral const *node) {
     }
   }
 
-  return ir::Results{ir::ScopeHandler(module(), inits, dones, blocks)};
+  return ir::Results{ir::ScopeHandler(this, inits, dones, blocks)};
 }
 
 ir::Results InitializeAndEmitBlockNode(Compiler *compiler,
@@ -1513,10 +1513,9 @@ ir::Results Compiler::EmitValue(ast::StructLiteral const *node) {
   //     params.append(d.id(), type::Typed<ast::Expression const *>(
   //                               d.init_val(), arg_types.at(i++)));
   //   }
-
-  //   ir_func = node->module()->AddFunc(type::Func(arg_types, {type::Type_}),
-  //                                     std::move(params));
-
+  //
+  //   ir_func = AddFunc(type::Func(arg_types, {type::Type_}), std::move(params));
+  //
   //   ir_func->work_item = work_item_ptr;
   // }
 

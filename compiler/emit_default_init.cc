@@ -16,7 +16,7 @@ void Compiler::EmitDefaultInit(type::Array const *t,
                                              ir::Reg reg) {
   t->init_func_.init([=]() {
     // TODO special function?
-    auto *fn = module()->AddFunc(
+    auto *fn = AddFunc(
         type::Func({type::Ptr(t)}, {}),
         core::FnParams(core::Param{
             "", type::Typed<ast::Expression const *>{nullptr, type::Ptr(t)}}));
@@ -67,7 +67,7 @@ void Compiler::EmitDefaultInit(type::Struct const *t,
 void Compiler::EmitDefaultInit(type::Tuple const *t,
                                              ir::Reg reg) {
   t->init_func_.init([=]() {
-    auto *fn = module()->AddFunc(
+    auto *fn = AddFunc(
         type::Func({type::Ptr(t)}, {}),
         core::FnParams(core::Param{
             "", type::Typed<ast::Expression const *>{nullptr, type::Ptr(t)}}));

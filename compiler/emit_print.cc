@@ -20,7 +20,7 @@ void Compiler::EmitPrint(type::Array const *t,
                                        ir::Results const &val) {
   t->repr_func_.init([=]() {
     // TODO special function?
-    ir::CompiledFn *fn = module()->AddFunc(
+    ir::CompiledFn *fn = AddFunc(
         type::Func({t}, {}),
         core::FnParams(
             core::Param{"", type::Typed<ast::Expression const *>{nullptr, t}}));
@@ -140,7 +140,7 @@ void Compiler::EmitPrint(type::Variant const *t,
 
   std::unique_lock lock(t->mtx_);
   if (!t->repr_func_) {
-    t->repr_func_ = module()->AddFunc(
+    t->repr_func_ = AddFunc(
         type::Func({t}, {}),
         core::FnParams(
             core::Param{"", type::Typed<ast::Expression const *>{nullptr, t}}));

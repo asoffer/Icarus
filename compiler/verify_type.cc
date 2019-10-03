@@ -657,6 +657,7 @@ VerifyResult Compiler::VerifyType(ast::Access const *node) {
     auto *t = backend::EvaluateAs<Module const *>(
                   type::Typed{node->operand(), operand_result.type_}, this)
                   ->GetType(node->member_name());
+
     if (t == nullptr) {
       error_log()->NoExportedSymbol(node->span);
       return VerifyResult::Error();

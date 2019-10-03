@@ -48,18 +48,6 @@ struct Module {
   Module(Module &&) = delete;
 
 #ifdef ICARUS_VISITOR_EMIT_IR
-  ir::CompiledFn *AddFunc(
-      type::Function const *fn_type,
-      core::FnParams<type::Typed<ast::Expression const *>> params);
-  ir::CompiledFn *AddJump(
-      type::Jump const *jump_type,
-      core::FnParams<type::Typed<ast::Expression const *>> params);
-  ir::ScopeDef *AddScope(
-      std::vector<ir::AnyFunc> inits, std::vector<ir::AnyFunc> dones,
-      absl::flat_hash_map<std::string_view, ir::BlockDef *> blocks);
-  ir::BlockDef *AddBlock(std::vector<ir::AnyFunc> befores,
-                         std::vector<ir::AnyFunc> afters);
-
   // TODO this ifdef needs to disappear it's not long-term sustainable
   type::Type const *GetType(std::string_view name) const;
 #endif  // ICARUS_VISITOR_EMIT_IR
@@ -72,13 +60,6 @@ struct Module {
   // TODO long-term this is not a good way to store these. We should probably
   // extract the declarations determine which are public, etc.
   std::vector<std::unique_ptr<ast::Node>> statements_;
-
-  // TODO this ifdef needs to disappear it's not long-term sustainable
-#ifdef ICARUS_VISITOR_EMIT_IR
-  std::vector<std::unique_ptr<ir::CompiledFn>> fns_;
-  std::vector<std::unique_ptr<ir::ScopeDef>> scope_defs_;
-  std::vector<std::unique_ptr<ir::BlockDef>> block_defs_;
-#endif  // ICARUS_VISITOR_EMIT_IR
 
   // TODO support more than just a single type argument to generic structs.
   struct GenericStructCache {

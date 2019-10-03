@@ -65,9 +65,9 @@ cc_group_target(
     name = "module-impl",
     srcs = ["module.cc"],
     deps = {
-        "compile": COMMON_MODULE_IMPL_TARGETS + ["//ir:compiled_fn"],
+        "compile": COMMON_MODULE_IMPL_TARGETS,
         "format": COMMON_MODULE_IMPL_TARGETS,
-        "match": COMMON_MODULE_IMPL_TARGETS + ["//ir:compiled_fn"],
+        "match": COMMON_MODULE_IMPL_TARGETS,
     },
 )
 
