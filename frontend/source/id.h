@@ -7,6 +7,8 @@
 namespace frontend {
 
 struct SourceId {
+  static SourceId Make();
+
   SourceId() = delete;
 
   constexpr SourceId(SourceId const &) noexcept = default;
@@ -24,8 +26,6 @@ struct SourceId {
   }
 
  private:
-  friend struct SourceRegistrar;
-  static SourceId Make();
   constexpr SourceId(uint64_t value) : value_(value) {}
   uint64_t value_;
 };

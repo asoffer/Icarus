@@ -6,6 +6,7 @@
 #include "absl/strings/str_format.h"
 #include "ast/ast.h"
 #include "base/interval.h"
+#include "diagnostic/diagnostic.h"
 #include "frontend/source/range.h"
 #include "frontend/source/source.h"
 
@@ -120,7 +121,8 @@ void WriteSource(
     if (i + 2 != line_intervals.endpoints_.size()) {
       if (end_num + 1 == line_intervals.endpoints_[i + 2]) {
         os << "\033[97;1m" << std::right
-           << std::setw(static_cast<int>(border_alignment)) << line_num.value << " | "
+           << std::setw(static_cast<int>(border_alignment)) << line_num.value
+           << " | "
            << "\033[0m" << LoadLines(source).at(end_num.value) << "\n";
       } else {
         os << "\033[97;1m" << std::right
@@ -138,28 +140,20 @@ void Log::UndeclaredIdentifier(ast::Identifier const *id) {
 
 void Log::PostconditionNeedsBool(frontend::SourceRange const &range,
                                  std::string_view type) {
-  std::stringstream ss;
-  ss << "Function postcondition must be of type bool, but you provided an "
-        "expression of type "
-     << type << ".\n\n";
-  WriteSource(
-      ss, src_, {base::Interval<frontend::LineNum>{range.lines()}},
-      {{range, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
-  ss << "\n\n";
-  errors_.push_back(ss.str());
+  renderer_.AddError(diagnostic::Diagnostic(
+      diagnostic::Text("Function postcondition must be of type bool, but you "
+                       "provided an expression of type `%s`."),
+      diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
 void Log::PreconditionNeedsBool(frontend::SourceRange const &range,
                                 std::string_view type) {
-  std::stringstream ss;
-  ss << "Function precondition must be of type bool, but you provided an "
-        "expression of type "
-     << type << ".\n\n";
-  WriteSource(
-      ss, src_, {range.lines()},
-      {{range, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
-  ss << "\n\n";
-  errors_.push_back(ss.str());
+  renderer_.AddError(diagnostic::Diagnostic(
+      diagnostic::Text(
+          "Function precondition must be of type bool, but you provided an "
+          "expression of type %s.",
+          type),
+      diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
 template <typename ExprContainer>
@@ -178,95 +172,73 @@ static auto LinesToShow(ExprContainer const &exprs) {
 
 #define MAKE_LOG_ERROR(fn_name, msg)                                           \
   void Log::fn_name(frontend::SourceRange const &range) {                      \
-    std::stringstream ss;                                                      \
-    ss << msg "\n\n";                                                          \
-    WriteSource(                                                               \
-        ss, src_, {range.lines()},                                             \
-        {{range, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});  \
-    ss << "\n\n";                                                              \
-    errors_.push_back(ss.str());                                               \
+    renderer_.AddError(diagnostic::Diagnostic(                                 \
+        diagnostic::Text(msg), diagnostic::SourceQuote(src_).Highlighted(      \
+                                   range, diagnostic::Style{})));              \
   }
 #include "error/errors.xmacro.h"
 #undef MAKE_LOG_ERROR
 
 void Log::StatementsFollowingJump(frontend::SourceRange const &range) {
-  std::stringstream ss;
-  ss << "Statements cannot follow a `return` or `yield` statement.\n\n";
-  WriteSource(
-      ss, src_, {range.lines().expanded(1).clamped_below(frontend::LineNum(1))},
-      {{range, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
-  ss << "\n\n";
-  errors_.push_back(ss.str());
+  renderer_.AddError(diagnostic::Diagnostic(
+      diagnostic::Text(
+          "Statements cannot follow a `return` or `yield` statement."),
+      diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
 void Log::RunawayMultilineComment() {
-  errors_.push_back("Finished reading file during multi-line comment.\n\n");
+  renderer_.AddError(diagnostic::Diagnostic(
+      diagnostic::Text("Finished reading file during multi-line comment.")));
 }
 
 void Log::DoubleDeclAssignment(frontend::SourceRange const &decl_range,
                                frontend::SourceRange const &val_range) {
-  std::stringstream ss;
-  ss << "Attempting to initialize an identifier that already has an initial "
-        "value. Did you mean `==` instead of `=`?\n\n";
-  WriteSource(
-      ss, src_, {decl_range.lines(), val_range.lines()},
-      {{decl_range, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}},
-       {val_range, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
-  ss << "\n\n";
-  errors_.push_back(ss.str());
+  renderer_.AddError(diagnostic::Diagnostic(
+      diagnostic::Text(
+          "Attempting to initialize an identifier that already has an initial "
+          "value. Did you mean `==` instead of `=`?"),
+      diagnostic::SourceQuote(src_)
+          .Highlighted(decl_range, diagnostic::Style{})
+          .Highlighted(val_range, diagnostic::Style{})));
 }
 
 void Log::DeclarationUsedInUnop(std::string const &unop,
                                 frontend::SourceRange const &decl_range) {
-  std::stringstream ss;
-  ss << "Declarations cannot be used as argument to unary operator `" << unop
-     << "`.\n\n";
-  WriteSource(
-      ss, src_, {decl_range.lines()},
-      {{decl_range, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
-  ss << "\n\n";
-  errors_.push_back(ss.str());
+  renderer_.AddError(diagnostic::Diagnostic(
+      diagnostic::Text(
+          "Declarations cannot be used as argument to unary operator `%s`.",
+          unop),
+      diagnostic::SourceQuote(src_).Highlighted(decl_range,
+                                                diagnostic::Style{})));
 }
 
 void Log::MissingMember(frontend::SourceRange const &range,
                         std::string_view member_name, std::string_view type) {
-  std::stringstream ss;
-  ss << "Expressions of type `" << type << "` have no member named `"
-     << member_name << "`.\n\n";
-  WriteSource(
-      ss, src_, {range.lines()},
-      {{range, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
-
-  ss << "\n\n";
-  errors_.push_back(ss.str());
+  renderer_.AddError(diagnostic::Diagnostic(
+      diagnostic::Text("Expressions of type `%s` have no member named `%s`.",
+                       type, member_name),
+      diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
 void Log::NonExportedMember(frontend::SourceRange const &range,
                             std::string_view member_name,
                             std::string_view type) {
-  std::stringstream ss;
-  ss << "Expressions of type `" << type << "` do not export the member `"
-     << member_name << "`.\n\n";
-  WriteSource(
-      ss, src_, {range.lines()},
-      {{range, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
-
-  ss << "\n\n";
-  errors_.push_back(ss.str());
+  renderer_.AddError(diagnostic::Diagnostic(
+      diagnostic::Text(
+          "Expressions of type `%s` do not export the member `%s`.", type,
+          member_name),
+      diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
 void Log::ReturnTypeMismatch(std::string_view expected_type,
                              std::string_view actual_type,
                              frontend::SourceRange const &range) {
-  std::stringstream ss;
-  ss << "Returning an expression of type `" << actual_type << '`'
-     << " from a function which returns `" << expected_type << "`.\n\n";
   // TODO also show where the return type is specified?
-  WriteSource(
-      ss, ASSERT_NOT_NULL(src_), {range.lines()},
-      {{range, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
-  ss << "\n\n";
-  errors_.push_back(ss.str());
+  renderer_.AddError(diagnostic::Diagnostic(
+      diagnostic::Text("Returning an expression of type `%s` from a function "
+                       "which returns `%s`.",
+                       actual_type, expected_type),
+      diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
 void Log::NoReturnTypes(ast::ReturnStmt const *ret_expr) {
@@ -316,26 +288,20 @@ void Log::IndexedReturnTypeMismatch(std::string_view expected_type,
 
 void Log::DereferencingNonPointer(std::string_view type,
                                   frontend::SourceRange const &range) {
-  std::stringstream ss;
-  ss << "Attempting to dereference an object of type `" << type
-     << "` which is not a pointer.\n\n";
-  WriteSource(
-      ss, src_, {range.lines()},
-      {{range, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
-  ss << "\n\n";
-  errors_.push_back(ss.str());
+  renderer_.AddError(diagnostic::Diagnostic(
+      diagnostic::Text("Attempting to dereference an object of type `%s` which "
+                       "is not a pointer",
+                       type),
+      diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
 void Log::WhichNonVariant(std::string_view type,
                           frontend::SourceRange const &range) {
-  std::stringstream ss;
-  ss << "Attempting to call `which` an object of type `" << type
-     << "` which is not a variant.\n\n";
-  WriteSource(
-      ss, src_, {range.lines()},
-      {{range, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
-  ss << "\n\n";
-  errors_.push_back(ss.str());
+  renderer_.AddError(diagnostic::Diagnostic(
+      diagnostic::Text("Attempting to call `which` an object of type `%s` "
+                       "which is not a variant.",
+                       type),
+      diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
 void Log::Reserved(frontend::SourceRange const &range,
@@ -475,12 +441,12 @@ void Log::Dump() const {
     std::cerr << "\n\n";
   }
 
-  for (auto const & [ decl, ids ] : out_of_order_decls_) {
+  for (auto const &[decl, ids] : out_of_order_decls_) {
     std::cerr << "Variable `" << decl->id()
               << "` is used before it is defined (which is only allowed for "
                  "constants).\n\n";
 
-    auto[iset, underlines] = LinesToShow(ids);
+    auto [iset, underlines] = LinesToShow(ids);
     iset.insert(
         decl->span.lines().expanded(1).clamped_below(frontend::LineNum(1)));
     // TODO highlight just the identifier
@@ -492,10 +458,10 @@ void Log::Dump() const {
     std::cerr << "\n\n";
   }
 
-  for (const auto & [ token, ids ] : undeclared_ids_) {
+  for (const auto &[token, ids] : undeclared_ids_) {
     std::cerr << "Use of undeclared identifier `" << token << "`:\n\n";
 
-    auto[iset, underlines] = LinesToShow(ids);
+    auto [iset, underlines] = LinesToShow(ids);
     // TODO src_ is probably wrong
     WriteSource(std::cerr, src_, iset, underlines);
     std::cerr << "\n\n";
@@ -595,7 +561,7 @@ void Log::NoCallMatch(frontend::SourceRange const &range,
   for (std::string const &reason : generic_failure_reasons) {
     ss << "\n  * " << reason << "\n";
   }
-  for (auto const & [ expr, reason ] : failure_reasons) {
+  for (auto const &[expr, reason] : failure_reasons) {
     ss << "\n  * " << reason << ":\n\n";
     WriteSource(ss, src_, {expr->span.lines()}, {});
   }
@@ -702,6 +668,11 @@ void Log::UninferrableType(InferenceFailureReason reason,
 void Log::MismatchedBinopArithmeticType(std::string_view lhs,
                                         std::string_view rhs,
                                         frontend::SourceRange const &range) {
+  renderer_.AddError(diagnostic::Diagnostic(
+      diagnostic::Text("MismatchedTypes `%s` and `%s` in binary operator.", lhs,
+                       rhs),
+      diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
+
   std::stringstream ss;
   ss << "Mismatched types `" << lhs << "` and `" << rhs
      << "` in binary operator.\n\n";

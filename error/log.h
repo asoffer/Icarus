@@ -9,6 +9,7 @@
 #include "ast/ast_fwd.h"
 #include "base/debug.h"
 #include "core/fn_args.h"
+#include "diagnostic/console_renderer.h"
 #include "error/inference_failure_reason.h"
 #include "frontend/source/range.h"
 
@@ -20,6 +21,7 @@ namespace error {
 struct Log {
   // TODO remove this overload
   explicit Log() : src_(nullptr) {}
+  ~Log() { renderer_.Flush(); }
 
   explicit Log(frontend::Source *src) : src_(ASSERT_NOT_NULL(src)) {}
 
@@ -142,6 +144,7 @@ struct Log {
 
   std::vector<std::string> errors_;
   frontend::Source *src_;
+  diagnostic::ConsoleRenderer renderer_{stderr};
 };
 }  // namespace error
 

@@ -6,6 +6,7 @@ cc_binary(
     srcs = ["main.cc"],
     deps = [
         ":impl-compile",
+        "//diagnostic:console_renderer-impl-compile",
         "//init:cli-impl",
         "//init:signal-impl",
         "//misc:compile-impl-compile",
@@ -20,6 +21,7 @@ cc_binary(
     srcs = ["match.cc"],
     deps = [
         ":impl-match",
+        "//diagnostic:console_renderer-impl-compile",
         "//init:cli-impl",
         "//init:signal-impl",
         "//match:binding_id-impl-match",

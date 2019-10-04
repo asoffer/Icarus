@@ -34,7 +34,8 @@ struct Interval {
   }
 
   Interval clamped_below(T &&val) {
-    return Interval<T>(std::max<T>(std::forward<T>(val), begin_), end_);
+    using std::max;
+    return Interval<T>(max(std::forward<T>(val), begin_), end_);
   }
 
  private:
@@ -49,10 +50,37 @@ struct IntervalSet {
     for (const auto &interval : intervals) { insert(interval); }
   }
 
+ private:
+  using container_type = std::vector<T>;
+
+ public:
+  struct const_iterator {
+    const_iterator operator++() { return ++++iter_; }
+    const_iterator operator++(int) { return iter_++ ++; }
+
+    Interval<T> operator*() const { return Interval<T>(*iter_, *(iter_ + 1)); }
+
+    friend bool operator==(const_iterator lhs, const_iterator rhs) {
+      return lhs.iter_ == rhs.iter_;
+    }
+    friend bool operator!=(const_iterator lhs, const_iterator rhs) {
+      return !(lhs == rhs);
+    }
+
+   private:
+    friend struct IntervalSet;
+    const_iterator(typename container_type::const_iterator i) : iter_(i) {}
+    typename container_type::const_iterator iter_;
+  };
+
+  const_iterator begin() const { return const_iterator(endpoints_.begin()); }
+  const_iterator end() const { return const_iterator(endpoints_.end()); }
+
   void insert(base::Interval<T> const &i) {
     auto lower =
         std::lower_bound(endpoints_.begin(), endpoints_.end(), i.begin());
-    auto upper = std::upper_bound(endpoints_.begin(), endpoints_.end(), i.end());
+    auto upper =
+        std::upper_bound(endpoints_.begin(), endpoints_.end(), i.end());
 
     if (std::distance(lower, upper) == 0) {
       std::vector<T> entries;
@@ -73,7 +101,7 @@ struct IntervalSet {
     endpoints_.erase(lower, upper);
   }
 
-  std::vector<T> endpoints_;
+  container_type endpoints_;
 };
 }  // namespace base
 
