@@ -48,7 +48,10 @@ COMMON_IMPL_DEPS = [
         "//opt:combine_blocks-impl",
         "//type:impl",
         "//type:cast-impl",
-        "//visitor:visitors-impl",
+        "//visitor:assign_scope-impl",
+        "//visitor:dependent_decls-impl",
+        "//ast/methods:dump-impl",
+        "//visitor:extract_jumps-impl",
         "//visitor:type_query-impl",
     ]
 
@@ -57,6 +60,9 @@ cc_group_target(
     cfgs = ["match", "compile"],
     deps = {
         "compile": COMMON_IMPL_DEPS,
-        "match": COMMON_IMPL_DEPS + ["//match:binding_id-impl"],
+        "match": COMMON_IMPL_DEPS + [
+            "//visitor:match-impl",
+            "//match:binding_id-impl",
+        ],
     }
 )

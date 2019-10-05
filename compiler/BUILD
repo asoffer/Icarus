@@ -46,7 +46,6 @@ cc_lib_target(
         "//misc:module",
         "//type:type",
         "//type:typed_value",
-        "//type:all_types",
         ":emit_assign-impl",
         ":emit_destroy-impl",
         ":emit_copy_init-impl",

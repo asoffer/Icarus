@@ -27,9 +27,6 @@ cc_lib_target(name = "callable",
               intf_deps = [":type"],
               impl_deps = None,
               test_deps = None)
-cc_group_target(
-    name = "all_types",
-    deps = [":concrete_types", ":generic_struct"])
 
 cc_group_target(
     name = "concrete_types",
@@ -75,7 +72,7 @@ cc_lib_target(
     # done fixing this.
     cfgs = ["match", "compile"],
     impl_deps = [
-        ":all_types",
+        ":concrete_types",
         "@com_google_absl//absl/algorithm:container",
     ],
     test_deps = ["//:impl"],

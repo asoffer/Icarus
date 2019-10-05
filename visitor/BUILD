@@ -1,32 +1,5 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_group_target", "cc_lib_target")
-
-# TODO rename ast_visitors-impl
-# TODO hack mirroring -impl, -test
-cc_group_target(
-    name = "visitors-impl",
-    deps = {
-        "compile": [
-            ":assign_scope-impl",
-            ":dependent_decls-impl",
-            "//ast/methods:dump-impl",
-            ":extract_jumps-impl",
-            "//compiler:compiler-impl",
-        ],
-        "format": [
-            "//ast/methods:dump-impl",
-            "//format:token_extractor-impl",
-        ],
-        "match": [
-            ":assign_scope-impl",
-            ":dependent_decls-impl",
-            "//ast/methods:dump-impl",
-            ":extract_jumps-impl",
-            ":match-impl",
-            "//compiler:compiler-impl",
-        ],
-    }
-)
+load("//:defs.bzl", "cc_lib_target")
 
 cc_lib_target(
     name = "assign_scope",
@@ -86,7 +59,7 @@ cc_lib_target(
     intf_deps = ["//type:type_fwd"],
     impl_deps = [
         "//ast:ast",
-        "//type:all_types",
+        "//type:concrete_types",
         "@com_google_absl//absl/algorithm:container",
     ],
     test_deps = None,

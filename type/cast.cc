@@ -7,7 +7,6 @@
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"
-#include "type/generic_struct.h"
 #include "type/opaque.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
