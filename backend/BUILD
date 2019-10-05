@@ -41,6 +41,7 @@ cc_lib_target(
         "//error:log",
         "//ir/cmd:jumps",
         "//ir:compiled_fn",
+        "//ir:read_only_data",
         "//core:arch",
         "//misc:module",
         "//type:generic_struct",

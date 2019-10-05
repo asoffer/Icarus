@@ -9,7 +9,7 @@ struct ParameterPack : public Type {
   TYPE_FNS(ParameterPack);
   ParameterPack(Type const *t) : elem(t) {}
 
-#include "visitor/type_visitors.xmacro.h"
+#include ICARUS_TYPE_VISITOR_METHODS
 
   Type const *elem;
 };

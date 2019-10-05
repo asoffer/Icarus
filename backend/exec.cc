@@ -17,6 +17,7 @@
 #include "ir/basic_block.h"
 #include "ir/cmd/jumps.h"
 #include "ir/compiled_fn.h"
+#include "ir/read_only_data.h"
 #include "misc/module.h"
 #include "type/type.h"
 #include "type/util.h"
@@ -33,7 +34,6 @@ struct Expression;
 }  // namespace ast
 
 namespace backend {
-base::untyped_buffer ReadOnlyData(0);
 
 void CallForeignFn(ir::Foreign const &f, base::untyped_buffer const &arguments,
                    std::vector<ir::Addr> const &ret_slots,
@@ -121,7 +121,8 @@ static T LoadValue(ir::Addr addr, base::untyped_buffer const &stack) {
     case ir::Addr::Kind::Heap:
       return *ASSERT_NOT_NULL(static_cast<T *>(addr.as_heap));
     case ir::Addr::Kind::Stack: return stack.get<T>(addr.as_stack);
-    case ir::Addr::Kind::ReadOnly: return ReadOnlyData.get<T>(addr.as_rodata);
+    case ir::Addr::Kind::ReadOnly:
+      return ir::ReadOnlyData.get<T>(addr.as_rodata);
   }
   UNREACHABLE(DUMP(static_cast<int>(addr.kind)));
 }
@@ -141,9 +142,7 @@ static void StoreValue(T val, ir::Addr addr, base::untyped_buffer *stack) {
   } else {
     switch (addr.kind) {
       case ir::Addr::Kind::Stack: stack->set(addr.as_stack, val); return;
-      case ir::Addr::Kind::ReadOnly:
-        ReadOnlyData.set(addr.as_rodata, val);
-        return;
+      case ir::Addr::Kind::ReadOnly: UNREACHABLE();
       case ir::Addr::Kind::Heap:
         *ASSERT_NOT_NULL(static_cast<T *>(addr.as_heap)) = val;
     }
@@ -171,7 +170,7 @@ struct RetrieveArgs<N, T, Ts...> {
           ptr = static_cast<void *>(addr.as_heap);
           break;
         case ir::Addr::Kind::ReadOnly:
-          ptr = static_cast<void *>(ReadOnlyData.raw(addr.as_rodata));
+          ptr = static_cast<void *>(ir::ReadOnlyData.raw(addr.as_rodata));
           break;
         default: UNREACHABLE(static_cast<int>(addr.kind));
       }

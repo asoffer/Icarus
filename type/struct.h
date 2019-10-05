@@ -38,7 +38,7 @@ struct Struct : public Type {
   void defining_modules(
       absl::flat_hash_set<::Module const *> *modules) const override;
 
-#include "visitor/type_visitors.xmacro.h"
+#include ICARUS_TYPE_VISITOR_METHODS
 
   // Return the type of a field, or a nullptr if it doesn't exist
   Field const *field(std::string_view name) const;

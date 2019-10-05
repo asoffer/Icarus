@@ -265,9 +265,15 @@ cc_component(
     name = "str",
     intf_deps = [":addr"],
     impl_deps = [
+        ":read_only_data",
         "//base:guarded",
         "//base:untyped_buffer",
         "@com_google_absl//absl/container:node_hash_map",
     ],
     test_deps = None,
+)
+
+cc_component(
+    name = "read_only_data",
+    intf_deps = ["//base:untyped_buffer"],
 )

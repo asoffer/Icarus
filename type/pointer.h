@@ -8,7 +8,7 @@ struct Pointer : public Type {
   TYPE_FNS(Pointer);
   Pointer(Type const *t) : pointee(t) {}
 
-#include "visitor/type_visitors.xmacro.h"
+#include ICARUS_TYPE_VISITOR_METHODS
 
   Type const *pointee;
 };
@@ -17,7 +17,7 @@ struct Pointer : public Type {
 struct BufferPointer : public Pointer {
   BufferPointer() = delete;
 
-#include "visitor/type_visitors.xmacro.h"
+#include ICARUS_TYPE_VISITOR_METHODS
 
   void WriteTo(std::string *result) const override;
   BufferPointer(Type const *t) : Pointer(t) {}

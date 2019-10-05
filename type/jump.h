@@ -12,7 +12,7 @@ struct Jump : public Type {
   TYPE_FNS(Jump);
   Jump(std::vector<Type const *> ts) : args_(std::move(ts)) {}
 
-#include "visitor/type_visitors.xmacro.h"
+#include ICARUS_TYPE_VISITOR_METHODS
 
   absl::Span<type::Type const *const> args() const { return args_; }
 

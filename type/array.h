@@ -10,7 +10,7 @@ struct Array : public Type {
   TYPE_FNS(Array);
   Array(size_t l, Type const *t) : len(l), data_type(t) {}
 
-#include "visitor/type_visitors.xmacro.h"
+#include ICARUS_TYPE_VISITOR_METHODS
 
   size_t len;
   Type const *data_type;

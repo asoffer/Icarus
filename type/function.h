@@ -19,7 +19,7 @@ struct GenericFunction : public Callable {
     result->append("generic");
   }
 
-#include "visitor/type_visitors.xmacro.h"
+#include ICARUS_TYPE_VISITOR_METHODS
 
   void defining_modules(
       absl::flat_hash_set<::Module const *> *modules) const override;
@@ -36,7 +36,7 @@ struct Function : public Callable {
     for (auto *t : output) { ASSERT(t != nullptr); }
   }
 
-#include "visitor/type_visitors.xmacro.h"
+#include ICARUS_TYPE_VISITOR_METHODS
 
   core::FnParams<type::Typed<ast::Expression const *>> AnonymousFnParams()
       const;

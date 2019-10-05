@@ -3,13 +3,7 @@
 #include "absl/container/node_hash_map.h"
 #include "base/guarded.h"
 #include "base/untyped_buffer.h"
-
-// TODO this ifdef needs to disappear it's not long-term sustainable
-#ifdef ICARUS_VISITOR_EMIT_IR
-namespace backend {
-extern base::untyped_buffer ReadOnlyData;
-}  // namespace backend
-#endif // ICARUS_VISITOR_EMIT_IR 
+#include "ir/read_only_data.h"
 
 namespace ir {
 
@@ -20,15 +14,15 @@ std::string_view SaveStringGlobally(std::string const &str) {
   auto[iter, success] = handle->emplace(str, Addr::ReadOnly(0));
   if (!success) { return iter->first; }
 
-// TODO this ifdef needs to disappear it's not long-term sustainable
-#ifdef ICARUS_VISITOR_EMIT_IR
-  size_t buf_end = backend::ReadOnlyData.size();
-  backend::ReadOnlyData.append_bytes(
+  // TODO This means we're storing strings during lexing even if we never intend
+  // to use them later. I doubt that's a huge performance loss, but it's worth
+  // remembering and seeing if there's an easy way to fix it.
+  size_t buf_end = ReadOnlyData.size();
+  ReadOnlyData.append_bytes(
       str.size() + 1,  // +1 for the null terminator.
       alignof(char));
-  std::memcpy(backend::ReadOnlyData.raw(buf_end), str.data(), str.size() + 1);
+  std::memcpy(ReadOnlyData.raw(buf_end), str.data(), str.size() + 1);
   iter->second = Addr::ReadOnly(buf_end);
-#endif // ICARUS_VISITOR_EMIT_IR 
 
   return iter->first;
 }

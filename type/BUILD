@@ -228,6 +228,7 @@ cc_lib_target(
     name = "type",
     textual_hdrs = ["primitive.xmacro.h"],
     intf_deps = [
+        ":type_deps",
         "//base:debug",
         "//base:meta",
         "//base:tag",
@@ -264,4 +265,30 @@ cc_lib_target(
         "@com_google_absl//absl/algorithm:container",
     ],
     test_deps = None,
+)
+
+cc_library(
+    name = "type_deps-compile",
+    textual_hdrs = ["compile_type_dependencies.h"],
+    deps = [dep + "-compile" for dep in [
+        "//compiler:compiler",
+        "//visitor:type_query",
+        "//visitor:type_visitors",
+    ]],
+)
+
+cc_library(
+    name = "type_deps-match",
+    textual_hdrs = ["match_type_dependencies.h"],
+    deps = [dep + "-match" for dep in [
+        "//compiler:compiler",
+        "//visitor:type_query",
+        "//visitor:type_visitors",
+    ]],
+)
+
+cc_library(
+    name = "type_deps-format",
+    textual_hdrs = ["format_type_dependencies.h"],
+    deps = [],
 )

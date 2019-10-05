@@ -11,7 +11,7 @@ struct Tuple : public Type {
   ~Tuple() {}
   Tuple(std::vector<Type const *> entries) : entries_(std::move(entries)) {}
 
-#include "visitor/type_visitors.xmacro.h"
+#include ICARUS_TYPE_VISITOR_METHODS
 
   void WriteTo(std::string *result) const override;
 

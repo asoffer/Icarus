@@ -15,10 +15,7 @@
 #include "ir/results.h"
 #include "ir/values.h"
 
-#ifdef ICARUS_VISITOR_EMIT_IR
-#include "compiler/compiler.h"
-#include "visitor/type_query.h"
-#endif  // ICARUS_VISITOR_EMIT_IR
+#include ICARUS_TYPE_VISITOR_DEPENDENCIES
 
 struct Context;
 struct Module;
@@ -62,7 +59,7 @@ struct Type : public base::Cast<Type> {
 
 #define ICARUS_TYPE_VISITOR(signature, body)                                   \
   virtual signature { UNREACHABLE(); }
-#include "visitor/type_visitors.xmacro.h"
+#include ICARUS_TYPE_VISITOR_METHODS
 #undef ICARUS_TYPE_VISITOR
 
   // TODO rename so it doesn't have "Test" in the name.

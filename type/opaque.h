@@ -10,7 +10,7 @@ struct Opaque : public Type {
   Opaque(::Module const *mod) : mod_(mod) {}
   ~Opaque() override {}
 
-#include "visitor/type_visitors.xmacro.h"
+#include ICARUS_TYPE_VISITOR_METHODS
 
   void WriteTo(std::string *result) const override;
 

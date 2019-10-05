@@ -1,23 +1,32 @@
-def configuration(xmacro_file, dependency_file, defines = []):
+def configuration(ast_methods, ast_deps, type_methods, type_deps, defines = []):
     return {
         "defines": defines + [
-            "ICARUS_AST_VISITOR_METHODS=\\\"{}\\\"".format(xmacro_file),
-            "ICARUS_AST_VISITOR_DEPENDENCIES=\\\"{}\\\"".format(dependency_file),
+            "ICARUS_AST_VISITOR_METHODS=\\\"{}\\\"".format(ast_methods),
+            "ICARUS_AST_VISITOR_DEPENDENCIES=\\\"{}\\\"".format(ast_deps),
+            "ICARUS_TYPE_VISITOR_METHODS=\\\"{}\\\"".format(type_methods),
+            "ICARUS_TYPE_VISITOR_DEPENDENCIES=\\\"{}\\\"".format(type_deps),
         ]
     }
 
 _VISITOR_DEFINES = {
     "compile": configuration(
-        "compiler/ast_methods.xmacro.h",
-        "compile_ast_dependencies.h",
-        ["ICARUS_VISITOR_EMIT_IR"]),
+        ast_methods = "compiler/ast_methods.xmacro.h",
+        ast_deps = "compile_ast_dependencies.h",
+        type_methods = "visitor/type_visitors.xmacro.h",
+        type_deps = "compile_type_dependencies.h",
+        defines = ["ICARUS_VISITOR_EMIT_IR"]),
     "format": configuration(
-        "format/ast_methods.xmacro.h",
-        "format_ast_dependencies.h"),
+        ast_methods = "format/ast_methods.xmacro.h",
+        ast_deps = "format_ast_dependencies.h",
+        type_methods = "visitor/type_visitors.xmacro.h",
+        type_deps = "format_type_dependencies.h",
+        ),
     "match": configuration(
-        "visitor/xvisitors.xmacro.h",
-        "match_ast_dependencies.h",
-        ["ICARUS_VISITOR_EMIT_IR", "ICARUS_MATCHER"])
+        ast_methods = "visitor/xvisitors.xmacro.h",
+        ast_deps = "match_ast_dependencies.h",
+        type_methods = "visitor/type_visitors.xmacro.h",
+        type_deps = "match_type_dependencies.h",
+        defines = ["ICARUS_VISITOR_EMIT_IR", "ICARUS_MATCHER"])
 }
 
 def configured_dep(dep, cfg):

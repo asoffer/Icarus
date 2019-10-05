@@ -13,7 +13,7 @@ struct GenericStruct : public Callable {
   GenericStruct(core::Scope const *scope, std::vector<Type const *> ts)
       : scope_(scope), mod_(scope->module()), deps_(std::move(ts)) {}
 
-#include "visitor/type_visitors.xmacro.h"
+#include ICARUS_TYPE_VISITOR_METHODS
 
   ::Module const *defining_module() const { return mod_; }
 

@@ -19,7 +19,7 @@ struct Enum : public type::Type {
     for (auto& [name, val] : vals_) { members_.emplace(val, name); }
   }
 
-#include "visitor/type_visitors.xmacro.h"
+#include ICARUS_TYPE_VISITOR_METHODS
 
   std::optional<ir::EnumVal> Get(std::string_view name) const;
   Typed<ir::EnumVal, Enum> EmitLiteral(std::string_view member_name) const;

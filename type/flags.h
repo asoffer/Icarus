@@ -26,7 +26,7 @@ struct Flags : public type::Type {
     DEBUG_LOG("flags")(members_);
   }
 
-#include "visitor/type_visitors.xmacro.h"
+#include ICARUS_TYPE_VISITOR_METHODS
 
   std::optional<ir::FlagsVal> Get(std::string_view name) const;
   Typed<ir::FlagsVal, Flags> EmitLiteral(std::string_view member_name) const;

@@ -5,7 +5,7 @@
 
 namespace type {
 struct Callable : public Type {
-#include "visitor/type_visitors.xmacro.h"
+#include ICARUS_TYPE_VISITOR_METHODS
 };
 }  // namespace type
 

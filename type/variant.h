@@ -22,7 +22,7 @@ struct Variant : public Type {
   // variant", rather than as "a different kind of alignment."
   core::Alignment alternative_alignment(core::Arch const& arch) const;
 
-#include "visitor/type_visitors.xmacro.h"
+#include ICARUS_TYPE_VISITOR_METHODS
 
   // TODO can do better with a pair of iterators and checking if one is a subset
   // of the other.
