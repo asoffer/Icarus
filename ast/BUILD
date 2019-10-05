@@ -46,16 +46,44 @@ cc_lib_target(name = "expression",
 cc_lib_target(
     name = "node",
     intf_deps = [
+        ":ast_deps",
         "//base:util",
-        "//visitor:visitors",
         "//frontend/source:range",
-        "//ir:results",
+    ],
+)
 
+cc_library(
+    name = "ast_deps-compile",
+    textual_hdrs = ["compile_ast_dependencies.h"],
+    deps = [dep + "-compile" for dep in [
+        "//visitor:visitors",
+        "//ir:results",
         "//ast/methods:dump",
         "//compiler:ast_methods-xmacro",
         "//visitor:xvisitors-xmacro",
+    ]],
+)
+
+cc_library(
+    name = "ast_deps-match",
+    textual_hdrs = ["match_ast_dependencies.h"],
+    deps = [dep + "-match" for dep in [
+        "//visitor:visitors",
+        "//ir:results",
+        "//ast/methods:dump",
+        "//compiler:ast_methods-xmacro",
+        "//visitor:xvisitors-xmacro",
+    ]],
+)
+
+cc_library(
+    name = "ast_deps-format",
+    textual_hdrs = ["format_ast_dependencies.h"],
+    deps = [dep + "-format" for dep in [
+        "//ast/methods:dump",
         "//format:ast_methods-xmacro",
-    ],
+        "//format:token_extractor",
+    ]],
 )
 
 cc_component(

@@ -6,24 +6,7 @@
 #include "base/util.h"
 #include "frontend/source/range.h"
 
-#include "ast/methods/dump.h"
-
-#ifdef ICARUS_MATCHER
-#include "visitor/match.h"
-#endif  // ICARUS_MATCHER
-
-#ifdef ICARUS_VISITOR_EMIT_IR
-#include "ir/results.h"
-#include "visitor/assign_scope.h"
-#include "visitor/dependent_decls.h"
-#include "compiler/compiler.h"
-#include "visitor/extract_jumps.h"
-#include "compiler/compiler.h"
-#endif  // ICARUS_VISITOR_EMIT_IR
-
-#ifdef ICARUS_VISITOR_FORMAT
-#include "format/token_extractor.h"
-#endif  // ICARUS_VISITOR_FORMAT
+#include ICARUS_AST_VISITOR_DEPENDENCIES
 
 namespace core {
 struct Scope;

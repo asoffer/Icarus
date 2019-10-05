@@ -1,17 +1,23 @@
+def configuration(xmacro_file, dependency_file, defines = []):
+    return {
+        "defines": defines + [
+            "ICARUS_AST_VISITOR_METHODS=\\\"{}\\\"".format(xmacro_file),
+            "ICARUS_AST_VISITOR_DEPENDENCIES=\\\"{}\\\"".format(dependency_file),
+        ]
+    }
+
 _VISITOR_DEFINES = {
-    "compile": [
-        "ICARUS_VISITOR_EMIT_IR",
-        "ICARUS_AST_VISITOR_METHODS=\\\"compiler/ast_methods.xmacro.h\\\"",
-    ],
-    "format": [
-        "ICARUS_VISITOR_FORMAT",
-        "ICARUS_AST_VISITOR_METHODS=\\\"format/ast_methods.xmacro.h\\\"",
-    ],
-    "match": [
-        "ICARUS_VISITOR_EMIT_IR",
-        "ICARUS_MATCHER",
-        "ICARUS_AST_VISITOR_METHODS=\\\"visitor/xvisitors.xmacro.h\\\"",
-    ],
+    "compile": configuration(
+        "compiler/ast_methods.xmacro.h",
+        "compile_ast_dependencies.h",
+        ["ICARUS_VISITOR_EMIT_IR"]),
+    "format": configuration(
+        "format/ast_methods.xmacro.h",
+        "format_ast_dependencies.h"),
+    "match": configuration(
+        "visitor/xvisitors.xmacro.h",
+        "match_ast_dependencies.h",
+        ["ICARUS_VISITOR_EMIT_IR", "ICARUS_MATCHER"])
 }
 
 def configured_dep(dep, cfg):
@@ -46,7 +52,7 @@ def cc_lib_target(name, intf_deps = [], impl_deps = None,
             native.cc_library(
                 name = intf_name,
                 hdrs = [name + ".h"] + extra_hdrs,
-                defines = defs,
+                defines = defs["defines"],
                 deps = [configured_dep(dep, cfg) for dep in intf_deps],
                 alwayslink = True,
                 **kwargs)
@@ -55,7 +61,7 @@ def cc_lib_target(name, intf_deps = [], impl_deps = None,
             native.cc_library(
                 name = impl_name,
                 srcs = [name + ".cc"] + extra_srcs,
-                defines = defs,
+                defines = defs["defines"],
                 deps = (([intf_name] if intf_deps != None else []) +
                         [configured_dep(dep, cfg) for dep in impl_deps]),
                 alwayslink = True,
@@ -64,7 +70,7 @@ def cc_lib_target(name, intf_deps = [], impl_deps = None,
         if test_deps != None:
             native.cc_test(
                 name = test_name,
-                defines = defs,
+                defines = defs["defines"],
                 srcs = [name + "_test.cc"],
                 deps = (["//test:test",
                          impl_name if impl_deps != None else intf_name] +
@@ -142,6 +148,6 @@ def cc_group_target(name, deps, cfgs = None, hdrs = [], srcs = [], **kwargs):
             hdrs = hdrs,
             srcs = srcs,
             deps = make_deps(deps, cfg),
-            defines = defs,
+            defines = defs["defines"],
             alwayslink = True,
             **kwargs)

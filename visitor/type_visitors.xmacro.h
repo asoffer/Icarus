@@ -39,4 +39,4 @@ ICARUS_TYPE_VISITOR(bool ReinterpretableAs(type::Type const *other) const, {
   return visitor::TypeQuery::ReinterpretableAs(this, other);
 });
 
-#endif
+#endif  // ICARUS_VISITOR_EMIT_IR

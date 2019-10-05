@@ -25,13 +25,11 @@ struct DependentData {
   // TODO probably make these funcs constant.
   absl::node_hash_map<ast::Expression const *, ir::CompiledFn *> ir_funcs_;
 
-#ifdef ICARUS_VISITOR_EMIT_IR
   // TODO future optimization: the bool determining if it's const is not
   // dependent and can therefore be stored more efficiently (though querying
   // for both simultaneously would be more expensive I guess.
   absl::flat_hash_map<ast::ExprPtr, compiler::VerifyResult> verify_results_;
 
-  // TODO this ifdef needs to disappear it's not long-term sustainable
   absl::flat_hash_map<ast::ExprPtr, ast::DispatchTable> dispatch_tables_;
 
   // Similar to dispatch tables, but specifically for `jump_handler`s. The
@@ -41,7 +39,6 @@ struct DependentData {
       jump_tables_;
   absl::node_hash_map<ast::ScopeLiteral const *, ir::ScopeDef> scope_defs_;
 
-#endif
   ConstantBinding constants_;
 
   absl::flat_hash_map<ast::Import const *, core::PendingModule>
