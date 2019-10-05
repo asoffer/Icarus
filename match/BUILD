@@ -1,5 +1,5 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib_target")
+load("//:defs.bzl", "cc_lib_target", "icarus_method")
 
 cc_lib_target(
     name = "binding_id",
@@ -22,4 +22,19 @@ cc_lib_target(
     ],
     impl_deps = None,
     test_deps = None,
+)
+
+icarus_method(
+    name = "ast_methods",
+    deps = ["//ast/methods:dump-xmacro"],
+    gen = False,
+)
+
+icarus_method(
+    name = "type_methods",
+    deps = [
+        "//compiler:compiler-match",
+        "//visitor:type_query-match",
+    ],
+    gen = False,
 )

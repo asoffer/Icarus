@@ -13,9 +13,6 @@ cc_component(
 cc_lib_target(
     name = "ast",
     intf_deps = [
-        "//compiler:ast_methods-xmacro",
-        "//visitor:xvisitors-xmacro",
-        "//format:ast_methods-xmacro",
         ":expression",
         ":node",
         "//base:graph",
@@ -56,11 +53,13 @@ cc_library(
     name = "ast_deps-compile",
     textual_hdrs = ["compile_ast_dependencies.h"],
     deps = [dep + "-compile" for dep in [
-        "//visitor:visitors",
+        "//visitor:assign_scope",
+        "//visitor:dependent_decls",
+        "//visitor:extract_jumps",
         "//ir:results",
         "//ast/methods:dump",
+        "//compiler:compiler",
         "//compiler:ast_methods-xmacro",
-        "//visitor:xvisitors-xmacro",
     ]],
 )
 
@@ -68,11 +67,15 @@ cc_library(
     name = "ast_deps-match",
     textual_hdrs = ["match_ast_dependencies.h"],
     deps = [dep + "-match" for dep in [
-        "//visitor:visitors",
+        "//visitor:assign_scope",
+        "//visitor:dependent_decls",
+        "//visitor:extract_jumps",
+        "//visitor:match",
         "//ir:results",
         "//ast/methods:dump",
+        "//compiler:compiler",
         "//compiler:ast_methods-xmacro",
-        "//visitor:xvisitors-xmacro",
+        "//match:ast_methods-xmacro",
     ]],
 )
 

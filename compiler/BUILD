@@ -1,9 +1,18 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib_target", "cc_component", "icarus_ast_method")
+load("//:defs.bzl", "cc_lib_target", "cc_component", "icarus_method")
 
-icarus_ast_method(
+icarus_method(
     name = "ast_methods",
     deps = ["//ast/methods:dump-xmacro"],
+    gen = False,
+)
+
+icarus_method(
+    name = "type_methods",
+    deps = [
+        "//compiler:compiler-compile",
+        "//visitor:type_query-compile",
+    ],
     gen = False,
 )
 

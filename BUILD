@@ -49,7 +49,7 @@ COMMON_IMPL_DEPS = [
         "//type:impl",
         "//type:cast-impl",
         "//visitor:visitors-impl",
-        "//visitor:type_visitors-impl",
+        "//visitor:type_query-impl",
     ]
 
 cc_group_target(

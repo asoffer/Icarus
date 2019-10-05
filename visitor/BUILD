@@ -1,42 +1,5 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_group_target", "cc_lib_target", "cc_component", "icarus_ast_method")
-
-icarus_ast_method(
-    name = "xvisitors",
-    deps = ["//ast/methods:dump-xmacro"],
-    gen = False
-)
-
-# TODO rename ast_visitors
-# TODO hack mirroring -impl, -test
-cc_group_target(
-    name = "visitors",
-    deps = {
-        "compile": [
-            ":xvisitors-xmacro",
-            ":assign_scope",
-            ":dependent_decls",
-            "//ast/methods:dump",
-            ":extract_jumps",
-            "//compiler:compiler",
-        ],
-        "format": [
-            ":xvisitors-xmacro",
-            "//ast/methods:dump",
-            "//format:token_extractor",
-        ],
-        "match": [
-            ":xvisitors-xmacro",
-            ":assign_scope",
-            ":dependent_decls",
-            "//ast/methods:dump",
-            ":extract_jumps",
-            ":match",
-            "//compiler:compiler",
-        ],
-
-    }
-)
+load("//:defs.bzl", "cc_group_target", "cc_lib_target")
 
 # TODO rename ast_visitors-impl
 # TODO hack mirroring -impl, -test
@@ -44,7 +7,6 @@ cc_group_target(
     name = "visitors-impl",
     deps = {
         "compile": [
-            ":visitors",
             ":assign_scope-impl",
             ":dependent_decls-impl",
             "//ast/methods:dump-impl",
@@ -52,12 +14,10 @@ cc_group_target(
             "//compiler:compiler-impl",
         ],
         "format": [
-            ":visitors",
             "//ast/methods:dump-impl",
             "//format:token_extractor-impl",
         ],
         "match": [
-            ":visitors",
             ":assign_scope-impl",
             ":dependent_decls-impl",
             "//ast/methods:dump-impl",
@@ -67,29 +27,6 @@ cc_group_target(
         ],
     }
 )
-
-# TODO hack mirroring -impl, -test
-cc_group_target(
-    name = "type_visitors",
-    textual_hdrs = ["type_visitors.xmacro.h"],
-    deps = {
-        "compile": [
-            "//compiler:compiler",
-            ":type_query",
-        ],
-        "match": [
-            "//compiler:compiler",
-            ":type_query",
-        ]
-    },
-)
-cc_group_target(
-    cfgs = ["match", "compile"],
-    name = "type_visitors-impl",
-    textual_hdrs = ["type_visitors.xmacro.h"],
-    deps = [
-        ":type_query-impl",
-    ])
 
 cc_lib_target(
     name = "assign_scope",

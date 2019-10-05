@@ -1,32 +1,23 @@
-def configuration(ast_methods, ast_deps, type_methods, type_deps, defines = []):
+def configuration(ast_deps, type_deps, defines = []):
     return {
         "defines": defines + [
-            "ICARUS_AST_VISITOR_METHODS=\\\"{}\\\"".format(ast_methods),
             "ICARUS_AST_VISITOR_DEPENDENCIES=\\\"{}\\\"".format(ast_deps),
-            "ICARUS_TYPE_VISITOR_METHODS=\\\"{}\\\"".format(type_methods),
             "ICARUS_TYPE_VISITOR_DEPENDENCIES=\\\"{}\\\"".format(type_deps),
         ]
     }
 
 _VISITOR_DEFINES = {
     "compile": configuration(
-        ast_methods = "compiler/ast_methods.xmacro.h",
         ast_deps = "compile_ast_dependencies.h",
-        type_methods = "visitor/type_visitors.xmacro.h",
-        type_deps = "compile_type_dependencies.h",
-        defines = ["ICARUS_VISITOR_EMIT_IR"]),
+        type_deps = "compile_type_dependencies.h"),
     "format": configuration(
-        ast_methods = "format/ast_methods.xmacro.h",
         ast_deps = "format_ast_dependencies.h",
-        type_methods = "visitor/type_visitors.xmacro.h",
-        type_deps = "format_type_dependencies.h",
-        ),
+        type_deps = "format_type_dependencies.h"),
     "match": configuration(
-        ast_methods = "visitor/xvisitors.xmacro.h",
         ast_deps = "match_ast_dependencies.h",
-        type_methods = "visitor/type_visitors.xmacro.h",
         type_deps = "match_type_dependencies.h",
-        defines = ["ICARUS_VISITOR_EMIT_IR", "ICARUS_MATCHER"])
+        #TODO Figure out how to get rid of this define.
+        defines = ["ICARUS_MATCHER"])
 }
 
 def configured_dep(dep, cfg):
@@ -87,11 +78,11 @@ def cc_lib_target(name, intf_deps = [], impl_deps = None,
                 data = test_data,
                 **kwargs)
 
-def icarus_ast_method(name,
-                      intf_deps = None,
-                      impl_deps = None,
-                      deps = [],
-                      gen = True):
+def icarus_method(name,
+                  intf_deps = None,
+                  impl_deps = None,
+                  deps = [],
+                  gen = True):
     native.cc_library(
         name = name + "-xmacro",
         textual_hdrs = [name + ".xmacro.h"],

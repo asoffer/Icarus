@@ -239,7 +239,6 @@ cc_lib_target(
         "//ir:results",
         "//ir:values",
         "//core:arch",
-        "//visitor:type_visitors",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
     impl_deps = [
@@ -273,7 +272,7 @@ cc_library(
     deps = [dep + "-compile" for dep in [
         "//compiler:compiler",
         "//visitor:type_query",
-        "//visitor:type_visitors",
+        "//compiler:type_methods-xmacro",
     ]],
 )
 
@@ -283,12 +282,14 @@ cc_library(
     deps = [dep + "-match" for dep in [
         "//compiler:compiler",
         "//visitor:type_query",
-        "//visitor:type_visitors",
+        "//match:type_methods-xmacro",
     ]],
 )
 
 cc_library(
     name = "type_deps-format",
     textual_hdrs = ["format_type_dependencies.h"],
-    deps = [],
+    deps = [dep + "-format" for dep in [
+        "//format:type_methods-xmacro",
+    ]],
 )

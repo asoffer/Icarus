@@ -1,7 +1,7 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_component", "icarus_ast_method")
+load("//:defs.bzl", "cc_component", "icarus_method")
 
-icarus_ast_method(
+icarus_method(
     name = "dump",
     intf_deps = ["//ast:ast_fwd"],
     impl_deps = [

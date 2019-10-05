@@ -1,3 +1,5 @@
+#define ICARUS_AST_VISITOR_METHODS "compiler/ast_methods.xmacro.h"
+
 #include "ast/methods/dump.h"
 #include "compiler/compiler.h"
 #include "ir/results.h"
