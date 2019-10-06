@@ -7,6 +7,21 @@ icarus_method(
     gen = False,
 )
 
+cc_lib_target(
+    name = "ast_dependencies",
+    cfgs = ["compile"],
+    textual_hdrs = ["ast_dependencies.h"],
+    intf_deps = [
+        "//visitor:assign_scope",
+        "//visitor:dependent_decls",
+        "//visitor:extract_jumps",
+        "//ir:results",
+        "//ast/methods:dump",
+        "//compiler:compiler",
+        "//compiler:ast_methods-xmacro",
+    ],
+)
+
 icarus_method(
     name = "type_methods",
     deps = [
@@ -14,6 +29,17 @@ icarus_method(
         "//visitor:type_query-compile",
     ],
     gen = False,
+)
+
+cc_lib_target(
+    name = "type_dependencies",
+    cfgs = ["compile"],
+    textual_hdrs = ["type_dependencies.h"],
+    intf_deps = [
+        "//compiler:compiler",
+        "//visitor:type_query",
+        "//compiler:type_methods-xmacro",
+    ],
 )
 
 cc_lib_target(

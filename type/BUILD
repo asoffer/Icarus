@@ -1,5 +1,5 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_group_target", "cc_lib_target", "cc_component")
+load("//:defs.bzl", "cc_group_target", "cc_lib_target", "cc_component", "type_dependency")
 
 cc_lib_target(name = "type_fwd", impl_deps = None, test_deps = None)
 
@@ -225,7 +225,7 @@ cc_lib_target(
     name = "type",
     textual_hdrs = ["primitive.xmacro.h"],
     intf_deps = [
-        ":type_deps",
+        type_dependency,
         "//base:debug",
         "//base:meta",
         "//base:tag",
@@ -261,32 +261,4 @@ cc_lib_target(
         "@com_google_absl//absl/algorithm:container",
     ],
     test_deps = None,
-)
-
-cc_library(
-    name = "type_deps-compile",
-    textual_hdrs = ["compile_type_dependencies.h"],
-    deps = [dep + "-compile" for dep in [
-        "//compiler:compiler",
-        "//visitor:type_query",
-        "//compiler:type_methods-xmacro",
-    ]],
-)
-
-cc_library(
-    name = "type_deps-match",
-    textual_hdrs = ["match_type_dependencies.h"],
-    deps = [dep + "-match" for dep in [
-        "//compiler:compiler",
-        "//visitor:type_query",
-        "//match:type_methods-xmacro",
-    ]],
-)
-
-cc_library(
-    name = "type_deps-format",
-    textual_hdrs = ["format_type_dependencies.h"],
-    deps = [dep + "-format" for dep in [
-        "//format:type_methods-xmacro",
-    ]],
 )

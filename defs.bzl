@@ -1,23 +1,18 @@
-def configuration(ast_deps, type_deps, defines = []):
+def configuration(name, defines = []):
     return {
+        "name": name,
         "defines": defines + [
-            "ICARUS_AST_VISITOR_DEPENDENCIES=\\\"{}\\\"".format(ast_deps),
-            "ICARUS_TYPE_VISITOR_DEPENDENCIES=\\\"{}\\\"".format(type_deps),
+            "ICARUS_AST_VISITOR_DEPENDENCIES=\\\"{}/ast_dependencies.h\\\"".format(name),
+            "ICARUS_TYPE_VISITOR_DEPENDENCIES=\\\"{}/type_dependencies.h\\\"".format(name),
         ]
     }
 
+
 _VISITOR_DEFINES = {
-    "compile": configuration(
-        ast_deps = "compile_ast_dependencies.h",
-        type_deps = "compile_type_dependencies.h"),
-    "format": configuration(
-        ast_deps = "format_ast_dependencies.h",
-        type_deps = "format_type_dependencies.h"),
-    "match": configuration(
-        ast_deps = "match_ast_dependencies.h",
-        type_deps = "match_type_dependencies.h",
-        #TODO Figure out how to get rid of this define.
-        defines = ["ICARUS_MATCHER"])
+    "compile": configuration("compiler"),
+    "format": configuration("format"),
+    #TODO Figure out how to get rid of this define.
+    "match": configuration("match", defines = ["ICARUS_MATCHER"])
 }
 
 def configured_dep(dep, cfg):
@@ -37,6 +32,12 @@ def make_deps(deps, cfg):
     else:
         fail()
 
+def ast_dependency(cfg):
+    return "//{}:ast_dependencies-{}".format(_VISITOR_DEFINES[cfg]["name"], cfg)
+
+def type_dependency(cfg):
+    return "//{}:type_dependencies-{}".format(_VISITOR_DEFINES[cfg]["name"], cfg)
+
 def cc_lib_target(name, intf_deps = [], impl_deps = None,
                   test_deps = None, test_data = [], 
                   extra_hdrs = [], extra_srcs = [],
@@ -53,7 +54,9 @@ def cc_lib_target(name, intf_deps = [], impl_deps = None,
                 name = intf_name,
                 hdrs = [name + ".h"] + extra_hdrs,
                 defines = defs["defines"],
-                deps = [configured_dep(dep, cfg) for dep in intf_deps],
+                deps = [
+                    configured_dep(dep, cfg) if str(type(dep)) == "string" else dep(cfg)
+                    for dep in intf_deps],
                 alwayslink = True,
                 **kwargs)
 
@@ -63,7 +66,8 @@ def cc_lib_target(name, intf_deps = [], impl_deps = None,
                 srcs = [name + ".cc"] + extra_srcs,
                 defines = defs["defines"],
                 deps = (([intf_name] if intf_deps != None else []) +
-                        [configured_dep(dep, cfg) for dep in impl_deps]),
+                        [configured_dep(dep, cfg) if str(type(dep)) == "string" else dep(cfg)
+                         for dep in impl_deps]),
                 alwayslink = True,
                 **kwargs)
 
@@ -74,7 +78,8 @@ def cc_lib_target(name, intf_deps = [], impl_deps = None,
                 srcs = [name + "_test.cc"],
                 deps = (["//test:test",
                          impl_name if impl_deps != None else intf_name] +
-                        [configured_dep(dep, cfg) for dep in test_deps]),
+                        [configured_dep(dep, cfg) if str(type(dep)) == "string" else dep(cfg)
+                         for dep in test_deps]),
                 data = test_data,
                 **kwargs)
 

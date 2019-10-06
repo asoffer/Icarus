@@ -1,5 +1,5 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib_target", "cc_component")
+load("//:defs.bzl", "cc_lib_target", "cc_component", "ast_dependency")
 
 cc_library(name = "node_xmacro", textual_hdrs = ["node.xmacro.h"])
 
@@ -43,50 +43,10 @@ cc_lib_target(name = "expression",
 cc_lib_target(
     name = "node",
     intf_deps = [
-        ":ast_deps",
+        ast_dependency,
         "//base:util",
         "//frontend/source:range",
     ],
-)
-
-cc_library(
-    name = "ast_deps-compile",
-    textual_hdrs = ["compile_ast_dependencies.h"],
-    deps = [dep + "-compile" for dep in [
-        "//visitor:assign_scope",
-        "//visitor:dependent_decls",
-        "//visitor:extract_jumps",
-        "//ir:results",
-        "//ast/methods:dump",
-        "//compiler:compiler",
-        "//compiler:ast_methods-xmacro",
-    ]],
-)
-
-cc_library(
-    name = "ast_deps-match",
-    textual_hdrs = ["match_ast_dependencies.h"],
-    deps = [dep + "-match" for dep in [
-        "//visitor:assign_scope",
-        "//visitor:dependent_decls",
-        "//visitor:extract_jumps",
-        "//visitor:match",
-        "//ir:results",
-        "//ast/methods:dump",
-        "//compiler:compiler",
-        "//compiler:ast_methods-xmacro",
-        "//match:ast_methods-xmacro",
-    ]],
-)
-
-cc_library(
-    name = "ast_deps-format",
-    textual_hdrs = ["format_ast_dependencies.h"],
-    deps = [dep + "-format" for dep in [
-        "//ast/methods:dump",
-        "//format:ast_methods-xmacro",
-        "//format:token_extractor",
-    ]],
 )
 
 cc_component(

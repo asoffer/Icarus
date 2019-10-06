@@ -7,10 +7,30 @@ icarus_method(
     gen = False,
 )
 
+cc_lib_target(
+    name = "ast_dependencies",
+    cfgs = ["format"],
+    textual_hdrs = ["ast_dependencies.h"],
+    intf_deps = [
+        "//ast/methods:dump",
+        "//format:ast_methods-xmacro",
+        "//format:token_extractor",
+    ],
+)
+
 icarus_method(
     name = "type_methods",
     deps = [],
     gen = False,
+)
+
+cc_lib_target(
+    name = "type_dependencies",
+    cfgs = ["format"],
+    textual_hdrs = ["type_dependencies.h"],
+    intf_deps = [
+        "//format:type_methods-xmacro",
+    ],
 )
 
 cc_binary(
