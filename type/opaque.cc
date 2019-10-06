@@ -6,7 +6,7 @@ namespace type {
 void Opaque::WriteTo(std::string *result) const { result->append("<opaque>"); }
 
 void Opaque::defining_modules(
-    absl::flat_hash_set<::Module const *> *modules) const {
+    absl::flat_hash_set<module::Module const *> *modules) const {
   modules->insert(mod_);
 }
 

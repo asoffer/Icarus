@@ -7,7 +7,7 @@ struct Module;
 
 namespace type {
 struct Opaque : public Type {
-  Opaque(::Module const *mod) : mod_(mod) {}
+  Opaque(module::Module const *mod) : mod_(mod) {}
   ~Opaque() override {}
 
 #include ICARUS_TYPE_VISITOR_METHODS
@@ -18,9 +18,9 @@ struct Opaque : public Type {
   core::Alignment alignment(core::Arch const &arch) const override;
 
   void defining_modules(
-      absl::flat_hash_set<::Module const *> *modules) const override;
+      absl::flat_hash_set<module::Module const *> *modules) const override;
 
-  ::Module const *mod_;
+  module::Module const *mod_;
 };
 
 }  // namespace type

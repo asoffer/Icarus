@@ -47,10 +47,10 @@ namespace compiler {
 // water.
 
 struct Compiler {
-  Compiler(Module *mod);
+  Compiler(module::Module *mod);
   ~Compiler();
 
-  Module *module() { return mod_; }
+  module::Module *module() { return mod_; }
   ir::Builder &builder() { return bldr_; };
   error::Log *error_log() { return &module()->error_log_; }
   size_t num_errors() { return error_log()->size(); }
@@ -211,7 +211,7 @@ struct Compiler {
                     type::Typed<ir::Reg> to_var);
 
  private:
-  Module *mod_;
+  module::Module *mod_;
   ir::Builder &bldr_;
 
  public:  // TODO make private

@@ -18,7 +18,7 @@ extern ir::CompiledFn *main_fn;
 
 extern std::atomic<bool> found_errors;
 
-std::unique_ptr<Module> CompileModule(frontend::Source *);
+std::unique_ptr<module::Module> CompileModule(frontend::Source *);
 
 int RunCompiler() {
   void *libc_handle = dlopen("/lib/x86_64-linux-gnu/libc.so.6", RTLD_LAZY);

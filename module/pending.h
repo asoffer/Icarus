@@ -7,9 +7,9 @@
 #include "base/expected.h"
 #include "frontend/source/source.h"
 
-struct Module;
 
 namespace module {
+struct Module;
 
 // A `PendingModule` represents a module that is currently being loaded but for
 // which the data may not yet be available.

@@ -8,7 +8,7 @@
 namespace ir {
 
 CompiledFn::CompiledFn(
-    Module *mod, type::Function const *fn_type,
+    module::Module *mod, type::Function const *fn_type,
     core::FnParams<type::Typed<ast::Expression const *>> params)
     : type_(fn_type),
       params_(std::move(params)),

@@ -16,7 +16,7 @@ struct Tuple : public Type {
   void WriteTo(std::string *result) const override;
 
   virtual void defining_modules(
-      absl::flat_hash_set<::Module const *> *modules) const;
+      absl::flat_hash_set<module::Module const *> *modules) const;
 
   core::Bytes offset(size_t n, core::Arch const &arch) const;
   size_t size() const { return entries_.size(); }

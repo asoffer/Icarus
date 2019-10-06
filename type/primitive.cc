@@ -10,7 +10,7 @@ namespace type {
 #undef PRIMITIVE_MACRO
 
 void Primitive::defining_modules(
-    absl::flat_hash_set<::Module const *> *modules) const {}
+    absl::flat_hash_set<module::Module const *> *modules) const {}
 
 void Primitive::WriteTo(std::string *result) const {
   switch (type_) {

@@ -9,9 +9,9 @@
 
 namespace type {
 Struct::Struct(
-    core::Scope const *scope, ::Module const *mod,
+    core::Scope const *scope, module::Module const *mod,
     absl::Span<std::tuple<std::string_view, type::Type const *> const> fields)
-    : scope_(scope), mod_(const_cast<::Module *>(mod)) {
+    : scope_(scope), mod_(const_cast<module::Module *>(mod)) {
   fields_.reserve(fields.size());
   size_t i = 0;
   for (auto [name, t] : fields) {
@@ -44,7 +44,7 @@ Struct::Field const *Struct::field(std::string_view name) const {
 }
 
 void Struct::defining_modules(
-    absl::flat_hash_set<::Module const *> *modules) const {
+    absl::flat_hash_set<module::Module const *> *modules) const {
   modules->insert(defining_module());
 }
 

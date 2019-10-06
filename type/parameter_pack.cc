@@ -15,7 +15,7 @@ ParameterPack const *Pack(Type const *t) {
 }
 
 void ParameterPack::defining_modules(
-    absl::flat_hash_set<::Module const *> *modules) const {
+    absl::flat_hash_set<module::Module const *> *modules) const {
   elem->defining_modules(modules);
 }
 

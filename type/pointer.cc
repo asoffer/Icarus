@@ -29,7 +29,7 @@ BufferPointer const *BufPtr(Type const *t) {
 }
 
 void Pointer::defining_modules(
-    absl::flat_hash_set<::Module const *> *modules) const {
+    absl::flat_hash_set<module::Module const *> *modules) const {
   pointee->defining_modules(modules);
 }
 

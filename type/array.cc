@@ -19,7 +19,7 @@ Array const *Arr(size_t len, Type const *t) {
 }
 
 void Array::defining_modules(
-    absl::flat_hash_set<::Module const *> *modules) const {
+    absl::flat_hash_set<module::Module const *> *modules) const {
   data_type->defining_modules(modules);
 }
 

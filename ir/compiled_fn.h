@@ -23,14 +23,16 @@ namespace type {
 struct Function;
 }  // namespace type
 
+namespace module {
 struct Module;
+}  // namespace module
 
 namespace ir {
 struct BlockDef;
 
 struct CompiledFn {
 
-  CompiledFn(Module *mod, type::Function const *fn_type,
+  CompiledFn(module::Module *mod, type::Function const *fn_type,
              core::FnParams<type::Typed<ast::Expression const *>> params);
 
   Inliner inliner() {
@@ -61,7 +63,7 @@ struct CompiledFn {
   std::vector<std::unique_ptr<BasicBlock>> blocks_;
   base::move_func<void()> *work_item = nullptr;
 
-  Module *mod_;
+  module::Module *mod_;
 
   core::Bytes reg_size_ = core::Bytes{0};
 

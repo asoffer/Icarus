@@ -8,7 +8,9 @@
 #include "ast/ast_fwd.h"
 #include "base/util.h"
 
+namespace module {
 struct Module;
+}  // namespace module
 
 namespace core {
 
@@ -25,8 +27,8 @@ struct Scope : public base::Cast<Scope> {
   std::vector<ast::Declaration const *> AllDeclsWithId(
       std::string_view id) const;
 
-  Module const *module() const;
-  Module *module();
+  module::Module const *module() const;
+  module::Module *module();
 
   void InsertDecl(std::string const &id, ast::Declaration *decl);
 
@@ -44,7 +46,7 @@ struct Scope : public base::Cast<Scope> {
   absl::flat_hash_map<std::string, std::vector<ast::Declaration *>>
       child_decls_;
 
-  absl::flat_hash_set<Module const *> embedded_modules_;
+  absl::flat_hash_set<module::Module const *> embedded_modules_;
   Scope *parent = nullptr;
 };
 
@@ -60,11 +62,11 @@ struct ScopeLitScope : public DeclScope {
 };
 
 struct ModuleScope : public DeclScope {
-  ModuleScope(::Module *mod) : DeclScope(nullptr), module_(mod) {}
+  ModuleScope(module::Module *mod) : DeclScope(nullptr), module_(mod) {}
 
  private:
   friend struct Scope;
-  Module *module_;
+  module::Module *module_;
 };
 
 struct ExecScope : public Scope {

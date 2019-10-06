@@ -31,14 +31,14 @@ OverloadSet::OverloadSet(core::Scope *scope, std::string_view id,
 }
 
 void OverloadSet::add_adl(std::string_view id, type::Type const *t) {
-  absl::flat_hash_set<::Module const *> modules;
+  absl::flat_hash_set<module::Module const *> modules;
   t->defining_modules(&modules);
 
   for (auto *mod : modules) {
     ASSIGN_OR(continue, auto &d, mod->GetDecl(id));
     // TODO remove this const_cast.
     ASSIGN_OR(continue, auto &t,
-              compiler::Compiler(const_cast<Module *>(mod)).type_of(&d));
+              compiler::Compiler(const_cast<module::Module *>(mod)).type_of(&d));
     // TODO handle this case. I think it's safe to just discard it.
 
     for (auto const &overload : *this) {

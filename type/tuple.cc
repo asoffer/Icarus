@@ -34,7 +34,7 @@ core::Bytes Tuple::offset(size_t field_num, core::Arch const &a) const {
 }
 
 void Tuple::defining_modules(
-    absl::flat_hash_set<::Module const *> *modules) const {
+    absl::flat_hash_set<module::Module const *> *modules) const {
   for (auto *entry : entries_) { entry->defining_modules(modules); }
 }
 

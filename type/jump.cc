@@ -12,7 +12,7 @@ Jump const *Jmp(std::vector<Type const *> const &args) {
 }
 
 void Jump::defining_modules(
-    absl::flat_hash_set<::Module const *> *modules) const {
+    absl::flat_hash_set<module::Module const *> *modules) const {
   for (auto const *arg : args_) { arg->defining_modules(modules); }
 }
 

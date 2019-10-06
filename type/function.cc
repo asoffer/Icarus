@@ -7,7 +7,7 @@ namespace type {
 Type const *Generic = new GenericFunction;
 
 void GenericFunction::defining_modules(
-    absl::flat_hash_set<::Module const *> *modules) const {
+    absl::flat_hash_set<module::Module const *> *modules) const {
   NOT_YET();
 }
 
@@ -20,7 +20,7 @@ core::Alignment GenericFunction::alignment(core::Arch const &) const {
 }
 
 void Function::defining_modules(
-    absl::flat_hash_set<::Module const *> *modules) const {
+    absl::flat_hash_set<module::Module const *> *modules) const {
   NOT_YET();
 }
 

@@ -17,8 +17,9 @@
 
 #include ICARUS_TYPE_VISITOR_DEPENDENCIES
 
-struct Context;
+namespace module {
 struct Module;
+}  // namespace module
 
 namespace ast {
 struct FunctionLiteral;
@@ -36,7 +37,7 @@ struct ScopeDef;
   void WriteTo(std::string *buf) const override;                               \
   core::Bytes bytes(core::Arch const &arch) const override;                    \
   core::Alignment alignment(core::Arch const &arch) const override;            \
-  void defining_modules(absl::flat_hash_set<::Module const *> *modules)        \
+  void defining_modules(absl::flat_hash_set<module::Module const *> *modules)        \
       const override
 
 namespace type {
@@ -55,7 +56,7 @@ struct Type : public base::Cast<Type> {
   virtual core::Bytes bytes(core::Arch const &arch) const         = 0;
   virtual core::Alignment alignment(core::Arch const &arch) const = 0;
   virtual void defining_modules(
-      absl::flat_hash_set<::Module const *> *modules) const = 0;
+      absl::flat_hash_set<module::Module const *> *modules) const = 0;
 
 #define ICARUS_TYPE_VISITOR(signature, body)                                   \
   virtual signature { UNREACHABLE(); }
@@ -135,8 +136,8 @@ bool Compare(::type::Type const *t) {
     return t->is<::type::Jump>();
   } else if constexpr (std::is_same_v<T, ast::FunctionLiteral *>) {
     return t == ::type::Generic;
-  } else if constexpr (std::is_same_v<T, ::Module *> ||
-                       std::is_same_v<T, ::Module const *>) {
+  } else if constexpr (std::is_same_v<T, module::Module *> ||
+                       std::is_same_v<T, module::Module const *>) {
     return t == ::type::Module;
   } else if constexpr (std::is_same_v<T, ir::BlockDef const *>) {
     return t == ::type::Block;
@@ -176,7 +177,7 @@ auto Apply(Type const *t, Fn &&fn) {
   return ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                     uint32_t, uint64_t, float, double, type::Type const *,
                     ir::EnumVal, ir::FlagsVal, ir::Addr, std::string_view,
-                    ::Module *, type::Struct const *, ir::ScopeDef *,
+                    module::Module *, type::Struct const *, ir::ScopeDef *,
                     ir::AnyFunc, ir::BlockDef const *, ast::FunctionLiteral *>(
       t, std::forward<Fn>(fn));
 }

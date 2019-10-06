@@ -15,7 +15,7 @@
 #include "type/typed_value.h"
 #include "type/util.h"
 
-std::unique_ptr<Module> CompileModule(frontend::Source *);
+std::unique_ptr<module::Module> CompileModule(frontend::Source *);
 
 namespace ir {
 
@@ -655,10 +655,10 @@ VerifyResult Compiler::VerifyType(ast::Access const *node) {
       return VerifyResult::Error();
     }
 
-    auto *mod = backend::EvaluateAs<Module const *>(
+    auto *mod = backend::EvaluateAs<module::Module const *>(
         type::Typed{node->operand(), operand_result.type_}, this);
     // TODO remove this const_cast.
-    auto *t = Compiler(const_cast<Module *>(mod))
+    auto *t = Compiler(const_cast<module::Module *>(mod))
                   .type_of(mod->GetDecl(node->member_name()));
 
     if (t == nullptr) {
@@ -1437,7 +1437,7 @@ VerifyResult Compiler::VerifyType(ast::Declaration const *node) {
       // TODO check shadowing against other modules?
       // TODO what if no init val is provded? what if not constant?
       node->scope_->embedded_modules_.insert(
-          backend::EvaluateAs<Module const *>(
+          backend::EvaluateAs<module::Module const *>(
               type::Typed<ast::Expression const *>(node->init_val(),
                                                    type::Module),
               this));

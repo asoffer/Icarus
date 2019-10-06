@@ -38,7 +38,7 @@ struct MakeNodeResult {
   }
 
   frontend::StringSource source;
-  Module module;
+  module::Module module;
   compiler::Compiler compiler;
   std::unique_ptr<T> node;
 };

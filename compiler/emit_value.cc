@@ -290,7 +290,7 @@ ir::Results Compiler::EmitValue(ast::Access const *node) {
   if (type_of(node->operand()) == type::Module) {
     // TODO we already did this evaluation in type verification. Can't we just
     // save and reuse it?
-    return backend::EvaluateAs<Module const *>(
+    return backend::EvaluateAs<module::Module const *>(
                type::Typed<ast::Expression const *>(node->operand(),
                                                     type::Module),
                this)
@@ -1455,9 +1455,9 @@ ir::Results Compiler::EmitValue(ast::ScopeNode const *node) {
   //
   //   DEBUG_LOG("ScopeNode")("Inlining exit handler");
   //   {
-  //     auto *mod       = const_cast<Module *>(scope_def->module());
+  //     auto *mod       = const_cast<module::Module *>(scope_def->module());
   //     bool swap_bc    = module() != mod;
-  //     Module *old_mod = std::exchange(module(), mod);
+  //     module::Module *old_mod = std::exchange(module(), mod);
   //     if (swap_bc) { constants_ = &module()->dep_data_.front(); }
   //     base::defer d([&] {
   //       module() = old_mod;

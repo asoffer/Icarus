@@ -28,7 +28,7 @@ struct Struct : public Type {
     std::vector<ast::Hashtag> hashtags_;
   };
 
-  Struct(core::Scope const *scope, ::Module const *mod,
+  Struct(core::Scope const *scope, module::Module const *mod,
          absl::Span<std::tuple<std::string_view, type::Type const *> const>);
 
   ~Struct() override {}
@@ -36,14 +36,14 @@ struct Struct : public Type {
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;
   void defining_modules(
-      absl::flat_hash_set<::Module const *> *modules) const override;
+      absl::flat_hash_set<module::Module const *> *modules) const override;
 
 #include ICARUS_TYPE_VISITOR_METHODS
 
   // Return the type of a field, or a nullptr if it doesn't exist
   Field const *field(std::string_view name) const;
 
-  ::Module const *defining_module() const { return mod_; }
+  module::Module const *defining_module() const { return mod_; }
 
   core::Bytes offset(size_t n, core::Arch const &arch) const;
 
@@ -53,7 +53,7 @@ struct Struct : public Type {
   bool contains_hashtag(ast::Hashtag needle) const;
 
   core::Scope const *scope_         = nullptr;
-  ::Module *mod_                    = nullptr;
+  module::Module *mod_                    = nullptr;
 
   // `init_func_` is generated in FinalizeStruct.
   //

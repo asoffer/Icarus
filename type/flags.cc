@@ -16,7 +16,7 @@ Typed<ir::FlagsVal, Flags> Flags::EmitLiteral(
 }
 
 void Flags::defining_modules(
-    absl::flat_hash_set<::Module const *> *modules) const {
+    absl::flat_hash_set<module::Module const *> *modules) const {
   modules->insert(mod_);
 }
 

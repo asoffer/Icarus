@@ -45,11 +45,10 @@ int RunRepl() {
   std::puts("Icarus REPL (v0.1)");
 
   frontend::ReplSource repl;
-
+  module::Module mod;
 repl_start:;
   {
-    // TODO create a new module on each parse? That's not right.
-    Module mod(frontend::Parse(&repl));
+    mod.AppendStatements(frontend::Parse(&repl));
     if (mod.error_log_.size() > 0) {
       mod.error_log_.Dump();
       goto repl_start;

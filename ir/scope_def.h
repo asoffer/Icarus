@@ -8,13 +8,15 @@
 #include "ir/any_func.h"
 #include "ir/block_def.h"
 
+namespace module {
 struct Module;
+}  // namespace module
 
 namespace ir {
 // TODO Calls to EvaluateAs should probably take this as const, so we can be
 // sure no one modifies blocks_ and invalidates pointers.
 struct ScopeDef {
-  explicit ScopeDef(Module const *mod, std::vector<AnyFunc> inits,
+  explicit ScopeDef(module::Module const *mod, std::vector<AnyFunc> inits,
                     std::vector<AnyFunc> dones,
                     absl::flat_hash_map<std::string_view, BlockDef *> blocks)
       : mod_(mod),
@@ -22,9 +24,9 @@ struct ScopeDef {
         dones_(std::move(dones)),
         blocks_(std::move(blocks)) {}
 
-  Module const *module() const { return mod_; }
+  module::Module const *module() const { return mod_; }
 
-  Module const *mod_ = nullptr;
+  module::Module const *mod_ = nullptr;
   std::vector<AnyFunc> inits_, dones_;
   absl::flat_hash_map<std::string_view, BlockDef *> blocks_;
   base::move_func<void()> *work_item = nullptr;
