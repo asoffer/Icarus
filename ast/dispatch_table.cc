@@ -19,7 +19,7 @@
 #include "ir/components.h"
 #include "ir/reg.h"
 #include "ir/reg_or.h"
-#include "misc/module.h"
+#include "module/module.h"
 #include "type/cast.h"
 #include "type/function.h"
 #include "type/generic_struct.h"

@@ -18,7 +18,7 @@
 #include "ir/cmd/jumps.h"
 #include "ir/compiled_fn.h"
 #include "ir/read_only_data.h"
-#include "misc/module.h"
+#include "module/module.h"
 #include "type/type.h"
 #include "type/util.h"
 

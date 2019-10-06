@@ -16,7 +16,7 @@ cc_lib_target(
         "//base:tuple",
         "//core:fn_params",
         "//core:arch",
-        "//misc:module",
+        "//module:module",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
@@ -119,7 +119,7 @@ cc_lib_target(
     intf_deps = [
         ":callable",
         ":type",
-        "//misc:module",
+        "//module:module",
         "//core:scope",
     ],
     impl_deps = [],
@@ -196,7 +196,7 @@ cc_lib_target(
         ":pointer",
         "//base:guarded",
         "//core:arch",
-        "//misc:module",
+        "//module:module",
     ],
     test_deps = None,
 )
@@ -214,7 +214,7 @@ cc_lib_target(
         "//base:guarded",
         "//base:permutation",
         "//core:arch",
-        "//misc:module",
+        "//module:module",
     ],
     test_deps = None,
 )

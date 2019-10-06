@@ -3,10 +3,11 @@
 
 #include <memory>
 #include <string>
+#include <type_traits>
 
 #include "core/scope.h"
 #include "frontend/source/string.h"
-#include "misc/module.h"
+#include "module/module.h"
 #include "compiler/compiler.h"
 
 namespace frontend {
@@ -14,46 +15,54 @@ std::vector<std::unique_ptr<ast::Node>> Parse(Source *src, ::Module *mod);
 }  // namespace frontend
 
 namespace test {
-namespace internal {
 
-template <typename T, bool Verify>
-std::unique_ptr<T> MakeNode(std::string s,
-                            compiler::Compiler *visitor,
-                            core::Scope *scope) {
-  if (scope == nullptr) { scope = &visitor->module()->scope_; }
-  frontend::StringSource src(std::move(s));
-  auto stmts = frontend::Parse(&src, visitor->module());
-  if (stmts.size() != 1u) { return nullptr; }
-  auto *cast_ptr = stmts[0]->if_as<T>();
-  if (cast_ptr) {
-    {
-      visitor::AssignScope a;
-      cast_ptr->assign_scope(&a, scope);
+template <typename T>
+struct MakeNodeResult {
+  template <bool Verify>
+  MakeNodeResult(std::string s, core::Scope *scope,
+                 std::integral_constant<bool, Verify>)
+      : source(std::move(s)), module(&source), compiler(&module) {
+    if (scope == nullptr) { scope = &module.scope_; }
+    auto stmts = frontend::Parse(&source, &module);
+    if (stmts.size() != 1u) { return; }
+    auto *cast_ptr = stmts[0]->template if_as<T>();
+    if (cast_ptr) {
+      {
+        visitor::AssignScope a;
+        cast_ptr->assign_scope(&a, scope);
+      }
+
+      if constexpr (Verify) {
+        if (!cast_ptr->VerifyType(&compiler)) { return; }
+      }
+      stmts[0].release();
+      node = std::unique_ptr<T>{cast_ptr};
     }
-
-    if constexpr (Verify) {
-      if (!cast_ptr->VerifyType(visitor)) { return nullptr; }
-    }
-    stmts[0].release();
-    return std::unique_ptr<T>{cast_ptr};
-
-  } else {
-    return nullptr;
   }
+
+  frontend::StringSource source;
+  Module module;
+  compiler::Compiler compiler;
+  std::unique_ptr<T> node;
+};
+
+namespace internal {
+template <typename T, bool Verify>
+MakeNodeResult<T> MakeNode(std::string s, core::Scope *scope) {
+  MakeNodeResult<T> result(std::move(s));
+
 }
 
 }  // namespace internal
 
 template <typename T>
-std::unique_ptr<T> MakeUnverified(compiler::Compiler *visitor,
-                                  std::string s, core::Scope *scope = nullptr) {
-  return internal::MakeNode<T, false>(std::move(s), visitor, scope);
+MakeNodeResult<T> MakeUnverified(std::string s, core::Scope *scope = nullptr) {
+  return MakeNodeResult<T>(std::move(s), scope, std::false_type{});
 }
 
 template <typename T>
-std::unique_ptr<T> MakeVerified(compiler::Compiler *visitor,
-                                std::string s, core::Scope *scope = nullptr) {
-  return internal::MakeNode<T, true>(std::move(s), visitor, scope);
+MakeNodeResult<T> MakeVerified(std::string s, core::Scope *scope = nullptr) {
+  return MakeNodeResult<T>(std::move(s), scope, std::true_type{});
 }
 
 }  // namespace test

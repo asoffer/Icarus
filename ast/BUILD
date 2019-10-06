@@ -81,7 +81,7 @@ cc_lib_target(
         "//ir/cmd:store",
         "//ir:components",
         "//ir:compiled_fn",
-        "//misc:module",
+        "//module:module",
         "//core:scope",
         "//type:cast",
         "//type:function",

@@ -48,7 +48,7 @@ cc_binary(
         "//init:signal-impl",
         "//ir:results-impl",
         "//ir:str-impl",
-        "//misc:module-impl-format",
+        "//module:module-impl-format",
         "//type:impl-format",
     ],
 )

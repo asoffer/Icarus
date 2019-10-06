@@ -5,6 +5,7 @@
 #include <string_view>
 #include <vector>
 
+#include "base/util.h"
 #include "base/expected.h"
 
 namespace frontend {
@@ -14,7 +15,7 @@ struct SourceChunk {
   bool more_to_read     = true;
 };
 
-struct Source {
+struct Source : base::Cast<Source> {
   virtual ~Source(){};
 
   // Reads data from the source until the delimeter is found, dropping the

@@ -9,6 +9,21 @@ struct StringSource : public Source {
   ~StringSource() override {}
   StringSource(std::string src) : src_(std::move(src)), view_(src_) {}
 
+  StringSource(StringSource const& s) : src_(s.src_), view_(src_) {}
+  StringSource(StringSource&& s) : src_(std::move(s).src_), view_(src_) {}
+
+  StringSource& operator=(StringSource const& s) {
+    src_  = s.src_;
+    view_ = src_;
+    return *this;
+  }
+
+  StringSource& operator=(StringSource&& s) {
+    src_  = std::move(s).src_;
+    view_ = src_;
+    return *this;
+  }
+
   SourceChunk ReadUntil(char delim) override {
     auto pos = view_.find_first_of(delim);
     if (pos == std::string_view::npos) { return {view_, false}; }

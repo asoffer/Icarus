@@ -5,7 +5,7 @@
 #include "base/guarded.h"
 #include "base/permutation.h"
 #include "core/arch.h"
-#include "misc/module.h"
+#include "module/module.h"
 #include "type/function.h"
 #include "type/pointer.h"
 

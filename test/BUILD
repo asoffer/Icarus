@@ -34,7 +34,7 @@ cc_lib_target(
     cfgs = ["compile", "match"],
     intf_deps = [
         "//frontend/source:string",
-        "//misc:module",
+        "//module:module",
         "//:impl",
     ],
     impl_deps = None,

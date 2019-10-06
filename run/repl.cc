@@ -11,7 +11,7 @@
 #include "frontend/source/repl.h"
 #include "ir/cmd/jumps.h"
 #include "ir/compiled_fn.h"
-#include "misc/module.h"
+#include "module/module.h"
 #include "type/function.h"
 
 namespace frontend {
@@ -48,7 +48,7 @@ int RunRepl() {
   std::puts("Icarus REPL (v0.1)");
 
   frontend::ReplSource repl;
-  Module mod;
+  Module mod(&repl);
 
 repl_start:;
   {

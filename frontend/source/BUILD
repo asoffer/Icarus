@@ -3,7 +3,10 @@ load("//:defs.bzl", "cc_component")
 
 cc_component(
     name = "source",
-    intf_deps = ["//base:expected"],
+    intf_deps = [
+        "//base:expected",
+        "//base:util",
+    ],
     impl_deps = None,
     test_deps = None,
 )

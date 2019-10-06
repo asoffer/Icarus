@@ -43,7 +43,7 @@ cc_lib_target(
         "//ir:compiled_fn",
         "//ir:read_only_data",
         "//core:arch",
-        "//misc:module",
+        "//module:module",
         "//type:generic_struct",
         "//type:util",
     ],

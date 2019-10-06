@@ -6,9 +6,9 @@
 #include "base/expected.h"
 #include "base/untyped_buffer.h"
 #include "base/util.h"
-#include "core/pending_module.h"
 #include "ir/compiled_fn.h"
-#include "misc/module.h"
+#include "module/module.h"
+#include "module/pending.h"
 #include "opt/combine_blocks.h"
 
 std::vector<std::string> files;
@@ -18,7 +18,7 @@ extern ir::CompiledFn *main_fn;
 
 extern std::atomic<bool> found_errors;
 
-Module *CompileModule(Module *mod, std::filesystem::path const *path);
+Module *CompileModule(Module *mod);
 
 int RunCompiler() {
   void *libc_handle = dlopen("/lib/x86_64-linux-gnu/libc.so.6", RTLD_LAZY);
@@ -27,8 +27,8 @@ int RunCompiler() {
 
   error::Log log;
   for (const auto &src : files) {
-    if (!core::ImportModule(std::filesystem::path{src},
-                            std::filesystem::path{""}, CompileModule)) {
+    if (!module::ImportModule(std::filesystem::path{src}, nullptr,
+                              CompileModule)) {
       log.MissingModule(src, "");
     }
   }
@@ -38,7 +38,7 @@ int RunCompiler() {
     return 0;
   }
 
-  core::AwaitAllModulesTransitively();
+  module::AwaitAllModulesTransitively();
 
   if (main_fn == nullptr) {
     // TODO make this an actual error?

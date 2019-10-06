@@ -58,18 +58,6 @@ cc_component(
 )
 
 cc_lib_target(
-    name = "pending_module",
-    intf_deps = ["//base:expected"],
-    impl_deps = [
-        "//base:debug",
-        "//base:graph",
-        "//base:macros",
-        "//misc:module", # TODO remove this.
-        "@com_google_absl//absl/container:node_hash_set",
-    ],
-)
-
-cc_lib_target(
     name = "scope",
     intf_deps = [
         "//ast:ast_fwd",
@@ -78,6 +66,6 @@ cc_lib_target(
         "@com_google_absl//absl/container:flat_hash_set",
     ],
     impl_deps = [
-        "//misc:module", # TODO get rid of hard dependency here?
+        "//module:module", # TODO get rid of hard dependency here?
     ],
 )

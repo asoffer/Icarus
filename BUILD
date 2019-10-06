@@ -36,7 +36,7 @@ COMMON_IMPL_DEPS = [
         "//backend:eval-impl",
         "//backend:exec-impl",
         "//compiler:compiler-impl",
-        "//core:pending_module-impl",
+        "//module:pending-impl",
         "//core:scope-impl",
         "//frontend:lex-impl",
         "//frontend:parse-impl",

@@ -18,7 +18,7 @@
 #include "ir/results.h"
 #include "misc/constant_binding.h"
 #include "misc/dependent_data.h"
-#include "misc/module.h"
+#include "module/module.h"
 #include "type/type_fwd.h"
 
 namespace ir {
@@ -80,13 +80,13 @@ struct Compiler {
 
   ast::DispatchTable const *dispatch_table(ast::ExprPtr expr) const;
 
-  core::PendingModule *pending_module(ast::Import const *import_node) const;
+  module::PendingModule *pending_module(ast::Import const *import_node) const;
 
   std::pair<ConstantBinding, DependentData> *insert_constants(
       ConstantBinding const &constant_binding);
 
   void set_pending_module(ast::Import const *import_node,
-                          core::PendingModule mod);
+                          module::PendingModule mod);
 
   void CompleteDeferredBodies();
 

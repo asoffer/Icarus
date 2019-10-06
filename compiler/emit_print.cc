@@ -5,7 +5,7 @@
 #include "ir/cmd/print.h"
 #include "ir/compiled_fn.h"
 #include "ir/components.h"
-#include "misc/module.h"
+#include "module/module.h"
 #include "type/array.h"
 #include "type/enum.h"
 #include "type/flags.h"

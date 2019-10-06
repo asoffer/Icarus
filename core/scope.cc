@@ -1,6 +1,6 @@
 #include "core/scope.h"
 
-#include "misc/module.h"
+#include "module/module.h"
 
 namespace core {
 

@@ -6,7 +6,7 @@
 #include "frontend/source/file.h"
 #include "init/cli.h"
 #include "init/signal.h"
-#include "misc/module.h"
+#include "module/module.h"
 #include "match/match_expr.h"
 
 namespace frontend {
@@ -16,17 +16,17 @@ std::vector<std::unique_ptr<ast::Node>> Parse(Source *src, ::Module *mod);
 namespace match {
 int MatchParse(std::filesystem::path const &expr_file,
               std::filesystem::path const &file) {
-  Module expr_mod;
   ASSIGN_OR(return 1, frontend::FileSource expr_src,
-                   frontend::FileSource::Make(file));
+                   frontend::FileSource::Make(expr_file));
+  Module expr_mod(&expr_src);
   auto expr_stmts = frontend::Parse(&expr_src, &expr_mod);
   if (expr_stmts.size() != 1) { return 2; }
   auto *expr = expr_stmts[0]->if_as<ast::Expression>();
   if (!expr) { return 2; }
 
-  Module mod;
   ASSIGN_OR(return 1, frontend::FileSource src,
                    frontend::FileSource::Make(file));
+  Module mod(&src);
   auto stmts = frontend::Parse(&src, &mod);
 
   match::Match visitor;

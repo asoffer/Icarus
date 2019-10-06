@@ -6,7 +6,7 @@
 #include "frontend/source/string.h"
 #include "init/cli.h"
 #include "init/signal.h"
-#include "misc/module.h"
+#include "module/module.h"
 
 namespace frontend {
 std::vector<std::unique_ptr<ast::Node>> Parse(Source *src, ::Module *mod);
@@ -14,8 +14,8 @@ std::vector<std::unique_ptr<ast::Node>> Parse(Source *src, ::Module *mod);
 
 namespace format {
 int FormatFile(std::filesystem::path const &file) {
-  Module mod;
   frontend::StringSource src("3 + abc");
+  Module mod(&src);
   auto stmts = frontend::Parse(&src, &mod);
   TokenExtractor visitor;
   for (auto const &stmt : stmts) { stmt->ExtractTokens(&visitor); }

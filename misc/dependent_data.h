@@ -6,9 +6,9 @@
 #include "ast/dispatch_table.h"
 #include "ast/expr_ptr.h"
 #include "compiler/verify_result.h"
-#include "core/pending_module.h"
 #include "ir/scope_def.h"
 #include "misc/constant_binding.h"
+#include "module/pending.h"
 
 namespace ast {
 struct Declaration;
@@ -41,7 +41,7 @@ struct DependentData {
 
   ConstantBinding constants_;
 
-  absl::flat_hash_map<ast::Import const *, core::PendingModule>
+  absl::flat_hash_map<ast::Import const *, module::PendingModule>
       imported_module_;
 };
 

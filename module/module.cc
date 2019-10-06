@@ -1,10 +1,11 @@
-#include "misc/module.h"
+#include "module/module.h"
 
 #include "ast/ast.h"
 
 // Can't declare this in header because unique_ptr's destructor needs to know
 // the size of ir::CompiledFn which we want to forward declare.
-Module::Module() : scope_(this) {}
+Module::Module(frontend::Source *src)
+    : scope_(this), src_(src), error_log_(src) {}
 
 Module::~Module() = default;
 

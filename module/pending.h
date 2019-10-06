@@ -1,5 +1,5 @@
-#ifndef ICARUS_CORE_PENDING_MODULE_H
-#define ICARUS_CORE_PENDING_MODULE_H
+#ifndef ICARUS_MODULE_PENDING_H
+#define ICARUS_MODULE_PENDING_H
 
 #include <filesystem>
 #include <future>
@@ -8,7 +8,7 @@
 
 struct Module;
 
-namespace core {
+namespace module {
 
 // A `PendingModule` represents a module that is currently being loaded but for
 // which the data may not yet be available.
@@ -30,12 +30,11 @@ struct PendingModule {
   uintptr_t data_ = 0;
 };
 
-base::expected<PendingModule> ImportModule(
-    std::filesystem::path const &src, std::filesystem::path const &requestor,
-    Module *(*fn)(Module *, std::filesystem::path const *));
-
+base::expected<PendingModule> ImportModule(std::filesystem::path const &src,
+                                           Module const *requestor,
+                                           Module *(*fn)(Module *));
 void AwaitAllModulesTransitively();
 
-}  // namespace core
+}  // namespace module
 
-#endif  // ICARUS_CORE_PENDING_MODULE_H
+#endif  // ICARUS_MODULE_PENDING_H

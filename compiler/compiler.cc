@@ -101,12 +101,11 @@ void Compiler::set_jump_table(ast::ExprPtr jump_expr,
 }
 
 void Compiler::set_pending_module(ast::Import const *import_node,
-                                                core::PendingModule mod) {
+                                  module::PendingModule mod) {
   constants_->second.imported_module_.emplace(import_node, std::move(mod));
 }
 
-ast::DispatchTable const *Compiler::dispatch_table(
-    ast::ExprPtr expr) const {
+ast::DispatchTable const *Compiler::dispatch_table(ast::ExprPtr expr) const {
   auto &table = constants_->second.dispatch_tables_;
   if (auto iter = table.find(expr); iter != table.end()) {
     return &iter->second;
@@ -114,7 +113,7 @@ ast::DispatchTable const *Compiler::dispatch_table(
   return nullptr;
 }
 
-core::PendingModule *Compiler::pending_module(
+module::PendingModule *Compiler::pending_module(
     ast::Import const *import_node) const {
   if (auto iter = constants_->second.imported_module_.find(import_node);
       iter != constants_->second.imported_module_.end()) {

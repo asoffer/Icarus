@@ -8,7 +8,7 @@ cc_group_target(
     cfgs = ["match", "compile"],
     deps = [
         ":constant_binding-impl",
-        ":module-impl",
+        "//module:module-impl",
         "//visitor:assign_scope",
     ])
 
@@ -28,22 +28,11 @@ cc_lib_target(
 )
 
 cc_lib_target(
-    name = "module",
-    intf_deps = [
-        "//core:pending_module",
-        "//core:scope",
-        "//error:log",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-    impl_deps = ["//ast:ast"],
-)
-
-cc_lib_target(
     name = "compile",
     cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
-        ":module",
+        "//module:module",
         "//ast:ast",
         "//backend:eval",
         "//frontend/source:file-impl",
@@ -59,7 +48,7 @@ cc_lib_target(
         "//ast:dispatch_table",
         "//ast:expr_ptr",
         "//compiler:verify_result",
-        "//core:pending_module",
+        "//module:pending",
         "//ir:scope_def",
     ],
     impl_deps = None,

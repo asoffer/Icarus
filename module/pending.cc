@@ -1,4 +1,4 @@
-#include "core/pending_module.h"
+#include "module/pending.h"
 
 #include <sstream>
 
@@ -6,9 +6,10 @@
 #include "base/debug.h"
 #include "base/graph.h"
 #include "base/macros.h"
-#include "misc/module.h"
+#include "frontend/source/file.h"
+#include "module/module.h"
 
-namespace core {
+namespace module {
 namespace {
 struct PathHasher {
   size_t operator()(std::filesystem::path const &p) const {
@@ -62,29 +63,32 @@ void AwaitAllModulesTransitively() {
   }
 }
 
-base::expected<PendingModule> ImportModule(
-    std::filesystem::path const &src, std::filesystem::path const &requestor,
-    Module *(*fn)(Module *, std::filesystem::path const *)) {
+base::expected<PendingModule> ImportModule(std::filesystem::path const &src,
+                                           Module const *requestor,
+                                           Module *(*fn)(Module *)) {
   std::lock_guard lock(mtx);
   ASSIGN_OR(return _.error(), auto dependee, CanonicalizePath(src));
-  ASSIGN_OR(return _.error(), auto depender, CanonicalizePath(requestor));
+  auto &[canonical_src, new_src] = dependee;
 
-  // Need to add dependencies even if the node was already scheduled (hence the
-  // "already scheduled" check is done after this).
+  // TODO Need to add dependencies even if the node was already scheduled (hence
+  // the "already scheduled" check is done after this).
   //
   // TODO detect dependency cycles.
-  if (requestor != std::filesystem::path{""}) {
-    import_dep_graph.add_edge(depender.first, dependee.first);
-  }
 
-  auto &[fut, mod] = all_modules[dependee.first];
-  if (!dependee.second) { return PendingModule{ASSERT_NOT_NULL(fut)}; }
+  auto &[fut, mod] = all_modules[canonical_src];
+  if (!new_src) { return PendingModule{ASSERT_NOT_NULL(fut)}; }
 
   ASSERT(fut == nullptr);
-  mod = std::make_unique<Module>();
-  fut = &pending_module_futures.emplace_back(std::async(
-      std::launch::async, fn, mod.get(), dependee.first));
+
+  // TODO this is wrong because the file source will die before the module is
+  // compiled (asynchronously).
+  ASSIGN_OR(return _.error(), frontend::FileSource file_src,
+                   frontend::FileSource::Make(src));
+  mod = std::make_unique<Module>(&file_src);
+
+  fut = &pending_module_futures.emplace_back(
+      std::async(std::launch::async, fn, mod.get()));
   return PendingModule{fut};
 }
 
-}  // namespace core
+}  // namespace module

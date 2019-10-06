@@ -1,9 +1,11 @@
 #include "absl/algorithm/container.h"
 #include "ast/ast.h"
+#include "ast/methods/dump.h"
 #include "ast/overload_set.h"
 #include "backend/eval.h"
 #include "error/inference_failure_reason.h"
 #include "frontend/operators.h"
+#include "frontend/source/file.h"
 #include "ir/compiled_fn.h"
 #include "type/cast.h"
 #include "type/generic_struct.h"
@@ -12,9 +14,8 @@
 #include "type/type.h"
 #include "type/typed_value.h"
 #include "type/util.h"
-#include "ast/methods/dump.h"
 
-Module *CompileModule(Module *mod, std::filesystem::path const *path);
+Module *CompileModule(Module *mod);
 
 namespace ir {
 
@@ -1592,11 +1593,13 @@ VerifyResult Compiler::VerifyType(ast::Import const *node) {
   auto src = backend::EvaluateAs<std::string_view>(
       type::Typed<ast::Expression const *>(node->operand(), type::ByteView),
       this);
-  ASSIGN_OR(error_log()->MissingModule(src, *module()->path_);
+  // TODO not always a file source?!
+  ASSIGN_OR(error_log()->MissingModule(
+      src, module()->src_->as<frontend::FileSource>().path());
             return VerifyResult::Error(),  //
                    auto pending_mod,
-                   core::ImportModule(std::filesystem::path{src},
-                                      *module()->path_, CompileModule));
+                   module::ImportModule(std::filesystem::path{src}, module(),
+                                        CompileModule));
 
   if (!pending_mod.valid()) { return VerifyResult::Error(); }
   set_pending_module(node, pending_mod);

@@ -13,7 +13,7 @@
 #include "frontend/source/source.h"
 #include "frontend/tagged_node.h"
 #include "frontend/token.h"
-#include "misc/module.h"
+#include "module/module.h"
 
 namespace debug {
 bool parser = false;

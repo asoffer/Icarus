@@ -87,7 +87,7 @@ cc_lib_target(
         "//base:guarded",
         "//error:log-impl",
         "//frontend/source:source",
-        "//misc:module",
+        "//module:module",
         "//ast/methods:dump-impl",
         "@com_google_absl//absl/container:flat_hash_map",
     ],

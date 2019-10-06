@@ -12,8 +12,7 @@ struct Interval {
   static_assert(
       std::is_same_v<bool, decltype(std::declval<T>() <= std::declval<T>())>);
 
-  ICARUS_CONSTEXPR Interval(T b, T e)
-      : begin_(std::move(b)), end_(std::move(e)) {
+  constexpr Interval(T b, T e) : begin_(std::move(b)), end_(std::move(e)) {
     ASSERT(b <= e);
   }
 
