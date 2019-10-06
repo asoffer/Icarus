@@ -5,6 +5,7 @@
 #include <future>
 
 #include "base/expected.h"
+#include "frontend/source/source.h"
 
 struct Module;
 
@@ -30,9 +31,9 @@ struct PendingModule {
   uintptr_t data_ = 0;
 };
 
-base::expected<PendingModule> ImportModule(std::filesystem::path const &src,
-                                           Module const *requestor,
-                                           Module *(*fn)(Module *));
+base::expected<PendingModule> ImportModule(
+    std::filesystem::path const &src, Module const *requestor,
+    std::unique_ptr<Module> (*fn)(frontend::Source *));
 void AwaitAllModulesTransitively();
 
 }  // namespace module

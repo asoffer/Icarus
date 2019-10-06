@@ -45,6 +45,7 @@ COMMON_IMPL_DEPS = [
         "//ir:foreign-impl",
         "//ir:impl",
         "//misc:impl",
+        "//module:module-impl",
         "//opt:combine_blocks-impl",
         "//type:impl",
         "//type:cast-impl",

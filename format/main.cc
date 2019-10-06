@@ -3,20 +3,15 @@
 
 #include "ast/node.h"
 #include "format/token_extractor.h"
+#include "frontend/parse.h"
 #include "frontend/source/string.h"
 #include "init/cli.h"
 #include "init/signal.h"
-#include "module/module.h"
-
-namespace frontend {
-std::vector<std::unique_ptr<ast::Node>> Parse(Source *src, ::Module *mod);
-}  // namespace frontend
 
 namespace format {
 int FormatFile(std::filesystem::path const &file) {
   frontend::StringSource src("3 + abc");
-  Module mod(&src);
-  auto stmts = frontend::Parse(&src, &mod);
+  auto stmts = frontend::Parse(&src);
   TokenExtractor visitor;
   for (auto const &stmt : stmts) { stmt->ExtractTokens(&visitor); }
   return 0;

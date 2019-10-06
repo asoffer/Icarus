@@ -4,8 +4,8 @@
 
 // Can't declare this in header because unique_ptr's destructor needs to know
 // the size of ir::CompiledFn which we want to forward declare.
-Module::Module(frontend::Source *src)
-    : scope_(this), src_(src), error_log_(src) {}
+Module::Module(std::vector<std::unique_ptr<ast::Node>> stmts)
+    : scope_(this), statements_(std::move(stmts)) {}
 
 Module::~Module() = default;
 

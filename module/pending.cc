@@ -2,6 +2,7 @@
 
 #include <sstream>
 
+#include "absl/container/node_hash_map.h"
 #include "absl/container/node_hash_set.h"
 #include "base/debug.h"
 #include "base/graph.h"
@@ -21,7 +22,7 @@ std::mutex mtx;
 absl::node_hash_set<std::filesystem::path, PathHasher> all_paths;
 base::Graph<std::filesystem::path const *> import_dep_graph;
 std::list<std::shared_future<Module *>> pending_module_futures;
-absl::flat_hash_map<
+absl::node_hash_map<
     std::filesystem::path const *,
     std::pair<std::shared_future<Module *> *, std::unique_ptr<Module>>>
     all_modules;
@@ -63,31 +64,36 @@ void AwaitAllModulesTransitively() {
   }
 }
 
-base::expected<PendingModule> ImportModule(std::filesystem::path const &src,
-                                           Module const *requestor,
-                                           Module *(*fn)(Module *)) {
+base::expected<PendingModule> ImportModule(
+    std::filesystem::path const &src, Module const *requestor,
+    std::unique_ptr<Module> (*fn)(frontend::Source *)) {
   std::lock_guard lock(mtx);
   ASSIGN_OR(return _.error(), auto dependee, CanonicalizePath(src));
-  auto &[canonical_src, new_src] = dependee;
+  auto const *canonical_src = dependee.first;
+  bool new_src              = dependee.second;
 
   // TODO Need to add dependencies even if the node was already scheduled (hence
   // the "already scheduled" check is done after this).
   //
   // TODO detect dependency cycles.
 
-  auto &[fut, mod] = all_modules[canonical_src];
+  auto [iter, inserted] = all_modules.try_emplace(canonical_src);
+  auto &[fut, mod]      = iter->second;
+
   if (!new_src) { return PendingModule{ASSERT_NOT_NULL(fut)}; }
 
   ASSERT(fut == nullptr);
 
-  // TODO this is wrong because the file source will die before the module is
-  // compiled (asynchronously).
-  ASSIGN_OR(return _.error(), frontend::FileSource file_src,
-                   frontend::FileSource::Make(src));
-  mod = std::make_unique<Module>(&file_src);
+  fut = &pending_module_futures.emplace_back(std::async(
+      std::launch::async,
+      [fn, canonical_src, mod(&iter->second.second)]() -> Module * {
+        // TODO error messages.
+        ASSIGN_OR(return nullptr, frontend::FileSource file_src,
+                         frontend::FileSource::Make(*canonical_src));
 
-  fut = &pending_module_futures.emplace_back(
-      std::async(std::launch::async, fn, mod.get()));
+        *mod = fn(&file_src);
+        return mod->get();
+      }));
   return PendingModule{fut};
 }
 

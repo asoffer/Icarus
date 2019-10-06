@@ -8,8 +8,8 @@
 #include "base/guarded.h"
 #include "error/log.h"
 #include "frontend/lex.h"
-#include "frontend/parse_rule.h"
 #include "frontend/operators.h"
+#include "frontend/parse_rule.h"
 #include "frontend/source/source.h"
 #include "frontend/tagged_node.h"
 #include "frontend/token.h"
@@ -64,8 +64,7 @@ std::unique_ptr<To> move_as(std::unique_ptr<From> &val) {
   return std::unique_ptr<To>(static_cast<To *>(val.release()));
 }
 
-void ValidateStatementSyntax(ast::Node *node, Module *mod,
-                             error::Log *error_log) {
+void ValidateStatementSyntax(ast::Node *node, error::Log *error_log) {
   if (auto *cl = node->if_as<ast::CommaList>()) {
     error_log->CommaListStatement(cl->span);
   }
@@ -89,8 +88,7 @@ constexpr size_t precedence(frontend::Operator op) {
 }
 
 std::unique_ptr<ast::Node> AddHashtag(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   auto expr = move_as<ast::Expression>(nodes.back());
   auto iter =
       BuiltinHashtagMap.find(nodes.front()->as<frontend::Token>().token);
@@ -103,7 +101,7 @@ std::unique_ptr<ast::Node> AddHashtag(
 }
 
 std::unique_ptr<ast::Switch> BuildSwitch(std::unique_ptr<Statements> stmts,
-                                         Module *mod, error::Log *error_log) {
+                                         error::Log *error_log) {
   auto switch_expr  = std::make_unique<ast::Switch>();
   switch_expr->span = stmts->span;  // TODO it's really bigger than this because
                                     // it involves the keyword too.
@@ -122,18 +120,16 @@ std::unique_ptr<ast::Switch> BuildSwitch(std::unique_ptr<Statements> stmts,
 }
 
 std::unique_ptr<ast::Node> OneBracedStatement(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   auto stmts  = std::make_unique<Statements>();
   stmts->span = SourceRange(nodes[0]->span, nodes[2]->span);
   stmts->append(std::move(nodes[1]));
-  ValidateStatementSyntax(stmts->content_.back().get(), mod, error_log);
+  ValidateStatementSyntax(stmts->content_.back().get(), error_log);
   return stmts;
 }
 
 std::unique_ptr<ast::Node> EmptyBraces(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   auto stmts  = std::make_unique<Statements>();
   stmts->span = SourceRange(nodes[0]->span, nodes[1]->span);
   return stmts;
@@ -148,32 +144,29 @@ std::unique_ptr<ast::Node> BuildControlHandler(
 }
 
 std::unique_ptr<ast::Node> BracedStatementsSameLineEnd(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   auto stmts  = move_as<Statements>(nodes[1]);
   stmts->span = SourceRange(nodes[0]->span, nodes[2]->span);
   if (nodes[2]->is<Statements>()) {
     for (auto &stmt : nodes[2]->as<Statements>().content_) {
       stmts->append(std::move(stmt));
-      ValidateStatementSyntax(stmts->content_.back().get(), mod, error_log);
+      ValidateStatementSyntax(stmts->content_.back().get(), error_log);
     }
   } else {
     stmts->append(std::move(nodes[2]));
-    ValidateStatementSyntax(stmts->content_.back().get(), mod, error_log);
+    ValidateStatementSyntax(stmts->content_.back().get(), error_log);
   }
   return stmts;
 }
 
 std::unique_ptr<ast::Node> BracedStatementsJumpSameLineEnd(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   nodes[2] = BuildControlHandler(std::move(nodes[2]));
-  return BracedStatementsSameLineEnd(std::move(nodes), mod, error_log);
+  return BracedStatementsSameLineEnd(std::move(nodes), error_log);
 }
 
 std::unique_ptr<ast::Node> BuildRightUnop(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   const std::string &tk = nodes[1]->as<frontend::Token>().token;
   if (tk == ":?") {
     SourceRange span(nodes[0]->span, nodes[1]->span);
@@ -192,8 +185,7 @@ std::unique_ptr<ast::Node> BuildRightUnop(
 
 std::unique_ptr<ast::Node> BuildCallImpl(
     SourceRange span, std::unique_ptr<ast::Expression> callee,
-    std::unique_ptr<ast::Expression> args_expr, Module *mod,
-    error::Log *error_log) {
+    std::unique_ptr<ast::Expression> args_expr, error::Log *error_log) {
   if (!args_expr) {
     return std::make_unique<ast::Call>(std::move(span), std::move(callee),
                                        core::OrderedFnArgs<ast::Expression>{});
@@ -210,7 +202,7 @@ std::unique_ptr<ast::Node> BuildCallImpl(
         if (positional_error_spans.empty()) {
           last_named_span_before_error = b->lhs()->span;
         }
-        auto[lhs, rhs] = std::move(*b).extract();
+        auto [lhs, rhs] = std::move(*b).extract();
         args.emplace_back(std::string{lhs->as<ast::Identifier>().token()},
                           std::move(rhs));
       } else {
@@ -246,16 +238,14 @@ std::unique_ptr<ast::Node> BuildCallImpl(
 }
 
 std::unique_ptr<ast::Node> BuildCall(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   SourceRange span(nodes.front()->span, nodes.back()->span);
   return BuildCallImpl(std::move(span), move_as<ast::Expression>(nodes[0]),
-                       move_as<ast::Expression>(nodes[2]), mod, error_log);
+                       move_as<ast::Expression>(nodes[2]), error_log);
 }
 
 std::unique_ptr<ast::Node> BuildLeftUnop(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   const std::string &tk = nodes[0]->as<frontend::Token>().token;
 
   using frontend::Operator;
@@ -313,7 +303,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
   } else if (tk == "'") {
     SourceRange span(nodes.front()->span, nodes.back()->span);
     return BuildCallImpl(std::move(span), move_as<ast::Expression>(nodes[1]),
-                         nullptr, mod, error_log);
+                         nullptr, error_log);
   }
 
   static absl::flat_hash_map<std::string_view, Operator> const kUnopMap{
@@ -337,8 +327,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
 }
 
 std::unique_ptr<ast::Node> BuildChainOp(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   auto op = nodes[1]->as<frontend::Token>().op;
   std::unique_ptr<ast::ChainOp> chain;
 
@@ -360,8 +349,7 @@ std::unique_ptr<ast::Node> BuildChainOp(
 }
 
 std::unique_ptr<ast::Node> BuildCommaList(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   std::unique_ptr<ast::CommaList> comma_list = nullptr;
   if (nodes[0]->is<ast::CommaList>() &&
       !nodes[0]->as<ast::CommaList>().parenthesized_) {
@@ -377,8 +365,7 @@ std::unique_ptr<ast::Node> BuildCommaList(
 }
 
 std::unique_ptr<ast::Node> BuildAccess(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   auto span      = SourceRange(nodes[0]->span, nodes[2]->span);
   auto &&operand = move_as<ast::Expression>(nodes[0]);
   if (operand->is<ast::Declaration>()) {
@@ -393,8 +380,7 @@ std::unique_ptr<ast::Node> BuildAccess(
 }
 
 std::unique_ptr<ast::Node> BuildIndexOperator(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   auto span  = SourceRange(nodes[0]->span, nodes[2]->span);
   auto index = std::make_unique<ast::Index>(std::move(span),
                                             move_as<ast::Expression>(nodes[0]),
@@ -417,24 +403,21 @@ std::unique_ptr<ast::Node> BuildIndexOperator(
 }
 
 std::unique_ptr<ast::Node> BuildEmptyArray(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   return std::make_unique<ast::ArrayLiteral>(
       SourceRange(nodes.front()->span, nodes.back()->span),
       std::vector<std::unique_ptr<ast::Expression>>{});
 }
 
 std::unique_ptr<ast::Node> BuildEmptyCommaList(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   auto comma_list  = std::make_unique<ast::CommaList>();
   comma_list->span = SourceRange(nodes[0]->span, nodes[1]->span);
   return comma_list;
 }
 
 std::unique_ptr<ast::Node> BuildArrayLiteral(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   if (auto *cl = nodes[1]->if_as<ast::CommaList>(); cl && !cl->parenthesized_) {
     return std::make_unique<ast::ArrayLiteral>(nodes[0]->span,
                                                std::move(*cl).extract());
@@ -445,8 +428,7 @@ std::unique_ptr<ast::Node> BuildArrayLiteral(
 }
 
 std::unique_ptr<ast::Node> BuildGenericStructType(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   auto result = std::make_unique<ast::StructType>(
       SourceRange(nodes.front()->span, nodes.back()->span));
   if (nodes[1]->is<ast::CommaList>() &&
@@ -460,8 +442,7 @@ std::unique_ptr<ast::Node> BuildGenericStructType(
 }
 
 std::unique_ptr<ast::Node> BuildArrayType(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   if (auto *cl = nodes[1]->if_as<ast::CommaList>(); cl && !cl->parenthesized_) {
     auto span = SourceRange(nodes.front()->span, nodes.back()->span);
     return std::make_unique<ast::ArrayType>(std::move(span),
@@ -476,8 +457,7 @@ std::unique_ptr<ast::Node> BuildArrayType(
 
 template <bool IsConst>
 std::unique_ptr<ast::Node> BuildDeclaration(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   auto op = nodes[1]->as<frontend::Token>().op;
   SourceRange span(nodes.front()->span, nodes.back()->span);
   std::string id;
@@ -522,12 +502,11 @@ std::vector<std::unique_ptr<ast::Declaration>> ExtractInputs(
 
 std::unique_ptr<ast::Node> BuildFunctionLiteral(
     SourceRange span, std::vector<std::unique_ptr<ast::Declaration>> inputs,
-    std::unique_ptr<ast::Expression> output, Statements &&stmts, Module *mod,
+    std::unique_ptr<ast::Expression> output, Statements &&stmts,
     error::Log *error_log) {
   if (output == nullptr) {
     return std::make_unique<ast::FunctionLiteral>(
-        std::move(span), ASSERT_NOT_NULL(mod), std::move(inputs),
-        std::move(stmts).extract());
+        std::move(span), std::move(inputs), std::move(stmts).extract());
   }
 
   std::vector<std::unique_ptr<ast::Expression>> outputs;
@@ -540,41 +519,39 @@ std::unique_ptr<ast::Node> BuildFunctionLiteral(
       outputs.push_back(std::move(expr));
     }
   } else {
-    if (auto* decl = output->if_as<ast::Declaration>()) {
+    if (auto *decl = output->if_as<ast::Declaration>()) {
       decl->flags() |=
           (ast::Declaration::f_IsFnParam | ast::Declaration::f_IsOutput);
     }
     outputs.push_back(std::move(output));
   }
   return std::make_unique<ast::FunctionLiteral>(
-      std::move(span), ASSERT_NOT_NULL(mod), std::move(inputs),
-      std::move(stmts).extract(), std::move(outputs));
+      std::move(span), std::move(inputs), std::move(stmts).extract(),
+      std::move(outputs));
 }
 
 std::unique_ptr<ast::Node> BuildNormalFunctionLiteral(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
-  auto span      = SourceRange(nodes[0]->span, nodes.back()->span);
-  auto *binop    = &nodes[0]->as<ast::Binop>();
-  auto[lhs, rhs] = std::move(*binop).extract();
-  return BuildFunctionLiteral(
-      std::move(span), ExtractInputs(std::move(lhs)), std::move(rhs),
-      std::move(nodes[1]->as<Statements>()), mod, error_log);
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+  auto span       = SourceRange(nodes[0]->span, nodes.back()->span);
+  auto *binop     = &nodes[0]->as<ast::Binop>();
+  auto [lhs, rhs] = std::move(*binop).extract();
+  return BuildFunctionLiteral(std::move(span), ExtractInputs(std::move(lhs)),
+                              std::move(rhs),
+                              std::move(nodes[1]->as<Statements>()), error_log);
 }
 
 std::unique_ptr<ast::Node> BuildInferredFunctionLiteral(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   auto span = SourceRange(nodes[0]->span, nodes.back()->span);
   return BuildFunctionLiteral(
       std::move(span), ExtractInputs(move_as<ast::Expression>(nodes[0])),
-      nullptr, std::move(nodes[2]->as<Statements>()), mod, error_log);
+      nullptr, std::move(nodes[2]->as<Statements>()), error_log);
 }
 
 // TODO this loses syntactic information that a formatter cares about.
 std::unique_ptr<ast::Node> BuildShortFunctionLiteral(
     std::unique_ptr<ast::Expression> args,
-    std::unique_ptr<ast::Expression> body, Module *mod, error::Log *error_log) {
+    std::unique_ptr<ast::Expression> body, error::Log *error_log) {
   auto span   = SourceRange(args->span, body->span);
   auto inputs = ExtractInputs(std::move(args));
 
@@ -589,12 +566,11 @@ std::unique_ptr<ast::Node> BuildShortFunctionLiteral(
   stmts.append(
       std::make_unique<ast::ReturnStmt>(std::move(span), std::move(ret_vals)));
   return BuildFunctionLiteral(std::move(span), std::move(inputs), nullptr,
-                              std::move(stmts), mod, error_log);
+                              std::move(stmts), error_log);
 }
 
 std::unique_ptr<ast::Node> BuildOneElementCommaList(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   auto comma_list  = std::make_unique<ast::CommaList>();
   comma_list->span = SourceRange(nodes[0]->span, nodes[3]->span);
   comma_list->exprs_.push_back(move_as<ast::Expression>(nodes[1]));
@@ -603,44 +579,40 @@ std::unique_ptr<ast::Node> BuildOneElementCommaList(
 }
 
 std::unique_ptr<ast::Node> BuildOneStatement(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   auto stmts  = std::make_unique<Statements>();
   stmts->span = nodes[0]->span;
   stmts->append(std::move(nodes[0]));
-  ValidateStatementSyntax(stmts->content_.back().get(), mod, error_log);
+  ValidateStatementSyntax(stmts->content_.back().get(), error_log);
   return stmts;
 }
 
 std::unique_ptr<ast::Node> BuildMoreStatements(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   std::unique_ptr<Statements> stmts = move_as<Statements>(nodes[0]);
   stmts->append(std::move(nodes[1]));
-  ValidateStatementSyntax(stmts->content_.back().get(), mod, error_log);
+  ValidateStatementSyntax(stmts->content_.back().get(), error_log);
   return stmts;
 }
 
 std::unique_ptr<ast::Node> OneBracedJump(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   auto stmts  = std::make_unique<Statements>();
   stmts->span = SourceRange(nodes[0]->span, nodes[2]->span);
   stmts->append(BuildControlHandler(std::move(nodes[1])));
-  ValidateStatementSyntax(stmts->content_.back().get(), mod, error_log);
+  ValidateStatementSyntax(stmts->content_.back().get(), error_log);
   return stmts;
 }
 
 std::unique_ptr<ast::Node> BuildControlHandler(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *, error::Log *) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *) {
   return BuildControlHandler(std::move(nodes[0]));
 }
 
 std::unique_ptr<ast::Node> BuildScopeNode(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   SourceRange span(nodes.front()->span, nodes.back()->span);
-  auto[callee, ordered_fn_args] =
+  auto [callee, ordered_fn_args] =
       std::move(nodes[0]->as<ast::Call>()).extract();
   std::vector<ast::BlockNode> blocks;
   blocks.push_back(std::move(nodes[1]->as<ast::BlockNode>()));
@@ -650,15 +622,14 @@ std::unique_ptr<ast::Node> BuildScopeNode(
 }
 
 std::unique_ptr<ast::Node> BuildBlockNode(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   auto span = SourceRange(nodes.front()->span, nodes.back()->span);
   if (auto *id = nodes.front()->if_as<ast::Identifier>()) {
     return std::make_unique<ast::BlockNode>(
         std::move(span), std::string{id->token()},
         std::move(nodes.back()->as<Statements>()).extract());
   } else if (auto *index = nodes.front()->if_as<ast::Index>()) {
-    auto[lhs, rhs] = std::move(*index).extract();
+    auto [lhs, rhs] = std::move(*index).extract();
     std::vector<std::unique_ptr<ast::Expression>> args;
     if (auto *cl = rhs->if_as<ast::CommaList>()) {
       args = std::move(*cl).extract();
@@ -670,24 +641,20 @@ std::unique_ptr<ast::Node> BuildBlockNode(
         std::move(args), std::move(nodes.back()->as<Statements>()).extract());
 
   } else {
-    for (auto const &n : nodes) {
-      DEBUG_LOG()(ast::Dump::ToString(n.get()));
-    }
+    for (auto const &n : nodes) { DEBUG_LOG()(ast::Dump::ToString(n.get())); }
     NOT_YET("log an error");
   }
 }
 
 std::unique_ptr<ast::Node> ExtendScopeNode(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   nodes[0]->as<ast::ScopeNode>().append_block_syntactically(
       std::move(nodes[1]->as<ast::BlockNode>()));
   return std::move(nodes[0]);
 }
 
 std::unique_ptr<ast::Node> SugaredExtendScopeNode(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   SourceRange span(nodes.front()->span, nodes.back()->span);
   auto *updated_last_scope_node = &nodes[2]->as<ast::ScopeNode>();
   std::vector<std::unique_ptr<ast::Node>> block_stmt_nodes;
@@ -702,8 +669,7 @@ std::unique_ptr<ast::Node> SugaredExtendScopeNode(
 }
 
 std::unique_ptr<ast::Node> BuildBinaryOperator(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   static absl::flat_hash_map<std::string_view, frontend::Operator> const
       chain_ops{
           {",", frontend::Operator::Comma}, {"==", frontend::Operator::Eq},
@@ -719,26 +685,26 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
     if (iter != chain_ops.end()) {
       nodes[1]->as<frontend::Token>().op = iter->second;
       return (iter->second == frontend::Operator::Comma)
-                 ? BuildCommaList(std::move(nodes), mod, error_log)
-                 : BuildChainOp(std::move(nodes), mod, error_log);
+                 ? BuildCommaList(std::move(nodes), error_log)
+                 : BuildChainOp(std::move(nodes), error_log);
     }
   }
 
   if (tk == ".") {
-    return BuildAccess(std::move(nodes), mod, error_log);
+    return BuildAccess(std::move(nodes), error_log);
 
   } else if (tk == "`") {
     NOT_YET();
 
   } else if (tk == ":" || tk == ":=") {
-    return BuildDeclaration<false>(std::move(nodes), mod, error_log);
+    return BuildDeclaration<false>(std::move(nodes), error_log);
 
   } else if (tk == "::" || tk == "::=") {
-    return BuildDeclaration<true>(std::move(nodes), mod, error_log);
+    return BuildDeclaration<true>(std::move(nodes), error_log);
 
   } else if (tk == "=>") {
     return BuildShortFunctionLiteral(move_as<ast::Expression>(nodes[0]),
-                                     move_as<ast::Expression>(nodes[2]), mod,
+                                     move_as<ast::Expression>(nodes[2]),
                                      error_log);
   } else if (tk == "=") {
     if (nodes[0]->is<ast::Declaration>()) {
@@ -772,7 +738,7 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
   } else if (tk == "'") {
     SourceRange span(nodes.front()->span, nodes.back()->span);
     return BuildCallImpl(std::move(span), move_as<ast::Expression>(nodes[2]),
-                         move_as<ast::Expression>(nodes[0]), mod, error_log);
+                         move_as<ast::Expression>(nodes[0]), error_log);
   }
 
   static absl::flat_hash_map<std::string_view, frontend::Operator> const
@@ -790,7 +756,7 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
 }
 
 std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
-    absl::Span<std::unique_ptr<ast::Node>> nodes,ast::EnumLiteral::Kind kind, Module *mod,
+    absl::Span<std::unique_ptr<ast::Node>> nodes, ast::EnumLiteral::Kind kind,
     error::Log *error_log) {
   SourceRange span(nodes[0]->span, nodes[1]->span);
   std::vector<std::unique_ptr<ast::Expression>> elems;
@@ -821,7 +787,7 @@ std::unique_ptr<ast::Node> BuildScopeLiteral(std::unique_ptr<Statements> stmts,
 }
 
 std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
-                                      Module *mod, error::Log *error_log) {
+                                      error::Log *error_log) {
   auto span = stmts->span;  // TODO it's really bigger than this because it
                             // involves the keyword too.
 
@@ -845,7 +811,6 @@ std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
 
 std::unique_ptr<ast::StructLiteral> BuildStructLiteral(Statements &&stmts,
                                                        SourceRange span,
-                                                       Module *mod,
                                                        error::Log *error_log) {
   auto struct_lit  = std::make_unique<ast::StructLiteral>();
   struct_lit->span = std::move(span);
@@ -863,14 +828,13 @@ std::unique_ptr<ast::StructLiteral> BuildStructLiteral(Statements &&stmts,
 
 // TODO rename this now that it supports switch statements too.
 std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   // TODO should probably not do this with a token but some sort of enumerator
   // so we can ensure coverage/safety.
   ASSERT(nodes[0], InheritsFrom<frontend::Token>());
   auto const &tk = nodes[0]->as<frontend::Token>().token;
   if (tk == "switch") {
-    auto sw   = BuildSwitch(move_as<Statements>(nodes[4]), mod, error_log);
+    auto sw   = BuildSwitch(move_as<Statements>(nodes[4]), error_log);
     sw->expr_ = move_as<ast::Expression>(nodes[2]);
     return sw;
   } else if (tk == "jump_handler") {
@@ -899,11 +863,11 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
   } else if (tk == "struct") {
     auto result = BuildStructLiteral(
         std::move(nodes[4]->as<Statements>()),
-        SourceRange(nodes.front()->span, nodes.back()->span), mod, error_log);
+        SourceRange(nodes.front()->span, nodes.back()->span), error_log);
     if (nodes[2]->is<ast::CommaList>()) {
       for (auto &expr : nodes[2]->as<ast::CommaList>().exprs_) {
         ASSERT(expr, InheritsFrom<ast::Declaration>());  // TODO handle failure
-        auto decl          = move_as<ast::Declaration>(expr);
+        auto decl = move_as<ast::Declaration>(expr);
         decl->flags() |= ast::Declaration::f_IsFnParam;
         result->args_.push_back(std::move(*decl));
       }
@@ -919,16 +883,14 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
 }
 
 std::unique_ptr<ast::Node> BuildConcreteStruct(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
-  return BuildStructLiteral(std::move(nodes[1]->as<Statements>()),
-                            SourceRange(nodes.front()->span, nodes.back()->span),
-                            mod, error_log);
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+  return BuildStructLiteral(
+      std::move(nodes[1]->as<Statements>()),
+      SourceRange(nodes.front()->span, nodes.back()->span), error_log);
 }
 
 std::unique_ptr<ast::Node> BuildKWBlock(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   if (nodes[0]->is<frontend::Token>()) {
     std::string const &tk = nodes[0]->as<frontend::Token>().token;
 
@@ -936,20 +898,20 @@ std::unique_ptr<ast::Node> BuildKWBlock(
       return BuildEnumOrFlagLiteral(std::move(nodes),
                                     is_enum ? ast::EnumLiteral::Kind::Enum
                                             : ast::EnumLiteral::Kind::Flags,
-                                    mod, error_log);
+                                    error_log);
 
     } else if (tk == "struct") {
-      return BuildConcreteStruct(std::move(nodes), mod, error_log);
+      return BuildConcreteStruct(std::move(nodes), error_log);
 
     } else if (tk == "switch") {
-      return BuildSwitch(move_as<Statements>(nodes[1]), mod, error_log);
+      return BuildSwitch(move_as<Statements>(nodes[1]), error_log);
 
     } else if (tk == "scope") {
       SourceRange span(nodes.front()->span, nodes.back()->span);
       return BuildScopeLiteral(move_as<Statements>(nodes[1]), span);
 
     } else if (tk == "block") {
-      return BuildBlock(move_as<Statements>(nodes[1]), mod, error_log);
+      return BuildBlock(move_as<Statements>(nodes[1]), error_log);
     } else {
       UNREACHABLE(tk);
     }
@@ -959,16 +921,14 @@ std::unique_ptr<ast::Node> BuildKWBlock(
 }
 
 std::unique_ptr<ast::Node> Parenthesize(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   auto result            = move_as<ast::Expression>(nodes[1]);
   result->parenthesized_ = true;
   return result;
 }
 
 std::unique_ptr<ast::Node> BuildEmptyParen(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   if (nodes[0]->is<ast::Declaration>()) {
     error_log->CallingDeclaration(nodes[0]->span);
   }
@@ -980,25 +940,22 @@ std::unique_ptr<ast::Node> BuildEmptyParen(
 
 template <size_t N>
 std::unique_ptr<ast::Node> drop_all_but(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   return std::move(nodes[N]);
 }
 
 std::unique_ptr<ast::Node> CombineColonEq(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   auto *tk_node = &nodes[0]->as<frontend::Token>();
   tk_node->token += "=";  // Change : to := and :: to ::=
   tk_node->op = frontend::Operator::ColonEq;
-  return drop_all_but<0>(std::move(nodes), mod, error_log);
+  return drop_all_but<0>(std::move(nodes), error_log);
 }
 
 namespace ErrMsg {
 template <size_t RTN, size_t RES>
 std::unique_ptr<ast::Node> Reserved(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   error_log->Reserved(nodes[RES]->span,
                       nodes[RES]->as<frontend::Token>().token);
 
@@ -1007,8 +964,7 @@ std::unique_ptr<ast::Node> Reserved(
 
 template <size_t RTN, size_t RES1, size_t RES2>
 std::unique_ptr<ast::Node> BothReserved(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   error_log->Reserved(nodes[RES1]->span,
                       nodes[RES1]->as<frontend::Token>().token);
   error_log->Reserved(nodes[RES2]->span,
@@ -1017,16 +973,14 @@ std::unique_ptr<ast::Node> BothReserved(
 }
 
 std::unique_ptr<ast::Node> NonBinop(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   error_log->NotBinary(nodes[1]->span, nodes[1]->as<frontend::Token>().token);
   return std::make_unique<ast::Identifier>(nodes[1]->span, "invalid_node");
 }
 
 template <size_t RTN, size_t RES>
 std::unique_ptr<ast::Node> NonBinopReserved(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   error_log->NotBinary(nodes[1]->span, nodes[1]->as<frontend::Token>().token);
   error_log->Reserved(nodes[RES]->span,
                       nodes[RES]->as<frontend::Token>().token);
@@ -1034,8 +988,7 @@ std::unique_ptr<ast::Node> NonBinopReserved(
 }
 
 std::unique_ptr<ast::Node> NonBinopBothReserved(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   error_log->Reserved(nodes[0]->span, nodes[0]->as<frontend::Token>().token);
   error_log->NotBinary(nodes[1]->span, nodes[1]->as<frontend::Token>().token);
   error_log->Reserved(nodes[2]->span, nodes[2]->as<frontend::Token>().token);
@@ -1044,8 +997,7 @@ std::unique_ptr<ast::Node> NonBinopBothReserved(
 }  // namespace ErrMsg
 
 std::unique_ptr<ast::Node> BuildOperatorIdentifier(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, Module *mod,
-    error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   auto span = nodes[1]->span;
   return std::make_unique<ast::Identifier>(
       span, move_as<frontend::Token>(nodes[1])->token);
@@ -1161,8 +1113,7 @@ auto Rules = std::array{
 
 enum class ShiftState : char { NeedMore, EndOfExpr, MustReduce };
 struct ParseState {
-  ParseState(Source *src, Module *mod)
-      : mod_(mod), lex_state_{src, &mod->error_log_} {}
+  ParseState(Source *src, error::Log *log) : lex_state_(src, log) {}
 
   template <size_t N>
   inline Tag get_type() const {
@@ -1278,7 +1229,6 @@ struct ParseState {
   std::vector<Tag> tag_stack_;
   std::vector<std::unique_ptr<ast::Node>> node_stack_;
   std::optional<TaggedNode> lookahead_;
-  Module *mod_ = nullptr;
   LexState lex_state_;
 
   // We actually don't care about mathing braces because we are only using this
@@ -1329,7 +1279,7 @@ bool Reduce(ParseState *ps) {
   // return false
   if (matched_rule_ptr == nullptr) { return false; }
 
-  matched_rule_ptr->Apply(&ps->node_stack_, &ps->tag_stack_, ps->mod_,
+  matched_rule_ptr->Apply(&ps->node_stack_, &ps->tag_stack_,
                           ps->lex_state_.error_log_);
 
   return true;
@@ -1351,8 +1301,9 @@ void CleanUpReduction(ParseState *state) {
 }
 }  // namespace
 
-std::vector<std::unique_ptr<ast::Node>> Parse(Source *src, ::Module *mod) {
-  auto state = ParseState(src, mod);
+std::vector<std::unique_ptr<ast::Node>> Parse(Source *src) {
+  error::Log log(src);
+  ParseState state(src, &log);
   Shift(&state);
 
   while (state.Next().tag_ != eof) {
@@ -1381,9 +1332,10 @@ std::vector<std::unique_ptr<ast::Node>> Parse(Source *src, ::Module *mod) {
     }
 
     // This is an exceedingly crappy error message.
-    mod->error_log_.UnknownParseError(lines);
+    log.UnknownParseError(lines);
   }
 
+  // TODO extract errors from the log if they exist.
   return std::move(move_as<Statements>(state.node_stack_.back())->content_);
 }
 

@@ -540,15 +540,14 @@ struct EnumLiteral : ScopeExpr<core::DeclScope> {
 // TODO
 struct FunctionLiteral : public Expression {
   // Represents a function with all constants bound to some value.
-  FunctionLiteral(frontend::SourceRange span, Module *mod,
+  FunctionLiteral(frontend::SourceRange span,
                   std::vector<std::unique_ptr<Declaration>> in_params,
                   std::vector<std::unique_ptr<Node>> statements,
                   std::optional<std::vector<std::unique_ptr<Expression>>>
                       out_params = std::nullopt)
       : Expression(std::move(span)),
         outputs_(std::move(out_params)),
-        statements_(std::move(statements)),
-        module_(mod) {
+        statements_(std::move(statements)) {
     for (auto &input : in_params) {
       input->flags() |= Declaration::f_IsFnParam;
       // NOTE: This is safe because the declaration is behind a unique_ptr so
@@ -591,8 +590,6 @@ struct FunctionLiteral : public Expression {
   core::FnParams<std::unique_ptr<Declaration>> inputs_;
   std::optional<std::vector<std::unique_ptr<Expression>>> outputs_;
   std::vector<std::unique_ptr<Node>> statements_;
-
-  Module *module_ = nullptr;
 };
 
 // Terminal:

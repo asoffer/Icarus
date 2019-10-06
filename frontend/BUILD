@@ -77,7 +77,9 @@ cc_lib_target(
 
 cc_lib_target(
     name = "parse",
-    intf_deps = None,
+    intf_deps = [
+        "//ast:ast_fwd",
+    ],
     impl_deps = [
         ":lex",
         ":tagged_node",

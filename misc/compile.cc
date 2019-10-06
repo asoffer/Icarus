@@ -8,7 +8,7 @@
 #include "visitor/assign_scope.h"
 
 namespace frontend {
-std::vector<std::unique_ptr<ast::Node>> Parse(Source *src, ::Module *mod);
+std::vector<std::unique_ptr<ast::Node>> Parse(Source *src);
 }  // namespace frontend
 
 std::atomic<bool> found_errors = false;
@@ -17,8 +17,8 @@ ir::CompiledFn *main_fn        = nullptr;
 // Once this function exits the file is destructed and we no longer have
 // access to the source lines. All verification for this module must be done
 // inside this function.
-Module *CompileModule(Module *mod) {
-  mod->statements_ = frontend::Parse(mod->src_, mod);
+std::unique_ptr<Module> CompileModule(frontend::Source *src) {
+  auto mod = std::make_unique<Module>(frontend::Parse(src));
   if (mod->error_log_.size() > 0) {
     mod->error_log_.Dump();
     found_errors = true;
@@ -32,7 +32,7 @@ Module *CompileModule(Module *mod) {
     }
   }
 
-  compiler::Compiler visitor(mod);
+  compiler::Compiler visitor(mod.get());
   for (auto const &stmt : mod->statements_) { stmt->VerifyType(&visitor); }
 
   if (visitor.num_errors() > 0) {

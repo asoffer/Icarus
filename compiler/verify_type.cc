@@ -15,7 +15,7 @@
 #include "type/typed_value.h"
 #include "type/util.h"
 
-Module *CompileModule(Module *mod);
+std::unique_ptr<Module> CompileModule(frontend::Source *);
 
 namespace ir {
 

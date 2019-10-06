@@ -28,6 +28,7 @@ cc_lib_target(
         "//base:untyped_buffer",
         "//core:fn_params",
         "//frontend/source:repl",
+        "//frontend:parse",
         "//ir:compiled_fn",
         "//ir/cmd:jumps",
         "//module:module",

@@ -3,7 +3,10 @@ load("//:defs.bzl", "cc_lib_target", "cc_component")
 
 cc_lib_target(
     name = "pending",
-    intf_deps = ["//base:expected"],
+    intf_deps = [
+        "//base:expected",
+        "//frontend/source:source",
+    ],
     impl_deps = [
         ":module",
         "//base:debug",
@@ -11,6 +14,7 @@ cc_lib_target(
         "//base:macros",
         "//frontend/source:file",
         "@com_google_absl//absl/container:node_hash_set",
+        "@com_google_absl//absl/container:node_hash_map",
     ],
 )
 

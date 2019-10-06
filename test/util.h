@@ -5,14 +5,11 @@
 #include <string>
 #include <type_traits>
 
+#include "compiler/compiler.h"
 #include "core/scope.h"
+#include "frontend/parse.h"
 #include "frontend/source/string.h"
 #include "module/module.h"
-#include "compiler/compiler.h"
-
-namespace frontend {
-std::vector<std::unique_ptr<ast::Node>> Parse(Source *src, ::Module *mod);
-}  // namespace frontend
 
 namespace test {
 
@@ -23,7 +20,7 @@ struct MakeNodeResult {
                  std::integral_constant<bool, Verify>)
       : source(std::move(s)), module(&source), compiler(&module) {
     if (scope == nullptr) { scope = &module.scope_; }
-    auto stmts = frontend::Parse(&source, &module);
+    auto stmts = frontend::Parse(&source);
     if (stmts.size() != 1u) { return; }
     auto *cast_ptr = stmts[0]->template if_as<T>();
     if (cast_ptr) {

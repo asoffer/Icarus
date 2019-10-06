@@ -12,7 +12,7 @@
 #include "module/pending.h"
 
 struct Module {
-  explicit Module(frontend::Source *src);
+  explicit Module(std::vector<std::unique_ptr<ast::Node>> stmts);
   ~Module();
 
   // We take pointers to the module, so it cannot be moved.
