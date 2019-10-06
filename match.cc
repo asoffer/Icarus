@@ -7,7 +7,7 @@
 #include "init/cli.h"
 #include "init/signal.h"
 #include "misc/module.h"
-#include "visitor/match.h"
+#include "match/match_expr.h"
 
 namespace frontend {
 std::vector<std::unique_ptr<ast::Node>> Parse(Source *src, ::Module *mod);
@@ -29,7 +29,7 @@ int MatchParse(std::filesystem::path const &expr_file,
                    frontend::FileSource::Make(file));
   auto stmts = frontend::Parse(&src, &mod);
 
-  visitor::Match visitor;
+  match::Match visitor;
   // TODO How do you want to match multiple lines?
   visitor.MatchAll(stmts[0].get(), expr);
 

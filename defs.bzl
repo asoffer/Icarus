@@ -87,6 +87,7 @@ def icarus_method(name,
                   intf_deps = None,
                   impl_deps = None,
                   deps = [],
+                  cfgs = None,
                   gen = True):
     native.cc_library(
         name = name + "-xmacro",
@@ -95,11 +96,15 @@ def icarus_method(name,
 
     if gen:
         cc_lib_target(name,
+                      cfgs = cfgs,
                       intf_deps = intf_deps,
                       impl_deps = impl_deps)
 
 
     for cfg, defs in _VISITOR_DEFINES.items():
+        if cfgs != None and cfg not in cfgs:
+            continue
+
         native.alias(name = configured_dep(name + "-xmacro", cfg), actual = name + "-xmacro")
 
 

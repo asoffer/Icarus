@@ -33,27 +33,6 @@ cc_lib_target(
 
 
 cc_lib_target(
-    name = "match",
-    cfgs = ["match"],
-    intf_deps = [
-        "//ast:ast_fwd",
-    ],
-    impl_deps = [
-        ":match_state",
-        "//match:binding_node",
-        "//ast:ast",
-    ],
-    test_deps = None,
-)
-
-cc_lib_target(
-    name = "match_state",
-    intf_deps = ["//ast:ast_fwd"],
-    impl_deps = None,
-    test_deps = None,
-)
-
-cc_lib_target(
     name = "type_query",
     cfgs = ["match", "compile"],
     intf_deps = ["//type:type_fwd"],

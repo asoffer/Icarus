@@ -3,7 +3,7 @@
 #include "ast/methods/dump.h"
 #include "compiler/compiler.h"
 #include "ir/results.h"
+#include "match/match_expr.h"
 #include "visitor/assign_scope.h"
 #include "visitor/dependent_decls.h"
 #include "visitor/extract_jumps.h"
-#include "visitor/match.h"

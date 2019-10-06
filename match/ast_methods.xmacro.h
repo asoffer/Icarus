@@ -1,8 +1,5 @@
 #include "ast/methods/dump.xmacro.h"
-
-ICARUS_AST_VISITOR(void match_expr(visitor::Match *visitor,
-                                   visitor::MatchState *state) const,
-                   { visitor->MatchExpr(this, state); });
+#include "match/match_expr.xmacro.h"
 
 ICARUS_AST_VISITOR(
     ir::Results EmitValue(compiler::Compiler *visitor) const,

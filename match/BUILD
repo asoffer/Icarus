@@ -2,8 +2,21 @@ package(default_visibility = ["//visibility:public"])
 load("//:defs.bzl", "cc_lib_target", "icarus_method")
 
 icarus_method(
+    name = "match_expr",
+    cfgs = ["match"],
+    intf_deps = ["//ast:ast_fwd"],
+    impl_deps = [
+        "//match:binding_node",
+        "//ast:ast",
+    ],
+)
+
+icarus_method(
     name = "ast_methods",
-    deps = ["//ast/methods:dump-xmacro"],
+    deps = [
+        "//ast/methods:dump-xmacro",
+        ":match_expr-xmacro",
+    ],
     gen = False,
 )
 
@@ -12,10 +25,10 @@ cc_lib_target(
     name = "ast_dependencies",
     textual_hdrs = ["ast_dependencies.h"],
     intf_deps = [
+        ":match_expr",
         "//visitor:assign_scope",
         "//visitor:dependent_decls",
         "//visitor:extract_jumps",
-        "//visitor:match",
         "//ir:results",
         "//ast/methods:dump",
         "//compiler:compiler",

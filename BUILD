@@ -61,7 +61,7 @@ cc_group_target(
     deps = {
         "compile": COMMON_IMPL_DEPS,
         "match": COMMON_IMPL_DEPS + [
-            "//visitor:match-impl",
+            "//match:match_expr-impl",
             "//match:binding_id-impl",
         ],
     }
