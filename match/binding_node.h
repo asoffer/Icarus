@@ -8,7 +8,7 @@
 #include "match/binding_id.h"
 
 namespace match {
-constexpr std::string_view kMatchPrefix = "@%";
+inline constexpr std::string_view kMatchPrefix = "@%";
 
 struct BindingNode : public ast::Expression {
  public:

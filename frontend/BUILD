@@ -21,6 +21,7 @@ cc_group_target(
     hdrs = ["lex.h"],
     deps = [
         ":lexeme",
+        "//frontend/source:cursor",
         "//frontend/source:source",
         "//frontend/source:range",
     ],

@@ -29,12 +29,6 @@ absl::flat_hash_map<std::string_view, ast::Hashtag::Builtin> const
 
 namespace {
 
-SourceRange ToRange(SourceCursor const &cursor) {
-  return SourceRange(
-      SourceLoc(cursor.line(), cursor.offset()),
-      SourceLoc(cursor.line(), cursor.offset() + cursor.view().size()));
-}
-
 constexpr inline bool IsLower(char c) { return ('a' <= c && c <= 'z'); }
 constexpr inline bool IsUpper(char c) { return ('A' <= c && c <= 'Z'); }
 constexpr inline bool IsNonZeroDigit(char c) { return ('1' <= c && c <= '9'); }
@@ -75,7 +69,7 @@ Lexeme NextWord(SourceCursor *cursor, Source *src) {
   // We have already matched the first character
   auto word_cursor       = NextSimpleWord(cursor);
   std::string_view token = word_cursor.view();
-  auto span              = ToRange(word_cursor);
+  auto span              = word_cursor.range();
 
   static absl::flat_hash_map<std::string_view,
                              std::pair<ir::Results, type::Type const *>> const
@@ -143,7 +137,7 @@ Lexeme NextNumber(SourceCursor *cursor, Source *src, error::Log *error_log) {
            c == '.' || IsDigit(c);
   });
 
-  auto span = ToRange(num_cursor);
+  auto span = num_cursor.range();
   auto num  = ParseNumber(num_cursor.view());
   if (!num.has_value()) {
     // TODO should you do something with guessing the type?
@@ -159,8 +153,9 @@ Lexeme NextNumber(SourceCursor *cursor, Source *src, error::Log *error_log) {
       *num);
 }
 
-std::pair<SourceRange, std::string> NextStringLiteral(SourceCursor *cursor, Source *src,
-                                                   error::Log *error_log) {
+std::pair<SourceRange, std::string> NextStringLiteral(SourceCursor *cursor,
+                                                      Source *src,
+                                                      error::Log *error_log) {
   cursor->remove_prefix(1);
   bool escaped = false;
   auto str_lit_cursor =
@@ -189,7 +184,7 @@ std::pair<SourceRange, std::string> NextStringLiteral(SourceCursor *cursor, Sour
         return true;
       });
 
-  auto span = ToRange(str_lit_cursor);
+  auto span = str_lit_cursor.range();
   if (cursor->view().empty()) {
     error_log->RunawayStringLiteral(span);
   } else {
@@ -233,19 +228,17 @@ Lexeme NextHashtag(SourceCursor *cursor, Source *src) {
     auto word_cursor = NextSimpleWord(cursor);
     token            = std::string_view{word_cursor.view().data() - 1,
                              word_cursor.view().size() + 2};
-    span             = ToRange(word_cursor);
+    span             = word_cursor.range();
 
     // TODO log an error if this fails.
     ASSERT(cursor->view().size() != 0u);
     ASSERT(cursor->view()[0] == '}');
     cursor->remove_prefix(1);
-    span =
-        SourceRange(SourceLoc(span.begin().line_num, span.begin().offset - 1),
-                    SourceLoc(span.end().line_num, span.end().offset + 1));
+    span = span.expanded(Offset(1));
   } else {
     auto word_cursor = NextSimpleWord(cursor);
     token            = word_cursor.view();
-    span             = ToRange(word_cursor);
+    span             = word_cursor.range();
   }
 
   if (auto iter = BuiltinHashtagMap.find(token);
@@ -324,7 +317,7 @@ Lexeme NextOperator(SourceCursor *cursor, Source *src) {
     cursor->remove_prefix(2);
     auto word_cursor       = NextSimpleWord(cursor);
     std::string_view token = word_cursor.view();
-    auto span              = ToRange(word_cursor);
+    auto span              = word_cursor.range();
     return Lexeme(
         std::make_unique<match::BindingNode>(match::BindingId{token}, span));
   }
@@ -332,7 +325,7 @@ Lexeme NextOperator(SourceCursor *cursor, Source *src) {
 
   for (auto[prefix, x] : Ops) {
     if (BeginsWith(prefix, cursor->view())) {
-      auto span = ToRange(cursor->remove_prefix(prefix.size()));
+      auto span = cursor->remove_prefix(prefix.size()).range();
       return std::visit([&](auto x) { return Lexeme(x, span); }, x);
     }
   }
@@ -342,8 +335,7 @@ Lexeme NextOperator(SourceCursor *cursor, Source *src) {
 std::optional<std::pair<SourceRange, Operator>> NextSlashInitiatedToken(
     SourceCursor *cursor, Source *src, error::Log *error_log) {
   SourceRange span;
-  span.begin().offset   = cursor->offset();
-  span.begin().line_num = cursor->line();
+  span.begin() = cursor->loc();
   cursor->remove_prefix(1);
   switch (cursor->view()[0]) {
     case '/':  // line comment
@@ -394,12 +386,12 @@ restart:
     auto chunk = state->src_->ReadUntil('\n');
     if (chunk.more_to_read) {
       state->cursor_ =
-          SourceCursor{state->cursor_.line() + 1, Offset(0), chunk.view};
+          SourceCursor(state->cursor_.loc().next_line(), chunk.view);
       return Lexeme(Syntax::ImplicitNewline,
-                    ToRange(state->cursor_.remove_prefix(0)));
+                    state->cursor_.remove_prefix(0).range());
     } else {
       return Lexeme(Syntax::EndOfFile,
-                    ToRange(state->cursor_.remove_prefix(0)));
+                    state->cursor_.remove_prefix(0).range());
     }
   } else if (IsAlphaOrUnderscore(state->peek())) {
     return NextWord(&state->cursor_, state->src_);
@@ -410,15 +402,15 @@ restart:
   }
   if (BeginsWith("*/", state->cursor_.view())) {
     state->error_log_->NotInMultilineComment(
-        ToRange(state->cursor_.remove_prefix(2)));
+        state->cursor_.remove_prefix(2).range());
     goto restart;
   }
 
   switch (state->peek()) {
     case '`': {
-      // auto span         = ToRange(state->cursor_.remove_prefix(1));
-      // span.end().offset = state->cursor_.offset() + 1;
-      return Lexeme(Operator::MatchDecl, ToRange(state->cursor_));
+      // auto span         = state->cursor_.remove_prefix(1).range();
+      // span.end().offset = state->cursor_.loc().offset + 1;
+      return Lexeme(Operator::MatchDecl, state->cursor_.range());
     } break;
     case '"': {
       auto[span, str] =
@@ -434,7 +426,7 @@ restart:
       if (auto maybe_op = NextSlashInitiatedToken(&state->cursor_, state->src_,
                                                   state->error_log_)) {
         auto & [ span, op ] = *maybe_op;
-        return Lexeme(op, ToRange(state->cursor_));
+        return Lexeme(op, state->cursor_.range());
       }
       goto restart;
     } break;
@@ -442,16 +434,16 @@ restart:
     case ' ': state->cursor_.ConsumeWhile(IsWhitespace); goto restart;
     case '?':
       state->error_log_->InvalidCharacterQuestionMark(
-          ToRange(state->cursor_.remove_prefix(1)));
+          state->cursor_.remove_prefix(1).range());
       // Ignore and restart
       goto restart;
     case '\\': {
       if (state->cursor_.view().size() >= 2 &&
           state->cursor_.view()[1] == '\\') {
         return Lexeme(Syntax::ExplicitNewline,
-                      ToRange(state->cursor_.remove_prefix(2)));
+                      state->cursor_.remove_prefix(2).range());
       }
-      auto span = ToRange(state->cursor_.remove_prefix(1));
+      auto span = state->cursor_.remove_prefix(1).range();
       state->cursor_.ConsumeWhile(IsWhitespace);
       if (!state->cursor_.view().empty()) {
         state->error_log_->NonWhitespaceAfterNewlineEscape(span);

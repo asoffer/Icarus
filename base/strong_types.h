@@ -12,9 +12,10 @@
 namespace base {
 
 struct EnableEqualityComparisons {};
-struct EnableComparisons : public EnableEqualityComparisons {};
-struct EnableRawArithmetic {};
-struct EnableHashing : public EnableEqualityComparisons {};
+struct EnableComparisons : EnableEqualityComparisons {};
+struct EnableArithmetic {};
+struct EnableRawArithmetic : EnableArithmetic {};
+struct EnableHashing : EnableEqualityComparisons {};
 
 namespace internal {
 
@@ -90,11 +91,31 @@ constexpr Strong<Tag, UnderlyingType, CrtpTags>& operator+=(
 
 template <typename Tag, typename UnderlyingType, typename CrtpTags,
           typename std::enable_if_t<
+              std::is_base_of_v<EnableArithmetic, CrtpTags>>* = nullptr>
+constexpr Strong<Tag, UnderlyingType, CrtpTags>& operator+=(
+    Strong<Tag, UnderlyingType, CrtpTags>& lhs,
+    Strong<Tag, UnderlyingType, CrtpTags>& rhs) {
+  lhs.value += rhs.value;
+  return lhs;
+}
+
+template <typename Tag, typename UnderlyingType, typename CrtpTags,
+          typename std::enable_if_t<
               std::is_base_of_v<EnableRawArithmetic, CrtpTags>>* = nullptr>
 constexpr Strong<Tag, UnderlyingType, CrtpTags>& operator-=(
     Strong<Tag, UnderlyingType, CrtpTags>& lhs,
     base::DeductionBlockerT<UnderlyingType> n) {
   lhs.value -= n;
+  return lhs;
+}
+
+template <typename Tag, typename UnderlyingType, typename CrtpTags,
+          typename std::enable_if_t<
+              std::is_base_of_v<EnableArithmetic, CrtpTags>>* = nullptr>
+constexpr Strong<Tag, UnderlyingType, CrtpTags>& operator-=(
+    Strong<Tag, UnderlyingType, CrtpTags>& lhs,
+    Strong<Tag, UnderlyingType, CrtpTags>& rhs) {
+  lhs.value -= rhs.value;
   return lhs;
 }
 
@@ -116,6 +137,14 @@ constexpr Tag operator+(base::DeductionBlockerT<UnderlyingType> lhs,
 
 template <typename Tag, typename UnderlyingType, typename CrtpTags,
           typename std::enable_if_t<
+              std::is_base_of_v<EnableArithmetic, CrtpTags>>* = nullptr>
+constexpr Tag operator+(Strong<Tag, UnderlyingType, CrtpTags> lhs,
+                        Strong<Tag, UnderlyingType, CrtpTags> rhs) {
+  return Tag(lhs.value + rhs.value);
+}
+
+template <typename Tag, typename UnderlyingType, typename CrtpTags,
+          typename std::enable_if_t<
               std::is_base_of_v<EnableRawArithmetic, CrtpTags>>* = nullptr>
 constexpr Tag operator-(Strong<Tag, UnderlyingType, CrtpTags> lhs,
                         base::DeductionBlockerT<UnderlyingType> rhs) {
@@ -128,6 +157,14 @@ template <typename Tag, typename UnderlyingType, typename CrtpTags,
 constexpr Tag operator-(base::DeductionBlockerT<UnderlyingType> lhs,
                         Strong<Tag, UnderlyingType, CrtpTags> rhs) {
   return Tag(lhs - rhs.value);
+}
+
+template <typename Tag, typename UnderlyingType, typename CrtpTags,
+          typename std::enable_if_t<
+              std::is_base_of_v<EnableArithmetic, CrtpTags>>* = nullptr>
+constexpr Tag operator-(Strong<Tag, UnderlyingType, CrtpTags> lhs,
+                        Strong<Tag, UnderlyingType, CrtpTags> rhs) {
+  return Tag(lhs.value - rhs.value);
 }
 
 template <typename Tag, typename UnderlyingType, typename CrtpTags,

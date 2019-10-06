@@ -9,6 +9,16 @@ cc_component(
 )
 
 cc_component(
+    name = "cursor",
+    intf_deps = [
+        ":range",
+        "//base:debug",
+    ],
+    impl_deps = None,
+    test_deps = None,
+)
+
+cc_component(
     name = "file",
     intf_deps = [
         ":source",
