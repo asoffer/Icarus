@@ -1,5 +1,5 @@
-#ifndef ICARUS_VISITOR_DEPENDENT_DECLS_H
-#define ICARUS_VISITOR_DEPENDENT_DECLS_H
+#ifndef ICARUS_MODULE_DEPENDENT_DECLS_H
+#define ICARUS_MODULE_DEPENDENT_DECLS_H
 
 #include <array>
 #include <vector>
@@ -8,7 +8,7 @@
 #include "base/debug.h"
 #include "base/graph.h"
 
-namespace visitor {
+namespace module {
 struct DeclDepGraph {
   base::Graph<ast::Declaration const *> graph_;
 
@@ -46,6 +46,6 @@ struct DependentDecls  {
   DeclDepGraph decl_graph_;
 };
 
-}  // namespace visitor
+}  // namespace module
 
-#endif  // ICARUS_VISITOR_DEPENDENT_DECLS_H
+#endif  // ICARUS_MODULE_DEPENDENT_DECLS_H

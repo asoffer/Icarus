@@ -4,5 +4,5 @@
 #include "format/token_extractor.h"
 
 // TODO remove these, they're not really necessary.
-#include "visitor/assign_scope.h"
-#include "visitor/dependent_decls.h"
+#include "module/assign_scope.h"
+#include "module/dependent_decls.h"

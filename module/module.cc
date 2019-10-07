@@ -2,7 +2,7 @@
 
 #include "absl/algorithm/container.h"
 #include "ast/ast.h"
-#include "visitor/assign_scope.h"
+#include "module/assign_scope.h"
 
 namespace module {
 // Can't declare this in header because unique_ptr's destructor needs to know
@@ -12,7 +12,7 @@ Module::Module() : scope_(this) {}
 Module::~Module() = default;
 
 void Module::AppendStatements(std::vector<std::unique_ptr<ast::Node>> stmts) {
-  visitor::AssignScope visitor;
+  AssignScope visitor;
   for (auto &stmt : stmts) { stmt->assign_scope(&visitor, &scope_); }
 
   unprocessed_.insert(unprocessed_.end(),
@@ -21,7 +21,7 @@ void Module::AppendStatements(std::vector<std::unique_ptr<ast::Node>> stmts) {
 }
 
 void Module::Append(std::unique_ptr<ast::Node> node) {
-  visitor::AssignScope visitor;
+  AssignScope visitor;
   node->assign_scope(&visitor, &scope_);
   unprocessed_.push_back(std::move(node));
 }

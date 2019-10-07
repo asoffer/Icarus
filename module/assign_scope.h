@@ -1,11 +1,11 @@
-#ifndef ICARUS_VISITOR_ASSIGN_SCOPE_H
-#define ICARUS_VISITOR_ASSIGN_SCOPE_H
+#ifndef ICARUS_MODULE_ASSIGN_SCOPE_H
+#define ICARUS_MODULE_ASSIGN_SCOPE_H
 
 #include "ast/ast_fwd.h"
 #include "base/debug.h"
 #include "core/scope.h"
 
-namespace visitor {
+namespace module {
 
 struct AssignScope {
   void operator()(ast::Node *node, core::Scope *scope) { UNREACHABLE(); }
@@ -15,6 +15,6 @@ struct AssignScope {
 #undef ICARUS_AST_NODE_X
 };
 
-}  // namespace visitor
+}  // namespace module
 
-#endif  // ICARUS_VISITOR_ASSIGN_SCOPE_H
+#endif  // ICARUS_MODULE_ASSIGN_SCOPE_H

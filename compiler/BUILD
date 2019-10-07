@@ -3,7 +3,11 @@ load("//:defs.bzl", "cc_lib_target", "cc_component", "icarus_method")
 
 icarus_method(
     name = "ast_methods",
-    deps = ["//ast/methods:dump-xmacro"],
+    deps = [
+        "//ast/methods:dump-xmacro",
+        "//module:assign_scope-xmacro",
+        "//module:dependent_decls-xmacro",
+    ],
     gen = False,
 )
 
@@ -12,13 +16,13 @@ cc_lib_target(
     cfgs = ["compile"],
     textual_hdrs = ["ast_dependencies.h"],
     intf_deps = [
-        "//visitor:assign_scope",
-        "//visitor:dependent_decls",
-        "//visitor:extract_jumps",
         "//ir:results",
+        "//module:dependent_decls",
         "//ast/methods:dump",
         "//compiler:compiler",
         "//compiler:ast_methods-xmacro",
+        "//module:assign_scope",
+        "//visitor:extract_jumps",
     ],
 )
 

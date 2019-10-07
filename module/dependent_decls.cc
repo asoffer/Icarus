@@ -1,8 +1,8 @@
-#include "visitor/dependent_decls.h"
+#include "module/dependent_decls.h"
 
 #include "ast/ast.h"
 
-namespace visitor {
+namespace module {
 
 void DependentDecls::operator()(ast::Access const *node,
                                 ast::Declaration const *d) {
@@ -170,5 +170,4 @@ void DependentDecls::operator()(ast::Unop const *node,
   node->operand()->DependentDecls(this, d);
 }
 
-}  // namespace visitor
-
+}  // namespace module

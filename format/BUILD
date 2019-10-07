@@ -3,7 +3,11 @@ load("//:defs.bzl", "cc_lib_target", "icarus_method")
 
 icarus_method(
     name = "ast_methods",
-    deps = ["//ast/methods:dump-xmacro"],
+    deps = [
+        "//ast/methods:dump-xmacro",
+        "//module:assign_scope-xmacro",
+        "//module:dependent_decls-xmacro",
+    ],
     gen = False,
 )
 
@@ -18,8 +22,8 @@ cc_lib_target(
 
         # TODO remove these... not necessary, just here because `type` still
         # depends on Module uncoditionally.
-        "//visitor:assign_scope",
-        "//visitor:dependent_decls",
+        "//module:assign_scope",
+        "//module:dependent_decls",
     ],
 )
 
@@ -58,8 +62,8 @@ cc_binary(
 
         # TODO remove these... not necessary, just here because `type` still
         # depends on Module uncoditionally.
-        "//visitor:assign_scope-impl-format",
-        "//visitor:dependent_decls-impl-format",
+        "//module:assign_scope-impl-format",
+        "//module:dependent_decls-impl-format",
     ],
 )
 

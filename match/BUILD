@@ -4,7 +4,11 @@ load("//:defs.bzl", "cc_lib_target", "icarus_method")
 icarus_method(
     name = "match_expr",
     cfgs = ["match"],
-    intf_deps = ["//ast:ast_fwd"],
+    intf_deps = [
+        "//ast:ast_fwd",
+        "//module:assign_scope-xmacro",
+        "//module:dependent_decls-xmacro",
+    ],
     impl_deps = [
         "//match:binding_node",
         "//ast:ast",
@@ -26,8 +30,8 @@ cc_lib_target(
     textual_hdrs = ["ast_dependencies.h"],
     intf_deps = [
         ":match_expr",
-        "//visitor:assign_scope",
-        "//visitor:dependent_decls",
+        "//module:assign_scope",
+        "//module:dependent_decls",
         "//visitor:extract_jumps",
         "//ir:results",
         "//ast/methods:dump",
