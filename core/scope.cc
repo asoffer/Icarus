@@ -33,7 +33,8 @@ std::vector<ast::Declaration const *> Scope::AllDeclsWithId(
 
     for (auto const *mod : scope_ptr->embedded_modules_) {
       // TODO use the right bound constants? or kill bound constants?
-      if (auto *decl = mod->GetDecl(id)) {
+      for (auto *decl : mod->declarations(id)) {
+        // TODO what about transitivity for embedded modules?
         // New context will lookup with no constants.
         matching_decls.push_back(decl);
       }

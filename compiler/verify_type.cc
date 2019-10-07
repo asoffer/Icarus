@@ -657,9 +657,16 @@ VerifyResult Compiler::VerifyType(ast::Access const *node) {
 
     auto *mod = backend::EvaluateAs<module::Module const *>(
         type::Typed{node->operand(), operand_result.type_}, this);
-    // TODO remove this const_cast.
-    auto *t = Compiler(const_cast<module::Module *>(mod))
-                  .type_of(mod->GetDecl(node->member_name()));
+    auto decls = mod->declarations(node->member_name());
+    type::Type const *t;
+    switch (decls.size()) {
+      case 0: NOT_YET();
+      case 1:
+        // TODO remove this const_cast.
+        t = Compiler(const_cast<module::Module *>(mod)).type_of(decls[0]);
+        break;
+      default: NOT_YET();
+    }
 
     if (t == nullptr) {
       error_log()->NoExportedSymbol(node->span);

@@ -26,28 +26,25 @@ void Module::Append(std::unique_ptr<ast::Node> node) {
   unprocessed_.push_back(std::move(node));
 }
 
-base::PtrSpan<ast::Node> Module::unprocessed() { return unprocessed_; };
-base::PtrSpan<ast::Node const> Module::unprocessed() const {
-  return unprocessed_;
-};
+void Module::IndexDeclarations(base::PtrSpan<ast::Node const> nodes) {
+  for (ast::Node const *node : nodes) {
+    auto *decl = node->if_as<ast::Declaration>();
+    if (!decl) { continue; }
 
-void Module::process() {
-  processed_.insert(processed_.end(),
-                    std::make_move_iterator(unprocessed_.begin()),
-                    std::make_move_iterator(unprocessed_.end()));
-  unprocessed_.clear();
-}
-
-ast::Declaration *Module::GetDecl(std::string_view name) const {
-  for (auto const &stmt : unprocessed_) {
-    ASSIGN_OR(continue, auto &decl, stmt->if_as<ast::Declaration>());
-    if (decl.id() != name) { continue; }
-    bool exported = absl::c_any_of(decl.hashtags_, [](ast::Hashtag h) {
+    bool exported = absl::c_any_of(decl->hashtags_, [](ast::Hashtag h) {
       return h.kind_ == ast::Hashtag::Builtin::Export;
     });
     if (!exported) { continue; }
-    return &decl;
+
+    top_level_decls_[decl->id()].push_back(decl);
   }
-  return nullptr;
 }
+
+absl::Span<ast::Declaration const *const> Module::declarations(
+    std::string_view name) const {
+  auto iter = top_level_decls_.find(name);
+  if (iter == top_level_decls_.end()) { return {}; }
+  return iter->second;
+}
+
 }  // namespace module

@@ -290,12 +290,16 @@ ir::Results Compiler::EmitValue(ast::Access const *node) {
   if (type_of(node->operand()) == type::Module) {
     // TODO we already did this evaluation in type verification. Can't we just
     // save and reuse it?
-    return backend::EvaluateAs<module::Module const *>(
-               type::Typed<ast::Expression const *>(node->operand(),
-                                                    type::Module),
-               this)
-        ->GetDecl(node->member_name())
-        ->EmitValue(this);
+    auto decls =
+        backend::EvaluateAs<module::Module const *>(
+            type::Typed<ast::Expression const *>(node->operand(), type::Module),
+            this)
+            ->declarations(node->member_name());
+    switch (decls.size()) {
+      case 0: NOT_YET();
+      case 1: return decls[0]->EmitValue(this);
+      default: NOT_YET();
+    }
   }
 
   auto *this_type = type_of(node);

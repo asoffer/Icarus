@@ -613,10 +613,10 @@ TEST_CASE("overload set") {
   auto* bool_overload = ASSERT_NOT_NULL(nodes[0]->if_as<Expression>());
   auto* int_overload  = ASSERT_NOT_NULL(nodes[1]->if_as<Expression>());
 
-  compiler.module()->AppendStatements(std::move(nodes));
-  bool_overload->VerifyType(&compiler);
-  int_overload->VerifyType(&compiler);
-  compiler.module()->process();
+  mod.AppendStatements(std::move(nodes));
+  mod.process([&compiler](base::PtrSpan<Node const> nodes) {
+    for (Node const* node : nodes) { node->VerifyType(&compiler); }
+  });
 
   OverloadSet os;
   os.emplace(bool_overload, compiler::VerifyResult::Constant(type::Generic));
@@ -679,11 +679,10 @@ TEST_CASE("overload set") {
   }
 
   SECTION("without variant - matching one") {
-    auto variant = test::ParseAs<Declaration>("v: bool | float32 = true ");
-    auto* decl   = variant.get();
-    compiler.module()->Append(std::move(variant));
-    decl->VerifyType(&compiler);
-    compiler.module()->process();
+    mod.Append(test::ParseAs<Declaration>("v: bool | float32 = true "));
+    mod.process([&compiler](base::PtrSpan<Node const> nodes) {
+      for (Node const* node : nodes) { node->VerifyType(&compiler); }
+    });
 
     Call call_expr(frontend::SourceRange{}, test::ParseAs<Expression>("f"),
                    test::MakeFnArgs({"v"}, {}));
@@ -693,11 +692,11 @@ TEST_CASE("overload set") {
   }
 
   SECTION("without variant - matching both") {
-    auto variant = test::ParseAs<Declaration>("v: bool | int64 = true");
-    auto* decl   = variant.get();
-    compiler.module()->Append(std::move(variant));
-    decl->VerifyType(&compiler);
-    compiler.module()->process();
+    mod.Append(test::ParseAs<Declaration>("v: bool | int64 = true"));
+    mod.process([&compiler](base::PtrSpan<Node const> nodes) {
+      for (Node const* node : nodes) { node->VerifyType(&compiler); }
+    });
+
     Call call_expr(frontend::SourceRange{}, test::ParseAs<Expression>("f"),
                    test::MakeFnArgs({"v"}, {}));
     CHECK(

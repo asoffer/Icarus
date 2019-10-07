@@ -16,23 +16,22 @@
 #include "type/function.h"
 
 namespace backend {
-static void ReplEval(ast::Expression *expr) {
+static void ReplEval(ast::Expression const *expr,
+                     compiler::Compiler *compiler) {
   // TODO is nullptr for module okay here?
   ir::CompiledFn fn(nullptr, type::Func({}, {}), {});
   ICARUS_SCOPE(ir::SetCurrentFunc(&fn)) {
     ir::GetBuilder().CurrentBlock() = fn.entry();
-    // TODO use the right module
-    compiler::Compiler visitor(nullptr);
 
     // TODO support multiple values computed simultaneously?
-    auto expr_val = visitor.EmitValue(expr);
-    if (visitor.num_errors() != 0) {
-      visitor.DumpErrors();
+    auto expr_val = compiler->EmitValue(expr);
+    if (compiler->num_errors() != 0) {
+      compiler->DumpErrors();
       return;
     }
-    // TODO visitor.CompleteDeferredBodies();
-    auto *expr_type = visitor.type_of(expr);
-    if (expr_type != type::Void()) { visitor.EmitPrint(expr_type, expr_val); }
+    // TODO compiler->CompleteDeferredBodies();
+    auto *expr_type = compiler->type_of(expr);
+    if (expr_type != type::Void()) { compiler->EmitPrint(expr_type, expr_val); }
     ir::ReturnJump();
   }
 
@@ -46,38 +45,30 @@ int RunRepl() {
 
   frontend::ReplSource repl;
   module::Module mod;
-repl_start:;
-  {
-    mod.process();
+  compiler::Compiler compiler(&mod);
+
+  while (true) {
     mod.AppendStatements(frontend::Parse(&repl));
-    if (mod.error_log_.size() > 0) {
-      mod.error_log_.Dump();
-      goto repl_start;
-    }
+    mod.process([&](base::PtrSpan<ast::Node const> nodes) {
+      for (ast::Node const *node : nodes) {
+        if (node->is<ast::Declaration>()) {
+          auto *decl = &node->as<ast::Declaration>();
 
-    for (auto *stmt : mod.unprocessed()) {
-      if (stmt->is<ast::Declaration>()) {
-        auto *decl = &stmt->as<ast::Declaration>();
-
-        {
-          compiler::Compiler visitor(&mod);
-          visitor.VerifyType(decl);
-          visitor.EmitValue(decl);
-          // TODO visitor.CompleteDeferredBodies();
-          if (visitor.num_errors() != 0) {
-            visitor.DumpErrors();
-            goto repl_start;
+          {
+            compiler.VerifyType(decl);
+            compiler.EmitValue(decl);
+            // TODO compiler.CompleteDeferredBodies();
+            if (compiler.num_errors() != 0) { compiler.DumpErrors(); }
           }
-        }
 
-      } else if (stmt->is<ast::Expression>()) {
-        auto *expr = &stmt->as<ast::Expression>();
-        backend::ReplEval(expr);
-        fprintf(stderr, "\n");
-      } else {
-        NOT_YET(*stmt);
+        } else if (node->is<ast::Expression>()) {
+          auto *expr = &node->as<ast::Expression>();
+          backend::ReplEval(expr, &compiler);
+          fprintf(stderr, "\n");
+        } else {
+          NOT_YET(*node);
+        }
       }
-    }
-    goto repl_start;
+    });
   }
 }

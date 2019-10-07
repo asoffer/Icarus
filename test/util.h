@@ -49,8 +49,10 @@ std::pair<ast::OverloadSet, ast::Call*> MakeCall(
              compiler::VerifyResult::Constant(type::Func({}, {})));
   auto* expr = call_expr.get();
   compiler->module()->Append(std::move(call_expr));
-  expr->VerifyType(compiler);
-  compiler->module()->process();
+  compiler->module()->process(
+      [&compiler](base::PtrSpan<ast::Node const> nodes) {
+        for (ast::Node const* node : nodes) { node->VerifyType(compiler); }
+      });
   return std::pair(std::move(os), expr);
 }
 

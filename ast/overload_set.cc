@@ -34,18 +34,20 @@ void OverloadSet::add_adl(std::string_view id, type::Type const *t) {
   absl::flat_hash_set<module::Module const *> modules;
   t->ExtractDefiningModules(&modules);
 
-  for (auto *mod : modules) {
-    ASSIGN_OR(continue, auto &d, mod->GetDecl(id));
-    // TODO remove this const_cast.
-    ASSIGN_OR(continue, auto &t,
-              compiler::Compiler(const_cast<module::Module *>(mod)).type_of(&d));
-    // TODO handle this case. I think it's safe to just discard it.
+  for (auto const *mod : modules) {
+    auto decls = mod->declarations(id);
+    for (auto *d : decls) {
+      ASSIGN_OR(
+          continue, auto &t,
+          compiler::Compiler(const_cast<module::Module *>(mod)).type_of(d));
+      // TODO handle this case. I think it's safe to just discard it.
+      for (auto const &overload : *this) {
+        if (d == overload.expr) { return; }
+      }
 
-    for (auto const &overload : *this) {
-      if (&d == overload.expr) { return; }
+      // TODO const
+      emplace(d, compiler::VerifyResult{&t, true});
     }
-    // TODO const
-    emplace(&d, compiler::VerifyResult{&t, true});
   }
 }
 

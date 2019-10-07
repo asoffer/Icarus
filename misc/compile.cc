@@ -20,51 +20,38 @@ std::unique_ptr<module::Module> CompileModule(frontend::Source *src) {
   auto mod = std::make_unique<module::Module>();
 
   mod->AppendStatements(frontend::Parse(src));
+  compiler::Compiler compiler(mod.get());
+  mod->process([&](base::PtrSpan<ast::Node const> nodes) {
+    for (ast::Node const *node : nodes) { node->VerifyType(&compiler); }
+    if (compiler.num_errors() > 0) { return; }
 
-  if (mod->error_log_.size() > 0) {
-    mod->error_log_.Dump();
-    found_errors = true;
-    return mod;
-  }
+    for (ast::Node const *node : nodes) { node->EmitValue(&compiler); }
+    compiler.CompleteDeferredBodies();
+    if (compiler.num_errors() > 0) { return; }
 
-  compiler::Compiler visitor(mod.get());
-  for (auto const *stmt : mod->unprocessed()) { stmt->VerifyType(&visitor); }
+    for (ast::Node const *node : nodes) {
+      if (auto const *decl = node->if_as<ast::Declaration>()) {
+        if (decl->id() != "main") { continue; }
+        auto f = backend::EvaluateAs<ir::AnyFunc>(
+            type::Typed{decl->init_val(), compiler.type_of(decl->init_val())},
+            &compiler);
+        ASSERT(f.is_fn() == true);
+        auto ir_fn = f.func();
 
-  if (visitor.num_errors() > 0) {
-    // TODO Is this right?
-    visitor.DumpErrors();
-    found_errors = true;
-    return mod;
-  }
+        // TODO check more than one?
 
-  for (auto const *stmt : mod->unprocessed()) { stmt->EmitValue(&visitor); }
-  visitor.CompleteDeferredBodies();
-
-  if (visitor.num_errors() > 0) {
-    // TODO Is this right?
-    visitor.DumpErrors();
-    found_errors = true;
-    return mod;
-  }
-
-  for (auto const *stmt : mod->unprocessed()) {
-    if (auto const *decl = stmt->if_as<ast::Declaration>()) {
-      if (decl->id() != "main") { continue; }
-      auto f = backend::EvaluateAs<ir::AnyFunc>(
-          type::Typed{decl->init_val(), visitor.type_of(decl->init_val())},
-          &visitor);
-      ASSERT(f.is_fn() == true);
-      auto ir_fn = f.func();
-
-      // TODO check more than one?
-
-      // TODO need to be holding a lock when you do this.
-      main_fn = ir_fn;
-    } else {
-      continue;
+        // TODO need to be holding a lock when you do this.
+        main_fn = ir_fn;
+      } else {
+        continue;
+      }
     }
+  });
+
+  if (compiler.num_errors() > 0) {
+    found_errors = true;
+    return mod;
   }
 
-  mod->process();
   return mod;
 }

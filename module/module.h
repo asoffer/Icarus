@@ -5,6 +5,7 @@
 #include <string_view>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "base/ptr_span.h"
 #include "core/scope.h"
 #include "error/log.h"
@@ -23,18 +24,29 @@ struct Module {
   void AppendStatements(std::vector<std::unique_ptr<ast::Node>> stmts);
   void Append(std::unique_ptr<ast::Node> node);
 
-  ast::Declaration *GetDecl(std::string_view name) const;
+  absl::Span<ast::Declaration const *const> declarations(
+      std::string_view name) const;
 
-  base::PtrSpan<ast::Node> unprocessed();
-  base::PtrSpan<ast::Node const> unprocessed() const;
+  template <typename Fn>
+  void process(Fn &&fn) {
+    base::PtrSpan<ast::Node const> nodes(unprocessed_.begin(),
+                                         unprocessed_.end());
 
-  // TODO This is poorly named. It's just a simple way to mark that everything
-  // so far has been processed, but there are no invariants enforced yet.
-  // Ideally we'd fix this by wrapping some functor that does the processing.
-  void process();
+    IndexDeclarations(nodes);
+    std::forward<Fn>(fn)(nodes);
+
+    processed_.insert(processed_.end(),
+                      std::make_move_iterator(unprocessed_.begin()),
+                      std::make_move_iterator(unprocessed_.end()));
+    unprocessed_.clear();
+  }
 
  private:
+  void IndexDeclarations(base::PtrSpan<ast::Node const> nodes);
+
   core::ModuleScope scope_;
+  absl::flat_hash_map<std::string_view, std::vector<ast::Declaration const *>>
+      top_level_decls_;
   std::vector<std::unique_ptr<ast::Node>> processed_;
   std::vector<std::unique_ptr<ast::Node>> unprocessed_;
 

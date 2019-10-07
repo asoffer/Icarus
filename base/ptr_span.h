@@ -60,9 +60,12 @@ struct PtrSpan {
 
   T *operator[](size_t n) const { return ptr_[n].get(); }
 
-  template <typename Container>
+  template <
+      typename Container,
+      std::enable_if_t<!std::is_same_v<PtrSpan<T>, std::decay_t<Container>>> * =
+          nullptr>
   PtrSpan(Container &&c)
-      : ptr_(c.empty() ? nullptr : &c[0]), size_(c.size()) {}
+      : ptr_(c.empty() ? nullptr : std::addressof(c[0])), size_(c.size()) {}
   template <typename Iter>
   explicit PtrSpan(Iter b, Iter e)
       : ptr_(std::addressof(*b)),
