@@ -3,7 +3,6 @@ load("//:defs.bzl", "cc_lib_target")
 
 cc_lib_target(
     name = "assign_scope",
-    cfgs = ["match", "compile"],
     intf_deps = [
         "//ast:ast_fwd",
         "//core:scope",
@@ -14,7 +13,6 @@ cc_lib_target(
 
 cc_lib_target(
     name = "dependent_decls",
-    cfgs = ["match", "compile"],
     intf_deps = [
         "//ast:ast_fwd",
         "//base:graph",

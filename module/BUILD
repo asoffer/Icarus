@@ -22,9 +22,13 @@ cc_lib_target(
     name = "module",
     intf_deps = [
         ":pending",
+        "//base:ptr_span",
         "//core:scope",
         "//error:log",
-        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/algorithm:container",
     ],
-    impl_deps = ["//ast:ast"],
+    impl_deps = [
+        "//ast:ast",
+        "//visitor:assign_scope",
+    ],
 )

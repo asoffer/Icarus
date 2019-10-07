@@ -27,6 +27,7 @@ toolchain {
   compiler_flag: '-Wno-unused-parameter'
   compiler_flag: '-Wno-unused-variable'
   compiler_flag: '-Wno-unused-but-set-parameter'
+  compiler_flag: '-fno-exceptions'
   linker_flag: '-ldl'
   linker_flag: '-lstdc++fs'
   linker_flag: '-pthread'

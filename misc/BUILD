@@ -9,7 +9,6 @@ cc_group_target(
     deps = [
         ":constant_binding-impl",
         "//module:module-impl",
-        "//visitor:assign_scope",
     ])
 
 cc_lib_target(

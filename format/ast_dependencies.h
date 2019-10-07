@@ -2,3 +2,7 @@
 
 #include "ast/methods/dump.h"
 #include "format/token_extractor.h"
+
+// TODO remove these, they're not really necessary.
+#include "visitor/assign_scope.h"
+#include "visitor/dependent_decls.h"

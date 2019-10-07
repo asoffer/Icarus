@@ -36,6 +36,7 @@ cc_lib_target(
         "//frontend:parse",
         "//frontend/source:string",
         "//module:module",
+        "//type:function",
         "//:impl",
     ],
     impl_deps = None,

@@ -48,20 +48,16 @@ int RunRepl() {
   module::Module mod;
 repl_start:;
   {
+    mod.process();
     mod.AppendStatements(frontend::Parse(&repl));
     if (mod.error_log_.size() > 0) {
       mod.error_log_.Dump();
       goto repl_start;
     }
 
-    for (auto &stmt : mod.statements_) {
+    for (auto *stmt : mod.unprocessed()) {
       if (stmt->is<ast::Declaration>()) {
         auto *decl = &stmt->as<ast::Declaration>();
-
-        {
-          visitor::AssignScope visitor;
-          decl->assign_scope(&visitor, &mod.scope_);
-        }
 
         {
           compiler::Compiler visitor(&mod);
@@ -76,8 +72,6 @@ repl_start:;
 
       } else if (stmt->is<ast::Expression>()) {
         auto *expr = &stmt->as<ast::Expression>();
-        visitor::AssignScope visitor;
-        expr->assign_scope(&visitor, &mod.scope_);
         backend::ReplEval(expr);
         fprintf(stderr, "\n");
       } else {

@@ -5,7 +5,6 @@
 #include "frontend/source/file.h"
 #include "ir/compiled_fn.h"
 #include "module/module.h"
-#include "visitor/assign_scope.h"
 
 namespace frontend {
 std::vector<std::unique_ptr<ast::Node>> Parse(Source *src);
@@ -18,22 +17,18 @@ ir::CompiledFn *main_fn        = nullptr;
 // access to the source lines. All verification for this module must be done
 // inside this function.
 std::unique_ptr<module::Module> CompileModule(frontend::Source *src) {
-  auto mod = std::make_unique<module::Module>(frontend::Parse(src));
+  auto mod = std::make_unique<module::Module>();
+
+  mod->AppendStatements(frontend::Parse(src));
+
   if (mod->error_log_.size() > 0) {
     mod->error_log_.Dump();
     found_errors = true;
     return mod;
   }
 
-  {
-    visitor::AssignScope visitor;
-    for (auto &stmt : mod->statements_) {
-      stmt->assign_scope(&visitor, &mod->scope_);
-    }
-  }
-
   compiler::Compiler visitor(mod.get());
-  for (auto const &stmt : mod->statements_) { stmt->VerifyType(&visitor); }
+  for (auto const *stmt : mod->unprocessed()) { stmt->VerifyType(&visitor); }
 
   if (visitor.num_errors() > 0) {
     // TODO Is this right?
@@ -42,7 +37,7 @@ std::unique_ptr<module::Module> CompileModule(frontend::Source *src) {
     return mod;
   }
 
-  for (auto const &stmt : mod->statements_) { stmt->EmitValue(&visitor); }
+  for (auto const *stmt : mod->unprocessed()) { stmt->EmitValue(&visitor); }
   visitor.CompleteDeferredBodies();
 
   if (visitor.num_errors() > 0) {
@@ -52,7 +47,7 @@ std::unique_ptr<module::Module> CompileModule(frontend::Source *src) {
     return mod;
   }
 
-  for (auto const &stmt : mod->statements_) {
+  for (auto const *stmt : mod->unprocessed()) {
     if (auto const *decl = stmt->if_as<ast::Declaration>()) {
       if (decl->id() != "main") { continue; }
       auto f = backend::EvaluateAs<ir::AnyFunc>(
@@ -70,5 +65,6 @@ std::unique_ptr<module::Module> CompileModule(frontend::Source *src) {
     }
   }
 
+  mod->process();
   return mod;
 }

@@ -1593,13 +1593,13 @@ VerifyResult Compiler::VerifyType(ast::Import const *node) {
   auto src = backend::EvaluateAs<std::string_view>(
       type::Typed<ast::Expression const *>(node->operand(), type::ByteView),
       this);
-  // TODO not always a file source?!
-  ASSIGN_OR(error_log()->MissingModule(
-      src, module()->src_->as<frontend::FileSource>().path());
-            return VerifyResult::Error(),  //
-                   auto pending_mod,
-                   module::ImportModule(std::filesystem::path{src}, module(),
-                                        CompileModule));
+  // TODO source name?
+  ASSIGN_OR(
+      error_log()->MissingModule(src, std::filesystem::path{"TODO source"});
+      return VerifyResult::Error(),  //
+             auto pending_mod,
+             module::ImportModule(std::filesystem::path{src}, module(),
+                                  CompileModule));
 
   if (!pending_mod.valid()) { return VerifyResult::Error(); }
   set_pending_module(node, pending_mod);

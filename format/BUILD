@@ -15,6 +15,11 @@ cc_lib_target(
         "//ast/methods:dump",
         "//format:ast_methods-xmacro",
         "//format:token_extractor",
+
+        # TODO remove these... not necessary, just here because `type` still
+        # depends on Module uncoditionally.
+        "//visitor:assign_scope",
+        "//visitor:dependent_decls",
     ],
 )
 
@@ -50,6 +55,11 @@ cc_binary(
         "//ir:str-impl",
         "//module:module-impl-format",
         "//type:impl-format",
+
+        # TODO remove these... not necessary, just here because `type` still
+        # depends on Module uncoditionally.
+        "//visitor:assign_scope-impl-format",
+        "//visitor:dependent_decls-impl-format",
     ],
 )
 

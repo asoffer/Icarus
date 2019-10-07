@@ -5,7 +5,7 @@
 #include <string_view>
 #include <vector>
 
-#include "absl/container/flat_hash_map.h"
+#include "base/ptr_span.h"
 #include "core/scope.h"
 #include "error/log.h"
 #include "frontend/source/source.h"
@@ -13,7 +13,7 @@
 
 namespace module {
 struct Module {
-  explicit Module(std::vector<std::unique_ptr<ast::Node>> stmts = {});
+  Module();
   ~Module();
 
   // We take pointers to the module, so it cannot be moved.
@@ -21,15 +21,24 @@ struct Module {
   Module &operator=(Module &&) noexcept = delete;
 
   void AppendStatements(std::vector<std::unique_ptr<ast::Node>> stmts);
+  void Append(std::unique_ptr<ast::Node> node);
 
   ast::Declaration *GetDecl(std::string_view name) const;
 
-  core::ModuleScope scope_;
+  base::PtrSpan<ast::Node> unprocessed();
+  base::PtrSpan<ast::Node const> unprocessed() const;
 
-  // TODO long-term this is not a good way to store these. We should probably
-  // extract the declarations determine which are public, etc.
-  std::vector<std::unique_ptr<ast::Node>> statements_;
-  frontend::Source *src_ = nullptr;
+  // TODO This is poorly named. It's just a simple way to mark that everything
+  // so far has been processed, but there are no invariants enforced yet.
+  // Ideally we'd fix this by wrapping some functor that does the processing.
+  void process();
+
+ private:
+  core::ModuleScope scope_;
+  std::vector<std::unique_ptr<ast::Node>> processed_;
+  std::vector<std::unique_ptr<ast::Node>> unprocessed_;
+
+ public:
   error::Log error_log_;
 };
 }  // namespace module
