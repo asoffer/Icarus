@@ -16,11 +16,6 @@ Typed<ir::EnumVal, Enum> Enum::EmitLiteral(std::string_view member_name) const {
   return Typed<ir::EnumVal, Enum>(vals_.at(member_name), this);
 }
 
-void Enum::defining_modules(
-    absl::flat_hash_set<module::Module const *> *modules) const {
-  modules->insert(mod_);
-}
-
 void Enum::WriteTo(std::string *result) const {
   result->append("enum.");
   result->append(std::to_string(reinterpret_cast<uintptr_t>(this)));

@@ -18,11 +18,6 @@ Array const *Arr(size_t len, Type const *t) {
   return (*handle)[t].emplace(len, new Array(len, t)).first->second;
 }
 
-void Array::defining_modules(
-    absl::flat_hash_set<module::Module const *> *modules) const {
-  data_type->defining_modules(modules);
-}
-
 void Array::WriteTo(std::string *result) const {
   result->append("[");
   result->append(std::to_string(len));

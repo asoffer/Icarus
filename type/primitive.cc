@@ -9,9 +9,6 @@ namespace type {
 #include "type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
 
-void Primitive::defining_modules(
-    absl::flat_hash_set<module::Module const *> *modules) const {}
-
 void Primitive::WriteTo(std::string *result) const {
   switch (type_) {
 #define PRIMITIVE_MACRO(EnumName, name)                                        \

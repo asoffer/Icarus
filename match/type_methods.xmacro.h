@@ -1,3 +1,5 @@
+#include "module/extract_defining_modules.xmacro.h"
+
 ICARUS_TYPE_VISITOR(void EmitDestroy(compiler::Compiler *visitor,
                                      ir::Reg reg) const,
                     { visitor->EmitDestroy(this, reg); });

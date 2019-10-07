@@ -50,3 +50,16 @@ icarus_method(
     ],
     impl_deps = ["//ast:ast"],
 )
+
+icarus_method(
+    name = "extract_defining_modules",
+    intf_deps = [
+        "//type:type_fwd",
+        "@com_google_absl//absl/container:flat_hash_set",
+    ],
+    impl_deps = [
+        ":module",
+        "//type:concrete_types",
+        "//type:generic_struct",
+    ],
+)

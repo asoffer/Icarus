@@ -21,9 +21,6 @@ struct GenericFunction : public Callable {
 
 #include ICARUS_TYPE_VISITOR_METHODS
 
-  void defining_modules(
-      absl::flat_hash_set<module::Module const *> *modules) const override;
-
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;
 };

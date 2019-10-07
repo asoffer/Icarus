@@ -10,7 +10,7 @@ icarus_method(
         "//module:dependent_decls-xmacro",
     ],
     impl_deps = [
-        "//match:binding_node",
+        ":binding_node",
         "//ast:ast",
     ],
 )
@@ -29,6 +29,7 @@ cc_lib_target(
     name = "ast_dependencies",
     textual_hdrs = ["ast_dependencies.h"],
     intf_deps = [
+        ":ast_methods-xmacro",
         ":match_expr",
         "//module:assign_scope",
         "//module:dependent_decls",
@@ -37,7 +38,6 @@ cc_lib_target(
         "//ast/methods:dump",
         "//compiler:compiler",
         "//compiler:ast_methods-xmacro",
-        "//match:ast_methods-xmacro",
     ],
 )
 
@@ -46,6 +46,7 @@ icarus_method(
     deps = [
         "//compiler:compiler-match",
         "//visitor:type_query-match",
+        "//module:extract_defining_modules-xmacro",
     ],
     gen = False,
 )
@@ -55,9 +56,10 @@ cc_lib_target(
     cfgs = ["match"],
     textual_hdrs = ["type_dependencies.h"],
     intf_deps = [
+        ":type_methods-xmacro",
         "//compiler:compiler",
         "//visitor:type_query",
-        "//match:type_methods-xmacro",
+        "//module:extract_defining_modules",
     ],
 )
 

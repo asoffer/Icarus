@@ -14,6 +14,7 @@ struct Jump;
 struct Opaque;
 struct Pointer;
 struct Primitive;
+struct ParameterPack;
 struct Struct;
 struct Tuple;
 struct Type;

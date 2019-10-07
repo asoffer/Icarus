@@ -28,11 +28,6 @@ BufferPointer const *BufPtr(Type const *t) {
 
 }
 
-void Pointer::defining_modules(
-    absl::flat_hash_set<module::Module const *> *modules) const {
-  pointee->defining_modules(modules);
-}
-
 void static WriteStr(char const *ptr_str, Pointer const *ptr,
                   std::string *result) {
   bool needs_paren = ptr->pointee->is<Function>();

@@ -17,9 +17,6 @@ struct Opaque : public Type {
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;
 
-  void defining_modules(
-      absl::flat_hash_set<module::Module const *> *modules) const override;
-
   module::Module const *mod_;
 };
 

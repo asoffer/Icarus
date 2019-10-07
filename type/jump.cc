@@ -11,11 +11,6 @@ Jump const *Jmp(std::vector<Type const *> const &args) {
   return &*jmps_.lock()->emplace(args).first;
 }
 
-void Jump::defining_modules(
-    absl::flat_hash_set<module::Module const *> *modules) const {
-  for (auto const *arg : args_) { arg->defining_modules(modules); }
-}
-
 void Jump::WriteTo(std::string *r) const {
   absl::StrAppend(
       r, "jump(",

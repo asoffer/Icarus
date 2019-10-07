@@ -2,7 +2,5 @@
 
 #include "ast/methods/dump.h"
 #include "format/token_extractor.h"
-
-// TODO remove these, they're not really necessary.
 #include "module/assign_scope.h"
 #include "module/dependent_decls.h"

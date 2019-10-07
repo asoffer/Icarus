@@ -14,11 +14,6 @@ ParameterPack const *Pack(Type const *t) {
   return p.get();
 }
 
-void ParameterPack::defining_modules(
-    absl::flat_hash_set<module::Module const *> *modules) const {
-  elem->defining_modules(modules);
-}
-
 void ParameterPack::WriteTo(std::string *r) const {
   r->append("..");
   elem->WriteTo(r);

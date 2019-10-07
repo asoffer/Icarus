@@ -36,9 +36,7 @@ struct ScopeDef;
   ~name() {}                                                                   \
   void WriteTo(std::string *buf) const override;                               \
   core::Bytes bytes(core::Arch const &arch) const override;                    \
-  core::Alignment alignment(core::Arch const &arch) const override;            \
-  void defining_modules(absl::flat_hash_set<module::Module const *> *modules)        \
-      const override
+  core::Alignment alignment(core::Arch const &arch) const override
 
 namespace type {
 
@@ -55,8 +53,6 @@ struct Type : public base::Cast<Type> {
   virtual void WriteTo(std::string *buf) const                    = 0;
   virtual core::Bytes bytes(core::Arch const &arch) const         = 0;
   virtual core::Alignment alignment(core::Arch const &arch) const = 0;
-  virtual void defining_modules(
-      absl::flat_hash_set<module::Module const *> *modules) const = 0;
 
 #define ICARUS_TYPE_VISITOR(signature, body)                                   \
   virtual signature { UNREACHABLE(); }

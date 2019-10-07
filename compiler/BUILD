@@ -16,11 +16,11 @@ cc_lib_target(
     cfgs = ["compile"],
     textual_hdrs = ["ast_dependencies.h"],
     intf_deps = [
+        ":ast_methods-xmacro",
+        ":compiler",
         "//ir:results",
         "//module:dependent_decls",
         "//ast/methods:dump",
-        "//compiler:compiler",
-        "//compiler:ast_methods-xmacro",
         "//module:assign_scope",
         "//visitor:extract_jumps",
     ],
@@ -31,6 +31,7 @@ icarus_method(
     deps = [
         "//compiler:compiler-compile",
         "//visitor:type_query-compile",
+        "//module:extract_defining_modules-xmacro",
     ],
     gen = False,
 )
@@ -40,9 +41,10 @@ cc_lib_target(
     cfgs = ["compile"],
     textual_hdrs = ["type_dependencies.h"],
     intf_deps = [
-        "//compiler:compiler",
+        ":compiler",
+        ":type_methods-xmacro",
         "//visitor:type_query",
-        "//compiler:type_methods-xmacro",
+        "//module:extract_defining_modules",
     ],
 )
 

@@ -6,22 +6,12 @@
 namespace type {
 Type const *Generic = new GenericFunction;
 
-void GenericFunction::defining_modules(
-    absl::flat_hash_set<module::Module const *> *modules) const {
-  NOT_YET();
-}
-
 core::Bytes GenericFunction::bytes(core::Arch const &) const {
   return core::Host().ptr_bytes;
 }
 
 core::Alignment GenericFunction::alignment(core::Arch const &) const {
   return core::Host().ptr_alignment;
-}
-
-void Function::defining_modules(
-    absl::flat_hash_set<module::Module const *> *modules) const {
-  NOT_YET();
 }
 
 static base::guarded<std::map<std::vector<Type const *>,

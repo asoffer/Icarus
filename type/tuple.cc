@@ -33,11 +33,6 @@ core::Bytes Tuple::offset(size_t field_num, core::Arch const &a) const {
   return offset;
 }
 
-void Tuple::defining_modules(
-    absl::flat_hash_set<module::Module const *> *modules) const {
-  for (auto *entry : entries_) { entry->defining_modules(modules); }
-}
-
 void Tuple::WriteTo(std::string *result) const {
   if (entries_.empty()) {
     result->append("()");

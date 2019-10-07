@@ -111,6 +111,7 @@ cc_lib_target(
         ":ast",
         "//compiler:compiler",
         "//core:scope",
+        "//module:extract_defining_modules",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
     test_deps = None,

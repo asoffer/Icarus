@@ -51,6 +51,7 @@ COMMON_IMPL_DEPS = [
         "//type:cast-impl",
         "//module:assign_scope-impl",
         "//module:dependent_decls-impl",
+        "//module:extract_defining_modules-impl",
         "//ast/methods:dump-impl",
         "//visitor:extract_jumps-impl",
         "//visitor:type_query-impl",

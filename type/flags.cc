@@ -15,11 +15,6 @@ Typed<ir::FlagsVal, Flags> Flags::EmitLiteral(
   return Typed<ir::FlagsVal, Flags>(vals_.at(member_name), this);
 }
 
-void Flags::defining_modules(
-    absl::flat_hash_set<module::Module const *> *modules) const {
-  modules->insert(mod_);
-}
-
 void Flags::WriteTo(std::string *result) const {
   result->append("flags.");
   result->append(std::to_string(reinterpret_cast<uintptr_t>(this)));

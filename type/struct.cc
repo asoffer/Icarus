@@ -43,11 +43,6 @@ Struct::Field const *Struct::field(std::string_view name) const {
   return &fields_[iter->second];
 }
 
-void Struct::defining_modules(
-    absl::flat_hash_set<module::Module const *> *modules) const {
-  modules->insert(defining_module());
-}
-
 void Struct::WriteTo(std::string *result) const {
   result->append("struct.");
   result->append(std::to_string(reinterpret_cast<uintptr_t>(this)));

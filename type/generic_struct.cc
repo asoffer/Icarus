@@ -6,11 +6,6 @@ GenericStruct *GenStruct(core::Scope const* scope, std::vector<Type const *> ts)
   return new GenericStruct(scope, std::move(ts));
 }
 
-void GenericStruct::defining_modules(
-    absl::flat_hash_set<module::Module const *> *modules) const {
-  modules->insert(defining_module());
-}
-
 void GenericStruct::WriteTo(std::string *result) const {
   result->append("[");
   if (!deps_.empty()) {

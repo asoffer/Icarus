@@ -32,7 +32,7 @@ OverloadSet::OverloadSet(core::Scope *scope, std::string_view id,
 
 void OverloadSet::add_adl(std::string_view id, type::Type const *t) {
   absl::flat_hash_set<module::Module const *> modules;
-  t->defining_modules(&modules);
+  t->ExtractDefiningModules(&modules);
 
   for (auto *mod : modules) {
     ASSIGN_OR(continue, auto &d, mod->GetDecl(id));

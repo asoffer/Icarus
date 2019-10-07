@@ -19,9 +19,6 @@ cc_lib_target(
         "//ast/methods:dump",
         "//format:ast_methods-xmacro",
         "//format:token_extractor",
-
-        # TODO remove these... not necessary, just here because `type` still
-        # depends on Module uncoditionally.
         "//module:assign_scope",
         "//module:dependent_decls",
     ],
@@ -29,7 +26,7 @@ cc_lib_target(
 
 icarus_method(
     name = "type_methods",
-    deps = [],
+    deps = ["//module:extract_defining_modules-xmacro"],
     gen = False,
 )
 
@@ -39,6 +36,7 @@ cc_lib_target(
     textual_hdrs = ["type_dependencies.h"],
     intf_deps = [
         "//format:type_methods-xmacro",
+        "//module:extract_defining_modules"
     ],
 )
 
@@ -57,13 +55,11 @@ cc_binary(
         "//init:signal-impl",
         "//ir:results-impl",
         "//ir:str-impl",
-        "//module:module-impl-format",
-        "//type:impl-format",
-
-        # TODO remove these... not necessary, just here because `type` still
-        # depends on Module uncoditionally.
         "//module:assign_scope-impl-format",
         "//module:dependent_decls-impl-format",
+        "//module:extract_defining_modules-impl-format",
+        "//module:module-impl-format",
+        "//type:impl-format",
     ],
 )
 

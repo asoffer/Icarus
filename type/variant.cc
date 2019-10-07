@@ -50,11 +50,6 @@ Type const *Var(std::vector<Type const *> variants) {
               .first->second;
 }
 
-void Variant::defining_modules(
-    absl::flat_hash_set<module::Module const *> *modules) const {
-  for (auto *v : variants_) { v->defining_modules(modules); }
-}
-
 void Variant::WriteTo(std::string *result) const {
   auto iter = variants_.begin();
 
