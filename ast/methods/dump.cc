@@ -6,6 +6,7 @@
 #include "base/stringify.h"
 #include "frontend/token.h"
 #include "ir/results.h"
+#include "type/type.h"
 
 namespace ast {
 std::string Dump::ToString(ast::Node const *node) {
@@ -390,25 +391,46 @@ void Dump::operator()(ast::Switch const *node) {
 }
 
 void Dump::operator()(ast::Terminal const *node) {
-  type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                   uint32_t, uint64_t, float, double, bool, type::Type const *,
-                   std::string_view, ir::BlockDef *>(
-      node->type(), [&](auto tag) {
-        using T = typename decltype(tag)::type;
-        if constexpr (std::is_same_v<T, bool>) {
-          absl::StrAppend(out_, node->template as<T>() ? "true" : "false");
-        } else if constexpr (std::is_same_v<T, type::Type const *>) {
-          absl::StrAppend(out_, node->template as<T>()->to_string());
-        } else if constexpr (std::is_same_v<T, ir::BlockDef *>) {
-          absl::StrAppend(
-              out_,
-              base::stringify(node->value().get<ir::BlockDef *>(0).value()));
-        } else if constexpr (std::is_same_v<T, std::string_view>) {
-          absl::StrAppend(out_, node->template as<T>());
-        } else {
-          absl::StrAppend(out_, node->template as<T>(), "_", typeid(T).name());
-        }
-      });
+  switch (node->basic_type()) {
+    case type::BasicType::Int8:
+      absl::StrAppend(out_, node->as<int8_t>(), "_i8");
+      return;
+    case type::BasicType::Nat8:
+      absl::StrAppend(out_, node->as<uint8_t>(), "_u8");
+      return;
+    case type::BasicType::Int16:
+      absl::StrAppend(out_, node->as<int16_t>(), "_i16");
+      return;
+    case type::BasicType::Nat16:
+      absl::StrAppend(out_, node->as<uint16_t>(), "_u16");
+      return;
+    case type::BasicType::Int32:
+      absl::StrAppend(out_, node->as<int32_t>(), "_i32");
+      return;
+    case type::BasicType::Nat32:
+      absl::StrAppend(out_, node->as<uint32_t>(), "_u32");
+      return;
+    case type::BasicType::Int64:
+      absl::StrAppend(out_, node->as<int64_t>(), "_i64");
+      return;
+    case type::BasicType::Nat64:
+      absl::StrAppend(out_, node->as<uint64_t>(), "_u64");
+      return;
+    case type::BasicType::Float32:
+      absl::StrAppend(out_, node->as<float>(), "_f32");
+      return;
+    case type::BasicType::Float64:
+      absl::StrAppend(out_, node->as<double>(), "_f64");
+      return;
+    case type::BasicType::Type_:
+      absl::StrAppend(out_, node->as<type::Type const *>()->to_string());
+      return;
+    case type::BasicType::Bool:
+      absl::StrAppend(out_, node->as<bool>() ? "true" : "false");
+      return;
+    default:;
+  }
+  UNREACHABLE();
 }
 
 void Dump::operator()(ast::Unop const *node) {

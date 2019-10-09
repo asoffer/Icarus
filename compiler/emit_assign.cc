@@ -176,22 +176,22 @@ void Compiler::EmitCopyAssign(
     type::Typed<ir::Results> const &from) {
   ASSERT(t == from.type());
   switch (t->type_) {
-    case type::PrimType::Type_:
+    case type::BasicType::Type_:
       ir::Store(from->get<type::Type const *>(0), to);
       break;
-    case type::PrimType::NullPtr: UNREACHABLE();
-    case type::PrimType::EmptyArray: UNREACHABLE();
-    case type::PrimType::Bool: ir::Store(from->get<bool>(0), to); break;
-    case type::PrimType::Int8: ir::Store(from->get<int8_t>(0), to); break;
-    case type::PrimType::Int16: ir::Store(from->get<int16_t>(0), to); break;
-    case type::PrimType::Int32: ir::Store(from->get<int32_t>(0), to); break;
-    case type::PrimType::Int64: ir::Store(from->get<int64_t>(0), to); break;
-    case type::PrimType::Nat8: ir::Store(from->get<uint8_t>(0), to); break;
-    case type::PrimType::Nat16: ir::Store(from->get<uint16_t>(0), to); break;
-    case type::PrimType::Nat32: ir::Store(from->get<uint32_t>(0), to); break;
-    case type::PrimType::Nat64: ir::Store(from->get<uint64_t>(0), to); break;
-    case type::PrimType::Float32: ir::Store(from->get<float>(0), to); break;
-    case type::PrimType::Float64: ir::Store(from->get<double>(0), to); break;
+    case type::BasicType::NullPtr: UNREACHABLE();
+    case type::BasicType::EmptyArray: UNREACHABLE();
+    case type::BasicType::Bool: ir::Store(from->get<bool>(0), to); break;
+    case type::BasicType::Int8: ir::Store(from->get<int8_t>(0), to); break;
+    case type::BasicType::Int16: ir::Store(from->get<int16_t>(0), to); break;
+    case type::BasicType::Int32: ir::Store(from->get<int32_t>(0), to); break;
+    case type::BasicType::Int64: ir::Store(from->get<int64_t>(0), to); break;
+    case type::BasicType::Nat8: ir::Store(from->get<uint8_t>(0), to); break;
+    case type::BasicType::Nat16: ir::Store(from->get<uint16_t>(0), to); break;
+    case type::BasicType::Nat32: ir::Store(from->get<uint32_t>(0), to); break;
+    case type::BasicType::Nat64: ir::Store(from->get<uint64_t>(0), to); break;
+    case type::BasicType::Float32: ir::Store(from->get<float>(0), to); break;
+    case type::BasicType::Float64: ir::Store(from->get<double>(0), to); break;
     default: UNREACHABLE();
   }
 }

@@ -15,6 +15,7 @@
 #include "ir/results.h"
 #include "ir/values.h"
 #include "module/module.h"
+#include "type/basic_type.h"
 
 #include ICARUS_TYPE_VISITOR_DEPENDENCIES
 
@@ -82,6 +83,17 @@ Type const *Void();
 #include "type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
 extern Type const *Generic;
+
+inline type::Type const *Prim(BasicType b) {
+  switch (b) {
+#define PRIMITIVE_MACRO(EnumName, name)                                        \
+  case BasicType::EnumName:                                                        \
+    return EnumName;
+#include "type/primitive.xmacro.h"
+#undef PRIMITIVE_MACRO
+  }
+  UNREACHABLE();
+}
 
 template <typename T>
 bool Compare(::type::Type const *t) {

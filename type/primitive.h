@@ -1,19 +1,15 @@
 #ifndef ICARUS_TYPE_PRIMITIVE_H
 #define ICARUS_TYPE_PRIMITIVE_H
 
+#include "type/basic_type.h"
 #include "type/type.h"
 
 namespace type {
-enum class PrimType : char {
-#define PRIMITIVE_MACRO(EnumName, name) EnumName,
-#include "type/primitive.xmacro.h"
-#undef PRIMITIVE_MACRO
-};
 
 struct Primitive : public Type {
  public:
   TYPE_FNS(Primitive);
-  Primitive(PrimType pt) : type_(pt) {}
+  Primitive(BasicType pt) : type_(pt) {}
 
 #include ICARUS_TYPE_VISITOR_METHODS
 
@@ -21,7 +17,7 @@ struct Primitive : public Type {
 
   bool is_integral() const;
 
-  PrimType type_;
+  BasicType type_;
 };
 
 }  // namespace type

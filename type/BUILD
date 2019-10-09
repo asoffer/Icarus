@@ -170,6 +170,14 @@ cc_lib_target(
     test_deps = None,
 )
 
+cc_component(
+    name = "basic_type",
+    textual_hdrs = ["primitive.xmacro.h"],
+    intf_deps = [],
+    impl_deps = None,
+    test_deps = None,
+)
+
 cc_lib_target(
     name = "primitive",
     textual_hdrs = ["primitive.xmacro.h"],
@@ -226,6 +234,7 @@ cc_lib_target(
     textual_hdrs = ["primitive.xmacro.h"],
     intf_deps = [
         type_dependency,
+        ":basic_type",
         "//base:debug",
         "//base:meta",
         "//base:tag",

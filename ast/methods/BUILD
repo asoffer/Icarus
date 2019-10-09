@@ -10,6 +10,7 @@ icarus_method(
         "//ast/methods:dump-xmacro",
         "//frontend:token",
         "//ir:results",
+        "//type:type",
         "@com_google_absl//absl/strings",
     ],
 )

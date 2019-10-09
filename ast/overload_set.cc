@@ -4,6 +4,7 @@
 #include "ast/ast.h"
 #include "base/ptr_span.h"
 #include "core/scope.h"
+#include "type/type.h"
 
 namespace ast {
 

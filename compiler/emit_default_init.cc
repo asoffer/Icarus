@@ -41,20 +41,20 @@ void Compiler::EmitDefaultInit(type::Pointer const *t,
 void Compiler::EmitDefaultInit(type::Primitive const *t,
                                              ir::Reg reg) {
   switch (t->type_) {
-    case type::PrimType::Type_: ir::Store(type::Void(), reg); break;
-    case type::PrimType::NullPtr: UNREACHABLE();
-    case type::PrimType::EmptyArray: UNREACHABLE();
-    case type::PrimType::Bool: ir::Store(false, reg); break;
-    case type::PrimType::Int8: ir::Store(static_cast<int8_t>(0), reg); break;
-    case type::PrimType::Int16: ir::Store(static_cast<int16_t>(0), reg); break;
-    case type::PrimType::Int32: ir::Store(static_cast<int32_t>(0), reg); break;
-    case type::PrimType::Int64: ir::Store(static_cast<int64_t>(0), reg); break;
-    case type::PrimType::Nat8: ir::Store(static_cast<uint8_t>(0), reg); break;
-    case type::PrimType::Nat16: ir::Store(static_cast<uint16_t>(0), reg); break;
-    case type::PrimType::Nat32: ir::Store(static_cast<uint32_t>(0), reg); break;
-    case type::PrimType::Nat64: ir::Store(static_cast<uint64_t>(0), reg); break;
-    case type::PrimType::Float32: ir::Store(0.0f, reg); break;
-    case type::PrimType::Float64: ir::Store(0.0, reg); break;
+    case type::BasicType::Type_: ir::Store(type::Void(), reg); break;
+    case type::BasicType::NullPtr: UNREACHABLE();
+    case type::BasicType::EmptyArray: UNREACHABLE();
+    case type::BasicType::Bool: ir::Store(false, reg); break;
+    case type::BasicType::Int8: ir::Store(static_cast<int8_t>(0), reg); break;
+    case type::BasicType::Int16: ir::Store(static_cast<int16_t>(0), reg); break;
+    case type::BasicType::Int32: ir::Store(static_cast<int32_t>(0), reg); break;
+    case type::BasicType::Int64: ir::Store(static_cast<int64_t>(0), reg); break;
+    case type::BasicType::Nat8: ir::Store(static_cast<uint8_t>(0), reg); break;
+    case type::BasicType::Nat16: ir::Store(static_cast<uint16_t>(0), reg); break;
+    case type::BasicType::Nat32: ir::Store(static_cast<uint32_t>(0), reg); break;
+    case type::BasicType::Nat64: ir::Store(static_cast<uint64_t>(0), reg); break;
+    case type::BasicType::Float32: ir::Store(0.0f, reg); break;
+    case type::BasicType::Float64: ir::Store(0.0, reg); break;
     default: UNREACHABLE();
   }
 }

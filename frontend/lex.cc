@@ -71,29 +71,45 @@ Lexeme NextWord(SourceCursor *cursor, Source *src) {
   std::string_view token = word_cursor.view();
   auto span              = word_cursor.range();
 
-  static absl::flat_hash_map<std::string_view,
-                             std::pair<ir::Results, type::Type const *>> const
-      Reserved{
-          {"bool", std::pair(ir::Results{type::Bool}, type::Type_)},
-          {"int8", std::pair(ir::Results{type::Int8}, type::Type_)},
-          {"int16", std::pair(ir::Results{type::Int16}, type::Type_)},
-          {"int32", std::pair(ir::Results{type::Int32}, type::Type_)},
-          {"int64", std::pair(ir::Results{type::Int64}, type::Type_)},
-          {"nat8", std::pair(ir::Results{type::Nat8}, type::Type_)},
-          {"nat16", std::pair(ir::Results{type::Nat16}, type::Type_)},
-          {"nat32", std::pair(ir::Results{type::Nat32}, type::Type_)},
-          {"nat64", std::pair(ir::Results{type::Nat64}, type::Type_)},
-          {"float32", std::pair(ir::Results{type::Float32}, type::Type_)},
-          {"float64", std::pair(ir::Results{type::Float64}, type::Type_)},
-          {"type", std::pair(ir::Results{type::Type_}, type::Type_)},
-          {"module", std::pair(ir::Results{type::Module}, type::Type_)},
-          {"true", std::pair(ir::Results{true}, type::Bool)},
-          {"false", std::pair(ir::Results{false}, type::Bool)},
-          {"null", std::pair(ir::Results{ir::Addr::Null()}, type::NullPtr)},
-          {"byte_view", std::pair(ir::Results{type::ByteView}, type::Type_)},
-          {"exit", std::pair(ir::Results{ir::BlockDef::Exit()}, type::Block)},
-          {"start", std::pair(ir::Results{ir::BlockDef::Start()}, type::Block)},
-      };
+  static absl::flat_hash_map<
+      std::string_view, std::pair<ir::Results, type::BasicType>> const Reserved{
+      {"bool",
+       std::pair(ir::Results{type::BasicType::Bool}, type::BasicType::Type_)},
+      {"int8",
+       std::pair(ir::Results{type::BasicType::Int8}, type::BasicType::Type_)},
+      {"int16",
+       std::pair(ir::Results{type::BasicType::Int16}, type::BasicType::Type_)},
+      {"int32",
+       std::pair(ir::Results{type::BasicType::Int32}, type::BasicType::Type_)},
+      {"int64",
+       std::pair(ir::Results{type::BasicType::Int64}, type::BasicType::Type_)},
+      {"nat8",
+       std::pair(ir::Results{type::BasicType::Nat8}, type::BasicType::Type_)},
+      {"nat16",
+       std::pair(ir::Results{type::BasicType::Nat16}, type::BasicType::Type_)},
+      {"nat32",
+       std::pair(ir::Results{type::BasicType::Nat32}, type::BasicType::Type_)},
+      {"nat64",
+       std::pair(ir::Results{type::BasicType::Nat64}, type::BasicType::Type_)},
+      {"float32", std::pair(ir::Results{type::BasicType::Float32},
+                            type::BasicType::Type_)},
+      {"float64", std::pair(ir::Results{type::BasicType::Float64},
+                            type::BasicType::Type_)},
+      {"type",
+       std::pair(ir::Results{type::BasicType::Type_}, type::BasicType::Type_)},
+      {"module",
+       std::pair(ir::Results{type::BasicType::Module}, type::BasicType::Type_)},
+      {"true", std::pair(ir::Results{true}, type::BasicType::Bool)},
+      {"false", std::pair(ir::Results{false}, type::BasicType::Bool)},
+      {"null",
+       std::pair(ir::Results{ir::Addr::Null()}, type::BasicType::NullPtr)},
+      {"byte_view", std::pair(ir::Results{type::BasicType::ByteView},
+                              type::BasicType::Type_)},
+      {"exit",
+       std::pair(ir::Results{ir::BlockDef::Exit()}, type::BasicType::Block)},
+      {"start",
+       std::pair(ir::Results{ir::BlockDef::Start()}, type::BasicType::Block)},
+  };
 
   if (auto iter = Reserved.find(token); iter != Reserved.end()) {
     auto const & [ results, type ] = iter->second;
@@ -142,14 +158,19 @@ Lexeme NextNumber(SourceCursor *cursor, Source *src, error::Log *error_log) {
   if (!num.has_value()) {
     // TODO should you do something with guessing the type?
     error_log->InvalidNumber(span, num.error().to_string());
-    return Lexeme(std::make_unique<ast::Terminal>(std::move(span),
-                                                  ir::Results{0}, type::Int32));
+    return Lexeme(std::make_unique<ast::Terminal>(
+        std::move(span), ir::Results{0}, type::BasicType::Int32));
   }
   return std::visit(
-      [&span](auto x) {
-        return Lexeme(std::make_unique<ast::Terminal>(
-            std::move(span), ir::Results{x}, type::Get<decltype(x)>()));
-      },
+      base::overloaded{
+          [&span](int64_t x) {
+            return Lexeme(std::make_unique<ast::Terminal>(
+                std::move(span), ir::Results{x}, type::BasicType::Int64));
+          },
+          [&span](double x) {
+            return Lexeme(std::make_unique<ast::Terminal>(
+                std::move(span), ir::Results{x}, type::BasicType::Float64));
+          }},
       *num);
 }
 
@@ -417,7 +438,7 @@ restart:
           NextStringLiteral(&state->cursor_, state->src_, state->error_log_);
       return Lexeme(std::make_unique<ast::Terminal>(
           std::move(span), ir::Results{ir::SaveStringGlobally(str)},
-          type::ByteView));
+          type::BasicType::ByteView));
 
     } break;
     case '#': return NextHashtag(&state->cursor_, state->src_);

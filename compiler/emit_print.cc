@@ -86,27 +86,26 @@ void Compiler::EmitPrint(type::Pointer const *t,
 void Compiler::EmitPrint(type::Primitive const *t,
                                        ir::Results const &val) {
   switch (t->type_) {
-    case type::PrimType::Bool: ir::Print(val.get<bool>(0)); break;
-    case type::PrimType::Int8: ir::Print(val.get<int8_t>(0)); break;
-    case type::PrimType::Int16: ir::Print(val.get<int16_t>(0)); break;
-    case type::PrimType::Int32: ir::Print(val.get<int32_t>(0)); break;
-    case type::PrimType::Int64: ir::Print(val.get<int64_t>(0)); break;
-    case type::PrimType::Nat8: ir::Print(val.get<uint8_t>(0)); break;
-    case type::PrimType::Nat16: ir::Print(val.get<uint16_t>(0)); break;
-    case type::PrimType::Nat32: ir::Print(val.get<uint32_t>(0)); break;
-    case type::PrimType::Nat64: ir::Print(val.get<uint64_t>(0)); break;
-    case type::PrimType::Float32: ir::Print(val.get<float>(0)); break;
-    case type::PrimType::Float64: ir::Print(val.get<double>(0)); break;
-    case type::PrimType::Type_:
+    case type::BasicType::Bool: ir::Print(val.get<bool>(0)); break;
+    case type::BasicType::Int8: ir::Print(val.get<int8_t>(0)); break;
+    case type::BasicType::Int16: ir::Print(val.get<int16_t>(0)); break;
+    case type::BasicType::Int32: ir::Print(val.get<int32_t>(0)); break;
+    case type::BasicType::Int64: ir::Print(val.get<int64_t>(0)); break;
+    case type::BasicType::Nat8: ir::Print(val.get<uint8_t>(0)); break;
+    case type::BasicType::Nat16: ir::Print(val.get<uint16_t>(0)); break;
+    case type::BasicType::Nat32: ir::Print(val.get<uint32_t>(0)); break;
+    case type::BasicType::Nat64: ir::Print(val.get<uint64_t>(0)); break;
+    case type::BasicType::Float32: ir::Print(val.get<float>(0)); break;
+    case type::BasicType::Float64: ir::Print(val.get<double>(0)); break;
+    case type::BasicType::Type_:
       ir::Print(val.get<type::Type const *>(0));
       break;
-    case type::PrimType::Ctx:
-    case type::PrimType::Scope:
-    case type::PrimType::NullPtr:
-    case type::PrimType::EmptyArray:
-    case type::PrimType::Module:
-    case type::PrimType::Block: UNREACHABLE();
-    case type::PrimType::ByteView:
+    case type::BasicType::Scope:
+    case type::BasicType::NullPtr:
+    case type::BasicType::EmptyArray:
+    case type::BasicType::Module:
+    case type::BasicType::Block: UNREACHABLE();
+    case type::BasicType::ByteView:
       ir::Print(val.get<std::string_view>(0));
       break;
   }

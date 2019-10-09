@@ -20,7 +20,7 @@
 #include "frontend/operators.h"
 #include "ir/block_def.h"
 #include "ir/results.h"
-#include "type/primitive.h"
+#include "type/basic_type.h"
 
 namespace ast {
 
@@ -597,22 +597,73 @@ struct FunctionLiteral : public Expression {
 // typically numeric literals, or expressions that are also keywords such as
 // `true`, `false`, or `null`.
 struct Terminal : public Expression {
-  explicit Terminal(frontend::SourceRange span, ir::Results results, type::Type const *t)
-      : Expression(std::move(span)), results_(std::move(results)), type_(t) {}
+  template <typename T>
+  explicit Terminal(frontend::SourceRange span, T value, type::BasicType t)
+      : Expression(std::move(span)), basic_(t) {
+    if constexpr (std::is_same_v<T, bool>) {
+      b_ = value;
+    } else if constexpr (std::is_signed_v<T>) {
+      i64_ = value;
+    } else if constexpr (std::is_unsigned_v<T>) {
+      u64_ = value;
+    } else if constexpr (std::is_same_v<T, std::string_view>) {
+      sv_ = value;
+    } else {
+      UNREACHABLE();
+    }
+  }
   ~Terminal() override {}
 
-  type::Type const *type() const { return type_; }
-  ir::Results const &value() const { return results_; }
+  type::BasicType basic_type() const { return basic_; }
+
+  // TODO remove. This should be a variant or union.
+  ir::Results value() const {
+    switch (basic_) {
+      using type::BasicType;
+      case BasicType::Int8: return ir::Results{static_cast<int8_t>(i64_)};
+      case BasicType::Nat8: return ir::Results{static_cast<uint8_t>(u64_)};
+      case BasicType::Int16: return ir::Results{static_cast<int16_t>(i64_)};
+      case BasicType::Nat16: return ir::Results{static_cast<uint16_t>(u64_)};
+      case BasicType::Int32: return ir::Results{static_cast<int32_t>(i64_)};
+      case BasicType::Nat32: return ir::Results{static_cast<uint32_t>(u64_)};
+      case BasicType::Int64: return ir::Results{i64_};
+      case BasicType::Nat64: return ir::Results{u64_};
+      case BasicType::ByteView: return ir::Results{sv_};
+      case BasicType::Bool: return ir::Results{b_};
+      case BasicType::Type_:
+        return ir::Results{reinterpret_cast<type::Type const *>(ptr_)};
+      default:;
+    }
+    UNREACHABLE();
+  }
+
+  // TODO rename to value_as, or something like that.
   template <typename T>
   T as() const {
-    return results_.get<T>(0).value();
+    if constexpr (std::is_signed_v<T>) {
+      return static_cast<T>(i64_);
+    } else if constexpr (std::is_unsigned_v<T>) {
+      return static_cast<T>(u64_);
+    } else if constexpr (std::is_same_v<T, bool>) {
+      return b_;
+    } else if constexpr (std::is_same_v<T, std::string_view>) {
+      return sv_;
+    } else {
+      NOT_YET();
+    }
   }
 
 #include ICARUS_AST_VISITOR_METHODS
 
  private:
-  ir::Results results_;
-  type::Type const *type_;
+  type::BasicType basic_;
+  union {
+    bool b_;
+    int64_t i64_;
+    uint64_t u64_;
+    uintptr_t ptr_;
+    std::string_view sv_;
+  };
 };
 
 // Identifier:
@@ -1016,6 +1067,7 @@ struct Unop : public Expression {
   Expression const *operand() const { return operand_.get(); }
   Expression *operand() { return operand_.get(); }
 
+ private:
   std::unique_ptr<Expression> operand_;
   frontend::Operator op_;
 };

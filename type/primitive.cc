@@ -5,14 +5,14 @@
 
 namespace type {
 #define PRIMITIVE_MACRO(EnumName, name)                                        \
-  Type const *EnumName = new Primitive(PrimType::EnumName);
+  Type const *EnumName = new Primitive(BasicType::EnumName);
 #include "type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
 
 void Primitive::WriteTo(std::string *result) const {
   switch (type_) {
 #define PRIMITIVE_MACRO(EnumName, name)                                        \
-  case PrimType::EnumName:                                                     \
+  case BasicType::EnumName:                                                     \
     result->append(name);                                                      \
     return;
 #include "type/primitive.xmacro.h"
@@ -23,14 +23,14 @@ void Primitive::WriteTo(std::string *result) const {
 
 bool Primitive::is_integral() const {
   switch (type_) {
-    case PrimType::Int8:
-    case PrimType::Int16:
-    case PrimType::Int32:
-    case PrimType::Int64:
-    case PrimType::Nat8:
-    case PrimType::Nat16:
-    case PrimType::Nat32:
-    case PrimType::Nat64: return true;
+    case BasicType::Int8:
+    case BasicType::Int16:
+    case BasicType::Int32:
+    case BasicType::Int64:
+    case BasicType::Nat8:
+    case BasicType::Nat16:
+    case BasicType::Nat32:
+    case BasicType::Nat64: return true;
     default: return false;
   }
 }
@@ -39,65 +39,68 @@ core::Bytes Primitive::bytes(core::Arch const &a) const {
   switch (type_) {
     // Types are stored as pointers on the host and integers on the target
     // machine that are as wide as host pointers.
-    case PrimType::Type_: return core::Host().ptr_bytes;
-    case PrimType::NullPtr: return a.ptr_bytes;
-    case PrimType::EmptyArray: return core::Bytes{0};
-    case PrimType::Bool: return core::Bytes{1};
-    case PrimType::Int8: return core::Bytes{1};
-    case PrimType::Int16: return core::Bytes{2};
-    case PrimType::Int32: return core::Bytes{4};
-    case PrimType::Int64: return core::Bytes{8};
-    case PrimType::Nat8: return core::Bytes{1};
-    case PrimType::Nat16: return core::Bytes{2};
-    case PrimType::Nat32: return core::Bytes{4};
-    case PrimType::Nat64: return core::Bytes{8};
-    case PrimType::Float32: return core::Bytes{4};
-    case PrimType::Float64: return core::Bytes{8};
-    case PrimType::Module: return core::Host().ptr_bytes;
-    case PrimType::Scope: return core::Host().ptr_bytes;
-    case PrimType::Block: return core::Host().ptr_bytes;
-    case PrimType::ByteView:
+    case BasicType::Type_: return core::Host().ptr_bytes;
+    case BasicType::NullPtr: return a.ptr_bytes;
+    case BasicType::EmptyArray: return core::Bytes{0};
+    case BasicType::Bool: return core::Bytes{1};
+    case BasicType::Int8: return core::Bytes{1};
+    case BasicType::Int16: return core::Bytes{2};
+    case BasicType::Int32: return core::Bytes{4};
+    case BasicType::Int64: return core::Bytes{8};
+    case BasicType::Nat8: return core::Bytes{1};
+    case BasicType::Nat16: return core::Bytes{2};
+    case BasicType::Nat32: return core::Bytes{4};
+    case BasicType::Nat64: return core::Bytes{8};
+    case BasicType::Float32: return core::Bytes{4};
+    case BasicType::Float64: return core::Bytes{8};
+    case BasicType::Module: return core::Host().ptr_bytes;
+    case BasicType::Scope: return core::Host().ptr_bytes;
+    case BasicType::Block: return core::Host().ptr_bytes;
+    case BasicType::ByteView:
       // TODO generalize to other architectures.
       return core::Bytes{sizeof(std::string_view)};
-    default: UNREACHABLE(to_string());
+    default:;
   }
+  UNREACHABLE(to_string());
 }
 
 core::Alignment Primitive::alignment(core::Arch const &a) const {
   switch (type_) {
     // Types are stored as pointers on the host and integers on the target
     // machine that are as wide as host pointers.
-    case PrimType::Type_: return core::Host().ptr_alignment;
-    case PrimType::NullPtr: return a.ptr_alignment;
-    case PrimType::EmptyArray: return core::Alignment{1};
-    case PrimType::Bool: return core::Alignment{1};
-    case PrimType::Int8: return core::Alignment{1};
-    case PrimType::Int16: return core::Alignment{2};
-    case PrimType::Int32: return core::Alignment{4};
-    case PrimType::Int64: return core::Alignment{8};
-    case PrimType::Nat8: return core::Alignment{1};
-    case PrimType::Nat16: return core::Alignment{2};
-    case PrimType::Nat32: return core::Alignment{4};
-    case PrimType::Nat64: return core::Alignment{8};
-    case PrimType::Float32: return core::Alignment{4};
-    case PrimType::Float64: return core::Alignment{8};
-    case PrimType::Module: return core::Host().ptr_alignment;
-    case PrimType::Scope: return core::Host().ptr_alignment;
-    case PrimType::Block: return core::Host().ptr_alignment;
-    case PrimType::ByteView:
+    case BasicType::Type_: return core::Host().ptr_alignment;
+    case BasicType::NullPtr: return a.ptr_alignment;
+    case BasicType::EmptyArray: return core::Alignment{1};
+    case BasicType::Bool: return core::Alignment{1};
+    case BasicType::Int8: return core::Alignment{1};
+    case BasicType::Int16: return core::Alignment{2};
+    case BasicType::Int32: return core::Alignment{4};
+    case BasicType::Int64: return core::Alignment{8};
+    case BasicType::Nat8: return core::Alignment{1};
+    case BasicType::Nat16: return core::Alignment{2};
+    case BasicType::Nat32: return core::Alignment{4};
+    case BasicType::Nat64: return core::Alignment{8};
+    case BasicType::Float32: return core::Alignment{4};
+    case BasicType::Float64: return core::Alignment{8};
+    case BasicType::Module: return core::Host().ptr_alignment;
+    case BasicType::Scope: return core::Host().ptr_alignment;
+    case BasicType::Block: return core::Host().ptr_alignment;
+    case BasicType::ByteView:
       // TODO generalize to other architectures.
       return core::Alignment{alignof(std::string_view)};
-    default: UNREACHABLE(to_string());
+    default:;
   }
+  UNREACHABLE(to_string());
 }
 
 bool Primitive::TestEquality(void const *lhs, void const *rhs) const {
   switch (type_) {
-    case PrimType::Int64:
-      return *reinterpret_cast<int64_t const *>(lhs) ==
-             *reinterpret_cast<int64_t const *>(rhs);
-    default: UNREACHABLE();
+    case BasicType::Int64:
+      return reinterpret_cast<uintptr_t>(lhs) ==
+             reinterpret_cast<uintptr_t>(rhs);
+    default:;
   }
+  UNREACHABLE();
 }
 
 }  // namespace type

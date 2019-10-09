@@ -1954,7 +1954,8 @@ VerifyResult Compiler::VerifyType(ast::Switch const *node) {
 }
 
 VerifyResult Compiler::VerifyType(ast::Terminal const *node) {
-  return set_result(node, VerifyResult::Constant(node->type()));
+  return set_result(node,
+                    VerifyResult::Constant(type::Prim(node->basic_type())));
 }
 
 VerifyResult Compiler::VerifyType(ast::Unop const *node) {
