@@ -55,8 +55,8 @@ constexpr type::Type const *Get() {
     return type::Block; // Maybe opt-block?
   } else if constexpr (std::is_same_v<T, type::Type const *>) {
     return type::Type_;
-  } else if constexpr (std::is_same_v<T, module::Module *> ||
-                       std::is_same_v<T, module::Module const *>) {
+  } else if constexpr (std::is_same_v<T, module::BasicModule *> ||
+                       std::is_same_v<T, module::BasicModule const *>) {
     return type::Module;
   } else if constexpr (std::is_same_v<T, ast::FunctionLiteral *>) {
     return type::Generic;

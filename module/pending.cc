@@ -21,10 +21,10 @@ struct PathHasher {
 std::mutex mtx;
 absl::node_hash_set<std::filesystem::path, PathHasher> all_paths;
 base::Graph<std::filesystem::path const *> import_dep_graph;
-std::list<std::shared_future<Module *>> pending_module_futures;
-absl::node_hash_map<
-    std::filesystem::path const *,
-    std::pair<std::shared_future<Module *> *, std::unique_ptr<Module>>>
+std::list<std::shared_future<BasicModule *>> pending_module_futures;
+absl::node_hash_map<std::filesystem::path const *,
+                    std::pair<std::shared_future<BasicModule *> *,
+                              std::unique_ptr<BasicModule>>>
     all_modules;
 }  // namespace
 
@@ -41,10 +41,10 @@ CanonicalizePath(std::filesystem::path const &p) {
   return std::pair{&*iter, newly_inserted};
 }
 
-Module *PendingModule::get() {
-  if ((data_ & 1) == 0) { return reinterpret_cast<Module *>(data_); }
-  Module *result =
-      reinterpret_cast<std::shared_future<Module *> *>(data_ - 1)->get();
+BasicModule *PendingModule::get() {
+  if ((data_ & 1) == 0) { return reinterpret_cast<BasicModule *>(data_); }
+  BasicModule *result =
+      reinterpret_cast<std::shared_future<BasicModule *> *>(data_ - 1)->get();
   *this = PendingModule{result};
   return result;
 }
@@ -65,8 +65,8 @@ void AwaitAllModulesTransitively() {
 }
 
 base::expected<PendingModule> ImportModule(
-    std::filesystem::path const &src, Module const *requestor,
-    std::unique_ptr<Module> (*fn)(frontend::Source *)) {
+    std::filesystem::path const &src, BasicModule const *requestor,
+    std::unique_ptr<BasicModule> (*fn)(frontend::Source *)) {
   std::lock_guard lock(mtx);
   ASSIGN_OR(return _.error(), auto dependee, CanonicalizePath(src));
   auto const *canonical_src = dependee.first;
@@ -86,7 +86,7 @@ base::expected<PendingModule> ImportModule(
 
   fut = &pending_module_futures.emplace_back(std::async(
       std::launch::async,
-      [fn, canonical_src, mod(&iter->second.second)]() -> Module * {
+      [fn, canonical_src, mod(&iter->second.second)]() -> BasicModule * {
         // TODO error messages.
         ASSIGN_OR(return nullptr, frontend::FileSource file_src,
                          frontend::FileSource::Make(*canonical_src));

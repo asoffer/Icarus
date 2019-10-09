@@ -14,12 +14,9 @@
 #include "ir/reg.h"
 #include "ir/results.h"
 #include "ir/values.h"
+#include "module/module.h"
 
 #include ICARUS_TYPE_VISITOR_DEPENDENCIES
-
-namespace module {
-struct Module;
-}  // namespace module
 
 namespace ast {
 struct FunctionLiteral;
@@ -132,8 +129,8 @@ bool Compare(::type::Type const *t) {
     return t->is<::type::Jump>();
   } else if constexpr (std::is_same_v<T, ast::FunctionLiteral *>) {
     return t == ::type::Generic;
-  } else if constexpr (std::is_same_v<T, module::Module *> ||
-                       std::is_same_v<T, module::Module const *>) {
+  } else if constexpr (std::is_same_v<T, module::BasicModule *> ||
+                       std::is_same_v<T, module::BasicModule const *>) {
     return t == ::type::Module;
   } else if constexpr (std::is_same_v<T, ir::BlockDef const *>) {
     return t == ::type::Block;
@@ -173,7 +170,7 @@ auto Apply(Type const *t, Fn &&fn) {
   return ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                     uint32_t, uint64_t, float, double, type::Type const *,
                     ir::EnumVal, ir::FlagsVal, ir::Addr, std::string_view,
-                    module::Module *, type::Struct const *, ir::ScopeDef *,
+                    module::BasicModule *, type::Struct const *, ir::ScopeDef *,
                     ir::AnyFunc, ir::BlockDef const *, ast::FunctionLiteral *>(
       t, std::forward<Fn>(fn));
 }

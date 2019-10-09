@@ -6,24 +6,23 @@
 
 #include "base/expected.h"
 #include "frontend/source/source.h"
-
+#include "module.h"
 
 namespace module {
-struct Module;
 
 // A `PendingModule` represents a module that is currently being loaded but for
 // which the data may not yet be available.
 struct PendingModule {
  public:
   PendingModule() = default;
-  explicit PendingModule(Module *mod)
+  explicit PendingModule(BasicModule *mod)
       : data_(reinterpret_cast<uintptr_t>(mod)) {}
-  explicit PendingModule(std::shared_future<Module *> *mod)
+  explicit PendingModule(std::shared_future<BasicModule *> *mod)
       : data_(reinterpret_cast<uintptr_t>(mod) | 0x01) {}
 
   // Returns the compiled module, possibly blocking if `get` is called before
   // the module has finished compiling.
-  Module *get();
+  BasicModule *get();
 
   bool valid() const { return data_ != 0; }
 
@@ -32,8 +31,8 @@ struct PendingModule {
 };
 
 base::expected<PendingModule> ImportModule(
-    std::filesystem::path const &src, Module const *requestor,
-    std::unique_ptr<Module> (*fn)(frontend::Source *));
+    std::filesystem::path const &src, BasicModule const *requestor,
+    std::unique_ptr<BasicModule> (*fn)(frontend::Source *));
 void AwaitAllModulesTransitively();
 
 }  // namespace module

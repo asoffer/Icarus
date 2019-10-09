@@ -13,7 +13,7 @@ namespace ir {
 AnyFunc BytesFn() {
   static CompiledFn *bytes_func_ = [&]() {
     auto fn = new CompiledFn(
-        nullptr, type::Func({type::Type_}, {type::Int64}),
+        type::Func({type::Type_}, {type::Int64}),
         core::FnParams(core::Param(
             "", type::Typed<ast::Expression const *>(nullptr, type::Type_))));
     ICARUS_SCOPE(SetCurrentFunc(fn)) {
@@ -29,7 +29,7 @@ AnyFunc BytesFn() {
 AnyFunc AlignmentFn() {
   static CompiledFn *bytes_func_ = [&]() {
     auto fn = new CompiledFn(
-        nullptr, type::Func({type::Type_}, {type::Int64}),
+        type::Func({type::Type_}, {type::Int64}),
         core::FnParams(core::Param(
             "", type::Typed<ast::Expression const *>(nullptr, type::Type_))));
 

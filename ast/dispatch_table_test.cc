@@ -22,7 +22,7 @@ ResultsForArgs(compiler::Compiler* visitor,
 }
 
 TEST_CASE("() -> ()") {
-  module::Module mod;
+  module::BasicModule mod;
   compiler::Compiler compiler(&mod);
 
   auto call_with = [&](std::vector<std::string>&& pos,
@@ -75,7 +75,7 @@ TEST_CASE("() -> ()") {
 }
 
 TEST_CASE("(b: bool) -> ()") {
-  module::Module mod;
+  module::BasicModule mod;
   compiler::Compiler compiler(&mod);
 
   auto call_with = [&](std::vector<std::string>&& pos,
@@ -170,7 +170,7 @@ TEST_CASE("(b: bool) -> ()") {
 }
 
 TEST_CASE("(b := true) -> ()") {
-  module::Module mod;
+  module::BasicModule mod;
   compiler::Compiler compiler(&mod);
 
   auto call_with = [&](std::vector<std::string>&& pos,
@@ -265,7 +265,7 @@ TEST_CASE("(b := true) -> ()") {
 }
 
 TEST_CASE("(n: int64, b: bool) -> ()") {
-  module::Module mod;
+  module::BasicModule mod;
   compiler::Compiler compiler(&mod);
 
   auto call_with = [&](std::vector<std::string>&& pos,
@@ -375,7 +375,7 @@ TEST_CASE("(n: int64, b: bool) -> ()") {
 }
 
 TEST_CASE("(T :: type) -> *T") {
-  module::Module mod;
+  module::BasicModule mod;
   compiler::Compiler compiler(&mod);
 
   auto call_with = [&](std::vector<std::string>&& pos,
@@ -435,7 +435,7 @@ TEST_CASE("(T :: type) -> *T") {
 }
 
 TEST_CASE("(T ::= bool) -> *T") {
-  module::Module mod;
+  module::BasicModule mod;
   compiler::Compiler compiler(&mod);
 
   auto call_with = [&](std::vector<std::string>&& pos,
@@ -495,7 +495,7 @@ TEST_CASE("(T ::= bool) -> *T") {
 }
 
 TEST_CASE("(val: T, T ::= bool) -> *T") {
-  module::Module mod;
+  module::BasicModule mod;
   compiler::Compiler compiler(&mod);
 
   auto call_with = [&](std::vector<std::string>&& pos,
@@ -603,7 +603,7 @@ TEST_CASE("(val: T, T ::= bool) -> *T") {
 }
 
 TEST_CASE("overload set") {
-  module::Module mod;
+  module::BasicModule mod;
   compiler::Compiler compiler(&mod);
 
   std::vector<std::unique_ptr<ast::Node>> nodes;

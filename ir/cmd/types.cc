@@ -5,7 +5,7 @@ namespace {
 
 template <bool IsEnumNotFlags>
 Reg EnumerationImpl(
-    module::Module *mod, absl::Span<std::string_view const> names,
+    module::BasicModule *mod, absl::Span<std::string_view const> names,
     absl::flat_hash_map<uint64_t, RegOr<EnumerationCmd::enum_t>> const
         &specified_values) {
   auto &blk = *GetBuilder().CurrentBlock();
@@ -32,13 +32,13 @@ Reg EnumerationImpl(
 }
 }  // namespace
 
-Reg Enum(module::Module *mod, absl::Span<std::string_view const> names,
+Reg Enum(module::BasicModule *mod, absl::Span<std::string_view const> names,
          absl::flat_hash_map<uint64_t, RegOr<EnumerationCmd::enum_t>> const
              &specified_values) {
   return EnumerationImpl<true>(mod, names, specified_values);
 }
 
-Reg Flags(module::Module *mod, absl::Span<std::string_view const> names,
+Reg Flags(module::BasicModule *mod, absl::Span<std::string_view const> names,
           absl::flat_hash_map<uint64_t, RegOr<EnumerationCmd::enum_t>> const
               &specified_values) {
   return EnumerationImpl<false>(mod, names, specified_values);
@@ -50,7 +50,7 @@ BasicBlock const *EnumerationCmd::Execute(base::untyped_buffer::const_iterator *
   bool is_enum_not_flags   = iter->read<bool>();
   uint16_t num_enumerators = iter->read<uint16_t>();
   uint16_t num_specified   = iter->read<uint16_t>();
-  module::Module *mod      = iter->read<module::Module *>();
+  module::BasicModule *mod      = iter->read<module::BasicModule *>();
   std::vector<std::pair<std::string_view, std::optional<enum_t>>> enumerators;
   enumerators.reserve(num_enumerators);
   for (uint16_t i = 0; i < num_enumerators; ++i) {
@@ -132,7 +132,7 @@ std::string EnumerationCmd::DebugString(
   bool is_enum_not_flags   = iter->read<bool>();
   uint16_t num_enumerators = iter->read<uint16_t>();
   uint16_t num_specified   = iter->read<uint16_t>();
-  iter->read<module::Module *>();
+  iter->read<module::BasicModule *>();
   std::vector<std::pair<uint16_t, std::string_view>> names;
   names.reserve(num_enumerators);
   for (uint16_t i = 0; i < num_enumerators; ++i) {
@@ -170,7 +170,7 @@ void EnumerationCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
   iter->read<bool>();
   uint16_t num_enumerators = iter->read<uint16_t>();
   uint16_t num_specified   = iter->read<uint16_t>();
-  iter->read<module::Module *>();
+  iter->read<module::BasicModule *>();
   for (uint16_t i = 0; i < num_enumerators; ++i) {
     // TODO jump ahead.
     iter->read<std::string_view>();
@@ -196,7 +196,7 @@ BasicBlock const *StructCmd::Execute(base::untyped_buffer::const_iterator *iter,
   auto num = iter->read<uint16_t>();
   fields.reserve(num);
   auto *scope = iter->read<core::Scope const *>();
-  auto *mod   = iter->read<module::Module *>();
+  auto *mod   = iter->read<module::BasicModule *>();
   for (uint16_t i = 0; i < num; ++i) {
     fields.emplace_back(iter->read<std::string_view>(), nullptr);
   }
@@ -220,14 +220,14 @@ void StructCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
                                   Inliner const &inliner) {
   auto num = iter->read<uint16_t>();
   iter->read<core::Scope *>();
-  iter->read<module::Module *>();
+  iter->read<module::BasicModule *>();
   for (uint16_t i = 0; i < num; ++i) { iter->read<std::string_view>(); }
   internal::Deserialize<uint16_t, type::Type const *>(
       iter, [&inliner](Reg &reg) { inliner.Inline(&reg); });
   inliner.Inline(&iter->read<Reg>(), ::type::Type_);
 }
 
-Reg Struct(core::Scope const *scope, module::Module *mod,
+Reg Struct(core::Scope const *scope, module::BasicModule *mod,
            std::vector<std::tuple<std::string_view, RegOr<type::Type const *>>>
                fields) {
   auto &blk = *GetBuilder().CurrentBlock();
@@ -258,7 +258,7 @@ BasicBlock const *OpaqueTypeCmd::Execute(base::untyped_buffer::const_iterator *i
                                          std::vector<Addr> const &ret_slots,
                                          backend::ExecContext *ctx) {
   auto &frame = ctx->call_stack.top();
-  auto *mod   = iter->read<module::Module const *>();
+  auto *mod   = iter->read<module::BasicModule const *>();
   frame.regs_.set(GetOffset(frame.fn_, iter->read<Reg>()),
                   new type::Opaque(mod));
   return nullptr;
@@ -271,7 +271,7 @@ std::string OpaqueTypeCmd::DebugString(
 
 void OpaqueTypeCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
                                       Inliner const &inliner) {
-  iter->read<module::Module const *>();
+  iter->read<module::BasicModule const *>();
   inliner.Inline(&iter->read<Reg>());
 }
 
@@ -347,7 +347,7 @@ RegOr<type::Function const *> Arrow(
   return RegOr<type::Function const *>{result};
 }
 
-Reg OpaqueType(module::Module const *mod) {
+Reg OpaqueType(module::BasicModule const *mod) {
   auto &blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append_index<OpaqueTypeCmd>();
   blk.cmd_buffer_.append(mod);

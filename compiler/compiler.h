@@ -47,12 +47,15 @@ namespace compiler {
 // water.
 
 struct Compiler {
-  Compiler(module::Module *mod);
+  Compiler(module::BasicModule *mod);
   ~Compiler();
 
-  module::Module *module() { return mod_; }
+  module::BasicModule *module() { return mod_; }
   ir::Builder &builder() { return bldr_; };
-  error::Log *error_log() { return &module()->error_log_; }
+
+  // TODO Depending on if we're streaming or batching errors, we may want one
+  // log per module, or one per compiler instance.
+  error::Log *error_log() { return &error_log_; }
   size_t num_errors() { return error_log()->size(); }
   void DumpErrors() { error_log()->Dump(); }
 
@@ -211,7 +214,7 @@ struct Compiler {
                     type::Typed<ir::Reg> to_var);
 
  private:
-  module::Module *mod_;
+  module::BasicModule *mod_;
   ir::Builder &bldr_;
 
  public:  // TODO make private
@@ -272,6 +275,8 @@ struct Compiler {
   // pointer stability. A vector of unique_ptrs would also work, but would
   // unnecessarily reallocate with some frequency..
   std::list<std::pair<ConstantBinding, DependentData>> dep_data_;
+
+  error::Log error_log_;
 };
 }  // namespace compiler
 

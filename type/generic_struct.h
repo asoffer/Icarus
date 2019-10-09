@@ -15,10 +15,10 @@ struct GenericStruct : public Callable {
 
 #include ICARUS_TYPE_VISITOR_METHODS
 
-  module::Module const *defining_module() const { return mod_; }
+  module::BasicModule const *defining_module() const { return mod_; }
 
-  core::Scope const *scope_ = nullptr;
-  module::Module const *mod_      = nullptr;
+  core::Scope const *scope_       = nullptr;
+  module::BasicModule const *mod_ = nullptr;
   std::vector<Type const *> deps_;
 };
 

@@ -8,13 +8,12 @@
 namespace ir {
 
 CompiledFn::CompiledFn(
-    module::Module *mod, type::Function const *fn_type,
+    type::Function const *fn_type,
     core::FnParams<type::Typed<ast::Expression const *>> params)
     : type_(fn_type),
       params_(std::move(params)),
       num_regs_(
-          static_cast<int32_t>(type_->input.size() + type_->output.size())),
-      mod_(mod) {
+          static_cast<int32_t>(type_->input.size() + type_->output.size())) {
   auto arch = core::Interpretter();
   int32_t i = 0;
   for (auto *t : type_->input) {

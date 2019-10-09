@@ -8,18 +8,15 @@
 #include "absl/container/flat_hash_map.h"
 #include "base/ptr_span.h"
 #include "core/scope.h"
-#include "error/log.h"
-#include "frontend/source/source.h"
-#include "module/pending.h"
 
 namespace module {
-struct Module {
-  Module();
-  ~Module();
+struct BasicModule {
+  BasicModule();
+  ~BasicModule();
 
   // We take pointers to the module, so it cannot be moved.
-  Module(Module &&) noexcept = delete;
-  Module &operator=(Module &&) noexcept = delete;
+  BasicModule(BasicModule &&) noexcept = delete;
+  BasicModule &operator=(BasicModule &&) noexcept = delete;
 
   void AppendStatements(std::vector<std::unique_ptr<ast::Node>> stmts);
   void Append(std::unique_ptr<ast::Node> node);
@@ -49,10 +46,18 @@ struct Module {
       top_level_decls_;
   std::vector<std::unique_ptr<ast::Node>> processed_;
   std::vector<std::unique_ptr<ast::Node>> unprocessed_;
-
- public:
-  error::Log error_log_;
 };
+
+template <typename Extension = void>
+struct ExtendedModule : BasicModule {
+ private:
+  Extension ext_;
+};
+
+template <>
+struct ExtendedModule<void> : BasicModule {};
+
+using Module = ExtendedModule<void>;
 }  // namespace module
 
 #endif  // ICARUS_MODULE_MODULE_H

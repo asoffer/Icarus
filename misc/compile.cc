@@ -16,8 +16,8 @@ ir::CompiledFn *main_fn        = nullptr;
 // Once this function exits the file is destructed and we no longer have
 // access to the source lines. All verification for this module must be done
 // inside this function.
-std::unique_ptr<module::Module> CompileModule(frontend::Source *src) {
-  auto mod = std::make_unique<module::Module>();
+std::unique_ptr<module::BasicModule> CompileModule(frontend::Source *src) {
+  auto mod = std::make_unique<module::BasicModule>();
 
   mod->AppendStatements(frontend::Parse(src));
   compiler::Compiler compiler(mod.get());

@@ -4,6 +4,7 @@ load("//:defs.bzl", "cc_lib_target", "icarus_method")
 cc_lib_target(
     name = "pending",
     intf_deps = [
+        ":module",
         "//base:expected",
         "//frontend/source:source",
     ],
@@ -21,10 +22,8 @@ cc_lib_target(
 cc_lib_target(
     name = "module",
     intf_deps = [
-        ":pending",
         "//base:ptr_span",
         "//core:scope",
-        "//error:log",
         "@com_google_absl//absl/algorithm:container",
     ],
     impl_deps = [

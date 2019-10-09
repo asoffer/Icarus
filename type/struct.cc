@@ -9,9 +9,9 @@
 
 namespace type {
 Struct::Struct(
-    core::Scope const *scope, module::Module const *mod,
+    core::Scope const *scope, module::BasicModule const *mod,
     absl::Span<std::tuple<std::string_view, type::Type const *> const> fields)
-    : scope_(scope), mod_(const_cast<module::Module *>(mod)) {
+    : scope_(scope), mod_(const_cast<module::BasicModule *>(mod)) {
   fields_.reserve(fields.size());
   size_t i = 0;
   for (auto [name, t] : fields) {

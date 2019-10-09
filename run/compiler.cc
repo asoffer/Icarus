@@ -6,6 +6,7 @@
 #include "base/expected.h"
 #include "base/untyped_buffer.h"
 #include "base/util.h"
+#include "error/log.h"
 #include "ir/compiled_fn.h"
 #include "module/module.h"
 #include "module/pending.h"
@@ -18,7 +19,7 @@ extern ir::CompiledFn *main_fn;
 
 extern std::atomic<bool> found_errors;
 
-std::unique_ptr<module::Module> CompileModule(frontend::Source *);
+std::unique_ptr<module::BasicModule> CompileModule(frontend::Source *);
 
 int RunCompiler() {
   void *libc_handle = dlopen("/lib/x86_64-linux-gnu/libc.so.6", RTLD_LAZY);
@@ -44,8 +45,6 @@ int RunCompiler() {
     // TODO make this an actual error?
     std::cerr << "No compiled module has a `main` function.\n";
   } else if (!found_errors) {
-    ASSERT(main_fn->mod_ != nullptr);
-
     // TODO All the functions? In all the modules?
     opt::CombineBlocks(main_fn);
 

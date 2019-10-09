@@ -10,7 +10,7 @@
 
 namespace compiler {
 
-Compiler::Compiler(module::Module *mod) : mod_(mod), bldr_(ir::GetBuilder()) {
+Compiler::Compiler(module::BasicModule *mod) : mod_(mod), bldr_(ir::GetBuilder()) {
   dep_data_.emplace_back();
   constants_ = &dep_data_.front();
 }
@@ -36,7 +36,7 @@ type::Type const *Compiler::type_of(ast::Expression const *expr) const {
   // TODO reenabel once modules are all in core.
   // // When searching in embedded modules we intentionally look with no bound
   // // constants. Across module boundaries, a declaration can't be present anyway.
-  // for (module::Module const *mod : mod_->scope_.embedded_modules_) {
+  // for (module::BasicModule const *mod : mod_->scope_.embedded_modules_) {
   //   // TODO use right constants
   //   if (auto iter = mod->dep_data_.front().second.verify_results_.find(expr);
   //       iter != mod->dep_data_.front().second.verify_results_.end()) {
@@ -139,8 +139,8 @@ ir::CompiledFn *Compiler::AddFunc(
     type::Function const *fn_type,
     core::FnParams<type::Typed<ast::Expression const *>> params) {
   return fns_
-      .emplace_back(std::make_unique<ir::CompiledFn>(module(), fn_type,
-                                                     std::move(params)))
+      .emplace_back(
+          std::make_unique<ir::CompiledFn>(fn_type, std::move(params)))
       .get();
 }
 
@@ -148,8 +148,8 @@ ir::CompiledFn *Compiler::AddJump(
     type::Jump const *jump_type,
     core::FnParams<type::Typed<ast::Expression const *>> params) {
   return fns_
-      .emplace_back(std::make_unique<ir::CompiledFn>(
-          module(), jump_type->ToFunction(), std::move(params)))
+      .emplace_back(std::make_unique<ir::CompiledFn>(jump_type->ToFunction(),
+                                                     std::move(params)))
       .get();
 }
 

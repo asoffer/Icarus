@@ -19,7 +19,7 @@ struct Expression : public Node {
 
   virtual ~Expression() {}
 
-  module::Module *module() const { return scope_->module(); }
+  module::BasicModule *module() const { return scope_->module(); }
 
   virtual bool needs_expansion() const { return false; }
   std::vector<Hashtag> hashtags_;

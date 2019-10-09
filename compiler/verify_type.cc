@@ -15,7 +15,7 @@
 #include "type/typed_value.h"
 #include "type/util.h"
 
-std::unique_ptr<module::Module> CompileModule(frontend::Source *);
+std::unique_ptr<module::BasicModule> CompileModule(frontend::Source *);
 
 namespace ir {
 
@@ -655,7 +655,7 @@ VerifyResult Compiler::VerifyType(ast::Access const *node) {
       return VerifyResult::Error();
     }
 
-    auto *mod = backend::EvaluateAs<module::Module const *>(
+    auto *mod = backend::EvaluateAs<module::BasicModule const *>(
         type::Typed{node->operand(), operand_result.type_}, this);
     auto decls = mod->declarations(node->member_name());
     type::Type const *t;
@@ -663,7 +663,7 @@ VerifyResult Compiler::VerifyType(ast::Access const *node) {
       case 0: NOT_YET();
       case 1:
         // TODO remove this const_cast.
-        t = Compiler(const_cast<module::Module *>(mod)).type_of(decls[0]);
+        t = Compiler(const_cast<module::BasicModule *>(mod)).type_of(decls[0]);
         break;
       default: NOT_YET();
     }
@@ -1444,7 +1444,7 @@ VerifyResult Compiler::VerifyType(ast::Declaration const *node) {
       // TODO check shadowing against other modules?
       // TODO what if no init val is provded? what if not constant?
       node->scope_->embedded_modules_.insert(
-          backend::EvaluateAs<module::Module const *>(
+          backend::EvaluateAs<module::BasicModule const *>(
               type::Typed<ast::Expression const *>(node->init_val(),
                                                    type::Module),
               this));

@@ -28,7 +28,7 @@ struct Struct : public Type {
     std::vector<ast::Hashtag> hashtags_;
   };
 
-  Struct(core::Scope const *scope, module::Module const *mod,
+  Struct(core::Scope const *scope, module::BasicModule const *mod,
          absl::Span<std::tuple<std::string_view, type::Type const *> const>);
 
   ~Struct() override {}
@@ -41,7 +41,7 @@ struct Struct : public Type {
   // Return the type of a field, or a nullptr if it doesn't exist
   Field const *field(std::string_view name) const;
 
-  module::Module const *defining_module() const { return mod_; }
+  module::BasicModule const *defining_module() const { return mod_; }
 
   core::Bytes offset(size_t n, core::Arch const &arch) const;
 
@@ -50,8 +50,8 @@ struct Struct : public Type {
 
   bool contains_hashtag(ast::Hashtag needle) const;
 
-  core::Scope const *scope_         = nullptr;
-  module::Module *mod_                    = nullptr;
+  core::Scope const *scope_ = nullptr;
+  module::BasicModule *mod_ = nullptr;
 
   // `init_func_` is generated in FinalizeStruct.
   //

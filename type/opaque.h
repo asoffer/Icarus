@@ -3,11 +3,9 @@
 
 #include "type/type.h"
 
-struct Module;
-
 namespace type {
 struct Opaque : public Type {
-  Opaque(module::Module const *mod) : mod_(mod) {}
+  Opaque(module::BasicModule const *mod) : mod_(mod) {}
   ~Opaque() override {}
 
 #include ICARUS_TYPE_VISITOR_METHODS
@@ -17,7 +15,7 @@ struct Opaque : public Type {
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;
 
-  module::Module const *mod_;
+  module::BasicModule const *mod_;
 };
 
 }  // namespace type

@@ -14,15 +14,12 @@
 #include "ir/cmd/util.h"
 #include "ir/cmd_buffer.h"
 #include "ir/reg.h"
+#include "module/module.h"
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/pointer.h"
 #include "type/tuple.h"
 #include "type/variant.h"
-
-namespace module {
-struct Module;
-}  // namespace module
 
 namespace ir {
 namespace internal {
@@ -136,17 +133,17 @@ inline RegOr<type::Type const *> Tup(
 }
 
 Reg Enum(
-    module::Module *mod, absl::Span<std::string_view const> names,
+    module::BasicModule *mod, absl::Span<std::string_view const> names,
     absl::flat_hash_map<uint64_t, RegOr<EnumerationCmd::enum_t>> const
         &specified_values);
 
 Reg Flags(
-    module::Module *mod, absl::Span<std::string_view const> names,
+    module::BasicModule *mod, absl::Span<std::string_view const> names,
     absl::flat_hash_map<uint64_t, RegOr<EnumerationCmd::enum_t>> const
         &specified_values);
 
 // TODO handle initial values.
-Reg Struct(core::Scope const *scope, module::Module *mod,
+Reg Struct(core::Scope const *scope, module::BasicModule *mod,
            std::vector<std::tuple<std::string_view, RegOr<type::Type const *>>>
                fields);
 
@@ -195,7 +192,7 @@ RegOr<type::Function const *> Arrow(
 RegOr<type::Type const *> Array(RegOr<ArrayCmd::length_t> len,
                                 RegOr<type::Type const *> data_type);
 
-Reg OpaqueType(module::Module const *mod);
+Reg OpaqueType(module::BasicModule const *mod);
 
 }  // namespace ir
 

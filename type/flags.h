@@ -15,7 +15,7 @@ namespace type {
 struct Flags : public type::Type {
   TYPE_FNS(Flags);
 
-  Flags(module::Module const* mod,
+  Flags(module::BasicModule const* mod,
         absl::flat_hash_map<std::string, ir::FlagsVal> vals)
       : mod_(mod), vals_(std::move(vals)) {
     for (auto& [name, val] : vals_) {
@@ -41,7 +41,7 @@ struct Flags : public type::Type {
   size_t All = 0;
 
   ICARUS_PRIVATE
-  module::Module const* mod_;
+  module::BasicModule const* mod_;
   // TODO combine these into a single bidirectional map?
   absl::flat_hash_map<std::string, ir::FlagsVal> vals_;
   absl::flat_hash_map<ir::FlagsVal, std::string> members_;

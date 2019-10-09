@@ -14,7 +14,8 @@ namespace type {
 struct Enum : public type::Type {
   TYPE_FNS(Enum);
 
-  Enum(module::Module const* mod, absl::flat_hash_map<std::string, ir::EnumVal> vals)
+  Enum(module::BasicModule const* mod,
+       absl::flat_hash_map<std::string, ir::EnumVal> vals)
       : mod_(mod), vals_(std::move(vals)) {
     for (auto& [name, val] : vals_) { members_.emplace(val, name); }
   }
@@ -32,7 +33,7 @@ struct Enum : public type::Type {
 
 
   ICARUS_PRIVATE
-  module::Module const* mod_;
+  module::BasicModule const* mod_;
 
   // TODO combine these into a single bidirectional map?
   absl::flat_hash_map<std::string, ir::EnumVal> vals_;

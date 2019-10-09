@@ -291,7 +291,7 @@ ir::Results Compiler::EmitValue(ast::Access const *node) {
     // TODO we already did this evaluation in type verification. Can't we just
     // save and reuse it?
     auto decls =
-        backend::EvaluateAs<module::Module const *>(
+        backend::EvaluateAs<module::BasicModule const *>(
             type::Typed<ast::Expression const *>(node->operand(), type::Module),
             this)
             ->declarations(node->member_name());
@@ -1459,9 +1459,9 @@ ir::Results Compiler::EmitValue(ast::ScopeNode const *node) {
   //
   //   DEBUG_LOG("ScopeNode")("Inlining exit handler");
   //   {
-  //     auto *mod       = const_cast<module::Module *>(scope_def->module());
+  //     auto *mod       = const_cast<module::BasicModule *>(scope_def->module());
   //     bool swap_bc    = module() != mod;
-  //     module::Module *old_mod = std::exchange(module(), mod);
+  //     module::BasicModule *old_mod = std::exchange(module(), mod);
   //     if (swap_bc) { constants_ = &module()->dep_data_.front(); }
   //     base::defer d([&] {
   //       module() = old_mod;
