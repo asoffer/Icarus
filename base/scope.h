@@ -3,6 +3,8 @@
 
 #include <type_traits>
 
+#include "base/macros.h"
+
 // Constructs an object passed into the macro and destroys the object when the
 // scope ends. This is intended to be used with RAII-like objects to avoid the
 // necessity of providing a name for the objects.

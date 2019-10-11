@@ -3,7 +3,7 @@
 
 #include <utility>
 
-#include "base/util.h"
+#include "base/cast.h"
 #include "frontend/source/range.h"
 
 #include ICARUS_AST_VISITOR_DEPENDENCIES

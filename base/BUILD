@@ -12,6 +12,11 @@ cc_component(name = "expected",
              impl_deps = None,
              test_deps = None)
 
+cc_component(name = "cast",
+             intf_deps = [":debug"],
+             impl_deps = None,
+             test_deps = None)
+
 cc_component(
     name = "graph",
     intf_deps = [
@@ -53,7 +58,10 @@ cc_component(name = "permutation",
              impl_deps = None,
              test_deps = None)
 cc_component(name = "owned_ptr", impl_deps = None, test_deps = None)
-cc_component(name = "scope", impl_deps = None, test_deps = [])
+cc_component(name = "scope",
+             intf_deps = [":macros"],
+             impl_deps = None, 
+             test_deps = [])
 cc_component(name = "stringify",
              intf_deps = [":tuple"],
              impl_deps = None,
@@ -81,7 +89,7 @@ cc_component(
 
 cc_component(
     name = "util",
-    intf_deps = [":debug", ":macros"],
+    intf_deps = [],
     impl_deps = None,
     test_deps = None)
 

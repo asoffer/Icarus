@@ -5,7 +5,7 @@
 #include <string_view>
 #include <vector>
 
-#include "base/util.h"
+#include "base/cast.h"
 #include "base/expected.h"
 
 namespace frontend {

@@ -61,7 +61,7 @@ cc_lib_target(
     name = "scope",
     intf_deps = [
         "//ast:ast_fwd",
-        "//base:util",
+        "//base:cast",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
     ],

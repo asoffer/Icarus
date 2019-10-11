@@ -4,6 +4,7 @@ load("//:defs.bzl", "cc_component")
 cc_component(
     name = "source",
     intf_deps = [
+        "//base:cast",
         "//base:expected",
         "//base:util",
     ],

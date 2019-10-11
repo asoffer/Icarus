@@ -6,7 +6,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "ast/ast_fwd.h"
-#include "base/util.h"
+#include "base/cast.h"
 
 namespace module {
 struct BasicModule;

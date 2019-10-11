@@ -44,7 +44,7 @@ cc_lib_target(
     name = "node",
     intf_deps = [
         ast_dependency,
-        "//base:util",
+        "//base:cast",
         "//frontend/source:range",
     ],
 )
