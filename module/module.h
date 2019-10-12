@@ -10,6 +10,9 @@
 #include "core/scope.h"
 
 namespace module {
+template <typename T>
+struct ExtendedModule;
+
 struct BasicModule {
   BasicModule();
   ~BasicModule();
@@ -24,22 +27,11 @@ struct BasicModule {
   absl::Span<ast::Declaration const *const> declarations(
       std::string_view name) const;
 
-  template <typename Fn>
-  void process(Fn &&fn) {
-    base::PtrSpan<ast::Node const> nodes(unprocessed_.begin(),
-                                         unprocessed_.end());
-
-    IndexDeclarations(nodes);
-    std::forward<Fn>(fn)(nodes);
-
-    processed_.insert(processed_.end(),
-                      std::make_move_iterator(unprocessed_.begin()),
-                      std::make_move_iterator(unprocessed_.end()));
-    unprocessed_.clear();
-  }
-
  private:
-  void IndexDeclarations(base::PtrSpan<ast::Node const> nodes);
+  template <typename T>
+  friend struct ExtendedModule;
+
+  void InitializeNodes(base::PtrSpan<ast::Node > nodes);
 
   core::ModuleScope scope_;
   absl::flat_hash_map<std::string_view, std::vector<ast::Declaration const *>>
@@ -50,8 +42,21 @@ struct BasicModule {
 
 template <typename Extension = void>
 struct ExtendedModule : BasicModule {
- private:
-  Extension ext_;
+ public:
+  void Process(std::unique_ptr<ast::Node> node) {
+    InitializeNodes(base::PtrSpan<ast::Node>(&node, 1));
+    static_cast<Extension *>(this)->ProcessNewNodes(
+        base::PtrSpan<ast::Node const>(&node, 1));
+    processed_.push_back(std::move(node));
+  }
+
+  void Process(std::vector<std::unique_ptr<ast::Node>> nodes) {
+    InitializeNodes(nodes);
+    static_cast<Extension *>(this)->ProcessNewNodes(nodes);
+    processed_.insert(processed_.end(),
+                      std::make_move_iterator(unprocessed_.begin()),
+                      std::make_move_iterator(unprocessed_.end()));
+  }
 };
 
 template <>

@@ -70,6 +70,7 @@ struct PtrSpan {
   explicit PtrSpan(Iter b, Iter e)
       : ptr_(std::addressof(*b)),
         size_(std::addressof(*e) - std::addressof(*b)) {}
+  explicit PtrSpan(pointer_type *p, size_t num) : ptr_(p), size_(num) {}
 
  private:
   pointer_type *ptr_ = nullptr;

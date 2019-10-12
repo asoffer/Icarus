@@ -1,7 +1,7 @@
 #include <cstdio>
 #include <memory>
-
 #include <vector>
+
 #include "ast/ast.h"
 #include "ast/expression.h"
 #include "backend/exec.h"
@@ -40,35 +40,41 @@ static void ReplEval(ast::Expression const *expr,
 }
 }  // namespace backend
 
+
+struct ReplModule : public module::ExtendedModule<ReplModule> {
+  ReplModule() : compiler(this) {}
+
+  void ProcessNewNodes(base::PtrSpan<ast::Node const> nodes) {
+    for (ast::Node const *node : nodes) {
+      if (node->is<ast::Declaration>()) {
+        auto *decl = &node->as<ast::Declaration>();
+
+        {
+          compiler.VerifyType(decl);
+          compiler.EmitValue(decl);
+          // TODO compiler.CompleteDeferredBodies();
+          if (compiler.num_errors() != 0) { compiler.DumpErrors(); }
+        }
+
+      } else if (node->is<ast::Expression>()) {
+        auto *expr = &node->as<ast::Expression>();
+        backend::ReplEval(expr, &compiler);
+        fprintf(stderr, "\n");
+      } else {
+        NOT_YET(*node);
+      }
+    }
+  }
+
+  compiler::Compiler compiler;
+};
+
 int RunRepl() {
   std::puts("Icarus REPL (v0.1)");
 
   frontend::ReplSource repl;
-  module::BasicModule mod;
-  compiler::Compiler compiler(&mod);
+  ReplModule mod;
 
-  while (true) {
-    mod.AppendStatements(frontend::Parse(&repl));
-    mod.process([&](base::PtrSpan<ast::Node const> nodes) {
-      for (ast::Node const *node : nodes) {
-        if (node->is<ast::Declaration>()) {
-          auto *decl = &node->as<ast::Declaration>();
-
-          {
-            compiler.VerifyType(decl);
-            compiler.EmitValue(decl);
-            // TODO compiler.CompleteDeferredBodies();
-            if (compiler.num_errors() != 0) { compiler.DumpErrors(); }
-          }
-
-        } else if (node->is<ast::Expression>()) {
-          auto *expr = &node->as<ast::Expression>();
-          backend::ReplEval(expr, &compiler);
-          fprintf(stderr, "\n");
-        } else {
-          NOT_YET(*node);
-        }
-      }
-    });
-  }
+  // TODO Parse can fail.
+  while (true) { mod.Process(frontend::Parse(&repl)); }
 }

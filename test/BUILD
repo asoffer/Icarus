@@ -29,6 +29,22 @@ cc_component(name = "ordered_elements_are",
              test_deps = None,
              testonly = True)
 
+cc_lib_target(name = "module",
+              cfgs = ["compile", "match"],
+              intf_deps = [
+                  ":util",
+                  "//ast:ast",
+                  "//ast:expression",
+                  "//ast:overload_set",
+                  "//base:ptr_span",
+                  "//frontend/source:range",
+                  "//module:module",
+              ],
+              impl_deps = None,
+              test_deps = None,
+              testonly = True,
+)
+
 cc_lib_target(
     name = "util",
     cfgs = ["compile", "match"],

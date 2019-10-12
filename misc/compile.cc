@@ -13,15 +13,10 @@ std::vector<std::unique_ptr<ast::Node>> Parse(Source *src);
 std::atomic<bool> found_errors = false;
 ir::CompiledFn *main_fn        = nullptr;
 
-// Once this function exits the file is destructed and we no longer have
-// access to the source lines. All verification for this module must be done
-// inside this function.
-std::unique_ptr<module::BasicModule> CompileModule(frontend::Source *src) {
-  auto mod = std::make_unique<module::BasicModule>();
+struct CompiledModule : module::ExtendedModule<CompiledModule> {
+  CompiledModule() : compiler(this) {}
 
-  mod->AppendStatements(frontend::Parse(src));
-  compiler::Compiler compiler(mod.get());
-  mod->process([&](base::PtrSpan<ast::Node const> nodes) {
+  void ProcessNewNodes(base::PtrSpan<ast::Node const> nodes) {
     for (ast::Node const *node : nodes) { node->VerifyType(&compiler); }
     if (compiler.num_errors() > 0) { return; }
 
@@ -46,9 +41,20 @@ std::unique_ptr<module::BasicModule> CompileModule(frontend::Source *src) {
         continue;
       }
     }
-  });
+  }
 
-  if (compiler.num_errors() > 0) {
+  compiler::Compiler compiler;
+};
+
+// Once this function exits the file is destructed and we no longer have
+// access to the source lines. All verification for this module must be done
+// inside this function.
+std::unique_ptr<module::BasicModule> CompileModule(frontend::Source *src) {
+  auto mod = std::make_unique<CompiledModule>();
+
+  mod->Process(frontend::Parse(src));
+
+  if (mod->compiler.num_errors() > 0) {
     found_errors = true;
     return mod;
   }

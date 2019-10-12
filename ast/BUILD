@@ -92,6 +92,7 @@ cc_lib_target(
     ],
     test_deps = [
         "//:impl",
+        "//test:module",
         "//test:util",
         "//type:pointer",
         "//type:variant",

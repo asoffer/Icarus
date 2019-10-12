@@ -37,25 +37,6 @@ core::OrderedFnArgs<ast::Expression> MakeFnArgs(
   return core::OrderedFnArgs<ast::Expression>(std::move(vec));
 }
 
-std::pair<ast::OverloadSet, ast::Call*> MakeCall(
-    std::string fn, std::vector<std::string> pos_args,
-    absl::flat_hash_map<std::string, std::string> named_args,
-    compiler::Compiler* compiler) {
-  auto call_expr = std::make_unique<ast::Call>(
-      frontend::SourceRange{}, ParseAs<ast::Expression>(std::move(fn)),
-      MakeFnArgs(std::move(pos_args), std::move(named_args)));
-  ast::OverloadSet os;
-  os.emplace(call_expr->callee(),
-             compiler::VerifyResult::Constant(type::Func({}, {})));
-  auto* expr = call_expr.get();
-  compiler->module()->Append(std::move(call_expr));
-  compiler->module()->process(
-      [&compiler](base::PtrSpan<ast::Node const> nodes) {
-        for (ast::Node const* node : nodes) { node->VerifyType(compiler); }
-      });
-  return std::pair(std::move(os), expr);
-}
-
 }  // namespace test
 
 #endif  // ICARUS_TEST_UTIL_H

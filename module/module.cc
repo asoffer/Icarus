@@ -10,23 +10,9 @@ namespace module {
 BasicModule::BasicModule() : scope_(this) {}
 BasicModule::~BasicModule() = default;
 
-void BasicModule::AppendStatements(
-    std::vector<std::unique_ptr<ast::Node>> stmts) {
+void BasicModule::InitializeNodes(base::PtrSpan<ast::Node> nodes) {
   AssignScope visitor;
-  for (auto &stmt : stmts) { stmt->assign_scope(&visitor, &scope_); }
-
-  unprocessed_.insert(unprocessed_.end(),
-                      std::make_move_iterator(stmts.begin()),
-                      std::make_move_iterator(stmts.end()));
-}
-
-void BasicModule::Append(std::unique_ptr<ast::Node> node) {
-  AssignScope visitor;
-  node->assign_scope(&visitor, &scope_);
-  unprocessed_.push_back(std::move(node));
-}
-
-void BasicModule::IndexDeclarations(base::PtrSpan<ast::Node const> nodes) {
+  for (ast::Node *node : nodes) { node->assign_scope(&visitor, &scope_); }
   for (ast::Node const *node : nodes) {
     auto *decl = node->if_as<ast::Declaration>();
     if (!decl) { continue; }
