@@ -16,7 +16,7 @@
 std::vector<std::string> files;
 
 // TODO sad. don't use a global to do this.
-extern ir::CompiledFn *main_fn;
+extern std::atomic<ir::CompiledFn *> main_fn;
 
 extern std::atomic<bool> found_errors;
 

@@ -71,50 +71,39 @@ Lexeme NextWord(SourceCursor *cursor, Source *src) {
   std::string_view token = word_cursor.view();
   auto span              = word_cursor.range();
 
-  static absl::flat_hash_map<
-      std::string_view, std::pair<ir::Results, type::BasicType>> const Reserved{
-      {"bool",
-       std::pair(ir::Results{type::BasicType::Bool}, type::BasicType::Type_)},
-      {"int8",
-       std::pair(ir::Results{type::BasicType::Int8}, type::BasicType::Type_)},
-      {"int16",
-       std::pair(ir::Results{type::BasicType::Int16}, type::BasicType::Type_)},
-      {"int32",
-       std::pair(ir::Results{type::BasicType::Int32}, type::BasicType::Type_)},
-      {"int64",
-       std::pair(ir::Results{type::BasicType::Int64}, type::BasicType::Type_)},
-      {"nat8",
-       std::pair(ir::Results{type::BasicType::Nat8}, type::BasicType::Type_)},
-      {"nat16",
-       std::pair(ir::Results{type::BasicType::Nat16}, type::BasicType::Type_)},
-      {"nat32",
-       std::pair(ir::Results{type::BasicType::Nat32}, type::BasicType::Type_)},
-      {"nat64",
-       std::pair(ir::Results{type::BasicType::Nat64}, type::BasicType::Type_)},
-      {"float32", std::pair(ir::Results{type::BasicType::Float32},
-                            type::BasicType::Type_)},
-      {"float64", std::pair(ir::Results{type::BasicType::Float64},
-                            type::BasicType::Type_)},
-      {"type",
-       std::pair(ir::Results{type::BasicType::Type_}, type::BasicType::Type_)},
-      {"module",
-       std::pair(ir::Results{type::BasicType::Module}, type::BasicType::Type_)},
-      {"true", std::pair(ir::Results{true}, type::BasicType::Bool)},
-      {"false", std::pair(ir::Results{false}, type::BasicType::Bool)},
-      {"null",
-       std::pair(ir::Results{ir::Addr::Null()}, type::BasicType::NullPtr)},
-      {"byte_view", std::pair(ir::Results{type::BasicType::ByteView},
-                              type::BasicType::Type_)},
-      {"exit",
-       std::pair(ir::Results{ir::BlockDef::Exit()}, type::BasicType::Block)},
-      {"start",
-       std::pair(ir::Results{ir::BlockDef::Start()}, type::BasicType::Block)},
-  };
+  static absl::flat_hash_map<std::string_view, type::BasicType> const
+      ReservedTypes{{"bool", type::BasicType::Bool},
+                    {"int8", type::BasicType::Int8},
+                    {"int16", type::BasicType::Int16},
+                    {"int32", type::BasicType::Int32},
+                    {"int64", type::BasicType::Int64},
+                    {"nat8", type::BasicType::Nat8},
+                    {"nat16", type::BasicType::Nat16},
+                    {"nat32", type::BasicType::Nat32},
+                    {"nat64", type::BasicType::Nat64},
+                    {"float32", type::BasicType::Float32},
+                    {"float64", type::BasicType::Float64},
+                    {"type", type::BasicType::Type_},
+                    {"module", type::BasicType::Module},
+                    {"byte_view", type::BasicType::ByteView}};
+  // {"exit", std::pair(ir::BlockDef::Exit()}, type::BasicType::Block),
+  // {"start", std::pair(ir::Results{ir::BlockDef::Start()},
+  // type::BasicType::Block)},
 
-  if (auto iter = Reserved.find(token); iter != Reserved.end()) {
-    auto const & [ results, type ] = iter->second;
-    return Lexeme(std::make_unique<ast::Terminal>(std::move(span),
-                                                  std::move(results), type));
+  if (token == "true") {
+    return Lexeme(std::make_unique<ast::Terminal>(std::move(span), true,
+                                                  type::BasicType::Bool));
+  } else if (token == "false") {
+    return Lexeme(std::make_unique<ast::Terminal>(std::move(span), false,
+                                                  type::BasicType::Bool));
+  } else if (token == "null") {
+    return Lexeme(std::make_unique<ast::Terminal>(
+        std::move(span), ir::Addr::Null(), type::BasicType::NullPtr));
+  }
+
+  if (auto iter = ReservedTypes.find(token); iter != ReservedTypes.end()) {
+    return Lexeme(std::make_unique<ast::Terminal>(std::move(span), iter->second,
+                                                  type::BasicType::Type_));
   }
   static absl::flat_hash_map<std::string_view, core::Builtin> const BuiltinFns{
 #define ICARUS_CORE_BUILTIN_X(enumerator, str, t)                              \
@@ -159,18 +148,17 @@ Lexeme NextNumber(SourceCursor *cursor, Source *src, error::Log *error_log) {
     // TODO should you do something with guessing the type?
     error_log->InvalidNumber(span, num.error().to_string());
     return Lexeme(std::make_unique<ast::Terminal>(
-        std::move(span), ir::Results{0}, type::BasicType::Int32));
+        std::move(span), 0, type::BasicType::Int32));
   }
   return std::visit(
-      base::overloaded{
-          [&span](int64_t x) {
-            return Lexeme(std::make_unique<ast::Terminal>(
-                std::move(span), ir::Results{x}, type::BasicType::Int64));
-          },
-          [&span](double x) {
-            return Lexeme(std::make_unique<ast::Terminal>(
-                std::move(span), ir::Results{x}, type::BasicType::Float64));
-          }},
+      base::overloaded{[&span](int64_t x) {
+                         return Lexeme(std::make_unique<ast::Terminal>(
+                             std::move(span), x, type::BasicType::Int64));
+                       },
+                       [&span](double x) {
+                         return Lexeme(std::make_unique<ast::Terminal>(
+                             std::move(span), x, type::BasicType::Float64));
+                       }},
       *num);
 }
 
@@ -436,9 +424,9 @@ restart:
     case '"': {
       auto[span, str] =
           NextStringLiteral(&state->cursor_, state->src_, state->error_log_);
-      return Lexeme(std::make_unique<ast::Terminal>(
-          std::move(span), ir::Results{ir::SaveStringGlobally(str)},
-          type::BasicType::ByteView));
+      return Lexeme(std::make_unique<ast::Terminal>(std::move(span),
+                                                    ir::SaveStringGlobally(str),
+                                                    type::BasicType::ByteView));
 
     } break;
     case '#': return NextHashtag(&state->cursor_, state->src_);

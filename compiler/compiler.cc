@@ -21,7 +21,8 @@ std::unique_ptr<module::BasicModule> CompileModule(frontend::Source *src) {
   return mod;
 }
 
-Compiler::Compiler(module::BasicModule *mod) : mod_(mod), bldr_(ir::GetBuilder()) {
+Compiler::Compiler(module::BasicModule *mod)
+    : mod_(mod), bldr_(ir::GetBuilder()) {
   dep_data_.emplace_back();
   constants_ = &dep_data_.front();
 }

@@ -597,7 +597,8 @@ struct FunctionLiteral : public Expression {
 // typically numeric literals, or expressions that are also keywords such as
 // `true`, `false`, or `null`.
 struct Terminal : public Expression {
-  template <typename T>
+  template <typename T,
+            std::enable_if_t<std::is_trivially_copyable_v<T>, int> = 0>
   explicit Terminal(frontend::SourceRange span, T value, type::BasicType t)
       : Expression(std::move(span)), basic_(t) {
     if constexpr (std::is_same_v<T, bool>) {
@@ -609,7 +610,7 @@ struct Terminal : public Expression {
     } else if constexpr (std::is_same_v<T, std::string_view>) {
       sv_ = value;
     } else {
-      UNREACHABLE();
+      UNREACHABLE(typeid(T).name());
     }
   }
   ~Terminal() override {}

@@ -266,6 +266,8 @@ cc_lib_target(
     intf_deps = [
         "//ast:ast_fwd",
         "//base:ptr_span",
+        "//misc:constant_binding",
+        "//misc:dependent_data",
         "//module:module",
     ],
     impl_deps = [

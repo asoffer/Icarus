@@ -64,7 +64,11 @@ void Execute(ir::CompiledFn *fn, const base::untyped_buffer &arguments,
 
   auto arch   = core::Interpretter();
   auto offset = core::Bytes{0};
+  DEBUG_LOG("dbg")(fn);
+  DEBUG_LOG("dbg")(fn->type_);
+  DEBUG_LOG("dbg")(fn->type_->to_string());
   for (auto *t : fn->type_->output) {
+    DEBUG_LOG("dbg")(t->to_string());
     offset = core::FwdAlign(offset, t->alignment(arch)) + t->bytes(arch);
   }
   base::untyped_buffer ret_buffer(offset.value());
