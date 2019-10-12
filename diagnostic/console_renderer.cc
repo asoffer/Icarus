@@ -26,6 +26,8 @@ std::string const &LoadLine(frontend::Source *src, frontend::LineNum line) {
 }  // namespace
 
 void ConsoleRenderer::Flush() {
+  if (!has_data_) { return; }
+  has_data_ = false;
   std::fputs("\n\n", out_);
   std::fflush(out_);
 }

@@ -42,7 +42,10 @@ CompiledModule::CompiledModule()
           [this](base::PtrSpan<ast::Node const> nodes) {
             compiler::Compiler c(this);
             CompileNodes(&c, nodes);
-            dep_data_ = std::move(c.dep_data_);
+            dep_data_   = std::move(c.dep_data_);
+            fns_        = std::move(c.fns_);
+            scope_defs_ = std::move(c.scope_defs_);
+            block_defs_ = std::move(c.block_defs_);
           }) {}
 
 type::Type const *CompiledModule::type_of(ast::Expression const *expr) const {

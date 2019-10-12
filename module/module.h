@@ -16,7 +16,7 @@ struct ExtendedModule;
 
 struct BasicModule {
   BasicModule();
-  ~BasicModule();
+  virtual ~BasicModule();
 
   // We take pointers to the module, so it cannot be moved.
   BasicModule(BasicModule &&) noexcept = delete;
@@ -43,6 +43,7 @@ struct BasicModule {
 template <typename Extension = void>
 struct ExtendedModule : BasicModule {
  public:
+  ~ExtendedModule() override {}
   explicit ExtendedModule(
       std::function<void(base::PtrSpan<ast::Node const>)> fn)
       : process_(std::move(fn)) {}
