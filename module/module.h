@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -36,33 +37,33 @@ struct BasicModule {
   core::ModuleScope scope_;
   absl::flat_hash_map<std::string_view, std::vector<ast::Declaration const *>>
       top_level_decls_;
-  std::vector<std::unique_ptr<ast::Node>> processed_;
-  std::vector<std::unique_ptr<ast::Node>> unprocessed_;
+  std::vector<std::unique_ptr<ast::Node>> nodes_;
 };
 
 template <typename Extension = void>
 struct ExtendedModule : BasicModule {
  public:
+  explicit ExtendedModule(
+      std::function<void(base::PtrSpan<ast::Node const>)> fn)
+      : process_(std::move(fn)) {}
+
   void Process(std::unique_ptr<ast::Node> node) {
     InitializeNodes(base::PtrSpan<ast::Node>(&node, 1));
-    static_cast<Extension *>(this)->ProcessNewNodes(
-        base::PtrSpan<ast::Node const>(&node, 1));
-    processed_.push_back(std::move(node));
+    process_(base::PtrSpan<ast::Node const>(&node, 1));
+    nodes_.push_back(std::move(node));
   }
 
   void Process(std::vector<std::unique_ptr<ast::Node>> nodes) {
     InitializeNodes(nodes);
-    static_cast<Extension *>(this)->ProcessNewNodes(nodes);
-    processed_.insert(processed_.end(),
-                      std::make_move_iterator(unprocessed_.begin()),
-                      std::make_move_iterator(unprocessed_.end()));
+    process_(nodes);
+    nodes_.insert(nodes_.end(), std::make_move_iterator(nodes.begin()),
+                  std::make_move_iterator(nodes.end()));
   }
+
+ private:
+  std::function<void(base::PtrSpan<ast::Node const>)> process_;
 };
 
-template <>
-struct ExtendedModule<void> : BasicModule {};
-
-using Module = ExtendedModule<void>;
 }  // namespace module
 
 #endif  // ICARUS_MODULE_MODULE_H

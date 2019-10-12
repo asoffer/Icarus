@@ -15,13 +15,9 @@ std::atomic<bool> found_errors = false;
 namespace compiler {
 
 std::unique_ptr<module::BasicModule> CompileModule(frontend::Source *src) {
-  auto mod = std::make_unique<compiler::CompiledModule>();
-  Compiler c(mod.get());
-  mod->compiler_ = &c;
+  auto mod = std::make_unique<CompiledModule>();
   mod->Process(frontend::Parse(src));
-
-  if (c.num_errors() > 0) { found_errors = true; }
-
+  // TODO mark found_errors any were found
   return mod;
 }
 

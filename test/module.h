@@ -16,12 +16,14 @@
 namespace test {
 
 struct TestModule : module::ExtendedModule<TestModule> {
-  TestModule() : compiler(this) {}
-
-  void ProcessNewNodes(base::PtrSpan<ast::Node const> nodes) {
-    for (ast::Node const* node : nodes) { node->VerifyType(&compiler); }
-  }
-
+  TestModule()
+      : module::ExtendedModule<TestModule>(
+            [this](base::PtrSpan<ast::Node const> nodes) {
+              for (ast::Node const* node : nodes) {
+                node->VerifyType(&compiler);
+              }
+            }),
+        compiler(this) {}
   compiler::Compiler compiler;
 };
 

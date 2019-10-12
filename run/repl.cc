@@ -42,31 +42,30 @@ static void ReplEval(ast::Expression const *expr,
 
 
 struct ReplModule : public module::ExtendedModule<ReplModule> {
-  ReplModule() : compiler(this) {}
+  ReplModule()
+      : module::ExtendedModule<ReplModule>(
+            [this](base::PtrSpan<ast::Node const> nodes) {
+              compiler::Compiler compiler(this);
+              for (ast::Node const *node : nodes) {
+                if (node->is<ast::Declaration>()) {
+                  auto *decl = &node->as<ast::Declaration>();
 
-  void ProcessNewNodes(base::PtrSpan<ast::Node const> nodes) {
-    for (ast::Node const *node : nodes) {
-      if (node->is<ast::Declaration>()) {
-        auto *decl = &node->as<ast::Declaration>();
+                  {
+                    compiler.VerifyType(decl);
+                    compiler.EmitValue(decl);
+                    // TODO compiler.CompleteDeferredBodies();
+                    if (compiler.num_errors() != 0) { compiler.DumpErrors(); }
+                  }
 
-        {
-          compiler.VerifyType(decl);
-          compiler.EmitValue(decl);
-          // TODO compiler.CompleteDeferredBodies();
-          if (compiler.num_errors() != 0) { compiler.DumpErrors(); }
-        }
-
-      } else if (node->is<ast::Expression>()) {
-        auto *expr = &node->as<ast::Expression>();
-        backend::ReplEval(expr, &compiler);
-        fprintf(stderr, "\n");
-      } else {
-        NOT_YET(*node);
-      }
-    }
-  }
-
-  compiler::Compiler compiler;
+                } else if (node->is<ast::Expression>()) {
+                  auto *expr = &node->as<ast::Expression>();
+                  backend::ReplEval(expr, &compiler);
+                  fprintf(stderr, "\n");
+                } else {
+                  NOT_YET(*node);
+                }
+              }
+            }) {}
 };
 
 int RunRepl() {

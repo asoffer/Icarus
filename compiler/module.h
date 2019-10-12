@@ -10,8 +10,7 @@ namespace compiler {
 struct Compiler;
 
 struct CompiledModule : module::ExtendedModule<CompiledModule> {
-  void ProcessNewNodes(base::PtrSpan<ast::Node const> nodes);
-  Compiler* compiler_ = nullptr;
+  CompiledModule();
 };
 
 }  // namespace compiler
