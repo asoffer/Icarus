@@ -7,7 +7,7 @@
 #include "ast/expr_ptr.h"
 #include "compiler/verify_result.h"
 #include "ir/scope_def.h"
-#include "misc/constant_binding.h"
+#include "compiler/constant_binding.h"
 #include "module/pending.h"
 
 namespace ast {

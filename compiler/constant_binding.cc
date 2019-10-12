@@ -1,4 +1,4 @@
-#include "misc/constant_binding.h"
+#include "compiler/constant_binding.h"
 #include "type/type.h"
 #include "ir/results.h"
 

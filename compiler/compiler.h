@@ -18,8 +18,8 @@
 #include "ir/builder.h"
 #include "ir/reg.h"
 #include "ir/results.h"
-#include "misc/constant_binding.h"
-#include "misc/dependent_data.h"
+#include "compiler/constant_binding.h"
+#include "compiler/dependent_data.h"
 #include "module/module.h"
 #include "type/type_fwd.h"
 

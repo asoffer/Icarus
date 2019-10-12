@@ -2,13 +2,15 @@
 #define ICARUS_COMPILER_MODULE_H
 
 #include <list>
+#include <memory>
 #include <utility>
 
 #include "ast/ast_fwd.h"
 #include "base/ptr_span.h"
-#include "misc/constant_binding.h"
-#include "misc/dependent_data.h"
+#include "compiler/constant_binding.h"
+#include "compiler/dependent_data.h"
 #include "module/module.h"
+#include "type/type_fwd.h"
 
 namespace compiler {
 

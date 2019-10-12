@@ -29,7 +29,7 @@ cc_lib_target(
 icarus_method(
     name = "type_methods",
     deps = [
-        "//compiler:compiler-compile",
+        ":compiler-compile",
         "//visitor:type_query-compile",
         "//module:extract_defining_modules-xmacro",
     ],
@@ -52,6 +52,7 @@ cc_lib_target(
     name = "compiler",
     cfgs = ["match", "compile"],
     intf_deps = [
+        ":constant_binding",
         ":module",
         ":verify_result",
         "//base:debug",
@@ -59,8 +60,7 @@ cc_lib_target(
         "//base:move_func",
         "//base:tag",
         "//error:log",
-        "//misc:constant_binding",
-        "//misc:dependent_data",
+        "//compiler:dependent_data",
         "//module:module",
         "//ir:results",
         "//ir:builder",
@@ -91,6 +91,35 @@ cc_lib_target(
         ":special_function-impl",
         ":verify_type-impl",
     ],
+    test_deps = None,
+)
+
+cc_lib_target(
+    name = "constant_binding",
+    intf_deps = [
+        "//base:untyped_buffer",
+        "//core:bytes",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+    impl_deps = [
+        "//ir:results",
+        "//core:arch",
+        "//type:type",
+    ],
+    test_deps = None,
+)
+
+cc_lib_target(
+    name = "dependent_data",
+    cfgs = ["match", "compile"],
+    intf_deps = [
+        ":verify_result",
+        "//ast:dispatch_table",
+        "//ast:expr_ptr",
+        "//module:pending",
+        "//ir:scope_def",
+    ],
+    impl_deps = None,
     test_deps = None,
 )
 
@@ -264,11 +293,12 @@ cc_lib_target(
     name = "module",
     cfgs = ["match", "compile"],
     intf_deps = [
+        ":constant_binding",
         "//ast:ast_fwd",
         "//base:ptr_span",
-        "//misc:constant_binding",
-        "//misc:dependent_data",
+        "//compiler:dependent_data",
         "//module:module",
+        "//type:type_fwd",
     ],
     impl_deps = [
         ":compiler",
