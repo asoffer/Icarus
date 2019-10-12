@@ -27,20 +27,6 @@ cc_lib_target(
 )
 
 cc_lib_target(
-    name = "compile",
-    cfgs = ["match", "compile"],
-    intf_deps = None,
-    impl_deps = [
-        "//module:module",
-        "//ast:ast",
-        "//backend:eval",
-        "//frontend/source:file-impl",
-        "//ir:compiled_fn",
-    ],
-    test_deps = None,
-)
-
-cc_lib_target(
     name = "dependent_data",
     cfgs = ["match", "compile"],
     intf_deps = [

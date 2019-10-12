@@ -6,6 +6,7 @@
 #include "base/expected.h"
 #include "base/untyped_buffer.h"
 #include "base/util.h"
+#include "compiler/compiler.h"
 #include "error/log.h"
 #include "ir/compiled_fn.h"
 #include "module/module.h"
@@ -19,8 +20,6 @@ extern ir::CompiledFn *main_fn;
 
 extern std::atomic<bool> found_errors;
 
-std::unique_ptr<module::BasicModule> CompileModule(frontend::Source *);
-
 int RunCompiler() {
   void *libc_handle = dlopen("/lib/x86_64-linux-gnu/libc.so.6", RTLD_LAZY);
   ASSERT(libc_handle != nullptr);
@@ -29,7 +28,7 @@ int RunCompiler() {
   error::Log log;
   for (const auto &src : files) {
     if (!module::ImportModule(std::filesystem::path{src}, nullptr,
-                              CompileModule)) {
+                              compiler::CompileModule)) {
       log.MissingModule(src, "");
     }
   }

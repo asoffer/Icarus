@@ -3,9 +3,9 @@
 #include "ast/methods/dump.h"
 #include "ast/overload_set.h"
 #include "backend/eval.h"
+#include "compiler/compiler.h"
 #include "error/inference_failure_reason.h"
 #include "frontend/operators.h"
-#include "frontend/source/file.h"
 #include "ir/compiled_fn.h"
 #include "type/cast.h"
 #include "type/generic_struct.h"
@@ -14,8 +14,6 @@
 #include "type/type.h"
 #include "type/typed_value.h"
 #include "type/util.h"
-
-std::unique_ptr<module::BasicModule> CompileModule(frontend::Source *);
 
 namespace ir {
 

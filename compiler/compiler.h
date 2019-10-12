@@ -10,8 +10,10 @@
 #include "base/guarded.h"
 #include "base/move_func.h"
 #include "base/tag.h"
+#include "compiler/module.h"
 #include "compiler/verify_result.h"
 #include "error/log.h"
+#include "frontend/source/source.h"
 #include "ir/addr.h"
 #include "ir/builder.h"
 #include "ir/reg.h"
@@ -28,6 +30,7 @@ struct BlockDef;
 }  // namespace ir
 
 namespace compiler {
+std::unique_ptr<module::BasicModule> CompileModule(frontend::Source *src);
 
 // These are the steps in a traditional compiler of verifying types and emitting
 // code. They're tied together because they don't necessarily happen in a

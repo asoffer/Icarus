@@ -52,6 +52,7 @@ cc_lib_target(
     name = "compiler",
     cfgs = ["match", "compile"],
     intf_deps = [
+        ":module",
         ":verify_result",
         "//base:debug",
         "//base:guarded",
@@ -69,6 +70,7 @@ cc_lib_target(
     impl_deps = [
         ":ast_methods-xmacro",
         "//ast:ast",
+        "//frontend:parse",
         "//ir:builder",
         "//ir:compiled_fn",
         "//ir:components",
@@ -257,6 +259,24 @@ cc_lib_target(
     test_deps = None,
 )
 
+
+cc_lib_target(
+    name = "module",
+    cfgs = ["match", "compile"],
+    intf_deps = [
+        "//ast:ast_fwd",
+        "//base:ptr_span",
+        "//module:module",
+    ],
+    impl_deps = [
+        ":compiler",
+        "//ast:ast",
+        "//backend:eval",
+        "//ir:compiled_fn",
+    ],
+    test_deps = None,
+)
+
 cc_lib_target(
     name = "verify_type",
     cfgs = ["match", "compile"],
@@ -266,7 +286,6 @@ cc_lib_target(
         "//ast:ast",
         "//ast:overload_set",
         "//backend:eval",
-        "//misc:compile-impl",
         "//type:cast",
         "//type:generic_struct",
         "//type:jump",
