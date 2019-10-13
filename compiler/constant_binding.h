@@ -1,28 +1,18 @@
-#ifndef ICARUS_MISC_CONSTANT_BINDING_H
-#define ICARUS_MISC_CONSTANT_BINDING_H
+#ifndef ICARUS_COMPILER_CONSTANT_BINDING_H
+#define ICARUS_COMPILER_CONSTANT_BINDING_H
 
 #include <utility>
 #include <variant>
 
 #include "absl/container/flat_hash_map.h"
+#include "ast/ast_fwd.h"
 #include "base/untyped_buffer.h"
 #include "core/bytes.h"
-
-namespace ast {
-struct Declaration;
-}  // namespace ast
-
-namespace type {
-struct Type;
-}  // namespace type
-
-namespace ir {
-struct Results;
-}  // namespace ir
+#include "type/type_fwd.h"
+#include "ir/results.h"
 
 namespace compiler {
 struct Compiler;
-}  // namespace compiler
 
 struct ConstantBinding {
  public:
@@ -48,10 +38,10 @@ struct ConstantBinding {
  private:
   friend bool operator==(ConstantBinding const& lhs,
                          ConstantBinding const& rhs);
-  friend struct compiler::Compiler;  // TODO remove me.
+  friend struct Compiler;  // TODO remove me.
 
   struct Binding {
-    type::Type const * type_;
+    type::Type const* type_;
     size_t offset_;
   };
 
@@ -62,5 +52,6 @@ struct ConstantBinding {
 inline bool operator!=(ConstantBinding const& lhs, ConstantBinding const& rhs) {
   return !(lhs == rhs);
 }
+}  // namespace compiler
 
-#endif  // ICARUS_MISC_CONSTANT_BINDING_H
+#endif  // ICARUS_COMPILER_CONSTANT_BINDING_H

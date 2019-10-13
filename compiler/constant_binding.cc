@@ -2,6 +2,7 @@
 #include "type/type.h"
 #include "ir/results.h"
 
+namespace compiler {
 bool operator==(ConstantBinding const& lhs, ConstantBinding const& rhs) {
   if (lhs.size() != rhs.size()) { return false; }
   for (auto const& [decl, binding] : lhs.keys_) {
@@ -45,3 +46,5 @@ ir::Results ConstantBinding::set_slot(size_t offset, void const* data,
   std::memcpy(buf_.raw(offset), data, bytes.value());
   return ir::Results::FromRaw(buf_.raw(offset), bytes);
 }
+
+}  // namespace compiler

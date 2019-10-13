@@ -97,12 +97,14 @@ cc_lib_target(
 cc_lib_target(
     name = "constant_binding",
     intf_deps = [
+        "//ast:ast_fwd",
         "//base:untyped_buffer",
         "//core:bytes",
+        "//ir:results",
+        "//type:type_fwd",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
     impl_deps = [
-        "//ir:results",
         "//core:arch",
         "//type:type",
     ],
@@ -115,6 +117,7 @@ cc_lib_target(
     intf_deps = [
         ":verify_result",
         "//ast:dispatch_table",
+        "//ast:ast_fwd",
         "//ast:expr_ptr",
         "//module:pending",
         "//ir:scope_def",

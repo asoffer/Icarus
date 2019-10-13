@@ -49,10 +49,8 @@ CompiledModule::CompiledModule()
           }) {}
 
 type::Type const *CompiledModule::type_of(ast::Expression const *expr) const {
-  if (auto iter = dep_data_.front().second.verify_results_.find(expr);
-      iter != dep_data_.front().second.verify_results_.end()) {
-    if (iter->second.type_) { return iter->second.type_; }
-  }
+  auto const *result = dep_data_.front().second.result(expr);
+  if (result && result->type_) { return result->type_; }
 
   // TODO reenabel once modules are all in core.
   // // When searching in embedded modules we intentionally look with no bound

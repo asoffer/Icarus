@@ -29,21 +29,17 @@ Compiler::Compiler(module::BasicModule *mod)
 
 Compiler::~Compiler() { ASSERT(deferred_work_.lock()->empty() == true); }
 
-VerifyResult const *Compiler::prior_verification_attempt(
-    ast::ExprPtr expr) {
-  auto const &map = constants_->second.verify_results_;
-  if (auto iter = map.find(expr); iter != map.end()) { return &iter->second; }
-  return nullptr;
+VerifyResult const *Compiler::prior_verification_attempt(ast::ExprPtr expr) {
+  return constants_->second.result(expr);
 }
 
 type::Type const *Compiler::type_of(ast::Expression const *expr) const {
   if (auto *decl = expr->if_as<ast::Declaration>()) {
     if (auto *t = current_constants_.type_of(decl)) { return t; }
   }
-  if (auto iter = constants_->second.verify_results_.find(expr);
-      iter != constants_->second.verify_results_.end()) {
-    if (iter->second.type_) { return iter->second.type_; }
-  }
+
+  auto *result = constants_->second.result(expr);
+  if (result && result->type_) { return result->type_; }
 
   // TODO reenabel once modules are all in core.
   // // When searching in embedded modules we intentionally look with no bound
@@ -62,10 +58,8 @@ void Compiler::set_addr(ast::Declaration const *decl,
                                       ir::Reg addr) {
   constants_->second.addr_[decl] = addr;
 }
-compiler::VerifyResult Compiler::set_result(
-    ast::ExprPtr expr, compiler::VerifyResult r) {
-  constants_->second.verify_results_.emplace(expr, r);
-  return r;
+VerifyResult Compiler::set_result(ast::ExprPtr expr, VerifyResult r) {
+  return constants_->second.set_result(expr, r);
 }
 
 ir::Reg Compiler::addr(ast::Declaration const *decl) const {
@@ -93,8 +87,7 @@ std::pair<ConstantBinding, DependentData> *Compiler::insert_constants(
   pair->second.constants_ = pair->first;
 
   for (auto const &[decl, binding] : constant_binding.keys_) {
-    pair->second.verify_results_.emplace(
-        ast::ExprPtr(decl), compiler::VerifyResult::Constant(binding.type_));
+    pair->second.set_result(decl, VerifyResult::Constant(binding.type_));
   }
   return pair;
 }
