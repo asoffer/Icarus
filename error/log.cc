@@ -242,48 +242,32 @@ void Log::ReturnTypeMismatch(std::string_view expected_type,
 }
 
 void Log::NoReturnTypes(ast::ReturnStmt const *ret_expr) {
-  std::stringstream ss;
   // TODO allow "return foo(...)" when foo: ??? -> ().
-
-  ss << "Attempting to return a value when function returns nothing\n\n";
-  auto &range = ret_expr->span;
-  // TODO also show where the return type is specified?
-  WriteSource(
-      ss, src_, {range.lines()},
-      {{range, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
-  ss << "\n\n";
-  errors_.push_back(ss.str());
+  renderer_.AddError(diagnostic::Diagnostic(
+      diagnostic::Text(
+          "Attempting to return a value when function returns nothing."),
+      diagnostic::SourceQuote(src_).Highlighted(ret_expr->span,
+                                                diagnostic::Style{})));
 }
 
 void Log::ReturningWrongNumber(frontend::SourceRange const &range,
                                size_t actual, size_t expected) {
-  std::stringstream ss;
-  ss << "Attempting to return " << actual
-     << " values from a function which has " << expected
-     << " return values.\n\n";
-  // TODO also show where the return type is specified?
-  WriteSource(
-      ss, src_, {range.lines()},
-      {{range, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
-  ss << "\n\n";
-  errors_.push_back(ss.str());
+  renderer_.AddError(diagnostic::Diagnostic(
+      diagnostic::Text("Attempting to return %u values from a function which "
+                       "has %u return values."),
+      diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
 void Log::IndexedReturnTypeMismatch(std::string_view expected_type,
                                     std::string_view actual_type,
                                     frontend::SourceRange const &range,
                                     size_t index) {
-  std::stringstream ss;
-  ss << "Returning an expression in slot #" << index
-     << " (zero-indexed) of type `" << actual_type
-     << "` but function expects a value of type `" << expected_type
-     << "` in that slot.\n\n";
-  // TODO also show where the return type is specified?
-  WriteSource(
-      ss, src_, {range.lines()},
-      {{range, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
-  ss << "\n\n";
-  errors_.push_back(ss.str());
+  renderer_.AddError(diagnostic::Diagnostic(
+      diagnostic::Text("Returning an expression in slot #%u (zero-indexed) of "
+                       "type `%s` but function expects a value of type `%s` in "
+                       "that slot.",
+                       index, actual_type, expected_type),
+      diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
 void Log::DereferencingNonPointer(std::string_view type,
@@ -306,59 +290,39 @@ void Log::WhichNonVariant(std::string_view type,
 
 void Log::Reserved(frontend::SourceRange const &range,
                    std::string const &token) {
-  std::stringstream ss;
-  ss << "Identifier `" << token << "` is a reserved keyword.\n\n";
-  WriteSource(
-      ss, src_, {range.lines()},
-      {{range, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
-  ss << "\n\n";
-  errors_.push_back(ss.str());
+  renderer_.AddError(diagnostic::Diagnostic(
+      diagnostic::Text("Identifier `%s` is a reserved keyword.", token),
+      diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
 void Log::NotBinary(frontend::SourceRange const &range,
                     std::string const &token) {
-  std::stringstream ss;
-  ss << "Operator `" << token << "` is not a binary operator.\n\n";
-  WriteSource(
-      ss, src_, {range.lines()},
-      {{range, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
-  ss << "\n\n";
-  errors_.push_back(ss.str());
+  renderer_.AddError(diagnostic::Diagnostic(
+      diagnostic::Text("Operator `%s` is not a binary operator.", token),
+      diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
 void Log::NotAType(frontend::SourceRange const &range, std::string_view type) {
-  std::stringstream ss;
-  ss << "Expression was expected to be a type, but instead it was a(n) " << type
-     << ".\n\n";
-  WriteSource(
-      ss, src_, {range.lines()},
-      {{range, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
-  ss << "\n\n";
-  errors_.push_back(ss.str());
+  renderer_.AddError(diagnostic::Diagnostic(
+      diagnostic::Text(
+          "Expression was expected to be a type, but instead was of type `%s`.",
+          type),
+      diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
 void Log::PositionalArgumentFollowingNamed(
     std::vector<frontend::SourceRange> const &pos_ranges,
     frontend::SourceRange const &named_range) {
-  std::stringstream ss;
-  ss << "Positional function arguments cannot follow a named argument.\n\n";
-  base::IntervalSet<frontend::LineNum> iset;
-
-  std::vector<std::pair<frontend::SourceRange, DisplayAttrs>> underlines;
-  // TODO do you also want to show the whole function call?
-  iset.insert(named_range.lines().expanded(1));
-  underlines.emplace_back(
-      named_range, DisplayAttrs{DisplayAttrs::GREEN, DisplayAttrs::UNDERLINE});
-
-  for (const auto &range : pos_ranges) {
-    iset.insert(named_range.lines().expanded(1));
-    underlines.emplace_back(
-        range, DisplayAttrs{DisplayAttrs::GREEN, DisplayAttrs::UNDERLINE});
+  diagnostic::SourceQuote quote(src_);
+  quote.Highlighted(named_range, diagnostic::Style{});
+  for (auto const &pos_range : pos_ranges) {
+    quote.Highlighted(pos_range, diagnostic::Style{});
   }
 
-  WriteSource(ss, src_, iset, underlines);
-  ss << "\n\n";
-  errors_.push_back(ss.str());
+  renderer_.AddError(diagnostic::Diagnostic(
+      diagnostic::Text(
+          "Positional function arguments cannot follow a named argument."),
+      quote));
 }
 
 void Log::UnknownParseError(std::vector<frontend::SourceRange> const &lines) {
@@ -477,75 +441,54 @@ void Log::DeclOutOfOrder(ast::Declaration const *decl,
 
 void Log::InvalidIndexing(frontend::SourceRange const &range,
                           std::string_view type) {
-  std::stringstream ss;
-  ss << "Cannot index into a non-array, non-buffer type. Indexed type is a `"
-     << type << "`.\n\n";
-  WriteSource(
-      ss, src_, {range.lines()},
-      {{range, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
-  ss << "\n\n";
-  errors_.push_back(ss.str());
+  renderer_.AddError(diagnostic::Diagnostic(
+      diagnostic::Text("Cannot index into a non-array, non-buffer type. "
+                       "Indexed type is a `%s`.",
+                       type),
+      diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
 void Log::InvalidIndexType(frontend::SourceRange const &range,
                            std::string_view type, std::string_view index_type) {
-  std::stringstream ss;
-  ss << "Attempting to index a value of type `" << type
-     << "` with a non-integral index. Indices must be integers, but you "
-        "provided an index of type `"
-     << index_type << "`.\n\n";
-  WriteSource(
-      ss, src_, {range.lines()},
-      {{range, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
-  ss << "\n\n";
-  errors_.push_back(ss.str());
+  renderer_.AddError(diagnostic::Diagnostic(
+      diagnostic::Text(
+          "Attempting to index a value of type `%s` with a non-integral index. "
+          "Indices must be integers, but you provided an index of type `%s`.",
+          type, index_type),
+      diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
 void Log::TypeMustBeInitialized(frontend::SourceRange const &range,
                                 std::string_view type) {
-  std::stringstream ss;
-  ss << "There is no default value for the type `" << type << "`.\n\n";
-  WriteSource(
-      ss, src_, {range.lines()},
-      {{range, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
-  ss << "\n\n";
-  errors_.push_back(ss.str());
+  renderer_.AddError(diagnostic::Diagnostic(
+      diagnostic::Text("There is no default value for the type `%s`.", type),
+      diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
 void Log::ComparingIncomparables(std::string_view lhs, std::string_view rhs,
                                  frontend::SourceRange const &range) {
-  std::stringstream ss;
-  ss << "Values of type `" << lhs << "` and `" << rhs
-     << "` are being compared but no such comparison is allowed:\n\n";
-  WriteSource(
-      ss, src_, {range.lines()},
-      {{range, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
-  ss << "\n\n";
-  errors_.push_back(ss.str());
+  renderer_.AddError(diagnostic::Diagnostic(
+      diagnostic::Text("Values of type `%s` and `%s` are being compared but no "
+                       "such comparison is allowed:",
+                       lhs, rhs),
+      diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
 void Log::MismatchedAssignmentSize(frontend::SourceRange const &range,
                                    size_t lhs, size_t rhs) {
-  std::stringstream ss;
-  ss << "Assigning multiple values but left- and right-hand side have "
-        "different numbers of elements  ("
-     << lhs << " vs " << rhs << ").\n\n";
-  WriteSource(
-      ss, src_, {range.lines()},
-      {{range, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
-  ss << "\n\n";
-  errors_.push_back(ss.str());
+  renderer_.AddError(diagnostic::Diagnostic(
+      diagnostic::Text("Assigning multiple values but left- and right-hand "
+                       "side have different numbers of elements  (`%d` vs. "
+                       "`%d`).",
+                       lhs, rhs),
+      diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
 void Log::InvalidNumber(frontend::SourceRange const &range,
                         std::string_view err) {
-  std::stringstream ss;
-  ss << err << "\n\n";
-  WriteSource(
-      ss, src_, {range.lines()},
-      {{range, DisplayAttrs{DisplayAttrs::RED, DisplayAttrs::UNDERLINE}}});
-  ss << "\n\n";
-  errors_.push_back(ss.str());
+  renderer_.AddError(diagnostic::Diagnostic(
+      diagnostic::Text("%s.", err),
+      diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
 void Log::NoCallMatch(frontend::SourceRange const &range,
