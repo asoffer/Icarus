@@ -84,17 +84,6 @@ Type const *Void();
 #undef PRIMITIVE_MACRO
 extern Type const *Generic;
 
-inline type::Type const *Prim(BasicType b) {
-  switch (b) {
-#define PRIMITIVE_MACRO(EnumName, name)                                        \
-  case BasicType::EnumName:                                                    \
-    return EnumName;
-#include "type/primitive.xmacro.h"
-#undef PRIMITIVE_MACRO
-  }
-  UNREACHABLE();
-}
-
 template <typename T>
 bool Compare(::type::Type const *t) {
   if constexpr (std::is_same_v<T, bool>) {

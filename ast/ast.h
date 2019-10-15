@@ -615,6 +615,8 @@ struct Terminal : public Expression {
       u64_ = value;
     } else if constexpr (std::is_same_v<T, std::string_view>) {
       sv_ = value;
+    } else if constexpr (std::is_same_v<T, type::BasicType>) {
+      t_ = value;
     } else {
       UNREACHABLE(typeid(T).name());
     }
@@ -637,8 +639,7 @@ struct Terminal : public Expression {
       case BasicType::Nat64: return ir::Results{u64_};
       case BasicType::ByteView: return ir::Results{sv_};
       case BasicType::Bool: return ir::Results{b_};
-      case BasicType::Type_:
-        return ir::Results{reinterpret_cast<type::Type const *>(ptr_)};
+      case BasicType::Type_: return ir::Results{type::Prim(t_)};
       default:;
     }
     UNREACHABLE();
@@ -655,6 +656,8 @@ struct Terminal : public Expression {
       return b_;
     } else if constexpr (std::is_same_v<T, std::string_view>) {
       return sv_;
+    } else if constexpr (std::is_same_v<T, type::BasicType>) {
+      return t_;
     } else {
       NOT_YET();
     }
@@ -668,8 +671,8 @@ struct Terminal : public Expression {
     bool b_;
     int64_t i64_;
     uint64_t u64_;
-    uintptr_t ptr_;
     std::string_view sv_;
+    type::BasicType t_;
   };
 };
 
