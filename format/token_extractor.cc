@@ -7,7 +7,7 @@ namespace format {
 template <typename T>
 static void Join(TokenExtractor *visitor, base::PtrSpan<T const> span,
                  std::string_view joiner) {
-  if (!span.empty()) {
+  if (not span.empty()) {
     using std::begin;
     using std::end;
     auto iter = begin(span);
@@ -141,7 +141,7 @@ void TokenExtractor::operator()(ast::StructType const *node) {
 
 void TokenExtractor::operator()(ast::Switch const *node) {
   if (node->expr_) { node->expr_->ExtractTokens(this); }
-  for (auto & [ body, cond ] : node->cases_) {
+  for (auto &[body, cond] : node->cases_) {
     body->ExtractTokens(this);
     cond->ExtractTokens(this);
   }

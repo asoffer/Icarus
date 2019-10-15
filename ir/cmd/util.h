@@ -6,9 +6,9 @@
 #include "backend/exec.h"
 #include "base/util.h"
 #include "ir/addr.h"
-#include "ir/values.h"
 #include "ir/reg.h"
 #include "ir/reg_or.h"
+#include "ir/values.h"
 #include "type/primitive.h"
 #include "type/util.h"
 
@@ -33,7 +33,7 @@ constexpr uint8_t PrimitiveIndex() {
     return 0x0a;
   } else if constexpr (std::is_same_v<T, std::string_view>) {
     return 0x0b;
-  } else if constexpr (std::is_same_v<T, type::Type const *>) {
+  } else if constexpr (std::is_same_v<T, type::Type const*>) {
     return 0x0c;
   } else if constexpr (std::is_same_v<T, Addr>) {
     return 0x0d;
@@ -109,10 +109,9 @@ auto PrimitiveDispatch(uint8_t primitive_type, Fn&& fn) {
       return std::forward<Fn>(fn)(base::Tag<double>{});
     case PrimitiveIndex<std::string_view>():
       return std::forward<Fn>(fn)(base::Tag<std::string_view>{});
-    case PrimitiveIndex<type::Type const *>():
-      return std::forward<Fn>(fn)(base::Tag<type::Type const *>{});
-    case PrimitiveIndex<Addr>():
-      return std::forward<Fn>(fn)(base::Tag<Addr>{});
+    case PrimitiveIndex<type::Type const*>():
+      return std::forward<Fn>(fn)(base::Tag<type::Type const*>{});
+    case PrimitiveIndex<Addr>(): return std::forward<Fn>(fn)(base::Tag<Addr>{});
     case PrimitiveIndex<AnyFunc>():
       return std::forward<Fn>(fn)(base::Tag<AnyFunc>{});
     case PrimitiveIndex<core::Alignment>():
@@ -172,7 +171,6 @@ void WriteBits(CmdBuffer* buf, absl::Span<T const> span, Fn&& predicate) {
     }
   }
   if (span.size() % 8 != 0) { buf->append(reg_mask); }
-
 }
 
 template <typename SizeType, typename T>
@@ -240,8 +238,8 @@ auto Deserialize(Iter* iter, Fn&& fn) {
 
 template <uint8_t Index, typename Fn, typename... SupportedTypes>
 struct UnaryCmd {
-  using fn_type                                 = Fn;
-  constexpr static uint8_t index                = Index;
+  using fn_type                  = Fn;
+  constexpr static uint8_t index = Index;
 
   template <typename T>
   static constexpr bool IsSupported() {
@@ -265,9 +263,9 @@ struct UnaryCmd {
                                    std::vector<Addr> const& ret_slots,
                                    backend::ExecContext* ctx) {
     auto& frame = ctx->call_stack.top();
-    auto ctrl = iter->read<control_bits>();
+    auto ctrl   = iter->read<control_bits>();
     PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
-      using type = typename std::decay_t<decltype(tag)>::type;
+      using type  = typename std::decay_t<decltype(tag)>::type;
       auto result = Apply<type>(iter, ctrl.reg0, ctx);
       frame.regs_.set(GetOffset(frame.fn_, iter->read<Reg>()), result);
     });
@@ -284,7 +282,8 @@ struct UnaryCmd {
       // TODO: Add core::LayoutRequirements so you can skip forward by the
       // appropriate amount without instantiating so many templates.
       PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
-        s.append(stringify(iter->read<typename std::decay_t<decltype(tag)>::type>()));
+        s.append(stringify(
+            iter->read<typename std::decay_t<decltype(tag)>::type>()));
       });
     }
 
@@ -326,7 +325,7 @@ struct UnaryCmd {
 template <typename CmdType>
 struct UnaryHandler {
   template <typename... Args,
-            typename std::enable_if_t<!std::conjunction_v<
+            typename std::enable_if_t<not std::conjunction_v<
                 std::is_same<Args, RegOr<UnwrapTypeT<Args>>>...>>* = nullptr>
   auto operator()(Args... args) const {
     return operator()(RegOr<UnwrapTypeT<Args>>(std::forward<Args>(args))...);
@@ -338,7 +337,7 @@ struct UnaryHandler {
     using fn_type     = typename CmdType::fn_type;
     using result_type = decltype(fn_type{}(operand.value()));
     if constexpr (CmdType::template IsSupported<T>()) {
-      if (!operand.is_reg()) {
+      if (not operand.is_reg()) {
         return RegOr<result_type>{fn_type{}(operand.value())};
       }
     }
@@ -454,8 +453,8 @@ struct BinaryCmd {
 
  private:
   template <typename T>
-  static auto Apply(base::untyped_buffer::const_iterator* iter, bool reg0, bool reg1,
-                    backend::ExecContext* ctx) {
+  static auto Apply(base::untyped_buffer::const_iterator* iter, bool reg0,
+                    bool reg1, backend::ExecContext* ctx) {
     if constexpr (IsSupported<T>()) {
       auto lhs = reg0 ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>();
       auto rhs = reg1 ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>();
@@ -470,7 +469,7 @@ struct BinaryCmd {
 template <typename CmdType>
 struct BinaryHandler {
   template <typename... Args,
-            typename std::enable_if_t<!std::conjunction_v<
+            typename std::enable_if_t<not std::conjunction_v<
                 std::is_same<Args, RegOr<UnwrapTypeT<Args>>>...>>* = nullptr>
   auto operator()(Args... args) const {
     return operator()(RegOr<UnwrapTypeT<Args>>(std::forward<Args>(args))...);
@@ -482,7 +481,7 @@ struct BinaryHandler {
     using fn_type     = typename CmdType::fn_type;
     using result_type = decltype(fn_type{}(lhs.value(), rhs.value()));
     if constexpr (CmdType::template IsSupported<T>()) {
-      if (!lhs.is_reg() && !rhs.is_reg()) {
+      if (not lhs.is_reg() and not rhs.is_reg()) {
         return RegOr<result_type>{fn_type{}(lhs.value(), rhs.value())};
       }
     }
@@ -548,7 +547,7 @@ RegOr<typename CmdType::type> MakeVariadicImpl(
     }
   }
 
-  auto &blk = *GetBuilder().CurrentBlock();
+  auto& blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append_index<CmdType>();
   Serialize<uint16_t>(&blk.cmd_buffer_, vals);
 

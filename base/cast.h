@@ -7,7 +7,7 @@
 
 #define BASE_INTERNAL_STATIC_ASSERT_RELATED(base, derived)                     \
   static_assert(                                                               \
-      std::is_base_of_v<std::remove_cv_t<base>, std::remove_cv_t<derived>> &&  \
+      std::is_base_of_v<std::remove_cv_t<base>, std::remove_cv_t<derived>> and \
           std::is_convertible_v<std::remove_cv_t<derived> *,                   \
                                 std::remove_cv_t<base> *>,                     \
       "Calling is<...> but there is no public inheritance relationship. "      \

@@ -54,7 +54,7 @@ void Execute(ir::CompiledFn *fn, const base::untyped_buffer &arguments,
   // explanation here. I'm quite confident this is really possible with the
   // generics model I have, but I can't quite articulate exactly why it only
   // happens for generics and nothing else.
-  if (fn->work_item && *fn->work_item) { (std::move(*fn->work_item))(); }
+  if (fn->work_item and *fn->work_item) { (std::move(*fn->work_item))(); }
 
   // TODO what about bound constants?
   ctx->call_stack.emplace(fn, arguments, ctx);
@@ -137,7 +137,7 @@ static void StoreValue(T val, ir::Addr addr, base::untyped_buffer *stack) {
     auto start  = reinterpret_cast<uintptr_t>(stack->raw(0));
     auto end    = reinterpret_cast<uintptr_t>(stack->raw(stack->size()));
     auto result = reinterpret_cast<uintptr_t>(val);
-    if (start <= result && result < end) {
+    if (start <= result and result < end) {
       StoreValue(ir::Addr::Stack(result - start), addr, stack);
     } else {
       StoreValue(ir::Addr::Heap(val), addr, stack);
@@ -153,7 +153,6 @@ static void StoreValue(T val, ir::Addr addr, base::untyped_buffer *stack) {
   }
 }
 
-
 template <size_t N, typename... Ts>
 struct RetrieveArgs;
 
@@ -165,7 +164,7 @@ struct RetrieveArgs<N, T, Ts...> {
     if constexpr (std::is_same_v<T, void *>) {
       // Any pointer-type alignment is fine. (TODO they're always the same,
       // right?)
-      *index = ((*index - 1) | (alignof(ir::Addr) - 1)) + 1;
+      *index    = ((*index - 1) | (alignof(ir::Addr) - 1)) + 1;
       auto addr = arguments.get<ir::Addr>(*index);
       void *ptr = nullptr;
       switch (addr.kind) {
@@ -184,8 +183,7 @@ struct RetrieveArgs<N, T, Ts...> {
     } else {
       auto arch = core::Interpretter();
       auto t    = type::Get<T>();
-      *index =
-          core::FwdAlign(core::Bytes{*index}, t->alignment(arch)).value();
+      *index = core::FwdAlign(core::Bytes{*index}, t->alignment(arch)).value();
       std::get<N>(*out_tup) = arguments.get<T>(*index);
       *index += t->bytes(arch).value();
       RetrieveArgs<N + 1, Ts...>{}(arguments, index, out_tup);
@@ -225,7 +223,7 @@ void FfiCall(ir::Foreign const &f, base::untyped_buffer const &arguments,
 }
 
 void CallForeignFn(ir::Foreign const &f, base::untyped_buffer const &arguments,
-                   std::vector<ir::Addr> const& ret_slots,
+                   std::vector<ir::Addr> const &ret_slots,
                    base::untyped_buffer *stack) {
   // TODO we can catch locally or in the same lexical scope stack if a
   // redeclaration of the same foreign symbol has a different type.
@@ -245,29 +243,31 @@ void CallForeignFn(ir::Foreign const &f, base::untyped_buffer const &arguments,
     FfiCall<int64_t>(f, arguments, &ret_slots, stack);
   } else if (fn_type == type::Func({type::Nat8}, {type::Int64})) {
     FfiCall<int64_t, uint8_t>(f, arguments, &ret_slots, stack);
-  } else if (fn_type->input.size() == 1 &&
-             fn_type->input[0]->is<type::Pointer>() &&
-             fn_type->output.size() == 1 && fn_type->output[0] == type::Int64) {
+  } else if (fn_type->input.size() == 1 and
+             fn_type->input[0]->is<type::Pointer>() and
+             fn_type->output.size() == 1 and
+             fn_type->output[0] == type::Int64) {
     FfiCall<int64_t, void *>(f, arguments, &ret_slots, stack);
-  } else if (fn_type->input.size() == 2 &&
-             fn_type->input[0]->is<type::Pointer>() &&
-             fn_type->input[1]->is<type::Pointer>() &&
-             fn_type->output.size() == 1 &&
+  } else if (fn_type->input.size() == 2 and
+             fn_type->input[0]->is<type::Pointer>() and
+             fn_type->input[1]->is<type::Pointer>() and
+             fn_type->output.size() == 1 and
              fn_type->output[0]->is<type::Pointer>()) {
     FfiCall<void *, void *, void *>(f, arguments, &ret_slots, stack);
-  } else if (fn_type->input.size() == 2 && fn_type->input[0] == type::Int64 &&
-             fn_type->input[1]->is<type::Pointer>() &&
-             fn_type->output.size() == 1 && fn_type->output[0] == type::Int64) {
+  } else if (fn_type->input.size() == 2 and fn_type->input[0] == type::Int64 and
+             fn_type->input[1]->is<type::Pointer>() and
+             fn_type->output.size() == 1 and
+             fn_type->output[0] == type::Int64) {
     FfiCall<int64_t, int64_t, void *>(f, arguments, &ret_slots, stack);
-  } else if (fn_type->input.size() == 1 && fn_type->input[0] == type::Int64 &&
-             fn_type->output.size() == 1 &&
+  } else if (fn_type->input.size() == 1 and fn_type->input[0] == type::Int64 and
+             fn_type->output.size() == 1 and
              fn_type->output[0]->is<type::Pointer>()) {
     FfiCall<void *, int64_t>(f, arguments, &ret_slots, stack);
-  } else if (fn_type->input.size() == 1 && fn_type->input[0] == type::Nat64 &&
-             fn_type->output.size() == 1 &&
+  } else if (fn_type->input.size() == 1 and fn_type->input[0] == type::Nat64 and
+             fn_type->output.size() == 1 and
              fn_type->output[0]->is<type::Pointer>()) {
     FfiCall<void *, uint64_t>(f, arguments, &ret_slots, stack);
-  } else if (fn_type->input.size() == 1 && fn_type->output.empty() &&
+  } else if (fn_type->input.size() == 1 and fn_type->output.empty() and
              fn_type->input[0]->is<type::Pointer>()) {
     FfiCall<void, void *>(f, arguments, &ret_slots, stack);
   } else {

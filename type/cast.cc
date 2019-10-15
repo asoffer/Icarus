@@ -14,17 +14,16 @@
 #include "type/tuple.h"
 #include "type/variant.h"
 
-
 namespace type {
 
 // TODO much of this should be moved to virtual methods.
 bool CanCast(Type const *from, Type const *to) {
   if (from->ReinterpretableAs(to)) { return true; }
 
-  if (IsIntegral(from) && IsNumeric(to)) { return true; }
-  if (IsFloatingPoint(from) && IsFloatingPoint(to)) { return true; }
+  if (IsIntegral(from) and IsNumeric(to)) { return true; }
+  if (IsFloatingPoint(from) and IsFloatingPoint(to)) { return true; }
 
-  if (from->is<Tuple>() && to == Type_) {
+  if (from->is<Tuple>() and to == Type_) {
     // TODO remove this hack for expressing the type of tuples
     auto const &entries = from->as<Tuple>().entries_;
     return std::all_of(entries.begin(), entries.end(),
@@ -32,7 +31,7 @@ bool CanCast(Type const *from, Type const *to) {
   }
 
   // TODO other integer types.
-  if (from == Int32 && (to->is<Enum>() || to->is<Flags>())) { return true; }
+  if (from == Int32 and (to->is<Enum>() or to->is<Flags>())) { return true; }
 
   if (auto *from_var = from->if_as<Variant>()) {
     if (auto *to_var = to->if_as<Variant>()) {
@@ -56,7 +55,7 @@ bool CanCast(Type const *from, Type const *to) {
     if (auto *to_tup = to->if_as<Tuple>()) {
       if (from_tup->size() != to_tup->size()) { return false; }
       for (size_t i = 0; i < from_tup->size(); ++i) {
-        if (!CanCast(from_tup->entries_.at(i), to_tup->entries_.at(i))) {
+        if (not CanCast(from_tup->entries_.at(i), to_tup->entries_.at(i))) {
           return false;
         }
       }
@@ -69,13 +68,13 @@ bool CanCast(Type const *from, Type const *to) {
   return false;
 }
 
-// TODO optimize (early exists. don't check lhs->is<> && rhs->is<>. If they
+// TODO optimize (early exists. don't check lhs->is<> and rhs->is<>. If they
 // don't match you can early exit.
 Type const *Meet(Type const *lhs, Type const *rhs) {
   if (lhs == rhs) { return lhs; }
-  if (lhs == nullptr || rhs == nullptr) { return nullptr; }
+  if (lhs == nullptr or rhs == nullptr) { return nullptr; }
 
-  if (lhs == NullPtr || rhs == NullPtr) {
+  if (lhs == NullPtr or rhs == NullPtr) {
     // TODO It's not obvious to me that this is what I want to do.
     return nullptr;
   }
@@ -83,7 +82,7 @@ Type const *Meet(Type const *lhs, Type const *rhs) {
     return rhs->is<Pointer>() ? Ptr(Meet(lhs->as<Pointer>().pointee,
                                          rhs->as<Pointer>().pointee))
                               : nullptr;
-  } else if (lhs->is<Array>() && rhs->is<Array>()) {
+  } else if (lhs->is<Array>() and rhs->is<Array>()) {
     if (lhs->as<Array>().len != rhs->as<Array>().len) { return nullptr; }
     auto *result = Meet(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
     return result ? Arr(lhs->as<Array>().len, result) : result;

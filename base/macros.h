@@ -11,10 +11,10 @@
 
 #define ASSIGN_OR_IMPL2(action, var, expr, temp)                               \
   auto &&temp = (expr);                                                        \
-  if (!temp) {                                                                 \
+  if (not temp) {                                                              \
     auto &&_ = std::move(temp);                                                \
     action;                                                                    \
   }                                                                            \
   var = *std::move(temp)
 
-#endif // ICARUS_BASE_MACROS_H
+#endif  // ICARUS_BASE_MACROS_H

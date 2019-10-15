@@ -5,9 +5,9 @@
 #include <vector>
 
 #include "base/untyped_buffer.h"
+#include "core/bytes.h"
 #include "ir/reg.h"
 #include "ir/reg_or.h"
-#include "core/bytes.h"
 
 namespace ir {
 
@@ -22,7 +22,8 @@ struct Results {
                                    base::untyped_buffer buf);
   static Results FromRaw(void const* data, core::Bytes bytes);
 
-  template <typename T, typename = std::enable_if_t<!std::is_base_of_v<Reg, T>>>
+  template <typename T,
+            typename = std::enable_if_t<not std::is_base_of_v<Reg, T>>>
   RegOr<T> get(size_t index) const {
     if constexpr (std::is_same_v<T, IsRegOr<T>>) {
       return get<typename IsRegOr<T>::type>(index);

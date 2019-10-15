@@ -7,7 +7,6 @@
 #include "frontend/tag.h"
 #include "frontend/token.h"
 
-
 namespace frontend {
 struct SourceRange;
 
@@ -41,9 +40,7 @@ struct TaggedNode {
               case ast::Hashtag::Builtin::Immovable:
                 token = "{immovable}";
                 break;
-              case ast::Hashtag::Builtin::Inline:
-                token = "{inline}";
-                break;
+              case ast::Hashtag::Builtin::Inline: token = "{inline}"; break;
             }
             node_ = std::make_unique<Token>(span, token, true);
           }

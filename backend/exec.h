@@ -1,8 +1,8 @@
 #ifndef ICARUS_BACKEND_EXEC_H
 #define ICARUS_BACKEND_EXEC_H
 
-#include <memory>
 #include <cstddef>
+#include <memory>
 #include <stack>
 
 #include "base/untyped_buffer.h"

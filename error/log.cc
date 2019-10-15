@@ -93,7 +93,7 @@ void WriteSource(
 
       // TODO Handle spans crossing multiple lines.
       size_t prev_start_offset = 0;
-      while (iter != underlines.end() &&
+      while (iter != underlines.end() and
              iter->first.begin().line_num == line_num) {
         os << line_view.substr(
             prev_start_offset,

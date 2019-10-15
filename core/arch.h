@@ -1,10 +1,10 @@
 #ifndef ICARUS_CORE_ARCH_H
 #define ICARUS_CORE_ARCH_H
 
-#include "ir/addr.h"
-#include "ir/any_func.h"
 #include "core/alignment.h"
 #include "core/bytes.h"
+#include "ir/addr.h"
+#include "ir/any_func.h"
 
 namespace core {
 

@@ -17,7 +17,7 @@ struct BasicBlock;
 struct CmdBuffer {
  public:
   template <typename CmdType>
-    void append_index() {
+  void append_index() {
     buf_.append(CmdType::index);
   }
 
@@ -36,7 +36,7 @@ struct CmdBuffer {
   size_t size() const { return buf_.size(); }
 
   template <typename T>
-  void set(size_t offset, T const &t) {
+  void set(size_t offset, T const& t) {
     buf_.set(offset, t);
   }
 
@@ -44,7 +44,6 @@ struct CmdBuffer {
                             backend::ExecContext* ctx) const;
 
   void UpdateForInlining(Inliner const& inliner);
-
 
   std::string to_string() const;
 

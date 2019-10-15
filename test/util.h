@@ -19,7 +19,7 @@ std::unique_ptr<T> ParseAs(std::string s) {
   frontend::StringSource source(std::move(s));
   auto stmts     = frontend::Parse(&source);
   auto* cast_ptr = stmts[0]->template if_as<T>();
-  if (!cast_ptr) { return nullptr; }
+  if (not cast_ptr) { return nullptr; }
   stmts[0].release();
   return std::unique_ptr<T>(cast_ptr);
 }

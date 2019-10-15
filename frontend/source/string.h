@@ -29,7 +29,7 @@ struct StringSource : public Source {
     if (pos == std::string_view::npos) { return {view_, false}; }
     auto result = view_.substr(0, pos);
     view_.remove_prefix(pos + 1);
-    return {result, !view_.empty()};
+    return {result, not view_.empty()};
   }
 
   std::vector<std::string> LoadLines() override {

@@ -1,10 +1,10 @@
 #include "ir/builder.h"
-#include "ir/results.h"
 #include "ir/cmd/basic.h"
 #include "ir/cmd/call.h"
 #include "ir/cmd/print.h"
 #include "ir/compiled_fn.h"
 #include "ir/components.h"
+#include "ir/results.h"
 #include "module/module.h"
 #include "type/array.h"
 #include "type/enum.h"
@@ -16,14 +16,13 @@
 
 namespace compiler {
 
-void Compiler::EmitPrint(type::Array const *t,
-                                       ir::Results const &val) {
+void Compiler::EmitPrint(type::Array const *t, ir::Results const &val) {
   t->repr_func_.init([=]() {
     // TODO special function?
-    ir::CompiledFn *fn = AddFunc(
-        type::Func({t}, {}),
-        core::FnParams(
-            core::Param{"", type::Typed<ast::Expression const *>{nullptr, t}}));
+    ir::CompiledFn *fn =
+        AddFunc(type::Func({t}, {}),
+                core::FnParams(core::Param{
+                    "", type::Typed<ast::Expression const *>{nullptr, t}}));
 
     ICARUS_SCOPE(ir::SetCurrentFunc(fn)) {
       builder().CurrentBlock() = fn->entry();
@@ -66,25 +65,21 @@ void Compiler::EmitPrint(type::Array const *t,
   ir::Call(ir::AnyFunc{t->repr_func_.get()}, t->repr_func_.get()->type_, {val});
 }
 
-void Compiler::EmitPrint(type::Enum const *t,
-                                       ir::Results const &val) {
+void Compiler::EmitPrint(type::Enum const *t, ir::Results const &val) {
   // TODO print something friendlier
   ir::Print(val.get<ir::EnumVal>(0), t);
 }
 
-void Compiler::EmitPrint(type::Flags const *t,
-                                       ir::Results const &val) {
+void Compiler::EmitPrint(type::Flags const *t, ir::Results const &val) {
   // TODO print something friendlier
   ir::Print(val.get<ir::FlagsVal>(0), t);
 }
 
-void Compiler::EmitPrint(type::Pointer const *t,
-                                       ir::Results const &val) {
+void Compiler::EmitPrint(type::Pointer const *t, ir::Results const &val) {
   ir::Print(val.get<ir::Addr>(0));
 }
 
-void Compiler::EmitPrint(type::Primitive const *t,
-                                       ir::Results const &val) {
+void Compiler::EmitPrint(type::Primitive const *t, ir::Results const &val) {
   switch (t->type_) {
     case type::BasicType::Bool: ir::Print(val.get<bool>(0)); break;
     case type::BasicType::Int8: ir::Print(val.get<int8_t>(0)); break;
@@ -111,8 +106,7 @@ void Compiler::EmitPrint(type::Primitive const *t,
   }
 }
 
-void Compiler::EmitPrint(type::Tuple const *t,
-                                       ir::Results const &val) {
+void Compiler::EmitPrint(type::Tuple const *t, ir::Results const &val) {
   auto reg = val.get<ir::Reg>(0);
   ir::Print(std::string_view{"("});
   for (int i = 0; i < static_cast<int>(t->entries_.size()) - 1; ++i) {
@@ -122,7 +116,7 @@ void Compiler::EmitPrint(type::Tuple const *t,
     ir::Print(std::string_view{", "});
   }
 
-  if (!t->entries_.empty()) {
+  if (not t->entries_.empty()) {
     t->entries_.back()->EmitPrint(
         this,
         ir::Results{ir::PtrFix(ir::Field(reg, t, t->entries_.size() - 1).get(),
@@ -131,18 +125,17 @@ void Compiler::EmitPrint(type::Tuple const *t,
   ir::Print(std::string_view{")"});
 }
 
-void Compiler::EmitPrint(type::Variant const *t,
-                                       ir::Results const &val) {
+void Compiler::EmitPrint(type::Variant const *t, ir::Results const &val) {
   // TODO design and build a jump table?
   // TODO repr_func_
   // TODO remove these casts in favor of something easier to track properties on
 
   std::unique_lock lock(t->mtx_);
-  if (!t->repr_func_) {
-    t->repr_func_ = AddFunc(
-        type::Func({t}, {}),
-        core::FnParams(
-            core::Param{"", type::Typed<ast::Expression const *>{nullptr, t}}));
+  if (not t->repr_func_) {
+    t->repr_func_ =
+        AddFunc(type::Func({t}, {}),
+                core::FnParams(core::Param{
+                    "", type::Typed<ast::Expression const *>{nullptr, t}}));
 
     ICARUS_SCOPE(ir::SetCurrentFunc(t->repr_func_)) {
       builder().CurrentBlock() = t->repr_func_->entry();

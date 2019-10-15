@@ -48,7 +48,7 @@ inline Addr operator+(Addr a, core::Bytes b) { return a += b; }
 inline Addr operator+(core::Bytes b, Addr a) { return a += b; }
 
 bool operator==(Addr lhs, Addr rhs);
-inline bool operator!=(Addr lhs, Addr rhs) { return !(lhs == rhs); }
+inline bool operator!=(Addr lhs, Addr rhs) { return not (lhs == rhs); }
 
 std::string stringify(Addr::Kind k);
 

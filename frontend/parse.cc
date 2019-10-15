@@ -185,7 +185,7 @@ std::unique_ptr<ast::Node> BuildRightUnop(
 std::unique_ptr<ast::Node> BuildCallImpl(
     SourceRange span, std::unique_ptr<ast::Expression> callee,
     std::unique_ptr<ast::Expression> args_expr, error::Log *error_log) {
-  if (!args_expr) {
+  if (not args_expr) {
     return std::make_unique<ast::Call>(std::move(span), std::move(callee),
                                        core::OrderedFnArgs<ast::Expression>{});
   }
@@ -197,7 +197,7 @@ std::unique_ptr<ast::Node> BuildCallImpl(
 
     for (auto &expr : cl->exprs_) {
       if (auto *b = expr->if_as<ast::Binop>();
-          b && b->op() == frontend::Operator::Assign) {
+          b and b->op() == frontend::Operator::Assign) {
         if (positional_error_spans.empty()) {
           last_named_span_before_error = b->lhs()->span;
         }
@@ -212,13 +212,13 @@ std::unique_ptr<ast::Node> BuildCallImpl(
       }
     }
 
-    if (!positional_error_spans.empty()) {
+    if (not positional_error_spans.empty()) {
       error_log->PositionalArgumentFollowingNamed(
           positional_error_spans, *last_named_span_before_error);
     }
   } else {
     if (ast::Binop *b = args_expr->if_as<ast::Binop>();
-        b && b->op() == frontend::Operator::Assign) {
+        b and b->op() == frontend::Operator::Assign) {
       auto [lhs, rhs] = std::move(*b).extract();
       args.emplace_back(std::string{lhs->as<ast::Identifier>().token()},
                         std::move(rhs));
@@ -256,7 +256,8 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
     auto span = SourceRange(nodes.front()->span, nodes.back()->span);
     std::vector<std::unique_ptr<ast::Expression>> exprs;
     std::vector<std::unique_ptr<ast::Call>> call_exprs;
-    if (auto *c = nodes[1]->if_as<ast::ChainOp>(); c && !c->parenthesized_) {
+    if (auto *c = nodes[1]->if_as<ast::ChainOp>();
+        c and not c->parenthesized_) {
       exprs = std::move(*c).extract();
       for (auto &expr : exprs) {
         if (expr->is<ast::Call>()) {
@@ -273,7 +274,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
     auto span = SourceRange(nodes.front()->span, nodes.back()->span);
     std::vector<std::unique_ptr<ast::Expression>> exprs;
     if (auto *cl = nodes[1]->if_as<ast::CommaList>();
-        cl && !cl->parenthesized_) {
+        cl and not cl->parenthesized_) {
       exprs = std::move(*cl).extract();
     } else {
       exprs.push_back(move_as<ast::Expression>(nodes[1]));
@@ -283,7 +284,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
     auto span = SourceRange(nodes.front()->span, nodes.back()->span);
     std::vector<std::unique_ptr<ast::Expression>> exprs;
     if (auto *cl = nodes[1]->if_as<ast::CommaList>();
-        cl && !cl->parenthesized_) {
+        cl and not cl->parenthesized_) {
       exprs = std::move(*cl).extract();
     } else {
       exprs.push_back(move_as<ast::Expression>(nodes[1]));
@@ -293,7 +294,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
     auto span = SourceRange(nodes.front()->span, nodes.back()->span);
     std::vector<std::unique_ptr<ast::Expression>> exprs;
     if (auto *cl = nodes[1]->if_as<ast::CommaList>();
-        cl && !cl->parenthesized_) {
+        cl and not cl->parenthesized_) {
       exprs = std::move(*cl).extract();
     } else {
       exprs.push_back(move_as<ast::Expression>(nodes[1]));
@@ -332,7 +333,7 @@ std::unique_ptr<ast::Node> BuildChainOp(
 
   // Add to a chain so long as the precedence levels match. The only thing at
   // that precedence level should be the operators which can be chained.
-  if (nodes[0]->is<ast::ChainOp>() &&
+  if (nodes[0]->is<ast::ChainOp>() and
       precedence(nodes[0]->as<ast::ChainOp>().ops().front()) ==
           precedence(op)) {
     chain = move_as<ast::ChainOp>(nodes[0]);
@@ -350,8 +351,8 @@ std::unique_ptr<ast::Node> BuildChainOp(
 std::unique_ptr<ast::Node> BuildCommaList(
     absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   std::unique_ptr<ast::CommaList> comma_list = nullptr;
-  if (nodes[0]->is<ast::CommaList>() &&
-      !nodes[0]->as<ast::CommaList>().parenthesized_) {
+  if (nodes[0]->is<ast::CommaList>() and
+      not nodes[0]->as<ast::CommaList>().parenthesized_) {
     comma_list = move_as<ast::CommaList>(nodes[0]);
   } else {
     comma_list       = std::make_unique<ast::CommaList>();
@@ -369,7 +370,7 @@ std::unique_ptr<ast::Node> BuildAccess(
   auto &&operand = move_as<ast::Expression>(nodes[0]);
   if (operand->is<ast::Declaration>()) {
     error_log->DeclarationInAccess(operand->span);
-  } else if (!nodes[2]->is<ast::Identifier>()) {
+  } else if (not nodes[2]->is<ast::Identifier>()) {
     error_log->RHSNonIdInAccess(nodes[2]->span);
   }
 
@@ -417,7 +418,8 @@ std::unique_ptr<ast::Node> BuildEmptyCommaList(
 
 std::unique_ptr<ast::Node> BuildArrayLiteral(
     absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
-  if (auto *cl = nodes[1]->if_as<ast::CommaList>(); cl && !cl->parenthesized_) {
+  if (auto *cl = nodes[1]->if_as<ast::CommaList>();
+      cl and not cl->parenthesized_) {
     return std::make_unique<ast::ArrayLiteral>(nodes[0]->span,
                                                std::move(*cl).extract());
   } else {
@@ -430,8 +432,8 @@ std::unique_ptr<ast::Node> BuildGenericStructType(
     absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   auto result = std::make_unique<ast::StructType>(
       SourceRange(nodes.front()->span, nodes.back()->span));
-  if (nodes[1]->is<ast::CommaList>() &&
-      !nodes[1]->as<ast::CommaList>().parenthesized_) {
+  if (nodes[1]->is<ast::CommaList>() and
+      not nodes[1]->as<ast::CommaList>().parenthesized_) {
     result->args_ = std::move(nodes[1]->as<ast::CommaList>().exprs_);
   } else {
     result->args_.push_back(move_as<ast::Expression>(nodes[1]));
@@ -442,7 +444,8 @@ std::unique_ptr<ast::Node> BuildGenericStructType(
 
 std::unique_ptr<ast::Node> BuildArrayType(
     absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
-  if (auto *cl = nodes[1]->if_as<ast::CommaList>(); cl && !cl->parenthesized_) {
+  if (auto *cl = nodes[1]->if_as<ast::CommaList>();
+      cl and not cl->parenthesized_) {
     auto span = SourceRange(nodes.front()->span, nodes.back()->span);
     return std::make_unique<ast::ArrayType>(std::move(span),
                                             std::move(*cl).extract(),
@@ -465,7 +468,7 @@ std::unique_ptr<ast::Node> BuildDeclaration(
   }
 
   std::unique_ptr<ast::Expression> type_expr, init_val;
-  if (op == frontend::Operator::Colon ||
+  if (op == frontend::Operator::Colon or
       op == frontend::Operator::DoubleColon) {
     type_expr = move_as<ast::Expression>(nodes[2]);
   } else {
@@ -695,10 +698,10 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
   } else if (tk == "`") {
     NOT_YET();
 
-  } else if (tk == ":" || tk == ":=") {
+  } else if (tk == ":" or tk == ":=") {
     return BuildDeclaration<false>(std::move(nodes), error_log);
 
-  } else if (tk == "::" || tk == "::=") {
+  } else if (tk == "::" or tk == "::=") {
     return BuildDeclaration<true>(std::move(nodes), error_log);
 
   } else if (tk == "=>") {
@@ -893,7 +896,7 @@ std::unique_ptr<ast::Node> BuildKWBlock(
   if (nodes[0]->is<frontend::Token>()) {
     std::string const &tk = nodes[0]->as<frontend::Token>().token;
 
-    if (bool is_enum = (tk == "enum"); is_enum || tk == "flags") {
+    if (bool is_enum = (tk == "enum"); is_enum or tk == "flags") {
       return BuildEnumOrFlagLiteral(std::move(nodes),
                                     is_enum ? ast::EnumLiteral::Kind::Enum
                                             : ast::EnumLiteral::Kind::Flags,
@@ -1133,42 +1136,42 @@ struct ParseState {
       return brace_count == 0 ? ShiftState::EndOfExpr : ShiftState::MustReduce;
     }
 
-    if (ahead.tag_ == l_brace && (get_type<1>() & kw_block) &&
+    if (ahead.tag_ == l_brace and (get_type<1>() & kw_block) and
         get_type<2>() == fn_arrow) {
       return ShiftState::MustReduce;
     }
 
-    if (ahead.tag_ == l_brace && get_type<1>() == fn_expr &&
+    if (ahead.tag_ == l_brace and get_type<1>() == fn_expr and
         get_type<2>() == fn_arrow) {
       return ShiftState::MustReduce;
     }
 
-    if (ahead.tag_ == l_brace &&
+    if (ahead.tag_ == l_brace and
         (get_type<1>() & (fn_expr | kw_block_head | kw_struct))) {
       return ShiftState::NeedMore;
     }
 
-    if (get_type<1>() == newline && get_type<2>() == comma) {
+    if (get_type<1>() == newline and get_type<2>() == comma) {
       return ShiftState::MustReduce;
     }
 
-    if (get_type<1>() == op_lt && ahead.tag_ != newline) {
+    if (get_type<1>() == op_lt and ahead.tag_ != newline) {
       return ShiftState::NeedMore;
     }
 
-    if ((get_type<1>() & (kw_block_head | kw_struct)) &&
+    if ((get_type<1>() & (kw_block_head | kw_struct)) and
         ahead.tag_ == newline) {
       return ShiftState::NeedMore;
     }
 
-    if ((get_type<2>() & (kw_block_head | kw_struct)) &&
+    if ((get_type<2>() & (kw_block_head | kw_struct)) and
         get_type<1>() == newline) {
       return ShiftState::NeedMore;
     }
 
     if (ahead.tag_ == r_paren) { return ShiftState::MustReduce; }
 
-    if (get_type<1>() == r_paren && ahead.tag_ == l_brace) {
+    if (get_type<1>() == r_paren and ahead.tag_ == l_brace) {
       size_t i = tag_stack_.size() - 1;
       while (i > 0) {
         if (tag_stack_[i] == fn_arrow) { return ShiftState::MustReduce; }
@@ -1209,8 +1212,8 @@ struct ParseState {
       } else {
         return ShiftState::MustReduce;
       }
-      return (left_prec < right_prec) ||
-                     (left_prec == right_prec &&
+      return (left_prec < right_prec) or
+                     (left_prec == right_prec and
                       (left_prec & assoc_mask) == right_assoc)
                  ? ShiftState::NeedMore
                  : ShiftState::MustReduce;
@@ -1221,7 +1224,7 @@ struct ParseState {
   void LookAhead() { lookahead_ = NextToken(&lex_state_); }
 
   const TaggedNode &Next() {
-    if (!lookahead_) { LookAhead(); }
+    if (not lookahead_) { LookAhead(); }
     return *lookahead_;
   }
 
@@ -1251,7 +1254,7 @@ void Debug(ParseState *ps) {
 }
 
 void Shift(ParseState *ps) {
-  if (!ps->lookahead_) { ps->LookAhead(); }
+  if (not ps->lookahead_) { ps->LookAhead(); }
   auto ahead     = *std::move(ps->lookahead_);
   ps->lookahead_ = std::nullopt;
   ps->tag_stack_.push_back(ahead.tag_);
@@ -1308,7 +1311,7 @@ std::vector<std::unique_ptr<ast::Node>> Parse(Source *src) {
   while (state.Next().tag_ != eof) {
     ASSERT(state.tag_stack_.size() == state.node_stack_.size());
     // Shift if you are supposed to, or if you are unable to reduce.
-    if (state.shift_state() == ShiftState::NeedMore || !Reduce(&state)) {
+    if (state.shift_state() == ShiftState::NeedMore or not Reduce(&state)) {
       Shift(&state);
     }
 

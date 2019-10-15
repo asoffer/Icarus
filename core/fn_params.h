@@ -54,7 +54,6 @@ struct Param<T, false, true> {
   FnParamFlags flags{};
 };
 
-
 template <typename T>
 struct Param<T, true, false> {
   Param() = default;
@@ -87,13 +86,13 @@ struct Param<T, false, false> {
 
 template <typename T>
 inline bool operator==(Param<T> const& lhs, Param<T> const& rhs) {
-  return lhs.name == rhs.name && lhs.value == rhs.value &&
+  return lhs.name == rhs.name and lhs.value == rhs.value and
          lhs.flags == rhs.flags;
 }
 
 template <typename T>
 inline bool operator!=(Param<T> const& lhs, Param<T> const& rhs) {
-  return !(lhs == rhs);
+  return not (lhs == rhs);
 }
 
 template <typename T>
@@ -113,7 +112,7 @@ struct FnParams {
     (params_.push_back(std::forward<Ps>(params)), ...);
     size_t i = 0;
     for (auto const& p : params_) {
-      if (!p.name.empty()) { lookup_.emplace(p.name, i); }
+      if (not p.name.empty()) { lookup_.emplace(p.name, i); }
       ++i;
     }
   }
@@ -125,7 +124,7 @@ struct FnParams {
   }
 
   template <typename Fn>
-  auto Transform(Fn &&fn) const {
+  auto Transform(Fn&& fn) const {
     using out_t = decltype(fn(params_[0].value));
     FnParams<out_t> result;
     result.params_.reserve(params_.size());
@@ -162,7 +161,7 @@ struct FnParams {
 
   void append(std::string_view name, T val,
               FnParamFlags flags = FnParamFlags{}) {
-    if (!name.empty()) { lookup_.emplace(name, params_.size()); }
+    if (not name.empty()) { lookup_.emplace(name, params_.size()); }
     params_.emplace_back(name, std::move(val), flags);
   }
 
@@ -209,9 +208,9 @@ bool AmbiguouslyCallable(FnParams<T> const& params1, FnParams<T> const& params2,
   size_t min_size = std::min(params1.size(), params2.size());
   std::vector<int> diffs(1 + min_size, 0);
   for (size_t i = 0; i < min_size; ++i) {
-    auto const &p1 = params1.at(i);
-    if (size_t const *j = params2.at_or_null(p1.name)) {
-      auto const &p2 = params2.at(*j);
+    auto const& p1 = params1.at(i);
+    if (size_t const* j = params2.at_or_null(p1.name)) {
+      auto const& p2 = params2.at(*j);
       if (p2.flags & HAS_DEFAULT) { continue; }
       auto [min, max] = std::minmax(i, *j);
       diffs[min]++;
@@ -231,11 +230,11 @@ bool AmbiguouslyCallable(FnParams<T> const& params1, FnParams<T> const& params2,
     // one parameter set.
     for (auto [name, index1] : params1.lookup_) {
       if (index1 < i) { continue; }
-      auto const &p1 = params1.at(index1);
+      auto const& p1 = params1.at(index1);
       if (p1.flags & HAS_DEFAULT) {
         continue;
-      } else if (size_t const *index2 = params2.at_or_null(name)) {
-        auto const &p2 = params2.at(*index2);
+      } else if (size_t const* index2 = params2.at_or_null(name)) {
+        auto const& p2 = params2.at(*index2);
         if (ambiguity(p1.value, p2.value)) { continue; }
         goto next_named_positional_breakpoint;
       } else {
@@ -245,11 +244,11 @@ bool AmbiguouslyCallable(FnParams<T> const& params1, FnParams<T> const& params2,
 
     for (auto [name, index2] : params2.lookup_) {
       if (index2 < i) { continue; }
-      auto const &p2 = params2.at(index2);
+      auto const& p2 = params2.at(index2);
       if (p2.flags & HAS_DEFAULT) {
         continue;
-      } else if (size_t const *index1 = params1.at_or_null(name)) {
-        auto const &p1 = params1.at(*index1);
+      } else if (size_t const* index1 = params1.at_or_null(name)) {
+        auto const& p1 = params1.at(*index1);
 
         if (ambiguity(p1.value, p2.value)) { continue; }
         goto next_named_positional_breakpoint;
@@ -259,8 +258,8 @@ bool AmbiguouslyCallable(FnParams<T> const& params1, FnParams<T> const& params2,
     }
 
     for (; checked_type_matches_through < i; ++checked_type_matches_through) {
-      if (!ambiguity(params1.at(checked_type_matches_through).value,
-                     params2.at(checked_type_matches_through).value)) {
+      if (not ambiguity(params1.at(checked_type_matches_through).value,
+                        params2.at(checked_type_matches_through).value)) {
         return false;
       }
     }

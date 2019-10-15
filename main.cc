@@ -1,16 +1,15 @@
 #include <vector>
 
+#include "absl/strings/str_split.h"
 #include "base/log.h"
 #include "init/cli.h"
 #include "init/signal.h"
-#include "absl/strings/str_split.h"
 
 namespace debug {
 extern bool parser;
 extern bool validation;
 extern bool optimize_ir;
 }  // namespace debug
-
 
 extern std::vector<std::string> files;
 
@@ -33,10 +32,10 @@ void cli::Usage() {
       base::EnableLogging(key);
     }
   };
-#endif // defined(ICARUS_DEBUG)
+#endif  // defined(ICARUS_DEBUG)
 
   Flag("repl", "r") << "Run the read-eval-print-loop." << [](bool b = false) {
-    if (!execute) { execute = (b ? RunRepl : RunCompiler); }
+    if (not execute) { execute = (b ? RunRepl : RunCompiler); }
   };
 
   HandleOther = [](char const *arg) { files.emplace_back(arg); };

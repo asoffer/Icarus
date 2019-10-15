@@ -46,8 +46,7 @@ base::untyped_buffer EvaluateToBuffer(
   DEBUG_LOG("eval")(*typed_expr.type());
   auto fn = ExprFn(visitor, typed_expr);
 
-  size_t bytes_needed =
-      typed_expr.type()->bytes(core::Interpretter()).value();
+  size_t bytes_needed = typed_expr.type()->bytes(core::Interpretter()).value();
   base::untyped_buffer ret_buf(bytes_needed);
   ret_buf.append_bytes(bytes_needed, 1);
   std::vector<ir::Addr> ret_slots;

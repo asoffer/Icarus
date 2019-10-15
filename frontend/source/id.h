@@ -30,7 +30,7 @@ struct SourceId {
   uint64_t value_;
 };
 
-constexpr bool operator!=(SourceId lhs, SourceId rhs) { return !(lhs == rhs); }
+constexpr bool operator!=(SourceId lhs, SourceId rhs) { return not (lhs == rhs); }
 
 }  // namespace frontend
 

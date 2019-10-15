@@ -32,7 +32,7 @@ static type::Type const *BuiltinType(core::Builtin b) {
 
 namespace compiler {
 std::ostream &operator<<(std::ostream &os, VerifyResult r) {
-  if (!r.ok()) { return os << "error"; }
+  if (not r.ok()) { return os << "error"; }
   return os << (r.const_ ? "const[" : "non-const[") << r.type_->to_string()
             << "]";
 }
@@ -64,9 +64,9 @@ Cmp Comparator(type::Type const *t) {
                  static_cast<cmp_t>(Cmp::Equality)));
   } else if (auto *p = t->if_as<type::Primitive>()) {
     return type::IsNumeric(p) ? Cmp::Order : Cmp::Equality;
-  } else if (t->is<type::Flags>() || t->is<type::BufferPointer>()) {
+  } else if (t->is<type::Flags>() or t->is<type::BufferPointer>()) {
     return Cmp::Order;
-  } else if (t->is<type::Enum>() || t->is<type::Pointer>()) {
+  } else if (t->is<type::Enum>() or t->is<type::Pointer>()) {
     return Cmp::Equality;
   } else {
     return Cmp::None;
@@ -75,12 +75,12 @@ Cmp Comparator(type::Type const *t) {
 
 bool VerifyAssignment(Compiler *visitor, frontend::SourceRange const &span,
                       type::Type const *to, type::Type const *from) {
-  if (to == from && to->is<type::GenericStruct>()) { return true; }
+  if (to == from and to->is<type::GenericStruct>()) { return true; }
 
   // TODO this feels like the semantics are iffy. It works fine if we assign
   // to/from the same type, but we really care if you can assign to a type
   // rather than copy from another, I think.
-  if (!from->IsMovable()) {
+  if (not from->IsMovable()) {
     visitor->error_log()->NotMovable(span, from->to_string());
     return false;
   }
@@ -88,7 +88,7 @@ bool VerifyAssignment(Compiler *visitor, frontend::SourceRange const &span,
   if (to == from) { return true; }
   auto *to_tup   = to->if_as<type::Tuple>();
   auto *from_tup = from->if_as<type::Tuple>();
-  if (to_tup && from_tup) {
+  if (to_tup and from_tup) {
     if (to_tup->size() != from_tup->size()) {
       visitor->error_log()->MismatchedAssignmentSize(span, to_tup->size(),
                                                      from_tup->size());
@@ -106,14 +106,14 @@ bool VerifyAssignment(Compiler *visitor, frontend::SourceRange const &span,
   if (auto *to_var = to->if_as<type::Variant>()) {
     if (auto *from_var = from->if_as<type::Variant>()) {
       for (auto fvar : from_var->variants_) {
-        if (!to_var->contains(fvar)) {
+        if (not to_var->contains(fvar)) {
           NOT_YET("log an error", from, to);
           return false;
         }
       }
       return true;
     } else {
-      if (!to_var->contains(from)) {
+      if (not to_var->contains(from)) {
         NOT_YET("log an error", from, to);
         return false;
       }
@@ -152,7 +152,8 @@ static std::optional<std::vector<VerifyResult>> VerifyWithoutSetting(
       results.push_back(r);
     }
   }
-  if (absl::c_any_of(results, [](VerifyResult const &r) { return !r.ok(); })) {
+  if (absl::c_any_of(results,
+                     [](VerifyResult const &r) { return not r.ok(); })) {
     return std::nullopt;
   }
   return results;
@@ -164,14 +165,14 @@ static VerifyResult VerifySpecialFunctions(Compiler *visitor,
   bool error = false;
   if (decl->id() == "copy") {
     if (auto *f = decl_type->if_as<type::Function>()) {
-      if (!f->output.empty()) {
+      if (not f->output.empty()) {
         error = true;
         NOT_YET("output must be empty");
       }
 
-      if (f->input.size() != 2 || f->input.at(0) != f->input.at(1) ||
-          !f->input.at(0)->is<type::Pointer>() ||
-          !f->input.at(0)->as<type::Pointer>().pointee->is<type::Struct>()) {
+      if (f->input.size() != 2 or f->input.at(0) != f->input.at(1) or
+          not f->input.at(0)->is<type::Pointer>() or
+          not f->input.at(0)->as<type::Pointer>().pointee->is<type::Struct>()) {
         error = true;
         NOT_YET("incorrect input type");
       } else {
@@ -198,14 +199,14 @@ static VerifyResult VerifySpecialFunctions(Compiler *visitor,
     }
   } else if (decl->id() == "move") {
     if (auto *f = decl_type->if_as<type::Function>()) {
-      if (!f->output.empty()) {
+      if (not f->output.empty()) {
         error = true;
         NOT_YET("output must be empty");
       }
 
-      if (f->input.size() != 2 || f->input.at(0) != f->input.at(1) ||
-          !f->input.at(0)->is<type::Pointer>() ||
-          !f->input.at(0)->as<type::Pointer>().pointee->is<type::Struct>()) {
+      if (f->input.size() != 2 or f->input.at(0) != f->input.at(1) or
+          not f->input.at(0)->is<type::Pointer>() or
+          not f->input.at(0)->as<type::Pointer>().pointee->is<type::Struct>()) {
         error = true;
         NOT_YET("incorrect input type");
       } else {
@@ -245,7 +246,7 @@ static VerifyResult VerifySpecialFunctions(Compiler *visitor,
 bool Shadow(Compiler *visitor, type::Typed<ast::Declaration const *> decl1,
             type::Typed<ast::Declaration const *> decl2) {
   // TODO Don't worry about generic shadowing? It'll be checked later?
-  if (decl1.type() == type::Generic || decl2.type() == type::Generic) {
+  if (decl1.type() == type::Generic or decl2.type() == type::Generic) {
     return false;
   }
 
@@ -254,7 +255,7 @@ bool Shadow(Compiler *visitor, type::Typed<ast::Declaration const *> decl1,
           ast::Declaration const *decl) -> core::FnParams<type::Type const *> {
     bool is_const               = (decl->flags() & ast::Declaration::f_IsConst);
     ast::Expression const *expr = decl->init_val();
-    if (!is_const) {
+    if (not is_const) {
       return visitor->type_of(expr)
           ->as<type::Function>()
           .AnonymousFnParams()
@@ -347,7 +348,7 @@ VerifyResult VerifyBody(Compiler *visitor, ast::FunctionLiteral const *node) {
         ASSERT_NOT_NULL(visitor->type_of(input.value.get())));
   }
 
-  if (!node->outputs_) {
+  if (not node->outputs_) {
     std::vector<type::Type const *> output_type_vec(
         std::make_move_iterator(types.begin()),
         std::make_move_iterator(types.end()));
@@ -365,7 +366,7 @@ VerifyResult VerifyBody(Compiler *visitor, ast::FunctionLiteral const *node) {
         for (auto *n :
              extract_visitor.jumps(visitor::ExtractJumps::Kind::Return)) {
           if (auto *ret_node = n->if_as<ast::ReturnStmt>()) {
-            if (!ret_node->exprs().empty()) {
+            if (not ret_node->exprs().empty()) {
               visitor->error_log()->NoReturnTypes(ret_node);
               err = true;
             }
@@ -477,7 +478,7 @@ VerifyResult Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
     for (auto &output : *node->outputs_) {
       auto result = output->VerifyType(this);
       output_type_vec.push_back(result.type_);
-      if (result.type_ != nullptr && !result.const_) {
+      if (result.type_ != nullptr and not result.const_) {
         // TODO this feels wrong because output could be a decl. And that decl
         // being a const decl isn't what I care about.
         NOT_YET("log an error");
@@ -486,9 +487,9 @@ VerifyResult Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
     }
   }
 
-  if (error ||
+  if (error or
       absl::c_any_of(input_type_vec,
-                     [](type::Type const *t) { return t == nullptr; }) ||
+                     [](type::Type const *t) { return t == nullptr; }) or
       absl::c_any_of(output_type_vec,
                      [](type::Type const *t) { return t == nullptr; })) {
     return VerifyResult::Error();
@@ -531,7 +532,7 @@ VerifySpan(Compiler *v, base::PtrSpan<ast::Expression const> exprs) {
   bool err = false;
   for (auto *expr : exprs) {
     results.emplace_back(expr, expr->VerifyType(v));
-    err |= !results.back().second.ok();
+    err |= not results.back().second.ok();
   }
   if (err) { return std::nullopt; }
   return results;
@@ -544,8 +545,8 @@ static Constness VerifyAndGetConstness(
   bool is_const = true;
   for (auto *expr : exprs) {
     auto r = expr->VerifyType(v);
-    err |= !r.ok();
-    if (!err) { is_const &= r.const_; }
+    err |= not r.ok();
+    if (not err) { is_const &= r.const_; }
   }
   if (err) { return Constness::Error; }
   return is_const ? Constness::Const : Constness::NonConst;
@@ -596,7 +597,7 @@ VerifyResult Compiler::VerifyType(ast::Access const *node) {
 
   auto base_type = DereferenceAll(operand_result.type_);
   if (base_type == type::Type_) {
-    if (!operand_result.const_) {
+    if (not operand_result.const_) {
       error_log()->NonConstantTypeMemberAccess(node->span);
       return VerifyResult::Error();
     }
@@ -611,13 +612,13 @@ VerifyResult Compiler::VerifyType(ast::Access const *node) {
     // clear that node is supposed to be a member so we should emit an error but
     // carry on assuming that node is an element of that enum type.
     if (auto *e = evaled_type->if_as<type::Enum>()) {
-      if (!e->Get(node->member_name()).has_value()) {
+      if (not e->Get(node->member_name()).has_value()) {
         error_log()->MissingMember(node->span, node->member_name(),
                                    evaled_type->to_string());
       }
       return set_result(node, VerifyResult::Constant(evaled_type));
     } else if (auto *f = evaled_type->if_as<type::Flags>()) {
-      if (!f->Get(node->member_name()).has_value()) {
+      if (not f->Get(node->member_name()).has_value()) {
         error_log()->MissingMember(node->span, node->member_name(),
                                    evaled_type->to_string());
       }
@@ -637,7 +638,7 @@ VerifyResult Compiler::VerifyType(ast::Access const *node) {
       return VerifyResult::Error();
     }
 
-    if (module() != s->defining_module() &&
+    if (module() != s->defining_module() and
         absl::c_none_of(member->hashtags_, [](ast::Hashtag h) {
           return h.kind_ == ast::Hashtag::Builtin::Export;
         })) {
@@ -648,7 +649,7 @@ VerifyResult Compiler::VerifyType(ast::Access const *node) {
     return set_result(node, VerifyResult(member->type, operand_result.const_));
 
   } else if (base_type == type::Module) {
-    if (!operand_result.const_) {
+    if (not operand_result.const_) {
       error_log()->NonConstantModuleMemberAccess(node->span);
       return VerifyResult::Error();
     }
@@ -719,31 +720,33 @@ VerifyResult Compiler::VerifyType(ast::ArrayType const *node) {
   }
 
   return set_result(
-      node, VerifyResult(type::Type_, data_type_result.const_ && is_const));
+      node, VerifyResult(type::Type_, data_type_result.const_ and is_const));
 }
 
 static bool IsTypeOrTupleOfTypes(type::Type const *t) {
-  return t == type::Type_ || t->is<type::Tuple>();
+  return t == type::Type_ or t->is<type::Tuple>();
 }
 
 VerifyResult Compiler::VerifyType(ast::Binop const *node) {
   auto lhs_result = node->lhs()->VerifyType(this);
   auto rhs_result = node->rhs()->VerifyType(this);
-  if (!lhs_result.ok() || !rhs_result.ok()) { return VerifyResult::Error(); }
+  if (not lhs_result.ok() or not rhs_result.ok()) {
+    return VerifyResult::Error();
+  }
 
   using frontend::Operator;
   switch (node->op()) {
     case Operator::Assign: {
       // TODO if lhs is reserved?
-      if (!VerifyAssignment(this, node->span, lhs_result.type_,
-                            rhs_result.type_)) {
+      if (not VerifyAssignment(this, node->span, lhs_result.type_,
+                               rhs_result.type_)) {
         return VerifyResult::Error();
       }
       return VerifyResult::NonConstant(type::Void());
     } break;
     case Operator::XorEq:
-      if (lhs_result.type_ == rhs_result.type_ &&
-          (lhs_result.type_ == type::Bool ||
+      if (lhs_result.type_ == rhs_result.type_ and
+          (lhs_result.type_ == type::Bool or
            lhs_result.type_->is<type::Flags>())) {
         return set_result(node, lhs_result);
       } else {
@@ -751,8 +754,8 @@ VerifyResult Compiler::VerifyType(ast::Binop const *node) {
         return VerifyResult::Error();
       }
     case Operator::AndEq:
-      if (lhs_result.type_ == rhs_result.type_ &&
-          (lhs_result.type_ == type::Bool ||
+      if (lhs_result.type_ == rhs_result.type_ and
+          (lhs_result.type_ == type::Bool or
            lhs_result.type_->is<type::Flags>())) {
         return set_result(node, lhs_result);
       } else {
@@ -760,8 +763,8 @@ VerifyResult Compiler::VerifyType(ast::Binop const *node) {
         return VerifyResult::Error();
       }
     case Operator::OrEq:
-      if (lhs_result.type_ == rhs_result.type_ &&
-          (lhs_result.type_ == type::Bool ||
+      if (lhs_result.type_ == rhs_result.type_ and
+          (lhs_result.type_ == type::Bool or
            lhs_result.type_->is<type::Flags>())) {
         return set_result(node, lhs_result);
       } else {
@@ -771,8 +774,8 @@ VerifyResult Compiler::VerifyType(ast::Binop const *node) {
 
 #define CASE(OpName, symbol, return_type)                                      \
   case Operator::OpName: {                                                     \
-    bool is_const = lhs_result.const_ && rhs_result.const_;                    \
-    if (type::IsNumeric(lhs_result.type_) &&                                   \
+    bool is_const = lhs_result.const_ and rhs_result.const_;                   \
+    if (type::IsNumeric(lhs_result.type_) and                                  \
         type::IsNumeric(rhs_result.type_)) {                                   \
       if (lhs_result.type_ == rhs_result.type_) {                              \
         return set_result(node, VerifyResult((return_type), is_const));        \
@@ -804,8 +807,8 @@ VerifyResult Compiler::VerifyType(ast::Binop const *node) {
       CASE(ModEq, "%=", type::Void());
 #undef CASE
     case Operator::Add: {
-      bool is_const = lhs_result.const_ && rhs_result.const_;
-      if (type::IsNumeric(lhs_result.type_) &&
+      bool is_const = lhs_result.const_ and rhs_result.const_;
+      if (type::IsNumeric(lhs_result.type_) and
           type::IsNumeric(rhs_result.type_)) {
         if (lhs_result.type_ == rhs_result.type_) {
           return set_result(node, VerifyResult(lhs_result.type_, is_const));
@@ -828,8 +831,8 @@ VerifyResult Compiler::VerifyType(ast::Binop const *node) {
       }
     } break;
     case Operator::AddEq: {
-      bool is_const = lhs_result.const_ && rhs_result.const_;
-      if (type::IsNumeric(lhs_result.type_) &&
+      bool is_const = lhs_result.const_ and rhs_result.const_;
+      if (type::IsNumeric(lhs_result.type_) and
           type::IsNumeric(rhs_result.type_)) {
         if (lhs_result.type_ == rhs_result.type_) {
           return set_result(node, VerifyResult(type::Void(), is_const));
@@ -853,19 +856,19 @@ VerifyResult Compiler::VerifyType(ast::Binop const *node) {
     } break;
     case Operator::Arrow: {
       type::Type const *t = type::Type_;
-      if (!IsTypeOrTupleOfTypes(lhs_result.type_)) {
+      if (not IsTypeOrTupleOfTypes(lhs_result.type_)) {
         t = nullptr;
         error_log()->NonTypeFunctionInput(node->span);
       }
 
-      if (!IsTypeOrTupleOfTypes(rhs_result.type_)) {
+      if (not IsTypeOrTupleOfTypes(rhs_result.type_)) {
         t = nullptr;
         error_log()->NonTypeFunctionOutput(node->span);
       }
 
       if (t == nullptr) { return VerifyResult::Error(); }
 
-      return set_result(node, VerifyResult(type::Type_, lhs_result.const_ &&
+      return set_result(node, VerifyResult(type::Type_, lhs_result.const_ and
                                                             rhs_result.const_));
     }
     default: UNREACHABLE();
@@ -909,7 +912,7 @@ static VerifyResult VerifyCall(Compiler *visitor, ast::BuiltinFn const *b,
   switch (b->value()) {
     case core::Builtin::Foreign: {
       bool err = false;
-      if (!arg_results.named().empty()) {
+      if (not arg_results.named().empty()) {
         visitor->error_log()->BuiltinError(b->span,
                                            "Built-in function `foreign` cannot "
                                            "be called with named arguments.");
@@ -925,7 +928,7 @@ static VerifyResult VerifyCall(Compiler *visitor, ast::BuiltinFn const *b,
         err = true;
       }
 
-      if (!err) {
+      if (not err) {
         if (arg_results.at(0).type_ != type::ByteView) {
           visitor->error_log()->BuiltinError(
               b->span,
@@ -933,7 +936,7 @@ static VerifyResult VerifyCall(Compiler *visitor, ast::BuiltinFn const *b,
                            "(You provided a(n) ",
                            arg_results.at(0).type_->to_string(), ")."));
         }
-        if (!arg_results.at(0).const_) {
+        if (not arg_results.at(0).const_) {
           visitor->error_log()->BuiltinError(
               b->span, "First argument to `foreign` must be a constant.");
         }
@@ -944,7 +947,7 @@ static VerifyResult VerifyCall(Compiler *visitor, ast::BuiltinFn const *b,
               "a(n) " +
                   arg_results.at(0).type_->to_string() + ").");
         }
-        if (!arg_results.at(1).const_) {
+        if (not arg_results.at(1).const_) {
           visitor->error_log()->BuiltinError(
               b->span, "Second argument to `foreign` must be a constant.");
         }
@@ -954,7 +957,7 @@ static VerifyResult VerifyCall(Compiler *visitor, ast::BuiltinFn const *b,
           visitor));
     } break;
     case core::Builtin::Opaque:
-      if (!arg_results.empty()) {
+      if (not arg_results.empty()) {
         visitor->error_log()->BuiltinError(
             b->span, "Built-in function `opaque` takes no arguments.");
       }
@@ -964,7 +967,7 @@ static VerifyResult VerifyCall(Compiler *visitor, ast::BuiltinFn const *b,
 
     case core::Builtin::Bytes: {
       size_t size = arg_results.size();
-      if (!arg_results.named().empty()) {
+      if (not arg_results.named().empty()) {
         visitor->error_log()->BuiltinError(
             b->span,
             "Built-in function `bytes` cannot be "
@@ -988,7 +991,7 @@ static VerifyResult VerifyCall(Compiler *visitor, ast::BuiltinFn const *b,
     }
     case core::Builtin::Alignment: {
       size_t size = arg_results.size();
-      if (!arg_results.named().empty()) {
+      if (not arg_results.named().empty()) {
         visitor->error_log()->BuiltinError(
             b->span,
             "Built-in function `alignment` cannot "
@@ -1029,7 +1032,7 @@ static std::pair<core::FnArgs<VerifyResult, StrType>, bool> VerifyFnArgs(
   bool err         = false;
   auto arg_results = args.Transform([&](EPtr const &expr) {
     auto expr_result = expr->VerifyType(visitor);
-    err |= !expr_result.ok();
+    err |= not expr_result.ok();
     return expr_result;
   });
 
@@ -1079,13 +1082,15 @@ VerifyResult Compiler::VerifyType(ast::Call const *node) {
 VerifyResult Compiler::VerifyType(ast::Cast const *node) {
   auto expr_result = node->expr()->VerifyType(this);
   auto type_result = node->type()->VerifyType(this);
-  if (!expr_result.ok() || !type_result.ok()) { return VerifyResult::Error(); }
+  if (not expr_result.ok() or not type_result.ok()) {
+    return VerifyResult::Error();
+  }
 
   if (type_result.type_ != type::Type_) {
     error_log()->CastToNonType(node->span);
     return VerifyResult::Error();
   }
-  if (!type_result.const_) {
+  if (not type_result.const_) {
     error_log()->CastToNonConstantType(node->span);
     return VerifyResult::Error();
   }
@@ -1102,7 +1107,7 @@ VerifyResult Compiler::VerifyType(ast::Cast const *node) {
         core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>(
             {std::pair(node->expr(), expr_result)}, {}));
   } else {
-    if (!type::CanCast(expr_result.type_, t)) {
+    if (not type::CanCast(expr_result.type_, t)) {
       error_log()->InvalidCast(expr_result.type_->to_string(), t->to_string(),
                                node->span);
       NOT_YET("log an error", expr_result.type_, t);
@@ -1118,7 +1123,8 @@ VerifyResult Compiler::VerifyType(ast::ChainOp const *node) {
   for (auto *expr : node->exprs()) {
     results.push_back(expr->VerifyType(this));
   }
-  if (absl::c_any_of(results, [](VerifyResult const &v) { return !v.ok(); })) {
+  if (absl::c_any_of(results,
+                     [](VerifyResult const &v) { return not v.ok(); })) {
     return VerifyResult::Error();
   }
 
@@ -1126,7 +1132,7 @@ VerifyResult Compiler::VerifyType(ast::ChainOp const *node) {
     bool found_err = false;
     for (size_t i = 0; i < results.size() - 1; ++i) {
       if (results[i].type_ == type::Block) {
-        if (!results[i].const_) { NOT_YET("log an error: non const block"); }
+        if (not results[i].const_) { NOT_YET("log an error: non const block"); }
 
         error_log()->EarlyRequiredBlock(node->exprs()[i]->span);
         found_err = true;
@@ -1138,7 +1144,7 @@ VerifyResult Compiler::VerifyType(ast::ChainOp const *node) {
     auto &last = results.back();
     if (last.type_ != type::Block) {
       goto not_blocks;
-    } else if (!results.back().const_) {
+    } else if (not results.back().const_) {
       NOT_YET("log an error: non const block");
     } else {
       return set_result(node, VerifyResult::Constant(last.type_));
@@ -1201,7 +1207,7 @@ not_blocks:
           default: UNREACHABLE();
         }
 
-        if (lhs_result.type_->is<type::Struct>() ||
+        if (lhs_result.type_->is<type::Struct>() or
             lhs_result.type_->is<type::Struct>()) {
           // TODO overwriting type a bunch of times?
           ast::OverloadSet os(node->scope_, token, this);
@@ -1215,11 +1221,11 @@ not_blocks:
                   {}));
         }
 
-        if (lhs_result.type_ != rhs_result.type_ &&
-            !(lhs_result.type_->is<type::Pointer>() &&
-              rhs_result.type_ == type::NullPtr) &&
-            !(rhs_result.type_->is<type::Pointer>() &&
-              lhs_result.type_ == type::NullPtr)) {
+        if (lhs_result.type_ != rhs_result.type_ and
+            not(lhs_result.type_->is<type::Pointer>() and
+                rhs_result.type_ == type::NullPtr) and
+            not(rhs_result.type_->is<type::Pointer>() and
+                lhs_result.type_ == type::NullPtr)) {
           NOT_YET("Log an error", lhs_result.type_->to_string(),
                   rhs_result.type_->to_string(), node);
 
@@ -1303,7 +1309,7 @@ VerifyResult Compiler::VerifyType(ast::Declaration const *node) {
       ASSIGN_OR(return set_result(node, VerifyResult::Error()),
                        auto type_expr_result,
                        node->type_expr()->VerifyType(this));
-      if (!type_expr_result.const_) {
+      if (not type_expr_result.const_) {
         // Hmm, not necessarily an error. Example (not necessarily minimal):
         //
         //   S ::= (x: any`T) => struct {
@@ -1323,8 +1329,8 @@ VerifyResult Compiler::VerifyType(ast::Declaration const *node) {
                                      this)))
                 .type_);
 
-        if (!(node->flags() & ast::Declaration::f_IsFnParam) &&
-            !node_type->IsDefaultInitializable()) {
+        if (not(node->flags() & ast::Declaration::f_IsFnParam) and
+            not node_type->IsDefaultInitializable()) {
           error_log()->TypeMustBeInitialized(node->span,
                                              node_type->to_string());
         }
@@ -1348,8 +1354,8 @@ VerifyResult Compiler::VerifyType(ast::Declaration const *node) {
       }
 
       // TODO initialization, not assignment.
-      if (!VerifyAssignment(this, node->span, init_val_result.type_,
-                            init_val_result.type_)) {
+      if (not VerifyAssignment(this, node->span, init_val_result.type_,
+                               init_val_result.type_)) {
         return set_result(node, VerifyResult::Error());
       }
 
@@ -1369,7 +1375,7 @@ VerifyResult Compiler::VerifyType(ast::Declaration const *node) {
     } break;
     case CUSTOM_INIT: {
       auto init_val_result = node->init_val()->VerifyType(this);
-      bool error           = !init_val_result.ok();
+      bool error           = not init_val_result.ok();
 
       auto *init_val_type   = node->init_val()->VerifyType(this).type_;
       auto type_expr_result = node->type_expr()->VerifyType(this);
@@ -1378,7 +1384,7 @@ VerifyResult Compiler::VerifyType(ast::Declaration const *node) {
       if (type_expr_type == nullptr) {
         error = true;
       } else if (type_expr_type == type::Type_) {
-        if (!type_expr_result.const_) {
+        if (not type_expr_result.const_) {
           NOT_YET("log an error");
           error = true;
         } else {
@@ -1393,9 +1399,9 @@ VerifyResult Compiler::VerifyType(ast::Declaration const *node) {
 
         // TODO initialization, not assignment. Error messages will be
         // wrong.
-        if (node_type != nullptr && init_val_type != nullptr) {
+        if (node_type != nullptr and init_val_type != nullptr) {
           error |=
-              !VerifyAssignment(this, node->span, node_type, init_val_type);
+              not VerifyAssignment(this, node->span, node_type, init_val_type);
         }
       } else {
         error_log()->NotAType(node->type_expr()->span,
@@ -1411,7 +1417,7 @@ VerifyResult Compiler::VerifyType(ast::Declaration const *node) {
                        node->type_expr()->VerifyType(this));
       auto *type_expr_type = type_expr_result.type_;
       if (type_expr_type == type::Type_) {
-        if (!type_expr_result.const_) {
+        if (not type_expr_result.const_) {
           NOT_YET("log an error");
           return set_result(node, VerifyResult::Error());
         }
@@ -1516,8 +1522,8 @@ VerifyResult Compiler::VerifyType(ast::EnumLiteral const *node) {
 
 VerifyResult Compiler::VerifyType(ast::FunctionLiteral const *node) {
   for (auto const &p : node->inputs_) {
-    if ((p.value->flags() & ast::Declaration::f_IsConst) ||
-        !node->param_dep_graph_.at(p.value.get()).empty()) {
+    if ((p.value->flags() & ast::Declaration::f_IsConst) or
+        not node->param_dep_graph_.at(p.value.get()).empty()) {
       return set_result(node, VerifyResult::Constant(type::Generic));
     }
   }
@@ -1562,7 +1568,7 @@ VerifyResult Compiler::VerifyType(ast::Identifier const *node) {
         return VerifyResult::Error();
     }
 
-    if (!(node->decl()->flags() & ast::Declaration::f_IsConst) &&
+    if (not(node->decl()->flags() & ast::Declaration::f_IsConst) and
         node->span.begin() < node->decl()->span.begin()) {
       error_log()->DeclOutOfOrder(node->decl(), node);
     }
@@ -1588,7 +1594,7 @@ VerifyResult Compiler::VerifyType(ast::Import const *node) {
     err = true;
   }
 
-  if (!result.const_) {
+  if (not result.const_) {
     error_log()->NonConstantImport(node->operand()->span);
     err = true;
   }
@@ -1606,7 +1612,7 @@ VerifyResult Compiler::VerifyType(ast::Import const *node) {
              module::ImportModule(std::filesystem::path{src}, module(),
                                   CompileModule));
 
-  if (!pending_mod.valid()) { return VerifyResult::Error(); }
+  if (not pending_mod.valid()) { return VerifyResult::Error(); }
   set_pending_module(node, pending_mod);
   return set_result(node, VerifyResult::Constant(type::Module));
 }
@@ -1614,10 +1620,12 @@ VerifyResult Compiler::VerifyType(ast::Import const *node) {
 VerifyResult Compiler::VerifyType(ast::Index const *node) {
   auto lhs_result = node->lhs()->VerifyType(this);
   auto rhs_result = node->rhs()->VerifyType(this);
-  if (!lhs_result.ok() || !rhs_result.ok()) { return VerifyResult::Error(); }
+  if (not lhs_result.ok() or not rhs_result.ok()) {
+    return VerifyResult::Error();
+  }
 
   auto *index_type = rhs_result.type_->if_as<type::Primitive>();
-  if (!index_type || !index_type->is_integral()) {
+  if (not index_type or not index_type->is_integral()) {
     error_log()->InvalidIndexType(node->span, lhs_result.type_->to_string(),
                                   lhs_result.type_->to_string());
   }
@@ -1632,7 +1640,7 @@ VerifyResult Compiler::VerifyType(ast::Index const *node) {
     return set_result(node,
                       VerifyResult(lhs_buf_type->pointee, rhs_result.const_));
   } else if (auto *tup = lhs_result.type_->if_as<type::Tuple>()) {
-    if (!rhs_result.const_) {
+    if (not rhs_result.const_) {
       error_log()->NonConstantTupleIndex(node->span);
       return VerifyResult::Error();
     }
@@ -1657,7 +1665,7 @@ VerifyResult Compiler::VerifyType(ast::Index const *node) {
       UNREACHABLE();
     }();
 
-    if (index < 0 || index >= static_cast<int64_t>(tup->size())) {
+    if (index < 0 or index >= static_cast<int64_t>(tup->size())) {
       error_log()->IndexingTupleOutOfBounds(node->span, tup->to_string(),
                                             tup->size(), index);
       return VerifyResult::Error();
@@ -1684,7 +1692,7 @@ VerifyResult Compiler::VerifyType(ast::JumpHandler const *node) {
   arg_types.reserve(node->input().size());
   for (auto const &input : node->input()) {
     auto v = input->VerifyType(this);
-    if (!v.ok()) {
+    if (not v.ok()) {
       err = true;
     } else {
       arg_types.push_back(v.type_);
@@ -1700,12 +1708,12 @@ VerifyResult Compiler::VerifyType(ast::JumpHandler const *node) {
 
 VerifyResult Compiler::VerifyType(ast::PrintStmt const *node) {
   auto verify_results = VerifySpan(this, node->exprs());
-  if (!verify_results) { return VerifyResult::Error(); }
+  if (not verify_results) { return VerifyResult::Error(); }
   for (auto &verify_result : *verify_results) {
     auto *expr_type = verify_result.second.type_;
     // TODO print arrays?
-    if (expr_type->is<type::Primitive>() || expr_type->is<type::Pointer>() ||
-        expr_type == type::ByteView || expr_type->is<type::Enum>() ||
+    if (expr_type->is<type::Primitive>() or expr_type->is<type::Pointer>() or
+        expr_type == type::ByteView or expr_type->is<type::Enum>() or
         expr_type->is<type::Flags>()) {
       continue;
     } else {
@@ -1719,7 +1727,7 @@ VerifyResult Compiler::VerifyType(ast::PrintStmt const *node) {
           this, ast::ExprPtr{verify_result.first, 0x01}, os,
           core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>(
               {verify_result}, {}));
-      if (dispatch_result.type_ && dispatch_result.type_ != type::Void()) {
+      if (dispatch_result.type_ and dispatch_result.type_ != type::Void()) {
         error_log()->PrintMustReturnVoid(dispatch_result.type_->to_string(),
                                          node->span);
         return VerifyResult::Error();
@@ -1748,7 +1756,7 @@ VerifyResult Compiler::VerifyType(ast::ScopeLiteral const *node) {
   bool error         = false;
   for (auto const *decl : node->decls()) {
     auto result = decl->VerifyType(this);
-    if (!result.const_) {
+    if (not result.const_) {
       error = true;
       NOT_YET("log an error");
     }
@@ -1781,7 +1789,7 @@ VerifyResult Compiler::VerifyType(ast::ScopeNode const *node) {
   // TODO is the scope type correct here?
   auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(
       type::Typed<ast::Expression const *>{node->name(), type::Scope}, this);
-  if (scope_def->work_item && *scope_def->work_item) {
+  if (scope_def->work_item and *scope_def->work_item) {
     (std::move(*scope_def->work_item))();
   }
 
@@ -1789,8 +1797,8 @@ VerifyResult Compiler::VerifyType(ast::ScopeNode const *node) {
   std::vector<ir::BlockDef const *> block_defs;
   for (auto const &block : node->blocks()) {
     DEBUG_LOG("ScopeNode")("Verifying dispatch for block `", block.name(), "`");
-    auto block_results    = VerifyBlockNode(this, &block);
-    auto *block_def       = scope_def->blocks_.at(block.name());
+    auto block_results = VerifyBlockNode(this, &block);
+    auto *block_def    = scope_def->blocks_.at(block.name());
     DEBUG_LOG("ScopeNode")("    ", block_results);
     if (block_results.empty()) {
       DEBUG_LOG("ScopeNode")("    ... empty block results");
@@ -1828,9 +1836,9 @@ VerifyResult Compiler::VerifyType(ast::StructLiteral const *node) {
     bool is_const = true;
     bool err      = false;
     for (auto const &field : node->fields_) {
-      if (!field.type_expr()) { continue; }
+      if (not field.type_expr()) { continue; }
       auto result = field.type_expr()->VerifyType(this);
-      if (!result) {
+      if (not result) {
         err = true;
         continue;
       }
@@ -1838,7 +1846,7 @@ VerifyResult Compiler::VerifyType(ast::StructLiteral const *node) {
       if (field.init_val()) {
         if (result.const_) {
           auto init_val_result = field.init_val()->VerifyType(this);
-          if (!init_val_result.const_) {
+          if (not init_val_result.const_) {
             error_log()->NonConstantStructFieldDefaultValue(
                 field.init_val()->span);
             err = true;
@@ -1868,7 +1876,7 @@ VerifyResult Compiler::VerifyType(ast::StructLiteral const *node) {
     &field) {
       // TODO you should verify each field no matter what.
       field.VerifyType(this);
-      if (!field.init_val() ||
+      if (not field.init_val() or
           ASSERT_NOT_NULL(prior_verification_attempt(field.init_val()))
               ->const_) {
         return true;
@@ -1910,13 +1918,13 @@ VerifyResult Compiler::VerifyType(ast::Switch const *node) {
   for (auto &[body, cond] : node->cases_) {
     auto cond_result = cond->VerifyType(this);
     auto body_result = body->VerifyType(this);
-    err |= !cond_result || !body_result;
+    err |= not cond_result or not body_result;
     if (err) {
       NOT_YET();
       continue;
     }
 
-    is_const &= cond_result.const_ && body_result.const_;
+    is_const &= cond_result.const_ and body_result.const_;
     if (node->expr_) {
       static_cast<void>(expr_type);
       // TODO dispatch table
@@ -1963,13 +1971,15 @@ VerifyResult Compiler::VerifyType(ast::Unop const *node) {
 
   switch (node->op()) {
     case frontend::Operator::Copy:
-      if (!operand_type->IsCopyable()) {
+      if (not operand_type->IsCopyable()) {
         NOT_YET("log an error. not copyable");
       }
       // TODO Are copies always consts?
       return set_result(node, VerifyResult(operand_type, result.const_));
     case frontend::Operator::Move:
-      if (!operand_type->IsMovable()) { NOT_YET("log an error. not movable"); }
+      if (not operand_type->IsMovable()) {
+        NOT_YET("log an error. not movable");
+      }
       // TODO Are copies always consts?
       return set_result(node, VerifyResult(operand_type, result.const_));
     case frontend::Operator::BufPtr:
@@ -1977,7 +1987,7 @@ VerifyResult Compiler::VerifyType(ast::Unop const *node) {
     case frontend::Operator::TypeOf:
       return set_result(node, VerifyResult(type::Type_, result.const_));
     case frontend::Operator::Eval:
-      if (!result.const_) {
+      if (not result.const_) {
         // TODO here you could return a correct type and just have there
         // be an error regarding constness. When you do node probably worth a
         // full pass over all verification code.
@@ -1987,7 +1997,7 @@ VerifyResult Compiler::VerifyType(ast::Unop const *node) {
         return set_result(node, VerifyResult(operand_type, result.const_));
       }
     case frontend::Operator::Which:
-      if (!operand_type->is<type::Variant>()) {
+      if (not operand_type->is<type::Variant>()) {
         error_log()->WhichNonVariant(operand_type->to_string(), node->span);
       }
       return set_result(node, VerifyResult(type::Type_, result.const_));
@@ -2039,7 +2049,7 @@ VerifyResult Compiler::VerifyType(ast::Unop const *node) {
         NOT_YET();  // Log an error. can't expand a non-tuple.
       }
     case frontend::Operator::Not:
-      if (operand_type == type::Bool || operand_type->is<type::Enum>() ||
+      if (operand_type == type::Bool or operand_type->is<type::Enum>() or
           operand_type->is<type::Flags>()) {
         return set_result(node, VerifyResult(operand_type, result.const_));
       }
@@ -2059,17 +2069,17 @@ VerifyResult Compiler::VerifyType(ast::Unop const *node) {
         error_log()->PreconditionNeedsBool(node->operand()->span,
                                            operand_type->to_string());
       }
-      if (!result.const_) { NOT_YET(); }
+      if (not result.const_) { NOT_YET(); }
       return set_result(node, VerifyResult::Constant(type::Void()));
     case frontend::Operator::Ensure:
       if (operand_type != type::Bool) {
         error_log()->PostconditionNeedsBool(node->operand()->span,
                                             operand_type->to_string());
       }
-      if (!result.const_) { NOT_YET(); }
+      if (not result.const_) { NOT_YET(); }
       return set_result(node, VerifyResult::Constant(type::Void()));
     case frontend::Operator::VariadicPack: {
-      if (!result.const_) { NOT_YET("Log an error"); }
+      if (not result.const_) { NOT_YET("Log an error"); }
       // TODO could be a type, or a function returning a ty
       if (result.type_ == type::Type_) {
         return set_result(node, VerifyResult::Constant(type::Type_));

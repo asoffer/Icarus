@@ -44,9 +44,9 @@ using NeCmd =
 using GeCmd = internal::BinaryCmd<10, std::greater_equal<>,  //
                                   int8_t, int16_t, int32_t, int64_t, uint8_t,
                                   uint16_t, uint32_t, uint64_t, FlagsVal>;
-using GtCmd  = internal::BinaryCmd<11, std::greater<>,  
-                                  int8_t, int16_t, int32_t, int64_t, uint8_t,
-                                  uint16_t, uint32_t, uint64_t, FlagsVal>;
+using GtCmd =
+    internal::BinaryCmd<11, std::greater<>, int8_t, int16_t, int32_t, int64_t,
+                        uint8_t, uint16_t, uint32_t, uint64_t, FlagsVal>;
 using NegCmd = internal::UnaryCmd<12, std::negate<>, int8_t, int16_t, int32_t,
                                   int64_t, float, double>;
 using NotCmd = internal::UnaryCmd<15, std::logical_not<>, bool>;

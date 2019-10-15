@@ -21,7 +21,7 @@ void Inliner::Inline(Reg *r, type::Type const *t) const {
 
   if (t) {
     DEBUG_LOG("inline_reserve")("Reserving t = ", t->to_string());
-    auto arch   = core::Interpretter();
+    auto arch = core::Interpretter();
     auto offset =
         FwdAlign(GetBuilder().function()->reg_size_, t->alignment(arch));
     GetBuilder().function()->reg_size_ = offset + t->bytes(arch);
@@ -60,7 +60,7 @@ std::pair<Results, bool> CallInline(
 
   for (size_t i = 1; i < f->blocks_.size(); ++i) {
     auto *block = GetBuilder().AddBlock();
-    *block       = *std::move(f->blocks_.at(i));
+    *block      = *std::move(f->blocks_.at(i));
     block->cmd_buffer_.UpdateForInlining(inliner);
   }
 

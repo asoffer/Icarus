@@ -1,9 +1,9 @@
 #ifndef ICARUS_FORMAT_TOKEN_EXTRACTOR_H
 #define ICARUS_FORMAT_TOKEN_EXTRACTOR_H
 
+#include <iostream>
 #include "ast/ast_fwd.h"
 #include "base/debug.h"
-#include <iostream>
 
 namespace format {
 struct LineBuilder {

@@ -65,7 +65,7 @@ void Variant::WriteTo(std::string *result) const {
 
 core::Bytes Variant::bytes(core::Arch const &a) const {
   auto num_bytes = core::Bytes{0};
-  auto align = core::Alignment{1};
+  auto align     = core::Alignment{1};
   for (auto const *t : variants_) {
     align     = std::max(align, t->alignment(a));
     num_bytes = std::max(num_bytes, t->bytes(a));

@@ -19,7 +19,7 @@ struct CastCmd {
                                    backend::ExecContext* ctx) {
     auto to_type   = iter->read<uint8_t>();
     auto from_type = iter->read<uint8_t>();
-    auto& frame = ctx->call_stack.top();
+    auto& frame    = ctx->call_stack.top();
     PrimitiveDispatch(from_type, [&](auto from_tag) {
       using FromType = typename std::decay_t<decltype(from_tag)>::type;
       [[maybe_unused]] auto val    = ctx->resolve<FromType>(iter->read<Reg>());
@@ -72,7 +72,7 @@ struct CastCmd {
             frame.regs_.set(offset, static_cast<double>(val));
             break;
         }
-      } else if constexpr (std::is_same_v<FromType, EnumVal> ||
+      } else if constexpr (std::is_same_v<FromType, EnumVal> or
                            std::is_same_v<FromType, FlagsVal>) {
         switch (to_type) {
           case PrimitiveIndex<int8_t>():

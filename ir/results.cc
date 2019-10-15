@@ -39,18 +39,17 @@ Results Results::GetResult(size_t index) const {
 
 std::string Results::to_string() const {
   size_t index = 0;
-  return absl::StrCat("[",
-                      absl::StrJoin(offset_, ", ",
-                                    [&](std::string* out, uint32_t offset) {
-                                      if (is_reg(index++)) {
-                                        out->append(
-                                            stringify(buf_.get<Reg>(offset)));
-                                      } else {
-                                        return absl::StrAppend(out, "offset(",
-                                                               offset, ")");
-                                      }
-                                    }),
-                      "]");
+  return absl::StrCat(
+      "[",
+      absl::StrJoin(offset_, ", ",
+                    [&](std::string* out, uint32_t offset) {
+                      if (is_reg(index++)) {
+                        out->append(stringify(buf_.get<Reg>(offset)));
+                      } else {
+                        return absl::StrAppend(out, "offset(", offset, ")");
+                      }
+                    }),
+      "]");
 }
 
 }  // namespace ir

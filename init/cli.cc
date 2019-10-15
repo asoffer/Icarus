@@ -22,7 +22,7 @@ int ParseAndRun(int argc, char *argv[]) {
     if (arg[0] == '-') {
       if (arg[1] == '-') {
         char *ptr = arg + 2;
-        while (*ptr != '=' && *ptr != '\0') { ++ptr; }
+        while (*ptr != '=' and *ptr != '\0') { ++ptr; }
         bool was_eq   = (*ptr == '=');
         char *old_ptr = ptr;
         *old_ptr      = '\0';
@@ -58,8 +58,8 @@ int ParseAndRun(int argc, char *argv[]) {
     }
   }
 
-  for (auto & [ name, handler ] : ::cli::internal::all_handlers) {
-    if (handler->call_once_ && !handler->called_) {
+  for (auto &[name, handler] : ::cli::internal::all_handlers) {
+    if (handler->call_once_ and not handler->called_) {
       handler->parse_and_apply_("");
     }
   }
@@ -81,12 +81,12 @@ int ShowUsage() {
 
   constexpr int terminal_width = 80;
   int max_name_length          = 0;
-  for (const auto & [ name, handler ] : ::cli::internal::all_handlers) {
+  for (const auto &[name, handler] : ::cli::internal::all_handlers) {
     handlers[handler].push_back(name);
     max_name_length = std::max<int>(max_name_length, name.size());
   }
 
-  for (const auto & [ handler, names ] : handlers) {
+  for (const auto &[handler, names] : handlers) {
     std::string const &msg = handler->msg_;
     size_t msg_index       = 0;
 
@@ -98,7 +98,7 @@ int ShowUsage() {
         size_t chunk_size         = 0;
         if (space_for_description < static_cast<int>(msg.size() - msg_index)) {
           chunk_size = space_for_description;
-          while (chunk_size > 0 && msg.at(msg_index + chunk_size) != ' ') {
+          while (chunk_size > 0 and msg.at(msg_index + chunk_size) != ' ') {
             --chunk_size;
           }
           if (chunk_size == 0) {
@@ -113,7 +113,7 @@ int ShowUsage() {
         std::fprintf(stderr, "\n  --%-*s    %s", max_name_length, name.c_str(),
                      chunk.c_str());
         msg_index += chunk.size();
-        while (msg_index < msg.size() && msg.at(msg_index) == ' ') {
+        while (msg_index < msg.size() and msg.at(msg_index) == ' ') {
           ++msg_index;
         }
       }

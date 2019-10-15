@@ -1,6 +1,5 @@
 #include "type/enum.h"
 
-
 #include "absl/container/flat_hash_set.h"
 
 namespace type {
@@ -22,9 +21,7 @@ void Enum::WriteTo(std::string *result) const {
 }
 
 // TODO make this the smallest size that fits.
-core::Bytes Enum::bytes(core::Arch const &a) const {
-  return core::Bytes{8};
-}
+core::Bytes Enum::bytes(core::Arch const &a) const { return core::Bytes{8}; }
 
 // TODO make this the smallest size that fits.
 core::Alignment Enum::alignment(core::Arch const &a) const {

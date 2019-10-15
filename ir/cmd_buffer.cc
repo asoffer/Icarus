@@ -107,7 +107,7 @@ void CmdBuffer::UpdateForInlining(Inliner const& inliner) {
 #undef CASE
     }
   }
-  
+
   DEBUG_LOG("dbg")(buf_);
 }
 

@@ -8,7 +8,7 @@ namespace match {
 
 void Match::MatchAll(ast::Node const *node, ast::Expression const *pattern) {
   states_.emplace(node, pattern);
-  while (!states_.empty()) {
+  while (not states_.empty()) {
     auto *state = &states_.front();
     state->current_node_->match_expr(this, state);
     states_.pop();
@@ -23,7 +23,7 @@ void Match::MatchExpr(ast::Node const *node, Match::State *state) {
 
 void Match::MatchExpr(ast::Access const *node, Match::State *state) {
   if (auto *ac = state->current_pattern_->if_as<ast::Access>()) {
-    Match::State new_state       = *state;
+    Match::State new_state     = *state;
     new_state.current_node_    = node->operand();
     new_state.current_pattern_ = ac->operand();
     states_.push(new_state);
@@ -32,8 +32,8 @@ void Match::MatchExpr(ast::Access const *node, Match::State *state) {
     DEBUG_LOG()(ast::Dump::ToString(node));
   }
 
-  if (!state->root_) {
-    Match::State new_state    = *state;
+  if (not state->root_) {
+    Match::State new_state  = *state;
     new_state.current_node_ = node->operand();
     states_.push(new_state);
   }

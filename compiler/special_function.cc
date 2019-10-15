@@ -1,11 +1,10 @@
 #include "compiler/special_function.h"
 #include "ast/ast.h"
+#include "compiler/compiler.h"
 #include "ir/any_func.h"
 #include "type/function.h"
 #include "type/pointer.h"
 #include "type/struct.h"
-#include "compiler/compiler.h"
-#include "compiler/compiler.h"
 
 namespace compiler {
 std::optional<ir::AnyFunc> SpecialFunction(Compiler *compiler,

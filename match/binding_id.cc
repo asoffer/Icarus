@@ -1,7 +1,7 @@
 #include "match/binding_id.h"
 
-#include "base/guarded.h"
 #include "absl/container/node_hash_set.h"
+#include "base/guarded.h"
 
 namespace match {
 

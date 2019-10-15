@@ -15,12 +15,12 @@ void BasicModule::InitializeNodes(base::PtrSpan<ast::Node> nodes) {
   for (ast::Node *node : nodes) { node->assign_scope(&visitor, &scope_); }
   for (ast::Node const *node : nodes) {
     auto *decl = node->if_as<ast::Declaration>();
-    if (!decl) { continue; }
+    if (not decl) { continue; }
 
     bool exported = absl::c_any_of(decl->hashtags_, [](ast::Hashtag h) {
       return h.kind_ == ast::Hashtag::Builtin::Export;
     });
-    if (!exported) { continue; }
+    if (not exported) { continue; }
 
     top_level_decls_[decl->id()].push_back(decl);
   }

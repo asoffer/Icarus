@@ -19,8 +19,7 @@ int FormatFile(std::filesystem::path const &file) {
 }  // namespace format
 
 void cli::Usage() {
-  Flag("help") << "Show usage information."
-               << [] { execute = cli::ShowUsage; };
+  Flag("help") << "Show usage information." << [] { execute = cli::ShowUsage; };
 
   // TODO error-out if more than one file is provided
   static char const *file;

@@ -78,7 +78,7 @@ struct Reg {
   underlying_type val_ = (std::numeric_limits<underlying_type>::max)();
 };
 
-ICARUS_CONSTEXPR bool operator!=(Reg lhs, Reg rhs) { return !(lhs == rhs); }
+ICARUS_CONSTEXPR bool operator!=(Reg lhs, Reg rhs) { return not (lhs == rhs); }
 
 }  // namespace ir
 

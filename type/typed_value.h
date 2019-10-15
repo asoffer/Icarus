@@ -13,15 +13,15 @@ struct Typed {
   Typed(V value, T const* t) : value_(std::move(value)), type_(t) {}
 
   V& get() & { return value_; }
-  V const& get() const & { return value_; }
+  V const& get() const& { return value_; }
   V&& get() && { return std::move(value_); }
-  V const&& get() const && { return value_; }
+  V const&& get() const&& { return value_; }
 
   V* operator->() & { return &value_; }
-  V const* operator->() const & { return &value_; }
+  V const* operator->() const& { return &value_; }
 
   V& operator*() & { return value_; }
-  V const& operator*() const & { return value_; }
+  V const& operator*() const& { return value_; }
 
   T const* type() const { return type_; }
   void set_type(T const* t) { type_ = t; }
@@ -32,8 +32,8 @@ struct Typed {
            type_->to_string();
   }
 
-  template <typename U, typename = std::enable_if_t<std::is_base_of_v<U, T> &&
-                                                    !std::is_same_v<U, T>>>
+  template <typename U, typename = std::enable_if_t<std::is_base_of_v<U, T> and
+                                                    not std::is_same_v<U, T>>>
   operator Typed<V, U>() const {
     return Typed<V, U>(value_, type_);
   }

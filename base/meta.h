@@ -23,4 +23,4 @@ using first_t = typename first<Ts...>::type;
 
 }  // namespace base
 
-#endif // ICARUS_BASE_META_H
+#endif  // ICARUS_BASE_META_H

@@ -20,7 +20,7 @@ struct Variant : public Type {
   // of `bool | int16` will be 8, but the alternative alignment will be 2. The
   // name is intended to be read as "alignment of the alternatives in the
   // variant", rather than as "a different kind of alignment."
-  core::Alignment alternative_alignment(core::Arch const& arch) const;
+  core::Alignment alternative_alignment(core::Arch const &arch) const;
 
 #include ICARUS_TYPE_VISITOR_METHODS
 

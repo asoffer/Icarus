@@ -38,7 +38,7 @@ struct PtrSpan {
     friend bool operator==(iterator lhs, iterator rhs) {
       return lhs.ptr_ == rhs.ptr_;
     }
-    friend bool operator!=(iterator lhs, iterator rhs) { return !(lhs == rhs); }
+    friend bool operator!=(iterator lhs, iterator rhs) { return not (lhs == rhs); }
 
    private:
     friend struct PtrSpan<T>;
@@ -62,8 +62,8 @@ struct PtrSpan {
 
   template <
       typename Container,
-      std::enable_if_t<!std::is_same_v<PtrSpan<T>, std::decay_t<Container>>> * =
-          nullptr>
+      std::enable_if_t<not std::is_same_v<PtrSpan<T>, std::decay_t<Container>>>
+          * = nullptr>
   PtrSpan(Container &&c)
       : ptr_(c.empty() ? nullptr : std::addressof(c[0])), size_(c.size()) {}
   template <typename Iter>
@@ -75,7 +75,6 @@ struct PtrSpan {
  private:
   pointer_type *ptr_ = nullptr;
   size_t size_       = 0;
-
 };
 
 }  // namespace base

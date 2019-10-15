@@ -18,7 +18,7 @@ extern base::guarded<
 extern base::guarded<absl::flat_hash_set<std::string_view>> on_logs;
 
 inline std::recursive_mutex logger_mtx_;
-}  // namespace base_internal
+}  // namespace internal
 
 void EnableLogging(std::string_view key);
 
@@ -28,7 +28,7 @@ struct Logger {
          std::experimental::source_location src_loc =
              std::experimental::source_location::current())
       : fn_(fn) {
-        internal::logger_mtx_.lock();
+    internal::logger_mtx_.lock();
     std::cerr << fmt(src_loc);
   }
 
@@ -44,7 +44,7 @@ struct Logger {
     if (fn_) { fn_(); }
   }
   void (*fn_)() = nullptr;
-  bool do_log_ = false;
+  bool do_log_  = false;
 };
 
 template <typename T>

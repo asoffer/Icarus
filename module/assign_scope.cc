@@ -88,8 +88,7 @@ void AssignScope::operator()(ast::EnumLiteral *node, core::Scope *scope) {
   SetAllScopes(this, node->elems(), node->body_scope());
 }
 
-void AssignScope::operator()(ast::FunctionLiteral *node,
-                             core::Scope *scope) {
+void AssignScope::operator()(ast::FunctionLiteral *node, core::Scope *scope) {
   node->scope_             = scope;
   node->fn_scope_          = scope->add_child<core::FnScope>();
   node->fn_scope_->fn_lit_ = node;
@@ -200,12 +199,13 @@ void AssignScope::operator()(ast::ScopeNode *node, core::Scope *scope) {
   for (auto &block : node->blocks()) { block.assign_scope(this, scope); }
 }
 
-void AssignScope::operator()(ast::StructLiteral *node,
-                             core::Scope *scope) {
+void AssignScope::operator()(ast::StructLiteral *node, core::Scope *scope) {
   node->scope_     = scope;
   node->type_scope = scope->add_child<core::DeclScope>();
   for (auto &a : node->args_) { a.assign_scope(this, node->type_scope.get()); }
-  for (auto &f : node->fields_) { f.assign_scope(this, node->type_scope.get()); }
+  for (auto &f : node->fields_) {
+    f.assign_scope(this, node->type_scope.get());
+  }
 }
 
 void AssignScope::operator()(ast::StructType *node, core::Scope *scope) {

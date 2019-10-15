@@ -9,12 +9,12 @@
 namespace compiler {
 
 void Compiler::EmitCopyInit(type::Type const *from_type,
-                                          ir::Results const &from_val,
-                                          type::Typed<ir::Reg> to_var) {
+                            ir::Results const &from_val,
+                            type::Typed<ir::Reg> to_var) {
   auto *to_type = to_var.type()->as<type::Pointer>().pointee;
   // TODO Optimize once you understand the semantics better.
-  if (!to_type->is<type::Primitive>() && !to_type->is<type::Function>() &&
-      !to_type->is<type::Variant>()) {
+  if (not to_type->is<type::Primitive>() and
+      not to_type->is<type::Function>() and not to_type->is<type::Variant>()) {
     to_type->EmitDefaultInit(this, to_var.get());
   }
 
@@ -22,12 +22,12 @@ void Compiler::EmitCopyInit(type::Type const *from_type,
 }
 
 void Compiler::EmitCopyInit(ast::Expression const *node,
-                                          type::Typed<ir::Reg> reg) {
+                            type::Typed<ir::Reg> reg) {
   EmitCopyInit(type_of(node), node->EmitValue(this), reg);
 }
 
 void Compiler::EmitCopyInit(ast::ArrayLiteral const *node,
-                                          type::Typed<ir::Reg> reg) {
+                            type::Typed<ir::Reg> reg) {
   type::Array const &array_type = type_of(node)->as<type::Array>();
   auto *data_type_ptr           = type::Ptr(array_type.data_type);
   auto elem = ir::Index(type::Ptr(&array_type), reg.get(), 0);
@@ -41,7 +41,7 @@ void Compiler::EmitCopyInit(ast::ArrayLiteral const *node,
 }
 
 void Compiler::EmitCopyInit(ast::CommaList const *node,
-                                          type::Typed<ir::Reg> reg) {
+                            type::Typed<ir::Reg> reg) {
   size_t index  = 0;
   auto const &t = reg.type()->as<type::Pointer>().pointee->as<type::Tuple>();
   for (auto &expr : node->exprs_) {
@@ -59,8 +59,7 @@ void Compiler::EmitCopyInit(ast::CommaList const *node,
   }
 }
 
-void Compiler::EmitCopyInit(ast::Unop const *node,
-                                          type::Typed<ir::Reg> reg) {
+void Compiler::EmitCopyInit(ast::Unop const *node, type::Typed<ir::Reg> reg) {
   switch (node->op()) {
     case frontend::Operator::Move:
       node->operand()->EmitMoveInit(this, reg);

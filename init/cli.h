@@ -19,7 +19,8 @@ struct Handler;
 enum class Result { Ok, ParseError, AlreadyCalled };
 
 extern std::vector<std::unique_ptr<::cli::internal::Handler>> owned_handlers;
-extern absl::flat_hash_map<std::string, ::cli::internal::Handler *> all_handlers;
+extern absl::flat_hash_map<std::string, ::cli::internal::Handler *>
+    all_handlers;
 
 struct Handler {
   template <typename... Args>
@@ -30,14 +31,14 @@ struct Handler {
   template <typename Fn>
   void operator<<(Fn &&fn) {
     if constexpr (std::is_invocable_v<Fn, bool>) {
-      parse_and_apply_ = [ this, f = std::forward<Fn>(fn) ](char const *arg) {
+      parse_and_apply_ = [this, f = std::forward<Fn>(fn)](char const *arg) {
         bool called_already = called_;
         called_             = true;
-        if (call_once_ && called_already) {
+        if (call_once_ and called_already) {
           return ::cli::internal::Result::AlreadyCalled;
         }
 
-        if (arg == nullptr || strcmp("true", arg) == 0) {
+        if (arg == nullptr or strcmp("true", arg) == 0) {
           f(true);
           return ::cli::internal::Result::Ok;
         } else if (strcmp("false", arg) == 0) {
@@ -52,10 +53,10 @@ struct Handler {
       };
     } else if constexpr (std::is_invocable_v<Fn>) {
       call_once_       = false;
-      parse_and_apply_ = [ this, f = std::forward<Fn>(fn) ](char const *) {
+      parse_and_apply_ = [this, f = std::forward<Fn>(fn)](char const *) {
         bool called_already = called_;
         called_             = true;
-        if (call_once_ && called_already) {
+        if (call_once_ and called_already) {
           return ::cli::internal::Result::AlreadyCalled;
         }
 
@@ -64,10 +65,10 @@ struct Handler {
       };
     } else if constexpr (std::is_invocable_v<Fn, char const *>) {
       call_once_       = false;
-      parse_and_apply_ = [ this, f = std::forward<Fn>(fn) ](char const * cstr) {
+      parse_and_apply_ = [this, f = std::forward<Fn>(fn)](char const *cstr) {
         bool called_already = called_;
         called_             = true;
-        if (call_once_ && called_already) {
+        if (call_once_ and called_already) {
           return ::cli::internal::Result::AlreadyCalled;
         }
 

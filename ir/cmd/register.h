@@ -25,7 +25,7 @@ using RegisterCmd =
 
 template <typename T>
 Reg MakeReg(T t) {
-  static_assert(!std::is_same_v<T, Reg>);
+  static_assert(not std::is_same_v<T, Reg>);
   if constexpr (ir::IsRegOr<T>::value) {
     auto &blk = *GetBuilder().CurrentBlock();
     blk.cmd_buffer_.append_index<RegisterCmd>();

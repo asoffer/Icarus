@@ -19,7 +19,7 @@ struct SourceCursor {
   constexpr SourceCursor ConsumeWhile(Fn &&predicate) {
     size_t pos = 0;
     for (char c : view_) {
-      if (!predicate(c)) { break; }
+      if (not predicate(c)) { break; }
       ++pos;
     }
     return remove_prefix(pos);

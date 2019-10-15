@@ -1,6 +1,6 @@
 #include "compiler/constant_binding.h"
-#include "type/type.h"
 #include "ir/results.h"
+#include "type/type.h"
 
 namespace compiler {
 bool operator==(ConstantBinding const& lhs, ConstantBinding const& rhs) {
@@ -8,8 +8,8 @@ bool operator==(ConstantBinding const& lhs, ConstantBinding const& rhs) {
   for (auto const& [decl, binding] : lhs.keys_) {
     if (auto iter = rhs.keys_.find(decl); iter != rhs.keys_.end()) {
       if (binding.type_ != iter->second.type_) { return false; }
-      if (!binding.type_->TestEquality(lhs.buf_.raw(binding.offset_),
-                                       rhs.buf_.raw(iter->second.offset_))) {
+      if (not binding.type_->TestEquality(lhs.buf_.raw(binding.offset_),
+                                          rhs.buf_.raw(iter->second.offset_))) {
         return false;
       }
     } else {
@@ -28,11 +28,12 @@ ir::Results ConstantBinding::get_constant(ast::Declaration const* decl) const {
 }
 
 std::variant<ir::Results, std::pair<size_t, core::Bytes>>
-ConstantBinding::reserve_slot(ast::Declaration const* decl, type::Type const* t) {
+ConstantBinding::reserve_slot(ast::Declaration const* decl,
+                              type::Type const* t) {
   auto arch                   = core::Interpretter();
   auto bytes                  = t->bytes(arch);
   auto [iter, newly_inserted] = keys_.try_emplace(decl);
-  if (!newly_inserted) {
+  if (not newly_inserted) {
     return ir::Results::FromRaw(buf_.raw(iter->second.offset_), bytes);
   }
   auto alignment = t->alignment(arch);

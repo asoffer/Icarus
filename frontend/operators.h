@@ -3,8 +3,8 @@
 
 #include <string>
 
-#include "frontend/tag.h"
 #include "base/debug.h"
+#include "frontend/tag.h"
 
 namespace frontend {
 

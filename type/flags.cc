@@ -6,7 +6,9 @@
 namespace type {
 
 std::optional<ir::FlagsVal> Flags::Get(std::string_view name) const {
-  if (auto iter = vals_.find(name); iter != vals_.end()) { return iter->second; }
+  if (auto iter = vals_.find(name); iter != vals_.end()) {
+    return iter->second;
+  }
   return std::nullopt;
 }
 
@@ -21,9 +23,7 @@ void Flags::WriteTo(std::string *result) const {
 }
 
 // TODO make this the smallest size that fits.
-core::Bytes Flags::bytes(core::Arch const &a) const {
-  return core::Bytes{8};
-}
+core::Bytes Flags::bytes(core::Arch const &a) const { return core::Bytes{8}; }
 
 // TODO make this the smallest size that fits.
 core::Alignment Flags::alignment(core::Arch const &a) const {

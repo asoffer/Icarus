@@ -87,7 +87,7 @@ extern Type const *Generic;
 inline type::Type const *Prim(BasicType b) {
   switch (b) {
 #define PRIMITIVE_MACRO(EnumName, name)                                        \
-  case BasicType::EnumName:                                                        \
+  case BasicType::EnumName:                                                    \
     return EnumName;
 #include "type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
@@ -141,7 +141,7 @@ bool Compare(::type::Type const *t) {
     return t->is<::type::Jump>();
   } else if constexpr (std::is_same_v<T, ast::FunctionLiteral *>) {
     return t == ::type::Generic;
-  } else if constexpr (std::is_same_v<T, module::BasicModule *> ||
+  } else if constexpr (std::is_same_v<T, module::BasicModule *> or
                        std::is_same_v<T, module::BasicModule const *>) {
     return t == ::type::Module;
   } else if constexpr (std::is_same_v<T, ir::BlockDef const *>) {
@@ -171,7 +171,7 @@ auto ApplyTypes(Type const *t, Fn &&fn) {
   // computation, the value of `index` is one more than the array index for the
   // function we want to call.
   size_t index = 0;
-  bool found   = ((++index, type::Compare<Ts>(t)) || ...);
+  bool found   = ((++index, type::Compare<Ts>(t)) or ...);
   ASSERT(found == true);
 
   return (*kFnToCall)[index - 1](std::forward<Fn>(fn));
@@ -189,15 +189,17 @@ auto Apply(Type const *t, Fn &&fn) {
 
 // TODO lay these out adjacent in memory so the tests can be faster.
 inline bool IsIntegral(Type const *t) {
-  return t == Int8 || t == Int16 || t == Int32 || t == Int64 || t == Nat8 ||
-         t == Nat16 || t == Nat32 || t == Nat64 ;
+  return t == Int8 or t == Int16 or t == Int32 or t == Int64 or t == Nat8 or
+         t == Nat16 or t == Nat32 or t == Nat64;
 }
 
 inline bool IsFloatingPoint(Type const *t) {
-  return  t == Float32 || t == Float64;
+  return t == Float32 or t == Float64;
 }
 
-inline bool IsNumeric(Type const *t) { return IsIntegral(t) || IsFloatingPoint(t); }
+inline bool IsNumeric(Type const *t) {
+  return IsIntegral(t) or IsFloatingPoint(t);
+}
 
 }  // namespace type
 

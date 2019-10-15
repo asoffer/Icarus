@@ -12,7 +12,6 @@ namespace base {
 constexpr inline uint8_t kUnusedByte = 0xaa;
 
 struct untyped_buffer {
-
   struct const_iterator {
     template <typename T>
     T const &read() {
@@ -36,16 +35,16 @@ struct untyped_buffer {
       return (rhs < lhs);
     }
     friend constexpr bool operator<=(const_iterator lhs, const_iterator rhs) {
-      return !(lhs > rhs);
+      return not (lhs > rhs);
     }
     friend constexpr bool operator>=(const_iterator lhs, const_iterator rhs) {
-      return !(rhs < lhs);
+      return not (rhs < lhs);
     }
     friend constexpr bool operator==(const_iterator lhs, const_iterator rhs) {
       return lhs.ptr_ == rhs.ptr_;
     }
     friend constexpr bool operator!=(const_iterator lhs, const_iterator rhs) {
-      return !(lhs == rhs);
+      return not (lhs == rhs);
     }
 
     constexpr const_iterator(char const *ptr) : ptr_(ptr) {}
@@ -86,16 +85,16 @@ struct untyped_buffer {
       return (rhs < lhs);
     }
     friend constexpr bool operator<=(iterator lhs, iterator rhs) {
-      return !(lhs > rhs);
+      return not (lhs > rhs);
     }
     friend constexpr bool operator>=(iterator lhs, iterator rhs) {
-      return !(rhs < lhs);
+      return not (rhs < lhs);
     }
     friend constexpr bool operator==(iterator lhs, iterator rhs) {
       return lhs.ptr_ == rhs.ptr_;
     }
     friend constexpr bool operator!=(iterator lhs, iterator rhs) {
-      return !(lhs == rhs);
+      return not (lhs == rhs);
     }
 
     constexpr iterator(char *ptr) : ptr_(ptr) {}
@@ -155,12 +154,14 @@ struct untyped_buffer {
   constexpr const_iterator begin() const { return const_iterator(data_); }
 
   constexpr iterator end() { return iterator(data_ + size()); }
-  constexpr const_iterator end() const { return const_iterator(data_ + size()); }
+  constexpr const_iterator end() const {
+    return const_iterator(data_ + size());
+  }
 
   constexpr std::pair<iterator, iterator> bounds() {
     return std::pair(begin(), end());
   }
-  constexpr std::pair<const_iterator, const_iterator> bounds() const{
+  constexpr std::pair<const_iterator, const_iterator> bounds() const {
     return std::pair(begin(), end());
   }
 

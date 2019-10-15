@@ -14,4 +14,3 @@
   auto&& temp = (expr);                                                        \
   REQUIRE(temp);                                                               \
   var = *std::move(temp)
-

@@ -24,7 +24,8 @@ struct ElementsAreMatcher : public Catch::MatcherBase<Container> {
 
   virtual std::string describe() const override {
     using base::stringify;
-    return "is a container with the elements in some order " + stringify(container_);
+    return "is a container with the elements in some order " +
+           stringify(container_);
   }
 
  private:
@@ -33,7 +34,7 @@ struct ElementsAreMatcher : public Catch::MatcherBase<Container> {
 
 // The builder function
 template <typename K, typename V, typename... Args>
-inline auto ElementsAre(std::pair<K, V>const & arg, Args&&... args) {
+inline auto ElementsAre(std::pair<K, V> const& arg, Args&&... args) {
   return ElementsAreMatcher(
       absl::flat_hash_map<K, V>{std::move(arg), std::forward<Args>(args)...});
 }

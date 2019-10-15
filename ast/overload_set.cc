@@ -14,7 +14,7 @@ static void EmplaceDecls(OverloadSet *os, DeclSpan &&decls,
   os->reserve(decls.size());
   for (auto const *decl : decls) {
     auto const *result_ptr = visitor->prior_verification_attempt(decl);
-    if (!result_ptr) { decl->VerifyType(visitor); }
+    if (not result_ptr) { decl->VerifyType(visitor); }
     result_ptr = visitor->prior_verification_attempt(decl);
     if (result_ptr) { os->emplace(decl, *result_ptr); }
   }
@@ -38,9 +38,9 @@ void OverloadSet::add_adl(std::string_view id, type::Type const *t) {
   for (auto const *mod : modules) {
     auto decls = mod->declarations(id);
     for (auto *d : decls) {
-      ASSIGN_OR(
-          continue, auto &t,
-          compiler::Compiler(const_cast<module::BasicModule *>(mod)).type_of(d));
+      ASSIGN_OR(continue, auto &t,
+                compiler::Compiler(const_cast<module::BasicModule *>(mod))
+                    .type_of(d));
       // TODO handle this case. I think it's safe to just discard it.
       for (auto const &overload : *this) {
         if (d == overload.expr) { return; }

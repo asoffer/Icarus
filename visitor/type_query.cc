@@ -18,7 +18,7 @@ bool TypeQuery::IsDefaultInitializable(type::Struct const *t) {
   return absl::c_all_of(t->fields_,
                         [](type::Struct::Field const &field) {
                           return field.type->IsDefaultInitializable();
-                        }) &&
+                        }) and
          absl::c_none_of(t->hashtags_, [](ast::Hashtag tag) {
            return tag.kind_ == ast::Hashtag::Builtin::NoDefault;
          });
@@ -36,7 +36,7 @@ bool TypeQuery::IsCopyable(type::Struct const *t) {
   return absl::c_all_of(t->fields_,
                         [](type::Struct::Field const &field) {
                           return field.type->IsCopyable();
-                        }) &&
+                        }) and
          absl::c_none_of(t->hashtags_, [](ast::Hashtag tag) {
            return tag.kind_ == ast::Hashtag::Builtin::Uncopyable;
          });
@@ -60,7 +60,7 @@ bool TypeQuery::IsMovable(type::Struct const *t) {
   return absl::c_all_of(t->fields_,
                         [](type::Struct::Field const &field) {
                           return field.type->IsMovable();
-                        }) &&
+                        }) and
          absl::c_none_of(t->hashtags_, [](ast::Hashtag tag) {
            return tag.kind_ == ast::Hashtag::Builtin::Immovable;
          });
@@ -101,7 +101,7 @@ bool TypeQuery::HasDestructor(type::Variant const *t) {
 bool TypeQuery::ReinterpretableAs(type::Variant const *from,
                                   type::Type const *to) {
   auto *v = to->if_as<type::Variant>();
-  if (!v) { return false; }
+  if (not v) { return false; }
   // Every type in this variant needs to be reinterprettable as a type in v
   // exactly once. The problem is this isn't quite enough because the to-type
   // could have another member that's much larger. This violates the
@@ -121,7 +121,7 @@ bool TypeQuery::ReinterpretableAs(type::Variant const *from,
 bool TypeQuery::ReinterpretableAs(type::Pointer const *from,
                                   type::Type const *to) {
   auto *to_ptr = to->if_as<type::Pointer>();
-  if (!to_ptr) { return false; }
+  if (not to_ptr) { return false; }
   if (to_ptr->is<type::BufferPointer>()) { return false; }
   return from->pointee->ReinterpretableAs(to_ptr->pointee);
 }
@@ -136,17 +136,17 @@ bool TypeQuery::ReinterpretableAs(type::BufferPointer const *from,
 }
 bool TypeQuery::ReinterpretableAs(type::Primitive const *from,
                                   type::Type const *to) {
-  return to == from || (from == type::NullPtr && to->is<type::Pointer>()) ||
-         (from == type::EmptyArray && to->is<type::Array>() &&
+  return to == from or (from == type::NullPtr and to->is<type::Pointer>()) or
+         (from == type::EmptyArray and to->is<type::Array>() and
           to->as<type::Array>().len == 0);
 }
 
 bool TypeQuery::ReinterpretableAs(type::Tuple const *from,
                                   type::Type const *to) {
   auto *tup = to->if_as<type::Tuple>();
-  if (!tup || tup->size() != from->size()) { return false; }
+  if (not tup or tup->size() != from->size()) { return false; }
   for (size_t i = 0; i < from->size(); ++i) {
-    if (!from->entries_.at(i)->ReinterpretableAs(tup->entries_.at(i))) {
+    if (not from->entries_.at(i)->ReinterpretableAs(tup->entries_.at(i))) {
       return false;
     }
   }
@@ -156,7 +156,7 @@ bool TypeQuery::ReinterpretableAs(type::Tuple const *from,
 bool TypeQuery::ReinterpretableAs(type::Array const *from,
                                   type::Type const *to) {
   if (auto *a = to->if_as<type::Array>()) {
-    return from->len == a->len &&
+    return from->len == a->len and
            from->data_type->ReinterpretableAs(a->data_type);
   }
   return false;

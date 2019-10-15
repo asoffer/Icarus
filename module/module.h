@@ -32,7 +32,7 @@ struct BasicModule {
   template <typename T>
   friend struct ExtendedModule;
 
-  void InitializeNodes(base::PtrSpan<ast::Node > nodes);
+  void InitializeNodes(base::PtrSpan<ast::Node> nodes);
 
   core::ModuleScope scope_;
   absl::flat_hash_map<std::string_view, std::vector<ast::Declaration const *>>

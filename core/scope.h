@@ -19,8 +19,8 @@ struct Scope : public base::Cast<Scope> {
   Scope(Scope *parent) : parent(parent) {}
   virtual ~Scope() {}
 
-  template <typename ScopeType, typename ...Args>
-  std::unique_ptr<ScopeType> add_child(Args&& ...args) {
+  template <typename ScopeType, typename... Args>
+  std::unique_ptr<ScopeType> add_child(Args &&... args) {
     return std::make_unique<ScopeType>(this, std::forward<Args>(args)...);
   }
 
@@ -35,7 +35,7 @@ struct Scope : public base::Cast<Scope> {
   template <typename Sc>
   Sc *Containing() {
     Scope *scope = this;
-    while (scope && !scope->is<Sc>()) { scope = scope->parent; }
+    while (scope and not scope->is<Sc>()) { scope = scope->parent; }
     return static_cast<Sc *>(scope);
   }
 

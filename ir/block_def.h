@@ -15,7 +15,7 @@ struct BlockDef {
   static BlockDef const *Start();
   static BlockDef const *Exit();
 
-  inline friend std::ostream &operator<<(std::ostream &os, BlockDef const& b) {
+  inline friend std::ostream &operator<<(std::ostream &os, BlockDef const &b) {
     return os << "blockdef{" << b.before_.size() << ", " << b.after_.size()
               << "}";
   }

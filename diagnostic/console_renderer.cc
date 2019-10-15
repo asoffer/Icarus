@@ -26,13 +26,13 @@ std::string const &LoadLine(frontend::Source *src, frontend::LineNum line) {
 }  // namespace
 
 void ConsoleRenderer::Flush() {
-  if (!has_data_) { return; }
+  if (not has_data_) { return; }
   has_data_ = false;
   std::fputs("\n\n", out_);
   std::fflush(out_);
 }
 
-void ConsoleRenderer::WriteSourceQuote(SourceQuote const& quote) {
+void ConsoleRenderer::WriteSourceQuote(SourceQuote const &quote) {
   int border_alignment = NumDigits(quote.lines.endpoints_.back() - 1) + 2;
   for (base::Interval<frontend::LineNum> line_range : quote.lines) {
     for (frontend::LineNum line = line_range.begin(); line != line_range.end();

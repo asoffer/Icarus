@@ -8,7 +8,7 @@
 namespace type {
 
 bool Type::is_big() const {
-  return is<Array>() || is<Struct>() || is<Variant>() || is<Tuple>();
+  return is<Array>() or is<Struct>() or is<Variant>() or is<Tuple>();
 }
 
 }  // namespace type

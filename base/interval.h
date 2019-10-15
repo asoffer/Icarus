@@ -63,7 +63,7 @@ struct IntervalSet {
       return lhs.iter_ == rhs.iter_;
     }
     friend bool operator!=(const_iterator lhs, const_iterator rhs) {
-      return !(lhs == rhs);
+      return not (lhs == rhs);
     }
 
    private:

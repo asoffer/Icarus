@@ -59,7 +59,7 @@ struct ReturnCmd {
 
   static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
     using base::stringify;
-    auto ctrl = iter->read<control_bits>();
+    auto ctrl  = iter->read<control_bits>();
     uint16_t n = iter->read<uint16_t>();
 
     if (ctrl.only_get) {
@@ -107,7 +107,7 @@ struct ReturnCmd {
 template <typename T>
 void SetRet(uint16_t n, T val) {
   if constexpr (ir::IsRegOr<T>::value) {
-    auto &blk = *GetBuilder().CurrentBlock();
+    auto& blk = *GetBuilder().CurrentBlock();
     blk.cmd_buffer_.append_index<ReturnCmd>();
     blk.cmd_buffer_.append(
         ReturnCmd::MakeControlBits<typename T::type>(val.is_reg(), false));
@@ -142,11 +142,11 @@ inline void SetRet(uint16_t n, type::Typed<Results> const& r) {
       SetRet(n, r->get<T>(0));
       // }
     });
-   }
+  }
 }
 
 inline base::Tagged<Addr, Reg> GetRet(uint16_t n, type::Type const* t) {
-  auto &blk = *GetBuilder().CurrentBlock();
+  auto& blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append(ReturnCmd::MakeControlBits<int>(false, true));
   blk.cmd_buffer_.append(n);
   Reg r = MakeResult(t);

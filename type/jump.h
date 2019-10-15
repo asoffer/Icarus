@@ -4,8 +4,8 @@
 #include <vector>
 
 #include "absl/types/span.h"
-#include "type.h"
 #include "function.h"
+#include "type.h"
 
 namespace type {
 struct Jump : public Type {
@@ -17,7 +17,7 @@ struct Jump : public Type {
   absl::Span<type::Type const *const> args() const { return args_; }
 
   template <typename H>
-  friend H AbslHashValue(H h, Jump const& j) {
+  friend H AbslHashValue(H h, Jump const &j) {
     return H::combine(std::move(h), j.args_);
   }
 

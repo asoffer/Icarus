@@ -13,7 +13,7 @@
 
 namespace ir {
 base::Tagged<Addr, Reg> Index(type::Pointer const *t, Reg array_ptr,
-                          RegOr<int64_t> offset);
+                              RegOr<int64_t> offset);
 
 template <bool B>
 BasicBlock *EarlyExitOn(BasicBlock *exit_block, RegOr<bool> cond) {
@@ -76,7 +76,7 @@ template <typename F>
 void OnEachArrayElement(type::Array const *t, CompiledFn *fn, F &&fn_to_apply) {
   ICARUS_SCOPE(SetCurrentFunc(fn)) {
     GetBuilder().CurrentBlock() = fn->entry();
-    auto *data_ptr_type = type::Ptr(t->data_type);
+    auto *data_ptr_type         = type::Ptr(t->data_type);
 
     auto ptr     = Index(type::Ptr(t), Reg::Arg(0), 0);
     auto end_ptr = PtrIncr(ptr, static_cast<int32_t>(t->len), data_ptr_type);

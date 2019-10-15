@@ -3,9 +3,9 @@
 
 #include <cstdint>
 
-#include "base/strong_types.h"
 #include "base/debug.h"
 #include "base/interval.h"
+#include "base/strong_types.h"
 
 namespace frontend {
 
@@ -23,7 +23,9 @@ struct SourceLoc {
   LineNum line_num = LineNum(0);
   Offset offset    = Offset(0);
 
-  constexpr SourceLoc next_line() const { return SourceLoc(line_num + 1, Offset(0)); }
+  constexpr SourceLoc next_line() const {
+    return SourceLoc(line_num + 1, Offset(0));
+  }
 
   constexpr SourceLoc &operator+=(Offset o) {
     offset += o;
@@ -53,34 +55,39 @@ constexpr SourceLoc operator+(SourceLoc loc, Offset offset) {
   return loc;
 }
 
-constexpr SourceLoc operator+(Offset offset, SourceLoc loc) { return loc + offset; }
+constexpr SourceLoc operator+(Offset offset, SourceLoc loc) {
+  return loc + offset;
+}
 
 constexpr SourceLoc operator-(SourceLoc loc, Offset offset) {
   loc -= offset;
   return loc;
 }
 
-constexpr SourceLoc operator-(Offset offset, SourceLoc loc) { return loc - offset; }
+constexpr SourceLoc operator-(Offset offset, SourceLoc loc) {
+  return loc - offset;
+}
 
 constexpr bool operator>(SourceLoc const &lhs, SourceLoc const &rhs) {
   return rhs < lhs;
 }
 
 constexpr bool operator<=(SourceLoc const &lhs, SourceLoc const &rhs) {
-  return !(lhs > rhs);
+  return not (lhs > rhs);
 }
 
 constexpr bool operator>=(SourceLoc const &lhs, SourceLoc const &rhs) {
-  return !(lhs < rhs);
+  return not (lhs < rhs);
 }
 
 constexpr bool operator!=(SourceLoc const &lhs, SourceLoc const &rhs) {
-  return !(lhs == rhs);
+  return not (lhs == rhs);
 }
 
 struct SourceRange {
   constexpr SourceRange() : range_(SourceLoc(), SourceLoc()) {}
-  explicit constexpr SourceRange(SourceLoc const &b, SourceLoc const &e) : range_(b, e) {}
+  explicit constexpr SourceRange(SourceLoc const &b, SourceLoc const &e)
+      : range_(b, e) {}
 
   // TODO remove this constructor.
   explicit constexpr SourceRange(SourceRange const &b, SourceRange const &e)

@@ -15,7 +15,7 @@ core::Alignment GenericFunction::alignment(core::Arch const &) const {
 }
 
 static base::guarded<std::map<std::vector<Type const *>,
-                               std::map<std::vector<Type const *>, Function>>>
+                              std::map<std::vector<Type const *>, Function>>>
     funcs_;
 Function const *Func(std::vector<Type const *> in,
                      std::vector<Type const *> out) {
@@ -29,7 +29,7 @@ Function const *Func(std::vector<Type const *> in,
 void Function::WriteTo(std::string *result) const {
   if (input.empty()) {
     result->append("()");
-  } else if (input.size() == 1 && !input[0]->is<Function>()) {
+  } else if (input.size() == 1 and not input[0]->is<Function>()) {
     input.at(0)->WriteTo(result);
   } else {
     result->append("(");
@@ -66,9 +66,9 @@ core::Alignment Function::alignment(core::Arch const &a) const {
   return a.fn_ptr_alignment;
 }
 
-core::FnParams<type::Typed<ast::Expression const *>> Function::AnonymousFnParams()
-    const {
-  core::FnParams<type::Typed<ast::Expression const*>> result;
+core::FnParams<type::Typed<ast::Expression const *>>
+Function::AnonymousFnParams() const {
+  core::FnParams<type::Typed<ast::Expression const *>> result;
   for (type::Type const *t : input) {
     result.append("", type::Typed<ast::Expression const *>(nullptr, t));
   }

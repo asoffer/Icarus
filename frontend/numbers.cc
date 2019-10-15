@@ -8,7 +8,7 @@ template <int Base>
 int64_t DigitInBase(char c);
 template <>
 int64_t DigitInBase<10>(char c) {
-  return ('0' <= c && c <= '9') ? (c - '0') : -1;
+  return ('0' <= c and c <= '9') ? (c - '0') : -1;
 }
 template <>
 int64_t DigitInBase<2>(char c) {
@@ -22,8 +22,8 @@ template <>
 int64_t DigitInBase<16>(char c) {
   int digit = DigitInBase<10>(c);
   if (digit != -1) { return digit; }
-  if ('A' <= c && c <= 'F') { return c - 'A' + 10; }
-  if ('a' <= c && c <= 'f') { return c - 'a' + 10; }
+  if ('A' <= c and c <= 'F') { return c - 'A' + 10; }
+  if ('a' <= c and c <= 'f') { return c - 'a' + 10; }
   return -1;
 }
 
@@ -37,17 +37,17 @@ bool IntRepresentableInBase<2>(std::string const &s) {
 
 template <>
 bool IntRepresentableInBase<8>(std::string const &s) {
-  return (s.size() > 11 || (s.size() == 11 && s[0] > '1'));
+  return (s.size() > 11 or (s.size() == 11 and s[0] > '1'));
 }
 
 template <>
 bool IntRepresentableInBase<10>(std::string const &s) {
-  return s.size() > 10 || (s.size() == 10 && s > "2147483647");
+  return s.size() > 10 or (s.size() == 10 and s > "2147483647");
 }
 
 template <>
 bool IntRepresentableInBase<16>(std::string const &s) {
-  return s.size() > 8 || (s.size() == 8 && s[0] > '7');
+  return s.size() > 8 or (s.size() == 8 and s[0] > '7');
 }
 
 template <int Base>
@@ -124,7 +124,7 @@ base::expected<std::variant<int64_t, double>> ParseNumberInBase(
 }  // namespace
 
 base::expected<std::variant<int64_t, double>> ParseNumber(std::string_view sv) {
-  if (sv.size() > 1 && sv[0] == '0') {
+  if (sv.size() > 1 and sv[0] == '0') {
     if (sv[1] == '.') { return ParseNumberInBase<10>(sv); }
     char base = sv[1];
     sv.remove_prefix(2);

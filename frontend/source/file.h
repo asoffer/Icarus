@@ -41,7 +41,7 @@ struct FileSource : public Source {
     auto src = *FileSource::Make(path());
     while (true) {
       auto chunk = src.ReadUntil('\n');
-      if (chunk.view.empty() && !chunk.more_to_read) { return lines; }
+      if (chunk.view.empty() and not chunk.more_to_read) { return lines; }
       lines.emplace_back(chunk.view);
     }
   }

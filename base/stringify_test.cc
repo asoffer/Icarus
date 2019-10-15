@@ -82,7 +82,7 @@ TEST_CASE("tuples") {
   CHECK(stringify(std::tuple(false)) == "(false)");
   CHECK(stringify(std::tuple(3, 4)) == "(3, 4)");
   CHECK(stringify(std::tuple(true, 3, std::pair(false, "hello"))) ==
-            "(true, 3, (false, hello))");
+        "(true, 3, (false, hello))");
 }
 
 TEST_CASE("variants") {
@@ -128,9 +128,7 @@ struct Streamable {};
 std::ostream& operator<<(std::ostream& os, Streamable) {
   return os << "streamable!";
 }
-TEST_CASE("streamable") {
-  CHECK(stringify(Streamable{}) == "streamable!");
-}
+TEST_CASE("streamable") { CHECK(stringify(Streamable{}) == "streamable!"); }
 
 }  // namespace
 }  // namespace base
@@ -140,6 +138,6 @@ std::string stringify(S const&) { return "adl"; }
 
 TEST_CASE("ADL overload") {
   using base::stringify;
-  CHECK(stringify(S{}) =="adl");
+  CHECK(stringify(S{}) == "adl");
   CHECK(stringify(std::pair{S{}, S{}}) == "(adl, adl)");
 }

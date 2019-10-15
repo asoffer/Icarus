@@ -5,7 +5,7 @@
 
 namespace base {
 std::string untyped_buffer::to_string(size_t width, size_t indent) const {
-  constexpr char char_lookup[32] ="0123456789abcdef";
+  constexpr char char_lookup[32] = "0123456789abcdef";
 
   std::vector<std::string> lines;
 

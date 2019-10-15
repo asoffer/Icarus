@@ -21,7 +21,7 @@ namespace core {
 // OrderedFnArgs is usually more appropriate.
 template <typename T, typename StringType = std::string_view,
           typename std::enable_if_t<
-              std::is_same_v<StringType, std::string> ||
+              std::is_same_v<StringType, std::string> or
               std::is_same_v<StringType, std::string_view>> * = nullptr>
 struct FnArgs {
   FnArgs() = default;

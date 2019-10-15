@@ -33,19 +33,19 @@ struct move_func<R(Args...)> {
     return lhs.fn_ == rhs.fn_;
   }
   friend bool operator==(move_func const& f, std::nullptr_t) {
-    return !static_cast<bool>(f.fn_);
+    return not static_cast<bool>(f.fn_);
   }
   friend bool operator==(std::nullptr_t, move_func const& f) {
-    return !static_cast<bool>(f.fn_);
+    return not static_cast<bool>(f.fn_);
   }
   friend bool operator!=(move_func const& lhs, move_func const& rhs) {
-    return !(lhs == rhs);
+    return not (lhs == rhs);
   }
   friend bool operator!=(move_func const& f, std::nullptr_t) {
-    return !(f == nullptr);
+    return not (f == nullptr);
   }
   friend bool operator!=(std::nullptr_t, move_func const& f) {
-    return !(nullptr == f);
+    return not (nullptr == f);
   }
 
  private:

@@ -14,7 +14,7 @@ base::expected<FileSource> FileSource::Make(std::filesystem::path path) {
   }
   FILE *f = std::fopen(path.c_str(), "r");
 
-  if (!f) {
+  if (not f) {
     return base::unexpected(absl::StrFormat(R"(Unable to open file "%s")",
                                             canonical_path.string()));
   }

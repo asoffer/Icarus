@@ -10,6 +10,8 @@
 #include "base/guarded.h"
 #include "base/move_func.h"
 #include "base/tag.h"
+#include "compiler/constant_binding.h"
+#include "compiler/dependent_data.h"
 #include "compiler/module.h"
 #include "compiler/verify_result.h"
 #include "error/log.h"
@@ -18,8 +20,6 @@
 #include "ir/builder.h"
 #include "ir/reg.h"
 #include "ir/results.h"
-#include "compiler/constant_binding.h"
-#include "compiler/dependent_data.h"
 #include "module/module.h"
 #include "type/type_fwd.h"
 
@@ -65,7 +65,8 @@ struct Compiler {
   VerifyResult const *prior_verification_attempt(ast::ExprPtr expr);
   type::Type const *type_of(ast::Expression const *expr) const;
   void set_addr(ast::Declaration const *decl, ir::Reg addr);
-  compiler::VerifyResult set_result(ast::ExprPtr expr, compiler::VerifyResult r);
+  compiler::VerifyResult set_result(ast::ExprPtr expr,
+                                    compiler::VerifyResult r);
 
   ir::Reg addr(ast::Declaration const *decl) const;
   void set_dispatch_table(ast::ExprPtr expr, ast::DispatchTable &&table);

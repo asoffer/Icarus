@@ -39,12 +39,13 @@ type::Type const *Compiler::type_of(ast::Expression const *expr) const {
   }
 
   auto *result = constants_->second.result(expr);
-  if (result && result->type_) { return result->type_; }
+  if (result and result->type_) { return result->type_; }
 
   // TODO reenabel once modules are all in core.
   // // When searching in embedded modules we intentionally look with no bound
-  // // constants. Across module boundaries, a declaration can't be present anyway.
-  // for (module::BasicModule const *mod : mod_->scope_.embedded_modules_) {
+  // // constants. Across module boundaries, a declaration can't be present
+  // anyway. for (module::BasicModule const *mod :
+  // mod_->scope_.embedded_modules_) {
   //   // TODO use right constants
   //   if (auto iter = mod->dep_data_.front().second.verify_results_.find(expr);
   //       iter != mod->dep_data_.front().second.verify_results_.end()) {
@@ -54,8 +55,7 @@ type::Type const *Compiler::type_of(ast::Expression const *expr) const {
   return nullptr;
 }
 
-void Compiler::set_addr(ast::Declaration const *decl,
-                                      ir::Reg addr) {
+void Compiler::set_addr(ast::Declaration const *decl, ir::Reg addr) {
   constants_->second.addr_[decl] = addr;
 }
 VerifyResult Compiler::set_result(ast::ExprPtr expr, VerifyResult r) {
@@ -67,7 +67,7 @@ ir::Reg Compiler::addr(ast::Declaration const *decl) const {
 }
 
 void Compiler::set_dispatch_table(ast::ExprPtr expr,
-                                                ast::DispatchTable &&table) {
+                                  ast::DispatchTable &&table) {
   constants_->second.dispatch_tables_.emplace(expr, std::move(table));
   // TODO in some situations you may be trying to set the dispatch table more
   // than once. This has come up with generic structs and you should
@@ -92,9 +92,8 @@ std::pair<ConstantBinding, DependentData> *Compiler::insert_constants(
   return pair;
 }
 
-void Compiler::set_jump_table(ast::ExprPtr jump_expr,
-                                            ast::ExprPtr node,
-                                            ast::DispatchTable &&table) {
+void Compiler::set_jump_table(ast::ExprPtr jump_expr, ast::ExprPtr node,
+                              ast::DispatchTable &&table) {
   constants_->second.jump_tables_.emplace(std::pair{jump_expr, node},
                                           std::move(table));
   // TODO in some situations you may be trying to set the dispatch table more

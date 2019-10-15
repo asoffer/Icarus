@@ -16,7 +16,6 @@ struct StackFrameAllocations;
 struct BlockDef;
 
 struct Inliner {
-
   void Inline(Reg *r, type::Type const *t = nullptr) const;
 
   constexpr void Inline(BasicBlock const *b) const {

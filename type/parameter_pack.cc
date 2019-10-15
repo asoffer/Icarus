@@ -10,7 +10,7 @@ static base::guarded<
 ParameterPack const *Pack(Type const *t) {
   auto handle = packs_.lock();
   auto &p     = (*handle)[t];
-  if (!p) { p = std::make_unique<ParameterPack>(t); }
+  if (not p) { p = std::make_unique<ParameterPack>(t); }
   return p.get();
 }
 

@@ -17,7 +17,7 @@ int MatchParse(std::filesystem::path const &expr_file,
   auto expr_stmts = frontend::Parse(&expr_src);
   if (expr_stmts.size() != 1) { return 2; }
   auto *expr = expr_stmts[0]->if_as<ast::Expression>();
-  if (!expr) { return 2; }
+  if (not expr) { return 2; }
 
   ASSIGN_OR(return 1, frontend::FileSource src,
                    frontend::FileSource::Make(file));
@@ -32,12 +32,11 @@ int MatchParse(std::filesystem::path const &expr_file,
 }  // namespace match
 
 void cli::Usage() {
-  Flag("help") << "Show usage information."
-               << [] { execute = cli::ShowUsage; };
+  Flag("help") << "Show usage information." << [] { execute = cli::ShowUsage; };
 
   static char const *expr_file;
   Flag("expr") << "The file holding the expression to be matched."
-               << [](char const * e) { expr_file = e; };
+               << [](char const *e) { expr_file = e; };
 
   // TODO error-out if more than one file is provided
   static char const *file;

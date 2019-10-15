@@ -41,7 +41,7 @@ DEFINE_RANKED_STRINGIFY(2, bool) { return value ? "true" : "false"; }
 DEFINE_RANKED_STRINGIFY(3, char const *) {
   return (value == nullptr) ? "null char const*" : value;
 }
-DEFINE_RANKED_STRINGIFY(3, std::string const&) { return value; }
+DEFINE_RANKED_STRINGIFY(3, std::string const &) { return value; }
 DEFINE_RANKED_STRINGIFY(3, std::string_view) { return std::string{value}; }
 DEFINE_RANKED_STRINGIFY(2, char) {
   char const c[2] = {value, '\0'};

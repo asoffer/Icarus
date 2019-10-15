@@ -7,10 +7,10 @@
 #if defined(ICARUS_DEBUG)
 
 #define ICARUS_CONSTEXPR inline
-#define ICARUS_PRIVATE 
+#define ICARUS_PRIVATE
 
 #define ASSERT(...)                                                            \
-  static_cast<bool>((MATCH(::debug::Asserter{}, __VA_ARGS__))) ||              \
+  static_cast<bool>((MATCH(::debug::Asserter{}, __VA_ARGS__))) or              \
       base::Logger(                                                            \
           +[](std::experimental::source_location const &) -> std::string {     \
             return "";                                                         \
@@ -24,7 +24,7 @@ struct Asserter {
   bool operator()(::matcher::ExprMatchResult<L, R> const &result,
                   std::experimental::source_location src_loc =
                       std::experimental::source_location::current()) const {
-    if (!result.matched) {
+    if (not result.matched) {
       using base::stringify;
       base::Logger(base::LogFormatterWithoutFunction, nullptr, src_loc)
           << "\033[0;1;31mAssertion failed\n"
@@ -57,7 +57,7 @@ struct Asserter {
              "      \033[0;1;37mActual:\033[0m "
           << stringify(match_result.expr.value()) << "\n";
     }
-    return !match_result.description.has_value();
+    return not match_result.description.has_value();
   }
 };
 }  // namespace debug
@@ -101,15 +101,15 @@ struct Asserter {
     std::abort();                                                              \
   } while (false)
 
-#else // defined(ICARUS_DEBUG)
+#else  // defined(ICARUS_DEBUG)
 
 #define ICARUS_CONSTEXPR constexpr
 #define ICARUS_PRIVATE private:
 
 #define ASSERT(...)                                                            \
-  false && base::Logger(+[](std::experimental::source_location const &)        \
-                            -> std::string { return ""; },                     \
-                        nullptr)
+  false and base::Logger(+[](std::experimental::source_location const &)       \
+                             -> std::string { return ""; },                    \
+                         nullptr)
 #define ASSERT_NOT_NULL(...) __VA_ARGS__
 #define UNREACHABLE(...) __builtin_unreachable();
 #define DUMP(...) ""

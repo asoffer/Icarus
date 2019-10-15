@@ -107,7 +107,7 @@ static bool Covers(
   if (params.size() < args.size()) { return false; }
 
   for (size_t i = 0; i < args.pos().size(); ++i) {
-    if (!type::CanCast(args.pos().at(i), params.at(i).value.type())) {
+    if (not type::CanCast(args.pos().at(i), params.at(i).value.type())) {
       return false;
     }
   }
@@ -115,7 +115,9 @@ static bool Covers(
   for (auto const &[name, type] : args.named()) {
     auto *index = params.at_or_null(name);
     if (index == nullptr) { return false; }
-    if (!type::CanCast(type, params.at(*index).value.type())) { return false; }
+    if (not type::CanCast(type, params.at(*index).value.type())) {
+      return false;
+    }
   }
 
   for (size_t i = args.pos().size(); i < params.size(); ++i) {
@@ -144,7 +146,7 @@ MatchArgsToParams(
     auto const &param = params.at(param_index);
     type::Type const *meet =
         type::Meet(verify_result.type_, param.value.type());
-    if (!meet) {
+    if (not meet) {
       return base::unexpected(absl::StrCat(
           "Failed to match argument to parameter at position ", param_index));
     }
@@ -177,7 +179,7 @@ MatchArgsToParams(
     } else {
       auto *meet =
           type::Meet(expr_and_verify_result->second.type_, param.value.type());
-      if (!meet) {
+      if (not meet) {
         // TODO explain why types don't match.
         return base::unexpected(absl::StrCat(
             "Failed to match argument to parameter named `", param.name, "`"));
@@ -251,8 +253,8 @@ static base::expected<DispatchTable::Row> OverloadParams(
 
   auto result =
       *ASSERT_NOT_NULL(compiler->prior_verification_attempt(overload.expr));
-  if (!result.type_->is<type::Callable>() && result.type_ != type::Generic &&
-      result.type_ != type::Block) {
+  if (not result.type_->is<type::Callable>() and
+      result.type_ != type::Generic and result.type_ != type::Block) {
     // Figure out who should have verified this. Is it guaranteed to be
     // covered by shadowing checks? What if the overload isn't a declaration
     // so there aren't any shadowing checks?
@@ -274,9 +276,9 @@ static base::expected<DispatchTable::Row> OverloadParams(
         auto const &param  = fn_lit->inputs_.at(param_index);
 
         auto result = decl->VerifyType(compiler);
-        if (!result.ok()) { NOT_YET(); }
+        if (not result.ok()) { NOT_YET(); }
 
-        if (!(param.value->flags() & Declaration::f_IsConst)) {
+        if (not(param.value->flags() & Declaration::f_IsConst)) {
           params.set(param_index, core::Param<type::Typed<Expression const *>>{
                                       param.name,
                                       type::Typed<Expression const *>(
@@ -287,7 +289,7 @@ static base::expected<DispatchTable::Row> OverloadParams(
           if (param_index < args.pos().size()) {
             auto [arg_expr, verify_result] = args.pos().at(param_index);
             type::Type const *decl_type = compiler->type_of(param.value.get());
-            if (!type::CanCast(verify_result.type_, decl_type)) {
+            if (not type::CanCast(verify_result.type_, decl_type)) {
               return base::unexpected(
                   absl::StrCat("TODO good error message couldn't match type ",
                                decl_type->to_string(), " to ",
@@ -315,7 +317,7 @@ static base::expected<DispatchTable::Row> OverloadParams(
             if (auto *arg = args.at_or_null(param.value->id())) {
               type::Type const *decl_type =
                   compiler->type_of(param.value.get());
-              if (!type::CanCast(arg->second.type_, decl_type)) {
+              if (not type::CanCast(arg->second.type_, decl_type)) {
                 return base::unexpected(
                     absl::StrCat("TODO good error message couldn't match type ",
                                  decl_type->to_string(), " to ",
@@ -449,13 +451,13 @@ std::pair<DispatchTable, compiler::VerifyResult> VerifyDispatchImpl(
   absl::flat_hash_map<Expression const *, std::string> failure_reasons;
   for (auto &&overload : overload_set) {
     auto expected_row = OverloadParams(compiler, overload, args);
-    if (!expected_row.has_value()) {
+    if (not expected_row.has_value()) {
       DEBUG_LOG("verify_dispatch")
       ("  skipping failed row -- ", expected_row.error());
       continue;
     }
     auto match = MatchArgsToParams(expected_row->params, args);
-    if (!match.has_value()) {
+    if (not match.has_value()) {
       DEBUG_LOG("verify_dispatch")
       ("  skipping failed match -- ", match.error());
       continue;
@@ -486,7 +488,7 @@ std::pair<DispatchTable, compiler::VerifyResult> VerifyDispatchImpl(
                            });
                      }),
       expanded_fnargs.end());
-  if (!expanded_fnargs.empty()) {
+  if (not expanded_fnargs.empty()) {
     // TODO log an error
     // ctx->error_log()->MissingDispatchContingency(node->span,
     // expanded_fnargs.Transform([](type::Type const *arg) { return
@@ -532,7 +534,7 @@ compiler::VerifyResult VerifyJumpDispatch(
   for (ir::AnyFunc f : overload_set) {
     // TODO some of these may be entirely discarded at compile-time. We really
     // only want to iterate through the jumps possible at run-time.
-    if (!f.func()) { continue; }
+    if (not f.func()) { continue; }
     // TODO do you know this work is safe to do right now?
     auto *work = f.func()->work_item;
     if (work) { std::move (*work)(); }
@@ -590,7 +592,7 @@ static ir::BasicBlock *EmitDispatchTest(
     auto const &[expr, val] =
         (i < args.pos().size()) ? args.at(i) : args.at(std::string{param.name});
     auto *expr_var = compiler->type_of(expr)->if_as<type::Variant>();
-    if (!expr_var) { continue; }
+    if (not expr_var) { continue; }
     compiler->builder().CurrentBlock() = ir::EarlyExitOn<false>(
         next_binding, EmitVariantMatch(compiler->builder(), val.get<ir::Reg>(0),
                                        param.value.type()));
@@ -626,8 +628,9 @@ static bool EmitOneCall(
       },
       row.fn);
   // TODO this feels super hacky. And wasteful to compute `fn` twice.
-  if constexpr (!Inline) {
-    if (!fn.is_reg() && fn.value().is_fn() && fn.value().func()->must_inline_) {
+  if constexpr (not Inline) {
+    if (not fn.is_reg() and fn.value().is_fn() and
+        fn.value().func()->must_inline_) {
       return EmitOneCall<true>(compiler, row, args, return_types, outputs,
                                block_map, inline_results);
     }
@@ -647,7 +650,7 @@ static bool EmitOneCall(
   for (; i < row.params.size(); ++i) {
     auto const &param = row.params.at(i);
     auto *arg         = args.at_or_null(param.name);
-    if (!arg && (param.flags & core::HAS_DEFAULT)) {
+    if (not arg and (param.flags & core::HAS_DEFAULT)) {
       arg_results.push_back(param.value.get()->EmitValue(compiler));
     } else {
       auto const &[expr, results] = *ASSERT_NOT_NULL(arg);
@@ -735,8 +738,9 @@ static ir::Results EmitFnCall(
   // If an output to the function fits in a register we will create a phi node
   // for it on the landing block. Otherwise, we'll temporarily allocate stack
   // space for it and pass in an output pointer.
-  size_t num_regs = absl::c_count_if(
-      table->return_types_, [](type::Type const *t) { return !t->is_big(); });
+  size_t num_regs =
+      absl::c_count_if(table->return_types_,
+                       [](type::Type const *t) { return not t->is_big(); });
   absl::flat_hash_map<ir::BasicBlock *, ir::Results> result_phi_args[num_regs];
 
   // The vector of registers for all the outputs aggregated from all the
@@ -770,14 +774,14 @@ static ir::Results EmitFnCall(
         EmitOneCall<Inline>(compiler, row, args, table->return_types_, &outputs,
                             block_map, &inline_results);
 
-    if (!is_jump) { ir::UncondJump(landing_block); }
+    if (not is_jump) { ir::UncondJump(landing_block); }
     compiler->builder().CurrentBlock() = next_binding;
   }
 
   bool is_jump = EmitOneCall<Inline>(compiler, table->bindings_.back(), args,
                                      table->return_types_, &outputs, block_map,
                                      &inline_results);
-  if (!is_jump) { ir::UncondJump(landing_block); }
+  if (not is_jump) { ir::UncondJump(landing_block); }
   compiler->builder().CurrentBlock() = landing_block;
 
   if constexpr (Inline) {

@@ -123,7 +123,7 @@ template <typename Tag, typename UnderlyingType, typename CrtpTags,
           typename std::enable_if_t<
               std::is_base_of_v<EnableRawArithmetic, CrtpTags>>* = nullptr>
 constexpr Tag operator+(Strong<Tag, UnderlyingType, CrtpTags> lhs,
-                      base::DeductionBlockerT<UnderlyingType> rhs) {
+                        base::DeductionBlockerT<UnderlyingType> rhs) {
   return Tag(lhs.value + rhs);
 }
 
@@ -212,7 +212,7 @@ template <typename Tag, typename UnderlyingType, typename CrtpTags,
                                                       CrtpTags>>* = nullptr>
 constexpr bool operator!=(Strong<Tag, UnderlyingType, CrtpTags> lhs,
                           Strong<Tag, UnderlyingType, CrtpTags> rhs) {
-  return !(lhs == rhs);
+  return not (lhs == rhs);
 }
 
 }  // namespace internal

@@ -22,7 +22,7 @@ bool ParseRule::Match(absl::Span<Tag const> tag_stack) const {
 }
 
 void ParseRule::Apply(std::vector<std::unique_ptr<ast::Node>> *node_stack,
-                      std::vector<Tag> *tag_stack, 
+                      std::vector<Tag> *tag_stack,
                       error::Log *error_log) const {
   auto nodes_to_reduce = absl::MakeSpan(
       std::addressof(*(node_stack->end() - this->size())), this->size());

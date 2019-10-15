@@ -15,7 +15,7 @@ namespace ir {
 template <typename T>
 struct RegOr {
   using type = T;
-  static_assert(!std::is_same_v<Reg, type>);
+  static_assert(not std::is_same_v<Reg, type>);
   static_assert(std::is_trivially_copyable_v<type>);
 
   constexpr RegOr(Reg reg) : reg_(reg), is_reg_(true) {}
@@ -60,13 +60,13 @@ struct RegOr {
 
 template <typename T>
 ICARUS_CONSTEXPR bool operator==(RegOr<T> const &lhs, RegOr<T> const &rhs) {
-  if (lhs.is_reg()) { return rhs.is_reg() && lhs.reg() == rhs.reg(); }
-  return !rhs.is_reg() && lhs.value() == rhs.value();
+  if (lhs.is_reg()) { return rhs.is_reg() and lhs.reg() == rhs.reg(); }
+  return not rhs.is_reg() and lhs.value() == rhs.value();
 }
 
 template <typename T>
 ICARUS_CONSTEXPR bool operator!=(RegOr<T> const &lhs, RegOr<T> const &rhs) {
-  return !(lhs == rhs);
+  return not (lhs == rhs);
 }
 
 // A type trait for checking if the input type is a `RegOr<T>` for some `T` and

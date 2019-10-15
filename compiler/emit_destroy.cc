@@ -1,6 +1,8 @@
 #include "absl/random/random.h"
 #include "ast/ast.h"
 #include "base/permutation.h"
+#include "compiler/compiler.h"
+#include "compiler/special_function.h"
 #include "ir/builder.h"
 #include "ir/cmd/call.h"
 #include "ir/cmd/misc.h"
@@ -8,13 +10,11 @@
 #include "ir/components.h"
 #include "type/type.h"
 #include "type/typed_value.h"
-#include "compiler/compiler.h"
-#include "compiler/special_function.h"
 
 namespace compiler {
 
 void Compiler::EmitDestroy(type::Struct const *t, ir::Reg reg) {
-  if (!t->HasDestructor()) { return; }
+  if (not t->HasDestructor()) { return; }
   t->destroy_func_.init([=]() {
     if (auto fn = SpecialFunction(this, t, "~")) { return *fn; }
 
@@ -41,15 +41,15 @@ void Compiler::EmitDestroy(type::Struct const *t, ir::Reg reg) {
 }
 
 void Compiler::EmitDestroy(type::Variant const *t, ir::Reg reg) {
-  if (!t->HasDestructor()) { return; }
+  if (not t->HasDestructor()) { return; }
   // TODO design and build a jump table?
   // TODO remove these casts in favor of something easier to track properties on
   std::unique_lock lock(t->mtx_);
-  if (!t->destroy_func_) {
-    t->destroy_func_ = AddFunc(
-        type::Func({t}, {}),
-        core::FnParams(
-            core::Param{"", type::Typed<ast::Expression const *>{nullptr, t}}));
+  if (not t->destroy_func_) {
+    t->destroy_func_ =
+        AddFunc(type::Func({t}, {}),
+                core::FnParams(core::Param{
+                    "", type::Typed<ast::Expression const *>{nullptr, t}}));
     ICARUS_SCOPE(ir::SetCurrentFunc(t->destroy_func_)) {
       builder().CurrentBlock() = t->destroy_func_->entry();
       auto *landing            = builder().AddBlock();
@@ -58,7 +58,7 @@ void Compiler::EmitDestroy(type::Variant const *t, ir::Reg reg) {
 
       auto var_val = ir::VariantValue(t, ir::Reg::Arg(0));
       for (type::Type const *v : t->variants_) {
-        if (!v->HasDestructor()) { continue; }
+        if (not v->HasDestructor()) { continue; }
         auto *old_block   = builder().CurrentBlock();
         auto *found_block = builder().AddBlock();
 
@@ -82,7 +82,7 @@ void Compiler::EmitDestroy(type::Variant const *t, ir::Reg reg) {
 }
 
 void Compiler::EmitDestroy(type::Tuple const *t, ir::Reg reg) {
-  if (!t->HasDestructor()) { return; }
+  if (not t->HasDestructor()) { return; }
   t->destroy_func_.init([=]() {
     auto *fn = AddFunc(
         type::Func({Ptr(t)}, {}),
@@ -106,7 +106,7 @@ void Compiler::EmitDestroy(type::Tuple const *t, ir::Reg reg) {
 }
 
 void Compiler::EmitDestroy(type::Array const *t, ir::Reg reg) {
-  if (!t->HasDestructor()) { return; }
+  if (not t->HasDestructor()) { return; }
   t->destroy_func_.init([=]() {
     // TODO special function?
     auto *fn = AddFunc(

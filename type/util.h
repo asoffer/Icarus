@@ -52,10 +52,10 @@ constexpr type::Type const *Get() {
   } else if constexpr (std::is_same_v<T, ir::Addr>) {
     UNREACHABLE();
   } else if constexpr (std::is_same_v<T, ir::BlockDef const *>) {
-    return type::Block; // Maybe opt-block?
+    return type::Block;  // Maybe opt-block?
   } else if constexpr (std::is_same_v<T, type::Type const *>) {
     return type::Type_;
-  } else if constexpr (std::is_same_v<T, module::BasicModule *> ||
+  } else if constexpr (std::is_same_v<T, module::BasicModule *> or
                        std::is_same_v<T, module::BasicModule const *>) {
     return type::Module;
   } else if constexpr (std::is_same_v<T, ast::FunctionLiteral *>) {

@@ -44,7 +44,7 @@ struct CompiledFn {
   Reg Reserve(type::Type const *t);
   Reg Reserve(core::Bytes b, core::Alignment a);
 
-  Reg Alloca(type::Type const* t);
+  Reg Alloca(type::Type const *t);
 
   BasicBlock const *entry() const { return blocks()[0]; }
   BasicBlock *entry() { return blocks()[0]; }

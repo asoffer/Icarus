@@ -31,11 +31,11 @@ struct VerifyResult {
 std::ostream &operator<<(std::ostream &os, VerifyResult r);
 
 constexpr bool operator==(VerifyResult lhs, VerifyResult rhs) {
-  return lhs.type_ == rhs.type_ && lhs.const_ == rhs.const_;
+  return lhs.type_ == rhs.type_ and lhs.const_ == rhs.const_;
 }
 
 constexpr bool operator!=(VerifyResult lhs, VerifyResult rhs) {
-  return !(lhs == rhs);
+  return not (lhs == rhs);
 }
 
 }  // namespace compiler

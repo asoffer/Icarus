@@ -11,7 +11,7 @@ Foreign::Foreign(void *obj, type::Type const *t) : obj_(obj) {
   // TODO what if two calls to foreign claim it's a different type? Should this
   // be allowed? Is it already checked?
   //
-  // More thoughts: yes it's allowed... 
+  // More thoughts: yes it's allowed...
   //    allocate ::= (T :: type, num: int32) -> [*]T {
   //      malloc ::= foreign("malloc", nat64 -> [*]T)
   //      return malloc(T'bytes * (num as nat64))
@@ -19,6 +19,8 @@ Foreign::Foreign(void *obj, type::Type const *t) : obj_(obj) {
   foreign_objs.lock()->emplace(obj, t);
 }
 
-type::Type const *Foreign::type() const { return foreign_objs.lock()->at(obj_); }
+type::Type const *Foreign::type() const {
+  return foreign_objs.lock()->at(obj_);
+}
 
 }  // namespace ir

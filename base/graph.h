@@ -17,7 +17,9 @@ struct Graph {
     adj_lists_[from].insert(to);
   }
 
-  absl::flat_hash_set<T> const& at(T const& t) const { return adj_lists_.at(t); }
+  absl::flat_hash_set<T> const& at(T const& t) const {
+    return adj_lists_.at(t);
+  }
 
   template <typename Fn>
   void topologically(Fn&& fn) const {
@@ -34,7 +36,7 @@ struct Graph {
       if (vals.empty()) { empty_keys.push(key); }
     }
 
-    while (!empty_keys.empty()) {
+    while (not empty_keys.empty()) {
       auto const& key = empty_keys.front();
       fn(key);
       for (auto val : reverse.adj_lists_.at(key)) {

@@ -151,4 +151,3 @@ void ExtractJumps::operator()(ast::Unop const *node) {
 }
 
 }  // namespace visitor
-

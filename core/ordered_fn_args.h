@@ -11,7 +11,8 @@ template <typename T>
 struct OrderedFnArgs {
  public:
   explicit OrderedFnArgs() {}
-  explicit OrderedFnArgs(std::vector<std::pair<std::string, std::unique_ptr<T>>> args)
+  explicit OrderedFnArgs(
+      std::vector<std::pair<std::string, std::unique_ptr<T>>> args)
       : ordered_args_(std::move(args)) {
     for (auto const &[name, arg] : ordered_args_) {
       if (name.empty()) {
@@ -37,7 +38,8 @@ struct OrderedFnArgs {
     for (auto &[key, val] : ordered_args_) { std::forward<Fn>(fn)(val.get()); }
   }
 
-  absl::Span<std::pair<std::string, std::unique_ptr<T>> const> ordered_args() const {
+  absl::Span<std::pair<std::string, std::unique_ptr<T>> const> ordered_args()
+      const {
     return ordered_args_;
   }
 

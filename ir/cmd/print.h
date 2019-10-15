@@ -25,9 +25,9 @@ struct PrintCmd {
     return result;
   }
 
-  static BasicBlock const * Execute(base::untyped_buffer::const_iterator* iter,
-                                           std::vector<Addr> const& ret_slots,
-                                           backend::ExecContext* ctx);
+  static BasicBlock const* Execute(base::untyped_buffer::const_iterator* iter,
+                                   std::vector<Addr> const& ret_slots,
+                                   backend::ExecContext* ctx);
 
   static std::string DebugString(base::untyped_buffer::const_iterator* iter);
 
@@ -49,7 +49,7 @@ void Print(T r) {
 }
 
 template <typename T,
-          typename std::enable_if_t<std::is_same_v<T, EnumVal> ||
+          typename std::enable_if_t<std::is_same_v<T, EnumVal> or
                                     std::is_same_v<T, FlagsVal>>* = nullptr>
 void Print(RegOr<T> r, type::Type const* t) {
   auto& blk = *GetBuilder().CurrentBlock();

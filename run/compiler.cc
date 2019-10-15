@@ -27,8 +27,8 @@ int RunCompiler() {
 
   error::Log log;
   for (const auto &src : files) {
-    if (!module::ImportModule(std::filesystem::path{src}, nullptr,
-                              compiler::CompileModule)) {
+    if (not module::ImportModule(std::filesystem::path{src}, nullptr,
+                                 compiler::CompileModule)) {
       log.MissingModule(src, "");
     }
   }
@@ -43,7 +43,7 @@ int RunCompiler() {
   if (main_fn == nullptr) {
     // TODO make this an actual error?
     std::cerr << "No compiled module has a `main` function.\n";
-  } else if (!found_errors) {
+  } else if (not found_errors) {
     // TODO All the functions? In all the modules?
     opt::CombineBlocks(main_fn);
 

@@ -86,7 +86,7 @@ void DumpFnArgs(Dump *d, core::FnArgs<EPtr, StrType> const &fnargs) {
   bool seen_one = false;
   fnargs.ApplyWithIndex([&](auto &&index, EPtr const &expr) {
     absl::StrAppend(d->out_, seen_one ? ", " : "");
-    if constexpr (!std::is_same_v<std::decay_t<decltype(index)>, size_t>) {
+    if constexpr (not std::is_same_v<std::decay_t<decltype(index)>, size_t>) {
       absl::StrAppend(d->out_, index, " = ");
     }
     expr->Dump(d);
@@ -97,7 +97,7 @@ void DumpFnArgs(Dump *d, core::FnArgs<EPtr, StrType> const &fnargs) {
 }  // namespace
 
 void Dump::operator()(ast::Access const *node) {
-  if (node->operand()->is<ast::Identifier>() ||
+  if (node->operand()->is<ast::Identifier>() or
       node->operand()->is<ast::Index>()) {
     node->operand()->Dump(this);
   } else {
@@ -148,7 +148,7 @@ void Dump::operator()(ast::BlockLiteral const *node) {
 
 void Dump::operator()(ast::BlockNode const *node) {
   absl::StrAppend(out_, node->name());
-  if (!node->args().empty()) {
+  if (not node->args().empty()) {
     absl::StrAppend(out_, " [", absl::StrJoin(node->args(), ", ", Joiner{this}),
                     "]");
   }
@@ -338,7 +338,7 @@ void Dump::operator()(ast::ScopeNode const *node) {
   absl::StrAppend(out_, " ");
 
   auto const &args = node->args();
-  if (!args.empty()) {
+  if (not args.empty()) {
     absl::StrAppend(out_, "(");
     DumpFnArgs(this, args);
     absl::StrAppend(out_, ")");

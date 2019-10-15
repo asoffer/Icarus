@@ -38,7 +38,7 @@ struct StoreCmd {
       T val   = ctrl.reg ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>();
       Addr addr = ctrl.reg_addr ? ctx->resolve<Addr>(iter->read<Reg>())
                                 : iter->read<Addr>();
-      static_assert(!std::is_same_v<T, void*>, "Not handling addresses yet");
+      static_assert(not std::is_same_v<T, void*>, "Not handling addresses yet");
       switch (addr.kind) {
         case Addr::Kind::Stack:
           DEBUG_LOG("store")(addr);

@@ -35,8 +35,10 @@ struct DeclDepGraph {
       ids_;
 };
 
-struct DependentDecls  {
-  void operator()(ast::Node const *node, ast::Declaration const *d) { UNREACHABLE(); }
+struct DependentDecls {
+  void operator()(ast::Node const *node, ast::Declaration const *d) {
+    UNREACHABLE();
+  }
 #define ICARUS_AST_NODE_X(name)                                                \
   void operator()(ast::name const *node, ast::Declaration const *d);
 #include "ast/node.xmacro.h"

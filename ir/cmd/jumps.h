@@ -35,13 +35,15 @@ struct JumpCmd {
     using base::stringify;
     switch (iter->read<Kind>()) {
       case Kind::kRet: s.append("ret"); break;
-      case Kind::kUncond: s.append(stringify(iter->read<BasicBlock const *>())); break;
+      case Kind::kUncond:
+        s.append(stringify(iter->read<BasicBlock const*>()));
+        break;
       case Kind::kCond: {
         s.append(stringify(iter->read<Reg>()));
         s.append(" false: ");
-        s.append(stringify(iter->read<BasicBlock const *>()));
+        s.append(stringify(iter->read<BasicBlock const*>()));
         s.append(", true: ");
-        s.append(stringify(iter->read<BasicBlock const *>()));
+        s.append(stringify(iter->read<BasicBlock const*>()));
       } break;
       default: UNREACHABLE();
     }
@@ -59,18 +61,20 @@ struct JumpCmd {
         // reallocation. This ensures iterators remain valid.
         iter->write(inliner.landing());
         break;
-      case Kind::kUncond: inliner.Inline(iter->read<BasicBlock const *>()); break;
+      case Kind::kUncond:
+        inliner.Inline(iter->read<BasicBlock const*>());
+        break;
       case Kind::kCond: {
         iter->read<Reg>();
-        inliner.Inline(iter->read<BasicBlock const *>());
-        inliner.Inline(iter->read<BasicBlock const *>());
+        inliner.Inline(iter->read<BasicBlock const*>());
+        inliner.Inline(iter->read<BasicBlock const*>());
       } break;
       default: UNREACHABLE();
     }
   }
 };
 
-inline void UncondJump(BasicBlock const *block) {
+inline void UncondJump(BasicBlock const* block) {
   auto& blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append_index<JumpCmd>();
   blk.cmd_buffer_.append(JumpCmd::Kind::kUncond);

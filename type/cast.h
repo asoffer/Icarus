@@ -13,4 +13,4 @@ Type const *Meet(Type const *lhs, Type const *rhs);
 
 }  // namespace type
 
-#endif // ICARUS_TYPE_CAST_H
+#endif  // ICARUS_TYPE_CAST_H

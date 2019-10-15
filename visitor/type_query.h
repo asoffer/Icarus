@@ -24,7 +24,7 @@ struct TypeQuery {
   static bool IsMovable(type::Tuple const *t);
   static bool IsMovable(type::Variant const *t);
 
-  static bool HasDestructor(type::Type const*) { return false; }
+  static bool HasDestructor(type::Type const *) { return false; }
   static bool HasDestructor(type::Array const *t);
   static bool HasDestructor(type::Struct const *t);
   static bool HasDestructor(type::Tuple const *t);
@@ -33,16 +33,14 @@ struct TypeQuery {
   static bool ReinterpretableAs(type::Type const *from, type::Type const *to) {
     return from == to;
   }
-  static bool ReinterpretableAs(type::Array const *from,
-                                type::Type const *to);
+  static bool ReinterpretableAs(type::Array const *from, type::Type const *to);
   static bool ReinterpretableAs(type::BufferPointer const *from,
                                 type::Type const *to);
   static bool ReinterpretableAs(type::Pointer const *from,
                                 type::Type const *to);
   static bool ReinterpretableAs(type::Primitive const *from,
                                 type::Type const *to);
-  static bool ReinterpretableAs(type::Tuple const *from,
-                                type::Type const *to);
+  static bool ReinterpretableAs(type::Tuple const *from, type::Type const *to);
   static bool ReinterpretableAs(type::Variant const *from,
                                 type::Type const *to);
 };

@@ -31,7 +31,6 @@ struct Enum : public type::Type {
     return it->second;
   }
 
-
   ICARUS_PRIVATE
   module::BasicModule const* mod_;
 

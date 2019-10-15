@@ -18,7 +18,6 @@ struct BlockCmd {
 
   static void UpdateForInlining(base::untyped_buffer::iterator *iter,
                                 Inliner const &inliner);
-
 };
 
 struct ScopeCmd {
@@ -32,7 +31,6 @@ struct ScopeCmd {
 
   static void UpdateForInlining(base::untyped_buffer::iterator *iter,
                                 Inliner const &inliner);
-
 };
 
 // TODO "Handler" doesn't really make sense in the name for these.

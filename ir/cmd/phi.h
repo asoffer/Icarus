@@ -80,7 +80,7 @@ inline Results Phi(type::Type const *type,
     vals.reserve(values.size());
     std::vector<BasicBlock const *> blocks;
     blocks.reserve(values.size());
-    for (auto const & [ key, val ] : values) {
+    for (auto const &[key, val] : values) {
       blocks.push_back(key);
       vals.push_back(val.template get<T>(0));
     }

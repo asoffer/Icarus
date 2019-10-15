@@ -71,8 +71,7 @@ compiler::VerifyResult VerifyDispatch(
         &args);
 
 compiler::VerifyResult VerifyDispatch(
-    compiler::Compiler *visitor, ExprPtr expr,
-    OverloadSet const &overload_set,
+    compiler::Compiler *visitor, ExprPtr expr, OverloadSet const &overload_set,
     core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
         &args);
 

@@ -12,7 +12,7 @@ namespace type {
 void Primitive::WriteTo(std::string *result) const {
   switch (type_) {
 #define PRIMITIVE_MACRO(EnumName, name)                                        \
-  case BasicType::EnumName:                                                     \
+  case BasicType::EnumName:                                                    \
     result->append(name);                                                      \
     return;
 #include "type/primitive.xmacro.h"

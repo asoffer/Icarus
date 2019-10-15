@@ -40,7 +40,6 @@ static void ReplEval(ast::Expression const *expr,
 }
 }  // namespace backend
 
-
 struct ReplModule : public module::ExtendedModule<ReplModule> {
   ReplModule()
       : module::ExtendedModule<ReplModule>(

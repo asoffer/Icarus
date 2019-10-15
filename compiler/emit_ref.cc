@@ -15,8 +15,7 @@
 namespace compiler {
 using ::matcher::InheritsFrom;
 
-std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(
-    ast::Access const *node) {
+std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(ast::Access const *node) {
   auto reg = node->operand()->EmitRef(this)[0];
   auto *t  = type_of(node->operand());
 
@@ -31,8 +30,7 @@ std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(
               .get()};
 }
 
-std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(
-    ast::CommaList const *node) {
+std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(ast::CommaList const *node) {
   std::vector<ir::RegOr<ir::Addr>> results;
   results.reserve(node->exprs_.size());
   for (auto &expr : node->exprs_) { results.push_back(expr->EmitRef(this)[0]); }
@@ -45,8 +43,7 @@ std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(
   return {addr(node->decl())};
 }
 
-std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(
-    ast::Index const *node) {
+std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(ast::Index const *node) {
   auto *lhs_type = type_of(node->lhs());
   auto *rhs_type = type_of(node->rhs());
 
@@ -54,7 +51,7 @@ std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(
     auto index = ir::CastTo<int64_t>(rhs_type, node->rhs()->EmitValue(this));
 
     auto lval = node->lhs()->EmitRef(this)[0];
-    if (!lval.is_reg()) { NOT_YET(this, type_of(node)); }
+    if (not lval.is_reg()) { NOT_YET(this, type_of(node)); }
     return {ir::Index(type::Ptr(type_of(node->lhs())), lval.reg(), index)};
   } else if (auto *buf_ptr_type = lhs_type->if_as<type::BufferPointer>()) {
     auto index = ir::CastTo<int64_t>(rhs_type, node->rhs()->EmitValue(this));
@@ -79,8 +76,7 @@ std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(
   UNREACHABLE(*this);
 }
 
-std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(
-    ast::Unop const *node) {
+std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(ast::Unop const *node) {
   ASSERT(node->op() == frontend::Operator::At);
   return {node->operand()->EmitValue(this).get<ir::Reg>(0)};
 }

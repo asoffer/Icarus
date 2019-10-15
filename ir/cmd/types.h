@@ -48,9 +48,9 @@ struct EnumerationCmd {
   using enum_t                       = uint64_t;
   constexpr static cmd_index_t index = 29;
 
-  static BasicBlock const * Execute(base::untyped_buffer::const_iterator *iter,
-                                           std::vector<Addr> const &ret_slots,
-                                           backend::ExecContext *ctx);
+  static BasicBlock const *Execute(base::untyped_buffer::const_iterator *iter,
+                                   std::vector<Addr> const &ret_slots,
+                                   backend::ExecContext *ctx);
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
 
@@ -61,9 +61,9 @@ struct EnumerationCmd {
 struct StructCmd {
   constexpr static cmd_index_t index = 30;
 
-  static BasicBlock const * Execute(base::untyped_buffer::const_iterator *iter,
-                                           std::vector<Addr> const &ret_slots,
-                                           backend::ExecContext *ctx);
+  static BasicBlock const *Execute(base::untyped_buffer::const_iterator *iter,
+                                   std::vector<Addr> const &ret_slots,
+                                   backend::ExecContext *ctx);
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
 
@@ -73,9 +73,9 @@ struct StructCmd {
 
 struct OpaqueTypeCmd {
   constexpr static cmd_index_t index = 31;
-  static BasicBlock const * Execute(base::untyped_buffer::const_iterator *iter,
-                                           std::vector<Addr> const &ret_slots,
-                                           backend::ExecContext *ctx);
+  static BasicBlock const *Execute(base::untyped_buffer::const_iterator *iter,
+                                   std::vector<Addr> const &ret_slots,
+                                   backend::ExecContext *ctx);
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
 
@@ -85,7 +85,7 @@ struct OpaqueTypeCmd {
 
 struct ArrayCmd {
   constexpr static cmd_index_t index = 32;
-  using length_t = int64_t;
+  using length_t                     = int64_t;
   struct control_bits {
     uint8_t length_is_reg : 1;
     uint8_t type_is_reg : 1;
@@ -98,16 +98,15 @@ struct ArrayCmd {
     return ctrl;
   }
 
-  static BasicBlock const * Execute(base::untyped_buffer::const_iterator *iter,
-                                           std::vector<Addr> const &ret_slots,
-                                           backend::ExecContext *ctx);
+  static BasicBlock const *Execute(base::untyped_buffer::const_iterator *iter,
+                                   std::vector<Addr> const &ret_slots,
+                                   backend::ExecContext *ctx);
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
 
   static void UpdateForInlining(base::untyped_buffer::iterator *iter,
                                 Inliner const &inliner);
 };
-
 
 using VariantCmd = internal::VariadicCmd<16, type::Type const *, type::Var>;
 using TupleCmd   = internal::VariadicCmd<17, type::Type const *, type::Tup>;
@@ -132,15 +131,13 @@ inline RegOr<type::Type const *> Tup(
   return internal::MakeVariadicImpl<TupleCmd>(types);
 }
 
-Reg Enum(
-    module::BasicModule *mod, absl::Span<std::string_view const> names,
-    absl::flat_hash_map<uint64_t, RegOr<EnumerationCmd::enum_t>> const
-        &specified_values);
+Reg Enum(module::BasicModule *mod, absl::Span<std::string_view const> names,
+         absl::flat_hash_map<uint64_t, RegOr<EnumerationCmd::enum_t>> const
+             &specified_values);
 
-Reg Flags(
-    module::BasicModule *mod, absl::Span<std::string_view const> names,
-    absl::flat_hash_map<uint64_t, RegOr<EnumerationCmd::enum_t>> const
-        &specified_values);
+Reg Flags(module::BasicModule *mod, absl::Span<std::string_view const> names,
+          absl::flat_hash_map<uint64_t, RegOr<EnumerationCmd::enum_t>> const
+              &specified_values);
 
 // TODO handle initial values.
 Reg Struct(core::Scope const *scope, module::BasicModule *mod,
@@ -152,9 +149,9 @@ constexpr inline auto BufPtr = internal::UnaryHandler<BufPtrCmd>{};
 
 struct ArrowCmd {
   constexpr static cmd_index_t index = 22;
-  static BasicBlock const * Execute(base::untyped_buffer::const_iterator *iter,
-                                           std::vector<Addr> const &ret_slots,
-                                           backend::ExecContext *ctx) {
+  static BasicBlock const *Execute(base::untyped_buffer::const_iterator *iter,
+                                   std::vector<Addr> const &ret_slots,
+                                   backend::ExecContext *ctx) {
     std::vector<type::Type const *> ins =
         internal::Deserialize<uint16_t, type::Type const *>(
             iter,

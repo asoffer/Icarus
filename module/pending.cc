@@ -80,7 +80,7 @@ base::expected<PendingModule> ImportModule(
   auto [iter, inserted] = all_modules.try_emplace(canonical_src);
   auto &[fut, mod]      = iter->second;
 
-  if (!new_src) { return PendingModule{ASSERT_NOT_NULL(fut)}; }
+  if (not new_src) { return PendingModule{ASSERT_NOT_NULL(fut)}; }
 
   ASSERT(fut == nullptr);
 

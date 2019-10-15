@@ -1,10 +1,10 @@
 #ifndef ICARUS_BASE_MATCHERS_H
 #define ICARUS_BASE_MATCHERS_H
 
-#include <vector>
+#include <memory>
 #include <optional>
 #include <string>
-#include <memory>
+#include <vector>
 
 #include "base/stringify.h"
 #include "base/tuple.h"
@@ -18,6 +18,7 @@ struct Expression {
   char const* string() const& { return string_; }
 
   Expression(char const* s, T const& value) : string_(s), value_(value) {}
+
  private:
   char const* string_ = nullptr;
   T const& value_;
@@ -71,7 +72,7 @@ template <typename T>
 struct InheritsFrom : public UntypedMatcher<InheritsFrom<T>> {
   template <typename Expr>
   struct Matcher : public ::matcher::Matcher<Expr> {
-    Matcher(InheritsFrom const&m) {}
+    Matcher(InheritsFrom const& m) {}
     bool match(Expr const& input) const {
       if constexpr (internal::is_pointery<Expr>::value) {
         return dynamic_cast<T const*>(
@@ -89,7 +90,7 @@ template <bool B>
 struct CastsTo : public UntypedMatcher<CastsTo<B>> {
   template <typename Expr>
   struct Matcher : public ::matcher::Matcher<Expr> {
-    Matcher(CastsTo const&m) {}
+    Matcher(CastsTo const& m) {}
     bool match(Expr const& input) const {
       return static_cast<bool>(input) == B;
     }
@@ -103,7 +104,7 @@ template <typename T>
 struct Holds : public UntypedMatcher<Holds<T>> {
   template <typename V>
   struct Matcher : public ::matcher::Matcher<V> {
-    Matcher(Holds const&m) {}
+    Matcher(Holds const& m) {}
     bool match(V const& input) const {
       return std::holds_alternative<T>(input);
     }
@@ -126,13 +127,12 @@ struct OrderedElementsAre : public UntypedMatcher<OrderedElementsAre<T>> {
     bool match(Expr const& input) const {
       auto it         = input.begin();
       auto matcher_it = m_.matchers_.begin();
-      while (it != input.end() && matcher_it != m_.matchers_.end()) {
-        if (!matcher_it->get().match(*it)) { 
-          return false; }
+      while (it != input.end() and matcher_it != m_.matchers_.end()) {
+        if (not matcher_it->get().match(*it)) { return false; }
         ++matcher_it;
         ++it;
       }
-      return it == input.end() && matcher_it == m_.matchers_.end();
+      return it == input.end() and matcher_it == m_.matchers_.end();
     }
 
     std::string describe(bool positive) const override {
@@ -156,7 +156,7 @@ struct OrderedElementsAre : public UntypedMatcher<OrderedElementsAre<T>> {
 struct IsEmpty : public UntypedMatcher<IsEmpty> {
   template <typename V>
   struct Matcher : public ::matcher::Matcher<V> {
-    Matcher(IsEmpty const&m) {}
+    Matcher(IsEmpty const& m) {}
     bool match(V const& input) const { return input.empty(); }
     std::string describe(bool positive) const override {
       return positive ? "is empty" : "is not empty";
@@ -168,9 +168,9 @@ template <typename T>
 struct Not : public Matcher<T> {
   Not(Matcher<T> const& m) : m_(m) {}
 
-  bool match(T const& input) const { return !m_.match(input); }
+  bool match(T const& input) const { return not m_.match(input); }
   std::string describe(bool positive) const override {
-    return m_.describe(!positive);
+    return m_.describe(not positive);
   }
 
  private:
@@ -178,7 +178,7 @@ struct Not : public Matcher<T> {
 };
 
 template <typename T>
-inline Not<T> operator!(Matcher<T> const& m) {
+inline Not<T> operator not(Matcher<T> const& m) {
   return Not{m};
 }
 
@@ -186,7 +186,7 @@ template <typename T>
 struct And : public Matcher<T> {
   And(Matcher<T> const& lhs, Matcher<T> const& rhs) : lhs_(lhs), rhs_(rhs) {}
   bool match(T const& input) const override {
-    return lhs_.match(input) && rhs_.match(input);
+    return lhs_.match(input) and rhs_.match(input);
   }
   std::string describe(bool positive) const override {
     return lhs_.describe(positive) + " and " + rhs_.describe(positive);
@@ -206,7 +206,7 @@ template <typename T>
 struct Or : public Matcher<T> {
   Or(Matcher<T> const& lhs, Matcher<T> const& rhs) : lhs_(lhs), rhs_(rhs) {}
   bool match(T const& input) const override {
-    return lhs_.match(input) || rhs_.match(input);
+    return lhs_.match(input) or rhs_.match(input);
   }
   std::string describe(bool positive) const override {
     return lhs_.describe(positive) + " or " + rhs_.describe(positive);
@@ -249,7 +249,7 @@ struct Tuple : public Matcher<std::tuple<Ts...>> {
           },
           matchers_);
       std::string result = "is a tuple where";
-      if (!positive) { result += " one of the following is false:"; }
+      if (not positive) { result += " one of the following is false:"; }
       for (size_t i = 0; i < sizeof...(Ts); ++i) {
         result += "\n                 parameter " + std::to_string(i) + " " +
                   descriptions[i];
@@ -279,7 +279,7 @@ Eq(char const (&)[N])->Eq<std::string>;
 
 template <typename L, typename R>
 struct ExprMatchResult {
-  char const *expr_string = nullptr;
+  char const* expr_string = nullptr;
   bool matched;
   L const& lhs;
   R const& rhs;

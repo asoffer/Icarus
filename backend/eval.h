@@ -26,7 +26,7 @@ template <typename T>
 T EvaluateAs(type::Typed<ast::Expression const *> typed_expr,
              compiler::Compiler *visitor) {
   static_assert(std::is_trivially_copyable_v<T>);
-  static_assert(!std::is_same_v<T, ir::BlockDef *>, "");
+  static_assert(not std::is_same_v<T, ir::BlockDef *>, "");
   // if (visitor->num_errors() != 0u) {
   //   visitor->DumpErrors();
   //   UNREACHABLE();

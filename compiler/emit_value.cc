@@ -81,7 +81,7 @@ void MakeAllDestructions(Compiler *compiler,
 
   for (auto *decl : ordered_decls) {
     auto *t = ASSERT_NOT_NULL(compiler->type_of(decl));
-    if (!t->HasDestructor()) { continue; }
+    if (not t->HasDestructor()) { continue; }
     t->EmitDestroy(compiler, compiler->addr(decl));
   }
 }
@@ -119,7 +119,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node) {
     if (node->outputs_) {
       for (size_t i = 0; i < node->outputs_->size(); ++i) {
         auto *out_decl = node->outputs_->at(i)->if_as<ast::Declaration>();
-        if (!out_decl) { continue; }
+        if (not out_decl) { continue; }
         auto *out_decl_type = ASSERT_NOT_NULL(compiler->type_of(out_decl));
         auto alloc          = out_decl_type->is_big()
                          ? ir::GetRet(i, out_decl_type)
@@ -275,7 +275,7 @@ base::move_func<void()> *DeferBody(Compiler *compiler, NodeType const *node) {
         Compiler c(node->module());
         c.constants_ = std::move(constants);
 
-        if constexpr (std::is_same_v<NodeType, ast::FunctionLiteral> ||
+        if constexpr (std::is_same_v<NodeType, ast::FunctionLiteral> or
                       std::is_same_v<NodeType, ast::JumpHandler>) {
           VerifyBody(&c, node);
         }
@@ -331,7 +331,7 @@ ir::Results Compiler::EmitValue(ast::ArrayLiteral const *node) {
   // TODO If this is a constant we can just store it somewhere.
   auto *this_type = type_of(node);
   auto alloc      = builder().TmpAlloca(this_type);
-  if (!node->empty()) {
+  if (not node->empty()) {
     auto *data_type = this_type->as<type::Array>().data_type;
     for (size_t i = 0; i < node->size(); ++i) {
       EmitMoveInit(data_type, node->elem(i)->EmitValue(this),
@@ -836,14 +836,14 @@ static ir::RegOr<bool> EmitChainOpPair(Compiler *compiler,
   auto *rhs_type = compiler->type_of(chain_op->exprs()[index + 1]);
   auto op        = chain_op->ops()[index];
 
-  if (lhs_type->is<type::Array>() && rhs_type->is<type::Array>()) {
+  if (lhs_type->is<type::Array>() and rhs_type->is<type::Array>()) {
     using ::matcher::Eq;
-    ASSERT(op, Eq(frontend::Operator::Eq) || Eq(frontend::Operator::Ne));
+    ASSERT(op, Eq(frontend::Operator::Eq) or Eq(frontend::Operator::Ne));
     return ArrayCompare(compiler, &lhs_type->as<type::Array>(), lhs_ir,
                         &rhs_type->as<type::Array>(), rhs_ir,
                         op == frontend::Operator::Eq)
         .get<bool>(0);
-  } else if (lhs_type->is<type::Struct>() || rhs_type->is<type::Struct>()) {
+  } else if (lhs_type->is<type::Struct>() or rhs_type->is<type::Struct>()) {
     auto results =
         ASSERT_NOT_NULL(
             compiler->dispatch_table(reinterpret_cast<ast::Expression *>(
@@ -877,7 +877,7 @@ static ir::RegOr<bool> EmitChainOpPair(Compiler *compiler,
         if (lhs_type == type::Block) {
           auto val1 = lhs_ir.get<ir::BlockDef *>(0);
           auto val2 = rhs_ir.get<ir::BlockDef *>(0);
-          if (!val1.is_reg() && !val2.is_reg()) {
+          if (not val1.is_reg() and not val2.is_reg()) {
             return val1.value() == val2.value();
           }
         }
@@ -893,7 +893,7 @@ static ir::RegOr<bool> EmitChainOpPair(Compiler *compiler,
         if (lhs_type == type::Block) {
           auto val1 = lhs_ir.get<ir::BlockDef *>(0);
           auto val2 = rhs_ir.get<ir::BlockDef *>(0);
-          if (!val1.is_reg() && !val2.is_reg()) {
+          if (not val1.is_reg() and not val2.is_reg()) {
             return val1.value() == val2.value();
           }
         }
@@ -946,14 +946,15 @@ ir::Results Compiler::EmitValue(ast::ChainOp const *node) {
       UNREACHABLE();
     }
 
-  } else if (node->ops()[0] == frontend::Operator::Or && t->is<type::Flags>()) {
+  } else if (node->ops()[0] == frontend::Operator::Or and
+             t->is<type::Flags>()) {
     auto iter = node->exprs().begin();
     auto val  = (*iter)->EmitValue(this).get<ir::FlagsVal>(0);
     while (++iter != node->exprs().end()) {
       val = ir::OrFlags(val, (*iter)->EmitValue(this).get<ir::FlagsVal>(0));
     }
     return ir::Results{val};
-  } else if (node->ops()[0] == frontend::Operator::And &&
+  } else if (node->ops()[0] == frontend::Operator::And and
              t->is<type::Flags>()) {
     auto iter = node->exprs().begin();
     auto val  = (*iter)->EmitValue(this).get<ir::FlagsVal>(0);
@@ -961,7 +962,7 @@ ir::Results Compiler::EmitValue(ast::ChainOp const *node) {
       val = ir::AndFlags(val, (*iter)->EmitValue(this).get<ir::FlagsVal>(0));
     }
     return ir::Results{val};
-  } else if (node->ops()[0] == frontend::Operator::Or && t == type::Type_) {
+  } else if (node->ops()[0] == frontend::Operator::Or and t == type::Type_) {
     // TODO probably want to check that each expression is a type? What if I
     // overload | to take my own stuff and have it return a type?
     std::vector<ir::RegOr<type::Type const *>> args;
@@ -971,9 +972,9 @@ ir::Results Compiler::EmitValue(ast::ChainOp const *node) {
     }
     auto reg_or_type = ir::Var(args);
     return ir::Results{reg_or_type};
-  } else if (node->ops()[0] == frontend::Operator::Or && t == type::Block) {
+  } else if (node->ops()[0] == frontend::Operator::Or and t == type::Block) {
     NOT_YET();
-  } else if (node->ops()[0] == frontend::Operator::And ||
+  } else if (node->ops()[0] == frontend::Operator::And or
              node->ops()[0] == frontend::Operator::Or) {
     auto *land_block = builder().AddBlock();
 
@@ -1070,17 +1071,17 @@ ir::Results Compiler::EmitValue(ast::Declaration const *node) {
     // TODO
     if (node->flags() & ast::Declaration::f_IsFnParam) {
       if (auto result = current_constants_.get_constant(node);
-          !result.empty()) {
+          not result.empty()) {
         return result;
       } else if (auto result = constants_->first.get_constant(node);
-                 !result.empty()) {
+                 not result.empty()) {
         return result;
       } else {
         UNREACHABLE();
       }
     } else {
       auto *t = type_of(node);
-      if (!t) {
+      if (not t) {
         DEBUG_LOG()(ast::Dump::ToString(node));
         UNREACHABLE();
       }
@@ -1124,7 +1125,7 @@ ir::Results Compiler::EmitValue(ast::Declaration const *node) {
     if (node->IsCustomInitialized()) {
       node->init_val()->EmitMoveInit(this, type::Typed(a, type::Ptr(t)));
     } else {
-      if (!(node->flags() & ast::Declaration::f_IsFnParam)) {
+      if (not(node->flags() & ast::Declaration::f_IsFnParam)) {
         t->EmitDefaultInit(this, a);
       }
     }
@@ -1143,7 +1144,7 @@ ir::Results Compiler::EmitValue(ast::EnumLiteral const *node) {
       names.push_back(id->token());
     } else if (auto *decl = elem->if_as<ast::Declaration>()) {
       names.push_back(decl->id());
-      if (!decl->IsCustomInitialized()) {
+      if (not decl->IsCustomInitialized()) {
         specified_values.emplace(
             names.size() - 1, decl->init_val()->EmitValue(this).get<enum_t>(0));
       }
@@ -1162,19 +1163,19 @@ ir::Results Compiler::EmitValue(ast::EnumLiteral const *node) {
 ir::Results Compiler::EmitValue(ast::FunctionLiteral const *node) {
   for (auto const &param : node->inputs_) {
     auto *p = param.value.get();
-    if ((p->flags() & ast::Declaration::f_IsConst) &&
-        !constants_->first.contains(p)) {
+    if ((p->flags() & ast::Declaration::f_IsConst) and
+        not constants_->first.contains(p)) {
       return ir::Results{node};
     }
 
     for (auto *dep : node->param_dep_graph_.sink_deps(param.value.get())) {
-      if (!constants_->first.contains(dep)) { return ir::Results{node}; }
+      if (not constants_->first.contains(dep)) { return ir::Results{node}; }
     }
   }
 
   // TODO Use correct constants
   ir::CompiledFn *&ir_func = constants_->second.ir_funcs_[node];
-  if (!ir_func) {
+  if (not ir_func) {
     auto *work_item_ptr = DeferBody(this, node);
 
     auto *fn_type = &type_of(node)->as<type::Function>();
@@ -1202,18 +1203,19 @@ ir::Results Compiler::EmitValue(ast::Identifier const *node) {
     ir::Reg reg = addr(node->decl());
     if (inline_) {
       ir::Results reg_results = (*inline_)[reg];
-      if (!reg_results.is_reg(0)) { return reg_results; }
+      if (not reg_results.is_reg(0)) { return reg_results; }
       reg = reg_results.get<ir::Reg>(0);
     }
 
-    return ir::Results{(node->decl()->flags() & ast::Declaration::f_IsOutput) &&
-                               !t->is_big()
-                           ? ir::Load(reg, t)
-                           : reg};
+    return ir::Results{
+        (node->decl()->flags() & ast::Declaration::f_IsOutput) and
+                not t->is_big()
+            ? ir::Load(reg, t)
+            : reg};
   } else {
     auto *t   = ASSERT_NOT_NULL(type_of(node));
     auto lval = node->EmitRef(this)[0];
-    if (!lval.is_reg()) { NOT_YET(); }
+    if (not lval.is_reg()) { NOT_YET(); }
     return ir::Results{ir::PtrFix(lval.reg(), t)};
   }
 }
@@ -1233,7 +1235,7 @@ ir::Results Compiler::EmitValue(ast::Jump const *node) {
 
 ir::Results Compiler::EmitValue(ast::JumpHandler const *node) {
   ir::CompiledFn *&ir_func = constants_->second.ir_funcs_[node];
-  if (!ir_func) {
+  if (not ir_func) {
     auto work_item_ptr = DeferBody(this, node);
     auto *jmp_type     = &type_of(node)->as<type::Jump>();
 
@@ -1436,7 +1438,7 @@ ir::Results Compiler::EmitValue(ast::ScopeNode const *node) {
 
   DEBUG_LOG("ScopeNode")("Emit each block:");
   //   for (auto[block_name, block_and_node] : interp.blocks_) {
-  //     if (block_name == "init" || block_name == "done") { continue; }
+  //     if (block_name == "init" or block_name == "done") { continue; }
   //     DEBUG_LOG("ScopeNode")("... ", block_name);
   //     auto & [ block, block_node ] = block_and_node;
   //     auto iter                    = block_map.find(block);
@@ -1459,8 +1461,8 @@ ir::Results Compiler::EmitValue(ast::ScopeNode const *node) {
   //
   //   DEBUG_LOG("ScopeNode")("Inlining exit handler");
   //   {
-  //     auto *mod       = const_cast<module::BasicModule *>(scope_def->module());
-  //     bool swap_bc    = module() != mod;
+  //     auto *mod       = const_cast<module::BasicModule
+  //     *>(scope_def->module()); bool swap_bc    = module() != mod;
   //     module::BasicModule *old_mod = std::exchange(module(), mod);
   //     if (swap_bc) { constants_ = &module()->dep_data_.front(); }
   //     base::defer d([&] {
@@ -1504,8 +1506,8 @@ ir::Results Compiler::EmitValue(ast::StructLiteral const *node) {
   // // For now, it's safe to do this from within a single module compilation
   // // (which is single-threaded).
   // ir::CompiledFn *&ir_func = constants_->second.ir_funcs_[node];
-  // if (!ir_func) {
-     auto work_item_ptr = DeferBody(this, node);
+  // if (not ir_func) {
+  auto work_item_ptr = DeferBody(this, node);
 
   //   auto const &arg_types =
   //   type_of(node)->as<type::GenericStruct>().deps_;
@@ -1518,7 +1520,8 @@ ir::Results Compiler::EmitValue(ast::StructLiteral const *node) {
   //                               d.init_val(), arg_types.at(i++)));
   //   }
   //
-  //   ir_func = AddFunc(type::Func(arg_types, {type::Type_}), std::move(params));
+  //   ir_func = AddFunc(type::Func(arg_types, {type::Type_}),
+  //   std::move(params));
   //
   //   ir_func->work_item = work_item_ptr;
   // }
@@ -1567,7 +1570,7 @@ ir::Results Compiler::EmitValue(ast::Switch const *node) {
       // It must be a jump/yield/return, which we've verified in VerifyType.
       body->EmitValue(this);
 
-      if (!all_paths_jump) { builder().allow_more_stmts(); }
+      if (not all_paths_jump) { builder().allow_more_stmts(); }
     }
 
     builder().CurrentBlock() = next_block;
@@ -1580,7 +1583,7 @@ ir::Results Compiler::EmitValue(ast::Switch const *node) {
   } else {
     // It must be a jump/yield/return, which we've verified in VerifyType.
     node->cases_.back().first->EmitValue(this);
-    if (!all_paths_jump) { builder().allow_more_stmts(); }
+    if (not all_paths_jump) { builder().allow_more_stmts(); }
   }
 
   builder().CurrentBlock() = land_block;
@@ -1654,10 +1657,9 @@ ir::Results Compiler::EmitValue(ast::Unop const *node) {
     case frontend::Operator::Eval: {
       // Guaranteed to be constant by VerifyType
       // TODO what if there's an error during evaluation?
-      return backend::Evaluate(
-          type::Typed<ast::Expression const *>(node->operand(),
-                                               type_of(node->operand())),
-          this);
+      return backend::Evaluate(type::Typed<ast::Expression const *>(
+                                   node->operand(), type_of(node->operand())),
+                               this);
     }
     case frontend::Operator::Mul:
       return ir::Results{

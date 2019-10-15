@@ -29,23 +29,23 @@ absl::flat_hash_map<std::string_view, ast::Hashtag::Builtin> const
 
 namespace {
 
-constexpr inline bool IsLower(char c) { return ('a' <= c && c <= 'z'); }
-constexpr inline bool IsUpper(char c) { return ('A' <= c && c <= 'Z'); }
-constexpr inline bool IsNonZeroDigit(char c) { return ('1' <= c && c <= '9'); }
-constexpr inline bool IsDigit(char c) { return ('0' <= c && c <= '9'); }
+constexpr inline bool IsLower(char c) { return ('a' <= c and c <= 'z'); }
+constexpr inline bool IsUpper(char c) { return ('A' <= c and c <= 'Z'); }
+constexpr inline bool IsNonZeroDigit(char c) { return ('1' <= c and c <= '9'); }
+constexpr inline bool IsDigit(char c) { return ('0' <= c and c <= '9'); }
 
-constexpr inline bool IsAlpha(char c) { return IsLower(c) || IsUpper(c); }
+constexpr inline bool IsAlpha(char c) { return IsLower(c) or IsUpper(c); }
 constexpr inline bool IsAlphaNumeric(char c) {
-  return IsAlpha(c) || IsDigit(c);
+  return IsAlpha(c) or IsDigit(c);
 }
 constexpr inline bool IsWhitespace(char c) {
-  return c == ' ' || c == '\t' || c == '\n' || c == '\r';
+  return c == ' ' or c == '\t' or c == '\n' or c == '\r';
 }
 constexpr inline bool IsAlphaOrUnderscore(char c) {
-  return IsAlpha(c) || (c == '_');
+  return IsAlpha(c) or (c == '_');
 }
 constexpr inline bool IsAlphaNumericOrUnderscore(char c) {
-  return IsAlphaNumeric(c) || (c == '_');
+  return IsAlphaNumeric(c) or (c == '_');
 }
 
 SourceCursor NextSimpleWord(SourceCursor *cursor) {
@@ -138,17 +138,17 @@ Lexeme NextWord(SourceCursor *cursor, Source *src) {
 
 Lexeme NextNumber(SourceCursor *cursor, Source *src, error::Log *error_log) {
   auto num_cursor = cursor->ConsumeWhile([](char c) {
-    return c == 'b' || c == 'o' || c == 'd' || c == 'd' || c == '_' ||
-           c == '.' || IsDigit(c);
+    return c == 'b' or c == 'o' or c == 'd' or c == 'd' or c == '_' or
+           c == '.' or IsDigit(c);
   });
 
   auto span = num_cursor.range();
   auto num  = ParseNumber(num_cursor.view());
-  if (!num.has_value()) {
+  if (not num.has_value()) {
     // TODO should you do something with guessing the type?
     error_log->InvalidNumber(span, num.error().to_string());
-    return Lexeme(std::make_unique<ast::Terminal>(
-        std::move(span), 0, type::BasicType::Int32));
+    return Lexeme(std::make_unique<ast::Terminal>(std::move(span), 0,
+                                                  type::BasicType::Int32));
   }
   return std::visit(
       base::overloaded{[&span](int64_t x) {
@@ -170,10 +170,10 @@ std::pair<SourceRange, std::string> NextStringLiteral(SourceCursor *cursor,
   auto str_lit_cursor =
       cursor->ConsumeWhile([&escaped, src, error_log](char c) {
         if (c == '\\') {
-          escaped = !escaped;
+          escaped = not escaped;
           return true;
         }
-        if (!escaped) { return c != '"'; }
+        if (not escaped) { return c != '"'; }
         escaped = false;
         switch (c) {
           case '"':
@@ -332,7 +332,7 @@ Lexeme NextOperator(SourceCursor *cursor, Source *src) {
   }
 #endif
 
-  for (auto[prefix, x] : Ops) {
+  for (auto [prefix, x] : Ops) {
     if (BeginsWith(prefix, cursor->view())) {
       auto span = cursor->remove_prefix(prefix.size()).range();
       return std::visit([&](auto x) { return Lexeme(x, span); }, x);
@@ -363,10 +363,10 @@ std::optional<std::pair<SourceRange, Operator>> NextSlashInitiatedToken(
       //     span.finish = loc.cursor;
       //     return TaggedNode(span, "", eof);
 
-      //   } else if (back_one == '/' && *loc == '*') {
+      //   } else if (back_one == '/' and *loc == '*') {
       //     ++comment_layer;
 
-      //   } else if (back_one == '*' && *loc == '/') {
+      //   } else if (back_one == '*' and *loc == '/') {
       //     --comment_layer;
       //   }
 
@@ -399,13 +399,12 @@ restart:
       return Lexeme(Syntax::ImplicitNewline,
                     state->cursor_.remove_prefix(0).range());
     } else {
-      return Lexeme(Syntax::EndOfFile,
-                    state->cursor_.remove_prefix(0).range());
+      return Lexeme(Syntax::EndOfFile, state->cursor_.remove_prefix(0).range());
     }
   } else if (IsAlphaOrUnderscore(state->peek())) {
     return NextWord(&state->cursor_, state->src_);
-  } else if (IsDigit(state->peek()) ||
-             (state->peek() == '.' && state->cursor_.view().size() > 1 &&
+  } else if (IsDigit(state->peek()) or
+             (state->peek() == '.' and state->cursor_.view().size() > 1 and
               IsDigit(state->cursor_.view()[1]))) {
     return NextNumber(&state->cursor_, state->src_, state->error_log_);
   }
@@ -422,7 +421,7 @@ restart:
       return Lexeme(Operator::MatchDecl, state->cursor_.range());
     } break;
     case '"': {
-      auto[span, str] =
+      auto [span, str] =
           NextStringLiteral(&state->cursor_, state->src_, state->error_log_);
       return Lexeme(std::make_unique<ast::Terminal>(std::move(span),
                                                     ir::SaveStringGlobally(str),
@@ -434,7 +433,7 @@ restart:
       // TODO just check for comments early and roll this into NextOperator.
       if (auto maybe_op = NextSlashInitiatedToken(&state->cursor_, state->src_,
                                                   state->error_log_)) {
-        auto & [ span, op ] = *maybe_op;
+        auto &[span, op] = *maybe_op;
         return Lexeme(op, state->cursor_.range());
       }
       goto restart;
@@ -447,14 +446,14 @@ restart:
       // Ignore and restart
       goto restart;
     case '\\': {
-      if (state->cursor_.view().size() >= 2 &&
+      if (state->cursor_.view().size() >= 2 and
           state->cursor_.view()[1] == '\\') {
         return Lexeme(Syntax::ExplicitNewline,
                       state->cursor_.remove_prefix(2).range());
       }
       auto span = state->cursor_.remove_prefix(1).range();
       state->cursor_.ConsumeWhile(IsWhitespace);
-      if (!state->cursor_.view().empty()) {
+      if (not state->cursor_.view().empty()) {
         state->error_log_->NonWhitespaceAfterNewlineEscape(span);
       }
       goto restart;

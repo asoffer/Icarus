@@ -26,7 +26,7 @@ struct unexpected {
 
 template <typename T, typename E = unexpected>
 struct expected {
-  static_assert(!std::is_same_v<T, E>);
+  static_assert(not std::is_same_v<T, E>);
 
   expected(T val) : val_(std::move(val)) {}
 
@@ -54,7 +54,7 @@ struct expected {
 inline std::string stringify(unexpected u) { return std::move(u).to_string(); }
 
 template <typename T, typename E>
-std::string stringify(expected<T, E> const& e) {
+std::string stringify(expected<T, E> const &e) {
   if (e) {
     using base::stringify;
     return stringify(*e);

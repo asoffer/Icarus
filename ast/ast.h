@@ -49,8 +49,8 @@ struct ScopeExpr : public Expression {
 //  * `my_pair.first_element`
 //  * `(some + computation).member`
 struct Access : public Expression {
-  explicit Access(frontend::SourceRange span, std::unique_ptr<Expression> operand,
-                  std::string member_name)
+  explicit Access(frontend::SourceRange span,
+                  std::unique_ptr<Expression> operand, std::string member_name)
       : Expression(std::move(span)),
         operand_(std::move(operand)),
         member_name_(std::move(member_name)) {}
@@ -77,11 +77,13 @@ struct Access : public Expression {
 //  * `[im_the_only_thing]`
 //  * `[]`
 struct ArrayLiteral : public Expression {
-  explicit ArrayLiteral(frontend::SourceRange span, std::unique_ptr<Expression> expr)
+  explicit ArrayLiteral(frontend::SourceRange span,
+                        std::unique_ptr<Expression> expr)
       : Expression(std::move(span)) {
     exprs_.push_back(std::move(expr));
   }
-  ArrayLiteral(frontend::SourceRange span, std::vector<std::unique_ptr<Expression>> exprs)
+  ArrayLiteral(frontend::SourceRange span,
+               std::vector<std::unique_ptr<Expression>> exprs)
       : Expression(std::move(span)), exprs_(std::move(exprs)) {}
   ~ArrayLiteral() override {}
 
@@ -116,12 +118,14 @@ struct ArrayLiteral : public Expression {
 //                         8-bit integers.
 //  * `[3, 2; int8]`   ... A shorthand syntax for `[3; [2; int8]]`
 struct ArrayType : public Expression {
-  explicit ArrayType(frontend::SourceRange span, std::unique_ptr<Expression> length,
+  explicit ArrayType(frontend::SourceRange span,
+                     std::unique_ptr<Expression> length,
                      std::unique_ptr<Expression> data_type)
       : Expression(std::move(span)), data_type_(std::move(data_type)) {
     lengths_.push_back(std::move(length));
   }
-  ArrayType(frontend::SourceRange span, std::vector<std::unique_ptr<Expression>> lengths,
+  ArrayType(frontend::SourceRange span,
+            std::vector<std::unique_ptr<Expression>> lengths,
             std::unique_ptr<Expression> data_type)
       : Expression(std::move(span)),
         lengths_(std::move(lengths)),
@@ -220,8 +224,10 @@ struct Declaration : public Expression {
   // TODO: These functions are confusingly named. They look correct in normal
   // declarations, but in function arguments, IsDefaultInitialized() is true iff
   // there is no default value provided.
-  bool IsInferred() const { return !type_expr_; }
-  bool IsDefaultInitialized() const { return !init_val_ && !IsUninitialized(); }
+  bool IsInferred() const { return not type_expr_; }
+  bool IsDefaultInitialized() const {
+    return not init_val_ and not IsUninitialized();
+  }
   bool IsCustomInitialized() const { return init_val_.get(); }
   bool IsUninitialized() const { return (flags_ & f_InitIsHole); }
 
@@ -480,7 +486,7 @@ struct CommaList : public Expression {
   std::vector<std::unique_ptr<Expression>> &&extract() && {
     return std::move(exprs_);
   }
-  bool needs_expansion() const override { return !parenthesized_; }
+  bool needs_expansion() const override { return not parenthesized_; }
 
   std::vector<std::unique_ptr<Expression>> exprs_;
 };
@@ -518,8 +524,8 @@ struct CommaList : public Expression {
 struct EnumLiteral : ScopeExpr<core::DeclScope> {
   enum Kind : char { Enum, Flags };
 
-  EnumLiteral(frontend::SourceRange span, std::vector<std::unique_ptr<Expression>> elems,
-              Kind kind)
+  EnumLiteral(frontend::SourceRange span,
+              std::vector<std::unique_ptr<Expression>> elems, Kind kind)
       : ScopeExpr<core::DeclScope>(std::move(span)),
         elems_(std::move(elems)),
         kind_(kind) {}
@@ -562,7 +568,7 @@ struct FunctionLiteral : public Expression {
       // declaration, when thougth of as a parameter to a function, has no
       // default value.
       core::FnParamFlags flags{};
-      if (!input->IsDefaultInitialized()) { flags = core::HAS_DEFAULT; }
+      if (not input->IsDefaultInitialized()) { flags = core::HAS_DEFAULT; }
 
       inputs_.append(name, std::move(input), flags);
     }
@@ -756,10 +762,11 @@ struct Index : public Expression {
 //  ```
 struct Jump : public Node {
  public:
-  explicit Jump(frontend::SourceRange span, std::vector<std::unique_ptr<Call>> calls)
+  explicit Jump(frontend::SourceRange span,
+                std::vector<std::unique_ptr<Call>> calls)
       : Node(std::move(span)) {
     for (auto &call : calls) {
-      auto[callee, ordered_args] = std::move(*call).extract();
+      auto [callee, ordered_args] = std::move(*call).extract();
       if (auto *term = callee->if_as<Terminal>()) {
         if (term->as<ir::BlockDef *>() == ir::BlockDef::Start()) {
           options_.emplace_back("start", std::move(ordered_args).DropOrder());
@@ -930,7 +937,8 @@ struct YieldStmt : public Node {
 //  }
 //  ```
 struct ScopeLiteral : public ScopeExpr<core::ScopeLitScope> {
-  ScopeLiteral(frontend::SourceRange span, std::vector<std::unique_ptr<Declaration>> decls)
+  ScopeLiteral(frontend::SourceRange span,
+               std::vector<std::unique_ptr<Declaration>> decls)
       : ScopeExpr<core::ScopeLitScope>(std::move(span)),
         decls_(std::move(decls)) {}
   ~ScopeLiteral() override {}
@@ -1061,7 +1069,7 @@ struct Unop : public Expression {
 #include ICARUS_AST_VISITOR_METHODS
 
   bool needs_expansion() const override {
-    return !parenthesized_ && op() == frontend::Operator::Expand;
+    return not parenthesized_ and op() == frontend::Operator::Expand;
   }
 
   frontend::Operator op() const { return op_; }

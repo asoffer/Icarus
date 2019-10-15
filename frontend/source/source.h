@@ -19,7 +19,8 @@ struct Source : base::Cast<Source> {
   virtual ~Source(){};
 
   // Reads data from the source until the delimeter is found, dropping the
-  // delimeter Sources may have a maximum number of characters they will read.  Typically 1k.
+  // delimeter Sources may have a maximum number of characters they will read.
+  // Typically 1k.
   //
   // Returned data contains a string_view which is guaranteed to be valid until
   // the next call to ReadUntil.
