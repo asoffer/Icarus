@@ -89,11 +89,11 @@ static std::vector<core::FnArgs<type::Type const *>> ExpandAllFnArgs(
       [&](auto &&index,
           std::pair<Expression const *, compiler::VerifyResult> const &p) {
         if (p.first->needs_expansion()) {
-          for (auto *t : p.second.type_->as<type::Tuple>().entries_) {
+          for (auto *t : p.second.type()->as<type::Tuple>().entries_) {
             AddType(index, t, &all_expanded_options);
           }
         } else {
-          AddType(index, p.second.type_, &all_expanded_options);
+          AddType(index, p.second.type(), &all_expanded_options);
         }
       });
 
@@ -145,7 +145,7 @@ MatchArgsToParams(
   for (auto const &[expr, verify_result] : args.pos()) {
     auto const &param = params.at(param_index);
     type::Type const *meet =
-        type::Meet(verify_result.type_, param.value.type());
+        type::Meet(verify_result.type(), param.value.type());
     if (not meet) {
       return base::unexpected(absl::StrCat(
           "Failed to match argument to parameter at position ", param_index));
@@ -178,7 +178,7 @@ MatchArgsToParams(
       }
     } else {
       auto *meet =
-          type::Meet(expr_and_verify_result->second.type_, param.value.type());
+          type::Meet(expr_and_verify_result->second.type(), param.value.type());
       if (not meet) {
         // TODO explain why types don't match.
         return base::unexpected(absl::StrCat(
@@ -253,19 +253,19 @@ static base::expected<DispatchTable::Row> OverloadParams(
 
   auto result =
       *ASSERT_NOT_NULL(compiler->prior_verification_attempt(overload.expr));
-  if (not result.type_->is<type::Callable>() and
-      result.type_ != type::Generic and result.type_ != type::Block) {
+  if (not result.type()->is<type::Callable>() and
+      result.type() != type::Generic and result.type() != type::Block) {
     // Figure out who should have verified this. Is it guaranteed to be
     // covered by shadowing checks? What if the overload isn't a declaration
     // so there aren't any shadowing checks?
-    DEBUG_LOG()(result.type_->to_string());
+    DEBUG_LOG()(result.type()->to_string());
     NOT_YET();
   }
 
-  if (result.const_) {
-    if (result.type_ == type::Generic) {
+  if (result.constant()) {
+    if (result.type() == type::Generic) {
       auto *fn_lit = backend::EvaluateAs<ast::FunctionLiteral *>(
-          type::Typed<ast::Expression const *>{overload.expr, result.type_},
+          type::Typed<ast::Expression const *>{overload.expr, result.type()},
           compiler);
 
       core::FnParams<type::Typed<Expression const *>> params(
@@ -289,15 +289,15 @@ static base::expected<DispatchTable::Row> OverloadParams(
           if (param_index < args.pos().size()) {
             auto [arg_expr, verify_result] = args.pos().at(param_index);
             type::Type const *decl_type = compiler->type_of(param.value.get());
-            if (not type::CanCast(verify_result.type_, decl_type)) {
+            if (not type::CanCast(verify_result.type(), decl_type)) {
               return base::unexpected(
                   absl::StrCat("TODO good error message couldn't match type ",
                                decl_type->to_string(), " to ",
-                               verify_result.type_->to_string()));
+                               verify_result.type()->to_string()));
             }
 
             auto buf = backend::EvaluateToBuffer(
-                type::Typed<Expression const *>(arg_expr, verify_result.type_),
+                type::Typed<Expression const *>(arg_expr, verify_result.type()),
                 compiler);
             auto [data_offset, num_bytes] =
                 std::get<std::pair<size_t, core::Bytes>>(
@@ -317,11 +317,11 @@ static base::expected<DispatchTable::Row> OverloadParams(
             if (auto *arg = args.at_or_null(param.value->id())) {
               type::Type const *decl_type =
                   compiler->type_of(param.value.get());
-              if (not type::CanCast(arg->second.type_, decl_type)) {
+              if (not type::CanCast(arg->second.type(), decl_type)) {
                 return base::unexpected(
                     absl::StrCat("TODO good error message couldn't match type ",
                                  decl_type->to_string(), " to ",
-                                 arg->second.type_->to_string()));
+                                 arg->second.type()->to_string()));
               }
 
               auto buf = backend::EvaluateToBuffer(
@@ -383,26 +383,26 @@ static base::expected<DispatchTable::Row> OverloadParams(
       base::defer d([&]() { compiler->constants_ = old_constants; });
       // TODO errors?
       auto *fn_type =
-          ASSERT_NOT_NULL(compiler->VerifyConcreteFnLit(fn_lit).type_);
+          ASSERT_NOT_NULL(compiler->VerifyConcreteFnLit(fn_lit).type());
       return DispatchTable::Row{
           std::move(params), &fn_type->as<type::Function>(),
           backend::EvaluateAs<ir::AnyFunc>(
               type::Typed<ast::Expression const *>{fn_lit, fn_type}, compiler)};
     } else {
-      return OverloadParams(
-          compiler,
-          backend::EvaluateAs<ir::AnyFunc>(
-              type::Typed<ast::Expression const *>{overload.expr, result.type_},
-              compiler),
-          args);
+      return OverloadParams(compiler,
+                            backend::EvaluateAs<ir::AnyFunc>(
+                                type::Typed<ast::Expression const *>{
+                                    overload.expr, result.type()},
+                                compiler),
+                            args);
     }
   } else {
-    if (result.type_ == type::Generic) {
+    if (result.type() == type::Generic) {
       UNREACHABLE();
-    } else if (auto *fn_type = result.type_->if_as<type::Function>()) {
+    } else if (auto *fn_type = result.type()->if_as<type::Function>()) {
       return DispatchTable::Row{fn_type->AnonymousFnParams(), fn_type,
                                 overload.expr};
-    } else if (result.type_ == type::Block) {
+    } else if (result.type() == type::Block) {
       NOT_YET();
     } else {
       UNREACHABLE();

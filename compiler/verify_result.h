@@ -7,36 +7,43 @@ struct Type;
 
 namespace compiler {
 struct VerifyResult {
-  type::Type const *type_;
-  bool const_;
+  type::Type const *type() const {
+    return reinterpret_cast<type::Type const *>(data_ & ~uintptr_t{1});
+  }
 
-  constexpr VerifyResult() : type_(nullptr), const_(false) {}
-  constexpr VerifyResult(type::Type const *t, bool b) : type_(t), const_(b) {}
+  constexpr bool constant() const { return data_ & uintptr_t{1}; }
+
+  constexpr VerifyResult() {}
+  VerifyResult(type::Type const *t, bool b)
+      : data_(reinterpret_cast<uintptr_t>(t) | b) {}
 
   // TODO you could actually pass some information through successfully. Like
   // maybe there's a type error but you do at least know it's a constant.
-  static constexpr VerifyResult Error() { return VerifyResult{nullptr, false}; }
-  static constexpr VerifyResult Constant(type::Type const *t) {
+  static constexpr VerifyResult Error() { return VerifyResult(); }
+  static VerifyResult Constant(type::Type const *t) {
     return VerifyResult{t, true};
   }
-  static constexpr VerifyResult NonConstant(type::Type const *t) {
+  static VerifyResult NonConstant(type::Type const *t) {
     return VerifyResult{t, false};
   }
 
-  explicit operator bool() const { return type_ != nullptr; }
-  bool ok() const { return type_ != nullptr; }
+  explicit operator bool() const { return type() != nullptr; }
+  bool ok() const { return static_cast<bool>(*this); }
   VerifyResult operator*() const { return *this; }
+
+  friend constexpr bool operator==(VerifyResult lhs, VerifyResult rhs) {
+    return lhs.data_ == rhs.data_;
+  }
+
+  friend constexpr bool operator!=(VerifyResult lhs, VerifyResult rhs) {
+    return !(lhs == rhs);
+  }
+
+ private:
+  uintptr_t data_ = 0;
 };
 
 std::ostream &operator<<(std::ostream &os, VerifyResult r);
-
-constexpr bool operator==(VerifyResult lhs, VerifyResult rhs) {
-  return lhs.type_ == rhs.type_ and lhs.const_ == rhs.const_;
-}
-
-constexpr bool operator!=(VerifyResult lhs, VerifyResult rhs) {
-  return not (lhs == rhs);
-}
 
 }  // namespace compiler
 

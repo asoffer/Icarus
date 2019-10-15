@@ -50,7 +50,7 @@ CompiledModule::CompiledModule()
 
 type::Type const *CompiledModule::type_of(ast::Expression const *expr) const {
   auto const *result = dep_data_.front().second.result(expr);
-  if (result and result->type_) { return result->type_; }
+  if (result and result->type()) { return result->type(); }
 
   // TODO reenabel once modules are all in core.
   // // When searching in embedded modules we intentionally look with no bound
@@ -60,7 +60,7 @@ type::Type const *CompiledModule::type_of(ast::Expression const *expr) const {
   //   // TODO use right constants
   //   if (auto iter = mod->dep_data_.front().second.verify_results_.find(expr);
   //       iter != mod->dep_data_.front().second.verify_results_.end()) {
-  //     return iter->second.type_;
+  //     return iter->second.type();
   //   }
   // }
   return nullptr;

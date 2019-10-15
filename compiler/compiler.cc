@@ -39,7 +39,7 @@ type::Type const *Compiler::type_of(ast::Expression const *expr) const {
   }
 
   auto *result = constants_->second.result(expr);
-  if (result and result->type_) { return result->type_; }
+  if (result and result->type()) { return result->type(); }
 
   // TODO reenabel once modules are all in core.
   // // When searching in embedded modules we intentionally look with no bound
