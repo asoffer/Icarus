@@ -86,6 +86,7 @@ struct Compiler {
                          std::vector<ir::AnyFunc> afters);
 
   ast::DispatchTable const *dispatch_table(ast::ExprPtr expr) const;
+  ast::DispatchTable const *jump_table(ast::ExprPtr jump_expr, ast::ExprPtr node) const;
 
   module::PendingModule *pending_module(ast::Import const *import_node) const;
 

@@ -1378,12 +1378,12 @@ ir::Results InitializeAndEmitBlockNode(Compiler *compiler,
 struct LocalScopeInterpretation {
   explicit LocalScopeInterpretation(
       ir::Builder &bldr,
-      absl::flat_hash_map<std::string_view, ir::BlockDef> const &block_defs,
+      absl::flat_hash_map<std::string_view, ir::BlockDef *> const &block_defs,
       ast::ScopeNode const *node)
       : node_(node) {
     for (auto const &[name, block] : block_defs) {
       blocks_.emplace(std::piecewise_construct, std::forward_as_tuple(name),
-                      std::forward_as_tuple(&block, nullptr));
+                      std::forward_as_tuple(block, nullptr));
     }
 
     block_ptrs_.emplace(ir::BlockDef::Start(), bldr.AddBlock());
@@ -1421,28 +1421,27 @@ ir::Results Compiler::EmitValue(ast::ScopeNode const *node) {
   DEBUG_LOG("ScopeNode")("          ... done.");
 
   DEBUG_LOG("ScopeNode")("Constructing interpretation");
-  NOT_YET();
-  // LocalScopeInterpretation interp(builder(), scope_def->blocks_, node);
+  LocalScopeInterpretation interp(builder(), scope_def->blocks_, node);
   DEBUG_LOG("ScopeNode")("          ... done");
 
-  // auto *init_block = interp.init_block();
-  // auto *land_block = interp.land_block();
+  auto *init_block = interp.init_block();
+  auto *land_block = interp.land_block();
 
-  // // TODO not sure this part is necessary
-  // auto *old_block_map = block_map;
-  // block_map           = &interp.block_ptrs_;
-  // base::defer d([&] { block_map = old_block_map; });
+  // TODO not sure this part is necessary
+  auto *old_block_map = block_map;
+  block_map           = &interp.block_ptrs_;
+  base::defer d([&] { block_map = old_block_map; });
 
-  // ir::UncondJump(init_block);
-  // builder().CurrentBlock() = init_block;
+  ir::UncondJump(init_block);
+  builder().CurrentBlock() = init_block;
 
   DEBUG_LOG("ScopeNode")("Inlining entry handler at ", ast::ExprPtr{node});
-  // ASSERT_NOT_NULL(jump_table(node, nullptr))
-  //     ->EmitInlineCall(
-  //         node->args().Transform([this](ast::Expression const *expr) {
-  //           return std::pair(expr, expr->EmitValue(this));
-  //         }),
-  //         *block_map);
+  ASSERT_NOT_NULL(jump_table(node, nullptr))
+      ->EmitInlineCall(
+          this, node->args().Transform([this](ast::Expression const *expr) {
+            return std::pair(expr, expr->EmitValue(this));
+          }),
+          *block_map);
 
   DEBUG_LOG("ScopeNode")("Emit each block:");
   //   for (auto[block_name, block_and_node] : interp.blocks_) {

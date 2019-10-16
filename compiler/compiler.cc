@@ -117,6 +117,15 @@ ast::DispatchTable const *Compiler::dispatch_table(ast::ExprPtr expr) const {
   return nullptr;
 }
 
+ast::DispatchTable const *Compiler::jump_table(ast::ExprPtr jump_expr,
+                                               ast::ExprPtr node) const {
+  auto &table = constants_->second.jump_tables_;
+  if (auto iter = table.find(std::pair(jump_expr, node)); iter != table.end()) {
+    return &iter->second;
+  }
+  return nullptr;
+}
+
 module::PendingModule *Compiler::pending_module(
     ast::Import const *import_node) const {
   if (auto iter = constants_->second.imported_module_.find(import_node);
