@@ -47,13 +47,16 @@ constexpr uint8_t PrimitiveIndex() {
     return 0x11;
   } else if constexpr (std::is_same_v<T, core::Bytes>) {
     return 0x12;
-  } else if constexpr (std::is_same_v<T, ast::FunctionLiteral*>) {
+  } else if constexpr (std::is_same_v<T, ast::FunctionLiteral*> ||
+                       std::is_same_v<T, ast::FunctionLiteral const*>) {
     // TODO: FunctionLiteral is a short-term hack for generics. IR shouldn't
     // depend on it.
     return 0x13;
-  } else if constexpr (std::is_same_v<T, BlockDef*>) {
+  } else if constexpr (std::is_same_v<T, BlockDef*> ||
+                       std::is_same_v<T, BlockDef const*>) {
     return 0x14;
-  } else if constexpr (std::is_same_v<T, ScopeDef*>) {
+  } else if constexpr (std::is_same_v<T, ScopeDef*> ||
+                       std::is_same_v<T, ScopeDef const*>) {
     return 0x15;
   } else if constexpr (std::is_integral_v<T>) {
     return base::Log2(sizeof(T)) * 2 + std::is_signed_v<T>;

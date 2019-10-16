@@ -38,10 +38,10 @@ Reg BlockHandler(compiler::Compiler *compiler,
                  absl::Span<RegOr<AnyFunc> const> befores,
                  absl::Span<RegOr<AnyFunc> const> afters);
 
-Reg ScopeHandler(compiler::Compiler *compiler,
-                 absl::Span<RegOr<AnyFunc> const> inits,
-                 absl::Span<RegOr<AnyFunc> const> dones,
-                 absl::flat_hash_map<std::string_view, ir::Reg> const &blocks);
+Reg ScopeHandler(
+    compiler::Compiler *compiler, absl::Span<RegOr<AnyFunc> const> inits,
+    absl::Span<RegOr<AnyFunc> const> dones,
+    absl::flat_hash_map<std::string_view, BlockDef *> const &blocks);
 
 }  // namespace ir
 #endif  // ICARUS_IR_CMD_SCOPE_H

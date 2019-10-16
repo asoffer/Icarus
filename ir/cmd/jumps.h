@@ -1,6 +1,7 @@
 #ifndef ICARUS_IR_CMD_JUMP_H
 #define ICARUS_IR_CMD_JUMP_H
 
+#include "absl/types/span.h"
 #include "base/debug.h"
 #include "ir/basic_block.h"
 #include "ir/cmd/util.h"
@@ -12,7 +13,7 @@ namespace ir {
 
 struct JumpCmd {
   constexpr static cmd_index_t index = 20;
-  enum class Kind : uint8_t { kRet, kUncond, kCond };
+  enum class Kind : uint8_t { kRet, kUncond, kCond, kChoose };
 
   static BasicBlock const* Execute(base::untyped_buffer::const_iterator* iter,
                                    std::vector<Addr> const& ret_slots,
@@ -26,6 +27,7 @@ struct JumpCmd {
         auto true_block  = iter->read<BasicBlock const*>();
         return b ? true_block : false_block;
       }
+      case Kind::kChoose: UNREACHABLE("Choose jumps can never be executed.");
       default: UNREACHABLE();
     }
   }
@@ -45,6 +47,7 @@ struct JumpCmd {
         s.append(", true: ");
         s.append(stringify(iter->read<BasicBlock const*>()));
       } break;
+      case Kind::kChoose: NOT_YET();
       default: UNREACHABLE();
     }
     return s;
@@ -69,6 +72,7 @@ struct JumpCmd {
         inliner.Inline(iter->read<BasicBlock const*>());
         inliner.Inline(iter->read<BasicBlock const*>());
       } break;
+      case Kind::kChoose: NOT_YET();
       default: UNREACHABLE();
     }
   }
@@ -104,6 +108,9 @@ inline void CondJump(RegOr<bool> cond, BasicBlock const* true_block,
     UncondJump(cond.value() ? true_block : false_block);
   }
 }
+
+inline void ChooseJump(absl::Span<std::string_view const> names,
+                       absl::Span<BasicBlock* const> blocks) {}
 
 }  // namespace ir
 

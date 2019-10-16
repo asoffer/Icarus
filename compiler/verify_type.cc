@@ -1687,7 +1687,11 @@ VerifyResult Compiler::VerifyType(ast::Index const *node) {
 }
 
 VerifyResult Compiler::VerifyType(ast::Jump const *node) {
-  NOT_YET();
+  for (auto const &option : node->options_) {
+    option.args.Apply([&](std::unique_ptr<ast::Expression> const &expr) {
+      expr->VerifyType(this);
+    });
+  }
   return VerifyResult::Constant(type::Void());
 }
 

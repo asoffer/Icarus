@@ -79,7 +79,7 @@ BasicBlock const *ScopeCmd::Execute(base::untyped_buffer::const_iterator *iter,
   absl::flat_hash_map<std::string_view, BlockDef *> blocks;
   for (uint16_t i = 0; i < num_blocks; ++i) {
     auto name  = iter->read<std::string_view>();
-    auto block = ctx->resolve<BlockDef *>(iter->read<Reg>());
+    auto block = ctx->resolve<BlockDef *>(iter->read<BlockDef *>());
     blocks.emplace(name, block);
   }
 
@@ -101,10 +101,10 @@ void ScopeCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
   // TODO for this to be okay, you do need to iterate through everything.
 }
 
-Reg ScopeHandler(compiler::Compiler *compiler,
-                 absl::Span<RegOr<AnyFunc> const> inits,
-                 absl::Span<RegOr<AnyFunc> const> dones,
-                 absl::flat_hash_map<std::string_view, Reg> const &blocks) {
+Reg ScopeHandler(
+    compiler::Compiler *compiler, absl::Span<RegOr<AnyFunc> const> inits,
+    absl::Span<RegOr<AnyFunc> const> dones,
+    absl::flat_hash_map<std::string_view, BlockDef *> const &blocks) {
   auto &blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append_index<ScopeCmd>();
   blk.cmd_buffer_.append(compiler);

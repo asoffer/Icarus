@@ -49,6 +49,7 @@ cc_lib_target(
         ":util",
         "//ir:basic_block",
         "//type:util",
+        "@com_google_absl//absl/types:span",
     ],
     impl_deps = None,
     test_deps = None,

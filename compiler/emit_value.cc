@@ -228,44 +228,34 @@ void CompleteBody(Compiler *compiler, ast::StructLiteral const *node) {
 }
 
 void CompleteBody(Compiler *compiler, ast::JumpHandler const *node) {
-  NOT_YET();
-  //   // TODO have validate return a bool distinguishing if there are errors
-  //   and
-  //   // whether or not we can proceed.
-  //
-  //   auto *t = type_of(node);
-  //
-  //   ir::CompiledFn *&ir_func = constants_->second.ir_funcs_[node];
-  //
-  //   ICARUS_SCOPE(ir::SetCurrentFunc(ir_func)) {
-  //     ir::GetBuilder().CurrentBlock() = ir_func->entry();
-  //
-  //     // TODO arguments should be renumbered to not waste space on const
-  //     values for (int32_t i = 0; i <
-  //     static_cast<int32_t>(node->input().size()); ++i)
-  //     {
-  //       set_addr(node->input()[i], ir::Reg::Arg(i));
-  //     }
-  //
-  //     MakeAllStackAllocations(node->body_scope(), ctx);
-  //
-  //
-  //    ICARUS_SCOPE(ir::SetTemporaries(compiler->builder())) {
-  //       for (auto *stmt : node->stmts()) {
-  //         stmt->EmitValue(compiler, ctx);
-  //
-  //         compiler->builder().FinishTemporariesWith(
-  //         [compiler](type::Typed<ir::Reg> r) {
-  //           r.type()->EmitDestroy(compiler, r.get());
-  //         });
-  //       }
-  //     }
-  //
-  //     MakeAllDestructions(compiler, node->body_scope());
-  //
-  //     ir::ReturnJump();
-  //     ir_func->work_item = nullptr;
-  //   }
+  ir::CompiledFn *&ir_func = compiler->constants_->second.ir_funcs_[node];
+
+  ICARUS_SCOPE(ir::SetCurrentFunc(ir_func)) {
+    compiler->builder().CurrentBlock() = ir_func->entry();
+    // TODO arguments should be renumbered to not waste space on const
+    // values
+    for (int32_t i = 0; i < static_cast<int32_t>(node->input().size()); ++i) {
+      compiler->set_addr(node->input()[i], ir::Reg::Arg(i));
+    }
+
+    MakeAllStackAllocations(compiler, node->body_scope());
+
+    ICARUS_SCOPE(ir::SetTemporaries(compiler->builder())) {
+      for (auto *stmt : node->stmts()) {
+        stmt->EmitValue(compiler);
+
+        compiler->builder().FinishTemporariesWith(
+            [compiler](type::Typed<ir::Reg> r) {
+              r.type()->EmitDestroy(compiler, r.get());
+            });
+      }
+    }
+
+    MakeAllDestructions(compiler, node->body_scope());
+
+    ir::ReturnJump();
+    ir_func->work_item = nullptr;
+  }
 }
 
 template <typename NodeType>
@@ -1229,7 +1219,24 @@ ir::Results Compiler::EmitValue(ast::Index const *node) {
 }
 
 ir::Results Compiler::EmitValue(ast::Jump const *node) {
-  NOT_YET();
+  std::vector<std::string_view> names;
+  names.reserve(node->options_.size());
+
+  std::vector<ir::BasicBlock *> blocks;
+  blocks.reserve(node->options_.size());
+  auto current_block = builder().CurrentBlock();
+
+  for (auto const &opt : node->options_) {
+    ir::BasicBlock *block    = builder().AddBlock();
+    blocks.push_back(block);
+    names.push_back(opt.block);
+
+    builder().CurrentBlock() = block;
+    // TODO emit code for each possible jumped-to block
+  }
+
+  builder().CurrentBlock() = current_block;
+  ir::ChooseJump(names, blocks);
   return ir::Results{};
 }
 
@@ -1326,7 +1333,7 @@ ir::Results Compiler::EmitValue(ast::YieldStmt const *node) {
 }
 
 ir::Results Compiler::EmitValue(ast::ScopeLiteral const *node) {
-  absl::flat_hash_map<std::string_view, ir::Reg> blocks;
+  absl::flat_hash_map<std::string_view, ir::BlockDef *> blocks;
   std::vector<ir::RegOr<ir::AnyFunc>> inits;
   std::vector<ir::RegOr<ir::AnyFunc>> dones;
   for (auto const *decl : node->decls()) {
@@ -1335,7 +1342,8 @@ ir::Results Compiler::EmitValue(ast::ScopeLiteral const *node) {
     } else if (decl->id() == "done") {
       dones.push_back(decl->EmitValue(this).get<ir::AnyFunc>(0));
     } else {
-      blocks.emplace(decl->id(), decl->EmitValue(this).get<ir::Reg>(0));
+      blocks.emplace(decl->id(),
+                     decl->EmitValue(this).get<ir::BlockDef *>(0).value());
     }
   }
 
