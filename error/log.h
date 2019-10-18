@@ -51,9 +51,6 @@ struct Log {
   void ShadowingDeclaration(frontend::SourceRange const &span1,
                             frontend::SourceRange const &span2);
 
-  // TODO include a source location/range/trace or whatever you decide to
-  // include.
-  void UserDefinedError(std::string const &err);
   void DereferencingNonPointer(std::string_view type,
                                frontend::SourceRange const &range);
   void WhichNonVariant(std::string_view type,
@@ -97,7 +94,7 @@ struct Log {
   void InvalidNumber(frontend::SourceRange const &range, std::string_view err);
 
   void NoCallMatch(frontend::SourceRange const &range,
-                   std::vector<std::string> const &generic_failure_reasons,
+                   std::vector<std::string> generic_failure_reasons,
                    absl::flat_hash_map<ast::Expression const *,
                                        std::string> const &failure_reasons);
   void UninferrableType(InferenceFailureReason reason,
@@ -106,7 +103,7 @@ struct Log {
   void NotCopyable(frontend::SourceRange const &range, std::string_view from);
   void NotMovable(frontend::SourceRange const &range, std::string_view from);
 
-  void BuiltinError(frontend::SourceRange const &range, std::string_view text);
+  void BuiltinError(frontend::SourceRange const &range, std::string text);
 
   void MissingDispatchContingency(
       frontend::SourceRange const &range,
@@ -128,9 +125,11 @@ struct Log {
 
   size_t size() const {
     return undeclared_ids_.size() + out_of_order_decls_.size() +
-           errors_.size() + cyc_dep_vecs_.size();
+           cyc_dep_vecs_
+               .size();  // TODO get size out of renderer? Probably have a first
+                         // step before it goes to the renderer.
   }
-  void Dump() const;
+  void Dump();
 
   // TODO per source file splitting? Can't do this until you figure out the
   // module/multi-source-file story.
@@ -142,7 +141,6 @@ struct Log {
 
   std::vector<std::vector<ast::Identifier const *>> cyc_dep_vecs_;
 
-  std::vector<std::string> errors_;
   frontend::Source *src_;
   diagnostic::ConsoleRenderer renderer_{stderr};
 };

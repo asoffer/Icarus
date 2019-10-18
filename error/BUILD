@@ -20,10 +20,9 @@ cc_lib_target(
     ],
     impl_deps = [
         "//ast:ast",
-        "//base:interval",
         "//diagnostic:diagnostic",
         "//diagnostic:console_renderer-impl",
         "//frontend/source:source",
-        "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/strings",
     ],
     test_deps = None)

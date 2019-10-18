@@ -32,6 +32,13 @@ struct SourceQuote {
     return *this;
   }
 
+  SourceQuote& Line(frontend::LineNum l) {
+    lines.insert(
+        base::Interval<frontend::LineNum>(l, l + 1).expanded(1).clamped_below(
+            frontend::LineNum(1)));
+    return *this;
+  }
+
   frontend::Source* source;
   base::IntervalSet<frontend::LineNum> lines;
   std::vector<Highlight> highlights;
@@ -49,9 +56,17 @@ struct Text {
   std::string message_;
 };
 
+struct List {
+  explicit List(std::vector<std::string> items) : items_(std::move(items)) {}
+  absl::Span<std::string const> items() const { return items_; }
+
+ private:
+  std::vector<std::string> items_;
+};
+
 struct Diagnostic {
  private:
-  using Component = std::variant<SourceQuote, Text>;
+  using Component = std::variant<SourceQuote, Text, List>;
 
  public:
   template <typename... Ts>

@@ -20,6 +20,10 @@ struct ConsoleRenderer {
       using T = std::decay_t<decltype(component)>;
       if constexpr (std::is_same_v<T, Text>) {
         std::fputs(component.c_str(), out_);
+      } else if constexpr (std::is_same_v<T, List>) {
+        for (std::string const& item : component.items()) {
+          std::fprintf(out_, "  * %s", item.c_str());
+        }
       } else {
         WriteSourceQuote(component);
       }
