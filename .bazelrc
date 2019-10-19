@@ -5,3 +5,5 @@ build --strip=never
 build --color=yes
 test  --color=yes
 test  --test_arg="--use-colour yes"
+
+build:asan --copt=-fsanitize=address --linkopt=-fsanitize=address

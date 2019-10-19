@@ -260,18 +260,16 @@ void CompleteBody(Compiler *compiler, ast::JumpHandler const *node) {
 
 template <typename NodeType>
 base::move_func<void()> *DeferBody(Compiler *compiler, NodeType const *node) {
-  return compiler->AddWork(
-      node, [constants(compiler->constants_), node]() mutable {
-        Compiler c(node->module());
-        c.constants_ = std::move(constants);
-
-        if constexpr (std::is_same_v<NodeType, ast::FunctionLiteral> or
-                      std::is_same_v<NodeType, ast::JumpHandler>) {
-          VerifyBody(&c, node);
-        }
-
-        CompleteBody(&c, node);
-      });
+  // It's safe to capture `compiler` because we know this lambda will be
+  // executed as part of work deferral of `compiler` before the compiler is
+  // destroyed.
+  return compiler->AddWork(node, [compiler, node]() mutable {
+    if constexpr (std::is_same_v<NodeType, ast::FunctionLiteral> or
+                  std::is_same_v<NodeType, ast::JumpHandler>) {
+      VerifyBody(compiler, node);
+    }
+    CompleteBody(compiler, node);
+  });
 }
 
 }  // namespace

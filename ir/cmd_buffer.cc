@@ -82,8 +82,7 @@ BasicBlock const* CmdBuffer::Execute(std::vector<ir::Addr> const& ret_slots,
 #define CASE(type)                                                             \
   case type::index: {                                                          \
     DEBUG_LOG("dbg")(#type);                                                   \
-    auto result = type::Execute(&iter, ret_slots, ctx);                        \
-    if (result) { return result; }                                             \
+    if (auto result = type::Execute(&iter, ret_slots, ctx)) { return result; } \
   } break
       CASES;
 #undef CASE

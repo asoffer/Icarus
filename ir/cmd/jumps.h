@@ -1,6 +1,7 @@
 #ifndef ICARUS_IR_CMD_JUMP_H
 #define ICARUS_IR_CMD_JUMP_H
 
+#include "absl/strings/str_join.h"
 #include "absl/types/span.h"
 #include "base/debug.h"
 #include "ir/basic_block.h"
@@ -47,7 +48,26 @@ struct JumpCmd {
         s.append(", true: ");
         s.append(stringify(iter->read<BasicBlock const*>()));
       } break;
-      case Kind::kChoose: NOT_YET();
+      case Kind::kChoose: {
+        auto num = iter->read<uint16_t>();
+        std::vector<std::pair<std::string_view, BasicBlock*>> entries;
+        entries.reserve(num);
+        for (uint16_t i = 0; i < num; ++i) {
+          entries.emplace_back(iter->read<std::string_view>(), nullptr);
+        }
+
+        for (uint16_t i = 0; i < num; ++i) {
+          entries[i].second = iter->read<BasicBlock*>();
+        }
+
+        s.append(absl::StrJoin(entries, " ",
+                      [](std::string* out,
+                         std::pair<std::string_view, BasicBlock*> const& p) {
+                        using base::stringify;
+                        absl::StrAppend(out, p.first, " -> ",
+                                        stringify(p.second));
+                      }));
+      } break;
       default: UNREACHABLE();
     }
     return s;
@@ -110,7 +130,15 @@ inline void CondJump(RegOr<bool> cond, BasicBlock const* true_block,
 }
 
 inline void ChooseJump(absl::Span<std::string_view const> names,
-                       absl::Span<BasicBlock* const> blocks) {}
+                       absl::Span<BasicBlock* const> blocks) {
+  ASSERT(names.size() == blocks.size());
+  auto& blk = *GetBuilder().CurrentBlock();
+  blk.cmd_buffer_.append_index<JumpCmd>();
+  blk.cmd_buffer_.append(JumpCmd::Kind::kChoose);
+  blk.cmd_buffer_.append<uint16_t>(names.size());
+  for (std::string_view name : names) { blk.cmd_buffer_.append(name); }
+  for (BasicBlock* block : blocks) { blk.cmd_buffer_.append(block); }
+}
 
 }  // namespace ir
 
