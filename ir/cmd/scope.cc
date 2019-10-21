@@ -12,8 +12,10 @@ BasicBlock const *BlockCmd::Execute(base::untyped_buffer::const_iterator *iter,
   auto *compiler                   = iter->read<compiler::Compiler *>();
   std::vector<AnyFunc> before_vals = internal::Deserialize<uint16_t, AnyFunc>(
       iter, [ctx](Reg reg) { return ctx->resolve<AnyFunc>(reg); });
-  std::vector<AnyFunc> after_vals = internal::Deserialize<uint16_t, AnyFunc>(
-      iter, [ctx](Reg reg) { return ctx->resolve<AnyFunc>(reg); });
+  std::vector<JumpHandler const *> after_vals =
+      internal::Deserialize<uint16_t, JumpHandler const *>(
+          iter,
+          [ctx](Reg reg) { return ctx->resolve<JumpHandler const *>(reg); });
   Reg result_reg = iter->read<Reg>();
 
   // TODO deal with leak.
@@ -29,24 +31,25 @@ std::string BlockCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
   std::vector<RegOr<AnyFunc>> before_vals =
       internal::Deserialize<uint16_t, AnyFunc>(
           iter, [](Reg reg) -> RegOr<AnyFunc> { return reg; });
-  std::vector<RegOr<AnyFunc>> after_vals =
-      internal::Deserialize<uint16_t, AnyFunc>(
-          iter, [](Reg reg) -> RegOr<AnyFunc> { return reg; });
+  std::vector<RegOr<JumpHandler const *>> after_vals =
+      internal::Deserialize<uint16_t, JumpHandler const *>(
+          iter, [](Reg reg) -> RegOr<JumpHandler const *> { return reg; });
   Reg result = iter->read<Reg>();
 
   using base::stringify;
-  return absl::StrCat(stringify(result), " = before(",
-                      absl::StrJoin(before_vals, ", ",
-                                    [](std::string *out, RegOr<AnyFunc> f) {
-                                      return out->append(stringify(f));
-                                    }),
-                      ") after(",
-                      absl::StrJoin(after_vals, ", ",
-                                    [](std::string *out, RegOr<AnyFunc> f) {
-                                      return out->append(stringify(f));
-                                    }),
+  return absl::StrCat(
+      stringify(result), " = before(",
+      absl::StrJoin(before_vals, ", ",
+                    [](std::string *out, RegOr<AnyFunc> f) {
+                      return out->append(stringify(f));
+                    }),
+      ") after(",
+      absl::StrJoin(after_vals, ", ",
+                    [](std::string *out, RegOr<JumpHandler const *> f) {
+                      return out->append(stringify(f));
+                    }),
 
-                      ")");
+      ")");
 }
 
 void BlockCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
@@ -54,7 +57,7 @@ void BlockCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
 
 Reg BlockHandler(compiler::Compiler *compiler,
                  absl::Span<RegOr<AnyFunc> const> befores,
-                 absl::Span<RegOr<AnyFunc> const> afters) {
+                 absl::Span<RegOr<JumpHandler const *> const> afters) {
   auto &blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append_index<BlockCmd>();
   blk.cmd_buffer_.append(compiler);
@@ -70,8 +73,10 @@ BasicBlock const *ScopeCmd::Execute(base::untyped_buffer::const_iterator *iter,
                                     backend::ExecContext *ctx) {
   auto *compiler = iter->read<compiler::Compiler *>();
 
-  std::vector<AnyFunc> inits = internal::Deserialize<uint16_t, AnyFunc>(
-      iter, [ctx](Reg reg) { return ctx->resolve<AnyFunc>(reg); });
+  std::vector<JumpHandler const *> inits =
+      internal::Deserialize<uint16_t, JumpHandler const *>(
+          iter,
+          [ctx](Reg reg) { return ctx->resolve<JumpHandler const *>(reg); });
   std::vector<AnyFunc> dones = internal::Deserialize<uint16_t, AnyFunc>(
       iter, [ctx](Reg reg) { return ctx->resolve<AnyFunc>(reg); });
 
@@ -102,7 +107,8 @@ void ScopeCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
 }
 
 Reg ScopeHandler(
-    compiler::Compiler *compiler, absl::Span<RegOr<AnyFunc> const> inits,
+    compiler::Compiler *compiler,
+    absl::Span<RegOr<JumpHandler const *> const> inits,
     absl::Span<RegOr<AnyFunc> const> dones,
     absl::flat_hash_map<std::string_view, BlockDef *> const &blocks) {
   auto &blk = *GetBuilder().CurrentBlock();

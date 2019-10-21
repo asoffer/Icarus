@@ -7,6 +7,7 @@
 #include "frontend/parse.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
+#include "ir/jump_handler.h"
 #include "ir/results.h"
 #include "type/jump.h"
 
@@ -167,7 +168,7 @@ ir::CompiledFn *Compiler::AddJump(
 }
 
 ir::ScopeDef *Compiler::AddScope(
-    std::vector<ir::AnyFunc> inits, std::vector<ir::AnyFunc> dones,
+    std::vector<ir::JumpHandler const *> inits, std::vector<ir::AnyFunc> dones,
     absl::flat_hash_map<std::string_view, ir::BlockDef *> blocks) {
   return scope_defs_
       .emplace_back(std::make_unique<ir::ScopeDef>(
@@ -176,7 +177,7 @@ ir::ScopeDef *Compiler::AddScope(
 }
 
 ir::BlockDef *Compiler::AddBlock(std::vector<ir::AnyFunc> befores,
-                                 std::vector<ir::AnyFunc> afters) {
+                                 std::vector<ir::JumpHandler const *> afters) {
   return block_defs_
       .emplace_back(
           std::make_unique<ir::BlockDef>(std::move(befores), std::move(afters)))

@@ -25,7 +25,7 @@ void Compiler::EmitDestroy(type::Struct const *t, ir::Reg reg) {
                     "", type::Typed<ast::Expression const *>{nullptr, pt}}));
 
     ICARUS_SCOPE(ir::SetCurrentFunc(fn.func())) {
-      builder().CurrentBlock() = builder().function()->entry();
+      builder().CurrentBlock() = builder().CurrentGroup()->entry();
       auto var                 = ir::Reg::Arg(0);
 
       for (int i = static_cast<int>(t->fields_.size()) - 1; i >= 0; --i) {
@@ -89,7 +89,7 @@ void Compiler::EmitDestroy(type::Tuple const *t, ir::Reg reg) {
         core::FnParams(core::Param{
             "", type::Typed<ast::Expression const *>{nullptr, type::Ptr(t)}}));
     ICARUS_SCOPE(ir::SetCurrentFunc(fn)) {
-      builder().CurrentBlock() = builder().function()->entry();
+      builder().CurrentBlock() = builder().CurrentGroup()->entry();
       auto var                 = ir::Reg::Arg(0);
 
       for (size_t i :

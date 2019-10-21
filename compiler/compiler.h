@@ -80,10 +80,10 @@ struct Compiler {
       type::Jump const *jump_type,
       core::FnParams<type::Typed<ast::Expression const *>> params);
   ir::ScopeDef *AddScope(
-      std::vector<ir::AnyFunc> inits, std::vector<ir::AnyFunc> dones,
+      std::vector<ir::JumpHandler const *> inits, std::vector<ir::AnyFunc> dones,
       absl::flat_hash_map<std::string_view, ir::BlockDef *> blocks);
   ir::BlockDef *AddBlock(std::vector<ir::AnyFunc> befores,
-                         std::vector<ir::AnyFunc> afters);
+                         std::vector<ir::JumpHandler const *> afters);
 
   ast::DispatchTable const *dispatch_table(ast::ExprPtr expr) const;
   ast::DispatchTable const *jump_table(ast::ExprPtr jump_expr, ast::ExprPtr node) const;
@@ -243,8 +243,6 @@ struct Compiler {
     ir::Results val_;
   };
   std::vector<std::vector<YieldResult>> yields_stack_;
-
-  absl::flat_hash_map<ir::BlockDef const *, ir::BasicBlock *> *block_map;
 
   // During validation, when a cyclic dependency is encountered, we write it
   // down here. That way, we can bubble up from the dependency until we see it

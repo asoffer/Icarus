@@ -10,10 +10,13 @@
 #include "module/module.h"
 
 namespace ir {
+struct JumpHandler;
+
 // TODO Calls to EvaluateAs should probably take this as const, so we can be
 // sure no one modifies blocks_ and invalidates pointers.
 struct ScopeDef {
-  explicit ScopeDef(module::BasicModule const *mod, std::vector<AnyFunc> inits,
+  explicit ScopeDef(module::BasicModule const *mod,
+                    std::vector<JumpHandler const *> inits,
                     std::vector<AnyFunc> dones,
                     absl::flat_hash_map<std::string_view, BlockDef *> blocks)
       : mod_(mod),
@@ -24,7 +27,8 @@ struct ScopeDef {
   module::BasicModule const *module() const { return mod_; }
 
   module::BasicModule const *mod_ = nullptr;
-  std::vector<AnyFunc> inits_, dones_;
+  std::vector<JumpHandler const *> inits_;
+  std::vector<AnyFunc> dones_;
   absl::flat_hash_map<std::string_view, BlockDef *> blocks_;
   base::move_func<void()> *work_item = nullptr;
 };

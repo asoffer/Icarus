@@ -103,8 +103,8 @@ ExecContext::Frame::Frame(ir::CompiledFn *fn,
   fn->allocs().for_each([&](type::Type const *t, ir::Reg r) {
     DEBUG_LOG("allocs")
     ("Allocating type = ", t->to_string(), ", reg = ", r,
-     ", offset = ", fn_->compiler_reg_to_offset_.at(r));
-    regs_.set(fn_->compiler_reg_to_offset_.at(r),
+     ", offset = ", fn_->reg_to_offset_.at(r));
+    regs_.set(fn_->reg_to_offset_.at(r),
               ir::Addr::Stack(core::FwdAlign(core::Bytes{ctx->stack_.size()},
                                              t->alignment(arch))
                                   .value()));

@@ -23,15 +23,13 @@ void Inliner::Inline(Reg *r, type::Type const *t) const {
     DEBUG_LOG("inline_reserve")("Reserving t = ", t->to_string());
     auto arch = core::Interpretter();
     auto offset =
-        FwdAlign(GetBuilder().function()->reg_size_, t->alignment(arch));
-    GetBuilder().function()->reg_size_ = offset + t->bytes(arch);
-    GetBuilder().function()->compiler_reg_to_offset_.emplace(*r,
-                                                             offset.value());
-    ++GetBuilder().function()->num_regs_;
+        FwdAlign(GetBuilder().CurrentGroup()->reg_size_, t->alignment(arch));
+    GetBuilder().CurrentGroup()->reg_size_ = offset + t->bytes(arch);
+    GetBuilder().CurrentGroup()->reg_to_offset_.emplace(*r, offset.value());
   }
 }
 
-void Inliner::MergeAllocations(CompiledFn *fn,
+void Inliner::MergeAllocations(internal::BlockGroup *group,
                                StackFrameAllocations const &allocs) {}
 
 std::pair<Results, bool> CallInline(
@@ -45,7 +43,7 @@ std::pair<Results, bool> CallInline(
   // for each of the arguments, because creating the inliner looks state on the
   // current function (counting which register it should start on), and this
   // should exclude the registers we create to hold the arguments.
-  auto inliner = GetBuilder().function()->inliner();
+  auto inliner = GetBuilder().CurrentGroup()->inliner();
 
   std::vector<Reg> arg_regs;
   arg_regs.reserve(f->type_->input.size());
@@ -56,18 +54,18 @@ std::pair<Results, bool> CallInline(
     }));
   }
 
-  size_t inlined_start = GetBuilder().function()->blocks().size();
+  size_t inlined_start = GetBuilder().CurrentGroup()->blocks().size();
 
-  for (size_t i = 1; i < f->blocks_.size(); ++i) {
+  for (size_t i = 1; i < f->blocks().size(); ++i) {
     auto *block = GetBuilder().AddBlock();
-    *block      = *std::move(f->blocks_.at(i));
+    *block      = *std::move(f->blocks()[i]);
     block->cmd_buffer_.UpdateForInlining(inliner);
   }
 
-  UncondJump(GetBuilder().function()->blocks()[inlined_start]);
+  UncondJump(GetBuilder().CurrentGroup()->blocks()[inlined_start]);
   GetBuilder().CurrentBlock() = inliner.landing();
 
-  inliner.MergeAllocations(GetBuilder().function(), f->allocs());
+  inliner.MergeAllocations(GetBuilder().CurrentGroup(), f->allocs());
 
   Results results;
   for (auto const &r : return_vals) { results.append(r); }

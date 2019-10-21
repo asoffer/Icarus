@@ -73,7 +73,7 @@ void Compiler::EmitDefaultInit(type::Tuple const *t, ir::Reg reg) {
             "", type::Typed<ast::Expression const *>{nullptr, type::Ptr(t)}}));
 
     ICARUS_SCOPE(ir::SetCurrentFunc(fn)) {
-      builder().CurrentBlock() = builder().function()->entry();
+      builder().CurrentBlock() = builder().CurrentGroup()->entry();
       auto var                 = ir::Reg::Arg(0);
 
       for (size_t i :

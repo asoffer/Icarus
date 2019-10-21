@@ -10,12 +10,13 @@
 #include "ir/out_params.h"
 
 namespace ir {
-
-struct CompiledFn;
+namespace internal {
+struct BlockGroup;
+}  // namespace internal
 
 struct BasicBlock {
   BasicBlock() = default;
-  explicit BasicBlock(CompiledFn *fn) : fn_(fn) {}
+  explicit BasicBlock(internal::BlockGroup *group) : group_(group) {}
 
   BasicBlock(BasicBlock const &b)    = default;
   BasicBlock(BasicBlock &&) noexcept = default;
@@ -24,8 +25,10 @@ struct BasicBlock {
 
   void Append(BasicBlock &&b);
 
-  CompiledFn *fn_;  // Containing function
   CmdBuffer cmd_buffer_;
+
+ private:
+  internal::BlockGroup *group_;
 };
 
 BasicBlock const *ReturnBlock();

@@ -17,6 +17,7 @@
 #include "ir/cmd/store.h"
 #include "ir/compiled_fn.h"
 #include "ir/components.h"
+#include "ir/jump_handler.h"
 #include "ir/reg.h"
 #include "ir/reg_or.h"
 #include "module/module.h"
@@ -206,8 +207,9 @@ MatchArgsToParams(
   return matched_params;
 }
 
+template <typename OverloadT>
 static base::expected<DispatchTable::Row> OverloadParams(
-    compiler::Compiler *compiler, ir::AnyFunc overload,
+    compiler::Compiler *compiler, OverloadT overload,
     core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
         &args) {
   // These are the parameters for the actual overload that will be potentially
@@ -221,18 +223,23 @@ static base::expected<DispatchTable::Row> OverloadParams(
   // how it actually gets called which would be with the arguments A and C
   // respectively.
 
-  if (overload.is_fn()) {
-    auto &fn = *ASSERT_NOT_NULL(overload.func());
-    return DispatchTable::Row{fn.params_, fn.type_, overload};
-  } else {
-    if (auto *fn_type = overload.foreign().type()->if_as<type::Function>()) {
-      // TODO foreign functions should be allowed named and default
-      // parameters.
-      return DispatchTable::Row{fn_type->AnonymousFnParams(), fn_type,
-                                overload};
+  if constexpr (std::is_same_v<OverloadT, ir::AnyFunc>) {
+    if (overload.is_fn()) {
+      auto &fn = *ASSERT_NOT_NULL(overload.func());
+      return DispatchTable::Row{fn.params(), fn.type_, overload};
     } else {
-      UNREACHABLE();
+      if (auto *fn_type =
+              overload.foreign().type()->template if_as<type::Function>()) {
+        // TODO foreign functions should be allowed named and default
+        // parameters.
+        return DispatchTable::Row{fn_type->AnonymousFnParams(), fn_type,
+                                  overload};
+      } else {
+        UNREACHABLE();
+      }
     }
+  } else {
+    NOT_YET();
   }
 }
 
@@ -525,23 +532,12 @@ compiler::VerifyResult VerifyDispatch(
 
 compiler::VerifyResult VerifyJumpDispatch(
     compiler::Compiler *compiler, ExprPtr expr,
-    absl::Span<ir::AnyFunc const> overload_set,
+    absl::Span<ir::JumpHandler const * const> overload_set,
     core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
         &args,
     std::vector<ir::BlockDef const *> *block_defs) {
   auto [table, result] = VerifyDispatchImpl(compiler, expr, overload_set, args);
-  DEBUG_LOG("ScopeNode")("Inserting into jump table");
-  for (ir::AnyFunc f : overload_set) {
-    // TODO some of these may be entirely discarded at compile-time. We really
-    // only want to iterate through the jumps possible at run-time.
-    if (not f.func()) { continue; }
-    // TODO do you know this work is safe to do right now?
-    auto *work = f.func()->work_item;
-    if (work) { std::move (*work)(); }
-    DEBUG_LOG("ScopeNode")("    ... jumps = ", f.func()->jumps_);
-    block_defs->insert(block_defs->end(), f.func()->jumps_.begin(),
-                       f.func()->jumps_.end());
-  }
+  DEBUG_LOG("ScopeNode")("Inserting into jump table(", result, ")");
   compiler->set_jump_table(expr, nullptr, std::move(table));
   return result;
 }

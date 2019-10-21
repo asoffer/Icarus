@@ -1815,8 +1815,8 @@ VerifyResult Compiler::VerifyType(ast::ScopeNode const *node) {
       DEBUG_LOG("ScopeNode")("    ... dispatch result = ", result);
     } else {
       for (auto const &fn_args : block_results) {
-        auto result =
-            ast::VerifyDispatch(this, node, block_def->after_, fn_args);
+        auto result = ast::VerifyJumpDispatch(this, node, block_def->after_,
+                                              fn_args, &block_defs);
         static_cast<void>(result);
         DEBUG_LOG("ScopeNode")("    ... dispatch result = ", result);
       }

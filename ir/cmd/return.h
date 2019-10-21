@@ -133,7 +133,7 @@ inline void SetRet(uint16_t n, type::Typed<Results> const& r) {
     type::Apply(r.type(), [&](auto tag) {
       using T = typename decltype(tag)::type;
       // if constexpr (std::is_same_v<T, type::Struct const*>) {
-      //   auto* t = GetBuilder().function()->type_->output[n];
+      //   auto* t = GetBuilder().CurrentGroup()->type_->output[n];
       //   // TODO guaranteed move-elision
       //   visitor::EmitIr visitor;
       //   t->EmitMoveAssign(&visitor, t, r.get(), GetRet(n, t), ctx);

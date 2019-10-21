@@ -59,7 +59,7 @@ BasicBlock const *CallCmd::Execute(base::untyped_buffer::const_iterator *iter,
     // NOTE: This is a hack using heap address slots to represent registers
     // since they are both void* and are used identically in the interpretter.
     auto addr = ir::Addr::Heap(ctx->call_stack.top().regs_.raw(
-        ctx->call_stack.top().fn_->compiler_reg_to_offset_.at(reg)));
+        ctx->call_stack.top().fn_->reg_to_offset_.at(reg)));
     DEBUG_LOG("call")("Ret addr = ", addr);
     return_slots.push_back(addr);
   }

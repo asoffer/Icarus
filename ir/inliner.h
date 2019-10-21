@@ -11,9 +11,13 @@ struct Type;
 
 namespace ir {
 struct BasicBlock;
+struct BlockDef;
 struct CompiledFn;
 struct StackFrameAllocations;
-struct BlockDef;
+
+namespace internal {
+struct BlockGroup;
+}  // namespace internal
 
 struct Inliner {
   void Inline(Reg *r, type::Type const *t = nullptr) const;
@@ -22,12 +26,13 @@ struct Inliner {
     // TODO *b = BlockIndex(b->value + block_offset_);
   }
 
-  void MergeAllocations(CompiledFn *fn, StackFrameAllocations const &allocs);
+  void MergeAllocations(internal::BlockGroup *group,
+                        StackFrameAllocations const &allocs);
 
   BasicBlock *landing() const { return land_; }
 
  private:
-  friend struct CompiledFn;
+  friend struct ::ir::internal::BlockGroup;
   explicit Inliner(size_t reg_offset, size_t block_offset, BasicBlock *land)
       : reg_offset_(reg_offset), block_offset_(block_offset), land_(land) {}
 

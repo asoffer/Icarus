@@ -10,12 +10,14 @@
 #include "type/typed_value.h"
 
 namespace ir {
-struct CompiledFn;
+namespace internal {
+struct BlockGroup;
+}  // namespace internal
 
 struct Builder {
   BasicBlock* AddBlock();
 
-  CompiledFn* function() { return ASSERT_NOT_NULL(current_.func_); }
+  internal::BlockGroup*& CurrentGroup() { return current_.group_; }
   BasicBlock*& CurrentBlock() { return current_.block_; }
 
   base::Tagged<Addr, Reg> Alloca(type::Type const* t);
@@ -43,7 +45,7 @@ struct Builder {
   friend struct SetTemporaries;
 
   struct State {
-    CompiledFn* func_ = nullptr;
+    internal::BlockGroup* group_ = nullptr;
     BasicBlock* block_;
 
     // Temporaries need to be destroyed at the end of each statement.
@@ -57,11 +59,11 @@ struct Builder {
 Builder& GetBuilder();
 
 struct SetCurrentFunc : public base::UseWithScope {
-  SetCurrentFunc(CompiledFn* fn);
+  SetCurrentFunc(internal::BlockGroup* fn);
   ~SetCurrentFunc();
 
  private:
-  CompiledFn* old_fn_;
+  internal::BlockGroup* old_group_;
   BasicBlock* old_block_;
 };
 

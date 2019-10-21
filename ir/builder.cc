@@ -10,26 +10,22 @@ thread_local Builder current;
 
 Builder& GetBuilder() { return current; }
 
-BasicBlock* Builder::AddBlock() {
-  return current_.func_->blocks_
-      .emplace_back(std::make_unique<BasicBlock>(current_.func_))
-      .get();
-}
+BasicBlock* Builder::AddBlock() { return CurrentGroup()->AppendBlock(); }
 
-SetCurrentFunc::SetCurrentFunc(CompiledFn* fn)
-    : old_fn_(GetBuilder().current_.func_),
+SetCurrentFunc::SetCurrentFunc(internal::BlockGroup* group)
+    : old_group_(GetBuilder().CurrentGroup()),
       old_block_(GetBuilder().CurrentBlock()) {
-  GetBuilder().current_.func_  = fn;
-  GetBuilder().current_.block_ = fn->entry();
+  GetBuilder().CurrentGroup()  = group;
+  GetBuilder().current_.block_ = group->entry();
 }
 
 SetCurrentFunc::~SetCurrentFunc() {
-  GetBuilder().current_.func_ = old_fn_;
+  GetBuilder().CurrentGroup() = old_group_;
   GetBuilder().CurrentBlock() = old_block_;
 }
 
 base::Tagged<Addr, Reg> Builder::Alloca(type::Type const* t) {
-  return function()->Alloca(t);
+  return CurrentGroup()->Alloca(t);
 }
 
 base::Tagged<Addr, Reg> Builder::TmpAlloca(type::Type const* t) {

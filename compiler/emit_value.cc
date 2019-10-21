@@ -17,6 +17,7 @@
 #include "ir/cmd/store.h"
 #include "ir/cmd/types.h"
 #include "ir/components.h"
+#include "ir/jump_handler.h"
 #include "ir/reg.h"
 #include "type/jump.h"
 #include "type/type.h"
@@ -574,7 +575,8 @@ ir::Results Compiler::EmitValue(ast::Binop const *node) {
 }
 
 ir::Results Compiler::EmitValue(ast::BlockLiteral const *node) {
-  std::vector<ir::RegOr<ir::AnyFunc>> befores, afters;
+  std::vector<ir::RegOr<ir::AnyFunc>> befores;
+  std::vector<ir::RegOr<ir::JumpHandler const *>> afters;
   befores.reserve(node->before().size());
   for (auto const &decl : node->before()) {
     ASSERT((decl->flags() & ast::Declaration::f_IsConst) != 0);
@@ -583,7 +585,7 @@ ir::Results Compiler::EmitValue(ast::BlockLiteral const *node) {
 
   for (auto const &decl : node->after()) {
     ASSERT((decl->flags() & ast::Declaration::f_IsConst) != 0);
-    afters.push_back(decl->EmitValue(this).get<ir::AnyFunc>(0));
+    afters.push_back(decl->EmitValue(this).get<ir::JumpHandler const *>(0));
   }
 
   return ir::Results{ir::BlockHandler(this, befores, afters)};
@@ -1332,11 +1334,11 @@ ir::Results Compiler::EmitValue(ast::YieldStmt const *node) {
 
 ir::Results Compiler::EmitValue(ast::ScopeLiteral const *node) {
   absl::flat_hash_map<std::string_view, ir::BlockDef *> blocks;
-  std::vector<ir::RegOr<ir::AnyFunc>> inits;
+  std::vector<ir::RegOr<ir::JumpHandler const *>> inits;
   std::vector<ir::RegOr<ir::AnyFunc>> dones;
   for (auto const *decl : node->decls()) {
     if (decl->id() == "init") {
-      inits.push_back(decl->EmitValue(this).get<ir::AnyFunc>(0));
+      inits.push_back(decl->EmitValue(this).get<ir::JumpHandler const *>(0));
     } else if (decl->id() == "done") {
       dones.push_back(decl->EmitValue(this).get<ir::AnyFunc>(0));
     } else {
@@ -1422,16 +1424,8 @@ ir::Results Compiler::EmitValue(ast::ScopeNode const *node) {
   LocalScopeInterpretation interp(builder(), scope_def->blocks_, node);
   DEBUG_LOG("ScopeNode")("          ... done");
 
-  auto *init_block = interp.init_block();
-  auto *land_block = interp.land_block();
-
-  // TODO not sure this part is necessary
-  auto *old_block_map = block_map;
-  block_map           = &interp.block_ptrs_;
-  base::defer d([&] { block_map = old_block_map; });
-
-  ir::UncondJump(init_block);
-  builder().CurrentBlock() = init_block;
+  ir::UncondJump(interp.init_block());
+  builder().CurrentBlock() = interp.init_block();
 
   DEBUG_LOG("ScopeNode")("Inlining entry handler at ", ast::ExprPtr{node});
   ASSERT_NOT_NULL(jump_table(node, nullptr))
@@ -1439,24 +1433,23 @@ ir::Results Compiler::EmitValue(ast::ScopeNode const *node) {
           this, node->args().Transform([this](ast::Expression const *expr) {
             return std::pair(expr, expr->EmitValue(this));
           }),
-          *block_map);
+          interp.block_ptrs_);
 
   DEBUG_LOG("ScopeNode")("Emit each block:");
-  //   for (auto[block_name, block_and_node] : interp.blocks_) {
-  //     if (block_name == "init" or block_name == "done") { continue; }
-  //     DEBUG_LOG("ScopeNode")("... ", block_name);
-  //     auto & [ block, block_node ] = block_and_node;
-  //     auto iter                    = block_map.find(block);
-  //     if (iter == block_map.end()) { continue; }
-  //     builder().CurrentBlock() = iter->second;
-  //     auto results =
-  //         ASSERT_NOT_NULL(dispatch_table(ast::ExprPtr{block_node,
-  //         0x01}))
-  //             ->EmitInlineCall({}, block_map);
-  //     InitializeAndEmitBlockNode(results, block_node, this);
-  //   }
-  //
-  // builder().CurrentBlock() = land_block;
+  for (auto[block_name, block_and_node] : interp.blocks_) {
+    if (block_name == "init" or block_name == "done") { continue; }
+    DEBUG_LOG("ScopeNode")("... ", block_name);
+    auto & [ block, block_node ] = block_and_node;
+    auto iter                    = interp.block_ptrs_.find(block);
+    if (iter == interp.block_ptrs_.end()) { continue; }
+    builder().CurrentBlock() = iter->second;
+    auto results =
+        ASSERT_NOT_NULL(jump_table(ast::ExprPtr{block_node, 0x01}, nullptr))
+            ->EmitInlineCall(this, {}, interp.block_ptrs_);
+    InitializeAndEmitBlockNode(this, results, block_node);
+  }
+
+  // builder().CurrentBlock() = interp.land_block();
   //
   //   // TODO currently the block you end up on here is where EmitInlineCall
   //   thinks

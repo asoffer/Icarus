@@ -50,11 +50,11 @@ struct ExecContext {
 
   template <typename T>
   T resolve(ir::Reg r) const {
-    auto iter = call_stack.top().fn_->compiler_reg_to_offset_.find(r);
+    auto iter = call_stack.top().fn_->reg_to_offset_.find(r);
 #if defined(ICARUS_DEBUG)
-    if (iter == call_stack.top().fn_->compiler_reg_to_offset_.end()) {
+    if (iter == call_stack.top().fn_->reg_to_offset_.end()) {
       UNREACHABLE("Failed to find ", r, " in ",
-                  call_stack.top().fn_->compiler_reg_to_offset_);
+                  call_stack.top().fn_->reg_to_offset_);
     }
 #endif
     return call_stack.top().regs_.get<T>(iter->second);

@@ -132,6 +132,6 @@ std::string CmdBuffer::to_string() const {
 #undef DEBUG_CASES
 
 size_t GetOffset(CompiledFn const* fn, Reg r) {
-  return fn->compiler_reg_to_offset_.at(r);
+  return fn->reg_to_offset_.at(r);
 }
 }  // namespace ir

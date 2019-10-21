@@ -7,6 +7,7 @@ cc_group_target(
     deps = [
         ":addr-impl",
         ":basic_block-impl",
+        ":block_group-impl",
         ":builder-impl",
         ":builtin_ir-impl",
         ":cmd_buffer-impl",
@@ -59,6 +60,36 @@ cc_component(
         "//base:debug",
     ],
     impl_deps = [],
+    test_deps = None,
+)
+
+cc_lib_target(
+    name = "block_group",
+    cfgs = ["match", "compile"],
+    intf_deps = [
+        ":basic_block",
+        ":stack_frame_allocations",
+        "//ast:ast_fwd",
+        "//base:ptr_span",
+        "//core:alignment",
+        "//core:bytes",
+        "//core:fn_params",
+        "//type:type_fwd",
+    ],
+    impl_deps = [
+        ":inliner",
+        "//type:pointer",
+    ],
+    test_deps = None,
+)
+
+cc_lib_target(
+    name = "jump_handler",
+    cfgs = ["match", "compile"],
+    intf_deps = [
+        ":block_group",
+    ],
+    impl_deps = None,
     test_deps = None,
 )
 
@@ -164,8 +195,8 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = [
         ":basic_block",
+        ":block_group",
         ":builder",
-        ":stack_frame_allocations",
         "//ast:ast",
         "//base:bag",
         "//base:ptr_span",
@@ -240,7 +271,7 @@ cc_component(
     test_deps = [],
 )
 
-cc_component(
+cc_lib_target(
     name = "scope_def",
     intf_deps = [
         ":any_func",

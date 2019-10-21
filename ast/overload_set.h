@@ -39,6 +39,7 @@ struct OverloadSet : public base::bag<Overload> {
 
   void add_adl(std::string_view id, type::Type const *t);
 };
+
 }  // namespace ast
 
 #endif  // ICARUS_AST_OVERLOAD_SET_H

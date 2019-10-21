@@ -53,13 +53,15 @@ struct DispatchTable {
       core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
       bool is_inline = false) const;
 
+  size_t size() const { return bindings_.size(); }
+
   std::vector<Row> bindings_;
   std::vector<type::Type const *> return_types_;
 };
 
 compiler::VerifyResult VerifyJumpDispatch(
     compiler::Compiler *visitor, ExprPtr expr,
-    absl::Span<ir::AnyFunc const> overload_set,
+    absl::Span<ir::JumpHandler const *const> overload_set,
     core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
         &args,
     std::vector<ir::BlockDef const *> *block_defs);

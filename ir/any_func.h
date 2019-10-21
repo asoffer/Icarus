@@ -2,8 +2,14 @@
 #define ICARUS_IR_ANY_FUNC_H
 
 #include <cstring>
+#include <ostream>
+
 #include "base/debug.h"
 #include "ir/foreign.h"
+
+namespace type {
+struct Function;
+}  // namespace type
 
 namespace ir {
 struct CompiledFn;
