@@ -238,8 +238,14 @@ static base::expected<DispatchTable::Row> OverloadParams(
         UNREACHABLE();
       }
     }
+  } else if constexpr (std::is_same_v<OverloadT, ir::JumpHandler const*>) {
+    return DispatchTable::Row{overload->params(), ASSERT_NOT_NULL(nullptr),
+                              overload};
+
   } else {
-    NOT_YET();
+    static_assert(base::always_false<OverloadT>(),
+                  "Should never be called with a type othre than ir::AnyFunc "
+                  "or ir::JumpHandler const *");
   }
 }
 
@@ -616,10 +622,12 @@ static bool EmitOneCall(
         using T = std::decay_t<decltype(f)>;
         if constexpr (std::is_same_v<T, ir::AnyFunc>) {
           return f;
-        } else {
+        } else if constexpr (std::is_same_v<T, Expression const *>) {
           // TODO must `f` always be a declaration?
           return ir::Load(compiler->addr(&f->template as<Declaration const>()),
                           row.type);
+        } else {
+          NOT_YET();
         }
       },
       row.fn);

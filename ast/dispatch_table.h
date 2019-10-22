@@ -33,14 +33,15 @@ struct DispatchTable {
   struct Row {
     Row(core::FnParams<type::Typed<Expression const *>> p,
         type::Function const *t,
-        std::variant<Expression const *, ir::AnyFunc> f)
+        std::variant<Expression const *, ir::AnyFunc, ir::JumpHandler const *>
+            f)
         : params(std::move(p)), type(t), fn(std::move(f)) {}
 
     // In the typed-expression, each expression may be null (if no default value
     // is possible), but the type will always be present.
     core::FnParams<type::Typed<Expression const *>> params;
     type::Function const *type;
-    std::variant<Expression const *, ir::AnyFunc> fn;
+    std::variant<Expression const *, ir::AnyFunc, ir::JumpHandler const *> fn;
   };
 
   ir::Results EmitInlineCall(
