@@ -22,10 +22,8 @@ void Inliner::Inline(Reg *r, type::Type const *t) const {
   if (t) {
     DEBUG_LOG("inline_reserve")("Reserving t = ", t->to_string());
     auto arch = core::Interpretter();
-    auto offset =
-        FwdAlign(GetBuilder().CurrentGroup()->reg_size_, t->alignment(arch));
-    GetBuilder().CurrentGroup()->reg_size_ = offset + t->bytes(arch);
-    GetBuilder().CurrentGroup()->reg_to_offset_.emplace(*r, offset.value());
+    GetBuilder().CurrentGroup()->Reserve(*r, t->bytes(arch),
+                                         t->alignment(arch));
   }
 }
 

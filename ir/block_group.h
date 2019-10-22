@@ -7,6 +7,7 @@
 
 #include "ast/ast_fwd.h"
 #include "base/ptr_span.h"
+#include "base/strong_types.h"
 #include "core/alignment.h"
 #include "core/bytes.h"
 #include "core/fn_params.h"
@@ -18,6 +19,7 @@
 #include "type/typed_value.h"
 
 namespace ir {
+
 namespace internal {
 
 // A `BlockGroup` represents a collection of `BasicBlock`s which make sense
@@ -45,23 +47,34 @@ struct BlockGroup {
 
   Inliner inliner();
 
+  base::untyped_buffer MakeBuffer() const {
+    return base::untyped_buffer::MakeFull(reg_size_.value());
+  }
+
   StackFrameAllocations const &allocs() { return allocs_; }
 
   Reg Reserve(type::Type const *t);
   Reg Reserve(core::Bytes b, core::Alignment a);
+  void Reserve(Reg r, core::Bytes b, core::Alignment a);
   Reg Alloca(type::Type const *t);
 
-  core::Bytes reg_size_ = core::Bytes{0};
-
-  // This vector is indexed by Reg and stores the value which is the offset
-  // into the base::untyped_buffer holding all registers during compile-time
-  // execution. It is only valid for core::Host().
-  absl::flat_hash_map<Reg, size_t> reg_to_offset_;
+  core::Bytes const *offset_or_null(Reg r) const {
+    auto iter = reg_to_offset_.find(r);
+    return iter != reg_to_offset_.end() ? &iter->second : nullptr;
+  }
 
  private:
   core::FnParams<type::Typed<ast::Expression const *>> params_;
   std::vector<std::unique_ptr<BasicBlock>> blocks_;
   StackFrameAllocations allocs_;
+
+  // This vector is indexed by Reg and stores the value which is the offset
+  // into the base::untyped_buffer holding all registers during compile-time
+  // execution. It is only valid for core::Host().
+  absl::flat_hash_map<Reg, core::Bytes> reg_to_offset_;
+
+  // The size of an untyped_buffer required to construct
+  core::Bytes reg_size_ = core::Bytes{0};
 };
 
 inline std::ostream &operator<<(std::ostream &os, BlockGroup const &b) {

@@ -96,15 +96,16 @@ ExecContext::Frame::Frame(ir::CompiledFn *fn,
     : fn_(fn),
       current_(fn_->entry()),
       prev_(fn_->entry()),
-      regs_(base::untyped_buffer::MakeFull(fn_->reg_size_.value())) {
+      regs_(fn_->MakeBuffer()) {
   regs_.write(0, arguments);
 
   auto arch = core::Interpretter();
   fn->allocs().for_each([&](type::Type const *t, ir::Reg r) {
+    core::Bytes offset = *ASSERT_NOT_NULL(fn_->offset_or_null(r));
     DEBUG_LOG("allocs")
     ("Allocating type = ", t->to_string(), ", reg = ", r,
-     ", offset = ", fn_->reg_to_offset_.at(r));
-    regs_.set(fn_->reg_to_offset_.at(r),
+     ", offset = ", offset);
+    regs_.set(offset.value(),
               ir::Addr::Stack(core::FwdAlign(core::Bytes{ctx->stack_.size()},
                                              t->alignment(arch))
                                   .value()));

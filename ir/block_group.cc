@@ -11,13 +11,10 @@ BlockGroup::BlockGroup(
   int32_t arg_index = 0;
   auto arch         = core::Interpretter();
   for (const auto &param : params_) {
-    auto *t    = param.value.type();
-    auto entry = core::Bytes{0};
-    if (t->is_big()) {
-      entry = core::FwdAlign(reg_size_, core::Alignment::Get<Addr>());
-    } else {
-      entry = core::FwdAlign(reg_size_, t->alignment(arch));
-    }
+    auto *t = param.value.type();
+    auto entry =
+        core::FwdAlign(reg_size_, t->is_big() ? core::Alignment::Get<Addr>()
+                                              : t->alignment(arch));
     reg_to_offset_.emplace(ir::Reg::Arg(arg_index++), entry.value());
     reg_size_ =
         entry + (t->is_big() ? core::Bytes::Get<Addr>() : t->bytes(arch));
@@ -30,15 +27,19 @@ Reg BlockGroup::Reserve(type::Type const *t) {
 }
 
 Reg BlockGroup::Reserve(core::Bytes b, core::Alignment a) {
+  Reg r(reg_to_offset_.size());
+  Reserve(r, b, a);
+  return r;
+}
+
+void BlockGroup::Reserve(Reg r, core::Bytes b, core::Alignment a) {
+  // TODO starts at `n`, where `n` is the number of arguments.
   auto offset = core::FwdAlign(reg_size_, a);
   reg_size_   = offset + b;
   DEBUG_LOG("reserve")
   ("New size = ", reg_size_, ", because type's size is ", b);
 
-  // TODO starts at `n`, where `n` is the number of function arguments.
-  Reg r{reg_to_offset_.size()};
-  reg_to_offset_.emplace(r, offset.value());
-  return r;
+  reg_to_offset_.emplace(r, offset);
 }
 
 Reg BlockGroup::Alloca(type::Type const *t) {
