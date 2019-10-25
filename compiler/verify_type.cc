@@ -40,6 +40,27 @@ std::ostream &operator<<(std::ostream &os, VerifyResult r) {
 
 namespace {
 
+void AddAdl(ast::OverloadSet *overload_set, std::string_view id,
+            type::Type const *t) {
+  absl::flat_hash_set<module::BasicModule const *> modules;
+  t->ExtractDefiningModules(&modules);
+
+  for (auto const *mod : modules) {
+    auto decls = mod->declarations(id);
+    for (auto *d : decls) {
+      ASSIGN_OR(continue, auto &t,
+                Compiler(const_cast<module::BasicModule *>(mod)).type_of(d));
+      // TODO handle this case. I think it's safe to just discard it.
+      for (auto const *overload : *overload_set) {
+        if (d == overload) { return; }
+      }
+
+      // TODO const
+      overload_set->insert(d);
+    }
+  }
+}
+
 // NOTE: the order of these enumerators is meaningful and relied upon! They are
 // ordered from strongest relation to weakest.
 enum class Cmp { Order, Equality, None };
@@ -789,9 +810,9 @@ VerifyResult Compiler::VerifyType(ast::Binop const *node) {
         return VerifyResult::Error();                                          \
       }                                                                        \
     } else {                                                                   \
-      ast::OverloadSet os(node->scope_, symbol, this);                         \
-      os.add_adl(symbol, lhs_result.type());                                   \
-      os.add_adl(symbol, rhs_result.type());                                   \
+      ast::OverloadSet os(node->scope_, symbol);                               \
+      AddAdl(&os, symbol, lhs_result.type());                                   \
+      AddAdl(&os, symbol, rhs_result.type());                                   \
       return ast::VerifyDispatch(                                              \
           this, node, os,                                                      \
           core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>(      \
@@ -822,9 +843,9 @@ VerifyResult Compiler::VerifyType(ast::Binop const *node) {
           return VerifyResult::Error();
         }
       } else {
-        ast::OverloadSet os(node->scope_, "+", this);
-        os.add_adl("+", lhs_result.type());
-        os.add_adl("+", rhs_result.type());
+        ast::OverloadSet os(node->scope_, "+");
+        AddAdl(&os, "+", lhs_result.type());
+        AddAdl(&os, "+", rhs_result.type());
         return ast::VerifyDispatch(
             this, node, os,
             core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>(
@@ -846,9 +867,9 @@ VerifyResult Compiler::VerifyType(ast::Binop const *node) {
           return VerifyResult::Error();
         }
       } else {
-        ast::OverloadSet os(node->scope_, "+=", this);
-        os.add_adl("+=", lhs_result.type());
-        os.add_adl("+=", rhs_result.type());
+        ast::OverloadSet os(node->scope_, "+=");
+        AddAdl(&os, "+=", lhs_result.type());
+        AddAdl(&os, "+=", rhs_result.type());
         return ast::VerifyDispatch(
             this, node, os,
             core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>(
@@ -904,8 +925,8 @@ VerifyResult Compiler::VerifyType(ast::BuiltinFn const *node) {
 static ast::OverloadSet FindOverloads(
     compiler::Compiler *visitor, ast::Scope *scope, std::string_view token,
     core::FnArgs<type::Type const *> arg_types) {
-  ast::OverloadSet os(scope, token, visitor);
-  arg_types.Apply([&](type::Type const *t) { os.add_adl(token, t); });
+  ast::OverloadSet os(scope, token);
+  arg_types.Apply([&](type::Type const *t) { AddAdl(&os, token, t); });
   return os;
 }
 
@@ -1061,9 +1082,8 @@ VerifyResult Compiler::VerifyType(ast::Call const *node) {
                            arg_results.Transform(
                                [](VerifyResult const &p) { return p.type(); }));
     } else {
-      auto results = node->callee()->VerifyType(this);
       ast::OverloadSet os;
-      os.emplace(node->callee(), results);
+      os.emplace(node->callee());
       // TODO ADL for node?
       return os;
     }
@@ -1101,10 +1121,11 @@ VerifyResult Compiler::VerifyType(ast::Cast const *node) {
   auto *t = ASSERT_NOT_NULL(backend::EvaluateAs<type::Type const *>(
       type::Typed<ast::Expression const *>(node->type(), type::Type_), this));
   if (t->is<type::Struct>()) {
-    ast::OverloadSet os(node->scope_, "as", this);
-    os.add_adl("as", t);
-    os.add_adl("as", expr_result.type());
-    os.keep([t](ast::Overload const &o) { return o.result.type() == t; });
+    ast::OverloadSet os(node->scope_, "as");
+    AddAdl(&os, "as", t);
+    AddAdl(&os, "as", expr_result.type());
+    NOT_YET();
+    // os.keep([t](ast::Overload const &o) { return o.result.type() == t; });
 
     return ast::VerifyDispatch(
         this, node, os,
@@ -1216,9 +1237,9 @@ not_blocks:
         if (lhs_result.type()->is<type::Struct>() or
             lhs_result.type()->is<type::Struct>()) {
           // TODO overwriting type a bunch of times?
-          ast::OverloadSet os(node->scope_, token, this);
-          os.add_adl(token, lhs_result.type());
-          os.add_adl(token, rhs_result.type());
+          ast::OverloadSet os(node->scope_, token);
+          AddAdl(&os, token, lhs_result.type());
+          AddAdl(&os, token, rhs_result.type());
           return ast::VerifyDispatch(
               this, ast::ExprPtr{node->exprs()[i], 0x01}, os,
               core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>(
@@ -1724,8 +1745,8 @@ VerifyResult Compiler::VerifyType(ast::PrintStmt const *node) {
         expr_type->is<type::Flags>()) {
       continue;
     } else {
-      ast::OverloadSet os(node->scope_, "print", this);
-      os.add_adl("print", expr_type);
+      ast::OverloadSet os(node->scope_, "print");
+      AddAdl(&os, "print", expr_type);
       // TODO using expr.get() for the dispatch table is super janky. node is
       // used so we don't collide with the table for the actual expression as
       // `print f(x)` needs a table both for the printing and for the call to
@@ -2035,8 +2056,8 @@ VerifyResult Compiler::VerifyType(ast::Unop const *node) {
       if (type::IsNumeric(operand_type)) {
         return set_result(node, VerifyResult(operand_type, result.constant()));
       } else if (operand_type->is<type::Struct>()) {
-        ast::OverloadSet os(node->scope_, "-", this);
-        os.add_adl("-", operand_type);
+        ast::OverloadSet os(node->scope_, "-");
+        AddAdl(&os, "-", operand_type);
         return ast::VerifyDispatch(
             this, node, os,
             core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>(
@@ -2061,8 +2082,8 @@ VerifyResult Compiler::VerifyType(ast::Unop const *node) {
         return set_result(node, VerifyResult(operand_type, result.constant()));
       }
       if (operand_type->is<type::Struct>()) {
-        ast::OverloadSet os(node->scope_, "!", this);
-        os.add_adl("!", operand_type);
+        ast::OverloadSet os(node->scope_, "!");
+        AddAdl(&os, "!", operand_type);
         return ast::VerifyDispatch(
             this, node, os,
             core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>(

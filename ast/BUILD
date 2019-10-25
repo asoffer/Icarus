@@ -112,15 +112,9 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = [
         "//base:bag",
-        "//base:ptr_span",
-    ],
-    impl_deps = [
-        ":ast",
+        "//ast:ast",
         "//ast/scope:scope",
-        "//compiler:compiler",
-        "//module:extract_defining_modules",
-        "//type:type",
-        "@com_google_absl//absl/container:flat_hash_set",
     ],
+    impl_deps = [],
     test_deps = None,
 )

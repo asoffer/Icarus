@@ -223,7 +223,171 @@ static base::expected<DispatchTable::Row> OverloadParams(
   // how it actually gets called which would be with the arguments A and C
   // respectively.
 
-  if constexpr (std::is_same_v<OverloadT, ir::AnyFunc>) {
+  if constexpr (std::is_same_v<std::decay_t<OverloadT>, Expression const *>) {
+    auto result =
+        *ASSERT_NOT_NULL(compiler->prior_verification_attempt(overload));
+    if (not result.type()->template is<type::Callable>() and
+        result.type() != type::Generic and result.type() != type::Block) {
+      // Figure out who should have verified this. Is it guaranteed to be
+      // covered by shadowing checks? What if the overload isn't a declaration
+      // so there aren't any shadowing checks?
+      DEBUG_LOG()(result.type()->to_string());
+      NOT_YET();
+    }
+
+    if (result.constant()) {
+      if (result.type() == type::Generic) {
+        auto *fn_lit = backend::EvaluateAs<ast::FunctionLiteral *>(
+            type::Typed<ast::Expression const *>{overload, result.type()},
+            compiler);
+
+        core::FnParams<type::Typed<Expression const *>> params(
+            fn_lit->inputs_.size());
+        for (auto *decl : fn_lit->sorted_params_) {
+          // TODO skip decls that are not parameters.
+          size_t param_index = fn_lit->decl_to_param_.at(decl);
+          auto const &param  = fn_lit->inputs_.at(param_index);
+
+          auto result = decl->VerifyType(compiler);
+          if (not result.ok()) { NOT_YET(); }
+
+          if (not(param.value->flags() & Declaration::f_IsConst)) {
+            params.set(param_index,
+                       core::Param<type::Typed<Expression const *>>{
+                           param.name,
+                           type::Typed<Expression const *>(
+                               param.value.get(),
+                               compiler->type_of(param.value.get())),
+                           param.flags});
+          } else {
+            if (param_index < args.pos().size()) {
+              auto [arg_expr, verify_result] = args.pos().at(param_index);
+              type::Type const *decl_type =
+                  compiler->type_of(param.value.get());
+              if (not type::CanCast(verify_result.type(), decl_type)) {
+                return base::unexpected(
+                    absl::StrCat("TODO good error message couldn't match type ",
+                                 decl_type->to_string(), " to ",
+                                 verify_result.type()->to_string()));
+              }
+
+              auto buf =
+                  backend::EvaluateToBuffer(type::Typed<Expression const *>(
+                                                arg_expr, verify_result.type()),
+                                            compiler);
+              auto [data_offset, num_bytes] =
+                  std::get<std::pair<size_t, core::Bytes>>(
+                      compiler->current_constants_.reserve_slot(
+                          param.value.get(), decl_type));
+              // TODO you haven't done the cast yet! And you didn't even check
+              // about implicit casts.
+              compiler->current_constants_.set_slot(data_offset, buf.raw(0),
+                                                    num_bytes);
+              params.set(param_index,
+                         core::Param<type::Typed<Expression const *>>{
+                             param.name,
+                             type::Typed<Expression const *>(param.value.get(),
+                                                             decl_type),
+                             param.flags});
+            } else {
+              if (auto *arg = args.at_or_null(param.value->id())) {
+                type::Type const *decl_type =
+                    compiler->type_of(param.value.get());
+                if (not type::CanCast(arg->second.type(), decl_type)) {
+                  return base::unexpected(absl::StrCat(
+                      "TODO good error message couldn't match type ",
+                      decl_type->to_string(), " to ",
+                      arg->second.type()->to_string()));
+                }
+
+                auto buf = backend::EvaluateToBuffer(
+                    type::Typed<Expression const *>(arg->first, decl_type),
+                    compiler);
+                auto [data_offset, num_bytes] =
+                    std::get<std::pair<size_t, core::Bytes>>(
+                        compiler->current_constants_.reserve_slot(
+                            param.value.get(), decl_type));
+                // TODO you haven't done the cast yet! And you didn't even check
+                // about implicit casts.
+                compiler->current_constants_.set_slot(data_offset, buf.raw(0),
+                                                      num_bytes);
+                params.set(param_index,
+                           core::Param<type::Typed<Expression const *>>{
+                               param.name,
+                               type::Typed<Expression const *>(
+                                   param.value.get(),
+                                   compiler->type_of(param.value.get())),
+                               param.flags});
+
+              } else {
+                if (param.flags & core::HAS_DEFAULT) {
+                  type::Type const *decl_type =
+                      compiler->type_of(param.value.get());
+
+                  // TODO you haven't done the cast from init_val to declared
+                  // type
+                  auto buf = backend::EvaluateToBuffer(
+                      type::Typed<Expression const *>(decl->init_val(),
+                                                      decl_type),
+                      compiler);
+                  auto [data_offset, num_bytes] =
+                      std::get<std::pair<size_t, core::Bytes>>(
+                          compiler->current_constants_.reserve_slot(
+                              param.value.get(), decl_type));
+                  compiler->current_constants_.set_slot(data_offset, buf.raw(0),
+                                                        num_bytes);
+                  // TODO should I be setting this parameter?
+
+                  params.set(param_index,
+                             core::Param<type::Typed<Expression const *>>{
+                                 param.name,
+                                 type::Typed<Expression const *>(
+                                     decl->init_val(), decl_type),
+                                 param.flags});
+                } else {
+                  return base::unexpected(
+                      "TODO good error message. needed default parameter but "
+                      "none provided.");
+                }
+              }
+            }
+          }
+        }
+
+        auto *old_constants = std::exchange(
+            compiler->constants_,
+            compiler->insert_constants(compiler->current_constants_));
+        base::defer d([&]() { compiler->constants_ = old_constants; });
+        // TODO errors?
+        auto *fn_type =
+            ASSERT_NOT_NULL(compiler->VerifyConcreteFnLit(fn_lit).type());
+        return DispatchTable::Row{
+            std::move(params), &fn_type->template as<type::Function>(),
+            backend::EvaluateAs<ir::AnyFunc>(
+                type::Typed<ast::Expression const *>{fn_lit, fn_type},
+                compiler)};
+      } else {
+        return OverloadParams(
+            compiler,
+            backend::EvaluateAs<ir::AnyFunc>(
+                type::Typed<ast::Expression const *>{overload, result.type()},
+                compiler),
+            args);
+      }
+    } else {
+      if (result.type() == type::Generic) {
+        UNREACHABLE();
+      } else if (auto *fn_type =
+                     result.type()->template if_as<type::Function>()) {
+        return DispatchTable::Row{fn_type->AnonymousFnParams(), fn_type,
+                                  overload};
+      } else if (result.type() == type::Block) {
+        NOT_YET();
+      } else {
+        UNREACHABLE();
+      }
+    }
+  } else if constexpr (std::is_same_v<OverloadT, ir::AnyFunc>) {
     if (overload.is_fn()) {
       auto &fn = *ASSERT_NOT_NULL(overload.func());
       return DispatchTable::Row{fn.params(), fn.type_, overload};
@@ -244,182 +408,8 @@ static base::expected<DispatchTable::Row> OverloadParams(
 
   } else {
     static_assert(base::always_false<OverloadT>(),
-                  "Should never be called with a type othre than ir::AnyFunc "
+                  "Should never be called with a type other than ir::AnyFunc "
                   "or ir::JumpHandler const *");
-  }
-}
-
-static base::expected<DispatchTable::Row> OverloadParams(
-    compiler::Compiler *compiler, Overload const &overload,
-    core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
-        &args) {
-  // These are the parameters for the actual overload that will be potentially
-  // selected. In particular, if we have two overloads:
-  //
-  //   f :: (A | B) -> X = ...
-  //   f :: (C | D) -> Y = ...
-  //
-  // And we call it with an object of type (A | C), then these parameters will
-  // be (A | B) and (C | D) on the two loop iterations. This is to distinct from
-  // how it actually gets called which would be with the arguments A and C
-  // respectively.
-
-  auto result =
-      *ASSERT_NOT_NULL(compiler->prior_verification_attempt(overload.expr));
-  if (not result.type()->is<type::Callable>() and
-      result.type() != type::Generic and result.type() != type::Block) {
-    // Figure out who should have verified this. Is it guaranteed to be
-    // covered by shadowing checks? What if the overload isn't a declaration
-    // so there aren't any shadowing checks?
-    DEBUG_LOG()(result.type()->to_string());
-    NOT_YET();
-  }
-
-  if (result.constant()) {
-    if (result.type() == type::Generic) {
-      auto *fn_lit = backend::EvaluateAs<ast::FunctionLiteral *>(
-          type::Typed<ast::Expression const *>{overload.expr, result.type()},
-          compiler);
-
-      core::FnParams<type::Typed<Expression const *>> params(
-          fn_lit->inputs_.size());
-      for (auto *decl : fn_lit->sorted_params_) {
-        // TODO skip decls that are not parameters.
-        size_t param_index = fn_lit->decl_to_param_.at(decl);
-        auto const &param  = fn_lit->inputs_.at(param_index);
-
-        auto result = decl->VerifyType(compiler);
-        if (not result.ok()) { NOT_YET(); }
-
-        if (not(param.value->flags() & Declaration::f_IsConst)) {
-          params.set(param_index, core::Param<type::Typed<Expression const *>>{
-                                      param.name,
-                                      type::Typed<Expression const *>(
-                                          param.value.get(),
-                                          compiler->type_of(param.value.get())),
-                                      param.flags});
-        } else {
-          if (param_index < args.pos().size()) {
-            auto [arg_expr, verify_result] = args.pos().at(param_index);
-            type::Type const *decl_type = compiler->type_of(param.value.get());
-            if (not type::CanCast(verify_result.type(), decl_type)) {
-              return base::unexpected(
-                  absl::StrCat("TODO good error message couldn't match type ",
-                               decl_type->to_string(), " to ",
-                               verify_result.type()->to_string()));
-            }
-
-            auto buf = backend::EvaluateToBuffer(
-                type::Typed<Expression const *>(arg_expr, verify_result.type()),
-                compiler);
-            auto [data_offset, num_bytes] =
-                std::get<std::pair<size_t, core::Bytes>>(
-                    compiler->current_constants_.reserve_slot(param.value.get(),
-                                                              decl_type));
-            // TODO you haven't done the cast yet! And you didn't even check
-            // about implicit casts.
-            compiler->current_constants_.set_slot(data_offset, buf.raw(0),
-                                                  num_bytes);
-            params.set(param_index,
-                       core::Param<type::Typed<Expression const *>>{
-                           param.name,
-                           type::Typed<Expression const *>(param.value.get(),
-                                                           decl_type),
-                           param.flags});
-          } else {
-            if (auto *arg = args.at_or_null(param.value->id())) {
-              type::Type const *decl_type =
-                  compiler->type_of(param.value.get());
-              if (not type::CanCast(arg->second.type(), decl_type)) {
-                return base::unexpected(
-                    absl::StrCat("TODO good error message couldn't match type ",
-                                 decl_type->to_string(), " to ",
-                                 arg->second.type()->to_string()));
-              }
-
-              auto buf = backend::EvaluateToBuffer(
-                  type::Typed<Expression const *>(arg->first, decl_type),
-                  compiler);
-              auto [data_offset, num_bytes] =
-                  std::get<std::pair<size_t, core::Bytes>>(
-                      compiler->current_constants_.reserve_slot(
-                          param.value.get(), decl_type));
-              // TODO you haven't done the cast yet! And you didn't even check
-              // about implicit casts.
-              compiler->current_constants_.set_slot(data_offset, buf.raw(0),
-                                                    num_bytes);
-              params.set(param_index,
-                         core::Param<type::Typed<Expression const *>>{
-                             param.name,
-                             type::Typed<Expression const *>(
-                                 param.value.get(),
-                                 compiler->type_of(param.value.get())),
-                             param.flags});
-
-            } else {
-              if (param.flags & core::HAS_DEFAULT) {
-                type::Type const *decl_type =
-                    compiler->type_of(param.value.get());
-
-                // TODO you haven't done the cast from init_val to declared type
-                auto buf =
-                    backend::EvaluateToBuffer(type::Typed<Expression const *>(
-                                                  decl->init_val(), decl_type),
-                                              compiler);
-                auto [data_offset, num_bytes] =
-                    std::get<std::pair<size_t, core::Bytes>>(
-                        compiler->current_constants_.reserve_slot(
-                            param.value.get(), decl_type));
-                compiler->current_constants_.set_slot(data_offset, buf.raw(0),
-                                                      num_bytes);
-                // TODO should I be setting this parameter?
-
-                params.set(param_index,
-                           core::Param<type::Typed<Expression const *>>{
-                               param.name,
-                               type::Typed<Expression const *>(decl->init_val(),
-                                                               decl_type),
-                               param.flags});
-              } else {
-                return base::unexpected(
-                    "TODO good error message. needed default parameter but "
-                    "none provided.");
-              }
-            }
-          }
-        }
-      }
-
-      auto *old_constants = std::exchange(
-          compiler->constants_,
-          compiler->insert_constants(compiler->current_constants_));
-      base::defer d([&]() { compiler->constants_ = old_constants; });
-      // TODO errors?
-      auto *fn_type =
-          ASSERT_NOT_NULL(compiler->VerifyConcreteFnLit(fn_lit).type());
-      return DispatchTable::Row{
-          std::move(params), &fn_type->as<type::Function>(),
-          backend::EvaluateAs<ir::AnyFunc>(
-              type::Typed<ast::Expression const *>{fn_lit, fn_type}, compiler)};
-    } else {
-      return OverloadParams(compiler,
-                            backend::EvaluateAs<ir::AnyFunc>(
-                                type::Typed<ast::Expression const *>{
-                                    overload.expr, result.type()},
-                                compiler),
-                            args);
-    }
-  } else {
-    if (result.type() == type::Generic) {
-      UNREACHABLE();
-    } else if (auto *fn_type = result.type()->if_as<type::Function>()) {
-      return DispatchTable::Row{fn_type->AnonymousFnParams(), fn_type,
-                                overload.expr};
-    } else if (result.type() == type::Block) {
-      NOT_YET();
-    } else {
-      UNREACHABLE();
-    }
   }
 }
 

@@ -603,14 +603,14 @@ TEST_CASE("overload set") {
   nodes.push_back(test::ParseAs<Declaration>("f ::= (val: bool) -> bool {}"));
   nodes.push_back(test::ParseAs<Declaration>("f ::= (val: int64) -> int64 {}"));
 
-  auto* bool_overload = ASSERT_NOT_NULL(nodes[0]->if_as<Expression>());
-  auto* int_overload  = ASSERT_NOT_NULL(nodes[1]->if_as<Expression>());
+  auto* bool_overload = &nodes[0]->as<Expression>();
+  auto* int_overload  = &nodes[1]->as<Expression>();
 
   mod.Process(std::move(nodes));
 
   OverloadSet os;
-  os.emplace(bool_overload, compiler::VerifyResult::Constant(type::Generic));
-  os.emplace(int_overload, compiler::VerifyResult::Constant(type::Generic));
+  os.insert(bool_overload);
+  os.insert(int_overload);
 
   SECTION("without args") {
     Call call_expr(frontend::SourceRange{}, test::ParseAs<Expression>("f"),

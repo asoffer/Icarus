@@ -35,8 +35,7 @@ std::pair<ast::OverloadSet, ast::Call*> MakeCall(
       frontend::SourceRange{}, ParseAs<ast::Expression>(std::move(fn)),
       MakeFnArgs(std::move(pos_args), std::move(named_args)));
   ast::OverloadSet os;
-  os.emplace(call_expr->callee(),
-             compiler::VerifyResult::Constant(type::Func({}, {})));
+  os.insert(call_expr->callee());
   auto* expr = call_expr.get();
   module->Process(std::move(call_expr));
   return std::pair(std::move(os), expr);
