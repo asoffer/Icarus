@@ -56,16 +56,3 @@ cc_component(
     impl_deps = None,
     test_deps = [],
 )
-
-cc_lib_target(
-    name = "scope",
-    intf_deps = [
-        "//ast:ast_fwd",
-        "//base:cast",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/container:flat_hash_set",
-    ],
-    impl_deps = [
-        "//module:module", # TODO get rid of hard dependency here?
-    ],
-)

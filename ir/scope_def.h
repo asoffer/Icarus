@@ -3,8 +3,8 @@
 
 #include <string_view>
 
+#include "ast/scope/scope.h"
 #include "base/move_func.h"
-#include "core/scope.h"
 #include "ir/any_func.h"
 #include "ir/block_def.h"
 #include "module/module.h"

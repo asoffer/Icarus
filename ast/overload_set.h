@@ -32,7 +32,7 @@ struct Overload {
 
 struct OverloadSet : public base::bag<Overload> {
   OverloadSet() = default;
-  OverloadSet(core::Scope *scope, std::string_view id,
+  OverloadSet(ast::Scope *scope, std::string_view id,
               compiler::Compiler *visitor);
   OverloadSet(base::PtrSpan<Declaration const> decls,
               compiler::Compiler *visitor);

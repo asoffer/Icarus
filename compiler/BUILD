@@ -247,6 +247,8 @@ cc_lib_target(
     impl_deps = [
         ":ast_methods-xmacro",
         "//ast:ast",
+        "//ast/scope:scope",
+        "//ast/scope:fn",
         "//backend:eval",
         "//base:guarded",
         "//module:pending",

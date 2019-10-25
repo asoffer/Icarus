@@ -902,7 +902,7 @@ VerifyResult Compiler::VerifyType(ast::BuiltinFn const *node) {
 }
 
 static ast::OverloadSet FindOverloads(
-    compiler::Compiler *visitor, core::Scope *scope, std::string_view token,
+    compiler::Compiler *visitor, ast::Scope *scope, std::string_view token,
     core::FnArgs<type::Type const *> arg_types) {
   ast::OverloadSet os(scope, token, visitor);
   arg_types.Apply([&](type::Type const *t) { os.add_adl(token, t); });

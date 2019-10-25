@@ -1,6 +1,7 @@
 #include "compiler/compiler.h"
 
 #include "ast/ast.h"
+#include "ast/scope/exec.h"
 #include "backend/eval.h"
 #include "backend/exec.h"
 #include "base/guarded.h"
@@ -47,8 +48,8 @@ void VerifyBody(Compiler *compiler, ast::JumpHandler const *node);
 namespace {
 
 void MakeAllStackAllocations(Compiler *compiler,
-                             core::FnScope const *fn_scope) {
-  for (auto *scope : fn_scope->innards_) {
+                             ast::FnScope const *fn_scope) {
+  for (auto *scope : fn_scope->descendants()) {
     for (const auto &[key, val] : scope->decls_) {
       for (auto *decl : val) {
         if (decl->flags() &
@@ -67,7 +68,7 @@ void MakeAllStackAllocations(Compiler *compiler,
 }
 
 void MakeAllDestructions(Compiler *compiler,
-                         core::ExecScope const *exec_scope) {
+                         ast::ExecScope const *exec_scope) {
   // TODO store these in the appropriate order so we don't have to compute this?
   // Will this be faster?
   std::vector<ast::Declaration *> ordered_decls;
@@ -1106,7 +1107,7 @@ ir::Results Compiler::EmitValue(ast::Declaration const *node) {
     // set, but the allocation has to be done much earlier. We do the allocation
     // in FunctionLiteral::Compiler.
     // Declaration::Compiler is just used to set the value.
-    ASSERT(node->scope_->Containing<core::FnScope>() != nullptr);
+    ASSERT(node->scope_->Containing<ast::FnScope>() != nullptr);
 
     // TODO these checks actually overlap and could be simplified.
     if (node->IsUninitialized()) { return ir::Results{}; }
@@ -1286,7 +1287,7 @@ ir::Results Compiler::EmitValue(ast::PrintStmt const *node) {
 
 ir::Results Compiler::EmitValue(ast::ReturnStmt const *node) {
   auto arg_vals  = EmitValueWithExpand(this, node->exprs());
-  auto *fn_scope = ASSERT_NOT_NULL(node->scope_->Containing<core::FnScope>());
+  auto *fn_scope = ASSERT_NOT_NULL(node->scope_->Containing<ast::FnScope>());
   auto *fn_lit   = ASSERT_NOT_NULL(fn_scope->fn_lit_);
 
   auto *fn_type = &ASSERT_NOT_NULL(type_of(fn_lit))->as<type::Function>();
@@ -1298,7 +1299,7 @@ ir::Results Compiler::EmitValue(ast::ReturnStmt const *node) {
   // Rather than doing this on each block it'd be better to have each
   // scope's destructors jump you to the correct next block for destruction.
   auto *scope = node->scope_;
-  while (auto *exec = scope->if_as<core::ExecScope>()) {
+  while (auto *exec = scope->if_as<ast::ExecScope>()) {
     MakeAllDestructions(this, exec);
     scope = exec->parent;
   }
@@ -1311,7 +1312,7 @@ ir::Results Compiler::EmitValue(ast::ReturnStmt const *node) {
 ir::Results Compiler::EmitValue(ast::YieldStmt const *node) {
   auto arg_vals = EmitValueWithExpand(this, node->exprs());
   // TODO store this as an exec_scope.
-  MakeAllDestructions(this, &node->scope_->as<core::ExecScope>());
+  MakeAllDestructions(this, &node->scope_->as<ast::ExecScope>());
   // TODO pretty sure this is all wrong.
 
   // Can't return these because we need to pass them up at least through the

@@ -8,8 +8,8 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "ast/hashtag.h"
+#include "ast/scope/scope.h"
 #include "base/lazy.h"
-#include "core/scope.h"
 #include "ir/any_func.h"
 #include "type/type.h"
 
@@ -28,7 +28,7 @@ struct Struct : public Type {
     std::vector<ast::Hashtag> hashtags_;
   };
 
-  Struct(core::Scope const *scope, module::BasicModule const *mod,
+  Struct(ast::Scope const *scope, module::BasicModule const *mod,
          absl::Span<std::tuple<std::string_view, type::Type const *> const>);
 
   ~Struct() override {}
@@ -50,7 +50,7 @@ struct Struct : public Type {
 
   bool contains_hashtag(ast::Hashtag needle) const;
 
-  core::Scope const *scope_ = nullptr;
+  ast::Scope const *scope_ = nullptr;
   module::BasicModule *mod_ = nullptr;
 
   // `init_func_` is generated in FinalizeStruct.

@@ -10,13 +10,17 @@
 #include "ast/expression.h"
 #include "ast/hashtag.h"
 #include "ast/node.h"
+#include "ast/scope/decl.h"
+#include "ast/scope/fn.h"
+#include "ast/scope/module.h"
+#include "ast/scope/scope.h"
+#include "ast/scope/scope_lit.h"
 #include "base/graph.h"
 #include "base/ptr_span.h"
 #include "core/builtin.h"
 #include "core/fn_args.h"
 #include "core/fn_params.h"
 #include "core/ordered_fn_args.h"
-#include "core/scope.h"
 #include "frontend/operators.h"
 #include "ir/block_def.h"
 #include "ir/results.h"
@@ -32,7 +36,7 @@ struct ScopeExpr : public Expression {
   ScopeExpr &operator=(ScopeExpr &&) noexcept = default;
 
   template <typename... Args>
-  void set_body_with_parent(core::Scope *p, Args &&... args) {
+  void set_body_with_parent(ast::Scope *p, Args &&... args) {
     body_scope_ = p->template add_child<S>(std::forward<Args>(args)...);
   }
   S *body_scope() { return body_scope_.get(); }
@@ -267,11 +271,11 @@ struct Declaration : public Expression {
 //    after  ::= () -> () { jump exit() }
 //  }
 //  ```
-struct BlockLiteral : public ScopeExpr<core::DeclScope> {
+struct BlockLiteral : public ScopeExpr<ast::DeclScope> {
   explicit BlockLiteral(frontend::SourceRange span,
                         std::vector<std::unique_ptr<Declaration>> before,
                         std::vector<std::unique_ptr<Declaration>> after)
-      : ScopeExpr<core::DeclScope>(std::move(span)),
+      : ScopeExpr<ast::DeclScope>(std::move(span)),
         before_(std::move(before)),
         after_(std::move(after)) {}
   ~BlockLiteral() override {}
@@ -318,16 +322,16 @@ struct BlockLiteral : public ScopeExpr<core::DeclScope> {
 // (likely in the form of `core::FnArgs<std::unique_ptr<ast::Expression>>`).
 //
 // TODO: `args` should be renamed to `params`.
-struct BlockNode : public ScopeExpr<core::ExecScope> {
+struct BlockNode : public ScopeExpr<ast::ExecScope> {
   explicit BlockNode(frontend::SourceRange span, std::string name,
                      std::vector<std::unique_ptr<Node>> stmts)
-      : ScopeExpr<core::ExecScope>(std::move(span)),
+      : ScopeExpr<ast::ExecScope>(std::move(span)),
         name_(std::move(name)),
         stmts_(std::move(stmts)) {}
   explicit BlockNode(frontend::SourceRange span, std::string name,
                      std::vector<std::unique_ptr<Expression>> args,
                      std::vector<std::unique_ptr<Node>> stmts)
-      : ScopeExpr<core::ExecScope>(std::move(span)),
+      : ScopeExpr<ast::ExecScope>(std::move(span)),
         name_(std::move(name)),
         args_(std::move(args)),
         stmts_(std::move(stmts)) {}
@@ -521,12 +525,12 @@ struct CommaList : public Expression {
 //  }
 //  ```
 //
-struct EnumLiteral : ScopeExpr<core::DeclScope> {
+struct EnumLiteral : ScopeExpr<ast::DeclScope> {
   enum Kind : char { Enum, Flags };
 
   EnumLiteral(frontend::SourceRange span,
               std::vector<std::unique_ptr<Expression>> elems, Kind kind)
-      : ScopeExpr<core::DeclScope>(std::move(span)),
+      : ScopeExpr<ast::DeclScope>(std::move(span)),
         elems_(std::move(elems)),
         kind_(kind) {}
 
@@ -578,7 +582,7 @@ struct FunctionLiteral : public Expression {
 
 #include ICARUS_AST_VISITOR_METHODS
 
-  std::unique_ptr<core::FnScope> fn_scope_;
+  std::unique_ptr<ast::FnScope> fn_scope_;
 
   // Note this field is computed, but it is independent of any type or
   // context-specific information. It holds a topologically sorted list of
@@ -825,11 +829,11 @@ struct Jump : public Node {
 //    jump exit()
 //  }
 //  ```
-struct JumpHandler : ScopeExpr<core::FnScope> {
+struct JumpHandler : ScopeExpr<ast::FnScope> {
   explicit JumpHandler(frontend::SourceRange span,
                        std::vector<std::unique_ptr<Declaration>> input,
                        std::vector<std::unique_ptr<Node>> stmts)
-      : ScopeExpr<core::FnScope>(std::move(span)),
+      : ScopeExpr<ast::FnScope>(std::move(span)),
         input_(std::move(input)),
         stmts_(std::move(stmts)) {
     for (auto &input : input_) { input->flags() |= Declaration::f_IsFnParam; }
@@ -939,10 +943,10 @@ struct YieldStmt : public Node {
 //    done ::= () -> () {}
 //  }
 //  ```
-struct ScopeLiteral : public ScopeExpr<core::ScopeLitScope> {
+struct ScopeLiteral : public ScopeExpr<ast::ScopeLitScope> {
   ScopeLiteral(frontend::SourceRange span,
                std::vector<std::unique_ptr<Declaration>> decls)
-      : ScopeExpr<core::ScopeLitScope>(std::move(span)),
+      : ScopeExpr<ast::ScopeLitScope>(std::move(span)),
         decls_(std::move(decls)) {}
   ~ScopeLiteral() override {}
 
@@ -1027,7 +1031,7 @@ struct StructLiteral : public Expression {
 
 #include ICARUS_AST_VISITOR_METHODS
 
-  std::unique_ptr<core::DeclScope> type_scope;
+  std::unique_ptr<ast::DeclScope> type_scope;
   std::vector<Declaration> fields_, args_;
 };
 

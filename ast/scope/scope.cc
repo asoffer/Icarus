@@ -1,24 +1,16 @@
-#include "core/scope.h"
+#include "ast/scope/scope.h"
 
+#include "ast/scope/exec.h"
+#include "ast/scope/fn.h"
 #include "module/module.h"
 
-namespace core {
+namespace ast {
 
-void Scope::InsertDecl(std::string const &id, ast::Declaration *decl) {
+void Scope::InsertDecl(std::string_view id, ast::Declaration *decl) {
   decls_[id].push_back(decl);
   for (auto *scope_ptr = parent; scope_ptr; scope_ptr = scope_ptr->parent) {
     scope_ptr->child_decls_[id].push_back(decl);
   }
-}
-
-module::BasicModule *Scope::module() {
-  if (auto *ds = this->if_as<ModuleScope>()) { return ds->module_; }
-  return parent->module();
-}
-
-module::BasicModule const *Scope::module() const {
-  if (auto *ds = this->if_as<ModuleScope>()) { return ds->module_; }
-  return parent->module();
 }
 
 std::vector<ast::Declaration const *> Scope::AllDeclsWithId(
@@ -43,11 +35,4 @@ std::vector<ast::Declaration const *> Scope::AllDeclsWithId(
   return matching_decls;
 }
 
-ExecScope::ExecScope(Scope *parent) : Scope(parent) {
-  // If this scope is a FnScope it will be handled by the FnScope constructor.
-  if (auto containing_fn_scope = parent->Containing<FnScope>()) {
-    containing_fn_scope->innards_.push_back(this);
-  }
-}
-
-}  // namespace core
+}  // namespace ast

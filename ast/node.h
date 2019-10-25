@@ -22,7 +22,7 @@ struct Node : public base::Cast<Node> {
 #include ICARUS_AST_VISITOR_METHODS
 #undef ICARUS_AST_VISITOR
 
-  core::Scope *scope_ = nullptr;
+  ast::Scope *scope_ = nullptr;
   frontend::SourceRange span;
 };
 

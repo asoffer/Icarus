@@ -4,10 +4,10 @@
 
 #include "ast/ast.h"
 #include "ast/expression.h"
+#include "ast/scope/scope.h"
 #include "backend/exec.h"
 #include "base/untyped_buffer.h"
 #include "core/fn_params.h"
-#include "core/scope.h"
 #include "frontend/parse.h"
 #include "frontend/source/repl.h"
 #include "ir/cmd/jumps.h"

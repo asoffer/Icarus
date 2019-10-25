@@ -2,8 +2,8 @@
 
 #include "absl/container/flat_hash_set.h"
 #include "ast/ast.h"
+#include "ast/scope/scope.h"
 #include "base/ptr_span.h"
-#include "core/scope.h"
 #include "type/type.h"
 
 namespace ast {
@@ -26,7 +26,7 @@ OverloadSet::OverloadSet(base::PtrSpan<Declaration const> decls,
 }
 
 // TODO only hold functions?
-OverloadSet::OverloadSet(core::Scope *scope, std::string_view id,
+OverloadSet::OverloadSet(ast::Scope *scope, std::string_view id,
                          compiler::Compiler *visitor) {
   EmplaceDecls(this, scope->AllDeclsWithId(id), visitor);
 }

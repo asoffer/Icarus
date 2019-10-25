@@ -195,7 +195,7 @@ BasicBlock const *StructCmd::Execute(base::untyped_buffer::const_iterator *iter,
   std::vector<std::tuple<std::string_view, type::Type const *>> fields;
   auto num = iter->read<uint16_t>();
   fields.reserve(num);
-  auto *scope = iter->read<core::Scope const *>();
+  auto *scope = iter->read<ast::Scope const *>();
   auto *mod   = iter->read<module::BasicModule *>();
   for (uint16_t i = 0; i < num; ++i) {
     fields.emplace_back(iter->read<std::string_view>(), nullptr);
@@ -219,7 +219,7 @@ std::string StructCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
 void StructCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
                                   Inliner const &inliner) {
   auto num = iter->read<uint16_t>();
-  iter->read<core::Scope *>();
+  iter->read<ast::Scope *>();
   iter->read<module::BasicModule *>();
   for (uint16_t i = 0; i < num; ++i) { iter->read<std::string_view>(); }
   internal::Deserialize<uint16_t, type::Type const *>(
@@ -227,7 +227,7 @@ void StructCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
   inliner.Inline(&iter->read<Reg>(), ::type::Type_);
 }
 
-Reg Struct(core::Scope const *scope, module::BasicModule *mod,
+Reg Struct(ast::Scope const *scope, module::BasicModule *mod,
            std::vector<std::tuple<std::string_view, RegOr<type::Type const *>>>
                fields) {
   auto &blk = *GetBuilder().CurrentBlock();

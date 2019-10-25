@@ -46,8 +46,9 @@ cc_binary(
     deps = [
         ":token_extractor-impl-format",
         "//ast:ast-format",
+        "//ast/scope:scope-impl-format",
+        "//ast/scope:exec-impl-format",
         "//base:log-impl",
-        "//core:scope-impl-format",
         "//frontend:lex-impl-format",
         "//frontend:parse-impl-format",
         "//frontend/source:string",

@@ -30,6 +30,8 @@ cc_binary(
 COMMON_IMPL_DEPS = [
         "//ast:dispatch_table-impl",
         "//ast:overload_set-impl",
+        "//ast/scope:scope-impl",
+        "//ast/scope:exec-impl",
         "//base:log-impl",
         "//base:untyped_buffer-impl",
         "//backend:eval-impl",
@@ -37,7 +39,6 @@ COMMON_IMPL_DEPS = [
         "//compiler:compiler-impl",
         "//compiler:constant_binding-impl",
         "//compiler:module-impl",
-        "//core:scope-impl",
         "//error:log-impl",
         "//frontend:lex-impl",
         "//frontend:parse-impl",

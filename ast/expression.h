@@ -4,7 +4,7 @@
 #include "ast/expr_ptr.h"
 #include "ast/hashtag.h"
 #include "ast/node.h"
-#include "core/scope.h"
+#include "ast/scope/scope.h"
 
 namespace ast {
 
@@ -18,8 +18,6 @@ struct Expression : public Node {
   Expression &operator=(Expression const &) noexcept = default;
 
   virtual ~Expression() {}
-
-  module::BasicModule *module() const { return scope_->module(); }
 
   virtual bool needs_expansion() const { return false; }
   std::vector<Hashtag> hashtags_;

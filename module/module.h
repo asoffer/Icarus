@@ -7,8 +7,8 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "ast/scope/module.h"
 #include "base/ptr_span.h"
-#include "core/scope.h"
 
 namespace module {
 template <typename T>
@@ -34,7 +34,7 @@ struct BasicModule {
 
   void InitializeNodes(base::PtrSpan<ast::Node> nodes);
 
-  core::ModuleScope scope_;
+  ast::ModuleScope scope_;
   absl::flat_hash_map<std::string_view, std::vector<ast::Declaration const *>>
       top_level_decls_;
   std::vector<std::unique_ptr<ast::Node>> nodes_;

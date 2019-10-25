@@ -120,7 +120,8 @@ cc_lib_target(
         ":callable",
         ":type",
         "//module:module",
-        "//core:scope",
+        "//ast/scope:scope",
+        "//ast/scope:module",
     ],
     impl_deps = [],
     test_deps = None,
@@ -193,10 +194,10 @@ cc_lib_target(
     name = "struct",
     intf_deps = [
         ":type",
+        "//ast/scope:scope",
         "//ast:hashtag",
         "//base:lazy",
         "//ir:any_func",
-        "//core:scope",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
     impl_deps = [

@@ -140,7 +140,7 @@ Reg Flags(module::BasicModule *mod, absl::Span<std::string_view const> names,
               &specified_values);
 
 // TODO handle initial values.
-Reg Struct(core::Scope const *scope, module::BasicModule *mod,
+Reg Struct(ast::Scope const *scope, module::BasicModule *mod,
            std::vector<std::tuple<std::string_view, RegOr<type::Type const *>>>
                fields);
 

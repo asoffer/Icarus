@@ -2,7 +2,7 @@
 
 namespace type {
 
-GenericStruct *GenStruct(core::Scope const *scope,
+GenericStruct *GenStruct(ast::Scope const *scope,
                          std::vector<Type const *> ts) {
   return new GenericStruct(scope, std::move(ts));
 }

@@ -22,8 +22,8 @@ cc_lib_target(
 cc_lib_target(
     name = "module",
     intf_deps = [
+        "//ast/scope:module",
         "//base:ptr_span",
-        "//core:scope",
         "@com_google_absl//absl/algorithm:container",
     ],
     impl_deps = [
@@ -45,9 +45,13 @@ icarus_method(
     name = "assign_scope",
     intf_deps = [
         "//ast:ast_fwd",
-        "//core:scope",
+        "//ast/scope:scope",
     ],
-    impl_deps = ["//ast:ast"],
+    impl_deps = [
+        "//ast:ast",
+        "//ast/scope:decl",
+        "//ast/scope:fn",
+    ],
 )
 
 icarus_method(

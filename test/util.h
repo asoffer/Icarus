@@ -5,8 +5,8 @@
 #include <string>
 #include <type_traits>
 
+#include "ast/scope/scope.h"
 #include "compiler/compiler.h"
-#include "core/scope.h"
 #include "frontend/parse.h"
 #include "frontend/source/string.h"
 #include "module/module.h"
