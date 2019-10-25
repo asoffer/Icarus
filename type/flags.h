@@ -40,8 +40,9 @@ struct Flags : public type::Type {
 
   size_t All = 0;
 
-  ICARUS_PRIVATE
   module::BasicModule const* mod_;
+
+  ICARUS_PRIVATE
   // TODO combine these into a single bidirectional map?
   absl::flat_hash_map<std::string, ir::FlagsVal> vals_;
   absl::flat_hash_map<ir::FlagsVal, std::string> members_;

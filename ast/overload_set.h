@@ -4,6 +4,7 @@
 #include <string_view>
 #include <utility>
 
+#include "absl/types/span.h"
 #include "ast/ast.h"
 #include "ast/scope/scope.h"
 #include "base/bag.h"
@@ -23,8 +24,7 @@ namespace ast {
 // other functions or overload sets with some operator.
 //
 // TODO unit tests
-// TODO remove the inheritance. Make the bag a member.
-struct OverloadSet : public base::bag<Expression const *> {
+struct OverloadSet {
   OverloadSet() = default;
 
   // Construct an overlaod set from a collection of declarations.
@@ -33,6 +33,12 @@ struct OverloadSet : public base::bag<Expression const *> {
   // Construct an overload set from all declarations visibile in `scope` that
   // have the name `id`.
   OverloadSet(Scope const *scope, std::string_view id);
+
+  absl::Span<Expression const *const> members() const { return members_; }
+  void insert(Expression const *member) { members_.insert(member); }
+
+ private:
+  base::bag<Expression const *> members_;
 };
 
 }  // namespace ast

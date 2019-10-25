@@ -521,7 +521,8 @@ compiler::VerifyResult VerifyDispatch(
     compiler::Compiler *compiler, ExprPtr expr, OverloadSet const &overload_set,
     core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
         &args) {
-  auto [table, result] = VerifyDispatchImpl(compiler, expr, overload_set, args);
+  auto [table, result] =
+      VerifyDispatchImpl(compiler, expr, overload_set.members(), args);
   compiler->set_dispatch_table(expr, std::move(table));
   return result;
 }

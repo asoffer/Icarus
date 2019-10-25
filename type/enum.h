@@ -31,9 +31,9 @@ struct Enum : public type::Type {
     return it->second;
   }
 
-  ICARUS_PRIVATE
   module::BasicModule const* mod_;
 
+  ICARUS_PRIVATE
   // TODO combine these into a single bidirectional map?
   absl::flat_hash_map<std::string, ir::EnumVal> vals_;
   absl::flat_hash_map<ir::EnumVal, std::string_view> members_;

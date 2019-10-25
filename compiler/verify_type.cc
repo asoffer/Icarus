@@ -51,8 +51,8 @@ void AddAdl(ast::OverloadSet *overload_set, std::string_view id,
       ASSIGN_OR(continue, auto &t,
                 Compiler(const_cast<module::BasicModule *>(mod)).type_of(d));
       // TODO handle this case. I think it's safe to just discard it.
-      for (auto const *overload : *overload_set) {
-        if (d == overload) { return; }
+      for (auto const *expr : overload_set->members()) {
+        if (d == expr) { return; }
       }
 
       // TODO const
@@ -1083,7 +1083,7 @@ VerifyResult Compiler::VerifyType(ast::Call const *node) {
                                [](VerifyResult const &p) { return p.type(); }));
     } else {
       ast::OverloadSet os;
-      os.emplace(node->callee());
+      os.insert(node->callee());
       // TODO ADL for node?
       return os;
     }

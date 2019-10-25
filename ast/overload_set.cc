@@ -7,8 +7,8 @@
 namespace ast {
 
 OverloadSet::OverloadSet(absl::Span<Declaration const *const> decls) {
-  reserve(decls.size());
-  for (auto const *decl : decls) { insert(decl); }
+  members_.reserve(decls.size());
+  for (auto const *decl : decls) { members_.insert(decl); }
 }
 
 OverloadSet::OverloadSet(ast::Scope const *scope, std::string_view id)

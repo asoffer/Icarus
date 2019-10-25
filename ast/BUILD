@@ -114,6 +114,7 @@ cc_lib_target(
         "//base:bag",
         "//ast:ast",
         "//ast/scope:scope",
+        "@com_google_absl//absl/types:span",
     ],
     impl_deps = [],
     test_deps = None,

@@ -71,6 +71,9 @@ struct bag {
     return it;
   }
 
+  T* data() { return data_.data(); }
+  T const* data() const { return data_.data(); }
+
   void clear() { data_.clear(); }
   void reserve(size_t n) { data_.reserve(n); }
 
