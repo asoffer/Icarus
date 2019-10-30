@@ -8,10 +8,6 @@
 
 #include ICARUS_AST_VISITOR_DEPENDENCIES
 
-namespace core {
-struct Scope;
-}  // namespace core
-
 namespace ast {
 struct Node : public base::Cast<Node> {
   Node(frontend::SourceRange span = frontend::SourceRange())

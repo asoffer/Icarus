@@ -268,6 +268,7 @@ cc_lib_target(
         "//ir/cmd:types-impl",
         "//type:jump",
         "//type:generic_struct",
+        "//type:pointer",
         "//type:type",
         "//type:typed_value",
     ],

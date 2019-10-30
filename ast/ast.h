@@ -595,6 +595,11 @@ struct FunctionLiteral : public Expression {
   absl::flat_hash_map<Declaration const *, size_t> decl_to_param_;
   base::Graph<Declaration const *> param_dep_graph_;
 
+  // TODO core::FnParamsRef to erase the unique_ptr?
+  core::FnParams<std::unique_ptr<Declaration>> const &params() const {
+    return inputs_;
+  }
+
   // TODO This is storing both the name in the declaration and pulls the
   // string_view of the name out in core::FnParams::Param.
   core::FnParams<std::unique_ptr<Declaration>> inputs_;

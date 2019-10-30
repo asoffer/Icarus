@@ -32,11 +32,14 @@ struct Typed {
            type_->to_string();
   }
 
-  template <typename U, typename = std::enable_if_t<std::is_base_of_v<U, T> and
-                                                    not std::is_same_v<U, T>>>
-  operator Typed<V, U>() const {
-    return Typed<V, U>(value_, type_);
+  template <typename W, typename U,
+            typename = std::enable_if_t<
+                std::is_convertible_v<V, W> and std::is_base_of_v<U, T> and
+                not std::is_same_v<Typed<W, U>, Typed<V, T>>>>
+  operator Typed<W, U>() const {
+    return Typed<W, U>(value_, type_);
   }
+
 
   template <typename U>
   Typed<V, U> as_type() const {
