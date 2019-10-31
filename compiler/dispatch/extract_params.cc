@@ -9,16 +9,18 @@
 namespace compiler {
 namespace {
 core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
-    Compiler *compiler, type::Typed<ast::Declaration const *> decl) {
-  if (decl.get()->flags() & ast::Declaration::f_IsConst) {
-    if (auto const *fn_type = decl.type()->if_as<type::Function>()) {
-      auto f = backend::EvaluateAs<ir::AnyFunc>(decl, compiler);
+    Compiler *compiler, ast::Declaration const *decl) {
+  auto *decl_type = compiler->type_of(decl);
+  if (decl->flags() & ast::Declaration::f_IsConst) {
+    if (auto const *fn_type = decl_type->if_as<type::Function>()) {
+      auto f = backend::EvaluateAs<ir::AnyFunc>(type::Typed{decl, decl_type},
+                                                compiler);
       return f.is_fn() ? f.func()->params() : fn_type->AnonymousFnParams();
     } else {
       NOT_YET();
     }
   } else {
-    if (auto const *fn_type = decl.type()->if_as<type::Function>()) {
+    if (auto const *fn_type = decl_type->if_as<type::Function>()) {
       return fn_type->AnonymousFnParams();
     } else {
       NOT_YET();
@@ -27,8 +29,8 @@ core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
 }
 
 core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
-    Compiler *compiler, type::Typed<ast::FunctionLiteral const *> fn_lit) {
-  return fn_lit.get()->params().Transform([compiler](auto const &expr) {
+    Compiler *compiler, ast::FunctionLiteral const * fn_lit) {
+  return fn_lit->params().Transform([compiler](auto const &expr) {
     return type::Typed<ast::Declaration const *>(expr.get(),
                                                  compiler->type_of(expr.get()));
   });
@@ -36,13 +38,11 @@ core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
 }  // namespace
 
 core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
-    Compiler *compiler, type::Typed<ast::Expression const *> expr) {
-  if (auto const *decl = expr.get()->if_as<ast::Declaration>()) {
-    return ExtractParams(
-        compiler, type::Typed<ast::Declaration const *>(decl, expr.type()));
-  } else if (auto const *fn_lit = expr.get()->if_as<ast::FunctionLiteral>()) {
-    return ExtractParams(compiler, type::Typed<ast::FunctionLiteral const *>(
-                                       fn_lit, expr.type()));
+    Compiler *compiler, ast::Expression const *expr) {
+  if (auto const *decl = expr->if_as<ast::Declaration>()) {
+    return ExtractParams(compiler, decl);
+  } else if (auto const *fn_lit = expr->if_as<ast::FunctionLiteral>()) {
+    return ExtractParams(compiler, fn_lit);
   } else {
     NOT_YET();
   }

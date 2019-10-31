@@ -27,6 +27,7 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = [
         "//ast:ast_fwd",
+        "//base:expected",
         "//compiler:verify_result",
         "//core:fn_args",
         "//core:fn_params",
@@ -39,5 +40,7 @@ cc_lib_target(
     test_deps = [
         ":extract_params-impl",
         "//test:module",
+        "//type:variant",
+        "//type:function",
     ],
 )

@@ -21,18 +21,13 @@ TEST_CASE("FunctionLiteral") {
 
   SECTION("() -> ()") {
     auto params = ExtractParams(
-        &mod.compiler, type::Typed<ast::FunctionLiteral const *>{
-                           Make<ast::FunctionLiteral>(&mod, "() -> () {}"),
-                           type::Func({}, {})});
+        &mod.compiler, Make<ast::FunctionLiteral>(&mod, "() -> () {}"));
     CHECK(params.size() == 0);
   }
 
   SECTION("(b: bool) -> ()") {
     auto params = ExtractParams(
-        &mod.compiler,
-        type::Typed<ast::FunctionLiteral const *>{
-            Make<ast::FunctionLiteral>(&mod, "(b: bool) -> () {}"),
-            type::Func({}, {})});
+        &mod.compiler, Make<ast::FunctionLiteral>(&mod, "(b: bool) -> () {}"));
     CHECK(params.size() == 1);
     CHECK(params.at(0).name == "b");
     CHECK(params.at(0).value.type() == type::Bool);
@@ -41,9 +36,7 @@ TEST_CASE("FunctionLiteral") {
   SECTION("(b: bool, n: int32) -> ()") {
     auto params = ExtractParams(
         &mod.compiler,
-        type::Typed<ast::FunctionLiteral const *>{
-            Make<ast::FunctionLiteral>(&mod, "(b: bool, n: int32) -> () {}"),
-            type::Func({}, {})});
+        Make<ast::FunctionLiteral>(&mod, "(b: bool, n: int32) -> () {}"));
     CHECK(params.size() == 2);
     CHECK(params.at(0).name == "b");
     CHECK(params.at(0).value.type() == type::Bool);
@@ -57,18 +50,14 @@ TEST_CASE("Constant declaration") {
 
   SECTION("() -> ()") {
     auto params = ExtractParams(
-        &mod.compiler, type::Typed<ast::Declaration const *>{
-                           Make<ast::Declaration>(&mod, "f ::= () -> () {}"),
-                           type::Func({}, {})});
+        &mod.compiler, Make<ast::Declaration>(&mod, "f ::= () -> () {}"));
     CHECK(params.size() == 0);
   }
 
   SECTION("(b: bool) -> ()") {
-    auto params = ExtractParams(
-        &mod.compiler,
-        type::Typed<ast::Declaration const *>{
-            Make<ast::Declaration>(&mod, "f ::= (b: bool) -> () {}"),
-            type::Func({type::Bool}, {})});
+    auto params =
+        ExtractParams(&mod.compiler,
+                      Make<ast::Declaration>(&mod, "f ::= (b: bool) -> () {}"));
     CHECK(params.size() == 1);
     CHECK(params.at(0).name == "b");
     CHECK(params.at(0).value.type() == type::Bool);
@@ -77,9 +66,7 @@ TEST_CASE("Constant declaration") {
   SECTION("(b: bool, n: int32) -> ()") {
     auto params = ExtractParams(
         &mod.compiler,
-        type::Typed<ast::Declaration const *>{
-            Make<ast::Declaration>(&mod, "f ::= (b: bool, n: int32) -> () {}"),
-            type::Func({type::Bool, type::Int32}, {})});
+        Make<ast::Declaration>(&mod, "f ::= (b: bool, n: int32) -> () {}"));
     CHECK(params.size() == 2);
     CHECK(params.at(0).name == "b");
     CHECK(params.at(0).value.type() == type::Bool);
@@ -93,18 +80,13 @@ TEST_CASE("Non-constant declaration") {
 
   SECTION("() -> ()") {
     auto params = ExtractParams(
-        &mod.compiler, type::Typed<ast::Declaration const *>{
-                           Make<ast::Declaration>(&mod, "f := () -> () {}"),
-                           type::Func({}, {})});
+        &mod.compiler, Make<ast::Declaration>(&mod, "f := () -> () {}"));
     CHECK(params.size() == 0);
   }
 
   SECTION("(b: bool) -> ()") {
     auto params = ExtractParams(
-        &mod.compiler,
-        type::Typed<ast::Declaration const *>{
-            Make<ast::Declaration>(&mod, "f := (b: bool) -> () {}"),
-            type::Func({type::Bool}, {})});
+        &mod.compiler, Make<ast::Declaration>(&mod, "f := (b: bool) -> () {}"));
     CHECK(params.size() == 1);
     CHECK(params.at(0).name == "");
     CHECK(params.at(0).value.type() == type::Bool);
@@ -113,9 +95,7 @@ TEST_CASE("Non-constant declaration") {
   SECTION("(b: bool, n: int32) -> ()") {
     auto params = ExtractParams(
         &mod.compiler,
-        type::Typed<ast::Declaration const *>{
-            Make<ast::Declaration>(&mod, "f := (b: bool, n: int32) -> () {}"),
-            type::Func({type::Bool, type::Int32}, {})});
+        Make<ast::Declaration>(&mod, "f := (b: bool, n: int32) -> () {}"));
     CHECK(params.size() == 2);
     CHECK(params.at(0).name == "");
     CHECK(params.at(0).value.type() == type::Bool);

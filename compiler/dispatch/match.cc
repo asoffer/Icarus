@@ -7,7 +7,7 @@
 namespace compiler {
 namespace {
 
-bool MatchPositionalArgsToParams(
+std::optional<FailedMatch> MatchPositionalArgsToParams(
     core::FnParams<type::Typed<ast::Declaration const *>> const &params,
     core::FnArgs<compiler::VerifyResult> const &args,
     core::FnParams<type::Type const *> *matched_params) {
@@ -15,14 +15,14 @@ bool MatchPositionalArgsToParams(
     auto const &param = params.at(i);
     type::Type const *meet =
         type::Meet(args.at(i).type(), params.at(i).value.type());
-    if (not meet) { return false; }
+    if (not meet) { return FailedMatch{}; }
     // TODO understand why copying flags is wrong here and explain it.
     matched_params->append(param.name, meet);
   }
-  return true;
+  return std::nullopt;
 }
 
-bool MatchNamedArgsToParams(
+std::optional<FailedMatch> MatchNamedArgsToParams(
     core::FnParams<type::Typed<ast::Declaration const *>> const &params,
     core::FnArgs<compiler::VerifyResult> const &args,
     core::FnParams<type::Type const *> *matched_params) {
@@ -36,34 +36,38 @@ bool MatchNamedArgsToParams(
       // TODO: Handle variadic packs.
       if (param.flags & core::HAS_DEFAULT) {
       } else {
-        return false;
+        return FailedMatch{};
       }
     } else {
       if ((*param.value)->flags() & ast::Declaration::f_IsConst) {
         NOT_YET();
       } else {
         type::Type const *meet = type::Meet(result->type(), param.value.type());
-        if (not meet) { NOT_YET(); }
+        if (not meet) { return FailedMatch{}; }
         matched_params->append(param.name, meet);
       }
     }
   }
-  return true;
+  return std::nullopt;
 }
 
 }  // namespace
 
-std::variant<core::FnParams<type::Type const *>, FailedMatch> MatchArgsToParams(
+base::expected<core::FnParams<type::Type const *>, FailedMatch>
+MatchArgsToParams(
     core::FnParams<type::Typed<ast::Declaration const *>> const &params,
     core::FnArgs<compiler::VerifyResult> const &args) {
-  if (args.size() > params.size()) { NOT_YET(); }
+  if (args.size() > params.size()) { FailedMatch{}; }
 
   core::FnParams<type::Type const *> matched_params;
-  if (MatchPositionalArgsToParams(params, args, &matched_params) and
-      MatchNamedArgsToParams(params, args, &matched_params)) {
-    return matched_params;
+  if (auto failure =
+          MatchPositionalArgsToParams(params, args, &matched_params)) {
+    return *failure;
   }
-  return FailedMatch{};
+  if (auto failure = MatchNamedArgsToParams(params, args, &matched_params)) {
+    return *failure;
+  }
+  return matched_params;
 }
 
 }  // namespace compiler
