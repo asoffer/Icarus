@@ -1,6 +1,8 @@
 #ifndef ICARUS_COMPILER_VERIFY_RESULT_H
 #define ICARUS_COMPILER_VERIFY_RESULT_H
 
+#include <iostream>
+
 namespace type {
 struct Type;
 }  // namespace type

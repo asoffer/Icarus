@@ -18,13 +18,8 @@ template <SpecialFunctionCategory Cat>
 static ir::CompiledFn *CreateAssign(Compiler *compiler, type::Array const *a) {
   type::Pointer const *ptr_type = type::Ptr(a);
   auto *data_ptr_type           = type::Ptr(a->data_type);
-  auto *fn                      = compiler->AddFunc(
-      type::Func({ptr_type, ptr_type}, {}),
-      core::FnParams(
-          core::Param{"",
-                      type::Typed<ast::Expression const *>{nullptr, ptr_type}},
-          core::Param{
-              "", type::Typed<ast::Expression const *>{nullptr, ptr_type}}));
+  auto fn_type                  = type::Func({ptr_type, ptr_type}, {});
+  auto *fn = compiler->AddFunc(fn_type, fn_type->AnonymousFnParams());
   ICARUS_SCOPE(ir::SetCurrentFunc(fn)) {
     compiler->builder().CurrentBlock() = fn->entry();
     auto val                           = ir::Reg::Arg(0);
@@ -68,11 +63,8 @@ template <SpecialFunctionCategory Cat>
 static ir::AnyFunc CreateAssign(Compiler *compiler, type::Struct const *s) {
   if (auto fn = SpecialFunction(compiler, s, Name<Cat>())) { return *fn; }
   type::Pointer const *pt = type::Ptr(s);
-  ir::AnyFunc fn          = compiler->AddFunc(
-      type::Func({pt, pt}, {}),
-      core::FnParams(
-          core::Param{"", type::Typed<ast::Expression const *>{nullptr, pt}},
-          core::Param{"", type::Typed<ast::Expression const *>{nullptr, pt}}));
+  auto fn_type            = type::Func({pt, pt}, {});
+  ir::AnyFunc fn = compiler->AddFunc(fn_type, fn_type->AnonymousFnParams());
   ICARUS_SCOPE(ir::SetCurrentFunc(fn.func())) {
     compiler->builder().CurrentBlock() = fn.func()->entry();
     auto val                           = ir::Reg::Arg(0);
@@ -192,11 +184,8 @@ void Compiler::EmitCopyAssign(type::Tuple const *t, ir::RegOr<ir::Addr> to,
                               type::Typed<ir::Results> const &from) {
   t->copy_assign_func_.init([=]() {
     type::Pointer const *p = type::Ptr(t);
-    auto *fn               = AddFunc(
-        type::Func({p, p}, {}),
-        core::FnParams(
-            core::Param{"", type::Typed<ast::Expression const *>{nullptr, p}},
-            core::Param{"", type::Typed<ast::Expression const *>{nullptr, p}}));
+    auto fn_type           = type::Func({p, p}, {});
+    auto *fn               = AddFunc(fn_type, fn_type->AnonymousFnParams());
     ICARUS_SCOPE(ir::SetCurrentFunc(fn)) {
       builder().CurrentBlock() = fn->entry();
       auto val                 = ir::Reg::Arg(0);
@@ -223,11 +212,8 @@ void Compiler::EmitMoveAssign(type::Tuple const *t, ir::RegOr<ir::Addr> to,
                               type::Typed<ir::Results> const &from) {
   t->move_assign_func_.init([=]() {
     type::Pointer const *p = type::Ptr(t);
-    auto *fn               = AddFunc(
-        type::Func({p, p}, {}),
-        core::FnParams(
-            core::Param{"", type::Typed<ast::Expression const *>{nullptr, p}},
-            core::Param{"", type::Typed<ast::Expression const *>{nullptr, p}}));
+    auto fn_type           = type::Func({p, p}, {});
+    auto *fn               = AddFunc(fn_type, fn_type->AnonymousFnParams());
     ICARUS_SCOPE(ir::SetCurrentFunc(fn)) {
       builder().CurrentBlock() = fn->entry();
       auto val                 = ir::Reg::Arg(0);

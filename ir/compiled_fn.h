@@ -18,7 +18,7 @@ namespace ir {
 
 struct CompiledFn : internal::BlockGroup {
   CompiledFn(type::Function const *fn_type,
-             core::FnParams<type::Typed<ast::Expression const *>> p);
+             core::FnParams<type::Typed<ast::Declaration const *>> p);
 
   std::string name() const;
 

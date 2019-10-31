@@ -750,12 +750,9 @@ ir::Results ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
 
   auto [iter, success] = (*handle)[lhs_type].emplace(rhs_type, nullptr);
   if (success) {
-    auto *fn = compiler->AddFunc(
-        type::Func({type::Ptr(lhs_type), type::Ptr(rhs_type)}, {type::Bool}),
-        core::FnParams(core::Param{"", type::Typed<ast::Expression const *>(
-                                           nullptr, type::Ptr(lhs_type))},
-                       core::Param{"", type::Typed<ast::Expression const *>(
-                                           nullptr, type::Ptr(rhs_type))}));
+    auto const *fn_type =
+        type::Func({type::Ptr(lhs_type), type::Ptr(rhs_type)}, {type::Bool});
+    auto *fn = compiler->AddFunc(fn_type, fn_type->AnonymousFnParams());
 
     ICARUS_SCOPE(ir::SetCurrentFunc(fn)) {
       compiler->builder().CurrentBlock() = fn->entry();
@@ -1174,9 +1171,9 @@ ir::Results Compiler::EmitValue(ast::FunctionLiteral const *node) {
     ir_func = AddFunc(
         fn_type, node->inputs_.Transform(
                      [fn_type, i = 0](
-                         std::unique_ptr<ast::Declaration> const &e) mutable {
-                       return type::Typed<ast::Expression const *>(
-                           e->init_val(), fn_type->input.at(i++));
+                         std::unique_ptr<ast::Declaration> const &d) mutable {
+                       return type::Typed<ast::Declaration const *>(
+                           d.get(), fn_type->input.at(i++));
                      }));
     if (work_item_ptr) { ir_func->work_item = work_item_ptr; }
   }
@@ -1247,14 +1244,12 @@ ir::Results Compiler::EmitValue(ast::JumpHandler const *node) {
     auto work_item_ptr = DeferBody(this, node);
     auto *jmp_type     = &type_of(node)->as<type::Jump>();
 
-    core::FnParams<type::Typed<ast::Expression const *>> params(
+    core::FnParams<type::Typed<ast::Declaration const *>> params(
         node->input().size());
     for (size_t i = 0; i < node->input().size(); ++i) {
       auto const *decl = node->input()[i];
-      params.set(i,
-                 core::Param<type::Typed<ast::Expression const *>>{
-                     decl->id(), type::Typed<ast::Expression const *>(
-                                     decl->init_val(), jmp_type->args()[i])});
+      params.set(i, core::Param<type::Typed<ast::Declaration const *>>{
+                        decl->id(), type::Typed(decl, jmp_type->args()[i])});
     }
 
     ir_func = AddJump(jmp_type, std::move(params));

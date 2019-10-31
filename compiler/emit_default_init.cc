@@ -15,10 +15,8 @@ namespace compiler {
 void Compiler::EmitDefaultInit(type::Array const *t, ir::Reg reg) {
   t->init_func_.init([=]() {
     // TODO special function?
-    auto *fn = AddFunc(
-        type::Func({type::Ptr(t)}, {}),
-        core::FnParams(core::Param{
-            "", type::Typed<ast::Expression const *>{nullptr, type::Ptr(t)}}));
+    auto const *fn_type = type::Func({type::Ptr(t)}, {});
+    auto *fn            = AddFunc(fn_type, fn_type->AnonymousFnParams());
     ir::OnEachArrayElement(
         t, fn, [=](ir::Reg r) { t->data_type->EmitDefaultInit(this, r); });
     return fn;
@@ -67,10 +65,8 @@ void Compiler::EmitDefaultInit(type::Struct const *t, ir::Reg reg) {
 
 void Compiler::EmitDefaultInit(type::Tuple const *t, ir::Reg reg) {
   t->init_func_.init([=]() {
-    auto *fn = AddFunc(
-        type::Func({type::Ptr(t)}, {}),
-        core::FnParams(core::Param{
-            "", type::Typed<ast::Expression const *>{nullptr, type::Ptr(t)}}));
+    auto const *fn_type = type::Func({type::Ptr(t)}, {});
+    auto *fn            = AddFunc(fn_type, fn_type->AnonymousFnParams());
 
     ICARUS_SCOPE(ir::SetCurrentFunc(fn)) {
       builder().CurrentBlock() = builder().CurrentGroup()->entry();

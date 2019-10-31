@@ -8,7 +8,7 @@
 
 namespace compiler {
 namespace {
-core::FnParams<type::Typed<ast::Expression const *>> ExtractParams(
+core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
     Compiler *compiler, type::Typed<ast::Declaration const *> decl) {
   if (decl.get()->flags() & ast::Declaration::f_IsConst) {
     if (auto const *fn_type = decl.type()->if_as<type::Function>()) {
@@ -26,16 +26,16 @@ core::FnParams<type::Typed<ast::Expression const *>> ExtractParams(
   }
 }
 
-core::FnParams<type::Typed<ast::Expression const *>> ExtractParams(
+core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
     Compiler *compiler, type::Typed<ast::FunctionLiteral const *> fn_lit) {
   return fn_lit.get()->params().Transform([compiler](auto const &expr) {
-    return type::Typed<ast::Expression const *>(expr.get(),
-                                                compiler->type_of(expr.get()));
+    return type::Typed<ast::Declaration const *>(expr.get(),
+                                                 compiler->type_of(expr.get()));
   });
 }
 }  // namespace
 
-core::FnParams<type::Typed<ast::Expression const *>> ExtractParams(
+core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
     Compiler *compiler, type::Typed<ast::Expression const *> expr) {
   if (auto const *decl = expr.get()->if_as<ast::Declaration>()) {
     return ExtractParams(

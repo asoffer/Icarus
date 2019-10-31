@@ -281,7 +281,7 @@ bool Shadow(Compiler *visitor, type::Typed<ast::Declaration const *> decl1,
       return visitor->type_of(expr)
           ->as<type::Function>()
           .AnonymousFnParams()
-          .Transform([](type::Typed<ast::Expression const *> expr) {
+          .Transform([](type::Typed<ast::Declaration const *> expr) {
             return expr.type();
           });
     } else if (auto *fn_lit = expr->if_as<ast::FunctionLiteral>()) {

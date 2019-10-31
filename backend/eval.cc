@@ -15,7 +15,7 @@ namespace backend {
 static ir::CompiledFn ExprFn(compiler::Compiler *visitor,
                              type::Typed<ast::Expression const *> typed_expr) {
   ir::CompiledFn fn(type::Func({}, {ASSERT_NOT_NULL(typed_expr.type())}),
-                    core::FnParams<type::Typed<ast::Expression const *>>{});
+                    core::FnParams<type::Typed<ast::Declaration const *>>{});
   ICARUS_SCOPE(ir::SetCurrentFunc(&fn)) {
     // TODO this is essentially a copy of the body of FunctionLiteral::EmitValue
     // Factor these out together.

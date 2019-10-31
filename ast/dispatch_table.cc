@@ -103,7 +103,7 @@ static std::vector<core::FnArgs<type::Type const *>> ExpandAllFnArgs(
 
 // Small contains expanded arguments (no variants).
 static bool Covers(
-    core::FnParams<type::Typed<Expression const *>> const &params,
+    core::FnParams<type::Typed<Declaration const *>> const &params,
     core::FnArgs<type::Type const *> const &args) {
   if (params.size() < args.size()) { return false; }
 
@@ -130,9 +130,9 @@ static bool Covers(
   return true;
 }
 
-static base::expected<core::FnParams<type::Typed<Expression const *>>>
+static base::expected<core::FnParams<type::Typed<Declaration const *>>>
 MatchArgsToParams(
-    core::FnParams<type::Typed<Expression const *>> const &params,
+    core::FnParams<type::Typed<Declaration const *>> const &params,
     core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
         &args) {
   if (args.pos().size() > params.size()) {
@@ -141,7 +141,7 @@ MatchArgsToParams(
         ") but expression is only callable with at most ", params.size()));
   }
 
-  core::FnParams<type::Typed<Expression const *>> matched_params;
+  core::FnParams<type::Typed<Declaration const *>> matched_params;
   size_t param_index = 0;
   for (auto const &[expr, verify_result] : args.pos()) {
     auto const &param = params.at(param_index);
@@ -153,7 +153,7 @@ MatchArgsToParams(
     }
     // Note: I'm intentionally not taking any flags here.
     matched_params.append(param.name,
-                          type::Typed<Expression const *>(nullptr, meet));
+                          type::Typed<Declaration const *>(nullptr, meet));
     ++param_index;
   }
 
@@ -187,7 +187,7 @@ MatchArgsToParams(
       }
       // Note: I'm intentionally not taking any flags here.
       matched_params.append(param.name,
-                            type::Typed<Expression const *>(nullptr, meet));
+                            type::Typed<Declaration const *>(nullptr, meet));
     }
   }
 
@@ -241,7 +241,7 @@ static base::expected<DispatchTable::Row> OverloadParams(
             type::Typed<ast::Expression const *>{overload, result.type()},
             compiler);
 
-        core::FnParams<type::Typed<Expression const *>> params(
+        core::FnParams<type::Typed<Declaration const *>> params(
             fn_lit->inputs_.size());
         for (auto *decl : fn_lit->sorted_params_) {
           // TODO skip decls that are not parameters.
@@ -253,9 +253,9 @@ static base::expected<DispatchTable::Row> OverloadParams(
 
           if (not(param.value->flags() & Declaration::f_IsConst)) {
             params.set(param_index,
-                       core::Param<type::Typed<Expression const *>>{
+                       core::Param<type::Typed<Declaration const *>>{
                            param.name,
-                           type::Typed<Expression const *>(
+                           type::Typed<Declaration const *>(
                                param.value.get(),
                                compiler->type_of(param.value.get())),
                            param.flags});
@@ -284,9 +284,9 @@ static base::expected<DispatchTable::Row> OverloadParams(
               compiler->current_constants_.set_slot(data_offset, buf.raw(0),
                                                     num_bytes);
               params.set(param_index,
-                         core::Param<type::Typed<Expression const *>>{
+                         core::Param<type::Typed<Declaration const *>>{
                              param.name,
-                             type::Typed<Expression const *>(param.value.get(),
+                             type::Typed<Declaration const *>(param.value.get(),
                                                              decl_type),
                              param.flags});
             } else {
@@ -312,9 +312,9 @@ static base::expected<DispatchTable::Row> OverloadParams(
                 compiler->current_constants_.set_slot(data_offset, buf.raw(0),
                                                       num_bytes);
                 params.set(param_index,
-                           core::Param<type::Typed<Expression const *>>{
+                           core::Param<type::Typed<Declaration const *>>{
                                param.name,
-                               type::Typed<Expression const *>(
+                               type::Typed<Declaration const *>(
                                    param.value.get(),
                                    compiler->type_of(param.value.get())),
                                param.flags});
@@ -338,12 +338,12 @@ static base::expected<DispatchTable::Row> OverloadParams(
                                                         num_bytes);
                   // TODO should I be setting this parameter?
 
-                  params.set(param_index,
-                             core::Param<type::Typed<Expression const *>>{
-                                 param.name,
-                                 type::Typed<Expression const *>(
-                                     decl->init_val(), decl_type),
-                                 param.flags});
+                  params.set(
+                      param_index,
+                      core::Param<type::Typed<Declaration const *>>{
+                          param.name,
+                          type::Typed<Declaration const *>(decl, decl_type),
+                          param.flags});
                 } else {
                   return base::unexpected(
                       "TODO good error message. needed default parameter but "
@@ -575,7 +575,7 @@ static ir::RegOr<bool> EmitVariantMatch(ir::Builder &bldr, ir::Reg needle,
 
 static ir::BasicBlock *EmitDispatchTest(
     compiler::Compiler *compiler,
-    core::FnParams<type::Typed<ast::Expression const *>> const &params,
+    core::FnParams<type::Typed<Declaration const *>> const &params,
     core::FnArgs<std::pair<Expression const *, ir::Results>> const &args) {
   auto next_binding = compiler->builder().AddBlock();
 

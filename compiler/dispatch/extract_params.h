@@ -9,7 +9,7 @@
 
 namespace compiler {
 
-core::FnParams<type::Typed<ast::Expression const *>> ExtractParams(
+core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
     Compiler *compiler, type::Typed<ast::Expression const *> expr);
 
 }  // namespace compiler

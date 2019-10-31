@@ -6,7 +6,7 @@
 namespace ir::internal {
 
 BlockGroup::BlockGroup(
-    core::FnParams<type::Typed<ast::Expression const *>> params)
+    core::FnParams<type::Typed<ast::Declaration const *>> params)
     : params_(std::move(params)) {
   int32_t arg_index = 0;
   auto arch         = core::Interpretter();

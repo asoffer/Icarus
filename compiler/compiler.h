@@ -75,10 +75,10 @@ struct Compiler {
 
   ir::CompiledFn *AddFunc(
       type::Function const *fn_type,
-      core::FnParams<type::Typed<ast::Expression const *>> params);
+      core::FnParams<type::Typed<ast::Declaration const *>> params);
   ir::CompiledFn *AddJump(
       type::Jump const *jump_type,
-      core::FnParams<type::Typed<ast::Expression const *>> params);
+      core::FnParams<type::Typed<ast::Declaration const *>> params);
   ir::ScopeDef *AddScope(
       std::vector<ir::JumpHandler const *> inits, std::vector<ir::AnyFunc> dones,
       absl::flat_hash_map<std::string_view, ir::BlockDef *> blocks);

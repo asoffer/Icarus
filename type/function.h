@@ -35,7 +35,7 @@ struct Function : public Callable {
 
 #include ICARUS_TYPE_VISITOR_METHODS
 
-  core::FnParams<type::Typed<ast::Expression const *>> AnonymousFnParams()
+  core::FnParams<type::Typed<ast::Declaration const *>> AnonymousFnParams()
       const;
 
   std::vector<const Type *> input, output;

@@ -29,7 +29,8 @@ namespace internal {
 // function with a few differences. A `BlockGroup` represents the parts common
 // to both.
 struct BlockGroup {
-  explicit BlockGroup(core::FnParams<type::Typed<ast::Expression const *>> params);
+  explicit BlockGroup(
+      core::FnParams<type::Typed<ast::Declaration const *>> params);
 
   base::PtrSpan<BasicBlock const> blocks() const { return blocks_; }
   base::PtrSpan<BasicBlock> blocks() { return blocks_; }
@@ -41,7 +42,7 @@ struct BlockGroup {
     return blocks_.emplace_back(std::make_unique<BasicBlock>(this)).get();
   }
 
-  core::FnParams<type::Typed<ast::Expression const *>> const &params() const {
+  core::FnParams<type::Typed<ast::Declaration const *>> const &params() const {
     return params_;
   }
 
@@ -64,7 +65,7 @@ struct BlockGroup {
   }
 
  private:
-  core::FnParams<type::Typed<ast::Expression const *>> params_;
+  core::FnParams<type::Typed<ast::Declaration const *>> params_;
   std::vector<std::unique_ptr<BasicBlock>> blocks_;
   StackFrameAllocations allocs_;
 

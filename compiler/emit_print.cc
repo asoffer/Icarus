@@ -19,10 +19,8 @@ namespace compiler {
 void Compiler::EmitPrint(type::Array const *t, ir::Results const &val) {
   t->repr_func_.init([=]() {
     // TODO special function?
-    ir::CompiledFn *fn =
-        AddFunc(type::Func({t}, {}),
-                core::FnParams(core::Param{
-                    "", type::Typed<ast::Expression const *>{nullptr, t}}));
+    auto const *fn_type = type::Func({t}, {});
+    ir::CompiledFn *fn  = AddFunc(fn_type, fn_type->AnonymousFnParams());
 
     ICARUS_SCOPE(ir::SetCurrentFunc(fn)) {
       builder().CurrentBlock() = fn->entry();
@@ -132,10 +130,8 @@ void Compiler::EmitPrint(type::Variant const *t, ir::Results const &val) {
 
   std::unique_lock lock(t->mtx_);
   if (not t->repr_func_) {
-    t->repr_func_ =
-        AddFunc(type::Func({t}, {}),
-                core::FnParams(core::Param{
-                    "", type::Typed<ast::Expression const *>{nullptr, t}}));
+    auto const *fn_type = type::Func({t}, {});
+    t->repr_func_       = AddFunc(fn_type, fn_type->AnonymousFnParams());
 
     ICARUS_SCOPE(ir::SetCurrentFunc(t->repr_func_)) {
       builder().CurrentBlock() = t->repr_func_->entry();

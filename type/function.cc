@@ -66,11 +66,11 @@ core::Alignment Function::alignment(core::Arch const &a) const {
   return a.fn_ptr_alignment;
 }
 
-core::FnParams<type::Typed<ast::Expression const *>>
+core::FnParams<type::Typed<ast::Declaration const *>>
 Function::AnonymousFnParams() const {
-  core::FnParams<type::Typed<ast::Expression const *>> result;
+  core::FnParams<type::Typed<ast::Declaration const *>> result;
   for (type::Type const *t : input) {
-    result.append("", type::Typed<ast::Expression const *>(nullptr, t));
+    result.append("", type::Typed<ast::Declaration const *>(nullptr, t));
   }
   return result;
 }

@@ -151,7 +151,7 @@ void Compiler::CompleteDeferredBodies() {
 
 ir::CompiledFn *Compiler::AddFunc(
     type::Function const *fn_type,
-    core::FnParams<type::Typed<ast::Expression const *>> params) {
+    core::FnParams<type::Typed<ast::Declaration const *>> params) {
   return fns_
       .emplace_back(
           std::make_unique<ir::CompiledFn>(fn_type, std::move(params)))
@@ -160,7 +160,7 @@ ir::CompiledFn *Compiler::AddFunc(
 
 ir::CompiledFn *Compiler::AddJump(
     type::Jump const *jump_type,
-    core::FnParams<type::Typed<ast::Expression const *>> params) {
+    core::FnParams<type::Typed<ast::Declaration const *>> params) {
   return fns_
       .emplace_back(std::make_unique<ir::CompiledFn>(jump_type->ToFunction(),
                                                      std::move(params)))

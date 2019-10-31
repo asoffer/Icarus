@@ -12,10 +12,8 @@ namespace ir {
 
 AnyFunc BytesFn() {
   static CompiledFn *bytes_func_ = [&]() {
-    auto fn = new CompiledFn(
-        type::Func({type::Type_}, {type::Int64}),
-        core::FnParams(core::Param(
-            "", type::Typed<ast::Expression const *>(nullptr, type::Type_))));
+    auto const *fn_type = type::Func({type::Type_}, {type::Int64});
+    auto fn             = new CompiledFn(fn_type, fn_type->AnonymousFnParams());
     ICARUS_SCOPE(SetCurrentFunc(fn)) {
       GetBuilder().CurrentBlock() = fn->entry();
       SetRet(0, Bytes(Reg::Arg(0)));
@@ -28,11 +26,8 @@ AnyFunc BytesFn() {
 
 AnyFunc AlignmentFn() {
   static CompiledFn *bytes_func_ = [&]() {
-    auto fn = new CompiledFn(
-        type::Func({type::Type_}, {type::Int64}),
-        core::FnParams(core::Param(
-            "", type::Typed<ast::Expression const *>(nullptr, type::Type_))));
-
+    auto const *fn_type = type::Func({type::Type_}, {type::Int64});
+    auto fn             = new CompiledFn(fn_type, fn_type->AnonymousFnParams());
     ICARUS_SCOPE(SetCurrentFunc(fn)) {
       GetBuilder().CurrentBlock() = fn->entry();
       SetRet(0, Align(Reg::Arg(0)));

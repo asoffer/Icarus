@@ -19,10 +19,8 @@ void Compiler::EmitDestroy(type::Struct const *t, ir::Reg reg) {
     if (auto fn = SpecialFunction(this, t, "~")) { return *fn; }
 
     type::Pointer const *pt = type::Ptr(t);
-    ir::AnyFunc fn =
-        AddFunc(type::Func({pt}, {}),
-                core::FnParams(core::Param{
-                    "", type::Typed<ast::Expression const *>{nullptr, pt}}));
+    auto const *fn_type     = type::Func({pt}, {});
+    ir::AnyFunc fn          = AddFunc(fn_type, fn_type->AnonymousFnParams());
 
     ICARUS_SCOPE(ir::SetCurrentFunc(fn.func())) {
       builder().CurrentBlock() = builder().CurrentGroup()->entry();
@@ -46,10 +44,8 @@ void Compiler::EmitDestroy(type::Variant const *t, ir::Reg reg) {
   // TODO remove these casts in favor of something easier to track properties on
   std::unique_lock lock(t->mtx_);
   if (not t->destroy_func_) {
-    t->destroy_func_ =
-        AddFunc(type::Func({t}, {}),
-                core::FnParams(core::Param{
-                    "", type::Typed<ast::Expression const *>{nullptr, t}}));
+    auto const *fn_type = type::Func({t}, {});
+    t->destroy_func_    = AddFunc(fn_type, fn_type->AnonymousFnParams());
     ICARUS_SCOPE(ir::SetCurrentFunc(t->destroy_func_)) {
       builder().CurrentBlock() = t->destroy_func_->entry();
       auto *landing            = builder().AddBlock();
@@ -84,10 +80,8 @@ void Compiler::EmitDestroy(type::Variant const *t, ir::Reg reg) {
 void Compiler::EmitDestroy(type::Tuple const *t, ir::Reg reg) {
   if (not t->HasDestructor()) { return; }
   t->destroy_func_.init([=]() {
-    auto *fn = AddFunc(
-        type::Func({Ptr(t)}, {}),
-        core::FnParams(core::Param{
-            "", type::Typed<ast::Expression const *>{nullptr, type::Ptr(t)}}));
+    auto const *fn_type = type::Func({Ptr(t)}, {});
+    auto *fn            = AddFunc(fn_type, fn_type->AnonymousFnParams());
     ICARUS_SCOPE(ir::SetCurrentFunc(fn)) {
       builder().CurrentBlock() = builder().CurrentGroup()->entry();
       auto var                 = ir::Reg::Arg(0);
@@ -109,11 +103,8 @@ void Compiler::EmitDestroy(type::Array const *t, ir::Reg reg) {
   if (not t->HasDestructor()) { return; }
   t->destroy_func_.init([=]() {
     // TODO special function?
-    auto *fn = AddFunc(
-        type::Func({type::Ptr(t)}, {}),
-        core::FnParams(core::Param{
-            "", type::Typed<ast::Expression const *>{nullptr, type::Ptr(t)}}));
-
+    auto const *fn_type = type::Func({Ptr(t)}, {});
+    auto *fn            = AddFunc(fn_type, fn_type->AnonymousFnParams());
     ir::OnEachArrayElement(
         t, fn, [=](ir::Reg r) { t->data_type->EmitDestroy(this, r); });
     return fn;
