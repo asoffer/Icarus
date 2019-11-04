@@ -423,7 +423,8 @@ void Dump::operator()(ast::Terminal const *node) {
       absl::StrAppend(out_, node->as<double>(), "_f64");
       return;
     case type::BasicType::Type_:
-      absl::StrAppend(out_, node->as<type::Type const *>()->to_string());
+      absl::StrAppend(out_,
+                      type::Prim(node->as<type::BasicType>())->to_string());
       return;
     case type::BasicType::Bool:
       absl::StrAppend(out_, node->as<bool>() ? "true" : "false");

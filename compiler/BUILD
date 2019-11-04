@@ -324,6 +324,7 @@ cc_lib_target(
         "//ast:ast",
         "//ast:overload_set",
         "//backend:eval",
+        "//compiler/dispatch:dispatch",
         "//type:cast",
         "//type:generic_struct",
         "//type:jump",

@@ -1,5 +1,25 @@
-package(default_visibility = ["//compiler:__subpackages__"])
+package(default_visibility = ["//visibility:public"]) # TODO compiler:__subpackages__"])
 load("//:defs.bzl", "cc_lib_target")
+
+cc_lib_target(
+    name = "dispatch",
+    cfgs = ["match", "compile"],
+    intf_deps = [
+        ":match",
+        "//compiler:verify_result",
+        "//core:fn_params",
+    ],
+    impl_deps = [
+        ":extract_params",
+        "//ast:expression",
+        "//ast:overload_set",
+        "//ast/methods:dump",
+        "//base:debug",
+        "//base:expected",
+        "//type:variant",
+    ],
+    test_deps = None,
+)
 
 cc_lib_target(
     name = "extract_params",

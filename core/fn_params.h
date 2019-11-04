@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/strings/str_join.h"
 #include "base/debug.h"
 #include "core/fn_args.h"
 
@@ -180,6 +181,19 @@ struct FnParams {
 
   std::vector<Param<T>> params_;
 };
+
+template <typename T>
+std::string stringify(FnParams<T> const& fn_params) {
+  return absl::StrCat("(",
+                      absl::StrJoin(fn_params, ", ",
+                                    [](std::string* out, auto const& param) {
+                                      out->append(param.name);
+                                      out->append(": ");
+                                      using base::stringify;
+                                      out->append(stringify(param.value));
+                                    }),
+                      ")");
+}
 
 template <typename T, typename AmbiguityFn>
 bool AmbiguouslyCallable(FnParams<T> const& params1, FnParams<T> const& params2,

@@ -5,6 +5,7 @@
 #include "ast/overload_set.h"
 #include "backend/eval.h"
 #include "compiler/compiler.h"
+#include "compiler/dispatch/dispatch.h"
 #include "error/inference_failure_reason.h"
 #include "frontend/operators.h"
 #include "ir/compiled_fn.h"
@@ -1099,6 +1100,9 @@ VerifyResult Compiler::VerifyType(ast::Call const *node) {
         std::piecewise_construct, std::forward_as_tuple(name),
         std::forward_as_tuple(node->args().at(name), res));
   }
+  DispatchTable::Verify(
+      this, overload_set,
+      arg_expr_result.Transform([](auto x) { return x.second; }));
 
   return ast::VerifyDispatch(this, node, overload_set, arg_expr_result);
 }
