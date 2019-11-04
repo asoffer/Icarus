@@ -1,5 +1,6 @@
 #include "core/fn_args.h"
 
+#include <iostream>
 #include "test/catch.h"
 #include "test/elements_are.h"
 
@@ -71,6 +72,13 @@ TEST_CASE("apply with index") {
         }
       });
   CHECK(total == 33u);
+}
+
+TEST_CASE("const_iterator") {
+  FnArgs<int> fnargs({1, 2, 3}, {{"hello", -3}, {"world", -5}});
+  int total = 0;
+  for (int n : fnargs) { total += n; }
+  CHECK(total == -2);
 }
 
 }  // namespace

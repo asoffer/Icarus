@@ -98,7 +98,7 @@ void TokenExtractor::operator()(ast::Index const *node) {
 
 void TokenExtractor::operator()(ast::Jump const *node) {
   for (auto &opt : node->options_) {
-    opt.args.Apply([this](auto &expr) { expr->ExtractTokens(this); });
+    for (auto &expr : opt.args) { expr->ExtractTokens(this); }
   }
 }
 

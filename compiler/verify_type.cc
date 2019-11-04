@@ -927,7 +927,7 @@ static ast::OverloadSet FindOverloads(
     compiler::Compiler *visitor, ast::Scope *scope, std::string_view token,
     core::FnArgs<type::Type const *> arg_types) {
   ast::OverloadSet os(scope, token);
-  arg_types.Apply([&](type::Type const *t) { AddAdl(&os, token, t); });
+  for (type::Type const *t : arg_types) { AddAdl(&os, token, t); };
   return os;
 }
 
@@ -1713,9 +1713,9 @@ VerifyResult Compiler::VerifyType(ast::Index const *node) {
 
 VerifyResult Compiler::VerifyType(ast::Jump const *node) {
   for (auto const &option : node->options_) {
-    option.args.Apply([&](std::unique_ptr<ast::Expression> const &expr) {
+    for (std::unique_ptr<ast::Expression> const &expr : option.args) {
       expr->VerifyType(this);
-    });
+    };
   }
   return VerifyResult::Constant(type::Void());
 }

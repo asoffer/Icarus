@@ -40,8 +40,7 @@ void ExtractJumps::operator()(ast::BuiltinFn const *node) {}
 
 void ExtractJumps::operator()(ast::Call const *node) {
   node->callee()->ExtractJumps(this);
-  node->args().Apply(
-      [this](ast::Expression const *expr) { expr->ExtractJumps(this); });
+  for (ast::Expression const *expr : node->args()) { expr->ExtractJumps(this); }
 }
 
 void ExtractJumps::operator()(ast::Cast const *node) {
@@ -87,9 +86,9 @@ void ExtractJumps::operator()(ast::Index const *node) {
 void ExtractJumps::operator()(ast::Jump const *node) {
   // TODO Can you return or yield or jump from inside a jump block?!
   for (auto const &opt : node->options_) {
-    opt.args.Apply([this](std::unique_ptr<ast::Expression> const &expr) {
+    for (std::unique_ptr<ast::Expression> const &expr : opt.args) {
       expr->ExtractJumps(this);
-    });
+    }
   }
   data_[static_cast<std::underlying_type_t<Kind>>(Kind::Jump)].push_back(node);
 }
@@ -122,8 +121,7 @@ void ExtractJumps::operator()(ast::ScopeLiteral const *node) {
 
 void ExtractJumps::operator()(ast::ScopeNode const *node) {
   node->name()->ExtractJumps(this);
-  node->args().Apply(
-      [&](ast::Expression const *expr) { expr->ExtractJumps(this); });
+  for (auto const *expr : node->args()) { expr->ExtractJumps(this); }
   for (auto const &block : node->blocks()) { block.ExtractJumps(this); }
 }
 

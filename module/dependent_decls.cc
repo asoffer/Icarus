@@ -43,9 +43,9 @@ void DependentDecls::operator()(ast::BuiltinFn const *node,
 void DependentDecls::operator()(ast::Call const *node,
                                 ast::Declaration const *d) {
   node->callee()->DependentDecls(this, d);
-  node->args().Apply([this, d](ast::Expression const *expr) {
+  for (ast::Expression const *expr : node->args()) {
     expr->DependentDecls(this, d);
-  });
+  }
 }
 
 void DependentDecls::operator()(ast::Cast const *node,
@@ -103,8 +103,9 @@ void DependentDecls::operator()(ast::Index const *node,
 void DependentDecls::operator()(ast::Jump const *node,
                                 ast::Declaration const *d) {
   for (auto const &opt : node->options_) {
-    opt.args.Apply(
-        [this, d](auto const &expr) { expr->DependentDecls(this, d); });
+    for (std::unique_ptr<ast::Expression> const &expr : opt.args) {
+      expr->DependentDecls(this, d);
+    }
   }
 }
 
@@ -137,8 +138,9 @@ void DependentDecls::operator()(ast::ScopeLiteral const *node,
 void DependentDecls::operator()(ast::ScopeNode const *node,
                                 ast::Declaration const *d) {
   node->name()->DependentDecls(this, d);
-  node->args().Apply(
-      [&](ast::Expression const *expr) { expr->DependentDecls(this, d); });
+  for (ast::Expression const *expr : node->args()) {
+    expr->DependentDecls(this, d);
+  }
   for (auto const &block : node->blocks()) { block.DependentDecls(this, d); }
 }
 

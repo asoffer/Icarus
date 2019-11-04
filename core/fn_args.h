@@ -95,6 +95,72 @@ struct FnArgs {
     return FnArgs<out_t, StringType>(std::move(pos), std::move(named));
   }
 
+  struct const_iterator {
+   private:
+    using named_iter_type =
+        typename absl::flat_hash_map<StringType, T>::const_iterator;
+    using pos_iter_type = typename std::vector<T>::const_iterator;
+
+   public:
+    const_iterator operator++() {
+      std::visit(
+          [this](auto &iter) {
+            ++iter;
+            if constexpr (std::is_same_v<std::decay_t<decltype(iter)>,
+                                         pos_iter_type>) {
+              if (iter == data_->pos_.end()) { iter_ = data_->named_.begin(); }
+            }
+          },
+          iter_);
+      return *this;
+    }
+
+    const_iterator operator++(int) {
+      auto iter_copy = *this;
+      ++*this;
+      return iter_copy;
+    }
+
+    T const &operator*() const {
+      return std::visit(
+          [](auto iter) -> T const & {
+            if constexpr (std::is_same_v<std::decay_t<decltype(iter)>,
+                                         pos_iter_type>) {
+              return *iter;
+            } else {
+              return iter->second;
+            }
+          },
+          iter_);
+    }
+
+    friend constexpr bool operator==(const_iterator lhs, const_iterator rhs) {
+      return lhs.data_ == rhs.data_ and lhs.iter_ == rhs.iter_;
+    }
+    friend constexpr bool operator!=(const_iterator lhs, const_iterator rhs) {
+      return not(lhs == rhs);
+    }
+
+   private:
+    friend struct FnArgs<T>;
+    static const_iterator MakeBegin(FnArgs<T> const *data) {
+      return const_iterator(data, data->pos_.begin());
+    }
+    static const_iterator MakeEnd(FnArgs<T> const *data) {
+      return const_iterator(data, data->named_.end());
+    }
+
+    const_iterator(FnArgs<T> const *data,
+                   std::variant<pos_iter_type, named_iter_type> iter)
+        : data_(data), iter_(iter) {}
+
+    FnArgs<T> const *data_;
+    std::variant<pos_iter_type, named_iter_type> iter_;
+  };
+
+  const_iterator begin() const { return const_iterator::MakeBegin(this); }
+  const_iterator end() const { return const_iterator::MakeEnd(this); }
+
   size_t size() const { return pos().size() + named().size(); }
   bool empty() const { return size() == 0; }
 
