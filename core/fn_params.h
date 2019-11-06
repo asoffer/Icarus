@@ -8,6 +8,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/str_join.h"
 #include "base/debug.h"
+#include "base/macros.h"
 #include "core/fn_args.h"
 
 namespace type {
@@ -284,6 +285,30 @@ bool AmbiguouslyCallable(FnParams<T> const& params1, FnParams<T> const& params2,
   }
 
   return false;
+}
+
+// Returns true if and only if a callable with `params` can be called with `args`.
+template <typename T, typename ConvertibleFn>
+bool IsCallable(FnParams<T> const& params, FnArgs<T> const& args,
+                ConvertibleFn fn) {
+  if (params.size() < args.size()) { return false; }
+
+  for (size_t i = 0; i < args.pos().size(); ++i) {
+    if (not fn(args.pos().at(i), params.at(i).value)) { return false; }
+  }
+
+  for (auto const& [name, type] : args.named()) {
+    ASSIGN_OR(return false, auto index, params.at_or_null(name));
+    if (not fn(type, params.at(index).value)) { return false; }
+  }
+
+  for (size_t i = args.pos().size(); i < params.size(); ++i) {
+    auto const& param = params.at(i);
+    if (param.flags & HAS_DEFAULT) { continue; }
+    if (args.at_or_null(param.name) == nullptr) { return false; }
+  }
+
+  return true;
 }
 
 }  // namespace core

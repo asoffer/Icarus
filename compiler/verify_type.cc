@@ -1100,9 +1100,10 @@ VerifyResult Compiler::VerifyType(ast::Call const *node) {
         std::piecewise_construct, std::forward_as_tuple(name),
         std::forward_as_tuple(node->args().at(name), res));
   }
-  DispatchTable::Verify(
+  auto table = DispatchTable::Verify(
       this, overload_set,
       arg_expr_result.Transform([](auto x) { return x.second; }));
+  static_cast<void>(table);
 
   return ast::VerifyDispatch(this, node, overload_set, arg_expr_result);
 }

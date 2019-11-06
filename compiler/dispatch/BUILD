@@ -8,6 +8,7 @@ cc_lib_target(
         ":match",
         "//compiler:verify_result",
         "//core:fn_params",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
     impl_deps = [
         ":extract_params",
@@ -16,6 +17,7 @@ cc_lib_target(
         "//ast/methods:dump",
         "//base:debug",
         "//base:expected",
+        "//type:cast",
         "//type:variant",
     ],
     test_deps = None,
