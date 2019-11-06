@@ -14,7 +14,10 @@ namespace ast {
 // they need to know about all child scopes so they can stack-allocate enough
 // space when they start.
 struct FnScope : public ExecScope {
-  FnScope(Scope *parent) : ExecScope(parent) { descendants_.insert(this); }
+  FnScope(Scope *parent, FunctionLiteral *fn_lit = nullptr)
+      : ExecScope(parent), fn_lit_(fn_lit) {
+    descendants_.insert(this);
+  }
   ~FnScope() override {}
 
   FunctionLiteral *fn_lit_ = nullptr;

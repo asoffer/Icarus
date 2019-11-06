@@ -260,25 +260,32 @@ void Dump::operator()(ast::FunctionLiteral const *node) {
   absl::StrAppend(
       out_, "(",
       absl::StrJoin(
-          node->inputs_, ", ",
+          node->params(), ", ",
           [](std::string *out,
              core::Param<std::unique_ptr<ast::Declaration>> const &p) {
             Dump dump(out);
             p.value->Dump(&dump);
           }),
-      ") -> ");
-  if (node->outputs_) {
-    absl::StrAppend(out_, "(",
-                    absl::StrJoin(*node->outputs_, ", ", Joiner{this}), ")");
+      ")");
+
+  if (node->is_short()) {
+    absl::StrAppend(out_, " => ");
+    node->stmts()[0]->Dump(this);
+  } else {
+    absl::StrAppend(out_, " -> ");
+    if (node->outputs()) {
+      absl::StrAppend(out_, "(",
+                      absl::StrJoin(*node->outputs(), ", ", Joiner{this}), ")");
+    }
+    absl::StrAppend(out_, "{");
+    ++indentation_;
+    for (auto const *stmt : node->stmts()) {
+      absl::StrAppend(out_, "\n", indent());
+      stmt->Dump(this);
+    }
+    --indentation_;
+    absl::StrAppend(out_, "\n", indent(), "}");
   }
-  absl::StrAppend(out_, "{");
-  ++indentation_;
-  for (auto const &stmt : node->statements_) {
-    absl::StrAppend(out_, "\n", indent());
-    stmt->Dump(this);
-  }
-  --indentation_;
-  absl::StrAppend(out_, "\n", indent(), "}");
 }
 
 void Dump::operator()(ast::Identifier const *node) {

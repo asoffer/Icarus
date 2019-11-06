@@ -286,7 +286,7 @@ bool Shadow(Compiler *visitor, type::Typed<ast::Declaration const *> decl1,
             return expr.type();
           });
     } else if (auto *fn_lit = expr->if_as<ast::FunctionLiteral>()) {
-      return fn_lit->inputs_.Transform(
+      return fn_lit->params().Transform(
           [visitor](std::unique_ptr<ast::Declaration> const &decl) {
             return visitor->type_of(decl.get());
           });
@@ -336,11 +336,11 @@ static InferenceFailureReason Inferrable(type::Type const *t) {
 // TODO there's not that much shared between the inferred and uninferred cases,
 // so probably break them out.
 VerifyResult VerifyBody(Compiler *visitor, ast::FunctionLiteral const *node) {
-  for (auto const &stmt : node->statements_) { stmt->VerifyType(visitor); }
+  for (auto const *stmt : node->stmts()) { stmt->VerifyType(visitor); }
   // TODO propogate cyclic dependencies.
 
   visitor::ExtractJumps extract_visitor;
-  for (auto const &stmt : node->statements_) {
+  for (auto const *stmt : node->stmts()) {
     stmt->ExtractJumps(&extract_visitor);
   }
 
@@ -365,13 +365,13 @@ VerifyResult VerifyBody(Compiler *visitor, ast::FunctionLiteral const *node) {
   }
 
   std::vector<type::Type const *> input_type_vec;
-  input_type_vec.reserve(node->inputs_.size());
-  for (auto &input : node->inputs_) {
+  input_type_vec.reserve(node->params().size());
+  for (auto &param: node->params()) {
     input_type_vec.push_back(
-        ASSERT_NOT_NULL(visitor->type_of(input.value.get())));
+        ASSERT_NOT_NULL(visitor->type_of(param.value.get())));
   }
 
-  if (not node->outputs_) {
+  if (not node->outputs()) {
     std::vector<type::Type const *> output_type_vec(
         std::make_move_iterator(types.begin()),
         std::make_move_iterator(types.end()));
@@ -488,17 +488,18 @@ void VerifyBody(Compiler *visitor, ast::JumpHandler const *node) {
 
 VerifyResult Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
   std::vector<type::Type const *> input_type_vec;
-  input_type_vec.reserve(node->inputs_.size());
-  for (auto &d : node->inputs_) {
+  input_type_vec.reserve(node->params().size());
+  for (auto &d : node->params()) {
     ASSIGN_OR(return _, auto result, d.value->VerifyType(this));
     input_type_vec.push_back(result.type());
   }
 
   std::vector<type::Type const *> output_type_vec;
   bool error = false;
-  if (node->outputs_) {
-    output_type_vec.reserve(node->outputs_->size());
-    for (auto &output : *node->outputs_) {
+  auto outputs = node->outputs();
+  if (outputs) {
+    output_type_vec.reserve(outputs->size());
+    for (auto *output : *outputs) {
       auto result = output->VerifyType(this);
       output_type_vec.push_back(result.type());
       if (result.type() != nullptr and not result.constant()) {
@@ -526,15 +527,14 @@ VerifyResult Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
     return VerifyResult::Error();
   }
 
-  if (node->outputs_) {
+  if (outputs) {
     for (size_t i = 0; i < output_type_vec.size(); ++i) {
-      if (auto *decl = node->outputs_->at(i)->if_as<ast::Declaration>()) {
+      if (auto *decl = (*outputs)[i]->if_as<ast::Declaration>()) {
         output_type_vec.at(i) = type_of(decl);
       } else {
         ASSERT(output_type_vec.at(i) == type::Type_);
         output_type_vec.at(i) = backend::EvaluateAs<type::Type const *>(
-            type::Typed<ast::Expression const *>(node->outputs_->at(i).get(),
-                                                 type::Type_),
+            type::Typed<ast::Expression const *>((*outputs)[i], type::Type_),
             this);
       }
     }
@@ -1553,7 +1553,7 @@ VerifyResult Compiler::VerifyType(ast::EnumLiteral const *node) {
 }
 
 VerifyResult Compiler::VerifyType(ast::FunctionLiteral const *node) {
-  for (auto const &p : node->inputs_) {
+  for (auto const &p : node->params()) {
     if ((p.value->flags() & ast::Declaration::f_IsConst) or
         not node->param_dep_graph_.at(p.value.get()).empty()) {
       return set_result(node, VerifyResult::Constant(type::Generic));

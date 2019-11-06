@@ -39,6 +39,7 @@ cc_component(
     intf_deps = [
         ":fn_args",
         "//base:debug",
+        "//base:macros",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
     impl_deps = None,

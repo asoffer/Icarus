@@ -78,9 +78,11 @@ void DependentDecls::operator()(ast::EnumLiteral const *node,
 
 void DependentDecls::operator()(ast::FunctionLiteral const *node,
                                 ast::Declaration const *d) {
-  for (auto const &in : node->inputs_) { in.value->DependentDecls(this, d); }
-  if (node->outputs_) {
-    for (auto const &out : *node->outputs_) { out->DependentDecls(this, d); }
+  for (auto const &param : node->params()) {
+    param.value->DependentDecls(this, d);
+  }
+  if (auto outputs = node->outputs()) {
+    for (auto const &out : *outputs) { out->DependentDecls(this, d); }
   }
 }
 

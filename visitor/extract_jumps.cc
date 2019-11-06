@@ -66,10 +66,10 @@ void ExtractJumps::operator()(ast::EnumLiteral const *node) {
 }
 
 void ExtractJumps::operator()(ast::FunctionLiteral const *node) {
-  for (auto &in : node->inputs_) { in.value->ExtractJumps(this); }
-  if (node->outputs_) {
-    for (auto &out : *node->outputs_) { out->ExtractJumps(this); }
-  }
+  for (auto const &param : node->params()) { param.value->ExtractJumps(this); }
+  auto outputs = node->outputs();
+  if (not outputs) { return; }
+  for (auto *out : *outputs) { out->ExtractJumps(this); }
 }
 
 void ExtractJumps::operator()(ast::Identifier const *node) {}

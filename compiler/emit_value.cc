@@ -112,15 +112,15 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node) {
 
   ICARUS_SCOPE(ir::SetCurrentFunc(ir_func)) {
     // TODO arguments should be renumbered to not waste space on const values
-    for (int32_t i = 0; i < static_cast<int32_t>(node->inputs_.size()); ++i) {
-      compiler->set_addr(node->inputs_.at(i).value.get(), ir::Reg::Arg(i));
+    size_t i = 0;
+    for (auto const &param : node->params()) {
+      compiler->set_addr(param.value.get(), ir::Reg::Arg(i++));
     }
 
-    MakeAllStackAllocations(compiler, node->fn_scope_.get());
-
-    if (node->outputs_) {
-      for (size_t i = 0; i < node->outputs_->size(); ++i) {
-        auto *out_decl = node->outputs_->at(i)->if_as<ast::Declaration>();
+    MakeAllStackAllocations(compiler, node->body_scope());
+    if (auto outputs = node->outputs()) {
+      for (size_t i = 0; i < outputs->size(); ++i) {
+        auto *out_decl = (*outputs)[i]->if_as<ast::Declaration>();
         if (not out_decl) { continue; }
         auto *out_decl_type = ASSERT_NOT_NULL(compiler->type_of(out_decl));
         auto alloc          = out_decl_type->is_big()
@@ -139,7 +139,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node) {
     }
 
     ICARUS_SCOPE(ir::SetTemporaries(compiler->builder())) {
-      for (auto &stmt : node->statements_) {
+      for (auto const *stmt : node->stmts()) {
         stmt->EmitValue(compiler);
 
         compiler->builder().FinishTemporariesWith(
@@ -149,7 +149,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node) {
       }
     }
 
-    MakeAllDestructions(compiler, node->fn_scope_.get());
+    MakeAllDestructions(compiler, node->body_scope());
 
     if (t->as<type::Function>().output.empty()) {
       // TODO even this is wrong. Figure out the right jumping strategy
@@ -1149,7 +1149,7 @@ ir::Results Compiler::EmitValue(ast::EnumLiteral const *node) {
 }
 
 ir::Results Compiler::EmitValue(ast::FunctionLiteral const *node) {
-  for (auto const &param : node->inputs_) {
+  for (auto const &param : node->params()) {
     auto *p = param.value.get();
     if ((p->flags() & ast::Declaration::f_IsConst) and
         not constants_->first.contains(p)) {
@@ -1169,7 +1169,7 @@ ir::Results Compiler::EmitValue(ast::FunctionLiteral const *node) {
     auto *fn_type = &type_of(node)->as<type::Function>();
 
     ir_func = AddFunc(
-        fn_type, node->inputs_.Transform(
+        fn_type, node->params().Transform(
                      [fn_type, i = 0](
                          std::unique_ptr<ast::Declaration> const &d) mutable {
                        return type::Typed<ast::Declaration const *>(

@@ -36,7 +36,7 @@ struct ScopeExpr : public Expression {
   ScopeExpr &operator=(ScopeExpr &&) noexcept = default;
 
   template <typename... Args>
-  void set_body_with_parent(ast::Scope *p, Args &&... args) {
+  void set_body_with_parent(Scope *p, Args &&... args) {
     body_scope_ = p->template add_child<S>(std::forward<Args>(args)...);
   }
   S *body_scope() { return body_scope_.get(); }
@@ -271,11 +271,11 @@ struct Declaration : public Expression {
 //    after  ::= () -> () { jump exit() }
 //  }
 //  ```
-struct BlockLiteral : public ScopeExpr<ast::DeclScope> {
+struct BlockLiteral : public ScopeExpr<DeclScope> {
   explicit BlockLiteral(frontend::SourceRange span,
                         std::vector<std::unique_ptr<Declaration>> before,
                         std::vector<std::unique_ptr<Declaration>> after)
-      : ScopeExpr<ast::DeclScope>(std::move(span)),
+      : ScopeExpr<DeclScope>(std::move(span)),
         before_(std::move(before)),
         after_(std::move(after)) {}
   ~BlockLiteral() override {}
@@ -322,16 +322,16 @@ struct BlockLiteral : public ScopeExpr<ast::DeclScope> {
 // (likely in the form of `core::FnArgs<std::unique_ptr<ast::Expression>>`).
 //
 // TODO: `args` should be renamed to `params`.
-struct BlockNode : public ScopeExpr<ast::ExecScope> {
+struct BlockNode : public ScopeExpr<ExecScope> {
   explicit BlockNode(frontend::SourceRange span, std::string name,
                      std::vector<std::unique_ptr<Node>> stmts)
-      : ScopeExpr<ast::ExecScope>(std::move(span)),
+      : ScopeExpr<ExecScope>(std::move(span)),
         name_(std::move(name)),
         stmts_(std::move(stmts)) {}
   explicit BlockNode(frontend::SourceRange span, std::string name,
                      std::vector<std::unique_ptr<Expression>> args,
                      std::vector<std::unique_ptr<Node>> stmts)
-      : ScopeExpr<ast::ExecScope>(std::move(span)),
+      : ScopeExpr<ExecScope>(std::move(span)),
         name_(std::move(name)),
         args_(std::move(args)),
         stmts_(std::move(stmts)) {}
@@ -525,12 +525,12 @@ struct CommaList : public Expression {
 //  }
 //  ```
 //
-struct EnumLiteral : ScopeExpr<ast::DeclScope> {
+struct EnumLiteral : ScopeExpr<DeclScope> {
   enum Kind : char { Enum, Flags };
 
   EnumLiteral(frontend::SourceRange span,
               std::vector<std::unique_ptr<Expression>> elems, Kind kind)
-      : ScopeExpr<ast::DeclScope>(std::move(span)),
+      : ScopeExpr<DeclScope>(std::move(span)),
         elems_(std::move(elems)),
         kind_(kind) {}
 
@@ -547,17 +547,84 @@ struct EnumLiteral : ScopeExpr<ast::DeclScope> {
   Kind kind_;
 };
 
-// TODO
-struct FunctionLiteral : public Expression {
-  // Represents a function with all constants bound to some value.
-  FunctionLiteral(frontend::SourceRange span,
-                  std::vector<std::unique_ptr<Declaration>> in_params,
-                  std::vector<std::unique_ptr<Node>> statements,
-                  std::optional<std::vector<std::unique_ptr<Expression>>>
-                      out_params = std::nullopt)
-      : Expression(std::move(span)),
+// FunctionLiteral:
+//
+// Represents a literal function. Functions may have deduced return-type, which
+// can be determined by calling `outputs()`, If the result is std::nullopt, the
+// output is deduced. Functions may be generic.
+//
+// Examples:
+// * `(n: int32) -> () { print n }`
+// * `() -> int32 { return 3 }`
+// * `(n: int32, m: int32) => n * m`
+// * `(T :: type, val: T) => val`
+//
+struct FunctionLiteral : public ScopeExpr<FnScope> {
+  static std::unique_ptr<FunctionLiteral> MakeLong(
+      frontend::SourceRange span,
+      std::vector<std::unique_ptr<Declaration>> in_params,
+      std::vector<std::unique_ptr<Node>> statements,
+      std::optional<std::vector<std::unique_ptr<Expression>>> out_params =
+          std::nullopt) {
+    return std::unique_ptr<FunctionLiteral>{new FunctionLiteral(
+        std::move(span), std::move(in_params), std::move(statements),
+        std::move(out_params), false)};
+  }
+  static std::unique_ptr<FunctionLiteral> MakeShort(
+      frontend::SourceRange span,
+      std::vector<std::unique_ptr<Declaration>> in_params,
+      std::vector<std::unique_ptr<Node>> statements) {
+    return std::unique_ptr<FunctionLiteral>{
+        new FunctionLiteral(std::move(span), std::move(in_params),
+                            std::move(statements), std::nullopt, true)};
+  }
+
+  FunctionLiteral(FunctionLiteral &&) noexcept = default;
+  ~FunctionLiteral() override {}
+
+  base::PtrSpan<Node> stmts() { return statements_; }
+  base::PtrSpan<Node const> stmts() const { return statements_; }
+
+  // TODO core::FnParamsRef to erase the unique_ptr?
+  using params_type= core::FnParams<std::unique_ptr<Declaration>>;
+  params_type const &params() const { return inputs_; }
+  params_type &params() { return inputs_; }
+
+  std::optional<base::PtrSpan<Expression>> outputs() {
+    if (not outputs_) { return std::nullopt; }
+    return *outputs_;
+  }
+  std::optional<base::PtrSpan<Expression const>> outputs() const {
+    if (not outputs_) { return std::nullopt; }
+    return *outputs_;
+  }
+
+  bool is_short() const { return is_short_; }
+
+#include ICARUS_AST_VISITOR_METHODS
+
+  // Note this field is computed, but it is independent of any type or
+  // context-specific information. It holds a topologically sorted list of
+  // function parameters such that earlier parameters never depend on later
+  // ones. It's filled in assign_scope because that's when we have enough
+  // information to do so and it guarantees it's only called once.
+  //
+  // TODO rename assign_scope.
+  std::vector<Declaration const *> sorted_params_;
+  absl::flat_hash_map<Declaration const *, size_t> decl_to_param_;
+  base::Graph<Declaration const *> param_dep_graph_;
+
+ private:
+  explicit FunctionLiteral(
+      frontend::SourceRange span,
+      std::vector<std::unique_ptr<Declaration>> in_params,
+      std::vector<std::unique_ptr<Node>> statements,
+      std::optional<std::vector<std::unique_ptr<Expression>>> out_params,
+      bool is_short)
+      : ScopeExpr<FnScope>(std::move(span)),
         outputs_(std::move(out_params)),
-        statements_(std::move(statements)) {
+        statements_(std::move(statements)),
+        is_short_(is_short) {
     for (auto &input : in_params) {
       input->flags() |= Declaration::f_IsFnParam;
       // NOTE: This is safe because the declaration is behind a unique_ptr so
@@ -577,34 +644,13 @@ struct FunctionLiteral : public Expression {
       inputs_.append(name, std::move(input), flags);
     }
   }
-  FunctionLiteral(FunctionLiteral &&) noexcept = default;
-  ~FunctionLiteral() override {}
-
-#include ICARUS_AST_VISITOR_METHODS
-
-  std::unique_ptr<ast::FnScope> fn_scope_;
-
-  // Note this field is computed, but it is independent of any type or
-  // context-specific information. It holds a topologically sorted list of
-  // function parameters such that earlier parameters never depend on later
-  // ones. It's filled in assign_scope because that's when we have enough
-  // information to do so and it guarantees it's only called once.
-  //
-  // TODO rename assign_scope.
-  std::vector<Declaration const *> sorted_params_;
-  absl::flat_hash_map<Declaration const *, size_t> decl_to_param_;
-  base::Graph<Declaration const *> param_dep_graph_;
-
-  // TODO core::FnParamsRef to erase the unique_ptr?
-  core::FnParams<std::unique_ptr<Declaration>> const &params() const {
-    return inputs_;
-  }
 
   // TODO This is storing both the name in the declaration and pulls the
   // string_view of the name out in core::FnParams::Param.
   core::FnParams<std::unique_ptr<Declaration>> inputs_;
   std::optional<std::vector<std::unique_ptr<Expression>>> outputs_;
   std::vector<std::unique_ptr<Node>> statements_;
+  bool is_short_;
 };
 
 // Terminal:
@@ -834,11 +880,11 @@ struct Jump : public Node {
 //    jump exit()
 //  }
 //  ```
-struct JumpHandler : ScopeExpr<ast::FnScope> {
+struct JumpHandler : ScopeExpr<FnScope> {
   explicit JumpHandler(frontend::SourceRange span,
                        std::vector<std::unique_ptr<Declaration>> input,
                        std::vector<std::unique_ptr<Node>> stmts)
-      : ScopeExpr<ast::FnScope>(std::move(span)),
+      : ScopeExpr<FnScope>(std::move(span)),
         input_(std::move(input)),
         stmts_(std::move(stmts)) {
     for (auto &input : input_) { input->flags() |= Declaration::f_IsFnParam; }
@@ -948,10 +994,10 @@ struct YieldStmt : public Node {
 //    done ::= () -> () {}
 //  }
 //  ```
-struct ScopeLiteral : public ScopeExpr<ast::ScopeLitScope> {
+struct ScopeLiteral : public ScopeExpr<ScopeLitScope> {
   ScopeLiteral(frontend::SourceRange span,
                std::vector<std::unique_ptr<Declaration>> decls)
-      : ScopeExpr<ast::ScopeLitScope>(std::move(span)),
+      : ScopeExpr<ScopeLitScope>(std::move(span)),
         decls_(std::move(decls)) {}
   ~ScopeLiteral() override {}
 
@@ -1036,7 +1082,7 @@ struct StructLiteral : public Expression {
 
 #include ICARUS_AST_VISITOR_METHODS
 
-  std::unique_ptr<ast::DeclScope> type_scope;
+  std::unique_ptr<DeclScope> type_scope;
   std::vector<Declaration> fields_, args_;
 };
 

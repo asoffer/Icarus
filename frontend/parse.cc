@@ -505,11 +505,18 @@ std::vector<std::unique_ptr<ast::Declaration>> ExtractInputs(
 std::unique_ptr<ast::Node> BuildFunctionLiteral(
     SourceRange span, std::vector<std::unique_ptr<ast::Declaration>> inputs,
     std::unique_ptr<ast::Expression> output, Statements &&stmts,
+    bool is_short,
     error::Log *error_log) {
   if (output == nullptr) {
-    return std::make_unique<ast::FunctionLiteral>(
-        std::move(span), std::move(inputs), std::move(stmts).extract());
+    if (is_short) {
+      return ast::FunctionLiteral::MakeShort(std::move(span), std::move(inputs),
+                                             std::move(stmts).extract());
+    } else {
+      return ast::FunctionLiteral::MakeLong(std::move(span), std::move(inputs),
+                                            std::move(stmts).extract());
+    }
   }
+  ASSERT(is_short == false);
 
   std::vector<std::unique_ptr<ast::Expression>> outputs;
   if (auto *cl = output->if_as<ast::CommaList>()) {
@@ -527,9 +534,9 @@ std::unique_ptr<ast::Node> BuildFunctionLiteral(
     }
     outputs.push_back(std::move(output));
   }
-  return std::make_unique<ast::FunctionLiteral>(
-      std::move(span), std::move(inputs), std::move(stmts).extract(),
-      std::move(outputs));
+  return ast::FunctionLiteral::MakeLong(std::move(span), std::move(inputs),
+                                        std::move(stmts).extract(),
+                                        std::move(outputs));
 }
 
 std::unique_ptr<ast::Node> BuildNormalFunctionLiteral(
@@ -537,9 +544,9 @@ std::unique_ptr<ast::Node> BuildNormalFunctionLiteral(
   auto span       = SourceRange(nodes[0]->span, nodes.back()->span);
   auto *binop     = &nodes[0]->as<ast::Binop>();
   auto [lhs, rhs] = std::move(*binop).extract();
-  return BuildFunctionLiteral(std::move(span), ExtractInputs(std::move(lhs)),
-                              std::move(rhs),
-                              std::move(nodes[1]->as<Statements>()), error_log);
+  return BuildFunctionLiteral(
+      std::move(span), ExtractInputs(std::move(lhs)), std::move(rhs),
+      std::move(nodes[1]->as<Statements>()), false, error_log);
 }
 
 std::unique_ptr<ast::Node> BuildInferredFunctionLiteral(
@@ -547,7 +554,7 @@ std::unique_ptr<ast::Node> BuildInferredFunctionLiteral(
   auto span = SourceRange(nodes[0]->span, nodes.back()->span);
   return BuildFunctionLiteral(
       std::move(span), ExtractInputs(move_as<ast::Expression>(nodes[0])),
-      nullptr, std::move(nodes[2]->as<Statements>()), error_log);
+      nullptr, std::move(nodes[2]->as<Statements>()), false, error_log);
 }
 
 // TODO this loses syntactic information that a formatter cares about.
@@ -568,7 +575,7 @@ std::unique_ptr<ast::Node> BuildShortFunctionLiteral(
   stmts.append(
       std::make_unique<ast::ReturnStmt>(std::move(span), std::move(ret_vals)));
   return BuildFunctionLiteral(std::move(span), std::move(inputs), nullptr,
-                              std::move(stmts), error_log);
+                              std::move(stmts), true, error_log);
 }
 
 std::unique_ptr<ast::Node> BuildOneElementCommaList(

@@ -91,33 +91,31 @@ void AssignScope::operator()(ast::EnumLiteral *node, ast::Scope *scope) {
 
 void AssignScope::operator()(ast::FunctionLiteral *node, ast::Scope *scope) {
   node->scope_             = scope;
-  node->fn_scope_          = scope->add_child<ast::FnScope>();
-  node->fn_scope_->fn_lit_ = node;
+  node->set_body_with_parent(scope, node);
 
-  for (auto &in : node->inputs_) {
-    in.value->assign_scope(this, node->fn_scope_.get());
+  for (auto &param : node->params()) {
+    param.value->assign_scope(this, node->body_scope());
   }
-  if (node->outputs_) {
-    for (auto &out : *node->outputs_) {
-      out->assign_scope(this, node->fn_scope_.get());
+  if (auto outputs = node->outputs()) {
+    for (auto *out : *outputs) {
+      out->assign_scope(this, node->body_scope());
     }
   }
-  SetAllScopes(this, base::PtrSpan<ast::Node>{node->statements_},
-               node->fn_scope_.get());
+  SetAllScopes(this, node->stmts(), node->body_scope());
 
   DependentDecls visitor;
-  for (auto const &in : node->inputs_) {
-    visitor.decl_graph_.graph_.add_node(in.value.get());
-    if (in.value->type_expr()) {
-      in.value->type_expr()->DependentDecls(&visitor, in.value.get());
+  for (auto const &param : node->params()) {
+    visitor.decl_graph_.graph_.add_node(param.value.get());
+    if (param.value->type_expr()) {
+      param.value->type_expr()->DependentDecls(&visitor, param.value.get());
     }
-    if (in.value->init_val()) {
-      in.value->init_val()->DependentDecls(&visitor, in.value.get());
+    if (param.value->init_val()) {
+      param.value->init_val()->DependentDecls(&visitor, param.value.get());
     }
   }
 
   absl::flat_hash_map<std::string_view, ast::Declaration *> decls_by_id;
-  for (auto const &param : node->inputs_) {
+  for (auto const &param : node->params()) {
     decls_by_id.emplace(param.value->id(), param.value.get());
   }
 
@@ -132,8 +130,10 @@ void AssignScope::operator()(ast::FunctionLiteral *node, ast::Scope *scope) {
   node->param_dep_graph_.topologically([node](ast::Declaration const *decl) {
     node->sorted_params_.push_back(decl);
   });
-  for (size_t i = 0; i < node->inputs_.size(); ++i) {
-    node->decl_to_param_.emplace(node->inputs_.at(i).value.get(), i);
+
+  size_t i = 0;
+  for (auto const &param : node->params()) {
+    node->decl_to_param_.emplace(param.value.get(), i++);
   }
 }
 

@@ -242,11 +242,11 @@ static base::expected<DispatchTable::Row> OverloadParams(
             compiler);
 
         core::FnParams<type::Typed<Declaration const *>> params(
-            fn_lit->inputs_.size());
+            fn_lit->params().size());
         for (auto *decl : fn_lit->sorted_params_) {
           // TODO skip decls that are not parameters.
           size_t param_index = fn_lit->decl_to_param_.at(decl);
-          auto const &param  = fn_lit->inputs_.at(param_index);
+          auto const &param  = fn_lit->params().at(param_index);
 
           auto result = decl->VerifyType(compiler);
           if (not result.ok()) { NOT_YET(); }
