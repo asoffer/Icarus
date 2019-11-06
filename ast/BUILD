@@ -49,6 +49,7 @@ cc_lib_target(
     name = "node",
     intf_deps = [
         ast_dependency,
+        ":visitor_base",
         "//base:cast",
         "//frontend/source:range",
     ],
@@ -117,5 +118,25 @@ cc_lib_target(
         "@com_google_absl//absl/types:span",
     ],
     impl_deps = [],
+    test_deps = None,
+)
+
+cc_component(
+    name = "visitor_base",
+    intf_deps = [
+        ":ast_fwd",
+        "//base:debug",
+    ],
+    impl_deps = None,
+    test_deps = None,
+)
+
+cc_lib_target(
+    name = "visitor",
+    intf_deps = [
+        ":ast",
+        ":visitor_base",
+    ],
+    impl_deps = None,
     test_deps = None,
 )

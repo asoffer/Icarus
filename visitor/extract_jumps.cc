@@ -9,143 +9,137 @@ absl::Span<ast::Node const *const> ExtractJumps::jumps(
   return data_[static_cast<std::underlying_type_t<Kind>>(k)];
 }
 
-void ExtractJumps::operator()(ast::Access const *node) {
-  node->operand()->ExtractJumps(this);
+void ExtractJumps::Visit(ast::Access const *node) { Visit(node->operand()); }
+
+void ExtractJumps::Visit(ast::ArrayLiteral const *node) {
+  for (auto const *expr : node->elems()) { Visit(expr); }
 }
 
-void ExtractJumps::operator()(ast::ArrayLiteral const *node) {
-  for (auto const *expr : node->elems()) { expr->ExtractJumps(this); }
+void ExtractJumps::Visit(ast::ArrayType const *node) {
+  for (auto const &len : node->lengths()) { Visit(len); }
+  Visit(node->data_type());
 }
 
-void ExtractJumps::operator()(ast::ArrayType const *node) {
-  for (auto const &len : node->lengths()) { len->ExtractJumps(this); }
-  node->data_type()->ExtractJumps(this);
+void ExtractJumps::Visit(ast::Binop const *node) {
+  Visit(node->lhs());
+  Visit(node->rhs());
 }
 
-void ExtractJumps::operator()(ast::Binop const *node) {
-  node->lhs()->ExtractJumps(this);
-  node->rhs()->ExtractJumps(this);
+void ExtractJumps::Visit(ast::BlockLiteral const *node) {
+  for (auto const *b : node->before()) { Visit(b); }
+  for (auto const *a : node->after()) { Visit(a); }
 }
 
-void ExtractJumps::operator()(ast::BlockLiteral const *node) {
-  for (auto const *b : node->before()) { b->ExtractJumps(this); }
-  for (auto const *a : node->after()) { a->ExtractJumps(this); }
+void ExtractJumps::Visit(ast::BlockNode const *node) {
+  for (auto const *stmt : node->stmts()) { Visit(stmt); }
 }
 
-void ExtractJumps::operator()(ast::BlockNode const *node) {
-  for (auto const *stmt : node->stmts()) { stmt->ExtractJumps(this); }
+void ExtractJumps::Visit(ast::BuiltinFn const *node) {}
+
+void ExtractJumps::Visit(ast::Call const *node) {
+  Visit(node->callee());
+  for (ast::Expression const *expr : node->args()) { Visit(expr); }
 }
 
-void ExtractJumps::operator()(ast::BuiltinFn const *node) {}
-
-void ExtractJumps::operator()(ast::Call const *node) {
-  node->callee()->ExtractJumps(this);
-  for (ast::Expression const *expr : node->args()) { expr->ExtractJumps(this); }
+void ExtractJumps::Visit(ast::Cast const *node) {
+  Visit(node->expr());
+  Visit(node->type());
 }
 
-void ExtractJumps::operator()(ast::Cast const *node) {
-  node->expr()->ExtractJumps(this);
-  node->type()->ExtractJumps(this);
+void ExtractJumps::Visit(ast::ChainOp const *node) {
+  for (auto *expr : node->exprs()) { Visit(expr); }
 }
 
-void ExtractJumps::operator()(ast::ChainOp const *node) {
-  for (auto *expr : node->exprs()) { expr->ExtractJumps(this); }
+void ExtractJumps::Visit(ast::CommaList const *node) {
+  for (auto &expr : node->exprs_) { Visit(expr.get()); }
 }
 
-void ExtractJumps::operator()(ast::CommaList const *node) {
-  for (auto &expr : node->exprs_) { expr->ExtractJumps(this); }
+void ExtractJumps::Visit(ast::Declaration const *node) {
+  if (node->type_expr()) { Visit(node->type_expr()); }
+  if (node->init_val()) { Visit(node->init_val()); }
 }
 
-void ExtractJumps::operator()(ast::Declaration const *node) {
-  if (node->type_expr()) { node->type_expr()->ExtractJumps(this); }
-  if (node->init_val()) { node->init_val()->ExtractJumps(this); }
+void ExtractJumps::Visit(ast::EnumLiteral const *node) {
+  for (auto const *elem : node->elems()) { Visit(elem); }
 }
 
-void ExtractJumps::operator()(ast::EnumLiteral const *node) {
-  for (auto const *elem : node->elems()) { elem->ExtractJumps(this); }
-}
-
-void ExtractJumps::operator()(ast::FunctionLiteral const *node) {
-  for (auto const &param : node->params()) { param.value->ExtractJumps(this); }
+void ExtractJumps::Visit(ast::FunctionLiteral const *node) {
+  for (auto const &param : node->params()) { Visit(param.value.get()); }
   auto outputs = node->outputs();
   if (not outputs) { return; }
-  for (auto *out : *outputs) { out->ExtractJumps(this); }
+  for (auto *out : *outputs) { Visit(out); }
 }
 
-void ExtractJumps::operator()(ast::Identifier const *node) {}
+void ExtractJumps::Visit(ast::Identifier const *node) {}
 
-void ExtractJumps::operator()(ast::Import const *node) {
-  node->operand()->ExtractJumps(this);
+void ExtractJumps::Visit(ast::Import const *node) { Visit(node->operand()); }
+
+void ExtractJumps::Visit(ast::Index const *node) {
+  Visit(node->lhs());
+  Visit(node->rhs());
 }
 
-void ExtractJumps::operator()(ast::Index const *node) {
-  node->lhs()->ExtractJumps(this);
-  node->rhs()->ExtractJumps(this);
-}
-
-void ExtractJumps::operator()(ast::Jump const *node) {
+void ExtractJumps::Visit(ast::Jump const *node) {
   // TODO Can you return or yield or jump from inside a jump block?!
   for (auto const &opt : node->options_) {
     for (std::unique_ptr<ast::Expression> const &expr : opt.args) {
-      expr->ExtractJumps(this);
+      Visit(expr.get());
     }
   }
   data_[static_cast<std::underlying_type_t<Kind>>(Kind::Jump)].push_back(node);
 }
 
-void ExtractJumps::operator()(ast::JumpHandler const *node) {
+void ExtractJumps::Visit(ast::JumpHandler const *node) {
   // TODO Can you return or yield or jump from inside a jump block?!
-  for (auto const *in : node->input()) { in->ExtractJumps(this); }
-  for (auto const *stmt : node->stmts()) { stmt->ExtractJumps(this); }
+  for (auto const *in : node->input()) { Visit(in); }
+  for (auto const *stmt : node->stmts()) { Visit(stmt); }
 }
 
-void ExtractJumps::operator()(ast::PrintStmt const *node) {
-  for (auto *expr : node->exprs()) { expr->ExtractJumps(this); }
+void ExtractJumps::Visit(ast::PrintStmt const *node) {
+  for (auto *expr : node->exprs()) { Visit(expr); }
 }
 
-void ExtractJumps::operator()(ast::ReturnStmt const *node) {
-  for (auto *expr : node->exprs()) { expr->ExtractJumps(this); }
+void ExtractJumps::Visit(ast::ReturnStmt const *node) {
+  for (auto *expr : node->exprs()) { Visit(expr); }
   constexpr auto key = static_cast<std::underlying_type_t<Kind>>(Kind::Return);
   data_[key].push_back(node);
 }
 
-void ExtractJumps::operator()(ast::YieldStmt const *node) {
-  for (auto *expr : node->exprs()) { expr->ExtractJumps(this); }
+void ExtractJumps::Visit(ast::YieldStmt const *node) {
+  for (auto *expr : node->exprs()) { Visit(expr); }
   constexpr auto key = static_cast<std::underlying_type_t<Kind>>(Kind::Yield);
   data_[key].push_back(node);
 }
 
-void ExtractJumps::operator()(ast::ScopeLiteral const *node) {
-  for (auto const *decl : node->decls()) { decl->ExtractJumps(this); }
+void ExtractJumps::Visit(ast::ScopeLiteral const *node) {
+  for (auto const *decl : node->decls()) { Visit(decl); }
 }
 
-void ExtractJumps::operator()(ast::ScopeNode const *node) {
-  node->name()->ExtractJumps(this);
-  for (auto const *expr : node->args()) { expr->ExtractJumps(this); }
-  for (auto const &block : node->blocks()) { block.ExtractJumps(this); }
+void ExtractJumps::Visit(ast::ScopeNode const *node) {
+  Visit(node->name());
+  for (auto const *expr : node->args()) { Visit(expr); }
+  for (auto const &block : node->blocks()) { Visit(&block); }
 }
 
-void ExtractJumps::operator()(ast::StructLiteral const *node) {
-  for (auto &a : node->args_) { a.ExtractJumps(this); }
-  for (auto &f : node->fields_) { f.ExtractJumps(this); }
+void ExtractJumps::Visit(ast::StructLiteral const *node) {
+  for (auto &a : node->args_) { Visit(&a); }
+  for (auto &f : node->fields_) { Visit(&f); }
 }
 
-void ExtractJumps::operator()(ast::StructType const *node) {
-  for (auto &arg : node->args_) { arg->ExtractJumps(this); }
+void ExtractJumps::Visit(ast::StructType const *node) {
+  for (auto &arg : node->args_) { Visit(arg.get()); }
 }
 
-void ExtractJumps::operator()(ast::Switch const *node) {
-  if (node->expr_) { node->expr_->ExtractJumps(this); }
+void ExtractJumps::Visit(ast::Switch const *node) {
+  if (node->expr_) { Visit(node->expr_.get()); }
   for (auto &[body, cond] : node->cases_) {
-    body->ExtractJumps(this);
-    cond->ExtractJumps(this);
+    Visit(body.get());
+    Visit(cond.get());
   }
 }
 
-void ExtractJumps::operator()(ast::Terminal const *node) {}
+void ExtractJumps::Visit(ast::Terminal const *node) {}
 
-void ExtractJumps::operator()(ast::Unop const *node) {
-  node->operand()->ExtractJumps(this);
-}
+void ExtractJumps::Visit(ast::Unop const *node) { Visit(node->operand()); }
 
 }  // namespace visitor

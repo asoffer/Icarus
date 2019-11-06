@@ -4,7 +4,7 @@ load("//:defs.bzl", "cc_lib_target")
 cc_lib_target(
     name = "extract_jumps",
     cfgs = ["match", "compile"],
-    intf_deps = ["//ast:ast_fwd"],
+    intf_deps = ["//ast:visitor"],
     impl_deps = ["//ast:ast"],
     test_deps = None,
 )

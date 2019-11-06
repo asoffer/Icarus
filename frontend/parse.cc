@@ -30,6 +30,11 @@ struct Statements : public ast::Node {
 
 #include ICARUS_AST_VISITOR_METHODS
 
+  void Accept(ast::VisitorBase *visitor, void *ret,
+              void *arg_tuple) const override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
+
   size_t size() const { return content_.size(); }
   void append(std::unique_ptr<ast::Node> &&node) {
     if (auto *stmts = node->if_as<Statements>()) {
@@ -52,6 +57,11 @@ struct SwitchWhen : public ast::Node {
   ~SwitchWhen() override {}
 
 #include ICARUS_AST_VISITOR_METHODS
+
+  void Accept(ast::VisitorBase *visitor, void *ret,
+              void *arg_tuple) const override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
 
   std::unique_ptr<ast::Node> body;
   std::unique_ptr<ast::Expression> cond;

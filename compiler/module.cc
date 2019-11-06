@@ -12,10 +12,12 @@ namespace compiler {
 
 static void CompileNodes(Compiler *compiler,
                          base::PtrSpan<ast::Node const> nodes) {
-  for (ast::Node const *node : nodes) { node->VerifyType(compiler); }
+  for (ast::Node const *node : nodes) {
+    compiler->Visit(node, VerifyTypeTag{});
+  }
   if (compiler->num_errors() > 0) { return; }
 
-  for (ast::Node const *node : nodes) { node->EmitValue(compiler); }
+  for (ast::Node const *node : nodes) { compiler->Visit(node, EmitValueTag{}); }
   compiler->CompleteDeferredBodies();
   if (compiler->num_errors() > 0) { return; }
 

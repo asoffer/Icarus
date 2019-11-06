@@ -18,6 +18,11 @@ struct BindingNode : public ast::Expression {
 
 #include ICARUS_AST_VISITOR_METHODS
 
+  void Accept(ast::VisitorBase *visitor, void *ret,
+              void *arg_tuple) const override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
+
   BindingId id() const { return id_; }
 
  private:

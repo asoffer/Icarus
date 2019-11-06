@@ -5,6 +5,7 @@
 
 #include "base/cast.h"
 #include "frontend/source/range.h"
+#include "ast/visitor_base.h"
 
 #include ICARUS_AST_VISITOR_DEPENDENCIES
 
@@ -17,6 +18,9 @@ struct Node : public base::Cast<Node> {
 #define ICARUS_AST_VISITOR(signature, body) virtual signature body
 #include ICARUS_AST_VISITOR_METHODS
 #undef ICARUS_AST_VISITOR
+
+  virtual void Accept(VisitorBase *visitor, void *ret,
+                      void *arg_tuple) const = 0;
 
   ast::Scope *scope_ = nullptr;
   frontend::SourceRange span;

@@ -22,53 +22,56 @@ void Compiler::EmitMoveInit(type::Type const *from_type,
   to_type->EmitMoveAssign(this, from_type, from_val, to_var.get());
 }
 
-void Compiler::EmitMoveInit(ast::Expression const *node,
-                            type::Typed<ir::Reg> reg) {
-  EmitMoveInit(type_of(node), node->EmitValue(this), reg);
+void Compiler::Visit(ast::Expression const *node, type::Typed<ir::Reg> reg,
+                     EmitMoveInitTag) {
+  EmitMoveInit(type_of(node), Visit(node, EmitValueTag{}), reg);
 }
 
-void Compiler::EmitMoveInit(ast::ArrayLiteral const *node,
-                            type::Typed<ir::Reg> reg) {
+void Compiler::Visit(ast::ArrayLiteral const *node, type::Typed<ir::Reg> reg,
+                     EmitMoveInitTag) {
   type::Array const &array_type = type_of(node)->as<type::Array>();
   auto *data_type_ptr           = type::Ptr(array_type.data_type);
   auto elem = ir::Index(type::Ptr(&array_type), reg.get(), 0);
   for (size_t i = 0; i + 1 < array_type.len; ++i) {
-    node->elem(i)->EmitMoveInit(this,
-                                type::Typed<ir::Reg>(elem, data_type_ptr));
+    Visit(node->elem(i), type::Typed<ir::Reg>(elem, data_type_ptr),
+          EmitMoveInitTag{});
     elem = ir::PtrIncr(elem, 1, data_type_ptr);
   }
-  node->elems().back()->EmitMoveInit(this,
-                                     type::Typed<ir::Reg>(elem, data_type_ptr));
+  Visit(node->elems().back(), type::Typed<ir::Reg>(elem, data_type_ptr),
+        EmitMoveInitTag{});
 }
 
-void Compiler::EmitMoveInit(ast::CommaList const *node,
-                            type::Typed<ir::Reg> reg) {
+void Compiler::Visit(ast::CommaList const *node, type::Typed<ir::Reg> reg,
+                     EmitMoveInitTag) {
   size_t index  = 0;
   auto const &t = reg.type()->as<type::Pointer>().pointee->as<type::Tuple>();
   for (auto &expr : node->exprs_) {
     if (expr->needs_expansion()) {
-      auto results = expr->EmitValue(this);
+      auto results = Visit(expr.get(), EmitValueTag{});
       for (size_t i = 0; i < results.size(); ++i) {
         EmitMoveInit(t.entries_[index], results.GetResult(i),
                      ir::Field(reg.get(), &t, index));
         ++index;
       }
     } else {
-      expr->EmitMoveInit(this, ir::Field(reg.get(), &t, index));
+      Visit(expr.get(), ir::Field(reg.get(), &t, index), EmitMoveInitTag{});
       ++index;
     }
   }
 }
 
-void Compiler::EmitMoveInit(ast::Unop const *node, type::Typed<ir::Reg> reg) {
+void Compiler::Visit(ast::Unop const *node, type::Typed<ir::Reg> reg,
+                     EmitMoveInitTag) {
   switch (node->op()) {
     case frontend::Operator::Move:
-      node->operand()->EmitMoveInit(this, reg);
+      Visit(node->operand(), reg, EmitMoveInitTag{});
       break;
     case frontend::Operator::Copy:
-      node->operand()->EmitCopyInit(this, reg);
+      Visit(node->operand(), reg, EmitCopyInitTag{});
       break;
-    default: EmitMoveInit(type_of(node), node->EmitValue(this), reg); break;
+    default:
+      EmitMoveInit(type_of(node), Visit(node, EmitValueTag{}), reg);
+      break;
   }
 }
 

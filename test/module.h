@@ -20,7 +20,7 @@ struct TestModule : module::ExtendedModule<TestModule> {
       : module::ExtendedModule<TestModule>(
             [this](base::PtrSpan<ast::Node const> nodes) {
               for (ast::Node const* node : nodes) {
-                node->VerifyType(&compiler);
+                compiler.Visit(node, compiler::VerifyTypeTag{});
               }
             }),
         compiler(this) {}

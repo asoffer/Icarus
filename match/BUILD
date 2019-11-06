@@ -33,10 +33,8 @@ cc_lib_target(
         ":match_expr",
         "//module:assign_scope",
         "//module:dependent_decls",
-        "//visitor:extract_jumps",
         "//ir:results",
         "//ast/methods:dump",
-        "//compiler:compiler",
         "//compiler:ast_methods-xmacro",
     ],
 )

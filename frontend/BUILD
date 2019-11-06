@@ -103,6 +103,10 @@ cc_component(name = "tagged_node",
              test_deps = None)
 
 cc_lib_target(name = "token",
-              intf_deps = [":operators", "//ast:node"],
+              intf_deps = [
+                  ":operators",
+                  "//ast:node",
+                  "//base:debug",
+              ],
               impl_deps = None,
               test_deps = None)

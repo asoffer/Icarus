@@ -21,7 +21,7 @@ static ir::CompiledFn ExprFn(compiler::Compiler *visitor,
     // Factor these out together.
     ir::GetBuilder().CurrentBlock() = fn.entry();
 
-    auto vals = typed_expr.get()->EmitValue(visitor);
+    auto vals = visitor->Visit(typed_expr.get(), compiler::EmitValueTag{});
     // TODO wrap this up into SetRet(vector)
     std::vector<type::Type const *> extracted_types;
     if (auto *tup = typed_expr.type()->if_as<type::Tuple>()) {

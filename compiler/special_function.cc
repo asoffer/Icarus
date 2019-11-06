@@ -19,7 +19,7 @@ std::optional<ir::AnyFunc> SpecialFunction(Compiler *compiler,
     auto *fn_type = t->if_as<type::Function>();
     if (fn_type == nullptr) { continue; }
     if (fn_type->input.front() != ptr_to_s) { continue; }
-    return decl->EmitValue(compiler).get<ir::AnyFunc>(0).value();
+    return compiler->Visit(decl, EmitValueTag{}).get<ir::AnyFunc>(0).value();
   }
   return std::nullopt;
 }

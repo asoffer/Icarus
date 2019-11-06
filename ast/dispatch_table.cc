@@ -248,7 +248,7 @@ static base::expected<DispatchTable::Row> OverloadParams(
           size_t param_index = fn_lit->decl_to_param_.at(decl);
           auto const &param  = fn_lit->params().at(param_index);
 
-          auto result = decl->VerifyType(compiler);
+          auto result = compiler->Visit(decl, compiler::VerifyTypeTag{});
           if (not result.ok()) { NOT_YET(); }
 
           if (not(param.value->flags() & Declaration::f_IsConst)) {
@@ -646,7 +646,8 @@ static bool EmitOneCall(
     auto const &param = row.params.at(i);
     auto *arg         = args.at_or_null(param.name);
     if (not arg and (param.flags & core::HAS_DEFAULT)) {
-      arg_results.push_back(param.value.get()->EmitValue(compiler));
+      arg_results.push_back(
+          compiler->Visit(param.value.get(), compiler::EmitValueTag{}));
     } else {
       auto const &[expr, results] = *ASSERT_NOT_NULL(arg);
       arg_results.push_back(PrepArg(compiler, param.value.type(),

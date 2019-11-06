@@ -10,6 +10,7 @@
 #include "base/guarded.h"
 #include "base/move_func.h"
 #include "base/tag.h"
+#include "ast/visitor.h"
 #include "compiler/constant_binding.h"
 #include "compiler/dependent_data.h"
 #include "compiler/module.h"
@@ -30,6 +31,12 @@ struct BlockDef;
 }  // namespace ir
 
 namespace compiler {
+struct EmitRefTag {};
+struct EmitCopyInitTag {};
+struct EmitMoveInitTag {};
+struct EmitValueTag {};
+struct VerifyTypeTag {};
+
 std::unique_ptr<module::BasicModule> CompileModule(frontend::Source *src);
 
 // These are the steps in a traditional compiler of verifying types and emitting
@@ -49,7 +56,35 @@ std::unique_ptr<module::BasicModule> CompileModule(frontend::Source *src);
 // rather than separating all stages. In time we will see if this belief holds
 // water.
 
-struct Compiler {
+struct Compiler
+    : ast::Visitor<VerifyResult(VerifyTypeTag), ir::Results(EmitValueTag),
+                   void(type::Typed<ir::Reg> reg, EmitMoveInitTag),
+                   void(type::Typed<ir::Reg> reg, EmitCopyInitTag),
+                   std::vector<ir::RegOr<ir::Addr>>(EmitRefTag)> {
+  VerifyResult Visit(ast::Node const *node, VerifyTypeTag) {
+    return ast::SingleVisitor<VerifyResult(VerifyTypeTag)>::Visit(node,
+                                                            VerifyTypeTag{});
+  }
+
+  ir::Results Visit(ast::Node const *node, EmitValueTag) {
+    return ast::SingleVisitor<ir::Results(EmitValueTag)>::Visit(node, EmitValueTag{});
+  }
+
+  void Visit(ast::Node const *node, type::Typed<ir::Reg> reg, EmitCopyInitTag) {
+    ast::SingleVisitor<void(type::Typed<ir::Reg> reg, EmitCopyInitTag)>::Visit(
+        node, reg, EmitCopyInitTag{});
+  }
+
+  void Visit(ast::Node const *node, type::Typed<ir::Reg> reg, EmitMoveInitTag) {
+    ast::SingleVisitor<void(type::Typed<ir::Reg> reg, EmitMoveInitTag)>::Visit(
+        node, reg, EmitMoveInitTag{});
+  }
+
+  std::vector<ir::RegOr<ir::Addr>> Visit(ast::Node const *node, EmitRefTag) {
+    return ast::SingleVisitor<std::vector<ir::RegOr<ir::Addr>>(
+        EmitRefTag)>::Visit(node, EmitRefTag{});
+  }
+
   Compiler(module::BasicModule *mod);
   ~Compiler();
 
@@ -106,26 +141,25 @@ struct Compiler {
     return &iter->second;
   }
 
-  ir::Results EmitValue(ast::Node const *node) { UNREACHABLE(node); };
-#define ICARUS_AST_NODE_X(name) ir::Results EmitValue(ast::name const *node);
+#define ICARUS_AST_NODE_X(name)                                                \
+  ir::Results Visit(ast::name const *node, EmitValueTag);
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
 
-  VerifyResult VerifyType(ast::Node const *node) { UNREACHABLE(node); };
-#define ICARUS_AST_NODE_X(name) VerifyResult VerifyType(ast::name const *node);
+#define ICARUS_AST_NODE_X(name)                                                \
+  VerifyResult Visit(ast::name const *node, VerifyTypeTag);
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
 
   VerifyResult VerifyConcreteFnLit(ast::FunctionLiteral const *node);
 
-  std::vector<ir::RegOr<ir::Addr>> EmitRef(ast::Node const *node) {
-    UNREACHABLE(node);
-  }
-  std::vector<ir::RegOr<ir::Addr>> EmitRef(ast::Access const *node);
-  std::vector<ir::RegOr<ir::Addr>> EmitRef(ast::CommaList const *node);
-  std::vector<ir::RegOr<ir::Addr>> EmitRef(ast::Identifier const *node);
-  std::vector<ir::RegOr<ir::Addr>> EmitRef(ast::Index const *node);
-  std::vector<ir::RegOr<ir::Addr>> EmitRef(ast::Unop const *node);
+  std::vector<ir::RegOr<ir::Addr>> Visit(ast::Access const *node, EmitRefTag);
+  std::vector<ir::RegOr<ir::Addr>> Visit(ast::CommaList const *node,
+                                         EmitRefTag);
+  std::vector<ir::RegOr<ir::Addr>> Visit(ast::Identifier const *node,
+                                         EmitRefTag);
+  std::vector<ir::RegOr<ir::Addr>> Visit(ast::Index const *node, EmitRefTag);
+  std::vector<ir::RegOr<ir::Addr>> Visit(ast::Unop const *node, EmitRefTag);
 
   void EmitPrint(type::Type const *, ir::Results const &) { UNREACHABLE(); }
   void EmitPrint(type::Array const *t, ir::Results const &val);
@@ -196,24 +230,18 @@ struct Compiler {
   void EmitDefaultInit(type::Struct const *t, ir::Reg reg);
   void EmitDefaultInit(type::Tuple const *t, ir::Reg reg);
 
-  void EmitMoveInit(ast::Node const *, type::Typed<ir::Reg> reg) {
-    UNREACHABLE();
-  }
-  void EmitMoveInit(ast::Expression const *, type::Typed<ir::Reg> reg);
-  void EmitMoveInit(ast::ArrayLiteral const *, type::Typed<ir::Reg> reg);
-  void EmitMoveInit(ast::CommaList const *, type::Typed<ir::Reg> reg);
-  void EmitMoveInit(ast::Unop const *, type::Typed<ir::Reg> reg);
+  void Visit(ast::Expression const *, type::Typed<ir::Reg> reg, EmitMoveInitTag);
+  void Visit(ast::ArrayLiteral const *, type::Typed<ir::Reg> reg, EmitMoveInitTag);
+  void Visit(ast::CommaList const *, type::Typed<ir::Reg> reg, EmitMoveInitTag);
+  void Visit(ast::Unop const *, type::Typed<ir::Reg> reg, EmitMoveInitTag);
 
   void EmitMoveInit(type::Type const *from_type, ir::Results const &from_val,
                     type::Typed<ir::Reg> to_var);
 
-  void EmitCopyInit(ast::Node const *, type::Typed<ir::Reg> reg) {
-    UNREACHABLE();
-  }
-  void EmitCopyInit(ast::Expression const *, type::Typed<ir::Reg> reg);
-  void EmitCopyInit(ast::ArrayLiteral const *, type::Typed<ir::Reg> reg);
-  void EmitCopyInit(ast::CommaList const *, type::Typed<ir::Reg> reg);
-  void EmitCopyInit(ast::Unop const *, type::Typed<ir::Reg> reg);
+  void Visit(ast::Expression const *, type::Typed<ir::Reg> reg, EmitCopyInitTag);
+  void Visit(ast::ArrayLiteral const *, type::Typed<ir::Reg> reg, EmitCopyInitTag);
+  void Visit(ast::CommaList const *, type::Typed<ir::Reg> reg, EmitCopyInitTag);
+  void Visit(ast::Unop const *, type::Typed<ir::Reg> reg, EmitCopyInitTag);
 
   void EmitCopyInit(type::Type const *from_type, ir::Results const &from_val,
                     type::Typed<ir::Reg> to_var);

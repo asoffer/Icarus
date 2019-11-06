@@ -3,6 +3,7 @@
 
 #include <string>
 #include "ast/node.h"
+#include "base/debug.h"
 #include "frontend/operators.h"
 
 struct JumpExprs;
@@ -28,6 +29,10 @@ struct Token : public ast::Node {
   }
 
   ~Token() override {}
+
+  void Accept(ast::VisitorBase *, void *, void *) const override {
+    UNREACHABLE();
+  }
 
   std::string token;
   Operator op;

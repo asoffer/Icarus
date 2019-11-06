@@ -3,6 +3,7 @@
 
 #include "ast/expression.h"
 #include "ast/node.h"
+#include "base/macros.h"
 #include "frontend/parse.h"
 #include "frontend/source/file.h"
 #include "init/cli.h"

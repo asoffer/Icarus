@@ -17,12 +17,10 @@ cc_lib_target(
     textual_hdrs = ["ast_dependencies.h"],
     intf_deps = [
         ":ast_methods-xmacro",
-        ":compiler",
         "//ir:results",
         "//module:dependent_decls",
         "//ast/methods:dump",
         "//module:assign_scope",
-        "//visitor:extract_jumps",
     ],
 )
 
@@ -55,6 +53,7 @@ cc_lib_target(
         ":constant_binding",
         ":module",
         ":verify_result",
+        "//ast:visitor",
         "//base:debug",
         "//base:guarded",
         "//base:move_func",

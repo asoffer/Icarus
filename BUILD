@@ -20,6 +20,7 @@ cc_binary(
     srcs = ["match.cc"],
     deps = [
         ":impl-match",
+        "//base:macros",
         "//diagnostic:console_renderer-impl-compile",
         "//init:cli-impl",
         "//init:signal-impl",

@@ -9,6 +9,7 @@ cc_lib_target(
         "//backend:exec",
         "//base:untyped_buffer",
         "//base:util",
+        "//compiler:compiler",
         "//error:log",
         "//module:pending",
         "//ir:compiled_fn",

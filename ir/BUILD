@@ -199,6 +199,7 @@ cc_lib_target(
         ":builder",
         "//ast:ast",
         "//base:bag",
+        "//base:move_func",
         "//base:ptr_span",
         "//base:scope",
         "//core:fn_params",
