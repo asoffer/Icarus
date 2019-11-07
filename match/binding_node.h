@@ -6,6 +6,9 @@
 #include "absl/strings/str_cat.h"
 #include "ast/expression.h"
 #include "match/binding_id.h"
+#include "ast/methods/dump.h"
+#include "module/assign_scope.h"
+#include "module/dependent_decls.h"
 
 namespace match {
 inline constexpr std::string_view kMatchPrefix = "@%";
@@ -16,7 +19,7 @@ struct BindingNode : public ast::Expression {
       : ast::Expression(std::move(span)), id_(id) {}
   ~BindingNode() override {}
 
-#include ICARUS_AST_VISITOR_METHODS
+  METHODS;
 
   void Accept(ast::VisitorBase *visitor, void *ret,
               void *arg_tuple) const override {

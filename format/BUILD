@@ -2,28 +2,6 @@ package(default_visibility = ["//visibility:public"])
 load("//:defs.bzl", "cc_lib_target", "icarus_method")
 
 icarus_method(
-    name = "ast_methods",
-    deps = [
-        "//ast/methods:dump-xmacro",
-        "//module:assign_scope-xmacro",
-        "//module:dependent_decls-xmacro",
-    ],
-    gen = False,
-)
-
-cc_lib_target(
-    name = "ast_dependencies",
-    cfgs = ["format"],
-    textual_hdrs = ["ast_dependencies.h"],
-    intf_deps = [
-        "//ast/methods:dump",
-        "//format:ast_methods-xmacro",
-        "//module:assign_scope",
-        "//module:dependent_decls",
-    ],
-)
-
-icarus_method(
     name = "type_methods",
     deps = ["//module:extract_defining_modules-xmacro"],
     gen = False,
@@ -72,7 +50,6 @@ cc_lib_target(
         "//base:debug",
     ],
     impl_deps = [
-        ":ast_methods-xmacro",
         "//ast:ast",
     ],
     test_deps = None,

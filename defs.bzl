@@ -2,7 +2,6 @@ def configuration(name, defines = []):
     return {
         "name": name,
         "defines": defines + [
-            "ICARUS_AST_VISITOR_DEPENDENCIES=\\\"{}/ast_dependencies.h\\\"".format(name),
             "ICARUS_TYPE_VISITOR_DEPENDENCIES=\\\"{}/type_dependencies.h\\\"".format(name),
         ]
     }
@@ -31,9 +30,6 @@ def make_deps(deps, cfg):
             return []
     else:
         fail()
-
-def ast_dependency(cfg):
-    return "//{}:ast_dependencies-{}".format(_VISITOR_DEFINES[cfg]["name"], cfg)
 
 def type_dependency(cfg):
     return "//{}:type_dependencies-{}".format(_VISITOR_DEFINES[cfg]["name"], cfg)

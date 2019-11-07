@@ -1,5 +1,5 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib_target", "icarus_method")
+load("//:defs.bzl", "cc_lib_target", "icarus_method", "cc_component")
 
 cc_lib_target(
     name = "pending",
@@ -19,7 +19,7 @@ cc_lib_target(
     ],
 )
 
-cc_lib_target(
+cc_component(
     name = "module",
     intf_deps = [
         "//ast/scope:module",
@@ -32,7 +32,7 @@ cc_lib_target(
     ],
 )
 
-icarus_method(
+cc_component(
     name = "dependent_decls",
     intf_deps = [
         "//ast:ast_fwd",
@@ -41,7 +41,7 @@ icarus_method(
     impl_deps = ["//ast:ast"],
 )
 
-icarus_method(
+cc_component(
     name = "assign_scope",
     intf_deps = [
         "//ast:ast_fwd",

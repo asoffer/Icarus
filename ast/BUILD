@@ -1,5 +1,5 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib_target", "cc_component", "ast_dependency")
+load("//:defs.bzl", "cc_lib_target", "cc_component")
 
 cc_library(name = "node_xmacro", textual_hdrs = ["node.xmacro.h"])
 
@@ -10,7 +10,7 @@ cc_component(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "ast",
     intf_deps = [
         ":expression",
@@ -36,7 +36,7 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(name = "expression",
+cc_component(name = "expression",
               intf_deps = [
                   ":expr_ptr",
                   ":hashtag",
@@ -45,13 +45,15 @@ cc_lib_target(name = "expression",
               impl_deps = None,
               test_deps = None)
 
-cc_lib_target(
+cc_component(
     name = "node",
     intf_deps = [
-        ast_dependency,
         ":visitor_base",
+        "//ast/methods:dump",
         "//base:cast",
         "//frontend/source:range",
+        "//module:assign_scope",
+        "//module:dependent_decls",
     ],
 )
 
@@ -108,9 +110,8 @@ cc_lib_target(
 
 cc_component(name = "hashtag")
 
-cc_lib_target(
+cc_component(
     name = "overload_set",
-    cfgs = ["match", "compile"],
     intf_deps = [
         "//base:bag",
         "//ast:ast",
@@ -131,7 +132,7 @@ cc_component(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "visitor",
     intf_deps = [
         ":ast",

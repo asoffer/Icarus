@@ -1,16 +1,14 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_component", "icarus_method")
+load("//:defs.bzl", "cc_component")
 
-icarus_method(
+cc_component(
     name = "dump",
     intf_deps = ["//ast:ast_fwd"],
     impl_deps = [
         "//base:stringify",
         "//ast:ast",
-        "//ast/methods:dump-xmacro",
         "//frontend:token",
         "//ir:results",
-        "//type:type",
         "@com_google_absl//absl/strings",
     ],
 )

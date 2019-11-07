@@ -6,7 +6,6 @@
 #include "base/stringify.h"
 #include "frontend/token.h"
 #include "ir/results.h"
-#include "type/type.h"
 
 namespace ast {
 std::string Dump::ToString(ast::Node const *node) {
@@ -430,8 +429,8 @@ void Dump::operator()(ast::Terminal const *node) {
       absl::StrAppend(out_, node->as<double>(), "_f64");
       return;
     case type::BasicType::Type_:
-      absl::StrAppend(out_,
-                      type::Prim(node->as<type::BasicType>())->to_string());
+      // TODO make ast not depend on this so it can once again depend ont type.
+      absl::StrAppend(out_, "{{unknown-type}}");
       return;
     case type::BasicType::Bool:
       absl::StrAppend(out_, node->as<bool>() ? "true" : "false");

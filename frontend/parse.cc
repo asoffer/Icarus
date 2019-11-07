@@ -28,7 +28,7 @@ struct Statements : public ast::Node {
   Statements(Statements &&) noexcept = default;
   Statements &operator=(Statements &&) noexcept = default;
 
-#include ICARUS_AST_VISITOR_METHODS
+  METHODS;
 
   void Accept(ast::VisitorBase *visitor, void *ret,
               void *arg_tuple) const override {
@@ -56,7 +56,7 @@ struct Statements : public ast::Node {
 struct SwitchWhen : public ast::Node {
   ~SwitchWhen() override {}
 
-#include ICARUS_AST_VISITOR_METHODS
+  METHODS;
 
   void Accept(ast::VisitorBase *visitor, void *ret,
               void *arg_tuple) const override {

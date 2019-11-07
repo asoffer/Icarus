@@ -1,7 +1,7 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib_target")
+load("//:defs.bzl", "cc_component")
 
-cc_lib_target(
+cc_component(
     name = "scope",
     intf_deps = [
         "//ast:ast_fwd",
@@ -18,27 +18,27 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "decl",
     intf_deps = [":scope"],
     impl_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "scope_lit",
     intf_deps = [":scope"],
     impl_deps = None,
 )
 
 
-cc_lib_target(
+cc_component(
     name = "exec",
     intf_deps = [":scope"],
     impl_deps = [":fn"],
 )
 
 
-cc_lib_target(
+cc_component(
     name = "fn",
     intf_deps = [
         ":scope",
@@ -47,7 +47,7 @@ cc_lib_target(
     impl_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "module",
     intf_deps = [
         ":decl",
