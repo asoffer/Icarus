@@ -11,152 +11,148 @@ static void Join(TokenExtractor *visitor, base::PtrSpan<T const> span,
     using std::begin;
     using std::end;
     auto iter = begin(span);
-    (*iter)->ExtractTokens(visitor);
+    visitor->Visit(*iter);
     ++iter;
     for (; iter != end(span); ++iter) {
       visitor->line_builder_.write(joiner);
-      (*iter)->ExtractTokens(visitor);
+      visitor->Visit(*iter);
     }
   }
 }
 
-void TokenExtractor::operator()(ast::Access const *node) {
-  node->operand()->ExtractTokens(this);
+void TokenExtractor::Visit(ast::Access const *node) {
+  Visit(node->operand());
   line_builder_.write(".");
   line_builder_.write(node->member_name());
 }
 
-void TokenExtractor::operator()(ast::ArrayLiteral const *node) {
+void TokenExtractor::Visit(ast::ArrayLiteral const *node) {
   line_builder_.write("[");
   Join(this, node->elems(), ",");
   line_builder_.write("]");
 }
 
-void TokenExtractor::operator()(ast::ArrayType const *node) {
+void TokenExtractor::Visit(ast::ArrayType const *node) {
   line_builder_.write("[");
   Join(this, node->lengths(), ",");
   line_builder_.write(";");
-  node->data_type()->ExtractTokens(this);
+  Visit(node->data_type());
   line_builder_.write("]");
 }
 
-void TokenExtractor::operator()(ast::Binop const *node) {
-  node->lhs()->ExtractTokens(this);
+void TokenExtractor::Visit(ast::Binop const *node) {
+  Visit(node->lhs());
   line_builder_.write(stringify(node->op()));
-  node->rhs()->ExtractTokens(this);
+  Visit(node->rhs());
 }
 
-void TokenExtractor::operator()(ast::BlockLiteral const *node) {
-  UNREACHABLE();
-}
+void TokenExtractor::Visit(ast::BlockLiteral const *node) { UNREACHABLE(); }
 
-void TokenExtractor::operator()(ast::BlockNode const *node) { UNREACHABLE(); }
+void TokenExtractor::Visit(ast::BlockNode const *node) { UNREACHABLE(); }
 
-void TokenExtractor::operator()(ast::Call const *node) {
-  node->callee()->ExtractTokens(this);
+void TokenExtractor::Visit(ast::Call const *node) {
+  Visit(node->callee());
   line_builder_.write("(");
   // TODO Join(this, node->args(), ",");
   line_builder_.write(")");
 }
 
-void TokenExtractor::operator()(ast::Cast const *node) {
-  node->expr()->ExtractTokens(this);
+void TokenExtractor::Visit(ast::Cast const *node) {
+  Visit(node->expr());
   line_builder_.write("as");
-  node->type()->ExtractTokens(this);
+  Visit(node->type());
 }
 
-void TokenExtractor::operator()(ast::ChainOp const *node) {
+void TokenExtractor::Visit(ast::ChainOp const *node) {
   // TODO op
-  for (auto *expr : node->exprs()) { expr->ExtractTokens(this); }
+  for (auto *expr : node->exprs()) { Visit(expr); }
 }
 
-void TokenExtractor::operator()(ast::CommaList const *node) {
+void TokenExtractor::Visit(ast::CommaList const *node) {
   // TODO Join(this, node->exprs_, ",");
 }
 ///////////////////////////////////////////////////////////////////////////
-void TokenExtractor::operator()(ast::Declaration const *node) {
-  if (node->type_expr()) { node->type_expr()->ExtractTokens(this); }
-  if (node->init_val()) { node->init_val()->ExtractTokens(this); }
+void TokenExtractor::Visit(ast::Declaration const *node) {
+  if (node->type_expr()) { Visit(node->type_expr()); }
+  if (node->init_val()) { Visit(node->init_val()); }
 }
 
-void TokenExtractor::operator()(ast::EnumLiteral const *node) {
+void TokenExtractor::Visit(ast::EnumLiteral const *node) {
   Join(this, node->elems(), "\n");
 }
 
-void TokenExtractor::operator()(ast::FunctionLiteral const *node) {
+void TokenExtractor::Visit(ast::FunctionLiteral const *node) {
   // TODO
 }
 
-void TokenExtractor::operator()(ast::Import const *node) {
-  node->operand()->ExtractTokens(this);
+void TokenExtractor::Visit(ast::Import const *node) { Visit(node->operand()); }
+
+void TokenExtractor::Visit(ast::Index const *node) {
+  Visit(node->lhs());
+  Visit(node->rhs());
 }
 
-void TokenExtractor::operator()(ast::Index const *node) {
-  node->lhs()->ExtractTokens(this);
-  node->rhs()->ExtractTokens(this);
-}
-
-void TokenExtractor::operator()(ast::Jump const *node) {
+void TokenExtractor::Visit(ast::Jump const *node) {
   for (auto &opt : node->options_) {
-    for (auto &expr : opt.args) { expr->ExtractTokens(this); }
+    for (auto &expr : opt.args) { Visit(expr.get()); }
   }
 }
 
-void TokenExtractor::operator()(ast::JumpHandler const *node) {
+void TokenExtractor::Visit(ast::JumpHandler const *node) {
   Join(this, node->input(), ",");
   Join(this, node->stmts(), "\n");
 }
 
-void TokenExtractor::operator()(ast::PrintStmt const *node) {
+void TokenExtractor::Visit(ast::PrintStmt const *node) {
   Join(this, node->exprs(), ",");
 }
 
-void TokenExtractor::operator()(ast::ReturnStmt const *node) {
+void TokenExtractor::Visit(ast::ReturnStmt const *node) {
   Join(this, node->exprs(), ",");
 }
 
-void TokenExtractor::operator()(ast::YieldStmt const *node) {
+void TokenExtractor::Visit(ast::YieldStmt const *node) {
   Join(this, node->exprs(), ",");
 }
 
-void TokenExtractor::operator()(ast::ScopeLiteral const *node) {
-  for (auto *decl : node->decls()) { decl->ExtractTokens(this); }
+void TokenExtractor::Visit(ast::ScopeLiteral const *node) {
+  for (auto *decl : node->decls()) { Visit(decl); }
 }
 
-void TokenExtractor::operator()(ast::ScopeNode const *node) {
-  node->name()->ExtractTokens(this);
+void TokenExtractor::Visit(ast::ScopeNode const *node) {
+  Visit(node->name());
   // TODO
 
-  for (auto &block : node->blocks()) { block.ExtractTokens(this); }
+  for (auto &block : node->blocks()) { Visit(&block); }
 }
 
-void TokenExtractor::operator()(ast::StructLiteral const *node) {
-  for (auto &a : node->args_) { a.ExtractTokens(this); }
-  for (auto &f : node->fields_) { f.ExtractTokens(this); }
+void TokenExtractor::Visit(ast::StructLiteral const *node) {
+  for (auto &a : node->args_) { Visit(&a); }
+  for (auto &f : node->fields_) { Visit(&f); }
 }
 
-void TokenExtractor::operator()(ast::StructType const *node) {
-  for (auto &arg : node->args_) { arg->ExtractTokens(this); }
+void TokenExtractor::Visit(ast::StructType const *node) {
+  for (auto &arg : node->args_) { Visit(arg.get()); }
 }
 
-void TokenExtractor::operator()(ast::Switch const *node) {
-  if (node->expr_) { node->expr_->ExtractTokens(this); }
+void TokenExtractor::Visit(ast::Switch const *node) {
+  if (node->expr_) { Visit(node->expr_.get()); }
   for (auto &[body, cond] : node->cases_) {
-    body->ExtractTokens(this);
-    cond->ExtractTokens(this);
+    Visit(body.get());
+    Visit(cond.get());
   }
 }
 
-void TokenExtractor::operator()(ast::Unop const *node) {
+void TokenExtractor::Visit(ast::Unop const *node) {
   // TODO
-  node->operand()->ExtractTokens(this);
+  Visit(node->operand());
 }
 
-void TokenExtractor::operator()(ast::Identifier const *node) {
+void TokenExtractor::Visit(ast::Identifier const *node) {
   line_builder_.write(node->token());
 }
-void TokenExtractor::operator()(ast::Terminal const *node) {
+void TokenExtractor::Visit(ast::Terminal const *node) {
   line_builder_.write("TERM");
 }
-void TokenExtractor::operator()(ast::BuiltinFn const *node) { UNREACHABLE(); }
+void TokenExtractor::Visit(ast::BuiltinFn const *node) { UNREACHABLE(); }
 }  // namespace format

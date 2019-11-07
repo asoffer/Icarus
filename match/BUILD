@@ -6,6 +6,7 @@ icarus_method(
     cfgs = ["match"],
     intf_deps = [
         "//ast:ast_fwd",
+        "//ast:visitor",
         "//module:assign_scope-xmacro",
         "//module:dependent_decls-xmacro",
     ],
@@ -19,7 +20,6 @@ icarus_method(
     name = "ast_methods",
     deps = [
         "//ast/methods:dump-xmacro",
-        ":match_expr-xmacro",
     ],
     gen = False,
 )
@@ -30,7 +30,6 @@ cc_lib_target(
     textual_hdrs = ["ast_dependencies.h"],
     intf_deps = [
         ":ast_methods-xmacro",
-        ":match_expr",
         "//module:assign_scope",
         "//module:dependent_decls",
         "//ir:results",

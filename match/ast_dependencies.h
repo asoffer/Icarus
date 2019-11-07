@@ -2,6 +2,5 @@
 
 #include "ast/methods/dump.h"
 #include "ir/results.h"
-#include "match/match_expr.h"
 #include "module/assign_scope.h"
 #include "module/dependent_decls.h"

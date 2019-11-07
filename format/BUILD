@@ -18,7 +18,6 @@ cc_lib_target(
     intf_deps = [
         "//ast/methods:dump",
         "//format:ast_methods-xmacro",
-        "//format:token_extractor",
         "//module:assign_scope",
         "//module:dependent_decls",
     ],
@@ -69,6 +68,7 @@ cc_lib_target(
     cfgs = ["format"],
     intf_deps = [
         "//ast:ast_fwd",
+        "//ast:visitor",
         "//base:debug",
     ],
     impl_deps = [

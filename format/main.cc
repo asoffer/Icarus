@@ -13,7 +13,7 @@ int FormatFile(std::filesystem::path const &file) {
   frontend::StringSource src("3 + abc");
   auto stmts = frontend::Parse(&src);
   TokenExtractor visitor;
-  for (auto const &stmt : stmts) { stmt->ExtractTokens(&visitor); }
+  for (auto const &stmt : stmts) { visitor.Visit(stmt.get()); }
   return 0;
 }
 }  // namespace format
