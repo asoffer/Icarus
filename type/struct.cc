@@ -55,6 +55,31 @@ bool Struct::contains_hashtag(ast::Hashtag needle) const {
   return false;
 }
 
+bool Struct::IsDefaultInitializable() const {
+  for (auto const &field : fields_) {
+    if (not field.type->IsDefaultInitializable()) { return false; }
+  }
+  return true;
+}
+
+bool Struct::IsCopyable() const {
+  for (auto const &field : fields_) {
+    if (not field.type->IsCopyable()) { return false; }
+  }
+  return absl::c_none_of(hashtags_, [](ast::Hashtag tag) {
+    return tag.kind_ == ast::Hashtag::Builtin::Uncopyable;
+  });
+}
+
+bool Struct::IsMovable() const {
+  for (auto const &field : fields_) {
+    if (not field.type->IsMovable()) { return false; }
+  }
+  return absl::c_none_of(hashtags_, [](ast::Hashtag tag) {
+    return tag.kind_ == ast::Hashtag::Builtin::Immovable;
+  });
+}
+
 core::Bytes Struct::bytes(core::Arch const &a) const {
   auto num_bytes = core::Bytes{0};
   for (auto const &field : fields_) {

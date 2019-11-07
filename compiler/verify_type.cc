@@ -6,6 +6,7 @@
 #include "backend/eval.h"
 #include "compiler/compiler.h"
 #include "compiler/dispatch/dispatch.h"
+#include "compiler/extract_jumps.h"
 #include "error/inference_failure_reason.h"
 #include "frontend/operators.h"
 #include "ir/compiled_fn.h"
@@ -16,7 +17,6 @@
 #include "type/type.h"
 #include "type/typed_value.h"
 #include "type/util.h"
-#include "visitor/extract_jumps.h"
 
 namespace ir {
 
@@ -342,7 +342,7 @@ VerifyResult VerifyBody(Compiler *visitor, ast::FunctionLiteral const *node) {
   }
   // TODO propogate cyclic dependencies.
 
-  visitor::ExtractJumps extractor;
+  ExtractJumps extractor;
   for (auto const *stmt : node->stmts()) { extractor.Visit(stmt); }
 
   // TODO we can have yields and returns, or yields and jumps, but not jumps and
@@ -350,7 +350,7 @@ VerifyResult VerifyBody(Compiler *visitor, ast::FunctionLiteral const *node) {
   absl::flat_hash_set<type::Type const *> types;
   absl::flat_hash_map<ast::ReturnStmt const *, type::Type const *>
       saved_ret_types;
-  for (auto const *n : extractor.jumps(visitor::ExtractJumps::Kind::Return)) {
+  for (auto const *n : extractor.jumps(ExtractJumps::Kind::Return)) {
     if (auto const *ret_node = n->if_as<ast::ReturnStmt>()) {
       std::vector<type::Type const *> ret_types;
       for (auto const *expr : ret_node->exprs()) {
@@ -386,7 +386,7 @@ VerifyResult VerifyBody(Compiler *visitor, ast::FunctionLiteral const *node) {
     switch (outs.size()) {
       case 0: {
         bool err = false;
-        for (auto *n : extractor.jumps(visitor::ExtractJumps::Kind::Return)) {
+        for (auto *n : extractor.jumps(ExtractJumps::Kind::Return)) {
           if (auto *ret_node = n->if_as<ast::ReturnStmt>()) {
             if (not ret_node->exprs().empty()) {
               visitor->error_log()->NoReturnTypes(ret_node);
@@ -400,7 +400,7 @@ VerifyResult VerifyBody(Compiler *visitor, ast::FunctionLiteral const *node) {
       } break;
       case 1: {
         bool err = false;
-        for (auto *n : extractor.jumps(visitor::ExtractJumps::Kind::Return)) {
+        for (auto *n : extractor.jumps(ExtractJumps::Kind::Return)) {
           if (auto *ret_node = n->if_as<ast::ReturnStmt>()) {
             auto *t = ASSERT_NOT_NULL(saved_ret_types.at(ret_node));
             if (t == outs[0]) { continue; }
@@ -414,7 +414,7 @@ VerifyResult VerifyBody(Compiler *visitor, ast::FunctionLiteral const *node) {
         return err ? VerifyResult::Error() : VerifyResult::Constant(node_type);
       } break;
       default: {
-        for (auto *n : extractor.jumps(visitor::ExtractJumps::Kind::Return)) {
+        for (auto *n : extractor.jumps(ExtractJumps::Kind::Return)) {
           if (auto *ret_node = n->if_as<ast::ReturnStmt>()) {
             auto *expr_type = ASSERT_NOT_NULL(saved_ret_types.at(ret_node));
             if (expr_type->is<type::Tuple>()) {
@@ -466,13 +466,13 @@ VerifyResult VerifyBody(Compiler *visitor, ast::FunctionLiteral const *node) {
 
 void VerifyBody(Compiler *visitor, ast::JumpHandler const *node) {
   DEBUG_LOG("JumpHandler")(ast::Dump::ToString(node));
-  visitor::ExtractJumps extractor;
+  ExtractJumps extractor;
   for (auto const *stmt : node->stmts()) {
     visitor->Visit(stmt, VerifyTypeTag{});
     extractor.Visit(stmt);
   }
 
-  auto jumps = extractor.jumps(visitor::ExtractJumps::Kind::Jump);
+  auto jumps = extractor.jumps(ExtractJumps::Kind::Jump);
   for (auto const *jump : jumps) {
     DEBUG_LOG("JumpHandler")
     (ast::Dump::ToString(&jump->as<ast::Jump>()));
@@ -577,10 +577,10 @@ static std::vector<
 VerifyBlockNode(Compiler *visitor, ast::BlockNode const *node) {
   visitor->Visit(node, VerifyTypeTag{});
 
-  visitor::ExtractJumps extractor;
+  ExtractJumps extractor;
   for (auto const *stmt : node->stmts()) { extractor.Visit(stmt); }
 
-  auto yields = extractor.jumps(visitor::ExtractJumps::Kind::Yield);
+  auto yields = extractor.jumps(ExtractJumps::Kind::Yield);
   // TODO this setup is definitely wrong because it doesn't account for
   // multiple yields correctly. For example,
   //

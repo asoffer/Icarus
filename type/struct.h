@@ -36,6 +36,11 @@ struct Struct : public Type {
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;
 
+  bool IsDefaultInitializable() const;
+  bool IsCopyable() const;
+  bool IsMovable() const;
+  bool HasDestructor() const { NOT_YET(); }
+
 #include ICARUS_TYPE_VISITOR_METHODS
 
   // Return the type of a field, or a nullptr if it doesn't exist

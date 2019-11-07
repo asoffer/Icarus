@@ -2,4 +2,3 @@
 
 #include "compiler/compiler.h"
 #include "module/extract_defining_modules.h"
-#include "visitor/type_query.h"

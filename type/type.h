@@ -51,6 +51,10 @@ struct Type : public base::Cast<Type> {
   virtual void WriteTo(std::string *buf) const                    = 0;
   virtual core::Bytes bytes(core::Arch const &arch) const         = 0;
   virtual core::Alignment alignment(core::Arch const &arch) const = 0;
+  bool IsDefaultInitializable() const { return true; }
+  bool IsCopyable() const { return true; }
+  bool IsMovable() const { return true; }
+  bool HasDestructor() const { return true; }
 
 #define ICARUS_TYPE_VISITOR(signature, body)                                   \
   virtual signature { UNREACHABLE(); }

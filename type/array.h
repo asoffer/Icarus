@@ -9,6 +9,12 @@ namespace type {
 struct Array : public Type {
   TYPE_FNS(Array);
   Array(size_t l, Type const *t) : len(l), data_type(t) {}
+  bool IsDefaultInitializable() const {
+    return data_type->IsDefaultInitializable();
+  }
+  bool IsCopyable() const { return data_type->IsCopyable(); }
+  bool IsMovable() const { return data_type->IsMovable(); }
+  bool HasDestructor() const { return data_type->HasDestructor(); }
 
 #include ICARUS_TYPE_VISITOR_METHODS
 

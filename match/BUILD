@@ -18,7 +18,6 @@ icarus_method(
     name = "type_methods",
     deps = [
         "//compiler:compiler-match",
-        "//visitor:type_query-match",
         "//module:extract_defining_modules-xmacro",
     ],
     gen = False,
@@ -31,7 +30,6 @@ cc_lib_target(
     intf_deps = [
         ":type_methods-xmacro",
         "//compiler:compiler",
-        "//visitor:type_query",
         "//module:extract_defining_modules",
     ],
 )

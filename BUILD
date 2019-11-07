@@ -40,6 +40,7 @@ COMMON_IMPL_DEPS = [
         "//compiler:compiler-impl",
         "//compiler:constant_binding-impl",
         "//compiler:module-impl",
+        "//compiler:extract_jumps-impl",
         "//compiler/dispatch:dispatch-impl",
         "//compiler/dispatch:extract_params-impl",
         "//compiler/dispatch:match-impl",
@@ -59,8 +60,6 @@ COMMON_IMPL_DEPS = [
         "//module:dependent_decls-impl",
         "//module:extract_defining_modules-impl",
         "//ast/methods:dump-impl",
-        "//visitor:extract_jumps-impl",
-        "//visitor:type_query-impl",
     ]
 
 cc_group_target(

@@ -15,6 +15,9 @@ struct Opaque : public Type {
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;
 
+  // TODO is this right?
+  bool IsDefaultInitializable() const { return false; }
+
   module::BasicModule const *mod_;
 };
 

@@ -1,5 +1,5 @@
-#ifndef ICARUS_VISITOR_EXTRACT_JUMPS_H
-#define ICARUS_VISITOR_EXTRACT_JUMPS_H
+#ifndef ICARUS_COMPILER_EXTRACT_JUMPS_H
+#define ICARUS_COMPILER_EXTRACT_JUMPS_H
 
 #include <array>
 #include <vector>
@@ -7,7 +7,7 @@
 #include "ast/visitor.h"
 #include "base/debug.h"
 
-namespace visitor {
+namespace compiler{
 
 struct ExtractJumps : ast::Visitor<void()> {
   void Visit(ast::Node const *node) { ast::Visitor<void()>::Visit(node); }
@@ -23,6 +23,6 @@ struct ExtractJumps : ast::Visitor<void()> {
   std::array<std::vector<ast::Node const *>, 3> data_;
 };
 
-}  // namespace visitor
+}  // namespace compiler
 
-#endif  // ICARUS_VISITOR_EXTRACT_JUMPS_H
+#endif  // ICARUS_COMPILER_EXTRACT_JUMPS_H

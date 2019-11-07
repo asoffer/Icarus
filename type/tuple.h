@@ -21,6 +21,11 @@ struct Tuple : public Type {
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;
 
+  bool IsDefaultInitializable() const;
+  bool IsCopyable() const;
+  bool IsMovable() const;
+  bool HasDestructor() const;
+
   std::vector<Type const *> entries_;
 
   base::lazy<ir::CompiledFn *> destroy_func_;

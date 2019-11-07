@@ -31,6 +31,8 @@ struct Enum : public type::Type {
     return it->second;
   }
 
+  bool IsDefaultInitializable() const { return false; }
+
   module::BasicModule const* mod_;
 
   ICARUS_PRIVATE

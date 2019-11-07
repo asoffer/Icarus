@@ -15,6 +15,11 @@ struct Variant : public Type {
       : variants_(std::move(variants)) {}
   size_t size() const { return variants_.size(); }
 
+  bool IsDefaultInitializable() const { return false; }
+  bool IsCopyable() const;
+  bool IsMovable() const;
+  bool HasDestructor() const;
+
   // Alignment of the alternatives present in the variant, excluding the type
   // tag. For example, if a type requires 8-byte alignment, then the alignment
   // of `bool | int16` will be 8, but the alternative alignment will be 2. The

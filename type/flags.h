@@ -38,6 +38,8 @@ struct Flags : public type::Type {
     return it->second;
   }
 
+  bool IsDefaultInitializable() const { return false; }
+
   size_t All = 0;
 
   module::BasicModule const* mod_;

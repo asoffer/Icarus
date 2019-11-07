@@ -49,6 +49,34 @@ void Tuple::WriteTo(std::string *result) const {
   result->append(")");
 }
 
+bool Tuple::IsDefaultInitializable() const {
+  for (auto const *t : entries_) {
+    if (not t->IsDefaultInitializable()) { return false; }
+  }
+  return true;
+}
+
+bool Tuple::IsCopyable() const {
+  for (auto const *t : entries_) {
+    if (not t->IsCopyable()) { return false; }
+  }
+  return true;
+}
+
+bool Tuple::IsMovable() const {
+  for (auto const *t : entries_) {
+    if (not t->IsMovable()) { return false; }
+  }
+  return true;
+}
+
+bool Tuple::HasDestructor() const {
+  for (auto const *t : entries_) {
+    if (not t->HasDestructor()) { return false; }
+  }
+  return true;
+}
+
 core::Bytes Tuple::bytes(core::Arch const &a) const {
   auto num_bytes = core::Bytes{0};
   for (auto const *t : entries_) {

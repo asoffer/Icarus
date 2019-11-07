@@ -63,6 +63,27 @@ void Variant::WriteTo(std::string *result) const {
   }
 }
 
+bool Variant::IsCopyable() const {
+  for (auto const *t : variants_) {
+    if (not t->IsCopyable()) {return false; }
+  }
+  return true;
+}
+
+bool Variant::IsMovable() const {
+  for (auto const *t : variants_) {
+    if (not t->IsMovable()) {return false; }
+  }
+  return true;
+}
+
+bool Variant::HasDestructor() const {
+  for (auto const *t : variants_) {
+    if (not t->HasDestructor()) { return false; }
+  }
+  return true;
+}
+
 core::Bytes Variant::bytes(core::Arch const &a) const {
   auto num_bytes = core::Bytes{0};
   auto align     = core::Alignment{1};

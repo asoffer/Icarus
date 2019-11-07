@@ -5,7 +5,6 @@ icarus_method(
     name = "type_methods",
     deps = [
         ":compiler-compile",
-        "//visitor:type_query-compile",
         "//module:extract_defining_modules-xmacro",
     ],
     gen = False,
@@ -18,7 +17,6 @@ cc_lib_target(
     intf_deps = [
         ":compiler",
         ":type_methods-xmacro",
-        "//visitor:type_query",
         "//module:extract_defining_modules",
     ],
 )
@@ -66,6 +64,13 @@ cc_lib_target(
         ":special_function-impl",
         ":verify_type-impl",
     ],
+    test_deps = None,
+)
+
+cc_component(
+    name = "extract_jumps",
+    intf_deps = ["//ast:visitor"],
+    impl_deps = ["//ast:ast"],
     test_deps = None,
 )
 
@@ -287,6 +292,7 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
+        ":extract_jumps",
         "//ast:ast",
         "//ast:overload_set",
         "//backend:eval",
@@ -297,7 +303,6 @@ cc_lib_target(
         "//type:parameter_pack",
         "//type:type",
         "//type:util",
-        "//visitor:extract_jumps",
         "@com_google_absl//absl/algorithm:container",
     ],
     test_deps = None,

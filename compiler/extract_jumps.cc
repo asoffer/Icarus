@@ -1,8 +1,8 @@
-#include "visitor/extract_jumps.h"
+#include "compiler/extract_jumps.h"
 
 #include "ast/ast.h"
 
-namespace visitor {
+namespace compiler {
 
 absl::Span<ast::Node const *const> ExtractJumps::jumps(
     ExtractJumps::Kind k) const {
@@ -142,4 +142,4 @@ void ExtractJumps::Visit(ast::Terminal const *node) {}
 
 void ExtractJumps::Visit(ast::Unop const *node) { Visit(node->operand()); }
 
-}  // namespace visitor
+}  // namespace compiler

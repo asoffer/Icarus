@@ -24,17 +24,3 @@ ICARUS_TYPE_VISITOR(void EmitDefaultInit(compiler::Compiler *visitor,
 ICARUS_TYPE_VISITOR(void EmitPrint(compiler::Compiler *visitor,
                                    ir::Results const &val) const,
                     { visitor->EmitPrint(this, val); });
-
-ICARUS_TYPE_VISITOR(bool IsDefaultInitializable() const, {
-  return visitor::TypeQuery::IsDefaultInitializable(this);
-});
-ICARUS_TYPE_VISITOR(bool IsCopyable() const,
-                    { return visitor::TypeQuery::IsCopyable(this); });
-ICARUS_TYPE_VISITOR(bool IsMovable() const,
-                    { return visitor::TypeQuery::IsMovable(this); });
-ICARUS_TYPE_VISITOR(bool HasDestructor() const,
-                    { return visitor::TypeQuery::HasDestructor(this); });
-
-ICARUS_TYPE_VISITOR(bool ReinterpretableAs(type::Type const *other) const, {
-  return visitor::TypeQuery::ReinterpretableAs(this, other);
-});
