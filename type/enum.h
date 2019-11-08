@@ -20,7 +20,14 @@ struct Enum : public type::Type {
     for (auto& [name, val] : vals_) { members_.emplace(val, name); }
   }
 
-#include ICARUS_TYPE_VISITOR_METHODS
+  void ExtractDefiningModules(absl::flat_hash_set<module::BasicModule const *>
+                                  *modules) const override {
+    return module::ExtractDefiningModules::Extract(this, modules);
+  }
+
+  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
 
   std::optional<ir::EnumVal> Get(std::string_view name) const;
   Typed<ir::EnumVal, Enum> EmitLiteral(std::string_view member_name) const;

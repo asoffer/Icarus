@@ -129,6 +129,7 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = [
         ":util",
+        "//compiler:compiler",
         "//ir:basic_block",
         "//ir:block_def",
     ],
@@ -171,6 +172,7 @@ cc_lib_target(
     name = "util",
     cfgs = ["match", "compile"],
     intf_deps = [
+        "//ir:builder",
         "//ir:values",
         "//backend:exec",
         "//base:tag",

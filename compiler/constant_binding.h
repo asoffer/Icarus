@@ -9,7 +9,7 @@
 #include "base/untyped_buffer.h"
 #include "core/bytes.h"
 #include "ir/results.h"
-#include "type/type_fwd.h"
+#include "type/type.h"
 
 namespace compiler {
 struct Compiler;

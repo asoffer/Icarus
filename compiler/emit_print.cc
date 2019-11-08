@@ -1,3 +1,4 @@
+#include "compiler/compiler.h"
 #include "ir/builder.h"
 #include "ir/cmd/basic.h"
 #include "ir/cmd/call.h"
@@ -16,7 +17,8 @@
 
 namespace compiler {
 
-void Compiler::EmitPrint(type::Array const *t, ir::Results const &val) {
+void Compiler::Visit(type::Array const *t, ir::Results const &val,
+                     EmitPrintTag) {
   t->repr_func_.init([=]() {
     // TODO special function?
     auto const *fn_type = type::Func({t}, {});
@@ -32,7 +34,8 @@ void Compiler::EmitPrint(type::Array const *t, ir::Results const &val) {
       builder().CurrentBlock() = ir::EarlyExitOn<true>(exit_block, t->len == 0);
       auto ptr                 = ir::Index(type::Ptr(t), ir::Reg::Arg(0), 0);
 
-      t->data_type->EmitPrint(this, ir::Results{ir::PtrFix(ptr, t->data_type)});
+      Visit(t->data_type, ir::Results{ir::PtrFix(ptr, t->data_type)},
+            EmitPrintTag{});
 
       ir::CreateLoop(
           [&](ir::RegOr<ir::Addr> const &phi0, ir::RegOr<int32_t> const &phi1) {
@@ -42,8 +45,8 @@ void Compiler::EmitPrint(type::Array const *t, ir::Results const &val) {
             auto elem_ptr = ir::PtrIncr(phi0.reg(), 1, type::Ptr(t->data_type));
 
             ir::Print(std::string_view{", "});
-            t->data_type->EmitPrint(
-                this, ir::Results{ir::PtrFix(elem_ptr, t->data_type)});
+            Visit(t->data_type, ir::Results{ir::PtrFix(elem_ptr, t->data_type)},
+                  EmitPrintTag{});
 
             return std::make_tuple(elem_ptr,
                                    ir::Sub(ir::RegOr<int32_t>(phi1), 1));
@@ -63,21 +66,25 @@ void Compiler::EmitPrint(type::Array const *t, ir::Results const &val) {
   ir::Call(ir::AnyFunc{t->repr_func_.get()}, t->repr_func_.get()->type_, {val});
 }
 
-void Compiler::EmitPrint(type::Enum const *t, ir::Results const &val) {
+void Compiler::Visit(type::Enum const *t, ir::Results const &val,
+                     EmitPrintTag) {
   // TODO print something friendlier
   ir::Print(val.get<ir::EnumVal>(0), t);
 }
 
-void Compiler::EmitPrint(type::Flags const *t, ir::Results const &val) {
+void Compiler::Visit(type::Flags const *t, ir::Results const &val,
+                     EmitPrintTag) {
   // TODO print something friendlier
   ir::Print(val.get<ir::FlagsVal>(0), t);
 }
 
-void Compiler::EmitPrint(type::Pointer const *t, ir::Results const &val) {
+void Compiler::Visit(type::Pointer const *t, ir::Results const &val,
+                     EmitPrintTag) {
   ir::Print(val.get<ir::Addr>(0));
 }
 
-void Compiler::EmitPrint(type::Primitive const *t, ir::Results const &val) {
+void Compiler::Visit(type::Primitive const *t, ir::Results const &val,
+                     EmitPrintTag) {
   switch (t->type_) {
     case type::BasicType::Bool: ir::Print(val.get<bool>(0)); break;
     case type::BasicType::Int8: ir::Print(val.get<int8_t>(0)); break;
@@ -104,26 +111,29 @@ void Compiler::EmitPrint(type::Primitive const *t, ir::Results const &val) {
   }
 }
 
-void Compiler::EmitPrint(type::Tuple const *t, ir::Results const &val) {
+void Compiler::Visit(type::Tuple const *t, ir::Results const &val,
+                     EmitPrintTag) {
   auto reg = val.get<ir::Reg>(0);
   ir::Print(std::string_view{"("});
   for (int i = 0; i < static_cast<int>(t->entries_.size()) - 1; ++i) {
-    t->entries_[i]->EmitPrint(
-        this,
-        ir::Results{ir::PtrFix(ir::Field(reg, t, i).get(), t->entries_[i])});
+    Visit(t->entries_[i],
+          ir::Results{ir::PtrFix(ir::Field(reg, t, i).get(), t->entries_[i])},
+          EmitPrintTag{});
     ir::Print(std::string_view{", "});
   }
 
   if (not t->entries_.empty()) {
-    t->entries_.back()->EmitPrint(
-        this,
+    Visit(
+        t->entries_.back(),
         ir::Results{ir::PtrFix(ir::Field(reg, t, t->entries_.size() - 1).get(),
-                               t->entries_.back())});
+                               t->entries_.back())},
+        EmitPrintTag{});
   }
   ir::Print(std::string_view{")"});
 }
 
-void Compiler::EmitPrint(type::Variant const *t, ir::Results const &val) {
+void Compiler::Visit(type::Variant const *t, ir::Results const &val,
+                     EmitPrintTag) {
   // TODO design and build a jump table?
   // TODO repr_func_
   // TODO remove these casts in favor of something easier to track properties on
@@ -145,7 +155,7 @@ void Compiler::EmitPrint(type::Variant const *t, ir::Results const &val) {
         auto *found_block = builder().AddBlock();
 
         builder().CurrentBlock() = found_block;
-        v->EmitPrint(this, ir::Results{ir::PtrFix(var_val, v)});
+        Visit(v, ir::Results{ir::PtrFix(var_val, v)}, EmitPrintTag{});
         ir::UncondJump(landing);
 
         builder().CurrentBlock() = old_block;

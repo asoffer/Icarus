@@ -8,7 +8,14 @@ struct Pointer : public Type {
   TYPE_FNS(Pointer);
   Pointer(Type const *t) : pointee(t) {}
 
-#include ICARUS_TYPE_VISITOR_METHODS
+  void ExtractDefiningModules(absl::flat_hash_set<module::BasicModule const *>
+                                  *modules) const override {
+    return module::ExtractDefiningModules::Extract(this, modules);
+  }
+
+  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
 
   Type const *pointee;
 };
@@ -17,7 +24,10 @@ struct Pointer : public Type {
 struct BufferPointer : public Pointer {
   BufferPointer() = delete;
 
-#include ICARUS_TYPE_VISITOR_METHODS
+  void ExtractDefiningModules(absl::flat_hash_set<module::BasicModule const *>
+                                  *modules) const override {
+    return module::ExtractDefiningModules::Extract(this, modules);
+  }
 
   void WriteTo(std::string *result) const override;
   BufferPointer(Type const *t) : Pointer(t) {}

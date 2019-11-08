@@ -27,7 +27,14 @@ struct Variant : public Type {
   // variant", rather than as "a different kind of alignment."
   core::Alignment alternative_alignment(core::Arch const &arch) const;
 
-#include ICARUS_TYPE_VISITOR_METHODS
+  void ExtractDefiningModules(absl::flat_hash_set<module::BasicModule const *>
+                                  *modules) const override {
+    return module::ExtractDefiningModules::Extract(this, modules);
+  }
+
+  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
 
   // TODO can do better with a pair of iterators and checking if one is a subset
   // of the other.

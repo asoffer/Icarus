@@ -1,25 +1,5 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib_target", "cc_component", "icarus_method")
-
-icarus_method(
-    name = "type_methods",
-    deps = [
-        ":compiler-compile",
-        "//module:extract_defining_modules-xmacro",
-    ],
-    gen = False,
-)
-
-cc_lib_target(
-    name = "type_dependencies",
-    cfgs = ["compile"],
-    textual_hdrs = ["type_dependencies.h"],
-    intf_deps = [
-        ":compiler",
-        ":type_methods-xmacro",
-        "//module:extract_defining_modules",
-    ],
-)
+load("//:defs.bzl", "cc_lib_target", "cc_component")
 
 cc_lib_target(
     name = "compiler",
@@ -39,6 +19,7 @@ cc_lib_target(
         "//ir:results",
         "//ir:builder",
         "//type:type_fwd",
+        "//type:visitor",
         "@com_google_absl//absl/container:node_hash_map",
     ],
     impl_deps = [
@@ -111,6 +92,7 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
+        ":compiler",
         ":special_function",
         "//ast:ast",
         "//base:permutation",
@@ -132,6 +114,7 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
+        ":compiler",
         ":special_function",
         "//ast:ast",
         "//base:permutation",
@@ -152,6 +135,7 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
+        ":compiler",
         "//ast:ast",
         "//base:permutation",
         "//ir/cmd:misc",
@@ -171,6 +155,7 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
+        ":compiler",
         "//ast:ast",
         "//ir:components",
         "//ir/cmd:misc",
@@ -185,6 +170,7 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
+        ":compiler",
         "//ast:ast",
         "//ir/cmd:misc",
         "//ir:components",
@@ -199,6 +185,7 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
+        ":compiler",
         "//ast:ast",
         "//backend:eval",
         "//ir:addr",
@@ -219,6 +206,7 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
+        ":compiler",
         "//ast:ast",
         "//ast/scope:scope",
         "//ast/scope:fn",
@@ -253,6 +241,7 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
+        ":compiler",
         "//ast:ast",
         "//ir:builder",
         "//ir:compiled_fn",
@@ -320,6 +309,7 @@ cc_lib_target(
     cfgs = ["match", "compile"],
     intf_deps = [],
     impl_deps = [
+        ":compiler",
         "//ast:ast",
         "//ir:any_func",
         "//type:function",

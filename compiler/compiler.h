@@ -6,11 +6,11 @@
 
 #include "absl/container/node_hash_map.h"
 #include "ast/ast_fwd.h"
+#include "ast/visitor.h"
 #include "base/debug.h"
 #include "base/guarded.h"
 #include "base/move_func.h"
 #include "base/tag.h"
-#include "ast/visitor.h"
 #include "compiler/constant_binding.h"
 #include "compiler/dependent_data.h"
 #include "compiler/module.h"
@@ -23,6 +23,7 @@
 #include "ir/results.h"
 #include "module/module.h"
 #include "type/type_fwd.h"
+#include "type/visitor.h"
 
 namespace ir {
 struct CompiledFn;
@@ -36,7 +37,11 @@ struct EmitCopyInitTag {};
 struct EmitMoveInitTag {};
 struct EmitValueTag {};
 struct VerifyTypeTag {};
-
+struct EmitPrintTag {};
+struct EmitDestroyTag {};
+struct EmitDefaultInitTag {};
+struct EmitCopyAssignTag {};
+struct EmitMoveAssignTag {};
 std::unique_ptr<module::BasicModule> CompileModule(frontend::Source *src);
 
 // These are the steps in a traditional compiler of verifying types and emitting
@@ -60,14 +65,22 @@ struct Compiler
     : ast::Visitor<VerifyResult(VerifyTypeTag), ir::Results(EmitValueTag),
                    void(type::Typed<ir::Reg> reg, EmitMoveInitTag),
                    void(type::Typed<ir::Reg> reg, EmitCopyInitTag),
-                   std::vector<ir::RegOr<ir::Addr>>(EmitRefTag)> {
+                   std::vector<ir::RegOr<ir::Addr>>(EmitRefTag)>,
+      type::Visitor<void(ir::Results const &, EmitPrintTag),
+                    void(ir::Reg reg, EmitDestroyTag),
+                    void(ir::Reg reg, EmitDefaultInitTag),
+                    void(ir::RegOr<ir::Addr>, type::Typed<ir::Results> const &,
+                         EmitMoveAssignTag),
+                    void(ir::RegOr<ir::Addr>, type::Typed<ir::Results> const &,
+                         EmitCopyAssignTag)> {
   VerifyResult Visit(ast::Node const *node, VerifyTypeTag) {
-    return ast::SingleVisitor<VerifyResult(VerifyTypeTag)>::Visit(node,
-                                                            VerifyTypeTag{});
+    return ast::SingleVisitor<VerifyResult(VerifyTypeTag)>::Visit(
+        node, VerifyTypeTag{});
   }
 
   ir::Results Visit(ast::Node const *node, EmitValueTag) {
-    return ast::SingleVisitor<ir::Results(EmitValueTag)>::Visit(node, EmitValueTag{});
+    return ast::SingleVisitor<ir::Results(EmitValueTag)>::Visit(node,
+                                                                EmitValueTag{});
   }
 
   void Visit(ast::Node const *node, type::Typed<ir::Reg> reg, EmitCopyInitTag) {
@@ -83,6 +96,35 @@ struct Compiler
   std::vector<ir::RegOr<ir::Addr>> Visit(ast::Node const *node, EmitRefTag) {
     return ast::SingleVisitor<std::vector<ir::RegOr<ir::Addr>>(
         EmitRefTag)>::Visit(node, EmitRefTag{});
+  }
+
+  void Visit(type::Type const *t, ir::Results const &val, EmitPrintTag) {
+    type::SingleVisitor<void(ir::Results const &, EmitPrintTag)>::Visit(
+        t, val, EmitPrintTag{});
+  }
+
+  void Visit(type::Type const *t, ir::Reg r, EmitDestroyTag) {
+    type::SingleVisitor<void(ir::Reg, EmitDestroyTag)>::Visit(t, r,
+                                                              EmitDestroyTag{});
+  }
+
+  void Visit(type::Type const *t, ir::Reg r, EmitDefaultInitTag) {
+    type::SingleVisitor<void(ir::Reg, EmitDefaultInitTag)>::Visit(
+        t, r, EmitDefaultInitTag{});
+  }
+
+  void Visit(type::Type const *t, ir::RegOr<ir::Addr> to,
+             type::Typed<ir::Results> const &from, EmitMoveAssignTag) {
+    type::SingleVisitor<void(
+        ir::RegOr<ir::Addr>, type::Typed<ir::Results> const &,
+        EmitMoveAssignTag)>::Visit(t, to, from, EmitMoveAssignTag{});
+  }
+
+  void Visit(type::Type const *t, ir::RegOr<ir::Addr> to,
+             type::Typed<ir::Results> const &from, EmitCopyAssignTag) {
+    type::SingleVisitor<void(
+        ir::RegOr<ir::Addr>, type::Typed<ir::Results> const &,
+        EmitCopyAssignTag)>::Visit(t, to, from, EmitCopyAssignTag{});
   }
 
   Compiler(module::BasicModule *mod);
@@ -115,13 +157,15 @@ struct Compiler
       type::Jump const *jump_type,
       core::FnParams<type::Typed<ast::Declaration const *>> params);
   ir::ScopeDef *AddScope(
-      std::vector<ir::JumpHandler const *> inits, std::vector<ir::AnyFunc> dones,
+      std::vector<ir::JumpHandler const *> inits,
+      std::vector<ir::AnyFunc> dones,
       absl::flat_hash_map<std::string_view, ir::BlockDef *> blocks);
   ir::BlockDef *AddBlock(std::vector<ir::AnyFunc> befores,
                          std::vector<ir::JumpHandler const *> afters);
 
   ast::DispatchTable const *dispatch_table(ast::ExprPtr expr) const;
-  ast::DispatchTable const *jump_table(ast::ExprPtr jump_expr, ast::ExprPtr node) const;
+  ast::DispatchTable const *jump_table(ast::ExprPtr jump_expr,
+                                       ast::ExprPtr node) const;
 
   module::PendingModule *pending_module(ast::Import const *import_node) const;
 
@@ -161,85 +205,78 @@ struct Compiler
   std::vector<ir::RegOr<ir::Addr>> Visit(ast::Index const *node, EmitRefTag);
   std::vector<ir::RegOr<ir::Addr>> Visit(ast::Unop const *node, EmitRefTag);
 
-  void EmitPrint(type::Type const *, ir::Results const &) { UNREACHABLE(); }
-  void EmitPrint(type::Array const *t, ir::Results const &val);
-  void EmitPrint(type::Enum const *t, ir::Results const &val);
-  void EmitPrint(type::Flags const *t, ir::Results const &val);
-  void EmitPrint(type::Pointer const *t, ir::Results const &val);
-  void EmitPrint(type::Primitive const *t, ir::Results const &val);
-  void EmitPrint(type::Tuple const *t, ir::Results const &val);
-  void EmitPrint(type::Variant const *t, ir::Results const &val);
+  void Visit(type::Array const *t, ir::Results const &val, EmitPrintTag);
+  void Visit(type::Enum const *t, ir::Results const &val, EmitPrintTag);
+  void Visit(type::Flags const *t, ir::Results const &val, EmitPrintTag);
+  void Visit(type::Pointer const *t, ir::Results const &val, EmitPrintTag);
+  void Visit(type::Primitive const *t, ir::Results const &val, EmitPrintTag);
+  void Visit(type::Tuple const *t, ir::Results const &val, EmitPrintTag);
+  void Visit(type::Variant const *t, ir::Results const &val, EmitPrintTag);
 
-  void EmitDestroy(type::Type const *, ir::Reg) { UNREACHABLE(); }
-  void EmitDestroy(type::Struct const *t, ir::Reg reg);
-  void EmitDestroy(type::Variant const *t, ir::Reg reg);
-  void EmitDestroy(type::Tuple const *t, ir::Reg reg);
-  void EmitDestroy(type::Array const *t, ir::Reg reg);
+  void Visit(type::Struct const *t, ir::Reg reg, EmitDestroyTag);
+  void Visit(type::Variant const *t, ir::Reg reg, EmitDestroyTag);
+  void Visit(type::Tuple const *t, ir::Reg reg, EmitDestroyTag);
+  void Visit(type::Array const *t, ir::Reg reg, EmitDestroyTag);
 
-  void EmitCopyAssign(type::Type const *t, ir::RegOr<ir::Addr> to,
-                      type::Typed<ir::Results> const &from) {
-    UNREACHABLE();
-  }
-  void EmitCopyAssign(type::Array const *t, ir::RegOr<ir::Addr> to,
-                      type::Typed<ir::Results> const &from);
-  void EmitCopyAssign(type::Enum const *t, ir::RegOr<ir::Addr> to,
-                      type::Typed<ir::Results> const &from);
-  void EmitCopyAssign(type::Flags const *t, ir::RegOr<ir::Addr> to,
-                      type::Typed<ir::Results> const &from);
-  void EmitCopyAssign(type::Function const *t, ir::RegOr<ir::Addr> to,
-                      type::Typed<ir::Results> const &from);
-  void EmitCopyAssign(type::Pointer const *t, ir::RegOr<ir::Addr> to,
-                      type::Typed<ir::Results> const &from);
-  void EmitCopyAssign(type::Primitive const *t, ir::RegOr<ir::Addr> to,
-                      type::Typed<ir::Results> const &from);
-  void EmitCopyAssign(type::Struct const *t, ir::RegOr<ir::Addr> to,
-                      type::Typed<ir::Results> const &from);
-  void EmitCopyAssign(type::Tuple const *t, ir::RegOr<ir::Addr> to,
-                      type::Typed<ir::Results> const &from);
-  void EmitCopyAssign(type::Variant const *t, ir::RegOr<ir::Addr> to,
-                      type::Typed<ir::Results> const &from);
+  void Visit(type::Array const *t, ir::RegOr<ir::Addr> to,
+             type::Typed<ir::Results> const &from, EmitCopyAssignTag);
+  void Visit(type::Enum const *t, ir::RegOr<ir::Addr> to,
+             type::Typed<ir::Results> const &from, EmitCopyAssignTag);
+  void Visit(type::Flags const *t, ir::RegOr<ir::Addr> to,
+             type::Typed<ir::Results> const &from, EmitCopyAssignTag);
+  void Visit(type::Function const *t, ir::RegOr<ir::Addr> to,
+             type::Typed<ir::Results> const &from, EmitCopyAssignTag);
+  void Visit(type::Pointer const *t, ir::RegOr<ir::Addr> to,
+             type::Typed<ir::Results> const &from, EmitCopyAssignTag);
+  void Visit(type::Primitive const *t, ir::RegOr<ir::Addr> to,
+             type::Typed<ir::Results> const &from, EmitCopyAssignTag);
+  void Visit(type::Struct const *t, ir::RegOr<ir::Addr> to,
+             type::Typed<ir::Results> const &from, EmitCopyAssignTag);
+  void Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
+             type::Typed<ir::Results> const &from, EmitCopyAssignTag);
+  void Visit(type::Variant const *t, ir::RegOr<ir::Addr> to,
+             type::Typed<ir::Results> const &from, EmitCopyAssignTag);
 
-  void EmitMoveAssign(type::Type const *t, ir::RegOr<ir::Addr> to,
-                      type::Typed<ir::Results> const &from) {
-    UNREACHABLE();
-  }
-  void EmitMoveAssign(type::Array const *t, ir::RegOr<ir::Addr> to,
-                      type::Typed<ir::Results> const &from);
-  void EmitMoveAssign(type::Enum const *t, ir::RegOr<ir::Addr> to,
-                      type::Typed<ir::Results> const &from);
-  void EmitMoveAssign(type::Flags const *t, ir::RegOr<ir::Addr> to,
-                      type::Typed<ir::Results> const &from);
-  void EmitMoveAssign(type::Function const *t, ir::RegOr<ir::Addr> to,
-                      type::Typed<ir::Results> const &from);
-  void EmitMoveAssign(type::Pointer const *t, ir::RegOr<ir::Addr> to,
-                      type::Typed<ir::Results> const &from);
-  void EmitMoveAssign(type::Primitive const *t, ir::RegOr<ir::Addr> to,
-                      type::Typed<ir::Results> const &from);
-  void EmitMoveAssign(type::Struct const *t, ir::RegOr<ir::Addr> to,
-                      type::Typed<ir::Results> const &from);
-  void EmitMoveAssign(type::Tuple const *t, ir::RegOr<ir::Addr> to,
-                      type::Typed<ir::Results> const &from);
-  void EmitMoveAssign(type::Variant const *t, ir::RegOr<ir::Addr> to,
-                      type::Typed<ir::Results> const &from);
+  void Visit(type::Array const *t, ir::RegOr<ir::Addr> to,
+             type::Typed<ir::Results> const &from, EmitMoveAssignTag);
+  void Visit(type::Enum const *t, ir::RegOr<ir::Addr> to,
+             type::Typed<ir::Results> const &from, EmitMoveAssignTag);
+  void Visit(type::Flags const *t, ir::RegOr<ir::Addr> to,
+             type::Typed<ir::Results> const &from, EmitMoveAssignTag);
+  void Visit(type::Function const *t, ir::RegOr<ir::Addr> to,
+             type::Typed<ir::Results> const &from, EmitMoveAssignTag);
+  void Visit(type::Pointer const *t, ir::RegOr<ir::Addr> to,
+             type::Typed<ir::Results> const &from, EmitMoveAssignTag);
+  void Visit(type::Primitive const *t, ir::RegOr<ir::Addr> to,
+             type::Typed<ir::Results> const &from, EmitMoveAssignTag);
+  void Visit(type::Struct const *t, ir::RegOr<ir::Addr> to,
+             type::Typed<ir::Results> const &from, EmitMoveAssignTag);
+  void Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
+             type::Typed<ir::Results> const &from, EmitMoveAssignTag);
+  void Visit(type::Variant const *t, ir::RegOr<ir::Addr> to,
+             type::Typed<ir::Results> const &from, EmitMoveAssignTag);
 
-  void EmitDefaultInit(type::Type const *t, ir::Reg) { UNREACHABLE(); }
-  void EmitDefaultInit(type::Array const *t, ir::Reg reg);
-  void EmitDefaultInit(type::Flags const *t, ir::Reg reg);
-  void EmitDefaultInit(type::Pointer const *t, ir::Reg reg);
-  void EmitDefaultInit(type::Primitive const *t, ir::Reg reg);
-  void EmitDefaultInit(type::Struct const *t, ir::Reg reg);
-  void EmitDefaultInit(type::Tuple const *t, ir::Reg reg);
+  void Visit(type::Array const *t, ir::Reg reg, EmitDefaultInitTag);
+  void Visit(type::Flags const *t, ir::Reg reg, EmitDefaultInitTag);
+  void Visit(type::Pointer const *t, ir::Reg reg, EmitDefaultInitTag);
+  void Visit(type::Primitive const *t, ir::Reg reg, EmitDefaultInitTag);
+  void Visit(type::Struct const *t, ir::Reg reg, EmitDefaultInitTag);
+  void Visit(type::Tuple const *t, ir::Reg reg, EmitDefaultInitTag);
 
-  void Visit(ast::Expression const *, type::Typed<ir::Reg> reg, EmitMoveInitTag);
-  void Visit(ast::ArrayLiteral const *, type::Typed<ir::Reg> reg, EmitMoveInitTag);
+  void Visit(ast::Expression const *, type::Typed<ir::Reg> reg,
+             EmitMoveInitTag);
+  void Visit(ast::ArrayLiteral const *, type::Typed<ir::Reg> reg,
+             EmitMoveInitTag);
   void Visit(ast::CommaList const *, type::Typed<ir::Reg> reg, EmitMoveInitTag);
   void Visit(ast::Unop const *, type::Typed<ir::Reg> reg, EmitMoveInitTag);
 
   void EmitMoveInit(type::Type const *from_type, ir::Results const &from_val,
                     type::Typed<ir::Reg> to_var);
 
-  void Visit(ast::Expression const *, type::Typed<ir::Reg> reg, EmitCopyInitTag);
-  void Visit(ast::ArrayLiteral const *, type::Typed<ir::Reg> reg, EmitCopyInitTag);
+  void Visit(ast::Expression const *, type::Typed<ir::Reg> reg,
+             EmitCopyInitTag);
+  void Visit(ast::ArrayLiteral const *, type::Typed<ir::Reg> reg,
+             EmitCopyInitTag);
   void Visit(ast::CommaList const *, type::Typed<ir::Reg> reg, EmitCopyInitTag);
   void Visit(ast::Unop const *, type::Typed<ir::Reg> reg, EmitCopyInitTag);
 

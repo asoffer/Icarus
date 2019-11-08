@@ -11,7 +11,14 @@ struct Primitive : public Type {
   TYPE_FNS(Primitive);
   Primitive(BasicType pt) : type_(pt) {}
 
-#include ICARUS_TYPE_VISITOR_METHODS
+  void ExtractDefiningModules(absl::flat_hash_set<module::BasicModule const *>
+                                  *modules) const override {
+    return module::ExtractDefiningModules::Extract(this, modules);
+  }
+
+  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
 
   bool TestEquality(void const *lhs, void const *rhs) const override;
 

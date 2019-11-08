@@ -16,10 +16,11 @@ void Compiler::EmitMoveInit(type::Type const *from_type,
   if (not to_type->is<type::Primitive>() and
       not to_type->is<type::Function>() and not to_type->is<type::Variant>() and
       not to_type->is<type::Enum>() and not to_type->is<type::Flags>()) {
-    to_type->EmitDefaultInit(this, to_var.get());
+    Visit(to_type, to_var.get(), EmitDefaultInitTag{});
   }
 
-  to_type->EmitMoveAssign(this, from_type, from_val, to_var.get());
+  Visit(to_type, to_var.get(), type::Typed{from_val, from_type},
+        EmitMoveAssignTag{});
 }
 
 void Compiler::Visit(ast::Expression const *node, type::Typed<ir::Reg> reg,

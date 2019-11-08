@@ -39,7 +39,8 @@ static ir::Results PrepArg(compiler::Compiler *compiler, type::Type const *to,
     } else {
       auto alloc = compiler->builder().TmpAlloca(to);
       // TODO move initialization, not move assignment.
-      to->EmitMoveAssign(compiler, from, val, alloc);
+      compiler->Visit(to, alloc, type::Typed{val, from},
+                      compiler::EmitMoveAssignTag{});
       // TODO who destruction of the moved-from buffer? what if it was
       // previously a temp-alloc and already planned to be destroyed?
       return ir::Results{alloc};

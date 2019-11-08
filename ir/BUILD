@@ -47,6 +47,7 @@ cc_lib_target(
         "//base:untyped_buffer",
     ],
     impl_deps = [
+        ":builder",
         ":compiled_fn",
         "//type:type",
     ],
@@ -75,6 +76,7 @@ cc_lib_target(
         "//core:bytes",
         "//core:fn_params",
         "//type:type_fwd",
+        "//type:typed_value",
     ],
     impl_deps = [
         ":inliner",

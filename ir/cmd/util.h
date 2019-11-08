@@ -6,6 +6,7 @@
 #include "backend/exec.h"
 #include "base/util.h"
 #include "ir/addr.h"
+#include "ir/builder.h"
 #include "ir/reg.h"
 #include "ir/reg_or.h"
 #include "ir/values.h"

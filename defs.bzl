@@ -1,9 +1,7 @@
 def configuration(name, defines = []):
     return {
         "name": name,
-        "defines": defines + [
-            "ICARUS_TYPE_VISITOR_DEPENDENCIES=\\\"{}/type_dependencies.h\\\"".format(name),
-        ]
+        "defines": defines
     }
 
 
@@ -30,9 +28,6 @@ def make_deps(deps, cfg):
             return []
     else:
         fail()
-
-def type_dependency(cfg):
-    return "//{}:type_dependencies-{}".format(_VISITOR_DEFINES[cfg]["name"], cfg)
 
 def cc_lib_target(name, intf_deps = [], impl_deps = None,
                   test_deps = None, test_data = [], 

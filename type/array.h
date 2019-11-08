@@ -16,7 +16,14 @@ struct Array : public Type {
   bool IsMovable() const { return data_type->IsMovable(); }
   bool HasDestructor() const { return data_type->HasDestructor(); }
 
-#include ICARUS_TYPE_VISITOR_METHODS
+  void ExtractDefiningModules(absl::flat_hash_set<module::BasicModule const *>
+                                  *modules) const override {
+    return module::ExtractDefiningModules::Extract(this, modules);
+  }
+
+  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
 
   size_t len;
   Type const *data_type;

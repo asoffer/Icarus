@@ -28,6 +28,7 @@ cc_lib_target(
         "//ast:expression",
         "//backend:exec",
         "//base:untyped_buffer",
+        "//compiler:compiler",
         "//core:fn_params",
         "//frontend/source:repl",
         "//frontend:parse",

@@ -4,9 +4,7 @@
 #include "type/type.h"
 
 namespace type {
-struct Callable : public Type {
-#include ICARUS_TYPE_VISITOR_METHODS
-};
+struct Callable : public Type {};
 }  // namespace type
 
 #endif  // ICARUS_TYPE_CALLABLE_H

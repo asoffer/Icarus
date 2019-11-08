@@ -8,7 +8,14 @@ struct Opaque : public Type {
   Opaque(module::BasicModule const *mod) : mod_(mod) {}
   ~Opaque() override {}
 
-#include ICARUS_TYPE_VISITOR_METHODS
+  void ExtractDefiningModules(absl::flat_hash_set<module::BasicModule const *>
+                                  *modules) const override {
+    return module::ExtractDefiningModules::Extract(this, modules);
+  }
+
+  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
 
   void WriteTo(std::string *result) const override;
 

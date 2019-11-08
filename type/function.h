@@ -19,7 +19,14 @@ struct GenericFunction : public Callable {
     result->append("generic");
   }
 
-#include ICARUS_TYPE_VISITOR_METHODS
+  void ExtractDefiningModules(absl::flat_hash_set<module::BasicModule const *>
+                                  *modules) const override {
+    return module::ExtractDefiningModules::Extract(this, modules);
+  }
+
+  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
 
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;
@@ -33,7 +40,14 @@ struct Function : public Callable {
     for (auto *t : output) { ASSERT(t != nullptr); }
   }
 
-#include ICARUS_TYPE_VISITOR_METHODS
+  void ExtractDefiningModules(absl::flat_hash_set<module::BasicModule const *>
+                                  *modules) const override {
+    return module::ExtractDefiningModules::Extract(this, modules);
+  }
+
+  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
 
   core::FnParams<type::Typed<ast::Declaration const *>> AnonymousFnParams()
       const;

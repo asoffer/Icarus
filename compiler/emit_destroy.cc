@@ -13,7 +13,7 @@
 
 namespace compiler {
 
-void Compiler::EmitDestroy(type::Struct const *t, ir::Reg reg) {
+void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDestroyTag) {
   if (not t->HasDestructor()) { return; }
   t->destroy_func_.init([=]() {
     if (auto fn = SpecialFunction(this, t, "~")) { return *fn; }
@@ -27,7 +27,8 @@ void Compiler::EmitDestroy(type::Struct const *t, ir::Reg reg) {
       auto var                 = ir::Reg::Arg(0);
 
       for (int i = static_cast<int>(t->fields_.size()) - 1; i >= 0; --i) {
-        t->fields_.at(i).type->EmitDestroy(this, ir::Field(var, t, i).get());
+        Visit(t->fields_.at(i).type, ir::Field(var, t, i).get(),
+              EmitDestroyTag{});
       }
 
       ir::ReturnJump();
@@ -38,7 +39,7 @@ void Compiler::EmitDestroy(type::Struct const *t, ir::Reg reg) {
   ir::Destroy(t, reg);
 }
 
-void Compiler::EmitDestroy(type::Variant const *t, ir::Reg reg) {
+void Compiler::Visit(type::Variant const *t, ir::Reg reg, EmitDestroyTag) {
   if (not t->HasDestructor()) { return; }
   // TODO design and build a jump table?
   // TODO remove these casts in favor of something easier to track properties on
@@ -59,7 +60,7 @@ void Compiler::EmitDestroy(type::Variant const *t, ir::Reg reg) {
         auto *found_block = builder().AddBlock();
 
         builder().CurrentBlock() = found_block;
-        v->EmitDestroy(this, ir::PtrFix(var_val, v));
+        Visit(v, ir::PtrFix(var_val, v), EmitDestroyTag{});
         ir::UncondJump(landing);
 
         builder().CurrentBlock() = old_block;
@@ -77,7 +78,7 @@ void Compiler::EmitDestroy(type::Variant const *t, ir::Reg reg) {
            {ir::Results{reg}});
 }
 
-void Compiler::EmitDestroy(type::Tuple const *t, ir::Reg reg) {
+void Compiler::Visit(type::Tuple const *t, ir::Reg reg, EmitDestroyTag) {
   if (not t->HasDestructor()) { return; }
   t->destroy_func_.init([=]() {
     auto const *fn_type = type::Func({Ptr(t)}, {});
@@ -88,7 +89,7 @@ void Compiler::EmitDestroy(type::Tuple const *t, ir::Reg reg) {
 
       for (size_t i :
            base::make_random_permutation(absl::BitGen{}, t->entries_.size())) {
-        t->entries_.at(i)->EmitDestroy(this, ir::Field(var, t, i).get());
+        Visit(t->entries_.at(i), ir::Field(var, t, i).get(), EmitDestroyTag{});
       }
 
       ir::ReturnJump();
@@ -99,14 +100,14 @@ void Compiler::EmitDestroy(type::Tuple const *t, ir::Reg reg) {
   ir::Destroy(t, reg);
 }
 
-void Compiler::EmitDestroy(type::Array const *t, ir::Reg reg) {
+void Compiler::Visit(type::Array const *t, ir::Reg reg, EmitDestroyTag) {
   if (not t->HasDestructor()) { return; }
   t->destroy_func_.init([=]() {
     // TODO special function?
     auto const *fn_type = type::Func({Ptr(t)}, {});
     auto *fn            = AddFunc(fn_type, fn_type->AnonymousFnParams());
     ir::OnEachArrayElement(
-        t, fn, [=](ir::Reg r) { t->data_type->EmitDestroy(this, r); });
+        t, fn, [=](ir::Reg r) { Visit(t->data_type, r, EmitDestroyTag{}); });
     return fn;
   });
 

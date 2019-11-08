@@ -14,26 +14,6 @@ icarus_method(
     ],
 )
 
-icarus_method(
-    name = "type_methods",
-    deps = [
-        "//compiler:compiler-match",
-        "//module:extract_defining_modules-xmacro",
-    ],
-    gen = False,
-)
-
-cc_lib_target(
-    name = "type_dependencies",
-    cfgs = ["match"],
-    textual_hdrs = ["type_dependencies.h"],
-    intf_deps = [
-        ":type_methods-xmacro",
-        "//compiler:compiler",
-        "//module:extract_defining_modules",
-    ],
-)
-
 cc_lib_target(
     name = "binding_id",
     cfgs = ["match"],

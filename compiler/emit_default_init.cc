@@ -12,28 +12,30 @@
 
 namespace compiler {
 
-void Compiler::EmitDefaultInit(type::Array const *t, ir::Reg reg) {
+void Compiler::Visit(type::Array const *t, ir::Reg reg, EmitDefaultInitTag) {
   t->init_func_.init([=]() {
     // TODO special function?
     auto const *fn_type = type::Func({type::Ptr(t)}, {});
     auto *fn            = AddFunc(fn_type, fn_type->AnonymousFnParams());
-    ir::OnEachArrayElement(
-        t, fn, [=](ir::Reg r) { t->data_type->EmitDefaultInit(this, r); });
+    ir::OnEachArrayElement(t, fn, [=](ir::Reg r) {
+      Visit(t->data_type, r, EmitDefaultInitTag{});
+    });
     return fn;
   });
 
   ir::Init(t, reg);
 }
 
-void Compiler::EmitDefaultInit(type::Flags const *t, ir::Reg reg) {
+void Compiler::Visit(type::Flags const *t, ir::Reg reg, EmitDefaultInitTag) {
   ir::Store(ir::FlagsVal{0}, reg);
 }
 
-void Compiler::EmitDefaultInit(type::Pointer const *t, ir::Reg reg) {
+void Compiler::Visit(type::Pointer const *t, ir::Reg reg, EmitDefaultInitTag) {
   ir::Store(ir::Addr::Null(), reg);
 }
 
-void Compiler::EmitDefaultInit(type::Primitive const *t, ir::Reg reg) {
+void Compiler::Visit(type::Primitive const *t, ir::Reg reg,
+                     EmitDefaultInitTag) {
   switch (t->type_) {
     case type::BasicType::Type_: ir::Store(type::Void(), reg); break;
     case type::BasicType::NullPtr: UNREACHABLE();
@@ -59,11 +61,11 @@ void Compiler::EmitDefaultInit(type::Primitive const *t, ir::Reg reg) {
   }
 }
 
-void Compiler::EmitDefaultInit(type::Struct const *t, ir::Reg reg) {
+void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDefaultInitTag) {
   ir::Init(t, reg);
 }
 
-void Compiler::EmitDefaultInit(type::Tuple const *t, ir::Reg reg) {
+void Compiler::Visit(type::Tuple const *t, ir::Reg reg, EmitDefaultInitTag) {
   t->init_func_.init([=]() {
     auto const *fn_type = type::Func({type::Ptr(t)}, {});
     auto *fn            = AddFunc(fn_type, fn_type->AnonymousFnParams());
@@ -74,7 +76,8 @@ void Compiler::EmitDefaultInit(type::Tuple const *t, ir::Reg reg) {
 
       for (size_t i :
            base::make_random_permutation(absl::BitGen{}, t->entries_.size())) {
-        t->entries_.at(i)->EmitDefaultInit(this, ir::Field(var, t, i).get());
+        Visit(t->entries_.at(i), ir::Field(var, t, i).get(),
+              EmitDefaultInitTag{});
       }
 
       ir::ReturnJump();

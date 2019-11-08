@@ -11,7 +11,14 @@ struct Tuple : public Type {
   ~Tuple() {}
   Tuple(std::vector<Type const *> entries) : entries_(std::move(entries)) {}
 
-#include ICARUS_TYPE_VISITOR_METHODS
+  void ExtractDefiningModules(absl::flat_hash_set<module::BasicModule const *>
+                                  *modules) const override {
+    return module::ExtractDefiningModules::Extract(this, modules);
+  }
+
+  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
 
   void WriteTo(std::string *result) const override;
 

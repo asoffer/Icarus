@@ -14,10 +14,10 @@
 #include "ir/reg.h"
 #include "ir/results.h"
 #include "ir/values.h"
+#include "module/extract_defining_modules.h"
 #include "module/module.h"
 #include "type/basic_type.h"
-
-#include ICARUS_TYPE_VISITOR_DEPENDENCIES
+#include "type/visitor_base.h"
 
 namespace ast {
 struct FunctionLiteral;
@@ -56,10 +56,13 @@ struct Type : public base::Cast<Type> {
   bool IsMovable() const { return true; }
   bool HasDestructor() const { return true; }
 
-#define ICARUS_TYPE_VISITOR(signature, body)                                   \
-  virtual signature { UNREACHABLE(); }
-#include ICARUS_TYPE_VISITOR_METHODS
-#undef ICARUS_TYPE_VISITOR
+  virtual void ExtractDefiningModules(
+      absl::flat_hash_set<module::BasicModule const *> *modules) const {
+    UNREACHABLE();
+  }
+
+  virtual void Accept(VisitorBase *visitor, void *ret,
+                      void *arg_tuple) const = 0;
 
   // TODO rename so it doesn't have "Test" in the name.
   virtual bool TestEquality(void const *lhs, void const *rhs) const {
@@ -195,7 +198,5 @@ inline bool IsNumeric(Type const *t) {
 }
 
 }  // namespace type
-
-#define ICARUS_TYPE_VISITOR(signature, body) signature override body
 
 #endif  // ICARUS_TYPE_TYPE_H

@@ -1,7 +1,14 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_group_target", "cc_lib_target", "cc_component", "type_dependency")
+load("//:defs.bzl", "cc_group_target", "cc_lib_target", "cc_component")
 
-cc_lib_target(name = "type_fwd", impl_deps = None, test_deps = None)
+cc_library(name = "type_xmacro", textual_hdrs = ["type.xmacro.h"])
+
+cc_component(
+    name = "type_fwd",
+    intf_deps = [":type_xmacro"],
+    impl_deps = None,
+    test_deps = None,
+)
 
 cc_lib_target(
     name = "array",
@@ -234,8 +241,8 @@ cc_lib_target(
     name = "type",
     textual_hdrs = ["primitive.xmacro.h"],
     intf_deps = [
-        type_dependency,
         ":basic_type",
+        ":visitor_base",
         "//base:debug",
         "//base:meta",
         "//base:tag",
@@ -247,6 +254,7 @@ cc_lib_target(
         "//ir:results",
         "//ir:values",
         "//module:module",
+        "//module:extract_defining_modules",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
     impl_deps = [
@@ -271,5 +279,25 @@ cc_lib_target(
         "//base:guarded",
         "@com_google_absl//absl/algorithm:container",
     ],
+    test_deps = None,
+)
+
+cc_component(
+    name = "visitor_base",
+    intf_deps = [
+        ":type_fwd",
+        "//base:debug",
+    ],
+    impl_deps = None,
+    test_deps = None,
+)
+
+cc_lib_target(
+    name = "visitor",
+    intf_deps = [
+        ":type",
+        ":visitor_base",
+    ],
+    impl_deps = None,
     test_deps = None,
 )

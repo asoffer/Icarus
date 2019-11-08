@@ -82,7 +82,7 @@ void MakeAllDestructions(Compiler *compiler, ast::ExecScope const *exec_scope) {
   for (auto *decl : ordered_decls) {
     auto *t = ASSERT_NOT_NULL(compiler->type_of(decl));
     if (not t->HasDestructor()) { continue; }
-    t->EmitDestroy(compiler, compiler->addr(decl));
+    compiler->Visit(t, compiler->addr(decl), EmitDestroyTag{});
   }
 }
 
@@ -93,7 +93,7 @@ void EmitIrForStatements(Compiler *compiler,
       compiler->Visit(stmt, EmitValueTag{});
       compiler->builder().FinishTemporariesWith(
           [compiler](type::Typed<ir::Reg> r) {
-            r.type()->EmitDestroy(compiler, r.get());
+            compiler->Visit(r.type(), r.get(), EmitDestroyTag{});
           });
       if (compiler->builder().more_stmts_allowed()) { break; };
     }
@@ -127,11 +127,13 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node) {
 
         compiler->set_addr(out_decl, alloc);
         if (out_decl->IsDefaultInitialized()) {
-          out_decl_type->EmitDefaultInit(compiler, alloc);
+          compiler->Visit(out_decl_type, alloc, EmitDefaultInitTag{});
         } else {
-          out_decl_type->EmitCopyAssign(
-              compiler, out_decl_type,
-              compiler->Visit(out_decl->init_val(), EmitValueTag{}), alloc);
+          compiler->Visit(
+              out_decl_type, alloc,
+              type::Typed{compiler->Visit(out_decl->init_val(), EmitValueTag{}),
+                          out_decl_type},
+              EmitCopyAssignTag{});
         }
       }
     }
@@ -142,7 +144,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node) {
 
         compiler->builder().FinishTemporariesWith(
             [compiler](type::Typed<ir::Reg> r) {
-              r.type()->EmitDestroy(compiler, r.get());
+              compiler->Visit(r.type(), r.get(), EmitDestroyTag{});
             });
       }
     }
@@ -246,7 +248,7 @@ void CompleteBody(Compiler *compiler, ast::JumpHandler const *node) {
 
         compiler->builder().FinishTemporariesWith(
             [compiler](type::Typed<ir::Reg> r) {
-              r.type()->EmitDestroy(compiler, r.get());
+              compiler->Visit(r.type(), r.get(), EmitDestroyTag{});
             });
       }
     }
@@ -437,7 +439,8 @@ ir::Results Compiler::Visit(ast::Binop const *node, EmitValueTag) {
       if (lhs_lvals.size() != 1) { NOT_YET(); }
 
       auto rhs_vals = Visit(node->rhs(), EmitValueTag{});
-      lhs_type->EmitMoveAssign(this, rhs_type, rhs_vals, lhs_lvals[0]);
+      Visit(lhs_type, lhs_lvals[0], type::Typed{rhs_vals, rhs_type},
+            EmitMoveAssignTag{});
 
       return ir::Results{};
     } break;
@@ -1120,7 +1123,7 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
       Visit(node->init_val(), type::Typed(a, type::Ptr(t)), EmitMoveInitTag{});
     } else {
       if (not(node->flags() & ast::Declaration::f_IsFnParam)) {
-        t->EmitDefaultInit(this, a);
+        Visit(t, a, EmitDefaultInitTag{});
       }
     }
     return ir::Results{a};
@@ -1284,7 +1287,7 @@ ir::Results Compiler::Visit(ast::PrintStmt const *node, EmitValueTag) {
           this, core::FnArgs<std::pair<ast::Expression const *, ir::Results>>(
                     {std::move(result)}, {}));
     } else {
-      type_of(result.first)->EmitPrint(this, result.second);
+      Visit(type_of(result.first), result.second, EmitPrintTag{});
     }
   }
   return ir::Results{};

@@ -1,21 +1,5 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib_target", "icarus_method")
-
-icarus_method(
-    name = "type_methods",
-    deps = ["//module:extract_defining_modules-xmacro"],
-    gen = False,
-)
-
-cc_lib_target(
-    name = "type_dependencies",
-    cfgs = ["format"],
-    textual_hdrs = ["type_dependencies.h"],
-    intf_deps = [
-        "//format:type_methods-xmacro",
-        "//module:extract_defining_modules"
-    ],
-)
+load("//:defs.bzl", "cc_lib_target")
 
 cc_binary(
     name = "icfmt",

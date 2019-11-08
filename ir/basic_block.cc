@@ -1,5 +1,6 @@
 #include "ir/basic_block.h"
 
+#include "ir/builder.h"
 #include "ir/compiled_fn.h"
 #include "type/type.h"
 

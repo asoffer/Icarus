@@ -15,10 +15,11 @@ void Compiler::EmitCopyInit(type::Type const *from_type,
   // TODO Optimize once you understand the semantics better.
   if (not to_type->is<type::Primitive>() and
       not to_type->is<type::Function>() and not to_type->is<type::Variant>()) {
-    to_type->EmitDefaultInit(this, to_var.get());
+    Visit(to_type, to_var.get(), EmitDefaultInitTag{});
   }
 
-  to_type->EmitCopyAssign(this, from_type, from_val, to_var.get());
+  Visit(to_type, to_var.get(), type::Typed{from_val, from_type},
+        EmitCopyAssignTag{});
 }
 
 void Compiler::Visit(ast::Expression const *node, type::Typed<ir::Reg> reg,

@@ -53,6 +53,7 @@ cc_lib_target(
         "//compiler:verify_result",
         "//core:fn_args",
         "//core:fn_params",
+        "//type:typed_value",
     ],
     impl_deps = [
         "//ast:ast",

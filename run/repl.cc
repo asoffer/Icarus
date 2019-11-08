@@ -7,6 +7,7 @@
 #include "ast/scope/scope.h"
 #include "backend/exec.h"
 #include "base/untyped_buffer.h"
+#include "compiler/compiler.h"
 #include "core/fn_params.h"
 #include "frontend/parse.h"
 #include "frontend/source/repl.h"
@@ -31,7 +32,9 @@ static void ReplEval(ast::Expression const *expr,
     }
     // TODO compiler->CompleteDeferredBodies();
     auto *expr_type = compiler->type_of(expr);
-    if (expr_type != type::Void()) { compiler->EmitPrint(expr_type, expr_val); }
+    if (expr_type != type::Void()) {
+      compiler->Visit(expr_type, expr_val, compiler::EmitPrintTag{});
+    }
     ir::ReturnJump();
   }
 
