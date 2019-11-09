@@ -1,19 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 load("//:defs.bzl", "cc_group_target", "cc_component", "cc_lib")
 
-cc_group_target(
-    name = "impl",
-    deps = [
-        ":basic_block-impl",
-        ":block_group-impl",
-        ":builder-impl",
-        ":cmd_buffer-impl",
-        ":compiled_fn-impl",
-        ":components-impl",
-        ":inliner-impl",
-    ],
-)
-
 cc_lib(
     name = "addr",
     deps = [
@@ -33,16 +20,12 @@ cc_lib(
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "basic_block",
-    intf_deps = [
+    deps = [
         ":cmd_buffer",
         ":out_params",
         "//base:untyped_buffer",
-    ],
-    impl_deps = [
-        ":builder",
-        ":compiled_fn",
         "//type:type",
     ],
     test_deps = None,
@@ -57,49 +40,43 @@ cc_lib(
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "block_group",
-    intf_deps = [
+    deps = [
         ":basic_block",
         ":stack_frame_allocations",
         "//ast:ast_fwd",
         "//base:ptr_span",
+        "//base:strong_types",
         "//core:alignment",
         "//core:bytes",
         "//core:fn_params",
+        "//type:pointer",
         "//type:type_fwd",
         "//type:typed_value",
     ],
-    impl_deps = [
-        ":inliner",
-        "//type:pointer",
-    ],
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "jump_handler",
-    intf_deps = [
-        ":block_group",
-    ],
-    impl_deps = None,
+    deps = [":block_group"],
+    header_only = True,
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "builder",
-    intf_deps = [
+    deps = [
         ":addr",
         ":basic_block",
+        ":block_group",
+        ":cmd_buffer",
         ":reg",
         "//base:debug",
         "//base:scope",
         "//base:tag",
         "//type:typed_value",
-    ],
-    impl_deps = [
-        ":cmd_buffer",
-        ":compiled_fn",
     ],
     test_deps = None,
 )
@@ -121,7 +98,6 @@ cc_lib(
 cc_component(
     name = "cmd_buffer",
     intf_deps = [
-        ":inliner",
         "//base:untyped_buffer",
         "//core:arch",
     ],
@@ -129,12 +105,12 @@ cc_component(
         ":compiled_fn",
         "//backend:exec",
         "//ir/cmd:basic",
-        "//ir/cmd:call-impl",
+        "//ir/cmd:call",
         "//ir/cmd:cast",
         "//ir/cmd:jumps",
         "//ir/cmd:load",
-        "//ir/cmd:misc-impl",
-        "//ir/cmd:print-impl",
+        "//ir/cmd:misc",
+        "//ir/cmd:print",
         "//ir/cmd:register",
         "//ir/cmd:return",
         "//ir/cmd:scope",
@@ -178,9 +154,9 @@ cc_lib(
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "compiled_fn",
-    intf_deps = [
+    deps = [
         ":basic_block",
         ":block_group",
         ":builder",
@@ -189,34 +165,29 @@ cc_component(
         "//base:move_func",
         "//base:ptr_span",
         "//base:scope",
-        "//core:fn_params",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/container:flat_hash_set",
-    ],
-    impl_deps = [
-        "//ast:ast",
         "//core:arch",
+        "//core:fn_params",
         "//type:function",
         "//type:pointer",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
     ],
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "inliner",
-    intf_deps = [
-        ":reg",
-        ":results",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-    impl_deps = [
+    deps = [
         ":builder",
         ":compiled_fn",
+        ":reg",
+        ":results",
         ":stack_frame_allocations",
         "//ir/cmd:jumps",
         "//ir/cmd:register",
         "//type:function",
         "//type:type",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
     test_deps = None,
 )

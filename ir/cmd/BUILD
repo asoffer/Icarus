@@ -1,5 +1,5 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_component")
+load("//:defs.bzl", "cc_component", "cc_lib")
 
 cc_component(
     name = "basic",
@@ -155,9 +155,9 @@ cc_component(
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "util",
-    intf_deps = [
+    deps = [
         "//ir:builder",
         "//ir:values",
         "//backend:exec",
@@ -165,6 +165,6 @@ cc_component(
         "//type:primitive",
         "//type:util",
     ],
-    impl_deps = None,
+    header_only = True,
     test_deps = None,
 )

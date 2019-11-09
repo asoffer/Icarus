@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "ir/compiled_fn.h"
+#include "ir/block_group.h"
 
 namespace ir {
 
@@ -33,5 +33,11 @@ base::Tagged<Addr, Reg> Builder::TmpAlloca(type::Type const* t) {
   current_.temporaries_to_destroy_.emplace_back(reg, t);
   return reg;
 }
+
+Reg Reserve(core::Bytes b, core::Alignment a) {
+  return current.CurrentGroup()->Reserve(b, a);
+}
+
+Reg Reserve(type::Type const* t) { return current.CurrentGroup()->Reserve(t); }
 
 }  // namespace ir

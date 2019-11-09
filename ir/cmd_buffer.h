@@ -5,7 +5,7 @@
 
 #include "base/untyped_buffer.h"
 #include "core/arch.h"
-#include "ir/inliner.h"
+#include "ir/reg.h"
 
 namespace backend {
 struct ExecContext;
@@ -13,8 +13,10 @@ struct ExecContext;
 
 namespace ir {
 struct BasicBlock;
+struct Inliner;
 
 struct CmdBuffer {
+  friend struct Inliner;  // TODO remove
  public:
   template <typename CmdType>
   void append_index() {

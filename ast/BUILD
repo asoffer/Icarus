@@ -74,6 +74,7 @@ cc_component(
         "//core:fn_params",
         "//ir:basic_block",
         "//ir:block_def",
+        "//ir:inliner",
         "//ir:jump_handler",
         "//ir:results",
         "@com_google_absl//absl/container:flat_hash_map",

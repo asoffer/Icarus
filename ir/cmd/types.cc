@@ -167,26 +167,26 @@ std::string EnumerationCmd::DebugString(
 
 void EnumerationCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
                                        Inliner const &inliner) {
-  iter->read<bool>();
-  uint16_t num_enumerators = iter->read<uint16_t>();
-  uint16_t num_specified   = iter->read<uint16_t>();
-  iter->read<module::BasicModule *>();
-  for (uint16_t i = 0; i < num_enumerators; ++i) {
-    // TODO jump ahead.
-    iter->read<std::string_view>();
-  }
+  // iter->read<bool>();
+  // uint16_t num_enumerators = iter->read<uint16_t>();
+  // uint16_t num_specified   = iter->read<uint16_t>();
+  // iter->read<module::BasicModule *>();
+  // for (uint16_t i = 0; i < num_enumerators; ++i) {
+  //   // TODO jump ahead.
+  //   iter->read<std::string_view>();
+  // }
 
-  for (uint16_t i = 0; i < num_specified; ++i) {
-    iter->read<uint64_t>();  // index
-    bool is_reg = iter->read<bool>();
-    if (is_reg) {
-      inliner.Inline(&iter->read<Reg>());
-    } else {
-      iter->read<EnumerationCmd::enum_t>();
-    }
-  }
+  // for (uint16_t i = 0; i < num_specified; ++i) {
+  //   iter->read<uint64_t>();  // index
+  //   bool is_reg = iter->read<bool>();
+  //   if (is_reg) {
+  //     inliner.Inline(&iter->read<Reg>());
+  //   } else {
+  //     iter->read<EnumerationCmd::enum_t>();
+  //   }
+  // }
 
-  iter->read<Reg>();
+  // iter->read<Reg>();
 }
 
 BasicBlock const *StructCmd::Execute(base::untyped_buffer::const_iterator *iter,
@@ -218,13 +218,13 @@ std::string StructCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
 
 void StructCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
                                   Inliner const &inliner) {
-  auto num = iter->read<uint16_t>();
-  iter->read<ast::Scope *>();
-  iter->read<module::BasicModule *>();
-  for (uint16_t i = 0; i < num; ++i) { iter->read<std::string_view>(); }
-  internal::Deserialize<uint16_t, type::Type const *>(
-      iter, [&inliner](Reg &reg) { inliner.Inline(&reg); });
-  inliner.Inline(&iter->read<Reg>(), ::type::Type_);
+  // auto num = iter->read<uint16_t>();
+  // iter->read<ast::Scope *>();
+  // iter->read<module::BasicModule *>();
+  // for (uint16_t i = 0; i < num; ++i) { iter->read<std::string_view>(); }
+  // internal::Deserialize<uint16_t, type::Type const *>(
+  //     iter, [&inliner](Reg &reg) { inliner.Inline(&reg); });
+  // inliner.Inline(&iter->read<Reg>(), ::type::Type_);
 }
 
 Reg Struct(ast::Scope const *scope, module::BasicModule *mod,
@@ -271,8 +271,8 @@ std::string OpaqueTypeCmd::DebugString(
 
 void OpaqueTypeCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
                                       Inliner const &inliner) {
-  iter->read<module::BasicModule const *>();
-  inliner.Inline(&iter->read<Reg>());
+  // iter->read<module::BasicModule const *>();
+  // inliner.Inline(&iter->read<Reg>());
 }
 
 BasicBlock const *ArrayCmd::Execute(base::untyped_buffer::const_iterator *iter,
@@ -308,18 +308,18 @@ std::string ArrayCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
 
 void ArrayCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
                                  Inliner const &inliner) {
-  auto ctrl_bits = iter->read<control_bits>();
-  if (ctrl_bits.length_is_reg) {
-    inliner.Inline(&iter->read<Reg>());
-  } else {
-    iter->read<length_t>();
-  }
+  // auto ctrl_bits = iter->read<control_bits>();
+  // if (ctrl_bits.length_is_reg) {
+  //   inliner.Inline(&iter->read<Reg>());
+  // } else {
+  //   iter->read<length_t>();
+  // }
 
-  if (ctrl_bits.type_is_reg) {
-    inliner.Inline(&iter->read<Reg>());
-  } else {
-    iter->read<type::Type const *>();
-  }
+  // if (ctrl_bits.type_is_reg) {
+  //   inliner.Inline(&iter->read<Reg>());
+  // } else {
+  //   iter->read<type::Type const *>();
+  // }
 }
 
 RegOr<type::Function const *> Arrow(

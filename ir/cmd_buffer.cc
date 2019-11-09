@@ -92,22 +92,23 @@ BasicBlock const* CmdBuffer::Execute(std::vector<ir::Addr> const& ret_slots,
 }
 
 void CmdBuffer::UpdateForInlining(Inliner const& inliner) {
-  auto iter = buf_.begin();
-  DEBUG_LOG("dbg")(buf_);
-
-  while (iter < buf_.end()) {
-    switch (iter.read<cmd_index_t>()) {
-#define CASE(type)                                                             \
-  case type::index:                                                            \
-    DEBUG_LOG("dbg")(#type ": ", iter);                                        \
-    type::UpdateForInlining(&iter, inliner);                                   \
-    break
-      CASES;
-#undef CASE
-    }
-  }
-
-  DEBUG_LOG("dbg")(buf_);
+  //   TODO Re-implement
+//   auto iter = buf_.begin();
+//   DEBUG_LOG("dbg")(buf_);
+// 
+//   while (iter < buf_.end()) {
+//     switch (iter.read<cmd_index_t>()) {
+// #define CASE(type)                                                              
+//   case type::index:                                                             
+//     DEBUG_LOG("dbg")(#type ": ", iter);                                         
+//     type::UpdateForInlining(&iter, inliner);                                    
+//     break
+//       CASES;
+// #undef CASE
+//     }
+//   }
+// 
+//   DEBUG_LOG("dbg")(buf_);
 }
 
 std::string CmdBuffer::to_string() const {

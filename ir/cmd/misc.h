@@ -8,7 +8,6 @@
 #include "backend/exec.h"
 #include "base/debug.h"
 #include "ir/cmd/util.h"
-#include "ir/inliner.h"
 #include "ir/reg_or.h"
 #include "type/type.h"
 

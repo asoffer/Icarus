@@ -13,7 +13,6 @@
 #include "ir/reg_or.h"
 
 namespace ir {
-struct Cmd;
 struct BasicBlock;
 struct ScopeDef;
 }  // namespace ir

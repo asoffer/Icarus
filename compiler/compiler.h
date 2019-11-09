@@ -13,7 +13,6 @@
 #include "base/tag.h"
 #include "compiler/constant_binding.h"
 #include "compiler/dependent_data.h"
-#include "compiler/module.h"
 #include "compiler/verify_result.h"
 #include "error/log.h"
 #include "frontend/source/source.h"

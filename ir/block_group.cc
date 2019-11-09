@@ -48,10 +48,4 @@ Reg BlockGroup::Alloca(type::Type const *t) {
   return r;
 }
 
-Inliner BlockGroup::inliner() {
-  BasicBlock *block = blocks().back();
-  AppendBlock();
-  return Inliner(reg_to_offset_.size(), blocks().size() - 1, block);
-}
-
 }  // namespace ir::internal

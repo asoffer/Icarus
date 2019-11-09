@@ -1,79 +1,60 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_component")
+load("//:defs.bzl", "cc_component", "cc_lib")
 
-cc_component(
+cc_lib(
     name = "compiler",
-    intf_deps = [
+    deps = [
         ":constant_binding",
-        ":module",
         ":verify_result",
+        "//ast:ast",
         "//ast:visitor",
         "//base:debug",
         "//base:guarded",
         "//base:move_func",
         "//base:tag",
-        "//error:log",
         "//compiler:dependent_data",
-        "//module:module",
-        "//ir:results",
-        "//ir:builder",
-        "//type:type_fwd",
-        "//type:visitor",
-        "@com_google_absl//absl/container:node_hash_map",
-    ],
-    impl_deps = [
-        "//ast:ast",
+        "//error:log",
         "//frontend:parse",
         "//ir:builder",
         "//ir:compiled_fn",
-        "//ir:components",
-        "//ir/cmd:call",
-        "//ir/cmd:print",
-        "//ir/cmd:basic",
+        "//ir:results",
         "//module:module",
         "//type:type",
+        "//type:type_fwd",
         "//type:typed_value",
-        ":emit_assign-impl",
-        ":emit_destroy-impl",
-        ":emit_copy_init-impl",
-        ":emit_default_init-impl",
-        ":emit_move_init-impl",
-        ":emit_ref-impl",
-        ":emit_value-impl",
-        ":emit_print-impl",
-        ":special_function-impl",
-        ":verify_type-impl",
+        "//type:visitor",
+        "@com_google_absl//absl/container:node_hash_map",
     ],
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "extract_jumps",
-    intf_deps = ["//ast:visitor"],
-    impl_deps = ["//ast:ast"],
+    deps = [
+        "//ast:visitor",
+        "//ast:ast",
+    ],
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "constant_binding",
-    intf_deps = [
+    deps = [
         "//ast:ast_fwd",
         "//base:untyped_buffer",
+        "//core:arch",
         "//core:bytes",
         "//ir:results",
         "//type:type_fwd",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-    impl_deps = [
-        "//core:arch",
         "//type:type",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "dependent_data",
-    intf_deps = [
+    deps = [
         ":verify_result",
         "//ast:dispatch_table",
         "//ast:ast_fwd",
@@ -81,7 +62,7 @@ cc_component(
         "//module:pending",
         "//ir:scope_def",
     ],
-    impl_deps = None,
+    header_only = True,
     test_deps = None,
 )
 
@@ -159,10 +140,9 @@ cc_component(
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "emit_move_init",
-    intf_deps = None,
-    impl_deps = [
+    deps = [
         ":compiler",
         "//ast:ast",
         "//ir/cmd:misc",
@@ -173,10 +153,9 @@ cc_component(
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "emit_ref",
-    intf_deps = None,
-    impl_deps = [
+    deps = [
         ":compiler",
         "//ast:ast",
         "//backend:eval",
@@ -193,10 +172,9 @@ cc_component(
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "emit_value",
-    intf_deps = None,
-    impl_deps = [
+    deps = [
         ":compiler",
         "//ast:ast",
         "//ast/methods:dump",
@@ -228,10 +206,9 @@ cc_component(
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "emit_print",
-    intf_deps = None,
-    impl_deps = [
+    deps = [
         ":compiler",
         "//ast:ast",
         "//ir:builder",
@@ -247,29 +224,26 @@ cc_component(
 )
 
 
-cc_component(
+cc_lib(
     name = "module",
-    intf_deps = [
+    deps = [
+        ":compiler",
         ":constant_binding",
+        ":dependent_data",
+        "//ast:ast",
         "//ast:ast_fwd",
+        "//backend:eval",
         "//base:ptr_span",
-        "//compiler:dependent_data",
+        "//ir:compiled_fn",
         "//module:module",
         "//type:type_fwd",
-    ],
-    impl_deps = [
-        ":compiler",
-        "//ast:ast",
-        "//backend:eval",
-        "//ir:compiled_fn",
     ],
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "verify_type",
-    intf_deps = None,
-    impl_deps = [
+    deps = [
         ":extract_jumps",
         "//ast:ast",
         "//ast/methods:dump",
@@ -287,10 +261,10 @@ cc_component(
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "verify_result",
-    intf_deps = [],
-    impl_deps = None,
+    deps = [],
+    header_only = True,
     test_deps = None,
 )
 

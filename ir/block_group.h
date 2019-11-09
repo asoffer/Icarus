@@ -12,15 +12,15 @@
 #include "core/bytes.h"
 #include "core/fn_params.h"
 #include "ir/basic_block.h"
-#include "ir/inliner.h"
 #include "ir/reg.h"
 #include "ir/stack_frame_allocations.h"
 #include "type/type_fwd.h"
 #include "type/typed_value.h"
 
 namespace ir {
-
-namespace internal {
+struct Inliner;
+}  // namespace ir
+namespace ir::internal {
 
 // A `BlockGroup` represents a collection of `BasicBlock`s which make sense
 // together as a coherent entity. One might normally call such a collection of
@@ -46,8 +46,6 @@ struct BlockGroup {
     return params_;
   }
 
-  Inliner inliner();
-
   base::untyped_buffer MakeBuffer() const {
     return base::untyped_buffer::MakeFull(reg_size_.value());
   }
@@ -65,6 +63,7 @@ struct BlockGroup {
   }
 
  private:
+  friend struct ::ir::Inliner; // TODO remove.
   core::FnParams<type::Typed<ast::Declaration const *>> params_;
   std::vector<std::unique_ptr<BasicBlock>> blocks_;
   StackFrameAllocations allocs_;
@@ -85,7 +84,6 @@ inline std::ostream &operator<<(std::ostream &os, BlockGroup const &b) {
   return os;
 }
 
-}  // namespace internal
-}  // namespace ir
+}  // namespace ir::internal
 
 #endif  // ICARUS_IR_BLOCK_GROUP_H

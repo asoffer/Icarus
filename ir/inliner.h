@@ -2,6 +2,7 @@
 #define ICARUS_IR_CMD_INLINER_H
 
 #include "absl/container/flat_hash_map.h"
+#include "ir/block_group.h"
 #include "ir/reg.h"
 #include "ir/results.h"
 
@@ -15,11 +16,14 @@ struct BlockDef;
 struct CompiledFn;
 struct StackFrameAllocations;
 
-namespace internal {
-struct BlockGroup;
-}  // namespace internal
-
 struct Inliner {
+  static Inliner Make(internal::BlockGroup *group) {
+    BasicBlock *block = group->blocks().back();
+    group->AppendBlock();
+    return Inliner(group->reg_to_offset_.size(), group->blocks().size() - 1,
+                   block);
+  }
+
   void Inline(Reg *r, type::Type const *t = nullptr) const;
 
   constexpr void Inline(BasicBlock const *b) const {

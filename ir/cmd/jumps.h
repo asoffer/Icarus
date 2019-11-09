@@ -75,26 +75,26 @@ struct JumpCmd {
 
   static void UpdateForInlining(base::untyped_buffer::iterator* iter,
                                 Inliner const& inliner) {
-    auto& kind = iter->read<Kind>();
-    switch (kind) {
-      case Kind::kRet:
-        kind = Kind::kUncond;
-        // We have ensured that any return jump has enough space to hold an
-        // unconditional jump so that this write wile inlining does not need a
-        // reallocation. This ensures iterators remain valid.
-        iter->write(inliner.landing());
-        break;
-      case Kind::kUncond:
-        inliner.Inline(iter->read<BasicBlock const*>());
-        break;
-      case Kind::kCond: {
-        iter->read<Reg>();
-        inliner.Inline(iter->read<BasicBlock const*>());
-        inliner.Inline(iter->read<BasicBlock const*>());
-      } break;
-      case Kind::kChoose: NOT_YET();
-      default: UNREACHABLE();
-    }
+    // auto& kind = iter->read<Kind>();
+    // switch (kind) {
+    //   case Kind::kRet:
+    //     kind = Kind::kUncond;
+    //     // We have ensured that any return jump has enough space to hold an
+    //     // unconditional jump so that this write wile inlining does not need a
+    //     // reallocation. This ensures iterators remain valid.
+    //     iter->write(inliner.landing());
+    //     break;
+    //   case Kind::kUncond:
+    //     inliner.Inline(iter->read<BasicBlock const*>());
+    //     break;
+    //   case Kind::kCond: {
+    //     iter->read<Reg>();
+    //     inliner.Inline(iter->read<BasicBlock const*>());
+    //     inliner.Inline(iter->read<BasicBlock const*>());
+    //   } break;
+    //   case Kind::kChoose: NOT_YET();
+    //   default: UNREACHABLE();
+    // }
   }
 };
 

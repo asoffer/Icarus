@@ -17,6 +17,7 @@
 #include "ir/cmd/store.h"
 #include "ir/compiled_fn.h"
 #include "ir/components.h"
+#include "ir/inliner.h"
 #include "ir/jump_handler.h"
 #include "ir/reg.h"
 #include "ir/reg_or.h"

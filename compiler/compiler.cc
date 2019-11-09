@@ -3,8 +3,6 @@
 #include "ast/ast.h"
 #include "ast/expr_ptr.h"
 #include "compiler/compiler.h"
-#include "compiler/module.h"
-#include "frontend/parse.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
 #include "ir/jump_handler.h"
@@ -14,13 +12,6 @@
 std::atomic<bool> found_errors = false;
 
 namespace compiler {
-
-std::unique_ptr<module::BasicModule> CompileModule(frontend::Source *src) {
-  auto mod = std::make_unique<CompiledModule>();
-  mod->Process(frontend::Parse(src));
-  // TODO mark found_errors any were found
-  return mod;
-}
 
 Compiler::Compiler(module::BasicModule *mod)
     : mod_(mod), bldr_(ir::GetBuilder()) {

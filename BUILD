@@ -2,21 +2,12 @@ package(default_visibility = ["//visibility:public"])
 load("//:defs.bzl", "cc_group_target")
 
 COMMON_IMPL_DEPS = [
-    "//ast:dispatch_table-impl",
     "//ast:overload_set",
     "//ast/scope:scope",
     "//ast/scope:exec",
     "//base:log",
     "//base:untyped_buffer",
-    "//backend:eval-impl",
-    "//backend:exec-impl",
-    "//compiler:compiler-impl",
-    "//compiler:constant_binding-impl",
-    "//compiler:module-impl",
     "//compiler:extract_jumps",
-    "//compiler/dispatch:dispatch-impl",
-    "//compiler/dispatch:extract_params-impl",
-    "//compiler/dispatch:match-impl",
     "//error:log",
     "//frontend:lex",
     "//frontend:parse",

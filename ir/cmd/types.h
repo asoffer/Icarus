@@ -174,11 +174,11 @@ struct ArrowCmd {
 
   static void UpdateForInlining(base::untyped_buffer::iterator *iter,
                                 Inliner const &inliner) {
-    internal::Deserialize<uint16_t, type::Type const *>(
-        iter, [&inliner](Reg &reg) { inliner.Inline(&reg); });
-    internal::Deserialize<uint16_t, type::Type const *>(
-        iter, [&inliner](Reg &reg) { inliner.Inline(&reg); });
-    inliner.Inline(&iter->read<Reg>(), type::Type_);  // Result value
+    // internal::Deserialize<uint16_t, type::Type const *>(
+    //     iter, [&inliner](Reg &reg) { inliner.Inline(&reg); });
+    // internal::Deserialize<uint16_t, type::Type const *>(
+    //     iter, [&inliner](Reg &reg) { inliner.Inline(&reg); });
+    // inliner.Inline(&iter->read<Reg>(), type::Type_);  // Result value
   }
 };
 

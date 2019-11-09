@@ -66,11 +66,12 @@ def cc_component(name, intf_deps = [], impl_deps = None,
                 name = configured_dep(name + "-impl", cfg),
                 actual = name + "-impl")
 
-def cc_lib(name, deps, test_deps = [], header_only = False, test_data = None, **kwargs):
+def cc_lib(name, deps, srcs = [], test_deps = [], header_only = False,
+           test_data = None, **kwargs):
   native.cc_library(
       name = name,
       hdrs = [name + ".h"],
-      srcs = [] if header_only else [name + ".cc"],
+      srcs = [] if header_only else [name + ".cc"] + srcs,
       deps = deps,
       **kwargs
   )

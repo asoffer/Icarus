@@ -41,7 +41,7 @@ std::pair<Results, bool> CallInline(
   // for each of the arguments, because creating the inliner looks state on the
   // current function (counting which register it should start on), and this
   // should exclude the registers we create to hold the arguments.
-  auto inliner = GetBuilder().CurrentGroup()->inliner();
+  auto inliner = Inliner::Make( GetBuilder().CurrentGroup());
 
   std::vector<Reg> arg_regs;
   arg_regs.reserve(f->type_->input.size());
