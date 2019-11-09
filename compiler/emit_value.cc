@@ -1,6 +1,7 @@
 #include "compiler/compiler.h"
 
 #include "ast/ast.h"
+#include "ast/methods/dump.h"
 #include "ast/scope/exec.h"
 #include "backend/eval.h"
 #include "backend/exec.h"

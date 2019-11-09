@@ -1,9 +1,8 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib_target")
+load("//:defs.bzl", "cc_component")
 
-cc_lib_target(
+cc_component(
     name = "eval",
-    cfgs = ["match", "compile"],
     intf_deps = [
         ":exec",
         "//base:debug",
@@ -24,9 +23,8 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "exec",
-    cfgs = ["match", "compile"],
     intf_deps = [
         "//base:untyped_buffer",
         "//ir:addr",

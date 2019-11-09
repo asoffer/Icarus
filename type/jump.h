@@ -12,11 +12,6 @@ struct Jump : public Type {
   TYPE_FNS(Jump);
   Jump(std::vector<Type const *> ts) : args_(std::move(ts)) {}
 
-  void ExtractDefiningModules(absl::flat_hash_set<module::BasicModule const *>
-                                  *modules) const override {
-    return module::ExtractDefiningModules::Extract(this, modules);
-  }
-
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }

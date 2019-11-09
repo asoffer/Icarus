@@ -4,6 +4,7 @@
 #include <string>
 
 #include "ast/ast_fwd.h"
+#include "ast/visitor.h"
 
 namespace frontend {
 struct Token;
@@ -11,16 +12,16 @@ struct Token;
 
 namespace ast {
 
-struct Dump {
+struct Dump : Visitor<void()> {
   static std::string ToString(ast::Node const *);
+  void Visit(ast::Node const *node) { ast::Visitor<void()>::Visit(node); }
 
-  constexpr Dump(std::string *out) : out_(out) {}
-  void operator()(ast::Node const *node) { out_->append("[unknown node]"); }
-#define ICARUS_AST_NODE_X(name) void operator()(ast::name const *node);
+  explicit constexpr Dump(std::string *out) : out_(out) {}
+#define ICARUS_AST_NODE_X(name) void Visit(ast::name const *node);
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
 
-  void operator()(frontend::Token const *node);
+  void Visit(frontend::Token const *node);
 
   std::string indent() const { return std::string(2 * indentation_, ' '); }
 

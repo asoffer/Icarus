@@ -19,8 +19,6 @@ struct BindingNode : public ast::Expression {
       : ast::Expression(std::move(span)), id_(id) {}
   ~BindingNode() override {}
 
-  METHODS;
-
   void Accept(ast::VisitorBase *visitor, void *ret,
               void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);

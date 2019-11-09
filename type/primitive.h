@@ -11,11 +11,6 @@ struct Primitive : public Type {
   TYPE_FNS(Primitive);
   Primitive(BasicType pt) : type_(pt) {}
 
-  void ExtractDefiningModules(absl::flat_hash_set<module::BasicModule const *>
-                                  *modules) const override {
-    return module::ExtractDefiningModules::Extract(this, modules);
-  }
-
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }

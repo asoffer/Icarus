@@ -1,28 +1,27 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib_target", "cc_component")
+load("//:defs.bzl", "cc_lib")
 
-cc_component(
+cc_lib(
     name = "inference_failure_reason",
-    impl_deps = None,
-    test_deps = None)
+    deps = [],
+    header_only = True,
+    test_deps = None,
+)
 
-cc_lib_target(
+cc_lib(
     name = "log",
     textual_hdrs = ["errors.xmacro.h"],
-    intf_deps = [
+    deps = [
         ":inference_failure_reason",
-        "//ast:ast_fwd",
+        "//ast:ast",
         "//core:fn_args",
         "//base:debug",
         "//diagnostic:console_renderer",
-        "//frontend/source:range",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-    impl_deps = [
-        "//ast:ast",
         "//diagnostic:diagnostic",
-        "//diagnostic:console_renderer-impl",
+        "//frontend/source:range",
         "//frontend/source:source",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/strings",
     ],
-    test_deps = None)
+    test_deps = None,
+)

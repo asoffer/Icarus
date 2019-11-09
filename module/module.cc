@@ -11,8 +11,7 @@ BasicModule::BasicModule() : scope_(this) {}
 BasicModule::~BasicModule() = default;
 
 void BasicModule::InitializeNodes(base::PtrSpan<ast::Node> nodes) {
-  AssignScope visitor;
-  for (ast::Node *node : nodes) { node->assign_scope(&visitor, &scope_); }
+  AssignScope::To(nodes, &scope_);
   for (ast::Node const *node : nodes) {
     auto *decl = node->if_as<ast::Declaration>();
     if (not decl) { continue; }

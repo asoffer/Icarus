@@ -2,115 +2,115 @@
 
 #include "ast/ast.h"
 #include "ast/scope/decl.h"
+#include "module/dependent_decls.h"
 
 namespace module {
 
 template <typename T>
-void SetAllScopes(AssignScope *visitor, base::PtrSpan<T> span,
-                  ast::Scope *scope) {
-  for (auto *n : span) { n->assign_scope(visitor, scope); }
+static void SetAllScopes(AssignScope *visitor, base::PtrSpan<T> span,
+                         ast::Scope *scope) {
+  for (auto *n : span) { visitor->Visit(n, scope); }
 }
 
-void AssignScope::operator()(ast::Access *node, ast::Scope *scope) {
+void AssignScope::To(base::PtrSpan<ast::Node> nodes, ast::Scope *scope) {
+  AssignScope visitor;
+  SetAllScopes(&visitor, nodes, scope);
+}
+
+void AssignScope::Visit(ast::Access *node, ast::Scope *scope) {
   node->scope_ = scope;
-  node->operand()->assign_scope(this, scope);
+  Visit(node->operand(), scope);
 }
 
-void AssignScope::operator()(ast::ArrayLiteral *node, ast::Scope *scope) {
+void AssignScope::Visit(ast::ArrayLiteral *node, ast::Scope *scope) {
   node->scope_ = scope;
-  for (auto *expr : node->elems()) { expr->assign_scope(this, scope); }
+  for (auto *expr : node->elems()) { Visit(expr, scope); }
 }
 
-void AssignScope::operator()(ast::ArrayType *node, ast::Scope *scope) {
+void AssignScope::Visit(ast::ArrayType *node, ast::Scope *scope) {
   node->scope_ = scope;
-  for (auto const &len : node->lengths()) { len->assign_scope(this, scope); }
-  node->data_type()->assign_scope(this, scope);
+  for (auto const &len : node->lengths()) { Visit(len, scope); }
+  Visit(node->data_type(), scope);
 }
 
-void AssignScope::operator()(ast::Binop *node, ast::Scope *scope) {
+void AssignScope::Visit(ast::Binop *node, ast::Scope *scope) {
   node->scope_ = scope;
-  node->lhs()->assign_scope(this, scope);
-  node->rhs()->assign_scope(this, scope);
+  Visit(node->lhs(), scope);
+  Visit(node->rhs(), scope);
 }
 
-void AssignScope::operator()(ast::BlockLiteral *node, ast::Scope *scope) {
+void AssignScope::Visit(ast::BlockLiteral *node, ast::Scope *scope) {
   node->scope_ = scope;
   node->set_body_with_parent(scope);
   SetAllScopes(this, node->before(), node->body_scope());
   SetAllScopes(this, node->after(), node->body_scope());
 }
 
-void AssignScope::operator()(ast::BlockNode *node, ast::Scope *scope) {
+void AssignScope::Visit(ast::BlockNode *node, ast::Scope *scope) {
   node->scope_ = scope;
   node->set_body_with_parent(scope);
   SetAllScopes(this, node->args(), node->body_scope());
   SetAllScopes(this, node->stmts(), node->body_scope());
 }
 
-void AssignScope::operator()(ast::BuiltinFn *node, ast::Scope *scope) {
+void AssignScope::Visit(ast::BuiltinFn *node, ast::Scope *scope) {
   node->scope_ = scope;
 }
 
-void AssignScope::operator()(ast::Call *node, ast::Scope *scope) {
+void AssignScope::Visit(ast::Call *node, ast::Scope *scope) {
   node->scope_ = scope;
-  node->callee()->assign_scope(this, scope);
-  node->Apply([this, scope](ast::Expression *expr) {
-    expr->assign_scope(this, scope);
-  });
+  Visit(node->callee(), scope);
+  node->Apply([this, scope](ast::Expression *expr) { Visit(expr, scope); });
 }
 
-void AssignScope::operator()(ast::Cast *node, ast::Scope *scope) {
+void AssignScope::Visit(ast::Cast *node, ast::Scope *scope) {
   node->scope_ = scope;
-  node->expr()->assign_scope(this, scope);
-  node->type()->assign_scope(this, scope);
+  Visit(node->expr(), scope);
+  Visit(node->type(), scope);
 }
 
-void AssignScope::operator()(ast::ChainOp *node, ast::Scope *scope) {
+void AssignScope::Visit(ast::ChainOp *node, ast::Scope *scope) {
   node->scope_ = scope;
-  for (auto *expr : node->exprs()) { expr->assign_scope(this, scope); }
+  for (auto *expr : node->exprs()) { Visit(expr, scope); }
 }
 
-void AssignScope::operator()(ast::CommaList *node, ast::Scope *scope) {
+void AssignScope::Visit(ast::CommaList *node, ast::Scope *scope) {
   node->scope_ = scope;
-  for (auto &expr : node->exprs_) { expr->assign_scope(this, scope); }
+  for (auto &expr : node->exprs_) { Visit(expr.get(), scope); }
 }
 
-void AssignScope::operator()(ast::Declaration *node, ast::Scope *scope) {
+void AssignScope::Visit(ast::Declaration *node, ast::Scope *scope) {
   ASSERT(scope != nullptr);
   node->scope_ = scope;
   node->scope_->InsertDecl(node->id(), node);
-  if (node->type_expr()) { node->type_expr()->assign_scope(this, scope); }
-  if (node->init_val()) { node->init_val()->assign_scope(this, scope); }
+  if (node->type_expr()) { Visit(node->type_expr(), scope); }
+  if (node->init_val()) { Visit(node->init_val(), scope); }
 }
 
-void AssignScope::operator()(ast::EnumLiteral *node, ast::Scope *scope) {
+void AssignScope::Visit(ast::EnumLiteral *node, ast::Scope *scope) {
   node->scope_ = scope;
   node->set_body_with_parent(scope);
   SetAllScopes(this, node->elems(), node->body_scope());
 }
 
-void AssignScope::operator()(ast::FunctionLiteral *node, ast::Scope *scope) {
-  node->scope_             = scope;
+void AssignScope::Visit(ast::FunctionLiteral *node, ast::Scope *scope) {
+  node->scope_ = scope;
   node->set_body_with_parent(scope, node);
 
-  for (auto &param : node->params()) {
-    param.value->assign_scope(this, node->body_scope());
-  }
+  for (auto &param : node->params()) { Visit(param.value.get(), node->body_scope()); }
   if (auto outputs = node->outputs()) {
-    for (auto *out : *outputs) {
-      out->assign_scope(this, node->body_scope());
-    }
+    for (auto *out : *outputs) { Visit(out, node->body_scope()); }
   }
   SetAllScopes(this, node->stmts(), node->body_scope());
 
-  DependentDecls visitor;
+  DependentDecls dep_decls;
   for (auto const &param : node->params()) {
-    visitor.decl_graph_.graph_.add_node(param.value.get());
+    dep_decls.decl_graph_.graph_.add_node(param.value.get());
     if (param.value->type_expr()) {
-      param.value->type_expr()->DependentDecls(&visitor, param.value.get());
+      dep_decls.Visit(param.value->type_expr(), param.value.get());
     }
     if (param.value->init_val()) {
-      param.value->init_val()->DependentDecls(&visitor, param.value.get());
+      dep_decls.Visit(param.value->init_val(), param.value.get());
     }
   }
 
@@ -119,8 +119,8 @@ void AssignScope::operator()(ast::FunctionLiteral *node, ast::Scope *scope) {
     decls_by_id.emplace(param.value->id(), param.value.get());
   }
 
-  node->param_dep_graph_ = std::move(visitor.decl_graph_.graph_);
-  for (auto &[id, decls] : visitor.decl_graph_.ids_) {
+  node->param_dep_graph_ = std::move(dep_decls.decl_graph_.graph_);
+  for (auto &[id, decls] : dep_decls.decl_graph_.ids_) {
     auto iter = decls_by_id.find(id);
     if (iter == decls_by_id.end()) { continue; }
     for (auto *d : decls) { node->param_dep_graph_.add_edge(d, iter->second); }
@@ -137,98 +137,91 @@ void AssignScope::operator()(ast::FunctionLiteral *node, ast::Scope *scope) {
   }
 }
 
-void AssignScope::operator()(ast::Identifier *node, ast::Scope *scope) {
+void AssignScope::Visit(ast::Identifier *node, ast::Scope *scope) {
   node->scope_ = scope;
 }
 
-void AssignScope::operator()(ast::Import *node, ast::Scope *scope) {
+void AssignScope::Visit(ast::Import *node, ast::Scope *scope) {
   node->scope_ = scope;
-  node->operand()->assign_scope(this, scope);
+  Visit(node->operand(), scope);
 }
 
-void AssignScope::operator()(ast::Index *node, ast::Scope *scope) {
+void AssignScope::Visit(ast::Index *node, ast::Scope *scope) {
   node->scope_ = scope;
-  node->lhs()->assign_scope(this, scope);
-  node->rhs()->assign_scope(this, scope);
+  Visit(node->lhs(), scope);
+  Visit(node->rhs(), scope);
 }
 
-void AssignScope::operator()(ast::Jump *node, ast::Scope *scope) {
+void AssignScope::Visit(ast::Jump *node, ast::Scope *scope) {
   node->scope_ = scope;
   for (auto &opt : node->options_) {
-    opt.args.Apply(
-        [this, scope](auto &expr) { expr->assign_scope(this, scope); });
+    opt.args.Apply([this, scope](auto &expr) { Visit(expr.get(), scope); });
   }
 }
 
-void AssignScope::operator()(ast::JumpHandler *node, ast::Scope *scope) {
+void AssignScope::Visit(ast::JumpHandler *node, ast::Scope *scope) {
   node->scope_ = scope;
   node->set_body_with_parent(scope);
   SetAllScopes(this, node->input(), node->body_scope());
   SetAllScopes(this, node->stmts(), node->body_scope());
 }
 
-void AssignScope::operator()(ast::PrintStmt *node, ast::Scope *scope) {
+void AssignScope::Visit(ast::PrintStmt *node, ast::Scope *scope) {
   node->scope_ = scope;
   SetAllScopes(this, node->exprs(), scope);
 }
 
-void AssignScope::operator()(ast::ReturnStmt *node, ast::Scope *scope) {
+void AssignScope::Visit(ast::ReturnStmt *node, ast::Scope *scope) {
   node->scope_ = scope;
   SetAllScopes(this, node->exprs(), scope);
 }
 
-void AssignScope::operator()(ast::YieldStmt *node, ast::Scope *scope) {
+void AssignScope::Visit(ast::YieldStmt *node, ast::Scope *scope) {
   node->scope_ = scope;
   SetAllScopes(this, node->exprs(), scope);
 }
 
-void AssignScope::operator()(ast::ScopeLiteral *node, ast::Scope *scope) {
+void AssignScope::Visit(ast::ScopeLiteral *node, ast::Scope *scope) {
   node->scope_ = scope;
   node->set_body_with_parent(scope, node);
-  for (auto *decl : node->decls()) {
-    decl->assign_scope(this, node->body_scope());
-  }
+  for (auto *decl : node->decls()) { Visit(decl, node->body_scope()); }
 }
 
-void AssignScope::operator()(ast::ScopeNode *node, ast::Scope *scope) {
+void AssignScope::Visit(ast::ScopeNode *node, ast::Scope *scope) {
   node->scope_ = scope;
-  node->name()->assign_scope(this, scope);
-  node->Apply([this, scope](ast::Expression *expr) {
-    expr->assign_scope(this, scope);
-  });
+  Visit(node->name(), scope);
+  node->Apply([this, scope](ast::Expression *expr) { Visit(expr, scope); });
 
-  for (auto &block : node->blocks()) { block.assign_scope(this, scope); }
+  for (auto &block : node->blocks()) { Visit(&block, scope); }
 }
 
-void AssignScope::operator()(ast::StructLiteral *node, ast::Scope *scope) {
+void AssignScope::Visit(ast::StructLiteral *node, ast::Scope *scope) {
   node->scope_     = scope;
   node->type_scope = scope->add_child<ast::DeclScope>();
-  for (auto &a : node->args_) { a.assign_scope(this, node->type_scope.get()); }
-  for (auto &f : node->fields_) {
-    f.assign_scope(this, node->type_scope.get());
-  }
+  for (auto &a : node->args_) { Visit(&a, node->type_scope.get()); }
+  for (auto &f : node->fields_) { Visit(&f, node->type_scope.get()); }
 }
 
-void AssignScope::operator()(ast::StructType *node, ast::Scope *scope) {
-  for (auto &arg : node->args_) { arg->assign_scope(this, scope); }
+void AssignScope::Visit(ast::StructType *node, ast::Scope *scope) {
+  for (auto &arg : node->args_) { Visit(arg.get(), scope); }
 }
 
-void AssignScope::operator()(ast::Switch *node, ast::Scope *scope) {
+void AssignScope::Visit(ast::Switch *node, ast::Scope *scope) {
   node->scope_ = scope;
-  if (node->expr_) { node->expr_->assign_scope(this, scope); }
+  if (node->expr_) { Visit(node->expr_.get(), scope); }
   for (auto &[body, cond] : node->cases_) {
-    body->assign_scope(this, scope);
-    cond->assign_scope(this, scope);
+    Visit(body.get(), scope);
+    Visit(cond.get(), scope);
   }
 }
 
-void AssignScope::operator()(ast::Terminal *node, ast::Scope *scope) {
+void AssignScope::Visit(ast::Terminal *node, ast::Scope *scope) {
   node->scope_ = scope;
 }
 
-void AssignScope::operator()(ast::Unop *node, ast::Scope *scope) {
+void AssignScope::Visit(ast::Unop *node, ast::Scope *scope) {
   node->scope_ = scope;
-  node->operand()->assign_scope(this, scope);
+  Visit(node->operand(), scope);
 }
 
 }  // namespace module

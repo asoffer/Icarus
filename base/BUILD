@@ -1,96 +1,173 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_component")
+load("//:defs.bzl", "cc_lib")
 
-cc_component(name = "bag", impl_deps = None, test_deps = None)
-cc_component(name = "debug",
-             intf_deps = [":matchers", ":log"],
-             impl_deps = None,
-             test_deps = None)
-
-cc_component(name = "expected",
-             intf_deps = [":stringify"],
-             impl_deps = None,
-             test_deps = None)
-
-cc_component(name = "cast",
-             intf_deps = [":debug"],
-             impl_deps = None,
-             test_deps = None)
-
-cc_component(
-    name = "graph",
-    intf_deps = [
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/container:flat_hash_set",
-    ],
-    impl_deps = None,
-    test_deps = None,)
-
-cc_component(name = "guarded", impl_deps = None, test_deps = None)
-cc_component(name = "hash", impl_deps = None, test_deps = None)
-
-cc_component(
-    name = "interval",
-    intf_deps = [":debug"],
-    impl_deps = None,
+cc_lib(
+    name = "bag",
+    deps = [],
+    header_only = True,
     test_deps = None,
 )
 
-cc_component(name = "lazy", impl_deps = None, test_deps = None)
-cc_component(name = "log",
-             intf_deps = [
-                 ":guarded",
-                 ":stringify",
-                 "@com_google_absl//absl/container:flat_hash_map",
-                 "@com_google_absl//absl/container:flat_hash_set",
-                 ],
-             impl_deps = [],
-             test_deps = None)
-cc_component(name = "macros", impl_deps = None, test_deps = None)
-cc_component(name = "matchers",
-             intf_deps = [":tuple"],
-             impl_deps = None,
-             test_deps = None)
-cc_component(name = "meta", impl_deps = None, test_deps = [])
-cc_component(name = "move_func", impl_deps = None, test_deps = [])
-cc_component(name = "permutation", 
-             intf_deps = ["@com_google_absl//absl/random"],
-             impl_deps = None,
-             test_deps = None)
-cc_component(name = "owned_ptr", impl_deps = None, test_deps = None)
-cc_component(name = "scope",
-             intf_deps = [":macros"],
-             impl_deps = None, 
-             test_deps = [])
-cc_component(name = "stringify",
-             intf_deps = [":tuple"],
-             impl_deps = None,
-             test_deps = [])
-cc_component(name = "strong_types",
-             intf_deps = [
-                 ":debug",
-                 ":meta",
-                 ":stringify",
-                 "@com_google_absl//absl/strings",
-             ],
-             impl_deps = None,
-             test_deps = None)
-cc_component(name = "tag", intf_deps = [], impl_deps = None, test_deps = None)
-cc_component(name = "tuple", intf_deps = [], impl_deps = None, test_deps = [])
-cc_component(
-    name = "untyped_buffer",
-    intf_deps = [
-        ":debug",
+cc_lib(
+    name = "debug",
+    deps = [":matchers", ":log"],
+    header_only = True,
+    test_deps = None,
+)
+
+cc_lib(
+    name = "expected",
+    deps = [":stringify"],
+    header_only = True,
+    test_deps = None,
+)
+
+
+cc_lib(
+    name = "cast",
+    deps = [":debug"],
+    header_only = True,
+    test_deps = None,
+)
+
+
+cc_lib(
+    name = "graph",
+    deps = [
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
     ],
-    impl_deps = [
+    header_only = True,
+    test_deps = None,
+)
+ 
+cc_lib(
+    name = "guarded", 
+    deps = [],
+    header_only = True,
+    test_deps = None,
+)
+
+
+cc_lib(
+    name = "interval",
+    deps = [":debug"],
+    header_only = True,
+    test_deps = None,
+)
+
+cc_lib(
+    name = "lazy", 
+    deps = [],
+    header_only = True,
+    test_deps = None,
+)
+
+cc_lib(
+    name = "log",
+    deps = [
+        ":guarded",
+        ":stringify",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
+    ],
+    test_deps = None,
+)
+
+cc_lib(
+    name = "macros",
+    deps = [],
+    header_only = True,
+    test_deps = None,
+)
+
+cc_lib(
+    name = "matchers",
+    deps = [":tuple"],
+    header_only = True,
+    test_deps = None,
+)
+
+cc_lib(
+    name = "meta",
+    deps = [],
+    header_only = True,
+    test_deps = [],
+)
+
+cc_lib(
+    name = "move_func",
+    deps = [],
+    header_only = True,
+    test_deps = [],
+)
+
+cc_lib(
+    name = "permutation", 
+    deps = ["@com_google_absl//absl/random"],
+    header_only = True,
+    test_deps = None,
+)
+
+cc_lib(
+    name = "scope",
+    deps = [":macros"],
+    header_only = True,
+    test_deps = [],
+)
+
+cc_lib(
+    name = "stringify",
+    deps = [":tuple"],
+    header_only = True,
+    test_deps = [],
+)
+
+cc_lib(
+    name = "strong_types",
+    deps = [
+        ":debug",
+        ":meta",
+        ":stringify",
         "@com_google_absl//absl/strings",
     ],
-    test_deps = [])
+    header_only = True,
+    test_deps = None,
+)
 
-cc_component(
+cc_lib(
+    name = "tag",
+    deps = [],
+    header_only = True,
+    test_deps = None,
+)
+
+cc_lib(
+    name = "tuple",
+    deps = [],
+    header_only = True,
+    test_deps = [],
+)
+
+cc_lib(
+    name = "untyped_buffer",
+    deps = [
+        ":debug",
+        "@com_google_absl//absl/strings",
+    ],
+    test_deps = [],
+)
+
+cc_lib(
     name = "util",
-    intf_deps = [],
-    impl_deps = None,
-    test_deps = None)
+    deps = [],
+    header_only = True,
+    test_deps = None,
+)
 
-cc_component(name = "ptr_span", intf_deps = [], impl_deps = None, test_deps = None)
+cc_lib(
+    name = "ptr_span",
+    deps = [],
+    header_only = True,
+    test_deps = None,
+)

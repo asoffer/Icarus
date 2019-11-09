@@ -1,9 +1,8 @@
 package(default_visibility = ["//visibility:public"]) # TODO compiler:__subpackages__"])
-load("//:defs.bzl", "cc_lib_target")
+load("//:defs.bzl", "cc_component")
 
-cc_lib_target(
+cc_component(
     name = "dispatch",
-    cfgs = ["match", "compile"],
     intf_deps = [
         ":match",
         "//compiler:verify_result",
@@ -23,9 +22,8 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "extract_params",
-    cfgs = ["match", "compile"],
     intf_deps = [
         "//ast:ast_fwd",
         "//compiler:compiler",
@@ -38,15 +36,13 @@ cc_lib_target(
     ],
     test_deps = [
         "//test:module",
-        "//type:type-impl",
-        "//type:function-impl",
+        "//type:function",
         "//backend:eval-impl",
     ],
 )
 
-cc_lib_target(
+cc_component(
     name = "match",
-    cfgs = ["match", "compile"],
     intf_deps = [
         "//ast:ast_fwd",
         "//base:expected",

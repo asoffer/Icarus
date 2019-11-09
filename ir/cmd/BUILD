@@ -1,9 +1,8 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib_target")
+load("//:defs.bzl", "cc_component")
 
-cc_lib_target(
+cc_component(
     name = "basic",
-    cfgs = ["match", "compile"],
     intf_deps = [
         ":util",
         "//ir:basic_block",
@@ -13,9 +12,8 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "call",
-    cfgs = ["match", "compile"],
     intf_deps = [
         ":util",
         "//ir:basic_block",
@@ -30,9 +28,8 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "cast",
-    cfgs = ["match", "compile"],
     intf_deps = [
         ":util",
         "//ir:basic_block",
@@ -42,9 +39,8 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "jumps",
-    cfgs = ["match", "compile"],
     intf_deps = [
         ":util",
         "//ir:basic_block",
@@ -55,9 +51,8 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "load",
-    cfgs = ["match", "compile"],
     intf_deps = [
         ":util",
         "//ir:basic_block",
@@ -67,9 +62,8 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "misc",
-    cfgs = ["match", "compile"],
     intf_deps = [
         ":util",
         "//base:debug",
@@ -78,9 +72,8 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "phi",
-    cfgs = ["match", "compile"],
     intf_deps = [
         ":util",
         "//ir:basic_block",
@@ -89,9 +82,8 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "print",
-    cfgs = ["match", "compile"],
     intf_deps = [
         ":util",
         "//ir:basic_block",
@@ -100,9 +92,8 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "register",
-    cfgs = ["match", "compile"],
     intf_deps = [
         ":util",
         "//ir:basic_block",
@@ -111,9 +102,8 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "return",
-    cfgs = ["match", "compile"],
     intf_deps = [
         ":util",
         "//ir:basic_block",
@@ -124,9 +114,8 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "scope",
-    cfgs = ["match", "compile"],
     intf_deps = [
         ":util",
         "//compiler:compiler",
@@ -140,9 +129,8 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "store",
-    cfgs = ["match", "compile"],
     intf_deps = [
         ":util",
         "//ir:basic_block",
@@ -151,9 +139,8 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "types",
-    cfgs = ["match", "compile"],
     intf_deps = [
         ":util",
         "//ir:basic_block",
@@ -168,9 +155,8 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "util",
-    cfgs = ["match", "compile"],
     intf_deps = [
         "//ir:builder",
         "//ir:values",

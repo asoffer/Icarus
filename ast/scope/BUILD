@@ -1,57 +1,58 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_component")
+load("//:defs.bzl", "cc_lib")
 
-cc_component(
+cc_lib(
     name = "scope",
-    intf_deps = [
+    deps = [
         "//ast:ast_fwd",
         "//base:cast",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
-    impl_deps = [
-        "//ast:ast",
-        "//ast/scope:exec",
-        "//ast/scope:fn",
-        "//module:module",
+    test_deps = None,
+)
+
+cc_lib(
+    name = "decl",
+    deps = [":scope"],
+    header_only = True,
+    test_deps = None,
+)
+
+cc_lib(
+    name = "scope_lit",
+    deps = [":scope"],
+    header_only = True,
+    test_deps = None,
+)
+
+
+cc_lib(
+    name = "exec",
+    deps = [
+        ":scope",
+        ":fn",
     ],
     test_deps = None,
 )
 
-cc_component(
-    name = "decl",
-    intf_deps = [":scope"],
-    impl_deps = None,
-)
 
-cc_component(
-    name = "scope_lit",
-    intf_deps = [":scope"],
-    impl_deps = None,
-)
-
-
-cc_component(
-    name = "exec",
-    intf_deps = [":scope"],
-    impl_deps = [":fn"],
-)
-
-
-cc_component(
+cc_lib(
     name = "fn",
-    intf_deps = [
+    deps = [
         ":scope",
         "//base:bag",
     ],
-    impl_deps = None,
+    header_only = True,
+    test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "module",
-    intf_deps = [
+    deps = [
         ":decl",
         ":scope",
     ],
-    impl_deps = None,
+    header_only = True,
+    test_deps = None,
 )

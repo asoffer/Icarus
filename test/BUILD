@@ -1,5 +1,5 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib_target", "cc_component")
+load("//:defs.bzl", "cc_lib", "cc_component")
 
 cc_library(
     name = "test",
@@ -19,41 +19,45 @@ cc_library(
     testonly = True,
 )
 
-cc_component(name = "elements_are",
-             impl_deps = None,
-             test_deps = None,
-             testonly = True)
-
-cc_component(name = "ordered_elements_are",
-             impl_deps = None,
-             test_deps = None,
-             testonly = True)
-
-cc_lib_target(name = "module",
-              cfgs = ["compile", "match"],
-              intf_deps = [
-                  ":util",
-                  "//ast:ast",
-                  "//ast:expression",
-                  "//ast:overload_set",
-                  "//base:ptr_span",
-                  "//frontend/source:range",
-                  "//module:module",
-              ],
-              impl_deps = None,
-              test_deps = None,
-              testonly = True,
+cc_lib(
+    name = "elements_are",
+    deps = [],
+    header_only = True,
+    test_deps = None,
+    testonly = True,
 )
 
-cc_lib_target(
+cc_lib(
+    name = "ordered_elements_are",
+    deps = [],
+    header_only = True,
+    test_deps = None,
+    testonly = True,
+)
+
+cc_lib(
+    name = "module",
+    deps = [
+        ":util",
+        "//ast:ast",
+        "//ast:expression",
+        "//ast:overload_set",
+        "//base:ptr_span",
+        "//frontend/source:range",
+        "//module:module",
+    ],
+    header_only = True,
+    test_deps = None,
+    testonly = True,
+)
+
+cc_component(
     name = "util",
-    cfgs = ["compile", "match"],
     intf_deps = [
         "//frontend:parse",
         "//frontend/source:string",
         "//module:module",
         "//type:function",
-        "//:impl",
     ],
     impl_deps = None,
     test_deps = None,

@@ -65,12 +65,13 @@ struct Access : public Expression {
   Expression const *operand() const { return operand_.get(); }
   Expression *operand() { return operand_.get(); }
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
-
  private:
   std::unique_ptr<Expression> operand_;
   std::string member_name_;
@@ -105,8 +106,10 @@ struct ArrayLiteral : public Expression {
     return std::move(exprs_);
   }
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -153,8 +156,10 @@ struct ArrayType : public Expression {
   Expression const *data_type() const { return data_type_.get(); }
   Expression *data_type() { return data_type_.get(); }
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -195,8 +200,10 @@ struct Binop : public Expression {
     return std::pair{std::move(lhs_), std::move(rhs_)};
   }
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -265,8 +272,10 @@ struct Declaration : public Expression {
     init_val_ = std::move(expr);
   }
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -306,8 +315,10 @@ struct BlockLiteral : public ScopeExpr<DeclScope> {
   base::PtrSpan<Declaration const> after() const { return after_; }
   base::PtrSpan<Declaration> after() { return after_; }
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -370,8 +381,10 @@ struct BlockNode : public ScopeExpr<ExecScope> {
   base::PtrSpan<Expression> args() { return args_; }
   base::PtrSpan<Expression const> args() const { return args_; }
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -393,8 +406,10 @@ struct BuiltinFn : public Expression {
 
   core::Builtin value() const { return val_; }
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -434,8 +449,10 @@ struct Call : public Expression {
     return std::pair{std::move(callee_), std::move(args_)};
   }
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -467,8 +484,10 @@ struct Cast : public Expression {
   Expression const *type() const { return type_.get(); }
   Expression *type() { return type_.get(); }
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -509,8 +528,10 @@ struct ChainOp : public Expression {
     return std::move(exprs_);
   }
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -530,8 +551,10 @@ struct CommaList : public Expression {
   CommaList &operator=(CommaList const &) noexcept = default;
   CommaList &operator=(CommaList &&) noexcept = default;
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -589,8 +612,10 @@ struct EnumLiteral : ScopeExpr<DeclScope> {
   base::PtrSpan<Expression const> elems() const { return elems_; }
   Kind kind() const { return kind_; }
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -654,8 +679,10 @@ struct FunctionLiteral : public ScopeExpr<FnScope> {
 
   bool is_short() const { return is_short_; }
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -775,8 +802,10 @@ struct Terminal : public Expression {
     }
   }
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -799,8 +828,10 @@ struct Identifier : public Expression {
       : Expression(std::move(span)), token_(std::move(token)) {}
   ~Identifier() override {}
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -828,8 +859,10 @@ struct Import : public Expression {
   Expression const *operand() const { return operand_.get(); }
   Expression *operand() { return operand_.get(); }
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -862,8 +895,10 @@ struct Index : public Expression {
     return std::pair(std::move(lhs_), std::move(rhs_));
   }
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -915,8 +950,10 @@ struct Jump : public Node {
     }
   }
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -967,8 +1004,10 @@ struct JumpHandler : ScopeExpr<FnScope> {
     for (auto &input : input_) { input->flags() |= Declaration::f_IsFnParam; }
   }
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -1000,8 +1039,10 @@ struct PrintStmt : public Node {
   base::PtrSpan<Expression> exprs() { return exprs_; }
   base::PtrSpan<Expression const> exprs() const { return exprs_; }
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -1027,8 +1068,10 @@ struct ReturnStmt : public Node {
   base::PtrSpan<Expression> exprs() { return exprs_; }
   base::PtrSpan<Expression const> exprs() const { return exprs_; }
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -1054,8 +1097,10 @@ struct YieldStmt : public Node {
   base::PtrSpan<Expression> exprs() { return exprs_; }
   base::PtrSpan<Expression const> exprs() const { return exprs_; }
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -1097,8 +1142,10 @@ struct ScopeLiteral : public ScopeExpr<ScopeLitScope> {
   base::PtrSpan<Declaration const> decls() const { return decls_; }
   base::PtrSpan<Declaration> decls() { return decls_; }
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -1160,8 +1207,10 @@ struct ScopeNode : public Expression {
     if (updated_last_scope_node) { last_scope_node_ = updated_last_scope_node; }
   }
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -1181,8 +1230,10 @@ struct StructLiteral : public Expression {
 
   StructLiteral &operator=(StructLiteral &&) noexcept = default;
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -1196,8 +1247,10 @@ struct StructType : public Expression {
   StructType(frontend::SourceRange span) : Expression(span) {}
   ~StructType() override {}
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -1211,8 +1264,10 @@ struct StructType : public Expression {
 struct Switch : public Expression {
   ~Switch() override {}
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -1237,8 +1292,10 @@ struct Unop : public Expression {
       : Expression(span), operand_(std::move(operand)), op_(op) {}
   ~Unop() override {}
 
-  METHODS;
-
+  void Accept(MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }

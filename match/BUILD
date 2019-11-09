@@ -1,9 +1,8 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib_target", "icarus_method")
+load("//:defs.bzl", "cc_component")
 
-icarus_method(
+cc_component(
     name = "match_expr",
-    cfgs = ["match"],
     intf_deps = [
         "//ast:ast_fwd",
         "//ast:visitor",
@@ -14,9 +13,8 @@ icarus_method(
     ],
 )
 
-cc_lib_target(
+cc_component(
     name = "binding_id",
-    cfgs = ["match"],
     intf_deps = [],
     impl_deps = [
         "//base:guarded",
@@ -26,12 +24,13 @@ cc_lib_target(
     test_deps = [],
 )
 
-cc_lib_target(
+cc_component(
     name = "binding_node",
-    cfgs = ["match"],
     intf_deps = [
         ":binding_id",
         "//ast:expression",
+        "//ast/methods:dump",
+        "//module:assign_scope",
     ],
     impl_deps = None,
     test_deps = None,

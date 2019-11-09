@@ -1,59 +1,69 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib_target", "cc_component")
+load("//:defs.bzl", "cc_lib")
 
-cc_component(name = "alignment", impl_deps = None, test_deps = None)
-cc_component(name = "bytes", impl_deps = None, test_deps = None)
+cc_lib(
+    name = "alignment",
+    deps = [],
+    header_only = True,
+    test_deps = None,
+)
+cc_lib(
+    name = "bytes",
+    deps = [],
+    header_only = True,
+    test_deps = None,
+)
 
-cc_component(
+cc_lib(
     name = "arch",
-    intf_deps = [
+    deps = [
         ":alignment",
         ":bytes",
         "//ir:addr",
         "//ir:any_func",
     ],
-    impl_deps = None,
+    header_only = True,
     test_deps = [],
 )
 
-cc_component(
+cc_lib(
     name = "builtin",
     textual_hdrs = ["builtin.xmacro.h"],
-    intf_deps = ["//base:debug"],
-    impl_deps = None,
+    deps = ["//base:debug"],
+    header_only = True,
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "fn_args",
-    intf_deps = [
+    deps = [
         "//base:stringify",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
-    impl_deps = None,
+    header_only = True,
     test_deps = [],
 )
 
-cc_component(
+cc_lib(
     name = "fn_params",
-    intf_deps = [
+    deps = [
         ":fn_args",
         "//base:debug",
         "//base:macros",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
-    impl_deps = None,
+    header_only = True,
     test_deps = [],
 )
 
-cc_component(
+cc_lib(
     name = "ordered_fn_args",
-    intf_deps = [
+    deps = [
         ":fn_args",
         "//base:stringify",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/types:span",
     ],
-    impl_deps = None,
+    header_only = True,
     test_deps = [],
 )

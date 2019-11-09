@@ -8,11 +8,6 @@ struct Pointer : public Type {
   TYPE_FNS(Pointer);
   Pointer(Type const *t) : pointee(t) {}
 
-  void ExtractDefiningModules(absl::flat_hash_set<module::BasicModule const *>
-                                  *modules) const override {
-    return module::ExtractDefiningModules::Extract(this, modules);
-  }
-
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -23,11 +18,6 @@ struct Pointer : public Type {
 // Like Pointer but allows indexing and pointer arithmetic.
 struct BufferPointer : public Pointer {
   BufferPointer() = delete;
-
-  void ExtractDefiningModules(absl::flat_hash_set<module::BasicModule const *>
-                                  *modules) const override {
-    return module::ExtractDefiningModules::Extract(this, modules);
-  }
 
   void WriteTo(std::string *result) const override;
   BufferPointer(Type const *t) : Pointer(t) {}

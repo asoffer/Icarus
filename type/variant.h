@@ -27,11 +27,6 @@ struct Variant : public Type {
   // variant", rather than as "a different kind of alignment."
   core::Alignment alternative_alignment(core::Arch const &arch) const;
 
-  void ExtractDefiningModules(absl::flat_hash_set<module::BasicModule const *>
-                                  *modules) const override {
-    return module::ExtractDefiningModules::Extract(this, modules);
-  }
-
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }

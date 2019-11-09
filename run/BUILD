@@ -1,9 +1,8 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib_target")
+load("//:defs.bzl", "cc_component")
 
-cc_lib_target(
+cc_component(
     name = "compiler",
-    cfgs = ["compile"],
     intf_deps = None,
     impl_deps = [
         "//backend:exec",
@@ -19,9 +18,8 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "repl",
-    cfgs = ["compile"],
     intf_deps = None,
     impl_deps = [
         "//ast:ast",

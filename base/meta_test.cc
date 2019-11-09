@@ -13,5 +13,10 @@ TEST_CASE("first") {
   CHECK(std::is_same_v<first_t<bool, int>, bool>);
 }
 
+TEST_CASE("identity") {
+  CHECK(std::is_same_v<identity<int>, int>);
+  CHECK(std::is_same_v<identity<bool>, bool>);
+}
+
 }  // namespace
 }  // namespace base

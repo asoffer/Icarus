@@ -17,11 +17,6 @@ struct GenericStruct : public Callable {
         mod_(scope->Containing<ast::ModuleScope>()->module()),
         deps_(std::move(ts)) {}
 
-  void ExtractDefiningModules(absl::flat_hash_set<module::BasicModule const *>
-                                  *modules) const override {
-    return module::ExtractDefiningModules::Extract(this, modules);
-  }
-
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }

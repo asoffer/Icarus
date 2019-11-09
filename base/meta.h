@@ -21,6 +21,11 @@ struct first<T, Ts...> {
 template <typename... Ts>
 using first_t = typename first<Ts...>::type;
 
+template <typename T>
+struct identity {
+  using type = T;
+};
+
 }  // namespace base
 
 #endif  // ICARUS_BASE_META_H

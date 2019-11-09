@@ -1,9 +1,8 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib_target", "cc_component")
+load("//:defs.bzl", "cc_component")
 
-cc_lib_target(
+cc_component(
     name = "compiler",
-    cfgs = ["match", "compile"],
     intf_deps = [
         ":constant_binding",
         ":module",
@@ -55,7 +54,7 @@ cc_component(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "constant_binding",
     intf_deps = [
         "//ast:ast_fwd",
@@ -72,9 +71,8 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "dependent_data",
-    cfgs = ["match", "compile"],
     intf_deps = [
         ":verify_result",
         "//ast:dispatch_table",
@@ -87,9 +85,8 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "emit_assign",
-    cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
         ":compiler",
@@ -109,9 +106,8 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "emit_destroy",
-    cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
         ":compiler",
@@ -130,9 +126,8 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "emit_default_init",
-    cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
         ":compiler",
@@ -150,9 +145,8 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "emit_copy_init",
-    cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
         ":compiler",
@@ -165,9 +159,8 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "emit_move_init",
-    cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
         ":compiler",
@@ -180,9 +173,8 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "emit_ref",
-    cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
         ":compiler",
@@ -201,13 +193,13 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "emit_value",
-    cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
         ":compiler",
         "//ast:ast",
+        "//ast/methods:dump",
         "//ast/scope:scope",
         "//ast/scope:fn",
         "//backend:eval",
@@ -236,9 +228,8 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "emit_print",
-    cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
         ":compiler",
@@ -256,9 +247,8 @@ cc_lib_target(
 )
 
 
-cc_lib_target(
+cc_component(
     name = "module",
-    cfgs = ["match", "compile"],
     intf_deps = [
         ":constant_binding",
         "//ast:ast_fwd",
@@ -276,13 +266,13 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "verify_type",
-    cfgs = ["match", "compile"],
     intf_deps = None,
     impl_deps = [
         ":extract_jumps",
         "//ast:ast",
+        "//ast/methods:dump",
         "//ast:overload_set",
         "//backend:eval",
         "//compiler/dispatch:dispatch",
@@ -304,9 +294,8 @@ cc_component(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_component(
     name = "special_function",
-    cfgs = ["match", "compile"],
     intf_deps = [],
     impl_deps = [
         ":compiler",

@@ -30,6 +30,10 @@ struct Token : public ast::Node {
 
   ~Token() override {}
 
+  void Accept(ast::MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    UNREACHABLE();
+  }
   void Accept(ast::VisitorBase *, void *, void *) const override {
     UNREACHABLE();
   }

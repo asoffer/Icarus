@@ -4,6 +4,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "ast/ast.h"
+#include "ast/methods/dump.h"
 #include "base/debug.h"
 #include "base/guarded.h"
 #include "error/log.h"
@@ -28,8 +29,10 @@ struct Statements : public ast::Node {
   Statements(Statements &&) noexcept = default;
   Statements &operator=(Statements &&) noexcept = default;
 
-  METHODS;
-
+  void Accept(ast::MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(ast::VisitorBase *visitor, void *ret,
               void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
@@ -56,8 +59,10 @@ struct Statements : public ast::Node {
 struct SwitchWhen : public ast::Node {
   ~SwitchWhen() override {}
 
-  METHODS;
-
+  void Accept(ast::MutableVisitorBase *visitor, void *ret,
+              void *arg_tuple) override {
+    visitor->ErasedVisit(this, ret, arg_tuple);
+  }
   void Accept(ast::VisitorBase *visitor, void *ret,
               void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);

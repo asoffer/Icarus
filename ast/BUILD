@@ -1,18 +1,18 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib_target", "cc_component")
+load("//:defs.bzl", "cc_component", "cc_lib")
 
 cc_library(name = "node_xmacro", textual_hdrs = ["node.xmacro.h"])
 
-cc_component(
+cc_lib(
     name = "ast_fwd",
-    intf_deps = [":node_xmacro"],
-    impl_deps = None,
+    deps = [":node_xmacro"],
+    header_only = True,
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "ast",
-    intf_deps = [
+    deps = [
         ":expression",
         ":node",
         "//ast/scope:decl",
@@ -32,41 +32,41 @@ cc_component(
         "//ir:results",
         "//type:basic_type",
     ],
-    impl_deps = None,
+    header_only = True,
     test_deps = None,
 )
 
-cc_component(name = "expression",
-              intf_deps = [
-                  ":expr_ptr",
-                  ":hashtag",
-                  ":node",
-              ],
-              impl_deps = None,
-              test_deps = None)
+cc_lib(
+    name = "expression",
+    deps = [
+        ":expr_ptr",
+        ":hashtag",
+        ":node",
+    ],
+    header_only = True,
+    test_deps = None,
+)
 
-cc_component(
+cc_lib(
     name = "node",
-    intf_deps = [
+    deps = [
         ":visitor_base",
-        "//ast/methods:dump",
         "//base:cast",
         "//frontend/source:range",
-        "//module:assign_scope",
-        "//module:dependent_decls",
     ],
-)
-
-cc_component(
-    name = "expr_ptr",
-    intf_deps = [],
-    impl_deps = None,
+    header_only = True,
     test_deps = None,
 )
 
-cc_lib_target(
+cc_lib(
+    name = "expr_ptr",
+    deps = [],
+    header_only = True,
+    test_deps = None,
+)
+
+cc_component(
     name = "dispatch_table",
-    cfgs = ["match", "compile"],
     intf_deps = [
         "//base:expected",
         "//compiler:verify_result",
@@ -100,7 +100,6 @@ cc_lib_target(
         "//type:variant",
     ],
     test_deps = [
-        "//:impl",
         "//test:module",
         "//test:util",
         "//type:pointer",
@@ -108,36 +107,40 @@ cc_lib_target(
     ],
 )
 
-cc_component(name = "hashtag")
+cc_lib(
+    name = "hashtag",
+    deps = [],
+    header_only = True,
+    test_deps = None,
+)
 
-cc_component(
+cc_lib(
     name = "overload_set",
-    intf_deps = [
+    deps = [
         "//base:bag",
         "//ast:ast",
         "//ast/scope:scope",
         "@com_google_absl//absl/types:span",
     ],
-    impl_deps = [],
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "visitor_base",
-    intf_deps = [
+    deps = [
         ":ast_fwd",
         "//base:debug",
     ],
-    impl_deps = None,
+    header_only = True,
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "visitor",
-    intf_deps = [
+    deps = [
         ":ast",
         ":visitor_base",
     ],
-    impl_deps = None,
+    header_only = True,
     test_deps = None,
 )

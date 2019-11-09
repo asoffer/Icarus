@@ -1,68 +1,56 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib_target", "icarus_method", "cc_component")
+load("//:defs.bzl", "cc_lib")
 
-cc_lib_target(
+cc_lib(
     name = "pending",
-    intf_deps = [
-        ":module",
-        "//base:expected",
-        "//frontend/source:source",
-    ],
-    impl_deps = [
+    deps = [
         ":module",
         "//base:debug",
+        "//base:expected",
         "//base:graph",
         "//base:macros",
+        "//frontend/source:source",
         "//frontend/source:file",
         "@com_google_absl//absl/container:node_hash_set",
         "@com_google_absl//absl/container:node_hash_map",
     ],
+    test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "module",
-    intf_deps = [
+    deps = [
+        ":assign_scope",
+        "//ast:ast",
+        "//ast:ast_fwd",
         "//ast/scope:module",
         "//base:ptr_span",
         "@com_google_absl//absl/algorithm:container",
     ],
-    impl_deps = [
-        "//ast:ast",
-        "//module:assign_scope",
-    ],
+    test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "dependent_decls",
-    intf_deps = [
+    deps = [
+        "//ast:ast",
         "//ast:ast_fwd",
+        "//ast:visitor",
         "//base:graph",
     ],
-    impl_deps = ["//ast:ast"],
+    test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "assign_scope",
-    intf_deps = [
-        "//ast:ast_fwd",
-        "//ast/scope:scope",
-    ],
-    impl_deps = [
+    deps = [
+        ":dependent_decls",
         "//ast:ast",
+        "//ast:ast_fwd",
+        "//ast:visitor",
         "//ast/scope:decl",
         "//ast/scope:fn",
+        "//ast/scope:scope",
     ],
-)
-
-icarus_method(
-    name = "extract_defining_modules",
-    intf_deps = [
-        "//type:type_fwd",
-        "@com_google_absl//absl/container:flat_hash_set",
-    ],
-    impl_deps = [
-        ":module",
-        "//type:concrete_types",
-        "//type:generic_struct",
-    ],
+    test_deps = None,
 )

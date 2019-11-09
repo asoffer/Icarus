@@ -1,34 +1,34 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_component")
+load("//:defs.bzl", "cc_lib")
 
-cc_component(
+cc_lib(
     name = "source",
-    intf_deps = [
+    deps = [
         "//base:cast",
         "//base:expected",
         "//base:util",
     ],
-    impl_deps = None,
+    header_only = True,
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "cursor",
-    intf_deps = [
+    deps = [
         ":range",
         "//base:debug",
     ],
-    impl_deps = None,
+    header_only = True,
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "file",
-    intf_deps = [
+    deps = [
         ":source",
         "//base:expected",
+        "@com_google_absl//absl/strings:str_format",
     ],
-    impl_deps = ["@com_google_absl//absl/strings:str_format"],
     test_deps = [],
     test_data = [
         "testdata/empty_file.txt",
@@ -37,34 +37,33 @@ cc_component(
     ]
 )
 
-cc_component(
+cc_lib(
     name = "id",
-    intf_deps = [],
-    impl_deps = [],
+    deps = [],
     test_deps = []
 )
 
-cc_component(
+cc_lib(
     name = "repl",
-    intf_deps = [":source"],
-    impl_deps = None,
+    deps = [":source"],
+    header_only = True,
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "string",
-    intf_deps = [":source"],
-    impl_deps = None,
+    deps = [":source"],
+    header_only = True,
     test_deps = [],
 )
 
-cc_component(
+cc_lib(
     name = "range",
-    intf_deps = [
+    deps = [
         "//base:debug",
         "//base:interval",
         "//base:strong_types",
     ],
-    impl_deps = None,
+    header_only = True,
     test_deps = None,
 )

@@ -14,7 +14,6 @@
 #include "ir/reg.h"
 #include "ir/results.h"
 #include "ir/values.h"
-#include "module/extract_defining_modules.h"
 #include "module/module.h"
 #include "type/basic_type.h"
 #include "type/visitor_base.h"
@@ -55,11 +54,6 @@ struct Type : public base::Cast<Type> {
   bool IsCopyable() const { return true; }
   bool IsMovable() const { return true; }
   bool HasDestructor() const { return true; }
-
-  virtual void ExtractDefiningModules(
-      absl::flat_hash_set<module::BasicModule const *> *modules) const {
-    UNREACHABLE();
-  }
 
   virtual void Accept(VisitorBase *visitor, void *ret,
                       void *arg_tuple) const = 0;

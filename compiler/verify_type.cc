@@ -45,7 +45,7 @@ namespace {
 void AddAdl(ast::OverloadSet *overload_set, std::string_view id,
             type::Type const *t) {
   absl::flat_hash_set<module::BasicModule const *> modules;
-  t->ExtractDefiningModules(&modules);
+  // TODO t->ExtractDefiningModules(&modules);
 
   for (auto const *mod : modules) {
     auto decls = mod->declarations(id);

@@ -19,11 +19,6 @@ struct GenericFunction : public Callable {
     result->append("generic");
   }
 
-  void ExtractDefiningModules(absl::flat_hash_set<module::BasicModule const *>
-                                  *modules) const override {
-    return module::ExtractDefiningModules::Extract(this, modules);
-  }
-
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -38,11 +33,6 @@ struct Function : public Callable {
       : input(std::move(in)), output(std::move(out)) {
     for (auto *t : input) { ASSERT(t != nullptr); }
     for (auto *t : output) { ASSERT(t != nullptr); }
-  }
-
-  void ExtractDefiningModules(absl::flat_hash_set<module::BasicModule const *>
-                                  *modules) const override {
-    return module::ExtractDefiningModules::Extract(this, modules);
   }
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {

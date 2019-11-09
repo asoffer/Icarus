@@ -1,20 +1,19 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_component")
+load("//:defs.bzl", "cc_lib")
 
-cc_component(
+cc_lib(
     name = "diagnostic",
-    intf_deps = [
+    deps = [
         "//frontend/source",
         "//frontend/source:range",
         "@com_google_absl//absl/strings:str_format",
     ],
-    impl_deps = None,
+    header_only = True,
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "console_renderer",
-    intf_deps = [":diagnostic"],
-    impl_deps = [],
+    deps = [":diagnostic"],
     test_deps = None,
 )

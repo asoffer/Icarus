@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "ast/ast_fwd.h"
+#include "ast/visitor.h"
 #include "base/debug.h"
 #include "base/graph.h"
 
@@ -35,12 +36,13 @@ struct DeclDepGraph {
       ids_;
 };
 
-struct DependentDecls {
-  void operator()(ast::Node const *node, ast::Declaration const *d) {
-    UNREACHABLE();
+struct DependentDecls : ast::Visitor<void(ast::Declaration const *)> {
+  void Visit(ast::Node const *node, ast::Declaration const *d) {
+    ast::Visitor<void(ast::Declaration const *)>::Visit(node, d);
   }
+
 #define ICARUS_AST_NODE_X(name)                                                \
-  void operator()(ast::name const *node, ast::Declaration const *d);
+  void Visit(ast::name const *node, ast::Declaration const *d);
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
 

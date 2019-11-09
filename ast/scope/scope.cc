@@ -1,8 +1,6 @@
 #include "ast/scope/scope.h"
 
-#include "ast/scope/exec.h"
-#include "ast/scope/fn.h"
-#include "module/module.h"
+// TODO #include "module/module.h"
 
 namespace ast {
 
@@ -23,14 +21,15 @@ std::vector<ast::Declaration const *> Scope::AllDeclsWithId(
       for (auto *decl : iter->second) { matching_decls.push_back(decl); }
     }
 
-    for (auto const *mod : scope_ptr->embedded_modules_) {
-      // TODO use the right bound constants? or kill bound constants?
-      for (auto *decl : mod->declarations(id)) {
-        // TODO what about transitivity for embedded modules?
-        // New context will lookup with no constants.
-        matching_decls.push_back(decl);
-      }
-    }
+    // TODO
+    // for (auto const *mod : scope_ptr->embedded_modules_) {
+    //   // TODO use the right bound constants? or kill bound constants?
+    //   for (auto *decl : mod->declarations(id)) {
+    //     // TODO what about transitivity for embedded modules?
+    //     // New context will lookup with no constants.
+    //     matching_decls.push_back(decl);
+    //   }
+    // }
   }
   return matching_decls;
 }

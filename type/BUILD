@@ -1,25 +1,23 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_group_target", "cc_lib_target", "cc_component")
+load("//:defs.bzl", "cc_lib")
 
 cc_library(name = "type_xmacro", textual_hdrs = ["type.xmacro.h"])
 
-cc_component(
+cc_lib(
     name = "type_fwd",
-    intf_deps = [":type_xmacro"],
-    impl_deps = None,
+    deps = [":type_xmacro"],
+    header_only = True,
     test_deps = None,
 )
 
-cc_lib_target(
+cc_lib(
     name = "array",
-    intf_deps = [
-        "//base:lazy",
-        "//type:type",
-    ],
-    impl_deps = [
+    deps = [
         ":function",
         ":pointer",
+        ":type",
         "//base:guarded",
+        "//base:lazy",
         "//base:tuple",
         "//core:fn_params",
         "//core:arch",
@@ -30,75 +28,50 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(name = "callable",
-              intf_deps = [":type"],
-              impl_deps = None,
-              test_deps = None)
-
-cc_group_target(
-    name = "concrete_types",
-    deps = [
-        ":array",
-        ":enum",
-        ":flags",
-        ":function",
-        ":jump",
-        ":opaque",
-        ":parameter_pack",
-        ":pointer",
-        ":primitive",
-        ":struct",
-        ":tuple",
-        ":type",
-        ":variant",
-    ])
-
-cc_group_target(
-    name = "impl",
-    deps = [
-        ":array-impl",
-        ":enum-impl",
-        ":flags-impl",
-        ":function-impl",
-        ":generic_struct-impl",
-        ":jump-impl",
-        ":opaque-impl",
-        ":parameter_pack-impl",
-        ":pointer-impl",
-        ":primitive-impl",
-        ":struct-impl",
-        ":tuple-impl",
-        ":type-impl",
-        ":variant-impl",
-    ])
-
-cc_lib_target(
-    name = "cast",
-    # TODO this should be runnable without all the ir, but for now it's
-    # necessary. because scope drags in module. reduce the test deps when you're
-    # done fixing this.
-    cfgs = ["match", "compile"],
-    impl_deps = [
-        ":concrete_types",
-        "@com_google_absl//absl/algorithm:container",
-    ],
-    test_deps = ["//:impl"],
+cc_lib(
+    name = "callable",
+    deps = [":type"],
+    header_only = True,
+    test_deps = None,
 )
 
-cc_lib_target(
+CONCRETE_TYPES = [
+    ":array",
+    ":enum",
+    ":flags",
+    ":function",
+    ":jump",
+    ":opaque",
+    ":parameter_pack",
+    ":pointer",
+    ":primitive",
+    ":struct",
+    ":tuple",
+    ":type",
+    ":variant",
+]
+
+cc_lib(
+    name = "cast",
+    deps = CONCRETE_TYPES + [
+        "@com_google_absl//absl/algorithm:container",
+    ],
+    test_deps = [],
+)
+
+cc_lib(
     name = "enum",
-    intf_deps = [
+    deps = [
         ":type",
         ":typed_value",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
-    impl_deps = [],
     test_deps = None,
 )
 
-cc_lib_target(
+cc_lib(
     name = "flags",
-    intf_deps = [
+    deps = [
         ":type",
         ":typed_value",
         "//ir:values",
@@ -106,61 +79,59 @@ cc_lib_target(
         "@com_google_absl//absl/random",
         "@com_google_absl//absl/random:distributions",
     ],
-    impl_deps = [],
     test_deps = None,
 )
 
-cc_lib_target(
+cc_lib(
     name = "function",
-    intf_deps = [
+    deps = [
         ":callable",
-        "//core:fn_params",
         ":typed_value",
+        "//core:fn_params",
+        "//base:guarded",
     ],
-    impl_deps = ["//base:guarded"],
     test_deps = None,
 )
 
-cc_lib_target(
+cc_lib(
     name = "generic_struct",
-    intf_deps = [
+    deps = [
         ":callable",
         ":type",
         "//module:module",
         "//ast/scope:scope",
         "//ast/scope:module",
     ],
-    impl_deps = [],
     test_deps = None,
 )
 
-cc_lib_target(
+cc_lib(
     name = "jump",
-    intf_deps = [
+    deps = [
         ":type",
         ":function",
-        "@com_google_absl//absl/types:span",
-    ],
-    impl_deps = [
         "//base:guarded",
         "@com_google_absl//absl/container:node_hash_set",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
     ],
     test_deps = None,
 )
 
-cc_lib_target(
+cc_lib(
     name = "opaque",
-    intf_deps = [":type"],
-    impl_deps = ["//base:debug"],
+    deps = [
+        ":type",
+        "//base:debug",
+    ],
     test_deps = None,
 )
 
-cc_lib_target(
+cc_lib(
     name = "pointer",
-    intf_deps = [":type"],
-    impl_deps = [
+    deps = [
         ":function",
+        ":type",
         "//base:guarded",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
@@ -168,79 +139,80 @@ cc_lib_target(
     test_deps = None,
 )
 
-cc_lib_target(
+cc_lib(
     name = "parameter_pack",
-    intf_deps = [":type"],
-    impl_deps = [
+    deps = [
+        ":type",
         "//base:guarded",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "basic_type",
     textual_hdrs = ["primitive.xmacro.h"],
-    intf_deps = [],
-    impl_deps = None,
+    deps = [],
+    header_only = True,
     test_deps = None,
 )
 
-cc_lib_target(
+cc_lib(
     name = "primitive",
     textual_hdrs = ["primitive.xmacro.h"],
-    intf_deps = [":type"],
-    impl_deps = [
+    deps = [
+        ":type",
         ":array",
         ":pointer",
     ],
     test_deps = None,
 )
 
-cc_lib_target(
+cc_lib(
     name = "struct",
-    intf_deps = [
+    deps = [
+        ":function",
+        ":pointer",
         ":type",
         "//ast/scope:scope",
         "//ast:hashtag",
-        "//base:lazy",
-        "//ir:any_func",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-    impl_deps = [
-        ":function",
-        ":pointer",
         "//base:guarded",
+        "//base:lazy",
         "//core:arch",
+        "//ir:any_func",
         "//module:module",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
     test_deps = None,
 )
 
-cc_lib_target(
+cc_lib(
     name = "tuple",
-    intf_deps = [
-        ":type",
-        "//base:lazy",
-        "//ir:any_func",
-    ],
-    impl_deps = [
+    deps = [
         ":function",
         ":pointer",
+        ":type",
+        "//base:lazy",
         "//base:guarded",
         "//base:permutation",
         "//core:arch",
+        "//ir:any_func",
         "//module:module",
     ],
     test_deps = None,
 )
 
-cc_component(name = "typed_value", impl_deps = None, test_deps = None)
+cc_lib(
+    name = "typed_value",
+    deps = [],
+    header_only = True,
+    test_deps = None,
+)
 
-cc_lib_target(
+cc_lib(
     name = "type",
     textual_hdrs = ["primitive.xmacro.h"],
-    intf_deps = [
+    deps = [
         ":basic_type",
         ":visitor_base",
         "//base:debug",
@@ -254,50 +226,44 @@ cc_lib_target(
         "//ir:results",
         "//ir:values",
         "//module:module",
-        "//module:extract_defining_modules",
         "@com_google_absl//absl/container:flat_hash_set",
-    ],
-    impl_deps = [
-        ":array",
-        ":struct",
-        ":tuple",
-        ":variant",
     ],
     test_deps = None,
 )
 
-cc_lib_target(
+cc_lib(
     name = "util",
-    intf_deps = [":concrete_types"],
-    impl_deps = None,
-    test_deps = None)
+    deps = CONCRETE_TYPES,
+    header_only = True,
+    test_deps = None,
+)
 
-cc_lib_target(
+cc_lib(
     name = "variant",
-    intf_deps = [":type"],
-    impl_deps = [
+    deps = [
+        ":type",
         "//base:guarded",
         "@com_google_absl//absl/algorithm:container",
     ],
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "visitor_base",
-    intf_deps = [
+    deps = [
         ":type_fwd",
         "//base:debug",
     ],
-    impl_deps = None,
+    header_only = True,
     test_deps = None,
 )
 
-cc_lib_target(
+cc_lib(
     name = "visitor",
-    intf_deps = [
+    deps = [
         ":type",
         ":visitor_base",
     ],
-    impl_deps = None,
+    header_only = True,
     test_deps = None,
 )

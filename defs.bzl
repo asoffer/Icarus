@@ -6,9 +6,6 @@ def configuration(name, defines = []):
 
 
 _VISITOR_DEFINES = {
-    "compile": configuration("compiler"),
-    "format": configuration("format"),
-    #TODO Figure out how to get rid of this define.
     "match": configuration("match", defines = ["ICARUS_MATCHER"])
 }
 
@@ -28,76 +25,6 @@ def make_deps(deps, cfg):
             return []
     else:
         fail()
-
-def cc_lib_target(name, intf_deps = [], impl_deps = None,
-                  test_deps = None, test_data = [], 
-                  extra_hdrs = [], extra_srcs = [],
-                  cfgs = None, **kwargs):
-    for cfg, defs in _VISITOR_DEFINES.items():
-        if cfgs != None and cfg not in cfgs:
-            continue
-
-        intf_name = configured_dep(name, cfg)
-        impl_name = configured_dep(name + "-impl", cfg)
-        test_name = configured_dep(name + "-test", cfg)
-        if intf_deps != None:
-            native.cc_library(
-                name = intf_name,
-                hdrs = [name + ".h"] + extra_hdrs,
-                defines = defs["defines"],
-                deps = [
-                    configured_dep(dep, cfg) if str(type(dep)) == "string" else dep(cfg)
-                    for dep in intf_deps],
-                alwayslink = True,
-                **kwargs)
-
-        if impl_deps != None:
-            native.cc_library(
-                name = impl_name,
-                srcs = [name + ".cc"] + extra_srcs,
-                defines = defs["defines"],
-                deps = (([intf_name] if intf_deps != None else []) +
-                        [configured_dep(dep, cfg) if str(type(dep)) == "string" else dep(cfg)
-                         for dep in impl_deps]),
-                alwayslink = True,
-                **kwargs)
-
-        if test_deps != None:
-            native.cc_test(
-                name = test_name,
-                defines = defs["defines"],
-                srcs = [name + "_test.cc"],
-                deps = (["//test:test",
-                         impl_name if impl_deps != None else intf_name] +
-                        [configured_dep(dep, cfg) if str(type(dep)) == "string" else dep(cfg)
-                         for dep in test_deps]),
-                data = test_data,
-                **kwargs)
-
-def icarus_method(name,
-                  intf_deps = None,
-                  impl_deps = None,
-                  deps = [],
-                  cfgs = None,
-                  gen = True):
-    native.cc_library(
-        name = name + "-xmacro",
-        textual_hdrs = [name + ".xmacro.h"],
-        deps = deps)
-
-    if gen:
-        cc_lib_target(name,
-                      cfgs = cfgs,
-                      intf_deps = intf_deps,
-                      impl_deps = impl_deps)
-
-
-    for cfg, defs in _VISITOR_DEFINES.items():
-        if cfgs != None and cfg not in cfgs:
-            continue
-
-        native.alias(name = configured_dep(name + "-xmacro", cfg), actual = name + "-xmacro")
-
 
 def cc_component(name, intf_deps = [], impl_deps = None,
                  test_deps = None, test_data = [], 
@@ -138,6 +65,24 @@ def cc_component(name, intf_deps = [], impl_deps = None,
             native.alias(
                 name = configured_dep(name + "-impl", cfg),
                 actual = name + "-impl")
+
+def cc_lib(name, deps, test_deps = [], header_only = False, test_data = None, **kwargs):
+  native.cc_library(
+      name = name,
+      hdrs = [name + ".h"],
+      srcs = [] if header_only else [name + ".cc"],
+      deps = deps,
+      **kwargs
+  )
+
+  if test_deps != None:
+    native.cc_test(
+        name = name + "-test",
+        srcs = [name + "_test.cc"],
+        deps = ["//test", ":" + name] + test_deps,
+        data = test_data
+    )
+
 
 def cc_group_target(name, deps, cfgs = None, hdrs = [], srcs = [], **kwargs):
     for cfg, defs in _VISITOR_DEFINES.items():
