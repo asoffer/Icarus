@@ -1,5 +1,5 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_component")
+load("//:defs.bzl", "cc_component", "cc_lib")
 
 cc_component(name = "bag", impl_deps = None, test_deps = None)
 cc_component(name = "debug",
@@ -87,6 +87,13 @@ cc_component(
     ],
     test_deps = [])
 
+cc_lib(
+    name = "unaligned_ref",
+    deps = [],
+    header_only = True,
+    test_deps = [],
+)
+
 cc_component(
     name = "util",
     intf_deps = [],
@@ -94,3 +101,4 @@ cc_component(
     test_deps = None)
 
 cc_component(name = "ptr_span", intf_deps = [], impl_deps = None, test_deps = None)
+
