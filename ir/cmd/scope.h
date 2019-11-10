@@ -16,9 +16,6 @@ struct BlockCmd {
                                    backend::ExecContext *ctx);
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
-
-  static void UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                Inliner const &inliner);
 };
 
 struct ScopeCmd {
@@ -29,9 +26,6 @@ struct ScopeCmd {
                                    backend::ExecContext *ctx);
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
-
-  static void UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                Inliner const &inliner);
 };
 
 // TODO "Handler" doesn't really make sense in the name for these.

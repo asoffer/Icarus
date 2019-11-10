@@ -30,9 +30,6 @@ struct PrintCmd {
                                    backend::ExecContext* ctx);
 
   static std::string DebugString(base::untyped_buffer::const_iterator* iter);
-
-  static void UpdateForInlining(base::untyped_buffer::iterator* iter,
-                                Inliner const& inliner);
 };
 
 template <typename T>

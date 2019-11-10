@@ -72,22 +72,6 @@ struct LoadCmd {
     s.append(stringify(iter->read<Reg>()));
     return s;
   }
-  static void UpdateForInlining(base::untyped_buffer::iterator* iter,
-                                Inliner const& inliner) {
-    auto ctrl = iter->read<control_bits>();
-    if (ctrl.reg) {
-      inliner.Inline(&iter->read<Reg>());
-    } else {
-      // TODO: Add core::LayoutRequirements so you can skip forward by the
-      // appropriate amount without instantiating so many templates.
-      PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
-        iter->read<typename std::decay_t<decltype(tag)>::type>();
-      });
-    }
-
-    // Result value
-    inliner.Inline(&iter->read<Reg>(), GetType(ctrl.primitive_type));
-  }
 };
 
 template <typename T>

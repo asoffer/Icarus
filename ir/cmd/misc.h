@@ -23,9 +23,6 @@ struct SemanticCmd {
                                    backend::ExecContext *ctx);
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
-
-  static void UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                Inliner const &inliner);
 };
 
 struct LoadSymbolCmd {
@@ -36,9 +33,6 @@ struct LoadSymbolCmd {
                                    backend::ExecContext *ctx);
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
-
-  static void UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                Inliner const &inliner);
 };
 
 struct TypeInfoCmd {
@@ -49,9 +43,6 @@ struct TypeInfoCmd {
                                    backend::ExecContext *ctx);
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
-
-  static void UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                Inliner const &inliner);
 };
 
 struct AccessCmd {
@@ -75,9 +66,6 @@ struct AccessCmd {
                                    backend::ExecContext *ctx);
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
-
-  static void UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                Inliner const &inliner);
 };
 
 struct VariantAccessCmd {
@@ -90,9 +78,6 @@ struct VariantAccessCmd {
                                    backend::ExecContext *ctx);
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
-
-  static void UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                Inliner const &inliner);
 };
 
 base::Tagged<core::Alignment, Reg> Align(RegOr<type::Type const *> r);
@@ -130,9 +115,6 @@ struct DebugIrCmd {
   static std::string DebugString(base::untyped_buffer::const_iterator *iter) {
     return "debug-ir";
   }
-
-  static void UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                Inliner const &inliner) {}
 };
 inline void DebugIr() {}
 #endif  // ICARUS_DEBUG

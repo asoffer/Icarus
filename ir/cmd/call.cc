@@ -91,55 +91,6 @@ std::string CallCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
   return result;
 }
 
-void CallCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                Inliner const &inliner) {
-  // RegOr<AnyFunc> r_fn;
-  // if (cmd.call_.fn_.is_reg()) {
-  //   auto iter = reg_relocs.find(cmd.call_.fn_.reg());
-  //   if (iter == reg_relocs.end()) { goto next_block; }
-  //   r_fn = iter->second.get<AnyFunc>(0).reg();
-  // } else {
-  //   r_fn = cmd.call_.fn_;
-  // }
-
-  // Results new_arg_results;
-  // for (size_t i = 0; i < cmd.call_.arguments_->results().size(); ++i) {
-  //   if (cmd.call_.arguments_->results().is_reg(i)) {
-  //     auto iter =
-  //         reg_relocs.find(cmd.call_.arguments_->results().get<Reg>(i));
-  //     if (iter == reg_relocs.end()) { goto next_block; }
-  //     new_arg_results.append(iter->second.GetResult(0));
-  //   } else {
-  //     new_arg_results.append(
-  //         cmd.call_.arguments_->results().GetResult(i));
-  //   }
-  // }
-  // Arguments new_args(cmd.call_.arguments_->type_,
-  //                    std::move(new_arg_results));
-
-  // if (cmd.call_.outs_) {
-  //   OutParams outs;
-  //   for (size_t i = 0; i < cmd.call_.outs_->regs_.size(); ++i) {
-  //     if (cmd.call_.outs_->is_loc_[i]) {
-  //       auto old_r = cmd.call_.outs_->regs_[i];
-  //       auto iter  = reg_relocs.find(old_r);
-  //       if (iter == reg_relocs.end()) { goto next_block; }
-  //       // TODO reg_relocs.emplace(, op_fn(r0, r1));
-  //     } else {
-  //       auto r =
-  //           Reserve(type::Int64);  // TODO this type is probably wrong.
-  //       outs.is_loc_.push_back(false);
-  //       outs.regs_.push_back(r);
-  //       reg_relocs.emplace(cmd.call_.outs_->regs_[i], r);
-  //     }
-  //   }
-  //   Call(r_fn, std::move(new_args), std::move(outs));
-  // } else {
-  //   Call(r_fn, std::move(new_args));
-  // }
-  NOT_YET();
-}
-
 namespace {
 
 void CallImpl(BasicBlock *blk, RegOr<AnyFunc> const &fn,

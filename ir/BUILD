@@ -144,6 +144,7 @@ cc_lib_target(
         "//ir/cmd:basic",
         "//ir/cmd:call-impl",
         "//ir/cmd:cast",
+        "//ir/cmd:inline",
         "//ir/cmd:jumps",
         "//ir/cmd:load",
         "//ir/cmd:misc-impl",
@@ -274,7 +275,7 @@ cc_component(
     test_deps = [],
 )
 
-cc_lib_target(
+cc_component(
     name = "scope_def",
     intf_deps = [
         ":any_func",

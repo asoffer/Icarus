@@ -296,22 +296,6 @@ struct UnaryCmd {
     return s;
   }
 
-  static void UpdateForInlining(base::untyped_buffer::iterator* iter,
-                                Inliner const& inliner) {
-    auto ctrl = iter->read<control_bits>();
-    // TODO: Add core::LayoutRequirements so you can skip forward by the
-    // appropriate amount without instantiating so many templates.
-    if (ctrl.reg0) {
-      inliner.Inline(&iter->read<Reg>());
-    } else {
-      PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
-        iter->read<typename std::decay_t<decltype(tag)>::type>();
-      });
-    }
-    // Result value
-    inliner.Inline(&iter->read<Reg>(), GetType(ctrl.primitive_type));
-  }
-
  private:
   template <typename T>
   static auto Apply(base::untyped_buffer::const_iterator* iter, bool reg0,
@@ -428,33 +412,6 @@ struct BinaryCmd {
     return s;
   }
 
-  static void UpdateForInlining(base::untyped_buffer::iterator* iter,
-                                Inliner const& inliner) {
-    auto ctrl = iter->read<control_bits>();
-    if (ctrl.reg0) {
-      inliner.Inline(&iter->read<Reg>());
-    } else {
-      // TODO: Add core::LayoutRequirements so you can skip forward by the
-      // appropriate amount without instantiating so many templates.
-      PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
-        iter->read<typename std::decay_t<decltype(tag)>::type>();
-      });
-    }
-
-    if (ctrl.reg1) {
-      inliner.Inline(&iter->read<Reg>());
-    } else {
-      // TODO: Add core::LayoutRequirements so you can skip forward by the
-      // appropriate amount without instantiating so many templates.
-      PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
-        iter->read<typename std::decay_t<decltype(tag)>::type>();
-      });
-    }
-
-    // Result value
-    inliner.Inline(&iter->read<Reg>(), GetType(ctrl.primitive_type));
-  }
-
  private:
   template <typename T>
   static auto Apply(base::untyped_buffer::const_iterator* iter, bool reg0,
@@ -524,14 +481,6 @@ struct VariadicCmd {
 
   static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
     return "NOT_YET";
-  }
-
-  static void UpdateForInlining(base::untyped_buffer::iterator* iter,
-                                Inliner const& inliner) {
-    Deserialize<uint16_t, T>(iter,
-                             [&inliner](Reg& reg) { inliner.Inline(&reg); });
-    // Result value
-    inliner.Inline(&iter->read<Reg>(), ::type::Get<T>());
   }
 };
 

@@ -9,6 +9,7 @@
 #include "ir/cmd/basic.h"
 #include "ir/cmd/call.h"
 #include "ir/cmd/cast.h"
+#include "ir/cmd/inline.h"
 #include "ir/cmd/jumps.h"
 #include "ir/cmd/load.h"
 #include "ir/cmd/misc.h"
@@ -100,7 +101,7 @@ void CmdBuffer::UpdateForInlining(Inliner const& inliner) {
 #define CASE(type)                                                             \
   case type::index:                                                            \
     DEBUG_LOG("dbg")(#type ": ", iter);                                        \
-    type::UpdateForInlining(&iter, inliner);                                   \
+    InlineCmd<type>(&iter, inliner);                                           \
     break
       CASES;
 #undef CASE

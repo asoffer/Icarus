@@ -53,9 +53,6 @@ struct EnumerationCmd {
                                    backend::ExecContext *ctx);
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
-
-  static void UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                Inliner const &inliner);
 };
 
 struct StructCmd {
@@ -66,9 +63,6 @@ struct StructCmd {
                                    backend::ExecContext *ctx);
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
-
-  static void UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                Inliner const &inliner);
 };
 
 struct OpaqueTypeCmd {
@@ -78,9 +72,6 @@ struct OpaqueTypeCmd {
                                    backend::ExecContext *ctx);
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
-
-  static void UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                Inliner const &inliner);
 };
 
 struct ArrayCmd {
@@ -103,9 +94,6 @@ struct ArrayCmd {
                                    backend::ExecContext *ctx);
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
-
-  static void UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                Inliner const &inliner);
 };
 
 using VariantCmd = internal::VariadicCmd<16, type::Type const *, type::Var>;
@@ -170,15 +158,6 @@ struct ArrowCmd {
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter) {
     return "NOT_YET";
-  }
-
-  static void UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                Inliner const &inliner) {
-    internal::Deserialize<uint16_t, type::Type const *>(
-        iter, [&inliner](Reg &reg) { inliner.Inline(&reg); });
-    internal::Deserialize<uint16_t, type::Type const *>(
-        iter, [&inliner](Reg &reg) { inliner.Inline(&reg); });
-    inliner.Inline(&iter->read<Reg>(), type::Type_);  // Result value
   }
 };
 

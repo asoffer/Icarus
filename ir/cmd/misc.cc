@@ -140,35 +140,6 @@ std::string SemanticCmd::DebugString(
   }
 }
 
-void SemanticCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                    Inliner const &inliner) {
-  size_t num_args = 0;
-  switch (iter->read<Kind>()) {
-    case Kind::Init: num_args = 1; break;
-    case Kind::Destroy: num_args = 1; break;
-    case Kind::Move: num_args = 2; break;
-    case Kind::Copy: num_args = 2; break;
-  }
-
-  switch (num_args) {
-    case 1: {
-      iter->read<type::Type const *>();
-      inliner.Inline(&iter->read<Reg>());
-    } break;
-    case 2: {
-      bool to_reg = iter->read<bool>();
-      iter->read<type::Type const *>();
-      inliner.Inline(&iter->read<Reg>());
-      if (to_reg) {
-        inliner.Inline(&iter->read<Reg>());
-      } else {
-        iter->read<Addr>();
-      }
-    } break;
-    default: UNREACHABLE();
-  }
-}
-
 void Init(type::Type const *t, Reg r) {
   MakeSemanticCmd(SemanticCmd::Kind::Init, t, r);
 }
@@ -216,13 +187,6 @@ std::string LoadSymbolCmd::DebugString(
                       type->to_string(), ")");
 }
 
-void LoadSymbolCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                      Inliner const &inliner) {
-  iter->read<std::string_view>();
-  iter->read<type::Type const *>();
-  inliner.Inline(&iter->read<Reg>());
-}
-
 type::Typed<Reg> LoadSymbol(std::string_view name, type::Type const *type) {
   auto &blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append_index<LoadSymbolCmd>();
@@ -268,17 +232,6 @@ std::string TypeInfoCmd::DebugString(
   auto reg = iter->read<Reg>();
   return absl::StrCat(stringify(reg),
                       (ctrl_bits & 0x02) ? " = alignment " : " = bytes ", arg);
-}
-
-void TypeInfoCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                    Inliner const &inliner) {
-  auto ctrl_bits = iter->read<uint8_t>();
-  if (ctrl_bits & 0x01) {
-    inliner.Inline(&iter->read<Reg>());
-  } else {
-    iter->read<type::Type const *>();
-  }
-  inliner.Inline(&iter->read<Reg>());
 }
 
 base::Tagged<core::Alignment, Reg> Align(RegOr<type::Type const *> r) {
@@ -343,26 +296,6 @@ std::string AccessCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
       stringify(reg),
       ctrl_bits.is_array ? " = access-array " : " = access-index ",
       type->to_string(), " ", stringify(addr), " ", stringify(index));
-}
-
-void AccessCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                  Inliner const &inliner) {
-  auto ctrl_bits = iter->read<control_bits>();
-  iter->read<type::Type const *>();
-
-  if (ctrl_bits.reg_ptr) {
-    inliner.Inline(&iter->read<Reg>());
-  } else {
-    iter->read<Addr>();
-  }
-
-  if (ctrl_bits.reg_index) {
-    inliner.Inline(&iter->read<Reg>());
-  } else {
-    iter->read<int64_t>();
-  }
-
-  inliner.Inline(&iter->read<Reg>());
 }
 
 namespace {
@@ -441,22 +374,6 @@ std::string VariantAccessCmd::DebugString(
     Reg reg = iter->read<Reg>();
     return absl::StrCat(stringify(reg), " = variant-type ", stringify(addr));
   }
-}
-
-void VariantAccessCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                         Inliner const &inliner) {
-  bool get_val = iter->read<bool>();
-  bool is_reg  = iter->read<bool>();
-
-  if (is_reg) {
-    inliner.Inline(&iter->read<Reg>());
-  } else {
-    iter->read<Addr>();
-  }
-
-  if (get_val) { iter->read<type::Variant const *>(); }
-
-  inliner.Inline(&iter->read<Reg>());
 }
 
 namespace {

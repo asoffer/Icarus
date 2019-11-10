@@ -52,9 +52,6 @@ std::string BlockCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
       ")");
 }
 
-void BlockCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                 Inliner const &inliner) {}
-
 Reg BlockHandler(compiler::Compiler *compiler,
                  absl::Span<RegOr<AnyFunc> const> befores,
                  absl::Span<RegOr<JumpHandler const *> const> afters) {
@@ -99,11 +96,6 @@ BasicBlock const *ScopeCmd::Execute(base::untyped_buffer::const_iterator *iter,
 std::string ScopeCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
   // TODO for this to be okay, you do need to iterate through everything.
   return "scope()";
-}
-
-void ScopeCmd::UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                 Inliner const &inliner) {
-  // TODO for this to be okay, you do need to iterate through everything.
 }
 
 Reg ScopeHandler(

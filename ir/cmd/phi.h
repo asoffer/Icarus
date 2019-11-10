@@ -40,11 +40,6 @@ struct PhiCmd {
   static std::string DebugString(base::untyped_buffer::const_iterator *iter) {
     NOT_YET();
   }
-
-  static void UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                Inliner const &inliner) {
-    NOT_YET();
-  }
 };
 
 template <typename T>
