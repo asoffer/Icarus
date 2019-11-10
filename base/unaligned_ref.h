@@ -10,8 +10,10 @@ namespace base {
 template <typename T>
 struct unaligned_ref {
   static_assert(std::is_trivial_v<T>);
-  unaligned_ref(void *ptr) : ptr_(reinterpret_cast<uintptr_t>(ptr)) {}
-  unaligned_ref(T const &t) : ptr_(reinterpret_cast<uintptr_t>(&t)) {}
+  explicit constexpr unaligned_ref(void const *ptr)
+      : ptr_(reinterpret_cast<uintptr_t>(ptr)) {}
+  explicit constexpr unaligned_ref(T const &t)
+      : ptr_(reinterpret_cast<uintptr_t>(&t)) {}
 
   operator T() const {
     T t;

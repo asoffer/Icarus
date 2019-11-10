@@ -5,8 +5,10 @@
 #include <cstring>
 #include <string>
 #include <utility>
+#include <type_traits>
 
 #include "base/debug.h"
+#include "base/unaligned_ref.h"
 
 namespace base {
 constexpr inline uint8_t kUnusedByte = 0xaa;
@@ -102,6 +104,58 @@ struct untyped_buffer {
     char *ptr_;
   };
 
+  struct unaligned_iterator {
+    template <typename T>
+    unaligned_ref<T> read() {
+      unaligned_ref<T> result(reinterpret_cast<void const *>(ptr_));
+      ptr_ += sizeof(T);
+      return result;
+    }
+
+    template <typename T>
+    void write(T const &val) {
+      std::memcpy(reinterpret_cast<void *>(ptr_), &val, sizeof(T));
+      ptr_ += sizeof(T);
+    }
+
+    void skip(size_t n) { ptr_ += n; }
+
+   private:
+    friend struct untyped_buffer;
+    friend std::string stringify(untyped_buffer::unaligned_iterator);
+
+    friend constexpr bool operator<(unaligned_iterator lhs,
+                                    unaligned_iterator rhs) {
+      return lhs.ptr_ < rhs.ptr_;
+    }
+    friend constexpr bool operator>(unaligned_iterator lhs,
+                                    unaligned_iterator rhs) {
+      return (rhs < lhs);
+    }
+    friend constexpr bool operator<=(unaligned_iterator lhs,
+                                     unaligned_iterator rhs) {
+      return not(lhs > rhs);
+    }
+    friend constexpr bool operator>=(unaligned_iterator lhs,
+                                     unaligned_iterator rhs) {
+      return not(rhs < lhs);
+    }
+    friend constexpr bool operator==(unaligned_iterator lhs,
+                                     unaligned_iterator rhs) {
+      return lhs.ptr_ == rhs.ptr_;
+    }
+    friend constexpr bool operator!=(unaligned_iterator lhs,
+                                     unaligned_iterator rhs) {
+      return not(lhs == rhs);
+    }
+
+   private:
+    explicit constexpr unaligned_iterator(void *ptr)
+        : ptr_(reinterpret_cast<uintptr_t>(ptr)) {}
+
+    uintptr_t ptr_;
+  };
+
   untyped_buffer(const_iterator iter, size_t len)
       : size_(len), capacity_(len), data_(static_cast<char *>(malloc(len))) {
     std::memcpy(data_, iter.ptr_, size_);
@@ -111,6 +165,14 @@ struct untyped_buffer {
       : size_(0),
         capacity_(starting_capacity),
         data_(static_cast<char *>(malloc(starting_capacity))) {}
+
+  constexpr unaligned_iterator unaligned_begin() {
+    return unaligned_iterator(data_);
+  }
+
+  constexpr unaligned_iterator unaligned_end() {
+    return unaligned_iterator(data_ + size_);
+  }
 
   static untyped_buffer MakeFull(size_t starting_size) {
     untyped_buffer result(starting_size);

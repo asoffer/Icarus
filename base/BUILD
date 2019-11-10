@@ -77,15 +77,18 @@ cc_component(name = "strong_types",
              test_deps = None)
 cc_component(name = "tag", intf_deps = [], impl_deps = None, test_deps = None)
 cc_component(name = "tuple", intf_deps = [], impl_deps = None, test_deps = [])
+
 cc_component(
     name = "untyped_buffer",
     intf_deps = [
         ":debug",
+        ":unaligned_ref",
     ],
     impl_deps = [
         "@com_google_absl//absl/strings",
     ],
-    test_deps = [])
+    test_deps = [],
+)
 
 cc_lib(
     name = "unaligned_ref",
@@ -101,4 +104,3 @@ cc_component(
     test_deps = None)
 
 cc_component(name = "ptr_span", intf_deps = [], impl_deps = None, test_deps = None)
-

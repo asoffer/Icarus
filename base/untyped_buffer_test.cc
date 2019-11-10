@@ -98,5 +98,24 @@ TEST_CASE("const_iterator") {
   CHECK_FALSE(iter.read<bool>());
 }
 
+TEST_CASE("unaligned_iterator") {
+  // Layout for this buffer will be
+  // * 1 byte for bool
+  // * 4 bytes for int32_t
+  // * 1 byte leftover
+  //
+  // This means that buf.unaligned_end() should not be equal to the iterator
+  // after the int32_t is read.
+  auto buf = untyped_buffer::MakeFull(sizeof(int32_t) + 2);
+
+  auto iter = buf.unaligned_begin();
+  iter.write(true);
+  iter.write(int32_t{0x12345678});
+
+  iter = buf.unaligned_begin();
+  iter.skip(1);
+  CHECK(int32_t{0x12345678} == iter.read<int>());
+  CHECK(iter != buf.unaligned_end());
+}
 }  // namespace
 }  // namespace base
