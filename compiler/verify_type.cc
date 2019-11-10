@@ -1559,15 +1559,16 @@ VerifyResult Compiler::Visit(ast::FunctionLiteral const *node, VerifyTypeTag) {
 }
 
 VerifyResult Compiler::Visit(ast::Identifier const *node, VerifyTypeTag) {
-  for (auto iter = cyc_deps_.begin(); iter != cyc_deps_.end(); ++iter) {
+  for (auto iter = data_.cyc_deps_.begin(); iter != data_.cyc_deps_.end();
+       ++iter) {
     if (*iter == node) {
       error_log()->CyclicDependency(
-          std::vector<ast::Identifier const *>(iter, cyc_deps_.end()));
+          std::vector<ast::Identifier const *>(iter, data_.cyc_deps_.end()));
       return VerifyResult::Error();
     }
   }
-  cyc_deps_.push_back(node);
-  base::defer d([&] { cyc_deps_.pop_back(); });
+  data_.cyc_deps_.push_back(node);
+  base::defer d([&] { data_.cyc_deps_.pop_back(); });
 
   // `node->decl()` is not necessarily null. Because we may call VerifyType many
   // times in multiple contexts, it is null the first time, but not on future

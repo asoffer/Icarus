@@ -1,5 +1,6 @@
 #include <dlfcn.h>
 #include <filesystem>
+#include <memory>
 #include <vector>
 
 #include "backend/exec.h"
@@ -7,6 +8,7 @@
 #include "base/untyped_buffer.h"
 #include "base/util.h"
 #include "compiler/compiler.h"
+#include "compiler/module.h"
 #include "error/log.h"
 #include "frontend/parse.h"
 #include "ir/compiled_fn.h"

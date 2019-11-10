@@ -31,9 +31,10 @@ cc_lib(
         "//type:function",
     ],
     test_deps = [
+        "//backend:eval",
+        "//compiler:compiler",
         "//test:module",
         "//type:function",
-        "//backend:eval",
     ],
 )
 
@@ -52,6 +53,7 @@ cc_lib(
     ],
     test_deps = [
         ":extract_params",
+        "//compiler:compiler",
         "//test:module",
         "//type:variant",
         "//type:function",

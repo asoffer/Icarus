@@ -279,11 +279,11 @@ static base::expected<DispatchTable::Row> OverloadParams(
                                             compiler);
               auto [data_offset, num_bytes] =
                   std::get<std::pair<size_t, core::Bytes>>(
-                      compiler->current_constants_.reserve_slot(
+                      compiler->data_.current_constants_.reserve_slot(
                           param.value.get(), decl_type));
               // TODO you haven't done the cast yet! And you didn't even check
               // about implicit casts.
-              compiler->current_constants_.set_slot(data_offset, buf.raw(0),
+              compiler->data_.current_constants_.set_slot(data_offset, buf.raw(0),
                                                     num_bytes);
               params.set(param_index,
                          core::Param<type::Typed<Declaration const *>>{
@@ -307,11 +307,11 @@ static base::expected<DispatchTable::Row> OverloadParams(
                     compiler);
                 auto [data_offset, num_bytes] =
                     std::get<std::pair<size_t, core::Bytes>>(
-                        compiler->current_constants_.reserve_slot(
+                        compiler->data_.current_constants_.reserve_slot(
                             param.value.get(), decl_type));
                 // TODO you haven't done the cast yet! And you didn't even check
                 // about implicit casts.
-                compiler->current_constants_.set_slot(data_offset, buf.raw(0),
+                compiler->data_.current_constants_.set_slot(data_offset, buf.raw(0),
                                                       num_bytes);
                 params.set(param_index,
                            core::Param<type::Typed<Declaration const *>>{
@@ -334,9 +334,9 @@ static base::expected<DispatchTable::Row> OverloadParams(
                       compiler);
                   auto [data_offset, num_bytes] =
                       std::get<std::pair<size_t, core::Bytes>>(
-                          compiler->current_constants_.reserve_slot(
+                          compiler->data_.current_constants_.reserve_slot(
                               param.value.get(), decl_type));
-                  compiler->current_constants_.set_slot(data_offset, buf.raw(0),
+                  compiler->data_.current_constants_.set_slot(data_offset, buf.raw(0),
                                                         num_bytes);
                   // TODO should I be setting this parameter?
 
@@ -357,9 +357,9 @@ static base::expected<DispatchTable::Row> OverloadParams(
         }
 
         auto *old_constants = std::exchange(
-            compiler->constants_,
-            compiler->insert_constants(compiler->current_constants_));
-        base::defer d([&]() { compiler->constants_ = old_constants; });
+            compiler->data_.constants_,
+            compiler->insert_constants(compiler->data_.current_constants_));
+        base::defer d([&]() { compiler->data_.constants_ = old_constants; });
         // TODO errors?
         auto *fn_type =
             ASSERT_NOT_NULL(compiler->VerifyConcreteFnLit(fn_lit).type());
@@ -661,8 +661,8 @@ static bool EmitOneCall(
 
   if constexpr (Inline) {
     if (fn.value().is_fn()) {
-      auto *prev_inline_map = std::exchange(compiler->inline_, nullptr);
-      base::defer d([&]() { compiler->inline_ = prev_inline_map; });
+      auto *prev_inline_map = std::exchange(compiler->data_.inline_, nullptr);
+      base::defer d([&]() { compiler->data_.inline_ = prev_inline_map; });
       auto *func = ASSERT_NOT_NULL(fn.value().func());
       if (func->work_item != nullptr) { std::move (*func->work_item)(); }
       ASSERT(func->work_item == nullptr);

@@ -107,7 +107,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node) {
 
   auto *t = compiler->type_of(node);
 
-  ir::CompiledFn *&ir_func = compiler->constants_->second.ir_funcs_[node];
+  ir::CompiledFn *&ir_func = compiler->data_.constants_->second.ir_funcs_[node];
 
   ICARUS_SCOPE(ir::SetCurrentFunc(ir_func)) {
     // TODO arguments should be renumbered to not waste space on const values
@@ -164,7 +164,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node) {
 
 void CompleteBody(Compiler *compiler, ast::StructLiteral const *node) {
   NOT_YET();
-  //   ir::CompiledFn *&ir_func = constants_->second.ir_funcs_[node];
+  //   ir::CompiledFn *&ir_func = data_.constants_->second.ir_funcs_[node];
   //   for (size_t i = 0; i < node->args_.size(); ++i) {
   //     set_addr(&node->args_[i], ir::Reg::Arg(i));
   //   }
@@ -231,7 +231,7 @@ void CompleteBody(Compiler *compiler, ast::StructLiteral const *node) {
 }
 
 void CompleteBody(Compiler *compiler, ast::JumpHandler const *node) {
-  ir::CompiledFn *&ir_func = compiler->constants_->second.ir_funcs_[node];
+  ir::CompiledFn *&ir_func = compiler->data_.constants_->second.ir_funcs_[node];
 
   ICARUS_SCOPE(ir::SetCurrentFunc(ir_func)) {
     compiler->builder().CurrentBlock() = ir_func->entry();
@@ -614,13 +614,13 @@ template <typename T, typename... Args>
 PushVec(std::vector<T> *, Args &&...)->PushVec<T>;
 
 ir::Results Compiler::Visit(ast::BlockNode const *node, EmitValueTag) {
-  ICARUS_SCOPE(PushVec(&yields_stack_)) {
+  ICARUS_SCOPE(PushVec(&data_.yields_stack_)) {
     EmitIrForStatements(this, node->stmts());
 
     //   // TODO yield args can just be this pair type, making this conversion
     //   // unnecessary.
     //   std::vector<std::pair<ast::Expression const *, ir::Results>>
-    //   yield_args; for (auto &arg : yields_stack_.back()) {
+    //   yield_args; for (auto &arg : data_.yields_stack_.back()) {
     //     yield_args.emplace_back(arg.expr_, arg.value());
     //   }
     //
@@ -1068,10 +1068,10 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
   if (node->flags() & ast::Declaration::f_IsConst) {
     // TODO
     if (node->flags() & ast::Declaration::f_IsFnParam) {
-      if (auto result = current_constants_.get_constant(node);
+      if (auto result = data_.current_constants_.get_constant(node);
           not result.empty()) {
         return result;
-      } else if (auto result = constants_->first.get_constant(node);
+      } else if (auto result = data_.constants_->first.get_constant(node);
                  not result.empty()) {
         return result;
       } else {
@@ -1084,7 +1084,7 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
         UNREACHABLE();
       }
 
-      auto slot = constants_->second.constants_.reserve_slot(node, t);
+      auto slot = data_.constants_->second.constants_.reserve_slot(node, t);
       if (auto *result = std::get_if<ir::Results>(&slot)) {
         return std::move(*result);
       }
@@ -1100,7 +1100,7 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
         base::untyped_buffer buf = backend::EvaluateToBuffer(
             type::Typed<ast::Expression const *>(node->init_val(), t), this);
         if (num_errors() > 0u) { return ir::Results{}; }
-        return constants_->second.constants_.set_slot(data_offset, buf.raw(0),
+        return data_.constants_->second.constants_.set_slot(data_offset, buf.raw(0),
                                                       num_bytes);
       } else if (node->IsDefaultInitialized()) {
         UNREACHABLE();
@@ -1163,17 +1163,17 @@ ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
   for (auto const &param : node->params()) {
     auto *p = param.value.get();
     if ((p->flags() & ast::Declaration::f_IsConst) and
-        not constants_->first.contains(p)) {
+        not data_.constants_->first.contains(p)) {
       return ir::Results{node};
     }
 
     for (auto *dep : node->param_dep_graph_.sink_deps(param.value.get())) {
-      if (not constants_->first.contains(dep)) { return ir::Results{node}; }
+      if (not data_.constants_->first.contains(dep)) { return ir::Results{node}; }
     }
   }
 
   // TODO Use correct constants
-  ir::CompiledFn *&ir_func = constants_->second.ir_funcs_[node];
+  ir::CompiledFn *&ir_func = data_.constants_->second.ir_funcs_[node];
   if (not ir_func) {
     auto *work_item_ptr = DeferBody(this, node);
 
@@ -1200,8 +1200,8 @@ ir::Results Compiler::Visit(ast::Identifier const *node, EmitValueTag) {
   if (node->decl()->flags() & ast::Declaration::f_IsFnParam) {
     auto *t     = type_of(node);
     ir::Reg reg = addr(node->decl());
-    if (inline_) {
-      ir::Results reg_results = (*inline_)[reg];
+    if (data_.inline_) {
+      ir::Results reg_results = (*data_.inline_)[reg];
       if (not reg_results.is_reg(0)) { return reg_results; }
       reg = reg_results.get<ir::Reg>(0);
     }
@@ -1251,7 +1251,7 @@ ir::Results Compiler::Visit(ast::Jump const *node, EmitValueTag) {
 }
 
 ir::Results Compiler::Visit(ast::JumpHandler const *node, EmitValueTag) {
-  ir::CompiledFn *&ir_func = constants_->second.ir_funcs_[node];
+  ir::CompiledFn *&ir_func = data_.constants_->second.ir_funcs_[node];
   if (not ir_func) {
     auto work_item_ptr = DeferBody(this, node);
     auto *jmp_type     = &type_of(node)->as<type::Jump>();
@@ -1327,15 +1327,15 @@ ir::Results Compiler::Visit(ast::YieldStmt const *node, EmitValueTag) {
   // Can't return these because we need to pass them up at least through the
   // containing statements this and maybe further if we allow labelling
   // scopes to be yielded to.
-  yields_stack_.back().clear();
-  yields_stack_.back().reserve(arg_vals.size());
+  data_.yields_stack_.back().clear();
+  data_.yields_stack_.back().reserve(arg_vals.size());
   // TODO one problem with this setup is that we look things up in a context
   // after returning, so the `after` method has access to a different
   // (smaller) collection of bound constants. This can change the meaning of
   // things or at least make them not compile if the `after` function takes
   // a compile-time constant argument.
   for (size_t i = 0; i < arg_vals.size(); ++i) {
-    yields_stack_.back().emplace_back(node->exprs()[i], arg_vals[i].second);
+    data_.yields_stack_.back().emplace_back(node->exprs()[i], arg_vals[i].second);
   }
 
   builder().disallow_more_stmts();
@@ -1474,10 +1474,10 @@ ir::Results Compiler::Visit(ast::ScopeNode const *node, EmitValueTag) {
   //     auto *mod       = const_cast<module::BasicModule
   //     *>(scope_def->module()); bool swap_bc    = module() != mod;
   //     module::BasicModule *old_mod = std::exchange(module(), mod);
-  //     if (swap_bc) { constants_ = &module()->dep_data_.front(); }
+  //     if (swap_bc) { data_.constants_ = &module()->dep_data_.front(); }
   //     base::defer d([&] {
   //       module() = old_mod;
-  //       if (swap_bc) { constants_ = &module()->dep_data_.front(); }
+  //       if (swap_bc) { data_.constants_ = &module()->dep_data_.front(); }
   //     });
   //   }
   //   auto result =
@@ -1515,7 +1515,7 @@ ir::Results Compiler::Visit(ast::StructLiteral const *node, EmitValueTag) {
   // //
   // // For now, it's safe to do this from within a single module compilation
   // // (which is single-threaded).
-  // ir::CompiledFn *&ir_func = constants_->second.ir_funcs_[node];
+  // ir::CompiledFn *&ir_func = data_.constants_->second.ir_funcs_[node];
   // if (not ir_func) {
   auto work_item_ptr = DeferBody(this, node);
 

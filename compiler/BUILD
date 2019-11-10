@@ -4,7 +4,7 @@ load("//:defs.bzl", "cc_component", "cc_lib")
 cc_lib(
     name = "compiler",
     deps = [
-        ":constant_binding",
+        ":data",
         ":verify_result",
         "//ast:ast",
         "//ast:visitor",
@@ -24,6 +24,23 @@ cc_lib(
         "//type:typed_value",
         "//type:visitor",
         "@com_google_absl//absl/container:node_hash_map",
+    ],
+    test_deps = None,
+)
+
+# TODO rename
+cc_lib(
+    name = "data",
+    deps = [
+        ":constant_binding",
+        ":dependent_data",
+        "//ast:ast",
+        "//error:log",
+        "//ir:block_def",
+        "//ir:builder",
+        "//ir:results",
+        "//ir:scope_def",
+        "//module:module",
     ],
     test_deps = None,
 )
