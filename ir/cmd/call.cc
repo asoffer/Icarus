@@ -6,69 +6,6 @@
 #include "ir/reg_or.h"
 
 namespace ir {
-namespace {
-
-type::Function const *GetType(AnyFunc f) {
-  return f.is_fn() ? f.func()->type_
-                   : &f.foreign().type()->as<type::Function>();
-}
-
-}  // namespace
-
-BasicBlock const *CallCmd::Execute(base::untyped_buffer::const_iterator *iter,
-                                   std::vector<Addr> const &ret_slots,
-                                   backend::ExecContext *ctx) {
-  bool fn_is_reg                = iter->read<bool>();
-  std::vector<bool> is_reg_bits = internal::ReadBits<uint16_t>(iter);
-
-  AnyFunc f = fn_is_reg ? ctx->resolve<AnyFunc>(iter->read<Reg>())
-                        : iter->read<AnyFunc>();
-  type::Function const *fn_type = GetType(f);
-  DEBUG_LOG("call")(f, ": ", fn_type->to_string());
-  DEBUG_LOG("call")(is_reg_bits);
-
-  iter->read<core::Bytes>();
-
-  base::untyped_buffer call_buf;
-  ASSERT(fn_type->input.size() == is_reg_bits.size());
-  for (size_t i = 0; i < is_reg_bits.size(); ++i) {
-    type::Type const *t = fn_type->input[i];
-    if (is_reg_bits[i]) {
-      auto reg = iter->read<Reg>();
-      PrimitiveDispatch(PrimitiveIndex(t), [&](auto tag) {
-        using type = typename std::decay_t<decltype(tag)>::type;
-        call_buf.append(ctx->resolve<type>(reg));
-      });
-
-    } else if (t->is_big()) {
-      NOT_YET();
-    } else {
-      PrimitiveDispatch(PrimitiveIndex(t), [&](auto tag) {
-        using type = typename std::decay_t<decltype(tag)>::type;
-        call_buf.append(iter->read<type>());
-      });
-    }
-  }
-
-  uint16_t num_rets = iter->read<uint16_t>();
-  std::vector<Addr> return_slots;
-  return_slots.reserve(num_rets);
-  for (uint16_t i = 0; i < num_rets; ++i) {
-    auto reg = iter->read<Reg>();
-    // TODO: handle is_loc outparams.
-    // NOTE: This is a hack using heap address slots to represent registers
-    // since they are both void* and are used identically in the interpretter.
-    auto addr = ir::Addr::Heap(ctx->call_stack.top().regs_.raw(
-        ASSERT_NOT_NULL(ctx->call_stack.top().fn_->offset_or_null(reg))
-            ->value()));
-    DEBUG_LOG("call")("Ret addr = ", addr);
-    return_slots.push_back(addr);
-  }
-
-  backend::Execute(f, call_buf, return_slots, ctx);
-  return nullptr;
-}
-
 std::string CallCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
   bool fn_is_reg = iter->read<bool>();
   internal::ReadBits<uint16_t>(iter);

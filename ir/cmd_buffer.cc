@@ -9,6 +9,7 @@
 #include "ir/cmd/basic.h"
 #include "ir/cmd/call.h"
 #include "ir/cmd/cast.h"
+#include "ir/cmd/execute.h"
 #include "ir/cmd/inline.h"
 #include "ir/cmd/jumps.h"
 #include "ir/cmd/load.h"
@@ -83,7 +84,7 @@ BasicBlock const* CmdBuffer::Execute(std::vector<ir::Addr> const& ret_slots,
 #define CASE(type)                                                             \
   case type::index: {                                                          \
     DEBUG_LOG("dbg")(#type);                                                   \
-    if (auto result = type::Execute(&iter, ret_slots, ctx)) { return result; } \
+    if (auto blk = ExecuteCmd<type>(&iter, ret_slots, ctx)) { return blk; }    \
   } break
       CASES;
 #undef CASE

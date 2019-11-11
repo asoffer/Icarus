@@ -1,7 +1,5 @@
 #include "ir/cmd/misc.h"
 
-#include <dlfcn.h>
-
 namespace ir {
 namespace {
 void MakeSemanticCmd(SemanticCmd::Kind k, type::Type const *t, Reg r) {
@@ -23,80 +21,6 @@ void MakeSemanticCmd(SemanticCmd::Kind k, type::Type const *t, Reg from,
   to.apply([&](auto v) { blk.cmd_buffer_.append(v); });
 }
 }  // namespace
-
-BasicBlock const *SemanticCmd::Execute(
-    base::untyped_buffer::const_iterator *iter,
-    std::vector<Addr> const &ret_slots, backend::ExecContext *ctx) {
-  ir::AnyFunc f;
-  base::untyped_buffer call_buf(sizeof(ir::Addr));
-  switch (iter->read<Kind>()) {
-    case Kind::Init: {
-      auto *t = iter->read<type::Type const *>();
-      call_buf.append(ctx->resolve<Addr>(iter->read<Reg>()));
-
-      if (auto *s = t->if_as<type::Struct>()) {
-        f = s->init_func_;
-      } else if (auto *tup = t->if_as<type::Tuple>()) {
-        f = tup->init_func_.get();
-      } else if (auto *a = t->if_as<type::Array>()) {
-        f = a->init_func_.get();
-      } else {
-        NOT_YET();
-      }
-    } break;
-    case Kind::Destroy: {
-      auto *t = iter->read<type::Type const *>();
-      call_buf.append(ctx->resolve<Addr>(iter->read<Reg>()));
-
-      if (auto *s = t->if_as<type::Struct>()) {
-        f = s->destroy_func_.get();
-      } else if (auto *tup = t->if_as<type::Tuple>()) {
-        f = tup->destroy_func_.get();
-      } else if (auto *a = t->if_as<type::Array>()) {
-        f = a->destroy_func_.get();
-      } else {
-        NOT_YET();
-      }
-    } break;
-    case Kind::Move: {
-      bool to_reg = iter->read<bool>();
-      auto *t     = iter->read<type::Type const *>();
-      call_buf.append(ctx->resolve<Addr>(iter->read<Reg>()));
-      call_buf.append(to_reg ? ctx->resolve<Addr>(iter->read<Reg>())
-                             : iter->read<Addr>());
-
-      ir::AnyFunc f;
-      if (auto *s = t->if_as<type::Struct>()) {
-        f = s->move_assign_func_.get();
-      } else if (auto *tup = t->if_as<type::Tuple>()) {
-        f = tup->move_assign_func_.get();
-      } else if (auto *a = t->if_as<type::Array>()) {
-        f = a->move_assign_func_.get();
-      } else {
-        NOT_YET();
-      }
-    } break;
-    case Kind::Copy: {
-      bool to_reg = iter->read<bool>();
-      auto *t     = iter->read<type::Type const *>();
-      call_buf.append(ctx->resolve<Addr>(iter->read<Reg>()));
-      call_buf.append(to_reg ? ctx->resolve<Addr>(iter->read<Reg>())
-                             : iter->read<Addr>());
-      if (auto *s = t->if_as<type::Struct>()) {
-        f = s->copy_assign_func_.get();
-      } else if (auto *tup = t->if_as<type::Tuple>()) {
-        f = tup->copy_assign_func_.get();
-      } else if (auto *a = t->if_as<type::Array>()) {
-        f = a->copy_assign_func_.get();
-      } else {
-        NOT_YET();
-      }
-    } break;
-  }
-
-  backend::Execute(f, call_buf, ret_slots, ctx);
-  return nullptr;
-}
 
 std::string SemanticCmd::DebugString(
     base::untyped_buffer::const_iterator *iter) {
@@ -156,28 +80,6 @@ void Copy(type::Type const *t, Reg from, RegOr<Addr> to) {
   MakeSemanticCmd(SemanticCmd::Kind::Copy, t, from, to);
 }
 
-BasicBlock const *LoadSymbolCmd::Execute(
-    base::untyped_buffer::const_iterator *iter,
-    std::vector<Addr> const &ret_slots, backend::ExecContext *ctx) {
-  auto name = iter->read<std::string_view>();
-  auto type = iter->read<type::Type const *>();
-  auto reg  = iter->read<Reg>();
-  void *sym = ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, std::string(name).c_str()));
-
-  auto &frame = ctx->call_stack.top();
-  if (type->is<type::Function>()) {
-    frame.regs_.set(GetOffset(frame.fn_, reg),
-                    ir::AnyFunc{ir::Foreign(sym, type)});
-  } else if (type->is<type::Pointer>()) {
-    frame.regs_.set(GetOffset(frame.fn_, reg),
-                    ir::Addr::Heap(*static_cast<void **>(sym)));
-  } else {
-    NOT_YET(type->to_string());
-  }
-
-  return nullptr;
-}
-
 std::string LoadSymbolCmd::DebugString(
     base::untyped_buffer::const_iterator *iter) {
   auto name = iter->read<std::string_view>();
@@ -199,28 +101,6 @@ type::Typed<Reg> LoadSymbol(std::string_view name, type::Type const *type) {
   }();
   blk.cmd_buffer_.append(result);
   return type::Typed<Reg>(result, type);
-}
-
-BasicBlock const *TypeInfoCmd::Execute(
-    base::untyped_buffer::const_iterator *iter,
-    std::vector<Addr> const &ret_slots, backend::ExecContext *ctx) {
-  auto ctrl_bits = iter->read<uint8_t>();
-  type::Type const *type =
-      (ctrl_bits & 0x01) ? ctx->resolve<type::Type const *>(iter->read<Reg>())
-                         : iter->read<type::Type const *>();
-  auto reg = iter->read<Reg>();
-
-  auto &frame = ctx->call_stack.top();
-  if (ctrl_bits & 0x02) {
-    frame.regs_.set(GetOffset(frame.fn_, reg),
-                    type->alignment(core::Interpretter()));
-
-  } else {
-    frame.regs_.set(GetOffset(frame.fn_, reg),
-                    type->bytes(core::Interpretter()));
-  }
-
-  return nullptr;
 }
 
 std::string TypeInfoCmd::DebugString(
@@ -253,34 +133,6 @@ base::Tagged<core::Bytes, Reg> Bytes(RegOr<type::Type const *> r) {
   Reg result = MakeResult<core::Bytes>();
   blk.cmd_buffer_.append(result);
   return result;
-}
-
-BasicBlock const *AccessCmd::Execute(base::untyped_buffer::const_iterator *iter,
-                                     std::vector<Addr> const &ret_slots,
-                                     backend::ExecContext *ctx) {
-  auto ctrl_bits   = iter->read<control_bits>();
-  auto const *type = iter->read<type::Type const *>();
-
-  Addr addr = ctrl_bits.reg_ptr ? ctx->resolve<Addr>(iter->read<Reg>())
-                                : iter->read<Addr>();
-  int64_t index = ctrl_bits.reg_index ? ctx->resolve<int64_t>(iter->read<Reg>())
-                                      : iter->read<int64_t>();
-  auto reg = iter->read<Reg>();
-
-  auto arch = core::Interpretter();
-  core::Bytes offset;
-  if (ctrl_bits.is_array) {
-    offset = core::FwdAlign(type->bytes(arch), type->alignment(arch)) * index;
-  } else if (auto *struct_type = type->if_as<type::Struct>()) {
-    offset = struct_type->offset(index, arch);
-  } else if (auto *tuple_type = type->if_as<type::Tuple>()) {
-    offset = struct_type->offset(index, arch);
-  }
-
-  auto &frame = ctx->call_stack.top();
-  frame.regs_.set(GetOffset(frame.fn_, reg), addr + offset);
-
-  return nullptr;
 }
 
 std::string AccessCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
@@ -330,33 +182,6 @@ type::Typed<Reg> Field(RegOr<Addr> r, type::Tuple const *t, int64_t n) {
 type::Typed<Reg> Field(RegOr<Addr> r, type::Struct const *t, int64_t n) {
   auto *p = type::Ptr(t->fields().at(n).type);
   return type::Typed<Reg>(MakeAccessCmd(r, n, t, false), p);
-}
-
-BasicBlock const *VariantAccessCmd::Execute(
-    base::untyped_buffer::const_iterator *iter,
-    std::vector<Addr> const &ret_slots, backend::ExecContext *ctx) {
-  auto &frame  = ctx->call_stack.top();
-  bool get_val = iter->read<bool>();
-  bool is_reg  = iter->read<bool>();
-
-  Addr addr =
-      is_reg ? ctx->resolve<Addr>(iter->read<Reg>()) : iter->read<Addr>();
-  DEBUG_LOG("variant")(addr);
-  if (get_val) {
-    auto const *variant = iter->read<type::Variant const *>();
-    DEBUG_LOG("variant")(variant);
-    DEBUG_LOG("variant")(variant->to_string());
-    auto arch = core::Interpretter();
-    addr += core::FwdAlign(type::Type_->bytes(arch),
-                           variant->alternative_alignment(arch));
-    DEBUG_LOG("variant")(variant->to_string());
-    DEBUG_LOG("variant")(addr);
-  }
-
-  Reg reg = iter->read<Reg>();
-  DEBUG_LOG("variant")(reg);
-  frame.regs_.set(GetOffset(frame.fn_, reg), addr);
-  return nullptr;
 }
 
 std::string VariantAccessCmd::DebugString(

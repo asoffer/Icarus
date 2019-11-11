@@ -12,10 +12,6 @@ namespace ir {
 struct CallCmd {
   constexpr static cmd_index_t index = 38;
 
-  static BasicBlock const *Execute(base::untyped_buffer::const_iterator *iter,
-                                   std::vector<Addr> const &ret_slots,
-                                   backend::ExecContext *ctx);
-
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
 };
 

@@ -6,26 +6,6 @@
 
 namespace ir {
 
-BasicBlock const *BlockCmd::Execute(base::untyped_buffer::const_iterator *iter,
-                                    std::vector<Addr> const &ret_slots,
-                                    backend::ExecContext *ctx) {
-  auto *compiler                   = iter->read<compiler::Compiler *>();
-  std::vector<AnyFunc> before_vals = internal::Deserialize<uint16_t, AnyFunc>(
-      iter, [ctx](Reg reg) { return ctx->resolve<AnyFunc>(reg); });
-  std::vector<JumpHandler const *> after_vals =
-      internal::Deserialize<uint16_t, JumpHandler const *>(
-          iter,
-          [ctx](Reg reg) { return ctx->resolve<JumpHandler const *>(reg); });
-  Reg result_reg = iter->read<Reg>();
-
-  // TODO deal with leak.
-  auto &frame = ctx->call_stack.top();
-  frame.regs_.set(
-      GetOffset(frame.fn_, result_reg),
-      compiler->AddBlock(std::move(before_vals), std::move(after_vals)));
-  return nullptr;
-}
-
 std::string BlockCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
   iter->read<compiler::Compiler *>();
   std::vector<RegOr<AnyFunc>> before_vals =
@@ -63,34 +43,6 @@ Reg BlockHandler(compiler::Compiler *compiler,
   Reg r = MakeResult<BlockDef const *>();
   blk.cmd_buffer_.append(r);
   return r;
-}
-
-BasicBlock const *ScopeCmd::Execute(base::untyped_buffer::const_iterator *iter,
-                                    std::vector<Addr> const &ret_slots,
-                                    backend::ExecContext *ctx) {
-  auto *compiler = iter->read<compiler::Compiler *>();
-
-  std::vector<JumpHandler const *> inits =
-      internal::Deserialize<uint16_t, JumpHandler const *>(
-          iter,
-          [ctx](Reg reg) { return ctx->resolve<JumpHandler const *>(reg); });
-  std::vector<AnyFunc> dones = internal::Deserialize<uint16_t, AnyFunc>(
-      iter, [ctx](Reg reg) { return ctx->resolve<AnyFunc>(reg); });
-
-  auto num_blocks = iter->read<uint16_t>();
-  absl::flat_hash_map<std::string_view, BlockDef *> blocks;
-  for (uint16_t i = 0; i < num_blocks; ++i) {
-    auto name  = iter->read<std::string_view>();
-    auto block = ctx->resolve<BlockDef *>(iter->read<BlockDef *>());
-    blocks.emplace(name, block);
-  }
-
-  Reg result_reg = iter->read<Reg>();
-  auto &frame    = ctx->call_stack.top();
-  frame.regs_.set(GetOffset(frame.fn_, result_reg),
-                  compiler->AddScope(std::move(inits), std::move(dones),
-                                     std::move(blocks)));
-  return nullptr;
 }
 
 std::string ScopeCmd::DebugString(base::untyped_buffer::const_iterator *iter) {

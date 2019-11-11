@@ -263,19 +263,6 @@ struct UnaryCmd {
     return result;
   }
 
-  static BasicBlock const* Execute(base::untyped_buffer::const_iterator* iter,
-                                   std::vector<Addr> const& ret_slots,
-                                   backend::ExecContext* ctx) {
-    auto& frame = ctx->call_stack.top();
-    auto ctrl   = iter->read<control_bits>();
-    PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
-      using type  = typename std::decay_t<decltype(tag)>::type;
-      auto result = Apply<type>(iter, ctrl.reg0, ctx);
-      frame.regs_.set(GetOffset(frame.fn_, iter->read<Reg>()), result);
-    });
-    return nullptr;
-  }
-
   static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
     auto ctrl = iter->read<control_bits>();
     using base::stringify;
@@ -294,19 +281,6 @@ struct UnaryCmd {
     s.append(" -> ");
     s.append(stringify(iter->read<Reg>()));
     return s;
-  }
-
- private:
-  template <typename T>
-  static auto Apply(base::untyped_buffer::const_iterator* iter, bool reg0,
-                    backend::ExecContext* ctx) {
-    if constexpr (IsSupported<T>()) {
-      auto val = reg0 ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>();
-      DEBUG_LOG("unary")(val);
-      return Fn{}(val);
-    } else {
-      return T{};
-    }
   }
 };
 
@@ -367,19 +341,6 @@ struct BinaryCmd {
     return result;
   }
 
-  static BasicBlock const* Execute(base::untyped_buffer::const_iterator* iter,
-                                   std::vector<Addr> const& ret_slots,
-                                   backend::ExecContext* ctx) {
-    auto& frame = ctx->call_stack.top();
-    auto ctrl   = iter->read<control_bits>();
-    PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
-      using type  = typename std::decay_t<decltype(tag)>::type;
-      auto result = Apply<type>(iter, ctrl.reg0, ctrl.reg1, ctx);
-      frame.regs_.set(GetOffset(frame.fn_, iter->read<Reg>()), result);
-    });
-    return nullptr;
-  }
-
   static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
     auto ctrl = iter->read<control_bits>();
     using base::stringify;
@@ -410,20 +371,6 @@ struct BinaryCmd {
     s.append(" -> ");
     s.append(stringify(iter->read<Reg>()));
     return s;
-  }
-
- private:
-  template <typename T>
-  static auto Apply(base::untyped_buffer::const_iterator* iter, bool reg0,
-                    bool reg1, backend::ExecContext* ctx) {
-    if constexpr (IsSupported<T>()) {
-      auto lhs = reg0 ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>();
-      auto rhs = reg1 ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>();
-      DEBUG_LOG("binary")(lhs, rhs);
-      return Fn{}(lhs, rhs);
-    } else {
-      return T{};
-    }
   }
 };
 
@@ -465,19 +412,6 @@ struct VariadicCmd {
   constexpr static cmd_index_t index = Index;
   using type                         = T;
   constexpr static auto* fn_ptr      = Fn;
-
-  static BasicBlock const* Execute(base::untyped_buffer::const_iterator* iter,
-                                   std::vector<Addr> const& ret_slots,
-                                   backend::ExecContext* ctx) {
-    std::vector<T> vals = Deserialize<uint16_t, T>(
-        iter, [ctx](Reg reg) { return ctx->resolve<T>(reg); });
-
-    auto& frame = ctx->call_stack.top();
-    frame.regs_.set(GetOffset(frame.fn_, iter->read<Reg>()),
-                    Fn(std::move(vals)));
-
-    return nullptr;
-  }
 
   static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
     return "NOT_YET";

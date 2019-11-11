@@ -183,25 +183,38 @@ cc_lib_target(
     test_deps = None,
 )
 
+CMDS = [
+    ":basic",
+    ":call-impl",
+    ":cast",
+    ":jumps",
+    ":load",
+    ":misc-impl",
+    ":phi",
+    ":print-impl",
+    ":register",
+    ":return",
+    ":scope",
+    ":store",
+    ":types",
+]
+
 cc_lib_target(
     name = "inline",
     cfgs = ["match", "compile"],
+    intf_deps = ["//ir:inliner"] + CMDS,
+    impl_deps = None,
+    test_deps = None,
+)
+
+cc_lib_target(
+    name = "execute",
+    cfgs = ["match", "compile"],
     intf_deps = [
-        "//ir:inliner",
-        ":basic",
-        ":call-impl",
-        ":cast",
-        ":jumps",
-        ":load",
-        ":misc-impl",
-        ":phi",
-        ":print-impl",
-        ":register",
-        ":return",
-        ":scope",
-        ":store",
-        ":types",
-    ],
+        "//backend:exec",
+        "//base:untyped_buffer",
+        "//ir:addr",
+    ] + CMDS,
     impl_deps = None,
     test_deps = None,
 )

@@ -44,89 +44,6 @@ Reg Flags(module::BasicModule *mod, absl::Span<std::string_view const> names,
   return EnumerationImpl<false>(mod, names, specified_values);
 }
 
-BasicBlock const *EnumerationCmd::Execute(
-    base::untyped_buffer::const_iterator *iter,
-    std::vector<Addr> const &ret_slots, backend::ExecContext *ctx) {
-  bool is_enum_not_flags   = iter->read<bool>();
-  uint16_t num_enumerators = iter->read<uint16_t>();
-  uint16_t num_specified   = iter->read<uint16_t>();
-  module::BasicModule *mod = iter->read<module::BasicModule *>();
-  std::vector<std::pair<std::string_view, std::optional<enum_t>>> enumerators;
-  enumerators.reserve(num_enumerators);
-  for (uint16_t i = 0; i < num_enumerators; ++i) {
-    enumerators.emplace_back(iter->read<std::string_view>(), std::nullopt);
-  }
-
-  absl::flat_hash_set<enum_t> vals;
-
-  for (uint16_t i = 0; i < num_specified; ++i) {
-    uint64_t index = iter->read<uint64_t>();
-    enum_t val = iter->read<bool>() ? ctx->resolve<enum_t>(iter->read<Reg>())
-                                    : iter->read<enum_t>();
-    enumerators[i].second = val;
-    vals.insert(val);
-  }
-
-  type::Type *result = nullptr;
-  absl::BitGen gen;
-
-  if (is_enum_not_flags) {
-    for (auto &[name, maybe_val] : enumerators) {
-      DEBUG_LOG("enum")(name, " => ", maybe_val);
-
-      if (not maybe_val.has_value()) {
-        bool success;
-        enum_t x;
-        do {
-          x       = absl::Uniform<enum_t>(gen);
-          success = vals.insert(x).second;
-          DEBUG_LOG("enum")("Adding value ", x, " for ", name);
-          maybe_val = x;
-        } while (not success);
-      }
-    }
-    absl::flat_hash_map<std::string, EnumVal> mapping;
-
-    for (auto [name, maybe_val] : enumerators) {
-      ASSERT(maybe_val.has_value() == true);
-      mapping.emplace(std::string(name), EnumVal{maybe_val.value()});
-    }
-    DEBUG_LOG("enum")(vals, ", ", mapping);
-    result = new type::Enum(mod, std::move(mapping));
-  } else {
-    for (auto &[name, maybe_val] : enumerators) {
-      DEBUG_LOG("flags")(name, " => ", maybe_val);
-
-      if (not maybe_val.has_value()) {
-        bool success;
-        enum_t x;
-        do {
-          x       = absl::Uniform<enum_t>(absl::IntervalClosedOpen, gen, 0,
-                                    std::numeric_limits<enum_t>::digits);
-          success = vals.insert(x).second;
-          DEBUG_LOG("enum")("Adding value ", x, " for ", name);
-          maybe_val = x;
-        } while (not success);
-      }
-    }
-
-    absl::flat_hash_map<std::string, FlagsVal> mapping;
-
-    for (auto [name, maybe_val] : enumerators) {
-      ASSERT(maybe_val.has_value() == true);
-      mapping.emplace(std::string(name),
-                      FlagsVal{enum_t{1} << maybe_val.value()});
-    }
-
-    DEBUG_LOG("flags")(vals, ", ", mapping);
-    result = new type::Flags(mod, std::move(mapping));
-  }
-
-  auto &frame = ctx->call_stack.top();
-  frame.regs_.set(GetOffset(frame.fn_, iter->read<Reg>()), result);
-  return nullptr;
-}
-
 std::string EnumerationCmd::DebugString(
     base::untyped_buffer::const_iterator *iter) {
   bool is_enum_not_flags   = iter->read<bool>();
@@ -165,29 +82,6 @@ std::string EnumerationCmd::DebugString(
       ")");
 }
 
-BasicBlock const *StructCmd::Execute(base::untyped_buffer::const_iterator *iter,
-                                     std::vector<Addr> const &ret_slots,
-                                     backend::ExecContext *ctx) {
-  std::vector<std::tuple<std::string_view, type::Type const *>> fields;
-  auto num = iter->read<uint16_t>();
-  fields.reserve(num);
-  auto *scope = iter->read<ast::Scope const *>();
-  auto *mod   = iter->read<module::BasicModule *>();
-  for (uint16_t i = 0; i < num; ++i) {
-    fields.emplace_back(iter->read<std::string_view>(), nullptr);
-  }
-
-  size_t index = 0;
-  internal::Deserialize<uint16_t, type::Type const *>(iter, [&](Reg reg) {
-    std::get<1>(fields[index++]) = ctx->resolve<type::Type const *>(reg);
-  });
-
-  auto &frame = ctx->call_stack.top();
-  frame.regs_.set(GetOffset(frame.fn_, iter->read<Reg>()),
-                  new type::Struct(scope, mod, fields));
-  return nullptr;
-}
-
 std::string StructCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
   return "NOT_YET";
 }
@@ -219,37 +113,9 @@ Reg Struct(ast::Scope const *scope, module::BasicModule *mod,
   return result;
 }
 
-BasicBlock const *OpaqueTypeCmd::Execute(
-    base::untyped_buffer::const_iterator *iter,
-    std::vector<Addr> const &ret_slots, backend::ExecContext *ctx) {
-  auto &frame = ctx->call_stack.top();
-  auto *mod   = iter->read<module::BasicModule const *>();
-  frame.regs_.set(GetOffset(frame.fn_, iter->read<Reg>()),
-                  new type::Opaque(mod));
-  return nullptr;
-}
-
 std::string OpaqueTypeCmd::DebugString(
     base::untyped_buffer::const_iterator *iter) {
   return absl::StrCat(stringify(iter->read<Reg>()), " = opaque");
-}
-
-BasicBlock const *ArrayCmd::Execute(base::untyped_buffer::const_iterator *iter,
-                                    std::vector<Addr> const &ret_slots,
-                                    backend::ExecContext *ctx) {
-  auto &frame    = ctx->call_stack.top();
-  auto ctrl_bits = iter->read<control_bits>();
-  length_t len   = ctrl_bits.length_is_reg
-                     ? ctx->resolve<length_t>(iter->read<Reg>())
-                     : iter->read<length_t>();
-  type::Type const *data_type =
-      ctrl_bits.type_is_reg
-          ? ctx->resolve<type::Type const *>(iter->read<Reg>())
-          : iter->read<type::Type const *>();
-
-  frame.regs_.set(GetOffset(frame.fn_, iter->read<Reg>()),
-                  type::Arr(len, data_type));
-  return nullptr;
 }
 
 std::string ArrayCmd::DebugString(base::untyped_buffer::const_iterator *iter) {

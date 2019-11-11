@@ -27,32 +27,6 @@ struct LoadCmd {
     return result;
   }
 
-  static BasicBlock const* Execute(base::untyped_buffer::const_iterator* iter,
-                                   std::vector<Addr> const& ret_slots,
-                                   backend::ExecContext* ctx) {
-    auto& frame = ctx->call_stack.top();
-    auto ctrl   = iter->read<control_bits>();
-    auto addr =
-        ctrl.reg ? ctx->resolve<Addr>(iter->read<Reg>()) : iter->read<Addr>();
-    auto result_reg = iter->read<Reg>();
-    DEBUG_LOG("load")("addr = ", addr);
-    DEBUG_LOG("load")("result_reg = ", result_reg);
-    PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
-      using type = typename std::decay_t<decltype(tag)>::type;
-      switch (addr.kind) {
-        case Addr::Kind::Stack:
-          frame.regs_.set(GetOffset(frame.fn_, result_reg),
-                          ctx->stack_.get<type>(addr.as_stack));
-          break;
-        case Addr::Kind::ReadOnly: NOT_YET(); break;
-        case Addr::Kind::Heap:
-          frame.regs_.set(GetOffset(frame.fn_, result_reg),
-                          *static_cast<type*>(addr.as_heap));
-      }
-    });
-    return nullptr;
-  }
-
   static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
     using base::stringify;
     std::string s;

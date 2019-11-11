@@ -144,6 +144,7 @@ cc_lib_target(
         "//ir/cmd:basic",
         "//ir/cmd:call-impl",
         "//ir/cmd:cast",
+        "//ir/cmd:execute",
         "//ir/cmd:inline",
         "//ir/cmd:jumps",
         "//ir/cmd:load",
