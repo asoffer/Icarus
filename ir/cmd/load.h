@@ -27,32 +27,6 @@ struct LoadCmd {
     return result;
   }
 
-  static BasicBlock const* Execute(base::untyped_buffer::const_iterator* iter,
-                                   std::vector<Addr> const& ret_slots,
-                                   backend::ExecContext* ctx) {
-    auto& frame = ctx->call_stack.top();
-    auto ctrl   = iter->read<control_bits>();
-    auto addr =
-        ctrl.reg ? ctx->resolve<Addr>(iter->read<Reg>()) : iter->read<Addr>();
-    auto result_reg = iter->read<Reg>();
-    DEBUG_LOG("load")("addr = ", addr);
-    DEBUG_LOG("load")("result_reg = ", result_reg);
-    PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
-      using type = typename std::decay_t<decltype(tag)>::type;
-      switch (addr.kind) {
-        case Addr::Kind::Stack:
-          frame.regs_.set(GetOffset(frame.fn_, result_reg),
-                          ctx->stack_.get<type>(addr.as_stack));
-          break;
-        case Addr::Kind::ReadOnly: NOT_YET(); break;
-        case Addr::Kind::Heap:
-          frame.regs_.set(GetOffset(frame.fn_, result_reg),
-                          *static_cast<type*>(addr.as_heap));
-      }
-    });
-    return nullptr;
-  }
-
   static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
     using base::stringify;
     std::string s;
@@ -71,22 +45,6 @@ struct LoadCmd {
     s.append(" ");
     s.append(stringify(iter->read<Reg>()));
     return s;
-  }
-  static void UpdateForInlining(base::untyped_buffer::iterator* iter,
-                                Inliner const& inliner) {
-    // auto ctrl = iter->read<control_bits>();
-    // if (ctrl.reg) {
-    //   inliner.Inline(&iter->read<Reg>());
-    // } else {
-    //   // TODO: Add core::LayoutRequirements so you can skip forward by the
-    //   // appropriate amount without instantiating so many templates.
-    //   PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
-    //     iter->read<typename std::decay_t<decltype(tag)>::type>();
-    //   });
-    // }
-
-    // // Result value
-    // inliner.Inline(&iter->read<Reg>(), GetType(ctrl.primitive_type));
   }
 };
 

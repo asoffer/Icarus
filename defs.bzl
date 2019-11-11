@@ -67,10 +67,10 @@ def cc_component(name, intf_deps = [], impl_deps = None,
                 actual = name + "-impl")
 
 def cc_lib(name, deps, srcs = [], test_deps = [], header_only = False,
-           test_data = None, **kwargs):
+           test_data = None, no_header = False, **kwargs):
   native.cc_library(
       name = name,
-      hdrs = [name + ".h"],
+      hdrs = [name + ".h"] if not no_header else [],
       srcs = [] if header_only else [name + ".cc"] + srcs,
       deps = deps,
       **kwargs

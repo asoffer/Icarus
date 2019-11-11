@@ -107,6 +107,8 @@ cc_component(
         "//ir/cmd:basic",
         "//ir/cmd:call",
         "//ir/cmd:cast",
+        "//ir/cmd:execute",
+        "//ir/cmd:inline",
         "//ir/cmd:jumps",
         "//ir/cmd:load",
         "//ir/cmd:misc",

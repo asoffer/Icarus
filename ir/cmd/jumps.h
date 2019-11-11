@@ -16,23 +16,6 @@ struct JumpCmd {
   constexpr static cmd_index_t index = 20;
   enum class Kind : uint8_t { kRet, kUncond, kCond, kChoose };
 
-  static BasicBlock const* Execute(base::untyped_buffer::const_iterator* iter,
-                                   std::vector<Addr> const& ret_slots,
-                                   backend::ExecContext* ctx) {
-    switch (iter->read<Kind>()) {
-      case Kind::kRet: return ReturnBlock();
-      case Kind::kUncond: return iter->read<BasicBlock const*>();
-      case Kind::kCond: {
-        bool b           = ctx->resolve<bool>(iter->read<Reg>());
-        auto false_block = iter->read<BasicBlock const*>();
-        auto true_block  = iter->read<BasicBlock const*>();
-        return b ? true_block : false_block;
-      }
-      case Kind::kChoose: UNREACHABLE("Choose jumps can never be executed.");
-      default: UNREACHABLE();
-    }
-  }
-
   static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
     std::string s;
     using base::stringify;
@@ -71,30 +54,6 @@ struct JumpCmd {
       default: UNREACHABLE();
     }
     return s;
-  }
-
-  static void UpdateForInlining(base::untyped_buffer::iterator* iter,
-                                Inliner const& inliner) {
-    // auto& kind = iter->read<Kind>();
-    // switch (kind) {
-    //   case Kind::kRet:
-    //     kind = Kind::kUncond;
-    //     // We have ensured that any return jump has enough space to hold an
-    //     // unconditional jump so that this write wile inlining does not need a
-    //     // reallocation. This ensures iterators remain valid.
-    //     iter->write(inliner.landing());
-    //     break;
-    //   case Kind::kUncond:
-    //     inliner.Inline(iter->read<BasicBlock const*>());
-    //     break;
-    //   case Kind::kCond: {
-    //     iter->read<Reg>();
-    //     inliner.Inline(iter->read<BasicBlock const*>());
-    //     inliner.Inline(iter->read<BasicBlock const*>());
-    //   } break;
-    //   case Kind::kChoose: NOT_YET();
-    //   default: UNREACHABLE();
-    // }
   }
 };
 

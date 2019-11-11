@@ -29,33 +29,6 @@ struct StoreCmd {
     return result;
   }
 
-  static BasicBlock const* Execute(base::untyped_buffer::const_iterator* iter,
-                                   std::vector<Addr> const& ret_slots,
-                                   backend::ExecContext* ctx) {
-    auto ctrl = iter->read<control_bits>();
-    PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
-      using T = typename std::decay_t<decltype(tag)>::type;
-      T val   = ctrl.reg ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>();
-      Addr addr = ctrl.reg_addr ? ctx->resolve<Addr>(iter->read<Reg>())
-                                : iter->read<Addr>();
-      static_assert(not std::is_same_v<T, void*>, "Not handling addresses yet");
-      switch (addr.kind) {
-        case Addr::Kind::Stack:
-          DEBUG_LOG("store")(addr);
-          ctx->stack_.set(addr.as_stack, val);
-          break;
-        case Addr::Kind::ReadOnly:
-          NOT_YET(
-              "Storing into read-only data seems suspect. Is it just for "
-              "initialization?");
-          break;
-        case Addr::Kind::Heap:
-          *ASSERT_NOT_NULL(static_cast<T*>(addr.as_heap)) = val;
-      }
-    });
-    return nullptr;
-  }
-
   static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
     using base::stringify;
     std::string s;
@@ -83,30 +56,6 @@ struct StoreCmd {
       });
     }
     return s;
-  }
-
-  static void UpdateForInlining(base::untyped_buffer::iterator* iter,
-                                Inliner const& inliner) {
-    // auto ctrl = iter->read<control_bits>();
-    // if (ctrl.reg) {
-    //   inliner.Inline(&iter->read<Reg>());
-    // } else {
-    //   // TODO: Add core::LayoutRequirements so you can skip forward by the
-    //   // appropriate amount without instantiating so many templates.
-    //   PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
-    //     iter->read<typename std::decay_t<decltype(tag)>::type>();
-    //   });
-    // }
-
-    // if (ctrl.reg_addr) {
-    //   inliner.Inline(&iter->read<Reg>());
-    // } else {
-    //   // TODO: Add core::LayoutRequirements so you can skip forward by the
-    //   // appropriate amount without instantiating so many templates.
-    //   PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
-    //     iter->read<typename std::decay_t<decltype(tag)>::type>();
-    //   });
-    // }
   }
 };
 

@@ -32,31 +32,6 @@ struct ReturnCmd {
     return result;
   };
 
-  static BasicBlock const* Execute(base::untyped_buffer::const_iterator* iter,
-                                   std::vector<Addr> const& ret_slots,
-                                   backend::ExecContext* ctx) {
-    auto ctrl     = iter->read<control_bits>();
-    uint16_t n    = iter->read<uint16_t>();
-    Addr ret_slot = ret_slots[n];
-
-    if (ctrl.only_get) {
-      auto reg    = iter->read<Reg>();
-      auto& frame = ctx->call_stack.top();
-      frame.regs_.set(GetOffset(frame.fn_, reg), ret_slot);
-      return nullptr;
-    }
-    DEBUG_LOG("return")("return slot #", n, " = ", ret_slot);
-
-    ASSERT(ret_slot.kind == Addr::Kind::Heap);
-    PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
-      using T = typename std::decay_t<decltype(tag)>::type;
-      T val   = ctrl.reg ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>();
-      DEBUG_LOG("return")("val = ", val);
-      *ASSERT_NOT_NULL(static_cast<T*>(ret_slot.as_heap)) = val;
-    });
-    return nullptr;
-  }
-
   static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
     using base::stringify;
     auto ctrl  = iter->read<control_bits>();
@@ -80,27 +55,6 @@ struct ReturnCmd {
       });
     }
     return s;
-  }
-
-  static void UpdateForInlining(base::untyped_buffer::iterator* iter,
-                                Inliner const& inliner) {
-    // auto ctrl = iter->read<control_bits>();
-    // iter->read<uint16_t>();
-
-    // if (ctrl.only_get) {
-    //   inliner.Inline(&iter->read<Reg>());
-    //   return;
-    // }
-
-    // if (ctrl.reg) {
-    //   inliner.Inline(&iter->read<Reg>());
-    // } else {
-    //   // TODO: Add core::LayoutRequirements so you can skip forward by the
-    //   // appropriate amount without instantiating so many templates.
-    //   PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
-    //     iter->read<typename std::decay_t<decltype(tag)>::type>();
-    //   });
-    // }
   }
 };
 

@@ -168,3 +168,37 @@ cc_lib(
     header_only = True,
     test_deps = None,
 )
+
+CMDS = [
+    ":basic",
+    ":call-impl",
+    ":cast",
+    ":jumps",
+    ":load",
+    ":misc-impl",
+    ":phi",
+    ":print-impl",
+    ":register",
+    ":return",
+    ":scope",
+    ":store",
+    ":types",
+]
+
+cc_lib(
+    name = "inline",
+    deps = ["//ir:inliner"] + CMDS,
+    header_only = True,
+    test_deps = None,
+)
+
+cc_lib(
+    name = "execute",
+    deps = [
+        "//backend:exec",
+        "//base:untyped_buffer",
+        "//ir:addr",
+    ] + CMDS,
+    header_only = True,
+    test_deps = None,
+)

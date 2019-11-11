@@ -14,8 +14,8 @@ TEST_CASE("first") {
 }
 
 TEST_CASE("identity") {
-  CHECK(std::is_same_v<identity<int>, int>);
-  CHECK(std::is_same_v<identity<bool>, bool>);
+  CHECK(std::is_same_v<identity_t<int>, int>);
+  CHECK(std::is_same_v<identity_t<bool>, bool>);
 }
 
 }  // namespace

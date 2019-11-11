@@ -17,40 +17,19 @@ struct SemanticCmd {
 
   enum class Kind : uint8_t { Init, Destroy, Move, Copy };
 
-  static BasicBlock const *Execute(base::untyped_buffer::const_iterator *iter,
-                                   std::vector<Addr> const &ret_slots,
-                                   backend::ExecContext *ctx);
-
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
-
-  static void UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                Inliner const &inliner);
 };
 
 struct LoadSymbolCmd {
   constexpr static cmd_index_t index = 34;
 
-  static BasicBlock const *Execute(base::untyped_buffer::const_iterator *iter,
-                                   std::vector<Addr> const &ret_slots,
-                                   backend::ExecContext *ctx);
-
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
-
-  static void UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                Inliner const &inliner);
 };
 
 struct TypeInfoCmd {
   constexpr static cmd_index_t index = 35;
 
-  static BasicBlock const *Execute(base::untyped_buffer::const_iterator *iter,
-                                   std::vector<Addr> const &ret_slots,
-                                   backend::ExecContext *ctx);
-
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
-
-  static void UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                Inliner const &inliner);
 };
 
 struct AccessCmd {
@@ -69,14 +48,7 @@ struct AccessCmd {
     return ctrl_bits;
   }
 
-  static BasicBlock const *Execute(base::untyped_buffer::const_iterator *iter,
-                                   std::vector<Addr> const &ret_slots,
-                                   backend::ExecContext *ctx);
-
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
-
-  static void UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                Inliner const &inliner);
 };
 
 struct VariantAccessCmd {
@@ -84,14 +56,8 @@ struct VariantAccessCmd {
 
   // TODO you store a bool for val vs type and a bool for addr.is_reg(). These
   // should be compresseed.
-  static BasicBlock const *Execute(base::untyped_buffer::const_iterator *iter,
-                                   std::vector<Addr> const &ret_slots,
-                                   backend::ExecContext *ctx);
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
-
-  static void UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                Inliner const &inliner);
 };
 
 base::Tagged<core::Alignment, Reg> Align(RegOr<type::Type const *> r);
@@ -117,21 +83,9 @@ struct DebugIrCmd {
   constexpr static cmd_index_t index =
       (std::numeric_limits<cmd_index_t>::max)();
 
-  static BasicBlock const *Execute(base::untyped_buffer::const_iterator *iter,
-                                   std::vector<Addr> const &ret_slots,
-                                   backend::ExecContext *ctx) {
-    std::stringstream ss;
-    ss << *ctx->call_stack.top().fn_;
-    DEBUG_LOG()(ss.str());
-    return nullptr;
-  }
-
   static std::string DebugString(base::untyped_buffer::const_iterator *iter) {
     return "debug-ir";
   }
-
-  static void UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                Inliner const &inliner) {}
 };
 inline void DebugIr() {}
 #endif  // ICARUS_DEBUG

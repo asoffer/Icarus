@@ -221,6 +221,7 @@ cc_lib(
         "//type:typed_value",
     ],
     test_deps = None,
+    no_header = True,
 )
 
 cc_lib(
@@ -276,6 +277,7 @@ cc_lib(
         "@com_google_absl//absl/algorithm:container",
     ],
     test_deps = None,
+    no_header = True,
 )
 
 cc_lib(

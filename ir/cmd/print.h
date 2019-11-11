@@ -25,14 +25,7 @@ struct PrintCmd {
     return result;
   }
 
-  static BasicBlock const* Execute(base::untyped_buffer::const_iterator* iter,
-                                   std::vector<Addr> const& ret_slots,
-                                   backend::ExecContext* ctx);
-
   static std::string DebugString(base::untyped_buffer::const_iterator* iter);
-
-  static void UpdateForInlining(base::untyped_buffer::iterator* iter,
-                                Inliner const& inliner);
 };
 
 template <typename T>

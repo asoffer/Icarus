@@ -150,9 +150,17 @@ cc_lib(
 )
 
 cc_lib(
+    name = "unaligned_ref",
+    deps = [],
+    header_only = True,
+    test_deps = [],
+)
+
+cc_lib(
     name = "untyped_buffer",
     deps = [
         ":debug",
+        ":unaligned_ref",
         "@com_google_absl//absl/strings",
     ],
     test_deps = [],

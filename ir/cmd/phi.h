@@ -7,42 +7,7 @@ namespace ir {
 struct PhiCmd {
   constexpr static cmd_index_t index = 36;
 
-  static BasicBlock const *Execute(base::untyped_buffer::const_iterator *iter,
-                                   std::vector<Addr> const &ret_slots,
-                                   backend::ExecContext *ctx) {
-    uint8_t primitive_type = iter->read<uint8_t>();
-    uint16_t num           = iter->read<uint16_t>();
-    uint64_t index         = std::numeric_limits<uint64_t>::max();
-    for (uint16_t i = 0; i < num; ++i) {
-      if (ctx->call_stack.top().prev_ == iter->read<BasicBlock const *>()) {
-        index = i;
-      }
-    }
-    ASSERT(index != std::numeric_limits<uint64_t>::max());
-
-    auto &frame = ctx->call_stack.top();
-    PrimitiveDispatch(primitive_type, [&](auto tag) {
-      using T                = typename std::decay_t<decltype(tag)>::type;
-      std::vector<T> results = internal::Deserialize<uint16_t, T>(
-          iter, [ctx](Reg reg) { return ctx->resolve<T>(reg); });
-
-      if constexpr (std::is_same_v<T, bool>) {
-        frame.regs_.set(GetOffset(frame.fn_, iter->read<Reg>()),
-                        bool{results[index]});
-      } else {
-        frame.regs_.set(GetOffset(frame.fn_, iter->read<Reg>()),
-                        results[index]);
-      }
-    });
-    return nullptr;
-  }
-
   static std::string DebugString(base::untyped_buffer::const_iterator *iter) {
-    NOT_YET();
-  }
-
-  static void UpdateForInlining(base::untyped_buffer::iterator *iter,
-                                Inliner const &inliner) {
     NOT_YET();
   }
 };
