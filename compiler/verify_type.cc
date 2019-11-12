@@ -18,6 +18,28 @@
 #include "type/typed_value.h"
 #include "type/util.h"
 
+namespace ast {
+
+compiler::VerifyResult VerifyJumpDispatch(
+    compiler::Compiler *visitor, ExprPtr expr,
+    absl::Span<ir::JumpHandler const *const> overload_set,
+    core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
+        &args,
+    std::vector<ir::BlockDef const *> *block_defs);
+
+compiler::VerifyResult VerifyDispatch(
+    compiler::Compiler *visitor, ExprPtr expr,
+    absl::Span<ir::AnyFunc const> overload_set,
+    core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
+        &args);
+
+compiler::VerifyResult VerifyDispatch(
+    compiler::Compiler *visitor, ExprPtr expr, OverloadSet const &overload_set,
+    core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
+        &args);
+
+}  // namespace ast
+
 namespace ir {
 
 // TODO Duplicated in emit_value.h

@@ -1,10 +1,9 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_component")
+load("//:defs.bzl", "cc_lib")
 
-cc_component(
+cc_lib(
     name = "compiler",
-    intf_deps = None,
-    impl_deps = [
+    deps = [
         "//backend:exec",
         "//base:untyped_buffer",
         "//base:util",
@@ -16,13 +15,13 @@ cc_component(
         "//module:module",
         "//opt:combine_blocks",
     ],
+    no_header = True,
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "repl",
-    intf_deps = None,
-    impl_deps = [
+    deps = [
         "//ast:ast",
         "//ast:expression",
         "//backend:exec",
@@ -38,4 +37,5 @@ cc_component(
         "//type:function",
         "//type:tuple",
     ],
+    no_header = True,
 )

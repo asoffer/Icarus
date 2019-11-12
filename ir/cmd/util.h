@@ -5,7 +5,6 @@
 
 #include "base/util.h"
 #include "ir/addr.h"
-#include "ir/builder.h"
 #include "ir/reg.h"
 #include "ir/reg_or.h"
 #include "ir/values.h"
@@ -160,31 +159,6 @@ struct UnwrapType<base::Tagged<T, Reg>> {
 template <typename T>
 using UnwrapTypeT = typename UnwrapType<T>::type;
 
-template <typename SizeType, typename T, typename Fn>
-void WriteBits(CmdBuffer* buf, absl::Span<T const> span, Fn&& predicate) {
-  ASSERT(span.size() < std::numeric_limits<SizeType>::max());
-  buf->append<SizeType>(span.size());
-
-  uint8_t reg_mask = 0;
-  for (size_t i = 0; i < span.size(); ++i) {
-    if (predicate(span[i])) { reg_mask |= (1 << (7 - (i % 8))); }
-    if (i % 8 == 7) {
-      buf->append(reg_mask);
-      reg_mask = 0;
-    }
-  }
-  if (span.size() % 8 != 0) { buf->append(reg_mask); }
-}
-
-template <typename SizeType, typename T>
-void Serialize(CmdBuffer* buf, absl::Span<RegOr<T> const> span) {
-  WriteBits<SizeType, RegOr<T>>(buf, span,
-                                [](RegOr<T> const& r) { return r.is_reg(); });
-
-  absl::c_for_each(
-      span, [&](RegOr<T> x) { x.apply([&](auto v) { buf->append(v); }); });
-}
-
 constexpr uint8_t ReverseByte(uint8_t byte) {
   byte = ((byte & 0b11110000) >> 4) | ((byte & 0b00001111) << 4);
   byte = ((byte & 0b11001100) >> 2) | ((byte & 0b00110011) << 2);
@@ -283,38 +257,6 @@ struct UnaryCmd {
   }
 };
 
-template <typename CmdType>
-struct UnaryHandler {
-  template <typename... Args,
-            typename std::enable_if_t<not std::conjunction_v<
-                std::is_same<Args, RegOr<UnwrapTypeT<Args>>>...>>* = nullptr>
-  auto operator()(Args... args) const {
-    return operator()(RegOr<UnwrapTypeT<Args>>(std::forward<Args>(args))...);
-  }
-
-  template <typename T>
-  auto operator()(RegOr<T> operand) const {
-    auto& blk         = *GetBuilder().CurrentBlock();
-    using fn_type     = typename CmdType::fn_type;
-    using result_type = decltype(fn_type{}(operand.value()));
-    if constexpr (CmdType::template IsSupported<T>()) {
-      if (not operand.is_reg()) {
-        return RegOr<result_type>{fn_type{}(operand.value())};
-      }
-    }
-
-    blk.cmd_buffer_.append_index<CmdType>();
-    blk.cmd_buffer_.append(
-        CmdType::template MakeControlBits<T>(operand.is_reg()));
-
-    operand.apply([&](auto v) { blk.cmd_buffer_.append(v); });
-
-    Reg result = MakeResult<T>();
-    blk.cmd_buffer_.append(result);
-    return RegOr<result_type>{result};
-  }
-};
-
 template <uint8_t Index, typename Fn, typename... SupportedTypes>
 struct BinaryCmd {
   using fn_type                  = Fn;
@@ -373,39 +315,6 @@ struct BinaryCmd {
   }
 };
 
-template <typename CmdType>
-struct BinaryHandler {
-  template <typename... Args,
-            typename std::enable_if_t<not std::conjunction_v<
-                std::is_same<Args, RegOr<UnwrapTypeT<Args>>>...>>* = nullptr>
-  auto operator()(Args... args) const {
-    return operator()(RegOr<UnwrapTypeT<Args>>(std::forward<Args>(args))...);
-  }
-
-  template <typename T>
-  auto operator()(RegOr<T> lhs, RegOr<T> rhs) const {
-    auto& blk         = *GetBuilder().CurrentBlock();
-    using fn_type     = typename CmdType::fn_type;
-    using result_type = decltype(fn_type{}(lhs.value(), rhs.value()));
-    if constexpr (CmdType::template IsSupported<T>()) {
-      if (not lhs.is_reg() and not rhs.is_reg()) {
-        return RegOr<result_type>{fn_type{}(lhs.value(), rhs.value())};
-      }
-    }
-
-    blk.cmd_buffer_.append_index<CmdType>();
-    blk.cmd_buffer_.append(
-        CmdType::template MakeControlBits<T>(lhs.is_reg(), rhs.is_reg()));
-
-    lhs.apply([&](auto v) { blk.cmd_buffer_.append(v); });
-    rhs.apply([&](auto v) { blk.cmd_buffer_.append(v); });
-
-    Reg result = MakeResult<T>();
-    blk.cmd_buffer_.append(result);
-    return RegOr<result_type>{result};
-  }
-};
-
 template <cmd_index_t Index, typename T, T (*Fn)(std::vector<T>)>
 struct VariadicCmd {
   constexpr static cmd_index_t index = Index;
@@ -416,32 +325,6 @@ struct VariadicCmd {
     return "NOT_YET";
   }
 };
-
-template <typename CmdType>
-RegOr<typename CmdType::type> MakeVariadicImpl(
-    absl::Span<RegOr<typename CmdType::type> const> vals) {
-  using T = typename CmdType::type;
-  {
-    std::vector<T> vs;
-    vs.reserve(vals.size());
-    if (absl::c_all_of(vals, [&](RegOr<T> t) {
-          if (t.is_reg()) { return false; }
-          vs.push_back(t.value());
-          return true;
-        })) {
-      return CmdType::fn_ptr(vs);
-    }
-  }
-
-  auto& blk = *GetBuilder().CurrentBlock();
-  blk.cmd_buffer_.append_index<CmdType>();
-  Serialize<uint16_t>(&blk.cmd_buffer_, vals);
-
-  Reg result = MakeResult<T>();
-  blk.cmd_buffer_.append(result);
-  DEBUG_LOG("variadic")(blk.cmd_buffer_.to_string());
-  return RegOr<T>{result};
-}
 
 }  // namespace internal
 }  // namespace ir

@@ -1,5 +1,5 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_component", "cc_lib")
+load("//:defs.bzl", "cc_lib")
 
 cc_lib(
     name = "match_expr",

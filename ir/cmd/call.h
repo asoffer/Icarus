@@ -2,9 +2,7 @@
 #define ICARUS_IR_CMD_CALL_H
 
 #include "absl/types/span.h"
-#include "ir/basic_block.h"
 #include "ir/cmd/util.h"
-#include "ir/cmd_buffer.h"
 #include "ir/reg.h"
 #include "ir/reg_or.h"
 
@@ -14,11 +12,6 @@ struct CallCmd {
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
 };
-
-void Call(RegOr<AnyFunc> const &fn, type::Function const *f,
-          absl::Span<Results const> arguments);
-void Call(RegOr<AnyFunc> const &fn, type::Function const *f,
-          absl::Span<Results const> arguments, OutParams);
 
 }  // namespace ir
 

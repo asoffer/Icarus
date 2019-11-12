@@ -31,6 +31,10 @@ struct ScopeDef;
 struct BlockDef;
 }  // namespace ir
 
+namespace ast {
+struct DispatchTable;
+}  // namespace ast
+
 namespace compiler {
 struct EmitRefTag {};
 struct EmitCopyInitTag {};

@@ -1,5 +1,5 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_component", "cc_lib")
+load("//:defs.bzl", "cc_lib")
 
 cc_library(name = "node_xmacro", textual_hdrs = ["node.xmacro.h"])
 
@@ -65,33 +65,29 @@ cc_lib(
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "dispatch_table",
-    intf_deps = [
-        "//base:expected",
-        "//compiler:verify_result",
-        "//core:fn_args",
-        "//core:fn_params",
-        "//ir:basic_block",
-        "//ir:block_def",
-        "//ir:inliner",
-        "//ir:jump_handler",
-        "//ir:results",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-    impl_deps = [
+    deps = [
         ":ast",
         ":overload_set",
         "//ast/scope:scope",
         "//backend:eval",
+        "//base:expected",
+        "//compiler:verify_result",
         "//compiler:compiler",
+        "//core:fn_args",
+        "//core:fn_params",
+        "//ir:basic_block",
         "//ir:block_def",
         "//ir:builder",
+        "//ir:components",
+        "//ir:compiled_fn",
+        "//ir:inliner",
+        "//ir:jump_handler",
+        "//ir:results",
         "//ir/cmd:call",
         "//ir/cmd:phi",
         "//ir/cmd:store",
-        "//ir:components",
-        "//ir:compiled_fn",
         "//module:module",
         "//type:cast",
         "//type:function",
@@ -99,6 +95,7 @@ cc_component(
         "//type:pointer",
         "//type:tuple",
         "//type:variant",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
     test_deps = [
         "//test:module",

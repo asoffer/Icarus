@@ -1,5 +1,4 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_group_target")
 
 COMMON_IMPL_DEPS = [
     "//ast:overload_set",
@@ -30,8 +29,8 @@ cc_binary(
         "//diagnostic:console_renderer",
         "//init:cli",
         "//init:signal",
-        "//run:repl-impl",
-        "//run:compiler-impl",
+        "//run:repl",
+        "//run:compiler",
         "@com_google_absl//absl/strings",
     ],
 )

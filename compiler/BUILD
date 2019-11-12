@@ -1,5 +1,5 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_component", "cc_lib")
+load("//:defs.bzl", "cc_lib")
 
 cc_lib(
     name = "compiler",
@@ -17,6 +17,7 @@ cc_lib(
         "//frontend:parse",
         "//ir:builder",
         "//ir:compiled_fn",
+        "//ir:jump_handler",
         "//ir:results",
         "//module:module",
         "//type:type",
@@ -38,6 +39,7 @@ cc_lib(
         "//error:log",
         "//ir:block_def",
         "//ir:builder",
+        "//ir:compiled_fn",
         "//ir:results",
         "//ir:scope_def",
         "//module:module",
@@ -73,7 +75,7 @@ cc_lib(
     name = "dependent_data",
     deps = [
         ":verify_result",
-        "//ast:dispatch_table",
+        # TODO "//ast:dispatch_table",
         "//ast:ast_fwd",
         "//ast:expr_ptr",
         "//module:pending",
@@ -83,10 +85,9 @@ cc_lib(
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "emit_assign",
-    intf_deps = None,
-    impl_deps = [
+    deps = [
         ":compiler",
         ":special_function",
         "//ast:ast",
@@ -101,13 +102,13 @@ cc_component(
         "//type:typed_value",
         "@com_google_absl//absl/random",
     ],
+    no_header = True,
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "emit_destroy",
-    intf_deps = None,
-    impl_deps = [
+    deps = [
         ":compiler",
         ":special_function",
         "//ast:ast",
@@ -121,13 +122,13 @@ cc_component(
         "//type:typed_value",
         "@com_google_absl//absl/random",
     ],
+    no_header = True,
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "emit_default_init",
-    intf_deps = None,
-    impl_deps = [
+    deps = [
         ":compiler",
         "//ast:ast",
         "//base:permutation",
@@ -140,13 +141,13 @@ cc_component(
         "//type:typed_value",
         "@com_google_absl//absl/random",
     ],
+    no_header = True,
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "emit_copy_init",
-    intf_deps = None,
-    impl_deps = [
+    deps = [
         ":compiler",
         "//ast:ast",
         "//ir:components",
@@ -154,6 +155,7 @@ cc_component(
         "//type:type",
         "//type:typed_value",
     ],
+    no_header = True,
     test_deps = None,
 )
 
@@ -167,6 +169,7 @@ cc_lib(
         "//type:type",
         "//type:typed_value",
     ],
+    no_header = True,
     test_deps = None,
 )
 
@@ -186,6 +189,7 @@ cc_lib(
         "//type:type",
         "//type:typed_value",
     ],
+    no_header = True,
     test_deps = None,
 )
 
@@ -211,9 +215,9 @@ cc_lib(
         "//ir/cmd:misc",
         "//ir/cmd:phi",
         "//ir/cmd:return",
-        "//ir/cmd:scope-impl",
+        "//ir/cmd:scope",
         "//ir/cmd:store",
-        "//ir/cmd:types-impl",
+        "//ir/cmd:types",
         "//type:jump",
         "//type:generic_struct",
         "//type:pointer",
@@ -238,6 +242,7 @@ cc_lib(
         "//type:type",
         "//type:typed_value",
     ],
+    no_header = True,
     test_deps = None,
 )
 
@@ -287,10 +292,9 @@ cc_lib(
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "special_function",
-    intf_deps = [],
-    impl_deps = [
+    deps = [
         ":compiler",
         "//ast:ast",
         "//ir:any_func",

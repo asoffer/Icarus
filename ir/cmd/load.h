@@ -3,7 +3,6 @@
 
 #include <string_view>
 
-#include "ir/basic_block.h"
 #include "ir/cmd/util.h"
 #include "ir/cmd_buffer.h"
 #include "ir/reg.h"
@@ -47,29 +46,6 @@ struct LoadCmd {
     return s;
   }
 };
-
-template <typename T>
-base::Tagged<T, Reg> Load(RegOr<Addr> addr) {
-  auto& blk = *GetBuilder().CurrentBlock();
-  blk.cmd_buffer_.append_index<LoadCmd>();
-  blk.cmd_buffer_.append(LoadCmd::MakeControlBits<T>(addr.is_reg()));
-  addr.apply([&](auto v) { blk.cmd_buffer_.append(v); });
-  base::Tagged<T, Reg> result = MakeResult<T>();
-  blk.cmd_buffer_.append(result);
-  DEBUG_LOG("load")(blk.cmd_buffer_.to_string());
-  return result;
-}
-
-inline Reg Load(RegOr<Addr> r, type::Type const* t) {
-  if (t->is<type::Function>()) { return Load<AnyFunc>(r); }
-  return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                          uint16_t, uint32_t, uint64_t, float, double,
-                          type::Type const*, EnumVal, FlagsVal, Addr,
-                          std::string_view, AnyFunc>(t, [&](auto tag) -> Reg {
-    using T = typename decltype(tag)::type;
-    return Load<T>(r);
-  });
-}
 
 }  // namespace ir
 

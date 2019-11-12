@@ -59,36 +59,6 @@ struct VariantAccessCmd {
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
 };
 
-base::Tagged<core::Alignment, Reg> Align(RegOr<type::Type const *> r);
-base::Tagged<core::Bytes, Reg> Bytes(RegOr<type::Type const *> r);
-
-void Init(type::Type const *t, Reg r);
-void Destroy(type::Type const *t, Reg r);
-void Move(type::Type const *t, Reg from, RegOr<Addr> to);
-void Copy(type::Type const *t, Reg from, RegOr<Addr> to);
-
-type::Typed<Reg> LoadSymbol(std::string_view name, type::Type const *type);
-
-base::Tagged<Addr, Reg> PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
-                                type::Pointer const *t);
-type::Typed<Reg> Field(RegOr<Addr> r, type::Struct const *t, int64_t n);
-type::Typed<Reg> Field(RegOr<Addr> r, type::Tuple const *t, int64_t n);
-
-Reg VariantType(RegOr<Addr> const &r);
-Reg VariantValue(type::Variant const *v, RegOr<Addr> const &r);
-
-#if defined(ICARUS_DEBUG)
-struct DebugIrCmd {
-  constexpr static cmd_index_t index =
-      (std::numeric_limits<cmd_index_t>::max)();
-
-  static std::string DebugString(base::untyped_buffer::const_iterator *iter) {
-    return "debug-ir";
-  }
-};
-inline void DebugIr() {}
-#endif  // ICARUS_DEBUG
-
 }  // namespace ir
 
 #endif  // ICARUS_IR_CMD_MISC_H

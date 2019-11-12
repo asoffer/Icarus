@@ -3,25 +3,10 @@
 #include <string_view>
 #include <type_traits>
 
-#include "backend/exec.h"
 #include "base/debug.h"
-#include "ir/basic_block.h"
-#include "ir/cmd/basic.h"
-#include "ir/cmd/call.h"
-#include "ir/cmd/cast.h"
-#include "ir/cmd/execute.h"
-#include "ir/cmd/jumps.h"
-#include "ir/cmd/load.h"
-#include "ir/cmd/misc.h"
-#include "ir/cmd/print.h"
-#include "ir/cmd/register.h"
-#include "ir/cmd/return.h"
-#include "ir/cmd/scope.h"
-#include "ir/cmd/store.h"
-#include "ir/cmd/types.h"
-#include "ir/compiled_fn.h"
 
 namespace ir {
+struct CompiledFn;
 
 #if defined(ICARUS_DEBUG)
 #define DEBUG_CASES CASE(DebugIrCmd);
@@ -71,30 +56,10 @@ namespace ir {
   CASE(BlockCmd);                                                              \
   CASE(ScopeCmd)
 
-BasicBlock const* CmdBuffer::Execute(std::vector<ir::Addr> const& ret_slots,
-                                     backend::ExecContext* ctx) const {
-  auto iter = buf_.begin();
-  DEBUG_LOG("dbg")(buf_);
-  while (true) {
-    DEBUG_LOG("dbg")(buf_.begin(), buf_.size());
-    ASSERT(iter < buf_.end());
-    auto cmd_index = iter.read<cmd_index_t>();
-    switch (cmd_index) {
-#define CASE(type)                                                             \
-  case type::index: {                                                          \
-    DEBUG_LOG("dbg")(#type);                                                   \
-    if (auto blk = ExecuteCmd<type>(&iter, ret_slots, ctx)) { return blk; }    \
-  } break
-      CASES;
-#undef CASE
-      default: UNREACHABLE(static_cast<int>(cmd_index));
-    }
-  }
-}
-
 std::string CmdBuffer::to_string() const {
   // Come up with a better/more-permanent solution here.
   std::string s;
+  /*
   auto iter = buf_.begin();
   while (iter < buf_.end()) {
     switch (iter.read<cmd_index_t>()) {
@@ -107,6 +72,7 @@ std::string CmdBuffer::to_string() const {
 #undef CASE
     }
   }
+  */
   return s;
 }
 
@@ -114,6 +80,7 @@ std::string CmdBuffer::to_string() const {
 #undef DEBUG_CASES
 
 size_t GetOffset(CompiledFn const* fn, Reg r) {
-  return ASSERT_NOT_NULL(fn->offset_or_null(r))->value();
+  return 0; // TODO
+  // return ASSERT_NOT_NULL(fn->offset_or_null(r))->value();
 }
 }  // namespace ir

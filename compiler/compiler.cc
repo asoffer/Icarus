@@ -11,6 +11,10 @@
 
 std::atomic<bool> found_errors = false;
 
+namespace ast {
+struct DispatchTable {}; // TODO ODR
+}  // namespace ast
+
 namespace compiler {
 
 Compiler::Compiler(module::BasicModule *mod) : data_(mod) {}
@@ -54,7 +58,7 @@ ir::Reg Compiler::addr(ast::Declaration const *decl) const {
 
 void Compiler::set_dispatch_table(ast::ExprPtr expr,
                                   ast::DispatchTable &&table) {
-  data_.constants_->second.dispatch_tables_.emplace(expr, std::move(table));
+  // TODO data_.constants_->second.dispatch_tables_.emplace(expr, std::move(table));
   // TODO in some situations you may be trying to set the dispatch table more
   // than once. This has come up with generic structs and you should
   // investigate.
@@ -80,8 +84,8 @@ std::pair<ConstantBinding, DependentData> *Compiler::insert_constants(
 
 void Compiler::set_jump_table(ast::ExprPtr jump_expr, ast::ExprPtr node,
                               ast::DispatchTable &&table) {
-  data_.constants_->second.jump_tables_.emplace(std::pair{jump_expr, node},
-                                                std::move(table));
+  // TODO data_.constants_->second.jump_tables_.emplace(std::pair{jump_expr, node},
+         //                                        std::move(table));
   // TODO in some situations you may be trying to set the dispatch table more
   // than once. This has come up with generic structs and you should
   // investigate.
@@ -96,19 +100,19 @@ void Compiler::set_pending_module(ast::Import const *import_node,
 }
 
 ast::DispatchTable const *Compiler::dispatch_table(ast::ExprPtr expr) const {
-  auto &table = data_.constants_->second.dispatch_tables_;
+  /* TODO auto &table = data_.constants_->second.dispatch_tables_;
   if (auto iter = table.find(expr); iter != table.end()) {
     return &iter->second;
-  }
+  }*/
   return nullptr;
 }
 
 ast::DispatchTable const *Compiler::jump_table(ast::ExprPtr jump_expr,
                                                ast::ExprPtr node) const {
-  auto &table = data_.constants_->second.jump_tables_;
+  /* TODOauto &table = data_.constants_->second.jump_tables_;
   if (auto iter = table.find(std::pair(jump_expr, node)); iter != table.end()) {
     return &iter->second;
-  }
+  }*/
   return nullptr;
 }
 

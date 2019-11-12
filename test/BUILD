@@ -1,5 +1,5 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib", "cc_component")
+load("//:defs.bzl", "cc_lib")
 
 cc_library(
     name = "test",
@@ -51,15 +51,15 @@ cc_lib(
     testonly = True,
 )
 
-cc_component(
+cc_lib(
     name = "util",
-    intf_deps = [
+    deps = [
         "//frontend:parse",
         "//frontend/source:string",
         "//module:module",
         "//type:function",
     ],
-    impl_deps = None,
+    header_only = True,
     test_deps = None,
     testonly = True,
 )

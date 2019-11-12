@@ -25,6 +25,7 @@ cc_lib(
         "//ast:ast",
         "//base:untyped_buffer",
         "//base:util",
+        "//compiler:compiler",
         "//core:arch",
         "//error:log",
         "//ir:addr",

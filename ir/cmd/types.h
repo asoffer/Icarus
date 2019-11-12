@@ -10,9 +10,7 @@
 #include "absl/random/distributions.h"
 #include "absl/random/random.h"
 #include "absl/types/span.h"
-#include "ir/basic_block.h"
 #include "ir/cmd/util.h"
-#include "ir/cmd_buffer.h"
 #include "ir/reg.h"
 #include "module/module.h"
 #include "type/enum.h"
@@ -94,32 +92,6 @@ using BufPtrCmd = internal::UnaryCmd<
                       std::tuple<type::Type const *>, type::BufPtr>,
     type::Type const *>;
 
-inline RegOr<type::Type const *> Var(
-    absl::Span<RegOr<type::Type const *> const> types) {
-  return internal::MakeVariadicImpl<VariantCmd>(types);
-}
-
-inline RegOr<type::Type const *> Tup(
-    absl::Span<RegOr<type::Type const *> const> types) {
-  return internal::MakeVariadicImpl<TupleCmd>(types);
-}
-
-Reg Enum(module::BasicModule *mod, absl::Span<std::string_view const> names,
-         absl::flat_hash_map<uint64_t, RegOr<EnumerationCmd::enum_t>> const
-             &specified_values);
-
-Reg Flags(module::BasicModule *mod, absl::Span<std::string_view const> names,
-          absl::flat_hash_map<uint64_t, RegOr<EnumerationCmd::enum_t>> const
-              &specified_values);
-
-// TODO handle initial values.
-Reg Struct(ast::Scope const *scope, module::BasicModule *mod,
-           std::vector<std::tuple<std::string_view, RegOr<type::Type const *>>>
-               fields);
-
-constexpr inline auto Ptr    = internal::UnaryHandler<PtrCmd>{};
-constexpr inline auto BufPtr = internal::UnaryHandler<BufPtrCmd>{};
-
 struct ArrowCmd {
   constexpr static cmd_index_t index = 22;
 
@@ -127,15 +99,6 @@ struct ArrowCmd {
     return "NOT_YET";
   }
 };
-
-RegOr<type::Function const *> Arrow(
-    absl::Span<RegOr<type::Type const *> const> ins,
-    absl::Span<RegOr<type::Type const *> const> outs);
-
-RegOr<type::Type const *> Array(RegOr<ArrayCmd::length_t> len,
-                                RegOr<type::Type const *> data_type);
-
-Reg OpaqueType(module::BasicModule const *mod);
 
 }  // namespace ir
 

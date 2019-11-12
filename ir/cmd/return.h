@@ -58,56 +58,6 @@ struct ReturnCmd {
   }
 };
 
-template <typename T>
-void SetRet(uint16_t n, T val) {
-  if constexpr (ir::IsRegOr<T>::value) {
-    auto& blk = *GetBuilder().CurrentBlock();
-    blk.cmd_buffer_.append_index<ReturnCmd>();
-    blk.cmd_buffer_.append(
-        ReturnCmd::MakeControlBits<typename T::type>(val.is_reg(), false));
-    blk.cmd_buffer_.append(n);
-    val.apply([&](auto v) { blk.cmd_buffer_.append(v); });
-  } else if constexpr (base::IsTaggedV<T>) {
-    static_assert(std::is_same_v<typename T::base_type, Reg>);
-    SetRet(n, RegOr<typename T::tag_type>(val));
-  } else {
-    SetRet(n, RegOr<T>(val));
-  }
-}
-
-inline void SetRet(uint16_t n, type::Typed<Results> const& r) {
-  // if (r.type()->is<type::GenericStruct>()) {
-  //   SetRet(n, r->get<AnyFunc>(0));
-  if (r.type()->is<type::Jump>()) {
-    // TODO currently this has to be implemented outside type::Apply because
-    // that's in type.h which is wrong because it forces weird instantiation
-    // order issues (type/type.h can't depend on type/jump.h).
-    SetRet(n, r->get<AnyFunc>(0));
-  } else {
-    type::Apply(r.type(), [&](auto tag) {
-      using T = typename decltype(tag)::type;
-      // if constexpr (std::is_same_v<T, type::Struct const*>) {
-      //   auto* t = GetBuilder().CurrentGroup()->type_->output[n];
-      //   // TODO guaranteed move-elision
-      //   visitor::EmitIr visitor;
-      //   t->EmitMoveAssign(&visitor, t, r.get(), GetRet(n, t), ctx);
-      //   visitor.CompleteDeferredBodies();
-      // } else {
-      SetRet(n, r->get<T>(0));
-      // }
-    });
-  }
-}
-
-inline base::Tagged<Addr, Reg> GetRet(uint16_t n, type::Type const* t) {
-  auto& blk = *GetBuilder().CurrentBlock();
-  blk.cmd_buffer_.append(ReturnCmd::MakeControlBits<int>(false, true));
-  blk.cmd_buffer_.append(n);
-  Reg r = MakeResult(t);
-  blk.cmd_buffer_.append(r);
-  return r;
-}
-
 }  // namespace ir
 
 #endif  // ICARUS_IR_CMD_RETURN_H

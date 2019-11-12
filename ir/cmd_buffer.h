@@ -39,15 +39,15 @@ struct CmdBuffer {
   constexpr auto begin() { return buf_.begin(); }
   constexpr auto end() { return buf_.end(); }
 
+  constexpr auto begin() const { return buf_.begin(); }
+  constexpr auto end() const { return buf_.end(); }
+
   size_t size() const { return buf_.size(); }
 
   template <typename T>
   void set(size_t offset, T const& t) {
     buf_.set(offset, t);
   }
-
-  BasicBlock const* Execute(std::vector<ir::Addr> const& ret_slots,
-                            backend::ExecContext* ctx) const;
 
   std::string to_string() const;
 

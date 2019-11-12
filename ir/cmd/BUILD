@@ -5,7 +5,6 @@ cc_lib(
     name = "basic",
     deps = [
         ":util",
-        "//ir:basic_block",
         "//type:util",
     ],
     header_only = True,
@@ -16,7 +15,6 @@ cc_lib(
     name = "call",
     deps = [
         ":util",
-        "//ir:basic_block",
         "//ir:reg",
         "//ir:results",
         "//type:util",
@@ -29,7 +27,6 @@ cc_lib(
     name = "cast",
     deps = [
         ":util",
-        "//ir:basic_block",
         "//type:util",
     ],
     header_only = True,
@@ -40,7 +37,6 @@ cc_lib(
     name = "jumps",
     deps = [
         ":util",
-        "//ir:basic_block",
         "//type:util",
         "@com_google_absl//absl/types:span",
     ],
@@ -52,7 +48,6 @@ cc_lib(
     name = "load",
     deps = [
         ":util",
-        "//ir:basic_block",
         "//type:util",
     ],
     header_only = True,
@@ -73,7 +68,6 @@ cc_lib(
     name = "phi",
     deps = [
         ":util",
-        "//ir:basic_block",
     ],
     header_only = True,
     test_deps = None,
@@ -83,7 +77,6 @@ cc_lib(
     name = "print",
     deps = [
         ":util",
-        "//ir:basic_block",
     ],
     test_deps = None,
 )
@@ -92,7 +85,6 @@ cc_lib(
     name = "register",
     deps = [
         ":util",
-        "//ir:basic_block",
     ],
     header_only = True,
     test_deps = None,
@@ -102,7 +94,6 @@ cc_lib(
     name = "return",
     deps = [
         ":util",
-        "//ir:basic_block",
         "//type:jump",
         "@com_google_absl//absl/strings",
     ],
@@ -116,7 +107,6 @@ cc_lib(
         ":util",
         "//base:stringify",
         # TODO "//compiler:compiler",
-        "//ir:basic_block",
         "//ir:block_def",
         "@com_google_absl//absl/strings",
     ],
@@ -125,10 +115,7 @@ cc_lib(
 
 cc_lib(
     name = "store",
-    deps = [
-        ":util",
-        "//ir:basic_block",
-    ],
+    deps = [":util"],
     header_only = True,
     test_deps = None,
 )
@@ -137,7 +124,7 @@ cc_lib(
     name = "types",
     deps = [
         ":util",
-        "//ir:basic_block",
+        "//ir:cmd_buffer",
         "//type:enum",
         "//type:flags",
         "//type:pointer",
@@ -151,7 +138,6 @@ cc_lib(
 cc_lib(
     name = "util",
     deps = [
-        "//ir:builder",
         "//ir:values",
         "//base:tag",
         "//type:primitive",

@@ -1,5 +1,5 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_group_target", "cc_component", "cc_lib")
+load("//:defs.bzl", "cc_lib")
 
 cc_lib(
     name = "addr",
@@ -76,6 +76,20 @@ cc_lib(
         "//base:debug",
         "//base:scope",
         "//base:tag",
+        "//ir/cmd:basic",
+        "//ir/cmd:call",
+        "//ir/cmd:cast",
+        "//ir/cmd:jumps",
+        "//ir/cmd:load",
+        "//ir/cmd:misc",
+        "//ir/cmd:phi",
+        "//ir/cmd:print",
+        "//ir/cmd:register",
+        "//ir/cmd:return",
+        "//ir/cmd:scope",
+        "//ir/cmd:store",
+        "//ir/cmd:types",
+        "//ir/cmd:util",
         "//type:typed_value",
     ],
     test_deps = None,
@@ -95,28 +109,12 @@ cc_lib(
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "cmd_buffer",
-    intf_deps = [
+    deps = [
         "//base:untyped_buffer",
         "//core:arch",
-    ],
-    impl_deps = [
-        ":compiled_fn",
-        "//backend:exec",
-        "//ir/cmd:basic",
-        "//ir/cmd:call",
-        "//ir/cmd:cast",
-        "//ir/cmd:execute",
-        "//ir/cmd:jumps",
-        "//ir/cmd:load",
-        "//ir/cmd:misc",
-        "//ir/cmd:print",
-        "//ir/cmd:register",
-        "//ir/cmd:return",
-        "//ir/cmd:scope",
-        "//ir/cmd:store",
-        "//ir/cmd:types",
+        "//ir:reg",
     ],
     test_deps = None,
 )

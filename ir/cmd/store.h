@@ -3,7 +3,6 @@
 
 #include <string_view>
 
-#include "ir/basic_block.h"
 #include "ir/cmd/util.h"
 #include "ir/cmd_buffer.h"
 #include "ir/reg.h"
@@ -57,23 +56,6 @@ struct StoreCmd {
     return s;
   }
 };
-
-template <typename T>
-void Store(T r, RegOr<Addr> addr) {
-  if constexpr (IsRegOr<T>::value) {
-    auto& blk = *GetBuilder().CurrentBlock();
-    blk.cmd_buffer_.append_index<StoreCmd>();
-    blk.cmd_buffer_.append(
-        StoreCmd::MakeControlBits<typename T::type>(r.is_reg(), addr.is_reg()));
-    r.apply([&](auto v) { blk.cmd_buffer_.append(v); });
-    addr.apply([&](auto v) {
-      DEBUG_LOG("store")(v);
-      blk.cmd_buffer_.append(v);
-    });
-  } else {
-    Store(RegOr<T>(r), addr);
-  }
-}
 
 }  // namespace ir
 

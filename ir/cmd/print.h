@@ -3,9 +3,7 @@
 
 #include <string_view>
 
-#include "ir/basic_block.h"
 #include "ir/cmd/util.h"
-#include "ir/cmd_buffer.h"
 #include "ir/reg.h"
 
 namespace ir {
@@ -27,30 +25,6 @@ struct PrintCmd {
 
   static std::string DebugString(base::untyped_buffer::const_iterator* iter);
 };
-
-template <typename T>
-void Print(T r) {
-  auto& blk = *GetBuilder().CurrentBlock();
-  if constexpr (ir::IsRegOr<T>::value) {
-    blk.cmd_buffer_.append_index<PrintCmd>();
-    blk.cmd_buffer_.append(
-        PrintCmd::MakeControlBits<typename T::type>(r.is_reg()));
-    r.apply([&](auto v) { blk.cmd_buffer_.append(v); });
-  } else {
-    Print(RegOr<T>(r));
-  }
-}
-
-template <typename T,
-          typename std::enable_if_t<std::is_same_v<T, EnumVal> or
-                                    std::is_same_v<T, FlagsVal>>* = nullptr>
-void Print(RegOr<T> r, type::Type const* t) {
-  auto& blk = *GetBuilder().CurrentBlock();
-  blk.cmd_buffer_.append_index<PrintCmd>();
-  blk.cmd_buffer_.append(PrintCmd::MakeControlBits<T>(r.is_reg()));
-  r.apply([&](auto v) { blk.cmd_buffer_.append(v); });
-  blk.cmd_buffer_.append(t);
-}
 
 }  // namespace ir
 

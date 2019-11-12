@@ -1,11 +1,11 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_component")
+load("//:defs.bzl", "cc_lib")
 
 cc_binary(
     name = "icfmt",
     srcs = ["main.cc"],
     deps = [
-        ":token_extractor-impl",
+        ":token_extractor",
         "//ast:ast",
         "//ast/scope:scope",
         "//ast/scope:exec",
@@ -23,15 +23,13 @@ cc_binary(
     ],
 )
 
-cc_component(
+cc_lib(
     name = "token_extractor",
-    intf_deps = [
+    deps = [
+        "//ast:ast",
         "//ast:ast_fwd",
         "//ast:visitor",
         "//base:debug",
-    ],
-    impl_deps = [
-        "//ast:ast",
     ],
     test_deps = None,
 )

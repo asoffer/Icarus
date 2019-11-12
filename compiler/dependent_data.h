@@ -4,7 +4,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/node_hash_map.h"
 #include "ast/ast_fwd.h"
-#include "ast/dispatch_table.h"
+// TODO #include "ast/dispatch_table.h"
 #include "ast/expr_ptr.h"
 #include "compiler/constant_binding.h"
 #include "compiler/verify_result.h"
@@ -22,13 +22,13 @@ struct DependentData {
   // TODO probably make these funcs constant.
   absl::node_hash_map<ast::Expression const *, ir::CompiledFn *> ir_funcs_;
 
-  absl::flat_hash_map<ast::ExprPtr, ast::DispatchTable> dispatch_tables_;
+  // TODO absl::flat_hash_map<ast::ExprPtr, ast::DispatchTable> dispatch_tables_;
 
   // Similar to dispatch tables, but specifically for `jump_handler`s. The
   // tables are keyed on both the scope/block node as well as the actual jump
   // expression.
-  absl::flat_hash_map<std::pair<ast::ExprPtr, ast::ExprPtr>, ast::DispatchTable>
-      jump_tables_;
+  // TODO absl::flat_hash_map<std::pair<ast::ExprPtr, ast::ExprPtr>, ast::DispatchTable>
+      // jump_tables_;
   absl::node_hash_map<ast::ScopeLiteral const *, ir::ScopeDef> scope_defs_;
 
   compiler::ConstantBinding constants_;
