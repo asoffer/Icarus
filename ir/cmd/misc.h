@@ -5,7 +5,6 @@
 #include <string_view>
 #include <vector>
 
-#include "backend/exec.h"
 #include "base/debug.h"
 #include "ir/cmd/util.h"
 #include "ir/reg_or.h"

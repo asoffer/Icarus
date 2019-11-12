@@ -2,7 +2,6 @@
 
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
-#include "backend/exec.h"
 #include "ir/reg_or.h"
 
 namespace ir {

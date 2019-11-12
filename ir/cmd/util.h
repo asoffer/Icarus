@@ -3,7 +3,6 @@
 
 #include <type_traits>
 
-#include "backend/exec.h"
 #include "base/util.h"
 #include "ir/addr.h"
 #include "ir/builder.h"

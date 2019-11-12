@@ -3,7 +3,6 @@
 
 #include <string_view>
 
-#include "backend/exec.h"
 #include "ir/basic_block.h"
 #include "ir/cmd/util.h"
 #include "ir/cmd_buffer.h"

@@ -7,6 +7,7 @@
 
 #include "backend/exec.h"
 #include "base/untyped_buffer.h"
+#include "compiler/compiler.h"
 #include "ir/addr.h"
 #include "ir/cmd/basic.h"
 #include "ir/cmd/call.h"

@@ -35,6 +35,10 @@ struct CmdBuffer {
     return buf_.append_bytes(sizeof(T), alignof(T));
   }
 
+  // TODO probably shouldn't exist.
+  constexpr auto begin() { return buf_.begin(); }
+  constexpr auto end() { return buf_.end(); }
+
   size_t size() const { return buf_.size(); }
 
   template <typename T>
@@ -44,8 +48,6 @@ struct CmdBuffer {
 
   BasicBlock const* Execute(std::vector<ir::Addr> const& ret_slots,
                             backend::ExecContext* ctx) const;
-
-  void UpdateForInlining(Inliner const& inliner);
 
   std::string to_string() const;
 

@@ -10,7 +10,6 @@
 #include "ir/cmd/call.h"
 #include "ir/cmd/cast.h"
 #include "ir/cmd/execute.h"
-#include "ir/cmd/inline.h"
 #include "ir/cmd/jumps.h"
 #include "ir/cmd/load.h"
 #include "ir/cmd/misc.h"
@@ -91,25 +90,6 @@ BasicBlock const* CmdBuffer::Execute(std::vector<ir::Addr> const& ret_slots,
       default: UNREACHABLE(static_cast<int>(cmd_index));
     }
   }
-}
-
-void CmdBuffer::UpdateForInlining(Inliner const& inliner) {
-  auto iter = buf_.begin();
-  DEBUG_LOG("dbg")(buf_);
-
-  while (iter < buf_.end()) {
-    switch (iter.read<cmd_index_t>()) {
-#define CASE(type)                                                             \
-  case type::index:                                                            \
-    DEBUG_LOG("dbg")(#type ": ", iter);                                        \
-    InlineCmd<type>(&iter, inliner);                                           \
-    break
-      CASES;
-#undef CASE
-    }
-  }
-
-  DEBUG_LOG("dbg")(buf_);
 }
 
 std::string CmdBuffer::to_string() const {

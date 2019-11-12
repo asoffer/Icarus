@@ -108,7 +108,6 @@ cc_component(
         "//ir/cmd:call",
         "//ir/cmd:cast",
         "//ir/cmd:execute",
-        "//ir/cmd:inline",
         "//ir/cmd:jumps",
         "//ir/cmd:load",
         "//ir/cmd:misc",
@@ -122,9 +121,9 @@ cc_component(
     test_deps = None,
 )
 
-cc_component(
+cc_lib(
     name = "components",
-    intf_deps = [
+    deps = [
         ":builder",
         ":compiled_fn",
         "//ir/cmd:basic",
@@ -133,9 +132,6 @@ cc_component(
         "//ir/cmd:misc",
         "//ir/cmd:phi",
         "//ir/cmd:types",
-    ],
-    impl_deps = [
-        ":builder",
     ],
     test_deps = None,
 )
@@ -185,8 +181,19 @@ cc_lib(
         ":reg",
         ":results",
         ":stack_frame_allocations",
+        "//ir/cmd:basic",
+        "//ir/cmd:call",
+        "//ir/cmd:cast",
         "//ir/cmd:jumps",
+        "//ir/cmd:load",
+        "//ir/cmd:misc",
+        "//ir/cmd:phi",
+        "//ir/cmd:print",
         "//ir/cmd:register",
+        "//ir/cmd:return",
+        "//ir/cmd:scope",
+        "//ir/cmd:store",
+        "//ir/cmd:types",
         "//type:function",
         "//type:type",
         "@com_google_absl//absl/container:flat_hash_map",
