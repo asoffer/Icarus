@@ -1,30 +1,80 @@
 package(default_visibility = ["//visibility:public"])
 load("//:defs.bzl", "cc_lib")
 
-cc_lib(
+
+cc_library(
     name = "compiler",
+    hdrs = [
+        "compiler.h",
+        "special_function.h",
+    ],
+    srcs = [
+        "compiler.cc",
+        "emit_assign.cc",
+        "emit_copy_init.cc",
+        "emit_default_init.cc",
+        "emit_destroy.cc",
+        "emit_move_init.cc",
+        "emit_print.cc",
+        "emit_ref.cc",
+        "emit_value.cc",
+        "special_function.cc",
+        "verify_type.cc",
+    ],
     deps = [
         ":data",
+        ":dependent_data",
+        ":extract_jumps",
+        ":module",
         ":verify_result",
         "//ast:ast",
+        "//ast/methods:dump",
+        "//ast:overload_set",
         "//ast:visitor",
+        "//backend:eval",
         "//base:debug",
         "//base:guarded",
         "//base:move_func",
+        "//base:permutation",
         "//base:tag",
-        "//compiler:dependent_data",
         "//error:log",
         "//frontend:parse",
+        "//ir:addr",
+        "//ir:any_func",
         "//ir:builder",
+        "//ir:builtin_ir",
         "//ir:compiled_fn",
+        "//ir:components",
         "//ir:jump_handler",
         "//ir:results",
+        "//ir:reg",
+        "//ir:str",
+        "//ir/cmd:basic",
+        "//ir/cmd:call",
+        "//ir/cmd:cast",
+        "//ir/cmd:load",
+        "//ir/cmd:misc",
+        "//ir/cmd:phi",
+        "//ir/cmd:return",
+        "//ir/cmd:scope",
+        "//ir/cmd:store",
+        "//ir/cmd:types",
         "//module:module",
+        "//module:pending",
+        "//type:cast",
+        "//type:function",
+        "//type:generic_struct",
+        "//type:jump",
+        "//type:parameter_pack",
+        "//type:pointer",
+        "//type:struct",
         "//type:type",
         "//type:type_fwd",
         "//type:typed_value",
         "//type:visitor",
+        "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/container:node_hash_map",
+        "@com_google_absl//absl/random",
     ],
     test_deps = None,
 )
@@ -75,7 +125,6 @@ cc_lib(
     name = "dependent_data",
     deps = [
         ":verify_result",
-        # TODO "//ast:dispatch_table",
         "//ast:ast_fwd",
         "//ast:expr_ptr",
         "//module:pending",
@@ -86,171 +135,8 @@ cc_lib(
 )
 
 cc_lib(
-    name = "emit_assign",
-    deps = [
-        ":compiler",
-        ":special_function",
-        "//ast:ast",
-        "//base:permutation",
-        "//ir:builder",
-        "//ir/cmd:load",
-        "//ir/cmd:misc",
-        "//ir/cmd:store",
-        "//ir:compiled_fn",
-        "//ir:components",
-        "//type:type",
-        "//type:typed_value",
-        "@com_google_absl//absl/random",
-    ],
-    no_header = True,
-    test_deps = None,
-)
-
-cc_lib(
-    name = "emit_destroy",
-    deps = [
-        ":compiler",
-        ":special_function",
-        "//ast:ast",
-        "//base:permutation",
-        "//ir:builder",
-        "//ir/cmd:call",
-        "//ir/cmd:misc",
-        "//ir:compiled_fn",
-        "//ir:components",
-        "//type:type",
-        "//type:typed_value",
-        "@com_google_absl//absl/random",
-    ],
-    no_header = True,
-    test_deps = None,
-)
-
-cc_lib(
-    name = "emit_default_init",
-    deps = [
-        ":compiler",
-        "//ast:ast",
-        "//base:permutation",
-        "//ir/cmd:misc",
-        "//ir/cmd:store",
-        "//ir:builder",
-        "//ir:compiled_fn",
-        "//ir:components",
-        "//type:type",
-        "//type:typed_value",
-        "@com_google_absl//absl/random",
-    ],
-    no_header = True,
-    test_deps = None,
-)
-
-cc_lib(
-    name = "emit_copy_init",
-    deps = [
-        ":compiler",
-        "//ast:ast",
-        "//ir:components",
-        "//ir/cmd:misc",
-        "//type:type",
-        "//type:typed_value",
-    ],
-    no_header = True,
-    test_deps = None,
-)
-
-cc_lib(
-    name = "emit_move_init",
-    deps = [
-        ":compiler",
-        "//ast:ast",
-        "//ir/cmd:misc",
-        "//ir:components",
-        "//type:type",
-        "//type:typed_value",
-    ],
-    no_header = True,
-    test_deps = None,
-)
-
-cc_lib(
-    name = "emit_ref",
-    deps = [
-        ":compiler",
-        "//ast:ast",
-        "//backend:eval",
-        "//ir:addr",
-        "//ir/cmd:cast",
-        "//ir/cmd:load",
-        "//ir/cmd:misc",
-        "//ir:components",
-        "//ir:reg",
-        "//ir:str",
-        "//type:type",
-        "//type:typed_value",
-    ],
-    no_header = True,
-    test_deps = None,
-)
-
-cc_lib(
-    name = "emit_value",
-    deps = [
-        ":compiler",
-        "//ast:ast",
-        "//ast/methods:dump",
-        "//ast/scope:scope",
-        "//ast/scope:fn",
-        "//backend:eval",
-        "//base:guarded",
-        "//module:pending",
-        "//ir:builder",
-        "//ir:builtin_ir",
-        "//ir:components",
-        "//ir:results",
-        "//ir/cmd:basic",
-        "//ir/cmd:call",
-        "//ir/cmd:cast",
-        "//ir/cmd:load",
-        "//ir/cmd:misc",
-        "//ir/cmd:phi",
-        "//ir/cmd:return",
-        "//ir/cmd:scope",
-        "//ir/cmd:store",
-        "//ir/cmd:types",
-        "//type:jump",
-        "//type:generic_struct",
-        "//type:pointer",
-        "//type:type",
-        "//type:typed_value",
-    ],
-    test_deps = None,
-    no_header = True,
-)
-
-cc_lib(
-    name = "emit_print",
-    deps = [
-        ":compiler",
-        "//ast:ast",
-        "//ir:builder",
-        "//ir:compiled_fn",
-        "//ir:components",
-        "//ir/cmd:call",
-        "//ir/cmd:print",
-        "//ir/cmd:basic",
-        "//type:type",
-        "//type:typed_value",
-    ],
-    no_header = True,
-    test_deps = None,
-)
-
-
-cc_lib(
     name = "module",
     deps = [
-        ":compiler",
         ":constant_binding",
         ":dependent_data",
         "//ast:ast",
@@ -265,42 +151,8 @@ cc_lib(
 )
 
 cc_lib(
-    name = "verify_type",
-    deps = [
-        ":extract_jumps",
-        "//ast:ast",
-        "//ast/methods:dump",
-        "//ast:overload_set",
-        "//backend:eval",
-        "//compiler/dispatch:dispatch",
-        "//type:cast",
-        "//type:generic_struct",
-        "//type:jump",
-        "//type:parameter_pack",
-        "//type:type",
-        "//type:util",
-        "@com_google_absl//absl/algorithm:container",
-    ],
-    test_deps = None,
-    no_header = True,
-)
-
-cc_lib(
     name = "verify_result",
     deps = [],
     header_only = True,
-    test_deps = None,
-)
-
-cc_lib(
-    name = "special_function",
-    deps = [
-        ":compiler",
-        "//ast:ast",
-        "//ir:any_func",
-        "//type:function",
-        "//type:pointer",
-        "//type:struct",
-    ],
     test_deps = None,
 )

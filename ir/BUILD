@@ -101,6 +101,7 @@ cc_lib(
     name = "builtin_ir",
     deps = [
         ":any_func",
+        ":builder",
         ":compiled_fn",
         "//ir/cmd:jumps",
         "//ir/cmd:misc",

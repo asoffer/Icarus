@@ -281,11 +281,9 @@ ir::Results Compiler::Visit(ast::Access const *node, EmitValueTag) {
   if (type_of(node->operand()) == type::Module) {
     // TODO we already did this evaluation in type verification. Can't we just
     // save and reuse it?
-    auto decls =
-        backend::EvaluateAs<module::BasicModule const *>(
-            type::Typed<ast::Expression const *>(node->operand(), type::Module),
-            this)
-            ->declarations(node->member_name());
+    auto decls = backend::EvaluateAs<module::BasicModule const *>(
+                     MakeThunk(node->operand(), type::Module))
+                     ->declarations(node->member_name());
     switch (decls.size()) {
       case 0: NOT_YET();
       case 1: return Visit(decls[0], EmitValueTag{});
@@ -651,13 +649,9 @@ ir::Results Compiler::Visit(ast::Call const *node, EmitValueTag) {
     switch (b->value()) {
       case core::Builtin::Foreign: {
         auto name = backend::EvaluateAs<std::string_view>(
-            type::Typed<ast::Expression const *>(node->args().at(0),
-                                                 type::ByteView),
-            this);
+            MakeThunk(node->args().at(0), type::ByteView));
         auto *foreign_type = backend::EvaluateAs<type::Type const *>(
-            type::Typed<ast::Expression const *>(node->args().at(1),
-                                                 type::Type_),
-            this);
+            MakeThunk(node->args().at(1), type::Type_));
         return ir::Results{ir::LoadSymbol(name, foreign_type).get()};
       } break;
 
@@ -1097,8 +1091,8 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
         // constants slot and the copied to an ir::Results object to be
         // returned. In reality, we could write directly to the buffer and only
         // copy once if Evaluate* took an out-parameter.
-        base::untyped_buffer buf = backend::EvaluateToBuffer(
-            type::Typed<ast::Expression const *>(node->init_val(), t), this);
+        base::untyped_buffer buf =
+            backend::EvaluateToBuffer(MakeThunk(node->init_val(), t));
         if (num_errors() > 0u) { return ir::Results{}; }
         return data_.constants_->second.constants_.set_slot(data_offset, buf.raw(0),
                                                       num_bytes);
@@ -1426,8 +1420,8 @@ ir::Results Compiler::Visit(ast::ScopeNode const *node, EmitValueTag) {
   DEBUG_LOG("ScopeNode")("Emitting IR for ScopeNode");
 
   DEBUG_LOG("ScopeNode")("scope_def ... evaluating.");
-  auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(
-      type::Typed{node->name(), type::Scope}, this);
+  auto *scope_def =
+      backend::EvaluateAs<ir::ScopeDef *>(MakeThunk(node->name(), type::Scope));
   DEBUG_LOG("ScopeNode")("          ... completing work.");
   if (scope_def->work_item) { std::move (*scope_def->work_item)(); }
   DEBUG_LOG("ScopeNode")("          ... done.");
@@ -1670,9 +1664,8 @@ ir::Results Compiler::Visit(ast::Unop const *node, EmitValueTag) {
     case frontend::Operator::Eval: {
       // Guaranteed to be constant by VerifyType
       // TODO what if there's an error during evaluation?
-      return backend::Evaluate(type::Typed<ast::Expression const *>(
-                                   node->operand(), type_of(node->operand())),
-                               this);
+      return backend::Evaluate(
+          MakeThunk(node->operand(), type_of(node->operand())));
     }
     case frontend::Operator::Mul:
       return ir::Results{ir::Ptr(

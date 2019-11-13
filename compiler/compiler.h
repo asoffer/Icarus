@@ -6,6 +6,7 @@
 
 #include "absl/container/node_hash_map.h"
 #include "ast/ast_fwd.h"
+#include "ast/overload_set.h"
 #include "ast/visitor.h"
 #include "base/debug.h"
 #include "base/guarded.h"
@@ -32,7 +33,44 @@ struct BlockDef;
 }  // namespace ir
 
 namespace ast {
-struct DispatchTable;
+struct DispatchTable {
+  // TODO obviously wrong but we're deprecating anyway
+  ir::Results EmitInlineCall(
+      compiler::Compiler *visitor,
+      core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
+      absl::flat_hash_map<ir::BlockDef const *, ir::BasicBlock *> const
+          &block_map) const {
+    return ir::Results{};
+  }
+  ir::Results EmitCall(
+      compiler::Compiler *visitor,
+      core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
+      bool is_inline = false) const {
+    return ir::Results{};
+  }
+};
+
+inline compiler::VerifyResult VerifyJumpDispatch(
+    void *visitor, ExprPtr expr,
+    absl::Span<ir::JumpHandler const *const> overload_set,
+    core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
+        &args,
+    std::vector<ir::BlockDef const *> *block_defs) {
+  return compiler::VerifyResult::Error();
+}
+inline compiler::VerifyResult VerifyDispatch(
+    void *visitor, ExprPtr expr, absl::Span<ir::AnyFunc const> overload_set,
+    core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
+        &args) {
+  return compiler::VerifyResult::Error();
+}
+inline compiler::VerifyResult VerifyDispatch(
+    void *visitor, ExprPtr expr, OverloadSet const &overload_set,
+    core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
+        &args) {
+  return compiler::VerifyResult::Error();
+}
+
 }  // namespace ast
 
 namespace compiler {
@@ -46,6 +84,7 @@ struct EmitDestroyTag {};
 struct EmitDefaultInitTag {};
 struct EmitCopyAssignTag {};
 struct EmitMoveAssignTag {};
+
 std::unique_ptr<module::BasicModule> CompileModule(frontend::Source *src);
 
 // These are the steps in a traditional compiler of verifying types and emitting
@@ -135,6 +174,8 @@ struct Compiler
 
   module::BasicModule *module() { return data_.mod_; }
   ir::Builder &builder() { return data_.bldr_; };
+
+  ir::CompiledFn MakeThunk(ast::Expression const *expr, type::Type const *type);
 
   // TODO Depending on if we're streaming or batching errors, we may want one
   // log per module, or one per compiler instance.

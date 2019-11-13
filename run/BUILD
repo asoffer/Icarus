@@ -27,7 +27,6 @@ cc_lib(
         "//backend:exec",
         "//base:untyped_buffer",
         "//compiler:compiler",
-        "//compiler:verify_type",
         "//core:fn_params",
         "//frontend/source:repl",
         "//frontend:parse",
@@ -38,4 +37,5 @@ cc_lib(
         "//type:tuple",
     ],
     no_header = True,
+    test_deps = None,
 )

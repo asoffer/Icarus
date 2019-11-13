@@ -5,34 +5,22 @@
 
 #include "base/debug.h"
 #include "base/untyped_buffer.h"
-#include "compiler/compiler.h"
+#include "ir/compiled_fn.h"
+#include "ir/results.h"
 
 namespace ir {
 struct BlockDef;
 }  // namespace ir
 
-namespace ast {
-struct Expression;
-}  // namespace ast
-
 namespace backend {
-ir::Results Evaluate(type::Typed<ast::Expression const *> typed_expr,
-                     compiler::Compiler *visitor);
-base::untyped_buffer EvaluateToBuffer(
-    type::Typed<ast::Expression const *> typed_expr,
-    compiler::Compiler *visitor);
+ir::Results Evaluate(ir::CompiledFn &&fn);
+base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn);
 
 template <typename T>
-T EvaluateAs(type::Typed<ast::Expression const *> typed_expr,
-             compiler::Compiler *visitor) {
+T EvaluateAs(ir::CompiledFn &&fn) {
   static_assert(std::is_trivially_copyable_v<T>);
   static_assert(not std::is_same_v<T, ir::BlockDef *>, "");
-  // if (visitor->num_errors() != 0u) {
-  //   visitor->DumpErrors();
-  //   UNREACHABLE();
-  // }
-
-  base::untyped_buffer result_buf = EvaluateToBuffer(typed_expr, visitor);
+  base::untyped_buffer result_buf = EvaluateToBuffer(std::move(fn));
   ASSERT(result_buf.size() == sizeof(T));
   return result_buf.get<T>(0);
 }

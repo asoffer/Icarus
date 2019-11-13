@@ -23,14 +23,6 @@ extern std::atomic<ir::CompiledFn *> main_fn;
 
 extern std::atomic<bool> found_errors;
 
-std::unique_ptr<module::BasicModule> CompileModule(frontend::Source *src) {
-  auto mod = std::make_unique<compiler::CompiledModule>();
-  mod->Process(frontend::Parse(src));
-  // TODO mark found_errors any were found
-  return mod;
-}
-
-
 int RunCompiler() {
   void *libc_handle = dlopen("/lib/x86_64-linux-gnu/libc.so.6", RTLD_LAZY);
   ASSERT(libc_handle != nullptr);

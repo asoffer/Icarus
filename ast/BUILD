@@ -66,46 +66,6 @@ cc_lib(
 )
 
 cc_lib(
-    name = "dispatch_table",
-    deps = [
-        ":ast",
-        ":overload_set",
-        "//ast/scope:scope",
-        "//backend:eval",
-        "//base:expected",
-        "//compiler:verify_result",
-        "//compiler:compiler",
-        "//core:fn_args",
-        "//core:fn_params",
-        "//ir:basic_block",
-        "//ir:block_def",
-        "//ir:builder",
-        "//ir:components",
-        "//ir:compiled_fn",
-        "//ir:inliner",
-        "//ir:jump_handler",
-        "//ir:results",
-        "//ir/cmd:call",
-        "//ir/cmd:phi",
-        "//ir/cmd:store",
-        "//module:module",
-        "//type:cast",
-        "//type:function",
-        "//type:generic_struct",
-        "//type:pointer",
-        "//type:tuple",
-        "//type:variant",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-    test_deps = [
-        "//test:module",
-        "//test:util",
-        "//type:pointer",
-        "//type:variant",
-    ],
-)
-
-cc_lib(
     name = "hashtag",
     deps = [],
     header_only = True,

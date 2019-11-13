@@ -2,7 +2,10 @@
 
 #include "ast/ast.h"
 #include "ast/expr_ptr.h"
+#include "backend/eval.h"
 #include "compiler/compiler.h"
+#include "compiler/module.h"
+#include "frontend/parse.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
 #include "ir/jump_handler.h"
@@ -10,12 +13,52 @@
 #include "type/jump.h"
 
 std::atomic<bool> found_errors = false;
-
-namespace ast {
-struct DispatchTable {}; // TODO ODR
-}  // namespace ast
+std::atomic<ir::CompiledFn *> main_fn = nullptr;
 
 namespace compiler {
+
+static void CompileNodes(Compiler *compiler,
+                         base::PtrSpan<ast::Node const> nodes) {
+  for (ast::Node const *node : nodes) {
+    compiler->Visit(node, VerifyTypeTag{});
+  }
+  if (compiler->num_errors() > 0) { return; }
+
+  for (ast::Node const *node : nodes) { compiler->Visit(node, EmitValueTag{}); }
+  compiler->CompleteDeferredBodies();
+  if (compiler->num_errors() > 0) { return; }
+
+  for (ast::Node const *node : nodes) {
+    if (auto const *decl = node->if_as<ast::Declaration>()) {
+      if (decl->id() != "main") { continue; }
+      auto f = backend::EvaluateAs<ir::AnyFunc>(compiler->MakeThunk(
+          decl->init_val(), compiler->type_of(decl->init_val())));
+      ASSERT(f.is_fn() == true);
+      auto ir_fn = f.func();
+
+      // TODO check more than one?
+
+      main_fn = ir_fn;
+    } else {
+      continue;
+    }
+  }
+}
+
+std::unique_ptr<module::BasicModule> CompileModule(frontend::Source *src) {
+  auto mod = std::make_unique<CompiledModule>(
+      [](base::PtrSpan<ast::Node const> nodes, CompiledModule *mod) {
+        compiler::Compiler c(mod);
+        CompileNodes(&c, nodes);
+        mod->dep_data_   = std::move(c.data_.dep_data_);
+        mod->fns_        = std::move(c.data_.fns_);
+        mod->scope_defs_ = std::move(c.data_.scope_defs_);
+        mod->block_defs_ = std::move(c.data_.block_defs_);
+      });
+  mod->Process(frontend::Parse(src));
+  // TODO mark found_errors any were found
+  return mod;
+}
 
 Compiler::Compiler(module::BasicModule *mod) : data_(mod) {}
 
@@ -171,6 +214,33 @@ ir::BlockDef *Compiler::AddBlock(std::vector<ir::AnyFunc> befores,
       .emplace_back(
           std::make_unique<ir::BlockDef>(std::move(befores), std::move(afters)))
       .get();
+}
+
+ir::CompiledFn Compiler::MakeThunk(ast::Expression const *expr,
+                                   type::Type const *type) {
+  ir::CompiledFn fn(type::Func({}, {ASSERT_NOT_NULL(type)}),
+                    core::FnParams<type::Typed<ast::Declaration const *>>{});
+  ICARUS_SCOPE(ir::SetCurrentFunc(&fn)) {
+    // TODO this is essentially a copy of the body of FunctionLiteral::EmitValue
+    // Factor these out together.
+    builder().CurrentBlock() = fn.entry();
+
+    auto vals = Visit(expr, compiler::EmitValueTag{});
+    // TODO wrap this up into SetRet(vector)
+    std::vector<type::Type const *> extracted_types;
+    if (auto *tup = type->if_as<type::Tuple>()) {
+      extracted_types = tup->entries_;
+    } else {
+      extracted_types = {type};
+    }
+    for (size_t i = 0; i < vals.size(); ++i) {
+      ir::SetRet(i, type::Typed{vals.GetResult(i), extracted_types.at(i)});
+    }
+    ir::ReturnJump();
+
+    CompleteDeferredBodies();
+  }
+  return fn;
 }
 
 }  // namespace compiler

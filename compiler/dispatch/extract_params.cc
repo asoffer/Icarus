@@ -13,8 +13,8 @@ core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
   auto *decl_type = compiler->type_of(decl);
   if (decl->flags() & ast::Declaration::f_IsConst) {
     if (auto const *fn_type = decl_type->if_as<type::Function>()) {
-      auto f = backend::EvaluateAs<ir::AnyFunc>(type::Typed{decl, decl_type},
-                                                compiler);
+      auto f = backend::EvaluateAs<ir::AnyFunc>(
+          compiler->MakeThunk(decl, decl_type));
       return f.is_fn() ? f.func()->params() : fn_type->AnonymousFnParams();
     } else {
       NOT_YET();

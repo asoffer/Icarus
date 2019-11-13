@@ -72,10 +72,10 @@ std::vector<ir::RegOr<ir::Addr>> Compiler::Visit(ast::Index const *node,
             Visit(node->lhs(), EmitValueTag{}).get<std::string_view>(0).value()),
         index, type::Ptr(type::Nat8))};
   } else if (auto *tup = lhs_type->if_as<type::Tuple>()) {
-    auto index = ir::CastTo<int64_t>(
-                     rhs_type, backend::Evaluate(
-                                   type::Typed{node->rhs(), rhs_type}, this))
-                     .value();
+    auto index =
+        ir::CastTo<int64_t>(rhs_type,
+                            backend::Evaluate(MakeThunk(node->rhs(), rhs_type)))
+            .value();
     return {ir::Field(Visit(node->lhs(), EmitRefTag{})[0], tup, index).get()};
   }
   UNREACHABLE(*this);

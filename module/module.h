@@ -47,6 +47,12 @@ struct ExtendedModule : BasicModule {
   explicit ExtendedModule(
       std::function<void(base::PtrSpan<ast::Node const>)> fn)
       : process_(std::move(fn)) {}
+  explicit ExtendedModule(
+      std::function<void(base::PtrSpan<ast::Node const>, Extension *)> fn)
+      : process_(
+            [fn{std::move(fn)}, this](base::PtrSpan<ast::Node const> nodes) {
+              return fn(nodes, static_cast<Extension *>(this));
+            }) {}
 
   void Process(std::unique_ptr<ast::Node> node) {
     InitializeNodes(base::PtrSpan<ast::Node>(&node, 1));

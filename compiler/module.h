@@ -14,13 +14,22 @@
 
 namespace compiler {
 
-struct Compiler;
-
 struct CompiledModule : module::ExtendedModule<CompiledModule> {
-  CompiledModule();
+  // Even though ew only ever want to pass a specific well-known ProcessFn here
+  // the one that does compilation, it requires constructing a Compiler object
+  // and this would create a dependency cycle. To avoid that we need to pass it
+  // in as an argument.
+  template <typename ProcessFn,
+            typename std::enable_if_t<
+                not std::is_same_v<ProcessFn, CompiledModule>, int> = 0>
+  explicit CompiledModule(ProcessFn fn)
+      : module::ExtendedModule<CompiledModule>(std::move(fn)) {}
+
   type::Type const *type_of(ast::Expression const *expr) const;
 
- private:
+
+  // TODO make private
+
   // TODO It's possible to have layers of constant bindings in a tree-like
   // structure. For example,
   //   f :: (a :: int64) => (b :: int64) => (c :: int64) => a + b * c

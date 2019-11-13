@@ -5,7 +5,6 @@
 #include "ast/overload_set.h"
 #include "backend/eval.h"
 #include "compiler/compiler.h"
-#include "compiler/dispatch/dispatch.h"
 #include "compiler/extract_jumps.h"
 #include "error/inference_failure_reason.h"
 #include "frontend/operators.h"
@@ -17,28 +16,6 @@
 #include "type/type.h"
 #include "type/typed_value.h"
 #include "type/util.h"
-
-namespace ast {
-
-compiler::VerifyResult VerifyJumpDispatch(
-    compiler::Compiler *visitor, ExprPtr expr,
-    absl::Span<ir::JumpHandler const *const> overload_set,
-    core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
-        &args,
-    std::vector<ir::BlockDef const *> *block_defs);
-
-compiler::VerifyResult VerifyDispatch(
-    compiler::Compiler *visitor, ExprPtr expr,
-    absl::Span<ir::AnyFunc const> overload_set,
-    core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
-        &args);
-
-compiler::VerifyResult VerifyDispatch(
-    compiler::Compiler *visitor, ExprPtr expr, OverloadSet const &overload_set,
-    core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
-        &args);
-
-}  // namespace ast
 
 namespace ir {
 
@@ -553,8 +530,7 @@ VerifyResult Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
       } else {
         ASSERT(output_type_vec.at(i) == type::Type_);
         output_type_vec.at(i) = backend::EvaluateAs<type::Type const *>(
-            type::Typed<ast::Expression const *>((*outputs)[i], type::Type_),
-            this);
+            MakeThunk((*outputs)[i], type::Type_));
       }
     }
 
@@ -645,8 +621,8 @@ VerifyResult Compiler::Visit(ast::Access const *node, VerifyTypeTag) {
     //    f ::= (T: type) => T.key
     // We need to know that T is const
     auto *t           = type_of(node->operand());
-    auto *evaled_type = backend::EvaluateAs<type::Type const *>(
-        type::Typed{node->operand(), t}, this);
+    auto *evaled_type =
+        backend::EvaluateAs<type::Type const *>(MakeThunk(node->operand(), t));
 
     // For enums and flags, regardless of whether we can get the value, it's
     // clear that node is supposed to be a member so we should emit an error but
@@ -696,7 +672,7 @@ VerifyResult Compiler::Visit(ast::Access const *node, VerifyTypeTag) {
     }
 
     auto *mod = backend::EvaluateAs<module::BasicModule const *>(
-        type::Typed{node->operand(), operand_result.type()}, this);
+        MakeThunk(node->operand(), operand_result.type()));
     auto decls = mod->declarations(node->member_name());
     type::Type const *t;
     switch (decls.size()) {
@@ -996,8 +972,7 @@ static VerifyResult VerifyCall(Compiler *visitor, ast::BuiltinFn const *b,
         }
       }
       return VerifyResult::Constant(backend::EvaluateAs<type::Type const *>(
-          type::Typed<ast::Expression const *>{args.at(1), type::Type_},
-          visitor));
+          visitor->MakeThunk(args.at(1), type::Type_)));
     } break;
     case core::Builtin::Opaque:
       if (not arg_results.empty()) {
@@ -1117,12 +1092,16 @@ VerifyResult Compiler::Visit(ast::Call const *node, VerifyTypeTag) {
         std::piecewise_construct, std::forward_as_tuple(name),
         std::forward_as_tuple(node->args().at(name), res));
   }
+  /*
+     NOT_YET();
   auto table = DispatchTable::Verify(
       this, overload_set,
       arg_expr_result.Transform([](auto x) { return x.second; }));
   static_cast<void>(table);
 
   return ast::VerifyDispatch(this, node, overload_set, arg_expr_result);
+  */
+  return VerifyResult::Error();
 }
 
 VerifyResult Compiler::Visit(ast::Cast const *node, VerifyTypeTag) {
@@ -1141,7 +1120,7 @@ VerifyResult Compiler::Visit(ast::Cast const *node, VerifyTypeTag) {
     return VerifyResult::Error();
   }
   auto *t = ASSERT_NOT_NULL(backend::EvaluateAs<type::Type const *>(
-      type::Typed<ast::Expression const *>(node->type(), type::Type_), this));
+      MakeThunk(node->type(), type::Type_)));
   if (t->is<type::Struct>()) {
     ast::OverloadSet os(node->scope_, "as");
     AddAdl(&os, "as", t);
@@ -1371,11 +1350,10 @@ VerifyResult Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
       auto *type_expr_type = type_expr_result.type();
       if (type_expr_type == type::Type_) {
         node_type = ASSERT_NOT_NULL(
-            set_result(node, VerifyResult::Constant(
-                                 backend::EvaluateAs<type::Type const *>(
-                                     type::Typed<ast::Expression const *>(
-                                         node->type_expr(), type_expr_type),
-                                     this)))
+            set_result(
+                node,
+                VerifyResult::Constant(backend::EvaluateAs<type::Type const *>(
+                    MakeThunk(node->type_expr(), type_expr_type))))
                 .type());
 
         if (not(node->flags() & ast::Declaration::f_IsFnParam) and
@@ -1438,11 +1416,10 @@ VerifyResult Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
           error = true;
         } else {
           node_type =
-              set_result(node, VerifyResult::Constant(
-                                   backend::EvaluateAs<type::Type const *>(
-                                       type::Typed<ast::Expression const *>(
-                                           node->type_expr(), type::Type_),
-                                       this)))
+              set_result(node,
+                         VerifyResult::Constant(
+                             backend::EvaluateAs<type::Type const *>(
+                                 MakeThunk(node->type_expr(), type::Type_))))
                   .type();
         }
 
@@ -1471,11 +1448,10 @@ VerifyResult Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
           return set_result(node, VerifyResult::Error());
         }
         node_type =
-            set_result(node, VerifyResult::Constant(
-                                 backend::EvaluateAs<type::Type const *>(
-                                     type::Typed<ast::Expression const *>(
-                                         node->type_expr(), type::Type_),
-                                     this)))
+            set_result(
+                node,
+                VerifyResult::Constant(backend::EvaluateAs<type::Type const *>(
+                    MakeThunk(node->type_expr(), type::Type_))))
                 .type();
       } else {
         error_log()->NotAType(node->type_expr()->span,
@@ -1498,9 +1474,7 @@ VerifyResult Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
       // TODO what if no init val is provded? what if not constant?
       node->scope_->embedded_modules_.insert(
           backend::EvaluateAs<module::BasicModule const *>(
-              type::Typed<ast::Expression const *>(node->init_val(),
-                                                   type::Module),
-              this));
+              MakeThunk(node->init_val(), type::Module)));
       return set_result(node, VerifyResult::Constant(type::Module));
     } else if (node_type->is<type::Tuple>()) {
       NOT_YET(node_type, ast::Dump::ToString(node));
@@ -1652,8 +1626,7 @@ VerifyResult Compiler::Visit(ast::Import const *node, VerifyTypeTag) {
   if (err) { return VerifyResult::Error(); }
   // TODO storing node might not be safe.
   auto src = backend::EvaluateAs<std::string_view>(
-      type::Typed<ast::Expression const *>(node->operand(), type::ByteView),
-      this);
+      MakeThunk(node->operand(), type::ByteView));
   // TODO source name?
   ASSIGN_OR(
       error_log()->MissingModule(src, std::filesystem::path{"TODO source"});
@@ -1696,8 +1669,7 @@ VerifyResult Compiler::Visit(ast::Index const *node, VerifyTypeTag) {
     }
 
     int64_t index = [&]() -> int64_t {
-      auto results =
-          backend::Evaluate(type::Typed{node->rhs(), index_type}, this);
+      auto results = backend::Evaluate(MakeThunk(node->rhs(), index_type));
       if (index_type == type::Int8) { return results.get<int8_t>(0).value(); }
       if (index_type == type::Int16) { return results.get<int16_t>(0).value(); }
       if (index_type == type::Int32) { return results.get<int32_t>(0).value(); }
@@ -1838,8 +1810,8 @@ VerifyResult Compiler::Visit(ast::ScopeNode const *node, VerifyTypeTag) {
   // computing all the block handlers which may be generics.
   //
   // TODO is the scope type correct here?
-  auto *scope_def = backend::EvaluateAs<ir::ScopeDef *>(
-      type::Typed<ast::Expression const *>{node->name(), type::Scope}, this);
+  auto *scope_def =
+      backend::EvaluateAs<ir::ScopeDef *>(MakeThunk(node->name(), type::Scope));
   if (scope_def->work_item and *scope_def->work_item) {
     (std::move(*scope_def->work_item))();
   }

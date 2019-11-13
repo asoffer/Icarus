@@ -2,51 +2,16 @@
 
 #include "ast/expression.h"
 #include "backend/exec.h"
-#include "compiler/compiler.h"
 #include "core/arch.h"
 #include "ir/builder.h"
 #include "ir/cmd/jumps.h"
 #include "ir/cmd/return.h"
 #include "ir/compiled_fn.h"
-#include "type/generic_struct.h"
-#include "type/util.h"
 
 namespace backend {
-static ir::CompiledFn ExprFn(compiler::Compiler *visitor,
-                             type::Typed<ast::Expression const *> typed_expr) {
-  ir::CompiledFn fn(type::Func({}, {ASSERT_NOT_NULL(typed_expr.type())}),
-                    core::FnParams<type::Typed<ast::Declaration const *>>{});
-  ICARUS_SCOPE(ir::SetCurrentFunc(&fn)) {
-    // TODO this is essentially a copy of the body of FunctionLiteral::EmitValue
-    // Factor these out together.
-    ir::GetBuilder().CurrentBlock() = fn.entry();
-
-    auto vals = visitor->Visit(typed_expr.get(), compiler::EmitValueTag{});
-    // TODO wrap this up into SetRet(vector)
-    std::vector<type::Type const *> extracted_types;
-    if (auto *tup = typed_expr.type()->if_as<type::Tuple>()) {
-      extracted_types = tup->entries_;
-    } else {
-      extracted_types = {typed_expr.type()};
-    }
-    for (size_t i = 0; i < vals.size(); ++i) {
-      ir::SetRet(i, type::Typed{vals.GetResult(i), extracted_types.at(i)});
-    }
-    ir::ReturnJump();
-
-    visitor->CompleteDeferredBodies();
-  }
-  return fn;
-}
-
-base::untyped_buffer EvaluateToBuffer(
-    type::Typed<ast::Expression const *> typed_expr,
-    compiler::Compiler *visitor) {
-  DEBUG_LOG("eval")(ast::Dump::ToString(typed_expr.get()));
-  DEBUG_LOG("eval")(*typed_expr.type());
-  auto fn = ExprFn(visitor, typed_expr);
-
-  size_t bytes_needed = typed_expr.type()->bytes(core::Interpretter()).value();
+base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
+  size_t bytes_needed =
+      fn.type()->output[0]->bytes(core::Interpretter()).value();
   base::untyped_buffer ret_buf(bytes_needed);
   ret_buf.append_bytes(bytes_needed, 1);
   std::vector<ir::Addr> ret_slots;
@@ -57,26 +22,17 @@ base::untyped_buffer EvaluateToBuffer(
   return ret_buf;
 }
 
-ir::Results Evaluate(type::Typed<ast::Expression const *> typed_expr,
-                     compiler::Compiler *visitor) {
-  // TODO is the error-case distinguishible from successfully returning void?
-  if (visitor->num_errors() != 0) { return ir::Results{}; }
-
-  ASSERT(typed_expr.type() != nullptr);
+ir::Results Evaluate(ir::CompiledFn &&fn) {
   std::vector<uint32_t> offsets;
-  auto buf = EvaluateToBuffer(typed_expr, visitor);
+  auto buf = EvaluateToBuffer(std::move(fn));
 
-  if (auto *tup = typed_expr.type()->if_as<type::Tuple>()) {
-    offsets.reserve(tup->entries_.size());
-    auto arch   = core::Interpretter();
-    auto offset = core::Bytes{0};
-    for (auto *t : tup->entries_) {
-      offset = core::FwdAlign(offset, t->alignment(arch));
-      offsets.push_back(offset.value());
-      offset += t->bytes(arch);
-    }
-  } else {
-    offsets.push_back(0);
+  offsets.reserve(fn.type()->output.size());
+  auto arch   = core::Interpretter();
+  auto offset = core::Bytes{0};
+  for (auto *t : fn.type()->output) {
+    offset = core::FwdAlign(offset, t->alignment(arch));
+    offsets.push_back(offset.value());
+    offset += t->bytes(arch);
   }
 
   return ir::Results::FromUntypedBuffer(std::move(offsets), std::move(buf));

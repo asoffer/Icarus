@@ -6,6 +6,7 @@ COMMON_IMPL_DEPS = [
     "//ast/scope:exec",
     "//base:log",
     "//base:untyped_buffer",
+    "//compiler:compiler",
     "//compiler:extract_jumps",
     "//error:log",
     "//frontend:lex",

@@ -11,7 +11,6 @@
 
 #include "ast/ast.h"
 #include "base/util.h"
-#include "compiler/compiler.h"
 #include "core/arch.h"
 #include "error/log.h"
 #include "ir/basic_block.h"
@@ -347,6 +346,8 @@ BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
       default: UNREACHABLE();
     }
   } else if constexpr (std::is_same_v<CmdType, ScopeCmd>) {
+    NOT_YET();
+    /*
     auto *compiler = iter->read<compiler::Compiler *>();
 
     std::vector<JumpHandler const *> inits =
@@ -370,7 +371,10 @@ BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
                     compiler->AddScope(std::move(inits), std::move(dones),
                                        std::move(blocks)));
 
+    */
   } else if constexpr (std::is_same_v<CmdType, BlockCmd>) {
+    NOT_YET();
+    /*
     auto *compiler                   = iter->read<compiler::Compiler *>();
     std::vector<AnyFunc> before_vals = internal::Deserialize<uint16_t, AnyFunc>(
         iter, [ctx](Reg reg) { return ctx->resolve<AnyFunc>(reg); });
@@ -386,6 +390,7 @@ BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
         GetOffset(frame.fn_, result_reg),
         compiler->AddBlock(std::move(before_vals), std::move(after_vals)));
 
+        */
   } else if constexpr (std::is_same_v<CmdType, EnumerationCmd>) {
     using enum_t             = typename CmdType::enum_t;
     bool is_enum_not_flags   = iter->read<bool>();

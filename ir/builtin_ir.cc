@@ -1,6 +1,7 @@
 #include "ir/builtin_ir.h"
 
 #include "core/fn_params.h"
+#include "ir/builder.h"
 #include "ir/cmd/jumps.h"
 #include "ir/cmd/misc.h"
 #include "ir/cmd/return.h"
