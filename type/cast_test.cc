@@ -208,7 +208,7 @@ TEST_CASE("Variants") {
 
   SECTION("Variant to variant") {
     CHECK(CanCast(Var({Int16, Int64}), Var({Int16, Int64})));
-    CHECK(CanCast(Var({Int16, Int64}), Var({Bool, Int16, Int64})));
+    CHECK_FALSE(CanCast(Var({Int16, Int64}), Var({Bool, Int16, Int64})));
 
     CHECK(CanCast(Var({Int32, BufPtr(Bool)}), Var({Int64, Ptr(Bool)})));
     CHECK_FALSE(CanCast(Var({Int32, BufPtr(Bool)}),

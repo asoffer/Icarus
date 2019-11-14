@@ -16,8 +16,22 @@
 
 namespace type {
 
+static bool CanCastPointer(Pointer const *from, Pointer const *to) {
+  if (from == to) { return true; }
+  if (to->is<BufferPointer>() and not from->is<BufferPointer>()) {
+    return false;
+  }
+  if (auto *from_p = from->pointee->if_as<Pointer>()) {
+    if (auto *to_p = to->pointee->if_as<Pointer>()) {
+      return CanCastPointer(from_p, to_p);
+    }
+  }
+  return from->pointee == to->pointee;
+}
+
 // TODO much of this should be moved to virtual methods.
 bool CanCast(Type const *from, Type const *to) {
+  if (to == from) { return true; }
   // TODO handle reinterpretation
 
   if (IsIntegral(from) and IsNumeric(to)) { return true; }
@@ -62,6 +76,34 @@ bool CanCast(Type const *from, Type const *to) {
       return true;
     } else {
       return false;
+    }
+  }
+
+  if (from == NullPtr) {
+    if (auto *to_p = to->if_as<Pointer>()) { return true; }
+  }
+  if (auto *to_p = to->if_as<Pointer>()) {
+    if (auto *from_p = from->if_as<Pointer>()) {
+      return CanCastPointer(from_p, to_p);
+    }
+  }
+
+  if (from == EmptyArray) {
+    if (auto *to_arr = to->if_as<Array>()) {
+      return to_arr->len == 0;
+    } else {
+      return false;
+    }
+  }
+
+  if (auto * from_arr = from->if_as<Array>()) {
+    if (auto *to_arr = to->if_as<Array>()) {
+      if (from_arr->len != to_arr->len) { return false; }
+      if (auto *from_p = from_arr->data_type->if_as<Pointer>()) {
+        if (auto *to_p = to_arr->data_type->if_as<Pointer>()) {
+          return CanCastPointer(from_p, to_p);
+        }
+      }
     }
   }
 
