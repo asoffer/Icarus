@@ -8,6 +8,6 @@ CompilationData::CompilationData(module::BasicModule *mod)
 }
 
 CompilationData::~CompilationData() {
-  ASSERT(data_.deferred_work_.lock()->empty() == true);
+  ASSERT(deferred_work_.lock()->empty() == true);
 }
 }  // namespace compiler

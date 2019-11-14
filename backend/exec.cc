@@ -897,7 +897,7 @@ ir::BasicBlock const *ExecContext::ExecuteBlock(
     const std::vector<ir::Addr> &ret_slots) {
   auto iter = current_block()->cmd_buffer_.begin();
   while (true) {
-    ASSERT(iter < buf_.end());
+    ASSERT(iter < current_block()->cmd_buffer_.end());
     auto cmd_index = iter.read<ir::cmd_index_t>();
     switch (cmd_index) {
 #define CASE(type)                                                             \

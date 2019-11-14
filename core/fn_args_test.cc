@@ -26,6 +26,14 @@ TEST_CASE("size") {
   CHECK_FALSE(args.empty());
 }
 
+TEST_CASE("iterators") {
+  auto args = FnArgs<int>{};
+  CHECK(args.begin() == args.end());
+
+  args = FnArgs<int>({}, {{"hello", -3}, {"world", -5}});
+  CHECK(args.begin() != args.end());
+}
+
 TEST_CASE("mutable access") {
   FnArgs<int> args({1, 4, 9}, {{"hello", -3}, {"world", -5}});
   CHECK(args.pos() == std::vector<int>{1, 4, 9});
