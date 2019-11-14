@@ -26,6 +26,10 @@ struct untyped_buffer {
 
     void skip(size_t n) { ptr_ += n; }
 
+#if defined(ICARUS_DEBUG)
+    uintptr_t DebugValue() const { return reinterpret_cast<uintptr_t>(ptr_); }
+#endif  // defined(ICARUS_DEBUG)
+
    private:
     friend struct untyped_buffer;
     friend std::string stringify(untyped_buffer::const_iterator);
@@ -76,6 +80,10 @@ struct untyped_buffer {
 
     operator const_iterator() { return const_iterator(ptr_); }
 
+#if defined(ICARUS_DEBUG)
+    uintptr_t DebugValue() const { return reinterpret_cast<uintptr_t>(ptr_); }
+#endif  // defined(ICARUS_DEBUG)
+
    private:
     friend struct untyped_buffer;
     friend std::string stringify(untyped_buffer::iterator);
@@ -119,6 +127,10 @@ struct untyped_buffer {
     }
 
     void skip(size_t n) { ptr_ += n; }
+
+#if defined(ICARUS_DEBUG)
+    uintptr_t DebugValue() const { return reinterpret_cast<uintptr_t>(ptr_); }
+#endif  // defined(ICARUS_DEBUG)
 
    private:
     friend struct untyped_buffer;

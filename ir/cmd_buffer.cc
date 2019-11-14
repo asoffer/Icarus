@@ -79,8 +79,4 @@ std::string CmdBuffer::to_string() const {
 #undef CASES
 #undef DEBUG_CASES
 
-size_t GetOffset(CompiledFn const* fn, Reg r) {
-  return 0; // TODO
-  // return ASSERT_NOT_NULL(fn->offset_or_null(r))->value();
-}
 }  // namespace ir

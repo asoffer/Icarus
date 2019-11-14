@@ -59,6 +59,10 @@ struct BlockGroup {
 
   core::Bytes const *offset_or_null(Reg r) const {
     auto iter = reg_to_offset_.find(r);
+    DEBUG_LOG("offset_or_null")(reg_to_offset_);
+    DEBUG_LOG("offset_or_null")
+    ("offset_or_null(", r,
+     ") = ", iter != reg_to_offset_.end() ? iter->second : core::Bytes(-1));
     return iter != reg_to_offset_.end() ? &iter->second : nullptr;
   }
 

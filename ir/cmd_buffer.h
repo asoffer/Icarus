@@ -55,7 +55,6 @@ struct CmdBuffer {
   base::untyped_buffer buf_;
 };
 
-size_t GetOffset(CompiledFn const* fn, Reg r);
 }  // namespace ir
 
 #endif  // ICARUS_IR_CMD_BUFFER_H
