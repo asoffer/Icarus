@@ -60,7 +60,6 @@ cc_lib(
         ":util",
         "//base:debug",
     ],
-    header_only = True,
     test_deps = None,
 )
 

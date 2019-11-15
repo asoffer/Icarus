@@ -53,7 +53,7 @@ struct Type : public base::Cast<Type> {
   bool IsDefaultInitializable() const { return true; }
   bool IsCopyable() const { return true; }
   bool IsMovable() const { return true; }
-  bool HasDestructor() const { return true; }
+  bool HasDestructor() const { return false; }
 
   virtual void Accept(VisitorBase *visitor, void *ret,
                       void *arg_tuple) const = 0;

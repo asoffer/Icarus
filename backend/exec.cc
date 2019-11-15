@@ -40,10 +40,6 @@
 // TODO compile-time failure. dump the stack trace and abort for Null address
 // kinds
 
-namespace ast {
-struct Expression;
-}  // namespace ast
-
 namespace ir {
 namespace {
 
@@ -55,6 +51,7 @@ type::Function const *GetType(AnyFunc f) {
 template <typename CmdType, typename T>
 auto BinaryApply(base::untyped_buffer::const_iterator *iter, bool reg0,
                  bool reg1, backend::ExecContext *ctx) {
+  DEBUG_LOG("binary")("xyz");
   using fn_type = typename CmdType::fn_type;
   if constexpr (CmdType::template IsSupported<T>()) {
     auto lhs = reg0 ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>();
@@ -85,6 +82,8 @@ template <typename CmdType>
 BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
                              std::vector<Addr> const &ret_slots,
                              backend::ExecContext *ctx) {
+  auto iter_copy = *iter;
+  DEBUG_LOG("cmd")(CmdType::DebugString(&iter_copy));
   auto &frame = ctx->call_stack.top();
   if constexpr (std::is_same_v<CmdType, PrintCmd>) {
     auto ctrl = iter->read<typename CmdType::control_bits>();
@@ -154,6 +153,7 @@ BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
                        std::is_same_v<CmdType, NeCmd> or
                        std::is_same_v<CmdType, GeCmd> or
                        std::is_same_v<CmdType, GtCmd>) {
+    DEBUG_LOG("binary")("");
     auto ctrl = iter->read<typename CmdType::control_bits>();
     PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
       using type  = typename std::decay_t<decltype(tag)>::type;
