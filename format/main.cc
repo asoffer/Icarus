@@ -1,12 +1,13 @@
 #include <filesystem>
 #include <vector>
 
+#include "absl/debugging/failure_signal_handler.h"
+#include "absl/debugging/symbolize.h"
 #include "ast/node.h"
 #include "format/token_extractor.h"
 #include "frontend/parse.h"
 #include "frontend/source/string.h"
 #include "init/cli.h"
-#include "init/signal.h"
 
 namespace format {
 int FormatFile(std::filesystem::path const &file) {
@@ -28,6 +29,8 @@ void cli::Usage() {
 }
 
 int main(int argc, char *argv[]) {
-  init::InstallSignalHandlers();
+  absl::InitializeSymbolizer(argv[0]);
+  absl::FailureSignalHandlerOptions opts;
+  absl::InstallFailureSignalHandler(opts);
   return cli::ParseAndRun(argc, argv);
 }

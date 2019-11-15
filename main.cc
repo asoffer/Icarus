@@ -1,9 +1,10 @@
 #include <vector>
 
+#include "absl/debugging/failure_signal_handler.h"
+#include "absl/debugging/symbolize.h"
 #include "absl/strings/str_split.h"
 #include "base/log.h"
 #include "init/cli.h"
-#include "init/signal.h"
 
 namespace debug {
 extern bool parser;
@@ -42,6 +43,8 @@ void cli::Usage() {
 }
 
 int main(int argc, char *argv[]) {
-  init::InstallSignalHandlers();
+  absl::InitializeSymbolizer(argv[0]);
+  absl::FailureSignalHandlerOptions opts;
+  absl::InstallFailureSignalHandler(opts);
   return cli::ParseAndRun(argc, argv);
 }

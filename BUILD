@@ -29,9 +29,10 @@ cc_binary(
     deps = COMMON_IMPL_DEPS + [
         "//diagnostic:console_renderer",
         "//init:cli",
-        "//init:signal",
         "//run:repl",
         "//run:compiler",
+        "@com_google_absl//absl/debugging:failure_signal_handler",
+        "@com_google_absl//absl/debugging:symbolize",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -44,8 +45,9 @@ cc_binary(
         "//base:macros",
         "//diagnostic:console_renderer",
         "//init:cli",
-        "//init:signal",
         "//match:binding_id",
         "//match:match_expr",
+        "@com_google_absl//absl/debugging:failure_signal_handler",
+        "@com_google_absl//absl/debugging:symbolize",
     ],
 )

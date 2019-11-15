@@ -10,8 +10,3 @@ cc_lib(
     ],
     test_deps = None,
 )
-cc_lib(
-    name = "signal",
-    deps = [],
-    test_deps = None,
-)

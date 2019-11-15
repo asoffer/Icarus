@@ -14,12 +14,13 @@ cc_binary(
         "//frontend:parse",
         "//frontend/source:string",
         "//init:cli",
-        "//init:signal",
         "//ir:results",
         "//ir:str",
         "//module:assign_scope",
         "//module:dependent_decls",
         "//module:module",
+        "@com_google_absl//absl/debugging:failure_signal_handler",
+        "@com_google_absl//absl/debugging:symbolize",
     ],
 )
 

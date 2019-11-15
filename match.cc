@@ -1,13 +1,14 @@
 #include <filesystem>
 #include <vector>
 
+#include "absl/debugging/failure_signal_handler.h"
+#include "absl/debugging/symbolize.h"
 #include "ast/expression.h"
 #include "ast/node.h"
 #include "base/macros.h"
 #include "frontend/parse.h"
 #include "frontend/source/file.h"
 #include "init/cli.h"
-#include "init/signal.h"
 #include "match/match_expr.h"
 
 namespace match {
@@ -49,6 +50,8 @@ void cli::Usage() {
 }
 
 int main(int argc, char *argv[]) {
-  init::InstallSignalHandlers();
+  absl::InitializeSymbolizer(argv[0]);
+  absl::FailureSignalHandlerOptions opts;
+  absl::InstallFailureSignalHandler(opts);
   return cli::ParseAndRun(argc, argv);
 }
