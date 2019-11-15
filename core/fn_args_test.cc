@@ -83,10 +83,33 @@ TEST_CASE("apply with index") {
 }
 
 TEST_CASE("const_iterator") {
-  FnArgs<int> fnargs({1, 2, 3}, {{"hello", -3}, {"world", -5}});
-  int total = 0;
-  for (int n : fnargs) { total += n; }
-  CHECK(total == -2);
+  SECTION("generic") {
+    FnArgs<int> fnargs({1, 2, 3}, {{"hello", -3}, {"world", -5}});
+    int total = 0;
+    for (int n : fnargs) { total += n; }
+    CHECK(total == -2);
+  }
+
+  SECTION("positional only") {
+    FnArgs<int> fnargs({1, 2, 3}, {});
+    int total = 0;
+    for (int n : fnargs) { total += n; }
+    CHECK(total == 6);
+  }
+
+  SECTION("named only") {
+    FnArgs<int> fnargs({}, {{"hello", -3}, {"world", -5}});
+    int total = 0;
+    for (int n : fnargs) { total += n; }
+    CHECK(total == -8);
+  }
+
+  SECTION("empty") {
+    FnArgs<int> fnargs({}, {});
+    int total = 0;
+    for (int n : fnargs) { total += n; }
+    CHECK(total == 0);
+  }
 }
 
 }  // namespace

@@ -144,14 +144,14 @@ struct FnArgs {
    private:
     friend struct FnArgs<T>;
     static const_iterator MakeBegin(FnArgs<T> const *data) {
-      return const_iterator(data, data->pos_.begin());
+      if (data->pos_.empty()) {
+        return const_iterator(data, data->named_.begin());
+      } else {
+        return const_iterator(data, data->pos_.begin());
+      }
     }
     static const_iterator MakeEnd(FnArgs<T> const *data) {
-      if (data->named_.empty()) {
-        return const_iterator(data, data->pos_.end());
-      } else {
-        return const_iterator(data, data->named_.end());
-      }
+      return const_iterator(data, data->named_.end());
     }
 
     const_iterator(FnArgs<T> const *data,
