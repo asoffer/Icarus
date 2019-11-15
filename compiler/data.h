@@ -1,7 +1,7 @@
 #ifndef ICARUS_COMPILER_DATA_H
 #define ICARUS_COMPILER_DATA_H
 
-#include <list>
+#include <forward_list>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -22,6 +22,11 @@ namespace compiler {
 struct CompilationData {
   explicit CompilationData(module::BasicModule *mod);
   ~CompilationData();
+
+  ir::ScopeDef *add_scope(module::BasicModule const *mod) {
+    return &scope_defs_.emplace_front(mod);
+  }
+  ir::BlockDef *add_block() { return &block_defs_.emplace_front(); }
 
   module::BasicModule *mod_;
   ir::Builder &bldr_;
@@ -63,8 +68,12 @@ struct CompilationData {
       deferred_work_;
 
   std::vector<std::unique_ptr<ir::CompiledFn>> fns_;
-  std::vector<std::unique_ptr<ir::ScopeDef>> scope_defs_;
-  std::vector<std::unique_ptr<ir::BlockDef>> block_defs_;
+
+  // std::forward_list makes sense for many of the strutures below because we
+  // never traverse them and we need pointer stability. A vector of unique_ptrs
+  // would also work, but would unnecessarily reallocate with some frequency.
+  std::forward_list<ir::ScopeDef> scope_defs_;
+  std::forward_list<ir::BlockDef> block_defs_;
 
   // TODO It's possible to have layers of constant bindings in a tree-like
   // structure. For example,
@@ -77,11 +86,7 @@ struct CompilationData {
   // structure would be more efficient? More cache misses, but you're already
   // paying heavily for the equality call, so maybe it's just a simpler
   // structure.
-  //
-  // std::list makes sense here because we never traverse them and we need
-  // pointer stability. A vector of unique_ptrs would also work, but would
-  // unnecessarily reallocate with some frequency..
-  std::list<std::pair<ConstantBinding, DependentData>> dep_data_;
+  std::forward_list<std::pair<ConstantBinding, DependentData>> dep_data_;
 
   error::Log error_log_;
 };

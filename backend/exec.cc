@@ -14,6 +14,7 @@
 #include "core/arch.h"
 #include "error/log.h"
 #include "ir/basic_block.h"
+#include "ir/block_def.h"
 #include "ir/cmd/basic.h"
 #include "ir/cmd/call.h"
 #include "ir/cmd/cast.h"
@@ -30,6 +31,7 @@
 #include "ir/cmd/util.h"
 #include "ir/compiled_fn.h"
 #include "ir/read_only_data.h"
+#include "ir/scope_def.h"
 #include "type/type.h"
 #include "type/util.h"
 
@@ -333,49 +335,34 @@ BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
       default: UNREACHABLE();
     }
   } else if constexpr (std::is_same_v<CmdType, ScopeCmd>) {
-    NOT_YET();
-    /*
-    auto *compiler = iter->read<compiler::Compiler *>();
+    auto *scope_def = iter->read<ir::ScopeDef *>();
 
-    std::vector<JumpHandler const *> inits =
-        internal::Deserialize<uint16_t, JumpHandler const *>(
-            iter,
-            [ctx](Reg reg) { return ctx->resolve<JumpHandler const *>(reg); });
-    std::vector<AnyFunc> dones = internal::Deserialize<uint16_t, AnyFunc>(
+    scope_def->inits_ = internal::Deserialize<uint16_t, JumpHandler const *>(
+        iter,
+        [ctx](Reg reg) { return ctx->resolve<JumpHandler const *>(reg); });
+    scope_def->dones_ = internal::Deserialize<uint16_t, AnyFunc>(
         iter, [ctx](Reg reg) { return ctx->resolve<AnyFunc>(reg); });
 
     auto num_blocks = iter->read<uint16_t>();
-    absl::flat_hash_map<std::string_view, BlockDef *> blocks;
     for (uint16_t i = 0; i < num_blocks; ++i) {
       auto name  = iter->read<std::string_view>();
       auto block = ctx->resolve<BlockDef *>(iter->read<BlockDef *>());
-      blocks.emplace(name, block);
+      scope_def->blocks_.emplace(name, block);
     }
 
     Reg result_reg = iter->read<Reg>();
-    frame.regs_.set(ctx->Offset(result_reg),
-                    compiler->AddScope(std::move(inits), std::move(dones),
-                                       std::move(blocks)));
+    frame.regs_.set(ctx->Offset(result_reg), scope_def);
 
-    */
   } else if constexpr (std::is_same_v<CmdType, BlockCmd>) {
-    NOT_YET();
-    /*
-    auto *compiler                   = iter->read<compiler::Compiler *>();
-    std::vector<AnyFunc> before_vals = internal::Deserialize<uint16_t, AnyFunc>(
+    auto *block_def = iter->read<ir::BlockDef *>();
+    block_def->before_ = internal::Deserialize<uint16_t, AnyFunc>(
         iter, [ctx](Reg reg) { return ctx->resolve<AnyFunc>(reg); });
-    std::vector<JumpHandler const *> after_vals =
-        internal::Deserialize<uint16_t, JumpHandler const *>(
-            iter,
-            [ctx](Reg reg) { return ctx->resolve<JumpHandler const *>(reg); });
+    block_def->after_ = internal::Deserialize<uint16_t, JumpHandler const *>(
+        iter,
+        [ctx](Reg reg) { return ctx->resolve<JumpHandler const *>(reg); });
     Reg result_reg = iter->read<Reg>();
+    frame.regs_.set(ctx->Offset(result_reg), block_def);
 
-    // TODO deal with leak.
-    frame.regs_.set(
-        ctx->Offset(result_reg),
-        compiler->AddBlock(std::move(before_vals), std::move(after_vals)));
-
-        */
   } else if constexpr (std::is_same_v<CmdType, EnumerationCmd>) {
     using enum_t             = typename CmdType::enum_t;
     bool is_enum_not_flags   = iter->read<bool>();

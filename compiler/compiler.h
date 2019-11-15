@@ -200,12 +200,6 @@ struct Compiler
   ir::CompiledFn *AddJump(
       type::Jump const *jump_type,
       core::FnParams<type::Typed<ast::Declaration const *>> params);
-  ir::ScopeDef *AddScope(
-      std::vector<ir::JumpHandler const *> inits,
-      std::vector<ir::AnyFunc> dones,
-      absl::flat_hash_map<std::string_view, ir::BlockDef *> blocks);
-  ir::BlockDef *AddBlock(std::vector<ir::AnyFunc> befores,
-                         std::vector<ir::JumpHandler const *> afters);
 
   ast::DispatchTable const *dispatch_table(ast::ExprPtr expr) const;
   ast::DispatchTable const *jump_table(ast::ExprPtr jump_expr,

@@ -44,11 +44,11 @@ struct CompiledModule : module::ExtendedModule<CompiledModule> {
   // std::list makes sense here because we never traverse them and we need
   // pointer stability. A vector of unique_ptrs would also work, but would
   // unnecessarily reallocate with some frequency..
-  std::list<std::pair<ConstantBinding, DependentData>> dep_data_;
+  std::forward_list<std::pair<ConstantBinding, DependentData>> dep_data_;
 
   std::vector<std::unique_ptr<ir::CompiledFn>> fns_;
-  std::vector<std::unique_ptr<ir::ScopeDef>> scope_defs_;
-  std::vector<std::unique_ptr<ir::BlockDef>> block_defs_;
+  std::forward_list<ir::ScopeDef> scope_defs_;
+  std::forward_list<ir::BlockDef> block_defs_;
 };
 
 }  // namespace compiler

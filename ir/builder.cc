@@ -220,12 +220,12 @@ Reg VariantValue(type::Variant const *v, RegOr<Addr> const &r) {
   return MakeVariantAccessCmd(r, v);
 }
 
-Reg BlockHandler(compiler::Compiler *compiler,
+Reg BlockHandler(ir::BlockDef *block_def,
                  absl::Span<RegOr<AnyFunc> const> befores,
                  absl::Span<RegOr<JumpHandler const *> const> afters) {
   auto &blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append_index<BlockCmd>();
-  blk.cmd_buffer_.append(compiler);
+  blk.cmd_buffer_.append(block_def);
   internal::Serialize<uint16_t>(&blk.cmd_buffer_, befores);
   internal::Serialize<uint16_t>(&blk.cmd_buffer_, afters);
   Reg r = MakeResult<BlockDef const *>();
@@ -234,13 +234,12 @@ Reg BlockHandler(compiler::Compiler *compiler,
 }
 
 Reg ScopeHandler(
-    compiler::Compiler *compiler,
-    absl::Span<RegOr<JumpHandler const *> const> inits,
+    ir::ScopeDef *scope_def, absl::Span<RegOr<JumpHandler const *> const> inits,
     absl::Span<RegOr<AnyFunc> const> dones,
     absl::flat_hash_map<std::string_view, BlockDef *> const &blocks) {
   auto &blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append_index<ScopeCmd>();
-  blk.cmd_buffer_.append(compiler);
+  blk.cmd_buffer_.append(scope_def);
   internal::Serialize<uint16_t>(&blk.cmd_buffer_, inits);
   internal::Serialize<uint16_t>(&blk.cmd_buffer_, dones);
   blk.cmd_buffer_.append<uint16_t>(blocks.size());

@@ -593,7 +593,7 @@ ir::Results Compiler::Visit(ast::BlockLiteral const *node, EmitValueTag) {
         Visit(decl, EmitValueTag{}).get<ir::JumpHandler const *>(0));
   }
 
-  return ir::Results{ir::BlockHandler(this, befores, afters)};
+  return ir::Results{ir::BlockHandler(data_.add_block(), befores, afters)};
 }
 
 template <typename T>
@@ -1353,7 +1353,8 @@ ir::Results Compiler::Visit(ast::ScopeLiteral const *node, EmitValueTag) {
     }
   }
 
-  return ir::Results{ir::ScopeHandler(this, inits, dones, blocks)};
+  return ir::Results{
+      ir::ScopeHandler(data_.add_scope(module()), inits, dones, blocks)};
 }
 
 ir::Results InitializeAndEmitBlockNode(Compiler *compiler,

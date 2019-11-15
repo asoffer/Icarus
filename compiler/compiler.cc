@@ -112,11 +112,12 @@ void Compiler::set_dispatch_table(ast::ExprPtr expr,
 
 std::pair<ConstantBinding, DependentData> *Compiler::insert_constants(
     ConstantBinding const &constant_binding) {
+  // TODO remove this iteration
   for (auto iter = data_.dep_data_.begin(); iter != data_.dep_data_.end(); ++iter) {
     auto &[key, val] = *iter;
     if (key == constant_binding) { return &*iter; }
   }
-  auto *pair = &data_.dep_data_.emplace_back(constant_binding, DependentData{});
+  auto *pair = &data_.dep_data_.emplace_front(constant_binding, DependentData{});
   pair->second.constants_ = pair->first;
 
   for (auto const &[decl, binding] : constant_binding.keys_) {
@@ -196,23 +197,6 @@ ir::CompiledFn *Compiler::AddJump(
   return data_.fns_
       .emplace_back(std::make_unique<ir::CompiledFn>(jump_type->ToFunction(),
                                                      std::move(params)))
-      .get();
-}
-
-ir::ScopeDef *Compiler::AddScope(
-    std::vector<ir::JumpHandler const *> inits, std::vector<ir::AnyFunc> dones,
-    absl::flat_hash_map<std::string_view, ir::BlockDef *> blocks) {
-  return data_.scope_defs_
-      .emplace_back(std::make_unique<ir::ScopeDef>(
-          module(), std::move(inits), std::move(dones), std::move(blocks)))
-      .get();
-}
-
-ir::BlockDef *Compiler::AddBlock(std::vector<ir::AnyFunc> befores,
-                                 std::vector<ir::JumpHandler const *> afters) {
-  return data_.block_defs_
-      .emplace_back(
-          std::make_unique<ir::BlockDef>(std::move(befores), std::move(afters)))
       .get();
 }
 

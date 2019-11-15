@@ -7,7 +7,7 @@
 namespace ir {
 
 std::string BlockCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
-  iter->read<compiler::Compiler *>();
+  iter->read<BlockDef *>();
   std::vector<RegOr<AnyFunc>> before_vals =
       internal::Deserialize<uint16_t, AnyFunc>(
           iter, [](Reg reg) -> RegOr<AnyFunc> { return reg; });

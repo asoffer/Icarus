@@ -30,6 +30,7 @@ cc_lib(
         "//ir:reg",
         "//ir:reg_or",
         "//ir:read_only_data",
+        "//ir:scope_def",
         "//type:generic_struct",
         "//type:util",
     ],

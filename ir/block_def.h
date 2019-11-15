@@ -10,10 +10,6 @@ namespace ir {
 struct JumpHandler;
 
 struct BlockDef {
-  explicit BlockDef(std::vector<AnyFunc> before,
-                    std::vector<JumpHandler const *> after)
-      : before_(std::move(before)), after_(std::move(after)) {}
-
   static BlockDef const *Start();
   static BlockDef const *Exit();
 
