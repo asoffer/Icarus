@@ -11,6 +11,7 @@ std::optional<FailedMatch> MatchPositionalArgsToParams(
     core::FnParams<type::Typed<ast::Declaration const *>> const &params,
     core::FnArgs<compiler::VerifyResult> const &args,
     core::FnParams<type::Type const *> *matched_params) {
+  if (args.size() > params.size()) { return FailedMatch{}; }
   for (size_t i = 0; i < args.pos().size(); ++i) {
     auto const &param = params.at(i);
     type::Type const *meet =
@@ -29,22 +30,21 @@ std::optional<FailedMatch> MatchNamedArgsToParams(
   size_t named_start_index = args.pos().size();
   for (size_t i = named_start_index; i < params.size(); ++i) {
     auto const &param = params.at(i);
-    auto *result      = args.at_or_null(param.name);
-    if (not result) {
-      // No argument provided by that name? This could be because we have
-      // default parameters or an empty variadic pack.
-      // TODO: Handle variadic packs.
-      if (param.flags & core::HAS_DEFAULT) {
-      } else {
-        return FailedMatch{};
-      }
-    } else {
+    if (auto *result = args.at_or_null(param.name)) {
       if ((*param.value)->flags() & ast::Declaration::f_IsConst) {
         NOT_YET();
       } else {
         type::Type const *meet = type::Meet(result->type(), param.value.type());
         if (not meet) { return FailedMatch{}; }
         matched_params->append(param.name, meet);
+      }
+    } else {
+      // No argument provided by that name? This could be because we have
+      // default parameters or an empty variadic pack.
+      // TODO: Handle variadic packs.
+      if (param.flags & core::HAS_DEFAULT) {
+      } else {
+        return FailedMatch{};
       }
     }
   }

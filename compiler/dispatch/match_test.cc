@@ -25,10 +25,22 @@ TEST_CASE("() -> () {}") {
   auto params = ExtractParams(&mod.compiler,
                               Make<ast::FunctionLiteral>(&mod, "() -> () {}"));
 
-  SECTION("() -> ()") {
+  SECTION("No args") {
     auto args = core::FnArgs<VerifyResult>({}, {});
     REQUIRE_OK_AND_ASSIGN(auto matched_params, MatchArgsToParams(params, args));
     CHECK(matched_params.size() == 0);
+  }
+
+  SECTION("Positional args") {
+    auto args =
+        core::FnArgs<VerifyResult>({VerifyResult::Constant(type::Int32)}, {});
+    CHECK_FALSE(MatchArgsToParams(params, args));
+  }
+
+  SECTION("Named args") {
+    auto args =
+        core::FnArgs<VerifyResult>({}, {{"abc", VerifyResult::Constant(type::Int32)}});
+    CHECK_FALSE(MatchArgsToParams(params, args));
   }
 }
 
