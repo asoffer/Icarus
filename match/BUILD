@@ -33,3 +33,20 @@ cc_lib(
     header_only = True,
     test_deps = None,
 )
+
+cc_binary(
+    name = "match",
+    srcs = ["main.cc"],
+    defines = ["ICARUS_MATCHER"],
+    deps = [
+        ":binding_id",
+        ":match_expr",
+        "//ast:ast",
+        "//base:macros",
+        "//frontend:parse",
+        "//frontend/source:file",
+        "//init:cli",
+        "@com_google_absl//absl/debugging:failure_signal_handler",
+        "@com_google_absl//absl/debugging:symbolize",
+    ],
+)
