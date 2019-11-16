@@ -3,11 +3,14 @@
 
 #include <mutex>
 
+#include "absl/types/span.h"
 #include "core/arch.h"
 #include "type.h"
 
 namespace type {
 Type const *Var(std::vector<Type const *> variants);
+
+Type const *MultiVar(absl::Span<std::vector<Type const *> const> variants);
 
 struct Variant : public Type {
   TYPE_FNS(Variant);

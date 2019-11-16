@@ -10,6 +10,7 @@
 #include "base/guarded.h"
 #include "compiler/constant_binding.h"
 #include "compiler/dependent_data.h"
+#include "compiler/dispatch/table.h"
 #include "error/log.h"
 #include "ir/block_def.h"
 #include "ir/builder.h"
@@ -31,6 +32,21 @@ struct CompilationData {
 
   module::BasicModule *mod_;
   ir::Builder &bldr_;
+
+  void set_dispatch_table(ast::Expression const *expr,
+                          FnCallDispatchTable &&table) {
+    auto [iter, success] =
+        fn_call_dispatch_tables_.emplace(expr, std::move(table));
+    ASSERT(success == true);
+  }
+
+  FnCallDispatchTable const *dispatch_table(ast::Expression const *expr) const {
+    if (auto iter = fn_call_dispatch_tables_.find(expr);
+        iter != fn_call_dispatch_tables_.end()) {
+      return &iter->second;
+    }
+    return nullptr;
+  }
 
   std::pair<ConstantBinding, DependentData> *constants_;
   // We only want to generate at most one node for each set of constants in a
@@ -88,6 +104,9 @@ struct CompilationData {
   // paying heavily for the equality call, so maybe it's just a simpler
   // structure.
   std::forward_list<std::pair<ConstantBinding, DependentData>> dep_data_;
+
+  absl::flat_hash_map<ast::Expression const *, FnCallDispatchTable>
+      fn_call_dispatch_tables_;
 
   error::Log error_log_;
 };

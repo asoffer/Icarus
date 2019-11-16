@@ -242,10 +242,11 @@ cc_lib(
     name = "variant",
     deps = [
         ":type",
+        ":tuple",
         "//base:guarded",
         "@com_google_absl//absl/algorithm:container",
     ],
-    test_deps = None,
+    test_deps = [":primitive"],
 )
 
 cc_lib(

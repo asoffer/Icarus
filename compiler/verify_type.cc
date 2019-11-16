@@ -1094,18 +1094,16 @@ VerifyResult Compiler::Visit(ast::Call const *node, VerifyTypeTag) {
         std::forward_as_tuple(node->args().at(name), res));
   }
 
-  ASSIGN_OR(return VerifyResult::Error(),  //
-                   auto table,
-                   DispatchTable::Verify(this, overload_set,
-                                         arg_expr_result.Transform(
-                                             [](auto x) { return x.second; })));
-  static_cast<void>(table);
-
-  NOT_YET();
-  /*
-  return ast::VerifyDispatch(this, node, overload_set, arg_expr_result);
-  */
-  return VerifyResult::Error();
+  ASSIGN_OR(
+      return VerifyResult::Error(),  //
+             auto table,
+             FnCallDispatchTable::Verify(
+                 this, overload_set,
+                 arg_expr_result.Transform([](auto x) { return x.second; })));
+  auto result = VerifyResult::NonConstant(table.result_type());
+  data_.set_dispatch_table(node, std::move(table));
+  DEBUG_LOG("dispatch-verify")("Resulting type of dispatch is ", result);
+  return result;
 }
 
 VerifyResult Compiler::Visit(ast::Cast const *node, VerifyTypeTag) {

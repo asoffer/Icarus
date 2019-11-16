@@ -685,22 +685,20 @@ ir::Results Compiler::Visit(ast::Call const *node, EmitValueTag) {
     UNREACHABLE();
   }
 
-  auto const &table = *ASSERT_NOT_NULL(dispatch_table(node));
+  auto const &table = *ASSERT_NOT_NULL(data_.dispatch_table(node));
   // Look at all the possible calls and generate the dispatching code
   // TODO implement this with a lookup table instead of this branching insanity.
 
   // TODO an opmitimazion we can do is merging all the allocas for results
   // into a single variant buffer, because we know we need something that big
   // anyway, and their use cannot overlap.
-  auto args = node->args().Transform(
-      [this](ast::Expression const *expr)
-          -> std::pair<ast::Expression const *, ir::Results> {
-        return std::pair(expr, Visit(expr, EmitValueTag{}));
-      });
+  auto args = node->args().Transform([this](ast::Expression const *expr) {
+    return std::pair<type::Typed<ast::Expression const *>, ir::Results>(
+        type::Typed(expr, type_of(expr)), Visit(expr, EmitValueTag{}));
+  });
 
-  return table.EmitCall(
-      this, args,
-      node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
+  return table.EmitCall(builder(), args);
+  //     node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
 }
 
 ir::Results Compiler::Visit(ast::Cast const *node, EmitValueTag) {

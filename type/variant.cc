@@ -4,6 +4,7 @@
 
 #include "absl/algorithm/container.h"
 #include "base/guarded.h"
+#include "type/tuple.h"
 
 namespace type {
 
@@ -104,6 +105,27 @@ core::Alignment Variant::alternative_alignment(core::Arch const &a) const {
   core::Alignment align;
   for (auto const *t : variants_) { align = std::max(align, t->alignment(a)); }
   return align;
+}
+
+Type const *MultiVar(absl::Span<std::vector<Type const *> const> type_vecs) {
+  size_t min_size = std::numeric_limits<size_t>::max(), max_size = 0;
+
+  for (auto const &vec : type_vecs) {
+    min_size = std::min(min_size, vec.size());
+    max_size = std::max(max_size, vec.size());
+  }
+  if (min_size != max_size) { return nullptr; }
+
+  std::vector<type::Type const *> vars;
+  vars.reserve(min_size);
+  for (size_t i = 0; i < min_size; ++i) {
+    std::vector<type::Type const *> var_entry;
+    var_entry.reserve(type_vecs.size());
+    for (auto const &v : type_vecs) { var_entry.push_back(v[i]); }
+    vars.push_back(type::Var(std::move(var_entry)));
+  }
+
+  return type::Tup(std::move(vars));
 }
 
 }  // namespace type

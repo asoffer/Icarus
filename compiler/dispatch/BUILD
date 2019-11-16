@@ -1,24 +1,37 @@
 package(default_visibility = ["//visibility:public"]) # TODO compiler:__subpackages__"])
 load("//:defs.bzl", "cc_lib")
 
-cc_lib(
-    name = "table",
+cc_library(
+    name = "table_header",
+    hdrs = ["table.h"],
     deps = [
-        ":extract_params",
         ":match",
         "//ast:expression",
         "//ast:overload_set",
-        "//ast/methods:dump",
-        "//base:debug",
         "//base:expected",
-        "//compiler:compiler_header",
         "//compiler:verify_result",
+        "//core:fn_args",
         "//core:fn_params",
-        "//type:cast",
-        "//type:variant",
+        "//ir:builder",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
-    test_deps = None,
+)
+
+cc_library(
+    name = "table",
+    srcs = ["table.cc"],
+    deps = [
+        ":table_header",
+        ":extract_params",
+        ":match",
+        "//ast/methods:dump",
+        "//base:debug",
+        "//compiler:compiler_header",
+        "//compiler:verify_result",
+        "//type",
+        "//type:cast",
+        "//type:variant",
+    ],
 )
 
 cc_lib(

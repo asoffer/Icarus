@@ -3,14 +3,14 @@
 #include "ast/expression.h"
 #include "ast/methods/dump.h"
 #include "base/debug.h"
+#include "compiler/compiler.h"
 #include "compiler/dispatch/extract_params.h"
 #include "core/fn_params.h"
 #include "type/cast.h"
 #include "type/type.h"
-#include "type/typed_value.h"
 #include "type/variant.h"
 
-namespace compiler {
+namespace compiler::internal {
 namespace {
 template <typename IndexT>
 void AddType(IndexT &&index, type::Type const *t,
@@ -58,7 +58,7 @@ std::vector<core::FnArgs<type::Type const *>> ExpandedFnArgs(
 
 }  // namespace
 
-base::expected<DispatchTable> DispatchTable::Verify(
+base::expected<TableImpl> TableImpl::Verify(
     Compiler *compiler, ast::OverloadSet const &os,
     core::FnArgs<VerifyResult> const &args) {
   DEBUG_LOG("dispatch-verify")
@@ -67,7 +67,7 @@ base::expected<DispatchTable> DispatchTable::Verify(
   // Keep a collection of failed matches around so we can give better
   // diagnostics.
   absl::flat_hash_map<ast::Expression const *, FailedMatch> failures;
-  DispatchTable table;
+  TableImpl table;
   for (ast::Expression const *overload : os.members()) {
     // TODO the type of the specific overload could *correctly* be null and we
     // need to handle that case.
@@ -77,7 +77,10 @@ base::expected<DispatchTable> DispatchTable::Verify(
     if (not result) {
       failures.emplace(overload, result.error());
     } else {
-      table.table_.emplace(overload, *result);
+      // TODO you also call compiler->type_of inside ExtractParams, so it's
+      // probably worth reducing the number of lookups.
+      table.table_.emplace(overload,
+                           ExprData{compiler->type_of(overload), *result});
     }
   }
 
@@ -87,19 +90,46 @@ base::expected<DispatchTable> DispatchTable::Verify(
       std::remove_if(expanded_fnargs.begin(), expanded_fnargs.end(),
                      [&](core::FnArgs<type::Type const *> const &fnargs) {
                        return absl::c_any_of(
-                           table.table_, [&fnargs](auto const &expr_params) {
-                             return core::IsCallable(expr_params.second, fnargs,
-                                                     [](type::Type const *from,
-                                                        type::Type const *to) {
-                                                       return type::CanCast(
-                                                           from, to);
-                                                     });
+                           table.table_, [&fnargs](auto const &expr_data) {
+                             return core::IsCallable(expr_data.second.params,
+                                                     fnargs, type::CanCast);
                            });
                      }),
       expanded_fnargs.end());
 
   if (not expanded_fnargs.empty()) { NOT_YET("log an error"); }
   return table;
+}
+}  // namespace compiler::internal
+
+namespace compiler {
+type::Type const *FnCallDispatchTable::ComputeResultType(
+    internal::TableImpl const &impl) {
+  std::vector<std::vector<type::Type const *>> results;
+  for (auto const &[expr, expr_data] : impl.table_) {
+    auto const &[type, fn_params] = expr_data;
+    DEBUG_LOG("dispatch-verify")
+    ("Extracting return type for ", ast::Dump::ToString(expr), " of type ",
+     type->to_string());
+    if (auto *fn_type = type->if_as<type::Function>()) {
+      auto const &out_vec = fn_type->output;
+      results.push_back(out_vec);
+    } else if (type == type::Generic) {
+      NOT_YET("log error");
+    } else {
+      NOT_YET();
+    }
+  }
+
+  return type::MultiVar(results);
+}
+
+ir::Results FnCallDispatchTable::EmitCall(
+    ir::Builder &builder,
+    core::FnArgs<std::pair<type::Typed<ast::Expression const *>,
+                           ir::Results>> const &args) const {
+  NOT_YET();
+  return ir::Results{};
 }
 
 }  // namespace compiler

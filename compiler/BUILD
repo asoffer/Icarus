@@ -136,6 +136,7 @@ cc_lib(
         ":dependent_data",
         "//ast:ast",
         "//base:guarded",
+        "//compiler/dispatch:table_header",
         "//error:log",
         "//ir:block_def",
         "//ir:builder",
