@@ -1,17 +1,14 @@
 #ifndef ICARUS_COMPILER_COMPILER_H
 #define ICARUS_COMPILER_COMPILER_H
 
-#include <atomic>
 #include <memory>
 
-#include "absl/container/node_hash_map.h"
+#include "absl/container/flat_hash_map.h"
 #include "ast/ast_fwd.h"
 #include "ast/overload_set.h"
 #include "ast/visitor.h"
 #include "base/debug.h"
-#include "base/guarded.h"
 #include "base/move_func.h"
-#include "base/tag.h"
 #include "compiler/constant_binding.h"
 #include "compiler/data.h"
 #include "compiler/dependent_data.h"

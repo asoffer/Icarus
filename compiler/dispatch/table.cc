@@ -1,4 +1,4 @@
-#include "compiler/dispatch/dispatch.h"
+#include "compiler/dispatch/table.h"
 
 #include "ast/expression.h"
 #include "ast/methods/dump.h"

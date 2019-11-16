@@ -2,14 +2,11 @@ package(default_visibility = ["//visibility:public"])
 load("//:defs.bzl", "cc_lib")
 
 
+# TODO split this up and rename the parts.
 cc_library(
-    name = "compiler",
-    hdrs = [
-        "compiler.h",
-        "special_function.h",
-    ],
+    name = "visitors",
+    hdrs = [],
     srcs = [
-        "compiler.cc",
         "emit_assign.cc",
         "emit_copy_init.cc",
         "emit_default_init.cc",
@@ -18,14 +15,15 @@ cc_library(
         "emit_print.cc",
         "emit_ref.cc",
         "emit_value.cc",
-        "special_function.cc",
         "verify_type.cc",
     ],
     deps = [
+        ":compiler_header",
         ":data",
         ":dependent_data",
         ":extract_jumps",
         ":module",
+        ":special_function",
         ":verify_result",
         "//ast:ast",
         "//ast/methods:dump",
@@ -37,6 +35,7 @@ cc_library(
         "//base:move_func",
         "//base:permutation",
         "//base:tag",
+        "//compiler/dispatch:table",
         "//error:log",
         "//frontend:parse",
         "//ir:addr",
@@ -77,6 +76,56 @@ cc_library(
         "@com_google_absl//absl/random",
     ],
     test_deps = None,
+    alwayslink = 1,
+)
+
+
+cc_library(
+    name = "compiler_header",
+    hdrs = ["compiler.h"],
+    deps = [
+        ":constant_binding",
+        ":data",
+        ":dependent_data",
+        ":verify_result",
+        "//ast:ast_fwd",
+        "//ast:overload_set",
+        "//ast:visitor",
+        "//base:debug",
+        "//base:move_func",
+        "//error:log",
+        "//frontend/source",
+        "//ir:addr",
+        "//ir:builder",
+        "//ir:reg",
+        "//ir:results",
+        "//module",
+        "//type:type_fwd",
+        "//type:visitor",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
+
+cc_library(
+    name = "compiler",
+    srcs = ["compiler.cc"],
+    deps = [
+        ":compiler_header",
+        ":visitors",
+    ],
+)
+
+cc_lib(
+    name = "special_function",
+    deps = [
+        ":compiler_header",
+        "//ir:any_func",
+        "//ast",
+        "//type:function",
+        "//type:pointer",
+        "//type:struct",
+    ],
+    test_deps = None,
 )
 
 # TODO rename
@@ -86,6 +135,7 @@ cc_lib(
         ":constant_binding",
         ":dependent_data",
         "//ast:ast",
+        "//base:guarded",
         "//error:log",
         "//ir:block_def",
         "//ir:builder",

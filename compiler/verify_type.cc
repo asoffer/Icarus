@@ -5,6 +5,7 @@
 #include "ast/overload_set.h"
 #include "backend/eval.h"
 #include "compiler/compiler.h"
+#include "compiler/dispatch/table.h"
 #include "compiler/extract_jumps.h"
 #include "error/inference_failure_reason.h"
 #include "frontend/operators.h"
@@ -1092,13 +1093,16 @@ VerifyResult Compiler::Visit(ast::Call const *node, VerifyTypeTag) {
         std::piecewise_construct, std::forward_as_tuple(name),
         std::forward_as_tuple(node->args().at(name), res));
   }
-  /*
-     NOT_YET();
-  auto table = DispatchTable::Verify(
-      this, overload_set,
-      arg_expr_result.Transform([](auto x) { return x.second; }));
+
+  ASSIGN_OR(return VerifyResult::Error(),  //
+                   auto table,
+                   DispatchTable::Verify(this, overload_set,
+                                         arg_expr_result.Transform(
+                                             [](auto x) { return x.second; })));
   static_cast<void>(table);
 
+  NOT_YET();
+  /*
   return ast::VerifyDispatch(this, node, overload_set, arg_expr_result);
   */
   return VerifyResult::Error();

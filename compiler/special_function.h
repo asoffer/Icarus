@@ -3,14 +3,11 @@
 
 #include <optional>
 
+#include "compiler/compiler.h"
 #include "ir/any_func.h"
-
-namespace type {
-struct Struct;
-}  // namespace type
+#include "type/struct.h"
 
 namespace compiler {
-struct Compiler;
 
 enum SpecialFunctionCategory { Copy, Move };
 

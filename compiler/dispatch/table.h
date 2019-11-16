@@ -1,5 +1,5 @@
-#ifndef ICARUS_COMPILER_DISPATCH_DISPATCH_H
-#define ICARUS_COMPILER_DISPATCH_DISPATCH_H
+#ifndef ICARUS_COMPILER_DISPATCH_TABLE_H
+#define ICARUS_COMPILER_DISPATCH_TABLE_H
 
 #include <optional>
 
@@ -30,4 +30,4 @@ struct DispatchTable {
 
 }  // namespace compiler
 
-#endif  // ICARUS_COMPILER_DISPATCH_DISPATCH_H
+#endif  // ICARUS_COMPILER_DISPATCH_TABLE_H

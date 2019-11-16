@@ -2,7 +2,7 @@ package(default_visibility = ["//visibility:public"]) # TODO compiler:__subpacka
 load("//:defs.bzl", "cc_lib")
 
 cc_lib(
-    name = "dispatch",
+    name = "table",
     deps = [
         ":extract_params",
         ":match",
@@ -11,6 +11,7 @@ cc_lib(
         "//ast/methods:dump",
         "//base:debug",
         "//base:expected",
+        "//compiler:compiler_header",
         "//compiler:verify_result",
         "//core:fn_params",
         "//type:cast",
@@ -26,7 +27,7 @@ cc_lib(
         "//ast:ast_fwd",
         "//ast:ast",
         "//backend:eval",
-        "//compiler:compiler",
+        "//compiler:compiler_header",
         "//type:type",
         "//type:function",
     ],

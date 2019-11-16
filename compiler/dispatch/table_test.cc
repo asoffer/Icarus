@@ -1,4 +1,4 @@
-#include "compiler/dispatch.h"
+#include "compiler/dispatch/table.h"
 
 #include "test/catch.h"
 #include "test/module.h"

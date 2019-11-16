@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "ast/ast.h"
+#include "base/guarded.h"
 #include "compiler/constant_binding.h"
 #include "compiler/dependent_data.h"
 #include "error/log.h"
