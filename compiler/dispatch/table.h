@@ -10,7 +10,6 @@
 #include "compiler/verify_result.h"
 #include "core/fn_args.h"
 #include "core/fn_params.h"
-#include "ir/builder.h"
 
 namespace compiler {
 struct Compiler;  // TODO move into it's own header.
@@ -25,7 +24,7 @@ struct TableImpl {
 
   struct ExprData {
     type::Type const *type;
-    core::FnParams<type::Type const *> params;
+    core::FnParams<type::Typed<ast::Declaration const *>> params;
   };
 
   absl::flat_hash_map<ast::Expression const *, ExprData> table_;
@@ -49,9 +48,8 @@ struct FnCallDispatchTable {
   type::Type const *result_type() const { return result_type_; }
 
   ir::Results EmitCall(
-      ir::Builder &builder,
-      core::FnArgs<std::pair<type::Typed<ast::Expression const *>,
-                             ir::Results>> const &args) const;
+      Compiler *compiler,
+      core::FnArgs<type::Typed<ir::Results>> const &args) const;
 
  private:
   static type::Type const *ComputeResultType(internal::TableImpl const &impl);

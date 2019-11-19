@@ -84,7 +84,7 @@ template <typename CmdType>
 BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
                              std::vector<Addr> const &ret_slots,
                              backend::ExecContext *ctx) {
-  auto iter_copy = *iter;
+  ICARUS_DEBUG_ONLY(auto iter_copy = *iter;)
   DEBUG_LOG("cmd")(CmdType::DebugString(&iter_copy));
   auto &frame = ctx->call_stack.top();
   if constexpr (std::is_same_v<CmdType, PrintCmd>) {

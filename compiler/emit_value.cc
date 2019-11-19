@@ -693,12 +693,11 @@ ir::Results Compiler::Visit(ast::Call const *node, EmitValueTag) {
   // into a single variant buffer, because we know we need something that big
   // anyway, and their use cannot overlap.
   auto args = node->args().Transform([this](ast::Expression const *expr) {
-    return std::pair<type::Typed<ast::Expression const *>, ir::Results>(
-        type::Typed(expr, type_of(expr)), Visit(expr, EmitValueTag{}));
+    return type::Typed(Visit(expr, EmitValueTag{}), type_of(expr));
   });
 
-  return table.EmitCall(builder(), args);
-  //     node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
+  return table.EmitCall(this, args);
+  // TODO    node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
 }
 
 ir::Results Compiler::Visit(ast::Cast const *node, EmitValueTag) {

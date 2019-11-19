@@ -288,8 +288,8 @@ bool AmbiguouslyCallable(FnParams<T> const& params1, FnParams<T> const& params2,
 }
 
 // Returns true if and only if a callable with `params` can be called with `args`.
-template <typename T, typename ConvertibleFn>
-bool IsCallable(FnParams<T> const& params, FnArgs<T> const& args,
+template <typename T, typename U, typename ConvertibleFn>
+bool IsCallable(FnParams<T> const& params, FnArgs<U> const& args,
                 ConvertibleFn fn) {
   if (params.size() < args.size()) { return false; }
 
@@ -298,7 +298,7 @@ bool IsCallable(FnParams<T> const& params, FnArgs<T> const& args,
   }
 
   for (auto const& [name, type] : args.named()) {
-    ASSIGN_OR(return false, auto index, params.at_or_null(name));
+    ASSIGN_OR(return false, auto const& index, params.at_or_null(name));
     if (not fn(type, params.at(index).value)) { return false; }
   }
 

@@ -28,6 +28,7 @@ cc_library(
         "//base:debug",
         "//compiler:compiler_header",
         "//compiler:verify_result",
+        "//ir:builder",
         "//type",
         "//type:cast",
         "//type:variant",

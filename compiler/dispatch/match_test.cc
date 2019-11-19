@@ -38,8 +38,8 @@ TEST_CASE("() -> () {}") {
   }
 
   SECTION("Named args") {
-    auto args =
-        core::FnArgs<VerifyResult>({}, {{"abc", VerifyResult::Constant(type::Int32)}});
+    auto args = core::FnArgs<VerifyResult>(
+        {}, {{"abc", VerifyResult::Constant(type::Int32)}});
     CHECK_FALSE(MatchArgsToParams(params, args));
   }
 }
@@ -60,7 +60,7 @@ TEST_CASE("(n: int32) -> () {}") {
     REQUIRE_OK_AND_ASSIGN(auto matched_params, MatchArgsToParams(params, args));
     CHECK(matched_params.size() == 1);
     CHECK(matched_params.at(0).name == "n");
-    CHECK(matched_params.at(0).value == type::Int32);
+    CHECK(matched_params.at(0).value.type() == type::Int32);
   }
 
   SECTION("Call positionally with incorrect type") {
@@ -75,7 +75,73 @@ TEST_CASE("(n: int32) -> () {}") {
     REQUIRE_OK_AND_ASSIGN(auto matched_params, MatchArgsToParams(params, args));
     CHECK(matched_params.size() == 1);
     CHECK(matched_params.at(0).name == "n");
-    CHECK(matched_params.at(0).value == type::Int32);
+    CHECK(matched_params.at(0).value.type() == type::Int32);
+  }
+
+  SECTION("Call named with incorrect type") {
+    auto args = core::FnArgs<VerifyResult>(
+        {}, {{"n", VerifyResult::Constant(type::Bool)}});
+    auto matched_params = MatchArgsToParams(params, args);
+    CHECK_FALSE(MatchArgsToParams(params, args));
+  }
+
+  SECTION("Call named with incorrect name") {
+    auto args = core::FnArgs<VerifyResult>(
+        {}, {{"N", VerifyResult::Constant(type::Int32)}});
+    auto matched_params = MatchArgsToParams(params, args);
+    CHECK_FALSE(MatchArgsToParams(params, args));
+  }
+}
+
+TEST_CASE("(n: int32, b := true) -> () {}") {
+  test::TestModule mod;
+  auto params = ExtractParams(
+      &mod.compiler,
+      Make<ast::FunctionLiteral>(&mod, "(n: int32, b := true) -> () {}"));
+
+  SECTION("Call without args") {
+    auto args = core::FnArgs<VerifyResult>({}, {});
+    CHECK_FALSE(MatchArgsToParams(params, args));
+  }
+
+  SECTION("Call positionally with correct type") {
+    auto args =
+        core::FnArgs<VerifyResult>({VerifyResult::Constant(type::Int32)}, {});
+    REQUIRE_OK_AND_ASSIGN(auto matched_params, MatchArgsToParams(params, args));
+    CHECK(matched_params.size() == 2);
+    CHECK(matched_params.at(0).name == "n");
+    CHECK(matched_params.at(0).value.type() == type::Int32);
+    CHECK(matched_params.at(1).name == "b");
+    CHECK(matched_params.at(1).value.type() == type::Bool);
+  }
+
+  SECTION("Call positionally with incorrect type") {
+    auto args =
+        core::FnArgs<VerifyResult>({VerifyResult::Constant(type::Bool)}, {});
+    CHECK_FALSE(MatchArgsToParams(params, args));
+  }
+
+  SECTION("Call named with correct type") {
+    auto args = core::FnArgs<VerifyResult>(
+        {}, {{"n", VerifyResult::Constant(type::Int32)}});
+    REQUIRE_OK_AND_ASSIGN(auto matched_params, MatchArgsToParams(params, args));
+    CHECK(matched_params.size() == 2);
+    CHECK(matched_params.at(0).name == "n");
+    CHECK(matched_params.at(0).value.type() == type::Int32);
+    CHECK(matched_params.at(1).name == "b");
+    CHECK(matched_params.at(1).value.type() == type::Bool);
+  }
+
+  SECTION("Call named with explicit second argument") {
+    auto args = core::FnArgs<VerifyResult>(
+        {}, {{"n", VerifyResult::Constant(type::Int32)},
+             {"b", VerifyResult::Constant(type::Bool)}});
+    REQUIRE_OK_AND_ASSIGN(auto matched_params, MatchArgsToParams(params, args));
+    CHECK(matched_params.size() == 2);
+    CHECK(matched_params.at(0).name == "n");
+    CHECK(matched_params.at(0).value.type() == type::Int32);
+    CHECK(matched_params.at(1).name == "b");
+    CHECK(matched_params.at(1).value.type() == type::Bool);
   }
 
   SECTION("Call named with incorrect type") {
@@ -111,7 +177,7 @@ TEST_CASE("(x: int32 | bool) -> () {}") {
     REQUIRE_OK_AND_ASSIGN(auto matched_params, MatchArgsToParams(params, args));
     CHECK(matched_params.size() == 1);
     CHECK(matched_params.at(0).name == "x");
-    CHECK(matched_params.at(0).value == type::Int32);
+    CHECK(matched_params.at(0).value.type() == type::Int32);
   }
 
   SECTION("Call positionally with matching type") {
@@ -120,7 +186,7 @@ TEST_CASE("(x: int32 | bool) -> () {}") {
     REQUIRE_OK_AND_ASSIGN(auto matched_params, MatchArgsToParams(params, args));
     CHECK(matched_params.size() == 1);
     CHECK(matched_params.at(0).name == "x");
-    CHECK(matched_params.at(0).value == type::Bool);
+    CHECK(matched_params.at(0).value.type() == type::Bool);
   }
 
   SECTION("Call positionally with overlapping type") {
@@ -129,7 +195,7 @@ TEST_CASE("(x: int32 | bool) -> () {}") {
     REQUIRE_OK_AND_ASSIGN(auto matched_params, MatchArgsToParams(params, args));
     CHECK(matched_params.size() == 1);
     CHECK(matched_params.at(0).name == "x");
-    CHECK(matched_params.at(0).value == type::Bool);
+    CHECK(matched_params.at(0).value.type() == type::Bool);
   }
 
   SECTION("Call positionally with non-overlapping type") {
@@ -145,7 +211,7 @@ TEST_CASE("(x: int32 | bool) -> () {}") {
     REQUIRE_OK_AND_ASSIGN(auto matched_params, MatchArgsToParams(params, args));
     CHECK(matched_params.size() == 1);
     CHECK(matched_params.at(0).name == "x");
-    CHECK(matched_params.at(0).value == type::Int32);
+    CHECK(matched_params.at(0).value.type() == type::Int32);
   }
 
   SECTION("Call named with matching type") {
@@ -154,7 +220,7 @@ TEST_CASE("(x: int32 | bool) -> () {}") {
     REQUIRE_OK_AND_ASSIGN(auto matched_params, MatchArgsToParams(params, args));
     CHECK(matched_params.size() == 1);
     CHECK(matched_params.at(0).name == "x");
-    CHECK(matched_params.at(0).value == type::Bool);
+    CHECK(matched_params.at(0).value.type() == type::Bool);
   }
 
   SECTION("Call named with overlapping type") {
@@ -164,7 +230,7 @@ TEST_CASE("(x: int32 | bool) -> () {}") {
     REQUIRE_OK_AND_ASSIGN(auto matched_params, MatchArgsToParams(params, args));
     CHECK(matched_params.size() == 1);
     CHECK(matched_params.at(0).name == "x");
-    CHECK(matched_params.at(0).value == type::Bool);
+    CHECK(matched_params.at(0).value.type() == type::Bool);
   }
 
   SECTION("Call named with non-overlapping type") {

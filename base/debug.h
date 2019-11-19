@@ -6,6 +6,8 @@
 
 #if defined(ICARUS_DEBUG)
 
+#define ICARUS_DEBUG_ONLY(...) __VA_ARGS__
+
 #define ICARUS_CONSTEXPR inline
 #define ICARUS_PRIVATE
 
@@ -102,6 +104,8 @@ struct Asserter {
   } while (false)
 
 #else  // defined(ICARUS_DEBUG)
+
+#define ICARUS_DEBUG_ONLY(...)
 
 #define ICARUS_CONSTEXPR constexpr
 #define ICARUS_PRIVATE private:

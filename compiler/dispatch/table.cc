@@ -6,6 +6,7 @@
 #include "compiler/compiler.h"
 #include "compiler/dispatch/extract_params.h"
 #include "core/fn_params.h"
+#include "ir/builder.h"
 #include "type/cast.h"
 #include "type/type.h"
 #include "type/variant.h"
@@ -56,6 +57,30 @@ std::vector<core::FnArgs<type::Type const *>> ExpandedFnArgs(
   return all_expanded_options;
 }
 
+ir::Results EmitCallOneOverload(
+    Compiler *compiler, ast::Expression const *fn,
+    core::FnParams<type::Typed<ast::Declaration const *>> const &params,
+    core::FnArgs<type::Typed<ir::Results>> const &args) {
+  std::vector<ir::Results> results;
+  // TODO prep args (if it's a variant, e.g.)
+  for (auto arg : args.pos()) { results.push_back(arg.get()); }
+  for (size_t i = args.pos().size(); i < params.size(); ++i) {
+    auto const &param = params.at(i);
+    if (auto *arg = args.at_or_null(param.name)) {
+      results.push_back(arg->get());
+    } else {
+      results.push_back(ir::Results{compiler->Visit(
+          ASSERT_NOT_NULL(param.value.get()->init_val()), EmitValueTag{})});
+    }
+  }
+
+  // TODO out params
+
+  ir::Call(compiler->Visit(fn, EmitValueTag{}).get<ir::AnyFunc>(0),
+           &compiler->type_of(fn)->as<type::Function>(), results);
+  return ir::Results{};
+}
+
 }  // namespace
 
 base::expected<TableImpl> TableImpl::Verify(
@@ -87,14 +112,19 @@ base::expected<TableImpl> TableImpl::Verify(
   auto expanded_fnargs = ExpandedFnArgs(args);
 
   expanded_fnargs.erase(
-      std::remove_if(expanded_fnargs.begin(), expanded_fnargs.end(),
-                     [&](core::FnArgs<type::Type const *> const &fnargs) {
-                       return absl::c_any_of(
-                           table.table_, [&fnargs](auto const &expr_data) {
-                             return core::IsCallable(expr_data.second.params,
-                                                     fnargs, type::CanCast);
-                           });
-                     }),
+      std::remove_if(
+          expanded_fnargs.begin(), expanded_fnargs.end(),
+          [&](core::FnArgs<type::Type const *> const &fnargs) {
+            return absl::c_any_of(
+                table.table_, [&fnargs](auto const &expr_data) {
+                  return core::IsCallable(
+                      expr_data.second.params, fnargs,
+                      [](type::Type const *arg,
+                         type::Typed<ast::Declaration const *> param) {
+                        return type::CanCast(arg, param.type());
+                      });
+                });
+          }),
       expanded_fnargs.end());
 
   if (not expanded_fnargs.empty()) { NOT_YET("log an error"); }
@@ -106,10 +136,10 @@ namespace compiler {
 type::Type const *FnCallDispatchTable::ComputeResultType(
     internal::TableImpl const &impl) {
   std::vector<std::vector<type::Type const *>> results;
-  for (auto const &[expr, expr_data] : impl.table_) {
+  for (auto const &[overload, expr_data] : impl.table_) {
     auto const &[type, fn_params] = expr_data;
     DEBUG_LOG("dispatch-verify")
-    ("Extracting return type for ", ast::Dump::ToString(expr), " of type ",
+    ("Extracting return type for ", ast::Dump::ToString(overload), " of type ",
      type->to_string());
     if (auto *fn_type = type->if_as<type::Function>()) {
       auto const &out_vec = fn_type->output;
@@ -125,10 +155,15 @@ type::Type const *FnCallDispatchTable::ComputeResultType(
 }
 
 ir::Results FnCallDispatchTable::EmitCall(
-    ir::Builder &builder,
-    core::FnArgs<std::pair<type::Typed<ast::Expression const *>,
-                           ir::Results>> const &args) const {
-  NOT_YET();
+    Compiler *compiler,
+    core::FnArgs<type::Typed<ir::Results>> const &args) const {
+  if (impl_.table_.size() == 1) {
+    auto const &[overload, expr_data] = *impl_.table_.begin();
+    return internal::EmitCallOneOverload(compiler, overload, expr_data.params,
+                                         args);
+  } else {
+    NOT_YET();
+  }
   return ir::Results{};
 }
 
