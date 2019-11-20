@@ -1103,7 +1103,7 @@ VerifyResult Compiler::Visit(ast::Call const *node, VerifyTypeTag) {
   auto result = VerifyResult::NonConstant(table.result_type());
   data_.set_dispatch_table(node, std::move(table));
   DEBUG_LOG("dispatch-verify")("Resulting type of dispatch is ", result);
-  return result;
+  return set_result(node, result);
 }
 
 VerifyResult Compiler::Visit(ast::Cast const *node, VerifyTypeTag) {

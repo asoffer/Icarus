@@ -57,28 +57,47 @@ std::vector<core::FnArgs<type::Type const *>> ExpandedFnArgs(
   return all_expanded_options;
 }
 
+std::pair<ir::Results, ir::OutParams> SetReturns(
+    TableImpl::ExprData const &expr_data,
+    absl::Span<type::Type const *> final_out_types) {
+  auto const &[type, params] = expr_data;
+  auto const &ret_types      = type->as<type::Function>().output;
+  ir::Results results;
+  ir::OutParams out_params;
+  for (type::Type const *ret_type : ret_types) {
+    if (ret_type->is_big()) {
+      NOT_YET();
+    } else {
+      out_params.AppendReg(ret_type);
+      results.append(out_params.regs_.back());
+    }
+  }
+  return std::pair<ir::Results, ir::OutParams>(std::move(results),
+                                               std::move(out_params));
+}
+
 ir::Results EmitCallOneOverload(
     Compiler *compiler, ast::Expression const *fn,
-    core::FnParams<type::Typed<ast::Declaration const *>> const &params,
+    TableImpl::ExprData const &data,
     core::FnArgs<type::Typed<ir::Results>> const &args) {
-  std::vector<ir::Results> results;
+  auto const &[type, params] = data;
+  std::vector<ir::Results> arg_results;
   // TODO prep args (if it's a variant, e.g.)
-  for (auto arg : args.pos()) { results.push_back(arg.get()); }
+  for (auto arg : args.pos()) { arg_results.push_back(arg.get()); }
   for (size_t i = args.pos().size(); i < params.size(); ++i) {
     auto const &param = params.at(i);
     if (auto *arg = args.at_or_null(param.name)) {
-      results.push_back(arg->get());
+      arg_results.push_back(arg->get());
     } else {
-      results.push_back(ir::Results{compiler->Visit(
+      arg_results.push_back(ir::Results{compiler->Visit(
           ASSERT_NOT_NULL(param.value.get()->init_val()), EmitValueTag{})});
     }
   }
-
-  // TODO out params
-
+  auto [out_results, out_params] = SetReturns(data, {});
   ir::Call(compiler->Visit(fn, EmitValueTag{}).get<ir::AnyFunc>(0),
-           &compiler->type_of(fn)->as<type::Function>(), results);
-  return ir::Results{};
+           &compiler->type_of(fn)->as<type::Function>(), arg_results,
+           out_params);
+  return std::move(out_results);
 }
 
 }  // namespace
@@ -159,8 +178,7 @@ ir::Results FnCallDispatchTable::EmitCall(
     core::FnArgs<type::Typed<ir::Results>> const &args) const {
   if (impl_.table_.size() == 1) {
     auto const &[overload, expr_data] = *impl_.table_.begin();
-    return internal::EmitCallOneOverload(compiler, overload, expr_data.params,
-                                         args);
+    return internal::EmitCallOneOverload(compiler, overload, expr_data, args);
   } else {
     NOT_YET();
   }
