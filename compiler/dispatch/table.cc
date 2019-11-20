@@ -94,9 +94,9 @@ ir::Results EmitCallOneOverload(
     }
   }
   auto [out_results, out_params] = SetReturns(data, {});
-  ir::Call(compiler->Visit(fn, EmitValueTag{}).get<ir::AnyFunc>(0),
-           &compiler->type_of(fn)->as<type::Function>(), arg_results,
-           out_params);
+  compiler->builder().Call(
+      compiler->Visit(fn, EmitValueTag{}).get<ir::AnyFunc>(0),
+      &compiler->type_of(fn)->as<type::Function>(), arg_results, out_params);
   return std::move(out_results);
 }
 

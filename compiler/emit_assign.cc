@@ -56,7 +56,7 @@ static ir::CompiledFn *CreateAssign(Compiler *compiler, type::Array const *a) {
         },
         std::tuple{data_ptr_type, data_ptr_type},
         std::tuple{ir::RegOr<ir::Addr>(from_ptr), ir::RegOr<ir::Addr>(to_ptr)});
-    ir::ReturnJump();
+    compiler->builder().ReturnJump();
   }
   return fn;
 }
@@ -90,7 +90,7 @@ static ir::AnyFunc CreateAssign(Compiler *compiler, type::Struct const *s) {
       }
     }
 
-    ir::ReturnJump();
+    compiler->builder().ReturnJump();
   }
   return fn;
 }
@@ -206,7 +206,7 @@ void Compiler::Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
               EmitCopyAssignTag{});
       }
 
-      ir::ReturnJump();
+      builder().ReturnJump();
     }
     return fn;
   });
@@ -235,7 +235,7 @@ void Compiler::Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
               EmitMoveAssignTag{});
       }
 
-      ir::ReturnJump();
+      builder().ReturnJump();
     }
     return fn;
   });
@@ -264,10 +264,10 @@ void Compiler::Visit(type::Variant const *t, ir::RegOr<ir::Addr> to,
       Visit(v, ir::VariantValue(t, to),
             type::Typed{ir::Results{ir::PtrFix(var_val, v)}, v},
             EmitCopyAssignTag{});
-      ir::UncondJump(landing);
+      builder().UncondJump(landing);
       builder().CurrentBlock() = next_block;
     }
-    ir::UncondJump(landing);
+    builder().UncondJump(landing);
     builder().CurrentBlock() = landing;
   } else {
     ir::Store(from.type(), ir::VariantType(to));
@@ -298,10 +298,10 @@ void Compiler::Visit(type::Variant const *t, ir::RegOr<ir::Addr> to,
       Visit(v, ir::VariantValue(t, to),
             type::Typed{ir::Results{ir::PtrFix(var_val, v)}, v},
             EmitMoveAssignTag{});
-      ir::UncondJump(landing);
+      builder().UncondJump(landing);
       builder().CurrentBlock() = next_block;
     }
-    ir::UncondJump(landing);
+    builder().UncondJump(landing);
     builder().CurrentBlock() = landing;
   } else {
     ir::Store(from.type(), ir::VariantType(to));

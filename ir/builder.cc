@@ -40,54 +40,80 @@ Reg Reserve(core::Bytes b, core::Alignment a) {
 
 Reg Reserve(type::Type const* t) { return current.CurrentGroup()->Reserve(t); }
 
-namespace {
-
-void CallImpl(BasicBlock *blk, RegOr<AnyFunc> const &fn,
-              type::Function const *f, absl::Span<Results const> arguments) {
+void Builder::Call(RegOr<AnyFunc> const &fn, type::Function const *f,
+                   absl::Span<Results const> arguments, OutParams outs) {
+  auto &blk = *CurrentBlock();
   ASSERT(arguments.size() == f->input.size());
-  blk->cmd_buffer_.append_index<CallCmd>();
-  blk->cmd_buffer_.append(fn.is_reg());
-  internal::WriteBits<uint16_t, Results>(&blk->cmd_buffer_, arguments,
+  blk.cmd_buffer_.append_index<CallCmd>();
+  blk.cmd_buffer_.append(fn.is_reg());
+  internal::WriteBits<uint16_t, Results>(&blk.cmd_buffer_, arguments,
                                          [](Results const &r) {
                                            ASSERT(r.size() == 1u);
                                            return r.is_reg(0);
                                          });
 
-  fn.apply([&](auto v) { blk->cmd_buffer_.append(v); });
-  size_t bytes_written_slot = blk->cmd_buffer_.reserve<core::Bytes>();
+  fn.apply([&](auto v) { blk.cmd_buffer_.append(v); });
+  size_t bytes_written_slot = blk.cmd_buffer_.reserve<core::Bytes>();
   size_t arg_index          = 0;
   for (Results const &arg : arguments) {
     if (arg.is_reg(0)) {
-      blk->cmd_buffer_.append(arg.get<Reg>(0));
+      blk.cmd_buffer_.append(arg.get<Reg>(0));
     } else {
       type::Apply(f->input[arg_index], [&](auto tag) {
         using T = typename decltype(tag)::type;
-        blk->cmd_buffer_.append(arg.get<T>(0).value());
+        blk.cmd_buffer_.append(arg.get<T>(0).value());
       });
     }
     ++arg_index;
   }
-  blk->cmd_buffer_.set(bytes_written_slot,
-                       core::Bytes{blk->cmd_buffer_.size() -
-                                   bytes_written_slot - sizeof(core::Bytes)});
-}
-
-}  // namespace
-
-void Call(RegOr<AnyFunc> const &fn, type::Function const *f,
-          absl::Span<Results const> arguments) {
-  auto &blk = *GetBuilder().CurrentBlock();
-  CallImpl(&blk, fn, f, arguments);
-  blk.cmd_buffer_.append<uint16_t>(0);
-}
-
-void Call(RegOr<AnyFunc> const &fn, type::Function const *f,
-          absl::Span<Results const> arguments, OutParams outs) {
-  auto &blk = *GetBuilder().CurrentBlock();
-  CallImpl(&blk, fn, f, arguments);
+  blk.cmd_buffer_.set(bytes_written_slot,
+                      core::Bytes{blk.cmd_buffer_.size() - bytes_written_slot -
+                                  sizeof(core::Bytes)});
 
   blk.cmd_buffer_.append<uint16_t>(f->output.size());
   for (Reg r : outs.regs_) { blk.cmd_buffer_.append(r); }
+}
+
+void Builder::UncondJump(BasicBlock const *block) {
+  auto &blk = *CurrentBlock();
+  blk.cmd_buffer_.append_index<JumpCmd>();
+  blk.cmd_buffer_.append(JumpCmd::Kind::kUncond);
+  blk.cmd_buffer_.append(block);
+}
+
+void Builder::ReturnJump() {
+  auto &blk = *CurrentBlock();
+  blk.cmd_buffer_.append_index<JumpCmd>();
+  blk.cmd_buffer_.append(JumpCmd::Kind::kRet);
+  // This extra block index is so that when inlined, we don't have to worry
+  // about iterator invalidation, as a return becomes an unconditional jump
+  // needing extra space.
+  blk.cmd_buffer_.append(ReturnBlock());
+}
+
+void Builder::CondJump(RegOr<bool> cond, BasicBlock const *true_block,
+                       BasicBlock const *false_block) {
+  auto& blk = *CurrentBlock();
+  if (cond.is_reg()) {
+    blk.cmd_buffer_.append_index<JumpCmd>();
+    blk.cmd_buffer_.append(JumpCmd::Kind::kCond);
+    blk.cmd_buffer_.append(cond.reg());
+    blk.cmd_buffer_.append(false_block);
+    blk.cmd_buffer_.append(true_block);
+  } else {
+    UncondJump(cond.value() ? true_block : false_block);
+  }
+}
+
+void Builder::ChooseJump(absl::Span<std::string_view const> names,
+                         absl::Span<BasicBlock *const> blocks) {
+  ASSERT(names.size() == blocks.size());
+  auto& blk = *CurrentBlock();
+  blk.cmd_buffer_.append_index<JumpCmd>();
+  blk.cmd_buffer_.append(JumpCmd::Kind::kChoose);
+  blk.cmd_buffer_.append<uint16_t>(names.size());
+  for (std::string_view name : names) { blk.cmd_buffer_.append(name); }
+  for (BasicBlock* block : blocks) { blk.cmd_buffer_.append(block); }
 }
 
 namespace {

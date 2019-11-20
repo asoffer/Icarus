@@ -36,6 +36,33 @@ struct Builder {
   internal::BlockGroup*& CurrentGroup() { return current_.group_; }
   BasicBlock*& CurrentBlock() { return current_.block_; }
 
+  // INSTRUCTIONS
+
+  // Emits a function-call instruction, calling `fn` of type `f` with the given
+  // `arguments` and output parameters. If output parameters are not present,
+  // the function must return nothing.
+  void Call(RegOr<AnyFunc> const& fn, type::Function const* f,
+            absl::Span<Results const> arguments, OutParams = {});
+
+  // Jump instructions must be the last instruction in a basic block. They
+  // handle control-flow, indicating which basic block control should be
+  // transferred to next.
+  //
+  // `UncondJump`: Transfers control to `block`.
+  // `CondJump`:   Transfers control to one of two blocks depending on a
+  //               run-time boolean value.
+  // `ReturnJump`: Transfers control back to the calling function.
+  //
+  // `ChooseJump`: Transfers control to the appropriate block-handler. Note that
+  //               this is highly specific to the current scope-defining
+  //               language constructs which are likely to change.
+  void UncondJump(BasicBlock const* block);
+  void CondJump(RegOr<bool> cond, BasicBlock const* true_block,
+                BasicBlock const* false_block);
+  void ReturnJump();
+  void ChooseJump(absl::Span<std::string_view const> names,
+                  absl::Span<BasicBlock* const> blocks);
+
   base::Tagged<Addr, Reg> Alloca(type::Type const* t);
   base::Tagged<Addr, Reg> TmpAlloca(type::Type const* t);
 
@@ -98,11 +125,6 @@ struct SetTemporaries : public base::UseWithScope {
   Builder& bldr_;
 };
 
-void Call(RegOr<AnyFunc> const &fn, type::Function const *f,
-          absl::Span<Results const> arguments);
-void Call(RegOr<AnyFunc> const &fn, type::Function const *f,
-          absl::Span<Results const> arguments, OutParams);
-
 template <typename ToType, typename FromType>
 RegOr<ToType> Cast(RegOr<FromType> r) {
   if (r.is_reg()) {
@@ -145,48 +167,6 @@ RegOr<ToType> CastTo(type::Type const* from_type, ir::Results const& r) {
   } else {
     UNREACHABLE();
   }
-}
-
-inline void UncondJump(BasicBlock const* block) {
-  auto& blk = *GetBuilder().CurrentBlock();
-  blk.cmd_buffer_.append_index<JumpCmd>();
-  blk.cmd_buffer_.append(JumpCmd::Kind::kUncond);
-  blk.cmd_buffer_.append(block);
-}
-
-inline void ReturnJump() {
-  auto& blk = *GetBuilder().CurrentBlock();
-  blk.cmd_buffer_.append_index<JumpCmd>();
-  blk.cmd_buffer_.append(JumpCmd::Kind::kRet);
-  // This extra block index is so that when inlined, we don't have to worry
-  // about iterator invalidation, as a return becomes an unconditional jump
-  // needing extra space.
-  blk.cmd_buffer_.append(ReturnBlock());
-}
-
-inline void CondJump(RegOr<bool> cond, BasicBlock const* true_block,
-                     BasicBlock const* false_block) {
-  auto& blk = *GetBuilder().CurrentBlock();
-  if (cond.is_reg()) {
-    blk.cmd_buffer_.append_index<JumpCmd>();
-    blk.cmd_buffer_.append(JumpCmd::Kind::kCond);
-    blk.cmd_buffer_.append(cond.reg());
-    blk.cmd_buffer_.append(false_block);
-    blk.cmd_buffer_.append(true_block);
-  } else {
-    UncondJump(cond.value() ? true_block : false_block);
-  }
-}
-
-inline void ChooseJump(absl::Span<std::string_view const> names,
-                       absl::Span<BasicBlock* const> blocks) {
-  ASSERT(names.size() == blocks.size());
-  auto& blk = *GetBuilder().CurrentBlock();
-  blk.cmd_buffer_.append_index<JumpCmd>();
-  blk.cmd_buffer_.append(JumpCmd::Kind::kChoose);
-  blk.cmd_buffer_.append<uint16_t>(names.size());
-  for (std::string_view name : names) { blk.cmd_buffer_.append(name); }
-  for (BasicBlock* block : blocks) { blk.cmd_buffer_.append(block); }
 }
 
 template <typename T>

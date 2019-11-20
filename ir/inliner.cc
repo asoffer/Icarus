@@ -452,7 +452,7 @@ std::pair<Results, bool> CallInline(
     }
   }
 
-  UncondJump(GetBuilder().CurrentGroup()->blocks()[inlined_start]);
+  GetBuilder().UncondJump(GetBuilder().CurrentGroup()->blocks()[inlined_start]);
   GetBuilder().CurrentBlock() = inliner.landing();
 
   inliner.MergeAllocations(GetBuilder().CurrentGroup(), f->allocs());

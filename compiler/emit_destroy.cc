@@ -31,7 +31,7 @@ void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDestroyTag) {
               EmitDestroyTag{});
       }
 
-      ir::ReturnJump();
+      builder().ReturnJump();
     }
     return fn;
   });
@@ -61,21 +61,21 @@ void Compiler::Visit(type::Variant const *t, ir::Reg reg, EmitDestroyTag) {
 
         builder().CurrentBlock() = found_block;
         Visit(v, ir::PtrFix(var_val, v), EmitDestroyTag{});
-        ir::UncondJump(landing);
+        builder().UncondJump(landing);
 
         builder().CurrentBlock() = old_block;
         builder().CurrentBlock() = ir::EarlyExitOn<true>(
             found_block, ir::Eq(ir::RegOr<type::Type const *>(type), v));
       }
 
-      ir::UncondJump(landing);
+      builder().UncondJump(landing);
       builder().CurrentBlock() = landing;
-      ir::ReturnJump();
+      builder().ReturnJump();
     }
   }
 
-  ir::Call(ir::AnyFunc{t->destroy_func_}, t->destroy_func_->type_,
-           {ir::Results{reg}});
+  builder().Call(ir::AnyFunc{t->destroy_func_}, t->destroy_func_->type_,
+                 {ir::Results{reg}});
 }
 
 void Compiler::Visit(type::Tuple const *t, ir::Reg reg, EmitDestroyTag) {
@@ -92,7 +92,7 @@ void Compiler::Visit(type::Tuple const *t, ir::Reg reg, EmitDestroyTag) {
         Visit(t->entries_.at(i), ir::Field(var, t, i).get(), EmitDestroyTag{});
       }
 
-      ir::ReturnJump();
+      builder().ReturnJump();
     }
     return fn;
   });

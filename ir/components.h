@@ -19,9 +19,9 @@ template <bool B>
 BasicBlock *EarlyExitOn(BasicBlock *exit_block, RegOr<bool> cond) {
   auto *continue_block = GetBuilder().AddBlock();
   if constexpr (B) {
-    CondJump(cond, exit_block, continue_block);
+    GetBuilder().CondJump(cond, exit_block, continue_block);
   } else {
-    CondJump(cond, continue_block, exit_block);
+    GetBuilder().CondJump(cond, continue_block, exit_block);
   }
   return continue_block;
 }
@@ -46,7 +46,7 @@ void CreateLoop(LoopPhiFn &&loop_phi_fn, LoopBodyFn &&loop_body_fn,
   auto *loop_body  = GetBuilder().AddBlock();
   auto *exit_block = GetBuilder().AddBlock();
 
-  UncondJump(loop_phi);
+  GetBuilder().UncondJump(loop_phi);
   GetBuilder().CurrentBlock() = loop_phi;
 
   auto phi_indices = base::tuple::transform([&]() { ir::Phi(); }, types);
@@ -55,11 +55,11 @@ void CreateLoop(LoopPhiFn &&loop_phi_fn, LoopBodyFn &&loop_body_fn,
       phi_indices);
 
   auto exit_cond = std::apply(std::forward<LoopPhiFn>(loop_phi_fn), phi_vals);
-  CondJump(exit_cond, exit_block, loop_body);
+  GetBuilder().CondJump(exit_cond, exit_block, loop_body);
 
   GetBuilder().CurrentBlock() = loop_body;
   auto new_phis = std::apply(std::forward<LoopBodyFn>(loop_body_fn), phi_vals);
-  UncondJump(loop_phi);
+  GetBuilder().UncondJump(loop_phi);
 
   base::tuple::for_each(
       [&](auto &&phi_index, auto &&entry_val, auto &&new_phi) {
@@ -90,7 +90,7 @@ void OnEachArrayElement(type::Array const *t, CompiledFn *fn, F &&fn_to_apply) {
                },
                std::tuple{data_ptr_type}, tup{ptr});
 
-    ReturnJump();
+    GetBuilder().ReturnJump();
   }
 }
 

@@ -155,7 +155,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node) {
     if (t->as<type::Function>().output.empty()) {
       // TODO even this is wrong. Figure out the right jumping strategy
       // between here and where you call SetReturn
-      ir::ReturnJump();
+      compiler->builder().ReturnJump();
     }
 
     ir_func->work_item = nullptr;
@@ -221,12 +221,12 @@ void CompleteBody(Compiler *compiler, ast::StructLiteral const *node) {
   //     ir::SetRet(0, static_cast<ir::RegOr<type::Type const *>>(result));
   //     ir::Store(static_cast<ir::RegOr<type::Type const *>>(result),
   //               cache_slot_addr);
-  //     ir::ReturnJump();
+  //     compiler->builder().ReturnJump();
   //
   //     // Exit path from finding the cache
   //     ir::GetBuilder().CurrentBlock() = land_block;
   //     ir::SetRet(0, static_cast<ir::RegOr<type::Type const *>>(cache_slot));
-  //     ir::ReturnJump();
+  //     compiler->builder().ReturnJump();
   //   }
 }
 
@@ -256,7 +256,7 @@ void CompleteBody(Compiler *compiler, ast::JumpHandler const *node) {
 
     MakeAllDestructions(compiler, node->body_scope());
 
-    ir::ReturnJump();
+    compiler->builder().ReturnJump();
     ir_func->work_item = nullptr;
   }
 }
@@ -458,12 +458,12 @@ ir::Results Compiler::Visit(ast::Binop const *node, EmitValueTag) {
 
       auto lhs_val       = Visit(node->lhs(), EmitValueTag{}).get<bool>(0);
       auto lhs_end_block = builder().CurrentBlock();
-      ir::CondJump(lhs_val, land_block, more_block);
+      builder().CondJump(lhs_val, land_block, more_block);
 
       builder().CurrentBlock() = more_block;
       auto rhs_val       = Visit(node->rhs(), EmitValueTag{}).get<bool>(0);
       auto rhs_end_block = builder().CurrentBlock();
-      ir::UncondJump(land_block);
+      builder().UncondJump(land_block);
 
       builder().CurrentBlock() = land_block;
 
@@ -486,12 +486,12 @@ ir::Results Compiler::Visit(ast::Binop const *node, EmitValueTag) {
 
       auto lhs_val       = Visit(node->lhs(), EmitValueTag{}).get<bool>(0);
       auto lhs_end_block = builder().CurrentBlock();
-      ir::CondJump(lhs_val, more_block, land_block);
+      builder().CondJump(lhs_val, more_block, land_block);
 
       builder().CurrentBlock() = more_block;
       auto rhs_val       = Visit(node->rhs(), EmitValueTag{}).get<bool>(0);
       auto rhs_end_block = builder().CurrentBlock();
-      ir::UncondJump(land_block);
+      builder().UncondJump(land_block);
 
       builder().CurrentBlock() = land_block;
 
@@ -661,8 +661,8 @@ ir::Results Compiler::Visit(ast::Call const *node, EmitValueTag) {
             ir::BuiltinType(core::Builtin::Bytes)->as<type::Function>();
         ir::OutParams outs;
         auto reg = outs.AppendReg(fn_type.output.at(0));
-        ir::Call(ir::BytesFn(), &fn_type,
-                 {Visit(node->args().at(0), EmitValueTag{})}, outs);
+        builder().Call(ir::BytesFn(), &fn_type,
+                       {Visit(node->args().at(0), EmitValueTag{})}, outs);
 
         return ir::Results{reg};
       } break;
@@ -672,8 +672,8 @@ ir::Results Compiler::Visit(ast::Call const *node, EmitValueTag) {
             ir::BuiltinType(core::Builtin::Alignment)->as<type::Function>();
         ir::OutParams outs;
         auto reg = outs.AppendReg(fn_type.output.at(0));
-        ir::Call(ir::AlignmentFn(), &fn_type,
-                 {Visit(node->args().at(0), EmitValueTag{})}, outs);
+        builder().Call(ir::AlignmentFn(), &fn_type,
+                       {Visit(node->args().at(0), EmitValueTag{})}, outs);
 
         return ir::Results{reg};
       } break;
@@ -762,42 +762,43 @@ ir::Results ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
       auto *body_block      = compiler->builder().AddBlock();
       auto *incr_block      = compiler->builder().AddBlock();
 
-      ir::CondJump(ir::Eq(lhs_type->len, rhs_type->len), equal_len_block,
-                   false_block);
+      compiler->builder().CondJump(ir::Eq(lhs_type->len, rhs_type->len),
+                                   equal_len_block, false_block);
 
       compiler->builder().CurrentBlock() = true_block;
       ir::SetRet(0, true);
-      ir::ReturnJump();
+      compiler->builder().ReturnJump();
 
       compiler->builder().CurrentBlock() = false_block;
       ir::SetRet(0, false);
-      ir::ReturnJump();
+      compiler->builder().ReturnJump();
 
       compiler->builder().CurrentBlock() = equal_len_block;
       auto lhs_start = ir::Index(Ptr(lhs_type), ir::Reg::Arg(0), 0);
       auto rhs_start = ir::Index(Ptr(rhs_type), ir::Reg::Arg(1), 0);
       auto lhs_end =
           ir::PtrIncr(lhs_start, lhs_type->len, Ptr(rhs_type->data_type));
-      ir::UncondJump(phi_block);
+      compiler->builder().UncondJump(phi_block);
 
       compiler->builder().CurrentBlock() = phi_block;
 
       ir::Reg lhs_phi_reg = ir::MakeResult<ir::Addr>();
       ir::Reg rhs_phi_reg = ir::MakeResult<ir::Addr>();
 
-      ir::CondJump(ir::Eq(ir::RegOr<ir::Addr>(lhs_phi_reg), lhs_end),
-                   true_block, body_block);
+      compiler->builder().CondJump(
+          ir::Eq(ir::RegOr<ir::Addr>(lhs_phi_reg), lhs_end), true_block,
+          body_block);
 
       compiler->builder().CurrentBlock() = body_block;
       // TODO what if data type is an array?
-      ir::CondJump(ir::Eq(ir::Load<ir::Addr>(lhs_phi_reg),
-                          ir::Load<ir::Addr>(rhs_phi_reg)),
-                   incr_block, false_block);
+      compiler->builder().CondJump(ir::Eq(ir::Load<ir::Addr>(lhs_phi_reg),
+                                          ir::Load<ir::Addr>(rhs_phi_reg)),
+                                   incr_block, false_block);
 
       compiler->builder().CurrentBlock() = incr_block;
       auto lhs_incr = ir::PtrIncr(lhs_phi_reg, 1, Ptr(lhs_type->data_type));
       auto rhs_incr = ir::PtrIncr(rhs_phi_reg, 1, Ptr(rhs_type->data_type));
-      ir::UncondJump(phi_block);
+      compiler->builder().UncondJump(phi_block);
 
       ir::Phi<ir::Addr>(lhs_phi_reg, {equal_len_block, incr_block},
                         {lhs_start, lhs_incr});
@@ -809,8 +810,8 @@ ir::Results ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
   ir::OutParams outs;
   auto result = outs.AppendReg(type::Bool);
 
-  ir::Call(ir::AnyFunc{iter->second}, iter->second->type_, {lhs_ir, rhs_ir},
-           std::move(outs));
+  compiler->builder().Call(ir::AnyFunc{iter->second}, iter->second->type_,
+                           {lhs_ir, rhs_ir}, std::move(outs));
   return ir::Results{result};
 }
 
@@ -973,8 +974,8 @@ ir::Results Compiler::Visit(ast::ChainOp const *node, EmitValueTag) {
       auto val = Visit(node->exprs()[i], EmitValueTag{}).get<bool>(0);
 
       auto *next_block = builder().AddBlock();
-      ir::CondJump(val, is_or ? land_block : next_block,
-                   is_or ? next_block : land_block);
+      builder().CondJump(val, is_or ? land_block : next_block,
+                         is_or ? next_block : land_block);
       phi_blocks.push_back(builder().CurrentBlock());
       phi_results.push_back(is_or);
 
@@ -984,7 +985,7 @@ ir::Results Compiler::Visit(ast::ChainOp const *node, EmitValueTag) {
     phi_blocks.push_back(builder().CurrentBlock());
     phi_results.push_back(
         Visit(node->exprs().back(), EmitValueTag{}).get<bool>(0));
-    ir::UncondJump(land_block);
+    builder().UncondJump(land_block);
 
     builder().CurrentBlock() = land_block;
 
@@ -1008,7 +1009,7 @@ ir::Results Compiler::Visit(ast::ChainOp const *node, EmitValueTag) {
         phi_blocks.push_back(builder().CurrentBlock());
         phi_values.push_back(false);
         auto *next_block = builder().AddBlock();
-        ir::CondJump(cmp, next_block, land_block);
+        builder().CondJump(cmp, next_block, land_block);
         builder().CurrentBlock() = next_block;
         lhs_ir                   = std::move(rhs_ir);
       }
@@ -1018,7 +1019,7 @@ ir::Results Compiler::Visit(ast::ChainOp const *node, EmitValueTag) {
       phi_blocks.push_back(builder().CurrentBlock());
       phi_values.push_back(EmitChainOpPair(this, node, node->exprs().size() - 2,
                                            lhs_ir, rhs_ir));
-      ir::UncondJump(land_block);
+      builder().UncondJump(land_block);
 
       builder().CurrentBlock() = land_block;
 
@@ -1237,7 +1238,7 @@ ir::Results Compiler::Visit(ast::Jump const *node, EmitValueTag) {
   }
 
   builder().CurrentBlock() = current_block;
-  ir::ChooseJump(names, blocks);
+  builder().ChooseJump(names, blocks);
   return ir::Results{};
 }
 
@@ -1305,7 +1306,7 @@ ir::Results Compiler::Visit(ast::ReturnStmt const *node, EmitValueTag) {
   }
 
   builder().disallow_more_stmts();
-  ir::ReturnJump();
+  builder().ReturnJump();
   return ir::Results{};
 }
 
@@ -1428,7 +1429,7 @@ ir::Results Compiler::Visit(ast::ScopeNode const *node, EmitValueTag) {
   LocalScopeInterpretation interp(builder(), scope_def->blocks_, node);
   DEBUG_LOG("ScopeNode")("          ... done");
 
-  ir::UncondJump(interp.init_block());
+  builder().UncondJump(interp.init_block());
   builder().CurrentBlock() = interp.init_block();
 
   DEBUG_LOG("ScopeNode")("Inlining entry handler at ", ast::ExprPtr{node});
@@ -1570,7 +1571,7 @@ ir::Results Compiler::Visit(ast::Switch const *node, EmitValueTag) {
     if (body->is<ast::Expression>()) {
       phi_args.emplace(builder().CurrentBlock(),
                        Visit(body.get(), EmitValueTag{}));
-      ir::UncondJump(land_block);
+      builder().UncondJump(land_block);
     } else {
       // It must be a jump/yield/return, which we've verified in VerifyType.
       Visit(body.get(), EmitValueTag{});
@@ -1584,7 +1585,7 @@ ir::Results Compiler::Visit(ast::Switch const *node, EmitValueTag) {
   if (node->cases_.back().first->is<ast::Expression>()) {
     phi_args.emplace(builder().CurrentBlock(),
                      Visit(node->cases_.back().first.get(), EmitValueTag{}));
-    ir::UncondJump(land_block);
+    builder().UncondJump(land_block);
   } else {
     // It must be a jump/yield/return, which we've verified in VerifyType.
     Visit(node->cases_.back().first.get(), EmitValueTag{});

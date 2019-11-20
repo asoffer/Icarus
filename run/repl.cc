@@ -35,7 +35,7 @@ static void ReplEval(ast::Expression const *expr,
     if (expr_type != type::Void()) {
       compiler->Visit(expr_type, expr_val, compiler::EmitPrintTag{});
     }
-    ir::ReturnJump();
+    compiler->builder().ReturnJump();
   }
 
   ExecContext ctx;

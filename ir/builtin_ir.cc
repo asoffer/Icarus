@@ -18,7 +18,7 @@ AnyFunc BytesFn() {
     ICARUS_SCOPE(SetCurrentFunc(fn)) {
       GetBuilder().CurrentBlock() = fn->entry();
       SetRet(0, Bytes(Reg::Arg(0)));
-      ReturnJump();
+      GetBuilder().ReturnJump();
     }
     return fn;
   }();
@@ -32,7 +32,7 @@ AnyFunc AlignmentFn() {
     ICARUS_SCOPE(SetCurrentFunc(fn)) {
       GetBuilder().CurrentBlock() = fn->entry();
       SetRet(0, Align(Reg::Arg(0)));
-      ReturnJump();
+      GetBuilder().ReturnJump();
     }
     return fn;
   }();

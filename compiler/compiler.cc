@@ -220,7 +220,7 @@ ir::CompiledFn Compiler::MakeThunk(ast::Expression const *expr,
     for (size_t i = 0; i < vals.size(); ++i) {
       ir::SetRet(i, type::Typed{vals.GetResult(i), extracted_types.at(i)});
     }
-    ir::ReturnJump();
+    builder().ReturnJump();
 
     CompleteDeferredBodies();
   }

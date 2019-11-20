@@ -53,17 +53,18 @@ void Compiler::Visit(type::Array const *t, ir::Results const &val,
           },
           std::tuple{type::Ptr(t->data_type), type::Int32},
           std::tuple{ir::RegOr<ir::Addr>(ptr), ir::RegOr<int32_t>(t->len - 1)});
-      ir::UncondJump(exit_block);
+      builder().UncondJump(exit_block);
 
       builder().CurrentBlock() = exit_block;
       ir::Print(std::string_view{"]"});
-      ir::ReturnJump();
+      builder().ReturnJump();
     }
 
     return fn;
   });
 
-  ir::Call(ir::AnyFunc{t->repr_func_.get()}, t->repr_func_.get()->type_, {val});
+  builder().Call(ir::AnyFunc{t->repr_func_.get()}, t->repr_func_.get()->type_,
+                 {val});
 }
 
 void Compiler::Visit(type::Enum const *t, ir::Results const &val,
@@ -156,20 +157,20 @@ void Compiler::Visit(type::Variant const *t, ir::Results const &val,
 
         builder().CurrentBlock() = found_block;
         Visit(v, ir::Results{ir::PtrFix(var_val, v)}, EmitPrintTag{});
-        ir::UncondJump(landing);
+        builder().UncondJump(landing);
 
         builder().CurrentBlock() = old_block;
         builder().CurrentBlock() = ir::EarlyExitOn<true>(
             found_block, ir::Eq(ir::RegOr<type::Type const *>(type), v));
       }
 
-      ir::UncondJump(landing);
+      builder().UncondJump(landing);
       builder().CurrentBlock() = landing;
-      ir::ReturnJump();
+      builder().ReturnJump();
     }
   }
 
-  ir::Call(ir::AnyFunc{t->repr_func_}, t->repr_func_->type_, {val});
+  builder().Call(ir::AnyFunc{t->repr_func_}, t->repr_func_->type_, {val});
 }
 
 }  // namespace compiler

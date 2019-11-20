@@ -80,7 +80,7 @@ void Compiler::Visit(type::Tuple const *t, ir::Reg reg, EmitDefaultInitTag) {
               EmitDefaultInitTag{});
       }
 
-      ir::ReturnJump();
+      builder().ReturnJump();
     }
     return fn;
   });
