@@ -12,15 +12,15 @@ struct ExecutableModule : CompiledModule {
                 not std::is_same_v<ProcessFn, CompiledModule>, int> = 0>
   explicit ExecutableModule(ProcessFn fn) : CompiledModule(std::move(fn)) {}
 
-  ir::CompiledFn *main() const { return main_; }
+  ir::CompiledFn *main() { return &main_; }
 
   // TODO hide this
-  void set_main(ir::CompiledFn *main_fn) { main_ = main_fn; }
+  void set_main(ir::CompiledFn *main_fn) {}
 
  private:
-  ir::CompiledFn *main_ = nullptr;
+  ir::CompiledFn main_ = ir::CompiledFn(type::Func({}, {}), {});
 };
 
 }  // namespace compiler
 
-#endif // ICARUS_COMPILER_EXECUTABLE_MODULE_H
+#endif  // ICARUS_COMPILER_EXECUTABLE_MODULE_H

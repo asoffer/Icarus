@@ -1325,7 +1325,6 @@ VerifyResult Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
   // see an identifier (either a real identifier node, or a declaration, we need
   // to verify the type, but we only want to do node once.
   if (auto *attempt = prior_verification_attempt(node)) { return *attempt; }
-
   int dk = 0;
   if (node->IsInferred()) { dk = INFER; }
   if (node->IsUninitialized()) {

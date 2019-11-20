@@ -102,10 +102,11 @@ struct Builder {
 Builder& GetBuilder();
 
 struct SetCurrentFunc : public base::UseWithScope {
-  SetCurrentFunc(internal::BlockGroup* fn);
+  SetCurrentFunc(internal::BlockGroup* fn, Builder* builder = nullptr);
   ~SetCurrentFunc();
 
  private:
+  Builder* builder_;
   internal::BlockGroup* old_group_;
   BasicBlock* old_block_;
 };

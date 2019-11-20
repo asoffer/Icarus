@@ -21,6 +21,7 @@ cc_library(
         ":compiler_header",
         ":data",
         ":dependent_data",
+        ":executable_module",
         ":extract_jumps",
         ":module",
         ":special_function",

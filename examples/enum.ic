@@ -1,12 +1,10 @@
-main ::= () -> () {
-  print "Basic enums:\n"
-  basic_enums()
-  print "--------------------------------------------------------------------\n"
+print "Basic enums:\n"
+basic_enums()
+print "--------------------------------------------------------------------\n"
 
-  print "Basic flags:\n"
-  basic_flags()
-  print "--------------------------------------------------------------------\n"
-}
+print "Basic flags:\n"
+basic_flags()
+print "--------------------------------------------------------------------\n"
 
 basic_enums ::= () -> () {
   // Enums are defined by simply listing the values without commas, one per

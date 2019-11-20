@@ -8,20 +8,21 @@ namespace ir {
 
 thread_local Builder current;
 
-Builder& GetBuilder() { return current; }
+Builder &GetBuilder() { return current; }
 
-BasicBlock* Builder::AddBlock() { return CurrentGroup()->AppendBlock(); }
+BasicBlock *Builder::AddBlock() { return CurrentGroup()->AppendBlock(); }
 
-SetCurrentFunc::SetCurrentFunc(internal::BlockGroup* group)
-    : old_group_(GetBuilder().CurrentGroup()),
-      old_block_(GetBuilder().CurrentBlock()) {
-  GetBuilder().CurrentGroup()  = group;
-  GetBuilder().current_.block_ = group->entry();
+SetCurrentFunc::SetCurrentFunc(internal::BlockGroup *group, Builder *builder)
+    : builder_(builder ? builder : &GetBuilder()),
+      old_group_(builder_->CurrentGroup()),
+      old_block_(builder_->CurrentBlock()) {
+  builder_->CurrentGroup()  = group;
+  builder_->current_.block_ = group->entry();
 }
 
 SetCurrentFunc::~SetCurrentFunc() {
-  GetBuilder().CurrentGroup() = old_group_;
-  GetBuilder().CurrentBlock() = old_block_;
+  builder_->CurrentGroup() = old_group_;
+  builder_->CurrentBlock() = old_block_;
 }
 
 base::Tagged<Addr, Reg> Builder::Alloca(type::Type const* t) {

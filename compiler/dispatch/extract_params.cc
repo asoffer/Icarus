@@ -10,7 +10,7 @@ namespace compiler {
 namespace {
 core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
     Compiler *compiler, ast::Declaration const *decl) {
-  auto *decl_type = compiler->type_of(decl);
+  auto *decl_type = ASSERT_NOT_NULL(compiler->type_of(decl));
   if (decl->flags() & ast::Declaration::f_IsConst) {
     if (auto const *fn_type = decl_type->if_as<type::Function>()) {
       auto f = backend::EvaluateAs<ir::AnyFunc>(

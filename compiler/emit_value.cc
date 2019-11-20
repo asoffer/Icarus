@@ -6,6 +6,8 @@
 #include "backend/eval.h"
 #include "backend/exec.h"
 #include "base/guarded.h"
+#include "compiler/executable_module.h"
+#include "frontend/parse.h"
 #include "ir/builder.h"
 #include "ir/builtin_ir.h"
 #include "ir/cmd/basic.h"
@@ -276,6 +278,64 @@ base::move_func<void()> *DeferBody(Compiler *compiler, NodeType const *node) {
 }
 
 }  // namespace
+
+std::unique_ptr<module::BasicModule> CompileExecutableModule(
+    frontend::Source *src) {
+  auto mod = std::make_unique<ExecutableModule>(
+      [](base::PtrSpan<ast::Node const> nodes, CompiledModule *mod) {
+        // TODO remove reinterpret_cast
+        auto exec_mod = reinterpret_cast<ExecutableModule *>(mod);
+        compiler::Compiler c(mod);
+
+        // Do one pass of verification over constant declarations. Then come
+        // back a second time to handle the remaining.
+        // TODO this may be necessary in library modules too.
+        std::vector <ast::Node const*> deferred;
+        for (ast::Node const *node : nodes) {
+          if (auto const *decl = node->if_as<ast::Declaration>()) {
+            if (decl->flags() & ast::Declaration::f_IsConst) {
+              c.Visit(decl, VerifyTypeTag{});
+              continue;
+            }
+          }
+          deferred.push_back(node);
+        }
+
+        for (ast::Node const *node : deferred) {
+          c.Visit(node, VerifyTypeTag{});
+        }
+        if (c.num_errors() > 0) { return; }
+
+        ICARUS_SCOPE(ir::SetCurrentFunc(exec_mod->main(), &c.builder())) {
+          // TODO make all stack allocations.
+
+          ICARUS_SCOPE(ir::SetTemporaries(c.builder())) {
+            for (auto const *stmt : nodes) {
+              c.Visit(stmt, EmitValueTag{});
+              c.builder().FinishTemporariesWith([&](type::Typed<ir::Reg> r) {
+                c.Visit(r.type(), r.get(), EmitDestroyTag{});
+              });
+            }
+          }
+
+          // TODO make all destructions -- or decide that you don't need to do
+          // this in main.
+
+          c.builder().ReturnJump();
+        }
+
+        c.CompleteDeferredBodies();
+
+        mod->dep_data_   = std::move(c.data_.dep_data_);
+        mod->fns_        = std::move(c.data_.fns_);
+        mod->scope_defs_ = std::move(c.data_.scope_defs_);
+        mod->block_defs_ = std::move(c.data_.block_defs_);
+      });
+  mod->Process(frontend::Parse(src));
+  return mod;
+}
+
+
 
 ir::Results Compiler::Visit(ast::Access const *node, EmitValueTag) {
   if (type_of(node->operand()) == type::Module) {

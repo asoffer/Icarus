@@ -16,53 +16,16 @@
 
 namespace compiler {
 
-static void CompileNodes(Compiler *compiler,
-                         base::PtrSpan<ast::Node const> nodes) {
-  for (ast::Node const *node : nodes) {
-    compiler->Visit(node, VerifyTypeTag{});
-  }
-  if (compiler->num_errors() > 0) { return; }
-
-  for (ast::Node const *node : nodes) { compiler->Visit(node, EmitValueTag{}); }
-  compiler->CompleteDeferredBodies();
-}
-
-std::unique_ptr<module::BasicModule> CompileExecutableModule(
-    frontend::Source *src) {
-  auto mod = std::make_unique<ExecutableModule>(
-      [](base::PtrSpan<ast::Node const> nodes, CompiledModule *mod) {
-        compiler::Compiler c(mod);
-        CompileNodes(&c, nodes);
-
-        for (ast::Node const *node : nodes) {
-          if (auto const *decl = node->if_as<ast::Declaration>()) {
-            if (decl->id() != "main") { continue; }
-            auto f = backend::EvaluateAs<ir::AnyFunc>(
-                c.MakeThunk(decl->init_val(), c.type_of(decl->init_val())));
-            ASSERT(f.is_fn() == true);
-            auto ir_fn = f.func();
-
-            // TODO remove reinterpret_cast
-            reinterpret_cast<ExecutableModule *>(mod)->set_main(ir_fn);
-          } else {
-            continue;
-          }
-        }
-
-        mod->dep_data_   = std::move(c.data_.dep_data_);
-        mod->fns_        = std::move(c.data_.fns_);
-        mod->scope_defs_ = std::move(c.data_.scope_defs_);
-        mod->block_defs_ = std::move(c.data_.block_defs_);
-      });
-  mod->Process(frontend::Parse(src));
-  return mod;
-}
-
 std::unique_ptr<module::BasicModule> CompileLibraryModule(frontend::Source *src) {
   auto mod = std::make_unique<LibraryModule>(
       [](base::PtrSpan<ast::Node const> nodes, CompiledModule *mod) {
         compiler::Compiler c(mod);
-        CompileNodes(&c, nodes);
+        for (ast::Node const *node : nodes) { c.Visit(node, VerifyTypeTag{}); }
+        if (c.num_errors() > 0) { return; }
+
+        for (ast::Node const *node : nodes) { c.Visit(node, EmitValueTag{}); }
+        c.CompleteDeferredBodies();
+
         mod->dep_data_   = std::move(c.data_.dep_data_);
         mod->fns_        = std::move(c.data_.fns_);
         mod->scope_defs_ = std::move(c.data_.scope_defs_);
