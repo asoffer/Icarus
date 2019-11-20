@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <vector>
 
 #include "absl/debugging/failure_signal_handler.h"
@@ -12,10 +13,8 @@ extern bool validation;
 extern bool optimize_ir;
 }  // namespace debug
 
-extern std::vector<std::string> files;
-
 int RunRepl();
-int RunCompiler();
+int RunCompiler(std::filesystem::path const &);
 
 void cli::Usage() {
   Flag("help") << "Show usage information."
@@ -35,11 +34,14 @@ void cli::Usage() {
   };
 #endif  // defined(ICARUS_DEBUG)
 
-  Flag("repl", "r") << "Run the read-eval-print-loop." << [](bool b = false) {
-    if (not execute) { execute = (b ? RunRepl : RunCompiler); }
-  };
+  static std::filesystem::path file;
+  HandleOther = [](char const *arg) { file = arg; };
 
-  HandleOther = [](char const *arg) { files.emplace_back(arg); };
+  Flag("repl", "r") << "Run the read-eval-print-loop." << [](bool b = false) {
+    if (not execute) {
+      execute = (b ? RunRepl : [] { return RunCompiler(file); });
+    }
+  };
 }
 
 int main(int argc, char *argv[]) {

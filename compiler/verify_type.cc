@@ -1635,7 +1635,7 @@ VerifyResult Compiler::Visit(ast::Import const *node, VerifyTypeTag) {
       return VerifyResult::Error(),  //
              auto pending_mod,
              module::ImportModule(std::filesystem::path{src}, module(),
-                                  CompileModule));
+                                  CompileLibraryModule));
 
   if (not pending_mod.valid()) { return VerifyResult::Error(); }
   set_pending_module(node, pending_mod);

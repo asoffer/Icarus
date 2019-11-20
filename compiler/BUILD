@@ -87,6 +87,8 @@ cc_library(
         ":constant_binding",
         ":data",
         ":dependent_data",
+        ":executable_module",
+        ":library_module",
         ":verify_result",
         "//ast:ast_fwd",
         "//ast:overload_set",
@@ -199,6 +201,21 @@ cc_lib(
         "//type:type_fwd",
     ],
     test_deps = None,
+)
+
+cc_library(
+    name = "library_module",
+    hdrs = ["library_module.h"],
+    deps = [":module"],
+)
+
+cc_library(
+    name = "executable_module",
+    hdrs = ["executable_module.h"],
+    deps = [
+        ":module",
+        "//ir:compiled_fn",
+    ],
 )
 
 cc_lib(

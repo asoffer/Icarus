@@ -82,7 +82,9 @@ struct EmitDefaultInitTag {};
 struct EmitCopyAssignTag {};
 struct EmitMoveAssignTag {};
 
-std::unique_ptr<module::BasicModule> CompileModule(frontend::Source *src);
+std::unique_ptr<module::BasicModule> CompileExecutableModule(
+    frontend::Source *src);
+std::unique_ptr<module::BasicModule> CompileLibraryModule(frontend::Source *src);
 
 // These are the steps in a traditional compiler of verifying types and emitting
 // code. They're tied together because they don't necessarily happen in a

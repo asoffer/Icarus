@@ -8,7 +8,7 @@ cc_lib(
         "//base:untyped_buffer",
         "//base:util",
         "//compiler:compiler",
-        "//compiler:module",
+        "//compiler:executable_module",
         "//error:log",
         "//module:pending",
         "//ir:compiled_fn",

@@ -8,6 +8,7 @@
 #include "base/untyped_buffer.h"
 #include "base/util.h"
 #include "compiler/compiler.h"
+#include "compiler/executable_module.h"
 #include "compiler/module.h"
 #include "error/log.h"
 #include "frontend/parse.h"
@@ -16,25 +17,15 @@
 #include "module/pending.h"
 #include "opt/combine_blocks.h"
 
-std::vector<std::string> files;
-
-// TODO sad. don't use a global to do this.
-extern std::atomic<ir::CompiledFn *> main_fn;
-
-extern std::atomic<bool> found_errors;
-
-int RunCompiler() {
+int RunCompiler(std::filesystem::path const &file) {
   void *libc_handle = dlopen("/lib/x86_64-linux-gnu/libc.so.6", RTLD_LAZY);
   ASSERT(libc_handle != nullptr);
   base::defer d([libc_handle] { dlclose(libc_handle); });
 
   error::Log log;
-  for (const auto &src : files) {
-    if (not module::ImportModule(std::filesystem::path{src}, nullptr,
-                                 compiler::CompileModule)) {
-      log.MissingModule(src, "");
-    }
-  }
+  auto expected_pending_mod =
+      module::ImportModule(file, nullptr, compiler::CompileExecutableModule);
+  if (not expected_pending_mod) { log.MissingModule(file.string(), ""); }
 
   if (log.size() > 0) {
     log.Dump();
@@ -42,17 +33,19 @@ int RunCompiler() {
   }
 
   module::AwaitAllModulesTransitively();
+  // TODO remove reinterpret_cast
+  auto *exec_mod = reinterpret_cast<compiler::ExecutableModule *>(
+      expected_pending_mod->get());
 
-  if (main_fn == nullptr) {
+  if (not exec_mod->main()) {
     // TODO make this an actual error?
     std::cerr << "No compiled module has a `main` function.\n";
-  } else if (not found_errors) {
-    // TODO All the functions? In all the modules?
-    opt::CombineBlocks(main_fn);
-
-    backend::ExecContext exec_ctx;
-    backend::Execute(main_fn, base::untyped_buffer(0), {}, &exec_ctx);
   }
+
+  // TODO All the functions? In all the modules?
+  opt::CombineBlocks(exec_mod->main());
+  backend::ExecContext exec_ctx;
+  backend::Execute(exec_mod->main(), base::untyped_buffer(0), {}, &exec_ctx);
 
   return 0;
 }
