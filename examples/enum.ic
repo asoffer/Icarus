@@ -1,83 +1,77 @@
 print "Basic enums:\n"
-basic_enums()
+// Enums are defined by simply listing the values without commas, one per
+// line.
+Suit ::= enum {
+  CLUB
+  DIAMOND
+  HEART
+  SPADE
+}
+
+// Recall that `\\` represents a line break, which yield the more concise:
+Boolean ::= enum { TRUE \\ FALSE }
+
+// Enums have no default initial value, so the following line will not
+// compile.
+// b: Boolean
+
+// Accessing an enumerator is done with the enum name followed by a dot.
+trump := Suit.SPADE
+
+// When printed, enumerators show just the enumerator name.
+print trump, "\n"
+
+// Enums can be compared for (in)equality 
+print "(CLUB == DIAMOND): ", Suit.CLUB == Suit.DIAMOND, "\n"
+
+// However enumerators do not come with any particular ordering, so operators
+// like (<) will not work.
+
 print "--------------------------------------------------------------------\n"
 
 print "Basic flags:\n"
-basic_flags()
+// Flags are like enums but whereas enums can only hold one value at a time,
+// flags can have each option set or unset.
+Color ::= flags { RED \\ GREEN \\ BLUE }
+print "My favorite color is ", Color.RED, "\n"
+
+// To set more than one option, use the or-operator (|).
+cyan ::= (Color.GREEN | Color.BLUE)
+magenta ::= (Color.RED | Color.BLUE)
+yellow ::= (Color.GREEN | Color.RED)
+print "Yellow is just ", yellow, "\n"
+
+// Flag values have a default initial value consisting of all enumerators
+// unset.
+black: Color
+// Printing an empty enumerator shows:
+print "Black is ", black, "\n"
+
+// Flag values can also be negated:
+print "Cyan is ", !Color.RED, "\n"
+
+// Flags do come with a partial ordering where "less than" means having a
+// subset of the enumerators set.
+print "Red is \"less than\" magenta: ", Color.RED < magenta,
+      "\n"
+print "However, Red and blue are not comparable:\n",
+       "  RED < BLUE: ", (Color.RED < Color.BLUE), "\n",
+       "  BLUE < RED: ", (Color.BLUE < Color.RED), "\n"
+
+// Flags can be xor-ed together:
+print "Cyan is ", magenta ^ yellow, "\n"
+
+// Lastly, enumerators can be intersected with the and-operator (&).
+print "(not red and not blue) is ", !Color.RED & !Color.BLUE, "\n"
+
+// Note that enumerator printing is intended purely for debugging purposes.
+// Specifically with flags, this program may print "RED | GREEN" or
+// "GREEN | RED". These are both valid. It is guaranteed that a compiled
+// program will always use the same ordering. It is not guaranteed however
+// that successive compilations will have the same ordering:
+print "Magenta is ", Color.RED | Color.BLUE, "\n"
+print "Magenta is ", Color.RED | Color.BLUE, "\n"
+print "Magenta is ", Color.RED | Color.BLUE, "\n"
+print "Magenta is ", Color.RED | Color.BLUE, "\n"
+
 print "--------------------------------------------------------------------\n"
-
-basic_enums ::= () -> () {
-  // Enums are defined by simply listing the values without commas, one per
-  // line.
-  Suit ::= enum {
-    CLUB
-    DIAMOND
-    HEART
-    SPADE
-  }
-
-  // Recall that `\\` represents a line break, which yield the more concise:
-  Boolean ::= enum { TRUE \\ FALSE }
-
-  // Enums have no default initial value, so the following line will not
-  // compile.
-  // b: Boolean
-
-  // Accessing an enumerator is done with the enum name followed by a dot.
-  trump := Suit.SPADE
-
-  // When printed, enumerators show just the enumerator name.
-  print trump, "\n"
-
-  // Enums can be compared for (in)equality 
-  print "(CLUB == DIAMOND): ", Suit.CLUB == Suit.DIAMOND, "\n"
-
-  // However enumerators do not come with any particular ordering, so operators
-  // like (<) will not work.
-}
-
-basic_flags ::= () -> () {
-  // Flags are like enums but whereas enums can only hold one value at a time,
-  // flags can have each option set or unset.
-  Color ::= flags { RED \\ GREEN \\ BLUE }
-  print "My favorite color is ", Color.RED, "\n"
-
-  // To set more than one option, use the or-operator (|).
-  cyan ::= (Color.GREEN | Color.BLUE)
-  magenta ::= (Color.RED | Color.BLUE)
-  yellow ::= (Color.GREEN | Color.RED)
-  print "Yellow is just ", yellow, "\n"
-
-  // Flag values have a default initial value consisting of all enumerators
-  // unset.
-  black: Color
-  // Printing an empty enumerator shows:
-  print "Black is ", black, "\n"
-
-  // Flag values can also be negated:
-  print "Cyan is ", !Color.RED, "\n"
-
-  // Flags do come with a partial ordering where "less than" means having a
-  // subset of the enumerators set.
-  print "Red is \"less than\" magenta: ", Color.RED < magenta,
-        "\n"
-  print "However, Red and blue are not comparable:\n",
-         "  RED < BLUE: ", (Color.RED < Color.BLUE), "\n",
-         "  BLUE < RED: ", (Color.BLUE < Color.RED), "\n"
-
-  // Flags can be xor-ed together:
-  print "Cyan is ", magenta ^ yellow, "\n"
-
-  // Lastly, enumerators can be intersected with the and-operator (&).
-  print "(not red and not blue) is ", !Color.RED & !Color.BLUE, "\n"
-
-  // Note that enumerator printing is intended purely for debugging purposes.
-  // Specifically with flags, this program may print "RED | GREEN" or
-  // "GREEN | RED". These are both valid. It is guaranteed that a compiled
-  // program will always use the same ordering. It is not guaranteed however
-  // that successive compilations will have the same ordering:
-  print "Magenta is ", Color.RED | Color.BLUE, "\n"
-  print "Magenta is ", Color.RED | Color.BLUE, "\n"
-  print "Magenta is ", Color.RED | Color.BLUE, "\n"
-  print "Magenta is ", Color.RED | Color.BLUE, "\n"
-}

@@ -50,7 +50,7 @@ cc_lib(
 cc_lib(
     name = "module",
     deps = [
-        ":decl",
+        ":fn",
         ":scope",
     ],
     header_only = True,

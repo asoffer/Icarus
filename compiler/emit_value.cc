@@ -306,9 +306,10 @@ std::unique_ptr<module::BasicModule> CompileExecutableModule(
         }
         if (c.num_errors() > 0) { return; }
 
+        ast::ModuleScope *mod_scope =
+            &nodes.front()->scope_->as<ast::ModuleScope>();
         ICARUS_SCOPE(ir::SetCurrentFunc(exec_mod->main(), &c.builder())) {
-          // TODO make all stack allocations.
-
+          MakeAllStackAllocations(&c, mod_scope);
           ICARUS_SCOPE(ir::SetTemporaries(c.builder())) {
             for (auto const *stmt : nodes) {
               c.Visit(stmt, EmitValueTag{});
@@ -318,8 +319,8 @@ std::unique_ptr<module::BasicModule> CompileExecutableModule(
             }
           }
 
-          // TODO make all destructions -- or decide that you don't need to do
-          // this in main.
+          MakeAllDestructions(&c, mod_scope);
+          // TODO determine under which scenarios destructors can be skipped.
 
           c.builder().ReturnJump();
         }
@@ -1162,12 +1163,6 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
     }
     UNREACHABLE(ast::Dump::ToString(node));
   } else {
-    // For local variables the declaration determines where the initial value is
-    // set, but the allocation has to be done much earlier. We do the allocation
-    // in FunctionLiteral::Compiler.
-    // Declaration::Compiler is just used to set the value.
-    ASSERT(node->scope_->Containing<ast::FnScope>() != nullptr);
-
     // TODO these checks actually overlap and could be simplified.
     if (node->IsUninitialized()) { return ir::Results{}; }
     auto *t = type_of(node);

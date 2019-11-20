@@ -13,9 +13,7 @@ namespace type {
 struct GenericStruct : public Callable {
   TYPE_FNS(GenericStruct);
   GenericStruct(ast::Scope const *scope, std::vector<Type const *> ts)
-      : scope_(scope),
-        mod_(scope->Containing<ast::ModuleScope>()->module()),
-        deps_(std::move(ts)) {}
+      : scope_(scope), mod_(nullptr /* TODO */), deps_(std::move(ts)) {}
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
