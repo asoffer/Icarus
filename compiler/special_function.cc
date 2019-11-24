@@ -10,7 +10,7 @@ std::optional<ir::AnyFunc> SpecialFunction(Compiler *compiler,
                                            type::Struct const *s,
                                            char const *symbol) {
   auto *ptr_to_s = type::Ptr(s);
-  for (auto const *decl : s->scope_->AllDeclsWithId(symbol)) {
+  for (auto const *decl : s->scope_->AllDeclsTowardsRoot(symbol)) {
     // Note: there cannot be more than one declaration with the correct type
     // because our shadowing checks would have caught it.
     auto *t = compiler->type_of(decl);

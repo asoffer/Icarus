@@ -24,7 +24,14 @@ struct Scope : public base::Cast<Scope> {
     return std::make_unique<ScopeType>(this, std::forward<Args>(args)...);
   }
 
-  std::vector<Declaration const *> AllDeclsWithId(std::string_view id) const;
+  // Returns a container of all declarations in this scope and in parent scopes
+  // with the given identifier.
+  std::vector<Declaration const *> AllDeclsTowardsRoot(std::string_view id) const;
+
+  // Returns a container of all declaration with the given identifier that are
+  // in a scope directly related to this one (i.e., one of the scopes is an
+  // ancestor of the other).
+  std::vector<Declaration const *> AllAccessibleDecls(std::string_view id) const;
 
   void InsertDecl(std::string_view id, Declaration *decl);
 
@@ -43,8 +50,12 @@ struct Scope : public base::Cast<Scope> {
   }
 
   absl::flat_hash_map<std::string_view, std::vector<Declaration *>> decls_;
-  absl::flat_hash_map<std::string_view, std::vector<Declaration *>> child_decls_;
 
+ private:
+  absl::flat_hash_map<std::string_view, std::vector<Declaration *>>
+      child_decls_;
+
+ public:
   absl::flat_hash_set<module::BasicModule const *> embedded_modules_;
   Scope *parent = nullptr;
 };

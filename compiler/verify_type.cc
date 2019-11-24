@@ -5,6 +5,7 @@
 #include "ast/overload_set.h"
 #include "backend/eval.h"
 #include "compiler/compiler.h"
+#include "compiler/dispatch/extract_params.h"
 #include "compiler/dispatch/table.h"
 #include "compiler/extract_jumps.h"
 #include "error/inference_failure_reason.h"
@@ -267,35 +268,18 @@ static VerifyResult VerifySpecialFunctions(Compiler *visitor,
 // TODO what about shadowing of symbols across module boundaries imported with
 // -- ::= ?
 // Or when you import two modules verifying that symbols don't conflict.
-bool Shadow(Compiler *visitor, type::Typed<ast::Declaration const *> decl1,
+bool Shadow(Compiler *compiler, type::Typed<ast::Declaration const *> decl1,
             type::Typed<ast::Declaration const *> decl2) {
   // TODO Don't worry about generic shadowing? It'll be checked later?
   if (decl1.type() == type::Generic or decl2.type() == type::Generic) {
     return false;
   }
 
-  auto ExtractParams =
-      [visitor](
-          ast::Declaration const *decl) -> core::FnParams<type::Type const *> {
-    bool is_const               = (decl->flags() & ast::Declaration::f_IsConst);
-    ast::Expression const *expr = decl->init_val();
-    if (not is_const) {
-      return visitor->type_of(expr)
-          ->as<type::Function>()
-          .AnonymousFnParams()
-          .Transform([](type::Typed<ast::Declaration const *> expr) {
-            return expr.type();
-          });
-    } else if (auto *fn_lit = expr->if_as<ast::FunctionLiteral>()) {
-      return fn_lit->params().Transform(
-          [visitor](std::unique_ptr<ast::Declaration> const &decl) {
-            return visitor->type_of(decl.get());
-          });
-    }
-    NOT_YET();
-  };
   return core::AmbiguouslyCallable(
-      ExtractParams(*decl1), ExtractParams(*decl2),
+      ExtractParams(compiler, *decl1).Transform(
+          [](auto const &typed_decl) { return typed_decl.type(); }),
+      ExtractParams(compiler, *decl2).Transform(
+          [](auto const &typed_decl) { return typed_decl.type(); }),
       [](type::Type const *lhs, type::Type const *rhs) {
         return type::Meet(lhs, rhs) != nullptr;
       });
@@ -1477,48 +1461,68 @@ VerifyResult Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
           backend::EvaluateAs<module::BasicModule const *>(
               MakeThunk(node->init_val(), type::Module)));
       return set_result(node, VerifyResult::Constant(type::Module));
-    } else if (node_type->is<type::Tuple>()) {
-      NOT_YET(node_type, ast::Dump::ToString(node));
     } else {
       NOT_YET(node_type, ast::Dump::ToString(node));
     }
   }
 
-  // TODO simplify now that you don't have error decls.
   ASSERT(node_type != nullptr) << ast::Dump::ToString(node);
-  std::vector<type::Typed<ast::Declaration const *>> decls_to_check;
-  {
-    auto good_decls_to_check = node->scope_->AllDeclsWithId(node->id());
-    size_t num_total         = good_decls_to_check.size();
-    auto iter                = node->scope_->child_decls_.find(node->id());
 
-    bool has_children = (iter != node->scope_->child_decls_.end());
-    if (has_children) { num_total += iter->second.size(); }
-
-    decls_to_check.reserve(num_total);
-    for (auto *decl : good_decls_to_check) {
-      decls_to_check.emplace_back(decl, type_of(decl));
-    }
-
-    if (has_children) {
-      for (auto *decl : iter->second) {
-        decls_to_check.emplace_back(decl, type_of(decl));
-      }
-    }
-  }
-
-  auto iter = std::partition(decls_to_check.begin(), decls_to_check.end(),
-                             [node](type::Typed<ast::Declaration const *> td) {
-                               return node >= td.get();
-                             });
+  // Gather all declarations with the same identifer that are visible in this
+  // scope or that are in a scope which for which this declaration would be
+  // visible. In other words, look both up and down the scope tree for
+  // declarations of this identifier.
+  //
+  // It's tempting to assume we only need to look in one direction because we
+  // would catch any ambiguity at a later time. However this is not correct. For
+  // instance, consider this example:
+  //
+  // ```
+  // if (cond) then {
+  //   a := 4
+  // }
+  // a := 3  // Error: Redeclaration of `a`.
+  // ```
+  //
+  // There is a redeclaration of `a` that needs to be caught. However, If we
+  // only look towards the root of the scope tree, we will first see `a := 4`
+  // which is not ambiguous. Later we will find `a := 3` which should have been
+  // found but wasn't due to the fact that we saw the declaration that was
+  // further from the root first while processing.
+  //
+  // The problem can be described mathematically as follows:
+  //
+  // Define *scope tree order* to be the partial order defined by D1 <= D2 iff
+  // D1's path to the scope tree root is a prefix of D2's path to the scope tree
+  // root. Define *processing order* to be the order in which nodes have their
+  // types verified.
+  //
+  // The problem is that scope tree order does not have processing order as a
+  // linear extension.
+  //
+  // To fix this particular problem, we need to make sure we check all
+  // declarations that may be ambiguous regardless of whether they are above or
+  // below `node` on the scope tree. However, we only want to look at the ones
+  // which have been previously processed. This can be checked by looking to see
+  // if we have saved the result of this declaration. We can also skip out if
+  // the result was an error.
+  //
+  // TODO Skipping out on errors *might* reduce the fidelity of future
+  // compilation work by not finding ambiguities that we should have.
   bool failed_shadowing = false;
-  while (iter != decls_to_check.end()) {
-    auto typed_decl = *iter;
-    if (Shadow(this, type::Typed(node, node_type), typed_decl)) {
+  type::Typed<ast::Declaration const *> typed_node_decl(node, node_type);
+  for (auto const *decl : node->scope_->AllAccessibleDecls(node->id())) {
+    if (decl == node) { continue; }
+    auto *r = prior_verification_attempt(decl);
+    if (not r) { continue; }
+    auto *t = r->type();
+    if (not t) { continue; }
+
+    type::Typed<ast::Declaration const *> typed_decl(decl, t);
+    if (Shadow(this, typed_node_decl, typed_decl)) {
       failed_shadowing = true;
       error_log()->ShadowingDeclaration(node->span, (*typed_decl)->span);
     }
-    ++iter;
   }
 
   if (failed_shadowing) {
@@ -1575,7 +1579,7 @@ VerifyResult Compiler::Visit(ast::Identifier const *node, VerifyTypeTag) {
   // type verification, but I think we rely on type information to figure it out
   // for now so you'll have to undo that first.
   if (node->decl() == nullptr) {
-    auto potential_decls = node->scope_->AllDeclsWithId(node->token());
+    auto potential_decls = node->scope_->AllDeclsTowardsRoot(node->token());
     switch (potential_decls.size()) {
       case 1: {
         // TODO could it be that evn though there is only one declaration,

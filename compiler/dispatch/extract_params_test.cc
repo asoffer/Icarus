@@ -103,5 +103,6 @@ TEST_CASE("Non-constant declaration") {
     CHECK(params.at(1).value.type() == type::Int32);
   }
 }
+
 }  // namespace
 }  // namespace compiler
