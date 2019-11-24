@@ -89,11 +89,7 @@ struct SourceRange {
   explicit constexpr SourceRange(SourceLoc const &b, SourceLoc const &e)
       : range_(b, e) {}
 
-  // TODO remove this constructor.
-  explicit constexpr SourceRange(SourceRange const &b, SourceRange const &e)
-      : range_(b.begin(), e.end()) {}
-
-  base::Interval<LineNum> lines() const {
+  constexpr base::Interval<LineNum> lines() const {
     return base::Interval<LineNum>(begin().line_num, end().line_num + 1);
   }
 

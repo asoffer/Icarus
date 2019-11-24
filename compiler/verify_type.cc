@@ -1272,8 +1272,8 @@ not_blocks:
                   error_log()->ComparingIncomparables(
                       lhs_result.type()->to_string(),
                       rhs_result.type()->to_string(),
-                      frontend::SourceRange(node->exprs()[i]->span,
-                                            node->exprs()[i + 1]->span));
+                      frontend::SourceRange(node->exprs()[i]->span.begin(),
+                                            node->exprs()[i + 1]->span.end()));
                   return VerifyResult::Error();
               }
             } break;
@@ -1288,8 +1288,8 @@ not_blocks:
                   error_log()->ComparingIncomparables(
                       lhs_result.type()->to_string(),
                       rhs_result.type()->to_string(),
-                      frontend::SourceRange(node->exprs()[i]->span,
-                                            node->exprs()[i + 1]->span));
+                      frontend::SourceRange(node->exprs()[i]->span.begin(),
+                                            node->exprs()[i + 1]->span.end()));
                   return VerifyResult::Error();
               }
             } break;

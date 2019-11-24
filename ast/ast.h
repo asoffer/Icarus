@@ -183,7 +183,7 @@ struct ArrayType : public Expression {
 struct Binop : public Expression {
   explicit Binop(std::unique_ptr<Expression> lhs, frontend::Operator op,
                  std::unique_ptr<Expression> rhs)
-      : Expression(frontend::SourceRange(lhs->span, rhs->span)),
+      : Expression(frontend::SourceRange(lhs->span.begin(), rhs->span.end())),
         op_(op),
         lhs_(std::move(lhs)),
         rhs_(std::move(rhs)) {}
