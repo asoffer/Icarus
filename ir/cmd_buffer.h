@@ -4,8 +4,6 @@
 #include <cstddef>
 
 #include "base/untyped_buffer.h"
-#include "core/arch.h"
-#include "ir/reg.h"
 
 namespace backend {
 struct ExecContext;
@@ -42,6 +40,9 @@ struct CmdBuffer {
   constexpr auto begin() const { return buf_.begin(); }
   constexpr auto end() const { return buf_.end(); }
 
+  constexpr auto cbegin() const { return buf_.begin(); }
+  constexpr auto cend() const { return buf_.end(); }
+
   size_t size() const { return buf_.size(); }
 
   template <typename T>
@@ -49,9 +50,7 @@ struct CmdBuffer {
     buf_.set(offset, t);
   }
 
-  std::string to_string() const;
-
-  ICARUS_PRIVATE
+ private:
   base::untyped_buffer buf_;
 };
 

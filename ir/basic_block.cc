@@ -5,7 +5,7 @@
 namespace ir {
 
 std::ostream &operator<<(std::ostream &os, BasicBlock const &b) {
-  return os << b.cmd_buffer_.to_string();
+  return os;
 }
 
 void BasicBlock::Append(BasicBlock &&b) { NOT_YET(); }

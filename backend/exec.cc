@@ -35,6 +35,56 @@
 #include "type/type.h"
 #include "type/util.h"
 
+#if defined(ICARUS_DEBUG)
+#define DEBUG_CASES CASE(DebugIrCmd);
+#else
+#define DEBUG_CASES
+#endif
+
+#define CASES                                                                  \
+  DEBUG_CASES                                                                  \
+  CASE(PrintCmd);                                                              \
+  CASE(AddCmd);                                                                \
+  CASE(SubCmd);                                                                \
+  CASE(MulCmd);                                                                \
+  CASE(DivCmd);                                                                \
+  CASE(ModCmd);                                                                \
+  CASE(NegCmd);                                                                \
+  CASE(NotCmd);                                                                \
+  CASE(LtCmd);                                                                 \
+  CASE(LeCmd);                                                                 \
+  CASE(EqCmd);                                                                 \
+  CASE(NeCmd);                                                                 \
+  CASE(GeCmd);                                                                 \
+  CASE(GtCmd);                                                                 \
+  CASE(StoreCmd);                                                              \
+  CASE(LoadCmd);                                                               \
+  CASE(VariantCmd);                                                            \
+  CASE(TupleCmd);                                                              \
+  CASE(ArrowCmd);                                                              \
+  CASE(PtrCmd);                                                                \
+  CASE(BufPtrCmd);                                                             \
+  CASE(JumpCmd);                                                               \
+  CASE(XorFlagsCmd);                                                           \
+  CASE(AndFlagsCmd);                                                           \
+  CASE(OrFlagsCmd);                                                            \
+  CASE(CastCmd);                                                               \
+  CASE(RegisterCmd);                                                           \
+  CASE(ReturnCmd);                                                             \
+  CASE(EnumerationCmd);                                                        \
+  CASE(StructCmd);                                                             \
+  CASE(OpaqueTypeCmd);                                                         \
+  CASE(SemanticCmd);                                                           \
+  CASE(LoadSymbolCmd);                                                         \
+  CASE(TypeInfoCmd);                                                           \
+  CASE(AccessCmd);                                                             \
+  CASE(VariantAccessCmd);                                                      \
+  CASE(CallCmd);                                                               \
+  CASE(BlockCmd);                                                              \
+  CASE(ScopeCmd)
+
+
+
 // TODO CreateStruct, CreateEnum, etc should register a deleter so if we exit
 // early we don't leak them. FinalizeStruct, FinalizeEnum, etc should dergeister
 // the deleter without calling it.
@@ -479,9 +529,25 @@ BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
 
 #if defined(ICARUS_DEBUG)
   } else if constexpr (std::is_same_v<CmdType, DebugIrCmd>) {
-    std::stringstream ss;
-    ss << *ctx->call_stack.top().fn_;
-    DEBUG_LOG()(ss.str());
+    int i = 0;
+    for (auto *block : ctx->call_stack.top().fn_->blocks()) {
+      std::cerr << "block " << i++ << ":\n";
+      for (auto dbg_iter = block->cmd_buffer_.cbegin();
+           dbg_iter < block->cmd_buffer_.cend();) {
+        auto cmd_index = dbg_iter.read<ir::cmd_index_t>();
+        switch (cmd_index) {
+#define CASE(type)                                                             \
+  case ir::type::index:                                                        \
+    std::cerr << "    " << ir::type::DebugString(&dbg_iter) << "\n";           \
+    break;
+          CASES;
+#undef CASE
+          default: UNREACHABLE(static_cast<int>(cmd_index));
+        }
+        if (cmd_index == ir::JumpCmd::index) { break; }
+      }
+    }
+
 #endif
   } else if constexpr (std::is_same_v<CmdType, CastCmd>) {
     auto to_type   = iter->read<uint8_t>();
@@ -801,54 +867,6 @@ ExecContext::Frame::Frame(ir::CompiledFn *fn,
   });
 }
 
-#if defined(ICARUS_DEBUG)
-#define DEBUG_CASES CASE(DebugIrCmd);
-#else
-#define DEBUG_CASES
-#endif
-
-#define CASES                                                                  \
-  DEBUG_CASES                                                                  \
-  CASE(PrintCmd);                                                              \
-  CASE(AddCmd);                                                                \
-  CASE(SubCmd);                                                                \
-  CASE(MulCmd);                                                                \
-  CASE(DivCmd);                                                                \
-  CASE(ModCmd);                                                                \
-  CASE(NegCmd);                                                                \
-  CASE(NotCmd);                                                                \
-  CASE(LtCmd);                                                                 \
-  CASE(LeCmd);                                                                 \
-  CASE(EqCmd);                                                                 \
-  CASE(NeCmd);                                                                 \
-  CASE(GeCmd);                                                                 \
-  CASE(GtCmd);                                                                 \
-  CASE(StoreCmd);                                                              \
-  CASE(LoadCmd);                                                               \
-  CASE(VariantCmd);                                                            \
-  CASE(TupleCmd);                                                              \
-  CASE(ArrowCmd);                                                              \
-  CASE(PtrCmd);                                                                \
-  CASE(BufPtrCmd);                                                             \
-  CASE(JumpCmd);                                                               \
-  CASE(XorFlagsCmd);                                                           \
-  CASE(AndFlagsCmd);                                                           \
-  CASE(OrFlagsCmd);                                                            \
-  CASE(CastCmd);                                                               \
-  CASE(RegisterCmd);                                                           \
-  CASE(ReturnCmd);                                                             \
-  CASE(EnumerationCmd);                                                        \
-  CASE(StructCmd);                                                             \
-  CASE(OpaqueTypeCmd);                                                         \
-  CASE(SemanticCmd);                                                           \
-  CASE(LoadSymbolCmd);                                                         \
-  CASE(TypeInfoCmd);                                                           \
-  CASE(AccessCmd);                                                             \
-  CASE(VariantAccessCmd);                                                      \
-  CASE(CallCmd);                                                               \
-  CASE(BlockCmd);                                                              \
-  CASE(ScopeCmd)
-
 ir::BasicBlock const *ExecContext::ExecuteBlock(
     const std::vector<ir::Addr> &ret_slots) {
   auto iter = current_block()->cmd_buffer_.begin();
@@ -869,9 +887,6 @@ ir::BasicBlock const *ExecContext::ExecuteBlock(
     }
   }
 }
-
-#undef CASE
-#undef CASES
 
 template <typename T>
 static T LoadValue(ir::Addr addr, base::untyped_buffer const &stack) {
@@ -1030,3 +1045,6 @@ void CallForeignFn(ir::Foreign const &f, base::untyped_buffer const &arguments,
 }
 
 }  // namespace backend
+
+#undef CASE
+#undef CASES

@@ -203,7 +203,6 @@ Reg MakeAccessCmd(RegOr<Addr> ptr, RegOr<int64_t> inc, type::Type const *t,
 
   Reg result = MakeResult<Addr>();
   blk.cmd_buffer_.append(result);
-  DEBUG_LOG("access")(blk.cmd_buffer_.to_string());
   return result;
 }
 }  // namespace
@@ -233,8 +232,6 @@ Reg MakeVariantAccessCmd(RegOr<Addr> const &r, type::Variant const *v) {
   r.apply([&](auto v) { blk.cmd_buffer_.append(v); });
   Reg result = MakeResult<Addr>();
   blk.cmd_buffer_.append(result);
-  DEBUG_LOG("variant")(blk.cmd_buffer_.to_string());
-  DEBUG_LOG("variant")(blk.cmd_buffer_.buf_.to_string());
   return result;
 }
 }  // namespace
@@ -304,8 +301,6 @@ Reg EnumerationImpl(
   Reg result =
       MakeResult<std::conditional_t<IsEnumNotFlags, EnumVal, FlagsVal>>();
   blk.cmd_buffer_.append(result);
-  DEBUG_LOG("enum")(blk.cmd_buffer_.buf_.to_string());
-  DEBUG_LOG("enum")(blk.cmd_buffer_.to_string());
   return result;
 }
 }  // namespace
@@ -344,8 +339,6 @@ Reg Struct(ast::Scope const *scope, module::BasicModule *mod,
 
   Reg result = MakeResult<type::Type const *>();
   blk.cmd_buffer_.append(result);
-  DEBUG_LOG("struct")(blk.cmd_buffer_.buf_.to_string());
-  DEBUG_LOG("struct")(blk.cmd_buffer_.to_string());
   return result;
 }
 

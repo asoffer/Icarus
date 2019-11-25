@@ -6,6 +6,8 @@
 #include <vector>
 
 #include "base/untyped_buffer.h"
+#include "core/alignment.h"
+#include "core/bytes.h"
 #include "ir/cmd_buffer.h"
 #include "ir/out_params.h"
 

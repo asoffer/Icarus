@@ -3,7 +3,7 @@
 namespace ir {
 
 std::string PrintCmd::DebugString(base::untyped_buffer::const_iterator* iter) {
-  std::string s;
+  std::string s = "print ";
   auto ctrl = iter->read<control_bits>();
   if (ctrl.reg) {
     s.append(stringify(iter->read<Reg>()));

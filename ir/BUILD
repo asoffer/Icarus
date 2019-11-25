@@ -112,11 +112,8 @@ cc_lib(
 
 cc_lib(
     name = "cmd_buffer",
-    deps = [
-        "//base:untyped_buffer",
-        "//core:arch",
-        "//ir:reg",
-    ],
+    deps = ["//base:untyped_buffer"],
+    header_only = True,
     test_deps = None,
 )
 

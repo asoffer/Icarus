@@ -66,6 +66,10 @@ struct Builder {
   base::Tagged<Addr, Reg> Alloca(type::Type const* t);
   base::Tagged<Addr, Reg> TmpAlloca(type::Type const* t);
 
+#if defined(ICARUS_DEBUG)
+  void DebugIr() { CurrentBlock()->cmd_buffer_.append_index<DebugIrCmd>(); }
+#endif  // ICARUS_DEBUG
+
   // Apply the callable to each temporary in reverse order, and clear the list
   // of temporaries.
   template <typename Fn>
@@ -178,7 +182,6 @@ base::Tagged<T, Reg> Load(RegOr<Addr> addr) {
   addr.apply([&](auto v) { blk.cmd_buffer_.append(v); });
   base::Tagged<T, Reg> result = MakeResult<T>();
   blk.cmd_buffer_.append(result);
-  DEBUG_LOG("load")(blk.cmd_buffer_.to_string());
   return result;
 }
 
@@ -210,10 +213,6 @@ type::Typed<Reg> Field(RegOr<Addr> r, type::Tuple const* t, int64_t n);
 
 Reg VariantType(RegOr<Addr> const& r);
 Reg VariantValue(type::Variant const* v, RegOr<Addr> const& r);
-
-#if defined(ICARUS_DEBUG)
-inline void DebugIr() {}
-#endif  // ICARUS_DEBUG
 
 namespace internal {
 template <typename SizeType, typename T, typename Fn>
@@ -500,7 +499,6 @@ RegOr<typename CmdType::type> MakeVariadicImpl(
 
   Reg result = MakeResult<T>();
   blk.cmd_buffer_.append(result);
-  DEBUG_LOG("variadic")(blk.cmd_buffer_.to_string());
   return RegOr<T>{result};
 }
 }  // namespace internal

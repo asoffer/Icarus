@@ -913,15 +913,15 @@ struct Index : public Expression {
 // Example (in context of a scope):
 //  ```
 //  while ::= scope {
-//    init ::= (b: bool) -> () {
+//    init ::= jump_handler(b: bool) {
 //      switch (b) {
-//        jump do()   when true              // <-- `jump do()`
-//        jump exit() when false             // <-- `jump exit()`
+//        jump do()   when true
+//        jump exit() when false
 //      }
 //    }
 //    do ::= block {
 //      before ::= () -> () {}
-//      after ::= () -> () { jump start() }  // <-- `jump start()`
+//      after ::= jump_handler() { jump start() }
 //    }
 //    done ::= () -> () {}
 //  }

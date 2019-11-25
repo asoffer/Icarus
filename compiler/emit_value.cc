@@ -706,6 +706,7 @@ ir::Results Compiler::Visit(ast::BuiltinFn const *node, EmitValueTag) {
 }
 
 ir::Results Compiler::Visit(ast::Call const *node, EmitValueTag) {
+  auto *b = node->callee()->if_as<ast::BuiltinFn>();
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
     switch (b->value()) {
       case core::Builtin::Foreign: {
@@ -740,7 +741,7 @@ ir::Results Compiler::Visit(ast::Call const *node, EmitValueTag) {
       } break;
 
 #if defined(ICARUS_DEBUG)
-      case core::Builtin::DebugIr: ir::DebugIr(); return ir::Results{};
+      case core::Builtin::DebugIr: builder().DebugIr(); return ir::Results{};
 #endif  // defined(ICARUS_DEBUG)
     }
     UNREACHABLE();
