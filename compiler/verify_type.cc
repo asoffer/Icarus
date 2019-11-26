@@ -64,6 +64,35 @@ void AddAdl(ast::OverloadSet *overload_set, std::string_view id,
   }
 }
 
+VerifyResult VerifyUnaryOverload(Compiler *c, char const *symbol,
+                                 ast::Expression const *node,
+                                 VerifyResult operand_result) {
+  ast::OverloadSet os(node->scope_, symbol);
+  AddAdl(&os, symbol, operand_result.type());
+  ASSIGN_OR(return VerifyResult::Error(), auto table,
+                   FnCallDispatchTable::Verify(
+                       c, os, core::FnArgs<VerifyResult>({operand_result}, {})));
+  auto result = VerifyResult::NonConstant(table.result_type());
+  c->data_.set_dispatch_table(node, std::move(table));
+  return c->set_result(node, result);
+}
+
+VerifyResult VerifyBinaryOverload(Compiler *c, char const *symbol,
+                                  ast::Expression const *node,
+                                  VerifyResult lhs_result,
+                                  VerifyResult rhs_result) {
+  ast::OverloadSet os(node->scope_, symbol);
+  AddAdl(&os, symbol, lhs_result.type());
+  AddAdl(&os, symbol, rhs_result.type());
+  ASSIGN_OR(
+      return VerifyResult::Error(), auto table,
+             FnCallDispatchTable::Verify(
+                 c, os,
+                 core::FnArgs<VerifyResult>({lhs_result, rhs_result}, {})));
+  auto result = VerifyResult::NonConstant(table.result_type());
+  c->data_.set_dispatch_table(node, std::move(table));
+  return c->set_result(node, result);
+}
 // NOTE: the order of these enumerators is meaningful and relied upon! They are
 // ordered from strongest relation to weakest.
 enum class Cmp { Order, Equality, None };
@@ -557,8 +586,8 @@ static Constness VerifyAndGetConstness(
 
 static std::vector<
     core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>>
-VerifyBlockNode(Compiler *visitor, ast::BlockNode const *node) {
-  visitor->Visit(node, VerifyTypeTag{});
+VerifyBlockNode(Compiler *compiler, ast::BlockNode const *node) {
+  compiler->Visit(node, VerifyTypeTag{});
 
   ExtractJumps extractor;
   for (auto const *stmt : node->stmts()) { extractor.Visit(stmt); }
@@ -586,7 +615,7 @@ VerifyBlockNode(Compiler *visitor, ast::BlockNode const *node) {
     for (auto *yield_expr : yields[0]->as<ast::YieldStmt>().exprs()) {
       back.pos_emplace(
           yield_expr,
-          *ASSERT_NOT_NULL(visitor->prior_verification_attempt(yield_expr)));
+          *ASSERT_NOT_NULL(compiler->prior_verification_attempt(yield_expr)));
     }
   }
   return result;
@@ -775,8 +804,8 @@ VerifyResult Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
         return VerifyResult::Error();
       }
 
-#define CASE(OpName, symbol, return_type)                                      \
-  case Operator::OpName: {                                                     \
+#define CASE(symbol, return_type)                                              \
+  do {                                                                         \
     bool is_const = lhs_result.constant() and rhs_result.constant();           \
     if (type::IsNumeric(lhs_result.type()) and                                 \
         type::IsNumeric(rhs_result.type())) {                                  \
@@ -789,25 +818,34 @@ VerifyResult Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
         return VerifyResult::Error();                                          \
       }                                                                        \
     } else {                                                                   \
-      ast::OverloadSet os(node->scope_, symbol);                               \
-      AddAdl(&os, symbol, lhs_result.type());                                  \
-      AddAdl(&os, symbol, rhs_result.type());                                  \
-      return ast::VerifyDispatch(                                              \
-          this, node, os,                                                      \
-          core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>(      \
-              {std::pair{node->lhs(), lhs_result},                             \
-               std::pair{node->rhs(), rhs_result}},                            \
-              {}));                                                            \
+      return VerifyBinaryOverload(this, symbol, node, lhs_result, rhs_result); \
     }                                                                          \
-  } break;
-      CASE(Sub, "-", lhs_result.type());
-      CASE(Mul, "*", lhs_result.type());
-      CASE(Div, "/", lhs_result.type());
-      CASE(Mod, "%", lhs_result.type());
-      CASE(SubEq, "-=", type::Void());
-      CASE(MulEq, "*=", type::Void());
-      CASE(DivEq, "/=", type::Void());
-      CASE(ModEq, "%=", type::Void());
+  } while (false)
+
+    case Operator::Sub: {
+      CASE("-", lhs_result.type());
+    } break;
+    case Operator::Mul: {
+      CASE("*", lhs_result.type());
+    } break;
+    case Operator::Div: {
+      CASE("/", lhs_result.type());
+    } break;
+    case Operator::Mod: {
+      CASE("%", lhs_result.type());
+    } break;
+    case Operator::SubEq: {
+      CASE("-=", type::Void());
+    } break;
+    case Operator::MulEq: {
+      CASE("*=", type::Void());
+    } break;
+    case Operator::DivEq: {
+      CASE("/=", type::Void());
+    } break;
+    case Operator::ModEq: {
+      CASE("%=", type::Void());
+    } break;
 #undef CASE
     case Operator::Add: {
       bool is_const = lhs_result.constant() and rhs_result.constant();
@@ -822,15 +860,7 @@ VerifyResult Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
           return VerifyResult::Error();
         }
       } else {
-        ast::OverloadSet os(node->scope_, "+");
-        AddAdl(&os, "+", lhs_result.type());
-        AddAdl(&os, "+", rhs_result.type());
-        return ast::VerifyDispatch(
-            this, node, os,
-            core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>(
-                {std::pair{node->lhs(), lhs_result},
-                 std::pair{node->rhs(), rhs_result}},
-                {}));
+        VerifyBinaryOverload(this, "+", node, lhs_result, rhs_result);
       }
     } break;
     case Operator::AddEq: {
@@ -846,15 +876,7 @@ VerifyResult Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
           return VerifyResult::Error();
         }
       } else {
-        ast::OverloadSet os(node->scope_, "+=");
-        AddAdl(&os, "+=", lhs_result.type());
-        AddAdl(&os, "+=", rhs_result.type());
-        return ast::VerifyDispatch(
-            this, node, os,
-            core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>(
-                {std::pair{node->lhs(), lhs_result},
-                 std::pair{node->rhs(), rhs_result}},
-                {}));
+        return VerifyBinaryOverload(this, "+=", node, lhs_result, rhs_result);
       }
     } break;
     case Operator::Arrow: {
@@ -1067,23 +1089,10 @@ VerifyResult Compiler::Visit(ast::Call const *node, VerifyTypeTag) {
     }
   }();
 
-  core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>
-      arg_expr_result;
-  for (size_t i = 0; i < arg_results.pos().size(); ++i) {
-    arg_expr_result.pos_emplace(node->args().at(i), arg_results.at(i));
-  }
-  for (auto const &[name, res] : arg_results.named()) {
-    arg_expr_result.named_emplace(
-        std::piecewise_construct, std::forward_as_tuple(name),
-        std::forward_as_tuple(node->args().at(name), res));
-  }
-
   ASSIGN_OR(
       return VerifyResult::Error(),  //
              auto table,
-             FnCallDispatchTable::Verify(
-                 this, overload_set,
-                 arg_expr_result.Transform([](auto x) { return x.second; })));
+             FnCallDispatchTable::Verify(this, overload_set, arg_results));
   auto result = VerifyResult::NonConstant(table.result_type());
   data_.set_dispatch_table(node, std::move(table));
   DEBUG_LOG("dispatch-verify")("Resulting type of dispatch is ", result);
@@ -1108,16 +1117,7 @@ VerifyResult Compiler::Visit(ast::Cast const *node, VerifyTypeTag) {
   auto *t = ASSERT_NOT_NULL(backend::EvaluateAs<type::Type const *>(
       MakeThunk(node->type(), type::Type_)));
   if (t->is<type::Struct>()) {
-    ast::OverloadSet os(node->scope_, "as");
-    AddAdl(&os, "as", t);
-    AddAdl(&os, "as", expr_result.type());
-    NOT_YET();
-    // os.keep([t](ast::Overload const &o) { return o.result.type() == t; });
-
-    return ast::VerifyDispatch(
-        this, node, os,
-        core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>(
-            {std::pair(node->expr(), expr_result)}, {}));
+    return VerifyUnaryOverload(this, "as", node, expr_result);
   } else {
     if (not type::CanCast(expr_result.type(), t)) {
       error_log()->InvalidCast(expr_result.type()->to_string(), t->to_string(),
@@ -1224,15 +1224,8 @@ not_blocks:
         if (lhs_result.type()->is<type::Struct>() or
             lhs_result.type()->is<type::Struct>()) {
           // TODO overwriting type a bunch of times?
-          ast::OverloadSet os(node->scope_, token);
-          AddAdl(&os, token, lhs_result.type());
-          AddAdl(&os, token, rhs_result.type());
-          return ast::VerifyDispatch(
-              this, ast::ExprPtr{node->exprs()[i], 0x01}, os,
-              core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>(
-                  {std::pair(node->exprs()[i], lhs_result),
-                   std::pair(node->exprs()[i + 1], rhs_result)},
-                  {}));
+          return VerifyBinaryOverload(this, token, node, lhs_result,
+                                      rhs_result);
         }
 
         if (lhs_result.type() != rhs_result.type() and
@@ -1751,15 +1744,7 @@ VerifyResult Compiler::Visit(ast::PrintStmt const *node, VerifyTypeTag) {
       // used so we don't collide with the table for the actual expression as
       // `print f(x)` needs a table both for the printing and for the call to
       // `f`. Test node thoroughly.
-      auto dispatch_result = ast::VerifyDispatch(
-          this, ast::ExprPtr{verify_result.first, 0x01}, os,
-          core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>(
-              {verify_result}, {}));
-      if (dispatch_result.type() and dispatch_result.type() != type::Void()) {
-        error_log()->PrintMustReturnVoid(dispatch_result.type()->to_string(),
-                                         node->span);
-        return VerifyResult::Error();
-      }
+      NOT_YET();
     }
   }
   return VerifyResult::NonConstant(type::Void());
@@ -1795,6 +1780,7 @@ VerifyResult Compiler::Visit(ast::ScopeLiteral const *node, VerifyTypeTag) {
 }
 
 VerifyResult Compiler::Visit(ast::ScopeNode const *node, VerifyTypeTag) {
+  DEBUG_LOG("ScopeNode")(ast::Dump::ToString(node));
   // TODO how do you determine the type of this?
   ASSIGN_OR(return _, auto name_result, Visit(node->name(), VerifyTypeTag{}));
   static_cast<void>(name_result);
@@ -2058,12 +2044,7 @@ VerifyResult Compiler::Visit(ast::Unop const *node, VerifyTypeTag) {
       if (type::IsNumeric(operand_type)) {
         return set_result(node, VerifyResult(operand_type, result.constant()));
       } else if (operand_type->is<type::Struct>()) {
-        ast::OverloadSet os(node->scope_, "-");
-        AddAdl(&os, "-", operand_type);
-        return ast::VerifyDispatch(
-            this, node, os,
-            core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>(
-                {std::pair(node->operand(), result)}, {}));
+        return VerifyUnaryOverload(this, "-", node, result);
       }
       NOT_YET();
       return VerifyResult::Error();
@@ -2084,12 +2065,7 @@ VerifyResult Compiler::Visit(ast::Unop const *node, VerifyTypeTag) {
         return set_result(node, VerifyResult(operand_type, result.constant()));
       }
       if (operand_type->is<type::Struct>()) {
-        ast::OverloadSet os(node->scope_, "!");
-        AddAdl(&os, "!", operand_type);
-        return ast::VerifyDispatch(
-            this, node, os,
-            core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>(
-                {std::pair(node->operand(), result)}, {}));
+        return VerifyUnaryOverload(this, "!", node, result);
       } else {
         NOT_YET("log an error");
         return VerifyResult::Error();

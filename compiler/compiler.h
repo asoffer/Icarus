@@ -55,18 +55,6 @@ inline compiler::VerifyResult VerifyJumpDispatch(
     std::vector<ir::BlockDef const *> *block_defs) {
   return compiler::VerifyResult::Error();
 }
-inline compiler::VerifyResult VerifyDispatch(
-    void *visitor, ExprPtr expr, absl::Span<ir::AnyFunc const> overload_set,
-    core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
-        &args) {
-  return compiler::VerifyResult::Error();
-}
-inline compiler::VerifyResult VerifyDispatch(
-    void *visitor, ExprPtr expr, OverloadSet const &overload_set,
-    core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
-        &args) {
-  return compiler::VerifyResult::Error();
-}
 
 }  // namespace ast
 
