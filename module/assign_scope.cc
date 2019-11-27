@@ -162,7 +162,7 @@ void AssignScope::Visit(ast::Goto *node, ast::Scope *scope) {
 void AssignScope::Visit(ast::Jump *node, ast::Scope *scope) {
   node->scope_ = scope;
   node->set_body_with_parent(scope);
-  SetAllScopes(this, node->input(), node->body_scope());
+  for (auto &param : node->params()) { Visit(param.value.get(), node->body_scope()); }
   SetAllScopes(this, node->stmts(), node->body_scope());
 }
 

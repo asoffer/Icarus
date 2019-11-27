@@ -1007,12 +1007,26 @@ struct Goto : public Node {
 //  ```
 struct Jump : ScopeExpr<FnScope> {
   explicit Jump(frontend::SourceRange span,
-                       std::vector<std::unique_ptr<Declaration>> input,
-                       std::vector<std::unique_ptr<Node>> stmts)
-      : ScopeExpr<FnScope>(std::move(span)),
-        input_(std::move(input)),
-        stmts_(std::move(stmts)) {
-    for (auto &input : input_) { input->flags() |= Declaration::f_IsFnParam; }
+                std::vector<std::unique_ptr<Declaration>> in_params,
+                std::vector<std::unique_ptr<Node>> stmts)
+      : ScopeExpr<FnScope>(std::move(span)), stmts_(std::move(stmts)) {
+    for (auto &input : in_params) {
+      input->flags() |= Declaration::f_IsFnParam;
+      // NOTE: This is safe because the declaration is behind a unique_ptr so
+      // the string is never moved. You need to be careful if you ever decide to
+      // use make this declaration inline because SSO might mean moving the
+      // declaration (which can happen if core::FnParams internal vector gets
+      // reallocated) could invalidate the string_view unintentionally.
+      std::string_view name = input->id();
+
+      // Note the weird naming here: A declaration which is default initialized
+      // means there is no `=` as part of the declaration. This means that the
+      // declaration, when thougth of as a parameter to a function, has no
+      // default value.
+      core::FnParamFlags flags{};
+      if (not input->IsDefaultInitialized()) { flags = core::HAS_DEFAULT; }
+      inputs_.append(name, std::move(input), flags);
+    }
   }
 
   void Accept(MutableVisitorBase *visitor, void *ret,
@@ -1023,13 +1037,15 @@ struct Jump : ScopeExpr<FnScope> {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
 
-  base::PtrSpan<Declaration const> input() const { return input_; }
-  base::PtrSpan<Declaration> input() { return input_; }
+  // TODO core::FnParamsRef to erase the unique_ptr?
+  using params_type = core::FnParams<std::unique_ptr<Declaration>>;
+  params_type const &params() const { return inputs_; }
+  params_type &params() { return inputs_; }
   base::PtrSpan<Node> stmts() { return stmts_; }
   base::PtrSpan<Node const> stmts() const { return stmts_; }
 
  private:
-  std::vector<std::unique_ptr<Declaration>> input_;
+  core::FnParams<std::unique_ptr<ast::Declaration>> inputs_;
   std::vector<std::unique_ptr<Node>> stmts_;
 };
 

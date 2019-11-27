@@ -91,7 +91,7 @@ void ExtractJumps::Visit(ast::Goto const *node) {
 
 void ExtractJumps::Visit(ast::Jump const *node) {
   // TODO Can you return or yield or jump from inside a jump block?!
-  for (auto const *in : node->input()) { Visit(in); }
+  for (auto const &param : node->params()) { Visit(param.value.get()); }
   for (auto const *stmt : node->stmts()) { Visit(stmt); }
 }
 

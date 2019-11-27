@@ -162,8 +162,17 @@ void Dump::Visit(ast::BlockNode const *node) {
 }
 
 void Dump::Visit(ast::Jump const *node) {
-  absl::StrAppend(out_, "jump (",
-                  absl::StrJoin(node->input(), ", ", Joiner{this}), ") {");
+  absl::StrAppend(
+      out_, "jump(",
+      absl::StrJoin(
+          node->params(), ", ",
+          [](std::string *out,
+             core::Param<std::unique_ptr<ast::Declaration>> const &p) {
+            Dump dump(out);
+            dump.Visit(p.value.get());
+          }),
+      ")");
+
   ++indentation_;
   for (auto *stmt : node->stmts()) {
     absl::StrAppend(out_, "\n", indent());

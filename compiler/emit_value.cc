@@ -239,8 +239,9 @@ void CompleteBody(Compiler *compiler, ast::Jump const *node) {
     compiler->builder().CurrentBlock() = ir_func->entry();
     // TODO arguments should be renumbered to not waste space on const
     // values
-    for (int32_t i = 0; i < static_cast<int32_t>(node->input().size()); ++i) {
-      compiler->set_addr(node->input()[i], ir::Reg::Arg(i));
+    int32_t i = 0;
+    for (auto const &param : node->params()) {
+      compiler->set_addr(param.value.get(), ir::Reg::Arg(i++));
     }
 
     MakeAllStackAllocations(compiler, node->body_scope());
@@ -1305,9 +1306,9 @@ ir::Results Compiler::Visit(ast::Jump const *node, EmitValueTag) {
     auto *jmp_type     = &type_of(node)->as<type::Jump>();
 
     core::FnParams<type::Typed<ast::Declaration const *>> params(
-        node->input().size());
-    for (size_t i = 0; i < node->input().size(); ++i) {
-      auto const *decl = node->input()[i];
+        node->params().size());
+    for (size_t i = 0; i < node->params().size(); ++i) {
+      auto const *decl = node->params().at(i).value.get();
       params.set(i, core::Param<type::Typed<ast::Declaration const *>>{
                         decl->id(), type::Typed(decl, jmp_type->args()[i])});
     }

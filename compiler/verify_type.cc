@@ -1700,9 +1700,9 @@ VerifyResult Compiler::Visit(ast::Jump const *node, VerifyTypeTag) {
   DEBUG_LOG("Jump")(ast::Dump::ToString(node));
   bool err = false;
   std::vector<type::Type const *> param_types;
-  param_types.reserve(node->input().size());
-  for (auto const &input : node->input()) {
-    auto v = Visit(input, VerifyTypeTag{});
+  param_types.reserve(node->params().size());
+  for (auto const &param : node->params()) {
+    auto v = Visit(param.value.get(), VerifyTypeTag{});
     if (not v.ok()) {
       err = true;
     } else {

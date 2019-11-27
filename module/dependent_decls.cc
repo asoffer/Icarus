@@ -102,7 +102,7 @@ void DependentDecls::Visit(ast::Goto const *node, ast::Declaration const *d) {
 
 void DependentDecls::Visit(ast::Jump const *node,
                            ast::Declaration const *d) {
-  for (auto const *in : node->input()) { Visit(in, d); }
+  for (auto const &param : node->params()) { Visit(param.value.get(), d); }
   for (auto const *stmt : node->stmts()) { Visit(stmt, d); }
 }
 

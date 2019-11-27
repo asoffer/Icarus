@@ -99,8 +99,7 @@ void TokenExtractor::Visit(ast::Goto const *node) {
 }
 
 void TokenExtractor::Visit(ast::Jump const *node) {
-  Join(this, node->input(), ",");
-  Join(this, node->stmts(), "\n");
+  // TODO
 }
 
 void TokenExtractor::Visit(ast::PrintStmt const *node) {
