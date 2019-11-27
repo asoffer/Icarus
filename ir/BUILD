@@ -59,8 +59,13 @@ cc_lib(
 )
 
 cc_lib(
-    name = "jump_handler",
-    deps = [":block_group"],
+    name = "jump",
+    deps = [
+        ":block_group",
+        "//ast:ast",
+        "//core:fn_params",
+        "//type:jump",
+    ],
     header_only = True,
     test_deps = None,
 )

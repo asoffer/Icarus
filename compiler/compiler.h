@@ -49,7 +49,7 @@ struct DispatchTable {
 
 inline compiler::VerifyResult VerifyJumpDispatch(
     void *visitor, ExprPtr expr,
-    absl::Span<ir::JumpHandler const *const> overload_set,
+    absl::Span<ir::Jump const *const> overload_set,
     core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
         &args,
     std::vector<ir::BlockDef const *> *block_defs) {

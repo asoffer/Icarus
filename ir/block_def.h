@@ -7,7 +7,7 @@
 #include "ir/any_func.h"
 
 namespace ir {
-struct JumpHandler;
+struct Jump;
 
 struct BlockDef {
   static BlockDef const *Start();
@@ -19,7 +19,7 @@ struct BlockDef {
   }
 
   std::vector<AnyFunc> before_;
-  std::vector<JumpHandler const *> after_;
+  std::vector<Jump const *> after_;
 };
 
 }  // namespace ir

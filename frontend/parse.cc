@@ -267,7 +267,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
     auto span = SourceRange(nodes[0]->span.begin(), nodes[1]->span.end());
     return std::make_unique<ast::Import>(std::move(span),
                                          move_as<ast::Expression>(nodes[1]));
-  } else if (tk == "jump") {
+  } else if (tk == "goto") {
     auto span =
         SourceRange(nodes.front()->span.begin(), nodes.back()->span.end());
     std::vector<std::unique_ptr<ast::Expression>> exprs;
@@ -285,7 +285,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
     } else {
       call_exprs.push_back(move_as<ast::Call>(nodes[1]));
     }
-    return std::make_unique<ast::Jump>(std::move(span), std::move(call_exprs));
+    return std::make_unique<ast::Goto>(std::move(span), std::move(call_exprs));
   } else if (tk == "print") {
     auto span =
         SourceRange(nodes.front()->span.begin(), nodes.back()->span.end());
@@ -867,7 +867,7 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
     auto sw   = BuildSwitch(move_as<Statements>(nodes[4]), error_log);
     sw->expr_ = move_as<ast::Expression>(nodes[2]);
     return sw;
-  } else if (tk == "jump_handler") {
+  } else if (tk == "jump") {
     SourceRange span(nodes.front()->span.begin(), nodes.back()->span.end());
     std::vector<std::unique_ptr<ast::Declaration>> params;
     if (nodes.size() == 5) {
@@ -886,7 +886,7 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
       }
     }
 
-    return std::make_unique<ast::JumpHandler>(
+    return std::make_unique<ast::Jump>(
         std::move(span), std::move(params),
         std::move(nodes.back()->as<Statements>()).extract());
 

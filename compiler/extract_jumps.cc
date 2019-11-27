@@ -79,17 +79,17 @@ void ExtractJumps::Visit(ast::Index const *node) {
   Visit(node->rhs());
 }
 
-void ExtractJumps::Visit(ast::Jump const *node) {
+void ExtractJumps::Visit(ast::Goto const *node) {
   // TODO Can you return or yield or jump from inside a jump block?!
-  for (auto const &opt : node->options_) {
-    for (std::unique_ptr<ast::Expression> const &expr : opt.args) {
+  for (auto const &opt : node->options()) {
+    for (std::unique_ptr<ast::Expression> const &expr : opt.args()) {
       Visit(expr.get());
     }
   }
   data_[static_cast<std::underlying_type_t<Kind>>(Kind::Jump)].push_back(node);
 }
 
-void ExtractJumps::Visit(ast::JumpHandler const *node) {
+void ExtractJumps::Visit(ast::Jump const *node) {
   // TODO Can you return or yield or jump from inside a jump block?!
   for (auto const *in : node->input()) { Visit(in); }
   for (auto const *stmt : node->stmts()) { Visit(stmt); }

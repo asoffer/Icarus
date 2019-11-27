@@ -246,7 +246,7 @@ Reg VariantValue(type::Variant const *v, RegOr<Addr> const &r) {
 
 Reg BlockHandler(ir::BlockDef *block_def,
                  absl::Span<RegOr<AnyFunc> const> befores,
-                 absl::Span<RegOr<JumpHandler const *> const> afters) {
+                 absl::Span<RegOr<Jump const *> const> afters) {
   auto &blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append_index<BlockCmd>();
   blk.cmd_buffer_.append(block_def);
@@ -258,7 +258,7 @@ Reg BlockHandler(ir::BlockDef *block_def,
 }
 
 Reg ScopeHandler(
-    ir::ScopeDef *scope_def, absl::Span<RegOr<JumpHandler const *> const> inits,
+    ir::ScopeDef *scope_def, absl::Span<RegOr<Jump const *> const> inits,
     absl::Span<RegOr<AnyFunc> const> dones,
     absl::flat_hash_map<std::string_view, BlockDef *> const &blocks) {
   auto &blk = *GetBuilder().CurrentBlock();

@@ -10,7 +10,7 @@
 #include "frontend/parse.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
-#include "ir/jump_handler.h"
+#include "ir/jump.h"
 #include "ir/results.h"
 #include "type/jump.h"
 

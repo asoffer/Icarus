@@ -71,9 +71,9 @@ void Match::Visit(ast::Import const *node, MatchState *state) {}
 
 void Match::Visit(ast::Index const *node, MatchState *state) {}
 
-void Match::Visit(ast::Jump const *node, MatchState *state) {}
+void Match::Visit(ast::Goto const *node, MatchState *state) {}
 
-void Match::Visit(ast::JumpHandler const *node, MatchState *state) {}
+void Match::Visit(ast::Jump const *node, MatchState *state) {}
 
 void Match::Visit(ast::PrintStmt const *node, MatchState *state) {}
 

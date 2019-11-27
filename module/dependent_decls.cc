@@ -92,15 +92,15 @@ void DependentDecls::Visit(ast::Index const *node, ast::Declaration const *d) {
   Visit(node->rhs(), d);
 }
 
-void DependentDecls::Visit(ast::Jump const *node, ast::Declaration const *d) {
-  for (auto const &opt : node->options_) {
-    for (std::unique_ptr<ast::Expression> const &expr : opt.args) {
+void DependentDecls::Visit(ast::Goto const *node, ast::Declaration const *d) {
+  for (auto const &opt : node->options()) {
+    for (std::unique_ptr<ast::Expression> const &expr : opt.args()) {
       Visit(expr.get(), d);
     }
   }
 }
 
-void DependentDecls::Visit(ast::JumpHandler const *node,
+void DependentDecls::Visit(ast::Jump const *node,
                            ast::Declaration const *d) {
   for (auto const *in : node->input()) { Visit(in, d); }
   for (auto const *stmt : node->stmts()) { Visit(stmt, d); }

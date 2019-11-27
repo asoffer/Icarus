@@ -11,9 +11,9 @@ std::string BlockCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
   std::vector<RegOr<AnyFunc>> before_vals =
       internal::Deserialize<uint16_t, AnyFunc>(
           iter, [](Reg reg) -> RegOr<AnyFunc> { return reg; });
-  std::vector<RegOr<JumpHandler const *>> after_vals =
-      internal::Deserialize<uint16_t, JumpHandler const *>(
-          iter, [](Reg reg) -> RegOr<JumpHandler const *> { return reg; });
+  std::vector<RegOr<Jump const *>> after_vals =
+      internal::Deserialize<uint16_t, Jump const *>(
+          iter, [](Reg reg) -> RegOr<Jump const *> { return reg; });
   Reg result = iter->read<Reg>();
 
   using base::stringify;
@@ -25,7 +25,7 @@ std::string BlockCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
                     }),
       ") after(",
       absl::StrJoin(after_vals, ", ",
-                    [](std::string *out, RegOr<JumpHandler const *> f) {
+                    [](std::string *out, RegOr<Jump const *> f) {
                       return out->append(stringify(f));
                     }),
 

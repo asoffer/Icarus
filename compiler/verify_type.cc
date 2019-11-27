@@ -477,22 +477,9 @@ VerifyResult VerifyBody(Compiler *visitor, ast::FunctionLiteral const *node) {
   }
 }
 
-void VerifyBody(Compiler *visitor, ast::JumpHandler const *node) {
-  DEBUG_LOG("JumpHandler")(ast::Dump::ToString(node));
-  ExtractJumps extractor;
+void VerifyBody(Compiler *visitor, ast::Jump const *node) {
   for (auto const *stmt : node->stmts()) {
     visitor->Visit(stmt, VerifyTypeTag{});
-    extractor.Visit(stmt);
-  }
-
-  auto jumps = extractor.jumps(ExtractJumps::Kind::Jump);
-  for (auto const *jump : jumps) {
-    DEBUG_LOG("JumpHandler")
-    (ast::Dump::ToString(&jump->as<ast::Jump>()));
-    for (auto const &jump_opt : jump->as<ast::Jump>().options_) {
-      DEBUG_LOG("JumpHandler")
-      (jump_opt.block, " args=(", jump_opt.args, ")");
-    }
   }
 }
 
@@ -1700,31 +1687,31 @@ VerifyResult Compiler::Visit(ast::Index const *node, VerifyTypeTag) {
   }
 }
 
-VerifyResult Compiler::Visit(ast::Jump const *node, VerifyTypeTag) {
-  for (auto const &option : node->options_) {
-    for (std::unique_ptr<ast::Expression> const &expr : option.args) {
+VerifyResult Compiler::Visit(ast::Goto const *node, VerifyTypeTag) {
+  for (auto const &option : node->options()) {
+    for (auto const &expr : option.args()) {
       Visit(expr.get(), VerifyTypeTag{});
-    };
+    }
   }
   return VerifyResult::Constant(type::Void());
 }
 
-VerifyResult Compiler::Visit(ast::JumpHandler const *node, VerifyTypeTag) {
-  DEBUG_LOG("JumpHandler")(ast::Dump::ToString(node));
+VerifyResult Compiler::Visit(ast::Jump const *node, VerifyTypeTag) {
+  DEBUG_LOG("Jump")(ast::Dump::ToString(node));
   bool err = false;
-  std::vector<type::Type const *> arg_types;
-  arg_types.reserve(node->input().size());
+  std::vector<type::Type const *> param_types;
+  param_types.reserve(node->input().size());
   for (auto const &input : node->input()) {
     auto v = Visit(input, VerifyTypeTag{});
     if (not v.ok()) {
       err = true;
     } else {
-      arg_types.push_back(v.type());
+      param_types.push_back(v.type());
     }
   }
 
   return set_result(node, err ? VerifyResult::Error()
-                              : VerifyResult::Constant(type::Jmp(arg_types)));
+                              : VerifyResult::Constant(type::Jmp(param_types)));
 }
 
 VerifyResult Compiler::Visit(ast::PrintStmt const *node, VerifyTypeTag) {

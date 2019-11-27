@@ -21,7 +21,7 @@
 #include "ir/cmd/store.h"
 #include "ir/cmd/types.h"
 #include "ir/components.h"
-#include "ir/jump_handler.h"
+#include "ir/jump.h"
 #include "ir/reg.h"
 #include "type/jump.h"
 #include "type/type.h"
@@ -46,7 +46,7 @@ namespace compiler {
 using ::matcher::InheritsFrom;
 
 VerifyResult VerifyBody(Compiler *compiler, ast::FunctionLiteral const *node);
-void VerifyBody(Compiler *compiler, ast::JumpHandler const *node);
+void VerifyBody(Compiler *compiler, ast::Jump const *node);
 
 namespace {
 
@@ -232,7 +232,7 @@ void CompleteBody(Compiler *compiler, ast::StructLiteral const *node) {
   //   }
 }
 
-void CompleteBody(Compiler *compiler, ast::JumpHandler const *node) {
+void CompleteBody(Compiler *compiler, ast::Jump const *node) {
   ir::CompiledFn *&ir_func = compiler->data_.constants_->second.ir_funcs_[node];
 
   ICARUS_SCOPE(ir::SetCurrentFunc(ir_func)) {
@@ -270,7 +270,7 @@ base::move_func<void()> *DeferBody(Compiler *compiler, NodeType const *node) {
   // destroyed.
   return compiler->AddWork(node, [compiler, node]() mutable {
     if constexpr (std::is_same_v<NodeType, ast::FunctionLiteral> or
-                  std::is_same_v<NodeType, ast::JumpHandler>) {
+                  std::is_same_v<NodeType, ast::Jump>) {
       VerifyBody(compiler, node);
     }
     CompleteBody(compiler, node);
@@ -641,7 +641,7 @@ ir::Results Compiler::Visit(ast::Binop const *node, EmitValueTag) {
 
 ir::Results Compiler::Visit(ast::BlockLiteral const *node, EmitValueTag) {
   std::vector<ir::RegOr<ir::AnyFunc>> befores;
-  std::vector<ir::RegOr<ir::JumpHandler const *>> afters;
+  std::vector<ir::RegOr<ir::Jump const *>> afters;
   befores.reserve(node->before().size());
   for (auto const &decl : node->before()) {
     ASSERT((decl->flags() & ast::Declaration::f_IsConst) != 0);
@@ -651,7 +651,7 @@ ir::Results Compiler::Visit(ast::BlockLiteral const *node, EmitValueTag) {
   for (auto const &decl : node->after()) {
     ASSERT((decl->flags() & ast::Declaration::f_IsConst) != 0);
     afters.push_back(
-        Visit(decl, EmitValueTag{}).get<ir::JumpHandler const *>(0));
+        Visit(decl, EmitValueTag{}).get<ir::Jump const *>(0));
   }
 
   return ir::Results{ir::BlockHandler(data_.add_block(), befores, afters)};
@@ -1276,18 +1276,18 @@ ir::Results Compiler::Visit(ast::Index const *node, EmitValueTag) {
       ir::PtrFix(Visit(node, EmitRefTag{})[0].reg(), type_of(node))};
 }
 
-ir::Results Compiler::Visit(ast::Jump const *node, EmitValueTag) {
+ir::Results Compiler::Visit(ast::Goto const *node, EmitValueTag) {
   std::vector<std::string_view> names;
-  names.reserve(node->options_.size());
+  names.reserve(node->options().size());
 
   std::vector<ir::BasicBlock *> blocks;
-  blocks.reserve(node->options_.size());
+  blocks.reserve(node->options().size());
   auto current_block = builder().CurrentBlock();
 
-  for (auto const &opt : node->options_) {
+  for (auto const &opt : node->options()) {
     ir::BasicBlock *block = builder().AddBlock();
     blocks.push_back(block);
-    names.push_back(opt.block);
+    names.push_back(opt.block());
 
     builder().CurrentBlock() = block;
     // TODO emit code for each possible jumped-to block
@@ -1298,7 +1298,7 @@ ir::Results Compiler::Visit(ast::Jump const *node, EmitValueTag) {
   return ir::Results{};
 }
 
-ir::Results Compiler::Visit(ast::JumpHandler const *node, EmitValueTag) {
+ir::Results Compiler::Visit(ast::Jump const *node, EmitValueTag) {
   ir::CompiledFn *&ir_func = data_.constants_->second.ir_funcs_[node];
   if (not ir_func) {
     auto work_item_ptr = DeferBody(this, node);
@@ -1392,12 +1392,12 @@ ir::Results Compiler::Visit(ast::YieldStmt const *node, EmitValueTag) {
 
 ir::Results Compiler::Visit(ast::ScopeLiteral const *node, EmitValueTag) {
   absl::flat_hash_map<std::string_view, ir::BlockDef *> blocks;
-  std::vector<ir::RegOr<ir::JumpHandler const *>> inits;
+  std::vector<ir::RegOr<ir::Jump const *>> inits;
   std::vector<ir::RegOr<ir::AnyFunc>> dones;
   for (auto const *decl : node->decls()) {
     if (decl->id() == "init") {
       inits.push_back(
-          Visit(decl, EmitValueTag{}).get<ir::JumpHandler const *>(0));
+          Visit(decl, EmitValueTag{}).get<ir::Jump const *>(0));
     } else if (decl->id() == "done") {
       dones.push_back(Visit(decl, EmitValueTag{}).get<ir::AnyFunc>(0));
     } else {

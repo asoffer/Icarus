@@ -387,9 +387,9 @@ BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
   } else if constexpr (std::is_same_v<CmdType, ScopeCmd>) {
     auto *scope_def = iter->read<ir::ScopeDef *>();
 
-    scope_def->inits_ = internal::Deserialize<uint16_t, JumpHandler const *>(
+    scope_def->inits_ = internal::Deserialize<uint16_t, Jump const *>(
         iter,
-        [ctx](Reg reg) { return ctx->resolve<JumpHandler const *>(reg); });
+        [ctx](Reg reg) { return ctx->resolve<Jump const *>(reg); });
     scope_def->dones_ = internal::Deserialize<uint16_t, AnyFunc>(
         iter, [ctx](Reg reg) { return ctx->resolve<AnyFunc>(reg); });
 
@@ -407,9 +407,9 @@ BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
     auto *block_def = iter->read<ir::BlockDef *>();
     block_def->before_ = internal::Deserialize<uint16_t, AnyFunc>(
         iter, [ctx](Reg reg) { return ctx->resolve<AnyFunc>(reg); });
-    block_def->after_ = internal::Deserialize<uint16_t, JumpHandler const *>(
+    block_def->after_ = internal::Deserialize<uint16_t, Jump const *>(
         iter,
-        [ctx](Reg reg) { return ctx->resolve<JumpHandler const *>(reg); });
+        [ctx](Reg reg) { return ctx->resolve<Jump const *>(reg); });
     Reg result_reg = iter->read<Reg>();
     frame.regs_.set(ctx->Offset(result_reg), block_def);
 

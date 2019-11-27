@@ -907,28 +907,28 @@ struct Index : public Expression {
   std::unique_ptr<Expression> lhs_, rhs_;
 };
 
-// Jump:
+// Goto:
 // Represents a statement describing where a block should jump after completion.
 //
 // Example (in context of a scope):
 //  ```
 //  while ::= scope {
-//    init ::= jump_handler(b: bool) {
+//    init ::= jump(b: bool) {
 //      switch (b) {
-//        jump do()   when true
-//        jump exit() when false
+//        goto do()   when true
+//        goto exit() when false
 //      }
 //    }
 //    do ::= block {
 //      before ::= () -> () {}
-//      after ::= jump_handler() { jump start() }
+//      after ::= jump() { goto start() }
 //    }
 //    done ::= () -> () {}
 //  }
 //  ```
-struct Jump : public Node {
+struct Goto : public Node {
  public:
-  explicit Jump(frontend::SourceRange span,
+  explicit Goto(frontend::SourceRange span,
                 std::vector<std::unique_ptr<Call>> calls)
       : Node(std::move(span)) {
     for (auto &call : calls) {
@@ -958,44 +958,55 @@ struct Jump : public Node {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
 
-  // TODO private:
-
   // A jump option is a collection of blocks that may be jumped to and the
   // arguments to pass to such a block. When evaluating jump options, the option
   // is chose if the collection of blocks refers to a block that is present on
   // the scope node. In that case, the arguments are evaluated and passed to it.
-  // Otherwise, the option is dicarded and the next option in the `options_`
+  // Otherwise, the option is discarded and the next option in the `options_`
   // container is chosen.
   struct JumpOption {
     explicit JumpOption(std::string name,
                         core::FnArgs<std::unique_ptr<Expression>> a)
-        : block(std::move(name)), args(std::move(a)) {}
+        : block_(std::move(name)), args_(std::move(a)) {}
     JumpOption(JumpOption const &)     = default;
     JumpOption(JumpOption &&) noexcept = default;
     JumpOption &operator=(JumpOption const &) = default;
     JumpOption &operator=(JumpOption &&) noexcept = default;
 
-    std::string block;
-    core::FnArgs<std::unique_ptr<Expression>> args;
+    std::string_view block() const { return block_; }
+    core::FnArgs<std::unique_ptr<Expression>> const &args() const {
+      return args_;
+    }
+    core::FnArgs<std::unique_ptr<Expression>> &args() { return args_; }
+
+   private:
+    std::string block_;
+    core::FnArgs<std::unique_ptr<Expression>> args_;
   };
+
+  absl::Span<JumpOption const> options() const { return options_; }
+  absl::Span<JumpOption> options() { return absl::MakeSpan(options_); }
+
+ private:
   // A jump will evaluate at compile-time to the first option for which the
   // scope node has all possible blocks.
   std::vector<JumpOption> options_;
 };
 
-// JumpHandler:
-// TODO figure out a good name for this node and the precise syntax/semantics it
-// is going to have.
+// Jump:
+// Represents a component of a scope definition that directs control flow.
 //
 // Example:
+// If the bool is true, control flow continues to the next block in this scope.
+// Otherwise, control flow exits the scope entirely.
 //  ```
-//  jump_handler (b: bool) {
-//    if (b) then { jump next() }
-//    jump exit()
+//  jump (b: bool) {
+//    if (b) then { goto next() }
+//    goto exit()
 //  }
 //  ```
-struct JumpHandler : ScopeExpr<FnScope> {
-  explicit JumpHandler(frontend::SourceRange span,
+struct Jump : ScopeExpr<FnScope> {
+  explicit Jump(frontend::SourceRange span,
                        std::vector<std::unique_ptr<Declaration>> input,
                        std::vector<std::unique_ptr<Node>> stmts)
       : ScopeExpr<FnScope>(std::move(span)),

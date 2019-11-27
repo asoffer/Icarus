@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/container/node_hash_map.h"
 #include "ast/ast.h"
 #include "base/guarded.h"
 #include "compiler/constant_binding.h"
@@ -15,6 +16,7 @@
 #include "ir/block_def.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
+#include "ir/jump.h"
 #include "ir/reg.h"
 #include "ir/results.h"
 #include "ir/scope_def.h"
@@ -46,6 +48,21 @@ struct CompilationData {
       return &iter->second;
     }
     return nullptr;
+  }
+
+  ir::Jump *jumps(ast::Expression const *expr) {
+    auto iter = jumps_.find(expr);
+    if (iter == jumps_.end()) { return nullptr; }
+    return &iter->second;
+  }
+
+  ir::Jump *add_jump(ast::Expression const *expr, type::Jump const *jump_type,
+                     core::FnParams<type::Typed<ast::Declaration const *>> p) {
+    auto[iter, success] =
+        jumps_.emplace(std::piecewise_construct, std::forward_as_tuple(expr),
+                       std::forward_as_tuple(jump_type, std::move(p)));
+    ASSERT(success == true);
+    return &iter->second;
   }
 
   std::pair<ConstantBinding, DependentData> *constants_;
@@ -109,6 +126,9 @@ struct CompilationData {
       fn_call_dispatch_tables_;
 
   error::Log error_log_;
+
+ private:
+  absl::node_hash_map<ast::Expression const *, ir::Jump> jumps_;
 };
 }  // namespace compiler
 #endif  // ICARUS_COMPILER_DATA_H

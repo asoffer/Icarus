@@ -152,14 +152,14 @@ void AssignScope::Visit(ast::Index *node, ast::Scope *scope) {
   Visit(node->rhs(), scope);
 }
 
-void AssignScope::Visit(ast::Jump *node, ast::Scope *scope) {
+void AssignScope::Visit(ast::Goto *node, ast::Scope *scope) {
   node->scope_ = scope;
-  for (auto &opt : node->options_) {
-    opt.args.Apply([this, scope](auto &expr) { Visit(expr.get(), scope); });
+  for (auto &opt : node->options()) {
+    opt.args().Apply([this, scope](auto &expr) { Visit(expr.get(), scope); });
   }
 }
 
-void AssignScope::Visit(ast::JumpHandler *node, ast::Scope *scope) {
+void AssignScope::Visit(ast::Jump *node, ast::Scope *scope) {
   node->scope_ = scope;
   node->set_body_with_parent(scope);
   SetAllScopes(this, node->input(), node->body_scope());

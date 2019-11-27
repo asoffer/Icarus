@@ -48,7 +48,7 @@ char const *OpStr(frontend::Operator op) {
     case frontend::Operator::Ne: return " != ";
     case frontend::Operator::Ge: return " >= ";
     case frontend::Operator::Gt: return " > ";
-    case frontend::Operator::Jump: return "jump ";
+    case frontend::Operator::Goto: return "goto ";
     case frontend::Operator::Return: return "return ";
     case frontend::Operator::Yield: return "yield ";
     case frontend::Operator::Print: return "print ";
@@ -161,16 +161,16 @@ void Dump::Visit(ast::BlockNode const *node) {
   absl::StrAppend(out_, indent(), "}\n");
 }
 
-void Dump::Visit(ast::JumpHandler const *node) {
-  absl::StrAppend(out_, "jump_handler (",
-                  absl::StrJoin(node->input(), ", ", Joiner{this}), ") {\n");
+void Dump::Visit(ast::Jump const *node) {
+  absl::StrAppend(out_, "jump (",
+                  absl::StrJoin(node->input(), ", ", Joiner{this}), ") {");
   ++indentation_;
   for (auto *stmt : node->stmts()) {
     absl::StrAppend(out_, "\n", indent());
     Visit(stmt);
   }
   --indentation_;
-  absl::StrAppend(out_, indent(), "}\n");
+  absl::StrAppend(out_, "\n", indent(), "}\n");
 }
 
 void Dump::Visit(ast::BuiltinFn const *node) {
@@ -303,11 +303,11 @@ void Dump::Visit(ast::Index const *node) {
   absl::StrAppend(out_, "]");
 }
 
-void Dump::Visit(ast::Jump const *node) {
-  absl::StrAppend(out_, "jump ");
-  for (auto const &opt : node->options_) {
-    absl::StrAppend(out_, opt.block, "(");
-    DumpFnArgs(this, opt.args);
+void Dump::Visit(ast::Goto const *node) {
+  absl::StrAppend(out_, "goto ");
+  for (auto const &opt : node->options()) {
+    absl::StrAppend(out_, opt.block(), "(");
+    DumpFnArgs(this, opt.args());
     absl::StrAppend(out_, ")");
   }
 }

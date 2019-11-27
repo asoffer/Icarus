@@ -25,7 +25,7 @@ namespace ir::internal {
 // A `BlockGroup` represents a collection of `BasicBlock`s which make sense
 // together as a coherent entity. One might normally call such a collection of
 // `BasicBlock`s a function, but Icarus has at least one other useful example: A
-// `JumpHandler`. The IR for a JumpHandler is largely similar to that of a
+// `Jump`. The IR for a Jump is largely similar to that of a
 // function with a few differences. A `BlockGroup` represents the parts common
 // to both.
 struct BlockGroup {

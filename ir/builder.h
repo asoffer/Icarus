@@ -377,10 +377,10 @@ inline base::Tagged<Addr, Reg> GetRet(uint16_t n, type::Type const* t) {
 // TODO "Handler" doesn't really make sense in the name for these.
 Reg BlockHandler(ir::BlockDef* block_def,
                  absl::Span<RegOr<AnyFunc> const> befores,
-                 absl::Span<RegOr<JumpHandler const*> const> afters);
+                 absl::Span<RegOr<Jump const*> const> afters);
 
 Reg ScopeHandler(
-    ir::ScopeDef* scope_def, absl::Span<RegOr<JumpHandler const*> const> inits,
+    ir::ScopeDef* scope_def, absl::Span<RegOr<Jump const*> const> inits,
     absl::Span<RegOr<AnyFunc> const> dones,
     absl::flat_hash_map<std::string_view, BlockDef*> const& blocks);
 

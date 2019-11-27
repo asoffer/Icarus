@@ -59,7 +59,7 @@ static absl::flat_hash_map<std::string_view,
     {"import", {Operator::Import}}, {"flags", {Syntax::Flags}},
     {"enum", {Syntax::Enum}},       {"struct", {Syntax::Struct}},
     {"return", {Operator::Return}}, {"yield", {Operator::Yield}},
-    {"jump", {Operator::Jump}},     {"jump_handler", {Syntax::JumpHandler}},
+    {"goto", {Operator::Goto}},     {"jump", {Syntax::Jump}},
     {"switch", {Syntax::Switch}},   {"when", {Operator::When}},
     {"as", {Operator::As}},         {"copy", {Operator::Copy}},
     {"move", {Operator::Move}}};

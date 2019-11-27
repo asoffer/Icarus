@@ -4,7 +4,6 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/node_hash_map.h"
 #include "ast/ast_fwd.h"
-// TODO #include "ast/dispatch_table.h"
 #include "ast/expr_ptr.h"
 #include "compiler/constant_binding.h"
 #include "compiler/verify_result.h"
@@ -24,7 +23,7 @@ struct DependentData {
 
   // TODO absl::flat_hash_map<ast::ExprPtr, ast::DispatchTable> dispatch_tables_;
 
-  // Similar to dispatch tables, but specifically for `jump_handler`s. The
+  // Similar to dispatch tables, but specifically for `jump`s. The
   // tables are keyed on both the scope/block node as well as the actual jump
   // expression.
   // TODO absl::flat_hash_map<std::pair<ast::ExprPtr, ast::ExprPtr>, ast::DispatchTable>

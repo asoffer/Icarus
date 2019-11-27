@@ -92,13 +92,13 @@ void TokenExtractor::Visit(ast::Index const *node) {
   Visit(node->rhs());
 }
 
-void TokenExtractor::Visit(ast::Jump const *node) {
-  for (auto &opt : node->options_) {
-    for (auto &expr : opt.args) { Visit(expr.get()); }
+void TokenExtractor::Visit(ast::Goto const *node) {
+  for (auto &opt : node->options()) {
+    for (auto &expr : opt.args()) { Visit(expr.get()); }
   }
 }
 
-void TokenExtractor::Visit(ast::JumpHandler const *node) {
+void TokenExtractor::Visit(ast::Jump const *node) {
   Join(this, node->input(), ",");
   Join(this, node->stmts(), "\n");
 }
