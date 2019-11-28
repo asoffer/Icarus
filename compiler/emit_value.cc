@@ -52,16 +52,15 @@ namespace {
 
 void MakeAllStackAllocations(Compiler *compiler, ast::FnScope const *fn_scope) {
   for (auto *scope : fn_scope->descendants()) {
+    if (scope != fn_scope and scope->is<ast::FnScope>()) { continue; }
     for (const auto &[key, val] : scope->decls_) {
+      DEBUG_LOG("MakeAllStackAllocations")(key);
       for (auto *decl : val) {
         if (decl->flags() &
             (ast::Declaration::f_IsConst | ast::Declaration::f_IsFnParam)) {
           continue;
         }
 
-        // TODO it's wrong to use a default BoundConstants, but it's even more
-        // wrong to store the address on the declaration, so you can fix those
-        // together.
         compiler->set_addr(decl,
                            compiler->builder().Alloca(compiler->type_of(decl)));
       }
@@ -233,10 +232,11 @@ void CompleteBody(Compiler *compiler, ast::StructLiteral const *node) {
 }
 
 void CompleteBody(Compiler *compiler, ast::Jump const *node) {
-  ir::CompiledFn *&ir_func = compiler->data_.constants_->second.ir_funcs_[node];
+  ir::Jump *jmp = ASSERT_NOT_NULL(compiler->data_.jump(node));
 
-  ICARUS_SCOPE(ir::SetCurrent(ir_func)) {
-    compiler->builder().CurrentBlock() = ir_func->entry();
+  ICARUS_SCOPE(ir::SetCurrent(jmp, &compiler->builder())) {
+    ASSERT(compiler != nullptr);
+    compiler->builder().CurrentBlock() = jmp->entry();
     // TODO arguments should be renumbered to not waste space on const
     // values
     int32_t i = 0;
@@ -260,7 +260,7 @@ void CompleteBody(Compiler *compiler, ast::Jump const *node) {
     MakeAllDestructions(compiler, node->body_scope());
 
     compiler->builder().ReturnJump();
-    ir_func->work_item = nullptr;
+    jmp->work_item = nullptr;
   }
 }
 
@@ -1119,6 +1119,7 @@ ir::Results Compiler::Visit(ast::CommaList const *node, EmitValueTag) {
 }
 
 ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
+  DEBUG_LOG("EmitValueDeclaration")(ast::Dump::ToString(node));
   // TODO swap contexts?
   if (node->flags() & ast::Declaration::f_IsConst) {
     // TODO
@@ -1300,9 +1301,7 @@ ir::Results Compiler::Visit(ast::Goto const *node, EmitValueTag) {
 }
 
 ir::Results Compiler::Visit(ast::Jump const *node, EmitValueTag) {
-  ir::CompiledFn *&ir_func = data_.constants_->second.ir_funcs_[node];
-
-  if (not ir_func) {
+  return ir::Results{data_.add_jump(node, [this, node] {
     auto work_item_ptr = DeferBody(this, node);
     auto *jmp_type     = &type_of(node)->as<type::Jump>();
 
@@ -1314,10 +1313,11 @@ ir::Results Compiler::Visit(ast::Jump const *node, EmitValueTag) {
                         decl->id(), type::Typed(decl, jmp_type->args()[i])});
     }
 
-    ir_func = AddJump(jmp_type, std::move(params));
-    if (work_item_ptr) { ir_func->work_item = work_item_ptr; }
-  }
-  return ir::Results{ir_func};
+    DEBUG_LOG("Jump")("Jump type = ", jmp_type->to_string());
+    ir::Jump jmp(jmp_type, std::move(params));
+    if (work_item_ptr) { jmp.work_item = work_item_ptr; }
+    return jmp;
+  })};
 }
 
 static std::vector<std::pair<ast::Expression const *, ir::Results>>

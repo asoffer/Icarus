@@ -64,6 +64,13 @@ cc_lib(
 )
 
 cc_lib(
+    name = "lazy_convert",
+    deps = [],
+    header_only = True,
+    test_deps = None,
+)
+
+cc_lib(
     name = "log",
     deps = [
         ":guarded",

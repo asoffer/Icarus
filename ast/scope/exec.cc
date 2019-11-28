@@ -9,7 +9,7 @@ ExecScope::ExecScope(Scope *parent) : Scope(parent) {
   // This is not just a convencience, it's necessary for correctness because on
   // FnScope construction, the ExecScope constructor will be run before any
   // FnScope member is initialized.
-  if (auto containing_fn_scope = parent->Containing<FnScope>()) {
+  if (auto *containing_fn_scope = parent->Containing<FnScope>()) {
     containing_fn_scope->insert_descendant(this);
   }
 }

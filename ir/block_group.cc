@@ -44,7 +44,7 @@ void BlockGroup::Reserve(Reg r, core::Bytes b, core::Alignment a) {
 
 Reg BlockGroup::Alloca(type::Type const *t) {
   Reg r = Reserve(type::Ptr(t));
-  allocs_.allocate(t, r);
+  allocs_.allocate(ASSERT_NOT_NULL(t), r);
   return r;
 }
 

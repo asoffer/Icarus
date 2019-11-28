@@ -9,6 +9,7 @@
 #include "absl/container/node_hash_map.h"
 #include "ast/ast.h"
 #include "base/guarded.h"
+#include "base/lazy_convert.h"
 #include "compiler/constant_binding.h"
 #include "compiler/dependent_data.h"
 #include "compiler/dispatch/table.h"
@@ -50,17 +51,16 @@ struct CompilationData {
     return nullptr;
   }
 
-  ir::Jump *jumps(ast::Expression const *expr) {
+  ir::Jump *jump(ast::Jump const *expr) {
     auto iter = jumps_.find(expr);
     if (iter == jumps_.end()) { return nullptr; }
     return &iter->second;
   }
 
-  ir::Jump *add_jump(ast::Expression const *expr, type::Jump const *jump_type,
-                     core::FnParams<type::Typed<ast::Declaration const *>> p) {
+  template <typename Fn>
+  ir::Jump *add_jump(ast::Jump const *expr, Fn &&fn) {
     auto[iter, success] =
-        jumps_.emplace(std::piecewise_construct, std::forward_as_tuple(expr),
-                       std::forward_as_tuple(jump_type, std::move(p)));
+        jumps_.emplace(expr, base::lazy_convert{std::forward<Fn>(fn)});
     ASSERT(success == true);
     return &iter->second;
   }
@@ -128,7 +128,7 @@ struct CompilationData {
   error::Log error_log_;
 
  private:
-  absl::node_hash_map<ast::Expression const *, ir::Jump> jumps_;
+  absl::node_hash_map<ast::Jump const *, ir::Jump> jumps_;
 };
 }  // namespace compiler
 #endif  // ICARUS_COMPILER_DATA_H

@@ -11,7 +11,9 @@ namespace ir {
 struct Jump : internal::BlockGroup {
   explicit Jump(type::Jump const *jump_type,
                 core::FnParams<type::Typed<ast::Declaration const *>> p)
-      : internal::BlockGroup(std::move(p)), type_(jump_type) {}
+      : internal::BlockGroup(std::move(p)), type_(jump_type) {
+    AppendBlock();
+  }
 
   type::Jump const *type() const { return type_; }
 

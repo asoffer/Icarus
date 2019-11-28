@@ -6,6 +6,7 @@ cc_lib(
     deps = [
         "//ast:ast_fwd",
         "//base:cast",
+        "//base:debug",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
     ],

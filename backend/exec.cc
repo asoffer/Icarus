@@ -853,6 +853,7 @@ ExecContext::Frame::Frame(ir::CompiledFn *fn,
 
   auto arch = core::Interpretter();
   fn->allocs().for_each([&](type::Type const *t, ir::Reg r) {
+    ASSERT(t != nullptr);
     core::Bytes offset = *ASSERT_NOT_NULL(fn_->offset_or_null(r));
     DEBUG_LOG("allocs")
     ("Allocating type = ", t->to_string(), ", reg = ", r,

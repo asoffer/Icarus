@@ -7,6 +7,7 @@
 #include "absl/container/flat_hash_set.h"
 #include "ast/ast_fwd.h"
 #include "base/cast.h"
+#include "base/debug.h"
 
 namespace module {
 struct BasicModule;
@@ -38,15 +39,18 @@ struct Scope : public base::Cast<Scope> {
   template <typename Sc>
   Sc const *Containing() const {
     Scope const *scope = this;
-    while (scope and not scope->is<Sc>()) { scope = scope->parent; }
+    DEBUG_LOG("scope")("Looking for ancestor of type ", typeid(Sc).name());
+    while (scope and not scope->is<Sc>()) {
+      DEBUG_LOG("scope")(scope, " => ", scope->parent);
+      scope = scope->parent;
+    }
     return static_cast<Sc const *>(scope);
   }
 
   template <typename Sc>
   Sc *Containing() {
-    Scope *scope = this;
-    while (scope and not scope->is<Sc>()) { scope = scope->parent; }
-    return static_cast<Sc *>(scope);
+    return const_cast<Sc *>(
+        static_cast<Scope const *>(this)->template Containing<Sc>());
   }
 
   absl::flat_hash_map<std::string_view, std::vector<Declaration *>> decls_;
