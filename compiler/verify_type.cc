@@ -571,7 +571,7 @@ static Constness VerifyAndGetConstness(
   return is_const ? Constness::Const : Constness::NonConst;
 }
 
-static std::vector<
+/*static*/ std::vector<
     core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>>
 VerifyBlockNode(Compiler *compiler, ast::BlockNode const *node) {
   compiler->Visit(node, VerifyTypeTag{});
@@ -912,10 +912,23 @@ VerifyResult Compiler::Visit(ast::BuiltinFn const *node, VerifyTypeTag) {
 
 static ast::OverloadSet FindOverloads(
     compiler::Compiler *visitor, ast::Scope *scope, std::string_view token,
-    core::FnArgs<type::Type const *> arg_types) {
+    core::FnArgs<VerifyResult, std::string_view> args) {
   ast::OverloadSet os(scope, token);
-  for (type::Type const *t : arg_types) { AddAdl(&os, token, t); };
+  for (VerifyResult result : args) { AddAdl(&os, token, result.type()); };
   return os;
+}
+
+ast::OverloadSet MakeOverloadSet(
+    Compiler *c, ast::Expression const *call_expr,
+    core::FnArgs<VerifyResult, std::string_view> const &args) {
+  if (auto *id = call_expr->if_as<ast::Identifier>()) {
+    return FindOverloads(c, call_expr->scope_, id->token(), args);
+  } else {
+    ast::OverloadSet os;
+    os.insert(call_expr);
+    // TODO ADL for node?
+    return os;
+  }
 }
 
 template <typename EPtr, typename StrType>
@@ -1063,23 +1076,12 @@ VerifyResult Compiler::Visit(ast::Call const *node, VerifyTypeTag) {
     return set_result(node, VerifyResult(result.type(), result.constant()));
   }
 
-  ast::OverloadSet overload_set = [&]() {
-    if (auto *id = node->callee()->if_as<ast::Identifier>()) {
-      return FindOverloads(this, node->scope_, id->token(),
-                           arg_results.Transform(
-                               [](VerifyResult const &p) { return p.type(); }));
-    } else {
-      ast::OverloadSet os;
-      os.insert(node->callee());
-      // TODO ADL for node?
-      return os;
-    }
-  }();
-
-  ASSIGN_OR(
-      return VerifyResult::Error(),  //
-             auto table,
-             FnCallDispatchTable::Verify(this, overload_set, arg_results));
+  ASSIGN_OR(return VerifyResult::Error(),  //
+                   auto table,
+                   FnCallDispatchTable::Verify(
+                       this, MakeOverloadSet(this, node->callee(), arg_results),
+                       arg_results));
+  // TODO might be constant?
   auto result = VerifyResult::NonConstant(table.result_type());
   data_.set_dispatch_table(node, std::move(table));
   DEBUG_LOG("dispatch-verify")("Resulting type of dispatch is ", result);
@@ -1768,13 +1770,23 @@ VerifyResult Compiler::Visit(ast::ScopeLiteral const *node, VerifyTypeTag) {
 
 VerifyResult Compiler::Visit(ast::ScopeNode const *node, VerifyTypeTag) {
   DEBUG_LOG("ScopeNode")(ast::Dump::ToString(node));
-  // TODO how do you determine the type of this?
-  ASSIGN_OR(return _, auto name_result, Visit(node->name(), VerifyTypeTag{}));
-  static_cast<void>(name_result);
+  auto [arg_results, err] = VerifyFnArgs(this, node->args());
+  // TODO handle cyclic dependencies in call arguments.
+  if (err) { return VerifyResult::Error(); }
 
-  auto arg_results = node->args().Transform([this](ast::Expression const *arg) {
-    return std::pair{arg, Visit(arg, VerifyTypeTag{})};
-  });
+  ASSIGN_OR(return VerifyResult::Error(),  //
+                   auto table,
+                   JumpDispatchTable::Verify(
+                       this, MakeOverloadSet(this, node->name(), arg_results),
+                       arg_results));
+  // TODO might be constant? Actually handle yields correctly.
+  auto result = VerifyResult::NonConstant(type::Void());
+  return set_result(node, result);
+
+  /*
+  auto result = VerifyResult::NonConstant(table.result_type());
+  c->data_.set_jump_table(node, std::move(table));
+  return c->set_result(node, result);
 
   // TODO later on you'll want to allow dynamic dispatch. Calling a scope on an
   // argument of type `A | B` where there are two scope objects (one of type `A`
@@ -1823,6 +1835,7 @@ VerifyResult Compiler::Visit(ast::ScopeNode const *node, VerifyTypeTag) {
   DEBUG_LOG("ScopeNode")("    ... init_result = ", init_result);
   DEBUG_LOG("ScopeNode")("    ... block_defs = ", block_defs);
   return VerifyResult::Constant(type::Void());
+  */
 }
 
 VerifyResult Compiler::Visit(ast::StructLiteral const *node, VerifyTypeTag) {
