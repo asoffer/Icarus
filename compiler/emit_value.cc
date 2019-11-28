@@ -111,7 +111,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node) {
 
   ir::CompiledFn *&ir_func = compiler->data_.constants_->second.ir_funcs_[node];
 
-  ICARUS_SCOPE(ir::SetCurrentFunc(ir_func)) {
+  ICARUS_SCOPE(ir::SetCurrent(ir_func)) {
     // TODO arguments should be renumbered to not waste space on const values
     size_t i = 0;
     for (auto const &param : node->params()) {
@@ -171,7 +171,7 @@ void CompleteBody(Compiler *compiler, ast::StructLiteral const *node) {
   //     set_addr(&node->args_[i], ir::Reg::Arg(i));
   //   }
   //
-  //   ICARUS_SCOPE(ir::SetCurrentFunc(ir_func)) {
+  //   ICARUS_SCOPE(ir::SetCurrent(ir_func)) {
   //     ir::GetBuilder().CurrentBlock() = ir_func->entry();
   //     auto cache_slot_addr    = ir::ArgumentCache(node);
   //     auto cache_slot         = ir::Load<type::Type const
@@ -235,7 +235,7 @@ void CompleteBody(Compiler *compiler, ast::StructLiteral const *node) {
 void CompleteBody(Compiler *compiler, ast::Jump const *node) {
   ir::CompiledFn *&ir_func = compiler->data_.constants_->second.ir_funcs_[node];
 
-  ICARUS_SCOPE(ir::SetCurrentFunc(ir_func)) {
+  ICARUS_SCOPE(ir::SetCurrent(ir_func)) {
     compiler->builder().CurrentBlock() = ir_func->entry();
     // TODO arguments should be renumbered to not waste space on const
     // values
@@ -309,7 +309,7 @@ std::unique_ptr<module::BasicModule> CompileExecutableModule(
 
         ast::ModuleScope *mod_scope =
             &nodes.front()->scope_->as<ast::ModuleScope>();
-        ICARUS_SCOPE(ir::SetCurrentFunc(exec_mod->main(), &c.builder())) {
+        ICARUS_SCOPE(ir::SetCurrent(exec_mod->main(), &c.builder())) {
           MakeAllStackAllocations(&c, mod_scope);
           ICARUS_SCOPE(ir::SetTemporaries(c.builder())) {
             for (auto const *stmt : nodes) {
@@ -815,7 +815,7 @@ ir::Results ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
         type::Func({type::Ptr(lhs_type), type::Ptr(rhs_type)}, {type::Bool});
     auto *fn = compiler->AddFunc(fn_type, fn_type->AnonymousFnParams());
 
-    ICARUS_SCOPE(ir::SetCurrentFunc(fn)) {
+    ICARUS_SCOPE(ir::SetCurrent(fn)) {
       compiler->builder().CurrentBlock() = fn->entry();
 
       auto *equal_len_block = compiler->builder().AddBlock();
@@ -1301,6 +1301,7 @@ ir::Results Compiler::Visit(ast::Goto const *node, EmitValueTag) {
 
 ir::Results Compiler::Visit(ast::Jump const *node, EmitValueTag) {
   ir::CompiledFn *&ir_func = data_.constants_->second.ir_funcs_[node];
+
   if (not ir_func) {
     auto work_item_ptr = DeferBody(this, node);
     auto *jmp_type     = &type_of(node)->as<type::Jump>();

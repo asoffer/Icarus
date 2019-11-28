@@ -22,7 +22,7 @@ void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDestroyTag) {
     auto const *fn_type     = type::Func({pt}, {});
     ir::AnyFunc fn          = AddFunc(fn_type, fn_type->AnonymousFnParams());
 
-    ICARUS_SCOPE(ir::SetCurrentFunc(fn.func())) {
+    ICARUS_SCOPE(ir::SetCurrent(fn.func())) {
       builder().CurrentBlock() = builder().CurrentGroup()->entry();
       auto var                 = ir::Reg::Arg(0);
 
@@ -47,7 +47,7 @@ void Compiler::Visit(type::Variant const *t, ir::Reg reg, EmitDestroyTag) {
   if (not t->destroy_func_) {
     auto const *fn_type = type::Func({t}, {});
     t->destroy_func_    = AddFunc(fn_type, fn_type->AnonymousFnParams());
-    ICARUS_SCOPE(ir::SetCurrentFunc(t->destroy_func_)) {
+    ICARUS_SCOPE(ir::SetCurrent(t->destroy_func_)) {
       builder().CurrentBlock() = t->destroy_func_->entry();
       auto *landing            = builder().AddBlock();
       auto type =
@@ -83,7 +83,7 @@ void Compiler::Visit(type::Tuple const *t, ir::Reg reg, EmitDestroyTag) {
   t->destroy_func_.init([=]() {
     auto const *fn_type = type::Func({Ptr(t)}, {});
     auto *fn            = AddFunc(fn_type, fn_type->AnonymousFnParams());
-    ICARUS_SCOPE(ir::SetCurrentFunc(fn)) {
+    ICARUS_SCOPE(ir::SetCurrent(fn)) {
       builder().CurrentBlock() = builder().CurrentGroup()->entry();
       auto var                 = ir::Reg::Arg(0);
 

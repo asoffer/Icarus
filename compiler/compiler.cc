@@ -179,7 +179,7 @@ ir::CompiledFn Compiler::MakeThunk(ast::Expression const *expr,
                                    type::Type const *type) {
   ir::CompiledFn fn(type::Func({}, {ASSERT_NOT_NULL(type)}),
                     core::FnParams<type::Typed<ast::Declaration const *>>{});
-  ICARUS_SCOPE(ir::SetCurrentFunc(&fn)) {
+  ICARUS_SCOPE(ir::SetCurrent(&fn)) {
     // TODO this is essentially a copy of the body of FunctionLiteral::EmitValue
     // Factor these out together.
     builder().CurrentBlock() = fn.entry();

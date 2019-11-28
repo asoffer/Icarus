@@ -88,7 +88,7 @@ struct Builder {
   constexpr void disallow_more_stmts() { current_.more_stmts_allowed_ = false; }
 
   ICARUS_PRIVATE
-  friend struct SetCurrentFunc;
+  friend struct SetCurrent;
   friend struct SetTemporaries;
 
   struct State {
@@ -105,9 +105,9 @@ struct Builder {
 
 Builder& GetBuilder();
 
-struct SetCurrentFunc : public base::UseWithScope {
-  SetCurrentFunc(internal::BlockGroup* fn, Builder* builder = nullptr);
-  ~SetCurrentFunc();
+struct SetCurrent : public base::UseWithScope {
+  SetCurrent(internal::BlockGroup* fn, Builder* builder = nullptr);
+  ~SetCurrent();
 
  private:
   Builder* builder_;

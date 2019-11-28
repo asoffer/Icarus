@@ -21,7 +21,7 @@ static void ReplEval(ast::Expression const *expr,
                      compiler::Compiler *compiler) {
   // TODO is nullptr for module okay here?
   ir::CompiledFn fn(type::Func({}, {}), {});
-  ICARUS_SCOPE(ir::SetCurrentFunc(&fn)) {
+  ICARUS_SCOPE(ir::SetCurrent(&fn)) {
     ir::GetBuilder().CurrentBlock() = fn.entry();
 
     // TODO support multiple values computed simultaneously?

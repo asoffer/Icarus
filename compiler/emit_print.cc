@@ -24,7 +24,7 @@ void Compiler::Visit(type::Array const *t, ir::Results const &val,
     auto const *fn_type = type::Func({t}, {});
     ir::CompiledFn *fn  = AddFunc(fn_type, fn_type->AnonymousFnParams());
 
-    ICARUS_SCOPE(ir::SetCurrentFunc(fn)) {
+    ICARUS_SCOPE(ir::SetCurrent(fn)) {
       builder().CurrentBlock() = fn->entry();
 
       auto *exit_block = builder().AddBlock();
@@ -144,7 +144,7 @@ void Compiler::Visit(type::Variant const *t, ir::Results const &val,
     auto const *fn_type = type::Func({t}, {});
     t->repr_func_       = AddFunc(fn_type, fn_type->AnonymousFnParams());
 
-    ICARUS_SCOPE(ir::SetCurrentFunc(t->repr_func_)) {
+    ICARUS_SCOPE(ir::SetCurrent(t->repr_func_)) {
       builder().CurrentBlock() = t->repr_func_->entry();
       auto *landing            = builder().AddBlock();
       auto type =

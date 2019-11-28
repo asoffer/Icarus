@@ -20,7 +20,7 @@ static ir::CompiledFn *CreateAssign(Compiler *compiler, type::Array const *a) {
   auto *data_ptr_type           = type::Ptr(a->data_type);
   auto fn_type                  = type::Func({ptr_type, ptr_type}, {});
   auto *fn = compiler->AddFunc(fn_type, fn_type->AnonymousFnParams());
-  ICARUS_SCOPE(ir::SetCurrentFunc(fn)) {
+  ICARUS_SCOPE(ir::SetCurrent(fn)) {
     compiler->builder().CurrentBlock() = fn->entry();
     auto val                           = ir::Reg::Arg(0);
     auto var                           = ir::Reg::Arg(1);
@@ -67,7 +67,7 @@ static ir::AnyFunc CreateAssign(Compiler *compiler, type::Struct const *s) {
   type::Pointer const *pt = type::Ptr(s);
   auto fn_type            = type::Func({pt, pt}, {});
   ir::AnyFunc fn = compiler->AddFunc(fn_type, fn_type->AnonymousFnParams());
-  ICARUS_SCOPE(ir::SetCurrentFunc(fn.func())) {
+  ICARUS_SCOPE(ir::SetCurrent(fn.func())) {
     compiler->builder().CurrentBlock() = fn.func()->entry();
     auto val                           = ir::Reg::Arg(0);
     auto var                           = ir::Reg::Arg(1);
@@ -191,7 +191,7 @@ void Compiler::Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
     type::Pointer const *p = type::Ptr(t);
     auto fn_type           = type::Func({p, p}, {});
     auto *fn               = AddFunc(fn_type, fn_type->AnonymousFnParams());
-    ICARUS_SCOPE(ir::SetCurrentFunc(fn)) {
+    ICARUS_SCOPE(ir::SetCurrent(fn)) {
       builder().CurrentBlock() = fn->entry();
       auto val                 = ir::Reg::Arg(0);
       auto var                 = ir::Reg::Arg(1);
@@ -220,7 +220,7 @@ void Compiler::Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
     type::Pointer const *p = type::Ptr(t);
     auto fn_type           = type::Func({p, p}, {});
     auto *fn               = AddFunc(fn_type, fn_type->AnonymousFnParams());
-    ICARUS_SCOPE(ir::SetCurrentFunc(fn)) {
+    ICARUS_SCOPE(ir::SetCurrent(fn)) {
       builder().CurrentBlock() = fn->entry();
       auto val                 = ir::Reg::Arg(0);
       auto var                 = ir::Reg::Arg(1);

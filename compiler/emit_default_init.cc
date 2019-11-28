@@ -70,7 +70,7 @@ void Compiler::Visit(type::Tuple const *t, ir::Reg reg, EmitDefaultInitTag) {
     auto const *fn_type = type::Func({type::Ptr(t)}, {});
     auto *fn            = AddFunc(fn_type, fn_type->AnonymousFnParams());
 
-    ICARUS_SCOPE(ir::SetCurrentFunc(fn)) {
+    ICARUS_SCOPE(ir::SetCurrent(fn)) {
       builder().CurrentBlock() = builder().CurrentGroup()->entry();
       auto var                 = ir::Reg::Arg(0);
 

@@ -12,7 +12,7 @@ Builder &GetBuilder() { return current; }
 
 BasicBlock *Builder::AddBlock() { return CurrentGroup()->AppendBlock(); }
 
-SetCurrentFunc::SetCurrentFunc(internal::BlockGroup *group, Builder *builder)
+SetCurrent::SetCurrent(internal::BlockGroup *group, Builder *builder)
     : builder_(builder ? builder : &GetBuilder()),
       old_group_(builder_->CurrentGroup()),
       old_block_(builder_->CurrentBlock()) {
@@ -20,7 +20,7 @@ SetCurrentFunc::SetCurrentFunc(internal::BlockGroup *group, Builder *builder)
   builder_->current_.block_ = group->entry();
 }
 
-SetCurrentFunc::~SetCurrentFunc() {
+SetCurrent::~SetCurrent() {
   builder_->CurrentGroup() = old_group_;
   builder_->CurrentBlock() = old_block_;
 }

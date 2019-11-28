@@ -74,7 +74,7 @@ void CreateLoop(LoopPhiFn &&loop_phi_fn, LoopBodyFn &&loop_body_fn,
 
 template <typename F>
 void OnEachArrayElement(type::Array const *t, CompiledFn *fn, F &&fn_to_apply) {
-  ICARUS_SCOPE(SetCurrentFunc(fn)) {
+  ICARUS_SCOPE(SetCurrent(fn)) {
     GetBuilder().CurrentBlock() = fn->entry();
     auto *data_ptr_type         = type::Ptr(t->data_type);
 
