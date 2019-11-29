@@ -119,6 +119,7 @@ void Builder::ChooseJump(absl::Span<std::string_view const> names,
 }
 
 namespace {
+
 void MakeSemanticCmd(SemanticCmd::Kind k, type::Type const *t, Reg r) {
   auto &blk = *GetBuilder().CurrentBlock();
   blk.cmd_buffer_.append_index<SemanticCmd>();
@@ -139,19 +140,19 @@ void MakeSemanticCmd(SemanticCmd::Kind k, type::Type const *t, Reg from,
 }
 }  // namespace
 
-void Init(type::Type const *t, Reg r) {
+void Builder::Init(type::Type const *t, Reg r) {
   MakeSemanticCmd(SemanticCmd::Kind::Init, t, r);
 }
 
-void Destroy(type::Type const *t, Reg r) {
+void Builder::Destroy(type::Type const *t, Reg r) {
   MakeSemanticCmd(SemanticCmd::Kind::Destroy, t, r);
 }
 
-void Move(type::Type const *t, Reg from, RegOr<Addr> to) {
+void Builder::Move(type::Type const *t, Reg from, RegOr<Addr> to) {
   MakeSemanticCmd(SemanticCmd::Kind::Move, t, from, to);
 }
 
-void Copy(type::Type const *t, Reg from, RegOr<Addr> to) {
+void Builder::Copy(type::Type const *t, Reg from, RegOr<Addr> to) {
   MakeSemanticCmd(SemanticCmd::Kind::Copy, t, from, to);
 }
 
@@ -191,58 +192,59 @@ base::Tagged<core::Bytes, Reg> Bytes(RegOr<type::Type const *> r) {
 }
 
 namespace {
-Reg MakeAccessCmd(RegOr<Addr> ptr, RegOr<int64_t> inc, type::Type const *t,
-                  bool is_array) {
-  auto &blk = *GetBuilder().CurrentBlock();
-  blk.cmd_buffer_.append_index<AccessCmd>();
-  blk.cmd_buffer_.append(
-      AccessCmd::MakeControlBits(is_array, ptr.is_reg(), inc.is_reg()));
-  blk.cmd_buffer_.append(t);
+template <bool IsArray>
+Reg MakeAccessCmd(Builder *bldr, RegOr<Addr> ptr, RegOr<int64_t> inc,
+                  type::Type const *t) {
+  auto &buf = bldr->CurrentBlock()->cmd_buffer_;
+  buf.append_index<AccessCmd>();
+  buf.append(AccessCmd::MakeControlBits(IsArray, ptr.is_reg(), inc.is_reg()));
+  buf.append(t);
 
-  ptr.apply([&](auto v) { blk.cmd_buffer_.append(v); });
-  inc.apply([&](auto v) { blk.cmd_buffer_.append(v); });
+  ptr.apply([&](auto v) { buf.append(v); });
+  inc.apply([&](auto v) { buf.append(v); });
 
   Reg result = MakeResult<Addr>();
-  blk.cmd_buffer_.append(result);
+  buf.append(result);
   return result;
 }
 }  // namespace
 
-base::Tagged<Addr, Reg> PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
-                                type::Pointer const *t) {
-  return base::Tagged<Addr, Reg>{MakeAccessCmd(ptr, inc, t, true)};
+base::Tagged<Addr, Reg> Builder::PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
+                                         type::Pointer const *t) {
+  return base::Tagged<Addr, Reg>{MakeAccessCmd<true>(this, ptr, inc, t)};
 }
 
-type::Typed<Reg> Field(RegOr<Addr> r, type::Tuple const *t, int64_t n) {
-  auto *p = type::Ptr(t->entries_.at(n));
-  return type::Typed<Reg>(MakeAccessCmd(r, n, t, false), p);
+type::Typed<Reg> Builder::Field(RegOr<Addr> r, type::Tuple const *t, int64_t n) {
+  return type::Typed<Reg>(MakeAccessCmd<false>(this, r, n, t),
+                          type::Ptr(t->entries_.at(n)));
 }
 
-type::Typed<Reg> Field(RegOr<Addr> r, type::Struct const *t, int64_t n) {
-  auto *p = type::Ptr(t->fields().at(n).type);
-  return type::Typed<Reg>(MakeAccessCmd(r, n, t, false), p);
+type::Typed<Reg> Builder::Field(RegOr<Addr> r, type::Struct const *t,
+                                int64_t n) {
+  return type::Typed<Reg>(MakeAccessCmd<false>(this, r, n, t),
+                          type::Ptr(t->fields().at(n).type));
 }
 
-namespace {
-Reg MakeVariantAccessCmd(RegOr<Addr> const &r, type::Variant const *v) {
-  auto &blk = *GetBuilder().CurrentBlock();
+Reg Builder::VariantType(RegOr<Addr> const &r) {
+  auto &blk = *CurrentBlock();
   blk.cmd_buffer_.append_index<VariantAccessCmd>();
-  bool get_val = (v != nullptr);
-  blk.cmd_buffer_.append(get_val);
+  blk.cmd_buffer_.append(false);
   blk.cmd_buffer_.append(r.is_reg());
   r.apply([&](auto v) { blk.cmd_buffer_.append(v); });
   Reg result = MakeResult<Addr>();
   blk.cmd_buffer_.append(result);
   return result;
 }
-}  // namespace
 
-Reg VariantType(RegOr<Addr> const &r) {
-  return MakeVariantAccessCmd(r, nullptr);
-}
-
-Reg VariantValue(type::Variant const *v, RegOr<Addr> const &r) {
-  return MakeVariantAccessCmd(r, v);
+Reg Builder::VariantValue(type::Variant const *v, RegOr<Addr> const &r) {
+  auto &blk = *CurrentBlock();
+  blk.cmd_buffer_.append_index<VariantAccessCmd>();
+  blk.cmd_buffer_.append(true);
+  blk.cmd_buffer_.append(r.is_reg());
+  r.apply([&](auto v) { blk.cmd_buffer_.append(v); });
+  Reg result = MakeResult<Addr>();
+  blk.cmd_buffer_.append(result);
+  return result;
 }
 
 Reg BlockHandler(ir::BlockDef *block_def,

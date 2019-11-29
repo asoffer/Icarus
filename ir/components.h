@@ -79,16 +79,21 @@ void OnEachArrayElement(type::Array const *t, CompiledFn *fn, F &&fn_to_apply) {
     auto *data_ptr_type         = type::Ptr(t->data_type);
 
     auto ptr     = Index(type::Ptr(t), Reg::Arg(0), 0);
-    auto end_ptr = PtrIncr(ptr, static_cast<int32_t>(t->len), data_ptr_type);
+    auto end_ptr =
+        GetBuilder().PtrIncr(ptr, static_cast<int32_t>(t->len), data_ptr_type);
 
     using tup = std::tuple<RegOr<Addr>>;
-    CreateLoop([&](tup const &phis) { return Eq(std::get<0>(phis), end_ptr); },
-               [&](tup const &phis) {
-                 ASSERT(std::get<0>(phis).is_reg() == true);
-                 fn_to_apply(std::get<0>(phis).reg());
-                 return tup{PtrIncr(std::get<0>(phis).reg(), 1, data_ptr_type)};
-               },
-               std::tuple{data_ptr_type}, tup{ptr});
+    CreateLoop(
+        [&](tup const &phis) {
+          return GetBuilder().Eq(std::get<0>(phis), end_ptr);
+        },
+        [&](tup const &phis) {
+          ASSERT(std::get<0>(phis).is_reg() == true);
+          fn_to_apply(std::get<0>(phis).reg());
+          return tup{
+              GetBuilder().PtrIncr(std::get<0>(phis).reg(), 1, data_ptr_type)};
+        },
+        std::tuple{data_ptr_type}, tup{ptr});
 
     GetBuilder().ReturnJump();
   }

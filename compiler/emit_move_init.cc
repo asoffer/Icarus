@@ -36,7 +36,7 @@ void Compiler::Visit(ast::ArrayLiteral const *node, type::Typed<ir::Reg> reg,
   for (size_t i = 0; i + 1 < array_type.len; ++i) {
     Visit(node->elem(i), type::Typed<ir::Reg>(elem, data_type_ptr),
           EmitMoveInitTag{});
-    elem = ir::PtrIncr(elem, 1, data_type_ptr);
+    elem = builder().PtrIncr(elem, 1, data_type_ptr);
   }
   Visit(node->elems().back(), type::Typed<ir::Reg>(elem, data_type_ptr),
         EmitMoveInitTag{});
@@ -51,11 +51,12 @@ void Compiler::Visit(ast::CommaList const *node, type::Typed<ir::Reg> reg,
       auto results = Visit(expr.get(), EmitValueTag{});
       for (size_t i = 0; i < results.size(); ++i) {
         EmitMoveInit(t.entries_[index], results.GetResult(i),
-                     ir::Field(reg.get(), &t, index));
+                     builder().Field(reg.get(), &t, index));
         ++index;
       }
     } else {
-      Visit(expr.get(), ir::Field(reg.get(), &t, index), EmitMoveInitTag{});
+      Visit(expr.get(), builder().Field(reg.get(), &t, index),
+            EmitMoveInitTag{});
       ++index;
     }
   }

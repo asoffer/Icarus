@@ -27,7 +27,7 @@ std::vector<ir::RegOr<ir::Addr>> Compiler::Visit(ast::Access const *node,
 
   ASSERT(t, InheritsFrom<type::Struct>());
   auto *struct_type = &t->as<type::Struct>();
-  return {ir::Field(reg, struct_type, struct_type->index(node->member_name()))
+  return {builder().Field(reg, struct_type, struct_type->index(node->member_name()))
               .get()};
 }
 
@@ -59,24 +59,28 @@ std::vector<ir::RegOr<ir::Addr>> Compiler::Visit(ast::Index const *node,
     if (not lval.is_reg()) { NOT_YET(this, type_of(node)); }
     return {ir::Index(type::Ptr(type_of(node->lhs())), lval.reg(), index)};
   } else if (auto *buf_ptr_type = lhs_type->if_as<type::BufferPointer>()) {
-    auto index = ir::CastTo<int64_t>(rhs_type, Visit(node->rhs(), EmitValueTag{}));
+    auto index =
+        ir::CastTo<int64_t>(rhs_type, Visit(node->rhs(), EmitValueTag{}));
 
-    return {ir::PtrIncr(Visit(node->lhs(), EmitValueTag{}).get<ir::Reg>(0), index,
-                        type::Ptr(buf_ptr_type->pointee))};
+    return {
+        builder().PtrIncr(Visit(node->lhs(), EmitValueTag{}).get<ir::Reg>(0),
+                          index, type::Ptr(buf_ptr_type->pointee))};
   } else if (lhs_type == type::ByteView) {
     // TODO interim until you remove string_view and replace it with Addr
     // entirely.
-    auto index = ir::CastTo<int64_t>(rhs_type, Visit(node->rhs(), EmitValueTag{}));
-    return {ir::PtrIncr(
-        ir::GetString(
-            Visit(node->lhs(), EmitValueTag{}).get<std::string_view>(0).value()),
-        index, type::Ptr(type::Nat8))};
+    auto index =
+        ir::CastTo<int64_t>(rhs_type, Visit(node->rhs(), EmitValueTag{}));
+    return {builder().PtrIncr(ir::GetString(Visit(node->lhs(), EmitValueTag{})
+                                                .get<std::string_view>(0)
+                                                .value()),
+                              index, type::Ptr(type::Nat8))};
   } else if (auto *tup = lhs_type->if_as<type::Tuple>()) {
     auto index =
         ir::CastTo<int64_t>(rhs_type,
                             backend::Evaluate(MakeThunk(node->rhs(), rhs_type)))
             .value();
-    return {ir::Field(Visit(node->lhs(), EmitRefTag{})[0], tup, index).get()};
+    return {
+        builder().Field(Visit(node->lhs(), EmitRefTag{})[0], tup, index).get()};
   }
   UNREACHABLE(*this);
 }

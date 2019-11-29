@@ -77,6 +77,8 @@ template <typename T>
 struct IsRegOr<RegOr<T>> : public std::true_type {
   using type = T;
 };
+template <typename T>
+constexpr bool IsRegOrV = IsRegOr<T>::value;
 
 }  // namespace ir
 

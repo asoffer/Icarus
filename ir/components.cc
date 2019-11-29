@@ -13,7 +13,7 @@ RegOr<bool> EmitEq(type::Type const *lhs_type, ir::Results const &lhs_val,
                           uint16_t, uint32_t, uint64_t, float, double>(
       lhs_type, [&](auto tag) {
         using T = typename decltype(tag)::type;
-        return ir::Eq(lhs_val.get<T>(0), rhs_val.get<T>(0));
+        return GetBuilder().Eq(lhs_val.get<T>(0), rhs_val.get<T>(0));
       });
 }
 
@@ -22,8 +22,8 @@ base::Tagged<Addr, Reg> Index(type::Pointer const *t, Reg array_ptr,
   // TODO this works but generates worse ir (both here and in llvm). It's worth
   // figuring out how to do this better. Is this still true without
   // variable-length arrays?
-  return PtrIncr(array_ptr, offset,
-                 type::Ptr(t->pointee->as<type::Array>().data_type));
+  return GetBuilder().PtrIncr(
+      array_ptr, offset, type::Ptr(t->pointee->as<type::Array>().data_type));
 }
 
 }  // namespace ir

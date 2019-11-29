@@ -23,7 +23,7 @@ void Compiler::Visit(type::Array const *t, ir::Reg reg, EmitDefaultInitTag) {
     return fn;
   });
 
-  ir::Init(t, reg);
+  builder().Init(t, reg);
 }
 
 void Compiler::Visit(type::Flags const *t, ir::Reg reg, EmitDefaultInitTag) {
@@ -62,7 +62,7 @@ void Compiler::Visit(type::Primitive const *t, ir::Reg reg,
 }
 
 void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDefaultInitTag) {
-  ir::Init(t, reg);
+  builder().Init(t, reg);
 }
 
 void Compiler::Visit(type::Tuple const *t, ir::Reg reg, EmitDefaultInitTag) {
@@ -76,7 +76,7 @@ void Compiler::Visit(type::Tuple const *t, ir::Reg reg, EmitDefaultInitTag) {
 
       for (size_t i :
            base::make_random_permutation(absl::BitGen{}, t->entries_.size())) {
-        Visit(t->entries_.at(i), ir::Field(var, t, i).get(),
+        Visit(t->entries_.at(i), builder().Field(var, t, i).get(),
               EmitDefaultInitTag{});
       }
 
@@ -84,8 +84,7 @@ void Compiler::Visit(type::Tuple const *t, ir::Reg reg, EmitDefaultInitTag) {
     }
     return fn;
   });
-
-  ir::Init(t, reg);
+  builder().Init(t, reg);
 }
 
 }  // namespace compiler

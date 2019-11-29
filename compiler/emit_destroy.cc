@@ -27,7 +27,7 @@ void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDestroyTag) {
       auto var                 = ir::Reg::Arg(0);
 
       for (int i = static_cast<int>(t->fields_.size()) - 1; i >= 0; --i) {
-        Visit(t->fields_.at(i).type, ir::Field(var, t, i).get(),
+        Visit(t->fields_.at(i).type, builder().Field(var, t, i).get(),
               EmitDestroyTag{});
       }
 
@@ -35,8 +35,7 @@ void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDestroyTag) {
     }
     return fn;
   });
-
-  ir::Destroy(t, reg);
+  builder().Destroy(t, reg);
 }
 
 void Compiler::Visit(type::Variant const *t, ir::Reg reg, EmitDestroyTag) {
@@ -51,9 +50,9 @@ void Compiler::Visit(type::Variant const *t, ir::Reg reg, EmitDestroyTag) {
       builder().CurrentBlock() = t->destroy_func_->entry();
       auto *landing            = builder().AddBlock();
       auto type =
-          ir::Load<type::Type const *>(ir::VariantType(ir::Reg::Arg(0)));
+          ir::Load<type::Type const *>(builder().VariantType(ir::Reg::Arg(0)));
 
-      auto var_val = ir::VariantValue(t, ir::Reg::Arg(0));
+      auto var_val = builder().VariantValue(t, ir::Reg::Arg(0));
       for (type::Type const *v : t->variants_) {
         if (not v->HasDestructor()) { continue; }
         auto *old_block   = builder().CurrentBlock();
@@ -65,7 +64,7 @@ void Compiler::Visit(type::Variant const *t, ir::Reg reg, EmitDestroyTag) {
 
         builder().CurrentBlock() = old_block;
         builder().CurrentBlock() = ir::EarlyExitOn<true>(
-            found_block, ir::Eq(ir::RegOr<type::Type const *>(type), v));
+            found_block, builder().Eq(ir::RegOr<type::Type const *>(type), v));
       }
 
       builder().UncondJump(landing);
@@ -89,7 +88,8 @@ void Compiler::Visit(type::Tuple const *t, ir::Reg reg, EmitDestroyTag) {
 
       for (size_t i :
            base::make_random_permutation(absl::BitGen{}, t->entries_.size())) {
-        Visit(t->entries_.at(i), ir::Field(var, t, i).get(), EmitDestroyTag{});
+        Visit(t->entries_.at(i), builder().Field(var, t, i).get(),
+              EmitDestroyTag{});
       }
 
       builder().ReturnJump();
@@ -97,7 +97,7 @@ void Compiler::Visit(type::Tuple const *t, ir::Reg reg, EmitDestroyTag) {
     return fn;
   });
 
-  ir::Destroy(t, reg);
+  builder().Destroy(t, reg);
 }
 
 void Compiler::Visit(type::Array const *t, ir::Reg reg, EmitDestroyTag) {
@@ -111,7 +111,7 @@ void Compiler::Visit(type::Array const *t, ir::Reg reg, EmitDestroyTag) {
     return fn;
   });
 
-  ir::Destroy(t, reg);
+  builder().Destroy(t, reg);
 }
 
 }  // namespace compiler

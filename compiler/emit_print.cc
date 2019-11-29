@@ -29,7 +29,7 @@ void Compiler::Visit(type::Array const *t, ir::Results const &val,
 
       auto *exit_block = builder().AddBlock();
 
-      ir::Print(std::string_view{"["});
+      builder().Print("[");
 
       builder().CurrentBlock() = ir::EarlyExitOn<true>(exit_block, t->len == 0);
       auto ptr                 = ir::Index(type::Ptr(t), ir::Reg::Arg(0), 0);
@@ -39,24 +39,25 @@ void Compiler::Visit(type::Array const *t, ir::Results const &val,
 
       ir::CreateLoop(
           [&](ir::RegOr<ir::Addr> const &phi0, ir::RegOr<int32_t> const &phi1) {
-            return ir::Eq(phi1, 0);
+            return builder().Eq(phi1, 0);
           },
           [&](ir::RegOr<ir::Addr> const &phi0, ir::RegOr<int32_t> const &phi1) {
-            auto elem_ptr = ir::PtrIncr(phi0.reg(), 1, type::Ptr(t->data_type));
+            auto elem_ptr =
+                builder().PtrIncr(phi0.reg(), 1, type::Ptr(t->data_type));
 
-            ir::Print(std::string_view{", "});
+            builder().Print(", ");
             Visit(t->data_type, ir::Results{ir::PtrFix(elem_ptr, t->data_type)},
                   EmitPrintTag{});
 
             return std::make_tuple(elem_ptr,
-                                   ir::Sub(ir::RegOr<int32_t>(phi1), 1));
+                                   builder().Sub(ir::RegOr<int32_t>(phi1), 1));
           },
           std::tuple{type::Ptr(t->data_type), type::Int32},
           std::tuple{ir::RegOr<ir::Addr>(ptr), ir::RegOr<int32_t>(t->len - 1)});
       builder().UncondJump(exit_block);
 
       builder().CurrentBlock() = exit_block;
-      ir::Print(std::string_view{"]"});
+      builder().Print("]");
       builder().ReturnJump();
     }
 
@@ -70,36 +71,36 @@ void Compiler::Visit(type::Array const *t, ir::Results const &val,
 void Compiler::Visit(type::Enum const *t, ir::Results const &val,
                      EmitPrintTag) {
   // TODO print something friendlier
-  ir::Print(val.get<ir::EnumVal>(0), t);
+  builder().Print(val.get<ir::EnumVal>(0), t);
 }
 
 void Compiler::Visit(type::Flags const *t, ir::Results const &val,
                      EmitPrintTag) {
   // TODO print something friendlier
-  ir::Print(val.get<ir::FlagsVal>(0), t);
+  builder().Print(val.get<ir::FlagsVal>(0), t);
 }
 
 void Compiler::Visit(type::Pointer const *t, ir::Results const &val,
                      EmitPrintTag) {
-  ir::Print(val.get<ir::Addr>(0));
+  builder().Print(val.get<ir::Addr>(0));
 }
 
 void Compiler::Visit(type::Primitive const *t, ir::Results const &val,
                      EmitPrintTag) {
   switch (t->type_) {
-    case type::BasicType::Bool: ir::Print(val.get<bool>(0)); break;
-    case type::BasicType::Int8: ir::Print(val.get<int8_t>(0)); break;
-    case type::BasicType::Int16: ir::Print(val.get<int16_t>(0)); break;
-    case type::BasicType::Int32: ir::Print(val.get<int32_t>(0)); break;
-    case type::BasicType::Int64: ir::Print(val.get<int64_t>(0)); break;
-    case type::BasicType::Nat8: ir::Print(val.get<uint8_t>(0)); break;
-    case type::BasicType::Nat16: ir::Print(val.get<uint16_t>(0)); break;
-    case type::BasicType::Nat32: ir::Print(val.get<uint32_t>(0)); break;
-    case type::BasicType::Nat64: ir::Print(val.get<uint64_t>(0)); break;
-    case type::BasicType::Float32: ir::Print(val.get<float>(0)); break;
-    case type::BasicType::Float64: ir::Print(val.get<double>(0)); break;
+    case type::BasicType::Bool: builder().Print(val.get<bool>(0)); break;
+    case type::BasicType::Int8: builder().Print(val.get<int8_t>(0)); break;
+    case type::BasicType::Int16: builder().Print(val.get<int16_t>(0)); break;
+    case type::BasicType::Int32: builder().Print(val.get<int32_t>(0)); break;
+    case type::BasicType::Int64: builder().Print(val.get<int64_t>(0)); break;
+    case type::BasicType::Nat8: builder().Print(val.get<uint8_t>(0)); break;
+    case type::BasicType::Nat16: builder().Print(val.get<uint16_t>(0)); break;
+    case type::BasicType::Nat32: builder().Print(val.get<uint32_t>(0)); break;
+    case type::BasicType::Nat64: builder().Print(val.get<uint64_t>(0)); break;
+    case type::BasicType::Float32: builder().Print(val.get<float>(0)); break;
+    case type::BasicType::Float64: builder().Print(val.get<double>(0)); break;
     case type::BasicType::Type_:
-      ir::Print(val.get<type::Type const *>(0));
+      builder().Print(val.get<type::Type const *>(0));
       break;
     case type::BasicType::Scope:
     case type::BasicType::NullPtr:
@@ -107,7 +108,7 @@ void Compiler::Visit(type::Primitive const *t, ir::Results const &val,
     case type::BasicType::Module:
     case type::BasicType::Block: UNREACHABLE();
     case type::BasicType::ByteView:
-      ir::Print(val.get<std::string_view>(0));
+      builder().Print(val.get<std::string_view>(0));
       break;
   }
 }
@@ -115,22 +116,23 @@ void Compiler::Visit(type::Primitive const *t, ir::Results const &val,
 void Compiler::Visit(type::Tuple const *t, ir::Results const &val,
                      EmitPrintTag) {
   auto reg = val.get<ir::Reg>(0);
-  ir::Print(std::string_view{"("});
+  builder().Print("(");
   for (int i = 0; i < static_cast<int>(t->entries_.size()) - 1; ++i) {
     Visit(t->entries_[i],
-          ir::Results{ir::PtrFix(ir::Field(reg, t, i).get(), t->entries_[i])},
+          ir::Results{
+              ir::PtrFix(builder().Field(reg, t, i).get(), t->entries_[i])},
           EmitPrintTag{});
-    ir::Print(std::string_view{", "});
+    builder().Print(", ");
   }
 
   if (not t->entries_.empty()) {
-    Visit(
-        t->entries_.back(),
-        ir::Results{ir::PtrFix(ir::Field(reg, t, t->entries_.size() - 1).get(),
-                               t->entries_.back())},
-        EmitPrintTag{});
+    Visit(t->entries_.back(),
+          ir::Results{
+              ir::PtrFix(builder().Field(reg, t, t->entries_.size() - 1).get(),
+                         t->entries_.back())},
+          EmitPrintTag{});
   }
-  ir::Print(std::string_view{")"});
+  builder().Print(")");
 }
 
 void Compiler::Visit(type::Variant const *t, ir::Results const &val,
@@ -148,9 +150,9 @@ void Compiler::Visit(type::Variant const *t, ir::Results const &val,
       builder().CurrentBlock() = t->repr_func_->entry();
       auto *landing            = builder().AddBlock();
       auto type =
-          ir::Load<type::Type const *>(ir::VariantType(ir::Reg::Arg(0)));
+          ir::Load<type::Type const *>(builder().VariantType(ir::Reg::Arg(0)));
 
-      auto var_val = ir::VariantValue(t, ir::Reg::Arg(0));
+      auto var_val = builder().VariantValue(t, ir::Reg::Arg(0));
       for (type::Type const *v : t->variants_) {
         auto old_block    = builder().CurrentBlock();
         auto *found_block = builder().AddBlock();
@@ -161,7 +163,7 @@ void Compiler::Visit(type::Variant const *t, ir::Results const &val,
 
         builder().CurrentBlock() = old_block;
         builder().CurrentBlock() = ir::EarlyExitOn<true>(
-            found_block, ir::Eq(ir::RegOr<type::Type const *>(type), v));
+            found_block, builder().Eq(ir::RegOr<type::Type const *>(type), v));
       }
 
       builder().UncondJump(landing);
