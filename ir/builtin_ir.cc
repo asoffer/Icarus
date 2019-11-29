@@ -16,9 +16,10 @@ AnyFunc BytesFn() {
     auto const *fn_type = type::Func({type::Type_}, {type::Int64});
     auto fn             = new CompiledFn(fn_type, fn_type->AnonymousFnParams());
     ICARUS_SCOPE(SetCurrent(fn)) {
-      GetBuilder().CurrentBlock() = fn->entry();
-      SetRet(0, Bytes(Reg::Arg(0)));
-      GetBuilder().ReturnJump();
+      auto &bldr          = GetBuilder();
+      bldr.CurrentBlock() = fn->entry();
+      SetRet(0, bldr.Bytes(Reg::Arg(0)));
+      bldr.ReturnJump();
     }
     return fn;
   }();
@@ -30,9 +31,10 @@ AnyFunc AlignmentFn() {
     auto const *fn_type = type::Func({type::Type_}, {type::Int64});
     auto fn             = new CompiledFn(fn_type, fn_type->AnonymousFnParams());
     ICARUS_SCOPE(SetCurrent(fn)) {
-      GetBuilder().CurrentBlock() = fn->entry();
-      SetRet(0, Align(Reg::Arg(0)));
-      GetBuilder().ReturnJump();
+      auto &bldr          = GetBuilder();
+      bldr.CurrentBlock() = fn->entry();
+      SetRet(0, bldr.Align(Reg::Arg(0)));
+      bldr.ReturnJump();
     }
     return fn;
   }();

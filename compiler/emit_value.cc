@@ -398,8 +398,8 @@ ir::Results Compiler::Visit(ast::ArrayType const *node, EmitValueTag) {
   // Size must be at least 1 by construction, so `.size() - 1` will not
   // overflow.
   for (int i = node->lengths().size() - 1; i >= 0; --i) {
-    result = ir::Array(Visit(node->length(i), EmitValueTag{}).get<int64_t>(0),
-                       result);
+    result = builder().Array(
+        Visit(node->length(i), EmitValueTag{}).get<int64_t>(0), result);
   }
   return ir::Results{result};
 }
@@ -495,7 +495,7 @@ ir::Results Compiler::Visit(ast::Binop const *node, EmitValueTag) {
             Visit(node->rhs(), EmitValueTag{}).get<type::Type const *>(0));
       }
 
-      return ir::Results{ir::Arrow(lhs_vals, rhs_vals)};
+      return ir::Results{builder().Arrow(lhs_vals, rhs_vals)};
     } break;
     case frontend::Operator::Assign: {
       // TODO support splatting.
@@ -721,7 +721,8 @@ ir::Results Compiler::Visit(ast::Call const *node, EmitValueTag) {
         return ir::Results{ir::LoadSymbol(name, foreign_type).get()};
       } break;
 
-      case core::Builtin::Opaque: return ir::Results{ir::OpaqueType(module())};
+      case core::Builtin::Opaque:
+        return ir::Results{builder().OpaqueType(module())};
       case core::Builtin::Bytes: {
         auto const &fn_type =
             ir::BuiltinType(core::Builtin::Bytes)->as<type::Function>();
@@ -1006,7 +1007,8 @@ ir::Results Compiler::Visit(ast::ChainOp const *node, EmitValueTag) {
     auto iter = node->exprs().begin();
     auto val  = Visit(*iter, EmitValueTag{}).get<ir::FlagsVal>(0);
     while (++iter != node->exprs().end()) {
-      val = builder().OrFlags(val, Visit(*iter, EmitValueTag{}).get<ir::FlagsVal>(0));
+      val = builder().OrFlags(
+          val, Visit(*iter, EmitValueTag{}).get<ir::FlagsVal>(0));
     }
     return ir::Results{val};
   } else if (node->ops()[0] == frontend::Operator::And and
@@ -1014,8 +1016,8 @@ ir::Results Compiler::Visit(ast::ChainOp const *node, EmitValueTag) {
     auto iter = node->exprs().begin();
     auto val  = Visit(*iter, EmitValueTag{}).get<ir::FlagsVal>(0);
     while (++iter != node->exprs().end()) {
-      val =
-          builder().AndFlags(val, Visit(*iter, EmitValueTag{}).get<ir::FlagsVal>(0));
+      val = builder().AndFlags(
+          val, Visit(*iter, EmitValueTag{}).get<ir::FlagsVal>(0));
     }
     return ir::Results{val};
   } else if (node->ops()[0] == frontend::Operator::Or and t == type::Type_) {
@@ -1026,7 +1028,7 @@ ir::Results Compiler::Visit(ast::ChainOp const *node, EmitValueTag) {
     for (auto const *expr : node->exprs()) {
       args.push_back(Visit(expr, EmitValueTag{}).get<type::Type const *>(0));
     }
-    auto reg_or_type = ir::Var(args);
+    auto reg_or_type = builder().Var(args);
     return ir::Results{reg_or_type};
   } else if (node->ops()[0] == frontend::Operator::Or and t == type::Block) {
     NOT_YET();
@@ -1699,13 +1701,13 @@ ir::Results Compiler::Visit(ast::Unop const *node, EmitValueTag) {
       return ir::Results{reg};
     } break;
     case frontend::Operator::BufPtr:
-      return ir::Results{ir::BufPtr(
+      return ir::Results{builder().BufPtr(
           Visit(node->operand(), EmitValueTag{}).get<type::Type const *>(0))};
     case frontend::Operator::Not: {
       auto *t = type_of(node->operand());
       if (t == type::Bool) {
         return ir::Results{
-            ir::Not(Visit(node->operand(), EmitValueTag{}).get<bool>(0))};
+            builder().Not(Visit(node->operand(), EmitValueTag{}).get<bool>(0))};
       } else if (t->is<type::Flags>()) {
         return ir::Results{builder().XorFlags(
             Visit(node->operand(), EmitValueTag{}).get<ir::FlagsVal>(0),
@@ -1720,7 +1722,7 @@ ir::Results Compiler::Visit(ast::Unop const *node, EmitValueTag) {
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, float, double>(
           type_of(node->operand()), [&](auto tag) {
             using T = typename decltype(tag)::type;
-            return ir::Results{ir::Neg(operand_ir.get<T>(0))};
+            return ir::Results{builder().Neg(operand_ir.get<T>(0))};
           });
     } break;
     case frontend::Operator::TypeOf:
@@ -1737,7 +1739,7 @@ ir::Results Compiler::Visit(ast::Unop const *node, EmitValueTag) {
           MakeThunk(node->operand(), type_of(node->operand())));
     }
     case frontend::Operator::Mul:
-      return ir::Results{ir::Ptr(
+      return ir::Results{builder().Ptr(
           Visit(node->operand(), EmitValueTag{}).get<type::Type const *>(0))};
     case frontend::Operator::At: {
       auto *t = type_of(node);

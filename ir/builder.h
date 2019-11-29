@@ -31,8 +31,18 @@ struct Builder;
 namespace internal {
 struct BlockGroup;
 
+template <typename SizeType, typename T>
+void Serialize(CmdBuffer*, absl::Span<RegOr<T> const>);
+
 template <typename CmdType, typename T>
 auto MakeBinaryCmd(RegOr<T>, RegOr<T>, Builder *);
+
+template <typename CmdType, typename T>
+auto MakeUnaryCmd(RegOr<T>, Builder*);
+
+template <typename CmdType>
+RegOr<typename CmdType::type> MakeVariadicCmd(
+    absl::Span<RegOr<typename CmdType::type> const> vals, Builder*);
 
 template <typename T>
 auto PrepareCmdArg(T&& arg);
@@ -75,6 +85,30 @@ struct Builder {
   ICARUS_IR_DEFINE_CMD(AndFlags);
   ICARUS_IR_DEFINE_CMD(OrFlags);
 #undef ICARUS_IR_DEFINE_CMD
+
+#define ICARUS_IR_DEFINE_CMD(name)                                             \
+  template <typename T>                                                        \
+  auto name(T&& val) {                                                         \
+    return internal::MakeUnaryCmd<name##Cmd>(                                  \
+        internal::PrepareCmdArg(std::forward<T>(val)), this);                  \
+  }
+
+  ICARUS_IR_DEFINE_CMD(Not);
+  ICARUS_IR_DEFINE_CMD(Neg);
+  ICARUS_IR_DEFINE_CMD(Ptr);
+  ICARUS_IR_DEFINE_CMD(BufPtr);
+#undef ICARUS_IR_DEFINE_CMD
+
+  RegOr<type::Type const*> Var(
+      absl::Span<RegOr<type::Type const*> const> types) {
+    return internal::MakeVariadicCmd<VariantCmd>(types, this);
+  }
+
+  RegOr<type::Type const*> Tup(
+      absl::Span<RegOr<type::Type const*> const> types) {
+    return internal::MakeVariadicCmd<TupleCmd>(types, this);
+  }
+
 
   // Emits a function-call instruction, calling `fn` of type `f` with the given
   // `arguments` and output parameters. If output parameters are not present,
@@ -128,6 +162,16 @@ struct Builder {
   base::Tagged<Addr, Reg> PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
                                   type::Pointer const* t);
 
+  // Type construction commands
+  RegOr<type::Function const*> Arrow(
+      absl::Span<RegOr<type::Type const*> const> ins,
+      absl::Span<RegOr<type::Type const*> const> outs);
+
+  RegOr<type::Type const*> Array(RegOr<ArrayCmd::length_t> len,
+                                 RegOr<type::Type const*> data_type);
+
+  Reg OpaqueType(module::BasicModule const* mod);
+
   // Print commands
   template <typename T>
   void Print(T r) {
@@ -154,8 +198,13 @@ struct Builder {
     buf.append(t);
   }
 
+  // Low-level size/alignment commands
+  base::Tagged<core::Alignment, Reg> Align(RegOr<type::Type const*> r);
+  base::Tagged<core::Bytes, Reg> Bytes(RegOr<type::Type const*> r);
+
   base::Tagged<Addr, Reg> Alloca(type::Type const* t);
   base::Tagged<Addr, Reg> TmpAlloca(type::Type const* t);
+
 
 #if defined(ICARUS_DEBUG)
   void DebugIr() { CurrentBlock()->cmd_buffer_.append_index<DebugIrCmd>(); }
@@ -287,37 +336,7 @@ inline Reg Load(RegOr<Addr> r, type::Type const* t) {
   });
 }
 
-base::Tagged<core::Alignment, Reg> Align(RegOr<type::Type const*> r);
-base::Tagged<core::Bytes, Reg> Bytes(RegOr<type::Type const*> r);
-
 type::Typed<Reg> LoadSymbol(std::string_view name, type::Type const* type);
-
-namespace internal {
-template <typename SizeType, typename T, typename Fn>
-void WriteBits(CmdBuffer* buf, absl::Span<T const> span, Fn&& predicate) {
-  ASSERT(span.size() < std::numeric_limits<SizeType>::max());
-  buf->append<SizeType>(span.size());
-
-  uint8_t reg_mask = 0;
-  for (size_t i = 0; i < span.size(); ++i) {
-    if (predicate(span[i])) { reg_mask |= (1 << (7 - (i % 8))); }
-    if (i % 8 == 7) {
-      buf->append(reg_mask);
-      reg_mask = 0;
-    }
-  }
-  if (span.size() % 8 != 0) { buf->append(reg_mask); }
-}
-
-template <typename SizeType, typename T>
-void Serialize(CmdBuffer* buf, absl::Span<RegOr<T> const> span) {
-  WriteBits<SizeType, RegOr<T>>(buf, span,
-                                [](RegOr<T> const& r) { return r.is_reg(); });
-
-  absl::c_for_each(
-      span, [&](RegOr<T> x) { x.apply([&](auto v) { buf->append(v); }); });
-}
-}  // namespace internal
 
 template <typename T>
 RegOr<T> Phi(Reg r, absl::Span<BasicBlock const* const> blocks,
@@ -455,121 +474,6 @@ void Store(T r, RegOr<Addr> addr) {
   }
 }
 
-RegOr<type::Function const*> Arrow(
-    absl::Span<RegOr<type::Type const*> const> ins,
-    absl::Span<RegOr<type::Type const*> const> outs);
-
-RegOr<type::Type const*> Array(RegOr<ArrayCmd::length_t> len,
-                               RegOr<type::Type const*> data_type);
-
-Reg OpaqueType(module::BasicModule const* mod);
-
-namespace internal {
-
-template <typename CmdType>
-struct UnaryHandler {
-  template <typename... Args,
-            typename std::enable_if_t<not std::conjunction_v<
-                std::is_same<Args, RegOr<UnwrapTypeT<Args>>>...>>* = nullptr>
-  auto operator()(Args... args) const {
-    return operator()(RegOr<UnwrapTypeT<Args>>(std::forward<Args>(args))...);
-  }
-
-  template <typename T>
-  auto operator()(RegOr<T> operand) const {
-    auto& blk         = *GetBuilder().CurrentBlock();
-    using fn_type     = typename CmdType::fn_type;
-    using result_type = decltype(fn_type{}(operand.value()));
-    if constexpr (CmdType::template IsSupported<T>()) {
-      if (not operand.is_reg()) {
-        return RegOr<result_type>{fn_type{}(operand.value())};
-      }
-    }
-
-    blk.cmd_buffer_.append_index<CmdType>();
-    blk.cmd_buffer_.append(
-        CmdType::template MakeControlBits<T>(operand.is_reg()));
-
-    operand.apply([&](auto v) { blk.cmd_buffer_.append(v); });
-
-    Reg result = MakeResult<T>();
-    blk.cmd_buffer_.append(result);
-    return RegOr<result_type>{result};
-  }
-};
-
-template <typename CmdType>
-struct BinaryHandler {
-  template <typename... Args,
-            typename std::enable_if_t<not std::conjunction_v<
-                std::is_same<Args, RegOr<UnwrapTypeT<Args>>>...>>* = nullptr>
-  auto operator()(Args... args) const {
-    return operator()(RegOr<UnwrapTypeT<Args>>(std::forward<Args>(args))...);
-  }
-
-  template <typename T>
-  auto operator()(RegOr<T> lhs, RegOr<T> rhs) const {
-    auto& blk         = *GetBuilder().CurrentBlock();
-    using fn_type     = typename CmdType::fn_type;
-    using result_type = decltype(fn_type{}(lhs.value(), rhs.value()));
-    if constexpr (CmdType::template IsSupported<T>()) {
-      if (not lhs.is_reg() and not rhs.is_reg()) {
-        return RegOr<result_type>{fn_type{}(lhs.value(), rhs.value())};
-      }
-    }
-
-    blk.cmd_buffer_.append_index<CmdType>();
-    blk.cmd_buffer_.append(
-        CmdType::template MakeControlBits<T>(lhs.is_reg(), rhs.is_reg()));
-
-    lhs.apply([&](auto v) { blk.cmd_buffer_.append(v); });
-    rhs.apply([&](auto v) { blk.cmd_buffer_.append(v); });
-
-    Reg result = MakeResult<T>();
-    blk.cmd_buffer_.append(result);
-    return RegOr<result_type>{result};
-  }
-};
-
-template <typename CmdType>
-RegOr<typename CmdType::type> MakeVariadicImpl(
-    absl::Span<RegOr<typename CmdType::type> const> vals) {
-  using T = typename CmdType::type;
-  {
-    std::vector<T> vs;
-    vs.reserve(vals.size());
-    if (absl::c_all_of(vals, [&](RegOr<T> t) {
-          if (t.is_reg()) { return false; }
-          vs.push_back(t.value());
-          return true;
-        })) {
-      return CmdType::fn_ptr(vs);
-    }
-  }
-
-  auto& blk = *GetBuilder().CurrentBlock();
-  blk.cmd_buffer_.append_index<CmdType>();
-  Serialize<uint16_t>(&blk.cmd_buffer_, vals);
-
-  Reg result = MakeResult<T>();
-  blk.cmd_buffer_.append(result);
-  return RegOr<T>{result};
-}
-}  // namespace internal
-
-constexpr auto Neg      = internal::UnaryHandler<NegCmd>{};
-constexpr auto Not      = internal::UnaryHandler<NotCmd>{};
-
-inline RegOr<type::Type const*> Var(
-    absl::Span<RegOr<type::Type const*> const> types) {
-  return internal::MakeVariadicImpl<VariantCmd>(types);
-}
-
-inline RegOr<type::Type const*> Tup(
-    absl::Span<RegOr<type::Type const*> const> types) {
-  return internal::MakeVariadicImpl<TupleCmd>(types);
-}
-
 Reg Enum(module::BasicModule* mod, absl::Span<std::string_view const> names,
          absl::flat_hash_map<uint64_t, RegOr<EnumerationCmd::enum_t>> const&
              specified_values);
@@ -583,10 +487,36 @@ Reg Struct(
     ast::Scope const* scope, module::BasicModule* mod,
     std::vector<std::tuple<std::string_view, RegOr<type::Type const*>>> fields);
 
-constexpr inline auto Ptr    = internal::UnaryHandler<PtrCmd>{};
-constexpr inline auto BufPtr = internal::UnaryHandler<BufPtrCmd>{};
+// ----------------------------------------------------------------------------
+// Implementation details only below
+// ----------------------------------------------------------------------------
 
 namespace internal {
+template <typename SizeType, typename T, typename Fn>
+void WriteBits(CmdBuffer* buf, absl::Span<T const> span, Fn&& predicate) {
+  ASSERT(span.size() < std::numeric_limits<SizeType>::max());
+  buf->append<SizeType>(span.size());
+
+  uint8_t reg_mask = 0;
+  for (size_t i = 0; i < span.size(); ++i) {
+    if (predicate(span[i])) { reg_mask |= (1 << (7 - (i % 8))); }
+    if (i % 8 == 7) {
+      buf->append(reg_mask);
+      reg_mask = 0;
+    }
+  }
+  if (span.size() % 8 != 0) { buf->append(reg_mask); }
+}
+
+template <typename SizeType, typename T>
+void Serialize(CmdBuffer* buf, absl::Span<RegOr<T> const> span) {
+  WriteBits<SizeType, RegOr<T>>(buf, span,
+                                [](RegOr<T> const& r) { return r.is_reg(); });
+
+  absl::c_for_each(
+      span, [&](RegOr<T> x) { x.apply([&](auto v) { buf->append(v); }); });
+}
+
 template <typename T>
 auto PrepareCmdArg(T&& arg) {
   using type = std::decay_t<T>;
@@ -622,8 +552,53 @@ auto MakeBinaryCmd(RegOr<T> lhs, RegOr<T> rhs, Builder* bldr) {
   return RegOr<result_type>{result};
 }
 
-}  // namespace internal
+template <typename CmdType, typename T>
+auto MakeUnaryCmd(RegOr<T> operand, Builder* bldr) {
+  auto& buf         = bldr->CurrentBlock()->cmd_buffer_;
+  using fn_type     = typename CmdType::fn_type;
+  using result_type = decltype(fn_type{}(operand.value()));
+  if constexpr (CmdType::template IsSupported<T>()) {
+    if (not operand.is_reg()) {
+      return RegOr<result_type>{fn_type{}(operand.value())};
+    }
+  }
 
+  buf.append_index<CmdType>();
+  buf.append(CmdType::template MakeControlBits<T>(operand.is_reg()));
+
+  operand.apply([&](auto v) { buf.append(v); });
+
+  Reg result = MakeResult<T>();
+  buf.append(result);
+  return RegOr<result_type>{result};
+}
+
+template <typename CmdType>
+RegOr<typename CmdType::type> MakeVariadicCmd(
+    absl::Span<RegOr<typename CmdType::type> const> vals, Builder* bldr) {
+  auto& buf = bldr->CurrentBlock()->cmd_buffer_;
+  using T = typename CmdType::type;
+  {
+    std::vector<T> vs;
+    vs.reserve(vals.size());
+    if (absl::c_all_of(vals, [&](RegOr<T> t) {
+          if (t.is_reg()) { return false; }
+          vs.push_back(t.value());
+          return true;
+        })) {
+      return CmdType::fn_ptr(vs);
+    }
+  }
+
+  buf.append_index<CmdType>();
+  Serialize<uint16_t>(&buf, vals);
+
+  Reg result = MakeResult<T>();
+  buf.append(result);
+  return RegOr<T>{result};
+}
+
+}  // namespace internal
 }  // namespace ir
 
 #endif  // ICARUS_IR_BUILDER_H
