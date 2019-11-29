@@ -48,6 +48,7 @@ struct ExecContext {
   ir::BasicBlock const *ExecuteBlock(std::vector<ir::Addr> const &ret_slots);
 
   size_t Offset(ir::Reg r) const {
+    DEBUG_LOG("exec-offset")(r);
     return ASSERT_NOT_NULL(call_stack.top().fn_->offset_or_null(r))->value();
   }
 

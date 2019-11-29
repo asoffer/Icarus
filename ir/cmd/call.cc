@@ -10,8 +10,9 @@ std::string CallCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
   internal::ReadBits<uint16_t>(iter);
 
   using base::stringify;
-  std::string result = fn_is_reg ? stringify(iter->read<Reg>())
-                                 : stringify(iter->read<AnyFunc>());
+  std::string result =
+      absl::StrCat("call ", fn_is_reg ? stringify(iter->read<Reg>())
+                                      : stringify(iter->read<AnyFunc>()));
   auto num_bytes_in_args = iter->read<core::Bytes>();
   iter->skip(num_bytes_in_args.value());
   uint16_t num_outs = iter->read<uint16_t>();

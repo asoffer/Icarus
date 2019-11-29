@@ -1629,6 +1629,9 @@ ir::Results Compiler::Visit(ast::Switch const *node, EmitValueTag) {
       phi_args.emplace(builder().CurrentBlock(),
                        Visit(body.get(), EmitValueTag{}));
       builder().UncondJump(land_block);
+    } else if (body->is<ast::PrintStmt>()) {
+      Visit(body.get(), EmitValueTag{});
+      builder().UncondJump(land_block);
     } else {
       // It must be a jump/yield/return, which we've verified in VerifyType.
       Visit(body.get(), EmitValueTag{});
@@ -1643,6 +1646,9 @@ ir::Results Compiler::Visit(ast::Switch const *node, EmitValueTag) {
     phi_args.emplace(builder().CurrentBlock(),
                      Visit(node->cases_.back().first.get(), EmitValueTag{}));
     builder().UncondJump(land_block);
+ } else if (node->cases_.back().first->is<ast::PrintStmt>()) {
+   Visit(node->cases_.back().first.get(), EmitValueTag{});
+   builder().UncondJump(land_block);
   } else {
     // It must be a jump/yield/return, which we've verified in VerifyType.
     Visit(node->cases_.back().first.get(), EmitValueTag{});

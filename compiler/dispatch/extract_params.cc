@@ -17,7 +17,7 @@ core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
           compiler->MakeThunk(decl, decl_type));
       return f.is_fn() ? f.func()->params() : fn_type->AnonymousFnParams();
     } else {
-      NOT_YET();
+      NOT_YET(decl->DebugString());
     }
   } else {
     if (auto const *fn_type = decl_type->if_as<type::Function>()) {

@@ -239,7 +239,7 @@ struct UnaryCmd {
   static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
     auto ctrl = iter->read<control_bits>();
     using base::stringify;
-    std::string s = " ";
+    std::string s;
     if (ctrl.reg0) {
       s.append(stringify(iter->read<Reg>()));
     } else {
@@ -285,7 +285,7 @@ struct BinaryCmd {
   static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
     auto ctrl = iter->read<control_bits>();
     using base::stringify;
-    std::string s = " ";
+    std::string s;
     if (ctrl.reg0) {
       s.append(stringify(iter->read<Reg>()));
     } else {

@@ -77,6 +77,7 @@ void Builder::Call(RegOr<AnyFunc> const &fn, type::Function const *f,
 
 void Builder::UncondJump(BasicBlock const *block) {
   auto &blk = *CurrentBlock();
+  DEBUG_LOG()("UncondJump");
   blk.cmd_buffer_.append_index<JumpCmd>();
   blk.cmd_buffer_.append(JumpCmd::Kind::kUncond);
   blk.cmd_buffer_.append(block);

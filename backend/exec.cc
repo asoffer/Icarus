@@ -205,7 +205,6 @@ BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
                        std::is_same_v<CmdType, NeCmd> or
                        std::is_same_v<CmdType, GeCmd> or
                        std::is_same_v<CmdType, GtCmd>) {
-    DEBUG_LOG("binary")("");
     auto ctrl = iter->read<typename CmdType::control_bits>();
     PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
       using type  = typename std::decay_t<decltype(tag)>::type;
@@ -531,14 +530,14 @@ BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
   } else if constexpr (std::is_same_v<CmdType, DebugIrCmd>) {
     int i = 0;
     for (auto *block : ctx->call_stack.top().fn_->blocks()) {
-      std::cerr << "block " << i++ << ":\n";
+      std::cerr << "block " << i++ << "(" << block << "):\n";
       for (auto dbg_iter = block->cmd_buffer_.cbegin();
            dbg_iter < block->cmd_buffer_.cend();) {
         auto cmd_index = dbg_iter.read<ir::cmd_index_t>();
         switch (cmd_index) {
 #define CASE(type)                                                             \
   case ir::type::index:                                                        \
-    std::cerr << "    " << ir::type::DebugString(&dbg_iter) << "\n";           \
+    std::cerr << "    " #type " " << ir::type::DebugString(&dbg_iter) << "\n"; \
     break;
           CASES;
 #undef CASE

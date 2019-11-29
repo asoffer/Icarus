@@ -1,6 +1,7 @@
 #ifndef ICARUS_IR_CMD_JUMP_H
 #define ICARUS_IR_CMD_JUMP_H
 
+#include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "absl/types/span.h"
 #include "base/debug.h"
@@ -19,17 +20,16 @@ struct JumpCmd {
     std::string s;
     using base::stringify;
     switch (iter->read<Kind>()) {
-      case Kind::kRet: s.append("ret"); break;
-      case Kind::kUncond:
-        s.append(stringify(iter->read<BasicBlock const*>()));
-        break;
-      case Kind::kCond: {
-        s.append(stringify(iter->read<Reg>()));
-        s.append(" false: ");
-        s.append(stringify(iter->read<BasicBlock const*>()));
-        s.append(", true: ");
-        s.append(stringify(iter->read<BasicBlock const*>()));
-      } break;
+      case Kind::kRet: return "ret";
+      case Kind::kUncond: s = stringify(iter->read<BasicBlock const*>()); break;
+      case Kind::kCond:{
+        auto reg         = iter->read<Reg>();
+        auto false_block = iter->read<BasicBlock const*>();
+        auto true_block  = iter->read<BasicBlock const*>();
+        return absl::StrCat("cond ", stringify(reg),
+                            " false: ", stringify(false_block),
+                            ", true: ", stringify(true_block));
+      }
       case Kind::kChoose: {
         auto num = iter->read<uint16_t>();
         std::vector<std::pair<std::string_view, BasicBlock*>> entries;
@@ -42,14 +42,16 @@ struct JumpCmd {
           entries[i].second = iter->read<BasicBlock*>();
         }
 
-        s.append(absl::StrJoin(entries, " ",
-                      [](std::string* out,
-                         std::pair<std::string_view, BasicBlock*> const& p) {
-                        using base::stringify;
-                        absl::StrAppend(out, p.first, " -> ",
-                                        stringify(p.second));
-                      }));
-      } break;
+        return absl::StrCat(
+            "choose ",
+            absl::StrJoin(
+                entries, " ",
+                [](std::string* out,
+                   std::pair<std::string_view, BasicBlock*> const& p) {
+                  using base::stringify;
+                  absl::StrAppend(out, p.first, " -> ", stringify(p.second));
+                }));
+      }
       default: UNREACHABLE();
     }
     return s;

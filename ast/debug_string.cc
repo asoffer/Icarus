@@ -428,6 +428,10 @@ void Terminal::DebugStrAppend(std::string *out, size_t indent) const {
     case type::BasicType::Bool:
       absl::StrAppend(out, as<bool>() ? "true" : "false");
       return;
+    case type::BasicType::ByteView:
+      absl::StrAppend(out, "\"", as<std::string_view>(), "\"");
+      return;
+
     default:;
   }
   UNREACHABLE();
