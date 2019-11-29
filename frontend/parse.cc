@@ -4,7 +4,6 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "ast/ast.h"
-#include "ast/methods/dump.h"
 #include "base/debug.h"
 #include "base/guarded.h"
 #include "error/log.h"
@@ -514,11 +513,11 @@ std::vector<std::unique_ptr<ast::Declaration>> ExtractInputs(
       if (expr->is<ast::Declaration>()) {
         inputs.push_back(move_as<ast::Declaration>(expr));
       } else {
-        NOT_YET("log an error: ", ast::Dump::ToString(args.get()));
+        NOT_YET("log an error: ", args->DebugString());
       }
     }
   } else {
-    NOT_YET("log an error: ", ast::Dump::ToString(args.get()));
+    NOT_YET("log an error: ", args->DebugString());
   }
   return inputs;
 }
@@ -671,7 +670,7 @@ std::unique_ptr<ast::Node> BuildBlockNode(
         std::move(args), std::move(nodes.back()->as<Statements>()).extract());
 
   } else {
-    for (auto const &n : nodes) { DEBUG_LOG()(ast::Dump::ToString(n.get())); }
+    for (auto const &n : nodes) { DEBUG_LOG()(n->DebugString()); }
     NOT_YET("log an error");
   }
 }
@@ -829,7 +828,7 @@ std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
       } else if (decl->id() == "after") {
         after.push_back(move_as<ast::Declaration>(stmt));
       } else {
-        NOT_YET(ast::Dump::ToString(stmt.get()));
+        NOT_YET(stmt->DebugString());
       }
     } else {
       NOT_YET();
@@ -1278,7 +1277,7 @@ void Debug(ParseState *ps) {
   fprintf(stderr, " -> %lu\n", ps->Next().tag_);
 
   for (const auto &node_ptr : ps->node_stack_) {
-    fputs(ast::Dump::ToString(node_ptr.get()).c_str(), stderr);
+    fputs(node_ptr->DebugString().c_str(), stderr);
   }
   fgetc(stdin);
 }

@@ -1,7 +1,6 @@
 #include "match/match_expr.h"
 
 #include "ast/ast.h"
-#include "ast/methods/dump.h"
 #include "match/binding_node.h"
 
 namespace match {
@@ -17,7 +16,7 @@ void Match::MatchAll(ast::Node const *node, ast::Expression const *pattern) {
 
 void Match::Visit(ast::Node const *node, MatchState *state) {
   if (state->current_pattern_->is<match::BindingNode>()) {
-    DEBUG_LOG()(ast::Dump::ToString(node));
+    DEBUG_LOG()(node->DebugString());
   }
 }
 
@@ -29,7 +28,7 @@ void Match::Visit(ast::Access const *node, MatchState *state) {
     states_.push(new_state);
   } else if (auto *binding =
                  state->current_pattern_->if_as<match::BindingNode>()) {
-    DEBUG_LOG()(ast::Dump::ToString(node));
+    DEBUG_LOG()(node->DebugString());
   }
 
   if (not state->root_) {

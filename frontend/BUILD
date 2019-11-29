@@ -73,7 +73,6 @@ cc_lib(
         "//base:guarded",
         "//error:log",
         "//frontend/source:source",
-        "//ast/methods:dump",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
     test_deps = None,

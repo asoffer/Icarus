@@ -29,6 +29,18 @@
 
 namespace ast {
 
+#define ICARUS_AST_VIRTUAL_METHODS                                             \
+  void Accept(MutableVisitorBase *visitor, void *ret, void *arg_tuple)         \
+      override {                                                               \
+    visitor->ErasedVisit(this, ret, arg_tuple);                                \
+  }                                                                            \
+  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple)                \
+      const override {                                                         \
+    visitor->ErasedVisit(this, ret, arg_tuple);                                \
+  }                                                                            \
+                                                                               \
+  void DebugStrAppend(std::string *out, size_t indent) const override
+
 template <typename S>
 struct ScopeExpr : public Expression {
   ScopeExpr(frontend::SourceRange &&span) : Expression(std::move(span)) {}
@@ -65,13 +77,8 @@ struct Access : public Expression {
   Expression const *operand() const { return operand_.get(); }
   Expression *operand() { return operand_.get(); }
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
+  ICARUS_AST_VIRTUAL_METHODS;
+
  private:
   std::unique_ptr<Expression> operand_;
   std::string member_name_;
@@ -106,13 +113,7 @@ struct ArrayLiteral : public Expression {
     return std::move(exprs_);
   }
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
+  ICARUS_AST_VIRTUAL_METHODS;
 
  private:
   std::vector<std::unique_ptr<Expression>> exprs_;
@@ -156,13 +157,7 @@ struct ArrayType : public Expression {
   Expression const *data_type() const { return data_type_.get(); }
   Expression *data_type() { return data_type_.get(); }
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
+  ICARUS_AST_VIRTUAL_METHODS;
 
  private:
   std::vector<std::unique_ptr<Expression>> lengths_;
@@ -200,13 +195,7 @@ struct Binop : public Expression {
     return std::pair{std::move(lhs_), std::move(rhs_)};
   }
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
+  ICARUS_AST_VIRTUAL_METHODS;
 
  private:
   frontend::Operator op_;
@@ -272,14 +261,8 @@ struct Declaration : public Expression {
     init_val_ = std::move(expr);
   }
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-
+  ICARUS_AST_VIRTUAL_METHODS;
+  
  private:
   std::string id_;
   std::unique_ptr<Expression> type_expr_, init_val_;
@@ -315,13 +298,7 @@ struct BlockLiteral : public ScopeExpr<DeclScope> {
   base::PtrSpan<Declaration const> after() const { return after_; }
   base::PtrSpan<Declaration> after() { return after_; }
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
+  ICARUS_AST_VIRTUAL_METHODS;
 
  private:
   std::vector<std::unique_ptr<Declaration>> before_, after_;
@@ -381,13 +358,7 @@ struct BlockNode : public ScopeExpr<ExecScope> {
   base::PtrSpan<Expression> args() { return args_; }
   base::PtrSpan<Expression const> args() const { return args_; }
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
+  ICARUS_AST_VIRTUAL_METHODS;
 
  private:
   std::string name_;
@@ -406,13 +377,7 @@ struct BuiltinFn : public Expression {
 
   core::Builtin value() const { return val_; }
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
+  ICARUS_AST_VIRTUAL_METHODS;
 
  private:
   core::Builtin val_;
@@ -449,13 +414,7 @@ struct Call : public Expression {
     return std::pair{std::move(callee_), std::move(args_)};
   }
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
+  ICARUS_AST_VIRTUAL_METHODS;
 
  private:
   std::unique_ptr<Expression> callee_;
@@ -484,13 +443,7 @@ struct Cast : public Expression {
   Expression const *type() const { return type_.get(); }
   Expression *type() { return type_.get(); }
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
+  ICARUS_AST_VIRTUAL_METHODS;
 
  private:
   std::unique_ptr<Expression> expr_, type_;
@@ -528,13 +481,7 @@ struct ChainOp : public Expression {
     return std::move(exprs_);
   }
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
+  ICARUS_AST_VIRTUAL_METHODS;
 
  private:
   std::vector<frontend::Operator> ops_;
@@ -551,13 +498,7 @@ struct CommaList : public Expression {
   CommaList &operator=(CommaList const &) noexcept = default;
   CommaList &operator=(CommaList &&) noexcept = default;
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
+  ICARUS_AST_VIRTUAL_METHODS;
 
   std::vector<std::unique_ptr<Expression>> &&extract() && {
     return std::move(exprs_);
@@ -612,13 +553,7 @@ struct EnumLiteral : ScopeExpr<DeclScope> {
   base::PtrSpan<Expression const> elems() const { return elems_; }
   Kind kind() const { return kind_; }
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
+  ICARUS_AST_VIRTUAL_METHODS;
 
  private:
   std::vector<std::unique_ptr<Expression>> elems_;
@@ -679,13 +614,7 @@ struct FunctionLiteral : public ScopeExpr<FnScope> {
 
   bool is_short() const { return is_short_; }
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
+  ICARUS_AST_VIRTUAL_METHODS;
 
   // Note this field is computed, but it is independent of any type or
   // context-specific information. It holds a topologically sorted list of
@@ -802,13 +731,7 @@ struct Terminal : public Expression {
     }
   }
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
+  ICARUS_AST_VIRTUAL_METHODS;
 
  private:
   type::BasicType basic_;
@@ -828,13 +751,7 @@ struct Identifier : public Expression {
       : Expression(std::move(span)), token_(std::move(token)) {}
   ~Identifier() override {}
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
+  ICARUS_AST_VIRTUAL_METHODS;
 
   std::string_view token() const { return token_; }
   Declaration const *decl() const { return decl_; }
@@ -859,13 +776,7 @@ struct Import : public Expression {
   Expression const *operand() const { return operand_.get(); }
   Expression *operand() { return operand_.get(); }
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
+  ICARUS_AST_VIRTUAL_METHODS;
 
  private:
   std::unique_ptr<Expression> operand_;
@@ -895,13 +806,7 @@ struct Index : public Expression {
     return std::pair(std::move(lhs_), std::move(rhs_));
   }
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
+  ICARUS_AST_VIRTUAL_METHODS;
 
  private:
   std::unique_ptr<Expression> lhs_, rhs_;
@@ -950,13 +855,7 @@ struct Goto : public Node {
     }
   }
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
+  ICARUS_AST_VIRTUAL_METHODS;
 
   // A jump option is a collection of blocks that may be jumped to and the
   // arguments to pass to such a block. When evaluating jump options, the option
@@ -1029,13 +928,7 @@ struct Jump : ScopeExpr<FnScope> {
     }
   }
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
+  ICARUS_AST_VIRTUAL_METHODS;
 
   // TODO core::FnParamsRef to erase the unique_ptr?
   using params_type = core::FnParams<std::unique_ptr<Declaration>>;
@@ -1066,13 +959,7 @@ struct PrintStmt : public Node {
   base::PtrSpan<Expression> exprs() { return exprs_; }
   base::PtrSpan<Expression const> exprs() const { return exprs_; }
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
+  ICARUS_AST_VIRTUAL_METHODS;
 
  private:
   std::vector<std::unique_ptr<Expression>> exprs_;
@@ -1095,13 +982,7 @@ struct ReturnStmt : public Node {
   base::PtrSpan<Expression> exprs() { return exprs_; }
   base::PtrSpan<Expression const> exprs() const { return exprs_; }
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
+  ICARUS_AST_VIRTUAL_METHODS;
 
  private:
   std::vector<std::unique_ptr<Expression>> exprs_;
@@ -1124,13 +1005,7 @@ struct YieldStmt : public Node {
   base::PtrSpan<Expression> exprs() { return exprs_; }
   base::PtrSpan<Expression const> exprs() const { return exprs_; }
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
+  ICARUS_AST_VIRTUAL_METHODS;
 
  private:
   std::vector<std::unique_ptr<Expression>> exprs_;
@@ -1169,13 +1044,7 @@ struct ScopeLiteral : public ScopeExpr<ScopeLitScope> {
   base::PtrSpan<Declaration const> decls() const { return decls_; }
   base::PtrSpan<Declaration> decls() { return decls_; }
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
+  ICARUS_AST_VIRTUAL_METHODS;
 
  private:
   std::vector<std::unique_ptr<Declaration>> decls_;
@@ -1234,13 +1103,7 @@ struct ScopeNode : public Expression {
     if (updated_last_scope_node) { last_scope_node_ = updated_last_scope_node; }
   }
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
+  ICARUS_AST_VIRTUAL_METHODS;
 
  private:
   std::unique_ptr<Expression> name_;
@@ -1257,13 +1120,7 @@ struct StructLiteral : public Expression {
 
   StructLiteral &operator=(StructLiteral &&) noexcept = default;
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
+  ICARUS_AST_VIRTUAL_METHODS;
 
   std::unique_ptr<DeclScope> type_scope;
   std::vector<Declaration> fields_, args_;
@@ -1274,13 +1131,7 @@ struct StructType : public Expression {
   StructType(frontend::SourceRange span) : Expression(span) {}
   ~StructType() override {}
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
+  ICARUS_AST_VIRTUAL_METHODS;
 
   std::vector<std::unique_ptr<Expression>> args_;
 };
@@ -1291,13 +1142,7 @@ struct StructType : public Expression {
 struct Switch : public Expression {
   ~Switch() override {}
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
+  ICARUS_AST_VIRTUAL_METHODS;
 
   std::unique_ptr<Expression> expr_;
   std::vector<std::pair<std::unique_ptr<Node>, std::unique_ptr<Expression>>>
@@ -1319,13 +1164,7 @@ struct Unop : public Expression {
       : Expression(span), operand_(std::move(operand)), op_(op) {}
   ~Unop() override {}
 
-  void Accept(MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
+  ICARUS_AST_VIRTUAL_METHODS;
 
   bool needs_expansion() const override {
     return not parenthesized_ and op() == frontend::Operator::Expand;
@@ -1339,6 +1178,8 @@ struct Unop : public Expression {
   std::unique_ptr<Expression> operand_;
   frontend::Operator op_;
 };
+
+#undef ICARUS_AST_VIRTUAL_METHODS
 
 }  // namespace ast
 

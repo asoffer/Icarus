@@ -1,7 +1,6 @@
 #include "compiler/compiler.h"
 
 #include "ast/ast.h"
-#include "ast/methods/dump.h"
 #include "ast/scope/exec.h"
 #include "backend/eval.h"
 #include "backend/exec.h"
@@ -1119,7 +1118,7 @@ ir::Results Compiler::Visit(ast::CommaList const *node, EmitValueTag) {
 }
 
 ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
-  DEBUG_LOG("EmitValueDeclaration")(ast::Dump::ToString(node));
+  DEBUG_LOG("EmitValueDeclaration")(node->DebugString());
   // TODO swap contexts?
   if (node->flags() & ast::Declaration::f_IsConst) {
     // TODO
@@ -1136,7 +1135,7 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
     } else {
       auto *t = type_of(node);
       if (not t) {
-        DEBUG_LOG()(ast::Dump::ToString(node));
+        DEBUG_LOG()(node->DebugString());
         UNREACHABLE();
       }
 
@@ -1164,7 +1163,7 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
         UNREACHABLE();
       }
     }
-    UNREACHABLE(ast::Dump::ToString(node));
+    UNREACHABLE(node->DebugString());
   } else {
     // TODO these checks actually overlap and could be simplified.
     if (node->IsUninitialized()) { return ir::Results{}; }
@@ -1243,7 +1242,7 @@ ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
 }
 
 ir::Results Compiler::Visit(ast::Identifier const *node, EmitValueTag) {
-  ASSERT(node->decl() != nullptr) << ast::Dump::ToString(node);
+  ASSERT(node->decl() != nullptr) << node->DebugString();
   if (node->decl()->flags() & ast::Declaration::f_IsConst) {
     return Visit(node->decl(), EmitValueTag{});
   }

@@ -38,6 +38,10 @@ struct Token : public ast::Node {
     UNREACHABLE();
   }
 
+  void DebugStrAppend(std::string *out, size_t indent) const override {
+    UNREACHABLE();
+  }
+
   std::string token;
   Operator op;
 };

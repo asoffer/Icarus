@@ -21,6 +21,14 @@ struct Node : public base::Cast<Node> {
   virtual void Accept(VisitorBase *visitor, void *ret,
                       void *arg_tuple) const = 0;
 
+  std::string DebugString() const {
+    std::string out;
+    DebugStrAppend(&out, 0);
+    return out;
+  }
+
+  virtual void DebugStrAppend(std::string *out, size_t indent) const {};
+
   ast::Scope *scope_ = nullptr;
   frontend::SourceRange span;
 };

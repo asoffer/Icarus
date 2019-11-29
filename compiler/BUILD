@@ -27,7 +27,6 @@ cc_library(
         ":special_function",
         ":verify_result",
         "//ast:ast",
-        "//ast/methods:dump",
         "//ast:overload_set",
         "//ast:visitor",
         "//backend:eval",

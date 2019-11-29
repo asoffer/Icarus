@@ -27,7 +27,6 @@ cc_lib(
     deps = [
         ":binding_id",
         "//ast:expression",
-        "//ast/methods:dump",
         "//module:assign_scope",
     ],
     header_only = True,

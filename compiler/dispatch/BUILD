@@ -24,7 +24,6 @@ cc_library(
         ":table_header",
         ":extract_params",
         ":match",
-        "//ast/methods:dump",
         "//base:debug",
         "//compiler:compiler_header",
         "//compiler:verify_result",

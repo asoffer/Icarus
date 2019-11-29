@@ -1,7 +1,6 @@
 #include "absl/algorithm/container.h"
 
 #include "ast/ast.h"
-#include "ast/methods/dump.h"
 #include "ast/overload_set.h"
 #include "backend/eval.h"
 #include "compiler/compiler.h"
@@ -1311,7 +1310,7 @@ VerifyResult Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
         //     _val: T = x
         //   }
         //
-        NOT_YET("log an error", ast::Dump::ToString(node));
+        NOT_YET("log an error", node->DebugString());
         return set_result(node, VerifyResult::Error());
       }
       auto *type_expr_type = type_expr_result.type();
@@ -1444,11 +1443,11 @@ VerifyResult Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
               MakeThunk(node->init_val(), type::Module)));
       return set_result(node, VerifyResult::Constant(type::Module));
     } else {
-      NOT_YET(node_type, ast::Dump::ToString(node));
+      NOT_YET(node_type, node->DebugString());
     }
   }
 
-  ASSERT(node_type != nullptr) << ast::Dump::ToString(node);
+  ASSERT(node_type != nullptr) << node->DebugString();
 
   // Gather all declarations with the same identifer that are visible in this
   // scope or that are in a scope which for which this declaration would be
@@ -1699,7 +1698,7 @@ VerifyResult Compiler::Visit(ast::Goto const *node, VerifyTypeTag) {
 }
 
 VerifyResult Compiler::Visit(ast::Jump const *node, VerifyTypeTag) {
-  DEBUG_LOG("Jump")(ast::Dump::ToString(node));
+  DEBUG_LOG("Jump")(node->DebugString());
   bool err = false;
   std::vector<type::Type const *> param_types;
   param_types.reserve(node->params().size());
@@ -1769,7 +1768,7 @@ VerifyResult Compiler::Visit(ast::ScopeLiteral const *node, VerifyTypeTag) {
 }
 
 VerifyResult Compiler::Visit(ast::ScopeNode const *node, VerifyTypeTag) {
-  DEBUG_LOG("ScopeNode")(ast::Dump::ToString(node));
+  DEBUG_LOG("ScopeNode")(node->DebugString());
   auto [arg_results, err] = VerifyFnArgs(this, node->args());
   // TODO handle cyclic dependencies in call arguments.
   if (err) { return VerifyResult::Error(); }

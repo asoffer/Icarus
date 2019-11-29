@@ -1,7 +1,6 @@
 #include "compiler/dispatch/table.h"
 
 #include "ast/expression.h"
-#include "ast/methods/dump.h"
 #include "base/debug.h"
 #include "compiler/compiler.h"
 #include "compiler/dispatch/extract_params.h"
@@ -116,7 +115,7 @@ base::expected<TableImpl> TableImpl::Verify(
     // TODO the type of the specific overload could *correctly* be null and we
     // need to handle that case.
     DEBUG_LOG("dispatch-verify")
-    ("Verifying ", overload, ": ", ast::Dump::ToString(overload));
+    ("Verifying ", overload, ": ", overload->DebugString());
     auto result = MatchArgsToParams(ExtractParams(compiler, overload), args);
     if (not result) {
       failures.emplace(overload, result.error());
@@ -158,7 +157,7 @@ type::Type const *FnCallDispatchTable::ComputeResultType(
   for (auto const &[overload, expr_data] : impl.table_) {
     auto const &[type, fn_params] = expr_data;
     DEBUG_LOG("dispatch-verify")
-    ("Extracting return type for ", ast::Dump::ToString(overload), " of type ",
+    ("Extracting return type for ", overload->DebugString(), " of type ",
      type->to_string());
     if (auto *fn_type = type->if_as<type::Function>()) {
       auto const &out_vec = fn_type->output;

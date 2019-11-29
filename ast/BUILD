@@ -10,8 +10,10 @@ cc_lib(
     test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "ast",
+    hdrs = ["ast.h"],
+    srcs = ["debug_string.cc"],
     deps = [
         ":expression",
         ":node",
@@ -32,8 +34,6 @@ cc_lib(
         "//ir:results",
         "//type:basic_type",
     ],
-    header_only = True,
-    test_deps = None,
 )
 
 cc_lib(

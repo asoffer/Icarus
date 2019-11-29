@@ -6,7 +6,6 @@
 #include "absl/strings/str_cat.h"
 #include "ast/expression.h"
 #include "match/binding_id.h"
-#include "ast/methods/dump.h"
 #include "module/assign_scope.h"
 #include "module/dependent_decls.h"
 
@@ -23,6 +22,7 @@ struct BindingNode : public ast::Expression {
               void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
+  void DebugStrAppend(std::string *out, size_t indent) const override {}
 
   BindingId id() const { return id_; }
 
