@@ -50,6 +50,10 @@ struct CmdBuffer {
     buf_.set(offset, t);
   }
 
+#if defined(ICARUS_DEBUG)
+  std::string DebugString() const { return buf_.to_string(); }
+#endif  // defined(ICARUS_DEBUG)
+
  private:
   base::untyped_buffer buf_;
 };

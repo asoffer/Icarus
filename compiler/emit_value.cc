@@ -532,8 +532,8 @@ ir::Results Compiler::Visit(ast::Binop const *node, EmitValueTag) {
 
       builder().CurrentBlock() = land_block;
 
-      return ir::Results{ir::Phi<bool>({lhs_end_block, rhs_end_block},
-                                       {ir::RegOr<bool>(true), rhs_val})};
+      return ir::Results{builder().Phi<bool>({lhs_end_block, rhs_end_block},
+                                             {ir::RegOr<bool>(true), rhs_val})};
     } break;
     case frontend::Operator::AndEq: {
       auto *this_type = type_of(node);
@@ -561,8 +561,8 @@ ir::Results Compiler::Visit(ast::Binop const *node, EmitValueTag) {
       builder().CurrentBlock() = land_block;
 
       // TODO this looks like a bug.
-      return ir::Results{ir::Phi<bool>({lhs_end_block, rhs_end_block},
-                                       {rhs_val, ir::RegOr<bool>(false)})};
+      return ir::Results{builder().Phi<bool>(
+          {lhs_end_block, rhs_end_block}, {rhs_val, ir::RegOr<bool>(false)})};
     } break;
     case frontend::Operator::AddEq: {
       auto lhs_lval = Visit(node->lhs(), EmitRefTag{})[0];
@@ -867,10 +867,10 @@ ir::Results ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
       auto rhs_incr = bldr.PtrIncr(rhs_phi_reg, 1, Ptr(rhs_type->data_type));
       bldr.UncondJump(phi_block);
 
-      ir::Phi<ir::Addr>(lhs_phi_reg, {equal_len_block, incr_block},
-                        {lhs_start, lhs_incr});
-      ir::Phi<ir::Addr>(rhs_phi_reg, {equal_len_block, incr_block},
-                        {rhs_start, rhs_incr});
+      bldr.Phi<ir::Addr>(lhs_phi_reg, {equal_len_block, incr_block},
+                         {lhs_start, lhs_incr});
+      bldr.Phi<ir::Addr>(rhs_phi_reg, {equal_len_block, incr_block},
+                         {rhs_start, rhs_incr});
     }
   }
 
@@ -1058,7 +1058,7 @@ ir::Results Compiler::Visit(ast::ChainOp const *node, EmitValueTag) {
 
     builder().CurrentBlock() = land_block;
 
-    return ir::Results{ir::Phi<bool>(phi_blocks, phi_results)};
+    return ir::Results{builder().Phi<bool>(phi_blocks, phi_results)};
 
   } else {
     if (node->ops().size() == 1) {
@@ -1092,7 +1092,7 @@ ir::Results Compiler::Visit(ast::ChainOp const *node, EmitValueTag) {
 
       builder().CurrentBlock() = land_block;
 
-      return ir::Results{ir::Phi<bool>(phi_blocks, phi_values)};
+      return ir::Results{builder().Phi<bool>(phi_blocks, phi_values)};
     }
   }
   UNREACHABLE();
@@ -1603,7 +1603,6 @@ ir::Results Compiler::Visit(ast::StructType const *node, EmitValueTag) {
 }
 
 ir::Results Compiler::Visit(ast::Switch const *node, EmitValueTag) {
-  absl::flat_hash_map<ir::BasicBlock *, ir::Results> phi_args;
 
   auto *land_block = builder().AddBlock();
   auto *t          = type_of(node);
@@ -1621,6 +1620,7 @@ ir::Results Compiler::Visit(ast::Switch const *node, EmitValueTag) {
     expr_type    = type_of(node->expr_.get());
   }
 
+  absl::flat_hash_map<ir::BasicBlock *, ir::Results> phi_args;
   for (size_t i = 0; i + 1 < node->cases_.size(); ++i) {
     auto & [ body, match_cond ] = node->cases_[i];
     auto *expr_block            = builder().AddBlock();
@@ -1668,7 +1668,22 @@ ir::Results Compiler::Visit(ast::Switch const *node, EmitValueTag) {
   if (t == type::Void()) {
     return ir::Results{};
   } else {
-    return ir::Phi(t->is_big() ? type::Ptr(t) : t, phi_args);
+    DEBUG_LOG("switch")
+    ("phi node is holding a ", (t->is_big() ? type::Ptr(t) : t)->to_string());
+    auto r = type::Apply(t->is_big() ? type::Ptr(t) : t, [&](auto tag) {
+      using T = typename decltype(tag)::type;
+      std::vector<ir::RegOr<T>> vals;
+      vals.reserve(phi_args.size());
+      std::vector<ir::BasicBlock const *> blocks;
+      blocks.reserve(phi_args.size());
+      for (auto const & [ key, val ] : phi_args) {
+        blocks.push_back(key);
+        vals.push_back(val.template get<T>(0));
+      }
+      return ir::Results{builder().Phi<T>(blocks, vals)};
+    });
+    DEBUG_LOG("switch")(builder().CurrentBlock()->cmd_buffer_.DebugString());
+    return r;
   }
 }
 

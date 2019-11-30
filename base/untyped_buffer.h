@@ -129,7 +129,7 @@ struct untyped_buffer {
     void skip(size_t n) { ptr_ += n; }
 
 #if defined(ICARUS_DEBUG)
-    uintptr_t DebugValue() const { return reinterpret_cast<uintptr_t>(ptr_); }
+    uintptr_t DebugValue() const { return ptr_; }
 #endif  // defined(ICARUS_DEBUG)
 
    private:

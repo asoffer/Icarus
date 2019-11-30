@@ -109,6 +109,36 @@ struct Builder {
     return internal::MakeVariadicCmd<TupleCmd>(types, this);
   }
 
+  // Phi instruction. Takes a span of basic blocks and a span of (registers or)
+  // values. As a precondition, the number of blocks must be equal to the number
+  // of values. This instruction evaluates to the value `values[i]` if the
+  // previous block was `blocks[i]`. 
+  //
+  // In the first overload, the resulting value is assigned to `r`. In the
+  // second overload, a register is constructed to represent the value.
+  template <typename T>
+  void Phi(Reg r, absl::Span<BasicBlock const* const> blocks,
+           absl::Span<RegOr<T> const> values) {
+    ASSERT(blocks.size() == values.size());
+
+    auto& buf = CurrentBlock()->cmd_buffer_;
+    buf.append_index<PhiCmd>();
+    buf.append(PrimitiveIndex<T>());
+    buf.append<uint16_t>(values.size());
+    for (auto block : blocks) { buf.append(block); }
+    internal::Serialize<uint16_t>(&buf, values);
+
+    buf.append(r);
+  }
+
+  template <typename T>
+  RegOr<T> Phi(absl::Span<BasicBlock const* const> blocks,
+               absl::Span<RegOr<T> const> values) {
+    if (values.size() == 1u) { return values[0]; }
+    auto r = MakeResult<T>();
+    Phi(r, blocks, values);
+    return r;
+  }
 
   // Emits a function-call instruction, calling `fn` of type `f` with the given
   // `arguments` and output parameters. If output parameters are not present,
@@ -337,47 +367,6 @@ inline Reg Load(RegOr<Addr> r, type::Type const* t) {
 }
 
 type::Typed<Reg> LoadSymbol(std::string_view name, type::Type const* type);
-
-template <typename T>
-RegOr<T> Phi(Reg r, absl::Span<BasicBlock const* const> blocks,
-             absl::Span<RegOr<T> const> values) {
-  ASSERT(blocks.size() == values.size());
-  if (values.size() == 1u) { return values[0]; }
-
-  auto& blk = *GetBuilder().CurrentBlock();
-  blk.cmd_buffer_.append_index<PhiCmd>();
-  blk.cmd_buffer_.append(PrimitiveIndex<T>());
-  blk.cmd_buffer_.append<uint16_t>(values.size());
-  for (auto block : blocks) { blk.cmd_buffer_.append(block); }
-  internal::Serialize<uint16_t>(&blk.cmd_buffer_, values);
-
-  Reg result = MakeResult<T>();
-  blk.cmd_buffer_.append(result);
-  return result;
-}
-
-template <typename T>
-RegOr<T> Phi(absl::Span<BasicBlock const* const> blocks,
-             absl::Span<RegOr<T> const> values) {
-  return Phi(MakeResult<T>(), blocks, values);
-}
-
-inline Results Phi(type::Type const* type,
-                   absl::flat_hash_map<BasicBlock*, Results> const& values) {
-  if (values.size() == 1) { return values.begin()->second; }
-  return type::Apply(type, [&](auto tag) {
-    using T = typename decltype(tag)::type;
-    std::vector<RegOr<T>> vals;
-    vals.reserve(values.size());
-    std::vector<BasicBlock const*> blocks;
-    blocks.reserve(values.size());
-    for (auto const & [ key, val ] : values) {
-      blocks.push_back(key);
-      vals.push_back(val.template get<T>(0));
-    }
-    return Results{Phi<T>(blocks, vals)};
-  });
-}
 
 template <typename T>
 Reg MakeReg(T t) {

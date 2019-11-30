@@ -77,6 +77,7 @@
   CASE(SemanticCmd);                                                           \
   CASE(LoadSymbolCmd);                                                         \
   CASE(TypeInfoCmd);                                                           \
+  CASE(PhiCmd);                                                                \
   CASE(AccessCmd);                                                             \
   CASE(VariantAccessCmd);                                                      \
   CASE(CallCmd);                                                               \
@@ -103,12 +104,11 @@ type::Function const *GetType(AnyFunc f) {
 template <typename CmdType, typename T>
 auto BinaryApply(base::untyped_buffer::const_iterator *iter, bool reg0,
                  bool reg1, backend::ExecContext *ctx) {
-  DEBUG_LOG("binary")("xyz");
   using fn_type = typename CmdType::fn_type;
   if constexpr (CmdType::template IsSupported<T>()) {
+    ASSERT((reg0 or reg1) == true);
     auto lhs = reg0 ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>();
     auto rhs = reg1 ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>();
-    DEBUG_LOG("binary")(lhs, rhs);
     return fn_type{}(lhs, rhs);
   } else {
     return T{};
@@ -121,7 +121,6 @@ auto UnaryApply(base::untyped_buffer::const_iterator *iter, bool reg0,
   using fn_type = typename CmdType::fn_type;
   if constexpr (CmdType::template IsSupported<T>()) {
     auto val = reg0 ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>();
-    DEBUG_LOG("unary")(val);
     return fn_type{}(val);
   } else {
     return T{};
@@ -206,6 +205,7 @@ BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
                        std::is_same_v<CmdType, GeCmd> or
                        std::is_same_v<CmdType, GtCmd>) {
     auto ctrl = iter->read<typename CmdType::control_bits>();
+
     PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
       using type  = typename std::decay_t<decltype(tag)>::type;
       auto result = BinaryApply<CmdType, type>(iter, ctrl.reg0, ctrl.reg1, ctx);

@@ -33,12 +33,12 @@ using LeCmd  = internal::BinaryCmd<7, std::less_equal<>,  //
                                   uint16_t, uint32_t, uint64_t, FlagsVal>;
 using EqCmd =
     internal::BinaryCmd<8, std::equal_to<>,  //
-                        int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                        uint32_t, uint64_t, FlagsVal, EnumVal>;
+                        bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                        uint16_t, uint32_t, uint64_t, FlagsVal, EnumVal>;
 using NeCmd =
     internal::BinaryCmd<9, std::not_equal_to<>,  //
-                        int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                        uint32_t, uint64_t, FlagsVal, EnumVal>;
+                        bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                        uint16_t, uint32_t, uint64_t, FlagsVal, EnumVal>;
 using GeCmd = internal::BinaryCmd<10, std::greater_equal<>,  //
                                   int8_t, int16_t, int32_t, int64_t, uint8_t,
                                   uint16_t, uint32_t, uint64_t, FlagsVal>;

@@ -32,7 +32,7 @@ struct TypeInfoCmd {
 };
 
 struct AccessCmd {
-  constexpr static cmd_index_t index = 36;
+  constexpr static cmd_index_t index = 37;
 
   struct control_bits {
     uint8_t is_array : 1;
@@ -51,7 +51,7 @@ struct AccessCmd {
 };
 
 struct VariantAccessCmd {
-  constexpr static cmd_index_t index = 37;
+  constexpr static cmd_index_t index = 38;
 
   // TODO you store a bool for val vs type and a bool for addr.is_reg(). These
   // should be compresseed.

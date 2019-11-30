@@ -67,6 +67,7 @@ cc_lib(
     name = "phi",
     deps = [
         ":util",
+        "@com_google_absl//absl/strings",
     ],
     header_only = True,
     test_deps = None,
