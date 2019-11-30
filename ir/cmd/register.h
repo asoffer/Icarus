@@ -3,8 +3,8 @@
 
 #include <optional>
 
+#include "base/untyped_buffer.h"
 #include "ir/cmd/util.h"
-#include "ir/cmd_buffer.h"
 #include "ir/reg.h"
 
 namespace ir {

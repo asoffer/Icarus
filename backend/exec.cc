@@ -84,8 +84,6 @@
   CASE(BlockCmd);                                                              \
   CASE(ScopeCmd)
 
-
-
 // TODO CreateStruct, CreateEnum, etc should register a deleter so if we exit
 // early we don't leak them. FinalizeStruct, FinalizeEnum, etc should dergeister
 // the deleter without calling it.
@@ -140,7 +138,7 @@ BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
     auto ctrl = iter->read<typename CmdType::control_bits>();
     PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
       using T = typename std::decay_t<decltype(tag)>::type;
-      T val = ctrl.reg ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>();
+      T val   = ctrl.reg ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>();
       if constexpr (std::is_same_v<T, bool>) {
         std::cerr << (val ? "true" : "false");
       } else if constexpr (std::is_same_v<T, uint8_t>) {
@@ -387,8 +385,7 @@ BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
     auto *scope_def = iter->read<ir::ScopeDef *>();
 
     scope_def->inits_ = internal::Deserialize<uint16_t, Jump const *>(
-        iter,
-        [ctx](Reg reg) { return ctx->resolve<Jump const *>(reg); });
+        iter, [ctx](Reg reg) { return ctx->resolve<Jump const *>(reg); });
     scope_def->dones_ = internal::Deserialize<uint16_t, AnyFunc>(
         iter, [ctx](Reg reg) { return ctx->resolve<AnyFunc>(reg); });
 
@@ -403,12 +400,11 @@ BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
     frame.regs_.set(ctx->Offset(result_reg), scope_def);
 
   } else if constexpr (std::is_same_v<CmdType, BlockCmd>) {
-    auto *block_def = iter->read<ir::BlockDef *>();
+    auto *block_def    = iter->read<ir::BlockDef *>();
     block_def->before_ = internal::Deserialize<uint16_t, AnyFunc>(
         iter, [ctx](Reg reg) { return ctx->resolve<AnyFunc>(reg); });
     block_def->after_ = internal::Deserialize<uint16_t, Jump const *>(
-        iter,
-        [ctx](Reg reg) { return ctx->resolve<Jump const *>(reg); });
+        iter, [ctx](Reg reg) { return ctx->resolve<Jump const *>(reg); });
     Reg result_reg = iter->read<Reg>();
     frame.regs_.set(ctx->Offset(result_reg), block_def);
 
@@ -438,7 +434,7 @@ BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
     absl::BitGen gen;
 
     if (is_enum_not_flags) {
-      for (auto &[name, maybe_val] : enumerators) {
+      for (auto & [ name, maybe_val ] : enumerators) {
         DEBUG_LOG("enum")(name, " => ", maybe_val);
 
         if (not maybe_val.has_value()) {
@@ -454,14 +450,14 @@ BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
       }
       absl::flat_hash_map<std::string, EnumVal> mapping;
 
-      for (auto [name, maybe_val] : enumerators) {
+      for (auto[name, maybe_val] : enumerators) {
         ASSERT(maybe_val.has_value() == true);
         mapping.emplace(std::string(name), EnumVal{maybe_val.value()});
       }
       DEBUG_LOG("enum")(vals, ", ", mapping);
       result = new type::Enum(mod, std::move(mapping));
     } else {
-      for (auto &[name, maybe_val] : enumerators) {
+      for (auto & [ name, maybe_val ] : enumerators) {
         DEBUG_LOG("flags")(name, " => ", maybe_val);
 
         if (not maybe_val.has_value()) {
@@ -479,7 +475,7 @@ BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
 
       absl::flat_hash_map<std::string, FlagsVal> mapping;
 
-      for (auto [name, maybe_val] : enumerators) {
+      for (auto[name, maybe_val] : enumerators) {
         ASSERT(maybe_val.has_value() == true);
         mapping.emplace(std::string(name),
                         FlagsVal{enum_t{1} << maybe_val.value()});

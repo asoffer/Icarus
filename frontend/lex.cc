@@ -332,7 +332,7 @@ Lexeme NextOperator(SourceCursor *cursor, Source *src) {
   }
 #endif
 
-  for (auto [prefix, x] : Ops) {
+  for (auto[prefix, x] : Ops) {
     if (BeginsWith(prefix, cursor->view())) {
       auto span = cursor->remove_prefix(prefix.size()).range();
       return std::visit([&](auto x) { return Lexeme(x, span); }, x);
@@ -421,7 +421,7 @@ restart:
       return Lexeme(Operator::MatchDecl, state->cursor_.range());
     } break;
     case '"': {
-      auto [span, str] =
+      auto[span, str] =
           NextStringLiteral(&state->cursor_, state->src_, state->error_log_);
       return Lexeme(std::make_unique<ast::Terminal>(std::move(span),
                                                     ir::SaveStringGlobally(str),
@@ -433,7 +433,7 @@ restart:
       // TODO just check for comments early and roll this into NextOperator.
       if (auto maybe_op = NextSlashInitiatedToken(&state->cursor_, state->src_,
                                                   state->error_log_)) {
-        auto &[span, op] = *maybe_op;
+        auto & [ span, op ] = *maybe_op;
         return Lexeme(op, state->cursor_.range());
       }
       goto restart;

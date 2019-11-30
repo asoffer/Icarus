@@ -16,7 +16,8 @@
 
 namespace compiler {
 
-std::unique_ptr<module::BasicModule> CompileLibraryModule(frontend::Source *src) {
+std::unique_ptr<module::BasicModule> CompileLibraryModule(
+    frontend::Source *src) {
   auto mod = std::make_unique<LibraryModule>(
       [](base::PtrSpan<ast::Node const> nodes, CompiledModule *mod) {
         compiler::Compiler c(mod);
@@ -76,7 +77,8 @@ ir::Reg Compiler::addr(ast::Declaration const *decl) const {
 
 void Compiler::set_dispatch_table(ast::ExprPtr expr,
                                   ast::DispatchTable &&table) {
-  // TODO data_.constants_->second.dispatch_tables_.emplace(expr, std::move(table));
+  // TODO data_.constants_->second.dispatch_tables_.emplace(expr,
+  // std::move(table));
   // TODO in some situations you may be trying to set the dispatch table more
   // than once. This has come up with generic structs and you should
   // investigate.
@@ -88,14 +90,16 @@ void Compiler::set_dispatch_table(ast::ExprPtr expr,
 std::pair<ConstantBinding, DependentData> *Compiler::insert_constants(
     ConstantBinding const &constant_binding) {
   // TODO remove this iteration
-  for (auto iter = data_.dep_data_.begin(); iter != data_.dep_data_.end(); ++iter) {
-    auto &[key, val] = *iter;
+  for (auto iter = data_.dep_data_.begin(); iter != data_.dep_data_.end();
+       ++iter) {
+    auto & [ key, val ] = *iter;
     if (key == constant_binding) { return &*iter; }
   }
-  auto *pair = &data_.dep_data_.emplace_front(constant_binding, DependentData{});
+  auto *pair =
+      &data_.dep_data_.emplace_front(constant_binding, DependentData{});
   pair->second.constants_ = pair->first;
 
-  for (auto const &[decl, binding] : constant_binding.keys_) {
+  for (auto const & [ decl, binding ] : constant_binding.keys_) {
     pair->second.set_result(decl, VerifyResult::Constant(binding.type_));
   }
   return pair;
@@ -103,8 +107,9 @@ std::pair<ConstantBinding, DependentData> *Compiler::insert_constants(
 
 void Compiler::set_jump_table(ast::ExprPtr jump_expr, ast::ExprPtr node,
                               ast::DispatchTable &&table) {
-  // TODO data_.constants_->second.jump_tables_.emplace(std::pair{jump_expr, node},
-         //                                        std::move(table));
+  // TODO data_.constants_->second.jump_tables_.emplace(std::pair{jump_expr,
+  // node},
+  //                                        std::move(table));
   // TODO in some situations you may be trying to set the dispatch table more
   // than once. This has come up with generic structs and you should
   // investigate.
@@ -115,7 +120,8 @@ void Compiler::set_jump_table(ast::ExprPtr jump_expr, ast::ExprPtr node,
 
 void Compiler::set_pending_module(ast::Import const *import_node,
                                   module::PendingModule mod) {
-  data_.constants_->second.imported_module_.emplace(import_node, std::move(mod));
+  data_.constants_->second.imported_module_.emplace(import_node,
+                                                    std::move(mod));
 }
 
 ast::DispatchTable const *Compiler::dispatch_table(ast::ExprPtr expr) const {

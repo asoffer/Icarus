@@ -31,7 +31,7 @@ struct Handler {
   template <typename Fn>
   void operator<<(Fn &&fn) {
     if constexpr (std::is_invocable_v<Fn, bool>) {
-      parse_and_apply_ = [this, f = std::forward<Fn>(fn)](char const *arg) {
+      parse_and_apply_ = [ this, f = std::forward<Fn>(fn) ](char const *arg) {
         bool called_already = called_;
         called_             = true;
         if (call_once_ and called_already) {
@@ -53,7 +53,7 @@ struct Handler {
       };
     } else if constexpr (std::is_invocable_v<Fn>) {
       call_once_       = false;
-      parse_and_apply_ = [this, f = std::forward<Fn>(fn)](char const *) {
+      parse_and_apply_ = [ this, f = std::forward<Fn>(fn) ](char const *) {
         bool called_already = called_;
         called_             = true;
         if (call_once_ and called_already) {
@@ -65,7 +65,7 @@ struct Handler {
       };
     } else if constexpr (std::is_invocable_v<Fn, char const *>) {
       call_once_       = false;
-      parse_and_apply_ = [this, f = std::forward<Fn>(fn)](char const *cstr) {
+      parse_and_apply_ = [ this, f = std::forward<Fn>(fn) ](char const *cstr) {
         bool called_already = called_;
         called_             = true;
         if (call_once_ and called_already) {

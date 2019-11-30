@@ -25,11 +25,11 @@ SetCurrent::~SetCurrent() {
   builder_->CurrentBlock() = old_block_;
 }
 
-base::Tagged<Addr, Reg> Builder::Alloca(type::Type const* t) {
+base::Tagged<Addr, Reg> Builder::Alloca(type::Type const *t) {
   return CurrentGroup()->Alloca(t);
 }
 
-base::Tagged<Addr, Reg> Builder::TmpAlloca(type::Type const* t) {
+base::Tagged<Addr, Reg> Builder::TmpAlloca(type::Type const *t) {
   auto reg = Alloca(t);
   current_.temporaries_to_destroy_.emplace_back(reg, t);
   return reg;
@@ -39,13 +39,13 @@ Reg Reserve(core::Bytes b, core::Alignment a) {
   return current.CurrentGroup()->Reserve(b, a);
 }
 
-Reg Reserve(type::Type const* t) { return current.CurrentGroup()->Reserve(t); }
+Reg Reserve(type::Type const *t) { return current.CurrentGroup()->Reserve(t); }
 
 void Builder::Call(RegOr<AnyFunc> const &fn, type::Function const *f,
                    absl::Span<Results const> arguments, OutParams outs) {
   auto &buf = CurrentBlock()->cmd_buffer_;
   ASSERT(arguments.size() == f->input.size());
-  buf.append_index<CallCmd>();
+  buf.append(CallCmd::index);
   buf.append(fn.is_reg());
   internal::WriteBits<uint16_t, Results>(&buf, arguments, [](Results const &r) {
     ASSERT(r.size() == 1u);
@@ -75,14 +75,14 @@ void Builder::Call(RegOr<AnyFunc> const &fn, type::Function const *f,
 
 void Builder::UncondJump(BasicBlock const *block) {
   auto &buf = CurrentBlock()->cmd_buffer_;
-  buf.append_index<JumpCmd>();
+  buf.append(JumpCmd::index);
   buf.append(JumpCmd::Kind::kUncond);
   buf.append(block);
 }
 
 void Builder::ReturnJump() {
   auto &buf = CurrentBlock()->cmd_buffer_;
-  buf.append_index<JumpCmd>();
+  buf.append(JumpCmd::index);
   buf.append(JumpCmd::Kind::kRet);
   // This extra block index is so that when inlined, we don't have to worry
   // about iterator invalidation, as a return becomes an unconditional jump
@@ -94,7 +94,7 @@ void Builder::CondJump(RegOr<bool> cond, BasicBlock const *true_block,
                        BasicBlock const *false_block) {
   auto &buf = CurrentBlock()->cmd_buffer_;
   if (cond.is_reg()) {
-    buf.append_index<JumpCmd>();
+    buf.append(JumpCmd::index);
     buf.append(JumpCmd::Kind::kCond);
     buf.append(cond.reg());
     buf.append(false_block);
@@ -108,11 +108,11 @@ void Builder::ChooseJump(absl::Span<std::string_view const> names,
                          absl::Span<BasicBlock *const> blocks) {
   ASSERT(names.size() == blocks.size());
   auto &buf = CurrentBlock()->cmd_buffer_;
-  buf.append_index<JumpCmd>();
+  buf.append(JumpCmd::index);
   buf.append(JumpCmd::Kind::kChoose);
   buf.append<uint16_t>(names.size());
   for (std::string_view name : names) { buf.append(name); }
-  for (BasicBlock* block : blocks) { buf.append(block); }
+  for (BasicBlock *block : blocks) { buf.append(block); }
 }
 
 namespace {
@@ -120,7 +120,7 @@ namespace {
 void MakeSemanticCmd(SemanticCmd::Kind k, type::Type const *t, Reg r,
                      Builder *bldr) {
   auto &buf = bldr->CurrentBlock()->cmd_buffer_;
-  buf.append_index<SemanticCmd>();
+  buf.append(SemanticCmd::index);
   buf.append(k);
   buf.append(t);
   buf.append(r);
@@ -129,7 +129,7 @@ void MakeSemanticCmd(SemanticCmd::Kind k, type::Type const *t, Reg r,
 void MakeSemanticCmd(SemanticCmd::Kind k, type::Type const *t, Reg from,
                      RegOr<Addr> to, Builder *bldr) {
   auto &buf = bldr->CurrentBlock()->cmd_buffer_;
-  buf.append_index<SemanticCmd>();
+  buf.append(SemanticCmd::index);
   buf.append(k);
   buf.append(to.is_reg());
   buf.append(t);
@@ -156,7 +156,7 @@ void Builder::Copy(type::Type const *t, Reg from, RegOr<Addr> to) {
 
 type::Typed<Reg> LoadSymbol(std::string_view name, type::Type const *type) {
   auto &blk = *GetBuilder().CurrentBlock();
-  blk.cmd_buffer_.append_index<LoadSymbolCmd>();
+  blk.cmd_buffer_.append(LoadSymbolCmd::index);
   blk.cmd_buffer_.append(name);
   blk.cmd_buffer_.append(type);
   Reg result = [&] {
@@ -170,7 +170,7 @@ type::Typed<Reg> LoadSymbol(std::string_view name, type::Type const *type) {
 
 base::Tagged<core::Alignment, Reg> Builder::Align(RegOr<type::Type const *> r) {
   auto &buf = CurrentBlock()->cmd_buffer_;
-  buf.append_index<TypeInfoCmd>();
+  buf.append(TypeInfoCmd::index);
   buf.append<uint8_t>(r.is_reg() ? 0x01 : 0x00);
 
   r.apply([&](auto v) { buf.append(v); });
@@ -181,7 +181,7 @@ base::Tagged<core::Alignment, Reg> Builder::Align(RegOr<type::Type const *> r) {
 
 base::Tagged<core::Bytes, Reg> Builder::Bytes(RegOr<type::Type const *> r) {
   auto &buf = CurrentBlock()->cmd_buffer_;
-  buf.append_index<TypeInfoCmd>();
+  buf.append(TypeInfoCmd::index);
   buf.append<uint8_t>(0x02 + (r.is_reg() ? 0x01 : 0x00));
   r.apply([&](auto v) { buf.append(v); });
   Reg result = MakeResult<core::Bytes>();
@@ -194,7 +194,7 @@ template <bool IsArray>
 Reg MakeAccessCmd(Builder *bldr, RegOr<Addr> ptr, RegOr<int64_t> inc,
                   type::Type const *t) {
   auto &buf = bldr->CurrentBlock()->cmd_buffer_;
-  buf.append_index<AccessCmd>();
+  buf.append(AccessCmd::index);
   buf.append(AccessCmd::MakeControlBits(IsArray, ptr.is_reg(), inc.is_reg()));
   buf.append(t);
 
@@ -212,7 +212,8 @@ base::Tagged<Addr, Reg> Builder::PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
   return base::Tagged<Addr, Reg>{MakeAccessCmd<true>(this, ptr, inc, t)};
 }
 
-type::Typed<Reg> Builder::Field(RegOr<Addr> r, type::Tuple const *t, int64_t n) {
+type::Typed<Reg> Builder::Field(RegOr<Addr> r, type::Tuple const *t,
+                                int64_t n) {
   return type::Typed<Reg>(MakeAccessCmd<false>(this, r, n, t),
                           type::Ptr(t->entries_.at(n)));
 }
@@ -225,7 +226,7 @@ type::Typed<Reg> Builder::Field(RegOr<Addr> r, type::Struct const *t,
 
 Reg Builder::VariantType(RegOr<Addr> const &r) {
   auto &blk = *CurrentBlock();
-  blk.cmd_buffer_.append_index<VariantAccessCmd>();
+  blk.cmd_buffer_.append(VariantAccessCmd::index);
   blk.cmd_buffer_.append(false);
   blk.cmd_buffer_.append(r.is_reg());
   r.apply([&](auto v) { blk.cmd_buffer_.append(v); });
@@ -236,7 +237,7 @@ Reg Builder::VariantType(RegOr<Addr> const &r) {
 
 Reg Builder::VariantValue(type::Variant const *v, RegOr<Addr> const &r) {
   auto &blk = *CurrentBlock();
-  blk.cmd_buffer_.append_index<VariantAccessCmd>();
+  blk.cmd_buffer_.append(VariantAccessCmd::index);
   blk.cmd_buffer_.append(true);
   blk.cmd_buffer_.append(r.is_reg());
   r.apply([&](auto v) { blk.cmd_buffer_.append(v); });
@@ -249,7 +250,7 @@ Reg BlockHandler(ir::BlockDef *block_def,
                  absl::Span<RegOr<AnyFunc> const> befores,
                  absl::Span<RegOr<Jump const *> const> afters) {
   auto &blk = *GetBuilder().CurrentBlock();
-  blk.cmd_buffer_.append_index<BlockCmd>();
+  blk.cmd_buffer_.append(BlockCmd::index);
   blk.cmd_buffer_.append(block_def);
   internal::Serialize<uint16_t>(&blk.cmd_buffer_, befores);
   internal::Serialize<uint16_t>(&blk.cmd_buffer_, afters);
@@ -263,12 +264,12 @@ Reg ScopeHandler(
     absl::Span<RegOr<AnyFunc> const> dones,
     absl::flat_hash_map<std::string_view, BlockDef *> const &blocks) {
   auto &blk = *GetBuilder().CurrentBlock();
-  blk.cmd_buffer_.append_index<ScopeCmd>();
+  blk.cmd_buffer_.append(ScopeCmd::index);
   blk.cmd_buffer_.append(scope_def);
   internal::Serialize<uint16_t>(&blk.cmd_buffer_, inits);
   internal::Serialize<uint16_t>(&blk.cmd_buffer_, dones);
   blk.cmd_buffer_.append<uint16_t>(blocks.size());
-  for (auto [name, block] : blocks) {
+  for (auto[name, block] : blocks) {
     blk.cmd_buffer_.append(name);
     blk.cmd_buffer_.append(block);
   }
@@ -285,14 +286,14 @@ Reg EnumerationImpl(
     absl::flat_hash_map<uint64_t, RegOr<EnumerationCmd::enum_t>> const
         &specified_values) {
   auto &blk = *GetBuilder().CurrentBlock();
-  blk.cmd_buffer_.append_index<EnumerationCmd>();
+  blk.cmd_buffer_.append(EnumerationCmd::index);
   blk.cmd_buffer_.append(IsEnumNotFlags);
   blk.cmd_buffer_.append<uint16_t>(names.size());
   blk.cmd_buffer_.append<uint16_t>(specified_values.size());
   blk.cmd_buffer_.append(mod);
   for (auto name : names) { blk.cmd_buffer_.append(name); }
 
-  for (auto const &[index, val] : specified_values) {
+  for (auto const & [ index, val ] : specified_values) {
     // TODO these could be packed much more efficiently.
     blk.cmd_buffer_.append(index);
     blk.cmd_buffer_.append<bool>(val.is_reg());
@@ -322,20 +323,20 @@ Reg Struct(ast::Scope const *scope, module::BasicModule *mod,
            std::vector<std::tuple<std::string_view, RegOr<type::Type const *>>>
                fields) {
   auto &blk = *GetBuilder().CurrentBlock();
-  blk.cmd_buffer_.append_index<StructCmd>();
+  blk.cmd_buffer_.append(StructCmd::index);
   blk.cmd_buffer_.append<uint16_t>(fields.size());
   blk.cmd_buffer_.append(scope);
   blk.cmd_buffer_.append(mod);
   // TODO determine if order randomization makes sense here. Or perhaps you want
   // to do it later? Or not at all?
   std::shuffle(fields.begin(), fields.end(), absl::BitGen{});
-  for (auto &[name, t] : fields) { blk.cmd_buffer_.append(name); }
+  for (auto & [ name, t ] : fields) { blk.cmd_buffer_.append(name); }
 
   // TODO performance: Serialize requires an absl::Span here, but we'd love to
   // not copy out the elements of `fields`.
   std::vector<RegOr<type::Type const *>> types;
   types.reserve(fields.size());
-  for (auto &[name, t] : fields) { types.push_back(t); }
+  for (auto & [ name, t ] : fields) { types.push_back(t); }
   internal::Serialize<uint16_t>(&blk.cmd_buffer_, absl::MakeConstSpan(types));
 
   Reg result = MakeResult<type::Type const *>();
@@ -359,7 +360,7 @@ RegOr<type::Function const *> Builder::Arrow(
   }
 
   auto &buf = CurrentBlock()->cmd_buffer_;
-  buf.append_index<ArrowCmd>();
+  buf.append(ArrowCmd::index);
   internal::Serialize<uint16_t>(&buf, ins);
   internal::Serialize<uint16_t>(&buf, outs);
 
@@ -370,7 +371,7 @@ RegOr<type::Function const *> Builder::Arrow(
 
 Reg Builder::OpaqueType(module::BasicModule const *mod) {
   auto &buf = CurrentBlock()->cmd_buffer_;
-  buf.append_index<OpaqueTypeCmd>();
+  buf.append(OpaqueTypeCmd::index);
   buf.append(mod);
   Reg result = MakeResult<type::Type const *>();
   buf.append(result);
@@ -384,7 +385,7 @@ RegOr<type::Type const *> Builder::Array(RegOr<ArrayCmd::length_t> len,
   }
 
   auto &buf = CurrentBlock()->cmd_buffer_;
-  buf.append_index<ArrayCmd>();
+  buf.append(ArrayCmd::index);
   buf.append(ArrayCmd::MakeControlBits(len.is_reg(), data_type.is_reg()));
 
   len.apply([&](auto v) { buf.append(v); });

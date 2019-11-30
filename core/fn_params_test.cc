@@ -50,13 +50,13 @@ TEST_CASE("transform") {
 }
 
 TEST_CASE("ambiguously callable") {
-  SECTION("Both empty"){
+  SECTION("Both empty") {
     FnParams<int> p1, p2;
     CHECK(AmbiguouslyCallable(p1, p2, Ambiguity));
     CHECK(AmbiguouslyCallable(p2, p1, Ambiguity));
   }
 
-  SECTION("One empty"){
+  SECTION("One empty") {
     FnParams<int> p1{Param<int>{"a", 1}};
     FnParams<int> p2;
     CHECK_FALSE(AmbiguouslyCallable(p1, p2, Ambiguity));

@@ -48,8 +48,7 @@ struct DispatchTable {
 };
 
 inline compiler::VerifyResult VerifyJumpDispatch(
-    void *visitor, ExprPtr expr,
-    absl::Span<ir::Jump const *const> overload_set,
+    void *visitor, ExprPtr expr, absl::Span<ir::Jump const *const> overload_set,
     core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
         &args,
     std::vector<ir::BlockDef const *> *block_defs) {
@@ -72,7 +71,8 @@ struct EmitMoveAssignTag {};
 
 std::unique_ptr<module::BasicModule> CompileExecutableModule(
     frontend::Source *src);
-std::unique_ptr<module::BasicModule> CompileLibraryModule(frontend::Source *src);
+std::unique_ptr<module::BasicModule> CompileLibraryModule(
+    frontend::Source *src);
 
 // These are the steps in a traditional compiler of verifying types and emitting
 // code. They're tied together because they don't necessarily happen in a
@@ -204,7 +204,7 @@ struct Compiler
 
   template <typename Fn>
   base::move_func<void()> *AddWork(ast::Node const *node, Fn &&fn) {
-    auto [iter, success] =
+    auto[iter, success] =
         data_.deferred_work_.lock()->emplace(node, std::forward<Fn>(fn));
     ASSERT(success == true);
     return &iter->second;

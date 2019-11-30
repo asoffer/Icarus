@@ -17,7 +17,7 @@ struct StackFrameAllocations {
 
   template <typename Fn>
   void for_each(Fn&& f) const {
-    for (auto const& [t, regs] : allocs_) {
+    for (auto const & [ t, regs ] : allocs_) {
       for (auto reg : regs) { f(t, reg); }
     }
   }

@@ -18,9 +18,9 @@ Type const *Void() { return Tup({}); }
 static base::guarded<std::map<std::vector<Type const *>, Tuple const>> tups_;
 Type const *Tup(std::vector<Type const *> entries) {
   if (entries.size() == 1) { return entries[0]; }
-  auto [iter, success] = tups_.lock()->emplace(std::piecewise_construct,
-                                               std::forward_as_tuple(entries),
-                                               std::forward_as_tuple(entries));
+  auto[iter, success] = tups_.lock()->emplace(std::piecewise_construct,
+                                              std::forward_as_tuple(entries),
+                                              std::forward_as_tuple(entries));
   return &iter->second;
 }
 

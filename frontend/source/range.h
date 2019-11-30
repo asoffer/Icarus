@@ -73,15 +73,15 @@ constexpr bool operator>(SourceLoc const &lhs, SourceLoc const &rhs) {
 }
 
 constexpr bool operator<=(SourceLoc const &lhs, SourceLoc const &rhs) {
-  return not (lhs > rhs);
+  return not(lhs > rhs);
 }
 
 constexpr bool operator>=(SourceLoc const &lhs, SourceLoc const &rhs) {
-  return not (lhs < rhs);
+  return not(lhs < rhs);
 }
 
 constexpr bool operator!=(SourceLoc const &lhs, SourceLoc const &rhs) {
-  return not (lhs == rhs);
+  return not(lhs == rhs);
 }
 
 struct SourceRange {

@@ -23,7 +23,6 @@ struct MatchState {
 };
 
 struct Match : ast::Visitor<void(MatchState *)> {
-
   void MatchAll(ast::Node const *node, ast::Expression const *pattern);
 
   void Visit(ast::Node const *node, MatchState *state);

@@ -14,10 +14,10 @@ Struct::Struct(
     : scope_(scope), mod_(const_cast<module::BasicModule *>(mod)) {
   fields_.reserve(fields.size());
   size_t i = 0;
-  for (auto [name, t] : fields) {
+  for (auto[name, t] : fields) {
     field_indices_.emplace(std::string(name), i++);
   }
-  for (auto const &[name, t] : fields) {
+  for (auto const & [ name, t ] : fields) {
     Field f(t);
     f.name = field_indices_.find(name)->first;
     fields_.push_back(f);

@@ -21,7 +21,7 @@ struct bag {
       return lhs.value_ == rhs.value_;
     }
     friend bool operator!=(const_iterator lhs, const_iterator rhs) {
-      return not (lhs == rhs);
+      return not(lhs == rhs);
     }
 
     explicit const_iterator(typename std::vector<T>::const_iterator iter)
@@ -42,7 +42,9 @@ struct bag {
     friend bool operator==(iterator lhs, iterator rhs) {
       return lhs.value_ == rhs.value_;
     }
-    friend bool operator!=(iterator lhs, iterator rhs) { return not (lhs == rhs); }
+    friend bool operator!=(iterator lhs, iterator rhs) {
+      return not(lhs == rhs);
+    }
 
     explicit iterator(typename std::vector<T>::iterator iter) : value_(iter) {}
     typename std::vector<T>::iterator value_;

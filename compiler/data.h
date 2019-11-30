@@ -38,7 +38,7 @@ struct CompilationData {
 
   void set_dispatch_table(ast::Expression const *expr,
                           FnCallDispatchTable &&table) {
-    ICARUS_DEBUG_ONLY(auto [iter, success] =)
+    ICARUS_DEBUG_ONLY(auto[iter, success] =)
     fn_call_dispatch_tables_.emplace(expr, std::move(table));
     ASSERT(success == true);
   }

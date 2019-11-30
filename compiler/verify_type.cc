@@ -68,9 +68,10 @@ VerifyResult VerifyUnaryOverload(Compiler *c, char const *symbol,
                                  VerifyResult operand_result) {
   ast::OverloadSet os(node->scope_, symbol);
   AddAdl(&os, symbol, operand_result.type());
-  ASSIGN_OR(return VerifyResult::Error(), auto table,
-                   FnCallDispatchTable::Verify(
-                       c, os, core::FnArgs<VerifyResult>({operand_result}, {})));
+  ASSIGN_OR(
+      return VerifyResult::Error(), auto table,
+             FnCallDispatchTable::Verify(
+                 c, os, core::FnArgs<VerifyResult>({operand_result}, {})));
   auto result = VerifyResult::NonConstant(table.result_type());
   c->data_.set_dispatch_table(node, std::move(table));
   return c->set_result(node, result);
@@ -304,10 +305,12 @@ bool Shadow(Compiler *compiler, type::Typed<ast::Declaration const *> decl1,
   }
 
   return core::AmbiguouslyCallable(
-      ExtractParams(compiler, *decl1).Transform(
-          [](auto const &typed_decl) { return typed_decl.type(); }),
-      ExtractParams(compiler, *decl2).Transform(
-          [](auto const &typed_decl) { return typed_decl.type(); }),
+      ExtractParams(compiler, *decl1).Transform([](auto const &typed_decl) {
+        return typed_decl.type();
+      }),
+      ExtractParams(compiler, *decl2).Transform([](auto const &typed_decl) {
+        return typed_decl.type();
+      }),
       [](type::Type const *lhs, type::Type const *rhs) {
         return type::Meet(lhs, rhs) != nullptr;
       });
@@ -620,7 +623,7 @@ VerifyResult Compiler::Visit(ast::Access const *node, VerifyTypeTag) {
     // TODO We may not be allowed to evaluate node:
     //    f ::= (T: type) => T.key
     // We need to know that T is const
-    auto *t           = type_of(node->operand());
+    auto *t = type_of(node->operand());
     auto *evaled_type =
         backend::EvaluateAs<type::Type const *>(MakeThunk(node->operand(), t));
 
@@ -1064,7 +1067,7 @@ static std::pair<core::FnArgs<VerifyResult, StrType>, bool> VerifyFnArgs(
 }
 
 VerifyResult Compiler::Visit(ast::Call const *node, VerifyTypeTag) {
-  auto [arg_results, err] = VerifyFnArgs(this, node->args());
+  auto[arg_results, err] = VerifyFnArgs(this, node->args());
   // TODO handle cyclic dependencies in call arguments.
   if (err) { return VerifyResult::Error(); }
 
@@ -1769,7 +1772,7 @@ VerifyResult Compiler::Visit(ast::ScopeLiteral const *node, VerifyTypeTag) {
 
 VerifyResult Compiler::Visit(ast::ScopeNode const *node, VerifyTypeTag) {
   DEBUG_LOG("ScopeNode")(node->DebugString());
-  auto [arg_results, err] = VerifyFnArgs(this, node->args());
+  auto[arg_results, err] = VerifyFnArgs(this, node->args());
   // TODO handle cyclic dependencies in call arguments.
   if (err) { return VerifyResult::Error(); }
 
@@ -1930,7 +1933,7 @@ VerifyResult Compiler::Visit(ast::Switch const *node, VerifyTypeTag) {
 
   absl::flat_hash_set<type::Type const *> types;
   bool err = false;
-  for (auto &[body, cond] : node->cases_) {
+  for (auto & [ body, cond ] : node->cases_) {
     auto cond_result = Visit(cond.get(), VerifyTypeTag{});
     auto body_result = Visit(body.get(), VerifyTypeTag{});
     err |= not cond_result or not body_result;

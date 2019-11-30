@@ -78,7 +78,7 @@ void OnEachArrayElement(type::Array const *t, CompiledFn *fn, F &&fn_to_apply) {
     GetBuilder().CurrentBlock() = fn->entry();
     auto *data_ptr_type         = type::Ptr(t->data_type);
 
-    auto ptr     = Index(type::Ptr(t), Reg::Arg(0), 0);
+    auto ptr = Index(type::Ptr(t), Reg::Arg(0), 0);
     auto end_ptr =
         GetBuilder().PtrIncr(ptr, static_cast<int32_t>(t->len), data_ptr_type);
 

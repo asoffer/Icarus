@@ -4,9 +4,7 @@
 
 namespace ir {
 
-std::ostream &operator<<(std::ostream &os, BasicBlock const &b) {
-  return os;
-}
+std::ostream &operator<<(std::ostream &os, BasicBlock const &b) { return os; }
 
 void BasicBlock::Append(BasicBlock &&b) { NOT_YET(); }
 

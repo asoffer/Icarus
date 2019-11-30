@@ -262,7 +262,7 @@ struct Declaration : public Expression {
   }
 
   ICARUS_AST_VIRTUAL_METHODS;
-  
+
  private:
   std::string id_;
   std::unique_ptr<Expression> type_expr_, init_val_;
@@ -837,7 +837,7 @@ struct Goto : public Node {
                 std::vector<std::unique_ptr<Call>> calls)
       : Node(std::move(span)) {
     for (auto &call : calls) {
-      auto [callee, ordered_args] = std::move(*call).extract();
+      auto[callee, ordered_args] = std::move(*call).extract();
       if (auto *term = callee->if_as<Terminal>()) {
         if (term->as<ir::BlockDef *>() == ir::BlockDef::Start()) {
           options_.emplace_back("start", std::move(ordered_args).DropOrder());

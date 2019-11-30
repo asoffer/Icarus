@@ -27,15 +27,19 @@ constexpr bool operator==(Alignment lhs, Alignment rhs) {
 }
 
 constexpr bool operator!=(Alignment lhs, Alignment rhs) {
-  return not (lhs == rhs);
+  return not(lhs == rhs);
 }
 constexpr bool operator<(Alignment lhs, Alignment rhs) {
   return lhs.value() < rhs.value();
 }
 
-constexpr bool operator<=(Alignment lhs, Alignment rhs) { return not (rhs < lhs); }
+constexpr bool operator<=(Alignment lhs, Alignment rhs) {
+  return not(rhs < lhs);
+}
 constexpr bool operator>(Alignment lhs, Alignment rhs) { return rhs < lhs; }
-constexpr bool operator>=(Alignment lhs, Alignment rhs) { return not (lhs < rhs); }
+constexpr bool operator>=(Alignment lhs, Alignment rhs) {
+  return not(lhs < rhs);
+}
 
 inline std::ostream& operator<<(std::ostream& os, Alignment a) {
   return os << "align(" << a.value() << ")";

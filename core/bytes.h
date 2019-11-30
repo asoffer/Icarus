@@ -38,14 +38,14 @@ constexpr bool operator==(Bytes lhs, Bytes rhs) {
   return lhs.value() == rhs.value();
 }
 
-constexpr bool operator!=(Bytes lhs, Bytes rhs) { return not (lhs == rhs); }
+constexpr bool operator!=(Bytes lhs, Bytes rhs) { return not(lhs == rhs); }
 constexpr bool operator<(Bytes lhs, Bytes rhs) {
   return lhs.value() < rhs.value();
 }
 
-constexpr bool operator<=(Bytes lhs, Bytes rhs) { return not (rhs < lhs); }
+constexpr bool operator<=(Bytes lhs, Bytes rhs) { return not(rhs < lhs); }
 constexpr bool operator>(Bytes lhs, Bytes rhs) { return rhs < lhs; }
-constexpr bool operator>=(Bytes lhs, Bytes rhs) { return not (lhs < rhs); }
+constexpr bool operator>=(Bytes lhs, Bytes rhs) { return not(lhs < rhs); }
 
 inline std::ostream& operator<<(std::ostream& os, Bytes b) {
   return os << b.value() << " bytes";

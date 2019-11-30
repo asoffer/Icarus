@@ -14,10 +14,10 @@ namespace type {
 struct Enum : public type::Type {
   TYPE_FNS(Enum);
 
-  Enum(module::BasicModule const* mod,
+  Enum(module::BasicModule const *mod,
        absl::flat_hash_map<std::string, ir::EnumVal> vals)
       : mod_(mod), vals_(std::move(vals)) {
-    for (auto& [name, val] : vals_) { members_.emplace(val, name); }
+    for (auto & [ name, val ] : vals_) { members_.emplace(val, name); }
   }
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
@@ -35,7 +35,7 @@ struct Enum : public type::Type {
 
   bool IsDefaultInitializable() const { return false; }
 
-  module::BasicModule const* mod_;
+  module::BasicModule const *mod_;
 
   ICARUS_PRIVATE
   // TODO combine these into a single bidirectional map?

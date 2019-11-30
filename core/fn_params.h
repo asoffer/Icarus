@@ -94,7 +94,7 @@ inline bool operator==(Param<T> const& lhs, Param<T> const& rhs) {
 
 template <typename T>
 inline bool operator!=(Param<T> const& lhs, Param<T> const& rhs) {
-  return not (lhs == rhs);
+  return not(lhs == rhs);
 }
 
 template <typename T>
@@ -159,7 +159,7 @@ struct FnParams {
     return &iter->second;
   }
 
-  Param<T> const& at(size_t i) const& { return params_.at(i); }
+  Param<T> const& at(size_t i) const & { return params_.at(i); }
 
   void append(std::string_view name, T val,
               FnParamFlags flags = FnParamFlags{}) {
@@ -227,7 +227,7 @@ bool AmbiguouslyCallable(FnParams<T> const& params1, FnParams<T> const& params2,
     if (size_t const* j = params2.at_or_null(p1.name)) {
       auto const& p2 = params2.at(*j);
       if (p2.flags & HAS_DEFAULT) { continue; }
-      auto [min, max] = std::minmax(i, *j);
+      auto[min, max] = std::minmax(i, *j);
       diffs[min]++;
       diffs[max]--;
       if (max > min_size) { return false; }
@@ -243,7 +243,7 @@ bool AmbiguouslyCallable(FnParams<T> const& params1, FnParams<T> const& params2,
     if (accumulator != 0) { continue; }
     // Ensure that any parameter name has a default value if it only appears in
     // one parameter set.
-    for (auto [name, index1] : params1.lookup_) {
+    for (auto[name, index1] : params1.lookup_) {
       if (index1 < i) { continue; }
       auto const& p1 = params1.at(index1);
       if (p1.flags & HAS_DEFAULT) {
@@ -257,7 +257,7 @@ bool AmbiguouslyCallable(FnParams<T> const& params1, FnParams<T> const& params2,
       }
     }
 
-    for (auto [name, index2] : params2.lookup_) {
+    for (auto[name, index2] : params2.lookup_) {
       if (index2 < i) { continue; }
       auto const& p2 = params2.at(index2);
       if (p2.flags & HAS_DEFAULT) {
@@ -287,7 +287,8 @@ bool AmbiguouslyCallable(FnParams<T> const& params1, FnParams<T> const& params2,
   return false;
 }
 
-// Returns true if and only if a callable with `params` can be called with `args`.
+// Returns true if and only if a callable with `params` can be called with
+// `args`.
 template <typename T, typename U, typename ConvertibleFn>
 bool IsCallable(FnParams<T> const& params, FnArgs<U> const& args,
                 ConvertibleFn fn) {
@@ -297,7 +298,7 @@ bool IsCallable(FnParams<T> const& params, FnArgs<U> const& args,
     if (not fn(args.pos().at(i), params.at(i).value)) { return false; }
   }
 
-  for (auto const& [name, type] : args.named()) {
+  for (auto const & [ name, type ] : args.named()) {
     ASSIGN_OR(return false, auto const& index, params.at_or_null(name));
     if (not fn(type, params.at(index).value)) { return false; }
   }

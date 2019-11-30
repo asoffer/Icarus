@@ -57,7 +57,7 @@ struct Struct : public Type {
 
   bool contains_hashtag(ast::Hashtag needle) const;
 
-  ast::Scope const *scope_ = nullptr;
+  ast::Scope const *scope_  = nullptr;
   module::BasicModule *mod_ = nullptr;
 
   // `init_func_` is generated in FinalizeStruct.

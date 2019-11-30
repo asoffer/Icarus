@@ -65,7 +65,7 @@ static ir::CompiledFn *CreateAssign(Compiler *compiler, type::Array const *a) {
 template <SpecialFunctionCategory Cat>
 static ir::AnyFunc CreateAssign(Compiler *compiler, type::Struct const *s) {
   if (auto fn = SpecialFunction(compiler, s, Name<Cat>())) { return *fn; }
-auto & bldr = compiler->builder();
+  auto &bldr              = compiler->builder();
   type::Pointer const *pt = type::Ptr(s);
   auto fn_type            = type::Func({pt, pt}, {});
   ir::AnyFunc fn = compiler->AddFunc(fn_type, fn_type->AnonymousFnParams());

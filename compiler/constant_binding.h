@@ -50,7 +50,7 @@ struct ConstantBinding {
 };
 
 inline bool operator!=(ConstantBinding const& lhs, ConstantBinding const& rhs) {
-  return not (lhs == rhs);
+  return not(lhs == rhs);
 }
 }  // namespace compiler
 

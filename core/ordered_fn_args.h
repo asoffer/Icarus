@@ -14,7 +14,7 @@ struct OrderedFnArgs {
   explicit OrderedFnArgs(
       std::vector<std::pair<std::string, std::unique_ptr<T>>> args)
       : ordered_args_(std::move(args)) {
-    for (auto const &[name, arg] : ordered_args_) {
+    for (auto const & [ name, arg ] : ordered_args_) {
       if (name.empty()) {
         fn_args_.pos_emplace(arg.get());
       } else {
@@ -35,7 +35,9 @@ struct OrderedFnArgs {
   // TODO test
   template <typename Fn>
   void Apply(Fn &&fn) {
-    for (auto &[key, val] : ordered_args_) { std::forward<Fn>(fn)(val.get()); }
+    for (auto & [ key, val ] : ordered_args_) {
+      std::forward<Fn>(fn)(val.get());
+    }
   }
 
   absl::Span<std::pair<std::string, std::unique_ptr<T>> const> ordered_args()
@@ -45,7 +47,7 @@ struct OrderedFnArgs {
 
   FnArgs<std::unique_ptr<T>> DropOrder() && {
     FnArgs<std::unique_ptr<T>> args;
-    for (auto &[name, arg] : ordered_args_) {
+    for (auto & [ name, arg ] : ordered_args_) {
       if (name.empty()) {
         args.pos_emplace(std::move(arg));
       } else {

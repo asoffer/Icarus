@@ -21,13 +21,14 @@ struct DependentData {
   // TODO probably make these funcs constant.
   absl::node_hash_map<ast::Expression const *, ir::CompiledFn *> ir_funcs_;
 
-  // TODO absl::flat_hash_map<ast::ExprPtr, ast::DispatchTable> dispatch_tables_;
+  // TODO absl::flat_hash_map<ast::ExprPtr, ast::DispatchTable>
+  // dispatch_tables_;
 
   // Similar to dispatch tables, but specifically for `jump`s. The
   // tables are keyed on both the scope/block node as well as the actual jump
   // expression.
-  // TODO absl::flat_hash_map<std::pair<ast::ExprPtr, ast::ExprPtr>, ast::DispatchTable>
-      // jump_tables_;
+  // TODO absl::flat_hash_map<std::pair<ast::ExprPtr, ast::ExprPtr>,
+  // ast::DispatchTable> jump_tables_;
   absl::node_hash_map<ast::ScopeLiteral const *, ir::ScopeDef> scope_defs_;
 
   compiler::ConstantBinding constants_;

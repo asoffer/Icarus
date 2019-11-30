@@ -3,8 +3,8 @@
 
 #include <vector>
 
-#include "ast/scope/scope.h"
 #include "ast/scope/module.h"
+#include "ast/scope/scope.h"
 #include "module/module.h"
 #include "type/callable.h"
 #include "type/type.h"
@@ -21,13 +21,12 @@ struct GenericStruct : public Callable {
 
   module::BasicModule const *defining_module() const { return mod_; }
 
-  ast::Scope const *scope_       = nullptr;
+  ast::Scope const *scope_        = nullptr;
   module::BasicModule const *mod_ = nullptr;
   std::vector<Type const *> deps_;
 };
 
-GenericStruct *GenStruct(ast::Scope const *scope,
-                         std::vector<Type const *> ts);
+GenericStruct *GenStruct(ast::Scope const *scope, std::vector<Type const *> ts);
 }  // namespace type
 
 #endif  // ICARUS_TYPE_GENERIC_STRUCT_H

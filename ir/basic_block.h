@@ -8,7 +8,6 @@
 #include "base/untyped_buffer.h"
 #include "core/alignment.h"
 #include "core/bytes.h"
-#include "ir/cmd_buffer.h"
 #include "ir/out_params.h"
 
 namespace ir {
@@ -27,7 +26,7 @@ struct BasicBlock {
 
   void Append(BasicBlock &&b);
 
-  CmdBuffer cmd_buffer_;
+  base::untyped_buffer cmd_buffer_;
 
  private:
   internal::BlockGroup *group_;

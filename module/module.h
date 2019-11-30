@@ -50,7 +50,7 @@ struct ExtendedModule : BasicModule {
   explicit ExtendedModule(
       std::function<void(base::PtrSpan<ast::Node const>, Extension *)> fn)
       : process_(
-            [fn{std::move(fn)}, this](base::PtrSpan<ast::Node const> nodes) {
+            [ fn{std::move(fn)}, this ](base::PtrSpan<ast::Node const> nodes) {
               return fn(nodes, static_cast<Extension *>(this));
             }) {}
 

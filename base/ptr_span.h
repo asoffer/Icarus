@@ -38,7 +38,9 @@ struct PtrSpan {
     friend bool operator==(iterator lhs, iterator rhs) {
       return lhs.ptr_ == rhs.ptr_;
     }
-    friend bool operator!=(iterator lhs, iterator rhs) { return not (lhs == rhs); }
+    friend bool operator!=(iterator lhs, iterator rhs) {
+      return not(lhs == rhs);
+    }
 
    private:
     friend struct PtrSpan<T>;

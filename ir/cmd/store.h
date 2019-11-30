@@ -3,8 +3,8 @@
 
 #include <string_view>
 
+#include "base/untyped_buffer.h"
 #include "ir/cmd/util.h"
-#include "ir/cmd_buffer.h"
 #include "ir/reg.h"
 
 namespace ir {
@@ -30,7 +30,7 @@ struct StoreCmd {
   static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
     using base::stringify;
     std::string s = "store ";
-    auto ctrl = iter->read<control_bits>();
+    auto ctrl     = iter->read<control_bits>();
     if (ctrl.reg) {
       s.append(stringify(iter->read<Reg>()));
     } else {

@@ -4,8 +4,8 @@
 #include <cstddef>
 #include <cstring>
 #include <string>
-#include <utility>
 #include <type_traits>
+#include <utility>
 
 #include "base/debug.h"
 #include "base/unaligned_ref.h"
@@ -41,16 +41,16 @@ struct untyped_buffer {
       return (rhs < lhs);
     }
     friend constexpr bool operator<=(const_iterator lhs, const_iterator rhs) {
-      return not (lhs > rhs);
+      return not(lhs > rhs);
     }
     friend constexpr bool operator>=(const_iterator lhs, const_iterator rhs) {
-      return not (rhs < lhs);
+      return not(rhs < lhs);
     }
     friend constexpr bool operator==(const_iterator lhs, const_iterator rhs) {
       return lhs.ptr_ == rhs.ptr_;
     }
     friend constexpr bool operator!=(const_iterator lhs, const_iterator rhs) {
-      return not (lhs == rhs);
+      return not(lhs == rhs);
     }
 
     constexpr const_iterator(char const *ptr) : ptr_(ptr) {}
@@ -95,16 +95,16 @@ struct untyped_buffer {
       return (rhs < lhs);
     }
     friend constexpr bool operator<=(iterator lhs, iterator rhs) {
-      return not (lhs > rhs);
+      return not(lhs > rhs);
     }
     friend constexpr bool operator>=(iterator lhs, iterator rhs) {
-      return not (rhs < lhs);
+      return not(rhs < lhs);
     }
     friend constexpr bool operator==(iterator lhs, iterator rhs) {
       return lhs.ptr_ == rhs.ptr_;
     }
     friend constexpr bool operator!=(iterator lhs, iterator rhs) {
-      return not (lhs == rhs);
+      return not(lhs == rhs);
     }
 
     constexpr iterator(char *ptr) : ptr_(ptr) {}
@@ -226,9 +226,13 @@ struct untyped_buffer {
 
   constexpr iterator begin() { return iterator(data_); }
   constexpr const_iterator begin() const { return const_iterator(data_); }
+  constexpr const_iterator cbegin() const { return const_iterator(data_); }
 
   constexpr iterator end() { return iterator(data_ + size()); }
   constexpr const_iterator end() const {
+    return const_iterator(data_ + size());
+  }
+  constexpr const_iterator cend() const {
     return const_iterator(data_ + size());
   }
 
@@ -288,6 +292,12 @@ struct untyped_buffer {
     if (new_size > capacity_) { reallocate(new_size); }
     size_ = new_size;
     return old_size_with_alignment;
+  }
+
+  template <typename T>
+  size_t reserve() {
+    static_assert(std::is_trivially_copyable_v<T>);
+    return append_bytes(sizeof(T), alignof(T));
   }
 
   void pad_to(size_t n) {

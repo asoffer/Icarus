@@ -124,7 +124,6 @@ cc_lib(
     name = "types",
     deps = [
         ":util",
-        "//ir:cmd_buffer",
         "//type:enum",
         "//type:flags",
         "//type:pointer",

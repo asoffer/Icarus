@@ -66,7 +66,7 @@ ICARUS_CONSTEXPR bool operator==(RegOr<T> const &lhs, RegOr<T> const &rhs) {
 
 template <typename T>
 ICARUS_CONSTEXPR bool operator!=(RegOr<T> const &lhs, RegOr<T> const &rhs) {
-  return not (lhs == rhs);
+  return not(lhs == rhs);
 }
 
 // A type trait for checking if the input type is a `RegOr<T>` for some `T` and

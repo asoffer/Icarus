@@ -29,7 +29,7 @@ core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
 }
 
 core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
-    Compiler *compiler, ast::FunctionLiteral const * fn_lit) {
+    Compiler *compiler, ast::FunctionLiteral const *fn_lit) {
   return fn_lit->params().Transform([compiler](auto const &expr) {
     return type::Typed<ast::Declaration const *>(expr.get(),
                                                  compiler->type_of(expr.get()));

@@ -2,8 +2,8 @@
 #define ICARUS_IR_CMD_RETURN_H
 
 #include "absl/strings/str_cat.h"
+#include "base/untyped_buffer.h"
 #include "ir/cmd/util.h"
-#include "ir/cmd_buffer.h"
 #include "type/jump.h"
 
 namespace ir {

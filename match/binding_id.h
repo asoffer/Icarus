@@ -18,7 +18,9 @@ struct BindingId {
   friend bool operator==(BindingId lhs, BindingId rhs) {
     return lhs.name_.data() == rhs.name_.data();
   }
-  friend bool operator!=(BindingId lhs, BindingId rhs) { return not (lhs == rhs); }
+  friend bool operator!=(BindingId lhs, BindingId rhs) {
+    return not(lhs == rhs);
+  }
 
   constexpr std::string_view view() const { return name_; }
 

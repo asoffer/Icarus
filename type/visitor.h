@@ -58,6 +58,6 @@ struct SingleVisitor<Ret(Args...)> : VisitorBase {
 template <typename... Signatures>
 struct Visitor : SingleVisitor<Signatures>... {};
 
-}  // namespace ast
+}  // namespace type
 
 #endif  // ICARUS_TYPE_VISITOR_H

@@ -20,4 +20,4 @@ MatchArgsToParams(
 
 }  // namespace compiler
 
-#endif // ICARUS_COMPILER_DISPATCH_MATCH_H
+#endif  // ICARUS_COMPILER_DISPATCH_MATCH_H

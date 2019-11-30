@@ -27,12 +27,14 @@ struct Scope : public base::Cast<Scope> {
 
   // Returns a container of all declarations in this scope and in parent scopes
   // with the given identifier.
-  std::vector<Declaration const *> AllDeclsTowardsRoot(std::string_view id) const;
+  std::vector<Declaration const *> AllDeclsTowardsRoot(
+      std::string_view id) const;
 
   // Returns a container of all declaration with the given identifier that are
   // in a scope directly related to this one (i.e., one of the scopes is an
   // ancestor of the other).
-  std::vector<Declaration const *> AllAccessibleDecls(std::string_view id) const;
+  std::vector<Declaration const *> AllAccessibleDecls(
+      std::string_view id) const;
 
   void InsertDecl(std::string_view id, Declaration *decl);
 

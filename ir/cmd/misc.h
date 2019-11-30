@@ -64,7 +64,7 @@ struct DebugIrCmd {
   constexpr static cmd_index_t index =
       (std::numeric_limits<cmd_index_t>::max)();
 
-  static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
+  static std::string DebugString(base::untyped_buffer::const_iterator *iter) {
     return "debug-ir";
   }
 };

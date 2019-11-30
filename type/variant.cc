@@ -66,14 +66,14 @@ void Variant::WriteTo(std::string *result) const {
 
 bool Variant::IsCopyable() const {
   for (auto const *t : variants_) {
-    if (not t->IsCopyable()) {return false; }
+    if (not t->IsCopyable()) { return false; }
   }
   return true;
 }
 
 bool Variant::IsMovable() const {
   for (auto const *t : variants_) {
-    if (not t->IsMovable()) {return false; }
+    if (not t->IsMovable()) { return false; }
   }
   return true;
 }

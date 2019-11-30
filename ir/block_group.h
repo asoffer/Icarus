@@ -67,7 +67,7 @@ struct BlockGroup {
   }
 
  private:
-  friend struct ::ir::Inliner; // TODO remove.
+  friend struct ::ir::Inliner;  // TODO remove.
   core::FnParams<type::Typed<ast::Declaration const *>> params_;
   std::vector<std::unique_ptr<BasicBlock>> blocks_;
   StackFrameAllocations allocs_;

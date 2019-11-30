@@ -96,7 +96,7 @@ bool CanCast(Type const *from, Type const *to) {
     }
   }
 
-  if (auto * from_arr = from->if_as<Array>()) {
+  if (auto *from_arr = from->if_as<Array>()) {
     if (auto *to_arr = to->if_as<Array>()) {
       if (from_arr->len != to_arr->len) { return false; }
       if (auto *from_p = from_arr->data_type->if_as<Pointer>()) {

@@ -13,7 +13,7 @@ std::optional<FailedMatch> MatchPositionalArgsToParams(
     core::FnParams<type::Typed<ast::Declaration const *>> *matched_params) {
   if (args.size() > params.size()) { return FailedMatch{}; }
   for (size_t i = 0; i < args.pos().size(); ++i) {
-    auto const &param = params.at(i);
+    auto const &param      = params.at(i);
     type::Type const *meet = type::Meet(args.at(i).type(), param.value.type());
     if (not meet) { return FailedMatch{}; }
     matched_params->append(param.name, type::Typed(param.value.get(), meet),

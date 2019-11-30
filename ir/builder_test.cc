@@ -5,8 +5,7 @@
 namespace ir {
 namespace {
 
-TEST_CASE("construction") {
-}
+TEST_CASE("construction") {}
 
 }  // namespace
 }  // namespace ir

@@ -27,7 +27,6 @@ struct CompiledModule : module::ExtendedModule<CompiledModule> {
 
   type::Type const *type_of(ast::Expression const *expr) const;
 
-
   // TODO make private
 
   // TODO It's possible to have layers of constant bindings in a tree-like

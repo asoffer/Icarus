@@ -37,7 +37,7 @@ CanonicalizePath(std::filesystem::path const &p) {
     ss << ec;
     return base::unexpected{ss.str()};
   }
-  auto [iter, newly_inserted] = all_paths.insert(std::move(canonical_path));
+  auto[iter, newly_inserted] = all_paths.insert(std::move(canonical_path));
   return std::pair{&*iter, newly_inserted};
 }
 
@@ -77,8 +77,8 @@ base::expected<PendingModule> ImportModule(
   //
   // TODO detect dependency cycles.
 
-  auto [iter, inserted] = all_modules.try_emplace(canonical_src);
-  auto &[fut, mod]      = iter->second;
+  auto[iter, inserted] = all_modules.try_emplace(canonical_src);
+  auto & [ fut, mod ]  = iter->second;
 
   if (not new_src) { return PendingModule{ASSERT_NOT_NULL(fut)}; }
 
@@ -86,7 +86,7 @@ base::expected<PendingModule> ImportModule(
 
   fut = &pending_module_futures.emplace_back(std::async(
       std::launch::async,
-      [fn, canonical_src, mod(&iter->second.second)]() -> BasicModule * {
+      [ fn, canonical_src, mod(&iter->second.second) ]()->BasicModule * {
         // TODO error messages.
         ASSIGN_OR(return nullptr, frontend::FileSource file_src,
                          frontend::FileSource::Make(*canonical_src));

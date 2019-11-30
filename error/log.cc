@@ -229,7 +229,7 @@ void Log::Dump() {
         diagnostic::Text("Found a cyclic dependency:"), quote));
   }
 
-  for (auto const &[decl, ids] : out_of_order_decls_) {
+  for (auto const & [ decl, ids ] : out_of_order_decls_) {
     diagnostic::SourceQuote quote(src_);
     for (auto const *id : ids) {
       quote.Highlighted(id->span, diagnostic::Style{});
@@ -242,7 +242,7 @@ void Log::Dump() {
         quote));
   }
 
-  for (const auto &[token, ids] : undeclared_ids_) {
+  for (const auto & [ token, ids ] : undeclared_ids_) {
     diagnostic::SourceQuote quote(src_);
     for (auto const *id : ids) {
       quote.Highlighted(id->span, diagnostic::Style{});
@@ -316,7 +316,7 @@ void Log::NoCallMatch(frontend::SourceRange const &range,
                                           std::string> const &failure_reasons) {
   diagnostic::SourceQuote quote(src_);
   std::vector<std::string> reasons = std::move(generic_failure_reasons);
-  for (auto const &[expr, reason] : failure_reasons) {
+  for (auto const & [ expr, reason ] : failure_reasons) {
     quote.Highlighted(expr->span, diagnostic::Style{});
     reasons.push_back(reason);
   }

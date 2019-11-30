@@ -3,8 +3,8 @@
 
 #include <string_view>
 
+#include "base/untyped_buffer.h"
 #include "ir/cmd/util.h"
-#include "ir/cmd_buffer.h"
 #include "ir/reg.h"
 #include "ir/reg_or.h"
 

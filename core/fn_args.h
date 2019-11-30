@@ -65,7 +65,7 @@ struct FnArgs {
     using base::stringify;
     std::string result;
     for (auto &&val : pos_) { absl::StrAppend(&result, stringify(val), ", "); }
-    for (auto &&[key, val] : named_) {
+    for (auto && [ key, val ] : named_) {
       absl::StrAppend(&result, key, ": ", stringify(val), ", ");
     }
     return result;
@@ -74,14 +74,14 @@ struct FnArgs {
   template <typename Fn>
   void Apply(Fn &&fn) const {
     for (auto const &val : pos_) { fn(val); }
-    for (auto const &[key, val] : named_) { fn(val); }
+    for (auto const & [ key, val ] : named_) { fn(val); }
   }
 
   template <typename Fn>
   void ApplyWithIndex(Fn &&fn) const {
     size_t i = 0;
     for (auto const &val : pos_) { fn(i++, val); }
-    for (auto const &[key, val] : named_) { fn(key, val); }
+    for (auto const & [ key, val ] : named_) { fn(key, val); }
   }
 
   template <typename Fn>
@@ -91,7 +91,7 @@ struct FnArgs {
     pos.reserve(pos_.size());
     absl::flat_hash_map<StringType, out_t> named;
     for (auto &&val : pos_) { pos.push_back(fn(val)); }
-    for (auto &&[key, val] : named_) { named.emplace(key, fn(val)); }
+    for (auto && [ key, val ] : named_) { named.emplace(key, fn(val)); }
     return FnArgs<out_t, StringType>(std::move(pos), std::move(named));
   }
 

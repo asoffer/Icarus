@@ -4,6 +4,7 @@
 #include "base/debug.h"
 #include "base/scope.h"
 #include "base/tag.h"
+#include "base/untyped_buffer.h"
 #include "ir/addr.h"
 #include "ir/basic_block.h"
 #include "ir/cmd/basic.h"
@@ -20,7 +21,6 @@
 #include "ir/cmd/store.h"
 #include "ir/cmd/types.h"
 #include "ir/cmd/util.h"
-#include "ir/cmd_buffer.h"
 #include "ir/reg.h"
 #include "type/typed_value.h"
 #include "type/util.h"
@@ -32,10 +32,10 @@ namespace internal {
 struct BlockGroup;
 
 template <typename SizeType, typename T>
-void Serialize(CmdBuffer*, absl::Span<RegOr<T> const>);
+void Serialize(base::untyped_buffer*, absl::Span<RegOr<T> const>);
 
 template <typename CmdType, typename T>
-auto MakeBinaryCmd(RegOr<T>, RegOr<T>, Builder *);
+auto MakeBinaryCmd(RegOr<T>, RegOr<T>, Builder*);
 
 template <typename CmdType, typename T>
 auto MakeUnaryCmd(RegOr<T>, Builder*);
@@ -55,7 +55,7 @@ struct Builder {
   internal::BlockGroup*& CurrentGroup() { return current_.group_; }
   BasicBlock*& CurrentBlock() { return current_.block_; }
 
-  // INSTRUCTIONS
+    // INSTRUCTIONS
 
 #define ICARUS_IR_DEFINE_CMD(name)                                             \
   template <typename Lhs, typename Rhs>                                        \
@@ -112,7 +112,7 @@ struct Builder {
   // Phi instruction. Takes a span of basic blocks and a span of (registers or)
   // values. As a precondition, the number of blocks must be equal to the number
   // of values. This instruction evaluates to the value `values[i]` if the
-  // previous block was `blocks[i]`. 
+  // previous block was `blocks[i]`.
   //
   // In the first overload, the resulting value is assigned to `r`. In the
   // second overload, a register is constructed to represent the value.
@@ -122,7 +122,7 @@ struct Builder {
     ASSERT(blocks.size() == values.size());
 
     auto& buf = CurrentBlock()->cmd_buffer_;
-    buf.append_index<PhiCmd>();
+    buf.append(PhiCmd::index);
     buf.append(PrimitiveIndex<T>());
     buf.append<uint16_t>(values.size());
     for (auto block : blocks) { buf.append(block); }
@@ -207,7 +207,7 @@ struct Builder {
   void Print(T r) {
     auto& buf = CurrentBlock()->cmd_buffer_;
     if constexpr (ir::IsRegOr<T>::value) {
-      buf.append_index<PrintCmd>();
+      buf.append(PrintCmd::index);
       buf.append(PrintCmd::MakeControlBits<typename T::type>(r.is_reg()));
       r.apply([&](auto v) { buf.append(v); });
     } else if constexpr (std::is_same_v<T, char const*>) {
@@ -222,7 +222,7 @@ struct Builder {
                                       std::is_same_v<T, FlagsVal>>* = nullptr>
   void Print(RegOr<T> r, type::Type const* t) {
     auto& buf = CurrentBlock()->cmd_buffer_;
-    buf.append_index<PrintCmd>();
+    buf.append(PrintCmd::index);
     buf.append(PrintCmd::MakeControlBits<T>(r.is_reg()));
     r.apply([&](auto v) { buf.append(v); });
     buf.append(t);
@@ -235,9 +235,8 @@ struct Builder {
   base::Tagged<Addr, Reg> Alloca(type::Type const* t);
   base::Tagged<Addr, Reg> TmpAlloca(type::Type const* t);
 
-
 #if defined(ICARUS_DEBUG)
-  void DebugIr() { CurrentBlock()->cmd_buffer_.append_index<DebugIrCmd>(); }
+  void DebugIr() { CurrentBlock()->cmd_buffer_.append(DebugIrCmd::index); }
 #endif  // ICARUS_DEBUG
 
   // Apply the callable to each temporary in reverse order, and clear the list
@@ -304,7 +303,7 @@ template <typename ToType, typename FromType>
 RegOr<ToType> Cast(RegOr<FromType> r) {
   if (r.is_reg()) {
     auto& blk = *GetBuilder().CurrentBlock();
-    blk.cmd_buffer_.append_index<CastCmd>();
+    blk.cmd_buffer_.append(CastCmd::index);
     blk.cmd_buffer_.append(PrimitiveIndex<ToType>());
     blk.cmd_buffer_.append(PrimitiveIndex<FromType>());
     blk.cmd_buffer_.append(r.reg());
@@ -347,7 +346,7 @@ RegOr<ToType> CastTo(type::Type const* from_type, ir::Results const& r) {
 template <typename T>
 base::Tagged<T, Reg> Load(RegOr<Addr> addr) {
   auto& blk = *GetBuilder().CurrentBlock();
-  blk.cmd_buffer_.append_index<LoadCmd>();
+  blk.cmd_buffer_.append(LoadCmd::index);
   blk.cmd_buffer_.append(LoadCmd::MakeControlBits<T>(addr.is_reg()));
   addr.apply([&](auto v) { blk.cmd_buffer_.append(v); });
   base::Tagged<T, Reg> result = MakeResult<T>();
@@ -373,7 +372,7 @@ Reg MakeReg(T t) {
   static_assert(not std::is_same_v<T, Reg>);
   if constexpr (ir::IsRegOr<T>::value) {
     auto& blk = *GetBuilder().CurrentBlock();
-    blk.cmd_buffer_.append_index<RegisterCmd>();
+    blk.cmd_buffer_.append(RegisterCmd::index);
     blk.cmd_buffer_.append(
         RegisterCmd::MakeControlBits<typename T::type>(t.is_reg()));
     t.apply([&](auto v) { blk.cmd_buffer_.append(v); });
@@ -390,7 +389,7 @@ template <typename T>
 void SetRet(uint16_t n, T val) {
   if constexpr (ir::IsRegOr<T>::value) {
     auto& blk = *GetBuilder().CurrentBlock();
-    blk.cmd_buffer_.append_index<ReturnCmd>();
+    blk.cmd_buffer_.append(ReturnCmd::index);
     blk.cmd_buffer_.append(
         ReturnCmd::MakeControlBits<typename T::type>(val.is_reg(), false));
     blk.cmd_buffer_.append(n);
@@ -450,7 +449,7 @@ template <typename T>
 void Store(T r, RegOr<Addr> addr) {
   if constexpr (IsRegOr<T>::value) {
     auto& blk = *GetBuilder().CurrentBlock();
-    blk.cmd_buffer_.append_index<StoreCmd>();
+    blk.cmd_buffer_.append(StoreCmd::index);
     blk.cmd_buffer_.append(
         StoreCmd::MakeControlBits<typename T::type>(r.is_reg(), addr.is_reg()));
     r.apply([&](auto v) { blk.cmd_buffer_.append(v); });
@@ -482,7 +481,8 @@ Reg Struct(
 
 namespace internal {
 template <typename SizeType, typename T, typename Fn>
-void WriteBits(CmdBuffer* buf, absl::Span<T const> span, Fn&& predicate) {
+void WriteBits(base::untyped_buffer* buf, absl::Span<T const> span,
+               Fn&& predicate) {
   ASSERT(span.size() < std::numeric_limits<SizeType>::max());
   buf->append<SizeType>(span.size());
 
@@ -498,7 +498,7 @@ void WriteBits(CmdBuffer* buf, absl::Span<T const> span, Fn&& predicate) {
 }
 
 template <typename SizeType, typename T>
-void Serialize(CmdBuffer* buf, absl::Span<RegOr<T> const> span) {
+void Serialize(base::untyped_buffer* buf, absl::Span<RegOr<T> const> span) {
   WriteBits<SizeType, RegOr<T>>(buf, span,
                                 [](RegOr<T> const& r) { return r.is_reg(); });
 
@@ -530,7 +530,7 @@ auto MakeBinaryCmd(RegOr<T> lhs, RegOr<T> rhs, Builder* bldr) {
   }
 
   auto& buf = bldr->CurrentBlock()->cmd_buffer_;
-  buf.append_index<CmdType>();
+  buf.append(CmdType::index);
   buf.append(CmdType::template MakeControlBits<T>(lhs.is_reg(), rhs.is_reg()));
 
   lhs.apply([&](auto v) { buf.append(v); });
@@ -552,7 +552,7 @@ auto MakeUnaryCmd(RegOr<T> operand, Builder* bldr) {
     }
   }
 
-  buf.append_index<CmdType>();
+  buf.append(CmdType::index);
   buf.append(CmdType::template MakeControlBits<T>(operand.is_reg()));
 
   operand.apply([&](auto v) { buf.append(v); });
@@ -566,7 +566,7 @@ template <typename CmdType>
 RegOr<typename CmdType::type> MakeVariadicCmd(
     absl::Span<RegOr<typename CmdType::type> const> vals, Builder* bldr) {
   auto& buf = bldr->CurrentBlock()->cmd_buffer_;
-  using T = typename CmdType::type;
+  using T   = typename CmdType::type;
   {
     std::vector<T> vs;
     vs.reserve(vals.size());
@@ -579,7 +579,7 @@ RegOr<typename CmdType::type> MakeVariadicCmd(
     }
   }
 
-  buf.append_index<CmdType>();
+  buf.append(CmdType::index);
   Serialize<uint16_t>(&buf, vals);
 
   Reg result = MakeResult<T>();

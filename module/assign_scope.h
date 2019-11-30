@@ -13,8 +13,7 @@ struct AssignScope : ast::MutableVisitor<void(ast::Scope *scope)> {
     ast::MutableVisitor<void(ast::Scope *)>::Visit(node, scope);
   }
 
-#define ICARUS_AST_NODE_X(name)                                                \
-  void Visit(ast::name *node, ast::Scope *scope);
+#define ICARUS_AST_NODE_X(name) void Visit(ast::name *node, ast::Scope *scope);
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
 

@@ -25,7 +25,6 @@ cc_lib(
         "//ir:addr",
         "//ir:basic_block",
         "//ir:block_def",
-        "//ir:cmd_buffer",
         "//ir:compiled_fn",
         "//ir:reg",
         "//ir:reg_or",

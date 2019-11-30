@@ -7,7 +7,7 @@ cc_lib(
         "//core:bytes",
         "//base:debug",
     ],
-    test_deps = None,
+    test_deps = [],
 )
 
 cc_lib(
@@ -23,7 +23,6 @@ cc_lib(
 cc_lib(
     name = "basic_block",
     deps = [
-        ":cmd_buffer",
         ":out_params",
         "//base:untyped_buffer",
         "//type:type",
@@ -76,7 +75,6 @@ cc_lib(
         ":addr",
         ":basic_block",
         ":block_group",
-        ":cmd_buffer",
         ":reg",
         "//base:debug",
         "//base:scope",
@@ -112,13 +110,6 @@ cc_lib(
         "//ir/cmd:misc",
         "//ir/cmd:return",
     ],
-    test_deps = None,
-)
-
-cc_lib(
-    name = "cmd_buffer",
-    deps = ["//base:untyped_buffer"],
-    header_only = True,
     test_deps = None,
 )
 

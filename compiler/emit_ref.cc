@@ -27,7 +27,8 @@ std::vector<ir::RegOr<ir::Addr>> Compiler::Visit(ast::Access const *node,
 
   ASSERT(t, InheritsFrom<type::Struct>());
   auto *struct_type = &t->as<type::Struct>();
-  return {builder().Field(reg, struct_type, struct_type->index(node->member_name()))
+  return {builder()
+              .Field(reg, struct_type, struct_type->index(node->member_name()))
               .get()};
 }
 
@@ -53,7 +54,8 @@ std::vector<ir::RegOr<ir::Addr>> Compiler::Visit(ast::Index const *node,
   auto *rhs_type = type_of(node->rhs());
 
   if (lhs_type->is<type::Array>()) {
-    auto index = ir::CastTo<int64_t>(rhs_type, Visit(node->rhs(), EmitValueTag{}));
+    auto index =
+        ir::CastTo<int64_t>(rhs_type, Visit(node->rhs(), EmitValueTag{}));
 
     auto lval = Visit(node->lhs(), EmitRefTag{})[0];
     if (not lval.is_reg()) { NOT_YET(this, type_of(node)); }

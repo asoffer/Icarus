@@ -1603,7 +1603,6 @@ ir::Results Compiler::Visit(ast::StructType const *node, EmitValueTag) {
 }
 
 ir::Results Compiler::Visit(ast::Switch const *node, EmitValueTag) {
-
   auto *land_block = builder().AddBlock();
   auto *t          = type_of(node);
   // TODO this is not precisely accurate if you have regular void.
@@ -1682,7 +1681,7 @@ ir::Results Compiler::Visit(ast::Switch const *node, EmitValueTag) {
       }
       return ir::Results{builder().Phi<T>(blocks, vals)};
     });
-    DEBUG_LOG("switch")(builder().CurrentBlock()->cmd_buffer_.DebugString());
+    DEBUG_LOG("switch")(builder().CurrentBlock()->cmd_buffer_.to_string());
     return r;
   }
 }

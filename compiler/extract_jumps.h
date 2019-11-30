@@ -7,7 +7,7 @@
 #include "ast/visitor.h"
 #include "base/debug.h"
 
-namespace compiler{
+namespace compiler {
 
 struct ExtractJumps : ast::Visitor<void()> {
   void Visit(ast::Node const *node) { ast::Visitor<void()>::Visit(node); }

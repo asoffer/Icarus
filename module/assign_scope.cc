@@ -97,7 +97,9 @@ void AssignScope::Visit(ast::FunctionLiteral *node, ast::Scope *scope) {
   node->scope_ = scope;
   node->set_body_with_parent(scope, node);
 
-  for (auto &param : node->params()) { Visit(param.value.get(), node->body_scope()); }
+  for (auto &param : node->params()) {
+    Visit(param.value.get(), node->body_scope());
+  }
   if (auto outputs = node->outputs()) {
     for (auto *out : *outputs) { Visit(out, node->body_scope()); }
   }
@@ -120,7 +122,7 @@ void AssignScope::Visit(ast::FunctionLiteral *node, ast::Scope *scope) {
   }
 
   node->param_dep_graph_ = std::move(dep_decls.decl_graph_.graph_);
-  for (auto &[id, decls] : dep_decls.decl_graph_.ids_) {
+  for (auto & [ id, decls ] : dep_decls.decl_graph_.ids_) {
     auto iter = decls_by_id.find(id);
     if (iter == decls_by_id.end()) { continue; }
     for (auto *d : decls) { node->param_dep_graph_.add_edge(d, iter->second); }
@@ -162,7 +164,9 @@ void AssignScope::Visit(ast::Goto *node, ast::Scope *scope) {
 void AssignScope::Visit(ast::Jump *node, ast::Scope *scope) {
   node->scope_ = scope;
   node->set_body_with_parent(scope);
-  for (auto &param : node->params()) { Visit(param.value.get(), node->body_scope()); }
+  for (auto &param : node->params()) {
+    Visit(param.value.get(), node->body_scope());
+  }
   SetAllScopes(this, node->stmts(), node->body_scope());
 }
 
@@ -209,7 +213,7 @@ void AssignScope::Visit(ast::StructType *node, ast::Scope *scope) {
 void AssignScope::Visit(ast::Switch *node, ast::Scope *scope) {
   node->scope_ = scope;
   if (node->expr_) { Visit(node->expr_.get(), scope); }
-  for (auto &[body, cond] : node->cases_) {
+  for (auto & [ body, cond ] : node->cases_) {
     Visit(body.get(), scope);
     Visit(cond.get(), scope);
   }

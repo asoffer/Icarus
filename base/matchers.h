@@ -14,8 +14,8 @@ namespace matcher {
 // A reference to a constant expression along with it's macro-stringification.
 template <typename T>
 struct Expression {
-  T const& value() const& { return value_; }
-  char const* string() const& { return string_; }
+  T const& value() const & { return value_; }
+  char const* string() const & { return string_; }
 
   Expression(char const* s, T const& value) : string_(s), value_(value) {}
 
@@ -34,7 +34,7 @@ MatchResult(Expression<T>, std::optional<std::string>)->MatchResult<T>;
 
 template <typename T>
 struct Matcher {
-  MatchResult<T> match_and_describe(Expression<T> const& input) const& {
+  MatchResult<T> match_and_describe(Expression<T> const& input) const & {
     if (match(input.value())) { return MatchResult<T>{input, std::nullopt}; }
     return MatchResult<T>{input, describe(true)};
   }
@@ -46,7 +46,7 @@ struct Matcher {
 template <typename CrtpDerived>
 struct UntypedMatcher {
   template <typename T>
-  MatchResult<T> match_and_describe(Expression<T> const& input) const& {
+  MatchResult<T> match_and_describe(Expression<T> const& input) const & {
     return typename CrtpDerived::template Matcher<T>(
                *static_cast<CrtpDerived const*>(this))
         .match_and_describe(input);

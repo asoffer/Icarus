@@ -13,4 +13,4 @@ struct LibraryModule : CompiledModule {
 
 }  // namespace compiler
 
-#endif // ICARUS_COMPILER_LIBRARY_MODULE_H
+#endif  // ICARUS_COMPILER_LIBRARY_MODULE_H

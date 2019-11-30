@@ -21,7 +21,6 @@ TEST_CASE("Converts on equality") {
   CHECK(ref == n);
 }
 
-
 TEST_CASE("Converts both on equality") {
   int a = 3, b = 3;
   auto a_ref = unaligned_ref<int>(a);
@@ -36,8 +35,7 @@ TEST_CASE("Converts both on equality") {
 TEST_CASE("Allows unaligned") {
   // Construct a buffer aligned appropriately but leave an extra byte at the end
   // so we can guarantee bad alignment for the purposes of this test.
-  alignas(alignof(int)) char data[sizeof(int) + 1] = {}; 
-
+  alignas(alignof(int)) char data[sizeof(int) + 1] = {};
 
   int num = 0x12345678;
   std::memcpy(&data[1], &num, sizeof(int));

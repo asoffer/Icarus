@@ -212,7 +212,7 @@ template <typename Tag, typename UnderlyingType, typename CrtpTags,
                                                       CrtpTags>>* = nullptr>
 constexpr bool operator!=(Strong<Tag, UnderlyingType, CrtpTags> lhs,
                           Strong<Tag, UnderlyingType, CrtpTags> rhs) {
-  return not (lhs == rhs);
+  return not(lhs == rhs);
 }
 
 }  // namespace internal

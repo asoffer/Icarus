@@ -100,8 +100,7 @@ void DependentDecls::Visit(ast::Goto const *node, ast::Declaration const *d) {
   }
 }
 
-void DependentDecls::Visit(ast::Jump const *node,
-                           ast::Declaration const *d) {
+void DependentDecls::Visit(ast::Jump const *node, ast::Declaration const *d) {
   for (auto const &param : node->params()) { Visit(param.value.get(), d); }
   for (auto const *stmt : node->stmts()) { Visit(stmt, d); }
 }
@@ -146,7 +145,7 @@ void DependentDecls::Visit(ast::StructType const *node,
 
 void DependentDecls::Visit(ast::Switch const *node, ast::Declaration const *d) {
   if (node->expr_) { Visit(node->expr_.get(), d); }
-  for (auto &[body, cond] : node->cases_) {
+  for (auto & [ body, cond ] : node->cases_) {
     Visit(body.get(), d);
     Visit(cond.get(), d);
   }

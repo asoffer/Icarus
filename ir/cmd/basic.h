@@ -4,8 +4,8 @@
 #include <functional>
 #include <optional>
 
+#include "base/untyped_buffer.h"
 #include "ir/cmd/util.h"
-#include "ir/cmd_buffer.h"
 #include "ir/reg.h"
 #include "type/util.h"
 

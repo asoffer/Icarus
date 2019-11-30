@@ -19,7 +19,7 @@ TEST_CASE("Var") {
   SECTION("one") {
     CHECK(Var({Int64}) != Void());
     CHECK(Var({Int64}) == Var({Int64}));
-    CHECK(Var({Int64}) ==  Int64);
+    CHECK(Var({Int64}) == Int64);
     // Second time because of caching.
     CHECK(Var({Int64}) == Int64);
     CHECK(Var({Int64, Int64}) == Int64);
@@ -58,4 +58,3 @@ TEST_CASE("contains") {
 
 }  // namespace
 }  // namespace type
-

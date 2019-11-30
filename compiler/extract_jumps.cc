@@ -132,7 +132,7 @@ void ExtractJumps::Visit(ast::StructType const *node) {
 
 void ExtractJumps::Visit(ast::Switch const *node) {
   if (node->expr_) { Visit(node->expr_.get()); }
-  for (auto &[body, cond] : node->cases_) {
+  for (auto & [ body, cond ] : node->cases_) {
     Visit(body.get());
     Visit(cond.get());
   }

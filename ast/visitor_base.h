@@ -10,9 +10,7 @@ namespace ast {
 struct VisitorBase {
   virtual ~VisitorBase() {}
 
-  virtual void ErasedVisit(Node const*, void *, void *) {
-    UNREACHABLE();
-  }
+  virtual void ErasedVisit(Node const *, void *, void *) { UNREACHABLE(); }
 
 #define ICARUS_AST_NODE_X(node_type)                                           \
   virtual void ErasedVisit(node_type const *, void *, void *) = 0;

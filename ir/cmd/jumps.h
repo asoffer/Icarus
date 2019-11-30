@@ -5,8 +5,8 @@
 #include "absl/strings/str_join.h"
 #include "absl/types/span.h"
 #include "base/debug.h"
+#include "base/untyped_buffer.h"
 #include "ir/cmd/util.h"
-#include "ir/cmd_buffer.h"
 #include "ir/reg.h"
 #include "ir/reg_or.h"
 
@@ -22,7 +22,7 @@ struct JumpCmd {
     switch (iter->read<Kind>()) {
       case Kind::kRet: return "ret";
       case Kind::kUncond: s = stringify(iter->read<BasicBlock const*>()); break;
-      case Kind::kCond:{
+      case Kind::kCond: {
         auto reg         = iter->read<Reg>();
         auto false_block = iter->read<BasicBlock const*>();
         auto true_block  = iter->read<BasicBlock const*>();

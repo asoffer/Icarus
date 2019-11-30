@@ -59,8 +59,8 @@ std::vector<core::FnArgs<type::Type const *>> ExpandedFnArgs(
 std::pair<ir::Results, ir::OutParams> SetReturns(
     TableImpl::ExprData const &expr_data,
     absl::Span<type::Type const *> final_out_types) {
-  auto const &[type, params] = expr_data;
-  auto const &ret_types      = type->as<type::Function>().output;
+  auto const & [ type, params ] = expr_data;
+  auto const &ret_types         = type->as<type::Function>().output;
   ir::Results results;
   ir::OutParams out_params;
   for (type::Type const *ret_type : ret_types) {
@@ -79,7 +79,7 @@ ir::Results EmitCallOneOverload(
     Compiler *compiler, ast::Expression const *fn,
     TableImpl::ExprData const &data,
     core::FnArgs<type::Typed<ir::Results>> const &args) {
-  auto const &[type, params] = data;
+  auto const & [ type, params ] = data;
   std::vector<ir::Results> arg_results;
   // TODO prep args (if it's a variant, e.g.)
   for (auto arg : args.pos()) { arg_results.push_back(arg.get()); }
@@ -92,7 +92,7 @@ ir::Results EmitCallOneOverload(
           ASSERT_NOT_NULL(param.value.get()->init_val()), EmitValueTag{})});
     }
   }
-  auto [out_results, out_params] = SetReturns(data, {});
+  auto[out_results, out_params] = SetReturns(data, {});
   compiler->builder().Call(
       compiler->Visit(fn, EmitValueTag{}).get<ir::AnyFunc>(0),
       &compiler->type_of(fn)->as<type::Function>(), arg_results, out_params);
@@ -154,8 +154,8 @@ namespace compiler {
 type::Type const *FnCallDispatchTable::ComputeResultType(
     internal::TableImpl const &impl) {
   std::vector<std::vector<type::Type const *>> results;
-  for (auto const &[overload, expr_data] : impl.table_) {
-    auto const &[type, fn_params] = expr_data;
+  for (auto const & [ overload, expr_data ] : impl.table_) {
+    auto const & [ type, fn_params ] = expr_data;
     DEBUG_LOG("dispatch-verify")
     ("Extracting return type for ", overload->DebugString(), " of type ",
      type->to_string());
@@ -176,7 +176,7 @@ ir::Results FnCallDispatchTable::EmitCall(
     Compiler *compiler,
     core::FnArgs<type::Typed<ir::Results>> const &args) const {
   if (impl_.table_.size() == 1) {
-    auto const &[overload, expr_data] = *impl_.table_.begin();
+    auto const & [ overload, expr_data ] = *impl_.table_.begin();
     return internal::EmitCallOneOverload(compiler, overload, expr_data, args);
   } else {
     NOT_YET();
