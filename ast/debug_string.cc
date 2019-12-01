@@ -154,10 +154,10 @@ void Jump::DebugStrAppend(std::string *out, size_t indent) const {
                                 [&](std::string *out, auto const &p) {
                                   p.value->DebugStrAppend(out, indent);
                                 }),
-                  ")");
+                  ") {");
 
   for (auto *stmt : stmts()) {
-    absl::StrAppend(out, "\n", indentation(indent));
+    absl::StrAppend(out, "\n", indentation(indent + 1));
     stmt->DebugStrAppend(out, indent + 1);
   }
   absl::StrAppend(out, "\n", indentation(indent), "}\n");

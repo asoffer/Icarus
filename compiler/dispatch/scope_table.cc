@@ -13,6 +13,8 @@
 
 namespace compiler::internal {
 
+// TODO this is independent of scope literals and therefore should be moved back
+// into verify_type.cc.
 std::vector<core::FnArgs<VerifyResult>> VerifyBlockNode(
     Compiler *compiler, ast::BlockNode const *node) {
   compiler->Visit(node, VerifyTypeTag{});
@@ -47,6 +49,27 @@ std::vector<core::FnArgs<VerifyResult>> VerifyBlockNode(
   return result;
 }
 
+ir::Results EmitCallOneOverload(
+    Compiler *compiler, ir::Jump const *jump,
+    core::FnArgs<type::Typed<ir::Results>> const &args) {
+  std::vector<ir::Results> arg_results;
+  // TODO prep args (if it's a variant, e.g.)
+  auto const &params = jump->params();
+  for (auto arg : args.pos()) { arg_results.push_back(arg.get()); }
+  for (size_t i = args.pos().size(); i < params.size(); ++i) {
+    auto const &param = params.at(i);
+    if (auto *arg = args.at_or_null(param.name)) {
+      arg_results.push_back(arg->get());
+    } else {
+      arg_results.push_back(ir::Results{compiler->Visit(
+          ASSERT_NOT_NULL(param.value.get()->init_val()), EmitValueTag{})});
+    }
+  }
+
+  NOT_YET();
+  return ir::Results{};
+}
+
 }  // namespace compiler::internal
 
 namespace compiler {
@@ -59,7 +82,8 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
                       absl::flat_hash_map<ir::Jump const *, FailedMatch>>
       failures;
   ScopeDispatchTable table;
-  for (auto[jump, scope] : inits) {
+  table.init_map_ = std::move(inits);
+  for (auto[jump, scope] : table.init_map_) {
     auto result = MatchArgsToParams(jump->params(), args);
     if (not result) {
       failures[scope].emplace(jump, result.error());
@@ -120,6 +144,19 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
   }
 
   return table;
+}
+
+ir::Results ScopeDispatchTable::EmitCall(
+    Compiler *compiler,
+    core::FnArgs<type::Typed<ir::Results>> const &args) const {
+  // TODO dispatch test.
+  if (init_map_.size() == 1) {
+    auto const & [ jump, scope_def ] = *init_map_.begin();
+    return internal::EmitCallOneOverload(compiler, jump, args);
+  } else {
+    NOT_YET();
+  }
+  return ir::Results{};
 }
 
 }  // namespace compiler

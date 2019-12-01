@@ -1765,44 +1765,10 @@ VerifyResult Compiler::Visit(ast::ScopeNode const *node, VerifyTypeTag) {
   ASSIGN_OR(return VerifyResult::Error(),  //
                    auto table,
                    ScopeDispatchTable::Verify(this, node, inits, arg_results));
-  static_cast<void>(table);
+  data_.set_scope_dispatch_table(node, std::move(table));
   // TODO might be constant? Actually handle yields correctly.
   auto result = VerifyResult::NonConstant(type::Void());
   return set_result(node, result);
-
-  /*
-
-
-  bool err = false;
-  std::vector<ir::BlockDef const *> block_defs;
-  for (auto const &block : node->blocks()) {
-    DEBUG_LOG("ScopeNode")("Verifying dispatch for block `", block.name(), "`");
-    auto block_results = VerifyBlockNode(this, &block);
-    auto *block_def    = scope_def->blocks_.at(block.name());
-    DEBUG_LOG("ScopeNode")("    ", block_results);
-    if (block_results.empty()) {
-      DEBUG_LOG("ScopeNode")("    ... empty block results");
-      auto result = ast::VerifyJumpDispatch(this, node, block_def->after_, {},
-                                            &block_defs);
-      static_cast<void>(result);
-      DEBUG_LOG("ScopeNode")("    ... dispatch result = ", result);
-    } else {
-      for (auto const &fn_args : block_results) {
-        auto result = ast::VerifyJumpDispatch(this, node, block_def->after_,
-                                              fn_args, &block_defs);
-        static_cast<void>(result);
-        DEBUG_LOG("ScopeNode")("    ... dispatch result = ", result);
-      }
-    }
-    DEBUG_LOG("ScopeNode")("    ... done.");
-  }
-  auto init_result = ast::VerifyJumpDispatch(this, node, scope_def->inits_,
-                                             arg_results, &block_defs);
-  static_cast<void>(init_result);
-  DEBUG_LOG("ScopeNode")("    ... init_result = ", init_result);
-  DEBUG_LOG("ScopeNode")("    ... block_defs = ", block_defs);
-  return VerifyResult::Constant(type::Void());
-  */
 }
 
 VerifyResult Compiler::Visit(ast::StructLiteral const *node, VerifyTypeTag) {

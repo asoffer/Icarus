@@ -37,6 +37,8 @@ struct CompilationData {
   module::BasicModule *mod_;
   ir::Builder &bldr_;
 
+  // TODO rename to be more specific to the kind of dispatch table (in this
+  // case, fn_call).
   void set_dispatch_table(ast::Expression const *expr,
                           FnCallDispatchTable &&table) {
     ICARUS_DEBUG_ONLY(auto[iter, success] =)
@@ -47,6 +49,22 @@ struct CompilationData {
   FnCallDispatchTable const *dispatch_table(ast::Expression const *expr) const {
     if (auto iter = fn_call_dispatch_tables_.find(expr);
         iter != fn_call_dispatch_tables_.end()) {
+      return &iter->second;
+    }
+    return nullptr;
+  }
+
+  void set_scope_dispatch_table(ast::Expression const *expr,
+                                ScopeDispatchTable &&table) {
+    ICARUS_DEBUG_ONLY(auto[iter, success] =)
+    scope_dispatch_tables_.emplace(expr, std::move(table));
+    ASSERT(success == true);
+  }
+
+  ScopeDispatchTable const *scope_dispatch_table(
+      ast::Expression const *expr) const {
+    if (auto iter = scope_dispatch_tables_.find(expr);
+        iter != scope_dispatch_tables_.end()) {
       return &iter->second;
     }
     return nullptr;
@@ -125,6 +143,8 @@ struct CompilationData {
 
   absl::flat_hash_map<ast::Expression const *, FnCallDispatchTable>
       fn_call_dispatch_tables_;
+  absl::flat_hash_map<ast::Expression const *, ScopeDispatchTable>
+      scope_dispatch_tables_;
 
   error::Log error_log_;
 

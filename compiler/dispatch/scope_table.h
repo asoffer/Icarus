@@ -18,32 +18,30 @@
 namespace compiler {
 struct Compiler;  // TODO move into it's own header.
 
+namespace internal {
+
+struct OneTable {
+  absl::flat_hash_map<ir::Jump const *,
+                      core::FnParams<type::Typed<ast::Declaration const *>>>
+      inits;
+  absl::flat_hash_map<ast::BlockNode const *, JumpDispatchTable> blocks;
+};
+
+}  // namespace internal
+
 struct ScopeDispatchTable {
   static base::expected<ScopeDispatchTable> Verify(
       Compiler *compiler, ast::ScopeNode const *node,
       absl::flat_hash_map<ir::Jump const *, ir::ScopeDef const *> inits,
       core::FnArgs<VerifyResult> const &args);
 
+  ir::Results EmitCall(
+      Compiler *compiler,
+      core::FnArgs<type::Typed<ir::Results>> const &args) const;
+
  private:
-  struct OneTable {
-    absl::flat_hash_map<ir::Jump const *,
-                        core::FnParams<type::Typed<ast::Declaration const *>>>
-        inits;
-    absl::flat_hash_map<ast::BlockNode const *, JumpDispatchTable> blocks;
-  };
-
-  absl::flat_hash_map<ir::ScopeDef const *, OneTable> tables_;
-
-  /*
-      absl::flat_hash_map<ir::Jump const *, core::FnParams<type::Typed<
-                                                ast::Declaration const *>>>>
-      init_table_;
-
-  absl::flat_hash_map<
-      ir::ScopeDef const *,
-      absl::flat_hash_map<ast::BlockNode const *, JumpDispatchTable>>
-      block_tables_;
-      */
+  absl::flat_hash_map<ir::Jump const*, ir::ScopeDef const *> init_map_;
+  absl::flat_hash_map<ir::ScopeDef const *, internal::OneTable> tables_;
 };
 
 }  // namespace compiler

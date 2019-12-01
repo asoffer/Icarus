@@ -1444,108 +1444,17 @@ ir::Results InitializeAndEmitBlockNode(Compiler *compiler,
   return compiler->Visit(block_node, EmitValueTag{});
 }
 
-// Represents the data extracted from a scope literal ready for application
-// locally to a scope node.
-struct LocalScopeInterpretation {
-  explicit LocalScopeInterpretation(
-      ir::Builder &bldr,
-      absl::flat_hash_map<std::string_view, ir::BlockDef *> const &block_defs,
-      ast::ScopeNode const *node)
-      : node_(node) {
-    for (auto const & [ name, block ] : block_defs) {
-      blocks_.emplace(std::piecewise_construct, std::forward_as_tuple(name),
-                      std::forward_as_tuple(block, nullptr));
-    }
-
-    block_ptrs_.emplace(ir::BlockDef::Start(), bldr.AddBlock());
-    block_ptrs_.emplace(ir::BlockDef::Exit(), bldr.AddBlock());
-
-    for (auto const &block_node : node->blocks()) {
-      auto &block        = blocks_.at(block_node.name());
-      std::get<1>(block) = &block_node;
-      block_ptrs_.emplace(std::get<0>(block), bldr.AddBlock());
-    }
-  }
-
-  ir::BasicBlock *init_block() const {
-    return block_ptrs_.at(ir::BlockDef::Start());
-  }
-  ir::BasicBlock *land_block() const {
-    return block_ptrs_.at(ir::BlockDef::Exit());
-  }
-
-  ast::ScopeNode const *node_;
-  absl::flat_hash_map<std::string_view,
-                      std::tuple<ir::BlockDef const *, ast::BlockNode const *>>
-      blocks_;
-  absl::flat_hash_map<ir::BlockDef const *, ir::BasicBlock *> block_ptrs_;
-};
-
 ir::Results Compiler::Visit(ast::ScopeNode const *node, EmitValueTag) {
   DEBUG_LOG("ScopeNode")("Emitting IR for ScopeNode");
 
-  DEBUG_LOG("ScopeNode")("scope_def ... evaluating.");
-  auto *scope_def =
-      backend::EvaluateAs<ir::ScopeDef *>(MakeThunk(node->name(), type::Scope));
-  DEBUG_LOG("ScopeNode")("          ... completing work.");
-  if (scope_def->work_item) { std::move (*scope_def->work_item)(); }
-  DEBUG_LOG("ScopeNode")("          ... done.");
+  auto const &scope_dispatch_table =
+      *ASSERT_NOT_NULL(data_.scope_dispatch_table(node));
 
-  DEBUG_LOG("ScopeNode")("Constructing interpretation");
-  LocalScopeInterpretation interp(builder(), scope_def->blocks_, node);
-  DEBUG_LOG("ScopeNode")("          ... done");
+  auto args = node->args().Transform([this](ast::Expression const *expr) {
+    return type::Typed(Visit(expr, EmitValueTag{}), type_of(expr));
+  });
 
-  builder().UncondJump(interp.init_block());
-  builder().CurrentBlock() = interp.init_block();
-
-  DEBUG_LOG("ScopeNode")("Inlining entry handler at ", ast::ExprPtr{node});
-  ASSERT_NOT_NULL(jump_table(node, nullptr))
-      ->EmitInlineCall(
-          this, node->args().Transform([this](ast::Expression const *expr) {
-            return std::pair(expr, Visit(expr, EmitValueTag{}));
-          }),
-          interp.block_ptrs_);
-
-  DEBUG_LOG("ScopeNode")("Emit each block:");
-  for (auto[block_name, block_and_node] : interp.blocks_) {
-    if (block_name == "init" or block_name == "done") { continue; }
-    DEBUG_LOG("ScopeNode")("... ", block_name);
-    auto & [ block, block_node ] = block_and_node;
-    auto iter                    = interp.block_ptrs_.find(block);
-    if (iter == interp.block_ptrs_.end()) { continue; }
-    builder().CurrentBlock() = iter->second;
-    auto results =
-        ASSERT_NOT_NULL(jump_table(ast::ExprPtr{block_node, 0x01}, nullptr))
-            ->EmitInlineCall(this, {}, interp.block_ptrs_);
-    InitializeAndEmitBlockNode(this, results, block_node);
-  }
-
-  // builder().CurrentBlock() = interp.land_block();
-  //
-  //   // TODO currently the block you end up on here is where EmitInlineCall
-  //   thinks
-  //   // you should end up, but that's not necessarily well-defined for
-  //   things that
-  //   // end up jumping to more than one possible location.
-  //
-  //   DEBUG_LOG("ScopeNode")("Inlining exit handler");
-  //   {
-  //     auto *mod       = const_cast<module::BasicModule
-  //     *>(scope_def->module()); bool swap_bc    = module() != mod;
-  //     module::BasicModule *old_mod = std::exchange(module(), mod);
-  //     if (swap_bc) { data_.constants_ = &module()->dep_data_.front(); }
-  //     base::defer d([&] {
-  //       module() = old_mod;
-  //       if (swap_bc) { data_.constants_ = &module()->dep_data_.front(); }
-  //     });
-  //   }
-  //   auto result =
-  //       ASSERT_NOT_NULL(dispatch_table(node))->EmitInlineCall({},
-  //       {}, ctx);
-  //
-  //   DEBUG_LOG("ScopeNode")("Done emitting IR for ScopeNode");
-  //   return result;
-  return ir::Results{};
+  return scope_dispatch_table.EmitCall(this, args);
 }
 
 ir::Results Compiler::Visit(ast::StructLiteral const *node, EmitValueTag) {
