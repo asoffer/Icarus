@@ -1,7 +1,7 @@
 #include "compiler/dispatch/match.h"
 
 #include "ast/ast.h"
-#include "compiler/dispatch/extract_params.h"
+#include "compiler/dispatch/parameters_and_arguments.h"
 #include "test/catch.h"
 #include "test/module.h"
 #include "test/util.h"

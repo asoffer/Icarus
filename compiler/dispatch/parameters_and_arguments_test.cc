@@ -1,4 +1,4 @@
-#include "compiler/dispatch/extract_params.h"
+#include "compiler/dispatch/parameters_and_arguments.h"
 
 #include "ast/ast.h"
 #include "test/catch.h"

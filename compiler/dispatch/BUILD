@@ -2,9 +2,11 @@ package(default_visibility = ["//visibility:public"]) # TODO compiler:__subpacka
 load("//:defs.bzl", "cc_lib")
 
 cc_library(
-    name = "table_header",
-    hdrs = ["table.h"],
+    name = "scope_table_header",
+    hdrs = ["scope_table.h"],
     deps = [
+        ":overload",
+        ":fn_call_table_header",
         ":match",
         "//ast:expression",
         "//ast:overload_set",
@@ -18,11 +20,11 @@ cc_library(
 )
 
 cc_library(
-    name = "table",
-    srcs = ["table.cc"],
+    name = "scope_table",
+    srcs = ["scope_table.cc"],
     deps = [
-        ":table_header",
-        ":extract_params",
+        ":scope_table_header",
+        ":parameters_and_arguments",
         ":match",
         "//base:debug",
         "//compiler:compiler_header",
@@ -35,13 +37,61 @@ cc_library(
     ],
 )
 
-cc_lib(
-    name = "extract_params",
+cc_library(
+    name = "fn_call_table_header",
+    hdrs = ["fn_call_table.h"],
     deps = [
-        "//ast:ast_fwd",
+        ":overload",
+        "//ast:overload_set",
+        "//base:expected",
+        "//compiler:verify_result",
+        "//core:fn_args",
+        "//core:fn_params",
+        "//ir:results",
+        "//type:type",
+        "//type:typed_value",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
+
+cc_library(
+    name = "fn_call_table",
+    srcs = ["fn_call_table.cc"],
+    deps = [
+        ":fn_call_table_header",
+        ":match",
+        ":parameters_and_arguments",
+        "//base:debug",
+        "//compiler:compiler_header",
+        "//compiler:extract_jumps",
+        "//compiler:verify_result",
+        "//ir:builder",
+        "//ir:results",
+        "//type",
+        "//type:cast",
+        "//type:typed_value",
+        "//type:variant",
+    ],
+)
+
+cc_library(
+    name = "overload",
+    hdrs = ["overload.h"],
+    deps = [
+        "//ast:ast",
+        "//type:type",
+        "//type:typed_value",
+        "//core:fn_params",
+    ]
+)
+
+cc_lib(
+    name = "parameters_and_arguments",
+    deps = [
         "//ast:ast",
         "//backend:eval",
         "//compiler:compiler_header",
+        "//type:cast",
         "//type:type",
         "//type:function",
     ],
@@ -67,7 +117,7 @@ cc_lib(
         "//type:typed_value",
     ],
     test_deps = [
-        ":extract_params",
+        ":parameters_and_arguments",
         "//compiler:compiler",
         "//test:module",
         "//type:variant",

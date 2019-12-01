@@ -1,4 +1,4 @@
-#include "compiler/dispatch/extract_params.h"
+#include "compiler/dispatch/parameters_and_arguments.h"
 
 #include "ast/ast.h"
 #include "backend/eval.h"
@@ -35,7 +35,52 @@ core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
                                                  compiler->type_of(expr.get()));
   });
 }
+
+template <typename IndexT>
+void AddType(IndexT &&index, type::Type const *t,
+             std::vector<core::FnArgs<type::Type const *>> *args) {
+  if (auto *vt = t->if_as<type::Variant>()) {
+    std::vector<core::FnArgs<type::Type const *>> new_args;
+    for (auto *v : vt->variants_) {
+      for (auto fnargs : *args) {
+        if constexpr (std::is_same_v<std::decay_t<IndexT>, size_t>) {
+          fnargs.pos_emplace(v);
+        } else {
+          fnargs.named_emplace(index, v);
+        }
+        new_args.push_back(std::move(fnargs));
+      }
+    }
+    *args = std::move(new_args);
+  } else {
+    std::for_each(
+        args->begin(), args->end(),
+        [&](core::FnArgs<type::Type const *> &fnargs) {
+          if constexpr (std::is_same_v<std::decay_t<IndexT>, size_t>) {
+            fnargs.pos_emplace(t);
+          } else {
+            fnargs.named_emplace(index, t);
+          }
+        });
+  }
+}
+
 }  // namespace
+
+// TODO: Ideally we wouldn't create these all at once but rather iterate through
+// the possibilities. Doing this the right way involves having sum and product
+// iterators.
+std::vector<core::FnArgs<type::Type const *>> ExpandedFnArgs(
+    core::FnArgs<VerifyResult> const &fnargs) {
+  std::vector<core::FnArgs<type::Type const *>> all_expanded_options(1);
+  fnargs.ApplyWithIndex([&](auto &&index, compiler::VerifyResult r) {
+    // TODO also maybe need the expression this came from to see if it needs
+    // to be expanded.
+    AddType(index, r.type(), &all_expanded_options);
+  });
+
+  return all_expanded_options;
+}
 
 core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
     Compiler *compiler, ast::Expression const *expr) {
