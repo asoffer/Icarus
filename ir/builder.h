@@ -1,6 +1,8 @@
 #ifndef ICARUS_IR_BUILDER_H
 #define ICARUS_IR_BUILDER_H
 
+#include <vector>
+
 #include "base/debug.h"
 #include "base/scope.h"
 #include "base/tag.h"
@@ -355,6 +357,8 @@ base::Tagged<T, Reg> Load(RegOr<Addr> addr) {
 }
 
 inline Reg Load(RegOr<Addr> r, type::Type const* t) {
+  using base::stringify;
+  DEBUG_LOG("Load")("Calling Load(", stringify(r), ", ", t->to_string(), ")");
   if (t->is<type::Function>()) { return Load<AnyFunc>(r); }
   return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
                           uint16_t, uint32_t, uint64_t, float, double,

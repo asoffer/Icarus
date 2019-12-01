@@ -2,12 +2,6 @@
 
 namespace type {
 
-bool Type::is_big() const {
-  // TODO implement with virtual functions
-  return false;
-  // return is<Array>() or is<Struct>() or is<Variant>() or is<Tuple>();
-}
-
 Type const *Prim(BasicType b) {
   switch (b) {
 #define PRIMITIVE_MACRO(EnumName, name)                                        \

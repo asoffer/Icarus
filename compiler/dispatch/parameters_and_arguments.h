@@ -6,6 +6,7 @@
 #include "compiler/compiler.h"
 #include "compiler/dispatch/overload.h"
 #include "core/fn_params.h"
+#include "ir/results.h"
 #include "type/cast.h"
 #include "type/type.h"
 #include "type/typed_value.h"
@@ -47,6 +48,9 @@ bool ParamsCoverArgs(
 
 core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
     Compiler *compiler, ast::Expression const *expr);
+
+ir::Results PrepareArg(ir::Builder &bldr, type::Typed<ir::Results> const &arg,
+                       type::Type const *param_type);
 
 }  // namespace compiler
 

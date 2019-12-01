@@ -29,7 +29,7 @@ struct StoreCmd {
 
   static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
     using base::stringify;
-    std::string s = "store ";
+    std::string s;
     auto ctrl     = iter->read<control_bits>();
     if (ctrl.reg) {
       s.append(stringify(iter->read<Reg>()));

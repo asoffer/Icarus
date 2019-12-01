@@ -82,14 +82,15 @@ std::string AccessCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
 std::string VariantAccessCmd::DebugString(
     base::untyped_buffer::const_iterator *iter) {
   bool get_val = iter->read<bool>();
+  DEBUG_LOG("VariantAccessCmd")("get_val = ", get_val);
   bool is_reg  = iter->read<bool>();
+  DEBUG_LOG("VariantAccessCmd")("is_reg = ", is_reg);
   auto addr =
       is_reg ? RegOr<Addr>(iter->read<Reg>()) : RegOr<Addr>(iter->read<Addr>());
+  DEBUG_LOG("VariantAccessCmd")("addr = ", stringify(addr));
   if (get_val) {
-    auto const *variant = iter->read<type::Variant const *>();
-    Reg reg             = iter->read<Reg>();
-    return absl::StrCat(stringify(reg), "variant-value ", variant->to_string(),
-                        " ", stringify(addr));
+    Reg reg = iter->read<Reg>();
+    return absl::StrCat(stringify(reg), " = variant-value ", stringify(addr));
   } else {
     Reg reg = iter->read<Reg>();
     return absl::StrCat(stringify(reg), " = variant-type ", stringify(addr));

@@ -82,7 +82,7 @@ inline uint8_t PrimitiveIndex(type::Type const* t) {
   if (t->is<type::Enum>()) { return 0x0e; }
   if (t->is<type::Flags>()) { return 0x0f; }
   if (t->is<type::Function>()) { return 0x10; }
-  UNREACHABLE();
+  UNREACHABLE(t->to_string());
 }
 
 template <typename Fn>

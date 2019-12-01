@@ -72,7 +72,8 @@ struct Type : public base::Cast<Type> {
 
   // TODO length-0 arrays and length-1 arrays of small types should be
   // considered small too. Similarly with simple variants and tuples.
-  bool is_big() const;
+  // // TODO make this pure virtual
+  virtual bool is_big() const { return true; }
 };
 
 struct Enum;

@@ -15,6 +15,8 @@ struct Primitive : public Type {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
 
+  bool is_big() const override { return false; }
+
   bool TestEquality(void const *lhs, void const *rhs) const override;
 
   bool is_integral() const;

@@ -4,6 +4,7 @@
 #include "backend/eval.h"
 #include "ir/any_func.h"
 #include "ir/compiled_fn.h"
+#include "ir/components.h"
 #include "type/function.h"
 
 namespace compiler {
@@ -90,6 +91,26 @@ core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
     return ExtractParams(compiler, fn_lit);
   } else {
     NOT_YET();
+  }
+}
+
+ir::Results PrepareArg(ir::Builder &bldr, type::Typed<ir::Results> const &arg,
+                       type::Type const *param_type) {
+  auto *arg_var   = arg.type()->if_as<type::Variant>();
+  auto *param_var = param_type->if_as<type::Variant>();
+  if (arg_var and param_var) {
+    NOT_YET();
+  } else if (arg_var) {
+    return ir::Results{ir::PtrFix(
+        bldr.VariantValue(nullptr, arg->get<ir::Addr>(0)), param_type)};
+  } else if (param_var) {
+    auto tmp = bldr.TmpAlloca(param_var);
+    // TODO type::ApplyTypes<>
+    // ir::Store(arg_var , tmp);
+    NOT_YET(tmp);
+  } else {
+    // TODO other implicit conversions?
+    return arg.get();
   }
 }
 

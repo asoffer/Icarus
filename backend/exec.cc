@@ -107,6 +107,7 @@ auto BinaryApply(base::untyped_buffer::const_iterator *iter, bool reg0,
     ASSERT((reg0 or reg1) == true);
     auto lhs = reg0 ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>();
     auto rhs = reg1 ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>();
+    DEBUG_LOG("BinaryApply")("lhs = ", lhs, ", rhs = ", rhs);
     return fn_type{}(lhs, rhs);
   } else {
     return T{};
@@ -202,6 +203,7 @@ BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
                        std::is_same_v<CmdType, NeCmd> or
                        std::is_same_v<CmdType, GeCmd> or
                        std::is_same_v<CmdType, GtCmd>) {
+    DEBUG_LOG("BinaryApply")(typeid(CmdType).name());
     auto ctrl = iter->read<typename CmdType::control_bits>();
 
     PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
@@ -250,11 +252,17 @@ BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
       using type = typename std::decay_t<decltype(tag)>::type;
       switch (addr.kind) {
         case Addr::Kind::Stack: {
+          DEBUG_LOG("LoadCmd")
+          ("Loading ", ctx->stack_.get<type>(addr.as_stack), " into ",
+           result_reg);
           frame.regs_.set(ctx->Offset(result_reg),
                           ctx->stack_.get<type>(addr.as_stack));
         } break;
         case Addr::Kind::ReadOnly: NOT_YET(); break;
         case Addr::Kind::Heap: {
+          DEBUG_LOG("LoadCmd")
+          ("Loading ", *static_cast<type *>(addr.as_heap), " into ",
+           result_reg);
           frame.regs_.set(ctx->Offset(result_reg),
                           *static_cast<type *>(addr.as_heap));
         }
@@ -527,6 +535,7 @@ BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
     int i = 0;
     for (auto *block : ctx->call_stack.top().fn_->blocks()) {
       std::cerr << "block " << i++ << "(" << block << "):\n";
+      DEBUG_LOG("debug-ir")(block->cmd_buffer_.to_string());
       for (auto dbg_iter = block->cmd_buffer_.cbegin();
            dbg_iter < block->cmd_buffer_.cend();) {
         auto cmd_index = dbg_iter.read<ir::cmd_index_t>();
@@ -760,16 +769,7 @@ BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
     Addr addr =
         is_reg ? ctx->resolve<Addr>(iter->read<Reg>()) : iter->read<Addr>();
     DEBUG_LOG("variant")(addr);
-    if (get_val) {
-      auto const *variant = iter->read<type::Variant const *>();
-      DEBUG_LOG("variant")(variant);
-      DEBUG_LOG("variant")(variant->to_string());
-      auto arch = core::Interpretter();
-      addr += core::FwdAlign(type::Type_->bytes(arch),
-                             variant->alternative_alignment(arch));
-      DEBUG_LOG("variant")(variant->to_string());
-      DEBUG_LOG("variant")(addr);
-    }
+    if (get_val) { addr += type::Type_->bytes(core::Interpretter()); }
 
     Reg reg = iter->read<Reg>();
     DEBUG_LOG("variant")(reg);
@@ -865,6 +865,7 @@ ExecContext::Frame::Frame(ir::CompiledFn *fn,
 
 ir::BasicBlock const *ExecContext::ExecuteBlock(
     const std::vector<ir::Addr> &ret_slots) {
+  DEBUG_LOG("ExecuteBlock")(current_block()->cmd_buffer_.to_string());
   auto iter = current_block()->cmd_buffer_.begin();
   while (true) {
     ASSERT(iter < current_block()->cmd_buffer_.end());
