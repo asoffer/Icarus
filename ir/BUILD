@@ -62,6 +62,7 @@ cc_lib(
     deps = [
         ":block_group",
         "//ast:ast",
+        "//base:move_func",
         "//core:fn_params",
         "//type:jump",
     ],

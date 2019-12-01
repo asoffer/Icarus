@@ -10,22 +10,23 @@
 #include "compiler/verify_result.h"
 #include "core/fn_args.h"
 #include "core/fn_params.h"
+#include "ir/jump.h"
+#include "ir/scope_def.h"
 
 namespace compiler {
 struct Compiler;  // TODO move into it's own header.
 }  // namespace compiler
 
 namespace compiler::internal {
+struct ExprData {
+  type::Type const *type;
+  core::FnParams<type::Typed<ast::Declaration const *>> params;
+};
 
 struct TableImpl {
   static base::expected<TableImpl> Verify(
       Compiler *compiler, ast::OverloadSet const &os,
       core::FnArgs<VerifyResult> const &args);
-
-  struct ExprData {
-    type::Type const *type;
-    core::FnParams<type::Typed<ast::Declaration const *>> params;
-  };
 
   absl::flat_hash_map<ast::Expression const *, ExprData> table_;
 };
@@ -33,6 +34,9 @@ struct TableImpl {
 
 namespace compiler {
 
+// TODO it looks like we actually won't be sharing much between function-call
+// and jump in terms of the interface. Should probably inline TableImpl and
+// separate out these headers.
 struct FnCallDispatchTable {
   static base::expected<FnCallDispatchTable> Verify(
       Compiler *compiler, ast::OverloadSet const &os,
@@ -58,20 +62,33 @@ struct FnCallDispatchTable {
   type::Type const *result_type_;
 };
 
-struct JumpDispatchTable {
-  static base::expected<JumpDispatchTable> Verify(
-      Compiler *compiler, ast::OverloadSet const &os,
-      core::FnArgs<VerifyResult> const &args) {
-    ASSIGN_OR(return _.error(),  //
-                     auto impl,
-                     internal::TableImpl::Verify(compiler, os, args));
-    JumpDispatchTable table;
-    table.impl_ = std::move(impl);
-    return table;
-  }
+struct ScopeDispatchTable {
+  static base::expected<ScopeDispatchTable> Verify(
+      Compiler *compiler, ast::ScopeNode const *node,
+      absl::flat_hash_map<ir::Jump const *, ir::ScopeDef const *> inits,
+      core::FnArgs<VerifyResult> const &args);
 
  private:
-  internal::TableImpl impl_;
+  struct JumpDispatchTable {
+    static base::expected<JumpDispatchTable> Verify(
+        Compiler *compiler, ast::ScopeNode const *node,
+        absl::Span<ir::Jump const *const> jumps,
+        core::FnArgs<VerifyResult> const &args);
+
+   private:
+    absl::flat_hash_map<ir::Jump const *, internal::ExprData> table_;
+  };
+
+  absl::flat_hash_map<
+      ir::ScopeDef const *,
+      absl::flat_hash_map<ir::Jump const *, core::FnParams<type::Typed<
+                                                ast::Declaration const *>>>>
+      init_table_;
+
+  absl::flat_hash_map<
+      ir::ScopeDef const *,
+      absl::flat_hash_map<ast::BlockNode const *, JumpDispatchTable>>
+      block_tables_;
 };
 
 }  // namespace compiler

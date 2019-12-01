@@ -26,6 +26,7 @@ cc_library(
         ":match",
         "//base:debug",
         "//compiler:compiler_header",
+        "//compiler:extract_jumps",
         "//compiler:verify_result",
         "//ir:builder",
         "//type",

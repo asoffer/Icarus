@@ -2,6 +2,7 @@
 #define ICARUS_IR_JUMP_H
 
 #include "ast/ast.h"
+#include "base/move_func.h"
 #include "core/fn_params.h"
 #include "ir/block_group.h"
 #include "type/jump.h"

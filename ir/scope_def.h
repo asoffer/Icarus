@@ -19,6 +19,13 @@ struct ScopeDef {
 
   module::BasicModule const *module() const { return mod_; }
 
+  BlockDef const *block(std::string_view name) const {
+    if (auto iter = blocks_.find(name); iter != blocks_.end()) {
+      return iter->second;
+    }
+    return nullptr;
+  }
+
   module::BasicModule const *mod_ = nullptr;
   std::vector<Jump const *> inits_;
   std::vector<AnyFunc> dones_;

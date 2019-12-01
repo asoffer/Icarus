@@ -573,43 +573,6 @@ static Constness VerifyAndGetConstness(
   return is_const ? Constness::Const : Constness::NonConst;
 }
 
-/*static*/ std::vector<
-    core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>>
-VerifyBlockNode(Compiler *compiler, ast::BlockNode const *node) {
-  compiler->Visit(node, VerifyTypeTag{});
-
-  ExtractJumps extractor;
-  for (auto const *stmt : node->stmts()) { extractor.Visit(stmt); }
-
-  auto yields = extractor.jumps(ExtractJumps::Kind::Yield);
-  // TODO this setup is definitely wrong because it doesn't account for
-  // multiple yields correctly. For example,
-  //
-  // ```
-  //  result: int32 | bool = if (cond) then {
-  //    yield 3
-  //  } else if (other_cond) then {
-  //    yield 4
-  //  } else {
-  //    yield true
-  //  }
-  //  ```
-  std::vector<core::FnArgs<std::pair<ast::Expression const *, VerifyResult>>>
-      result;
-  for (auto *yield : yields) {
-    auto &back = result.emplace_back();
-    // TODO actually fill a fnargs
-    std::vector<std::pair<ast::Expression const *, VerifyResult>>
-        local_pos_yields;
-    for (auto *yield_expr : yields[0]->as<ast::YieldStmt>().exprs()) {
-      back.pos_emplace(
-          yield_expr,
-          *ASSERT_NOT_NULL(compiler->prior_verification_attempt(yield_expr)));
-    }
-  }
-  return result;
-}
-
 VerifyResult Compiler::Visit(ast::Access const *node, VerifyTypeTag) {
   ASSIGN_OR(return VerifyResult::Error(), auto operand_result,
                    Visit(node->operand(), VerifyTypeTag{}));
@@ -1770,43 +1733,45 @@ VerifyResult Compiler::Visit(ast::ScopeLiteral const *node, VerifyTypeTag) {
   return verify_result;
 }
 
+static absl::flat_hash_map<ir::Jump const *, ir::ScopeDef const *>
+MakeJumpInits(Compiler*c, ast::OverloadSet const &os) {
+  absl::flat_hash_map<ir::Jump const *, ir::ScopeDef const *> inits;
+  for (ast::Expression const *member : os.members()) {
+    DEBUG_LOG("ScopeNode")(member->DebugString());
+    auto *def =
+        backend::EvaluateAs<ir::ScopeDef *>(c->MakeThunk(member, type::Scope));
+    if (def->work_item and *def->work_item) { (std::move(*def->work_item))(); }
+    for (auto *init : def->inits_) {
+      bool success = inits.emplace(init, def).second;
+      static_cast<void>(success);
+      ASSERT(success == true);
+    }
+  }
+  return inits;
+}
+
 VerifyResult Compiler::Visit(ast::ScopeNode const *node, VerifyTypeTag) {
   DEBUG_LOG("ScopeNode")(node->DebugString());
+
   auto[arg_results, err] = VerifyFnArgs(this, node->args());
+  auto os                = MakeOverloadSet(this, node->name(), arg_results);
+  auto inits             = MakeJumpInits(this, os);
+
+  DEBUG_LOG("ScopeNode")(inits);
+
   // TODO handle cyclic dependencies in call arguments.
   if (err) { return VerifyResult::Error(); }
 
   ASSIGN_OR(return VerifyResult::Error(),  //
                    auto table,
-                   JumpDispatchTable::Verify(
-                       this, MakeOverloadSet(this, node->name(), arg_results),
-                       arg_results));
+                   ScopeDispatchTable::Verify(this, node, inits, arg_results));
+  static_cast<void>(table);
   // TODO might be constant? Actually handle yields correctly.
   auto result = VerifyResult::NonConstant(type::Void());
   return set_result(node, result);
 
   /*
-  auto result = VerifyResult::NonConstant(table.result_type());
-  c->data_.set_jump_table(node, std::move(table));
-  return c->set_result(node, result);
 
-  // TODO later on you'll want to allow dynamic dispatch. Calling a scope on an
-  // argument of type `A | B` where there are two scope objects (one of type `A`
-  // and one of type `B`) should work. But this necessitates evaluating not as a
-  // ScopeDef but as an overload set.
-  //
-  // Then on each possibility, you should first check that all the block names
-  // are available on all possible scopes.
-  //
-  // TODO you may not be able to compute this ahead of time. It relies on
-  // computing all the block handlers which may be generics.
-  //
-  // TODO is the scope type correct here?
-  auto *scope_def =
-      backend::EvaluateAs<ir::ScopeDef *>(MakeThunk(node->name(), type::Scope));
-  if (scope_def->work_item and *scope_def->work_item) {
-    (std::move(*scope_def->work_item))();
-  }
 
   bool err = false;
   std::vector<ir::BlockDef const *> block_defs;
