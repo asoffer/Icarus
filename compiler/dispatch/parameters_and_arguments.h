@@ -19,14 +19,24 @@ template <typename IgnoredType>
 bool ParamsCoverArgs(
     core::FnArgs<VerifyResult> const &args,
     absl::flat_hash_map<IgnoredType, internal::ExprData> const &table) {
+  DEBUG_LOG("ParamsCoverArgs")("Unexpanded args: ", args.to_string());
+
   auto expanded_fnargs = ExpandedFnArgs(args);
   for (auto const &expanded_arg : expanded_fnargs) {
+    DEBUG_LOG("ParamsCoverArgs")("Expansion: ", expanded_arg.to_string());
     for (auto const & [ k, v ] : table) {
-      bool callable = core::IsCallable(
-          v.params, args,
-          [](VerifyResult arg, type::Typed<ast::Declaration const *> param) {
-            return type::CanCast(arg.type(), param.type());
-          });
+      // TODO take constness into account for callability.
+      bool callable =
+          core::IsCallable(v.params, expanded_arg,
+                           [](type::Type const *arg,
+                              type::Typed<ast::Declaration const *> param) {
+                             bool result = type::CanCast(arg, param.type());
+                             DEBUG_LOG("ParamsCoverArgs")
+                             ("    ... CanCast(", arg->to_string(), ", ",
+                              param.type()->to_string(), ") = ", result);
+                             return result;
+                           });
+      DEBUG_LOG("ParamsCoverArgs")(" Callable: ", callable);
       if (callable) { goto next_expanded_arg; }
     }
     return false;

@@ -63,11 +63,17 @@ struct FnArgs {
 
   std::string to_string() const {
     using base::stringify;
-    std::string result;
-    for (auto &&val : pos_) { absl::StrAppend(&result, stringify(val), ", "); }
-    for (auto && [ key, val ] : named_) {
-      absl::StrAppend(&result, key, ": ", stringify(val), ", ");
+    std::string result = "fnargs[";
+    char const *sep    = "";
+    for (auto &&val : pos_) {
+      absl::StrAppend(&result, stringify(val), sep);
+      sep = ", ";
     }
+    for (auto && [ key, val ] : named_) {
+      absl::StrAppend(&result, key, ": ", stringify(val), sep);
+      sep = ", ";
+    }
+    absl::StrAppend(&result, "]");
     return result;
   }
 

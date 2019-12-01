@@ -10,7 +10,6 @@
 
 namespace compiler {
 namespace {
-using param_type = ::core::FnParams<type::Type const *>;
 
 template <typename NodeType>
 NodeType const *Make(test::TestModule *mod, std::string code) {

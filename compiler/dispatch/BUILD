@@ -101,6 +101,17 @@ cc_library(
     ],
 )
 
+cc_test(
+    name = "fn_call_table-test",
+    srcs = ["fn_call_table_test.cc"],
+    deps = [
+        ":fn_call_table",
+        "//compiler:compiler",
+        "//test",
+        "//test:module",
+    ],
+)
+
 cc_library(
     name = "overload",
     hdrs = ["overload.h"],

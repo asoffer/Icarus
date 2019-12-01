@@ -9,6 +9,7 @@
 namespace compiler {
 namespace internal {
 
+// TODO rename to `Overload` or sometihng similar
 struct ExprData {
   type::Type const *type;
   core::FnParams<type::Typed<ast::Declaration const *>> params;

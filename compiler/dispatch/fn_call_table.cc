@@ -83,7 +83,8 @@ base::expected<FnCallDispatchTable> FnCallDispatchTable::Verify(
   }
 
   if (not ParamsCoverArgs(args, table.table_)) {
-    NOT_YET("log an error");
+    // TODO Return a failuere-match-reason.
+    return base::unexpected("Match failure");
   }
 
   table.result_type_ = ComputeResultType(table.table_);
