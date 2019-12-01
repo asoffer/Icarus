@@ -2,11 +2,37 @@ package(default_visibility = ["//visibility:public"]) # TODO compiler:__subpacka
 load("//:defs.bzl", "cc_lib")
 
 cc_library(
+    name = "jump_table_header",
+    hdrs = ["jump_table.h"],
+    deps = [
+        ":overload",
+        "//ast:ast",
+        "//base:expected",
+        "//compiler:verify_result",
+        "//core:fn_args",
+        "//ir:jump",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
+    name = "jump_table",
+    srcs = ["jump_table.cc"],
+    deps = [
+        ":jump_table_header",
+        ":match",
+        ":parameters_and_arguments",
+        "//base:debug",
+    ],
+)
+
+cc_library(
     name = "scope_table_header",
     hdrs = ["scope_table.h"],
     deps = [
+        ":jump_table_header",
         ":overload",
-        ":fn_call_table_header",
         ":match",
         "//ast:expression",
         "//ast:overload_set",
@@ -23,9 +49,10 @@ cc_library(
     name = "scope_table",
     srcs = ["scope_table.cc"],
     deps = [
-        ":scope_table_header",
-        ":parameters_and_arguments",
         ":match",
+        ":jump_table",
+        ":parameters_and_arguments",
+        ":scope_table_header",
         "//base:debug",
         "//compiler:compiler_header",
         "//compiler:extract_jumps",

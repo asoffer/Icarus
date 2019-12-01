@@ -50,34 +50,6 @@ std::vector<core::FnArgs<VerifyResult>> VerifyBlockNode(
 }  // namespace compiler::internal
 
 namespace compiler {
-base::expected<ScopeDispatchTable::JumpDispatchTable> ScopeDispatchTable::JumpDispatchTable::Verify(
-    Compiler *compiler, ast::ScopeNode const *node,
-    absl::Span<ir::Jump const *const> jumps,
-    core::FnArgs<VerifyResult> const &args) {
-  DEBUG_LOG("dispatch-verify")
-  ("Verifying overload set with ", jumps.size(), " members.");
-
-  // Keep a collection of failed matches around so we can give better
-  // diagnostics.
-  absl::flat_hash_map<ir::Jump const *, FailedMatch> failures;
-  ScopeDispatchTable::JumpDispatchTable table;
-  for (ir::Jump const *jump : jumps) {
-    // TODO the type of the specific overload could *correctly* be null and
-    // we need to handle that case.
-    DEBUG_LOG("dispatch-verify")("Verifying ", jump);
-    auto result = MatchArgsToParams(jump->params(), args);
-    if (not result) {
-      failures.emplace(jump, result.error());
-    } else {
-      // TODO you also call compiler->type_of inside ExtractParams, so it's
-      // probably worth reducing the number of lookups.
-      table.table_.emplace(jump, internal::ExprData{jump->type(), *result});
-    }
-  }
-
-  if (not ParamsCoverArgs(args, table.table_)) { NOT_YET("log an error"); }
-  return table;
-}
 
 base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
     Compiler *compiler, ast::ScopeNode const *node,
@@ -92,7 +64,7 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
     if (not result) {
       failures[scope].emplace(jump, result.error());
     } else {
-      table.init_table_[scope].emplace(jump, *result);
+      table.tables_[scope].inits.emplace(jump, *result);
     }
   }
 
@@ -101,8 +73,8 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
       std::remove_if(
           expanded_fnargs.begin(), expanded_fnargs.end(),
           [&](core::FnArgs<type::Type const *> const &fnargs) {
-            for (auto const & [ k, v ] : table.init_table_) {
-              for (auto const & [ init, params ] : v) {
+            for (auto const & [ scope_def, one_table ] : table.tables_) {
+              for (auto const & [ init, params ] : one_table.inits) {
                 if (core::IsCallable(
                         params, fnargs,
                         [](type::Type const *arg,
@@ -120,8 +92,7 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
 
   // If there are any scopes in this overload set that do not have blocks of the
   // corresponding names, we should exit.
-  for (auto[scope_def, _] : table.init_table_) {
-    auto &block_tables = table.block_tables_[scope_def];
+  for (auto[scope_def, one_table] : table.tables_) {
     for (auto const &block : node->blocks()) {
       DEBUG_LOG("ScopeNode")
       ("Verifying dispatch for block `", block.name(), "`");
@@ -137,7 +108,8 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
             continue,  //
             auto table,
             JumpDispatchTable::Verify(compiler, node, block_def->after_, {}));
-        bool success = block_tables.emplace(&block, std::move(table)).second;
+        bool success =
+            one_table.blocks.emplace(&block, std::move(table)).second;
         static_cast<void>(success);
         ASSERT(success == true);
       } else {

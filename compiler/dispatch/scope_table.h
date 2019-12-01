@@ -6,6 +6,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "ast/overload_set.h"
 #include "base/expected.h"
+#include "compiler/dispatch/jump_table.h"
 #include "compiler/dispatch/match.h"
 #include "compiler/dispatch/overload.h"
 #include "compiler/verify_result.h"
@@ -24,18 +25,16 @@ struct ScopeDispatchTable {
       core::FnArgs<VerifyResult> const &args);
 
  private:
-  struct JumpDispatchTable {
-    static base::expected<JumpDispatchTable> Verify(
-        Compiler *compiler, ast::ScopeNode const *node,
-        absl::Span<ir::Jump const *const> jumps,
-        core::FnArgs<VerifyResult> const &args);
-
-   private:
-    absl::flat_hash_map<ir::Jump const *, internal::ExprData> table_;
+  struct OneTable {
+    absl::flat_hash_map<ir::Jump const *,
+                        core::FnParams<type::Typed<ast::Declaration const *>>>
+        inits;
+    absl::flat_hash_map<ast::BlockNode const *, JumpDispatchTable> blocks;
   };
 
-  absl::flat_hash_map<
-      ir::ScopeDef const *,
+  absl::flat_hash_map<ir::ScopeDef const *, OneTable> tables_;
+
+  /*
       absl::flat_hash_map<ir::Jump const *, core::FnParams<type::Typed<
                                                 ast::Declaration const *>>>>
       init_table_;
@@ -44,6 +43,7 @@ struct ScopeDispatchTable {
       ir::ScopeDef const *,
       absl::flat_hash_map<ast::BlockNode const *, JumpDispatchTable>>
       block_tables_;
+      */
 };
 
 }  // namespace compiler
