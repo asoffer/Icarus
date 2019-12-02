@@ -41,42 +41,13 @@ ir::Results EmitCallOneOverload(
        .to_string());
 
   auto const & [ type, params ] = data;
-  std::vector<ir::Results> arg_results;
-  // TODO This style of loop (index over args then parameters seems to be common
-  // and should perhaps be extracted.
-  size_t i = 0;
-  for (; i < args.pos().size(); ++i) {
-    arg_results.push_back(PrepareArg(compiler->builder(), args.pos()[i],
-                                     params.at(i).value.type()));
-  }
-  for (; i < params.size(); ++i) {
-    auto const &param = params.at(i);
-    if (auto *arg = args.at_or_null(param.name)) {
-      arg_results.push_back(
-          PrepareArg(compiler->builder(), *arg, params.at(i).value.type()));
-    } else {
-      arg_results.push_back(ir::Results{compiler->Visit(
-          ASSERT_NOT_NULL(param.value.get()->init_val()), EmitValueTag{})});
-    }
-  }
+  auto arg_results = PrepareCallArguments(compiler, params, args);
 
   auto[out_results, out_params] = SetReturns(data, {});
   compiler->builder().Call(
       compiler->Visit(fn, EmitValueTag{}).get<ir::AnyFunc>(0),
       &compiler->type_of(fn)->as<type::Function>(), arg_results, out_params);
   return std::move(out_results);
-}
-
-absl::flat_hash_map<ast::Expression const *, ir::BasicBlock *> MakeBlockMap(
-    ir::Builder &bldr,
-    absl::flat_hash_map<ast::Expression const *, internal::ExprData> const
-        &table) {
-  absl::flat_hash_map<ast::Expression const *, ir::BasicBlock *>
-      callee_to_block;
-  for (auto const & [ overload, expr_data ] : table) {
-    callee_to_block.emplace(overload, bldr.AddBlock());
-  }
-  return callee_to_block;
 }
 
 // Emits code which determines if a function with parameters `params` should be
@@ -218,7 +189,7 @@ ir::Results FnCallDispatchTable::EmitCall(
   } else {
     auto &bldr           = compiler->builder();
     auto *land_block     = bldr.AddBlock();
-    auto callee_to_block = MakeBlockMap(bldr, table_);
+    auto callee_to_block = bldr.AddBlocks(table_);
 
     EmitRuntimeDispatch(bldr, table_, callee_to_block, args);
 

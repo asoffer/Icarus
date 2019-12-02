@@ -7,11 +7,14 @@
 #include "compiler/extract_jumps.h"
 #include "core/fn_params.h"
 #include "ir/builder.h"
+#include "ir/components.h"
+#include "ir/inliner.h"
 #include "type/cast.h"
 #include "type/type.h"
 #include "type/variant.h"
 
-namespace compiler::internal {
+namespace compiler {
+namespace {
 
 // TODO this is independent of scope literals and therefore should be moved back
 // into verify_type.cc.
@@ -51,28 +54,83 @@ std::vector<core::FnArgs<VerifyResult>> VerifyBlockNode(
 
 ir::Results EmitCallOneOverload(
     Compiler *compiler, ir::Jump const *jump,
-    core::FnArgs<type::Typed<ir::Results>> const &args) {
-  std::vector<ir::Results> arg_results;
-  // TODO prep args (if it's a variant, e.g.)
-  auto const &params = jump->params();
-  for (auto arg : args.pos()) { arg_results.push_back(arg.get()); }
-  for (size_t i = args.pos().size(); i < params.size(); ++i) {
-    auto const &param = params.at(i);
-    if (auto *arg = args.at_or_null(param.name)) {
-      arg_results.push_back(arg->get());
-    } else {
-      arg_results.push_back(ir::Results{compiler->Visit(
-          ASSERT_NOT_NULL(param.value.get()->init_val()), EmitValueTag{})});
-    }
-  }
+    core::FnArgs<type::Typed<ir::Results>> const &args,
+    ir::LocalBlockInterpretation const &block_interp) {
+  DEBUG_LOG("EmitCallOneOverload")
+  (args.Transform([](auto const &x) { return x.type()->to_string(); })
+       .to_string());
+
+  auto arg_results = PrepareCallArguments(compiler, jump->params(), args);
+  auto inliner = ir::Inliner::Make(compiler->builder().CurrentGroup());
+  static_cast<void>(inliner);
+  static_cast<void>(arg_results);
 
   NOT_YET();
   return ir::Results{};
 }
 
-}  // namespace compiler::internal
+// Emits code which determines if a function with parameters `params` should be
+// called with arguments `args`. It does this by looking for variants in `args`
+// and testing the actually held type to see if it matches the corresponding
+// parameter type. Note that the parameter type need not be identical. Rather,
+// there must be a cast from the actual argument type to the parameter type
+// (usually due to a cast such as `int64` casting to `int64 | bool`).
+ir::RegOr<bool> EmitRuntimeDispatchOneComparison(
+    ir::Builder &bldr,
+    core::FnParams<type::Typed<ast::Declaration const *>> const &params,
+    core::FnArgs<type::Typed<ir::Results>> const &args) {
+  size_t i = 0;
+  for (; i < args.pos().size(); ++i) {
+    auto &arg     = args.pos()[i];
+    auto *arg_var = arg.type()->if_as<type::Variant>();
+    if (not arg_var) { continue; }
+    auto runtime_type =
+        ir::Load<type::Type const *>(bldr.VariantType(arg->get<ir::Addr>(0)));
+    // TODO Equality isn't the right thing to check
+    return bldr.Eq(runtime_type, params.at(i).value.type());
+  }
+  for (; i < params.size(); ++i) {
+    auto const &param = params.at(i);
+    auto *arg         = args.at_or_null(param.name);
+    if (not arg) { continue; }  // Default arguments
+    auto *arg_var = arg->type()->if_as<type::Variant>();
+    if (not arg_var) { continue; }
+    NOT_YET();
+  }
+  return ir::RegOr<bool>(false);
+}
 
-namespace compiler {
+void EmitRuntimeDispatch(
+    ir::Builder &bldr,
+    absl::flat_hash_map<ir::Jump const *, ir::ScopeDef const *> const &table,
+    absl::flat_hash_map<ir::Jump const *, ir::BasicBlock *> const
+        &callee_to_block,
+    core::FnArgs<type::Typed<ir::Results>> const &args) {
+  // TODO This is a simple linear search through the table which is certainly a
+  // bad idea. We can optimize it later. Likely the right way to do this is to
+  // find a perfect hash of the function variants that produces an index into a
+  // block table so we pay for a hash and a single indirect jump. This may be
+  // harder if you remove variant and implement `overlay`.
+
+  auto iter = table.begin();
+
+  while (true) {
+    auto const & [ jump, scope_def ] = *iter;
+    ++iter;
+
+    if (iter == table.end()) {
+      bldr.UncondJump(callee_to_block.at(jump));
+      break;
+    }
+
+    ir::RegOr<bool> match =
+        EmitRuntimeDispatchOneComparison(bldr, jump->params(), args);
+    bldr.CurrentBlock() =
+        ir::EarlyExitOn<true>(callee_to_block.at(jump), match);
+  }
+}
+
+}  // namespace
 
 base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
     Compiler *compiler, ast::ScopeNode const *node,
@@ -82,7 +140,8 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
                       absl::flat_hash_map<ir::Jump const *, FailedMatch>>
       failures;
   ScopeDispatchTable table;
-  table.init_map_ = std::move(inits);
+  table.scope_node_ = node;
+  table.init_map_   = std::move(inits);
   for (auto[jump, scope] : table.init_map_) {
     auto result = MatchArgsToParams(jump->params(), args);
     if (not result) {
@@ -122,7 +181,7 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
       ("Verifying dispatch for block `", block.name(), "`");
       auto const *block_def = scope_def->block(block.name());
       if (not block_def) { NOT_YET("log an error"); }
-      auto block_results = internal::VerifyBlockNode(compiler, &block);
+      auto block_results = VerifyBlockNode(compiler, &block);
       DEBUG_LOG("ScopeNode")("    ", block_results);
       if (block_results.empty()) {
         // There are no relevant yield statements
@@ -149,14 +208,53 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
 ir::Results ScopeDispatchTable::EmitCall(
     Compiler *compiler,
     core::FnArgs<type::Typed<ir::Results>> const &args) const {
-  // TODO dispatch test.
+  DEBUG_LOG("ScopelDispatchTable")
+  ("Emitting a table with ", init_map_.size(), " entries.");
+
   if (init_map_.size() == 1) {
+    // If there's just one entry in the table we can avoid doing all the work to
+    // generate runtime dispatch code. It will amount to only a few
+    // unconditional jumps between blocks which will be optimized out, but
+    // there's no sense in generating them in the first place..
     auto const & [ jump, scope_def ] = *init_map_.begin();
-    return internal::EmitCallOneOverload(compiler, jump, args);
+
+    auto block_interp =
+        compiler->builder().MakeLocalBlockInterpretation(scope_node_);
+    EmitCallOneOverload(compiler, jump, args, block_interp);
+    // TODO handle results
   } else {
-    NOT_YET();
+
+    auto &bldr           = compiler->builder();
+    auto *land_block     = bldr.AddBlock();
+    auto callee_to_block = bldr.AddBlocks(init_map_);
+
+    EmitRuntimeDispatch(bldr, init_map_, callee_to_block, args);
+
+    // Add basic blocks for each block node in the scope (for each scope
+    // definition which might be callable).
+    absl::flat_hash_map<ir::ScopeDef const *, ir::LocalBlockInterpretation>
+        block_interps;
+    for (auto const & [ scope_def, _ ] : tables_) {
+      auto[iter, success] = block_interps.emplace(
+          scope_def, bldr.MakeLocalBlockInterpretation(scope_node_));
+      static_cast<void>(success);
+      ASSERT(success == true);
+    }
+
+    for (auto const & [ jump, scope_def ] : init_map_) {
+      bldr.CurrentBlock() = callee_to_block[jump];
+      // Argument preparation is done inside EmitCallOneOverload
+      EmitCallOneOverload(compiler, jump, args, block_interps.at(scope_def));
+      // TODO phi-node to coalesce return values.
+      // TODO jumping to a single landing block isn't correct for scopes.
+      bldr.UncondJump(land_block);
+    }
+    bldr.CurrentBlock() = land_block;
+    // TODO handle results
   }
   return ir::Results{};
 }
+
+
 
 }  // namespace compiler

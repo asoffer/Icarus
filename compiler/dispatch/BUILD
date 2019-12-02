@@ -58,6 +58,8 @@ cc_library(
         "//compiler:extract_jumps",
         "//compiler:verify_result",
         "//ir:builder",
+        "//ir:components",
+        "//ir:inliner",
         "//type",
         "//type:cast",
         "//type:variant",

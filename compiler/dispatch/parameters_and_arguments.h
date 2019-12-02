@@ -49,8 +49,32 @@ bool ParamsCoverArgs(
 core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
     Compiler *compiler, ast::Expression const *expr);
 
-ir::Results PrepareArg(ir::Builder &bldr, type::Typed<ir::Results> const &arg,
-                       type::Type const *param_type);
+// Given arguments `args` for a function-call with parameters `params`, emits
+// the necessary code to prepare the arguments for being called (without
+// actually calling). This means performing any necessary conversions, including
+// handling variants. Note that the arguments passed in may not be of a type
+// which the parameters can directly accept. This is because `args` are
+// evaluated once for an entire overload set, but `PrepareCallArguments` is
+// called for each particular overload. So for example,
+//
+// ```
+// f ::= (n: int64) -> () {}
+// f ::= (b: bool) -> () {}
+//
+// x := int64 | bool = true
+// f(x)
+// ```
+//
+// For each overload of `f`, the argument will be have type `int64 | bool`, even
+// though for each overload (one with `int64`, and one with `bool`), the call
+// cannot be made directly. In such cases it is assumed that the variant holds a
+// value correctly bindable to the parameters. It is the responsibility of the
+// caller of this function to ensure that code has already been emitted to
+// guard for this situation.
+std::vector<ir::Results> PrepareCallArguments(
+    Compiler *compiler,
+    core::FnParams<type::Typed<ast::Declaration const *>> const &params,
+    core::FnArgs<type::Typed<ir::Results>> const &args);
 
 }  // namespace compiler
 

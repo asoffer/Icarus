@@ -395,4 +395,14 @@ RegOr<type::Type const *> Builder::Array(RegOr<ArrayCmd::length_t> len,
   return result;
 }
 
+LocalBlockInterpretation Builder::MakeLocalBlockInterpretation(
+    ast::ScopeNode const *node) {
+  absl::flat_hash_map<ast::BlockNode const *, ir::BasicBlock *> interp_map;
+  for (auto const &block : node->blocks()) {
+    interp_map.emplace(&block, AddBlock());
+  }
+
+  return LocalBlockInterpretation(std::move(interp_map));
+}
+
 }  // namespace ir

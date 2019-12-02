@@ -76,6 +76,7 @@ cc_lib(
         ":addr",
         ":basic_block",
         ":block_group",
+        ":local_block_interpretation",
         ":reg",
         "//base:debug",
         "//base:scope",
@@ -266,4 +267,15 @@ cc_lib(
     deps = ["//base:untyped_buffer"],
     header_only = True,
     test_deps = None,
+)
+
+cc_library(
+    name = "local_block_interpretation",
+    hdrs = ["local_block_interpretation.h"],
+    srcs = [],
+    deps = [
+        ":basic_block",
+        "//ast:ast",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
 )

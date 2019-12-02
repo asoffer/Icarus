@@ -23,6 +23,7 @@
 #include "ir/cmd/store.h"
 #include "ir/cmd/types.h"
 #include "ir/cmd/util.h"
+#include "ir/local_block_interpretation.h"
 #include "ir/reg.h"
 #include "type/typed_value.h"
 #include "type/util.h"
@@ -53,6 +54,14 @@ auto PrepareCmdArg(T&& arg);
 
 struct Builder {
   BasicBlock* AddBlock();
+
+  template <typename KeyType, typename ValueType>
+  absl::flat_hash_map<KeyType, ir::BasicBlock*> AddBlocks(
+      absl::flat_hash_map<KeyType, ValueType> const& table) {
+    absl::flat_hash_map<KeyType, ir::BasicBlock*> result;
+    for (auto const & [ key, val ] : table) { result.emplace(key, AddBlock()); }
+    return result;
+  }
 
   internal::BlockGroup*& CurrentGroup() { return current_.group_; }
   BasicBlock*& CurrentBlock() { return current_.block_; }
@@ -240,6 +249,8 @@ struct Builder {
 #if defined(ICARUS_DEBUG)
   void DebugIr() { CurrentBlock()->cmd_buffer_.append(DebugIrCmd::index); }
 #endif  // ICARUS_DEBUG
+
+  LocalBlockInterpretation MakeLocalBlockInterpretation(ast::ScopeNode const*);
 
   // Apply the callable to each temporary in reverse order, and clear the list
   // of temporaries.

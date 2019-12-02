@@ -40,6 +40,7 @@ struct ScopeDispatchTable {
       core::FnArgs<type::Typed<ir::Results>> const &args) const;
 
  private:
+  ast::ScopeNode const *scope_node_;
   absl::flat_hash_map<ir::Jump const*, ir::ScopeDef const *> init_map_;
   absl::flat_hash_map<ir::ScopeDef const *, internal::OneTable> tables_;
 };

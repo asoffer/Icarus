@@ -66,6 +66,27 @@ void AddType(IndexT &&index, type::Type const *t,
   }
 }
 
+ir::Results PrepareOneArg(ir::Builder &bldr,
+                          type::Typed<ir::Results> const &arg,
+                          type::Type const *param_type) {
+  auto *arg_var   = arg.type()->if_as<type::Variant>();
+  auto *param_var = param_type->if_as<type::Variant>();
+  if (arg_var and param_var) {
+    NOT_YET();
+  } else if (arg_var) {
+    return ir::Results{ir::PtrFix(
+        bldr.VariantValue(nullptr, arg->get<ir::Addr>(0)), param_type)};
+  } else if (param_var) {
+    auto tmp = bldr.TmpAlloca(param_var);
+    // TODO type::ApplyTypes<>
+    // ir::Store(arg_var , tmp);
+    NOT_YET(tmp);
+  } else {
+    // TODO other implicit conversions?
+    return arg.get();
+  }
+}
+
 }  // namespace
 
 // TODO: Ideally we wouldn't create these all at once but rather iterate through
@@ -94,24 +115,31 @@ core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
   }
 }
 
-ir::Results PrepareArg(ir::Builder &bldr, type::Typed<ir::Results> const &arg,
-                       type::Type const *param_type) {
-  auto *arg_var   = arg.type()->if_as<type::Variant>();
-  auto *param_var = param_type->if_as<type::Variant>();
-  if (arg_var and param_var) {
-    NOT_YET();
-  } else if (arg_var) {
-    return ir::Results{ir::PtrFix(
-        bldr.VariantValue(nullptr, arg->get<ir::Addr>(0)), param_type)};
-  } else if (param_var) {
-    auto tmp = bldr.TmpAlloca(param_var);
-    // TODO type::ApplyTypes<>
-    // ir::Store(arg_var , tmp);
-    NOT_YET(tmp);
-  } else {
-    // TODO other implicit conversions?
-    return arg.get();
+std::vector<ir::Results> PrepareCallArguments(
+    Compiler *compiler,
+    core::FnParams<type::Typed<ast::Declaration const *>> const &params,
+    core::FnArgs<type::Typed<ir::Results>> const &args) {
+  std::vector<ir::Results> arg_results;
+  arg_results.reserve(params.size());
+
+  auto &bldr = compiler->builder();
+  size_t i   = 0;
+  for (; i < args.pos().size(); ++i) {
+    arg_results.push_back(
+        PrepareOneArg(bldr, args.pos()[i], params.at(i).value.type()));
   }
+
+  for (; i < params.size(); ++i) {
+    auto const &param = params.at(i);
+    if (auto *arg = args.at_or_null(param.name)) {
+      arg_results.push_back(
+          PrepareOneArg(bldr, *arg, params.at(i).value.type()));
+    } else {
+      arg_results.push_back(ir::Results{compiler->Visit(
+          ASSERT_NOT_NULL(param.value.get()->init_val()), EmitValueTag{})});
+    }
+  }
+  return arg_results;
 }
 
 }  // namespace compiler

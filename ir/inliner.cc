@@ -398,14 +398,14 @@ std::pair<Results, bool> CallInline(
 
   for (size_t i = 1; i < f->blocks().size(); ++i) {
     auto *block = GetBuilder().AddBlock();
-    *block      = *std::move(f->blocks()[i]);
+    *block      = *f->blocks()[i];
     auto iter   = block->cmd_buffer_.begin();
 
     while (iter < block->cmd_buffer_.end()) {
       switch (iter.read<cmd_index_t>()) {
 #define CASE(type)                                                             \
   case type::index:                                                            \
-    DEBUG_LOG("dbg")(#type ": ", iter);                                        \
+    DEBUG_LOG("inliner_dbg")(#type ": ", iter);                                \
     InlineCmd<type>(&iter, inliner);                                           \
     break
         CASE(PrintCmd);
