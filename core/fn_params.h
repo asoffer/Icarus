@@ -185,15 +185,14 @@ struct FnParams {
 
 template <typename T>
 std::string stringify(FnParams<T> const& fn_params) {
-  return absl::StrCat("(",
+  return absl::StrCat("fnparams[",
                       absl::StrJoin(fn_params, ", ",
                                     [](std::string* out, auto const& param) {
-                                      out->append(param.name);
-                                      out->append(": ");
                                       using base::stringify;
-                                      out->append(stringify(param.value));
+                                      absl::StrAppend(out, param.name, ": ",
+                                                      stringify(param.value));
                                     }),
-                      ")");
+                      "]");
 }
 
 template <typename T, typename AmbiguityFn>
@@ -292,23 +291,47 @@ bool AmbiguouslyCallable(FnParams<T> const& params1, FnParams<T> const& params2,
 template <typename T, typename U, typename ConvertibleFn>
 bool IsCallable(FnParams<T> const& params, FnArgs<U> const& args,
                 ConvertibleFn fn) {
-  if (params.size() < args.size()) { return false; }
+  if (params.size() < args.size()) {
+    DEBUG_LOG("core::IsCallable")
+    ("IsCallable = false due to size mismatch (", params.size(), " vs ",
+     args.size());
+    return false;
+  }
 
   for (size_t i = 0; i < args.pos().size(); ++i) {
-    if (not fn(args.pos().at(i), params.at(i).value)) { return false; }
+    if (not fn(args.pos().at(i), params.at(i).value)) {
+      DEBUG_LOG("core::IsCallable")
+      ("IsCallable = false due to convertible failure at ", i);
+      return false;
+    }
   }
 
   for (auto const & [ name, type ] : args.named()) {
-    ASSIGN_OR(return false, auto const& index, params.at_or_null(name));
-    if (not fn(type, params.at(index).value)) { return false; }
+    ASSIGN_OR(
+        {
+          DEBUG_LOG("core::IsCallable")
+          ("No such parameter named \"", name, "\"");
+          return false;
+        },
+        auto const& index, params.at_or_null(name));
+    if (not fn(type, params.at(index).value)) {
+      DEBUG_LOG("core::IsCallable")
+      ("IsCallable = false due to convertible failure on \"", name, "\"");
+      return false;
+    }
   }
 
   for (size_t i = args.pos().size(); i < params.size(); ++i) {
     auto const& param = params.at(i);
     if (param.flags & HAS_DEFAULT) { continue; }
-    if (args.at_or_null(param.name) == nullptr) { return false; }
+    if (args.at_or_null(param.name) == nullptr) {
+      DEBUG_LOG("core::IsCallable")
+      ("No argument for non-default parameter named \"", param.name, "\"");
+      return false;
+    }
   }
 
+  DEBUG_LOG("core::IsCallable")("Yes, it's callable");
   return true;
 }
 

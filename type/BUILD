@@ -204,7 +204,10 @@ cc_lib(
 
 cc_lib(
     name = "typed_value",
-    deps = [],
+    deps = [
+        "//base:stringify",
+        "@com_google_absl//absl/strings",
+    ],
     header_only = True,
     test_deps = None,
 )

@@ -165,33 +165,11 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
     }
   }
 
-  bool covered = true;
-  auto expanded_fnargs = ExpandedFnArgs(args);
-  for (auto const &expanded_arg : expanded_fnargs) {
-    DEBUG_LOG("ScopeTableParamsCoverArgs")
-    ("Expansion: ", expanded_arg.to_string());
-    for (auto const & [ jump, scope ] : table.init_map_) {
-      // TODO take constness into account for callability.
-
-      bool callable =
-          core::IsCallable(jump->params(), expanded_arg,
-                           [](type::Type const *arg,
-                              type::Typed<ast::Declaration const *> param) {
-                             bool result = type::CanCast(arg, param.type());
-                             DEBUG_LOG("ScopeTableParamsCoverArgs")
-                             ("    ... CanCast(", arg->to_string(), ", ",
-                              param.type()->to_string(), ") = ", result);
-                             return result;
-                           });
-      DEBUG_LOG("ScopeTableParamsCoverArgs")(" Callable: ", callable);
-      if (callable) { goto next_expanded_arg; }
-    }
-    covered = false;
-    break;
-  next_expanded_arg:;
+  if (not ParamsCoverArgs(args, table.init_map_,
+                          [](ir::Jump const *jump, auto const &)
+                              -> decltype(auto) { return jump->params(); })) {
+    NOT_YET("log an error");
   }
-
-  if (not covered) { NOT_YET("log an error"); }
 
   // If there are any scopes in this overload set that do not have blocks of the
   // corresponding names, we should exit.

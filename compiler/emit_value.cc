@@ -1312,13 +1312,11 @@ ir::Results Compiler::Visit(ast::Jump const *node, EmitValueTag) {
     auto work_item_ptr = DeferBody(this, node);
     auto *jmp_type     = &type_of(node)->as<type::Jump>();
 
-    core::FnParams<type::Typed<ast::Declaration const *>> params(
-        node->params().size());
-    for (size_t i = 0; i < node->params().size(); ++i) {
-      auto const *decl = node->params().at(i).value.get();
-      params.set(i, core::Param<type::Typed<ast::Declaration const *>>{
-                        decl->id(), type::Typed(decl, jmp_type->args()[i])});
-    }
+    size_t i = 0;
+    auto params = node->params().Transform([&](auto const &decl) {
+      return type::Typed<ast::Declaration const *>(decl.get(),
+                                                   jmp_type->args()[i++]);
+    });
 
     DEBUG_LOG("Jump")("Jump type = ", jmp_type->to_string());
     ir::Jump jmp(jmp_type, std::move(params));

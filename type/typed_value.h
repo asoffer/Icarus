@@ -1,8 +1,10 @@
 #ifndef ICARUS_TYPE_TYPED_VALUE_H
 #define ICARUS_TYPE_TYPED_VALUE_H
 
-#include <iosfwd>
 #include <type_traits>
+#include <utility>
+#include "absl/strings/str_cat.h"
+#include "base/stringify.h"
 
 namespace type {
 struct Type;
@@ -26,12 +28,6 @@ struct Typed {
   T const* type() const { return type_; }
   void set_type(T const* t) { type_ = t; }
 
-  template <typename... Args>
-  std::string to_string(Args&&... args) const {
-    return value_->to_string(std::forward<Args>(args)...) + ": " +
-           type_->to_string();
-  }
-
   template <typename W, typename U,
             typename = std::enable_if_t<
                 std::is_convertible_v<V, W> and std::is_base_of_v<U, T> and
@@ -51,9 +47,9 @@ struct Typed {
 };
 
 template <typename V>
-std::ostream& operator<<(std::ostream& os, Typed<V> const& t) {
-  using base::stringify;
-  return os << stringify(t.get()) << ": " << t.type()->to_string();
+std::string stringify(Typed<V> const& t) {
+  ASSERT(t.type() != nullptr);
+  return absl::StrCat(stringify(t.get()), ": ", t.type()->to_string());
 }
 
 template <typename T>

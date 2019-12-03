@@ -16,19 +16,25 @@ namespace compiler {
 std::vector<core::FnArgs<type::Type const *>> ExpandedFnArgs(
     core::FnArgs<VerifyResult> const &fnargs);
 
-template <typename IgnoredType>
-bool ParamsCoverArgs(
-    core::FnArgs<VerifyResult> const &args,
-    absl::flat_hash_map<IgnoredType, internal::ExprData> const &table) {
+template <typename TableType, typename ParamAccessor>
+bool ParamsCoverArgs(core::FnArgs<VerifyResult> const &args,
+                     TableType const &table, ParamAccessor &&get_params) {
   DEBUG_LOG("ParamsCoverArgs")("Unexpanded args: ", args.to_string());
 
   auto expanded_fnargs = ExpandedFnArgs(args);
   for (auto const &expanded_arg : expanded_fnargs) {
     DEBUG_LOG("ParamsCoverArgs")("Expansion: ", expanded_arg.to_string());
     for (auto const & [ k, v ] : table) {
+      static_assert(
+          std::is_same_v<
+              decltype(get_params(k, v)),
+              core::FnParams<type::Typed<ast::Declaration const *>> const &>);
+      auto const &params = get_params(k, v);
+      DEBUG_LOG("ParamsCoverArgs")("Params: ", stringify(params));
+
       // TODO take constness into account for callability.
       bool callable =
-          core::IsCallable(v.params, expanded_arg,
+          core::IsCallable(params, expanded_arg,
                            [](type::Type const *arg,
                               type::Typed<ast::Declaration const *> param) {
                              bool result = type::CanCast(arg, param.type());

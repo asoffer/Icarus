@@ -16,8 +16,7 @@ namespace {
 std::pair<ir::Results, ir::OutParams> SetReturns(
     internal::ExprData const &expr_data,
     absl::Span<type::Type const *> final_out_types) {
-  auto const & [ type, params ] = expr_data;
-  auto const &ret_types         = type->as<type::Function>().output;
+  auto const &ret_types = expr_data.type()->as<type::Function>().output;
   ir::Results results;
   ir::OutParams out_params;
   for (type::Type const *ret_type : ret_types) {
@@ -40,8 +39,7 @@ ir::Results EmitCallOneOverload(
   (args.Transform([](auto const &x) { return x.type()->to_string(); })
        .to_string());
 
-  auto const & [ type, params ] = data;
-  auto arg_results = PrepareCallArguments(compiler, params, args);
+  auto arg_results = PrepareCallArguments(compiler, data.params(), args);
 
   auto[out_results, out_params] = SetReturns(data, {});
   compiler->builder().Call(
@@ -108,7 +106,7 @@ void EmitRuntimeDispatch(
     }
 
     ir::RegOr<bool> match =
-        EmitRuntimeDispatchOneComparison(bldr, expr_data.params, args);
+        EmitRuntimeDispatchOneComparison(bldr, expr_data.params(), args);
     bldr.CurrentBlock() =
         ir::EarlyExitOn<true>(callee_to_block.at(overload), match);
   }
@@ -143,7 +141,9 @@ base::expected<FnCallDispatchTable> FnCallDispatchTable::Verify(
     }
   }
 
-  if (not ParamsCoverArgs(args, table.table_)) {
+  if (not ParamsCoverArgs(args, table.table_,
+                          [](auto const &, internal::ExprData const &data)
+                              -> decltype(auto) { return data.params(); })) {
     // TODO Return a failuere-match-reason.
     return base::unexpected("Match failure");
   }
@@ -157,14 +157,13 @@ type::Type const *FnCallDispatchTable::ComputeResultType(
         &table) {
   std::vector<std::vector<type::Type const *>> results;
   for (auto const & [ overload, expr_data ] : table) {
-    auto const & [ type, fn_params ] = expr_data;
     DEBUG_LOG("dispatch-verify")
     ("Extracting return type for ", overload->DebugString(), " of type ",
-     type->to_string());
-    if (auto *fn_type = type->if_as<type::Function>()) {
+     expr_data.type()->to_string());
+    if (auto *fn_type = expr_data.type()->if_as<type::Function>()) {
       auto const &out_vec = fn_type->output;
       results.push_back(out_vec);
-    } else if (type == type::Generic) {
+    } else if (expr_data.type() == type::Generic) {
       NOT_YET("log error");
     } else {
       NOT_YET();

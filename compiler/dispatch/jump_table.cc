@@ -26,11 +26,17 @@ base::expected<JumpDispatchTable> JumpDispatchTable::Verify(
     } else {
       // TODO you also call compiler->type_of inside ExtractParams, so it's
       // probably worth reducing the number of lookups.
-      table.table_.emplace(jump, internal::ExprData{jump->type(), *result});
+      table.table_.emplace(std::piecewise_construct,
+                           std::forward_as_tuple(jump),
+                           std::forward_as_tuple(jump->type(), *result));
     }
   }
 
-  if (not ParamsCoverArgs(args, table.table_)) { NOT_YET("log an error"); }
+  if (not ParamsCoverArgs(args, table.table_,
+                          [](auto const &, internal::ExprData const &data)
+                              -> decltype(auto) { return data.params(); })) {
+    NOT_YET("log an error");
+  }
   return table;
 }
 }  // namespace compiler
