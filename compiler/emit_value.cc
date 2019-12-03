@@ -1423,10 +1423,14 @@ ir::Results Compiler::Visit(ast::ScopeLiteral const *node, EmitValueTag) {
 ir::Results Compiler::Visit(ast::ScopeNode const *node, EmitValueTag) {
   DEBUG_LOG("ScopeNode")("Emitting IR for ScopeNode");
 
-  DEBUG_LOG("ScopeNode")("Current block:\n", *builder().CurrentBlock());
-
   auto const &scope_dispatch_table =
       *ASSERT_NOT_NULL(data_.scope_dispatch_table(node));
+
+  // Jump to a new block in case some scope ends up with `goto start()` in order
+  // to re-evealuate arguments.
+  auto *args_block = builder().AddBlock();
+  builder().UncondJump(args_block);
+  builder().CurrentBlock() = args_block;
 
   auto args = node->args().Transform([this](ast::Expression const *expr) {
     return type::Typed(Visit(expr, EmitValueTag{}), type_of(expr));

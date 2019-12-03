@@ -52,21 +52,32 @@ std::vector<core::FnArgs<VerifyResult>> VerifyBlockNode(
   return result;
 }
 
-void EmitCallOneOverload(ir::ScopeDef const *scope_def, Compiler *compiler,
-                         ir::Jump const *jump,
+// TODO organize the parameters here, they're getting to be too much.
+void EmitCallOneOverload(ir::ScopeDef const *scope_def,
+                         ir::BasicBlock const *starting_block,
+                         ir::BasicBlock const *landing_block,
+                         Compiler *compiler, ir::Jump const *jump,
                          core::FnArgs<type::Typed<ir::Results>> const &args,
                          ir::LocalBlockInterpretation const &block_interp) {
   auto arg_results = PrepareCallArguments(compiler, jump->params(), args);
   static_cast<void>(arg_results);
   // TODO pass arguments to inliner.
 
-  auto &bldr                            = compiler->builder();
-  ast::BlockNode const *next_block_node = ir::Inline(bldr, jump, block_interp);
-  ir::BlockDef const *block_def = scope_def->block(next_block_node->name());
+  auto &bldr                       = compiler->builder();
+  std::string_view next_block_name = ir::Inline(bldr, jump, block_interp);
+  if (next_block_name == "start") {
+    bldr.UncondJump(starting_block);
+  } else if (next_block_name == "exit") {
+    bldr.Call(scope_def->dones_[0], type::Func({}, {}), {});
+    bldr.UncondJump(landing_block);
+  } else {
+    ir::BlockDef const *block_def =
+        ASSERT_NOT_NULL(scope_def->block(next_block_name));
 
-  // TODO make an overload set and call it appropriately.
-  bldr.Call(block_def->before_[0], type::Func({}, {}), {});
-  bldr.UncondJump(block_interp[next_block_node]);
+    // TODO make an overload set and call it appropriately.
+    bldr.Call(block_def->before_[0], type::Func({}, {}), {});
+    bldr.UncondJump(block_interp[next_block_name]);
+  }
 
   DEBUG_LOG("EmitCallOneOverload")(*bldr.CurrentGroup());
 }
@@ -216,66 +227,49 @@ ir::Results ScopeDispatchTable::EmitCall(
   ("Emitting a table with ", init_map_.size(), " entries.");
   auto &bldr = compiler->builder();
 
-  auto *landing_block_hack = bldr.AddBlock();
+  auto *landing_block  = bldr.AddBlock();
+  auto callee_to_block = bldr.AddBlocks(init_map_);
 
-  if (init_map_.size() == 1) {
-    // If there's just one entry in the table we can avoid doing all the work to
-    // generate runtime dispatch code. It will amount to only a few
-    // unconditional jumps between blocks which will be optimized out, but
-    // there's no sense in generating them in the first place..
-    auto const & [ jump, scope_def ] = *init_map_.begin();
-    auto const &one_table            = tables_.begin()->second;
+  // Add basic blocks for each block node in the scope (for each scope
+  // definition which might be callable).
+  absl::flat_hash_map<ir::ScopeDef const *, ir::LocalBlockInterpretation>
+      block_interps;
+  for (auto const & [ scope_def, _ ] : tables_) {
+    auto[iter, success] = block_interps.emplace(
+        scope_def, bldr.MakeLocalBlockInterpretation(scope_node_));
+    static_cast<void>(success);
+    ASSERT(success == true);
+  }
 
-    auto block_interp = bldr.MakeLocalBlockInterpretation(scope_node_);
-    EmitCallOneOverload(scope_def, compiler, jump, args, block_interp);
-    // TODO handle results
+  auto *starting_block = bldr.CurrentBlock();
+  EmitRuntimeDispatch(bldr, init_map_, callee_to_block, args);
+
+  for (auto const & [ jump, scope_def ] : init_map_) {
+    bldr.CurrentBlock() = callee_to_block[jump];
+    // Argument preparation is done inside EmitCallOneOverload
+    EmitCallOneOverload(scope_def, starting_block, landing_block, compiler,
+                        jump, args, block_interps.at(scope_def));
+  }
+
+  // TODO handle results
+
+  for (auto const & [ scope_def, one_table ] : tables_) {
     for (auto const & [ node, table ] : one_table.blocks) {
-      bldr.CurrentBlock() = block_interp[node];
-
+      DEBUG_LOG("EmitCall")(node->DebugString());
+      bldr.CurrentBlock() = block_interps.at(scope_def)[node];
       compiler->Visit(node, EmitValueTag{});
-      // TODO Jump, handling yields
+      // TODO This is a simplification which only handles the situation where
+      // we jump to the after handler that has no arguments.
 
-      // TODO do this for real. The hack here is to just ignore the end jumps
-      // and finish.
-      bldr.UncondJump(landing_block_hack);
-    }
-
-  } else {
-    auto *land_block     = bldr.AddBlock();
-    auto callee_to_block = bldr.AddBlocks(init_map_);
-
-    EmitRuntimeDispatch(bldr, init_map_, callee_to_block, args);
-
-    // Add basic blocks for each block node in the scope (for each scope
-    // definition which might be callable).
-    absl::flat_hash_map<ir::ScopeDef const *, ir::LocalBlockInterpretation>
-        block_interps;
-    for (auto const & [ scope_def, _ ] : tables_) {
-      auto[iter, success] = block_interps.emplace(
-          scope_def, bldr.MakeLocalBlockInterpretation(scope_node_));
-      static_cast<void>(success);
-      ASSERT(success == true);
-    }
-
-    for (auto const & [ jump, scope_def ] : init_map_) {
-      bldr.CurrentBlock() = callee_to_block[jump];
-      // Argument preparation is done inside EmitCallOneOverload
-      EmitCallOneOverload(scope_def, compiler, jump, args,
+      ir::BlockDef const *block_def = scope_def->block(node->name());
+      EmitCallOneOverload(scope_def, starting_block, landing_block, compiler,
+                          block_def->after_[0], {},
                           block_interps.at(scope_def));
-    }
-    // TODO handle results
-
-    for (auto const & [ scope_def, one_table ] : tables_) {
-      for (auto const & [ node, table ] : one_table.blocks) {
-        DEBUG_LOG("EmitCall")(node->DebugString());
-        bldr.CurrentBlock() = block_interps.at(scope_def)[node];
-        compiler->Visit(node, EmitValueTag{});
-        bldr.UncondJump(landing_block_hack);
-      }
+      bldr.UncondJump(landing_block);
     }
   }
 
-  bldr.CurrentBlock() = landing_block_hack;
+  bldr.CurrentBlock() = landing_block;
   DEBUG_LOG("EmitCall")(*bldr.CurrentGroup());
   return ir::Results{};
 }

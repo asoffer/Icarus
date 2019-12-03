@@ -192,6 +192,7 @@ cc_lib(
         ":reg",
         ":results",
         ":stack_frame_allocations",
+        "//base:macros",
         "//ir/cmd:basic",
         "//ir/cmd:call",
         "//ir/cmd:cast",
@@ -294,6 +295,7 @@ cc_library(
     deps = [
         ":basic_block",
         "//ast:ast",
+        "//base:macros",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )

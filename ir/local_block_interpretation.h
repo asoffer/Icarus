@@ -3,6 +3,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "ast/ast.h"
+#include "base/macros.h"
 #include "ir/basic_block.h"
 
 namespace ir {
@@ -19,6 +20,10 @@ struct LocalBlockInterpretation {
     for (auto[block_node, _] : data_) {
       name_to_node_.emplace(block_node->name(), block_node);
     }
+  }
+  BasicBlock *operator[](std::string_view name) const {
+    ASSIGN_OR(return nullptr, auto const &node, block_node(name));
+    return operator[](&node);
   }
 
   BasicBlock *operator[](ast::BlockNode const *node) const {

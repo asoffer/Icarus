@@ -1,5 +1,6 @@
 #include "ir/inliner.h"
 
+#include "base/macros.h"
 #include "ir/builder.h"
 #include "ir/cmd/basic.h"
 #include "ir/cmd/call.h"
@@ -82,8 +83,8 @@ struct JumpInliner {
 // indicate that the block finished via a ChooseJump. The `BasicBlock*` returned
 // is the chosen block.
 template <typename CmdType>
-ast::BlockNode const *InlineCmd(base::untyped_buffer::iterator *iter,
-                                JumpInliner &inliner) {
+std::optional<std::string_view> InlineCmd(base::untyped_buffer::iterator *iter,
+                                          JumpInliner &inliner) {
   if constexpr (std::is_same_v<CmdType, PrintCmd>) {
     auto ctrl = iter->read<typename CmdType::control_bits>();
     if (ctrl.reg) {
@@ -245,7 +246,7 @@ ast::BlockNode const *InlineCmd(base::untyped_buffer::iterator *iter,
 
     if (ctrl.only_get) {
       inliner.Inline(&iter->read<Reg>());
-      return nullptr;
+      return std::nullopt;
     }
 
     if (ctrl.reg) {
@@ -278,11 +279,16 @@ ast::BlockNode const *InlineCmd(base::untyped_buffer::iterator *iter,
         auto const &block_interp = inliner.block_interpretation();
         auto num_blocks                 = iter->read<uint16_t>();
         ast::BlockNode const *block_node = nullptr;
+
+        std::string_view next_name;
         for (uint16_t i = 0; i < num_blocks; ++i) {
           auto name = iter->read<std::string_view>();
-          if (not block_node) { block_node = block_interp.block_node(name); }
+          if (name == "start" or name == "exit" or
+              block_interp.block_node(name)) {
+            next_name = name;
+            break;
+          }
         }
-        ASSERT(block_node != nullptr);
 
         // TODO the block nodes stored afterwards aren't needed. we're just
         // ignoring them because this is the last command so we can safely do
@@ -293,7 +299,7 @@ ast::BlockNode const *InlineCmd(base::untyped_buffer::iterator *iter,
         auto *entry_block = inliner.builder().AddBlock();
         write_iter.write(entry_block);
         inliner.builder().CurrentBlock() = entry_block;
-        return block_node;
+        return next_name;
       } break;
 
       default: UNREACHABLE();
@@ -426,13 +432,13 @@ ast::BlockNode const *InlineCmd(base::untyped_buffer::iterator *iter,
 
     inliner.Inline(&iter->read<Reg>());
   }
-  return nullptr;
+  return std::nullopt;
 }
 
 }  // namespace
 
-ast::BlockNode const *Inline(Builder &bldr, Jump const *to_be_inlined,
-                             LocalBlockInterpretation const &block_interp) {
+std::string_view Inline(Builder &bldr, Jump const *to_be_inlined,
+                        LocalBlockInterpretation const &block_interp) {
   // Note: It is important that the inliner is created before making registers
   // for each of the arguments, because creating the inliner looks at state on
   // the target function (counting which register it should start from), and
@@ -452,8 +458,8 @@ ast::BlockNode const *Inline(Builder &bldr, Jump const *to_be_inlined,
   auto *start_block          = bldr.CurrentBlock();
   size_t inlined_start_index = bldr.CurrentGroup()->blocks().size();
 
-  BasicBlock *exit_block        = nullptr;
-  ast::BlockNode const *chosen_block = nullptr;
+  BasicBlock *exit_block = nullptr;
+  std::string_view chosen_block;
   for (auto *block_to_be_inlined : to_be_inlined->blocks()) {
     auto *block = bldr.AddBlock();
 
@@ -469,11 +475,11 @@ ast::BlockNode const *Inline(Builder &bldr, Jump const *to_be_inlined,
     while (iter != block->cmd_buffer_.end()) {
       switch (iter.read<cmd_index_t>()) {
 #define ICARUS_IR_CMD_X(type)                                                  \
-  case type::index:                                                            \
+  case type::index: {                                                          \
     DEBUG_LOG("inliner")(#type ": ", iter);                                    \
-    chosen_block = InlineCmd<type>(&iter, inliner);                            \
-    if (chosen_block) { goto finish_inline_iteration; }                        \
-    break;
+    ASSIGN_OR(break, chosen_block, InlineCmd<type>(&iter, inliner));           \
+    goto finish_inline_iteration;                                              \
+  } break;
 #include "ir/cmd/cmd.xmacro.h"
 #undef ICARUS_IR_CMD_X
       }
