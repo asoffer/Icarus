@@ -1,6 +1,8 @@
 package(default_visibility = ["//visibility:public"])
 load("//:defs.bzl", "cc_lib")
 
+cc_library(name = "cmd_xmacro", textual_hdrs = ["cmd.xmacro.h"])
+
 cc_lib(
     name = "basic",
     deps = [

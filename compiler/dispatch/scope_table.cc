@@ -52,21 +52,23 @@ std::vector<core::FnArgs<VerifyResult>> VerifyBlockNode(
   return result;
 }
 
-ir::Results EmitCallOneOverload(
-    Compiler *compiler, ir::Jump const *jump,
-    core::FnArgs<type::Typed<ir::Results>> const &args,
-    ir::LocalBlockInterpretation const &block_interp) {
-  DEBUG_LOG("EmitCallOneOverload")
-  (args.Transform([](auto const &x) { return x.type()->to_string(); })
-       .to_string());
-
+void EmitCallOneOverload(ir::ScopeDef const *scope_def, Compiler *compiler,
+                         ir::Jump const *jump,
+                         core::FnArgs<type::Typed<ir::Results>> const &args,
+                         ir::LocalBlockInterpretation const &block_interp) {
   auto arg_results = PrepareCallArguments(compiler, jump->params(), args);
-  auto inliner = ir::Inliner::Make(compiler->builder().CurrentGroup());
-  static_cast<void>(inliner);
   static_cast<void>(arg_results);
+  // TODO pass arguments to inliner.
 
-  NOT_YET();
-  return ir::Results{};
+  auto &bldr                            = compiler->builder();
+  ast::BlockNode const *next_block_node = ir::Inline(bldr, jump, block_interp);
+  ir::BlockDef const *block_def = scope_def->block(next_block_node->name());
+
+  // TODO make an overload set and call it appropriately.
+  bldr.Call(block_def->before_[0], type::Func({}, {}), {});
+  bldr.UncondJump(block_interp[next_block_node]);
+
+  DEBUG_LOG("EmitCallOneOverload")(*bldr.CurrentGroup());
 }
 
 // Emits code which determines if a function with parameters `params` should be
@@ -175,7 +177,9 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
 
   // If there are any scopes in this overload set that do not have blocks of the
   // corresponding names, we should exit.
-  for (auto[scope_def, one_table] : table.tables_) {
+
+  DEBUG_LOG("ScopeNode")("Num tables = ", table.tables_.size());
+  for (auto & [ scope_def, one_table ] : table.tables_) {
     for (auto const &block : node->blocks()) {
       DEBUG_LOG("ScopeNode")
       ("Verifying dispatch for block `", block.name(), "`");
@@ -189,10 +193,10 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
 
         ASSIGN_OR(
             continue,  //
-            auto table,
+            auto jump_table,
             JumpDispatchTable::Verify(compiler, node, block_def->after_, {}));
         bool success =
-            one_table.blocks.emplace(&block, std::move(table)).second;
+            one_table.blocks.emplace(&block, std::move(jump_table)).second;
         static_cast<void>(success);
         ASSERT(success == true);
       } else {
@@ -210,6 +214,9 @@ ir::Results ScopeDispatchTable::EmitCall(
     core::FnArgs<type::Typed<ir::Results>> const &args) const {
   DEBUG_LOG("ScopelDispatchTable")
   ("Emitting a table with ", init_map_.size(), " entries.");
+  auto &bldr = compiler->builder();
+
+  auto *landing_block_hack = bldr.AddBlock();
 
   if (init_map_.size() == 1) {
     // If there's just one entry in the table we can avoid doing all the work to
@@ -217,14 +224,23 @@ ir::Results ScopeDispatchTable::EmitCall(
     // unconditional jumps between blocks which will be optimized out, but
     // there's no sense in generating them in the first place..
     auto const & [ jump, scope_def ] = *init_map_.begin();
+    auto const &one_table            = tables_.begin()->second;
 
-    auto block_interp =
-        compiler->builder().MakeLocalBlockInterpretation(scope_node_);
-    EmitCallOneOverload(compiler, jump, args, block_interp);
+    auto block_interp = bldr.MakeLocalBlockInterpretation(scope_node_);
+    EmitCallOneOverload(scope_def, compiler, jump, args, block_interp);
     // TODO handle results
-  } else {
+    for (auto const & [ node, table ] : one_table.blocks) {
+      bldr.CurrentBlock() = block_interp[node];
 
-    auto &bldr           = compiler->builder();
+      compiler->Visit(node, EmitValueTag{});
+      // TODO Jump, handling yields
+
+      // TODO do this for real. The hack here is to just ignore the end jumps
+      // and finish.
+      bldr.UncondJump(landing_block_hack);
+    }
+
+  } else {
     auto *land_block     = bldr.AddBlock();
     auto callee_to_block = bldr.AddBlocks(init_map_);
 
@@ -244,17 +260,24 @@ ir::Results ScopeDispatchTable::EmitCall(
     for (auto const & [ jump, scope_def ] : init_map_) {
       bldr.CurrentBlock() = callee_to_block[jump];
       // Argument preparation is done inside EmitCallOneOverload
-      EmitCallOneOverload(compiler, jump, args, block_interps.at(scope_def));
-      // TODO phi-node to coalesce return values.
-      // TODO jumping to a single landing block isn't correct for scopes.
-      bldr.UncondJump(land_block);
+      EmitCallOneOverload(scope_def, compiler, jump, args,
+                          block_interps.at(scope_def));
     }
-    bldr.CurrentBlock() = land_block;
     // TODO handle results
+
+    for (auto const & [ scope_def, one_table ] : tables_) {
+      for (auto const & [ node, table ] : one_table.blocks) {
+        DEBUG_LOG("EmitCall")(node->DebugString());
+        bldr.CurrentBlock() = block_interps.at(scope_def)[node];
+        compiler->Visit(node, EmitValueTag{});
+        bldr.UncondJump(landing_block_hack);
+      }
+    }
   }
+
+  bldr.CurrentBlock() = landing_block_hack;
+  DEBUG_LOG("EmitCall")(*bldr.CurrentGroup());
   return ir::Results{};
 }
-
-
 
 }  // namespace compiler

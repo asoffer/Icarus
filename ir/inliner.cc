@@ -22,8 +22,68 @@
 
 namespace ir {
 namespace {
+
+struct JumpInliner {
+  // Constructs an Inliner which uses `bldr` to inline jumps.
+  static JumpInliner Make(Builder &bldr,
+                          LocalBlockInterpretation const &block_interp) {
+    return JumpInliner(bldr, block_interp,
+                       bldr.CurrentGroup()->reg_to_offset_.size(),
+                       bldr.CurrentGroup()->blocks().size() - 1);
+  }
+
+  void Inline(Reg *r, type::Type const *t = nullptr) const {
+    if (r->is_arg()) {
+      *r = Reg{r->arg_value() + reg_offset_};
+    } else if (r->is_out()) {
+      // NOT_YET();
+    } else {
+      *r = Reg{r->value() + reg_offset_};
+    }
+
+    if (t) {
+      DEBUG_LOG("inline_reserve")("Reserving t = ", t->to_string());
+      auto arch = core::Interpretter();
+      bldr_.CurrentGroup()->Reserve(*r, t->bytes(arch), t->alignment(arch));
+    }
+  }
+
+  Builder& builder() { return bldr_; }
+
+  LocalBlockInterpretation const &block_interpretation() const {
+    return block_interp_;
+  }
+
+  constexpr void Inline(BasicBlock const *b) const {
+    // TODO *b = BlockIndex(b->value + block_offset_);
+  }
+
+  void MergeAllocations(internal::BlockGroup *group,
+                        StackFrameAllocations const &allocs) {}
+
+ private:
+  friend struct ::ir::internal::BlockGroup;
+  explicit JumpInliner(Builder &bldr,
+                       LocalBlockInterpretation const &block_interp,
+                       size_t reg_offset, size_t block_offset)
+      : bldr_(bldr),
+        block_interp_(block_interp),
+        reg_offset_(reg_offset),
+        block_offset_(block_offset) {}
+
+  Builder &bldr_;
+  LocalBlockInterpretation const &block_interp_;
+  size_t reg_offset_   = 0;
+  size_t block_offset_ = 0;
+  BasicBlock *land_    = nullptr;
+};
+
+// Returns a `BasicBlock*` which is usually `nullptr`, but will be non-null to
+// indicate that the block finished via a ChooseJump. The `BasicBlock*` returned
+// is the chosen block.
 template <typename CmdType>
-void InlineCmd(base::untyped_buffer::iterator *iter, Inliner const &inliner) {
+ast::BlockNode const *InlineCmd(base::untyped_buffer::iterator *iter,
+                                JumpInliner &inliner) {
   if constexpr (std::is_same_v<CmdType, PrintCmd>) {
     auto ctrl = iter->read<typename CmdType::control_bits>();
     if (ctrl.reg) {
@@ -185,7 +245,7 @@ void InlineCmd(base::untyped_buffer::iterator *iter, Inliner const &inliner) {
 
     if (ctrl.only_get) {
       inliner.Inline(&iter->read<Reg>());
-      return;
+      return nullptr;
     }
 
     if (ctrl.reg) {
@@ -200,14 +260,11 @@ void InlineCmd(base::untyped_buffer::iterator *iter, Inliner const &inliner) {
   } else if constexpr (std::is_same_v<CmdType, PhiCmd>) {
     NOT_YET();
   } else if constexpr (std::is_same_v<CmdType, JumpCmd>) {
-    auto &kind = iter->read<typename CmdType::Kind>();
+    auto write_iter = *iter;  // Only used with ChooseJump
+    auto kind = iter->read<typename CmdType::Kind>();
     switch (kind) {
       case CmdType::Kind::kRet:
-        kind = CmdType::Kind::kUncond;
-        // We have ensured that any return jump has enough space to hold an
-        // unconditional jump so that this write wile inlining does not need a
-        // reallocation. This ensures iterators remain valid.
-        iter->write(inliner.landing());
+        UNREACHABLE("Jumps canont have `return`s");
         break;
       case CmdType::Kind::kUncond:
         inliner.Inline(iter->read<BasicBlock const *>());
@@ -217,7 +274,28 @@ void InlineCmd(base::untyped_buffer::iterator *iter, Inliner const &inliner) {
         inliner.Inline(iter->read<BasicBlock const *>());
         inliner.Inline(iter->read<BasicBlock const *>());
       } break;
-      case CmdType::Kind::kChoose: NOT_YET();
+      case CmdType::Kind::kChoose: {
+        auto const &block_interp = inliner.block_interpretation();
+        auto num_blocks                 = iter->read<uint16_t>();
+        ast::BlockNode const *block_node = nullptr;
+        for (uint16_t i = 0; i < num_blocks; ++i) {
+          auto name = iter->read<std::string_view>();
+          if (not block_node) { block_node = block_interp.block_node(name); }
+        }
+        ASSERT(block_node != nullptr);
+
+        // TODO the block nodes stored afterwards aren't needed. we're just
+        // ignoring them because this is the last command so we can safely do
+        // nothing here. But also we should delete them.
+
+        ASSERT(write_iter != *iter);
+        write_iter.write(CmdType::Kind::kUncond);
+        auto *entry_block = inliner.builder().AddBlock();
+        write_iter.write(entry_block);
+        inliner.builder().CurrentBlock() = entry_block;
+        return block_node;
+      } break;
+
       default: UNREACHABLE();
     }
   } else if constexpr (std::is_same_v<CmdType, ScopeCmd>) {
@@ -348,118 +426,72 @@ void InlineCmd(base::untyped_buffer::iterator *iter, Inliner const &inliner) {
 
     inliner.Inline(&iter->read<Reg>());
   }
+  return nullptr;
 }
 
 }  // namespace
 
-void Inliner::Inline(Reg *r, type::Type const *t) const {
-  if (r->is_arg()) {
-    *r = Reg{r->arg_value() + reg_offset_};
-  } else if (r->is_out()) {
-    // NOT_YET();
-  } else {
-    *r = Reg{r->value() + reg_offset_};
-  }
-
-  if (t) {
-    DEBUG_LOG("inline_reserve")("Reserving t = ", t->to_string());
-    auto arch = core::Interpretter();
-    GetBuilder().CurrentGroup()->Reserve(*r, t->bytes(arch),
-                                         t->alignment(arch));
-  }
-}
-
-void Inliner::MergeAllocations(internal::BlockGroup *group,
-                               StackFrameAllocations const &allocs) {}
-
-std::pair<Results, bool> CallInline(
-    CompiledFn *f, Results const &arguments,
-    absl::flat_hash_map<BlockDef const *, BasicBlock *> const &block_map) {
-  bool is_jump = false;  // TODO remove this
-  std::vector<Results> return_vals;
-  return_vals.resize(f->type_->output.size());
-
+ast::BlockNode const *Inline(Builder &bldr, Jump const *to_be_inlined,
+                             LocalBlockInterpretation const &block_interp) {
   // Note: It is important that the inliner is created before making registers
-  // for each of the arguments, because creating the inliner looks state on the
-  // current function (counting which register it should start on), and this
-  // should exclude the registers we create to hold the arguments.
-  auto inliner = Inliner::Make(GetBuilder().CurrentGroup());
+  // for each of the arguments, because creating the inliner looks at state on
+  // the target function (counting which register it should start from), and
+  // this should exclude the registers we create to hold the arguments.
+  auto inliner = JumpInliner::Make(bldr, block_interp);
 
   std::vector<Reg> arg_regs;
-  arg_regs.reserve(f->type_->input.size());
-  for (size_t i = 0; i < f->type_->input.size(); ++i) {
-    arg_regs.push_back(type::Apply(f->type_->input[i], [&](auto tag) -> Reg {
-      using T = typename decltype(tag)::type;
-      return MakeReg(arguments.get<T>(i));
-    }));
+  arg_regs.reserve(to_be_inlined->type()->args().size());
+  for (type::Type const *t : to_be_inlined->type()->args()) {
+    // type::Apply(t, [&](auto tag) -> Reg {
+    // using T = typename decltype(tag)::type;
+    // TODO arguments to the jump
+    // return MakeReg(arguments.get<T>(i));
+    // })
   }
 
-  size_t inlined_start = GetBuilder().CurrentGroup()->blocks().size();
+  auto *start_block          = bldr.CurrentBlock();
+  size_t inlined_start_index = bldr.CurrentGroup()->blocks().size();
 
-  for (size_t i = 1; i < f->blocks().size(); ++i) {
-    auto *block = GetBuilder().AddBlock();
-    *block      = *f->blocks()[i];
-    auto iter   = block->cmd_buffer_.begin();
+  BasicBlock *exit_block        = nullptr;
+  ast::BlockNode const *chosen_block = nullptr;
+  for (auto *block_to_be_inlined : to_be_inlined->blocks()) {
+    auto *block = bldr.AddBlock();
 
-    while (iter < block->cmd_buffer_.end()) {
+    // Copy the block and then scan it for references to things that need to
+    // be changed with inlining (e.g., basic blocks or registers).
+    *block = *block_to_be_inlined;
+
+    DEBUG_LOG("inliner-before")(*block_to_be_inlined);
+    DEBUG_LOG("inliner-before")("[", block->cmd_buffer_.to_string(), "]");
+    auto iter = block->cmd_buffer_.begin();
+    // TODO understand and document why/how blocks can be empty here. I would
+    // have suspected all blocks should be required
+    while (iter != block->cmd_buffer_.end()) {
       switch (iter.read<cmd_index_t>()) {
-#define CASE(type)                                                             \
+#define ICARUS_IR_CMD_X(type)                                                  \
   case type::index:                                                            \
-    DEBUG_LOG("inliner_dbg")(#type ": ", iter);                                \
-    InlineCmd<type>(&iter, inliner);                                           \
-    break
-        CASE(PrintCmd);
-        CASE(AddCmd);
-        CASE(SubCmd);
-        CASE(MulCmd);
-        CASE(DivCmd);
-        CASE(ModCmd);
-        CASE(NegCmd);
-        CASE(NotCmd);
-        CASE(LtCmd);
-        CASE(LeCmd);
-        CASE(EqCmd);
-        CASE(NeCmd);
-        CASE(GeCmd);
-        CASE(GtCmd);
-        CASE(StoreCmd);
-        CASE(LoadCmd);
-        CASE(VariantCmd);
-        CASE(TupleCmd);
-        CASE(ArrowCmd);
-        CASE(PtrCmd);
-        CASE(BufPtrCmd);
-        CASE(JumpCmd);
-        CASE(XorFlagsCmd);
-        CASE(AndFlagsCmd);
-        CASE(OrFlagsCmd);
-        CASE(CastCmd);
-        CASE(RegisterCmd);
-        CASE(ReturnCmd);
-        CASE(EnumerationCmd);
-        CASE(StructCmd);
-        CASE(OpaqueTypeCmd);
-        CASE(SemanticCmd);
-        CASE(LoadSymbolCmd);
-        CASE(TypeInfoCmd);
-        CASE(AccessCmd);
-        CASE(VariantAccessCmd);
-        CASE(CallCmd);
-        CASE(BlockCmd);
-        CASE(ScopeCmd);
-#undef CASE
+    DEBUG_LOG("inliner")(#type ": ", iter);                                    \
+    chosen_block = InlineCmd<type>(&iter, inliner);                            \
+    if (chosen_block) { goto finish_inline_iteration; }                        \
+    break;
+#include "ir/cmd/cmd.xmacro.h"
+#undef ICARUS_IR_CMD_X
       }
     }
+  finish_inline_iteration:;
+
+    DEBUG_LOG("inliner-after")(*block);
+
+    exit_block = bldr.CurrentBlock();
   }
 
-  GetBuilder().UncondJump(GetBuilder().CurrentGroup()->blocks()[inlined_start]);
-  GetBuilder().CurrentBlock() = inliner.landing();
+  // TODO Merge allocations
 
-  inliner.MergeAllocations(GetBuilder().CurrentGroup(), f->allocs());
+  bldr.CurrentBlock() = start_block;
+  bldr.UncondJump(bldr.CurrentGroup()->blocks()[inlined_start_index]);
 
-  Results results;
-  for (auto const &r : return_vals) { results.append(r); }
-  return std::pair{results, is_jump};
+  bldr.CurrentBlock() = exit_block;
+  return chosen_block;
 }
 
 }  // namespace ir

@@ -1,10 +1,38 @@
 #include "ir/basic_block.h"
 
+#include "ir/cmd/basic.h"
+#include "ir/cmd/call.h"
+#include "ir/cmd/cast.h"
+#include "ir/cmd/jumps.h"
+#include "ir/cmd/load.h"
+#include "ir/cmd/misc.h"
+#include "ir/cmd/phi.h"
+#include "ir/cmd/print.h"
+#include "ir/cmd/register.h"
+#include "ir/cmd/return.h"
+#include "ir/cmd/scope.h"
+#include "ir/cmd/store.h"
+#include "ir/cmd/types.h"
 #include "type/type.h"
 
 namespace ir {
 
-std::ostream &operator<<(std::ostream &os, BasicBlock const &b) { return os; }
+std::ostream &operator<<(std::ostream &os, BasicBlock const &b) {
+  for (auto iter = b.cmd_buffer_.cbegin(); iter < b.cmd_buffer_.cend();) {
+    auto cmd_index = iter.read<cmd_index_t>();
+    switch (cmd_index) {
+#define ICARUS_IR_CMD_X(type)                                                  \
+  case type::index:                                                            \
+    os << "    " #type " " << type::DebugString(&iter) << "\n";                \
+    break;
+#include "ir/cmd/cmd.xmacro.h"
+#undef ICARUS_IR_CMD_X
+      default: UNREACHABLE(static_cast<int>(cmd_index));
+    }
+    if (cmd_index == JumpCmd::index) { break; }
+  }
+  return os;
+}
 
 void BasicBlock::Append(BasicBlock &&b) { NOT_YET(); }
 

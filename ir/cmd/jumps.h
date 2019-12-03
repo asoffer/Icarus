@@ -17,11 +17,13 @@ struct JumpCmd {
   enum class Kind : uint8_t { kRet, kUncond, kCond, kChoose };
 
   static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
-    std::string s;
     using base::stringify;
     switch (iter->read<Kind>()) {
       case Kind::kRet: return "ret";
-      case Kind::kUncond: s = stringify(iter->read<BasicBlock const*>()); break;
+      case Kind::kUncond:
+        return absl::StrCat("uncond ",
+                            stringify(iter->read<BasicBlock const*>()));
+        break;
       case Kind::kCond: {
         auto reg         = iter->read<Reg>();
         auto false_block = iter->read<BasicBlock const*>();
@@ -54,7 +56,6 @@ struct JumpCmd {
       }
       default: UNREACHABLE();
     }
-    return s;
   }
 };
 

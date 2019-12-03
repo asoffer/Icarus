@@ -1,53 +1,20 @@
 #ifndef ICARUS_IR_CMD_INLINER_H
 #define ICARUS_IR_CMD_INLINER_H
 
-#include "absl/container/flat_hash_map.h"
+#include "ir/basic_block.h"
 #include "ir/block_group.h"
-#include "ir/reg.h"
-#include "ir/results.h"
-
-namespace type {
-struct Type;
-}  // namespace type
+#include "ir/builder.h"
+#include "ir/jump.h"
+#include "ir/local_block_interpretation.h"
 
 namespace ir {
-struct BasicBlock;
-struct BlockDef;
-struct CompiledFn;
-struct StackFrameAllocations;
 
-struct Inliner {
-  static Inliner Make(internal::BlockGroup *group) {
-    BasicBlock *block = group->blocks().back();
-    group->AppendBlock();
-    return Inliner(group->reg_to_offset_.size(), group->blocks().size() - 1,
-                   block);
-  }
-
-  void Inline(Reg *r, type::Type const *t = nullptr) const;
-
-  constexpr void Inline(BasicBlock const *b) const {
-    // TODO *b = BlockIndex(b->value + block_offset_);
-  }
-
-  void MergeAllocations(internal::BlockGroup *group,
-                        StackFrameAllocations const &allocs);
-
-  BasicBlock *landing() const { return land_; }
-
- private:
-  friend struct ::ir::internal::BlockGroup;
-  explicit Inliner(size_t reg_offset, size_t block_offset, BasicBlock *land)
-      : reg_offset_(reg_offset), block_offset_(block_offset), land_(land) {}
-
-  size_t reg_offset_   = 0;
-  size_t block_offset_ = 0;
-  BasicBlock *land_    = nullptr;
-};
-
-std::pair<Results, bool> CallInline(
-    CompiledFn *f, Results const &arguments,
-    absl::flat_hash_map<BlockDef const *, BasicBlock *> const &block_map);
+// Inlines a `Jump` into the corresponding target block group (function or
+// jump). On exit, the current block of `bldr` will be the block the inlined
+// jump lands on. The returned block is the block we intend to jump to (which
+// may need a function call for initialization first).
+ast::BlockNode const *Inline(Builder &bldr, Jump const *to_be_inlined,
+                             LocalBlockInterpretation const &);
 
 }  // namespace ir
 

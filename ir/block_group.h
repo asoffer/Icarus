@@ -17,9 +17,6 @@
 #include "type/type_fwd.h"
 #include "type/typed_value.h"
 
-namespace ir {
-struct Inliner;
-}  // namespace ir
 namespace ir::internal {
 
 // A `BlockGroup` represents a collection of `BasicBlock`s which make sense
@@ -67,26 +64,22 @@ struct BlockGroup {
   }
 
  private:
-  friend struct ::ir::Inliner;  // TODO remove.
   core::FnParams<type::Typed<ast::Declaration const *>> params_;
   std::vector<std::unique_ptr<BasicBlock>> blocks_;
   StackFrameAllocations allocs_;
 
+ public: // TODO remove publicity
   // This vector is indexed by Reg and stores the value which is the offset
   // into the base::untyped_buffer holding all registers during compile-time
   // execution. It is only valid for core::Host().
   absl::flat_hash_map<Reg, core::Bytes> reg_to_offset_;
 
+ private:
   // The size of an untyped_buffer required to construct
   core::Bytes reg_size_ = core::Bytes{0};
 };
 
-inline std::ostream &operator<<(std::ostream &os, BlockGroup const &b) {
-  for (size_t i = 0; i < b.blocks().size(); ++i) {
-    os << "\n block #" << i << "\n" << *b.blocks()[i];
-  }
-  return os;
-}
+std::ostream &operator<<(std::ostream &os, BlockGroup const &b);
 
 }  // namespace ir::internal
 

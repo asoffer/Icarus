@@ -700,7 +700,6 @@ ir::Results Compiler::Visit(ast::BlockNode const *node, EmitValueTag) {
     //               std::move(yield_args), {}},
     //           *block_map, ctx);
     //
-    NOT_YET();
   }
   return ir::Results{};
 }
@@ -1421,31 +1420,10 @@ ir::Results Compiler::Visit(ast::ScopeLiteral const *node, EmitValueTag) {
       ir::ScopeHandler(data_.add_scope(module()), inits, dones, blocks)};
 }
 
-ir::Results InitializeAndEmitBlockNode(Compiler *compiler,
-                                       ir::Results const &results,
-                                       ast::BlockNode const *block_node) {
-  // TODO this initialization should be the same as what's done with function
-  // calls, so you should share that code. It's tricky because you need to worry
-  // about conversions to/from variants.
-  ASSERT(block_node->args().size() == results.size());
-  size_t i = 0;
-  for (auto *arg : block_node->args()) {
-    ASSERT(arg->is<ast::Declaration>() == true);
-    auto *t   = compiler->type_of(arg->if_as<ast::Declaration>());
-    auto addr = compiler->addr(arg->if_as<ast::Declaration>());
-    type::ApplyTypes<bool, uint8_t, uint16_t, uint32_t, uint64_t, int8_t,
-                     int16_t, int32_t, int64_t, float, double, ir::Addr>(
-        t, [&](auto tag) {
-          using T = typename decltype(tag)::type;
-          ir::Store(results.get<T>(i), addr);
-        });
-    i++;
-  }
-  return compiler->Visit(block_node, EmitValueTag{});
-}
-
 ir::Results Compiler::Visit(ast::ScopeNode const *node, EmitValueTag) {
   DEBUG_LOG("ScopeNode")("Emitting IR for ScopeNode");
+
+  DEBUG_LOG("ScopeNode")("Current block:\n", *builder().CurrentBlock());
 
   auto const &scope_dispatch_table =
       *ASSERT_NOT_NULL(data_.scope_dispatch_table(node));

@@ -48,4 +48,11 @@ Reg BlockGroup::Alloca(type::Type const *t) {
   return r;
 }
 
+std::ostream &operator<<(std::ostream &os, BlockGroup const &b) {
+  for (size_t i = 0; i < b.blocks().size(); ++i) {
+    os << "\n block #" << i << " (" << b.blocks()[i] << ")\n" << *b.blocks()[i];
+  }
+  return os;
+}
+
 }  // namespace ir::internal
