@@ -91,12 +91,13 @@ void EmitIrForStatements(Compiler *compiler,
                          base::PtrSpan<ast::Node const> span) {
   ICARUS_SCOPE(ir::SetTemporaries(compiler->builder())) {
     for (auto *stmt : span) {
+      DEBUG_LOG("EmitIrForStatements")(stmt->DebugString());
       compiler->Visit(stmt, EmitValueTag{});
       compiler->builder().FinishTemporariesWith(
           [compiler](type::Typed<ir::Reg> r) {
             compiler->Visit(r.type(), r.get(), EmitDestroyTag{});
           });
-      if (compiler->builder().more_stmts_allowed()) { break; };
+      if (not compiler->builder().more_stmts_allowed()) { break; };
     }
   }
 }
@@ -139,17 +140,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node) {
       }
     }
 
-    ICARUS_SCOPE(ir::SetTemporaries(compiler->builder())) {
-      for (auto const *stmt : node->stmts()) {
-        compiler->Visit(stmt, EmitValueTag{});
-
-        compiler->builder().FinishTemporariesWith(
-            [compiler](type::Typed<ir::Reg> r) {
-              compiler->Visit(r.type(), r.get(), EmitDestroyTag{});
-            });
-      }
-    }
-
+    EmitIrForStatements(compiler, node->stmts());
     MakeAllDestructions(compiler, node->body_scope());
 
     if (t->as<type::Function>().output.empty()) {
@@ -246,16 +237,8 @@ void CompleteBody(Compiler *compiler, ast::Jump const *node) {
 
     MakeAllStackAllocations(compiler, node->body_scope());
 
-    ICARUS_SCOPE(ir::SetTemporaries(compiler->builder())) {
-      for (auto *stmt : node->stmts()) {
-        compiler->Visit(stmt, EmitValueTag{});
 
-        compiler->builder().FinishTemporariesWith(
-            [compiler](type::Typed<ir::Reg> r) {
-              compiler->Visit(r.type(), r.get(), EmitDestroyTag{});
-            });
-      }
-    }
+    EmitIrForStatements(compiler, node->stmts());
 
     // TODO it seems like this will be appended after ChooseJump, which means
     // it'll never be executed.
@@ -312,15 +295,7 @@ std::unique_ptr<module::BasicModule> CompileExecutableModule(
             &nodes.front()->scope_->as<ast::ModuleScope>();
         ICARUS_SCOPE(ir::SetCurrent(exec_mod->main(), &c.builder())) {
           MakeAllStackAllocations(&c, mod_scope);
-          ICARUS_SCOPE(ir::SetTemporaries(c.builder())) {
-            for (auto const *stmt : nodes) {
-              c.Visit(stmt, EmitValueTag{});
-              c.builder().FinishTemporariesWith([&](type::Typed<ir::Reg> r) {
-                c.Visit(r.type(), r.get(), EmitDestroyTag{});
-              });
-            }
-          }
-
+          EmitIrForStatements(&c, nodes);
           MakeAllDestructions(&c, mod_scope);
           // TODO determine under which scenarios destructors can be skipped.
 

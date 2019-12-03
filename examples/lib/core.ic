@@ -1,33 +1,37 @@
 #{export}
 if ::= scope {
-  init ::= (b: bool) -> () {
+  init ::= jump(b: bool) {
     switch (b) {
-      jump then() when true
-      jump (else | exit)() when false
+      goto then() when true
+      goto else() | exit() when false
     }
   }
   then ::= block {
     before ::= () -> () {}
-    after ::= () -> () { jump exit() }
+    after ::= jump() { goto exit() }
   }
-  else ::= block? {
+
+  else ::= block {
     before ::= () -> () {}
-    after ::= () -> () { jump exit() }
+    after ::= jump() { goto exit() }
   }
+
   done ::= () -> () {}
 }
 
 #{export}
 while ::= scope {
-  init ::= (b: bool) -> () {
+  init ::= jump(b: bool) {
     switch (b) {
-      jump do()   when true
-      jump exit() when false
+      goto do() when true
+      goto exit() when false
     }
   }
+
   do ::= block {
     before ::= () -> () {}
-    after ::= () -> () { jump start() }
+    after ::= jump() { goto start() }
   }
+
   done ::= () -> () {}
 }
