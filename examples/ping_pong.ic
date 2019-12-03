@@ -1,22 +1,18 @@
-main ::= () -> () {
-  foo () ping {
-    print "sending..."
-  } pong {
-    print "received!\n"
-  }
+foo () ping {
+  print "sending..."
+} pong {
+  print "received!\n"
 }
 
 foo ::= scope {
-  init ::= () -> () { jump ping() }
+  init ::= jump() { goto ping() }
   ping ::= block {
     before ::= () -> {}
-    after ::= () -> () { jump pong() }
+    after ::= jump() { goto pong() }
   }
   pong ::= block {
     before ::= () -> {}
-    after ::= () -> () { jump ping() }
+    after ::= jump() { goto ping() }
   }
   done ::= () -> {}
 }
-
-

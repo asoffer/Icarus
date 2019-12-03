@@ -71,6 +71,7 @@ auto UnaryApply(base::untyped_buffer::const_iterator *iter, bool reg0,
   using fn_type = typename CmdType::fn_type;
   if constexpr (CmdType::template IsSupported<T>()) {
     auto val = reg0 ? ctx->resolve<T>(iter->read<Reg>()) : iter->read<T>();
+    DEBUG_LOG("UnaryApply")("val = ", val);
     return fn_type{}(val);
   } else {
     return T{};
@@ -135,7 +136,8 @@ BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
   } else if constexpr (std::is_same_v<CmdType, NegCmd> or
                        std::is_same_v<CmdType, NotCmd> or
                        std::is_same_v<CmdType, PtrCmd> or
-                       std::is_same_v<CmdType, BufPtrCmd>) {
+                       std::is_same_v<CmdType, BufPtrCmd> or
+                       std::is_same_v<CmdType, RegisterCmd>) {
     auto ctrl = iter->read<typename CmdType::control_bits>();
     PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
       using type  = typename std::decay_t<decltype(tag)>::type;
@@ -480,11 +482,22 @@ BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
             : iter->read<type::Type const *>();
 
     frame.regs_.set(ctx->Offset(iter->read<Reg>()), type::Arr(len, data_type));
-
+  } else if constexpr (std::is_same_v<CmdType, XorFlagsCmd>) {
+    NOT_YET();  // TODO could this be included in binary commands? How is it
+                // working already?!
+  } else if constexpr (std::is_same_v<CmdType, OrFlagsCmd>) {
+    NOT_YET();  // TODO could this be included in binary commands? How is it
+                // working already?!
+  } else if constexpr (std::is_same_v<CmdType, AndFlagsCmd>) {
+    NOT_YET();  // TODO could this be included in binary commands? How is it
+                // working already?!
 #if defined(ICARUS_DEBUG)
   } else if constexpr (std::is_same_v<CmdType, DebugIrCmd>) {
+    size_t i = 0;
     for (auto *block : ctx->call_stack.top().fn_->blocks()) {
-      std::cerr << *block;
+      std::cerr << "\n block #" << i << " (" << block << ")\n" << *block;
+      DEBUG_LOG("debug_ir-buffer")(block->cmd_buffer_.to_string());
+      ++i;
     }
 #endif
   } else if constexpr (std::is_same_v<CmdType, CastCmd>) {
@@ -708,6 +721,8 @@ BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
     Reg reg = iter->read<Reg>();
     DEBUG_LOG("variant")(reg);
     frame.regs_.set(ctx->Offset(reg), addr);
+  } else {
+    static_assert(base::always_false<CmdType>());
   }
   return nullptr;
 }

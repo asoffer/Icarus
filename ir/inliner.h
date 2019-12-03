@@ -14,6 +14,7 @@ namespace ir {
 // jump lands on. The returned block name is the block we intend to jump to
 // (which may need a function call for initialization first).
 std::string_view Inline(Builder &bldr, Jump const *to_be_inlined,
+                        absl::Span<ir::Results const> arguments,
                         LocalBlockInterpretation const &);
 
 }  // namespace ir

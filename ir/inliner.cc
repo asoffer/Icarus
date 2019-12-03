@@ -355,7 +355,7 @@ std::optional<std::string_view> InlineCmd(base::untyped_buffer::iterator *iter,
     }
 #if defined(ICARUS_DEBUG)
   } else if constexpr (std::is_same_v<CmdType, DebugIrCmd>) {
-    NOT_YET();
+    // Nothing to be done here, one-byte command.
 #endif
   } else if constexpr (std::is_same_v<CmdType, CastCmd>) {
     iter->read<uint8_t>();
@@ -438,6 +438,7 @@ std::optional<std::string_view> InlineCmd(base::untyped_buffer::iterator *iter,
 }  // namespace
 
 std::string_view Inline(Builder &bldr, Jump const *to_be_inlined,
+                        absl::Span<ir::Results const> arguments,
                         LocalBlockInterpretation const &block_interp) {
   // Note: It is important that the inliner is created before making registers
   // for each of the arguments, because creating the inliner looks at state on
@@ -447,12 +448,13 @@ std::string_view Inline(Builder &bldr, Jump const *to_be_inlined,
 
   std::vector<Reg> arg_regs;
   arg_regs.reserve(to_be_inlined->type()->args().size());
+  size_t i = 0;
   for (type::Type const *t : to_be_inlined->type()->args()) {
-    // type::Apply(t, [&](auto tag) -> Reg {
-    // using T = typename decltype(tag)::type;
-    // TODO arguments to the jump
-    // return MakeReg(arguments.get<T>(i));
-    // })
+    type::Apply(t, [&](auto tag) -> Reg {
+      using T = typename decltype(tag)::type;
+      return MakeReg(arguments[i++].get<T>(0));
+    });
+    // TODO Handle types not covered by Apply (structs, etc).
   }
 
   auto *start_block          = bldr.CurrentBlock();

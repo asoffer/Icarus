@@ -64,7 +64,8 @@ void EmitCallOneOverload(ir::ScopeDef const *scope_def,
   // TODO pass arguments to inliner.
 
   auto &bldr                       = compiler->builder();
-  std::string_view next_block_name = ir::Inline(bldr, jump, block_interp);
+  std::string_view next_block_name =
+      ir::Inline(bldr, jump, arg_results, block_interp);
   if (next_block_name == "start") {
     bldr.UncondJump(starting_block);
   } else if (next_block_name == "exit") {
@@ -164,27 +165,33 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
     }
   }
 
+  bool covered = true;
   auto expanded_fnargs = ExpandedFnArgs(args);
-  expanded_fnargs.erase(
-      std::remove_if(
-          expanded_fnargs.begin(), expanded_fnargs.end(),
-          [&](core::FnArgs<type::Type const *> const &fnargs) {
-            for (auto const & [ scope_def, one_table ] : table.tables_) {
-              for (auto const & [ init, params ] : one_table.inits) {
-                if (core::IsCallable(
-                        params, fnargs,
-                        [](type::Type const *arg,
-                           type::Typed<ast::Declaration const *> param) {
-                          return type::CanCast(arg, param.type());
-                        })) {
-                  return true;
-                }
-              }
-            }
-            return false;
-          }),
-      expanded_fnargs.end());
-  if (not expanded_fnargs.empty()) { NOT_YET("log an error"); }
+  for (auto const &expanded_arg : expanded_fnargs) {
+    DEBUG_LOG("ScopeTableParamsCoverArgs")
+    ("Expansion: ", expanded_arg.to_string());
+    for (auto const & [ jump, scope ] : table.init_map_) {
+      // TODO take constness into account for callability.
+
+      bool callable =
+          core::IsCallable(jump->params(), expanded_arg,
+                           [](type::Type const *arg,
+                              type::Typed<ast::Declaration const *> param) {
+                             bool result = type::CanCast(arg, param.type());
+                             DEBUG_LOG("ScopeTableParamsCoverArgs")
+                             ("    ... CanCast(", arg->to_string(), ", ",
+                              param.type()->to_string(), ") = ", result);
+                             return result;
+                           });
+      DEBUG_LOG("ScopeTableParamsCoverArgs")(" Callable: ", callable);
+      if (callable) { goto next_expanded_arg; }
+    }
+    covered = false;
+    break;
+  next_expanded_arg:;
+  }
+
+  if (not covered) { NOT_YET("log an error"); }
 
   // If there are any scopes in this overload set that do not have blocks of the
   // corresponding names, we should exit.
