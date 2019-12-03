@@ -257,9 +257,10 @@ void CompleteBody(Compiler *compiler, ast::Jump const *node) {
       }
     }
 
+    // TODO it seems like this will be appended after ChooseJump, which means
+    // it'll never be executed.
     MakeAllDestructions(compiler, node->body_scope());
 
-    compiler->builder().ReturnJump();
     jmp->work_item = nullptr;
   }
 }

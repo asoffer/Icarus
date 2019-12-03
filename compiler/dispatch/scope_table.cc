@@ -63,21 +63,24 @@ void EmitCallOneOverload(ir::ScopeDef const *scope_def,
   static_cast<void>(arg_results);
   // TODO pass arguments to inliner.
 
-  auto &bldr                       = compiler->builder();
-  std::string_view next_block_name =
-      ir::Inline(bldr, jump, arg_results, block_interp);
-  if (next_block_name == "start") {
-    bldr.UncondJump(starting_block);
-  } else if (next_block_name == "exit") {
-    bldr.Call(scope_def->dones_[0], type::Func({}, {}), {});
-    bldr.UncondJump(landing_block);
-  } else {
-    ir::BlockDef const *block_def =
-        ASSERT_NOT_NULL(scope_def->block(next_block_name));
+  auto &bldr         = compiler->builder();
+  auto name_to_block = ir::Inline(bldr, jump, arg_results, block_interp);
 
-    // TODO make an overload set and call it appropriately.
-    bldr.Call(block_def->before_[0], type::Func({}, {}), {});
-    bldr.UncondJump(block_interp[next_block_name]);
+  for (auto[next_block_name, block] : name_to_block) {
+    bldr.CurrentBlock() = block;
+    if (next_block_name == "start") {
+      bldr.UncondJump(starting_block);
+    } else if (next_block_name == "exit") {
+      bldr.Call(scope_def->dones_[0], type::Func({}, {}), {});
+      bldr.UncondJump(landing_block);
+    } else {
+      ir::BlockDef const *block_def =
+          ASSERT_NOT_NULL(scope_def->block(next_block_name));
+
+      // TODO make an overload set and call it appropriately.
+      bldr.Call(block_def->before_[0], type::Func({}, {}), {});
+      bldr.UncondJump(block_interp[next_block_name]);
+    }
   }
 
   DEBUG_LOG("EmitCallOneOverload")(*bldr.CurrentGroup());

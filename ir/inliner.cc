@@ -33,6 +33,13 @@ struct JumpInliner {
                        bldr.CurrentGroup()->blocks().size() - 1);
   }
 
+  BasicBlock *CopyBlock(BasicBlock const *block_to_copy) {
+    auto *block = bldr_.AddBlock();
+    *block      = *block_to_copy;
+    block_updater_.emplace(block_to_copy, block);
+    return block;
+  }
+
   void Inline(Reg *r, type::Type const *t = nullptr) const {
     if (r->is_arg()) {
       *r = Reg{r->arg_value() + reg_offset_};
@@ -55,9 +62,10 @@ struct JumpInliner {
     return block_interp_;
   }
 
-  constexpr void Inline(BasicBlock const *b) const {
-    // TODO *b = BlockIndex(b->value + block_offset_);
+  BasicBlock *CorrespondingBlock(BasicBlock const *b) const {
+    return block_updater_.at(b);
   }
+  void Inline(BasicBlock **b) const { *b = CorrespondingBlock(*b); }
 
   void MergeAllocations(internal::BlockGroup *group,
                         StackFrameAllocations const &allocs) {}
@@ -72,6 +80,7 @@ struct JumpInliner {
         reg_offset_(reg_offset),
         block_offset_(block_offset) {}
 
+  absl::flat_hash_map<BasicBlock const *, BasicBlock *> block_updater_;
   Builder &bldr_;
   LocalBlockInterpretation const &block_interp_;
   size_t reg_offset_   = 0;
@@ -268,12 +277,12 @@ std::optional<std::string_view> InlineCmd(base::untyped_buffer::iterator *iter,
         UNREACHABLE("Jumps canont have `return`s");
         break;
       case CmdType::Kind::kUncond:
-        inliner.Inline(iter->read<BasicBlock const *>());
+        inliner.Inline(&iter->read<BasicBlock *>());
         break;
       case CmdType::Kind::kCond: {
-        iter->read<Reg>();
-        inliner.Inline(iter->read<BasicBlock const *>());
-        inliner.Inline(iter->read<BasicBlock const *>());
+        inliner.Inline(&iter->read<Reg>());
+        inliner.Inline(&iter->read<BasicBlock *>());
+        inliner.Inline(&iter->read<BasicBlock *>());
       } break;
       case CmdType::Kind::kChoose: {
         auto const &block_interp = inliner.block_interpretation();
@@ -437,14 +446,32 @@ std::optional<std::string_view> InlineCmd(base::untyped_buffer::iterator *iter,
 
 }  // namespace
 
-std::string_view Inline(Builder &bldr, Jump const *to_be_inlined,
-                        absl::Span<ir::Results const> arguments,
-                        LocalBlockInterpretation const &block_interp) {
+absl::flat_hash_map<std::string_view, BasicBlock *> Inline(
+    Builder &bldr, Jump const *to_be_inlined,
+    absl::Span<ir::Results const> arguments,
+    LocalBlockInterpretation const &block_interp) {
+  absl::flat_hash_map<std::string_view, BasicBlock *> result;
+
   // Note: It is important that the inliner is created before making registers
   // for each of the arguments, because creating the inliner looks at state on
   // the target function (counting which register it should start from), and
   // this should exclude the registers we create to hold the arguments.
+
   auto inliner = JumpInliner::Make(bldr, block_interp);
+
+  auto *start_block          = bldr.CurrentBlock();
+  size_t inlined_start_index = bldr.CurrentGroup()->blocks().size();
+
+  for (auto *block_to_be_inlined : to_be_inlined->blocks()) {
+    // Copy the block and then scan it for references to things that need to
+    // be changed with inlining (e.g., basic blocks or registers).
+    //
+    // Note that we need to copy all blocks first (or at least allocate them)
+    // because we may request a jump downwards (i.e., to a block which we have
+    // not yet seen). In other words, we have to make sure that any jump which
+    // needs to be updated, the block mapping is already present.
+    inliner.CopyBlock(block_to_be_inlined);
+  }
 
   std::vector<Reg> arg_regs;
   arg_regs.reserve(to_be_inlined->type()->args().size());
@@ -457,18 +484,9 @@ std::string_view Inline(Builder &bldr, Jump const *to_be_inlined,
     // TODO Handle types not covered by Apply (structs, etc).
   }
 
-  auto *start_block          = bldr.CurrentBlock();
-  size_t inlined_start_index = bldr.CurrentGroup()->blocks().size();
-
-  BasicBlock *exit_block = nullptr;
   std::string_view chosen_block;
   for (auto *block_to_be_inlined : to_be_inlined->blocks()) {
-    auto *block = bldr.AddBlock();
-
-    // Copy the block and then scan it for references to things that need to
-    // be changed with inlining (e.g., basic blocks or registers).
-    *block = *block_to_be_inlined;
-
+    auto *block = inliner.CorrespondingBlock(block_to_be_inlined);
     DEBUG_LOG("inliner-before")(*block_to_be_inlined);
     DEBUG_LOG("inliner-before")("[", block->cmd_buffer_.to_string(), "]");
     auto iter = block->cmd_buffer_.begin();
@@ -479,7 +497,9 @@ std::string_view Inline(Builder &bldr, Jump const *to_be_inlined,
 #define ICARUS_IR_CMD_X(type)                                                  \
   case type::index: {                                                          \
     DEBUG_LOG("inliner")(#type ": ", iter);                                    \
-    ASSIGN_OR(break, chosen_block, InlineCmd<type>(&iter, inliner));           \
+    ASSIGN_OR(break, /**/                                                      \
+              std::string_view chosen_block, InlineCmd<type>(&iter, inliner)); \
+    result.emplace(chosen_block, bldr.CurrentBlock());                         \
     goto finish_inline_iteration;                                              \
   } break;
 #include "ir/cmd/cmd.xmacro.h"
@@ -489,8 +509,6 @@ std::string_view Inline(Builder &bldr, Jump const *to_be_inlined,
   finish_inline_iteration:;
 
     DEBUG_LOG("inliner-after")(*block);
-
-    exit_block = bldr.CurrentBlock();
   }
 
   // TODO Merge allocations
@@ -498,8 +516,7 @@ std::string_view Inline(Builder &bldr, Jump const *to_be_inlined,
   bldr.CurrentBlock() = start_block;
   bldr.UncondJump(bldr.CurrentGroup()->blocks()[inlined_start_index]);
 
-  bldr.CurrentBlock() = exit_block;
-  return chosen_block;
+  return result;
 }
 
 }  // namespace ir

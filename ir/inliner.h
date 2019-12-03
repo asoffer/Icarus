@@ -10,12 +10,11 @@
 namespace ir {
 
 // Inlines a `Jump` into the corresponding target block group (function or
-// jump). On exit, the current block of `bldr` will be the block the inlined
-// jump lands on. The returned block name is the block we intend to jump to
-// (which may need a function call for initialization first).
-std::string_view Inline(Builder &bldr, Jump const *to_be_inlined,
-                        absl::Span<ir::Results const> arguments,
-                        LocalBlockInterpretation const &);
+// jump). Returns a mapping from the name of a block being jumped to, to the
+// newly allocated BasicBlock that we use as the corresponding landing pad.
+absl::flat_hash_map<std::string_view, BasicBlock *> Inline(
+    Builder &bldr, Jump const *to_be_inlined,
+    absl::Span<ir::Results const> arguments, LocalBlockInterpretation const &);
 
 }  // namespace ir
 
