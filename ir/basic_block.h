@@ -30,6 +30,8 @@ struct BasicBlock {
   base::untyped_buffer cmd_buffer_;
   JumpCmd jump_ = JumpCmd::Return();
 
+  size_t num_incoming_ = 0;
+
  private:
   internal::BlockGroup *group_;
 };

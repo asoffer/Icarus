@@ -18,11 +18,10 @@ struct BasicBlock;
 
 struct JumpCmd {
   static JumpCmd Return() { return JumpCmd(RetJump{}); }
-  static JumpCmd Uncond(BasicBlock const* block) {
+  static JumpCmd Uncond(BasicBlock* block) {
     return JumpCmd(UncondJump{block});
   }
-  static JumpCmd Cond(Reg r, BasicBlock const* true_block,
-                      BasicBlock const* false_block) {
+  static JumpCmd Cond(Reg r, BasicBlock* true_block, BasicBlock* false_block) {
     return JumpCmd(CondJump{r, true_block, false_block});
   }
   static JumpCmd Choose(absl::Span<std::string_view const> blocks) {
@@ -31,12 +30,12 @@ struct JumpCmd {
 
   struct RetJump {};
   struct UncondJump {
-    BasicBlock const* block;
+    BasicBlock * block;
   };
   struct CondJump {
     Reg reg;
-    BasicBlock const* true_block;
-    BasicBlock const* false_block;
+    BasicBlock * true_block;
+    BasicBlock * false_block;
   };
   struct ChooseJump {
     explicit ChooseJump(absl::Span<std::string_view const> b)
@@ -81,7 +80,7 @@ struct JumpCmd {
   }
 
   std::string DebugString() const {
-    return std::visit(
+    return Visit(
         [](auto const& j) -> std::string {
           using type = std::decay_t<decltype(j)>;
           using base::stringify;
@@ -103,8 +102,7 @@ struct JumpCmd {
           } else {
             static_assert(base::always_false<type>());
           }
-        },
-        jump_);
+        });
   }
 
  private:

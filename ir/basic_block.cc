@@ -17,6 +17,7 @@
 namespace ir {
 
 std::ostream &operator<<(std::ostream &os, BasicBlock const &b) {
+  os << " [with " << b.num_incoming_ << " incoming]\n";
   for (auto iter = b.cmd_buffer_.cbegin(); iter < b.cmd_buffer_.cend();) {
     auto cmd_index = iter.read<cmd_index_t>();
     switch (cmd_index) {

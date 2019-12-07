@@ -31,6 +31,7 @@ struct BlockGroup {
 
   base::PtrSpan<BasicBlock const> blocks() const { return blocks_; }
   base::PtrSpan<BasicBlock> blocks() { return blocks_; }
+  auto &mutable_blocks() { return blocks_; }
 
   BasicBlock const *entry() const { return blocks()[0]; }
   BasicBlock *entry() { return blocks()[0]; }

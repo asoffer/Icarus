@@ -54,12 +54,10 @@ struct JumpInliner {
     }
   }
 
-  Builder& builder() { return bldr_; }
-
   BasicBlock *CorrespondingBlock(BasicBlock const *b) const {
     return block_updater_.at(b);
   }
-  void Inline(BasicBlock const **b) const { *b = CorrespondingBlock(*b); }
+  void Inline(BasicBlock **b) const { *b = CorrespondingBlock(*b); }
 
   void MergeAllocations(internal::BlockGroup *group,
                         StackFrameAllocations const &allocs) {}
@@ -455,10 +453,13 @@ absl::flat_hash_map<std::string_view, BasicBlock *> Inline(
         // clean these up but in the mean time, we can just ignore them.
       } else if constexpr (std::is_same_v<type, JumpCmd::UncondJump>) {
         inliner.Inline(&j.block);
+        ++j.block->num_incoming_;
       } else if constexpr (std::is_same_v<type, JumpCmd::CondJump>) {
         inliner.Inline(&j.reg);
         inliner.Inline(&j.true_block);
+        ++j.true_block->num_incoming_;
         inliner.Inline(&j.false_block);
+        ++j.false_block->num_incoming_;
       } else if constexpr (std::is_same_v<type, JumpCmd::ChooseJump>) {
         std::string_view next_name;
         for (std::string_view name : j.blocks()) {
@@ -470,8 +471,9 @@ absl::flat_hash_map<std::string_view, BasicBlock *> Inline(
         }
 
         // NOTE: `j` is no longer valid because we're overwriting it here.
-        auto *entry_block   = inliner.builder().AddBlock();
-        block->jump_        = JumpCmd::Uncond(entry_block);
+        auto *entry_block   = bldr.AddBlock();
+        bldr.CurrentBlock() = block;
+        bldr.UncondJump(entry_block);
         result.emplace(next_name, entry_block);
       } else {
         static_assert(base::always_false<type>());

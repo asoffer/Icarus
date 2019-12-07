@@ -170,9 +170,9 @@ struct Builder {
   // that
   //               this is highly specific to the current scope-defining
   //               language constructs which are likely to change.
-  void UncondJump(BasicBlock const* block);
-  void CondJump(RegOr<bool> cond, BasicBlock const* true_block,
-                BasicBlock const* false_block);
+  void UncondJump(BasicBlock * block);
+  void CondJump(RegOr<bool> cond, BasicBlock* true_block,
+                BasicBlock* false_block);
   void ReturnJump();
   void ChooseJump(absl::Span<std::string_view const> names,
                   absl::Span<BasicBlock* const> blocks);
