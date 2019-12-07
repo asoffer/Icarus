@@ -5,7 +5,7 @@
 #include "ir/cmd/basic.h"
 #include "ir/cmd/call.h"
 #include "ir/cmd/cast.h"
-#include "ir/cmd/jumps.h"
+#include "ir/cmd/jump.h"
 #include "ir/cmd/load.h"
 #include "ir/cmd/misc.h"
 #include "ir/cmd/phi.h"
@@ -26,10 +26,8 @@ namespace {
 
 struct JumpInliner {
   // Constructs an Inliner which uses `bldr` to inline jumps.
-  static JumpInliner Make(Builder &bldr,
-                          LocalBlockInterpretation const &block_interp) {
-    return JumpInliner(bldr, block_interp,
-                       bldr.CurrentGroup()->reg_to_offset_.size(),
+  static JumpInliner Make(Builder &bldr) {
+    return JumpInliner(bldr, bldr.CurrentGroup()->reg_to_offset_.size(),
                        bldr.CurrentGroup()->blocks().size() - 1);
   }
 
@@ -58,31 +56,21 @@ struct JumpInliner {
 
   Builder& builder() { return bldr_; }
 
-  LocalBlockInterpretation const &block_interpretation() const {
-    return block_interp_;
-  }
-
   BasicBlock *CorrespondingBlock(BasicBlock const *b) const {
     return block_updater_.at(b);
   }
-  void Inline(BasicBlock **b) const { *b = CorrespondingBlock(*b); }
+  void Inline(BasicBlock const **b) const { *b = CorrespondingBlock(*b); }
 
   void MergeAllocations(internal::BlockGroup *group,
                         StackFrameAllocations const &allocs) {}
 
  private:
   friend struct ::ir::internal::BlockGroup;
-  explicit JumpInliner(Builder &bldr,
-                       LocalBlockInterpretation const &block_interp,
-                       size_t reg_offset, size_t block_offset)
-      : bldr_(bldr),
-        block_interp_(block_interp),
-        reg_offset_(reg_offset),
-        block_offset_(block_offset) {}
+  explicit JumpInliner(Builder &bldr, size_t reg_offset, size_t block_offset)
+      : bldr_(bldr), reg_offset_(reg_offset), block_offset_(block_offset) {}
 
   absl::flat_hash_map<BasicBlock const *, BasicBlock *> block_updater_;
   Builder &bldr_;
-  LocalBlockInterpretation const &block_interp_;
   size_t reg_offset_   = 0;
   size_t block_offset_ = 0;
   BasicBlock *land_    = nullptr;
@@ -92,8 +80,7 @@ struct JumpInliner {
 // indicate that the block finished via a ChooseJump. The `BasicBlock*` returned
 // is the chosen block.
 template <typename CmdType>
-std::optional<std::string_view> InlineCmd(base::untyped_buffer::iterator *iter,
-                                          JumpInliner &inliner) {
+void InlineCmd(base::untyped_buffer::iterator *iter, JumpInliner &inliner) {
   if constexpr (std::is_same_v<CmdType, PrintCmd>) {
     auto ctrl = iter->read<typename CmdType::control_bits>();
     if (ctrl.reg) {
@@ -255,7 +242,7 @@ std::optional<std::string_view> InlineCmd(base::untyped_buffer::iterator *iter,
 
     if (ctrl.only_get) {
       inliner.Inline(&iter->read<Reg>());
-      return std::nullopt;
+      return;
     }
 
     if (ctrl.reg) {
@@ -269,50 +256,6 @@ std::optional<std::string_view> InlineCmd(base::untyped_buffer::iterator *iter,
     }
   } else if constexpr (std::is_same_v<CmdType, PhiCmd>) {
     NOT_YET();
-  } else if constexpr (std::is_same_v<CmdType, JumpCmd>) {
-    auto write_iter = *iter;  // Only used with ChooseJump
-    auto kind = iter->read<typename CmdType::Kind>();
-    switch (kind) {
-      case CmdType::Kind::kRet:
-        UNREACHABLE("Jumps canont have `return`s");
-        break;
-      case CmdType::Kind::kUncond:
-        inliner.Inline(&iter->read<BasicBlock *>());
-        break;
-      case CmdType::Kind::kCond: {
-        inliner.Inline(&iter->read<Reg>());
-        inliner.Inline(&iter->read<BasicBlock *>());
-        inliner.Inline(&iter->read<BasicBlock *>());
-      } break;
-      case CmdType::Kind::kChoose: {
-        auto const &block_interp = inliner.block_interpretation();
-        auto num_blocks                 = iter->read<uint16_t>();
-        ast::BlockNode const *block_node = nullptr;
-
-        std::string_view next_name;
-        for (uint16_t i = 0; i < num_blocks; ++i) {
-          auto name = iter->read<std::string_view>();
-          if (name == "start" or name == "exit" or
-              block_interp.block_node(name)) {
-            next_name = name;
-            break;
-          }
-        }
-
-        // TODO the block nodes stored afterwards aren't needed. we're just
-        // ignoring them because this is the last command so we can safely do
-        // nothing here. But also we should delete them.
-
-        ASSERT(write_iter != *iter);
-        write_iter.write(CmdType::Kind::kUncond);
-        auto *entry_block = inliner.builder().AddBlock();
-        write_iter.write(entry_block);
-        inliner.builder().CurrentBlock() = entry_block;
-        return next_name;
-      } break;
-
-      default: UNREACHABLE();
-    }
   } else if constexpr (std::is_same_v<CmdType, ScopeCmd>) {
     NOT_YET();
   } else if constexpr (std::is_same_v<CmdType, BlockCmd>) {
@@ -441,7 +384,6 @@ std::optional<std::string_view> InlineCmd(base::untyped_buffer::iterator *iter,
 
     inliner.Inline(&iter->read<Reg>());
   }
-  return std::nullopt;
 }
 
 }  // namespace
@@ -450,6 +392,7 @@ absl::flat_hash_map<std::string_view, BasicBlock *> Inline(
     Builder &bldr, Jump const *to_be_inlined,
     absl::Span<ir::Results const> arguments,
     LocalBlockInterpretation const &block_interp) {
+  DEBUG_LOG("inliner")(*to_be_inlined);
   absl::flat_hash_map<std::string_view, BasicBlock *> result;
 
   // Note: It is important that the inliner is created before making registers
@@ -457,7 +400,7 @@ absl::flat_hash_map<std::string_view, BasicBlock *> Inline(
   // the target function (counting which register it should start from), and
   // this should exclude the registers we create to hold the arguments.
 
-  auto inliner = JumpInliner::Make(bldr, block_interp);
+  auto inliner = JumpInliner::Make(bldr);
 
   auto *start_block          = bldr.CurrentBlock();
   size_t inlined_start_index = bldr.CurrentGroup()->blocks().size();
@@ -497,17 +440,43 @@ absl::flat_hash_map<std::string_view, BasicBlock *> Inline(
 #define ICARUS_IR_CMD_X(type)                                                  \
   case type::index: {                                                          \
     DEBUG_LOG("inliner")(#type ": ", iter);                                    \
-    ASSIGN_OR(break, /**/                                                      \
-              std::string_view chosen_block, InlineCmd<type>(&iter, inliner)); \
-    result.emplace(chosen_block, bldr.CurrentBlock());                         \
-    goto finish_inline_iteration;                                              \
+    InlineCmd<type>(&iter, inliner);                                           \
   } break;
 #include "ir/cmd/cmd.xmacro.h"
 #undef ICARUS_IR_CMD_X
       }
     }
-  finish_inline_iteration:;
 
+    block->jump_.Visit([&](auto &j) {
+      using type = std::decay_t<decltype(j)>;
+      if constexpr (std::is_same_v<type, JumpCmd::RetJump>) {
+        // TODO somehow we end up creating extra blocks that aren't used.
+        // These blocks by default have a return jump at the end. We need to
+        // clean these up but in the mean time, we can just ignore them.
+      } else if constexpr (std::is_same_v<type, JumpCmd::UncondJump>) {
+        inliner.Inline(&j.block);
+      } else if constexpr (std::is_same_v<type, JumpCmd::CondJump>) {
+        inliner.Inline(&j.reg);
+        inliner.Inline(&j.true_block);
+        inliner.Inline(&j.false_block);
+      } else if constexpr (std::is_same_v<type, JumpCmd::ChooseJump>) {
+        std::string_view next_name;
+        for (std::string_view name : j.blocks()) {
+          if (name == "start" or name == "exit" or
+              block_interp.block_node(name)) {
+            next_name = name;
+            break;
+          }
+        }
+
+        // NOTE: `j` is no longer valid because we're overwriting it here.
+        auto *entry_block   = inliner.builder().AddBlock();
+        block->jump_        = JumpCmd::Uncond(entry_block);
+        result.emplace(next_name, entry_block);
+      } else {
+        static_assert(base::always_false<type>());
+      }
+    });
     DEBUG_LOG("inliner-after")(*block);
   }
 

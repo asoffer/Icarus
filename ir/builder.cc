@@ -74,45 +74,24 @@ void Builder::Call(RegOr<AnyFunc> const &fn, type::Function const *f,
 }
 
 void Builder::UncondJump(BasicBlock const *block) {
-  auto &buf = CurrentBlock()->cmd_buffer_;
-  buf.append(JumpCmd::index);
-  buf.append(JumpCmd::Kind::kUncond);
-  buf.append(block);
+  CurrentBlock()->jump_ = JumpCmd::Uncond(block);
 }
 
-void Builder::ReturnJump() {
-  auto &buf = CurrentBlock()->cmd_buffer_;
-  buf.append(JumpCmd::index);
-  buf.append(JumpCmd::Kind::kRet);
-  // This extra block index is so that when inlined, we don't have to worry
-  // about iterator invalidation, as a return becomes an unconditional jump
-  // needing extra space.
-  buf.append(ReturnBlock());
-}
+void Builder::ReturnJump() { CurrentBlock()->jump_ = JumpCmd::Return(); }
 
 void Builder::CondJump(RegOr<bool> cond, BasicBlock const *true_block,
                        BasicBlock const *false_block) {
-  auto &buf = CurrentBlock()->cmd_buffer_;
   if (cond.is_reg()) {
-    buf.append(JumpCmd::index);
-    buf.append(JumpCmd::Kind::kCond);
-    buf.append(cond.reg());
-    buf.append(false_block);
-    buf.append(true_block);
+    CurrentBlock()->jump_ = JumpCmd::Cond(cond.reg(), true_block, false_block);
   } else {
-    UncondJump(cond.value() ? true_block : false_block);
+    CurrentBlock()->jump_ =
+        JumpCmd::Uncond(cond.value() ? true_block : false_block);
   }
 }
 
 void Builder::ChooseJump(absl::Span<std::string_view const> names,
                          absl::Span<BasicBlock *const> blocks) {
-  ASSERT(names.size() == blocks.size());
-  auto &buf = CurrentBlock()->cmd_buffer_;
-  buf.append(JumpCmd::index);
-  buf.append(JumpCmd::Kind::kChoose);
-  buf.append<uint16_t>(names.size());
-  for (std::string_view name : names) { buf.append(name); }
-  for (BasicBlock *block : blocks) { buf.append(block); }
+  CurrentBlock()->jump_ = JumpCmd::Choose(names);
 }
 
 namespace {

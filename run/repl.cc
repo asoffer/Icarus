@@ -11,7 +11,7 @@
 #include "core/fn_params.h"
 #include "frontend/parse.h"
 #include "frontend/source/repl.h"
-#include "ir/cmd/jumps.h"
+#include "ir/cmd/jump.h"
 #include "ir/compiled_fn.h"
 #include "module/module.h"
 #include "type/function.h"

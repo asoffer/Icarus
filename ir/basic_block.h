@@ -8,6 +8,7 @@
 #include "base/untyped_buffer.h"
 #include "core/alignment.h"
 #include "core/bytes.h"
+#include "ir/cmd/jump.h"
 #include "ir/out_params.h"
 
 namespace ir {
@@ -27,6 +28,7 @@ struct BasicBlock {
   void Append(BasicBlock &&b);
 
   base::untyped_buffer cmd_buffer_;
+  JumpCmd jump_ = JumpCmd::Return();
 
  private:
   internal::BlockGroup *group_;

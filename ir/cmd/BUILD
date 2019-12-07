@@ -35,15 +35,14 @@ cc_lib(
     test_deps = None,
 )
 
-cc_lib(
-    name = "jumps",
+cc_library(
+    name = "jump",
+    hdrs = ["jump.h"],
     deps = [
-        ":util",
-        "//type:util",
-        "@com_google_absl//absl/types:span",
+        "//base:stringify",
+        "//base:util",
+        "//ir:reg",
     ],
-    header_only = True,
-    test_deps = None,
 )
 
 cc_lib(
@@ -152,7 +151,7 @@ CMDS = [
     ":basic",
     ":call",
     ":cast",
-    ":jumps",
+    ":jump",
     ":load",
     ":misc",
     ":phi",

@@ -105,6 +105,10 @@ TEST_CASE("ExtractParams - Non-constant declaration") {
   }
 }
 
+decltype(auto) GetParams(int, internal::ExprData const &data) {
+  return data.params();
+};
+
 TEST_CASE("ParamsCoverArgs - empty arguments") {
   auto args = core::FnArgs<VerifyResult>(/* pos = */ {}, /* named = */ {});
 
@@ -113,23 +117,23 @@ TEST_CASE("ParamsCoverArgs - empty arguments") {
     // We need to have an entry in the table... but the default will be empty
     // parameters which should have the proper coverage.
     table[0];
-    CHECK(ParamsCoverArgs(args, table));
+    CHECK(ParamsCoverArgs(args, table, GetParams));
   }
 
   SECTION("one parameter") {
     absl::flat_hash_map<int, internal::ExprData> table;
-    table[0].params.append(
+    table[0].params().append(
         "param0", type::Typed<ast::Declaration const *>(nullptr, type::Bool));
-    CHECK_FALSE(ParamsCoverArgs(args, table));
+    CHECK_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 
   SECTION("multiple parameters") {
     absl::flat_hash_map<int, internal::ExprData> table;
-    table[0].params.append(
+    table[0].params().append(
         "param0", type::Typed<ast::Declaration const *>(nullptr, type::Bool));
-    table[0].params.append(
+    table[0].params().append(
         "param1", type::Typed<ast::Declaration const *>(nullptr, type::Bool));
-    CHECK_FALSE(ParamsCoverArgs(args, table));
+    CHECK_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 }
 
@@ -141,46 +145,46 @@ TEST_CASE("ParamsCoverArgs - one positional argument") {
 
   SECTION("empty parameters") {
     absl::flat_hash_map<int, internal::ExprData> table;
-    CHECK_FALSE(ParamsCoverArgs(args, table));
+    CHECK_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 
   SECTION("single overload coverage - negative") {
     absl::flat_hash_map<int, internal::ExprData> table;
-    table[0].params.append(
+    table[0].params().append(
         "param0", type::Typed<ast::Declaration const *>(nullptr, type::Bool));
-    CHECK_FALSE(ParamsCoverArgs(args, table));
+    CHECK_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 
   SECTION("single overload coverage - positive") {
     absl::flat_hash_map<int, internal::ExprData> table;
-    table[0].params.append(
+    table[0].params().append(
         "param0",
         type::Typed<ast::Declaration const *>(
             nullptr, type::Var({type::Int64, type::Type_, type::Bool})));
-    CHECK(ParamsCoverArgs(args, table));
+    CHECK(ParamsCoverArgs(args, table, GetParams));
   }
 
   SECTION("multiple overload coverage - negative") {
     absl::flat_hash_map<int, internal::ExprData> table;
-    table[0].params.append(
+    table[0].params().append(
         "param0", type::Typed<ast::Declaration const *>(nullptr, type::Type_));
 
-    table[1].params.append(
+    table[1].params().append(
         "param1", type::Typed<ast::Declaration const *>(
                       nullptr, type::Var({type::Float64, type::Int64})));
-    CHECK_FALSE(ParamsCoverArgs(args, table));
+    CHECK_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 
   SECTION("multiple overload coverage - positive") {
     absl::flat_hash_map<int, internal::ExprData> table;
-    table[0].params.append("param0",
-                           type::Typed<ast::Declaration const *>(
-                               nullptr, type::Var({type::Type_, type::Bool})));
-    table[1].params.append(
+    table[0].params().append(
+        "param0", type::Typed<ast::Declaration const *>(
+                      nullptr, type::Var({type::Type_, type::Bool})));
+    table[1].params().append(
         "param1",
         type::Typed<ast::Declaration const *>(
             nullptr, type::Var({type::Ptr(type::Bool), type::Int64})));
-    CHECK(ParamsCoverArgs(args, table));
+    CHECK(ParamsCoverArgs(args, table, GetParams));
   }
 }
 
@@ -192,63 +196,62 @@ TEST_CASE("ParamsCoverArgs - one named argument") {
 
   SECTION("empty parameters") {
     absl::flat_hash_map<int, internal::ExprData> table;
-    CHECK_FALSE(ParamsCoverArgs(args, table));
+    CHECK_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 
   SECTION("single overload coverage - mismatched type") {
     absl::flat_hash_map<int, internal::ExprData> table;
-    table[0].params.append(
+    table[0].params().append(
         "x", type::Typed<ast::Declaration const *>(nullptr, type::Bool));
-    CHECK_FALSE(ParamsCoverArgs(args, table));
+    CHECK_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 
   SECTION("single overload coverage - mismatched name") {
     absl::flat_hash_map<int, internal::ExprData> table;
-    table[0].params.append("y",
-                           type::Typed<ast::Declaration const *>(nullptr, t));
-    CHECK_FALSE(ParamsCoverArgs(args, table));
+    table[0].params().append("y",
+                             type::Typed<ast::Declaration const *>(nullptr, t));
+    CHECK_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 
   SECTION("single overload coverage - positive") {
     absl::flat_hash_map<int, internal::ExprData> table;
-    table[0].params.append(
-        "x",
-        type::Typed<ast::Declaration const *>(
-            nullptr, type::Var({type::Int64, type::Type_, type::Bool})));
-    CHECK(ParamsCoverArgs(args, table));
+    table[0].params().append(
+        "x", type::Typed<ast::Declaration const *>(
+                 nullptr, type::Var({type::Int64, type::Type_, type::Bool})));
+    CHECK(ParamsCoverArgs(args, table, GetParams));
   }
 
   SECTION("multiple overload coverage - mismatched type") {
     absl::flat_hash_map<int, internal::ExprData> table;
-    table[0].params.append(
+    table[0].params().append(
         "x", type::Typed<ast::Declaration const *>(nullptr, type::Type_));
 
-    table[1].params.append(
+    table[1].params().append(
         "x", type::Typed<ast::Declaration const *>(
                  nullptr, type::Var({type::Float64, type::Int64})));
-    CHECK_FALSE(ParamsCoverArgs(args, table));
+    CHECK_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 
   SECTION("multiple overload coverage - mismatched name") {
     absl::flat_hash_map<int, internal::ExprData> table;
-    table[0].params.append("x",
-                           type::Typed<ast::Declaration const *>(
-                               nullptr, type::Var({type::Type_, type::Bool})));
-    table[1].params.append(
+    table[0].params().append(
+        "x", type::Typed<ast::Declaration const *>(
+                 nullptr, type::Var({type::Type_, type::Bool})));
+    table[1].params().append(
         "y", type::Typed<ast::Declaration const *>(
                  nullptr, type::Var({type::Ptr(type::Bool), type::Int64})));
-    CHECK_FALSE(ParamsCoverArgs(args, table));
+    CHECK_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 
   SECTION("multiple overload coverage - positive") {
     absl::flat_hash_map<int, internal::ExprData> table;
-    table[0].params.append("x",
-                           type::Typed<ast::Declaration const *>(
-                               nullptr, type::Var({type::Type_, type::Bool})));
-    table[1].params.append(
+    table[0].params().append(
+        "x", type::Typed<ast::Declaration const *>(
+                 nullptr, type::Var({type::Type_, type::Bool})));
+    table[1].params().append(
         "x", type::Typed<ast::Declaration const *>(
                  nullptr, type::Var({type::Ptr(type::Bool), type::Int64})));
-    CHECK(ParamsCoverArgs(args, table));
+    CHECK(ParamsCoverArgs(args, table, GetParams));
   }
 }
 }  // namespace

@@ -4,7 +4,7 @@
 #include "ir/cmd/basic.h"
 #include "ir/cmd/call.h"
 #include "ir/cmd/cast.h"
-#include "ir/cmd/jumps.h"
+#include "ir/cmd/jump.h"
 #include "ir/cmd/load.h"
 #include "ir/cmd/misc.h"
 #include "ir/cmd/phi.h"

@@ -18,7 +18,7 @@
 #include "ir/cmd/basic.h"
 #include "ir/cmd/call.h"
 #include "ir/cmd/cast.h"
-#include "ir/cmd/jumps.h"
+#include "ir/cmd/jump.h"
 #include "ir/cmd/load.h"
 #include "ir/cmd/misc.h"
 #include "ir/cmd/phi.h"
@@ -34,10 +34,6 @@
 #include "ir/scope_def.h"
 #include "type/type.h"
 #include "type/util.h"
-
-// TODO CreateStruct, CreateEnum, etc should register a deleter so if we exit
-// early we don't leak them. FinalizeStruct, FinalizeEnum, etc should dergeister
-// the deleter without calling it.
 
 // TODO compile-time failure. dump the stack trace and abort for Null address
 // kinds
@@ -81,9 +77,8 @@ auto UnaryApply(base::untyped_buffer::const_iterator *iter, bool reg0,
 }  // namespace
 
 template <typename CmdType>
-BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
-                             std::vector<Addr> const &ret_slots,
-                             backend::ExecContext *ctx) {
+void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
+                std::vector<Addr> const &ret_slots, backend::ExecContext *ctx) {
   ICARUS_DEBUG_ONLY(auto iter_copy = *iter;)
   DEBUG_LOG("cmd")(CmdType::DebugString(&iter_copy));
   auto &frame = ctx->call_stack.top();
@@ -293,7 +288,7 @@ BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
     if (ctrl.only_get) {
       auto reg = iter->read<Reg>();
       frame.regs_.set(ctx->Offset(reg), ret_slot);
-      return nullptr;
+      return;
     }
     DEBUG_LOG("return")("return slot #", n, " = ", ret_slot);
 
@@ -328,20 +323,6 @@ BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
       }
     });
 
-  } else if constexpr (std::is_same_v<CmdType, JumpCmd>) {
-    switch (iter->read<typename CmdType::Kind>()) {
-      case CmdType::Kind::kRet: return ReturnBlock();
-      case CmdType::Kind::kUncond: return iter->read<BasicBlock const *>();
-      case CmdType::Kind::kCond: {
-        bool b           = ctx->resolve<bool>(iter->read<Reg>());
-        auto false_block = iter->read<BasicBlock const *>();
-        auto true_block  = iter->read<BasicBlock const *>();
-        return b ? true_block : false_block;
-      }
-      case CmdType::Kind::kChoose:
-        UNREACHABLE("Choose jumps can never be executed.");
-      default: UNREACHABLE();
-    }
   } else if constexpr (std::is_same_v<CmdType, ScopeCmd>) {
     auto *scope_def = iter->read<ir::ScopeDef *>();
 
@@ -724,7 +705,6 @@ BasicBlock const *ExecuteCmd(base::untyped_buffer::const_iterator *iter,
   } else {
     static_assert(base::always_false<CmdType>());
   }
-  return nullptr;
 }
 
 }  // namespace ir
@@ -770,7 +750,23 @@ void Execute(ir::CompiledFn *fn, const base::untyped_buffer &arguments,
   base::untyped_buffer ret_buffer(offset.value());
 
   while (true) {
-    auto const *block = ctx->ExecuteBlock(ret_slots);
+    ctx->ExecuteBlock(ret_slots);
+    auto const *block = ctx->current_block()->jump_.Visit(
+        [&](auto const &j) -> ir::BasicBlock const * {
+          using type = std::decay_t<decltype(j)>;
+          if constexpr (std::is_same_v<type, ir::JumpCmd::RetJump>) {
+            return ir::ReturnBlock();
+          } else if constexpr (std::is_same_v<type, ir::JumpCmd::UncondJump>) {
+            return j.block;
+          } else if constexpr (std::is_same_v<type, ir::JumpCmd::CondJump>) {
+            return ctx->resolve<bool>(j.reg) ? j.true_block : j.false_block;
+          } else if constexpr (std::is_same_v<type, ir::JumpCmd::ChooseJump>) {
+            UNREACHABLE("Choose jumps can never be executed.");
+            return nullptr;
+          } else {
+            static_assert(base::always_false<type>());
+          }
+        });
     if (block == ir::ReturnBlock()) {
       ctx->call_stack.pop();
       return;
@@ -812,20 +808,16 @@ ExecContext::Frame::Frame(ir::CompiledFn *fn,
   });
 }
 
-ir::BasicBlock const *ExecContext::ExecuteBlock(
-    const std::vector<ir::Addr> &ret_slots) {
+void ExecContext::ExecuteBlock(const std::vector<ir::Addr> &ret_slots) {
   DEBUG_LOG("ExecuteBlock")(current_block()->cmd_buffer_.to_string());
   auto iter = current_block()->cmd_buffer_.begin();
-  while (true) {
-    ASSERT(iter < current_block()->cmd_buffer_.end());
+  while (iter < current_block()->cmd_buffer_.end()) {
     auto cmd_index = iter.read<ir::cmd_index_t>();
     switch (cmd_index) {
 #define ICARUS_IR_CMD_X(type)                                                  \
   case ir::type::index: {                                                      \
     DEBUG_LOG("dbg")(#type);                                                   \
-    if (auto blk = ir::ExecuteCmd<ir::type>(&iter, ret_slots, this)) {         \
-      return blk;                                                              \
-    }                                                                          \
+    ir::ExecuteCmd<ir::type>(&iter, ret_slots, this);                          \
   } break;
 #include "ir/cmd/cmd.xmacro.h"
 #undef ICARUS_IR_CMD_X

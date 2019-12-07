@@ -31,7 +31,6 @@ cc_lib(
         "//frontend/source:repl",
         "//frontend:parse",
         "//ir:compiled_fn",
-        "//ir/cmd:jumps",
         "//module:module",
         "//type:function",
         "//type:tuple",

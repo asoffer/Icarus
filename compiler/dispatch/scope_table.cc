@@ -54,9 +54,9 @@ std::vector<core::FnArgs<VerifyResult>> VerifyBlockNode(
 
 // TODO organize the parameters here, they're getting to be too much.
 void EmitCallOneOverload(ir::ScopeDef const *scope_def,
-                         ir::BasicBlock const *starting_block,
-                         ir::BasicBlock const *landing_block,
-                         Compiler *compiler, ir::Jump const *jump,
+                         ir::BasicBlock *starting_block,
+                         ir::BasicBlock *landing_block, Compiler *compiler,
+                         ir::Jump const *jump,
                          core::FnArgs<type::Typed<ir::Results>> const &args,
                          ir::LocalBlockInterpretation const &block_interp) {
   auto arg_results = PrepareCallArguments(compiler, jump->params(), args);
@@ -83,6 +83,7 @@ void EmitCallOneOverload(ir::ScopeDef const *scope_def,
     }
   }
 
+  bldr.CurrentBlock() = landing_block;
   DEBUG_LOG("EmitCallOneOverload")(*bldr.CurrentGroup());
 }
 
