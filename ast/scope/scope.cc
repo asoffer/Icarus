@@ -31,15 +31,16 @@ std::vector<ast::Declaration const *> Scope::AllDeclsTowardsRoot(
       for (auto *decl : iter->second) { decls.push_back(decl); }
     }
 
-    // TODO
-    // for (auto const *mod : scope_ptr->embedded_modules_) {
-    //   // TODO use the right bound constants? or kill bound constants?
-    //   for (auto *decl : mod->declarations(id)) {
-    //     // TODO what about transitivity for embedded modules?
-    //     // New context will lookup with no constants.
-    //     decls.push_back(decl);
-    //   }
-    // }
+    for (auto const *mod : scope_ptr->embedded_modules_) {
+      DEBUG_LOG("AllDeclsTowardsRoot")(this, " ", mod);
+      //   // TODO use the right bound constants? or kill bound constants?
+      // for (auto *decl : mod->declarations(id)) {
+      //   DEBUG_LOG("AllDeclsTowardsRoot")("   ", id);
+      //   // TODO what about transitivity for embedded modules?
+      //   // New context will lookup with no constants.
+      //   decls.push_back(decl);
+      // }
+    }
   }
 
   return decls;

@@ -314,6 +314,7 @@ std::unique_ptr<module::BasicModule> CompileExecutableModule(
 }
 
 ir::Results Compiler::Visit(ast::Access const *node, EmitValueTag) {
+  DEBUG_LOG("Access")(type_of(node->operand())->to_string());
   if (type_of(node->operand()) == type::Module) {
     // TODO we already did this evaluation in type verification. Can't we just
     // save and reuse it?

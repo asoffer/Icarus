@@ -27,7 +27,7 @@ struct Scope : public base::Cast<Scope> {
 
   // Returns a container of all declarations in this scope and in parent scopes
   // with the given identifier.
-  std::vector<Declaration const *> AllDeclsTowardsRoot(
+  std::vector<ast::Declaration const *> AllDeclsTowardsRoot(
       std::string_view id) const;
 
   // Returns a container of all declaration with the given identifier that are

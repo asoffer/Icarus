@@ -12,6 +12,8 @@ OverloadSet::OverloadSet(absl::Span<Declaration const *const> decls) {
 }
 
 OverloadSet::OverloadSet(ast::Scope const *scope, std::string_view id)
-    : OverloadSet(scope->AllDeclsTowardsRoot(id)) {}
+    : OverloadSet(scope->AllDeclsTowardsRoot(id)) {
+  DEBUG_LOG("OverloadSet")("Constructing an overload set from \"", id, "\"");
+}
 
 }  // namespace ast

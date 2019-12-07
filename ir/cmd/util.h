@@ -24,7 +24,9 @@ using cmd_index_t = uint8_t;
 
 template <typename T>
 constexpr uint8_t PrimitiveIndex() {
-  if constexpr (std::is_same_v<T, bool>) {
+  if constexpr (std::is_integral_v<T> and not std::is_same_v<T, bool>) {
+    return base::Log2(sizeof(T)) * 2 + std::is_signed_v<T>;
+  } else if constexpr (std::is_same_v<T, bool>) {
     return 0x08;
   } else if constexpr (std::is_same_v<T, float>) {
     return 0x09;
@@ -46,19 +48,20 @@ constexpr uint8_t PrimitiveIndex() {
     return 0x11;
   } else if constexpr (std::is_same_v<T, core::Bytes>) {
     return 0x12;
-  } else if constexpr (std::is_same_v<T, ast::FunctionLiteral*> ||
+  } else if constexpr (std::is_same_v<T, ast::FunctionLiteral*> or
                        std::is_same_v<T, ast::FunctionLiteral const*>) {
     // TODO: FunctionLiteral is a short-term hack for generics. IR shouldn't
     // depend on it.
     return 0x13;
-  } else if constexpr (std::is_same_v<T, BlockDef*> ||
+  } else if constexpr (std::is_same_v<T, BlockDef*> or
                        std::is_same_v<T, BlockDef const*>) {
     return 0x14;
-  } else if constexpr (std::is_same_v<T, ScopeDef*> ||
+  } else if constexpr (std::is_same_v<T, ScopeDef*> or
                        std::is_same_v<T, ScopeDef const*>) {
     return 0x15;
-  } else if constexpr (std::is_integral_v<T>) {
-    return base::Log2(sizeof(T)) * 2 + std::is_signed_v<T>;
+  } else if constexpr (std::is_same_v<T, module::BasicModule*> or
+                       std::is_same_v<T, module::BasicModule const*>) {
+    return 0x16;
   } else {
     UNREACHABLE(typeid(T).name());
   }
@@ -130,6 +133,8 @@ auto PrimitiveDispatch(uint8_t primitive_type, Fn&& fn) {
       return std::forward<Fn>(fn)(base::Tag<BlockDef*>{});
     case PrimitiveIndex<ScopeDef*>():
       return std::forward<Fn>(fn)(base::Tag<ScopeDef*>{});
+    case PrimitiveIndex<module::BasicModule*>():
+      return std::forward<Fn>(fn)(base::Tag<module::BasicModule*>{});
     default: UNREACHABLE(static_cast<int>(primitive_type));
   }
 }

@@ -78,6 +78,7 @@ ir::Results PrepareOneArg(ir::Builder &bldr,
         bldr.VariantValue(nullptr, arg->get<ir::Addr>(0)), param_type)};
   } else if (param_var) {
     auto tmp = bldr.TmpAlloca(param_var);
+    static_cast<void>(tmp);
     // TODO type::ApplyTypes<>
     // ir::Store(arg_var , tmp);
     NOT_YET(tmp);
