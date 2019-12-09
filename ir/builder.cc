@@ -73,33 +73,33 @@ void Builder::Call(RegOr<AnyFunc> const &fn, type::Function const *f,
   for (Reg r : outs.regs_) { buf.append(r); }
 }
 
-static void ClearJumps(JumpCmd *jump) {
-  jump->Visit([](auto &j) {
+static void ClearJumps(JumpCmd *jump, BasicBlock *from) {
+  jump->Visit([&](auto &j) {
     using type = std::decay_t<decltype(j)>;
     using base::stringify;
     if constexpr (std::is_same_v<type, JumpCmd::UncondJump>) {
-      --j.block->num_incoming_;
+      j.block->incoming_.erase(from);
     } else if constexpr (std::is_same_v<type, JumpCmd::CondJump>) {
-      --j.true_block->num_incoming_;
-      --j.false_block->num_incoming_;
+      j.true_block->incoming_.erase(from);
+      j.false_block->incoming_.erase(from);
     }
   });
 }
 
 void Builder::UncondJump(BasicBlock *block) {
-  ++block->num_incoming_;
+  ClearJumps(&CurrentBlock()->jump_, CurrentBlock());
+  block->incoming_.insert(CurrentBlock());
   CurrentBlock()->jump_ = JumpCmd::Uncond(block);
 }
 
-void Builder::ReturnJump() { 
-  CurrentBlock()->jump_ = JumpCmd::Return(); }
+void Builder::ReturnJump() { CurrentBlock()->jump_ = JumpCmd::Return(); }
 
 void Builder::CondJump(RegOr<bool> cond, BasicBlock *true_block,
                        BasicBlock *false_block) {
-  ClearJumps(&CurrentBlock()->jump_);
+  ClearJumps(&CurrentBlock()->jump_, CurrentBlock());
   if (cond.is_reg()) {
-    ++true_block->num_incoming_;
-    ++false_block->num_incoming_;
+    true_block->incoming_.insert(CurrentBlock());
+    false_block->incoming_.insert(CurrentBlock());
     CurrentBlock()->jump_ = JumpCmd::Cond(cond.reg(), true_block, false_block);
   } else {
     return UncondJump(cond.value() ? true_block : false_block);

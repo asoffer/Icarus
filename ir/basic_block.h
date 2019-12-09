@@ -30,7 +30,8 @@ struct BasicBlock {
   base::untyped_buffer cmd_buffer_;
   JumpCmd jump_ = JumpCmd::Return();
 
-  size_t num_incoming_ = 0;
+  absl::flat_hash_set<BasicBlock *> incoming_;
+  size_t num_incoming() const { return incoming_.size(); }
 
  private:
   internal::BlockGroup *group_;

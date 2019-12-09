@@ -12,7 +12,8 @@ CompiledFn::CompiledFn(type::Function const *fn_type,
     : internal::BlockGroup(std::move(p)), type_(fn_type) {
   // TODO is this still true with variadics?
   ASSERT(params().size() == fn_type->input.size());
-  ++AppendBlock()->num_incoming_;
+  auto *b = AppendBlock();
+  b->incoming_.insert(b);
 }
 
 std::ostream &operator<<(std::ostream &os, ir::CompiledFn const &f) {

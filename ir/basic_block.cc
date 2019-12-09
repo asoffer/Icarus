@@ -17,7 +17,7 @@
 namespace ir {
 
 std::ostream &operator<<(std::ostream &os, BasicBlock const &b) {
-  os << " [with " << b.num_incoming_ << " incoming]\n";
+  os << " [with " << b.num_incoming() << " incoming]\n";
   for (auto iter = b.cmd_buffer_.cbegin(); iter < b.cmd_buffer_.cend();) {
     auto cmd_index = iter.read<cmd_index_t>();
     switch (cmd_index) {
@@ -34,7 +34,9 @@ std::ostream &operator<<(std::ostream &os, BasicBlock const &b) {
   return os;
 }
 
-void BasicBlock::Append(BasicBlock &&b) { NOT_YET(); }
+void BasicBlock::Append(BasicBlock &&b) {
+  cmd_buffer_.write(cmd_buffer_.size(), b.cmd_buffer_);
+}
 
 Reg MakeResult(type::Type const *t) {
   auto arch = core::Interpretter();

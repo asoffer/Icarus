@@ -32,8 +32,9 @@ struct JumpInliner {
   }
 
   BasicBlock *CopyBlock(BasicBlock const *block_to_copy) {
-    auto *block = bldr_.AddBlock();
-    *block      = *block_to_copy;
+    auto *block      = bldr_.AddBlock();
+    *block           = *block_to_copy;
+    block->incoming_ = {};
     block_updater_.emplace(block_to_copy, block);
     return block;
   }
@@ -453,13 +454,13 @@ absl::flat_hash_map<std::string_view, BasicBlock *> Inline(
         // clean these up but in the mean time, we can just ignore them.
       } else if constexpr (std::is_same_v<type, JumpCmd::UncondJump>) {
         inliner.Inline(&j.block);
-        ++j.block->num_incoming_;
+        j.block->incoming_.insert(block);
       } else if constexpr (std::is_same_v<type, JumpCmd::CondJump>) {
         inliner.Inline(&j.reg);
         inliner.Inline(&j.true_block);
-        ++j.true_block->num_incoming_;
+        j.true_block->incoming_.insert(block);
         inliner.Inline(&j.false_block);
-        ++j.false_block->num_incoming_;
+        j.false_block->incoming_.insert(block);
       } else if constexpr (std::is_same_v<type, JumpCmd::ChooseJump>) {
         std::string_view next_name;
         for (std::string_view name : j.blocks()) {

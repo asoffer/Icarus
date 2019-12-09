@@ -166,10 +166,9 @@ struct Builder {
   //               run-time boolean value.
   // `ReturnJump`: Transfers control back to the calling function.
   //
-  // `ChooseJump`: Transfers control to the appropriate block-handler. Note
-  // that
-  //               this is highly specific to the current scope-defining
-  //               language constructs which are likely to change.
+  // `ChooseJump`: Transfers control to the appropriate block-handler. Note that
+  //               this is highly specific to the current scope-definine language
+  //               constructs which are likely to change.
   void UncondJump(BasicBlock * block);
   void CondJump(RegOr<bool> cond, BasicBlock* true_block,
                 BasicBlock* false_block);

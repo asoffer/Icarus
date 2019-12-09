@@ -13,7 +13,8 @@ struct Jump : internal::BlockGroup {
   explicit Jump(type::Jump const *jump_type,
                 core::FnParams<type::Typed<ast::Declaration const *>> p)
       : internal::BlockGroup(std::move(p)), type_(jump_type) {
-    ++AppendBlock()->num_incoming_;
+    auto *b = AppendBlock();
+    b->incoming_.insert(b);
   }
 
   type::Jump const *type() const { return type_; }
