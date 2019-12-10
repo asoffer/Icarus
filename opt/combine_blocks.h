@@ -7,6 +7,7 @@ struct CompiledFn;
 
 namespace opt {
 
+void ReduceEmptyBlocks(ir::CompiledFn* fn);
 void CombineBlocks(ir::CompiledFn* fn);
 
 }  // namespace opt

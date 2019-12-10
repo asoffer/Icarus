@@ -63,8 +63,7 @@ static void RemoveDeadBlocks(std::queue<ir::BasicBlock*> to_check,
   DeleteBlocks(to_delete, fn);
 }
 
-void CombineBlocksStartingAt(ir::BasicBlock* block,
-                             std::queue<ir::BasicBlock*>* dead_sources) {
+void CombineBlocksStartingAt(ir::BasicBlock* block) {
   auto& bldr = ir::GetBuilder();
 
   while (auto* next_block =
@@ -76,7 +75,7 @@ void CombineBlocksStartingAt(ir::BasicBlock* block,
                  return nullptr;
                }
              })) {
-    DEBUG_LOG()("Combining ", next_block, " into ", block);
+    DEBUG_LOG("opt")("Combining ", next_block, " into ", block);
     if (next_block->num_incoming() != 1) { break; }
     next_block->jump_.Visit([&](auto const& j) {
       bldr.CurrentBlock() = block;
@@ -86,7 +85,7 @@ void CombineBlocksStartingAt(ir::BasicBlock* block,
       } else if constexpr (std::is_same_v<type, ir::JumpCmd::CondJump>) {
         bldr.CondJump(j.reg, j.true_block, j.false_block);
       } else if constexpr (std::is_same_v<type, ir::JumpCmd::RetJump>) {
-        bldr.ReturnJump();
+        // Nothing to do
       } else {
         UNREACHABLE();
       }
@@ -95,6 +94,64 @@ void CombineBlocksStartingAt(ir::BasicBlock* block,
 
     bldr.CurrentBlock() = next_block;
     bldr.ReturnJump();
+  }
+}
+
+void ReduceEmptyBlocks(ir::CompiledFn* fn) {
+  auto& bldr = ir::GetBuilder();
+  for (auto& block : fn->mutable_blocks()) {
+    if (not block->cmd_buffer_.empty()) { continue; }
+    for (auto* inc : block->incoming_) {
+      bldr.CurrentBlock() = inc;
+      inc->jump_.Visit([&](auto const& inc_jump) {
+        using inc_type = std::decay_t<decltype(inc_jump)>;
+        if constexpr (std::is_same_v<inc_type, ir::JumpCmd::UncondJump>) {
+          block->jump_.Visit([&](auto const& block_jump) {
+            using block_type = std::decay_t<decltype(block_jump)>;
+            if constexpr (std::is_same_v<block_type, ir::JumpCmd::UncondJump>) {
+              bldr.UncondJump(block_jump.block);
+            } else if constexpr (std::is_same_v<block_type,
+                                                ir::JumpCmd::CondJump>) {
+              bldr.CondJump(block_jump.reg, block_jump.true_block,
+                            block_jump.false_block);
+            } else if constexpr (std::is_same_v<block_type,
+                                                ir::JumpCmd::RetJump>) {
+              bldr.ReturnJump();
+            } else {
+              UNREACHABLE();
+            }
+          });
+        } else if constexpr (std::is_same_v<inc_type, ir::JumpCmd::CondJump>) {
+          if (inc_jump.true_block == block.get()) {
+            block->jump_.Visit([&](auto const& block_jump) {
+              using block_type = std::decay_t<decltype(block_jump)>;
+              if constexpr (std::is_same_v<block_type,
+                                           ir::JumpCmd::UncondJump>) {
+                bldr.CondJump(inc_jump.reg, block_jump.block,
+                              inc_jump.false_block);
+              }
+            });
+          }
+
+          if (inc_jump.false_block == block.get()) {
+            block->jump_.Visit([&](auto const& block_jump) {
+              using block_type = std::decay_t<decltype(block_jump)>;
+              if constexpr (std::is_same_v<block_type,
+                                           ir::JumpCmd::UncondJump>) {
+                bldr.CondJump(inc_jump.reg, inc_jump.true_block,
+                              block_jump.block);
+              }
+            });
+          }
+        } else if constexpr (std::is_same_v<inc_type, ir::JumpCmd::RetJump>) {
+          // Nothing to do
+        } else {
+          UNREACHABLE();
+        }
+      });
+    }
+    // bldr.CurrentBlock() = block.get();
+    // bldr.ReturnJump();
   }
 }
 
@@ -119,7 +176,7 @@ void CombineBlocks(ir::CompiledFn* fn) {
               return std::is_same_v<std::decay_t<decltype(j)>,
                                     ir::JumpCmd::CondJump>;
             })) {
-          CombineBlocksStartingAt(block.get(), &dead_sources);
+          CombineBlocksStartingAt(block.get());
         }
         break;
       default:  // case (b).
@@ -127,10 +184,11 @@ void CombineBlocks(ir::CompiledFn* fn) {
               return std::is_same_v<std::decay_t<decltype(j)>,
                                     ir::JumpCmd::UncondJump>;
             })) {
-          CombineBlocksStartingAt(block.get(), &dead_sources);
+          CombineBlocksStartingAt(block.get());
         }
         break;
     }
+
   }
 
   RemoveDeadBlocks(std::move(dead_sources), fn);

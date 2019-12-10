@@ -15,7 +15,7 @@
 #include "ir/compiled_fn.h"
 #include "module/module.h"
 #include "module/pending.h"
-#include "opt/combine_blocks.h"
+#include "opt/opt.h"
 
 int RunCompiler(std::filesystem::path const &file) {
   void *libc_handle = dlopen("/lib/x86_64-linux-gnu/libc.so.6", RTLD_LAZY);
@@ -43,7 +43,7 @@ int RunCompiler(std::filesystem::path const &file) {
   }
 
   // TODO All the functions? In all the modules?
-  opt::CombineBlocks(exec_mod->main());
+  opt::RunAllOptimizations(exec_mod->main());
   backend::ExecContext exec_ctx;
   backend::Execute(exec_mod->main(), base::untyped_buffer(0), {}, &exec_ctx);
 

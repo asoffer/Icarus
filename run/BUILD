@@ -13,7 +13,7 @@ cc_lib(
         "//module:pending",
         "//ir:compiled_fn",
         "//module:module",
-        "//opt:combine_blocks",
+        "//opt",
     ],
     no_header = True,
     test_deps = None,
