@@ -12,6 +12,10 @@ Builder &GetBuilder() { return current; }
 
 BasicBlock *Builder::AddBlock() { return CurrentGroup()->AppendBlock(); }
 
+BasicBlock *Builder::AddBlock(BasicBlock const &to_copy) {
+  return CurrentGroup()->AppendBlock(to_copy);
+}
+
 SetCurrent::SetCurrent(internal::BlockGroup *group, Builder *builder)
     : builder_(builder ? builder : &GetBuilder()),
       old_group_(builder_->CurrentGroup()),

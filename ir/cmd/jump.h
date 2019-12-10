@@ -28,6 +28,12 @@ struct JumpCmd {
     return JumpCmd(ChooseJump{blocks});
   }
 
+  JumpCmd(JumpCmd const&)     = default;
+  JumpCmd(JumpCmd&&) noexcept = default;
+
+  JumpCmd& operator=(JumpCmd const&) = default;
+  JumpCmd& operator=(JumpCmd&&) noexcept = default;
+
   struct RetJump {};
   struct UncondJump {
     BasicBlock * block;
@@ -77,6 +83,24 @@ struct JumpCmd {
   template <typename Fn>
   auto Visit(Fn&& fn) {
     return std::visit(std::forward<Fn>(fn), jump_);
+  }
+
+  enum class Kind { Return, Uncond, Cond, Choose };
+  Kind kind() const {
+    return Visit([](auto const& j) -> Kind {
+      using type = std::decay_t<decltype(j)>;
+      if constexpr (std::is_same_v<type, RetJump>) {
+        return Kind::Return;
+      } else if constexpr (std::is_same_v<type, UncondJump>) {
+        return Kind::Uncond;
+      } else if constexpr (std::is_same_v<type, CondJump>) {
+        return Kind::Cond;
+      } else if constexpr (std::is_same_v<type, ChooseJump>) {
+        return Kind::Choose;
+      } else {
+        static_assert(base::always_false<type>());
+      }
+    });
   }
 
   std::string DebugString() const {

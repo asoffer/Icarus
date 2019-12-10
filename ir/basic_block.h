@@ -20,21 +20,30 @@ struct BasicBlock {
   BasicBlock() = default;
   explicit BasicBlock(internal::BlockGroup *group) : group_(group) {}
 
-  BasicBlock(BasicBlock const &b)    = default;
-  BasicBlock(BasicBlock &&) noexcept = default;
-  BasicBlock &operator=(BasicBlock &&) noexcept = default;
-  BasicBlock &operator=(BasicBlock const &b) = default;
+  BasicBlock(BasicBlock const &b);
+  BasicBlock(BasicBlock &&) noexcept;
+  BasicBlock &operator=(BasicBlock const &);
+  BasicBlock &operator=(BasicBlock &&) noexcept;
 
   void Append(BasicBlock &&b);
 
   base::untyped_buffer cmd_buffer_;
-  JumpCmd jump_ = JumpCmd::Return();
-
-  absl::flat_hash_set<BasicBlock *> incoming_;
   size_t num_incoming() const { return incoming_.size(); }
 
  private:
+  void RemoveOutgoingJumps();
+  void AddOutgoingJumps(JumpCmd const &jump);
+  void ExchangeJumps(BasicBlock const *b);
+
+  friend struct Builder;
+  friend struct Inliner;
+  friend std::ostream &operator<<(std::ostream &os, BasicBlock const &b);
+
   internal::BlockGroup *group_;
+
+ public:
+  JumpCmd jump_ = JumpCmd::Return();
+  absl::flat_hash_set<BasicBlock *> incoming_;
 };
 
 BasicBlock const *ReturnBlock();
@@ -47,8 +56,6 @@ Reg MakeResult() {
 }
 
 Reg MakeResult(type::Type const *t);
-
-std::ostream &operator<<(std::ostream &os, BasicBlock const &b);
 
 }  // namespace ir
 #endif  // ICARUS_IR_BASIC_BLOCK_H

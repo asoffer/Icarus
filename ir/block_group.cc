@@ -19,6 +19,11 @@ BlockGroup::BlockGroup(
     reg_size_ =
         entry + (t->is_big() ? core::Bytes::Get<Addr>() : t->bytes(arch));
   }
+
+  // Ensure the existence of an entry block. The entry block marks itself as
+  // incoming so it is never accidentally cleaned up.
+  auto *b = AppendBlock();
+  b->incoming_.insert(b);
 }
 
 Reg BlockGroup::Reserve(type::Type const *t) {

@@ -32,9 +32,7 @@ struct JumpInliner {
   }
 
   BasicBlock *CopyBlock(BasicBlock const *block_to_copy) {
-    auto *block      = bldr_.AddBlock();
-    *block           = *block_to_copy;
-    block->incoming_ = {};
+    auto *block = bldr_.AddBlock(*block_to_copy);
     block_updater_.emplace(block_to_copy, block);
     return block;
   }

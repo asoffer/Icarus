@@ -54,6 +54,7 @@ auto PrepareCmdArg(T&& arg);
 
 struct Builder {
   BasicBlock* AddBlock();
+  BasicBlock* AddBlock(BasicBlock const& to_copy);
 
   template <typename KeyType, typename ValueType>
   absl::flat_hash_map<KeyType, ir::BasicBlock*> AddBlocks(
