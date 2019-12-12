@@ -49,7 +49,7 @@ struct Results {
       buf_.write(current_buf_end, t.buf_);
       is_reg_.insert(is_reg_.end(), t.is_reg_.begin(), t.is_reg_.end());
       offset_.reserve(offset_.size() + t.size());
-      for (auto off : offset_) { offset_.push_back(current_buf_end + off); }
+      for (auto off : t.offset_) { offset_.push_back(current_buf_end + off); }
       return offset_.back();
     } else if constexpr (IsRegOr<T>::value) {
       return t.apply([&](auto v) { return append(v); });

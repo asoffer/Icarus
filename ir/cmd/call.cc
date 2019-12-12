@@ -13,7 +13,7 @@ std::string CallCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
   std::string result =
       absl::StrCat("call ", fn_is_reg ? stringify(iter->read<Reg>())
                                       : stringify(iter->read<AnyFunc>()));
-  auto num_bytes_in_args = iter->read<core::Bytes>();
+  core::Bytes num_bytes_in_args = iter->read<core::Bytes>();
   iter->skip(num_bytes_in_args.value());
   uint16_t num_outs = iter->read<uint16_t>();
   std::vector<Reg> out_regs;

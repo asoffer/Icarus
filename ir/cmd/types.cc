@@ -50,9 +50,10 @@ std::string OpaqueTypeCmd::DebugString(
 }
 
 std::string ArrayCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
-  auto ctrl_bits = iter->read<control_bits>();
-  auto len       = ctrl_bits.length_is_reg ? RegOr<length_t>(iter->read<Reg>())
-                                     : RegOr<length_t>(iter->read<length_t>());
+  control_bits ctrl_bits = iter->read<control_bits>();
+  RegOr<length_t> len    = ctrl_bits.length_is_reg
+                            ? RegOr<length_t>(Reg(iter->read<Reg>()))
+                            : RegOr<length_t>(length_t(iter->read<length_t>()));
   auto data_type =
       ctrl_bits.type_is_reg
           ? RegOr<type::Type const *>(iter->read<Reg>())

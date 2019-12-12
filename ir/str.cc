@@ -18,8 +18,7 @@ std::string_view SaveStringGlobally(std::string const &str) {
   // to use them later. I doubt that's a huge performance loss, but it's worth
   // remembering and seeing if there's an easy way to fix it.
   size_t buf_end = ReadOnlyData.size();
-  ReadOnlyData.append_bytes(str.size() + 1,  // +1 for the null terminator.
-                            alignof(char));
+  ReadOnlyData.append_bytes(str.size() + 1);  // +1 for the null terminator.
   std::memcpy(ReadOnlyData.raw(buf_end), str.data(), str.size() + 1);
   iter->second = Addr::ReadOnly(buf_end);
 

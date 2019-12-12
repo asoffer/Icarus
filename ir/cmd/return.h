@@ -34,7 +34,7 @@ struct ReturnCmd {
 
   static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
     using base::stringify;
-    auto ctrl  = iter->read<control_bits>();
+    control_bits ctrl  = iter->read<control_bits>();
     uint16_t n = iter->read<uint16_t>();
 
     if (ctrl.only_get) {

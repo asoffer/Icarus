@@ -36,9 +36,8 @@ ConstantBinding::reserve_slot(ast::Declaration const* decl,
   if (not newly_inserted) {
     return ir::Results::FromRaw(buf_.raw(iter->second.offset_), bytes);
   }
-  auto alignment = t->alignment(arch);
-  auto offset    = buf_.append_bytes(bytes.value(), alignment.value());
-  iter->second   = Binding{t, offset};
+  auto offset  = buf_.append_bytes(bytes.value());
+  iter->second = Binding{t, offset};
   return std::pair(offset, bytes);
 }
 

@@ -6,9 +6,7 @@ namespace ir {
 
 Results Results::FromRaw(void const* data, core::Bytes bytes) {
   Results results;
-  // I don't care about alignment here because the buffer is maximally aligned
-  // anyway.
-  results.buf_.append_bytes(bytes.value(), 16);
+  results.buf_.append_bytes(bytes.value());
   std::memcpy(results.buf_.raw(0), data, bytes.value());
   results.offset_.push_back(0);
   results.is_reg_.push_back(false);

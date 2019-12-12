@@ -9,11 +9,16 @@ namespace base {
 
 template <typename T>
 struct unaligned_ref {
-  static_assert(std::is_trivial_v<T>);
-  explicit constexpr unaligned_ref(void const *ptr)
-      : ptr_(reinterpret_cast<uintptr_t>(ptr)) {}
-  explicit constexpr unaligned_ref(T const &t)
-      : ptr_(reinterpret_cast<uintptr_t>(&t)) {}
+  static_assert(std::is_trivially_copyable_v<T>);
+
+  static unaligned_ref<T> FromPtr(void *ptr) { return unaligned_ref<T>(ptr); }
+
+  constexpr unaligned_ref(T &t) : ptr_(reinterpret_cast<uintptr_t>(&t)) {}
+
+  constexpr unaligned_ref<T> operator=(T const &val) {
+    std::memcpy(reinterpret_cast<void *>(ptr_), &val, sizeof(T));
+    return *this;
+  }
 
   operator T() const {
     T t;
@@ -22,8 +27,43 @@ struct unaligned_ref {
   }
 
  private:
+  friend struct unaligned_ref<T const>;
+
+  explicit constexpr unaligned_ref(void *ptr)
+      : ptr_(reinterpret_cast<uintptr_t>(ptr)) {}
+
   uintptr_t ptr_;
 };
+
+template <typename T>
+struct unaligned_ref<T const> {
+  static_assert(std::is_trivially_copyable_v<T>);
+
+  static unaligned_ref<T const> FromPtr(void const *ptr) {
+    return unaligned_ref<T const>(ptr);
+  }
+
+  constexpr unaligned_ref(unaligned_ref<T> r) : ptr_(r.ptr_) {}
+  constexpr unaligned_ref(T &t) : ptr_(reinterpret_cast<uintptr_t>(&t)) {}
+  constexpr unaligned_ref(T const &t) : ptr_(reinterpret_cast<uintptr_t>(&t)) {}
+
+  operator T() const {
+    T t;
+    std::memcpy(&t, reinterpret_cast<void const *>(ptr_), sizeof(T));
+    return t;
+  }
+
+ private:
+  explicit constexpr unaligned_ref(void const *ptr)
+      : ptr_(reinterpret_cast<uintptr_t>(ptr)) {}
+
+  uintptr_t ptr_;
+};
+
+template <typename T>
+unaligned_ref(T const &)->unaligned_ref<T const>;
+template <typename T>
+unaligned_ref(T &)->unaligned_ref<T>;
 
 }  // namespace base
 

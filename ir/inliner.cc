@@ -37,19 +37,21 @@ struct JumpInliner {
     return block;
   }
 
-  void Inline(Reg *r, type::Type const *t = nullptr) const {
-    if (r->is_arg()) {
-      *r = Reg{r->arg_value() + reg_offset_};
-    } else if (r->is_out()) {
+  void Inline(base::unaligned_ref<Reg> r_ref,
+              type::Type const *t = nullptr) const {
+    Reg r = r_ref;
+    if (r.is_arg()) {
+      r_ref = Reg{r.arg_value() + reg_offset_};
+    } else if (r.is_out()) {
       // NOT_YET();
     } else {
-      *r = Reg{r->value() + reg_offset_};
+      r_ref = Reg{r.value() + reg_offset_};
     }
 
     if (t) {
       DEBUG_LOG("inline_reserve")("Reserving t = ", t->to_string());
       auto arch = core::Interpretter();
-      bldr_.CurrentGroup()->Reserve(*r, t->bytes(arch), t->alignment(arch));
+      bldr_.CurrentGroup()->Reserve(r, t->bytes(arch), t->alignment(arch));
     }
   }
 
@@ -79,9 +81,10 @@ struct JumpInliner {
 template <typename CmdType>
 void InlineCmd(base::untyped_buffer::iterator *iter, JumpInliner &inliner) {
   if constexpr (std::is_same_v<CmdType, PrintCmd>) {
-    auto ctrl = iter->read<typename CmdType::control_bits>();
+    typename CmdType::control_bits ctrl =
+        iter->read<typename CmdType::control_bits>();
     if (ctrl.reg) {
-      inliner.Inline(&iter->read<Reg>());
+      inliner.Inline(iter->read<Reg>());
     } else {
       // TODO: Add core::LayoutRequirements so you can skip forward by the
       // appropriate amount without instantiating so many templates.
@@ -93,18 +96,19 @@ void InlineCmd(base::untyped_buffer::iterator *iter, JumpInliner &inliner) {
                        std::is_same_v<CmdType, NotCmd> or
                        std::is_same_v<CmdType, PtrCmd> or
                        std::is_same_v<CmdType, BufPtrCmd>) {
-    auto ctrl = iter->read<typename CmdType::control_bits>();
+    typename CmdType::control_bits ctrl =
+        iter->read<typename CmdType::control_bits>();
     // TODO: Add core::LayoutRequirements so you can skip forward by the
     // appropriate amount without instantiating so many templates.
     if (ctrl.reg0) {
-      inliner.Inline(&iter->read<Reg>());
+      inliner.Inline(iter->read<Reg>());
     } else {
       PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
         iter->read<typename std::decay_t<decltype(tag)>::type>();
       });
     }
     // Result value
-    inliner.Inline(&iter->read<Reg>(), GetType(ctrl.primitive_type));
+    inliner.Inline(iter->read<Reg>(), GetType(ctrl.primitive_type));
   } else if constexpr (std::is_same_v<CmdType, AddCmd> or
                        std::is_same_v<CmdType, SubCmd> or
                        std::is_same_v<CmdType, MulCmd> or
@@ -116,9 +120,10 @@ void InlineCmd(base::untyped_buffer::iterator *iter, JumpInliner &inliner) {
                        std::is_same_v<CmdType, NeCmd> or
                        std::is_same_v<CmdType, GeCmd> or
                        std::is_same_v<CmdType, GtCmd>) {
-    auto ctrl = iter->read<typename CmdType::control_bits>();
+    typename CmdType::control_bits ctrl =
+        iter->read<typename CmdType::control_bits>();
     if (ctrl.reg0) {
-      inliner.Inline(&iter->read<Reg>());
+      inliner.Inline(iter->read<Reg>());
     } else {
       // TODO: Add core::LayoutRequirements so you can skip forward by the
       // appropriate amount without instantiating so many templates.
@@ -128,7 +133,7 @@ void InlineCmd(base::untyped_buffer::iterator *iter, JumpInliner &inliner) {
     }
 
     if (ctrl.reg1) {
-      inliner.Inline(&iter->read<Reg>());
+      inliner.Inline(iter->read<Reg>());
     } else {
       // TODO: Add core::LayoutRequirements so you can skip forward by the
       // appropriate amount without instantiating so many templates.
@@ -138,17 +143,19 @@ void InlineCmd(base::untyped_buffer::iterator *iter, JumpInliner &inliner) {
     }
 
     // Result value
-    inliner.Inline(&iter->read<Reg>(), GetType(ctrl.primitive_type));
+    inliner.Inline(iter->read<Reg>(), GetType(ctrl.primitive_type));
   } else if constexpr (std::is_same_v<CmdType, VariantCmd> or
                        std::is_same_v<CmdType, TupleCmd>) {
     internal::Deserialize<uint16_t, type::Type const *>(
-        iter, [&inliner](Reg &reg) { inliner.Inline(&reg); });
+        iter,
+        [&inliner](base::unaligned_ref<Reg> reg) { inliner.Inline(reg); });
     // Result value
-    inliner.Inline(&iter->read<Reg>(), ::type::Type_);
+    inliner.Inline(iter->read<Reg>(), ::type::Type_);
   } else if constexpr (std::is_same_v<CmdType, StoreCmd>) {
-    auto ctrl = iter->read<typename CmdType::control_bits>();
+    typename CmdType::control_bits ctrl =
+        iter->read<typename CmdType::control_bits>();
     if (ctrl.reg) {
-      inliner.Inline(&iter->read<Reg>());
+      inliner.Inline(iter->read<Reg>());
     } else {
       // TODO: Add core::LayoutRequirements so you can skip forward by the
       // appropriate amount without instantiating so many templates.
@@ -158,7 +165,7 @@ void InlineCmd(base::untyped_buffer::iterator *iter, JumpInliner &inliner) {
     }
 
     if (ctrl.reg_addr) {
-      inliner.Inline(&iter->read<Reg>());
+      inliner.Inline(iter->read<Reg>());
     } else {
       // TODO: Add core::LayoutRequirements so you can skip forward by the
       // appropriate amount without instantiating so many templates.
@@ -167,9 +174,10 @@ void InlineCmd(base::untyped_buffer::iterator *iter, JumpInliner &inliner) {
       });
     }
   } else if constexpr (std::is_same_v<CmdType, LoadCmd>) {
-    auto ctrl = iter->read<typename CmdType::control_bits>();
+    typename CmdType::control_bits ctrl =
+        iter->read<typename CmdType::control_bits>();
     if (ctrl.reg) {
-      inliner.Inline(&iter->read<Reg>());
+      inliner.Inline(iter->read<Reg>());
     } else {
       // TODO: Add core::LayoutRequirements so you can skip forward by the
       // appropriate amount without instantiating so many templates.
@@ -179,13 +187,15 @@ void InlineCmd(base::untyped_buffer::iterator *iter, JumpInliner &inliner) {
     }
 
     // Result value
-    inliner.Inline(&iter->read<Reg>(), GetType(ctrl.primitive_type));
+    inliner.Inline(iter->read<Reg>(), GetType(ctrl.primitive_type));
   } else if constexpr (std::is_same_v<CmdType, ArrowCmd>) {
     internal::Deserialize<uint16_t, type::Type const *>(
-        iter, [&inliner](Reg &reg) { inliner.Inline(&reg); });
+        iter,
+        [&inliner](base::unaligned_ref<Reg> reg) { inliner.Inline(reg); });
     internal::Deserialize<uint16_t, type::Type const *>(
-        iter, [&inliner](Reg &reg) { inliner.Inline(&reg); });
-    inliner.Inline(&iter->read<Reg>(), type::Type_);  // Result value
+        iter,
+        [&inliner](base::unaligned_ref<Reg> reg) { inliner.Inline(reg); });
+    inliner.Inline(iter->read<Reg>(), type::Type_);  // Result value
   } else if constexpr (std::is_same_v<CmdType, CallCmd>) {
     // RegOr<AnyFunc> r_fn;
     // if (cmd.call_.fn_.is_reg()) {
@@ -234,16 +244,17 @@ void InlineCmd(base::untyped_buffer::iterator *iter, JumpInliner &inliner) {
     NOT_YET();
 
   } else if constexpr (std::is_same_v<CmdType, ReturnCmd>) {
-    auto ctrl = iter->read<typename CmdType::control_bits>();
+    typename CmdType::control_bits ctrl =
+        iter->read<typename CmdType::control_bits>();
     iter->read<uint16_t>();
 
     if (ctrl.only_get) {
-      inliner.Inline(&iter->read<Reg>());
+      inliner.Inline(iter->read<Reg>());
       return;
     }
 
     if (ctrl.reg) {
-      inliner.Inline(&iter->read<Reg>());
+      inliner.Inline(iter->read<Reg>());
     } else {
       // TODO: Add core::LayoutRequirements so you can skip forward by the
       // appropriate amount without instantiating so many templates.
@@ -271,7 +282,7 @@ void InlineCmd(base::untyped_buffer::iterator *iter, JumpInliner &inliner) {
       iter->read<uint64_t>();  // index
       bool is_reg = iter->read<bool>();
       if (is_reg) {
-        inliner.Inline(&iter->read<Reg>());
+        inliner.Inline(iter->read<Reg>());
       } else {
         iter->read<EnumerationCmd::enum_t>();
       }
@@ -284,21 +295,23 @@ void InlineCmd(base::untyped_buffer::iterator *iter, JumpInliner &inliner) {
     iter->read<module::BasicModule *>();
     for (uint16_t i = 0; i < num; ++i) { iter->read<std::string_view>(); }
     internal::Deserialize<uint16_t, type::Type const *>(
-        iter, [&inliner](Reg &reg) { inliner.Inline(&reg); });
-    inliner.Inline(&iter->read<Reg>(), ::type::Type_);
+        iter,
+        [&inliner](base::unaligned_ref<Reg> reg) { inliner.Inline(reg); });
+    inliner.Inline(iter->read<Reg>(), ::type::Type_);
   } else if constexpr (std::is_same_v<CmdType, OpaqueTypeCmd>) {
     iter->read<module::BasicModule const *>();
-    inliner.Inline(&iter->read<Reg>());
+    inliner.Inline(iter->read<Reg>());
   } else if constexpr (std::is_same_v<CmdType, ArrayCmd>) {
-    auto ctrl_bits = iter->read<typename CmdType::control_bits>();
+    typename CmdType::control_bits ctrl_bits =
+        iter->read<typename CmdType::control_bits>();
     if (ctrl_bits.length_is_reg) {
-      inliner.Inline(&iter->read<Reg>());
+      inliner.Inline(iter->read<Reg>());
     } else {
       iter->read<typename CmdType::length_t>();
     }
 
     if (ctrl_bits.type_is_reg) {
-      inliner.Inline(&iter->read<Reg>());
+      inliner.Inline(iter->read<Reg>());
     } else {
       iter->read<type::Type const *>();
     }
@@ -309,8 +322,8 @@ void InlineCmd(base::untyped_buffer::iterator *iter, JumpInliner &inliner) {
   } else if constexpr (std::is_same_v<CmdType, CastCmd>) {
     iter->read<uint8_t>();
     iter->read<uint8_t>();
-    inliner.Inline(&iter->read<Reg>());  // Input
-    inliner.Inline(&iter->read<Reg>());  // Result value
+    inliner.Inline(iter->read<Reg>());  // Input
+    inliner.Inline(iter->read<Reg>());  // Result value
   } else if constexpr (std::is_same_v<CmdType, SemanticCmd>) {
     size_t num_args = 0;
     switch (iter->read<typename CmdType::Kind>()) {
@@ -323,14 +336,14 @@ void InlineCmd(base::untyped_buffer::iterator *iter, JumpInliner &inliner) {
     switch (num_args) {
       case 1: {
         iter->read<type::Type const *>();
-        inliner.Inline(&iter->read<Reg>());
+        inliner.Inline(iter->read<Reg>());
       } break;
       case 2: {
         bool to_reg = iter->read<bool>();
         iter->read<type::Type const *>();
-        inliner.Inline(&iter->read<Reg>());
+        inliner.Inline(iter->read<Reg>());
         if (to_reg) {
-          inliner.Inline(&iter->read<Reg>());
+          inliner.Inline(iter->read<Reg>());
         } else {
           iter->read<Addr>();
         }
@@ -340,46 +353,47 @@ void InlineCmd(base::untyped_buffer::iterator *iter, JumpInliner &inliner) {
   } else if constexpr (std::is_same_v<CmdType, LoadSymbolCmd>) {
     iter->read<std::string_view>();
     iter->read<type::Type const *>();
-    inliner.Inline(&iter->read<Reg>());
+    inliner.Inline(iter->read<Reg>());
   } else if constexpr (std::is_same_v<CmdType, TypeInfoCmd>) {
-    auto ctrl_bits = iter->read<uint8_t>();
+    uint8_t ctrl_bits = iter->read<uint8_t>();
     if (ctrl_bits & 0x01) {
-      inliner.Inline(&iter->read<Reg>());
+      inliner.Inline(iter->read<Reg>());
     } else {
       iter->read<type::Type const *>();
     }
-    inliner.Inline(&iter->read<Reg>());
+    inliner.Inline(iter->read<Reg>());
   } else if constexpr (std::is_same_v<CmdType, AccessCmd>) {
-    auto ctrl_bits = iter->read<typename CmdType::control_bits>();
+    typename CmdType::control_bits ctrl_bits =
+        iter->read<typename CmdType::control_bits>();
     iter->read<type::Type const *>();
 
     if (ctrl_bits.reg_ptr) {
-      inliner.Inline(&iter->read<Reg>());
+      inliner.Inline(iter->read<Reg>());
     } else {
       iter->read<Addr>();
     }
 
     if (ctrl_bits.reg_index) {
-      inliner.Inline(&iter->read<Reg>());
+      inliner.Inline(iter->read<Reg>());
     } else {
       iter->read<int64_t>();
     }
 
-    inliner.Inline(&iter->read<Reg>());
+    inliner.Inline(iter->read<Reg>());
 
   } else if constexpr (std::is_same_v<CmdType, VariantAccessCmd>) {
     bool get_val = iter->read<bool>();
     bool is_reg  = iter->read<bool>();
 
     if (is_reg) {
-      inliner.Inline(&iter->read<Reg>());
+      inliner.Inline(iter->read<Reg>());
     } else {
       iter->read<Addr>();
     }
 
     if (get_val) { iter->read<type::Variant const *>(); }
 
-    inliner.Inline(&iter->read<Reg>());
+    inliner.Inline(iter->read<Reg>());
   }
 }
 
@@ -454,7 +468,7 @@ absl::flat_hash_map<std::string_view, BasicBlock *> Inline(
         inliner.Inline(&j.block);
         j.block->incoming_.insert(block);
       } else if constexpr (std::is_same_v<type, JumpCmd::CondJump>) {
-        inliner.Inline(&j.reg);
+        inliner.Inline(base::unaligned_ref{j.reg});
         inliner.Inline(&j.true_block);
         j.true_block->incoming_.insert(block);
         inliner.Inline(&j.false_block);

@@ -28,7 +28,9 @@ std::ostream &operator<<(std::ostream &os, BasicBlock const &b) {
     break;
 #include "ir/cmd/cmd.xmacro.h"
 #undef ICARUS_IR_CMD_X
-      default: UNREACHABLE(static_cast<int>(cmd_index));
+      default:
+        DEBUG_LOG()(b.cmd_buffer_);
+        UNREACHABLE(static_cast<int>(cmd_index));
     }
   }
   os << b.jump_.DebugString() << "\n";

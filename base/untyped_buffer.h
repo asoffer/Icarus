@@ -16,18 +16,17 @@ constexpr inline uint8_t kUnusedByte = 0xaa;
 struct untyped_buffer {
   struct const_iterator {
     template <typename T>
-    T const &read() {
-      ptr_ = reinterpret_cast<char const *>(
-          ((reinterpret_cast<uintptr_t>(ptr_) - 1) | (alignof(T) - 1)) + 1);
-      T const &result = *reinterpret_cast<T const *>(ptr_);
-      ptr_ += sizeof(T);
+    unaligned_ref<T const> read() {
+      auto result =
+          unaligned_ref<T const>::FromPtr(reinterpret_cast<void const *>(ptr_));
+      skip(sizeof(T));
       return result;
     }
 
     void skip(size_t n) { ptr_ += n; }
 
 #if defined(ICARUS_DEBUG)
-    uintptr_t DebugValue() const { return reinterpret_cast<uintptr_t>(ptr_); }
+    uintptr_t DebugValue() const { return ptr_; }
 #endif  // defined(ICARUS_DEBUG)
 
    private:
@@ -53,35 +52,25 @@ struct untyped_buffer {
       return not(lhs == rhs);
     }
 
-    constexpr const_iterator(char const *ptr) : ptr_(ptr) {}
+   private:
+    explicit constexpr const_iterator(void const *ptr)
+        : ptr_(reinterpret_cast<uintptr_t>(ptr)) {}
 
-    char const *ptr_;
+    uintptr_t ptr_;
   };
 
   struct iterator {
     template <typename T>
-    T &read() {
-      ptr_ = reinterpret_cast<char *>(
-          ((reinterpret_cast<uintptr_t>(ptr_) - 1) | (alignof(T) - 1)) + 1);
-      T &result = *reinterpret_cast<T *>(ptr_);
-      ptr_ += sizeof(T);
+    unaligned_ref<T> read() {
+      auto result = unaligned_ref<T>::FromPtr(reinterpret_cast<void *>(ptr_));
+      skip(sizeof(T));
       return result;
-    }
-
-    template <typename T>
-    void write(T t) {
-      ptr_ = reinterpret_cast<char *>(
-          ((reinterpret_cast<uintptr_t>(ptr_) - 1) | (alignof(T) - 1)) + 1);
-      *reinterpret_cast<T *>(ptr_) = t;
-      ptr_ += sizeof(T);
     }
 
     void skip(size_t n) { ptr_ += n; }
 
-    operator const_iterator() { return const_iterator(ptr_); }
-
 #if defined(ICARUS_DEBUG)
-    uintptr_t DebugValue() const { return reinterpret_cast<uintptr_t>(ptr_); }
+    uintptr_t DebugValue() const { return ptr_; }
 #endif  // defined(ICARUS_DEBUG)
 
    private:
@@ -107,62 +96,8 @@ struct untyped_buffer {
       return not(lhs == rhs);
     }
 
-    constexpr iterator(char *ptr) : ptr_(ptr) {}
-
-    char *ptr_;
-  };
-
-  struct unaligned_iterator {
-    template <typename T>
-    unaligned_ref<T> read() {
-      unaligned_ref<T> result(reinterpret_cast<void const *>(ptr_));
-      ptr_ += sizeof(T);
-      return result;
-    }
-
-    template <typename T>
-    void write(T const &val) {
-      std::memcpy(reinterpret_cast<void *>(ptr_), &val, sizeof(T));
-      ptr_ += sizeof(T);
-    }
-
-    void skip(size_t n) { ptr_ += n; }
-
-#if defined(ICARUS_DEBUG)
-    uintptr_t DebugValue() const { return ptr_; }
-#endif  // defined(ICARUS_DEBUG)
-
    private:
-    friend struct untyped_buffer;
-    friend std::string stringify(untyped_buffer::unaligned_iterator);
-
-    friend constexpr bool operator<(unaligned_iterator lhs,
-                                    unaligned_iterator rhs) {
-      return lhs.ptr_ < rhs.ptr_;
-    }
-    friend constexpr bool operator>(unaligned_iterator lhs,
-                                    unaligned_iterator rhs) {
-      return (rhs < lhs);
-    }
-    friend constexpr bool operator<=(unaligned_iterator lhs,
-                                     unaligned_iterator rhs) {
-      return not(lhs > rhs);
-    }
-    friend constexpr bool operator>=(unaligned_iterator lhs,
-                                     unaligned_iterator rhs) {
-      return not(rhs < lhs);
-    }
-    friend constexpr bool operator==(unaligned_iterator lhs,
-                                     unaligned_iterator rhs) {
-      return lhs.ptr_ == rhs.ptr_;
-    }
-    friend constexpr bool operator!=(unaligned_iterator lhs,
-                                     unaligned_iterator rhs) {
-      return not(lhs == rhs);
-    }
-
-   private:
-    explicit constexpr unaligned_iterator(void *ptr)
+    explicit constexpr iterator(void *ptr)
         : ptr_(reinterpret_cast<uintptr_t>(ptr)) {}
 
     uintptr_t ptr_;
@@ -170,7 +105,7 @@ struct untyped_buffer {
 
   untyped_buffer(const_iterator iter, size_t len)
       : size_(len), capacity_(len), data_(static_cast<char *>(malloc(len))) {
-    std::memcpy(data_, iter.ptr_, size_);
+    std::memcpy(data_, reinterpret_cast<void const *>(iter.ptr_), size_);
   }
 
   untyped_buffer(size_t starting_capacity = 0)
@@ -178,12 +113,13 @@ struct untyped_buffer {
         capacity_(starting_capacity),
         data_(static_cast<char *>(malloc(starting_capacity))) {}
 
-  constexpr unaligned_iterator unaligned_begin() {
-    return unaligned_iterator(data_);
-  }
-
-  constexpr unaligned_iterator unaligned_end() {
-    return unaligned_iterator(data_ + size_);
+  constexpr iterator begin() { return iterator(data_); }
+  constexpr iterator end() { return iterator(data_ + size_); }
+  constexpr const_iterator begin() const { return const_iterator(data_); }
+  constexpr const_iterator end() const { return const_iterator(data_ + size_); }
+  constexpr const_iterator cbegin() const { return const_iterator(data_); }
+  constexpr const_iterator cend() const {
+    return const_iterator(data_ + size_);
   }
 
   static untyped_buffer MakeFull(size_t starting_size) {
@@ -224,25 +160,6 @@ struct untyped_buffer {
 
   ~untyped_buffer() { free(data_); }
 
-  constexpr iterator begin() { return iterator(data_); }
-  constexpr const_iterator begin() const { return const_iterator(data_); }
-  constexpr const_iterator cbegin() const { return const_iterator(data_); }
-
-  constexpr iterator end() { return iterator(data_ + size()); }
-  constexpr const_iterator end() const {
-    return const_iterator(data_ + size());
-  }
-  constexpr const_iterator cend() const {
-    return const_iterator(data_ + size());
-  }
-
-  constexpr std::pair<iterator, iterator> bounds() {
-    return std::pair(begin(), end());
-  }
-  constexpr std::pair<const_iterator, const_iterator> bounds() const {
-    return std::pair(begin(), end());
-  }
-
   constexpr size_t size() const { return size_; }
   constexpr bool empty() const { return size_ == 0; }
 
@@ -274,30 +191,29 @@ struct untyped_buffer {
 
   template <typename T>
   size_t append(T const &t) {
-    size_t old_size_with_alignment = append_bytes(sizeof(T), alignof(T));
-    set(old_size_with_alignment, t);
-    return old_size_with_alignment;
+    size_t old_size = append_bytes(sizeof(T));
+    set(old_size, t);
+    return old_size;
   }
 
   void write(size_t offset, base::untyped_buffer const &buf) {
-    append_bytes(buf.size(), 1);
+    append_bytes(buf.size());
     std::memcpy(data_ + offset, buf.data_, buf.size_);
   }
 
   // Returns an offset to the newly appended region
-  size_t append_bytes(size_t num, size_t alignment) {
-    // TODO combine with core::FwdAlign?
-    size_t old_size_with_alignment = ((size_ - 1) | (alignment - 1)) + 1;
-    size_t new_size                = old_size_with_alignment + num;
+  size_t append_bytes(size_t num) {
+    size_t old_size = size_;
+    size_t new_size = old_size + num;
     if (new_size > capacity_) { reallocate(new_size); }
     size_ = new_size;
-    return old_size_with_alignment;
+    return old_size;
   }
 
   template <typename T>
   size_t reserve() {
     static_assert(std::is_trivially_copyable_v<T>);
-    return append_bytes(sizeof(T), alignof(T));
+    return append_bytes(sizeof(T));
   }
 
   void pad_to(size_t n) {

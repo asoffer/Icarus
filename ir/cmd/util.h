@@ -197,7 +197,8 @@ auto Deserialize(Iter* iter, Fn&& fn) {
                 std::is_same<Iter, base::untyped_buffer::const_iterator>>);
   auto bits = ReadBits<SizeType>(iter);
 
-  using result_type = std::decay_t<decltype(fn(std::declval<Reg&>()))>;
+  using result_type =
+      std::decay_t<decltype(fn(std::declval<base::unaligned_ref<Reg>>()))>;
   if constexpr (std::is_void_v<result_type>) {
     for (bool b : bits) {
       if (b) {
@@ -212,7 +213,7 @@ auto Deserialize(Iter* iter, Fn&& fn) {
     vals.reserve(bits.size());
     for (bool b : bits) {
       vals.push_back(b ? fn(iter->template read<Reg>())
-                       : iter->template read<T>());
+                       : static_cast<T>(iter->template read<T>()));
     }
     return vals;
   }
@@ -242,7 +243,7 @@ struct UnaryCmd {
   }
 
   static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
-    auto ctrl = iter->read<control_bits>();
+    control_bits ctrl = iter->read<control_bits>();
     using base::stringify;
     std::string s;
     if (ctrl.reg0) {
@@ -288,7 +289,7 @@ struct BinaryCmd {
   }
 
   static std::string DebugString(base::untyped_buffer::const_iterator* iter) {
-    auto ctrl = iter->read<control_bits>();
+    control_bits ctrl = iter->read<control_bits>();
     using base::stringify;
     std::string s;
     if (ctrl.reg0) {

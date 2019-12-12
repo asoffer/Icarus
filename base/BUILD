@@ -156,11 +156,19 @@ cc_lib(
     test_deps = [],
 )
 
-cc_lib(
+cc_library(
     name = "unaligned_ref",
+    hdrs = ["unaligned_ref.h"],
     deps = [],
-    header_only = True,
-    test_deps = [],
+)
+
+cc_test(
+    name = "unaligned_ref_test",
+    srcs = ["unaligned_ref_test.cc"],
+    deps = [
+        ":unaligned_ref",
+        "//test",
+    ],
 )
 
 cc_lib(

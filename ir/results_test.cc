@@ -85,9 +85,7 @@ TEST_CASE("FromUntypedBuffer") {
   buf.append(1234);
   buf.append(true);
   buf.append(5678);
-  // TODO this test is mildly dependent on size and alignment. Should be good so
-  // long as bool's size and alignment are less than that for int.
-  auto results = Results::FromUntypedBuffer({0, sizeof(int), 2 * sizeof(int)},
+  auto results = Results::FromUntypedBuffer({0, sizeof(int), sizeof(int) + 1},
                                             std::move(buf));
   CHECK(results.size() == 3);
   CHECK(results.get<int>(0) == RegOr<int>(1234));
@@ -99,7 +97,7 @@ TEST_CASE("to_string") {
   CHECK(Results().to_string() == "[]");
   CHECK(Results(true).to_string() == "[offset(0)]");
   CHECK(Results(uint16_t{3}, true, uint64_t{4}, Reg::Arg(4)).to_string() ==
-        "[offset(0), offset(2), offset(8), arg.4]");
+        "[offset(0), offset(2), offset(3), arg.4]");
 }
 
 }  // namespace

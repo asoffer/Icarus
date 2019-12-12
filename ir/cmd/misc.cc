@@ -28,14 +28,14 @@ std::string SemanticCmd::DebugString(
   using base::stringify;
   switch (num_args) {
     case 1: {
-      auto *t = iter->read<type::Type const *>();
+      type::Type const *t = iter->read<type::Type const *>();
       return absl::StrCat(cmd_name, " ", t->to_string(), " ",
                           stringify((iter->read<Reg>())));
     } break;
     case 2: {
-      bool to_reg = iter->read<bool>();
-      auto *t     = iter->read<type::Type const *>();
-      auto reg    = iter->read<Reg>();
+      bool to_reg         = iter->read<bool>();
+      type::Type const *t = iter->read<type::Type const *>();
+      Reg reg             = iter->read<Reg>();
       return absl::StrCat(cmd_name, " ", stringify(reg), " ",
                           to_reg ? stringify(iter->read<Reg>())
                                  : stringify(iter->read<Addr>()));
@@ -46,33 +46,36 @@ std::string SemanticCmd::DebugString(
 
 std::string LoadSymbolCmd::DebugString(
     base::untyped_buffer::const_iterator *iter) {
-  auto name = iter->read<std::string_view>();
-  auto type = iter->read<type::Type const *>();
-  auto reg  = iter->read<Reg>();
+  std::string_view name  = iter->read<std::string_view>();
+  type::Type const *type = iter->read<type::Type const *>();
+  Reg reg                = iter->read<Reg>();
   return absl::StrCat(stringify(reg), " = load-symbol(", name, ", ",
                       type->to_string(), ")");
 }
 
 std::string TypeInfoCmd::DebugString(
     base::untyped_buffer::const_iterator *iter) {
-  auto ctrl_bits  = iter->read<uint8_t>();
-  std::string arg = (ctrl_bits & 0x01)
-                        ? stringify(iter->read<Reg>())
-                        : iter->read<type::Type const *>()->to_string();
-  auto reg = iter->read<Reg>();
+  uint8_t ctrl_bits  = iter->read<uint8_t>();
+  std::string arg =
+      (ctrl_bits & 0x01)
+          ? stringify(iter->read<Reg>())
+          : static_cast<type::Type const *>(iter->read<type::Type const *>())
+                ->to_string();
+  Reg reg = iter->read<Reg>();
   return absl::StrCat(stringify(reg),
                       (ctrl_bits & 0x02) ? " = alignment " : " = bytes ", arg);
 }
 
 std::string AccessCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
-  auto ctrl_bits   = iter->read<control_bits>();
-  auto const *type = iter->read<type::Type const *>();
+  control_bits ctrl_bits = iter->read<control_bits>();
+  type::Type const *type = iter->read<type::Type const *>();
 
-  auto addr = ctrl_bits.reg_ptr ? RegOr<Addr>(iter->read<Reg>())
-                                : RegOr<Addr>(iter->read<Addr>());
-  auto index = ctrl_bits.reg_index ? RegOr<int64_t>(iter->read<Reg>())
-                                   : RegOr<int64_t>(iter->read<int64_t>());
-  auto reg = iter->read<Reg>();
+  RegOr<Addr> addr = ctrl_bits.reg_ptr ? RegOr<Addr>(iter->read<Reg>())
+                                       : RegOr<Addr>(iter->read<Addr>());
+  RegOr<int64_t> index = ctrl_bits.reg_index
+                             ? RegOr<int64_t>(iter->read<Reg>())
+                             : RegOr<int64_t>(iter->read<int64_t>());
+  Reg reg = iter->read<Reg>();
   return absl::StrCat(
       stringify(reg),
       ctrl_bits.is_array ? " = access-array " : " = access-index ",

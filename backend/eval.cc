@@ -11,8 +11,7 @@ namespace backend {
 base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
   size_t bytes_needed =
       fn.type()->output[0]->bytes(core::Interpretter()).value();
-  base::untyped_buffer ret_buf(bytes_needed);
-  ret_buf.append_bytes(bytes_needed, 1);
+  auto ret_buf = base::untyped_buffer::MakeFull(bytes_needed);
   std::vector<ir::Addr> ret_slots;
 
   ret_slots.push_back(ir::Addr::Heap(ret_buf.raw(0)));
