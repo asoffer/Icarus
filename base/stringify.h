@@ -10,6 +10,7 @@
 #include <variant>
 
 #include "base/tuple.h"
+#include "base/unaligned_ref.h"
 
 namespace base {
 template <typename T>
@@ -64,6 +65,11 @@ DEFINE_RANKED_STRINGIFY(2, long double) { return std::to_string(value); }
 template <typename T>
 std::string stringify_dispatch(dispatch_rank<2>, T *ptr) {
   return stringify_dispatch(dispatch_rank<2>{}, static_cast<T const *>(ptr));
+}
+
+template <typename T>
+std::string stringify_dispatch(dispatch_rank<2>, unaligned_ref<T> ref) {
+  return stringify(T(ref));
 }
 
 template <typename T>

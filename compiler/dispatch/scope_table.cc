@@ -254,7 +254,6 @@ ir::Results ScopeDispatchTable::EmitCall(
       EmitCallOneOverload(scope_def, starting_block, landing_block, compiler,
                           block_def->after_[0], {},
                           block_interps.at(scope_def));
-      bldr.UncondJump(landing_block);
     }
   }
 

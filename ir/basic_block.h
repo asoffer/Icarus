@@ -25,7 +25,8 @@ struct BasicBlock {
   BasicBlock &operator=(BasicBlock const &);
   BasicBlock &operator=(BasicBlock &&) noexcept;
 
-  void Append(BasicBlock &&b);
+  void ReplaceJumpTargets(BasicBlock *old_target, BasicBlock *new_target);
+  void Append(BasicBlock const &b);
 
   base::untyped_buffer cmd_buffer_;
   size_t num_incoming() const { return incoming_.size(); }

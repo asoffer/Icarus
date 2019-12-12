@@ -77,20 +77,7 @@ void CombineBlocksStartingAt(ir::BasicBlock* block) {
              })) {
     DEBUG_LOG("opt")("Combining ", next_block, " into ", block);
     if (next_block->num_incoming() != 1) { break; }
-    next_block->jump_.Visit([&](auto const& j) {
-      bldr.CurrentBlock() = block;
-      using type = std::decay_t<decltype(j)>;
-      if constexpr (std::is_same_v<type, ir::JumpCmd::UncondJump>) {
-        bldr.UncondJump(j.block);
-      } else if constexpr (std::is_same_v<type, ir::JumpCmd::CondJump>) {
-        bldr.CondJump(j.reg, j.true_block, j.false_block);
-      } else if constexpr (std::is_same_v<type, ir::JumpCmd::RetJump>) {
-        // Nothing to do
-      } else {
-        UNREACHABLE();
-      }
-    });
-    block->Append(std::move(*next_block));
+    block->Append(*next_block);
 
     bldr.CurrentBlock() = next_block;
     bldr.ReturnJump();
@@ -102,56 +89,18 @@ void ReduceEmptyBlocks(ir::CompiledFn* fn) {
   for (auto& block : fn->mutable_blocks()) {
     if (not block->cmd_buffer_.empty()) { continue; }
     for (auto* inc : block->incoming_) {
-      bldr.CurrentBlock() = inc;
-      inc->jump_.Visit([&](auto const& inc_jump) {
-        using inc_type = std::decay_t<decltype(inc_jump)>;
-        if constexpr (std::is_same_v<inc_type, ir::JumpCmd::UncondJump>) {
-          block->jump_.Visit([&](auto const& block_jump) {
-            using block_type = std::decay_t<decltype(block_jump)>;
-            if constexpr (std::is_same_v<block_type, ir::JumpCmd::UncondJump>) {
-              bldr.UncondJump(block_jump.block);
-            } else if constexpr (std::is_same_v<block_type,
-                                                ir::JumpCmd::CondJump>) {
-              bldr.CondJump(block_jump.reg, block_jump.true_block,
-                            block_jump.false_block);
-            } else if constexpr (std::is_same_v<block_type,
-                                                ir::JumpCmd::RetJump>) {
-              bldr.ReturnJump();
-            } else {
-              UNREACHABLE();
-            }
-          });
-        } else if constexpr (std::is_same_v<inc_type, ir::JumpCmd::CondJump>) {
-          if (inc_jump.true_block == block.get()) {
-            block->jump_.Visit([&](auto const& block_jump) {
-              using block_type = std::decay_t<decltype(block_jump)>;
-              if constexpr (std::is_same_v<block_type,
-                                           ir::JumpCmd::UncondJump>) {
-                bldr.CondJump(inc_jump.reg, block_jump.block,
-                              inc_jump.false_block);
-              }
-            });
-          }
-
-          if (inc_jump.false_block == block.get()) {
-            block->jump_.Visit([&](auto const& block_jump) {
-              using block_type = std::decay_t<decltype(block_jump)>;
-              if constexpr (std::is_same_v<block_type,
-                                           ir::JumpCmd::UncondJump>) {
-                bldr.CondJump(inc_jump.reg, inc_jump.true_block,
-                              block_jump.block);
-              }
-            });
-          }
-        } else if constexpr (std::is_same_v<inc_type, ir::JumpCmd::RetJump>) {
-          // Nothing to do
-        } else {
-          UNREACHABLE();
-        }
-      });
+      if (inc->jump_.kind() == ir::JumpCmd::Kind::Uncond) {
+        inc->Append(*block);
+      } else if (block->jump_.kind() == ir::JumpCmd::Kind::Uncond) {
+        auto* target = ASSERT_NOT_NULL(block->jump_.UncondTarget());
+        inc->ReplaceJumpTargets(block.get(), target);
+      }
     }
-    // bldr.CurrentBlock() = block.get();
-    // bldr.ReturnJump();
+
+    if (block->num_incoming() == 0u) {
+      bldr.CurrentBlock() = block.get();
+      bldr.ReturnJump();
+    }
   }
 }
 
@@ -164,6 +113,7 @@ void CombineBlocks(ir::CompiledFn* fn) {
 
   // TODO use something like a base::bag
   for (auto& block : fn->mutable_blocks()) {
+    DEBUG_LOG()(block->num_incoming());
     switch (block->num_incoming()) {
       case 0: dead_sources.push(block.get()); break;
       // There's no sense in doing block combining for dead blocks.
@@ -171,19 +121,15 @@ void CombineBlocks(ir::CompiledFn* fn) {
       // (a). It has one incoming block but it's parent has multiple outgoing blocks.
       // (b). It has multiple incoming blocks and a single outgoing block.
       // multiple incoming blocks
-      case 1:  // case (a).
-        if ((*block->incoming_.begin())->jump_.Visit([](auto const& j) {
-              return std::is_same_v<std::decay_t<decltype(j)>,
-                                    ir::JumpCmd::CondJump>;
-            })) {
-          CombineBlocksStartingAt(block.get());
+      case 1: {  // case (a).
+        auto* inc_block = *block->incoming_.begin();
+        if (inc_block->jump_.kind() == ir::JumpCmd::Kind::Cond) {
+          DEBUG_LOG()(inc_block);
+          CombineBlocksStartingAt(inc_block);
         }
-        break;
+      } break;
       default:  // case (b).
-        if (block->jump_.Visit([](auto const& j) {
-              return std::is_same_v<std::decay_t<decltype(j)>,
-                                    ir::JumpCmd::UncondJump>;
-            })) {
+        if (block->jump_.kind() == ir::JumpCmd::Kind::Uncond) {
           CombineBlocksStartingAt(block.get());
         }
         break;

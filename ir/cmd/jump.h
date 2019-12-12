@@ -103,6 +103,14 @@ struct JumpCmd {
     });
   }
 
+  BasicBlock* UncondTarget() const {
+    if (auto* u = std::get_if<UncondJump>(&jump_)) {
+      return u->block;
+    } else {
+      return nullptr;
+    }
+  }
+
   std::string DebugString() const {
     return Visit(
         [](auto const& j) -> std::string {

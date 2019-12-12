@@ -6,7 +6,7 @@ namespace opt {
 
 void RunAllOptimizations(ir::CompiledFn *fn) {
   ReduceEmptyBlocks(fn);
-  // CombineBlocks(fn);
+  CombineBlocks(fn);
 }
 
 }  // namespace opt

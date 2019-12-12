@@ -125,7 +125,10 @@ cc_lib(
 
 cc_lib(
     name = "stringify",
-    deps = [":tuple"],
+    deps = [
+        ":tuple",
+        ":unaligned_ref",
+    ],
     header_only = True,
     test_deps = [],
 )
