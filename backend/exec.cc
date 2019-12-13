@@ -764,27 +764,17 @@ void Execute(ir::CompiledFn *fn, const base::untyped_buffer &arguments,
 
   while (true) {
     ctx->ExecuteBlock(ret_slots);
-    auto const *block = ctx->current_block()->jump_.Visit(
-        [&](auto const &j) -> ir::BasicBlock const * {
-          using type = std::decay_t<decltype(j)>;
-          if constexpr (std::is_same_v<type, ir::JumpCmd::RetJump>) {
-            return ir::ReturnBlock();
-          } else if constexpr (std::is_same_v<type, ir::JumpCmd::UncondJump>) {
-            return j.block;
-          } else if constexpr (std::is_same_v<type, ir::JumpCmd::CondJump>) {
-            return ctx->resolve<bool>(j.reg) ? j.true_block : j.false_block;
-          } else if constexpr (std::is_same_v<type, ir::JumpCmd::ChooseJump>) {
-            UNREACHABLE("Choose jumps can never be executed.");
-            return nullptr;
-          } else {
-            static_assert(base::always_false<type>());
-          }
-        });
-    if (block == ir::ReturnBlock()) {
-      ctx->call_stack.pop();
-      return;
-    } else {
-      ctx->call_stack.top().MoveTo(block);
+    auto const &j = ctx->current_block()->jump_;
+    switch (j.kind()) {
+      case ir::JumpCmd::Kind::Return: ctx->call_stack.pop(); return;
+      case ir::JumpCmd::Kind::Uncond:
+        ctx->call_stack.top().MoveTo(j.UncondTarget());
+        break;
+      case ir::JumpCmd::Kind::Cond:
+        ctx->call_stack.top().MoveTo(
+            j.CondTarget(ctx->resolve<bool>(j.CondReg())));
+        break;
+      default: UNREACHABLE();
     }
   }
 }

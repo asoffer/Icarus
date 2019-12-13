@@ -75,34 +75,42 @@ struct JumpCmd {
     std::unique_ptr<std::string_view[]> blocks_;
   };
 
+  enum class Kind { Return, Uncond, Cond, Choose };
+  Kind kind() const { return static_cast<Kind>(jump_.index()); }
+
   template <typename Fn>
   auto Visit(Fn&& fn) const {
-    return std::visit(std::forward<Fn>(fn), jump_);
+    auto k = kind();
+    switch (k) {
+      case Kind::Return: return fn(std::get<0>(jump_));
+      case Kind::Uncond: return fn(std::get<1>(jump_));
+      case Kind::Cond: return fn(std::get<2>(jump_));
+      case Kind::Choose: return fn(std::get<3>(jump_));
+    }
+    UNREACHABLE();
   }
 
   template <typename Fn>
   auto Visit(Fn&& fn) {
-    return std::visit(std::forward<Fn>(fn), jump_);
+    auto k = kind();
+    switch (k) {
+      case Kind::Return: return fn(std::get<0>(jump_));
+      case Kind::Uncond: return fn(std::get<1>(jump_));
+      case Kind::Cond: return fn(std::get<2>(jump_));
+      case Kind::Choose: return fn(std::get<3>(jump_));
+    }
+    UNREACHABLE();
   }
 
-  enum class Kind { Return, Uncond, Cond, Choose };
-  Kind kind() const {
-    return Visit([](auto const& j) -> Kind {
-      using type = std::decay_t<decltype(j)>;
-      if constexpr (std::is_same_v<type, RetJump>) {
-        return Kind::Return;
-      } else if constexpr (std::is_same_v<type, UncondJump>) {
-        return Kind::Uncond;
-      } else if constexpr (std::is_same_v<type, CondJump>) {
-        return Kind::Cond;
-      } else if constexpr (std::is_same_v<type, ChooseJump>) {
-        return Kind::Choose;
-      } else {
-        static_assert(base::always_false<type>());
-      }
-    });
-  }
+  Reg CondReg() const { return std::get<CondJump>(jump_).reg; }
 
+  BasicBlock* CondTarget(bool b) const {
+    if (auto* u = std::get_if<CondJump>(&jump_)) {
+      return b ? u->true_block : u->false_block;
+    } else {
+      return nullptr;
+    }
+  }
   BasicBlock* UncondTarget() const {
     if (auto* u = std::get_if<UncondJump>(&jump_)) {
       return u->block;

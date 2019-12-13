@@ -35,9 +35,6 @@ struct ExecContext {
     ir::BasicBlock const *current_;
     ir::BasicBlock const *prev_;
 
-    std::stack<ir::ScopeDef *> scope_defs_;
-    std::stack<ir::BlockDef> block_defs_;
-
     base::untyped_buffer regs_;
   };
 
@@ -48,14 +45,13 @@ struct ExecContext {
   void ExecuteBlock(std::vector<ir::Addr> const &ret_slots);
 
   size_t Offset(ir::Reg r) const {
-    DEBUG_LOG("exec-offset")(r);
-    return ASSERT_NOT_NULL(call_stack.top().fn_->offset_or_null(r))->value();
+    return call_stack.top().fn_->offset(r).value();
   }
 
   template <typename T>
   T resolve(ir::Reg r) const {
-    auto offset = *ASSERT_NOT_NULL(call_stack.top().fn_->offset_or_null(r));
-    return call_stack.top().regs_.get<T>(offset.value());
+    return call_stack.top().regs_.get<T>(
+        call_stack.top().fn_->offset(r).value());
   }
 
   template <typename T>

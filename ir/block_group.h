@@ -68,6 +68,14 @@ struct BlockGroup {
     return iter != reg_to_offset_.end() ? &iter->second : nullptr;
   }
 
+  core::Bytes offset(Reg r) const {
+#if defined(ICARUS_DEBUG)
+    return ASSERT_NOT_NULL(offset_or_null(r));
+#else
+    return reg_to_offset_.find(r)->second;
+#endif
+  }
+
  private:
   core::FnParams<type::Typed<ast::Declaration const *>> params_;
   std::vector<std::unique_ptr<BasicBlock>> blocks_;
