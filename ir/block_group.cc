@@ -7,19 +7,7 @@ namespace ir::internal {
 
 BlockGroup::BlockGroup(
     core::FnParams<type::Typed<ast::Declaration const *>> params)
-    : params_(std::move(params)) {
-  int32_t arg_index = 0;
-  auto arch         = core::Interpretter();
-  for (const auto &param : params_) {
-    auto *t = param.value.type();
-    auto entry =
-        core::FwdAlign(reg_size_, t->is_big() ? core::Alignment::Get<Addr>()
-                                              : t->alignment(arch));
-    reg_to_offset_.emplace(ir::Reg::Arg(arg_index++), entry.value());
-    reg_size_ =
-        entry + (t->is_big() ? core::Bytes::Get<Addr>() : t->bytes(arch));
-  }
-
+    : params_(std::move(params)), num_regs_(params_.size()) {
   // Ensure the existence of an entry block. The entry block marks itself as
   // incoming so it is never accidentally cleaned up.
   auto *b = AppendBlock();
@@ -32,19 +20,13 @@ Reg BlockGroup::Reserve(type::Type const *t) {
 }
 
 Reg BlockGroup::Reserve(core::Bytes b, core::Alignment a) {
-  Reg r(reg_to_offset_.size());
+  Reg r(num_regs_);
   Reserve(r, b, a);
   return r;
 }
 
 void BlockGroup::Reserve(Reg r, core::Bytes b, core::Alignment a) {
-  // TODO starts at `n`, where `n` is the number of arguments.
-  auto offset = core::FwdAlign(reg_size_, a);
-  reg_size_   = offset + b;
-  DEBUG_LOG("reserve")
-  ("New size = ", reg_size_, ", because type's size is ", b);
-
-  reg_to_offset_.emplace(r, offset);
+  ++num_regs_;
 }
 
 Reg BlockGroup::Alloca(type::Type const *t) {

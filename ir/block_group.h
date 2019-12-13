@@ -48,10 +48,6 @@ struct BlockGroup {
     return params_;
   }
 
-  base::untyped_buffer MakeBuffer() const {
-    return base::untyped_buffer::MakeFull(reg_size_.value());
-  }
-
   StackFrameAllocations const &allocs() { return allocs_; }
 
   Reg Reserve(type::Type const *t);
@@ -59,37 +55,14 @@ struct BlockGroup {
   void Reserve(Reg r, core::Bytes b, core::Alignment a);
   Reg Alloca(type::Type const *t);
 
-  core::Bytes const *offset_or_null(Reg r) const {
-    auto iter = reg_to_offset_.find(r);
-    DEBUG_LOG("offset_or_null")(reg_to_offset_);
-    DEBUG_LOG("offset_or_null")
-    ("offset_or_null(", r,
-     ") = ", iter != reg_to_offset_.end() ? iter->second : core::Bytes(-1));
-    return iter != reg_to_offset_.end() ? &iter->second : nullptr;
-  }
-
-  core::Bytes offset(Reg r) const {
-#if defined(ICARUS_DEBUG)
-    return ASSERT_NOT_NULL(offset_or_null(r));
-#else
-    return reg_to_offset_.find(r)->second;
-#endif
-  }
+  size_t num_regs() const { return num_regs_; }
 
  private:
   core::FnParams<type::Typed<ast::Declaration const *>> params_;
   std::vector<std::unique_ptr<BasicBlock>> blocks_;
   StackFrameAllocations allocs_;
 
- public: // TODO remove publicity
-  // This vector is indexed by Reg and stores the value which is the offset
-  // into the base::untyped_buffer holding all registers during compile-time
-  // execution. It is only valid for core::Host().
-  absl::flat_hash_map<Reg, core::Bytes> reg_to_offset_;
-
- private:
-  // The size of an untyped_buffer required to construct
-  core::Bytes reg_size_ = core::Bytes{0};
+  size_t num_regs_ = 0;
 };
 
 std::ostream &operator<<(std::ostream &os, BlockGroup const &b);

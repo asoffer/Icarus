@@ -155,7 +155,7 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
     PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
       using type  = typename std::decay_t<decltype(tag)>::type;
       auto result = UnaryApply<CmdType, type>(iter, ctrl.reg0, ctx);
-      frame.regs_.set(ctx->Offset(iter->read<Reg>()), result);
+      frame.regs_.set(iter->read<Reg>(), result);
     });
 
   } else if constexpr (std::is_same_v<CmdType, AddCmd> or
@@ -176,7 +176,7 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
     PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
       using type  = typename std::decay_t<decltype(tag)>::type;
       auto result = BinaryApply<CmdType, type>(iter, ctrl.reg0, ctrl.reg1, ctx);
-      frame.regs_.set(ctx->Offset(iter->read<Reg>()), result);
+      frame.regs_.set(iter->read<Reg>(), result);
     });
 
   } else if constexpr (std::is_same_v<CmdType, VariantCmd> or
@@ -186,8 +186,7 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
             iter,
             [ctx](Reg reg) { return ctx->resolve<type::Type const *>(reg); });
 
-    frame.regs_.set(ctx->Offset(iter->read<Reg>()),
-                    CmdType::fn_ptr(std::move(vals)));
+    frame.regs_.set(iter->read<Reg>(), CmdType::fn_ptr(std::move(vals)));
 
   } else if constexpr (std::is_same_v<CmdType, StoreCmd>) {
     typename CmdType::control_bits ctrl =
@@ -222,16 +221,14 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
           DEBUG_LOG("LoadCmd")
           ("Loading ", ctx->stack_.get<type>(addr.as_stack), " into ",
            result_reg);
-          frame.regs_.set(ctx->Offset(result_reg),
-                          ctx->stack_.get<type>(addr.as_stack));
+          frame.regs_.set(result_reg, ctx->stack_.get<type>(addr.as_stack));
         } break;
         case Addr::Kind::ReadOnly: NOT_YET(); break;
         case Addr::Kind::Heap: {
           DEBUG_LOG("LoadCmd")
           ("Loading ", *static_cast<type *>(addr.as_heap), " into ",
            result_reg);
-          frame.regs_.set(ctx->Offset(result_reg),
-                          *static_cast<type *>(addr.as_heap));
+          frame.regs_.set(result_reg, *static_cast<type *>(addr.as_heap));
         }
       }
     });
@@ -246,7 +243,7 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
             iter,
             [ctx](Reg reg) { return ctx->resolve<type::Type const *>(reg); });
 
-    frame.regs_.set(ctx->Offset(iter->read<Reg>()),
+    frame.regs_.set(iter->read<Reg>(),
                     type::Func(std::move(ins), std::move(outs)));
 
   } else if constexpr (std::is_same_v<CmdType, CallCmd>) {
@@ -289,9 +286,7 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
       // TODO: handle is_loc outparams.
       // NOTE: This is a hack using heap address slots to represent registers
       // since they are both void* and are used identically in the interpretter.
-      auto addr = ir::Addr::Heap(ctx->call_stack.top().regs_.raw(
-          ASSERT_NOT_NULL(ctx->call_stack.top().fn_->offset_or_null(reg))
-              ->value()));
+      auto addr = ir::Addr::Heap(ctx->call_stack.top().regs_.raw(reg));
       DEBUG_LOG("call")("Ret addr = ", addr);
       return_slots.push_back(addr);
     }
@@ -306,7 +301,7 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
 
     if (ctrl.only_get) {
       Reg reg = iter->read<Reg>();
-      frame.regs_.set(ctx->Offset(reg), ret_slot);
+      frame.regs_.set(reg, ret_slot);
       return;
     }
     DEBUG_LOG("return")("return slot #", n, " = ", ret_slot);
@@ -336,9 +331,9 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
           iter, [ctx](Reg reg) { return ctx->resolve<T>(reg); });
 
       if constexpr (std::is_same_v<T, bool>) {
-        frame.regs_.set(ctx->Offset(iter->read<Reg>()), bool{results[index]});
+        frame.regs_.set(iter->read<Reg>(), bool{results[index]});
       } else {
-        frame.regs_.set(ctx->Offset(iter->read<Reg>()), results[index]);
+        frame.regs_.set(iter->read<Reg>(), results[index]);
       }
     });
 
@@ -358,7 +353,7 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
     }
 
     Reg result_reg = iter->read<Reg>();
-    frame.regs_.set(ctx->Offset(result_reg), scope_def);
+    frame.regs_.set(result_reg, scope_def);
 
   } else if constexpr (std::is_same_v<CmdType, BlockCmd>) {
     ir::BlockDef *block_def = iter->read<ir::BlockDef *>();
@@ -367,7 +362,7 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
     block_def->after_ = internal::Deserialize<uint16_t, Jump const *>(
         iter, [ctx](Reg reg) { return ctx->resolve<Jump const *>(reg); });
     Reg result_reg = iter->read<Reg>();
-    frame.regs_.set(ctx->Offset(result_reg), block_def);
+    frame.regs_.set(result_reg, block_def);
 
   } else if constexpr (std::is_same_v<CmdType, EnumerationCmd>) {
     using enum_t             = typename CmdType::enum_t;
@@ -446,7 +441,7 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
       result = new type::Flags(mod, std::move(mapping));
     }
 
-    frame.regs_.set(ctx->Offset(iter->read<Reg>()), result);
+    frame.regs_.set(iter->read<Reg>(), result);
 
   } else if constexpr (std::is_same_v<CmdType, StructCmd>) {
     std::vector<std::tuple<std::string_view, type::Type const *>> fields;
@@ -463,12 +458,11 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
       std::get<1>(fields[index++]) = ctx->resolve<type::Type const *>(reg);
     });
 
-    frame.regs_.set(ctx->Offset(iter->read<Reg>()),
-                    new type::Struct(scope, mod, fields));
+    frame.regs_.set(iter->read<Reg>(), new type::Struct(scope, mod, fields));
 
   } else if constexpr (std::is_same_v<CmdType, OpaqueTypeCmd>) {
     module::BasicModule const *mod = iter->read<module::BasicModule const *>();
-    frame.regs_.set(ctx->Offset(iter->read<Reg>()), new type::Opaque(mod));
+    frame.regs_.set(iter->read<Reg>(), new type::Opaque(mod));
 
   } else if constexpr (std::is_same_v<CmdType, ArrayCmd>) {
     using length_t = typename CmdType::length_t;
@@ -479,7 +473,7 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
     auto data_type = backend::ReadAndResolve<type::Type const *>(
         ctrl_bits.type_is_reg, iter, ctx);
 
-    frame.regs_.set(ctx->Offset(iter->read<Reg>()), type::Arr(len, data_type));
+    frame.regs_.set(iter->read<Reg>(), type::Arr(len, data_type));
   } else if constexpr (std::is_same_v<CmdType, XorFlagsCmd>) {
     NOT_YET();  // TODO could this be included in binary commands? How is it
                 // working already?!
@@ -505,87 +499,87 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
       using FromType = typename std::decay_t<decltype(from_tag)>::type;
       [[maybe_unused]] auto val =
           ctx->resolve<FromType>(Reg(iter->read<Reg>()));
-      [[maybe_unused]] auto offset = ctx->Offset(iter->read<Reg>());
+      [[maybe_unused]] auto r = iter->read<Reg>();
       if constexpr (std::is_integral_v<FromType>) {
         switch (to_type) {
           case PrimitiveIndex<int8_t>():
-            frame.regs_.set(offset, static_cast<int8_t>(val));
+            frame.regs_.set(r, static_cast<int8_t>(val));
             break;
           case PrimitiveIndex<int16_t>():
-            frame.regs_.set(offset, static_cast<int16_t>(val));
+            frame.regs_.set(r, static_cast<int16_t>(val));
             break;
           case PrimitiveIndex<int32_t>():
-            frame.regs_.set(offset, static_cast<int32_t>(val));
+            frame.regs_.set(r, static_cast<int32_t>(val));
             break;
           case PrimitiveIndex<int64_t>():
-            frame.regs_.set(offset, static_cast<int64_t>(val));
+            frame.regs_.set(r, static_cast<int64_t>(val));
             break;
           case PrimitiveIndex<uint8_t>():
-            frame.regs_.set(offset, static_cast<uint8_t>(val));
+            frame.regs_.set(r, static_cast<uint8_t>(val));
             break;
           case PrimitiveIndex<uint16_t>():
-            frame.regs_.set(offset, static_cast<uint16_t>(val));
+            frame.regs_.set(r, static_cast<uint16_t>(val));
             break;
           case PrimitiveIndex<uint32_t>():
-            frame.regs_.set(offset, static_cast<uint32_t>(val));
+            frame.regs_.set(r, static_cast<uint32_t>(val));
             break;
           case PrimitiveIndex<uint64_t>():
-            frame.regs_.set(offset, static_cast<uint64_t>(val));
+            frame.regs_.set(r, static_cast<uint64_t>(val));
             break;
           case PrimitiveIndex<float>():
-            frame.regs_.set(offset, static_cast<float>(val));
+            frame.regs_.set(r, static_cast<float>(val));
             break;
           case PrimitiveIndex<double>():
-            frame.regs_.set(offset, static_cast<double>(val));
+            frame.regs_.set(r, static_cast<double>(val));
             break;
           case PrimitiveIndex<EnumVal>():
-            frame.regs_.set(offset, EnumVal(val));
+            frame.regs_.set(r, EnumVal(val));
             break;
           case PrimitiveIndex<FlagsVal>():
-            frame.regs_.set(offset, FlagsVal(val));
+            frame.regs_.set(r, FlagsVal(val));
             break;
         }
       } else if constexpr (std::is_floating_point_v<FromType>) {
         switch (to_type) {
           case PrimitiveIndex<float>():
-            frame.regs_.set(offset, static_cast<float>(val));
+            frame.regs_.set(r, static_cast<float>(val));
             break;
           case PrimitiveIndex<double>():
-            frame.regs_.set(offset, static_cast<double>(val));
+            frame.regs_.set(r, static_cast<double>(val));
             break;
         }
       } else if constexpr (std::is_same_v<FromType, EnumVal> or
                            std::is_same_v<FromType, FlagsVal>) {
         switch (to_type) {
           case PrimitiveIndex<int8_t>():
-            frame.regs_.set(offset, static_cast<int8_t>(val.value));
+            frame.regs_.set(r, static_cast<int8_t>(val.value));
             break;
           case PrimitiveIndex<int16_t>():
-            frame.regs_.set(offset, static_cast<int16_t>(val.value));
+            frame.regs_.set(r, static_cast<int16_t>(val.value));
             break;
           case PrimitiveIndex<int32_t>():
-            frame.regs_.set(offset, static_cast<int32_t>(val.value));
+            frame.regs_.set(r, static_cast<int32_t>(val.value));
             break;
           case PrimitiveIndex<int64_t>():
-            frame.regs_.set(offset, static_cast<int64_t>(val.value));
+            frame.regs_.set(r, static_cast<int64_t>(val.value));
             break;
           case PrimitiveIndex<uint8_t>():
-            frame.regs_.set(offset, static_cast<uint8_t>(val.value));
+            frame.regs_.set(r, static_cast<uint8_t>(val.value));
             break;
           case PrimitiveIndex<uint16_t>():
-            frame.regs_.set(offset, static_cast<uint16_t>(val.value));
+            frame.regs_.set(r, static_cast<uint16_t>(val.value));
             break;
           case PrimitiveIndex<uint32_t>():
-            frame.regs_.set(offset, static_cast<uint32_t>(val.value));
+            frame.regs_.set(r, static_cast<uint32_t>(val.value));
             break;
           case PrimitiveIndex<uint64_t>():
-            frame.regs_.set(offset, static_cast<uint64_t>(val.value));
+            frame.regs_.set(r, static_cast<uint64_t>(val.value));
             break;
         }
       } else if constexpr (std::is_pointer_v<FromType>) {
-        NOT_YET(offset, val);
+        NOT_YET(r, val);
       } else {
-        UNREACHABLE(offset, val);
+        UNREACHABLE(r, val);
       }
     });
   } else if constexpr (std::is_same_v<CmdType, SemanticCmd>) {
@@ -663,10 +657,9 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
     void *sym = ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, std::string(name).c_str()));
 
     if (type->is<type::Function>()) {
-      frame.regs_.set(ctx->Offset(reg), ir::AnyFunc{ir::Foreign(sym, type)});
+      frame.regs_.set(reg, ir::AnyFunc{ir::Foreign(sym, type)});
     } else if (type->is<type::Pointer>()) {
-      frame.regs_.set(ctx->Offset(reg),
-                      ir::Addr::Heap(*static_cast<void **>(sym)));
+      frame.regs_.set(reg, ir::Addr::Heap(*static_cast<void **>(sym)));
     } else {
       NOT_YET(type->to_string());
     }
@@ -677,10 +670,10 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
     Reg reg   = iter->read<Reg>();
 
     if (ctrl_bits & 0x02) {
-      frame.regs_.set(ctx->Offset(reg), type->alignment(core::Interpretter()));
+      frame.regs_.set(reg, type->alignment(core::Interpretter()));
 
     } else {
-      frame.regs_.set(ctx->Offset(reg), type->bytes(core::Interpretter()));
+      frame.regs_.set(reg, type->bytes(core::Interpretter()));
     }
 
   } else if constexpr (std::is_same_v<CmdType, AccessCmd>) {
@@ -703,7 +696,7 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
       offset = struct_type->offset(index, arch);
     }
 
-    frame.regs_.set(ctx->Offset(reg), addr + offset);
+    frame.regs_.set(reg, addr + offset);
   } else if constexpr (std::is_same_v<CmdType, VariantAccessCmd>) {
     bool get_val = iter->read<bool>();
     bool is_reg  = iter->read<bool>();
@@ -714,7 +707,7 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
 
     Reg reg = iter->read<Reg>();
     DEBUG_LOG("variant")(reg);
-    frame.regs_.set(ctx->Offset(reg), addr);
+    frame.regs_.set(reg, addr);
   } else {
     static_assert(base::always_false<CmdType>());
   }
@@ -791,21 +784,14 @@ ExecContext::Frame::Frame(ir::CompiledFn *fn,
     : fn_(fn),
       current_(fn_->entry()),
       prev_(fn_->entry()),
-      regs_(fn_->MakeBuffer()) {
-  regs_.write(0, arguments);
+      regs_(fn_->num_regs()) {
+  regs_.write(arguments);
 
   auto arch = core::Interpretter();
   fn->allocs().for_each([&](type::Type const *t, ir::Reg r) {
     ASSERT(t != nullptr);
-    core::Bytes offset = *ASSERT_NOT_NULL(fn_->offset_or_null(r));
-    DEBUG_LOG("allocs")
-    ("Allocating type = ", t->to_string(), ", reg = ", r,
-     ", offset = ", offset);
-    regs_.set(offset.value(),
-              ir::Addr::Stack(core::FwdAlign(core::Bytes{ctx->stack_.size()},
-                                             t->alignment(arch))
-                                  .value()));
-
+    // TODO there's likely some price being paid for not storing these aligned.
+    regs_.set(r, ir::Addr::Stack(ctx->stack_.size()));
     ctx->stack_.append_bytes(t->bytes(arch).value());
   });
 }

@@ -27,7 +27,7 @@ namespace {
 struct JumpInliner {
   // Constructs an Inliner which uses `bldr` to inline jumps.
   static JumpInliner Make(Builder &bldr) {
-    return JumpInliner(bldr, bldr.CurrentGroup()->reg_to_offset_.size(),
+    return JumpInliner(bldr, bldr.CurrentGroup()->num_regs(),
                        bldr.CurrentGroup()->blocks().size() - 1);
   }
 
