@@ -7,3 +7,4 @@ test  --color=yes
 test  --test_arg="--use-colour yes"
 test  --test_output=errors
 build:asan --copt=-fsanitize=address --linkopt=-fsanitize=address
+build:profile --copt=-fno-omit-frame-pointer

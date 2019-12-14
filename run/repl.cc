@@ -5,18 +5,17 @@
 #include "ast/ast.h"
 #include "ast/expression.h"
 #include "ast/scope/scope.h"
-#include "backend/exec.h"
 #include "base/untyped_buffer.h"
 #include "compiler/compiler.h"
 #include "core/fn_params.h"
 #include "frontend/parse.h"
 #include "frontend/source/repl.h"
+#include "interpretter/execute.h"
 #include "ir/cmd/jump.h"
 #include "ir/compiled_fn.h"
 #include "module/module.h"
 #include "type/function.h"
 
-namespace backend {
 static void ReplEval(ast::Expression const *expr,
                      compiler::Compiler *compiler) {
   // TODO is nullptr for module okay here?
@@ -38,10 +37,9 @@ static void ReplEval(ast::Expression const *expr,
     compiler->builder().ReturnJump();
   }
 
-  ExecContext ctx;
-  Execute(&fn, base::untyped_buffer(0), {}, &ctx);
+  interpretter::ExecutionContext ctx;
+  interpretter::Execute(&fn, base::untyped_buffer(0), {}, &ctx);
 }
-}  // namespace backend
 
 struct ReplModule : public module::ExtendedModule<ReplModule> {
   ReplModule()
@@ -61,7 +59,7 @@ struct ReplModule : public module::ExtendedModule<ReplModule> {
 
                 } else if (node->is<ast::Expression>()) {
                   auto *expr = &node->as<ast::Expression>();
-                  backend::ReplEval(expr, &compiler);
+                  ReplEval(expr, &compiler);
                   fprintf(stderr, "\n");
                 } else {
                   NOT_YET(*node);

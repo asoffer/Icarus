@@ -11,3 +11,5 @@ examples/test.ic
 
 a.out
 bin/*
+
+perf.data*

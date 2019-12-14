@@ -4,13 +4,13 @@ load("//:defs.bzl", "cc_lib")
 cc_lib(
     name = "compiler",
     deps = [
-        "//backend:exec",
         "//base:untyped_buffer",
         "//base:util",
         "//compiler:compiler",
         "//compiler:executable_module",
         "//error:log",
         "//module:pending",
+        "//interpretter:execute",
         "//ir:compiled_fn",
         "//module:module",
         "//opt",
@@ -24,12 +24,12 @@ cc_lib(
     deps = [
         "//ast:ast",
         "//ast:expression",
-        "//backend:exec",
         "//base:untyped_buffer",
         "//compiler:compiler",
         "//core:fn_params",
         "//frontend/source:repl",
         "//frontend:parse",
+        "//interpretter:execute",
         "//ir:compiled_fn",
         "//module:module",
         "//type:function",

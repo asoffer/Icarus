@@ -1,0 +1,55 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "register_array",
+    hdrs = ["register_array.h"],
+    deps = [
+        "//base:untyped_buffer",
+        "//ir:reg",
+    ],
+)
+
+cc_library(
+    name = "stack_frame",
+    hdrs = ["stack_frame.h"],
+    srcs = ["stack_frame.cc"],
+    deps = [
+        ":register_array",
+        "//core:arch",
+        "//ir:basic_block",
+        "//ir:compiled_fn",
+        "//type:type",
+    ],
+)
+
+cc_library(
+    name = "execute",
+    hdrs = ["execute.h"],
+    srcs = ["execute.cc"],
+    deps = [
+        ":foreign",
+        ":stack_frame",
+        "//base:untyped_buffer",
+        "//ir:addr",
+        "//ir:any_func",
+        "//ir:block_def",
+        "//ir:jump",
+        "//ir:reg",
+        "//ir:reg_or",
+        "//ir:scope_def",
+        "//ir/cmd:cmd_xmacro",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
+    name = "foreign",
+    hdrs = ["foreign.h"],
+    srcs = ["foreign.cc"],
+    deps = [
+        "//base:untyped_buffer",
+        "//ir:addr",
+        "//ir:foreign",
+        "@com_google_absl//absl/types:span",
+    ],
+)

@@ -3,7 +3,7 @@
 #include <memory>
 #include <vector>
 
-#include "backend/exec.h"
+#include "interpretter/execute.h"
 #include "base/expected.h"
 #include "base/untyped_buffer.h"
 #include "base/util.h"
@@ -44,8 +44,9 @@ int RunCompiler(std::filesystem::path const &file) {
 
   // TODO All the functions? In all the modules?
   opt::RunAllOptimizations(exec_mod->main());
-  backend::ExecContext exec_ctx;
-  backend::Execute(exec_mod->main(), base::untyped_buffer(0), {}, &exec_ctx);
+  interpretter::ExecutionContext exec_ctx;
+  interpretter::Execute(exec_mod->main(), base::untyped_buffer(0), {},
+                        &exec_ctx);
 
   return 0;
 }

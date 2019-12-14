@@ -1,8 +1,8 @@
 #include "backend/eval.h"
 
 #include "ast/expression.h"
-#include "backend/exec.h"
 #include "core/arch.h"
+#include "interpretter/execute.h"
 #include "ir/builder.h"
 #include "ir/cmd/return.h"
 #include "ir/compiled_fn.h"
@@ -15,8 +15,8 @@ base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
   std::vector<ir::Addr> ret_slots;
 
   ret_slots.push_back(ir::Addr::Heap(ret_buf.raw(0)));
-  ExecContext exec_context;
-  Execute(&fn, base::untyped_buffer(0), ret_slots, &exec_context);
+  interpretter::ExecutionContext exec_context;
+  interpretter::Execute(&fn, base::untyped_buffer(0), ret_slots, &exec_context);
   return ret_buf;
 }
 
