@@ -1,13 +1,14 @@
-#include "ir/foreign.h"
+#include "ir/foreign_fn.h"
 
 #include "absl/container/flat_hash_map.h"
 #include "base/guarded.h"
 
 namespace ir {
-static base::guarded<absl::flat_hash_map<void *, type::Type const *>>
-    foreign_objs;
 
-Foreign::Foreign(void *obj, type::Type const *t) : obj_(obj) {
+static base::guarded<absl::flat_hash_map<void (*)(), type::Function const *>>
+    foreign_fns;
+
+ForeignFn::ForeignFn(void (*fn)(), type::Function const *t) : fn_(fn) {
   // TODO what if two calls to foreign claim it's a different type? Should this
   // be allowed? Is it already checked?
   //
@@ -16,11 +17,11 @@ Foreign::Foreign(void *obj, type::Type const *t) : obj_(obj) {
   //      malloc ::= foreign("malloc", nat64 -> [*]T)
   //      return malloc(T'bytes * (num as nat64))
   //    }
-  foreign_objs.lock()->emplace(obj, t);
+  foreign_fns.lock()->emplace(fn, t);
 }
 
-type::Type const *Foreign::type() const {
-  return foreign_objs.lock()->at(obj_);
+type::Function const *ForeignFn::type() const {
+  return foreign_fns.lock()->at(fn_);
 }
 
 }  // namespace ir

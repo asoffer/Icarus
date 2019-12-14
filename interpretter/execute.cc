@@ -668,11 +668,9 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
     type::Type const *type = iter->read<type::Type const *>();
     ir::Reg reg            = iter->read<ir::Reg>();
 
-    if (type->is<type::Function>()) {
+    if (auto *fn_type = type->if_as<type::Function>()) {
       void (*sym)() = LoadFunctionSymbol(name);
-      frame.regs_.set(reg, ir::AnyFunc{ir::Foreign(
-            // TODO remove cast here and separate out foreign-data from foreign-function
-            reinterpret_cast<void*>(sym), type)});
+      frame.regs_.set(reg, ir::AnyFunc{ir::ForeignFn(sym, fn_type)});
     } else if (type->is<type::Pointer>()) {
       void *sym = LoadDataSymbol(name);
       frame.regs_.set(reg, ir::Addr::Heap(*static_cast<void **>(sym)));

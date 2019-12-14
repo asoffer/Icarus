@@ -107,6 +107,7 @@ def _impl(ctx):
             "-ldl",
             "-lstdc++fs",
             "-pthread",
+            "-lffi",
             "-rdynamic",
         ]),
         mode_dependent_flags({

@@ -13,7 +13,7 @@ cc_lib(
 cc_lib(
     name = "any_func",
     deps = [
-        ":foreign",
+        ":foreign_fn",
         "//base:debug",
     ],
     header_only = True,
@@ -150,7 +150,7 @@ cc_lib(
 )
 
 cc_lib(
-    name = "foreign",
+    name = "foreign_fn",
     deps = [
         "//base:guarded",
         "@com_google_absl//absl/container:flat_hash_map",

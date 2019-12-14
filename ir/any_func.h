@@ -5,7 +5,7 @@
 #include <ostream>
 
 #include "base/debug.h"
-#include "ir/foreign.h"
+#include "ir/foreign_fn.h"
 
 namespace type {
 struct Function;
@@ -17,14 +17,14 @@ struct CompiledFn;
 // TODO This is a terrible name. Pick something better.
 struct AnyFunc {
   static_assert(alignof(CompiledFn *) <= alignof(uintptr_t));
-  static_assert(alignof(Foreign) <= alignof(uintptr_t));
+  static_assert(alignof(ForeignFn) <= alignof(uintptr_t));
   static_assert(sizeof(CompiledFn *) == sizeof(uintptr_t));
-  static_assert(sizeof(Foreign) == sizeof(uintptr_t));
+  static_assert(sizeof(ForeignFn) == sizeof(uintptr_t));
 
   AnyFunc(CompiledFn *fn = nullptr) { std::memcpy(&data_, &fn, sizeof(fn)); }
-  AnyFunc(Foreign foreign) {
-    void *obj = foreign.get();
-    std::memcpy(&data_, &obj, sizeof(void *));
+  AnyFunc(ForeignFn foreign) {
+    void (*fn)() = foreign.get();
+    std::memcpy(&data_, &fn, sizeof(void (*)()));
     data_ |= 0x1u;
   }
 
@@ -35,11 +35,11 @@ struct AnyFunc {
     return f;
   }
 
-  Foreign foreign() const {
+  ForeignFn foreign() const {
     ASSERT((data_ & 0x1u) == 1u);
-    Foreign f;
+    ForeignFn f;
     uintptr_t data = data_ - 1;
-    std::memcpy(&f.obj_, &data, sizeof(void *));
+    std::memcpy(&f.fn_, &data, sizeof(void *));
     return f;
   }
 

@@ -47,9 +47,13 @@ cc_library(
     hdrs = ["foreign.h"],
     srcs = ["foreign.cc"],
     deps = [
+        "//base:debug",
         "//base:untyped_buffer",
         "//ir:addr",
-        "//ir:foreign",
+        "//ir:foreign_fn",
+        "//type:function",
+        "//type:pointer",
+        "//type:primitive",
         "@com_google_absl//absl/types:span",
     ],
 )
