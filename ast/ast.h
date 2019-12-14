@@ -677,12 +677,16 @@ struct Terminal : public Expression {
       : Expression(std::move(span)), basic_(t) {
     if constexpr (std::is_same_v<T, bool>) {
       b_ = value;
-    } else if constexpr (std::is_signed_v<T>) {
+    } else if constexpr (std::is_integral_v<T> and std::is_signed_v<T>) {
       i64_ = value;
-    } else if constexpr (std::is_unsigned_v<T>) {
+    } else if constexpr (std::is_integral_v<T> and std::is_unsigned_v<T>) {
       u64_ = value;
     } else if constexpr (std::is_same_v<T, std::string_view>) {
       sv_ = value;
+    } else if constexpr (std::is_same_v<T, float>) {
+      f32_ = value;
+    } else if constexpr (std::is_same_v<T, double>) {
+      f64_ = value;
     } else if constexpr (std::is_same_v<T, type::BasicType>) {
       t_ = value;
     } else {
@@ -705,6 +709,8 @@ struct Terminal : public Expression {
       case BasicType::Nat32: return ir::Results{static_cast<uint32_t>(u64_)};
       case BasicType::Int64: return ir::Results{i64_};
       case BasicType::Nat64: return ir::Results{u64_};
+      case BasicType::Float32: return ir::Results{f32_};
+      case BasicType::Float64: return ir::Results{f64_};
       case BasicType::ByteView: return ir::Results{sv_};
       case BasicType::Bool: return ir::Results{b_};
       case BasicType::Type_: return ir::Results{type::Prim(t_)};
@@ -716,9 +722,9 @@ struct Terminal : public Expression {
   // TODO rename to value_as, or something like that.
   template <typename T>
   T as() const {
-    if constexpr (std::is_signed_v<T>) {
+    if constexpr (std::is_integral_v<T> and std::is_signed_v<T>) {
       return static_cast<T>(i64_);
-    } else if constexpr (std::is_unsigned_v<T>) {
+    } else if constexpr (std::is_integral_v<T> and std::is_unsigned_v<T>) {
       return static_cast<T>(u64_);
     } else if constexpr (std::is_same_v<T, bool>) {
       return b_;
@@ -726,6 +732,10 @@ struct Terminal : public Expression {
       return sv_;
     } else if constexpr (std::is_same_v<T, type::BasicType>) {
       return t_;
+    } else if constexpr (std::is_same_v<T, float>) {
+      return f32_;
+    } else if constexpr (std::is_same_v<T, double>) {
+      return f64_;
     } else {
       NOT_YET();
     }
@@ -739,6 +749,8 @@ struct Terminal : public Expression {
     bool b_;
     int64_t i64_;
     uint64_t u64_;
+    float f32_;
+    double f64_;
     std::string_view sv_;
     type::BasicType t_;
   };

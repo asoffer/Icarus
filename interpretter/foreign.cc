@@ -38,6 +38,8 @@ ffi_type *ToFfiType(type::Type const *t) {
   if (t == type::Nat16) { return &ffi_type_uint16; }
   if (t == type::Nat32) { return &ffi_type_uint32; }
   if (t == type::Nat64) { return &ffi_type_uint64; }
+  if (t == type::Float32) { return &ffi_type_float; }
+  if (t == type::Float64) { return &ffi_type_double; }
   return nullptr;
 }
 }  // namespace
@@ -91,6 +93,10 @@ void CallForeignFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
     ExtractReturnValue<uint32_t>(&ret, return_slots[0]);
   } else if (out_type == type::Nat64) {
     ExtractReturnValue<uint64_t>(&ret, return_slots[0]);
+  } else if (out_type == type::Float32) {
+    ExtractReturnValue<float>(&ret, return_slots[0]);
+  } else if (out_type == type::Float64) {
+    ExtractReturnValue<double>(&ret, return_slots[0]);
   } else if (out_type->is<type::Pointer>()) {
     NOT_YET();
   } else {
