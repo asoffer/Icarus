@@ -31,6 +31,7 @@ std::unique_ptr<module::BasicModule> CompileLibraryModule(
         mod->fns_        = std::move(c.data_.fns_);
         mod->scope_defs_ = std::move(c.data_.scope_defs_);
         mod->block_defs_ = std::move(c.data_.block_defs_);
+        mod->jumps_      = std::move(c.data_.jumps_);
       });
   mod->Process(frontend::Parse(src));
   return mod;

@@ -48,6 +48,7 @@ struct CompiledModule : module::ExtendedModule<CompiledModule> {
   std::vector<std::unique_ptr<ir::CompiledFn>> fns_;
   std::forward_list<ir::ScopeDef> scope_defs_;
   std::forward_list<ir::BlockDef> block_defs_;
+  absl::node_hash_map<ast::Jump const *, ir::Jump> jumps_;
 };
 
 }  // namespace compiler

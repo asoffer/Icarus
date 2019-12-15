@@ -308,6 +308,7 @@ std::unique_ptr<module::BasicModule> CompileExecutableModule(
         mod->fns_        = std::move(c.data_.fns_);
         mod->scope_defs_ = std::move(c.data_.scope_defs_);
         mod->block_defs_ = std::move(c.data_.block_defs_);
+        mod->jumps_      = std::move(c.data_.jumps_);
       });
   mod->Process(frontend::Parse(src));
   return mod;
@@ -1102,8 +1103,19 @@ ir::Results Compiler::Visit(ast::CommaList const *node, EmitValueTag) {
 
 ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
   DEBUG_LOG("EmitValueDeclaration")(node->DebugString());
-  // TODO swap contexts?
   if (node->flags() & ast::Declaration::f_IsConst) {
+    if (node->module() != module()) {
+      // TODO: This is wrong. Looking up in *any* dependent data is not what we
+      // want to do. We want to find it in the correct dependent data. But we
+      // need to rework contant bindings anyway.
+      for (auto &[constant_binding, dep_data] :
+           node->module()->as<CompiledModule>().dep_data_) {
+        auto result = dep_data.constants_.get_constant(node);
+        if (result.size() == 1) { return result; }
+      }
+      UNREACHABLE("should have found it already.");
+    }
+
     // TODO
     if (node->flags() & ast::Declaration::f_IsFnParam) {
       if (auto result = data_.current_constants_.get_constant(node);
@@ -1117,10 +1129,7 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
       }
     } else {
       auto *t = ASSERT_NOT_NULL(type_of(node));
-      if (not t) {
-        DEBUG_LOG()(node->DebugString());
-        UNREACHABLE();
-      }
+      if (not t) { UNREACHABLE(node->DebugString()); }
 
       auto slot = data_.constants_->second.constants_.reserve_slot(node, t);
       if (auto *result = std::get_if<ir::Results>(&slot)) {
@@ -1137,7 +1146,11 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
         // copy once if Evaluate* took an out-parameter.
         base::untyped_buffer buf =
             backend::EvaluateToBuffer(MakeThunk(node->init_val(), t));
-        if (num_errors() > 0u) { return ir::Results{}; }
+        if (num_errors() > 0u) {
+          // TODO we reserved a slot and haven't cleaned it up. Do we care?
+          NOT_YET("Found errors but haven't handeled them.");
+          return ir::Results{};
+        }
         return data_.constants_->second.constants_.set_slot(
             data_offset, buf.raw(0), num_bytes);
       } else if (node->IsDefaultInitialized()) {

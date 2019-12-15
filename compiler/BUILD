@@ -166,7 +166,7 @@ cc_lib(
 cc_lib(
     name = "constant_binding",
     deps = [
-        "//ast:ast_fwd",
+        "//ast:ast",
         "//base:untyped_buffer",
         "//core:arch",
         "//core:bytes",

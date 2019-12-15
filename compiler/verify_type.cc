@@ -1,5 +1,9 @@
 #include "absl/algorithm/container.h"
 
+#include <iostream>
+#include <optional>
+#include <string_view>
+
 #include "ast/ast.h"
 #include "ast/overload_set.h"
 #include "backend/eval.h"
@@ -637,8 +641,10 @@ static VerifyResult AccessModuleMember(Compiler *c, ast::Access const *node,
   }
 
   DEBUG_LOG("AccessModuleMember")(node->DebugString());
+  // TODO this is a common pattern for dealing with imported modules. Extract
+  // it.
   auto *mod = backend::EvaluateAs<CompiledModule const *>(
-      c->MakeThunk(node->operand(), operand_result.type()));
+      c->MakeThunk(node->operand(), type::Module));
   auto decls = mod->declarations(node->member_name());
   switch (decls.size()) {
     case 0: {
@@ -892,21 +898,27 @@ VerifyResult Compiler::Visit(ast::BuiltinFn const *node, VerifyTypeTag) {
 }
 
 static ast::OverloadSet FindOverloads(
-    compiler::Compiler *visitor, ast::Scope *scope, std::string_view token,
+    ast::Scope const *scope, std::string_view token,
     core::FnArgs<VerifyResult, std::string_view> args) {
   ast::OverloadSet os(scope, token);
   for (VerifyResult result : args) { AddAdl(&os, token, result.type()); };
   return os;
 }
 
-ast::OverloadSet MakeOverloadSet(
+std::optional<ast::OverloadSet> MakeOverloadSet(
     Compiler *c, ast::Expression const *expr,
     core::FnArgs<VerifyResult, std::string_view> const &args) {
   if (auto *id = expr->if_as<ast::Identifier>()) {
-    return FindOverloads(c, expr->scope_, id->token(), args);
+    return FindOverloads(expr->scope_, id->token(), args);
   } else if (auto *acc = expr->if_as<ast::Access>()) {
-    if (c->type_of(acc->operand()) == type::Module) {
-      NOT_YET("Find a module that has this compilation information");
+    ASSIGN_OR(return std::nullopt,  //
+                     auto result, c->Visit(acc->operand(), VerifyTypeTag{}));
+    if (result.type() == type::Module) {
+      // TODO this is a common pattern for dealing with imported modules.
+      // Extract it.
+      auto *mod = backend::EvaluateAs<CompiledModule const *>(
+          c->MakeThunk(acc->operand(), type::Module));
+      return FindOverloads(mod->scope(), acc->member_name(), args);
     } else {
       ast::OverloadSet os;
       os.insert(expr);
@@ -1067,10 +1079,10 @@ VerifyResult Compiler::Visit(ast::Call const *node, VerifyTypeTag) {
   }
 
   ASSIGN_OR(return VerifyResult::Error(),  //
+                   auto os, MakeOverloadSet(this, node->callee(), arg_results));
+  ASSIGN_OR(return VerifyResult::Error(),  //
                    auto table,
-                   FnCallDispatchTable::Verify(
-                       this, MakeOverloadSet(this, node->callee(), arg_results),
-                       arg_results));
+                   FnCallDispatchTable::Verify(this, os, arg_results));
   // TODO might be constant?
   auto result = VerifyResult::NonConstant(table.result_type());
   data_.set_dispatch_table(node, std::move(table));
@@ -1533,6 +1545,7 @@ VerifyResult Compiler::Visit(ast::FunctionLiteral const *node, VerifyTypeTag) {
 }
 
 VerifyResult Compiler::Visit(ast::Identifier const *node, VerifyTypeTag) {
+  DEBUG_LOG("Identifier")(node->DebugString());
   for (auto iter = data_.cyc_deps_.begin(); iter != data_.cyc_deps_.end();
        ++iter) {
     if (*iter == node) {
@@ -1553,6 +1566,7 @@ VerifyResult Compiler::Visit(ast::Identifier const *node, VerifyTypeTag) {
   // for now so you'll have to undo that first.
   if (node->decl() == nullptr) {
     auto potential_decls = node->scope_->AllDeclsTowardsRoot(node->token());
+    DEBUG_LOG("Identifier")(node->DebugString(), ": ", potential_decls);
     switch (potential_decls.size()) {
       case 1: {
         // TODO could it be that evn though there is only one declaration,
@@ -1767,6 +1781,7 @@ MakeJumpInits(Compiler*c, ast::OverloadSet const &os) {
     DEBUG_LOG("ScopeNode")(member->DebugString());
     auto *def =
         backend::EvaluateAs<ir::ScopeDef *>(c->MakeThunk(member, type::Scope));
+    DEBUG_LOG("ScopeNode")(def);
     if (def->work_item and *def->work_item) { (std::move(*def->work_item))(); }
     for (auto *init : def->inits_) {
       bool success = inits.emplace(init, def).second;
@@ -1780,9 +1795,10 @@ MakeJumpInits(Compiler*c, ast::OverloadSet const &os) {
 VerifyResult Compiler::Visit(ast::ScopeNode const *node, VerifyTypeTag) {
   DEBUG_LOG("ScopeNode")(node->DebugString());
 
-  auto[arg_results, err] = VerifyFnArgs(this, node->args());
-  auto os                = MakeOverloadSet(this, node->name(), arg_results);
-  auto inits             = MakeJumpInits(this, os);
+  auto [arg_results, err] = VerifyFnArgs(this, node->args());
+  ASSIGN_OR(return VerifyResult::Error(),  //
+                   auto os, MakeOverloadSet(this, node->name(), arg_results));
+  auto inits = MakeJumpInits(this, os);
 
   DEBUG_LOG("ScopeNode")(inits);
 

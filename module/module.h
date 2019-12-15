@@ -29,6 +29,8 @@ struct BasicModule : base::Cast<BasicModule> {
   absl::Span<ast::Declaration const *const> declarations(
       std::string_view name) const;
 
+  constexpr ast::ModuleScope const *scope() const { return &scope_; }
+
  private:
   template <typename T>
   friend struct ExtendedModule;

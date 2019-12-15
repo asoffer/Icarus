@@ -148,7 +148,6 @@ struct CompilationData {
 
   error::Log error_log_;
 
- private:
   absl::node_hash_map<ast::Jump const *, ir::Jump> jumps_;
 };
 }  // namespace compiler

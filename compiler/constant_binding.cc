@@ -1,4 +1,5 @@
 #include "compiler/constant_binding.h"
+#include "ast/ast.h"
 #include "ir/results.h"
 #include "type/type.h"
 
@@ -38,11 +39,15 @@ ConstantBinding::reserve_slot(ast::Declaration const* decl,
   }
   auto offset  = buf_.append_bytes(bytes.value());
   iter->second = Binding{t, offset};
+  DEBUG_LOG("reserve_slot")
+  ("Reserving slot ", offset, " (size = ", bytes, ") for ", decl);
+  DEBUG_LOG("reserve_slot")(decl->DebugString());
   return std::pair(offset, bytes);
 }
 
 ir::Results ConstantBinding::set_slot(size_t offset, void const* data,
                                       core::Bytes bytes) {
+  DEBUG_LOG("set_slot")("Setting slot ", offset, " (size = ", bytes, ")");
   std::memcpy(buf_.raw(offset), data, bytes.value());
   return ir::Results::FromRaw(buf_.raw(offset), bytes);
 }
