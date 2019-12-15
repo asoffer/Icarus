@@ -4,9 +4,11 @@
 #include <experimental/source_location>
 #include <iostream>
 #include <mutex>
+#include <thread>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
+#include "absl/strings/str_cat.h"
 #include "base/guarded.h"
 #include "base/stringify.h"
 
@@ -55,15 +57,19 @@ Logger const &operator<<(Logger const &l, T const &t) {
 
 inline std::string LogFormatterWithoutFunction(
     std::experimental::source_location const &src_loc) {
-  return std::string("\033[0;1;34m[") + src_loc.file_name() + ": " +
-         std::to_string(src_loc.line()) + "] \033[0m";
+  std::stringstream ss;
+  ss << std::this_thread::get_id();
+  return absl::StrCat("\033[0;1;34m[", src_loc.file_name(), " ", ss.str(), ": ",
+                      src_loc.line(), "] \033[0m");
 }
 
 inline std::string DefaultLogFormatter(
     std::experimental::source_location const &src_loc) {
-  return std::string("\033[0;1;34m[") + src_loc.file_name() + ": " +
-         std::to_string(src_loc.line()) + " " + src_loc.function_name() +
-         "] \033[0m";
+  std::stringstream ss;
+  ss << std::this_thread::get_id();
+  return absl::StrCat("\033[0;1;34m[", src_loc.file_name(), " ", ss.str(), ": ",
+                      src_loc.line(), " ", src_loc.function_name(),
+                      "] \033[0m");
 }
 
 template <typename... Ts>

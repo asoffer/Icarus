@@ -24,6 +24,7 @@ cc_lib(
         "//ast:ast",
         "//ast:ast_fwd",
         "//ast/scope:module",
+        "//base:cast",
         "//base:ptr_span",
         "@com_google_absl//absl/algorithm:container",
     ],

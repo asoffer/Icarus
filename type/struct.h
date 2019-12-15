@@ -23,6 +23,15 @@ struct Struct : public Type {
   struct Field {
     Field(type::Type const *t) : type(t) {}
     // TODO make a string_view but deal with trickiness of moving
+
+    bool contains_hashtag(ast::Hashtag needle) const {
+      for (auto const &h : hashtags_) {
+        // TODO this isn't always enough to determine equality.
+        if (h.kind_ == needle.kind_) { return true; }
+      }
+      return false;
+    }
+
     std::string name;
     Type const *type = nullptr;
     std::vector<ast::Hashtag> hashtags_;

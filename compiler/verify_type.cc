@@ -7,6 +7,7 @@
 #include "compiler/dispatch/parameters_and_arguments.h"
 #include "compiler/dispatch/scope_table.h"
 #include "compiler/extract_jumps.h"
+#include "compiler/library_module.h"
 #include "error/inference_failure_reason.h"
 #include "frontend/operators.h"
 #include "ir/compiled_fn.h"
@@ -573,90 +574,105 @@ static Constness VerifyAndGetConstness(
   return is_const ? Constness::Const : Constness::NonConst;
 }
 
+static VerifyResult AccessTypeMember(Compiler *c, ast::Access const *node,
+                                     VerifyResult operand_result) {
+  if (not operand_result.constant()) {
+    c->error_log()->NonConstantTypeMemberAccess(node->span);
+    return VerifyResult::Error();
+  }
+  // TODO We may not be allowed to evaluate node:
+  //    f ::= (T: type) => T.key
+  // We need to know that T is const
+  auto *evaled_type = backend::EvaluateAs<type::Type const *>(
+      c->MakeThunk(node->operand(), operand_result.type()));
+
+  // For enums and flags, regardless of whether we can get the value, it's
+  // clear that node is supposed to be a member so we should emit an error but
+  // carry on assuming that node is an element of that enum type.
+  if (auto *e = evaled_type->if_as<type::Enum>()) {
+    if (not e->Get(node->member_name()).has_value()) {
+      c->error_log()->MissingMember(node->span, node->member_name(),
+                                    evaled_type->to_string());
+    }
+    return c->set_result(node, VerifyResult::Constant(evaled_type));
+  } else if (auto *f = evaled_type->if_as<type::Flags>()) {
+    if (not f->Get(node->member_name()).has_value()) {
+      c->error_log()->MissingMember(node->span, node->member_name(),
+                                    evaled_type->to_string());
+    }
+    return c->set_result(node, VerifyResult::Constant(evaled_type));
+  } else {
+    // TODO what about structs? Can structs have constant members we're
+    // allowed to access?
+    c->error_log()->TypeHasNoMembers(node->span);
+    return VerifyResult::Error();
+  }
+}
+
+static VerifyResult AccessStructMember(Compiler *c, ast::Access const *node,
+                                       VerifyResult operand_result) {
+  auto const &s      = operand_result.type()->as<type::Struct>();
+  auto const *member = s.field(node->member_name());
+  if (member == nullptr) {
+    c->error_log()->MissingMember(node->span, node->member_name(),
+                                  s.to_string());
+    return VerifyResult::Error();
+  }
+  if (c->module() != s.defining_module() and
+      not member->contains_hashtag(ast::Hashtag::Builtin::Export)) {
+    c->error_log()->NonExportedMember(node->span, node->member_name(),
+                                      s.to_string());
+  }
+
+  return c->set_result(node,
+                       VerifyResult(member->type, operand_result.constant()));
+}
+
+static VerifyResult AccessModuleMember(Compiler *c, ast::Access const *node,
+                                       VerifyResult operand_result) {
+  DEBUG_LOG("AccessModuleMember")(node->DebugString());
+  if (not operand_result.constant()) {
+    c->error_log()->NonConstantModuleMemberAccess(node->span);
+    return VerifyResult::Error();
+  }
+
+  DEBUG_LOG("AccessModuleMember")(node->DebugString());
+  auto *mod = backend::EvaluateAs<CompiledModule const *>(
+      c->MakeThunk(node->operand(), operand_result.type()));
+  auto decls = mod->declarations(node->member_name());
+  switch (decls.size()) {
+    case 0: {
+      NOT_YET("Log an error, no such symbol in module.");
+    } break;
+    case 1: {
+      type::Type const *t = mod->type_of(decls[0]);
+      if (t == nullptr) {
+        c->error_log()->NoExportedSymbol(node->span);
+        return VerifyResult::Error();
+      }
+      DEBUG_LOG("AccessModuleMember")
+      ("Setting type of ", node, " to ", VerifyResult::Constant(t), " on ", c);
+      return c->set_result(node, VerifyResult::Constant(t));
+
+    } break;
+    default: {
+      NOT_YET("Ambiguous, multiple possible symbols exported by module.");
+    } break;
+  }
+  UNREACHABLE();
+}
+
 VerifyResult Compiler::Visit(ast::Access const *node, VerifyTypeTag) {
   ASSIGN_OR(return VerifyResult::Error(), auto operand_result,
                    Visit(node->operand(), VerifyTypeTag{}));
 
   auto base_type = DereferenceAll(operand_result.type());
   if (base_type == type::Type_) {
-    if (not operand_result.constant()) {
-      error_log()->NonConstantTypeMemberAccess(node->span);
-      return VerifyResult::Error();
-    }
-    // TODO We may not be allowed to evaluate node:
-    //    f ::= (T: type) => T.key
-    // We need to know that T is const
-    auto *t = type_of(node->operand());
-    auto *evaled_type =
-        backend::EvaluateAs<type::Type const *>(MakeThunk(node->operand(), t));
-
-    // For enums and flags, regardless of whether we can get the value, it's
-    // clear that node is supposed to be a member so we should emit an error but
-    // carry on assuming that node is an element of that enum type.
-    if (auto *e = evaled_type->if_as<type::Enum>()) {
-      if (not e->Get(node->member_name()).has_value()) {
-        error_log()->MissingMember(node->span, node->member_name(),
-                                   evaled_type->to_string());
-      }
-      return set_result(node, VerifyResult::Constant(evaled_type));
-    } else if (auto *f = evaled_type->if_as<type::Flags>()) {
-      if (not f->Get(node->member_name()).has_value()) {
-        error_log()->MissingMember(node->span, node->member_name(),
-                                   evaled_type->to_string());
-      }
-      return set_result(node, VerifyResult::Constant(evaled_type));
-    } else {
-      // TODO what about structs? Can structs have constant members we're
-      // allowed to access?
-      error_log()->TypeHasNoMembers(node->span);
-      return VerifyResult::Error();
-    }
-
+    return AccessTypeMember(this, node, operand_result);
   } else if (auto *s = base_type->if_as<type::Struct>()) {
-    auto const *member = s->field(node->member_name());
-    if (member == nullptr) {
-      error_log()->MissingMember(node->span, node->member_name(),
-                                 s->to_string());
-      return VerifyResult::Error();
-    }
-
-    if (module() != s->defining_module() and
-        absl::c_none_of(member->hashtags_, [](ast::Hashtag h) {
-          return h.kind_ == ast::Hashtag::Builtin::Export;
-        })) {
-      error_log()->NonExportedMember(node->span, node->member_name(),
-                                     s->to_string());
-    }
-
-    return set_result(node,
-                      VerifyResult(member->type, operand_result.constant()));
-
+    return AccessStructMember(this, node, operand_result);
   } else if (base_type == type::Module) {
-    if (not operand_result.constant()) {
-      error_log()->NonConstantModuleMemberAccess(node->span);
-      return VerifyResult::Error();
-    }
-
-    auto *mod = backend::EvaluateAs<module::BasicModule const *>(
-        MakeThunk(node->operand(), operand_result.type()));
-    auto decls = mod->declarations(node->member_name());
-    type::Type const *t;
-    switch (decls.size()) {
-      case 0: NOT_YET();
-      case 1:
-        // TODO remove this const_cast.
-        t = Compiler(const_cast<module::BasicModule *>(mod)).type_of(decls[0]);
-        break;
-      default: NOT_YET();
-    }
-
-    if (t == nullptr) {
-      error_log()->NoExportedSymbol(node->span);
-      return VerifyResult::Error();
-    }
-
-    // TODO is node right?
-    return set_result(node, VerifyResult::Constant(t));
+    return AccessModuleMember(this, node, operand_result);
   } else {
     error_log()->MissingMember(node->span, node->member_name(),
                                base_type->to_string());
@@ -884,13 +900,22 @@ static ast::OverloadSet FindOverloads(
 }
 
 ast::OverloadSet MakeOverloadSet(
-    Compiler *c, ast::Expression const *call_expr,
+    Compiler *c, ast::Expression const *expr,
     core::FnArgs<VerifyResult, std::string_view> const &args) {
-  if (auto *id = call_expr->if_as<ast::Identifier>()) {
-    return FindOverloads(c, call_expr->scope_, id->token(), args);
+  if (auto *id = expr->if_as<ast::Identifier>()) {
+    return FindOverloads(c, expr->scope_, id->token(), args);
+  } else if (auto *acc = expr->if_as<ast::Access>()) {
+    if (c->type_of(acc->operand()) == type::Module) {
+      NOT_YET("Find a module that has this compilation information");
+    } else {
+      ast::OverloadSet os;
+      os.insert(expr);
+      // TODO ADL for node?
+      return os;
+    }
   } else {
     ast::OverloadSet os;
-    os.insert(call_expr);
+    os.insert(expr);
     // TODO ADL for node?
     return os;
   }
@@ -1302,6 +1327,7 @@ VerifyResult Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
     } break;
     case INFER: UNREACHABLE(); break;
     case INFER | CUSTOM_INIT: {
+      DEBUG_LOG("Declaration")(node->DebugString());
       ASSIGN_OR(return set_result(node, VerifyResult::Error()),
                        auto init_val_result,
                        Visit(node->init_val(), VerifyTypeTag{}));
@@ -1562,6 +1588,7 @@ VerifyResult Compiler::Visit(ast::Identifier const *node, VerifyTypeTag) {
 }
 
 VerifyResult Compiler::Visit(ast::Import const *node, VerifyTypeTag) {
+  DEBUG_LOG("Import")(node->DebugString());
   ASSIGN_OR(return _, auto result, Visit(node->operand(), VerifyTypeTag{}));
   bool err = false;
   if (result.type() != type::ByteView) {

@@ -159,7 +159,7 @@ struct Compiler
 
   Compiler(module::BasicModule *mod);
 
-  module::BasicModule *module() { return data_.mod_; }
+  module::BasicModule *module() const { return data_.mod_; }
   ir::Builder &builder() { return data_.bldr_; };
 
   ir::CompiledFn MakeThunk(ast::Expression const *expr, type::Type const *type);
@@ -310,6 +310,7 @@ struct Compiler
 
   CompilationData data_;
 };
+
 }  // namespace compiler
 
 #endif  // ICARUS_COMPILER_COMPILER_H

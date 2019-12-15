@@ -77,6 +77,7 @@ cc_lib(
         ":stringify",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/strings",
     ],
     test_deps = None,
 )

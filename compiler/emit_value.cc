@@ -5,6 +5,7 @@
 #include "backend/eval.h"
 #include "base/guarded.h"
 #include "compiler/executable_module.h"
+#include "compiler/library_module.h"
 #include "frontend/parse.h"
 #include "ir/builder.h"
 #include "ir/builtin_ir.h"
@@ -313,7 +314,6 @@ std::unique_ptr<module::BasicModule> CompileExecutableModule(
 }
 
 ir::Results Compiler::Visit(ast::Access const *node, EmitValueTag) {
-  DEBUG_LOG("Access")(type_of(node->operand())->to_string());
   if (type_of(node->operand()) == type::Module) {
     // TODO we already did this evaluation in type verification. Can't we just
     // save and reuse it?
@@ -1116,7 +1116,7 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
         UNREACHABLE();
       }
     } else {
-      auto *t = type_of(node);
+      auto *t = ASSERT_NOT_NULL(type_of(node));
       if (not t) {
         DEBUG_LOG()(node->DebugString());
         UNREACHABLE();
@@ -1253,7 +1253,11 @@ ir::Results Compiler::Visit(ast::Identifier const *node, EmitValueTag) {
 }
 
 ir::Results Compiler::Visit(ast::Import const *node, EmitValueTag) {
-  return ir::Results{ASSERT_NOT_NULL(pending_module(node))->get()};
+  auto *pending_mod = ASSERT_NOT_NULL(pending_module(node));
+  DEBUG_LOG("Import")("Waiting for ", pending_mod);
+  auto *mod = pending_mod->get();
+  DEBUG_LOG("Import")("Completed compilation of ", pending_mod, " as ", mod);
+  return ir::Results{mod};
 }
 
 ir::Results Compiler::Visit(ast::Index const *node, EmitValueTag) {

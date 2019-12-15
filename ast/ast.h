@@ -254,6 +254,10 @@ struct Declaration : public Expression {
   Expression const *init_val() const { return init_val_.get(); }
   Expression *init_val() { return init_val_.get(); }
 
+  module::BasicModule const *module() const {
+    return scope_->Containing<ModuleScope>()->module();
+  }
+
   Flags flags() const { return flags_; }
   Flags &flags() { return flags_; }
 

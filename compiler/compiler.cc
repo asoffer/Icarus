@@ -44,6 +44,12 @@ VerifyResult const *Compiler::prior_verification_attempt(ast::ExprPtr expr) {
 
 type::Type const *Compiler::type_of(ast::Expression const *expr) const {
   if (auto *decl = expr->if_as<ast::Declaration>()) {
+    // If the declarations module is the same as this one, we haven't completed
+    // compiling it yet and so we need to access it through the compiler.
+    // Otherwise, we have finished compiling, so we access it through the
+    // module.
+    auto const &mod = ASSERT_NOT_NULL(decl->module())->as<CompiledModule>();
+    if (&mod != module()) { return mod.type_of(decl); }
     if (auto *t = data_.current_constants_.type_of(decl)) { return t; }
   }
 

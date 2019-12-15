@@ -8,13 +8,14 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "ast/scope/module.h"
+#include "base/cast.h"
 #include "base/ptr_span.h"
 
 namespace module {
 template <typename T>
 struct ExtendedModule;
 
-struct BasicModule {
+struct BasicModule : base::Cast<BasicModule> {
   BasicModule();
   virtual ~BasicModule();
 
