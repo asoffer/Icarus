@@ -5,6 +5,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
+#include "absl/types/span.h"
 #include "ast/ast_fwd.h"
 #include "base/cast.h"
 #include "base/debug.h"
@@ -24,17 +25,6 @@ struct Scope : public base::Cast<Scope> {
   std::unique_ptr<ScopeType> add_child(Args &&... args) {
     return std::make_unique<ScopeType>(this, std::forward<Args>(args)...);
   }
-
-  // Returns a container of all declarations in this scope and in parent scopes
-  // with the given identifier.
-  std::vector<ast::Declaration const *> AllDeclsTowardsRoot(
-      std::string_view id) const;
-
-  // Returns a container of all declaration with the given identifier that are
-  // in a scope directly related to this one (i.e., one of the scopes is an
-  // ancestor of the other).
-  std::vector<Declaration const *> AllAccessibleDecls(
-      std::string_view id) const;
 
   void InsertDecl(std::string_view id, Declaration *decl);
 
@@ -56,6 +46,12 @@ struct Scope : public base::Cast<Scope> {
   }
 
   absl::flat_hash_map<std::string_view, std::vector<Declaration *>> decls_;
+
+  absl::Span<Declaration *const> children_with_id(std::string_view id) const {
+    auto iter = child_decls_.find(id);
+    if (iter == child_decls_.end()) { return absl::Span<Declaration *const>(); }
+    return iter->second;
+  }
 
  private:
   absl::flat_hash_map<std::string_view, std::vector<Declaration *>>

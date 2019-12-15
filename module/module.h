@@ -74,6 +74,17 @@ struct ExtendedModule : BasicModule {
   std::function<void(base::PtrSpan<ast::Node const>)> process_;
 };
 
+// Returns a container of all declarations in this scope and in parent scopes
+// with the given identifier.
+std::vector<ast::Declaration const *> AllDeclsTowardsRoot(
+    ast::Scope const *starting_scope, std::string_view id);
+
+// Returns a container of all declaration with the given identifier that are in
+// a scope directly related to this one (i.e., one of the scopes is an ancestor
+// of the other, or is the root scope of an embedded module).
+std::vector<ast::Declaration const *> AllAccessibleDecls(
+    ast::Scope const *starting_scope, std::string_view id);
+
 }  // namespace module
 
 #endif  // ICARUS_MODULE_MODULE_H

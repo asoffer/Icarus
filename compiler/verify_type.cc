@@ -902,6 +902,8 @@ static ast::OverloadSet FindOverloads(
     core::FnArgs<VerifyResult, std::string_view> args) {
   ast::OverloadSet os(scope, token);
   for (VerifyResult result : args) { AddAdl(&os, token, result.type()); };
+  DEBUG_LOG("FindOverloads")
+  ("Found ", os.members().size(), " overloads for '", token, "'");
   return os;
 }
 
@@ -919,18 +921,13 @@ std::optional<ast::OverloadSet> MakeOverloadSet(
       auto *mod = backend::EvaluateAs<CompiledModule const *>(
           c->MakeThunk(acc->operand(), type::Module));
       return FindOverloads(mod->scope(), acc->member_name(), args);
-    } else {
-      ast::OverloadSet os;
-      os.insert(expr);
-      // TODO ADL for node?
-      return os;
     }
-  } else {
-    ast::OverloadSet os;
-    os.insert(expr);
-    // TODO ADL for node?
-    return os;
   }
+
+  ast::OverloadSet os;
+  os.insert(expr);
+  // TODO ADL for node?
+  return os;
 }
 
 template <typename EPtr, typename StrType>
@@ -1496,7 +1493,8 @@ VerifyResult Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
   // compilation work by not finding ambiguities that we should have.
   bool failed_shadowing = false;
   type::Typed<ast::Declaration const *> typed_node_decl(node, node_type);
-  for (auto const *decl : node->scope_->AllAccessibleDecls(node->id())) {
+  for (auto const *decl :
+       module::AllAccessibleDecls(node->scope_, node->id())) {
     if (decl == node) { continue; }
     auto *r = prior_verification_attempt(decl);
     if (not r) { continue; }
@@ -1565,7 +1563,8 @@ VerifyResult Compiler::Visit(ast::Identifier const *node, VerifyTypeTag) {
   // type verification, but I think we rely on type information to figure it out
   // for now so you'll have to undo that first.
   if (node->decl() == nullptr) {
-    auto potential_decls = node->scope_->AllDeclsTowardsRoot(node->token());
+    auto potential_decls =
+        module::AllDeclsTowardsRoot(node->scope_, node->token());
     DEBUG_LOG("Identifier")(node->DebugString(), ": ", potential_decls);
     switch (potential_decls.size()) {
       case 1: {
@@ -1775,8 +1774,9 @@ VerifyResult Compiler::Visit(ast::ScopeLiteral const *node, VerifyTypeTag) {
 }
 
 static absl::flat_hash_map<ir::Jump const *, ir::ScopeDef const *>
-MakeJumpInits(Compiler*c, ast::OverloadSet const &os) {
+MakeJumpInits(Compiler *c, ast::OverloadSet const &os) {
   absl::flat_hash_map<ir::Jump const *, ir::ScopeDef const *> inits;
+  DEBUG_LOG("ScopeNode")("Overload set for inits has size ", os.members().size());
   for (ast::Expression const *member : os.members()) {
     DEBUG_LOG("ScopeNode")(member->DebugString());
     auto *def =

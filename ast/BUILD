@@ -78,6 +78,7 @@ cc_lib(
         "//base:bag",
         "//ast:ast",
         "//ast/scope:scope",
+        "//module:module",
         "@com_google_absl//absl/types:span",
     ],
     test_deps = None,

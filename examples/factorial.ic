@@ -7,10 +7,8 @@ factorial ::= (n: int64) -> int64 {
   }
 }
 
-main ::= () -> () {
-  n := 0
-  while (n <= 10) do {
-    print n, "! = ", n'factorial, "\n"
-    n += 1
-  }
+num := 0
+while (num <= 10) do {
+  print num, "! = ", num'factorial, "\n"
+  num += 1
 }

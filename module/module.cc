@@ -34,4 +34,38 @@ absl::Span<ast::Declaration const *const> BasicModule::declarations(
   return iter->second;
 }
 
+std::vector<ast::Declaration const *> AllDeclsTowardsRoot(
+    ast::Scope const *starting_scope, std::string_view id) {
+  std::vector<ast::Declaration const *> decls;
+  for (auto scope_ptr = starting_scope; scope_ptr != nullptr;
+       scope_ptr      = scope_ptr->parent) {
+    if (auto iter = scope_ptr->decls_.find(id);
+        iter != scope_ptr->decls_.end()) {
+      for (auto *decl : iter->second) { decls.push_back(decl); }
+    }
+
+    for (auto const *mod : scope_ptr->embedded_modules_) {
+      DEBUG_LOG("AllDeclsTowardsRoot")(starting_scope, " ", mod);
+      // TODO use the right bound constants? or kill bound constants?
+      for (auto *decl : mod->declarations(id)) {
+        DEBUG_LOG("AllDeclsTowardsRoot")("   ", id);
+        // TODO what about transitivity for embedded modules?
+        // New context will lookup with no constants.
+        decls.push_back(decl);
+      }
+    }
+  }
+
+  return decls;
+}
+
+std::vector<ast::Declaration const *> AllAccessibleDecls(
+    ast::Scope const *starting_scope, std::string_view id) {
+  std::vector<ast::Declaration const *> decls =
+      module::AllDeclsTowardsRoot(starting_scope, id);
+  auto child_decls = starting_scope->children_with_id(id);
+  decls.insert(decls.end(), child_decls.begin(), child_decls.end());
+  return decls;
+}
+
 }  // namespace module
