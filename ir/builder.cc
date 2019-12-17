@@ -319,29 +319,25 @@ Reg Flags(module::BasicModule *mod, absl::Span<std::string_view const> names,
   return EnumerationImpl<false>(mod, names, specified_values);
 }
 
-Reg Struct(ast::Scope const *scope, module::BasicModule *mod,
-           std::vector<std::tuple<std::string_view, RegOr<type::Type const *>>>
-               fields) {
-  auto &blk = *GetBuilder().CurrentBlock();
+Reg Builder::Struct(ast::Scope const *scope,
+                    absl::Span<StructField const> fields) {
+  auto &blk = *CurrentBlock();
   blk.cmd_buffer_.append(StructCmd::index);
   blk.cmd_buffer_.append<uint16_t>(fields.size());
   blk.cmd_buffer_.append(scope);
-  blk.cmd_buffer_.append(mod);
-  // TODO determine if order randomization makes sense here. Or perhaps you want
-  // to do it later? Or not at all?
-  std::shuffle(fields.begin(), fields.end(), absl::BitGen{});
-  for (auto & [ name, t ] : fields) { blk.cmd_buffer_.append(name); }
 
-  // TODO performance: Serialize requires an absl::Span here, but we'd love to
-  // not copy out the elements of `fields`.
+  // TODO shuffling fields order?
+  for (auto const & field : fields) { blk.cmd_buffer_.append(field.name()); }
+
   std::vector<RegOr<type::Type const *>> types;
   types.reserve(fields.size());
-  for (auto & [ name, t ] : fields) { types.push_back(t); }
+  for (auto const &field : fields) { types.push_back(field.type()); }
   internal::Serialize<uint16_t>(&blk.cmd_buffer_, absl::MakeConstSpan(types));
 
   Reg result = MakeResult<type::Type const *>();
   blk.cmd_buffer_.append(result);
   return result;
+
 }
 
 RegOr<type::Function const *> Builder::Arrow(

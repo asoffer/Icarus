@@ -841,18 +841,20 @@ std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
 std::unique_ptr<ast::StructLiteral> BuildStructLiteral(Statements &&stmts,
                                                        SourceRange span,
                                                        error::Log *error_log) {
-  auto struct_lit  = std::make_unique<ast::StructLiteral>();
-  struct_lit->span = std::move(span);
-  for (auto &&stmt : std::move(stmts).content_) {
-    if (stmt->is<ast::Declaration>()) {
-      struct_lit->fields_.push_back(std::move(stmt->as<ast::Declaration>()));
+  std::vector<std::unique_ptr<ast::Node>> node_stmts =
+      std::move(stmts).extract();
+  std::vector<ast::Declaration> fields;
+  fields.reserve(node_stmts.size());
+  for (auto &stmt : node_stmts) {
+    if (auto *decl = stmt->if_as<ast::Declaration>()) {
+      fields.push_back(std::move(*decl));
     } else {
       error_log->NonDeclarationInStructDeclaration(stmt->span);
-      // TODO show the entire struct declaration and point to the problematic
-      // lines.
     }
   }
-  return struct_lit;
+
+  return std::make_unique<ast::StructLiteral>(std::move(span),
+                                              std::move(fields));
 }
 
 // TODO rename this now that it supports switch statements too.
@@ -890,23 +892,7 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
         std::move(nodes.back()->as<Statements>()).extract());
 
   } else if (tk == "struct") {
-    auto result = BuildStructLiteral(
-        std::move(nodes[4]->as<Statements>()),
-        SourceRange(nodes.front()->span.begin(), nodes.back()->span.end()),
-        error_log);
-    if (nodes[2]->is<ast::CommaList>()) {
-      for (auto &expr : nodes[2]->as<ast::CommaList>().exprs_) {
-        ASSERT(expr, InheritsFrom<ast::Declaration>());  // TODO handle failure
-        auto decl = move_as<ast::Declaration>(expr);
-        decl->flags() |= ast::Declaration::f_IsFnParam;
-        result->args_.push_back(std::move(*decl));
-      }
-    } else {
-      auto decl = move_as<ast::Declaration>(nodes[2]);
-      decl->flags() |= ast::Declaration::f_IsFnParam;
-      result->args_.push_back(std::move(*decl));
-    }
-    return result;
+    NOT_YET();
   } else {
     UNREACHABLE();
   }

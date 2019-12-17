@@ -8,20 +8,14 @@
 #include "type/pointer.h"
 
 namespace type {
-Struct::Struct(
-    ast::Scope const *scope, module::BasicModule const *mod,
-    absl::Span<std::tuple<std::string_view, type::Type const *> const> fields)
-    : scope_(scope), mod_(const_cast<module::BasicModule *>(mod)) {
-  fields_.reserve(fields.size());
+Struct::Struct(ast::Scope const *scope, std::vector<Struct::Field> fields)
+    : scope_(scope),
+      mod_(const_cast<ast::Scope *>(scope)
+               ->Containing<ast::ModuleScope>()
+               ->module()),
+      fields_(std::move(fields)) {
   size_t i = 0;
-  for (auto[name, t] : fields) {
-    field_indices_.emplace(std::string(name), i++);
-  }
-  for (auto const & [ name, t ] : fields) {
-    Field f(t);
-    f.name = field_indices_.find(name)->first;
-    fields_.push_back(f);
-  }
+  for (auto const &field : fields_) { field_indices_.emplace(field.name, i++); }
 }
 
 core::Bytes Struct::offset(size_t field_num, core::Arch const &a) const {
@@ -34,7 +28,7 @@ core::Bytes Struct::offset(size_t field_num, core::Arch const &a) const {
 }
 
 size_t Struct::index(std::string_view name) const {
-  return field_indices_.at(name);
+  return field_indices_.find(name)->second;
 }
 
 Struct::Field const *Struct::field(std::string_view name) const {
@@ -83,7 +77,7 @@ bool Struct::IsMovable() const {
 core::Bytes Struct::bytes(core::Arch const &a) const {
   auto num_bytes = core::Bytes{0};
   for (auto const &field : fields_) {
-    num_bytes += field.type->bytes(a);
+    num_bytes += ASSERT_NOT_NULL(field.type)->bytes(a);
     // TODO it'd be in the (common, I think) case where you want both, it would
     // be faster to compute bytes and alignment simultaneously.
     num_bytes = core::FwdAlign(num_bytes, field.type->alignment(a));

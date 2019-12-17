@@ -132,10 +132,16 @@ void DependentDecls::Visit(ast::ScopeNode const *node,
   for (auto const &block : node->blocks()) { Visit(&block, d); }
 }
 
+
 void DependentDecls::Visit(ast::StructLiteral const *node,
                            ast::Declaration const *d) {
-  for (auto &a : node->args_) { Visit(&a, d); }
-  for (auto &f : node->fields_) { Visit(&f, d); }
+  for (auto const &f : node->fields()) { Visit(&f, d); }
+}
+
+void DependentDecls::Visit(ast::ParameterizedStructLiteral const *node,
+                           ast::Declaration const *d) {
+  for (auto const &p : node->params()) { Visit(&p, d); }
+  for (auto const &f : node->fields()) { Visit(&f, d); }
 }
 
 void DependentDecls::Visit(ast::StructType const *node,

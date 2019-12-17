@@ -70,6 +70,7 @@ auto UnaryApply(base::untyped_buffer::const_iterator *iter, bool reg0,
 
 void CallFunction(ir::CompiledFn *fn, const base::untyped_buffer &arguments,
                   absl::Span<ir::Addr const> ret_slots, ExecutionContext *ctx) {
+  ASSERT(fn != nullptr);
   // TODO: Understand why and how work-items may not be complete and add an
   // explanation here. I'm quite confident this is really possible with the
   // generics model I have, but I can't quite articulate exactly why it only
@@ -456,23 +457,25 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
     frame.regs_.set(iter->read<ir::Reg>(), result);
 
   } else if constexpr (std::is_same_v<CmdType, ir::StructCmd>) {
-    std::vector<std::tuple<std::string_view, type::Type const *>> fields;
     uint16_t num = iter->read<uint16_t>();
-    fields.reserve(num);
+
     ast::Scope const *scope  = iter->read<ast::Scope const *>();
-    module::BasicModule *mod = iter->read<module::BasicModule *>();
+
+    std::vector<type::Struct::Field> fields;
+    fields.reserve(num);
+
     for (uint16_t i = 0; i < num; ++i) {
-      fields.emplace_back(iter->read<std::string_view>(), nullptr);
+      auto &field = fields.emplace_back();
+      field.name  = iter->read<std::string_view>();
     }
 
     size_t index = 0;
     ir::internal::Deserialize<uint16_t, type::Type const *>(
         iter, [&](ir::Reg reg) {
-          std::get<1>(fields[index++]) = ctx->resolve<type::Type const *>(reg);
-        });
+          fields[index++].type = ctx->resolve<type::Type const *>(reg);
+       });
 
-    frame.regs_.set(iter->read<ir::Reg>(),
-                    new type::Struct(scope, mod, fields));
+    frame.regs_.set(iter->read<ir::Reg>(), new type::Struct(scope, fields));
 
   } else if constexpr (std::is_same_v<CmdType, ir::OpaqueTypeCmd>) {
     module::BasicModule const *mod = iter->read<module::BasicModule const *>();
@@ -604,7 +607,7 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
         call_buf.append(ctx->resolve<ir::Addr>(ir::Reg(iter->read<ir::Reg>())));
 
         if (auto *s = t->if_as<type::Struct>()) {
-          f = s->init_func_;
+          f = s->init_func_.get();
         } else if (auto *tup = t->if_as<type::Tuple>()) {
           f = tup->init_func_.get();
         } else if (auto *a = t->if_as<type::Array>()) {

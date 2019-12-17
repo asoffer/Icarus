@@ -7,14 +7,14 @@
 namespace module {
 
 template <typename T>
-static void SetAllScopes(AssignScope *visitor, base::PtrSpan<T> span,
+static void SetAllScopes(AssignScope *a, base::PtrSpan<T> span,
                          ast::Scope *scope) {
-  for (auto *n : span) { visitor->Visit(n, scope); }
+  for (auto *n : span) { a->Visit(n, scope); }
 }
 
 void AssignScope::To(base::PtrSpan<ast::Node> nodes, ast::Scope *scope) {
-  AssignScope visitor;
-  SetAllScopes(&visitor, nodes, scope);
+  AssignScope a;
+  SetAllScopes(&a, nodes, scope);
 }
 
 void AssignScope::Visit(ast::Access *node, ast::Scope *scope) {
@@ -122,7 +122,7 @@ void AssignScope::Visit(ast::FunctionLiteral *node, ast::Scope *scope) {
   }
 
   node->param_dep_graph_ = std::move(dep_decls.decl_graph_.graph_);
-  for (auto & [ id, decls ] : dep_decls.decl_graph_.ids_) {
+  for (auto &[id, decls] : dep_decls.decl_graph_.ids_) {
     auto iter = decls_by_id.find(id);
     if (iter == decls_by_id.end()) { continue; }
     for (auto *d : decls) { node->param_dep_graph_.add_edge(d, iter->second); }
@@ -200,10 +200,17 @@ void AssignScope::Visit(ast::ScopeNode *node, ast::Scope *scope) {
 }
 
 void AssignScope::Visit(ast::StructLiteral *node, ast::Scope *scope) {
-  node->scope_     = scope;
-  node->type_scope = scope->add_child<ast::DeclScope>();
-  for (auto &a : node->args_) { Visit(&a, node->type_scope.get()); }
-  for (auto &f : node->fields_) { Visit(&f, node->type_scope.get()); }
+  node->scope_ = scope;
+  node->set_body_with_parent(scope);
+  for (auto &field : node->fields()) { Visit(&field, node->body_scope()); }
+}
+
+void AssignScope::Visit(ast::ParameterizedStructLiteral *node,
+                        ast::Scope *scope) {
+  node->scope_ = scope;
+  node->set_body_with_parent(scope);
+  for (auto &param : node->params()) { Visit(&param, node->body_scope()); }
+  for (auto &field : node->fields()) { Visit(&field, node->body_scope()); }
 }
 
 void AssignScope::Visit(ast::StructType *node, ast::Scope *scope) {
@@ -213,7 +220,7 @@ void AssignScope::Visit(ast::StructType *node, ast::Scope *scope) {
 void AssignScope::Visit(ast::Switch *node, ast::Scope *scope) {
   node->scope_ = scope;
   if (node->expr_) { Visit(node->expr_.get(), scope); }
-  for (auto & [ body, cond ] : node->cases_) {
+  for (auto &[body, cond] : node->cases_) {
     Visit(body.get(), scope);
     Visit(cond.get(), scope);
   }

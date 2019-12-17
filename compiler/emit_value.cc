@@ -22,6 +22,7 @@
 #include "ir/components.h"
 #include "ir/jump.h"
 #include "ir/reg.h"
+#include "ir/struct_field.h"
 #include "type/jump.h"
 #include "type/type.h"
 #include "type/typed_value.h"
@@ -153,11 +154,12 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node) {
   }
 }
 
-void CompleteBody(Compiler *compiler, ast::StructLiteral const *node) {
+void CompleteBody(Compiler *compiler,
+                  ast::ParameterizedStructLiteral const *node) {
   NOT_YET();
   //   ir::CompiledFn *&ir_func = data_.constants_->second.ir_funcs_[node];
-  //   for (size_t i = 0; i < node->args_.size(); ++i) {
-  //     set_addr(&node->args_[i], ir::Reg::Arg(i));
+  //   for (size_t i = 0; i < node->params().size(); ++i) {
+  //     set_addr(&node->params()[i], ir::Reg::Arg(i));
   //   }
   //
   //   ICARUS_SCOPE(ir::SetCurrent(ir_func)) {
@@ -183,7 +185,7 @@ void CompleteBody(Compiler *compiler, ast::StructLiteral const *node) {
   //     // second... I don't know.
   //     ir::Store(static_cast<ir::RegOr<type::Type const *>>(struct_reg),
   //               cache_slot_addr);
-  //     for (auto &arg : node->args_) {  // TODO const-ref
+  //     for (auto &arg : node->params()) {  // TODO const-ref
   //       ir::AddBoundConstant(ctx_reg, &arg, addr(&arg));
   //     }
   //
@@ -1431,26 +1433,24 @@ ir::Results Compiler::Visit(ast::ScopeNode const *node, EmitValueTag) {
 }
 
 ir::Results Compiler::Visit(ast::StructLiteral const *node, EmitValueTag) {
-  if (node->args_.empty()) {
-    // TODO what about handling incomplete types?
-    std::vector<std::tuple<std::string_view, ir::RegOr<type::Type const *>>>
-        fields;
-    fields.reserve(node->fields_.size());
-    for (auto const &field : node->fields_) {
-      // TODO hashtags?
-      fields.emplace_back(
-          field.id(),
-          Visit(field.type_expr(), EmitValueTag{}).get<type::Type const *>(0));
-    }
-    return ir::Results{ir::Struct(node->scope_, module(), std::move(fields))};
-  } else {
-    NOT_YET();
+  std::vector<ir::StructField> fields;
+  fields.reserve(node->fields().size());
+  for (auto const &field : node->fields()) {
+    // TODO hashtags and initial values.
+    fields.emplace_back(
+        field.id(),
+        Visit(field.type_expr(), EmitValueTag{}).get<type::Type const *>(0));
   }
+  return ir::Results{builder().Struct(node->scope_, fields)};
+}
 
+ir::Results Compiler::Visit(ast::ParameterizedStructLiteral const *node,
+                            EmitValueTag) {
+  NOT_YET();
   // // TODO A bunch of things need to be fixed here.
   // // * Lock access during creation so two requestors don't clobber each
   // other.
-  // // * Add a way way for one requestor to wait for another to have created
+  // // * Add a way for one requestor to wait for another to have created
   // the
   // // object and be notified.
   // //
@@ -1464,9 +1464,9 @@ ir::Results Compiler::Visit(ast::StructLiteral const *node, EmitValueTag) {
   //   type_of(node)->as<type::GenericStruct>().deps_;
 
   //   core::FnParams<type::Typed<ast::Expression const *>> params;
-  //   params.reserve(node->args_.size());
+  //   params.reserve(node->params().size());
   //   size_t i = 0;
-  //   for (auto const &d : node->args_) {
+  //   for (auto const &d : node->params()) {
   //     params.append(d.id(), type::Typed<ast::Expression const *>(
   //                               d.init_val(), arg_types.at(i++)));
   //   }

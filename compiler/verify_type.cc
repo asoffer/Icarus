@@ -1815,80 +1815,55 @@ VerifyResult Compiler::Visit(ast::ScopeNode const *node, VerifyTypeTag) {
 }
 
 VerifyResult Compiler::Visit(ast::StructLiteral const *node, VerifyTypeTag) {
+  bool err = false;
+  for (auto const &field : node->fields()) {
+    VerifyResult type_expr_result;
+    if (field.type_expr()) {
+      type_expr_result = Visit(field.type_expr(), VerifyTypeTag{});
+    }
+
+    VerifyResult init_val_result;
+    if (field.init_val()) {
+      init_val_result = Visit(field.init_val(), VerifyTypeTag{});
+    }
+
+    if (not type_expr_result or not init_val_result) {
+      err = true;
+      continue;
+    }
+
+    if (field.type_expr() and not type_expr_result.constant()) {
+      err = true;
+      NOT_YET("Log an error, type must be constant");
+    }
+
+    if (field.init_val() and not init_val_result.constant()) {
+      err = true;
+      NOT_YET("Log an error, type must be constant");
+    }
+
+    if (field.init_val() and field.init_val() and
+        init_val_result != type_expr_result) {
+      err = true;
+      NOT_YET("log an error, type mismatch");
+    }
+  }
+  if (err) { return set_result(node, VerifyResult::Error()); }
+  return set_result(node, VerifyResult::Constant(type::Type_));
+}
+
+VerifyResult Compiler::Visit(ast::ParameterizedStructLiteral const *node, VerifyTypeTag) {
   std::vector<type::Type const *> ts;
-  ts.reserve(node->args_.size());
-  for (auto &a : node->args_) {
+  ts.reserve(node->params().size());
+  for (auto const &a : node->params()) {
     ts.push_back(Visit(&a, VerifyTypeTag{}).type());
   }
   if (absl::c_any_of(ts, [](type::Type const *t) { return t == nullptr; })) {
     return VerifyResult::Error();
   }
 
-  if (node->args_.empty()) {
-    bool is_const = true;
-    bool err      = false;
-    for (auto const &field : node->fields_) {
-      if (not field.type_expr()) { continue; }
-      auto result = Visit(field.type_expr(), VerifyTypeTag{});
-      if (not result) {
-        err = true;
-        continue;
-      }
-      is_const &= result.constant();
-      if (field.init_val()) {
-        if (result.constant()) {
-          auto init_val_result = Visit(field.init_val(), VerifyTypeTag{});
-          if (not init_val_result.constant()) {
-            error_log()->NonConstantStructFieldDefaultValue(
-                field.init_val()->span);
-            err = true;
-          }
-
-          if (init_val_result.type() != result.type()) {
-            NOT_YET("type mismatch");
-          }
-
-        } else {
-          NOT_YET(
-              "can't have an initial value set if the type is also present and "
-              "non-constant");
-        }
-      }
-    }
-    if (err) { return set_result(node, VerifyResult::Error()); }
-    return set_result(node, VerifyResult::Constant(type::Type_));
-    // TODO, we need to verify the body of this struct at some point, but it may
-    // be dependent on things we can't evaluate yet. For example,
-    //
-    // wrapper ::= (T: type) => struct { val: T }
-    //
-    // I'm yet unsure exactly how we should handle this.
-    /*
-    bool ok = absl::c_all_of(node->fields_, [this](ast::Declaration const
-    &field) {
-      // TODO you should verify each field no matter what.
-      Visit(&field, VerifyTypeTag{});
-      if (not field.init_val() or
-          ASSERT_NOT_NULL(prior_verification_attempt(field.init_val()))
-              ->constant()) {
-        return true;
-      }
-      error_log()->NonConstantStructFieldDefaultValue(
-          field.init_val()->span);
-      return false;
-    });
-    // TODO so in fact we could recover here and just not emit ir but we're no
-    // longer set up to do that.
-    if (ok) {
-      return set_result(node, VerifyResult::Constant(type::Type_));
-    } else {
-      return VerifyResult::Error();
-    }
-    */
-  } else {
-    return set_result(node, VerifyResult::Constant(
-                                type::GenStruct(node->scope_, std::move(ts))));
-  }
+  return set_result(node, VerifyResult::Constant(
+                              type::GenStruct(node->scope_, std::move(ts))));
 }
 
 VerifyResult Compiler::Visit(ast::StructType const *node, VerifyTypeTag) {

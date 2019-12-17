@@ -3,6 +3,7 @@
 
 #include <vector>
 
+#include "absl/types/span.h"
 #include "base/debug.h"
 #include "base/scope.h"
 #include "base/tag.h"
@@ -25,6 +26,7 @@
 #include "ir/cmd/util.h"
 #include "ir/local_block_interpretation.h"
 #include "ir/reg.h"
+#include "ir/struct_field.h"
 #include "type/typed_value.h"
 #include "type/util.h"
 
@@ -212,6 +214,8 @@ struct Builder {
                                  RegOr<type::Type const*> data_type);
 
   Reg OpaqueType(module::BasicModule const* mod);
+
+  Reg Struct(ast::Scope const* scope, absl::Span<StructField const> fields);
 
   // Print commands
   template <typename T>
@@ -484,11 +488,6 @@ Reg Enum(module::BasicModule* mod, absl::Span<std::string_view const> names,
 Reg Flags(module::BasicModule* mod, absl::Span<std::string_view const> names,
           absl::flat_hash_map<uint64_t, RegOr<EnumerationCmd::enum_t>> const&
               specified_values);
-
-// TODO handle initial values.
-Reg Struct(
-    ast::Scope const* scope, module::BasicModule* mod,
-    std::vector<std::tuple<std::string_view, RegOr<type::Type const*>>> fields);
 
 // ----------------------------------------------------------------------------
 // Implementation details only below

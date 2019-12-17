@@ -21,7 +21,8 @@ namespace type {
 
 struct Struct : public Type {
   struct Field {
-    Field(type::Type const *t) : type(t) {}
+    explicit Field() = default;
+    explicit Field(type::Type const *t) : type(t) {}
     // TODO make a string_view but deal with trickiness of moving
 
     bool contains_hashtag(ast::Hashtag needle) const {
@@ -37,8 +38,7 @@ struct Struct : public Type {
     std::vector<ast::Hashtag> hashtags_;
   };
 
-  Struct(ast::Scope const *scope, module::BasicModule const *mod,
-         absl::Span<std::tuple<std::string_view, type::Type const *> const>);
+  Struct(ast::Scope const *scope, std::vector<Field> fields);
 
   ~Struct() override {}
   void WriteTo(std::string *buf) const override;
@@ -69,23 +69,14 @@ struct Struct : public Type {
   ast::Scope const *scope_  = nullptr;
   module::BasicModule *mod_ = nullptr;
 
-  // `init_func_` is generated in FinalizeStruct.
-  //
-  // TODO I'm not sure if this needs locking. If the threading model turns out
-  // to be 1 per module, then probably not. By generating this in init_func_, we
-  // guarantee that no one really had access to this struct, but maybe they got
-  // a pointer to it before it was completely initialized and tried to
-  // dereference ad use it? We can definitely hand out pointers before
-  // FinalizeStruct is called because that's how we do recursive types.
-  ir::AnyFunc init_func_;
-
+  base::lazy<ir::AnyFunc> init_func_;
   base::lazy<ir::AnyFunc> destroy_func_;
   base::lazy<ir::AnyFunc> copy_assign_func_;
   base::lazy<ir::AnyFunc> move_assign_func_;
 
   std::vector<ast::Hashtag> hashtags_;
   std::vector<Field> fields_;
-  absl::flat_hash_map<std::string, size_t> field_indices_;
+  absl::flat_hash_map<std::string_view, size_t> field_indices_;
 };
 
 }  // namespace type

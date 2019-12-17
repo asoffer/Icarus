@@ -347,14 +347,26 @@ void ScopeNode::DebugStrAppend(std::string *out, size_t indent) const {
   for (auto const &block : blocks()) { block.DebugStrAppend(out, indent); }
 }
 
+
 void StructLiteral::DebugStrAppend(std::string *out, size_t indent) const {
+  absl::StrAppend(out, "struct {\n");
+  for (auto const &f : fields()) {
+    absl::StrAppend(out, indentation(indent));
+    f.DebugStrAppend(out, indent + 1);
+    absl::StrAppend(out, "\n");
+  }
+  absl::StrAppend(out, indentation(indent), "}");
+}
+
+void ParameterizedStructLiteral::DebugStrAppend(std::string *out,
+                                                size_t indent) const {
   absl::StrAppend(out, "struct (",
-                  absl::StrJoin(args_, ", ",
+                  absl::StrJoin(params(), ", ",
                                 [&](std::string *out, Declaration const &d) {
                                   d.DebugStrAppend(out, indent);
                                 }),
                   ") {\n");
-  for (const auto &f : fields_) {
+  for (auto const &f : fields()) {
     absl::StrAppend(out, indentation(indent));
     f.DebugStrAppend(out, indent + 1);
     absl::StrAppend(out, "\n");

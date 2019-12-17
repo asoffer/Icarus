@@ -49,6 +49,7 @@ cc_library(
         "//ir:results",
         "//ir:reg",
         "//ir:str",
+        "//ir:struct_field",
         "//ir/cmd:basic",
         "//ir/cmd:call",
         "//ir/cmd:cast",

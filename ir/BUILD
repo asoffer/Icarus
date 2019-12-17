@@ -91,6 +91,7 @@ cc_lib(
         ":basic_block",
         ":block_group",
         ":local_block_interpretation",
+        ":struct_field",
         ":reg",
         "//base:debug",
         "//base:scope",
@@ -110,6 +111,7 @@ cc_lib(
         "//ir/cmd:types",
         "//ir/cmd:util",
         "//type:typed_value",
+        "@com_google_absl//absl/types:span",
     ],
     test_deps = None,
 )
@@ -297,3 +299,13 @@ cc_library(
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
+
+cc_library(
+    name = "struct_field",
+    hdrs = ["struct_field.h"],
+    deps = [
+        ":reg_or",
+        "//type",
+    ],
+)
+

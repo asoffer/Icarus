@@ -42,7 +42,7 @@ namespace ast {
   void DebugStrAppend(std::string *out, size_t indent) const override
 
 template <typename S>
-struct ScopeExpr : public Expression {
+struct ScopeExpr : Expression {
   ScopeExpr(frontend::SourceRange &&span) : Expression(std::move(span)) {}
   ~ScopeExpr() override {}
   ScopeExpr(ScopeExpr &&) noexcept = default;
@@ -65,7 +65,7 @@ struct ScopeExpr : public Expression {
 // Examples:
 //  * `my_pair.first_element`
 //  * `(some + computation).member`
-struct Access : public Expression {
+struct Access : Expression {
   explicit Access(frontend::SourceRange span,
                   std::unique_ptr<Expression> operand, std::string member_name)
       : Expression(std::move(span)),
@@ -93,7 +93,7 @@ struct Access : public Expression {
 //  * `[thing1, thing2]`
 //  * `[im_the_only_thing]`
 //  * `[]`
-struct ArrayLiteral : public Expression {
+struct ArrayLiteral : Expression {
   explicit ArrayLiteral(frontend::SourceRange span,
                         std::unique_ptr<Expression> expr)
       : Expression(std::move(span)) {
@@ -134,7 +134,7 @@ struct ArrayLiteral : public Expression {
 //                         elements, each of which is an array that can hold two
 //                         8-bit integers.
 //  * `[3, 2; int8]`   ... A shorthand syntax for `[3; [2; int8]]`
-struct ArrayType : public Expression {
+struct ArrayType : Expression {
   explicit ArrayType(frontend::SourceRange span,
                      std::unique_ptr<Expression> length,
                      std::unique_ptr<Expression> data_type)
@@ -175,7 +175,7 @@ struct ArrayType : public Expression {
 // differently (see `ChainOp`). This is because in Icarus, operators such as
 // `==` allow chains so that `x == y == z` can evaluate to `true` if and only if
 // both `x == y` and `y == z`.
-struct Binop : public Expression {
+struct Binop : Expression {
   explicit Binop(std::unique_ptr<Expression> lhs, frontend::Operator op,
                  std::unique_ptr<Expression> rhs)
       : Expression(frontend::SourceRange(lhs->span.begin(), rhs->span.end())),
@@ -219,7 +219,7 @@ struct Binop : public Expression {
 //                                `some_constant` is a (generic) function
 //                                parmaeter
 //
-struct Declaration : public Expression {
+struct Declaration : Expression {
   using Flags                         = uint8_t;
   static constexpr Flags f_IsFnParam  = 0x01;
   static constexpr Flags f_IsOutput   = 0x02;
@@ -288,7 +288,7 @@ struct Declaration : public Expression {
 //    after  ::= () -> () { jump exit() }
 //  }
 //  ```
-struct BlockLiteral : public ScopeExpr<DeclScope> {
+struct BlockLiteral : ScopeExpr<DeclScope> {
   explicit BlockLiteral(frontend::SourceRange span,
                         std::vector<std::unique_ptr<Declaration>> before,
                         std::vector<std::unique_ptr<Declaration>> after)
@@ -339,7 +339,7 @@ struct BlockLiteral : public ScopeExpr<DeclScope> {
 // (likely in the form of `core::FnArgs<std::unique_ptr<ast::Expression>>`).
 //
 // TODO: `args` should be renamed to `params`.
-struct BlockNode : public ScopeExpr<ExecScope> {
+struct BlockNode : ScopeExpr<ExecScope> {
   explicit BlockNode(frontend::SourceRange span, std::string name,
                      std::vector<std::unique_ptr<Node>> stmts)
       : ScopeExpr<ExecScope>(std::move(span)),
@@ -374,7 +374,7 @@ struct BlockNode : public ScopeExpr<ExecScope> {
 // which declares a foreign-function by name, or `opaque` which constructs a new
 // type with no known size or alignment (users can pass around pointers to
 // values of an opaque type, but not actual values).
-struct BuiltinFn : public Expression {
+struct BuiltinFn : Expression {
   explicit BuiltinFn(frontend::SourceRange span, core::Builtin b)
       : Expression(std::move(span)), val_(b) {}
   ~BuiltinFn() override {}
@@ -393,7 +393,7 @@ struct BuiltinFn : public Expression {
 // Examples:
 //  * `f(a, b, c = 3)`
 //  * `arg'func`
-struct Call : public Expression {
+struct Call : Expression {
   explicit Call(frontend::SourceRange span, std::unique_ptr<Expression> callee,
                 core::OrderedFnArgs<Expression> args)
       : Expression(std::move(span)),
@@ -434,7 +434,7 @@ struct Call : public Expression {
 // Examples:
 //  * `3 as nat32`
 //  * `null as *int64`
-struct Cast : public Expression {
+struct Cast : Expression {
   explicit Cast(frontend::SourceRange span, std::unique_ptr<Expression> expr,
                 std::unique_ptr<Expression> type_expr)
       : Expression(std::move(span)),
@@ -463,7 +463,7 @@ struct Cast : public Expression {
 //
 // Example:
 //  `a < b == c < d`
-struct ChainOp : public Expression {
+struct ChainOp : Expression {
   // TODO consider having a construct-or-append static function.
   explicit ChainOp(frontend::SourceRange span, std::unique_ptr<Expression> expr)
       : Expression(std::move(span)) {
@@ -493,7 +493,7 @@ struct ChainOp : public Expression {
 };
 
 // TODO
-struct CommaList : public Expression {
+struct CommaList : Expression {
   CommaList() = default;
   ~CommaList() override {}
 
@@ -576,7 +576,7 @@ struct EnumLiteral : ScopeExpr<DeclScope> {
 // * `(n: int32, m: int32) => n * m`
 // * `(T :: type, val: T) => val`
 //
-struct FunctionLiteral : public ScopeExpr<FnScope> {
+struct FunctionLiteral : ScopeExpr<FnScope> {
   static std::unique_ptr<FunctionLiteral> MakeLong(
       frontend::SourceRange span,
       std::vector<std::unique_ptr<Declaration>> in_params,
@@ -674,7 +674,7 @@ struct FunctionLiteral : public ScopeExpr<FnScope> {
 // Represents any node that is not an identifier but has no sub-parts. These are
 // typically numeric literals, or expressions that are also keywords such as
 // `true`, `false`, or `null`.
-struct Terminal : public Expression {
+struct Terminal : Expression {
   template <typename T,
             std::enable_if_t<std::is_trivially_copyable_v<T>, int> = 0>
   explicit Terminal(frontend::SourceRange span, T value, type::BasicType t)
@@ -762,7 +762,7 @@ struct Terminal : public Expression {
 
 // Identifier:
 // Represents any user-defined identifier.
-struct Identifier : public Expression {
+struct Identifier : Expression {
   Identifier(frontend::SourceRange span, std::string token)
       : Expression(std::move(span)), token_(std::move(token)) {}
   ~Identifier() override {}
@@ -784,7 +784,7 @@ struct Identifier : public Expression {
 // Examples:
 //  * `import "a_module.ic"`
 //  * `import function_returning_a_string()`
-struct Import : public Expression {
+struct Import : Expression {
   explicit Import(frontend::SourceRange span, std::unique_ptr<Expression> expr)
       : Expression(std::move(span)), operand_(std::move(expr)) {}
   ~Import() override {}
@@ -805,7 +805,7 @@ struct Import : public Expression {
 // Example:
 //  * `buf_ptr[3]`
 //  * `my_array[4]`
-struct Index : public Expression {
+struct Index : Expression {
   explicit Index(frontend::SourceRange span, std::unique_ptr<Expression> lhs,
                  std::unique_ptr<Expression> rhs)
       : Expression(std::move(span)),
@@ -847,8 +847,7 @@ struct Index : public Expression {
 //    done ::= () -> () {}
 //  }
 //  ```
-struct Goto : public Node {
- public:
+struct Goto : Node {
   explicit Goto(frontend::SourceRange span,
                 std::vector<std::unique_ptr<Call>> calls)
       : Node(std::move(span)) {
@@ -958,6 +957,45 @@ struct Jump : ScopeExpr<FnScope> {
   std::vector<std::unique_ptr<Node>> stmts_;
 };
 
+// ParameterizedStructLiteral:
+//
+// Represents the definition of a parameterized user-defined structure. This
+// consists of a collection of declarations, and a collection of parameters on
+// which those declaration's types and initial values may depend.
+//
+// Examples:
+// ```
+// struct (T: type) {
+//   ptr: *T
+// }
+//
+// struct (N: int64) {
+//   val: int64 = N
+//   square ::= N * N
+// }
+// ```
+struct ParameterizedStructLiteral : ScopeExpr<DeclScope> {
+  ParameterizedStructLiteral(frontend::SourceRange span,
+                             std::vector<Declaration> params,
+                             std::vector<Declaration> fields)
+      : ScopeExpr<DeclScope>(std::move(span)), fields_(std::move(fields)) {}
+
+  ~ParameterizedStructLiteral() override {}
+
+  absl::Span<Declaration const> fields() const { return fields_; }
+  absl::Span<Declaration> fields() { return absl::MakeSpan(fields_); }
+  absl::Span<Declaration const> params() const { return params_; }
+  absl::Span<Declaration> params() { return absl::MakeSpan(params_); }
+
+  ParameterizedStructLiteral &operator        =(
+      ParameterizedStructLiteral &&) noexcept = default;
+
+  ICARUS_AST_VIRTUAL_METHODS;
+
+ private:
+  std::vector<Declaration> params_, fields_;
+};
+
 // PrintStmt:
 // Represents a print statement. Arbitrarily many expressions can be passed.
 //
@@ -966,7 +1004,7 @@ struct Jump : ScopeExpr<FnScope> {
 //  print "hello", 42
 //  ```
 //
-struct PrintStmt : public Node {
+struct PrintStmt : Node {
   explicit PrintStmt(frontend::SourceRange span,
                      std::vector<std::unique_ptr<Expression>> exprs)
       : Node(std::move(span)), exprs_(std::move(exprs)) {}
@@ -989,34 +1027,11 @@ struct PrintStmt : public Node {
 //  return "hello", 42
 //  ```
 //
-struct ReturnStmt : public Node {
+struct ReturnStmt : Node {
   explicit ReturnStmt(frontend::SourceRange span,
                       std::vector<std::unique_ptr<Expression>> exprs = {})
       : Node(std::move(span)), exprs_(std::move(exprs)) {}
   ~ReturnStmt() override {}
-
-  base::PtrSpan<Expression> exprs() { return exprs_; }
-  base::PtrSpan<Expression const> exprs() const { return exprs_; }
-
-  ICARUS_AST_VIRTUAL_METHODS;
-
- private:
-  std::vector<std::unique_ptr<Expression>> exprs_;
-};
-
-// YieldStmt:
-// Represents a yield statement. Arbitrarily many expressions can be passed.
-//
-// Example:
-//  ```
-//  yield "hello", 42
-//  ```
-//
-struct YieldStmt : public Node {
-  explicit YieldStmt(frontend::SourceRange span,
-                     std::vector<std::unique_ptr<Expression>> exprs = {})
-      : Node(std::move(span)), exprs_(std::move(exprs)) {}
-  ~YieldStmt() override {}
 
   base::PtrSpan<Expression> exprs() { return exprs_; }
   base::PtrSpan<Expression const> exprs() const { return exprs_; }
@@ -1051,7 +1066,7 @@ struct YieldStmt : public Node {
 //    done ::= () -> () {}
 //  }
 //  ```
-struct ScopeLiteral : public ScopeExpr<ScopeLitScope> {
+struct ScopeLiteral : ScopeExpr<ScopeLitScope> {
   ScopeLiteral(frontend::SourceRange span,
                std::vector<std::unique_ptr<Declaration>> decls)
       : ScopeExpr<ScopeLitScope>(std::move(span)), decls_(std::move(decls)) {}
@@ -1085,7 +1100,7 @@ struct ScopeLiteral : public ScopeExpr<ScopeLitScope> {
 //
 //  `unwrap (maybe_object) or { return -1 }`
 //
-struct ScopeNode : public Expression {
+struct ScopeNode : Expression {
   ScopeNode(frontend::SourceRange span, std::unique_ptr<Expression> name,
             core::OrderedFnArgs<Expression> args, std::vector<BlockNode> blocks)
       : Expression(std::move(span)),
@@ -1128,22 +1143,40 @@ struct ScopeNode : public Expression {
   ScopeNode *last_scope_node_ = nullptr;
 };
 
-// TODO
-struct StructLiteral : public Expression {
-  StructLiteral()                          = default;
-  StructLiteral(StructLiteral &&) noexcept = default;
+// StructLiteral:
+//
+// Represents the definition of a user-defined structure. This consists of a
+// collection of declarations.
+//
+// Examples:
+// ```
+// struct {
+//   x: float64
+//   y: float64
+// }
+//
+// struct {}
+// ```
+struct StructLiteral : ScopeExpr<DeclScope> {
+  explicit StructLiteral(frontend::SourceRange span,
+                         std::vector<Declaration> fields)
+      : ScopeExpr<DeclScope>(std::move(span)), fields_(std::move(fields)) {}
+
   ~StructLiteral() override {}
+
+  absl::Span<Declaration const> fields() const { return fields_; }
+  absl::Span<Declaration> fields() { return absl::MakeSpan(fields_); }
 
   StructLiteral &operator=(StructLiteral &&) noexcept = default;
 
   ICARUS_AST_VIRTUAL_METHODS;
 
-  std::unique_ptr<DeclScope> type_scope;
-  std::vector<Declaration> fields_, args_;
+ private:
+  std::vector<Declaration> fields_;
 };
 
 // TODO
-struct StructType : public Expression {
+struct StructType : Expression {
   StructType(frontend::SourceRange span) : Expression(span) {}
   ~StructType() override {}
 
@@ -1155,7 +1188,7 @@ struct StructType : public Expression {
 // TODO comment
 // TODO consider separating this into two classes given that we know when we
 // parse if it has parens or not.
-struct Switch : public Expression {
+struct Switch : Expression {
   ~Switch() override {}
 
   ICARUS_AST_VIRTUAL_METHODS;
@@ -1174,7 +1207,7 @@ struct Switch : public Expression {
 //  * `!some_boolean`
 //  * `what_type_am_i:?`
 //  * `@some_ptr`
-struct Unop : public Expression {
+struct Unop : Expression {
   Unop(frontend::SourceRange span, frontend::Operator op,
        std::unique_ptr<Expression> operand)
       : Expression(span), operand_(std::move(operand)), op_(op) {}
@@ -1193,6 +1226,29 @@ struct Unop : public Expression {
  private:
   std::unique_ptr<Expression> operand_;
   frontend::Operator op_;
+};
+
+// YieldStmt:
+// Represents a yield statement. Arbitrarily many expressions can be passed.
+//
+// Example:
+//  ```
+//  yield "hello", 42
+//  ```
+//
+struct YieldStmt : Node {
+  explicit YieldStmt(frontend::SourceRange span,
+                     std::vector<std::unique_ptr<Expression>> exprs = {})
+      : Node(std::move(span)), exprs_(std::move(exprs)) {}
+  ~YieldStmt() override {}
+
+  base::PtrSpan<Expression> exprs() { return exprs_; }
+  base::PtrSpan<Expression const> exprs() const { return exprs_; }
+
+  ICARUS_AST_VIRTUAL_METHODS;
+
+ private:
+  std::vector<std::unique_ptr<Expression>> exprs_;
 };
 
 #undef ICARUS_AST_VIRTUAL_METHODS

@@ -122,8 +122,12 @@ void ExtractJumps::Visit(ast::ScopeNode const *node) {
 }
 
 void ExtractJumps::Visit(ast::StructLiteral const *node) {
-  for (auto &a : node->args_) { Visit(&a); }
-  for (auto &f : node->fields_) { Visit(&f); }
+  for (auto const &f : node->fields()) { Visit(&f); }
+}
+
+void ExtractJumps::Visit(ast::ParameterizedStructLiteral const *node) {
+  for (auto const &p : node->params()) { Visit(&p); }
+  for (auto const &f : node->fields()) { Visit(&f); }
 }
 
 void ExtractJumps::Visit(ast::StructType const *node) {
