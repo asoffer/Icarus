@@ -11,7 +11,7 @@ StackFrame::StackFrame(ir::CompiledFn *fn,
     : fn_(fn),
       current_(fn_->entry()),
       prev_(fn_->entry()),
-      regs_(fn_->num_regs()) {
+      regs_(fn_->num_regs(), fn_->num_args()) {
   // TODO this is incorrect because we no longer store these aligned.
   regs_.write(arguments);
 

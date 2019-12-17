@@ -72,7 +72,7 @@ void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDefaultInitTag) {
       auto var                 = ir::Reg::Arg(0);
 
       for (size_t i = 0; i < t->fields_.size(); ++i) {
-        Visit(t->fields_.at(i).type, builder().Field(var, t, i).get(),
+        Visit(t->fields_[i].type, builder().Field(var, t, i).get(),
               EmitDefaultInitTag{});
       }
 

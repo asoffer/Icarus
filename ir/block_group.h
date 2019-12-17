@@ -55,7 +55,8 @@ struct BlockGroup {
   void Reserve(Reg r, core::Bytes b, core::Alignment a);
   Reg Alloca(type::Type const *t);
 
-  size_t num_regs() const { return num_regs_; }
+  constexpr size_t num_regs() const { return num_regs_; }
+  constexpr size_t num_args() const { return num_args_; }
 
  private:
   core::FnParams<type::Typed<ast::Declaration const *>> params_;
@@ -63,6 +64,7 @@ struct BlockGroup {
   StackFrameAllocations allocs_;
 
   size_t num_regs_ = 0;
+  size_t num_args_ = 0;
 };
 
 std::ostream &operator<<(std::ostream &os, BlockGroup const &b);

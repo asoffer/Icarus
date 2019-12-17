@@ -469,11 +469,11 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
       field.name  = iter->read<std::string_view>();
     }
 
-    size_t index = 0;
-    ir::internal::Deserialize<uint16_t, type::Type const *>(
-        iter, [&](ir::Reg reg) {
-          fields[index++].type = ctx->resolve<type::Type const *>(reg);
-       });
+    std::vector<type::Type const *> types =
+        ir::internal::Deserialize<uint16_t, type::Type const *>(
+            iter,
+            [&](ir::Reg reg) { return ctx->resolve<type::Type const *>(reg); });
+    for (uint16_t i = 0; i < num; ++i) { fields[i].type = types[i]; }
 
     frame.regs_.set(iter->read<ir::Reg>(), new type::Struct(scope, fields));
 

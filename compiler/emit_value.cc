@@ -1441,6 +1441,7 @@ ir::Results Compiler::Visit(ast::StructLiteral const *node, EmitValueTag) {
         field.id(),
         Visit(field.type_expr(), EmitValueTag{}).get<type::Type const *>(0));
   }
+
   return ir::Results{builder().Struct(node->scope_, fields)};
 }
 

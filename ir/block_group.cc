@@ -7,7 +7,9 @@ namespace ir::internal {
 
 BlockGroup::BlockGroup(
     core::FnParams<type::Typed<ast::Declaration const *>> params)
-    : params_(std::move(params)), num_regs_(params_.size()) {
+    : params_(std::move(params)),
+      num_regs_(params_.size()),
+      num_args_(params_.size()) {
   // Ensure the existence of an entry block. The entry block marks itself as
   // incoming so it is never accidentally cleaned up.
   auto *b = AppendBlock();

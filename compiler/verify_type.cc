@@ -1284,8 +1284,6 @@ VerifyResult Compiler::Visit(ast::CommaList const *node, VerifyTypeTag) {
 }
 
 VerifyResult Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
-  // TODO swap module?
-
   // Declarations may have already been computed. Essentially the first time we
   // see an identifier (either a real identifier node, or a declaration, we need
   // to verify the type, but we only want to do node once.
@@ -1827,7 +1825,8 @@ VerifyResult Compiler::Visit(ast::StructLiteral const *node, VerifyTypeTag) {
       init_val_result = Visit(field.init_val(), VerifyTypeTag{});
     }
 
-    if (not type_expr_result or not init_val_result) {
+    if ((field.type_expr() and not type_expr_result) or
+        (field.init_val() and not init_val_result)) {
       err = true;
       continue;
     }
@@ -1848,6 +1847,7 @@ VerifyResult Compiler::Visit(ast::StructLiteral const *node, VerifyTypeTag) {
       NOT_YET("log an error, type mismatch");
     }
   }
+
   if (err) { return set_result(node, VerifyResult::Error()); }
   return set_result(node, VerifyResult::Constant(type::Type_));
 }
