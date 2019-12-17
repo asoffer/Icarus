@@ -166,7 +166,7 @@ type::Type const *FnCallDispatchTable::ComputeResultType(
     } else if (expr_data.type() == type::Generic) {
       NOT_YET("log error");
     } else {
-      NOT_YET();
+      NOT_YET(expr_data.type()->to_string());
     }
   }
 

@@ -24,7 +24,7 @@ core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
     if (auto const *fn_type = decl_type->if_as<type::Function>()) {
       return fn_type->AnonymousFnParams();
     } else {
-      NOT_YET();
+      NOT_YET(decl->DebugString());
     }
   }
 }
