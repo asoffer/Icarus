@@ -10,7 +10,7 @@ struct ExecutionContext;
 
 struct StackFrame {
   StackFrame() = delete;
-  StackFrame(ir::CompiledFn *fn, base::untyped_buffer const &arguments,
+  StackFrame(ir::CompiledFn *fn, base::untyped_buffer arguments,
              base::untyped_buffer *stack);
 
   void MoveTo(ir::BasicBlock const *block) {

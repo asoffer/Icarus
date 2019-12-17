@@ -5,16 +5,12 @@
 
 namespace interpretter {
 
-StackFrame::StackFrame(ir::CompiledFn *fn,
-                       base::untyped_buffer const &arguments,
+StackFrame::StackFrame(ir::CompiledFn *fn, base::untyped_buffer arguments,
                        base::untyped_buffer *stack)
     : fn_(fn),
       current_(fn_->entry()),
       prev_(fn_->entry()),
-      regs_(fn_->num_regs(), fn_->num_args()) {
-  // TODO this is incorrect because we no longer store these aligned.
-  regs_.write(arguments);
-
+      regs_(fn_->num_regs(), std::move(arguments)) {
   auto arch = core::Interpretter();
   fn->allocs().for_each([&](type::Type const *t, ir::Reg r) {
     ASSERT(t != nullptr);

@@ -184,6 +184,9 @@ struct untyped_buffer {
 
   template <typename T>
   void set(size_t offset, T const &t) {
+    static_assert(
+        not std::is_same_v<decltype(base::unaligned_ref(std::declval<T>())),
+                           T>);
     static_assert(std::is_trivially_copyable_v<T>);
     ASSERT(offset + sizeof(T) <= size_);
     std::memcpy(data_ + offset, &t, sizeof(T));

@@ -268,7 +268,10 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
 
     iter->read<core::Bytes>();
 
-    base::untyped_buffer call_buf;
+    // TODO you probably want interpretter::Arguments or something.
+    constexpr size_t kMaxSize = 16;
+    auto call_buf =
+        base::untyped_buffer::MakeFull(is_reg_bits.size() * kMaxSize);
     ASSERT(fn_type->input.size() == is_reg_bits.size());
     for (size_t i = 0; i < is_reg_bits.size(); ++i) {
       type::Type const *t = fn_type->input[i];
@@ -276,7 +279,7 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
         ir::Reg reg = iter->read<ir::Reg>();
         ir::PrimitiveDispatch(ir::PrimitiveIndex(t), [&](auto tag) {
           using type = typename std::decay_t<decltype(tag)>::type;
-          call_buf.append(ctx->resolve<type>(reg));
+          call_buf.set(i * kMaxSize, ctx->resolve<type>(reg));
         });
 
       } else if (t->is_big()) {
@@ -284,7 +287,8 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
       } else {
         ir::PrimitiveDispatch(ir::PrimitiveIndex(t), [&](auto tag) {
           using type = typename std::decay_t<decltype(tag)>::type;
-          call_buf.append(iter->read<type>());
+          type val   = iter->read<type>();
+          call_buf.set(i * kMaxSize, val);
         });
       }
     }
