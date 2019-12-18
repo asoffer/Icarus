@@ -6,6 +6,7 @@
 #include "base/guarded.h"
 #include "compiler/executable_module.h"
 #include "compiler/library_module.h"
+#include "diagnostic/consumer/streaming.h"
 #include "frontend/parse.h"
 #include "ir/builder.h"
 #include "ir/builtin_ir.h"
@@ -272,7 +273,8 @@ std::unique_ptr<module::BasicModule> CompileExecutableModule(
       [](base::PtrSpan<ast::Node const> nodes, CompiledModule *mod) {
         // TODO remove reinterpret_cast
         auto exec_mod = reinterpret_cast<ExecutableModule *>(mod);
-        compiler::Compiler c(mod);
+        diagnostic::StreamingConsumer consumer(stderr);
+        compiler::Compiler c(mod, consumer);
 
         // Do one pass of verification over constant declarations. Then come
         // back a second time to handle the remaining.

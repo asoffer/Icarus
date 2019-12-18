@@ -14,6 +14,9 @@ cc_lib(
 
 cc_lib(
     name = "console_renderer",
-    deps = [":diagnostic"],
+    deps = [
+        ":diagnostic",
+        "//base:util",
+    ],
     test_deps = None,
 )

@@ -37,6 +37,7 @@ cc_library(
         "//base:tag",
         "//compiler/dispatch:fn_call_table",
         "//compiler/dispatch:scope_table",
+        "//diagnostic/consumer:streaming",
         "//error:log",
         "//frontend:parse",
         "//ir:addr",
@@ -97,6 +98,7 @@ cc_library(
         "//ast:visitor",
         "//base:debug",
         "//base:move_func",
+        "//diagnostic/consumer",
         "//error:log",
         "//frontend/source",
         "//ir:addr",
@@ -116,6 +118,7 @@ cc_library(
     deps = [
         ":compiler_header",
         ":visitors",
+        "//diagnostic/consumer:streaming",
     ],
 )
 

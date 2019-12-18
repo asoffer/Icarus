@@ -13,6 +13,7 @@
 #include "compiler/data.h"
 #include "compiler/dependent_data.h"
 #include "compiler/verify_result.h"
+#include "diagnostic/consumer/consumer.h"
 #include "error/log.h"
 #include "frontend/source/source.h"
 #include "ir/addr.h"
@@ -157,7 +158,7 @@ struct Compiler
         EmitCopyAssignTag)>::Visit(t, to, from, EmitCopyAssignTag{});
   }
 
-  Compiler(module::BasicModule *mod);
+  Compiler(module::BasicModule *mod, diagnostic::DiagnosticConsumer &consumer);
 
   module::BasicModule *module() const { return data_.mod_; }
   ir::Builder &builder() { return data_.bldr_; };
@@ -309,6 +310,7 @@ struct Compiler
                     type::Typed<ir::Reg> to_var);
 
   CompilationData data_;
+  diagnostic::DiagnosticConsumer &diag_consumer_;
 };
 
 }  // namespace compiler

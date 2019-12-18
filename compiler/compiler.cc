@@ -7,6 +7,7 @@
 #include "compiler/executable_module.h"
 #include "compiler/library_module.h"
 #include "compiler/module.h"
+#include "diagnostic/consumer/streaming.h"
 #include "frontend/parse.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
@@ -20,7 +21,8 @@ std::unique_ptr<module::BasicModule> CompileLibraryModule(
     frontend::Source *src) {
   auto mod = std::make_unique<LibraryModule>(
       [](base::PtrSpan<ast::Node const> nodes, CompiledModule *mod) {
-        compiler::Compiler c(mod);
+        diagnostic::StreamingConsumer consumer(stderr);
+        compiler::Compiler c(mod, consumer);
         for (ast::Node const *node : nodes) { c.Visit(node, VerifyTypeTag{}); }
         if (c.num_errors() > 0) { return; }
 
@@ -37,7 +39,9 @@ std::unique_ptr<module::BasicModule> CompileLibraryModule(
   return mod;
 }
 
-Compiler::Compiler(module::BasicModule *mod) : data_(mod) {}
+Compiler::Compiler(module::BasicModule *mod,
+                   diagnostic::DiagnosticConsumer &consumer)
+    : data_(mod), diag_consumer_(consumer) {}
 
 VerifyResult const *Compiler::prior_verification_attempt(ast::ExprPtr expr) {
   return data_.constants_->second.result(expr);
@@ -99,14 +103,14 @@ std::pair<ConstantBinding, DependentData> *Compiler::insert_constants(
   // TODO remove this iteration
   for (auto iter = data_.dep_data_.begin(); iter != data_.dep_data_.end();
        ++iter) {
-    auto & [ key, val ] = *iter;
+    auto &[key, val] = *iter;
     if (key == constant_binding) { return &*iter; }
   }
   auto *pair =
       &data_.dep_data_.emplace_front(constant_binding, DependentData{});
   pair->second.constants_ = pair->first;
 
-  for (auto const & [ decl, binding ] : constant_binding.keys_) {
+  for (auto const &[decl, binding] : constant_binding.keys_) {
     pair->second.set_result(decl, VerifyResult::Constant(binding.type_));
   }
   return pair;

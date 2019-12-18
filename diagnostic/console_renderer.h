@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <type_traits>
 
+#include "base/util.h"
 #include "diagnostic/diagnostic.h"
 
 namespace diagnostic {
@@ -24,8 +25,10 @@ struct ConsoleRenderer {
         for (std::string const& item : component.items()) {
           std::fprintf(out_, "  * %s", item.c_str());
         }
-      } else {
+      } else if constexpr (std::is_same_v<T, SourceQuote>){
         WriteSourceQuote(component);
+      } else {
+        static_assert(base::always_false<T>());
       }
       std::fputs("\n\n", out_);
     });

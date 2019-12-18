@@ -12,6 +12,7 @@
 #include "compiler/dispatch/scope_table.h"
 #include "compiler/extract_jumps.h"
 #include "compiler/library_module.h"
+#include "diagnostic/consumer/streaming.h"
 #include "error/inference_failure_reason.h"
 #include "frontend/operators.h"
 #include "ir/compiled_fn.h"
@@ -23,6 +24,17 @@
 #include "type/typed_value.h"
 #include "type/util.h"
 
+namespace diagnostic {
+
+Diagnostic MismatchedBinaryArithmeticType(compiler::VerifyResult lhs,
+                                          compiler::VerifyResult rhs,
+                                          frontend::SourceRange const &range) {
+  return Diagnostic(Text("Mismatched types `%s` and `%s` in binary operator.",
+                         lhs.type()->to_string(), rhs.type()->to_string())
+                    /* , SourceQuote(src_).Highlighted(range, Style{})*/);
+}
+
+}  // namespace diagnostic
 namespace ir {
 
 // TODO Duplicated in emit_value.h
@@ -54,9 +66,13 @@ void AddAdl(ast::OverloadSet *overload_set, std::string_view id,
 
   for (auto const *mod : modules) {
     auto decls = mod->declarations(id);
+      diagnostic::StreamingConsumer consumer(stderr);
+
     for (auto *d : decls) {
+      // TODO Wow this is a terrible way to access the type.
       ASSIGN_OR(continue, auto &t,
-                Compiler(const_cast<module::BasicModule *>(mod)).type_of(d));
+                Compiler(const_cast<module::BasicModule *>(mod), consumer)
+                    .type_of(d));
       // TODO handle this case. I think it's safe to just discard it.
       for (auto const *expr : overload_set->members()) {
         if (d == expr) { return; }
@@ -132,7 +148,7 @@ Cmp Comparator(type::Type const *t) {
   }
 }
 
-bool VerifyAssignment(Compiler *visitor, frontend::SourceRange const &span,
+bool VerifyAssignment(Compiler *c, frontend::SourceRange const &span,
                       type::Type const *to, type::Type const *from) {
   if (to == from and to->is<type::GenericStruct>()) { return true; }
 
@@ -140,7 +156,7 @@ bool VerifyAssignment(Compiler *visitor, frontend::SourceRange const &span,
   // to/from the same type, but we really care if you can assign to a type
   // rather than copy from another, I think.
   if (not from->IsMovable()) {
-    visitor->error_log()->NotMovable(span, from->to_string());
+    c->error_log()->NotMovable(span, from->to_string());
     return false;
   }
 
@@ -149,14 +165,14 @@ bool VerifyAssignment(Compiler *visitor, frontend::SourceRange const &span,
   auto *from_tup = from->if_as<type::Tuple>();
   if (to_tup and from_tup) {
     if (to_tup->size() != from_tup->size()) {
-      visitor->error_log()->MismatchedAssignmentSize(span, to_tup->size(),
-                                                     from_tup->size());
+      c->error_log()->MismatchedAssignmentSize(span, to_tup->size(),
+                                               from_tup->size());
       return false;
     }
 
     bool result = true;
     for (size_t i = 0; i < to_tup->size(); ++i) {
-      result &= VerifyAssignment(visitor, span, to_tup->entries_.at(i),
+      result &= VerifyAssignment(c, span, to_tup->entries_.at(i),
                                  from_tup->entries_.at(i));
     }
     return result;
@@ -356,9 +372,9 @@ static InferenceFailureReason Inferrable(type::Type const *t) {
 
 // TODO there's not that much shared between the inferred and uninferred cases,
 // so probably break them out.
-VerifyResult VerifyBody(Compiler *visitor, ast::FunctionLiteral const *node) {
+VerifyResult VerifyBody(Compiler *c, ast::FunctionLiteral const *node) {
   for (auto const *stmt : node->stmts()) {
-    visitor->Visit(stmt, VerifyTypeTag{});
+    c->Visit(stmt, VerifyTypeTag{});
   }
   // TODO propogate cyclic dependencies.
 
@@ -374,7 +390,7 @@ VerifyResult VerifyBody(Compiler *visitor, ast::FunctionLiteral const *node) {
     if (auto const *ret_node = n->if_as<ast::ReturnStmt>()) {
       std::vector<type::Type const *> ret_types;
       for (auto const *expr : ret_node->exprs()) {
-        ret_types.push_back(visitor->type_of(expr));
+        ret_types.push_back(c->type_of(expr));
       }
       auto *t = Tup(std::move(ret_types));
       types.emplace(t);
@@ -388,7 +404,7 @@ VerifyResult VerifyBody(Compiler *visitor, ast::FunctionLiteral const *node) {
   input_type_vec.reserve(node->params().size());
   for (auto &param : node->params()) {
     input_type_vec.push_back(
-        ASSERT_NOT_NULL(visitor->type_of(param.value.get())));
+        ASSERT_NOT_NULL(c->type_of(param.value.get())));
   }
 
   if (not node->outputs()) {
@@ -398,10 +414,10 @@ VerifyResult VerifyBody(Compiler *visitor, ast::FunctionLiteral const *node) {
 
     if (types.size() > 1) { NOT_YET("log an error"); }
     auto f = type::Func(std::move(input_type_vec), std::move(output_type_vec));
-    return visitor->set_result(node, VerifyResult::Constant(f));
+    return c->set_result(node, VerifyResult::Constant(f));
 
   } else {
-    auto *node_type  = visitor->type_of(node);
+    auto *node_type  = c->type_of(node);
     auto const &outs = ASSERT_NOT_NULL(node_type)->as<type::Function>().output;
     switch (outs.size()) {
       case 0: {
@@ -409,7 +425,7 @@ VerifyResult VerifyBody(Compiler *visitor, ast::FunctionLiteral const *node) {
         for (auto *n : extractor.jumps(ExtractJumps::Kind::Return)) {
           if (auto *ret_node = n->if_as<ast::ReturnStmt>()) {
             if (not ret_node->exprs().empty()) {
-              visitor->error_log()->NoReturnTypes(ret_node);
+              c->error_log()->NoReturnTypes(ret_node);
               err = true;
             }
           } else {
@@ -424,7 +440,7 @@ VerifyResult VerifyBody(Compiler *visitor, ast::FunctionLiteral const *node) {
           if (auto *ret_node = n->if_as<ast::ReturnStmt>()) {
             auto *t = ASSERT_NOT_NULL(saved_ret_types.at(ret_node));
             if (t == outs[0]) { continue; }
-            visitor->error_log()->ReturnTypeMismatch(
+            c->error_log()->ReturnTypeMismatch(
                 outs[0]->to_string(), t->to_string(), ret_node->span);
             err = true;
           } else {
@@ -440,7 +456,7 @@ VerifyResult VerifyBody(Compiler *visitor, ast::FunctionLiteral const *node) {
             if (expr_type->is<type::Tuple>()) {
               auto const &tup_entries = expr_type->as<type::Tuple>().entries_;
               if (tup_entries.size() != outs.size()) {
-                visitor->error_log()->ReturningWrongNumber(
+                c->error_log()->ReturningWrongNumber(
                     ret_node->span,
                     (expr_type->is<type::Tuple>()
                          ? expr_type->as<type::Tuple>().size()
@@ -457,7 +473,7 @@ VerifyResult VerifyBody(Compiler *visitor, ast::FunctionLiteral const *node) {
                     //
                     // TODO point the span to the correct entry which may be
                     // hard if it's splatted.
-                    visitor->error_log()->IndexedReturnTypeMismatch(
+                    c->error_log()->IndexedReturnTypeMismatch(
                         outs.at(i)->to_string(), tup_entries.at(i)->to_string(),
                         ret_node->span, i);
                     err = true;
@@ -466,7 +482,7 @@ VerifyResult VerifyBody(Compiler *visitor, ast::FunctionLiteral const *node) {
                 if (err) { return VerifyResult::Error(); }
               }
             } else {
-              visitor->error_log()->ReturningWrongNumber(
+              c->error_log()->ReturningWrongNumber(
                   ret_node->span,
                   (expr_type->is<type::Tuple>()
                        ? expr_type->as<type::Tuple>().size()
@@ -484,9 +500,9 @@ VerifyResult VerifyBody(Compiler *visitor, ast::FunctionLiteral const *node) {
   }
 }
 
-void VerifyBody(Compiler *visitor, ast::Jump const *node) {
+void VerifyBody(Compiler *c, ast::Jump const *node) {
   for (auto const *stmt : node->stmts()) {
-    visitor->Visit(stmt, VerifyTypeTag{});
+    c->Visit(stmt, VerifyTypeTag{});
   }
 }
 
@@ -786,9 +802,8 @@ VerifyResult Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
       if (lhs_result.type() == rhs_result.type()) {                            \
         return set_result(node, VerifyResult((return_type), is_const));        \
       } else {                                                                 \
-        error_log()->MismatchedBinopArithmeticType(                            \
-            lhs_result.type()->to_string(), rhs_result.type()->to_string(),    \
-            node->span);                                                       \
+        diag_consumer_.Consume(diagnostic::MismatchedBinaryArithmeticType(     \
+            lhs_result, rhs_result, node->span));                              \
         return VerifyResult::Error();                                          \
       }                                                                        \
     } else {                                                                   \
@@ -931,14 +946,14 @@ std::optional<ast::OverloadSet> MakeOverloadSet(
 }
 
 template <typename EPtr, typename StrType>
-static VerifyResult VerifyCall(Compiler *visitor, ast::BuiltinFn const *b,
+static VerifyResult VerifyCall(Compiler *c, ast::BuiltinFn const *b,
                                core::FnArgs<EPtr, StrType> const &args,
                                core::FnArgs<VerifyResult> const &arg_results) {
   switch (b->value()) {
     case core::Builtin::Foreign: {
       bool err = false;
       if (not arg_results.named().empty()) {
-        visitor->error_log()->BuiltinError(b->span,
+        c->error_log()->BuiltinError(b->span,
                                            "Built-in function `foreign` cannot "
                                            "be called with named arguments.");
         err = true;
@@ -946,7 +961,7 @@ static VerifyResult VerifyCall(Compiler *visitor, ast::BuiltinFn const *b,
 
       size_t size = arg_results.size();
       if (size != 2u) {
-        visitor->error_log()->BuiltinError(
+        c->error_log()->BuiltinError(
             b->span, absl::StrCat("Built-in function `foreign` takes exactly "
                                   "two arguments (You provided ",
                                   size, ")."));
@@ -955,34 +970,34 @@ static VerifyResult VerifyCall(Compiler *visitor, ast::BuiltinFn const *b,
 
       if (not err) {
         if (arg_results.at(0).type() != type::ByteView) {
-          visitor->error_log()->BuiltinError(
+          c->error_log()->BuiltinError(
               b->span,
               absl::StrCat("First argument to `foreign` must be a byte-view "
                            "(You provided a(n) ",
                            arg_results.at(0).type()->to_string(), ")."));
         }
         if (not arg_results.at(0).constant()) {
-          visitor->error_log()->BuiltinError(
+          c->error_log()->BuiltinError(
               b->span, "First argument to `foreign` must be a constant.");
         }
         if (arg_results.at(1).type() != type::Type_) {
-          visitor->error_log()->BuiltinError(
+          c->error_log()->BuiltinError(
               b->span,
               "Second argument to `foreign` must be a type (You provided "
               "a(n) " +
                   arg_results.at(0).type()->to_string() + ").");
         }
         if (not arg_results.at(1).constant()) {
-          visitor->error_log()->BuiltinError(
+          c->error_log()->BuiltinError(
               b->span, "Second argument to `foreign` must be a constant.");
         }
       }
       return VerifyResult::Constant(backend::EvaluateAs<type::Type const *>(
-          visitor->MakeThunk(args.at(1), type::Type_)));
+          c->MakeThunk(args.at(1), type::Type_)));
     } break;
     case core::Builtin::Opaque:
       if (not arg_results.empty()) {
-        visitor->error_log()->BuiltinError(
+        c->error_log()->BuiltinError(
             b->span, "Built-in function `opaque` takes no arguments.");
       }
       return VerifyResult::Constant(ir::BuiltinType(core::Builtin::Opaque)
@@ -992,18 +1007,18 @@ static VerifyResult VerifyCall(Compiler *visitor, ast::BuiltinFn const *b,
     case core::Builtin::Bytes: {
       size_t size = arg_results.size();
       if (not arg_results.named().empty()) {
-        visitor->error_log()->BuiltinError(
+        c->error_log()->BuiltinError(
             b->span,
             "Built-in function `bytes` cannot be "
             "called with named arguments.");
       } else if (size != 1u) {
-        visitor->error_log()->BuiltinError(
+        c->error_log()->BuiltinError(
             b->span,
             "Built-in function `bytes` takes "
             "exactly one argument (You provided " +
                 std::to_string(size) + ").");
       } else if (arg_results.at(0).type() != type::Type_) {
-        visitor->error_log()->BuiltinError(
+        c->error_log()->BuiltinError(
             b->span,
             "Built-in function `bytes` must take a single argument of type "
             "`type` (You provided a(n) " +
@@ -1016,20 +1031,20 @@ static VerifyResult VerifyCall(Compiler *visitor, ast::BuiltinFn const *b,
     case core::Builtin::Alignment: {
       size_t size = arg_results.size();
       if (not arg_results.named().empty()) {
-        visitor->error_log()->BuiltinError(
+        c->error_log()->BuiltinError(
             b->span,
             "Built-in function `alignment` cannot "
             "be called with named arguments.");
       }
       if (size != 1u) {
-        visitor->error_log()->BuiltinError(
+        c->error_log()->BuiltinError(
             b->span,
             "Built-in function `alignment` takes "
             "exactly one argument (You provided " +
                 std::to_string(size) + ").");
 
       } else if (arg_results.at(0).type() != type::Type_) {
-        visitor->error_log()->BuiltinError(
+        c->error_log()->BuiltinError(
             b->span,
             "Built-in function `alignment` must take a single argument of "
             "type `type` (you provided a(n) " +

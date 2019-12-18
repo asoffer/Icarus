@@ -407,8 +407,8 @@ void Log::MismatchedBinopArithmeticType(std::string_view lhs,
                                         std::string_view rhs,
                                         frontend::SourceRange const &range) {
   renderer_.AddError(diagnostic::Diagnostic(
-      diagnostic::Text("MismatchedTypes `%s` and `%s` in binary operator.", lhs,
-                       rhs),
+      diagnostic::Text("Mismatched types `%s` and `%s` in binary operator.",
+                       lhs, rhs),
       diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 

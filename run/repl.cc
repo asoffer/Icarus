@@ -8,6 +8,7 @@
 #include "base/untyped_buffer.h"
 #include "compiler/compiler.h"
 #include "core/fn_params.h"
+#include "diagnostic/consumer/streaming.h"
 #include "frontend/parse.h"
 #include "frontend/source/repl.h"
 #include "interpretter/execute.h"
@@ -45,7 +46,8 @@ struct ReplModule : public module::ExtendedModule<ReplModule> {
   ReplModule()
       : module::ExtendedModule<ReplModule>(
             [this](base::PtrSpan<ast::Node const> nodes) {
-              compiler::Compiler compiler(this);
+              diagnostic::StreamingConsumer consumer(stderr);
+              compiler::Compiler compiler(this, consumer);
               for (ast::Node const *node : nodes) {
                 if (node->is<ast::Declaration>()) {
                   auto *decl = &node->as<ast::Declaration>();
