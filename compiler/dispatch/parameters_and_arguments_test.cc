@@ -110,7 +110,7 @@ decltype(auto) GetParams(int, internal::ExprData const &data) {
 };
 
 TEST_CASE("ParamsCoverArgs - empty arguments") {
-  auto args = core::FnArgs<VerifyResult>(/* pos = */ {}, /* named = */ {});
+  auto args = core::FnArgs<type::QualType>(/* pos = */ {}, /* named = */ {});
 
   SECTION("empty parameters") {
     absl::flat_hash_map<int, internal::ExprData> table;
@@ -138,8 +138,8 @@ TEST_CASE("ParamsCoverArgs - empty arguments") {
 }
 
 TEST_CASE("ParamsCoverArgs - one positional argument") {
-  auto args = core::FnArgs<VerifyResult>(
-      /* pos = */ {VerifyResult::NonConstant(
+  auto args = core::FnArgs<type::QualType>(
+      /* pos = */ {type::QualType::NonConstant(
           type::Var({type::Int64, type::Bool}))},
       /* named = */ {});
 
@@ -190,9 +190,9 @@ TEST_CASE("ParamsCoverArgs - one positional argument") {
 
 TEST_CASE("ParamsCoverArgs - one named argument") {
   auto const *t = type::Var({type::Int64, type::Bool});
-  auto args     = core::FnArgs<VerifyResult>(
+  auto args     = core::FnArgs<type::QualType>(
       /* pos = */ {},
-      /* named = */ {{"x", VerifyResult::NonConstant(t)}});
+      /* named = */ {{"x", type::QualType::NonConstant(t)}});
 
   SECTION("empty parameters") {
     absl::flat_hash_map<int, internal::ExprData> table;

@@ -18,7 +18,7 @@ namespace {
 
 // TODO this is independent of scope literals and therefore should be moved back
 // into verify_type.cc.
-std::vector<core::FnArgs<VerifyResult>> VerifyBlockNode(
+std::vector<core::FnArgs<type::QualType>> VerifyBlockNode(
     Compiler *compiler, ast::BlockNode const *node) {
   compiler->Visit(node, VerifyTypeTag{});
 
@@ -38,11 +38,11 @@ std::vector<core::FnArgs<VerifyResult>> VerifyBlockNode(
   //    yield true
   //  }
   //  ```
-  std::vector<core::FnArgs<VerifyResult>> result;
+  std::vector<core::FnArgs<type::QualType>> result;
   for (auto *yield : yields) {
     auto &back = result.emplace_back();
     // TODO actually fill a fnargs
-    std::vector<std::pair<ast::Expression const *, VerifyResult>>
+    std::vector<std::pair<ast::Expression const *, type::QualType>>
         local_pos_yields;
     for (auto *yield_expr : yields[0]->as<ast::YieldStmt>().exprs()) {
       back.pos_emplace(
@@ -153,7 +153,7 @@ void EmitRuntimeDispatch(
 base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
     Compiler *compiler, ast::ScopeNode const *node,
     absl::flat_hash_map<ir::Jump const *, ir::ScopeDef const *> inits,
-    core::FnArgs<VerifyResult> const &args) {
+    core::FnArgs<type::QualType> const &args) {
   absl::flat_hash_map<ir::ScopeDef const *,
                       absl::flat_hash_map<ir::Jump const *, FailedMatch>>
       failures;

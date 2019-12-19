@@ -9,6 +9,7 @@
 #include "ast/expression.h"
 #include "ast/overload_set.h"
 #include "base/ptr_span.h"
+#include "diagnostic/consumer/streaming.h"
 #include "frontend/source/range.h"
 #include "module/module.h"
 #include "test/util.h"
@@ -23,7 +24,10 @@ struct TestModule : module::ExtendedModule<TestModule> {
                 compiler.Visit(node, compiler::VerifyTypeTag{});
               }
             }),
-        compiler(this) {}
+        consumer(stderr),
+        compiler(this, consumer) {}
+
+  diagnostic::StreamingConsumer consumer;
   compiler::Compiler compiler;
 };
 

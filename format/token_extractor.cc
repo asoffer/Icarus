@@ -126,9 +126,14 @@ void TokenExtractor::Visit(ast::ScopeNode const *node) {
 }
 
 void TokenExtractor::Visit(ast::StructLiteral const *node) {
-  for (auto &a : node->args_) { Visit(&a); }
-  for (auto &f : node->fields_) { Visit(&f); }
+  for (auto &f : node->fields()) { Visit(&f); }
 }
+
+void TokenExtractor::Visit(ast::ParameterizedStructLiteral const *node) {
+  for (auto &a : node->params()) { Visit(&a); }
+  for (auto &f : node->fields()) { Visit(&f); }
+}
+
 
 void TokenExtractor::Visit(ast::StructType const *node) {
   for (auto &arg : node->args_) { Visit(arg.get()); }

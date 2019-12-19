@@ -94,9 +94,9 @@ ir::Results PrepareOneArg(ir::Builder &bldr,
 // the possibilities. Doing this the right way involves having sum and product
 // iterators.
 std::vector<core::FnArgs<type::Type const *>> ExpandedFnArgs(
-    core::FnArgs<VerifyResult> const &fnargs) {
+    core::FnArgs<type::QualType> const &fnargs) {
   std::vector<core::FnArgs<type::Type const *>> all_expanded_options(1);
-  fnargs.ApplyWithIndex([&](auto &&index, compiler::VerifyResult r) {
+  fnargs.ApplyWithIndex([&](auto &&index, type::QualType r) {
     // TODO also maybe need the expression this came from to see if it needs
     // to be expanded.
     AddType(index, r.type(), &all_expanded_options);

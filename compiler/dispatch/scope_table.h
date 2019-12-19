@@ -9,7 +9,7 @@
 #include "compiler/dispatch/jump_table.h"
 #include "compiler/dispatch/match.h"
 #include "compiler/dispatch/overload.h"
-#include "compiler/verify_result.h"
+#include "type/qual_type.h"
 #include "core/fn_args.h"
 #include "core/fn_params.h"
 #include "ir/jump.h"
@@ -33,7 +33,7 @@ struct ScopeDispatchTable {
   static base::expected<ScopeDispatchTable> Verify(
       Compiler *compiler, ast::ScopeNode const *node,
       absl::flat_hash_map<ir::Jump const *, ir::ScopeDef const *> inits,
-      core::FnArgs<VerifyResult> const &args);
+      core::FnArgs<type::QualType> const &args);
 
   ir::Results EmitCall(
       Compiler *compiler,

@@ -116,7 +116,7 @@ void EmitRuntimeDispatch(
 
 base::expected<FnCallDispatchTable> FnCallDispatchTable::Verify(
     Compiler *compiler, ast::OverloadSet const &os,
-    core::FnArgs<VerifyResult> const &args) {
+    core::FnArgs<type::QualType> const &args) {
   DEBUG_LOG("dispatch-verify")
   ("Verifying overload set with ", os.members().size(), " members.");
 

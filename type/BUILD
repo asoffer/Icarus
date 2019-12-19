@@ -168,6 +168,22 @@ cc_lib(
     test_deps = None,
 )
 
+cc_library(
+    name = "qual_type",
+    hdrs = ["qual_type.h"],
+    deps = [":type"],
+)
+
+cc_test(
+    name = "qual_type_test",
+    srcs = ["qual_type_test.cc"],
+    deps = [
+        ":primitive",
+        ":qual_type",
+        "//test",
+    ],
+)
+
 cc_lib(
     name = "struct",
     deps = [

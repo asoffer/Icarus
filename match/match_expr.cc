@@ -86,6 +86,9 @@ void Match::Visit(ast::ScopeNode const *node, MatchState *state) {}
 
 void Match::Visit(ast::StructLiteral const *node, MatchState *state) {}
 
+void Match::Visit(ast::ParameterizedStructLiteral const *node,
+                  MatchState *state) {}
+
 void Match::Visit(ast::StructType const *node, MatchState *state) {}
 
 void Match::Visit(ast::Switch const *node, MatchState *state) {}

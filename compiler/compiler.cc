@@ -43,7 +43,7 @@ Compiler::Compiler(module::BasicModule *mod,
                    diagnostic::DiagnosticConsumer &consumer)
     : data_(mod), diag_consumer_(consumer) {}
 
-VerifyResult const *Compiler::prior_verification_attempt(ast::ExprPtr expr) {
+type::QualType const *Compiler::prior_verification_attempt(ast::ExprPtr expr) {
   return data_.constants_->second.result(expr);
 }
 
@@ -78,7 +78,7 @@ type::Type const *Compiler::type_of(ast::Expression const *expr) const {
 void Compiler::set_addr(ast::Declaration const *decl, ir::Reg addr) {
   data_.constants_->second.addr_[decl] = addr;
 }
-VerifyResult Compiler::set_result(ast::ExprPtr expr, VerifyResult r) {
+type::QualType Compiler::set_result(ast::ExprPtr expr, type::QualType r) {
   return data_.constants_->second.set_result(expr, r);
 }
 
@@ -111,7 +111,7 @@ std::pair<ConstantBinding, DependentData> *Compiler::insert_constants(
   pair->second.constants_ = pair->first;
 
   for (auto const &[decl, binding] : constant_binding.keys_) {
-    pair->second.set_result(decl, VerifyResult::Constant(binding.type_));
+    pair->second.set_result(decl, type::QualType::Constant(binding.type_));
   }
   return pair;
 }

@@ -3,7 +3,7 @@
 
 #include "ast/ast_fwd.h"
 #include "base/expected.h"
-#include "compiler/verify_result.h"
+#include "type/qual_type.h"
 #include "core/fn_args.h"
 #include "core/fn_params.h"
 #include "type/typed_value.h"
@@ -16,7 +16,7 @@ base::expected<core::FnParams<type::Typed<ast::Declaration const *>>,
                FailedMatch>
 MatchArgsToParams(
     core::FnParams<type::Typed<ast::Declaration const *>> const &params,
-    core::FnArgs<compiler::VerifyResult> const &args);
+    core::FnArgs<type::QualType> const &args);
 
 }  // namespace compiler
 

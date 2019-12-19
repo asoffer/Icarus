@@ -6,7 +6,7 @@
 #include "ast/ast.h"
 #include "base/expected.h"
 #include "compiler/dispatch/overload.h"
-#include "compiler/verify_result.h"
+#include "type/qual_type.h"
 #include "core/fn_args.h"
 #include "ir/jump.h"
 
@@ -17,7 +17,7 @@ struct JumpDispatchTable {
   static base::expected<JumpDispatchTable> Verify(
       Compiler *compiler, ast::ScopeNode const *node,
       absl::Span<ir::Jump const *const> jumps,
-      core::FnArgs<VerifyResult> const &args);
+      core::FnArgs<type::QualType> const &args);
 
  private:
   absl::flat_hash_map<ir::Jump const *, internal::ExprData> table_;

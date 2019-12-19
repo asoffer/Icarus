@@ -14,10 +14,10 @@
 namespace compiler {
 
 std::vector<core::FnArgs<type::Type const *>> ExpandedFnArgs(
-    core::FnArgs<VerifyResult> const &fnargs);
+    core::FnArgs<type::QualType> const &fnargs);
 
 template <typename TableType, typename ParamAccessor>
-bool ParamsCoverArgs(core::FnArgs<VerifyResult> const &args,
+bool ParamsCoverArgs(core::FnArgs<type::QualType> const &args,
                      TableType const &table, ParamAccessor &&get_params) {
   DEBUG_LOG("ParamsCoverArgs")("Unexpanded args: ", args.to_string());
 

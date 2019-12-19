@@ -9,7 +9,7 @@ namespace {
 
 std::optional<FailedMatch> MatchPositionalArgsToParams(
     core::FnParams<type::Typed<ast::Declaration const *>> const &params,
-    core::FnArgs<compiler::VerifyResult> const &args,
+    core::FnArgs<type::QualType> const &args,
     core::FnParams<type::Typed<ast::Declaration const *>> *matched_params) {
   if (args.size() > params.size()) { return FailedMatch{}; }
   for (size_t i = 0; i < args.pos().size(); ++i) {
@@ -24,7 +24,7 @@ std::optional<FailedMatch> MatchPositionalArgsToParams(
 
 std::optional<FailedMatch> MatchNamedArgsToParams(
     core::FnParams<type::Typed<ast::Declaration const *>> const &params,
-    core::FnArgs<compiler::VerifyResult> const &args,
+    core::FnArgs<type::QualType> const &args,
     core::FnParams<type::Typed<ast::Declaration const *>> *matched_params) {
   for (size_t i = args.pos().size(); i < params.size(); ++i) {
     auto const &param = params.at(i);
@@ -57,7 +57,7 @@ base::expected<core::FnParams<type::Typed<ast::Declaration const *>>,
                FailedMatch>
 MatchArgsToParams(
     core::FnParams<type::Typed<ast::Declaration const *>> const &params,
-    core::FnArgs<compiler::VerifyResult> const &args) {
+    core::FnArgs<type::QualType> const &args) {
   if (args.size() > params.size()) { FailedMatch{}; }
 
   core::FnParams<type::Typed<ast::Declaration const *>> matched_params;

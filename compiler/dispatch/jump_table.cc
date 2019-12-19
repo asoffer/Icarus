@@ -8,7 +8,7 @@ namespace compiler {
 base::expected<JumpDispatchTable> JumpDispatchTable::Verify(
     Compiler *compiler, ast::ScopeNode const *node,
     absl::Span<ir::Jump const *const> jumps,
-    core::FnArgs<VerifyResult> const &args) {
+    core::FnArgs<type::QualType> const &args) {
   DEBUG_LOG("dispatch-verify")
   ("Verifying overload set with ", jumps.size(), " members.");
 

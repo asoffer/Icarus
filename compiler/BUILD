@@ -25,7 +25,6 @@ cc_library(
         ":extract_jumps",
         ":module",
         ":special_function",
-        ":verify_result",
         "//ast:ast",
         "//ast:overload_set",
         "//ast:visitor",
@@ -69,6 +68,7 @@ cc_library(
         "//type:jump",
         "//type:parameter_pack",
         "//type:pointer",
+        "//type:qual_type",
         "//type:struct",
         "//type:type",
         "//type:type_fwd",
@@ -92,7 +92,6 @@ cc_library(
         ":dependent_data",
         ":executable_module",
         ":library_module",
-        ":verify_result",
         "//ast:ast_fwd",
         "//ast:overload_set",
         "//ast:visitor",
@@ -107,6 +106,7 @@ cc_library(
         "//ir:results",
         "//module",
         "//type:type_fwd",
+        "//type:qual_type",
         "//type:visitor",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
@@ -185,11 +185,11 @@ cc_lib(
 cc_lib(
     name = "dependent_data",
     deps = [
-        ":verify_result",
         "//ast:ast_fwd",
         "//ast:expr_ptr",
         "//module:pending",
         "//ir:scope_def",
+        "//type:qual_type",
     ],
     header_only = True,
     test_deps = None,
@@ -228,7 +228,9 @@ cc_library(
 
 cc_lib(
     name = "verify_result",
-    deps = [],
+    deps = [
+        "//type:qual_type",
+    ],
     header_only = True,
     test_deps = None,
 )

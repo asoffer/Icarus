@@ -46,7 +46,7 @@ static type::Type const *BuiltinType(core::Builtin b) {
 namespace compiler {
 using ::matcher::InheritsFrom;
 
-VerifyResult VerifyBody(Compiler *compiler, ast::FunctionLiteral const *node);
+type::QualType VerifyBody(Compiler *compiler, ast::FunctionLiteral const *node);
 void VerifyBody(Compiler *compiler, ast::Jump const *node);
 
 namespace {

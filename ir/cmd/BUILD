@@ -163,14 +163,14 @@ CMDS = [
     ":types",
 ]
 
-cc_lib(
-    name = "execute",
-    deps = [
-        "//backend:exec",
-        "//base:untyped_buffer",
-        "//compiler:compiler",
-        "//ir:addr",
-    ] + CMDS,
-    header_only = True,
-    test_deps = None,
-)
+# cc_lib(
+#     name = "execute",
+#     deps = [
+#         "//backend:exec",
+#         "//base:untyped_buffer",
+#         "//compiler:compiler",
+#         "//ir:addr",
+#     ] + CMDS,
+#     header_only = True,
+#     test_deps = None,
+# )

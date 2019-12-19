@@ -7,7 +7,7 @@
 #include "ast/overload_set.h"
 #include "base/expected.h"
 #include "compiler/dispatch/overload.h"
-#include "compiler/verify_result.h"
+#include "type/qual_type.h"
 #include "core/fn_args.h"
 #include "core/fn_params.h"
 #include "type/type.h"
@@ -22,7 +22,7 @@ struct Compiler;  // TODO move into it's own header.
 struct FnCallDispatchTable {
   static base::expected<FnCallDispatchTable> Verify(
       Compiler *compiler, ast::OverloadSet const &os,
-      core::FnArgs<VerifyResult> const &args);
+      core::FnArgs<type::QualType> const &args);
 
   type::Type const *result_type() const { return result_type_; }
 

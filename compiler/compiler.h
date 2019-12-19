@@ -12,7 +12,7 @@
 #include "compiler/constant_binding.h"
 #include "compiler/data.h"
 #include "compiler/dependent_data.h"
-#include "compiler/verify_result.h"
+#include "type/qual_type.h"
 #include "diagnostic/consumer/consumer.h"
 #include "error/log.h"
 #include "frontend/source/source.h"
@@ -48,12 +48,12 @@ struct DispatchTable {
   }
 };
 
-inline compiler::VerifyResult VerifyJumpDispatch(
+inline type::QualType VerifyJumpDispatch(
     void *visitor, ExprPtr expr, absl::Span<ir::Jump const *const> overload_set,
-    core::FnArgs<std::pair<Expression const *, compiler::VerifyResult>> const
+    core::FnArgs<std::pair<Expression const *, type::QualType>> const
         &args,
     std::vector<ir::BlockDef const *> *block_defs) {
-  return compiler::VerifyResult::Error();
+  return type::QualType::Error();
 }
 
 }  // namespace ast
@@ -93,7 +93,7 @@ std::unique_ptr<module::BasicModule> CompileLibraryModule(
 // water.
 
 struct Compiler
-    : ast::Visitor<VerifyResult(VerifyTypeTag), ir::Results(EmitValueTag),
+    : ast::Visitor<type::QualType(VerifyTypeTag), ir::Results(EmitValueTag),
                    void(type::Typed<ir::Reg> reg, EmitMoveInitTag),
                    void(type::Typed<ir::Reg> reg, EmitCopyInitTag),
                    std::vector<ir::RegOr<ir::Addr>>(EmitRefTag)>,
@@ -104,8 +104,8 @@ struct Compiler
                          EmitMoveAssignTag),
                     void(ir::RegOr<ir::Addr>, type::Typed<ir::Results> const &,
                          EmitCopyAssignTag)> {
-  VerifyResult Visit(ast::Node const *node, VerifyTypeTag) {
-    return ast::SingleVisitor<VerifyResult(VerifyTypeTag)>::Visit(
+  type::QualType Visit(ast::Node const *node, VerifyTypeTag) {
+    return ast::SingleVisitor<type::QualType(VerifyTypeTag)>::Visit(
         node, VerifyTypeTag{});
   }
 
@@ -171,11 +171,11 @@ struct Compiler
   size_t num_errors() { return error_log()->size(); }
   void DumpErrors() { error_log()->Dump(); }
 
-  VerifyResult const *prior_verification_attempt(ast::ExprPtr expr);
+  type::QualType const *prior_verification_attempt(ast::ExprPtr expr);
   type::Type const *type_of(ast::Expression const *expr) const;
   void set_addr(ast::Declaration const *decl, ir::Reg addr);
-  compiler::VerifyResult set_result(ast::ExprPtr expr,
-                                    compiler::VerifyResult r);
+  type::QualType set_result(ast::ExprPtr expr,
+                                    type::QualType r);
 
   ir::Reg addr(ast::Declaration const *decl) const;
   void set_dispatch_table(ast::ExprPtr expr, ast::DispatchTable &&table);
@@ -217,11 +217,11 @@ struct Compiler
 #undef ICARUS_AST_NODE_X
 
 #define ICARUS_AST_NODE_X(name)                                                \
-  VerifyResult Visit(ast::name const *node, VerifyTypeTag);
+  type::QualType Visit(ast::name const *node, VerifyTypeTag);
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
 
-  VerifyResult VerifyConcreteFnLit(ast::FunctionLiteral const *node);
+  type::QualType VerifyConcreteFnLit(ast::FunctionLiteral const *node);
 
   std::vector<ir::RegOr<ir::Addr>> Visit(ast::Access const *node, EmitRefTag);
   std::vector<ir::RegOr<ir::Addr>> Visit(ast::CommaList const *node,

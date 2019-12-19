@@ -6,7 +6,7 @@
 #include "ast/ast_fwd.h"
 #include "ast/expr_ptr.h"
 #include "compiler/constant_binding.h"
-#include "compiler/verify_result.h"
+#include "type/qual_type.h"
 #include "ir/scope_def.h"
 #include "module/pending.h"
 
@@ -36,18 +36,18 @@ struct DependentData {
   absl::flat_hash_map<ast::Import const *, module::PendingModule>
       imported_module_;
 
-  VerifyResult const *result(ast::ExprPtr expr) const {
+  type::QualType const *result(ast::ExprPtr expr) const {
     auto iter = type_verification_results_.find(expr);
     return iter == type_verification_results_.end() ? nullptr : &iter->second;
   }
 
-  VerifyResult set_result(ast::ExprPtr expr, VerifyResult r) {
+  type::QualType set_result(ast::ExprPtr expr, type::QualType r) {
     type_verification_results_.emplace(expr, r);
     return r;
   }
 
  private:
-  absl::flat_hash_map<ast::ExprPtr, VerifyResult> type_verification_results_;
+  absl::flat_hash_map<ast::ExprPtr, type::QualType> type_verification_results_;
 };
 }  // namespace compiler
 
