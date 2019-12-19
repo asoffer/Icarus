@@ -2,7 +2,7 @@
 
 #include "absl/strings/str_cat.h"
 #include "ast/ast.h"
-#include "diagnostic/diagnostic.h"
+#include "diagnostic/message.h"
 #include "frontend/source/range.h"
 #include "frontend/source/source.h"
 
@@ -13,7 +13,7 @@ void Log::UndeclaredIdentifier(ast::Identifier const *id) {
 
 void Log::PostconditionNeedsBool(frontend::SourceRange const &range,
                                  std::string_view type) {
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text("Function postcondition must be of type bool, but you "
                        "provided an expression of type `%s`."),
       diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
@@ -21,7 +21,7 @@ void Log::PostconditionNeedsBool(frontend::SourceRange const &range,
 
 void Log::PreconditionNeedsBool(frontend::SourceRange const &range,
                                 std::string_view type) {
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text(
           "Function precondition must be of type bool, but you provided an "
           "expression of type %s.",
@@ -31,7 +31,7 @@ void Log::PreconditionNeedsBool(frontend::SourceRange const &range,
 
 #define MAKE_LOG_ERROR(fn_name, msg)                                           \
   void Log::fn_name(frontend::SourceRange const &range) {                      \
-    renderer_.AddError(diagnostic::Diagnostic(                                 \
+    renderer_.AddError(diagnostic::DiagnosticMessage(                                 \
         diagnostic::Text(msg), diagnostic::SourceQuote(src_).Highlighted(      \
                                    range, diagnostic::Style{})));              \
   }
@@ -39,20 +39,20 @@ void Log::PreconditionNeedsBool(frontend::SourceRange const &range,
 #undef MAKE_LOG_ERROR
 
 void Log::StatementsFollowingJump(frontend::SourceRange const &range) {
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text(
           "Statements cannot follow a `return` or `yield` statement."),
       diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
 void Log::RunawayMultilineComment() {
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text("Finished reading file during multi-line comment.")));
 }
 
 void Log::DoubleDeclAssignment(frontend::SourceRange const &decl_range,
                                frontend::SourceRange const &val_range) {
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text(
           "Attempting to initialize an identifier that already has an initial "
           "value. Did you mean `==` instead of `=`?"),
@@ -63,7 +63,7 @@ void Log::DoubleDeclAssignment(frontend::SourceRange const &decl_range,
 
 void Log::DeclarationUsedInUnop(std::string const &unop,
                                 frontend::SourceRange const &decl_range) {
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text(
           "Declarations cannot be used as argument to unary operator `%s`.",
           unop),
@@ -73,7 +73,7 @@ void Log::DeclarationUsedInUnop(std::string const &unop,
 
 void Log::MissingMember(frontend::SourceRange const &range,
                         std::string_view member_name, std::string_view type) {
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text("Expressions of type `%s` have no member named `%s`.",
                        type, member_name),
       diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
@@ -82,7 +82,7 @@ void Log::MissingMember(frontend::SourceRange const &range,
 void Log::NonExportedMember(frontend::SourceRange const &range,
                             std::string_view member_name,
                             std::string_view type) {
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text(
           "Expressions of type `%s` do not export the member `%s`.", type,
           member_name),
@@ -93,7 +93,7 @@ void Log::ReturnTypeMismatch(std::string_view expected_type,
                              std::string_view actual_type,
                              frontend::SourceRange const &range) {
   // TODO also show where the return type is specified?
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text("Returning an expression of type `%s` from a function "
                        "which returns `%s`.",
                        actual_type, expected_type),
@@ -102,7 +102,7 @@ void Log::ReturnTypeMismatch(std::string_view expected_type,
 
 void Log::NoReturnTypes(ast::ReturnStmt const *ret_expr) {
   // TODO allow "return foo(...)" when foo: ??? -> ().
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text(
           "Attempting to return a value when function returns nothing."),
       diagnostic::SourceQuote(src_).Highlighted(ret_expr->span,
@@ -111,7 +111,7 @@ void Log::NoReturnTypes(ast::ReturnStmt const *ret_expr) {
 
 void Log::ReturningWrongNumber(frontend::SourceRange const &range,
                                size_t actual, size_t expected) {
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text("Attempting to return %u values from a function which "
                        "has %u return values."),
       diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
@@ -121,7 +121,7 @@ void Log::IndexedReturnTypeMismatch(std::string_view expected_type,
                                     std::string_view actual_type,
                                     frontend::SourceRange const &range,
                                     size_t index) {
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text("Returning an expression in slot #%u (zero-indexed) of "
                        "type `%s` but function expects a value of type `%s` in "
                        "that slot.",
@@ -131,7 +131,7 @@ void Log::IndexedReturnTypeMismatch(std::string_view expected_type,
 
 void Log::DereferencingNonPointer(std::string_view type,
                                   frontend::SourceRange const &range) {
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text("Attempting to dereference an object of type `%s` which "
                        "is not a pointer",
                        type),
@@ -140,7 +140,7 @@ void Log::DereferencingNonPointer(std::string_view type,
 
 void Log::WhichNonVariant(std::string_view type,
                           frontend::SourceRange const &range) {
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text("Attempting to call `which` an object of type `%s` "
                        "which is not a variant.",
                        type),
@@ -149,20 +149,20 @@ void Log::WhichNonVariant(std::string_view type,
 
 void Log::Reserved(frontend::SourceRange const &range,
                    std::string const &token) {
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text("Identifier `%s` is a reserved keyword.", token),
       diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
 void Log::NotBinary(frontend::SourceRange const &range,
                     std::string const &token) {
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text("Operator `%s` is not a binary operator.", token),
       diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
 void Log::NotAType(frontend::SourceRange const &range, std::string_view type) {
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text(
           "Expression was expected to be a type, but instead was of type `%s`.",
           type),
@@ -178,7 +178,7 @@ void Log::PositionalArgumentFollowingNamed(
     quote.Highlighted(pos_range, diagnostic::Style{});
   }
 
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text(
           "Positional function arguments cannot follow a named argument."),
       quote));
@@ -192,7 +192,7 @@ void Log::UnknownParseError(std::vector<frontend::SourceRange> const &lines) {
     quote.Highlighted(range, diagnostic::Style{});
   }
 
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text(
           "Parse errors found in \"<SOME FILE>\" on the following lines:"),
       quote));
@@ -205,7 +205,7 @@ void Log::CyclicDependency(std::vector<ast::Identifier const *> cyc_deps) {
 void Log::ShadowingDeclaration(frontend::SourceRange const &span1,
                                frontend::SourceRange const &span2) {
   renderer_.AddError(
-      diagnostic::Diagnostic(diagnostic::Text("Ambiguous declarations:"),
+      diagnostic::DiagnosticMessage(diagnostic::Text("Ambiguous declarations:"),
                              diagnostic::SourceQuote(src_)
                                  .Line(span1.begin().line_num)
                                  .Line(span2.begin().line_num)));
@@ -225,7 +225,7 @@ void Log::Dump() {
           .Highlighted(id->span, diagnostic::Style{});
     }
 
-    renderer_.AddError(diagnostic::Diagnostic(
+    renderer_.AddError(diagnostic::DiagnosticMessage(
         diagnostic::Text("Found a cyclic dependency:"), quote));
   }
 
@@ -235,7 +235,7 @@ void Log::Dump() {
       quote.Highlighted(id->span, diagnostic::Style{});
     }
 
-    renderer_.AddError(diagnostic::Diagnostic(
+    renderer_.AddError(diagnostic::DiagnosticMessage(
         diagnostic::Text("Variable `%s` is used before it is defined (which is "
                          "only allowed for constants).",
                          decl->id()),
@@ -248,7 +248,7 @@ void Log::Dump() {
       quote.Highlighted(id->span, diagnostic::Style{});
     }
 
-    renderer_.AddError(diagnostic::Diagnostic(
+    renderer_.AddError(diagnostic::DiagnosticMessage(
         diagnostic::Text("Use of undeclared identifier `%s`:", token), quote));
   }
 }
@@ -260,7 +260,7 @@ void Log::DeclOutOfOrder(ast::Declaration const *decl,
 
 void Log::InvalidIndexing(frontend::SourceRange const &range,
                           std::string_view type) {
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text("Cannot index into a non-array, non-buffer type. "
                        "Indexed type is a `%s`.",
                        type),
@@ -269,7 +269,7 @@ void Log::InvalidIndexing(frontend::SourceRange const &range,
 
 void Log::InvalidIndexType(frontend::SourceRange const &range,
                            std::string_view type, std::string_view index_type) {
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text(
           "Attempting to index a value of type `%s` with a non-integral index. "
           "Indices must be integers, but you provided an index of type `%s`.",
@@ -279,14 +279,14 @@ void Log::InvalidIndexType(frontend::SourceRange const &range,
 
 void Log::TypeMustBeInitialized(frontend::SourceRange const &range,
                                 std::string_view type) {
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text("There is no default value for the type `%s`.", type),
       diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
 void Log::ComparingIncomparables(std::string_view lhs, std::string_view rhs,
                                  frontend::SourceRange const &range) {
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text("Values of type `%s` and `%s` are being compared but no "
                        "such comparison is allowed:",
                        lhs, rhs),
@@ -295,7 +295,7 @@ void Log::ComparingIncomparables(std::string_view lhs, std::string_view rhs,
 
 void Log::MismatchedAssignmentSize(frontend::SourceRange const &range,
                                    size_t lhs, size_t rhs) {
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text("Assigning multiple values but left- and right-hand "
                        "side have different numbers of elements  (`%d` vs. "
                        "`%d`).",
@@ -305,7 +305,7 @@ void Log::MismatchedAssignmentSize(frontend::SourceRange const &range,
 
 void Log::InvalidNumber(frontend::SourceRange const &range,
                         std::string_view err) {
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text("%s.", err),
       diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
@@ -321,7 +321,7 @@ void Log::NoCallMatch(frontend::SourceRange const &range,
     reasons.push_back(reason);
   }
 
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text("Failed to find a matching function signature to call."),
       diagnostic::List(reasons),
       quote.Highlighted(range, diagnostic::Style{})));
@@ -337,7 +337,7 @@ void Log::MissingDispatchContingency(
                                    fnargs.to_string(), ")"));
   }
 
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text("Failed to find a valid function to call for all "
                        "required dispatches."),
       diagnostic::List(std::move(reasons)),
@@ -346,14 +346,14 @@ void Log::MissingDispatchContingency(
 
 void Log::NotCopyable(frontend::SourceRange const &range,
                       std::string_view from) {
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text("Attempting to copy an uncopyable type `%s`.", from),
       diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
 void Log::NotMovable(frontend::SourceRange const &range,
                      std::string_view from) {
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text("Attempting to copy an immovable type `%s`.", from),
       diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
@@ -361,7 +361,7 @@ void Log::NotMovable(frontend::SourceRange const &range,
 void Log::IndexingTupleOutOfBounds(frontend::SourceRange const &range,
                                    std::string_view tup, size_t tup_size,
                                    size_t index) {
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text("Tuple is indexed out of bounds. Tuple of type `%s` has "
                        "size %u but you are attempting to access position %u.",
                        tup, tup_size, index),
@@ -370,7 +370,7 @@ void Log::IndexingTupleOutOfBounds(frontend::SourceRange const &range,
 
 void Log::MissingModule(std::filesystem::path const &src,
                         std::filesystem::path const &requestor) {
-  renderer_.AddError(diagnostic::Diagnostic(diagnostic::Text(
+  renderer_.AddError(diagnostic::DiagnosticMessage(diagnostic::Text(
       "Could not find module named \"%s\" requested from %s", src.string(),
       requestor.empty() ? "command line"
                         : absl::StrCat("\"", requestor.string(), "\"."))));
@@ -398,30 +398,21 @@ void Log::UninferrableType(InferenceFailureReason reason,
       break;
   }
 
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text(text),
-      diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
-}
-
-void Log::MismatchedBinopArithmeticType(std::string_view lhs,
-                                        std::string_view rhs,
-                                        frontend::SourceRange const &range) {
-  renderer_.AddError(diagnostic::Diagnostic(
-      diagnostic::Text("Mismatched types `%s` and `%s` in binary operator.",
-                       lhs, rhs),
       diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
 void Log::InvalidCast(std::string_view from, std::string_view to,
                       frontend::SourceRange const &range) {
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text("No viable cast from `%s` to `%s`.", from, to),
       diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
 void Log::PrintMustReturnVoid(std::string_view type,
                               frontend::SourceRange const &range) {
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text(
           "`print` must return void, but evaluates to an object of type `%s`.",
           type),
@@ -430,7 +421,7 @@ void Log::PrintMustReturnVoid(std::string_view type,
 
 void Log::SwitchConditionNeedsBool(std::string_view type,
                                    frontend::SourceRange const &range) {
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text("Expressionless switch conditions must evaluate to a "
                        "`bool`, but you provided a `%s`.",
                        type),
@@ -438,7 +429,7 @@ void Log::SwitchConditionNeedsBool(std::string_view type,
 }
 
 void Log::BuiltinError(frontend::SourceRange const &range, std::string text) {
-  renderer_.AddError(diagnostic::Diagnostic(
+  renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text(std::move(text)),
       diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }

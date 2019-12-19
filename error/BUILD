@@ -17,7 +17,7 @@ cc_lib(
         "//core:fn_args",
         "//base:debug",
         "//diagnostic:console_renderer",
-        "//diagnostic:diagnostic",
+        "//diagnostic:message",
         "//frontend/source:range",
         "//frontend/source:source",
         "@com_google_absl//absl/container:flat_hash_map",

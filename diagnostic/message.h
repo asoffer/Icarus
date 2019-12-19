@@ -1,5 +1,5 @@
-#ifndef ICARUS_DIAGNOSTIC_DIAGNOSTIC_H
-#define ICARUS_DIAGNOSTIC_DIAGNOSTIC_H
+#ifndef ICARUS_DIAGNOSTIC_MESSAGE_H
+#define ICARUS_DIAGNOSTIC_MESSAGE_H
 
 #include <string>
 #include <variant>
@@ -22,8 +22,8 @@ struct Highlight {
 };
 
 struct SourceQuote {
-  SourceQuote() = delete;
-  SourceQuote(frontend::Source* source) : source(source) {}
+  explicit SourceQuote() {}
+  explicit SourceQuote(frontend::Source*) {}
 
   // TODO implement for real.
   SourceQuote& Highlighted(frontend::SourceRange range, Style style) {
@@ -39,7 +39,7 @@ struct SourceQuote {
     return *this;
   }
 
-  frontend::Source* source;
+  frontend::Source* source = nullptr;
   base::IntervalSet<frontend::LineNum> lines;
   std::vector<Highlight> highlights;
 };
@@ -64,13 +64,13 @@ struct List {
   std::vector<std::string> items_;
 };
 
-struct Diagnostic {
+struct DiagnosticMessage {
  private:
   using Component = std::variant<SourceQuote, Text, List>;
 
  public:
   template <typename... Ts>
-  Diagnostic(Ts&&... ts) {
+  DiagnosticMessage(Ts&&... ts) {
     components_.reserve(sizeof...(Ts));
     (components_.emplace_back(std::forward<Ts>(ts)), ...);
   }
@@ -86,4 +86,4 @@ struct Diagnostic {
 
 }  // namespace diagnostic
 
-#endif  // ICARUS_DIAGNOSTIC_DIAGNOSTIC_H
+#endif  // ICARUS_DIAGNOSTIC_MESSAGE_H

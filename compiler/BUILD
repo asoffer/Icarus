@@ -36,6 +36,7 @@ cc_library(
         "//base:tag",
         "//compiler/dispatch:fn_call_table",
         "//compiler/dispatch:scope_table",
+        "//diagnostic:errors",
         "//diagnostic/consumer:streaming",
         "//error:log",
         "//frontend:parse",
@@ -224,13 +225,4 @@ cc_library(
         ":module",
         "//ir:compiled_fn",
     ],
-)
-
-cc_lib(
-    name = "verify_result",
-    deps = [
-        "//type:qual_type",
-    ],
-    header_only = True,
-    test_deps = None,
 )

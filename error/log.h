@@ -114,8 +114,6 @@ struct Log {
 
   void StatementsFollowingJump(frontend::SourceRange const &range);
 
-  void MismatchedBinopArithmeticType(std::string_view lhs, std::string_view rhs,
-                                     frontend::SourceRange const &range);
   void InvalidCast(std::string_view lhs, std::string_view rhs,
                    frontend::SourceRange const &range);
   void PrintMustReturnVoid(std::string_view type,

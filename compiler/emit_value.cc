@@ -293,6 +293,8 @@ std::unique_ptr<module::BasicModule> CompileExecutableModule(
         for (ast::Node const *node : deferred) {
           c.Visit(node, VerifyTypeTag{});
         }
+
+        if (consumer.num_consumed() > 0) { return; }
         if (c.num_errors() > 0) { return; }
 
         ast::ModuleScope *mod_scope =

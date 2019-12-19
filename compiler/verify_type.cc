@@ -13,6 +13,7 @@
 #include "compiler/extract_jumps.h"
 #include "compiler/library_module.h"
 #include "diagnostic/consumer/streaming.h"
+#include "diagnostic/errors.h"
 #include "error/inference_failure_reason.h"
 #include "frontend/operators.h"
 #include "ir/compiled_fn.h"
@@ -24,17 +25,6 @@
 #include "type/typed_value.h"
 #include "type/util.h"
 
-namespace diagnostic {
-
-Diagnostic MismatchedBinaryArithmeticType(type::QualType lhs,
-                                          type::QualType rhs,
-                                          frontend::SourceRange const &range) {
-  return Diagnostic(Text("Mismatched types `%s` and `%s` in binary operator.",
-                         lhs.type()->to_string(), rhs.type()->to_string())
-                    /* , SourceQuote(src_).Highlighted(range, Style{})*/);
-}
-
-}  // namespace diagnostic
 namespace ir {
 
 // TODO Duplicated in emit_value.h
@@ -794,11 +784,15 @@ type::QualType Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
     if (type::IsNumeric(lhs_result.type()) and                                 \
         type::IsNumeric(rhs_result.type())) {                                  \
       if (lhs_result.type() == rhs_result.type()) {                            \
-        return set_result(node, type::QualType((return_type), is_const));        \
+        return set_result(node, type::QualType((return_type), is_const));      \
       } else {                                                                 \
-        diag_consumer_.Consume(diagnostic::MismatchedBinaryArithmeticType(     \
-            lhs_result, rhs_result, node->span));                              \
-        return type::QualType::Error();                                          \
+        diag_consumer_.Consume(                                                \
+            diagnostic::ArithmeticBinaryOperatorTypeMismatch{                  \
+                .lhs_type = lhs_result.type(),                                 \
+                .rhs_type = rhs_result.type(),                                 \
+                .range    = node->span}                                        \
+                .ToMessage());                                                 \
+        return type::QualType::Error();                                        \
       }                                                                        \
     } else {                                                                   \
       return VerifyBinaryOverload(this, symbol, node, lhs_result, rhs_result); \
@@ -837,9 +831,12 @@ type::QualType Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
         if (lhs_result.type() == rhs_result.type()) {
           return set_result(node, type::QualType(lhs_result.type(), is_const));
         } else {
-          error_log()->MismatchedBinopArithmeticType(
-              lhs_result.type()->to_string(), rhs_result.type()->to_string(),
-              node->span);
+          diag_consumer_.Consume(
+              diagnostic::ArithmeticBinaryOperatorTypeMismatch{
+                  .lhs_type = lhs_result.type(),
+                  .rhs_type = rhs_result.type(),
+                  .range    = node->span}
+                  .ToMessage());
           return type::QualType::Error();
         }
       } else {
@@ -853,9 +850,12 @@ type::QualType Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
         if (lhs_result.type() == rhs_result.type()) {
           return set_result(node, type::QualType(type::Void(), is_const));
         } else {
-          error_log()->MismatchedBinopArithmeticType(
-              lhs_result.type()->to_string(), rhs_result.type()->to_string(),
-              node->span);
+          diag_consumer_.Consume(
+              diagnostic::ArithmeticBinaryOperatorTypeMismatch{
+                  .lhs_type = lhs_result.type(),
+                  .rhs_type = rhs_result.type(),
+                  .range    = node->span}
+                  .ToMessage());
           return type::QualType::Error();
         }
       } else {

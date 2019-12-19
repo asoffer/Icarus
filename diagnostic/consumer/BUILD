@@ -4,7 +4,7 @@ cc_library(
     name = "consumer",
     hdrs = ["consumer.h"],
     deps = [
-        "//diagnostic"
+        "//diagnostic:message"
     ],
 )
 
@@ -13,7 +13,7 @@ cc_library(
     hdrs = ["streaming.h"],
     deps = [
         ":consumer",
-        "//diagnostic",
         "//diagnostic:console_renderer",
+        "//diagnostic:message"
     ],
 )

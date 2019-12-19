@@ -1,8 +1,18 @@
 package(default_visibility = ["//visibility:public"])
 load("//:defs.bzl", "cc_lib")
 
+cc_library(
+    name = "errors",
+    hdrs = ["errors.h"],
+    deps = [
+        "//frontend/source",
+        "//frontend/source:range",
+        "//type:qual_type",
+    ],
+)
+
 cc_lib(
-    name = "diagnostic",
+    name = "message",
     deps = [
         "//frontend/source",
         "//frontend/source:range",
@@ -15,7 +25,7 @@ cc_lib(
 cc_lib(
     name = "console_renderer",
     deps = [
-        ":diagnostic",
+        ":message",
         "//base:util",
     ],
     test_deps = None,

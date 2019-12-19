@@ -5,7 +5,7 @@
 #include <type_traits>
 
 #include "base/util.h"
-#include "diagnostic/diagnostic.h"
+#include "diagnostic/message.h"
 
 namespace diagnostic {
 
@@ -13,31 +13,17 @@ struct ConsoleRenderer {
   // Assumes the file is already open.
   constexpr explicit ConsoleRenderer(std::FILE* out) : out_(out) {}
 
-  void AddError(Diagnostic const& diag) { Add(Category::Error, diag); }
-
-  void Add(Category cat, Diagnostic const& diag) {
-    has_data_ = true;
-    diag.for_each_component([&](auto const& component) {
-      using T = std::decay_t<decltype(component)>;
-      if constexpr (std::is_same_v<T, Text>) {
-        std::fputs(component.c_str(), out_);
-      } else if constexpr (std::is_same_v<T, List>) {
-        for (std::string const& item : component.items()) {
-          std::fprintf(out_, "  * %s", item.c_str());
-        }
-      } else if constexpr (std::is_same_v<T, SourceQuote>){
-        WriteSourceQuote(component);
-      } else {
-        static_assert(base::always_false<T>());
-      }
-      std::fputs("\n\n", out_);
-    });
+  void AddError(DiagnosticMessage const& diag) { Add(Category::Error, diag); }
+  void AddError(frontend::Source *source, DiagnosticMessage const& diag) {
+    Add(source, Category::Error, diag);
   }
 
+  void Add(Category cat, DiagnosticMessage const& diag);
+  void Add(frontend::Source *source, Category cat, DiagnosticMessage const& diag);
   void Flush();
 
  private:
-  void WriteSourceQuote(SourceQuote const& quote);
+  void WriteSourceQuote(frontend::Source *source, SourceQuote const& quote);
 
   bool has_data_ = false;
   std::FILE* out_;

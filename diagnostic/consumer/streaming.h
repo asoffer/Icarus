@@ -5,16 +5,19 @@
 
 #include "diagnostic/console_renderer.h"
 #include "diagnostic/consumer/consumer.h"
-#include "diagnostic/diagnostic.h"
+#include "diagnostic/message.h"
 
 namespace diagnostic {
 
 struct StreamingConsumer : DiagnosticConsumer {
   explicit StreamingConsumer(std::FILE* file) : renderer_(file) {}
   ~StreamingConsumer() override {}
-  void Consume(Diagnostic&& d) override { renderer_.AddError(d); }
+  void ConsumeImpl(DiagnosticMessage&& d) override {
+    renderer_.AddError(source_, d);
+  }
 
  private:
+  frontend::Source* source_;
   ConsoleRenderer renderer_;
 };
 

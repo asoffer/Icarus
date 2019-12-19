@@ -1,6 +1,0 @@
-#ifndef ICARUS_COMPILER_VERIFY_RESULT_H
-#define ICARUS_COMPILER_VERIFY_RESULT_H
-
-#include "type/qual_type.h"
-
-#endif  // ICARUS_COMPILER_VERIFY_RESULT_H
