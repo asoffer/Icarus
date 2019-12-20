@@ -13,7 +13,7 @@ struct ArithmeticBinaryOperatorTypeMismatch {
   static constexpr std::string_view kName =
       "arithmetic-binary-operator-type-mismatch";
 
-  DiagnosticMessage ToMessage() {
+  DiagnosticMessage ToMessage() const {
     return DiagnosticMessage(
         Text("Mismatched types `%s` and `%s` in binary operator.",
              lhs_type->to_string(), rhs_type->to_string())
@@ -25,6 +25,17 @@ struct ArithmeticBinaryOperatorTypeMismatch {
   frontend::SourceRange range;
 };
 
+struct NonConstantTypeMemberAccess {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName = "non-constant-type-member-access";
+
+  DiagnosticMessage ToMessage() const {
+    return DiagnosticMessage(
+        Text("Cannot access a member of a non-constant type."));
+  }
+
+  frontend::SourceRange range;
+};
 }  // namespace diagnostic
 
 #endif  // ICARUS_DIAGNOSTIC_ERRORS_H

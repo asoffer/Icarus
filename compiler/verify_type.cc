@@ -581,7 +581,8 @@ static Constness VerifyAndGetConstness(
 static type::QualType AccessTypeMember(Compiler *c, ast::Access const *node,
                                      type::QualType operand_result) {
   if (not operand_result.constant()) {
-    c->error_log()->NonConstantTypeMemberAccess(node->span);
+    c->diag_consumer_.Consume(
+        diagnostic::NonConstantTypeMemberAccess{.range = node->span});
     return type::QualType::Error();
   }
   // TODO We may not be allowed to evaluate node:
@@ -790,8 +791,7 @@ type::QualType Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
             diagnostic::ArithmeticBinaryOperatorTypeMismatch{                  \
                 .lhs_type = lhs_result.type(),                                 \
                 .rhs_type = rhs_result.type(),                                 \
-                .range    = node->span}                                        \
-                .ToMessage());                                                 \
+                .range    = node->span});                                         \
         return type::QualType::Error();                                        \
       }                                                                        \
     } else {                                                                   \
@@ -835,8 +835,7 @@ type::QualType Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
               diagnostic::ArithmeticBinaryOperatorTypeMismatch{
                   .lhs_type = lhs_result.type(),
                   .rhs_type = rhs_result.type(),
-                  .range    = node->span}
-                  .ToMessage());
+                  .range    = node->span});
           return type::QualType::Error();
         }
       } else {
@@ -854,8 +853,7 @@ type::QualType Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
               diagnostic::ArithmeticBinaryOperatorTypeMismatch{
                   .lhs_type = lhs_result.type(),
                   .rhs_type = rhs_result.type(),
-                  .range    = node->span}
-                  .ToMessage());
+                  .range    = node->span});
           return type::QualType::Error();
         }
       } else {

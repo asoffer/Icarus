@@ -53,9 +53,14 @@ type::Type const *Compiler::type_of(ast::Expression const *expr) const {
     // compiling it yet and so we need to access it through the compiler.
     // Otherwise, we have finished compiling, so we access it through the
     // module.
-    auto const &mod = ASSERT_NOT_NULL(decl->module())->as<CompiledModule>();
-    if (&mod != module()) { return mod.type_of(decl); }
-    if (auto *t = data_.current_constants_.type_of(decl)) { return t; }
+    //
+    // TODO This could be a TestModule which doesn't have a .type_of(). we
+    // really shouldn't need to pay for the check here.
+    if (auto const *mod =
+            ASSERT_NOT_NULL(decl->module())->if_as<CompiledModule>()) {
+      if (mod != module()) { return mod->type_of(decl); }
+      if (auto *t = data_.current_constants_.type_of(decl)) { return t; }
+    }
   }
 
   auto *result = data_.constants_->second.result(expr);
