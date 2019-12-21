@@ -894,7 +894,7 @@ type::QualType Compiler::Visit(ast::BlockLiteral const *node, VerifyTypeTag) {
 }
 
 type::QualType Compiler::Visit(ast::BlockNode const *node, VerifyTypeTag) {
-  for (auto *arg : node->args()) { Visit(arg, VerifyTypeTag{}); }
+  for (auto *param : node->params()) { Visit(param, VerifyTypeTag{}); }
   for (auto *stmt : node->stmts()) { Visit(stmt, VerifyTypeTag{}); }
   return set_result(node, type::QualType::Constant(type::Block));
 }

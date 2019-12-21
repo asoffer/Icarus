@@ -132,9 +132,9 @@ void BlockLiteral::DebugStrAppend(std::string *out, size_t indent) const {
 
 void BlockNode::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, name());
-  if (not args().empty()) {
+  if (not params().empty()) {
     absl::StrAppend(out, " [",
-                    absl::StrJoin(args(), ", ",
+                    absl::StrJoin(params(), ", ",
                                   [&](std::string *out, auto const &elem) {
                                     return Joiner(elem, out, indent);
                                   }),

@@ -32,6 +32,7 @@ void DependentDecls::Visit(ast::BlockLiteral const *node,
 
 void DependentDecls::Visit(ast::BlockNode const *node,
                            ast::Declaration const *d) {
+  for (auto const *p : node->params()) { Visit(p, d); }
   for (auto const *stmt : node->stmts()) { Visit(stmt, d); }
 }
 

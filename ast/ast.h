@@ -337,8 +337,6 @@ struct BlockLiteral : ScopeExpr<DeclScope> {
 // Note: Today blocks have names and statements but cannot take any arguments.
 // This will likely change in the future so that blocks can take arguments
 // (likely in the form of `core::FnArgs<std::unique_ptr<ast::Expression>>`).
-//
-// TODO: `args` should be renamed to `params`.
 struct BlockNode : ScopeExpr<ExecScope> {
   explicit BlockNode(frontend::SourceRange span, std::string name,
                      std::vector<std::unique_ptr<Node>> stmts)
@@ -346,11 +344,11 @@ struct BlockNode : ScopeExpr<ExecScope> {
         name_(std::move(name)),
         stmts_(std::move(stmts)) {}
   explicit BlockNode(frontend::SourceRange span, std::string name,
-                     std::vector<std::unique_ptr<Expression>> args,
+                     std::vector<std::unique_ptr<Expression>> params,
                      std::vector<std::unique_ptr<Node>> stmts)
       : ScopeExpr<ExecScope>(std::move(span)),
         name_(std::move(name)),
-        args_(std::move(args)),
+        params_(std::move(params)),
         stmts_(std::move(stmts)) {}
   ~BlockNode() override {}
   BlockNode(BlockNode &&) noexcept = default;
@@ -359,14 +357,14 @@ struct BlockNode : ScopeExpr<ExecScope> {
   std::string_view name() const { return name_; }
   base::PtrSpan<Node> stmts() { return stmts_; }
   base::PtrSpan<Node const> stmts() const { return stmts_; }
-  base::PtrSpan<Expression> args() { return args_; }
-  base::PtrSpan<Expression const> args() const { return args_; }
+  base::PtrSpan<Expression> params() { return params_; }
+  base::PtrSpan<Expression const> params() const { return params_; }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
   std::string name_;
-  std::vector<std::unique_ptr<Expression>> args_;
+  std::vector<std::unique_ptr<Expression>> params_;
   std::vector<std::unique_ptr<Node>> stmts_;
 };
 
