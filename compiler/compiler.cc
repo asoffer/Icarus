@@ -2,7 +2,6 @@
 
 #include "ast/ast.h"
 #include "ast/expr_ptr.h"
-#include "backend/eval.h"
 #include "compiler/compiler.h"
 #include "compiler/executable_module.h"
 #include "compiler/library_module.h"

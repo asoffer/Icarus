@@ -1,5 +1,5 @@
-#ifndef ICARUS_BACKEND_EVAL_H
-#define ICARUS_BACKEND_EVAL_H
+#ifndef ICARUS_INTERPRETTER_EVALUATE_H
+#define ICARUS_INTERPRETTER_EVALUATE_H
 
 #include <type_traits>
 
@@ -8,23 +8,18 @@
 #include "ir/compiled_fn.h"
 #include "ir/results.h"
 
-namespace ir {
-struct BlockDef;
-}  // namespace ir
-
-namespace backend {
+namespace interpretter {
 ir::Results Evaluate(ir::CompiledFn &&fn);
 base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn);
 
 template <typename T>
 T EvaluateAs(ir::CompiledFn &&fn) {
   static_assert(std::is_trivially_copyable_v<T>);
-  static_assert(not std::is_same_v<T, ir::BlockDef *>, "");
   base::untyped_buffer result_buf = EvaluateToBuffer(std::move(fn));
   ASSERT(result_buf.size() == sizeof(T));
   return result_buf.get<T>(0);
 }
 
-}  // namespace backend
+}  // namespace interpretter
 
-#endif  // ICARUS_BACKEND_EVAL_H
+#endif  // ICARUS_INTERPRETTER_EVALUATE_H

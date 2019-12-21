@@ -2,7 +2,7 @@
 
 #include "ast/ast.h"
 
-#include "backend/eval.h"
+#include "interpretter/evaluate.h"
 #include "ir/addr.h"
 #include "ir/cmd/cast.h"
 #include "ir/cmd/load.h"
@@ -79,8 +79,8 @@ std::vector<ir::RegOr<ir::Addr>> Compiler::Visit(ast::Index const *node,
                               index, type::Ptr(type::Nat8))};
   } else if (auto *tup = lhs_type->if_as<type::Tuple>()) {
     auto index =
-        ir::CastTo<int64_t>(rhs_type,
-                            backend::Evaluate(MakeThunk(node->rhs(), rhs_type)))
+        ir::CastTo<int64_t>(
+            rhs_type, interpretter::Evaluate(MakeThunk(node->rhs(), rhs_type)))
             .value();
     return {
         builder().Field(Visit(node->lhs(), EmitRefTag{})[0], tup, index).get()};

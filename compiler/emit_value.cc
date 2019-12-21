@@ -2,12 +2,12 @@
 
 #include "ast/ast.h"
 #include "ast/scope/exec.h"
-#include "backend/eval.h"
 #include "base/guarded.h"
 #include "compiler/executable_module.h"
 #include "compiler/library_module.h"
 #include "diagnostic/consumer/streaming.h"
 #include "frontend/parse.h"
+#include "interpretter/evaluate.h"
 #include "ir/builder.h"
 #include "ir/builtin_ir.h"
 #include "ir/cmd/basic.h"
@@ -324,7 +324,7 @@ ir::Results Compiler::Visit(ast::Access const *node, EmitValueTag) {
   if (type_of(node->operand()) == type::Module) {
     // TODO we already did this evaluation in type verification. Can't we just
     // save and reuse it?
-    auto decls = backend::EvaluateAs<module::BasicModule const *>(
+    auto decls = interpretter::EvaluateAs<module::BasicModule const *>(
                      MakeThunk(node->operand(), type::Module))
                      ->declarations(node->member_name());
     switch (decls.size()) {
@@ -696,9 +696,9 @@ ir::Results Compiler::Visit(ast::Call const *node, EmitValueTag) {
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
     switch (b->value()) {
       case core::Builtin::Foreign: {
-        auto name = backend::EvaluateAs<std::string_view>(
+        auto name = interpretter::EvaluateAs<std::string_view>(
             MakeThunk(node->args().at(0), type::ByteView));
-        auto *foreign_type = backend::EvaluateAs<type::Type const *>(
+        auto *foreign_type = interpretter::EvaluateAs<type::Type const *>(
             MakeThunk(node->args().at(1), type::Type_));
         return ir::Results{ir::LoadSymbol(name, foreign_type).get()};
       } break;
@@ -1151,7 +1151,7 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
         // returned. In reality, we could write directly to the buffer and only
         // copy once if Evaluate* took an out-parameter.
         base::untyped_buffer buf =
-            backend::EvaluateToBuffer(MakeThunk(node->init_val(), t));
+            interpretter::EvaluateToBuffer(MakeThunk(node->init_val(), t));
         if (num_errors() > 0u) {
           // TODO we reserved a slot and haven't cleaned it up. Do we care?
           NOT_YET("Found errors but haven't handeled them.");
@@ -1636,7 +1636,7 @@ ir::Results Compiler::Visit(ast::Unop const *node, EmitValueTag) {
     case frontend::Operator::Eval: {
       // Guaranteed to be constant by VerifyType
       // TODO what if there's an error during evaluation?
-      return backend::Evaluate(
+      return interpretter::Evaluate(
           MakeThunk(node->operand(), type_of(node->operand())));
     }
     case frontend::Operator::Mul:
