@@ -1,10 +1,10 @@
 #ifndef ICARUS_MODULE_PENDING_H
 #define ICARUS_MODULE_PENDING_H
 
-#include <filesystem>
 #include <future>
 
 #include "base/expected.h"
+#include "frontend/source/file_name.h"
 #include "frontend/source/source.h"
 #include "module.h"
 
@@ -31,7 +31,7 @@ struct PendingModule {
 };
 
 base::expected<PendingModule> ImportModule(
-    std::filesystem::path const &src, BasicModule const *requestor,
+    frontend::FileName const &src, BasicModule const *requestor,
     std::unique_ptr<BasicModule> (*fn)(frontend::Source *));
 void AwaitAllModulesTransitively();
 

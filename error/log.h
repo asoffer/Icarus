@@ -1,8 +1,8 @@
 #ifndef ICARUS_ERROR_LOG_H
 #define ICARUS_ERROR_LOG_H
 
-#include <filesystem>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -109,8 +109,7 @@ struct Log {
       frontend::SourceRange const &range,
       std::vector<core::FnArgs<std::string>> const &missing_dispatch);
 
-  void MissingModule(std::filesystem::path const &src,
-                     std::filesystem::path const &requestor);
+  void MissingModule(std::string_view src, std::string_view requestor);
 
   void StatementsFollowingJump(frontend::SourceRange const &range);
 

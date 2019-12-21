@@ -2,31 +2,30 @@
 #define ICARUS_FRONTEND_FILE_SOURCE_H
 
 #include <cstdio>
-#include <filesystem>
-#include <iostream>
+#include <utility>
 
 #include "base/expected.h"
+#include "base/strong_types.h"
 #include "frontend/source/source.h"
+#include "frontend/source/file_name.h"
 
 namespace frontend {
 
 struct FileSource : public Source {
-  static base::expected<FileSource> Make(std::filesystem::path path);
+  static base::expected<FileSource> Make(CanonicalFileName file_name);
 
   FileSource(FileSource const &) = delete;
-  FileSource(FileSource &&f) : path_(std::move(f.path_)), f_(f.f_) {
-    f.f_ = nullptr;
-  }
-  ~FileSource() override {
-    std::free(buf_);
-    if (f_) { std::fclose(f_); }
-  }
+
+  FileSource(FileSource &&f)
+      : name_(std::move(f.name_)), f_(std::exchange(f.f_, nullptr)) {}
+
+  ~FileSource() override { std::free(buf_); }
 
   SourceChunk ReadUntil(char delim) override {
     std::free(buf_);
     buf_              = nullptr;
     size_t n          = 0;
-    ssize_t num_chars = getdelim(&buf_, &n, delim, f_);
+    ssize_t num_chars = getdelim(&buf_, &n, delim, f_.get());
     if (num_chars <= 0) { return {"", false}; }
     if (buf_[num_chars - 1] == delim) {
       return {std::string_view(buf_, num_chars - 1), true};
@@ -38,7 +37,7 @@ struct FileSource : public Source {
   std::vector<std::string> LoadLines() override {
     std::vector<std::string> lines{1};
 
-    auto src = *FileSource::Make(path());
+    auto src = *FileSource::Make(name_);
     while (true) {
       auto chunk = src.ReadUntil('\n');
       if (chunk.view.empty() and not chunk.more_to_read) { return lines; }
@@ -46,14 +45,12 @@ struct FileSource : public Source {
     }
   }
 
-  std::filesystem::path path() const { return path_; }
-
  private:
-  FileSource(std::filesystem::path path, FILE *f)
-      : path_(std::move(path)), f_(f) {}
+  FileSource(CanonicalFileName name, file_handle_t f)
+      : name_(std::move(name)), f_(std::move(f)) {}
 
-  std::filesystem::path path_;
-  FILE *f_   = nullptr;
+  CanonicalFileName name_;
+  file_handle_t f_;
   char *buf_ = nullptr;
 };
 

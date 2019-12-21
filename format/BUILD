@@ -8,6 +8,7 @@ cc_binary(
         ":token_extractor",
         "//ast:ast",
         "//frontend:parse",
+        "//frontend/source:file_name",
         "//frontend/source:string",
         "//init:cli",
         "@com_google_absl//absl/debugging:failure_signal_handler",

@@ -222,16 +222,22 @@ constexpr bool operator!=(Strong<Tag, UnderlyingType, CrtpTags> lhs,
   struct name : public base::internal::Strong<                                 \
                     name, decltype(default_value),                             \
                     base::internal::StrongTypeCrtp<__VA_ARGS__>> {             \
+    template <typename...>                                                     \
     explicit constexpr name(decltype(default_value) val = default_value)       \
         : base::internal::Strong<name, decltype(default_value),                \
                                  base::internal::StrongTypeCrtp<__VA_ARGS__>>( \
               val) {}                                                          \
+                                                                               \
+    name(name&&) noexcept = default;                                           \
+    name(name const&)     = default;                                           \
+    name& operator=(name&&) noexcept = default;                                \
+    name& operator=(name const&) = default;                                    \
                                                                                \
     friend std::string stringify(name val) {                                   \
       return absl::StrCat(#name, "(", val.value, ")");                         \
     }                                                                          \
   };                                                                           \
                                                                                \
-  struct name
+  static_assert(true)
 
 #endif  // ICARUS_BASE_STRONG_TYPES_H

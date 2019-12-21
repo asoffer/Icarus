@@ -44,6 +44,7 @@ cc_binary(
         "//base:macros",
         "//frontend:parse",
         "//frontend/source:file",
+        "//frontend/source:file_name",
         "//init:cli",
         "@com_google_absl//absl/debugging:failure_signal_handler",
         "@com_google_absl//absl/debugging:symbolize",

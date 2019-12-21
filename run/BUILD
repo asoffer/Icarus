@@ -9,6 +9,7 @@ cc_lib(
         "//compiler:compiler",
         "//compiler:executable_module",
         "//error:log",
+        "//frontend/source:file_name",
         "//module:pending",
         "//interpretter:execute",
         "//ir:compiled_fn",

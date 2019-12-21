@@ -61,6 +61,13 @@ std::string stringify(expected<T, E> const &e) {
   }
   return stringify(e.error());
 }
+
+template <typename T, typename E>
+std::ostream &operator<<(std::ostream &os, expected<T, E> const &e) {
+  using base::stringify;
+  return os << stringify(e);
+}
+
 }  // namespace base
 
 #endif  // ICARUS_BASE_EXPECTED_H

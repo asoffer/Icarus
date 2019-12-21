@@ -1626,12 +1626,13 @@ type::QualType Compiler::Visit(ast::Import const *node, VerifyTypeTag) {
   auto src = interpretter::EvaluateAs<std::string_view>(
       MakeThunk(node->operand(), type::ByteView));
   // TODO source name?
+
+  frontend::FileName file_name{std::string(src)};
   ASSIGN_OR(
-      error_log()->MissingModule(src, std::filesystem::path{"TODO source"});
+      error_log()->MissingModule(src, "TODO source");
       return type::QualType::Error(),  //
              auto pending_mod,
-             module::ImportModule(std::filesystem::path{src}, module(),
-                                  CompileLibraryModule));
+             module::ImportModule(file_name, module(), CompileLibraryModule));
 
   if (not pending_mod.valid()) { return type::QualType::Error(); }
   set_pending_module(node, pending_mod);

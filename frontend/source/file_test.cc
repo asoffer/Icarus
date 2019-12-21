@@ -5,13 +5,10 @@
 namespace frontend {
 namespace {
 
-TEST_CASE("Failed to open FileSource") {
-  CHECK_FALSE(FileSource::Make("not_a_file.txt").has_value());
-}
-
 TEST_CASE("FileSource reading empty file") {
-  REQUIRE_ASSIGN(auto src,
-                 FileSource::Make("frontend/source/testdata/empty_file.txt"));
+  REQUIRE_ASSIGN(auto name, CanonicalFileName::Make(FileName{
+                                "frontend/source/testdata/empty_file.txt"}));
+  REQUIRE_ASSIGN(auto src, FileSource::Make(name));
 
   auto chunk = src.ReadUntil('\n');
   CHECK(chunk.view == "");
@@ -19,8 +16,9 @@ TEST_CASE("FileSource reading empty file") {
 }
 
 TEST_CASE("FileSource one-line file") {
-  REQUIRE_ASSIGN(
-      auto src, FileSource::Make("frontend/source/testdata/one_line_file.txt"));
+  REQUIRE_ASSIGN(auto name, CanonicalFileName::Make(FileName{
+                                "frontend/source/testdata/one_line_file.txt"}));
+  REQUIRE_ASSIGN(auto src, FileSource::Make(name));
 
   auto chunk = src.ReadUntil('\n');
   CHECK(chunk.view == "hello");
@@ -32,8 +30,10 @@ TEST_CASE("FileSource one-line file") {
 }
 
 TEST_CASE("FileSource multiple lines") {
-  REQUIRE_ASSIGN(auto src, FileSource::Make(
-                               "frontend/source/testdata/multi_line_file.txt"));
+  REQUIRE_ASSIGN(auto name,
+                 CanonicalFileName::Make(
+                     FileName{"frontend/source/testdata/multi_line_file.txt"}));
+  REQUIRE_ASSIGN(auto src, FileSource::Make(name));
 
   auto chunk = src.ReadUntil('\n');
   CHECK(chunk.view == "hello");

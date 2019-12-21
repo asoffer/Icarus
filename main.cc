@@ -1,10 +1,10 @@
-#include <filesystem>
 #include <vector>
 
 #include "absl/debugging/failure_signal_handler.h"
 #include "absl/debugging/symbolize.h"
 #include "absl/strings/str_split.h"
 #include "base/log.h"
+#include "frontend/source/file_name.h"
 #include "init/cli.h"
 
 namespace debug {
@@ -14,7 +14,7 @@ extern bool optimize_ir;
 }  // namespace debug
 
 int RunRepl();
-int RunCompiler(std::filesystem::path const &);
+int RunCompiler(frontend::FileName const &);
 
 void cli::Usage() {
   Flag("help") << "Show usage information."
@@ -34,12 +34,13 @@ void cli::Usage() {
   };
 #endif  // defined(ICARUS_DEBUG)
 
-  static std::filesystem::path file;
+  static char const *file;
   HandleOther = [](char const *arg) { file = arg; };
 
   Flag("repl", "r") << "Run the read-eval-print-loop." << [](bool b = false) {
     if (not execute) {
-      execute = (b ? RunRepl : [] { return RunCompiler(file); });
+      execute =
+          (b ? RunRepl : [] { return RunCompiler(frontend::FileName(file)); });
     }
   };
 }

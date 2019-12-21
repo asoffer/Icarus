@@ -5,39 +5,28 @@
 #include "absl/container/node_hash_map.h"
 #include "absl/container/node_hash_set.h"
 #include "base/debug.h"
-#include "base/graph.h"
 #include "base/macros.h"
 #include "frontend/source/file.h"
 #include "module/module.h"
 
 namespace module {
 namespace {
-struct PathHasher {
-  size_t operator()(std::filesystem::path const &p) const {
-    return std::filesystem::hash_value(p);
-  }
-};
 
 std::mutex mtx;
-absl::node_hash_set<std::filesystem::path, PathHasher> all_paths;
-base::Graph<std::filesystem::path const *> import_dep_graph;
+absl::node_hash_set<frontend::CanonicalFileName> all_paths;
 std::list<std::shared_future<BasicModule *>> pending_module_futures;
-absl::node_hash_map<std::filesystem::path const *,
+absl::node_hash_map<frontend::CanonicalFileName const *,
                     std::pair<std::shared_future<BasicModule *> *,
                               std::unique_ptr<BasicModule>>>
     all_modules;
 }  // namespace
 
-static base::expected<std::pair<std::filesystem::path const *, bool>>
-CanonicalizePath(std::filesystem::path const &p) {
-  std::error_code ec;
-  auto canonical_path = std::filesystem::canonical(p, ec);
-  std::stringstream ss;
-  if (ec) {
-    ss << ec;
-    return base::unexpected{ss.str()};
-  }
-  auto[iter, newly_inserted] = all_paths.insert(std::move(canonical_path));
+static base::expected<std::pair<frontend::CanonicalFileName const *, bool>>
+CanonicalizePath(frontend::FileName const &file_name) {
+  ASSIGN_OR(return _.error(),  //
+                   auto canonical_name,
+                   frontend::CanonicalFileName::Make(file_name));
+  auto [iter, newly_inserted] = all_paths.insert(std::move(canonical_name));
   return std::pair{&*iter, newly_inserted};
 }
 
@@ -65,12 +54,11 @@ void AwaitAllModulesTransitively() {
 }
 
 base::expected<PendingModule> ImportModule(
-    std::filesystem::path const &src, BasicModule const *requestor,
+    frontend::FileName const &file_name, BasicModule const *requestor,
     std::unique_ptr<BasicModule> (*fn)(frontend::Source *)) {
   std::lock_guard lock(mtx);
-  ASSIGN_OR(return _.error(), auto dependee, CanonicalizePath(src));
-  auto const *canonical_src = dependee.first;
-  bool new_src              = dependee.second;
+  ASSIGN_OR(return _.error(), auto dependee, CanonicalizePath(file_name));
+  auto [canonical_src, new_src] = dependee;
 
   // TODO Need to add dependencies even if the node was already scheduled (hence
   // the "already scheduled" check is done after this).
@@ -88,7 +76,8 @@ base::expected<PendingModule> ImportModule(
       std::launch::async,
       [ fn, canonical_src, mod(&iter->second.second) ]()->BasicModule * {
         // TODO error messages.
-        ASSIGN_OR(return nullptr, frontend::FileSource file_src,
+        ASSIGN_OR(return nullptr,  //
+                         frontend::FileSource file_src,
                          frontend::FileSource::Make(*canonical_src));
 
         *mod = fn(&file_src);

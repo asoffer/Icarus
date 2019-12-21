@@ -139,7 +139,6 @@ cc_lib(
         "//type:function",
     ],
     test_deps = [
-        "//backend:eval",
         "//compiler:compiler",
         "//test:module",
         "//type:function",

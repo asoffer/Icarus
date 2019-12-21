@@ -368,12 +368,12 @@ void Log::IndexingTupleOutOfBounds(frontend::SourceRange const &range,
       diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
-void Log::MissingModule(std::filesystem::path const &src,
-                        std::filesystem::path const &requestor) {
+void Log::MissingModule(std::string_view src,
+                        std::string_view requestor) {
   renderer_.AddError(diagnostic::DiagnosticMessage(diagnostic::Text(
-      "Could not find module named \"%s\" requested from %s", src.string(),
+      "Could not find module named \"%s\" requested from %s", src,
       requestor.empty() ? "command line"
-                        : absl::StrCat("\"", requestor.string(), "\"."))));
+                        : absl::StrCat("\"", requestor, "\"."))));
 }
 
 void Log::UninferrableType(InferenceFailureReason reason,

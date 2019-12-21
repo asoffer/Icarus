@@ -105,7 +105,6 @@ def _impl(ctx):
         ]),
         linkopts([
             "-ldl",
-            "-lstdc++fs",
             "-pthread",
             "-lffi",
             "-rdynamic",

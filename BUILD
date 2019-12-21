@@ -5,6 +5,7 @@ cc_binary(
     srcs = ["main.cc"],
     deps = [
         "//base:log",
+        "//frontend/source:file_name",
         "//init:cli",
         "//run:repl",
         "//run:compiler",

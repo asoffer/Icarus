@@ -39,6 +39,7 @@ cc_library(
         "//diagnostic/consumer:streaming",
         "//error:log",
         "//frontend:parse",
+        "//frontend/source:file_name",
         "//interpretter:evaluate",
         "//ir:addr",
         "//ir:any_func",

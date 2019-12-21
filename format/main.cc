@@ -1,4 +1,3 @@
-#include <filesystem>
 #include <vector>
 
 #include "absl/debugging/failure_signal_handler.h"
@@ -6,11 +5,12 @@
 #include "ast/node.h"
 #include "format/token_extractor.h"
 #include "frontend/parse.h"
+#include "frontend/source/file_name.h"
 #include "frontend/source/string.h"
 #include "init/cli.h"
 
 namespace format {
-int FormatFile(std::filesystem::path const &file) {
+int FormatFile(frontend::FileName const &file) {
   frontend::StringSource src("3 + abc");
   auto stmts = frontend::Parse(&src);
   TokenExtractor visitor;
@@ -25,7 +25,7 @@ void cli::Usage() {
   // TODO error-out if more than one file is provided
   static char const *file;
   HandleOther = [](char const *arg) { file = arg; };
-  execute     = [] { return format::FormatFile(std::filesystem::path{file}); };
+  execute     = [] { return format::FormatFile(frontend::FileName(file)); };
 }
 
 int main(int argc, char *argv[]) {

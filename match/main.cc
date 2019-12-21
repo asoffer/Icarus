@@ -1,4 +1,3 @@
-#include <filesystem>
 #include <vector>
 
 #include "absl/debugging/failure_signal_handler.h"
@@ -12,17 +11,25 @@
 #include "match/match_expr.h"
 
 namespace match {
-int MatchParse(std::filesystem::path const &expr_file,
-               std::filesystem::path const &file) {
-  ASSIGN_OR(return 1, frontend::FileSource expr_src,
-                   frontend::FileSource::Make(expr_file));
+int MatchParse(frontend::FileName const &expr_file,
+               frontend::FileName const &file) {
+  ASSIGN_OR(return 1,  //
+                   auto canonical_expr_file,
+                   frontend::CanonicalFileName::Make(expr_file));
+  ASSIGN_OR(return 1,  //
+                   frontend::FileSource expr_src,
+                   frontend::FileSource::Make(canonical_expr_file));
   auto expr_stmts = frontend::Parse(&expr_src);
   if (expr_stmts.size() != 1) { return 2; }
   auto *expr = expr_stmts[0]->if_as<ast::Expression>();
   if (not expr) { return 2; }
 
-  ASSIGN_OR(return 1, frontend::FileSource src,
-                   frontend::FileSource::Make(file));
+  ASSIGN_OR(return 1,  //
+                   auto canonical_file,
+                   frontend::CanonicalFileName::Make(file));
+  ASSIGN_OR(return 1,  //
+                   frontend::FileSource src,
+                   frontend::FileSource::Make(canonical_file));
   auto stmts = frontend::Parse(&src);
 
   match::Match visitor;
@@ -41,11 +48,11 @@ void cli::Usage() {
                << [](char const *e) { expr_file = e; };
 
   // TODO error-out if more than one file is provided
-  static char const *file;
+  static char const * file;
   HandleOther = [](char const *arg) { file = arg; };
   execute     = [] {
-    return match::MatchParse(std::filesystem::path{expr_file},
-                             std::filesystem::path{file});
+    return match::MatchParse(frontend::FileName(expr_file),
+                             frontend::FileName(file));
   };
 }
 
