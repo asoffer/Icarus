@@ -6,15 +6,17 @@
 #include "ast/ast_fwd.h"
 #include "ast/expr_ptr.h"
 #include "compiler/constant_binding.h"
-#include "type/qual_type.h"
 #include "ir/scope_def.h"
 #include "module/pending.h"
+#include "type/qual_type.h"
 
 namespace ir {
 struct CompiledFn;
 }  // namespace ir
 
 namespace compiler {
+struct LibraryModule;
+
 struct DependentData {
   absl::flat_hash_map<ast::Declaration const *, ir::Reg> addr_;
 
@@ -33,7 +35,7 @@ struct DependentData {
 
   compiler::ConstantBinding constants_;
 
-  absl::flat_hash_map<ast::Import const *, module::PendingModule>
+  absl::flat_hash_map<ast::Import const *, module::Pending<LibraryModule>>
       imported_module_;
 
   type::QualType const *result(ast::ExprPtr expr) const {

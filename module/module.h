@@ -10,68 +10,51 @@
 #include "ast/scope/module.h"
 #include "base/cast.h"
 #include "base/ptr_span.h"
+#include "frontend/source/source.h"
 
 namespace module {
 template <typename T>
 struct ExtendedModule;
 
+// BasicModule:
+//
+// Represents a unit of compilation, beyond which all intercommunication must be
+// explicit.
 struct BasicModule : base::Cast<BasicModule> {
   BasicModule();
   virtual ~BasicModule();
 
-  // We take pointers to the module, so it cannot be moved.
+  // Pointers to modules are passed around, so moving a module is not safe.
   BasicModule(BasicModule &&) noexcept = delete;
   BasicModule &operator=(BasicModule &&) noexcept = delete;
 
-  void AppendStatements(std::vector<std::unique_ptr<ast::Node>> stmts);
-  void Append(std::unique_ptr<ast::Node> node);
+  // Copying a module is implicitly disallowed as modules hold move-only types.
+  // We explicitly delete them to improve error messages, and because even if
+  // they were not implicitly deleted, we would not want modules to be copyable
+  // anyway for reasons similar to those explaining why we disallow moves.
+  BasicModule(BasicModule const &) = delete;
+  BasicModule &operator=(BasicModule const &)  = delete;
+
+  void AppendNode(std::unique_ptr<ast::Node> node);
+  void AppendNodes(std::vector<std::unique_ptr<ast::Node>> nodes);
 
   absl::Span<ast::Declaration const *const> declarations(
       std::string_view name) const;
 
   constexpr ast::ModuleScope const *scope() const { return &scope_; }
 
- private:
-  template <typename T>
-  friend struct ExtendedModule;
+  void ProcessFromSource(frontend::Source *src);
 
+ protected:
+  virtual void ProcessNodes(base::PtrSpan<ast::Node const>) = 0;
+
+ private:
   void InitializeNodes(base::PtrSpan<ast::Node> nodes);
 
   ast::ModuleScope scope_;
   absl::flat_hash_map<std::string_view, std::vector<ast::Declaration const *>>
       top_level_decls_;
   std::vector<std::unique_ptr<ast::Node>> nodes_;
-};
-
-template <typename Extension = void>
-struct ExtendedModule : BasicModule {
- public:
-  ~ExtendedModule() override {}
-  explicit ExtendedModule(
-      std::function<void(base::PtrSpan<ast::Node const>)> fn)
-      : process_(std::move(fn)) {}
-  explicit ExtendedModule(
-      std::function<void(base::PtrSpan<ast::Node const>, Extension *)> fn)
-      : process_(
-            [ fn{std::move(fn)}, this ](base::PtrSpan<ast::Node const> nodes) {
-              return fn(nodes, static_cast<Extension *>(this));
-            }) {}
-
-  void Process(std::unique_ptr<ast::Node> node) {
-    InitializeNodes(base::PtrSpan<ast::Node>(&node, 1));
-    process_(base::PtrSpan<ast::Node const>(&node, 1));
-    nodes_.push_back(std::move(node));
-  }
-
-  void Process(std::vector<std::unique_ptr<ast::Node>> nodes) {
-    InitializeNodes(nodes);
-    process_(nodes);
-    nodes_.insert(nodes_.end(), std::make_move_iterator(nodes.begin()),
-                  std::make_move_iterator(nodes.end()));
-  }
-
- private:
-  std::function<void(base::PtrSpan<ast::Node const>)> process_;
 };
 
 // Returns a container of all declarations in this scope and in parent scopes

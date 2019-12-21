@@ -11,8 +11,7 @@
 #include "ir/block_def.h"
 #include "ir/results.h"
 #include "ir/str.h"
-#include "type/primitive.h"
-#include "type/util.h"
+#include "type/basic_type.h"
 #ifdef ICARUS_MATCHER
 #include "match/binding_id.h"
 #include "match/binding_node.h"

@@ -1628,11 +1628,10 @@ type::QualType Compiler::Visit(ast::Import const *node, VerifyTypeTag) {
   // TODO source name?
 
   frontend::FileName file_name{std::string(src)};
-  ASSIGN_OR(
-      error_log()->MissingModule(src, "TODO source");
-      return type::QualType::Error(),  //
-             auto pending_mod,
-             module::ImportModule(file_name, module(), CompileLibraryModule));
+  ASSIGN_OR(error_log()->MissingModule(src, "TODO source");
+            return type::QualType::Error(),  //
+                   auto pending_mod,
+                   module::ImportModule<LibraryModule>(file_name));
 
   if (not pending_mod.valid()) { return type::QualType::Error(); }
   set_pending_module(node, pending_mod);

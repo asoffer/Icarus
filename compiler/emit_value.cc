@@ -4,7 +4,6 @@
 #include "ast/scope/exec.h"
 #include "base/guarded.h"
 #include "compiler/executable_module.h"
-#include "compiler/library_module.h"
 #include "diagnostic/consumer/streaming.h"
 #include "frontend/parse.h"
 #include "interpretter/evaluate.h"
@@ -267,57 +266,19 @@ base::move_func<void()> *DeferBody(Compiler *compiler, NodeType const *node) {
 
 }  // namespace
 
-std::unique_ptr<module::BasicModule> CompileExecutableModule(
-    frontend::Source *src) {
-  auto mod = std::make_unique<ExecutableModule>(
-      [](base::PtrSpan<ast::Node const> nodes, CompiledModule *mod) {
-        // TODO remove reinterpret_cast
-        auto exec_mod = reinterpret_cast<ExecutableModule *>(mod);
-        diagnostic::StreamingConsumer consumer(stderr);
-        compiler::Compiler c(mod, consumer);
+void ProcessExecutableBody(Compiler *c, base::PtrSpan<ast::Node const> nodes,
+                           ir::CompiledFn *main_fn) {
+  ast::ModuleScope *mod_scope = &nodes.front()->scope_->as<ast::ModuleScope>();
+  ICARUS_SCOPE(ir::SetCurrent(main_fn, &c->builder())) {
+    MakeAllStackAllocations(c, mod_scope);
+    EmitIrForStatements(c, nodes);
+    MakeAllDestructions(c, mod_scope);
+    // TODO determine under which scenarios destructors can be skipped.
 
-        // Do one pass of verification over constant declarations. Then come
-        // back a second time to handle the remaining.
-        // TODO this may be necessary in library modules too.
-        std::vector<ast::Node const *> deferred;
-        for (ast::Node const *node : nodes) {
-          if (auto const *decl = node->if_as<ast::Declaration>()) {
-            if (decl->flags() & ast::Declaration::f_IsConst) {
-              c.Visit(decl, VerifyTypeTag{});
-              continue;
-            }
-          }
-          deferred.push_back(node);
-        }
+    c->builder().ReturnJump();
+  }
 
-        for (ast::Node const *node : deferred) {
-          c.Visit(node, VerifyTypeTag{});
-        }
-
-        if (consumer.num_consumed() > 0) { return; }
-        if (c.num_errors() > 0) { return; }
-
-        ast::ModuleScope *mod_scope =
-            &nodes.front()->scope_->as<ast::ModuleScope>();
-        ICARUS_SCOPE(ir::SetCurrent(exec_mod->main(), &c.builder())) {
-          MakeAllStackAllocations(&c, mod_scope);
-          EmitIrForStatements(&c, nodes);
-          MakeAllDestructions(&c, mod_scope);
-          // TODO determine under which scenarios destructors can be skipped.
-
-          c.builder().ReturnJump();
-        }
-
-        c.CompleteDeferredBodies();
-
-        mod->dep_data_   = std::move(c.data_.dep_data_);
-        mod->fns_        = std::move(c.data_.fns_);
-        mod->scope_defs_ = std::move(c.data_.scope_defs_);
-        mod->block_defs_ = std::move(c.data_.block_defs_);
-        mod->jumps_      = std::move(c.data_.jumps_);
-      });
-  mod->Process(frontend::Parse(src));
-  return mod;
+  c->CompleteDeferredBodies();
 }
 
 ir::Results Compiler::Visit(ast::Access const *node, EmitValueTag) {

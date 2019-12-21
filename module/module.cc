@@ -2,6 +2,7 @@
 
 #include "absl/algorithm/container.h"
 #include "ast/ast.h"
+#include "frontend/parse.h"
 #include "module/assign_scope.h"
 
 namespace module {
@@ -23,6 +24,23 @@ void BasicModule::InitializeNodes(base::PtrSpan<ast::Node> nodes) {
 
     top_level_decls_[decl->id()].push_back(decl);
   }
+}
+
+void BasicModule::AppendNode(std::unique_ptr<ast::Node> node) {
+  InitializeNodes(base::PtrSpan<ast::Node>(&node, 1));
+  ProcessNodes(base::PtrSpan<ast::Node const>(&node, 1));
+  nodes_.push_back(std::move(node));
+}
+
+void BasicModule::AppendNodes(std::vector<std::unique_ptr<ast::Node>> nodes) {
+  InitializeNodes(nodes);
+  ProcessNodes(nodes);
+  nodes_.insert(nodes_.end(), std::make_move_iterator(nodes.begin()),
+                std::make_move_iterator(nodes.end()));
+}
+
+void BasicModule::ProcessFromSource(frontend::Source *src) {
+  AppendNodes(frontend::Parse(src));
 }
 
 absl::Span<ast::Declaration const *const> BasicModule::declarations(

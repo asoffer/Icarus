@@ -9,21 +9,20 @@
 #include "base/ptr_span.h"
 #include "compiler/constant_binding.h"
 #include "compiler/dependent_data.h"
+#include "ir/compiled_fn.h"
+#include "ir/jump.h"
 #include "module/module.h"
 #include "type/type_fwd.h"
 
 namespace compiler {
 
-struct CompiledModule : module::ExtendedModule<CompiledModule> {
-  // Even though ew only ever want to pass a specific well-known ProcessFn here
+struct CompiledModule : module::BasicModule {
+  // Even though we only ever want to pass a specific well-known ProcessFn here
   // the one that does compilation, it requires constructing a Compiler object
   // and this would create a dependency cycle. To avoid that we need to pass it
   // in as an argument.
-  template <typename ProcessFn,
-            typename std::enable_if_t<
-                not std::is_same_v<ProcessFn, CompiledModule>, int> = 0>
-  explicit CompiledModule(ProcessFn fn)
-      : module::ExtendedModule<CompiledModule>(std::move(fn)) {}
+  explicit CompiledModule() {}
+  ~CompiledModule() override {}
 
   type::Type const *type_of(ast::Expression const *expr) const;
 

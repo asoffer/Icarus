@@ -16,19 +16,18 @@
 
 namespace test {
 
-struct TestModule : module::ExtendedModule<TestModule> {
-  TestModule()
-      : module::ExtendedModule<TestModule>(
-            [this](base::PtrSpan<ast::Node const> nodes) {
-              for (ast::Node const* node : nodes) {
-                compiler.Visit(node, compiler::VerifyTypeTag{});
-              }
-            }),
-        consumer(stderr),
-        compiler(this, consumer) {}
+struct TestModule : module::BasicModule {
+  TestModule() : consumer(stderr), compiler(this, consumer) {}
 
   diagnostic::StreamingConsumer consumer;
   compiler::Compiler compiler;
+
+ protected:
+  void ProcessNodes(base::PtrSpan<ast::Node const> nodes) override {
+    for (ast::Node const* node : nodes) {
+      compiler.Visit(node, compiler::VerifyTypeTag{});
+    }
+  }
 };
 
 std::pair<ast::OverloadSet, ast::Call*> MakeCall(
@@ -41,7 +40,7 @@ std::pair<ast::OverloadSet, ast::Call*> MakeCall(
   ast::OverloadSet os;
   os.insert(call_expr->callee());
   auto* expr = call_expr.get();
-  module->Process(std::move(call_expr));
+  module->AppendNode(std::move(call_expr));
   return std::pair(std::move(os), expr);
 }
 

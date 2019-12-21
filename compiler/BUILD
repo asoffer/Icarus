@@ -23,6 +23,7 @@ cc_library(
         ":dependent_data",
         ":executable_module",
         ":extract_jumps",
+        ":library_module",
         ":module",
         ":special_function",
         "//ast:ast",
@@ -36,6 +37,7 @@ cc_library(
         "//compiler/dispatch:fn_call_table",
         "//compiler/dispatch:scope_table",
         "//diagnostic:errors",
+        "//diagnostic/consumer",
         "//diagnostic/consumer:streaming",
         "//error:log",
         "//frontend:parse",
@@ -92,8 +94,6 @@ cc_library(
         ":constant_binding",
         ":data",
         ":dependent_data",
-        ":executable_module",
-        ":library_module",
         "//ast:ast_fwd",
         "//ast:overload_set",
         "//ast:visitor",
@@ -207,6 +207,7 @@ cc_lib(
         "//base:ptr_span",
         "//interpretter:evaluate",
         "//ir:compiled_fn",
+        "//ir:jump",
         "//module:module",
         "//type:type_fwd",
     ],
@@ -216,14 +217,20 @@ cc_lib(
 cc_library(
     name = "library_module",
     hdrs = ["library_module.h"],
-    deps = [":module"],
+    deps = [
+        ":compiler_header",
+        ":module",
+        "//diagnostic/consumer:streaming",
+    ],
 )
 
 cc_library(
     name = "executable_module",
     hdrs = ["executable_module.h"],
     deps = [
+        ":compiler_header",
         ":module",
+        "//diagnostic/consumer:streaming",
         "//ir:compiled_fn",
     ],
 )

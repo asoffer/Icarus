@@ -4,9 +4,8 @@
 #include "ast/expr_ptr.h"
 #include "compiler/compiler.h"
 #include "compiler/executable_module.h"
-#include "compiler/library_module.h"
 #include "compiler/module.h"
-#include "diagnostic/consumer/streaming.h"
+#include "diagnostic/consumer/consumer.h"
 #include "frontend/parse.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
@@ -15,28 +14,6 @@
 #include "type/jump.h"
 
 namespace compiler {
-
-std::unique_ptr<module::BasicModule> CompileLibraryModule(
-    frontend::Source *src) {
-  auto mod = std::make_unique<LibraryModule>(
-      [](base::PtrSpan<ast::Node const> nodes, CompiledModule *mod) {
-        diagnostic::StreamingConsumer consumer(stderr);
-        compiler::Compiler c(mod, consumer);
-        for (ast::Node const *node : nodes) { c.Visit(node, VerifyTypeTag{}); }
-        if (c.num_errors() > 0) { return; }
-
-        for (ast::Node const *node : nodes) { c.Visit(node, EmitValueTag{}); }
-        c.CompleteDeferredBodies();
-
-        mod->dep_data_   = std::move(c.data_.dep_data_);
-        mod->fns_        = std::move(c.data_.fns_);
-        mod->scope_defs_ = std::move(c.data_.scope_defs_);
-        mod->block_defs_ = std::move(c.data_.block_defs_);
-        mod->jumps_      = std::move(c.data_.jumps_);
-      });
-  mod->Process(frontend::Parse(src));
-  return mod;
-}
 
 Compiler::Compiler(module::BasicModule *mod,
                    diagnostic::DiagnosticConsumer &consumer)
@@ -134,7 +111,7 @@ void Compiler::set_jump_table(ast::ExprPtr jump_expr, ast::ExprPtr node,
 }
 
 void Compiler::set_pending_module(ast::Import const *import_node,
-                                  module::PendingModule mod) {
+                                  module::Pending<LibraryModule> mod) {
   data_.constants_->second.imported_module_.emplace(import_node,
                                                     std::move(mod));
 }
@@ -156,7 +133,7 @@ ast::DispatchTable const *Compiler::jump_table(ast::ExprPtr jump_expr,
   return nullptr;
 }
 
-module::PendingModule *Compiler::pending_module(
+module::Pending<LibraryModule> *Compiler::pending_module(
     ast::Import const *import_node) const {
   if (auto iter = data_.constants_->second.imported_module_.find(import_node);
       iter != data_.constants_->second.imported_module_.end()) {

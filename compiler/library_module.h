@@ -1,14 +1,31 @@
 #ifndef ICARUS_COMPILER_LIBRARY_MODULE_H
 #define ICARUS_COMPILER_LIBRARY_MODULE_H
 
+#include "compiler/compiler.h"
 #include "compiler/module.h"
+#include "diagnostic/consumer/streaming.h"
 
 namespace compiler {
 struct LibraryModule : CompiledModule {
-  template <typename ProcessFn,
-            typename std::enable_if_t<
-                not std::is_same_v<ProcessFn, CompiledModule>, int> = 0>
-  explicit LibraryModule(ProcessFn fn) : CompiledModule(std::move(fn)) {}
+  explicit LibraryModule() {}
+  ~LibraryModule() override {}
+
+ protected:
+  void ProcessNodes(base::PtrSpan<ast::Node const> nodes) override {
+    diagnostic::StreamingConsumer consumer(stderr);
+    compiler::Compiler c(this, consumer);
+    for (ast::Node const *node : nodes) { c.Visit(node, VerifyTypeTag{}); }
+    if (c.num_errors() > 0) { return; }
+
+    for (ast::Node const *node : nodes) { c.Visit(node, EmitValueTag{}); }
+    c.CompleteDeferredBodies();
+
+    dep_data_   = std::move(c.data_.dep_data_);
+    fns_        = std::move(c.data_.fns_);
+    scope_defs_ = std::move(c.data_.scope_defs_);
+    block_defs_ = std::move(c.data_.block_defs_);
+    jumps_      = std::move(c.data_.jumps_);
+  }
 };
 
 }  // namespace compiler

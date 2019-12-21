@@ -10,6 +10,7 @@
 #include "module/module.h"
 
 namespace module {
+
 namespace {
 
 std::mutex mtx;
@@ -30,14 +31,6 @@ CanonicalizePath(frontend::FileName const &file_name) {
   return std::pair{&*iter, newly_inserted};
 }
 
-BasicModule *PendingModule::get() {
-  if ((data_ & 1) == 0) { return reinterpret_cast<BasicModule *>(data_); }
-  BasicModule *result =
-      reinterpret_cast<std::shared_future<BasicModule *> *>(data_ - 1)->get();
-  *this = PendingModule{result};
-  return result;
-}
-
 void AwaitAllModulesTransitively() {
   decltype(pending_module_futures)::iterator iter, end_iter;
   {
@@ -48,14 +41,15 @@ void AwaitAllModulesTransitively() {
 
   while (iter != end_iter) {
     iter->wait();
-    std::lock_guard lock(mtx);  // TODO I'm not sure this lock is necessary.
+    // TODO I'm not sure this lock is necessary.
+    std::lock_guard lock(mtx);
     ++iter;
   }
 }
 
-base::expected<PendingModule> ImportModule(
-    frontend::FileName const &file_name, BasicModule const *requestor,
-    std::unique_ptr<BasicModule> (*fn)(frontend::Source *)) {
+base::expected<Pending<BasicModule>> ImportModuleImpl(
+    frontend::FileName const &file_name,
+    std::unique_ptr<BasicModule> (*creator)()) {
   std::lock_guard lock(mtx);
   ASSIGN_OR(return _.error(), auto dependee, CanonicalizePath(file_name));
   auto [canonical_src, new_src] = dependee;
@@ -68,22 +62,22 @@ base::expected<PendingModule> ImportModule(
   auto[iter, inserted] = all_modules.try_emplace(canonical_src);
   auto & [ fut, mod ]  = iter->second;
 
-  if (not new_src) { return PendingModule{ASSERT_NOT_NULL(fut)}; }
+  if (not new_src) { return Pending<BasicModule>{ASSERT_NOT_NULL(fut)}; }
 
   ASSERT(fut == nullptr);
 
   fut = &pending_module_futures.emplace_back(std::async(
       std::launch::async,
-      [ fn, canonical_src, mod(&iter->second.second) ]()->BasicModule * {
+      [creator, canonical_src, mod(&iter->second.second)]() -> BasicModule * {
         // TODO error messages.
         ASSIGN_OR(return nullptr,  //
                          frontend::FileSource file_src,
                          frontend::FileSource::Make(*canonical_src));
-
-        *mod = fn(&file_src);
+        *mod = creator();
+        (*mod)->ProcessFromSource(&file_src);
         return mod->get();
       }));
-  return PendingModule{fut};
+  return Pending<BasicModule>{fut};
 }
 
 }  // namespace module

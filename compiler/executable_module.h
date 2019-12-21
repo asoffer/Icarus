@@ -1,24 +1,61 @@
 #ifndef ICARUS_COMPILER_EXECUTABLE_MODULE_H
 #define ICARUS_COMPILER_EXECUTABLE_MODULE_H
 
+#include "compiler/compiler.h"
 #include "compiler/module.h"
+#include "diagnostic/consumer/streaming.h"
 #include "ir/compiled_fn.h"
 
 namespace compiler {
 
+// TODO deal with this declaration
+void ProcessExecutableBody(Compiler *c, base::PtrSpan<ast::Node const> nodes,
+                           ir::CompiledFn *main_fn);
+
 struct ExecutableModule : CompiledModule {
-  template <typename ProcessFn,
-            typename std::enable_if_t<
-                not std::is_same_v<ProcessFn, CompiledModule>, int> = 0>
-  explicit ExecutableModule(ProcessFn fn) : CompiledModule(std::move(fn)) {}
+  explicit ExecutableModule() {}
+  ~ExecutableModule() override {}
 
   ir::CompiledFn *main() { return &main_; }
 
   // TODO hide this
   void set_main(ir::CompiledFn *main_fn) {}
 
- private:
-  ir::CompiledFn main_ = ir::CompiledFn(type::Func({}, {}), {});
+  protected:
+   void ProcessNodes(base::PtrSpan<ast::Node const> nodes) override {
+     diagnostic::StreamingConsumer consumer(stderr);
+     compiler::Compiler c(this, consumer);
+
+     // Do one pass of verification over constant declarations. Then come
+     // back a second time to handle the remaining.
+     // TODO this may be necessary in library modules too.
+     std::vector<ast::Node const *> deferred;
+     for (ast::Node const *node : nodes) {
+       if (auto const *decl = node->if_as<ast::Declaration>()) {
+         if (decl->flags() & ast::Declaration::f_IsConst) {
+           c.Visit(decl, VerifyTypeTag{});
+           continue;
+         }
+       }
+       deferred.push_back(node);
+     }
+
+     for (ast::Node const *node : deferred) { c.Visit(node, VerifyTypeTag{}); }
+
+     if (consumer.num_consumed() > 0) { return; }
+     if (c.num_errors() > 0) { return; }
+
+     ProcessExecutableBody(&c, nodes, main());
+
+     dep_data_   = std::move(c.data_.dep_data_);
+     fns_        = std::move(c.data_.fns_);
+     scope_defs_ = std::move(c.data_.scope_defs_);
+     block_defs_ = std::move(c.data_.block_defs_);
+     jumps_      = std::move(c.data_.jumps_);
+   }
+
+  private:
+   ir::CompiledFn main_ = ir::CompiledFn(type::Func({}, {}), {});
 };
 
 }  // namespace compiler

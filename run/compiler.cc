@@ -23,8 +23,8 @@ int RunCompiler(frontend::FileName const &file_name) {
   base::defer d([libc_handle] { dlclose(libc_handle); });
 
   error::Log log;
-  auto expected_pending_mod = module::ImportModule(
-      file_name, nullptr, compiler::CompileExecutableModule);
+  auto expected_pending_mod =
+      module::ImportModule<compiler::ExecutableModule>(file_name);
   if (not expected_pending_mod) { log.MissingModule(file_name.value, ""); }
 
   if (log.size() > 0) {

@@ -42,32 +42,33 @@ static void ReplEval(ast::Expression const *expr,
   interpretter::Execute(&fn, base::untyped_buffer(0), {}, &ctx);
 }
 
-struct ReplModule : public module::ExtendedModule<ReplModule> {
-  ReplModule()
-      : module::ExtendedModule<ReplModule>(
-            [this](base::PtrSpan<ast::Node const> nodes) {
-              diagnostic::StreamingConsumer consumer(stderr);
-              compiler::Compiler compiler(this, consumer);
-              for (ast::Node const *node : nodes) {
-                if (node->is<ast::Declaration>()) {
-                  auto *decl = &node->as<ast::Declaration>();
+struct ReplModule : public module::BasicModule {
+  explicit ReplModule() {}
+  ~ReplModule() override {}
 
-                  {
-                    compiler.Visit(decl, compiler::VerifyTypeTag{});
-                    compiler.Visit(decl, compiler::EmitValueTag{});
-                    // TODO compiler.CompleteDeferredBodies();
-                    if (compiler.num_errors() != 0) { compiler.DumpErrors(); }
-                  }
+  void ProcessNodes(base::PtrSpan<ast::Node const> nodes) {
+    diagnostic::StreamingConsumer consumer(stderr);
+    compiler::Compiler compiler(this, consumer);
+    for (ast::Node const *node : nodes) {
+      if (node->is<ast::Declaration>()) {
+        auto *decl = &node->as<ast::Declaration>();
 
-                } else if (node->is<ast::Expression>()) {
-                  auto *expr = &node->as<ast::Expression>();
-                  ReplEval(expr, &compiler);
-                  fprintf(stderr, "\n");
-                } else {
-                  NOT_YET(*node);
-                }
-              }
-            }) {}
+        {
+          compiler.Visit(decl, compiler::VerifyTypeTag{});
+          compiler.Visit(decl, compiler::EmitValueTag{});
+          // TODO compiler.CompleteDeferredBodies();
+          if (compiler.num_errors() != 0) { compiler.DumpErrors(); }
+        }
+
+      } else if (node->is<ast::Expression>()) {
+        auto *expr = &node->as<ast::Expression>();
+        ReplEval(expr, &compiler);
+        fprintf(stderr, "\n");
+      } else {
+        NOT_YET(*node);
+      }
+    }
+  }
 };
 
 int RunRepl() {
@@ -77,5 +78,5 @@ int RunRepl() {
   ReplModule mod;
 
   // TODO Parse can fail.
-  while (true) { mod.Process(frontend::Parse(&repl)); }
+  while (true) { mod.ProcessFromSource(&repl); }
 }

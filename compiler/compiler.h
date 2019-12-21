@@ -12,7 +12,6 @@
 #include "compiler/constant_binding.h"
 #include "compiler/data.h"
 #include "compiler/dependent_data.h"
-#include "type/qual_type.h"
 #include "diagnostic/consumer/consumer.h"
 #include "error/log.h"
 #include "frontend/source/source.h"
@@ -21,6 +20,7 @@
 #include "ir/reg.h"
 #include "ir/results.h"
 #include "module/module.h"
+#include "type/qual_type.h"
 #include "type/type_fwd.h"
 #include "type/visitor.h"
 
@@ -70,10 +70,7 @@ struct EmitDefaultInitTag {};
 struct EmitCopyAssignTag {};
 struct EmitMoveAssignTag {};
 
-std::unique_ptr<module::BasicModule> CompileExecutableModule(
-    frontend::Source *src);
-std::unique_ptr<module::BasicModule> CompileLibraryModule(
-    frontend::Source *src);
+struct LibraryModule; // TODO remove me.
 
 // These are the steps in a traditional compiler of verifying types and emitting
 // code. They're tied together because they don't necessarily happen in a
@@ -193,13 +190,14 @@ struct Compiler
   ast::DispatchTable const *jump_table(ast::ExprPtr jump_expr,
                                        ast::ExprPtr node) const;
 
-  module::PendingModule *pending_module(ast::Import const *import_node) const;
+  module::Pending<LibraryModule> *pending_module(
+      ast::Import const *import_node) const;
 
   std::pair<ConstantBinding, DependentData> *insert_constants(
       ConstantBinding const &constant_binding);
 
   void set_pending_module(ast::Import const *import_node,
-                          module::PendingModule mod);
+                          module::Pending<LibraryModule> mod);
 
   void CompleteDeferredBodies();
 
