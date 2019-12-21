@@ -6,7 +6,6 @@
 
 #include "ast/ast.h"
 #include "ast/overload_set.h"
-#include "backend/eval.h"
 #include "compiler/compiler.h"
 #include "compiler/dispatch/parameters_and_arguments.h"
 #include "compiler/dispatch/scope_table.h"
@@ -16,6 +15,7 @@
 #include "diagnostic/errors.h"
 #include "error/inference_failure_reason.h"
 #include "frontend/operators.h"
+#include "interpretter/evaluate.h"
 #include "ir/compiled_fn.h"
 #include "type/cast.h"
 #include "type/generic_struct.h"
@@ -537,7 +537,7 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
         output_type_vec.at(i) = type_of(decl);
       } else {
         ASSERT(output_type_vec.at(i) == type::Type_);
-        output_type_vec.at(i) = backend::EvaluateAs<type::Type const *>(
+        output_type_vec.at(i) = interpretter::EvaluateAs<type::Type const *>(
             MakeThunk((*outputs)[i], type::Type_));
       }
     }
@@ -587,7 +587,7 @@ static type::QualType AccessTypeMember(Compiler *c, ast::Access const *node,
   // TODO We may not be allowed to evaluate node:
   //    f ::= (T: type) => T.key
   // We need to know that T is const
-  auto *evaled_type = backend::EvaluateAs<type::Type const *>(
+  auto *evaled_type = interpretter::EvaluateAs<type::Type const *>(
       c->MakeThunk(node->operand(), operand_result.type()));
 
   // For enums and flags, regardless of whether we can get the value, it's
@@ -643,7 +643,7 @@ static type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
   DEBUG_LOG("AccessModuleMember")(node->DebugString());
   // TODO this is a common pattern for dealing with imported modules. Extract
   // it.
-  auto *mod = backend::EvaluateAs<CompiledModule const *>(
+  auto *mod = interpretter::EvaluateAs<CompiledModule const *>(
       c->MakeThunk(node->operand(), type::Module));
   auto decls = mod->declarations(node->member_name());
   switch (decls.size()) {
@@ -927,7 +927,7 @@ std::optional<ast::OverloadSet> MakeOverloadSet(
     if (result.type() == type::Module) {
       // TODO this is a common pattern for dealing with imported modules.
       // Extract it.
-      auto *mod = backend::EvaluateAs<CompiledModule const *>(
+      auto *mod = interpretter::EvaluateAs<CompiledModule const *>(
           c->MakeThunk(acc->operand(), type::Module));
       return FindOverloads(mod->scope(), acc->member_name(), args);
     }
@@ -986,8 +986,9 @@ static type::QualType VerifyCall(Compiler *c, ast::BuiltinFn const *b,
               b->span, "Second argument to `foreign` must be a constant.");
         }
       }
-      return type::QualType::Constant(backend::EvaluateAs<type::Type const *>(
-          c->MakeThunk(args.at(1), type::Type_)));
+      return type::QualType::Constant(
+          interpretter::EvaluateAs<type::Type const *>(
+              c->MakeThunk(args.at(1), type::Type_)));
     } break;
     case core::Builtin::Opaque:
       if (not arg_results.empty()) {
@@ -1111,7 +1112,7 @@ type::QualType Compiler::Visit(ast::Cast const *node, VerifyTypeTag) {
     error_log()->CastToNonConstantType(node->span);
     return type::QualType::Error();
   }
-  auto *t = ASSERT_NOT_NULL(backend::EvaluateAs<type::Type const *>(
+  auto *t = ASSERT_NOT_NULL(interpretter::EvaluateAs<type::Type const *>(
       MakeThunk(node->type(), type::Type_)));
   if (t->is<type::Struct>()) {
     return VerifyUnaryOverload(this, "as", node, expr_result);
@@ -1323,10 +1324,10 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
       auto *type_expr_type = type_expr_result.type();
       if (type_expr_type == type::Type_) {
         node_type = ASSERT_NOT_NULL(
-            set_result(
-                node,
-                type::QualType::Constant(backend::EvaluateAs<type::Type const *>(
-                    MakeThunk(node->type_expr(), type_expr_type))))
+            set_result(node,
+                       type::QualType::Constant(
+                           interpretter::EvaluateAs<type::Type const *>(
+                               MakeThunk(node->type_expr(), type_expr_type))))
                 .type());
 
         if (not(node->flags() & ast::Declaration::f_IsFnParam) and
@@ -1392,7 +1393,7 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
           node_type =
               set_result(node,
                          type::QualType::Constant(
-                             backend::EvaluateAs<type::Type const *>(
+                             interpretter::EvaluateAs<type::Type const *>(
                                  MakeThunk(node->type_expr(), type::Type_))))
                   .type();
         }
@@ -1422,10 +1423,10 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
           return set_result(node, type::QualType::Error());
         }
         node_type =
-            set_result(
-                node,
-                type::QualType::Constant(backend::EvaluateAs<type::Type const *>(
-                    MakeThunk(node->type_expr(), type::Type_))))
+            set_result(node,
+                       type::QualType::Constant(
+                           interpretter::EvaluateAs<type::Type const *>(
+                               MakeThunk(node->type_expr(), type::Type_))))
                 .type();
       } else {
         error_log()->NotAType(node->type_expr()->span,
@@ -1447,7 +1448,7 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
       // TODO check shadowing against other modules?
       // TODO what if no init val is provded? what if not constant?
       node->scope_->embedded_modules_.insert(
-          backend::EvaluateAs<module::BasicModule const *>(
+          interpretter::EvaluateAs<module::BasicModule const *>(
               MakeThunk(node->init_val(), type::Module)));
       return set_result(node, type::QualType::Constant(type::Module));
     } else {
@@ -1624,7 +1625,7 @@ type::QualType Compiler::Visit(ast::Import const *node, VerifyTypeTag) {
 
   if (err) { return type::QualType::Error(); }
   // TODO storing node might not be safe.
-  auto src = backend::EvaluateAs<std::string_view>(
+  auto src = interpretter::EvaluateAs<std::string_view>(
       MakeThunk(node->operand(), type::ByteView));
   // TODO source name?
   ASSIGN_OR(
@@ -1668,7 +1669,7 @@ type::QualType Compiler::Visit(ast::Index const *node, VerifyTypeTag) {
     }
 
     int64_t index = [&]() -> int64_t {
-      auto results = backend::Evaluate(MakeThunk(node->rhs(), index_type));
+      auto results = interpretter::Evaluate(MakeThunk(node->rhs(), index_type));
       if (index_type == type::Int8) { return results.get<int8_t>(0).value(); }
       if (index_type == type::Int16) { return results.get<int16_t>(0).value(); }
       if (index_type == type::Int32) { return results.get<int32_t>(0).value(); }
@@ -1786,8 +1787,8 @@ MakeJumpInits(Compiler *c, ast::OverloadSet const &os) {
   DEBUG_LOG("ScopeNode")("Overload set for inits has size ", os.members().size());
   for (ast::Expression const *member : os.members()) {
     DEBUG_LOG("ScopeNode")(member->DebugString());
-    auto *def =
-        backend::EvaluateAs<ir::ScopeDef *>(c->MakeThunk(member, type::Scope));
+    auto *def = interpretter::EvaluateAs<ir::ScopeDef *>(
+        c->MakeThunk(member, type::Scope));
     DEBUG_LOG("ScopeNode")(def);
     if (def->work_item and *def->work_item) { (std::move(*def->work_item))(); }
     for (auto *init : def->inits_) {

@@ -1,7 +1,7 @@
 #include "compiler/dispatch/parameters_and_arguments.h"
 
 #include "ast/ast.h"
-#include "backend/eval.h"
+#include "interpretter/evaluate.h"
 #include "ir/any_func.h"
 #include "ir/compiled_fn.h"
 #include "ir/components.h"
@@ -14,7 +14,7 @@ core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
   auto *decl_type = ASSERT_NOT_NULL(compiler->type_of(decl));
   if (decl->flags() & ast::Declaration::f_IsConst) {
     if (auto const *fn_type = decl_type->if_as<type::Function>()) {
-      auto f = backend::EvaluateAs<ir::AnyFunc>(
+      auto f = interpretter::EvaluateAs<ir::AnyFunc>(
           compiler->MakeThunk(decl, decl_type));
       return f.is_fn() ? f.func()->params() : fn_type->AnonymousFnParams();
     } else {

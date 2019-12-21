@@ -130,8 +130,8 @@ cc_lib(
     name = "parameters_and_arguments",
     deps = [
         "//ast:ast",
-        "//backend:eval",
         "//compiler:compiler_header",
+        "//interpretter:evaluate",
         "//ir:components",
         "//ir:results",
         "//type:cast",

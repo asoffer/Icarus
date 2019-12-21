@@ -10,6 +10,21 @@ cc_library(
 )
 
 cc_library(
+    name = "evaluate",
+    hdrs = ["evaluate.h"],
+    srcs = ["evaluate.cc"],
+    deps = [
+        ":execute",
+        "//base:debug",
+        "//base:untyped_buffer",
+        "//core:arch",
+        "//ir:compiled_fn",
+        "//ir:results",
+        "//type:function",
+    ],
+)
+
+cc_library(
     name = "stack_frame",
     hdrs = ["stack_frame.h"],
     srcs = ["stack_frame.cc"],
