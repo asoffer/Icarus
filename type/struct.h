@@ -48,7 +48,7 @@ struct Struct : public Type {
   bool IsDefaultInitializable() const;
   bool IsCopyable() const;
   bool IsMovable() const;
-  bool HasDestructor() const { NOT_YET(); }
+  bool HasDestructor() const { return false; /* TODO NOT_YET(); */ }
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);

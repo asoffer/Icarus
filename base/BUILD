@@ -58,7 +58,7 @@ cc_lib(
 
 cc_lib(
     name = "lazy", 
-    deps = [],
+    deps = [":debug"],
     header_only = True,
     test_deps = None,
 )

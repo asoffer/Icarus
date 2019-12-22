@@ -78,9 +78,10 @@ void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDefaultInitTag) {
 
       builder().ReturnJump();
     }
-    return fn;
 
+    return fn;
   });
+
   builder().Init(t, reg);
 }
 

@@ -421,9 +421,19 @@ void SetRet(uint16_t n, T val) {
   }
 }
 
+inline base::Tagged<Addr, Reg> GetRet(uint16_t n, type::Type const* t) {
+  auto& blk = *GetBuilder().CurrentBlock();
+  blk.cmd_buffer_.append(ReturnCmd::MakeControlBits<int>(false, true));
+  blk.cmd_buffer_.append(n);
+  Reg r = MakeResult(t);
+  blk.cmd_buffer_.append(r);
+  return r;
+}
+
 inline void SetRet(uint16_t n, type::Typed<Results> const& r) {
   // if (r.type()->is<type::GenericStruct>()) {
   //   SetRet(n, r->get<AnyFunc>(0));
+  // }
   if (r.type()->is<type::Jump>()) {
     // TODO currently this has to be implemented outside type::Apply because
     // that's in type.h which is wrong because it forces weird instantiation
@@ -432,26 +442,15 @@ inline void SetRet(uint16_t n, type::Typed<Results> const& r) {
   } else {
     type::Apply(r.type(), [&](auto tag) {
       using T = typename decltype(tag)::type;
-      // if constexpr (std::is_same_v<T, type::Struct const*>) {
-      //   auto* t = GetBuilder().CurrentGroup()->type_->output[n];
-      //   // TODO guaranteed move-elision
-      //   visitor::EmitIr visitor;
-      //   t->EmitMoveAssign(&visitor, t, r.get(), GetRet(n, t), ctx);
-      //   visitor.CompleteDeferredBodies();
-      // } else {
-      SetRet(n, r->get<T>(0));
-      // }
+      if constexpr (std::is_same_v<T, type::Struct const*>) {
+        // TODO must `r` be holding a register?
+        // TODO guaranteed move-elision
+        GetBuilder().Move(r.type(), r->get<Reg>(0), GetRet(n, r.type()));
+      } else {
+        SetRet(n, r->get<T>(0));
+      }
     });
   }
-}
-
-inline base::Tagged<Addr, Reg> GetRet(uint16_t n, type::Type const* t) {
-  auto& blk = *GetBuilder().CurrentBlock();
-  blk.cmd_buffer_.append(ReturnCmd::MakeControlBits<int>(false, true));
-  blk.cmd_buffer_.append(n);
-  Reg r = MakeResult(t);
-  blk.cmd_buffer_.append(r);
-  return r;
 }
 
 // TODO "Handler" doesn't really make sense in the name for these.

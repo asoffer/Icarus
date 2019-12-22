@@ -42,7 +42,7 @@ struct Function : public Callable {
   core::FnParams<type::Typed<ast::Declaration const *>> AnonymousFnParams()
       const;
 
-  std::vector<const Type *> input, output;
+  std::vector<Type const *> input, output;
 };
 
 Function const *Func(std::vector<Type const *> in,

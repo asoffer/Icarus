@@ -66,9 +66,9 @@ void AddType(IndexT &&index, type::Type const *t,
   }
 }
 
-ir::Results PrepareOneArg(ir::Builder &bldr,
-                          type::Typed<ir::Results> const &arg,
+ir::Results PrepareOneArg(Compiler *c, type::Typed<ir::Results> const &arg,
                           type::Type const *param_type) {
+  auto &bldr      = c->builder();
   auto *arg_var   = arg.type()->if_as<type::Variant>();
   auto *param_var = param_type->if_as<type::Variant>();
   if (arg_var and param_var) {
@@ -84,7 +84,14 @@ ir::Results PrepareOneArg(ir::Builder &bldr,
     NOT_YET(tmp);
   } else {
     // TODO other implicit conversions?
+    auto *t = arg.type();
+    if (t->is_big()) {
+      auto r = bldr.TmpAlloca(t);
+      c->EmitMoveInit(t, arg.get(), type::Typed(r, type::Ptr(t)));
+      return ir::Results{r};
+    } else {
     return arg.get();
+    }
   }
 }
 
@@ -127,14 +134,14 @@ std::vector<ir::Results> PrepareCallArguments(
   size_t i   = 0;
   for (; i < args.pos().size(); ++i) {
     arg_results.push_back(
-        PrepareOneArg(bldr, args.pos()[i], params.at(i).value.type()));
+        PrepareOneArg(compiler, args.pos()[i], params.at(i).value.type()));
   }
 
   for (; i < params.size(); ++i) {
     auto const &param = params.at(i);
     if (auto *arg = args.at_or_null(param.name)) {
       arg_results.push_back(
-          PrepareOneArg(bldr, *arg, params.at(i).value.type()));
+          PrepareOneArg(compiler, *arg, params.at(i).value.type()));
     } else {
       arg_results.push_back(ir::Results{compiler->Visit(
           ASSERT_NOT_NULL(param.value.get()->init_val()), EmitValueTag{})});

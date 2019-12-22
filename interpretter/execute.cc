@@ -277,6 +277,8 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
       type::Type const *t = fn_type->input[i];
       if (is_reg_bits[i]) {
         ir::Reg reg = iter->read<ir::Reg>();
+
+        if (t->is_big()) { t = type::Ptr(t); }
         ir::PrimitiveDispatch(ir::PrimitiveIndex(t), [&](auto tag) {
           using type = typename std::decay_t<decltype(tag)>::type;
           call_buf.set(i * kMaxSize, ctx->resolve<type>(reg));
@@ -610,6 +612,7 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
         type::Type const *t = iter->read<type::Type const *>();
         call_buf.append(ctx->resolve<ir::Addr>(ir::Reg(iter->read<ir::Reg>())));
 
+        DEBUG_LOG("SemanticCmd")(t->to_string());
         if (auto *s = t->if_as<type::Struct>()) {
           f = s->init_func_.get();
         } else if (auto *tup = t->if_as<type::Tuple>()) {
@@ -624,6 +627,7 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
         type::Type const *t = iter->read<type::Type const *>();
         call_buf.append(ctx->resolve<ir::Addr>(ir::Reg(iter->read<ir::Reg>())));
 
+        DEBUG_LOG("SemanticCmd")(t->to_string());
         if (auto *s = t->if_as<type::Struct>()) {
           f = s->destroy_func_.get();
         } else if (auto *tup = t->if_as<type::Tuple>()) {
@@ -640,9 +644,10 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
         call_buf.append(ctx->resolve<ir::Addr>(ir::Reg(iter->read<ir::Reg>())));
         call_buf.append(ReadAndResolve<ir::Addr>(to_reg, iter, ctx));
 
-        ir::AnyFunc f;
+        DEBUG_LOG("SemanticCmd")(t->to_string());
         if (auto *s = t->if_as<type::Struct>()) {
           f = s->move_assign_func_.get();
+          DEBUG_LOG("SemanticCmd")(f.func());
         } else if (auto *tup = t->if_as<type::Tuple>()) {
           f = tup->move_assign_func_.get();
         } else if (auto *a = t->if_as<type::Array>()) {
@@ -656,6 +661,8 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
         type::Type const *t = iter->read<type::Type const *>();
         call_buf.append(ctx->resolve<ir::Addr>(ir::Reg(iter->read<ir::Reg>())));
         call_buf.append(ReadAndResolve<ir::Addr>(to_reg, iter, ctx));
+
+        DEBUG_LOG("SemanticCmd")(t->to_string());
         if (auto *s = t->if_as<type::Struct>()) {
           f = s->copy_assign_func_.get();
         } else if (auto *tup = t->if_as<type::Tuple>()) {

@@ -14,14 +14,19 @@ std::string CallCmd::DebugString(base::untyped_buffer::const_iterator *iter) {
       absl::StrCat("call ", fn_is_reg ? stringify(iter->read<Reg>())
                                       : stringify(iter->read<AnyFunc>()));
   core::Bytes num_bytes_in_args = iter->read<core::Bytes>();
-  iter->skip(num_bytes_in_args.value());
+  std::string s;
+  s.reserve(num_bytes_in_args.value());
+  for (size_t i = 0; i < num_bytes_in_args.value(); ++i) {
+    s.append(" " + stringify(static_cast<int>(iter->read<char>())));
+  }
+  s.push_back(' ');
   uint16_t num_outs = iter->read<uint16_t>();
   std::vector<Reg> out_regs;
   out_regs.reserve(num_outs);
   for (uint16_t i = 0; i < num_outs; ++i) {
     out_regs.push_back(iter->read<Reg>());
   }
-  absl::StrAppend(&result, " args[", stringify(num_bytes_in_args), "]: ",
+  absl::StrAppend(&result, " args[", s, "]: ",
                   absl::StrJoin(out_regs, ", ", [](std::string *out, Reg r) {
                     out->append(stringify(r));
                   }));

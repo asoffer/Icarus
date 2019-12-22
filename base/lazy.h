@@ -3,6 +3,8 @@
 
 #include <mutex>
 
+#include "base/debug.h"
+
 namespace base {
 
 template <typename T>
@@ -13,7 +15,9 @@ struct lazy {
 
   template <typename Fn>
   void init(Fn&& f) const {
-    std::call_once(flag_, [&]() { val_ = f(); });
+    std::call_once(flag_, [&]() {
+      val_    = f();
+    });
   }
 
  private:

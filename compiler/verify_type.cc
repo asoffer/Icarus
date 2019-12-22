@@ -675,7 +675,8 @@ type::QualType Compiler::Visit(ast::Access const *node, VerifyTypeTag) {
   if (base_type == type::Type_) {
     return AccessTypeMember(this, node, operand_result);
   } else if (auto *s = base_type->if_as<type::Struct>()) {
-    return AccessStructMember(this, node, operand_result);
+    return AccessStructMember(
+        this, node, type::QualType(base_type, operand_result.constant()));
   } else if (base_type == type::Module) {
     return AccessModuleMember(this, node, operand_result);
   } else {

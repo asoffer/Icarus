@@ -13,7 +13,7 @@
 namespace compiler {
 namespace {
 
-std::pair<ir::Results, ir::OutParams> SetReturns(
+std::pair<ir::Results, ir::OutParams> SetReturns(ir::Builder& bldr,
     internal::ExprData const &expr_data,
     absl::Span<type::Type const *> final_out_types) {
   auto const &ret_types = expr_data.type()->as<type::Function>().output;
@@ -21,7 +21,8 @@ std::pair<ir::Results, ir::OutParams> SetReturns(
   ir::OutParams out_params;
   for (type::Type const *ret_type : ret_types) {
     if (ret_type->is_big()) {
-      NOT_YET();
+      auto reg = bldr.TmpAlloca(ret_type);
+      out_params.AppendLoc(reg);
     } else {
       out_params.AppendReg(ret_type);
       results.append(out_params.regs_.back());
@@ -41,7 +42,7 @@ ir::Results EmitCallOneOverload(
 
   auto arg_results = PrepareCallArguments(compiler, data.params(), args);
 
-  auto[out_results, out_params] = SetReturns(data, {});
+  auto [out_results, out_params] = SetReturns(compiler->builder(), data, {});
   compiler->builder().Call(
       compiler->Visit(fn, EmitValueTag{}).get<ir::AnyFunc>(0),
       &compiler->type_of(fn)->as<type::Function>(), arg_results, out_params);

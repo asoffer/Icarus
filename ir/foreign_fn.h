@@ -1,6 +1,8 @@
 #ifndef ICARUS_IR_FOREIGN_FN_H
 #define ICARUS_IR_FOREIGN_FN_H
 
+#include <iostream>
+
 // TODO depend on function directly, which involves moving core::Intepretter.
 namespace type {
 struct Function;
@@ -14,6 +16,10 @@ struct ForeignFn {
 
   void (*get())() const { return fn_; }
   type::Function const *type() const;
+
+  friend std::ostream &operator<<(std::ostream& os, ForeignFn f) {
+    return os << "Foreign(" << f.fn_ << ")";
+  }
 
  private:
   ForeignFn() {}
