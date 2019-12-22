@@ -30,7 +30,7 @@ std::string SemanticCmd::DebugString(
     case 1: {
       type::Type const *t = iter->read<type::Type const *>();
       return absl::StrCat(cmd_name, " ", t->to_string(), " ",
-                          stringify((iter->read<Reg>())));
+                          stringify(iter->read<Reg>()));
     } break;
     case 2: {
       bool to_reg         = iter->read<bool>();
