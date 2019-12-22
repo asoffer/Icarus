@@ -15,9 +15,9 @@
 
 namespace compiler {
 
-Compiler::Compiler(module::BasicModule *mod,
+Compiler::Compiler(CompiledModule *mod,
                    diagnostic::DiagnosticConsumer &consumer)
-    : data_(mod), diag_consumer_(consumer) {}
+    : data_(mod->data_), diag_consumer_(consumer) {}
 
 type::QualType const *Compiler::prior_verification_attempt(ast::ExprPtr expr) {
   return data_.constants_->second.result(expr);

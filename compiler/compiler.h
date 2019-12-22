@@ -12,6 +12,7 @@
 #include "compiler/constant_binding.h"
 #include "compiler/data.h"
 #include "compiler/dependent_data.h"
+#include "compiler/module.h"
 #include "diagnostic/consumer/consumer.h"
 #include "error/log.h"
 #include "frontend/source/source.h"
@@ -155,7 +156,7 @@ struct Compiler
         EmitCopyAssignTag)>::Visit(t, to, from, EmitCopyAssignTag{});
   }
 
-  Compiler(module::BasicModule *mod, diagnostic::DiagnosticConsumer &consumer);
+  Compiler(CompiledModule *mod, diagnostic::DiagnosticConsumer &consumer);
 
   module::BasicModule *module() const { return data_.mod_; }
   ir::Builder &builder() { return data_.bldr_; };
@@ -307,7 +308,7 @@ struct Compiler
   void EmitCopyInit(type::Type const *from_type, ir::Results const &from_val,
                     type::Typed<ir::Reg> to_var);
 
-  CompilationData data_;
+  CompilationData& data_;
   diagnostic::DiagnosticConsumer &diag_consumer_;
 };
 

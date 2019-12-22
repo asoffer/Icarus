@@ -42,7 +42,7 @@ static void ReplEval(ast::Expression const *expr,
   interpretter::Execute(&fn, base::untyped_buffer(0), {}, &ctx);
 }
 
-struct ReplModule : public module::BasicModule {
+struct ReplModule : public compiler::CompiledModule {
   explicit ReplModule() {}
   ~ReplModule() override {}
 

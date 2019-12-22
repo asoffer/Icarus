@@ -19,12 +19,6 @@ struct LibraryModule : CompiledModule {
 
     for (ast::Node const *node : nodes) { c.Visit(node, EmitValueTag{}); }
     c.CompleteDeferredBodies();
-
-    dep_data_   = std::move(c.data_.dep_data_);
-    fns_        = std::move(c.data_.fns_);
-    scope_defs_ = std::move(c.data_.scope_defs_);
-    block_defs_ = std::move(c.data_.block_defs_);
-    jumps_      = std::move(c.data_.jumps_);
   }
 };
 

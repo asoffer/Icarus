@@ -45,18 +45,16 @@ namespace {
 
 void AddAdl(ast::OverloadSet *overload_set, std::string_view id,
             type::Type const *t) {
-  absl::flat_hash_set<module::BasicModule const *> modules;
+  absl::flat_hash_set<CompiledModule *> modules;
   // TODO t->ExtractDefiningModules(&modules);
 
-  for (auto const *mod : modules) {
+  for (auto *mod : modules) {
     auto decls = mod->declarations(id);
       diagnostic::StreamingConsumer consumer(stderr);
 
     for (auto *d : decls) {
       // TODO Wow this is a terrible way to access the type.
-      ASSIGN_OR(continue, auto &t,
-                Compiler(const_cast<module::BasicModule *>(mod), consumer)
-                    .type_of(d));
+      ASSIGN_OR(continue, auto &t, Compiler(mod, consumer).type_of(d));
       // TODO handle this case. I think it's safe to just discard it.
       for (auto const *expr : overload_set->members()) {
         if (d == expr) { return; }

@@ -16,7 +16,7 @@
 
 namespace test {
 
-struct TestModule : module::BasicModule {
+struct TestModule : compiler::CompiledModule {
   TestModule() : consumer(stderr), compiler(this, consumer) {}
 
   diagnostic::StreamingConsumer consumer;

@@ -1076,7 +1076,7 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
       // want to do. We want to find it in the correct dependent data. But we
       // need to rework contant bindings anyway.
       for (auto &[constant_binding, dep_data] :
-           node->module()->as<CompiledModule>().dep_data_) {
+           node->module()->as<CompiledModule>().data_.dep_data_) {
         auto result = dep_data.constants_.get_constant(node);
         if (result.size() == 1) { return result; }
       }

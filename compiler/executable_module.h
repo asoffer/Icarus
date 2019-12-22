@@ -46,12 +46,6 @@ struct ExecutableModule : CompiledModule {
      if (c.num_errors() > 0) { return; }
 
      ProcessExecutableBody(&c, nodes, main());
-
-     dep_data_   = std::move(c.data_.dep_data_);
-     fns_        = std::move(c.data_.fns_);
-     scope_defs_ = std::move(c.data_.scope_defs_);
-     block_defs_ = std::move(c.data_.block_defs_);
-     jumps_      = std::move(c.data_.jumps_);
    }
 
   private:

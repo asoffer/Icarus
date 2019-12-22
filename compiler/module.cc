@@ -5,7 +5,7 @@
 namespace compiler {
 
 type::Type const *CompiledModule::type_of(ast::Expression const *expr) const {
-  auto const *result = dep_data_.front().second.result(expr);
+  auto const *result = data_.dep_data_.front().second.result(expr);
   if (result and result->type()) { return result->type(); }
 
   // TODO reenabel once modules are all in core.

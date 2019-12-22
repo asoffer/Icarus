@@ -94,6 +94,7 @@ cc_library(
         ":constant_binding",
         ":data",
         ":dependent_data",
+        ":module",
         "//ast:ast_fwd",
         "//ast:overload_set",
         "//ast:visitor",
@@ -201,6 +202,7 @@ cc_lib(
     name = "module",
     deps = [
         ":constant_binding",
+        ":data",
         ":dependent_data",
         "//ast:ast",
         "//ast:ast_fwd",
