@@ -1,9 +1,7 @@
-main ::= () -> () {
-  n := 0
-  while (n <= 10) do {
-    print "fib(", n, ") = ", fibonacci(n), "\n"
-    n += 1
-  }
+num := 0
+while (num <= 10) do {
+  print "fib(", num, ") = ", fibonacci(num), "\n"
+  num += 1
 }
 
 fibonacci ::= (n: int64) -> int64 {

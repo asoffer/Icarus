@@ -190,13 +190,13 @@ ir::CompiledFn Compiler::MakeThunk(ast::Expression const *expr,
     } else {
       extracted_types = {type};
     }
+  
     for (size_t i = 0; i < vals.size(); ++i) {
       ir::SetRet(i, type::Typed{vals.GetResult(i), extracted_types.at(i)});
     }
     builder().ReturnJump();
-
-    CompleteDeferredBodies();
   }
+
   return fn;
 }
 

@@ -1069,12 +1069,17 @@ ir::Results Compiler::Visit(ast::CommaList const *node, EmitValueTag) {
 }
 
 ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
-  DEBUG_LOG("EmitValueDeclaration")(node->DebugString());
+  DEBUG_LOG("EmitValueDeclaration")(node->id());
   if (node->flags() & ast::Declaration::f_IsConst) {
     if (node->module() != module()) {
       // TODO: This is wrong. Looking up in *any* dependent data is not what we
       // want to do. We want to find it in the correct dependent data. But we
       // need to rework contant bindings anyway.
+      auto result = node->module()
+                        ->as<CompiledModule>()
+                        .data_.constants_->first.get_constant(node);
+      if (result.size() == 1) { return result; }
+
       for (auto &[constant_binding, dep_data] :
            node->module()->as<CompiledModule>().data_.dep_data_) {
         auto result = dep_data.constants_.get_constant(node);
@@ -1096,7 +1101,6 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
       }
     } else {
       auto *t = ASSERT_NOT_NULL(type_of(node));
-      if (not t) { UNREACHABLE(node->DebugString()); }
 
       auto slot = data_.constants_->second.constants_.reserve_slot(node, t);
       if (auto *result = std::get_if<ir::Results>(&slot)) {

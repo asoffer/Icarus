@@ -1340,7 +1340,8 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
     } break;
     case INFER: UNREACHABLE(); break;
     case INFER | CUSTOM_INIT: {
-      DEBUG_LOG("Declaration")(node->DebugString());
+      DEBUG_LOG("Declaration")("Verifying, ", node->id());
+
       ASSIGN_OR(return set_result(node, type::QualType::Error()),
                        auto init_val_result,
                        Visit(node->init_val(), VerifyTypeTag{}));
@@ -1362,6 +1363,8 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
               node, type::QualType(init_val_result.type(),
                                  (node->flags() & ast::Declaration::f_IsConst)))
               .type();
+      DEBUG_LOG("Declaration")
+      ("Verified, ", node->id(), ": ", node_type->to_string());
     } break;
     case INFER | UNINITIALIZED: {
       error_log()->UninferrableType(InferenceFailureReason::Hole,
