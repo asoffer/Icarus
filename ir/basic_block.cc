@@ -132,11 +132,6 @@ Reg MakeResult(type::Type const *t) {
   return Reserve(t->bytes(arch), t->alignment(arch));
 }
 
-BasicBlock const *ReturnBlock() {
-  static BasicBlock b;
-  return &b;
-}
-
 void BasicBlock::ReplaceJumpTargets(BasicBlock *old_target,
                                     BasicBlock *new_target) {
   jump_.Visit([&](auto &j) {

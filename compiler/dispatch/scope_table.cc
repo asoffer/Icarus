@@ -242,11 +242,17 @@ ir::Results ScopeDispatchTable::EmitCall(
 
   // TODO handle results
 
+  bool more = bldr.more_stmts_allowed();
   for (auto const & [ scope_def, one_table ] : tables_) {
     for (auto const & [ node, table ] : one_table.blocks) {
       DEBUG_LOG("EmitCall")(node->DebugString());
       bldr.CurrentBlock() = block_interps.at(scope_def)[node];
+      bldr.allow_more_stmts();
       compiler->Visit(node, EmitValueTag{});
+
+      // TODO unconditionally skipping after-handlers is incorrect.
+      if (not bldr.more_stmts_allowed()) { continue; }
+
       // TODO This is a simplification which only handles the situation where
       // we jump to the after handler that has no arguments.
 
@@ -256,7 +262,7 @@ ir::Results ScopeDispatchTable::EmitCall(
                           block_interps.at(scope_def));
     }
   }
-
+  if (more) { bldr.allow_more_stmts(); }
   bldr.CurrentBlock() = landing_block;
   DEBUG_LOG("EmitCall")(*bldr.CurrentGroup());
   return ir::Results{};

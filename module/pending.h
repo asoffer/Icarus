@@ -65,6 +65,7 @@ base::expected<Pending<ModType>> ImportModule(frontend::FileName const &src) {
     return std::make_unique<ModType>();
   });
   ASSIGN_OR(return _.error(), auto p , import);
+  // TODO fix strict-aliasing violation.
   return *reinterpret_cast<Pending<ModType>*>(&p);
 }
 

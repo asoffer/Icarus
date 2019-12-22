@@ -88,6 +88,8 @@ void MakeAllDestructions(Compiler *compiler, ast::ExecScope const *exec_scope) {
   }
 }
 
+// TODO One problem with this setup is that we don't end up calling destructors
+// if we exit early, so those need to be handled externally.
 void EmitIrForStatements(Compiler *compiler,
                          base::PtrSpan<ast::Node const> span) {
   ICARUS_SCOPE(ir::SetTemporaries(compiler->builder())) {

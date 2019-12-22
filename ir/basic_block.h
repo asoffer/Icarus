@@ -47,8 +47,6 @@ struct BasicBlock {
   absl::flat_hash_set<BasicBlock *> incoming_;
 };
 
-BasicBlock const *ReturnBlock();
-
 Reg Reserve(core::Bytes b, core::Alignment a);
 
 template <typename T>
