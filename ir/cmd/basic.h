@@ -36,14 +36,14 @@ struct Multiplication {
 struct Division {
   template <typename T>
   T operator()(T lhs, T rhs) {
-    return lhs * rhs;
+    return lhs / rhs;
   }
 };
 
 struct Modulus {
   template <typename T>
   T operator()(T lhs, T rhs) {
-    return lhs * rhs;
+    return lhs % rhs;
   }
 };
 
