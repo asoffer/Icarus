@@ -89,8 +89,6 @@ struct Builder {
   // Comparison operators
   ICARUS_IR_DEFINE_CMD(Lt);
   ICARUS_IR_DEFINE_CMD(Le);
-  ICARUS_IR_DEFINE_CMD(Eq);
-  ICARUS_IR_DEFINE_CMD(Ne);
   ICARUS_IR_DEFINE_CMD(Ge);
   ICARUS_IR_DEFINE_CMD(Gt);
 
@@ -100,6 +98,68 @@ struct Builder {
   ICARUS_IR_DEFINE_CMD(OrFlags);
 #undef ICARUS_IR_DEFINE_CMD
 
+  template <typename Lhs, typename Rhs>
+  auto Eq(Lhs&& lhs, Rhs&& rhs) {
+    using lhs_t = std::decay_t<Lhs>;
+    using rhs_t = std::decay_t<Rhs>;
+    if constexpr (std::is_same_v<lhs_t, bool>) {
+      return lhs ? rhs : Not(rhs);
+    } else if constexpr (std::is_same_v<lhs_t, RegOr<bool>>) {
+      if (lhs.is_reg()) {
+        return internal::MakeBinaryCmd<EqCmd>(
+            internal::PrepareCmdArg(std::forward<Lhs>(lhs)),
+            internal::PrepareCmdArg(std::forward<Rhs>(rhs)), this);
+      } else {
+        return lhs.value() ? rhs : Not(rhs);
+      }
+    } else if constexpr (std::is_same_v<rhs_t, bool>) {
+      return rhs ? lhs : Not(lhs);
+    } else if constexpr (std::is_same_v<rhs_t, RegOr<bool>>) {
+      if (rhs.is_reg()) {
+        return internal::MakeBinaryCmd<EqCmd>(
+            internal::PrepareCmdArg(std::forward<Lhs>(lhs)),
+            internal::PrepareCmdArg(std::forward<Rhs>(rhs)), this);
+      } else {
+        return rhs.value() ? lhs : Not(lhs);
+      }
+    } else {
+      return internal::MakeBinaryCmd<EqCmd>(
+          internal::PrepareCmdArg(std::forward<Lhs>(lhs)),
+          internal::PrepareCmdArg(std::forward<Rhs>(rhs)), this);
+    }
+  }
+
+  template <typename Lhs, typename Rhs>
+  auto Ne(Lhs&& lhs, Rhs&& rhs) {
+    using lhs_t = std::decay_t<Lhs>;
+    using rhs_t = std::decay_t<Rhs>;
+    if constexpr (std::is_same_v<lhs_t, bool>) {
+      return lhs ? Not(rhs) : rhs;
+    } else if constexpr (std::is_same_v<lhs_t, RegOr<bool>>) {
+      if (lhs.is_reg()) {
+        return internal::MakeBinaryCmd<EqCmd>(
+            internal::PrepareCmdArg(std::forward<Lhs>(lhs)),
+            internal::PrepareCmdArg(std::forward<Rhs>(rhs)), this);
+      } else {
+        return lhs.value() ? Not(rhs) : rhs;
+      }
+    } else if constexpr (std::is_same_v<rhs_t, bool>) {
+      return rhs ? Not(lhs) : lhs;
+    } else if constexpr (std::is_same_v<rhs_t, RegOr<bool>>) {
+      if (rhs.is_reg()) {
+        return internal::MakeBinaryCmd<EqCmd>(
+            internal::PrepareCmdArg(std::forward<Lhs>(lhs)),
+            internal::PrepareCmdArg(std::forward<Rhs>(rhs)), this);
+      } else {
+        return rhs.value() ? Not(lhs) : lhs;
+      }
+    } else {
+      return internal::MakeBinaryCmd<EqCmd>(
+          internal::PrepareCmdArg(std::forward<Lhs>(lhs)),
+          internal::PrepareCmdArg(std::forward<Rhs>(rhs)), this);
+    }
+  }
+
 #define ICARUS_IR_DEFINE_CMD(name)                                             \
   template <typename T>                                                        \
   auto name(T&& val) {                                                         \
@@ -107,11 +167,28 @@ struct Builder {
         internal::PrepareCmdArg(std::forward<T>(val)), this);                  \
   }
 
-  ICARUS_IR_DEFINE_CMD(Not);
   ICARUS_IR_DEFINE_CMD(Neg);
   ICARUS_IR_DEFINE_CMD(Ptr);
   ICARUS_IR_DEFINE_CMD(BufPtr);
 #undef ICARUS_IR_DEFINE_CMD
+
+  template <typename T>
+  auto Not(T&& val) {
+    using type = std::decay_t<T>;
+    if constexpr (std::is_same_v<type, bool>) {
+      return !val;
+    } else if constexpr (std::is_same_v<type, RegOr<bool>>) {
+      if (val.is_reg()) {
+        return internal::MakeUnaryCmd<NotCmd>(
+            internal::PrepareCmdArg(std::forward<T>(val)), this);
+      } else {
+        return ir::RegOr<bool>(!val.value());
+      }
+    } else {
+      return internal::MakeUnaryCmd<NotCmd>(
+          internal::PrepareCmdArg(std::forward<T>(val)), this);
+    }
+  }
 
   RegOr<type::Type const*> Var(
       absl::Span<RegOr<type::Type const*> const> types) {
