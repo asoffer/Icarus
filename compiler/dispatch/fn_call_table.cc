@@ -23,6 +23,7 @@ std::pair<ir::Results, ir::OutParams> SetReturns(ir::Builder& bldr,
     if (ret_type->is_big()) {
       auto reg = bldr.TmpAlloca(ret_type);
       out_params.AppendLoc(reg);
+      results.append(reg);
     } else {
       out_params.AppendReg(ret_type);
       results.append(out_params.regs_.back());

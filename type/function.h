@@ -7,10 +7,6 @@
 #include "type/callable.h"
 #include "type/typed_value.h"
 
-namespace ast {
-struct Expression;
-}  // namespace ast
-
 namespace type {
 struct GenericFunction : public Callable {
   GenericFunction() {}
@@ -38,6 +34,8 @@ struct Function : public Callable {
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
+
+  bool is_big() const override { return false; }
 
   core::FnParams<type::Typed<ast::Declaration const *>> AnonymousFnParams()
       const;

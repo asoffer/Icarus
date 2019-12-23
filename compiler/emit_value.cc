@@ -1323,7 +1323,17 @@ ir::Results Compiler::Visit(ast::ReturnStmt const *node, EmitValueTag) {
   auto *fn_type = &ASSERT_NOT_NULL(type_of(fn_lit))->as<type::Function>();
   for (size_t i = 0; i < arg_vals.size(); ++i) {
     // TODO return type maybe not the same as type actually returned?
-    ir::SetRet(i, type::Typed{arg_vals[i].second, fn_type->output.at(i)});
+    auto *ret_type = fn_type->output[i];
+    if (ret_type->is_big()) {
+      // TODO must `r` be holding a register?
+      // TODO guaranteed move-elision
+      ASSERT(arg_vals[i].second.size() == 1u);
+      EmitMoveInit(ret_type, arg_vals[i].second,
+                   type::Typed(ir::GetRet(i, ret_type), type::Ptr(ret_type)));
+
+    } else {
+      ir::SetRet(i, type::Typed{arg_vals[i].second, ret_type});
+    }
   }
 
   // Rather than doing this on each block it'd be better to have each

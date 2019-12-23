@@ -191,8 +191,20 @@ ir::CompiledFn Compiler::MakeThunk(ast::Expression const *expr,
       extracted_types = {type};
     }
   
+    // TODO is_big()?
     for (size_t i = 0; i < vals.size(); ++i) {
-      ir::SetRet(i, type::Typed{vals.GetResult(i), extracted_types.at(i)});
+      auto const *t = extracted_types[i];
+      if (t->is_big()) {
+        // TODO must `r` be holding a register?
+        // TODO guaranteed move-elision
+
+        ASSERT(vals.GetResult(i).size() == 1u);
+        EmitMoveInit(t, vals.GetResult(i),
+                     type::Typed(ir::GetRet(i, t), type::Ptr(t)));
+
+      } else {
+        ir::SetRet(i, type::Typed{vals.GetResult(i), t});
+      }
     }
     builder().ReturnJump();
   }

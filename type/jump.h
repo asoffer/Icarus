@@ -25,6 +25,8 @@ struct Jump : public Type {
 
   type::Function const *ToFunction() const { return type::Func(args_, {}); }
 
+  bool is_big() const override { return false; }
+
   friend bool operator==(Jump const &lhs, Jump const &rhs) {
     return lhs.args_ == rhs.args_;
   }

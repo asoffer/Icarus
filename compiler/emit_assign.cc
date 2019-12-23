@@ -316,12 +316,14 @@ void Compiler::Visit(type::Variant const *t, ir::RegOr<ir::Addr> to,
 void Compiler::Visit(type::Struct const *t, ir::RegOr<ir::Addr> to,
                      type::Typed<ir::Results> const &from, EmitCopyAssignTag) {
   t->copy_assign_func_.init([=]() { return CreateAssign<Copy>(this, t); });
+  ASSERT(from->size() == 1u);
   builder().Copy(t, from->get<ir::Reg>(0), to);
 }
 
 void Compiler::Visit(type::Struct const *t, ir::RegOr<ir::Addr> to,
                      type::Typed<ir::Results> const &from, EmitMoveAssignTag) {
   t->move_assign_func_.init([=]() { return CreateAssign<Move>(this, t); });
+  ASSERT(from->size() == 1u);
   builder().Move(t, from->get<ir::Reg>(0), to);
 }
 
