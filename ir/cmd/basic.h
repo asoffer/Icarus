@@ -2,7 +2,6 @@
 #define ICARUS_IR_CMD_BASIC_H
 
 #include <functional>
-#include <optional>
 
 #include "base/untyped_buffer.h"
 #include "ir/cmd/util.h"
@@ -10,19 +9,57 @@
 #include "type/util.h"
 
 namespace ir {
-using AddCmd = internal::BinaryCmd<1, std::plus<>,  //
+
+// Note: We need to write these ourselves because we need to specif the return
+// type to avoid integral promotion.
+struct Addition {
+  template <typename T>
+  T operator()(T lhs, T rhs) {
+    return lhs + rhs;
+  }
+};
+
+struct Subtraction {
+  template <typename T>
+  T operator()(T lhs, T rhs) {
+    return lhs - rhs;
+  }
+};
+
+struct Multiplication {
+  template <typename T>
+  T operator()(T lhs, T rhs) {
+    return lhs * rhs;
+  }
+};
+
+struct Division {
+  template <typename T>
+  T operator()(T lhs, T rhs) {
+    return lhs * rhs;
+  }
+};
+
+struct Modulus {
+  template <typename T>
+  T operator()(T lhs, T rhs) {
+    return lhs * rhs;
+  }
+};
+
+using AddCmd = internal::BinaryCmd<1, Addition,  //
                                    int8_t, int16_t, int32_t, int64_t, uint8_t,
                                    uint16_t, uint32_t, uint64_t, float, double>;
-using SubCmd = internal::BinaryCmd<2, std::minus<>,  //
+using SubCmd = internal::BinaryCmd<2, Subtraction,  //
                                    int8_t, int16_t, int32_t, int64_t, uint8_t,
                                    uint16_t, uint32_t, uint64_t, float, double>;
-using MulCmd = internal::BinaryCmd<3, std::multiplies<>,  //
+using MulCmd = internal::BinaryCmd<3, Multiplication,  //
                                    int8_t, int16_t, int32_t, int64_t, uint8_t,
                                    uint16_t, uint32_t, uint64_t, float, double>;
-using DivCmd = internal::BinaryCmd<4, std::divides<>,  //
+using DivCmd = internal::BinaryCmd<4, Division,  //
                                    int8_t, int16_t, int32_t, int64_t, uint8_t,
                                    uint16_t, uint32_t, uint64_t, float, double>;
-using ModCmd = internal::BinaryCmd<5, std::modulus<>,  //
+using ModCmd = internal::BinaryCmd<5, Modulus,  //
                                    int8_t, int16_t, int32_t, int64_t, uint8_t,
                                    uint16_t, uint32_t, uint64_t>;
 using LtCmd  = internal::BinaryCmd<6, std::less<>,  //
