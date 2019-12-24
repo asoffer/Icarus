@@ -40,16 +40,6 @@ namespace internal {
 template <typename SizeType, typename T>
 void Serialize(base::untyped_buffer*, absl::Span<RegOr<T> const>);
 
-template <typename CmdType, typename T>
-auto MakeBinaryCmd(RegOr<T>, RegOr<T>, Builder*);
-
-template <typename CmdType>
-RegOr<typename CmdType::type> MakeVariadicCmd(
-    absl::Span<RegOr<typename CmdType::type> const> vals, Builder*);
-
-template <typename T>
-auto PrepareCmdArg(T&& arg);
-
 }  // namespace internal
 
 struct Builder {
@@ -131,106 +121,122 @@ struct Builder {
   }
 
   template <typename Lhs, typename Rhs>
-  auto Lt(Lhs const& lhs, Rhs const& rhs) {
-    auto inst = std::make_unique<LtInstruction<reduced_type_t<Lhs>>>(lhs, rhs);
-    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
-    inst->Serialize(&CurrentBlock()->cmd_buffer_);
-    CurrentBlock()->instructions_.push_back(std::move(inst));
-    return result;
-  }
-
-  template <typename Lhs, typename Rhs>
-  auto Gt(Lhs const& lhs, Rhs const& rhs) {
-    return Lt(rhs, lhs);
-  }
-
-  template <typename Lhs, typename Rhs>
-  auto Le(Lhs const& lhs, Rhs const& rhs) {
-    auto inst = std::make_unique<LeInstruction<reduced_type_t<Lhs>>>(lhs, rhs);
-    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
-    inst->Serialize(&CurrentBlock()->cmd_buffer_);
-    CurrentBlock()->instructions_.push_back(std::move(inst));
-    return result;
-  }
-
-  template <typename Lhs, typename Rhs>
-  auto Ge(Lhs const& lhs, Rhs const& rhs) {
-    return Le(rhs, lhs);
-  }
-
-#define ICARUS_IR_DEFINE_CMD(name)                                             \
-  template <typename Lhs, typename Rhs>                                        \
-  auto name(Lhs&& lhs, Rhs&& rhs) {                                            \
-    return internal::MakeBinaryCmd<name##Cmd>(                                 \
-        internal::PrepareCmdArg(std::forward<Lhs>(lhs)),                       \
-        internal::PrepareCmdArg(std::forward<Rhs>(rhs)), this);                \
-  }
-
-  // Flags operators
-  ICARUS_IR_DEFINE_CMD(XorFlags);
-  ICARUS_IR_DEFINE_CMD(AndFlags);
-  ICARUS_IR_DEFINE_CMD(OrFlags);
-#undef ICARUS_IR_DEFINE_CMD
-
-  template <typename Lhs, typename Rhs>
-  auto Eq(Lhs&& lhs, Rhs&& rhs) {
-    using lhs_t = std::decay_t<Lhs>;
-    using rhs_t = std::decay_t<Rhs>;
-    if constexpr (std::is_same_v<lhs_t, bool>) {
-      return lhs ? rhs : Not(rhs);
-    } else if constexpr (std::is_same_v<lhs_t, RegOr<bool>>) {
-      if (lhs.is_reg()) {
-        return internal::MakeBinaryCmd<EqCmd>(
-            internal::PrepareCmdArg(std::forward<Lhs>(lhs)),
-            internal::PrepareCmdArg(std::forward<Rhs>(rhs)), this);
-      } else {
-        return lhs.value() ? rhs : Not(rhs);
+  RegOr<bool> Lt(Lhs const& lhs, Rhs const& rhs) {
+    using type = reduced_type_t<Lhs>;
+    if constexpr (IsRegOr<Lhs>::value and IsRegOr<Rhs>::value) {
+      if (not lhs.is_reg() and not rhs.is_reg()) {
+        return LtInstruction<type>::Apply(lhs.value(), rhs.value());
       }
-    } else if constexpr (std::is_same_v<rhs_t, bool>) {
-      return rhs ? lhs : Not(lhs);
-    } else if constexpr (std::is_same_v<rhs_t, RegOr<bool>>) {
-      if (rhs.is_reg()) {
-        return internal::MakeBinaryCmd<EqCmd>(
-            internal::PrepareCmdArg(std::forward<Lhs>(lhs)),
-            internal::PrepareCmdArg(std::forward<Rhs>(rhs)), this);
-      } else {
-        return rhs.value() ? lhs : Not(lhs);
-      }
+
+      auto inst =
+          std::make_unique<LtInstruction<reduced_type_t<Lhs>>>(lhs, rhs);
+      auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+      inst->Serialize(&CurrentBlock()->cmd_buffer_);
+      CurrentBlock()->instructions_.push_back(std::move(inst));
+      return result;
     } else {
-      return internal::MakeBinaryCmd<EqCmd>(
-          internal::PrepareCmdArg(std::forward<Lhs>(lhs)),
-          internal::PrepareCmdArg(std::forward<Rhs>(rhs)), this);
+      return Lt(RegOr<type>(lhs), RegOr<type>(rhs));
     }
   }
 
   template <typename Lhs, typename Rhs>
-  auto Ne(Lhs&& lhs, Rhs&& rhs) {
-    using lhs_t = std::decay_t<Lhs>;
-    using rhs_t = std::decay_t<Rhs>;
-    if constexpr (std::is_same_v<lhs_t, bool>) {
-      return lhs ? Not(rhs) : rhs;
-    } else if constexpr (std::is_same_v<lhs_t, RegOr<bool>>) {
-      if (lhs.is_reg()) {
-        return internal::MakeBinaryCmd<EqCmd>(
-            internal::PrepareCmdArg(std::forward<Lhs>(lhs)),
-            internal::PrepareCmdArg(std::forward<Rhs>(rhs)), this);
-      } else {
-        return lhs.value() ? Not(rhs) : rhs;
+  RegOr<bool> Gt(Lhs const& lhs, Rhs const& rhs) {
+    return Lt(rhs, lhs);
+  }
+
+  template <typename Lhs, typename Rhs>
+  RegOr<bool> Le(Lhs const& lhs, Rhs const& rhs) {
+    using type = reduced_type_t<Lhs>;
+    if constexpr (IsRegOr<Lhs>::value and IsRegOr<Rhs>::value) {
+      if (not lhs.is_reg() and not rhs.is_reg()) {
+        return LeInstruction<type>::Apply(lhs.value(), rhs.value());
       }
-    } else if constexpr (std::is_same_v<rhs_t, bool>) {
-      return rhs ? Not(lhs) : lhs;
-    } else if constexpr (std::is_same_v<rhs_t, RegOr<bool>>) {
-      if (rhs.is_reg()) {
-        return internal::MakeBinaryCmd<EqCmd>(
-            internal::PrepareCmdArg(std::forward<Lhs>(lhs)),
-            internal::PrepareCmdArg(std::forward<Rhs>(rhs)), this);
-      } else {
-        return rhs.value() ? Not(lhs) : lhs;
-      }
+
+      auto inst   = std::make_unique<LeInstruction<type>>(lhs, rhs);
+      auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+      inst->Serialize(&CurrentBlock()->cmd_buffer_);
+      CurrentBlock()->instructions_.push_back(std::move(inst));
+      return result;
     } else {
-      return internal::MakeBinaryCmd<EqCmd>(
-          internal::PrepareCmdArg(std::forward<Lhs>(lhs)),
-          internal::PrepareCmdArg(std::forward<Rhs>(rhs)), this);
+      return Le(RegOr<type>(lhs), RegOr<type>(rhs));
+    }
+  }
+
+  template <typename Lhs, typename Rhs>
+  RegOr<bool> Ge(Lhs const& lhs, Rhs const& rhs) {
+    return Le(rhs, lhs);
+  }
+
+  // Flags operators
+  RegOr<FlagsVal> XorFlags(RegOr<FlagsVal> const& lhs, RegOr<FlagsVal> const& rhs) {
+    using InstrT = XorFlagsInstruction;
+    if (not lhs.is_reg() and not rhs.is_reg()) {
+      return InstrT::Apply(lhs.value(), rhs.value());
+    }
+    auto inst    = std::make_unique<InstrT>(lhs, rhs);
+    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    inst->Serialize(&CurrentBlock()->cmd_buffer_);
+    return result;
+  }
+
+  RegOr<FlagsVal> AndFlags(RegOr<FlagsVal> const& lhs, RegOr<FlagsVal> const& rhs) {
+    using InstrT = AndFlagsInstruction;
+    if (not lhs.is_reg() and not rhs.is_reg()) {
+      return InstrT::Apply(lhs.value(), rhs.value());
+    }
+    auto inst    = std::make_unique<InstrT>(lhs, rhs);
+    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    inst->Serialize(&CurrentBlock()->cmd_buffer_);
+    return result;
+  }
+
+  RegOr<FlagsVal> OrFlags(RegOr<FlagsVal> const& lhs, RegOr<FlagsVal> const& rhs) {
+    using InstrT = OrFlagsInstruction;
+    if (not lhs.is_reg() and not rhs.is_reg()) {
+      return InstrT::Apply(lhs.value(), rhs.value());
+    }
+    auto inst    = std::make_unique<InstrT>(lhs, rhs);
+    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    inst->Serialize(&CurrentBlock()->cmd_buffer_);
+    return result;
+  }
+
+  // Comparison
+  template <typename Lhs, typename Rhs>
+  RegOr<bool> Eq(Lhs const& lhs, Rhs const& rhs) {
+    using type = reduced_type_t<Lhs>;
+    if constexpr (std::is_same_v<type, bool>) {
+      return EqBool(lhs, rhs);
+    } else if constexpr (IsRegOr<Lhs>::value and IsRegOr<Rhs>::value) {
+      if (not lhs.is_reg() and not rhs.is_reg()) {
+        return EqInstruction<type>::Apply(lhs.value(), rhs.value());
+      }
+      auto inst   = std::make_unique<EqInstruction<type>>(lhs, rhs);
+      auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+      inst->Serialize(&CurrentBlock()->cmd_buffer_);
+      CurrentBlock()->instructions_.push_back(std::move(inst));
+      return result;
+    } else {
+      return Eq(RegOr<type>(lhs), RegOr<type>(rhs));
+    }
+  }
+
+  template <typename Lhs, typename Rhs>
+  RegOr<bool> Ne(Lhs const& lhs, Rhs const& rhs) {
+    using type = reduced_type_t<Lhs>;
+    if constexpr (std::is_same_v<type, bool>) {
+      return NeBool(lhs, rhs);
+    } else if constexpr (IsRegOr<Lhs>::value and IsRegOr<Rhs>::value) {
+      if (not lhs.is_reg() and not rhs.is_reg()) {
+        return NeInstruction<type>::Apply(lhs.value(), rhs.value());
+      }
+      auto inst   = std::make_unique<NeInstruction<type>>(lhs, rhs);
+      auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+      inst->Serialize(&CurrentBlock()->cmd_buffer_);
+      CurrentBlock()->instructions_.push_back(std::move(inst));
+      return result;
+    } else {
+      return Ne(RegOr<type>(lhs), RegOr<type>(rhs));
     }
   }
 
@@ -273,14 +279,19 @@ struct Builder {
     return result;
   }
 
-  RegOr<type::Type const*> Var(
-      absl::Span<RegOr<type::Type const*> const> types) {
-    return internal::MakeVariadicCmd<VariantCmd>(types, this);
+  RegOr<type::Type const*> Var(std::vector<RegOr<type::Type const*>> types) {
+    // TODO constant-folding
+    auto inst = std::make_unique<VariantInstruction>(std::move(types));
+    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    inst->Serialize(&CurrentBlock()->cmd_buffer_);
+    return result;
   }
-
-  RegOr<type::Type const*> Tup(
-      absl::Span<RegOr<type::Type const*> const> types) {
-    return internal::MakeVariadicCmd<TupleCmd>(types, this);
+  RegOr<type::Type const*> Tup(std::vector<RegOr<type::Type const*>> types) {
+    // TODO constant-folding
+    auto inst = std::make_unique<TupleInstruction>(std::move(types));
+    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    inst->Serialize(&CurrentBlock()->cmd_buffer_);
+    return result;
   }
 
   // Phi instruction. Takes a span of basic blocks and a span of (registers or)
@@ -396,11 +407,17 @@ struct Builder {
             typename std::enable_if_t<std::is_same_v<T, EnumVal> or
                                       std::is_same_v<T, FlagsVal>>* = nullptr>
   void Print(RegOr<T> r, type::Type const* t) {
-    auto& buf = CurrentBlock()->cmd_buffer_;
-    buf.append(PrintCmd::index);
-    buf.append(PrintCmd::MakeControlBits<T>(r.is_reg()));
-    r.apply([&](auto v) { buf.append(v); });
-    buf.append(t);
+    if constexpr (std::is_same_v<T, EnumVal>) {
+      auto inst =
+          std::make_unique<PrintEnumInstruction>(r, &t->as<type::Enum>());
+      inst->Serialize(&CurrentBlock()->cmd_buffer_);
+      CurrentBlock()->instructions_.push_back(std::move(inst));
+    } else {
+      auto inst =
+          std::make_unique<PrintFlagsInstruction>(r, &t->as<type::Flags>());
+      inst->Serialize(&CurrentBlock()->cmd_buffer_);
+      CurrentBlock()->instructions_.push_back(std::move(inst));
+    }
   }
 
   // Low-level size/alignment commands
@@ -438,6 +455,26 @@ struct Builder {
   constexpr void disallow_more_stmts() { current_.more_stmts_allowed_ = false; }
 
   ICARUS_PRIVATE
+  RegOr<bool> EqBool(RegOr<bool> const& lhs, RegOr<bool> const& rhs) {
+    if (not lhs.is_reg()) { return lhs.value() ? rhs : Not(rhs); }
+    if (not rhs.is_reg()) { return rhs.value() ? lhs : Not(lhs); }
+    auto inst   = std::make_unique<EqInstruction<bool>>(lhs, rhs);
+    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    inst->Serialize(&CurrentBlock()->cmd_buffer_);
+    CurrentBlock()->instructions_.push_back(std::move(inst));
+    return result;
+  }
+
+  RegOr<bool> NeBool(RegOr<bool> const& lhs, RegOr<bool> const& rhs) {
+    if (not lhs.is_reg()) { return lhs.value() ? Not(rhs) : rhs; }
+    if (not rhs.is_reg()) { return rhs.value() ? Not(lhs) : lhs; }
+    auto inst   = std::make_unique<NeInstruction<bool>>(lhs, rhs);
+    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    inst->Serialize(&CurrentBlock()->cmd_buffer_);
+    CurrentBlock()->instructions_.push_back(std::move(inst));
+    return result;
+  }
+
   friend struct SetCurrent;
   friend struct SetTemporaries;
 
@@ -552,7 +589,7 @@ type::Typed<Reg> LoadSymbol(std::string_view name, type::Type const* type);
 template <typename T>
 Reg MakeReg(T t) {
   static_assert(not std::is_same_v<T, Reg>);
-  if constexpr (ir::IsRegOr<T>::value) {
+  if constexpr (IsRegOr<T>::value) {
     auto& blk = *GetBuilder().CurrentBlock();
     blk.cmd_buffer_.append(RegisterCmd::index);
     blk.cmd_buffer_.append(
@@ -569,7 +606,7 @@ Reg MakeReg(T t) {
 
 template <typename T>
 void SetRet(uint16_t n, T val) {
-  if constexpr (ir::IsRegOr<T>::value) {
+  if constexpr (IsRegOr<T>::value) {
     auto& blk = *GetBuilder().CurrentBlock();
     blk.cmd_buffer_.append(ReturnCmd::index);
     blk.cmd_buffer_.append(
@@ -648,8 +685,8 @@ Reg Flags(module::BasicModule* mod, absl::Span<std::string_view const> names,
 
 namespace internal {
 template <typename SizeType, typename T, typename Fn>
-void WriteBits(base::untyped_buffer* buf, absl::Span<T const> span,
-               Fn&& predicate) {
+void XWriteBits(base::untyped_buffer* buf, absl::Span<T const> span,
+                Fn&& predicate) {
   ASSERT(span.size() < std::numeric_limits<SizeType>::max());
   buf->append<SizeType>(span.size());
 
@@ -666,71 +703,11 @@ void WriteBits(base::untyped_buffer* buf, absl::Span<T const> span,
 
 template <typename SizeType, typename T>
 void Serialize(base::untyped_buffer* buf, absl::Span<RegOr<T> const> span) {
-  WriteBits<SizeType, RegOr<T>>(buf, span,
-                                [](RegOr<T> const& r) { return r.is_reg(); });
+  XWriteBits<SizeType, RegOr<T>>(buf, span,
+                                 [](RegOr<T> const& r) { return r.is_reg(); });
 
   absl::c_for_each(
       span, [&](RegOr<T> x) { x.apply([&](auto v) { buf->append(v); }); });
-}
-
-template <typename T>
-auto PrepareCmdArg(T&& arg) {
-  using type = std::decay_t<T>;
-  if constexpr (base::IsTaggedV<type>) {
-    static_assert(std::is_same_v<typename type::base_type, Reg>);
-    return RegOr<typename type::tag_type>(std::forward<T>(arg));
-  } else if constexpr (IsRegOrV<type>) {
-    return std::forward<T>(arg);
-  } else {
-    return RegOr<type>(std::forward<T>(arg));
-  }
-}
-
-template <typename CmdType, typename T>
-auto MakeBinaryCmd(RegOr<T> lhs, RegOr<T> rhs, Builder* bldr) {
-  using fn_type     = typename CmdType::fn_type;
-  using result_type = decltype(fn_type{}(lhs.value(), rhs.value()));
-  if constexpr (CmdType::template IsSupported<T>()) {
-    if (not lhs.is_reg() and not rhs.is_reg()) {
-      return RegOr<result_type>{fn_type{}(lhs.value(), rhs.value())};
-    }
-  }
-
-  auto& buf = bldr->CurrentBlock()->cmd_buffer_;
-  buf.append(CmdType::index);
-  buf.append(CmdType::template MakeControlBits<T>(lhs.is_reg(), rhs.is_reg()));
-
-  lhs.apply([&](auto v) { buf.append(v); });
-  rhs.apply([&](auto v) { buf.append(v); });
-
-  Reg result = MakeResult<T>();
-  buf.append(result);
-  return RegOr<result_type>{result};
-}
-
-template <typename CmdType>
-RegOr<typename CmdType::type> MakeVariadicCmd(
-    absl::Span<RegOr<typename CmdType::type> const> vals, Builder* bldr) {
-  auto& buf = bldr->CurrentBlock()->cmd_buffer_;
-  using T   = typename CmdType::type;
-  {
-    std::vector<T> vs;
-    vs.reserve(vals.size());
-    if (absl::c_all_of(vals, [&](RegOr<T> t) {
-          if (t.is_reg()) { return false; }
-          vs.push_back(t.value());
-          return true;
-        })) {
-      return CmdType::fn_ptr(vs);
-    }
-  }
-
-  buf.append(CmdType::index);
-  Serialize<uint16_t>(&buf, vals);
-
-  Reg result = MakeResult<T>();
-  buf.append(result);
-  return RegOr<T>{result};
 }
 
 }  // namespace internal

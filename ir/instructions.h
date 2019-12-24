@@ -4,6 +4,7 @@
 #include <memory>
 
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_join.h"
 #include "ir/cmd/basic.h"
 #include "ir/cmd/call.h"
 #include "ir/cmd/cast.h"
@@ -19,12 +20,33 @@
 #include "ir/cmd/types.h"
 #include "ir/cmd/util.h"
 #include "ir/reg_or.h"
+#include "ir/values.h"
 #include "type/pointer.h"
 #include "type/type.h"
 
 // This file defines the interface required for IR instructions as well as all
 // the common instructions available in the core IR.
 namespace ir {
+namespace internal {
+
+template <typename SizeType, typename T, typename Fn>
+void WriteBits(base::untyped_buffer* buf, absl::Span<T const> span,
+               Fn&& predicate) {
+  ASSERT(span.size() < std::numeric_limits<SizeType>::max());
+  buf->append<SizeType>(span.size());
+
+  uint8_t reg_mask = 0;
+  for (size_t i = 0; i < span.size(); ++i) {
+    if (predicate(span[i])) { reg_mask |= (1 << (7 - (i % 8))); }
+    if (i % 8 == 7) {
+      buf->append(reg_mask);
+      reg_mask = 0;
+    }
+  }
+  if (span.size() % 8 != 0) { buf->append(reg_mask); }
+}
+
+}  // namespace internal
 
 struct Instruction {
   virtual ~Instruction() {}
@@ -37,11 +59,17 @@ template <typename NumType>
 struct UnaryInstruction : Instruction {
   UnaryInstruction(RegOr<NumType> const& operand) : operand(operand) {}
 
-  template <typename Cmd>
+  struct control_bits {
+    uint8_t is_reg : 1;
+    uint8_t primitive_type : 6;
+  };
+
+  template <uint8_t CmdIndex>
   void SerializeUnary(base::untyped_buffer* buf) const {
-    buf->append(Cmd::index);
-    buf->append(Cmd::template MakeControlBits<NumType>(operand.is_reg()));
-    this->operand.apply([&](auto v) { buf->append(v); });
+    buf->append(CmdIndex);
+    buf->append(control_bits{.is_reg         = operand.is_reg(),
+                             .primitive_type = PrimitiveIndex<NumType>()});
+    operand.apply([&](auto v) { buf->append(v); });
     buf->append(result);
   };
 
@@ -54,11 +82,18 @@ struct BinaryInstruction : Instruction {
   BinaryInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
       : lhs(lhs), rhs(rhs) {}
 
-  template <typename Cmd>
+  struct control_bits {
+    uint8_t lhs_is_reg : 1;
+    uint8_t rhs_is_reg : 1;
+    uint8_t primitive_type : 6;
+  };
+
+  template <uint8_t CmdIndex>
   void SerializeBinary(base::untyped_buffer* buf) const {
-    buf->append(Cmd::index);
-    buf->append(
-        Cmd::template MakeControlBits<NumType>(lhs.is_reg(), rhs.is_reg()));
+    buf->append(CmdIndex);
+    buf->append(control_bits{.lhs_is_reg     = lhs.is_reg(),
+                             .rhs_is_reg     = rhs.is_reg(),
+                             .primitive_type = PrimitiveIndex<NumType>()});
 
     lhs.apply([&](auto v) { buf->append(v); });
     rhs.apply([&](auto v) { buf->append(v); });
@@ -67,6 +102,28 @@ struct BinaryInstruction : Instruction {
 
   RegOr<NumType> lhs;
   RegOr<NumType> rhs;
+  Reg result;
+};
+
+template <typename T>
+struct VariadicInstruction : Instruction {
+  VariadicInstruction(std::vector<RegOr<T>> values)
+      : values(std::move(values)) {}
+
+  template <typename Cmd>
+  void SerializeVariadic(base::untyped_buffer* buf) const {
+    buf->append(Cmd::index);
+    internal::WriteBits<uint16_t, RegOr<T>>(
+        buf, values, [](RegOr<T> const& r) { return r.is_reg(); });
+
+    absl::c_for_each(values, [&](RegOr<T> const& x) {
+      x.apply([&](auto v) { buf->append(v); });
+    });
+
+    buf->append(result);
+  };
+
+  std::vector<RegOr<T>> values;
   Reg result;
 };
 
@@ -96,7 +153,12 @@ std::string_view TypeToString() {
     return "float64";
   } else if constexpr (std::is_same_v<T, std::string_view>) {
     return "bytes";
+  } else if constexpr (std::is_same_v<T, EnumVal>) {
+    return "enum";
+  } else if constexpr (std::is_same_v<T, FlagsVal>) {
+    return "flags";
   } else {
+    DEBUG_LOG()(typeid(T).name());
     return "[[unknown]]";
     // TODO enumerate all possibilities
     // static_assert(base::always_false<T>());
@@ -118,7 +180,7 @@ struct NegInstruction : UnaryInstruction<NumType> {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    this->template SerializeUnary<NegCmd>(buf);
+    this->template SerializeUnary<NegCmd::index>(buf);
   }
 };
 
@@ -136,7 +198,7 @@ struct NotInstruction : UnaryInstruction<bool> {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    SerializeUnary<NotCmd>(buf);
+    SerializeUnary<NotCmd::index>(buf);
   }
 };
 
@@ -150,7 +212,7 @@ struct PtrInstruction : UnaryInstruction<type::Type const*> {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    SerializeUnary<PtrCmd>(buf);
+    SerializeUnary<PtrCmd::index>(buf);
   }
 };
 
@@ -164,7 +226,7 @@ struct BufPtrInstruction : UnaryInstruction<type::Type const*> {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    SerializeUnary<BufPtrCmd>(buf);
+    SerializeUnary<BufPtrCmd::index>(buf);
   }
 };
 
@@ -184,7 +246,7 @@ struct AddInstruction : BinaryInstruction<NumType> {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    this->template SerializeBinary<AddCmd>(buf);
+    this->template SerializeBinary<AddCmd::index>(buf);
   }
 };
 
@@ -204,7 +266,7 @@ struct SubInstruction : BinaryInstruction<NumType> {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    this->template SerializeBinary<SubCmd>(buf);
+    this->template SerializeBinary<SubCmd::index>(buf);
   }
 };
 
@@ -224,7 +286,7 @@ struct MulInstruction : BinaryInstruction<NumType> {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    this->template SerializeBinary<MulCmd>(buf);
+    this->template SerializeBinary<MulCmd::index>(buf);
   }
 };
 
@@ -244,7 +306,7 @@ struct DivInstruction : BinaryInstruction<NumType> {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    this->template SerializeBinary<DivCmd>(buf);
+    this->template SerializeBinary<DivCmd::index>(buf);
   }
 };
 
@@ -264,7 +326,7 @@ struct ModInstruction : BinaryInstruction<NumType> {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    this->template SerializeBinary<ModCmd>(buf);
+    this->template SerializeBinary<ModCmd::index>(buf);
   }
 };
 
@@ -284,7 +346,7 @@ struct EqInstruction : BinaryInstruction<NumType> {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    this->template SerializeBinary<EqCmd>(buf);
+    this->template SerializeBinary<EqCmd::index>(buf);
   }
 };
 
@@ -304,7 +366,7 @@ struct NeInstruction : BinaryInstruction<NumType> {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    this->template SerializeBinary<NeCmd>(buf);
+    this->template SerializeBinary<NeCmd::index>(buf);
   }
 };
 
@@ -324,7 +386,7 @@ struct LtInstruction : BinaryInstruction<NumType> {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    this->template SerializeBinary<LtCmd>(buf);
+    this->template SerializeBinary<LtCmd::index>(buf);
   }
 };
 
@@ -344,7 +406,7 @@ struct LeInstruction : BinaryInstruction<NumType> {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    this->template SerializeBinary<LeCmd>(buf);
+    this->template SerializeBinary<LeCmd::index>(buf);
   }
 };
 
@@ -413,6 +475,51 @@ struct PrintInstruction : Instruction {
   RegOr<T> value;
 };
 
+struct PrintEnumInstruction : Instruction {
+  PrintEnumInstruction(RegOr<EnumVal> const& value, type::Enum const* enum_type)
+      : value(value), enum_type(enum_type) {}
+  ~PrintEnumInstruction() override {}
+
+  std::string to_string() const override {
+    using base::stringify;
+    return absl::StrCat("print enum ", enum_type->to_string(), " ",
+                        stringify(value));
+  }
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    buf->append(PrintCmd::index);
+    buf->append(PrintCmd::MakeControlBits<EnumVal>(value.is_reg()));
+    value.apply([&](auto v) { buf->append(v); });
+    buf->append(enum_type);
+  }
+
+  RegOr<EnumVal> value;
+  type::Enum const* enum_type;
+};
+
+struct PrintFlagsInstruction : Instruction {
+  PrintFlagsInstruction(RegOr<FlagsVal> const& value,
+                        type::Flags const* flags_type)
+      : value(value), flags_type(flags_type) {}
+  ~PrintFlagsInstruction() override {}
+
+  std::string to_string() const override {
+    using base::stringify;
+    return absl::StrCat("print flags ", flags_type->to_string(), " ",
+                        stringify(value));
+  }
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    buf->append(PrintCmd::index);
+    buf->append(PrintCmd::MakeControlBits<FlagsVal>(value.is_reg()));
+    value.apply([&](auto v) { buf->append(v); });
+    buf->append(flags_type);
+  }
+
+  RegOr<FlagsVal> value;
+  type::Flags const* flags_type;
+};
+
 // TODO Morph this into interpretter break-point instructions.
 struct DebugIrInstruction : Instruction {
   DebugIrInstruction() = default;
@@ -425,6 +532,107 @@ struct DebugIrInstruction : Instruction {
   }
 };
 
+struct XorFlagsInstruction : BinaryInstruction<FlagsVal> {
+  XorFlagsInstruction(RegOr<FlagsVal> const& lhs, RegOr<FlagsVal> const& rhs)
+      : BinaryInstruction<FlagsVal>(lhs, rhs) {}
+  ~XorFlagsInstruction() override {}
+
+  static FlagsVal Apply(FlagsVal lhs, FlagsVal rhs) { return lhs ^ rhs; }
+
+  std::string to_string() const override {
+    using base::stringify;
+    return absl::StrCat("flags ", stringify(this->result), " = add ",
+                        stringify(this->lhs), " ", stringify(this->rhs));
+  }
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    this->template SerializeBinary<XorFlagsCmd::index>(buf);
+  }
+};
+
+struct AndFlagsInstruction : BinaryInstruction<FlagsVal> {
+  AndFlagsInstruction(RegOr<FlagsVal> const& lhs, RegOr<FlagsVal> const& rhs)
+      : BinaryInstruction<FlagsVal>(lhs, rhs) {}
+  ~AndFlagsInstruction() override {}
+
+  static FlagsVal Apply(FlagsVal lhs, FlagsVal rhs) { return lhs & rhs; }
+
+  std::string to_string() const override {
+    using base::stringify;
+    return absl::StrCat("flags ", stringify(this->result), " = and ",
+                        stringify(this->lhs), " ", stringify(this->rhs));
+  }
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    this->template SerializeBinary<AndFlagsCmd::index>(buf);
+  }
+};
+
+struct OrFlagsInstruction : BinaryInstruction<FlagsVal> {
+  OrFlagsInstruction(RegOr<FlagsVal> const& lhs, RegOr<FlagsVal> const& rhs)
+      : BinaryInstruction<FlagsVal>(lhs, rhs) {}
+  ~OrFlagsInstruction() override {}
+
+  static FlagsVal Apply(FlagsVal lhs, FlagsVal rhs) { return lhs | rhs; }
+
+  std::string to_string() const override {
+    using base::stringify;
+    return absl::StrCat("flags ", stringify(this->result), " = or ",
+                        stringify(this->lhs), " ", stringify(this->rhs));
+  }
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    this->template SerializeBinary<OrFlagsCmd::index>(buf);
+  }
+};
+
+struct TupleInstruction : VariadicInstruction<type::Type const*> {
+  TupleInstruction(std::vector<RegOr<type::Type const*>> values)
+      : VariadicInstruction<type::Type const*>(std::move(values)) {}
+  ~TupleInstruction() override {}
+
+  static type::Type const* Apply(std::vector<type::Type const*> entries) {
+    return type::Tup(std::move(entries));
+  }
+
+  std::string to_string() const override {
+    using base::stringify;
+    return absl::StrCat(
+        "type ", stringify(this->result), " = tup ",
+        absl::StrJoin(this->values, " ",
+                      [](std::string* out, RegOr<type::Type const*> const& r) {
+                        out->append(stringify(r));
+                      }));
+  }
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    this->template SerializeVariadic<TupleCmd>(buf);
+  }
+};
+
+struct VariantInstruction : VariadicInstruction<type::Type const*> {
+  VariantInstruction(std::vector<RegOr<type::Type const*>> values)
+      : VariadicInstruction<type::Type const*>(std::move(values)) {}
+  ~VariantInstruction() override {}
+
+  static type::Type const* Apply(std::vector<type::Type const*> entries) {
+    return type::Var(std::move(entries));
+  }
+
+  std::string to_string() const override {
+    using base::stringify;
+    return absl::StrCat(
+        "type ", stringify(this->result), " = var ",
+        absl::StrJoin(this->values, " ",
+                      [](std::string* out, RegOr<type::Type const*> const& r) {
+                        out->append(stringify(r));
+                      }));
+  }
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    this->template SerializeVariadic<VariantCmd>(buf);
+  }
+};
 }  // namespace ir
 
 #endif  // ICARUS_IR_INSTRUCTIONS_H
