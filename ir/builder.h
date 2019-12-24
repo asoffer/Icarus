@@ -10,6 +10,7 @@
 #include "base/untyped_buffer.h"
 #include "ir/addr.h"
 #include "ir/basic_block.h"
+#include "ir/block_group.h"
 #include "ir/cmd/basic.h"
 #include "ir/cmd/call.h"
 #include "ir/cmd/cast.h"
@@ -24,6 +25,7 @@
 #include "ir/cmd/store.h"
 #include "ir/cmd/types.h"
 #include "ir/cmd/util.h"
+#include "ir/instructions.h"
 #include "ir/local_block_interpretation.h"
 #include "ir/reg.h"
 #include "ir/struct_field.h"
@@ -34,16 +36,12 @@ namespace ir {
 struct Builder;
 
 namespace internal {
-struct BlockGroup;
 
 template <typename SizeType, typename T>
 void Serialize(base::untyped_buffer*, absl::Span<RegOr<T> const>);
 
 template <typename CmdType, typename T>
 auto MakeBinaryCmd(RegOr<T>, RegOr<T>, Builder*);
-
-template <typename CmdType, typename T>
-auto MakeUnaryCmd(RegOr<T>, Builder*);
 
 template <typename CmdType>
 RegOr<typename CmdType::type> MakeVariadicCmd(
@@ -62,14 +60,103 @@ struct Builder {
   absl::flat_hash_map<KeyType, ir::BasicBlock*> AddBlocks(
       absl::flat_hash_map<KeyType, ValueType> const& table) {
     absl::flat_hash_map<KeyType, ir::BasicBlock*> result;
-    for (auto const & [ key, val ] : table) { result.emplace(key, AddBlock()); }
+    for (auto const& [key, val] : table) { result.emplace(key, AddBlock()); }
     return result;
   }
 
   internal::BlockGroup*& CurrentGroup() { return current_.group_; }
   BasicBlock*& CurrentBlock() { return current_.block_; }
 
-    // INSTRUCTIONS
+  template <typename T>
+  struct reduced_type {
+    using type = T;
+  };
+  template <typename T>
+  struct reduced_type<RegOr<T>> {
+    using type = T;
+  };
+  template <typename Tag>
+  struct reduced_type<base::Tagged<Tag, Reg>> {
+    using type = Tag;
+  };
+
+  template <typename T>
+  using reduced_type_t = typename reduced_type<T>::type;
+
+  // INSTRUCTIONS
+
+  template <typename Lhs, typename Rhs>
+  RegOr<reduced_type_t<Lhs>> Add(Lhs const& lhs, Rhs const& rhs) {
+    auto inst = std::make_unique<AddInstruction<reduced_type_t<Lhs>>>(lhs, rhs);
+    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    inst->Serialize(&CurrentBlock()->cmd_buffer_);
+    CurrentBlock()->instructions_.push_back(std::move(inst));
+    return result;
+  }
+
+  template <typename Lhs, typename Rhs>
+  RegOr<reduced_type_t<Lhs>> Sub(Lhs const& lhs, Rhs const& rhs) {
+    auto inst = std::make_unique<SubInstruction<reduced_type_t<Lhs>>>(lhs, rhs);
+    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    inst->Serialize(&CurrentBlock()->cmd_buffer_);
+    CurrentBlock()->instructions_.push_back(std::move(inst));
+    return result;
+  }
+
+  template <typename Lhs, typename Rhs>
+  RegOr<reduced_type_t<Lhs>> Mul(Lhs const& lhs, Rhs const& rhs) {
+    auto inst = std::make_unique<MulInstruction<reduced_type_t<Lhs>>>(lhs, rhs);
+    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    inst->Serialize(&CurrentBlock()->cmd_buffer_);
+    CurrentBlock()->instructions_.push_back(std::move(inst));
+    return result;
+  }
+
+  template <typename Lhs, typename Rhs>
+  RegOr<reduced_type_t<Lhs>> Div(Lhs const& lhs, Rhs const& rhs) {
+    auto inst = std::make_unique<DivInstruction<reduced_type_t<Lhs>>>(lhs, rhs);
+    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    inst->Serialize(&CurrentBlock()->cmd_buffer_);
+    CurrentBlock()->instructions_.push_back(std::move(inst));
+    return result;
+  }
+
+  template <typename Lhs, typename Rhs>
+  RegOr<reduced_type_t<Lhs>> Mod(Lhs const& lhs, Rhs const& rhs) {
+    auto inst = std::make_unique<ModInstruction<reduced_type_t<Lhs>>>(lhs, rhs);
+    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    inst->Serialize(&CurrentBlock()->cmd_buffer_);
+    CurrentBlock()->instructions_.push_back(std::move(inst));
+    return result;
+  }
+
+  template <typename Lhs, typename Rhs>
+  auto Lt(Lhs const& lhs, Rhs const& rhs) {
+    auto inst = std::make_unique<LtInstruction<reduced_type_t<Lhs>>>(lhs, rhs);
+    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    inst->Serialize(&CurrentBlock()->cmd_buffer_);
+    CurrentBlock()->instructions_.push_back(std::move(inst));
+    return result;
+  }
+
+  template <typename Lhs, typename Rhs>
+  auto Gt(Lhs const& lhs, Rhs const& rhs) {
+    return Lt(rhs, lhs);
+  }
+
+  template <typename Lhs, typename Rhs>
+  auto Le(Lhs const& lhs, Rhs const& rhs) {
+    auto inst = std::make_unique<LeInstruction<reduced_type_t<Lhs>>>(lhs, rhs);
+    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    inst->Serialize(&CurrentBlock()->cmd_buffer_);
+    CurrentBlock()->instructions_.push_back(std::move(inst));
+    return result;
+  }
+
+  template <typename Lhs, typename Rhs>
+  auto Ge(Lhs const& lhs, Rhs const& rhs) {
+    return Le(rhs, lhs);
+  }
 
 #define ICARUS_IR_DEFINE_CMD(name)                                             \
   template <typename Lhs, typename Rhs>                                        \
@@ -78,19 +165,6 @@ struct Builder {
         internal::PrepareCmdArg(std::forward<Lhs>(lhs)),                       \
         internal::PrepareCmdArg(std::forward<Rhs>(rhs)), this);                \
   }
-
-  // Arithmetic operators
-  ICARUS_IR_DEFINE_CMD(Add);
-  ICARUS_IR_DEFINE_CMD(Sub);
-  ICARUS_IR_DEFINE_CMD(Mul);
-  ICARUS_IR_DEFINE_CMD(Div);
-  ICARUS_IR_DEFINE_CMD(Mod);
-
-  // Comparison operators
-  ICARUS_IR_DEFINE_CMD(Lt);
-  ICARUS_IR_DEFINE_CMD(Le);
-  ICARUS_IR_DEFINE_CMD(Ge);
-  ICARUS_IR_DEFINE_CMD(Gt);
 
   // Flags operators
   ICARUS_IR_DEFINE_CMD(XorFlags);
@@ -160,34 +234,43 @@ struct Builder {
     }
   }
 
-#define ICARUS_IR_DEFINE_CMD(name)                                             \
-  template <typename T>                                                        \
-  auto name(T&& val) {                                                         \
-    return internal::MakeUnaryCmd<name##Cmd>(                                  \
-        internal::PrepareCmdArg(std::forward<T>(val)), this);                  \
+  template <typename T>
+  RegOr<T> Neg(RegOr<T> const& val) {
+    using InstrT = NegInstruction<T>;
+    if (not val.is_reg()) { return InstrT::Apply(val.value()); }
+    auto inst   = std::make_unique<NegInstruction<reduced_type_t<T>>>(val);
+    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    inst->Serialize(&CurrentBlock()->cmd_buffer_);
+    CurrentBlock()->instructions_.push_back(std::move(inst));
+    return result;
   }
 
-  ICARUS_IR_DEFINE_CMD(Neg);
-  ICARUS_IR_DEFINE_CMD(Ptr);
-  ICARUS_IR_DEFINE_CMD(BufPtr);
-#undef ICARUS_IR_DEFINE_CMD
+  RegOr<type::BufferPointer const*> BufPtr(
+      RegOr<type::Type const*> const& val) {
+    using InstrT = BufPtrInstruction;
+    if (not val.is_reg()) { return InstrT::Apply(val.value()); }
+    auto inst   = std::make_unique<InstrT>(val);
+    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    inst->Serialize(&CurrentBlock()->cmd_buffer_);
+    return result;
+  }
 
-  template <typename T>
-  auto Not(T&& val) {
-    using type = std::decay_t<T>;
-    if constexpr (std::is_same_v<type, bool>) {
-      return !val;
-    } else if constexpr (std::is_same_v<type, RegOr<bool>>) {
-      if (val.is_reg()) {
-        return internal::MakeUnaryCmd<NotCmd>(
-            internal::PrepareCmdArg(std::forward<T>(val)), this);
-      } else {
-        return ir::RegOr<bool>(!val.value());
-      }
-    } else {
-      return internal::MakeUnaryCmd<NotCmd>(
-          internal::PrepareCmdArg(std::forward<T>(val)), this);
-    }
+  RegOr<type::Pointer const*> Ptr(RegOr<type::Type const*> const& val) {
+    using InstrT = PtrInstruction;
+    if (not val.is_reg()) { return InstrT::Apply(val.value()); }
+    auto inst   = std::make_unique<InstrT>(val);
+    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    inst->Serialize(&CurrentBlock()->cmd_buffer_);
+    return result;
+  }
+
+  RegOr<bool> Not(RegOr<bool> const& val) {
+    using InstrT = NotInstruction;
+    if (not val.is_reg()) { return InstrT::Apply(val.value()); }
+    auto inst    = std::make_unique<InstrT>(val);
+    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    inst->Serialize(&CurrentBlock()->cmd_buffer_);
+    return result;
   }
 
   RegOr<type::Type const*> Var(
@@ -247,9 +330,9 @@ struct Builder {
   // `ReturnJump`: Transfers control back to the calling function.
   //
   // `ChooseJump`: Transfers control to the appropriate block-handler. Note that
-  //               this is highly specific to the current scope-definine language
-  //               constructs which are likely to change.
-  void UncondJump(BasicBlock * block);
+  //               this is highly specific to the current scope-definine
+  //               language constructs which are likely to change.
+  void UncondJump(BasicBlock* block);
   void CondJump(RegOr<bool> cond, BasicBlock* true_block,
                 BasicBlock* false_block);
   void ReturnJump();
@@ -298,10 +381,10 @@ struct Builder {
   template <typename T>
   void Print(T r) {
     auto& buf = CurrentBlock()->cmd_buffer_;
-    if constexpr (ir::IsRegOr<T>::value) {
-      buf.append(PrintCmd::index);
-      buf.append(PrintCmd::MakeControlBits<typename T::type>(r.is_reg()));
-      r.apply([&](auto v) { buf.append(v); });
+    if constexpr (IsRegOr<T>::value) {
+      auto inst = std::make_unique<PrintInstruction<typename T::type>>(r);
+      inst->Serialize(&CurrentBlock()->cmd_buffer_);
+      CurrentBlock()->instructions_.push_back(std::move(inst));
     } else if constexpr (std::is_same_v<T, char const*>) {
       Print(RegOr<std::string_view>(r));
     } else {
@@ -328,7 +411,11 @@ struct Builder {
   base::Tagged<Addr, Reg> TmpAlloca(type::Type const* t);
 
 #if defined(ICARUS_DEBUG)
-  void DebugIr() { CurrentBlock()->cmd_buffer_.append(DebugIrCmd::index); }
+  void DebugIr() {
+    CurrentBlock()->instructions_.push_back(
+        std::make_unique<DebugIrInstruction>());
+    CurrentBlock()->cmd_buffer_.append(DebugIrCmd::index);
+  }
 #endif  // ICARUS_DEBUG
 
   LocalBlockInterpretation MakeLocalBlockInterpretation(ast::ScopeNode const*);
@@ -439,12 +526,11 @@ RegOr<ToType> CastTo(type::Type const* from_type, ir::Results const& r) {
 
 template <typename T>
 base::Tagged<T, Reg> Load(RegOr<Addr> addr) {
-  auto& blk = *GetBuilder().CurrentBlock();
-  blk.cmd_buffer_.append(LoadCmd::index);
-  blk.cmd_buffer_.append(LoadCmd::MakeControlBits<T>(addr.is_reg()));
-  addr.apply([&](auto v) { blk.cmd_buffer_.append(v); });
-  base::Tagged<T, Reg> result = MakeResult<T>();
-  blk.cmd_buffer_.append(result);
+  auto& blk   = *GetBuilder().CurrentBlock();
+  auto inst   = std::make_unique<LoadInstruction<T>>(addr);
+  auto result = inst->result = GetBuilder().CurrentGroup()->Reserve(nullptr);
+  inst->Serialize(&blk.cmd_buffer_);
+  blk.instructions_.push_back(std::move(inst));
   return result;
 }
 
@@ -540,14 +626,9 @@ template <typename T>
 void Store(T r, RegOr<Addr> addr) {
   if constexpr (IsRegOr<T>::value) {
     auto& blk = *GetBuilder().CurrentBlock();
-    blk.cmd_buffer_.append(StoreCmd::index);
-    blk.cmd_buffer_.append(
-        StoreCmd::MakeControlBits<typename T::type>(r.is_reg(), addr.is_reg()));
-    r.apply([&](auto v) { blk.cmd_buffer_.append(v); });
-    addr.apply([&](auto v) {
-      DEBUG_LOG("store")(v);
-      blk.cmd_buffer_.append(v);
-    });
+    auto inst = std::make_unique<StoreInstruction<typename T::type>>(r, addr);
+    inst->Serialize(&blk.cmd_buffer_);
+    blk.instructions_.push_back(std::move(inst));
   } else {
     Store(RegOr<T>(r), addr);
   }
@@ -621,27 +702,6 @@ auto MakeBinaryCmd(RegOr<T> lhs, RegOr<T> rhs, Builder* bldr) {
 
   lhs.apply([&](auto v) { buf.append(v); });
   rhs.apply([&](auto v) { buf.append(v); });
-
-  Reg result = MakeResult<T>();
-  buf.append(result);
-  return RegOr<result_type>{result};
-}
-
-template <typename CmdType, typename T>
-auto MakeUnaryCmd(RegOr<T> operand, Builder* bldr) {
-  auto& buf         = bldr->CurrentBlock()->cmd_buffer_;
-  using fn_type     = typename CmdType::fn_type;
-  using result_type = decltype(fn_type{}(operand.value()));
-  if constexpr (CmdType::template IsSupported<T>()) {
-    if (not operand.is_reg()) {
-      return RegOr<result_type>{fn_type{}(operand.value())};
-    }
-  }
-
-  buf.append(CmdType::index);
-  buf.append(CmdType::template MakeControlBits<T>(operand.is_reg()));
-
-  operand.apply([&](auto v) { buf.append(v); });
 
   Reg result = MakeResult<T>();
   buf.append(result);

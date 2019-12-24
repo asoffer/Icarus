@@ -174,9 +174,7 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
                        std::is_same_v<CmdType, ir::LtCmd> or
                        std::is_same_v<CmdType, ir::LeCmd> or
                        std::is_same_v<CmdType, ir::EqCmd> or
-                       std::is_same_v<CmdType, ir::NeCmd> or
-                       std::is_same_v<CmdType, ir::GeCmd> or
-                       std::is_same_v<CmdType, ir::GtCmd>) {
+                       std::is_same_v<CmdType, ir::NeCmd>) {
     DEBUG_LOG("BinaryApply")(typeid(CmdType).name());
     typename CmdType::control_bits ctrl =
         iter->read<typename CmdType::control_bits>();

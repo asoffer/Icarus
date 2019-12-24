@@ -117,9 +117,7 @@ void InlineCmd(base::untyped_buffer::iterator *iter, JumpInliner &inliner) {
                        std::is_same_v<CmdType, LtCmd> or
                        std::is_same_v<CmdType, LeCmd> or
                        std::is_same_v<CmdType, EqCmd> or
-                       std::is_same_v<CmdType, NeCmd> or
-                       std::is_same_v<CmdType, GeCmd> or
-                       std::is_same_v<CmdType, GtCmd>) {
+                       std::is_same_v<CmdType, NeCmd>) {
     typename CmdType::control_bits ctrl =
         iter->read<typename CmdType::control_bits>();
     if (ctrl.reg0) {

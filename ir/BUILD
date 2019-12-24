@@ -23,6 +23,7 @@ cc_lib(
 cc_lib(
     name = "basic_block",
     deps = [
+        ":instructions",
         ":out_params",
         "//base:untyped_buffer",
         "//ir/cmd:basic",
@@ -90,6 +91,7 @@ cc_lib(
         ":addr",
         ":basic_block",
         ":block_group",
+        ":instructions",
         ":local_block_interpretation",
         ":struct_field",
         ":reg",
@@ -115,7 +117,33 @@ cc_lib(
     ],
     test_deps = None,
 )
-   
+
+cc_library(
+    name = "instructions",
+    hdrs = ["instructions.h"],
+    deps = [
+        ":reg_or",
+
+        "//ir/cmd:basic",
+        "//ir/cmd:call",
+        "//ir/cmd:cast",
+        "//ir/cmd:jump",
+        "//ir/cmd:load",
+        "//ir/cmd:misc",
+        "//ir/cmd:phi",
+        "//ir/cmd:print",
+        "//ir/cmd:register",
+        "//ir/cmd:return",
+        "//ir/cmd:scope",
+        "//ir/cmd:store",
+        "//ir/cmd:types",
+
+        "//type",
+        "//type:pointer",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
 # TODO now that ':builtin'; doesn't need any IR, move it up to ast and rename
 # this to ':builtin'
 cc_lib(

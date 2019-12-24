@@ -9,6 +9,7 @@
 #include "core/alignment.h"
 #include "core/bytes.h"
 #include "ir/cmd/jump.h"
+#include "ir/instructions.h"
 #include "ir/out_params.h"
 
 namespace ir {
@@ -28,6 +29,7 @@ struct BasicBlock {
   void ReplaceJumpTargets(BasicBlock *old_target, BasicBlock *new_target);
   void Append(BasicBlock const &b);
 
+  std::vector<std::unique_ptr<Instruction>> instructions_;
   base::untyped_buffer cmd_buffer_;
   size_t num_incoming() const { return incoming_.size(); }
 

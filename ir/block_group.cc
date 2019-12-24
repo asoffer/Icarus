@@ -17,8 +17,7 @@ BlockGroup::BlockGroup(
 }
 
 Reg BlockGroup::Reserve(type::Type const *t) {
-  auto arch = core::Interpretter();
-  return Reserve(t->bytes(arch), t->alignment(arch));
+  return Reserve(core::Bytes{0}, core::Alignment{0});
 }
 
 Reg BlockGroup::Reserve(core::Bytes b, core::Alignment a) {
