@@ -590,15 +590,10 @@ template <typename T>
 Reg MakeReg(T t) {
   static_assert(not std::is_same_v<T, Reg>);
   if constexpr (IsRegOr<T>::value) {
-    auto& blk = *GetBuilder().CurrentBlock();
-    blk.cmd_buffer_.append(RegisterCmd::index);
-    blk.cmd_buffer_.append(
-        RegisterCmd::MakeControlBits<typename T::type>(t.is_reg()));
-    t.apply([&](auto v) { blk.cmd_buffer_.append(v); });
-    Reg result = MakeResult<typename T::type>();
-    blk.cmd_buffer_.append(result);
+    auto inst = std::make_unique<RegisterInstruction<typename T::type>>(t);
+    auto result = inst->result = GetBuilder().CurrentGroup()->Reserve(nullptr);
+    inst->Serialize(&GetBuilder().CurrentBlock()->cmd_buffer_);
     return result;
-
   } else {
     return MakeReg(RegOr<T>{t});
   }

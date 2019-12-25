@@ -47,41 +47,41 @@ struct Modulus {
   }
 };
 
-using AddCmd = internal::BinaryCmd<1, Addition,  //
+using AddCmd = internal::BinaryCmd<1 * 256, Addition,  //
                                    int8_t, int16_t, int32_t, int64_t, uint8_t,
                                    uint16_t, uint32_t, uint64_t, float, double>;
-using SubCmd = internal::BinaryCmd<2, Subtraction,  //
+using SubCmd = internal::BinaryCmd<2 * 256, Subtraction,  //
                                    int8_t, int16_t, int32_t, int64_t, uint8_t,
                                    uint16_t, uint32_t, uint64_t, float, double>;
-using MulCmd = internal::BinaryCmd<3, Multiplication,  //
+using MulCmd = internal::BinaryCmd<3 * 256, Multiplication,  //
                                    int8_t, int16_t, int32_t, int64_t, uint8_t,
                                    uint16_t, uint32_t, uint64_t, float, double>;
-using DivCmd = internal::BinaryCmd<4, Division,  //
+using DivCmd = internal::BinaryCmd<4 * 256, Division,  //
                                    int8_t, int16_t, int32_t, int64_t, uint8_t,
                                    uint16_t, uint32_t, uint64_t, float, double>;
-using ModCmd = internal::BinaryCmd<5, Modulus,  //
+using ModCmd = internal::BinaryCmd<5 * 256, Modulus,  //
                                    int8_t, int16_t, int32_t, int64_t, uint8_t,
                                    uint16_t, uint32_t, uint64_t>;
-using LtCmd  = internal::BinaryCmd<6, std::less<>,  //
+using LtCmd  = internal::BinaryCmd<6 * 256, std::less<>,  //
                                   int8_t, int16_t, int32_t, int64_t, uint8_t,
                                   uint16_t, uint32_t, uint64_t, FlagsVal>;
-using LeCmd  = internal::BinaryCmd<7, std::less_equal<>,  //
+using LeCmd  = internal::BinaryCmd<7 * 256, std::less_equal<>,  //
                                   int8_t, int16_t, int32_t, int64_t, uint8_t,
                                   uint16_t, uint32_t, uint64_t, FlagsVal>;
-using EqCmd  = internal::BinaryCmd<8, std::equal_to<>,  //
+using EqCmd  = internal::BinaryCmd<8 * 256, std::equal_to<>,  //
                                   bool, int8_t, int16_t, int32_t, int64_t,
                                   uint8_t, uint16_t, uint32_t, uint64_t,
                                   FlagsVal, EnumVal, type::Type const*>;
-using NeCmd  = internal::BinaryCmd<9, std::not_equal_to<>,  //
+using NeCmd  = internal::BinaryCmd<9 * 256, std::not_equal_to<>,  //
                                   bool, int8_t, int16_t, int32_t, int64_t,
                                   uint8_t, uint16_t, uint32_t, uint64_t,
                                   FlagsVal, EnumVal, type::Type const*>;
-using NegCmd = internal::UnaryCmd<12, std::negate<>, int8_t, int16_t, int32_t,
-                                  int64_t, float, double>;
-using NotCmd = internal::UnaryCmd<15, std::logical_not<>, bool>;
-using XorFlagsCmd = internal::BinaryCmd<23, std::bit_xor<>, FlagsVal>;
-using AndFlagsCmd = internal::BinaryCmd<24, std::bit_and<>, FlagsVal>;
-using OrFlagsCmd  = internal::BinaryCmd<25, std::bit_or<>, FlagsVal>;
+using NegCmd      = internal::UnaryCmd<10 * 256, std::negate<>, int8_t, int16_t,
+                                  int32_t, int64_t, float, double>;
+using NotCmd      = internal::UnaryCmd<11 * 256, std::logical_not<>, bool>;
+using XorFlagsCmd = internal::BinaryCmd<23 * 256, std::bit_xor<>, FlagsVal>;
+using AndFlagsCmd = internal::BinaryCmd<24 * 256, std::bit_and<>, FlagsVal>;
+using OrFlagsCmd  = internal::BinaryCmd<25 * 256, std::bit_or<>, FlagsVal>;
 }  // namespace ir
 
 #endif  // ICARUS_IR_CMD_BASIC_H

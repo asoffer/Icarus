@@ -18,7 +18,7 @@ struct RegMaker {
 }  // namespace internal
 
 using RegisterCmd =
-    internal::UnaryCmd<27, internal::RegMaker,  //
+    internal::UnaryCmd<27 * 256, internal::RegMaker,  //
                        bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
                        uint16_t, uint32_t, uint64_t, FlagsVal, EnumVal, Addr>;
 

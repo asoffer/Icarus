@@ -59,16 +59,13 @@ struct VariantAccessCmd {
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
 };
 
-#if defined(ICARUS_DEBUG)
 struct DebugIrCmd {
-  constexpr static cmd_index_t index =
-      (std::numeric_limits<cmd_index_t>::max)();
+  constexpr static cmd_index_t index = 1;
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter) {
     return "debug-ir";
   }
 };
-#endif  // defined(ICARUS_DEBUG)
 
 }  // namespace ir
 

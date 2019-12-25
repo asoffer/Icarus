@@ -40,34 +40,6 @@ T ReadAndResolve(bool is_reg, base::untyped_buffer::const_iterator *iter,
   }
 }
 
-template <typename CmdType, typename T>
-auto BinaryApply(base::untyped_buffer::const_iterator *iter, bool reg0,
-                 bool reg1, ExecutionContext *ctx) {
-  using fn_type = typename CmdType::fn_type;
-  if constexpr (CmdType::template IsSupported<T>()) {
-    ASSERT((reg0 or reg1) == true);
-    auto lhs = ReadAndResolve<T>(reg0, iter, ctx);
-    auto rhs = ReadAndResolve<T>(reg1, iter, ctx);
-    DEBUG_LOG("BinaryApply")("lhs = ", lhs, ", rhs = ", rhs);
-    return fn_type{}(lhs, rhs);
-  } else {
-    return T{};
-  }
-}
-
-template <typename CmdType, typename T>
-auto UnaryApply(base::untyped_buffer::const_iterator *iter, bool reg0,
-                ExecutionContext *ctx) {
-  using fn_type = typename CmdType::fn_type;
-  if constexpr (CmdType::template IsSupported<T>()) {
-    auto val = ReadAndResolve<T>(reg0, iter, ctx);
-    DEBUG_LOG("UnaryApply")("val = ", val);
-    return fn_type{}(val);
-  } else {
-    return T{};
-  }
-}
-
 void CallFunction(ir::CompiledFn *fn, const base::untyped_buffer &arguments,
                   absl::Span<ir::Addr const> ret_slots, ExecutionContext *ctx) {
   ASSERT(fn != nullptr);
@@ -151,38 +123,6 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
       } else {
         std::cerr << val;
       }
-    });
-
-  } else if constexpr (std::is_same_v<CmdType, ir::NegCmd> or
-                       std::is_same_v<CmdType, ir::NotCmd> or
-                       std::is_same_v<CmdType, ir::PtrCmd> or
-                       std::is_same_v<CmdType, ir::BufPtrCmd> or
-                       std::is_same_v<CmdType, ir::RegisterCmd>) {
-    typename CmdType::control_bits ctrl =
-        iter->read<typename CmdType::control_bits>();
-    ir::PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
-      using type  = typename std::decay_t<decltype(tag)>::type;
-      auto result = UnaryApply<CmdType, type>(iter, ctrl.reg0, ctx);
-      frame.regs_.set(iter->read<ir::Reg>(), result);
-    });
-
-  } else if constexpr (std::is_same_v<CmdType, ir::AddCmd> or
-                       std::is_same_v<CmdType, ir::SubCmd> or
-                       std::is_same_v<CmdType, ir::MulCmd> or
-                       std::is_same_v<CmdType, ir::DivCmd> or
-                       std::is_same_v<CmdType, ir::ModCmd> or
-                       std::is_same_v<CmdType, ir::LtCmd> or
-                       std::is_same_v<CmdType, ir::LeCmd> or
-                       std::is_same_v<CmdType, ir::EqCmd> or
-                       std::is_same_v<CmdType, ir::NeCmd>) {
-    DEBUG_LOG("BinaryApply")(typeid(CmdType).name());
-    typename CmdType::control_bits ctrl =
-        iter->read<typename CmdType::control_bits>();
-
-    ir::PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
-      using type  = typename std::decay_t<decltype(tag)>::type;
-      auto result = BinaryApply<CmdType, type>(iter, ctrl.reg0, ctrl.reg1, ctx);
-      frame.regs_.set(iter->read<ir::Reg>(), result);
     });
 
   } else if constexpr (std::is_same_v<CmdType, ir::VariantCmd> or
@@ -732,8 +672,6 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
     ir::Reg reg = iter->read<ir::Reg>();
     DEBUG_LOG("variant")(reg);
     frame.regs_.set(reg, addr);
-  } else {
-    static_assert(base::always_false<CmdType>());
   }
 }
 
@@ -748,11 +686,391 @@ void Execute(ir::AnyFunc fn, base::untyped_buffer const &arguments,
   }
 }
 
+template <typename BinInst,
+          typename std::enable_if_t<
+              std::is_base_of_v<ir::BinaryInstruction<typename BinInst::type>,
+                                BinInst>,
+              int> = 0>
+void ExecuteInstruction(base::untyped_buffer::const_iterator *iter,
+                        ExecutionContext *ctx) {
+  using ctrl_t = typename BinInst::control_bits;
+  using type   = typename BinInst::type;
+  ctrl_t ctrl  = iter->read<ctrl_t>();
+  type lhs     = ReadAndResolve<type>(ctrl.lhs_is_reg, iter, ctx);
+  type rhs     = ReadAndResolve<type>(ctrl.rhs_is_reg, iter, ctx);
+  auto result  = BinInst::Apply(lhs, rhs);
+  ctx->current_frame().regs_.set(iter->read<ir::Reg>(), result);
+}
+
+template <
+    typename UnInst,
+    typename std::enable_if_t<
+        std::is_base_of_v<ir::UnaryInstruction<typename UnInst::type>, UnInst>,
+        int> = 0>
+void ExecuteInstruction(base::untyped_buffer::const_iterator *iter,
+                        ExecutionContext *ctx) {
+  using ctrl_t = typename UnInst::control_bits;
+  using type   = typename UnInst::type;
+  ctrl_t ctrl  = iter->read<ctrl_t>();
+  auto result  = UnInst::Apply(ReadAndResolve<type>(ctrl.is_reg, iter, ctx));
+  ctx->current_frame().regs_.set(iter->read<ir::Reg>(), result);
+}
+
 void ExecutionContext::ExecuteBlock(absl::Span<ir::Addr const> ret_slots) {
   auto iter = current_frame().current_block()->cmd_buffer_.begin();
   while (iter < current_frame().current_block()->cmd_buffer_.end()) {
-    auto cmd_index = iter.read<ir::cmd_index_t>();
-    switch (cmd_index) {
+    ir::cmd_index_t cmd_index = iter.read<ir::cmd_index_t>();
+    if (cmd_index >= 64) {
+      switch (cmd_index) {
+        case ir::AddInstruction<uint8_t>::kIndex:
+          ExecuteInstruction<ir::AddInstruction<uint8_t>>(&iter, this);
+          break;
+        case ir::AddInstruction<int8_t>::kIndex:
+          ExecuteInstruction<ir::AddInstruction<int8_t>>(&iter, this);
+          break;
+        case ir::AddInstruction<uint16_t>::kIndex:
+          ExecuteInstruction<ir::AddInstruction<uint16_t>>(&iter, this);
+          break;
+        case ir::AddInstruction<int16_t>::kIndex:
+          ExecuteInstruction<ir::AddInstruction<int16_t>>(&iter, this);
+          break;
+        case ir::AddInstruction<uint32_t>::kIndex:
+          ExecuteInstruction<ir::AddInstruction<uint32_t>>(&iter, this);
+          break;
+        case ir::AddInstruction<int32_t>::kIndex:
+          ExecuteInstruction<ir::AddInstruction<int32_t>>(&iter, this);
+          break;
+        case ir::AddInstruction<uint64_t>::kIndex:
+          ExecuteInstruction<ir::AddInstruction<uint64_t>>(&iter, this);
+          break;
+        case ir::AddInstruction<int64_t>::kIndex:
+          ExecuteInstruction<ir::AddInstruction<int64_t>>(&iter, this);
+          break;
+        case ir::AddInstruction<float>::kIndex:
+          ExecuteInstruction<ir::AddInstruction<float>>(&iter, this);
+          break;
+        case ir::AddInstruction<double>::kIndex:
+          ExecuteInstruction<ir::AddInstruction<double>>(&iter, this);
+          break;
+
+        case ir::SubInstruction<uint8_t>::kIndex:
+          ExecuteInstruction<ir::SubInstruction<uint8_t>>(&iter, this);
+          break;
+        case ir::SubInstruction<int8_t>::kIndex:
+          ExecuteInstruction<ir::SubInstruction<int8_t>>(&iter, this);
+          break;
+        case ir::SubInstruction<uint16_t>::kIndex:
+          ExecuteInstruction<ir::SubInstruction<uint16_t>>(&iter, this);
+          break;
+        case ir::SubInstruction<int16_t>::kIndex:
+          ExecuteInstruction<ir::SubInstruction<int16_t>>(&iter, this);
+          break;
+        case ir::SubInstruction<uint32_t>::kIndex:
+          ExecuteInstruction<ir::SubInstruction<uint32_t>>(&iter, this);
+          break;
+        case ir::SubInstruction<int32_t>::kIndex:
+          ExecuteInstruction<ir::SubInstruction<int32_t>>(&iter, this);
+          break;
+        case ir::SubInstruction<uint64_t>::kIndex:
+          ExecuteInstruction<ir::SubInstruction<uint64_t>>(&iter, this);
+          break;
+        case ir::SubInstruction<int64_t>::kIndex:
+          ExecuteInstruction<ir::SubInstruction<int64_t>>(&iter, this);
+          break;
+        case ir::SubInstruction<float>::kIndex:
+          ExecuteInstruction<ir::SubInstruction<float>>(&iter, this);
+          break;
+        case ir::SubInstruction<double>::kIndex:
+          ExecuteInstruction<ir::SubInstruction<double>>(&iter, this);
+          break;
+
+        case ir::MulInstruction<uint8_t>::kIndex:
+          ExecuteInstruction<ir::MulInstruction<uint8_t>>(&iter, this);
+          break;
+        case ir::MulInstruction<int8_t>::kIndex:
+          ExecuteInstruction<ir::MulInstruction<int8_t>>(&iter, this);
+          break;
+        case ir::MulInstruction<uint16_t>::kIndex:
+          ExecuteInstruction<ir::MulInstruction<uint16_t>>(&iter, this);
+          break;
+        case ir::MulInstruction<int16_t>::kIndex:
+          ExecuteInstruction<ir::MulInstruction<int16_t>>(&iter, this);
+          break;
+        case ir::MulInstruction<uint32_t>::kIndex:
+          ExecuteInstruction<ir::MulInstruction<uint32_t>>(&iter, this);
+          break;
+        case ir::MulInstruction<int32_t>::kIndex:
+          ExecuteInstruction<ir::MulInstruction<int32_t>>(&iter, this);
+          break;
+        case ir::MulInstruction<uint64_t>::kIndex:
+          ExecuteInstruction<ir::MulInstruction<uint64_t>>(&iter, this);
+          break;
+        case ir::MulInstruction<int64_t>::kIndex:
+          ExecuteInstruction<ir::MulInstruction<int64_t>>(&iter, this);
+          break;
+        case ir::MulInstruction<float>::kIndex:
+          ExecuteInstruction<ir::MulInstruction<float>>(&iter, this);
+          break;
+        case ir::MulInstruction<double>::kIndex:
+          ExecuteInstruction<ir::MulInstruction<double>>(&iter, this);
+          break;
+
+        case ir::DivInstruction<uint8_t>::kIndex:
+          ExecuteInstruction<ir::DivInstruction<uint8_t>>(&iter, this);
+          break;
+        case ir::DivInstruction<int8_t>::kIndex:
+          ExecuteInstruction<ir::DivInstruction<int8_t>>(&iter, this);
+          break;
+        case ir::DivInstruction<uint16_t>::kIndex:
+          ExecuteInstruction<ir::DivInstruction<uint16_t>>(&iter, this);
+          break;
+        case ir::DivInstruction<int16_t>::kIndex:
+          ExecuteInstruction<ir::DivInstruction<int16_t>>(&iter, this);
+          break;
+        case ir::DivInstruction<uint32_t>::kIndex:
+          ExecuteInstruction<ir::DivInstruction<uint32_t>>(&iter, this);
+          break;
+        case ir::DivInstruction<int32_t>::kIndex:
+          ExecuteInstruction<ir::DivInstruction<int32_t>>(&iter, this);
+          break;
+        case ir::DivInstruction<uint64_t>::kIndex:
+          ExecuteInstruction<ir::DivInstruction<uint64_t>>(&iter, this);
+          break;
+        case ir::DivInstruction<int64_t>::kIndex:
+          ExecuteInstruction<ir::DivInstruction<int64_t>>(&iter, this);
+          break;
+        case ir::DivInstruction<float>::kIndex:
+          ExecuteInstruction<ir::DivInstruction<float>>(&iter, this);
+          break;
+        case ir::DivInstruction<double>::kIndex:
+          ExecuteInstruction<ir::DivInstruction<double>>(&iter, this);
+          break;
+
+        case ir::ModInstruction<uint8_t>::kIndex:
+          ExecuteInstruction<ir::ModInstruction<uint8_t>>(&iter, this);
+          break;
+        case ir::ModInstruction<int8_t>::kIndex:
+          ExecuteInstruction<ir::ModInstruction<int8_t>>(&iter, this);
+          break;
+        case ir::ModInstruction<uint16_t>::kIndex:
+          ExecuteInstruction<ir::ModInstruction<uint16_t>>(&iter, this);
+          break;
+        case ir::ModInstruction<int16_t>::kIndex:
+          ExecuteInstruction<ir::ModInstruction<int16_t>>(&iter, this);
+          break;
+        case ir::ModInstruction<uint32_t>::kIndex:
+          ExecuteInstruction<ir::ModInstruction<uint32_t>>(&iter, this);
+          break;
+        case ir::ModInstruction<int32_t>::kIndex:
+          ExecuteInstruction<ir::ModInstruction<int32_t>>(&iter, this);
+          break;
+        case ir::ModInstruction<uint64_t>::kIndex:
+          ExecuteInstruction<ir::ModInstruction<uint64_t>>(&iter, this);
+          break;
+        case ir::ModInstruction<int64_t>::kIndex:
+          ExecuteInstruction<ir::ModInstruction<int64_t>>(&iter, this);
+          break;
+
+        case ir::EqInstruction<uint8_t>::kIndex:
+          ExecuteInstruction<ir::EqInstruction<uint8_t>>(&iter, this);
+          break;
+        case ir::EqInstruction<int8_t>::kIndex:
+          ExecuteInstruction<ir::EqInstruction<int8_t>>(&iter, this);
+          break;
+        case ir::EqInstruction<uint16_t>::kIndex:
+          ExecuteInstruction<ir::EqInstruction<uint16_t>>(&iter, this);
+          break;
+        case ir::EqInstruction<int16_t>::kIndex:
+          ExecuteInstruction<ir::EqInstruction<int16_t>>(&iter, this);
+          break;
+        case ir::EqInstruction<uint32_t>::kIndex:
+          ExecuteInstruction<ir::EqInstruction<uint32_t>>(&iter, this);
+          break;
+        case ir::EqInstruction<int32_t>::kIndex:
+          ExecuteInstruction<ir::EqInstruction<int32_t>>(&iter, this);
+          break;
+        case ir::EqInstruction<uint64_t>::kIndex:
+          ExecuteInstruction<ir::EqInstruction<uint64_t>>(&iter, this);
+          break;
+        case ir::EqInstruction<int64_t>::kIndex:
+          ExecuteInstruction<ir::EqInstruction<int64_t>>(&iter, this);
+          break;
+        case ir::EqInstruction<float>::kIndex:
+          ExecuteInstruction<ir::EqInstruction<float>>(&iter, this);
+          break;
+        case ir::EqInstruction<double>::kIndex:
+          ExecuteInstruction<ir::EqInstruction<double>>(&iter, this);
+          break;
+
+        case ir::NeInstruction<uint8_t>::kIndex:
+          ExecuteInstruction<ir::NeInstruction<uint8_t>>(&iter, this);
+          break;
+        case ir::NeInstruction<int8_t>::kIndex:
+          ExecuteInstruction<ir::NeInstruction<int8_t>>(&iter, this);
+          break;
+        case ir::NeInstruction<uint16_t>::kIndex:
+          ExecuteInstruction<ir::NeInstruction<uint16_t>>(&iter, this);
+          break;
+        case ir::NeInstruction<int16_t>::kIndex:
+          ExecuteInstruction<ir::NeInstruction<int16_t>>(&iter, this);
+          break;
+        case ir::NeInstruction<uint32_t>::kIndex:
+          ExecuteInstruction<ir::NeInstruction<uint32_t>>(&iter, this);
+          break;
+        case ir::NeInstruction<int32_t>::kIndex:
+          ExecuteInstruction<ir::NeInstruction<int32_t>>(&iter, this);
+          break;
+        case ir::NeInstruction<uint64_t>::kIndex:
+          ExecuteInstruction<ir::NeInstruction<uint64_t>>(&iter, this);
+          break;
+        case ir::NeInstruction<int64_t>::kIndex:
+          ExecuteInstruction<ir::NeInstruction<int64_t>>(&iter, this);
+          break;
+        case ir::NeInstruction<float>::kIndex:
+          ExecuteInstruction<ir::NeInstruction<float>>(&iter, this);
+          break;
+        case ir::NeInstruction<double>::kIndex:
+          ExecuteInstruction<ir::NeInstruction<double>>(&iter, this);
+          break;
+
+        case ir::LtInstruction<uint8_t>::kIndex:
+          ExecuteInstruction<ir::LtInstruction<uint8_t>>(&iter, this);
+          break;
+        case ir::LtInstruction<int8_t>::kIndex:
+          ExecuteInstruction<ir::LtInstruction<int8_t>>(&iter, this);
+          break;
+        case ir::LtInstruction<uint16_t>::kIndex:
+          ExecuteInstruction<ir::LtInstruction<uint16_t>>(&iter, this);
+          break;
+        case ir::LtInstruction<int16_t>::kIndex:
+          ExecuteInstruction<ir::LtInstruction<int16_t>>(&iter, this);
+          break;
+        case ir::LtInstruction<uint32_t>::kIndex:
+          ExecuteInstruction<ir::LtInstruction<uint32_t>>(&iter, this);
+          break;
+        case ir::LtInstruction<int32_t>::kIndex:
+          ExecuteInstruction<ir::LtInstruction<int32_t>>(&iter, this);
+          break;
+        case ir::LtInstruction<uint64_t>::kIndex:
+          ExecuteInstruction<ir::LtInstruction<uint64_t>>(&iter, this);
+          break;
+        case ir::LtInstruction<int64_t>::kIndex:
+          ExecuteInstruction<ir::LtInstruction<int64_t>>(&iter, this);
+          break;
+        case ir::LtInstruction<float>::kIndex:
+          ExecuteInstruction<ir::LtInstruction<float>>(&iter, this);
+          break;
+        case ir::LtInstruction<double>::kIndex:
+          ExecuteInstruction<ir::LtInstruction<double>>(&iter, this);
+          break;
+
+        case ir::LeInstruction<uint8_t>::kIndex:
+          ExecuteInstruction<ir::LeInstruction<uint8_t>>(&iter, this);
+          break;
+        case ir::LeInstruction<int8_t>::kIndex:
+          ExecuteInstruction<ir::LeInstruction<int8_t>>(&iter, this);
+          break;
+        case ir::LeInstruction<uint16_t>::kIndex:
+          ExecuteInstruction<ir::LeInstruction<uint16_t>>(&iter, this);
+          break;
+        case ir::LeInstruction<int16_t>::kIndex:
+          ExecuteInstruction<ir::LeInstruction<int16_t>>(&iter, this);
+          break;
+        case ir::LeInstruction<uint32_t>::kIndex:
+          ExecuteInstruction<ir::LeInstruction<uint32_t>>(&iter, this);
+          break;
+        case ir::LeInstruction<int32_t>::kIndex:
+          ExecuteInstruction<ir::LeInstruction<int32_t>>(&iter, this);
+          break;
+        case ir::LeInstruction<uint64_t>::kIndex:
+          ExecuteInstruction<ir::LeInstruction<uint64_t>>(&iter, this);
+          break;
+        case ir::LeInstruction<int64_t>::kIndex:
+          ExecuteInstruction<ir::LeInstruction<int64_t>>(&iter, this);
+          break;
+        case ir::LeInstruction<float>::kIndex:
+          ExecuteInstruction<ir::LeInstruction<float>>(&iter, this);
+          break;
+        case ir::LeInstruction<double>::kIndex:
+          ExecuteInstruction<ir::LeInstruction<double>>(&iter, this);
+          break;
+
+        case ir::NegInstruction<int8_t>::kIndex:
+          ExecuteInstruction<ir::NegInstruction<int8_t>>(&iter, this);
+          break;
+        case ir::NegInstruction<int16_t>::kIndex:
+          ExecuteInstruction<ir::NegInstruction<int16_t>>(&iter, this);
+          break;
+        case ir::NegInstruction<int32_t>::kIndex:
+          ExecuteInstruction<ir::NegInstruction<int32_t>>(&iter, this);
+          break;
+        case ir::NegInstruction<int64_t>::kIndex:
+          ExecuteInstruction<ir::NegInstruction<int64_t>>(&iter, this);
+          break;
+        case ir::NegInstruction<float>::kIndex:
+          ExecuteInstruction<ir::NegInstruction<float>>(&iter, this);
+          break;
+        case ir::NegInstruction<double>::kIndex:
+          ExecuteInstruction<ir::NegInstruction<double>>(&iter, this);
+          break;
+
+        case ir::NotInstruction::kIndex:
+          ExecuteInstruction<ir::NotInstruction>(&iter, this);
+          break;
+
+        case ir::PtrInstruction::kIndex:
+          ExecuteInstruction<ir::PtrInstruction>(&iter, this);
+          break;
+        case ir::BufPtrInstruction::kIndex:
+          ExecuteInstruction<ir::BufPtrInstruction>(&iter, this);
+          break;
+
+        case ir::RegisterInstruction<bool>::kIndex:
+          ExecuteInstruction<ir::RegisterInstruction<bool>>(&iter, this);
+          break;
+        case ir::RegisterInstruction<uint8_t>::kIndex:
+          ExecuteInstruction<ir::RegisterInstruction<uint8_t>>(&iter, this);
+          break;
+        case ir::RegisterInstruction<int8_t>::kIndex:
+          ExecuteInstruction<ir::RegisterInstruction<int8_t>>(&iter, this);
+          break;
+        case ir::RegisterInstruction<uint16_t>::kIndex:
+          ExecuteInstruction<ir::RegisterInstruction<uint16_t>>(&iter, this);
+          break;
+        case ir::RegisterInstruction<int16_t>::kIndex:
+          ExecuteInstruction<ir::RegisterInstruction<int16_t>>(&iter, this);
+          break;
+        case ir::RegisterInstruction<uint32_t>::kIndex:
+          ExecuteInstruction<ir::RegisterInstruction<uint32_t>>(&iter, this);
+          break;
+        case ir::RegisterInstruction<int32_t>::kIndex:
+          ExecuteInstruction<ir::RegisterInstruction<int32_t>>(&iter, this);
+          break;
+        case ir::RegisterInstruction<uint64_t>::kIndex:
+          ExecuteInstruction<ir::RegisterInstruction<uint64_t>>(&iter, this);
+          break;
+        case ir::RegisterInstruction<int64_t>::kIndex:
+          ExecuteInstruction<ir::RegisterInstruction<int64_t>>(&iter, this);
+          break;
+        case ir::RegisterInstruction<float>::kIndex:
+          ExecuteInstruction<ir::RegisterInstruction<float>>(&iter, this);
+          break;
+        case ir::RegisterInstruction<double>::kIndex:
+          ExecuteInstruction<ir::RegisterInstruction<double>>(&iter, this);
+          break;
+        case ir::RegisterInstruction<ir::EnumVal>::kIndex:
+          ExecuteInstruction<ir::RegisterInstruction<ir::EnumVal>>(&iter, this);
+          break;
+        case ir::RegisterInstruction<ir::FlagsVal>::kIndex:
+          ExecuteInstruction<ir::RegisterInstruction<ir::FlagsVal>>(&iter, this);
+          break;
+        case ir::RegisterInstruction<ir::Addr>::kIndex:
+          ExecuteInstruction<ir::RegisterInstruction<ir::Addr>>(&iter, this);
+          break;
+
+      }
+    } else {
+      switch (cmd_index) {
 #define ICARUS_IR_CMD_X(type)                                                  \
   case ir::type::index: {                                                      \
     DEBUG_LOG("dbg")(#type);                                                   \
@@ -760,7 +1078,8 @@ void ExecutionContext::ExecuteBlock(absl::Span<ir::Addr const> ret_slots) {
   } break;
 #include "ir/cmd/cmd.xmacro.h"
 #undef ICARUS_IR_CMD_X
-      default: UNREACHABLE(static_cast<int>(cmd_index));
+        default: UNREACHABLE(static_cast<int>(cmd_index));
+      }
     }
   }
 }

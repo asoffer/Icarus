@@ -64,7 +64,7 @@ struct UnaryInstruction : Instruction {
     uint8_t primitive_type : 6;
   };
 
-  template <uint8_t CmdIndex>
+  template <cmd_index_t CmdIndex>
   void SerializeUnary(base::untyped_buffer* buf) const {
     buf->append(CmdIndex);
     buf->append(control_bits{.is_reg         = operand.is_reg(),
@@ -88,7 +88,7 @@ struct BinaryInstruction : Instruction {
     uint8_t primitive_type : 6;
   };
 
-  template <uint8_t CmdIndex>
+  template <cmd_index_t CmdIndex>
   void SerializeBinary(base::untyped_buffer* buf) const {
     buf->append(CmdIndex);
     buf->append(control_bits{.lhs_is_reg     = lhs.is_reg(),
@@ -157,6 +157,8 @@ std::string_view TypeToString() {
     return "enum";
   } else if constexpr (std::is_same_v<T, FlagsVal>) {
     return "flags";
+  } else if constexpr (std::is_same_v<T, type::Type const*>) {
+    return "type";
   } else {
     DEBUG_LOG()(typeid(T).name());
     return "[[unknown]]";
@@ -167,6 +169,10 @@ std::string_view TypeToString() {
 
 template <typename NumType>
 struct NegInstruction : UnaryInstruction<NumType> {
+  using type = NumType;
+  static constexpr cmd_index_t kIndex =
+      NegCmd::index | PrimitiveIndex<NumType>();
+
   NegInstruction(RegOr<NumType> const& operand)
       : UnaryInstruction<NumType>(operand) {}
   ~NegInstruction() override {}
@@ -180,11 +186,14 @@ struct NegInstruction : UnaryInstruction<NumType> {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    this->template SerializeUnary<NegCmd::index>(buf);
+    this->template SerializeUnary<kIndex>(buf);
   }
 };
 
 struct NotInstruction : UnaryInstruction<bool> {
+  using type                          = bool;
+  static constexpr cmd_index_t kIndex = NotCmd::index;
+
   NotInstruction(RegOr<bool> const& operand)
       : UnaryInstruction<bool>(operand) {}
   ~NotInstruction() override {}
@@ -198,11 +207,14 @@ struct NotInstruction : UnaryInstruction<bool> {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    SerializeUnary<NotCmd::index>(buf);
+    SerializeUnary<kIndex>(buf);
   }
 };
 
 struct PtrInstruction : UnaryInstruction<type::Type const*> {
+  using type                          = type::Type const*;
+  static constexpr cmd_index_t kIndex = PtrCmd::index;
+
   PtrInstruction(RegOr<type::Type const*> const& operand)
       : UnaryInstruction<type::Type const*>(operand) {}
   ~PtrInstruction() override {}
@@ -212,11 +224,14 @@ struct PtrInstruction : UnaryInstruction<type::Type const*> {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    SerializeUnary<PtrCmd::index>(buf);
+    SerializeUnary<kIndex>(buf);
   }
 };
 
 struct BufPtrInstruction : UnaryInstruction<type::Type const*> {
+  using type                          = type::Type const*;
+  static constexpr cmd_index_t kIndex = BufPtrCmd::index;
+
   BufPtrInstruction(RegOr<type::Type const*> const& operand)
       : UnaryInstruction<type::Type const*>(operand) {}
   ~BufPtrInstruction() override {}
@@ -226,12 +241,42 @@ struct BufPtrInstruction : UnaryInstruction<type::Type const*> {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    SerializeUnary<BufPtrCmd::index>(buf);
+    SerializeUnary<kIndex>(buf);
+  }
+};
+
+// This instruction is a bit strange sets a register to either another registor,
+// or an immediate value. By the very nature of Single-Static-Assignment, every
+// use of this instruction is an optimization opportunity. If a register is
+// initialized with an immediate value, we can do constant propagation. If it is
+// initialized with another register, the two registers can be folded into a
+// single register.
+//
+// The benefit of such an instruction is that it enables us to inline code
+// without worrying about rewriting register names immediately. This instruction
+// should never be visible in the final code.
+template <typename T>
+struct RegisterInstruction : UnaryInstruction<T> {
+  using type = T;
+  static constexpr cmd_index_t kIndex =
+      RegisterCmd::index | PrimitiveIndex<T>();
+
+  RegisterInstruction(RegOr<T> const& operand) : UnaryInstruction<T>(operand) {}
+  ~RegisterInstruction() override {}
+
+  static T Apply(T val) { return val; }
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    this->template SerializeUnary<kIndex>(buf);
   }
 };
 
 template <typename NumType>
 struct AddInstruction : BinaryInstruction<NumType> {
+  using type = NumType;
+  static constexpr cmd_index_t kIndex =
+      AddCmd::index | PrimitiveIndex<NumType>();
+
   AddInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
       : BinaryInstruction<NumType>(lhs, rhs) {}
   ~AddInstruction() override {}
@@ -246,12 +291,16 @@ struct AddInstruction : BinaryInstruction<NumType> {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    this->template SerializeBinary<AddCmd::index>(buf);
+    this->template SerializeBinary<kIndex>(buf);
   }
 };
 
 template <typename NumType>
 struct SubInstruction : BinaryInstruction<NumType> {
+  using type = NumType;
+  static constexpr cmd_index_t kIndex =
+      SubCmd::index | PrimitiveIndex<NumType>();
+
   SubInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
       : BinaryInstruction<NumType>(lhs, rhs) {}
   ~SubInstruction() override {}
@@ -266,12 +315,16 @@ struct SubInstruction : BinaryInstruction<NumType> {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    this->template SerializeBinary<SubCmd::index>(buf);
+    this->template SerializeBinary<kIndex>(buf);
   }
 };
 
 template <typename NumType>
 struct MulInstruction : BinaryInstruction<NumType> {
+  using type = NumType;
+  static constexpr cmd_index_t kIndex =
+      MulCmd::index | PrimitiveIndex<NumType>();
+
   MulInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
       : BinaryInstruction<NumType>(lhs, rhs) {}
   ~MulInstruction() override {}
@@ -286,12 +339,16 @@ struct MulInstruction : BinaryInstruction<NumType> {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    this->template SerializeBinary<MulCmd::index>(buf);
+    this->template SerializeBinary<kIndex>(buf);
   }
 };
 
 template <typename NumType>
 struct DivInstruction : BinaryInstruction<NumType> {
+  using type = NumType;
+  static constexpr cmd_index_t kIndex =
+      DivCmd::index | PrimitiveIndex<NumType>();
+
   DivInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
       : BinaryInstruction<NumType>(lhs, rhs) {}
   ~DivInstruction() override {}
@@ -306,12 +363,16 @@ struct DivInstruction : BinaryInstruction<NumType> {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    this->template SerializeBinary<DivCmd::index>(buf);
+    this->template SerializeBinary<kIndex>(buf);
   }
 };
 
 template <typename NumType>
 struct ModInstruction : BinaryInstruction<NumType> {
+  using type = NumType;
+  static constexpr cmd_index_t kIndex =
+      ModCmd::index | PrimitiveIndex<NumType>();
+
   ModInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
       : BinaryInstruction<NumType>(lhs, rhs) {}
   ~ModInstruction() override {}
@@ -326,12 +387,16 @@ struct ModInstruction : BinaryInstruction<NumType> {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    this->template SerializeBinary<ModCmd::index>(buf);
+    this->template SerializeBinary<kIndex>(buf);
   }
 };
 
 template <typename NumType>
 struct EqInstruction : BinaryInstruction<NumType> {
+  using type = NumType;
+  static constexpr cmd_index_t kIndex =
+      EqCmd::index | PrimitiveIndex<NumType>();
+
   EqInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
       : BinaryInstruction<NumType>(lhs, rhs) {}
   ~EqInstruction() override {}
@@ -346,12 +411,16 @@ struct EqInstruction : BinaryInstruction<NumType> {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    this->template SerializeBinary<EqCmd::index>(buf);
+    this->template SerializeBinary<kIndex>(buf);
   }
 };
 
 template <typename NumType>
 struct NeInstruction : BinaryInstruction<NumType> {
+  using type = NumType;
+  static constexpr cmd_index_t kIndex =
+      NeCmd::index | PrimitiveIndex<NumType>();
+
   NeInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
       : BinaryInstruction<NumType>(lhs, rhs) {}
   ~NeInstruction() override {}
@@ -366,12 +435,16 @@ struct NeInstruction : BinaryInstruction<NumType> {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    this->template SerializeBinary<NeCmd::index>(buf);
+    this->template SerializeBinary<kIndex>(buf);
   }
 };
 
 template <typename NumType>
 struct LtInstruction : BinaryInstruction<NumType> {
+  using type = NumType;
+  static constexpr cmd_index_t kIndex =
+      LtCmd::index | PrimitiveIndex<NumType>();
+
   LtInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
       : BinaryInstruction<NumType>(lhs, rhs) {}
   ~LtInstruction() override {}
@@ -386,12 +459,16 @@ struct LtInstruction : BinaryInstruction<NumType> {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    this->template SerializeBinary<LtCmd::index>(buf);
+    this->template SerializeBinary<kIndex>(buf);
   }
 };
 
 template <typename NumType>
 struct LeInstruction : BinaryInstruction<NumType> {
+  using type = NumType;
+  static constexpr cmd_index_t kIndex =
+      LeCmd::index | PrimitiveIndex<NumType>();
+
   LeInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
       : BinaryInstruction<NumType>(lhs, rhs) {}
   ~LeInstruction() override {}
@@ -406,7 +483,7 @@ struct LeInstruction : BinaryInstruction<NumType> {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    this->template SerializeBinary<LeCmd::index>(buf);
+    this->template SerializeBinary<kIndex>(buf);
   }
 };
 

@@ -173,9 +173,8 @@ auto Apply(Type const *t, Fn &&fn) {
   return ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                     uint32_t, uint64_t, float, double, type::Type const *,
                     ir::EnumVal, ir::FlagsVal, ir::Addr, std::string_view,
-                    module::BasicModule *, type::Struct const *, ir::ScopeDef *,
-                    ir::AnyFunc, ir::BlockDef const *, ast::FunctionLiteral *>(
-      t, std::forward<Fn>(fn));
+                    module::BasicModule *, ir::ScopeDef *, ir::AnyFunc,
+                    ir::BlockDef const *>(t, std::forward<Fn>(fn));
 }
 
 // TODO lay these out adjacent in memory so the tests can be faster.

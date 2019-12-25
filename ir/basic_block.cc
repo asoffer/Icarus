@@ -22,8 +22,8 @@ std::ostream &operator<<(std::ostream &os, BasicBlock const &b) {
   for (auto const &inst : b.instructions_) { os << "    " << inst->to_string() << '\n'; }
   os << "    ---\n";
   for (auto iter = b.cmd_buffer_.cbegin(); iter < b.cmd_buffer_.cend();) {
-    auto cmd_index = iter.read<cmd_index_t>();
-    switch (cmd_index) {
+    cmd_index_t cmd_index = iter.read<cmd_index_t>();
+    switch (cmd_index > 64 ? (cmd_index & 0xffd0) : cmd_index) {
 #define ICARUS_IR_CMD_X(type)                                                  \
   case type::index:                                                            \
     os << "    " #type " " << type::DebugString(&iter) << "\n";                \

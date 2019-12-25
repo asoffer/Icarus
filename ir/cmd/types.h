@@ -82,12 +82,12 @@ struct ArrayCmd {
 using VariantCmd = internal::VariadicCmd<16, type::Type const *, type::Var>;
 using TupleCmd   = internal::VariadicCmd<17, type::Type const *, type::Tup>;
 using PtrCmd     = internal::UnaryCmd<
-    18,
+    18 * 256,
     internal::Functor<type::Pointer const *, std::tuple<type::Type const *>,
                       type::Ptr>,
     type::Type const *>;
 using BufPtrCmd = internal::UnaryCmd<
-    19,
+    19 * 256,
     internal::Functor<type::BufferPointer const *,
                       std::tuple<type::Type const *>, type::BufPtr>,
     type::Type const *>;

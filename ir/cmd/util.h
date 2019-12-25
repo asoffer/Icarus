@@ -20,7 +20,7 @@ struct Type;
 }  // namespace type
 
 namespace ir {
-using cmd_index_t = uint8_t;
+using cmd_index_t = uint16_t;
 
 template <typename T>
 constexpr uint8_t PrimitiveIndex() {
@@ -219,10 +219,10 @@ auto Deserialize(Iter* iter, Fn&& fn) {
   }
 }
 
-template <uint8_t Index, typename Fn, typename... SupportedTypes>
+template <cmd_index_t Index, typename Fn, typename... SupportedTypes>
 struct UnaryCmd {
-  using fn_type                  = Fn;
-  constexpr static uint8_t index = Index;
+  using fn_type                      = Fn;
+  constexpr static cmd_index_t index = Index;
 
   template <typename T>
   static constexpr bool IsSupported() {
@@ -263,10 +263,10 @@ struct UnaryCmd {
   }
 };
 
-template <uint8_t Index, typename Fn, typename... SupportedTypes>
+template <uint16_t Index, typename Fn, typename... SupportedTypes>
 struct BinaryCmd {
   using fn_type                  = Fn;
-  constexpr static uint8_t index = Index;
+  constexpr static cmd_index_t index = Index;
 
   template <typename T>
   static constexpr bool IsSupported() {
