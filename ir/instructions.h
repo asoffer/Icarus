@@ -3,6 +3,7 @@
 
 #include <memory>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "ir/cmd/basic.h"
@@ -57,6 +58,8 @@ struct Instruction {
 
 template <typename NumType>
 struct UnaryInstruction : Instruction {
+  using type = NumType;
+
   UnaryInstruction(RegOr<NumType> const& operand) : operand(operand) {}
 
   struct control_bits {
@@ -79,6 +82,8 @@ struct UnaryInstruction : Instruction {
 
 template <typename NumType>
 struct BinaryInstruction : Instruction {
+  using type = NumType;
+
   BinaryInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
       : lhs(lhs), rhs(rhs) {}
 
@@ -107,6 +112,8 @@ struct BinaryInstruction : Instruction {
 
 template <typename T>
 struct VariadicInstruction : Instruction {
+  using type = T;
+
   VariadicInstruction(std::vector<RegOr<T>> values)
       : values(std::move(values)) {}
 
@@ -169,7 +176,6 @@ std::string_view TypeToString() {
 
 template <typename NumType>
 struct NegInstruction : UnaryInstruction<NumType> {
-  using type = NumType;
   static constexpr cmd_index_t kIndex =
       NegCmd::index | PrimitiveIndex<NumType>();
 
@@ -191,7 +197,6 @@ struct NegInstruction : UnaryInstruction<NumType> {
 };
 
 struct NotInstruction : UnaryInstruction<bool> {
-  using type                          = bool;
   static constexpr cmd_index_t kIndex = NotCmd::index;
 
   NotInstruction(RegOr<bool> const& operand)
@@ -212,7 +217,6 @@ struct NotInstruction : UnaryInstruction<bool> {
 };
 
 struct PtrInstruction : UnaryInstruction<type::Type const*> {
-  using type                          = type::Type const*;
   static constexpr cmd_index_t kIndex = PtrCmd::index;
 
   PtrInstruction(RegOr<type::Type const*> const& operand)
@@ -229,7 +233,6 @@ struct PtrInstruction : UnaryInstruction<type::Type const*> {
 };
 
 struct BufPtrInstruction : UnaryInstruction<type::Type const*> {
-  using type                          = type::Type const*;
   static constexpr cmd_index_t kIndex = BufPtrCmd::index;
 
   BufPtrInstruction(RegOr<type::Type const*> const& operand)
@@ -257,7 +260,6 @@ struct BufPtrInstruction : UnaryInstruction<type::Type const*> {
 // should never be visible in the final code.
 template <typename T>
 struct RegisterInstruction : UnaryInstruction<T> {
-  using type = T;
   static constexpr cmd_index_t kIndex =
       RegisterCmd::index | PrimitiveIndex<T>();
 
@@ -273,7 +275,6 @@ struct RegisterInstruction : UnaryInstruction<T> {
 
 template <typename NumType>
 struct AddInstruction : BinaryInstruction<NumType> {
-  using type = NumType;
   static constexpr cmd_index_t kIndex =
       AddCmd::index | PrimitiveIndex<NumType>();
 
@@ -297,7 +298,6 @@ struct AddInstruction : BinaryInstruction<NumType> {
 
 template <typename NumType>
 struct SubInstruction : BinaryInstruction<NumType> {
-  using type = NumType;
   static constexpr cmd_index_t kIndex =
       SubCmd::index | PrimitiveIndex<NumType>();
 
@@ -321,7 +321,6 @@ struct SubInstruction : BinaryInstruction<NumType> {
 
 template <typename NumType>
 struct MulInstruction : BinaryInstruction<NumType> {
-  using type = NumType;
   static constexpr cmd_index_t kIndex =
       MulCmd::index | PrimitiveIndex<NumType>();
 
@@ -345,7 +344,6 @@ struct MulInstruction : BinaryInstruction<NumType> {
 
 template <typename NumType>
 struct DivInstruction : BinaryInstruction<NumType> {
-  using type = NumType;
   static constexpr cmd_index_t kIndex =
       DivCmd::index | PrimitiveIndex<NumType>();
 
@@ -369,7 +367,6 @@ struct DivInstruction : BinaryInstruction<NumType> {
 
 template <typename NumType>
 struct ModInstruction : BinaryInstruction<NumType> {
-  using type = NumType;
   static constexpr cmd_index_t kIndex =
       ModCmd::index | PrimitiveIndex<NumType>();
 
@@ -393,7 +390,6 @@ struct ModInstruction : BinaryInstruction<NumType> {
 
 template <typename NumType>
 struct EqInstruction : BinaryInstruction<NumType> {
-  using type = NumType;
   static constexpr cmd_index_t kIndex =
       EqCmd::index | PrimitiveIndex<NumType>();
 
@@ -417,7 +413,6 @@ struct EqInstruction : BinaryInstruction<NumType> {
 
 template <typename NumType>
 struct NeInstruction : BinaryInstruction<NumType> {
-  using type = NumType;
   static constexpr cmd_index_t kIndex =
       NeCmd::index | PrimitiveIndex<NumType>();
 
@@ -441,7 +436,6 @@ struct NeInstruction : BinaryInstruction<NumType> {
 
 template <typename NumType>
 struct LtInstruction : BinaryInstruction<NumType> {
-  using type = NumType;
   static constexpr cmd_index_t kIndex =
       LtCmd::index | PrimitiveIndex<NumType>();
 
@@ -465,7 +459,6 @@ struct LtInstruction : BinaryInstruction<NumType> {
 
 template <typename NumType>
 struct LeInstruction : BinaryInstruction<NumType> {
-  using type = NumType;
   static constexpr cmd_index_t kIndex =
       LeCmd::index | PrimitiveIndex<NumType>();
 
@@ -535,6 +528,8 @@ struct StoreInstruction : Instruction {
 
 template <typename T>
 struct PrintInstruction : Instruction {
+  static constexpr cmd_index_t kIndex = PrintCmd::index | PrimitiveIndex<T>();
+  using type = T;
   PrintInstruction(RegOr<T> const& value) : value(value) {}
   ~PrintInstruction() override {}
 
@@ -544,7 +539,7 @@ struct PrintInstruction : Instruction {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(PrintCmd::index);
+    buf->append(kIndex);
     buf->append(PrintCmd::MakeControlBits<T>(value.is_reg()));
     value.apply([&](auto v) { buf->append(v); });
   }
@@ -553,6 +548,9 @@ struct PrintInstruction : Instruction {
 };
 
 struct PrintEnumInstruction : Instruction {
+  static constexpr cmd_index_t kIndex =
+      PrintCmd::index | PrimitiveIndex<EnumVal>();
+
   PrintEnumInstruction(RegOr<EnumVal> const& value, type::Enum const* enum_type)
       : value(value), enum_type(enum_type) {}
   ~PrintEnumInstruction() override {}
@@ -564,7 +562,7 @@ struct PrintEnumInstruction : Instruction {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(PrintCmd::index);
+    buf->append(kIndex);
     buf->append(PrintCmd::MakeControlBits<EnumVal>(value.is_reg()));
     value.apply([&](auto v) { buf->append(v); });
     buf->append(enum_type);
@@ -575,6 +573,9 @@ struct PrintEnumInstruction : Instruction {
 };
 
 struct PrintFlagsInstruction : Instruction {
+  static constexpr cmd_index_t kIndex =
+      PrintCmd::index | PrimitiveIndex<FlagsVal>();
+
   PrintFlagsInstruction(RegOr<FlagsVal> const& value,
                         type::Flags const* flags_type)
       : value(value), flags_type(flags_type) {}
@@ -587,7 +588,7 @@ struct PrintFlagsInstruction : Instruction {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(PrintCmd::index);
+    buf->append(kIndex);
     buf->append(PrintCmd::MakeControlBits<FlagsVal>(value.is_reg()));
     value.apply([&](auto v) { buf->append(v); });
     buf->append(flags_type);
@@ -664,6 +665,8 @@ struct OrFlagsInstruction : BinaryInstruction<FlagsVal> {
 };
 
 struct TupleInstruction : VariadicInstruction<type::Type const*> {
+  static constexpr cmd_index_t kIndex = TupleCmd::index;
+
   TupleInstruction(std::vector<RegOr<type::Type const*>> values)
       : VariadicInstruction<type::Type const*>(std::move(values)) {}
   ~TupleInstruction() override {}
@@ -688,6 +691,8 @@ struct TupleInstruction : VariadicInstruction<type::Type const*> {
 };
 
 struct VariantInstruction : VariadicInstruction<type::Type const*> {
+  static constexpr cmd_index_t kIndex = VariantCmd::index;
+
   VariantInstruction(std::vector<RegOr<type::Type const*>> values)
       : VariadicInstruction<type::Type const*>(std::move(values)) {}
   ~VariantInstruction() override {}
@@ -710,6 +715,123 @@ struct VariantInstruction : VariadicInstruction<type::Type const*> {
     this->template SerializeVariadic<VariantCmd>(buf);
   }
 };
+
+struct EnumerationInstruction : Instruction {
+  static constexpr cmd_index_t kIndex = EnumerationCmd::index;
+
+  enum class Kind { Enum, Flags };
+  EnumerationInstruction(
+      Kind k, module::BasicModule* mod, std::vector<std::string_view> names,
+      absl::flat_hash_map<uint64_t, RegOr<uint64_t>> specified_values)
+      : kind_(k),
+        mod_(mod),
+        names_(std::move(names)),
+        specified_values_(std::move(specified_values)) {}
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    buf->append(kIndex);
+    buf->append(kind_ == Kind::Enum);
+    buf->append<uint16_t>(names_.size());
+    buf->append<uint16_t>(specified_values_.size());
+    buf->append(mod_);
+    for (auto name : names_) { buf->append(name); }
+
+    for (auto const& [index, val] : specified_values_) {
+      // TODO these could be packed much more efficiently.
+      buf->append(index);
+      buf->append<bool>(val.is_reg());
+      val.apply([&](auto v) { buf->append(v); });
+    }
+
+    buf->append(result);
+  };
+
+  std::string to_string() const override {
+    using base::stringify;
+    return absl::StrCat(stringify(result),
+                        kind_ == Kind::Enum ? " = enum (" : " = flags (",
+                        absl::StrJoin(names_, ", "), ")");
+  }
+
+  Kind kind_;
+  module::BasicModule* mod_;
+  std::vector<std::string_view> names_;
+  absl::flat_hash_map<uint64_t, RegOr<uint64_t>> specified_values_;
+  Reg result;
+};
+
+struct OpaqueTypeInstruction : Instruction {
+  constexpr static cmd_index_t kIndex = OpaqueTypeCmd::index;
+  OpaqueTypeInstruction(module::BasicModule* mod) : mod(mod) {}
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    buf->append(kIndex);
+    buf->append(mod);
+    buf->append(result);
+  }
+
+  std::string to_string() const override {
+    using base::stringify;
+    return absl::StrCat(stringify(result), " = opaque ", stringify( mod));
+  }
+
+  module::BasicModule* mod;
+  Reg result;
+};
+
+struct ArrowInstruction : Instruction {
+  ArrowInstruction(std::vector<RegOr<type::Type const*>> lhs,
+                   std::vector<RegOr<type::Type const*>> rhs)
+      : lhs(std::move(lhs)), rhs(std::move(rhs)) {}
+  constexpr static cmd_index_t kIndex = ArrowCmd::index;
+
+  ~ArrowInstruction() override {}
+
+  static type::Type const* Apply(std::vector<type::Type const*> lhs,
+                                 std::vector<type::Type const*> rhs) {
+    return type::Func(std::move(lhs), std::move(rhs));
+  }
+
+  std::string to_string() const override {
+    using base::stringify;
+    return absl::StrCat(
+        stringify(result), " = (",
+        absl::StrJoin(lhs, ", ",
+                      [](std::string* out, RegOr<type::Type const*> const& r) {
+                        out->append(stringify(r));
+                      }),
+        ") -> (",
+        absl::StrJoin(rhs, ", ",
+                      [](std::string* out, RegOr<type::Type const*> const& r) {
+                        out->append(stringify(r));
+                      }),
+        ")");
+  }
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    buf->append(kIndex);
+
+    internal::WriteBits<uint16_t, RegOr<type::Type const*>>(
+        buf, lhs, [](RegOr<type::Type const*> const& r) { return r.is_reg(); });
+    absl::c_for_each(lhs, [&](RegOr<type::Type const*> const& x) {
+      x.apply([&](auto v) { buf->append(v); });
+    });
+
+    internal::WriteBits<uint16_t, RegOr<type::Type const*>>(
+        buf, rhs, [](RegOr<type::Type const*> const& r) { return r.is_reg(); });
+    absl::c_for_each(rhs, [&](RegOr<type::Type const*> const& x) {
+      x.apply([&](auto v) { buf->append(v); });
+    });
+
+    buf->append(result);
+  }
+
+  std::vector<RegOr<type::Type const*>> lhs, rhs;
+  Reg result;
+};
+
+// TODO: StructCmd, ArrayCmd
+
 }  // namespace ir
 
 #endif  // ICARUS_IR_INSTRUCTIONS_H

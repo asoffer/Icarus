@@ -20,11 +20,13 @@ struct unaligned_ref {
     return *this;
   }
 
-  operator T() const {
+  T get() const {
     T t;
     std::memcpy(&t, reinterpret_cast<void const *>(ptr_), sizeof(T));
     return t;
   }
+
+  operator T() const { return get(); }
 
  private:
   friend struct unaligned_ref<T const>;
@@ -47,11 +49,13 @@ struct unaligned_ref<T const> {
   constexpr unaligned_ref(T &t) : ptr_(reinterpret_cast<uintptr_t>(&t)) {}
   constexpr unaligned_ref(T const &t) : ptr_(reinterpret_cast<uintptr_t>(&t)) {}
 
-  operator T() const {
+  T get() const {
     T t;
     std::memcpy(&t, reinterpret_cast<void const *>(ptr_), sizeof(T));
     return t;
   }
+
+  operator T() const { return get(); }
 
  private:
   explicit constexpr unaligned_ref(void const *ptr)

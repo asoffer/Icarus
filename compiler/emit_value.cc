@@ -1170,9 +1170,9 @@ ir::Results Compiler::Visit(ast::EnumLiteral const *node, EmitValueTag) {
 
   switch (node->kind()) {
     case ast::EnumLiteral::Kind::Enum:
-      return ir::Results{ir::Enum(module(), names, specified_values)};
+      return ir::Results{builder().Enum(module(), names, specified_values)};
     case ast::EnumLiteral::Kind::Flags:
-      return ir::Results{ir::Flags(module(), names, specified_values)};
+      return ir::Results{builder().Flags(module(), names, specified_values)};
     default: UNREACHABLE();
   }
 }

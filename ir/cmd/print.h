@@ -9,7 +9,7 @@
 namespace ir {
 
 struct PrintCmd {
-  constexpr static cmd_index_t index = 0;
+  constexpr static cmd_index_t index = 12 * 256;
 
   struct control_bits {
     uint8_t primitive_type : 6;

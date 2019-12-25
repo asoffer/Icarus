@@ -378,8 +378,8 @@ struct Builder {
 
   // Type construction commands
   RegOr<type::Function const*> Arrow(
-      absl::Span<RegOr<type::Type const*> const> ins,
-      absl::Span<RegOr<type::Type const*> const> outs);
+      std::vector<RegOr<type::Type const*>> const& ins,
+      std::vector<RegOr<type::Type const*>> const& outs);
 
   RegOr<type::Type const*> Array(RegOr<ArrayCmd::length_t> len,
                                  RegOr<type::Type const*> data_type);
@@ -387,6 +387,12 @@ struct Builder {
   Reg OpaqueType(module::BasicModule const* mod);
 
   Reg Struct(ast::Scope const* scope, absl::Span<StructField const> fields);
+
+  // TODO use scopes instead of modules.
+  Reg Enum(module::BasicModule* mod, std::vector<std::string_view> names,
+           absl::flat_hash_map<uint64_t, RegOr<uint64_t>> specified_values);
+  Reg Flags(module::BasicModule* mod, std::vector<std::string_view> names,
+            absl::flat_hash_map<uint64_t, RegOr<uint64_t>> specified_values);
 
   // Print commands
   template <typename T>

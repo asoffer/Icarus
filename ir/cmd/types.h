@@ -44,7 +44,7 @@ struct Functor {
 
 struct EnumerationCmd {
   using enum_t                       = uint64_t;
-  constexpr static cmd_index_t index = 29;
+  constexpr static cmd_index_t index = 29 * 256;
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
 };
@@ -56,7 +56,7 @@ struct StructCmd {
 };
 
 struct OpaqueTypeCmd {
-  constexpr static cmd_index_t index = 31;
+  constexpr static cmd_index_t index = 31 * 256;
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
 };
@@ -79,8 +79,8 @@ struct ArrayCmd {
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
 };
 
-using VariantCmd = internal::VariadicCmd<16, type::Type const *, type::Var>;
-using TupleCmd   = internal::VariadicCmd<17, type::Type const *, type::Tup>;
+using VariantCmd = internal::VariadicCmd<256 * 16, type::Type const *, type::Var>;
+using TupleCmd   = internal::VariadicCmd<256 * 17, type::Type const *, type::Tup>;
 using PtrCmd     = internal::UnaryCmd<
     18 * 256,
     internal::Functor<type::Pointer const *, std::tuple<type::Type const *>,
@@ -93,7 +93,7 @@ using BufPtrCmd = internal::UnaryCmd<
     type::Type const *>;
 
 struct ArrowCmd {
-  constexpr static cmd_index_t index = 22;
+  constexpr static cmd_index_t index = 22 * 256;
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter) {
     return "NOT_YET";

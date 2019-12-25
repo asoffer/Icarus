@@ -77,56 +77,8 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
   ICARUS_DEBUG_ONLY(auto iter_copy = *iter;)
   DEBUG_LOG("cmd")(CmdType::DebugString(&iter_copy));
   auto &frame = ctx->current_frame();
-  if constexpr (std::is_same_v<CmdType, ir::PrintCmd>) {
-    typename CmdType::control_bits ctrl =
-        iter->read<typename CmdType::control_bits>();
-    ir::PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
-      using T = typename std::decay_t<decltype(tag)>::type;
-      T val   = ReadAndResolve<T>(ctrl.reg, iter, ctx);
-      if constexpr (std::is_same_v<T, bool>) {
-        std::cerr << (val ? "true" : "false");
-      } else if constexpr (std::is_same_v<T, uint8_t>) {
-        std::cerr << static_cast<unsigned int>(val);
-      } else if constexpr (std::is_same_v<T, int8_t>) {
-        std::cerr << static_cast<int>(val);
-      } else if constexpr (std::is_same_v<T, type::Type const *>) {
-        std::cerr << val->to_string();
-      } else if constexpr (std::is_same_v<T, ir::Addr>) {
-        std::cerr << val.to_string();
-      } else if constexpr (std::is_same_v<T, ir::EnumVal>) {
-        std::optional<std::string_view> name =
-            static_cast<type::Enum const *>(iter->read<type::Enum const *>())
-                ->name(val);
-        std::cerr << (name.has_value() ? *name : absl::StrCat(val.value));
-      } else if constexpr (std::is_same_v<T, ir::FlagsVal>) {
-        auto numeric_val = val.value;
-        std::vector<std::string> vals;
-        type::Flags const *flags_type = iter->read<type::Flags const *>();
-
-        while (numeric_val != 0) {
-          size_t mask = (numeric_val & ((~numeric_val) + 1));
-          numeric_val -= mask;
-
-          std::optional<std::string_view> name =
-              flags_type->name(ir::FlagsVal(mask));
-          vals.emplace_back(name.has_value() ? std::string{*name}
-                                             : std::to_string(mask));
-        }
-
-        if (vals.empty()) {
-          std::cerr << "(empty)";
-        } else {
-          auto iter = vals.begin();
-          std::cerr << *iter++;
-          while (iter != vals.end()) { std::cerr << " | " << *iter++; }
-        }
-      } else {
-        std::cerr << val;
-      }
-    });
-
-  } else if constexpr (std::is_same_v<CmdType, ir::VariantCmd> or
-                       std::is_same_v<CmdType, ir::TupleCmd>) {
+  if constexpr (std::is_same_v<CmdType, ir::VariantCmd> or
+                std::is_same_v<CmdType, ir::TupleCmd>) {
     std::vector<type::Type const *> vals =
         ir::internal::Deserialize<uint16_t, type::Type const *>(
             iter, [ctx](ir::Reg reg) {
@@ -179,21 +131,6 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
         }
       }
     });
-
-  } else if constexpr (std::is_same_v<CmdType, ir::ArrowCmd>) {
-    std::vector<type::Type const *> ins =
-        ir::internal::Deserialize<uint16_t, type::Type const *>(
-            iter, [ctx](ir::Reg reg) {
-              return ctx->resolve<type::Type const *>(reg);
-            });
-    std::vector<type::Type const *> outs =
-        ir::internal::Deserialize<uint16_t, type::Type const *>(
-            iter, [ctx](ir::Reg reg) {
-              return ctx->resolve<type::Type const *>(reg);
-            });
-
-    frame.regs_.set(iter->read<ir::Reg>(),
-                    type::Func(std::move(ins), std::move(outs)));
 
   } else if constexpr (std::is_same_v<CmdType, ir::CallCmd>) {
     bool fn_is_reg                = iter->read<bool>();
@@ -321,85 +258,6 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
     ir::Reg result_reg = iter->read<ir::Reg>();
     frame.regs_.set(result_reg, block_def);
 
-  } else if constexpr (std::is_same_v<CmdType, ir::EnumerationCmd>) {
-    using enum_t             = typename CmdType::enum_t;
-    bool is_enum_not_flags   = iter->read<bool>();
-    uint16_t num_enumerators = iter->read<uint16_t>();
-    uint16_t num_specified   = iter->read<uint16_t>();
-    module::BasicModule *mod = iter->read<module::BasicModule *>();
-    std::vector<std::pair<std::string_view, std::optional<enum_t>>> enumerators;
-    enumerators.reserve(num_enumerators);
-    for (uint16_t i = 0; i < num_enumerators; ++i) {
-      enumerators.emplace_back(iter->read<std::string_view>(), std::nullopt);
-    }
-
-    absl::flat_hash_set<enum_t> vals;
-
-    for (uint16_t i = 0; i < num_specified; ++i) {
-      uint64_t index        = iter->read<uint64_t>();
-      auto b                = iter->read<bool>();
-      enum_t val            = ReadAndResolve<enum_t>(b, iter, ctx);
-      enumerators[i].second = val;
-      vals.insert(val);
-    }
-
-    type::Type *result = nullptr;
-    absl::BitGen gen;
-
-    if (is_enum_not_flags) {
-      for (auto &[name, maybe_val] : enumerators) {
-        DEBUG_LOG("enum")(name, " => ", maybe_val);
-
-        if (not maybe_val.has_value()) {
-          bool success;
-          enum_t x;
-          do {
-            x       = absl::Uniform<enum_t>(gen);
-            success = vals.insert(x).second;
-            DEBUG_LOG("enum")("Adding value ", x, " for ", name);
-            maybe_val = x;
-          } while (not success);
-        }
-      }
-      absl::flat_hash_map<std::string, ir::EnumVal> mapping;
-
-      for (auto [name, maybe_val] : enumerators) {
-        ASSERT(maybe_val.has_value() == true);
-        mapping.emplace(std::string(name), ir::EnumVal{maybe_val.value()});
-      }
-      DEBUG_LOG("enum")(vals, ", ", mapping);
-      result = new type::Enum(mod, std::move(mapping));
-    } else {
-      for (auto &[name, maybe_val] : enumerators) {
-        DEBUG_LOG("flags")(name, " => ", maybe_val);
-
-        if (not maybe_val.has_value()) {
-          bool success;
-          enum_t x;
-          do {
-            x       = absl::Uniform<enum_t>(absl::IntervalClosedOpen, gen, 0,
-                                      std::numeric_limits<enum_t>::digits);
-            success = vals.insert(x).second;
-            DEBUG_LOG("enum")("Adding value ", x, " for ", name);
-            maybe_val = x;
-          } while (not success);
-        }
-      }
-
-      absl::flat_hash_map<std::string, ir::FlagsVal> mapping;
-
-      for (auto [name, maybe_val] : enumerators) {
-        ASSERT(maybe_val.has_value() == true);
-        mapping.emplace(std::string(name),
-                        ir::FlagsVal{enum_t{1} << maybe_val.value()});
-      }
-
-      DEBUG_LOG("flags")(vals, ", ", mapping);
-      result = new type::Flags(mod, std::move(mapping));
-    }
-
-    frame.regs_.set(iter->read<ir::Reg>(), result);
-
   } else if constexpr (std::is_same_v<CmdType, ir::StructCmd>) {
     uint16_t num = iter->read<uint16_t>();
 
@@ -420,10 +278,6 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
     for (uint16_t i = 0; i < num; ++i) { fields[i].type = types[i]; }
 
     frame.regs_.set(iter->read<ir::Reg>(), new type::Struct(scope, fields));
-
-  } else if constexpr (std::is_same_v<CmdType, ir::OpaqueTypeCmd>) {
-    module::BasicModule const *mod = iter->read<module::BasicModule const *>();
-    frame.regs_.set(iter->read<ir::Reg>(), new type::Opaque(mod));
 
   } else if constexpr (std::is_same_v<CmdType, ir::ArrayCmd>) {
     using length_t = typename CmdType::length_t;
@@ -714,6 +568,177 @@ void ExecuteInstruction(base::untyped_buffer::const_iterator *iter,
   ctrl_t ctrl  = iter->read<ctrl_t>();
   auto result  = UnInst::Apply(ReadAndResolve<type>(ctrl.is_reg, iter, ctx));
   ctx->current_frame().regs_.set(iter->read<ir::Reg>(), result);
+}
+
+template <typename VarInst,
+          typename std::enable_if_t<
+              std::is_base_of_v<ir::VariadicInstruction<typename VarInst::type>,
+                                VarInst>,
+              int> = 0>
+void ExecuteInstruction(base::untyped_buffer::const_iterator *iter,
+                        ExecutionContext *ctx) {
+  using type = typename VarInst::type;
+
+  auto vals = ir::internal::Deserialize<uint16_t, type>(
+      iter, [ctx](ir::Reg reg) { return ctx->resolve<type>(reg); });
+  ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
+                                 VarInst::Apply(std::move(vals)));
+}
+
+template <typename Inst>
+void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
+                             ExecutionContext *ctx) {
+  if constexpr (std::is_same_v<Inst, ir::EnumerationInstruction>) {
+    using enum_t             = uint64_t;
+    bool is_enum_not_flags   = iter->read<bool>();
+    uint16_t num_enumerators = iter->read<uint16_t>();
+    uint16_t num_specified   = iter->read<uint16_t>();
+    module::BasicModule *mod = iter->read<module::BasicModule *>();
+    std::vector<std::pair<std::string_view, std::optional<enum_t>>> enumerators;
+    enumerators.reserve(num_enumerators);
+    for (uint16_t i = 0; i < num_enumerators; ++i) {
+      enumerators.emplace_back(iter->read<std::string_view>(), std::nullopt);
+    }
+
+    absl::flat_hash_set<enum_t> vals;
+
+    for (uint16_t i = 0; i < num_specified; ++i) {
+      uint64_t index        = iter->read<uint64_t>();
+      auto b                = iter->read<bool>();
+      enum_t val            = ReadAndResolve<enum_t>(b, iter, ctx);
+      enumerators[i].second = val;
+      vals.insert(val);
+    }
+
+    type::Type *result = nullptr;
+    absl::BitGen gen;
+
+    if (is_enum_not_flags) {
+      for (auto &[name, maybe_val] : enumerators) {
+        DEBUG_LOG("enum")(name, " => ", maybe_val);
+
+        if (not maybe_val.has_value()) {
+          bool success;
+          enum_t x;
+          do {
+            x       = absl::Uniform<enum_t>(gen);
+            success = vals.insert(x).second;
+            DEBUG_LOG("enum")("Adding value ", x, " for ", name);
+            maybe_val = x;
+          } while (not success);
+        }
+      }
+      absl::flat_hash_map<std::string, ir::EnumVal> mapping;
+
+      for (auto [name, maybe_val] : enumerators) {
+        ASSERT(maybe_val.has_value() == true);
+        mapping.emplace(std::string(name), ir::EnumVal{maybe_val.value()});
+      }
+      DEBUG_LOG("enum")(vals, ", ", mapping);
+      result = new type::Enum(mod, std::move(mapping));
+    } else {
+      for (auto &[name, maybe_val] : enumerators) {
+        DEBUG_LOG("flags")(name, " => ", maybe_val);
+
+        if (not maybe_val.has_value()) {
+          bool success;
+          enum_t x;
+          do {
+            x       = absl::Uniform<enum_t>(absl::IntervalClosedOpen, gen, 0,
+                                      std::numeric_limits<enum_t>::digits);
+            success = vals.insert(x).second;
+            DEBUG_LOG("enum")("Adding value ", x, " for ", name);
+            maybe_val = x;
+          } while (not success);
+        }
+      }
+
+      absl::flat_hash_map<std::string, ir::FlagsVal> mapping;
+
+      for (auto [name, maybe_val] : enumerators) {
+        ASSERT(maybe_val.has_value() == true);
+        mapping.emplace(std::string(name),
+                        ir::FlagsVal{enum_t{1} << maybe_val.value()});
+      }
+
+      DEBUG_LOG("flags")(vals, ", ", mapping);
+      result = new type::Flags(mod, std::move(mapping));
+    }
+
+    ctx->current_frame().regs_.set(iter->read<ir::Reg>(), result);
+
+  } else if constexpr (std::is_same_v<Inst, ir::OpaqueTypeInstruction>) {
+    module::BasicModule const *mod = iter->read<module::BasicModule const *>();
+    ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
+                                   new type::Opaque(mod));
+
+  } else if constexpr (std::is_same_v<Inst, ir::ArrowInstruction>) {
+    std::vector<type::Type const *> ins =
+        ir::internal::Deserialize<uint16_t, type::Type const *>(
+            iter, [ctx](ir::Reg reg) {
+              return ctx->resolve<type::Type const *>(reg);
+            });
+    std::vector<type::Type const *> outs =
+        ir::internal::Deserialize<uint16_t, type::Type const *>(
+            iter, [ctx](ir::Reg reg) {
+              return ctx->resolve<type::Type const *>(reg);
+            });
+
+    ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
+                                   type::Func(std::move(ins), std::move(outs)));
+  } else if constexpr (std::is_same_v<Inst, ir::PrintInstruction<bool>>) {
+    auto ctrl = iter->read<ir::PrintCmd::control_bits>().get();
+    std::cerr << (ReadAndResolve<bool>(ctrl.reg, iter, ctx) ? "true" : "false");
+  } else if constexpr (std::is_same_v<Inst, ir::PrintInstruction<uint8_t>> or
+                       std::is_same_v<Inst, ir::PrintInstruction<int8_t>>) {
+    using type = typename Inst::type;
+    auto ctrl  = iter->read<ir::PrintCmd::control_bits>().get();
+    // Cast to a larger type to ensure we print as an integer rather than a
+    // character.
+    std::cerr << static_cast<int16_t>(
+        ReadAndResolve<type>(ctrl.reg, iter, ctx));
+  } else if constexpr (std::is_same_v<Inst, ir::PrintInstruction<uint16_t>> or
+                       std::is_same_v<Inst, ir::PrintInstruction<int16_t>> or
+                       std::is_same_v<Inst, ir::PrintInstruction<uint32_t>> or
+                       std::is_same_v<Inst, ir::PrintInstruction<int32_t>> or
+                       std::is_same_v<Inst, ir::PrintInstruction<uint64_t>> or
+                       std::is_same_v<Inst, ir::PrintInstruction<int64_t>> or
+                       std::is_same_v<Inst,
+                                      ir::PrintInstruction<std::string_view>>) {
+    using type = typename Inst::type;
+    auto ctrl  = iter->read<ir::PrintCmd::control_bits>().get();
+    std::cerr << ReadAndResolve<type>(ctrl.reg, iter, ctx);
+  } else if constexpr (std::is_same_v<Inst, ir::PrintEnumInstruction>) {
+    auto ctrl = iter->read<ir::PrintCmd::control_bits>().get();
+    auto val  = ReadAndResolve<ir::EnumVal>(ctrl.reg, iter, ctx);
+    std::optional<std::string_view> name =
+        iter->read<type::Enum const *>().get()->name(val);
+    std::cerr << (name.has_value() ? *name : absl::StrCat(val.value));
+  } else if constexpr (std::is_same_v<Inst, ir::PrintFlagsInstruction>) {
+    auto ctrl        = iter->read<ir::PrintCmd::control_bits>().get();
+    auto val         = ReadAndResolve<ir::FlagsVal>(ctrl.reg, iter, ctx);
+    auto numeric_val = val.value;
+    std::vector<std::string> vals;
+    type::Flags const *flags_type = iter->read<type::Flags const *>();
+
+    while (numeric_val != 0) {
+      size_t mask = (numeric_val & ((~numeric_val) + 1));
+      numeric_val -= mask;
+
+      std::optional<std::string_view> name =
+          flags_type->name(ir::FlagsVal(mask));
+      vals.emplace_back(name.has_value() ? std::string{*name}
+                                         : std::to_string(mask));
+    }
+
+    if (vals.empty()) {
+      std::cerr << "(empty)";
+    } else {
+      auto iter = vals.begin();
+      std::cerr << *iter++;
+      while (iter != vals.end()) { std::cerr << " | " << *iter++; }
+    }
+  }
 }
 
 void ExecutionContext::ExecuteBlock(absl::Span<ir::Addr const> ret_slots) {
@@ -1024,7 +1049,21 @@ void ExecutionContext::ExecuteBlock(absl::Span<ir::Addr const> ret_slots) {
         case ir::BufPtrInstruction::kIndex:
           ExecuteInstruction<ir::BufPtrInstruction>(&iter, this);
           break;
-
+        case ir::TupleInstruction::kIndex:
+          ExecuteInstruction<ir::TupleInstruction>(&iter, this);
+          break;
+        case ir::VariantInstruction::kIndex:
+          ExecuteInstruction<ir::VariantInstruction>(&iter, this);
+          break;
+        case ir::EnumerationInstruction::kIndex:
+          ExecuteAdHocInstruction<ir::EnumerationInstruction>(&iter, this);
+          break;
+        case ir::OpaqueTypeInstruction::kIndex:
+          ExecuteAdHocInstruction<ir::OpaqueTypeInstruction>(&iter, this);
+          break;
+        case ir::ArrowInstruction::kIndex:
+          ExecuteAdHocInstruction<ir::ArrowInstruction>(&iter, this);
+          break;
         case ir::RegisterInstruction<bool>::kIndex:
           ExecuteInstruction<ir::RegisterInstruction<bool>>(&iter, this);
           break;
@@ -1062,12 +1101,55 @@ void ExecutionContext::ExecuteBlock(absl::Span<ir::Addr const> ret_slots) {
           ExecuteInstruction<ir::RegisterInstruction<ir::EnumVal>>(&iter, this);
           break;
         case ir::RegisterInstruction<ir::FlagsVal>::kIndex:
-          ExecuteInstruction<ir::RegisterInstruction<ir::FlagsVal>>(&iter, this);
+          ExecuteInstruction<ir::RegisterInstruction<ir::FlagsVal>>(&iter,
+                                                                    this);
           break;
         case ir::RegisterInstruction<ir::Addr>::kIndex:
           ExecuteInstruction<ir::RegisterInstruction<ir::Addr>>(&iter, this);
           break;
 
+        case ir::PrintInstruction<bool>::kIndex:
+          ExecuteAdHocInstruction<ir::PrintInstruction<bool>>(&iter, this);
+          break;
+        case ir::PrintInstruction<uint8_t>::kIndex:
+          ExecuteAdHocInstruction<ir::PrintInstruction<uint8_t>>(&iter, this);
+          break;
+        case ir::PrintInstruction<int8_t>::kIndex:
+          ExecuteAdHocInstruction<ir::PrintInstruction<int8_t>>(&iter, this);
+          break;
+        case ir::PrintInstruction<uint16_t>::kIndex:
+          ExecuteAdHocInstruction<ir::PrintInstruction<uint16_t>>(&iter, this);
+          break;
+        case ir::PrintInstruction<int16_t>::kIndex:
+          ExecuteAdHocInstruction<ir::PrintInstruction<int16_t>>(&iter, this);
+          break;
+        case ir::PrintInstruction<uint32_t>::kIndex:
+          ExecuteAdHocInstruction<ir::PrintInstruction<uint32_t>>(&iter, this);
+          break;
+        case ir::PrintInstruction<int32_t>::kIndex:
+          ExecuteAdHocInstruction<ir::PrintInstruction<int32_t>>(&iter, this);
+          break;
+        case ir::PrintInstruction<uint64_t>::kIndex:
+          ExecuteAdHocInstruction<ir::PrintInstruction<uint64_t>>(&iter, this);
+          break;
+        case ir::PrintInstruction<int64_t>::kIndex:
+          ExecuteAdHocInstruction<ir::PrintInstruction<int64_t>>(&iter, this);
+          break;
+        case ir::PrintInstruction<float>::kIndex:
+          ExecuteAdHocInstruction<ir::PrintInstruction<float>>(&iter, this);
+          break;
+        case ir::PrintInstruction<double>::kIndex:
+          ExecuteAdHocInstruction<ir::PrintInstruction<double>>(&iter, this);
+          break;
+        case ir::PrintInstruction<std::string_view>::kIndex:
+          ExecuteAdHocInstruction<ir::PrintInstruction<std::string_view>>(&iter, this);
+          break;
+        case ir::PrintEnumInstruction::kIndex:
+          ExecuteAdHocInstruction<ir::PrintEnumInstruction>(&iter, this);
+          break;
+        case ir::PrintFlagsInstruction::kIndex:
+          ExecuteAdHocInstruction<ir::PrintFlagsInstruction>(&iter, this);
+          break;
       }
     } else {
       switch (cmd_index) {

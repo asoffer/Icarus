@@ -307,6 +307,30 @@ Reg EnumerationImpl(
 }
 }  // namespace
 
+Reg Builder::Enum(
+    module::BasicModule *mod, std::vector<std::string_view> names,
+    absl::flat_hash_map<uint64_t, RegOr<uint64_t>> specified_values) {
+  auto inst = std::make_unique<EnumerationInstruction>(
+      EnumerationInstruction::Kind::Enum, mod, std::move(names),
+      std::move(specified_values));
+  auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+  inst->Serialize(&CurrentBlock()->cmd_buffer_);
+  CurrentBlock()->instructions_.push_back(std::move(inst));
+  return result;
+}
+
+Reg Builder::Flags(
+    module::BasicModule *mod, std::vector<std::string_view> names,
+    absl::flat_hash_map<uint64_t, RegOr<uint64_t>> specified_values) {
+  auto inst = std::make_unique<EnumerationInstruction>(
+      EnumerationInstruction::Kind::Flags, mod, std::move(names),
+      std::move(specified_values));
+  auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+  inst->Serialize(&CurrentBlock()->cmd_buffer_);
+  CurrentBlock()->instructions_.push_back(std::move(inst));
+  return result;
+}
+
 Reg Enum(module::BasicModule *mod, absl::Span<std::string_view const> names,
          absl::flat_hash_map<uint64_t, RegOr<EnumerationCmd::enum_t>> const
              &specified_values) {
@@ -341,8 +365,8 @@ Reg Builder::Struct(ast::Scope const *scope,
 }
 
 RegOr<type::Function const *> Builder::Arrow(
-    absl::Span<RegOr<type::Type const *> const> ins,
-    absl::Span<RegOr<type::Type const *> const> outs) {
+    std::vector<RegOr<type::Type const *>> const &ins,
+    std::vector<RegOr<type::Type const *>> const &outs) {
   if (absl::c_all_of(
           ins, [](RegOr<type::Type const *> r) { return not r.is_reg(); }) and
       absl::c_all_of(
@@ -354,15 +378,12 @@ RegOr<type::Function const *> Builder::Arrow(
     for (auto out : outs) { out_vec.push_back(out.value()); }
     return type::Func(std::move(in_vec), std::move(out_vec));
   }
-
-  auto &buf = CurrentBlock()->cmd_buffer_;
-  buf.append(ArrowCmd::index);
-  internal::Serialize<uint16_t>(&buf, ins);
-  internal::Serialize<uint16_t>(&buf, outs);
-
-  Reg result = MakeResult<type::Type const *>();
-  buf.append(result);
-  return RegOr<type::Function const *>{result};
+  auto inst =
+      std::make_unique<ArrowInstruction>(std::move(ins), std::move(outs));
+  inst->Serialize(&CurrentBlock()->cmd_buffer_);
+  auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+  CurrentBlock()->instructions_.push_back(std::move(inst));
+  return result;
 }
 
 Reg Builder::OpaqueType(module::BasicModule const *mod) {
