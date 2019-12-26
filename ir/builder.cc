@@ -48,6 +48,9 @@ Reg Reserve(type::Type const *t) { return current.CurrentGroup()->Reserve(t); }
 void Builder::Call(RegOr<AnyFunc> const &fn, type::Function const *f,
                    absl::Span<Results const> arguments, OutParams outs) {
   auto &buf = CurrentBlock()->cmd_buffer_;
+
+  CurrentBlock()->storage_cache_.clear();
+
   ASSERT(arguments.size() == f->input.size());
   buf.append(CallCmd::index);
   buf.append(fn.is_reg());

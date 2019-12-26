@@ -566,9 +566,19 @@ RegOr<ToType> CastTo(type::Type const* from_type, ir::Results const& r) {
 
 template <typename T>
 base::Tagged<T, Reg> Load(RegOr<Addr> addr) {
-  auto& blk   = *GetBuilder().CurrentBlock();
-  auto inst   = std::make_unique<LoadInstruction<T>>(addr);
+  auto& blk = *GetBuilder().CurrentBlock();
+  auto inst = std::make_unique<LoadInstruction<T>>(addr);
+
+  // TODO Just take a Reg. RegOr<Addr> is overkill and not possible because
+  // constants don't have addresses.
+  ASSERT(addr.is_reg() == true);
+  auto& results = blk.storage_cache_[addr.reg()];
+  if (not results.empty()) {
+    // TODO may not be Reg. could be anything of the right type.
+    return results.get<Reg>(0);
+  }
   auto result = inst->result = GetBuilder().CurrentGroup()->Reserve(nullptr);
+  results.append(result);
   inst->Serialize(&blk.cmd_buffer_);
   blk.instructions_.push_back(std::move(inst));
   return result;
@@ -661,6 +671,7 @@ template <typename T>
 void Store(T r, RegOr<Addr> addr) {
   if constexpr (IsRegOr<T>::value) {
     auto& blk = *GetBuilder().CurrentBlock();
+    blk.storage_cache_.clear();
     auto inst = std::make_unique<StoreInstruction<typename T::type>>(r, addr);
     inst->Serialize(&blk.cmd_buffer_);
     blk.instructions_.push_back(std::move(inst));

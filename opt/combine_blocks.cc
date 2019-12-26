@@ -113,7 +113,6 @@ void CombineBlocks(ir::CompiledFn* fn) {
 
   // TODO use something like a base::bag
   for (auto& block : fn->mutable_blocks()) {
-    DEBUG_LOG()(block->num_incoming());
     switch (block->num_incoming()) {
       case 0: dead_sources.push(block.get()); break;
       // There's no sense in doing block combining for dead blocks.

@@ -44,9 +44,14 @@ struct BasicBlock {
 
   internal::BlockGroup *group_;
 
+
  public:
+  // A cache of what values we know are held in these addresses.
+  absl::flat_hash_map<Reg, Results> storage_cache_;
+
   JumpCmd jump_ = JumpCmd::Return();
   absl::flat_hash_set<BasicBlock *> incoming_;
+
 };
 
 Reg Reserve(core::Bytes b, core::Alignment a);
