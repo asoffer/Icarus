@@ -981,7 +981,7 @@ ir::Results Compiler::Visit(ast::ChainOp const *node, EmitValueTag) {
              node->ops()[0] == frontend::Operator::Or) {
     auto *land_block = builder().AddBlock();
 
-    std::vector<ir::BasicBlock *> phi_blocks;
+    std::vector<ir::BasicBlock const *> phi_blocks;
     std::vector<ir::RegOr<bool>> phi_results;
     bool is_or = (node->ops()[0] == frontend::Operator::Or);
     for (size_t i = 0; i + 1 < node->exprs().size(); ++i) {
@@ -1003,7 +1003,8 @@ ir::Results Compiler::Visit(ast::ChainOp const *node, EmitValueTag) {
 
     builder().CurrentBlock() = land_block;
 
-    return ir::Results{builder().Phi<bool>(phi_blocks, phi_results)};
+    return ir::Results{
+        builder().Phi<bool>(std::move(phi_blocks), std::move(phi_results))};
 
   } else {
     if (node->ops().size() == 1) {
@@ -1012,7 +1013,7 @@ ir::Results Compiler::Visit(ast::ChainOp const *node, EmitValueTag) {
       return ir::Results{EmitChainOpPair(this, node, 0, lhs_ir, rhs_ir)};
 
     } else {
-      std::vector<ir::BasicBlock *> phi_blocks;
+      std::vector<ir::BasicBlock const *> phi_blocks;
       std::vector<ir::RegOr<bool>> phi_values;
       auto lhs_ir      = Visit(node->exprs().front(), EmitValueTag{});
       auto *land_block = builder().AddBlock();
@@ -1037,7 +1038,7 @@ ir::Results Compiler::Visit(ast::ChainOp const *node, EmitValueTag) {
 
       builder().CurrentBlock() = land_block;
 
-      return ir::Results{builder().Phi<bool>(phi_blocks, phi_values)};
+      return ir::Results{builder().Phi<bool>(std::move(phi_blocks),std::move( phi_values))};
     }
   }
   UNREACHABLE();

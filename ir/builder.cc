@@ -115,43 +115,32 @@ void Builder::ChooseJump(absl::Span<std::string_view const> names,
   CurrentBlock()->jump_ = JumpCmd::Choose(names);
 }
 
-namespace {
-
-void MakeSemanticCmd(SemanticCmd::Kind k, type::Type const *t, Reg r,
-                     Builder *bldr) {
-  auto &buf = bldr->CurrentBlock()->cmd_buffer_;
-  buf.append(SemanticCmd::index);
-  buf.append(k);
-  buf.append(t);
-  buf.append(r);
-}
-
-void MakeSemanticCmd(SemanticCmd::Kind k, type::Type const *t, Reg from,
-                     RegOr<Addr> to, Builder *bldr) {
-  auto &buf = bldr->CurrentBlock()->cmd_buffer_;
-  buf.append(SemanticCmd::index);
-  buf.append(k);
-  buf.append(to.is_reg());
-  buf.append(t);
-  buf.append(from);
-  to.apply([&](auto v) { buf.append(v); });
-}
-}  // namespace
-
 void Builder::Init(type::Type const *t, Reg r) {
-  MakeSemanticCmd(SemanticCmd::Kind::Init, t, r, this);
+  auto inst = std::make_unique<StructManipulationInstruction>(
+      StructManipulationInstruction::Kind::Init, t, r);
+  inst->Serialize(&CurrentBlock()->cmd_buffer_);
+  CurrentBlock()->instructions_.push_back(std::move(inst));
 }
 
 void Builder::Destroy(type::Type const *t, Reg r) {
-  MakeSemanticCmd(SemanticCmd::Kind::Destroy, t, r, this);
+  auto inst = std::make_unique<StructManipulationInstruction>(
+      StructManipulationInstruction::Kind::Destroy, t, r);
+  inst->Serialize(&CurrentBlock()->cmd_buffer_);
+  CurrentBlock()->instructions_.push_back(std::move(inst));
 }
 
 void Builder::Move(type::Type const *t, Reg from, RegOr<Addr> to) {
-  MakeSemanticCmd(SemanticCmd::Kind::Move, t, from, to, this);
+  auto inst = std::make_unique<StructManipulationInstruction>(
+      StructManipulationInstruction::Kind::Move, t, from, to);
+  inst->Serialize(&CurrentBlock()->cmd_buffer_);
+  CurrentBlock()->instructions_.push_back(std::move(inst));
 }
 
 void Builder::Copy(type::Type const *t, Reg from, RegOr<Addr> to) {
-  MakeSemanticCmd(SemanticCmd::Kind::Copy, t, from, to, this);
+  auto inst = std::make_unique<StructManipulationInstruction>(
+      StructManipulationInstruction::Kind::Copy, t, from, to);
+  inst->Serialize(&CurrentBlock()->cmd_buffer_);
+  CurrentBlock()->instructions_.push_back(std::move(inst));
 }
 
 type::Typed<Reg> LoadSymbol(std::string_view name, type::Type const *type) {
@@ -278,35 +267,6 @@ Reg ScopeHandler(
   return r;
 }
 
-namespace {
-
-template <bool IsEnumNotFlags>
-Reg EnumerationImpl(
-    module::BasicModule *mod, absl::Span<std::string_view const> names,
-    absl::flat_hash_map<uint64_t, RegOr<EnumerationCmd::enum_t>> const
-        &specified_values) {
-  auto &blk = *GetBuilder().CurrentBlock();
-  blk.cmd_buffer_.append(EnumerationCmd::index);
-  blk.cmd_buffer_.append(IsEnumNotFlags);
-  blk.cmd_buffer_.append<uint16_t>(names.size());
-  blk.cmd_buffer_.append<uint16_t>(specified_values.size());
-  blk.cmd_buffer_.append(mod);
-  for (auto name : names) { blk.cmd_buffer_.append(name); }
-
-  for (auto const & [ index, val ] : specified_values) {
-    // TODO these could be packed much more efficiently.
-    blk.cmd_buffer_.append(index);
-    blk.cmd_buffer_.append<bool>(val.is_reg());
-    val.apply([&](auto v) { blk.cmd_buffer_.append(v); });
-  }
-
-  Reg result =
-      MakeResult<std::conditional_t<IsEnumNotFlags, EnumVal, FlagsVal>>();
-  blk.cmd_buffer_.append(result);
-  return result;
-}
-}  // namespace
-
 Reg Builder::Enum(
     module::BasicModule *mod, std::vector<std::string_view> names,
     absl::flat_hash_map<uint64_t, RegOr<uint64_t>> specified_values) {
@@ -329,18 +289,6 @@ Reg Builder::Flags(
   inst->Serialize(&CurrentBlock()->cmd_buffer_);
   CurrentBlock()->instructions_.push_back(std::move(inst));
   return result;
-}
-
-Reg Enum(module::BasicModule *mod, absl::Span<std::string_view const> names,
-         absl::flat_hash_map<uint64_t, RegOr<EnumerationCmd::enum_t>> const
-             &specified_values) {
-  return EnumerationImpl<true>(mod, names, specified_values);
-}
-
-Reg Flags(module::BasicModule *mod, absl::Span<std::string_view const> names,
-          absl::flat_hash_map<uint64_t, RegOr<EnumerationCmd::enum_t>> const
-              &specified_values) {
-  return EnumerationImpl<false>(mod, names, specified_values);
 }
 
 Reg Builder::Struct(ast::Scope const *scope,

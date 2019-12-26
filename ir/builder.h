@@ -302,27 +302,24 @@ struct Builder {
   // In the first overload, the resulting value is assigned to `r`. In the
   // second overload, a register is constructed to represent the value.
   template <typename T>
-  void Phi(Reg r, absl::Span<BasicBlock const* const> blocks,
-           absl::Span<RegOr<T> const> values) {
+  void Phi(Reg r, std::vector<BasicBlock const*> blocks,
+           std::vector<RegOr<T>> values) {
     ASSERT(blocks.size() == values.size());
-
-    auto& buf = CurrentBlock()->cmd_buffer_;
-    buf.append(PhiCmd::index);
-    buf.append(PrimitiveIndex<T>());
-    buf.append<uint16_t>(values.size());
-    for (auto block : blocks) { buf.append(block); }
-    internal::Serialize<uint16_t>(&buf, values);
-
-    buf.append(r);
+    auto inst    = std::make_unique<PhiInstruction<T>>(std::move(blocks),
+                                                    std::move(values));
+    inst->result = r;
+    inst->Serialize(&CurrentBlock()->cmd_buffer_);
   }
 
   template <typename T>
-  RegOr<T> Phi(absl::Span<BasicBlock const* const> blocks,
-               absl::Span<RegOr<T> const> values) {
+  RegOr<T> Phi(std::vector<BasicBlock const*> blocks,
+               std::vector<RegOr<T>> values) {
     if (values.size() == 1u) { return values[0]; }
-    auto r = MakeResult<T>();
-    Phi(r, blocks, values);
-    return r;
+    auto inst   = std::make_unique<PhiInstruction<T>>(std::move(blocks),
+                                                    std::move(values));
+    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    inst->Serialize(&CurrentBlock()->cmd_buffer_);
+    return result;
   }
 
   // Emits a function-call instruction, calling `fn` of type `f` with the given
@@ -671,14 +668,6 @@ void Store(T r, RegOr<Addr> addr) {
     Store(RegOr<T>(r), addr);
   }
 }
-
-Reg Enum(module::BasicModule* mod, absl::Span<std::string_view const> names,
-         absl::flat_hash_map<uint64_t, RegOr<EnumerationCmd::enum_t>> const&
-             specified_values);
-
-Reg Flags(module::BasicModule* mod, absl::Span<std::string_view const> names,
-          absl::flat_hash_map<uint64_t, RegOr<EnumerationCmd::enum_t>> const&
-              specified_values);
 
 // ----------------------------------------------------------------------------
 // Implementation details only below

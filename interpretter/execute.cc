@@ -77,62 +77,7 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
   ICARUS_DEBUG_ONLY(auto iter_copy = *iter;)
   DEBUG_LOG("cmd")(CmdType::DebugString(&iter_copy));
   auto &frame = ctx->current_frame();
-  if constexpr (std::is_same_v<CmdType, ir::VariantCmd> or
-                std::is_same_v<CmdType, ir::TupleCmd>) {
-    std::vector<type::Type const *> vals =
-        ir::internal::Deserialize<uint16_t, type::Type const *>(
-            iter, [ctx](ir::Reg reg) {
-              return ctx->resolve<type::Type const *>(reg);
-            });
-
-    frame.regs_.set(iter->read<ir::Reg>(), CmdType::fn_ptr(std::move(vals)));
-
-  } else if constexpr (std::is_same_v<CmdType, ir::StoreCmd>) {
-    typename CmdType::control_bits ctrl =
-        iter->read<typename CmdType::control_bits>();
-    ir::PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
-      using T       = typename std::decay_t<decltype(tag)>::type;
-      T val         = ReadAndResolve<T>(ctrl.reg, iter, ctx);
-      ir::Addr addr = ReadAndResolve<ir::Addr>(ctrl.reg_addr, iter, ctx);
-      static_assert(not std::is_same_v<T, void *>,
-                    "Not handling addresses yet");
-      switch (addr.kind) {
-        case ir::Addr::Kind::Stack: ctx->stack_.set(addr.as_stack, val); break;
-        case ir::Addr::Kind::ReadOnly:
-          NOT_YET(
-              "Storing into read-only data seems suspect. Is it just for "
-              "initialization?");
-          break;
-        case ir::Addr::Kind::Heap:
-          *ASSERT_NOT_NULL(static_cast<T *>(addr.as_heap)) = val;
-      }
-    });
-
-  } else if constexpr (std::is_same_v<CmdType, ir::LoadCmd>) {
-    typename CmdType::control_bits ctrl =
-        iter->read<typename CmdType::control_bits>();
-    ir::Addr addr      = ReadAndResolve<ir::Addr>(ctrl.reg, iter, ctx);
-    ir::Reg result_reg = iter->read<ir::Reg>();
-    ir::PrimitiveDispatch(ctrl.primitive_type, [&](auto tag) {
-      using type = typename std::decay_t<decltype(tag)>::type;
-      switch (addr.kind) {
-        case ir::Addr::Kind::Stack: {
-          DEBUG_LOG("LoadCmd")
-          ("Loading ", ctx->stack_.get<type>(addr.as_stack), " into ",
-           result_reg);
-          frame.regs_.set(result_reg, ctx->stack_.get<type>(addr.as_stack));
-        } break;
-        case ir::Addr::Kind::ReadOnly: NOT_YET(); break;
-        case ir::Addr::Kind::Heap: {
-          DEBUG_LOG("LoadCmd")
-          ("Loading ", *static_cast<type *>(addr.as_heap), " into ",
-           result_reg);
-          frame.regs_.set(result_reg, *static_cast<type *>(addr.as_heap));
-        }
-      }
-    });
-
-  } else if constexpr (std::is_same_v<CmdType, ir::CallCmd>) {
+  if constexpr (std::is_same_v<CmdType, ir::CallCmd>) {
     bool fn_is_reg                = iter->read<bool>();
     std::vector<bool> is_reg_bits = ir::internal::ReadBits<uint16_t>(iter);
 
@@ -205,30 +150,6 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
       DEBUG_LOG("return")("val = ", val);
       *ASSERT_NOT_NULL(static_cast<T *>(ret_slot.as_heap)) = val;
     });
-
-  } else if constexpr (std::is_same_v<CmdType, ir::PhiCmd>) {
-    uint8_t primitive_type = iter->read<uint8_t>();
-    uint16_t num           = iter->read<uint16_t>();
-    uint64_t index         = std::numeric_limits<uint64_t>::max();
-    for (uint16_t i = 0; i < num; ++i) {
-      if (ctx->current_frame().prev_ == iter->read<ir::BasicBlock const *>()) {
-        index = i;
-      }
-    }
-    ASSERT(index != std::numeric_limits<uint64_t>::max());
-
-    ir::PrimitiveDispatch(primitive_type, [&](auto tag) {
-      using T                = typename std::decay_t<decltype(tag)>::type;
-      std::vector<T> results = ir::internal::Deserialize<uint16_t, T>(
-          iter, [ctx](ir::Reg reg) { return ctx->resolve<T>(reg); });
-
-      if constexpr (std::is_same_v<T, bool>) {
-        frame.regs_.set(iter->read<ir::Reg>(), bool{results[index]});
-      } else {
-        frame.regs_.set(iter->read<ir::Reg>(), results[index]);
-      }
-    });
-
   } else if constexpr (std::is_same_v<CmdType, ir::ScopeCmd>) {
     ir::ScopeDef *scope_def = iter->read<ir::ScopeDef *>();
 
@@ -297,15 +218,6 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
   } else if constexpr (std::is_same_v<CmdType, ir::AndFlagsCmd>) {
     NOT_YET();  // TODO could this be included in binary commands? How is it
                 // working already?!
-#if defined(ICARUS_DEBUG)
-  } else if constexpr (std::is_same_v<CmdType, ir::DebugIrCmd>) {
-    size_t i = 0;
-    for (auto *block : ctx->current_frame().fn_->blocks()) {
-      std::cerr << "\n block #" << i << " (" << block << ")\n" << *block;
-      DEBUG_LOG("debug_ir-buffer")(block->cmd_buffer_.to_string());
-      ++i;
-    }
-#endif
   } else if constexpr (std::is_same_v<CmdType, ir::CastCmd>) {
     uint8_t to_type   = iter->read<uint8_t>();
     uint8_t from_type = iter->read<uint8_t>();
@@ -396,79 +308,6 @@ void ExecuteCmd(base::untyped_buffer::const_iterator *iter,
         UNREACHABLE(r, val);
       }
     });
-  } else if constexpr (std::is_same_v<CmdType, ir::SemanticCmd>) {
-    ir::AnyFunc f;
-    base::untyped_buffer call_buf(sizeof(ir::Addr));
-    switch (iter->read<typename CmdType::Kind>()) {
-      case CmdType::Kind::Init: {
-        type::Type const *t = iter->read<type::Type const *>();
-        call_buf.append(ctx->resolve<ir::Addr>(ir::Reg(iter->read<ir::Reg>())));
-
-        DEBUG_LOG("SemanticCmd")(t->to_string());
-        if (auto *s = t->if_as<type::Struct>()) {
-          f = s->init_func_.get();
-        } else if (auto *tup = t->if_as<type::Tuple>()) {
-          f = tup->init_func_.get();
-        } else if (auto *a = t->if_as<type::Array>()) {
-          f = a->init_func_.get();
-        } else {
-          NOT_YET();
-        }
-      } break;
-      case CmdType::Kind::Destroy: {
-        type::Type const *t = iter->read<type::Type const *>();
-        call_buf.append(ctx->resolve<ir::Addr>(ir::Reg(iter->read<ir::Reg>())));
-
-        DEBUG_LOG("SemanticCmd")(t->to_string());
-        if (auto *s = t->if_as<type::Struct>()) {
-          f = s->destroy_func_.get();
-        } else if (auto *tup = t->if_as<type::Tuple>()) {
-          f = tup->destroy_func_.get();
-        } else if (auto *a = t->if_as<type::Array>()) {
-          f = a->destroy_func_.get();
-        } else {
-          NOT_YET();
-        }
-      } break;
-      case CmdType::Kind::Move: {
-        bool to_reg         = iter->read<bool>();
-        type::Type const *t = iter->read<type::Type const *>();
-        call_buf.append(ctx->resolve<ir::Addr>(ir::Reg(iter->read<ir::Reg>())));
-        call_buf.append(ReadAndResolve<ir::Addr>(to_reg, iter, ctx));
-
-        DEBUG_LOG("SemanticCmd")(t->to_string());
-        if (auto *s = t->if_as<type::Struct>()) {
-          f = s->move_assign_func_.get();
-          DEBUG_LOG("SemanticCmd")(f.func());
-        } else if (auto *tup = t->if_as<type::Tuple>()) {
-          f = tup->move_assign_func_.get();
-        } else if (auto *a = t->if_as<type::Array>()) {
-          f = a->move_assign_func_.get();
-        } else {
-          NOT_YET();
-        }
-      } break;
-      case CmdType::Kind::Copy: {
-        bool to_reg         = iter->read<bool>();
-        type::Type const *t = iter->read<type::Type const *>();
-        call_buf.append(ctx->resolve<ir::Addr>(ir::Reg(iter->read<ir::Reg>())));
-        call_buf.append(ReadAndResolve<ir::Addr>(to_reg, iter, ctx));
-
-        DEBUG_LOG("SemanticCmd")(t->to_string());
-        if (auto *s = t->if_as<type::Struct>()) {
-          f = s->copy_assign_func_.get();
-        } else if (auto *tup = t->if_as<type::Tuple>()) {
-          f = tup->copy_assign_func_.get();
-        } else if (auto *a = t->if_as<type::Array>()) {
-          f = a->copy_assign_func_.get();
-        } else {
-          NOT_YET();
-        }
-      } break;
-    }
-
-    Execute(f, call_buf, ret_slots, ctx);
-
   } else if constexpr (std::is_same_v<CmdType, ir::LoadSymbolCmd>) {
     std::string_view name  = iter->read<std::string_view>();
     type::Type const *type = iter->read<type::Type const *>();
@@ -587,7 +426,8 @@ void ExecuteInstruction(base::untyped_buffer::const_iterator *iter,
 
 template <typename Inst>
 void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
-                             ExecutionContext *ctx) {
+                             ExecutionContext *ctx,
+                             absl::Span<ir::Addr const> ret_slots = {}) {
   if constexpr (std::is_same_v<Inst, ir::EnumerationInstruction>) {
     using enum_t             = uint64_t;
     bool is_enum_not_flags   = iter->read<bool>();
@@ -703,6 +543,8 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
                        std::is_same_v<Inst, ir::PrintInstruction<int32_t>> or
                        std::is_same_v<Inst, ir::PrintInstruction<uint64_t>> or
                        std::is_same_v<Inst, ir::PrintInstruction<int64_t>> or
+                       std::is_same_v<Inst, ir::PrintInstruction<float>> or
+                       std::is_same_v<Inst, ir::PrintInstruction<double>> or
                        std::is_same_v<Inst,
                                       ir::PrintInstruction<std::string_view>>) {
     using type = typename Inst::type;
@@ -713,7 +555,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     auto val  = ReadAndResolve<ir::EnumVal>(ctrl.reg, iter, ctx);
     std::optional<std::string_view> name =
         iter->read<type::Enum const *>().get()->name(val);
-    std::cerr << (name.has_value() ? *name : absl::StrCat(val.value));
+    std::cerr << name.value_or(absl::StrCat(val.value));
   } else if constexpr (std::is_same_v<Inst, ir::PrintFlagsInstruction>) {
     auto ctrl        = iter->read<ir::PrintCmd::control_bits>().get();
     auto val         = ReadAndResolve<ir::FlagsVal>(ctrl.reg, iter, ctx);
@@ -738,10 +580,173 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
       std::cerr << *iter++;
       while (iter != vals.end()) { std::cerr << " | " << *iter++; }
     }
+  } else if constexpr (std::is_same_v<Inst, ir::StoreInstruction<bool>> or
+                       std::is_same_v<Inst, ir::StoreInstruction<uint8_t>> or
+                       std::is_same_v<Inst, ir::StoreInstruction<int8_t>> or
+                       std::is_same_v<Inst, ir::StoreInstruction<uint16_t>> or
+                       std::is_same_v<Inst, ir::StoreInstruction<int16_t>> or
+                       std::is_same_v<Inst, ir::StoreInstruction<uint32_t>> or
+                       std::is_same_v<Inst, ir::StoreInstruction<int32_t>> or
+                       std::is_same_v<Inst, ir::StoreInstruction<uint64_t>> or
+                       std::is_same_v<Inst, ir::StoreInstruction<int64_t>> or
+                       std::is_same_v<Inst, ir::StoreInstruction<float>> or
+                       std::is_same_v<Inst, ir::StoreInstruction<double>> or
+                       std::is_same_v<Inst, ir::StoreInstruction<ir::EnumVal>> or
+                       std::is_same_v<Inst, ir::StoreInstruction<ir::FlagsVal>> or
+                       std::is_same_v<Inst,
+                                      ir::StoreInstruction<std::string_view>>) {
+    using type    = typename Inst::type;
+    auto ctrl     = iter->read<ir::StoreCmd::control_bits>().get();
+    type val      = ReadAndResolve<type>(ctrl.reg, iter, ctx);
+    ir::Addr addr = ReadAndResolve<ir::Addr>(ctrl.reg_addr, iter, ctx);
+    switch (addr.kind) {
+      case ir::Addr::Kind::Stack: ctx->stack_.set(addr.as_stack, val); break;
+      case ir::Addr::Kind::ReadOnly:
+        NOT_YET(
+            "Storing into read-only data seems suspect. Is it just for "
+            "initialization?");
+        break;
+      case ir::Addr::Kind::Heap:
+        *ASSERT_NOT_NULL(static_cast<type *>(addr.as_heap)) = val;
+    }
+  } else if constexpr (std::is_same_v<Inst, ir::LoadInstruction<bool>> or
+                       std::is_same_v<Inst, ir::LoadInstruction<uint8_t>> or
+                       std::is_same_v<Inst, ir::LoadInstruction<int8_t>> or
+                       std::is_same_v<Inst, ir::LoadInstruction<uint16_t>> or
+                       std::is_same_v<Inst, ir::LoadInstruction<int16_t>> or
+                       std::is_same_v<Inst, ir::LoadInstruction<uint32_t>> or
+                       std::is_same_v<Inst, ir::LoadInstruction<int32_t>> or
+                       std::is_same_v<Inst, ir::LoadInstruction<uint64_t>> or
+                       std::is_same_v<Inst, ir::LoadInstruction<int64_t>> or
+                       std::is_same_v<Inst, ir::LoadInstruction<float>> or
+                       std::is_same_v<Inst, ir::LoadInstruction<double>> or
+                       std::is_same_v<Inst, ir::LoadInstruction<ir::EnumVal>> or
+                       std::is_same_v<Inst,
+                                      ir::LoadInstruction<ir::FlagsVal>> or
+                       std::is_same_v<Inst,
+                                      ir::LoadInstruction<std::string_view>>) {
+    using type      = typename Inst::type;
+    auto ctrl       = iter->read<ir::LoadCmd::control_bits>().get();
+    ir::Addr addr   = ReadAndResolve<ir::Addr>(ctrl.reg, iter, ctx);
+    auto result_reg = iter->read<ir::Reg>().get();
+    switch (addr.kind) {
+      case ir::Addr::Kind::Stack: {
+        ctx->current_frame().regs_.set(result_reg,
+                                       ctx->stack_.get<type>(addr.as_stack));
+      } break;
+      case ir::Addr::Kind::ReadOnly: NOT_YET(); break;
+      case ir::Addr::Kind::Heap: {
+        ctx->current_frame().regs_.set(result_reg,
+                                       *static_cast<type *>(addr.as_heap));
+      }
+    }
+  } else if constexpr (std::is_same_v<Inst, ir::PhiInstruction<bool>> or
+                       std::is_same_v<Inst, ir::PhiInstruction<uint8_t>> or
+                       std::is_same_v<Inst, ir::PhiInstruction<int8_t>> or
+                       std::is_same_v<Inst, ir::PhiInstruction<uint16_t>> or
+                       std::is_same_v<Inst, ir::PhiInstruction<int16_t>> or
+                       std::is_same_v<Inst, ir::PhiInstruction<uint32_t>> or
+                       std::is_same_v<Inst, ir::PhiInstruction<int32_t>> or
+                       std::is_same_v<Inst, ir::PhiInstruction<uint64_t>> or
+                       std::is_same_v<Inst, ir::PhiInstruction<int64_t>> or
+                       std::is_same_v<Inst, ir::PhiInstruction<float>> or
+                       std::is_same_v<Inst, ir::PhiInstruction<double>> or
+                       std::is_same_v<Inst, ir::PhiInstruction<ir::EnumVal>> or
+                       std::is_same_v<Inst, ir::PhiInstruction<ir::FlagsVal>> or
+                       std::is_same_v<Inst,
+                                      ir::PhiInstruction<std::string_view>>) {
+    uint8_t primitive_type = iter->read<uint8_t>();
+    uint16_t num           = iter->read<uint16_t>();
+    uint64_t index         = std::numeric_limits<uint64_t>::max();
+    for (uint16_t i = 0; i < num; ++i) {
+      if (ctx->current_frame().prev_ == iter->read<ir::BasicBlock const *>()) {
+        index = i;
+      }
+    }
+    ASSERT(index != std::numeric_limits<uint64_t>::max());
+
+    using type                = typename Inst::type;
+    std::vector<type> results = ir::internal::Deserialize<uint16_t, type>(
+        iter, [ctx](ir::Reg reg) { return ctx->resolve<type>(reg); });
+    ctx->current_frame().regs_.set(iter->read<ir::Reg>(), type{results[index]});
+  } else if constexpr (std::is_same_v<Inst, ir::StructManipulationInstruction>) {
+    ir::AnyFunc f;
+    base::untyped_buffer call_buf(sizeof(ir::Addr));
+    auto kind = iter->read<ir::StructManipulationInstruction::Kind>();
+    type::Type const *t =
+        ASSERT_NOT_NULL(iter->read<type::Type const *>().get());
+    switch (kind) {
+      case ir::StructManipulationInstruction::Kind::Init: {
+        call_buf.append(ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get()));
+        if (auto *s = t->if_as<type::Struct>()) {
+          f = s->init_func_.get();
+        } else if (auto *tup = t->if_as<type::Tuple>()) {
+          f = tup->init_func_.get();
+        } else if (auto *a = t->if_as<type::Array>()) {
+          f = a->init_func_.get();
+        } else {
+          NOT_YET();
+        }
+      } break;
+      case ir::StructManipulationInstruction::Kind::Destroy: {
+        call_buf.append(ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get()));
+
+        if (auto *s = t->if_as<type::Struct>()) {
+          f = s->destroy_func_.get();
+        } else if (auto *tup = t->if_as<type::Tuple>()) {
+          f = tup->destroy_func_.get();
+        } else if (auto *a = t->if_as<type::Array>()) {
+          f = a->destroy_func_.get();
+        } else {
+          NOT_YET();
+        }
+      } break;
+      case ir::StructManipulationInstruction::Kind::Move: {
+        auto from   = ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get());
+        bool is_reg = iter->read<bool>();
+        auto to     = ReadAndResolve<ir::Addr>(is_reg, iter, ctx);
+        call_buf.append(from);
+        call_buf.append(to);
+
+        if (auto *s = t->if_as<type::Struct>()) {
+          f = s->move_assign_func_.get();
+        } else if (auto *tup = t->if_as<type::Tuple>()) {
+          f = tup->move_assign_func_.get();
+        } else if (auto *a = t->if_as<type::Array>()) {
+          f = a->move_assign_func_.get();
+        } else {
+          NOT_YET();
+        }
+      } break;
+      case ir::StructManipulationInstruction::Kind::Copy: {
+        auto from   = ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get());
+        bool is_reg = iter->read<bool>();
+        auto to     = ReadAndResolve<ir::Addr>(is_reg, iter, ctx);
+        call_buf.append(from);
+        call_buf.append(to);
+
+        if (auto *s = t->if_as<type::Struct>()) {
+          f = s->copy_assign_func_.get();
+        } else if (auto *tup = t->if_as<type::Tuple>()) {
+          f = tup->copy_assign_func_.get();
+        } else if (auto *a = t->if_as<type::Array>()) {
+          f = a->copy_assign_func_.get();
+        } else {
+          NOT_YET();
+        }
+      } break;
+    }
+
+    Execute(f, call_buf, ret_slots, ctx);
+  } else if constexpr (std::is_same_v<Inst, ir::DebugIrInstruction>) {
+    std::cerr << *ctx->current_frame().fn_;
+  } else {
+    static_assert(base::always_false<Inst>());
   }
 }
 
 void ExecutionContext::ExecuteBlock(absl::Span<ir::Addr const> ret_slots) {
+  DEBUG_LOG("dbg-buffer")(current_frame().current_block()->cmd_buffer_);
   auto iter = current_frame().current_block()->cmd_buffer_.begin();
   while (iter < current_frame().current_block()->cmd_buffer_.end()) {
     ir::cmd_index_t cmd_index = iter.read<ir::cmd_index_t>();
@@ -1142,13 +1147,160 @@ void ExecutionContext::ExecuteBlock(absl::Span<ir::Addr const> ret_slots) {
           ExecuteAdHocInstruction<ir::PrintInstruction<double>>(&iter, this);
           break;
         case ir::PrintInstruction<std::string_view>::kIndex:
-          ExecuteAdHocInstruction<ir::PrintInstruction<std::string_view>>(&iter, this);
+          ExecuteAdHocInstruction<ir::PrintInstruction<std::string_view>>(&iter,
+                                                                          this);
           break;
         case ir::PrintEnumInstruction::kIndex:
           ExecuteAdHocInstruction<ir::PrintEnumInstruction>(&iter, this);
           break;
         case ir::PrintFlagsInstruction::kIndex:
           ExecuteAdHocInstruction<ir::PrintFlagsInstruction>(&iter, this);
+          break;
+
+        case ir::StoreInstruction<bool>::kIndex:
+          ExecuteAdHocInstruction<ir::StoreInstruction<bool>>(&iter, this);
+          break;
+        case ir::StoreInstruction<uint8_t>::kIndex:
+          ExecuteAdHocInstruction<ir::StoreInstruction<uint8_t>>(&iter, this);
+          break;
+        case ir::StoreInstruction<int8_t>::kIndex:
+          ExecuteAdHocInstruction<ir::StoreInstruction<int8_t>>(&iter, this);
+          break;
+        case ir::StoreInstruction<uint16_t>::kIndex:
+          ExecuteAdHocInstruction<ir::StoreInstruction<uint16_t>>(&iter, this);
+          break;
+        case ir::StoreInstruction<int16_t>::kIndex:
+          ExecuteAdHocInstruction<ir::StoreInstruction<int16_t>>(&iter, this);
+          break;
+        case ir::StoreInstruction<uint32_t>::kIndex:
+          ExecuteAdHocInstruction<ir::StoreInstruction<uint32_t>>(&iter, this);
+          break;
+        case ir::StoreInstruction<int32_t>::kIndex:
+          ExecuteAdHocInstruction<ir::StoreInstruction<int32_t>>(&iter, this);
+          break;
+        case ir::StoreInstruction<uint64_t>::kIndex:
+          ExecuteAdHocInstruction<ir::StoreInstruction<uint64_t>>(&iter, this);
+          break;
+        case ir::StoreInstruction<int64_t>::kIndex:
+          ExecuteAdHocInstruction<ir::StoreInstruction<int64_t>>(&iter, this);
+          break;
+        case ir::StoreInstruction<float>::kIndex:
+          ExecuteAdHocInstruction<ir::StoreInstruction<float>>(&iter, this);
+          break;
+        case ir::StoreInstruction<double>::kIndex:
+          ExecuteAdHocInstruction<ir::StoreInstruction<double>>(&iter, this);
+          break;
+        case ir::StoreInstruction<ir::EnumVal>::kIndex:
+          ExecuteAdHocInstruction<ir::StoreInstruction<ir::EnumVal>>(&iter,
+                                                                     this);
+          break;
+        case ir::StoreInstruction<ir::FlagsVal>::kIndex:
+          ExecuteAdHocInstruction<ir::StoreInstruction<ir::FlagsVal>>(&iter,
+                                                                      this);
+          break;
+        case ir::StoreInstruction<std::string_view>::kIndex:
+          ExecuteAdHocInstruction<ir::StoreInstruction<std::string_view>>(&iter,
+                                                                          this);
+          break;
+
+        case ir::LoadInstruction<bool>::kIndex:
+          ExecuteAdHocInstruction<ir::LoadInstruction<bool>>(&iter, this);
+          break;
+        case ir::LoadInstruction<uint8_t>::kIndex:
+          ExecuteAdHocInstruction<ir::LoadInstruction<uint8_t>>(&iter, this);
+          break;
+        case ir::LoadInstruction<int8_t>::kIndex:
+          ExecuteAdHocInstruction<ir::LoadInstruction<int8_t>>(&iter, this);
+          break;
+        case ir::LoadInstruction<uint16_t>::kIndex:
+          ExecuteAdHocInstruction<ir::LoadInstruction<uint16_t>>(&iter, this);
+          break;
+        case ir::LoadInstruction<int16_t>::kIndex:
+          ExecuteAdHocInstruction<ir::LoadInstruction<int16_t>>(&iter, this);
+          break;
+        case ir::LoadInstruction<uint32_t>::kIndex:
+          ExecuteAdHocInstruction<ir::LoadInstruction<uint32_t>>(&iter, this);
+          break;
+        case ir::LoadInstruction<int32_t>::kIndex:
+          ExecuteAdHocInstruction<ir::LoadInstruction<int32_t>>(&iter, this);
+          break;
+        case ir::LoadInstruction<uint64_t>::kIndex:
+          ExecuteAdHocInstruction<ir::LoadInstruction<uint64_t>>(&iter, this);
+          break;
+        case ir::LoadInstruction<int64_t>::kIndex:
+          ExecuteAdHocInstruction<ir::LoadInstruction<int64_t>>(&iter, this);
+          break;
+        case ir::LoadInstruction<float>::kIndex:
+          ExecuteAdHocInstruction<ir::LoadInstruction<float>>(&iter, this);
+          break;
+        case ir::LoadInstruction<double>::kIndex:
+          ExecuteAdHocInstruction<ir::LoadInstruction<double>>(&iter, this);
+          break;
+        case ir::LoadInstruction<ir::EnumVal>::kIndex:
+          ExecuteAdHocInstruction<ir::LoadInstruction<ir::EnumVal>>(&iter,
+                                                                    this);
+          break;
+        case ir::LoadInstruction<ir::FlagsVal>::kIndex:
+          ExecuteAdHocInstruction<ir::LoadInstruction<ir::FlagsVal>>(&iter,
+                                                                     this);
+          break;
+        case ir::LoadInstruction<std::string_view>::kIndex:
+          ExecuteAdHocInstruction<ir::LoadInstruction<std::string_view>>(&iter,
+                                                                         this);
+          break;
+
+        case ir::PhiInstruction<bool>::kIndex:
+          ExecuteAdHocInstruction<ir::PhiInstruction<bool>>(&iter, this);
+          break;
+        case ir::PhiInstruction<uint8_t>::kIndex:
+          ExecuteAdHocInstruction<ir::PhiInstruction<uint8_t>>(&iter, this);
+          break;
+        case ir::PhiInstruction<int8_t>::kIndex:
+          ExecuteAdHocInstruction<ir::PhiInstruction<int8_t>>(&iter, this);
+          break;
+        case ir::PhiInstruction<uint16_t>::kIndex:
+          ExecuteAdHocInstruction<ir::PhiInstruction<uint16_t>>(&iter, this);
+          break;
+        case ir::PhiInstruction<int16_t>::kIndex:
+          ExecuteAdHocInstruction<ir::PhiInstruction<int16_t>>(&iter, this);
+          break;
+        case ir::PhiInstruction<uint32_t>::kIndex:
+          ExecuteAdHocInstruction<ir::PhiInstruction<uint32_t>>(&iter, this);
+          break;
+        case ir::PhiInstruction<int32_t>::kIndex:
+          ExecuteAdHocInstruction<ir::PhiInstruction<int32_t>>(&iter, this);
+          break;
+        case ir::PhiInstruction<uint64_t>::kIndex:
+          ExecuteAdHocInstruction<ir::PhiInstruction<uint64_t>>(&iter, this);
+          break;
+        case ir::PhiInstruction<int64_t>::kIndex:
+          ExecuteAdHocInstruction<ir::PhiInstruction<int64_t>>(&iter, this);
+          break;
+        case ir::PhiInstruction<float>::kIndex:
+          ExecuteAdHocInstruction<ir::PhiInstruction<float>>(&iter, this);
+          break;
+        case ir::PhiInstruction<double>::kIndex:
+          ExecuteAdHocInstruction<ir::PhiInstruction<double>>(&iter, this);
+          break;
+        case ir::PhiInstruction<ir::EnumVal>::kIndex:
+          ExecuteAdHocInstruction<ir::PhiInstruction<ir::EnumVal>>(&iter, this);
+          break;
+        case ir::PhiInstruction<ir::FlagsVal>::kIndex:
+          ExecuteAdHocInstruction<ir::PhiInstruction<ir::FlagsVal>>(&iter,
+                                                                    this);
+          break;
+        case ir::PhiInstruction<std::string_view>::kIndex:
+          ExecuteAdHocInstruction<ir::PhiInstruction<std::string_view>>(&iter,
+                                                                        this);
+          break;
+
+        case ir::DebugIrInstruction::kIndex:
+          ExecuteAdHocInstruction<ir::DebugIrInstruction>(&iter, this);
+          break;
+
+        case ir::StructManipulationInstruction::kIndex:
+          ExecuteAdHocInstruction<ir::StructManipulationInstruction>(
+              &iter, this, ret_slots);
           break;
       }
     } else {

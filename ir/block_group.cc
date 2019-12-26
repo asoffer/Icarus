@@ -38,7 +38,10 @@ Reg BlockGroup::Alloca(type::Type const *t) {
 
 std::ostream &operator<<(std::ostream &os, BlockGroup const &b) {
   for (size_t i = 0; i < b.blocks().size(); ++i) {
-    os << "\n block #" << i << " (" << b.blocks()[i] << ")\n" << *b.blocks()[i];
+    if (b.blocks()[i]->cmd_buffer_.empty()) { continue; }
+    using base::stringify;
+    os << "\n block #" << i << " (" << stringify(b.blocks()[i]) << ")\n"
+       << *b.blocks()[i];
   }
   return os;
 }

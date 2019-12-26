@@ -12,7 +12,7 @@
 
 namespace ir {
 struct SemanticCmd {
-  constexpr static cmd_index_t index = 33;
+  constexpr static cmd_index_t index = 33 * 256;
 
   enum class Kind : uint8_t { Init, Destroy, Move, Copy };
 
@@ -60,7 +60,7 @@ struct VariantAccessCmd {
 };
 
 struct DebugIrCmd {
-  constexpr static cmd_index_t index = 1;
+  constexpr static cmd_index_t index = 255 * 256;
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter) {
     return "debug-ir";

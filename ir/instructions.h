@@ -3,6 +3,7 @@
 
 #include <memory>
 
+#include "absl/algorithm/container.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
@@ -482,6 +483,9 @@ struct LeInstruction : BinaryInstruction<NumType> {
 
 template <typename T>
 struct LoadInstruction : Instruction {
+  static constexpr cmd_index_t kIndex = LoadCmd::index | PrimitiveIndex<T>();
+  using type = T;
+
   LoadInstruction(RegOr<Addr> const& addr) : addr(addr) {}
   ~LoadInstruction() override {}
 
@@ -492,7 +496,7 @@ struct LoadInstruction : Instruction {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(LoadCmd::index);
+    buf->append(kIndex);
     buf->append(LoadCmd::MakeControlBits<T>(addr.is_reg()));
     addr.apply([&](auto v) { buf->append(v); });
     buf->append(result);
@@ -504,6 +508,8 @@ struct LoadInstruction : Instruction {
 
 template <typename T>
 struct StoreInstruction : Instruction {
+  static constexpr cmd_index_t kIndex = StoreCmd::index | PrimitiveIndex<T>();
+  using type = T;
   StoreInstruction(RegOr<T> const& value, RegOr<Addr> const& location)
       : value(value), location(location) {}
   ~StoreInstruction() override {}
@@ -515,7 +521,7 @@ struct StoreInstruction : Instruction {
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(StoreCmd::index);
+    buf->append(kIndex);
     buf->append(
         StoreCmd::MakeControlBits<T>(value.is_reg(), location.is_reg()));
     value.apply([&](auto v) { buf->append(v); });
@@ -600,6 +606,8 @@ struct PrintFlagsInstruction : Instruction {
 
 // TODO Morph this into interpretter break-point instructions.
 struct DebugIrInstruction : Instruction {
+  static constexpr cmd_index_t kIndex = DebugIrCmd::index;
+
   DebugIrInstruction() = default;
   ~DebugIrInstruction() override {}
 
@@ -828,6 +836,91 @@ struct ArrowInstruction : Instruction {
 
   std::vector<RegOr<type::Type const*>> lhs, rhs;
   Reg result;
+};
+
+// TODO consider changing these to something like 'basic block arguments'
+template <typename T>
+struct PhiInstruction : Instruction {
+  constexpr static cmd_index_t kIndex = PhiCmd::index | PrimitiveIndex<T>();
+  using type = T;
+
+  PhiInstruction(std::vector<BasicBlock const*> blocks,
+                 std::vector<RegOr<T>> values)
+      : blocks(std::move(blocks)), values(std::move(values)) {}
+
+  std::string to_string() const override {
+    using base::stringify;
+    std::string s = absl::StrCat("phi ", TypeToString<T>());
+    for (size_t i = 0; i < blocks.size(); ++i) {
+      absl::StrAppend(&s, "\n      ", stringify(blocks[i]), ": ",
+                      stringify(values[i]));
+    }
+    return s;
+  }
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    buf->append(kIndex);
+    buf->append(PrimitiveIndex<T>());
+    buf->append<uint16_t>(values.size());
+    for (auto block : blocks) { buf->append(block); }
+    internal::WriteBits<uint16_t, RegOr<T>>(
+        buf, values, [](RegOr<T> const& r) { return r.is_reg(); });
+
+    absl::c_for_each(values, [&](RegOr<T> const& x) {
+      x.apply([&](auto v) { buf->append(v); });
+    });
+
+    buf->append(result);
+  }
+
+  std::vector<BasicBlock const * > blocks;
+  std::vector<RegOr<T>> values;
+  Reg result;
+};
+
+// Oddly named to be sure, this instruction is used to do initializations,
+// copies, moves, or destructions of the given type.
+struct StructManipulationInstruction : Instruction {
+  constexpr static cmd_index_t kIndex = SemanticCmd::index;
+
+  enum class Kind : uint8_t { Init, Destroy, Move, Copy };
+  StructManipulationInstruction(Kind k, type::Type const* type, Reg from,
+                                RegOr<Addr> to = RegOr<Addr>(Reg(0)))
+      : kind(k), type(type), r(from), to(to) {}
+
+  std::string to_string() const override {
+    char const * name;
+    switch (kind) {
+      case Kind::Init:
+        return absl::StrCat("init ", type->to_string(), " ", stringify(r));
+      case Kind::Destroy:
+        return absl::StrCat("destroy ", type->to_string(), " ", stringify(r));
+      case Kind::Copy:
+        return absl::StrCat("copy ", type->to_string(), " ", stringify(r), " ",
+                            stringify(to));
+      case Kind::Move:
+        return absl::StrCat("move ", type->to_string(), " ", stringify(r), " ",
+                            stringify(to));
+      default: UNREACHABLE();
+    }
+  }
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    buf->append(kIndex);
+    buf->append(kind);
+    buf->append(type);
+    buf->append(r);
+    if (kind == Kind::Copy or kind == Kind::Move) {
+      buf->append(to.is_reg());
+      to.apply([&](auto v) { buf->append(v); });
+    } else {
+    }
+  }
+
+  Kind kind;
+  type::Type const* type;
+  Reg r;
+  RegOr<Addr> to;  // Only meaningful for copy and move
 };
 
 // TODO: StructCmd, ArrayCmd

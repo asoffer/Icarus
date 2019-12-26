@@ -6,7 +6,7 @@
 
 namespace ir {
 struct PhiCmd {
-  constexpr static cmd_index_t index = 36;
+  constexpr static cmd_index_t index = 36 * 256;
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter) {
     uint8_t prime_index  = iter->read<uint8_t>();

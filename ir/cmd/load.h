@@ -12,7 +12,7 @@
 namespace ir {
 
 struct LoadCmd {
-  constexpr static cmd_index_t index = 14;
+  constexpr static cmd_index_t index = 14 * 256;
 
   struct control_bits {
     uint8_t primitive_type : 6;

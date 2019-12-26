@@ -10,7 +10,7 @@
 namespace ir {
 
 struct StoreCmd {
-  constexpr static cmd_index_t index = 13;
+  constexpr static cmd_index_t index = 13 * 256;
 
   struct control_bits {
     uint8_t primitive_type : 6;
