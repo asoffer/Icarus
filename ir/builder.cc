@@ -46,38 +46,15 @@ Reg Reserve(core::Bytes b, core::Alignment a) {
 Reg Reserve(type::Type const *t) { return current.CurrentGroup()->Reserve(t); }
 
 void Builder::Call(RegOr<AnyFunc> const &fn, type::Function const *f,
-                   absl::Span<Results const> arguments, OutParams outs) {
-  auto &buf = CurrentBlock()->cmd_buffer_;
-
+                   std::vector<Results> args, OutParams outs) {
+  // TODO this call should return the constructed registers rather than forcing
+  // the caller to do it.
   CurrentBlock()->storage_cache_.clear();
-
-  ASSERT(arguments.size() == f->input.size());
-  buf.append(CallCmd::index);
-  buf.append(fn.is_reg());
-  internal::WriteBits<uint16_t, Results>(&buf, arguments, [](Results const &r) {
-    ASSERT(r.size() == 1u);
-    return r.is_reg(0);
-  });
-
-  fn.apply([&](auto v) { buf.append(v); });
-  size_t bytes_written_slot = buf.reserve<core::Bytes>();
-  size_t arg_index          = 0;
-  for (Results const &arg : arguments) {
-    if (arg.is_reg(0)) {
-      buf.append(arg.get<Reg>(0));
-    } else {
-      type::Apply(f->input[arg_index], [&](auto tag) {
-        using T = typename decltype(tag)::type;
-        buf.append(arg.get<T>(0).value());
-      });
-    }
-    ++arg_index;
-  }
-  buf.set(bytes_written_slot,
-          core::Bytes{buf.size() - bytes_written_slot - sizeof(core::Bytes)});
-
-  buf.append<uint16_t>(f->output.size());
-  for (Reg r : outs.regs_) { buf.append(r); }
+  ASSERT(args.size() == f->input.size());
+  auto inst = std::make_unique<CallInstruction>(f, fn, std::move(args),
+                                                std::move(outs));
+  inst->Serialize(&CurrentBlock()->cmd_buffer_);
+  CurrentBlock()->instructions_.push_back(std::move(inst));
 }
 
 static void ClearJumps(JumpCmd *jump, BasicBlock *from) {
@@ -146,128 +123,97 @@ void Builder::Copy(type::Type const *t, Reg from, RegOr<Addr> to) {
   CurrentBlock()->instructions_.push_back(std::move(inst));
 }
 
-type::Typed<Reg> LoadSymbol(std::string_view name, type::Type const *type) {
-  auto &blk = *GetBuilder().CurrentBlock();
-  blk.cmd_buffer_.append(LoadSymbolCmd::index);
-  blk.cmd_buffer_.append(name);
-  blk.cmd_buffer_.append(type);
-  Reg result = [&] {
-    if (type->is<type::Function>()) { return MakeResult<AnyFunc>(); }
-    if (type->is<type::Pointer>()) { return MakeResult<Addr>(); }
-    NOT_YET(type->to_string());
-  }();
-  blk.cmd_buffer_.append(result);
+type::Typed<Reg> Builder::LoadSymbol(std::string_view name,
+                                     type::Type const *type) {
+  auto inst = std::make_unique<LoadSymbolInstruction>(name, type);
+  auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+  inst->Serialize(&CurrentBlock()->cmd_buffer_);
+  CurrentBlock()->instructions_.push_back(std::move(inst));
   return type::Typed<Reg>(result, type);
 }
 
 base::Tagged<core::Alignment, Reg> Builder::Align(RegOr<type::Type const *> r) {
-  auto &buf = CurrentBlock()->cmd_buffer_;
-  buf.append(TypeInfoCmd::index);
-  buf.append<uint8_t>(r.is_reg() ? 0x01 : 0x00);
-
-  r.apply([&](auto v) { buf.append(v); });
-  Reg result = MakeResult<core::Alignment>();
-  buf.append(result);
+  auto inst = std::make_unique<TypeInfoInstruction>(
+      TypeInfoInstruction::Kind::Alignment, r);
+  auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+  inst->Serialize(&CurrentBlock()->cmd_buffer_);
+  CurrentBlock()->instructions_.push_back(std::move(inst));
   return result;
 }
 
 base::Tagged<core::Bytes, Reg> Builder::Bytes(RegOr<type::Type const *> r) {
-  auto &buf = CurrentBlock()->cmd_buffer_;
-  buf.append(TypeInfoCmd::index);
-  buf.append<uint8_t>(0x02 + (r.is_reg() ? 0x01 : 0x00));
-  r.apply([&](auto v) { buf.append(v); });
-  Reg result = MakeResult<core::Bytes>();
-  buf.append(result);
+  auto inst = std::make_unique<TypeInfoInstruction>(
+      TypeInfoInstruction::Kind::Bytes, r);
+  auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+  inst->Serialize(&CurrentBlock()->cmd_buffer_);
+  CurrentBlock()->instructions_.push_back(std::move(inst));
   return result;
 }
-
-namespace {
-template <bool IsArray>
-Reg MakeAccessCmd(Builder *bldr, RegOr<Addr> ptr, RegOr<int64_t> inc,
-                  type::Type const *t) {
-  auto &buf = bldr->CurrentBlock()->cmd_buffer_;
-  buf.append(AccessCmd::index);
-  buf.append(AccessCmd::MakeControlBits(IsArray, ptr.is_reg(), inc.is_reg()));
-  buf.append(t);
-
-  ptr.apply([&](auto v) { buf.append(v); });
-  inc.apply([&](auto v) { buf.append(v); });
-
-  Reg result = MakeResult<Addr>();
-  buf.append(result);
-  return result;
-}
-}  // namespace
 
 base::Tagged<Addr, Reg> Builder::PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
                                          type::Pointer const *t) {
-  return base::Tagged<Addr, Reg>{MakeAccessCmd<true>(this, ptr, inc, t)};
+  auto inst   = std::make_unique<PtrIncrInstruction>(ptr, inc, t);
+  auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+  inst->Serialize(&CurrentBlock()->cmd_buffer_);
+  CurrentBlock()->instructions_.push_back(std::move(inst));
+  return result;
 }
 
 type::Typed<Reg> Builder::Field(RegOr<Addr> r, type::Tuple const *t,
                                 int64_t n) {
-  return type::Typed<Reg>(MakeAccessCmd<false>(this, r, n, t),
-                          type::Ptr(t->entries_.at(n)));
+  auto inst   = std::make_unique<TupleIndexInstruction>(r, n, t);
+  auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+  inst->Serialize(&CurrentBlock()->cmd_buffer_);
+  CurrentBlock()->instructions_.push_back(std::move(inst));
+  return type::Typed<Reg>(result, type::Ptr(t->entries_.at(n)));
 }
 
 type::Typed<Reg> Builder::Field(RegOr<Addr> r, type::Struct const *t,
                                 int64_t n) {
-  return type::Typed<Reg>(MakeAccessCmd<false>(this, r, n, t),
-                          type::Ptr(t->fields().at(n).type));
+  auto inst   = std::make_unique<StructIndexInstruction>(r, n, t);
+  auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+  inst->Serialize(&CurrentBlock()->cmd_buffer_);
+  CurrentBlock()->instructions_.push_back(std::move(inst));
+  return type::Typed<Reg>(result, type::Ptr(t->fields()[n].type));
 }
 
 Reg Builder::VariantType(RegOr<Addr> const &r) {
-  auto &blk = *CurrentBlock();
-  blk.cmd_buffer_.append(VariantAccessCmd::index);
-  blk.cmd_buffer_.append(false);
-  blk.cmd_buffer_.append(r.is_reg());
-  r.apply([&](auto v) { blk.cmd_buffer_.append(v); });
-  Reg result = MakeResult<Addr>();
-  blk.cmd_buffer_.append(result);
+  auto inst   = std::make_unique<VariantAccessInstruction>(r, false);
+  auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+  inst->Serialize(&CurrentBlock()->cmd_buffer_);
+  CurrentBlock()->instructions_.push_back(std::move(inst));
   return result;
 }
 
 Reg Builder::VariantValue(type::Variant const *v, RegOr<Addr> const &r) {
-  auto &blk = *CurrentBlock();
-  blk.cmd_buffer_.append(VariantAccessCmd::index);
-  blk.cmd_buffer_.append(true);
-  blk.cmd_buffer_.append(r.is_reg());
-  r.apply([&](auto v) { blk.cmd_buffer_.append(v); });
-  Reg result = MakeResult<Addr>();
-  blk.cmd_buffer_.append(result);
+  auto inst   = std::make_unique<VariantAccessInstruction>(r, true);
+  auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+  inst->Serialize(&CurrentBlock()->cmd_buffer_);
+  CurrentBlock()->instructions_.push_back(std::move(inst));
   return result;
 }
 
-Reg BlockHandler(ir::BlockDef *block_def,
-                 absl::Span<RegOr<AnyFunc> const> befores,
-                 absl::Span<RegOr<Jump const *> const> afters) {
-  auto &blk = *GetBuilder().CurrentBlock();
-  blk.cmd_buffer_.append(BlockCmd::index);
-  blk.cmd_buffer_.append(block_def);
-  internal::Serialize<uint16_t>(&blk.cmd_buffer_, befores);
-  internal::Serialize<uint16_t>(&blk.cmd_buffer_, afters);
-  Reg r = MakeResult<BlockDef const *>();
-  blk.cmd_buffer_.append(r);
-  return r;
+Reg Builder::MakeBlock(ir::BlockDef *block_def,
+                       std::vector<RegOr<AnyFunc>> befores,
+                       std::vector<RegOr<Jump const *>> afters) {
+  auto inst = std::make_unique<MakeBlockInstruction>(
+      block_def, std::move(befores), std::move(afters));
+  auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+  inst->Serialize(&CurrentBlock()->cmd_buffer_);
+  CurrentBlock()->instructions_.push_back(std::move(inst));
+  return result;
 }
 
-Reg ScopeHandler(
-    ir::ScopeDef *scope_def, absl::Span<RegOr<Jump const *> const> inits,
-    absl::Span<RegOr<AnyFunc> const> dones,
-    absl::flat_hash_map<std::string_view, BlockDef *> const &blocks) {
-  auto &blk = *GetBuilder().CurrentBlock();
-  blk.cmd_buffer_.append(ScopeCmd::index);
-  blk.cmd_buffer_.append(scope_def);
-  internal::Serialize<uint16_t>(&blk.cmd_buffer_, inits);
-  internal::Serialize<uint16_t>(&blk.cmd_buffer_, dones);
-  blk.cmd_buffer_.append<uint16_t>(blocks.size());
-  for (auto[name, block] : blocks) {
-    blk.cmd_buffer_.append(name);
-    blk.cmd_buffer_.append(block);
-  }
-  Reg r = MakeResult<ScopeDef const *>();
-  blk.cmd_buffer_.append(r);
-  return r;
+Reg Builder::MakeScope(
+    ir::ScopeDef *scope_def, std::vector<RegOr<Jump const *>> inits,
+    std::vector<RegOr<AnyFunc>> dones,
+    absl::flat_hash_map<std::string_view, BlockDef *> blocks) {
+  auto inst = std::make_unique<MakeScopeInstruction>(
+      scope_def, std::move(inits), std::move(dones), std::move(blocks));
+  auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+  inst->Serialize(&CurrentBlock()->cmd_buffer_);
+  CurrentBlock()->instructions_.push_back(std::move(inst));
+  return result;
 }
 
 Reg Builder::Enum(
@@ -294,25 +240,12 @@ Reg Builder::Flags(
   return result;
 }
 
-Reg Builder::Struct(ast::Scope const *scope,
-                    absl::Span<StructField const> fields) {
-  auto &blk = *CurrentBlock();
-  blk.cmd_buffer_.append(StructCmd::index);
-  blk.cmd_buffer_.append<uint16_t>(fields.size());
-  blk.cmd_buffer_.append(scope);
-
-  // TODO shuffling fields order?
-  for (auto const & field : fields) { blk.cmd_buffer_.append(field.name()); }
-
-  std::vector<RegOr<type::Type const *>> types;
-  types.reserve(fields.size());
-  for (auto const &field : fields) { types.push_back(field.type()); }
-  internal::Serialize<uint16_t>(&blk.cmd_buffer_, absl::MakeConstSpan(types));
-
-  Reg result = MakeResult<type::Type const *>();
-  blk.cmd_buffer_.append(result);
+Reg Builder::Struct(ast::Scope const *scope, std::vector<StructField> fields) {
+  auto inst   = std::make_unique<StructInstruction>(scope, std::move(fields));
+  auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+  inst->Serialize(&CurrentBlock()->cmd_buffer_);
+  CurrentBlock()->instructions_.push_back(std::move(inst));
   return result;
-
 }
 
 RegOr<type::Function const *> Builder::Arrow(
@@ -338,11 +271,10 @@ RegOr<type::Function const *> Builder::Arrow(
 }
 
 Reg Builder::OpaqueType(module::BasicModule const *mod) {
-  auto &buf = CurrentBlock()->cmd_buffer_;
-  buf.append(OpaqueTypeCmd::index);
-  buf.append(mod);
-  Reg result = MakeResult<type::Type const *>();
-  buf.append(result);
+  auto inst = std::make_unique<OpaqueTypeInstruction>(mod);
+  inst->Serialize(&CurrentBlock()->cmd_buffer_);
+  auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+  CurrentBlock()->instructions_.push_back(std::move(inst));
   return result;
 }
 
@@ -352,14 +284,10 @@ RegOr<type::Type const *> Builder::Array(RegOr<ArrayCmd::length_t> len,
     return type::Arr(len.value(), data_type.value());
   }
 
-  auto &buf = CurrentBlock()->cmd_buffer_;
-  buf.append(ArrayCmd::index);
-  buf.append(ArrayCmd::MakeControlBits(len.is_reg(), data_type.is_reg()));
-
-  len.apply([&](auto v) { buf.append(v); });
-  data_type.apply([&](auto v) { buf.append(v); });
-  Reg result = MakeResult<type::Type const *>();
-  buf.append(result);
+  auto inst = std::make_unique<ArrayInstruction>(len, data_type);
+  inst->Serialize(&CurrentBlock()->cmd_buffer_);
+  auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+  CurrentBlock()->instructions_.push_back(std::move(inst));
   return result;
 }
 

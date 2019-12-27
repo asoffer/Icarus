@@ -604,7 +604,8 @@ ir::Results Compiler::Visit(ast::BlockLiteral const *node, EmitValueTag) {
     afters.push_back(Visit(decl, EmitValueTag{}).get<ir::Jump const *>(0));
   }
 
-  return ir::Results{ir::BlockHandler(data_.add_block(), befores, afters)};
+  return ir::Results{builder().MakeBlock(data_.add_block(), std::move(befores),
+                                         std::move(afters))};
 }
 
 template <typename T>
@@ -663,7 +664,7 @@ ir::Results Compiler::Visit(ast::Call const *node, EmitValueTag) {
             MakeThunk(node->args().at(0), type::ByteView));
         auto *foreign_type = interpretter::EvaluateAs<type::Type const *>(
             MakeThunk(node->args().at(1), type::Type_));
-        return ir::Results{ir::LoadSymbol(name, foreign_type).get()};
+        return ir::Results{builder().LoadSymbol(name, foreign_type).get()};
       } break;
 
       case core::Builtin::Opaque:
@@ -1391,8 +1392,9 @@ ir::Results Compiler::Visit(ast::ScopeLiteral const *node, EmitValueTag) {
     }
   }
 
-  return ir::Results{
-      ir::ScopeHandler(data_.add_scope(module()), inits, dones, blocks)};
+  return ir::Results{builder().MakeScope(data_.add_scope(module()),
+                                         std::move(inits), std::move(dones),
+                                         std::move(blocks))};
 }
 
 ir::Results Compiler::Visit(ast::ScopeNode const *node, EmitValueTag) {

@@ -7,6 +7,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
+#include "ast/scope/scope.h"
 #include "ir/cmd/basic.h"
 #include "ir/cmd/call.h"
 #include "ir/cmd/cast.h"
@@ -21,7 +22,9 @@
 #include "ir/cmd/store.h"
 #include "ir/cmd/types.h"
 #include "ir/cmd/util.h"
+#include "ir/out_params.h"
 #include "ir/reg_or.h"
+#include "ir/struct_field.h"
 #include "ir/values.h"
 #include "type/pointer.h"
 #include "type/type.h"
@@ -61,7 +64,8 @@ template <typename NumType>
 struct UnaryInstruction : Instruction {
   using type = NumType;
 
-  UnaryInstruction(RegOr<NumType> const& operand) : operand(operand) {}
+  explicit UnaryInstruction(RegOr<NumType> const& operand) : operand(operand) {}
+  ~UnaryInstruction() override {}
 
   struct control_bits {
     uint8_t is_reg : 1;
@@ -87,6 +91,7 @@ struct BinaryInstruction : Instruction {
 
   BinaryInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
       : lhs(lhs), rhs(rhs) {}
+  ~BinaryInstruction() override {}
 
   struct control_bits {
     uint8_t lhs_is_reg : 1;
@@ -117,6 +122,7 @@ struct VariadicInstruction : Instruction {
 
   VariadicInstruction(std::vector<RegOr<T>> values)
       : values(std::move(values)) {}
+  ~VariadicInstruction() override {}
 
   template <typename Cmd>
   void SerializeVariadic(base::untyped_buffer* buf) const {
@@ -180,7 +186,7 @@ struct NegInstruction : UnaryInstruction<NumType> {
   static constexpr cmd_index_t kIndex =
       NegCmd::index | PrimitiveIndex<NumType>();
 
-  NegInstruction(RegOr<NumType> const& operand)
+  explicit NegInstruction(RegOr<NumType> const& operand)
       : UnaryInstruction<NumType>(operand) {}
   ~NegInstruction() override {}
 
@@ -200,7 +206,7 @@ struct NegInstruction : UnaryInstruction<NumType> {
 struct NotInstruction : UnaryInstruction<bool> {
   static constexpr cmd_index_t kIndex = NotCmd::index;
 
-  NotInstruction(RegOr<bool> const& operand)
+  explicit NotInstruction(RegOr<bool> const& operand)
       : UnaryInstruction<bool>(operand) {}
   ~NotInstruction() override {}
 
@@ -220,7 +226,7 @@ struct NotInstruction : UnaryInstruction<bool> {
 struct PtrInstruction : UnaryInstruction<type::Type const*> {
   static constexpr cmd_index_t kIndex = PtrCmd::index;
 
-  PtrInstruction(RegOr<type::Type const*> const& operand)
+  explicit PtrInstruction(RegOr<type::Type const*> const& operand)
       : UnaryInstruction<type::Type const*>(operand) {}
   ~PtrInstruction() override {}
 
@@ -236,7 +242,7 @@ struct PtrInstruction : UnaryInstruction<type::Type const*> {
 struct BufPtrInstruction : UnaryInstruction<type::Type const*> {
   static constexpr cmd_index_t kIndex = BufPtrCmd::index;
 
-  BufPtrInstruction(RegOr<type::Type const*> const& operand)
+  explicit BufPtrInstruction(RegOr<type::Type const*> const& operand)
       : UnaryInstruction<type::Type const*>(operand) {}
   ~BufPtrInstruction() override {}
 
@@ -264,7 +270,8 @@ struct RegisterInstruction : UnaryInstruction<T> {
   static constexpr cmd_index_t kIndex =
       RegisterCmd::index | PrimitiveIndex<T>();
 
-  RegisterInstruction(RegOr<T> const& operand) : UnaryInstruction<T>(operand) {}
+  explicit RegisterInstruction(RegOr<T> const& operand)
+      : UnaryInstruction<T>(operand) {}
   ~RegisterInstruction() override {}
 
   static T Apply(T val) { return val; }
@@ -484,7 +491,7 @@ struct LeInstruction : BinaryInstruction<NumType> {
 template <typename T>
 struct LoadInstruction : Instruction {
   static constexpr cmd_index_t kIndex = LoadCmd::index | PrimitiveIndex<T>();
-  using type = T;
+  using type                          = T;
 
   LoadInstruction(RegOr<Addr> const& addr) : addr(addr) {}
   ~LoadInstruction() override {}
@@ -509,7 +516,7 @@ struct LoadInstruction : Instruction {
 template <typename T>
 struct StoreInstruction : Instruction {
   static constexpr cmd_index_t kIndex = StoreCmd::index | PrimitiveIndex<T>();
-  using type = T;
+  using type                          = T;
   StoreInstruction(RegOr<T> const& value, RegOr<Addr> const& location)
       : value(value), location(location) {}
   ~StoreInstruction() override {}
@@ -535,7 +542,7 @@ struct StoreInstruction : Instruction {
 template <typename T>
 struct PrintInstruction : Instruction {
   static constexpr cmd_index_t kIndex = PrintCmd::index | PrimitiveIndex<T>();
-  using type = T;
+  using type                          = T;
   PrintInstruction(RegOr<T> const& value) : value(value) {}
   ~PrintInstruction() override {}
 
@@ -735,6 +742,7 @@ struct EnumerationInstruction : Instruction {
         mod_(mod),
         names_(std::move(names)),
         specified_values_(std::move(specified_values)) {}
+  ~EnumerationInstruction() override {}
 
   void Serialize(base::untyped_buffer* buf) const override {
     buf->append(kIndex);
@@ -770,7 +778,8 @@ struct EnumerationInstruction : Instruction {
 
 struct OpaqueTypeInstruction : Instruction {
   constexpr static cmd_index_t kIndex = OpaqueTypeCmd::index;
-  OpaqueTypeInstruction(module::BasicModule* mod) : mod(mod) {}
+  OpaqueTypeInstruction(module::BasicModule const* mod) : mod(mod) {}
+  ~OpaqueTypeInstruction() override {}
 
   void Serialize(base::untyped_buffer* buf) const override {
     buf->append(kIndex);
@@ -780,19 +789,19 @@ struct OpaqueTypeInstruction : Instruction {
 
   std::string to_string() const override {
     using base::stringify;
-    return absl::StrCat(stringify(result), " = opaque ", stringify( mod));
+    return absl::StrCat(stringify(result), " = opaque ", stringify(mod));
   }
 
-  module::BasicModule* mod;
+  module::BasicModule const* mod;
   Reg result;
 };
 
 struct ArrowInstruction : Instruction {
+  constexpr static cmd_index_t kIndex = ArrowCmd::index;
+
   ArrowInstruction(std::vector<RegOr<type::Type const*>> lhs,
                    std::vector<RegOr<type::Type const*>> rhs)
       : lhs(std::move(lhs)), rhs(std::move(rhs)) {}
-  constexpr static cmd_index_t kIndex = ArrowCmd::index;
-
   ~ArrowInstruction() override {}
 
   static type::Type const* Apply(std::vector<type::Type const*> lhs,
@@ -842,11 +851,12 @@ struct ArrowInstruction : Instruction {
 template <typename T>
 struct PhiInstruction : Instruction {
   constexpr static cmd_index_t kIndex = PhiCmd::index | PrimitiveIndex<T>();
-  using type = T;
+  using type                          = T;
 
   PhiInstruction(std::vector<BasicBlock const*> blocks,
                  std::vector<RegOr<T>> values)
       : blocks(std::move(blocks)), values(std::move(values)) {}
+  ~PhiInstruction() override {}
 
   std::string to_string() const override {
     using base::stringify;
@@ -873,7 +883,7 @@ struct PhiInstruction : Instruction {
     buf->append(result);
   }
 
-  std::vector<BasicBlock const * > blocks;
+  std::vector<BasicBlock const*> blocks;
   std::vector<RegOr<T>> values;
   Reg result;
 };
@@ -887,9 +897,10 @@ struct StructManipulationInstruction : Instruction {
   StructManipulationInstruction(Kind k, type::Type const* type, Reg from,
                                 RegOr<Addr> to = RegOr<Addr>(Reg(0)))
       : kind(k), type(type), r(from), to(to) {}
+  ~StructManipulationInstruction() override {}
 
   std::string to_string() const override {
-    char const * name;
+    char const* name;
     switch (kind) {
       case Kind::Init:
         return absl::StrCat("init ", type->to_string(), " ", stringify(r));
@@ -923,8 +934,476 @@ struct StructManipulationInstruction : Instruction {
   RegOr<Addr> to;  // Only meaningful for copy and move
 };
 
-// TODO: StructCmd, ArrayCmd
+struct CallInstruction : Instruction {
+  static constexpr cmd_index_t kIndex = CallCmd::index;
 
+  CallInstruction(type::Function const* fn_type, RegOr<AnyFunc> const& fn,
+                  std::vector<Results> args, OutParams outs)
+      : fn_type(fn_type),
+        fn(fn),
+        args(std::move(args)),
+        outs(std::move(outs)) {}
+  ~CallInstruction() override {}
+
+  std::string to_string() const {
+    using base::stringify;
+    std::string result = absl::StrCat("call ", stringify(fn));
+    for (auto const& arg : args) {
+      absl::StrAppend(&result, "\n    ", stringify(arg));
+    }
+
+    // TODO out params
+    return result;
+  }
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    ASSERT(args.size() == fn_type->input.size());
+    buf->append(CallCmd::index);
+    buf->append(fn.is_reg());
+    internal::WriteBits<uint16_t, Results>(buf, args, [](Results const& r) {
+      ASSERT(r.size() == 1u);
+      return r.is_reg(0);
+    });
+
+    fn.apply([&](auto v) { buf->append(v); });
+    size_t bytes_written_slot = buf->reserve<core::Bytes>();
+    size_t arg_index          = 0;
+    for (Results const& arg : args) {
+      if (arg.is_reg(0)) {
+        buf->append(arg.get<Reg>(0));
+      } else {
+        type::Apply(fn_type->input[arg_index], [&](auto tag) {
+          using T = typename decltype(tag)::type;
+          buf->append(arg.get<T>(0).value());
+        });
+      }
+      ++arg_index;
+    }
+    buf->set(bytes_written_slot, core::Bytes{buf->size() - bytes_written_slot -
+                                             sizeof(core::Bytes)});
+
+    // TODO this is probably wrong.
+    buf->append<uint16_t>(fn_type->output.size());
+    for (Reg r : outs.regs_) { buf->append(r); }
+  }
+
+  type::Function const* fn_type;
+  RegOr<AnyFunc> fn;
+  std::vector<Results> args;
+  OutParams outs;
+};
+
+struct LoadSymbolInstruction : Instruction {
+  static constexpr cmd_index_t kIndex = LoadSymbolCmd::index;
+  LoadSymbolInstruction(std::string_view name, type::Type const* type)
+      : name(name), type(type) {}
+  ~LoadSymbolInstruction() override {}
+
+  std::string to_string() const override {
+    return absl::StrCat("load-symbol ", name, ": ", type->to_string());
+  }
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    buf->append(kIndex);
+    buf->append(name);
+    buf->append(type);
+    buf->append(result);
+  }
+
+  std::string_view name;
+  type::Type const* type;
+  Reg result;
+};
+
+struct ArrayInstruction : Instruction {
+  static constexpr cmd_index_t kIndex = ArrayCmd::index;
+
+  ArrayInstruction(RegOr<int64_t> length, RegOr<type::Type const*> data_type)
+      : length(length), data_type(data_type) {}
+  ~ArrayInstruction() override {}
+
+  std::string to_string() const override {
+    return absl::StrCat(stringify(result), " = array ", stringify(length),
+                        stringify(data_type));
+  }
+
+  struct control_bits {
+    uint8_t length_is_reg : 1;
+    uint8_t type_is_reg : 1;
+  };
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    buf->append(kIndex);
+    buf->append(control_bits{.length_is_reg = length.is_reg(),
+                             .type_is_reg   = data_type.is_reg()});
+
+    length.apply([&](auto v) { buf->append(v); });
+    data_type.apply([&](auto v) { buf->append(v); });
+    buf->append(result);
+  }
+
+  RegOr<int64_t> length;
+  RegOr<type::Type const*> data_type;
+  Reg result;
+};
+
+struct StructInstruction : Instruction {
+  static constexpr cmd_index_t kIndex = StructCmd::index;
+  StructInstruction(ast::Scope const* scope, std::vector<StructField> fields)
+      : scope(scope), fields(std::move(fields)) {}
+  ~StructInstruction() override {}
+
+  std::string to_string() const override {
+    // TODO
+    return absl::StrCat(stringify(result), " = struct TODO");
+  }
+
+  struct control_bits {
+    uint8_t length_is_reg : 1;
+    uint8_t type_is_reg : 1;
+  };
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    buf->append(kIndex);
+    buf->append<uint16_t>(fields.size());
+    buf->append(scope);
+
+    // TODO shuffling fields order?
+    for (auto const& field : fields) { buf->append(field.name()); }
+
+    std::vector<RegOr<type::Type const*>> types;
+    types.reserve(fields.size());
+    for (auto const& field : fields) { types.push_back(field.type()); }
+    internal::WriteBits<uint16_t, RegOr<type::Type const*>>(
+        buf, types,
+        [](RegOr<type::Type const*> const& r) { return r.is_reg(); });
+    absl::c_for_each(types, [&](RegOr<type::Type const*> x) {
+      x.apply([&](auto v) { buf->append(v); });
+    });
+
+    buf->append(result);
+  }
+
+  ast::Scope const* scope;
+  std::vector<StructField> fields;
+  Reg result;
+};
+
+struct TypeInfoInstruction : Instruction {
+  static constexpr cmd_index_t kIndex = TypeInfoCmd::index;
+  enum class Kind : uint8_t { Alignment = 0, Bytes = 2 };
+  TypeInfoInstruction(Kind kind, RegOr<type::Type const*> type)
+      : kind(kind), type(type) {}
+  ~TypeInfoInstruction() override {}
+
+  std::string to_string() const override {
+    using base::stringify;
+    return absl::StrCat(
+        stringify(result),
+        kind == Kind::Alignment ? " = alignment " : " = bytes ",
+        type.is_reg() ? stringify(type.reg()) : type.value()->to_string());
+  }
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    buf->append(kIndex);
+    buf->append<uint8_t>(static_cast<uint8_t>(kind) |
+                         static_cast<uint8_t>(type.is_reg()));
+    type.apply([&](auto v) { buf->append(v); });
+    buf->append(result);
+  }
+
+  Kind kind;
+  RegOr<type::Type const*> type;
+  Reg result;
+};
+
+struct MakeBlockInstruction : Instruction {
+  static constexpr cmd_index_t kIndex = BlockCmd::index;
+
+  MakeBlockInstruction(ir::BlockDef* block_def,
+                       std::vector<RegOr<AnyFunc>> befores,
+                       std::vector<RegOr<Jump const*>> afters)
+      : block_def(block_def),
+        befores(std::move(befores)),
+        afters(std::move(afters)) {}
+  ~MakeBlockInstruction() override {}
+
+  // TODO
+  std::string to_string() const override { return "make-block "; }
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    buf->append(kIndex);
+    buf->append(block_def);
+    internal::WriteBits<uint16_t, RegOr<AnyFunc>>(
+        buf, befores, [](RegOr<AnyFunc> const& r) { return r.is_reg(); });
+    absl::c_for_each(befores, [&](RegOr<AnyFunc> x) {
+      x.apply([&](auto v) { buf->append(v); });
+    });
+    internal::WriteBits<uint16_t, RegOr<Jump const*>>(
+        buf, afters, [](RegOr<Jump const*> const& r) { return r.is_reg(); });
+    absl::c_for_each(afters, [&](RegOr<Jump const*> x) {
+      x.apply([&](auto v) { buf->append(v); });
+    });
+    buf->append(result);
+  }
+
+  ir::BlockDef* block_def;
+  std::vector<RegOr<AnyFunc>> befores;
+  std::vector<RegOr<Jump const*>> afters;
+  Reg result;
+};
+
+struct MakeScopeInstruction : Instruction {
+  static constexpr cmd_index_t kIndex = ScopeCmd::index;
+
+  MakeScopeInstruction(ir::ScopeDef* scope_def,
+                       std::vector<RegOr<Jump const*>> inits,
+                       std::vector<RegOr<AnyFunc>> dones,
+                       absl::flat_hash_map<std::string_view, BlockDef*> blocks)
+      : scope_def(scope_def),
+        inits(std::move(inits)),
+        dones(std::move(dones)),
+        blocks(std::move(blocks)) {}
+  ~MakeScopeInstruction() override {}
+
+  // TODO
+  std::string to_string() const override { return "make-scope"; }
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    buf->append(kIndex);
+    buf->append(scope_def);
+
+    internal::WriteBits<uint16_t, RegOr<Jump const*>>(
+        buf, inits, [](RegOr<Jump const*> const& r) { return r.is_reg(); });
+    absl::c_for_each(inits, [&](RegOr<Jump const*> x) {
+      x.apply([&](auto v) { buf->append(v); });
+    });
+    internal::WriteBits<uint16_t, RegOr<AnyFunc>>(
+        buf, dones, [](RegOr<AnyFunc> const& r) { return r.is_reg(); });
+    absl::c_for_each(dones, [&](RegOr<AnyFunc> x) {
+      x.apply([&](auto v) { buf->append(v); });
+    });
+
+    buf->append<uint16_t>(blocks.size());
+    for (auto [name, block] : blocks) {
+      buf->append(name);
+      buf->append(block);
+    }
+    buf->append(result);
+  }
+
+  ir::ScopeDef* scope_def;
+  std::vector<RegOr<Jump const*>> inits;
+  std::vector<RegOr<AnyFunc>> dones;
+  absl::flat_hash_map<std::string_view, BlockDef*> blocks;
+  Reg result;
+};
+
+struct StructIndexInstruction : Instruction {
+  static constexpr cmd_index_t kIndex = AccessCmd::index;
+  StructIndexInstruction(RegOr<Addr> const& addr, RegOr<int64_t> index,
+                         type::Struct const* struct_type)
+      : addr(addr), index(index), struct_type(struct_type) {}
+  ~StructIndexInstruction() override {}
+
+  std::string to_string() const override {
+    using base::stringify;
+    return absl::StrCat(stringify(result), " = index ", stringify(index),
+                        " of ", stringify(addr), " (struct ",
+                        struct_type->to_string(), ")");
+  }
+
+  struct control_bits {
+    uint8_t reg_addr : 1;
+    uint8_t reg_index : 1;
+  };
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    buf->append(kIndex);
+    buf->append(control_bits{
+        .reg_addr  = addr.is_reg(),
+        .reg_index = index.is_reg(),
+    });
+
+    buf->append(struct_type);
+    addr.apply([&](auto v) { buf->append(v); });
+    index.apply([&](auto v) { buf->append(v); });
+    buf->append(result);
+  }
+
+  RegOr<Addr> addr;
+  RegOr<int64_t> index;
+  type::Struct const* struct_type;
+  Reg result;
+};
+
+struct TupleIndexInstruction : Instruction {
+  static constexpr cmd_index_t kIndex = AccessCmd::index;
+  TupleIndexInstruction(RegOr<Addr> const& addr, RegOr<int64_t> index,
+                        type::Tuple const* tuple)
+      : addr(addr), index(index), tuple(tuple) {}
+  ~TupleIndexInstruction() override {}
+
+  std::string to_string() const override {
+    using base::stringify;
+    return absl::StrCat(stringify(result), " = index ", stringify(index),
+                        " of ", stringify(addr), " (tuple ", tuple->to_string(),
+                        ")");
+  }
+
+  struct control_bits {
+    uint8_t reg_addr : 1;
+    uint8_t reg_index : 1;
+  };
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    buf->append(kIndex);
+    buf->append(control_bits{
+        .reg_addr  = addr.is_reg(),
+        .reg_index = index.is_reg(),
+    });
+
+    buf->append(tuple);
+    addr.apply([&](auto v) { buf->append(v); });
+    index.apply([&](auto v) { buf->append(v); });
+    buf->append(result);
+  }
+
+  RegOr<Addr> addr;
+  RegOr<int64_t> index;
+  type::Tuple const* tuple;
+  Reg result;
+};
+
+struct PtrIncrInstruction : Instruction {
+  static constexpr cmd_index_t kIndex = AccessCmd::index;
+  PtrIncrInstruction(RegOr<Addr> const& addr, RegOr<int64_t> index,
+                     type::Pointer const* ptr)
+      : addr(addr), index(index), ptr(ptr) {}
+  ~PtrIncrInstruction() override {}
+
+  std::string to_string() const override {
+    using base::stringify;
+    return absl::StrCat(stringify(result), " = index ", stringify(index),
+                        " of ", stringify(addr), " (ptr ", ptr->to_string(),
+                        ")");
+  }
+
+  struct control_bits {
+    uint8_t reg_addr : 1;
+    uint8_t reg_index : 1;
+  };
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    buf->append(kIndex);
+    buf->append(control_bits{
+        .reg_addr  = addr.is_reg(),
+        .reg_index = index.is_reg(),
+    });
+
+    buf->append(ptr);
+    addr.apply([&](auto v) { buf->append(v); });
+    index.apply([&](auto v) { buf->append(v); });
+    buf->append(result);
+  }
+
+  RegOr<Addr> addr;
+  RegOr<int64_t> index;
+  type::Pointer const* ptr;
+  Reg result;
+};
+
+struct VariantAccessInstruction : Instruction {
+  static constexpr cmd_index_t kIndex = VariantAccessCmd::index;
+  VariantAccessInstruction(RegOr<Addr> const& var, bool get_value)
+      : var(var), get_value(get_value) {}
+  ~VariantAccessInstruction() override {}
+
+  std::string to_string() const override {
+    using base::stringify;
+    return absl::StrCat(stringify(result), " = variant-",
+                        get_value ? "value" : "type", stringify(var));
+  }
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    buf->append(kIndex);
+    buf->append(get_value);
+    buf->append(var.is_reg());
+    var.apply([&](auto v) { buf->append(v); });
+    buf->append(result);
+  }
+
+  RegOr<Addr> var;
+  bool get_value;
+  Reg result;
+};
+
+template <typename ToType, typename FromType>
+struct CastInstruction: Instruction {
+  static constexpr cmd_index_t kIndex = CastCmd::index;
+
+  explicit CastInstruction(RegOr<FromType> const& value) : value(value) {}
+  ~CastInstruction() override {}
+
+  std::string to_string() const override {
+    using base::stringify;
+    return absl::StrCat(stringify(result), " = cast ", stringify(value), " to ",
+                        TypeToString<ToType>());
+  }
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    buf->append(kIndex);
+    buf->append(value);
+    buf->append(result);
+  }
+
+  RegOr<FromType> value;
+  Reg result;
+};
+
+template <typename T>
+struct SetReturnInstruction : Instruction {
+  static constexpr cmd_index_t kIndex = ReturnCmd::index;
+
+  SetReturnInstruction(uint16_t index, RegOr<T> const& value)
+      : index(index), value(value) {}
+  ~SetReturnInstruction() override {}
+
+  std::string to_string() const override {
+    using base::stringify;
+    return absl::StrCat("set-ret ", index, " = ", stringify(value));
+  }
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    buf->append(kIndex);
+    value.apply([&](auto v) { buf->append(v); });
+  }
+
+  uint16_t index;
+  RegOr<T> value;
+};
+
+
+struct GetReturnInstruction : Instruction {
+  static constexpr cmd_index_t kIndex = ReturnCmd::index;
+
+  explicit GetReturnInstruction(uint16_t index) : index(index) {}
+  ~GetReturnInstruction() override {}
+
+  std::string to_string() const override {
+    using base::stringify;
+    return absl::StrCat(stringify(result), " = get-ret ", index);
+  }
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    buf->append(kIndex);
+    buf->append(index);
+    buf->append(result);
+  }
+
+  uint16_t index;
+  Reg result;
+};
 }  // namespace ir
 
 #endif  // ICARUS_IR_INSTRUCTIONS_H

@@ -122,7 +122,11 @@ cc_library(
     name = "instructions",
     hdrs = ["instructions.h"],
     deps = [
+        ":block_def",
         ":reg_or",
+        ":scope_def",
+        ":struct_field",
+        "//ast/scope",
 
         "//ir/cmd:basic",
         "//ir/cmd:call",

@@ -33,14 +33,6 @@
 #include "type/util.h"
 
 namespace ir {
-struct Builder;
-
-namespace internal {
-
-template <typename SizeType, typename T>
-void Serialize(base::untyped_buffer*, absl::Span<RegOr<T> const>);
-
-}  // namespace internal
 
 struct Builder {
   BasicBlock* AddBlock();
@@ -326,7 +318,7 @@ struct Builder {
   // `arguments` and output parameters. If output parameters are not present,
   // the function must return nothing.
   void Call(RegOr<AnyFunc> const& fn, type::Function const* f,
-            absl::Span<Results const> arguments, OutParams = {});
+            std::vector<Results> args, OutParams outs = {});
 
   // Jump instructions must be the last instruction in a basic block. They
   // handle control-flow, indicating which basic block control should be
@@ -383,7 +375,7 @@ struct Builder {
 
   Reg OpaqueType(module::BasicModule const* mod);
 
-  Reg Struct(ast::Scope const* scope, absl::Span<StructField const> fields);
+  Reg Struct(ast::Scope const* scope, std::vector<StructField> fields);
 
   // TODO use scopes instead of modules.
   Reg Enum(module::BasicModule* mod, std::vector<std::string_view> names,
@@ -423,6 +415,8 @@ struct Builder {
     }
   }
 
+  type::Typed<Reg> LoadSymbol(std::string_view name, type::Type const* type);
+
   // Low-level size/alignment commands
   base::Tagged<core::Alignment, Reg> Align(RegOr<type::Type const*> r);
   base::Tagged<core::Bytes, Reg> Bytes(RegOr<type::Type const*> r);
@@ -430,11 +424,17 @@ struct Builder {
   base::Tagged<Addr, Reg> Alloca(type::Type const* t);
   base::Tagged<Addr, Reg> TmpAlloca(type::Type const* t);
 
+  Reg MakeBlock(ir::BlockDef* block_def, std::vector<RegOr<AnyFunc>> befores,
+                std::vector<RegOr<Jump const*>> afters);
+  Reg MakeScope(ir::ScopeDef* scope_def, std::vector<RegOr<Jump const*>> inits,
+                std::vector<RegOr<AnyFunc>> dones,
+                absl::flat_hash_map<std::string_view, BlockDef*> blocks);
+
 #if defined(ICARUS_DEBUG)
   void DebugIr() {
-    CurrentBlock()->instructions_.push_back(
-        std::make_unique<DebugIrInstruction>());
-    CurrentBlock()->cmd_buffer_.append(DebugIrCmd::index);
+    auto inst = std::make_unique<DebugIrInstruction>();
+    CurrentBlock()->instructions_.push_back(std::move(inst));
+    inst->Serialize(&CurrentBlock()->cmd_buffer_);
   }
 #endif  // ICARUS_DEBUG
 
@@ -523,13 +523,10 @@ struct SetTemporaries : public base::UseWithScope {
 template <typename ToType, typename FromType>
 RegOr<ToType> Cast(RegOr<FromType> r) {
   if (r.is_reg()) {
-    auto& blk = *GetBuilder().CurrentBlock();
-    blk.cmd_buffer_.append(CastCmd::index);
-    blk.cmd_buffer_.append(PrimitiveIndex<ToType>());
-    blk.cmd_buffer_.append(PrimitiveIndex<FromType>());
-    blk.cmd_buffer_.append(r.reg());
-    Reg result = MakeResult<ToType>();
-    blk.cmd_buffer_.append(result);
+    auto inst   = std::make_unique<CastInstruction<ToType, FromType>>(r);
+    auto result = inst->result = GetBuilder().CurrentGroup()->Reserve(nullptr);
+    inst->Serialize(&GetBuilder().CurrentBlock()->cmd_buffer_);
+    GetBuilder().CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   } else {
     return ToType(r.value());
@@ -567,18 +564,19 @@ RegOr<ToType> CastTo(type::Type const* from_type, ir::Results const& r) {
 template <typename T>
 base::Tagged<T, Reg> Load(RegOr<Addr> addr) {
   auto& blk = *GetBuilder().CurrentBlock();
-  auto inst = std::make_unique<LoadInstruction<T>>(addr);
 
   // TODO Just take a Reg. RegOr<Addr> is overkill and not possible because
   // constants don't have addresses.
   ASSERT(addr.is_reg() == true);
-  auto& results = blk.storage_cache_[addr.reg()];
-  if (not results.empty()) {
+  auto& cache_results = blk.storage_cache_[addr.reg()];
+  if (not cache_results.empty()) {
     // TODO may not be Reg. could be anything of the right type.
-    return results.get<Reg>(0);
+    return cache_results.get<Reg>(0);
   }
+
+  auto inst = std::make_unique<LoadInstruction<T>>(addr);
   auto result = inst->result = GetBuilder().CurrentGroup()->Reserve(nullptr);
-  results.append(result);
+  cache_results.append(result);
   inst->Serialize(&blk.cmd_buffer_);
   blk.instructions_.push_back(std::move(inst));
   return result;
@@ -597,8 +595,6 @@ inline Reg Load(RegOr<Addr> r, type::Type const* t) {
   });
 }
 
-type::Typed<Reg> LoadSymbol(std::string_view name, type::Type const* type);
-
 template <typename T>
 Reg MakeReg(T t) {
   static_assert(not std::is_same_v<T, Reg>);
@@ -615,12 +611,9 @@ Reg MakeReg(T t) {
 template <typename T>
 void SetRet(uint16_t n, T val) {
   if constexpr (IsRegOr<T>::value) {
-    auto& blk = *GetBuilder().CurrentBlock();
-    blk.cmd_buffer_.append(ReturnCmd::index);
-    blk.cmd_buffer_.append(
-        ReturnCmd::MakeControlBits<typename T::type>(val.is_reg(), false));
-    blk.cmd_buffer_.append(n);
-    val.apply([&](auto v) { blk.cmd_buffer_.append(v); });
+    auto inst =
+        std::make_unique<SetReturnInstruction<typename T::type>>(n, val);
+    inst->Serialize(&GetBuilder().CurrentBlock()->cmd_buffer_);
   } else if constexpr (base::IsTaggedV<T>) {
     static_assert(std::is_same_v<typename T::base_type, Reg>);
     SetRet(n, RegOr<typename T::tag_type>(val));
@@ -630,13 +623,10 @@ void SetRet(uint16_t n, T val) {
 }
 
 inline base::Tagged<Addr, Reg> GetRet(uint16_t n, type::Type const* t) {
-  auto& blk = *GetBuilder().CurrentBlock();
-  blk.cmd_buffer_.append(ReturnCmd::index);
-  blk.cmd_buffer_.append(ReturnCmd::MakeControlBits<int>(false, true));
-  blk.cmd_buffer_.append(n);
-  Reg r = MakeResult(t);
-  blk.cmd_buffer_.append(r);
-  return r;
+  auto inst = std::make_unique<GetReturnInstruction>(n);
+  auto result = inst->result = GetBuilder().CurrentGroup()->Reserve(nullptr);
+  inst->Serialize(&GetBuilder().CurrentBlock()->cmd_buffer_);
+  return result;
 }
 
 inline void SetRet(uint16_t n, type::Typed<Results> const& r) {
@@ -657,16 +647,6 @@ inline void SetRet(uint16_t n, type::Typed<Results> const& r) {
   }
 }
 
-// TODO "Handler" doesn't really make sense in the name for these.
-Reg BlockHandler(ir::BlockDef* block_def,
-                 absl::Span<RegOr<AnyFunc> const> befores,
-                 absl::Span<RegOr<Jump const*> const> afters);
-
-Reg ScopeHandler(
-    ir::ScopeDef* scope_def, absl::Span<RegOr<Jump const*> const> inits,
-    absl::Span<RegOr<AnyFunc> const> dones,
-    absl::flat_hash_map<std::string_view, BlockDef*> const& blocks);
-
 template <typename T>
 void Store(T r, RegOr<Addr> addr) {
   if constexpr (IsRegOr<T>::value) {
@@ -680,38 +660,6 @@ void Store(T r, RegOr<Addr> addr) {
   }
 }
 
-// ----------------------------------------------------------------------------
-// Implementation details only below
-// ----------------------------------------------------------------------------
-
-namespace internal {
-template <typename SizeType, typename T, typename Fn>
-void XWriteBits(base::untyped_buffer* buf, absl::Span<T const> span,
-                Fn&& predicate) {
-  ASSERT(span.size() < std::numeric_limits<SizeType>::max());
-  buf->append<SizeType>(span.size());
-
-  uint8_t reg_mask = 0;
-  for (size_t i = 0; i < span.size(); ++i) {
-    if (predicate(span[i])) { reg_mask |= (1 << (7 - (i % 8))); }
-    if (i % 8 == 7) {
-      buf->append(reg_mask);
-      reg_mask = 0;
-    }
-  }
-  if (span.size() % 8 != 0) { buf->append(reg_mask); }
-}
-
-template <typename SizeType, typename T>
-void Serialize(base::untyped_buffer* buf, absl::Span<RegOr<T> const> span) {
-  XWriteBits<SizeType, RegOr<T>>(buf, span,
-                                 [](RegOr<T> const& r) { return r.is_reg(); });
-
-  absl::c_for_each(
-      span, [&](RegOr<T> x) { x.apply([&](auto v) { buf->append(v); }); });
-}
-
-}  // namespace internal
 }  // namespace ir
 
 #endif  // ICARUS_IR_BUILDER_H
