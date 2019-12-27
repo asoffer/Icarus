@@ -18,6 +18,7 @@ namespace test {
 
 struct TestModule : compiler::CompiledModule {
   TestModule() : consumer(stderr), compiler(this, consumer) {}
+  ~TestModule() { compiler.CompleteDeferredBodies(); }
 
   diagnostic::StreamingConsumer consumer;
   compiler::Compiler compiler;
@@ -27,6 +28,7 @@ struct TestModule : compiler::CompiledModule {
     for (ast::Node const* node : nodes) {
       compiler.Visit(node, compiler::VerifyTypeTag{});
     }
+    compiler.CompleteDeferredBodies();
   }
 };
 
@@ -41,6 +43,7 @@ std::pair<ast::OverloadSet, ast::Call*> MakeCall(
   os.insert(call_expr->callee());
   auto* expr = call_expr.get();
   module->AppendNode(std::move(call_expr));
+  module->compiler.CompleteDeferredBodies();
   return std::pair(std::move(os), expr);
 }
 

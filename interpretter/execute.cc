@@ -248,11 +248,17 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
                        std::is_same_v<Inst, ir::PrintInstruction<int64_t>> or
                        std::is_same_v<Inst, ir::PrintInstruction<float>> or
                        std::is_same_v<Inst, ir::PrintInstruction<double>> or
+                       std::is_same_v<
+                           Inst, ir::PrintInstruction<type::Type const *>> or
                        std::is_same_v<Inst,
                                       ir::PrintInstruction<std::string_view>>) {
     using type = typename Inst::type;
     auto ctrl  = iter->read<ir::PrintCmd::control_bits>().get();
-    std::cerr << ReadAndResolve<type>(ctrl.reg, iter, ctx);
+    if constexpr (std::is_same_v<type, ::type::Type const *>) {
+      std::cerr << ReadAndResolve<type>(ctrl.reg, iter, ctx)->to_string();
+    } else {
+      std::cerr << ReadAndResolve<type>(ctrl.reg, iter, ctx);
+    }
   } else if constexpr (std::is_same_v<Inst, ir::PrintEnumInstruction>) {
     auto ctrl = iter->read<ir::PrintCmd::control_bits>().get();
     auto val  = ReadAndResolve<ir::EnumVal>(ctrl.reg, iter, ctx);
@@ -1008,6 +1014,10 @@ void ExecutionContext::ExecuteBlock(absl::Span<ir::Addr const> ret_slots) {
         break;
       case ir::PrintInstruction<double>::kIndex:
         ExecuteAdHocInstruction<ir::PrintInstruction<double>>(&iter, this);
+        break;
+      case ir::PrintInstruction<type::Type const *>::kIndex:
+        ExecuteAdHocInstruction<ir::PrintInstruction<type::Type const *>>(&iter,
+                                                                          this);
         break;
       case ir::PrintInstruction<std::string_view>::kIndex:
         ExecuteAdHocInstruction<ir::PrintInstruction<std::string_view>>(&iter,

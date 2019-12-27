@@ -280,8 +280,8 @@ void ProcessExecutableBody(Compiler *c, base::PtrSpan<ast::Node const> nodes,
 
     c->builder().ReturnJump();
   }
-  main_fn->Serialize();
   c->CompleteDeferredBodies();
+  main_fn->Serialize();
 }
 
 ir::Results Compiler::Visit(ast::Access const *node, EmitValueTag) {

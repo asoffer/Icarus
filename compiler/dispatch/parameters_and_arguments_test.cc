@@ -14,6 +14,7 @@ NodeType const *Make(test::TestModule *mod, std::string code) {
   auto node       = test::ParseAs<NodeType>(std::move(code));
   auto const *ptr = node.get();
   mod->AppendNode(std::move(node));
+  mod->compiler.CompleteDeferredBodies();
   return ptr;
 }
 

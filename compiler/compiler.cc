@@ -149,7 +149,8 @@ void Compiler::CompleteDeferredBodies() {
       auto handle = data_.deferred_work_.lock();
       if (handle->empty()) { return; }
       auto nh = handle->extract(handle->begin());
-      f       = std::move(nh.mapped());
+      DEBUG_LOG("CompleteDeferredBodies")(nh.key()->DebugString());
+      f = std::move(nh.mapped());
     }
     std::move(f)();
   }

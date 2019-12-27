@@ -268,12 +268,14 @@ struct Builder {
     // TODO constant-folding
     auto inst   = std::make_unique<VariantInstruction>(std::move(types));
     auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
   RegOr<type::Type const*> Tup(std::vector<RegOr<type::Type const*>> types) {
     // TODO constant-folding
     auto inst   = std::make_unique<TupleInstruction>(std::move(types));
     auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
 
@@ -300,6 +302,7 @@ struct Builder {
     auto inst   = std::make_unique<PhiInstruction<T>>(std::move(blocks),
                                                     std::move(values));
     auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
 

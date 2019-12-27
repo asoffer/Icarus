@@ -204,6 +204,7 @@ struct Compiler
 
   template <typename Fn>
   base::move_func<void()> *AddWork(ast::Node const *node, Fn &&fn) {
+    DEBUG_LOG("AddWork")(node->DebugString());
     auto[iter, success] =
         data_.deferred_work_.lock()->emplace(node, std::forward<Fn>(fn));
     ASSERT(success == true);
