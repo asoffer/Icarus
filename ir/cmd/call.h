@@ -8,7 +8,7 @@
 
 namespace ir {
 struct CallCmd {
-  constexpr static cmd_index_t index = 41;
+  constexpr static cmd_index_t index = 41 * 256;
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
 };

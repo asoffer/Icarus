@@ -539,6 +539,10 @@ struct StoreInstruction : Instruction {
   RegOr<Addr> location;
 };
 
+template <typename Inst>
+inline constexpr bool IsStoreInstruction = (Inst::kIndex &
+                                            0xff00) == StoreCmd::index;
+
 template <typename T>
 struct PrintInstruction : Instruction {
   static constexpr cmd_index_t kIndex = PrintCmd::index | PrimitiveIndex<T>();
@@ -559,6 +563,10 @@ struct PrintInstruction : Instruction {
 
   RegOr<T> value;
 };
+
+template <typename Inst>
+inline constexpr bool IsLoadInstruction = (Inst::kIndex &
+                                           0xff00) == LoadCmd::index;
 
 struct PrintEnumInstruction : Instruction {
   static constexpr cmd_index_t kIndex =
@@ -626,6 +634,8 @@ struct DebugIrInstruction : Instruction {
 };
 
 struct XorFlagsInstruction : BinaryInstruction<FlagsVal> {
+  static constexpr cmd_index_t kIndex =
+      XorFlagsCmd::index | PrimitiveIndex<FlagsVal>();
   XorFlagsInstruction(RegOr<FlagsVal> const& lhs, RegOr<FlagsVal> const& rhs)
       : BinaryInstruction<FlagsVal>(lhs, rhs) {}
   ~XorFlagsInstruction() override {}
@@ -644,6 +654,8 @@ struct XorFlagsInstruction : BinaryInstruction<FlagsVal> {
 };
 
 struct AndFlagsInstruction : BinaryInstruction<FlagsVal> {
+  static constexpr cmd_index_t kIndex =
+      AndFlagsCmd::index | PrimitiveIndex<FlagsVal>();
   AndFlagsInstruction(RegOr<FlagsVal> const& lhs, RegOr<FlagsVal> const& rhs)
       : BinaryInstruction<FlagsVal>(lhs, rhs) {}
   ~AndFlagsInstruction() override {}
@@ -662,6 +674,8 @@ struct AndFlagsInstruction : BinaryInstruction<FlagsVal> {
 };
 
 struct OrFlagsInstruction : BinaryInstruction<FlagsVal> {
+  static constexpr cmd_index_t kIndex =
+      OrFlagsCmd::index | PrimitiveIndex<FlagsVal>();
   OrFlagsInstruction(RegOr<FlagsVal> const& lhs, RegOr<FlagsVal> const& rhs)
       : BinaryInstruction<FlagsVal>(lhs, rhs) {}
   ~OrFlagsInstruction() override {}
@@ -888,6 +902,10 @@ struct PhiInstruction : Instruction {
   Reg result;
 };
 
+template <typename Inst>
+inline constexpr bool IsPhiInstruction = (Inst::kIndex &
+                                          0xff00) == PhiCmd::index;
+
 // Oddly named to be sure, this instruction is used to do initializations,
 // copies, moves, or destructions of the given type.
 struct StructManipulationInstruction : Instruction {
@@ -1017,8 +1035,9 @@ struct LoadSymbolInstruction : Instruction {
 
 struct ArrayInstruction : Instruction {
   static constexpr cmd_index_t kIndex = ArrayCmd::index;
+  using length_t                      = int64_t;
 
-  ArrayInstruction(RegOr<int64_t> length, RegOr<type::Type const*> data_type)
+  ArrayInstruction(RegOr<length_t> length, RegOr<type::Type const*> data_type)
       : length(length), data_type(data_type) {}
   ~ArrayInstruction() override {}
 
@@ -1042,7 +1061,7 @@ struct ArrayInstruction : Instruction {
     buf->append(result);
   }
 
-  RegOr<int64_t> length;
+  RegOr<length_t> length;
   RegOr<type::Type const*> data_type;
   Reg result;
 };
@@ -1120,7 +1139,7 @@ struct TypeInfoInstruction : Instruction {
 struct MakeBlockInstruction : Instruction {
   static constexpr cmd_index_t kIndex = BlockCmd::index;
 
-  MakeBlockInstruction(ir::BlockDef* block_def,
+  MakeBlockInstruction(BlockDef* block_def,
                        std::vector<RegOr<AnyFunc>> befores,
                        std::vector<RegOr<Jump const*>> afters)
       : block_def(block_def),
@@ -1147,7 +1166,7 @@ struct MakeBlockInstruction : Instruction {
     buf->append(result);
   }
 
-  ir::BlockDef* block_def;
+  BlockDef* block_def;
   std::vector<RegOr<AnyFunc>> befores;
   std::vector<RegOr<Jump const*>> afters;
   Reg result;
@@ -1156,7 +1175,7 @@ struct MakeBlockInstruction : Instruction {
 struct MakeScopeInstruction : Instruction {
   static constexpr cmd_index_t kIndex = ScopeCmd::index;
 
-  MakeScopeInstruction(ir::ScopeDef* scope_def,
+  MakeScopeInstruction(ScopeDef* scope_def,
                        std::vector<RegOr<Jump const*>> inits,
                        std::vector<RegOr<AnyFunc>> dones,
                        absl::flat_hash_map<std::string_view, BlockDef*> blocks)
@@ -1192,7 +1211,7 @@ struct MakeScopeInstruction : Instruction {
     buf->append(result);
   }
 
-  ir::ScopeDef* scope_def;
+  ScopeDef* scope_def;
   std::vector<RegOr<Jump const*>> inits;
   std::vector<RegOr<AnyFunc>> dones;
   absl::flat_hash_map<std::string_view, BlockDef*> blocks;
@@ -1200,7 +1219,9 @@ struct MakeScopeInstruction : Instruction {
 };
 
 struct StructIndexInstruction : Instruction {
-  static constexpr cmd_index_t kIndex = AccessCmd::index;
+  static constexpr cmd_index_t kIndex = 23 * 256;
+  using type                          = type::Struct const*;
+
   StructIndexInstruction(RegOr<Addr> const& addr, RegOr<int64_t> index,
                          type::Struct const* struct_type)
       : addr(addr), index(index), struct_type(struct_type) {}
@@ -1238,7 +1259,9 @@ struct StructIndexInstruction : Instruction {
 };
 
 struct TupleIndexInstruction : Instruction {
-  static constexpr cmd_index_t kIndex = AccessCmd::index;
+  static constexpr cmd_index_t kIndex = 24 * 256;
+  using type                          = type::Tuple const*;
+
   TupleIndexInstruction(RegOr<Addr> const& addr, RegOr<int64_t> index,
                         type::Tuple const* tuple)
       : addr(addr), index(index), tuple(tuple) {}
@@ -1276,7 +1299,9 @@ struct TupleIndexInstruction : Instruction {
 };
 
 struct PtrIncrInstruction : Instruction {
-  static constexpr cmd_index_t kIndex = AccessCmd::index;
+  static constexpr cmd_index_t kIndex = 25 * 256;
+  using type                          = type::Pointer const*;
+
   PtrIncrInstruction(RegOr<Addr> const& addr, RegOr<int64_t> index,
                      type::Pointer const* ptr)
       : addr(addr), index(index), ptr(ptr) {}
@@ -1322,7 +1347,7 @@ struct VariantAccessInstruction : Instruction {
   std::string to_string() const override {
     using base::stringify;
     return absl::StrCat(stringify(result), " = variant-",
-                        get_value ? "value" : "type", stringify(var));
+                        get_value ? "value " : "type ", stringify(var));
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
@@ -1341,6 +1366,8 @@ struct VariantAccessInstruction : Instruction {
 template <typename ToType, typename FromType>
 struct CastInstruction: Instruction {
   static constexpr cmd_index_t kIndex = CastCmd::index;
+  using to_type                       = ToType;
+  using from_type                     = FromType;
 
   explicit CastInstruction(RegOr<FromType> const& value) : value(value) {}
   ~CastInstruction() override {}
@@ -1353,7 +1380,8 @@ struct CastInstruction: Instruction {
 
   void Serialize(base::untyped_buffer* buf) const override {
     buf->append(kIndex);
-    buf->append(value);
+    buf->append(value.is_reg());
+    value.apply([&](auto v) { buf->append(v); });
     buf->append(result);
   }
 
@@ -1361,9 +1389,13 @@ struct CastInstruction: Instruction {
   Reg result;
 };
 
+template <typename Inst>
+inline constexpr bool IsCastInstruction = (Inst::kIndex == CastCmd::index);
+
 template <typename T>
 struct SetReturnInstruction : Instruction {
-  static constexpr cmd_index_t kIndex = ReturnCmd::index;
+  static constexpr cmd_index_t kIndex = ReturnCmd::index | PrimitiveIndex<T>();
+  using type                          = T;
 
   SetReturnInstruction(uint16_t index, RegOr<T> const& value)
       : index(index), value(value) {}
@@ -1371,18 +1403,26 @@ struct SetReturnInstruction : Instruction {
 
   std::string to_string() const override {
     using base::stringify;
-    return absl::StrCat("set-ret ", index, " = ", stringify(value));
+    if constexpr (std::is_same_v<T, ::type::Type const*>) {
+      return absl::StrCat(
+          "set-ret ", index, " = ", TypeToString<T>(), " ",
+          value.is_reg() ? stringify(value) : value.value()->to_string());
+    } else {
+      return absl::StrCat("set-ret ", index, " = ", TypeToString<T>(), " ",
+                          stringify(value));
+    }
   }
 
   void Serialize(base::untyped_buffer* buf) const override {
     buf->append(kIndex);
+    buf->append(index);
+    buf->append(value.is_reg());
     value.apply([&](auto v) { buf->append(v); });
   }
 
   uint16_t index;
   RegOr<T> value;
 };
-
 
 struct GetReturnInstruction : Instruction {
   static constexpr cmd_index_t kIndex = ReturnCmd::index;
@@ -1404,6 +1444,12 @@ struct GetReturnInstruction : Instruction {
   uint16_t index;
   Reg result;
 };
+
+template <typename Inst>
+inline constexpr bool IsSetReturnInstruction =
+    (Inst::kIndex & 0xff00) == ReturnCmd::index and
+    not std::is_same_v<Inst, GetReturnInstruction>;
+
 }  // namespace ir
 
 #endif  // ICARUS_IR_INSTRUCTIONS_H

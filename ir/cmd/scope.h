@@ -8,13 +8,13 @@
 namespace ir {
 
 struct BlockCmd {
-  constexpr static cmd_index_t index = 39;
+  constexpr static cmd_index_t index = 39 * 256;
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
 };
 
 struct ScopeCmd {
-  constexpr static cmd_index_t index = 40;
+  constexpr static cmd_index_t index = 40 * 256;
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
 };

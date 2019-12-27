@@ -9,7 +9,7 @@
 namespace ir {
 
 struct ReturnCmd {
-  constexpr static cmd_index_t index = 28;
+  constexpr static cmd_index_t index = 28 * 256;
 
   struct control_bits {
     uint8_t primitive_type : 6;

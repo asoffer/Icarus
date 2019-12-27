@@ -79,9 +79,9 @@ using NeCmd  = internal::BinaryCmd<9 * 256, std::not_equal_to<>,  //
 using NegCmd      = internal::UnaryCmd<10 * 256, std::negate<>, int8_t, int16_t,
                                   int32_t, int64_t, float, double>;
 using NotCmd      = internal::UnaryCmd<11 * 256, std::logical_not<>, bool>;
-using XorFlagsCmd = internal::BinaryCmd<23 * 256, std::bit_xor<>, FlagsVal>;
-using AndFlagsCmd = internal::BinaryCmd<24 * 256, std::bit_and<>, FlagsVal>;
-using OrFlagsCmd  = internal::BinaryCmd<25 * 256, std::bit_or<>, FlagsVal>;
+using XorFlagsCmd = internal::BinaryCmd<20 * 256, std::bit_xor<>, FlagsVal>;
+using AndFlagsCmd = internal::BinaryCmd<21 * 256, std::bit_and<>, FlagsVal>;
+using OrFlagsCmd  = internal::BinaryCmd<22 * 256, std::bit_or<>, FlagsVal>;
 }  // namespace ir
 
 #endif  // ICARUS_IR_CMD_BASIC_H

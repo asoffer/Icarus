@@ -20,13 +20,13 @@ struct SemanticCmd {
 };
 
 struct LoadSymbolCmd {
-  constexpr static cmd_index_t index = 34;
+  constexpr static cmd_index_t index = 34 * 256;
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
 };
 
 struct TypeInfoCmd {
-  constexpr static cmd_index_t index = 35;
+  constexpr static cmd_index_t index = 35 * 256;
 
   static std::string DebugString(base::untyped_buffer::const_iterator *iter);
 };
@@ -51,7 +51,7 @@ struct AccessCmd {
 };
 
 struct VariantAccessCmd {
-  constexpr static cmd_index_t index = 38;
+  constexpr static cmd_index_t index = 38 * 256;
 
   // TODO you store a bool for val vs type and a bool for addr.is_reg(). These
   // should be compresseed.

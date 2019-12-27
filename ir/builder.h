@@ -433,8 +433,8 @@ struct Builder {
 #if defined(ICARUS_DEBUG)
   void DebugIr() {
     auto inst = std::make_unique<DebugIrInstruction>();
-    CurrentBlock()->instructions_.push_back(std::move(inst));
     inst->Serialize(&CurrentBlock()->cmd_buffer_);
+    CurrentBlock()->instructions_.push_back(std::move(inst));
   }
 #endif  // ICARUS_DEBUG
 
@@ -602,6 +602,7 @@ Reg MakeReg(T t) {
     auto inst = std::make_unique<RegisterInstruction<typename T::type>>(t);
     auto result = inst->result = GetBuilder().CurrentGroup()->Reserve(nullptr);
     inst->Serialize(&GetBuilder().CurrentBlock()->cmd_buffer_);
+    GetBuilder().CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   } else {
     return MakeReg(RegOr<T>{t});
@@ -614,6 +615,7 @@ void SetRet(uint16_t n, T val) {
     auto inst =
         std::make_unique<SetReturnInstruction<typename T::type>>(n, val);
     inst->Serialize(&GetBuilder().CurrentBlock()->cmd_buffer_);
+    GetBuilder().CurrentBlock()->instructions_.push_back(std::move(inst));
   } else if constexpr (base::IsTaggedV<T>) {
     static_assert(std::is_same_v<typename T::base_type, Reg>);
     SetRet(n, RegOr<typename T::tag_type>(val));
@@ -626,6 +628,7 @@ inline base::Tagged<Addr, Reg> GetRet(uint16_t n, type::Type const* t) {
   auto inst = std::make_unique<GetReturnInstruction>(n);
   auto result = inst->result = GetBuilder().CurrentGroup()->Reserve(nullptr);
   inst->Serialize(&GetBuilder().CurrentBlock()->cmd_buffer_);
+  GetBuilder().CurrentBlock()->instructions_.push_back(std::move(inst));
   return result;
 }
 
