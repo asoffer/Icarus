@@ -119,6 +119,15 @@ cc_lib(
 )
 
 cc_library(
+    name = "new_inliner",
+    hdrs = ["new_inliner.h"],
+    deps = [
+        ":reg",
+        ":reg_or",
+    ]
+)
+
+cc_library(
     name = "instructions",
     hdrs = ["instructions.h"],
     deps = [
@@ -126,8 +135,8 @@ cc_library(
         ":reg_or",
         ":scope_def",
         ":struct_field",
+        ":new_inliner",
         "//ast/scope",
-
         "//ir/cmd:basic",
         "//ir/cmd:call",
         "//ir/cmd:cast",
@@ -221,6 +230,7 @@ cc_lib(
         ":compiled_fn",
         ":jump",
         ":local_block_interpretation",
+        ":new_inliner",
         ":reg",
         ":results",
         ":stack_frame_allocations",

@@ -22,6 +22,7 @@
 #include "ir/cmd/store.h"
 #include "ir/cmd/types.h"
 #include "ir/cmd/util.h"
+#include "ir/new_inliner.h"
 #include "ir/out_params.h"
 #include "ir/reg_or.h"
 #include "ir/struct_field.h"
@@ -57,7 +58,8 @@ struct Instruction {
   virtual ~Instruction() {}
   virtual std::string to_string() const { return "[[unknown]]"; }
 
-  virtual void Serialize(base::untyped_buffer* buf) const {}
+  virtual void Serialize(base::untyped_buffer* buf) const = 0;
+  virtual void Inline(Inliner const& inliner) = 0;
 };
 
 template <typename NumType>
@@ -80,6 +82,11 @@ struct UnaryInstruction : Instruction {
     operand.apply([&](auto v) { buf->append(v); });
     buf->append(result);
   };
+
+  void Inline(Inliner const& inliner) override {
+    inliner.Inline(operand);
+    inliner.Inline(result);
+  }
 
   RegOr<NumType> operand;
   Reg result;
@@ -111,6 +118,12 @@ struct BinaryInstruction : Instruction {
     buf->append(result);
   }
 
+  void Inline(Inliner const& inliner) override {
+    inliner.Inline(lhs);
+    inliner.Inline(rhs);
+    inliner.Inline(result);
+   }
+
   RegOr<NumType> lhs;
   RegOr<NumType> rhs;
   Reg result;
@@ -136,6 +149,11 @@ struct VariadicInstruction : Instruction {
 
     buf->append(result);
   };
+
+  void Inline(Inliner const& inliner) override {
+    inliner.Inline(values);
+    inliner.Inline(result);
+  }
 
   std::vector<RegOr<T>> values;
   Reg result;
@@ -494,6 +512,7 @@ struct LeInstruction : BinaryInstruction<NumType> {
   }
 };
 
+// TODO is this a UnaryInstruction<Addr>?
 template <typename T>
 struct LoadInstruction : Instruction {
   static constexpr cmd_index_t kIndex = LoadCmd::index | PrimitiveIndex<T>();
@@ -513,6 +532,11 @@ struct LoadInstruction : Instruction {
     buf->append(LoadCmd::MakeControlBits<T>(addr.is_reg()));
     addr.apply([&](auto v) { buf->append(v); });
     buf->append(result);
+  }
+
+  void Inline(Inliner const& inliner) override {
+    inliner.Inline(addr);
+    inliner.Inline(result);
   }
 
   RegOr<Addr> addr;
@@ -541,6 +565,11 @@ struct StoreInstruction : Instruction {
     location.apply([&](auto v) { buf->append(v); });
   }
 
+  void Inline(Inliner const& inliner) override {
+    inliner.Inline(value);
+    inliner.Inline(location);
+  }
+
   RegOr<T> value;
   RegOr<Addr> location;
 };
@@ -566,6 +595,8 @@ struct PrintInstruction : Instruction {
     buf->append(PrintCmd::MakeControlBits<T>(value.is_reg()));
     value.apply([&](auto v) { buf->append(v); });
   }
+
+  void Inline(Inliner const& inliner) override { inliner.Inline(value); }
 
   RegOr<T> value;
 };
@@ -595,6 +626,8 @@ struct PrintEnumInstruction : Instruction {
     buf->append(enum_type);
   }
 
+  void Inline(Inliner const& inliner) override { inliner.Inline(value); }
+
   RegOr<EnumVal> value;
   type::Enum const* enum_type;
 };
@@ -621,6 +654,8 @@ struct PrintFlagsInstruction : Instruction {
     buf->append(flags_type);
   }
 
+  void Inline(Inliner const& inliner) override { inliner.Inline(value); }
+
   RegOr<FlagsVal> value;
   type::Flags const* flags_type;
 };
@@ -637,6 +672,8 @@ struct DebugIrInstruction : Instruction {
   void Serialize(base::untyped_buffer* buf) const override {
     buf->append(DebugIrCmd::index);
   }
+
+  void Inline(Inliner const& inliner) override {}
 };
 
 struct XorFlagsInstruction : BinaryInstruction<FlagsVal> {
@@ -789,6 +826,8 @@ struct EnumerationInstruction : Instruction {
                         absl::StrJoin(names_, ", "), ")");
   }
 
+  void Inline(Inliner const& inliner) override { inliner.Inline(result); }
+
   Kind kind_;
   module::BasicModule* mod_;
   std::vector<std::string_view> names_;
@@ -811,6 +850,8 @@ struct OpaqueTypeInstruction : Instruction {
     using base::stringify;
     return absl::StrCat(stringify(result), " = opaque ", stringify(mod));
   }
+
+  void Inline(Inliner const& inliner) override { inliner.Inline(result); }
 
   module::BasicModule const* mod;
   Reg result;
@@ -863,6 +904,12 @@ struct ArrowInstruction : Instruction {
     buf->append(result);
   }
 
+  void Inline(Inliner const& inliner) override {
+    inliner.Inline(lhs);
+    inliner.Inline(rhs);
+    inliner.Inline(result);
+  }
+
   std::vector<RegOr<type::Type const*>> lhs, rhs;
   Reg result;
 };
@@ -901,6 +948,11 @@ struct PhiInstruction : Instruction {
     });
 
     buf->append(result);
+  }
+
+  void Inline(Inliner const& inliner) override {
+    inliner.Inline(values); 
+    inliner.Inline(result); 
   }
 
   std::vector<BasicBlock const*> blocks;
@@ -948,8 +1000,12 @@ struct StructManipulationInstruction : Instruction {
     if (kind == Kind::Copy or kind == Kind::Move) {
       buf->append(to.is_reg());
       to.apply([&](auto v) { buf->append(v); });
-    } else {
     }
+  }
+
+  void Inline(Inliner const& inliner) override {
+    inliner.Inline(r);
+    if (kind == Kind::Copy or kind == Kind::Move) { inliner.Inline(to); }
   }
 
   Kind kind;
@@ -1011,6 +1067,11 @@ struct CallInstruction : Instruction {
     for (Reg r : outs.regs_) { buf->append(r); }
   }
 
+  void Inline(Inliner const& inliner) override {
+    inliner.Inline(fn);
+    NOT_YET(); // Because we need to do this for args and out params too, it's tricky.
+  }
+
   type::Function const* fn_type;
   RegOr<AnyFunc> fn;
   std::vector<Results> args;
@@ -1033,6 +1094,8 @@ struct LoadSymbolInstruction : Instruction {
     buf->append(type);
     buf->append(result);
   }
+  
+  void Inline(Inliner const& inliner) override { inliner.Inline(result); }
 
   std::string_view name;
   type::Type const* type;
@@ -1065,6 +1128,12 @@ struct ArrayInstruction : Instruction {
     length.apply([&](auto v) { buf->append(v); });
     data_type.apply([&](auto v) { buf->append(v); });
     buf->append(result);
+  }
+
+  void Inline(Inliner const& inliner) override {
+    inliner.Inline(length);
+    inliner.Inline(data_type);
+    inliner.Inline(result);
   }
 
   RegOr<length_t> length;
@@ -1109,6 +1178,10 @@ struct StructInstruction : Instruction {
     buf->append(result);
   }
 
+  void Inline(Inliner const& inliner) override {
+    for (auto& field : fields) { inliner.Inline(field.type()); }
+  }
+
   ast::Scope const* scope;
   std::vector<StructField> fields;
   Reg result;
@@ -1136,6 +1209,8 @@ struct TypeInfoInstruction : Instruction {
     type.apply([&](auto v) { buf->append(v); });
     buf->append(result);
   }
+
+  void Inline(Inliner const& inliner) override { inliner.Inline(type); }
 
   Kind kind;
   RegOr<type::Type const*> type;
@@ -1170,6 +1245,12 @@ struct MakeBlockInstruction : Instruction {
       x.apply([&](auto v) { buf->append(v); });
     });
     buf->append(result);
+  }
+
+  void Inline(Inliner const& inliner) override {
+    inliner.Inline(befores);
+    inliner.Inline(afters);
+    inliner.Inline(result);
   }
 
   BlockDef* block_def;
@@ -1217,6 +1298,12 @@ struct MakeScopeInstruction : Instruction {
     buf->append(result);
   }
 
+  void Inline(Inliner const& inliner) override {
+    inliner.Inline(inits);
+    inliner.Inline(dones);
+    inliner.Inline(result);
+  }
+
   ScopeDef* scope_def;
   std::vector<RegOr<Jump const*>> inits;
   std::vector<RegOr<AnyFunc>> dones;
@@ -1256,6 +1343,12 @@ struct StructIndexInstruction : Instruction {
     addr.apply([&](auto v) { buf->append(v); });
     index.apply([&](auto v) { buf->append(v); });
     buf->append(result);
+  }
+
+  void Inline(Inliner const& inliner) override {
+    inliner.Inline(addr);
+    inliner.Inline(index);
+    inliner.Inline(result);
   }
 
   RegOr<Addr> addr;
@@ -1298,6 +1391,12 @@ struct TupleIndexInstruction : Instruction {
     buf->append(result);
   }
 
+  void Inline(Inliner const& inliner) override {
+    inliner.Inline(addr);
+    inliner.Inline(index);
+    inliner.Inline(result);
+  }
+
   RegOr<Addr> addr;
   RegOr<int64_t> index;
   type::Tuple const* tuple;
@@ -1338,6 +1437,12 @@ struct PtrIncrInstruction : Instruction {
     buf->append(result);
   }
 
+  void Inline(Inliner const& inliner) override {
+    inliner.Inline(addr);
+    inliner.Inline(index);
+    inliner.Inline(result);
+  }
+
   RegOr<Addr> addr;
   RegOr<int64_t> index;
   type::Pointer const* ptr;
@@ -1362,6 +1467,11 @@ struct VariantAccessInstruction : Instruction {
     buf->append(var.is_reg());
     var.apply([&](auto v) { buf->append(v); });
     buf->append(result);
+  }
+
+  void Inline(Inliner const& inliner) override {
+    inliner.Inline(var);
+    inliner.Inline(result);
   }
 
   RegOr<Addr> var;
@@ -1389,6 +1499,11 @@ struct CastInstruction: Instruction {
     buf->append(value.is_reg());
     value.apply([&](auto v) { buf->append(v); });
     buf->append(result);
+  }
+
+  void Inline(Inliner const& inliner) override {
+    inliner.Inline(value);
+    inliner.Inline(result);
   }
 
   RegOr<FromType> value;
@@ -1426,6 +1541,8 @@ struct SetReturnInstruction : Instruction {
     value.apply([&](auto v) { buf->append(v); });
   }
 
+  void Inline(Inliner const& inliner) override { NOT_YET(); }
+
   uint16_t index;
   RegOr<T> value;
 };
@@ -1446,6 +1563,8 @@ struct GetReturnInstruction : Instruction {
     buf->append(index);
     buf->append(result);
   }
+
+  void Inline(Inliner const& inliner) override { NOT_YET(); }
 
   uint16_t index;
   Reg result;

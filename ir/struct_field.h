@@ -23,6 +23,7 @@ struct StructField {
                                  RegOr<type::Type const*> type)
       : name_(name), type_(type) {}
 
+  RegOr<type::Type const*>& type() { return type_; }
   RegOr<type::Type const*> type() const { return type_; }
   std::string_view name() const { return name_; }
 
