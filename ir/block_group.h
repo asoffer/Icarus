@@ -48,6 +48,10 @@ struct BlockGroup {
     return params_;
   }
 
+  void Serialize() {
+    for (auto &block : blocks_) { block->Serialize(); }
+  }
+
   StackFrameAllocations const &allocs() { return allocs_; }
 
   Reg Reserve(type::Type const *t);

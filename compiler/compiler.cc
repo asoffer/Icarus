@@ -208,6 +208,7 @@ ir::CompiledFn Compiler::MakeThunk(ast::Expression const *expr,
     }
     builder().ReturnJump();
   }
+  fn.Serialize();
 
   return fn;
 }

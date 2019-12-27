@@ -274,6 +274,12 @@ struct RegisterInstruction : UnaryInstruction<T> {
       : UnaryInstruction<T>(operand) {}
   ~RegisterInstruction() override {}
 
+  std::string to_string() const override {
+    using base::stringify;
+    return absl::StrCat(TypeToString<T>(), " ", stringify(this->result), " = ",
+                        stringify(this->operand));
+  }
+
   static T Apply(T val) { return val; }
 
   void Serialize(base::untyped_buffer* buf) const override {

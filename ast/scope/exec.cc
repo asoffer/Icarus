@@ -5,6 +5,7 @@
 namespace ast {
 
 ExecScope::ExecScope(Scope *parent) : Scope(parent) {
+  if (parent == nullptr) { return; }
   // If this scope is a FnScope it will be handled by the FnScope constructor.
   // This is not just a convencience, it's necessary for correctness because on
   // FnScope construction, the ExecScope constructor will be run before any

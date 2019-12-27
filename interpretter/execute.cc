@@ -1300,6 +1300,7 @@ void ExecutionContext::ExecuteBlock(absl::Span<ir::Addr const> ret_slots) {
       case ir::VariantAccessInstruction::kIndex:
         ExecuteAdHocInstruction<ir::VariantAccessInstruction>(&iter, this);
         break;
+        // TODO Cast instructions
       default: UNREACHABLE(static_cast<int>(cmd_index));
     }
   }

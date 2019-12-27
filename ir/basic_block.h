@@ -33,6 +33,10 @@ struct BasicBlock {
   base::untyped_buffer cmd_buffer_;
   size_t num_incoming() const { return incoming_.size(); }
 
+  void Serialize() {
+    for (auto const &inst : instructions_) { inst->Serialize(&cmd_buffer_); }
+  }
+
  private:
   void RemoveOutgoingJumps();
   void AddOutgoingJumps(JumpCmd const &jump);

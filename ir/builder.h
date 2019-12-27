@@ -71,7 +71,6 @@ struct Builder {
   RegOr<reduced_type_t<Lhs>> Add(Lhs const& lhs, Rhs const& rhs) {
     auto inst = std::make_unique<AddInstruction<reduced_type_t<Lhs>>>(lhs, rhs);
     auto result = inst->result = CurrentGroup()->Reserve(nullptr);
-    inst->Serialize(&CurrentBlock()->cmd_buffer_);
     CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
@@ -80,7 +79,6 @@ struct Builder {
   RegOr<reduced_type_t<Lhs>> Sub(Lhs const& lhs, Rhs const& rhs) {
     auto inst = std::make_unique<SubInstruction<reduced_type_t<Lhs>>>(lhs, rhs);
     auto result = inst->result = CurrentGroup()->Reserve(nullptr);
-    inst->Serialize(&CurrentBlock()->cmd_buffer_);
     CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
@@ -89,7 +87,6 @@ struct Builder {
   RegOr<reduced_type_t<Lhs>> Mul(Lhs const& lhs, Rhs const& rhs) {
     auto inst = std::make_unique<MulInstruction<reduced_type_t<Lhs>>>(lhs, rhs);
     auto result = inst->result = CurrentGroup()->Reserve(nullptr);
-    inst->Serialize(&CurrentBlock()->cmd_buffer_);
     CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
@@ -98,7 +95,6 @@ struct Builder {
   RegOr<reduced_type_t<Lhs>> Div(Lhs const& lhs, Rhs const& rhs) {
     auto inst = std::make_unique<DivInstruction<reduced_type_t<Lhs>>>(lhs, rhs);
     auto result = inst->result = CurrentGroup()->Reserve(nullptr);
-    inst->Serialize(&CurrentBlock()->cmd_buffer_);
     CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
@@ -107,7 +103,6 @@ struct Builder {
   RegOr<reduced_type_t<Lhs>> Mod(Lhs const& lhs, Rhs const& rhs) {
     auto inst = std::make_unique<ModInstruction<reduced_type_t<Lhs>>>(lhs, rhs);
     auto result = inst->result = CurrentGroup()->Reserve(nullptr);
-    inst->Serialize(&CurrentBlock()->cmd_buffer_);
     CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
@@ -123,7 +118,6 @@ struct Builder {
       auto inst =
           std::make_unique<LtInstruction<reduced_type_t<Lhs>>>(lhs, rhs);
       auto result = inst->result = CurrentGroup()->Reserve(nullptr);
-      inst->Serialize(&CurrentBlock()->cmd_buffer_);
       CurrentBlock()->instructions_.push_back(std::move(inst));
       return result;
     } else {
@@ -146,7 +140,6 @@ struct Builder {
 
       auto inst   = std::make_unique<LeInstruction<type>>(lhs, rhs);
       auto result = inst->result = CurrentGroup()->Reserve(nullptr);
-      inst->Serialize(&CurrentBlock()->cmd_buffer_);
       CurrentBlock()->instructions_.push_back(std::move(inst));
       return result;
     } else {
@@ -160,36 +153,39 @@ struct Builder {
   }
 
   // Flags operators
-  RegOr<FlagsVal> XorFlags(RegOr<FlagsVal> const& lhs, RegOr<FlagsVal> const& rhs) {
+  RegOr<FlagsVal> XorFlags(RegOr<FlagsVal> const& lhs,
+                           RegOr<FlagsVal> const& rhs) {
     using InstrT = XorFlagsInstruction;
     if (not lhs.is_reg() and not rhs.is_reg()) {
       return InstrT::Apply(lhs.value(), rhs.value());
     }
-    auto inst    = std::make_unique<InstrT>(lhs, rhs);
+    auto inst   = std::make_unique<InstrT>(lhs, rhs);
     auto result = inst->result = CurrentGroup()->Reserve(nullptr);
-    inst->Serialize(&CurrentBlock()->cmd_buffer_);
+    CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
 
-  RegOr<FlagsVal> AndFlags(RegOr<FlagsVal> const& lhs, RegOr<FlagsVal> const& rhs) {
+  RegOr<FlagsVal> AndFlags(RegOr<FlagsVal> const& lhs,
+                           RegOr<FlagsVal> const& rhs) {
     using InstrT = AndFlagsInstruction;
     if (not lhs.is_reg() and not rhs.is_reg()) {
       return InstrT::Apply(lhs.value(), rhs.value());
     }
-    auto inst    = std::make_unique<InstrT>(lhs, rhs);
+    auto inst   = std::make_unique<InstrT>(lhs, rhs);
     auto result = inst->result = CurrentGroup()->Reserve(nullptr);
-    inst->Serialize(&CurrentBlock()->cmd_buffer_);
+    CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
 
-  RegOr<FlagsVal> OrFlags(RegOr<FlagsVal> const& lhs, RegOr<FlagsVal> const& rhs) {
+  RegOr<FlagsVal> OrFlags(RegOr<FlagsVal> const& lhs,
+                          RegOr<FlagsVal> const& rhs) {
     using InstrT = OrFlagsInstruction;
     if (not lhs.is_reg() and not rhs.is_reg()) {
       return InstrT::Apply(lhs.value(), rhs.value());
     }
-    auto inst    = std::make_unique<InstrT>(lhs, rhs);
+    auto inst   = std::make_unique<InstrT>(lhs, rhs);
     auto result = inst->result = CurrentGroup()->Reserve(nullptr);
-    inst->Serialize(&CurrentBlock()->cmd_buffer_);
+    CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
 
@@ -205,7 +201,6 @@ struct Builder {
       }
       auto inst   = std::make_unique<EqInstruction<type>>(lhs, rhs);
       auto result = inst->result = CurrentGroup()->Reserve(nullptr);
-      inst->Serialize(&CurrentBlock()->cmd_buffer_);
       CurrentBlock()->instructions_.push_back(std::move(inst));
       return result;
     } else {
@@ -224,7 +219,6 @@ struct Builder {
       }
       auto inst   = std::make_unique<NeInstruction<type>>(lhs, rhs);
       auto result = inst->result = CurrentGroup()->Reserve(nullptr);
-      inst->Serialize(&CurrentBlock()->cmd_buffer_);
       CurrentBlock()->instructions_.push_back(std::move(inst));
       return result;
     } else {
@@ -238,7 +232,6 @@ struct Builder {
     if (not val.is_reg()) { return InstrT::Apply(val.value()); }
     auto inst   = std::make_unique<NegInstruction<reduced_type_t<T>>>(val);
     auto result = inst->result = CurrentGroup()->Reserve(nullptr);
-    inst->Serialize(&CurrentBlock()->cmd_buffer_);
     CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
@@ -249,7 +242,7 @@ struct Builder {
     if (not val.is_reg()) { return InstrT::Apply(val.value()); }
     auto inst   = std::make_unique<InstrT>(val);
     auto result = inst->result = CurrentGroup()->Reserve(nullptr);
-    inst->Serialize(&CurrentBlock()->cmd_buffer_);
+    CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
 
@@ -258,31 +251,29 @@ struct Builder {
     if (not val.is_reg()) { return InstrT::Apply(val.value()); }
     auto inst   = std::make_unique<InstrT>(val);
     auto result = inst->result = CurrentGroup()->Reserve(nullptr);
-    inst->Serialize(&CurrentBlock()->cmd_buffer_);
+    CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
 
   RegOr<bool> Not(RegOr<bool> const& val) {
     using InstrT = NotInstruction;
     if (not val.is_reg()) { return InstrT::Apply(val.value()); }
-    auto inst    = std::make_unique<InstrT>(val);
+    auto inst   = std::make_unique<InstrT>(val);
     auto result = inst->result = CurrentGroup()->Reserve(nullptr);
-    inst->Serialize(&CurrentBlock()->cmd_buffer_);
+    CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
 
   RegOr<type::Type const*> Var(std::vector<RegOr<type::Type const*>> types) {
     // TODO constant-folding
-    auto inst = std::make_unique<VariantInstruction>(std::move(types));
+    auto inst   = std::make_unique<VariantInstruction>(std::move(types));
     auto result = inst->result = CurrentGroup()->Reserve(nullptr);
-    inst->Serialize(&CurrentBlock()->cmd_buffer_);
     return result;
   }
   RegOr<type::Type const*> Tup(std::vector<RegOr<type::Type const*>> types) {
     // TODO constant-folding
-    auto inst = std::make_unique<TupleInstruction>(std::move(types));
+    auto inst   = std::make_unique<TupleInstruction>(std::move(types));
     auto result = inst->result = CurrentGroup()->Reserve(nullptr);
-    inst->Serialize(&CurrentBlock()->cmd_buffer_);
     return result;
   }
 
@@ -300,7 +291,6 @@ struct Builder {
     auto inst    = std::make_unique<PhiInstruction<T>>(std::move(blocks),
                                                     std::move(values));
     inst->result = r;
-    inst->Serialize(&CurrentBlock()->cmd_buffer_);
   }
 
   template <typename T>
@@ -310,7 +300,6 @@ struct Builder {
     auto inst   = std::make_unique<PhiInstruction<T>>(std::move(blocks),
                                                     std::move(values));
     auto result = inst->result = CurrentGroup()->Reserve(nullptr);
-    inst->Serialize(&CurrentBlock()->cmd_buffer_);
     return result;
   }
 
@@ -389,7 +378,6 @@ struct Builder {
     auto& buf = CurrentBlock()->cmd_buffer_;
     if constexpr (IsRegOr<T>::value) {
       auto inst = std::make_unique<PrintInstruction<typename T::type>>(r);
-      inst->Serialize(&CurrentBlock()->cmd_buffer_);
       CurrentBlock()->instructions_.push_back(std::move(inst));
     } else if constexpr (std::is_same_v<T, char const*>) {
       Print(RegOr<std::string_view>(r));
@@ -405,12 +393,10 @@ struct Builder {
     if constexpr (std::is_same_v<T, EnumVal>) {
       auto inst =
           std::make_unique<PrintEnumInstruction>(r, &t->as<type::Enum>());
-      inst->Serialize(&CurrentBlock()->cmd_buffer_);
       CurrentBlock()->instructions_.push_back(std::move(inst));
     } else {
       auto inst =
           std::make_unique<PrintFlagsInstruction>(r, &t->as<type::Flags>());
-      inst->Serialize(&CurrentBlock()->cmd_buffer_);
       CurrentBlock()->instructions_.push_back(std::move(inst));
     }
   }
@@ -433,7 +419,6 @@ struct Builder {
 #if defined(ICARUS_DEBUG)
   void DebugIr() {
     auto inst = std::make_unique<DebugIrInstruction>();
-    inst->Serialize(&CurrentBlock()->cmd_buffer_);
     CurrentBlock()->instructions_.push_back(std::move(inst));
   }
 #endif  // ICARUS_DEBUG
@@ -463,7 +448,6 @@ struct Builder {
     if (not rhs.is_reg()) { return rhs.value() ? lhs : Not(lhs); }
     auto inst   = std::make_unique<EqInstruction<bool>>(lhs, rhs);
     auto result = inst->result = CurrentGroup()->Reserve(nullptr);
-    inst->Serialize(&CurrentBlock()->cmd_buffer_);
     CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
@@ -473,7 +457,6 @@ struct Builder {
     if (not rhs.is_reg()) { return rhs.value() ? Not(lhs) : lhs; }
     auto inst   = std::make_unique<NeInstruction<bool>>(lhs, rhs);
     auto result = inst->result = CurrentGroup()->Reserve(nullptr);
-    inst->Serialize(&CurrentBlock()->cmd_buffer_);
     CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
@@ -525,7 +508,6 @@ RegOr<ToType> Cast(RegOr<FromType> r) {
   if (r.is_reg()) {
     auto inst   = std::make_unique<CastInstruction<ToType, FromType>>(r);
     auto result = inst->result = GetBuilder().CurrentGroup()->Reserve(nullptr);
-    inst->Serialize(&GetBuilder().CurrentBlock()->cmd_buffer_);
     GetBuilder().CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   } else {
@@ -574,10 +556,9 @@ base::Tagged<T, Reg> Load(RegOr<Addr> addr) {
     return cache_results.get<Reg>(0);
   }
 
-  auto inst = std::make_unique<LoadInstruction<T>>(addr);
+  auto inst   = std::make_unique<LoadInstruction<T>>(addr);
   auto result = inst->result = GetBuilder().CurrentGroup()->Reserve(nullptr);
   cache_results.append(result);
-  inst->Serialize(&blk.cmd_buffer_);
   blk.instructions_.push_back(std::move(inst));
   return result;
 }
@@ -599,9 +580,8 @@ template <typename T>
 Reg MakeReg(T t) {
   static_assert(not std::is_same_v<T, Reg>);
   if constexpr (IsRegOr<T>::value) {
-    auto inst = std::make_unique<RegisterInstruction<typename T::type>>(t);
+    auto inst   = std::make_unique<RegisterInstruction<typename T::type>>(t);
     auto result = inst->result = GetBuilder().CurrentGroup()->Reserve(nullptr);
-    inst->Serialize(&GetBuilder().CurrentBlock()->cmd_buffer_);
     GetBuilder().CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   } else {
@@ -614,7 +594,6 @@ void SetRet(uint16_t n, T val) {
   if constexpr (IsRegOr<T>::value) {
     auto inst =
         std::make_unique<SetReturnInstruction<typename T::type>>(n, val);
-    inst->Serialize(&GetBuilder().CurrentBlock()->cmd_buffer_);
     GetBuilder().CurrentBlock()->instructions_.push_back(std::move(inst));
   } else if constexpr (base::IsTaggedV<T>) {
     static_assert(std::is_same_v<typename T::base_type, Reg>);
@@ -625,9 +604,8 @@ void SetRet(uint16_t n, T val) {
 }
 
 inline base::Tagged<Addr, Reg> GetRet(uint16_t n, type::Type const* t) {
-  auto inst = std::make_unique<GetReturnInstruction>(n);
+  auto inst   = std::make_unique<GetReturnInstruction>(n);
   auto result = inst->result = GetBuilder().CurrentGroup()->Reserve(nullptr);
-  inst->Serialize(&GetBuilder().CurrentBlock()->cmd_buffer_);
   GetBuilder().CurrentBlock()->instructions_.push_back(std::move(inst));
   return result;
 }
@@ -656,7 +634,6 @@ void Store(T r, RegOr<Addr> addr) {
     auto& blk = *GetBuilder().CurrentBlock();
     blk.storage_cache_.clear();
     auto inst = std::make_unique<StoreInstruction<typename T::type>>(r, addr);
-    inst->Serialize(&blk.cmd_buffer_);
     blk.instructions_.push_back(std::move(inst));
   } else {
     Store(RegOr<T>(r), addr);

@@ -152,8 +152,9 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node) {
       compiler->builder().ReturnJump();
     }
 
-    ir_func->work_item = nullptr;
   }
+  ir_func->Serialize();
+  ir_func->work_item = nullptr;
 }
 
 void CompleteBody(Compiler *compiler,
@@ -241,15 +242,15 @@ void CompleteBody(Compiler *compiler, ast::Jump const *node) {
 
     MakeAllStackAllocations(compiler, node->body_scope());
 
-
     EmitIrForStatements(compiler, node->stmts());
 
     // TODO it seems like this will be appended after ChooseJump, which means
     // it'll never be executed.
     MakeAllDestructions(compiler, node->body_scope());
 
-    jmp->work_item = nullptr;
   }
+  jmp->Serialize();
+  jmp->work_item = nullptr;
 }
 
 template <typename NodeType>
@@ -279,7 +280,7 @@ void ProcessExecutableBody(Compiler *c, base::PtrSpan<ast::Node const> nodes,
 
     c->builder().ReturnJump();
   }
-
+  main_fn->Serialize();
   c->CompleteDeferredBodies();
 }
 
@@ -1343,6 +1344,7 @@ ir::Results Compiler::Visit(ast::ReturnStmt const *node, EmitValueTag) {
   auto *scope = node->scope_;
   while (auto *exec = scope->if_as<ast::ExecScope>()) {
     MakeAllDestructions(this, exec);
+    if (not exec->parent) { break; }
     scope = exec->parent;
   }
 
