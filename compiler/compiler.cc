@@ -152,7 +152,7 @@ void Compiler::CompleteDeferredBodies() {
       DEBUG_LOG("CompleteDeferredBodies")(nh.key()->DebugString());
       f = std::move(nh.mapped());
     }
-    std::move(f)();
+    if (f) { std::move(f)(); }
   }
 }
 

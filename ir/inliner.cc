@@ -63,25 +63,29 @@ struct JumpInliner {
   void MergeAllocations(internal::BlockGroup *group,
                         StackFrameAllocations const &allocs) {}
 
+  absl::flat_hash_map<BasicBlock const *, BasicBlock *> block_updater_;
  private:
   friend struct ::ir::internal::BlockGroup;
   explicit JumpInliner(Builder &bldr, size_t reg_offset, size_t block_offset)
       : bldr_(bldr), reg_offset_(reg_offset), block_offset_(block_offset) {}
 
-  absl::flat_hash_map<BasicBlock const *, BasicBlock *> block_updater_;
   Builder &bldr_;
   size_t reg_offset_   = 0;
   size_t block_offset_ = 0;
-  BasicBlock *land_    = nullptr;
 };
 
 }  // namespace
 
 absl::flat_hash_map<std::string_view, BasicBlock *> Inline(
-    Builder &bldr, Jump const *to_be_inlined,
+    Builder &bldr, Jump *to_be_inlined,
     absl::Span<ir::Results const> arguments,
     LocalBlockInterpretation const &block_interp) {
   DEBUG_LOG("inliner")(*to_be_inlined);
+  if (to_be_inlined->work_item) {
+    auto f = std::move(*to_be_inlined->work_item);
+    if (f) { std::move(f)(); }
+  }
+
   absl::flat_hash_map<std::string_view, BasicBlock *> result;
 
   // Note: It is important that the inliner is created before making registers
@@ -117,11 +121,14 @@ absl::flat_hash_map<std::string_view, BasicBlock *> Inline(
     // TODO Handle types not covered by Apply (structs, etc).
   }
 
+  Inliner inl(reg_offset, inliner.block_updater_, nullptr);
   std::string_view chosen_block;
   for (auto *block_to_be_inlined : to_be_inlined->blocks()) {
     auto *block = inliner.CorrespondingBlock(block_to_be_inlined);
-    Inliner i(reg_offset);
-    for (auto &inst : block->instructions_) { inst->Inline(i); }
+    DEBUG_LOG("inliner-before")(*block);
+
+    for (auto &inst : block->instructions_) { inst->Inline(inl); }
+    // block->jump_.Inline(inl);
 
     block->jump_.Visit([&](auto &j) {
       using type = std::decay_t<decltype(j)>;
@@ -157,6 +164,7 @@ absl::flat_hash_map<std::string_view, BasicBlock *> Inline(
         static_assert(base::always_false<type>());
       }
     });
+
     DEBUG_LOG("inliner-after")(*block);
   }
 

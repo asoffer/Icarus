@@ -34,6 +34,10 @@ struct BasicBlock {
   size_t num_incoming() const { return incoming_.size(); }
 
   void Serialize() {
+    // TODO rather than clearing something that's been previously serialized, we
+    // should only serialize once. We shouldn't store the serialized version
+    // here at all.
+    cmd_buffer_.clear();
     for (auto const &inst : instructions_) { inst->Serialize(&cmd_buffer_); }
   }
 

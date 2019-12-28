@@ -213,6 +213,8 @@ struct untyped_buffer {
     return old_size;
   }
 
+  constexpr void clear() { size_ = 0; };
+
   template <typename T>
   size_t reserve() {
     static_assert(std::is_trivially_copyable_v<T>);

@@ -1781,9 +1781,9 @@ type::QualType Compiler::Visit(ast::ScopeLiteral const *node, VerifyTypeTag) {
   return verify_result;
 }
 
-static absl::flat_hash_map<ir::Jump const *, ir::ScopeDef const *>
-MakeJumpInits(Compiler *c, ast::OverloadSet const &os) {
-  absl::flat_hash_map<ir::Jump const *, ir::ScopeDef const *> inits;
+static absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> MakeJumpInits(
+    Compiler *c, ast::OverloadSet const &os) {
+  absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> inits;
   DEBUG_LOG("ScopeNode")("Overload set for inits has size ", os.members().size());
   for (ast::Expression const *member : os.members()) {
     DEBUG_LOG("ScopeNode")(member->DebugString());

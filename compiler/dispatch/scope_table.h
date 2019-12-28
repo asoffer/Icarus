@@ -21,7 +21,7 @@ struct Compiler;  // TODO move into it's own header.
 namespace internal {
 
 struct OneTable {
-  absl::flat_hash_map<ir::Jump const *,
+  absl::flat_hash_map<ir::Jump *,
                       core::FnParams<type::Typed<ast::Declaration const *>>>
       inits;
   absl::flat_hash_map<ast::BlockNode const *, JumpDispatchTable> blocks;
@@ -32,7 +32,7 @@ struct OneTable {
 struct ScopeDispatchTable {
   static base::expected<ScopeDispatchTable> Verify(
       Compiler *compiler, ast::ScopeNode const *node,
-      absl::flat_hash_map<ir::Jump const *, ir::ScopeDef const *> inits,
+      absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> inits,
       core::FnArgs<type::QualType> const &args);
 
   ir::Results EmitCall(
@@ -41,7 +41,7 @@ struct ScopeDispatchTable {
 
  private:
   ast::ScopeNode const *scope_node_;
-  absl::flat_hash_map<ir::Jump const*, ir::ScopeDef const *> init_map_;
+  absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> init_map_;
   absl::flat_hash_map<ir::ScopeDef const *, internal::OneTable> tables_;
 };
 

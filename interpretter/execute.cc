@@ -420,9 +420,8 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
   } else if constexpr (std::is_same_v<Inst, ir::MakeScopeInstruction>) {
     ir::ScopeDef *scope_def = iter->read<ir::ScopeDef *>();
 
-    scope_def->inits_ = ir::internal::Deserialize<uint16_t, ir::Jump const *>(
-        iter,
-        [ctx](ir::Reg reg) { return ctx->resolve<ir::Jump const *>(reg); });
+    scope_def->inits_ = ir::internal::Deserialize<uint16_t, ir::Jump *>(
+        iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::Jump *>(reg); });
     scope_def->dones_ = ir::internal::Deserialize<uint16_t, ir::AnyFunc>(
         iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::AnyFunc>(reg); });
 
@@ -439,9 +438,8 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     ir::BlockDef *block_def = iter->read<ir::BlockDef *>();
     block_def->before_      = ir::internal::Deserialize<uint16_t, ir::AnyFunc>(
         iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::AnyFunc>(reg); });
-    block_def->after_ = ir::internal::Deserialize<uint16_t, ir::Jump const *>(
-        iter,
-        [ctx](ir::Reg reg) { return ctx->resolve<ir::Jump const *>(reg); });
+    block_def->after_ = ir::internal::Deserialize<uint16_t, ir::Jump *>(
+        iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::Jump *>(reg); });
     ctx->current_frame().regs_.set(iter->read<ir::Reg>(), block_def);
 
   } else if constexpr (std::is_same_v<Inst, ir::StructInstruction>) {

@@ -25,7 +25,7 @@ struct BlockDef {
   type::Jump const *type() const { return type_; }
 
   std::vector<AnyFunc> before_;
-  std::vector<Jump const *> after_;
+  std::vector<Jump *> after_;
 
  private:
   type::Jump const *type_ = nullptr;

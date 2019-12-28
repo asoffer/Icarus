@@ -121,10 +121,24 @@ cc_lib(
 cc_library(
     name = "new_inliner",
     hdrs = ["new_inliner.h"],
+    srcs = ["new_inliner.cc"],
     deps = [
         ":reg",
         ":reg_or",
+        "//base:debug",
+        "//ir/cmd:jump",
+        "@com_google_absl//absl/container:flat_hash_map",
     ]
+)
+
+cc_test(
+    name = "new_inliner_test",
+    srcs = ["new_inliner_test.cc"],
+    deps = [
+        ":new_inliner",
+        ":basic_block",
+        "//test",
+    ],
 )
 
 cc_library(

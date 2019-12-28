@@ -56,7 +56,7 @@ std::vector<core::FnArgs<type::QualType>> VerifyBlockNode(
 void EmitCallOneOverload(ir::ScopeDef const *scope_def,
                          ir::BasicBlock *starting_block,
                          ir::BasicBlock *landing_block, Compiler *compiler,
-                         ir::Jump const *jump,
+                         ir::Jump *jump,
                          core::FnArgs<type::Typed<ir::Results>> const &args,
                          ir::LocalBlockInterpretation const &block_interp) {
   auto arg_results = PrepareCallArguments(compiler, jump->params(), args);
@@ -120,9 +120,8 @@ ir::RegOr<bool> EmitRuntimeDispatchOneComparison(
 
 void EmitRuntimeDispatch(
     ir::Builder &bldr,
-    absl::flat_hash_map<ir::Jump const *, ir::ScopeDef const *> const &table,
-    absl::flat_hash_map<ir::Jump const *, ir::BasicBlock *> const
-        &callee_to_block,
+    absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> const &table,
+    absl::flat_hash_map<ir::Jump *, ir::BasicBlock *> const &callee_to_block,
     core::FnArgs<type::Typed<ir::Results>> const &args) {
   // TODO This is a simple linear search through the table which is certainly a
   // bad idea. We can optimize it later. Likely the right way to do this is to
@@ -152,10 +151,10 @@ void EmitRuntimeDispatch(
 
 base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
     Compiler *compiler, ast::ScopeNode const *node,
-    absl::flat_hash_map<ir::Jump const *, ir::ScopeDef const *> inits,
+    absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> inits,
     core::FnArgs<type::QualType> const &args) {
   absl::flat_hash_map<ir::ScopeDef const *,
-                      absl::flat_hash_map<ir::Jump const *, FailedMatch>>
+                      absl::flat_hash_map<ir::Jump *, FailedMatch>>
       failures;
   ScopeDispatchTable table;
   table.scope_node_ = node;
@@ -170,8 +169,9 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
   }
 
   if (not ParamsCoverArgs(args, table.init_map_,
-                          [](ir::Jump const *jump, auto const &)
-                              -> decltype(auto) { return jump->params(); })) {
+                          [](ir::Jump *jump, auto const &) -> decltype(auto) {
+                            return jump->params();
+                          })) {
     NOT_YET("log an error");
   }
 

@@ -16,11 +16,11 @@ struct Compiler;
 struct JumpDispatchTable {
   static base::expected<JumpDispatchTable> Verify(
       Compiler *compiler, ast::ScopeNode const *node,
-      absl::Span<ir::Jump const *const> jumps,
+      absl::Span<ir::Jump *const> jumps,
       core::FnArgs<type::QualType> const &args);
 
  private:
-  absl::flat_hash_map<ir::Jump const *, internal::ExprData> table_;
+  absl::flat_hash_map<ir::Jump *, internal::ExprData> table_;
 };
 
 }  // namespace compiler

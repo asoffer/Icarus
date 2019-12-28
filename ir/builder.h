@@ -414,8 +414,8 @@ struct Builder {
   base::Tagged<Addr, Reg> TmpAlloca(type::Type const* t);
 
   Reg MakeBlock(ir::BlockDef* block_def, std::vector<RegOr<AnyFunc>> befores,
-                std::vector<RegOr<Jump const*>> afters);
-  Reg MakeScope(ir::ScopeDef* scope_def, std::vector<RegOr<Jump const*>> inits,
+                std::vector<RegOr<Jump*>> afters);
+  Reg MakeScope(ir::ScopeDef* scope_def, std::vector<RegOr<Jump*>> inits,
                 std::vector<RegOr<AnyFunc>> dones,
                 absl::flat_hash_map<std::string_view, BlockDef*> blocks);
 

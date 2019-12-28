@@ -1238,7 +1238,7 @@ struct MakeBlockInstruction : base::Clone<MakeBlockInstruction, Instruction> {
   static constexpr cmd_index_t kIndex = BlockCmd::index;
 
   MakeBlockInstruction(BlockDef* block_def, std::vector<RegOr<AnyFunc>> befores,
-                       std::vector<RegOr<Jump const*>> afters)
+                       std::vector<RegOr<Jump*>> afters)
       : block_def(block_def),
         befores(std::move(befores)),
         afters(std::move(afters)) {}
@@ -1255,9 +1255,9 @@ struct MakeBlockInstruction : base::Clone<MakeBlockInstruction, Instruction> {
     absl::c_for_each(befores, [&](RegOr<AnyFunc> x) {
       x.apply([&](auto v) { buf->append(v); });
     });
-    internal::WriteBits<uint16_t, RegOr<Jump const*>>(
-        buf, afters, [](RegOr<Jump const*> const& r) { return r.is_reg(); });
-    absl::c_for_each(afters, [&](RegOr<Jump const*> x) {
+    internal::WriteBits<uint16_t, RegOr<Jump*>>(
+        buf, afters, [](RegOr<Jump*> const& r) { return r.is_reg(); });
+    absl::c_for_each(afters, [&](RegOr<Jump*> x) {
       x.apply([&](auto v) { buf->append(v); });
     });
     buf->append(result);
@@ -1271,15 +1271,14 @@ struct MakeBlockInstruction : base::Clone<MakeBlockInstruction, Instruction> {
 
   BlockDef* block_def;
   std::vector<RegOr<AnyFunc>> befores;
-  std::vector<RegOr<Jump const*>> afters;
+  std::vector<RegOr<Jump*>> afters;
   Reg result;
 };
 
 struct MakeScopeInstruction : base::Clone<MakeScopeInstruction, Instruction> {
   static constexpr cmd_index_t kIndex = ScopeCmd::index;
 
-  MakeScopeInstruction(ScopeDef* scope_def,
-                       std::vector<RegOr<Jump const*>> inits,
+  MakeScopeInstruction(ScopeDef* scope_def, std::vector<RegOr<Jump*>> inits,
                        std::vector<RegOr<AnyFunc>> dones,
                        absl::flat_hash_map<std::string_view, BlockDef*> blocks)
       : scope_def(scope_def),
@@ -1295,9 +1294,9 @@ struct MakeScopeInstruction : base::Clone<MakeScopeInstruction, Instruction> {
     buf->append(kIndex);
     buf->append(scope_def);
 
-    internal::WriteBits<uint16_t, RegOr<Jump const*>>(
-        buf, inits, [](RegOr<Jump const*> const& r) { return r.is_reg(); });
-    absl::c_for_each(inits, [&](RegOr<Jump const*> x) {
+    internal::WriteBits<uint16_t, RegOr<Jump*>>(
+        buf, inits, [](RegOr<Jump*> const& r) { return r.is_reg(); });
+    absl::c_for_each(inits, [&](RegOr<Jump*> x) {
       x.apply([&](auto v) { buf->append(v); });
     });
     internal::WriteBits<uint16_t, RegOr<AnyFunc>>(
@@ -1321,7 +1320,7 @@ struct MakeScopeInstruction : base::Clone<MakeScopeInstruction, Instruction> {
   }
 
   ScopeDef* scope_def;
-  std::vector<RegOr<Jump const*>> inits;
+  std::vector<RegOr<Jump*>> inits;
   std::vector<RegOr<AnyFunc>> dones;
   absl::flat_hash_map<std::string_view, BlockDef*> blocks;
   Reg result;

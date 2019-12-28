@@ -109,5 +109,14 @@ TEST_CASE("const_iterator") {
   CHECK_FALSE(iter.read<bool>());
 }
 
+TEST_CASE("clear") {
+  untyped_buffer buf;
+  buf.append(123);
+  buf.append(true);
+  CHECK(buf.size() > 0);
+  buf.clear();
+  CHECK(buf.size() == 0);
+}
+
 }  // namespace
 }  // namespace base

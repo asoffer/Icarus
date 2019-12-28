@@ -27,7 +27,7 @@ struct ScopeDef {
   }
 
   module::BasicModule const *mod_ = nullptr;
-  std::vector<Jump const *> inits_;
+  std::vector<Jump *> inits_;
   std::vector<AnyFunc> dones_;
   absl::flat_hash_map<std::string_view, BlockDef *> blocks_;
   base::move_func<void()> *work_item = nullptr;

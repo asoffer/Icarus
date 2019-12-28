@@ -53,7 +53,7 @@ namespace {
 void MakeAllStackAllocations(Compiler *compiler, ast::FnScope const *fn_scope) {
   for (auto *scope : fn_scope->descendants()) {
     if (scope != fn_scope and scope->is<ast::FnScope>()) { continue; }
-    for (const auto & [ key, val ] : scope->decls_) {
+    for (const auto &[key, val] : scope->decls_) {
       DEBUG_LOG("MakeAllStackAllocations")(key);
       for (auto *decl : val) {
         if (decl->flags() &
@@ -72,7 +72,7 @@ void MakeAllDestructions(Compiler *compiler, ast::ExecScope const *exec_scope) {
   // TODO store these in the appropriate order so we don't have to compute this?
   // Will this be faster?
   std::vector<ast::Declaration *> ordered_decls;
-  for (auto & [ name, decls ] : exec_scope->decls_) {
+  for (auto &[name, decls] : exec_scope->decls_) {
     ordered_decls.insert(ordered_decls.end(), decls.begin(), decls.end());
   }
 
@@ -151,7 +151,6 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node) {
       // between here and where you call SetReturn
       compiler->builder().ReturnJump();
     }
-
   }
   ir_func->Serialize();
   ir_func->work_item = nullptr;
@@ -247,7 +246,6 @@ void CompleteBody(Compiler *compiler, ast::Jump const *node) {
     // TODO it seems like this will be appended after ChooseJump, which means
     // it'll never be executed.
     MakeAllDestructions(compiler, node->body_scope());
-
   }
   jmp->Serialize();
   jmp->work_item = nullptr;
@@ -447,7 +445,7 @@ ir::Results Compiler::Visit(ast::Binop const *node, EmitValueTag) {
     case frontend::Operator::Assign: {
       // TODO support splatting.
       auto lhs_lvals = Visit(node->lhs(), EmitRefTag{});
-      auto rhs_vals = Visit(node->rhs(), EmitValueTag{});
+      auto rhs_vals  = Visit(node->rhs(), EmitValueTag{});
       ASSERT(lhs_lvals.size() == rhs_vals.size());
       if (lhs_lvals.size() == 1) {
         Visit(lhs_type, lhs_lvals[0], type::Typed{rhs_vals, rhs_type},
@@ -603,7 +601,7 @@ ir::Results Compiler::Visit(ast::Binop const *node, EmitValueTag) {
 
 ir::Results Compiler::Visit(ast::BlockLiteral const *node, EmitValueTag) {
   std::vector<ir::RegOr<ir::AnyFunc>> befores;
-  std::vector<ir::RegOr<ir::Jump const *>> afters;
+  std::vector<ir::RegOr<ir::Jump *>> afters;
   befores.reserve(node->before().size());
   for (auto const &decl : node->before()) {
     ASSERT((decl->flags() & ast::Declaration::f_IsConst) != 0);
@@ -612,7 +610,7 @@ ir::Results Compiler::Visit(ast::BlockLiteral const *node, EmitValueTag) {
 
   for (auto const &decl : node->after()) {
     ASSERT((decl->flags() & ast::Declaration::f_IsConst) != 0);
-    afters.push_back(Visit(decl, EmitValueTag{}).get<ir::Jump const *>(0));
+    afters.push_back(Visit(decl, EmitValueTag{}).get<ir::Jump *>(0));
   }
 
   return ir::Results{builder().MakeBlock(data_.add_block(), std::move(befores),
@@ -1390,11 +1388,11 @@ ir::Results Compiler::Visit(ast::YieldStmt const *node, EmitValueTag) {
 
 ir::Results Compiler::Visit(ast::ScopeLiteral const *node, EmitValueTag) {
   absl::flat_hash_map<std::string_view, ir::BlockDef *> blocks;
-  std::vector<ir::RegOr<ir::Jump const *>> inits;
+  std::vector<ir::RegOr<ir::Jump *>> inits;
   std::vector<ir::RegOr<ir::AnyFunc>> dones;
   for (auto const *decl : node->decls()) {
     if (decl->id() == "init") {
-      inits.push_back(Visit(decl, EmitValueTag{}).get<ir::Jump const *>(0));
+      inits.push_back(Visit(decl, EmitValueTag{}).get<ir::Jump *>(0));
     } else if (decl->id() == "done") {
       dones.push_back(Visit(decl, EmitValueTag{}).get<ir::AnyFunc>(0));
     } else {

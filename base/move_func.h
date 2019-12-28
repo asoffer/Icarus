@@ -27,7 +27,7 @@ struct move_func<R(Args...)> {
     return std::exchange(fn_, nullptr)(std::forward<Args>(args)...);
   }
 
-  explicit operator bool() const noexcept { return fn_ == nullptr; }
+  explicit operator bool() const noexcept { return fn_ != nullptr; }
 
   friend bool operator==(move_func const& lhs, move_func const& rhs) {
     return lhs.fn_ == rhs.fn_;

@@ -178,7 +178,7 @@ Reg Builder::VariantValue(type::Variant const *v, RegOr<Addr> const &r) {
 
 Reg Builder::MakeBlock(ir::BlockDef *block_def,
                        std::vector<RegOr<AnyFunc>> befores,
-                       std::vector<RegOr<Jump const *>> afters) {
+                       std::vector<RegOr<Jump *>> afters) {
   auto inst = std::make_unique<MakeBlockInstruction>(
       block_def, std::move(befores), std::move(afters));
   auto result = inst->result = CurrentGroup()->Reserve();
@@ -187,7 +187,7 @@ Reg Builder::MakeBlock(ir::BlockDef *block_def,
 }
 
 Reg Builder::MakeScope(
-    ir::ScopeDef *scope_def, std::vector<RegOr<Jump const *>> inits,
+    ir::ScopeDef *scope_def, std::vector<RegOr<Jump *>> inits,
     std::vector<RegOr<AnyFunc>> dones,
     absl::flat_hash_map<std::string_view, BlockDef *> blocks) {
   auto inst = std::make_unique<MakeScopeInstruction>(

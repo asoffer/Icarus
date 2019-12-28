@@ -118,11 +118,18 @@ cc_lib(
     test_deps = [],
 )
 
-cc_lib(
+cc_library(
     name = "move_func",
-    deps = [],
-    header_only = True,
-    test_deps = [],
+    hdrs = ["move_func.h"],
+)
+
+cc_test(
+    name = "move_func_test",
+    srcs = ["move_func_test.cc"],
+    deps = [
+        ":move_func",
+        "//test",
+    ],
 )
 
 cc_lib(
@@ -190,14 +197,24 @@ cc_test(
     ],
 )
 
-cc_lib(
+cc_library(
     name = "untyped_buffer",
+    hdrs = ["untyped_buffer.h"],
+    srcs = ["untyped_buffer.cc"],
     deps = [
         ":debug",
         ":unaligned_ref",
         "@com_google_absl//absl/strings",
     ],
-    test_deps = [],
+)
+
+cc_test(
+    name = "untyped_buffer_test",
+    srcs = ["untyped_buffer_test.cc"],
+    deps = [
+        ":untyped_buffer",
+        "//test",
+    ],
 )
 
 cc_lib(
