@@ -8,6 +8,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "ast/scope/scope.h"
+#include "base/clone.h"
 #include "ir/cmd/basic.h"
 #include "ir/cmd/call.h"
 #include "ir/cmd/cast.h"
@@ -54,16 +55,16 @@ void WriteBits(base::untyped_buffer* buf, absl::Span<T const> span,
 
 }  // namespace internal
 
-struct Instruction {
+struct Instruction : base::Clone<Instruction, void> {
   virtual ~Instruction() {}
   virtual std::string to_string() const { return "[[unknown]]"; }
 
   virtual void Serialize(base::untyped_buffer* buf) const = 0;
-  virtual void Inline(Inliner const& inliner) = 0;
+  virtual void Inline(Inliner const& inliner)             = 0;
 };
 
 template <typename NumType>
-struct UnaryInstruction : Instruction {
+struct UnaryInstruction : base::Clone<UnaryInstruction<NumType>, Instruction> {
   using type = NumType;
 
   explicit UnaryInstruction(RegOr<NumType> const& operand) : operand(operand) {}
@@ -73,6 +74,10 @@ struct UnaryInstruction : Instruction {
     uint8_t is_reg : 1;
     uint8_t primitive_type : 6;
   };
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    UNREACHABLE("Should call a child class");
+  }
 
   template <cmd_index_t CmdIndex>
   void SerializeUnary(base::untyped_buffer* buf) const {
@@ -93,7 +98,8 @@ struct UnaryInstruction : Instruction {
 };
 
 template <typename NumType>
-struct BinaryInstruction : Instruction {
+struct BinaryInstruction
+    : base::Clone<BinaryInstruction<NumType>, Instruction> {
   using type = NumType;
 
   BinaryInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
@@ -105,6 +111,10 @@ struct BinaryInstruction : Instruction {
     uint8_t rhs_is_reg : 1;
     uint8_t primitive_type : 6;
   };
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    UNREACHABLE("Should call a child class");
+  }
 
   template <cmd_index_t CmdIndex>
   void SerializeBinary(base::untyped_buffer* buf) const {
@@ -122,7 +132,7 @@ struct BinaryInstruction : Instruction {
     inliner.Inline(lhs);
     inliner.Inline(rhs);
     inliner.Inline(result);
-   }
+  }
 
   RegOr<NumType> lhs;
   RegOr<NumType> rhs;
@@ -130,12 +140,16 @@ struct BinaryInstruction : Instruction {
 };
 
 template <typename T>
-struct VariadicInstruction : Instruction {
+struct VariadicInstruction : base::Clone<VariadicInstruction<T>, Instruction> {
   using type = T;
 
   VariadicInstruction(std::vector<RegOr<T>> values)
       : values(std::move(values)) {}
   ~VariadicInstruction() override {}
+
+  void Serialize(base::untyped_buffer* buf) const override {
+    UNREACHABLE("Should call a child class");
+  }
 
   template <typename Cmd>
   void SerializeVariadic(base::untyped_buffer* buf) const {
@@ -514,7 +528,7 @@ struct LeInstruction : BinaryInstruction<NumType> {
 
 // TODO is this a UnaryInstruction<Addr>?
 template <typename T>
-struct LoadInstruction : Instruction {
+struct LoadInstruction : base::Clone<LoadInstruction<T>, Instruction> {
   static constexpr cmd_index_t kIndex = LoadCmd::index | PrimitiveIndex<T>();
   using type                          = T;
 
@@ -544,7 +558,7 @@ struct LoadInstruction : Instruction {
 };
 
 template <typename T>
-struct StoreInstruction : Instruction {
+struct StoreInstruction : base::Clone<StoreInstruction<T>, Instruction> {
   static constexpr cmd_index_t kIndex = StoreCmd::index | PrimitiveIndex<T>();
   using type                          = T;
   StoreInstruction(RegOr<T> const& value, RegOr<Addr> const& location)
@@ -579,7 +593,7 @@ inline constexpr bool IsStoreInstruction = (Inst::kIndex &
                                             0xff00) == StoreCmd::index;
 
 template <typename T>
-struct PrintInstruction : Instruction {
+struct PrintInstruction : base::Clone<PrintInstruction<T>, Instruction> {
   static constexpr cmd_index_t kIndex = PrintCmd::index | PrimitiveIndex<T>();
   using type                          = T;
   PrintInstruction(RegOr<T> const& value) : value(value) {}
@@ -605,7 +619,7 @@ template <typename Inst>
 inline constexpr bool IsLoadInstruction = (Inst::kIndex &
                                            0xff00) == LoadCmd::index;
 
-struct PrintEnumInstruction : Instruction {
+struct PrintEnumInstruction : base::Clone<PrintEnumInstruction, Instruction> {
   static constexpr cmd_index_t kIndex =
       PrintCmd::index | PrimitiveIndex<EnumVal>();
 
@@ -632,7 +646,7 @@ struct PrintEnumInstruction : Instruction {
   type::Enum const* enum_type;
 };
 
-struct PrintFlagsInstruction : Instruction {
+struct PrintFlagsInstruction : base::Clone<PrintFlagsInstruction, Instruction> {
   static constexpr cmd_index_t kIndex =
       PrintCmd::index | PrimitiveIndex<FlagsVal>();
 
@@ -661,7 +675,7 @@ struct PrintFlagsInstruction : Instruction {
 };
 
 // TODO Morph this into interpretter break-point instructions.
-struct DebugIrInstruction : Instruction {
+struct DebugIrInstruction : base::Clone<DebugIrInstruction, Instruction> {
   static constexpr cmd_index_t kIndex = DebugIrCmd::index;
 
   DebugIrInstruction() = default;
@@ -788,7 +802,8 @@ struct VariantInstruction : VariadicInstruction<type::Type const*> {
   }
 };
 
-struct EnumerationInstruction : Instruction {
+struct EnumerationInstruction
+    : base::Clone<EnumerationInstruction, Instruction> {
   static constexpr cmd_index_t kIndex = EnumerationCmd::index;
 
   enum class Kind { Enum, Flags };
@@ -835,7 +850,7 @@ struct EnumerationInstruction : Instruction {
   Reg result;
 };
 
-struct OpaqueTypeInstruction : Instruction {
+struct OpaqueTypeInstruction : base::Clone<OpaqueTypeInstruction, Instruction> {
   constexpr static cmd_index_t kIndex = OpaqueTypeCmd::index;
   OpaqueTypeInstruction(module::BasicModule const* mod) : mod(mod) {}
   ~OpaqueTypeInstruction() override {}
@@ -857,7 +872,7 @@ struct OpaqueTypeInstruction : Instruction {
   Reg result;
 };
 
-struct ArrowInstruction : Instruction {
+struct ArrowInstruction : base::Clone<ArrowInstruction, Instruction> {
   constexpr static cmd_index_t kIndex = ArrowCmd::index;
 
   ArrowInstruction(std::vector<RegOr<type::Type const*>> lhs,
@@ -916,7 +931,7 @@ struct ArrowInstruction : Instruction {
 
 // TODO consider changing these to something like 'basic block arguments'
 template <typename T>
-struct PhiInstruction : Instruction {
+struct PhiInstruction : base::Clone<PhiInstruction<T>, Instruction> {
   constexpr static cmd_index_t kIndex = PhiCmd::index | PrimitiveIndex<T>();
   using type                          = T;
 
@@ -951,8 +966,8 @@ struct PhiInstruction : Instruction {
   }
 
   void Inline(Inliner const& inliner) override {
-    inliner.Inline(values); 
-    inliner.Inline(result); 
+    inliner.Inline(values);
+    inliner.Inline(result);
   }
 
   std::vector<BasicBlock const*> blocks;
@@ -966,7 +981,8 @@ inline constexpr bool IsPhiInstruction = (Inst::kIndex &
 
 // Oddly named to be sure, this instruction is used to do initializations,
 // copies, moves, or destructions of the given type.
-struct StructManipulationInstruction : Instruction {
+struct StructManipulationInstruction
+    : base::Clone<StructManipulationInstruction, Instruction> {
   constexpr static cmd_index_t kIndex = SemanticCmd::index;
 
   enum class Kind : uint8_t { Init, Destroy, Move, Copy };
@@ -1014,7 +1030,7 @@ struct StructManipulationInstruction : Instruction {
   RegOr<Addr> to;  // Only meaningful for copy and move
 };
 
-struct CallInstruction : Instruction {
+struct CallInstruction : base::Clone<CallInstruction, Instruction> {
   static constexpr cmd_index_t kIndex = CallCmd::index;
 
   CallInstruction(type::Function const* fn_type, RegOr<AnyFunc> const& fn,
@@ -1069,7 +1085,8 @@ struct CallInstruction : Instruction {
 
   void Inline(Inliner const& inliner) override {
     inliner.Inline(fn);
-    NOT_YET(); // Because we need to do this for args and out params too, it's tricky.
+    NOT_YET();  // Because we need to do this for args and out params too, it's
+                // tricky.
   }
 
   type::Function const* fn_type;
@@ -1078,7 +1095,7 @@ struct CallInstruction : Instruction {
   OutParams outs;
 };
 
-struct LoadSymbolInstruction : Instruction {
+struct LoadSymbolInstruction : base::Clone<LoadSymbolInstruction, Instruction> {
   static constexpr cmd_index_t kIndex = LoadSymbolCmd::index;
   LoadSymbolInstruction(std::string_view name, type::Type const* type)
       : name(name), type(type) {}
@@ -1094,7 +1111,7 @@ struct LoadSymbolInstruction : Instruction {
     buf->append(type);
     buf->append(result);
   }
-  
+
   void Inline(Inliner const& inliner) override { inliner.Inline(result); }
 
   std::string_view name;
@@ -1102,7 +1119,7 @@ struct LoadSymbolInstruction : Instruction {
   Reg result;
 };
 
-struct ArrayInstruction : Instruction {
+struct ArrayInstruction : base::Clone<ArrayInstruction, Instruction> {
   static constexpr cmd_index_t kIndex = ArrayCmd::index;
   using length_t                      = int64_t;
 
@@ -1141,7 +1158,7 @@ struct ArrayInstruction : Instruction {
   Reg result;
 };
 
-struct StructInstruction : Instruction {
+struct StructInstruction : base::Clone<StructInstruction, Instruction> {
   static constexpr cmd_index_t kIndex = StructCmd::index;
   StructInstruction(ast::Scope const* scope, std::vector<StructField> fields)
       : scope(scope), fields(std::move(fields)) {}
@@ -1187,7 +1204,7 @@ struct StructInstruction : Instruction {
   Reg result;
 };
 
-struct TypeInfoInstruction : Instruction {
+struct TypeInfoInstruction : base::Clone<TypeInfoInstruction, Instruction> {
   static constexpr cmd_index_t kIndex = TypeInfoCmd::index;
   enum class Kind : uint8_t { Alignment = 0, Bytes = 2 };
   TypeInfoInstruction(Kind kind, RegOr<type::Type const*> type)
@@ -1217,11 +1234,10 @@ struct TypeInfoInstruction : Instruction {
   Reg result;
 };
 
-struct MakeBlockInstruction : Instruction {
+struct MakeBlockInstruction : base::Clone<MakeBlockInstruction, Instruction> {
   static constexpr cmd_index_t kIndex = BlockCmd::index;
 
-  MakeBlockInstruction(BlockDef* block_def,
-                       std::vector<RegOr<AnyFunc>> befores,
+  MakeBlockInstruction(BlockDef* block_def, std::vector<RegOr<AnyFunc>> befores,
                        std::vector<RegOr<Jump const*>> afters)
       : block_def(block_def),
         befores(std::move(befores)),
@@ -1259,7 +1275,7 @@ struct MakeBlockInstruction : Instruction {
   Reg result;
 };
 
-struct MakeScopeInstruction : Instruction {
+struct MakeScopeInstruction : base::Clone<MakeScopeInstruction, Instruction> {
   static constexpr cmd_index_t kIndex = ScopeCmd::index;
 
   MakeScopeInstruction(ScopeDef* scope_def,
@@ -1311,7 +1327,8 @@ struct MakeScopeInstruction : Instruction {
   Reg result;
 };
 
-struct StructIndexInstruction : Instruction {
+struct StructIndexInstruction
+    : base::Clone<StructIndexInstruction, Instruction> {
   static constexpr cmd_index_t kIndex = 23 * 256;
   using type                          = type::Struct const*;
 
@@ -1357,7 +1374,7 @@ struct StructIndexInstruction : Instruction {
   Reg result;
 };
 
-struct TupleIndexInstruction : Instruction {
+struct TupleIndexInstruction : base::Clone<TupleIndexInstruction, Instruction> {
   static constexpr cmd_index_t kIndex = 24 * 256;
   using type                          = type::Tuple const*;
 
@@ -1403,7 +1420,7 @@ struct TupleIndexInstruction : Instruction {
   Reg result;
 };
 
-struct PtrIncrInstruction : Instruction {
+struct PtrIncrInstruction : base::Clone<PtrIncrInstruction, Instruction> {
   static constexpr cmd_index_t kIndex = 25 * 256;
   using type                          = type::Pointer const*;
 
@@ -1449,7 +1466,8 @@ struct PtrIncrInstruction : Instruction {
   Reg result;
 };
 
-struct VariantAccessInstruction : Instruction {
+struct VariantAccessInstruction
+    : base::Clone<VariantAccessInstruction, Instruction> {
   static constexpr cmd_index_t kIndex = VariantAccessCmd::index;
   VariantAccessInstruction(RegOr<Addr> const& var, bool get_value)
       : var(var), get_value(get_value) {}
@@ -1480,7 +1498,7 @@ struct VariantAccessInstruction : Instruction {
 };
 
 template <typename ToType, typename FromType>
-struct CastInstruction: Instruction {
+struct CastInstruction : Instruction {
   static constexpr cmd_index_t kIndex = CastCmd::index;
   using to_type                       = ToType;
   using from_type                     = FromType;
@@ -1514,7 +1532,8 @@ template <typename Inst>
 inline constexpr bool IsCastInstruction = (Inst::kIndex == CastCmd::index);
 
 template <typename T>
-struct SetReturnInstruction : Instruction {
+struct SetReturnInstruction
+    : base::Clone<SetReturnInstruction<T>, Instruction> {
   static constexpr cmd_index_t kIndex = ReturnCmd::index | PrimitiveIndex<T>();
   using type                          = T;
 
@@ -1547,7 +1566,7 @@ struct SetReturnInstruction : Instruction {
   RegOr<T> value;
 };
 
-struct GetReturnInstruction : Instruction {
+struct GetReturnInstruction : base::Clone<GetReturnInstruction, Instruction> {
   static constexpr cmd_index_t kIndex = ReturnCmd::index;
 
   explicit GetReturnInstruction(uint16_t index) : index(index) {}

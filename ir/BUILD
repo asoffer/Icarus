@@ -137,6 +137,7 @@ cc_library(
         ":struct_field",
         ":new_inliner",
         "//ast/scope",
+        "//base:clone",
         "//ir/cmd:basic",
         "//ir/cmd:call",
         "//ir/cmd:cast",
