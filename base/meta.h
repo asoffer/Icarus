@@ -28,6 +28,31 @@ struct identity {
 template <typename T>
 using identity_t = typename identity<T>::type;
 
+template <typename... Ts>
+using type_list = void(Ts...);
+
+namespace internal {
+
+template <typename T, typename U>
+struct type_list_pair_catter;
+template <typename... P1s, typename... P2s>
+struct type_list_pair_catter<type_list<P1s...>, type_list<P2s...>> {
+  using type = type_list<P1s..., P2s...>;
+};
+
+template <typename... Ts>
+struct type_list_catter {
+  using type = type_list<>;
+};
+template <typename T, typename... Ts>
+struct type_list_catter<T, Ts...>
+    : type_list_pair_catter<T, typename type_list_catter<Ts...>::type> {};
+
+}  // namespace internal
+
+template <typename... TLs>
+using type_list_cat = typename ::base::internal::type_list_catter<TLs...>::type;
+
 }  // namespace base
 
 #endif  // ICARUS_BASE_META_H
