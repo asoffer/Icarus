@@ -43,6 +43,8 @@ cc_lib(
         "//ast:expression",
         "//ast:overload_set",
         "//base:ptr_span",
+        "//compiler",
+        "//diagnostic/consumer:streaming",
         "//frontend/source:range",
         "//module:module",
     ],

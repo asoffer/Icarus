@@ -20,6 +20,14 @@ struct TestModule : compiler::CompiledModule {
   TestModule() : consumer(stderr), compiler(this, consumer) {}
   ~TestModule() { compiler.CompleteDeferredBodies(); }
 
+  template <typename NodeType>
+  NodeType const* Append(std::string code) {
+    auto node       = test::ParseAs<NodeType>(std::move(code));
+    auto const* ptr = node.get();
+    AppendNode(std::move(node));
+    return ptr;
+  }
+
   diagnostic::StreamingConsumer consumer;
   compiler::Compiler compiler;
 

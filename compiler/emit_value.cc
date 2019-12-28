@@ -447,11 +447,21 @@ ir::Results Compiler::Visit(ast::Binop const *node, EmitValueTag) {
     case frontend::Operator::Assign: {
       // TODO support splatting.
       auto lhs_lvals = Visit(node->lhs(), EmitRefTag{});
-      if (lhs_lvals.size() != 1) { NOT_YET(); }
-
       auto rhs_vals = Visit(node->rhs(), EmitValueTag{});
-      Visit(lhs_type, lhs_lvals[0], type::Typed{rhs_vals, rhs_type},
-            EmitMoveAssignTag{});
+      ASSERT(lhs_lvals.size() == rhs_vals.size());
+      if (lhs_lvals.size() == 1) {
+        Visit(lhs_type, lhs_lvals[0], type::Typed{rhs_vals, rhs_type},
+              EmitMoveAssignTag{});
+
+      } else {
+        auto const &rhs_tup_type = rhs_type->as<type::Tuple>();
+        auto const &lhs_tup_type = lhs_type->as<type::Tuple>();
+        for (size_t i = 0; i < lhs_lvals.size(); ++i) {
+          Visit(lhs_tup_type.entries_[i], lhs_lvals[i],
+                type::Typed{rhs_vals.GetResult(i), rhs_tup_type.entries_[i]},
+                EmitMoveAssignTag{});
+        }
+      }
 
       return ir::Results{};
     } break;
