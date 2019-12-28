@@ -70,7 +70,7 @@ struct Builder {
   template <typename Lhs, typename Rhs>
   RegOr<reduced_type_t<Lhs>> Add(Lhs const& lhs, Rhs const& rhs) {
     auto inst = std::make_unique<AddInstruction<reduced_type_t<Lhs>>>(lhs, rhs);
-    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    auto result = inst->result = CurrentGroup()->Reserve();
     CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
@@ -78,7 +78,7 @@ struct Builder {
   template <typename Lhs, typename Rhs>
   RegOr<reduced_type_t<Lhs>> Sub(Lhs const& lhs, Rhs const& rhs) {
     auto inst = std::make_unique<SubInstruction<reduced_type_t<Lhs>>>(lhs, rhs);
-    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    auto result = inst->result = CurrentGroup()->Reserve();
     CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
@@ -86,7 +86,7 @@ struct Builder {
   template <typename Lhs, typename Rhs>
   RegOr<reduced_type_t<Lhs>> Mul(Lhs const& lhs, Rhs const& rhs) {
     auto inst = std::make_unique<MulInstruction<reduced_type_t<Lhs>>>(lhs, rhs);
-    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    auto result = inst->result = CurrentGroup()->Reserve();
     CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
@@ -94,7 +94,7 @@ struct Builder {
   template <typename Lhs, typename Rhs>
   RegOr<reduced_type_t<Lhs>> Div(Lhs const& lhs, Rhs const& rhs) {
     auto inst = std::make_unique<DivInstruction<reduced_type_t<Lhs>>>(lhs, rhs);
-    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    auto result = inst->result = CurrentGroup()->Reserve();
     CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
@@ -102,7 +102,7 @@ struct Builder {
   template <typename Lhs, typename Rhs>
   RegOr<reduced_type_t<Lhs>> Mod(Lhs const& lhs, Rhs const& rhs) {
     auto inst = std::make_unique<ModInstruction<reduced_type_t<Lhs>>>(lhs, rhs);
-    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    auto result = inst->result = CurrentGroup()->Reserve();
     CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
@@ -117,7 +117,7 @@ struct Builder {
 
       auto inst =
           std::make_unique<LtInstruction<reduced_type_t<Lhs>>>(lhs, rhs);
-      auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+      auto result = inst->result = CurrentGroup()->Reserve();
       CurrentBlock()->instructions_.push_back(std::move(inst));
       return result;
     } else {
@@ -139,7 +139,7 @@ struct Builder {
       }
 
       auto inst   = std::make_unique<LeInstruction<type>>(lhs, rhs);
-      auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+      auto result = inst->result = CurrentGroup()->Reserve();
       CurrentBlock()->instructions_.push_back(std::move(inst));
       return result;
     } else {
@@ -160,7 +160,7 @@ struct Builder {
       return InstrT::Apply(lhs.value(), rhs.value());
     }
     auto inst   = std::make_unique<InstrT>(lhs, rhs);
-    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    auto result = inst->result = CurrentGroup()->Reserve();
     CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
@@ -172,7 +172,7 @@ struct Builder {
       return InstrT::Apply(lhs.value(), rhs.value());
     }
     auto inst   = std::make_unique<InstrT>(lhs, rhs);
-    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    auto result = inst->result = CurrentGroup()->Reserve();
     CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
@@ -184,7 +184,7 @@ struct Builder {
       return InstrT::Apply(lhs.value(), rhs.value());
     }
     auto inst   = std::make_unique<InstrT>(lhs, rhs);
-    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    auto result = inst->result = CurrentGroup()->Reserve();
     CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
@@ -200,7 +200,7 @@ struct Builder {
         return EqInstruction<type>::Apply(lhs.value(), rhs.value());
       }
       auto inst   = std::make_unique<EqInstruction<type>>(lhs, rhs);
-      auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+      auto result = inst->result = CurrentGroup()->Reserve();
       CurrentBlock()->instructions_.push_back(std::move(inst));
       return result;
     } else {
@@ -218,7 +218,7 @@ struct Builder {
         return NeInstruction<type>::Apply(lhs.value(), rhs.value());
       }
       auto inst   = std::make_unique<NeInstruction<type>>(lhs, rhs);
-      auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+      auto result = inst->result = CurrentGroup()->Reserve();
       CurrentBlock()->instructions_.push_back(std::move(inst));
       return result;
     } else {
@@ -231,7 +231,7 @@ struct Builder {
     using InstrT = NegInstruction<T>;
     if (not val.is_reg()) { return InstrT::Apply(val.value()); }
     auto inst   = std::make_unique<NegInstruction<reduced_type_t<T>>>(val);
-    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    auto result = inst->result = CurrentGroup()->Reserve();
     CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
@@ -241,7 +241,7 @@ struct Builder {
     using InstrT = BufPtrInstruction;
     if (not val.is_reg()) { return InstrT::Apply(val.value()); }
     auto inst   = std::make_unique<InstrT>(val);
-    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    auto result = inst->result = CurrentGroup()->Reserve();
     CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
@@ -250,7 +250,7 @@ struct Builder {
     using InstrT = PtrInstruction;
     if (not val.is_reg()) { return InstrT::Apply(val.value()); }
     auto inst   = std::make_unique<InstrT>(val);
-    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    auto result = inst->result = CurrentGroup()->Reserve();
     CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
@@ -259,7 +259,7 @@ struct Builder {
     using InstrT = NotInstruction;
     if (not val.is_reg()) { return InstrT::Apply(val.value()); }
     auto inst   = std::make_unique<InstrT>(val);
-    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    auto result = inst->result = CurrentGroup()->Reserve();
     CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
@@ -267,14 +267,14 @@ struct Builder {
   RegOr<type::Type const*> Var(std::vector<RegOr<type::Type const*>> types) {
     // TODO constant-folding
     auto inst   = std::make_unique<VariantInstruction>(std::move(types));
-    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    auto result = inst->result = CurrentGroup()->Reserve();
     CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
   RegOr<type::Type const*> Tup(std::vector<RegOr<type::Type const*>> types) {
     // TODO constant-folding
     auto inst   = std::make_unique<TupleInstruction>(std::move(types));
-    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    auto result = inst->result = CurrentGroup()->Reserve();
     CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
@@ -301,7 +301,7 @@ struct Builder {
     if (values.size() == 1u) { return values[0]; }
     auto inst   = std::make_unique<PhiInstruction<T>>(std::move(blocks),
                                                     std::move(values));
-    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    auto result = inst->result = CurrentGroup()->Reserve();
     CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
@@ -450,7 +450,7 @@ struct Builder {
     if (not lhs.is_reg()) { return lhs.value() ? rhs : Not(rhs); }
     if (not rhs.is_reg()) { return rhs.value() ? lhs : Not(lhs); }
     auto inst   = std::make_unique<EqInstruction<bool>>(lhs, rhs);
-    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    auto result = inst->result = CurrentGroup()->Reserve();
     CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
@@ -459,7 +459,7 @@ struct Builder {
     if (not lhs.is_reg()) { return lhs.value() ? Not(rhs) : rhs; }
     if (not rhs.is_reg()) { return rhs.value() ? Not(lhs) : lhs; }
     auto inst   = std::make_unique<NeInstruction<bool>>(lhs, rhs);
-    auto result = inst->result = CurrentGroup()->Reserve(nullptr);
+    auto result = inst->result = CurrentGroup()->Reserve();
     CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   }
@@ -510,7 +510,7 @@ template <typename ToType, typename FromType>
 RegOr<ToType> Cast(RegOr<FromType> r) {
   if (r.is_reg()) {
     auto inst   = std::make_unique<CastInstruction<ToType, FromType>>(r);
-    auto result = inst->result = GetBuilder().CurrentGroup()->Reserve(nullptr);
+    auto result = inst->result = GetBuilder().CurrentGroup()->Reserve();
     GetBuilder().CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   } else {
@@ -560,7 +560,7 @@ base::Tagged<T, Reg> Load(RegOr<Addr> addr) {
   }
 
   auto inst   = std::make_unique<LoadInstruction<T>>(addr);
-  auto result = inst->result = GetBuilder().CurrentGroup()->Reserve(nullptr);
+  auto result = inst->result = GetBuilder().CurrentGroup()->Reserve();
   cache_results.append(result);
   blk.instructions_.push_back(std::move(inst));
   return result;
@@ -584,7 +584,7 @@ Reg MakeReg(T t) {
   static_assert(not std::is_same_v<T, Reg>);
   if constexpr (IsRegOr<T>::value) {
     auto inst   = std::make_unique<RegisterInstruction<typename T::type>>(t);
-    auto result = inst->result = GetBuilder().CurrentGroup()->Reserve(nullptr);
+    auto result = inst->result = GetBuilder().CurrentGroup()->Reserve();
     GetBuilder().CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   } else {
@@ -608,7 +608,7 @@ void SetRet(uint16_t n, T val) {
 
 inline base::Tagged<Addr, Reg> GetRet(uint16_t n, type::Type const* t) {
   auto inst   = std::make_unique<GetReturnInstruction>(n);
-  auto result = inst->result = GetBuilder().CurrentGroup()->Reserve(nullptr);
+  auto result = inst->result = GetBuilder().CurrentGroup()->Reserve();
   GetBuilder().CurrentBlock()->instructions_.push_back(std::move(inst));
   return result;
 }

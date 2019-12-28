@@ -51,8 +51,7 @@ struct JumpInliner {
 
     if (t) {
       DEBUG_LOG("inline_reserve")("Reserving t = ", t->to_string());
-      auto arch = core::Interpretter();
-      bldr_.CurrentGroup()->Reserve(r, t->bytes(arch), t->alignment(arch));
+      bldr_.CurrentGroup()->Reserve();
     }
   }
 

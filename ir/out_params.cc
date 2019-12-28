@@ -1,7 +1,8 @@
 #include "ir/out_params.h"
 
 namespace ir {
-Reg Reserve(type::Type const *t);
+
+Reg Reserve();
 
 void OutParams::AppendLoc(Reg reg) {
   regs_.push_back(reg);
@@ -9,7 +10,7 @@ void OutParams::AppendLoc(Reg reg) {
 }
 
 Reg OutParams::AppendReg(type::Type const *t) {
-  auto reg = Reserve(t);
+  auto reg = Reserve();
   regs_.push_back(reg);
   is_loc_.push_back(false);
   return reg;

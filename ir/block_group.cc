@@ -16,22 +16,8 @@ BlockGroup::BlockGroup(
   b->incoming_.insert(b);
 }
 
-Reg BlockGroup::Reserve(type::Type const *t) {
-  return Reserve(core::Bytes{0}, core::Alignment{0});
-}
-
-Reg BlockGroup::Reserve(core::Bytes b, core::Alignment a) {
-  Reg r(num_regs_);
-  Reserve(r, b, a);
-  return r;
-}
-
-void BlockGroup::Reserve(Reg r, core::Bytes b, core::Alignment a) {
-  ++num_regs_;
-}
-
 Reg BlockGroup::Alloca(type::Type const *t) {
-  Reg r = Reserve(type::Ptr(t));
+  Reg r = Reserve();
   allocs_.allocate(ASSERT_NOT_NULL(t), r);
   return r;
 }

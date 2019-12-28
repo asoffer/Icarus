@@ -114,11 +114,6 @@ void BasicBlock::Append(BasicBlock const &b) {
   jump_ = std::move(b.jump_);
 }
 
-Reg MakeResult(type::Type const *t) {
-  auto arch = core::Interpretter();
-  return Reserve(t->bytes(arch), t->alignment(arch));
-}
-
 void BasicBlock::ReplaceJumpTargets(BasicBlock *old_target,
                                     BasicBlock *new_target) {
   jump_.Visit([&](auto &j) {

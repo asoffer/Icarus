@@ -807,8 +807,8 @@ ir::Results ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
 
       bldr.CurrentBlock() = phi_block;
 
-      ir::Reg lhs_phi_reg = ir::MakeResult<ir::Addr>();
-      ir::Reg rhs_phi_reg = ir::MakeResult<ir::Addr>();
+      ir::Reg lhs_phi_reg = bldr.CurrentGroup()->Reserve();
+      ir::Reg rhs_phi_reg = bldr.CurrentGroup()->Reserve();
 
       bldr.CondJump(bldr.Eq(ir::RegOr<ir::Addr>(lhs_phi_reg), lhs_end),
                     true_block, body_block);

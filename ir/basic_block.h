@@ -58,14 +58,5 @@ struct BasicBlock {
 
 };
 
-Reg Reserve(core::Bytes b, core::Alignment a);
-
-template <typename T>
-Reg MakeResult() {
-  return Reserve(core::Bytes::Get<T>(), core::Alignment::Get<T>());
-}
-
-Reg MakeResult(type::Type const *t);
-
 }  // namespace ir
 #endif  // ICARUS_IR_BASIC_BLOCK_H

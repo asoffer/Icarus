@@ -54,9 +54,7 @@ struct BlockGroup {
 
   StackFrameAllocations const &allocs() { return allocs_; }
 
-  Reg Reserve(type::Type const *t);
-  Reg Reserve(core::Bytes b, core::Alignment a);
-  void Reserve(Reg r, core::Bytes b, core::Alignment a);
+  Reg Reserve() { return Reg(num_regs_++); }
   Reg Alloca(type::Type const *t);
 
   constexpr size_t num_regs() const { return num_regs_; }
