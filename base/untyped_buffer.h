@@ -17,11 +17,12 @@ struct untyped_buffer {
   struct const_iterator {
     template <typename T>
     unaligned_ref<T const> read() {
-      auto result =
-          unaligned_ref<T const>::FromPtr(reinterpret_cast<void const *>(ptr_));
+      auto result = unaligned_ref<T const>::FromPtr(raw());
       skip(sizeof(T));
       return result;
     }
+
+    void const *raw() const { return reinterpret_cast<void const *>(ptr_); }
 
     void skip(size_t n) { ptr_ += n; }
 
@@ -62,12 +63,15 @@ struct untyped_buffer {
   struct iterator {
     template <typename T>
     unaligned_ref<T> read() {
-      auto result = unaligned_ref<T>::FromPtr(reinterpret_cast<void *>(ptr_));
+      auto result = unaligned_ref<T>::FromPtr(raw());
       skip(sizeof(T));
       return result;
     }
 
     void skip(size_t n) { ptr_ += n; }
+
+    void const *raw() const { return reinterpret_cast<void const *>(ptr_); }
+    void *raw() { return reinterpret_cast<void *>(ptr_); }
 
 #if defined(ICARUS_DEBUG)
     uintptr_t DebugValue() const { return ptr_; }

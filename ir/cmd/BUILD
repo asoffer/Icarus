@@ -1,5 +1,4 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib")
 
 cc_library(
     name = "jump",
@@ -9,16 +8,4 @@ cc_library(
         "//base:util",
         "//ir:reg",
     ],
-)
-
-cc_lib(
-    name = "util",
-    deps = [
-        "//ir:values",
-        "//base:tag",
-        "//type:primitive",
-        "//type:util",
-    ],
-    header_only = True,
-    test_deps = None,
 )

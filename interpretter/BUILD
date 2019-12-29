@@ -52,7 +52,7 @@ cc_library(
         "//ir:reg",
         "//ir:reg_or",
         "//ir:scope_def",
-        "//ir/cmd:cmd_xmacro",
+        "//type:opaque",
         "@com_google_absl//absl/types:span",
     ],
 )

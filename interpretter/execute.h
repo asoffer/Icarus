@@ -20,6 +20,9 @@ struct ExecutionContext {
   StackFrame const &current_frame() const { return call_stack_.back(); }
   StackFrame &current_frame() { return call_stack_.back(); }
 
+  // Copies `length` bytes stored in `reg` to `dst`.
+  void MemCpyRegisterBytes(void *dst, ir::Reg reg, size_t length);
+
   template <typename T>
   T resolve(ir::Reg r) const {
     return call_stack_.back().regs_.get<T>(r);

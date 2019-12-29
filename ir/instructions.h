@@ -9,19 +9,72 @@
 #include "absl/strings/str_join.h"
 #include "ast/scope/scope.h"
 #include "base/clone.h"
-#include "ir/cmd/util.h"
 #include "ir/new_inliner.h"
 #include "ir/out_params.h"
 #include "ir/reg_or.h"
 #include "ir/struct_field.h"
 #include "ir/values.h"
+#include "type/array.h"
+#include "type/enum.h"
+#include "type/flags.h"
+#include "type/function.h"
 #include "type/pointer.h"
+#include "type/struct.h"
+#include "type/tuple.h"
 #include "type/type.h"
+#include "type/variant.h"
 
 // This file defines the interface required for IR instructions as well as all
 // the common instructions available in the core IR.
 namespace ir {
+using cmd_index_t = uint16_t;
+
 namespace internal {
+
+template <typename T>
+constexpr uint8_t PrimitiveIndex() {
+  if constexpr (std::is_integral_v<T> and not std::is_same_v<T, bool>) {
+    return base::Log2(sizeof(T)) * 2 + std::is_signed_v<T>;
+  } else if constexpr (std::is_same_v<T, bool>) {
+    return 0x08;
+  } else if constexpr (std::is_same_v<T, float>) {
+    return 0x09;
+  } else if constexpr (std::is_same_v<T, double>) {
+    return 0x0a;
+  } else if constexpr (std::is_same_v<T, std::string_view>) {
+    return 0x0b;
+  } else if constexpr (std::is_same_v<T, type::Type const*>) {
+    return 0x0c;
+  } else if constexpr (std::is_same_v<T, Addr>) {
+    return 0x0d;
+  } else if constexpr (std::is_same_v<T, EnumVal>) {
+    return 0x0e;
+  } else if constexpr (std::is_same_v<T, FlagsVal>) {
+    return 0x0f;
+  } else if constexpr (std::is_same_v<T, AnyFunc>) {
+    return 0x10;
+  } else if constexpr (std::is_same_v<T, core::Alignment>) {
+    return 0x11;
+  } else if constexpr (std::is_same_v<T, core::Bytes>) {
+    return 0x12;
+  } else if constexpr (std::is_same_v<T, ast::FunctionLiteral*> or
+                       std::is_same_v<T, ast::FunctionLiteral const*>) {
+    // TODO: FunctionLiteral is a short-term hack for generics. IR shouldn't
+    // depend on it.
+    return 0x13;
+  } else if constexpr (std::is_same_v<T, BlockDef*> or
+                       std::is_same_v<T, BlockDef const*>) {
+    return 0x14;
+  } else if constexpr (std::is_same_v<T, ScopeDef*> or
+                       std::is_same_v<T, ScopeDef const*>) {
+    return 0x15;
+  } else if constexpr (std::is_same_v<T, module::BasicModule*> or
+                       std::is_same_v<T, module::BasicModule const*>) {
+    return 0x16;
+  } else {
+    UNREACHABLE(typeid(T).name());
+  }
+}
 
 template <typename SizeType, typename T, typename Fn>
 void WriteBits(base::untyped_buffer* buf, absl::Span<T const> span,
@@ -57,19 +110,13 @@ struct UnaryInstruction : base::Clone<UnaryInstruction<NumType>, Instruction> {
   explicit UnaryInstruction(RegOr<NumType> const& operand) : operand(operand) {}
   ~UnaryInstruction() override {}
 
-  struct control_bits {
-    uint8_t is_reg : 1;
-    uint8_t primitive_type : 6;
-  };
-
   void Serialize(base::untyped_buffer* buf) const override {
     UNREACHABLE("Should call a child class");
   }
 
   void SerializeUnary(cmd_index_t index, base::untyped_buffer* buf) const {
     buf->append(index);
-    buf->append(control_bits{.is_reg         = operand.is_reg(),
-                             .primitive_type = PrimitiveIndex<NumType>()});
+    buf->append(operand.is_reg());
     operand.apply([&](auto v) { buf->append(v); });
     buf->append(result);
   };
@@ -95,7 +142,6 @@ struct BinaryInstruction
   struct control_bits {
     uint8_t lhs_is_reg : 1;
     uint8_t rhs_is_reg : 1;
-    uint8_t primitive_type : 6;
   };
 
   void Serialize(base::untyped_buffer* buf) const override {
@@ -104,9 +150,10 @@ struct BinaryInstruction
 
   void SerializeBinary(cmd_index_t index, base::untyped_buffer* buf) const {
     buf->append(index);
-    buf->append(control_bits{.lhs_is_reg     = lhs.is_reg(),
-                             .rhs_is_reg     = rhs.is_reg(),
-                             .primitive_type = PrimitiveIndex<NumType>()});
+    buf->append(control_bits{
+        .lhs_is_reg = lhs.is_reg(),
+        .rhs_is_reg = rhs.is_reg(),
+    });
 
     lhs.apply([&](auto v) { buf->append(v); });
     rhs.apply([&](auto v) { buf->append(v); });
@@ -243,15 +290,15 @@ inline constexpr cmd_index_t kTypeInfoInstructionNumber      = kAdHocStart + 22;
 inline constexpr cmd_index_t kStructManipulationInstructionNumber =
     kAdHocStart + 23;
 
-inline constexpr cmd_index_t kCastInstructionIndex      = 26 << kTypeBits;
-inline constexpr cmd_index_t kDebugIrInstructionNumber  = 255 << kTypeBits;
+inline constexpr cmd_index_t kCastInstructionIndex     = 26 << kTypeBits;
+inline constexpr cmd_index_t kDebugIrInstructionNumber = 255 << kTypeBits;
 
 }  // namespace internal
 
 template <typename NumType>
 struct AddInstruction : BinaryInstruction<NumType> {
   static constexpr cmd_index_t kIndex =
-      internal::kAddInstructionMask | PrimitiveIndex<NumType>();
+      internal::kAddInstructionMask | internal::PrimitiveIndex<NumType>();
 
   AddInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
       : BinaryInstruction<NumType>(lhs, rhs) {}
@@ -274,7 +321,7 @@ struct AddInstruction : BinaryInstruction<NumType> {
 template <typename NumType>
 struct SubInstruction : BinaryInstruction<NumType> {
   static constexpr cmd_index_t kIndex =
-      internal::kSubInstructionMask | PrimitiveIndex<NumType>();
+      internal::kSubInstructionMask | internal::PrimitiveIndex<NumType>();
 
   SubInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
       : BinaryInstruction<NumType>(lhs, rhs) {}
@@ -297,7 +344,7 @@ struct SubInstruction : BinaryInstruction<NumType> {
 template <typename NumType>
 struct MulInstruction : BinaryInstruction<NumType> {
   static constexpr cmd_index_t kIndex =
-      internal::kMulInstructionMask | PrimitiveIndex<NumType>();
+      internal::kMulInstructionMask | internal::PrimitiveIndex<NumType>();
 
   MulInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
       : BinaryInstruction<NumType>(lhs, rhs) {}
@@ -320,7 +367,7 @@ struct MulInstruction : BinaryInstruction<NumType> {
 template <typename NumType>
 struct DivInstruction : BinaryInstruction<NumType> {
   static constexpr cmd_index_t kIndex =
-      internal::kDivInstructionMask | PrimitiveIndex<NumType>();
+      internal::kDivInstructionMask | internal::PrimitiveIndex<NumType>();
 
   DivInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
       : BinaryInstruction<NumType>(lhs, rhs) {}
@@ -343,7 +390,7 @@ struct DivInstruction : BinaryInstruction<NumType> {
 template <typename NumType>
 struct ModInstruction : BinaryInstruction<NumType> {
   static constexpr cmd_index_t kIndex =
-      internal::kModInstructionMask | PrimitiveIndex<NumType>();
+      internal::kModInstructionMask | internal::PrimitiveIndex<NumType>();
 
   ModInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
       : BinaryInstruction<NumType>(lhs, rhs) {}
@@ -366,7 +413,7 @@ struct ModInstruction : BinaryInstruction<NumType> {
 template <typename NumType>
 struct EqInstruction : BinaryInstruction<NumType> {
   static constexpr cmd_index_t kIndex =
-      internal::kEqInstructionMask | PrimitiveIndex<NumType>();
+      internal::kEqInstructionMask | internal::PrimitiveIndex<NumType>();
 
   EqInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
       : BinaryInstruction<NumType>(lhs, rhs) {}
@@ -389,7 +436,7 @@ struct EqInstruction : BinaryInstruction<NumType> {
 template <typename NumType>
 struct NeInstruction : BinaryInstruction<NumType> {
   static constexpr cmd_index_t kIndex =
-      internal::kNeInstructionMask | PrimitiveIndex<NumType>();
+      internal::kNeInstructionMask | internal::PrimitiveIndex<NumType>();
 
   NeInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
       : BinaryInstruction<NumType>(lhs, rhs) {}
@@ -412,7 +459,7 @@ struct NeInstruction : BinaryInstruction<NumType> {
 template <typename NumType>
 struct LtInstruction : BinaryInstruction<NumType> {
   static constexpr cmd_index_t kIndex =
-      internal::kLtInstructionMask | PrimitiveIndex<NumType>();
+      internal::kLtInstructionMask | internal::PrimitiveIndex<NumType>();
 
   LtInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
       : BinaryInstruction<NumType>(lhs, rhs) {}
@@ -435,7 +482,7 @@ struct LtInstruction : BinaryInstruction<NumType> {
 template <typename NumType>
 struct LeInstruction : BinaryInstruction<NumType> {
   static constexpr cmd_index_t kIndex =
-      internal::kLeInstructionMask | PrimitiveIndex<NumType>();
+      internal::kLeInstructionMask | internal::PrimitiveIndex<NumType>();
 
   LeInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
       : BinaryInstruction<NumType>(lhs, rhs) {}
@@ -459,7 +506,7 @@ struct LeInstruction : BinaryInstruction<NumType> {
 template <typename T>
 struct LoadInstruction : base::Clone<LoadInstruction<T>, Instruction> {
   static constexpr cmd_index_t kIndex =
-      internal::kLoadInstructionMask | PrimitiveIndex<T>();
+      internal::kLoadInstructionMask | internal::PrimitiveIndex<T>();
   using type = T;
 
   LoadInstruction(RegOr<Addr> const& addr) : addr(addr) {}
@@ -495,7 +542,7 @@ inline constexpr bool IsLoadInstruction =
 template <typename T>
 struct StoreInstruction : base::Clone<StoreInstruction<T>, Instruction> {
   static constexpr cmd_index_t kIndex =
-      internal::kStoreInstructionMask | PrimitiveIndex<T>();
+      internal::kStoreInstructionMask | internal::PrimitiveIndex<T>();
   using type = T;
   StoreInstruction(RegOr<T> const& value, RegOr<Addr> const& location)
       : value(value), location(location) {}
@@ -537,7 +584,7 @@ inline constexpr bool IsStoreInstruction =
 template <typename T>
 struct PrintInstruction : base::Clone<PrintInstruction<T>, Instruction> {
   static constexpr cmd_index_t kIndex =
-      internal::kPrintInstructionMask | PrimitiveIndex<T>();
+      internal::kPrintInstructionMask | internal::PrimitiveIndex<T>();
   using type = T;
   PrintInstruction(RegOr<T> const& value) : value(value) {}
   ~PrintInstruction() override {}
@@ -566,7 +613,7 @@ struct PrintInstruction : base::Clone<PrintInstruction<T>, Instruction> {
 template <typename T>
 struct PhiInstruction : base::Clone<PhiInstruction<T>, Instruction> {
   constexpr static cmd_index_t kIndex =
-      internal::kPhiInstructionMask | PrimitiveIndex<T>();
+      internal::kPhiInstructionMask | internal::PrimitiveIndex<T>();
   using type = T;
 
   PhiInstruction(std::vector<BasicBlock const*> blocks,
@@ -586,7 +633,6 @@ struct PhiInstruction : base::Clone<PhiInstruction<T>, Instruction> {
 
   void Serialize(base::untyped_buffer* buf) const override {
     buf->append(kIndex);
-    buf->append(PrimitiveIndex<T>());
     buf->append<uint16_t>(values.size());
     for (auto block : blocks) { buf->append(block); }
     internal::WriteBits<uint16_t, RegOr<T>>(
@@ -627,7 +673,7 @@ inline constexpr bool IsPhiInstruction =
 template <typename T>
 struct RegisterInstruction : UnaryInstruction<T> {
   static constexpr cmd_index_t kIndex =
-      internal::kRegisterInstructionMask | PrimitiveIndex<T>();
+      internal::kRegisterInstructionMask | internal::PrimitiveIndex<T>();
 
   explicit RegisterInstruction(RegOr<T> const& operand)
       : UnaryInstruction<T>(operand) {}
@@ -646,13 +692,11 @@ struct RegisterInstruction : UnaryInstruction<T> {
   }
 };
 
-
-
 template <typename T>
 struct SetReturnInstruction
     : base::Clone<SetReturnInstruction<T>, Instruction> {
   static constexpr cmd_index_t kIndex =
-      internal::kSetReturnInstructionMask | PrimitiveIndex<T>();
+      internal::kSetReturnInstructionMask | internal::PrimitiveIndex<T>();
   using type = T;
 
   SetReturnInstruction(uint16_t index, RegOr<T> const& value)
@@ -723,7 +767,7 @@ struct CastInstruction : Instruction {
 template <typename NumType>
 struct NegInstruction : UnaryInstruction<NumType> {
   static constexpr cmd_index_t kIndex =
-      internal::kNegInstructionMask | PrimitiveIndex<NumType>();
+      internal::kNegInstructionMask | internal::PrimitiveIndex<NumType>();
 
   explicit NegInstruction(RegOr<NumType> const& operand)
       : UnaryInstruction<NumType>(operand) {}
@@ -824,7 +868,7 @@ struct BufPtrInstruction : UnaryInstruction<type::Type const*> {
 
 struct PrintEnumInstruction : base::Clone<PrintEnumInstruction, Instruction> {
   static constexpr cmd_index_t kIndex =
-      internal::kPrintInstructionMask | PrimitiveIndex<EnumVal>();
+      internal::kPrintInstructionMask | internal::PrimitiveIndex<EnumVal>();
 
   PrintEnumInstruction(RegOr<EnumVal> const& value, type::Enum const* enum_type)
       : value(value), enum_type(enum_type) {}
@@ -851,7 +895,7 @@ struct PrintEnumInstruction : base::Clone<PrintEnumInstruction, Instruction> {
 
 struct PrintFlagsInstruction : base::Clone<PrintFlagsInstruction, Instruction> {
   static constexpr cmd_index_t kIndex =
-      internal::kPrintInstructionMask | PrimitiveIndex<FlagsVal>();
+      internal::kPrintInstructionMask | internal::PrimitiveIndex<FlagsVal>();
 
   PrintFlagsInstruction(RegOr<FlagsVal> const& value,
                         type::Flags const* flags_type)

@@ -7,9 +7,64 @@
 #include "ir/block_def.h"
 #include "ir/jump.h"
 #include "ir/scope_def.h"
+#include "type/opaque.h"
 
 namespace interpretter {
 namespace {
+constexpr uint8_t ReverseByte(uint8_t byte) {
+  byte = ((byte & 0b11110000) >> 4) | ((byte & 0b00001111) << 4);
+  byte = ((byte & 0b11001100) >> 2) | ((byte & 0b00110011) << 2);
+  byte = ((byte & 0b10101010) >> 1) | ((byte & 0b01010101) << 1);
+  return byte;
+}
+
+template <typename SizeType, typename Iter>
+std::vector<bool> ReadBits(Iter *iter) {
+  static_assert(std::disjunction_v<
+                std::is_same<Iter, base::untyped_buffer::iterator>,
+                std::is_same<Iter, base::untyped_buffer::const_iterator>>);
+  SizeType num = iter->template read<SizeType>();
+
+  uint8_t current = 0;
+
+  std::vector<bool> bits;
+  bits.reserve(num);
+  for (SizeType i = 0; i < num; ++i) {
+    if (i % 8 == 0) { current = ReverseByte(iter->template read<uint8_t>()); }
+    bits.push_back(current & 1);
+    current >>= 1;
+  }
+  return bits;
+}
+
+template <typename SizeType, typename T, typename Iter, typename Fn>
+auto Deserialize(Iter *iter, Fn &&fn) {
+  static_assert(std::disjunction_v<
+                std::is_same<Iter, base::untyped_buffer::iterator>,
+                std::is_same<Iter, base::untyped_buffer::const_iterator>>);
+  auto bits = ReadBits<SizeType>(iter);
+
+  using result_type =
+      std::decay_t<decltype(fn(std::declval<base::unaligned_ref<ir::Reg>>()))>;
+  if constexpr (std::is_void_v<result_type>) {
+    for (bool b : bits) {
+      if (b) {
+        fn(iter->template read<ir::Reg>());
+      } else {
+        iter->template read<T>();
+      }
+    }
+    return;
+  } else {
+    std::vector<result_type> vals;
+    vals.reserve(bits.size());
+    for (bool b : bits) {
+      vals.push_back(b ? fn(iter->template read<ir::Reg>())
+                       : static_cast<T>(iter->template read<T>()));
+    }
+    return vals;
+  }
+}
 
 type::Function const *GetType(ir::AnyFunc f) {
   return f.is_fn() ? f.func()->type_
@@ -92,10 +147,9 @@ template <
         int> = 0>
 void ExecuteInstruction(base::untyped_buffer::const_iterator *iter,
                         ExecutionContext *ctx) {
-  using ctrl_t = typename UnInst::control_bits;
   using type   = typename UnInst::type;
-  ctrl_t ctrl  = iter->read<ctrl_t>();
-  auto result  = UnInst::Apply(ReadAndResolve<type>(ctrl.is_reg, iter, ctx));
+  bool is_reg  = iter->read<bool>();
+  auto result  = UnInst::Apply(ReadAndResolve<type>(is_reg, iter, ctx));
   ctx->current_frame().regs_.set(iter->read<ir::Reg>(), result);
 }
 
@@ -108,7 +162,7 @@ void ExecuteInstruction(base::untyped_buffer::const_iterator *iter,
                         ExecutionContext *ctx) {
   using type = typename VarInst::type;
 
-  auto vals = ir::internal::Deserialize<uint16_t, type>(
+  auto vals = Deserialize<uint16_t, type>(
       iter, [ctx](ir::Reg reg) { return ctx->resolve<type>(reg); });
   ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
                                  VarInst::Apply(std::move(vals)));
@@ -204,15 +258,13 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
 
   } else if constexpr (std::is_same_v<Inst, ir::ArrowInstruction>) {
     std::vector<type::Type const *> ins =
-        ir::internal::Deserialize<uint16_t, type::Type const *>(
-            iter, [ctx](ir::Reg reg) {
-              return ctx->resolve<type::Type const *>(reg);
-            });
+        Deserialize<uint16_t, type::Type const *>(iter, [ctx](ir::Reg reg) {
+          return ctx->resolve<type::Type const *>(reg);
+        });
     std::vector<type::Type const *> outs =
-        ir::internal::Deserialize<uint16_t, type::Type const *>(
-            iter, [ctx](ir::Reg reg) {
-              return ctx->resolve<type::Type const *>(reg);
-            });
+        Deserialize<uint16_t, type::Type const *>(iter, [ctx](ir::Reg reg) {
+          return ctx->resolve<type::Type const *>(reg);
+        });
 
     ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
                                    type::Func(std::move(ins), std::move(outs)));
@@ -221,7 +273,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     std::cerr << (ReadAndResolve<bool>(is_reg, iter, ctx) ? "true" : "false");
   } else if constexpr (std::is_same_v<Inst, ir::PrintInstruction<uint8_t>> or
                        std::is_same_v<Inst, ir::PrintInstruction<int8_t>>) {
-    using type = typename Inst::type;
+    using type  = typename Inst::type;
     bool is_reg = iter->read<bool>();
     // Cast to a larger type to ensure we print as an integer rather than a
     // character.
@@ -238,8 +290,8 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
                            Inst, ir::PrintInstruction<type::Type const *>> or
                        std::is_same_v<Inst,
                                       ir::PrintInstruction<std::string_view>>) {
-    using type = typename Inst::type;
-    bool is_reg= iter->read<bool>();
+    using type  = typename Inst::type;
+    bool is_reg = iter->read<bool>();
     if constexpr (std::is_same_v<type, ::type::Type const *>) {
       std::cerr << ReadAndResolve<type>(is_reg, iter, ctx)->to_string();
     } else {
@@ -307,7 +359,6 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
       }
     }
   } else if constexpr (ir::IsPhiInstruction<Inst>) {
-    uint8_t primitive_type = iter->read<uint8_t>();
     uint16_t num           = iter->read<uint16_t>();
     uint64_t index         = std::numeric_limits<uint64_t>::max();
     for (uint16_t i = 0; i < num; ++i) {
@@ -318,10 +369,11 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     ASSERT(index != std::numeric_limits<uint64_t>::max());
 
     using type                = typename Inst::type;
-    std::vector<type> results = ir::internal::Deserialize<uint16_t, type>(
+    std::vector<type> results = Deserialize<uint16_t, type>(
         iter, [ctx](ir::Reg reg) { return ctx->resolve<type>(reg); });
     ctx->current_frame().regs_.set(iter->read<ir::Reg>(), type{results[index]});
-  } else if constexpr (std::is_same_v<Inst, ir::StructManipulationInstruction>) {
+  } else if constexpr (std::is_same_v<Inst,
+                                      ir::StructManipulationInstruction>) {
     ir::AnyFunc f;
     base::untyped_buffer call_buf(sizeof(ir::Addr));
     auto kind = iter->read<ir::StructManipulationInstruction::Kind>();
@@ -394,8 +446,8 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     std::cerr << *ctx->current_frame().fn_;
 
   } else if constexpr (ir::IsSetReturnInstruction<Inst>) {
-    using type        = typename Inst::type;
-    uint16_t n        = iter->read<uint16_t>();
+    using type = typename Inst::type;
+    uint16_t n = iter->read<uint16_t>();
     ASSERT(ret_slots.size() > n);
     ir::Addr ret_slot = ret_slots[n];
     bool is_reg       = iter->read<bool>();
@@ -406,9 +458,9 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
   } else if constexpr (std::is_same_v<Inst, ir::MakeScopeInstruction>) {
     ir::ScopeDef *scope_def = iter->read<ir::ScopeDef *>();
 
-    scope_def->inits_ = ir::internal::Deserialize<uint16_t, ir::Jump *>(
+    scope_def->inits_ = Deserialize<uint16_t, ir::Jump *>(
         iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::Jump *>(reg); });
-    scope_def->dones_ = ir::internal::Deserialize<uint16_t, ir::AnyFunc>(
+    scope_def->dones_ = Deserialize<uint16_t, ir::AnyFunc>(
         iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::AnyFunc>(reg); });
 
     uint16_t num_blocks = iter->read<uint16_t>();
@@ -422,9 +474,9 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
 
   } else if constexpr (std::is_same_v<Inst, ir::MakeBlockInstruction>) {
     ir::BlockDef *block_def = iter->read<ir::BlockDef *>();
-    block_def->before_      = ir::internal::Deserialize<uint16_t, ir::AnyFunc>(
+    block_def->before_      = Deserialize<uint16_t, ir::AnyFunc>(
         iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::AnyFunc>(reg); });
-    block_def->after_ = ir::internal::Deserialize<uint16_t, ir::Jump *>(
+    block_def->after_ = Deserialize<uint16_t, ir::Jump *>(
         iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::Jump *>(reg); });
     ctx->current_frame().regs_.set(iter->read<ir::Reg>(), block_def);
 
@@ -441,9 +493,9 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     }
 
     std::vector<type::Type const *> types =
-        ir::internal::Deserialize<uint16_t, type::Type const *>(
-            iter,
-            [&](ir::Reg reg) { return ctx->resolve<type::Type const *>(reg); });
+        Deserialize<uint16_t, type::Type const *>(iter, [&](ir::Reg reg) {
+          return ctx->resolve<type::Type const *>(reg);
+        });
     for (uint16_t i = 0; i < num; ++i) { fields[i].type = types[i]; }
 
     ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
@@ -460,7 +512,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
                                    type::Arr(len, data_type));
   } else if constexpr (std::is_same_v<Inst, ir::CallInstruction>) {
     bool fn_is_reg                = iter->read<bool>();
-    std::vector<bool> is_reg_bits = ir::internal::ReadBits<uint16_t>(iter);
+    std::vector<bool> is_reg_bits = ReadBits<uint16_t>(iter);
 
     ir::AnyFunc f = ReadAndResolve<ir::AnyFunc>(fn_is_reg, iter, ctx);
     type::Function const *fn_type = GetType(f);
@@ -480,19 +532,14 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         ir::Reg reg = iter->read<ir::Reg>();
 
         if (t->is_big()) { t = type::Ptr(t); }
-        ir::PrimitiveDispatch(ir::PrimitiveIndex(t), [&](auto tag) {
-          using type = typename std::decay_t<decltype(tag)>::type;
-          call_buf.set(i * kMaxSize, ctx->resolve<type>(reg));
-        });
-
+        ctx->MemCpyRegisterBytes(/*    dst = */ call_buf.raw(i * kMaxSize),
+                                 /*    src = */ reg,
+                                 /* length = */ kMaxSize);
       } else if (t->is_big()) {
         NOT_YET();
       } else {
-        ir::PrimitiveDispatch(ir::PrimitiveIndex(t), [&](auto tag) {
-          using type = typename std::decay_t<decltype(tag)>::type;
-          type val   = iter->read<type>();
-          call_buf.set(i * kMaxSize, val);
-        });
+        std::memcpy(call_buf.raw(i * kMaxSize), iter->raw(), kMaxSize);
+        iter->skip(t->bytes(core::Interpretter()).value());
       }
     }
 
@@ -584,6 +631,11 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
   } else {
     static_assert(base::always_false<Inst>());
   }
+}
+
+void ExecutionContext::MemCpyRegisterBytes(void *dst, ir::Reg reg,
+                                           size_t length) {
+  std::memcpy(dst, call_stack_.back().regs_.raw(reg), length);
 }
 
 void ExecutionContext::ExecuteBlock(absl::Span<ir::Addr const> ret_slots) {
