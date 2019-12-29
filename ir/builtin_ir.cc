@@ -2,8 +2,6 @@
 
 #include "core/fn_params.h"
 #include "ir/builder.h"
-#include "ir/cmd/misc.h"
-#include "ir/cmd/return.h"
 #include "ir/compiled_fn.h"
 #include "type/function.h"
 #include "type/typed_value.h"

@@ -3,8 +3,6 @@
 #include "base/permutation.h"
 #include "compiler/compiler.h"
 #include "ir/builder.h"
-#include "ir/cmd/misc.h"
-#include "ir/cmd/store.h"
 #include "ir/compiled_fn.h"
 #include "ir/components.h"
 #include "ir/results.h"

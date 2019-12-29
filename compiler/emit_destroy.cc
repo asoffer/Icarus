@@ -4,8 +4,6 @@
 #include "compiler/compiler.h"
 #include "compiler/special_function.h"
 #include "ir/builder.h"
-#include "ir/cmd/call.h"
-#include "ir/cmd/misc.h"
 #include "ir/compiled_fn.h"
 #include "ir/components.h"
 #include "type/type.h"

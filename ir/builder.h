@@ -11,24 +11,11 @@
 #include "ir/addr.h"
 #include "ir/basic_block.h"
 #include "ir/block_group.h"
-#include "ir/cmd/basic.h"
-#include "ir/cmd/call.h"
-#include "ir/cmd/cast.h"
-#include "ir/cmd/jump.h"
-#include "ir/cmd/load.h"
-#include "ir/cmd/misc.h"
-#include "ir/cmd/phi.h"
-#include "ir/cmd/print.h"
-#include "ir/cmd/register.h"
-#include "ir/cmd/return.h"
-#include "ir/cmd/scope.h"
-#include "ir/cmd/store.h"
-#include "ir/cmd/types.h"
-#include "ir/cmd/util.h"
 #include "ir/instructions.h"
 #include "ir/local_block_interpretation.h"
 #include "ir/reg.h"
 #include "ir/struct_field.h"
+#include "type/jump.h"
 #include "type/typed_value.h"
 #include "type/util.h"
 
@@ -362,7 +349,7 @@ struct Builder {
       std::vector<RegOr<type::Type const*>> const& ins,
       std::vector<RegOr<type::Type const*>> const& outs);
 
-  RegOr<type::Type const*> Array(RegOr<ArrayCmd::length_t> len,
+  RegOr<type::Type const*> Array(RegOr<ArrayInstruction::length_t> len,
                                  RegOr<type::Type const*> data_type);
 
   Reg OpaqueType(module::BasicModule const* mod);

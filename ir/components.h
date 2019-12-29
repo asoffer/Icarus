@@ -2,11 +2,6 @@
 #define ICARUS_IR_COMPONENTS_H
 
 #include "ir/builder.h"
-#include "ir/cmd/basic.h"
-#include "ir/cmd/load.h"
-#include "ir/cmd/misc.h"
-#include "ir/cmd/phi.h"
-#include "ir/cmd/types.h"
 #include "ir/compiled_fn.h"
 #include "ir/reg.h"
 

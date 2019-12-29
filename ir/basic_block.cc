@@ -1,17 +1,5 @@
 #include "ir/basic_block.h"
 
-#include "ir/cmd/basic.h"
-#include "ir/cmd/call.h"
-#include "ir/cmd/cast.h"
-#include "ir/cmd/load.h"
-#include "ir/cmd/misc.h"
-#include "ir/cmd/phi.h"
-#include "ir/cmd/print.h"
-#include "ir/cmd/register.h"
-#include "ir/cmd/return.h"
-#include "ir/cmd/scope.h"
-#include "ir/cmd/store.h"
-#include "ir/cmd/types.h"
 #include "type/type.h"
 
 namespace ir {

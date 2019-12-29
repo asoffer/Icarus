@@ -2,22 +2,9 @@
 
 #include <vector>
 
+#include "absl/random/random.h"
 #include "interpretter/foreign.h"
 #include "ir/block_def.h"
-#include "ir/cmd/basic.h"
-#include "ir/cmd/call.h"
-#include "ir/cmd/cast.h"
-#include "ir/cmd/jump.h"
-#include "ir/cmd/load.h"
-#include "ir/cmd/misc.h"
-#include "ir/cmd/phi.h"
-#include "ir/cmd/print.h"
-#include "ir/cmd/register.h"
-#include "ir/cmd/return.h"
-#include "ir/cmd/scope.h"
-#include "ir/cmd/store.h"
-#include "ir/cmd/types.h"
-#include "ir/cmd/util.h"
 #include "ir/jump.h"
 #include "ir/scope_def.h"
 
@@ -230,16 +217,15 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
                                    type::Func(std::move(ins), std::move(outs)));
   } else if constexpr (std::is_same_v<Inst, ir::PrintInstruction<bool>>) {
-    auto ctrl = iter->read<ir::PrintCmd::control_bits>().get();
-    std::cerr << (ReadAndResolve<bool>(ctrl.reg, iter, ctx) ? "true" : "false");
+    bool is_reg = iter->read<bool>();
+    std::cerr << (ReadAndResolve<bool>(is_reg, iter, ctx) ? "true" : "false");
   } else if constexpr (std::is_same_v<Inst, ir::PrintInstruction<uint8_t>> or
                        std::is_same_v<Inst, ir::PrintInstruction<int8_t>>) {
     using type = typename Inst::type;
-    auto ctrl  = iter->read<ir::PrintCmd::control_bits>().get();
+    bool is_reg = iter->read<bool>();
     // Cast to a larger type to ensure we print as an integer rather than a
     // character.
-    std::cerr << static_cast<int16_t>(
-        ReadAndResolve<type>(ctrl.reg, iter, ctx));
+    std::cerr << static_cast<int16_t>(ReadAndResolve<type>(is_reg, iter, ctx));
   } else if constexpr (std::is_same_v<Inst, ir::PrintInstruction<uint16_t>> or
                        std::is_same_v<Inst, ir::PrintInstruction<int16_t>> or
                        std::is_same_v<Inst, ir::PrintInstruction<uint32_t>> or
@@ -253,21 +239,21 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
                        std::is_same_v<Inst,
                                       ir::PrintInstruction<std::string_view>>) {
     using type = typename Inst::type;
-    auto ctrl  = iter->read<ir::PrintCmd::control_bits>().get();
+    bool is_reg= iter->read<bool>();
     if constexpr (std::is_same_v<type, ::type::Type const *>) {
-      std::cerr << ReadAndResolve<type>(ctrl.reg, iter, ctx)->to_string();
+      std::cerr << ReadAndResolve<type>(is_reg, iter, ctx)->to_string();
     } else {
-      std::cerr << ReadAndResolve<type>(ctrl.reg, iter, ctx);
+      std::cerr << ReadAndResolve<type>(is_reg, iter, ctx);
     }
   } else if constexpr (std::is_same_v<Inst, ir::PrintEnumInstruction>) {
-    auto ctrl = iter->read<ir::PrintCmd::control_bits>().get();
-    auto val  = ReadAndResolve<ir::EnumVal>(ctrl.reg, iter, ctx);
+    bool is_reg = iter->read<bool>().get();
+    auto val    = ReadAndResolve<ir::EnumVal>(is_reg, iter, ctx);
     std::optional<std::string_view> name =
         iter->read<type::Enum const *>().get()->name(val);
     std::cerr << name.value_or(absl::StrCat(val.value));
   } else if constexpr (std::is_same_v<Inst, ir::PrintFlagsInstruction>) {
-    auto ctrl        = iter->read<ir::PrintCmd::control_bits>().get();
-    auto val         = ReadAndResolve<ir::FlagsVal>(ctrl.reg, iter, ctx);
+    bool is_reg      = iter->read<bool>().get();
+    auto val         = ReadAndResolve<ir::FlagsVal>(is_reg, iter, ctx);
     auto numeric_val = val.value;
     std::vector<std::string> vals;
     type::Flags const *flags_type = iter->read<type::Flags const *>();
@@ -291,9 +277,9 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     }
   } else if constexpr (ir::IsStoreInstruction<Inst>) {
     using type    = typename Inst::type;
-    auto ctrl     = iter->read<ir::StoreCmd::control_bits>().get();
-    type val      = ReadAndResolve<type>(ctrl.reg, iter, ctx);
-    ir::Addr addr = ReadAndResolve<ir::Addr>(ctrl.reg_addr, iter, ctx);
+    auto ctrl     = iter->read<typename Inst::control_bits>().get();
+    type val      = ReadAndResolve<type>(ctrl.value_is_reg, iter, ctx);
+    ir::Addr addr = ReadAndResolve<ir::Addr>(ctrl.location_is_reg, iter, ctx);
     switch (addr.kind) {
       case ir::Addr::Kind::Stack: ctx->stack_.set(addr.as_stack, val); break;
       case ir::Addr::Kind::ReadOnly:
@@ -306,8 +292,8 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     }
   } else if constexpr (ir::IsLoadInstruction<Inst>) {
     using type      = typename Inst::type;
-    auto ctrl       = iter->read<ir::LoadCmd::control_bits>().get();
-    ir::Addr addr   = ReadAndResolve<ir::Addr>(ctrl.reg, iter, ctx);
+    bool is_reg     = iter->read<bool>();
+    ir::Addr addr   = ReadAndResolve<ir::Addr>(is_reg, iter, ctx);
     auto result_reg = iter->read<ir::Reg>().get();
     switch (addr.kind) {
       case ir::Addr::Kind::Stack: {
