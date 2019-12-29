@@ -246,7 +246,7 @@ std::string_view TypeToString() {
 
 namespace internal {
 inline constexpr uint8_t kTypeBits    = 8;
-inline constexpr uint16_t kAdHocStart = (50 << kTypeBits);
+inline constexpr uint16_t kAdHocStart = (18 << kTypeBits);
 
 inline constexpr cmd_index_t kAddInstructionMask             = 0 << kTypeBits;
 inline constexpr cmd_index_t kSubInstructionMask             = 1 << kTypeBits;
@@ -258,12 +258,12 @@ inline constexpr cmd_index_t kLeInstructionMask              = 7 << kTypeBits;
 inline constexpr cmd_index_t kEqInstructionMask              = 8 << kTypeBits;
 inline constexpr cmd_index_t kNeInstructionMask              = 9 << kTypeBits;
 inline constexpr cmd_index_t kNegInstructionMask             = 10 << kTypeBits;
-inline constexpr cmd_index_t kPrintInstructionMask           = 12 << kTypeBits;
-inline constexpr cmd_index_t kStoreInstructionMask           = 13 << kTypeBits;
-inline constexpr cmd_index_t kLoadInstructionMask            = 14 << kTypeBits;
-inline constexpr cmd_index_t kPhiInstructionMask             = 36 << kTypeBits;
-inline constexpr cmd_index_t kRegisterInstructionMask        = 27 << kTypeBits;
-inline constexpr cmd_index_t kSetReturnInstructionMask       = 28 << kTypeBits;
+inline constexpr cmd_index_t kPrintInstructionMask           = 11 << kTypeBits;
+inline constexpr cmd_index_t kStoreInstructionMask           = 12 << kTypeBits;
+inline constexpr cmd_index_t kLoadInstructionMask            = 13 << kTypeBits;
+inline constexpr cmd_index_t kPhiInstructionMask             = 14 << kTypeBits;
+inline constexpr cmd_index_t kRegisterInstructionMask        = 15 << kTypeBits;
+inline constexpr cmd_index_t kSetReturnInstructionMask       = 16 << kTypeBits;
 inline constexpr cmd_index_t kNotInstructionNumber           = kAdHocStart;
 inline constexpr cmd_index_t kXorFlagsInstructionNumber      = kAdHocStart + 1;
 inline constexpr cmd_index_t kAndFlagsInstructionNumber      = kAdHocStart + 2;
@@ -290,7 +290,7 @@ inline constexpr cmd_index_t kTypeInfoInstructionNumber      = kAdHocStart + 22;
 inline constexpr cmd_index_t kStructManipulationInstructionNumber =
     kAdHocStart + 23;
 
-inline constexpr cmd_index_t kCastInstructionIndex     = 26 << kTypeBits;
+inline constexpr cmd_index_t kCastInstructionIndex     = 17 << kTypeBits;
 inline constexpr cmd_index_t kDebugIrInstructionNumber = 255 << kTypeBits;
 
 }  // namespace internal

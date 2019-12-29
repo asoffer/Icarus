@@ -85,8 +85,17 @@ void CombineBlocksStartingAt(ir::BasicBlock* block) {
 }
 
 void ReduceEmptyBlocks(ir::CompiledFn* fn) {
-  auto& bldr = ir::GetBuilder();
-  for (auto& block : fn->mutable_blocks()) {
+  auto& bldr       = ir::GetBuilder();
+  auto& mut_blocks = fn->mutable_blocks();
+  auto iter        = mut_blocks.begin();
+
+  // Skip the initial block, it may be empty, but we've marked it as it's own
+  // incoming so as to avoid considering it to be dead, and the code below would
+  // incorrectly modify its jump.
+  ++iter;
+
+  for (; iter != mut_blocks.end(); ++iter) {
+    auto& block = *iter;
     if (not block->cmd_buffer_.empty()) { continue; }
     for (auto* inc : block->incoming_) {
       if (inc->jump_.kind() == ir::JumpCmd::Kind::Uncond) {
