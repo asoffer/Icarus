@@ -13,7 +13,7 @@ std::ostream &operator<<(std::ostream &os, BasicBlock const &b) {
 }
 
 BasicBlock::BasicBlock(BasicBlock const &b)
-    : cmd_buffer_(b.cmd_buffer_), jump_(b.jump_) {
+    : cmd_buffer_(b.cmd_buffer_), group_(b.group_), jump_(b.jump_) {
   instructions_.reserve(b.instructions_.size());
   for (auto const &inst : b.instructions_) {
     instructions_.push_back(inst->clone());
@@ -24,6 +24,7 @@ BasicBlock::BasicBlock(BasicBlock const &b)
 BasicBlock::BasicBlock(BasicBlock &&b) noexcept
     : instructions_(std::move(b.instructions_)),
       cmd_buffer_(std::move(b.cmd_buffer_)),
+      group_(b.group_),
       jump_(std::move(b.jump_)) {
   ExchangeJumps(&b);
   b.jump_ = JumpCmd::Return();
@@ -33,6 +34,7 @@ BasicBlock &BasicBlock::operator=(BasicBlock const &b) noexcept {
   RemoveOutgoingJumps();
   AddOutgoingJumps(b.jump_);
 
+  group_ = b.group_;
   instructions_.clear();
   instructions_.reserve(b.instructions_.size());
   for (auto const &inst : b.instructions_) {
@@ -101,6 +103,7 @@ BasicBlock &BasicBlock::operator=(BasicBlock &&b) noexcept {
   RemoveOutgoingJumps();
   ExchangeJumps(&b);
 
+  group_        = b.group_;
   instructions_ = std::move(b.instructions_);
   jump_         = std::exchange(b.jump_, JumpCmd::Return());
   cmd_buffer_   = std::move(b.cmd_buffer_);

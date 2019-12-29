@@ -5,6 +5,7 @@
 #include "absl/random/random.h"
 #include "interpretter/foreign.h"
 #include "ir/block_def.h"
+#include "ir/instructions.h"
 #include "ir/jump.h"
 #include "ir/scope_def.h"
 #include "type/opaque.h"
@@ -108,7 +109,7 @@ void CallFunction(ir::CompiledFn *fn, const base::untyped_buffer &arguments,
         ctx->current_frame().MoveTo(
             j.CondTarget(ctx->resolve<bool>(j.CondReg())));
         break;
-      default: UNREACHABLE();
+      default: UNREACHABLE(static_cast<int>(j.kind()));
     }
   }
 }

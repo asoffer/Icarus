@@ -23,8 +23,9 @@ cc_lib(
 cc_lib(
     name = "basic_block",
     deps = [
-        ":instructions",
+        ":instructions_base",
         ":out_params",
+        "//ir/cmd:jump",
         "//base:untyped_buffer",
         "//type:type",
     ],
@@ -96,6 +97,10 @@ cc_library(
     hdrs = ["new_inliner.h"],
     srcs = ["new_inliner.cc"],
     deps = [
+        ":basic_block",
+        ":block_group",
+        ":instructions_base",
+        ":local_block_interpretation",
         ":reg",
         ":reg_or",
         "//base:debug",
@@ -108,17 +113,30 @@ cc_test(
     name = "new_inliner_test",
     srcs = ["new_inliner_test.cc"],
     deps = [
+        ":compiled_fn",
+        ":jump",
         ":new_inliner",
-        ":basic_block",
+        "//type",
+        "//type:function",
+        "//type:jump",
         "//test",
     ],
 )
 
 cc_library(
+    name = "instructions_base",
+    hdrs = ["instructions_base.h"],
+    deps = [
+        "//base:untyped_buffer",
+        "//base:clone",
+    ]
+)
+cc_library(
     name = "instructions",
-    hdrs = ["instructions.h"],
+    hdrs = ["instructions.h", "instructions_base.h"],
     deps = [
         ":block_def",
+        ":instructions_base",
         ":reg_or",
         ":scope_def",
         ":struct_field",

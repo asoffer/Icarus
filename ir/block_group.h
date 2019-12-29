@@ -41,7 +41,9 @@ struct BlockGroup {
   }
 
   BasicBlock *AppendBlock(BasicBlock const &to_copy) {
-    return blocks_.emplace_back(std::make_unique<BasicBlock>(to_copy)).get();
+    auto *b = blocks_.emplace_back(std::make_unique<BasicBlock>(to_copy)).get();
+    b->group_ = this;
+    return b;
   }
 
   core::FnParams<type::Typed<ast::Declaration const *>> const &params() const {

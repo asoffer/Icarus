@@ -9,6 +9,7 @@
 #include "absl/strings/str_join.h"
 #include "ast/scope/scope.h"
 #include "base/clone.h"
+#include "ir/instructions_base.h"
 #include "ir/new_inliner.h"
 #include "ir/out_params.h"
 #include "ir/reg_or.h"
@@ -94,14 +95,6 @@ void WriteBits(base::untyped_buffer* buf, absl::Span<T const> span,
 }
 
 }  // namespace internal
-
-struct Instruction : base::Clone<Instruction, void> {
-  virtual ~Instruction() {}
-  virtual std::string to_string() const { return "[[unknown]]"; }
-
-  virtual void Serialize(base::untyped_buffer* buf) const = 0;
-  virtual void Inline(Inliner const& inliner)             = 0;
-};
 
 template <typename NumType>
 struct UnaryInstruction : base::Clone<UnaryInstruction<NumType>, Instruction> {

@@ -9,8 +9,9 @@
 #include "core/alignment.h"
 #include "core/bytes.h"
 #include "ir/cmd/jump.h"
-#include "ir/instructions.h"
+#include "ir/instructions_base.h"
 #include "ir/out_params.h"
+#include "ir/results.h"
 
 namespace ir {
 namespace internal {
@@ -41,6 +42,9 @@ struct BasicBlock {
     for (auto const &inst : instructions_) { inst->Serialize(&cmd_buffer_); }
   }
 
+  internal::BlockGroup *group() { return group_; }
+  internal::BlockGroup const *group() const { return group_; }
+
  private:
   void RemoveOutgoingJumps();
   void AddOutgoingJumps(JumpCmd const &jump);
@@ -48,6 +52,7 @@ struct BasicBlock {
 
   friend struct Builder;
   friend struct Inliner;
+  friend struct internal::BlockGroup;
   friend std::ostream &operator<<(std::ostream &os, BasicBlock const &b);
 
   internal::BlockGroup *group_;

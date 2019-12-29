@@ -48,6 +48,7 @@ cc_library(
         "//ir:addr",
         "//ir:any_func",
         "//ir:block_def",
+        "//ir:instructions",
         "//ir:jump",
         "//ir:reg",
         "//ir:reg_or",
