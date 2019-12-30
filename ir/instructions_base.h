@@ -12,13 +12,14 @@
 namespace ir {
 
 struct Inliner;
+struct ByteCodeWriter;
 
 struct Instruction : base::Clone<Instruction, void> {
   virtual ~Instruction() {}
   virtual std::string to_string() const { return "[[unknown]]"; }
 
-  virtual void Serialize(base::untyped_buffer* buf) const = 0;
-  virtual void Inline(Inliner const& inliner)             = 0;
+  virtual void WriteByteCode(ByteCodeWriter*) const = 0;
+  virtual void Inline(Inliner const&)               = 0;
 };
 
 

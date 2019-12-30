@@ -23,6 +23,7 @@ cc_lib(
 cc_lib(
     name = "basic_block",
     deps = [
+        ":byte_code_writer",
         ":instructions_base",
         ":out_params",
         "//ir/cmd:jump",
@@ -57,6 +58,14 @@ cc_lib(
         "//type:typed_value",
     ],
     test_deps = None,
+)
+
+cc_library(
+    name = "byte_code_writer",
+    hdrs = ["byte_code_writer.h"],
+    deps = [
+        "//base:untyped_buffer",
+    ],
 )
 
 cc_lib(
@@ -327,4 +336,3 @@ cc_library(
         "//type",
     ],
 )
-

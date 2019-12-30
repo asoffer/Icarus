@@ -8,6 +8,7 @@
 #include "base/untyped_buffer.h"
 #include "core/alignment.h"
 #include "core/bytes.h"
+#include "ir/byte_code_writer.h"
 #include "ir/cmd/jump.h"
 #include "ir/instructions_base.h"
 #include "ir/out_params.h"
@@ -34,12 +35,13 @@ struct BasicBlock {
   base::untyped_buffer cmd_buffer_;
   size_t num_incoming() const { return incoming_.size(); }
 
-  void Serialize() {
+  void WriteByteCode() {
     // TODO rather than clearing something that's been previously serialized, we
     // should only serialize once. We shouldn't store the serialized version
     // here at all.
     cmd_buffer_.clear();
-    for (auto const &inst : instructions_) { inst->Serialize(&cmd_buffer_); }
+    ByteCodeWriter writer{&cmd_buffer_};
+    for (auto const &inst : instructions_) { inst->WriteByteCode(&writer); }
   }
 
   internal::BlockGroup *group() { return group_; }

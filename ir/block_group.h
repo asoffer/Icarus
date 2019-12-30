@@ -50,8 +50,8 @@ struct BlockGroup {
     return params_;
   }
 
-  void Serialize() {
-    for (auto &block : blocks_) { block->Serialize(); }
+  void WriteByteCode() {
+    for (auto &block : blocks_) { block->WriteByteCode(); }
   }
 
   StackFrameAllocations const &allocs() { return allocs_; }

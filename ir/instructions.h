@@ -78,20 +78,20 @@ constexpr uint8_t PrimitiveIndex() {
 }
 
 template <typename SizeType, typename T, typename Fn>
-void WriteBits(base::untyped_buffer* buf, absl::Span<T const> span,
+void WriteBits(ByteCodeWriter* writer, absl::Span<T const> span,
                Fn&& predicate) {
   ASSERT(span.size() < std::numeric_limits<SizeType>::max());
-  buf->append<SizeType>(span.size());
+  writer->Write<SizeType>(span.size());
 
   uint8_t reg_mask = 0;
   for (size_t i = 0; i < span.size(); ++i) {
     if (predicate(span[i])) { reg_mask |= (1 << (7 - (i % 8))); }
     if (i % 8 == 7) {
-      buf->append(reg_mask);
+      writer->Write(reg_mask);
       reg_mask = 0;
     }
   }
-  if (span.size() % 8 != 0) { buf->append(reg_mask); }
+  if (span.size() % 8 != 0) { writer->Write(reg_mask); }
 }
 
 }  // namespace internal
@@ -103,15 +103,15 @@ struct UnaryInstruction : base::Clone<UnaryInstruction<NumType>, Instruction> {
   explicit UnaryInstruction(RegOr<NumType> const& operand) : operand(operand) {}
   ~UnaryInstruction() override {}
 
-  void Serialize(base::untyped_buffer* buf) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const override {
     UNREACHABLE("Should call a child class");
   }
 
-  void SerializeUnary(cmd_index_t index, base::untyped_buffer* buf) const {
-    buf->append(index);
-    buf->append(operand.is_reg());
-    operand.apply([&](auto v) { buf->append(v); });
-    buf->append(result);
+  void WriteByteCodeUnary(cmd_index_t index, ByteCodeWriter* writer) const {
+    writer->Write(index);
+    writer->Write(operand.is_reg());
+    operand.apply([&](auto v) { writer->Write(v); });
+    writer->Write(result);
   };
 
   void Inline(Inliner const& inliner) override {
@@ -137,20 +137,20 @@ struct BinaryInstruction
     uint8_t rhs_is_reg : 1;
   };
 
-  void Serialize(base::untyped_buffer* buf) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const override {
     UNREACHABLE("Should call a child class");
   }
 
-  void SerializeBinary(cmd_index_t index, base::untyped_buffer* buf) const {
-    buf->append(index);
-    buf->append(control_bits{
+  void WriteByteCodeBinary(cmd_index_t index, ByteCodeWriter* writer) const {
+    writer->Write(index);
+    writer->Write(control_bits{
         .lhs_is_reg = lhs.is_reg(),
         .rhs_is_reg = rhs.is_reg(),
     });
 
-    lhs.apply([&](auto v) { buf->append(v); });
-    rhs.apply([&](auto v) { buf->append(v); });
-    buf->append(result);
+    lhs.apply([&](auto v) { writer->Write(v); });
+    rhs.apply([&](auto v) { writer->Write(v); });
+    writer->Write(result);
   }
 
   void Inline(Inliner const& inliner) override {
@@ -172,20 +172,20 @@ struct VariadicInstruction : base::Clone<VariadicInstruction<T>, Instruction> {
       : values(std::move(values)) {}
   ~VariadicInstruction() override {}
 
-  void Serialize(base::untyped_buffer* buf) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const override {
     UNREACHABLE("Should call a child class");
   }
 
-  void SerializeVariadic(cmd_index_t index, base::untyped_buffer* buf) const {
-    buf->append(index);
+  void WriteByteCodeVariadic(cmd_index_t index, ByteCodeWriter* writer) const {
+    writer->Write(index);
     internal::WriteBits<uint16_t, RegOr<T>>(
-        buf, values, [](RegOr<T> const& r) { return r.is_reg(); });
+        writer, values, [](RegOr<T> const& r) { return r.is_reg(); });
 
     absl::c_for_each(values, [&](RegOr<T> const& x) {
-      x.apply([&](auto v) { buf->append(v); });
+      x.apply([&](auto v) { writer->Write(v); });
     });
 
-    buf->append(result);
+    writer->Write(result);
   };
 
   void Inline(Inliner const& inliner) override {
@@ -306,8 +306,8 @@ struct AddInstruction : BinaryInstruction<NumType> {
                         stringify(this->rhs));
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    this->SerializeBinary(kIndex, buf);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    this->WriteByteCodeBinary(kIndex, writer);
   }
 };
 
@@ -329,8 +329,8 @@ struct SubInstruction : BinaryInstruction<NumType> {
                         stringify(this->rhs));
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    this->SerializeBinary(kIndex, buf);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    this->WriteByteCodeBinary(kIndex, writer);
   }
 };
 
@@ -352,8 +352,8 @@ struct MulInstruction : BinaryInstruction<NumType> {
                         stringify(this->rhs));
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    this->SerializeBinary(kIndex, buf);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    this->WriteByteCodeBinary(kIndex, writer);
   }
 };
 
@@ -375,8 +375,8 @@ struct DivInstruction : BinaryInstruction<NumType> {
                         stringify(this->rhs));
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    this->SerializeBinary(kIndex, buf);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    this->WriteByteCodeBinary(kIndex, writer);
   }
 };
 
@@ -398,8 +398,8 @@ struct ModInstruction : BinaryInstruction<NumType> {
                         stringify(this->rhs));
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    this->SerializeBinary(kIndex, buf);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    this->WriteByteCodeBinary(kIndex, writer);
   }
 };
 
@@ -421,8 +421,8 @@ struct EqInstruction : BinaryInstruction<NumType> {
                         stringify(this->rhs));
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    this->SerializeBinary(kIndex, buf);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    this->WriteByteCodeBinary(kIndex, writer);
   }
 };
 
@@ -444,8 +444,8 @@ struct NeInstruction : BinaryInstruction<NumType> {
                         stringify(this->rhs));
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    this->SerializeBinary(kIndex, buf);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    this->WriteByteCodeBinary(kIndex, writer);
   }
 };
 
@@ -467,8 +467,8 @@ struct LtInstruction : BinaryInstruction<NumType> {
                         stringify(this->rhs));
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    this->SerializeBinary(kIndex, buf);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    this->WriteByteCodeBinary(kIndex, writer);
   }
 };
 
@@ -490,8 +490,8 @@ struct LeInstruction : BinaryInstruction<NumType> {
                         stringify(this->rhs));
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    this->SerializeBinary(kIndex, buf);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    this->WriteByteCodeBinary(kIndex, writer);
   }
 };
 
@@ -511,11 +511,11 @@ struct LoadInstruction : base::Clone<LoadInstruction<T>, Instruction> {
                         " = load ", stringify(addr));
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(kIndex);
-    buf->append(addr.is_reg());
-    addr.apply([&](auto v) { buf->append(v); });
-    buf->append(result);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    writer->Write(kIndex);
+    writer->Write(addr.is_reg());
+    addr.apply([&](auto v) { writer->Write(v); });
+    writer->Write(result);
   }
 
   void Inline(Inliner const& inliner) override {
@@ -552,12 +552,12 @@ struct StoreInstruction : base::Clone<StoreInstruction<T>, Instruction> {
     uint8_t location_is_reg : 1;
   };
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(kIndex);
-    buf->append(control_bits{.value_is_reg    = value.is_reg(),
-                             .location_is_reg = location.is_reg()});
-    value.apply([&](auto v) { buf->append(v); });
-    location.apply([&](auto v) { buf->append(v); });
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    writer->Write(kIndex);
+    writer->Write(control_bits{.value_is_reg    = value.is_reg(),
+                               .location_is_reg = location.is_reg()});
+    value.apply([&](auto v) { writer->Write(v); });
+    location.apply([&](auto v) { writer->Write(v); });
   }
 
   void Inline(Inliner const& inliner) override {
@@ -591,10 +591,10 @@ struct PrintInstruction : base::Clone<PrintInstruction<T>, Instruction> {
     bool value_is_reg;
   };
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(kIndex);
-    buf->append(control_bits{.value_is_reg = value.is_reg()});
-    value.apply([&](auto v) { buf->append(v); });
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    writer->Write(kIndex);
+    writer->Write(control_bits{.value_is_reg = value.is_reg()});
+    value.apply([&](auto v) { writer->Write(v); });
   }
 
   void Inline(Inliner const& inliner) override { inliner.Inline(value); }
@@ -624,18 +624,18 @@ struct PhiInstruction : base::Clone<PhiInstruction<T>, Instruction> {
     return s;
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(kIndex);
-    buf->append<uint16_t>(values.size());
-    for (auto block : blocks) { buf->append(block); }
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    writer->Write(kIndex);
+    writer->Write<uint16_t>(values.size());
+    for (auto block : blocks) { writer->Write(block); }
     internal::WriteBits<uint16_t, RegOr<T>>(
-        buf, values, [](RegOr<T> const& r) { return r.is_reg(); });
+        writer, values, [](RegOr<T> const& r) { return r.is_reg(); });
 
     absl::c_for_each(values, [&](RegOr<T> const& x) {
-      x.apply([&](auto v) { buf->append(v); });
+      x.apply([&](auto v) { writer->Write(v); });
     });
 
-    buf->append(result);
+    writer->Write(result);
   }
 
   void Inline(Inliner const& inliner) override {
@@ -680,8 +680,8 @@ struct RegisterInstruction : UnaryInstruction<T> {
 
   static T Apply(T val) { return val; }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    this->SerializeUnary(kIndex, buf);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    this->WriteByteCodeUnary(kIndex, writer);
   }
 };
 
@@ -708,11 +708,11 @@ struct SetReturnInstruction
     }
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(kIndex);
-    buf->append(index);
-    buf->append(value.is_reg());
-    value.apply([&](auto v) { buf->append(v); });
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    writer->Write(kIndex);
+    writer->Write(index);
+    writer->Write(value.is_reg());
+    value.apply([&](auto v) { writer->Write(v); });
   }
 
   void Inline(Inliner const& inliner) override { NOT_YET(); }
@@ -741,11 +741,11 @@ struct CastInstruction : Instruction {
                         TypeToString<ToType>());
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(kIndex);
-    buf->append(value.is_reg());
-    value.apply([&](auto v) { buf->append(v); });
-    buf->append(result);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    writer->Write(kIndex);
+    writer->Write(value.is_reg());
+    value.apply([&](auto v) { writer->Write(v); });
+    writer->Write(result);
   }
 
   void Inline(Inliner const& inliner) override {
@@ -774,8 +774,8 @@ struct NegInstruction : UnaryInstruction<NumType> {
                         " = neg ", stringify(this->operand));
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    this->SerializeUnary(kIndex, buf);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    this->WriteByteCodeUnary(kIndex, writer);
   }
 };
 
@@ -794,10 +794,10 @@ struct GetReturnInstruction : base::Clone<GetReturnInstruction, Instruction> {
     return absl::StrCat(stringify(result), " = get-ret ", index);
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(kIndex);
-    buf->append(index);
-    buf->append(result);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    writer->Write(kIndex);
+    writer->Write(index);
+    writer->Write(result);
   }
 
   void Inline(Inliner const& inliner) override { NOT_YET(); }
@@ -822,8 +822,8 @@ struct NotInstruction : UnaryInstruction<bool> {
                         " = not ", stringify(this->operand));
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    this->SerializeUnary(kIndex, buf);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    this->WriteByteCodeUnary(kIndex, writer);
   }
 };
 
@@ -838,8 +838,8 @@ struct PtrInstruction : UnaryInstruction<type::Type const*> {
     return type::Ptr(operand);
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    this->SerializeUnary(kIndex, buf);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    this->WriteByteCodeUnary(kIndex, writer);
   }
 };
 
@@ -854,8 +854,8 @@ struct BufPtrInstruction : UnaryInstruction<type::Type const*> {
     return type::BufPtr(operand);
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    this->SerializeUnary(kIndex, buf);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    this->WriteByteCodeUnary(kIndex, writer);
   }
 };
 
@@ -873,11 +873,11 @@ struct PrintEnumInstruction : base::Clone<PrintEnumInstruction, Instruction> {
                         stringify(value));
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(kIndex);
-    buf->append(value.is_reg());
-    value.apply([&](auto v) { buf->append(v); });
-    buf->append(enum_type);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    writer->Write(kIndex);
+    writer->Write(value.is_reg());
+    value.apply([&](auto v) { writer->Write(v); });
+    writer->Write(enum_type);
   }
 
   void Inline(Inliner const& inliner) override { inliner.Inline(value); }
@@ -901,11 +901,11 @@ struct PrintFlagsInstruction : base::Clone<PrintFlagsInstruction, Instruction> {
                         stringify(value));
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(kIndex);
-    buf->append(value.is_reg());
-    value.apply([&](auto v) { buf->append(v); });
-    buf->append(flags_type);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    writer->Write(kIndex);
+    writer->Write(value.is_reg());
+    value.apply([&](auto v) { writer->Write(v); });
+    writer->Write(flags_type);
   }
 
   void Inline(Inliner const& inliner) override { inliner.Inline(value); }
@@ -923,8 +923,8 @@ struct DebugIrInstruction : base::Clone<DebugIrInstruction, Instruction> {
 
   std::string to_string() const override { return "debug-ir"; }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(internal::kDebugIrInstructionNumber);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    writer->Write(internal::kDebugIrInstructionNumber);
   }
 
   void Inline(Inliner const& inliner) override {}
@@ -944,8 +944,8 @@ struct XorFlagsInstruction : BinaryInstruction<FlagsVal> {
                         stringify(this->lhs), " ", stringify(this->rhs));
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    this->SerializeBinary(kIndex, buf);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    this->WriteByteCodeBinary(kIndex, writer);
   }
 };
 
@@ -963,8 +963,8 @@ struct AndFlagsInstruction : BinaryInstruction<FlagsVal> {
                         stringify(this->lhs), " ", stringify(this->rhs));
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    this->SerializeBinary(kIndex, buf);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    this->WriteByteCodeBinary(kIndex, writer);
   }
 };
 
@@ -982,8 +982,8 @@ struct OrFlagsInstruction : BinaryInstruction<FlagsVal> {
                         stringify(this->lhs), " ", stringify(this->rhs));
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    this->SerializeBinary(kIndex, buf);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    this->WriteByteCodeBinary(kIndex, writer);
   }
 };
 
@@ -1008,8 +1008,8 @@ struct TupleInstruction : VariadicInstruction<type::Type const*> {
                       }));
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    SerializeVariadic(kIndex, buf);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    WriteByteCodeVariadic(kIndex, writer);
   }
 };
 
@@ -1034,8 +1034,8 @@ struct VariantInstruction : VariadicInstruction<type::Type const*> {
                       }));
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    this->SerializeVariadic(kIndex, buf);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    this->WriteByteCodeVariadic(kIndex, writer);
   }
 };
 
@@ -1053,22 +1053,22 @@ struct EnumerationInstruction
         specified_values_(std::move(specified_values)) {}
   ~EnumerationInstruction() override {}
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(kIndex);
-    buf->append(kind_ == Kind::Enum);
-    buf->append<uint16_t>(names_.size());
-    buf->append<uint16_t>(specified_values_.size());
-    buf->append(mod_);
-    for (auto name : names_) { buf->append(name); }
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    writer->Write(kIndex);
+    writer->Write(kind_ == Kind::Enum);
+    writer->Write<uint16_t>(names_.size());
+    writer->Write<uint16_t>(specified_values_.size());
+    writer->Write(mod_);
+    for (auto name : names_) { writer->Write(name); }
 
     for (auto const& [index, val] : specified_values_) {
       // TODO these could be packed much more efficiently.
-      buf->append(index);
-      buf->append<bool>(val.is_reg());
-      val.apply([&](auto v) { buf->append(v); });
+      writer->Write(index);
+      writer->Write<bool>(val.is_reg());
+      val.apply([&](auto v) { writer->Write(v); });
     }
 
-    buf->append(result);
+    writer->Write(result);
   };
 
   std::string to_string() const override {
@@ -1092,10 +1092,10 @@ struct OpaqueTypeInstruction : base::Clone<OpaqueTypeInstruction, Instruction> {
   OpaqueTypeInstruction(module::BasicModule const* mod) : mod(mod) {}
   ~OpaqueTypeInstruction() override {}
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(kIndex);
-    buf->append(mod);
-    buf->append(result);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    writer->Write(kIndex);
+    writer->Write(mod);
+    writer->Write(result);
   }
 
   std::string to_string() const override {
@@ -1138,22 +1138,24 @@ struct ArrowInstruction : base::Clone<ArrowInstruction, Instruction> {
         ")");
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(kIndex);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    writer->Write(kIndex);
 
     internal::WriteBits<uint16_t, RegOr<type::Type const*>>(
-        buf, lhs, [](RegOr<type::Type const*> const& r) { return r.is_reg(); });
+        writer, lhs,
+        [](RegOr<type::Type const*> const& r) { return r.is_reg(); });
     absl::c_for_each(lhs, [&](RegOr<type::Type const*> const& x) {
-      x.apply([&](auto v) { buf->append(v); });
+      x.apply([&](auto v) { writer->Write(v); });
     });
 
     internal::WriteBits<uint16_t, RegOr<type::Type const*>>(
-        buf, rhs, [](RegOr<type::Type const*> const& r) { return r.is_reg(); });
+        writer, rhs,
+        [](RegOr<type::Type const*> const& r) { return r.is_reg(); });
     absl::c_for_each(rhs, [&](RegOr<type::Type const*> const& x) {
-      x.apply([&](auto v) { buf->append(v); });
+      x.apply([&](auto v) { writer->Write(v); });
     });
 
-    buf->append(result);
+    writer->Write(result);
   }
 
   void Inline(Inliner const& inliner) override {
@@ -1196,14 +1198,14 @@ struct StructManipulationInstruction
     }
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(kIndex);
-    buf->append(kind);
-    buf->append(type);
-    buf->append(r);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    writer->Write(kIndex);
+    writer->Write(kind);
+    writer->Write(type);
+    writer->Write(r);
     if (kind == Kind::Copy or kind == Kind::Move) {
-      buf->append(to.is_reg());
-      to.apply([&](auto v) { buf->append(v); });
+      writer->Write(to.is_reg());
+      to.apply([&](auto v) { writer->Write(v); });
     }
   }
 
@@ -1240,35 +1242,36 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
     return result;
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const override {
     ASSERT(args.size() == fn_type->input.size());
-    buf->append(kIndex);
-    buf->append(fn.is_reg());
-    internal::WriteBits<uint16_t, Results>(buf, args, [](Results const& r) {
+    writer->Write(kIndex);
+    writer->Write(fn.is_reg());
+    internal::WriteBits<uint16_t, Results>(writer, args, [](Results const& r) {
       ASSERT(r.size() == 1u);
       return r.is_reg(0);
     });
 
-    fn.apply([&](auto v) { buf->append(v); });
-    size_t bytes_written_slot = buf->reserve<core::Bytes>();
+    fn.apply([&](auto v) { writer->Write(v); });
+    size_t bytes_written_slot = writer->buf_->reserve<core::Bytes>();
     size_t arg_index          = 0;
     for (Results const& arg : args) {
       if (arg.is_reg(0)) {
-        buf->append(arg.get<Reg>(0));
+        writer->Write(arg.get<Reg>(0));
       } else {
         type::Apply(fn_type->input[arg_index], [&](auto tag) {
           using T = typename decltype(tag)::type;
-          buf->append(arg.get<T>(0).value());
+          writer->Write(arg.get<T>(0).value());
         });
       }
       ++arg_index;
     }
-    buf->set(bytes_written_slot, core::Bytes{buf->size() - bytes_written_slot -
-                                             sizeof(core::Bytes)});
+    writer->buf_->set(bytes_written_slot,
+                      core::Bytes{writer->buf_->size() - bytes_written_slot -
+                                  sizeof(core::Bytes)});
 
     // TODO this is probably wrong.
-    buf->append<uint16_t>(fn_type->output.size());
-    for (Reg r : outs.regs_) { buf->append(r); }
+    writer->Write<uint16_t>(fn_type->output.size());
+    for (Reg r : outs.regs_) { writer->Write(r); }
   }
 
   void Inline(Inliner const& inliner) override {
@@ -1293,11 +1296,11 @@ struct LoadSymbolInstruction : base::Clone<LoadSymbolInstruction, Instruction> {
     return absl::StrCat("load-symbol ", name, ": ", type->to_string());
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(kIndex);
-    buf->append(name);
-    buf->append(type);
-    buf->append(result);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    writer->Write(kIndex);
+    writer->Write(name);
+    writer->Write(type);
+    writer->Write(result);
   }
 
   void Inline(Inliner const& inliner) override { inliner.Inline(result); }
@@ -1325,14 +1328,14 @@ struct ArrayInstruction : base::Clone<ArrayInstruction, Instruction> {
     uint8_t type_is_reg : 1;
   };
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(kIndex);
-    buf->append(control_bits{.length_is_reg = length.is_reg(),
-                             .type_is_reg   = data_type.is_reg()});
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    writer->Write(kIndex);
+    writer->Write(control_bits{.length_is_reg = length.is_reg(),
+                               .type_is_reg   = data_type.is_reg()});
 
-    length.apply([&](auto v) { buf->append(v); });
-    data_type.apply([&](auto v) { buf->append(v); });
-    buf->append(result);
+    length.apply([&](auto v) { writer->Write(v); });
+    data_type.apply([&](auto v) { writer->Write(v); });
+    writer->Write(result);
   }
 
   void Inline(Inliner const& inliner) override {
@@ -1362,25 +1365,25 @@ struct StructInstruction : base::Clone<StructInstruction, Instruction> {
     uint8_t type_is_reg : 1;
   };
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(kIndex);
-    buf->append<uint16_t>(fields.size());
-    buf->append(scope);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    writer->Write(kIndex);
+    writer->Write<uint16_t>(fields.size());
+    writer->Write(scope);
 
     // TODO shuffling fields order?
-    for (auto const& field : fields) { buf->append(field.name()); }
+    for (auto const& field : fields) { writer->Write(field.name()); }
 
     std::vector<RegOr<type::Type const*>> types;
     types.reserve(fields.size());
     for (auto const& field : fields) { types.push_back(field.type()); }
     internal::WriteBits<uint16_t, RegOr<type::Type const*>>(
-        buf, types,
+        writer, types,
         [](RegOr<type::Type const*> const& r) { return r.is_reg(); });
     absl::c_for_each(types, [&](RegOr<type::Type const*> x) {
-      x.apply([&](auto v) { buf->append(v); });
+      x.apply([&](auto v) { writer->Write(v); });
     });
 
-    buf->append(result);
+    writer->Write(result);
   }
 
   void Inline(Inliner const& inliner) override {
@@ -1407,12 +1410,12 @@ struct TypeInfoInstruction : base::Clone<TypeInfoInstruction, Instruction> {
         type.is_reg() ? stringify(type.reg()) : type.value()->to_string());
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(kIndex);
-    buf->append<uint8_t>(static_cast<uint8_t>(kind) |
-                         static_cast<uint8_t>(type.is_reg()));
-    type.apply([&](auto v) { buf->append(v); });
-    buf->append(result);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    writer->Write(kIndex);
+    writer->Write<uint8_t>(static_cast<uint8_t>(kind) |
+                           static_cast<uint8_t>(type.is_reg()));
+    type.apply([&](auto v) { writer->Write(v); });
+    writer->Write(result);
   }
 
   void Inline(Inliner const& inliner) override { inliner.Inline(type); }
@@ -1435,20 +1438,20 @@ struct MakeBlockInstruction : base::Clone<MakeBlockInstruction, Instruction> {
   // TODO
   std::string to_string() const override { return "make-block "; }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(kIndex);
-    buf->append(block_def);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    writer->Write(kIndex);
+    writer->Write(block_def);
     internal::WriteBits<uint16_t, RegOr<AnyFunc>>(
-        buf, befores, [](RegOr<AnyFunc> const& r) { return r.is_reg(); });
+        writer, befores, [](RegOr<AnyFunc> const& r) { return r.is_reg(); });
     absl::c_for_each(befores, [&](RegOr<AnyFunc> x) {
-      x.apply([&](auto v) { buf->append(v); });
+      x.apply([&](auto v) { writer->Write(v); });
     });
     internal::WriteBits<uint16_t, RegOr<Jump*>>(
-        buf, afters, [](RegOr<Jump*> const& r) { return r.is_reg(); });
+        writer, afters, [](RegOr<Jump*> const& r) { return r.is_reg(); });
     absl::c_for_each(afters, [&](RegOr<Jump*> x) {
-      x.apply([&](auto v) { buf->append(v); });
+      x.apply([&](auto v) { writer->Write(v); });
     });
-    buf->append(result);
+    writer->Write(result);
   }
 
   void Inline(Inliner const& inliner) override {
@@ -1478,27 +1481,27 @@ struct MakeScopeInstruction : base::Clone<MakeScopeInstruction, Instruction> {
   // TODO
   std::string to_string() const override { return "make-scope"; }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(kIndex);
-    buf->append(scope_def);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    writer->Write(kIndex);
+    writer->Write(scope_def);
 
     internal::WriteBits<uint16_t, RegOr<Jump*>>(
-        buf, inits, [](RegOr<Jump*> const& r) { return r.is_reg(); });
+        writer, inits, [](RegOr<Jump*> const& r) { return r.is_reg(); });
     absl::c_for_each(inits, [&](RegOr<Jump*> x) {
-      x.apply([&](auto v) { buf->append(v); });
+      x.apply([&](auto v) { writer->Write(v); });
     });
     internal::WriteBits<uint16_t, RegOr<AnyFunc>>(
-        buf, dones, [](RegOr<AnyFunc> const& r) { return r.is_reg(); });
+        writer, dones, [](RegOr<AnyFunc> const& r) { return r.is_reg(); });
     absl::c_for_each(dones, [&](RegOr<AnyFunc> x) {
-      x.apply([&](auto v) { buf->append(v); });
+      x.apply([&](auto v) { writer->Write(v); });
     });
 
-    buf->append<uint16_t>(blocks.size());
+    writer->Write<uint16_t>(blocks.size());
     for (auto [name, block] : blocks) {
-      buf->append(name);
-      buf->append(block);
+      writer->Write(name);
+      writer->Write(block);
     }
-    buf->append(result);
+    writer->Write(result);
   }
 
   void Inline(Inliner const& inliner) override {
@@ -1536,17 +1539,17 @@ struct StructIndexInstruction
     uint8_t reg_index : 1;
   };
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(kIndex);
-    buf->append(control_bits{
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    writer->Write(kIndex);
+    writer->Write(control_bits{
         .reg_addr  = addr.is_reg(),
         .reg_index = index.is_reg(),
     });
 
-    buf->append(struct_type);
-    addr.apply([&](auto v) { buf->append(v); });
-    index.apply([&](auto v) { buf->append(v); });
-    buf->append(result);
+    writer->Write(struct_type);
+    addr.apply([&](auto v) { writer->Write(v); });
+    index.apply([&](auto v) { writer->Write(v); });
+    writer->Write(result);
   }
 
   void Inline(Inliner const& inliner) override {
@@ -1582,17 +1585,17 @@ struct TupleIndexInstruction : base::Clone<TupleIndexInstruction, Instruction> {
     uint8_t reg_index : 1;
   };
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(kIndex);
-    buf->append(control_bits{
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    writer->Write(kIndex);
+    writer->Write(control_bits{
         .reg_addr  = addr.is_reg(),
         .reg_index = index.is_reg(),
     });
 
-    buf->append(tuple);
-    addr.apply([&](auto v) { buf->append(v); });
-    index.apply([&](auto v) { buf->append(v); });
-    buf->append(result);
+    writer->Write(tuple);
+    addr.apply([&](auto v) { writer->Write(v); });
+    index.apply([&](auto v) { writer->Write(v); });
+    writer->Write(result);
   }
 
   void Inline(Inliner const& inliner) override {
@@ -1628,17 +1631,17 @@ struct PtrIncrInstruction : base::Clone<PtrIncrInstruction, Instruction> {
     uint8_t reg_index : 1;
   };
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(kIndex);
-    buf->append(control_bits{
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    writer->Write(kIndex);
+    writer->Write(control_bits{
         .reg_addr  = addr.is_reg(),
         .reg_index = index.is_reg(),
     });
 
-    buf->append(ptr);
-    addr.apply([&](auto v) { buf->append(v); });
-    index.apply([&](auto v) { buf->append(v); });
-    buf->append(result);
+    writer->Write(ptr);
+    addr.apply([&](auto v) { writer->Write(v); });
+    index.apply([&](auto v) { writer->Write(v); });
+    writer->Write(result);
   }
 
   void Inline(Inliner const& inliner) override {
@@ -1667,12 +1670,12 @@ struct VariantAccessInstruction
                         get_value ? "value " : "type ", stringify(var));
   }
 
-  void Serialize(base::untyped_buffer* buf) const override {
-    buf->append(kIndex);
-    buf->append(get_value);
-    buf->append(var.is_reg());
-    var.apply([&](auto v) { buf->append(v); });
-    buf->append(result);
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    writer->Write(kIndex);
+    writer->Write(get_value);
+    writer->Write(var.is_reg());
+    var.apply([&](auto v) { writer->Write(v); });
+    writer->Write(result);
   }
 
   void Inline(Inliner const& inliner) override {

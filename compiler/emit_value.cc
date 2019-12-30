@@ -142,7 +142,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node) {
       compiler->builder().ReturnJump();
     }
   }
-  ir_func->Serialize();
+  ir_func->WriteByteCode();
   ir_func->work_item = nullptr;
 }
 
@@ -237,7 +237,7 @@ void CompleteBody(Compiler *compiler, ast::Jump const *node) {
     // it'll never be executed.
     MakeAllDestructions(compiler, node->body_scope());
   }
-  jmp->Serialize();
+  jmp->WriteByteCode();
   jmp->work_item = nullptr;
 }
 
@@ -269,7 +269,7 @@ void ProcessExecutableBody(Compiler *c, base::PtrSpan<ast::Node const> nodes,
     c->builder().ReturnJump();
   }
   c->CompleteDeferredBodies();
-  main_fn->Serialize();
+  main_fn->WriteByteCode();
 }
 
 ir::Results Compiler::Visit(ast::Access const *node, EmitValueTag) {

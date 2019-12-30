@@ -209,7 +209,7 @@ ir::CompiledFn Compiler::MakeThunk(ast::Expression const *expr,
     }
     builder().ReturnJump();
   }
-  fn.Serialize();
+  fn.WriteByteCode();
 
   return fn;
 }
