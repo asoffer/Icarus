@@ -64,7 +64,9 @@ cc_library(
     name = "byte_code_writer",
     hdrs = ["byte_code_writer.h"],
     deps = [
+        "//base:debug",
         "//base:untyped_buffer",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
 

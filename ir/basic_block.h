@@ -40,8 +40,11 @@ struct BasicBlock {
     // should only serialize once. We shouldn't store the serialized version
     // here at all.
     cmd_buffer_.clear();
-    ByteCodeWriter writer{&cmd_buffer_};
+    ByteCodeWriter writer(&cmd_buffer_);
+    writer.StartBlock(this);
     for (auto const &inst : instructions_) { inst->WriteByteCode(&writer); }
+    writer.replacements_.clear(); // TODO
+    writer.MakeReplacements();
   }
 
   internal::BlockGroup *group() { return group_; }
