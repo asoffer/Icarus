@@ -91,9 +91,16 @@ void CallFunction(ir::CompiledFn *fn, const base::untyped_buffer &arguments,
   // generics model I have, but I can't quite articulate exactly why it only
   // happens for generics and nothing else.
   //
+  // Also, we shouldn't pay this lookup cost every time when it's mostly
+  // irrelevant.
+  //
   // TODO log an error if you're asked to execute a function that had an
   // error.
-  if (fn->work_item and *fn->work_item) { (std::move(*fn->work_item))(); }
+  if (fn->work_item and *fn->work_item) {
+    (std::move(*fn->work_item))();
+    fn->WriteByteCode();
+  }
+  if (fn->byte_code().size() == 2) { return; };
 
   ctx->call_stack_.emplace_back(fn, arguments, &ctx->stack_);
   ctx->ExecuteBlocks(ret_slots);
@@ -628,8 +635,6 @@ void ExecutionContext::MemCpyRegisterBytes(void *dst, ir::Reg reg,
 void ExecutionContext::ExecuteBlocks(absl::Span<ir::Addr const> ret_slots) {
 
   DEBUG_LOG("dbg-buffer")(*current_frame().current_block());
-  DEBUG_LOG("dbg-buffer")(*current_frame().current_block());
-  DEBUG_LOG("dbg-buffer")(current_frame().current_block()->cmd_buffer_);
   auto &buffer = current_frame().fn_->byte_code();
 
   // Empty functions are common. Ignore them.

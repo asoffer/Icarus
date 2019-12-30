@@ -6,15 +6,13 @@
 namespace ir {
 
 std::ostream &operator<<(std::ostream &os, BasicBlock const &b) {
-  os << " [with " << b.num_incoming() << " incoming; " << b.cmd_buffer_.size()
-     << "]\n";
+  os << " [with " << b.num_incoming() << " incoming]\n";
   for (auto const &inst : b.instructions_) { os << "    " << inst->to_string() << '\n'; }
   os << b.jump_.DebugString() << "\n";
   return os;
 }
 
-BasicBlock::BasicBlock(BasicBlock const &b)
-    : cmd_buffer_(b.cmd_buffer_), group_(b.group_), jump_(b.jump_) {
+BasicBlock::BasicBlock(BasicBlock const &b) : group_(b.group_), jump_(b.jump_) {
   instructions_.reserve(b.instructions_.size());
   for (auto const &inst : b.instructions_) {
     instructions_.push_back(inst->clone());
@@ -24,7 +22,6 @@ BasicBlock::BasicBlock(BasicBlock const &b)
 
 BasicBlock::BasicBlock(BasicBlock &&b) noexcept
     : instructions_(std::move(b.instructions_)),
-      cmd_buffer_(std::move(b.cmd_buffer_)),
       group_(b.group_),
       jump_(std::move(b.jump_)) {
   ExchangeJumps(&b);
@@ -41,7 +38,6 @@ BasicBlock &BasicBlock::operator=(BasicBlock const &b) noexcept {
   for (auto const &inst : b.instructions_) {
     instructions_.push_back(inst->clone());
   }
-  cmd_buffer_ = b.cmd_buffer_;
   jump_ = b.jump_;
   return *this;
 }
@@ -107,7 +103,6 @@ BasicBlock &BasicBlock::operator=(BasicBlock &&b) noexcept {
   group_        = b.group_;
   instructions_ = std::move(b.instructions_);
   jump_         = std::exchange(b.jump_, JumpCmd::Return());
-  cmd_buffer_   = std::move(b.cmd_buffer_);
   return *this;
 }
 
@@ -119,7 +114,6 @@ void BasicBlock::Append(BasicBlock &&b) {
                        std::make_move_iterator(b.instructions_.begin()),
                        std::make_move_iterator(b.instructions_.end()));
   b.instructions_.clear();
-  cmd_buffer_.write(cmd_buffer_.size(), b.cmd_buffer_);
   jump_ = std::move(b.jump_);
 }
 

@@ -1548,7 +1548,6 @@ ir::Results Compiler::Visit(ast::Switch const *node, EmitValueTag) {
       }
       return ir::Results{builder().Phi<T>(blocks, vals)};
     });
-    DEBUG_LOG("switch")(builder().CurrentBlock()->cmd_buffer_.to_string());
     return r;
   }
 }

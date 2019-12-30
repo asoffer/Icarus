@@ -365,7 +365,6 @@ struct Builder {
   // Print commands
   template <typename T>
   void Print(T r) {
-    auto& buf = CurrentBlock()->cmd_buffer_;
     if constexpr (IsRegOr<T>::value) {
       auto inst = std::make_unique<PrintInstruction<typename T::type>>(r);
       CurrentBlock()->instructions_.push_back(std::move(inst));

@@ -32,7 +32,6 @@ struct BasicBlock {
   void Append(BasicBlock &&b);
 
   std::vector<std::unique_ptr<Instruction>> instructions_;
-  base::untyped_buffer cmd_buffer_;
   size_t num_incoming() const { return incoming_.size(); }
 
   void WriteByteCode(ByteCodeWriter *writer);
