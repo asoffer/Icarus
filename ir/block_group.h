@@ -50,8 +50,16 @@ struct BlockGroup {
     return params_;
   }
 
+  base::untyped_buffer const& byte_code() const {
+    ASSERT(byte_code_.size() != 0u);
+    return byte_code_;
+  }
+
   void WriteByteCode() {
-    for (auto &block : blocks_) { block->WriteByteCode(); }
+    ByteCodeWriter writer(&byte_code_);
+    ASSERT(byte_code_.size() == 0u);
+    for (auto &block : blocks_) { block->WriteByteCode(&writer); }
+    writer.MakeReplacements();
   }
 
   StackFrameAllocations const &allocs() { return allocs_; }
@@ -69,6 +77,8 @@ struct BlockGroup {
 
   size_t num_regs_ = 0;
   size_t num_args_ = 0;
+
+  base::untyped_buffer byte_code_;
 };
 
 std::ostream &operator<<(std::ostream &os, BlockGroup const &b);

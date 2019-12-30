@@ -269,7 +269,7 @@ void ProcessExecutableBody(Compiler *c, base::PtrSpan<ast::Node const> nodes,
     c->builder().ReturnJump();
   }
   c->CompleteDeferredBodies();
-  main_fn->WriteByteCode();
+  // main_fn->WriteByteCode();
 }
 
 ir::Results Compiler::Visit(ast::Access const *node, EmitValueTag) {

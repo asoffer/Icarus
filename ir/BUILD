@@ -25,6 +25,7 @@ cc_lib(
     deps = [
         ":byte_code_writer",
         ":instructions_base",
+        ":instruction_op_codes",
         ":out_params",
         "//ir/cmd:jump",
         "//base:untyped_buffer",
@@ -135,6 +136,11 @@ cc_test(
 )
 
 cc_library(
+    name = "instruction_op_codes",
+    hdrs = ["instruction_op_codes.h"],
+)
+
+cc_library(
     name = "instructions_base",
     hdrs = ["instructions_base.h"],
     deps = [
@@ -148,6 +154,7 @@ cc_library(
     deps = [
         ":block_def",
         ":instructions_base",
+        ":instruction_op_codes",
         ":reg_or",
         ":scope_def",
         ":struct_field",

@@ -96,22 +96,8 @@ void CallFunction(ir::CompiledFn *fn, const base::untyped_buffer &arguments,
   if (fn->work_item and *fn->work_item) { (std::move(*fn->work_item))(); }
 
   ctx->call_stack_.emplace_back(fn, arguments, &ctx->stack_);
-
-  while (true) {
-    ctx->ExecuteBlock(ret_slots);
-    auto const &j = ctx->current_frame().current_block()->jump_;
-    switch (j.kind()) {
-      case ir::JumpCmd::Kind::Return: ctx->call_stack_.pop_back(); return;
-      case ir::JumpCmd::Kind::Uncond:
-        ctx->current_frame().MoveTo(j.UncondTarget());
-        break;
-      case ir::JumpCmd::Kind::Cond:
-        ctx->current_frame().MoveTo(
-            j.CondTarget(ctx->resolve<bool>(j.CondReg())));
-        break;
-      default: UNREACHABLE(static_cast<int>(j.kind()));
-    }
-  }
+  ctx->ExecuteBlocks(ret_slots);
+  ctx->call_stack_.pop_back();
 }
 
 }  // namespace
@@ -363,7 +349,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     uint16_t num           = iter->read<uint16_t>();
     uint64_t index         = std::numeric_limits<uint64_t>::max();
     for (uint16_t i = 0; i < num; ++i) {
-      if (ctx->current_frame().prev_ == iter->read<ir::BasicBlock const *>()) {
+      if (ctx->current_frame().prev_index_ == iter->read<uintptr_t>()) {
         index = i;
       }
     }
@@ -639,14 +625,39 @@ void ExecutionContext::MemCpyRegisterBytes(void *dst, ir::Reg reg,
   std::memcpy(dst, call_stack_.back().regs_.raw(reg), length);
 }
 
-void ExecutionContext::ExecuteBlock(absl::Span<ir::Addr const> ret_slots) {
+void ExecutionContext::ExecuteBlocks(absl::Span<ir::Addr const> ret_slots) {
+
+  DEBUG_LOG("dbg-buffer")(*current_frame().current_block());
   DEBUG_LOG("dbg-buffer")(*current_frame().current_block());
   DEBUG_LOG("dbg-buffer")(current_frame().current_block()->cmd_buffer_);
-  auto iter = current_frame().current_block()->cmd_buffer_.begin();
-  while (iter < current_frame().current_block()->cmd_buffer_.end()) {
+  auto &buffer = current_frame().fn_->byte_code();
+
+  // Empty functions are common. Ignore them.
+  if (buffer.size() == 2) { return; }
+
+  auto iter = buffer.begin();
+  while (true) {
+    ASSERT(iter < buffer.end());
     ir::cmd_index_t cmd_index = iter.read<ir::cmd_index_t>();
     DEBUG_LOG("dbg-buffer")(cmd_index);
     switch (cmd_index) {
+      case ir::internal::kUncondJumpInstruction: {
+        uintptr_t offset = iter.read<uintptr_t>();
+        current_frame().MoveTo(offset);
+        iter = buffer.begin();
+        iter.skip(offset);
+      } break;
+      case ir::internal::kCondJumpInstruction: {
+        ir::Reg r             = iter.read<ir::Reg>();
+        uintptr_t true_block  = iter.read<uintptr_t>();
+        uintptr_t false_block = iter.read<uintptr_t>();
+        uintptr_t offset      = resolve<bool>(r) ? true_block : false_block;
+        current_frame().MoveTo(offset);
+        iter = buffer.begin();
+        iter.skip(offset);
+      } break;
+      case ir::internal::kReturnInstruction: return;
+
       case ir::AddInstruction<uint8_t>::kIndex:
         ExecuteInstruction<ir::AddInstruction<uint8_t>>(&iter, this);
         break;
@@ -1347,8 +1358,9 @@ void ExecutionContext::ExecuteBlock(absl::Span<ir::Addr const> ret_slots) {
       case ir::VariantAccessInstruction::kIndex:
         ExecuteAdHocInstruction<ir::VariantAccessInstruction>(&iter, this);
         break;
+      default:
         // TODO Cast instructions
-      default: UNREACHABLE(static_cast<int>(cmd_index));
+        UNREACHABLE(static_cast<int>(cmd_index));
     }
   }
 }

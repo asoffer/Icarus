@@ -1,5 +1,6 @@
 #include "ir/basic_block.h"
 
+#include "ir/instruction_op_codes.h"
 #include "type/type.h"
 
 namespace ir {
@@ -110,10 +111,14 @@ BasicBlock &BasicBlock::operator=(BasicBlock &&b) noexcept {
   return *this;
 }
 
-void BasicBlock::Append(BasicBlock const &b) {
+void BasicBlock::Append(BasicBlock &&b) {
   ASSERT(jump_.kind() == JumpCmd::Kind::Uncond);
   RemoveOutgoingJumps();
   ExchangeJumps(&b);
+  instructions_.insert(instructions_.end(),
+                       std::make_move_iterator(b.instructions_.begin()),
+                       std::make_move_iterator(b.instructions_.end()));
+  b.instructions_.clear();
   cmd_buffer_.write(cmd_buffer_.size(), b.cmd_buffer_);
   jump_ = std::move(b.jump_);
 }
@@ -140,6 +145,25 @@ void BasicBlock::ReplaceJumpTargets(BasicBlock *old_target,
         j.false_block = new_target;
         j.false_block->incoming_.insert(this);
       }
+    }
+  });
+}
+
+void BasicBlock::WriteByteCode(ByteCodeWriter *writer) {
+  writer->StartBlock(this);
+  for (auto const &inst : instructions_) { inst->WriteByteCode(writer); }
+  jump_.Visit([&](auto &j) {
+    using type = std::decay_t<decltype(j)>;
+    if constexpr (std::is_same_v<type, JumpCmd::RetJump>) {
+      writer->Write(internal::kReturnInstruction);
+    } else if constexpr (std::is_same_v<type, JumpCmd::UncondJump>) {
+      writer->Write(internal::kUncondJumpInstruction);
+      writer->Write(j.block);
+    } else if constexpr (std::is_same_v<type, JumpCmd::CondJump>) {
+      writer->Write(internal::kCondJumpInstruction);
+      writer->Write(j.reg);
+      writer->Write(j.true_block);
+      writer->Write(j.false_block);
     }
   });
 }

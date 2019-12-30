@@ -15,7 +15,7 @@
 namespace interpretter {
 
 struct ExecutionContext {
-  void ExecuteBlock(absl::Span<ir::Addr const> ret_slots);
+  void ExecuteBlocks(absl::Span<ir::Addr const> ret_slots);
 
   StackFrame const &current_frame() const { return call_stack_.back(); }
   StackFrame &current_frame() { return call_stack_.back(); }

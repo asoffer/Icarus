@@ -44,6 +44,7 @@ int RunCompiler(frontend::FileName const &file_name) {
 
   // TODO All the functions? In all the modules?
   opt::RunAllOptimizations(exec_mod->main());
+  exec_mod->main()->WriteByteCode();
   interpretter::ExecutionContext exec_ctx;
   interpretter::Execute(exec_mod->main(), base::untyped_buffer(0), {},
                         &exec_ctx);

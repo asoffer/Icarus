@@ -29,23 +29,13 @@ struct BasicBlock {
   BasicBlock &operator=(BasicBlock &&) noexcept;
 
   void ReplaceJumpTargets(BasicBlock *old_target, BasicBlock *new_target);
-  void Append(BasicBlock const &b);
+  void Append(BasicBlock &&b);
 
   std::vector<std::unique_ptr<Instruction>> instructions_;
   base::untyped_buffer cmd_buffer_;
   size_t num_incoming() const { return incoming_.size(); }
 
-  void WriteByteCode() {
-    // TODO rather than clearing something that's been previously serialized, we
-    // should only serialize once. We shouldn't store the serialized version
-    // here at all.
-    cmd_buffer_.clear();
-    ByteCodeWriter writer(&cmd_buffer_);
-    writer.StartBlock(this);
-    for (auto const &inst : instructions_) { inst->WriteByteCode(&writer); }
-    writer.replacements_.clear(); // TODO
-    writer.MakeReplacements();
-  }
+  void WriteByteCode(ByteCodeWriter *writer);
 
   internal::BlockGroup *group() { return group_; }
   internal::BlockGroup const *group() const { return group_; }

@@ -77,8 +77,9 @@ void CombineBlocksStartingAt(ir::BasicBlock* block) {
              })) {
     DEBUG_LOG("opt")("Combining ", next_block, " into ", block);
     if (next_block->num_incoming() != 1) { break; }
-    block->Append(*next_block);
+    block->Append(std::move(*next_block));
 
+    // TODO should be part of moved-from state.
     bldr.CurrentBlock() = next_block;
     bldr.ReturnJump();
   }
@@ -96,10 +97,10 @@ void ReduceEmptyBlocks(ir::CompiledFn* fn) {
 
   for (; iter != mut_blocks.end(); ++iter) {
     auto& block = *iter;
-    if (not block->cmd_buffer_.empty()) { continue; }
+    if (not block->instructions_.empty()) { continue; }
     for (auto* inc : block->incoming_) {
       if (inc->jump_.kind() == ir::JumpCmd::Kind::Uncond) {
-        inc->Append(*block);
+        inc->Append(std::move(*block));
       } else if (block->jump_.kind() == ir::JumpCmd::Kind::Uncond) {
         auto* target = ASSERT_NOT_NULL(block->jump_.UncondTarget());
         inc->ReplaceJumpTargets(block.get(), target);
@@ -132,7 +133,6 @@ void CombineBlocks(ir::CompiledFn* fn) {
       case 1: {  // case (a).
         auto* inc_block = *block->incoming_.begin();
         if (inc_block->jump_.kind() == ir::JumpCmd::Kind::Cond) {
-          DEBUG_LOG()(inc_block);
           CombineBlocksStartingAt(inc_block);
         }
       } break;
