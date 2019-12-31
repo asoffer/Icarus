@@ -1181,14 +1181,15 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
     ASSERT(args.size() == fn_type->input.size());
     writer->Write(kIndex);
     writer->Write(fn.is_reg());
+    fn.apply([&](auto v) { writer->Write(v); });
+    size_t bytes_written_slot = writer->buf_->reserve<core::Bytes>();
+
     internal::WriteBits<uint16_t, Results>(writer, args, [](Results const& r) {
       ASSERT(r.size() == 1u);
       return r.is_reg(0);
     });
 
-    fn.apply([&](auto v) { writer->Write(v); });
-    size_t bytes_written_slot = writer->buf_->reserve<core::Bytes>();
-    size_t arg_index          = 0;
+    size_t arg_index = 0;
     for (Results const& arg : args) {
       if (arg.is_reg(0)) {
         writer->Write(arg.get<Reg>(0));
@@ -1200,13 +1201,14 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
       }
       ++arg_index;
     }
-    writer->buf_->set(bytes_written_slot,
-                      core::Bytes{writer->buf_->size() - bytes_written_slot -
-                                  sizeof(core::Bytes)});
 
     // TODO this is probably wrong.
     writer->Write<uint16_t>(fn_type->output.size());
     for (Reg r : outs.regs_) { writer->Write(r); }
+
+    writer->buf_->set(bytes_written_slot,
+                      core::Bytes{writer->buf_->size() - bytes_written_slot -
+                                  sizeof(core::Bytes)});
   }
 
   void Inline(Inliner const& inliner) override {

@@ -492,16 +492,22 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
                                    type::Arr(len, data_type));
   } else if constexpr (std::is_same_v<Inst, ir::CallInstruction>) {
-    bool fn_is_reg                = iter->read<bool>();
-    std::vector<bool> is_reg_bits = ReadBits<uint16_t>(iter);
+    bool fn_is_reg     = iter->read<bool>();
+    ir::AnyFunc f      = ReadAndResolve<ir::AnyFunc>(fn_is_reg, iter, ctx);
+    auto bytes_written = iter->read<core::Bytes>().get();
+    if (f.is_fn() and f.func()->byte_code().size() == 2) {
+      // byte-code of size 2 is exactly enough space for a function return. It
+      // also means that we have emit the byte-code already (i.e., it's not like
+      // this is small because we accidentally hadn't emit the instructions yet.
+      iter->skip(bytes_written.value());
+      return;
+    }
 
-    ir::AnyFunc f = ReadAndResolve<ir::AnyFunc>(fn_is_reg, iter, ctx);
+    std::vector<bool> is_reg_bits = ReadBits<uint16_t>(iter);
 
     type::Function const *fn_type = GetType(f);
     DEBUG_LOG("call")(f, ": ", fn_type->to_string());
     DEBUG_LOG("call")(is_reg_bits);
-
-    iter->read<core::Bytes>();
 
     // TODO you probably want interpretter::Arguments or something.
     auto call_buf =
@@ -525,13 +531,6 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     }
 
     uint16_t num_rets = iter->read<uint16_t>();
-
-    // TODO: This is a hugely important optimization, because if/while loop tend
-    // to call empty functions frequently.
-    if (f.is_fn() and f.func()->byte_code().size() == 2) {
-      iter->skip(num_rets * sizeof(ir::Reg));
-      return;
-    }
 
     std::vector<ir::Addr> return_slots;
     return_slots.reserve(num_rets);

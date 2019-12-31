@@ -1,7 +1,7 @@
 -- ::= import "examples/lib/core.ic"
 
 num := 0
-upper ::= 1_000_000
+upper ::= 2_000_000
 n := 2
 while (n <= upper) do {
   found_div := false
