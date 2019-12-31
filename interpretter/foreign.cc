@@ -23,9 +23,9 @@ void ExtractReturnValue(ffi_arg *ret, ir::Addr ret_addr) {
     int int_val;
     std::memcpy(&int_val, ret, sizeof(int));
     T val = int_val;
-    std::memcpy(ret_addr.as_heap, &val, sizeof(T));
+    std::memcpy(ret_addr.heap(), &val, sizeof(T));
   } else {
-    std::memcpy(ret_addr.as_heap, ret, sizeof(T));
+    std::memcpy(ret_addr.heap(), ret, sizeof(T));
   }
 }
 

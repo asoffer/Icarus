@@ -329,15 +329,15 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     auto ctrl     = iter->read<typename Inst::control_bits>().get();
     type val      = ReadAndResolve<type>(ctrl.value_is_reg, iter, ctx);
     ir::Addr addr = ReadAndResolve<ir::Addr>(ctrl.location_is_reg, iter, ctx);
-    switch (addr.kind) {
-      case ir::Addr::Kind::Stack: ctx->stack_.set(addr.as_stack, val); break;
+    switch (addr.kind()) {
+      case ir::Addr::Kind::Stack: ctx->stack_.set(addr.stack(), val); break;
       case ir::Addr::Kind::ReadOnly:
         NOT_YET(
             "Storing into read-only data seems suspect. Is it just for "
             "initialization?");
         break;
       case ir::Addr::Kind::Heap:
-        *ASSERT_NOT_NULL(static_cast<type *>(addr.as_heap)) = val;
+        *ASSERT_NOT_NULL(static_cast<type *>(addr.heap())) = val;
     }
   } else if constexpr (ir::IsPhiInstruction<Inst>) {
     uint16_t num           = iter->read<uint16_t>();
@@ -433,8 +433,8 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     ir::Addr ret_slot = ret_slots[n];
     bool is_reg       = iter->read<bool>();
     type val          = ReadAndResolve<type>(is_reg, iter, ctx);
-    ASSERT(ret_slot.kind == ir::Addr::Kind::Heap);
-    *ASSERT_NOT_NULL(static_cast<type *>(ret_slot.as_heap)) = val;
+    ASSERT(ret_slot.kind() == ir::Addr::Kind::Heap);
+    *ASSERT_NOT_NULL(static_cast<type *>(ret_slot.heap())) = val;
 
   } else if constexpr (std::is_same_v<Inst, ir::MakeScopeInstruction>) {
     ir::ScopeDef *scope_def = iter->read<ir::ScopeDef *>();
@@ -1127,14 +1127,14 @@ void ExecutionContext::ExecuteBlocks(absl::Span<ir::Addr const> ret_slots) {
         ir::Addr addr      = resolve<ir::Addr>(iter.read<ir::Reg>());
         auto result_reg = iter.read<ir::Reg>().get();
         DEBUG_LOG("load-instruction")(num_bytes, " ", addr, " ", result_reg);
-        switch (addr.kind) {
+        switch (addr.kind()) {
           case ir::Addr::Kind::Stack: {
             current_frame().regs_.set_raw(result_reg,
-                                          stack_.raw(addr.as_stack), num_bytes);
+                                          stack_.raw(addr.stack()), num_bytes);
           } break;
           case ir::Addr::Kind::ReadOnly: NOT_YET(); break;
           case ir::Addr::Kind::Heap: {
-            current_frame().regs_.set_raw(result_reg, addr.as_heap, num_bytes);
+            current_frame().regs_.set_raw(result_reg, addr.heap(), num_bytes);
           } break;
         }
       } break;
