@@ -364,9 +364,8 @@ struct EqInstruction : BinaryInstruction<NumType> {
 
   std::string to_string() const override {
     using base::stringify;
-    return absl::StrCat(TypeToString<NumType>(), " ", stringify(this->result),
-                        " = eq ", stringify(this->lhs), " ",
-                        stringify(this->rhs));
+    return absl::StrCat("bool ", stringify(this->result), " = eq ",
+                        stringify(this->lhs), " ", stringify(this->rhs));
   }
 
   void WriteByteCode(ByteCodeWriter* writer) const override {
@@ -387,9 +386,8 @@ struct NeInstruction : BinaryInstruction<NumType> {
 
   std::string to_string() const override {
     using base::stringify;
-    return absl::StrCat(TypeToString<NumType>(), " ", stringify(this->result),
-                        " = ne ", stringify(this->lhs), " ",
-                        stringify(this->rhs));
+    return absl::StrCat("bool ", stringify(this->result), " = ne ",
+                        stringify(this->lhs), " ", stringify(this->rhs));
   }
 
   void WriteByteCode(ByteCodeWriter* writer) const override {
@@ -410,9 +408,8 @@ struct LtInstruction : BinaryInstruction<NumType> {
 
   std::string to_string() const override {
     using base::stringify;
-    return absl::StrCat(TypeToString<NumType>(), " ", stringify(this->result),
-                        " = lt ", stringify(this->lhs), " ",
-                        stringify(this->rhs));
+    return absl::StrCat("bool ", stringify(this->result), " = lt ",
+                        stringify(this->lhs), " ", stringify(this->rhs));
   }
 
   void WriteByteCode(ByteCodeWriter* writer) const override {
@@ -433,9 +430,8 @@ struct LeInstruction : BinaryInstruction<NumType> {
 
   std::string to_string() const override {
     using base::stringify;
-    return absl::StrCat(TypeToString<NumType>(), " ", stringify(this->result),
-                        " = le ", stringify(this->lhs), " ",
-                        stringify(this->rhs));
+    return absl::StrCat("bool ", stringify(this->result), " = le ",
+                        stringify(this->lhs), " ", stringify(this->rhs));
   }
 
   void WriteByteCode(ByteCodeWriter* writer) const override {
@@ -443,26 +439,22 @@ struct LeInstruction : BinaryInstruction<NumType> {
   }
 };
 
-// TODO is this a UnaryInstruction<Addr>?
-template <typename T>
-struct LoadInstruction : base::Clone<LoadInstruction<T>, Instruction> {
-  static constexpr cmd_index_t kIndex =
-      internal::kLoadInstructionMask | internal::PrimitiveIndex<T>();
-  using type = T;
+struct LoadInstruction : base::Clone<LoadInstruction, Instruction> {
+  static constexpr cmd_index_t kIndex = internal::kLoadInstructionNumber;
 
-  LoadInstruction(RegOr<Addr> const& addr) : addr(addr) {}
+  explicit LoadInstruction(Reg addr, uint16_t num_bytes)
+      : num_bytes(num_bytes), addr(addr) {}
   ~LoadInstruction() override {}
 
   std::string to_string() const override {
     using base::stringify;
-    return absl::StrCat(TypeToString<T>(), " ", stringify(this->result),
-                        " = load ", stringify(addr));
+    return absl::StrCat(stringify(result), " = load ", stringify(addr));
   }
 
   void WriteByteCode(ByteCodeWriter* writer) const override {
     writer->Write(kIndex);
-    writer->Write(addr.is_reg());
-    addr.apply([&](auto v) { writer->Write(v); });
+    writer->Write(num_bytes);
+    writer->Write(addr);
     writer->Write(result);
   }
 
@@ -471,14 +463,9 @@ struct LoadInstruction : base::Clone<LoadInstruction<T>, Instruction> {
     inliner.Inline(result);
   }
 
-  RegOr<Addr> addr;
-  Reg result;
+  uint16_t num_bytes;
+  Reg addr, result;
 };
-
-template <typename Inst>
-inline constexpr bool IsLoadInstruction =
-    ((Inst::kIndex >> internal::kTypeBits) ==
-     (internal::kLoadInstructionMask >> internal::kTypeBits));
 
 template <typename T>
 struct StoreInstruction : base::Clone<StoreInstruction<T>, Instruction> {

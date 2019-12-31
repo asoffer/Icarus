@@ -39,6 +39,19 @@ struct RegisterArray {
     return data_.set<T>(r.value() * kMaxSize, val);
   }
 
+  void set_raw(ir::Reg r, void *src, uint16_t num_bytes) {
+    ASSERT(num_bytes <= kMaxSize);
+    void *dst;
+    if (r.is_arg()) {
+      dst = args_.raw(r.arg_value() * kMaxSize);
+    } else if (r.is_out()) {
+      NOT_YET();
+    } else {
+      dst = data_.raw(r.value() * kMaxSize);
+    }
+    std::memcpy(dst, src, num_bytes);
+  }
+
  private:
   base::untyped_buffer data_;
   base::untyped_buffer args_;

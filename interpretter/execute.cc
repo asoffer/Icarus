@@ -12,6 +12,10 @@
 
 namespace interpretter {
 namespace {
+
+// Maximum size of any primitive type we may write
+constexpr size_t kMaxSize = 16;
+
 constexpr uint8_t ReverseByte(uint8_t byte) {
   byte = ((byte & 0b11110000) >> 4) | ((byte & 0b00001111) << 4);
   byte = ((byte & 0b11001100) >> 2) | ((byte & 0b00110011) << 2);
@@ -100,7 +104,6 @@ void CallFunction(ir::CompiledFn *fn, const base::untyped_buffer &arguments,
     (std::move(*fn->work_item))();
     fn->WriteByteCode();
   }
-  if (fn->byte_code().size() == 2) { return; };
 
   ctx->call_stack_.emplace_back(fn, arguments, &ctx->stack_);
   ctx->ExecuteBlocks(ret_slots);
@@ -336,22 +339,6 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
       case ir::Addr::Kind::Heap:
         *ASSERT_NOT_NULL(static_cast<type *>(addr.as_heap)) = val;
     }
-  } else if constexpr (ir::IsLoadInstruction<Inst>) {
-    using type      = typename Inst::type;
-    bool is_reg     = iter->read<bool>();
-    ir::Addr addr   = ReadAndResolve<ir::Addr>(is_reg, iter, ctx);
-    auto result_reg = iter->read<ir::Reg>().get();
-    switch (addr.kind) {
-      case ir::Addr::Kind::Stack: {
-        ctx->current_frame().regs_.set(result_reg,
-                                       ctx->stack_.get<type>(addr.as_stack));
-      } break;
-      case ir::Addr::Kind::ReadOnly: NOT_YET(); break;
-      case ir::Addr::Kind::Heap: {
-        ctx->current_frame().regs_.set(result_reg,
-                                       *static_cast<type *>(addr.as_heap));
-      }
-    }
   } else if constexpr (ir::IsPhiInstruction<Inst>) {
     uint16_t num           = iter->read<uint16_t>();
     uint64_t index         = std::numeric_limits<uint64_t>::max();
@@ -509,6 +496,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     std::vector<bool> is_reg_bits = ReadBits<uint16_t>(iter);
 
     ir::AnyFunc f = ReadAndResolve<ir::AnyFunc>(fn_is_reg, iter, ctx);
+
     type::Function const *fn_type = GetType(f);
     DEBUG_LOG("call")(f, ": ", fn_type->to_string());
     DEBUG_LOG("call")(is_reg_bits);
@@ -516,7 +504,6 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     iter->read<core::Bytes>();
 
     // TODO you probably want interpretter::Arguments or something.
-    constexpr size_t kMaxSize = 16;
     auto call_buf =
         base::untyped_buffer::MakeFull(is_reg_bits.size() * kMaxSize);
     ASSERT(fn_type->input.size() == is_reg_bits.size());
@@ -538,6 +525,14 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     }
 
     uint16_t num_rets = iter->read<uint16_t>();
+
+    // TODO: This is a hugely important optimization, because if/while loop tend
+    // to call empty functions frequently.
+    if (f.is_fn() and f.func()->byte_code().size() == 2) {
+      iter->skip(num_rets * sizeof(ir::Reg));
+      return;
+    }
+
     std::vector<ir::Addr> return_slots;
     return_slots.reserve(num_rets);
     for (uint16_t i = 0; i < num_rets; ++i) {
@@ -633,12 +628,8 @@ void ExecutionContext::MemCpyRegisterBytes(void *dst, ir::Reg reg,
 }
 
 void ExecutionContext::ExecuteBlocks(absl::Span<ir::Addr const> ret_slots) {
-
   DEBUG_LOG("dbg-buffer")(*current_frame().current_block());
   auto &buffer = current_frame().fn_->byte_code();
-
-  // Empty functions are common. Ignore them.
-  if (buffer.size() == 2) { return; }
 
   auto iter = buffer.begin();
   while (true) {
@@ -1132,54 +1123,22 @@ void ExecutionContext::ExecuteBlocks(absl::Span<ir::Addr const> ret_slots) {
                                                                         this);
         break;
 
-      case ir::LoadInstruction<bool>::kIndex:
-        ExecuteAdHocInstruction<ir::LoadInstruction<bool>>(&iter, this);
-        break;
-      case ir::LoadInstruction<uint8_t>::kIndex:
-        ExecuteAdHocInstruction<ir::LoadInstruction<uint8_t>>(&iter, this);
-        break;
-      case ir::LoadInstruction<int8_t>::kIndex:
-        ExecuteAdHocInstruction<ir::LoadInstruction<int8_t>>(&iter, this);
-        break;
-      case ir::LoadInstruction<uint16_t>::kIndex:
-        ExecuteAdHocInstruction<ir::LoadInstruction<uint16_t>>(&iter, this);
-        break;
-      case ir::LoadInstruction<int16_t>::kIndex:
-        ExecuteAdHocInstruction<ir::LoadInstruction<int16_t>>(&iter, this);
-        break;
-      case ir::LoadInstruction<uint32_t>::kIndex:
-        ExecuteAdHocInstruction<ir::LoadInstruction<uint32_t>>(&iter, this);
-        break;
-      case ir::LoadInstruction<int32_t>::kIndex:
-        ExecuteAdHocInstruction<ir::LoadInstruction<int32_t>>(&iter, this);
-        break;
-      case ir::LoadInstruction<uint64_t>::kIndex:
-        ExecuteAdHocInstruction<ir::LoadInstruction<uint64_t>>(&iter, this);
-        break;
-      case ir::LoadInstruction<int64_t>::kIndex:
-        ExecuteAdHocInstruction<ir::LoadInstruction<int64_t>>(&iter, this);
-        break;
-      case ir::LoadInstruction<float>::kIndex:
-        ExecuteAdHocInstruction<ir::LoadInstruction<float>>(&iter, this);
-        break;
-      case ir::LoadInstruction<double>::kIndex:
-        ExecuteAdHocInstruction<ir::LoadInstruction<double>>(&iter, this);
-        break;
-      case ir::LoadInstruction<type::Type const *>::kIndex:
-        ExecuteAdHocInstruction<ir::LoadInstruction<type::Type const *>>(&iter,
-                                                                         this);
-        break;
-      case ir::LoadInstruction<ir::EnumVal>::kIndex:
-        ExecuteAdHocInstruction<ir::LoadInstruction<ir::EnumVal>>(&iter, this);
-        break;
-      case ir::LoadInstruction<ir::FlagsVal>::kIndex:
-        ExecuteAdHocInstruction<ir::LoadInstruction<ir::FlagsVal>>(&iter, this);
-        break;
-      case ir::LoadInstruction<std::string_view>::kIndex:
-        ExecuteAdHocInstruction<ir::LoadInstruction<std::string_view>>(&iter,
-                                                                       this);
-        break;
-
+      case ir::LoadInstruction::kIndex: {
+        uint16_t num_bytes = iter.read<uint16_t>();
+        ir::Addr addr      = resolve<ir::Addr>(iter.read<ir::Reg>());
+        auto result_reg = iter.read<ir::Reg>().get();
+        DEBUG_LOG("load-instruction")(num_bytes, " ", addr, " ", result_reg);
+        switch (addr.kind) {
+          case ir::Addr::Kind::Stack: {
+            current_frame().regs_.set_raw(result_reg,
+                                          stack_.raw(addr.as_stack), num_bytes);
+          } break;
+          case ir::Addr::Kind::ReadOnly: NOT_YET(); break;
+          case ir::Addr::Kind::Heap: {
+            current_frame().regs_.set_raw(result_reg, addr.as_heap, num_bytes);
+          } break;
+        }
+      } break;
       case ir::PhiInstruction<bool>::kIndex:
         ExecuteAdHocInstruction<ir::PhiInstruction<bool>>(&iter, this);
         break;

@@ -19,10 +19,9 @@ inline constexpr cmd_index_t kNeInstructionMask              = 9 << kTypeBits;
 inline constexpr cmd_index_t kNegInstructionMask             = 10 << kTypeBits;
 inline constexpr cmd_index_t kPrintInstructionMask           = 11 << kTypeBits;
 inline constexpr cmd_index_t kStoreInstructionMask           = 12 << kTypeBits;
-inline constexpr cmd_index_t kLoadInstructionMask            = 13 << kTypeBits;
-inline constexpr cmd_index_t kPhiInstructionMask             = 14 << kTypeBits;
-inline constexpr cmd_index_t kRegisterInstructionMask        = 15 << kTypeBits;
-inline constexpr cmd_index_t kSetReturnInstructionMask       = 16 << kTypeBits;
+inline constexpr cmd_index_t kPhiInstructionMask             = 13 << kTypeBits;
+inline constexpr cmd_index_t kRegisterInstructionMask        = 14 << kTypeBits;
+inline constexpr cmd_index_t kSetReturnInstructionMask       = 15 << kTypeBits;
 inline constexpr cmd_index_t kNotInstructionNumber           = kAdHocStart + 0;
 inline constexpr cmd_index_t kXorFlagsInstructionNumber      = kAdHocStart + 1;
 inline constexpr cmd_index_t kAndFlagsInstructionNumber      = kAdHocStart + 2;
@@ -46,8 +45,9 @@ inline constexpr cmd_index_t kTupleInstructionNumber         = kAdHocStart + 19;
 inline constexpr cmd_index_t kVariantInstructionNumber       = kAdHocStart + 20;
 inline constexpr cmd_index_t kEnumerationInstructionNumber   = kAdHocStart + 21;
 inline constexpr cmd_index_t kTypeInfoInstructionNumber      = kAdHocStart + 22;
+inline constexpr cmd_index_t kLoadInstructionNumber          = kAdHocStart + 23;
 inline constexpr cmd_index_t kStructManipulationInstructionNumber =
-    kAdHocStart + 23;
+    kAdHocStart + 24;
 
 inline constexpr cmd_index_t kCastInstructionIndex     = 17 << kTypeBits;
 inline constexpr cmd_index_t kDebugIrInstructionNumber = 254 << kTypeBits;

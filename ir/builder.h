@@ -545,7 +545,8 @@ base::Tagged<T, Reg> Load(RegOr<Addr> addr) {
     return cache_results.get<Reg>(0);
   }
 
-  auto inst   = std::make_unique<LoadInstruction<T>>(addr);
+  auto inst   = std::make_unique<LoadInstruction>(addr.reg(),
+                                                core::Bytes::Get<T>().value());
   auto result = inst->result = GetBuilder().CurrentGroup()->Reserve();
   cache_results.append(result);
   blk.instructions_.push_back(std::move(inst));
