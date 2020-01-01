@@ -191,10 +191,9 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
         // There are no relevant yield statements
         DEBUG_LOG("ScopeNode")("    ... empty block results");
 
-        ASSIGN_OR(
-            continue,  //
-            auto jump_table,
-            JumpDispatchTable::Verify(compiler, node, block_def->after_, {}));
+        ASSIGN_OR(continue,  //
+                  auto jump_table,
+                  JumpDispatchTable::Verify(node, block_def->after_, {}));
         bool success =
             one_table.blocks.emplace(&block, std::move(jump_table)).second;
         static_cast<void>(success);

@@ -11,12 +11,10 @@
 #include "ir/jump.h"
 
 namespace compiler {
-struct Compiler;
 
 struct JumpDispatchTable {
   static base::expected<JumpDispatchTable> Verify(
-      Compiler *compiler, ast::ScopeNode const *node,
-      absl::Span<ir::Jump *const> jumps,
+      ast::ScopeNode const *node, absl::Span<ir::Jump *const> jumps,
       core::FnArgs<type::QualType> const &args);
 
  private:

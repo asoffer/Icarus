@@ -5,9 +5,9 @@
 #include "parameters_and_arguments.h"
 
 namespace compiler {
+
 base::expected<JumpDispatchTable> JumpDispatchTable::Verify(
-    Compiler *compiler, ast::ScopeNode const *node,
-    absl::Span<ir::Jump *const> jumps,
+    ast::ScopeNode const *node, absl::Span<ir::Jump *const> jumps,
     core::FnArgs<type::QualType> const &args) {
   DEBUG_LOG("dispatch-verify")
   ("Verifying overload set with ", jumps.size(), " members.");
