@@ -145,7 +145,10 @@ void BasicBlock::ReplaceJumpTargets(BasicBlock *old_target,
 
 void BasicBlock::WriteByteCode(ByteCodeWriter *writer) {
   writer->StartBlock(this);
-  for (auto const &inst : instructions_) { inst->WriteByteCode(writer); }
+  for (auto const &inst : instructions_) {
+    if (not inst) { continue; }
+    inst->WriteByteCode(writer);
+  }
   jump_.Visit([&](auto &j) {
     using type = std::decay_t<decltype(j)>;
     if constexpr (std::is_same_v<type, JumpCmd::RetJump>) {

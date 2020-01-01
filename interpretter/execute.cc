@@ -494,14 +494,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
   } else if constexpr (std::is_same_v<Inst, ir::CallInstruction>) {
     bool fn_is_reg     = iter->read<bool>();
     ir::AnyFunc f      = ReadAndResolve<ir::AnyFunc>(fn_is_reg, iter, ctx);
-    auto bytes_written = iter->read<core::Bytes>().get();
-    if (f.is_fn() and f.func()->byte_code().size() == 2) {
-      // byte-code of size 2 is exactly enough space for a function return. It
-      // also means that we have emit the byte-code already (i.e., it's not like
-      // this is small because we accidentally hadn't emit the instructions yet.
-      iter->skip(bytes_written.value());
-      return;
-    }
+    iter->read<core::Bytes>().get();
 
     std::vector<bool> is_reg_bits = ReadBits<uint16_t>(iter);
 

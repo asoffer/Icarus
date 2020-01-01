@@ -148,4 +148,25 @@ void CombineBlocks(ir::CompiledFn* fn) {
   RemoveDeadBlocks(std::move(dead_sources), fn);
 }
 
+void RemoveTrivialFunctionCalls(ir::CompiledFn* fn) {
+  for (auto& block : fn->mutable_blocks()) {
+    for (auto& inst : block->instructions_) {
+      if (auto* call_inst = inst->if_as<ir::CallInstruction>()) {
+        if (call_inst->fn.is_reg()) { continue; }
+        if (not call_inst->fn.value().is_fn()) { continue; }
+        auto* called_fn = call_inst->fn.value().func();
+        if (called_fn->type() != type::Func({}, {})) { continue; }
+        ASSERT(called_fn->work_item == nullptr);
+        // TODO track this as you go.
+        for (auto const* called_block : called_fn->blocks()) {
+          // What if it's null?
+          if (not called_block->instructions_.empty()) { goto next_inst; }
+        }
+        inst = nullptr;
+      }
+    next_inst:;
+    }
+  }
+}
+
 }  // namespace opt

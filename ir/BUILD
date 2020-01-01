@@ -144,8 +144,9 @@ cc_library(
     name = "instructions_base",
     hdrs = ["instructions_base.h"],
     deps = [
-        "//base:untyped_buffer",
+        "//base:cast",
         "//base:clone",
+        "//base:untyped_buffer",
     ]
 )
 cc_library(

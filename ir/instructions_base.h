@@ -3,6 +3,7 @@
 
 #include <string>
 
+#include "base/cast.h"
 #include "base/clone.h"
 #include "base/untyped_buffer.h"
 
@@ -14,7 +15,7 @@ namespace ir {
 struct Inliner;
 struct ByteCodeWriter;
 
-struct Instruction : base::Clone<Instruction, void> {
+struct Instruction : base::Clone<Instruction, void>, base::Cast<Instruction> {
   virtual ~Instruction() {}
   virtual std::string to_string() const { return "[[unknown]]"; }
 
