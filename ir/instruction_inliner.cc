@@ -1,10 +1,10 @@
-#include "ir/new_inliner.h"
+#include "ir/instruction_inliner.h"
 
 namespace ir {
 
-Inliner::Inliner(internal::BlockGroup* to_be_inlined,
-                 internal::BlockGroup* into,
-                 LocalBlockInterpretation block_interp)
+InstructionInliner::InstructionInliner(internal::BlockGroup* to_be_inlined,
+                                       internal::BlockGroup* into,
+                                       LocalBlockInterpretation block_interp)
     : register_offset_(into->num_regs()),
       block_interp_(std::move(block_interp)) {
   for (auto* block_to_copy : to_be_inlined->blocks()) {
@@ -22,14 +22,15 @@ Inliner::Inliner(internal::BlockGroup* to_be_inlined,
   landing_block_ = into->AppendBlock();
 }
 
-void Inliner::Inline(BasicBlock*& block, BasicBlock* incoming_block) const {
+void InstructionInliner::Inline(BasicBlock*& block,
+                                BasicBlock* incoming_block) const {
   auto iter = blocks_.find(block);
   ASSERT(iter != blocks_.end());
   block = iter->second;
   block->incoming_.insert(incoming_block);
 }
 
-void Inliner::Inline(Reg& r) const {
+void InstructionInliner::Inline(Reg& r) const {
   if (r.is_arg()) {
     r = Reg(r.arg_value() + register_offset_);
   } else {
@@ -37,7 +38,7 @@ void Inliner::Inline(Reg& r) const {
   }
 }
 
-void Inliner::InlineJump(BasicBlock* block) {
+void InstructionInliner::InlineJump(BasicBlock* block) {
   block->jump_.Visit([&](auto& j) {
     using type = std::decay_t<decltype(j)>;
     if constexpr (std::is_same_v<type, JumpCmd::RetJump>) {
@@ -71,7 +72,7 @@ void Inliner::InlineJump(BasicBlock* block) {
   });
 }
 
-void Inliner::InlineAllBlocks() {
+void InstructionInliner::InlineAllBlocks() {
   for (auto [ignored, block] : blocks_) {
     DEBUG_LOG("inliner-before")(*block);
 

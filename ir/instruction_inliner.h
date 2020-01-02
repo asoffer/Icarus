@@ -1,5 +1,5 @@
-#ifndef ICARUS_IR_NEW_INLINER_H
-#define ICARUS_IR_NEW_INLINER_H
+#ifndef ICARUS_IR_INSTRUCTION_INLINER_H
+#define ICARUS_IR_INSTRUCTION_INLINER_H
 
 #include <string_view>
 #include <utility>
@@ -16,10 +16,10 @@
 namespace ir {
 struct BasicBlock;
 
-struct Inliner {
-  explicit Inliner(internal::BlockGroup *to_be_inlined,
-                   internal::BlockGroup *into,
-                   LocalBlockInterpretation block_interp);
+struct InstructionInliner {
+  explicit InstructionInliner(internal::BlockGroup *to_be_inlined,
+                              internal::BlockGroup *into,
+                              LocalBlockInterpretation block_interp);
 
   void Inline(Reg &r) const;
   void Inline(BasicBlock *&block, BasicBlock *incoming_block) const;
@@ -65,4 +65,4 @@ struct Inliner {
 };
 }  // namespace ir
 
-#endif  // ICARUS_IR_NEW_INLINER_H
+#endif  // ICARUS_IR_INSTRUCTION_INLINER_H

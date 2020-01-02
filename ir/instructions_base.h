@@ -12,7 +12,7 @@
 // anyway.
 namespace ir {
 
-struct Inliner;
+struct InstructionInliner;
 struct ByteCodeWriter;
 
 struct Instruction : base::Clone<Instruction, void>, base::Cast<Instruction> {
@@ -20,9 +20,8 @@ struct Instruction : base::Clone<Instruction, void>, base::Cast<Instruction> {
   virtual std::string to_string() const { return "[[unknown]]"; }
 
   virtual void WriteByteCode(ByteCodeWriter*) const = 0;
-  virtual void Inline(Inliner const&)               = 0;
+  virtual void Inline(InstructionInliner const&)    = 0;
 };
-
 
 }  // namespace ir
 

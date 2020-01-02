@@ -1,4 +1,4 @@
-#include "ir/new_inliner.h"
+#include "ir/instruction_inliner.h"
 
 #include <vector>
 
@@ -26,11 +26,11 @@ void InitBlockGroupsForTest(ir::CompiledFn *f, ir::Jump *j) {
 }
 
 TEST_CASE("Reg") {
-  ir::CompiledFn f(type::Func({type::Int64}, {}), {});
+  ir::CompiledFn f(type::Func({}, {}), {});
   ir::Jump j(type::Jmp(std::vector<type::Type const *>{}), {});
   InitBlockGroupsForTest(&f, &j);
 
-  ir::Inliner i(&j, &f, ir::LocalBlockInterpretation({}));
+  ir::InstructionInliner i(&j, &f, ir::LocalBlockInterpretation({}));
 
   // Function we're inlining into has 4 registers already.
   REQUIRE(f.num_regs() == 4);
@@ -40,11 +40,11 @@ TEST_CASE("Reg") {
 }
 
 TEST_CASE("RegOr") {
-  ir::CompiledFn f(type::Func({type::Int64}, {}), {});
+  ir::CompiledFn f(type::Func({}, {}), {});
   ir::Jump j(type::Jmp(std::vector<type::Type const *>{}), {});
   InitBlockGroupsForTest(&f, &j);
 
-  ir::Inliner i(&j, &f, ir::LocalBlockInterpretation({}));
+  ir::InstructionInliner i(&j, &f, ir::LocalBlockInterpretation({}));
 
   // Function we're inlining into has 4 registers already.
   REQUIRE(f.num_regs() == 4);
@@ -65,11 +65,11 @@ TEST_CASE("Container") {
       ir::RegOr<double>(ir::Reg(5)),
   };
 
-  ir::CompiledFn f(type::Func({type::Int64}, {}), {});
+  ir::CompiledFn f(type::Func({}, {}), {});
   ir::Jump j(type::Jmp(std::vector<type::Type const *>{}), {});
   InitBlockGroupsForTest(&f, &j);
 
-  ir::Inliner i(&j, &f, ir::LocalBlockInterpretation({}));
+  ir::InstructionInliner i(&j, &f, ir::LocalBlockInterpretation({}));
 
   // Function we're inlining into has 4 registers already.
   REQUIRE(f.num_regs() == 4);

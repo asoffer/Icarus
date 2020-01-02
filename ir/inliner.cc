@@ -3,7 +3,7 @@
 #include "base/macros.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
-#include "ir/new_inliner.h"
+#include "ir/instruction_inliner.h"
 #include "ir/reg.h"
 #include "ir/stack_frame_allocations.h"
 #include "type/function.h"
@@ -26,7 +26,7 @@ absl::flat_hash_map<std::string_view, BasicBlock *> Inline(
   auto *start_block          = bldr.CurrentBlock();
   size_t inlined_start_index = bldr.CurrentGroup()->blocks().size();
 
-  Inliner inl(to_be_inlined, bldr.CurrentGroup(), block_interp);
+  InstructionInliner inl(to_be_inlined, bldr.CurrentGroup(), block_interp);
 
   size_t i = 0;
   for (type::Type const *t : to_be_inlined->type()->args()) {

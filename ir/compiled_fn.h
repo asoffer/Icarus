@@ -26,8 +26,6 @@ struct CompiledFn : internal::BlockGroup {
   type::Function const *const type_ = nullptr;
 
   base::move_func<void()> *work_item = nullptr;
-
-  bool must_inline_ = false;
 };
 
 static_assert(alignof(CompiledFn) > 1);

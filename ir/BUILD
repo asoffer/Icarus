@@ -105,9 +105,9 @@ cc_lib(
 )
 
 cc_library(
-    name = "new_inliner",
-    hdrs = ["new_inliner.h"],
-    srcs = ["new_inliner.cc"],
+    name = "instruction_inliner",
+    hdrs = ["instruction_inliner.h"],
+    srcs = ["instruction_inliner.cc"],
     deps = [
         ":basic_block",
         ":block_group",
@@ -122,12 +122,13 @@ cc_library(
 )
 
 cc_test(
-    name = "new_inliner_test",
-    srcs = ["new_inliner_test.cc"],
+    name = "instruction_inliner_test",
+    srcs = ["instruction_inliner_test.cc"],
     deps = [
+        ":builder",
         ":compiled_fn",
         ":jump",
-        ":new_inliner",
+        ":instruction_inliner",
         "//type",
         "//type:function",
         "//type:jump",
@@ -155,11 +156,11 @@ cc_library(
     deps = [
         ":block_def",
         ":instructions_base",
+        ":instruction_inliner",
         ":instruction_op_codes",
         ":reg_or",
         ":scope_def",
         ":struct_field",
-        ":new_inliner",
         "//ast/scope",
         "//base:clone",
         "//type",
@@ -216,7 +217,6 @@ cc_lib(
     deps = [
         ":basic_block",
         ":block_group",
-        ":builder",
         "//ast:ast",
         "//base:move_func",
         "//base:ptr_span",
@@ -237,9 +237,9 @@ cc_lib(
         ":basic_block",
         ":builder",
         ":compiled_fn",
+        ":instruction_inliner",
         ":jump",
         ":local_block_interpretation",
-        ":new_inliner",
         ":reg",
         ":results",
         ":stack_frame_allocations",

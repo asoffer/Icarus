@@ -9,10 +9,10 @@
 #include "absl/strings/str_join.h"
 #include "ast/scope/scope.h"
 #include "base/clone.h"
-#include "ir/instructions_base.h"
-#include "ir/new_inliner.h"
-#include "ir/out_params.h"
+#include "ir/instruction_inliner.h"
 #include "ir/instruction_op_codes.h"
+#include "ir/instructions_base.h"
+#include "ir/out_params.h"
 #include "ir/reg_or.h"
 #include "ir/struct_field.h"
 #include "ir/values.h"
@@ -113,7 +113,7 @@ struct UnaryInstruction : base::Clone<UnaryInstruction<NumType>, Instruction> {
     writer->Write(result);
   };
 
-  void Inline(Inliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) override {
     inliner.Inline(operand);
     inliner.Inline(result);
   }
@@ -152,7 +152,7 @@ struct BinaryInstruction
     writer->Write(result);
   }
 
-  void Inline(Inliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) override {
     inliner.Inline(lhs);
     inliner.Inline(rhs);
     inliner.Inline(result);
@@ -187,7 +187,7 @@ struct VariadicInstruction : base::Clone<VariadicInstruction<T>, Instruction> {
     writer->Write(result);
   };
 
-  void Inline(Inliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) override {
     inliner.Inline(values);
     inliner.Inline(result);
   }
@@ -458,7 +458,7 @@ struct LoadInstruction : base::Clone<LoadInstruction, Instruction> {
     writer->Write(result);
   }
 
-  void Inline(Inliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) override {
     inliner.Inline(addr);
     inliner.Inline(result);
   }
@@ -495,7 +495,7 @@ struct StoreInstruction : base::Clone<StoreInstruction<T>, Instruction> {
     location.apply([&](auto v) { writer->Write(v); });
   }
 
-  void Inline(Inliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) override {
     inliner.Inline(value);
     inliner.Inline(location);
   }
@@ -532,7 +532,7 @@ struct PrintInstruction : base::Clone<PrintInstruction<T>, Instruction> {
     value.apply([&](auto v) { writer->Write(v); });
   }
 
-  void Inline(Inliner const& inliner) override { inliner.Inline(value); }
+  void Inline(InstructionInliner const& inliner) override { inliner.Inline(value); }
 
   RegOr<T> value;
 };
@@ -573,7 +573,7 @@ struct PhiInstruction : base::Clone<PhiInstruction<T>, Instruction> {
     writer->Write(result);
   }
 
-  void Inline(Inliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) override {
     inliner.Inline(values);
     inliner.Inline(result);
   }
@@ -650,7 +650,7 @@ struct SetReturnInstruction
     value.apply([&](auto v) { writer->Write(v); });
   }
 
-  void Inline(Inliner const& inliner) override { NOT_YET(); }
+  void Inline(InstructionInliner const& inliner) override { NOT_YET(); }
 
   uint16_t index;
   RegOr<T> value;
@@ -683,7 +683,7 @@ struct CastInstruction : Instruction {
     writer->Write(result);
   }
 
-  void Inline(Inliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) override {
     inliner.Inline(value);
     inliner.Inline(result);
   }
@@ -735,7 +735,7 @@ struct GetReturnInstruction : base::Clone<GetReturnInstruction, Instruction> {
     writer->Write(result);
   }
 
-  void Inline(Inliner const& inliner) override { NOT_YET(); }
+  void Inline(InstructionInliner const& inliner) override { NOT_YET(); }
 
   uint16_t index;
   Reg result;
@@ -815,7 +815,7 @@ struct PrintEnumInstruction : base::Clone<PrintEnumInstruction, Instruction> {
     writer->Write(enum_type);
   }
 
-  void Inline(Inliner const& inliner) override { inliner.Inline(value); }
+  void Inline(InstructionInliner const& inliner) override { inliner.Inline(value); }
 
   RegOr<EnumVal> value;
   type::Enum const* enum_type;
@@ -843,7 +843,7 @@ struct PrintFlagsInstruction : base::Clone<PrintFlagsInstruction, Instruction> {
     writer->Write(flags_type);
   }
 
-  void Inline(Inliner const& inliner) override { inliner.Inline(value); }
+  void Inline(InstructionInliner const& inliner) override { inliner.Inline(value); }
 
   RegOr<FlagsVal> value;
   type::Flags const* flags_type;
@@ -862,7 +862,7 @@ struct DebugIrInstruction : base::Clone<DebugIrInstruction, Instruction> {
     writer->Write(internal::kDebugIrInstructionNumber);
   }
 
-  void Inline(Inliner const& inliner) override {}
+  void Inline(InstructionInliner const& inliner) override {}
 };
 
 struct XorFlagsInstruction : BinaryInstruction<FlagsVal> {
@@ -1013,7 +1013,7 @@ struct EnumerationInstruction
                         absl::StrJoin(names_, ", "), ")");
   }
 
-  void Inline(Inliner const& inliner) override { inliner.Inline(result); }
+  void Inline(InstructionInliner const& inliner) override { inliner.Inline(result); }
 
   Kind kind_;
   module::BasicModule* mod_;
@@ -1038,7 +1038,7 @@ struct OpaqueTypeInstruction : base::Clone<OpaqueTypeInstruction, Instruction> {
     return absl::StrCat(stringify(result), " = opaque ", stringify(mod));
   }
 
-  void Inline(Inliner const& inliner) override { inliner.Inline(result); }
+  void Inline(InstructionInliner const& inliner) override { inliner.Inline(result); }
 
   module::BasicModule const* mod;
   Reg result;
@@ -1093,7 +1093,7 @@ struct ArrowInstruction : base::Clone<ArrowInstruction, Instruction> {
     writer->Write(result);
   }
 
-  void Inline(Inliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) override {
     inliner.Inline(lhs);
     inliner.Inline(rhs);
     inliner.Inline(result);
@@ -1144,7 +1144,7 @@ struct StructManipulationInstruction
     }
   }
 
-  void Inline(Inliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) override {
     inliner.Inline(r);
     if (kind == Kind::Copy or kind == Kind::Move) { inliner.Inline(to); }
   }
@@ -1211,7 +1211,7 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
                                   sizeof(core::Bytes)});
   }
 
-  void Inline(Inliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) override {
     inliner.Inline(fn);
     NOT_YET();  // Because we need to do this for args and out params too, it's
                 // tricky.
@@ -1240,7 +1240,7 @@ struct LoadSymbolInstruction : base::Clone<LoadSymbolInstruction, Instruction> {
     writer->Write(result);
   }
 
-  void Inline(Inliner const& inliner) override { inliner.Inline(result); }
+  void Inline(InstructionInliner const& inliner) override { inliner.Inline(result); }
 
   std::string_view name;
   type::Type const* type;
@@ -1275,7 +1275,7 @@ struct ArrayInstruction : base::Clone<ArrayInstruction, Instruction> {
     writer->Write(result);
   }
 
-  void Inline(Inliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) override {
     inliner.Inline(length);
     inliner.Inline(data_type);
     inliner.Inline(result);
@@ -1323,7 +1323,7 @@ struct StructInstruction : base::Clone<StructInstruction, Instruction> {
     writer->Write(result);
   }
 
-  void Inline(Inliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) override {
     for (auto& field : fields) { inliner.Inline(field.type()); }
   }
 
@@ -1355,7 +1355,7 @@ struct TypeInfoInstruction : base::Clone<TypeInfoInstruction, Instruction> {
     writer->Write(result);
   }
 
-  void Inline(Inliner const& inliner) override { inliner.Inline(type); }
+  void Inline(InstructionInliner const& inliner) override { inliner.Inline(type); }
 
   Kind kind;
   RegOr<type::Type const*> type;
@@ -1391,7 +1391,7 @@ struct MakeBlockInstruction : base::Clone<MakeBlockInstruction, Instruction> {
     writer->Write(result);
   }
 
-  void Inline(Inliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) override {
     inliner.Inline(befores);
     inliner.Inline(afters);
     inliner.Inline(result);
@@ -1441,7 +1441,7 @@ struct MakeScopeInstruction : base::Clone<MakeScopeInstruction, Instruction> {
     writer->Write(result);
   }
 
-  void Inline(Inliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) override {
     inliner.Inline(inits);
     inliner.Inline(dones);
     inliner.Inline(result);
@@ -1489,7 +1489,7 @@ struct StructIndexInstruction
     writer->Write(result);
   }
 
-  void Inline(Inliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) override {
     inliner.Inline(addr);
     inliner.Inline(index);
     inliner.Inline(result);
@@ -1535,7 +1535,7 @@ struct TupleIndexInstruction : base::Clone<TupleIndexInstruction, Instruction> {
     writer->Write(result);
   }
 
-  void Inline(Inliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) override {
     inliner.Inline(addr);
     inliner.Inline(index);
     inliner.Inline(result);
@@ -1581,7 +1581,7 @@ struct PtrIncrInstruction : base::Clone<PtrIncrInstruction, Instruction> {
     writer->Write(result);
   }
 
-  void Inline(Inliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) override {
     inliner.Inline(addr);
     inliner.Inline(index);
     inliner.Inline(result);
@@ -1613,7 +1613,7 @@ struct ByteViewLengthInstruction
     writer->Write(result);
   }
 
-  void Inline(Inliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) override {
     inliner.Inline(reg);
     inliner.Inline(result);
   }
@@ -1642,7 +1642,7 @@ struct ByteViewDataInstruction
     writer->Write(result);
   }
 
-  void Inline(Inliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) override {
     inliner.Inline(reg);
     inliner.Inline(result);
   }
@@ -1673,7 +1673,7 @@ struct VariantAccessInstruction
     writer->Write(result);
   }
 
-  void Inline(Inliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) override {
     inliner.Inline(var);
     inliner.Inline(result);
   }
