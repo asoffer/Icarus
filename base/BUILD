@@ -1,13 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 load("//:defs.bzl", "cc_lib")
 
-cc_lib(
-    name = "bag",
-    deps = [],
-    header_only = True,
-    test_deps = None,
-)
-
 cc_library(
     name = "clone",
     hdrs = ["clone.h"],
@@ -56,13 +49,20 @@ cc_lib(
     test_deps = None,
 )
  
-cc_lib(
+cc_library(
     name = "guarded", 
+    hdrs = ["guarded.h"],
     deps = [],
-    header_only = True,
-    test_deps = None,
 )
 
+cc_test(
+    name = "guarded_test",
+    srcs = ["guarded_test.cc"],
+    deps = [
+        ":guarded",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
 
 cc_lib(
     name = "interval",

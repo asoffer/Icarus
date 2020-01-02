@@ -3,11 +3,11 @@
 
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include "absl/types/span.h"
 #include "ast/ast.h"
 #include "ast/scope/scope.h"
-#include "base/bag.h"
 
 namespace ast {
 
@@ -35,10 +35,10 @@ struct OverloadSet {
   OverloadSet(Scope const *scope, std::string_view id);
 
   absl::Span<Expression const *const> members() const { return members_; }
-  void insert(Expression const *member) { members_.insert(member); }
+  void insert(Expression const *member) { members_.push_back(member); }
 
  private:
-  base::bag<Expression const *> members_;
+  std::vector<Expression const *> members_;
 };
 
 }  // namespace ast

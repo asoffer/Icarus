@@ -218,7 +218,6 @@ cc_lib(
         ":block_group",
         ":builder",
         "//ast:ast",
-        "//base:bag",
         "//base:move_func",
         "//base:ptr_span",
         "//base:scope",

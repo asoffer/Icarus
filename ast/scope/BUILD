@@ -43,7 +43,7 @@ cc_lib(
     name = "fn",
     deps = [
         ":scope",
-        "//base:bag",
+        "@com_google_absl//absl/types:span"
     ],
     header_only = True,
     test_deps = None,

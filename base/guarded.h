@@ -5,7 +5,7 @@
 #include <mutex>
 
 namespace base {
-template <typename T>
+template <typename T, typename Mtx = std::mutex>
 struct guarded {
   template <typename... Args>
   explicit guarded(Args&&... args) : val_(std::forward<Args>(args)...) {}
@@ -17,7 +17,7 @@ struct guarded {
   }
 
  private:
-  mutable std::mutex mu_;
+  mutable Mtx mu_;
   T val_;
 };
 }  // namespace base

@@ -3,9 +3,9 @@
 
 #include <vector>
 
+#include "absl/types/span.h"
 #include "ast/ast_fwd.h"
 #include "ast/scope/exec.h"
-#include "base/bag.h"
 
 namespace ast {
 
@@ -16,16 +16,16 @@ namespace ast {
 struct FnScope : public ExecScope {
   FnScope(Scope *parent, FunctionLiteral *fn_lit = nullptr)
       : ExecScope(parent), fn_lit_(fn_lit) {
-    descendants_.insert(this);
+    descendants_.push_back(this);
   }
   ~FnScope() override {}
 
   FunctionLiteral *fn_lit_ = nullptr;
-  void insert_descendant(ExecScope *s) { descendants_.insert(s); }
-  base::bag<ExecScope *> const &descendants() const { return descendants_; }
+  void insert_descendant(ExecScope *s) { descendants_.push_back(s); }
+  absl::Span<ExecScope *const> descendants() const { return descendants_; }
 
  private:
-  base::bag<ExecScope *> descendants_;
+  std::vector<ExecScope *> descendants_;
 };
 
 }  // namespace ast

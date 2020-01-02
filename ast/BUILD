@@ -75,7 +75,6 @@ cc_lib(
 cc_lib(
     name = "overload_set",
     deps = [
-        "//base:bag",
         "//ast:ast",
         "//ast/scope:scope",
         "//module:module",
