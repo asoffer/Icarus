@@ -343,6 +343,9 @@ struct Builder {
 
   base::Tagged<Addr, Reg> PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
                                   type::Pointer const* t);
+  // TODO should this be unsigned?
+  RegOr<int64_t> ByteViewLength(RegOr<std::string_view> val);
+  RegOr<Addr> ByteViewData(RegOr<std::string_view> val);
 
   // Type construction commands
   RegOr<type::Function const*> Arrow(

@@ -48,6 +48,9 @@ inline constexpr cmd_index_t kTypeInfoInstructionNumber      = kAdHocStart + 22;
 inline constexpr cmd_index_t kLoadInstructionNumber          = kAdHocStart + 23;
 inline constexpr cmd_index_t kStructManipulationInstructionNumber =
     kAdHocStart + 24;
+inline constexpr cmd_index_t kByteViewLengthInstructionNumber =
+    kAdHocStart + 25;
+inline constexpr cmd_index_t kByteViewDataInstructionNumber = kAdHocStart + 26;
 
 inline constexpr cmd_index_t kCastInstructionIndex     = 17 << kTypeBits;
 inline constexpr cmd_index_t kDebugIrInstructionNumber = 254 << kTypeBits;

@@ -7,6 +7,7 @@
 #include "ir/block_def.h"
 #include "ir/instructions.h"
 #include "ir/jump.h"
+#include "ir/read_only_data.h"
 #include "ir/scope_def.h"
 #include "type/opaque.h"
 
@@ -581,14 +582,24 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
 
     if constexpr (std::is_same_v<Inst, ir::PtrIncrInstruction>) {
       auto arch = core::Interpretter();
-      core::Bytes offset =
-          core::FwdAlign(type->bytes(arch), type->alignment(arch)) * index;
+      core::Bytes offset = core::FwdAlign(type->pointee->bytes(arch),
+                                          type->pointee->alignment(arch)) *
+                           index;
       ctx->current_frame().regs_.set(reg, addr + offset);
     } else {
       ctx->current_frame().regs_.set(
           reg, addr + type->offset(index, core::Interpretter()));
     }
-
+  } else if constexpr (std::is_same_v<Inst, ir::ByteViewLengthInstruction>) {
+    int64_t length =
+        ctx->resolve<std::string_view>(iter->read<ir::Reg>().get()).size();
+    ir::Reg result = iter->read<ir::Reg>();
+    ctx->current_frame().regs_.set(result, length);
+  } else if constexpr (std::is_same_v<Inst, ir::ByteViewDataInstruction>) {
+    auto data_addr = ir::Addr::Heap(const_cast<char *>(
+        ctx->resolve<std::string_view>(iter->read<ir::Reg>().get()).data()));
+    ir::Reg result = iter->read<ir::Reg>();
+    ctx->current_frame().regs_.set(result, data_addr);
   } else if constexpr (std::is_same_v<Inst, ir::VariantAccessInstruction>) {
     bool get_val = iter->read<bool>();
     bool is_reg  = iter->read<bool>();
@@ -1122,10 +1133,13 @@ void ExecutionContext::ExecuteBlocks(absl::Span<ir::Addr const> ret_slots) {
         DEBUG_LOG("load-instruction")(num_bytes, " ", addr, " ", result_reg);
         switch (addr.kind()) {
           case ir::Addr::Kind::Stack: {
-            current_frame().regs_.set_raw(result_reg,
-                                          stack_.raw(addr.stack()), num_bytes);
+            current_frame().regs_.set_raw(result_reg, stack_.raw(addr.stack()),
+                                          num_bytes);
           } break;
-          case ir::Addr::Kind::ReadOnly: NOT_YET(); break;
+          case ir::Addr::Kind::ReadOnly:
+            current_frame().regs_.set_raw(
+                result_reg, ir::ReadOnlyData.raw(addr.rodata()), num_bytes);
+            break;
           case ir::Addr::Kind::Heap: {
             current_frame().regs_.set_raw(result_reg, addr.heap(), num_bytes);
           } break;
@@ -1310,6 +1324,12 @@ void ExecutionContext::ExecuteBlocks(absl::Span<ir::Addr const> ret_slots) {
         break;
       case ir::PtrIncrInstruction::kIndex:
         ExecuteAdHocInstruction<ir::PtrIncrInstruction>(&iter, this);
+        break;
+      case ir::ByteViewLengthInstruction::kIndex:
+        ExecuteAdHocInstruction<ir::ByteViewLengthInstruction>(&iter, this);
+        break;
+      case ir::ByteViewDataInstruction::kIndex:
+        ExecuteAdHocInstruction<ir::ByteViewDataInstruction>(&iter, this);
         break;
       case ir::VariantAccessInstruction::kIndex:
         ExecuteAdHocInstruction<ir::VariantAccessInstruction>(&iter, this);

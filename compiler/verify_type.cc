@@ -674,6 +674,9 @@ type::QualType Compiler::Visit(ast::Access const *node, VerifyTypeTag) {
   auto base_type = DereferenceAll(operand_result.type());
   if (base_type == type::Type_) {
     return AccessTypeMember(this, node, operand_result);
+  } else if (base_type == type::ByteView) {
+    return set_result(node,
+                      type::QualType(type::Int64, operand_result.constant()));
   } else if (auto *s = base_type->if_as<type::Struct>()) {
     return AccessStructMember(
         this, node, type::QualType(base_type, operand_result.constant()));

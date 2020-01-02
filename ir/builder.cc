@@ -146,6 +146,22 @@ base::Tagged<Addr, Reg> Builder::PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
   return result;
 }
 
+RegOr<int64_t> Builder::ByteViewLength(RegOr<std::string_view> val) {
+  if (not val.is_reg()) { return val.value().size(); }
+  auto inst   = std::make_unique<ByteViewLengthInstruction>(val.reg());
+  auto result = inst->result = CurrentGroup()->Reserve();
+  CurrentBlock()->instructions_.push_back(std::move(inst));
+  return result;
+}
+
+RegOr<Addr> Builder::ByteViewData(RegOr<std::string_view> val) {
+  if (not val.is_reg()) { NOT_YET(); }
+  auto inst   = std::make_unique<ByteViewDataInstruction>(val.reg());
+  auto result = inst->result = CurrentGroup()->Reserve();
+  CurrentBlock()->instructions_.push_back(std::move(inst));
+  return result;
+}
+
 type::Typed<Reg> Builder::Field(RegOr<Addr> r, type::Tuple const *t,
                                 int64_t n) {
   auto inst   = std::make_unique<TupleIndexInstruction>(r, n, t);

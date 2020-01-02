@@ -50,6 +50,7 @@ cc_library(
         "//ir:block_def",
         "//ir:instructions",
         "//ir:jump",
+        "//ir:read_only_data",
         "//ir:reg",
         "//ir:reg_or",
         "//ir:scope_def",

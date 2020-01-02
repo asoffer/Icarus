@@ -1593,6 +1593,64 @@ struct PtrIncrInstruction : base::Clone<PtrIncrInstruction, Instruction> {
   Reg result;
 };
 
+struct ByteViewLengthInstruction
+    : base::Clone<ByteViewLengthInstruction, Instruction> {
+  static constexpr cmd_index_t kIndex =
+      internal::kByteViewLengthInstructionNumber;
+
+  explicit ByteViewLengthInstruction(Reg reg) : reg(reg) {}
+  ~ByteViewLengthInstruction() override {}
+
+  std::string to_string() const override {
+    using base::stringify;
+    return absl::StrCat(stringify(result), " = byte-view length ",
+                        stringify(reg));
+  }
+
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    writer->Write(kIndex);
+    writer->Write(reg);
+    writer->Write(result);
+  }
+
+  void Inline(Inliner const& inliner) override {
+    inliner.Inline(reg);
+    inliner.Inline(result);
+  }
+
+  Reg reg;
+  Reg result;
+};
+
+struct ByteViewDataInstruction
+    : base::Clone<ByteViewDataInstruction, Instruction> {
+  static constexpr cmd_index_t kIndex =
+      internal::kByteViewDataInstructionNumber;
+
+  explicit ByteViewDataInstruction(Reg reg) : reg(reg) {}
+  ~ByteViewDataInstruction() override {}
+
+  std::string to_string() const override {
+    using base::stringify;
+    return absl::StrCat(stringify(result), " = byte-view data ",
+                        stringify(reg));
+  }
+
+  void WriteByteCode(ByteCodeWriter* writer) const override {
+    writer->Write(kIndex);
+    writer->Write(reg);
+    writer->Write(result);
+  }
+
+  void Inline(Inliner const& inliner) override {
+    inliner.Inline(reg);
+    inliner.Inline(result);
+  }
+
+  Reg reg;
+  Reg result;
+};
+
 struct VariantAccessInstruction
     : base::Clone<VariantAccessInstruction, Instruction> {
   static constexpr cmd_index_t kIndex =

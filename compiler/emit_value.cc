@@ -273,7 +273,8 @@ void ProcessExecutableBody(Compiler *c, base::PtrSpan<ast::Node const> nodes,
 }
 
 ir::Results Compiler::Visit(ast::Access const *node, EmitValueTag) {
-  if (type_of(node->operand()) == type::Module) {
+  auto *this_type = type_of(node);
+  if (this_type == type::Module) {
     // TODO we already did this evaluation in type verification. Can't we just
     // save and reuse it?
     auto decls = interpretter::EvaluateAs<module::BasicModule const *>(
@@ -286,16 +287,19 @@ ir::Results Compiler::Visit(ast::Access const *node, EmitValueTag) {
     }
   }
 
-  auto *this_type = type_of(node);
   if (this_type->is<type::Enum>()) {
     auto lit = this_type->as<type::Enum>().EmitLiteral(node->member_name());
     return ir::Results{lit};
   } else if (this_type->is<type::Flags>()) {
     auto lit = this_type->as<type::Flags>().EmitLiteral(node->member_name());
     return ir::Results{lit};
+  } else if (type_of(node->operand()) == type::ByteView) {
+    ASSERT(node->member_name() == "length");
+    return ir::Results{builder().ByteViewLength(
+        Visit(node->operand(), EmitValueTag{}).get<std::string_view>(0))};
   } else {
     auto reg = Visit(node->operand(), EmitRefTag{})[0];
-    auto *t  = type_of(node->operand());
+    auto *t  = this_type;
 
     if (t->is<type::Pointer>()) { t = t->as<type::Pointer>().pointee; }
     while (auto *p = t->if_as<type::Pointer>()) {
@@ -1248,6 +1252,14 @@ ir::Results Compiler::Visit(ast::Import const *node, EmitValueTag) {
 }
 
 ir::Results Compiler::Visit(ast::Index const *node, EmitValueTag) {
+  if (type_of(node->lhs()) == type::ByteView) {
+    auto data = builder().ByteViewData(
+        Visit(node->lhs(), EmitValueTag{}).get<std::string_view>(0));
+    auto addr = builder().PtrIncr(
+        data, Visit(node->rhs(), EmitValueTag{}).get<int64_t>(0),
+        type::Ptr(type::Nat8));
+    return ir::Results{ir::Load(addr, type::Nat8)};
+  }
   return ir::Results{
       ir::PtrFix(Visit(node, EmitRefTag{})[0].reg(), type_of(node))};
 }

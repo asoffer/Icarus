@@ -24,7 +24,7 @@ AnyFunc BytesFn() {
 }
 
 AnyFunc AlignmentFn() {
-  static CompiledFn *bytes_func_ = [&]() {
+  static CompiledFn *alignment_func_ = [&]() {
     auto const *fn_type = type::Func({type::Type_}, {type::Int64});
     auto fn             = new CompiledFn(fn_type, fn_type->AnonymousFnParams());
     ICARUS_SCOPE(SetCurrent(fn)) {
@@ -35,7 +35,7 @@ AnyFunc AlignmentFn() {
     }
     return fn;
   }();
-  return AnyFunc{bytes_func_};
+  return AnyFunc{alignment_func_};
 }
 
 }  // namespace ir
