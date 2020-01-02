@@ -841,8 +841,6 @@ static ir::RegOr<bool> EmitChainOpPair(Compiler *compiler,
   auto op        = chain_op->ops()[index];
 
   if (lhs_type->is<type::Array>() and rhs_type->is<type::Array>()) {
-    using ::matcher::Eq;
-    ASSERT(op, Eq(frontend::Operator::Eq) or Eq(frontend::Operator::Ne));
     return ArrayCompare(compiler, &lhs_type->as<type::Array>(), lhs_ir,
                         &rhs_type->as<type::Array>(), rhs_ir,
                         op == frontend::Operator::Eq)

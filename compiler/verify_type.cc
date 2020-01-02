@@ -1053,7 +1053,7 @@ static type::QualType VerifyCall(Compiler *c, ast::BuiltinFn const *b,
     case core::Builtin::DebugIr:
       // This is for debugging the compiler only, so there's no need to write
       // decent errors here.
-      ASSERT(arg_results, matcher::IsEmpty());
+      ASSERT(arg_results.size() == 0u);
       return type::QualType::Constant(type::Void());
 #endif  // defined(ICARUS_DEBUG)
   }
