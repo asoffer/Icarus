@@ -11,6 +11,7 @@
 #include "compiler/dispatch/scope_table.h"
 #include "compiler/extract_jumps.h"
 #include "compiler/library_module.h"
+#include "compiler/verify_assignment_and_initialization.h"
 #include "diagnostic/consumer/streaming.h"
 #include "diagnostic/errors.h"
 #include "error/inference_failure_reason.h"
@@ -21,6 +22,7 @@
 #include "type/generic_struct.h"
 #include "type/jump.h"
 #include "type/parameter_pack.h"
+#include "type/qual_type.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 #include "type/util.h"
@@ -126,65 +128,6 @@ Cmp Comparator(type::Type const *t) {
   } else {
     return Cmp::None;
   }
-}
-
-bool VerifyAssignment(Compiler *c, frontend::SourceRange const &span,
-                      type::Type const *to, type::Type const *from) {
-  if (to == from and to->is<type::GenericStruct>()) { return true; }
-
-  // TODO this feels like the semantics are iffy. It works fine if we assign
-  // to/from the same type, but we really care if you can assign to a type
-  // rather than copy from another, I think.
-  if (not from->IsMovable()) {
-    c->error_log()->NotMovable(span, from->to_string());
-    return false;
-  }
-
-  if (to == from) { return true; }
-  auto *to_tup   = to->if_as<type::Tuple>();
-  auto *from_tup = from->if_as<type::Tuple>();
-  if (to_tup and from_tup) {
-    if (to_tup->size() != from_tup->size()) {
-      c->error_log()->MismatchedAssignmentSize(span, to_tup->size(),
-                                               from_tup->size());
-      return false;
-    }
-
-    bool result = true;
-    for (size_t i = 0; i < to_tup->size(); ++i) {
-      result &= VerifyAssignment(c, span, to_tup->entries_.at(i),
-                                 from_tup->entries_.at(i));
-    }
-    return result;
-  }
-
-  if (auto *to_var = to->if_as<type::Variant>()) {
-    if (auto *from_var = from->if_as<type::Variant>()) {
-      for (auto fvar : from_var->variants_) {
-        if (not to_var->contains(fvar)) {
-          NOT_YET("log an error", from, to);
-          return false;
-        }
-      }
-      return true;
-    } else {
-      if (not to_var->contains(from)) {
-        NOT_YET("log an error", from, to);
-        return false;
-      }
-
-      return true;
-    }
-  }
-
-  if (auto *to_ptr = to->if_as<type::Pointer>()) {
-    if (from == type::NullPtr) { return true; }
-    NOT_YET("log an error", from, to);
-    return false;
-  }
-
-  NOT_YET("log an error: no cast from ", from->to_string(), " to ",
-          to->to_string());
 }
 
 type::Type const *DereferenceAll(type::Type const *t) {
@@ -497,7 +440,7 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
   std::vector<type::Type const *> output_type_vec;
   bool error   = false;
   auto outputs = node->outputs();
-  if (outputs) {
+  if (not node->is_short()) {
     output_type_vec.reserve(outputs->size());
     for (auto *output : *outputs) {
       auto result = Visit(output, VerifyTypeTag{});
@@ -527,7 +470,7 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
     return type::QualType::Error();
   }
 
-  if (outputs) {
+  if (not node->is_short()) {
     for (size_t i = 0; i < output_type_vec.size(); ++i) {
       if (auto *decl = (*outputs)[i]->if_as<ast::Declaration>()) {
         output_type_vec.at(i) = type_of(decl);
@@ -542,7 +485,7 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
         node, type::QualType::Constant(type::Func(std::move(input_type_vec),
                                                 std::move(output_type_vec))));
   } else {
-    return VerifyBody(this, node);
+    return set_result(node, VerifyBody(this, node));
   }
 }
 
@@ -745,8 +688,8 @@ type::QualType Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
   switch (node->op()) {
     case Operator::Assign: {
       // TODO if lhs is reserved?
-      if (not VerifyAssignment(this, node->span, lhs_result.type(),
-                               rhs_result.type())) {
+      if (not VerifyAssignment(error_log(), node->span, lhs_result,
+                               rhs_result)) {
         return type::QualType::Error();
       }
       return type::QualType::NonConstant(type::Void());
@@ -1287,7 +1230,7 @@ type::QualType Compiler::Visit(ast::CommaList const *node, VerifyTypeTag) {
     ts.push_back(r.type());
     is_const &= r.constant();
   }
-  return set_result(node, type::QualType(type::Tup(std::move(ts)), is_const));
+  return set_result(node, type::QualType(std::move(ts), is_const));
 }
 
 type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
@@ -1302,7 +1245,7 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
   } else if (node->IsCustomInitialized()) {
     dk |= CUSTOM_INIT;
   }
-  type::Type const *node_type = nullptr;
+  type::QualType node_qual_type;
   switch (dk) {
     case 0 /* Default initailization */: {
       ASSIGN_OR(return set_result(node, type::QualType::Error()),
@@ -1320,17 +1263,15 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
       }
       auto *type_expr_type = type_expr_result.type();
       if (type_expr_type == type::Type_) {
-        node_type = ASSERT_NOT_NULL(
-            set_result(node,
-                       type::QualType::Constant(
-                           interpretter::EvaluateAs<type::Type const *>(
-                               MakeThunk(node->type_expr(), type_expr_type))))
-                .type());
+        node_qual_type = set_result(
+            node, type::QualType::Constant(ASSERT_NOT_NULL(
+                      interpretter::EvaluateAs<type::Type const *>(
+                          MakeThunk(node->type_expr(), type_expr_type)))));
 
         if (not(node->flags() & ast::Declaration::f_IsFnParam) and
-            not node_type->IsDefaultInitializable()) {
-          error_log()->TypeMustBeInitialized(node->span,
-                                             node_type->to_string());
+            not node_qual_type.type()->IsDefaultInitializable()) {
+          error_log()->TypeMustBeInitialized(
+              node->span, node_qual_type.type()->to_string());
         }
 
       } else {
@@ -1353,19 +1294,16 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
         return set_result(node, type::QualType::Error());
       }
 
-      // TODO initialization, not assignment.
-      if (not VerifyAssignment(this, node->span, init_val_result.type(),
-                               init_val_result.type())) {
+      if (not VerifyInitialization(error_log(), node->span, init_val_result,
+                                   init_val_result)) {
         return set_result(node, type::QualType::Error());
       }
 
-      node_type =
-          set_result(
-              node, type::QualType(init_val_result.type(),
-                                 (node->flags() & ast::Declaration::f_IsConst)))
-              .type();
+      node_qual_type = set_result(
+          node, type::QualType(init_val_result.type(),
+                               (node->flags() & ast::Declaration::f_IsConst)));
       DEBUG_LOG("Declaration")
-      ("Verified, ", node->id(), ": ", node_type->to_string());
+      ("Verified, ", node->id(), ": ", node_qual_type.type()->to_string());
     } break;
     case INFER | UNINITIALIZED: {
       error_log()->UninferrableType(InferenceFailureReason::Hole,
@@ -1376,12 +1314,10 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
       return set_result(node, type::QualType::Error());
     } break;
     case CUSTOM_INIT: {
-      auto init_val_result = Visit(node->init_val(), VerifyTypeTag{});
-      bool error           = not init_val_result.ok();
-
-      auto *init_val_type   = Visit(node->init_val(), VerifyTypeTag{}).type();
-      auto type_expr_result = Visit(node->type_expr(), VerifyTypeTag{});
-      auto *type_expr_type  = type_expr_result.type();
+      auto init_val_qual_type = Visit(node->init_val(), VerifyTypeTag{});
+      bool error              = not init_val_qual_type.ok();
+      auto type_expr_result   = Visit(node->type_expr(), VerifyTypeTag{});
+      auto *type_expr_type    = type_expr_result.type();
 
       if (type_expr_type == nullptr) {
         error = true;
@@ -1390,19 +1326,15 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
           NOT_YET("log an error");
           error = true;
         } else {
-          node_type =
-              set_result(node,
-                         type::QualType::Constant(
-                             interpretter::EvaluateAs<type::Type const *>(
-                                 MakeThunk(node->type_expr(), type::Type_))))
-                  .type();
+          node_qual_type = set_result(
+              node, type::QualType::Constant(
+                        interpretter::EvaluateAs<type::Type const *>(
+                            MakeThunk(node->type_expr(), type::Type_))));
         }
 
-        // TODO initialization, not assignment. Error messages will be
-        // wrong.
-        if (node_type != nullptr and init_val_type != nullptr) {
-          error |=
-              not VerifyAssignment(this, node->span, node_type, init_val_type);
+        if (node_qual_type and init_val_qual_type) {
+          error |= not VerifyInitialization(error_log(), node->span,
+                                            node_qual_type, init_val_qual_type);
         }
       } else {
         error_log()->NotAType(node->type_expr()->span,
@@ -1422,12 +1354,10 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
           NOT_YET("log an error");
           return set_result(node, type::QualType::Error());
         }
-        node_type =
-            set_result(node,
-                       type::QualType::Constant(
-                           interpretter::EvaluateAs<type::Type const *>(
-                               MakeThunk(node->type_expr(), type::Type_))))
-                .type();
+        node_qual_type = set_result(
+            node, type::QualType::Constant(
+                      interpretter::EvaluateAs<type::Type const *>(
+                          MakeThunk(node->type_expr(), type::Type_))));
       } else {
         error_log()->NotAType(node->type_expr()->span,
                               type_expr_type->to_string());
@@ -1444,7 +1374,7 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
   }
 
   if (node->id().empty()) {
-    if (node_type == type::Module) {
+    if (node_qual_type.type() == type::Module) {
       // TODO check shadowing against other modules?
       // TODO what if no init val is provded? what if not constant?
       node->scope_->embedded_modules_.insert(
@@ -1452,11 +1382,11 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
               MakeThunk(node->init_val(), type::Module)));
       return set_result(node, type::QualType::Constant(type::Module));
     } else {
-      NOT_YET(node_type, node->DebugString());
+      NOT_YET(node_qual_type, node->DebugString());
     }
   }
 
-  ASSERT(node_type != nullptr) << node->DebugString();
+  ASSERT(node_qual_type != type::QualType::Error()) << node->DebugString();
 
   // Gather all declarations with the same identifer that are visible in this
   // scope or that are in a scope which for which this declaration would be
@@ -1500,7 +1430,8 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
   // TODO Skipping out on errors *might* reduce the fidelity of future
   // compilation work by not finding ambiguities that we should have.
   bool failed_shadowing = false;
-  type::Typed<ast::Declaration const *> typed_node_decl(node, node_type);
+  type::Typed<ast::Declaration const *> typed_node_decl(node,
+                                                        node_qual_type.type());
   for (auto const *decl :
        module::AllAccessibleDecls(node->scope_, node->id())) {
     if (decl == node) { continue; }
@@ -1524,7 +1455,7 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
     return set_result(node, type::QualType::Error());
   }
 
-  return VerifySpecialFunctions(this, node, node_type);
+  return VerifySpecialFunctions(this, node, node_qual_type.type());
 }
 
 type::QualType Compiler::Visit(ast::EnumLiteral const *node, VerifyTypeTag) {

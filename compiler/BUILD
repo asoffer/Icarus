@@ -26,6 +26,7 @@ cc_library(
         ":library_module",
         ":module",
         ":special_function",
+        ":verify_assignment_and_initialization",
         "//ast:ast",
         "//ast:overload_set",
         "//ast:visitor",
@@ -224,5 +225,28 @@ cc_library(
         ":module",
         "//diagnostic/consumer:streaming",
         "//ir:compiled_fn",
+    ],
+)
+
+
+cc_library(
+    name = "verify_assignment_and_initialization",
+    hdrs = ["verify_assignment_and_initialization.h"],
+    srcs = ["verify_assignment_and_initialization.cc"],
+    deps = [
+        "//error:log",
+        "//frontend/source:range",
+        "//type:cast",
+        "//type:qual_type",
+    ],
+)
+
+cc_test(
+    name = "verify_assignment_and_initialization_test",
+    srcs = ["verify_assignment_and_initialization_test.cc"],
+    deps = [
+        ":verify_assignment_and_initialization",
+        "//type:pointer",
+        "@com_google_googletest//:gtest_main",
     ],
 )

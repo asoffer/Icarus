@@ -1057,25 +1057,11 @@ ir::Results Compiler::Visit(ast::CommaList const *node, EmitValueTag) {
   // counts as atype
   if (tuple_type->entries_.empty()) { return ir::Results{type::Tup({})}; }
 
-  auto tuple_alloc = builder().TmpAlloca(tuple_type);
-
-  size_t index = 0;
+  ir::Results results;
   for (auto &expr : node->exprs_) {
-    if (expr->needs_expansion()) {
-      auto results = Visit(expr.get(), EmitValueTag{});
-      for (size_t i = 0; i < results.size(); ++i) {
-        EmitCopyInit(tuple_type->entries_[index], results.GetResult(i),
-                     builder().Field(tuple_alloc, tuple_type, index));
-        ++index;
-      }
-    } else {
-      EmitCopyInit(tuple_type->entries_[index],
-                   Visit(expr.get(), EmitValueTag{}),
-                   builder().Field(tuple_alloc, tuple_type, index));
-      ++index;
-    }
+    results.append(Visit(expr.get(), EmitValueTag{}));
   }
-  return ir::Results{tuple_alloc};
+  return results;
 }
 
 ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
