@@ -88,9 +88,6 @@ struct Log {
                               frontend::SourceRange const &range);
   void CyclicDependency(std::vector<ast::Identifier const *> cyc_deps);
 
-  void MismatchedAssignmentSize(frontend::SourceRange const &range, size_t lhs,
-                                size_t rhs);
-
   void InvalidNumber(frontend::SourceRange const &range, std::string_view err);
 
   void NoCallMatch(frontend::SourceRange const &range,
@@ -101,7 +98,6 @@ struct Log {
                         frontend::SourceRange const &range);
 
   void NotCopyable(frontend::SourceRange const &range, std::string_view from);
-  void NotMovable(frontend::SourceRange const &range, std::string_view from);
 
   void BuiltinError(frontend::SourceRange const &range, std::string text);
 
@@ -113,8 +109,6 @@ struct Log {
 
   void StatementsFollowingJump(frontend::SourceRange const &range);
 
-  void InvalidCast(std::string_view lhs, std::string_view rhs,
-                   frontend::SourceRange const &range);
   void PrintMustReturnVoid(std::string_view type,
                            frontend::SourceRange const &range);
   void SwitchConditionNeedsBool(std::string_view type,

@@ -293,16 +293,6 @@ void Log::ComparingIncomparables(std::string_view lhs, std::string_view rhs,
       diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
-void Log::MismatchedAssignmentSize(frontend::SourceRange const &range,
-                                   size_t lhs, size_t rhs) {
-  renderer_.AddError(diagnostic::DiagnosticMessage(
-      diagnostic::Text("Assigning multiple values but left- and right-hand "
-                       "side have different numbers of elements  (`%d` vs. "
-                       "`%d`).",
-                       lhs, rhs),
-      diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
-}
-
 void Log::InvalidNumber(frontend::SourceRange const &range,
                         std::string_view err) {
   renderer_.AddError(diagnostic::DiagnosticMessage(
@@ -351,13 +341,6 @@ void Log::NotCopyable(frontend::SourceRange const &range,
       diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
-void Log::NotMovable(frontend::SourceRange const &range,
-                     std::string_view from) {
-  renderer_.AddError(diagnostic::DiagnosticMessage(
-      diagnostic::Text("Attempting to copy an immovable type `%s`.", from),
-      diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
-}
-
 void Log::IndexingTupleOutOfBounds(frontend::SourceRange const &range,
                                    std::string_view tup, size_t tup_size,
                                    size_t index) {
@@ -400,13 +383,6 @@ void Log::UninferrableType(InferenceFailureReason reason,
 
   renderer_.AddError(diagnostic::DiagnosticMessage(
       diagnostic::Text(text),
-      diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
-}
-
-void Log::InvalidCast(std::string_view from, std::string_view to,
-                      frontend::SourceRange const &range) {
-  renderer_.AddError(diagnostic::DiagnosticMessage(
-      diagnostic::Text("No viable cast from `%s` to `%s`.", from, to),
       diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 

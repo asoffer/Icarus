@@ -440,7 +440,7 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
   std::vector<type::Type const *> output_type_vec;
   bool error   = false;
   auto outputs = node->outputs();
-  if (not node->is_short()) {
+  if (outputs) {
     output_type_vec.reserve(outputs->size());
     for (auto *output : *outputs) {
       auto result = Visit(output, VerifyTypeTag{});
@@ -470,7 +470,7 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
     return type::QualType::Error();
   }
 
-  if (not node->is_short()) {
+  if (outputs) {
     for (size_t i = 0; i < output_type_vec.size(); ++i) {
       if (auto *decl = (*outputs)[i]->if_as<ast::Declaration>()) {
         output_type_vec.at(i) = type_of(decl);
@@ -688,7 +688,7 @@ type::QualType Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
   switch (node->op()) {
     case Operator::Assign: {
       // TODO if lhs is reserved?
-      if (not VerifyAssignment(error_log(), node->span, lhs_result,
+      if (not VerifyAssignment(diag_consumer_, node->span, lhs_result,
                                rhs_result)) {
         return type::QualType::Error();
       }
@@ -1058,8 +1058,11 @@ type::QualType Compiler::Visit(ast::Cast const *node, VerifyTypeTag) {
     return VerifyUnaryOverload(this, "as", node, expr_result);
   } else {
     if (not type::CanCast(expr_result.type(), t)) {
-      error_log()->InvalidCast(expr_result.type()->to_string(), t->to_string(),
-                               node->span);
+      diag_consumer_.Consume(diagnostic::InvalidCast{
+          .from  = expr_result.type(),
+          .to    = t,
+          .range = node->span,
+      });
       NOT_YET("log an error", expr_result.type(), t);
     }
 
@@ -1294,7 +1297,7 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
         return set_result(node, type::QualType::Error());
       }
 
-      if (not VerifyInitialization(error_log(), node->span, init_val_result,
+      if (not VerifyInitialization(diag_consumer_, node->span, init_val_result,
                                    init_val_result)) {
         return set_result(node, type::QualType::Error());
       }
@@ -1333,7 +1336,7 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
         }
 
         if (node_qual_type and init_val_qual_type) {
-          error |= not VerifyInitialization(error_log(), node->span,
+          error |= not VerifyInitialization(diag_consumer_, node->span,
                                             node_qual_type, init_val_qual_type);
         }
       } else {

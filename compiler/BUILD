@@ -234,7 +234,8 @@ cc_library(
     hdrs = ["verify_assignment_and_initialization.h"],
     srcs = ["verify_assignment_and_initialization.cc"],
     deps = [
-        "//error:log",
+        "//diagnostic/consumer",
+        "//diagnostic:errors",
         "//frontend/source:range",
         "//type:cast",
         "//type:qual_type",
@@ -246,6 +247,7 @@ cc_test(
     srcs = ["verify_assignment_and_initialization_test.cc"],
     deps = [
         ":verify_assignment_and_initialization",
+        "//diagnostic/consumer:trivial",
         "//type:pointer",
         "@com_google_googletest//:gtest_main",
     ],

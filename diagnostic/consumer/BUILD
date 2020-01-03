@@ -17,3 +17,12 @@ cc_library(
         "//diagnostic:message"
     ],
 )
+
+cc_library(
+    name = "trivial",
+    hdrs = ["trivial.h"],
+    deps = [
+        ":consumer",
+        "//diagnostic:message"
+    ],
+)
