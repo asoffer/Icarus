@@ -658,47 +658,52 @@ ir::Results Compiler::Visit(ast::BuiltinFn const *node, EmitValueTag) {
   return ir::Results{node->value()};
 }
 
-ir::Results Compiler::Visit(ast::Call const *node, EmitValueTag) {
-  auto *b = node->callee()->if_as<ast::BuiltinFn>();
-  if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
-    switch (b->value()) {
-      case core::Builtin::Foreign: {
-        auto name = interpretter::EvaluateAs<std::string_view>(
-            MakeThunk(node->args().at(0), type::ByteView));
-        auto *foreign_type = interpretter::EvaluateAs<type::Type const *>(
-            MakeThunk(node->args().at(1), type::Type_));
-        return ir::Results{builder().LoadSymbol(name, foreign_type).get()};
-      } break;
+ir::Results EmitBuiltinCall(
+    Compiler *c, ast::BuiltinFn const *callee,
+    core::FnArgs<ast::Expression const *, std::string_view> const &args) {
+  switch (callee->value()) {
+    case core::Builtin::Foreign: {
+      auto name = interpretter::EvaluateAs<std::string_view>(
+          c->MakeThunk(args.at(0), type::ByteView));
+      auto *foreign_type = interpretter::EvaluateAs<type::Type const *>(
+          c->MakeThunk(args.at(1), type::Type_));
+      return ir::Results{c->builder().LoadSymbol(name, foreign_type).get()};
+    } break;
 
-      case core::Builtin::Opaque:
-        return ir::Results{builder().OpaqueType(module())};
-      case core::Builtin::Bytes: {
-        auto const &fn_type =
-            ir::BuiltinType(core::Builtin::Bytes)->as<type::Function>();
-        ir::OutParams outs;
-        auto reg = outs.AppendReg(fn_type.output.at(0));
-        builder().Call(ir::BytesFn(), &fn_type,
-                       {Visit(node->args().at(0), EmitValueTag{})}, outs);
+    case core::Builtin::Opaque:
+      return ir::Results{c->builder().OpaqueType(c->module())};
+    case core::Builtin::Bytes: {
+      auto const &fn_type =
+          ir::BuiltinType(core::Builtin::Bytes)->as<type::Function>();
+      ir::OutParams outs;
+      auto reg = outs.AppendReg(fn_type.output.at(0));
+      c->builder().Call(ir::BytesFn(), &fn_type,
+                        {c->Visit(args.at(0), EmitValueTag{})}, outs);
 
-        return ir::Results{reg};
-      } break;
+      return ir::Results{reg};
+    } break;
 
-      case core::Builtin::Alignment: {
-        auto const &fn_type =
-            ir::BuiltinType(core::Builtin::Alignment)->as<type::Function>();
-        ir::OutParams outs;
-        auto reg = outs.AppendReg(fn_type.output.at(0));
-        builder().Call(ir::AlignmentFn(), &fn_type,
-                       {Visit(node->args().at(0), EmitValueTag{})}, outs);
+    case core::Builtin::Alignment: {
+      auto const &fn_type =
+          ir::BuiltinType(core::Builtin::Alignment)->as<type::Function>();
+      ir::OutParams outs;
+      auto reg = outs.AppendReg(fn_type.output.at(0));
+      c->builder().Call(ir::AlignmentFn(), &fn_type,
+                        {c->Visit(args.at(0), EmitValueTag{})}, outs);
 
-        return ir::Results{reg};
-      } break;
+      return ir::Results{reg};
+    } break;
 
 #if defined(ICARUS_DEBUG)
-      case core::Builtin::DebugIr: builder().DebugIr(); return ir::Results{};
+    case core::Builtin::DebugIr: c->builder().DebugIr(); return ir::Results{};
 #endif  // defined(ICARUS_DEBUG)
-    }
-    UNREACHABLE();
+  }
+  UNREACHABLE();
+}
+
+ir::Results Compiler::Visit(ast::Call const *node, EmitValueTag) {
+  if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
+    return EmitBuiltinCall(this, b, node->args());
   }
 
   auto const &table = *ASSERT_NOT_NULL(data_.dispatch_table(node));

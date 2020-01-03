@@ -1,65 +1,93 @@
 #include "type/qual_type.h"
 
-#include "test/catch.h"
+#include "gtest/gtest.h"
 #include "type/primitive.h"
 
 namespace {
 
-TEST_CASE("Regularity") {
-  CHECK(type::QualType::Error() == type::QualType::Error());
+TEST(QualType, Regularity) {
+  EXPECT_EQ(type::QualType::Error(), type::QualType::Error());
 
-  CHECK(type::QualType::Constant(type::Int32) ==
-        type::QualType::Constant(type::Int32));
-  CHECK(type::QualType::Constant(type::Int32) !=
-        type::QualType::Constant(type::Int64));
+  EXPECT_EQ(type::QualType::Constant(type::Int32),
+            type::QualType::Constant(type::Int32));
+  EXPECT_NE(type::QualType::Constant(type::Int32),
+            type::QualType::Constant(type::Int64));
 
-  CHECK(type::QualType::NonConstant(type::Int32) ==
-        type::QualType::NonConstant(type::Int32));
-  CHECK(type::QualType::NonConstant(type::Int32) !=
-        type::QualType::Constant(type::Int32));
-  CHECK(type::QualType::NonConstant(type::Int32) !=
-        type::QualType::NonConstant(type::Int64));
+  EXPECT_EQ(type::QualType::NonConstant(type::Int32),
+            type::QualType::NonConstant(type::Int32));
+  EXPECT_NE(type::QualType::NonConstant(type::Int32),
+            type::QualType::Constant(type::Int32));
+  EXPECT_NE(type::QualType::NonConstant(type::Int32),
+            type::QualType::NonConstant(type::Int64));
+
+  EXPECT_EQ(type::QualType::NonConstant(type::Int32),
+            type::QualType({type::Int32}, false));
+
+  EXPECT_EQ(type::QualType::Constant(type::Int32),
+            type::QualType({type::Int32}, true));
+
+  EXPECT_EQ(type::QualType({type::Int32, type::Bool}, true),
+            type::QualType({type::Int32, type::Bool}, true));
+  EXPECT_NE(type::QualType({type::Int32, type::Bool}, false),
+            type::QualType({type::Int32, type::Bool}, true));
 
   auto q = type::QualType::Constant(type::Int64);
 
-  CHECK(q == type::QualType::Constant(type::Int64));
+  EXPECT_EQ(q, type::QualType::Constant(type::Int64));
 
-  CHECK(q != type::QualType::Constant(type::Bool));
+  EXPECT_NE(q, type::QualType::Constant(type::Bool));
   q = type::QualType::Constant(type::Bool);
-  CHECK(q == type::QualType::Constant(type::Bool));
+  EXPECT_EQ(q, type::QualType::Constant(type::Bool));
 }
 
-TEST_CASE("Access") {
+TEST(QualType, Access) {
   auto q = type::QualType::Constant(type::Int32);
-  CHECK(q.constant());
-  CHECK(q.type() == type::Int32);
+  EXPECT_TRUE(q.constant());
+  EXPECT_EQ(q.type(), type::Int32);
 
   auto q2 = type::QualType::NonConstant(type::Bool);
-  CHECK_FALSE(q2.constant());
-  CHECK(q2.type() == type::Bool);
+  EXPECT_FALSE(q2.constant());
+  EXPECT_EQ(q2.type(), type::Bool);
 }
 
-TEST_CASE("Streaming") {
-  std::stringstream ss;
-
-  SECTION("constant") {
+TEST(QualType, Streaming) {
+  {
+    std::stringstream ss;
     auto q = type::QualType::Constant(type::Int32);
     ss << q;
-    CHECK(ss.str() == "const[int32]");
+    EXPECT_EQ(ss.str(), "const(int32)");
   }
 
-  SECTION("non-constant") {
+  {
+    std::stringstream ss;
     auto q = type::QualType::NonConstant(type::Bool);
     ss << q;
-    CHECK(ss.str() == "non-const[bool]");
+    EXPECT_EQ(ss.str(), "non-const(bool)");
+  }
+
+
+  {
+    std::stringstream ss;
+    auto q = type::QualType({type::Int64, type::Bool}, true);
+    ss << q;
+    EXPECT_EQ(ss.str(), "const(int64, bool)");
   }
 }
 
-TEST_CASE("Ok") {
-  CHECK_FALSE(type::QualType::Error().ok());
-  CHECK_FALSE(type::QualType::Error());
-  CHECK(type::QualType::Constant(type::Bool).ok());
-  CHECK(type::QualType::Constant(type::Bool));
+TEST(QualType, Ok) {
+  EXPECT_FALSE(type::QualType::Error().ok());
+  EXPECT_FALSE(type::QualType::Error());
+  EXPECT_TRUE(type::QualType::Constant(type::Bool).ok());
+  EXPECT_TRUE(type::QualType::Constant(type::Bool));
+}
+
+TEST(QualType, ExpansionSize) {
+  EXPECT_EQ(type::QualType::Constant(type::Int32).expansion_size(), 1);
+  EXPECT_EQ(type::QualType({type::Int32}, true).expansion_size(), 1);
+
+  EXPECT_EQ(type::QualType({}, true).expansion_size(), 0);
+  EXPECT_EQ(type::QualType({type::Int32, type::Bool}, true).expansion_size(),
+            2);
 }
 
 }  // namespace

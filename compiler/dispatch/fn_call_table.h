@@ -7,9 +7,9 @@
 #include "ast/overload_set.h"
 #include "base/expected.h"
 #include "compiler/dispatch/overload.h"
-#include "type/qual_type.h"
 #include "core/fn_args.h"
 #include "core/fn_params.h"
+#include "type/qual_type.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 
@@ -24,19 +24,19 @@ struct FnCallDispatchTable {
       Compiler *compiler, ast::OverloadSet const &os,
       core::FnArgs<type::QualType> const &args);
 
-  type::Type const *result_type() const { return result_type_; }
+  type::QualType result_qual_type() const { return result_type_; }
 
   ir::Results EmitCall(
       Compiler *compiler,
       core::FnArgs<type::Typed<ir::Results>> const &args) const;
 
  private:
-  static type::Type const *ComputeResultType(
+  static type::QualType ComputeResultQualType(
       absl::flat_hash_map<ast::Expression const *, internal::ExprData> const
           &table);
 
   absl::flat_hash_map<ast::Expression const *, internal::ExprData> table_;
-  type::Type const *result_type_;
+  type::QualType result_type_;
 };
 
 }  // namespace compiler

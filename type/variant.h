@@ -2,6 +2,7 @@
 #define ICARUS_TYPE_VARIANT_H
 
 #include <mutex>
+#include <vector>
 
 #include "absl/types/span.h"
 #include "core/arch.h"
@@ -10,7 +11,8 @@
 namespace type {
 Type const *Var(std::vector<Type const *> variants);
 
-Type const *MultiVar(absl::Span<std::vector<Type const *> const> variants);
+std::vector<Type const *> MultiVar(
+    absl::Span<std::vector<Type const *> const> variants);
 
 struct Variant : public Type {
   TYPE_FNS(Variant);

@@ -75,9 +75,8 @@ type::QualType VerifyUnaryOverload(Compiler *c, char const *symbol,
       return type::QualType::Error(), auto table,
              FnCallDispatchTable::Verify(
                  c, os, core::FnArgs<type::QualType>({operand_result}, {})));
-  auto result = type::QualType::NonConstant(table.result_type());
   c->data_.set_dispatch_table(node, std::move(table));
-  return c->set_result(node, result);
+  return c->set_result(node, table.result_qual_type());
 }
 
 type::QualType VerifyBinaryOverload(Compiler *c, char const *symbol,
@@ -92,9 +91,8 @@ type::QualType VerifyBinaryOverload(Compiler *c, char const *symbol,
              FnCallDispatchTable::Verify(
                  c, os,
                  core::FnArgs<type::QualType>({lhs_result, rhs_result}, {})));
-  auto result = type::QualType::NonConstant(table.result_type());
   c->data_.set_dispatch_table(node, std::move(table));
-  return c->set_result(node, result);
+  return c->set_result(node, table.result_qual_type());
 }
 // NOTE: the order of these enumerators is meaningful and relied upon! They are
 // ordered from strongest relation to weakest.
@@ -1090,8 +1088,7 @@ type::QualType Compiler::Visit(ast::Call const *node, VerifyTypeTag) {
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto table,
                    FnCallDispatchTable::Verify(this, os, arg_results));
-  // TODO might be constant?
-  auto result = type::QualType::NonConstant(table.result_type());
+  auto result = table.result_qual_type();
   data_.set_dispatch_table(node, std::move(table));
   DEBUG_LOG("dispatch-verify")("Resulting type of dispatch is ", result);
   return set_result(node, result);
@@ -1297,7 +1294,7 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
   // Declarations may have already been computed. Essentially the first time we
   // see an identifier (either a real identifier node, or a declaration, we need
   // to verify the type, but we only want to do node once.
-  if (auto *attempt = prior_verification_attempt(node)) { return *attempt; }
+  if (auto *attempt = qual_type_of(node)) { return *attempt; }
   int dk = 0;
   if (node->IsInferred()) { dk = INFER; }
   if (node->IsUninitialized()) {
@@ -1507,7 +1504,7 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
   for (auto const *decl :
        module::AllAccessibleDecls(node->scope_, node->id())) {
     if (decl == node) { continue; }
-    auto *r = prior_verification_attempt(decl);
+    auto *r = qual_type_of(decl);
     if (not r) { continue; }
     auto *t = r->type();
     if (not t) { continue; }

@@ -150,11 +150,11 @@ base::expected<FnCallDispatchTable> FnCallDispatchTable::Verify(
     return base::unexpected("Match failure");
   }
 
-  table.result_type_ = ComputeResultType(table.table_);
+  table.result_type_ = ComputeResultQualType(table.table_);
   return table;
 }
 
-type::Type const *FnCallDispatchTable::ComputeResultType(
+type::QualType FnCallDispatchTable::ComputeResultQualType(
     absl::flat_hash_map<ast::Expression const *, internal::ExprData> const
         &table) {
   std::vector<std::vector<type::Type const *>> results;
@@ -172,7 +172,7 @@ type::Type const *FnCallDispatchTable::ComputeResultType(
     }
   }
 
-  return type::MultiVar(results);
+  return type::QualType(type::MultiVar(results), false);
 }
 
 ir::Results FnCallDispatchTable::EmitCall(

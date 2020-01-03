@@ -169,7 +169,7 @@ struct Compiler
   size_t num_errors() { return error_log()->size(); }
   void DumpErrors() { error_log()->Dump(); }
 
-  type::QualType const *prior_verification_attempt(ast::ExprPtr expr);
+  type::QualType const *qual_type_of(ast::ExprPtr expr) const;
   type::Type const *type_of(ast::Expression const *expr) const;
   void set_addr(ast::Declaration const *decl, ir::Reg addr);
   type::QualType set_result(ast::ExprPtr expr,

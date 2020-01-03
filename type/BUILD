@@ -171,7 +171,10 @@ cc_lib(
 cc_library(
     name = "qual_type",
     hdrs = ["qual_type.h"],
-    deps = [":type"],
+    deps = [
+        ":type",
+        ":tuple",
+    ],
 )
 
 cc_test(
@@ -180,7 +183,7 @@ cc_test(
     deps = [
         ":primitive",
         ":qual_type",
-        "//test",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -257,15 +260,26 @@ cc_lib(
     test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "variant",
+    hdrs = ["variant.h"],
+    srcs = ["variant.cc"],
     deps = [
+        ":primitive",
         ":type",
         ":tuple",
         "//base:guarded",
         "@com_google_absl//absl/algorithm:container",
     ],
-    test_deps = [":primitive"],
+)
+
+cc_test(
+    name = "variant_test",
+    srcs = ["variant_test.cc"],
+    deps = [
+        ":variant",
+        "@com_google_googletest//:gtest_main",
+    ],
 )
 
 cc_lib(

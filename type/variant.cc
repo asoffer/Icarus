@@ -107,25 +107,31 @@ core::Alignment Variant::alternative_alignment(core::Arch const &a) const {
   return align;
 }
 
-Type const *MultiVar(absl::Span<std::vector<Type const *> const> type_vecs) {
-  size_t min_size = std::numeric_limits<size_t>::max(), max_size = 0;
+std::vector<Type const *> MultiVar(
+    absl::Span<std::vector<Type const *> const> type_vecs) {
+  if (type_vecs.empty()) { return {}; }
 
+#if defined(ICARUS_DEBUG)
+  size_t min_size = std::numeric_limits<size_t>::max(), max_size = 0;
   for (auto const &vec : type_vecs) {
     min_size = std::min(min_size, vec.size());
     max_size = std::max(max_size, vec.size());
   }
-  if (min_size != max_size) { return nullptr; }
 
+  ASSERT(min_size == max_size);
+#endif  // defined(ICARUS_DEBUG
+
+  size_t num = type_vecs[0].size();
   std::vector<type::Type const *> vars;
-  vars.reserve(min_size);
-  for (size_t i = 0; i < min_size; ++i) {
+  vars.reserve(num);
+  for (size_t i = 0; i < num; ++i) {
     std::vector<type::Type const *> var_entry;
     var_entry.reserve(type_vecs.size());
     for (auto const &v : type_vecs) { var_entry.push_back(v[i]); }
     vars.push_back(type::Var(std::move(var_entry)));
   }
 
-  return type::Tup(std::move(vars));
+  return vars;
 }
 
 }  // namespace type

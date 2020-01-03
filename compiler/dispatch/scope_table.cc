@@ -45,8 +45,7 @@ std::vector<core::FnArgs<type::QualType>> VerifyBlockNode(
     std::vector<std::pair<ast::Expression const *, type::QualType>>
         local_pos_yields;
     for (auto *yield_expr : yields[0]->as<ast::YieldStmt>().exprs()) {
-      back.pos_emplace(
-          *ASSERT_NOT_NULL(compiler->prior_verification_attempt(yield_expr)));
+      back.pos_emplace(*ASSERT_NOT_NULL(compiler->qual_type_of(yield_expr)));
     }
   }
   return result;
