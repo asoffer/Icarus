@@ -1211,9 +1211,7 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
       ++arg_index;
     }
 
-    // TODO this is probably wrong.
-    writer->Write<uint16_t>(fn_type->output.size());
-    for (Reg r : outs.regs_) { writer->Write(r); }
+    outs.WriteByteCode(writer);
 
     writer->buf_->set(bytes_written_slot,
                       core::Bytes{writer->buf_->size() - bytes_written_slot -

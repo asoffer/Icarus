@@ -18,16 +18,10 @@ std::pair<ir::Results, ir::OutParams> SetReturns(ir::Builder& bldr,
     absl::Span<type::Type const *> final_out_types) {
   auto const &ret_types = expr_data.type()->as<type::Function>().output;
   ir::Results results;
-  ir::OutParams out_params;
-  for (type::Type const *ret_type : ret_types) {
-    if (ret_type->is_big()) {
-      auto reg = bldr.TmpAlloca(ret_type);
-      out_params.AppendLoc(reg);
-      results.append(reg);
-    } else {
-      out_params.AppendReg(ret_type);
-      results.append(out_params.regs_.back());
-    }
+  ir::OutParams out_params = bldr.OutParams(ret_types);
+  // TODO find a better way to extract these. Figure out why you even need to.
+  for (size_t i = 0; i < ret_types.size(); ++i) {
+    results.append(out_params[i]);
   }
   return std::pair<ir::Results, ir::OutParams>(std::move(results),
                                                std::move(out_params));

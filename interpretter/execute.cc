@@ -439,6 +439,10 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     ASSERT(ret_slot.kind() == ir::Addr::Kind::Heap);
     *ASSERT_NOT_NULL(static_cast<type *>(ret_slot.heap())) = val;
 
+  } else if constexpr (std::is_same_v<Inst, ir::GetReturnInstruction>) {
+    uint16_t index = iter->read<uint16_t>();
+    ctx->current_frame().regs_.set(iter->read<ir::Reg>(), ret_slots[index]);
+
   } else if constexpr (std::is_same_v<Inst, ir::MakeScopeInstruction>) {
     ir::ScopeDef *scope_def = iter->read<ir::ScopeDef *>();
 
@@ -1287,7 +1291,10 @@ void ExecutionContext::ExecuteBlocks(absl::Span<ir::Addr const> ret_slots) {
         ExecuteAdHocInstruction<ir::SetReturnInstruction<std::string_view>>(
             &iter, this, ret_slots);
         break;
-        // TODO GetReturnInstruction
+      case ir::GetReturnInstruction::kIndex:
+        ExecuteAdHocInstruction<ir::GetReturnInstruction>(&iter, this,
+                                                          ret_slots);
+        break;
       case ir::MakeScopeInstruction::kIndex:
         ExecuteAdHocInstruction<ir::MakeScopeInstruction>(&iter, this);
         break;

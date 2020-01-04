@@ -2,23 +2,28 @@
 #define ICARUS_IR_OUT_PARAMS_H
 
 #include <vector>
+
+#include "ir/byte_code_writer.h"
 #include "ir/reg.h"
 
-namespace type {
-struct Type;
-}  // namespace type
-
 namespace ir {
-// Represents an output parameter. The boolean value denotes whether the
-// register is a register to be filled with the value, or it is the address to
-// which the value should be written.
+// `OutParams` represent a collection of output parameters from a function or
+// jump. Outputs for register-sized values are returned in registers. For all
+// others, the caller allocates stack space and passes the address as the output
+// parameter.
 struct OutParams {
-  Reg AppendReg(type::Type const *);
-  void AppendLoc(Reg reg);
-  size_t size() const { return is_loc_.size(); }
+  explicit OutParams() = default;
+  explicit OutParams(std::vector<Reg> regs) : regs_(std::move(regs)) {}
 
+  Reg operator[](size_t n) const { return regs_[n]; }
+
+  void WriteByteCode(ByteCodeWriter *writer) const {
+    writer->Write<uint16_t>(regs_.size());
+    for (Reg r : regs_) { writer->Write(r); }
+  }
+
+ private:
   std::vector<Reg> regs_;
-  std::vector<bool> is_loc_;
 };
 }  // namespace ir
 

@@ -26,7 +26,6 @@ cc_lib(
         ":byte_code_writer",
         ":instructions_base",
         ":instruction_op_codes",
-        ":out_params",
         "//ir/cmd:jump",
         "//base:untyped_buffer",
         "//type:type",
@@ -158,6 +157,7 @@ cc_library(
         ":instructions_base",
         ":instruction_inliner",
         ":instruction_op_codes",
+        ":out_params",
         ":reg_or",
         ":scope_def",
         ":struct_field",
@@ -251,10 +251,13 @@ cc_lib(
     test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "out_params",
-    deps = [":reg"],
-    test_deps = None,
+    hdrs = ["out_params.h"],
+    deps = [
+        ":byte_code_writer",
+        ":reg",
+    ],
 )
 
 cc_lib(

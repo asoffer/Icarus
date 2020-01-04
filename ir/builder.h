@@ -13,6 +13,7 @@
 #include "ir/block_group.h"
 #include "ir/instructions.h"
 #include "ir/local_block_interpretation.h"
+#include "ir/out_params.h"
 #include "ir/reg.h"
 #include "ir/struct_field.h"
 #include "type/jump.h"
@@ -24,6 +25,8 @@ namespace ir {
 struct Builder {
   BasicBlock* AddBlock();
   BasicBlock* AddBlock(BasicBlock const& to_copy);
+
+  ir::OutParams OutParams(absl::Span<type::Type const* const> types);
 
   template <typename KeyType, typename ValueType>
   absl::flat_hash_map<KeyType, ir::BasicBlock*> AddBlocks(
@@ -339,7 +342,7 @@ struct Builder {
   // `arguments` and output parameters. If output parameters are not present,
   // the function must return nothing.
   void Call(RegOr<AnyFunc> const& fn, type::Function const* f,
-            std::vector<Results> args, OutParams outs = {});
+            std::vector<Results> args, ir::OutParams outs = ir::OutParams());
 
   // Jump instructions must be the last instruction in a basic block. They
   // handle control-flow, indicating which basic block control should be

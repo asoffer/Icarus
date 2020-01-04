@@ -675,10 +675,11 @@ ir::Results EmitBuiltinCall(
     case core::Builtin::Bytes: {
       auto const &fn_type =
           ir::BuiltinType(core::Builtin::Bytes)->as<type::Function>();
-      ir::OutParams outs;
-      auto reg = outs.AppendReg(fn_type.output.at(0));
+      ir::OutParams outs = c->builder().OutParams(fn_type.output);
+      ir::Reg reg        = outs[0];
       c->builder().Call(ir::BytesFn(), &fn_type,
-                        {c->Visit(args.at(0), EmitValueTag{})}, outs);
+                        {c->Visit(args.at(0), EmitValueTag{})},
+                        std::move(outs));
 
       return ir::Results{reg};
     } break;
@@ -686,10 +687,11 @@ ir::Results EmitBuiltinCall(
     case core::Builtin::Alignment: {
       auto const &fn_type =
           ir::BuiltinType(core::Builtin::Alignment)->as<type::Function>();
-      ir::OutParams outs;
-      auto reg = outs.AppendReg(fn_type.output.at(0));
+      ir::OutParams outs = c->builder().OutParams(fn_type.output);
+      ir::Reg reg        = outs[0];
       c->builder().Call(ir::AlignmentFn(), &fn_type,
-                        {c->Visit(args.at(0), EmitValueTag{})}, outs);
+                        {c->Visit(args.at(0), EmitValueTag{})},
+                        std::move(outs));
 
       return ir::Results{reg};
     } break;
@@ -828,9 +830,8 @@ ir::Results ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
     }
   }
 
-  ir::OutParams outs;
-  auto result = outs.AppendReg(type::Bool);
-
+  ir::OutParams outs = compiler->builder().OutParams({type::Bool});
+  auto result = outs[0];
   bldr.Call(ir::AnyFunc{iter->second}, iter->second->type_, {lhs_ir, rhs_ir},
             std::move(outs));
   return ir::Results{result};

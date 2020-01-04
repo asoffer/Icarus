@@ -41,8 +41,21 @@ base::Tagged<Addr, Reg> Builder::TmpAlloca(type::Type const *t) {
 
 Reg Reserve() { return current.CurrentGroup()->Reserve(); }
 
+ir::OutParams Builder::OutParams(absl::Span<type::Type const *const> types) {
+  // TODO It'd be nice to have copy/move-elision in the C++ sense. A function
+  // used to initialize a variable should do so directly rather than
+  // initializing a temporary allocation and then moving it.
+  std::vector<Reg> regs;
+  regs.reserve(types.size());
+  for (type::Type const *type : types) {
+    regs.push_back(type->is_big() ? TmpAlloca(type)
+                                  : CurrentGroup()->Reserve());
+  }
+  return ir::OutParams(std::move(regs));
+}
+
 void Builder::Call(RegOr<AnyFunc> const &fn, type::Function const *f,
-                   std::vector<Results> args, OutParams outs) {
+                   std::vector<Results> args, ir::OutParams outs) {
   // TODO this call should return the constructed registers rather than forcing
   // the caller to do it.
   CurrentBlock()->storage_cache_.clear();

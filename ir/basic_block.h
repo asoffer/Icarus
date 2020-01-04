@@ -11,7 +11,6 @@
 #include "ir/byte_code_writer.h"
 #include "ir/cmd/jump.h"
 #include "ir/instructions_base.h"
-#include "ir/out_params.h"
 #include "ir/results.h"
 
 namespace ir {
