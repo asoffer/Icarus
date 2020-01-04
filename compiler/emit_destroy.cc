@@ -101,14 +101,17 @@ void Compiler::Visit(type::Tuple const *t, ir::Reg reg, EmitDestroyTag) {
 void Compiler::Visit(type::Array const *t, ir::Reg reg, EmitDestroyTag) {
   if (not t->HasDestructor()) { return; }
   t->destroy_func_.init([=]() {
-    // TODO special function?
     auto const *fn_type = type::Func({Ptr(t)}, {});
     auto *fn            = AddFunc(fn_type, fn_type->AnonymousFnParams());
-    ir::OnEachArrayElement(
-        t, fn, [=](ir::Reg r) { Visit(t->data_type, r, EmitDestroyTag{}); });
+    ICARUS_SCOPE(ir::SetCurrent(fn)) {
+      builder().CurrentBlock() = fn->entry();
+      builder().OnEachArrayElement(t, ir::Reg::Arg(0), [=](ir::Reg r) {
+        Visit(t->data_type, r, EmitDestroyTag{});
+      });
+      builder().ReturnJump();
+    }
     return fn;
   });
-
   builder().Destroy(t, reg);
 }
 

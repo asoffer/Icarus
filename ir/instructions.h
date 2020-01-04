@@ -228,6 +228,8 @@ std::string_view TypeToString() {
     return "flags";
   } else if constexpr (std::is_same_v<T, type::Type const*>) {
     return "type";
+  } else if constexpr (std::is_same_v<T, ir::Addr>) {
+    return "addr";
   } else {
     DEBUG_LOG()(typeid(T).name());
     return "[[unknown]]";
@@ -544,14 +546,21 @@ struct PhiInstruction : base::Clone<PhiInstruction<T>, Instruction> {
       internal::kPhiInstructionMask | internal::PrimitiveIndex<T>();
   using type = T;
 
+  PhiInstruction() = default;
   PhiInstruction(std::vector<BasicBlock const*> blocks,
                  std::vector<RegOr<T>> values)
       : blocks(std::move(blocks)), values(std::move(values)) {}
   ~PhiInstruction() override {}
 
+  void add(BasicBlock const* block, RegOr<T> value) {
+    blocks.push_back(block);
+    values.push_back(value);
+  }
+
   std::string to_string() const override {
     using base::stringify;
-    std::string s = absl::StrCat("phi ", TypeToString<T>());
+    std::string s =
+        absl::StrCat(stringify(result), " = phi ", TypeToString<T>());
     for (size_t i = 0; i < blocks.size(); ++i) {
       absl::StrAppend(&s, "\n      ", stringify(blocks[i]), ": ",
                       stringify(values[i]));
@@ -1105,16 +1114,16 @@ struct ArrowInstruction : base::Clone<ArrowInstruction, Instruction> {
 
 // Oddly named to be sure, this instruction is used to do initializations,
 // copies, moves, or destructions of the given type.
-struct StructManipulationInstruction
-    : base::Clone<StructManipulationInstruction, Instruction> {
+struct TypeManipulationInstruction
+    : base::Clone<TypeManipulationInstruction, Instruction> {
   constexpr static cmd_index_t kIndex =
-      internal::kStructManipulationInstructionNumber;
+      internal::kTypeManipulationInstructionNumber;
 
   enum class Kind : uint8_t { Init, Destroy, Move, Copy };
-  StructManipulationInstruction(Kind k, type::Type const* type, Reg from,
-                                RegOr<Addr> to = RegOr<Addr>(Reg(0)))
+  TypeManipulationInstruction(Kind k, type::Type const* type, Reg from,
+                              RegOr<Addr> to = RegOr<Addr>(Reg(0)))
       : kind(k), type(type), r(from), to(to) {}
-  ~StructManipulationInstruction() override {}
+  ~TypeManipulationInstruction() override {}
 
   std::string to_string() const override {
     char const* name;
@@ -1240,7 +1249,9 @@ struct LoadSymbolInstruction : base::Clone<LoadSymbolInstruction, Instruction> {
     writer->Write(result);
   }
 
-  void Inline(InstructionInliner const& inliner) override { inliner.Inline(result); }
+  void Inline(InstructionInliner const& inliner) override {
+    inliner.Inline(result);
+  }
 
   std::string_view name;
   type::Type const* type;
@@ -1355,7 +1366,9 @@ struct TypeInfoInstruction : base::Clone<TypeInfoInstruction, Instruction> {
     writer->Write(result);
   }
 
-  void Inline(InstructionInliner const& inliner) override { inliner.Inline(type); }
+  void Inline(InstructionInliner const& inliner) override {
+    inliner.Inline(type);
+  }
 
   Kind kind;
   RegOr<type::Type const*> type;

@@ -1128,7 +1128,6 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
     }
     UNREACHABLE(node->DebugString());
   } else {
-    // TODO these checks actually overlap and could be simplified.
     if (node->IsUninitialized()) { return ir::Results{}; }
     auto *t = type_of(node);
     auto a  = addr(node);

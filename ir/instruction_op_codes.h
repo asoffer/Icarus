@@ -46,7 +46,7 @@ inline constexpr cmd_index_t kVariantInstructionNumber       = kAdHocStart + 20;
 inline constexpr cmd_index_t kEnumerationInstructionNumber   = kAdHocStart + 21;
 inline constexpr cmd_index_t kTypeInfoInstructionNumber      = kAdHocStart + 22;
 inline constexpr cmd_index_t kLoadInstructionNumber          = kAdHocStart + 23;
-inline constexpr cmd_index_t kStructManipulationInstructionNumber =
+inline constexpr cmd_index_t kTypeManipulationInstructionNumber =
     kAdHocStart + 24;
 inline constexpr cmd_index_t kByteViewLengthInstructionNumber =
     kAdHocStart + 25;

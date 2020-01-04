@@ -12,12 +12,16 @@ namespace compiler {
 
 void Compiler::Visit(type::Array const *t, ir::Reg reg, EmitDefaultInitTag) {
   t->init_func_.init([=]() {
-    // TODO special function?
-    auto const *fn_type = type::Func({type::Ptr(t)}, {});
+    auto const *fn_type = type::Func({Ptr(t)}, {});
     auto *fn            = AddFunc(fn_type, fn_type->AnonymousFnParams());
-    ir::OnEachArrayElement(t, fn, [=](ir::Reg r) {
-      Visit(t->data_type, r, EmitDefaultInitTag{});
-    });
+    ICARUS_SCOPE(ir::SetCurrent(fn)) {
+      builder().CurrentBlock() = fn->entry();
+      builder().OnEachArrayElement(t, ir::Reg::Arg(0), [=](ir::Reg r) {
+        Visit(t->data_type, r, EmitDefaultInitTag{});
+      });
+      builder().ReturnJump();
+    }
+    fn->WriteByteCode();
     return fn;
   });
 

@@ -293,6 +293,48 @@ struct Builder {
     return result;
   }
 
+  // Usually it is sufficient to determine all the inputs to a phi instruction
+  // upfront, but sometimes it is useful to construct a phi instruction without
+  // having set its inputs.
+  template <typename T>
+  PhiInstruction<T>* PhiInst() {
+    auto inst = std::make_unique<PhiInstruction<T>>();
+
+    inst->result   = CurrentGroup()->Reserve();
+    auto* phi_inst = inst.get();
+    CurrentBlock()->instructions_.push_back(std::move(inst));
+    return phi_inst;
+  }
+
+  template <typename F>
+  void OnEachArrayElement(type::Array const* t, Reg array_reg, F fn) {
+    auto* data_ptr_type = type::Ptr(t->data_type);
+
+    auto ptr     = PtrIncr(array_reg, 0, type::Ptr(data_ptr_type));
+    auto end_ptr = PtrIncr(ptr, static_cast<int32_t>(t->len), data_ptr_type);
+
+    auto* start_block = CurrentBlock();
+    auto* loop_body   = AddBlock();
+    auto* land_block  = AddBlock();
+    auto* cond_block  = AddBlock();
+
+    UncondJump(cond_block);
+
+    CurrentBlock() = cond_block;
+    auto* phi      = PhiInst<Addr>();
+    CondJump(Eq(RegOr<Addr>(phi->result), end_ptr), land_block, loop_body);
+
+    CurrentBlock() = loop_body;
+    fn(phi->result);
+    Reg next = PtrIncr(phi->result, 1, data_ptr_type);
+    UncondJump(cond_block);
+
+    phi->add(start_block, ptr);
+    phi->add(CurrentBlock(), next);
+
+    CurrentBlock() = land_block;
+  }
+
   // Emits a function-call instruction, calling `fn` of type `f` with the given
   // `arguments` and output parameters. If output parameters are not present,
   // the function must return nothing.

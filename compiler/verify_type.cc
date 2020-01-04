@@ -260,8 +260,6 @@ bool Shadow(Compiler *compiler, type::Typed<ast::Declaration const *> decl1,
       });
 }
 
-enum DeclKind { INFER = 1, CUSTOM_INIT = 2, UNINITIALIZED = 4 };
-
 static InferenceFailureReason Inferrable(type::Type const *t) {
   if (t == type::NullPtr) { return InferenceFailureReason::NullPtr; }
   if (t == type::EmptyArray) { return InferenceFailureReason::EmptyArray; }
@@ -1241,20 +1239,13 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
   // see an identifier (either a real identifier node, or a declaration, we need
   // to verify the type, but we only want to do node once.
   if (auto *attempt = qual_type_of(node)) { return *attempt; }
-  int dk = 0;
-  if (node->IsInferred()) { dk = INFER; }
-  if (node->IsUninitialized()) {
-    dk |= UNINITIALIZED;
-  } else if (node->IsCustomInitialized()) {
-    dk |= CUSTOM_INIT;
-  }
   type::QualType node_qual_type;
-  switch (dk) {
-    case 0 /* Default initailization */: {
-      ASSIGN_OR(return set_result(node, type::QualType::Error()),
-                       auto type_expr_result,
-                       Visit(node->type_expr(), VerifyTypeTag{}));
-      if (not type_expr_result.constant()) {
+  switch (node->kind()) {
+    case ast::Declaration::kDefaultInit: {
+      auto type_expr_result = Visit(node->type_expr(), VerifyTypeTag{});
+      if (not type_expr_result) {
+        return set_result(node, type::QualType::Error());
+      } else if (not type_expr_result.constant()) {
         // Hmm, not necessarily an error. Example (not necessarily minimal):
         //
         //   S ::= (x: any`T) => struct {
@@ -1283,8 +1274,7 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
         return set_result(node, type::QualType::Error());
       }
     } break;
-    case INFER: UNREACHABLE(); break;
-    case INFER | CUSTOM_INIT: {
+    case ast::Declaration::kInferred: {
       DEBUG_LOG("Declaration")("Verifying, ", node->id());
 
       ASSIGN_OR(return set_result(node, type::QualType::Error()),
@@ -1308,7 +1298,7 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
       DEBUG_LOG("Declaration")
       ("Verified, ", node->id(), ": ", node_qual_type.type()->to_string());
     } break;
-    case INFER | UNINITIALIZED: {
+    case ast::Declaration::kInferredAndUninitialized: {
       error_log()->UninferrableType(InferenceFailureReason::Hole,
                                     node->init_val()->span);
       if (node->flags() & ast::Declaration::f_IsConst) {
@@ -1316,7 +1306,7 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
       }
       return set_result(node, type::QualType::Error());
     } break;
-    case CUSTOM_INIT: {
+    case ast::Declaration::kCustomInit: {
       auto init_val_qual_type = Visit(node->init_val(), VerifyTypeTag{});
       bool error              = not init_val_qual_type.ok();
       auto type_expr_result   = Visit(node->type_expr(), VerifyTypeTag{});
@@ -1347,7 +1337,7 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
 
       if (error) { return set_result(node, type::QualType::Error()); }
     } break;
-    case UNINITIALIZED: {
+    case ast::Declaration::kUninitialized: {
       ASSIGN_OR(return set_result(node, type::QualType::Error()),
                        auto type_expr_result,
                        Visit(node->type_expr(), VerifyTypeTag{}));
@@ -1373,7 +1363,7 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
       }
 
     } break;
-    default: UNREACHABLE(dk);
+    default: UNREACHABLE(node->DebugString());
   }
 
   if (node->id().empty()) {

@@ -355,14 +355,14 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         iter, [ctx](ir::Reg reg) { return ctx->resolve<type>(reg); });
     ctx->current_frame().regs_.set(iter->read<ir::Reg>(), type{results[index]});
   } else if constexpr (std::is_same_v<Inst,
-                                      ir::StructManipulationInstruction>) {
+                                      ir::TypeManipulationInstruction>) {
     ir::AnyFunc f;
     base::untyped_buffer call_buf(sizeof(ir::Addr));
-    auto kind = iter->read<ir::StructManipulationInstruction::Kind>();
+    auto kind = iter->read<ir::TypeManipulationInstruction::Kind>();
     type::Type const *t =
         ASSERT_NOT_NULL(iter->read<type::Type const *>().get());
     switch (kind) {
-      case ir::StructManipulationInstruction::Kind::Init: {
+      case ir::TypeManipulationInstruction::Kind::Init: {
         call_buf.append(ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get()));
         if (auto *s = t->if_as<type::Struct>()) {
           f = s->init_func_.get();
@@ -374,7 +374,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
           NOT_YET();
         }
       } break;
-      case ir::StructManipulationInstruction::Kind::Destroy: {
+      case ir::TypeManipulationInstruction::Kind::Destroy: {
         call_buf.append(ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get()));
 
         if (auto *s = t->if_as<type::Struct>()) {
@@ -387,12 +387,13 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
           NOT_YET();
         }
       } break;
-      case ir::StructManipulationInstruction::Kind::Move: {
+      case ir::TypeManipulationInstruction::Kind::Move: {
         auto from   = ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get());
         bool is_reg = iter->read<bool>();
         auto to     = ReadAndResolve<ir::Addr>(is_reg, iter, ctx);
-        call_buf.append(from);
-        call_buf.append(to);
+        call_buf    = base::untyped_buffer::MakeFull(kMaxSize * 2);
+        call_buf.set(0, from);
+        call_buf.set(kMaxSize, to);
 
         if (auto *s = t->if_as<type::Struct>()) {
           f = s->move_assign_func_.get();
@@ -404,12 +405,13 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
           NOT_YET();
         }
       } break;
-      case ir::StructManipulationInstruction::Kind::Copy: {
+      case ir::TypeManipulationInstruction::Kind::Copy: {
         auto from   = ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get());
         bool is_reg = iter->read<bool>();
         auto to     = ReadAndResolve<ir::Addr>(is_reg, iter, ctx);
-        call_buf.append(from);
-        call_buf.append(to);
+        call_buf    = base::untyped_buffer::MakeFull(kMaxSize * 2);
+        call_buf.set(0, from);
+        call_buf.set(kMaxSize, to);
 
         if (auto *s = t->if_as<type::Struct>()) {
           f = s->copy_assign_func_.get();
@@ -1184,6 +1186,9 @@ void ExecutionContext::ExecuteBlocks(absl::Span<ir::Addr const> ret_slots) {
       case ir::PhiInstruction<ir::FlagsVal>::kIndex:
         ExecuteAdHocInstruction<ir::PhiInstruction<ir::FlagsVal>>(&iter, this);
         break;
+      case ir::PhiInstruction<ir::Addr>::kIndex:
+        ExecuteAdHocInstruction<ir::PhiInstruction<ir::Addr>>(&iter, this);
+        break;
       case ir::PhiInstruction<std::string_view>::kIndex:
         ExecuteAdHocInstruction<ir::PhiInstruction<std::string_view>>(&iter,
                                                                       this);
@@ -1193,8 +1198,8 @@ void ExecutionContext::ExecuteBlocks(absl::Span<ir::Addr const> ret_slots) {
         ExecuteAdHocInstruction<ir::DebugIrInstruction>(&iter, this);
         break;
 
-      case ir::StructManipulationInstruction::kIndex:
-        ExecuteAdHocInstruction<ir::StructManipulationInstruction>(&iter, this);
+      case ir::TypeManipulationInstruction::kIndex:
+        ExecuteAdHocInstruction<ir::TypeManipulationInstruction>(&iter, this);
         break;
 
       case ir::SetReturnInstruction<bool>::kIndex:

@@ -248,6 +248,23 @@ struct Declaration : Expression {
   bool IsCustomInitialized() const { return init_val_.get(); }
   bool IsUninitialized() const { return (flags_ & f_InitIsHole); }
 
+  enum Kind {
+    kDefaultInit              = 0,
+    kCustomInit               = 2,
+    kInferred                 = 3,
+    kUninitialized            = 4,
+    kInferredAndUninitialized = 7,  // This is an error
+  };
+  Kind kind() const {
+    int k = IsInferred() ? 1 : 0;
+    if (IsUninitialized()) {
+      k |= kUninitialized;
+    } else if (IsCustomInitialized()) {
+      k |= kCustomInit;
+    }
+    return static_cast<Kind>(k);
+  }
+
   std::string_view id() const { return id_; }
   Expression const *type_expr() const { return type_expr_.get(); }
   Expression *type_expr() { return type_expr_.get(); }

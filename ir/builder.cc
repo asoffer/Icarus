@@ -91,26 +91,26 @@ void Builder::ChooseJump(absl::Span<std::string_view const> names,
 }
 
 void Builder::Init(type::Type const *t, Reg r) {
-  auto inst = std::make_unique<StructManipulationInstruction>(
-      StructManipulationInstruction::Kind::Init, t, r);
+  auto inst = std::make_unique<TypeManipulationInstruction>(
+      TypeManipulationInstruction::Kind::Init, t, r);
   CurrentBlock()->instructions_.push_back(std::move(inst));
 }
 
 void Builder::Destroy(type::Type const *t, Reg r) {
-  auto inst = std::make_unique<StructManipulationInstruction>(
-      StructManipulationInstruction::Kind::Destroy, t, r);
+  auto inst = std::make_unique<TypeManipulationInstruction>(
+      TypeManipulationInstruction::Kind::Destroy, t, r);
   CurrentBlock()->instructions_.push_back(std::move(inst));
 }
 
 void Builder::Move(type::Type const *t, Reg from, RegOr<Addr> to) {
-  auto inst = std::make_unique<StructManipulationInstruction>(
-      StructManipulationInstruction::Kind::Move, t, from, to);
+  auto inst = std::make_unique<TypeManipulationInstruction>(
+      TypeManipulationInstruction::Kind::Move, t, from, to);
   CurrentBlock()->instructions_.push_back(std::move(inst));
 }
 
 void Builder::Copy(type::Type const *t, Reg from, RegOr<Addr> to) {
-  auto inst = std::make_unique<StructManipulationInstruction>(
-      StructManipulationInstruction::Kind::Copy, t, from, to);
+  auto inst = std::make_unique<TypeManipulationInstruction>(
+      TypeManipulationInstruction::Kind::Copy, t, from, to);
   CurrentBlock()->instructions_.push_back(std::move(inst));
 }
 

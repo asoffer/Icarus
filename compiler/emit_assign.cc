@@ -23,39 +23,52 @@ static ir::CompiledFn *CreateAssign(Compiler *compiler, type::Array const *a) {
     auto val            = ir::Reg::Arg(0);
     auto var            = ir::Reg::Arg(1);
 
-    auto from_ptr     = ir::Index(ptr_type, val, 0);
+    auto from_ptr     = bldr.PtrIncr(val, 0, data_ptr_type);
     auto from_end_ptr = bldr.PtrIncr(from_ptr, a->len, data_ptr_type);
-    auto to_ptr       = ir::Index(ptr_type, var, 0);
+    auto to_ptr       = bldr.PtrIncr(var, 0, data_ptr_type);
 
-    ir::CreateLoop(
-        [&](ir::RegOr<ir::Addr> const &phi, ir::RegOr<ir::Addr> const &) {
-          return bldr.Eq(phi, from_end_ptr);
-        },
-        [&](ir::RegOr<ir::Addr> const &phi0, ir::RegOr<ir::Addr> const &phi1) {
-          ASSERT(phi0.is_reg() == true);
-          ASSERT(phi1.is_reg() == true);
+    auto *loop_body  = bldr.AddBlock();
+    auto *land_block = bldr.AddBlock();
+    auto *cond_block = bldr.AddBlock();
 
-          auto from_val = ir::Results{PtrFix(phi0.reg(), a->data_type)};
+    bldr.UncondJump(cond_block);
 
-          if constexpr (Cat == Copy) {
-            compiler->Visit(a->data_type, phi1.reg(),
-                            type::Typed{from_val, a->data_type},
-                            EmitCopyAssignTag{});
-          } else if constexpr (Cat == Move) {
-            compiler->Visit(a->data_type, phi1.reg(),
-                            type::Typed{from_val, a->data_type},
-                            EmitMoveAssignTag{});
-          } else {
-            UNREACHABLE();
-          }
+    bldr.CurrentBlock() = cond_block;
+    auto *from_phi      = bldr.PhiInst<ir::Addr>();
+    auto *to_phi        = bldr.PhiInst<ir::Addr>();
+    bldr.CondJump(bldr.Eq(ir::RegOr<ir::Addr>(from_phi->result), from_end_ptr),
+                  land_block, loop_body);
 
-          return std::tuple{bldr.PtrIncr(phi0.reg(), 1, data_ptr_type),
-                            bldr.PtrIncr(phi1.reg(), 1, data_ptr_type)};
-        },
-        std::tuple{data_ptr_type, data_ptr_type},
-        std::tuple{ir::RegOr<ir::Addr>(from_ptr), ir::RegOr<ir::Addr>(to_ptr)});
+    bldr.CurrentBlock() = loop_body;
+    if constexpr (Cat == Copy) {
+      compiler->Visit(
+          a->data_type, to_phi->result,
+          type::Typed{ir::Results{ir::PtrFix(from_phi->result, a->data_type)},
+                      a->data_type},
+          EmitCopyAssignTag{});
+    } else if constexpr (Cat == Move) {
+      compiler->Visit(
+          a->data_type, to_phi->result,
+          type::Typed{ir::Results{ir::PtrFix(from_phi->result, a->data_type)},
+                      a->data_type},
+          EmitMoveAssignTag{});
+    } else {
+      UNREACHABLE();
+    }
+
+    ir::Reg next_to   = bldr.PtrIncr(to_phi->result, 1, data_ptr_type);
+    ir::Reg next_from = bldr.PtrIncr(from_phi->result, 1, data_ptr_type);
+    bldr.UncondJump(cond_block);
+
+    to_phi->add(fn->entry(), to_ptr);
+    to_phi->add(bldr.CurrentBlock(), next_to);
+    from_phi->add(fn->entry(), from_ptr);
+    from_phi->add(bldr.CurrentBlock(), next_from);
+
+    bldr.CurrentBlock() = land_block;
     bldr.ReturnJump();
   }
+  fn->WriteByteCode();
   return fn;
 }
 
