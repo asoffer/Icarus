@@ -14,46 +14,47 @@
 
 namespace compiler {
 
-void Compiler::Visit(type::Array const *t, ir::Results const &val,
+void Compiler::Visit(type::Array const *a, ir::Results const &val,
                      EmitPrintTag) {
-  t->repr_func_.init([=]() {
+  a->repr_func_.init([=]() {
     // TODO special function?
-    auto const *fn_type = type::Func({t}, {});
+    auto const *fn_type = type::Func({a}, {});
     ir::CompiledFn *fn  = AddFunc(fn_type, fn_type->AnonymousFnParams());
 
     ICARUS_SCOPE(ir::SetCurrent(fn)) {
       builder().CurrentBlock() = fn->entry();
 
-      auto *exit_block = builder().AddBlock();
-
       builder().Print("[");
+      auto *data_ptr_type = type::Ptr(a->data_type);
+      auto ptr     = builder().PtrIncr(val.get<ir::Reg>(0), 0, data_ptr_type);
+      auto end_ptr = builder().PtrIncr(ptr, a->len, data_ptr_type);
 
-      builder().CurrentBlock() = ir::EarlyExitOn<true>(exit_block, t->len == 0);
-      auto ptr                 = ir::Index(type::Ptr(t), ir::Reg::Arg(0), 0);
+      auto *loop_body  = builder().AddBlock();
+      auto *land_block = builder().AddBlock();
+      auto *cond_block = builder().AddBlock();
 
-      Visit(t->data_type, ir::Results{ir::PtrFix(ptr, t->data_type)},
+      builder().UncondJump(cond_block);
+
+      builder().CurrentBlock() = cond_block;
+      auto *phi           = builder().PhiInst<ir::Addr>();
+      auto *sep           = builder().PhiInst<std::string_view>();
+      builder().CondJump(builder().Eq(ir::RegOr<ir::Addr>(phi->result), end_ptr),
+                    land_block, loop_body);
+
+      builder().CurrentBlock() = loop_body;
+      Visit(a->data_type, ir::Results{ir::PtrFix(phi->result, a->data_type)},
             EmitPrintTag{});
 
-      ir::CreateLoop(
-          [&](ir::RegOr<ir::Addr> const &phi0, ir::RegOr<int32_t> const &phi1) {
-            return builder().Eq(phi1, 0);
-          },
-          [&](ir::RegOr<ir::Addr> const &phi0, ir::RegOr<int32_t> const &phi1) {
-            auto elem_ptr =
-                builder().PtrIncr(phi0.reg(), 1, type::Ptr(t->data_type));
+      ir::Reg next = builder().PtrIncr(phi->result, 1, data_ptr_type);
+      builder().UncondJump(cond_block);
 
-            builder().Print(", ");
-            Visit(t->data_type, ir::Results{ir::PtrFix(elem_ptr, t->data_type)},
-                  EmitPrintTag{});
+      phi->add(fn->entry(), ptr);
+      phi->add(builder().CurrentBlock(), next);
+      sep->add(fn->entry(), std::string_view(""));
+      sep->add(builder().CurrentBlock(), std::string_view(", "));
 
-            return std::make_tuple(elem_ptr,
-                                   builder().Sub(ir::RegOr<int32_t>(phi1), 1));
-          },
-          std::tuple{type::Ptr(t->data_type), type::Int32},
-          std::tuple{ir::RegOr<ir::Addr>(ptr), ir::RegOr<int32_t>(t->len - 1)});
-      builder().UncondJump(exit_block);
+      builder().CurrentBlock() = land_block;
 
-      builder().CurrentBlock() = exit_block;
       builder().Print("]");
       builder().ReturnJump();
     }
@@ -61,7 +62,7 @@ void Compiler::Visit(type::Array const *t, ir::Results const &val,
     return fn;
   });
 
-  builder().Call(ir::AnyFunc{t->repr_func_.get()}, t->repr_func_.get()->type_,
+  builder().Call(ir::AnyFunc{a->repr_func_.get()}, a->repr_func_.get()->type_,
                  {val});
 }
 
