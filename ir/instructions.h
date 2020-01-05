@@ -1179,10 +1179,12 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
     using base::stringify;
     std::string result = absl::StrCat("call ", stringify(fn));
     for (auto const& arg : args) {
-      absl::StrAppend(&result, "\n      ", stringify(arg));
+      absl::StrAppend(&result, "\n      -> ", stringify(arg));
+    }
+    for (size_t i = 0; i < fn_type->output.size(); ++i) {
+      absl::StrAppend(&result, "\n      <- ", stringify(outs[i]));
     }
 
-    // TODO out params
     return result;
   }
 

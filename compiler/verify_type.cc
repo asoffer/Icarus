@@ -1581,7 +1581,8 @@ type::QualType Compiler::Visit(ast::Index const *node, VerifyTypeTag) {
     return set_result(node, type::QualType(type::Nat8, rhs_result.constant()));
   } else if (auto *lhs_array_type = lhs_result.type()->if_as<type::Array>()) {
     return set_result(
-        node, type::QualType(lhs_array_type->data_type, rhs_result.constant()));
+        node, type::QualType(lhs_array_type->data_type,
+                             lhs_result.constant() and rhs_result.constant()));
   } else if (auto *lhs_buf_type =
                  lhs_result.type()->if_as<type::BufferPointer>()) {
     return set_result(
@@ -1670,7 +1671,6 @@ type::QualType Compiler::Visit(ast::PrintStmt const *node, VerifyTypeTag) {
       // used so we don't collide with the table for the actual expression as
       // `print f(x)` needs a table both for the printing and for the call to
       // `f`. Test node thoroughly.
-      NOT_YET();
     }
   }
   return type::QualType::NonConstant(type::Void());

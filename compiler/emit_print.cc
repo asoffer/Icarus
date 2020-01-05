@@ -26,7 +26,7 @@ void Compiler::Visit(type::Array const *a, ir::Results const &val,
 
       builder().Print("[");
       auto *data_ptr_type = type::Ptr(a->data_type);
-      auto ptr     = builder().PtrIncr(val.get<ir::Reg>(0), 0, data_ptr_type);
+      auto ptr     = builder().PtrIncr(ir::Reg::Arg(0), 0, data_ptr_type);
       auto end_ptr = builder().PtrIncr(ptr, a->len, data_ptr_type);
 
       auto *loop_body  = builder().AddBlock();
@@ -42,6 +42,7 @@ void Compiler::Visit(type::Array const *a, ir::Results const &val,
                     land_block, loop_body);
 
       builder().CurrentBlock() = loop_body;
+      builder().Print(ir::RegOr<std::string_view>(sep->result));
       Visit(a->data_type, ir::Results{ir::PtrFix(phi->result, a->data_type)},
             EmitPrintTag{});
 
@@ -58,7 +59,7 @@ void Compiler::Visit(type::Array const *a, ir::Results const &val,
       builder().Print("]");
       builder().ReturnJump();
     }
-
+    fn->WriteByteCode();
     return fn;
   });
 

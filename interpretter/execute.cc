@@ -354,6 +354,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     std::vector<type> results = Deserialize<uint16_t, type>(
         iter, [ctx](ir::Reg reg) { return ctx->resolve<type>(reg); });
     ctx->current_frame().regs_.set(iter->read<ir::Reg>(), type{results[index]});
+    DEBUG_LOG("phi-instruction")(results[index]);
   } else if constexpr (std::is_same_v<Inst,
                                       ir::TypeManipulationInstruction>) {
     ir::AnyFunc f;
@@ -534,12 +535,15 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
 
     std::vector<ir::Addr> return_slots;
     return_slots.reserve(num_rets);
+    ASSERT(fn_type->output.size() == num_rets);
     for (uint16_t i = 0; i < num_rets; ++i) {
       ir::Reg reg = iter->read<ir::Reg>();
-      // TODO: handle is_loc outparams.
       // NOTE: This is a hack using heap address slots to represent registers
       // since they are both void* and are used identically in the interpretter.
-      auto addr = ir::Addr::Heap(ctx->current_frame().regs_.raw(reg));
+      ir::Addr addr = (fn_type->output[i]->is_big())
+                          ? ctx->resolve<ir::Addr>(reg)
+                          : ir::Addr::Heap(ctx->current_frame().regs_.raw(reg));
+
       DEBUG_LOG("call")("Ret addr = ", addr);
       return_slots.push_back(addr);
     }
