@@ -1,6 +1,17 @@
 package(default_visibility = ["//visibility:public"])
 load("//:defs.bzl", "cc_lib")
 
+cc_library(
+    name = "emit_function_call_infrastructure",
+    hdrs = ["emit_function_call_infrastructure.h"],
+    srcs = ["emit_function_call_infrastructure.cc"],
+    deps = [
+        ":compiler_header",
+        "//base:ptr_span",
+        "//ast/scope:exec",
+        "//ast/scope:fn"
+    ],
+)
 
 # TODO split this up and rename the parts.
 cc_library(
@@ -21,6 +32,7 @@ cc_library(
         ":compiler_header",
         ":data",
         ":dependent_data",
+        ":emit_function_call_infrastructure",
         ":executable_module",
         ":extract_jumps",
         ":library_module",
@@ -222,6 +234,7 @@ cc_library(
     hdrs = ["executable_module.h"],
     deps = [
         ":compiler_header",
+        ":emit_function_call_infrastructure",
         ":module",
         "//diagnostic/consumer:streaming",
         "//ir:compiled_fn",

@@ -2,15 +2,12 @@
 #define ICARUS_COMPILER_EXECUTABLE_MODULE_H
 
 #include "compiler/compiler.h"
+#include "compiler/emit_function_call_infrastructure.h"
 #include "compiler/module.h"
 #include "diagnostic/consumer/streaming.h"
 #include "ir/compiled_fn.h"
 
 namespace compiler {
-
-// TODO deal with this declaration
-void ProcessExecutableBody(Compiler *c, base::PtrSpan<ast::Node const> nodes,
-                           ir::CompiledFn *main_fn);
 
 struct ExecutableModule : CompiledModule {
   explicit ExecutableModule() {}
