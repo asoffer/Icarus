@@ -78,9 +78,9 @@ static ir::AnyFunc CreateAssign(Compiler *compiler, type::Struct const *s) {
   auto &bldr              = compiler->builder();
   type::Pointer const *pt = type::Ptr(s);
   auto fn_type            = type::Func({pt, pt}, {});
-  ir::AnyFunc fn = compiler->AddFunc(fn_type, fn_type->AnonymousFnParams());
-  ICARUS_SCOPE(ir::SetCurrent(fn.func())) {
-    bldr.CurrentBlock() = fn.func()->entry();
+  auto *fn = compiler->AddFunc(fn_type, fn_type->AnonymousFnParams());
+  ICARUS_SCOPE(ir::SetCurrent(fn)) {
+    bldr.CurrentBlock() = fn->entry();
     auto val            = ir::Reg::Arg(0);
     auto var            = ir::Reg::Arg(1);
 
@@ -104,6 +104,7 @@ static ir::AnyFunc CreateAssign(Compiler *compiler, type::Struct const *s) {
 
     bldr.ReturnJump();
   }
+  fn->WriteByteCode();
   return fn;
 }
 

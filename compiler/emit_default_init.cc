@@ -67,9 +67,9 @@ void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDefaultInitTag) {
   t->init_func_.init([=]() {
     type::Pointer const *pt = type::Ptr(t);
     auto const *fn_type     = type::Func({pt}, {});
-    ir::AnyFunc fn          = AddFunc(fn_type, fn_type->AnonymousFnParams());
+    auto *fn                = AddFunc(fn_type, fn_type->AnonymousFnParams());
 
-    ICARUS_SCOPE(ir::SetCurrent(fn.func())) {
+    ICARUS_SCOPE(ir::SetCurrent(fn)) {
       builder().CurrentBlock() = builder().CurrentGroup()->entry();
       auto var                 = ir::Reg::Arg(0);
 
@@ -80,7 +80,7 @@ void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDefaultInitTag) {
 
       builder().ReturnJump();
     }
-
+    fn->WriteByteCode();
     return fn;
   });
 

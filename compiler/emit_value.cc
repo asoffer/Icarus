@@ -84,7 +84,7 @@ ir::Results Compiler::Visit(ast::Access const *node, EmitValueTag) {
         Visit(node->operand(), EmitValueTag{}).get<std::string_view>(0))};
   } else {
     auto reg = Visit(node->operand(), EmitRefTag{})[0];
-    auto *t  = this_type;
+    auto *t  = type_of(node->operand());
 
     if (t->is<type::Pointer>()) { t = t->as<type::Pointer>().pointee; }
     while (auto *p = t->if_as<type::Pointer>()) {
@@ -92,7 +92,7 @@ ir::Results Compiler::Visit(ast::Access const *node, EmitValueTag) {
       reg = ir::Load<ir::Addr>(reg);
     }
 
-    ASSERT(t, InheritsFrom<type::Struct>());
+    ASSERT(t, InheritsFrom<type::Struct>()) << t->to_string();
     auto *struct_type = &t->as<type::Struct>();
     auto field        = builder().Field(reg, struct_type,
                                  struct_type->index(node->member_name()));
