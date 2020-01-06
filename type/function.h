@@ -3,6 +3,7 @@
 
 #include <cstring>
 
+#include "ast/ast.h"
 #include "core/fn_params.h"
 #include "type/callable.h"
 #include "type/typed_value.h"

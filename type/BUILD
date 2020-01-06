@@ -87,6 +87,7 @@ cc_lib(
     deps = [
         ":callable",
         ":typed_value",
+        "//ast:ast",
         "//core:fn_params",
         "//base:guarded",
     ],
@@ -237,6 +238,7 @@ cc_lib(
     deps = [
         ":basic_type",
         ":visitor_base",
+        "//base:cast",
         "//base:debug",
         "//base:meta",
         "//base:tag",
@@ -247,7 +249,6 @@ cc_lib(
         "//ir:reg",
         "//ir:results",
         "//ir:values",
-        "//module:module",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
     test_deps = None,

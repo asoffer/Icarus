@@ -3,7 +3,6 @@
 #include "ast/ast.h"
 #include "core/arch.h"
 #include "type/function.h"
-#include "type/pointer.h"
 
 namespace ir {
 

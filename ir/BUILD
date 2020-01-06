@@ -10,14 +10,25 @@ cc_lib(
     test_deps = [],
 )
 
-cc_lib(
+cc_library(
     name = "any_func",
+    hdrs = ["any_func.h"],
     deps = [
         ":foreign_fn",
         "//base:debug",
     ],
-    header_only = True,
-    test_deps = None,
+)
+
+cc_test(
+    name = "any_func_test",
+    srcs = ["any_func_test.cc"],
+    deps = [
+        ":any_func",
+        ":compiled_fn",
+        "//type:type",
+        "//type:function",
+        "@com_google_googletest//:gtest_main",
+    ],
 )
 
 cc_lib(
@@ -206,6 +217,7 @@ cc_lib(
 cc_lib(
     name = "foreign_fn",
     deps = [
+        "//base:debug",
         "//base:guarded",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
@@ -224,7 +236,6 @@ cc_lib(
         "//core:arch",
         "//core:fn_params",
         "//type:function",
-        "//type:pointer",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
@@ -252,12 +263,31 @@ cc_lib(
 )
 
 cc_library(
+    name = "local_block_interpretation",
+    hdrs = ["local_block_interpretation.h"],
+    srcs = [],
+    deps = [
+        ":basic_block",
+        "//ast:ast",
+        "//base:macros",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
+
+cc_library(
     name = "out_params",
     hdrs = ["out_params.h"],
     deps = [
         ":byte_code_writer",
         ":reg",
     ],
+)
+
+cc_lib(
+    name = "read_only_data",
+    deps = ["//base:untyped_buffer"],
+    header_only = True,
+    test_deps = None,
 )
 
 cc_lib(
@@ -321,25 +351,6 @@ cc_lib(
     test_deps = None,
 )
 
-cc_lib(
-    name = "read_only_data",
-    deps = ["//base:untyped_buffer"],
-    header_only = True,
-    test_deps = None,
-)
-
-cc_library(
-    name = "local_block_interpretation",
-    hdrs = ["local_block_interpretation.h"],
-    srcs = [],
-    deps = [
-        ":basic_block",
-        "//ast:ast",
-        "//base:macros",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-)
-
 cc_library(
     name = "struct_field",
     hdrs = ["struct_field.h"],
@@ -347,4 +358,30 @@ cc_library(
         ":reg_or",
         "//type",
     ],
+)
+
+cc_library(
+    name = "overload_set",
+    hdrs = ["overload_set.h"],
+    deps = [
+        ":any_func",
+        ":compiled_fn", # Remove once AnyFunc depends on this.
+        "//type:function",
+        "//type:type",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_test(
+    name = "overload_set_test",
+    srcs = ["overload_set_test.cc"],
+    deps = [
+        ":any_func",
+        ":foreign_fn",
+        ":overload_set",
+        "//type:type",
+        "//type:primitive",
+        "@com_google_googletest//:gtest_main",
+    ]
 )

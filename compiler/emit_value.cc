@@ -987,7 +987,7 @@ ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
     if (work_item_ptr) { ir_func->work_item = work_item_ptr; }
   }
 
-  return ir::Results{ir_func};
+  return ir::Results{ir::AnyFunc{ir_func}};
 }
 
 ir::Results Compiler::Visit(ast::Identifier const *node, EmitValueTag) {

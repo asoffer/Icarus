@@ -2,6 +2,7 @@
 #define ICARUS_IR_ANY_FUNC_H
 
 #include <cstring>
+#include <limits>
 #include <ostream>
 
 #include "base/debug.h"
@@ -21,29 +22,39 @@ struct AnyFunc {
   static_assert(sizeof(CompiledFn *) == sizeof(uintptr_t));
   static_assert(sizeof(ForeignFn) == sizeof(uintptr_t));
 
-  AnyFunc(CompiledFn *fn = nullptr) { std::memcpy(&data_, &fn, sizeof(fn)); }
+  AnyFunc(CompiledFn *fn = nullptr) {
+    std::memcpy(&data_, &fn, sizeof(fn));
+    data_ |= 1;
+    ASSERT(is_fn() == true);
+  }
   AnyFunc(ForeignFn foreign) {
     void (*fn)() = foreign.get();
-    std::memcpy(&data_, &fn, sizeof(void (*)()));
-    data_ |= 0x1u;
+    uintptr_t data;
+    std::memcpy(&data, &fn, sizeof(void (*)()));
+    constexpr uintptr_t high_bit =
+        uintptr_t{1} << (std::numeric_limits<uintptr_t>::digits - 1);
+    ASSERT((data & high_bit) == 0u);
+    data = (data_ << uintptr_t{1});
+    ASSERT(is_fn() == false);
   }
 
   CompiledFn *func() const {
-    ASSERT((data_ & 0x1u) == 0u);
+    ASSERT(is_fn() == true);
     CompiledFn *f;
-    std::memcpy(&f, &data_, sizeof(CompiledFn *));
+    uintptr_t data = data_ - 1;
+    std::memcpy(&f, &data, sizeof(CompiledFn *));
     return f;
   }
 
   ForeignFn foreign() const {
-    ASSERT((data_ & 0x1u) == 1u);
+    ASSERT(is_fn() == false);
+    uintptr_t data = data_ >> 1;
     ForeignFn f;
-    uintptr_t data = data_ - 1;
     std::memcpy(&f.fn_, &data, sizeof(void *));
     return f;
   }
 
-  bool is_fn() const { return (data_ & 0x1u) == 0u; }
+  bool is_fn() const { return (data_ & 0x1u) == 1u; }
 
  private:
   uintptr_t data_;

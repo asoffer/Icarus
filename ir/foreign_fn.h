@@ -1,6 +1,7 @@
 #ifndef ICARUS_IR_FOREIGN_FN_H
 #define ICARUS_IR_FOREIGN_FN_H
 
+#include <cstring>
 #include <iostream>
 
 // TODO depend on function directly, which involves moving core::Intepretter.
@@ -18,7 +19,10 @@ struct ForeignFn {
   type::Function const *type() const;
 
   friend std::ostream &operator<<(std::ostream& os, ForeignFn f) {
-    return os << "Foreign(" << f.fn_ << ")";
+    static_assert(sizeof(uintptr_t) == sizeof(void (*)()));
+    uintptr_t n;
+    std::memcpy(&n, &f.fn_, sizeof(n));
+    return os << "Foreign(" << n << ")";
   }
 
  private:

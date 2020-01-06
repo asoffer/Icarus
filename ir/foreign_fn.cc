@@ -1,5 +1,6 @@
 #include "ir/foreign_fn.h"
 
+#include "base/debug.h"
 #include "absl/container/flat_hash_map.h"
 #include "base/guarded.h"
 
@@ -21,7 +22,10 @@ ForeignFn::ForeignFn(void (*fn)(), type::Function const *t) : fn_(fn) {
 }
 
 type::Function const *ForeignFn::type() const {
-  return foreign_fns.lock()->at(fn_);
+  auto handle = foreign_fns.lock();
+  auto iter   = handle->find(fn_);
+  ASSERT(iter != handle->end());
+  return iter->second;
 }
 
 }  // namespace ir

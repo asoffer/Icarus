@@ -4,6 +4,7 @@
 #include <string>
 
 #include "absl/container/flat_hash_set.h"
+#include "base/cast.h"
 #include "base/debug.h"
 #include "base/meta.h"
 #include "base/tag.h"
@@ -14,9 +15,12 @@
 #include "ir/reg.h"
 #include "ir/results.h"
 #include "ir/values.h"
-#include "module/module.h"
 #include "type/basic_type.h"
 #include "type/visitor_base.h"
+
+namespace module {
+struct BasicModule;
+}  // namespace module
 
 namespace ast {
 struct FunctionLiteral;
