@@ -56,6 +56,8 @@ struct InstructionInliner {
     return blocks_.find(block)->second;
   }
 
+  internal::BlockGroup *to_be_inlined_;
+  internal::BlockGroup *into_;
   int register_offset_;
   absl::flat_hash_map<BasicBlock const *, BasicBlock *> blocks_;
 

@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "type/type.h"
 
 namespace ir {
 
@@ -20,6 +21,15 @@ struct StackFrameAllocations {
     for (auto const & [ t, regs ] : allocs_) {
       for (auto reg : regs) { f(t, reg); }
     }
+  }
+
+  friend std::ostream& operator<<(std::ostream& os,
+                                  StackFrameAllocations const& s) {
+    for (auto const& [t, rs] : s.allocs_) {
+      os << "  " << t->to_string() << ":\n";
+      for (Reg r : rs) { os << "    " << stringify(r) << "\n"; }
+    }
+    return os;
   }
 
  private:

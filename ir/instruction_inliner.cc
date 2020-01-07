@@ -5,8 +5,13 @@ namespace ir {
 InstructionInliner::InstructionInliner(internal::BlockGroup* to_be_inlined,
                                        internal::BlockGroup* into,
                                        LocalBlockInterpretation block_interp)
-    : register_offset_(into->num_regs()),
+    : to_be_inlined_(to_be_inlined),
+      into_(into),
+      register_offset_(into->num_regs()),
       block_interp_(std::move(block_interp)) {
+  DEBUG_LOG("InstructionInliner")("Inlining: ", *to_be_inlined);
+  DEBUG_LOG("InstructionInliner")("Into: ", *into);
+
   for (auto* block_to_copy : to_be_inlined->blocks()) {
     // Copy the block and then scan it for references to things that need to
     // be changed with inlining (e.g., basic blocks or registers).
@@ -75,6 +80,11 @@ void InstructionInliner::InlineJump(BasicBlock* block) {
 }
 
 void InstructionInliner::InlineAllBlocks() {
+  // Update the register count. This must be done after we've added the
+  // register-forwarding instructions which use this count to choose a register
+  // number.
+  into_->num_regs_ += to_be_inlined_->num_regs();
+
   for (auto [ignored, block] : blocks_) {
     DEBUG_LOG("inliner-before")(*block);
 

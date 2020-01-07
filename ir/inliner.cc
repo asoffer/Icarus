@@ -26,8 +26,10 @@ Inline(Builder &bldr, Jump *to_be_inlined,
   auto *start_block          = bldr.CurrentBlock();
   size_t inlined_start_index = bldr.CurrentGroup()->blocks().size();
 
-  InstructionInliner inl(to_be_inlined, bldr.CurrentGroup(), block_interp);
+  auto *into = bldr.CurrentGroup();
+  InstructionInliner inl(to_be_inlined, into, block_interp);
 
+  bldr.CurrentBlock() = start_block;
   size_t i = 0;
   for (type::Type const *t : to_be_inlined->type()->args()) {
     type::Apply(t, [&](auto tag) -> Reg {

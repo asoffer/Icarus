@@ -62,7 +62,7 @@ struct BlockGroup {
     writer.MakeReplacements();
   }
 
-  StackFrameAllocations const &allocs() { return allocs_; }
+  StackFrameAllocations const &allocs() const { return allocs_; }
 
   Reg Reserve() { return Reg(num_regs_++); }
   Reg Alloca(type::Type const *t);
@@ -71,6 +71,8 @@ struct BlockGroup {
   constexpr size_t num_args() const { return num_args_; }
 
  private:
+  friend struct ir::InstructionInliner;
+
   core::FnParams<type::Typed<ast::Declaration const *>> params_;
   std::vector<std::unique_ptr<BasicBlock>> blocks_;
   StackFrameAllocations allocs_;

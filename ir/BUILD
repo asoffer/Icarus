@@ -334,6 +334,8 @@ cc_lib(
     deps = [
         ":addr",
         ":reg",
+        "//base:stringify",
+        "//type",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
     header_only = True,

@@ -240,12 +240,14 @@ std::string_view TypeToString() {
 }
 
 template <typename NumType>
-struct AddInstruction : BinaryInstruction<NumType> {
+struct AddInstruction
+    : base::Clone<AddInstruction<NumType>, BinaryInstruction<NumType>> {
   static constexpr cmd_index_t kIndex =
       internal::kAddInstructionMask | internal::PrimitiveIndex<NumType>();
 
   AddInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
-      : BinaryInstruction<NumType>(lhs, rhs) {}
+      : base::Clone<AddInstruction<NumType>, BinaryInstruction<NumType>>(lhs,
+                                                                         rhs) {}
   ~AddInstruction() override {}
 
   static NumType Apply(NumType lhs, NumType rhs) { return lhs + rhs; }
@@ -263,12 +265,14 @@ struct AddInstruction : BinaryInstruction<NumType> {
 };
 
 template <typename NumType>
-struct SubInstruction : BinaryInstruction<NumType> {
+struct SubInstruction
+    : base::Clone<SubInstruction<NumType>, BinaryInstruction<NumType>> {
   static constexpr cmd_index_t kIndex =
       internal::kSubInstructionMask | internal::PrimitiveIndex<NumType>();
 
   SubInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
-      : BinaryInstruction<NumType>(lhs, rhs) {}
+      : base::Clone<SubInstruction<NumType>, BinaryInstruction<NumType>>(lhs,
+                                                                         rhs) {}
   ~SubInstruction() override {}
 
   static NumType Apply(NumType lhs, NumType rhs) { return lhs - rhs; }
@@ -286,12 +290,14 @@ struct SubInstruction : BinaryInstruction<NumType> {
 };
 
 template <typename NumType>
-struct MulInstruction : BinaryInstruction<NumType> {
+struct MulInstruction
+    : base::Clone<MulInstruction<NumType>, BinaryInstruction<NumType>> {
   static constexpr cmd_index_t kIndex =
       internal::kMulInstructionMask | internal::PrimitiveIndex<NumType>();
 
   MulInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
-      : BinaryInstruction<NumType>(lhs, rhs) {}
+      : base::Clone<MulInstruction<NumType>, BinaryInstruction<NumType>>(lhs,
+                                                                         rhs) {}
   ~MulInstruction() override {}
 
   static NumType Apply(NumType lhs, NumType rhs) { return lhs * rhs; }
@@ -309,12 +315,14 @@ struct MulInstruction : BinaryInstruction<NumType> {
 };
 
 template <typename NumType>
-struct DivInstruction : BinaryInstruction<NumType> {
+struct DivInstruction
+    : base::Clone<DivInstruction<NumType>, BinaryInstruction<NumType>> {
   static constexpr cmd_index_t kIndex =
       internal::kDivInstructionMask | internal::PrimitiveIndex<NumType>();
 
   DivInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
-      : BinaryInstruction<NumType>(lhs, rhs) {}
+      : base::Clone<DivInstruction<NumType>, BinaryInstruction<NumType>>(lhs,
+                                                                         rhs) {}
   ~DivInstruction() override {}
 
   static NumType Apply(NumType lhs, NumType rhs) { return lhs / rhs; }
@@ -332,12 +340,14 @@ struct DivInstruction : BinaryInstruction<NumType> {
 };
 
 template <typename NumType>
-struct ModInstruction : BinaryInstruction<NumType> {
+struct ModInstruction
+    : base::Clone<ModInstruction<NumType>, BinaryInstruction<NumType>> {
   static constexpr cmd_index_t kIndex =
       internal::kModInstructionMask | internal::PrimitiveIndex<NumType>();
 
   ModInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
-      : BinaryInstruction<NumType>(lhs, rhs) {}
+      : base::Clone<ModInstruction<NumType>, BinaryInstruction<NumType>>(lhs,
+                                                                         rhs) {}
   ~ModInstruction() override {}
 
   static NumType Apply(NumType lhs, NumType rhs) { return lhs % rhs; }
@@ -355,12 +365,14 @@ struct ModInstruction : BinaryInstruction<NumType> {
 };
 
 template <typename NumType>
-struct EqInstruction : BinaryInstruction<NumType> {
+struct EqInstruction
+    : base::Clone<EqInstruction<NumType>, BinaryInstruction<NumType>> {
   static constexpr cmd_index_t kIndex =
       internal::kEqInstructionMask | internal::PrimitiveIndex<NumType>();
 
   EqInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
-      : BinaryInstruction<NumType>(lhs, rhs) {}
+      : base::Clone<EqInstruction<NumType>, BinaryInstruction<NumType>>(lhs,
+                                                                        rhs) {}
   ~EqInstruction() override {}
 
   static bool Apply(NumType lhs, NumType rhs) { return lhs == rhs; }
@@ -377,12 +389,14 @@ struct EqInstruction : BinaryInstruction<NumType> {
 };
 
 template <typename NumType>
-struct NeInstruction : BinaryInstruction<NumType> {
+struct NeInstruction
+    : base::Clone<NeInstruction<NumType>, BinaryInstruction<NumType>> {
   static constexpr cmd_index_t kIndex =
       internal::kNeInstructionMask | internal::PrimitiveIndex<NumType>();
 
   NeInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
-      : BinaryInstruction<NumType>(lhs, rhs) {}
+      : base::Clone<NeInstruction<NumType>, BinaryInstruction<NumType>>(lhs,
+                                                                        rhs) {}
   ~NeInstruction() override {}
 
   static bool Apply(NumType lhs, NumType rhs) { return lhs != rhs; }
@@ -399,12 +413,14 @@ struct NeInstruction : BinaryInstruction<NumType> {
 };
 
 template <typename NumType>
-struct LtInstruction : BinaryInstruction<NumType> {
+struct LtInstruction
+    : base::Clone<LtInstruction<NumType>, BinaryInstruction<NumType>> {
   static constexpr cmd_index_t kIndex =
       internal::kLtInstructionMask | internal::PrimitiveIndex<NumType>();
 
   LtInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
-      : BinaryInstruction<NumType>(lhs, rhs) {}
+      : base::Clone<LtInstruction<NumType>, BinaryInstruction<NumType>>(lhs,
+                                                                        rhs) {}
   ~LtInstruction() override {}
 
   static bool Apply(NumType lhs, NumType rhs) { return lhs < rhs; }
@@ -421,12 +437,14 @@ struct LtInstruction : BinaryInstruction<NumType> {
 };
 
 template <typename NumType>
-struct LeInstruction : BinaryInstruction<NumType> {
+struct LeInstruction
+    : base::Clone<LeInstruction<NumType>, BinaryInstruction<NumType>> {
   static constexpr cmd_index_t kIndex =
       internal::kLeInstructionMask | internal::PrimitiveIndex<NumType>();
 
   LeInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
-      : BinaryInstruction<NumType>(lhs, rhs) {}
+      : base::Clone<LeInstruction<NumType>, BinaryInstruction<NumType>>(lhs,
+                                                                        rhs) {}
   ~LeInstruction() override {}
 
   static bool Apply(NumType lhs, NumType rhs) { return lhs <= rhs; }
@@ -875,10 +893,11 @@ struct DebugIrInstruction : base::Clone<DebugIrInstruction, Instruction> {
   void Inline(InstructionInliner const& inliner) override {}
 };
 
-struct XorFlagsInstruction : BinaryInstruction<FlagsVal> {
+struct XorFlagsInstruction
+    : base::Clone<XorFlagsInstruction, BinaryInstruction<FlagsVal>> {
   static constexpr cmd_index_t kIndex = internal::kXorFlagsInstructionNumber;
   XorFlagsInstruction(RegOr<FlagsVal> const& lhs, RegOr<FlagsVal> const& rhs)
-      : BinaryInstruction<FlagsVal>(lhs, rhs) {}
+      :base::Clone<XorFlagsInstruction, BinaryInstruction<FlagsVal>>(lhs, rhs) {}
   ~XorFlagsInstruction() override {}
 
   static FlagsVal Apply(FlagsVal lhs, FlagsVal rhs) { return lhs ^ rhs; }
@@ -894,10 +913,12 @@ struct XorFlagsInstruction : BinaryInstruction<FlagsVal> {
   }
 };
 
-struct AndFlagsInstruction : BinaryInstruction<FlagsVal> {
+struct AndFlagsInstruction
+    : base::Clone<AndFlagsInstruction, BinaryInstruction<FlagsVal>> {
   static constexpr cmd_index_t kIndex = internal::kAndFlagsInstructionNumber;
   AndFlagsInstruction(RegOr<FlagsVal> const& lhs, RegOr<FlagsVal> const& rhs)
-      : BinaryInstruction<FlagsVal>(lhs, rhs) {}
+      : base::Clone<AndFlagsInstruction, BinaryInstruction<FlagsVal>>(lhs,
+                                                                      rhs) {}
   ~AndFlagsInstruction() override {}
 
   static FlagsVal Apply(FlagsVal lhs, FlagsVal rhs) { return lhs & rhs; }
@@ -913,10 +934,12 @@ struct AndFlagsInstruction : BinaryInstruction<FlagsVal> {
   }
 };
 
-struct OrFlagsInstruction : BinaryInstruction<FlagsVal> {
+struct OrFlagsInstruction
+    : base::Clone<OrFlagsInstruction, BinaryInstruction<FlagsVal>> {
   static constexpr cmd_index_t kIndex = internal::kOrFlagsInstructionNumber;
   OrFlagsInstruction(RegOr<FlagsVal> const& lhs, RegOr<FlagsVal> const& rhs)
-      : BinaryInstruction<FlagsVal>(lhs, rhs) {}
+      : base::Clone<OrFlagsInstruction, BinaryInstruction<FlagsVal>>(lhs,
+                                                                      rhs) {}
   ~OrFlagsInstruction() override {}
 
   static FlagsVal Apply(FlagsVal lhs, FlagsVal rhs) { return lhs | rhs; }
