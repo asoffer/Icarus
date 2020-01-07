@@ -449,8 +449,8 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
 
     scope_def->inits_ = Deserialize<uint16_t, ir::Jump *>(
         iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::Jump *>(reg); });
-    scope_def->dones_ = Deserialize<uint16_t, ir::AnyFunc>(
-        iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::AnyFunc>(reg); });
+    scope_def->dones_ = ir::OverloadSet(Deserialize<uint16_t, ir::AnyFunc>(
+        iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::AnyFunc>(reg); }));
 
     uint16_t num_blocks = iter->read<uint16_t>();
     for (uint16_t i = 0; i < num_blocks; ++i) {
@@ -463,8 +463,8 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
 
   } else if constexpr (std::is_same_v<Inst, ir::MakeBlockInstruction>) {
     ir::BlockDef *block_def = iter->read<ir::BlockDef *>();
-    block_def->before_      = Deserialize<uint16_t, ir::AnyFunc>(
-        iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::AnyFunc>(reg); });
+    block_def->before_ = ir::OverloadSet(Deserialize<uint16_t, ir::AnyFunc>(
+        iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::AnyFunc>(reg); }));
     block_def->after_ = Deserialize<uint16_t, ir::Jump *>(
         iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::Jump *>(reg); });
     ctx->current_frame().regs_.set(iter->read<ir::Reg>(), block_def);

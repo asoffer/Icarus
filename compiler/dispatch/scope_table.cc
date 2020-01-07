@@ -51,6 +51,21 @@ std::vector<core::FnArgs<type::QualType>> VerifyBlockNode(
   return result;
 }
 
+std::pair<std::vector<type::Type const *>, std::vector<ir::Results>>
+ExtractArgsAndTypes(core::FnArgs<type::Typed<ir::Results>> const &args) {
+  std::vector<type::Type const *> arg_types;
+  std::vector<ir::Results> arg_results;
+  arg_types.reserve(args.size());
+  arg_results.reserve(args.size());
+  // TODO this is the wrong linearization. We have tools for this with FnArgs
+  // and FnParams.
+  args.Apply([&](type::Typed<ir::Results> const &arg) {
+    arg_types.push_back(arg.type());
+    arg_results.push_back(arg.get());
+  });
+  return std::pair(std::move(arg_types), std::move(arg_results));
+}
+
 // TODO organize the parameters here, they're getting to be too much.
 void EmitCallOneOverload(ir::ScopeDef const *scope_def,
                          ir::BasicBlock *starting_block,
@@ -65,19 +80,33 @@ void EmitCallOneOverload(ir::ScopeDef const *scope_def,
   auto &bldr         = compiler->builder();
   auto name_to_block = ir::Inline(bldr, jump, arg_results, block_interp);
 
-  for (auto[next_block_name, block] : name_to_block) {
+  for (auto &[next_block_name, block_and_args] : name_to_block) {
+    auto &[block, block_args] = block_and_args;
     bldr.CurrentBlock() = block;
     if (next_block_name == "start") {
       bldr.UncondJump(starting_block);
     } else if (next_block_name == "exit") {
-      bldr.Call(scope_def->dones_[0], type::Func({}, {}), {});
+      auto [done_types, done_results]     = ExtractArgsAndTypes(block_args);
+      std::optional<ir::AnyFunc> maybe_fn = scope_def->dones_[done_types];
+      ASSERT(maybe_fn.has_value() == true);
+      ir::AnyFunc fn = *maybe_fn;
+      auto *fn_type  = fn.is_fn() ? fn.func()->type() : fn.foreign().type();
+      bldr.Call(fn, fn_type, done_results);
       bldr.UncondJump(landing_block);
     } else {
-      ir::BlockDef const *block_def =
+      ir::BlockDef *block_def =
           ASSERT_NOT_NULL(scope_def->block(next_block_name));
 
       // TODO make an overload set and call it appropriately.
-      bldr.Call(block_def->before_[0], type::Func({}, {}), {});
+      // TODO We're calling operator* on an optional. Are we sure that's safe?
+      // Did we check it during type-verification? If so why do we need the
+      // create_ function in ir::OverloadSet?
+      auto [arg_types, arg_results]       = ExtractArgsAndTypes(block_args);
+      std::optional<ir::AnyFunc> maybe_fn = block_def->before_[arg_types];
+      ASSERT(maybe_fn.has_value() == true);
+      ir::AnyFunc fn = *maybe_fn;
+      auto *fn_type  = fn.is_fn() ? fn.func()->type() : fn.foreign().type();
+      bldr.Call(fn, fn_type, arg_results);
       bldr.UncondJump(block_interp[next_block_name]);
     }
   }

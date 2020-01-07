@@ -47,7 +47,7 @@ cc_lib(
 cc_lib(
     name = "block_def",
     deps = [
-        ":any_func",
+        ":overload_set",
         "//base:debug",
     ],
     test_deps = None,
@@ -125,6 +125,7 @@ cc_library(
         ":local_block_interpretation",
         ":reg",
         ":reg_or",
+        ":results",
         "//base:debug",
         "//ir/cmd:jump",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -321,7 +322,7 @@ cc_lib(
 cc_lib(
     name = "scope_def",
     deps = [
-        ":any_func",
+        ":overload_set",
         "//base:move_func",
     ],
     header_only = True,

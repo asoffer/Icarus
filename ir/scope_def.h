@@ -5,7 +5,7 @@
 
 #include "ast/scope/scope.h"
 #include "base/move_func.h"
-#include "ir/any_func.h"
+#include "ir/overload_set.h"
 #include "ir/block_def.h"
 #include "module/module.h"
 
@@ -19,7 +19,9 @@ struct ScopeDef {
 
   module::BasicModule const *module() const { return mod_; }
 
-  BlockDef const *block(std::string_view name) const {
+  // TODO This is const-incorrect. We need it to be mutable. Probably have two
+  // overloads here.
+  BlockDef *block(std::string_view name) const {
     if (auto iter = blocks_.find(name); iter != blocks_.end()) {
       return iter->second;
     }
@@ -28,7 +30,8 @@ struct ScopeDef {
 
   module::BasicModule const *mod_ = nullptr;
   std::vector<Jump *> inits_;
-  std::vector<AnyFunc> dones_;
+  mutable ir::OverloadSet dones_;  // TODO shouldn't actually be mutable. Hack
+                                   // to get a simple version working.
   absl::flat_hash_map<std::string_view, BlockDef *> blocks_;
   base::move_func<void()> *work_item = nullptr;
 };

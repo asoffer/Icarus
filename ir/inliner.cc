@@ -11,17 +11,17 @@
 
 namespace ir {
 
-absl::flat_hash_map<std::string_view, BasicBlock *> Inline(
-    Builder &bldr, Jump *to_be_inlined,
-    absl::Span<ir::Results const> arguments,
-    LocalBlockInterpretation const &block_interp) {
+absl::flat_hash_map<
+    std::string_view,
+    std::pair<BasicBlock *, core::FnArgs<type::Typed<ir::Results>>>>
+Inline(Builder &bldr, Jump *to_be_inlined,
+       absl::Span<ir::Results const> arguments,
+       LocalBlockInterpretation const &block_interp) {
   DEBUG_LOG("inliner")(*to_be_inlined);
   if (to_be_inlined->work_item) {
     auto f = std::move(*to_be_inlined->work_item);
     if (f) { std::move(f)(); }
   }
-
-  absl::flat_hash_map<std::string_view, BasicBlock *> result;
 
   auto *start_block          = bldr.CurrentBlock();
   size_t inlined_start_index = bldr.CurrentGroup()->blocks().size();

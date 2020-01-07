@@ -9,6 +9,7 @@
 #include "absl/strings/str_join.h"
 #include "ast/scope/scope.h"
 #include "base/clone.h"
+#include "ir/block_def.h"
 #include "ir/instruction_inliner.h"
 #include "ir/instruction_op_codes.h"
 #include "ir/instructions_base.h"

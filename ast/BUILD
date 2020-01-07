@@ -30,7 +30,6 @@ cc_library(
         "//core:fn_params",
         "//core:ordered_fn_args",
         "//frontend:operators",
-        "//ir:block_def",
         "//ir:results",
         "//type:basic_type",
     ],

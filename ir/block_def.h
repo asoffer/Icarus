@@ -4,7 +4,7 @@
 #include <iostream>
 
 #include "base/debug.h"
-#include "ir/any_func.h"
+#include "ir/overload_set.h"
 
 namespace type {
 struct Jump;
@@ -18,13 +18,12 @@ struct BlockDef {
   static BlockDef const *Exit();
 
   inline friend std::ostream &operator<<(std::ostream &os, BlockDef const &b) {
-    return os << "blockdef{" << b.before_.size() << ", " << b.after_.size()
-              << "}";
+    return os << "blockdef";
   }
 
   type::Jump const *type() const { return type_; }
 
-  std::vector<AnyFunc> before_;
+  ir::OverloadSet before_;
   std::vector<Jump *> after_;
 
  private:

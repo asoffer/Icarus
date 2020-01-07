@@ -34,7 +34,7 @@ struct AnyFunc {
     constexpr uintptr_t high_bit =
         uintptr_t{1} << (std::numeric_limits<uintptr_t>::digits - 1);
     ASSERT((data & high_bit) == 0u);
-    data = (data_ << uintptr_t{1});
+    data_ = (data << uintptr_t{1});
     ASSERT(is_fn() == false);
   }
 

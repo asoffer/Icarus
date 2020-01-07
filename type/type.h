@@ -11,7 +11,6 @@
 #include "base/util.h"
 #include "core/arch.h"
 #include "ir/addr.h"
-#include "ir/block_def.h"
 #include "ir/reg.h"
 #include "ir/results.h"
 #include "ir/values.h"
@@ -28,6 +27,7 @@ struct FunctionLiteral;
 
 namespace ir {
 struct AnyFunc;
+struct BlockDef;
 struct FlagsVal;
 struct ScopeDef;
 }  // namespace ir

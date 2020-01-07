@@ -12,6 +12,7 @@
 #include "ir/local_block_interpretation.h"
 #include "ir/reg.h"
 #include "ir/reg_or.h"
+#include "ir/results.h"
 
 namespace ir {
 struct BasicBlock;
@@ -36,7 +37,9 @@ struct InstructionInliner {
 
   void InlineAllBlocks();
 
-  absl::flat_hash_map<std::string_view, BasicBlock *>
+  absl::flat_hash_map<
+      std::string_view,
+      std::pair<BasicBlock *, core::FnArgs<type::Typed<ir::Results>>>>
   ExtractNamedBlockMapping() {
     return std::move(named_blocks_);
   }
@@ -56,7 +59,10 @@ struct InstructionInliner {
   int register_offset_;
   absl::flat_hash_map<BasicBlock const *, BasicBlock *> blocks_;
 
-  absl::flat_hash_map<std::string_view, BasicBlock *> named_blocks_;
+  absl::flat_hash_map<
+      std::string_view,
+      std::pair<BasicBlock *, core::FnArgs<type::Typed<ir::Results>>>>
+      named_blocks_;
   LocalBlockInterpretation block_interp_;
 
   // When inlining a return jump, this is the block that should be

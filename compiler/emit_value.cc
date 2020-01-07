@@ -1052,7 +1052,12 @@ ir::Results Compiler::Visit(ast::Goto const *node, EmitValueTag) {
     names.push_back(opt.block());
 
     builder().CurrentBlock() = block;
-    // TODO emit code for each possible jumped-to block
+
+    opt.args().Transform([this](auto const &expr) {
+      return type::Typed(Visit(expr.get(), EmitValueTag{}),
+                         type_of(expr.get()));
+    });
+    // TODO wire args together
   }
 
   builder().CurrentBlock() = current_block;

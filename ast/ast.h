@@ -23,7 +23,6 @@
 #include "core/fn_params.h"
 #include "core/ordered_fn_args.h"
 #include "frontend/operators.h"
-#include "ir/block_def.h"
 #include "ir/results.h"
 #include "type/basic_type.h"
 
@@ -868,15 +867,7 @@ struct Goto : Node {
       : Node(std::move(span)) {
     for (auto &call : calls) {
       auto[callee, ordered_args] = std::move(*call).extract();
-      if (auto *term = callee->if_as<Terminal>()) {
-        if (term->as<ir::BlockDef *>() == ir::BlockDef::Start()) {
-          options_.emplace_back("start", std::move(ordered_args).DropOrder());
-        } else if (term->as<ir::BlockDef *>() == ir::BlockDef::Exit()) {
-          options_.emplace_back("exit", std::move(ordered_args).DropOrder());
-        } else {
-          UNREACHABLE();
-        }
-      } else if (auto *id = callee->if_as<Identifier>()) {
+      if (auto *id = callee->if_as<Identifier>()) {
         options_.emplace_back(std::string{id->token()},
                               std::move(ordered_args).DropOrder());
       } else {

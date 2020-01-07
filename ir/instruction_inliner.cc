@@ -63,9 +63,11 @@ void InstructionInliner::InlineJump(BasicBlock* block) {
       ASSERT(next_name != "");
 
       auto& entry = named_blocks_[next_name];
-      if (entry == nullptr) { entry = block->group()->AppendBlock(); }
-      block->jump_ = JumpCmd::Uncond(entry);
-      entry->incoming_.insert(block);
+      if (entry.first == nullptr) {
+        entry.first = block->group()->AppendBlock();
+      }
+      block->jump_ = JumpCmd::Uncond(entry.first);
+      entry.first->incoming_.insert(block);
     } else {
       static_assert(base::always_false<type>());
     }

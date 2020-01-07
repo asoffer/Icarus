@@ -245,7 +245,6 @@ cc_lib(
         "//base:util",
         "//core:arch",
         "//ir:addr",
-        "//ir:block_def",
         "//ir:reg",
         "//ir:results",
         "//ir:values",
