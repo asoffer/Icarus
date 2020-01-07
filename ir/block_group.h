@@ -50,7 +50,7 @@ struct BlockGroup {
     return params_;
   }
 
-  base::untyped_buffer const& byte_code() const {
+  base::untyped_buffer const &byte_code() const {
     ASSERT(byte_code_.size() != 0u);
     return byte_code_;
   }

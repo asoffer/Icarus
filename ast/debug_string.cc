@@ -347,7 +347,6 @@ void ScopeNode::DebugStrAppend(std::string *out, size_t indent) const {
   for (auto const &block : blocks()) { block.DebugStrAppend(out, indent); }
 }
 
-
 void StructLiteral::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, "struct {\n");
   for (auto const &f : fields()) {
@@ -391,7 +390,7 @@ void Switch::DebugStrAppend(std::string *out, size_t indent) const {
     absl::StrAppend(out, ")");
   }
   absl::StrAppend(out, "{\n");
-  for (auto const & [ body, cond ] : cases_) {
+  for (auto const &[body, cond] : cases_) {
     absl::StrAppend(out, indentation(indent));
     body.get()->DebugStrAppend(out, indent + 1);
     absl::StrAppend(out, " when ");

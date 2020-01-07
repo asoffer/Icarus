@@ -145,9 +145,9 @@ template <
         int> = 0>
 void ExecuteInstruction(base::untyped_buffer::const_iterator *iter,
                         ExecutionContext *ctx) {
-  using type   = typename UnInst::type;
-  bool is_reg  = iter->read<bool>();
-  auto result  = UnInst::Apply(ReadAndResolve<type>(is_reg, iter, ctx));
+  using type  = typename UnInst::type;
+  bool is_reg = iter->read<bool>();
+  auto result = UnInst::Apply(ReadAndResolve<type>(is_reg, iter, ctx));
   ctx->current_frame().regs_.set(iter->read<ir::Reg>(), result);
 }
 
@@ -341,8 +341,8 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         *ASSERT_NOT_NULL(static_cast<type *>(addr.heap())) = val;
     }
   } else if constexpr (ir::IsPhiInstruction<Inst>) {
-    uint16_t num           = iter->read<uint16_t>();
-    uint64_t index         = std::numeric_limits<uint64_t>::max();
+    uint16_t num   = iter->read<uint16_t>();
+    uint64_t index = std::numeric_limits<uint64_t>::max();
     for (uint16_t i = 0; i < num; ++i) {
       if (ctx->current_frame().prev_index_ == iter->read<uintptr_t>()) {
         index = i;
@@ -355,8 +355,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         iter, [ctx](ir::Reg reg) { return ctx->resolve<type>(reg); });
     ctx->current_frame().regs_.set(iter->read<ir::Reg>(), type{results[index]});
     DEBUG_LOG("phi-instruction")(results[index]);
-  } else if constexpr (std::is_same_v<Inst,
-                                      ir::TypeManipulationInstruction>) {
+  } else if constexpr (std::is_same_v<Inst, ir::TypeManipulationInstruction>) {
     ir::AnyFunc f;
     base::untyped_buffer call_buf(sizeof(ir::Addr));
     auto kind = iter->read<ir::TypeManipulationInstruction::Kind>();
@@ -465,7 +464,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     ir::BlockDef *block_def = iter->read<ir::BlockDef *>();
     block_def->before_ = ir::OverloadSet(Deserialize<uint16_t, ir::AnyFunc>(
         iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::AnyFunc>(reg); }));
-    block_def->after_ = Deserialize<uint16_t, ir::Jump *>(
+    block_def->after_  = Deserialize<uint16_t, ir::Jump *>(
         iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::Jump *>(reg); });
     ctx->current_frame().regs_.set(iter->read<ir::Reg>(), block_def);
 
@@ -500,8 +499,8 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
                                    type::Arr(len, data_type));
   } else if constexpr (std::is_same_v<Inst, ir::CallInstruction>) {
-    bool fn_is_reg     = iter->read<bool>();
-    ir::AnyFunc f      = ReadAndResolve<ir::AnyFunc>(fn_is_reg, iter, ctx);
+    bool fn_is_reg = iter->read<bool>();
+    ir::AnyFunc f  = ReadAndResolve<ir::AnyFunc>(fn_is_reg, iter, ctx);
     iter->read<core::Bytes>().get();
 
     std::vector<bool> is_reg_bits = ReadBits<uint16_t>(iter);
@@ -591,7 +590,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     ir::Reg reg   = iter->read<ir::Reg>();
 
     if constexpr (std::is_same_v<Inst, ir::PtrIncrInstruction>) {
-      auto arch = core::Interpretter();
+      auto arch          = core::Interpretter();
       core::Bytes offset = core::FwdAlign(type->pointee->bytes(arch),
                                           type->pointee->alignment(arch)) *
                            index;
@@ -1139,7 +1138,7 @@ void ExecutionContext::ExecuteBlocks(absl::Span<ir::Addr const> ret_slots) {
       case ir::LoadInstruction::kIndex: {
         uint16_t num_bytes = iter.read<uint16_t>();
         ir::Addr addr      = resolve<ir::Addr>(iter.read<ir::Reg>());
-        auto result_reg = iter.read<ir::Reg>().get();
+        auto result_reg    = iter.read<ir::Reg>().get();
         DEBUG_LOG("load-instruction")(num_bytes, " ", addr, " ", result_reg);
         switch (addr.kind()) {
           case ir::Addr::Kind::Stack: {

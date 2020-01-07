@@ -18,7 +18,7 @@ struct ForeignFn {
   void (*get())() const { return fn_; }
   type::Function const *type() const;
 
-  friend std::ostream &operator<<(std::ostream& os, ForeignFn f) {
+  friend std::ostream &operator<<(std::ostream &os, ForeignFn f) {
     static_assert(sizeof(uintptr_t) == sizeof(void (*)()));
     uintptr_t n;
     std::memcpy(&n, &f.fn_, sizeof(n));

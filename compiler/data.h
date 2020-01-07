@@ -41,7 +41,7 @@ struct CompilationData {
   // case, fn_call).
   void set_dispatch_table(ast::Expression const *expr,
                           FnCallDispatchTable &&table) {
-    ICARUS_DEBUG_ONLY(auto[iter, success] =)
+    ICARUS_DEBUG_ONLY(auto [iter, success] =)
     fn_call_dispatch_tables_.emplace(expr, std::move(table));
     ASSERT(success == true);
   }
@@ -56,7 +56,7 @@ struct CompilationData {
 
   void set_scope_dispatch_table(ast::Expression const *expr,
                                 ScopeDispatchTable &&table) {
-    ICARUS_DEBUG_ONLY(auto[iter, success] =)
+    ICARUS_DEBUG_ONLY(auto [iter, success] =)
     scope_dispatch_tables_.emplace(expr, std::move(table));
     ASSERT(success == true);
   }
@@ -78,7 +78,7 @@ struct CompilationData {
 
   template <typename Fn>
   ir::Jump *add_jump(ast::Jump const *expr, Fn &&fn) {
-    auto[iter, success] =
+    auto [iter, success] =
         jumps_.emplace(expr, base::lazy_convert{std::forward<Fn>(fn)});
     ASSERT(success == true);
     return &iter->second;

@@ -8,10 +8,9 @@
 
 namespace base {
 
-
 template <typename Derived, typename Base>
 struct Clone : Base {
-  Clone(Clone const&) = default;
+  Clone(Clone const &) = default;
   template <typename... Args>
   Clone(Args &&... args) : Base(std::forward<Args>(args)...) {}
   Clone &operator=(Clone const &) = default;

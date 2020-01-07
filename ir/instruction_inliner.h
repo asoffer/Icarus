@@ -69,7 +69,7 @@ struct InstructionInliner {
 
   // When inlining a return jump, this is the block that should be
   // unconditionally jumped to.
-  ir::BasicBlock * landing_block_;
+  ir::BasicBlock *landing_block_;
 };
 }  // namespace ir
 

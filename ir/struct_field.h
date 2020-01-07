@@ -41,4 +41,4 @@ struct StructField {
 
 }  // namespace ir
 
-#endif // ICARUS_IR_STRUCT_FIELD_H
+#endif  // ICARUS_IR_STRUCT_FIELD_H

@@ -31,7 +31,7 @@ void Log::PreconditionNeedsBool(frontend::SourceRange const &range,
 
 #define MAKE_LOG_ERROR(fn_name, msg)                                           \
   void Log::fn_name(frontend::SourceRange const &range) {                      \
-    renderer_.AddError(diagnostic::DiagnosticMessage(                                 \
+    renderer_.AddError(diagnostic::DiagnosticMessage(                          \
         diagnostic::Text(msg), diagnostic::SourceQuote(src_).Highlighted(      \
                                    range, diagnostic::Style{})));              \
   }
@@ -206,9 +206,9 @@ void Log::ShadowingDeclaration(frontend::SourceRange const &span1,
                                frontend::SourceRange const &span2) {
   renderer_.AddError(
       diagnostic::DiagnosticMessage(diagnostic::Text("Ambiguous declarations:"),
-                             diagnostic::SourceQuote(src_)
-                                 .Line(span1.begin().line_num)
-                                 .Line(span2.begin().line_num)));
+                                    diagnostic::SourceQuote(src_)
+                                        .Line(span1.begin().line_num)
+                                        .Line(span2.begin().line_num)));
 }
 
 void Log::Dump() {
@@ -229,7 +229,7 @@ void Log::Dump() {
         diagnostic::Text("Found a cyclic dependency:"), quote));
   }
 
-  for (auto const & [ decl, ids ] : out_of_order_decls_) {
+  for (auto const &[decl, ids] : out_of_order_decls_) {
     diagnostic::SourceQuote quote(src_);
     for (auto const *id : ids) {
       quote.Highlighted(id->span, diagnostic::Style{});
@@ -242,7 +242,7 @@ void Log::Dump() {
         quote));
   }
 
-  for (const auto & [ token, ids ] : undeclared_ids_) {
+  for (const auto &[token, ids] : undeclared_ids_) {
     diagnostic::SourceQuote quote(src_);
     for (auto const *id : ids) {
       quote.Highlighted(id->span, diagnostic::Style{});
@@ -306,7 +306,7 @@ void Log::NoCallMatch(frontend::SourceRange const &range,
                                           std::string> const &failure_reasons) {
   diagnostic::SourceQuote quote(src_);
   std::vector<std::string> reasons = std::move(generic_failure_reasons);
-  for (auto const & [ expr, reason ] : failure_reasons) {
+  for (auto const &[expr, reason] : failure_reasons) {
     quote.Highlighted(expr->span, diagnostic::Style{});
     reasons.push_back(reason);
   }
@@ -351,8 +351,7 @@ void Log::IndexingTupleOutOfBounds(frontend::SourceRange const &range,
       diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
-void Log::MissingModule(std::string_view src,
-                        std::string_view requestor) {
+void Log::MissingModule(std::string_view src, std::string_view requestor) {
   renderer_.AddError(diagnostic::DiagnosticMessage(diagnostic::Text(
       "Could not find module named \"%s\" requested from %s", src,
       requestor.empty() ? "command line"

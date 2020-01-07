@@ -52,7 +52,7 @@ void AddAdl(ast::OverloadSet *overload_set, std::string_view id,
 
   for (auto *mod : modules) {
     auto decls = mod->declarations(id);
-      diagnostic::StreamingConsumer consumer(stderr);
+    diagnostic::StreamingConsumer consumer(stderr);
 
     for (auto *d : decls) {
       // TODO Wow this is a terrible way to access the type.
@@ -69,8 +69,8 @@ void AddAdl(ast::OverloadSet *overload_set, std::string_view id,
 }
 
 type::QualType VerifyUnaryOverload(Compiler *c, char const *symbol,
-                                 ast::Expression const *node,
-                                 type::QualType operand_result) {
+                                   ast::Expression const *node,
+                                   type::QualType operand_result) {
   ast::OverloadSet os(node->scope_, symbol);
   AddAdl(&os, symbol, operand_result.type());
   ASSIGN_OR(
@@ -82,9 +82,9 @@ type::QualType VerifyUnaryOverload(Compiler *c, char const *symbol,
 }
 
 type::QualType VerifyBinaryOverload(Compiler *c, char const *symbol,
-                                  ast::Expression const *node,
-                                  type::QualType lhs_result,
-                                  type::QualType rhs_result) {
+                                    ast::Expression const *node,
+                                    type::QualType lhs_result,
+                                    type::QualType rhs_result) {
   ast::OverloadSet os(node->scope_, symbol);
   AddAdl(&os, symbol, lhs_result.type());
   AddAdl(&os, symbol, rhs_result.type());
@@ -158,8 +158,8 @@ static std::optional<std::vector<type::QualType>> VerifyWithoutSetting(
 }
 
 static type::QualType VerifySpecialFunctions(Compiler *visitor,
-                                           ast::Declaration const *decl,
-                                           type::Type const *decl_type) {
+                                             ast::Declaration const *decl,
+                                             type::Type const *decl_type) {
   bool error = false;
   if (decl->id() == "copy") {
     if (auto *f = decl_type->if_as<type::Function>()) {
@@ -294,9 +294,7 @@ static InferenceFailureReason Inferrable(type::Type const *t) {
 // TODO there's not that much shared between the inferred and uninferred cases,
 // so probably break them out.
 type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node) {
-  for (auto const *stmt : node->stmts()) {
-    c->Visit(stmt, VerifyTypeTag{});
-  }
+  for (auto const *stmt : node->stmts()) { c->Visit(stmt, VerifyTypeTag{}); }
   // TODO propogate cyclic dependencies.
 
   ExtractJumps extractor;
@@ -324,8 +322,7 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node) {
   std::vector<type::Type const *> input_type_vec;
   input_type_vec.reserve(node->params().size());
   for (auto &param : node->params()) {
-    input_type_vec.push_back(
-        ASSERT_NOT_NULL(c->type_of(param.value.get())));
+    input_type_vec.push_back(ASSERT_NOT_NULL(c->type_of(param.value.get())));
   }
 
   if (not node->outputs()) {
@@ -353,7 +350,8 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node) {
             UNREACHABLE();  // TODO
           }
         }
-        return err ? type::QualType::Error() : type::QualType::Constant(node_type);
+        return err ? type::QualType::Error()
+                   : type::QualType::Constant(node_type);
       } break;
       case 1: {
         bool err = false;
@@ -361,14 +359,15 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node) {
           if (auto *ret_node = n->if_as<ast::ReturnStmt>()) {
             auto *t = ASSERT_NOT_NULL(saved_ret_types.at(ret_node));
             if (t == outs[0]) { continue; }
-            c->error_log()->ReturnTypeMismatch(
-                outs[0]->to_string(), t->to_string(), ret_node->span);
+            c->error_log()->ReturnTypeMismatch(outs[0]->to_string(),
+                                               t->to_string(), ret_node->span);
             err = true;
           } else {
             UNREACHABLE();  // TODO
           }
         }
-        return err ? type::QualType::Error() : type::QualType::Constant(node_type);
+        return err ? type::QualType::Error()
+                   : type::QualType::Constant(node_type);
       } break;
       default: {
         for (auto *n : extractor.jumps(ExtractJumps::Kind::Return)) {
@@ -422,9 +421,7 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node) {
 }
 
 void VerifyBody(Compiler *c, ast::Jump const *node) {
-  for (auto const *stmt : node->stmts()) {
-    c->Visit(stmt, VerifyTypeTag{});
-  }
+  for (auto const *stmt : node->stmts()) { c->Visit(stmt, VerifyTypeTag{}); }
 }
 
 type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
@@ -481,7 +478,7 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
 
     return set_result(
         node, type::QualType::Constant(type::Func(std::move(input_type_vec),
-                                                std::move(output_type_vec))));
+                                                  std::move(output_type_vec))));
   } else {
     return set_result(node, VerifyBody(this, node));
   }
@@ -516,7 +513,7 @@ static Constness VerifyAndGetConstness(
 }
 
 static type::QualType AccessTypeMember(Compiler *c, ast::Access const *node,
-                                     type::QualType operand_result) {
+                                       type::QualType operand_result) {
   if (not operand_result.constant()) {
     c->diag_consumer_.Consume(
         diagnostic::NonConstantTypeMemberAccess{.range = node->span});
@@ -552,7 +549,7 @@ static type::QualType AccessTypeMember(Compiler *c, ast::Access const *node,
 }
 
 static type::QualType AccessStructMember(Compiler *c, ast::Access const *node,
-                                       type::QualType operand_result) {
+                                         type::QualType operand_result) {
   auto const &s      = operand_result.type()->as<type::Struct>();
   auto const *member = s.field(node->member_name());
   if (member == nullptr) {
@@ -571,7 +568,7 @@ static type::QualType AccessStructMember(Compiler *c, ast::Access const *node,
 }
 
 static type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
-                                       type::QualType operand_result) {
+                                         type::QualType operand_result) {
   DEBUG_LOG("AccessModuleMember")(node->DebugString());
   if (not operand_result.constant()) {
     c->error_log()->NonConstantModuleMemberAccess(node->span);
@@ -595,7 +592,8 @@ static type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
         return type::QualType::Error();
       }
       DEBUG_LOG("AccessModuleMember")
-      ("Setting type of ", node, " to ", type::QualType::Constant(t), " on ", c);
+      ("Setting type of ", node, " to ", type::QualType::Constant(t), " on ",
+       c);
       return c->set_result(node, type::QualType::Constant(t));
 
     } break;
@@ -815,9 +813,9 @@ type::QualType Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
 
       if (t == nullptr) { return type::QualType::Error(); }
 
-      return set_result(
-          node, type::QualType(type::Type_,
-                             lhs_result.constant() and rhs_result.constant()));
+      return set_result(node,
+                        type::QualType(type::Type_, lhs_result.constant() and
+                                                        rhs_result.constant()));
     }
     default: UNREACHABLE();
   }
@@ -879,16 +877,17 @@ std::optional<ast::OverloadSet> MakeOverloadSet(
 }
 
 template <typename EPtr, typename StrType>
-static type::QualType VerifyCall(Compiler *c, ast::BuiltinFn const *b,
-                               core::FnArgs<EPtr, StrType> const &args,
-                               core::FnArgs<type::QualType> const &arg_results) {
+static type::QualType VerifyCall(
+    Compiler *c, ast::BuiltinFn const *b,
+    core::FnArgs<EPtr, StrType> const &args,
+    core::FnArgs<type::QualType> const &arg_results) {
   switch (b->value()) {
     case core::Builtin::Foreign: {
       bool err = false;
       if (not arg_results.named().empty()) {
         c->error_log()->BuiltinError(b->span,
-                                           "Built-in function `foreign` cannot "
-                                           "be called with named arguments.");
+                                     "Built-in function `foreign` cannot "
+                                     "be called with named arguments.");
         err = true;
       }
 
@@ -935,22 +934,20 @@ static type::QualType VerifyCall(Compiler *c, ast::BuiltinFn const *b,
             b->span, "Built-in function `opaque` takes no arguments.");
       }
       return type::QualType::Constant(ir::BuiltinType(core::Builtin::Opaque)
-                                        ->as<type::Function>()
-                                        .output[0]);
+                                          ->as<type::Function>()
+                                          .output[0]);
 
     case core::Builtin::Bytes: {
       size_t size = arg_results.size();
       if (not arg_results.named().empty()) {
-        c->error_log()->BuiltinError(
-            b->span,
-            "Built-in function `bytes` cannot be "
-            "called with named arguments.");
+        c->error_log()->BuiltinError(b->span,
+                                     "Built-in function `bytes` cannot be "
+                                     "called with named arguments.");
       } else if (size != 1u) {
-        c->error_log()->BuiltinError(
-            b->span,
-            "Built-in function `bytes` takes "
-            "exactly one argument (You provided " +
-                std::to_string(size) + ").");
+        c->error_log()->BuiltinError(b->span,
+                                     "Built-in function `bytes` takes "
+                                     "exactly one argument (You provided " +
+                                         std::to_string(size) + ").");
       } else if (arg_results.at(0).type() != type::Type_) {
         c->error_log()->BuiltinError(
             b->span,
@@ -959,23 +956,21 @@ static type::QualType VerifyCall(Compiler *c, ast::BuiltinFn const *b,
                 arg_results.at(0).type()->to_string() + ").");
       }
       return type::QualType::Constant(ir::BuiltinType(core::Builtin::Bytes)
-                                        ->as<type::Function>()
-                                        .output[0]);
+                                          ->as<type::Function>()
+                                          .output[0]);
     }
     case core::Builtin::Alignment: {
       size_t size = arg_results.size();
       if (not arg_results.named().empty()) {
-        c->error_log()->BuiltinError(
-            b->span,
-            "Built-in function `alignment` cannot "
-            "be called with named arguments.");
+        c->error_log()->BuiltinError(b->span,
+                                     "Built-in function `alignment` cannot "
+                                     "be called with named arguments.");
       }
       if (size != 1u) {
-        c->error_log()->BuiltinError(
-            b->span,
-            "Built-in function `alignment` takes "
-            "exactly one argument (You provided " +
-                std::to_string(size) + ").");
+        c->error_log()->BuiltinError(b->span,
+                                     "Built-in function `alignment` takes "
+                                     "exactly one argument (You provided " +
+                                         std::to_string(size) + ").");
 
       } else if (arg_results.at(0).type() != type::Type_) {
         c->error_log()->BuiltinError(
@@ -985,8 +980,8 @@ static type::QualType VerifyCall(Compiler *c, ast::BuiltinFn const *b,
                 arg_results.at(0).type()->to_string() + ")");
       }
       return type::QualType::Constant(ir::BuiltinType(core::Builtin::Alignment)
-                                        ->as<type::Function>()
-                                        .output[0]);
+                                          ->as<type::Function>()
+                                          .output[0]);
     }
 #if defined(ICARUS_DEBUG)
     case core::Builtin::DebugIr:
@@ -1013,7 +1008,7 @@ static std::pair<core::FnArgs<type::QualType, StrType>, bool> VerifyFnArgs(
 }
 
 type::QualType Compiler::Visit(ast::Call const *node, VerifyTypeTag) {
-  auto[arg_results, err] = VerifyFnArgs(this, node->args());
+  auto [arg_results, err] = VerifyFnArgs(this, node->args());
   // TODO handle cyclic dependencies in call arguments.
   if (err) { return type::QualType::Error(); }
 
@@ -1463,7 +1458,8 @@ type::QualType Compiler::Visit(ast::EnumLiteral const *node, VerifyTypeTag) {
   return set_result(node, type::QualType::Constant(type::Type_));
 }
 
-type::QualType Compiler::Visit(ast::FunctionLiteral const *node, VerifyTypeTag) {
+type::QualType Compiler::Visit(ast::FunctionLiteral const *node,
+                               VerifyTypeTag) {
   for (auto const &p : node->params()) {
     if ((p.value->flags() & ast::Declaration::f_IsConst) or
         not node->param_dep_graph_.at(p.value.get()).empty()) {
@@ -1529,7 +1525,7 @@ type::QualType Compiler::Visit(ast::Identifier const *node, VerifyTypeTag) {
 
   if (t == nullptr) { return type::QualType::Error(); }
   return set_result(node, type::QualType(t, node->decl()->flags() &
-                                              ast::Declaration::f_IsConst));
+                                                ast::Declaration::f_IsConst));
 }
 
 type::QualType Compiler::Visit(ast::Import const *node, VerifyTypeTag) {
@@ -1650,8 +1646,9 @@ type::QualType Compiler::Visit(ast::Jump const *node, VerifyTypeTag) {
     }
   }
 
-  return set_result(node, err ? type::QualType::Error()
-                              : type::QualType::Constant(type::Jmp(param_types)));
+  return set_result(node,
+                    err ? type::QualType::Error()
+                        : type::QualType::Constant(type::Jmp(param_types)));
 }
 
 type::QualType Compiler::Visit(ast::PrintStmt const *node, VerifyTypeTag) {
@@ -1708,7 +1705,8 @@ type::QualType Compiler::Visit(ast::ScopeLiteral const *node, VerifyTypeTag) {
 static absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> MakeJumpInits(
     Compiler *c, ast::OverloadSet const &os) {
   absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> inits;
-  DEBUG_LOG("ScopeNode")("Overload set for inits has size ", os.members().size());
+  DEBUG_LOG("ScopeNode")
+  ("Overload set for inits has size ", os.members().size());
   for (ast::Expression const *member : os.members()) {
     DEBUG_LOG("ScopeNode")(member->DebugString());
     auto *def = interpretter::EvaluateAs<ir::ScopeDef *>(
@@ -1786,7 +1784,8 @@ type::QualType Compiler::Visit(ast::StructLiteral const *node, VerifyTypeTag) {
   return set_result(node, type::QualType::Constant(type::Type_));
 }
 
-type::QualType Compiler::Visit(ast::ParameterizedStructLiteral const *node, VerifyTypeTag) {
+type::QualType Compiler::Visit(ast::ParameterizedStructLiteral const *node,
+                               VerifyTypeTag) {
   std::vector<type::Type const *> ts;
   ts.reserve(node->params().size());
   for (auto const &a : node->params()) {
@@ -1816,7 +1815,7 @@ type::QualType Compiler::Visit(ast::Switch const *node, VerifyTypeTag) {
 
   absl::flat_hash_set<type::Type const *> types;
   bool err = false;
-  for (auto & [ body, cond ] : node->cases_) {
+  for (auto &[body, cond] : node->cases_) {
     auto cond_result = Visit(cond.get(), VerifyTypeTag{});
     auto body_result = Visit(body.get(), VerifyTypeTag{});
     err |= not cond_result or not body_result;
@@ -1895,7 +1894,8 @@ type::QualType Compiler::Visit(ast::Unop const *node, VerifyTypeTag) {
         error_log()->NonConstantEvaluation(node->operand()->span);
         return type::QualType::Error();
       } else {
-        return set_result(node, type::QualType(operand_type, result.constant()));
+        return set_result(node,
+                          type::QualType(operand_type, result.constant()));
       }
     case frontend::Operator::Which:
       if (not operand_type->is<type::Variant>()) {
@@ -1906,7 +1906,7 @@ type::QualType Compiler::Visit(ast::Unop const *node, VerifyTypeTag) {
       if (operand_type->is<type::Pointer>()) {
         return set_result(
             node, type::QualType(operand_type->as<type::Pointer>().pointee,
-                               result.constant()));
+                                 result.constant()));
       } else {
         error_log()->DereferencingNonPointer(operand_type->to_string(),
                                              node->span);
@@ -1927,7 +1927,8 @@ type::QualType Compiler::Visit(ast::Unop const *node, VerifyTypeTag) {
       }
     case frontend::Operator::Sub:
       if (type::IsNumeric(operand_type)) {
-        return set_result(node, type::QualType(operand_type, result.constant()));
+        return set_result(node,
+                          type::QualType(operand_type, result.constant()));
       } else if (operand_type->is<type::Struct>()) {
         return VerifyUnaryOverload(this, "-", node, result);
       }
@@ -1940,14 +1941,16 @@ type::QualType Compiler::Visit(ast::Unop const *node, VerifyTypeTag) {
       //
       if (operand_type->is<type::Tuple>()) {
         // TODO there should be a way to avoid copying over any of entire type
-        return set_result(node, type::QualType(operand_type, result.constant()));
+        return set_result(node,
+                          type::QualType(operand_type, result.constant()));
       } else {
         NOT_YET();  // Log an error. can't expand a non-tuple.
       }
     case frontend::Operator::Not:
       if (operand_type == type::Bool or operand_type->is<type::Enum>() or
           operand_type->is<type::Flags>()) {
-        return set_result(node, type::QualType(operand_type, result.constant()));
+        return set_result(node,
+                          type::QualType(operand_type, result.constant()));
       }
       if (operand_type->is<type::Struct>()) {
         return VerifyUnaryOverload(this, "!", node, result);

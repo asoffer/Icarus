@@ -31,8 +31,8 @@ TEST_CASE("() -> () {}") {
   }
 
   SECTION("Positional args") {
-    auto args =
-        core::FnArgs<type::QualType>({type::QualType::Constant(type::Int32)}, {});
+    auto args = core::FnArgs<type::QualType>(
+        {type::QualType::Constant(type::Int32)}, {});
     CHECK_FALSE(MatchArgsToParams(params, args));
   }
 
@@ -54,8 +54,8 @@ TEST_CASE("(n: int32) -> () {}") {
   }
 
   SECTION("Call positionally with correct type") {
-    auto args =
-        core::FnArgs<type::QualType>({type::QualType::Constant(type::Int32)}, {});
+    auto args = core::FnArgs<type::QualType>(
+        {type::QualType::Constant(type::Int32)}, {});
     REQUIRE_OK_AND_ASSIGN(auto matched_params, MatchArgsToParams(params, args));
     CHECK(matched_params.size() == 1);
     CHECK(matched_params.at(0).name == "n");
@@ -63,8 +63,8 @@ TEST_CASE("(n: int32) -> () {}") {
   }
 
   SECTION("Call positionally with incorrect type") {
-    auto args =
-        core::FnArgs<type::QualType>({type::QualType::Constant(type::Bool)}, {});
+    auto args = core::FnArgs<type::QualType>(
+        {type::QualType::Constant(type::Bool)}, {});
     CHECK_FALSE(MatchArgsToParams(params, args));
   }
 
@@ -104,8 +104,8 @@ TEST_CASE("(n: int32, b := true) -> () {}") {
   }
 
   SECTION("Call positionally with correct type") {
-    auto args =
-        core::FnArgs<type::QualType>({type::QualType::Constant(type::Int32)}, {});
+    auto args = core::FnArgs<type::QualType>(
+        {type::QualType::Constant(type::Int32)}, {});
     REQUIRE_OK_AND_ASSIGN(auto matched_params, MatchArgsToParams(params, args));
     CHECK(matched_params.size() == 2);
     CHECK(matched_params.at(0).name == "n");
@@ -115,8 +115,8 @@ TEST_CASE("(n: int32, b := true) -> () {}") {
   }
 
   SECTION("Call positionally with incorrect type") {
-    auto args =
-        core::FnArgs<type::QualType>({type::QualType::Constant(type::Bool)}, {});
+    auto args = core::FnArgs<type::QualType>(
+        {type::QualType::Constant(type::Bool)}, {});
     CHECK_FALSE(MatchArgsToParams(params, args));
   }
 
@@ -171,8 +171,8 @@ TEST_CASE("(x: int32 | bool) -> () {}") {
   }
 
   SECTION("Call positionally with matching type") {
-    auto args =
-        core::FnArgs<type::QualType>({type::QualType::Constant(type::Int32)}, {});
+    auto args = core::FnArgs<type::QualType>(
+        {type::QualType::Constant(type::Int32)}, {});
     REQUIRE_OK_AND_ASSIGN(auto matched_params, MatchArgsToParams(params, args));
     CHECK(matched_params.size() == 1);
     CHECK(matched_params.at(0).name == "x");
@@ -180,8 +180,8 @@ TEST_CASE("(x: int32 | bool) -> () {}") {
   }
 
   SECTION("Call positionally with matching type") {
-    auto args =
-        core::FnArgs<type::QualType>({type::QualType::Constant(type::Bool)}, {});
+    auto args = core::FnArgs<type::QualType>(
+        {type::QualType::Constant(type::Bool)}, {});
     REQUIRE_OK_AND_ASSIGN(auto matched_params, MatchArgsToParams(params, args));
     CHECK(matched_params.size() == 1);
     CHECK(matched_params.at(0).name == "x");
@@ -199,7 +199,8 @@ TEST_CASE("(x: int32 | bool) -> () {}") {
 
   SECTION("Call positionally with non-overlapping type") {
     auto args = core::FnArgs<type::QualType>(
-        {type::QualType::Constant(type::Var({type::Int16, type::Float32}))}, {});
+        {type::QualType::Constant(type::Var({type::Int16, type::Float32}))},
+        {});
     auto matched_params = MatchArgsToParams(params, args);
     CHECK_FALSE(MatchArgsToParams(params, args));
   }
@@ -224,8 +225,8 @@ TEST_CASE("(x: int32 | bool) -> () {}") {
 
   SECTION("Call named with overlapping type") {
     auto args = core::FnArgs<type::QualType>(
-        {}, {{"x",
-              type::QualType::Constant(type::Var({type::Bool, type::Float32}))}});
+        {}, {{"x", type::QualType::Constant(
+                       type::Var({type::Bool, type::Float32}))}});
     REQUIRE_OK_AND_ASSIGN(auto matched_params, MatchArgsToParams(params, args));
     CHECK(matched_params.size() == 1);
     CHECK(matched_params.at(0).name == "x");

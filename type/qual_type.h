@@ -1,12 +1,12 @@
 #ifndef ICARUS_TYPE_QUAL_TYPE_H
 #define ICARUS_TYPE_QUAL_TYPE_H
 
-#include <type_traits>
 #include <iosfwd>
+#include <type_traits>
 #include <vector>
 
-#include "type/type.h"
 #include "type/tuple.h"
+#include "type/type.h"
 
 namespace type {
 

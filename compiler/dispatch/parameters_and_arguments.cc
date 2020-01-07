@@ -90,7 +90,7 @@ ir::Results PrepareOneArg(Compiler *c, type::Typed<ir::Results> const &arg,
       c->EmitMoveInit(t, arg.get(), type::Typed(r, type::Ptr(t)));
       return ir::Results{r};
     } else {
-    return arg.get();
+      return arg.get();
     }
   }
 }

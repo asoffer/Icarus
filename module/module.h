@@ -33,7 +33,7 @@ struct BasicModule : base::Cast<BasicModule> {
   // they were not implicitly deleted, we would not want modules to be copyable
   // anyway for reasons similar to those explaining why we disallow moves.
   BasicModule(BasicModule const &) = delete;
-  BasicModule &operator=(BasicModule const &)  = delete;
+  BasicModule &operator=(BasicModule const &) = delete;
 
   void AppendNode(std::unique_ptr<ast::Node> node);
   void AppendNodes(std::vector<std::unique_ptr<ast::Node>> nodes);

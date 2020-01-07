@@ -16,8 +16,7 @@ struct Base : base::Clone<Base, void> {
 
 struct Derived : base::Clone<Derived, Base> {
   Derived(int* b, int* d)
-      : base::Clone<Derived, Base>(b), derived_copy_counter(d) {
-  }
+      : base::Clone<Derived, Base>(b), derived_copy_counter(d) {}
 
   Derived(Derived const& d)
       : base::Clone<Derived, Base>(d),

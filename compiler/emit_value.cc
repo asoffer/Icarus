@@ -3,12 +3,12 @@
 #include "ast/ast.h"
 #include "ast/scope/exec.h"
 #include "base/guarded.h"
+#include "compiler/emit_function_call_infrastructure.h"
 #include "compiler/executable_module.h"
 #include "diagnostic/consumer/streaming.h"
 #include "frontend/parse.h"
 #include "interpretter/evaluate.h"
 #include "ir/builder.h"
-#include "compiler/emit_function_call_infrastructure.h"
 #include "ir/builtin_ir.h"
 #include "ir/components.h"
 #include "ir/jump.h"
@@ -555,7 +555,7 @@ ir::Results ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
   auto &funcs = equality ? eq_funcs : ne_funcs;
   auto handle = funcs.lock();
 
-  auto[iter, success] = (*handle)[lhs_type].emplace(rhs_type, nullptr);
+  auto [iter, success] = (*handle)[lhs_type].emplace(rhs_type, nullptr);
   if (success) {
     auto const *fn_type =
         type::Func({type::Ptr(lhs_type), type::Ptr(rhs_type)}, {type::Bool});
@@ -616,7 +616,7 @@ ir::Results ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
   }
 
   ir::OutParams outs = compiler->builder().OutParams({type::Bool});
-  auto result = outs[0];
+  auto result        = outs[0];
   bldr.Call(ir::AnyFunc{iter->second}, iter->second->type_, {lhs_ir, rhs_ir},
             std::move(outs));
   return ir::Results{result};
@@ -831,7 +831,8 @@ ir::Results Compiler::Visit(ast::ChainOp const *node, EmitValueTag) {
 
       builder().CurrentBlock() = land_block;
 
-      return ir::Results{builder().Phi<bool>(std::move(phi_blocks),std::move( phi_values))};
+      return ir::Results{
+          builder().Phi<bool>(std::move(phi_blocks), std::move(phi_values))};
     }
   }
   UNREACHABLE();
@@ -889,7 +890,7 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
         return std::move(*result);
       }
 
-      auto & [ data_offset, num_bytes ] =
+      auto &[data_offset, num_bytes] =
           std::get<std::pair<size_t, core::Bytes>>(slot);
 
       if (node->IsCustomInitialized()) {
@@ -978,12 +979,13 @@ ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
 
     auto *fn_type = &type_of(node)->as<type::Function>();
 
-    ir_func = AddFunc(fn_type,
-                      node->params().Transform([ fn_type, i = 0 ](
-                          std::unique_ptr<ast::Declaration> const &d) mutable {
-                        return type::Typed<ast::Declaration const *>(
-                            d.get(), fn_type->input.at(i++));
-                      }));
+    ir_func = AddFunc(
+        fn_type, node->params().Transform(
+                     [fn_type, i = 0](
+                         std::unique_ptr<ast::Declaration> const &d) mutable {
+                       return type::Typed<ast::Declaration const *>(
+                           d.get(), fn_type->input.at(i++));
+                     }));
     if (work_item_ptr) { ir_func->work_item = work_item_ptr; }
   }
 
@@ -1070,7 +1072,7 @@ ir::Results Compiler::Visit(ast::Jump const *node, EmitValueTag) {
     auto work_item_ptr = DeferBody(this, node);
     auto *jmp_type     = &type_of(node)->as<type::Jump>();
 
-    size_t i = 0;
+    size_t i    = 0;
     auto params = node->params().Transform([&](auto const &decl) {
       return type::Typed<ast::Declaration const *>(decl.get(),
                                                    jmp_type->args()[i++]);
@@ -1279,8 +1281,8 @@ ir::Results Compiler::Visit(ast::Switch const *node, EmitValueTag) {
 
   absl::flat_hash_map<ir::BasicBlock *, ir::Results> phi_args;
   for (size_t i = 0; i + 1 < node->cases_.size(); ++i) {
-    auto & [ body, match_cond ] = node->cases_[i];
-    auto *expr_block            = builder().AddBlock();
+    auto &[body, match_cond] = node->cases_[i];
+    auto *expr_block         = builder().AddBlock();
 
     ir::Results match_val = Visit(match_cond.get(), EmitValueTag{});
     ir::RegOr<bool> cond  = node->expr_
@@ -1333,7 +1335,7 @@ ir::Results Compiler::Visit(ast::Switch const *node, EmitValueTag) {
       vals.reserve(phi_args.size());
       std::vector<ir::BasicBlock const *> blocks;
       blocks.reserve(phi_args.size());
-      for (auto const & [ key, val ] : phi_args) {
+      for (auto const &[key, val] : phi_args) {
         blocks.push_back(key);
         vals.push_back(val.template get<T>(0));
       }

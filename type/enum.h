@@ -17,7 +17,7 @@ struct Enum : public type::Type {
   Enum(module::BasicModule const *mod,
        absl::flat_hash_map<std::string, ir::EnumVal> vals)
       : mod_(mod), vals_(std::move(vals)) {
-    for (auto & [ name, val ] : vals_) { members_.emplace(val, name); }
+    for (auto &[name, val] : vals_) { members_.emplace(val, name); }
   }
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {

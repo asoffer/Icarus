@@ -1,8 +1,8 @@
 #ifndef ICARUS_DIAGNOSTIC_CONSUMER_TRIVIAL_H
 #define ICARUS_DIAGNOSTIC_CONSUMER_TRIVIAL_H
 
-#include "diagnostic/message.h"
 #include "diagnostic/consumer/consumer.h"
+#include "diagnostic/message.h"
 
 namespace diagnostic {
 

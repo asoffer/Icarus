@@ -65,7 +65,6 @@ TEST(QualType, Streaming) {
     EXPECT_EQ(ss.str(), "non-const(bool)");
   }
 
-
   {
     std::stringstream ss;
     auto q = type::QualType({type::Int64, type::Bool}, true);

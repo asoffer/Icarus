@@ -48,7 +48,7 @@ void cli::Usage() {
                << [](char const *e) { expr_file = e; };
 
   // TODO error-out if more than one file is provided
-  static char const * file;
+  static char const *file;
   HandleOther = [](char const *arg) { file = arg; };
   execute     = [] {
     return match::MatchParse(frontend::FileName(expr_file),

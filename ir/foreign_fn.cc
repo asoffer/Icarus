@@ -1,7 +1,7 @@
 #include "ir/foreign_fn.h"
 
-#include "base/debug.h"
 #include "absl/container/flat_hash_map.h"
+#include "base/debug.h"
 #include "base/guarded.h"
 
 namespace ir {

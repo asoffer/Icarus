@@ -15,9 +15,7 @@ struct lazy {
 
   template <typename Fn>
   void init(Fn&& f) const {
-    std::call_once(flag_, [&]() {
-      val_    = f();
-    });
+    std::call_once(flag_, [&]() { val_ = f(); });
   }
 
  private:

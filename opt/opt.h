@@ -9,4 +9,4 @@ void RunAllOptimizations(ir::CompiledFn *fn);
 
 }  // namespace opt
 
-#endif // ICARUS_OPT_OPT_H
+#endif  // ICARUS_OPT_OPT_H

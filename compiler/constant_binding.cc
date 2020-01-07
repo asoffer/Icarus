@@ -6,7 +6,7 @@
 namespace compiler {
 bool operator==(ConstantBinding const& lhs, ConstantBinding const& rhs) {
   if (lhs.size() != rhs.size()) { return false; }
-  for (auto const & [ decl, binding ] : lhs.keys_) {
+  for (auto const& [decl, binding] : lhs.keys_) {
     if (auto iter = rhs.keys_.find(decl); iter != rhs.keys_.end()) {
       if (binding.type_ != iter->second.type_) { return false; }
       if (not binding.type_->TestEquality(lhs.buf_.raw(binding.offset_),
@@ -23,7 +23,7 @@ bool operator==(ConstantBinding const& lhs, ConstantBinding const& rhs) {
 ir::Results ConstantBinding::get_constant(ast::Declaration const* decl) const {
   auto iter = keys_.find(decl);
   if (iter == keys_.end()) { return ir::Results{}; }
-  auto[type, offset] = iter->second;
+  auto [type, offset] = iter->second;
   return ir::Results::FromRaw(buf_.raw(offset),
                               type->bytes(core::Interpretter()));
 }
@@ -31,9 +31,9 @@ ir::Results ConstantBinding::get_constant(ast::Declaration const* decl) const {
 std::variant<ir::Results, std::pair<size_t, core::Bytes>>
 ConstantBinding::reserve_slot(ast::Declaration const* decl,
                               type::Type const* t) {
-  auto arch                  = core::Interpretter();
-  auto bytes                 = t->bytes(arch);
-  auto[iter, newly_inserted] = keys_.try_emplace(decl);
+  auto arch                   = core::Interpretter();
+  auto bytes                  = t->bytes(arch);
+  auto [iter, newly_inserted] = keys_.try_emplace(decl);
   if (not newly_inserted) {
     return ir::Results::FromRaw(buf_.raw(iter->second.offset_), bytes);
   }

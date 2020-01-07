@@ -9,7 +9,7 @@ struct DiagnosticConsumer {
   virtual ~DiagnosticConsumer() {}
 
   template <typename Diag>
-    void Consume(Diag const& diag) {
+  void Consume(Diag const& diag) {
     ConsumeImpl(diag.ToMessage());
     ++num_consumed_;
   }

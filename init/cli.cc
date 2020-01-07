@@ -58,7 +58,7 @@ int ParseAndRun(int argc, char *argv[]) {
     }
   }
 
-  for (auto & [ name, handler ] : ::cli::internal::all_handlers) {
+  for (auto &[name, handler] : ::cli::internal::all_handlers) {
     if (handler->call_once_ and not handler->called_) {
       handler->parse_and_apply_("");
     }
@@ -81,12 +81,12 @@ int ShowUsage() {
 
   constexpr int terminal_width = 80;
   int max_name_length          = 0;
-  for (const auto & [ name, handler ] : ::cli::internal::all_handlers) {
+  for (const auto &[name, handler] : ::cli::internal::all_handlers) {
     handlers[handler].push_back(name);
     max_name_length = std::max<int>(max_name_length, name.size());
   }
 
-  for (const auto & [ handler, names ] : handlers) {
+  for (const auto &[handler, names] : handlers) {
     std::string const &msg = handler->msg_;
     size_t msg_index       = 0;
 

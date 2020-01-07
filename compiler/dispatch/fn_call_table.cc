@@ -13,8 +13,8 @@
 namespace compiler {
 namespace {
 
-std::pair<ir::Results, ir::OutParams> SetReturns(ir::Builder& bldr,
-    internal::ExprData const &expr_data,
+std::pair<ir::Results, ir::OutParams> SetReturns(
+    ir::Builder &bldr, internal::ExprData const &expr_data,
     absl::Span<type::Type const *> final_out_types) {
   auto const &ret_types = expr_data.type()->as<type::Function>().output;
   ir::Results results;
@@ -93,7 +93,7 @@ void EmitRuntimeDispatch(
   auto iter = table.begin();
 
   while (true) {
-    auto const & [ overload, expr_data ] = *iter;
+    auto const &[overload, expr_data] = *iter;
     ++iter;
 
     if (iter == table.end()) {
@@ -152,7 +152,7 @@ type::QualType FnCallDispatchTable::ComputeResultQualType(
     absl::flat_hash_map<ast::Expression const *, internal::ExprData> const
         &table) {
   std::vector<std::vector<type::Type const *>> results;
-  for (auto const & [ overload, expr_data ] : table) {
+  for (auto const &[overload, expr_data] : table) {
     DEBUG_LOG("dispatch-verify")
     ("Extracting return type for ", overload->DebugString(), " of type ",
      expr_data.type()->to_string());
@@ -179,7 +179,7 @@ ir::Results FnCallDispatchTable::EmitCall(
     // generate runtime dispatch code. It will amount to only a few
     // unconditional jumps between blocks which will be optimized out, but
     // there's no sense in generating them in the first place..
-    auto const & [ overload, expr_data ] = *table_.begin();
+    auto const &[overload, expr_data] = *table_.begin();
     return EmitCallOneOverload(compiler, overload, expr_data, args);
   } else {
     auto &bldr           = compiler->builder();
@@ -188,7 +188,7 @@ ir::Results FnCallDispatchTable::EmitCall(
 
     EmitRuntimeDispatch(bldr, table_, callee_to_block, args);
 
-    for (auto const & [ overload, expr_data ] : table_) {
+    for (auto const &[overload, expr_data] : table_) {
       bldr.CurrentBlock() = callee_to_block[overload];
       // Argument preparation is done inside EmitCallOneOverload
       EmitCallOneOverload(compiler, overload, expr_data, args);

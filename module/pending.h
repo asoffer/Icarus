@@ -68,7 +68,8 @@ CanonicalizePath(frontend::FileName const &file_name);
 }  // namespace internal
 
 template <typename ModType>
-base::expected<Pending<ModType>> ImportModule(frontend::FileName const &file_name) {
+base::expected<Pending<ModType>> ImportModule(
+    frontend::FileName const &file_name) {
   std::lock_guard lock(internal::mtx);
   ASSIGN_OR(return _.error(),  //
                    auto dependee, internal::CanonicalizePath(file_name));

@@ -5,8 +5,8 @@
 
 #include "ast/scope/scope.h"
 #include "base/move_func.h"
-#include "ir/overload_set.h"
 #include "ir/block_def.h"
+#include "ir/overload_set.h"
 #include "module/module.h"
 
 namespace ir {

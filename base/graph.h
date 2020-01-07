@@ -26,13 +26,13 @@ struct Graph {
     auto adj_list = adj_lists_;
 
     base::Graph<T> reverse;
-    for (auto const & [ key, vals ] : adj_list) {
+    for (auto const& [key, vals] : adj_list) {
       reverse.add_node(key);
       for (auto const& val : vals) { reverse.add_edge(val, key); }
     }
 
     std::queue<T> empty_keys;
-    for (auto & [ key, vals ] : adj_list) {
+    for (auto& [key, vals] : adj_list) {
       if (vals.empty()) { empty_keys.push(key); }
     }
 

@@ -28,7 +28,8 @@ struct ExecutionContext {
     return call_stack_.back().regs_.get<T>(r);
   }
 
-  // TODO determine if this is actually used and if not, remove the #include "ir/reg_or.h".
+  // TODO determine if this is actually used and if not, remove the #include
+  // "ir/reg_or.h".
   template <typename T>
   T resolve(ir::RegOr<T> val) const {
     return val.resolve([&](ir::Reg r) { return resolve<T>(r); });
@@ -43,4 +44,4 @@ void Execute(ir::AnyFunc fn, base::untyped_buffer const &arguments,
 
 }  // namespace interpretter
 
-#endif // ICARUS_INTERPRETTER_EXECUTE_H
+#endif  // ICARUS_INTERPRETTER_EXECUTE_H

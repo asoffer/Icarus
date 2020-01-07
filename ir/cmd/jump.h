@@ -2,11 +2,11 @@
 #define ICARUS_IR_CMD_JUMP_H
 
 #include <cstring>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <type_traits>
 #include <utility>
-#include <memory>
 #include <variant>
 
 #include "base/stringify.h"
@@ -36,12 +36,12 @@ struct JumpCmd {
 
   struct RetJump {};
   struct UncondJump {
-    BasicBlock * block;
+    BasicBlock* block;
   };
   struct CondJump {
     Reg reg;
-    BasicBlock * true_block;
-    BasicBlock * false_block;
+    BasicBlock* true_block;
+    BasicBlock* false_block;
   };
   struct ChooseJump {
     explicit ChooseJump(absl::Span<std::string_view const> b)
@@ -120,29 +120,28 @@ struct JumpCmd {
   }
 
   std::string DebugString() const {
-    return Visit(
-        [](auto const& j) -> std::string {
-          using type = std::decay_t<decltype(j)>;
-          using base::stringify;
-          if constexpr (std::is_same_v<type, RetJump>) {
-            return "return";
-          } else if constexpr (std::is_same_v<type, UncondJump>) {
-            return absl::StrCat("uncond ", stringify(j.block));
-          } else if constexpr (std::is_same_v<type, CondJump>) {
-            return absl::StrCat("cond ", stringify(j.reg),
-                                " false: ", stringify(j.false_block),
-                                ", true: ", stringify(j.true_block));
-          } else if constexpr (std::is_same_v<type, ChooseJump>) {
-            std::string out = "choose( ";
-            for (std::string_view name : j.blocks()) {
-              absl::StrAppend(&out, name, " ");
-            }
-            absl::StrAppend(&out, ")");
-            return out;
-          } else {
-            static_assert(base::always_false<type>());
-          }
-        });
+    return Visit([](auto const& j) -> std::string {
+      using type = std::decay_t<decltype(j)>;
+      using base::stringify;
+      if constexpr (std::is_same_v<type, RetJump>) {
+        return "return";
+      } else if constexpr (std::is_same_v<type, UncondJump>) {
+        return absl::StrCat("uncond ", stringify(j.block));
+      } else if constexpr (std::is_same_v<type, CondJump>) {
+        return absl::StrCat("cond ", stringify(j.reg),
+                            " false: ", stringify(j.false_block),
+                            ", true: ", stringify(j.true_block));
+      } else if constexpr (std::is_same_v<type, ChooseJump>) {
+        std::string out = "choose( ";
+        for (std::string_view name : j.blocks()) {
+          absl::StrAppend(&out, name, " ");
+        }
+        absl::StrAppend(&out, ")");
+        return out;
+      } else {
+        static_assert(base::always_false<type>());
+      }
+    });
   }
 
  private:

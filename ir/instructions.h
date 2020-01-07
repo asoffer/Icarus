@@ -553,7 +553,9 @@ struct PrintInstruction : base::Clone<PrintInstruction<T>, Instruction> {
     value.apply([&](auto v) { writer->Write(v); });
   }
 
-  void Inline(InstructionInliner const& inliner) override { inliner.Inline(value); }
+  void Inline(InstructionInliner const& inliner) override {
+    inliner.Inline(value);
+  }
 
   RegOr<T> value;
 };
@@ -843,7 +845,9 @@ struct PrintEnumInstruction : base::Clone<PrintEnumInstruction, Instruction> {
     writer->Write(enum_type);
   }
 
-  void Inline(InstructionInliner const& inliner) override { inliner.Inline(value); }
+  void Inline(InstructionInliner const& inliner) override {
+    inliner.Inline(value);
+  }
 
   RegOr<EnumVal> value;
   type::Enum const* enum_type;
@@ -871,7 +875,9 @@ struct PrintFlagsInstruction : base::Clone<PrintFlagsInstruction, Instruction> {
     writer->Write(flags_type);
   }
 
-  void Inline(InstructionInliner const& inliner) override { inliner.Inline(value); }
+  void Inline(InstructionInliner const& inliner) override {
+    inliner.Inline(value);
+  }
 
   RegOr<FlagsVal> value;
   type::Flags const* flags_type;
@@ -897,7 +903,8 @@ struct XorFlagsInstruction
     : base::Clone<XorFlagsInstruction, BinaryInstruction<FlagsVal>> {
   static constexpr cmd_index_t kIndex = internal::kXorFlagsInstructionNumber;
   XorFlagsInstruction(RegOr<FlagsVal> const& lhs, RegOr<FlagsVal> const& rhs)
-      :base::Clone<XorFlagsInstruction, BinaryInstruction<FlagsVal>>(lhs, rhs) {}
+      : base::Clone<XorFlagsInstruction, BinaryInstruction<FlagsVal>>(lhs,
+                                                                      rhs) {}
   ~XorFlagsInstruction() override {}
 
   static FlagsVal Apply(FlagsVal lhs, FlagsVal rhs) { return lhs ^ rhs; }
@@ -938,8 +945,8 @@ struct OrFlagsInstruction
     : base::Clone<OrFlagsInstruction, BinaryInstruction<FlagsVal>> {
   static constexpr cmd_index_t kIndex = internal::kOrFlagsInstructionNumber;
   OrFlagsInstruction(RegOr<FlagsVal> const& lhs, RegOr<FlagsVal> const& rhs)
-      : base::Clone<OrFlagsInstruction, BinaryInstruction<FlagsVal>>(lhs,
-                                                                      rhs) {}
+      : base::Clone<OrFlagsInstruction, BinaryInstruction<FlagsVal>>(lhs, rhs) {
+  }
   ~OrFlagsInstruction() override {}
 
   static FlagsVal Apply(FlagsVal lhs, FlagsVal rhs) { return lhs | rhs; }
@@ -1046,7 +1053,9 @@ struct EnumerationInstruction
                         absl::StrJoin(names_, ", "), ")");
   }
 
-  void Inline(InstructionInliner const& inliner) override { inliner.Inline(result); }
+  void Inline(InstructionInliner const& inliner) override {
+    inliner.Inline(result);
+  }
 
   Kind kind_;
   module::BasicModule* mod_;
@@ -1071,7 +1080,9 @@ struct OpaqueTypeInstruction : base::Clone<OpaqueTypeInstruction, Instruction> {
     return absl::StrCat(stringify(result), " = opaque ", stringify(mod));
   }
 
-  void Inline(InstructionInliner const& inliner) override { inliner.Inline(result); }
+  void Inline(InstructionInliner const& inliner) override {
+    inliner.Inline(result);
+  }
 
   module::BasicModule const* mod;
   Reg result;

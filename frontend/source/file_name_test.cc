@@ -18,10 +18,9 @@ TEST_CASE("Canonicalization") {
   SECTION("Same file") {
     REQUIRE_ASSIGN(auto name1, CanonicalFileName::Make(FileName{
                                    "frontend/source/testdata/empty_file.txt"}));
-    REQUIRE_ASSIGN(
-        auto name2,
-        CanonicalFileName::Make(FileName{"frontend/source/testdata/./../../"
-                                         "source/./testdata/empty_file.txt"}));
+    REQUIRE_ASSIGN(auto name2, CanonicalFileName::Make(FileName{
+                                   "frontend/source/testdata/./../../"
+                                   "source/./testdata/empty_file.txt"}));
     CHECK(name1 == name2);
   }
 }

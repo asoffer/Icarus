@@ -24,7 +24,6 @@ TEST(Guarded, LockingRValue) {
   EXPECT_FALSE(MockMutex::locked());
 }
 
-
 TEST(Guarded, LockingLValue) {
   ASSERT_FALSE(MockMutex::locked()) << "Test initialization failure";
 

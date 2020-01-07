@@ -52,7 +52,7 @@ TEST(Variant, MultiVar) {
   //           type::Bool}}),
   //   });
 
-  EXPECT_THAT(type::MultiVar({}),IsEmpty());
+  EXPECT_THAT(type::MultiVar({}), IsEmpty());
 
   EXPECT_THAT(type::MultiVar({std::vector{type::Int64, type::Bool},
                               std::vector{type::Int64, type::Bool}}),

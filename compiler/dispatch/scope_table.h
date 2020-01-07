@@ -9,11 +9,11 @@
 #include "compiler/dispatch/jump_table.h"
 #include "compiler/dispatch/match.h"
 #include "compiler/dispatch/overload.h"
-#include "type/qual_type.h"
 #include "core/fn_args.h"
 #include "core/fn_params.h"
 #include "ir/jump.h"
 #include "ir/scope_def.h"
+#include "type/qual_type.h"
 
 namespace compiler {
 struct Compiler;  // TODO move into it's own header.

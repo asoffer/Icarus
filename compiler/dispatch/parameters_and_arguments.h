@@ -24,7 +24,7 @@ bool ParamsCoverArgs(core::FnArgs<type::QualType> const &args,
   auto expanded_fnargs = ExpandedFnArgs(args);
   for (auto const &expanded_arg : expanded_fnargs) {
     DEBUG_LOG("ParamsCoverArgs")("Expansion: ", expanded_arg.to_string());
-    for (auto const & [ k, v ] : table) {
+    for (auto const &[k, v] : table) {
       static_assert(
           std::is_same_v<
               decltype(get_params(k, v)),

@@ -44,7 +44,7 @@ TEST(OverloadSet, Callable) {
       [](absl::Span<type::Type const *const>) -> std::optional<ir::AnyFunc> {
         return ir::ForeignFn(TestFn1, type::Func({}, {}));
       });
-  auto fn = os[std::vector<type::Type const*>()];
+  auto fn = os[std::vector<type::Type const *>()];
   ASSERT_TRUE(fn.has_value());
   ASSERT_FALSE(fn->is_fn());
   EXPECT_EQ(fn->foreign().get(), TestFn1);

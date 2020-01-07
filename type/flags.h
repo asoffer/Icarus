@@ -18,7 +18,7 @@ struct Flags : public type::Type {
   Flags(module::BasicModule const *mod,
         absl::flat_hash_map<std::string, ir::FlagsVal> vals)
       : mod_(mod), vals_(std::move(vals)) {
-    for (auto & [ name, val ] : vals_) {
+    for (auto &[name, val] : vals_) {
       All |= val.value;
       members_.emplace(val, name);
     }

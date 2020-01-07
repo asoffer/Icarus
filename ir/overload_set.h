@@ -28,14 +28,15 @@ struct OverloadSet {
           create = Closed)
       : create_(std::move(create)) {
     for (AnyFunc f : fns) {
-      auto *fn_type = f.is_fn() ? f.func()->type() : f.foreign().type();
+      auto *fn_type         = f.is_fn() ? f.func()->type() : f.foreign().type();
       auto [iter, inserted] = fns_.emplace(fn_type->input, f);
       static_cast<void>(inserted);
       ASSERT(inserted == true);
     }
   }
 
-  // TODO Change to a named method. This doesn't feel as great as I thought it would.
+  // TODO Change to a named method. This doesn't feel as great as I thought it
+  // would.
   std::optional<AnyFunc> operator[](
       std::vector<type::Type const *> const &inputs) {
     auto [iter, inserted] = fns_.emplace(inputs, std::nullopt);
@@ -47,9 +48,10 @@ struct OverloadSet {
  private:
   std::function<std::optional<AnyFunc>(absl::Span<type::Type const *const>)>
       create_;
-  absl::flat_hash_map<std::vector<type::Type const *>, std::optional<AnyFunc>> fns_;
+  absl::flat_hash_map<std::vector<type::Type const *>, std::optional<AnyFunc>>
+      fns_;
 };
 
 }  // namespace ir
 
-#endif // ICARUS_IR_OVERLOAD_SET_H
+#endif  // ICARUS_IR_OVERLOAD_SET_H

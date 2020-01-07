@@ -7,7 +7,9 @@ namespace ir {
 
 std::ostream &operator<<(std::ostream &os, BasicBlock const &b) {
   os << " [with " << b.num_incoming() << " incoming]\n";
-  for (auto const &inst : b.instructions_) { os << "    " << inst->to_string() << '\n'; }
+  for (auto const &inst : b.instructions_) {
+    os << "    " << inst->to_string() << '\n';
+  }
   os << b.jump_.DebugString() << "\n";
   return os;
 }

@@ -17,7 +17,7 @@ struct LocalBlockInterpretation {
   explicit LocalBlockInterpretation(
       absl::flat_hash_map<ast::BlockNode const *, BasicBlock *> data)
       : data_(std::move(data)) {
-    for (auto[block_node, _] : data_) {
+    for (auto [block_node, _] : data_) {
       name_to_node_.emplace(block_node->name(), block_node);
     }
   }
@@ -45,4 +45,4 @@ struct LocalBlockInterpretation {
 
 }  // namespace ir
 
-#endif // ICARUS_IR_LOCAL_BLOCK_INTERPRETATION_H
+#endif  // ICARUS_IR_LOCAL_BLOCK_INTERPRETATION_H

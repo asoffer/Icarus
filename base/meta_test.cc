@@ -31,7 +31,8 @@ TEST_CASE("Type lists") {
 TEST_CASE("Type lists concatenation") {
   CHECK(std::is_same_v<type_list_cat<>, type_list<>>);
   CHECK(std::is_same_v<type_list_cat<type_list<>>, type_list<>>);
-  CHECK(std::is_same_v<type_list_cat<type_list<int, bool>>, type_list<int, bool>>);
+  CHECK(std::is_same_v<type_list_cat<type_list<int, bool>>,
+                       type_list<int, bool>>);
   CHECK(std::is_same_v<type_list_cat<type_list<>, type_list<>>, type_list<>>);
   CHECK(std::is_same_v<type_list_cat<type_list<int>, type_list<>>,
                        type_list<int>>);

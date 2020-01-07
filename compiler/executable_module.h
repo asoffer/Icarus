@@ -18,35 +18,35 @@ struct ExecutableModule : CompiledModule {
   // TODO hide this
   void set_main(ir::CompiledFn *main_fn) {}
 
-  protected:
-   void ProcessNodes(base::PtrSpan<ast::Node const> nodes) override {
-     diagnostic::StreamingConsumer consumer(stderr);
-     compiler::Compiler c(this, consumer);
+ protected:
+  void ProcessNodes(base::PtrSpan<ast::Node const> nodes) override {
+    diagnostic::StreamingConsumer consumer(stderr);
+    compiler::Compiler c(this, consumer);
 
-     // Do one pass of verification over constant declarations. Then come
-     // back a second time to handle the remaining.
-     // TODO this may be necessary in library modules too.
-     std::vector<ast::Node const *> deferred;
-     for (ast::Node const *node : nodes) {
-       if (auto const *decl = node->if_as<ast::Declaration>()) {
-         if (decl->flags() & ast::Declaration::f_IsConst) {
-           c.Visit(decl, VerifyTypeTag{});
-           continue;
-         }
-       }
-       deferred.push_back(node);
-     }
+    // Do one pass of verification over constant declarations. Then come
+    // back a second time to handle the remaining.
+    // TODO this may be necessary in library modules too.
+    std::vector<ast::Node const *> deferred;
+    for (ast::Node const *node : nodes) {
+      if (auto const *decl = node->if_as<ast::Declaration>()) {
+        if (decl->flags() & ast::Declaration::f_IsConst) {
+          c.Visit(decl, VerifyTypeTag{});
+          continue;
+        }
+      }
+      deferred.push_back(node);
+    }
 
-     for (ast::Node const *node : deferred) { c.Visit(node, VerifyTypeTag{}); }
+    for (ast::Node const *node : deferred) { c.Visit(node, VerifyTypeTag{}); }
 
-     if (consumer.num_consumed() > 0) { return; }
-     if (c.num_errors() > 0) { return; }
+    if (consumer.num_consumed() > 0) { return; }
+    if (c.num_errors() > 0) { return; }
 
-     ProcessExecutableBody(&c, nodes, main());
-   }
+    ProcessExecutableBody(&c, nodes, main());
+  }
 
-  private:
-   ir::CompiledFn main_ = ir::CompiledFn(type::Func({}, {}), {});
+ private:
+  ir::CompiledFn main_ = ir::CompiledFn(type::Func({}, {}), {});
 };
 
 }  // namespace compiler

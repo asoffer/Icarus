@@ -133,7 +133,6 @@ void DependentDecls::Visit(ast::ScopeNode const *node,
   for (auto const &block : node->blocks()) { Visit(&block, d); }
 }
 
-
 void DependentDecls::Visit(ast::StructLiteral const *node,
                            ast::Declaration const *d) {
   for (auto const &f : node->fields()) { Visit(&f, d); }
@@ -152,7 +151,7 @@ void DependentDecls::Visit(ast::StructType const *node,
 
 void DependentDecls::Visit(ast::Switch const *node, ast::Declaration const *d) {
   if (node->expr_) { Visit(node->expr_.get(), d); }
-  for (auto & [ body, cond ] : node->cases_) {
+  for (auto &[body, cond] : node->cases_) {
     Visit(body.get(), d);
     Visit(cond.get(), d);
   }

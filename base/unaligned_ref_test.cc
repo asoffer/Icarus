@@ -22,7 +22,6 @@ TEST_CASE("has reference semantics") {
     int m    = ref;
     CHECK(n == m);
   }
-
 }
 
 TEST_CASE("Converts on equality") {
@@ -89,7 +88,6 @@ TEST_CASE("Allows unaligned") {
     CHECK(ref == 0x12345678);
   }
 }
-
 
 TEST_CASE("Assignment") {
   SECTION("Aligned") {

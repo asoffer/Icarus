@@ -47,7 +47,7 @@ struct Addr {
 
   std::string to_string() const;
 
-  private:
+ private:
   uintptr_t data_;
 };
 

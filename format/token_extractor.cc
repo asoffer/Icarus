@@ -134,14 +134,13 @@ void TokenExtractor::Visit(ast::ParameterizedStructLiteral const *node) {
   for (auto &f : node->fields()) { Visit(&f); }
 }
 
-
 void TokenExtractor::Visit(ast::StructType const *node) {
   for (auto &arg : node->args_) { Visit(arg.get()); }
 }
 
 void TokenExtractor::Visit(ast::Switch const *node) {
   if (node->expr_) { Visit(node->expr_.get()); }
-  for (auto & [ body, cond ] : node->cases_) {
+  for (auto &[body, cond] : node->cases_) {
     Visit(body.get());
     Visit(cond.get());
   }

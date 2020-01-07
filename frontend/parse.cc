@@ -215,7 +215,7 @@ std::unique_ptr<ast::Node> BuildCallImpl(
         if (positional_error_spans.empty()) {
           last_named_span_before_error = b->lhs()->span;
         }
-        auto[lhs, rhs] = std::move(*b).extract();
+        auto [lhs, rhs] = std::move(*b).extract();
         args.emplace_back(std::string{lhs->as<ast::Identifier>().token()},
                           std::move(rhs));
       } else {
@@ -233,7 +233,7 @@ std::unique_ptr<ast::Node> BuildCallImpl(
   } else {
     if (ast::Binop *b = args_expr->if_as<ast::Binop>();
         b and b->op() == frontend::Operator::Assign) {
-      auto[lhs, rhs] = std::move(*b).extract();
+      auto [lhs, rhs] = std::move(*b).extract();
       args.emplace_back(std::string{lhs->as<ast::Identifier>().token()},
                         std::move(rhs));
     } else {
@@ -562,7 +562,7 @@ std::unique_ptr<ast::Node> BuildNormalFunctionLiteral(
     absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   auto span   = SourceRange(nodes[0]->span.begin(), nodes.back()->span.end());
   auto *binop = &nodes[0]->as<ast::Binop>();
-  auto[lhs, rhs] = std::move(*binop).extract();
+  auto [lhs, rhs] = std::move(*binop).extract();
   return BuildFunctionLiteral(
       std::move(span), ExtractInputs(std::move(lhs)), std::move(rhs),
       std::move(nodes[1]->as<Statements>()), false, error_log);
@@ -640,7 +640,7 @@ std::unique_ptr<ast::Node> BuildControlHandler(
 std::unique_ptr<ast::Node> BuildScopeNode(
     absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   SourceRange span(nodes.front()->span.begin(), nodes.back()->span.end());
-  auto[callee, ordered_fn_args] =
+  auto [callee, ordered_fn_args] =
       std::move(nodes[0]->as<ast::Call>()).extract();
   std::vector<ast::BlockNode> blocks;
   blocks.push_back(std::move(nodes[1]->as<ast::BlockNode>()));
@@ -658,7 +658,7 @@ std::unique_ptr<ast::Node> BuildBlockNode(
         std::move(span), std::string{id->token()},
         std::move(nodes.back()->as<Statements>()).extract());
   } else if (auto *index = nodes.front()->if_as<ast::Index>()) {
-    auto[lhs, rhs] = std::move(*index).extract();
+    auto [lhs, rhs] = std::move(*index).extract();
     std::vector<std::unique_ptr<ast::Expression>> args;
     if (auto *cl = rhs->if_as<ast::CommaList>()) {
       args = std::move(*cl).extract();

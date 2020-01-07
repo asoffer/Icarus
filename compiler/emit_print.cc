@@ -36,10 +36,11 @@ void Compiler::Visit(type::Array const *a, ir::Results const &val,
       builder().UncondJump(cond_block);
 
       builder().CurrentBlock() = cond_block;
-      auto *phi           = builder().PhiInst<ir::Addr>();
-      auto *sep           = builder().PhiInst<std::string_view>();
-      builder().CondJump(builder().Eq(ir::RegOr<ir::Addr>(phi->result), end_ptr),
-                    land_block, loop_body);
+      auto *phi                = builder().PhiInst<ir::Addr>();
+      auto *sep                = builder().PhiInst<std::string_view>();
+      builder().CondJump(
+          builder().Eq(ir::RegOr<ir::Addr>(phi->result), end_ptr), land_block,
+          loop_body);
 
       builder().CurrentBlock() = loop_body;
       builder().Print(ir::RegOr<std::string_view>(sep->result));

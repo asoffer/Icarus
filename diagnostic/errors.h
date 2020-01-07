@@ -82,7 +82,7 @@ struct MismatchedAssignmentCount {
 
 struct MismatchedInitializationCount {
   static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "mismatched-initialization-count";
+  static constexpr std::string_view kName = "mismatched-initialization-count";
 
   DiagnosticMessage ToMessage() const {
     return DiagnosticMessage(
@@ -108,7 +108,7 @@ struct AssigningToConstant {
              to->to_string()));
   }
 
-  type::Type const * to;
+  type::Type const* to;
   frontend::SourceRange range;
 };
 

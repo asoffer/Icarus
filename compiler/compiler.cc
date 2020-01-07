@@ -191,7 +191,7 @@ ir::CompiledFn Compiler::MakeThunk(ast::Expression const *expr,
     } else {
       extracted_types = {type};
     }
-  
+
     // TODO is_big()?
     for (size_t i = 0; i < vals.size(); ++i) {
       auto const *t = extracted_types[i];

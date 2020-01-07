@@ -52,8 +52,6 @@ struct CanonicalFileName {
   std::string name_;
 };
 
-
-
 }  // namespace frontend
 
-#endif // ICARUS_FRONTEND_SOURCE_FILE_NAME_H
+#endif  // ICARUS_FRONTEND_SOURCE_FILE_NAME_H

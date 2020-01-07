@@ -3,9 +3,9 @@
 
 #include "ast/ast_fwd.h"
 #include "base/expected.h"
-#include "type/qual_type.h"
 #include "core/fn_args.h"
 #include "core/fn_params.h"
+#include "type/qual_type.h"
 #include "type/typed_value.h"
 
 namespace compiler {

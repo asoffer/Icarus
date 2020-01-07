@@ -6,9 +6,9 @@
 #include "ast/ast.h"
 #include "base/expected.h"
 #include "compiler/dispatch/overload.h"
-#include "type/qual_type.h"
 #include "core/fn_args.h"
 #include "ir/jump.h"
+#include "type/qual_type.h"
 
 namespace compiler {
 

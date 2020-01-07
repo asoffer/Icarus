@@ -82,7 +82,7 @@ void EmitCallOneOverload(ir::ScopeDef const *scope_def,
 
   for (auto &[next_block_name, block_and_args] : name_to_block) {
     auto &[block, block_args] = block_and_args;
-    bldr.CurrentBlock() = block;
+    bldr.CurrentBlock()       = block;
     if (next_block_name == "start") {
       bldr.UncondJump(starting_block);
     } else if (next_block_name == "exit") {
@@ -160,7 +160,7 @@ void EmitRuntimeDispatch(
   auto iter = table.begin();
 
   while (true) {
-    auto const & [ jump, scope_def ] = *iter;
+    auto const &[jump, scope_def] = *iter;
     ++iter;
 
     if (iter == table.end()) {
@@ -187,7 +187,7 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
   ScopeDispatchTable table;
   table.scope_node_ = node;
   table.init_map_   = std::move(inits);
-  for (auto[jump, scope] : table.init_map_) {
+  for (auto [jump, scope] : table.init_map_) {
     auto result = MatchArgsToParams(jump->params(), args);
     if (not result) {
       failures[scope].emplace(jump, result.error());
@@ -207,7 +207,7 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
   // corresponding names, we should exit.
 
   DEBUG_LOG("ScopeNode")("Num tables = ", table.tables_.size());
-  for (auto & [ scope_def, one_table ] : table.tables_) {
+  for (auto &[scope_def, one_table] : table.tables_) {
     for (auto const &block : node->blocks()) {
       DEBUG_LOG("ScopeNode")
       ("Verifying dispatch for block `", block.name(), "`");
@@ -250,8 +250,8 @@ ir::Results ScopeDispatchTable::EmitCall(
   // definition which might be callable).
   absl::flat_hash_map<ir::ScopeDef const *, ir::LocalBlockInterpretation>
       block_interps;
-  for (auto const & [ scope_def, _ ] : tables_) {
-    auto[iter, success] = block_interps.emplace(
+  for (auto const &[scope_def, _] : tables_) {
+    auto [iter, success] = block_interps.emplace(
         scope_def, bldr.MakeLocalBlockInterpretation(scope_node_));
     static_cast<void>(success);
     ASSERT(success == true);
@@ -260,7 +260,7 @@ ir::Results ScopeDispatchTable::EmitCall(
   auto *starting_block = bldr.CurrentBlock();
   EmitRuntimeDispatch(bldr, init_map_, callee_to_block, args);
 
-  for (auto const & [ jump, scope_def ] : init_map_) {
+  for (auto const &[jump, scope_def] : init_map_) {
     bldr.CurrentBlock() = callee_to_block[jump];
     // Argument preparation is done inside EmitCallOneOverload
     EmitCallOneOverload(scope_def, starting_block, landing_block, compiler,
@@ -270,8 +270,8 @@ ir::Results ScopeDispatchTable::EmitCall(
   // TODO handle results
 
   bool more = bldr.more_stmts_allowed();
-  for (auto const & [ scope_def, one_table ] : tables_) {
-    for (auto const & [ node, table ] : one_table.blocks) {
+  for (auto const &[scope_def, one_table] : tables_) {
+    for (auto const &[node, table] : one_table.blocks) {
       DEBUG_LOG("EmitCall")(node->DebugString());
       bldr.CurrentBlock() = block_interps.at(scope_def)[node];
       bldr.allow_more_stmts();

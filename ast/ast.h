@@ -866,7 +866,7 @@ struct Goto : Node {
                 std::vector<std::unique_ptr<Call>> calls)
       : Node(std::move(span)) {
     for (auto &call : calls) {
-      auto[callee, ordered_args] = std::move(*call).extract();
+      auto [callee, ordered_args] = std::move(*call).extract();
       if (auto *id = callee->if_as<Identifier>()) {
         options_.emplace_back(std::string{id->token()},
                               std::move(ordered_args).DropOrder());

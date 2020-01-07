@@ -51,8 +51,7 @@ struct DispatchTable {
 
 inline type::QualType VerifyJumpDispatch(
     void *visitor, ExprPtr expr, absl::Span<ir::Jump const *const> overload_set,
-    core::FnArgs<std::pair<Expression const *, type::QualType>> const
-        &args,
+    core::FnArgs<std::pair<Expression const *, type::QualType>> const &args,
     std::vector<ir::BlockDef const *> *block_defs) {
   return type::QualType::Error();
 }
@@ -71,7 +70,7 @@ struct EmitDefaultInitTag {};
 struct EmitCopyAssignTag {};
 struct EmitMoveAssignTag {};
 
-struct LibraryModule; // TODO remove me.
+struct LibraryModule;  // TODO remove me.
 
 // These are the steps in a traditional compiler of verifying types and emitting
 // code. They're tied together because they don't necessarily happen in a
@@ -172,8 +171,7 @@ struct Compiler
   type::QualType const *qual_type_of(ast::ExprPtr expr) const;
   type::Type const *type_of(ast::Expression const *expr) const;
   void set_addr(ast::Declaration const *decl, ir::Reg addr);
-  type::QualType set_result(ast::ExprPtr expr,
-                                    type::QualType r);
+  type::QualType set_result(ast::ExprPtr expr, type::QualType r);
 
   ir::Reg addr(ast::Declaration const *decl) const;
   void set_dispatch_table(ast::ExprPtr expr, ast::DispatchTable &&table);
@@ -205,7 +203,7 @@ struct Compiler
   template <typename Fn>
   base::move_func<void()> *AddWork(ast::Node const *node, Fn &&fn) {
     DEBUG_LOG("AddWork")(node->DebugString());
-    auto[iter, success] =
+    auto [iter, success] =
         data_.deferred_work_.lock()->emplace(node, std::forward<Fn>(fn));
     ASSERT(success == true);
     return &iter->second;
@@ -309,7 +307,7 @@ struct Compiler
   void EmitCopyInit(type::Type const *from_type, ir::Results const &from_val,
                     type::Typed<ir::Reg> to_var);
 
-  CompilationData& data_;
+  CompilationData &data_;
   diagnostic::DiagnosticConsumer &diag_consumer_;
 };
 

@@ -127,9 +127,9 @@ void CombineBlocks(ir::CompiledFn* fn) {
       case 0: dead_sources.push(block.get()); break;
       // There's no sense in doing block combining for dead blocks.
       // A block is the start of a chain of combinable blocks if either:
-      // (a). It has one incoming block but it's parent has multiple outgoing blocks.
-      // (b). It has multiple incoming blocks and a single outgoing block.
-      // multiple incoming blocks
+      // (a). It has one incoming block but it's parent has multiple outgoing
+      // blocks. (b). It has multiple incoming blocks and a single outgoing
+      // block. multiple incoming blocks
       case 1: {  // case (a).
         auto* inc_block = *block->incoming_.begin();
         if (inc_block->jump_.kind() == ir::JumpCmd::Kind::Cond) {
@@ -142,7 +142,6 @@ void CombineBlocks(ir::CompiledFn* fn) {
         }
         break;
     }
-
   }
 
   RemoveDeadBlocks(std::move(dead_sources), fn);

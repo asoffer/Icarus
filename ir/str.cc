@@ -10,8 +10,8 @@ namespace ir {
 // TODO avoid double-storing the string.
 static base::guarded<absl::node_hash_map<std::string, Addr>> GlobalStringSet;
 std::string_view SaveStringGlobally(std::string const &str) {
-  auto handle         = GlobalStringSet.lock();
-  auto[iter, success] = handle->emplace(str, Addr::ReadOnly(0));
+  auto handle          = GlobalStringSet.lock();
+  auto [iter, success] = handle->emplace(str, Addr::ReadOnly(0));
   if (not success) { return iter->first; }
 
   // TODO This means we're storing strings during lexing even if we never intend
