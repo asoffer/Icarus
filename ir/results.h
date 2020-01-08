@@ -59,6 +59,18 @@ struct Results {
     }
   }
 
+  // This is a strange thing to add as an API for the sole purpose of inlining.
+  // Probably means this is the wrong abstraction.
+  template <typename Fn>
+  void for_each_reg(Fn f) {
+    for (size_t i = 0; i < is_reg_.size(); ++i) {
+      if (not is_reg_[i]) { continue; }
+      Reg r = buf_.get<Reg>(offset_[i]);
+      f(r);
+      buf_.set(offset_[i], r);
+    }
+  }
+
   Results GetResult(size_t index) const;
 
   std::string to_string() const;

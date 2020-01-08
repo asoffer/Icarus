@@ -98,9 +98,11 @@ void Builder::CondJump(RegOr<bool> cond, BasicBlock *true_block,
   }
 }
 
-void Builder::ChooseJump(absl::Span<std::string_view const> names,
-                         absl::Span<BasicBlock *const> blocks) {
-  CurrentBlock()->jump_ = JumpCmd::Choose(names);
+void Builder::ChooseJump(std::vector<std::string_view> names,
+                         std::vector<BasicBlock *> blocks,
+                         std::vector<core::FnArgs<type::Typed<Results>>> args) {
+  CurrentBlock()->jump_ =
+      JumpCmd::Choose(std::move(names), std::move(blocks), std::move(args));
 }
 
 void Builder::Init(type::Type const *t, Reg r) {

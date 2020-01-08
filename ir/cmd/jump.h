@@ -4,6 +4,7 @@
 #include <cstring>
 #include <memory>
 #include <string>
+#include <vector>
 #include <string_view>
 #include <type_traits>
 #include <utility>
@@ -11,7 +12,10 @@
 
 #include "base/stringify.h"
 #include "base/util.h"
+#include "core/fn_args.h"
 #include "ir/reg.h"
+#include "ir/results.h"
+#include "type/typed_value.h"
 
 namespace ir {
 struct BasicBlock;
@@ -24,8 +28,11 @@ struct JumpCmd {
   static JumpCmd Cond(Reg r, BasicBlock* true_block, BasicBlock* false_block) {
     return JumpCmd(CondJump{r, true_block, false_block});
   }
-  static JumpCmd Choose(absl::Span<std::string_view const> blocks) {
-    return JumpCmd(ChooseJump{blocks});
+  static JumpCmd Choose(std::vector<std::string_view> names,
+                        std::vector<BasicBlock *> blocks,
+                        std::vector<core::FnArgs<type::Typed<Results>>> args) {
+    return JumpCmd(
+        ChooseJump(std::move(names), std::move(blocks), std::move(args)));
   }
 
   JumpCmd(JumpCmd const&)     = default;
@@ -44,35 +51,24 @@ struct JumpCmd {
     BasicBlock* false_block;
   };
   struct ChooseJump {
-    explicit ChooseJump(absl::Span<std::string_view const> b)
-        : num_(b.size()), blocks_(new std::string_view[b.size()]) {
-      std::memcpy(blocks_.get(), b.data(), sizeof(std::string_view) * b.size());
+    explicit ChooseJump(std::vector<std::string_view> names,
+                        std::vector<BasicBlock *> blocks,
+                        std::vector<core::FnArgs<type::Typed<Results>>> args)
+        : names_(std::move(names)),
+          blocks_(std::move(blocks)),
+          args_(std::move(args)) {}
+
+    size_t size() const { return names_.size(); }
+    absl::Span<std::string_view const> names() const { return names_; }
+    absl::Span<BasicBlock* const> blocks() const { return blocks_; }
+    absl::Span<core::FnArgs<type::Typed<Results>> const> args() const {
+      return args_;
     }
-    ChooseJump(ChooseJump const& j)
-        : ChooseJump(absl::MakeSpan(&j.blocks_.get()[0], j.num_)) {}
-
-    ChooseJump(ChooseJump&&) = default;
-
-    ChooseJump& operator=(ChooseJump const& j) {
-      if (&j == this) { return *this; }
-      num_ = j.num_;
-      blocks_ =
-          std::unique_ptr<std::string_view[]>(new std::string_view[j.num_]);
-      std::memcpy(blocks_.get(), j.blocks_.get(),
-                  sizeof(std::string_view) * j.num_);
-      return *this;
-    }
-
-    size_t size() const { return num_; }
-    absl::Span<std::string_view const> blocks() const {
-      return absl::MakeSpan(blocks_.get(), num_);
-    }
-
-    ChooseJump& operator=(ChooseJump&&) = default;
 
    private:
-    size_t num_;
-    std::unique_ptr<std::string_view[]> blocks_;
+    std::vector<std::string_view> names_;
+    std::vector<BasicBlock *> blocks_;
+    std::vector<core::FnArgs<type::Typed<Results>>> args_;
   };
 
   enum class Kind { Return, Uncond, Cond, Choose };
@@ -133,7 +129,7 @@ struct JumpCmd {
                             ", true: ", stringify(j.true_block));
       } else if constexpr (std::is_same_v<type, ChooseJump>) {
         std::string out = "choose( ";
-        for (std::string_view name : j.blocks()) {
+        for (std::string_view name : j.names()) {
           absl::StrAppend(&out, name, " ");
         }
         absl::StrAppend(&out, ")");

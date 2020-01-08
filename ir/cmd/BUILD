@@ -6,6 +6,9 @@ cc_library(
     deps = [
         "//base:stringify",
         "//base:util",
+        "//core:fn_args",
         "//ir:reg",
+        "//ir:results",
+        "//type:typed_value",
     ],
 )

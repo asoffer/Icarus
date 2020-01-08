@@ -1046,6 +1046,10 @@ ir::Results Compiler::Visit(ast::Goto const *node, EmitValueTag) {
 
   std::vector<ir::BasicBlock *> blocks;
   blocks.reserve(node->options().size());
+
+  std::vector<core::FnArgs<type::Typed<ir::Results>>> args;
+  args.reserve(node->options().size());
+
   auto current_block = builder().CurrentBlock();
 
   for (auto const &opt : node->options()) {
@@ -1055,15 +1059,14 @@ ir::Results Compiler::Visit(ast::Goto const *node, EmitValueTag) {
 
     builder().CurrentBlock() = block;
 
-    opt.args().Transform([this](auto const &expr) {
+    args.push_back(opt.args().Transform([this](auto const &expr) {
       return type::Typed(Visit(expr.get(), EmitValueTag{}),
                          type_of(expr.get()));
-    });
-    // TODO wire args together
+    }));
   }
 
   builder().CurrentBlock() = current_block;
-  builder().ChooseJump(names, blocks);
+  builder().ChooseJump(std::move(names), std::move(blocks), std::move(args));
   return ir::Results{};
 }
 

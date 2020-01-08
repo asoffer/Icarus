@@ -1,5 +1,7 @@
 #include "ir/instruction_inliner.h"
 
+#include "type/typed_value.h"
+
 namespace ir {
 
 InstructionInliner::InstructionInliner(internal::BlockGroup* to_be_inlined,
@@ -25,6 +27,10 @@ InstructionInliner::InstructionInliner(internal::BlockGroup* to_be_inlined,
   }
 
   landing_block_ = into->AppendBlock();
+}
+
+void InstructionInliner::Inline(Results& r) const {
+  r.for_each_reg([this](Reg& reg) { Inline(reg); });
 }
 
 void InstructionInliner::Inline(BasicBlock*& block,
@@ -58,19 +64,32 @@ void InstructionInliner::InlineJump(BasicBlock* block) {
       Inline(j.false_block, block);
     } else if constexpr (std::is_same_v<type, JumpCmd::ChooseJump>) {
       std::string_view next_name = "";
-      for (std::string_view name : j.blocks()) {
+      size_t i = 0;
+      for (std::string_view name : j.names()) {
         if (name == "start" or name == "exit" or
             block_interp_.block_node(name)) {
           next_name = name;
           break;
         }
+        ++i;
       }
       ASSERT(next_name != "");
 
       auto& entry = named_blocks_[next_name];
       if (entry.first == nullptr) {
         entry.first = block->group()->AppendBlock();
+
+        *entry.first = *j.blocks()[i];
+        for (auto& inst : entry.first->instructions_) { inst->Inline(*this); }
+
+        entry.second =
+            j.args()[i].Transform([&](::type::Typed<Results> const& r) {
+              auto copy = r;
+              Inline(copy.get());
+              return copy;
+            });
       }
+
       block->jump_ = JumpCmd::Uncond(entry.first);
       entry.first->incoming_.insert(block);
     } else {

@@ -100,5 +100,24 @@ TEST_CASE("to_string") {
         "[offset(0), offset(2), offset(3), arg.4]");
 }
 
+TEST_CASE("for_each_reg") {
+  auto f = [](Reg& r) { r = Reg(r.value() + 100); };
+
+  SECTION("empty") {
+    Results r(1, 2, 3);
+    r.for_each_reg(f);
+    CHECK(r.get<int>(0) == RegOr<int>(1));
+    CHECK(r.get<int>(1) == RegOr<int>(2));
+    CHECK(r.get<int>(2) == RegOr<int>(3));
+  }
+
+  SECTION("Updates") {
+    Results r(1, Reg(2), Reg(3));
+    r.for_each_reg(f);
+    CHECK(r.get<int>(0) == RegOr<int>(1));
+    CHECK(r.get<Reg>(1) == Reg(102));
+    CHECK(r.get<Reg>(2) == Reg(103));
+  }
+}
 }  // namespace
 }  // namespace ir

@@ -360,8 +360,10 @@ struct Builder {
   void CondJump(RegOr<bool> cond, BasicBlock* true_block,
                 BasicBlock* false_block);
   void ReturnJump();
-  void ChooseJump(absl::Span<std::string_view const> names,
-                  absl::Span<BasicBlock* const> blocks);
+  // TODO: Probably better to have a data structure for this.
+  void ChooseJump(std::vector<std::string_view> names,
+                  std::vector<BasicBlock *> blocks,
+                  std::vector<core::FnArgs<type::Typed<Results>>> args);
 
   // Special members function instructions. Calling these typically calls
   // builtin functions (or, in the case of primitive types, do nothing).

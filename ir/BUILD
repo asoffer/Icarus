@@ -128,6 +128,7 @@ cc_library(
         ":results",
         "//base:debug",
         "//ir/cmd:jump",
+        "//type:typed_value",
         "@com_google_absl//absl/container:flat_hash_map",
     ]
 )
