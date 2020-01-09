@@ -68,6 +68,7 @@ cc_library(
         "//base:untyped_buffer",
         "//ir:addr",
         "//ir:foreign_fn",
+        "//ir:read_only_data",
         "//type:function",
         "//type:pointer",
         "//type:primitive",

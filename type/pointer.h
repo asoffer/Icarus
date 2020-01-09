@@ -8,6 +8,7 @@ struct Pointer : public Type {
   TYPE_FNS(Pointer);
   Pointer(Type const *t) : pointee(t) {}
 
+  bool is_big() const override { return false; }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -19,6 +20,7 @@ struct Pointer : public Type {
 struct BufferPointer : public Pointer {
   BufferPointer() = delete;
 
+  bool is_big() const override { return false; }
   void WriteTo(std::string *result) const override;
   BufferPointer(Type const *t) : Pointer(t) {}
 };

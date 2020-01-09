@@ -287,6 +287,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
                        std::is_same_v<Inst, ir::PrintInstruction<int64_t>> or
                        std::is_same_v<Inst, ir::PrintInstruction<float>> or
                        std::is_same_v<Inst, ir::PrintInstruction<double>> or
+                       std::is_same_v<Inst, ir::PrintInstruction<ir::Addr>> or
                        std::is_same_v<
                            Inst, ir::PrintInstruction<type::Type const *>> or
                        std::is_same_v<Inst,
@@ -295,6 +296,10 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     bool is_reg = iter->read<bool>();
     if constexpr (std::is_same_v<type, ::type::Type const *>) {
       std::cerr << ReadAndResolve<type>(is_reg, iter, ctx)->to_string();
+
+    } else if constexpr (std::is_same_v<type, ir::Addr>) {
+      std::cerr << ReadAndResolve<type>(is_reg, iter, ctx).to_string();
+
     } else {
       std::cerr << ReadAndResolve<type>(is_reg, iter, ctx);
     }
@@ -921,6 +926,8 @@ absl::flat_hash_map<
      ExecuteAdHocInstruction<ir::PrintInstruction<type::Type const *>>},
     {ir::PrintInstruction<std::string_view>::kIndex,
      ExecuteAdHocInstruction<ir::PrintInstruction<std::string_view>>},
+    {ir::PrintInstruction<ir::Addr>::kIndex,
+     ExecuteAdHocInstruction<ir::PrintInstruction<ir::Addr>>},
     {ir::PrintEnumInstruction::kIndex,
      ExecuteAdHocInstruction<ir::PrintEnumInstruction>},
     {ir::PrintFlagsInstruction::kIndex,
@@ -956,6 +963,8 @@ absl::flat_hash_map<
      ExecuteAdHocInstruction<ir::StoreInstruction<ir::FlagsVal>>},
     {ir::StoreInstruction<std::string_view>::kIndex,
      ExecuteAdHocInstruction<ir::StoreInstruction<std::string_view>>},
+    {ir::StoreInstruction<ir::Addr>::kIndex,
+     ExecuteAdHocInstruction<ir::StoreInstruction<ir::Addr>>},
     {ir::PhiInstruction<bool>::kIndex,
      ExecuteAdHocInstruction<ir::PhiInstruction<bool>>},
     {ir::PhiInstruction<uint8_t>::kIndex,

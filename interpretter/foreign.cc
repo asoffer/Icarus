@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "base/debug.h"
+#include "ir/read_only_data.h"
 #include "type/function.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
@@ -21,9 +22,9 @@ void ExtractReturnValue(ffi_arg *ret, ir::Addr ret_addr) {
   // size.
   if constexpr (std::is_integral_v<T> and sizeof(T) < sizeof(int)) {
     int int_val;
-    std::memcpy(&int_val, ret, sizeof(int));
+    std::memcpy(&int_val, ret, sizeof(int_val));
     T val = int_val;
-    std::memcpy(ret_addr.heap(), &val, sizeof(T));
+    std::memcpy(ret_addr.heap(), &val, sizeof(val));
   } else {
     std::memcpy(ret_addr.heap(), ret, sizeof(T));
   }
@@ -40,7 +41,8 @@ ffi_type *ToFfiType(type::Type const *t) {
   if (t == type::Nat64) { return &ffi_type_uint64; }
   if (t == type::Float32) { return &ffi_type_float; }
   if (t == type::Float64) { return &ffi_type_double; }
-  return nullptr;
+  if (t->is<type::Pointer>()) { return &ffi_type_pointer; }
+  UNREACHABLE();
 }
 }  // namespace
 
@@ -59,10 +61,28 @@ void CallForeignFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
 
   size_t i = 0;
   for (type::Type const *in : fn_type->input) {
-    arg_types.push_back(ASSERT_NOT_NULL(ToFfiType(in)));
-    // TODO if the type is a pointer or something that's not the same between
-    // the host and the interpretter, this won't work.
-    arg_vals.push_back(const_cast<void *>(arguments.raw(16 * i++)));
+    auto ffi_type = ToFfiType(in);
+    arg_types.push_back(ffi_type);
+    std::vector<void *> pointer_values;
+    // This is more than we need to reserve, but it's sufficient to ensure that
+    // push_back will never cause a reallocation so the pointers we take to
+    // elements are stable.
+    pointer_values.reserve(fn_type->input.size());
+    if (ffi_type == &ffi_type_pointer) {
+      ir::Addr addr = arguments.get<ir::Addr>(16 * i++);
+      switch (addr.kind()) {
+        case ir::Addr::Kind::Heap: NOT_YET();
+        case ir::Addr::Kind::Stack: {
+          pointer_values.push_back(stack->raw(addr.stack()));
+          arg_vals.push_back(&pointer_values.back());
+        } break;
+        case ir::Addr::Kind::ReadOnly: {
+          pointer_values.push_back(ir::ReadOnlyData.raw(addr.rodata()));
+        } break;
+      }
+    } else {
+      arg_vals.push_back(const_cast<void *>(arguments.raw(16 * i++)));
+    }
   }
 
   ASSERT(fn_type->output.size() == 1u);
@@ -74,8 +94,10 @@ void CallForeignFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
   // TODO this might fail and we need to figure out how to catch that.
   auto prep_result = ffi_prep_cif(&cif, FFI_DEFAULT_ABI, arg_types.size(),
                                   ToFfiType(out_type), arg_types.data());
+  DEBUG_LOG("foreign-errno")("before: ", errno);
   ASSERT(prep_result == FFI_OK);
   ffi_call(&cif, f.get(), &ret, arg_vals.data());
+  DEBUG_LOG("foreign-errno")("after: ", errno);
 
   if (out_type == type::Int8) {
     ExtractReturnValue<int8_t>(&ret, return_slots[0]);
@@ -98,7 +120,21 @@ void CallForeignFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
   } else if (out_type == type::Float64) {
     ExtractReturnValue<double>(&ret, return_slots[0]);
   } else if (out_type->is<type::Pointer>()) {
-    NOT_YET();
+    char *ptr;
+    std::memcpy(&ptr, &ret, sizeof(ptr));
+    ir::Addr addr;
+    uintptr_t ptr_int    = reinterpret_cast<uintptr_t>(ptr);
+    uintptr_t stack_head = reinterpret_cast<uintptr_t>(stack->raw(0));
+    uintptr_t stack_end =
+        reinterpret_cast<uintptr_t>(stack->raw(0)) + stack->size();
+    if (stack_head <= ptr_int and ptr_int < stack_end) {
+      addr = ir::Addr::Stack(ptr_int - stack_head);
+    } else {
+      // TODO read-only data?
+      addr = ir::Addr::Heap(ptr);
+    }
+    std::memcpy(return_slots[0].heap(), &addr, sizeof(addr));
+
   } else {
     NOT_YET();
   }
