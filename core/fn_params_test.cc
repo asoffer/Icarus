@@ -102,6 +102,13 @@ TEST_CASE("ambiguously callable") {
     CHECK(AmbiguouslyCallable(p1, p2, Ambiguity));
     CHECK(AmbiguouslyCallable(p2, p1, Ambiguity));
   }
+
+  // TODO Many many more tests covering MUST_NOT_NAME
+  SECTION("Anonymous") {
+    FnParams<int> p1{Param<int>{"", 1, MUST_NOT_NAME}};
+    FnParams<int> p2{Param<int>{"", 2, MUST_NOT_NAME}};
+    CHECK_FALSE(AmbiguouslyCallable(p1, p2, Ambiguity));
+  }
 }
 
 TEST_CASE("set") {

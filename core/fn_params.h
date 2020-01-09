@@ -20,7 +20,7 @@ enum FnParamFlags : uint8_t {
   HAS_DEFAULT = 1,
   // At moste one of MUST_NAME and MUST_NOT_NAME should be set.
   MUST_NAME     = 2,  // TODO: Not yet supported
-  MUST_NOT_NAME = 4,  // TODO: Not yet supported
+  MUST_NOT_NAME = 4,  // TODO: semi-supported, used by foreign functions.
   VARIADIC      = 8   // TODO: Not yet supported
 };
 
@@ -195,6 +195,18 @@ std::string stringify(FnParams<T> const& fn_params) {
                       "]");
 }
 
+// Returns the index just after the last instance of MUST_NOT_NAME. If
+// MUST_NOT_NAME is the last parameter, then we return params.size(). If it is
+// not present at all, we return 0.
+template <typename T>
+size_t MustNotNameTailIndex(FnParams<T> const& params) {
+  if (params.empty()) { return 0; }
+  for (int i = params.size() - 1; i >= 0; --i) {
+    if (params.at(i).flags & MUST_NOT_NAME) { return i + 1; }
+  }
+  return 0;
+}
+
 template <typename T, typename AmbiguityFn>
 bool AmbiguouslyCallable(FnParams<T> const& params1, FnParams<T> const& params2,
                          AmbiguityFn&& ambiguity) {
@@ -235,11 +247,15 @@ bool AmbiguouslyCallable(FnParams<T> const& params1, FnParams<T> const& params2,
     }
   }
 
+  // No need to attempt naming parameters that must not be named.
+  size_t starting_named_index =
+      std::max(MustNotNameTailIndex(params1), MustNotNameTailIndex(params2));
+
   size_t accumulator                  = 0;
   size_t checked_type_matches_through = 0;
   for (size_t i = 0; i < diffs.size(); ++i) {
     accumulator += diffs[i];
-    if (accumulator != 0) { continue; }
+    if (accumulator != 0 or i < starting_named_index) { continue; }
     // Ensure that any parameter name has a default value if it only appears in
     // one parameter set.
     for (auto [name, index1] : params1.lookup_) {

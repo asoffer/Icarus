@@ -70,7 +70,8 @@ core::FnParams<type::Typed<ast::Declaration const *>>
 Function::AnonymousFnParams() const {
   core::FnParams<type::Typed<ast::Declaration const *>> result;
   for (type::Type const *t : input) {
-    result.append("", type::Typed<ast::Declaration const *>(nullptr, t));
+    result.append("", type::Typed<ast::Declaration const *>(nullptr, t),
+                  core::MUST_NOT_NAME);
   }
   return result;
 }
