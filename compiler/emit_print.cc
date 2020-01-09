@@ -65,7 +65,7 @@ void Compiler::Visit(type::Array const *a, ir::Results const &val,
   });
 
   builder().Call(ir::AnyFunc{a->repr_func_.get()}, a->repr_func_.get()->type_,
-                 {val});
+                 {val}, ir::OutParams());
 }
 
 void Compiler::Visit(type::Enum const *t, ir::Results const &val,
@@ -172,7 +172,8 @@ void Compiler::Visit(type::Variant const *t, ir::Results const &val,
     }
   }
 
-  builder().Call(ir::AnyFunc{t->repr_func_}, t->repr_func_->type_, {val});
+  builder().Call(ir::AnyFunc{t->repr_func_}, t->repr_func_->type_, {val},
+                 ir::OutParams());
 }
 
 }  // namespace compiler

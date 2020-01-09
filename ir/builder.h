@@ -342,7 +342,7 @@ struct Builder {
   // `arguments` and output parameters. If output parameters are not present,
   // the function must return nothing.
   void Call(RegOr<AnyFunc> const& fn, type::Function const* f,
-            std::vector<Results> args, ir::OutParams outs = ir::OutParams());
+            std::vector<Results> args, ir::OutParams outs);
 
   // Jump instructions must be the last instruction in a basic block. They
   // handle control-flow, indicating which basic block control should be

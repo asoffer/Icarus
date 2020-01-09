@@ -16,6 +16,7 @@ struct OutParams {
   explicit OutParams(std::vector<Reg> regs) : regs_(std::move(regs)) {}
 
   Reg operator[](size_t n) const { return regs_[n]; }
+  size_t size() const { return regs_.size(); }
 
   void WriteByteCode(ByteCodeWriter *writer) const {
     writer->Write<uint16_t>(regs_.size());

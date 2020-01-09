@@ -1204,10 +1204,10 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
 
   CallInstruction(type::Function const* fn_type, RegOr<AnyFunc> const& fn,
                   std::vector<Results> args, OutParams outs)
-      : fn_type(fn_type),
-        fn(fn),
-        args(std::move(args)),
-        outs(std::move(outs)) {}
+      : fn_type(fn_type), fn(fn), args(std::move(args)), outs(std::move(outs)) {
+    ASSERT(this->outs.size() == this->fn_type->output.size());
+    ASSERT(this->args.size() == this->fn_type->input.size());
+  }
   ~CallInstruction() override {}
 
   std::string to_string() const {
@@ -1224,7 +1224,6 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
   }
 
   void WriteByteCode(ByteCodeWriter* writer) const override {
-    ASSERT(args.size() == fn_type->input.size());
     writer->Write(kIndex);
     writer->Write(fn.is_reg());
     fn.apply([&](auto v) { writer->Write(v); });
@@ -1263,6 +1262,8 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
 
   type::Function const* fn_type;
   RegOr<AnyFunc> fn;
+
+ private:
   std::vector<Results> args;
   OutParams outs;
 };

@@ -373,6 +373,7 @@ struct BlockNode : ScopeExpr<ExecScope> {
   std::string_view name() const { return name_; }
   base::PtrSpan<Node> stmts() { return stmts_; }
   base::PtrSpan<Node const> stmts() const { return stmts_; }
+  // TODO params() should be a reference to core::FnParams?
   base::PtrSpan<Expression> params() { return params_; }
   base::PtrSpan<Expression const> params() const { return params_; }
 

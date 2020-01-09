@@ -39,7 +39,9 @@ struct Token : public ast::Node {
   }
 
   void DebugStrAppend(std::string *out, size_t indent) const override {
-    UNREACHABLE();
+    out->append("[token: ");
+    out->append(token);
+    out->append("]");
   }
 
   std::string token;
