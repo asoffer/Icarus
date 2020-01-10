@@ -217,6 +217,25 @@ cc_test(
     ],
 )
 
+cc_library(
+    name = "untyped_buffer_view",
+    hdrs = ["untyped_buffer_view.h"],
+    deps = [
+        ":debug",
+    ],
+)
+
+cc_test(
+    name = "untyped_buffer_view_test",
+    srcs = ["untyped_buffer_view_test.cc"],
+    deps = [
+        ":untyped_buffer",
+        ":untyped_buffer_view",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+
 cc_lib(
     name = "util",
     deps = [],

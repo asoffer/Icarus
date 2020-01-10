@@ -32,6 +32,7 @@ struct untyped_buffer {
 
    private:
     friend struct untyped_buffer;
+    friend struct untyped_buffer_view;
     friend std::string stringify(untyped_buffer::const_iterator);
 
     friend constexpr bool operator<(const_iterator lhs, const_iterator rhs) {
@@ -249,7 +250,7 @@ struct untyped_buffer {
 
   size_t size_     = 0;
   size_t capacity_ = 0;
-  char *data_      = 0;
+  char *data_      = nullptr;
 };
 
 }  // namespace base
