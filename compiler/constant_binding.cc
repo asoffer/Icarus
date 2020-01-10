@@ -4,21 +4,6 @@
 #include "type/type.h"
 
 namespace compiler {
-bool operator==(ConstantBinding const& lhs, ConstantBinding const& rhs) {
-  if (lhs.size() != rhs.size()) { return false; }
-  for (auto const& [decl, binding] : lhs.keys_) {
-    if (auto iter = rhs.keys_.find(decl); iter != rhs.keys_.end()) {
-      if (binding.type_ != iter->second.type_) { return false; }
-      if (not binding.type_->TestEquality(lhs.buf_.raw(binding.offset_),
-                                          rhs.buf_.raw(iter->second.offset_))) {
-        return false;
-      }
-    } else {
-      return false;
-    }
-  }
-  return true;
-}
 
 ir::Results ConstantBinding::get_constant(ast::Declaration const* decl) const {
   auto iter = keys_.find(decl);

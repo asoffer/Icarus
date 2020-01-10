@@ -18,10 +18,6 @@ struct ConstantBinding {
  public:
   size_t size() const { return keys_.size(); }
 
-  bool contains(ast::Declaration const* decl) const {
-    return keys_.contains(decl);
-  }
-
   type::Type const* type_of(ast::Declaration const* decl) const {
     if (auto iter = keys_.find(decl); iter != keys_.end()) {
       return iter->second.type_;
@@ -36,10 +32,6 @@ struct ConstantBinding {
   ir::Results get_constant(ast::Declaration const* decl) const;
 
  private:
-  friend bool operator==(ConstantBinding const& lhs,
-                         ConstantBinding const& rhs);
-  friend struct Compiler;  // TODO remove me.
-
   struct Binding {
     type::Type const* type_;
     size_t offset_;
@@ -49,9 +41,6 @@ struct ConstantBinding {
   base::untyped_buffer buf_;
 };
 
-inline bool operator!=(ConstantBinding const& lhs, ConstantBinding const& rhs) {
-  return not(lhs == rhs);
-}
 }  // namespace compiler
 
 #endif  // ICARUS_COMPILER_CONSTANT_BINDING_H

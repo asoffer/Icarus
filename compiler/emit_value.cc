@@ -954,15 +954,10 @@ ir::Results Compiler::Visit(ast::EnumLiteral const *node, EmitValueTag) {
 ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
   for (auto const &param : node->params()) {
     auto *p = param.value.get();
-    if ((p->flags() & ast::Declaration::f_IsConst) and
-        not data_.current_constants_.contains(p)) {
-      return ir::Results{node};
-    }
+    if (p->flags() & ast::Declaration::f_IsConst) { NOT_YET(); }
 
     for (auto *dep : node->param_dep_graph_.sink_deps(param.value.get())) {
-      if (not data_.current_constants_.contains(dep)) {
-        return ir::Results{node};
-      }
+      NOT_YET();
     }
   }
 
