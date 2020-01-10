@@ -11,7 +11,6 @@
 #include "base/move_func.h"
 #include "compiler/constant_binding.h"
 #include "compiler/data.h"
-#include "compiler/dependent_data.h"
 #include "compiler/module.h"
 #include "diagnostic/consumer/consumer.h"
 #include "error/log.h"
@@ -191,9 +190,6 @@ struct Compiler
 
   module::Pending<LibraryModule> *pending_module(
       ast::Import const *import_node) const;
-
-  std::pair<ConstantBinding, DependentData> *insert_constants(
-      ConstantBinding const &constant_binding);
 
   void set_pending_module(ast::Import const *import_node,
                           module::Pending<LibraryModule> mod);

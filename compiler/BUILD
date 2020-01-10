@@ -31,7 +31,6 @@ cc_library(
     deps = [
         ":compiler_header",
         ":data",
-        ":dependent_data",
         ":emit_function_call_infrastructure",
         ":executable_module",
         ":extract_jumps",
@@ -96,7 +95,6 @@ cc_library(
     deps = [
         ":constant_binding",
         ":data",
-        ":dependent_data",
         ":module",
         "//ast:ast_fwd",
         "//ast:overload_set",
@@ -146,7 +144,6 @@ cc_lib(
     name = "data",
     deps = [
         ":constant_binding",
-        ":dependent_data",
         "//ast:ast",
         "//base:guarded",
         "//base:lazy_convert",
@@ -160,6 +157,8 @@ cc_lib(
         "//ir:results",
         "//ir:scope_def",
         "//module:module",
+        "//module:pending",
+        "//type:qual_type",
     ],
     test_deps = None,
 )
@@ -189,24 +188,10 @@ cc_lib(
 )
 
 cc_lib(
-    name = "dependent_data",
-    deps = [
-        "//ast:ast_fwd",
-        "//ast:expr_ptr",
-        "//module:pending",
-        "//ir:scope_def",
-        "//type:qual_type",
-    ],
-    header_only = True,
-    test_deps = None,
-)
-
-cc_lib(
     name = "module",
     deps = [
         ":constant_binding",
         ":data",
-        ":dependent_data",
         "//ast:ast",
         "//ast:ast_fwd",
         "//base:ptr_span",

@@ -9,7 +9,6 @@
 #include "base/ptr_span.h"
 #include "compiler/constant_binding.h"
 #include "compiler/data.h"
-#include "compiler/dependent_data.h"
 #include "ir/compiled_fn.h"
 #include "ir/jump.h"
 #include "module/module.h"

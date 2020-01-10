@@ -6,12 +6,14 @@
 #include <utility>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/container/node_hash_map.h"
 #include "ast/ast.h"
+#include "ast/ast_fwd.h"
+#include "ast/expr_ptr.h"
 #include "base/guarded.h"
 #include "base/lazy_convert.h"
 #include "compiler/constant_binding.h"
-#include "compiler/dependent_data.h"
 #include "compiler/dispatch/fn_call_table.h"
 #include "compiler/dispatch/scope_table.h"
 #include "error/log.h"
@@ -23,8 +25,12 @@
 #include "ir/results.h"
 #include "ir/scope_def.h"
 #include "module/module.h"
+#include "module/pending.h"
+#include "type/qual_type.h"
 
 namespace compiler {
+struct LibraryModule;
+
 struct CompilationData {
   explicit CompilationData(module::BasicModule *mod);
   ~CompilationData();
@@ -76,6 +82,16 @@ struct CompilationData {
     return &iter->second;
   }
 
+  type::QualType const *result(ast::ExprPtr expr) const {
+    auto iter = type_verification_results_.find(expr);
+    return iter == type_verification_results_.end() ? nullptr : &iter->second;
+  }
+
+  type::QualType set_result(ast::ExprPtr expr, type::QualType r) {
+    type_verification_results_.emplace(expr, r);
+    return r;
+  }
+
   template <typename Fn>
   ir::Jump *add_jump(ast::Jump const *expr, Fn &&fn) {
     auto [iter, success] =
@@ -84,7 +100,6 @@ struct CompilationData {
     return &iter->second;
   }
 
-  std::pair<ConstantBinding, DependentData> *constants_;
   // We only want to generate at most one node for each set of constants in a
   // function literal, but we can't generate them all at once because, for
   // example:
@@ -128,19 +143,6 @@ struct CompilationData {
   std::forward_list<ir::ScopeDef> scope_defs_;
   std::forward_list<ir::BlockDef> block_defs_;
 
-  // TODO It's possible to have layers of constant bindings in a tree-like
-  // structure. For example,
-  //   f :: (a :: int64) => (b :: int64) => (c :: int64) => a + b * c
-  // has 3 layers. Essentially the number of layers is the number of nested
-  // scopes that have constant parameters (at time of writing only functions
-  // and struct literals, though struct literals may not be specified as
-  // constants syntactically?). For now you just store them flat in this
-  // vector and check them potentially many times. Perhaps a tree-like
-  // structure would be more efficient? More cache misses, but you're already
-  // paying heavily for the equality call, so maybe it's just a simpler
-  // structure.
-  std::forward_list<std::pair<ConstantBinding, DependentData>> dep_data_;
-
   absl::flat_hash_map<ast::Expression const *, FnCallDispatchTable>
       fn_call_dispatch_tables_;
   absl::flat_hash_map<ast::Expression const *, ScopeDispatchTable>
@@ -149,6 +151,19 @@ struct CompilationData {
   error::Log error_log_;
 
   absl::node_hash_map<ast::Jump const *, ir::Jump> jumps_;
+  absl::flat_hash_map<ast::ExprPtr, type::QualType> type_verification_results_;
+
+  absl::flat_hash_map<ast::Declaration const *, ir::Reg> addr_;
+
+  // TODO probably make these funcs constant.
+  absl::node_hash_map<ast::Expression const *, ir::CompiledFn *> ir_funcs_;
+
+  // TODO absl::flat_hash_map<ast::ExprPtr, ast::DispatchTable>
+  // dispatch_tables_;
+
+
+  absl::flat_hash_map<ast::Import const *, module::Pending<LibraryModule>>
+      imported_module_;
 };
 }  // namespace compiler
 #endif  // ICARUS_COMPILER_DATA_H

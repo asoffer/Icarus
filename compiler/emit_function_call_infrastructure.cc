@@ -68,7 +68,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node) {
 
   auto *t = compiler->type_of(node);
 
-  ir::CompiledFn *&ir_func = compiler->data_.constants_->second.ir_funcs_[node];
+  ir::CompiledFn *&ir_func = compiler->data_.ir_funcs_[node];
 
   ICARUS_SCOPE(ir::SetCurrent(ir_func)) {
     // TODO arguments should be renumbered to not waste space on const values
@@ -116,7 +116,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node) {
 void CompleteBody(Compiler *compiler,
                   ast::ParameterizedStructLiteral const *node) {
   NOT_YET();
-  //   ir::CompiledFn *&ir_func = data_.constants_->second.ir_funcs_[node];
+  //   ir::CompiledFn *&ir_func = data_.ir_funcs_[node];
   //   for (size_t i = 0; i < node->params().size(); ++i) {
   //     set_addr(&node->params()[i], ir::Reg::Arg(i));
   //   }

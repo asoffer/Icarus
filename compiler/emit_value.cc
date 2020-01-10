@@ -858,16 +858,10 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
       // TODO: This is wrong. Looking up in *any* dependent data is not what we
       // want to do. We want to find it in the correct dependent data. But we
       // need to rework contant bindings anyway.
-      auto result = node->module()
-                        ->as<CompiledModule>()
-                        .data_.constants_->first.get_constant(node);
+      auto &comp_mod_data = node->module()->as<CompiledModule>().data_;
+      auto result = comp_mod_data.current_constants_.get_constant(node);
       if (result.size() == 1) { return result; }
 
-      for (auto &[constant_binding, dep_data] :
-           node->module()->as<CompiledModule>().data_.dep_data_) {
-        auto result = dep_data.constants_.get_constant(node);
-        if (result.size() == 1) { return result; }
-      }
       UNREACHABLE("should have found it already.");
     }
 
@@ -876,7 +870,7 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
       if (auto result = data_.current_constants_.get_constant(node);
           not result.empty()) {
         return result;
-      } else if (auto result = data_.constants_->first.get_constant(node);
+      } else if (auto result = data_.current_constants_.get_constant(node);
                  not result.empty()) {
         return result;
       } else {
@@ -885,7 +879,7 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
     } else {
       auto *t = ASSERT_NOT_NULL(type_of(node));
 
-      auto slot = data_.constants_->second.constants_.reserve_slot(node, t);
+      auto slot = data_.current_constants_.reserve_slot(node, t);
       if (auto *result = std::get_if<ir::Results>(&slot)) {
         return std::move(*result);
       }
@@ -905,8 +899,8 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
           NOT_YET("Found errors but haven't handeled them.");
           return ir::Results{};
         }
-        return data_.constants_->second.constants_.set_slot(
-            data_offset, buf.raw(0), num_bytes);
+        return data_.current_constants_.set_slot(data_offset, buf.raw(0),
+                                                 num_bytes);
       } else if (node->IsDefaultInitialized()) {
         UNREACHABLE();
       } else {
@@ -961,19 +955,19 @@ ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
   for (auto const &param : node->params()) {
     auto *p = param.value.get();
     if ((p->flags() & ast::Declaration::f_IsConst) and
-        not data_.constants_->first.contains(p)) {
+        not data_.current_constants_.contains(p)) {
       return ir::Results{node};
     }
 
     for (auto *dep : node->param_dep_graph_.sink_deps(param.value.get())) {
-      if (not data_.constants_->first.contains(dep)) {
+      if (not data_.current_constants_.contains(dep)) {
         return ir::Results{node};
       }
     }
   }
 
   // TODO Use correct constants
-  ir::CompiledFn *&ir_func = data_.constants_->second.ir_funcs_[node];
+  ir::CompiledFn *&ir_func = data_.ir_funcs_[node];
   if (not ir_func) {
     auto *work_item_ptr = DeferBody(this, node);
 
@@ -1237,7 +1231,7 @@ ir::Results Compiler::Visit(ast::ParameterizedStructLiteral const *node,
   // //
   // // For now, it's safe to do this from within a single module compilation
   // // (which is single-threaded).
-  // ir::CompiledFn *&ir_func = data_.constants_->second.ir_funcs_[node];
+  // ir::CompiledFn *&ir_func = data_.ir_funcs_[node];
   // if (not ir_func) {
   auto work_item_ptr = DeferBody(this, node);
 
