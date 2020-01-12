@@ -7,6 +7,11 @@
 namespace base {
 
 struct untyped_buffer_view {
+  constexpr explicit untyped_buffer_view() = default;
+
+  constexpr explicit untyped_buffer_view(void const *data, size_t size)
+      : data_(reinterpret_cast<char const *>(data)), size_(size) {}
+
   /* implicit */ untyped_buffer_view(untyped_buffer const &buf)
       : data_(reinterpret_cast<char const *>(buf.raw(0))),
         size_(buf.size()) {}
@@ -26,6 +31,7 @@ struct untyped_buffer_view {
 
   void remove_suffix(size_t num) { size_ -= num; }
 
+  constexpr void const *data() const { return data_; }
   constexpr size_t size() const { return size_; }
   constexpr bool empty() const { return size_ == 0; }
 

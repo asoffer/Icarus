@@ -35,7 +35,9 @@ type::Type const *Compiler::type_of(ast::Expression const *expr) const {
     if (auto const *mod =
             ASSERT_NOT_NULL(decl->module())->if_as<CompiledModule>()) {
       if (mod != module()) { return mod->type_of(decl); }
-      if (auto *t = data_.current_constants_.type_of(decl)) { return t; }
+      if (auto *t = data_.current_constants_->binding().type_of(decl)) {
+        return t;
+      }
     }
   }
 

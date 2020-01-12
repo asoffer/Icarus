@@ -14,6 +14,7 @@
 #include "base/guarded.h"
 #include "base/lazy_convert.h"
 #include "compiler/constant_binding.h"
+#include "compiler/constant_binding_tree.h"
 #include "compiler/dispatch/fn_call_table.h"
 #include "compiler/dispatch/scope_table.h"
 #include "error/log.h"
@@ -100,14 +101,12 @@ struct CompilationData {
     return &iter->second;
   }
 
-  // We only want to generate at most one node for each set of constants in a
-  // function literal, but we can't generate them all at once because, for
-  // example:
+  // Generally speaking, in a ConstantBindingTree, leaves can depend on values
+  // in their ancestors. In addition, sometimes bindings can depend on values in
+  // the same node. For example:
   //   (val :: T, T :: type) -> () { ... }
-  // So we need to be able to build them even when there are dependencies
-  // between them. To do this, we bulid them here and then move them into the
-  // module constants when they're ready.
-  ConstantBinding current_constants_;
+  ConstantBindingTree constants_;
+  ConstantBindingTree::Node *current_constants_;
 
   // TODO this looks useful in bindings too. maybe give it a better name and
   // use it more frequently?

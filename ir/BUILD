@@ -314,6 +314,7 @@ cc_lib(
         ":reg",
         ":reg_or",
         "//base:untyped_buffer",
+        "//base:untyped_buffer_view",
         "//core:bytes",
         "@com_google_absl//absl/strings",
     ],

@@ -144,6 +144,7 @@ cc_lib(
     name = "data",
     deps = [
         ":constant_binding",
+        ":constant_binding_tree",
         "//ast:ast",
         "//base:guarded",
         "//base:lazy_convert",
@@ -172,11 +173,14 @@ cc_lib(
     test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "constant_binding",
+    hdrs = ["constant_binding.h"],
+    srcs = ["constant_binding.cc"],
     deps = [
         "//ast:ast",
         "//base:untyped_buffer",
+        "//base:untyped_buffer_view",
         "//core:arch",
         "//core:bytes",
         "//ir:results",
@@ -185,6 +189,21 @@ cc_lib(
         "@com_google_absl//absl/container:flat_hash_map",
     ],
     test_deps = None,
+)
+
+cc_library(
+    name = "constant_binding_tree",
+    hdrs = ["constant_binding_tree.h"],
+    deps = [":constant_binding"],
+)
+
+cc_test(
+    name = "constant_binding_tree_test",
+    srcs = ["constant_binding_tree_test.cc"],
+    deps = [
+        ":constant_binding_tree",
+        "@com_google_googletest//:gtest_main",
+    ],
 )
 
 cc_lib(

@@ -5,36 +5,26 @@
 
 namespace compiler {
 
-ir::Results ConstantBinding::get_constant(ast::Declaration const* decl) const {
-  auto iter = keys_.find(decl);
-  if (iter == keys_.end()) { return ir::Results{}; }
-  auto [type, offset] = iter->second;
-  return ir::Results::FromRaw(buf_.raw(offset),
-                              type->bytes(core::Interpretter()));
+base::untyped_buffer_view ConstantBinding::get_constant(
+    ast::Declaration const* decl) const {
+  auto iter = bindings_.find(decl);
+  if (iter == bindings_.end()) { return base::untyped_buffer_view{}; }
+  return iter->second.buf_;
 }
 
-std::variant<ir::Results, std::pair<size_t, core::Bytes>>
-ConstantBinding::reserve_slot(ast::Declaration const* decl,
-                              type::Type const* t) {
-  auto arch                   = core::Interpretter();
-  auto bytes                  = t->bytes(arch);
-  auto [iter, newly_inserted] = keys_.try_emplace(decl);
-  if (not newly_inserted) {
-    return ir::Results::FromRaw(buf_.raw(iter->second.offset_), bytes);
-  }
-  auto offset  = buf_.append_bytes(bytes.value());
-  iter->second = Binding{t, offset};
-  DEBUG_LOG("reserve_slot")
-  ("Reserving slot ", offset, " (size = ", bytes, ") for ", decl);
-  DEBUG_LOG("reserve_slot")(decl->DebugString());
-  return std::pair(offset, bytes);
+base::untyped_buffer_view ConstantBinding::reserve_slot(
+    ast::Declaration const* decl, type::Type const* t) {
+  auto [iter, newly_inserted] =
+      bindings_.emplace(decl, Binding{t, base::untyped_buffer{}});
+  return iter->second.buf_;
 }
 
-ir::Results ConstantBinding::set_slot(size_t offset, void const* data,
-                                      core::Bytes bytes) {
-  DEBUG_LOG("set_slot")("Setting slot ", offset, " (size = ", bytes, ")");
-  std::memcpy(buf_.raw(offset), data, bytes.value());
-  return ir::Results::FromRaw(buf_.raw(offset), bytes);
+void ConstantBinding::set_slot(ast::Declaration const* decl,
+                               base::untyped_buffer_view buf) {
+  auto& to_buf = bindings_[decl].buf_;
+  ASSERT(to_buf.size() == 0u);
+  to_buf.append_bytes(buf.size());
+  std::memcpy(to_buf.raw(0), buf.raw(0), buf.size());
 }
 
 }  // namespace compiler

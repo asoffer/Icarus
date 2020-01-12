@@ -79,4 +79,15 @@ TEST(UntypedBufferView, RemoveSuffixChangesSize) {
   EXPECT_TRUE(view.empty());
 }
 
+TEST(UntypedBufferView, DataPointer) {
+  base::untyped_buffer buf;
+  buf.append(1);
+  buf.append(2);
+
+  base::untyped_buffer_view view(buf);
+  EXPECT_EQ(buf.raw(0), view.data());
+  view.remove_prefix(4);
+  EXPECT_EQ(buf.raw(4), view.data());
+}
+
 }  // namespace

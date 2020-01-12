@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "base/untyped_buffer.h"
+#include "base/untyped_buffer_view.h"
 #include "core/bytes.h"
 #include "ir/reg.h"
 #include "ir/reg_or.h"
@@ -21,6 +22,9 @@ struct Results {
   static Results FromUntypedBuffer(std::vector<uint32_t> offsets,
                                    base::untyped_buffer buf);
   static Results FromRaw(void const* data, core::Bytes bytes);
+  static Results FromRaw(base::untyped_buffer_view buf) {
+    return FromRaw(buf.raw(0), core::Bytes(buf.size()));
+  }
 
   template <typename T,
             typename = std::enable_if_t<not std::is_base_of_v<Reg, T>>>

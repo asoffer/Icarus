@@ -859,33 +859,27 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
       // want to do. We want to find it in the correct dependent data. But we
       // need to rework contant bindings anyway.
       auto &comp_mod_data = node->module()->as<CompiledModule>().data_;
-      auto result = comp_mod_data.current_constants_.get_constant(node);
-      if (result.size() == 1) { return result; }
+      base::untyped_buffer_view result =
+          comp_mod_data.current_constants_->binding().get_constant(node);
+      if (not result.empty()) { return ir::Results::FromRaw(result); }
 
       UNREACHABLE("should have found it already.");
     }
 
     // TODO
     if (node->flags() & ast::Declaration::f_IsFnParam) {
-      if (auto result = data_.current_constants_.get_constant(node);
+      if (auto result = data_.current_constants_->binding().get_constant(node);
           not result.empty()) {
-        return result;
-      } else if (auto result = data_.current_constants_.get_constant(node);
-                 not result.empty()) {
-        return result;
+        return ir::Results::FromRaw(result);
       } else {
         UNREACHABLE();
       }
     } else {
       auto *t = ASSERT_NOT_NULL(type_of(node));
 
-      auto slot = data_.current_constants_.reserve_slot(node, t);
-      if (auto *result = std::get_if<ir::Results>(&slot)) {
-        return std::move(*result);
-      }
-
-      auto &[data_offset, num_bytes] =
-          std::get<std::pair<size_t, core::Bytes>>(slot);
+      base::untyped_buffer_view slot =
+          data_.current_constants_->binding().reserve_slot(node, t);
+      if (not slot.empty()) { return ir::Results::FromRaw(slot); }
 
       if (node->IsCustomInitialized()) {
         // TODO there's a lot of inefficiency here. `buf` is copied into the
@@ -899,8 +893,8 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
           NOT_YET("Found errors but haven't handeled them.");
           return ir::Results{};
         }
-        return data_.current_constants_.set_slot(data_offset, buf.raw(0),
-                                                 num_bytes);
+        data_.current_constants_->binding().set_slot(node, buf);
+        return ir::Results::FromRaw(buf);
       } else if (node->IsDefaultInitialized()) {
         UNREACHABLE();
       } else {
