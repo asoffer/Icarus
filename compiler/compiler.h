@@ -9,7 +9,7 @@
 #include "ast/visitor.h"
 #include "base/debug.h"
 #include "base/move_func.h"
-#include "compiler/constant_binding.h"
+#include "compiler/constant/binding.h"
 #include "compiler/data.h"
 #include "compiler/module.h"
 #include "diagnostic/consumer/consumer.h"

@@ -7,7 +7,7 @@
 
 #include "ast/ast_fwd.h"
 #include "base/ptr_span.h"
-#include "compiler/constant_binding.h"
+#include "compiler/constant/binding.h"
 #include "compiler/data.h"
 #include "ir/compiled_fn.h"
 #include "ir/jump.h"

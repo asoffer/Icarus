@@ -3,7 +3,7 @@
 
 #include <memory>
 
-#include "compiler/constant_binding.h"
+#include "compiler/constant/binding.h"
 
 namespace compiler {
 

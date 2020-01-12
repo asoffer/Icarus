@@ -93,7 +93,6 @@ cc_library(
     name = "compiler_header",
     hdrs = ["compiler.h"],
     deps = [
-        ":constant_binding",
         ":data",
         ":module",
         "//ast:ast_fwd",
@@ -101,6 +100,7 @@ cc_library(
         "//ast:visitor",
         "//base:debug",
         "//base:move_func",
+        "//compiler/constant:binding",
         "//diagnostic/consumer",
         "//error:log",
         "//frontend/source",
@@ -143,11 +143,11 @@ cc_lib(
 cc_lib(
     name = "data",
     deps = [
-        ":constant_binding",
-        ":constant_binding_tree",
         "//ast:ast",
         "//base:guarded",
         "//base:lazy_convert",
+        "//compiler/constant:binding",
+        "//compiler/constant:binding_tree",
         "//compiler/dispatch:fn_call_table_header",
         "//compiler/dispatch:scope_table_header",
         "//error:log",
@@ -173,47 +173,14 @@ cc_lib(
     test_deps = None,
 )
 
-cc_library(
-    name = "constant_binding",
-    hdrs = ["constant_binding.h"],
-    srcs = ["constant_binding.cc"],
-    deps = [
-        "//ast:ast",
-        "//base:untyped_buffer",
-        "//base:untyped_buffer_view",
-        "//core:arch",
-        "//core:bytes",
-        "//ir:results",
-        "//type:type_fwd",
-        "//type:type",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-    test_deps = None,
-)
-
-cc_library(
-    name = "constant_binding_tree",
-    hdrs = ["constant_binding_tree.h"],
-    deps = [":constant_binding"],
-)
-
-cc_test(
-    name = "constant_binding_tree_test",
-    srcs = ["constant_binding_tree_test.cc"],
-    deps = [
-        ":constant_binding_tree",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
 cc_lib(
     name = "module",
     deps = [
-        ":constant_binding",
         ":data",
         "//ast:ast",
         "//ast:ast_fwd",
         "//base:ptr_span",
+        "//compiler/constant:binding",
         "//interpretter:evaluate",
         "//ir:compiled_fn",
         "//ir:jump",

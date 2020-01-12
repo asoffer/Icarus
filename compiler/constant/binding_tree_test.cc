@@ -1,4 +1,4 @@
-#include "compiler/constant_binding_tree.h"
+#include "compiler/constant/binding_tree.h"
 
 #include "gtest/gtest.h"
 
