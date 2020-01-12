@@ -1,13 +1,21 @@
 #include "compiler/dispatch/parameters_and_arguments.h"
 
 #include "ast/ast.h"
-#include "test/catch.h"
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 #include "test/module.h"
 #include "test/util.h"
 #include "type/function.h"
 
 namespace compiler {
 namespace {
+using param_type = core::Param<type::Type const *>;
+
+using ::testing::ElementsAre;
+
+type::Type const *ExtractType(type::Typed<ast::Declaration const *> decl) {
+  return decl.type();
+}
 
 template <typename NodeType>
 NodeType const *Make(test::TestModule *mod, std::string code) {
@@ -18,91 +26,88 @@ NodeType const *Make(test::TestModule *mod, std::string code) {
   return ptr;
 }
 
-TEST_CASE("ExtractParams - FunctionLiteral") {
-  test::TestModule mod;
-
-  SECTION("() -> ()") {
-    auto params = ExtractParams(
-        &mod.compiler, Make<ast::FunctionLiteral>(&mod, "() -> () {}"));
-    CHECK(params.size() == 0);
+TEST(ExtractParams, FunctionLiteral) {
+  {  // Empty
+    test::TestModule mod;
+    EXPECT_THAT(ExtractParams(&mod.compiler,
+                              Make<ast::FunctionLiteral>(&mod, "() -> () {}"))
+                    .Transform(ExtractType),
+                ElementsAre());
   }
 
-  SECTION("(b: bool) -> ()") {
-    auto params = ExtractParams(
-        &mod.compiler, Make<ast::FunctionLiteral>(&mod, "(b: bool) -> () {}"));
-    CHECK(params.size() == 1);
-    CHECK(params.at(0).name == "b");
-    CHECK(params.at(0).value.type() == type::Bool);
+  {  // One argument
+    test::TestModule mod;
+    EXPECT_THAT(ExtractParams(&mod.compiler, Make<ast::FunctionLiteral>(
+                                                 &mod, "(b: bool) -> () {}"))
+                    .Transform(ExtractType),
+                ElementsAre(param_type("b", type::Bool)));
   }
 
-  SECTION("(b: bool, n: int32) -> ()") {
-    auto params = ExtractParams(
-        &mod.compiler,
-        Make<ast::FunctionLiteral>(&mod, "(b: bool, n: int32) -> () {}"));
-    CHECK(params.size() == 2);
-    CHECK(params.at(0).name == "b");
-    CHECK(params.at(0).value.type() == type::Bool);
-    CHECK(params.at(1).name == "n");
-    CHECK(params.at(1).value.type() == type::Int32);
+  {  // Multiple arguments
+    test::TestModule mod;
+    EXPECT_THAT(
+        ExtractParams(&mod.compiler, Make<ast::FunctionLiteral>(
+                                         &mod, "(b: bool, n: int32) -> () {}"))
+            .Transform(ExtractType),
+        ElementsAre(param_type("b", type::Bool), param_type("n", type::Int32)));
   }
 }
 
-TEST_CASE("ExtractParams - Constant declaration") {
-  test::TestModule mod;
-
-  SECTION("() -> ()") {
-    auto params = ExtractParams(
-        &mod.compiler, Make<ast::Declaration>(&mod, "f ::= () -> () {}"));
-    CHECK(params.size() == 0);
+TEST(ExtractParams, ConstantDeclaration) {
+  {  // Empty
+    test::TestModule mod;
+    EXPECT_THAT(ExtractParams(&mod.compiler,
+                              Make<ast::Declaration>(&mod, "f ::= () -> () {}"))
+                    .Transform(ExtractType),
+                ElementsAre());
   }
 
-  SECTION("(b: bool) -> ()") {
-    auto params =
+  {  // One argument
+    test::TestModule mod;
+    EXPECT_THAT(
         ExtractParams(&mod.compiler,
-                      Make<ast::Declaration>(&mod, "f ::= (b: bool) -> () {}"));
-    CHECK(params.size() == 1);
-    CHECK(params.at(0).name == "b");
-    CHECK(params.at(0).value.type() == type::Bool);
+                      Make<ast::Declaration>(&mod, "f ::= (b: bool) -> () {}"))
+            .Transform(ExtractType),
+        ElementsAre(param_type("b", type::Bool)));
   }
 
-  SECTION("(b: bool, n: int32) -> ()") {
-    auto params = ExtractParams(
-        &mod.compiler,
-        Make<ast::Declaration>(&mod, "f ::= (b: bool, n: int32) -> () {}"));
-    CHECK(params.size() == 2);
-    CHECK(params.at(0).name == "b");
-    CHECK(params.at(0).value.type() == type::Bool);
-    CHECK(params.at(1).name == "n");
-    CHECK(params.at(1).value.type() == type::Int32);
+  {  // Multiple arguments
+    test::TestModule mod;
+    EXPECT_THAT(
+        ExtractParams(
+            &mod.compiler,
+            Make<ast::Declaration>(&mod, "f ::= (b: bool, n: int32) -> () {}"))
+            .Transform(ExtractType),
+        ElementsAre(param_type("b", type::Bool), param_type("n", type::Int32)));
   }
 }
 
-TEST_CASE("ExtractParams - Non-constant declaration") {
-  test::TestModule mod;
-
-  SECTION("() -> ()") {
-    auto params = ExtractParams(
-        &mod.compiler, Make<ast::Declaration>(&mod, "f := () -> () {}"));
-    CHECK(params.size() == 0);
+TEST(ExtractParams, NonConstantDeclaration) {
+  {  // Empty
+    test::TestModule mod;
+    EXPECT_THAT(ExtractParams(&mod.compiler,
+                              Make<ast::Declaration>(&mod, "f := () -> () {}"))
+                    .Transform(ExtractType),
+                ElementsAre());
   }
 
-  SECTION("(b: bool) -> ()") {
-    auto params = ExtractParams(
-        &mod.compiler, Make<ast::Declaration>(&mod, "f := (b: bool) -> () {}"));
-    CHECK(params.size() == 1);
-    CHECK(params.at(0).name == "");
-    CHECK(params.at(0).value.type() == type::Bool);
+  {  // One argument
+    test::TestModule mod;
+    EXPECT_THAT(
+        ExtractParams(&mod.compiler,
+                      Make<ast::Declaration>(&mod, "f := (b: bool) -> () {}"))
+            .Transform(ExtractType),
+        ElementsAre(param_type("", type::Bool, core::MUST_NOT_NAME)));
   }
 
-  SECTION("(b: bool, n: int32) -> ()") {
-    auto params = ExtractParams(
-        &mod.compiler,
-        Make<ast::Declaration>(&mod, "f := (b: bool, n: int32) -> () {}"));
-    CHECK(params.size() == 2);
-    CHECK(params.at(0).name == "");
-    CHECK(params.at(0).value.type() == type::Bool);
-    CHECK(params.at(1).name == "");
-    CHECK(params.at(1).value.type() == type::Int32);
+  {  // Multiple arguments
+    test::TestModule mod;
+    EXPECT_THAT(ExtractParams(&mod.compiler,
+                              Make<ast::Declaration>(
+                                  &mod, "f := (b: bool, n: int32) -> () {}"))
+                    .Transform(ExtractType),
+                ElementsAre(param_type("", type::Bool, core::MUST_NOT_NAME),
+                            param_type("", type::Int32, core::MUST_NOT_NAME)));
   }
 }
 
@@ -110,62 +115,64 @@ decltype(auto) GetParams(int, internal::ExprData const &data) {
   return data.params();
 };
 
-TEST_CASE("ParamsCoverArgs - empty arguments") {
+TEST(ParamsCoverArgs, EmptyArguments) {
   auto args = core::FnArgs<type::QualType>(/* pos = */ {}, /* named = */ {});
 
-  SECTION("empty parameters") {
+  {  // Empty overloads
     absl::flat_hash_map<int, internal::ExprData> table;
     // We need to have an entry in the table... but the default will be empty
     // parameters which should have the proper coverage.
     table[0];
-    CHECK(ParamsCoverArgs(args, table, GetParams));
+    EXPECT_TRUE(ParamsCoverArgs(args, table, GetParams));
   }
 
-  SECTION("one parameter") {
+  {  // One overload
     absl::flat_hash_map<int, internal::ExprData> table;
     table[0].params().append(
         "param0", type::Typed<ast::Declaration const *>(nullptr, type::Bool));
-    CHECK_FALSE(ParamsCoverArgs(args, table, GetParams));
+    EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 
-  SECTION("multiple parameters") {
+  {  // Multiple overloads
     absl::flat_hash_map<int, internal::ExprData> table;
     table[0].params().append(
         "param0", type::Typed<ast::Declaration const *>(nullptr, type::Bool));
     table[0].params().append(
         "param1", type::Typed<ast::Declaration const *>(nullptr, type::Bool));
-    CHECK_FALSE(ParamsCoverArgs(args, table, GetParams));
+    EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 }
 
-TEST_CASE("ParamsCoverArgs - one positional argument") {
+TEST(ParamsCoverArgs, OnePositionalArgument) {
   auto args = core::FnArgs<type::QualType>(
       /* pos = */ {type::QualType::NonConstant(
           type::Var({type::Int64, type::Bool}))},
       /* named = */ {});
 
-  SECTION("empty parameters") {
+  {  // No overloads
     absl::flat_hash_map<int, internal::ExprData> table;
-    CHECK_FALSE(ParamsCoverArgs(args, table, GetParams));
+    // We need to have an entry in the table... but the default will be empty
+    // parameters which should have the proper coverage.
+    EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 
-  SECTION("single overload coverage - negative") {
+  {  // One overload
     absl::flat_hash_map<int, internal::ExprData> table;
     table[0].params().append(
         "param0", type::Typed<ast::Declaration const *>(nullptr, type::Bool));
-    CHECK_FALSE(ParamsCoverArgs(args, table, GetParams));
+    EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 
-  SECTION("single overload coverage - positive") {
+  {  // One parameter, matches
     absl::flat_hash_map<int, internal::ExprData> table;
     table[0].params().append(
         "param0",
         type::Typed<ast::Declaration const *>(
             nullptr, type::Var({type::Int64, type::Type_, type::Bool})));
-    CHECK(ParamsCoverArgs(args, table, GetParams));
+    EXPECT_TRUE(ParamsCoverArgs(args, table, GetParams));
   }
 
-  SECTION("multiple overload coverage - negative") {
+  {  // Multiple overloads
     absl::flat_hash_map<int, internal::ExprData> table;
     table[0].params().append(
         "param0", type::Typed<ast::Declaration const *>(nullptr, type::Type_));
@@ -173,10 +180,10 @@ TEST_CASE("ParamsCoverArgs - one positional argument") {
     table[1].params().append(
         "param1", type::Typed<ast::Declaration const *>(
                       nullptr, type::Var({type::Float64, type::Int64})));
-    CHECK_FALSE(ParamsCoverArgs(args, table, GetParams));
+    EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 
-  SECTION("multiple overload coverage - positive") {
+  {  // Multiple overloads, matches
     absl::flat_hash_map<int, internal::ExprData> table;
     table[0].params().append(
         "param0", type::Typed<ast::Declaration const *>(
@@ -185,44 +192,45 @@ TEST_CASE("ParamsCoverArgs - one positional argument") {
         "param1",
         type::Typed<ast::Declaration const *>(
             nullptr, type::Var({type::Ptr(type::Bool), type::Int64})));
-    CHECK(ParamsCoverArgs(args, table, GetParams));
+    EXPECT_TRUE(ParamsCoverArgs(args, table, GetParams));
   }
 }
 
-TEST_CASE("ParamsCoverArgs - one named argument") {
+TEST(ParamsCoverArgs, OneNamedArgument) {
   auto const *t = type::Var({type::Int64, type::Bool});
   auto args     = core::FnArgs<type::QualType>(
       /* pos = */ {},
       /* named = */ {{"x", type::QualType::NonConstant(t)}});
 
-  SECTION("empty parameters") {
+  {  // Empty parameters
     absl::flat_hash_map<int, internal::ExprData> table;
-    CHECK_FALSE(ParamsCoverArgs(args, table, GetParams));
+    table[0];
+    EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 
-  SECTION("single overload coverage - mismatched type") {
+  {  // One parameter, type mismatch
     absl::flat_hash_map<int, internal::ExprData> table;
     table[0].params().append(
         "x", type::Typed<ast::Declaration const *>(nullptr, type::Bool));
-    CHECK_FALSE(ParamsCoverArgs(args, table, GetParams));
+    EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 
-  SECTION("single overload coverage - mismatched name") {
+  {  // One parameter, name mismatch
     absl::flat_hash_map<int, internal::ExprData> table;
     table[0].params().append("y",
                              type::Typed<ast::Declaration const *>(nullptr, t));
-    CHECK_FALSE(ParamsCoverArgs(args, table, GetParams));
+    EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 
-  SECTION("single overload coverage - positive") {
+  {  // One parameter, matches
     absl::flat_hash_map<int, internal::ExprData> table;
     table[0].params().append(
         "x", type::Typed<ast::Declaration const *>(
                  nullptr, type::Var({type::Int64, type::Type_, type::Bool})));
-    CHECK(ParamsCoverArgs(args, table, GetParams));
+    EXPECT_TRUE(ParamsCoverArgs(args, table, GetParams));
   }
 
-  SECTION("multiple overload coverage - mismatched type") {
+  {  // Multiple overload coverage, mismatch args
     absl::flat_hash_map<int, internal::ExprData> table;
     table[0].params().append(
         "x", type::Typed<ast::Declaration const *>(nullptr, type::Type_));
@@ -230,10 +238,10 @@ TEST_CASE("ParamsCoverArgs - one named argument") {
     table[1].params().append(
         "x", type::Typed<ast::Declaration const *>(
                  nullptr, type::Var({type::Float64, type::Int64})));
-    CHECK_FALSE(ParamsCoverArgs(args, table, GetParams));
+    EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 
-  SECTION("multiple overload coverage - mismatched name") {
+  {  // Multiple overload coverage, mismatched name
     absl::flat_hash_map<int, internal::ExprData> table;
     table[0].params().append(
         "x", type::Typed<ast::Declaration const *>(
@@ -241,10 +249,10 @@ TEST_CASE("ParamsCoverArgs - one named argument") {
     table[1].params().append(
         "y", type::Typed<ast::Declaration const *>(
                  nullptr, type::Var({type::Ptr(type::Bool), type::Int64})));
-    CHECK_FALSE(ParamsCoverArgs(args, table, GetParams));
+    EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 
-  SECTION("multiple overload coverage - positive") {
+  {  // Multiple overload coverage, matches
     absl::flat_hash_map<int, internal::ExprData> table;
     table[0].params().append(
         "x", type::Typed<ast::Declaration const *>(
@@ -252,8 +260,9 @@ TEST_CASE("ParamsCoverArgs - one named argument") {
     table[1].params().append(
         "x", type::Typed<ast::Declaration const *>(
                  nullptr, type::Var({type::Ptr(type::Bool), type::Int64})));
-    CHECK(ParamsCoverArgs(args, table, GetParams));
+    EXPECT_TRUE(ParamsCoverArgs(args, table, GetParams));
   }
 }
+
 }  // namespace
 }  // namespace compiler

@@ -17,8 +17,15 @@ core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
       auto f = interpretter::EvaluateAs<ir::AnyFunc>(
           compiler->MakeThunk(decl, decl_type));
       return f.is_fn() ? f.func()->params() : fn_type->AnonymousFnParams();
+    } else if (decl_type == type::Generic) {
+        // TODO determine how to evaluate this with an interpretter.
+        if (auto *fn_lit = decl->init_val()->if_as<ast::FunctionLiteral>()) {
+          NOT_YET(fn_lit->DebugString());
+        } else {
+          NOT_YET(decl->init_val()->DebugString());
+        }
     } else {
-      NOT_YET(decl->DebugString());
+      UNREACHABLE(decl->DebugString(), decl_type->to_string());
     }
   } else {
     if (auto const *fn_type = decl_type->if_as<type::Function>()) {

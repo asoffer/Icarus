@@ -99,6 +99,9 @@ inline bool operator!=(Param<T> const& lhs, Param<T> const& rhs) {
 
 template <typename T>
 struct FnParams {
+  using value_type     = Param<T>;
+  using const_iterator = typename std::vector<Param<T>>::const_iterator;
+
   // Construct a FnParams object representing `n` parameters all of which must
   // not be named.
 

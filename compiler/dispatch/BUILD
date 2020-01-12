@@ -126,8 +126,10 @@ cc_library(
     ]
 )
 
-cc_lib(
+cc_library(
     name = "parameters_and_arguments",
+    hdrs = ["parameters_and_arguments.h"],
+    srcs = ["parameters_and_arguments.cc"],
     deps = [
         "//ast:ast",
         "//compiler:compiler_header",
@@ -138,10 +140,16 @@ cc_lib(
         "//type:type",
         "//type:function",
     ],
-    test_deps = [
+)
+
+cc_test(
+    name = "parameters_and_arguments_test",
+    srcs = ["parameters_and_arguments_test.cc"],
+    deps = [
         "//compiler:compiler",
         "//test:module",
         "//type:function",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
