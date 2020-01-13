@@ -20,6 +20,9 @@ core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
     } else if (decl_type == type::Generic) {
         // TODO determine how to evaluate this with an interpretter.
         if (auto *fn_lit = decl->init_val()->if_as<ast::FunctionLiteral>()) {
+          for (auto const &param : fn_lit->params()) {
+            DEBUG_LOG()(param.value->DebugString());
+          }
           NOT_YET(fn_lit->DebugString());
         } else {
           NOT_YET(decl->init_val()->DebugString());

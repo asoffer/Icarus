@@ -855,9 +855,6 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
   DEBUG_LOG("EmitValueDeclaration")(node->id());
   if (node->flags() & ast::Declaration::f_IsConst) {
     if (node->module() != module()) {
-      // TODO: This is wrong. Looking up in *any* dependent data is not what we
-      // want to do. We want to find it in the correct dependent data. But we
-      // need to rework contant bindings anyway.
       base::untyped_buffer_view result = node->module()
                                              ->as<CompiledModule>()
                                              .root_node()

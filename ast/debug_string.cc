@@ -434,7 +434,7 @@ void Terminal::DebugStrAppend(std::string *out, size_t indent) const {
       return;
     case type::BasicType::Type_:
       // TODO make ast not depend on this so it can once again depend ont type.
-      absl::StrAppend(out, "{{unknown-type}}");
+      absl::StrAppend(out, type::ToString(as<type::BasicType>()));
       return;
     case type::BasicType::Bool:
       absl::StrAppend(out, as<bool>() ? "true" : "false");

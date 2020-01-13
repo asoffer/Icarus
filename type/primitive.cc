@@ -10,15 +10,7 @@ namespace type {
 #undef PRIMITIVE_MACRO
 
 void Primitive::WriteTo(std::string *result) const {
-  switch (type_) {
-#define PRIMITIVE_MACRO(EnumName, name)                                        \
-  case BasicType::EnumName:                                                    \
-    result->append(name);                                                      \
-    return;
-#include "type/primitive.xmacro.h"
-#undef PRIMITIVE_MACRO
-    default: UNREACHABLE();
-  }
+  result->append(ToString(type_));
 }
 
 bool Primitive::is_integral() const {

@@ -3,6 +3,8 @@
 
 #include <cstdint>
 
+#include "base/debug.h"
+
 namespace type {
 struct Type;
 
@@ -11,6 +13,17 @@ enum class BasicType : uint8_t {
 #include "type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
 };
+
+inline char const *ToString(BasicType t) {
+  switch (t) {
+#define PRIMITIVE_MACRO(EnumName, name)                                        \
+  case BasicType::EnumName:                                                    \
+    return name;
+#include "type/primitive.xmacro.h"
+#undef PRIMITIVE_MACRO
+  }
+  UNREACHABLE();
+}
 
 Type const *Prim(BasicType b);
 

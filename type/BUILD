@@ -153,7 +153,7 @@ cc_lib(
 cc_lib(
     name = "basic_type",
     textual_hdrs = ["primitive.xmacro.h"],
-    deps = [],
+    deps = ["//base:debug"],
     header_only = True,
     test_deps = None,
 )
