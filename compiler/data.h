@@ -101,13 +101,6 @@ struct CompilationData {
     return &iter->second;
   }
 
-  // Generally speaking, in a ConstantBindingTree, leaves can depend on values
-  // in their ancestors. In addition, sometimes bindings can depend on values in
-  // the same node. For example:
-  //   (val :: T, T :: type) -> () { ... }
-  ConstantBindingTree constants_;
-  ConstantBindingTree::Node *current_constants_;
-
   // TODO this looks useful in bindings too. maybe give it a better name and
   // use it more frequently?
   struct YieldResult {

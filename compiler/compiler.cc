@@ -17,7 +17,9 @@ namespace compiler {
 
 Compiler::Compiler(CompiledModule *mod,
                    diagnostic::DiagnosticConsumer &consumer)
-    : data_(mod->data_), diag_consumer_(consumer) {}
+    : data_(mod->root_data()),
+      current_constants_(mod->root_node()),
+      diag_consumer_(consumer) {}
 
 type::QualType const *Compiler::qual_type_of(ast::ExprPtr expr) const {
   return data_.result(expr);
@@ -35,7 +37,7 @@ type::Type const *Compiler::type_of(ast::Expression const *expr) const {
     if (auto const *mod =
             ASSERT_NOT_NULL(decl->module())->if_as<CompiledModule>()) {
       if (mod != module()) { return mod->type_of(decl); }
-      if (auto *t = data_.current_constants_->binding().type_of(decl)) {
+      if (auto *t = current_constants_->binding().type_of(decl)) {
         return t;
       }
     }

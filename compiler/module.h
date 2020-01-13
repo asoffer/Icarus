@@ -7,7 +7,8 @@
 
 #include "ast/ast_fwd.h"
 #include "base/ptr_span.h"
-#include "compiler/constant/binding.h"
+#include "compiler/constant/binding_map.h"
+#include "compiler/constant/binding_tree.h"
 #include "compiler/data.h"
 #include "ir/compiled_fn.h"
 #include "ir/jump.h"
@@ -26,8 +27,16 @@ struct CompiledModule : module::BasicModule {
 
   type::Type const *type_of(ast::Expression const *expr) const;
 
-  // TODO make private
-  CompilationData data_;
+  ConstantBindingTree::Node const *root_node() const { return data_.root(); }
+  ConstantBindingTree::Node *root_node() { return data_.root(); }
+
+  // TODO We probably don't need these. There are likely better ways to expose
+  // the requisite information.
+  CompilationData const &root_data() const { return data_.root_value(); }
+  CompilationData &root_data() { return data_.root_value(); }
+
+ private:
+  ConstantBindingMap<CompilationData> data_;
 };
 
 }  // namespace compiler

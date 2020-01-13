@@ -180,7 +180,7 @@ cc_lib(
         "//ast:ast",
         "//ast:ast_fwd",
         "//base:ptr_span",
-        "//compiler/constant:binding",
+        "//compiler/constant:binding_map",
         "//interpretter:evaluate",
         "//ir:compiled_fn",
         "//ir:jump",

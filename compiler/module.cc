@@ -5,7 +5,7 @@
 namespace compiler {
 
 type::Type const *CompiledModule::type_of(ast::Expression const *expr) const {
-  auto const *result = data_.result(expr);
+  auto const *result = data_.root_value().result(expr);
   if (result and result->type()) { return result->type(); }
 
   // TODO embedded modules?

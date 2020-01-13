@@ -304,6 +304,7 @@ struct Compiler
                     type::Typed<ir::Reg> to_var);
 
   CompilationData &data_;
+  ConstantBindingTree::Node *current_constants_;
   diagnostic::DiagnosticConsumer &diag_consumer_;
 };
 

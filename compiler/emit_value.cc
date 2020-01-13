@@ -858,9 +858,11 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
       // TODO: This is wrong. Looking up in *any* dependent data is not what we
       // want to do. We want to find it in the correct dependent data. But we
       // need to rework contant bindings anyway.
-      auto &comp_mod_data = node->module()->as<CompiledModule>().data_;
-      base::untyped_buffer_view result =
-          comp_mod_data.current_constants_->binding().get_constant(node);
+      base::untyped_buffer_view result = node->module()
+                                             ->as<CompiledModule>()
+                                             .root_node()
+                                             ->binding()
+                                             .get_constant(node);
       if (not result.empty()) { return ir::Results::FromRaw(result); }
 
       UNREACHABLE("should have found it already.");
@@ -868,7 +870,7 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
 
     // TODO
     if (node->flags() & ast::Declaration::f_IsFnParam) {
-      if (auto result = data_.current_constants_->binding().get_constant(node);
+      if (auto result = current_constants_->binding().get_constant(node);
           not result.empty()) {
         return ir::Results::FromRaw(result);
       } else {
@@ -878,7 +880,7 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
       auto *t = ASSERT_NOT_NULL(type_of(node));
 
       base::untyped_buffer_view slot =
-          data_.current_constants_->binding().reserve_slot(node, t);
+          current_constants_->binding().reserve_slot(node, t);
       if (not slot.empty()) { return ir::Results::FromRaw(slot); }
 
       if (node->IsCustomInitialized()) {
@@ -893,7 +895,7 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
           NOT_YET("Found errors but haven't handeled them.");
           return ir::Results{};
         }
-        data_.current_constants_->binding().set_slot(node, buf);
+        current_constants_->binding().set_slot(node, buf);
         return ir::Results::FromRaw(buf);
       } else if (node->IsDefaultInitialized()) {
         UNREACHABLE();
