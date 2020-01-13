@@ -32,3 +32,21 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_library(
+    name = "binding_map",
+    hdrs = ["binding_map.h"],
+    deps = [
+        ":binding_tree",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
+
+cc_test(
+    name = "binding_map_test",
+    srcs = ["binding_map_test.cc"],
+    deps = [
+        ":binding_map",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
