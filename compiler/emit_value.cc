@@ -949,9 +949,7 @@ ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
     auto *p = param.value.get();
     if (p->flags() & ast::Declaration::f_IsConst) { NOT_YET(); }
 
-    for (auto *dep : node->param_dep_graph_.sink_deps(param.value.get())) {
-      NOT_YET();
-    }
+    for (auto *dep : node->param_dep_graph_.sink_deps(p)) { NOT_YET(); }
   }
 
   // TODO Use correct constants

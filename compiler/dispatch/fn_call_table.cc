@@ -160,7 +160,7 @@ type::QualType FnCallDispatchTable::ComputeResultQualType(
       auto const &out_vec = fn_type->output;
       results.push_back(out_vec);
     } else if (expr_data.type() == type::Generic) {
-      NOT_YET("log error");
+      results.emplace_back(); // NOT_YET figuring out the real answer.
     } else {
       NOT_YET(expr_data.type()->to_string());
     }
