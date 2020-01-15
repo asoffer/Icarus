@@ -558,6 +558,41 @@ std::unique_ptr<ast::Node> BuildFunctionLiteral(
                                         std::move(outputs));
 }
 
+std::unique_ptr<ast::Node> BuildDesignatedInitializer(
+    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+  auto span = SourceRange(nodes[0]->span.begin(), nodes.back()->span.end());
+  if (auto* stmts = nodes[2]->if_as<Statements>()) {
+    auto extracted_stmts = std::move(*stmts).extract();
+    std::vector<std::pair<std::string, std::unique_ptr<ast::Expression>>>
+        initializers;
+    initializers.reserve(extracted_stmts.size());
+    for (auto& stmt : extracted_stmts) {
+      if (auto *binop = stmt->if_as<ast::Binop>()) {
+        auto [lhs, rhs] = std::move(*binop).extract();
+        if (auto *lhs_id = lhs->if_as<ast::Identifier>()) {
+          initializers.emplace_back(std::move(*lhs_id).extract(),
+                                    std::move(rhs));
+        } else {
+          NOT_YET("log an error");
+          continue;
+        }
+      } else {
+        NOT_YET("log an error");
+        continue;
+      }
+    }
+
+    return std::make_unique<ast::DesignatedInitializer>(
+        std::move(span), move_as<ast::Expression>(nodes[0]),
+        std::move(initializers));
+  } else {
+    return std::make_unique<ast::DesignatedInitializer>(
+        std::move(span), move_as<ast::Expression>(nodes[0]),
+        std::vector<
+            std::pair<std::string, std::unique_ptr<ast::Expression>>>{});
+  }
+}
+
 std::unique_ptr<ast::Node> BuildNormalFunctionLiteral(
     absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
   auto span   = SourceRange(nodes[0]->span.begin(), nodes.back()->span.end());
@@ -1071,6 +1106,8 @@ auto Rules = std::array{
     ParseRule(r_paren, {r_paren, newline}, drop_all_but<0>),
     ParseRule(r_bracket, {r_bracket, newline}, drop_all_but<0>),
     ParseRule(r_brace, {r_brace, newline}, drop_all_but<0>),
+    // TODO more specifically, the op_b needs to be a '.'
+    ParseRule(expr, {expr, op_b, braced_stmts}, BuildDesignatedInitializer),
     ParseRule(braced_stmts, {l_brace, stmts, stmts | EXPR, r_brace},
               BracedStatementsSameLineEnd),
     ParseRule(braced_stmts, {l_brace, stmts, op_lt, r_brace},

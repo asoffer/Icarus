@@ -289,6 +289,49 @@ struct Declaration : Expression {
   Flags flags_;
 };
 
+
+// DesignatedInitializer:
+//
+// Represents an initializer for the given struct.
+//
+// Example:
+// For the struct `S` with fields `x` and `y`, we might write
+//
+// ```
+// S.{
+//   .x = 3
+//   .y = 17
+// }
+// ```
+struct DesignatedInitializer : Expression {
+  DesignatedInitializer(
+      frontend::SourceRange span, std::unique_ptr<Expression> type,
+      std::vector<std::pair<std::string, std::unique_ptr<Expression>>>
+          assignments)
+      : Expression(std::move(span)),
+        type_(std::move(type)),
+        assignments_(std::move(assignments)) {}
+
+  ~DesignatedInitializer() override {}
+
+  Expression const *type() const { return type_.get(); }
+  Expression *type() { return type_.get(); }
+  absl::Span<std::pair<std::string, std::unique_ptr<Expression>> const>
+  assignments() const {
+    return assignments_;
+  }
+  absl::Span<std::pair<std::string, std::unique_ptr<Expression>>>
+  assignments() {
+    return absl::MakeSpan(assignments_);
+  }
+
+  ICARUS_AST_VIRTUAL_METHODS;
+
+ private:
+  std::unique_ptr<Expression> type_;
+  std::vector<std::pair<std::string, std::unique_ptr<Expression>>> assignments_;
+};
+
 // BlockLiteral:
 //
 // Represents the specification for a block in a scope. The `before`
@@ -787,6 +830,8 @@ struct Identifier : Expression {
   std::string_view token() const { return token_; }
   Declaration const *decl() const { return decl_; }
   void set_decl(Declaration const *decl) { decl_ = decl; }
+
+  std::string extract() && { return std::move(token_); }
 
  private:
   std::string token_;

@@ -59,6 +59,11 @@ void ExtractJumps::Visit(ast::Declaration const *node) {
   if (node->init_val()) { Visit(node->init_val()); }
 }
 
+void ExtractJumps::Visit(ast::DesignatedInitializer const *node) {
+  Visit(node->type());
+  for (auto &[field, expr] : node->assignments()) { Visit(expr.get()); }
+}
+
 void ExtractJumps::Visit(ast::EnumLiteral const *node) {
   for (auto const *elem : node->elems()) { Visit(elem); }
 }

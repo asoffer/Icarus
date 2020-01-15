@@ -917,6 +917,37 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
   UNREACHABLE();
 }
 
+ir::Results Compiler::Visit(ast::DesignatedInitializer const *node, EmitValueTag) {
+  // TODO actual initialization with these field members.
+  auto *t    = type_of(node);
+  auto alloc = builder().TmpAlloca(t);
+
+  auto &struct_type  = t->as<type::Struct>();
+  auto const &fields = struct_type.fields();
+  for (size_t i = 0; i < fields.size(); ++i) {
+    auto const &field = fields[i];
+
+    for (auto &[field_name, expr] : node->assignments()) {
+      // Skip default initialization if we're going to use the designated
+      // initializer.
+      if (field_name == field.name) { goto next_field; }
+    }
+
+    Visit(field.type, builder().Field(alloc, &struct_type, i).get(),
+          EmitDefaultInitTag{});
+  next_field:;
+  }
+
+  // TODO initialize fields not listed in the designated initializer.
+  for (auto &[field, expr] : node->assignments()) {
+    auto *f            = struct_type.field(field);
+    size_t field_index = struct_type.index(f->name);
+    Visit(expr.get(), builder().Field(alloc, &struct_type, field_index),
+          EmitMoveInitTag{});
+  }
+  return ir::Results{alloc};
+}
+
 ir::Results Compiler::Visit(ast::EnumLiteral const *node, EmitValueTag) {
   using enum_t = uint64_t;
   std::vector<std::string_view> names;

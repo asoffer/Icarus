@@ -233,6 +233,12 @@ void Declaration::DebugStrAppend(std::string *out, size_t indent) const {
   }
 }
 
+void DesignatedInitializer::DebugStrAppend(std::string *out,
+                                           size_t indent) const {
+  type()->DebugStrAppend(out, indent);
+  out->append(".{}");
+}
+
 void EnumLiteral::DebugStrAppend(std::string *out, size_t indent) const {
   switch (kind()) {
     case EnumLiteral::Kind::Enum: absl::StrAppend(out, "enum {\n"); break;

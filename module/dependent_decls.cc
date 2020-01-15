@@ -66,6 +66,12 @@ void DependentDecls::Visit(ast::Declaration const *node,
   if (node->init_val()) { Visit(node->init_val(), node); }
 }
 
+void DependentDecls::Visit(ast::DesignatedInitializer const *node,
+                           ast::Declaration const *d) {
+  Visit(node->type(), d);
+  for (auto &[field, expr] : node->assignments()) { Visit(expr.get(), d); }
+}
+
 void DependentDecls::Visit(ast::EnumLiteral const *node,
                            ast::Declaration const *d) {
   for (auto const *elem : node->elems()) { Visit(elem, d); }

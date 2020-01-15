@@ -1446,6 +1446,45 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
   return VerifySpecialFunctions(this, node, node_qual_type.type());
 }
 
+type::QualType Compiler::Visit(ast::DesignatedInitializer const *node, VerifyTypeTag) {
+  // TODO include fields.
+  // TODO constant only when all fields are constant.
+  auto type_type = Visit(node->type(), VerifyTypeTag{});
+  if (type_type != type::QualType::Constant(type::Type_)) {
+    NOT_YET("log an error");
+  }
+
+  type::Type const *expr_type = interpretter::EvaluateAs<type::Type const *>(
+      MakeThunk(node->type(), type::Type_));
+
+  auto *struct_type = expr_type->if_as<type::Struct>();
+  if (not struct_type) { NOT_YET("log an error"); }
+
+  bool is_constant = true;
+  for (auto &[field, expr] : node->assignments()) {
+    type::QualType initializer_qual_type = Visit(expr.get(), VerifyTypeTag{});
+    if (not initializer_qual_type) {
+      // If there was an error we still want to verify all other initializers
+      // and we still want to claim this expression has the same type, but we'll
+      // just give up on it being a constant.
+      is_constant = false;
+      continue;
+    }
+    if (auto *struct_field = struct_type->field(field)) {
+      if (not type::CanCast(initializer_qual_type.type(), struct_field->type)) {
+        NOT_YET("log an error: ", initializer_qual_type.type()->to_string(),
+                struct_field->type->to_string());
+      }
+      is_constant &= initializer_qual_type.constant();
+    } else {
+      NOT_YET("log an error");
+      is_constant = false;
+    }
+  }
+
+  return set_result(node, type::QualType(struct_type, is_constant));
+}
+
 type::QualType Compiler::Visit(ast::EnumLiteral const *node, VerifyTypeTag) {
   for (auto const &elem : node->elems()) {
     if (auto *decl = elem->if_as<ast::Declaration>()) {

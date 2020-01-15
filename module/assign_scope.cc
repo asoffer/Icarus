@@ -87,6 +87,12 @@ void AssignScope::Visit(ast::Declaration *node, ast::Scope *scope) {
   if (node->init_val()) { Visit(node->init_val(), scope); }
 }
 
+void AssignScope::Visit(ast::DesignatedInitializer *node, ast::Scope *scope) {
+  node->scope_ = scope;
+  Visit(node->type(), scope);
+  for (auto &[field, expr] : node->assignments()) { Visit(expr.get(), scope); }
+}
+
 void AssignScope::Visit(ast::EnumLiteral *node, ast::Scope *scope) {
   node->scope_ = scope;
   node->set_body_with_parent(scope);
