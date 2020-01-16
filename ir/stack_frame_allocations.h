@@ -14,26 +14,23 @@ namespace ir {
 // also track lifetimes and reuse space effectively (and have a sanitizer mode
 // that poisons rather than reuses space).
 struct StackFrameAllocations {
-  void allocate(type::Type const* t, Reg r) { allocs_[t].push_back(r); }
+  void allocate(type::Type const* t, Reg r) { allocs_.emplace_back(t, r); }
 
   template <typename Fn>
   void for_each(Fn&& f) const {
-    for (auto const& [t, regs] : allocs_) {
-      for (auto reg : regs) { f(t, reg); }
-    }
+    for (auto const& [t, reg] : allocs_) { f(t, reg); }
   }
 
   friend std::ostream& operator<<(std::ostream& os,
                                   StackFrameAllocations const& s) {
-    for (auto const& [t, rs] : s.allocs_) {
-      os << "  " << t->to_string() << ":\n";
-      for (Reg r : rs) { os << "    " << stringify(r) << "\n"; }
+    for (auto const& [t, reg] : s.allocs_) {
+      os << "  " << stringify(reg) << ": " << t->to_string() << "\n";
     }
     return os;
   }
 
  private:
-  absl::flat_hash_map<type::Type const*, std::vector<Reg>> allocs_;
+  std::vector<std::pair<type::Type const *, Reg>> allocs_;
   // TODO In the short-term, use stack-space according to when the things were
   // allocated, just dropping them on the stack as needed. In the future, think
   // about how they may overlap. What their lifetime is, etc.

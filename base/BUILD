@@ -222,6 +222,7 @@ cc_library(
     hdrs = ["untyped_buffer_view.h"],
     deps = [
         ":debug",
+        "@com_google_absl//absl/strings",
     ],
 )
 
