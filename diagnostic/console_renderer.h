@@ -4,7 +4,6 @@
 #include <cstdio>
 #include <type_traits>
 
-#include "base/util.h"
 #include "diagnostic/message.h"
 
 namespace diagnostic {

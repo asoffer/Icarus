@@ -11,7 +11,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
-#include "base/util.h"
+#include "base/meta.h"
 
 namespace cli {
 namespace internal {

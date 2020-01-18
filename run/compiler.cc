@@ -4,7 +4,7 @@
 
 #include "base/expected.h"
 #include "base/untyped_buffer.h"
-#include "base/util.h"
+#include "base/defer.h"
 #include "compiler/compiler.h"
 #include "compiler/executable_module.h"
 #include "compiler/module.h"

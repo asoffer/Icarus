@@ -2,6 +2,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "ast/ast.h"
+#include "base/meta.h"
 #include "core/builtin.h"
 #include "error/log.h"
 #include "frontend/lex.h"
@@ -150,14 +151,18 @@ Lexeme NextNumber(SourceCursor *cursor, Source *src, error::Log *error_log) {
                                                   type::BasicType::Int32));
   }
   return std::visit(
-      base::overloaded{[&span](int64_t x) {
-                         return Lexeme(std::make_unique<ast::Terminal>(
-                             std::move(span), x, type::BasicType::Int64));
-                       },
-                       [&span](double x) {
-                         return Lexeme(std::make_unique<ast::Terminal>(
-                             std::move(span), x, type::BasicType::Float64));
-                       }},
+      [&span](auto num) {
+        using T = std::decay_t<decltype(num)>;
+        if constexpr (std::is_same_v<T, int64_t>) {
+          return Lexeme(std::make_unique<ast::Terminal>(
+              std::move(span), num, type::BasicType::Int64));
+        } else if constexpr (std::is_same_v<T, double>) {
+          return Lexeme(std::make_unique<ast::Terminal>(
+              std::move(span), num, type::BasicType::Float64));
+        } else {
+          static_assert(base::always_false<T>());
+        }
+      },
       *num);
 }
 

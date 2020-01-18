@@ -1,5 +1,6 @@
 #include "ir/instruction_inliner.h"
 
+#include "base/meta.h"
 #include "type/typed_value.h"
 
 namespace ir {

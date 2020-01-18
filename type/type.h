@@ -8,7 +8,6 @@
 #include "base/debug.h"
 #include "base/meta.h"
 #include "base/tag.h"
-#include "base/util.h"
 #include "core/arch.h"
 #include "ir/addr.h"
 #include "ir/reg.h"

@@ -26,7 +26,7 @@ cc_lib(
     name = "console_renderer",
     deps = [
         ":message",
-        "//base:util",
+        "//base:meta",
     ],
     test_deps = None,
 )

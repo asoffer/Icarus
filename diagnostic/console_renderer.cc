@@ -1,5 +1,7 @@
 #include "console_renderer.h"
 
+#include "base/meta.h"
+
 namespace diagnostic {
 
 namespace {

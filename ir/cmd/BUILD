@@ -4,8 +4,8 @@ cc_library(
     name = "jump",
     hdrs = ["jump.h"],
     deps = [
+        "//base:meta",
         "//base:stringify",
-        "//base:util",
         "//core:fn_args",
         "//ir:reg",
         "//ir:results",

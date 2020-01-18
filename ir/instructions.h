@@ -9,6 +9,7 @@
 #include "absl/strings/str_join.h"
 #include "ast/scope/scope.h"
 #include "base/clone.h"
+#include "base/meta.h"
 #include "ir/block_def.h"
 #include "ir/instruction_inliner.h"
 #include "ir/instruction_op_codes.h"
@@ -31,11 +32,12 @@
 // the common instructions available in the core IR.
 namespace ir {
 namespace internal {
+constexpr size_t Log2(size_t n) { return n == 1 ? 0 : 1 + Log2(n / 2); }
 
 template <typename T>
 constexpr uint8_t PrimitiveIndex() {
   if constexpr (std::is_integral_v<T> and not std::is_same_v<T, bool>) {
-    return base::Log2(sizeof(T)) * 2 + std::is_signed_v<T>;
+    return Log2(sizeof(T)) * 2 + std::is_signed_v<T>;
   } else if constexpr (std::is_same_v<T, bool>) {
     return 0x08;
   } else if constexpr (std::is_same_v<T, float>) {

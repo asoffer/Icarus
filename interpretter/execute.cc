@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "absl/random/random.h"
+#include "base/meta.h"
 #include "interpretter/foreign.h"
 #include "ir/block_def.h"
 #include "ir/instructions.h"

@@ -44,6 +44,7 @@ cc_library(
     deps = [
         ":foreign",
         ":stack_frame",
+        "//base:meta",
         "//base:untyped_buffer",
         "//ir:addr",
         "//ir:any_func",

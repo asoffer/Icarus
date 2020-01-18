@@ -242,7 +242,6 @@ cc_lib(
         "//base:debug",
         "//base:meta",
         "//base:tag",
-        "//base:util",
         "//core:arch",
         "//ir:addr",
         "//ir:reg",

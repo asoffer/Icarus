@@ -4,8 +4,8 @@ load("//:defs.bzl", "cc_lib")
 cc_lib(
     name = "compiler",
     deps = [
+        "//base:defer",
         "//base:untyped_buffer",
-        "//base:util",
         "//compiler:compiler",
         "//compiler:executable_module",
         "//error:log",

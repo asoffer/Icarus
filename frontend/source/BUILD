@@ -6,7 +6,6 @@ cc_lib(
     deps = [
         "//base:cast",
         "//base:expected",
-        "//base:util",
     ],
     header_only = True,
     test_deps = None,

@@ -6,6 +6,7 @@
 
 #include "ast/ast.h"
 #include "ast/overload_set.h"
+#include "base/defer.h"
 #include "compiler/compiler.h"
 #include "compiler/dispatch/parameters_and_arguments.h"
 #include "compiler/dispatch/scope_table.h"

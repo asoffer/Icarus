@@ -23,6 +23,21 @@ cc_lib(
     test_deps = None,
 )
 
+cc_library(
+    name = "defer",
+    hdrs = ["defer.h"],
+    deps = [],
+)
+
+cc_test(
+    name = "defer_test",
+    srcs = ["defer_test.cc"],
+    deps = [
+        ":defer",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 cc_lib(
     name = "expected",
     deps = [":stringify"],

@@ -122,6 +122,7 @@ cc_library(
     deps = [
         ":compiler_header",
         ":visitors",
+        "//base:defer",
         "//diagnostic/consumer:streaming",
     ],
 )

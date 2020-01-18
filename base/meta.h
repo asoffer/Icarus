@@ -53,6 +53,11 @@ struct type_list_catter<T, Ts...>
 template <typename... TLs>
 using type_list_cat = typename ::base::internal::type_list_catter<TLs...>::type;
 
+template <typename T>
+constexpr bool always_false() {
+  return false;
+}
+
 }  // namespace base
 
 #endif  // ICARUS_BASE_META_H
