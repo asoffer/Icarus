@@ -139,6 +139,21 @@ cc_lib(
     test_deps = None,
 )
 
+cc_library(
+    name = "raw_iterator",
+    hdrs = ["raw_iterator.h"],
+    deps = [":unaligned_ref"],
+)
+
+cc_test(
+    name = "raw_iterator_test",
+    srcs = ["raw_iterator_test.cc"],
+    deps = [
+        ":raw_iterator",
+        "@com_google_googletest//:gtest_main",
+    ]
+)
+
 cc_lib(
     name = "scope",
     deps = [":macros"],
@@ -203,6 +218,7 @@ cc_library(
     srcs = ["untyped_buffer.cc"],
     deps = [
         ":debug",
+        ":raw_iterator",
         ":unaligned_ref",
         "@com_google_absl//absl/strings",
     ],
@@ -222,6 +238,8 @@ cc_library(
     hdrs = ["untyped_buffer_view.h"],
     deps = [
         ":debug",
+        ":raw_iterator",
+        ":untyped_buffer",
         "@com_google_absl//absl/strings",
     ],
 )

@@ -8,109 +8,19 @@
 #include <utility>
 
 #include "base/debug.h"
+#include "base/raw_iterator.h"
 #include "base/unaligned_ref.h"
 
 namespace base {
 constexpr inline uint8_t kUnusedByte = 0xaa;
 
 struct untyped_buffer {
-  struct const_iterator {
-    template <typename T>
-    unaligned_ref<T const> read() {
-      auto result = unaligned_ref<T const>::FromPtr(raw());
-      skip(sizeof(T));
-      return result;
-    }
-
-    void const *raw() const { return reinterpret_cast<void const *>(ptr_); }
-
-    void skip(size_t n) { ptr_ += n; }
-
-#if defined(ICARUS_DEBUG)
-    uintptr_t DebugValue() const { return ptr_; }
-#endif  // defined(ICARUS_DEBUG)
-
-   private:
-    friend struct untyped_buffer;
-    friend struct untyped_buffer_view;
-    friend std::string stringify(untyped_buffer::const_iterator);
-
-    friend constexpr bool operator<(const_iterator lhs, const_iterator rhs) {
-      return lhs.ptr_ < rhs.ptr_;
-    }
-    friend constexpr bool operator>(const_iterator lhs, const_iterator rhs) {
-      return (rhs < lhs);
-    }
-    friend constexpr bool operator<=(const_iterator lhs, const_iterator rhs) {
-      return not(lhs > rhs);
-    }
-    friend constexpr bool operator>=(const_iterator lhs, const_iterator rhs) {
-      return not(rhs < lhs);
-    }
-    friend constexpr bool operator==(const_iterator lhs, const_iterator rhs) {
-      return lhs.ptr_ == rhs.ptr_;
-    }
-    friend constexpr bool operator!=(const_iterator lhs, const_iterator rhs) {
-      return not(lhs == rhs);
-    }
-
-   private:
-    explicit constexpr const_iterator(void const *ptr)
-        : ptr_(reinterpret_cast<uintptr_t>(ptr)) {}
-
-    uintptr_t ptr_;
-  };
-
-  struct iterator {
-    template <typename T>
-    unaligned_ref<T> read() {
-      auto result = unaligned_ref<T>::FromPtr(raw());
-      skip(sizeof(T));
-      return result;
-    }
-
-    void skip(size_t n) { ptr_ += n; }
-
-    void const *raw() const { return reinterpret_cast<void const *>(ptr_); }
-    void *raw() { return reinterpret_cast<void *>(ptr_); }
-
-#if defined(ICARUS_DEBUG)
-    uintptr_t DebugValue() const { return ptr_; }
-#endif  // defined(ICARUS_DEBUG)
-
-   private:
-    friend struct untyped_buffer;
-    friend std::string stringify(untyped_buffer::iterator);
-
-    friend constexpr bool operator<(iterator lhs, iterator rhs) {
-      return lhs.ptr_ < rhs.ptr_;
-    }
-    friend constexpr bool operator>(iterator lhs, iterator rhs) {
-      return (rhs < lhs);
-    }
-    friend constexpr bool operator<=(iterator lhs, iterator rhs) {
-      return not(lhs > rhs);
-    }
-    friend constexpr bool operator>=(iterator lhs, iterator rhs) {
-      return not(rhs < lhs);
-    }
-    friend constexpr bool operator==(iterator lhs, iterator rhs) {
-      return lhs.ptr_ == rhs.ptr_;
-    }
-    friend constexpr bool operator!=(iterator lhs, iterator rhs) {
-      return not(lhs == rhs);
-    }
-
-   private:
-    explicit constexpr iterator(void *ptr)
-        : ptr_(reinterpret_cast<uintptr_t>(ptr)) {}
-
-    uintptr_t ptr_;
-  };
+  using const_iterator = internal::raw_const_iterator;
+  using iterator       = internal::raw_iterator;
 
   untyped_buffer(const_iterator iter, size_t len)
       : size_(len), capacity_(len), data_(static_cast<char *>(malloc(len))) {
-    std::memcpy(data_, reinterpret_cast<void const *>(iter.ptr_), size_);
+    std::memcpy(data_, iter.raw(), size_);
   }
 
   untyped_buffer(size_t starting_capacity = 0)

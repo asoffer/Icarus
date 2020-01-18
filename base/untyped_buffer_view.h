@@ -13,14 +13,14 @@ namespace base {
 struct untyped_buffer_view {
   constexpr explicit untyped_buffer_view() = default;
 
-  constexpr explicit untyped_buffer_view(void const *data, size_t size)
+  explicit untyped_buffer_view(void const *data, size_t size)
       : data_(reinterpret_cast<char const *>(data)), size_(size) {}
 
   /* implicit */ untyped_buffer_view(untyped_buffer const &buf)
       : data_(reinterpret_cast<char const *>(buf.raw(0))),
         size_(buf.size()) {}
 
-  using const_iterator = untyped_buffer::const_iterator;
+  using const_iterator = internal::raw_const_iterator;
   constexpr const_iterator begin() const { return const_iterator(data_); }
   constexpr const_iterator end() const { return const_iterator(data_ + size_); }
   constexpr const_iterator cbegin() const { return const_iterator(data_); }

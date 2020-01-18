@@ -30,11 +30,11 @@ std::string untyped_buffer::to_string(size_t width, size_t indent) const {
 }
 
 std::string stringify(untyped_buffer::iterator iter) {
-  return absl::StrCat("iter[", reinterpret_cast<uintptr_t>(iter.ptr_), "]");
+  return absl::StrCat("iter[", reinterpret_cast<uintptr_t>(iter.raw()), "]");
 }
 
 std::string stringify(untyped_buffer::const_iterator iter) {
-  return absl::StrCat("iter[", reinterpret_cast<uintptr_t>(iter.ptr_), "]");
+  return absl::StrCat("iter[", reinterpret_cast<uintptr_t>(iter.raw()), "]");
 }
 
 }  // namespace base

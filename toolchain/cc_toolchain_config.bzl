@@ -95,6 +95,7 @@ def _impl(ctx):
             "extra",
             "error",
             "uninitialized",
+            "no-sign-compare",
             "no-unused-parameter",
             "no-unused-variable",
             "no-unused-but-set-parameter",
