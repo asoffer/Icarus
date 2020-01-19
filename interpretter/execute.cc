@@ -544,12 +544,12 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
 
     std::vector<ir::Addr> return_slots;
     return_slots.reserve(num_rets);
-    ASSERT(fn_type->output.size() == num_rets);
+    ASSERT(fn_type->output().size() == num_rets);
     for (uint16_t i = 0; i < num_rets; ++i) {
       ir::Reg reg = iter->read<ir::Reg>();
       // NOTE: This is a hack using heap address slots to represent registers
       // since they are both void* and are used identically in the interpretter.
-      ir::Addr addr = (fn_type->output[i]->is_big())
+      ir::Addr addr = (fn_type->output()[i]->is_big())
                           ? ctx->resolve<ir::Addr>(reg)
                           : ir::Addr::Heap(ctx->current_frame().regs_.raw(reg));
 

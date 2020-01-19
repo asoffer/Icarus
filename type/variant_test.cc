@@ -54,13 +54,17 @@ TEST(Variant, MultiVar) {
 
   EXPECT_THAT(type::MultiVar({}), IsEmpty());
 
-  EXPECT_THAT(type::MultiVar({std::vector{type::Int64, type::Bool},
-                              std::vector{type::Int64, type::Bool}}),
-              ElementsAre(type::Int64, type::Bool));
+  auto v1 = std::vector{type::Int64, type::Bool};
+  auto v2 = std::vector{type::Int64, type::Bool};
+  EXPECT_THAT(
+      type::MultiVar({absl::MakeConstSpan(v1), absl::MakeConstSpan(v2)}),
+      ElementsAre(type::Int64, type::Bool));
 
-  EXPECT_THAT(type::MultiVar({std::vector{type::Int64, type::Bool},
-                              std::vector{type::Int64, type::Int64}}),
-              ElementsAre(type::Int64, type::Var({type::Bool, type::Int64})));
+  auto v3 = std::vector{type::Int64, type::Bool};
+  auto v4 = std::vector{type::Int64, type::Int64};
+  EXPECT_THAT(
+      type::MultiVar({absl::MakeConstSpan(v3), absl::MakeConstSpan(v4)}),
+      ElementsAre(type::Int64, type::Var({type::Bool, type::Int64})));
 }
 
 TEST(Variant, Contains) {

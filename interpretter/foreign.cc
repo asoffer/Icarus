@@ -85,8 +85,8 @@ void CallForeignFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
     }
   }
 
-  ASSERT(fn_type->output.size() == 1u);
-  auto *out_type = fn_type->output[0];
+  ASSERT(fn_type->output().size() == 1u);
+  auto *out_type = fn_type->output()[0];
 
   ffi_cif cif;
   ffi_arg ret;

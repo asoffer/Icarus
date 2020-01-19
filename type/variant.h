@@ -16,7 +16,7 @@ namespace type {
 Type const *Var(std::vector<Type const *> variants);
 
 std::vector<Type const *> MultiVar(
-    absl::Span<std::vector<Type const *> const> variants);
+    absl::Span<absl::Span<Type const *const> const> variants);
 
 struct Variant : public Type {
   TYPE_FNS(Variant);

@@ -16,7 +16,7 @@ namespace {
 std::pair<ir::Results, ir::OutParams> SetReturns(
     ir::Builder &bldr, internal::ExprData const &expr_data,
     absl::Span<type::Type const *> final_out_types) {
-  auto const &ret_types = expr_data.type()->as<type::Function>().output;
+  auto ret_types = expr_data.type()->as<type::Function>().output();
   ir::Results results;
   ir::OutParams out_params = bldr.OutParams(ret_types);
   // TODO find a better way to extract these. Figure out why you even need to.
@@ -151,14 +151,14 @@ base::expected<FnCallDispatchTable> FnCallDispatchTable::Verify(
 type::QualType FnCallDispatchTable::ComputeResultQualType(
     absl::flat_hash_map<ast::Expression const *, internal::ExprData> const
         &table) {
-  std::vector<std::vector<type::Type const *>> results;
+  std::vector<absl::Span<type::Type const *const>> results;
   for (auto const &[overload, expr_data] : table) {
     DEBUG_LOG("dispatch-verify")
     ("Extracting return type for ", overload->DebugString(), " of type ",
      expr_data.type()->to_string());
     if (auto *fn_type = expr_data.type()->if_as<type::Function>()) {
-      auto const &out_vec = fn_type->output;
-      results.push_back(out_vec);
+      auto out_span = fn_type->output();
+      results.push_back(out_span);
     } else if (expr_data.type() == type::Generic) {
       results.emplace_back(); // NOT_YET figuring out the real answer.
     } else {

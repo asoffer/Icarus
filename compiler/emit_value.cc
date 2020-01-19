@@ -460,7 +460,7 @@ ir::Results EmitBuiltinCall(
     case core::Builtin::Bytes: {
       auto const &fn_type =
           ir::BuiltinType(core::Builtin::Bytes)->as<type::Function>();
-      ir::OutParams outs = c->builder().OutParams(fn_type.output);
+      ir::OutParams outs = c->builder().OutParams(fn_type.output());
       ir::Reg reg        = outs[0];
       c->builder().Call(ir::BytesFn(), &fn_type,
                         {c->Visit(args.at(0), EmitValueTag{})},
@@ -472,7 +472,7 @@ ir::Results EmitBuiltinCall(
     case core::Builtin::Alignment: {
       auto const &fn_type =
           ir::BuiltinType(core::Builtin::Alignment)->as<type::Function>();
-      ir::OutParams outs = c->builder().OutParams(fn_type.output);
+      ir::OutParams outs = c->builder().OutParams(fn_type.output());
       ir::Reg reg        = outs[0];
       c->builder().Call(ir::AlignmentFn(), &fn_type,
                         {c->Visit(args.at(0), EmitValueTag{})},
@@ -832,7 +832,7 @@ ir::Results Compiler::Visit(ast::ReturnStmt const *node, EmitValueTag) {
   auto *fn_type = &ASSERT_NOT_NULL(type_of(fn_lit))->as<type::Function>();
   for (size_t i = 0; i < arg_vals.size(); ++i) {
     // TODO return type maybe not the same as type actually returned?
-    auto *ret_type = fn_type->output[i];
+    auto *ret_type = fn_type->output()[i];
     if (ret_type->is_big()) {
       // TODO must `r` be holding a register?
       // TODO guaranteed move-elision

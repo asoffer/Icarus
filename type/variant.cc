@@ -108,7 +108,7 @@ core::Alignment Variant::alternative_alignment(core::Arch const &a) const {
 }
 
 std::vector<Type const *> MultiVar(
-    absl::Span<std::vector<Type const *> const> type_vecs) {
+    absl::Span<absl::Span<Type const *const> const> type_vecs) {
   if (type_vecs.empty()) { return {}; }
 
 #if defined(ICARUS_DEBUG)

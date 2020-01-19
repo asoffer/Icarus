@@ -164,7 +164,7 @@ static type::QualType VerifySpecialFunctions(Compiler *visitor,
   bool error = false;
   if (decl->id() == "copy") {
     if (auto *f = decl_type->if_as<type::Function>()) {
-      if (not f->output.empty()) {
+      if (not f->output().empty()) {
         error = true;
         NOT_YET("output must be empty");
       }
@@ -198,7 +198,7 @@ static type::QualType VerifySpecialFunctions(Compiler *visitor,
     }
   } else if (decl->id() == "move") {
     if (auto *f = decl_type->if_as<type::Function>()) {
-      if (not f->output.empty()) {
+      if (not f->output().empty()) {
         error = true;
         NOT_YET("output must be empty");
       }
@@ -283,7 +283,7 @@ static InferenceFailureReason Inferrable(type::Type const *t) {
       auto reason = Inferrable(t);
       if (reason != InferenceFailureReason::Inferrable) { return reason; }
     }
-    for (auto const *t : f->output) {
+    for (auto const *t : f->output()) {
       auto reason = Inferrable(t);
       if (reason != InferenceFailureReason::Inferrable) { return reason; }
     }
@@ -336,8 +336,8 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node) {
     return c->set_result(node, type::QualType::Constant(f));
 
   } else {
-    auto *node_type  = c->type_of(node);
-    auto const &outs = ASSERT_NOT_NULL(node_type)->as<type::Function>().output;
+    auto *node_type = c->type_of(node);
+    auto outs       = ASSERT_NOT_NULL(node_type)->as<type::Function>().output();
     switch (outs.size()) {
       case 0: {
         bool err = false;
@@ -936,7 +936,7 @@ static type::QualType VerifyCall(
       }
       return type::QualType::Constant(ir::BuiltinType(core::Builtin::Opaque)
                                           ->as<type::Function>()
-                                          .output[0]);
+                                          .output()[0]);
 
     case core::Builtin::Bytes: {
       size_t size = arg_results.size();
@@ -958,7 +958,7 @@ static type::QualType VerifyCall(
       }
       return type::QualType::Constant(ir::BuiltinType(core::Builtin::Bytes)
                                           ->as<type::Function>()
-                                          .output[0]);
+                                          .output()[0]);
     }
     case core::Builtin::Alignment: {
       size_t size = arg_results.size();
@@ -982,7 +982,7 @@ static type::QualType VerifyCall(
       }
       return type::QualType::Constant(ir::BuiltinType(core::Builtin::Alignment)
                                           ->as<type::Function>()
-                                          .output[0]);
+                                          .output()[0]);
     }
 #if defined(ICARUS_DEBUG)
     case core::Builtin::DebugIr:

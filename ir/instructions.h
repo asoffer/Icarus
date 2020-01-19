@@ -1207,7 +1207,7 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
   CallInstruction(type::Function const* fn_type, RegOr<AnyFunc> const& fn,
                   std::vector<Results> args, OutParams outs)
       : fn_type(fn_type), fn(fn), args(std::move(args)), outs(std::move(outs)) {
-    ASSERT(this->outs.size() == this->fn_type->output.size());
+    ASSERT(this->outs.size() == this->fn_type->output().size());
     ASSERT(this->args.size() == this->fn_type->input.size());
   }
   ~CallInstruction() override {}
@@ -1218,7 +1218,7 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
     for (auto const& arg : args) {
       absl::StrAppend(&result, "\n      -> ", stringify(arg));
     }
-    for (size_t i = 0; i < fn_type->output.size(); ++i) {
+    for (size_t i = 0; i < fn_type->output().size(); ++i) {
       absl::StrAppend(&result, "\n      <- ", stringify(outs[i]));
     }
 

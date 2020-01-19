@@ -33,13 +33,16 @@ struct Param {
   Param(Param&&) noexcept = default;
   Param& operator=(Param&&) noexcept = default;
 
-  Param(Param const&) noexcept = default;
-  Param& operator=(Param const&) noexcept = default;
+  Param(Param const&) = default;
+  Param& operator=(Param const&) = default;
 
   std::string_view name = "";
   T value{};
   FnParamFlags flags{};
 };
+
+// TODO ParamRef would be useful here.
+// TODO noexcept specifications.
 
 template <typename T>
 struct Param<T, false, true> {

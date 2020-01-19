@@ -14,15 +14,20 @@ core::Alignment GenericFunction::alignment(core::Arch const &) const {
   return core::Host.pointer().alignment();
 }
 
-static base::guarded<std::map<std::vector<Type const *>,
-                              std::map<std::vector<Type const *>, Function>>>
+static base::guarded<
+    std::map<std::vector<Type const *>,
+             std::map<absl::Span<Type const *const>, Function>>>
     funcs_;
 Function const *Func(std::vector<Type const *> in,
                      std::vector<Type const *> out) {
   // TODO if void is unit in some way we shouldn't do this.
   auto f = Function(in, out);
+  // output_span is backed by a vector that doesn't move even when the
+  // containing function does so this is safe to reference even after `f` is
+  // moved.
+  auto output_span = f.output();
   return &(*funcs_.lock())[std::move(in)]
-              .emplace(std::move(out), std::move(f))
+              .emplace(output_span, std::move(f))
               .first->second;
 }
 
@@ -43,16 +48,16 @@ void Function::WriteTo(std::string *result) const {
 
   result->append(" -> ");
 
-  if (output.empty()) {
+  if (output().empty()) {
     result->append("()");
-  } else if (output.size() == 1) {
-    output.at(0)->WriteTo(result);
+  } else if (output().size() == 1) {
+    output()[0]->WriteTo(result);
   } else {
     result->append("(");
-    output.at(0)->WriteTo(result);
-    for (size_t i = 1; i < output.size(); ++i) {
+    output()[0]->WriteTo(result);
+    for (size_t i = 1; i < output().size(); ++i) {
       result->append(", ");
-      output.at(i)->WriteTo(result);
+      output()[i]->WriteTo(result);
     }
     result->append(")");
   }

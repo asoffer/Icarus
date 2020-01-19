@@ -91,7 +91,7 @@ void EmitCallOneOverload(ir::ScopeDef const *scope_def,
       ASSERT(maybe_fn.has_value() == true);
       ir::AnyFunc fn = *maybe_fn;
       auto *fn_type  = fn.is_fn() ? fn.func()->type() : fn.foreign().type();
-      ir::OutParams outs = bldr.OutParams(fn_type->output);
+      ir::OutParams outs = bldr.OutParams(fn_type->output());
       bldr.Call(fn, fn_type, done_results, std::move(outs));
       bldr.UncondJump(landing_block);
     } else {
@@ -108,7 +108,7 @@ void EmitCallOneOverload(ir::ScopeDef const *scope_def,
       ir::AnyFunc fn = *maybe_fn;
       auto *fn_type  = fn.is_fn() ? fn.func()->type() : fn.foreign().type();
 
-      ir::OutParams outs = bldr.OutParams(fn_type->output);
+      ir::OutParams outs = bldr.OutParams(fn_type->output());
       bldr.Call(fn, fn_type, arg_results, outs);
 
       auto const &params = block_interp.block_node(next_block_name)->params();
@@ -120,7 +120,7 @@ void EmitCallOneOverload(ir::ScopeDef const *scope_def,
         type::Type const *param_type =
             compiler->type_of(&param->as<ast::Declaration>());
 
-        compiler->EmitMoveInit(fn_type->output[i], ir::Results{outs[i]},
+        compiler->EmitMoveInit(fn_type->output()[i], ir::Results{outs[i]},
                                type::Typed<ir::Reg>(addr, type::Ptr(param_type)));
         ++i;
       }

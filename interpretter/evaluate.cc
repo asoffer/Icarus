@@ -8,7 +8,7 @@
 
 namespace interpretter {
 base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
-  size_t bytes_needed = fn.type()->output[0]->bytes(kArchitecture).value();
+  size_t bytes_needed = fn.type()->output()[0]->bytes(kArchitecture).value();
   auto ret_buf        = base::untyped_buffer::MakeFull(bytes_needed);
   std::vector<ir::Addr> ret_slots;
 
@@ -22,9 +22,9 @@ ir::Results Evaluate(ir::CompiledFn &&fn) {
   std::vector<uint32_t> offsets;
   auto buf = EvaluateToBuffer(std::move(fn));
 
-  offsets.reserve(fn.type()->output.size());
+  offsets.reserve(fn.type()->output().size());
   auto offset = core::Bytes{0};
-  for (auto *t : fn.type()->output) {
+  for (auto *t : fn.type()->output()) {
     offset = core::FwdAlign(offset, t->alignment(kArchitecture));
     offsets.push_back(offset.value());
     offset += t->bytes(kArchitecture);

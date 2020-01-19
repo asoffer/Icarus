@@ -103,7 +103,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node) {
     EmitIrForStatements(compiler, node->stmts());
     MakeAllDestructions(compiler, node->body_scope());
 
-    if (t->as<type::Function>().output.empty()) {
+    if (t->as<type::Function>().output().empty()) {
       // TODO even this is wrong. Figure out the right jumping strategy
       // between here and where you call SetReturn
       compiler->builder().ReturnJump();
