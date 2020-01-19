@@ -3,32 +3,29 @@
 
 #include "core/alignment.h"
 #include "core/bytes.h"
-#include "ir/addr.h"
-#include "ir/any_func.h"
+#include "core/type_contour.h"
 
 namespace core {
 
 struct Arch {
-  Bytes const ptr_bytes;
-  Alignment const ptr_alignment;
+  template <typename PtrType, typename FnType>
+  static constexpr Arch Get() {
+    return Arch(TypeContour::Get<PtrType>(), TypeContour::Get<FnType>());
+  }
 
-  Bytes const fn_ptr_bytes;
-  Alignment const fn_ptr_alignment;
+  constexpr TypeContour pointer() const { return pointer_; }
+
+  // C/C++ would refer to this as a function pointer.
+  constexpr TypeContour function() const { return function_; }
+
+ private:
+  constexpr Arch(TypeContour ptr, TypeContour fn)
+      : pointer_(ptr), function_(fn) {}
+
+  TypeContour pointer_, function_;
 };
 
-constexpr Arch Host() {
-  return Arch{/* ptr_bytes        = */ Bytes{sizeof(void*)},
-              /* ptr_alignment    = */ Alignment{alignof(void*)},
-              /* fn_ptr_bytes     = */ Bytes{sizeof(void (*)())},
-              /* fn_ptr_alignment = */ Alignment{alignof(void (*)())}};
-}
-
-constexpr Arch Interpretter() {
-  return Arch{/* ptr_bytes        = */ Bytes{sizeof(ir::Addr)},
-              /* ptr_alignment    = */ Alignment{alignof(ir::Addr)},
-              /* fn_ptr_bytes     = */ Bytes{sizeof(ir::AnyFunc)},
-              /* fn_ptr_alignment = */ Alignment{alignof(ir::AnyFunc)}};
-}
+inline constexpr Arch Host = Arch::Get<void *, void (*)()>();
 
 constexpr Bytes FwdAlign(Bytes b, Alignment a) {
   return Bytes{((b.value() - 1u) | (a.value() - 1u)) + 1u};

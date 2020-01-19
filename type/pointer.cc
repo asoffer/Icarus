@@ -39,10 +39,12 @@ void static WriteStr(char const *ptr_str, Pointer const *ptr,
 void BufferPointer::WriteTo(std::string *r) const { WriteStr("[*]", this, r); }
 void Pointer::WriteTo(std::string *r) const { WriteStr("*", this, r); }
 
-core::Bytes Pointer::bytes(core::Arch const &a) const { return a.ptr_bytes; }
+core::Bytes Pointer::bytes(core::Arch const &a) const {
+  return a.pointer().bytes();
+}
 
 core::Alignment Pointer::alignment(core::Arch const &a) const {
-  return a.ptr_alignment;
+  return a.pointer().alignment();
 }
 
 }  // namespace type

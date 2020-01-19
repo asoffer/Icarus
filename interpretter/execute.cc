@@ -4,6 +4,7 @@
 
 #include "absl/random/random.h"
 #include "base/meta.h"
+#include "interpretter/architecture.h"
 #include "interpretter/foreign.h"
 #include "ir/block_def.h"
 #include "ir/instructions.h"
@@ -535,7 +536,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         NOT_YET();
       } else {
         std::memcpy(call_buf.raw(i * kMaxSize), iter->raw(), kMaxSize);
-        iter->skip(t->bytes(core::Interpretter()).value());
+        iter->skip(t->bytes(kArchitecture).value());
       }
     }
 
@@ -580,11 +581,10 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     ir::Reg reg = iter->read<ir::Reg>();
 
     if (ctrl_bits & 0x02) {
-      ctx->current_frame().regs_.set(reg,
-                                     type->alignment(core::Interpretter()));
+      ctx->current_frame().regs_.set(reg, type->alignment(kArchitecture));
 
     } else {
-      ctx->current_frame().regs_.set(reg, type->bytes(core::Interpretter()));
+      ctx->current_frame().regs_.set(reg, type->bytes(kArchitecture));
     }
 
   } else if constexpr (std::is_same_v<Inst, ir::StructIndexInstruction> or
@@ -599,14 +599,14 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     ir::Reg reg   = iter->read<ir::Reg>();
 
     if constexpr (std::is_same_v<Inst, ir::PtrIncrInstruction>) {
-      auto arch          = core::Interpretter();
-      core::Bytes offset = core::FwdAlign(type->pointee->bytes(arch),
-                                          type->pointee->alignment(arch)) *
-                           index;
+      core::Bytes offset =
+          core::FwdAlign(type->pointee->bytes(kArchitecture),
+                         type->pointee->alignment(kArchitecture)) *
+          index;
       ctx->current_frame().regs_.set(reg, addr + offset);
     } else {
-      ctx->current_frame().regs_.set(
-          reg, addr + type->offset(index, core::Interpretter()));
+      ctx->current_frame().regs_.set(reg,
+                                     addr + type->offset(index, kArchitecture));
     }
   } else if constexpr (std::is_same_v<Inst, ir::ByteViewLengthInstruction>) {
     int64_t length =
@@ -624,7 +624,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
 
     ir::Addr addr = ReadAndResolve<ir::Addr>(is_reg, iter, ctx);
     DEBUG_LOG("variant")(addr);
-    if (get_val) { addr += type::Type_->bytes(core::Interpretter()); }
+    if (get_val) { addr += type::Type_->bytes(kArchitecture); }
 
     ir::Reg reg = iter->read<ir::Reg>();
     DEBUG_LOG("variant")(reg);

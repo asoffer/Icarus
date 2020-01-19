@@ -4,6 +4,10 @@
 #include "base/lazy.h"
 #include "type/type.h"
 
+namespace ir {
+struct CompiledFn;
+}  // namespace ir
+
 namespace type {
 
 struct Array : public Type {

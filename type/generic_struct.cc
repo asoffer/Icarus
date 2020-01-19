@@ -20,11 +20,11 @@ void GenericStruct::WriteTo(std::string *result) const {
 }
 
 core::Bytes GenericStruct::bytes(core::Arch const &a) const {
-  return core::Host().ptr_bytes;
+  return core::Host.pointer().bytes();
 }
 
 core::Alignment GenericStruct::alignment(core::Arch const &a) const {
-  return core::Host().ptr_alignment;
+  return core::Host.pointer().alignment();
 }
 
 }  // namespace type

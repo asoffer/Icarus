@@ -26,6 +26,7 @@ cc_library(
         "emit_print.cc",
         "emit_ref.cc",
         "emit_value.cc",
+        "emit_chainop.cc",
         "verify_type.cc",
     ],
     deps = [
@@ -42,6 +43,7 @@ cc_library(
         "//ast:overload_set",
         "//ast:visitor",
         "//base:debug",
+        "//base:defer",
         "//base:guarded",
         "//base:move_func",
         "//base:permutation",

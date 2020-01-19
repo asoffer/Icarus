@@ -19,8 +19,7 @@ cc_lib(
     deps = [
         ":alignment",
         ":bytes",
-        "//ir:addr",
-        "//ir:any_func",
+        ":type_contour",
     ],
     header_only = True,
     test_deps = [],
@@ -66,4 +65,22 @@ cc_lib(
     ],
     header_only = True,
     test_deps = [],
+)
+
+cc_library(
+    name = "type_contour",
+    hdrs = ["type_contour.h"],
+    deps = [
+        ":alignment",
+        ":bytes",
+    ],
+)
+
+cc_test(
+    name = "type_contour_test",
+    srcs = ["type_contour_test.cc"],
+    deps = [
+        ":type_contour",
+        "@com_google_googletest//:gtest_main",
+    ],
 )

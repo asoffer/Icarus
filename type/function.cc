@@ -7,11 +7,11 @@ namespace type {
 Type const *Generic = new GenericFunction;
 
 core::Bytes GenericFunction::bytes(core::Arch const &) const {
-  return core::Host().ptr_bytes;
+  return core::Host.pointer().bytes();
 }
 
 core::Alignment GenericFunction::alignment(core::Arch const &) const {
-  return core::Host().ptr_alignment;
+  return core::Host.pointer().alignment();
 }
 
 static base::guarded<std::map<std::vector<Type const *>,
@@ -59,11 +59,11 @@ void Function::WriteTo(std::string *result) const {
 }
 
 core::Bytes Function::bytes(core::Arch const &a) const {
-  return a.fn_ptr_bytes;
+  return a.function().bytes();
 }
 
 core::Alignment Function::alignment(core::Arch const &a) const {
-  return a.fn_ptr_alignment;
+  return a.function().alignment();
 }
 
 core::FnParams<type::Typed<ast::Declaration const *>>

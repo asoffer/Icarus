@@ -8,6 +8,10 @@
 #include "core/arch.h"
 #include "type.h"
 
+namespace ir {
+struct CompiledFn;
+}  // namespace ir
+
 namespace type {
 Type const *Var(std::vector<Type const *> variants);
 

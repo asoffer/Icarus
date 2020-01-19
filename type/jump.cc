@@ -20,11 +20,11 @@ void Jump::WriteTo(std::string *r) const {
 }
 
 core::Bytes Jump::bytes(core::Arch const &) const {
-  return core::Host().ptr_bytes;
+  return core::Host.pointer().bytes();
 }
 
 core::Alignment Jump::alignment(core::Arch const &) const {
-  return core::Host().ptr_alignment;
+  return core::Host.pointer().alignment();
 }
 
 }  // namespace type

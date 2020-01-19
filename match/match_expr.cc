@@ -60,6 +60,8 @@ void Match::Visit(ast::CommaList const *node, MatchState *state) {}
 
 void Match::Visit(ast::Declaration const *node, MatchState *state) {}
 
+void Match::Visit(ast::DesignatedInitializer const *node, MatchState *state) {}
+
 void Match::Visit(ast::EnumLiteral const *node, MatchState *state) {}
 
 void Match::Visit(ast::FunctionLiteral const *node, MatchState *state) {}

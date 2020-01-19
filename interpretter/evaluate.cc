@@ -1,16 +1,15 @@
 #include "interpretter/evaluate.h"
 
 #include "ast/expression.h"
-#include "core/arch.h"
+#include "interpretter/architecture.h"
 #include "interpretter/execute.h"
 #include "ir/compiled_fn.h"
 #include "type/function.h"
 
 namespace interpretter {
 base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
-  size_t bytes_needed =
-      fn.type()->output[0]->bytes(core::Interpretter()).value();
-  auto ret_buf = base::untyped_buffer::MakeFull(bytes_needed);
+  size_t bytes_needed = fn.type()->output[0]->bytes(kArchitecture).value();
+  auto ret_buf        = base::untyped_buffer::MakeFull(bytes_needed);
   std::vector<ir::Addr> ret_slots;
 
   ret_slots.push_back(ir::Addr::Heap(ret_buf.raw(0)));
@@ -24,12 +23,11 @@ ir::Results Evaluate(ir::CompiledFn &&fn) {
   auto buf = EvaluateToBuffer(std::move(fn));
 
   offsets.reserve(fn.type()->output.size());
-  auto arch   = core::Interpretter();
   auto offset = core::Bytes{0};
   for (auto *t : fn.type()->output) {
-    offset = core::FwdAlign(offset, t->alignment(arch));
+    offset = core::FwdAlign(offset, t->alignment(kArchitecture));
     offsets.push_back(offset.value());
-    offset += t->bytes(arch);
+    offset += t->bytes(kArchitecture);
   }
 
   return ir::Results::FromUntypedBuffer(std::move(offsets), std::move(buf));

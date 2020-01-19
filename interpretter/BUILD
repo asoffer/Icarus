@@ -1,6 +1,16 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "architecture",
+    hdrs = ["architecture.h"],
+    deps = [
+        "//core:arch",
+        "//ir:addr",
+        "//ir:any_func",
+    ],
+)
+
+cc_library(
     name = "register_array",
     hdrs = ["register_array.h"],
     deps = [
@@ -14,6 +24,7 @@ cc_library(
     hdrs = ["evaluate.h"],
     srcs = ["evaluate.cc"],
     deps = [
+        ":architecture",
         ":execute",
         "//base:debug",
         "//base:untyped_buffer",
@@ -29,6 +40,7 @@ cc_library(
     hdrs = ["stack_frame.h"],
     srcs = ["stack_frame.cc"],
     deps = [
+        ":architecture",
         ":register_array",
         "//core:arch",
         "//ir:basic_block",
@@ -42,6 +54,7 @@ cc_library(
     hdrs = ["execute.h"],
     srcs = ["execute.cc"],
     deps = [
+        ":architecture",
         ":foreign",
         ":stack_frame",
         "//base:meta",
