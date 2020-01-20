@@ -51,12 +51,28 @@ CONCRETE_TYPES = [
     ":variant",
 ]
 
-cc_lib(
+cc_library(
     name = "cast",
+    hdrs = ["cast.h"],
+    srcs = ["cast.cc"],
     deps = CONCRETE_TYPES + [
         "@com_google_absl//absl/algorithm:container",
     ],
-    test_deps = [],
+)
+
+cc_test(
+    name = "cast_test",
+    srcs = ["cast_test.cc"],
+    deps = [
+        ":array",
+        ":cast",
+        ":function",
+        ":pointer",
+        ":primitive",
+        ":tuple",
+        ":variant",
+        "@com_google_googletest//:gtest_main",
+    ],
 )
 
 cc_lib(
