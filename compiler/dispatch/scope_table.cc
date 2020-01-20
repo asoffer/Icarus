@@ -51,19 +51,21 @@ std::vector<core::FnArgs<type::QualType>> VerifyBlockNode(
   return result;
 }
 
-std::pair<std::vector<type::Type const *>, std::vector<ir::Results>>
-ExtractArgsAndTypes(core::FnArgs<type::Typed<ir::Results>> const &args) {
-  std::vector<type::Type const *> arg_types;
+// TODO this doesn't entirely make sense. We use the parameters to pick out the
+// correct overload set member, but really that should be done with arguments?
+// Something is fishy here.
+std::pair<core::FnParams<type::Type const *>, std::vector<ir::Results>>
+ExtractArgsAndParams(core::FnArgs<type::Typed<ir::Results>> const &args) {
+  core::FnParams<type::Type const *> arg_params;
   std::vector<ir::Results> arg_results;
-  arg_types.reserve(args.size());
   arg_results.reserve(args.size());
   // TODO this is the wrong linearization. We have tools for this with FnArgs
   // and FnParams.
   args.Apply([&](type::Typed<ir::Results> const &arg) {
-    arg_types.push_back(arg.type());
+    arg_params.append("", arg.type());
     arg_results.push_back(arg.get());
   });
-  return std::pair(std::move(arg_types), std::move(arg_results));
+  return std::pair(std::move(arg_params), std::move(arg_results));
 }
 
 // TODO organize the parameters here, they're getting to be too much.
@@ -86,10 +88,7 @@ void EmitCallOneOverload(ir::ScopeDef const *scope_def,
     if (next_block_name == "start") {
       bldr.UncondJump(starting_block);
     } else if (next_block_name == "exit") {
-      // TODO ExtractArgsAndTypes should return a FnParams probably
-      auto [done_types, done_results]     = ExtractArgsAndTypes(block_args);
-      core::FnParams<type::Type const*> done_params;
-      for (auto *t : done_types) { done_params.append("", t); }
+      auto[done_params, done_results]     = ExtractArgsAndParams(block_args);
       std::optional<ir::AnyFunc> maybe_fn = scope_def->dones_[done_params];
       ASSERT(maybe_fn.has_value() == true);
       ir::AnyFunc fn = *maybe_fn;
@@ -105,9 +104,7 @@ void EmitCallOneOverload(ir::ScopeDef const *scope_def,
       // TODO We're calling operator* on an optional. Are we sure that's safe?
       // Did we check it during type-verification? If so why do we need the
       // create_ function in ir::OverloadSet?
-      auto[arg_types, arg_results] = ExtractArgsAndTypes(block_args);
-      core::FnParams<type::Type const *> arg_params;
-      for (auto *t : arg_types) { arg_params.append("", t); }
+      auto[arg_params, arg_results]       = ExtractArgsAndParams(block_args);
       std::optional<ir::AnyFunc> maybe_fn = block_def->before_[arg_params];
       ASSERT(maybe_fn.has_value() == true);
       ir::AnyFunc fn = *maybe_fn;
