@@ -1208,7 +1208,7 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
                   std::vector<Results> args, OutParams outs)
       : fn_type(fn_type), fn(fn), args(std::move(args)), outs(std::move(outs)) {
     ASSERT(this->outs.size() == this->fn_type->output().size());
-    ASSERT(this->args.size() == this->fn_type->input.size());
+    ASSERT(this->args.size() == this->fn_type->input().size());
   }
   ~CallInstruction() override {}
 
@@ -1241,7 +1241,7 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
       if (arg.is_reg(0)) {
         writer->Write(arg.get<Reg>(0));
       } else {
-        type::Apply(fn_type->input[arg_index], [&](auto tag) {
+        type::Apply(fn_type->input().at(arg_index).value, [&](auto tag) {
           using T = typename decltype(tag)::type;
           writer->Write(arg.get<T>(0).value());
         });

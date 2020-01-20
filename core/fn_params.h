@@ -11,10 +11,6 @@
 #include "base/macros.h"
 #include "core/fn_args.h"
 
-namespace type {
-struct Type;
-}  // namespace type
-
 namespace core {
 enum FnParamFlags : uint8_t {
   HAS_DEFAULT = 1,
@@ -24,17 +20,33 @@ enum FnParamFlags : uint8_t {
   VARIADIC      = 8   // TODO: Not yet supported
 };
 
-template <typename T, bool = std::is_copy_constructible_v<T>,
-          bool = std::is_move_constructible_v<T>>
+template <typename T>
 struct Param {
   Param() = default;
   Param(std::string_view s, T t, FnParamFlags f = FnParamFlags{})
       : name(s), value(std::move(t)), flags(f) {}
-  Param(Param&&) noexcept = default;
-  Param& operator=(Param&&) noexcept = default;
+  Param(Param&&) noexcept(std::is_nothrow_move_constructible_v<T>) = default;
+  Param& operator=(Param&&) noexcept(std::is_nothrow_move_assignable_v<T>) =
+      default;
 
-  Param(Param const&) = default;
-  Param& operator=(Param const&) = default;
+  Param(Param const&) noexcept(std::is_nothrow_copy_constructible_v<T>) =
+      default;
+  Param& operator=(Param const&)  // clang-format goof
+      noexcept(std::is_nothrow_copy_assignable_v<T>) = default;
+
+  friend bool operator==(Param<T> const& lhs, Param<T> const& rhs) {
+    return lhs.name == rhs.name and lhs.value == rhs.value and
+           lhs.flags == rhs.flags;
+  }
+
+  friend bool operator!=(Param<T> const& lhs, Param<T> const& rhs) {
+    return not(lhs == rhs);
+  }
+
+  template <typename H>
+  friend H AbslHashValue(H h, Param const& p) {
+    return H::combine(std::move(h), p.name, p.value, p.flags);
+  }
 
   std::string_view name = "";
   T value{};
@@ -42,63 +54,6 @@ struct Param {
 };
 
 // TODO ParamRef would be useful here.
-// TODO noexcept specifications.
-
-template <typename T>
-struct Param<T, false, true> {
-  Param() = default;
-  Param(std::string_view s, T t, FnParamFlags f = FnParamFlags{})
-      : name(s), value(std::move(t)), flags(f) {}
-  Param(Param const&) = delete;
-  Param& operator=(Param const&) = delete;
-  Param(Param&&) noexcept        = default;
-  Param& operator=(Param&&) noexcept = default;
-
-  std::string_view name = "";
-  T value{};
-  FnParamFlags flags{};
-};
-
-template <typename T>
-struct Param<T, true, false> {
-  Param() = default;
-  Param(std::string_view s, T t, FnParamFlags f = FnParamFlags{})
-      : name(s), value(std::move(t)), flags(f) {}
-  Param(Param const&) noexcept = default;
-  Param& operator=(Param const&) noexcept = default;
-  Param(Param&&)                          = delete;
-  Param& operator=(Param&&) = delete;
-
-  std::string_view name = "";
-  T value{};
-  FnParamFlags flags{};
-};
-
-template <typename T>
-struct Param<T, false, false> {
-  Param() = default;
-  Param(std::string_view s, T t, FnParamFlags f = FnParamFlags{})
-      : name(s), value(std::move(t)), flags(f) {}
-  Param(Param const&) = delete;
-  Param& operator=(Param const&) = delete;
-  Param(Param&&)                 = delete;
-  Param& operator=(Param&&) = delete;
-
-  std::string_view name = "";
-  T value{};
-  FnParamFlags flags{};
-};
-
-template <typename T>
-inline bool operator==(Param<T> const& lhs, Param<T> const& rhs) {
-  return lhs.name == rhs.name and lhs.value == rhs.value and
-         lhs.flags == rhs.flags;
-}
-
-template <typename T>
-inline bool operator!=(Param<T> const& lhs, Param<T> const& rhs) {
-  return not(lhs == rhs);
-}
 
 template <typename T>
 struct FnParams {
@@ -171,6 +126,20 @@ struct FnParams {
               FnParamFlags flags = FnParamFlags{}) {
     if (not name.empty()) { lookup_.emplace(name, params_.size()); }
     params_.emplace_back(name, std::move(val), flags);
+  }
+
+  template <typename H>
+  friend H AbslHashValue(H h, FnParams const& params) {
+    return H::combine_contiguous(std::move(h), params.params_.data(),
+                                 params.params_.size());
+  }
+
+  friend bool operator==(FnParams const& lhs, FnParams const& rhs) {
+    return lhs.params_ == rhs.params_;
+  }
+
+  friend bool operator!=(FnParams const& lhs, FnParams const& rhs) {
+    return not(lhs == rhs);
   }
 
  private:

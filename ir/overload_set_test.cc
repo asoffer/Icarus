@@ -7,6 +7,7 @@
 #include "type/primitive.h"
 
 namespace {
+using param = core::Param<type::Type const *>;
 
 void TestFn1() { std::puts("TestFn1"); }
 void TestFn2() { std::puts("TestFn2"); }
@@ -19,32 +20,32 @@ TEST(OverloadSet, Construction) {
       ir::ForeignFn(TestFn3, type::Func({type::Bool}, {}))});
 
   {
-    std::vector<type::Type const *> v;
-    auto fn = os[v];
+    core::FnParams<type::Type const *> p;
+    auto fn = os[p];
     ASSERT_TRUE(fn.has_value());
     EXPECT_EQ(fn->foreign().get(), TestFn1);
   }
   {
-    std::vector<type::Type const *> v{type::Int64};
-    auto fn = os[v];
+    core::FnParams<type::Type const *> p{param{"", type::Int64}};
+    auto fn = os[p];
     ASSERT_TRUE(fn.has_value());
     EXPECT_EQ(fn->foreign().get(), TestFn2);
   }
   {
-    std::vector<type::Type const *> v{type::Bool};
-    auto fn = os[v];
+    core::FnParams<type::Type const *> p{param{"", type::Bool}};
+    auto fn = os[p];
     ASSERT_TRUE(fn.has_value());
     EXPECT_EQ(fn->foreign().get(), TestFn3);
   }
 }
 
 TEST(OverloadSet, Callable) {
-  ir::OverloadSet os(
-      absl::Span<ir::AnyFunc const>{},
-      [](absl::Span<type::Type const *const>) -> std::optional<ir::AnyFunc> {
-        return ir::ForeignFn(TestFn1, type::Func({}, {}));
-      });
-  auto fn = os[std::vector<type::Type const *>()];
+  ir::OverloadSet os(absl::Span<ir::AnyFunc const>{},
+                     [](core::FnParams<type::Type const *> const &)
+                         -> std::optional<ir::AnyFunc> {
+                       return ir::ForeignFn(TestFn1, type::Func({}, {}));
+                     });
+  auto fn = os[core::FnParams<type::Type const *>()];
   ASSERT_TRUE(fn.has_value());
   ASSERT_FALSE(fn->is_fn());
   EXPECT_EQ(fn->foreign().get(), TestFn1);
@@ -54,8 +55,8 @@ TEST(OverloadSet, FailsToConstruct) {
   ir::OverloadSet os(absl::Span<ir::AnyFunc const>{});
 
   // Check twice because operator[] caches state.
-  EXPECT_FALSE(os[std::vector<type::Type const *>()].has_value());
-  EXPECT_FALSE(os[std::vector<type::Type const *>()].has_value());
+  EXPECT_FALSE(os[core::FnParams<type::Type const *>()].has_value());
+  EXPECT_FALSE(os[core::FnParams<type::Type const *>()].has_value());
 }
 
 }  // namespace

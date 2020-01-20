@@ -54,20 +54,20 @@ void CallForeignFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
   type::Function const *fn_type = f.type();
 
   std::vector<ffi_type *> arg_types;
-  arg_types.reserve(fn_type->input.size());
+  arg_types.reserve(fn_type->input().size());
 
   std::vector<void *> arg_vals;
-  arg_vals.reserve(fn_type->input.size());
+  arg_vals.reserve(fn_type->input().size());
 
   size_t i = 0;
-  for (type::Type const *in : fn_type->input) {
-    auto ffi_type = ToFfiType(in);
+  for (auto const &in : fn_type->input()) {
+    auto ffi_type = ToFfiType(in.value);
     arg_types.push_back(ffi_type);
     std::vector<void *> pointer_values;
     // This is more than we need to reserve, but it's sufficient to ensure that
     // push_back will never cause a reallocation so the pointers we take to
     // elements are stable.
-    pointer_values.reserve(fn_type->input.size());
+    pointer_values.reserve(fn_type->input().size());
     if (ffi_type == &ffi_type_pointer) {
       ir::Addr addr = arguments.get<ir::Addr>(16 * i++);
       switch (addr.kind()) {

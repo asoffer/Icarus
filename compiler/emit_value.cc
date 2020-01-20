@@ -696,7 +696,7 @@ ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
                      [fn_type, i = 0](
                          std::unique_ptr<ast::Declaration> const &d) mutable {
                        return type::Typed<ast::Declaration const *>(
-                           d.get(), fn_type->input.at(i++));
+                           d.get(), fn_type->input().at(i++).value);
                      }));
     if (work_item_ptr) { ir_func->work_item = work_item_ptr; }
   }

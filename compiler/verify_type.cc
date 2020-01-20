@@ -169,17 +169,23 @@ static type::QualType VerifySpecialFunctions(Compiler *visitor,
         NOT_YET("output must be empty");
       }
 
-      if (f->input.size() != 2 or f->input.at(0) != f->input.at(1) or
-          not f->input.at(0)->is<type::Pointer>() or
-          not f->input.at(0)->as<type::Pointer>().pointee->is<type::Struct>()) {
+      if (f->input().size() != 2 or
+          f->input().at(0).value != f->input().at(1).value or
+          not f->input().at(0).value->is<type::Pointer>() or
+          not f->input()
+                  .at(0)
+                  .value->as<type::Pointer>()
+                  .pointee->is<type::Struct>()) {
         error = true;
         NOT_YET("incorrect input type");
       } else {
         // TODO should you check that they're exported consistently in some way?
         // Note that you don't export the struct but rather declarations bound
         // to it so it's not totally clear how you would do that.
-        auto const &s =
-            f->input.at(0)->as<type::Pointer>().pointee->as<type::Struct>();
+        auto const &s = f->input()
+                            .at(0)
+                            .value->as<type::Pointer>()
+                            .pointee->as<type::Struct>();
 
         if (decl->scope_ != s.scope_) {
           error = true;
@@ -203,17 +209,23 @@ static type::QualType VerifySpecialFunctions(Compiler *visitor,
         NOT_YET("output must be empty");
       }
 
-      if (f->input.size() != 2 or f->input.at(0) != f->input.at(1) or
-          not f->input.at(0)->is<type::Pointer>() or
-          not f->input.at(0)->as<type::Pointer>().pointee->is<type::Struct>()) {
+      if (f->input().size() != 2 or
+          f->input().at(0).value != f->input().at(1).value or
+          not f->input().at(0).value->is<type::Pointer>() or
+          not f->input()
+                  .at(0)
+                  .value->as<type::Pointer>()
+                  .pointee->is<type::Struct>()) {
         error = true;
         NOT_YET("incorrect input type");
       } else {
         // TODO should you check that they're exported consistently in some way?
         // Note that you don't export the struct but rather declarations bound
         // to it so it's not totally clear how you would do that.
-        auto const &s =
-            f->input.at(0)->as<type::Pointer>().pointee->as<type::Struct>();
+        auto const &s = f->input()
+                            .at(0)
+                            .value->as<type::Pointer>()
+                            .pointee->as<type::Struct>();
 
         if (decl->scope_ != s.scope_) {
           error = true;
@@ -279,8 +291,8 @@ static InferenceFailureReason Inferrable(type::Type const *t) {
       if (reason != InferenceFailureReason::Inferrable) { return reason; }
     }
   } else if (auto *f = t->if_as<type::Function>()) {
-    for (auto const *t : f->input) {
-      auto reason = Inferrable(t);
+    for (auto const &param : f->input()) {
+      auto reason = Inferrable(param.value);
       if (reason != InferenceFailureReason::Inferrable) { return reason; }
     }
     for (auto const *t : f->output()) {

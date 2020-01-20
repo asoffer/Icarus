@@ -522,9 +522,9 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     // TODO you probably want interpretter::Arguments or something.
     auto call_buf =
         base::untyped_buffer::MakeFull(is_reg_bits.size() * kMaxSize);
-    ASSERT(fn_type->input.size() == is_reg_bits.size());
+    ASSERT(fn_type->input().size() == is_reg_bits.size());
     for (size_t i = 0; i < is_reg_bits.size(); ++i) {
-      type::Type const *t = fn_type->input[i];
+      type::Type const *t = fn_type->input().at(i).value;
       if (is_reg_bits[i]) {
         ir::Reg reg = iter->read<ir::Reg>();
 

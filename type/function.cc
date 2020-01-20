@@ -21,7 +21,10 @@ static base::guarded<
 Function const *Func(std::vector<Type const *> in,
                      std::vector<Type const *> out) {
   // TODO if void is unit in some way we shouldn't do this.
-  auto f = Function(in, out);
+  core::FnParams<Type const*> param_in;
+  for (Type const *i : in) { param_in.append("", i); }
+  auto f = Function(param_in, out);
+
   // output_span is backed by a vector that doesn't move even when the
   // containing function does so this is safe to reference even after `f` is
   // moved.
@@ -32,35 +35,22 @@ Function const *Func(std::vector<Type const *> in,
 }
 
 void Function::WriteTo(std::string *result) const {
-  if (input.empty()) {
-    result->append("()");
-  } else if (input.size() == 1 and not input[0]->is<Function>()) {
-    input.at(0)->WriteTo(result);
-  } else {
-    result->append("(");
-    input.at(0)->WriteTo(result);
-    for (size_t i = 1; i < input.size(); ++i) {
-      result->append(", ");
-      input.at(i)->WriteTo(result);
-    }
-    result->append(")");
+  result->append("(");
+  std::string_view sep = "";
+  for (auto const &param : input()) {
+    result->append(sep);
+    param.value->WriteTo(result);
+    sep = ", ";
   }
+  result->append(") -> (");
 
-  result->append(" -> ");
-
-  if (output().empty()) {
-    result->append("()");
-  } else if (output().size() == 1) {
-    output()[0]->WriteTo(result);
-  } else {
-    result->append("(");
-    output()[0]->WriteTo(result);
-    for (size_t i = 1; i < output().size(); ++i) {
-      result->append(", ");
-      output()[i]->WriteTo(result);
-    }
-    result->append(")");
+  sep = "";
+  for (Type const *out : output()) {
+    result->append(sep);
+    out->WriteTo(result);
+    sep = ", ";
   }
+  result->append(")");
 }
 
 core::Bytes Function::bytes(core::Arch const &a) const {
@@ -74,8 +64,9 @@ core::Alignment Function::alignment(core::Arch const &a) const {
 core::FnParams<type::Typed<ast::Declaration const *>>
 Function::AnonymousFnParams() const {
   core::FnParams<type::Typed<ast::Declaration const *>> result;
-  for (type::Type const *t : input) {
-    result.append("", type::Typed<ast::Declaration const *>(nullptr, t),
+  for (auto const& param: input()) {
+    result.append("",
+                  type::Typed<ast::Declaration const *>(nullptr, param.value),
                   core::MUST_NOT_NAME);
   }
   return result;

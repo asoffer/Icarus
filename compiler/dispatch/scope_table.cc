@@ -86,8 +86,11 @@ void EmitCallOneOverload(ir::ScopeDef const *scope_def,
     if (next_block_name == "start") {
       bldr.UncondJump(starting_block);
     } else if (next_block_name == "exit") {
+      // TODO ExtractArgsAndTypes should return a FnParams probably
       auto [done_types, done_results]     = ExtractArgsAndTypes(block_args);
-      std::optional<ir::AnyFunc> maybe_fn = scope_def->dones_[done_types];
+      core::FnParams<type::Type const*> done_params;
+      for (auto *t : done_types) { done_params.append("", t); }
+      std::optional<ir::AnyFunc> maybe_fn = scope_def->dones_[done_params];
       ASSERT(maybe_fn.has_value() == true);
       ir::AnyFunc fn = *maybe_fn;
       auto *fn_type  = fn.is_fn() ? fn.func()->type() : fn.foreign().type();
@@ -102,8 +105,10 @@ void EmitCallOneOverload(ir::ScopeDef const *scope_def,
       // TODO We're calling operator* on an optional. Are we sure that's safe?
       // Did we check it during type-verification? If so why do we need the
       // create_ function in ir::OverloadSet?
-      auto [arg_types, arg_results]       = ExtractArgsAndTypes(block_args);
-      std::optional<ir::AnyFunc> maybe_fn = block_def->before_[arg_types];
+      auto[arg_types, arg_results] = ExtractArgsAndTypes(block_args);
+      core::FnParams<type::Type const *> arg_params;
+      for (auto *t : arg_types) { arg_params.append("", t); }
+      std::optional<ir::AnyFunc> maybe_fn = block_def->before_[arg_params];
       ASSERT(maybe_fn.has_value() == true);
       ir::AnyFunc fn = *maybe_fn;
       auto *fn_type  = fn.is_fn() ? fn.func()->type() : fn.foreign().type();

@@ -26,10 +26,12 @@ struct GenericFunction : public Callable {
 
 struct Function : public Callable {
   TYPE_FNS(Function);
-  Function(std::vector<const Type *> in, std::vector<const Type *> out)
-      : input(std::move(in)), output_(std::move(out)) {
+  Function(core::FnParams<Type const *> in, std::vector<Type const *> out)
+      : input_(std::move(in)), output_(std::move(out)) {
+#if defined(ICARUS_DEBUG)
     for (auto *t : input) { ASSERT(t != nullptr); }
     for (auto *t : output_) { ASSERT(t != nullptr); }
+#endif  // defined(ICARUS_DEBUG)
   }
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
@@ -38,15 +40,24 @@ struct Function : public Callable {
 
   bool is_big() const override { return false; }
 
+  // TODO This doesn't need to be anonymous anymore!
   core::FnParams<type::Typed<ast::Declaration const *>> AnonymousFnParams()
       const;
+
+  core::FnParams<Type const *> const &input() const { return input_; }
   absl::Span<Type const * const> output() const { return output_; }
 
-  // TODO remove this in favor of function parameters that can have names.
-  std::vector<Type const *> input;
-
  private:
-  core::FnParams<Typed<std::string>> input_;
+  // Each `Param<Type const*>` has a `std::string_view` member representing the
+  // parameter name. This is viewing an identifier owned by a declaration in the
+  // syntax tree which means it is valid for the lifetime of the syntax tree.
+  // However, this type is never destroyed, so it's lifetime is indeed longer
+  // than that of the syntax tree.
+  //
+  // TODO either fix this, or come up with a simple and robust rule we can
+  // follow to ensure this is safe. Do we keep the syntax tree around for the
+  // lifetime of the program? Any program?
+  core::FnParams<Type const*> input_;
   std::vector<Type const *> output_;
 };
 
