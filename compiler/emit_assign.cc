@@ -15,7 +15,8 @@ template <SpecialFunctionCategory Cat>
 static ir::CompiledFn *CreateAssign(Compiler *compiler, type::Array const *a) {
   type::Pointer const *ptr_type = type::Ptr(a);
   auto *data_ptr_type           = type::Ptr(a->data_type);
-  auto fn_type                  = type::Func({ptr_type, ptr_type}, {});
+  auto fn_type                  = type::Func(
+      {core::AnonymousParam(ptr_type), core::AnonymousParam(ptr_type)}, {});
   auto *fn = compiler->AddFunc(fn_type, fn_type->AnonymousFnParams());
   ICARUS_SCOPE(ir::SetCurrent(fn)) {
     auto &bldr          = compiler->builder();
@@ -205,8 +206,9 @@ void Compiler::Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
                      type::Typed<ir::Results> const &from, EmitCopyAssignTag) {
   t->copy_assign_func_.init([=]() {
     type::Pointer const *p = type::Ptr(t);
-    auto fn_type           = type::Func({p, p}, {});
-    auto *fn               = AddFunc(fn_type, fn_type->AnonymousFnParams());
+    auto fn_type =
+        type::Func({core::AnonymousParam(p), core::AnonymousParam(p)}, {});
+    auto *fn = AddFunc(fn_type, fn_type->AnonymousFnParams());
     ICARUS_SCOPE(ir::SetCurrent(fn)) {
       builder().CurrentBlock() = fn->entry();
       auto val                 = ir::Reg::Arg(0);
@@ -234,8 +236,9 @@ void Compiler::Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
                      type::Typed<ir::Results> const &from, EmitMoveAssignTag) {
   t->move_assign_func_.init([=]() {
     type::Pointer const *p = type::Ptr(t);
-    auto fn_type           = type::Func({p, p}, {});
-    auto *fn               = AddFunc(fn_type, fn_type->AnonymousFnParams());
+    auto fn_type =
+        type::Func({core::AnonymousParam(p), core::AnonymousParam(p)}, {});
+    auto *fn = AddFunc(fn_type, fn_type->AnonymousFnParams());
     ICARUS_SCOPE(ir::SetCurrent(fn)) {
       builder().CurrentBlock() = fn->entry();
       auto val                 = ir::Reg::Arg(0);

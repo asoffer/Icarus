@@ -61,7 +61,7 @@ struct Function : public Callable {
   std::vector<Type const *> output_;
 };
 
-Function const *Func(std::vector<Type const *> in,
+Function const *Func(core::FnParams<Type const *> in,
                      std::vector<Type const *> out);
 
 }  // namespace type

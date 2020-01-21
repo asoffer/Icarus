@@ -31,8 +31,8 @@ Inline(Builder &bldr, Jump *to_be_inlined,
 
   bldr.CurrentBlock() = start_block;
   size_t i            = 0;
-  for (type::Type const *t : to_be_inlined->type()->args()) {
-    type::Apply(t, [&](auto tag) -> Reg {
+  for (auto const& p : to_be_inlined->type()->args()) {
+    type::Apply(p.value, [&](auto tag) -> Reg {
       using T = typename decltype(tag)::type;
       return MakeReg(arguments[i++].get<T>(0));
     });

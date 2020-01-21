@@ -14,8 +14,9 @@
 namespace core {
 enum FnParamFlags : uint8_t {
   HAS_DEFAULT = 1,
-  // At moste one of MUST_NAME and MUST_NOT_NAME should be set.
-  MUST_NAME     = 2,  // TODO: Not yet supported
+  // At most one of MUST_NAME and MUST_NOT_NAME should be set.
+  MUST_NAME = 2,  // TODO: Not yet supported
+  // TODO, if you must not name something, the name shouldn't even be available.
   MUST_NOT_NAME = 4,  // TODO: semi-supported, used by foreign functions.
   VARIADIC      = 8   // TODO: Not yet supported
 };
@@ -53,6 +54,12 @@ struct Param {
   FnParamFlags flags{};
 };
 
+template <typename T>
+Param<std::decay_t<T>> AnonymousParam(T&& val) {
+  using type = std::decay_t<T>;
+  return Param<type>("", std::forward<T>(val), MUST_NOT_NAME);
+}
+
 // TODO ParamRef would be useful here.
 
 template <typename T>
@@ -68,8 +75,17 @@ struct FnParams {
     for (auto& p : params_) { p = Param<T>("", T{}, MUST_NOT_NAME); }
   }
 
+  FnParams(std::initializer_list<Param<T>> params) : params_(params) {
+    size_t i = 0;
+    for (auto const& p : params_) {
+      if (not p.name.empty()) { lookup_.emplace(p.name, i); }
+      ++i;
+    }
+  }
+
   template <typename... Ps>
-  explicit FnParams(Param<T> param, Ps&&... params) {
+  FnParams(Param<T> param, Ps&&... params) {
+    static_assert((std::is_same_v<Param<T>, Ps> && ...));
     params_.reserve(1 + sizeof...(Ps));
     params_.push_back(std::move(param));
     (params_.push_back(std::forward<Ps>(params)), ...);
@@ -121,6 +137,11 @@ struct FnParams {
   }
 
   Param<T> const& at(size_t i) const& { return params_.at(i); }
+
+  void append(Param<T> p) {
+    if (not p.name.empty()) { lookup_.emplace(p.name, params_.size()); }
+    params_.push_back(std::move(p));
+  }
 
   void append(std::string_view name, T val,
               FnParamFlags flags = FnParamFlags{}) {

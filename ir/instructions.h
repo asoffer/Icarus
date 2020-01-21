@@ -1098,9 +1098,14 @@ struct ArrowInstruction : base::Clone<ArrowInstruction, Instruction> {
       : lhs(std::move(lhs)), rhs(std::move(rhs)) {}
   ~ArrowInstruction() override {}
 
-  static type::Type const* Apply(std::vector<type::Type const*> lhs,
+  // TODO take parameters, or a span if you don't want construction of names?
+  static type::Type const* Apply(std::vector<type::Type const*> const& lhs,
                                  std::vector<type::Type const*> rhs) {
-    return type::Func(std::move(lhs), std::move(rhs));
+    // TODO named arguments
+    core::FnParams<type::Type const*> params;
+    params.reserve(lhs.size());
+    for (auto* t : lhs) { params.append(core::AnonymousParam(t)); }
+    return type::Func(std::move(params), std::move(rhs));
   }
 
   std::string to_string() const override {

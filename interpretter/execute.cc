@@ -269,8 +269,13 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
           return ctx->resolve<type::Type const *>(reg);
         });
 
-    ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
-                                   type::Func(std::move(ins), std::move(outs)));
+    core::FnParams<type::Type const*> in_params;
+    in_params.reserve(ins.size());
+    for (auto *t : ins) { in_params.append(core::AnonymousParams(t)); }
+
+    ctx->current_frame().regs_.set(
+        iter->read<ir::Reg>(),
+        type::Func(std::move(in_params), std::move(outs)));
   } else if constexpr (std::is_same_v<Inst, ir::PrintInstruction<bool>>) {
     bool is_reg = iter->read<bool>();
     std::cerr << (ReadAndResolve<bool>(is_reg, iter, ctx) ? "true" : "false");

@@ -27,7 +27,7 @@ void InitBlockGroupsForTest(ir::CompiledFn *f, ir::Jump *j) {
 
 TEST_CASE("Reg") {
   ir::CompiledFn f(type::Func({}, {}), {});
-  ir::Jump j(type::Jmp(std::vector<type::Type const *>{}), {});
+  ir::Jump j(type::Jmp({}), {});
   InitBlockGroupsForTest(&f, &j);
 
   ir::InstructionInliner i(&j, &f, ir::LocalBlockInterpretation({}));
@@ -41,7 +41,7 @@ TEST_CASE("Reg") {
 
 TEST_CASE("RegOr") {
   ir::CompiledFn f(type::Func({}, {}), {});
-  ir::Jump j(type::Jmp(std::vector<type::Type const *>{}), {});
+  ir::Jump j(type::Jmp({}), {});
   InitBlockGroupsForTest(&f, &j);
 
   ir::InstructionInliner i(&j, &f, ir::LocalBlockInterpretation({}));
@@ -66,7 +66,7 @@ TEST_CASE("Container") {
   };
 
   ir::CompiledFn f(type::Func({}, {}), {});
-  ir::Jump j(type::Jmp(std::vector<type::Type const *>{}), {});
+  ir::Jump j(type::Jmp({}), {});
   InitBlockGroupsForTest(&f, &j);
 
   ir::InstructionInliner i(&j, &f, ir::LocalBlockInterpretation({}));

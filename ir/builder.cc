@@ -264,12 +264,13 @@ RegOr<type::Function const *> Builder::Arrow(
           ins, [](RegOr<type::Type const *> r) { return not r.is_reg(); }) and
       absl::c_all_of(
           outs, [](RegOr<type::Type const *> r) { return not r.is_reg(); })) {
-    std::vector<type::Type const *> in_vec, out_vec;
-    in_vec.reserve(ins.size());
-    for (auto in : ins) { in_vec.push_back(in.value()); }
+    core::FnParams<type::Type const *> in_params;
+    std::vector<type::Type const *> out_vec;
+    in_params.reserve(ins.size());
+    for (auto in : ins) { in_params.append(core::AnonymousParam(in.value())); }
     out_vec.reserve(outs.size());
     for (auto out : outs) { out_vec.push_back(out.value()); }
-    return type::Func(std::move(in_vec), std::move(out_vec));
+    return type::Func(std::move(in_params), std::move(out_vec));
   }
   auto inst =
       std::make_unique<ArrowInstruction>(std::move(ins), std::move(outs));

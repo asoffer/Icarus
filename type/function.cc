@@ -15,15 +15,13 @@ core::Alignment GenericFunction::alignment(core::Arch const &) const {
 }
 
 static base::guarded<
-    std::map<std::vector<Type const *>,
-             std::map<absl::Span<Type const *const>, Function>>>
+    absl::flat_hash_map<core::FnParams<Type const *>,
+                        std::map<absl::Span<Type const *const>, Function>>>
     funcs_;
-Function const *Func(std::vector<Type const *> in,
+Function const *Func(core::FnParams<Type const *> in,
                      std::vector<Type const *> out) {
   // TODO if void is unit in some way we shouldn't do this.
-  core::FnParams<Type const*> param_in;
-  for (Type const *i : in) { param_in.append("", i); }
-  auto f = Function(param_in, out);
+  auto f = Function(in, out);
 
   // output_span is backed by a vector that doesn't move even when the
   // containing function does so this is safe to reference even after `f` is

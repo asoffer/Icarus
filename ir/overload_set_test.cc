@@ -16,8 +16,10 @@ void TestFn3() { std::puts("TestFn3"); }
 TEST(OverloadSet, Construction) {
   ir::OverloadSet os(absl::Span<ir::AnyFunc const>{
       ir::ForeignFn(TestFn1, type::Func({}, {})),
-      ir::ForeignFn(TestFn2, type::Func({type::Int64}, {})),
-      ir::ForeignFn(TestFn3, type::Func({type::Bool}, {}))});
+      ir::ForeignFn(TestFn2,
+                    type::Func({core::AnonymousParam(type::Int64)}, {})),
+      ir::ForeignFn(TestFn3,
+                    type::Func({core::AnonymousParam(type::Bool)}, {}))});
 
   {
     core::FnParams<type::Type const *> p;

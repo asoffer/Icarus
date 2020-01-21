@@ -128,6 +128,7 @@ cc_lib(
         ":type",
         ":function",
         "//base:guarded",
+        "//core:fn_params",
         "@com_google_absl//absl/container:node_hash_set",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",

@@ -35,7 +35,9 @@ static ir::Results ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
   auto[iter, success] = (*handle)[lhs_type].emplace(rhs_type, nullptr);
   if (success) {
     auto const *fn_type =
-        type::Func({type::Ptr(lhs_type), type::Ptr(rhs_type)}, {type::Bool});
+        type::Func({core::AnonymousParam(type::Ptr(lhs_type)),
+                    core::AnonymousParam(type::Ptr(rhs_type))},
+                   {type::Bool});
     auto *fn = compiler->AddFunc(fn_type, fn_type->AnonymousFnParams());
 
     ICARUS_SCOPE(ir::SetCurrent(fn)) {

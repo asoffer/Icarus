@@ -332,11 +332,9 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node) {
     }
   }
 
-  std::vector<type::Type const *> input_type_vec;
-  input_type_vec.reserve(node->params().size());
-  for (auto &param : node->params()) {
-    input_type_vec.push_back(ASSERT_NOT_NULL(c->type_of(param.value.get())));
-  }
+  auto type_params = node.params().Transform([&](auto const &param) {
+    return ASSERT_NOT_NULL(c->type_of(param.value.get()));
+  });
 
   if (not node->outputs()) {
     std::vector<type::Type const *> output_type_vec(
@@ -344,7 +342,7 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node) {
         std::make_move_iterator(types.end()));
 
     if (types.size() > 1) { NOT_YET("log an error"); }
-    auto f = type::Func(std::move(input_type_vec), std::move(output_type_vec));
+    auto f = type::Func(std::move(type_params), std::move(output_type_vec));
     return c->set_result(node, type::QualType::Constant(f));
 
   } else {
@@ -438,12 +436,21 @@ void VerifyBody(Compiler *c, ast::Jump const *node) {
 }
 
 type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
-  std::vector<type::Type const *> input_type_vec;
-  input_type_vec.reserve(node->params().size());
+  // Parameter types can be dependent, so we in general need to bail out after
+  // any error.
+  //
+  // TODO we can actually continue so long as we don't use a dependency of a
+  // failure.
+  core::FnParams<type::Type const *> input_type_params;
+  input_type_params.reserve(node->params().size());
   for (auto &d : node->params()) {
     ASSIGN_OR(return _, auto result, Visit(d.value.get(), VerifyTypeTag{}));
-    input_type_vec.push_back(result.type());
+    input_type_params.append(d.name, result.type(), d.flags);
   }
+
+  auto type_params = node.params().Transform([&](auto const &param) {
+    return ASSERT_NOT_NULL(c->type_of(param.value.get()));
+  });
 
   std::vector<type::Type const *> output_type_vec;
   bool error   = false;
@@ -462,11 +469,9 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
     }
   }
 
-  if (error or
-      absl::c_any_of(input_type_vec,
-                     [](type::Type const *t) { return t == nullptr; }) or
-      absl::c_any_of(output_type_vec,
-                     [](type::Type const *t) { return t == nullptr; })) {
+  if (error or absl::c_any_of(output_type_vec, [](type::Type const *t) {
+        return t == nullptr;
+      })) {
     return type::QualType::Error();
   }
 
@@ -490,7 +495,7 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
     }
 
     return set_result(
-        node, type::QualType::Constant(type::Func(std::move(input_type_vec),
+        node, type::QualType::Constant(type::Func(std::move(input_type_params),
                                                   std::move(output_type_vec))));
   } else {
     return set_result(node, VerifyBody(this, node));
