@@ -16,7 +16,7 @@ core::Alignment GenericFunction::alignment(core::Arch const &) const {
 
 static base::guarded<
     absl::flat_hash_map<core::FnParams<Type const *>,
-                        std::map<absl::Span<Type const *const>, Function>>>
+                        std::map<std::vector<Type const *>, Function>>>
     funcs_;
 Function const *Func(core::FnParams<Type const *> in,
                      std::vector<Type const *> out) {
@@ -26,9 +26,8 @@ Function const *Func(core::FnParams<Type const *> in,
   // output_span is backed by a vector that doesn't move even when the
   // containing function does so this is safe to reference even after `f` is
   // moved.
-  auto output_span = f.output();
   return &(*funcs_.lock())[std::move(in)]
-              .emplace(output_span, std::move(f))
+              .emplace(out, std::move(f))
               .first->second;
 }
 

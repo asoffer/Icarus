@@ -107,6 +107,38 @@ bool CanCast(Type const *from, Type const *to) {
     }
   }
 
+  if (auto *from_fn = from->if_as<Function>()) {
+    if (auto * to_fn = to->if_as<Function>()) {
+      if (from_fn->input().size() != to_fn->input().size()) { return false; }
+
+      if (from_fn->output() != to_fn->output()) { return false; }
+
+      size_t num_params = from_fn->input().size();
+      for (size_t i = 0; i < num_params; ++i) {
+        auto const& from_param = from_fn->input().at(i);
+        auto const& to_param = to_fn->input().at(i);
+
+        if (not CanCast(from_param.value, to_param.value)) { return false; }
+        if (from_param.flags & core::MUST_NOT_NAME) {
+          if (not(to_param.flags & core::MUST_NOT_NAME)) { return false; }
+        } else if (from_param.flags & core::MUST_NAME) {
+          if (not(to_param.flags & core::MUST_NAME) or
+              from_param.name != to_param.name) {
+            return false;
+          }
+        } else {
+          if (not(to_param.flags & core::MUST_NOT_NAME) and
+              from_param.name != to_param.name) {
+            return false;
+          }
+        }
+      }
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   return false;
 }
 

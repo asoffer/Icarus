@@ -44,6 +44,7 @@ struct Function : public Callable {
   core::FnParams<type::Typed<ast::Declaration const *>> AnonymousFnParams()
       const;
 
+  // TODO rename to `params()`
   core::FnParams<Type const *> const &input() const { return input_; }
   absl::Span<Type const * const> output() const { return output_; }
 

@@ -215,5 +215,35 @@ TEST(CanCast, Tuple) {
                       Tup({Int64, Ptr(Int32), BufPtr(Bool)})));
 }
 
+TEST(CanCast, Function) {
+  EXPECT_TRUE(CanCast(Func({}, {}), Func({}, {})));
+  EXPECT_FALSE(CanCast(Func({}, {Bool}), Func({}, {Int64})));
+  EXPECT_FALSE(CanCast(Func({core::AnonymousParam(Bool)}, {}),
+                       Func({core::AnonymousParam(Int64)}, {})));
+
+  EXPECT_TRUE(CanCast(Func({core::Param("name", Bool)}, {}),
+                       Func({core::AnonymousParam(Bool)}, {})));
+
+  EXPECT_FALSE(CanCast(Func({core::Param("name", Bool, core::MUST_NAME)}, {}),
+                       Func({core::AnonymousParam(Bool)}, {})));
+
+  EXPECT_FALSE(CanCast(Func({core::AnonymousParam(Bool)}, {}),
+                       Func({core::Param("name", Bool, core::MUST_NAME)}, {})));
+
+  EXPECT_FALSE(CanCast(Func({core::Param("name1", Bool, core::MUST_NAME)}, {}),
+                       Func({core::Param("name2", Bool, core::MUST_NAME)}, {})));
+
+  EXPECT_FALSE(CanCast(Func({core::Param("name1", Bool)}, {}),
+                       Func({core::Param("name2", Bool)}, {})));
+
+  // TODO, actually these should be equal.
+  EXPECT_TRUE(
+      CanCast(Func({core::Param("name", Bool, core::MUST_NOT_NAME)}, {}),
+              Func({core::AnonymousParam(Bool)}, {})));
+
+  EXPECT_TRUE(CanCast(Func({core::Param("name", BufPtr(Bool))}, {}),
+                      Func({core::AnonymousParam(Ptr(Bool))}, {})));
+}
+
 }  // namespace
 }  // namespace type
