@@ -26,6 +26,12 @@ struct Param {
   Param() = default;
   Param(std::string_view s, T t, FnParamFlags f = FnParamFlags{})
       : name(s), value(std::move(t)), flags(f) {}
+
+ template <typename U, std::enable_if_t<not std::is_same_v<T, U> and
+                                            std::is_convertible_v<U, T>,
+                                        int> = 0>
+ Param(Param<U> const& p) : Param(p.name, static_cast<T>(p.value), p.flags) {}
+
   Param(Param&&) noexcept(std::is_nothrow_move_constructible_v<T>) = default;
   Param& operator=(Param&&) noexcept(std::is_nothrow_move_assignable_v<T>) =
       default;
@@ -35,18 +41,18 @@ struct Param {
   Param& operator=(Param const&)  // clang-format goof
       noexcept(std::is_nothrow_copy_assignable_v<T>) = default;
 
-  friend bool operator==(Param<T> const& lhs, Param<T> const& rhs) {
+  friend constexpr bool operator==(Param<T> const& lhs, Param<T> const& rhs) {
     return lhs.name == rhs.name and lhs.value == rhs.value and
            lhs.flags == rhs.flags;
   }
 
-  friend bool operator!=(Param<T> const& lhs, Param<T> const& rhs) {
+  friend constexpr bool operator!=(Param<T> const& lhs, Param<T> const& rhs) {
     return not(lhs == rhs);
-  }
+ }
 
-  template <typename H>
-  friend H AbslHashValue(H h, Param const& p) {
-    return H::combine(std::move(h), p.name, p.value, p.flags);
+ template <typename H>
+ friend H AbslHashValue(H h, Param const& p) {
+   return H::combine(std::move(h), p.name, p.value, p.flags);
   }
 
   std::string_view name = "";
@@ -83,12 +89,14 @@ struct FnParams {
     }
   }
 
-  template <typename... Ps>
-  FnParams(Param<T> param, Ps&&... params) {
-    static_assert((std::is_same_v<Param<T>, Ps> && ...));
-    params_.reserve(1 + sizeof...(Ps));
-    params_.push_back(std::move(param));
-    (params_.push_back(std::forward<Ps>(params)), ...);
+  template <typename U, std::enable_if_t<not std::is_same_v<T, U> and
+                                             std::is_convertible_v<U, T>,
+                                         int> = 0>
+  FnParams(std::initializer_list<Param<U>> params) {
+    params_.reserve(params.size());
+    for (auto const& p : params) {
+      params_.push_back(static_cast<Param<T>>(p));
+    }
     size_t i = 0;
     for (auto const& p : params_) {
       if (not p.name.empty()) { lookup_.emplace(p.name, i); }

@@ -271,7 +271,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
 
     core::FnParams<type::Type const*> in_params;
     in_params.reserve(ins.size());
-    for (auto *t : ins) { in_params.append(core::AnonymousParams(t)); }
+    for (auto *t : ins) { in_params.append(core::AnonymousParam(t)); }
 
     ctx->current_frame().regs_.set(
         iter->read<ir::Reg>(),

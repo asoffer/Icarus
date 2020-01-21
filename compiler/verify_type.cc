@@ -332,8 +332,8 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node) {
     }
   }
 
-  auto type_params = node.params().Transform([&](auto const &param) {
-    return ASSERT_NOT_NULL(c->type_of(param.value.get()));
+  auto type_params = node->params().Transform([&](auto const &param) {
+    return ASSERT_NOT_NULL(c->type_of(param.get()));
   });
 
   if (not node->outputs()) {
@@ -447,10 +447,6 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
     ASSIGN_OR(return _, auto result, Visit(d.value.get(), VerifyTypeTag{}));
     input_type_params.append(d.name, result.type(), d.flags);
   }
-
-  auto type_params = node.params().Transform([&](auto const &param) {
-    return ASSERT_NOT_NULL(c->type_of(param.value.get()));
-  });
 
   std::vector<type::Type const *> output_type_vec;
   bool error   = false;
@@ -1692,17 +1688,12 @@ type::QualType Compiler::Visit(ast::Goto const *node, VerifyTypeTag) {
 type::QualType Compiler::Visit(ast::Jump const *node, VerifyTypeTag) {
   DEBUG_LOG("Jump")(node->DebugString());
   bool err = false;
-  std::vector<type::Type const *> param_types;
-  param_types.reserve(node->params().size());
-  for (auto const &param : node->params()) {
-    auto v = Visit(param.value.get(), VerifyTypeTag{});
-    if (not v.ok()) {
-      err = true;
-    } else {
-      param_types.push_back(v.type());
-    }
-  }
-
+  core::FnParams<type::Type const *> param_types =
+      node->params().Transform([&](auto const &param) {
+        auto v = Visit(param.get(), VerifyTypeTag{});
+        err |= not v.ok();
+        return v.type();
+      });
   return set_result(node,
                     err ? type::QualType::Error()
                         : type::QualType::Constant(type::Jmp(param_types)));

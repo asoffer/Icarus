@@ -7,7 +7,6 @@
 #include "type/primitive.h"
 
 namespace {
-using param = core::Param<type::Type const *>;
 
 void TestFn1() { std::puts("TestFn1"); }
 void TestFn2() { std::puts("TestFn2"); }
@@ -28,13 +27,13 @@ TEST(OverloadSet, Construction) {
     EXPECT_EQ(fn->foreign().get(), TestFn1);
   }
   {
-    core::FnParams<type::Type const *> p{param{"", type::Int64}};
+    core::FnParams<type::Type const *> p{core::AnonymousParam(type::Int64)};
     auto fn = os[p];
     ASSERT_TRUE(fn.has_value());
     EXPECT_EQ(fn->foreign().get(), TestFn2);
   }
   {
-    core::FnParams<type::Type const *> p{param{"", type::Bool}};
+    core::FnParams<type::Type const *> p{core::AnonymousParam(type::Bool)};
     auto fn = os[p];
     ASSERT_TRUE(fn.has_value());
     EXPECT_EQ(fn->foreign().get(), TestFn3);

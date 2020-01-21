@@ -16,9 +16,10 @@ void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDestroyTag) {
   t->destroy_func_.init([=]() {
     if (auto fn = SpecialFunction(this, t, "~")) { return *fn; }
 
-    type::Pointer const *pt = type::Ptr(t);
-    auto const *fn_type     = type::Func({core::AnonymousParam(pt)}, {});
-    ir::AnyFunc fn          = AddFunc(fn_type, fn_type->AnonymousFnParams());
+    type::Type const *pt = type::Ptr(t);
+    auto const *fn_type  = type::Func(
+        core::FnParams<type::Type const *>{core::AnonymousParam(t)}, {});
+    ir::AnyFunc fn = AddFunc(fn_type, fn_type->AnonymousFnParams());
 
     ICARUS_SCOPE(ir::SetCurrent(fn.func())) {
       builder().CurrentBlock() = builder().CurrentGroup()->entry();
@@ -30,10 +31,10 @@ void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDestroyTag) {
       }
 
       builder().ReturnJump();
-    }
-    return fn;
-  });
-  builder().Destroy(t, reg);
+      }
+      return fn;
+    });
+    builder().Destroy(t, reg);
 }
 
 void Compiler::Visit(type::Variant const *t, ir::Reg reg, EmitDestroyTag) {
@@ -42,7 +43,8 @@ void Compiler::Visit(type::Variant const *t, ir::Reg reg, EmitDestroyTag) {
   // TODO remove these casts in favor of something easier to track properties on
   std::unique_lock lock(t->mtx_);
   if (not t->destroy_func_) {
-    auto const *fn_type = type::Func({core::AnonymousParam(t)}, {});
+    auto const *fn_type = type::Func(
+        core::FnParams<type::Type const *>{core::AnonymousParam(t)}, {});
     t->destroy_func_    = AddFunc(fn_type, fn_type->AnonymousFnParams());
     ICARUS_SCOPE(ir::SetCurrent(t->destroy_func_)) {
       builder().CurrentBlock() = t->destroy_func_->entry();
@@ -78,7 +80,9 @@ void Compiler::Visit(type::Variant const *t, ir::Reg reg, EmitDestroyTag) {
 void Compiler::Visit(type::Tuple const *t, ir::Reg reg, EmitDestroyTag) {
   if (not t->HasDestructor()) { return; }
   t->destroy_func_.init([=]() {
-    auto const *fn_type = type::Func({core::AnonymousParam(type::Ptr(t))}, {});
+    auto const *fn_type = type::Func(
+        core::FnParams<type::Type const *>{core::AnonymousParam(type::Ptr(t))},
+        {});
     auto *fn            = AddFunc(fn_type, fn_type->AnonymousFnParams());
     ICARUS_SCOPE(ir::SetCurrent(fn)) {
       builder().CurrentBlock() = builder().CurrentGroup()->entry();
@@ -101,7 +105,9 @@ void Compiler::Visit(type::Tuple const *t, ir::Reg reg, EmitDestroyTag) {
 void Compiler::Visit(type::Array const *t, ir::Reg reg, EmitDestroyTag) {
   if (not t->HasDestructor()) { return; }
   t->destroy_func_.init([=]() {
-    auto const *fn_type = type::Func({core::AnonymousParam(type::Ptr(t))}, {});
+    auto const *fn_type = type::Func(
+        core::FnParams<type::Type const *>{core::AnonymousParam(type::Ptr(t))},
+        {});
     auto *fn            = AddFunc(fn_type, fn_type->AnonymousFnParams());
     ICARUS_SCOPE(ir::SetCurrent(fn)) {
       builder().CurrentBlock() = fn->entry();

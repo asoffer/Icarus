@@ -16,7 +16,9 @@ static ir::CompiledFn *CreateAssign(Compiler *compiler, type::Array const *a) {
   type::Pointer const *ptr_type = type::Ptr(a);
   auto *data_ptr_type           = type::Ptr(a->data_type);
   auto fn_type                  = type::Func(
-      {core::AnonymousParam(ptr_type), core::AnonymousParam(ptr_type)}, {});
+      core::FnParams<type::Type const *>{core::AnonymousParam(ptr_type),
+                                         core::AnonymousParam(ptr_type)},
+      {});
   auto *fn = compiler->AddFunc(fn_type, fn_type->AnonymousFnParams());
   ICARUS_SCOPE(ir::SetCurrent(fn)) {
     auto &bldr          = compiler->builder();
@@ -78,7 +80,10 @@ static ir::AnyFunc CreateAssign(Compiler *compiler, type::Struct const *s) {
   if (auto fn = SpecialFunction(compiler, s, Name<Cat>())) { return *fn; }
   auto &bldr              = compiler->builder();
   type::Pointer const *pt = type::Ptr(s);
-  auto fn_type            = type::Func({pt, pt}, {});
+  auto fn_type =
+      type::Func(core::FnParams<type::Type const *>{core::AnonymousParam(pt),
+                                                    core::AnonymousParam(pt)},
+                 {});
   auto *fn = compiler->AddFunc(fn_type, fn_type->AnonymousFnParams());
   ICARUS_SCOPE(ir::SetCurrent(fn)) {
     bldr.CurrentBlock() = fn->entry();
@@ -207,7 +212,9 @@ void Compiler::Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
   t->copy_assign_func_.init([=]() {
     type::Pointer const *p = type::Ptr(t);
     auto fn_type =
-        type::Func({core::AnonymousParam(p), core::AnonymousParam(p)}, {});
+        type::Func(core::FnParams<type::Type const *>{core::AnonymousParam(p),
+                                                      core::AnonymousParam(p)},
+                   {});
     auto *fn = AddFunc(fn_type, fn_type->AnonymousFnParams());
     ICARUS_SCOPE(ir::SetCurrent(fn)) {
       builder().CurrentBlock() = fn->entry();
@@ -237,7 +244,9 @@ void Compiler::Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
   t->move_assign_func_.init([=]() {
     type::Pointer const *p = type::Ptr(t);
     auto fn_type =
-        type::Func({core::AnonymousParam(p), core::AnonymousParam(p)}, {});
+        type::Func(core::FnParams<type::Type const *>{core::AnonymousParam(p),
+                                                      core::AnonymousParam(p)},
+                   {});
     auto *fn = AddFunc(fn_type, fn_type->AnonymousFnParams());
     ICARUS_SCOPE(ir::SetCurrent(fn)) {
       builder().CurrentBlock() = fn->entry();
