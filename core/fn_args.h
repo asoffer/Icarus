@@ -41,9 +41,18 @@ struct FnArgs {
 
   template <typename... Args>
   void named_emplace(Args &&... args) & {
-    named_.emplace(std::forward<Args>(args)...);
+    named_.emplace(std::forward<Args>(args)...).second;
   }
 
+  T &operator[](size_t i) { return pos_[i]; }
+  T const &operator[](size_t i) const { return pos_[i]; }
+
+  T &operator[](std::string_view s) { return named_.find(s)->second; }
+  T const &operator[](std::string_view s) const {
+    return named_.find(s)->second;
+  }
+
+  // TODO deprecate `at` methods. Prefer operator[].
   T &at(size_t i) { return pos_.at(i); }
   T const &at(size_t i) const { return pos_.at(i); }
 

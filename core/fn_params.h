@@ -8,6 +8,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/str_join.h"
 #include "base/debug.h"
+#include "base/lazy_convert.h"
 #include "base/macros.h"
 #include "core/fn_args.h"
 
@@ -105,9 +106,9 @@ struct FnParams {
   }
 
   void set(size_t index, Param<T> param) {
-    ASSERT(params_.at(index).name == "");
+    ASSERT(params_[index].name == "");
     lookup_.emplace(param.name, index);
-    params_.at(index) = std::move(param);
+    params_[index] = std::move(param);
   }
 
   template <typename Fn>
@@ -144,7 +145,10 @@ struct FnParams {
     return &iter->second;
   }
 
+  // TODO deprecate `at` method. Prefer operator[]
   Param<T> const& at(size_t i) const& { return params_.at(i); }
+
+  Param<T> const& operator[](size_t i) const& { return params_[i]; }
 
   void append(Param<T> p) {
     if (not p.name.empty()) { lookup_.emplace(p.name, params_.size()); }
@@ -199,6 +203,7 @@ std::string stringify(FnParams<T> const& fn_params) {
                       "]");
 }
 
+namespace internal {
 // Returns the index just after the last instance of MUST_NOT_NAME. If
 // MUST_NOT_NAME is the last parameter, then we return params.size(). If it is
 // not present at all, we return 0.
@@ -206,10 +211,11 @@ template <typename T>
 size_t MustNotNameTailIndex(FnParams<T> const& params) {
   if (params.empty()) { return 0; }
   for (int i = params.size() - 1; i >= 0; --i) {
-    if (params.at(i).flags & MUST_NOT_NAME) { return i + 1; }
+    if (params[i].flags & MUST_NOT_NAME) { return i + 1; }
   }
   return 0;
 }
+}  // namespace internal
 
 template <typename T, typename AmbiguityFn>
 bool AmbiguouslyCallable(FnParams<T> const& params1, FnParams<T> const& params2,
@@ -238,9 +244,9 @@ bool AmbiguouslyCallable(FnParams<T> const& params1, FnParams<T> const& params2,
   size_t min_size = std::min(params1.size(), params2.size());
   std::vector<int> diffs(1 + min_size, 0);
   for (size_t i = 0; i < min_size; ++i) {
-    auto const& p1 = params1.at(i);
+    auto const& p1 = params1[i];
     if (size_t const* j = params2.at_or_null(p1.name)) {
-      auto const& p2 = params2.at(*j);
+      auto const& p2 = params2[*j];
       if (p2.flags & HAS_DEFAULT) { continue; }
       auto [min, max] = std::minmax(i, *j);
       diffs[min]++;
@@ -253,7 +259,8 @@ bool AmbiguouslyCallable(FnParams<T> const& params1, FnParams<T> const& params2,
 
   // No need to attempt naming parameters that must not be named.
   size_t starting_named_index =
-      std::max(MustNotNameTailIndex(params1), MustNotNameTailIndex(params2));
+      std::max(internal::MustNotNameTailIndex(params1),
+               internal::MustNotNameTailIndex(params2));
 
   size_t accumulator                  = 0;
   size_t checked_type_matches_through = 0;
@@ -264,11 +271,11 @@ bool AmbiguouslyCallable(FnParams<T> const& params1, FnParams<T> const& params2,
     // one parameter set.
     for (auto [name, index1] : params1.lookup_) {
       if (index1 < i) { continue; }
-      auto const& p1 = params1.at(index1);
+      auto const& p1 = params1[index1];
       if (p1.flags & HAS_DEFAULT) {
         continue;
       } else if (size_t const* index2 = params2.at_or_null(name)) {
-        auto const& p2 = params2.at(*index2);
+        auto const& p2 = params2[*index2];
         if (ambiguity(p1.value, p2.value)) { continue; }
         goto next_named_positional_breakpoint;
       } else {
@@ -278,11 +285,11 @@ bool AmbiguouslyCallable(FnParams<T> const& params1, FnParams<T> const& params2,
 
     for (auto [name, index2] : params2.lookup_) {
       if (index2 < i) { continue; }
-      auto const& p2 = params2.at(index2);
+      auto const& p2 = params2[index2];
       if (p2.flags & HAS_DEFAULT) {
         continue;
       } else if (size_t const* index1 = params1.at_or_null(name)) {
-        auto const& p1 = params1.at(*index1);
+        auto const& p1 = params1[*index1];
 
         if (ambiguity(p1.value, p2.value)) { continue; }
         goto next_named_positional_breakpoint;
@@ -292,8 +299,8 @@ bool AmbiguouslyCallable(FnParams<T> const& params1, FnParams<T> const& params2,
     }
 
     for (; checked_type_matches_through < i; ++checked_type_matches_through) {
-      if (not ambiguity(params1.at(checked_type_matches_through).value,
-                        params2.at(checked_type_matches_through).value)) {
+      if (not ambiguity(params1[checked_type_matches_through].value,
+                        params2[checked_type_matches_through].value)) {
         return false;
       }
     }
@@ -319,7 +326,7 @@ bool IsCallable(FnParams<T> const& params, FnArgs<U> const& args,
   }
 
   for (size_t i = 0; i < args.pos().size(); ++i) {
-    if (not fn(args.pos().at(i), params.at(i).value)) {
+    if (not fn(args.pos()[i], params[i].value)) {
       DEBUG_LOG("core::IsCallable")
       ("IsCallable = false due to convertible failure at ", i);
       return false;
@@ -334,7 +341,7 @@ bool IsCallable(FnParams<T> const& params, FnArgs<U> const& args,
           return false;
         },
         auto const& index, params.at_or_null(name));
-    if (not fn(type, params.at(index).value)) {
+    if (not fn(type, params[index].value)) {
       DEBUG_LOG("core::IsCallable")
       ("IsCallable = false due to convertible failure on \"", name, "\"");
       return false;
@@ -342,7 +349,7 @@ bool IsCallable(FnParams<T> const& params, FnArgs<U> const& args,
   }
 
   for (size_t i = args.pos().size(); i < params.size(); ++i) {
-    auto const& param = params.at(i);
+    auto const& param = params[i];
     if (param.flags & HAS_DEFAULT) { continue; }
     if (args.at_or_null(param.name) == nullptr) {
       DEBUG_LOG("core::IsCallable")
@@ -353,6 +360,19 @@ bool IsCallable(FnParams<T> const& params, FnArgs<U> const& args,
 
   DEBUG_LOG("core::IsCallable")("Yes, it's callable");
   return true;
+}
+
+// For each parameter in `params` for which `args` has chosen to use the default
+// value, update `args` to contain the appropriate default value, as chosen by
+// `fn(param.value)`.
+template <typename P, typename A, typename Fn>
+void FillMissingArgs(FnParams<P> const& params, FnArgs<A>* args, Fn fn) {
+  for (size_t i = args->pos().size(); i < params.size(); ++i) {
+    auto const& p = params[i];
+    if (p.name.empty()) { continue; }
+    args->named_emplace(p.name,
+                        base::lazy_convert{[&]() { return fn(p.value); }});
+  }
 }
 
 }  // namespace core

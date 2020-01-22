@@ -48,6 +48,7 @@ cc_lib(
     deps = [
         ":fn_args",
         "//base:debug",
+        "//base:lazy_convert",
         "//base:macros",
         "@com_google_absl//absl/container:flat_hash_map",
     ],

@@ -27,15 +27,23 @@ std::pair<ir::Results, ir::OutParams> SetReturns(
                                                std::move(out_params));
 }
 
-ir::Results EmitCallOneOverload(
-    Compiler *compiler, ast::Expression const *fn,
-    internal::ExprData const &data,
-    core::FnArgs<type::Typed<ir::Results>> const &args) {
+ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
+                                internal::ExprData const &data,
+                                core::FnArgs<type::Typed<ir::Results>> args) {
   DEBUG_LOG("EmitCallOneOverload")
   (args.Transform([](auto const &x) { return x.type()->to_string(); })
        .to_string());
 
-  auto arg_results = PrepareCallArguments(compiler, data.params(), args);
+  core::FillMissingArgs(data.params(), &args, [compiler](auto const &p) {
+    return type::Typed(
+        ir::Results{compiler->Visit(ASSERT_NOT_NULL(p.get()->init_val()),
+                                    EmitValueTag{})},
+        p.type());
+  });
+
+  auto arg_results = PrepareCallArguments(
+      compiler, data.params().Transform([](auto const &p) { return p.type(); }),
+      args);
 
   auto [out_results, out_params] = SetReturns(compiler->builder(), data, {});
   compiler->builder().Call(
@@ -51,8 +59,7 @@ ir::Results EmitCallOneOverload(
 // there must be a cast from the actual argument type to the parameter type
 // (usually due to a cast such as `int64` casting to `int64 | bool`).
 ir::RegOr<bool> EmitRuntimeDispatchOneComparison(
-    ir::Builder &bldr,
-    core::FnParams<type::Typed<ast::Declaration const *>> const &params,
+    ir::Builder &bldr, core::FnParams<type::Type const *> const &params,
     core::FnArgs<type::Typed<ir::Results>> const &args) {
   size_t i = 0;
   for (; i < args.pos().size(); ++i) {
@@ -62,11 +69,10 @@ ir::RegOr<bool> EmitRuntimeDispatchOneComparison(
     auto runtime_type =
         ir::Load<type::Type const *>(bldr.VariantType(arg->get<ir::Addr>(0)));
     // TODO Equality isn't the right thing to check
-    return bldr.Eq(runtime_type, params.at(i).value.type());
+    return bldr.Eq(runtime_type, params[i].value);
   }
   for (; i < params.size(); ++i) {
-    auto const &param = params.at(i);
-    auto *arg         = args.at_or_null(param.name);
+    auto *arg = args.at_or_null(params[i].name);
     if (not arg) { continue; }  // Default arguments
     auto *arg_var = arg->type()->if_as<type::Variant>();
     if (not arg_var) { continue; }
@@ -101,8 +107,10 @@ void EmitRuntimeDispatch(
       break;
     }
 
-    ir::RegOr<bool> match =
-        EmitRuntimeDispatchOneComparison(bldr, expr_data.params(), args);
+    ir::RegOr<bool> match = EmitRuntimeDispatchOneComparison(
+        bldr,
+        expr_data.params().Transform([](auto const &p) { return p.type(); }),
+        args);
     bldr.CurrentBlock() =
         ir::EarlyExitOn<true>(callee_to_block.at(overload), match);
   }

@@ -73,9 +73,18 @@ void EmitCallOneOverload(ir::ScopeDef const *scope_def,
                          ir::BasicBlock *starting_block,
                          ir::BasicBlock *landing_block, Compiler *compiler,
                          ir::Jump *jump,
-                         core::FnArgs<type::Typed<ir::Results>> const &args,
+                         core::FnArgs<type::Typed<ir::Results>> args,
                          ir::LocalBlockInterpretation const &block_interp) {
-  auto arg_results = PrepareCallArguments(compiler, jump->params(), args);
+  core::FillMissingArgs(jump->params(), &args, [compiler](auto const &p) {
+    return type::Typed(
+        ir::Results{compiler->Visit(ASSERT_NOT_NULL(p.get()->init_val()),
+                                    EmitValueTag{})},
+        p.type());
+  });
+
+  auto arg_results = PrepareCallArguments(
+      compiler,
+      jump->params().Transform([](auto const &p) { return p.type(); }), args);
   static_cast<void>(arg_results);
   // TODO pass arguments to inliner.
 
@@ -142,8 +151,7 @@ void EmitCallOneOverload(ir::ScopeDef const *scope_def,
 // there must be a cast from the actual argument type to the parameter type
 // (usually due to a cast such as `int64` casting to `int64 | bool`).
 ir::RegOr<bool> EmitRuntimeDispatchOneComparison(
-    ir::Builder &bldr,
-    core::FnParams<type::Typed<ast::Declaration const *>> const &params,
+    ir::Builder &bldr, core::FnParams<type::Type const *> const &params,
     core::FnArgs<type::Typed<ir::Results>> const &args) {
   size_t i = 0;
   for (; i < args.pos().size(); ++i) {
@@ -153,11 +161,10 @@ ir::RegOr<bool> EmitRuntimeDispatchOneComparison(
     auto runtime_type =
         ir::Load<type::Type const *>(bldr.VariantType(arg->get<ir::Addr>(0)));
     // TODO Equality isn't the right thing to check
-    return bldr.Eq(runtime_type, params.at(i).value.type());
+    return bldr.Eq(runtime_type, params[i].value);
   }
   for (; i < params.size(); ++i) {
-    auto const &param = params.at(i);
-    auto *arg         = args.at_or_null(param.name);
+    auto *arg = args.at_or_null(params[i].name);
     if (not arg) { continue; }  // Default arguments
     auto *arg_var = arg->type()->if_as<type::Variant>();
     if (not arg_var) { continue; }
@@ -188,8 +195,9 @@ void EmitRuntimeDispatch(
       break;
     }
 
-    ir::RegOr<bool> match =
-        EmitRuntimeDispatchOneComparison(bldr, jump->params(), args);
+    ir::RegOr<bool> match = EmitRuntimeDispatchOneComparison(
+        bldr, jump->params().Transform([](auto const &p) { return p.type(); }),
+        args);
     bldr.CurrentBlock() =
         ir::EarlyExitOn<true>(callee_to_block.at(jump), match);
   }

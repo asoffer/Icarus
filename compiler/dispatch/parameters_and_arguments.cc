@@ -136,8 +136,7 @@ core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
 }
 
 std::vector<ir::Results> PrepareCallArguments(
-    Compiler *compiler,
-    core::FnParams<type::Typed<ast::Declaration const *>> const &params,
+    Compiler *compiler, core::FnParams<type::Type const *> const &params,
     core::FnArgs<type::Typed<ir::Results>> const &args) {
   std::vector<ir::Results> arg_results;
   arg_results.reserve(params.size());
@@ -145,19 +144,12 @@ std::vector<ir::Results> PrepareCallArguments(
   auto &bldr = compiler->builder();
   size_t i   = 0;
   for (; i < args.pos().size(); ++i) {
-    arg_results.push_back(
-        PrepareOneArg(compiler, args.pos()[i], params.at(i).value.type()));
+    arg_results.push_back(PrepareOneArg(compiler, args[i], params[i].value));
   }
 
   for (; i < params.size(); ++i) {
-    auto const &param = params.at(i);
-    if (auto *arg = args.at_or_null(param.name)) {
-      arg_results.push_back(
-          PrepareOneArg(compiler, *arg, params.at(i).value.type()));
-    } else {
-      arg_results.push_back(ir::Results{compiler->Visit(
-          ASSERT_NOT_NULL(param.value.get()->init_val()), EmitValueTag{})});
-    }
+    arg_results.push_back(
+        PrepareOneArg(compiler, args[params[i].name], params[i].value));
   }
   return arg_results;
 }

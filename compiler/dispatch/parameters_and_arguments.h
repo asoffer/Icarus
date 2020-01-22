@@ -77,9 +77,12 @@ core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
 // value correctly bindable to the parameters. It is the responsibility of the
 // caller of this function to ensure that code has already been emitted to
 // guard for this situation.
+//
+// This function assumes that all arguments are present (i.e., we are not
+// relying on any defaulted parameters). Any such parameter should be used to
+// fill the arguments before calling this function.
 std::vector<ir::Results> PrepareCallArguments(
-    Compiler *compiler,
-    core::FnParams<type::Typed<ast::Declaration const *>> const &params,
+    Compiler *compiler, core::FnParams<type::Type const *> const &params,
     core::FnArgs<type::Typed<ir::Results>> const &args);
 
 }  // namespace compiler
