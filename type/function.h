@@ -29,7 +29,7 @@ struct Function : public Callable {
   Function(core::FnParams<Type const *> in, std::vector<Type const *> out)
       : input_(std::move(in)), output_(std::move(out)) {
 #if defined(ICARUS_DEBUG)
-    for (auto *t : input) { ASSERT(t != nullptr); }
+    for (auto const &p : input_) { ASSERT(p.value != nullptr); }
     for (auto *t : output_) { ASSERT(t != nullptr); }
 #endif  // defined(ICARUS_DEBUG)
   }
