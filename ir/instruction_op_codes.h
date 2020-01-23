@@ -4,23 +4,76 @@ namespace ir {
 using cmd_index_t = uint16_t;
 
 namespace internal {
+struct CmdRange {
+  constexpr bool contains(uint16_t n) const {
+    return start <= n and n < start + length;
+  }
+  constexpr uint16_t end() const { return start + length; }
+
+  uint16_t start, length;
+};
+
 inline constexpr uint8_t kTypeBits    = 8;
 inline constexpr uint16_t kAdHocStart = (18 << kTypeBits);
 
-inline constexpr cmd_index_t kAddInstructionMask             = 0 << kTypeBits;
-inline constexpr cmd_index_t kSubInstructionMask             = 1 << kTypeBits;
-inline constexpr cmd_index_t kMulInstructionMask             = 2 << kTypeBits;
-inline constexpr cmd_index_t kDivInstructionMask             = 3 << kTypeBits;
-inline constexpr cmd_index_t kModInstructionMask             = 4 << kTypeBits;
-inline constexpr cmd_index_t kLtInstructionMask              = 6 << kTypeBits;
-inline constexpr cmd_index_t kLeInstructionMask              = 7 << kTypeBits;
-inline constexpr cmd_index_t kEqInstructionMask              = 8 << kTypeBits;
-inline constexpr cmd_index_t kNeInstructionMask              = 9 << kTypeBits;
-inline constexpr cmd_index_t kNegInstructionMask             = 10 << kTypeBits;
-inline constexpr cmd_index_t kPrintInstructionMask           = 11 << kTypeBits;
-inline constexpr cmd_index_t kStoreInstructionMask           = 12 << kTypeBits;
-inline constexpr cmd_index_t kPhiInstructionMask             = 13 << kTypeBits;
-inline constexpr cmd_index_t kRegisterInstructionMask        = 14 << kTypeBits;
+inline constexpr auto kAddInstructionRange = CmdRange{
+    .start  = 0,
+    .length = 10,
+};
+inline constexpr auto kSubInstructionRange = CmdRange{
+    .start  = kAddInstructionRange.end(),
+    .length = 10,
+};
+inline constexpr auto kMulInstructionRange = CmdRange{
+    .start  = kSubInstructionRange.end(),
+    .length = 10,
+};
+inline constexpr auto kDivInstructionRange = CmdRange{
+    .start  = kMulInstructionRange.end(),
+    .length = 10,
+};
+inline constexpr auto kModInstructionRange = CmdRange{
+    .start  = kDivInstructionRange.end(),
+    .length = 8,
+};
+inline constexpr auto kLtInstructionRange = CmdRange{
+    .start  = kModInstructionRange.end(),
+    .length = 10,
+};
+inline constexpr auto kLeInstructionRange = CmdRange{
+    .start  = kLtInstructionRange.end(),
+    .length = 10,
+};
+inline constexpr auto kEqInstructionRange = CmdRange{
+    .start  = kLeInstructionRange.end(),
+    .length = 14,
+};
+inline constexpr auto kNeInstructionRange = CmdRange{
+    .start  = kEqInstructionRange.end(),
+    .length = 14,
+};
+inline constexpr auto kNegInstructionRange = CmdRange{
+    .start  = kNeInstructionRange.end(),
+    .length = 10,
+};
+inline constexpr auto kRegisterInstructionRange = CmdRange{
+    .start  = kNegInstructionRange.end(),
+    .length = 15,
+};
+inline constexpr auto kPrintInstructionRange = CmdRange{
+    .start  = kRegisterInstructionRange.end(),
+    .length = 16,
+};
+inline constexpr auto kStoreInstructionRange = CmdRange{
+    .start  = kPrintInstructionRange.end(),
+    .length = 16,
+};
+inline constexpr auto kPhiInstructionRange = CmdRange{
+    .start  = kStoreInstructionRange.end(),
+    .length = 16,
+};
+inline cmd_index_t kEndRangedInstructions = kPhiInstructionRange.end();
+
 inline constexpr cmd_index_t kSetReturnInstructionMask       = 15 << kTypeBits;
 inline constexpr cmd_index_t kNotInstructionNumber           = kAdHocStart + 0;
 inline constexpr cmd_index_t kXorFlagsInstructionNumber      = kAdHocStart + 1;
