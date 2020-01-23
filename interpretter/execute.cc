@@ -443,10 +443,9 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     }
 
     Execute(f, call_buf, {}, ctx);
-  } else if constexpr (std::is_same_v<Inst, ir::DebugIrInstruction>) {
-    std::cerr << *ctx->current_frame().fn_;
 
-  } else if constexpr (ir::IsSetReturnInstruction<Inst>) {
+  } else if constexpr (ir::internal::kSetReturnInstructionRange.contains(
+                           Inst::kIndex)) {
     using type = typename Inst::type;
     uint16_t n = iter->read<uint16_t>();
     ASSERT(ret_slots.size() > n);
@@ -644,7 +643,26 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     from_type value = ReadAndResolve<from_type>(is_reg, iter, ctx);
     ir::Reg reg     = iter->read<ir::Reg>();
     ctx->current_frame().regs_.set(reg, static_cast<to_type>(value));
-
+  } else if constexpr (std::is_same_v<Inst, ir::LoadInstruction>) {
+    uint16_t num_bytes = iter->read<uint16_t>();
+    ir::Addr addr      = ctx->resolve<ir::Addr>(iter->read<ir::Reg>());
+    auto result_reg    = iter->read<ir::Reg>().get();
+    DEBUG_LOG("load-instruction")(num_bytes, " ", addr, " ", result_reg);
+    switch (addr.kind()) {
+      case ir::Addr::Kind::Stack: {
+        ctx->current_frame().regs_.set_raw(
+            result_reg, ctx->stack_.raw(addr.stack()), num_bytes);
+      } break;
+      case ir::Addr::Kind::ReadOnly:
+        ctx->current_frame().regs_.set_raw(
+            result_reg, ir::ReadOnlyData.raw(addr.rodata()), num_bytes);
+        break;
+      case ir::Addr::Kind::Heap: {
+        ctx->current_frame().regs_.set_raw(result_reg, addr.heap(), num_bytes);
+      } break;
+    }
+  } else if constexpr (std::is_same_v<Inst, ir::DebugIrInstruction>) {
+    std::cerr << *ctx->current_frame().fn_;
   } else {
     static_assert(base::always_false<Inst>());
   }
@@ -672,7 +690,6 @@ auto kInstructions = std::array{
     ExecuteInstruction<ir::AddInstruction<int64_t>>,
     ExecuteInstruction<ir::AddInstruction<float>>,
     ExecuteInstruction<ir::AddInstruction<double>>,
-
     ExecuteInstruction<ir::SubInstruction<uint8_t>>,
     ExecuteInstruction<ir::SubInstruction<int8_t>>,
     ExecuteInstruction<ir::SubInstruction<uint16_t>>,
@@ -683,7 +700,6 @@ auto kInstructions = std::array{
     ExecuteInstruction<ir::SubInstruction<int64_t>>,
     ExecuteInstruction<ir::SubInstruction<float>>,
     ExecuteInstruction<ir::SubInstruction<double>>,
-
     ExecuteInstruction<ir::MulInstruction<uint8_t>>,
     ExecuteInstruction<ir::MulInstruction<int8_t>>,
     ExecuteInstruction<ir::MulInstruction<uint16_t>>,
@@ -694,7 +710,6 @@ auto kInstructions = std::array{
     ExecuteInstruction<ir::MulInstruction<int64_t>>,
     ExecuteInstruction<ir::MulInstruction<float>>,
     ExecuteInstruction<ir::MulInstruction<double>>,
-
     ExecuteInstruction<ir::DivInstruction<uint8_t>>,
     ExecuteInstruction<ir::DivInstruction<int8_t>>,
     ExecuteInstruction<ir::DivInstruction<uint16_t>>,
@@ -705,7 +720,6 @@ auto kInstructions = std::array{
     ExecuteInstruction<ir::DivInstruction<int64_t>>,
     ExecuteInstruction<ir::DivInstruction<float>>,
     ExecuteInstruction<ir::DivInstruction<double>>,
-
     ExecuteInstruction<ir::ModInstruction<uint8_t>>,
     ExecuteInstruction<ir::ModInstruction<int8_t>>,
     ExecuteInstruction<ir::ModInstruction<uint16_t>>,
@@ -714,7 +728,6 @@ auto kInstructions = std::array{
     ExecuteInstruction<ir::ModInstruction<int32_t>>,
     ExecuteInstruction<ir::ModInstruction<uint64_t>>,
     ExecuteInstruction<ir::ModInstruction<int64_t>>,
-
     ExecuteInstruction<ir::LtInstruction<uint8_t>>,
     ExecuteInstruction<ir::LtInstruction<int8_t>>,
     ExecuteInstruction<ir::LtInstruction<uint16_t>>,
@@ -725,7 +738,6 @@ auto kInstructions = std::array{
     ExecuteInstruction<ir::LtInstruction<int64_t>>,
     ExecuteInstruction<ir::LtInstruction<float>>,
     ExecuteInstruction<ir::LtInstruction<double>>,
-
     ExecuteInstruction<ir::LeInstruction<uint8_t>>,
     ExecuteInstruction<ir::LeInstruction<int8_t>>,
     ExecuteInstruction<ir::LeInstruction<uint16_t>>,
@@ -736,7 +748,6 @@ auto kInstructions = std::array{
     ExecuteInstruction<ir::LeInstruction<int64_t>>,
     ExecuteInstruction<ir::LeInstruction<float>>,
     ExecuteInstruction<ir::LeInstruction<double>>,
-
     ExecuteInstruction<ir::EqInstruction<uint8_t>>,
     ExecuteInstruction<ir::EqInstruction<int8_t>>,
     ExecuteInstruction<ir::EqInstruction<uint16_t>>,
@@ -751,7 +762,6 @@ auto kInstructions = std::array{
     ExecuteInstruction<ir::EqInstruction<ir::Addr>>,
     ExecuteInstruction<ir::EqInstruction<ir::EnumVal>>,
     ExecuteInstruction<ir::EqInstruction<ir::FlagsVal>>,
-
     ExecuteInstruction<ir::NeInstruction<uint8_t>>,
     ExecuteInstruction<ir::NeInstruction<int8_t>>,
     ExecuteInstruction<ir::NeInstruction<uint16_t>>,
@@ -766,7 +776,6 @@ auto kInstructions = std::array{
     ExecuteInstruction<ir::NeInstruction<ir::Addr>>,
     ExecuteInstruction<ir::NeInstruction<ir::EnumVal>>,
     ExecuteInstruction<ir::NeInstruction<ir::FlagsVal>>,
-
     kNullInstruction,
     ExecuteInstruction<ir::NegInstruction<int8_t>>,
     kNullInstruction,
@@ -777,7 +786,6 @@ auto kInstructions = std::array{
     ExecuteInstruction<ir::NegInstruction<int64_t>>,
     ExecuteInstruction<ir::NegInstruction<float>>,
     ExecuteInstruction<ir::NegInstruction<double>>,
-
     ExecuteInstruction<ir::RegisterInstruction<uint8_t>>,
     ExecuteInstruction<ir::RegisterInstruction<int8_t>>,
     ExecuteInstruction<ir::RegisterInstruction<uint16_t>>,
@@ -793,7 +801,6 @@ auto kInstructions = std::array{
     ExecuteInstruction<ir::RegisterInstruction<ir::EnumVal>>,
     ExecuteInstruction<ir::RegisterInstruction<ir::FlagsVal>>,
     ExecuteInstruction<ir::RegisterInstruction<bool>>,
-
     ExecuteAdHocInstruction<ir::PrintInstruction<uint8_t>>,
     ExecuteAdHocInstruction<ir::PrintInstruction<int8_t>>,
     ExecuteAdHocInstruction<ir::PrintInstruction<uint16_t>>,
@@ -810,7 +817,6 @@ auto kInstructions = std::array{
     ExecuteAdHocInstruction<ir::PrintFlagsInstruction>,
     ExecuteAdHocInstruction<ir::PrintInstruction<bool>>,
     ExecuteAdHocInstruction<ir::PrintInstruction<std::string_view>>,
-
     ExecuteAdHocInstruction<ir::StoreInstruction<uint8_t>>,
     ExecuteAdHocInstruction<ir::StoreInstruction<int8_t>>,
     ExecuteAdHocInstruction<ir::StoreInstruction<uint16_t>>,
@@ -827,7 +833,6 @@ auto kInstructions = std::array{
     ExecuteAdHocInstruction<ir::StoreInstruction<ir::FlagsVal>>,
     ExecuteAdHocInstruction<ir::StoreInstruction<bool>>,
     ExecuteAdHocInstruction<ir::StoreInstruction<std::string_view>>,
-
     ExecuteAdHocInstruction<ir::PhiInstruction<uint8_t>>,
     ExecuteAdHocInstruction<ir::PhiInstruction<int8_t>>,
     ExecuteAdHocInstruction<ir::PhiInstruction<uint16_t>>,
@@ -844,114 +849,74 @@ auto kInstructions = std::array{
     ExecuteAdHocInstruction<ir::PhiInstruction<ir::FlagsVal>>,
     ExecuteAdHocInstruction<ir::PhiInstruction<bool>>,
     ExecuteAdHocInstruction<ir::PhiInstruction<std::string_view>>,
-
-};
-
-// TODO if these instructions were laid out in a relatively sane order, this could be entirely flat.
-absl::flat_hash_map<
-    ir::cmd_index_t,
-    void (*)(base::untyped_buffer::const_iterator *, ExecutionContext *,
-             absl::Span<ir::Addr const>)> const kInstructionMap = {
-
-    {ir::NotInstruction::kIndex, ExecuteInstruction<ir::NotInstruction>},
-
-    {ir::PtrInstruction::kIndex, ExecuteInstruction<ir::PtrInstruction>},
-    {ir::BufPtrInstruction::kIndex, ExecuteInstruction<ir::BufPtrInstruction>},
-    {ir::TupleInstruction::kIndex, ExecuteInstruction<ir::TupleInstruction>},
-    {ir::VariantInstruction::kIndex,
-     ExecuteInstruction<ir::VariantInstruction>},
-    {ir::EnumerationInstruction::kIndex,
-     ExecuteAdHocInstruction<ir::EnumerationInstruction>},
-    {ir::OpaqueTypeInstruction::kIndex,
-     ExecuteAdHocInstruction<ir::OpaqueTypeInstruction>},
-    {ir::ArrowInstruction::kIndex,
-     ExecuteAdHocInstruction<ir::ArrowInstruction>},
-
-    {ir::DebugIrInstruction::kIndex,
-     ExecuteAdHocInstruction<ir::DebugIrInstruction>},
-
-    {ir::TypeManipulationInstruction::kIndex,
-     ExecuteAdHocInstruction<ir::TypeManipulationInstruction>},
-
-    {ir::SetReturnInstruction<bool>::kIndex,
-     ExecuteAdHocInstruction<ir::SetReturnInstruction<bool>>},
-    {ir::SetReturnInstruction<uint8_t>::kIndex,
-     ExecuteAdHocInstruction<ir::SetReturnInstruction<uint8_t>>},
-    {ir::SetReturnInstruction<int8_t>::kIndex,
-     ExecuteAdHocInstruction<ir::SetReturnInstruction<int8_t>>},
-    {ir::SetReturnInstruction<uint16_t>::kIndex,
-     ExecuteAdHocInstruction<ir::SetReturnInstruction<uint16_t>>},
-    {ir::SetReturnInstruction<int16_t>::kIndex,
-     ExecuteAdHocInstruction<ir::SetReturnInstruction<int16_t>>},
-    {ir::SetReturnInstruction<uint32_t>::kIndex,
-     ExecuteAdHocInstruction<ir::SetReturnInstruction<uint32_t>>},
-    {ir::SetReturnInstruction<int32_t>::kIndex,
-     ExecuteAdHocInstruction<ir::SetReturnInstruction<int32_t>>},
-    {ir::SetReturnInstruction<uint64_t>::kIndex,
-     ExecuteAdHocInstruction<ir::SetReturnInstruction<uint64_t>>},
-    {ir::SetReturnInstruction<int64_t>::kIndex,
-     ExecuteAdHocInstruction<ir::SetReturnInstruction<int64_t>>},
-    {ir::SetReturnInstruction<float>::kIndex,
-     ExecuteAdHocInstruction<ir::SetReturnInstruction<float>>},
-    {ir::SetReturnInstruction<double>::kIndex,
-     ExecuteAdHocInstruction<ir::SetReturnInstruction<double>>},
-    {ir::SetReturnInstruction<core::Bytes>::kIndex,
-     ExecuteAdHocInstruction<ir::SetReturnInstruction<core::Bytes>>},
-    {ir::SetReturnInstruction<core::Alignment>::kIndex,
-     ExecuteAdHocInstruction<ir::SetReturnInstruction<core::Alignment>>},
-    {ir::SetReturnInstruction<type::Type const *>::kIndex,
-     ExecuteAdHocInstruction<ir::SetReturnInstruction<type::Type const *>>},
-    {ir::SetReturnInstruction<ir::AnyFunc>::kIndex,
-     ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::AnyFunc>>},
-    {ir::SetReturnInstruction<ir::ScopeDef const *>::kIndex,
-     ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::ScopeDef const *>>},
-    {ir::SetReturnInstruction<ir::BlockDef const *>::kIndex,
-     ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::BlockDef const *>>},
-    {ir::SetReturnInstruction<module::BasicModule const *>::kIndex,
-     ExecuteAdHocInstruction<
-         ir::SetReturnInstruction<module::BasicModule const *>>},
-    {ir::SetReturnInstruction<ir::EnumVal>::kIndex,
-     ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::EnumVal>>},
-    {ir::SetReturnInstruction<ir::FlagsVal>::kIndex,
-     ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::FlagsVal>>},
-    {ir::SetReturnInstruction<std::string_view>::kIndex,
-     ExecuteAdHocInstruction<ir::SetReturnInstruction<std::string_view>>},
-    {ir::GetReturnInstruction::kIndex,
-     ExecuteAdHocInstruction<ir::GetReturnInstruction>},
-    {ir::MakeScopeInstruction::kIndex,
-     ExecuteAdHocInstruction<ir::MakeScopeInstruction>},
-    {ir::MakeBlockInstruction::kIndex,
-     ExecuteAdHocInstruction<ir::MakeBlockInstruction>},
-    {ir::StructInstruction::kIndex,
-     ExecuteAdHocInstruction<ir::StructInstruction>},
-    {ir::ArrayInstruction::kIndex,
-     ExecuteAdHocInstruction<ir::ArrayInstruction>},
-
-    {ir::XorFlagsInstruction::kIndex,
-     ExecuteInstruction<ir::XorFlagsInstruction>},
-    {ir::OrFlagsInstruction::kIndex,
-     ExecuteInstruction<ir::OrFlagsInstruction>},
-    {ir::AndFlagsInstruction::kIndex,
-     ExecuteInstruction<ir::AndFlagsInstruction>},
-
-    {ir::CallInstruction::kIndex, ExecuteAdHocInstruction<ir::CallInstruction>},
-
-    {ir::LoadSymbolInstruction::kIndex,
-     ExecuteAdHocInstruction<ir::LoadSymbolInstruction>},
-    {ir::TypeInfoInstruction::kIndex,
-     ExecuteAdHocInstruction<ir::TypeInfoInstruction>},
-    {ir::StructIndexInstruction::kIndex,
-     ExecuteAdHocInstruction<ir::StructIndexInstruction>},
-    {ir::TupleIndexInstruction::kIndex,
-     ExecuteAdHocInstruction<ir::TupleIndexInstruction>},
-    {ir::PtrIncrInstruction::kIndex,
-     ExecuteAdHocInstruction<ir::PtrIncrInstruction>},
-    {ir::ByteViewLengthInstruction::kIndex,
-     ExecuteAdHocInstruction<ir::ByteViewLengthInstruction>},
-    {ir::ByteViewDataInstruction::kIndex,
-     ExecuteAdHocInstruction<ir::ByteViewDataInstruction>},
-    {ir::VariantAccessInstruction::kIndex,
-     ExecuteAdHocInstruction<ir::VariantAccessInstruction>},
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<uint8_t>>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<int8_t>>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<uint16_t>>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<int16_t>>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<uint32_t>>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<int32_t>>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<uint64_t>>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<int64_t>>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<float>>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<double>>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<type::Type const *>>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::Addr>>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::EnumVal>>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::FlagsVal>>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<bool>>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<std::string_view>>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::AnyFunc>>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<core::Bytes>>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<core::Alignment>>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::BlockDef const *>>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::ScopeDef const *>>,
+    ExecuteAdHocInstruction<
+        ir::SetReturnInstruction<module::BasicModule const *>>,
+    ExecuteInstruction<ir::NotInstruction>,
+    ExecuteInstruction<ir::XorFlagsInstruction>,
+    ExecuteInstruction<ir::AndFlagsInstruction>,
+    ExecuteInstruction<ir::OrFlagsInstruction>,
+    ExecuteInstruction<ir::PtrInstruction>,
+    ExecuteInstruction<ir::BufPtrInstruction>,
+    ExecuteAdHocInstruction<ir::GetReturnInstruction>,
+    ExecuteAdHocInstruction<ir::OpaqueTypeInstruction>,
+    ExecuteAdHocInstruction<ir::ArrowInstruction>,
+    ExecuteAdHocInstruction<ir::CallInstruction>,
+    ExecuteAdHocInstruction<ir::LoadSymbolInstruction>,
+    ExecuteAdHocInstruction<ir::ArrayInstruction>,
+    ExecuteAdHocInstruction<ir::StructInstruction>,
+    ExecuteAdHocInstruction<ir::MakeBlockInstruction>,
+    ExecuteAdHocInstruction<ir::MakeScopeInstruction>,
+    ExecuteAdHocInstruction<ir::StructIndexInstruction>,
+    ExecuteAdHocInstruction<ir::TupleIndexInstruction>,
+    ExecuteAdHocInstruction<ir::PtrIncrInstruction>,
+    ExecuteAdHocInstruction<ir::VariantAccessInstruction>,
+    ExecuteInstruction<ir::TupleInstruction>,
+    ExecuteInstruction<ir::VariantInstruction>,
+    ExecuteAdHocInstruction<ir::EnumerationInstruction>,
+    ExecuteAdHocInstruction<ir::TypeInfoInstruction>,
+    ExecuteAdHocInstruction<ir::TypeManipulationInstruction>,
+    ExecuteAdHocInstruction<ir::ByteViewLengthInstruction>,
+    ExecuteAdHocInstruction<ir::ByteViewDataInstruction>,
+    ExecuteAdHocInstruction<ir::LoadInstruction>,
+    ExecuteAdHocInstruction<ir::DebugIrInstruction>,
+    +[](base::untyped_buffer::const_iterator *iter, ExecutionContext *ctx,
+        absl::Span<ir::Addr const>) {
+      uintptr_t offset = iter->read<uintptr_t>();
+      ctx->current_frame().MoveTo(offset);
+      *iter = ctx->current_frame().fn_->byte_code().begin();
+      iter->skip(offset);
+    },
+    +[](base::untyped_buffer::const_iterator *iter, ExecutionContext *ctx,
+        absl::Span<ir::Addr const>) {
+      ir::Reg r             = iter->read<ir::Reg>();
+      uintptr_t true_block  = iter->read<uintptr_t>();
+      uintptr_t false_block = iter->read<uintptr_t>();
+      uintptr_t offset      = ctx->resolve<bool>(r) ? true_block : false_block;
+      ctx->current_frame().MoveTo(offset);
+      *iter = ctx->current_frame().fn_->byte_code().begin();
+      iter->skip(offset);
+    },
 };
 
 void ExecutionContext::ExecuteBlocks(absl::Span<ir::Addr const> ret_slots) {
@@ -964,53 +929,11 @@ void ExecutionContext::ExecuteBlocks(absl::Span<ir::Addr const> ret_slots) {
     ir::cmd_index_t cmd_index = iter.read<ir::cmd_index_t>();
     DEBUG_LOG("dbg-buffer")(cmd_index);
 
-    if (cmd_index < ir::internal::kEndRangedInstructions) {
+    if (ABSL_PREDICT_TRUE(cmd_index < kInstructions.size())) {
       kInstructions[cmd_index](&iter, this, ret_slots);
       continue;
-    }
-
-    switch (cmd_index) {
-      case ir::internal::kUncondJumpInstruction: {
-        uintptr_t offset = iter.read<uintptr_t>();
-        current_frame().MoveTo(offset);
-        iter = buffer.begin();
-        iter.skip(offset);
-      } break;
-      case ir::internal::kCondJumpInstruction: {
-        ir::Reg r             = iter.read<ir::Reg>();
-        uintptr_t true_block  = iter.read<uintptr_t>();
-        uintptr_t false_block = iter.read<uintptr_t>();
-        uintptr_t offset      = resolve<bool>(r) ? true_block : false_block;
-        current_frame().MoveTo(offset);
-        iter = buffer.begin();
-        iter.skip(offset);
-      } break;
-      case ir::internal::kReturnInstruction: return;
-      case ir::LoadInstruction::kIndex: {
-        uint16_t num_bytes = iter.read<uint16_t>();
-        ir::Addr addr      = resolve<ir::Addr>(iter.read<ir::Reg>());
-        auto result_reg    = iter.read<ir::Reg>().get();
-        DEBUG_LOG("load-instruction")(num_bytes, " ", addr, " ", result_reg);
-        switch (addr.kind()) {
-          case ir::Addr::Kind::Stack: {
-            current_frame().regs_.set_raw(result_reg, stack_.raw(addr.stack()),
-                                          num_bytes);
-          } break;
-          case ir::Addr::Kind::ReadOnly:
-            current_frame().regs_.set_raw(
-                result_reg, ir::ReadOnlyData.raw(addr.rodata()), num_bytes);
-            break;
-          case ir::Addr::Kind::Heap: {
-            current_frame().regs_.set_raw(result_reg, addr.heap(), num_bytes);
-          } break;
-        }
-      } break;
-
-      default: {
-        auto it = kInstructionMap.find(cmd_index);
-        ASSERT(it != kInstructionMap.end()) << cmd_index;
-        it->second(&iter, this, ret_slots);
-      } break;
+    } else {
+      return;
     }
   }
 }

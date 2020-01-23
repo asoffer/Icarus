@@ -60,19 +60,19 @@ constexpr uint8_t PrimitiveIndex() {
     return 0x11;
   } else if constexpr (std::is_same_v<T, core::Bytes>) {
     return 0x12;
+  } else if constexpr (std::is_same_v<T, BlockDef*> or
+                       std::is_same_v<T, BlockDef const*>) {
+    return 0x13;
+  } else if constexpr (std::is_same_v<T, ScopeDef*> or
+                       std::is_same_v<T, ScopeDef const*>) {
+    return 0x14;
+  } else if constexpr (std::is_same_v<T, module::BasicModule*> or
+                       std::is_same_v<T, module::BasicModule const*>) {
+    return 0x15;
   } else if constexpr (std::is_same_v<T, ast::FunctionLiteral*> or
                        std::is_same_v<T, ast::FunctionLiteral const*>) {
     // TODO: FunctionLiteral is a short-term hack for generics. IR shouldn't
     // depend on it.
-    return 0x13;
-  } else if constexpr (std::is_same_v<T, BlockDef*> or
-                       std::is_same_v<T, BlockDef const*>) {
-    return 0x14;
-  } else if constexpr (std::is_same_v<T, ScopeDef*> or
-                       std::is_same_v<T, ScopeDef const*>) {
-    return 0x15;
-  } else if constexpr (std::is_same_v<T, module::BasicModule*> or
-                       std::is_same_v<T, module::BasicModule const*>) {
     return 0x16;
   } else {
     UNREACHABLE(typeid(T).name());
@@ -646,7 +646,8 @@ template <typename T>
 struct SetReturnInstruction
     : base::Clone<SetReturnInstruction<T>, Instruction> {
   static constexpr cmd_index_t kIndex =
-      internal::kSetReturnInstructionMask | internal::PrimitiveIndex<T>();
+      internal::kSetReturnInstructionRange.start +
+      internal::PrimitiveIndex<T>();
   using type = T;
 
   SetReturnInstruction(uint16_t index, RegOr<T> const& value)
@@ -677,11 +678,6 @@ struct SetReturnInstruction
   uint16_t index;
   RegOr<T> value;
 };
-
-template <typename Inst>
-inline constexpr bool IsSetReturnInstruction =
-    ((Inst::kIndex >> internal::kTypeBits) ==
-     (internal::kSetReturnInstructionMask >> internal::kTypeBits));
 
 template <typename ToType, typename FromType>
 struct CastInstruction : Instruction {

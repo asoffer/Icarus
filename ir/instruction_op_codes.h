@@ -14,7 +14,6 @@ struct CmdRange {
 };
 
 inline constexpr uint8_t kTypeBits    = 8;
-inline constexpr uint16_t kAdHocStart = (18 << kTypeBits);
 
 inline constexpr auto kAddInstructionRange = CmdRange{
     .start  = 0,
@@ -72,9 +71,15 @@ inline constexpr auto kPhiInstructionRange = CmdRange{
     .start  = kStoreInstructionRange.end(),
     .length = 16,
 };
-inline cmd_index_t kEndRangedInstructions = kPhiInstructionRange.end();
+inline constexpr auto kSetReturnInstructionRange = CmdRange{
+    .start  = kPhiInstructionRange.end(),
+    .length = 22,
+};
 
-inline constexpr cmd_index_t kSetReturnInstructionMask       = 15 << kTypeBits;
+inline constexpr cmd_index_t kEndRangedInstructions =
+    kSetReturnInstructionRange.end();
+inline constexpr uint16_t kAdHocStart = kEndRangedInstructions;
+
 inline constexpr cmd_index_t kNotInstructionNumber           = kAdHocStart + 0;
 inline constexpr cmd_index_t kXorFlagsInstructionNumber      = kAdHocStart + 1;
 inline constexpr cmd_index_t kAndFlagsInstructionNumber      = kAdHocStart + 2;
@@ -98,20 +103,21 @@ inline constexpr cmd_index_t kTupleInstructionNumber         = kAdHocStart + 19;
 inline constexpr cmd_index_t kVariantInstructionNumber       = kAdHocStart + 20;
 inline constexpr cmd_index_t kEnumerationInstructionNumber   = kAdHocStart + 21;
 inline constexpr cmd_index_t kTypeInfoInstructionNumber      = kAdHocStart + 22;
-inline constexpr cmd_index_t kLoadInstructionNumber          = kAdHocStart + 23;
 inline constexpr cmd_index_t kTypeManipulationInstructionNumber =
-    kAdHocStart + 24;
+    kAdHocStart + 23;
 inline constexpr cmd_index_t kByteViewLengthInstructionNumber =
-    kAdHocStart + 25;
-inline constexpr cmd_index_t kByteViewDataInstructionNumber = kAdHocStart + 26;
+    kAdHocStart + 24;
+inline constexpr cmd_index_t kByteViewDataInstructionNumber = kAdHocStart + 25;
+inline constexpr cmd_index_t kLoadInstructionNumber         = kAdHocStart + 26;
+inline constexpr cmd_index_t kDebugIrInstructionNumber      = kAdHocStart + 27;
+inline constexpr cmd_index_t kUncondJumpInstruction         = kAdHocStart + 28;
+inline constexpr cmd_index_t kCondJumpInstruction           = kAdHocStart + 29;
 
+// TODO not yet implemented.
 inline constexpr cmd_index_t kCastInstructionIndex     = 17 << kTypeBits;
-inline constexpr cmd_index_t kDebugIrInstructionNumber = 254 << kTypeBits;
 
 // Note: These are not used here but it's worthwhile to list them here so we
 // know they're taken.
-inline constexpr cmd_index_t kUncondJumpInstruction = (255 << kTypeBits) + 0;
-inline constexpr cmd_index_t kCondJumpInstruction   = (255 << kTypeBits) + 1;
 inline constexpr cmd_index_t kReturnInstruction     = (255 << kTypeBits) + 2;
 
 }  // namespace internal
