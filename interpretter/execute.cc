@@ -643,24 +643,6 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     from_type value = ReadAndResolve<from_type>(is_reg, iter, ctx);
     ir::Reg reg     = iter->read<ir::Reg>();
     ctx->current_frame().regs_.set(reg, static_cast<to_type>(value));
-  } else if constexpr (std::is_same_v<Inst, ir::LoadInstruction>) {
-    uint16_t num_bytes = iter->read<uint16_t>();
-    ir::Addr addr      = ctx->resolve<ir::Addr>(iter->read<ir::Reg>());
-    auto result_reg    = iter->read<ir::Reg>().get();
-    DEBUG_LOG("load-instruction")(num_bytes, " ", addr, " ", result_reg);
-    switch (addr.kind()) {
-      case ir::Addr::Kind::Stack: {
-        ctx->current_frame().regs_.set_raw(
-            result_reg, ctx->stack_.raw(addr.stack()), num_bytes);
-      } break;
-      case ir::Addr::Kind::ReadOnly:
-        ctx->current_frame().regs_.set_raw(
-            result_reg, ir::ReadOnlyData.raw(addr.rodata()), num_bytes);
-        break;
-      case ir::Addr::Kind::Heap: {
-        ctx->current_frame().regs_.set_raw(result_reg, addr.heap(), num_bytes);
-      } break;
-    }
   } else if constexpr (std::is_same_v<Inst, ir::DebugIrInstruction>) {
     std::cerr << *ctx->current_frame().fn_;
   } else {
@@ -680,6 +662,11 @@ inline constexpr auto kNullInstruction =
         nullptr);
 
 auto kInstructions = std::array{
+    kNullInstruction,  // Return instructions must be handled outside this
+                       // array.
+    kNullInstruction,  // UncondJumpInstruction
+    kNullInstruction,  // CondJumpInstruction
+    kNullInstruction,  // LoadInstruction is inlined.
     ExecuteInstruction<ir::AddInstruction<uint8_t>>,
     ExecuteInstruction<ir::AddInstruction<int8_t>>,
     ExecuteInstruction<ir::AddInstruction<uint16_t>>,
@@ -898,25 +885,7 @@ auto kInstructions = std::array{
     ExecuteAdHocInstruction<ir::TypeManipulationInstruction>,
     ExecuteAdHocInstruction<ir::ByteViewLengthInstruction>,
     ExecuteAdHocInstruction<ir::ByteViewDataInstruction>,
-    ExecuteAdHocInstruction<ir::LoadInstruction>,
     ExecuteAdHocInstruction<ir::DebugIrInstruction>,
-    +[](base::untyped_buffer::const_iterator *iter, ExecutionContext *ctx,
-        absl::Span<ir::Addr const>) {
-      uintptr_t offset = iter->read<uintptr_t>();
-      ctx->current_frame().MoveTo(offset);
-      *iter = ctx->current_frame().fn_->byte_code().begin();
-      iter->skip(offset);
-    },
-    +[](base::untyped_buffer::const_iterator *iter, ExecutionContext *ctx,
-        absl::Span<ir::Addr const>) {
-      ir::Reg r             = iter->read<ir::Reg>();
-      uintptr_t true_block  = iter->read<uintptr_t>();
-      uintptr_t false_block = iter->read<uintptr_t>();
-      uintptr_t offset      = ctx->resolve<bool>(r) ? true_block : false_block;
-      ctx->current_frame().MoveTo(offset);
-      *iter = ctx->current_frame().fn_->byte_code().begin();
-      iter->skip(offset);
-    },
 };
 
 void ExecutionContext::ExecuteBlocks(absl::Span<ir::Addr const> ret_slots) {
@@ -929,11 +898,44 @@ void ExecutionContext::ExecuteBlocks(absl::Span<ir::Addr const> ret_slots) {
     ir::cmd_index_t cmd_index = iter.read<ir::cmd_index_t>();
     DEBUG_LOG("dbg-buffer")(cmd_index);
 
-    if (ABSL_PREDICT_TRUE(cmd_index < kInstructions.size())) {
-      kInstructions[cmd_index](&iter, this, ret_slots);
-      continue;
-    } else {
-      return;
+    switch (cmd_index) {
+      case ir::internal::kReturnInstruction: return;
+      case ir::internal::kUncondJumpInstruction: {
+        uintptr_t offset = iter.read<uintptr_t>();
+        current_frame().MoveTo(offset);
+        iter = current_frame().fn_->byte_code().begin();
+        iter.skip(offset);
+      } break;
+      case ir::internal::kCondJumpInstruction: {
+        ir::Reg r             = iter.read<ir::Reg>();
+        uintptr_t true_block  = iter.read<uintptr_t>();
+        uintptr_t false_block = iter.read<uintptr_t>();
+        uintptr_t offset      = resolve<bool>(r) ? true_block : false_block;
+        current_frame().MoveTo(offset);
+        iter = current_frame().fn_->byte_code().begin();
+        iter.skip(offset);
+      } break;
+      case ir::LoadInstruction::kIndex: {
+        uint16_t num_bytes = iter.read<uint16_t>();
+        ir::Addr addr      = resolve<ir::Addr>(iter.read<ir::Reg>());
+        auto result_reg    = iter.read<ir::Reg>().get();
+        DEBUG_LOG("load-instruction")(num_bytes, " ", addr, " ", result_reg);
+        switch (addr.kind()) {
+          case ir::Addr::Kind::Stack: {
+            current_frame().regs_.set_raw(result_reg, stack_.raw(addr.stack()),
+                                          num_bytes);
+          } break;
+          case ir::Addr::Kind::ReadOnly:
+            current_frame().regs_.set_raw(
+                result_reg, ir::ReadOnlyData.raw(addr.rodata()), num_bytes);
+            break;
+          case ir::Addr::Kind::Heap: {
+            current_frame().regs_.set_raw(result_reg, addr.heap(), num_bytes);
+          } break;
+        }
+      } break;
+
+      default: kInstructions[cmd_index](&iter, this, ret_slots);
     }
   }
 }

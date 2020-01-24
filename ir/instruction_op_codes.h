@@ -13,10 +13,13 @@ struct CmdRange {
   uint16_t start, length;
 };
 
-inline constexpr uint8_t kTypeBits    = 8;
+inline constexpr cmd_index_t kReturnInstruction     = 0;
+inline constexpr cmd_index_t kUncondJumpInstruction = 1;
+inline constexpr cmd_index_t kCondJumpInstruction   = 2;
+inline constexpr cmd_index_t kLoadInstructionNumber = 3;
 
 inline constexpr auto kAddInstructionRange = CmdRange{
-    .start  = 0,
+    .start  = 4,
     .length = 10,
 };
 inline constexpr auto kSubInstructionRange = CmdRange{
@@ -108,17 +111,14 @@ inline constexpr cmd_index_t kTypeManipulationInstructionNumber =
 inline constexpr cmd_index_t kByteViewLengthInstructionNumber =
     kAdHocStart + 24;
 inline constexpr cmd_index_t kByteViewDataInstructionNumber = kAdHocStart + 25;
-inline constexpr cmd_index_t kLoadInstructionNumber         = kAdHocStart + 26;
-inline constexpr cmd_index_t kDebugIrInstructionNumber      = kAdHocStart + 27;
-inline constexpr cmd_index_t kUncondJumpInstruction         = kAdHocStart + 28;
-inline constexpr cmd_index_t kCondJumpInstruction           = kAdHocStart + 29;
+inline constexpr cmd_index_t kDebugIrInstructionNumber      = kAdHocStart + 26;
 
 // TODO not yet implemented.
+inline constexpr uint8_t kTypeBits    = 8;
 inline constexpr cmd_index_t kCastInstructionIndex     = 17 << kTypeBits;
 
 // Note: These are not used here but it's worthwhile to list them here so we
 // know they're taken.
-inline constexpr cmd_index_t kReturnInstruction     = (255 << kTypeBits) + 2;
 
 }  // namespace internal
 }  // namespace ir
