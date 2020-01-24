@@ -661,7 +661,7 @@ inline constexpr auto kNullInstruction =
                          ExecutionContext *, absl::Span<ir::Addr const>)>(
         nullptr);
 
-auto kInstructions = std::array{
+constexpr auto kInstructions = std::array{
     kNullInstruction,  // Return instructions must be handled outside this
                        // array.
     kNullInstruction,  // UncondJumpInstruction

@@ -997,13 +997,11 @@ static type::QualType VerifyCall(
                                           ->as<type::Function>()
                                           .output()[0]);
     }
-#if defined(ICARUS_DEBUG)
     case core::Builtin::DebugIr:
       // This is for debugging the compiler only, so there's no need to write
       // decent errors here.
       ASSERT(arg_results.size() == 0u);
       return type::QualType::Constant(type::Void());
-#endif  // defined(ICARUS_DEBUG)
   }
   UNREACHABLE();
 }

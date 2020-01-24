@@ -455,12 +455,10 @@ struct Builder {
                 std::vector<RegOr<AnyFunc>> dones,
                 absl::flat_hash_map<std::string_view, BlockDef*> blocks);
 
-#if defined(ICARUS_DEBUG)
   void DebugIr() {
     auto inst = std::make_unique<DebugIrInstruction>();
     CurrentBlock()->instructions_.push_back(std::move(inst));
   }
-#endif  // ICARUS_DEBUG
 
   LocalBlockInterpretation MakeLocalBlockInterpretation(ast::ScopeNode const*);
 

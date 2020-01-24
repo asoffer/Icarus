@@ -481,9 +481,7 @@ ir::Results EmitBuiltinCall(
       return ir::Results{reg};
     } break;
 
-#if defined(ICARUS_DEBUG)
     case core::Builtin::DebugIr: c->builder().DebugIr(); return ir::Results{};
-#endif  // defined(ICARUS_DEBUG)
   }
   UNREACHABLE();
 }
