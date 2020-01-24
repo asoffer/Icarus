@@ -85,7 +85,7 @@ struct QualType {
     return QualType(t, false);
   }
 
-  constexpr Type const *type() const {
+  Type const *type() const {
     return reinterpret_cast<Type const *>(data_ & ~uintptr_t{1});
   }
 

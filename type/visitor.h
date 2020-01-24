@@ -20,6 +20,7 @@ struct SingleVisitor<Ret(Args...)> : VisitorBase {
 #define ICARUS_TYPE_TYPE_X(subtype)                                             \
   void ErasedVisit(subtype const *type, void *erased_ret,                       \
                    void *erased_arg_tuple) final {                              \
+    static_cast<void>(erased_ret);                                              \
     auto *tup_ptr = static_cast<std::tuple<Args...> *>(erased_arg_tuple);       \
     if constexpr (std::is_void_v<Ret>) {                                        \
       std::apply(                                                               \

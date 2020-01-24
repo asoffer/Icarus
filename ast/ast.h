@@ -737,6 +737,7 @@ struct Terminal : Expression {
             std::enable_if_t<std::is_trivially_copyable_v<T>, int> = 0>
   explicit Terminal(frontend::SourceRange span, T value, type::BasicType t)
       : Expression(std::move(span)), basic_(t) {
+    static_cast<void>(value);
     if constexpr (std::is_same_v<T, bool>) {
       b_ = value;
     } else if constexpr (std::is_integral_v<T> and std::is_signed_v<T>) {

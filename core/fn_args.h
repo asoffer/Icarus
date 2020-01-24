@@ -41,7 +41,7 @@ struct FnArgs {
 
   template <typename... Args>
   void named_emplace(Args &&... args) & {
-    named_.emplace(std::forward<Args>(args)...).second;
+    named_.emplace(std::forward<Args>(args)...);
   }
 
   T &operator[](size_t i) { return pos_[i]; }

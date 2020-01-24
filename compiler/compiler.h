@@ -90,12 +90,12 @@ struct LibraryModule;  // TODO remove me.
 
 struct Compiler
     : ast::Visitor<type::QualType(VerifyTypeTag), ir::Results(EmitValueTag),
-                   void(type::Typed<ir::Reg> reg, EmitMoveInitTag),
-                   void(type::Typed<ir::Reg> reg, EmitCopyInitTag),
+                   void(type::Typed<ir::Reg>, EmitMoveInitTag),
+                   void(type::Typed<ir::Reg>, EmitCopyInitTag),
                    std::vector<ir::RegOr<ir::Addr>>(EmitRefTag)>,
       type::Visitor<void(ir::Results const &, EmitPrintTag),
-                    void(ir::Reg reg, EmitDestroyTag),
-                    void(ir::Reg reg, EmitDefaultInitTag),
+                    void(ir::Reg, EmitDestroyTag),
+                    void(ir::Reg, EmitDefaultInitTag),
                     void(ir::RegOr<ir::Addr>, type::Typed<ir::Results> const &,
                          EmitMoveAssignTag),
                     void(ir::RegOr<ir::Addr>, type::Typed<ir::Results> const &,

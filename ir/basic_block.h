@@ -22,9 +22,9 @@ struct BasicBlock {
   BasicBlock() = default;
   explicit BasicBlock(internal::BlockGroup *group) : group_(group) {}
 
-  BasicBlock(BasicBlock const &b);
+  BasicBlock(BasicBlock const &b) noexcept;
   BasicBlock(BasicBlock &&) noexcept;
-  BasicBlock &operator=(BasicBlock const &);
+  BasicBlock &operator=(BasicBlock const &) noexcept;
   BasicBlock &operator=(BasicBlock &&) noexcept;
 
   void ReplaceJumpTargets(BasicBlock *old_target, BasicBlock *new_target);

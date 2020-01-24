@@ -7,7 +7,7 @@ load("@bazel_tools//tools/cpp:cc_toolchain_config_lib.bzl",
 )
 load("@bazel_tools//tools/build_defs/cc:action_names.bzl", "ACTION_NAMES")
 
-def std_lib_version(num):
+def std_lib_version(version):
     return feature(
         name = "std_lib_version",
         enabled = True,
@@ -19,7 +19,7 @@ def std_lib_version(num):
                     ACTION_NAMES.cpp_module_compile,
                     ACTION_NAMES.cpp_module_codegen,
                 ],
-                flag_groups = [flag_group(flags = ["-std=c++" + str(num)])],
+                flag_groups = [flag_group(flags = ["-std=c++" + version])],
             ),
         ],
     )
@@ -78,7 +78,7 @@ def linkopts(ls):
 
 def _impl(ctx):
     tool_paths = [
-        tool_path(name = "gcc",     path = "/usr/bin/g++"),
+        tool_path(name = "gcc",     path = ctx.attr.compiler_path),
         tool_path(name = "ld",      path = "/usr/bin/ld"),
         tool_path(name = "ar",      path = "/usr/bin/ar"),
         tool_path(name = "cpp",     path = "/bin/false"),
@@ -89,7 +89,7 @@ def _impl(ctx):
     ]
 
     features = [
-        std_lib_version(17),
+        std_lib_version("17"),
         compiler_warnings([
             "all",
             "extra",
@@ -98,7 +98,6 @@ def _impl(ctx):
             "no-sign-compare",
             "no-unused-parameter",
             "no-unused-variable",
-            "no-unused-but-set-parameter",
         ]),
         compiler_features([
             "diagnostics-color=always",
@@ -127,7 +126,7 @@ def _impl(ctx):
         compiler = "gcc",
         abi_version = "unknown",
         abi_libc_version = "unknown",
-        cxx_builtin_include_directories = ["/usr/include", "/usr/lib/gcc"],
+        cxx_builtin_include_directories = ["/usr/lib/llvm-9", "/usr/include", "/usr/lib/gcc"],
         tool_paths = tool_paths,
         features = features + [
             feature(name = "dbg"),
@@ -138,6 +137,8 @@ def _impl(ctx):
 
 cc_toolchain_config = rule(
     implementation = _impl,
-    attrs = {},
+    attrs = {
+        "compiler_path": attr.string(),
+    },
     provides = [CcToolchainConfigInfo],
 )

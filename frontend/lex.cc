@@ -31,7 +31,6 @@ namespace {
 
 constexpr inline bool IsLower(char c) { return ('a' <= c and c <= 'z'); }
 constexpr inline bool IsUpper(char c) { return ('A' <= c and c <= 'Z'); }
-constexpr inline bool IsNonZeroDigit(char c) { return ('1' <= c and c <= '9'); }
 constexpr inline bool IsDigit(char c) { return ('0' <= c and c <= '9'); }
 
 constexpr inline bool IsAlpha(char c) { return IsLower(c) or IsUpper(c); }
@@ -171,31 +170,30 @@ std::pair<SourceRange, std::string> NextStringLiteral(SourceCursor *cursor,
                                                       error::Log *error_log) {
   cursor->remove_prefix(1);
   bool escaped = false;
-  auto str_lit_cursor =
-      cursor->ConsumeWhile([&escaped, src, error_log](char c) {
-        if (c == '\\') {
-          escaped = not escaped;
-          return true;
-        }
-        if (not escaped) { return c != '"'; }
-        escaped = false;
-        switch (c) {
-          case '"':
-          case 'a':
-          case 'b':
-          case 'f':
-          case 'n':
-          case 'r':
-          case 't':
-          case 'v': break;
-          default: {
-            // TODO log an invalid escape character
-            // error_log->InvalidEscapedCharacterInStringLiteral(invalid);
-          } break;
-        }
+  auto str_lit_cursor = cursor->ConsumeWhile([&escaped](char c) {
+    if (c == '\\') {
+      escaped = not escaped;
+      return true;
+    }
+    if (not escaped) { return c != '"'; }
+    escaped = false;
+    switch (c) {
+      case '"':
+      case 'a':
+      case 'b':
+      case 'f':
+      case 'n':
+      case 'r':
+      case 't':
+      case 'v': break;
+      default: {
+        // TODO log an invalid escape character
+        // error_log->InvalidEscapedCharacterInStringLiteral(invalid);
+      } break;
+    }
 
-        return true;
-      });
+    return true;
+  });
 
   auto span = str_lit_cursor.range();
   if (cursor->view().empty()) {

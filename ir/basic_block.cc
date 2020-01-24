@@ -15,7 +15,8 @@ std::ostream &operator<<(std::ostream &os, BasicBlock const &b) {
   return os;
 }
 
-BasicBlock::BasicBlock(BasicBlock const &b) : group_(b.group_), jump_(b.jump_) {
+BasicBlock::BasicBlock(BasicBlock const &b) noexcept
+    : group_(b.group_), jump_(b.jump_) {
   instructions_.reserve(b.instructions_.size());
   for (auto const &inst : b.instructions_) {
     instructions_.push_back(inst->clone());

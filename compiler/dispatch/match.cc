@@ -58,7 +58,7 @@ base::expected<core::FnParams<type::Typed<ast::Declaration const *>>,
 MatchArgsToParams(
     core::FnParams<type::Typed<ast::Declaration const *>> const &params,
     core::FnArgs<type::QualType> const &args) {
-  if (args.size() > params.size()) { FailedMatch{}; }
+  if (args.size() > params.size()) { return FailedMatch{}; }
 
   core::FnParams<type::Typed<ast::Declaration const *>> matched_params;
   if (auto failure =

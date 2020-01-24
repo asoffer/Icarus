@@ -175,6 +175,7 @@ template <typename Inst>
 void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
                              ExecutionContext *ctx,
                              absl::Span<ir::Addr const> ret_slots) {
+  static_cast<void>(ret_slots);
   if constexpr (std::is_same_v<Inst, ir::EnumerationInstruction>) {
     using enum_t             = uint64_t;
     bool is_enum_not_flags   = iter->read<bool>();

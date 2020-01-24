@@ -89,7 +89,8 @@ base::expected<Pending<ModType>> ImportModule(
 
   fut = &internal::pending_module_futures.emplace_back(
       std::async(std::launch::async,
-                 [canonical_src, mod(&iter->second.second)]() -> BasicModule * {
+                 [canonical_src(dependee.first),
+                  mod(&iter->second.second)]() -> BasicModule * {
                    // TODO error messages.
                    ASSIGN_OR(return nullptr,  //
                                     frontend::FileSource file_src,

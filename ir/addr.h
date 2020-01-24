@@ -18,7 +18,7 @@ struct Addr {
     return addr;
   }
 
-  constexpr static Addr Heap(void *ptr) {
+  static Addr Heap(void *ptr) {
     Addr addr;
     addr.data_ = (reinterpret_cast<uintptr_t>(ptr) << 2) +
                  static_cast<uint8_t>(Kind::Heap);
@@ -43,7 +43,7 @@ struct Addr {
   constexpr Kind kind() const { return static_cast<Kind>(data_ & 0b11); }
   constexpr uint64_t stack() const { return data_ >> 2; }
   constexpr uint64_t rodata() const { return data_ >> 2; }
-  constexpr void *heap() const { return reinterpret_cast<void *>(data_ >> 2); }
+  void *heap() const { return reinterpret_cast<void *>(data_ >> 2); }
 
   std::string to_string() const;
 

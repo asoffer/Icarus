@@ -780,15 +780,15 @@ struct NotInstruction : UnaryInstruction<bool> {
   }
 };
 
-struct PtrInstruction : UnaryInstruction<type::Type const*> {
+struct PtrInstruction : UnaryInstruction<::type::Type const*> {
   static constexpr cmd_index_t kIndex = internal::kPtrInstructionNumber;
 
-  explicit PtrInstruction(RegOr<type::Type const*> const& operand)
-      : UnaryInstruction<type::Type const*>(operand) {}
+  explicit PtrInstruction(RegOr<::type::Type const*> const& operand)
+      : UnaryInstruction<::type::Type const*>(operand) {}
   ~PtrInstruction() override {}
 
-  static type::Pointer const* Apply(type::Type const* operand) {
-    return type::Ptr(operand);
+  static ::type::Pointer const* Apply(::type::Type const* operand) {
+    return ::type::Ptr(operand);
   }
 
   void WriteByteCode(ByteCodeWriter* writer) const override {
@@ -796,15 +796,15 @@ struct PtrInstruction : UnaryInstruction<type::Type const*> {
   }
 };
 
-struct BufPtrInstruction : UnaryInstruction<type::Type const*> {
+struct BufPtrInstruction : UnaryInstruction<::type::Type const*> {
   static constexpr cmd_index_t kIndex = internal::kBufPtrInstructionNumber;
 
-  explicit BufPtrInstruction(RegOr<type::Type const*> const& operand)
-      : UnaryInstruction<type::Type const*>(operand) {}
+  explicit BufPtrInstruction(RegOr<::type::Type const*> const& operand)
+      : UnaryInstruction<::type::Type const*>(operand) {}
   ~BufPtrInstruction() override {}
 
-  static type::BufferPointer const* Apply(type::Type const* operand) {
-    return type::BufPtr(operand);
+  static ::type::BufferPointer const* Apply(::type::Type const* operand) {
+    return ::type::BufPtr(operand);
   }
 
   void WriteByteCode(ByteCodeWriter* writer) const override {
@@ -950,15 +950,15 @@ struct OrFlagsInstruction
   }
 };
 
-struct TupleInstruction : VariadicInstruction<type::Type const*> {
+struct TupleInstruction : VariadicInstruction<::type::Type const*> {
   static constexpr cmd_index_t kIndex = internal::kTupleInstructionNumber;
 
-  TupleInstruction(std::vector<RegOr<type::Type const*>> values)
-      : VariadicInstruction<type::Type const*>(std::move(values)) {}
+  TupleInstruction(std::vector<RegOr<::type::Type const*>> values)
+      : VariadicInstruction<::type::Type const*>(std::move(values)) {}
   ~TupleInstruction() override {}
 
-  static type::Type const* Apply(std::vector<type::Type const*> entries) {
-    return type::Tup(std::move(entries));
+  static ::type::Type const* Apply(std::vector<::type::Type const*> entries) {
+    return ::type::Tup(std::move(entries));
   }
 
   std::string to_string() const override {
@@ -966,7 +966,7 @@ struct TupleInstruction : VariadicInstruction<type::Type const*> {
     return absl::StrCat(
         "type ", stringify(this->result), " = tup ",
         absl::StrJoin(this->values, " ",
-                      [](std::string* out, RegOr<type::Type const*> const& r) {
+                      [](std::string* out, RegOr<::type::Type const*> const& r) {
                         out->append(stringify(r));
                       }));
   }
@@ -976,15 +976,15 @@ struct TupleInstruction : VariadicInstruction<type::Type const*> {
   }
 };
 
-struct VariantInstruction : VariadicInstruction<type::Type const*> {
+struct VariantInstruction : VariadicInstruction<::type::Type const*> {
   static constexpr cmd_index_t kIndex = internal::kVariantInstructionNumber;
 
-  VariantInstruction(std::vector<RegOr<type::Type const*>> values)
-      : VariadicInstruction<type::Type const*>(std::move(values)) {}
+  VariantInstruction(std::vector<RegOr<::type::Type const*>> values)
+      : VariadicInstruction<::type::Type const*>(std::move(values)) {}
   ~VariantInstruction() override {}
 
-  static type::Type const* Apply(std::vector<type::Type const*> entries) {
-    return type::Var(std::move(entries));
+  static ::type::Type const* Apply(std::vector<::type::Type const*> entries) {
+    return ::type::Var(std::move(entries));
   }
 
   std::string to_string() const override {
@@ -992,7 +992,7 @@ struct VariantInstruction : VariadicInstruction<type::Type const*> {
     return absl::StrCat(
         "type ", stringify(this->result), " = var ",
         absl::StrJoin(this->values, " ",
-                      [](std::string* out, RegOr<type::Type const*> const& r) {
+                      [](std::string* out, RegOr<::type::Type const*> const& r) {
                         out->append(stringify(r));
                       }));
   }
@@ -1203,7 +1203,7 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
   }
   ~CallInstruction() override {}
 
-  std::string to_string() const {
+  std::string to_string() const override {
     using base::stringify;
     std::string result = absl::StrCat("call ", stringify(fn));
     for (auto const& arg : args) {
@@ -1502,7 +1502,7 @@ struct StructIndexInstruction
   using type                          = type::Struct const*;
 
   StructIndexInstruction(RegOr<Addr> const& addr, RegOr<int64_t> index,
-                         type::Struct const* struct_type)
+                         ::type::Struct const* struct_type)
       : addr(addr), index(index), struct_type(struct_type) {}
   ~StructIndexInstruction() override {}
 
@@ -1539,7 +1539,7 @@ struct StructIndexInstruction
 
   RegOr<Addr> addr;
   RegOr<int64_t> index;
-  type::Struct const* struct_type;
+  ::type::Struct const* struct_type;
   Reg result;
 };
 
@@ -1548,7 +1548,7 @@ struct TupleIndexInstruction : base::Clone<TupleIndexInstruction, Instruction> {
   using type                          = type::Tuple const*;
 
   TupleIndexInstruction(RegOr<Addr> const& addr, RegOr<int64_t> index,
-                        type::Tuple const* tuple)
+                        ::type::Tuple const* tuple)
       : addr(addr), index(index), tuple(tuple) {}
   ~TupleIndexInstruction() override {}
 
@@ -1585,7 +1585,7 @@ struct TupleIndexInstruction : base::Clone<TupleIndexInstruction, Instruction> {
 
   RegOr<Addr> addr;
   RegOr<int64_t> index;
-  type::Tuple const* tuple;
+  ::type::Tuple const* tuple;
   Reg result;
 };
 
@@ -1594,7 +1594,7 @@ struct PtrIncrInstruction : base::Clone<PtrIncrInstruction, Instruction> {
   using type                          = type::Pointer const*;
 
   PtrIncrInstruction(RegOr<Addr> const& addr, RegOr<int64_t> index,
-                     type::Pointer const* ptr)
+                     ::type::Pointer const* ptr)
       : addr(addr), index(index), ptr(ptr) {}
   ~PtrIncrInstruction() override {}
 
@@ -1631,7 +1631,7 @@ struct PtrIncrInstruction : base::Clone<PtrIncrInstruction, Instruction> {
 
   RegOr<Addr> addr;
   RegOr<int64_t> index;
-  type::Pointer const* ptr;
+  ::type::Pointer const* ptr;
   Reg result;
 };
 

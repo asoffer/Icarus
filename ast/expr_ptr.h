@@ -8,7 +8,7 @@ struct Expression;
 
 // TODO pick a better name
 struct ExprPtr {
-  constexpr ExprPtr(Expression const *expr, int8_t offset = 0)
+  ExprPtr(Expression const *expr, int8_t offset = 0)
       : value_(reinterpret_cast<uintptr_t>(expr) | (offset & 0x03)) {}
 
   template <typename H>
@@ -16,7 +16,7 @@ struct ExprPtr {
     return H::combine(std::move(h), e.value_);
   }
 
-  friend constexpr bool operator==(ExprPtr lhs, ExprPtr rhs) {
+  friend bool operator==(ExprPtr lhs, ExprPtr rhs) {
     return lhs.value_ == rhs.value_;
   }
 

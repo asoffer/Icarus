@@ -24,19 +24,19 @@ TEST(OverloadSet, Construction) {
     core::FnParams<type::Type const *> p;
     auto fn = os[p];
     ASSERT_TRUE(fn.has_value());
-    EXPECT_EQ(fn->foreign().get(), TestFn1);
+    EXPECT_EQ(fn->foreign().get(), static_cast<void (*)()>(TestFn1));
   }
   {
     core::FnParams<type::Type const *> p{core::AnonymousParam(type::Int64)};
     auto fn = os[p];
     ASSERT_TRUE(fn.has_value());
-    EXPECT_EQ(fn->foreign().get(), TestFn2);
+    EXPECT_EQ(fn->foreign().get(), static_cast<void (*)()>(TestFn2));
   }
   {
     core::FnParams<type::Type const *> p{core::AnonymousParam(type::Bool)};
     auto fn = os[p];
     ASSERT_TRUE(fn.has_value());
-    EXPECT_EQ(fn->foreign().get(), TestFn3);
+    EXPECT_EQ(fn->foreign().get(), static_cast<void (*)()>(TestFn3));
   }
 }
 
@@ -49,7 +49,7 @@ TEST(OverloadSet, Callable) {
   auto fn = os[core::FnParams<type::Type const *>()];
   ASSERT_TRUE(fn.has_value());
   ASSERT_FALSE(fn->is_fn());
-  EXPECT_EQ(fn->foreign().get(), TestFn1);
+  EXPECT_EQ(fn->foreign().get(), static_cast<void (*)()>(TestFn1));
 }
 
 TEST(OverloadSet, FailsToConstruct) {

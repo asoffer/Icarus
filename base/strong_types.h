@@ -222,8 +222,27 @@ constexpr bool operator!=(Strong<Tag, UnderlyingType, CrtpTags> lhs,
   struct name : public base::internal::Strong<                                 \
                     name, decltype(default_value),                             \
                     base::internal::StrongTypeCrtp<__VA_ARGS__>> {             \
-    template <typename...>                                                     \
-    explicit constexpr name(decltype(default_value) val = default_value)       \
+    name()                                                                     \
+        : base::internal::Strong<name, decltype(default_value),                \
+                                 base::internal::StrongTypeCrtp<__VA_ARGS__>>( \
+              default_value) {}                                                \
+                                                                               \
+    template <                                                                 \
+        typename T,                                                            \
+        std::enable_if_t<std::is_convertible_v<T, decltype(default_value)> and \
+                             std::is_arithmetic_v<T>,                          \
+                         int> = 0>                                             \
+    explicit constexpr name(T val)                                             \
+        : base::internal::Strong<name, decltype(default_value),                \
+                                 base::internal::StrongTypeCrtp<__VA_ARGS__>>( \
+              val) {}                                                          \
+                                                                               \
+    template <                                                                 \
+        typename T,                                                            \
+        std::enable_if_t<std::is_convertible_v<T, decltype(default_value)> and \
+                             not std::is_arithmetic_v<T>,                      \
+                         int> = 0>                                             \
+    explicit name(T val)                                                       \
         : base::internal::Strong<name, decltype(default_value),                \
                                  base::internal::StrongTypeCrtp<__VA_ARGS__>>( \
               val) {}                                                          \

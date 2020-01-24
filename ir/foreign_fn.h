@@ -15,7 +15,8 @@ struct AnyFunc;
 struct ForeignFn {
   explicit ForeignFn(void (*fn)(), type::Function const *t);
 
-  void (*get())() const { return fn_; }
+  using void_fn_ptr  = void(*)();
+  void_fn_ptr get() const { return fn_; }
   type::Function const *type() const;
 
   friend std::ostream &operator<<(std::ostream &os, ForeignFn f) {
