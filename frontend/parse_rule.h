@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "absl/types/span.h"
-#include "frontend/tag.h"
+#include "frontend/lex/tag.h"
 
 namespace ast {
 struct Node;

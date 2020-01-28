@@ -29,7 +29,7 @@ cc_library(
         "//core:fn_args",
         "//core:fn_params",
         "//core:ordered_fn_args",
-        "//frontend:operators",
+        "//frontend/lex:operators",
         "//ir:results",
         "//type:basic_type",
     ],

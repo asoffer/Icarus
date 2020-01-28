@@ -1,10 +1,10 @@
-#ifndef ICARUS_FRONTEND_TOKEN_H
-#define ICARUS_FRONTEND_TOKEN_H
+#ifndef ICARUS_FRONTEND_LEX_TOKEN_H
+#define ICARUS_FRONTEND_LEX_TOKEN_H
 
 #include <string>
 #include "ast/node.h"
 #include "base/debug.h"
-#include "frontend/operators.h"
+#include "frontend/lex/operators.h"
 
 struct JumpExprs;
 namespace frontend {
@@ -50,4 +50,4 @@ struct Token : public ast::Node {
 
 }  // namespace frontend
 
-#endif  // ICARUS_FRONTEND_TOKEN_H
+#endif  // ICARUS_FRONTEND_LEX_TOKEN_H

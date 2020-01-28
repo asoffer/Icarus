@@ -16,7 +16,7 @@
 #include "diagnostic/consumer/streaming.h"
 #include "diagnostic/errors.h"
 #include "error/inference_failure_reason.h"
-#include "frontend/operators.h"
+#include "frontend/lex/operators.h"
 #include "interpretter/evaluate.h"
 #include "ir/compiled_fn.h"
 #include "type/cast.h"

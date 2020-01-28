@@ -1,5 +1,5 @@
-#ifndef ICARUS_FRONTEND_TAG_H
-#define ICARUS_FRONTEND_TAG_H
+#ifndef ICARUS_FRONTEND_LEX_TAG_H
+#define ICARUS_FRONTEND_LEX_TAG_H
 
 namespace frontend {
 
@@ -44,4 +44,4 @@ inline std::string stringify(Tag t) { return std::to_string(t); }
 
 }  // namespace frontend
 
-#endif  // ICARUS_FRONTEND_TAG_H
+#endif  // ICARUS_FRONTEND_LEX_TAG_H

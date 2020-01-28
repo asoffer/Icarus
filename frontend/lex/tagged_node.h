@@ -1,11 +1,11 @@
-#ifndef ICARUS_FRONTEND_TAGGED_NODE_H
-#define ICARUS_FRONTEND_TAGGED_NODE_H
+#ifndef ICARUS_FRONTEND_LEX_TAGGED_NODE_H
+#define ICARUS_FRONTEND_LEX_TAGGED_NODE_H
 
 #include <memory>
 
-#include "frontend/lexeme.h"
-#include "frontend/tag.h"
-#include "frontend/token.h"
+#include "frontend/lex/lexeme.h"
+#include "frontend/lex/tag.h"
+#include "frontend/lex/token.h"
 
 namespace frontend {
 struct SourceRange;
@@ -58,4 +58,4 @@ struct TaggedNode {
 };
 }  // namespace frontend
 
-#endif  // ICARUS_FRONTEND_TAGGED_NODE_H
+#endif  // ICARUS_FRONTEND_LEX_TAGGED_NODE_H

@@ -1,14 +1,12 @@
-#ifndef ICARUS_FRONTEND_LEXEME_H
-#define ICARUS_FRONTEND_LEXEME_H
+#ifndef ICARUS_FRONTEND_LEX_LEXEME_H
+#define ICARUS_FRONTEND_LEX_LEXEME_H
 
 #include <iostream>
-#include "frontend/operators.h"
-#include "frontend/syntax.h"
-#include "frontend/tag.h"
 
-namespace ast {
-struct Node;
-}  // namespace ast
+#include "ast/node.h"
+#include "frontend/lex/operators.h"
+#include "frontend/lex/syntax.h"
+#include "frontend/lex/tag.h"
 
 namespace frontend {
 
@@ -60,4 +58,4 @@ struct Lexeme {
 
 }  // namespace frontend
 
-#endif  // ICARUS_FRONTEND_LEX_H
+#endif  // ICARUS_FRONTEND_LEX_LEX_H

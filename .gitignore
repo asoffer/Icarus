@@ -13,3 +13,5 @@ a.out
 bin/*
 
 perf.data*
+
+*fuzz_corpus*

@@ -5,10 +5,10 @@
 #include "base/meta.h"
 #include "core/builtin.h"
 #include "error/log.h"
-#include "frontend/lex.h"
-#include "frontend/numbers.h"
-#include "frontend/operators.h"
-#include "frontend/syntax.h"
+#include "frontend/lex/lex.h"
+#include "frontend/lex/numbers.h"
+#include "frontend/lex/operators.h"
+#include "frontend/lex/syntax.h"
 #include "ir/block_def.h"
 #include "ir/results.h"
 #include "ir/str.h"
@@ -230,36 +230,6 @@ std::pair<SourceRange, std::string> NextStringLiteral(SourceCursor *cursor,
   return std::pair{span, str_lit};
 }
 
-Lexeme NextHashtag(SourceCursor *cursor, Source *src) {
-  cursor->remove_prefix(1);
-  SourceRange span;
-  std::string_view token;
-  if (cursor->view()[0] == '{') {
-    cursor->remove_prefix(1);
-    auto word_cursor = NextSimpleWord(cursor);
-    token            = std::string_view{word_cursor.view().data() - 1,
-                             word_cursor.view().size() + 2};
-    span             = word_cursor.range();
-
-    // TODO log an error if this fails.
-    ASSERT(cursor->view().size() != 0u);
-    ASSERT(cursor->view()[0] == '}');
-    cursor->remove_prefix(1);
-    span = span.expanded(Offset(1));
-  } else {
-    auto word_cursor = NextSimpleWord(cursor);
-    token            = word_cursor.view();
-    span             = word_cursor.range();
-  }
-
-  if (auto iter = BuiltinHashtagMap.find(token);
-      iter != BuiltinHashtagMap.end()) {
-    return Lexeme(ast::Hashtag{iter->second}, span);
-  }
-
-  NOT_YET();
-}
-
 static bool BeginsWith(std::string_view prefix, std::string_view s) {
   if (s.size() < prefix.size()) { return false; }
   auto p_iter = prefix.begin();
@@ -390,6 +360,46 @@ std::optional<std::pair<SourceRange, Operator>> NextSlashInitiatedToken(
 }
 }  // namespace
 
+base::expected<Lexeme> NextHashtag(SourceCursor *cursor, Source *src) {
+  cursor->remove_prefix(1);
+  SourceRange span;
+  std::string_view token;
+  if (cursor->view().empty()) {
+    // TODO log an error.
+    return base::unexpected("Nothing following #");
+  } else if (cursor->view()[0] == '{') {
+    cursor->remove_prefix(1);
+    auto word_cursor = NextSimpleWord(cursor);
+    token            = std::string_view{word_cursor.view().data() - 1,
+                             word_cursor.view().size() + 2};
+    span             = word_cursor.range();
+
+    if (cursor->view().empty()) {
+      // TODO log an error if this fails.
+      return base::unexpected("Missing closing '}' on system hashtag.");
+    } else if (cursor->view()[0] != '}') {
+      return base::unexpected("Expected closing '}' on system hashtag.");
+    }
+    cursor->remove_prefix(1);
+    span = span.expanded(Offset(1));
+
+    if (auto iter = BuiltinHashtagMap.find(token);
+        iter != BuiltinHashtagMap.end()) {
+      return Lexeme(ast::Hashtag{iter->second}, span);
+    }
+
+    return base::unexpected("Unrecognized hashtag");
+  } else {
+    auto word_cursor = NextSimpleWord(cursor);
+    token            = word_cursor.view();
+    span             = word_cursor.range();
+
+    // TODO
+    return base::unexpected("Not yet supporting user-defined hashtags");
+  }
+}
+
+
 Lexeme NextToken(LexState *state) {
 restart:
   // Delegate based on the next character in the file stream
@@ -430,7 +440,7 @@ restart:
                                                     type::BasicType::ByteView));
 
     } break;
-    case '#': return NextHashtag(&state->cursor_, state->src_);
+    case '#': return *NextHashtag(&state->cursor_, state->src_);
     case '/': {
       // TODO just check for comments early and roll this into NextOperator.
       if (auto maybe_op = NextSlashInitiatedToken(&state->cursor_, state->src_,

@@ -1,7 +1,9 @@
-#ifndef ICARUS_FRONTEND_LEX_H
-#define ICARUS_FRONTEND_LEX_H
+#ifndef ICARUS_FRONTEND_LEX_LEX_H
+#define ICARUS_FRONTEND_LEX_LEX_H
 
-#include "frontend/lexeme.h"
+#include "ast/hashtag.h"
+#include "base/expected.h"
+#include "frontend/lex/lexeme.h"
 #include "frontend/source/cursor.h"
 #include "frontend/source/range.h"
 #include "frontend/source/source.h"
@@ -30,8 +32,11 @@ struct LexState {
   error::Log *error_log_;
 };
 
+// Assumes that the next available character exists and is '#'.
+base::expected<Lexeme> NextHashtag(SourceCursor *cursor, Source *src);
+
 Lexeme NextToken(LexState *state);
 
 }  // namespace frontend
 
-#endif  // ICARUS_FRONTEND_LEX_H
+#endif  // ICARUS_FRONTEND_LEX_LEX_H

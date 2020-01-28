@@ -7,12 +7,12 @@
 #include "base/debug.h"
 #include "base/guarded.h"
 #include "error/log.h"
-#include "frontend/lex.h"
-#include "frontend/operators.h"
+#include "frontend/lex/lex.h"
+#include "frontend/lex/operators.h"
+#include "frontend/lex/tagged_node.h"
+#include "frontend/lex/token.h"
 #include "frontend/parse_rule.h"
 #include "frontend/source/source.h"
-#include "frontend/tagged_node.h"
-#include "frontend/token.h"
 
 namespace debug {
 bool parser = false;
@@ -94,7 +94,7 @@ constexpr size_t precedence(frontend::Operator op) {
 #define OPERATOR_MACRO(name, symbol, tag, prec, assoc)                         \
   case frontend::Operator::name:                                               \
     return (((prec) << 2) + (assoc));
-#include "frontend/operators.xmacro.h"
+#include "frontend/lex/operators.xmacro.h"
 #undef OPERATOR_MACRO
   }
   __builtin_unreachable();

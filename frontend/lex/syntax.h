@@ -4,7 +4,7 @@
 #include <string>
 
 #include "base/debug.h"
-#include "frontend/tag.h"
+#include "frontend/lex/tag.h"
 
 namespace frontend {
 
@@ -15,7 +15,7 @@ namespace frontend {
 // explicitly on the tree.
 enum class Syntax : uint64_t {
 #define SYNTAX_MACRO(name, symbol, tag) name,
-#include "frontend/syntax.xmacro.h"
+#include "frontend/lex/syntax.xmacro.h"
 #undef SYNTAX_MACRO
 };
 
@@ -24,7 +24,7 @@ inline Tag TagFrom(Syntax s) {
 #define SYNTAX_MACRO(name, symbol, tag)                                        \
   case Syntax::name:                                                           \
     return tag;
-#include "frontend/syntax.xmacro.h"
+#include "frontend/lex/syntax.xmacro.h"
 #undef SYNTAX_MACRO
   }
   UNREACHABLE();
@@ -35,7 +35,7 @@ inline std::string stringify(Syntax s) {
 #define SYNTAX_MACRO(name, symbol, tag)                                        \
   case Syntax::name:                                                           \
     return symbol;
-#include "frontend/syntax.xmacro.h"
+#include "frontend/lex/syntax.xmacro.h"
 #undef SYNTAX_MACRO
   }
   return "<<!>>";

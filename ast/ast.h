@@ -22,7 +22,7 @@
 #include "core/fn_args.h"
 #include "core/fn_params.h"
 #include "core/ordered_fn_args.h"
-#include "frontend/operators.h"
+#include "frontend/lex/operators.h"
 #include "ir/results.h"
 #include "type/basic_type.h"
 
