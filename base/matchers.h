@@ -73,7 +73,7 @@ struct InheritsFrom : public UntypedMatcher<InheritsFrom<T>> {
   template <typename Expr>
   struct Matcher : public ::matcher::Matcher<Expr> {
     Matcher(InheritsFrom const& m) {}
-    bool match(Expr const& input) const {
+    bool match(Expr const& input) const override {
       if constexpr (internal::is_pointery<Expr>::value) {
         return dynamic_cast<T const*>(
                    internal::is_pointery<Expr>{}.get(input)) != nullptr;

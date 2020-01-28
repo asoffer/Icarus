@@ -90,15 +90,7 @@ def _impl(ctx):
 
     features = [
         std_lib_version("17"),
-        compiler_warnings([
-            "all",
-            "extra",
-            "error",
-            "uninitialized",
-            "no-sign-compare",
-            "no-unused-parameter",
-            "no-unused-variable",
-        ]),
+        compiler_warnings(ctx.attr.warnings),
         compiler_features([
             "diagnostics-color=always",
             "no-exceptions",
@@ -139,6 +131,7 @@ cc_toolchain_config = rule(
     implementation = _impl,
     attrs = {
         "compiler_path": attr.string(),
+        "warnings": attr.string_list(),
     },
     provides = [CcToolchainConfigInfo],
 )

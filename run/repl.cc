@@ -45,7 +45,7 @@ struct ReplModule : public compiler::CompiledModule {
   explicit ReplModule() {}
   ~ReplModule() override {}
 
-  void ProcessNodes(base::PtrSpan<ast::Node const> nodes) {
+  void ProcessNodes(base::PtrSpan<ast::Node const> nodes) override {
     diagnostic::StreamingConsumer consumer(stderr);
     compiler::Compiler compiler(this, consumer);
     for (ast::Node const *node : nodes) {

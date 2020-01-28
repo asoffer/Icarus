@@ -26,7 +26,17 @@ cc_toolchain(
 
 cc_toolchain_config(
     name = 'gcc_toolchain_config',
-    compiler_path = '/usr/bin/g++'
+    compiler_path = '/usr/bin/g++',
+    warnings = [
+        "all",
+        "error",
+        "extra",
+        "no-sign-compare",
+        "no-unused-but-set-parameter",
+        "no-unused-parameter",
+        "no-unused-variable",
+        "uninitialized",
+    ]
 )
 
 cc_toolchain(
@@ -44,5 +54,16 @@ cc_toolchain(
 
 cc_toolchain_config(
     name = 'clang_toolchain_config',
-    compiler_path = '/usr/bin/clang++'
+    compiler_path = '/usr/bin/clang++',
+    warnings = [
+        "all",
+        "error",
+        "extra",
+        "no-sign-compare",
+        "no-unused-parameter",
+        "no-unused-variable",
+        "no-overloaded-shift-op-parentheses", # because of ASSERT macro.
+        "no-overloaded-virtual",  # TODO fix this. The visitor pattern is gross.
+        "uninitialized",
+    ]
 )
