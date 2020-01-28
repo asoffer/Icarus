@@ -11,6 +11,11 @@ TEST_CASE("Default constructor invariants") {
   CHECK(buf.empty());
 }
 
+TEST_CASE("MakeFull") {
+  untyped_buffer buf = untyped_buffer::MakeFull(10);
+  CHECK(buf.size() == 10);
+}
+
 TEST_CASE("Append") {
   untyped_buffer buf;
   buf.append(3);

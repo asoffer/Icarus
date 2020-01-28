@@ -87,12 +87,12 @@ struct untyped_buffer {
     return result;
   }
 
-  void *raw(size_t offset) {
+  char *raw(size_t offset) {
     ASSERT(offset <= size_);
     return data_ + offset;
   }
 
-  void const *raw(size_t offset) const {
+  char const *raw(size_t offset) const {
     ASSERT(offset <= size_);
     return data_ + offset;
   }
@@ -114,9 +114,13 @@ struct untyped_buffer {
     return old_size;
   }
 
+  void write(size_t offset, char const * data, size_t len) {
+    append_bytes(len);
+    std::memcpy(data_ + offset, data, len);
+  }
+
   void write(size_t offset, base::untyped_buffer const &buf) {
-    append_bytes(buf.size());
-    std::memcpy(data_ + offset, buf.data_, buf.size_);
+    write(offset, buf.data_, buf.size_);
   }
 
   // Returns an offset to the newly appended region

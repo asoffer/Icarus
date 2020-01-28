@@ -15,6 +15,7 @@ cc_library(
     hdrs = ["register_array.h"],
     deps = [
         "//base:untyped_buffer",
+        "//base:untyped_buffer_view",
         "//ir:reg",
     ],
 )
@@ -42,6 +43,7 @@ cc_library(
     deps = [
         ":architecture",
         ":register_array",
+        "//base:untyped_buffer_view",
         "//core:arch",
         "//ir:basic_block",
         "//ir:compiled_fn",

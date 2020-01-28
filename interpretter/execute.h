@@ -39,7 +39,7 @@ struct ExecutionContext {
   base::untyped_buffer stack_;
 };
 
-void Execute(ir::AnyFunc fn, base::untyped_buffer const &arguments,
+void Execute(ir::AnyFunc fn, base::untyped_buffer arguments,
              absl::Span<ir::Addr const> ret_slots, ExecutionContext *ctx);
 
 }  // namespace interpretter

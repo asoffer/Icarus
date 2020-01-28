@@ -14,7 +14,12 @@ base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
 
   ret_slots.push_back(ir::Addr::Heap(ret_buf.raw(0)));
   ExecutionContext exec_context;
-  Execute(&fn, base::untyped_buffer(0), ret_slots, &exec_context);
+  // TODO replace 16 with kMaxSize. But actually just have a good way to
+  // construct the buffer
+  Execute(&fn,
+          base::untyped_buffer::MakeFull(
+              (fn.type()->input().size() + fn.num_regs()) * 16),
+          ret_slots, &exec_context);
   return ret_buf;
 }
 

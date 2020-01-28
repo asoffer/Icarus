@@ -17,8 +17,7 @@ struct untyped_buffer_view {
       : data_(reinterpret_cast<char const *>(data)), size_(size) {}
 
   /* implicit */ untyped_buffer_view(untyped_buffer const &buf)
-      : data_(reinterpret_cast<char const *>(buf.raw(0))),
-        size_(buf.size()) {}
+      : data_(buf.raw(0)), size_(buf.size()) {}
 
   using const_iterator = internal::raw_const_iterator;
   constexpr const_iterator begin() const { return const_iterator(data_); }
@@ -35,7 +34,7 @@ struct untyped_buffer_view {
 
   void remove_suffix(size_t num) { size_ -= num; }
 
-  constexpr void const *data() const { return data_; }
+  constexpr char const *data() const { return data_; }
   constexpr size_t size() const { return size_; }
   constexpr bool empty() const { return size_ == 0; }
 
@@ -48,7 +47,7 @@ struct untyped_buffer_view {
     return result;
   }
 
-  void const *raw(size_t offset) const {
+  char const *raw(size_t offset) const {
     ASSERT(offset <= size_);
     return data_ + offset;
   }

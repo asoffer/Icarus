@@ -1,6 +1,7 @@
 #ifndef ICARUS_INTERPRETTER_STACK_FRAME_H
 #define ICARUS_INTERPRETTER_STACK_FRAME_H
 
+#include "base/untyped_buffer_view.h"
 #include "interpretter/register_array.h"
 #include "ir/basic_block.h"
 #include "ir/compiled_fn.h"

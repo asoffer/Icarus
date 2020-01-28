@@ -81,7 +81,7 @@ void CallForeignFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
         } break;
       }
     } else {
-      arg_vals.push_back(const_cast<void *>(arguments.raw(16 * i++)));
+      arg_vals.push_back(const_cast<char *>(arguments.raw(16 * i++)));
     }
   }
 

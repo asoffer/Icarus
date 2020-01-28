@@ -90,7 +90,7 @@ T ReadAndResolve(bool is_reg, base::untyped_buffer::const_iterator *iter,
   }
 }
 
-void CallFunction(ir::CompiledFn *fn, const base::untyped_buffer &arguments,
+void CallFunction(ir::CompiledFn *fn, base::untyped_buffer arguments,
                   absl::Span<ir::Addr const> ret_slots, ExecutionContext *ctx) {
   ASSERT(fn != nullptr);
   // TODO: Understand why and how work-items may not be complete and add an
@@ -108,17 +108,18 @@ void CallFunction(ir::CompiledFn *fn, const base::untyped_buffer &arguments,
     fn->WriteByteCode();
   }
 
-  ctx->call_stack_.emplace_back(fn, arguments, &ctx->stack_);
+  ctx->call_stack_.emplace_back(fn, std::move(arguments), &ctx->stack_);
   ctx->ExecuteBlocks(ret_slots);
   ctx->call_stack_.pop_back();
 }
 
 }  // namespace
 
-void Execute(ir::AnyFunc fn, base::untyped_buffer const &arguments,
+// TODO rename the `arguments` parameter. It actually should be arguments and space for registers.
+void Execute(ir::AnyFunc fn, base::untyped_buffer arguments,
              absl::Span<ir::Addr const> ret_slots, ExecutionContext *ctx) {
   if (fn.is_fn()) {
-    CallFunction(fn.func(), arguments, ret_slots, ctx);
+    CallFunction(fn.func(), std::move(arguments), ret_slots, ctx);
   } else {
     CallForeignFn(fn.foreign(), arguments, ret_slots, &ctx->stack_);
   }
@@ -381,7 +382,10 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         ASSERT_NOT_NULL(iter->read<type::Type const *>().get());
     switch (kind) {
       case ir::TypeManipulationInstruction::Kind::Init: {
-        call_buf.append(ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get()));
+        call_buf = base::untyped_buffer::MakeFull(kMaxSize *
+                                                  (1 + f.func()->num_regs()));
+        call_buf.set(0, ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get()));
+
         if (auto *s = t->if_as<type::Struct>()) {
           f = s->init_func_.get();
         } else if (auto *tup = t->if_as<type::Tuple>()) {
@@ -393,7 +397,9 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         }
       } break;
       case ir::TypeManipulationInstruction::Kind::Destroy: {
-        call_buf.append(ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get()));
+        call_buf = base::untyped_buffer::MakeFull(kMaxSize *
+                                                  (1 + f.func()->num_regs()));
+        call_buf.set(0, ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get()));
 
         if (auto *s = t->if_as<type::Struct>()) {
           f = s->destroy_func_.get();
@@ -409,7 +415,8 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         auto from   = ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get());
         bool is_reg = iter->read<bool>();
         auto to     = ReadAndResolve<ir::Addr>(is_reg, iter, ctx);
-        call_buf    = base::untyped_buffer::MakeFull(kMaxSize * 2);
+        call_buf    = base::untyped_buffer::MakeFull(kMaxSize *
+                                                  (2 + f.func()->num_regs()));
         call_buf.set(0, from);
         call_buf.set(kMaxSize, to);
 
@@ -427,7 +434,8 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         auto from   = ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get());
         bool is_reg = iter->read<bool>();
         auto to     = ReadAndResolve<ir::Addr>(is_reg, iter, ctx);
-        call_buf    = base::untyped_buffer::MakeFull(kMaxSize * 2);
+        call_buf    = base::untyped_buffer::MakeFull(kMaxSize *
+                                                  (2 + f.func()->num_regs()));
         call_buf.set(0, from);
         call_buf.set(kMaxSize, to);
 
@@ -443,7 +451,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
       } break;
     }
 
-    Execute(f, call_buf, {}, ctx);
+    Execute(f, std::move(call_buf), {}, ctx);
 
   } else if constexpr (ir::internal::kSetReturnInstructionRange.contains(
                            Inst::kIndex)) {
@@ -520,30 +528,32 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     ir::AnyFunc f  = ReadAndResolve<ir::AnyFunc>(fn_is_reg, iter, ctx);
     iter->read<core::Bytes>().get();
 
-    std::vector<bool> is_reg_bits = ReadBits<uint16_t>(iter);
-
     type::Function const *fn_type = GetType(f);
     DEBUG_LOG("call")(f, ": ", fn_type->to_string());
-    DEBUG_LOG("call")(is_reg_bits);
 
     // TODO you probably want interpretter::Arguments or something.
-    auto call_buf =
-        base::untyped_buffer::MakeFull(is_reg_bits.size() * kMaxSize);
-    ASSERT(fn_type->input().size() == is_reg_bits.size());
-    for (size_t i = 0; i < is_reg_bits.size(); ++i) {
-      type::Type const *t = fn_type->input().at(i).value;
-      if (is_reg_bits[i]) {
+    size_t num_inputs  = fn_type->input().size();
+    size_t num_regs    = f.is_fn() ? f.func()->num_regs() : 0;
+    size_t num_entries = num_inputs + num_regs;
+    auto call_buf     = base::untyped_buffer::MakeFull(num_entries * kMaxSize);
+    for (size_t i = 0; i < num_inputs; ++i) {
+      if (iter->read<bool>()) {
         ir::Reg reg = iter->read<ir::Reg>();
+        DEBUG_LOG("call")(reg);
 
-        if (t->is_big()) { t = type::Ptr(t); }
-        ctx->MemCpyRegisterBytes(/*    dst = */ call_buf.raw(i * kMaxSize),
-                                 /*    src = */ reg,
-                                 /* length = */ kMaxSize);
-      } else if (t->is_big()) {
-        NOT_YET();
+        ctx->MemCpyRegisterBytes(
+            /*    dst = */ call_buf.raw((num_regs + i) * kMaxSize),
+            /*    src = */ reg,
+            /* length = */ kMaxSize);
       } else {
-        std::memcpy(call_buf.raw(i * kMaxSize), iter->raw(), kMaxSize);
-        iter->skip(t->bytes(kArchitecture).value());
+        type::Type const *t = fn_type->input().at(i).value;
+        if (t->is_big()) {
+          NOT_YET();
+        } else {
+          std::memcpy(call_buf.raw((num_regs + i) * kMaxSize), iter->raw(),
+                      kMaxSize);
+          iter->skip(t->bytes(kArchitecture).value());
+        }
       }
     }
 
@@ -564,7 +574,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
       return_slots.push_back(addr);
     }
 
-    Execute(f, call_buf, return_slots, ctx);
+    Execute(f, std::move(call_buf), return_slots, ctx);
   } else if constexpr (std::is_same_v<Inst, ir::LoadSymbolInstruction>) {
     std::string_view name  = iter->read<std::string_view>();
     type::Type const *type = iter->read<type::Type const *>();

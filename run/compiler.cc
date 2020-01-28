@@ -46,8 +46,10 @@ int RunCompiler(frontend::FileName const &file_name) {
   opt::RunAllOptimizations(exec_mod->main());
   exec_mod->main()->WriteByteCode();
   interpretter::ExecutionContext exec_ctx;
-  interpretter::Execute(exec_mod->main(), base::untyped_buffer(0), {},
-                        &exec_ctx);
+  interpretter::Execute(
+      exec_mod->main(),
+      base::untyped_buffer::MakeFull(exec_mod->main()->num_regs() * 16), {},
+      &exec_ctx);
 
   return 0;
 }

@@ -1222,13 +1222,9 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
     fn.apply([&](auto v) { writer->Write(v); });
     size_t bytes_written_slot = writer->buf_->reserve<core::Bytes>();
 
-    internal::WriteBits<uint16_t, Results>(writer, args, [](Results const& r) {
-      ASSERT(r.size() == 1u);
-      return r.is_reg(0);
-    });
-
     size_t arg_index = 0;
     for (Results const& arg : args) {
+      writer->Write(arg.is_reg(0));
       if (arg.is_reg(0)) {
         writer->Write(arg.get<Reg>(0));
       } else {
