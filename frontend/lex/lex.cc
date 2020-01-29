@@ -4,6 +4,7 @@
 #include "ast/ast.h"
 #include "base/meta.h"
 #include "core/builtin.h"
+#include "diagnostic/errors.h"
 #include "error/log.h"
 #include "frontend/lex/lex.h"
 #include "frontend/lex/numbers.h"
@@ -135,22 +136,17 @@ Lexeme NextWord(SourceCursor *cursor, Source *src) {
   return Lexeme(std::make_unique<ast::Identifier>(span, std::string{token}));
 }
 
-Lexeme NextNumber(SourceCursor *cursor, Source *src, error::Log *error_log) {
+Lexeme NextNumber(SourceCursor *cursor, Source *src,
+                  diagnostic::DiagnosticConsumer &diag) {
+  // TODO hex-parsing?
   auto num_cursor = cursor->ConsumeWhile([](char c) {
     return c == 'b' or c == 'o' or c == 'd' or c == 'd' or c == '_' or
            c == '.' or IsDigit(c);
   });
 
-  auto span = num_cursor.range();
-  auto num  = ParseNumber(num_cursor.view());
-  if (not num.has_value()) {
-    // TODO should you do something with guessing the type?
-    error_log->InvalidNumber(span, num.error().to_string());
-    return Lexeme(std::make_unique<ast::Terminal>(std::move(span), 0,
-                                                  type::BasicType::Int32));
-  }
+  auto span   = num_cursor.range();
   return std::visit(
-      [&span](auto num) {
+      [&](auto num) {
         using T = std::decay_t<decltype(num)>;
         if constexpr (std::is_same_v<T, int64_t>) {
           return Lexeme(std::make_unique<ast::Terminal>(
@@ -158,11 +154,22 @@ Lexeme NextNumber(SourceCursor *cursor, Source *src, error::Log *error_log) {
         } else if constexpr (std::is_same_v<T, double>) {
           return Lexeme(std::make_unique<ast::Terminal>(
               std::move(span), num, type::BasicType::Float64));
+        } else if constexpr (std::is_same_v<T, NumberParsingError>) {
+          // Even though we could try to be helpful by guessing the type, it's
+          // unlikely to be useful. The value may also be important if it's used
+          // at compile-time (e.g., as an array extent). Generally proceeding
+          // further if we can't lex the input is likely not going to be useful.
+          diag.Consume(diagnostic::NumberParsingFailure{
+              .error = num,
+              .range = span,
+          });
+          return Lexeme(std::make_unique<ast::Terminal>(
+              std::move(span), 0, type::BasicType::Int32));
         } else {
           static_assert(base::always_false<T>());
         }
       },
-      *num);
+      ParseNumber(num_cursor.view()));
 }
 
 std::pair<SourceRange, std::string> NextStringLiteral(SourceCursor *cursor,
@@ -418,7 +425,7 @@ restart:
   } else if (IsDigit(state->peek()) or
              (state->peek() == '.' and state->cursor_.view().size() > 1 and
               IsDigit(state->cursor_.view()[1]))) {
-    return NextNumber(&state->cursor_, state->src_, state->error_log_);
+    return NextNumber(&state->cursor_, state->src_, state->diag_);
   }
   if (BeginsWith("*/", state->cursor_.view())) {
     state->error_log_->NotInMultilineComment(

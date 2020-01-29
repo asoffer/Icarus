@@ -21,6 +21,7 @@ cc_library(
         "//ast:ast",
         "//ast:ast_fwd",
         "//base:guarded",
+        "//diagnostic/consumer:streaming",
         "//error:log",
         "//frontend/lex:lex",
         "//frontend/lex:tagged_node",

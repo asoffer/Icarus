@@ -7,7 +7,16 @@
 
 namespace frontend {
 
-base::expected<std::variant<int64_t, double>> ParseNumber(std::string_view sv);
+enum class NumberParsingError {
+  kUnknownBase,
+  kTooManyDots,
+  kNoDigits,
+  kInvalidDigit,
+  kTooLarge,
+};
+
+std::variant<int64_t, double, NumberParsingError> ParseNumber(
+    std::string_view sv);
 
 }  // namespace frontend
 

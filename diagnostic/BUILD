@@ -5,6 +5,8 @@ cc_library(
     name = "errors",
     hdrs = ["errors.h"],
     deps = [
+        ":message",
+        "//frontend/lex:numbers",
         "//frontend/source",
         "//frontend/source:range",
         "//type:qual_type",

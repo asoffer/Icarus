@@ -10,6 +10,8 @@ cc_lib(
         "//ast:ast",
         "//ast:hashtag",
         "//core:builtin",
+        "//diagnostic/consumer",
+        "//diagnostic:errors",
         "//error:log",
         "//frontend/source:cursor",
         "//ir:block_def",
@@ -40,6 +42,15 @@ cc_binary(
     deps = [":numbers"],
     copts = ["-fsanitize=fuzzer"],
     linkopts = ["-fsanitize=fuzzer"],
+)
+
+cc_test(
+    name = "numbers_test",
+    srcs = ["numbers_test.cc"],
+    deps = [
+        ":numbers",
+        "@com_google_googletest//:gtest_main",
+    ],
 )
 
 cc_binary(

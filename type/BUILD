@@ -231,10 +231,8 @@ cc_lib(
         ":type",
         "//base:lazy",
         "//base:guarded",
-        "//base:permutation",
         "//core:arch",
         "//ir:any_func",
-        "//module:module",
     ],
     test_deps = None,
 )

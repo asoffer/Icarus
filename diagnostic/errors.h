@@ -3,6 +3,8 @@
 
 #include <string_view>
 
+#include "diagnostic/message.h"
+#include "frontend/lex/numbers.h"
 #include "frontend/source/range.h"
 #include "type/qual_type.h"
 
@@ -109,6 +111,37 @@ struct AssigningToConstant {
   }
 
   type::Type const* to;
+  frontend::SourceRange range;
+};
+
+struct NumberParsingFailure {
+  static constexpr std::string_view kCategory = "lex";
+  static constexpr std::string_view kName     = "number-parsing-failure";
+
+  DiagnosticMessage ToMessage() const {
+    std::string_view message;
+    switch (error) {
+      case frontend::NumberParsingError::kUnknownBase:
+        message = "Unknown base for numeric literal";
+        break;
+      case frontend::NumberParsingError::kTooManyDots:
+        message = "Too many `.` characters in numeric literal";
+        break;
+      case frontend::NumberParsingError::kNoDigits:
+        message = "No digits in numeric literal";
+        break;
+      case frontend::NumberParsingError::kInvalidDigit:
+        message = "Invalid digit encountered";
+        break;
+      case frontend::NumberParsingError::kTooLarge:
+        message = "Numeric literal is too large";
+        break;
+    }
+
+    return DiagnosticMessage(Text("%s", message));
+  }
+
+  frontend::NumberParsingError error;
   frontend::SourceRange range;
 };
 

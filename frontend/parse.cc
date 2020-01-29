@@ -6,6 +6,7 @@
 #include "ast/ast.h"
 #include "base/debug.h"
 #include "base/guarded.h"
+#include "diagnostic/consumer/streaming.h"
 #include "error/log.h"
 #include "frontend/lex/lex.h"
 #include "frontend/lex/operators.h"
@@ -1167,7 +1168,8 @@ auto Rules = std::array{
 
 enum class ShiftState : char { NeedMore, EndOfExpr, MustReduce };
 struct ParseState {
-  ParseState(Source *src, error::Log *log) : lex_state_(src, log) {}
+  ParseState(Source *src, error::Log *log, diagnostic::DiagnosticConsumer &diag)
+      : lex_state_(src, log, diag) {}
 
   template <size_t N>
   inline Tag get_type() const {
@@ -1357,7 +1359,8 @@ void CleanUpReduction(ParseState *state) {
 
 std::vector<std::unique_ptr<ast::Node>> Parse(Source *src) {
   error::Log log(src);
-  ParseState state(src, &log);
+  diagnostic::StreamingConsumer diag(stderr);
+  ParseState state(src, &log, diag);
   Shift(&state);
 
   while (state.Next().tag_ != eof) {
