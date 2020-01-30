@@ -1,18 +1,19 @@
 #include <cstdint>
+#include <iostream>
 #include <string>
 
-#include "error/log.h"
+#include "diagnostic/consumer/trivial.h"
 #include "frontend/lex/lex.h"
-#include "frontend/lex/lexeme.h"
 #include "frontend/source/string.h"
+#include "test/fuzz.h"
 
 extern "C" int LLVMFuzzerTestOneInput(uint8_t const* data, size_t length) {
-  frontend::StringSource src(
-      std::string(reinterpret_cast<char const*>(data), length));
+  frontend::StringSource src(test::Fuzzy<std::string>(data, length));
 
-  error::Log log(&src);
-  frontend::LexState state(&src, &log);
-  auto lexeme = NextToken(&state);
+  diagnostic::TrivialConsumer diag;
+  frontend::LexState state(&src, diag);
+
+  while (NextToken(&state).tag() != frontend::eof) {}
 
   return 0;
 }

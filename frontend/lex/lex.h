@@ -9,19 +9,14 @@
 #include "frontend/source/range.h"
 #include "frontend/source/source.h"
 
-namespace error {
-struct Log;
-}  // namespace error
-
 namespace frontend {
 extern absl::flat_hash_map<std::string_view, ast::Hashtag::Builtin> const
     BuiltinHashtagMap;
 
 struct LexState {
-  LexState(Source *src, error::Log *log, diagnostic::DiagnosticConsumer &diag)
+  LexState(Source *src, diagnostic::DiagnosticConsumer &diag)
       : src_(src),
         cursor_(SourceLoc(LineNum(1), Offset(0)), src_->ReadUntil('\n').view),
-        error_log_(log),
         diag_(diag) {}
 
   char peek() {
@@ -31,18 +26,8 @@ struct LexState {
 
   Source *src_;
   SourceCursor cursor_;
-  error::Log *error_log_;
   diagnostic::DiagnosticConsumer& diag_;
 };
-
-// Assumes that the next available character exists and is '#'.
-base::expected<Lexeme> NextHashtag(SourceCursor *cursor, Source *src);
-
-// Assumes that the next available character exists and is '#'.
-Lexeme NextNumber(SourceCursor *cursor, Source *src,
-                  diagnostic::DiagnosticConsumer &diag);
-
-Lexeme NextToken(LexState *state);
 
 struct StringLiteralError {
   enum class Kind {
@@ -54,13 +39,7 @@ struct StringLiteralError {
   int offset;
 };
 
-struct StringLiteralLexResult {
-  std::string value;
-  SourceRange range;
-  std::vector<StringLiteralError> errors;
-};
-
-StringLiteralLexResult NextStringLiteral(SourceCursor *cursor, Source *src);
+Lexeme NextToken(LexState *state);
 
 }  // namespace frontend
 

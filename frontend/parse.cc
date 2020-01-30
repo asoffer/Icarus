@@ -1169,7 +1169,7 @@ auto Rules = std::array{
 enum class ShiftState : char { NeedMore, EndOfExpr, MustReduce };
 struct ParseState {
   ParseState(Source *src, error::Log *log, diagnostic::DiagnosticConsumer &diag)
-      : lex_state_(src, log, diag) {}
+      : lex_state_(src, diag), log_(log) {}
 
   template <size_t N>
   inline Tag get_type() const {
@@ -1292,6 +1292,7 @@ struct ParseState {
   // wrong, we won't be able to to parse anyway, so it only needs to be the
   // correct value when the braces match.
   int brace_count = 0;
+  error::Log *log_;
 };
 
 // Print out the debug information for the parse stack, and pause.
@@ -1335,8 +1336,7 @@ bool Reduce(ParseState *ps) {
   // return false
   if (matched_rule_ptr == nullptr) { return false; }
 
-  matched_rule_ptr->Apply(&ps->node_stack_, &ps->tag_stack_,
-                          ps->lex_state_.error_log_);
+  matched_rule_ptr->Apply(&ps->node_stack_, &ps->tag_stack_, ps->log_);
 
   return true;
 }

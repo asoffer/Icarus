@@ -12,8 +12,8 @@ struct BindingId {
   BindingId()                                = delete;
   constexpr BindingId(BindingId const &)     = default;
   constexpr BindingId(BindingId &&) noexcept = default;
-  constexpr BindingId &operator=(BindingId const &) = default;
-  constexpr BindingId &operator=(BindingId &&) noexcept = default;
+  BindingId &operator=(BindingId const &) = default;
+  BindingId &operator=(BindingId &&) noexcept = default;
 
   friend bool operator==(BindingId lhs, BindingId rhs) {
     return lhs.name_.data() == rhs.name_.data();

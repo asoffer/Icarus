@@ -12,7 +12,6 @@ cc_lib(
         "//core:builtin",
         "//diagnostic/consumer",
         "//diagnostic:errors",
-        "//error:log",
         "//frontend/source:cursor",
         "//ir:block_def",
         "//ir:results",
@@ -21,6 +20,21 @@ cc_lib(
         "@com_google_absl//absl/container:flat_hash_map",
     ],
     test_deps = None,
+)
+
+cc_binary(
+    name = "lex_fuzz_test",
+    srcs = ["lex_fuzz_test.cc"],
+    deps = [
+        ":lex",
+        "//diagnostic/consumer:trivial",
+        "//frontend/source:cursor",
+        "//frontend/source:string",
+        "//test:fuzz",
+    ],
+    copts = ["-fsanitize=fuzzer"],
+    linkopts = ["-fsanitize=fuzzer"],
+    testonly = True,
 )
 
 cc_lib(
@@ -36,19 +50,6 @@ cc_lib(
     test_deps = None,
 )
 
-cc_binary(
-    name = "numbers_fuzz_test",
-    srcs = ["numbers_fuzz_test.cc"],
-    deps = [
-        ":lex",
-        "//diagnostic/consumer:trivial",
-        "//frontend/source:cursor",
-        "//frontend/source:string",
-    ],
-    copts = ["-fsanitize=fuzzer,signed-integer-overflow"],
-    linkopts = ["-fsanitize=fuzzer,signed-integer-overflow"],
-)
-
 cc_test(
     name = "numbers_test",
     srcs = ["numbers_test.cc"],
@@ -58,38 +59,12 @@ cc_test(
     ],
 )
 
-cc_binary(
-    name = "hashtag_fuzz_test",
-    srcs = ["hashtag_fuzz_test.cc"],
-    deps = [
-        ":lex",
-        "//frontend/source:cursor",
-        "//frontend/source:string",
-    ],
-    copts = ["-fsanitize=fuzzer"],
-    linkopts = ["-fsanitize=fuzzer"],
-)
-
 cc_lib(
     name = "operators",
     textual_hdrs = ["operators.xmacro.h"],
     deps = [":tag", "//base:debug"],
     header_only = True,
     test_deps = None,
-)
-
-cc_binary(
-    name = "string_literal_fuzz_test",
-    srcs = ["string_literal_fuzz_test.cc"],
-    deps = [
-        ":lex",
-        "//frontend/source:cursor",
-        "//frontend/source:string",
-        "//test:fuzz",
-    ],
-    copts = ["-fsanitize=fuzzer"],
-    linkopts = ["-fsanitize=fuzzer"],
-    testonly = True,
 )
 
 cc_lib(

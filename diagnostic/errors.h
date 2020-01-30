@@ -2,8 +2,10 @@
 #define ICARUS_DIAGNOSTIC_ERRORS_H
 
 #include <string_view>
+#include <vector>
 
 #include "diagnostic/message.h"
+#include "frontend/lex/lex.h"
 #include "frontend/lex/numbers.h"
 #include "frontend/source/range.h"
 #include "type/qual_type.h"
@@ -144,6 +146,74 @@ struct NumberParsingFailure {
   frontend::NumberParsingError error;
   frontend::SourceRange range;
 };
+
+struct UnprintableSourceCharacter {
+  static constexpr std::string_view kCategory = "lex";
+  static constexpr std::string_view kName     = "unprintable-source-character";
+
+  DiagnosticMessage ToMessage() const {
+    return DiagnosticMessage(Text(
+        "Uncountered unprintable character with integral value '%d' encountered in source.",
+        value));
+  }
+
+  int value;
+  frontend::SourceRange range;
+};
+
+struct InvalidSourceCharacter {
+  static constexpr std::string_view kCategory = "lex";
+  static constexpr std::string_view kName     = "invalid-source-character";
+
+  DiagnosticMessage ToMessage() const {
+    return DiagnosticMessage(
+        Text("Invalid character '%c' encountered in source.", value));
+  }
+
+  char value;
+  frontend::SourceRange range;
+};
+
+
+struct StringLiteralParsingFailure{
+  static constexpr std::string_view kCategory = "lex";
+  static constexpr std::string_view kName     = "string-literal-parsing-failure";
+
+  DiagnosticMessage ToMessage() const { 
+    // TODO: Implement
+    return DiagnosticMessage();
+  }
+
+  std::vector<frontend::StringLiteralError> errors;
+  frontend::SourceRange range;
+};
+
+struct HashtagParsingFailure{
+  static constexpr std::string_view kCategory = "lex";
+  static constexpr std::string_view kName     = "hashtag-parsing-failure";
+
+  DiagnosticMessage ToMessage() const { 
+    // TODO: Implement
+    return DiagnosticMessage();
+  }
+
+  // TODO
+  frontend::SourceRange range;
+};
+
+struct NonWhitespaceAfterNewlineEscape{
+  static constexpr std::string_view kCategory = "lex";
+  static constexpr std::string_view kName     = "non-whitespace-after-newline-escape";
+
+  DiagnosticMessage ToMessage() const { 
+    // TODO: Implement
+    return DiagnosticMessage();
+  }
+
+  // TODO
+  frontend::SourceRange range;
+};
+
 
 }  // namespace diagnostic
 
