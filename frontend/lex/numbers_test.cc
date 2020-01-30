@@ -17,14 +17,21 @@ TEST(ParseNumber, Base2Integer) {
   EXPECT_THAT(ParseNumber("0b010"), VariantWith<int64_t>(2));
   EXPECT_THAT(ParseNumber("0b01____________________________________0"),
               VariantWith<int64_t>(2));
-  EXPECT_THAT(ParseNumber("0b00000000000000000000000000000000"),
-              VariantWith<NumberParsingError>(NumberParsingError::kTooLarge));
-  EXPECT_THAT(ParseNumber("0b1111111111111111111111111111111"),
-              VariantWith<int64_t>(std::numeric_limits<int32_t>::max()));
-  EXPECT_THAT(ParseNumber("0b111_1111_1111_1111_1111_1111_1111_1111"),
-              VariantWith<int64_t>(std::numeric_limits<int32_t>::max()));
-  EXPECT_THAT(ParseNumber("0b10000000000000000000000000000000"),
-              VariantWith<NumberParsingError>(NumberParsingError::kTooLarge));
+  EXPECT_THAT(
+      ParseNumber(
+          "0b0000000000000000000000000000000000000000000000000000000000000000"),
+      VariantWith<NumberParsingError>(NumberParsingError::kTooLarge));
+  EXPECT_THAT(
+      ParseNumber(
+          "0b111111111111111111111111111111111111111111111111111111111111111"),
+      VariantWith<int64_t>(std::numeric_limits<int64_t>::max()));
+  EXPECT_THAT(ParseNumber("0b111_1111_1111_1111_1111_1111_1111_1111_1111_1111_"
+                          "1111_1111_1111_1111_1111_1111"),
+              VariantWith<int64_t>(std::numeric_limits<int64_t>::max()));
+  EXPECT_THAT(
+      ParseNumber(
+          "0b1000000000000000000000000000000000000000000000000000000000000000"),
+      VariantWith<NumberParsingError>(NumberParsingError::kTooLarge));
   EXPECT_THAT(ParseNumber("0b"),
               VariantWith<NumberParsingError>(NumberParsingError::kNoDigits));
   EXPECT_THAT(ParseNumber("0b_"),
@@ -44,11 +51,11 @@ TEST(ParseNumber, Base8Integer) {
               VariantWith<int64_t>(std::numeric_limits<int32_t>::max()));
   EXPECT_THAT(ParseNumber("0o177______________77777_____________777"),
               VariantWith<int64_t>(std::numeric_limits<int32_t>::max()));
-  EXPECT_THAT(ParseNumber("0o20000000000"),
+  EXPECT_THAT(ParseNumber("0o2000000000000000000000"),
               VariantWith<NumberParsingError>(NumberParsingError::kTooLarge));
-  EXPECT_THAT(ParseNumber("0o7777777777777777"),
+  EXPECT_THAT(ParseNumber("0o37777777777777777777777777777777"),
               VariantWith<NumberParsingError>(NumberParsingError::kTooLarge));
-  EXPECT_THAT(ParseNumber("0o77_77_77_77_77_77_77_77"),
+  EXPECT_THAT(ParseNumber("0o77_77_77_77_77_77_77_77_77_77_77_77_77_77_77_77"),
               VariantWith<NumberParsingError>(NumberParsingError::kTooLarge));
   EXPECT_THAT(ParseNumber("0o"),
               VariantWith<NumberParsingError>(NumberParsingError::kNoDigits));
@@ -61,21 +68,21 @@ TEST(ParseNumber, Base10Integer) {
   EXPECT_THAT(ParseNumber("0d07"), VariantWith<int64_t>(7));
   EXPECT_THAT(ParseNumber("0d01"), VariantWith<int64_t>(1));
   EXPECT_THAT(ParseNumber("0d11"), VariantWith<int64_t>(11));
-  EXPECT_THAT(ParseNumber("0d2147483647"),
-              VariantWith<int64_t>(std::numeric_limits<int32_t>::max()));
-  EXPECT_THAT(ParseNumber("0d2147483648"),
+  EXPECT_THAT(ParseNumber("0d9223372036854775807"),
+              VariantWith<int64_t>(std::numeric_limits<int64_t>::max()));
+  EXPECT_THAT(ParseNumber("0d9223372036854775808"),
               VariantWith<NumberParsingError>(NumberParsingError::kTooLarge));
-  EXPECT_THAT(ParseNumber("0d9999999999"),
+  EXPECT_THAT(ParseNumber("0d9999999999999999999"),
               VariantWith<NumberParsingError>(NumberParsingError::kTooLarge));
   EXPECT_THAT(ParseNumber("0"), VariantWith<int64_t>(0));
   EXPECT_THAT(ParseNumber("7"), VariantWith<int64_t>(7));
   EXPECT_THAT(ParseNumber("1"), VariantWith<int64_t>(1));
   EXPECT_THAT(ParseNumber("11"), VariantWith<int64_t>(11));
-  EXPECT_THAT(ParseNumber("2147483647"),
-              VariantWith<int64_t>(std::numeric_limits<int32_t>::max()));
-  EXPECT_THAT(ParseNumber("2147483648"),
+  EXPECT_THAT(ParseNumber("9223372036854775807"),
+              VariantWith<int64_t>(std::numeric_limits<int64_t>::max()));
+  EXPECT_THAT(ParseNumber("9223372036854775808"),
               VariantWith<NumberParsingError>(NumberParsingError::kTooLarge));
-  EXPECT_THAT(ParseNumber("9999999999"),
+  EXPECT_THAT(ParseNumber("9999999999999999999"),
               VariantWith<NumberParsingError>(NumberParsingError::kTooLarge));
   EXPECT_THAT(ParseNumber("0d"),
               VariantWith<NumberParsingError>(NumberParsingError::kNoDigits));

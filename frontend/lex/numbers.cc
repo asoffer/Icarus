@@ -21,22 +21,26 @@ int64_t DigitInBase(char c) {
 
 template <int Base>
 bool IntRepresentableInBase(std::string_view s) {
-  // TODO: Make this generic over bit-width too.
   if constexpr (Base == 10) {
-    return s.size() > 10 or (s.size() == 10 and s > "2147483647");
+    // TODO this is specific to 64-bit integers.
+    return s.size() < 19 or (s.size() == 19 and s <= "9223372036854775807");
   } else if constexpr (Base == 2) {
-    return s.size() > 31;
+    return s.size() < kMaxIntBytes * 8;
   } else if constexpr (Base == 8) {
-    return (s.size() > 11 or (s.size() == 11 and s[0] > '1'));
+    constexpr const char kFirstCharLimit[] = "371";
+    return (s.size() < (kMaxIntBytes * 8 / 3)) or
+           (s.size() == kMaxIntBytes and
+            s[0] <= kFirstCharLimit[kMaxIntBytes % 3]);
   } else if constexpr (Base == 16) {
-    return s.size() > 8 or (s.size() == 8 and s[0] > '7');
+    return (s.size() < kMaxIntBytes) or
+           (s.size() == kMaxIntBytes and s[0] <= '7');
   }
 }
 
 template <int Base>
 std::variant<int64_t, double, NumberParsingError> ParseIntInBase(
     std::string_view s) {
-  if (IntRepresentableInBase<Base>(s)) { return NumberParsingError::kTooLarge; }
+  if (not IntRepresentableInBase<Base>(s)) { return NumberParsingError::kTooLarge; }
   int64_t result = 0;
   for (char c : s) {
     int64_t digit = DigitInBase<Base>(c);

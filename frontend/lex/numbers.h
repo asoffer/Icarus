@@ -7,6 +7,9 @@
 
 namespace frontend {
 
+// This is the maximum byte-width allowed in integer literals.
+constexpr inline int8_t kMaxIntBytes = 8;
+
 enum class NumberParsingError {
   kUnknownBase,
   kTooManyDots,
