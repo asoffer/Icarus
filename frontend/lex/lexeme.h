@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include "ast/node.h"
+#include "base/meta.h"
 #include "frontend/lex/operators.h"
 #include "frontend/lex/syntax.h"
 #include "frontend/lex/tag.h"
@@ -22,8 +23,6 @@ struct Lexeme {
   explicit Lexeme(ast::Hashtag h, SourceRange const& span)
       : value_(h), span_(span) {}
 
-  // Lexeme with_cursor(SourceCursor cursor) { NOT_YET(); }
-
   constexpr Operator op() const { return std::get<Operator>(value_); }
 
   std::variant<std::unique_ptr<ast::Node>, Operator, Syntax, ast::Hashtag>
@@ -33,7 +32,7 @@ struct Lexeme {
 
   constexpr Tag tag() const {
     return std::visit(
-        [&](auto&& x) {
+        [](auto&& x) {
           using T = std::decay_t<decltype(x)>;
           if constexpr (std::is_same_v<T, Syntax>) {
             return TagFrom(x);
@@ -41,8 +40,10 @@ struct Lexeme {
             return TagFrom(x);
           } else if constexpr (std::is_same_v<T, std::unique_ptr<ast::Node>>) {
             return expr;
-          } else {
+          } else if constexpr (std::is_same_v<T, ast::Hashtag>) {
             return hashtag;
+          } else {
+            static_assert(base::always_false<T>());
           }
         },
         value_);

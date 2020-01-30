@@ -37,11 +37,16 @@ cc_binary(
     testonly = True,
 )
 
-cc_lib(
+cc_library(
     name = "lexeme",
-    deps = [":operators", ":syntax", ":tag", "//ast:node"],
-    header_only = True,
-    test_deps = None,
+    hdrs = ["lexeme.h"],
+    deps = [
+        ":operators",
+        ":syntax",
+        ":tag",
+        "//ast:node",
+        "//base:meta",
+    ],
 )
 
 cc_lib(
