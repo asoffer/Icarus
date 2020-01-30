@@ -136,107 +136,6 @@ Lexeme NextWord(SourceCursor *cursor, Source *src) {
   return Lexeme(std::make_unique<ast::Identifier>(span, std::string{token}));
 }
 
-Lexeme NextNumber(SourceCursor *cursor, Source *src,
-                  diagnostic::DiagnosticConsumer &diag) {
-  // TODO hex-parsing?
-  auto num_cursor = cursor->ConsumeWhile([](char c) {
-    return c == 'b' or c == 'o' or c == 'd' or c == 'd' or c == '_' or
-           c == '.' or IsDigit(c);
-  });
-
-  auto span   = num_cursor.range();
-  return std::visit(
-      [&](auto num) {
-        using T = std::decay_t<decltype(num)>;
-        if constexpr (std::is_same_v<T, int64_t>) {
-          return Lexeme(std::make_unique<ast::Terminal>(
-              std::move(span), num, type::BasicType::Int64));
-        } else if constexpr (std::is_same_v<T, double>) {
-          return Lexeme(std::make_unique<ast::Terminal>(
-              std::move(span), num, type::BasicType::Float64));
-        } else if constexpr (std::is_same_v<T, NumberParsingError>) {
-          // Even though we could try to be helpful by guessing the type, it's
-          // unlikely to be useful. The value may also be important if it's used
-          // at compile-time (e.g., as an array extent). Generally proceeding
-          // further if we can't lex the input is likely not going to be useful.
-          diag.Consume(diagnostic::NumberParsingFailure{
-              .error = num,
-              .range = span,
-          });
-          return Lexeme(std::make_unique<ast::Terminal>(
-              std::move(span), 0, type::BasicType::Int32));
-        } else {
-          static_assert(base::always_false<T>());
-        }
-      },
-      ParseNumber(num_cursor.view()));
-}
-
-std::pair<SourceRange, std::string> NextStringLiteral(SourceCursor *cursor,
-                                                      Source *src,
-                                                      error::Log *error_log) {
-  cursor->remove_prefix(1);
-  bool escaped = false;
-  auto str_lit_cursor = cursor->ConsumeWhile([&escaped](char c) {
-    if (c == '\\') {
-      escaped = not escaped;
-      return true;
-    }
-    if (not escaped) { return c != '"'; }
-    escaped = false;
-    switch (c) {
-      case '"':
-      case 'a':
-      case 'b':
-      case 'f':
-      case 'n':
-      case 'r':
-      case 't':
-      case 'v': break;
-      default: {
-        // TODO log an invalid escape character
-        // error_log->InvalidEscapedCharacterInStringLiteral(invalid);
-      } break;
-    }
-
-    return true;
-  });
-
-  auto span = str_lit_cursor.range();
-  if (cursor->view().empty()) {
-    error_log->RunawayStringLiteral(span);
-  } else {
-    cursor->remove_prefix(1);  // Ending '"'
-  }
-
-  std::string str_lit;
-  // Slightly larger than necessary because we're creating extra space for
-  // the
-  // '\', but it's at most double the size in the most pathological case, so
-  // unlikely to be an issue.
-  str_lit.reserve(str_lit_cursor.view().size());
-  for (auto it = str_lit_cursor.view().begin();
-       it != str_lit_cursor.view().end(); ++it) {
-    if (*it != '\\') {
-      str_lit.push_back(*it);
-      continue;
-    }
-    switch (*++it) {
-      case '"': str_lit.push_back('"'); break;
-      case 'a': str_lit.push_back('\a'); break;
-      case 'b': str_lit.push_back('\b'); break;
-      case 'f': str_lit.push_back('\f'); break;
-      case 'n': str_lit.push_back('\n'); break;
-      case 'r': str_lit.push_back('\r'); break;
-      case 't': str_lit.push_back('\t'); break;
-      case 'v': str_lit.push_back('\v'); break;
-      default: UNREACHABLE();
-    }
-  }
-
-  return std::pair{span, str_lit};
-}
-
 static bool BeginsWith(std::string_view prefix, std::string_view s) {
   if (s.size() < prefix.size()) { return false; }
   auto p_iter = prefix.begin();
@@ -367,6 +266,57 @@ std::optional<std::pair<SourceRange, Operator>> NextSlashInitiatedToken(
 }
 }  // namespace
 
+StringLiteralLexResult NextStringLiteral(SourceCursor *cursor, Source *src) {
+  StringLiteralLexResult result;
+  cursor->remove_prefix(1);
+  bool escaped        = false;
+  int offset          = -1;
+  auto str_lit_cursor = cursor->ConsumeWhile([&](char c) {
+    ++offset;
+    if (not escaped) {
+      switch (c) {
+        case '\\': escaped = true; return true;
+        case '"': return false;
+        // TODO non-printable chars?
+        default: result.value.push_back(c); return true;
+      }
+    }
+
+    escaped = false;
+    switch (c) {
+      case '\\':
+      case '"':
+      case 'a':
+      case 'b':
+      case 'f':
+      case 'n':
+      case 'r':
+      case 't':
+      case 'v': result.value.push_back(c); break;
+      default: {
+        result.errors.push_back(StringLiteralError{
+            .kind   = StringLiteralError::Kind::kInvalidEscapedChar,
+            .offset = offset,
+        });
+      } break;
+    }
+
+    return true;
+  });
+
+  auto span = str_lit_cursor.range();
+  if (cursor->view().empty()) {
+    result.errors.push_back(StringLiteralError{
+        .kind   = StringLiteralError::Kind::kRunaway,
+        .offset = -1,
+    });
+  } else {
+    cursor->remove_prefix(1);  // Ending '"'
+  }
+
+  return result;
+}
+
 base::expected<Lexeme> NextHashtag(SourceCursor *cursor, Source *src) {
   cursor->remove_prefix(1);
   SourceRange span;
@@ -406,6 +356,41 @@ base::expected<Lexeme> NextHashtag(SourceCursor *cursor, Source *src) {
   }
 }
 
+Lexeme NextNumber(SourceCursor *cursor, Source *src,
+                  diagnostic::DiagnosticConsumer &diag) {
+  // TODO hex-parsing?
+  auto num_cursor = cursor->ConsumeWhile([](char c) {
+    return c == 'b' or c == 'o' or c == 'd' or c == 'd' or c == '_' or
+           c == '.' or IsDigit(c);
+  });
+
+  auto span = num_cursor.range();
+  return std::visit(
+      [&](auto num) {
+        using T = std::decay_t<decltype(num)>;
+        if constexpr (std::is_same_v<T, int64_t>) {
+          return Lexeme(std::make_unique<ast::Terminal>(
+              std::move(span), num, type::BasicType::Int64));
+        } else if constexpr (std::is_same_v<T, double>) {
+          return Lexeme(std::make_unique<ast::Terminal>(
+              std::move(span), num, type::BasicType::Float64));
+        } else if constexpr (std::is_same_v<T, NumberParsingError>) {
+          // Even though we could try to be helpful by guessing the type, it's
+          // unlikely to be useful. The value may also be important if it's used
+          // at compile-time (e.g., as an array extent). Generally proceeding
+          // further if we can't lex the input is likely not going to be useful.
+          diag.Consume(diagnostic::NumberParsingFailure{
+              .error = num,
+              .range = span,
+          });
+          return Lexeme(std::make_unique<ast::Terminal>(
+              std::move(span), 0, type::BasicType::Int32));
+        } else {
+          static_assert(base::always_false<T>());
+        }
+      },
+      ParseNumber(num_cursor.view()));
+}
 
 Lexeme NextToken(LexState *state) {
 restart:
@@ -440,8 +425,9 @@ restart:
       return Lexeme(Operator::MatchDecl, state->cursor_.range());
     } break;
     case '"': {
-      auto [span, str] =
-          NextStringLiteral(&state->cursor_, state->src_, state->error_log_);
+      auto [str, span, errors] =
+          NextStringLiteral(&state->cursor_, state->src_);
+      if (not errors.empty()) { NOT_YET(); }
       return Lexeme(std::make_unique<ast::Terminal>(std::move(span),
                                                     ir::SaveStringGlobally(str),
                                                     type::BasicType::ByteView));

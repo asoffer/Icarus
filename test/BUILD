@@ -27,6 +27,13 @@ cc_lib(
     testonly = True,
 )
 
+cc_library(
+    name = "fuzz",
+    hdrs = ["fuzz.h"],
+    deps = [],
+    testonly = True,
+)
+
 cc_lib(
     name = "ordered_elements_are",
     deps = [],

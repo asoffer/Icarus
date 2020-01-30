@@ -39,9 +39,14 @@ cc_lib(
 cc_binary(
     name = "numbers_fuzz_test",
     srcs = ["numbers_fuzz_test.cc"],
-    deps = [":numbers"],
-    copts = ["-fsanitize=fuzzer"],
-    linkopts = ["-fsanitize=fuzzer"],
+    deps = [
+        ":lex",
+        "//diagnostic/consumer:trivial",
+        "//frontend/source:cursor",
+        "//frontend/source:string",
+    ],
+    copts = ["-fsanitize=fuzzer,signed-integer-overflow"],
+    linkopts = ["-fsanitize=fuzzer,signed-integer-overflow"],
 )
 
 cc_test(
@@ -71,6 +76,20 @@ cc_lib(
     deps = [":tag", "//base:debug"],
     header_only = True,
     test_deps = None,
+)
+
+cc_binary(
+    name = "string_literal_fuzz_test",
+    srcs = ["string_literal_fuzz_test.cc"],
+    deps = [
+        ":lex",
+        "//frontend/source:cursor",
+        "//frontend/source:string",
+        "//test:fuzz",
+    ],
+    copts = ["-fsanitize=fuzzer"],
+    linkopts = ["-fsanitize=fuzzer"],
+    testonly = True,
 )
 
 cc_lib(

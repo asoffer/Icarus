@@ -38,7 +38,29 @@ struct LexState {
 // Assumes that the next available character exists and is '#'.
 base::expected<Lexeme> NextHashtag(SourceCursor *cursor, Source *src);
 
+// Assumes that the next available character exists and is '#'.
+Lexeme NextNumber(SourceCursor *cursor, Source *src,
+                  diagnostic::DiagnosticConsumer &diag);
+
 Lexeme NextToken(LexState *state);
+
+struct StringLiteralError {
+  enum class Kind {
+    kInvalidEscapedChar,
+    kRunaway,
+  } kind;
+  // Offset of the offending character in the range (excluding the leading
+  // quotation mark).
+  int offset;
+};
+
+struct StringLiteralLexResult {
+  std::string value;
+  SourceRange range;
+  std::vector<StringLiteralError> errors;
+};
+
+StringLiteralLexResult NextStringLiteral(SourceCursor *cursor, Source *src);
 
 }  // namespace frontend
 
