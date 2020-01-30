@@ -7,7 +7,8 @@
 namespace {
 
 struct Base : base::Clone<Base, void> {
-  Base(int* n) : base_copy_counter(n) {}
+  explicit Base(int* n) : base_copy_counter(n) {}
+  virtual ~Base() {}
   Base(Base const& b) : base_copy_counter(b.base_copy_counter) {
     ++*base_copy_counter;
   }
@@ -17,6 +18,7 @@ struct Base : base::Clone<Base, void> {
 struct Derived : base::Clone<Derived, Base> {
   Derived(int* b, int* d)
       : base::Clone<Derived, Base>(b), derived_copy_counter(d) {}
+  ~Derived() override {}
 
   Derived(Derived const& d)
       : base::Clone<Derived, Base>(d),
