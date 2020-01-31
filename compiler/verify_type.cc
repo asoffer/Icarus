@@ -354,7 +354,9 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node) {
         for (auto *n : extractor.jumps(ExtractJumps::Kind::Return)) {
           if (auto *ret_node = n->if_as<ast::ReturnStmt>()) {
             if (not ret_node->exprs().empty()) {
-              c->error_log()->NoReturnTypes(ret_node);
+              c->diag().Consume(diagnostic::NoReturnTypes{
+                  .range = ret_node->span,
+              });
               err = true;
             }
           } else {
@@ -557,7 +559,9 @@ static type::QualType AccessTypeMember(Compiler *c, ast::Access const *node,
   } else {
     // TODO what about structs? Can structs have constant members we're
     // allowed to access?
-    c->error_log()->TypeHasNoMembers(node->span);
+    c->diag().Consume(diagnostic::TypeHasNoMembers{
+        .range = node->span,
+    });
     return type::QualType::Error();
   }
 }
@@ -585,7 +589,9 @@ static type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
                                          type::QualType operand_result) {
   DEBUG_LOG("AccessModuleMember")(node->DebugString());
   if (not operand_result.constant()) {
-    c->error_log()->NonConstantModuleMemberAccess(node->span);
+    c->diag().Consume(diagnostic::NonConstantModuleMemberAccess{
+        .range = node->span,
+    });
     return type::QualType::Error();
   }
 
@@ -602,7 +608,7 @@ static type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
     case 1: {
       type::Type const *t = mod->type_of(decls[0]);
       if (t == nullptr) {
-        c->error_log()->NoExportedSymbol(node->span);
+        c->diag().Consume(diagnostic::NoExportedSymbol{.range = node->span,});
         return type::QualType::Error();
       }
       DEBUG_LOG("AccessModuleMember")
@@ -653,7 +659,7 @@ type::QualType Compiler::Visit(ast::ArrayLiteral const *node, VerifyTypeTag) {
   for (auto expr_result : expr_results) {
     constant &= expr_result.constant();
     if (expr_result.type() != t) {
-      error_log()->InconsistentArrayType(node->span);
+      diag().Consume(diagnostic::InconsistentArrayType{.range = node->span,});
       return type::QualType::Error();
     }
   }
@@ -669,13 +675,17 @@ type::QualType Compiler::Visit(ast::ArrayType const *node, VerifyTypeTag) {
     is_const &= result.constant();
     length_results.push_back(result);
     if (result.type() != type::Int64) {
-      error_log()->ArrayIndexType(node->span);
+      diag().Consume(diagnostic::NonIntegralArrayLength{
+          .range = node->span,
+      });
     }
   }
 
   auto data_type_result = Visit(node->data_type(), VerifyTypeTag{});
   if (data_type_result.type() != type::Type_) {
-    error_log()->ArrayDataTypeNotAType(node->data_type()->span);
+    diag().Consume(diagnostic::ArrayDataTypeNotAType{
+        .range = node->data_type()->span,
+    });
   }
 
   return set_result(
@@ -710,7 +720,7 @@ type::QualType Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
            lhs_result.type()->is<type::Flags>())) {
         return set_result(node, lhs_result);
       } else {
-        error_log()->XorEqNeedsBoolOrFlags(node->span);
+        diag().Consume(diagnostic::XorEqNeedsBoolOrFlags{.range = node->span,});
         return type::QualType::Error();
       }
     case Operator::AndEq:
@@ -719,7 +729,7 @@ type::QualType Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
            lhs_result.type()->is<type::Flags>())) {
         return set_result(node, lhs_result);
       } else {
-        error_log()->AndEqNeedsBoolOrFlags(node->span);
+        diag().Consume(diagnostic::AndEqNeedsBoolOrFlags{.range = node->span,});
         return type::QualType::Error();
       }
     case Operator::OrEq:
@@ -728,7 +738,7 @@ type::QualType Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
            lhs_result.type()->is<type::Flags>())) {
         return set_result(node, lhs_result);
       } else {
-        error_log()->OrEqNeedsBoolOrFlags(node->span);
+        diag().Consume(diagnostic::OrEqNeedsBoolOrFlags{.range = node->span,});
         return type::QualType::Error();
       }
 
@@ -817,12 +827,16 @@ type::QualType Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
       type::Type const *t = type::Type_;
       if (not IsTypeOrTupleOfTypes(lhs_result.type())) {
         t = nullptr;
-        error_log()->NonTypeFunctionInput(node->span);
+        diag().Consume(diagnostic::NonTypeFunctionInput{
+            .range = node->span,
+        });
       }
 
       if (not IsTypeOrTupleOfTypes(rhs_result.type())) {
         t = nullptr;
-        error_log()->NonTypeFunctionOutput(node->span);
+        diag().Consume(diagnostic::NonTypeFunctionOutput{
+            .range = node->span,
+        });
       }
 
       if (t == nullptr) { return type::QualType::Error(); }
@@ -1458,7 +1472,8 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
   return VerifySpecialFunctions(this, node, node_qual_type.type());
 }
 
-type::QualType Compiler::Visit(ast::DesignatedInitializer const *node, VerifyTypeTag) {
+type::QualType Compiler::Visit(ast::DesignatedInitializer const *node,
+                               VerifyTypeTag) {
   // TODO include fields.
   // TODO constant only when all fields are constant.
   auto type_type = Visit(node->type(), VerifyTypeTag{});

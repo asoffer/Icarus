@@ -213,7 +213,7 @@ struct NonWhitespaceAfterNewlineEscape{
 };
 
 struct CommaSeparatedListStatement {
-  static constexpr std::string_view kCategory = "parse";
+  static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "comma-separated-list-statement";
 
   DiagnosticMessage ToMessage() const { 
@@ -225,7 +225,7 @@ struct CommaSeparatedListStatement {
 };
 
 struct DeclarationUsedInUnaryOperator {
-  static constexpr std::string_view kCategory = "parse";
+  static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "declaration-used-in-unary-operator";
 
   DiagnosticMessage ToMessage() const {
@@ -237,7 +237,7 @@ struct DeclarationUsedInUnaryOperator {
 };
 
 struct PositionalArgumentFollowingNamed {
-  static constexpr std::string_view kCategory = "parse";
+  static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName =
       "positional-argument-followed-by-named";
 
@@ -256,7 +256,7 @@ struct PositionalArgumentFollowingNamed {
 };
 
 struct AccessRhsNotIdentifier {
-  static constexpr std::string_view kCategory = "parse";
+  static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName =
       "access-rhs-not-identifier";
 
@@ -269,7 +269,7 @@ struct AccessRhsNotIdentifier {
 };
 
 struct ReservedKeyword {
-  static constexpr std::string_view kCategory = "parse";
+  static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "reserved-keyword";
 
   DiagnosticMessage ToMessage() const {
@@ -282,7 +282,7 @@ struct ReservedKeyword {
 };
 
 struct CallingDeclaration {
-  static constexpr std::string_view kCategory = "parse";
+  static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "calling-declaration";
 
   DiagnosticMessage ToMessage() const {
@@ -293,7 +293,7 @@ struct CallingDeclaration {
 };
 
 struct IndexingDeclaration {
-  static constexpr std::string_view kCategory = "parse";
+  static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "indexing-declaration";
 
   DiagnosticMessage ToMessage() const {
@@ -304,7 +304,7 @@ struct IndexingDeclaration {
 };
 
 struct NonDeclarationInStruct {
-  static constexpr std::string_view kCategory = "parse";
+  static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "non-declaration-in-struct";
 
   DiagnosticMessage ToMessage() const {
@@ -316,7 +316,7 @@ struct NonDeclarationInStruct {
 };
 
 struct UnknownParseError {
-  static constexpr std::string_view kCategory = "parse";
+  static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "unknown-parse-error";
 
   DiagnosticMessage ToMessage() const {
@@ -330,6 +330,149 @@ struct UnknownParseError {
   }
 
   std::vector<frontend::SourceRange> lines;
+};
+
+struct NoReturnTypes {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "no-return-type";
+
+  DiagnosticMessage ToMessage() const {
+    return DiagnosticMessage(diagnostic::Text(
+        "Attempting to return a value when function returns nothing."));
+  }
+
+  frontend::SourceRange range;
+};
+
+struct TypeHasNoMembers {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "type-has-no-members";
+
+  DiagnosticMessage ToMessage() const {
+    return DiagnosticMessage(
+        diagnostic::Text("Cannot access a member of `type`."));
+  }
+
+  frontend::SourceRange range;
+};
+
+struct NonConstantModuleMemberAccess {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "non-constant-module-member-access";
+
+  DiagnosticMessage ToMessage() const {
+    return DiagnosticMessage(
+        diagnostic::Text("Cannot access a member of a non-constant module."));
+  }
+
+  frontend::SourceRange range;
+};
+
+struct NoExportedSymbol {
+  static constexpr std::string_view kCategory = "build-error";
+  static constexpr std::string_view kName     = "no-exported-symbol";
+
+  DiagnosticMessage ToMessage() const {
+    return DiagnosticMessage(
+        diagnostic::Text("No exported symbol of given name in this module."));
+  }
+
+  frontend::SourceRange range;
+};
+
+struct InconsistentArrayType {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "inconsistent-array-type";
+
+  DiagnosticMessage ToMessage() const {
+    return DiagnosticMessage(diagnostic::Text(
+        "Type error: Array literal must have consistent type"));
+  }
+
+  frontend::SourceRange range;
+};
+
+struct NonIntegralArrayLength {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "non-integral-array-length";
+
+  DiagnosticMessage ToMessage() const {
+    return DiagnosticMessage(
+        diagnostic::Text("Array length indexed by non-integral type"));
+  }
+
+  frontend::SourceRange range;
+};
+
+struct ArrayDataTypeNotAType {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "array-data-type-not-a-type";
+
+  DiagnosticMessage ToMessage() const {
+    return DiagnosticMessage(
+        diagnostic::Text("Array type has underlying data type specified as a "
+                         "value which is not a type."));
+  }
+
+  frontend::SourceRange range;
+};
+
+struct XorEqNeedsBoolOrFlags {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "xor-needs-bool-or-flags";
+
+  DiagnosticMessage ToMessage() const {
+    return DiagnosticMessage(diagnostic::Text(
+        "Operator '^=' must take boolean or flags arguments."));
+  }
+
+  frontend::SourceRange range;
+};
+
+struct OrEqNeedsBoolOrFlags {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "or-needs-bool-or-flags";
+
+  DiagnosticMessage ToMessage() const {
+    return DiagnosticMessage(diagnostic::Text(
+        "Operator '|=' must take boolean or flags arguments."));
+  }
+
+  frontend::SourceRange range;
+};
+
+struct AndEqNeedsBoolOrFlags {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "and-needs-bool-or-flags";
+
+  DiagnosticMessage ToMessage() const {
+    return DiagnosticMessage(diagnostic::Text(
+        "Operator '&=' must take boolean or flags arguments."));
+  }
+
+  frontend::SourceRange range;
+};
+
+struct NonTypeFunctionInput {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "non-type-function-output";
+
+  DiagnosticMessage ToMessage() const {
+    return DiagnosticMessage(diagnostic::Text(
+        "The specified input type for a function must be a type."));
+  }
+  frontend::SourceRange range;
+};
+
+struct NonTypeFunctionOutput {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "non-type-function-output";
+
+  DiagnosticMessage ToMessage() const {
+    return DiagnosticMessage(diagnostic::Text(
+        "The specified return type for a function must be a type."));
+  }
+  frontend::SourceRange range;
 };
 
 }  // namespace diagnostic

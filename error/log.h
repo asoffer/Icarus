@@ -61,7 +61,6 @@ struct Log {
                                  size_t index);
   void ReturningWrongNumber(frontend::SourceRange const &range, size_t actual,
                             size_t expected);
-  void NoReturnTypes(ast::ReturnStmt const *ret_expr);
   void MissingMember(frontend::SourceRange const &range,
                      std::string_view member_name, std::string_view type);
   void NonExportedMember(frontend::SourceRange const &range,

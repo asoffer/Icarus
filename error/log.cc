@@ -79,15 +79,6 @@ void Log::ReturnTypeMismatch(std::string_view expected_type,
       diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
-void Log::NoReturnTypes(ast::ReturnStmt const *ret_expr) {
-  // TODO allow "return foo(...)" when foo: ??? -> ().
-  renderer_.AddError(diagnostic::DiagnosticMessage(
-      diagnostic::Text(
-          "Attempting to return a value when function returns nothing."),
-      diagnostic::SourceQuote(src_).Highlighted(ret_expr->span,
-                                                diagnostic::Style{})));
-}
-
 void Log::ReturningWrongNumber(frontend::SourceRange const &range,
                                size_t actual, size_t expected) {
   renderer_.AddError(diagnostic::DiagnosticMessage(

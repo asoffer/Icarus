@@ -50,35 +50,15 @@ MAKE_LOG_ERROR(InferringHole,
 MAKE_LOG_ERROR(UninitializedConstant,
                "Attempting to define a constant with an uninitialized value.")
 MAKE_LOG_ERROR(NonComposableFunctions, "Functions cannot be composed.")
-MAKE_LOG_ERROR(NonTypeFunctionInput,
-               "The specified input type for a function must be a type.")
-MAKE_LOG_ERROR(NonTypeFunctionOutput,
-               "The specified return type for a function must be a type.")
-MAKE_LOG_ERROR(InconsistentArrayType,
-               "Type error: Array literal must have consistent type")
-MAKE_LOG_ERROR(ArrayIndexType, "Array length indexed by non-integral type")
 MAKE_LOG_ERROR(JumpOutsideLoop, "statement must be contained inside a loop.")
 MAKE_LOG_ERROR(IndeterminantType, "Cannot determine type from in declaration.")
-MAKE_LOG_ERROR(XorEqNeedsBoolOrFlags,
-               "Operator '^=' must take boolean or flags arguments.")
-MAKE_LOG_ERROR(AndEqNeedsBoolOrFlags,
-               "Operator '&=' must take boolean or flags arguments.")
-MAKE_LOG_ERROR(OrEqNeedsBoolOrFlags,
-               "Operator '|=' must take boolean or flags arguments.")
 MAKE_LOG_ERROR(PrintingVoid, "Attempting to print an object of type void")
 MAKE_LOG_ERROR(EarlyRequiredBlock,
                "Required block appears on the left-hand side of `|` operator.")
 
 MAKE_LOG_ERROR(UnspecifiedOverload,
                "Attempting to access an overloaded function by name.")
-MAKE_LOG_ERROR(ArrayDataTypeNotAType,
-               "Array type has underlying data type specified as a value which "
-               "is not a type.")
-MAKE_LOG_ERROR(NoExportedSymbol,
-               "No exported symbol of given name in this module.")
-MAKE_LOG_ERROR(TypeHasNoMembers, "Cannot access a member of a type.")
-MAKE_LOG_ERROR(NonConstantModuleMemberAccess,
-               "Cannot access a member of a non-constant module.")
+
 MAKE_LOG_ERROR(CastToNonConstantType,
                "Cannot cast to a type which is not declared constant.")
 MAKE_LOG_ERROR(CastToNonType, "Cannot cast to a non-type.")

@@ -164,6 +164,7 @@ struct Compiler
   // TODO Depending on if we're streaming or batching errors, we may want one
   // log per module, or one per compiler instance.
   error::Log *error_log() { return &data_.error_log_; }
+  diagnostic::DiagnosticConsumer &diag() { return data_.error_log_.diag(); }
   size_t num_errors() { return error_log()->size(); }
   void DumpErrors() { error_log()->Dump(); }
 
