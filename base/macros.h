@@ -10,7 +10,7 @@
   ASSIGN_OR_IMPL2(action, var, expr, tmp)
 
 #define ASSIGN_OR_IMPL2(action, var, expr, temp)                               \
-  auto &&temp = (expr);                                                        \
+  auto temp = (expr);                                                          \
   if (not temp) {                                                              \
     auto &&_ = std::move(temp);                                                \
     action;                                                                    \
