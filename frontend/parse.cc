@@ -6,8 +6,7 @@
 #include "ast/ast.h"
 #include "base/debug.h"
 #include "base/guarded.h"
-#include "diagnostic/consumer/streaming.h"
-#include "error/log.h"
+#include "diagnostic/errors.h"
 #include "frontend/lex/lex.h"
 #include "frontend/lex/operators.h"
 #include "frontend/lex/tagged_node.h"
@@ -78,9 +77,10 @@ std::unique_ptr<To> move_as(std::unique_ptr<From> &val) {
   return std::unique_ptr<To>(static_cast<To *>(val.release()));
 }
 
-void ValidateStatementSyntax(ast::Node *node, error::Log *error_log) {
+void ValidateStatementSyntax(ast::Node *node,
+                             diagnostic::DiagnosticConsumer &diag) {
   if (auto *cl = node->if_as<ast::CommaList>()) {
-    error_log->CommaListStatement(cl->span);
+    diag.Consume(diagnostic::CommaSeparatedListStatement{.range = cl->span});
   }
 }
 
@@ -102,7 +102,8 @@ constexpr size_t precedence(frontend::Operator op) {
 }
 
 std::unique_ptr<ast::Node> AddHashtag(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &) {
   auto expr = move_as<ast::Expression>(nodes.back());
   auto iter =
       BuiltinHashtagMap.find(nodes.front()->as<frontend::Token>().token);
@@ -115,7 +116,7 @@ std::unique_ptr<ast::Node> AddHashtag(
 }
 
 std::unique_ptr<ast::Switch> BuildSwitch(std::unique_ptr<Statements> stmts,
-                                         error::Log *error_log) {
+                                         diagnostic::DiagnosticConsumer &) {
   auto switch_expr  = std::make_unique<ast::Switch>();
   switch_expr->span = stmts->span;  // TODO it's really bigger than this because
                                     // it involves the keyword too.
@@ -134,16 +135,17 @@ std::unique_ptr<ast::Switch> BuildSwitch(std::unique_ptr<Statements> stmts,
 }
 
 std::unique_ptr<ast::Node> OneBracedStatement(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   auto stmts  = std::make_unique<Statements>();
   stmts->span = SourceRange(nodes[0]->span.begin(), nodes[2]->span.end());
   stmts->append(std::move(nodes[1]));
-  ValidateStatementSyntax(stmts->content_.back().get(), error_log);
+  ValidateStatementSyntax(stmts->content_.back().get(), diag);
   return stmts;
 }
 
 std::unique_ptr<ast::Node> EmptyBraces(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, diagnostic::DiagnosticConsumer&) {
   auto stmts  = std::make_unique<Statements>();
   stmts->span = SourceRange(nodes[0]->span.begin(), nodes[1]->span.end());
   return stmts;
@@ -158,29 +160,32 @@ std::unique_ptr<ast::Node> BuildControlHandler(
 }
 
 std::unique_ptr<ast::Node> BracedStatementsSameLineEnd(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   auto stmts  = move_as<Statements>(nodes[1]);
   stmts->span = SourceRange(nodes[0]->span.begin(), nodes[2]->span.end());
   if (nodes[2]->is<Statements>()) {
     for (auto &stmt : nodes[2]->as<Statements>().content_) {
       stmts->append(std::move(stmt));
-      ValidateStatementSyntax(stmts->content_.back().get(), error_log);
+      ValidateStatementSyntax(stmts->content_.back().get(), diag);
     }
   } else {
     stmts->append(std::move(nodes[2]));
-    ValidateStatementSyntax(stmts->content_.back().get(), error_log);
+    ValidateStatementSyntax(stmts->content_.back().get(), diag);
   }
   return stmts;
 }
 
 std::unique_ptr<ast::Node> BracedStatementsJumpSameLineEnd(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   nodes[2] = BuildControlHandler(std::move(nodes[2]));
-  return BracedStatementsSameLineEnd(std::move(nodes), error_log);
+  return BracedStatementsSameLineEnd(std::move(nodes), diag);
 }
 
 std::unique_ptr<ast::Node> BuildRightUnop(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   const std::string &tk = nodes[1]->as<frontend::Token>().token;
   if (tk == ":?") {
     SourceRange span(nodes[0]->span.begin(), nodes[1]->span.end());
@@ -188,7 +193,9 @@ std::unique_ptr<ast::Node> BuildRightUnop(
                                             move_as<ast::Expression>(nodes[0]));
 
     if (unop->operand()->is<ast::Declaration>()) {
-      error_log->DeclarationUsedInUnop(tk, unop->operand()->span);
+      diag.Consume(diagnostic::DeclarationUsedInUnaryOperator{
+          .range = unop->operand()->span,
+      });
     }
 
     return unop;
@@ -199,7 +206,8 @@ std::unique_ptr<ast::Node> BuildRightUnop(
 
 std::unique_ptr<ast::Node> BuildCallImpl(
     SourceRange span, std::unique_ptr<ast::Expression> callee,
-    std::unique_ptr<ast::Expression> args_expr, error::Log *error_log) {
+    std::unique_ptr<ast::Expression> args_expr,
+    diagnostic::DiagnosticConsumer &diag) {
   if (not args_expr) {
     return std::make_unique<ast::Call>(std::move(span), std::move(callee),
                                        core::OrderedFnArgs<ast::Expression>{});
@@ -207,29 +215,31 @@ std::unique_ptr<ast::Node> BuildCallImpl(
 
   std::vector<std::pair<std::string, std::unique_ptr<ast::Expression>>> args;
   if (auto *cl = args_expr->if_as<ast::CommaList>()) {
-    std::optional<SourceRange> last_named_span_before_error = std::nullopt;
-    std::vector<SourceRange> positional_error_spans;
+    std::optional<SourceRange> last_named_range_before_error = std::nullopt;
+    std::vector<SourceRange> positional_error_ranges;
 
     for (auto &expr : cl->exprs_) {
       if (auto *b = expr->if_as<ast::Binop>();
           b and b->op() == frontend::Operator::Assign) {
-        if (positional_error_spans.empty()) {
-          last_named_span_before_error = b->lhs()->span;
+        if (positional_error_ranges.empty()) {
+          last_named_range_before_error = b->lhs()->span;
         }
         auto [lhs, rhs] = std::move(*b).extract();
         args.emplace_back(std::string{lhs->as<ast::Identifier>().token()},
                           std::move(rhs));
       } else {
-        if (last_named_span_before_error.has_value()) {
-          positional_error_spans.push_back(expr->span);
+        if (last_named_range_before_error.has_value()) {
+          positional_error_ranges.push_back(expr->span);
         }
         args.emplace_back("", std::move(expr));
       }
     }
 
-    if (not positional_error_spans.empty()) {
-      error_log->PositionalArgumentFollowingNamed(
-          positional_error_spans, *last_named_span_before_error);
+    if (not positional_error_ranges.empty()) {
+      diag.Consume(diagnostic::PositionalArgumentFollowingNamed{
+          .pos_ranges = positional_error_ranges,
+          .last_named = *last_named_range_before_error,
+      });
     }
   } else {
     if (ast::Binop *b = args_expr->if_as<ast::Binop>();
@@ -243,7 +253,9 @@ std::unique_ptr<ast::Node> BuildCallImpl(
   }
 
   if (callee->is<ast::Declaration>()) {
-    error_log->CallingDeclaration(callee->span);
+    diag.Consume(diagnostic::CallingDeclaration{
+        .range = callee->span,
+    });
   }
 
   return std::make_unique<ast::Call>(
@@ -252,14 +264,16 @@ std::unique_ptr<ast::Node> BuildCallImpl(
 }
 
 std::unique_ptr<ast::Node> BuildCall(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   SourceRange span(nodes.front()->span.begin(), nodes.back()->span.end());
   return BuildCallImpl(std::move(span), move_as<ast::Expression>(nodes[0]),
-                       move_as<ast::Expression>(nodes[2]), error_log);
+                       move_as<ast::Expression>(nodes[2]), diag);
 }
 
 std::unique_ptr<ast::Node> BuildLeftUnop(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   const std::string &tk = nodes[0]->as<frontend::Token>().token;
 
   using frontend::Operator;
@@ -322,7 +336,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
   } else if (tk == "'") {
     SourceRange span(nodes.front()->span.begin(), nodes.back()->span.end());
     return BuildCallImpl(std::move(span), move_as<ast::Expression>(nodes[1]),
-                         nullptr, error_log);
+                         nullptr, diag);
   }
 
   static absl::flat_hash_map<std::string_view, Operator> const kUnopMap{
@@ -340,13 +354,16 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
                                           move_as<ast::Expression>(nodes[1]));
 
   if (unop->operand()->is<ast::Declaration>()) {
-    error_log->DeclarationUsedInUnop(tk, unop->operand()->span);
+    diag.Consume(diagnostic::DeclarationUsedInUnaryOperator{
+        .range = unop->operand()->span,
+    });
   }
   return unop;
 }
 
 std::unique_ptr<ast::Node> BuildChainOp(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   auto op = nodes[1]->as<frontend::Token>().op;
   std::unique_ptr<ast::ChainOp> chain;
 
@@ -368,7 +385,8 @@ std::unique_ptr<ast::Node> BuildChainOp(
 }
 
 std::unique_ptr<ast::Node> BuildCommaList(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   std::unique_ptr<ast::CommaList> comma_list = nullptr;
   if (nodes[0]->is<ast::CommaList>() and
       not nodes[0]->as<ast::CommaList>().parenthesized_) {
@@ -385,13 +403,14 @@ std::unique_ptr<ast::Node> BuildCommaList(
 }
 
 std::unique_ptr<ast::Node> BuildAccess(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   auto span      = SourceRange(nodes[0]->span.begin(), nodes[2]->span.end());
   auto &&operand = move_as<ast::Expression>(nodes[0]);
-  if (operand->is<ast::Declaration>()) {
-    error_log->DeclarationInAccess(operand->span);
-  } else if (not nodes[2]->is<ast::Identifier>()) {
-    error_log->RHSNonIdInAccess(nodes[2]->span);
+  if (not nodes[2]->is<ast::Identifier>()) {
+    diag.Consume(diagnostic::AccessRhsNotIdentifier{
+        .range = nodes[2]->span,
+    });
   }
 
   return std::make_unique<ast::Access>(
@@ -400,14 +419,17 @@ std::unique_ptr<ast::Node> BuildAccess(
 }
 
 std::unique_ptr<ast::Node> BuildIndexOperator(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   auto span  = SourceRange(nodes[0]->span.begin(), nodes[2]->span.end());
   auto index = std::make_unique<ast::Index>(std::move(span),
                                             move_as<ast::Expression>(nodes[0]),
                                             move_as<ast::Expression>(nodes[2]));
 
   if (index->lhs()->is<ast::Declaration>()) {
-    error_log->IndexingDeclaration(index->lhs()->span);
+    diag.Consume(diagnostic::IndexingDeclaration{
+        .range = nodes[0]->span,
+    });
   }
 
   // TODO This check is correct except that we're using indexes as a temporary
@@ -423,21 +445,24 @@ std::unique_ptr<ast::Node> BuildIndexOperator(
 }
 
 std::unique_ptr<ast::Node> BuildEmptyArray(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   return std::make_unique<ast::ArrayLiteral>(
       SourceRange(nodes.front()->span.begin(), nodes.back()->span.end()),
       std::vector<std::unique_ptr<ast::Expression>>{});
 }
 
 std::unique_ptr<ast::Node> BuildEmptyCommaList(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   auto comma_list  = std::make_unique<ast::CommaList>();
   comma_list->span = SourceRange(nodes[0]->span.begin(), nodes[1]->span.end());
   return comma_list;
 }
 
 std::unique_ptr<ast::Node> BuildArrayLiteral(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   if (auto *cl = nodes[1]->if_as<ast::CommaList>();
       cl and not cl->parenthesized_) {
     return std::make_unique<ast::ArrayLiteral>(nodes[0]->span,
@@ -449,7 +474,8 @@ std::unique_ptr<ast::Node> BuildArrayLiteral(
 }
 
 std::unique_ptr<ast::Node> BuildGenericStructType(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   auto result = std::make_unique<ast::StructType>(
       SourceRange(nodes.front()->span.begin(), nodes.back()->span.end()));
   if (nodes[1]->is<ast::CommaList>() and
@@ -463,7 +489,8 @@ std::unique_ptr<ast::Node> BuildGenericStructType(
 }
 
 std::unique_ptr<ast::Node> BuildArrayType(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   if (auto *cl = nodes[1]->if_as<ast::CommaList>();
       cl and not cl->parenthesized_) {
     auto span =
@@ -480,7 +507,8 @@ std::unique_ptr<ast::Node> BuildArrayType(
 
 template <bool IsConst>
 std::unique_ptr<ast::Node> BuildDeclaration(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   auto op = nodes[1]->as<frontend::Token>().op;
   SourceRange span(nodes.front()->span.begin(), nodes.back()->span.end());
   std::string id;
@@ -526,7 +554,7 @@ std::vector<std::unique_ptr<ast::Declaration>> ExtractInputs(
 std::unique_ptr<ast::Node> BuildFunctionLiteral(
     SourceRange span, std::vector<std::unique_ptr<ast::Declaration>> inputs,
     std::unique_ptr<ast::Expression> output, Statements &&stmts, bool is_short,
-    error::Log *error_log) {
+    diagnostic::DiagnosticConsumer &diag) {
   if (output == nullptr) {
     if (is_short) {
       return ast::FunctionLiteral::MakeShort(std::move(span), std::move(inputs),
@@ -560,14 +588,15 @@ std::unique_ptr<ast::Node> BuildFunctionLiteral(
 }
 
 std::unique_ptr<ast::Node> BuildDesignatedInitializer(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   auto span = SourceRange(nodes[0]->span.begin(), nodes.back()->span.end());
-  if (auto* stmts = nodes[2]->if_as<Statements>()) {
+  if (auto *stmts = nodes[2]->if_as<Statements>()) {
     auto extracted_stmts = std::move(*stmts).extract();
     std::vector<std::pair<std::string, std::unique_ptr<ast::Expression>>>
         initializers;
     initializers.reserve(extracted_stmts.size());
-    for (auto& stmt : extracted_stmts) {
+    for (auto &stmt : extracted_stmts) {
       if (auto *binop = stmt->if_as<ast::Binop>()) {
         auto [lhs, rhs] = std::move(*binop).extract();
         if (auto *lhs_id = lhs->if_as<ast::Identifier>()) {
@@ -595,27 +624,30 @@ std::unique_ptr<ast::Node> BuildDesignatedInitializer(
 }
 
 std::unique_ptr<ast::Node> BuildNormalFunctionLiteral(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   auto span   = SourceRange(nodes[0]->span.begin(), nodes.back()->span.end());
   auto *binop = &nodes[0]->as<ast::Binop>();
   auto [lhs, rhs] = std::move(*binop).extract();
   return BuildFunctionLiteral(
       std::move(span), ExtractInputs(std::move(lhs)), std::move(rhs),
-      std::move(nodes[1]->as<Statements>()), false, error_log);
+      std::move(nodes[1]->as<Statements>()), false, diag);
 }
 
 std::unique_ptr<ast::Node> BuildInferredFunctionLiteral(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   auto span = SourceRange(nodes[0]->span.begin(), nodes.back()->span.end());
   return BuildFunctionLiteral(
       std::move(span), ExtractInputs(move_as<ast::Expression>(nodes[0])),
-      nullptr, std::move(nodes[2]->as<Statements>()), false, error_log);
+      nullptr, std::move(nodes[2]->as<Statements>()), false, diag);
 }
 
 // TODO this loses syntactic information that a formatter cares about.
 std::unique_ptr<ast::Node> BuildShortFunctionLiteral(
     std::unique_ptr<ast::Expression> args,
-    std::unique_ptr<ast::Expression> body, error::Log *error_log) {
+    std::unique_ptr<ast::Expression> body,
+    diagnostic::DiagnosticConsumer &diag) {
   auto span   = SourceRange(args->span.begin(), body->span.end());
   auto inputs = ExtractInputs(std::move(args));
 
@@ -630,11 +662,12 @@ std::unique_ptr<ast::Node> BuildShortFunctionLiteral(
   stmts.append(
       std::make_unique<ast::ReturnStmt>(std::move(span), std::move(ret_vals)));
   return BuildFunctionLiteral(std::move(span), std::move(inputs), nullptr,
-                              std::move(stmts), true, error_log);
+                              std::move(stmts), true, diag);
 }
 
 std::unique_ptr<ast::Node> BuildOneElementCommaList(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   auto comma_list  = std::make_unique<ast::CommaList>();
   comma_list->span = SourceRange(nodes[0]->span.begin(), nodes[3]->span.end());
   comma_list->exprs_.push_back(move_as<ast::Expression>(nodes[1]));
@@ -643,38 +676,43 @@ std::unique_ptr<ast::Node> BuildOneElementCommaList(
 }
 
 std::unique_ptr<ast::Node> BuildOneStatement(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   auto stmts  = std::make_unique<Statements>();
   stmts->span = nodes[0]->span;
   stmts->append(std::move(nodes[0]));
-  ValidateStatementSyntax(stmts->content_.back().get(), error_log);
+  ValidateStatementSyntax(stmts->content_.back().get(), diag);
   return stmts;
 }
 
 std::unique_ptr<ast::Node> BuildMoreStatements(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   std::unique_ptr<Statements> stmts = move_as<Statements>(nodes[0]);
   stmts->append(std::move(nodes[1]));
-  ValidateStatementSyntax(stmts->content_.back().get(), error_log);
+  ValidateStatementSyntax(stmts->content_.back().get(), diag);
   return stmts;
 }
 
 std::unique_ptr<ast::Node> OneBracedJump(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   auto stmts  = std::make_unique<Statements>();
   stmts->span = SourceRange(nodes[0]->span.begin(), nodes[2]->span.end());
   stmts->append(BuildControlHandler(std::move(nodes[1])));
-  ValidateStatementSyntax(stmts->content_.back().get(), error_log);
+  ValidateStatementSyntax(stmts->content_.back().get(), diag);
   return stmts;
 }
 
 std::unique_ptr<ast::Node> BuildControlHandler(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &) {
   return BuildControlHandler(std::move(nodes[0]));
 }
 
 std::unique_ptr<ast::Node> BuildScopeNode(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   SourceRange span(nodes.front()->span.begin(), nodes.back()->span.end());
   auto [callee, ordered_fn_args] =
       std::move(nodes[0]->as<ast::Call>()).extract();
@@ -686,7 +724,8 @@ std::unique_ptr<ast::Node> BuildScopeNode(
 }
 
 std::unique_ptr<ast::Node> BuildBlockNode(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   auto span =
       SourceRange(nodes.front()->span.begin(), nodes.back()->span.end());
   if (auto *id = nodes.front()->if_as<ast::Identifier>()) {
@@ -712,14 +751,16 @@ std::unique_ptr<ast::Node> BuildBlockNode(
 }
 
 std::unique_ptr<ast::Node> ExtendScopeNode(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   nodes[0]->as<ast::ScopeNode>().append_block_syntactically(
       std::move(nodes[1]->as<ast::BlockNode>()));
   return std::move(nodes[0]);
 }
 
 std::unique_ptr<ast::Node> SugaredExtendScopeNode(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   SourceRange span(nodes.front()->span.begin(), nodes.back()->span.end());
   auto *updated_last_scope_node = &nodes[2]->as<ast::ScopeNode>();
   std::vector<std::unique_ptr<ast::Node>> block_stmt_nodes;
@@ -734,7 +775,8 @@ std::unique_ptr<ast::Node> SugaredExtendScopeNode(
 }
 
 std::unique_ptr<ast::Node> BuildBinaryOperator(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   static absl::flat_hash_map<std::string_view, frontend::Operator> const
       chain_ops{
           {",", frontend::Operator::Comma}, {"==", frontend::Operator::Eq},
@@ -750,33 +792,32 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
     if (iter != chain_ops.end()) {
       nodes[1]->as<frontend::Token>().op = iter->second;
       return (iter->second == frontend::Operator::Comma)
-                 ? BuildCommaList(std::move(nodes), error_log)
-                 : BuildChainOp(std::move(nodes), error_log);
+                 ? BuildCommaList(std::move(nodes), diag)
+                 : BuildChainOp(std::move(nodes), diag);
     }
   }
 
   if (tk == ".") {
-    return BuildAccess(std::move(nodes), error_log);
+    return BuildAccess(std::move(nodes), diag);
 
   } else if (tk == "`") {
     NOT_YET();
 
   } else if (tk == ":" or tk == ":=") {
-    return BuildDeclaration<false>(std::move(nodes), error_log);
+    return BuildDeclaration<false>(std::move(nodes), diag);
 
   } else if (tk == "::" or tk == "::=") {
-    return BuildDeclaration<true>(std::move(nodes), error_log);
+    return BuildDeclaration<true>(std::move(nodes), diag);
 
   } else if (tk == "=>") {
     return BuildShortFunctionLiteral(move_as<ast::Expression>(nodes[0]),
-                                     move_as<ast::Expression>(nodes[2]),
-                                     error_log);
+                                     move_as<ast::Expression>(nodes[2]), diag);
   } else if (tk == "=") {
     if (nodes[0]->is<ast::Declaration>()) {
       if (nodes[0]->as<ast::Declaration>().IsInferred()) {
         // NOTE: It might be that this was supposed to be a bool ==? How can we
         // give a good error message if that's what is intended?
-        error_log->DoubleDeclAssignment(nodes[0]->span, nodes[1]->span);
+        NOT_YET();
         return move_as<ast::Declaration>(nodes[0]);
       }
 
@@ -803,7 +844,7 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
   } else if (tk == "'") {
     SourceRange span(nodes.front()->span.begin(), nodes.back()->span.end());
     return BuildCallImpl(std::move(span), move_as<ast::Expression>(nodes[2]),
-                         move_as<ast::Expression>(nodes[0]), error_log);
+                         move_as<ast::Expression>(nodes[0]), diag);
   }
 
   static absl::flat_hash_map<std::string_view, frontend::Operator> const
@@ -822,7 +863,7 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
 
 std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
     absl::Span<std::unique_ptr<ast::Node>> nodes, ast::EnumLiteral::Kind kind,
-    error::Log *error_log) {
+    diagnostic::DiagnosticConsumer &) {
   SourceRange span(nodes[0]->span.begin(), nodes[1]->span.end());
   std::vector<std::unique_ptr<ast::Expression>> elems;
   if (auto *stmts = nodes[1]->if_as<Statements>()) {
@@ -852,7 +893,7 @@ std::unique_ptr<ast::Node> BuildScopeLiteral(std::unique_ptr<Statements> stmts,
 }
 
 std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
-                                      error::Log *error_log) {
+                                      diagnostic::DiagnosticConsumer &) {
   auto span = stmts->span;  // TODO it's really bigger than this because it
                             // involves the keyword too.
 
@@ -874,9 +915,9 @@ std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
                                              std::move(after));
 }
 
-std::unique_ptr<ast::StructLiteral> BuildStructLiteral(Statements &&stmts,
-                                                       SourceRange span,
-                                                       error::Log *error_log) {
+std::unique_ptr<ast::StructLiteral> BuildStructLiteral(
+    Statements &&stmts, SourceRange span,
+    diagnostic::DiagnosticConsumer &diag) {
   std::vector<std::unique_ptr<ast::Node>> node_stmts =
       std::move(stmts).extract();
   std::vector<ast::Declaration> fields;
@@ -885,7 +926,9 @@ std::unique_ptr<ast::StructLiteral> BuildStructLiteral(Statements &&stmts,
     if (auto *decl = stmt->if_as<ast::Declaration>()) {
       fields.push_back(std::move(*decl));
     } else {
-      error_log->NonDeclarationInStructDeclaration(stmt->span);
+      diag.Consume(diagnostic::NonDeclarationInStruct{
+          .range = stmt->span,
+      });
     }
   }
 
@@ -895,13 +938,14 @@ std::unique_ptr<ast::StructLiteral> BuildStructLiteral(Statements &&stmts,
 
 // TODO rename this now that it supports switch statements too.
 std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   // TODO should probably not do this with a token but some sort of enumerator
   // so we can ensure coverage/safety.
   ASSERT(nodes[0], InheritsFrom<frontend::Token>());
   auto const &tk = nodes[0]->as<frontend::Token>().token;
   if (tk == "switch") {
-    auto sw   = BuildSwitch(move_as<Statements>(nodes[4]), error_log);
+    auto sw   = BuildSwitch(move_as<Statements>(nodes[4]), diag);
     sw->expr_ = move_as<ast::Expression>(nodes[2]);
     return sw;
   } else if (tk == "jump") {
@@ -935,15 +979,16 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
 }
 
 std::unique_ptr<ast::Node> BuildConcreteStruct(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   return BuildStructLiteral(
       std::move(nodes[1]->as<Statements>()),
-      SourceRange(nodes.front()->span.begin(), nodes.back()->span.end()),
-      error_log);
+      SourceRange(nodes.front()->span.begin(), nodes.back()->span.end()), diag);
 }
 
 std::unique_ptr<ast::Node> BuildKWBlock(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   if (nodes[0]->is<frontend::Token>()) {
     std::string const &tk = nodes[0]->as<frontend::Token>().token;
 
@@ -951,20 +996,20 @@ std::unique_ptr<ast::Node> BuildKWBlock(
       return BuildEnumOrFlagLiteral(std::move(nodes),
                                     is_enum ? ast::EnumLiteral::Kind::Enum
                                             : ast::EnumLiteral::Kind::Flags,
-                                    error_log);
+                                    diag);
 
     } else if (tk == "struct") {
-      return BuildConcreteStruct(std::move(nodes), error_log);
+      return BuildConcreteStruct(std::move(nodes), diag);
 
     } else if (tk == "switch") {
-      return BuildSwitch(move_as<Statements>(nodes[1]), error_log);
+      return BuildSwitch(move_as<Statements>(nodes[1]), diag);
 
     } else if (tk == "scope") {
       SourceRange span(nodes.front()->span.begin(), nodes.back()->span.end());
       return BuildScopeLiteral(move_as<Statements>(nodes[1]), span);
 
     } else if (tk == "block") {
-      return BuildBlock(move_as<Statements>(nodes[1]), error_log);
+      return BuildBlock(move_as<Statements>(nodes[1]), diag);
     } else {
       UNREACHABLE(tk);
     }
@@ -974,16 +1019,20 @@ std::unique_ptr<ast::Node> BuildKWBlock(
 }
 
 std::unique_ptr<ast::Node> Parenthesize(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   auto result            = move_as<ast::Expression>(nodes[1]);
   result->parenthesized_ = true;
   return result;
 }
 
 std::unique_ptr<ast::Node> BuildEmptyParen(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   if (nodes[0]->is<ast::Declaration>()) {
-    error_log->CallingDeclaration(nodes[0]->span);
+    diag.Consume(diagnostic::CallingDeclaration{
+        .range = nodes[0]->span,
+    });
   }
   SourceRange span(nodes[0]->span.begin(), nodes[2]->span.end());
   return std::make_unique<ast::Call>(std::move(span),
@@ -993,64 +1042,35 @@ std::unique_ptr<ast::Node> BuildEmptyParen(
 
 template <size_t N>
 std::unique_ptr<ast::Node> drop_all_but(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   return std::move(nodes[N]);
 }
 
 std::unique_ptr<ast::Node> CombineColonEq(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   auto *tk_node = &nodes[0]->as<frontend::Token>();
   tk_node->token += "=";  // Change : to := and :: to ::=
   tk_node->op = frontend::Operator::ColonEq;
-  return drop_all_but<0>(std::move(nodes), error_log);
+  return drop_all_but<0>(std::move(nodes), diag);
 }
 
-namespace ErrMsg {
-template <size_t RTN, size_t RES>
-std::unique_ptr<ast::Node> Reserved(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
-  error_log->Reserved(nodes[RES]->span,
-                      nodes[RES]->as<frontend::Token>().token);
-
-  return std::make_unique<ast::Identifier>(nodes[RTN]->span, "invalid_node");
+template <size_t ReturnIndex, size_t... ReservedIndices>
+std::unique_ptr<ast::Node> ReservedKeywords(
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
+  (diag.Consume(diagnostic::ReservedKeyword{
+       .range   = nodes[ReservedIndices]->span,
+       .keyword = nodes[ReservedIndices]->as<frontend::Token>().token,
+   }),
+   ...);
+  return std::make_unique<ast::Identifier>(nodes[ReturnIndex]->span,
+                                           "invalid_node");
 }
-
-template <size_t RTN, size_t RES1, size_t RES2>
-std::unique_ptr<ast::Node> BothReserved(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
-  error_log->Reserved(nodes[RES1]->span,
-                      nodes[RES1]->as<frontend::Token>().token);
-  error_log->Reserved(nodes[RES2]->span,
-                      nodes[RES2]->as<frontend::Token>().token);
-  return std::make_unique<ast::Identifier>(nodes[RTN]->span, "invalid_node");
-}
-
-std::unique_ptr<ast::Node> NonBinop(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
-  error_log->NotBinary(nodes[1]->span, nodes[1]->as<frontend::Token>().token);
-  return std::make_unique<ast::Identifier>(nodes[1]->span, "invalid_node");
-}
-
-template <size_t RTN, size_t RES>
-std::unique_ptr<ast::Node> NonBinopReserved(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
-  error_log->NotBinary(nodes[1]->span, nodes[1]->as<frontend::Token>().token);
-  error_log->Reserved(nodes[RES]->span,
-                      nodes[RES]->as<frontend::Token>().token);
-  return std::make_unique<ast::Identifier>(nodes[RTN]->span, "invalid_node");
-}
-
-std::unique_ptr<ast::Node> NonBinopBothReserved(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
-  error_log->Reserved(nodes[0]->span, nodes[0]->as<frontend::Token>().token);
-  error_log->NotBinary(nodes[1]->span, nodes[1]->as<frontend::Token>().token);
-  error_log->Reserved(nodes[2]->span, nodes[2]->as<frontend::Token>().token);
-  return std::make_unique<ast::Identifier>(nodes[1]->span, "invalid_node");
-}
-}  // namespace ErrMsg
 
 std::unique_ptr<ast::Node> BuildOperatorIdentifier(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, error::Log *error_log) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes, diagnostic::DiagnosticConsumer &diag) {
   auto span = nodes[1]->span;
   return std::make_unique<ast::Identifier>(
       span, move_as<frontend::Token>(nodes[1])->token);
@@ -1070,16 +1090,14 @@ auto Rules = std::array{
     ParseRule(fn_expr, {EXPR, fn_arrow, EXPR | kw_block}, BuildBinaryOperator),
     ParseRule(expr, {EXPR, (op_bl | OP_B), EXPR}, BuildBinaryOperator),
     ParseRule(op_b, {colon, eq}, CombineColonEq),
-    ParseRule(fn_expr, {EXPR, fn_arrow, RESERVED}, ErrMsg::Reserved<1, 2>),
+    ParseRule(fn_expr, {EXPR, fn_arrow, RESERVED}, ReservedKeywords<1, 2>),
     ParseRule(fn_expr, {RESERVED, fn_arrow, EXPR | kw_block},
-              ErrMsg::Reserved<1, 0>),
+              ReservedKeywords<1, 0>),
     ParseRule(fn_expr, {RESERVED, fn_arrow, RESERVED},
-              ErrMsg::BothReserved<1, 0, 2>),
-    ParseRule(expr, {EXPR, (OP_B | op_bl), RESERVED}, ErrMsg::Reserved<1, 2>),
+              ReservedKeywords<1, 0, 2>),
+    ParseRule(expr, {EXPR, (OP_B | op_bl), RESERVED}, ReservedKeywords<1, 2>),
     ParseRule(expr, {RESERVED, (OP_B | op_bl), RESERVED},
-              ErrMsg::BothReserved<1, 0, 2>),
-    ParseRule(expr, {EXPR, op_l, RESERVED}, ErrMsg::NonBinopReserved<1, 2>),
-    ParseRule(expr, {RESERVED, op_l, RESERVED}, ErrMsg::NonBinopBothReserved),
+              ReservedKeywords<1, 0, 2>),
     ParseRule(fn_call_expr, {EXPR, l_paren, EXPR, r_paren}, BuildCall),
     ParseRule(fn_call_expr, {EXPR, l_paren, r_paren}, BuildEmptyParen),
     ParseRule(expr, {l_paren, op_l | op_b | eq | op_bl, r_paren},
@@ -1092,11 +1110,11 @@ auto Rules = std::array{
     ParseRule(expr, {l_bracket, EXPR, semicolon, kw_struct, r_bracket},
               BuildGenericStructType),
     ParseRule(expr, {l_bracket, EXPR, semicolon, RESERVED, r_bracket},
-              ErrMsg::Reserved<0, 3>),
+              ReservedKeywords<0, 3>),
     ParseRule(expr, {l_bracket, RESERVED, semicolon, EXPR, r_bracket},
-              ErrMsg::Reserved<0, 1>),
+              ReservedKeywords<0, 1>),
     ParseRule(expr, {l_bracket, RESERVED, semicolon, RESERVED, r_bracket},
-              ErrMsg::BothReserved<0, 1, 3>),
+              ReservedKeywords<0, 1, 3>),
     ParseRule(eof, {newline, eof}, drop_all_but<1>),
     ParseRule(stmts, {stmts, eof}, drop_all_but<0>),
     ParseRule(r_paren, {newline, r_paren}, drop_all_but<1>),
@@ -1125,17 +1143,17 @@ auto Rules = std::array{
 
     // Call and index operator with reserved words. We can't put reserved words
     // in the first slot because that might conflict with a real use case.
-    ParseRule(expr, {EXPR, l_paren, RESERVED, r_paren}, ErrMsg::Reserved<0, 2>),
+    ParseRule(expr, {EXPR, l_paren, RESERVED, r_paren}, ReservedKeywords<0, 2>),
     ParseRule(expr, {EXPR, l_bracket, RESERVED, r_bracket},
-              ErrMsg::Reserved<0, 2>),
+              ReservedKeywords<0, 2>),
 
     ParseRule(expr, {EXPR, op_r}, BuildRightUnop),
     ParseRule(expr, {(op_l | op_bl | op_lt), EXPR}, BuildLeftUnop),
-    ParseRule(expr, {RESERVED, (OP_B | op_bl), EXPR}, ErrMsg::Reserved<1, 0>),
+    ParseRule(expr, {RESERVED, (OP_B | op_bl), EXPR}, ReservedKeywords<1, 0>),
     ParseRule(expr, {l_paren | l_ref, EXPR, r_paren}, Parenthesize),
     ParseRule(expr, {l_bracket, EXPR, r_bracket}, BuildArrayLiteral),
-    ParseRule(expr, {l_paren, RESERVED, r_paren}, ErrMsg::Reserved<1, 1>),
-    ParseRule(expr, {l_bracket, RESERVED, r_bracket}, ErrMsg::Reserved<1, 1>),
+    ParseRule(expr, {l_paren, RESERVED, r_paren}, ReservedKeywords<1, 1>),
+    ParseRule(expr, {l_bracket, RESERVED, r_bracket}, ReservedKeywords<1, 1>),
     ParseRule(stmts, {stmts, (EXPR | stmts), newline | eof},
               BuildMoreStatements),
     ParseRule(expr, {kw_struct, l_paren, expr, r_paren, braced_stmts},
@@ -1145,8 +1163,7 @@ auto Rules = std::array{
     ParseRule(expr, {KW_BLOCK, braced_stmts}, BuildKWBlock),
     ParseRule(expr, {KW_BLOCK, newline}, drop_all_but<0>),
 
-    ParseRule(expr, {(op_l | op_bl | op_lt), RESERVED}, ErrMsg::Reserved<0, 1>),
-    ParseRule(expr, {RESERVED, op_l, EXPR}, ErrMsg::NonBinopReserved<1, 0>),
+    ParseRule(expr, {(op_l | op_bl | op_lt), RESERVED}, ReservedKeywords<0, 1>),
     // TODO does this rule prevent chained scope blocks on new lines or is it
     // preceeded by a shift rule that eats newlines after a right-brace?
     ParseRule(stmts, {EXPR, (newline | eof)}, BuildOneStatement),
@@ -1157,7 +1174,6 @@ auto Rules = std::array{
     ParseRule(l_brace, {l_brace, newline}, drop_all_but<0>),
     ParseRule(stmts, {stmts, newline}, drop_all_but<0>),
 
-    ParseRule(expr, {EXPR, op_l, EXPR}, ErrMsg::NonBinop),
     ParseRule(stmts, {op_lt}, BuildControlHandler),
     ParseRule(block_expr, {expr, braced_stmts}, BuildBlockNode),
     ParseRule(scope_expr, {fn_call_expr, block_expr}, BuildScopeNode),
@@ -1168,8 +1184,9 @@ auto Rules = std::array{
 
 enum class ShiftState : char { NeedMore, EndOfExpr, MustReduce };
 struct ParseState {
-  ParseState(Source *src, error::Log *log, diagnostic::DiagnosticConsumer &diag)
-      : lex_state_(src, diag), log_(log) {}
+  // TODO storing the `diag` reference twice is unnecessary.
+  explicit ParseState(Source *src, diagnostic::DiagnosticConsumer &diag)
+      : lex_state_(src, diag), diag_(diag) {}
 
   template <size_t N>
   inline Tag get_type() const {
@@ -1292,7 +1309,7 @@ struct ParseState {
   // wrong, we won't be able to to parse anyway, so it only needs to be the
   // correct value when the braces match.
   int brace_count = 0;
-  error::Log *log_;
+  diagnostic::DiagnosticConsumer &diag_;
 };
 
 // Print out the debug information for the parse stack, and pause.
@@ -1336,7 +1353,7 @@ bool Reduce(ParseState *ps) {
   // return false
   if (matched_rule_ptr == nullptr) { return false; }
 
-  matched_rule_ptr->Apply(&ps->node_stack_, &ps->tag_stack_, ps->log_);
+  matched_rule_ptr->Apply(&ps->node_stack_, &ps->tag_stack_, ps->diag_);
 
   return true;
 }
@@ -1357,10 +1374,9 @@ void CleanUpReduction(ParseState *state) {
 }
 }  // namespace
 
-std::vector<std::unique_ptr<ast::Node>> Parse(Source *src) {
-  diagnostic::StreamingConsumer diag(stderr);
-  error::Log log(src, diag);
-  ParseState state(src, &log, diag);
+std::vector<std::unique_ptr<ast::Node>> Parse(
+    Source *src, diagnostic::DiagnosticConsumer &diag) {
+  ParseState state(src, diag);
   Shift(&state);
 
   while (state.Next().tag_ != eof) {
@@ -1389,7 +1405,9 @@ std::vector<std::unique_ptr<ast::Node>> Parse(Source *src) {
     }
 
     // This is an exceedingly crappy error message.
-    log.UnknownParseError(lines);
+    diag.Consume(diagnostic::UnknownParseError{
+        .lines = std::move(lines),
+    });
   }
 
   // TODO extract errors from the log if they exist.

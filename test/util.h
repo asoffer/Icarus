@@ -8,6 +8,7 @@
 #include "ast/scope/scope.h"
 #include "base/macros.h"
 #include "compiler/compiler.h"
+#include "diagnostic/consumer/aborting.h"
 #include "frontend/parse.h"
 #include "frontend/source/string.h"
 #include "module/module.h"
@@ -18,7 +19,8 @@ namespace test {
 template <typename T>
 std::unique_ptr<T> ParseAs(std::string s) {
   frontend::StringSource source(std::move(s));
-  auto stmts     = frontend::Parse(&source);
+  diagnostic::AbortingConsumer diag;
+  auto stmts     = frontend::Parse(&source, diag);
   auto* cast_ptr = stmts[0]->template if_as<T>();
   if (not cast_ptr) { return nullptr; }
   stmts[0].release();

@@ -50,27 +50,6 @@ void Log::RunawayMultilineComment() {
       diagnostic::Text("Finished reading file during multi-line comment.")));
 }
 
-void Log::DoubleDeclAssignment(frontend::SourceRange const &decl_range,
-                               frontend::SourceRange const &val_range) {
-  renderer_.AddError(diagnostic::DiagnosticMessage(
-      diagnostic::Text(
-          "Attempting to initialize an identifier that already has an initial "
-          "value. Did you mean `==` instead of `=`?"),
-      diagnostic::SourceQuote(src_)
-          .Highlighted(decl_range, diagnostic::Style{})
-          .Highlighted(val_range, diagnostic::Style{})));
-}
-
-void Log::DeclarationUsedInUnop(std::string const &unop,
-                                frontend::SourceRange const &decl_range) {
-  renderer_.AddError(diagnostic::DiagnosticMessage(
-      diagnostic::Text(
-          "Declarations cannot be used as argument to unary operator `%s`.",
-          unop),
-      diagnostic::SourceQuote(src_).Highlighted(decl_range,
-                                                diagnostic::Style{})));
-}
-
 void Log::MissingMember(frontend::SourceRange const &range,
                         std::string_view member_name, std::string_view type) {
   renderer_.AddError(diagnostic::DiagnosticMessage(
@@ -147,13 +126,6 @@ void Log::WhichNonVariant(std::string_view type,
       diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
 }
 
-void Log::Reserved(frontend::SourceRange const &range,
-                   std::string const &token) {
-  renderer_.AddError(diagnostic::DiagnosticMessage(
-      diagnostic::Text("Identifier `%s` is a reserved keyword.", token),
-      diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
-}
-
 void Log::NotBinary(frontend::SourceRange const &range,
                     std::string const &token) {
   renderer_.AddError(diagnostic::DiagnosticMessage(
@@ -167,35 +139,6 @@ void Log::NotAType(frontend::SourceRange const &range, std::string_view type) {
           "Expression was expected to be a type, but instead was of type `%s`.",
           type),
       diagnostic::SourceQuote(src_).Highlighted(range, diagnostic::Style{})));
-}
-
-void Log::PositionalArgumentFollowingNamed(
-    std::vector<frontend::SourceRange> const &pos_ranges,
-    frontend::SourceRange const &named_range) {
-  diagnostic::SourceQuote quote(src_);
-  quote.Highlighted(named_range, diagnostic::Style{});
-  for (auto const &pos_range : pos_ranges) {
-    quote.Highlighted(pos_range, diagnostic::Style{});
-  }
-
-  renderer_.AddError(diagnostic::DiagnosticMessage(
-      diagnostic::Text(
-          "Positional function arguments cannot follow a named argument."),
-      quote));
-}
-
-void Log::UnknownParseError(std::vector<frontend::SourceRange> const &lines) {
-  // TODO there's something seriously wrong with this
-  // TODO source name?
-  diagnostic::SourceQuote quote(src_);
-  for (const auto &range : lines) {
-    quote.Highlighted(range, diagnostic::Style{});
-  }
-
-  renderer_.AddError(diagnostic::DiagnosticMessage(
-      diagnostic::Text(
-          "Parse errors found in \"<SOME FILE>\" on the following lines:"),
-      quote));
 }
 
 void Log::CyclicDependency(std::vector<ast::Identifier const *> cyc_deps) {

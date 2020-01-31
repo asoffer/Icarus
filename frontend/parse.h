@@ -4,11 +4,14 @@
 #include <memory>
 #include <vector>
 
+#include "frontend/source/source.h"
 #include "ast/ast_fwd.h"
+#include "diagnostic/consumer/consumer.h"
 
 namespace frontend {
-struct Source;
-std::vector<std::unique_ptr<ast::Node>> Parse(Source *src);
+
+std::vector<std::unique_ptr<ast::Node>> Parse(
+    Source* src, diagnostic::DiagnosticConsumer& diag);
 }  // namespace frontend
 
 #endif  // ICARUS_FRONTEND_PARSE_H

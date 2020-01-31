@@ -197,7 +197,6 @@ struct HashtagParsingFailure{
     return DiagnosticMessage();
   }
 
-  // TODO
   frontend::SourceRange range;
 };
 
@@ -210,10 +209,128 @@ struct NonWhitespaceAfterNewlineEscape{
     return DiagnosticMessage();
   }
 
-  // TODO
   frontend::SourceRange range;
 };
 
+struct CommaSeparatedListStatement {
+  static constexpr std::string_view kCategory = "parse";
+  static constexpr std::string_view kName     = "comma-separated-list-statement";
+
+  DiagnosticMessage ToMessage() const { 
+    return DiagnosticMessage(
+        Text("Comma-separated lists are not allowed as statements"));
+  }
+
+  frontend::SourceRange range;
+};
+
+struct DeclarationUsedInUnaryOperator {
+  static constexpr std::string_view kCategory = "parse";
+  static constexpr std::string_view kName     = "declaration-used-in-unary-operator";
+
+  DiagnosticMessage ToMessage() const {
+    return DiagnosticMessage(
+        Text("Declarations cannot be used as argument to unary operator."));
+  }
+
+  frontend::SourceRange range;
+};
+
+struct PositionalArgumentFollowingNamed {
+  static constexpr std::string_view kCategory = "parse";
+  static constexpr std::string_view kName =
+      "positional-argument-followed-by-named";
+
+  DiagnosticMessage ToMessage() const {
+    // diagnostic::SourceQuote quote(src_);
+    // quote.Highlighted(named_range, diagnostic::Style{});
+    // for (auto const &pos_range : pos_ranges) {
+    //   quote.Highlighted(pos_range, diagnostic::Style{});
+    // }
+    return DiagnosticMessage(diagnostic::Text(
+        "Positional function arguments cannot follow a named argument."));
+  }
+
+  std::vector<frontend::SourceRange> pos_ranges;
+  frontend::SourceRange last_named;
+};
+
+struct AccessRhsNotIdentifier {
+  static constexpr std::string_view kCategory = "parse";
+  static constexpr std::string_view kName =
+      "access-rhs-not-identifier";
+
+  DiagnosticMessage ToMessage() const {
+    return DiagnosticMessage(
+        diagnostic::Text("Right-hand side must be an identifier"));
+  }
+
+  frontend::SourceRange range;
+};
+
+struct ReservedKeyword {
+  static constexpr std::string_view kCategory = "parse";
+  static constexpr std::string_view kName     = "reserved-keyword";
+
+  DiagnosticMessage ToMessage() const {
+    return DiagnosticMessage(
+        diagnostic::Text("Identifier `%s` is a reserved keyword.", keyword));
+  }
+
+  frontend::SourceRange range;
+  std::string keyword;
+};
+
+struct CallingDeclaration {
+  static constexpr std::string_view kCategory = "parse";
+  static constexpr std::string_view kName     = "calling-declaration";
+
+  DiagnosticMessage ToMessage() const {
+    return DiagnosticMessage(diagnostic::Text("Declarations cannot be called"));
+  }
+
+  frontend::SourceRange range;
+};
+
+struct IndexingDeclaration {
+  static constexpr std::string_view kCategory = "parse";
+  static constexpr std::string_view kName     = "indexing-declaration";
+
+  DiagnosticMessage ToMessage() const {
+    return DiagnosticMessage(diagnostic::Text("Declarations cannot be indexed"));
+  }
+
+  frontend::SourceRange range;
+};
+
+struct NonDeclarationInStruct {
+  static constexpr std::string_view kCategory = "parse";
+  static constexpr std::string_view kName     = "non-declaration-in-struct";
+
+  DiagnosticMessage ToMessage() const {
+    return DiagnosticMessage(diagnostic::Text(
+        "Each struct member must be defined using a declaration."));
+  }
+
+  frontend::SourceRange range;
+};
+
+struct UnknownParseError {
+  static constexpr std::string_view kCategory = "parse";
+  static constexpr std::string_view kName     = "unknown-parse-error";
+
+  DiagnosticMessage ToMessage() const {
+    // TODO
+    // diagnostic::SourceQuote quote(src_);
+    // for (auto const& range : lines) {
+    //   quote.Highlighted(range, diagnostic::Style{});
+    // }
+    return DiagnosticMessage(diagnostic::Text(
+        "Parse errors found in \"<SOME FILE>\" on the following lines:"));
+  }
+
+  std::vector<frontend::SourceRange> lines;
+};
 
 }  // namespace diagnostic
 

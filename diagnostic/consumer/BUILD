@@ -26,3 +26,12 @@ cc_library(
         "//diagnostic:message"
     ],
 )
+
+cc_library(
+    name = "aborting",
+    hdrs = ["aborting.h"],
+    deps = [
+        ":consumer",
+        "//diagnostic:message"
+    ],
+)

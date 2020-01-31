@@ -3,6 +3,7 @@
 #include "absl/debugging/failure_signal_handler.h"
 #include "absl/debugging/symbolize.h"
 #include "ast/node.h"
+#include "diagnostic/consumer/streaming.h"
 #include "format/token_extractor.h"
 #include "frontend/parse.h"
 #include "frontend/source/file_name.h"
@@ -12,7 +13,8 @@
 namespace format {
 int FormatFile(frontend::FileName const &file) {
   frontend::StringSource src("3 + abc");
-  auto stmts = frontend::Parse(&src);
+  diagnostic::StreamingConsumer diag(stderr);
+  auto stmts = frontend::Parse(&src, diag);
   TokenExtractor visitor;
   for (auto const &stmt : stmts) { visitor.Visit(stmt.get()); }
   return 0;

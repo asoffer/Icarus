@@ -42,6 +42,7 @@ cc_binary(
         ":match_expr",
         "//ast:ast",
         "//base:macros",
+        "//diagnostic/consumer:streaming",
         "//frontend:parse",
         "//frontend/source:file",
         "//frontend/source:file_name",

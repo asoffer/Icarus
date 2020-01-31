@@ -63,6 +63,7 @@ cc_lib(
 cc_lib(
     name = "util",
     deps = [
+        "//diagnostic/consumer:aborting",
         "//frontend:parse",
         "//frontend/source:string",
         "//module:module",

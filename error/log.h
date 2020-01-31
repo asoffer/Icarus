@@ -27,6 +27,8 @@ struct Log {
   explicit Log(frontend::Source *src, diagnostic::DiagnosticConsumer &diag)
       : src_(ASSERT_NOT_NULL(src)), diag_(diag) {}
 
+  diagnostic::DiagnosticConsumer &diag() { return diag_; }
+
 #define MAKE_LOG_ERROR(fn_name, msg)                                           \
   void fn_name(frontend::SourceRange const &range);
 #include "error/errors.xmacro.h"
@@ -41,14 +43,7 @@ struct Log {
                               std::string_view type);
   void DeclOutOfOrder(ast::Declaration const *decl, ast::Identifier const *id);
   void RunawayMultilineComment();
-  void DoubleDeclAssignment(frontend::SourceRange const &decl_range,
-                            frontend::SourceRange const &val_range);
-  void Reserved(frontend::SourceRange const &range, std::string const &token);
   void NotBinary(frontend::SourceRange const &range, std::string const &token);
-  void UnknownParseError(std::vector<frontend::SourceRange> const &range);
-  void PositionalArgumentFollowingNamed(
-      std::vector<frontend::SourceRange> const &pos_ranges,
-      frontend::SourceRange const &named_range);
   void NotAType(frontend::SourceRange const &range, std::string_view type);
   void ShadowingDeclaration(frontend::SourceRange const &span1,
                             frontend::SourceRange const &span2);
@@ -67,8 +62,6 @@ struct Log {
   void ReturningWrongNumber(frontend::SourceRange const &range, size_t actual,
                             size_t expected);
   void NoReturnTypes(ast::ReturnStmt const *ret_expr);
-  void DeclarationUsedInUnop(std::string const &unop,
-                             frontend::SourceRange const &decl_range);
   void MissingMember(frontend::SourceRange const &range,
                      std::string_view member_name, std::string_view type);
   void NonExportedMember(frontend::SourceRange const &range,

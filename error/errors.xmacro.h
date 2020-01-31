@@ -41,20 +41,10 @@ MAKE_LOG_ERROR(
 MAKE_LOG_ERROR(RepeatedEnumName, "Repeated enum member.")
 MAKE_LOG_ERROR(EnumNeedsIdsOrConstDecls,
                "Enum members must be identifiers or constant declarations.")
-MAKE_LOG_ERROR(CallingDeclaration, "Declarations cannot be called.")
-MAKE_LOG_ERROR(IndexingDeclaration, "Declaration cannot be indexed")
 MAKE_LOG_ERROR(DeclarationInIndex, "Declarations cannot appear inside an index")
-MAKE_LOG_ERROR(NonDeclarationInStructDeclaration,
-               "Each struct member must be defined using a declaration.")
-MAKE_LOG_ERROR(CommaListStatement,
-               "Comma-separated lists are not allowed as statements")
 MAKE_LOG_ERROR(InvalidImport,
                "Import statements must take a constant string as the name of "
                "the file to be imported.")
-MAKE_LOG_ERROR(RHSNonIdInAccess, "Right-hand side must be an identifier")
-MAKE_LOG_ERROR(DeclarationInAccess,
-               "Declaration not allowed on left-hand side of dot (.) operator.")
-
 MAKE_LOG_ERROR(InferringHole,
                "Attempting to infer the type of an uninitialized value")
 MAKE_LOG_ERROR(UninitializedConstant,

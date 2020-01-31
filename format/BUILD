@@ -7,6 +7,7 @@ cc_binary(
     deps = [
         ":token_extractor",
         "//ast:ast",
+        "//diagnostic/consumer:streaming",
         "//frontend:parse",
         "//frontend/source:file_name",
         "//frontend/source:string",
