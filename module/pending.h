@@ -9,6 +9,7 @@
 #include "absl/container/node_hash_map.h"
 #include "base/expected.h"
 #include "base/macros.h"
+#include "diagnostic/consumer/streaming.h"
 #include "frontend/source/file.h"
 #include "frontend/source/file_name.h"
 #include "frontend/source/source.h"
@@ -91,12 +92,13 @@ base::expected<Pending<ModType>> ImportModule(
       std::async(std::launch::async,
                  [canonical_src(dependee.first),
                   mod(&iter->second.second)]() -> BasicModule * {
+                   diagnostic::StreamingConsumer diag(stderr);
                    // TODO error messages.
                    ASSIGN_OR(return nullptr,  //
                                     frontend::FileSource file_src,
                                     frontend::FileSource::Make(*canonical_src));
                    *mod = std::make_unique<ModType>();
-                   (*mod)->ProcessFromSource(&file_src);
+                   (*mod)->ProcessFromSource(&file_src, diag);
                    return mod->get();
                  }));
   return Pending<ModType>{fut};

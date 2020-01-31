@@ -73,9 +73,10 @@ struct ReplModule : public compiler::CompiledModule {
 int RunRepl() {
   std::puts("Icarus REPL (v0.1)");
 
+  diagnostic::StreamingConsumer diag(stderr);
   frontend::ReplSource repl;
   ReplModule mod;
 
   // TODO Parse can fail.
-  while (true) { mod.ProcessFromSource(&repl); }
+  while (true) { mod.ProcessFromSource(&repl, diag); }
 }

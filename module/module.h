@@ -10,6 +10,7 @@
 #include "ast/scope/module.h"
 #include "base/cast.h"
 #include "base/ptr_span.h"
+#include "diagnostic/consumer/consumer.h"
 #include "frontend/source/source.h"
 
 namespace module {
@@ -43,7 +44,8 @@ struct BasicModule : base::Cast<BasicModule> {
 
   constexpr ast::ModuleScope const *scope() const { return &scope_; }
 
-  void ProcessFromSource(frontend::Source *src);
+  void ProcessFromSource(frontend::Source *src,
+                         diagnostic::DiagnosticConsumer &diag);
 
  protected:
   virtual void ProcessNodes(base::PtrSpan<ast::Node const>) = 0;

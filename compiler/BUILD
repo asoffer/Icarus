@@ -153,6 +153,7 @@ cc_lib(
         "//compiler/constant:binding_tree",
         "//compiler/dispatch:fn_call_table_header",
         "//compiler/dispatch:scope_table_header",
+        "//diagnostic/consumer:streaming",
         "//error:log",
         "//ir:block_def",
         "//ir:builder",

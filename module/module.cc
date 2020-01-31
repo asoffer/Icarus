@@ -2,7 +2,6 @@
 
 #include "absl/algorithm/container.h"
 #include "ast/ast.h"
-#include "diagnostic/consumer/streaming.h"
 #include "frontend/parse.h"
 #include "module/assign_scope.h"
 
@@ -40,8 +39,8 @@ void BasicModule::AppendNodes(std::vector<std::unique_ptr<ast::Node>> nodes) {
                 std::make_move_iterator(nodes.end()));
 }
 
-void BasicModule::ProcessFromSource(frontend::Source *src) {
-  diagnostic::StreamingConsumer diag(stderr);
+void BasicModule::ProcessFromSource(frontend::Source *src,
+                                    diagnostic::DiagnosticConsumer &diag) {
   AppendNodes(frontend::Parse(src, diag));
 }
 

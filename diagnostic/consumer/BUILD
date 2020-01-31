@@ -14,7 +14,7 @@ cc_library(
     deps = [
         ":consumer",
         "//diagnostic:console_renderer",
-        "//diagnostic:message"
+        "//diagnostic:message",
     ],
 )
 
