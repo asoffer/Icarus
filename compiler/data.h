@@ -17,6 +17,7 @@
 #include "compiler/constant/binding_tree.h"
 #include "compiler/dispatch/fn_call_table.h"
 #include "compiler/dispatch/scope_table.h"
+#include "diagnostic/consumer/streaming.h"
 #include "error/log.h"
 #include "ir/block_def.h"
 #include "ir/builder.h"
@@ -140,7 +141,8 @@ struct CompilationData {
   absl::flat_hash_map<ast::Expression const *, ScopeDispatchTable>
       scope_dispatch_tables_;
 
-  error::Log error_log_;
+  diagnostic::StreamingConsumer diag_{stderr};
+  error::Log error_log_{diag_};
 
   absl::node_hash_map<ast::Jump const *, ir::Jump> jumps_;
   absl::flat_hash_map<ast::ExprPtr, type::QualType> type_verification_results_;

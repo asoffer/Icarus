@@ -265,14 +265,14 @@ StringLiteralLexResult NextStringLiteral(SourceCursor *cursor, Source *src) {
     escaped = false;
     switch (c) {
       case '\\':
-      case '"':
-      case 'a':
-      case 'b':
-      case 'f':
-      case 'n':
-      case 'r':
-      case 't':
-      case 'v': result.value.push_back(c); break;
+      case '"': result.value.push_back(c); break;
+      case 'a': result.value.push_back('\a'); break;
+      case 'b': result.value.push_back('\b'); break;
+      case 'f': result.value.push_back('\f'); break;
+      case 'n': result.value.push_back('\n'); break;
+      case 'r': result.value.push_back('\r'); break;
+      case 't': result.value.push_back('\t'); break;
+      case 'v': result.value.push_back('\v'); break;
       default: {
         result.errors.push_back(StringLiteralError{
             .kind   = StringLiteralError::Kind::kInvalidEscapedChar,
@@ -284,7 +284,7 @@ StringLiteralLexResult NextStringLiteral(SourceCursor *cursor, Source *src) {
     return true;
   });
 
-  auto span = str_lit_cursor.range();
+  result.range = str_lit_cursor.range();
   if (cursor->view().empty()) {
     result.errors.push_back(StringLiteralError{
         .kind   = StringLiteralError::Kind::kRunaway,

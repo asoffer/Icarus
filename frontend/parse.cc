@@ -1358,8 +1358,8 @@ void CleanUpReduction(ParseState *state) {
 }  // namespace
 
 std::vector<std::unique_ptr<ast::Node>> Parse(Source *src) {
-  error::Log log(src);
   diagnostic::StreamingConsumer diag(stderr);
+  error::Log log(src, diag);
   ParseState state(src, &log, diag);
   Shift(&state);
 

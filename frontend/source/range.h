@@ -48,6 +48,11 @@ struct SourceLoc {
   friend constexpr bool operator==(SourceLoc const &lhs, SourceLoc const &rhs) {
     return lhs.value() == rhs.value();
   }
+
+  friend std::ostream& operator<<(std::ostream& os, SourceLoc const& loc) {
+    return os << "SourceLoc{ .line_num = " << loc.line_num.value
+              << ", .offset = " << loc.offset.value << " }";
+  }
 };
 
 constexpr SourceLoc operator+(SourceLoc loc, Offset offset) {

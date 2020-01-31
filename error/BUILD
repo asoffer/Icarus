@@ -17,6 +17,7 @@ cc_lib(
         "//core:fn_args",
         "//base:debug",
         "//diagnostic:console_renderer",
+        "//diagnostic/consumer",
         "//diagnostic:message",
         "//frontend/source:range",
         "//frontend/source:source",

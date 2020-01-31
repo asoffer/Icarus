@@ -22,7 +22,8 @@ int RunCompiler(frontend::FileName const &file_name) {
   ASSERT(libc_handle != nullptr);
   base::defer d([libc_handle] { dlclose(libc_handle); });
 
-  error::Log log;
+  diagnostic::StreamingConsumer diag(stderr);
+  error::Log log(diag);
   auto expected_pending_mod =
       module::ImportModule<compiler::ExecutableModule>(file_name);
   if (not expected_pending_mod) { log.MissingModule(file_name.value, ""); }
