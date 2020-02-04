@@ -15,7 +15,6 @@
 #include "compiler/verify_assignment_and_initialization.h"
 #include "diagnostic/consumer/streaming.h"
 #include "diagnostic/errors.h"
-#include "error/inference_failure_reason.h"
 #include "frontend/lex/operators.h"
 #include "interpretter/evaluate.h"
 #include "ir/compiled_fn.h"
@@ -273,9 +272,13 @@ bool Shadow(Compiler *compiler, type::Typed<ast::Declaration const *> decl1,
       });
 }
 
-static InferenceFailureReason Inferrable(type::Type const *t) {
-  if (t == type::NullPtr) { return InferenceFailureReason::NullPtr; }
-  if (t == type::EmptyArray) { return InferenceFailureReason::EmptyArray; }
+static diagnostic::UninferrableType::Reason Inferrable(type::Type const *t) {
+  if (t == type::NullPtr) {
+    return diagnostic::UninferrableType::Reason::kNullPtr;
+  }
+  if (t == type::EmptyArray) {
+    return diagnostic::UninferrableType::Reason::kEmptyArray;
+  }
   if (auto *a = t->if_as<type::Array>()) { return Inferrable(a->data_type); }
   if (auto *p = t->if_as<type::Pointer>()) { return Inferrable(p->pointee); }
   if (auto *v = t->if_as<type::Variant>()) {
@@ -283,25 +286,33 @@ static InferenceFailureReason Inferrable(type::Type const *t) {
     // explanation of precisely what the problem is. Fix here and below.
     for (auto const *var : v->variants_) {
       auto reason = Inferrable(var);
-      if (reason != InferenceFailureReason::Inferrable) { return reason; }
+      if (reason != diagnostic::UninferrableType::Reason::kInferrable) {
+        return reason;
+      }
     }
   } else if (auto *tup = t->if_as<type::Tuple>()) {
     for (auto const *entry : tup->entries_) {
       auto reason = Inferrable(entry);
-      if (reason != InferenceFailureReason::Inferrable) { return reason; }
+      if (reason != diagnostic::UninferrableType::Reason::kInferrable) {
+        return reason;
+      }
     }
   } else if (auto *f = t->if_as<type::Function>()) {
     for (auto const &param : f->input()) {
       auto reason = Inferrable(param.value);
-      if (reason != InferenceFailureReason::Inferrable) { return reason; }
+      if (reason != diagnostic::UninferrableType::Reason::kInferrable) {
+        return reason;
+      }
     }
     for (auto const *t : f->output()) {
       auto reason = Inferrable(t);
-      if (reason != InferenceFailureReason::Inferrable) { return reason; }
+      if (reason != diagnostic::UninferrableType::Reason::kInferrable) {
+        return reason;
+      }
     }
   }
   // TODO higher order types?
-  return InferenceFailureReason::Inferrable;
+  return diagnostic::UninferrableType::Reason::kInferrable;
 }
 
 // TODO there's not that much shared between the inferred and uninferred cases,
@@ -372,8 +383,11 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node) {
           if (auto *ret_node = n->if_as<ast::ReturnStmt>()) {
             auto *t = ASSERT_NOT_NULL(saved_ret_types.at(ret_node));
             if (t == outs[0]) { continue; }
-            c->error_log()->ReturnTypeMismatch(outs[0]->to_string(),
-                                               t->to_string(), ret_node->span);
+            c->diag().Consume(diagnostic::ReturnTypeMismatch{
+                .expected = outs[0],
+                .actual   = t,
+                .range    = ret_node->span,
+            });
             err = true;
           } else {
             UNREACHABLE();  // TODO
@@ -389,12 +403,13 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node) {
             if (expr_type->is<type::Tuple>()) {
               auto const &tup_entries = expr_type->as<type::Tuple>().entries_;
               if (tup_entries.size() != outs.size()) {
-                c->error_log()->ReturningWrongNumber(
-                    ret_node->span,
-                    (expr_type->is<type::Tuple>()
-                         ? expr_type->as<type::Tuple>().size()
-                         : 1),
-                    outs.size());
+                c->diag().Consume(diagnostic::ReturningWrongNumber{
+                    .range    = ret_node->span,
+                    .actual   = (expr_type->is<type::Tuple>()
+                                   ? expr_type->as<type::Tuple>().size()
+                                   : 1),
+                    .expected = outs.size(),
+                });
                 return type::QualType::Error();
               } else {
                 bool err = false;
@@ -406,21 +421,25 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node) {
                     //
                     // TODO point the span to the correct entry which may be
                     // hard if it's splatted.
-                    c->error_log()->IndexedReturnTypeMismatch(
-                        outs.at(i)->to_string(), tup_entries.at(i)->to_string(),
-                        ret_node->span, i);
+                    c->diag().Consume(diagnostic::IndexedReturnTypeMismatch{
+                        .index    = i,
+                        .actual   = outs[i],
+                        .expected = tup_entries[i],
+                        .range    = ret_node->span,
+                    });
                     err = true;
                   }
                 }
                 if (err) { return type::QualType::Error(); }
               }
             } else {
-              c->error_log()->ReturningWrongNumber(
-                  ret_node->span,
-                  (expr_type->is<type::Tuple>()
-                       ? expr_type->as<type::Tuple>().size()
-                       : 1),
-                  outs.size());
+              c->diag().Consume(diagnostic::ReturningWrongNumber{
+                  .actual   = (expr_type->is<type::Tuple>()
+                                 ? expr_type->as<type::Tuple>().size()
+                                 : 1),
+                  .expected = outs.size(),
+                  .range    = ret_node->span,
+              });
               return type::QualType::Error();
             }
           } else {
@@ -476,10 +495,7 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
   // TODO need a better way to say if there was an error recorded in a
   // particular section of compilation. Right now we just have the grad total
   // count.
-  if (num_errors() > 0) {
-    error_log()->Dump();
-    return type::QualType::Error();
-  }
+  if (diag().num_consumed() > 0) { return type::QualType::Error(); }
 
   if (outputs) {
     for (size_t i = 0; i < output_type_vec.size(); ++i) {
@@ -546,14 +562,20 @@ static type::QualType AccessTypeMember(Compiler *c, ast::Access const *node,
   // carry on assuming that node is an element of that enum type.
   if (auto *e = evaled_type->if_as<type::Enum>()) {
     if (not e->Get(node->member_name()).has_value()) {
-      c->error_log()->MissingMember(node->span, node->member_name(),
-                                    evaled_type->to_string());
+      c->diag().Consume(diagnostic::MissingMember{
+          .range  = node->span,
+          .member = std::string{node->member_name()},
+          .type   = evaled_type,
+      });
     }
     return c->set_result(node, type::QualType::Constant(evaled_type));
   } else if (auto *f = evaled_type->if_as<type::Flags>()) {
     if (not f->Get(node->member_name()).has_value()) {
-      c->error_log()->MissingMember(node->span, node->member_name(),
-                                    evaled_type->to_string());
+      c->diag().Consume(diagnostic::MissingMember{
+          .range  = node->span,
+          .member = std::string{node->member_name()},
+          .type   = evaled_type,
+      });
     }
     return c->set_result(node, type::QualType::Constant(evaled_type));
   } else {
@@ -571,14 +593,20 @@ static type::QualType AccessStructMember(Compiler *c, ast::Access const *node,
   auto const &s      = operand_result.type()->as<type::Struct>();
   auto const *member = s.field(node->member_name());
   if (member == nullptr) {
-    c->error_log()->MissingMember(node->span, node->member_name(),
-                                  s.to_string());
+    c->diag().Consume(diagnostic::MissingMember{
+        .range  = node->span,
+        .member = std::string{node->member_name()},
+        .type   = &s,
+    });
     return type::QualType::Error();
   }
   if (c->module() != s.defining_module() and
       not member->contains_hashtag(ast::Hashtag::Builtin::Export)) {
-    c->error_log()->NonExportedMember(node->span, node->member_name(),
-                                      s.to_string());
+    c->diag().Consume(diagnostic::NonExportedMember{
+        .range  = node->span,
+        .member = std::string{node->member_name()},
+        .type   = &s,
+    });
   }
 
   return c->set_result(node,
@@ -640,8 +668,11 @@ type::QualType Compiler::Visit(ast::Access const *node, VerifyTypeTag) {
   } else if (base_type == type::Module) {
     return AccessModuleMember(this, node, operand_result);
   } else {
-    error_log()->MissingMember(node->span, node->member_name(),
-                               base_type->to_string());
+    diag().Consume(diagnostic::MissingMember{
+        .range  = node->span,
+        .member = std::string{node->member_name()},
+        .type   = base_type,
+    });
     return type::QualType::Error();
   }
 }
@@ -909,47 +940,57 @@ static type::QualType VerifyCall(
     Compiler *c, ast::BuiltinFn const *b,
     core::FnArgs<EPtr, StrType> const &args,
     core::FnArgs<type::QualType> const &arg_results) {
+  // TODO for builtin's consider moving all the messages into an enum.
   switch (b->value()) {
     case core::Builtin::Foreign: {
       bool err = false;
       if (not arg_results.named().empty()) {
-        c->error_log()->BuiltinError(b->span,
-                                     "Built-in function `foreign` cannot "
-                                     "be called with named arguments.");
+        c->diag().Consume(diagnostic::BuiltinError{
+            .range   = b->span,
+            .message = "Built-in function `foreign` cannot be called with "
+                       "named arguments.",
+        });
         err = true;
       }
 
       size_t size = arg_results.size();
       if (size != 2u) {
-        c->error_log()->BuiltinError(
-            b->span, absl::StrCat("Built-in function `foreign` takes exactly "
-                                  "two arguments (You provided ",
-                                  size, ")."));
+        c->diag().Consume(diagnostic::BuiltinError{
+            .range   = b->span,
+            .message = absl::StrCat("Built-in function `foreign` takes exactly "
+                                    "two arguments (You provided ",
+                                    size, ")."),
+        });
         err = true;
       }
 
       if (not err) {
         if (arg_results.at(0).type() != type::ByteView) {
-          c->error_log()->BuiltinError(
-              b->span,
-              absl::StrCat("First argument to `foreign` must be a byte-view "
-                           "(You provided a(n) ",
-                           arg_results.at(0).type()->to_string(), ")."));
+          c->diag().Consume(diagnostic::BuiltinError{
+              .range = b->span,
+              .message =
+                  absl::StrCat("First argument to `foreign` must be a "
+                               "byte-view (You provided a(n) ",
+                               arg_results.at(0).type()->to_string(), ")."),
+          });
         }
         if (not arg_results.at(0).constant()) {
-          c->error_log()->BuiltinError(
-              b->span, "First argument to `foreign` must be a constant.");
+          c->diag().Consume(diagnostic::BuiltinError{
+              .range   = b->span,
+              .message = "First argument to `foreign` must be a constant."});
         }
         if (arg_results.at(1).type() != type::Type_) {
-          c->error_log()->BuiltinError(
-              b->span,
-              "Second argument to `foreign` must be a type (You provided "
-              "a(n) " +
-                  arg_results.at(0).type()->to_string() + ").");
+          c->diag().Consume(diagnostic::BuiltinError{
+              .range = b->span,
+              .message =
+                  absl::StrCat("Second argument to `foreign` must be a type "
+                               "(You provided a(n) ",
+                               arg_results.at(0).type()->to_string(), ").")});
         }
         if (not arg_results.at(1).constant()) {
-          c->error_log()->BuiltinError(
-              b->span, "Second argument to `foreign` must be a constant.");
+          c->diag().Consume(diagnostic::BuiltinError{
+              .range   = b->span,
+              .message = "Second argument to `foreign` must be a constant."});
         }
       }
       return type::QualType::Constant(
@@ -958,8 +999,9 @@ static type::QualType VerifyCall(
     } break;
     case core::Builtin::Opaque:
       if (not arg_results.empty()) {
-        c->error_log()->BuiltinError(
-            b->span, "Built-in function `opaque` takes no arguments.");
+        c->diag().Consume(diagnostic::BuiltinError{
+            .range   = b->span,
+            .message = "Built-in function `opaque` takes no arguments."});
       }
       return type::QualType::Constant(ir::BuiltinType(core::Builtin::Opaque)
                                           ->as<type::Function>()
@@ -968,20 +1010,25 @@ static type::QualType VerifyCall(
     case core::Builtin::Bytes: {
       size_t size = arg_results.size();
       if (not arg_results.named().empty()) {
-        c->error_log()->BuiltinError(b->span,
-                                     "Built-in function `bytes` cannot be "
-                                     "called with named arguments.");
+        c->diag().Consume(diagnostic::BuiltinError{
+            .range   = b->span,
+            .message = "Built-in function `bytes` cannot be called with named "
+                       "arguments."});
       } else if (size != 1u) {
-        c->error_log()->BuiltinError(b->span,
-                                     "Built-in function `bytes` takes "
-                                     "exactly one argument (You provided " +
-                                         std::to_string(size) + ").");
+        c->diag().Consume(diagnostic::BuiltinError{
+            .range   = b->span,
+            .message = absl::StrCat(
+                "Built-in function `bytes` takes exactly one argument "
+                "(You provided ",
+                size, ")."),
+        });
       } else if (arg_results.at(0).type() != type::Type_) {
-        c->error_log()->BuiltinError(
-            b->span,
-            "Built-in function `bytes` must take a single argument of type "
-            "`type` (You provided a(n) " +
-                arg_results.at(0).type()->to_string() + ").");
+        c->diag().Consume(diagnostic::BuiltinError{
+            .range = b->span,
+            .message =
+                absl::StrCat("Built-in function `bytes` must take a single "
+                             "argument of type `type` (You provided a(n) ",
+                             arg_results.at(0).type()->to_string(), ").")});
       }
       return type::QualType::Constant(ir::BuiltinType(core::Builtin::Bytes)
                                           ->as<type::Function>()
@@ -990,22 +1037,27 @@ static type::QualType VerifyCall(
     case core::Builtin::Alignment: {
       size_t size = arg_results.size();
       if (not arg_results.named().empty()) {
-        c->error_log()->BuiltinError(b->span,
-                                     "Built-in function `alignment` cannot "
-                                     "be called with named arguments.");
+        c->diag().Consume(diagnostic::BuiltinError{
+            .range   = b->span,
+            .message = "Built-in function `alignment` cannot be called with "
+                       "named arguments."});
       }
       if (size != 1u) {
-        c->error_log()->BuiltinError(b->span,
-                                     "Built-in function `alignment` takes "
-                                     "exactly one argument (You provided " +
-                                         std::to_string(size) + ").");
+        c->diag().Consume(diagnostic::BuiltinError{
+            .range   = b->span,
+            .message = absl::StrCat("Built-in function `alignment` takes "
+                                    "exactly one argument (You provided ",
+                                    size, ")."),
+        });
 
       } else if (arg_results.at(0).type() != type::Type_) {
-        c->error_log()->BuiltinError(
-            b->span,
-            "Built-in function `alignment` must take a single argument of "
-            "type `type` (you provided a(n) " +
-                arg_results.at(0).type()->to_string() + ")");
+        c->diag().Consume(diagnostic::BuiltinError{
+            .range = b->span,
+            absl::StrCat(
+                "Built-in function `alignment` must take a single argument of "
+                "type `type` (you provided a(n) ",
+                arg_results.at(0).type()->to_string(), ")"),
+        });
       }
       return type::QualType::Constant(ir::BuiltinType(core::Builtin::Alignment)
                                           ->as<type::Function>()
@@ -1064,11 +1116,15 @@ type::QualType Compiler::Visit(ast::Cast const *node, VerifyTypeTag) {
   }
 
   if (type_result.type() != type::Type_) {
-    error_log()->CastToNonType(node->span);
+    diag().Consume(diagnostic::CastToNonType{
+        .range = node->span,
+    });
     return type::QualType::Error();
   }
   if (not type_result.constant()) {
-    error_log()->CastToNonConstantType(node->span);
+    diag().Consume(diagnostic::CastToNonConstantType{
+        .range = node->span,
+    });
     return type::QualType::Error();
   }
   auto *t = ASSERT_NOT_NULL(interpretter::EvaluateAs<type::Type const *>(
@@ -1107,9 +1163,6 @@ type::QualType Compiler::Visit(ast::ChainOp const *node, VerifyTypeTag) {
         if (not results[i].constant()) {
           NOT_YET("log an error: non const block");
         }
-
-        error_log()->EarlyRequiredBlock(node->exprs()[i]->span);
-        found_err = true;
       } else {
         goto not_blocks;
       }
@@ -1206,11 +1259,13 @@ not_blocks:
                 case Cmp::Order:
                 case Cmp::Equality: continue;
                 case Cmp::None:
-                  error_log()->ComparingIncomparables(
-                      lhs_result.type()->to_string(),
-                      rhs_result.type()->to_string(),
-                      frontend::SourceRange(node->exprs()[i]->span.begin(),
-                                            node->exprs()[i + 1]->span.end()));
+                  diag().Consume(diagnostic::ComparingIncomparables{
+                      .lhs   = lhs_result.type(),
+                      .rhs   = rhs_result.type(),
+                      .range = frontend::SourceRange(
+                          node->exprs()[i]->span.begin(),
+                          node->exprs()[i + 1]->span.end()),
+                  });
                   return type::QualType::Error();
               }
             } break;
@@ -1222,11 +1277,13 @@ not_blocks:
                 case Cmp::Order: continue;
                 case Cmp::Equality:
                 case Cmp::None:
-                  error_log()->ComparingIncomparables(
-                      lhs_result.type()->to_string(),
-                      rhs_result.type()->to_string(),
-                      frontend::SourceRange(node->exprs()[i]->span.begin(),
-                                            node->exprs()[i + 1]->span.end()));
+                  diag().Consume(diagnostic::ComparingIncomparables{
+                      .lhs   = lhs_result.type(),
+                      .rhs   = rhs_result.type(),
+                      .range = frontend::SourceRange(
+                          node->exprs()[i]->span.begin(),
+                          node->exprs()[i + 1]->span.end()),
+                  });
                   return type::QualType::Error();
               }
             } break;
@@ -1285,13 +1342,17 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
 
         if (not(node->flags() & ast::Declaration::f_IsFnParam) and
             not node_qual_type.type()->IsDefaultInitializable()) {
-          error_log()->TypeMustBeInitialized(
-              node->span, node_qual_type.type()->to_string());
+          diag().Consume(diagnostic::NoDefaultValue{
+              .range = node->span,
+              .type  = node_qual_type.type(),
+          });
         }
 
       } else {
-        error_log()->NotAType(node->type_expr()->span,
-                              type_expr_type->to_string());
+        diag().Consume(diagnostic::NotAType{
+            .range = node->type_expr()->span,
+            .type  = type_expr_type,
+        });
         return set_result(node, type::QualType::Error());
       }
     } break;
@@ -1303,8 +1364,11 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
                        Visit(node->init_val(), VerifyTypeTag{}));
 
       auto reason = Inferrable(init_val_result.type());
-      if (reason != InferenceFailureReason::Inferrable) {
-        error_log()->UninferrableType(reason, node->init_val()->span);
+      if (reason != diagnostic::UninferrableType::Reason::kInferrable) {
+        diag().Consume(diagnostic::UninferrableType{
+            .reason = reason,
+            .range  = node->init_val()->span,
+        });
         return set_result(node, type::QualType::Error());
       }
 
@@ -1320,10 +1384,14 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
       ("Verified, ", node->id(), ": ", node_qual_type.type()->to_string());
     } break;
     case ast::Declaration::kInferredAndUninitialized: {
-      error_log()->UninferrableType(InferenceFailureReason::Hole,
-                                    node->init_val()->span);
+      diag().Consume(diagnostic::UninferrableType{
+          .reason = diagnostic::UninferrableType::Reason::kHole,
+          .range  = node->init_val()->span,
+      });
       if (node->flags() & ast::Declaration::f_IsConst) {
-        error_log()->UninitializedConstant(node->span);
+        diag().Consume(diagnostic::UninitializedConstant{
+            .range = node->span,
+        });
       }
       return set_result(node, type::QualType::Error());
     } break;
@@ -1351,8 +1419,10 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
                                             node_qual_type, init_val_qual_type);
         }
       } else {
-        error_log()->NotAType(node->type_expr()->span,
-                              type_expr_type->to_string());
+        diag().Consume(diagnostic::NotAType{
+            .range = node->type_expr()->span,
+            type_expr_type,
+        });
         error = true;
       }
 
@@ -1373,13 +1443,17 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
                       interpretter::EvaluateAs<type::Type const *>(
                           MakeThunk(node->type_expr(), type::Type_))));
       } else {
-        error_log()->NotAType(node->type_expr()->span,
-                              type_expr_type->to_string());
+        diag().Consume(diagnostic::NotAType{
+            .range = node->type_expr()->span,
+            type_expr_type,
+        });
         return set_result(node, type::QualType::Error());
       }
 
       if (node->flags() & ast::Declaration::f_IsConst) {
-        error_log()->UninitializedConstant(node->span);
+        diag().Consume(diagnostic::UninitializedConstant{
+            .range = node->span,
+        });
         return set_result(node, type::QualType::Error());
       }
 
@@ -1457,7 +1531,10 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
     type::Typed<ast::Declaration const *> typed_decl(decl, t);
     if (Shadow(this, typed_node_decl, typed_decl)) {
       failed_shadowing = true;
-      error_log()->ShadowingDeclaration(node->span, (*typed_decl)->span);
+      diag().Consume(diagnostic::ShadowingDeclaration{
+          .range1 = node->span,
+          .range2 = (*typed_decl)->span,
+      });
     }
   }
 
@@ -1541,8 +1618,12 @@ type::QualType Compiler::Visit(ast::Identifier const *node, VerifyTypeTag) {
   for (auto iter = data_.cyc_deps_.begin(); iter != data_.cyc_deps_.end();
        ++iter) {
     if (*iter == node) {
-      error_log()->CyclicDependency(
-          std::vector<ast::Identifier const *>(iter, data_.cyc_deps_.end()));
+      diagnostic::CyclicDependency cyclic_dep;
+      cyclic_dep.cycle.reserve(std::distance(iter, data_.cyc_deps_.end()));
+      for (; iter != data_.cyc_deps_.end(); ++iter) {
+        cyclic_dep.cycle.emplace_back((*iter)->span, (*iter)->token());
+      }
+      diag().Consume(std::move(cyclic_dep));
       return type::QualType::Error();
     }
   }
@@ -1569,17 +1650,26 @@ type::QualType Compiler::Visit(ast::Identifier const *node, VerifyTypeTag) {
         if (node->decl() == nullptr) { return type::QualType::Error(); }
       } break;
       case 0:
-        error_log()->UndeclaredIdentifier(node);
+        diag().Consume(diagnostic::UndeclaredIdentifier{
+            .id    = node->token(),
+            .range = node->span,
+        });
         return type::QualType::Error();
       default:
         // TODO Should we allow the overload?
-        error_log()->UnspecifiedOverload(node->span);
+        diag().Consume(diagnostic::UnspecifiedOverload{
+            .range = node->span,
+        });
         return type::QualType::Error();
     }
 
     if (not(node->decl()->flags() & ast::Declaration::f_IsConst) and
         node->span.begin() < node->decl()->span.begin()) {
-      error_log()->DeclOutOfOrder(node->decl(), node);
+      diag().Consume(diagnostic::DeclOutOfOrder{
+          .id         = node->token(),
+          .decl_range = node->decl()->span,
+          .use_range  = node->span,
+      });
     }
   }
 
@@ -1600,12 +1690,16 @@ type::QualType Compiler::Visit(ast::Import const *node, VerifyTypeTag) {
   bool err = false;
   if (result.type() != type::ByteView) {
     // TODO allow (import) overload
-    error_log()->InvalidImport(node->operand()->span);
+    diag().Consume(diagnostic::InvalidImport{
+        .range = node->operand()->span,
+    });
     err = true;
   }
 
   if (not result.constant()) {
-    error_log()->NonConstantImport(node->operand()->span);
+    diag().Consume(diagnostic::NonConstantImport{
+        .range = node->operand()->span,
+    });
     err = true;
   }
 
@@ -1616,7 +1710,10 @@ type::QualType Compiler::Visit(ast::Import const *node, VerifyTypeTag) {
   // TODO source name?
 
   frontend::FileName file_name{std::string(src)};
-  ASSIGN_OR(error_log()->MissingModule(src, "TODO source");
+  ASSIGN_OR(diag().Consume(diagnostic::MissingModule{
+      .source    = src,
+      .requestor = "TODO source",
+  });
             return type::QualType::Error(),  //
                    auto pending_mod,
                    module::ImportModule<LibraryModule>(file_name));
@@ -1635,8 +1732,11 @@ type::QualType Compiler::Visit(ast::Index const *node, VerifyTypeTag) {
 
   auto *index_type = rhs_result.type()->if_as<type::Primitive>();
   if (not index_type or not index_type->is_integral()) {
-    error_log()->InvalidIndexType(node->span, lhs_result.type()->to_string(),
-                                  lhs_result.type()->to_string());
+    diag().Consume(diagnostic::InvalidIndexType{
+        .range      = node->span,
+        .type       = lhs_result.type(),
+        .index_type = lhs_result.type(),
+    });
   }
 
   if (lhs_result.type() == type::ByteView) {
@@ -1651,7 +1751,9 @@ type::QualType Compiler::Visit(ast::Index const *node, VerifyTypeTag) {
         node, type::QualType(lhs_buf_type->pointee, rhs_result.constant()));
   } else if (auto *tup = lhs_result.type()->if_as<type::Tuple>()) {
     if (not rhs_result.constant()) {
-      error_log()->NonConstantTupleIndex(node->span);
+      diag().Consume(diagnostic::NonConstantTupleIndex{
+          .range = node->span,
+      });
       return type::QualType::Error();
     }
 
@@ -1675,8 +1777,11 @@ type::QualType Compiler::Visit(ast::Index const *node, VerifyTypeTag) {
     }();
 
     if (index < 0 or index >= static_cast<int64_t>(tup->size())) {
-      error_log()->IndexingTupleOutOfBounds(node->span, tup->to_string(),
-                                            tup->size(), index);
+      diag().Consume(diagnostic::IndexingTupleOutOfBounds{
+          .range = node->span,
+          .tuple = tup,
+          .index = index,
+      });
       return type::QualType::Error();
     }
 
@@ -1684,7 +1789,10 @@ type::QualType Compiler::Visit(ast::Index const *node, VerifyTypeTag) {
         node, type::QualType(tup->entries_.at(index), lhs_result.constant()));
 
   } else {
-    error_log()->InvalidIndexing(node->span, lhs_result.type()->to_string());
+    diag().Consume(diagnostic::InvalidIndexing{
+        .range = node->span,
+        .type  = lhs_result.type(),
+    });
     return type::QualType::Error();
   }
 }
@@ -1891,8 +1999,10 @@ type::QualType Compiler::Visit(ast::Switch const *node, VerifyTypeTag) {
       // TODO dispatch table
     } else {
       if (cond_result.type() != type::Bool) {
-        error_log()->SwitchConditionNeedsBool(cond_result.type()->to_string(),
-                                              node->span);
+        diag().Consume(diagnostic::SwitchConditionNeedsBool{
+            .range = node->span,
+            .type  = cond_result.type(),
+        });
       }
     }
     // TODO if there's an error, an unorderded_set is not helpful for giving
@@ -1952,7 +2062,9 @@ type::QualType Compiler::Visit(ast::Unop const *node, VerifyTypeTag) {
         // TODO here you could return a correct type and just have there
         // be an error regarding constness. When you do node probably worth a
         // full pass over all verification code.
-        error_log()->NonConstantEvaluation(node->operand()->span);
+        diag().Consume(diagnostic::NonConstantEvaluation{
+            .range = node->operand()->span,
+        });
         return type::QualType::Error();
       } else {
         return set_result(node,
@@ -1960,7 +2072,10 @@ type::QualType Compiler::Visit(ast::Unop const *node, VerifyTypeTag) {
       }
     case frontend::Operator::Which:
       if (not operand_type->is<type::Variant>()) {
-        error_log()->WhichNonVariant(operand_type->to_string(), node->span);
+        diag().Consume(diagnostic::WhichNonVariant{
+            .type  = operand_type,
+            .range = node->span,
+        });
       }
       return set_result(node, type::QualType(type::Type_, result.constant()));
     case frontend::Operator::At:
@@ -1969,8 +2084,10 @@ type::QualType Compiler::Visit(ast::Unop const *node, VerifyTypeTag) {
             node, type::QualType(operand_type->as<type::Pointer>().pointee,
                                  result.constant()));
       } else {
-        error_log()->DereferencingNonPointer(operand_type->to_string(),
-                                             node->span);
+        diag().Consume(diagnostic::DereferencingNonPointer{
+            .type  = operand_type,
+            .range = node->span,
+        });
         return type::QualType::Error();
       }
     case frontend::Operator::And:
@@ -2021,15 +2138,19 @@ type::QualType Compiler::Visit(ast::Unop const *node, VerifyTypeTag) {
       }
     case frontend::Operator::Needs:
       if (operand_type != type::Bool) {
-        error_log()->PreconditionNeedsBool(node->operand()->span,
-                                           operand_type->to_string());
+        diag().Consume(diagnostic::PreconditionNeedsBool{
+            .type  = operand_type,
+            .range = node->operand()->span,
+        });
       }
       if (not result.constant()) { NOT_YET(); }
       return set_result(node, type::QualType::Constant(type::Void()));
     case frontend::Operator::Ensure:
       if (operand_type != type::Bool) {
-        error_log()->PostconditionNeedsBool(node->operand()->span,
-                                            operand_type->to_string());
+        diag().Consume(diagnostic::PostconditionNeedsBool{
+            .type  = operand_type,
+            .range = node->operand()->span,
+        });
       }
       if (not result.constant()) { NOT_YET(); }
       return set_result(node, type::QualType::Constant(type::Void()));

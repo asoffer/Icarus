@@ -14,6 +14,9 @@ struct DiagnosticConsumer {
     ++num_consumed_;
   }
 
+  // TODO this should be overridable. What it means to count the number consumed
+  // is dependent on what it consumes. For example, if warnings are considered
+  // errors, we might change the count.
   constexpr size_t num_consumed() const { return num_consumed_; }
 
  protected:

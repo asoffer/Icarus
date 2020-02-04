@@ -2,13 +2,13 @@
 #include <memory>
 #include <vector>
 
+#include "base/defer.h"
 #include "base/expected.h"
 #include "base/untyped_buffer.h"
-#include "base/defer.h"
 #include "compiler/compiler.h"
 #include "compiler/executable_module.h"
 #include "compiler/module.h"
-#include "error/log.h"
+#include "diagnostic/errors.h"
 #include "frontend/parse.h"
 #include "frontend/source/file_name.h"
 #include "interpretter/execute.h"
@@ -23,13 +23,16 @@ int RunCompiler(frontend::FileName const &file_name) {
   base::defer d([libc_handle] { dlclose(libc_handle); });
 
   diagnostic::StreamingConsumer diag(stderr);
-  error::Log log(diag);
   auto expected_pending_mod =
       module::ImportModule<compiler::ExecutableModule>(file_name);
-  if (not expected_pending_mod) { log.MissingModule(file_name.value, ""); }
+  if (not expected_pending_mod) {
+    diag.Consume(diagnostic::MissingModule{
+        .source    = file_name.value,
+        .requestor = "",
+    });
+  }
 
-  if (log.size() > 0) {
-    log.Dump();
+  if (diag.num_consumed() > 0) {
     return 0;
   }
 

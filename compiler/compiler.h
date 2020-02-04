@@ -13,7 +13,6 @@
 #include "compiler/data.h"
 #include "compiler/module.h"
 #include "diagnostic/consumer/consumer.h"
-#include "error/log.h"
 #include "frontend/source/source.h"
 #include "ir/addr.h"
 #include "ir/builder.h"
@@ -163,10 +162,7 @@ struct Compiler
 
   // TODO Depending on if we're streaming or batching errors, we may want one
   // log per module, or one per compiler instance.
-  error::Log *error_log() { return &data_.error_log_; }
-  diagnostic::DiagnosticConsumer &diag() { return data_.error_log_.diag(); }
-  size_t num_errors() { return error_log()->size(); }
-  void DumpErrors() { error_log()->Dump(); }
+  diagnostic::DiagnosticConsumer &diag() { return data_.diag_; }
 
   type::QualType const *qual_type_of(ast::ExprPtr expr) const;
   type::Type const *type_of(ast::Expression const *expr) const;

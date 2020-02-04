@@ -15,7 +15,7 @@ struct LibraryModule : CompiledModule {
     diagnostic::StreamingConsumer consumer(stderr);
     compiler::Compiler c(this, consumer);
     for (ast::Node const *node : nodes) { c.Visit(node, VerifyTypeTag{}); }
-    if (c.num_errors() > 0) { return; }
+    if (c.diag().num_consumed() > 0) { return; }
 
     for (ast::Node const *node : nodes) { c.Visit(node, EmitValueTag{}); }
     c.CompleteDeferredBodies();

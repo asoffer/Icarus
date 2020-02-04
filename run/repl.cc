@@ -25,10 +25,7 @@ static void ReplEval(ast::Expression const *expr,
 
     // TODO support multiple values computed simultaneously?
     auto expr_val = compiler->Visit(expr, compiler::EmitValueTag{});
-    if (compiler->num_errors() != 0) {
-      compiler->DumpErrors();
-      return;
-    }
+    if (compiler->diag().num_consumed() != 0) { return; }
     // TODO compiler->CompleteDeferredBodies();
     auto *expr_type = compiler->type_of(expr);
     if (expr_type != type::Void()) {
@@ -56,7 +53,7 @@ struct ReplModule : public compiler::CompiledModule {
           compiler.Visit(decl, compiler::VerifyTypeTag{});
           compiler.Visit(decl, compiler::EmitValueTag{});
           // TODO compiler.CompleteDeferredBodies();
-          if (compiler.num_errors() != 0) { compiler.DumpErrors(); }
+          if (compiler.diag().num_consumed() != 0) { return; }
         }
 
       } else if (node->is<ast::Expression>()) {

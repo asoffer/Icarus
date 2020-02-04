@@ -40,7 +40,6 @@ struct ExecutableModule : CompiledModule {
     for (ast::Node const *node : deferred) { c.Visit(node, VerifyTypeTag{}); }
 
     if (consumer.num_consumed() > 0) { return; }
-    if (c.num_errors() > 0) { return; }
 
     ProcessExecutableBody(&c, nodes, main());
   }

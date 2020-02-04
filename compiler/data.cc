@@ -3,7 +3,7 @@
 namespace compiler {
 
 CompilationData::CompilationData(module::BasicModule *mod)
-    : mod_(mod), bldr_(ir::GetBuilder()), error_log_(diag_) {}
+    : mod_(mod), bldr_(ir::GetBuilder()) {}
 
 CompilationData::~CompilationData() {
   ASSERT(deferred_work_.lock()->empty() == true);

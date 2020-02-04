@@ -8,7 +8,6 @@ cc_lib(
         "//base:untyped_buffer",
         "//compiler:compiler",
         "//compiler:executable_module",
-        "//error:log",
         "//frontend/source:file_name",
         "//module:pending",
         "//interpretter:execute",
