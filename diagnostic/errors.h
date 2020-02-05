@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "absl/strings/str_cat.h"
+#include "core/fn_args.h"
 #include "diagnostic/message.h"
 #include "frontend/lex/lex.h"
 #include "frontend/lex/numbers.h"
@@ -925,6 +926,18 @@ struct WhichNonVariant {
   type::Type const *type;
   frontend::SourceRange range;
 };
+
+struct ParametersDoNotCoverArguments {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName = "parameters-do-not-cover-arguments";
+
+  DiagnosticMessage ToMessage() const {
+    return DiagnosticMessage(Text("Parameters do not cover arguments"));
+  }
+
+  core::FnArgs<type::QualType> const& args;
+};
+
 }  // namespace diagnostic
 
 #endif  // ICARUS_DIAGNOSTIC_ERRORS_H

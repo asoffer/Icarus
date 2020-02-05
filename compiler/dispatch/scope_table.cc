@@ -6,6 +6,7 @@
 #include "compiler/dispatch/parameters_and_arguments.h"
 #include "compiler/extract_jumps.h"
 #include "core/fn_params.h"
+#include "diagnostic/errors.h"
 #include "ir/builder.h"
 #include "ir/components.h"
 #include "ir/inliner.h"
@@ -228,7 +229,9 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
                           [](ir::Jump *jump, auto const &) -> decltype(auto) {
                             return jump->params();
                           })) {
-    NOT_YET("log an error");
+    compiler->diag().Consume(diagnostic::ParametersDoNotCoverArguments{
+        .args = args,
+    });
   }
 
   // If there are any scopes in this overload set that do not have blocks of the
@@ -255,7 +258,18 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
         static_cast<void>(success);
         ASSERT(success == true);
       } else {
-        for (auto const &fn_args : block_results) { NOT_YET(); }
+        // Find an `after` that matches
+        for (auto const &fn_args : block_results) {
+          DEBUG_LOG("ScopeNode")("    ... result = ", fn_args);
+          ASSIGN_OR(continue,  //
+                    auto jump_table,
+                    JumpDispatchTable::Verify(node, block_def->after_, args));
+
+          bool success =
+              one_table.blocks.emplace(&block, std::move(jump_table)).second;
+          static_cast<void>(success);
+          ASSERT(success == true);
+        }
       }
       DEBUG_LOG("ScopeNode")("    ... done.");
     }
@@ -303,17 +317,36 @@ ir::Results ScopeDispatchTable::EmitCall(
       DEBUG_LOG("EmitCall")(node->DebugString());
       bldr.CurrentBlock() = block_interps.at(scope_def)[node];
       bldr.allow_more_stmts();
-      compiler->Visit(node, EmitValueTag{});
+      auto yield_args = compiler->EmitBlockNode(node);
 
       // TODO unconditionally skipping after-handlers is incorrect.
       if (not bldr.more_stmts_allowed()) { continue; }
 
-      // TODO This is a simplification which only handles the situation where
-      // we jump to the after handler that has no arguments.
-
       ir::BlockDef const *block_def = scope_def->block(node->name());
+
+      // TODO call the appropriate overload set. This logic goes in jump table.
+      ir::Jump *chosen = nullptr;
+      for (ir::Jump *j : block_def->after_) {
+        std::vector<std::pair<ir::Jump *, int>> local_table_hack;
+        local_table_hack.emplace_back(j, 0);
+        if (ParamsCoverArgs(
+                yield_args.Transform([](auto const &p) { return p.second; }),
+                local_table_hack,
+                [](ir::Jump *jump, auto const &) -> decltype(auto) {
+                  DEBUG_LOG()(jump->params());
+                  return jump->params();
+                })) {
+          j->params();
+          chosen = j;
+          break;
+        }
+      }
+      ASSERT(chosen != nullptr);
+
       EmitCallOneOverload(scope_def, starting_block, landing_block, compiler,
-                          block_def->after_[0], {},
+                          chosen, yield_args.Transform([](auto const &p) {
+                            return type::Typed(p.first, p.second.type());
+                          }),
                           block_interps.at(scope_def));
     }
   }

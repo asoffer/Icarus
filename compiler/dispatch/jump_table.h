@@ -17,7 +17,7 @@ struct JumpDispatchTable {
       ast::ScopeNode const *node, absl::Span<ir::Jump *const> jumps,
       core::FnArgs<type::QualType> const &args);
 
- private:
+ // private:
   absl::flat_hash_map<ir::Jump *, internal::ExprData> table_;
 };
 

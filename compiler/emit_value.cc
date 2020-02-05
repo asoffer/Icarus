@@ -411,9 +411,15 @@ struct PushVec : public base::UseWithScope {
 template <typename T, typename... Args>
 PushVec(std::vector<T> *, Args &&...)->PushVec<T>;
 
-ir::Results Compiler::Visit(ast::BlockNode const *node, EmitValueTag) {
+core::FnArgs<std::pair<ir::Results, type::QualType>> Compiler::EmitBlockNode(
+    ast::BlockNode const *node) {
+  core::FnArgs<std::pair<ir::Results, type::QualType>> results;
   ICARUS_SCOPE(PushVec(&data_.yields_stack_)) {
     EmitIrForStatements(this, node->stmts());
+
+    // TODO `allow_more_stmts()` isn't specific enough because it doesn't
+    // distinguish between returns, direct yields, or labelled yields.
+    builder().allow_more_stmts();
 
     //   // TODO yield args can just be this pair type, making this conversion
     //   // unnecessary.
@@ -435,8 +441,16 @@ ir::Results Compiler::Visit(ast::BlockNode const *node, EmitValueTag) {
     //               std::move(yield_args), {}},
     //           *block_map, ctx);
     //
+    for (auto &yield : data_.yields_stack_.back()) {
+      // TODO what if they yield named values? Store FnArgs in yield result
+      results.pos_emplace(std::move(yield.val_), *qual_type_of(yield.expr_));
+    }
   }
-  return ir::Results{};
+  return results;
+}
+
+ir::Results Compiler::Visit(ast::BlockNode const *node, EmitValueTag) {
+  UNREACHABLE("Should be called via Compiler::EmitBlockNode");
 }
 
 ir::Results Compiler::Visit(ast::BuiltinFn const *node, EmitValueTag) {

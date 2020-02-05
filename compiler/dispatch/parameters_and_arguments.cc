@@ -17,6 +17,10 @@ core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
       auto f = interpretter::EvaluateAs<ir::AnyFunc>(
           compiler->MakeThunk(decl, decl_type));
       return f.is_fn() ? f.func()->params() : fn_type->AnonymousFnParams();
+    } else if (auto *jump_type = decl_type ->if_as<type::Jump>()) {
+      auto j = interpretter::EvaluateAs<ir::Jump const *>(
+          compiler->MakeThunk(decl, decl_type));
+      return j->params();
     } else if (decl_type == type::Generic) {
         // TODO determine how to evaluate this with an interpretter.
         if (auto *fn_lit = decl->init_val()->if_as<ast::FunctionLiteral>()) {

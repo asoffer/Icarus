@@ -212,6 +212,9 @@ struct Compiler
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
 
+  core::FnArgs<std::pair<ir::Results, type::QualType>> EmitBlockNode(
+      ast::BlockNode const *node);
+
   type::QualType VerifyConcreteFnLit(ast::FunctionLiteral const *node);
 
   std::vector<ir::RegOr<ir::Addr>> Visit(ast::Access const *node, EmitRefTag);

@@ -13,7 +13,7 @@ Jump const *Jmp(core::FnParams<Type const *> const &args) {
 
 void Jump::WriteTo(std::string *r) const {
   absl::StrAppend(r, "jump(",
-                  absl::StrJoin(args_, ", ",
+                  absl::StrJoin(params_, ", ",
                                 [](std::string *out, auto const &p) {
                                   if (not p.name.empty()) {
                                     out->append(p.name);
