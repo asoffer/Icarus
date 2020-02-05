@@ -384,8 +384,8 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node) {
             auto *t = ASSERT_NOT_NULL(saved_ret_types.at(ret_node));
             if (t == outs[0]) { continue; }
             c->diag().Consume(diagnostic::ReturnTypeMismatch{
-                .expected = outs[0],
                 .actual   = t,
+                .expected = outs[0],
                 .range    = ret_node->span,
             });
             err = true;
@@ -404,11 +404,11 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node) {
               auto const &tup_entries = expr_type->as<type::Tuple>().entries_;
               if (tup_entries.size() != outs.size()) {
                 c->diag().Consume(diagnostic::ReturningWrongNumber{
-                    .range    = ret_node->span,
                     .actual   = (expr_type->is<type::Tuple>()
                                    ? expr_type->as<type::Tuple>().size()
                                    : 1),
                     .expected = outs.size(),
+                    .range    = ret_node->span,
                 });
                 return type::QualType::Error();
               } else {
@@ -603,9 +603,9 @@ static type::QualType AccessStructMember(Compiler *c, ast::Access const *node,
   if (c->module() != s.defining_module() and
       not member->contains_hashtag(ast::Hashtag::Builtin::Export)) {
     c->diag().Consume(diagnostic::NonExportedMember{
-        .range  = node->span,
         .member = std::string{node->member_name()},
         .type   = &s,
+        .range  = node->span,
     });
   }
 
@@ -1343,8 +1343,8 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
         if (not(node->flags() & ast::Declaration::f_IsFnParam) and
             not node_qual_type.type()->IsDefaultInitializable()) {
           diag().Consume(diagnostic::NoDefaultValue{
-              .range = node->span,
               .type  = node_qual_type.type(),
+              .range = node->span,
           });
         }
 
@@ -2000,8 +2000,8 @@ type::QualType Compiler::Visit(ast::Switch const *node, VerifyTypeTag) {
     } else {
       if (cond_result.type() != type::Bool) {
         diag().Consume(diagnostic::SwitchConditionNeedsBool{
-            .range = node->span,
             .type  = cond_result.type(),
+            .range = node->span,
         });
       }
     }

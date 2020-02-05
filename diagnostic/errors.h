@@ -751,7 +751,6 @@ struct InvalidImport {
     return DiagnosticMessage(Text("Cannot import a non-constant module."));
   }
 
-  std::string_view id;
   frontend::SourceRange range;
 };
 
@@ -763,7 +762,6 @@ struct NonConstantImport {
     return DiagnosticMessage(Text("Scope names must be constant."));
   }
 
-  std::string_view id;
   frontend::SourceRange range;
 };
 
