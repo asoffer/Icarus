@@ -24,6 +24,8 @@ cc_library(
         ":match",
         ":parameters_and_arguments",
         "//base:debug",
+        "//compiler:compiler_header",
+        "//ir:inliner",
     ],
 )
 
@@ -58,7 +60,6 @@ cc_library(
         "//compiler:extract_jumps",
         "//ir:builder",
         "//ir:components",
-        "//ir:inliner",
         "//type",
         "//type:cast",
         "//type:qual_type",

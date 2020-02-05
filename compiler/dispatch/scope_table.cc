@@ -9,7 +9,6 @@
 #include "diagnostic/errors.h"
 #include "ir/builder.h"
 #include "ir/components.h"
-#include "ir/inliner.h"
 #include "type/cast.h"
 #include "type/type.h"
 #include "type/variant.h"
@@ -76,21 +75,9 @@ void EmitCallOneOverload(ir::ScopeDef const *scope_def,
                          ir::Jump *jump,
                          core::FnArgs<type::Typed<ir::Results>> args,
                          ir::LocalBlockInterpretation const &block_interp) {
-  core::FillMissingArgs(jump->params(), &args, [compiler](auto const &p) {
-    return type::Typed(
-        ir::Results{compiler->Visit(ASSERT_NOT_NULL(p.get()->init_val()),
-                                    EmitValueTag{})},
-        p.type());
-  });
-
-  auto arg_results = PrepareCallArguments(
-      compiler,
-      jump->params().Transform([](auto const &p) { return p.type(); }), args);
-  static_cast<void>(arg_results);
-  // TODO pass arguments to inliner.
-
-  auto &bldr         = compiler->builder();
-  auto name_to_block = ir::Inline(bldr, jump, arg_results, block_interp);
+  auto &bldr = compiler->builder();
+  auto name_to_block =
+      JumpDispatchTable::EmitCall(jump, compiler, args, block_interp);
 
   for (auto &[next_block_name, block_and_args] : name_to_block) {
     auto &[block, block_args] = block_and_args;

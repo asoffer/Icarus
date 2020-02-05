@@ -8,16 +8,26 @@
 #include "compiler/dispatch/overload.h"
 #include "core/fn_args.h"
 #include "ir/jump.h"
+#include "ir/local_block_interpretation.h"
 #include "type/qual_type.h"
 
 namespace compiler {
+struct Compiler;  // TODO move into it's own header.
 
 struct JumpDispatchTable {
   static base::expected<JumpDispatchTable> Verify(
       ast::ScopeNode const *node, absl::Span<ir::Jump *const> jumps,
       core::FnArgs<type::QualType> const &args);
 
- // private:
+  // TODO long-term the `jump` parameter should read from `table_`.
+  static absl::flat_hash_map<
+      std::string_view,
+      std::pair<ir::BasicBlock *, core::FnArgs<type::Typed<ir::Results>>>>
+  EmitCall(ir::Jump *jump, Compiler *compiler,
+           core::FnArgs<type::Typed<ir::Results>> args,
+           ir::LocalBlockInterpretation const &block_interp);
+
+  // private:
   absl::flat_hash_map<ir::Jump *, internal::ExprData> table_;
 };
 

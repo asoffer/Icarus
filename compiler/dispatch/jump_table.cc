@@ -1,8 +1,11 @@
 #include "compiler/dispatch/jump_table.h"
 
 #include "base/debug.h"
+#include "compiler/compiler.h"
 #include "compiler/dispatch/match.h"
-#include "parameters_and_arguments.h"
+#include "compiler/dispatch/parameters_and_arguments.h"
+#include "core/fn_params.h"
+#include "ir/inliner.h"
 
 namespace compiler {
 
@@ -39,4 +42,27 @@ base::expected<JumpDispatchTable> JumpDispatchTable::Verify(
   }
   return table;
 }
+
+absl::flat_hash_map<
+    std::string_view,
+    std::pair<ir::BasicBlock *, core::FnArgs<type::Typed<ir::Results>>>>
+JumpDispatchTable::EmitCall(
+    ir::Jump *jump,
+    Compiler *compiler, core::FnArgs<type::Typed<ir::Results>> args,
+    ir::LocalBlockInterpretation const &block_interp) {
+  // TODO actually choose correctly.
+  core::FillMissingArgs(jump->params(), &args, [compiler](auto const &p) {
+    return type::Typed(
+        ir::Results{compiler->Visit(ASSERT_NOT_NULL(p.get()->init_val()),
+                                    EmitValueTag{})},
+        p.type());
+  });
+
+  auto arg_results = PrepareCallArguments(
+      compiler,
+      jump->params().Transform([](auto const &p) { return p.type(); }), args);
+
+  return ir::Inline(compiler->builder(), jump, arg_results, block_interp);
+}
+
 }  // namespace compiler
