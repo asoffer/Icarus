@@ -473,11 +473,18 @@ struct Builder {
     current_.temporaries_to_destroy_.clear();
   }
 
-  constexpr bool more_stmts_allowed() const {
-    return current_.more_stmts_allowed_;
+  enum class BlockTerminationState {
+    kMoreStatements,  // Not at the end of the block yet
+    kNoTerminator,    // Block complete; no `return` or `<<`.
+    kReturn,          // Block completed with `return`
+    kYield,           // Block completed with `<<`.
+  };
+  constexpr BlockTerminationState block_termination_state() const {
+    return current_.block_termination_state_;
   }
-  constexpr void allow_more_stmts() { current_.more_stmts_allowed_ = true; }
-  constexpr void disallow_more_stmts() { current_.more_stmts_allowed_ = false; }
+  constexpr BlockTerminationState& block_termination_state() {
+    return current_.block_termination_state_;
+  }
 
   ICARUS_PRIVATE
   RegOr<bool> EqBool(RegOr<bool> const& lhs, RegOr<bool> const& rhs) {
@@ -509,7 +516,8 @@ struct Builder {
     // This is a pointer to a buffer where temporary allocations can register
     // themselves for deletion.
     std::vector<type::Typed<Reg>> temporaries_to_destroy_;
-    bool more_stmts_allowed_ = true;
+    BlockTerminationState block_termination_state_ =
+        BlockTerminationState::kMoreStatements;
   } current_;
 };
 
@@ -529,14 +537,15 @@ struct SetTemporaries : public base::UseWithScope {
   SetTemporaries(Builder& bldr) : bldr_(bldr) {
     old_temporaries_ = std::exchange(bldr_.current_.temporaries_to_destroy_,
                                      std::vector<type::Typed<Reg>>{});
-    old_more_stmts_allowed_ =
-        std::exchange(bldr_.current_.more_stmts_allowed_, true);
+    old_termination_state_ =
+        std::exchange(bldr_.current_.block_termination_state_,
+                      Builder::BlockTerminationState::kMoreStatements);
   }
   ~SetTemporaries() {}
 
  private:
   std::vector<type::Typed<Reg>> old_temporaries_;
-  bool old_more_stmts_allowed_;
+  Builder::BlockTerminationState old_termination_state_;
   Builder& bldr_;
 };
 

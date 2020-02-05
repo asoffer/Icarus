@@ -417,30 +417,6 @@ core::FnArgs<std::pair<ir::Results, type::QualType>> Compiler::EmitBlockNode(
   ICARUS_SCOPE(PushVec(&data_.yields_stack_)) {
     EmitIrForStatements(this, node->stmts());
 
-    // TODO `allow_more_stmts()` isn't specific enough because it doesn't
-    // distinguish between returns, direct yields, or labelled yields.
-    builder().allow_more_stmts();
-
-    //   // TODO yield args can just be this pair type, making this conversion
-    //   // unnecessary.
-    //   std::vector<std::pair<ast::Expression const *, ir::Results>>
-    //   yield_args; for (auto &arg : data_.yields_stack_.back()) {
-    //     yield_args.emplace_back(arg.expr_, arg.value());
-    //   }
-    //
-    //   // TODO this is tricky. We can easily destroy parameters that we're
-    //   trying to
-    //   // pass to the next scope. Need to really treat these like function
-    //   args and
-    //   // destroy them at the end of the inline call.
-    //   MakeAllDestructions(this, node->body_scope());
-    //
-    //   ASSERT_NOT_NULL(jump_table(node, ""))
-    //       ->EmitInlineCall(
-    //           core::FnArgs<std::pair<ast::Expression const *, ir::Results>>{
-    //               std::move(yield_args), {}},
-    //           *block_map, ctx);
-    //
     for (auto &yield : data_.yields_stack_.back()) {
       // TODO what if they yield named values? Store FnArgs in yield result
       results.pos_emplace(std::move(yield.val_), *qual_type_of(yield.expr_));
@@ -866,7 +842,6 @@ ir::Results Compiler::Visit(ast::ReturnStmt const *node, EmitValueTag) {
     scope = exec->parent;
   }
 
-  builder().disallow_more_stmts();
   builder().ReturnJump();
   return ir::Results{};
 }
@@ -892,7 +867,8 @@ ir::Results Compiler::Visit(ast::YieldStmt const *node, EmitValueTag) {
                                             arg_vals[i].second);
   }
 
-  builder().disallow_more_stmts();
+  builder().block_termination_state() =
+      ir::Builder::BlockTerminationState::kYield;
   return ir::Results{};
 }
 
@@ -1031,7 +1007,10 @@ ir::Results Compiler::Visit(ast::Switch const *node, EmitValueTag) {
       // It must be a jump/yield/return, which we've verified in VerifyType.
       Visit(body.get(), EmitValueTag{});
 
-      if (not all_paths_jump) { builder().allow_more_stmts(); }
+      if (not all_paths_jump) {
+        builder().block_termination_state() =
+            ir::Builder::BlockTerminationState::kMoreStatements;
+      }
     }
 
     builder().CurrentBlock() = next_block;
@@ -1047,7 +1026,10 @@ ir::Results Compiler::Visit(ast::Switch const *node, EmitValueTag) {
   } else {
     // It must be a jump/yield/return, which we've verified in VerifyType.
     Visit(node->cases_.back().first.get(), EmitValueTag{});
-    if (not all_paths_jump) { builder().allow_more_stmts(); }
+    if (not all_paths_jump) {
+      builder().block_termination_state() =
+          ir::Builder::BlockTerminationState::kMoreStatements;
+    }
   }
 
   builder().CurrentBlock() = land_block;

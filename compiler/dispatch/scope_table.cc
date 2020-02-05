@@ -298,16 +298,20 @@ ir::Results ScopeDispatchTable::EmitCall(
 
   // TODO handle results
 
-  bool more = bldr.more_stmts_allowed();
+  auto state = bldr.block_termination_state();
   for (auto const &[scope_def, one_table] : tables_) {
     for (auto const &[node, table] : one_table.blocks) {
       DEBUG_LOG("EmitCall")(node->DebugString());
       bldr.CurrentBlock() = block_interps.at(scope_def)[node];
-      bldr.allow_more_stmts();
+      bldr.block_termination_state() =
+          ir::Builder::BlockTerminationState::kMoreStatements;
       auto yield_args = compiler->EmitBlockNode(node);
 
-      // TODO unconditionally skipping after-handlers is incorrect.
-      if (not bldr.more_stmts_allowed()) { continue; }
+      // TODO skipping after-handlers is incorrect. We need a guaranteed exit path.
+      if (bldr.block_termination_state() ==
+          ir::Builder::BlockTerminationState::kReturn) {
+        continue;
+      }
 
       ir::BlockDef const *block_def = scope_def->block(node->name());
 
@@ -337,8 +341,9 @@ ir::Results ScopeDispatchTable::EmitCall(
                           block_interps.at(scope_def));
     }
   }
-  if (more) { bldr.allow_more_stmts(); }
-  bldr.CurrentBlock() = landing_block;
+
+  bldr.block_termination_state() = state;
+  bldr.CurrentBlock()            = landing_block;
   DEBUG_LOG("EmitCall")(*bldr.CurrentGroup());
   return ir::Results{};
 }

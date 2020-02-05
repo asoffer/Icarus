@@ -57,7 +57,10 @@ void EmitIrForStatements(Compiler *compiler,
           [compiler](type::Typed<ir::Reg> r) {
             compiler->Visit(r.type(), r.get(), EmitDestroyTag{});
           });
-      if (not compiler->builder().more_stmts_allowed()) { break; };
+      if (compiler->builder().block_termination_state() !=
+          ir::Builder::BlockTerminationState::kMoreStatements) {
+        break;
+      }
     }
   }
 }

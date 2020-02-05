@@ -84,7 +84,10 @@ void Builder::UncondJump(BasicBlock *block) {
   CurrentBlock()->jump_ = JumpCmd::Uncond(block);
 }
 
-void Builder::ReturnJump() { CurrentBlock()->jump_ = JumpCmd::Return(); }
+void Builder::ReturnJump() {
+  block_termination_state() = BlockTerminationState::kReturn;
+  CurrentBlock()->jump_     = JumpCmd::Return();
+}
 
 void Builder::CondJump(RegOr<bool> cond, BasicBlock *true_block,
                        BasicBlock *false_block) {
