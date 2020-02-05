@@ -45,18 +45,8 @@ void Compiler::Visit(ast::CommaList const *node, type::Typed<ir::Reg> reg,
   size_t index  = 0;
   auto const &t = reg.type()->as<type::Pointer>().pointee->as<type::Tuple>();
   for (auto &expr : node->exprs_) {
-    if (expr->needs_expansion()) {
-      auto results = Visit(expr.get(), EmitValueTag{});
-      for (size_t i = 0; i < results.size(); ++i) {
-        EmitCopyInit(t.entries_[index], results.GetResult(i),
-                     builder().Field(reg.get(), &t, index));
-        ++index;
-      }
-    } else {
-      Visit(expr.get(), builder().Field(reg.get(), &t, index),
-            EmitCopyInitTag{});
-      ++index;
-    }
+    Visit(expr.get(), builder().Field(reg.get(), &t, index), EmitCopyInitTag{});
+    ++index;
   }
 }
 

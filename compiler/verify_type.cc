@@ -143,12 +143,7 @@ static std::optional<std::vector<type::QualType>> VerifyWithoutSetting(
   results.reserve(exprs.size());
   for (auto const &expr : exprs) {
     auto r = visitor->Visit(expr, VerifyTypeTag{});
-    if (expr->needs_expansion()) {
-      auto &entries = r.type()->as<type::Tuple>().entries_;
-      for (auto *t : entries) { results.emplace_back(t, r.constant()); }
-    } else {
-      results.push_back(r);
-    }
+    results.push_back(r);
   }
   if (absl::c_any_of(results,
                      [](type::QualType const &r) { return not r.ok(); })) {
@@ -2112,18 +2107,6 @@ type::QualType Compiler::Visit(ast::Unop const *node, VerifyTypeTag) {
       }
       NOT_YET();
       return type::QualType::Error();
-    case frontend::Operator::Expand:
-      // NOTE: It doesn't really make sense to ask for the type of an expanded
-      // argument, but since we consider the type of the result of a function
-      // call returning multiple arguments to be a tuple, we do the same here.
-      //
-      if (operand_type->is<type::Tuple>()) {
-        // TODO there should be a way to avoid copying over any of entire type
-        return set_result(node,
-                          type::QualType(operand_type, result.constant()));
-      } else {
-        NOT_YET();  // Log an error. can't expand a non-tuple.
-      }
     case frontend::Operator::Not:
       if (operand_type == type::Bool or operand_type->is<type::Enum>() or
           operand_type->is<type::Flags>()) {

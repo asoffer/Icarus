@@ -1138,19 +1138,6 @@ ir::Results Compiler::Visit(ast::Unop const *node, EmitValueTag) {
     case frontend::Operator::Ensure: {
       NOT_YET();
     } break;
-    case frontend::Operator::Expand: {
-      ir::Results tuple_val = Visit(node->operand(), EmitValueTag{});
-      ir::Reg tuple_reg     = tuple_val.get<ir::Reg>(0);
-      type::Tuple const *tuple_type =
-          &type_of(node->operand())->as<type::Tuple>();
-      ir::Results results;
-      for (size_t i = 0; i < tuple_type->size(); ++i) {
-        results.append(
-            ir::PtrFix(builder().Field(tuple_reg, tuple_type, i).get(),
-                       tuple_type->entries_[i]));
-      }
-      return results;
-    }
     case frontend::Operator::VariadicPack: {
       NOT_YET();
     } break;

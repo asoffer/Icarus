@@ -53,16 +53,15 @@ SourceCursor NextSimpleWord(SourceCursor *cursor) {
 }
 
 static absl::flat_hash_map<std::string_view,
-                           std::variant<Operator, Syntax>> const Keywords = {
+                           std::variant<Operator, Syntax>> const kKeywords = {
     {"which", {Operator::Which}},   {"print", {Operator::Print}},
     {"ensure", {Operator::Ensure}}, {"needs", {Operator::Needs}},
     {"import", {Operator::Import}}, {"flags", {Syntax::Flags}},
     {"enum", {Syntax::Enum}},       {"struct", {Syntax::Struct}},
-    {"return", {Operator::Return}}, {"yield", {Operator::Yield}},
-    {"goto", {Operator::Goto}},     {"jump", {Syntax::Jump}},
-    {"switch", {Syntax::Switch}},   {"when", {Operator::When}},
-    {"as", {Operator::As}},         {"copy", {Operator::Copy}},
-    {"move", {Operator::Move}}};
+    {"return", {Operator::Return}}, {"goto", {Operator::Goto}},
+    {"jump", {Syntax::Jump}},       {"switch", {Syntax::Switch}},
+    {"when", {Operator::When}},     {"as", {Operator::As}},
+    {"copy", {Operator::Copy}},     {"move", {Operator::Move}}};
 
 static bool BeginsWith(std::string_view prefix, std::string_view s) {
   if (s.size() < prefix.size()) { return false; }
@@ -74,53 +73,33 @@ static bool BeginsWith(std::string_view prefix, std::string_view s) {
   return true;
 }
 
+// Note: The order here is somewhat important. Because we choose the first
+// match, we cannot, for example, put `:` before `::=`.
 static const std::array<
     std::pair<std::string_view, std::variant<Operator, Syntax>>, 45>
-    Ops = {{
-        {"@", {Operator::At}},
-        {",", {Operator::Comma}},
-        {"[*]", {Operator::BufPtr}},
-        {"$", {Operator::Eval}},
-        {"+=", {Operator::AddEq}},
-        {"+", {Operator::Add}},
-        {"--", {Syntax::Hole}},
-        {"-=", {Operator::SubEq}},
-        {"->", {Operator::Arrow}},
-        {"-", {Operator::Sub}},
-        {"*=", {Operator::MulEq}},
-        {"*", {Operator::Mul}},
-        {"%=", {Operator::ModEq}},
-        {"%", {Operator::Mod}},
-        {"&=", {Operator::AndEq}},
-        {"&", {Operator::And}},
-        {"|=", {Operator::OrEq}},
-        {"|", {Operator::Or}},
-        {"^=", {Operator::XorEq}},
-        {"^", {Operator::Xor}},
-        {">=", {Operator::Ge}},
-        {">", {Operator::Gt}},
-        {"::=", {Operator::DoubleColonEq}},
-        {"::", {Operator::DoubleColon}},
-        {":=", {Operator::ColonEq}},
-        {":?", {Operator::TypeOf}},
-        {":", {Operator::Colon}},
-        {"<<", {Operator::Expand}},
-        {"..", {Operator::VariadicPack}},
-        {"<=", {Operator::Le}},
-        {"<", {Operator::Lt}},
-        {"!=", {Operator::Ne}},
-        {"!", {Operator::Not}},
-        {"==", {Operator::Eq}},
-        {"=>", {Operator::Rocket}},
-        {"=", {Operator::Assign}},
-        {"'", {Operator::Call}},
-        {"(", {Syntax::LeftParen}},
-        {")", {Syntax::RightParen}},
-        {"[", {Syntax::LeftBracket}},
-        {"]", {Syntax::RightBracket}},
-        {"{", {Syntax::LeftBrace}},
-        {"}", {Syntax::RightBrace}},
-        {";", {Syntax::Semicolon}},
+    kOps = {{
+        {"@", {Operator::At}},         {",", {Operator::Comma}},
+        {"[*]", {Operator::BufPtr}},   {"$", {Operator::Eval}},
+        {"+=", {Operator::AddEq}},     {"+", {Operator::Add}},
+        {"--", {Syntax::Hole}},        {"-=", {Operator::SubEq}},
+        {"->", {Operator::Arrow}},     {"-", {Operator::Sub}},
+        {"*=", {Operator::MulEq}},     {"*", {Operator::Mul}},
+        {"%=", {Operator::ModEq}},     {"%", {Operator::Mod}},
+        {"&=", {Operator::AndEq}},     {"&", {Operator::And}},
+        {"|=", {Operator::OrEq}},      {"|", {Operator::Or}},
+        {"^=", {Operator::XorEq}},     {"^", {Operator::Xor}},
+        {">=", {Operator::Ge}},        {">", {Operator::Gt}},
+        {"!", {Operator::Not}},        {"::=", {Operator::DoubleColonEq}},
+        {":?", {Operator::TypeOf}},    {"::", {Operator::DoubleColon}},
+        {":=", {Operator::ColonEq}},   {"..", {Operator::VariadicPack}},
+        {":", {Operator::Colon}},      {"<<", {Operator::Yield}},
+        {"<=", {Operator::Le}},        {"<", {Operator::Lt}},
+        {"!=", {Operator::Ne}},        {"==", {Operator::Eq}},
+        {"=>", {Operator::Rocket}},    {"=", {Operator::Assign}},
+        {"'", {Operator::Call}},       {"(", {Syntax::LeftParen}},
+        {")", {Syntax::RightParen}},   {"[", {Syntax::LeftBracket}},
+        {"]", {Syntax::RightBracket}}, {"{", {Syntax::LeftBrace}},
+        {"}", {Syntax::RightBrace}},   {";", {Syntax::Semicolon}},
         {".", {Syntax::Dot}},
     }};
 
@@ -138,7 +117,7 @@ Lexeme NextOperator(SourceCursor *cursor, Source *src) {
   }
 #endif
 
-  for (auto [prefix, x] : Ops) {
+  for (auto [prefix, x] : kOps) {
     if (BeginsWith(prefix, cursor->view())) {
       auto span = cursor->remove_prefix(prefix.size()).range();
       return std::visit([&](auto x) { return Lexeme(x, span); }, x);
@@ -219,7 +198,7 @@ Lexeme NextWord(SourceCursor *cursor, Source *src) {
     return Lexeme(std::make_unique<ast::BuiltinFn>(span, iter->second));
   }
 
-  if (auto iter = Keywords.find(token); iter != Keywords.end()) {
+  if (auto iter = kKeywords.find(token); iter != kKeywords.end()) {
     return std::visit([&](auto x) { return Lexeme(x, span); }, iter->second);
   }
 

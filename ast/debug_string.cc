@@ -35,7 +35,7 @@ char const *OpStr(frontend::Operator op) {
     case frontend::Operator::Gt: return " > ";
     case frontend::Operator::Goto: return "goto ";
     case frontend::Operator::Return: return "return ";
-    case frontend::Operator::Yield: return "yield ";
+    case frontend::Operator::Yield: return "<< ";
     case frontend::Operator::Print: return "print ";
     case frontend::Operator::Which: return "which ";
     case frontend::Operator::Not: return "!";
@@ -43,7 +43,6 @@ char const *OpStr(frontend::Operator op) {
     case frontend::Operator::Eval: return "$";
     case frontend::Operator::Needs: return "needs ";
     case frontend::Operator::Ensure: return "ensure ";
-    case frontend::Operator::Expand: return "<< ";
     case frontend::Operator::VariadicPack: return "..";
     case frontend::Operator::BufPtr: return "[*]";
     case frontend::Operator::Copy: return "copy ";

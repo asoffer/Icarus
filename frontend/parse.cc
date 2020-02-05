@@ -90,10 +90,10 @@ constexpr size_t non_assoc   = 2;
 constexpr size_t chain_assoc = 3;
 constexpr size_t assoc_mask  = 3;
 
-constexpr size_t precedence(frontend::Operator op) {
+constexpr size_t precedence(Operator op) {
   switch (op) {
 #define OPERATOR_MACRO(name, symbol, tag, prec, assoc)                         \
-  case frontend::Operator::name:                                               \
+  case Operator::name:                                                         \
     return (((prec) << 2) + (assoc));
 #include "frontend/lex/operators.xmacro.h"
 #undef OPERATOR_MACRO
@@ -105,12 +105,11 @@ std::unique_ptr<ast::Node> AddHashtag(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &) {
   auto expr = move_as<ast::Expression>(nodes.back());
-  auto iter =
-      BuiltinHashtagMap.find(nodes.front()->as<frontend::Token>().token);
+  auto iter = BuiltinHashtagMap.find(nodes.front()->as<Token>().token);
   if (iter != BuiltinHashtagMap.end()) {
     expr->hashtags_.emplace_back(iter->second);
   } else {
-    NOT_YET(nodes.front()->as<frontend::Token>().token);
+    NOT_YET(nodes.front()->as<Token>().token);
   }
   return expr;
 }
@@ -145,7 +144,8 @@ std::unique_ptr<ast::Node> OneBracedStatement(
 }
 
 std::unique_ptr<ast::Node> EmptyBraces(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, diagnostic::DiagnosticConsumer&) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &) {
   auto stmts  = std::make_unique<Statements>();
   stmts->span = SourceRange(nodes[0]->span.begin(), nodes[1]->span.end());
   return stmts;
@@ -153,9 +153,9 @@ std::unique_ptr<ast::Node> EmptyBraces(
 
 std::unique_ptr<ast::Node> BuildControlHandler(
     std::unique_ptr<ast::Node> node) {
-  auto &tk = node->as<frontend::Token>().token;
+  auto &tk = node->as<Token>().token;
   if (tk == "return") { return std::make_unique<ast::ReturnStmt>(node->span); }
-  if (tk == "yield") { return std::make_unique<ast::YieldStmt>(node->span); }
+  if (tk == "<<") { return std::make_unique<ast::YieldStmt>(node->span); }
   UNREACHABLE();
 }
 
@@ -186,10 +186,10 @@ std::unique_ptr<ast::Node> BracedStatementsJumpSameLineEnd(
 std::unique_ptr<ast::Node> BuildRightUnop(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  const std::string &tk = nodes[1]->as<frontend::Token>().token;
+  const std::string &tk = nodes[1]->as<Token>().token;
   if (tk == ":?") {
     SourceRange span(nodes[0]->span.begin(), nodes[1]->span.end());
-    auto unop = std::make_unique<ast::Unop>(span, frontend::Operator::TypeOf,
+    auto unop = std::make_unique<ast::Unop>(span, Operator::TypeOf,
                                             move_as<ast::Expression>(nodes[0]));
 
     if (unop->operand()->is<ast::Declaration>()) {
@@ -220,7 +220,7 @@ std::unique_ptr<ast::Node> BuildCallImpl(
 
     for (auto &expr : cl->exprs_) {
       if (auto *b = expr->if_as<ast::Binop>();
-          b and b->op() == frontend::Operator::Assign) {
+          b and b->op() == Operator::Assign) {
         if (positional_error_ranges.empty()) {
           last_named_range_before_error = b->lhs()->span;
         }
@@ -243,7 +243,7 @@ std::unique_ptr<ast::Node> BuildCallImpl(
     }
   } else {
     if (ast::Binop *b = args_expr->if_as<ast::Binop>();
-        b and b->op() == frontend::Operator::Assign) {
+        b and b->op() == Operator::Assign) {
       auto [lhs, rhs] = std::move(*b).extract();
       args.emplace_back(std::string{lhs->as<ast::Identifier>().token()},
                         std::move(rhs));
@@ -274,9 +274,8 @@ std::unique_ptr<ast::Node> BuildCall(
 std::unique_ptr<ast::Node> BuildLeftUnop(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  const std::string &tk = nodes[0]->as<frontend::Token>().token;
+  const std::string &tk = nodes[0]->as<Token>().token;
 
-  using frontend::Operator;
   if (tk == "import") {
     auto span = SourceRange(nodes[0]->span.begin(), nodes[1]->span.end());
     return std::make_unique<ast::Import>(std::move(span),
@@ -322,7 +321,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
       exprs.push_back(move_as<ast::Expression>(nodes[1]));
     }
     return std::make_unique<ast::ReturnStmt>(std::move(span), std::move(exprs));
-  } else if (tk == "yield") {
+  } else if (tk == "<<") {
     auto span =
         SourceRange(nodes.front()->span.begin(), nodes.back()->span.end());
     std::vector<std::unique_ptr<ast::Expression>> exprs;
@@ -340,14 +339,14 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
   }
 
   static absl::flat_hash_map<std::string_view, Operator> const kUnopMap{
-      {"*", Operator::Mul},          {"[*]", Operator::BufPtr},
-      {"@", Operator::At},           {"import", Operator::Import},
-      {"&", Operator::And},          {"which", Operator::Which},
-      {"-", Operator::Sub},          {"needs", Operator::Needs},
-      {"!", Operator::Not},          {"ensure", Operator::Ensure},
-      {"<<", Operator::Expand},      {"copy", frontend::Operator::Copy},
-      {"$", Operator::Eval},         {"move", frontend::Operator::Move},
-      {"..", Operator::VariadicPack}};
+      {"*", Operator::Mul},         {"[*]", Operator::BufPtr},
+      {"@", Operator::At},          {"import", Operator::Import},
+      {"&", Operator::And},         {"which", Operator::Which},
+      {"-", Operator::Sub},         {"needs", Operator::Needs},
+      {"!", Operator::Not},         {"copy", Operator::Copy},
+      {"ensure", Operator::Ensure}, {"move", Operator::Move},
+      {"$", Operator::Eval},        {"..", Operator::VariadicPack},
+  };
 
   SourceRange span(nodes[0]->span.begin(), nodes[1]->span.end());
   auto unop = std::make_unique<ast::Unop>(span, kUnopMap.at(tk),
@@ -364,7 +363,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
 std::unique_ptr<ast::Node> BuildChainOp(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  auto op = nodes[1]->as<frontend::Token>().op;
+  auto op = nodes[1]->as<Token>().op;
   std::unique_ptr<ast::ChainOp> chain;
 
   // Add to a chain so long as the precedence levels match. The only thing at
@@ -509,7 +508,7 @@ template <bool IsConst>
 std::unique_ptr<ast::Node> BuildDeclaration(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  auto op = nodes[1]->as<frontend::Token>().op;
+  auto op = nodes[1]->as<Token>().op;
   SourceRange span(nodes.front()->span.begin(), nodes.back()->span.end());
   std::string id;
   if (nodes[0]->is<ast::Identifier>()) {
@@ -517,8 +516,7 @@ std::unique_ptr<ast::Node> BuildDeclaration(
   }
 
   std::unique_ptr<ast::Expression> type_expr, init_val;
-  if (op == frontend::Operator::Colon or
-      op == frontend::Operator::DoubleColon) {
+  if (op == Operator::Colon or op == Operator::DoubleColon) {
     type_expr = move_as<ast::Expression>(nodes[2]);
   } else {
     init_val = move_as<ast::Expression>(nodes[2]);
@@ -777,24 +775,18 @@ std::unique_ptr<ast::Node> SugaredExtendScopeNode(
 std::unique_ptr<ast::Node> BuildBinaryOperator(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  static absl::flat_hash_map<std::string_view, frontend::Operator> const
-      chain_ops{
-          {",", frontend::Operator::Comma}, {"==", frontend::Operator::Eq},
-          {"!=", frontend::Operator::Ne},   {"<", frontend::Operator::Lt},
-          {">", frontend::Operator::Gt},    {"<=", frontend::Operator::Le},
-          {">=", frontend::Operator::Ge},   {"&", frontend::Operator::And},
-          {"|", frontend::Operator::Or},    {"^", frontend::Operator::Xor},
-      };
+  static absl::flat_hash_map<std::string_view, Operator> const kChainOps{
+      {",", Operator::Comma}, {"==", Operator::Eq}, {"!=", Operator::Ne},
+      {"<", Operator::Lt},    {">", Operator::Gt},  {"<=", Operator::Le},
+      {">=", Operator::Ge},   {"&", Operator::And}, {"|", Operator::Or},
+      {"^", Operator::Xor}};
 
-  std::string const &tk = nodes[1]->as<frontend::Token>().token;
-  {
-    auto iter = chain_ops.find(tk);
-    if (iter != chain_ops.end()) {
-      nodes[1]->as<frontend::Token>().op = iter->second;
-      return (iter->second == frontend::Operator::Comma)
-                 ? BuildCommaList(std::move(nodes), diag)
-                 : BuildChainOp(std::move(nodes), diag);
-    }
+  std::string const &tk = nodes[1]->as<Token>().token;
+  if (auto iter = kChainOps.find(tk); iter != kChainOps.end()) {
+    nodes[1]->as<Token>().op = iter->second;
+    return (iter->second == Operator::Comma)
+               ? BuildCommaList(std::move(nodes), diag)
+               : BuildChainOp(std::move(nodes), diag);
   }
 
   if (tk == ".") {
@@ -827,7 +819,7 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
 
     } else {
       return std::make_unique<ast::Binop>(move_as<ast::Expression>(nodes[0]),
-                                          frontend::Operator::Assign,
+                                          Operator::Assign,
                                           move_as<ast::Expression>(nodes[2]));
     }
   } else if (tk == "as") {
@@ -847,15 +839,12 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
                          move_as<ast::Expression>(nodes[0]), diag);
   }
 
-  static absl::flat_hash_map<std::string_view, frontend::Operator> const
-      symbols = {
-          {"->", frontend::Operator::Arrow}, {"|=", frontend::Operator::OrEq},
-          {"&=", frontend::Operator::AndEq}, {"^=", frontend::Operator::XorEq},
-          {"+=", frontend::Operator::AddEq}, {"-=", frontend::Operator::SubEq},
-          {"*=", frontend::Operator::MulEq}, {"/=", frontend::Operator::DivEq},
-          {"%=", frontend::Operator::ModEq}, {"+", frontend::Operator::Add},
-          {"-", frontend::Operator::Sub},    {"*", frontend::Operator::Mul},
-          {"/", frontend::Operator::Div},    {"%", frontend::Operator::Mod}};
+  static absl::flat_hash_map<std::string_view, Operator> const symbols = {
+      {"->", Operator::Arrow}, {"|=", Operator::OrEq},  {"&=", Operator::AndEq},
+      {"^=", Operator::XorEq}, {"+=", Operator::AddEq}, {"-=", Operator::SubEq},
+      {"*=", Operator::MulEq}, {"/=", Operator::DivEq}, {"%=", Operator::ModEq},
+      {"+", Operator::Add},    {"-", Operator::Sub},    {"*", Operator::Mul},
+      {"/", Operator::Div},    {"%", Operator::Mod}};
   return std::make_unique<ast::Binop>(move_as<ast::Expression>(nodes[0]),
                                       symbols.at(tk),
                                       move_as<ast::Expression>(nodes[2]));
@@ -942,8 +931,8 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
     diagnostic::DiagnosticConsumer &diag) {
   // TODO should probably not do this with a token but some sort of enumerator
   // so we can ensure coverage/safety.
-  ASSERT(nodes[0], InheritsFrom<frontend::Token>());
-  auto const &tk = nodes[0]->as<frontend::Token>().token;
+  ASSERT(nodes[0], InheritsFrom<Token>());
+  auto const &tk = nodes[0]->as<Token>().token;
   if (tk == "switch") {
     auto sw   = BuildSwitch(move_as<Statements>(nodes[4]), diag);
     sw->expr_ = move_as<ast::Expression>(nodes[2]);
@@ -989,8 +978,8 @@ std::unique_ptr<ast::Node> BuildConcreteStruct(
 std::unique_ptr<ast::Node> BuildKWBlock(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  if (nodes[0]->is<frontend::Token>()) {
-    std::string const &tk = nodes[0]->as<frontend::Token>().token;
+  if (nodes[0]->is<Token>()) {
+    std::string const &tk = nodes[0]->as<Token>().token;
 
     if (bool is_enum = (tk == "enum"); is_enum or tk == "flags") {
       return BuildEnumOrFlagLiteral(std::move(nodes),
@@ -1050,9 +1039,9 @@ std::unique_ptr<ast::Node> drop_all_but(
 std::unique_ptr<ast::Node> CombineColonEq(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  auto *tk_node = &nodes[0]->as<frontend::Token>();
+  auto *tk_node = &nodes[0]->as<Token>();
   tk_node->token += "=";  // Change : to := and :: to ::=
-  tk_node->op = frontend::Operator::ColonEq;
+  tk_node->op = Operator::ColonEq;
   return drop_all_but<0>(std::move(nodes), diag);
 }
 
@@ -1062,7 +1051,7 @@ std::unique_ptr<ast::Node> ReservedKeywords(
     diagnostic::DiagnosticConsumer &diag) {
   (diag.Consume(diagnostic::ReservedKeyword{
        .range   = nodes[ReservedIndices]->span,
-       .keyword = nodes[ReservedIndices]->as<frontend::Token>().token,
+       .keyword = nodes[ReservedIndices]->as<Token>().token,
    }),
    ...);
   return std::make_unique<ast::Identifier>(nodes[ReturnIndex]->span,
@@ -1070,10 +1059,11 @@ std::unique_ptr<ast::Node> ReservedKeywords(
 }
 
 std::unique_ptr<ast::Node> BuildOperatorIdentifier(
-    absl::Span<std::unique_ptr<ast::Node>> nodes, diagnostic::DiagnosticConsumer &diag) {
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
   auto span = nodes[1]->span;
-  return std::make_unique<ast::Identifier>(
-      span, move_as<frontend::Token>(nodes[1])->token);
+  return std::make_unique<ast::Identifier>(span,
+                                           move_as<Token>(nodes[1])->token);
 }
 
 constexpr uint64_t OP_B = op_b | comma | colon | eq;
@@ -1086,7 +1076,7 @@ constexpr uint64_t KW_BLOCK = kw_struct | kw_block_head | kw_block;
 // list (second line of each rule). If so, then the function given in the third
 // line of each rule is applied, replacing the matched nodes. Lastly, the new
 // nodes type is set to the given type in the first line.
-auto Rules = std::array{
+static std::array Rules{
     ParseRule(fn_expr, {EXPR, fn_arrow, EXPR | kw_block}, BuildBinaryOperator),
     ParseRule(expr, {EXPR, (op_bl | OP_B), EXPR}, BuildBinaryOperator),
     ParseRule(op_b, {colon, eq}, CombineColonEq),
@@ -1174,6 +1164,7 @@ auto Rules = std::array{
     ParseRule(l_brace, {l_brace, newline}, drop_all_but<0>),
     ParseRule(stmts, {stmts, newline}, drop_all_but<0>),
 
+    // TODO also need to handle labels with yields.
     ParseRule(stmts, {op_lt}, BuildControlHandler),
     ParseRule(block_expr, {expr, braced_stmts}, BuildBlockNode),
     ParseRule(scope_expr, {fn_call_expr, block_expr}, BuildScopeNode),

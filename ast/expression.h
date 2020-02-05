@@ -19,7 +19,6 @@ struct Expression : public Node {
 
   virtual ~Expression() {}
 
-  virtual bool needs_expansion() const { return false; }
   std::vector<Hashtag> hashtags_;
   bool parenthesized_ = false;
 

@@ -565,7 +565,6 @@ struct CommaList : Expression {
   std::vector<std::unique_ptr<Expression>> &&extract() && {
     return std::move(exprs_);
   }
-  bool needs_expansion() const override { return not parenthesized_; }
 
   std::vector<std::unique_ptr<Expression>> exprs_;
 };
@@ -1267,10 +1266,6 @@ struct Unop : Expression {
   ~Unop() override {}
 
   ICARUS_AST_VIRTUAL_METHODS;
-
-  bool needs_expansion() const override {
-    return not parenthesized_ and op() == frontend::Operator::Expand;
-  }
 
   frontend::Operator op() const { return op_; }
   Expression const *operand() const { return operand_.get(); }
