@@ -176,6 +176,10 @@ void AssignScope::Visit(ast::Jump *node, ast::Scope *scope) {
   SetAllScopes(this, node->stmts(), node->body_scope());
 }
 
+void AssignScope::Visit(ast::Label *node, ast::Scope *scope) {
+  node->scope_ = scope;
+}
+
 void AssignScope::Visit(ast::PrintStmt *node, ast::Scope *scope) {
   node->scope_ = scope;
   SetAllScopes(this, node->exprs(), scope);

@@ -94,6 +94,8 @@ void ExtractJumps::Visit(ast::Goto const *node) {
   data_[static_cast<std::underlying_type_t<Kind>>(Kind::Jump)].push_back(node);
 }
 
+void ExtractJumps::Visit(ast::Label const *node) {}
+
 void ExtractJumps::Visit(ast::Jump const *node) {
   // TODO Can you return or yield or jump from inside a jump block?!
   for (auto const &param : node->params()) { Visit(param.value.get()); }

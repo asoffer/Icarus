@@ -23,6 +23,7 @@
 #include "core/fn_params.h"
 #include "core/ordered_fn_args.h"
 #include "frontend/lex/operators.h"
+#include "ir/label.h"
 #include "ir/results.h"
 #include "type/basic_type.h"
 
@@ -288,7 +289,6 @@ struct Declaration : Expression {
   std::unique_ptr<Expression> type_expr_, init_val_;
   Flags flags_;
 };
-
 
 // DesignatedInitializer:
 //
@@ -727,97 +727,6 @@ struct FunctionLiteral : ScopeExpr<FnScope> {
   bool is_short_;
 };
 
-// Terminal:
-// Represents any node that is not an identifier but has no sub-parts. These are
-// typically numeric literals, or expressions that are also keywords such as
-// `true`, `false`, or `null`.
-struct Terminal : Expression {
-  template <typename T,
-            std::enable_if_t<std::is_trivially_copyable_v<T>, int> = 0>
-  explicit Terminal(frontend::SourceRange span, T value, type::BasicType t)
-      : Expression(std::move(span)), basic_(t) {
-    static_cast<void>(value);
-    if constexpr (std::is_same_v<T, bool>) {
-      b_ = value;
-    } else if constexpr (std::is_integral_v<T> and std::is_signed_v<T>) {
-      i64_ = value;
-    } else if constexpr (std::is_integral_v<T> and std::is_unsigned_v<T>) {
-      u64_ = value;
-    } else if constexpr (std::is_same_v<T, std::string_view>) {
-      sv_ = value;
-    } else if constexpr (std::is_same_v<T, float>) {
-      f32_ = value;
-    } else if constexpr (std::is_same_v<T, double>) {
-      f64_ = value;
-    } else if constexpr (std::is_same_v<T, type::BasicType>) {
-      t_ = value;
-    } else {
-      UNREACHABLE(typeid(T).name());
-    }
-  }
-  ~Terminal() override {}
-
-  type::BasicType basic_type() const { return basic_; }
-
-  // TODO remove. This should be a variant or union.
-  ir::Results value() const {
-    switch (basic_) {
-      using type::BasicType;
-      case BasicType::Int8: return ir::Results{static_cast<int8_t>(i64_)};
-      case BasicType::Nat8: return ir::Results{static_cast<uint8_t>(u64_)};
-      case BasicType::Int16: return ir::Results{static_cast<int16_t>(i64_)};
-      case BasicType::Nat16: return ir::Results{static_cast<uint16_t>(u64_)};
-      case BasicType::Int32: return ir::Results{static_cast<int32_t>(i64_)};
-      case BasicType::Nat32: return ir::Results{static_cast<uint32_t>(u64_)};
-      case BasicType::Int64: return ir::Results{i64_};
-      case BasicType::Nat64: return ir::Results{u64_};
-      case BasicType::Float32: return ir::Results{f32_};
-      case BasicType::Float64: return ir::Results{f64_};
-      case BasicType::ByteView: return ir::Results{sv_};
-      case BasicType::Bool: return ir::Results{b_};
-      case BasicType::Type_: return ir::Results{type::Prim(t_)};
-      default:;
-    }
-    UNREACHABLE();
-  }
-
-  // TODO rename to value_as, or something like that.
-  template <typename T>
-  T as() const {
-    if constexpr (std::is_integral_v<T> and std::is_signed_v<T>) {
-      return static_cast<T>(i64_);
-    } else if constexpr (std::is_integral_v<T> and std::is_unsigned_v<T>) {
-      return static_cast<T>(u64_);
-    } else if constexpr (std::is_same_v<T, bool>) {
-      return b_;
-    } else if constexpr (std::is_same_v<T, std::string_view>) {
-      return sv_;
-    } else if constexpr (std::is_same_v<T, type::BasicType>) {
-      return t_;
-    } else if constexpr (std::is_same_v<T, float>) {
-      return f32_;
-    } else if constexpr (std::is_same_v<T, double>) {
-      return f64_;
-    } else {
-      NOT_YET();
-    }
-  }
-
-  ICARUS_AST_VIRTUAL_METHODS;
-
- private:
-  type::BasicType basic_;
-  union {
-    bool b_;
-    int64_t i64_;
-    uint64_t u64_;
-    float f32_;
-    double f64_;
-    std::string_view sv_;
-    type::BasicType t_;
-  };
-};
-
 // Identifier:
 // Represents any user-defined identifier.
 struct Identifier : Expression {
@@ -836,6 +745,80 @@ struct Identifier : Expression {
  private:
   std::string token_;
   Declaration const *decl_ = nullptr;
+};
+
+// Goto:
+// Represents a statement describing where a block should jump after completion.
+//
+// Example (in context of a scope):
+//  ```
+//  while ::= scope {
+//    init ::= jump(b: bool) {
+//      switch (b) {
+//        goto do()   when true
+//        goto exit() when false
+//      }
+//    }
+//    do ::= block {
+//      before ::= () -> () {}
+//      after ::= jump() { goto start() }
+//    }
+//    done ::= () -> () {}
+//  }
+//  ```
+//
+//  Note: We generally try to keep these alphabetical, but in this case, the
+//  body depends on `Identifier`.
+struct Goto : Node {
+  explicit Goto(frontend::SourceRange span,
+                std::vector<std::unique_ptr<Call>> calls)
+      : Node(std::move(span)) {
+    for (auto &call : calls) {
+      auto [callee, ordered_args] = std::move(*call).extract();
+      if (auto *id = callee->if_as<Identifier>()) {
+        options_.emplace_back(std::string{id->token()},
+                              std::move(ordered_args).DropOrder());
+      } else {
+        UNREACHABLE();
+      }
+    }
+  }
+
+  ICARUS_AST_VIRTUAL_METHODS;
+
+  // A jump option is a collection of blocks that may be jumped to and the
+  // arguments to pass to such a block. When evaluating jump options, the option
+  // is chose if the collection of blocks refers to a block that is present on
+  // the scope node. In that case, the arguments are evaluated and passed to it.
+  // Otherwise, the option is discarded and the next option in the `options_`
+  // container is chosen.
+  struct JumpOption {
+    explicit JumpOption(std::string name,
+                        core::FnArgs<std::unique_ptr<Expression>> a)
+        : block_(std::move(name)), args_(std::move(a)) {}
+    JumpOption(JumpOption const &)     = default;
+    JumpOption(JumpOption &&) noexcept = default;
+    JumpOption &operator=(JumpOption const &) = default;
+    JumpOption &operator=(JumpOption &&) noexcept = default;
+
+    std::string_view block() const { return block_; }
+    core::FnArgs<std::unique_ptr<Expression>> const &args() const {
+      return args_;
+    }
+    core::FnArgs<std::unique_ptr<Expression>> &args() { return args_; }
+
+   private:
+    std::string block_;
+    core::FnArgs<std::unique_ptr<Expression>> args_;
+  };
+
+  absl::Span<JumpOption const> options() const { return options_; }
+  absl::Span<JumpOption> options() { return absl::MakeSpan(options_); }
+
+ private:
+  // A jump will evaluate at compile-time to the first option for which the
+  // scope node has all possible blocks.
+  std::vector<JumpOption> options_;
 };
 
 // Import:
@@ -888,75 +871,23 @@ struct Index : Expression {
   std::unique_ptr<Expression> lhs_, rhs_;
 };
 
-// Goto:
-// Represents a statement describing where a block should jump after completion.
+// Label:
+// Represents a label which can be the target of a yield statement in a scope.
+// Other languages used labels for "labelled-break", and this is a similar idea.
 //
-// Example (in context of a scope):
-//  ```
-//  while ::= scope {
-//    init ::= jump(b: bool) {
-//      switch (b) {
-//        goto do()   when true
-//        goto exit() when false
-//      }
-//    }
-//    do ::= block {
-//      before ::= () -> () {}
-//      after ::= jump() { goto start() }
-//    }
-//    done ::= () -> () {}
-//  }
-//  ```
-struct Goto : Node {
-  explicit Goto(frontend::SourceRange span,
-                std::vector<std::unique_ptr<Call>> calls)
-      : Node(std::move(span)) {
-    for (auto &call : calls) {
-      auto [callee, ordered_args] = std::move(*call).extract();
-      if (auto *id = callee->if_as<Identifier>()) {
-        options_.emplace_back(std::string{id->token()},
-                              std::move(ordered_args).DropOrder());
-      } else {
-        UNREACHABLE();
-      }
-    }
-  }
+// Example:
+// `#.my_label`
+struct Label : Expression {
+  explicit Label(frontend::SourceRange span, std::string label)
+      : Expression(std::move(span)), label_(std::move(label)) {}
+  ~Label() override {}
+
+  ir::Label label() const { return ir::Label(label_); }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
-  // A jump option is a collection of blocks that may be jumped to and the
-  // arguments to pass to such a block. When evaluating jump options, the option
-  // is chose if the collection of blocks refers to a block that is present on
-  // the scope node. In that case, the arguments are evaluated and passed to it.
-  // Otherwise, the option is discarded and the next option in the `options_`
-  // container is chosen.
-  struct JumpOption {
-    explicit JumpOption(std::string name,
-                        core::FnArgs<std::unique_ptr<Expression>> a)
-        : block_(std::move(name)), args_(std::move(a)) {}
-    JumpOption(JumpOption const &)     = default;
-    JumpOption(JumpOption &&) noexcept = default;
-    JumpOption &operator=(JumpOption const &) = default;
-    JumpOption &operator=(JumpOption &&) noexcept = default;
-
-    std::string_view block() const { return block_; }
-    core::FnArgs<std::unique_ptr<Expression>> const &args() const {
-      return args_;
-    }
-    core::FnArgs<std::unique_ptr<Expression>> &args() { return args_; }
-
-   private:
-    std::string block_;
-    core::FnArgs<std::unique_ptr<Expression>> args_;
-  };
-
-  absl::Span<JumpOption const> options() const { return options_; }
-  absl::Span<JumpOption> options() { return absl::MakeSpan(options_); }
-
- private:
-  // A jump will evaluate at compile-time to the first option for which the
-  // scope node has all possible blocks.
-  std::vector<JumpOption> options_;
+  private:
+  std::string label_;
 };
 
 // Jump:
@@ -1248,6 +1179,97 @@ struct Switch : Expression {
   std::unique_ptr<Expression> expr_;
   std::vector<std::pair<std::unique_ptr<Node>, std::unique_ptr<Expression>>>
       cases_;
+};
+
+// Terminal:
+// Represents any node that is not an identifier but has no sub-parts. These are
+// typically numeric literals, or expressions that are also keywords such as
+// `true`, `false`, or `null`.
+struct Terminal : Expression {
+  template <typename T,
+            std::enable_if_t<std::is_trivially_copyable_v<T>, int> = 0>
+  explicit Terminal(frontend::SourceRange span, T value, type::BasicType t)
+      : Expression(std::move(span)), basic_(t) {
+    static_cast<void>(value);
+    if constexpr (std::is_same_v<T, bool>) {
+      b_ = value;
+    } else if constexpr (std::is_integral_v<T> and std::is_signed_v<T>) {
+      i64_ = value;
+    } else if constexpr (std::is_integral_v<T> and std::is_unsigned_v<T>) {
+      u64_ = value;
+    } else if constexpr (std::is_same_v<T, std::string_view>) {
+      sv_ = value;
+    } else if constexpr (std::is_same_v<T, float>) {
+      f32_ = value;
+    } else if constexpr (std::is_same_v<T, double>) {
+      f64_ = value;
+    } else if constexpr (std::is_same_v<T, type::BasicType>) {
+      t_ = value;
+    } else {
+      UNREACHABLE(typeid(T).name());
+    }
+  }
+  ~Terminal() override {}
+
+  type::BasicType basic_type() const { return basic_; }
+
+  // TODO remove. This should be a variant or union.
+  ir::Results value() const {
+    switch (basic_) {
+      using type::BasicType;
+      case BasicType::Int8: return ir::Results{static_cast<int8_t>(i64_)};
+      case BasicType::Nat8: return ir::Results{static_cast<uint8_t>(u64_)};
+      case BasicType::Int16: return ir::Results{static_cast<int16_t>(i64_)};
+      case BasicType::Nat16: return ir::Results{static_cast<uint16_t>(u64_)};
+      case BasicType::Int32: return ir::Results{static_cast<int32_t>(i64_)};
+      case BasicType::Nat32: return ir::Results{static_cast<uint32_t>(u64_)};
+      case BasicType::Int64: return ir::Results{i64_};
+      case BasicType::Nat64: return ir::Results{u64_};
+      case BasicType::Float32: return ir::Results{f32_};
+      case BasicType::Float64: return ir::Results{f64_};
+      case BasicType::ByteView: return ir::Results{sv_};
+      case BasicType::Bool: return ir::Results{b_};
+      case BasicType::Type_: return ir::Results{type::Prim(t_)};
+      default:;
+    }
+    UNREACHABLE();
+  }
+
+  // TODO rename to value_as, or something like that.
+  template <typename T>
+  T as() const {
+    if constexpr (std::is_integral_v<T> and std::is_signed_v<T>) {
+      return static_cast<T>(i64_);
+    } else if constexpr (std::is_integral_v<T> and std::is_unsigned_v<T>) {
+      return static_cast<T>(u64_);
+    } else if constexpr (std::is_same_v<T, bool>) {
+      return b_;
+    } else if constexpr (std::is_same_v<T, std::string_view>) {
+      return sv_;
+    } else if constexpr (std::is_same_v<T, type::BasicType>) {
+      return t_;
+    } else if constexpr (std::is_same_v<T, float>) {
+      return f32_;
+    } else if constexpr (std::is_same_v<T, double>) {
+      return f64_;
+    } else {
+      NOT_YET();
+    }
+  }
+
+  ICARUS_AST_VIRTUAL_METHODS;
+
+ private:
+  type::BasicType basic_;
+  union {
+    bool b_;
+    int64_t i64_;
+    uint64_t u64_;
+    float f32_;
+    double f64_;
+    std::string_view sv_;
+    type::BasicType t_;
+  };
 };
 
 // Unop:

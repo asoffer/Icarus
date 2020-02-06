@@ -285,7 +285,6 @@ enum class HashtagError {
 
 base::expected<Lexeme, HashtagError> NextHashtag(SourceCursor *cursor,
                                                  Source *src) {
-  cursor->remove_prefix(1);
   SourceRange span;
   std::string_view token;
   if (cursor->view().empty()) {
@@ -403,11 +402,24 @@ restart:
 
     } break;
     case '#': {
-      auto result = NextHashtag(&state->cursor_, state->src_);
-      if (result) { return *std::move(result); }
+      state->cursor_.remove_prefix(1);
+      if (state->peek() == '.') {
+        state->cursor_.remove_prefix(1);
+        auto word_cursor       = NextSimpleWord(&state->cursor_);
+        std::string_view token = word_cursor.view();
+        auto range             = word_cursor.range();
 
-      state->diag_.Consume(diagnostic::HashtagParsingFailure{});
-      goto restart;
+        return Lexeme(std::make_unique<ast::Label>(word_cursor.range(),
+                                                   std::string{token}));
+
+      } else {
+        if (auto result = NextHashtag(&state->cursor_, state->src_)) {
+          return *std::move(result);
+        }
+
+        state->diag_.Consume(diagnostic::HashtagParsingFailure{});
+        goto restart;
+      }
     } break;
     case '/': {
       // TODO just check for comments early and roll this into NextOperator.

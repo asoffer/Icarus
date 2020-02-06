@@ -771,6 +771,10 @@ ir::Results Compiler::Visit(ast::Goto const *node, EmitValueTag) {
   return ir::Results{};
 }
 
+ir::Results Compiler::Visit(ast::Label const *node, EmitValueTag) {
+  return ir::Results{node->label()};
+}
+
 ir::Results Compiler::Visit(ast::Jump const *node, EmitValueTag) {
   return ir::Results{data_.add_jump(node, [this, node] {
     auto work_item_ptr = DeferBody(this, node);

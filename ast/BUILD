@@ -30,6 +30,7 @@ cc_library(
         "//core:fn_params",
         "//core:ordered_fn_args",
         "//frontend/lex:operators",
+        "//ir:label",
         "//ir:results",
         "//type:basic_type",
     ],

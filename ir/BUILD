@@ -390,3 +390,9 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ]
 )
+
+cc_library(
+    name = "label",
+    hdrs = ["label.h"],
+    deps = ["//base:strong_types"],
+)

@@ -1832,6 +1832,10 @@ type::QualType Compiler::Visit(ast::Goto const *node, VerifyTypeTag) {
   return type::QualType::Constant(type::Void());
 }
 
+type::QualType Compiler::Visit(ast::Label const *node, VerifyTypeTag) {
+  return set_result(node, type::QualType::Constant(type::Label));
+}
+
 type::QualType Compiler::Visit(ast::Jump const *node, VerifyTypeTag) {
   DEBUG_LOG("Jump")(node->DebugString());
   bool err = false;

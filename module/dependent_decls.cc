@@ -112,6 +112,8 @@ void DependentDecls::Visit(ast::Jump const *node, ast::Declaration const *d) {
   for (auto const *stmt : node->stmts()) { Visit(stmt, d); }
 }
 
+void DependentDecls::Visit(ast::Label const *node, ast::Declaration const *d) {}
+
 void DependentDecls::Visit(ast::PrintStmt const *node,
                            ast::Declaration const *d) {
   for (auto *expr : node->exprs()) { Visit(expr, d); }

@@ -306,6 +306,10 @@ void Goto::DebugStrAppend(std::string *out, size_t indent) const {
   }
 }
 
+void Label::DebugStrAppend(std::string *out, size_t indent) const {
+  absl::StrAppend(out, "#.", label_);
+}
+
 void PrintStmt::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(
       out, "print ",
