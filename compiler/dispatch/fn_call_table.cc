@@ -3,6 +3,7 @@
 #include "compiler/compiler.h"
 #include "compiler/dispatch/match.h"
 #include "compiler/dispatch/parameters_and_arguments.h"
+#include "compiler/dispatch/runtime.h"
 #include "ir/components.h"
 #include "ir/out_params.h"
 #include "ir/results.h"
@@ -50,70 +51,6 @@ ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
       compiler->Visit(fn, EmitValueTag{}).get<ir::AnyFunc>(0),
       &compiler->type_of(fn)->as<type::Function>(), arg_results, out_params);
   return std::move(out_results);
-}
-
-// Emits code which determines if a function with parameters `params` should be
-// called with arguments `args`. It does this by looking for variants in `args`
-// and testing the actually held type to see if it matches the corresponding
-// parameter type. Note that the parameter type need not be identical. Rather,
-// there must be a cast from the actual argument type to the parameter type
-// (usually due to a cast such as `int64` casting to `int64 | bool`).
-ir::RegOr<bool> EmitRuntimeDispatchOneComparison(
-    ir::Builder &bldr, core::FnParams<type::Type const *> const &params,
-    core::FnArgs<type::Typed<ir::Results>> const &args) {
-  size_t i = 0;
-  for (; i < args.pos().size(); ++i) {
-    auto &arg     = args.pos()[i];
-    auto *arg_var = arg.type()->if_as<type::Variant>();
-    if (not arg_var) { continue; }
-    auto runtime_type =
-        ir::Load<type::Type const *>(bldr.VariantType(arg->get<ir::Addr>(0)));
-    // TODO Equality isn't the right thing to check
-    return bldr.Eq(runtime_type, params[i].value);
-  }
-  for (; i < params.size(); ++i) {
-    auto *arg = args.at_or_null(params[i].name);
-    if (not arg) { continue; }  // Default arguments
-    auto *arg_var = arg->type()->if_as<type::Variant>();
-    if (not arg_var) { continue; }
-    NOT_YET();
-  }
-  return ir::RegOr<bool>(false);
-}
-
-// Emits code which jumps to the appropriate argument-prep-and-function-call
-// after testing variants for the right type.
-void EmitRuntimeDispatch(
-    ir::Builder &bldr,
-    absl::flat_hash_map<ast::Expression const *, internal::ExprData> const
-        &table,
-    absl::flat_hash_map<ast::Expression const *, ir::BasicBlock *> const
-        &callee_to_block,
-    core::FnArgs<type::Typed<ir::Results>> const &args) {
-  // TODO This is a simple linear search through the table which is certainly a
-  // bad idea. We can optimize it later. Likely the right way to do this is to
-  // find a perfect hash of the function variants that produces an index into a
-  // block table so we pay for a hash and a single indirect jump. This may be
-  // harder if you remove variant and implement `overlay`.
-
-  auto iter = table.begin();
-
-  while (true) {
-    auto const &[overload, expr_data] = *iter;
-    ++iter;
-
-    if (iter == table.end()) {
-      bldr.UncondJump(callee_to_block.at(overload));
-      break;
-    }
-
-    ir::RegOr<bool> match = EmitRuntimeDispatchOneComparison(
-        bldr,
-        expr_data.params().Transform([](auto const &p) { return p.type(); }),
-        args);
-    bldr.CurrentBlock() =
-        ir::EarlyExitOn<true>(callee_to_block.at(overload), match);
-  }
 }
 
 }  // namespace

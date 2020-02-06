@@ -23,8 +23,11 @@ struct JumpDispatchTable {
   static absl::flat_hash_map<
       std::string_view,
       std::pair<ir::BasicBlock *, core::FnArgs<type::Typed<ir::Results>>>>
-  EmitCall(ir::Jump *jump, Compiler *compiler,
-           core::FnArgs<type::Typed<ir::Results>> args,
+  EmitCallOneOverload(ir::Jump *jump, Compiler *compiler,
+                      core::FnArgs<type::Typed<ir::Results>> args,
+                      ir::LocalBlockInterpretation const &block_interp);
+
+  void EmitCall(Compiler *compiler, core::FnArgs<type::Typed<ir::Results>> args,
            ir::LocalBlockInterpretation const &block_interp);
 
   // private:

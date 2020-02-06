@@ -55,6 +55,7 @@ cc_library(
         ":jump_table",
         ":parameters_and_arguments",
         ":scope_table_header",
+        ":runtime",
         "//base:debug",
         "//compiler:compiler_header",
         "//compiler:extract_jumps",
@@ -91,6 +92,7 @@ cc_library(
         ":fn_call_table_header",
         ":match",
         ":parameters_and_arguments",
+        ":runtime",
         "//base:debug",
         "//compiler:compiler_header",
         "//compiler:extract_jumps",
@@ -175,3 +177,21 @@ cc_lib(
         "//type:function",
     ],
 )
+
+cc_library(
+    name = "runtime",
+    hdrs = ["runtime.h"],
+    srcs = ["runtime.cc"],
+    deps = [
+        "//base:meta",
+        "//core:fn_args",
+        "//core:fn_params",
+        "//ir:basic_block",
+        "//ir:builder",
+        "//ir:components",
+        "//ir:reg_or",
+        "//ir:results",
+        "//type:typed_value",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)  

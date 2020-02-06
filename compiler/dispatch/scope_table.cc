@@ -4,6 +4,7 @@
 #include "base/debug.h"
 #include "compiler/compiler.h"
 #include "compiler/dispatch/parameters_and_arguments.h"
+#include "compiler/dispatch/runtime.h"
 #include "compiler/extract_jumps.h"
 #include "core/fn_params.h"
 #include "diagnostic/errors.h"
@@ -122,65 +123,6 @@ void EmitCallOneOverload(
   DEBUG_LOG("EmitCallOneOverload")(*bldr.CurrentGroup());
 }
 
-// Emits code which determines if a function with parameters `params` should be
-// called with arguments `args`. It does this by looking for variants in `args`
-// and testing the actually held type to see if it matches the corresponding
-// parameter type. Note that the parameter type need not be identical. Rather,
-// there must be a cast from the actual argument type to the parameter type
-// (usually due to a cast such as `int64` casting to `int64 | bool`).
-ir::RegOr<bool> EmitRuntimeDispatchOneComparison(
-    ir::Builder &bldr, core::FnParams<type::Type const *> const &params,
-    core::FnArgs<type::Typed<ir::Results>> const &args) {
-  size_t i = 0;
-  for (; i < args.pos().size(); ++i) {
-    auto &arg     = args.pos()[i];
-    auto *arg_var = arg.type()->if_as<type::Variant>();
-    if (not arg_var) { continue; }
-    auto runtime_type =
-        ir::Load<type::Type const *>(bldr.VariantType(arg->get<ir::Addr>(0)));
-    // TODO Equality isn't the right thing to check
-    return bldr.Eq(runtime_type, params[i].value);
-  }
-  for (; i < params.size(); ++i) {
-    auto *arg = args.at_or_null(params[i].name);
-    if (not arg) { continue; }  // Default arguments
-    auto *arg_var = arg->type()->if_as<type::Variant>();
-    if (not arg_var) { continue; }
-    NOT_YET();
-  }
-  return ir::RegOr<bool>(false);
-}
-
-void EmitRuntimeDispatch(
-    ir::Builder &bldr,
-    absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> const &table,
-    absl::flat_hash_map<ir::Jump *, ir::BasicBlock *> const &callee_to_block,
-    core::FnArgs<type::Typed<ir::Results>> const &args) {
-  // TODO This is a simple linear search through the table which is certainly a
-  // bad idea. We can optimize it later. Likely the right way to do this is to
-  // find a perfect hash of the function variants that produces an index into a
-  // block table so we pay for a hash and a single indirect jump. This may be
-  // harder if you remove variant and implement `overlay`.
-
-  auto iter = table.begin();
-
-  while (true) {
-    auto const &[jump, scope_def] = *iter;
-    ++iter;
-
-    if (iter == table.end()) {
-      bldr.UncondJump(callee_to_block.at(jump));
-      break;
-    }
-
-    ir::RegOr<bool> match = EmitRuntimeDispatchOneComparison(
-        bldr, jump->params().Transform([](auto const &p) { return p.type(); }),
-        args);
-    bldr.CurrentBlock() =
-        ir::EarlyExitOn<true>(callee_to_block.at(jump), match);
-  }
-}
-
 }  // namespace
 
 base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
@@ -284,7 +226,7 @@ ir::Results ScopeDispatchTable::EmitCall(
     bldr.CurrentBlock() = callee_to_block[jump];
     // Argument preparation is done inside EmitCallOneOverload
 
-    auto name_to_block = JumpDispatchTable::EmitCall(
+    auto name_to_block = JumpDispatchTable::EmitCallOneOverload(
         jump, compiler, args, block_interps.at(scope_def));
     EmitCallOneOverload(name_to_block, scope_def, compiler,
                         block_interps.at(scope_def));
@@ -327,7 +269,7 @@ ir::Results ScopeDispatchTable::EmitCall(
       }
       ASSERT(chosen != nullptr);
 
-      auto name_to_block = JumpDispatchTable::EmitCall(
+      auto name_to_block = JumpDispatchTable::EmitCallOneOverload(
           chosen, compiler, yield_args.Transform([](auto const &p) {
             return type::Typed(p.first, p.second.type());
           }),
