@@ -533,21 +533,18 @@ struct SetCurrent : public base::UseWithScope {
   Builder* builder_;
   internal::BlockGroup* old_group_;
   BasicBlock* old_block_;
+  Builder::BlockTerminationState old_termination_state_;
 };
 
 struct SetTemporaries : public base::UseWithScope {
   SetTemporaries(Builder& bldr) : bldr_(bldr) {
     old_temporaries_ = std::exchange(bldr_.current_.temporaries_to_destroy_,
                                      std::vector<type::Typed<Reg>>{});
-    old_termination_state_ =
-        std::exchange(bldr_.current_.block_termination_state_,
-                      Builder::BlockTerminationState::kMoreStatements);
   }
   ~SetTemporaries() {}
 
  private:
   std::vector<type::Typed<Reg>> old_temporaries_;
-  Builder::BlockTerminationState old_termination_state_;
   Builder& bldr_;
 };
 

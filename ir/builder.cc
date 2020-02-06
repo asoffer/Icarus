@@ -19,14 +19,18 @@ BasicBlock *Builder::AddBlock(BasicBlock const &to_copy) {
 SetCurrent::SetCurrent(internal::BlockGroup *group, Builder *builder)
     : builder_(builder ? builder : &GetBuilder()),
       old_group_(builder_->CurrentGroup()),
-      old_block_(builder_->CurrentBlock()) {
+      old_block_(builder_->CurrentBlock()),
+      old_termination_state_(builder_->current_.block_termination_state_) {
   builder_->CurrentGroup()  = group;
   builder_->current_.block_ = group->entry();
+  builder_->current_.block_termination_state_ =
+      Builder::BlockTerminationState::kMoreStatements;
 }
 
 SetCurrent::~SetCurrent() {
-  builder_->CurrentGroup() = old_group_;
-  builder_->CurrentBlock() = old_block_;
+  builder_->CurrentGroup()                    = old_group_;
+  builder_->CurrentBlock()                    = old_block_;
+  builder_->current_.block_termination_state_ = old_termination_state_;
 }
 
 base::Tagged<Addr, Reg> Builder::Alloca(type::Type const *t) {
