@@ -147,6 +147,7 @@ std::vector<ir::Results> PrepareCallArguments(
 
   auto &bldr = compiler->builder();
   size_t i   = 0;
+  DEBUG_LOG("PrepareCallArguments")(params.size(), args.pos().size(), args.named().size());
   for (; i < args.pos().size(); ++i) {
     arg_results.push_back(PrepareOneArg(compiler, args[i], params[i].value));
   }

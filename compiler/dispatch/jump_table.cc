@@ -38,6 +38,8 @@ base::expected<JumpDispatchTable> JumpDispatchTable::Verify(
   if (not ParamsCoverArgs(args, table.table_,
                           [](auto const &, internal::ExprData const &data)
                               -> decltype(auto) { return data.params(); })) {
+    DEBUG_LOG()(args.to_string());
+    DEBUG_LOG()(node->DebugString());
     NOT_YET("log an error");
   }
   return table;

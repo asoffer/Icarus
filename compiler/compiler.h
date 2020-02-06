@@ -212,6 +212,8 @@ struct Compiler
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
 
+  std::vector<core::FnArgs<type::QualType>> VerifyBlockNode(
+      ast::BlockNode const *node);
   core::FnArgs<std::pair<ir::Results, type::QualType>> EmitBlockNode(
       ast::BlockNode const *node);
 

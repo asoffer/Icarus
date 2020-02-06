@@ -5,7 +5,6 @@
 #include "compiler/compiler.h"
 #include "compiler/dispatch/parameters_and_arguments.h"
 #include "compiler/dispatch/runtime.h"
-#include "compiler/extract_jumps.h"
 #include "core/fn_params.h"
 #include "diagnostic/errors.h"
 #include "ir/builder.h"
@@ -16,41 +15,6 @@
 
 namespace compiler {
 namespace {
-
-// TODO this is independent of scope literals and therefore should be moved back
-// into verify_type.cc.
-std::vector<core::FnArgs<type::QualType>> VerifyBlockNode(
-    Compiler *compiler, ast::BlockNode const *node) {
-  compiler->Visit(node, VerifyTypeTag{});
-
-  ExtractJumps extractor;
-  for (auto const *stmt : node->stmts()) { extractor.Visit(stmt); }
-
-  auto yields = extractor.jumps(ExtractJumps::Kind::Yield);
-  // TODO this setup is definitely wrong because it doesn't account for
-  // multiple yields correctly. For example,
-  //
-  // ```
-  //  result: int32 | bool = if (cond) then {
-  //    yield 3
-  //  } else if (other_cond) then {
-  //    yield 4
-  //  } else {
-  //    yield true
-  //  }
-  //  ```
-  std::vector<core::FnArgs<type::QualType>> result;
-  for (auto *yield : yields) {
-    auto &back = result.emplace_back();
-    // TODO actually fill a fnargs
-    std::vector<std::pair<ast::Expression const *, type::QualType>>
-        local_pos_yields;
-    for (auto *yield_expr : yields[0]->as<ast::YieldStmt>().exprs()) {
-      back.pos_emplace(*ASSERT_NOT_NULL(compiler->qual_type_of(yield_expr)));
-    }
-  }
-  return result;
-}
 
 // TODO this doesn't entirely make sense. We use the parameters to pick out the
 // correct overload set member, but really that should be done with arguments?
@@ -163,7 +127,7 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
       ("Verifying dispatch for block `", block.name(), "`");
       auto const *block_def = scope_def->block(block.name());
       if (not block_def) { NOT_YET("log an error"); }
-      auto block_results = VerifyBlockNode(compiler, &block);
+      auto block_results = compiler->VerifyBlockNode(&block);
       DEBUG_LOG("ScopeNode")("    ", block_results);
       if (block_results.empty()) {
         // There are no relevant yield statements
@@ -182,7 +146,7 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
           DEBUG_LOG("ScopeNode")("    ... result = ", fn_args);
           ASSIGN_OR(continue,  //
                     auto jump_table,
-                    JumpDispatchTable::Verify(node, block_def->after_, args));
+                    JumpDispatchTable::Verify(node, block_def->after_, fn_args));
 
           bool success =
               one_table.blocks.emplace(&block, std::move(jump_table)).second;
@@ -230,8 +194,8 @@ ir::Results ScopeDispatchTable::EmitCall(
         jump, compiler, args, block_interps.at(scope_def));
     EmitCallOneOverload(name_to_block, scope_def, compiler,
                         block_interps.at(scope_def));
-    bldr.CurrentBlock() = landing_block;
   }
+  bldr.CurrentBlock() = landing_block;
 
   // TODO handle results
 
@@ -239,44 +203,34 @@ ir::Results ScopeDispatchTable::EmitCall(
   for (auto const &[scope_def, one_table] : tables_) {
     for (auto const &[node, table] : one_table.blocks) {
       DEBUG_LOG("EmitCall")(node->DebugString());
+
       bldr.CurrentBlock() = block_interps.at(scope_def)[node];
       bldr.block_termination_state() =
           ir::Builder::BlockTerminationState::kMoreStatements;
       auto yield_args = compiler->EmitBlockNode(node);
 
-      // TODO skipping after-handlers is incorrect. We need a guaranteed exit path.
+      // TODO skipping after-handlers is incorrect. We need a guaranteed
+      // exit path.
       if (bldr.block_termination_state() ==
           ir::Builder::BlockTerminationState::kReturn) {
         continue;
       }
 
-      ir::BlockDef const *block_def = scope_def->block(node->name());
+      auto yield_typed_results = yield_args.Transform(
+          [](auto const &p) { return type::Typed(p.first, p.second.type()); });
 
-      // TODO call the appropriate overload set. This logic goes in jump table.
-      ir::Jump *chosen = nullptr;
-      for (ir::Jump *j : block_def->after_) {
-        std::vector<std::pair<ir::Jump *, int>> local_table_hack;
-        local_table_hack.emplace_back(j, 0);
-        if (ParamsCoverArgs(
-                yield_args.Transform([](auto const &p) { return p.second; }),
-                local_table_hack,
-                [](ir::Jump *jump, auto const &) -> decltype(auto) {
-                  return jump->params();
-                })) {
-          chosen = j;
-          break;
-        }
+      auto callee_to_block = bldr.AddBlocks(table.table_);
+      EmitRuntimeDispatch(bldr, table.table_, callee_to_block,
+                          yield_typed_results);
+
+      for (auto const &[jump, expr_data] : table.table_) {
+        bldr.CurrentBlock() = callee_to_block[jump];
+
+        auto name_to_block = JumpDispatchTable::EmitCallOneOverload(
+            jump, compiler, yield_typed_results, block_interps.at(scope_def));
+        EmitCallOneOverload(name_to_block, scope_def, compiler,
+                            block_interps.at(scope_def));
       }
-      ASSERT(chosen != nullptr);
-
-      auto name_to_block = JumpDispatchTable::EmitCallOneOverload(
-          chosen, compiler, yield_args.Transform([](auto const &p) {
-            return type::Typed(p.first, p.second.type());
-          }),
-          block_interps.at(scope_def));
-      EmitCallOneOverload(name_to_block, scope_def, compiler,
-                          block_interps.at(scope_def));
-      bldr.CurrentBlock() = landing_block;
     }
   }
 

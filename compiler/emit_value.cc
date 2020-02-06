@@ -422,6 +422,7 @@ core::FnArgs<std::pair<ir::Results, type::QualType>> Compiler::EmitBlockNode(
       results.pos_emplace(std::move(yield.val_), *qual_type_of(yield.expr_));
     }
   }
+
   return results;
 }
 

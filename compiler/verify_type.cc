@@ -886,10 +886,41 @@ type::QualType Compiler::Visit(ast::BlockLiteral const *node, VerifyTypeTag) {
   return set_result(node, type::QualType::Constant(type::Block));
 }
 
-type::QualType Compiler::Visit(ast::BlockNode const *node, VerifyTypeTag) {
+std::vector<core::FnArgs<type::QualType>> Compiler::VerifyBlockNode(
+    ast::BlockNode const *node) {
   for (auto *param : node->params()) { Visit(param, VerifyTypeTag{}); }
   for (auto *stmt : node->stmts()) { Visit(stmt, VerifyTypeTag{}); }
-  return set_result(node, type::QualType::Constant(type::Block));
+  set_result(node, type::QualType::Constant(type::Block));
+
+  ExtractJumps extractor;
+  for (auto const *stmt : node->stmts()) { extractor.Visit(stmt); }
+  auto yields = extractor.jumps(ExtractJumps::Kind::Yield);
+  // TODO this setup is definitely wrong because it doesn't account for
+  // multiple yields correctly. For example,
+  //
+  // ```
+  //  result: int32 | bool = if (cond) then {
+  //    yield 3
+  //  } else if (other_cond) then {
+  //    yield 4
+  //  } else {
+  //    yield true
+  //  }
+  //  ```
+  std::vector<core::FnArgs<type::QualType>> result;
+  for (auto *yield : yields) {
+    auto &back = result.emplace_back();
+    // TODO actually fill a fnargs
+    for (auto *yield_expr : yields[0]->as<ast::YieldStmt>().exprs()) {
+      back.pos_emplace(*ASSERT_NOT_NULL(qual_type_of(yield_expr)));
+    }
+  }
+
+  return result;
+}
+
+type::QualType Compiler::Visit(ast::BlockNode const *node, VerifyTypeTag) {
+  UNREACHABLE("Should be called via Compiler::VerifyBlockNode");
 }
 
 type::QualType Compiler::Visit(ast::BuiltinFn const *node, VerifyTypeTag) {

@@ -324,7 +324,7 @@ void ReturnStmt::DebugStrAppend(std::string *out, size_t indent) const {
 
 void YieldStmt::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(
-      out, "yield ",
+      out, "<< ",
       absl::StrJoin(exprs(), ", ", [&](std::string *out, auto const &elem) {
         return Joiner(elem, out, indent);
       }));

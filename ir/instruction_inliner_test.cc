@@ -30,7 +30,8 @@ TEST_CASE("Reg") {
   ir::Jump j(type::Jmp({}), {});
   InitBlockGroupsForTest(&f, &j);
 
-  ir::InstructionInliner i(&j, &f, ir::LocalBlockInterpretation({}));
+  ir::InstructionInliner i(&j, &f,
+                           ir::LocalBlockInterpretation({}, nullptr, nullptr));
 
   // Function we're inlining into has 4 registers already.
   REQUIRE(f.num_regs() == 4);
@@ -44,7 +45,8 @@ TEST_CASE("RegOr") {
   ir::Jump j(type::Jmp({}), {});
   InitBlockGroupsForTest(&f, &j);
 
-  ir::InstructionInliner i(&j, &f, ir::LocalBlockInterpretation({}));
+  ir::InstructionInliner i(&j, &f,
+                           ir::LocalBlockInterpretation({}, nullptr, nullptr));
 
   // Function we're inlining into has 4 registers already.
   REQUIRE(f.num_regs() == 4);
@@ -69,7 +71,8 @@ TEST_CASE("Container") {
   ir::Jump j(type::Jmp({}), {});
   InitBlockGroupsForTest(&f, &j);
 
-  ir::InstructionInliner i(&j, &f, ir::LocalBlockInterpretation({}));
+  ir::InstructionInliner i(&j, &f,
+                           ir::LocalBlockInterpretation({}, nullptr, nullptr));
 
   // Function we're inlining into has 4 registers already.
   REQUIRE(f.num_regs() == 4);
