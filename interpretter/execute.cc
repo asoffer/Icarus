@@ -471,10 +471,12 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
   } else if constexpr (std::is_same_v<Inst, ir::MakeScopeInstruction>) {
     ir::ScopeDef *scope_def = iter->read<ir::ScopeDef *>();
 
-    scope_def->inits_ = Deserialize<uint16_t, ir::Jump *>(
+    scope_def->start_->after_ = Deserialize<uint16_t, ir::Jump *>(
         iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::Jump *>(reg); });
-    scope_def->dones_ = ir::OverloadSet(Deserialize<uint16_t, ir::AnyFunc>(
-        iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::AnyFunc>(reg); }));
+    scope_def->exit_->before_ = ir::OverloadSet(
+        Deserialize<uint16_t, ir::AnyFunc>(iter, [ctx](ir::Reg reg) {
+          return ctx->resolve<ir::AnyFunc>(reg);
+        }));
 
     uint16_t num_blocks = iter->read<uint16_t>();
     for (uint16_t i = 0; i < num_blocks; ++i) {

@@ -210,7 +210,7 @@ Reg Builder::VariantValue(type::Variant const *v, RegOr<Addr> const &r) {
   return result;
 }
 
-Reg Builder::MakeBlock(ir::BlockDef *block_def,
+Reg Builder::MakeBlock(BlockDef *block_def,
                        std::vector<RegOr<AnyFunc>> befores,
                        std::vector<RegOr<Jump *>> afters) {
   auto inst = std::make_unique<MakeBlockInstruction>(
@@ -221,7 +221,7 @@ Reg Builder::MakeBlock(ir::BlockDef *block_def,
 }
 
 Reg Builder::MakeScope(
-    ir::ScopeDef *scope_def, std::vector<RegOr<Jump *>> inits,
+    ScopeDef *scope_def, std::vector<RegOr<Jump *>> inits,
     std::vector<RegOr<AnyFunc>> dones,
     absl::flat_hash_map<std::string_view, BlockDef *> blocks) {
   auto inst = std::make_unique<MakeScopeInstruction>(
@@ -302,13 +302,14 @@ RegOr<type::Type const *> Builder::Array(RegOr<ArrayInstruction::length_t> len,
 }
 
 LocalBlockInterpretation Builder::MakeLocalBlockInterpretation(
-    ast::ScopeNode const *node) {
-  absl::flat_hash_map<ast::BlockNode const *, ir::BasicBlock *> interp_map;
+    ast::ScopeNode const *node, BasicBlock *starting_block, BasicBlock *landing_block) {
+  absl::flat_hash_map<ast::BlockNode const *, BasicBlock *> interp_map;
   for (auto const &block : node->blocks()) {
     interp_map.emplace(&block, AddBlock());
   }
 
-  return LocalBlockInterpretation(std::move(interp_map));
+  return LocalBlockInterpretation(std::move(interp_map), starting_block,
+                                  landing_block);
 }
 
 }  // namespace ir

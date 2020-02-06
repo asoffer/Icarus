@@ -460,7 +460,9 @@ struct Builder {
     CurrentBlock()->instructions_.push_back(std::move(inst));
   }
 
-  LocalBlockInterpretation MakeLocalBlockInterpretation(ast::ScopeNode const*);
+  LocalBlockInterpretation MakeLocalBlockInterpretation(
+      ast::ScopeNode const*, BasicBlock* starting_block,
+      BasicBlock* landing_block);
 
   // Apply the callable to each temporary in reverse order, and clear the list
   // of temporaries.

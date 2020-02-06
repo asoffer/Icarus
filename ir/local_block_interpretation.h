@@ -15,13 +15,16 @@ namespace ir {
 // jumps.
 struct LocalBlockInterpretation {
   explicit LocalBlockInterpretation(
-      absl::flat_hash_map<ast::BlockNode const *, BasicBlock *> data)
-      : data_(std::move(data)) {
+      absl::flat_hash_map<ast::BlockNode const *, BasicBlock *> data,
+      BasicBlock *starting_block, BasicBlock *landing_block)
+      : data_(std::move(data)), start_(starting_block), exit_(landing_block) {
     for (auto [block_node, _] : data_) {
       name_to_node_.emplace(block_node->name(), block_node);
     }
   }
   BasicBlock *operator[](std::string_view name) const {
+    if (name == "exit") { return exit_; }
+    if (name == "start") { return start_; }
     ASSIGN_OR(return nullptr, auto const &node, block_node(name));
     return operator[](&node);
   }
@@ -41,6 +44,8 @@ struct LocalBlockInterpretation {
  private:
   absl::flat_hash_map<ast::BlockNode const *, BasicBlock *> data_;
   absl::flat_hash_map<std::string_view, ast::BlockNode const *> name_to_node_;
+  BasicBlock *start_;
+  BasicBlock *exit_;
 };
 
 }  // namespace ir

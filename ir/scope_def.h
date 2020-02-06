@@ -1,7 +1,9 @@
 #ifndef ICARUS_IR_SCOPE_DEF_H
 #define ICARUS_IR_SCOPE_DEF_H
 
+#include <memory>
 #include <string_view>
+#include <vector>
 
 #include "ast/scope/scope.h"
 #include "base/move_func.h"
@@ -12,10 +14,23 @@
 namespace ir {
 struct Jump;
 
+inline CompiledFn &TrivialFunction() {
+  static CompiledFn f(type::Func({}, {}),
+                      core::FnParams<type::Typed<ast::Declaration const *>>{});
+  return f;
+}
+
 // TODO Calls to EvaluateAs should probably take this as const, so we can be
 // sure no one modifies blocks_ and invalidates pointers.
 struct ScopeDef {
-  explicit ScopeDef(module::BasicModule const *mod) : mod_(mod) {}
+  explicit ScopeDef(module::BasicModule const *mod)
+      : mod_(mod),
+        start_(std::make_unique<BlockDef>()),
+        exit_(std::make_unique<BlockDef>()) {
+    blocks_.emplace("start", start_.get());
+    blocks_.emplace("exit", exit_.get());
+    start_->before_ = OverloadSet({AnyFunc(&TrivialFunction())});
+  }
 
   module::BasicModule const *module() const { return mod_; }
 
@@ -29,10 +44,11 @@ struct ScopeDef {
   }
 
   module::BasicModule const *mod_ = nullptr;
-  std::vector<Jump *> inits_;
-  mutable ir::OverloadSet dones_;  // TODO shouldn't actually be mutable. Hack
-                                   // to get a simple version working.
   absl::flat_hash_map<std::string_view, BlockDef *> blocks_;
+  // TODO figure out move/lifetime for this so we don't need separate
+  // allocations.
+  std::unique_ptr<BlockDef> start_;
+  std::unique_ptr<BlockDef> exit_;
   base::move_func<void()> *work_item = nullptr;
 };
 }  // namespace ir

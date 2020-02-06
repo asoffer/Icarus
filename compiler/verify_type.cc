@@ -1877,7 +1877,7 @@ static absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> MakeJumpInits(
         c->MakeThunk(member, type::Scope));
     DEBUG_LOG("ScopeNode")(def);
     if (def->work_item and *def->work_item) { (std::move(*def->work_item))(); }
-    for (auto *init : def->inits_) {
+    for (auto *init : def->start_->after_) {
       bool success = inits.emplace(init, def).second;
       static_cast<void>(success);
       ASSERT(success == true);

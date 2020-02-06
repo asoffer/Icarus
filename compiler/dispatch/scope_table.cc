@@ -69,48 +69,38 @@ ExtractArgsAndParams(core::FnArgs<type::Typed<ir::Results>> const &args) {
 }
 
 // TODO organize the parameters here, they're getting to be too much.
-void EmitCallOneOverload(ir::ScopeDef const *scope_def,
-                         ir::BasicBlock *starting_block,
-                         ir::BasicBlock *landing_block, Compiler *compiler,
-                         ir::Jump *jump,
-                         core::FnArgs<type::Typed<ir::Results>> args,
-                         ir::LocalBlockInterpretation const &block_interp) {
+void EmitCallOneOverload(
+    absl::flat_hash_map<std::string_view,
+                        std::pair<ir::BasicBlock *,
+                                  core::FnArgs<type::Typed<ir::Results>>>> const
+        &name_to_block,
+    ir::ScopeDef const *scope_def, Compiler *compiler,
+    ir::LocalBlockInterpretation const &block_interp) {
   auto &bldr = compiler->builder();
-  auto name_to_block =
-      JumpDispatchTable::EmitCall(jump, compiler, args, block_interp);
 
   for (auto &[next_block_name, block_and_args] : name_to_block) {
     auto &[block, block_args] = block_and_args;
     bldr.CurrentBlock()       = block;
-    if (next_block_name == "start") {
-      bldr.UncondJump(starting_block);
-    } else if (next_block_name == "exit") {
-      auto[done_params, done_results]     = ExtractArgsAndParams(block_args);
-      std::optional<ir::AnyFunc> maybe_fn = scope_def->dones_[done_params];
-      ASSERT(maybe_fn.has_value() == true);
-      ir::AnyFunc fn = *maybe_fn;
-      auto *fn_type  = fn.is_fn() ? fn.func()->type() : fn.foreign().type();
-      ir::OutParams outs = bldr.OutParams(fn_type->output());
-      bldr.Call(fn, fn_type, done_results, std::move(outs));
-      bldr.UncondJump(landing_block);
-    } else {
-      ir::BlockDef *block_def =
-          ASSERT_NOT_NULL(scope_def->block(next_block_name));
+    ir::BlockDef *block_def =
+        ASSERT_NOT_NULL(scope_def->block(next_block_name));
 
-      // TODO make an overload set and call it appropriately.
-      // TODO We're calling operator* on an optional. Are we sure that's safe?
-      // Did we check it during type-verification? If so why do we need the
-      // create_ function in ir::OverloadSet?
-      auto[arg_params, arg_results]       = ExtractArgsAndParams(block_args);
-      std::optional<ir::AnyFunc> maybe_fn = block_def->before_[arg_params];
-      ASSERT(maybe_fn.has_value() == true);
-      ir::AnyFunc fn = *maybe_fn;
-      auto *fn_type  = fn.is_fn() ? fn.func()->type() : fn.foreign().type();
+    // TODO make an overload set and call it appropriately.
+    // TODO We're calling operator* on an optional. Are we sure that's safe?
+    // Did we check it during type-verification? If so why do we need the
+    // create_ function in ir::OverloadSet?
+    auto [arg_params, arg_results]      = ExtractArgsAndParams(block_args);
+    std::optional<ir::AnyFunc> maybe_fn = block_def->before_[arg_params];
+    ASSERT(maybe_fn.has_value() == true);
+    ir::AnyFunc fn = *maybe_fn;
+    auto *fn_type  = fn.is_fn() ? fn.func()->type() : fn.foreign().type();
 
-      ir::OutParams outs = bldr.OutParams(fn_type->output());
-      bldr.Call(fn, fn_type, arg_results, outs);
+    ir::OutParams outs = bldr.OutParams(fn_type->output());
+    bldr.Call(fn, fn_type, arg_results, outs);
 
-      auto const &params = block_interp.block_node(next_block_name)->params();
+    // TODO only null because there's no start/exit block node. can we fake it
+    // to make this work nicer?
+    if (auto *block_node = block_interp.block_node(next_block_name)) {
+      auto const &params = block_node->params();
 
       size_t i = 0;
       for (auto *param : params) {
@@ -119,16 +109,16 @@ void EmitCallOneOverload(ir::ScopeDef const *scope_def,
         type::Type const *param_type =
             compiler->type_of(&param->as<ast::Declaration>());
 
-        compiler->EmitMoveInit(fn_type->output()[i], ir::Results{outs[i]},
-                               type::Typed<ir::Reg>(addr, type::Ptr(param_type)));
+        compiler->EmitMoveInit(
+            fn_type->output()[i], ir::Results{outs[i]},
+            type::Typed<ir::Reg>(addr, type::Ptr(param_type)));
         ++i;
       }
-
-      bldr.UncondJump(block_interp[next_block_name]);
     }
+
+    bldr.UncondJump(block_interp[next_block_name]);
   }
 
-  bldr.CurrentBlock() = landing_block;
   DEBUG_LOG("EmitCallOneOverload")(*bldr.CurrentGroup());
 }
 
@@ -274,6 +264,7 @@ ir::Results ScopeDispatchTable::EmitCall(
 
   auto *landing_block  = bldr.AddBlock();
   auto callee_to_block = bldr.AddBlocks(init_map_);
+  auto *starting_block = bldr.CurrentBlock();
 
   // Add basic blocks for each block node in the scope (for each scope
   // definition which might be callable).
@@ -281,19 +272,23 @@ ir::Results ScopeDispatchTable::EmitCall(
       block_interps;
   for (auto const &[scope_def, _] : tables_) {
     auto [iter, success] = block_interps.emplace(
-        scope_def, bldr.MakeLocalBlockInterpretation(scope_node_));
+        scope_def, bldr.MakeLocalBlockInterpretation(
+                       scope_node_, starting_block, landing_block));
     static_cast<void>(success);
     ASSERT(success == true);
   }
 
-  auto *starting_block = bldr.CurrentBlock();
   EmitRuntimeDispatch(bldr, init_map_, callee_to_block, args);
 
   for (auto const &[jump, scope_def] : init_map_) {
     bldr.CurrentBlock() = callee_to_block[jump];
     // Argument preparation is done inside EmitCallOneOverload
-    EmitCallOneOverload(scope_def, starting_block, landing_block, compiler,
-                        jump, args, block_interps.at(scope_def));
+
+    auto name_to_block = JumpDispatchTable::EmitCall(
+        jump, compiler, args, block_interps.at(scope_def));
+    EmitCallOneOverload(name_to_block, scope_def, compiler,
+                        block_interps.at(scope_def));
+    bldr.CurrentBlock() = landing_block;
   }
 
   // TODO handle results
@@ -324,21 +319,22 @@ ir::Results ScopeDispatchTable::EmitCall(
                 yield_args.Transform([](auto const &p) { return p.second; }),
                 local_table_hack,
                 [](ir::Jump *jump, auto const &) -> decltype(auto) {
-                  DEBUG_LOG()(jump->params());
                   return jump->params();
                 })) {
-          j->params();
           chosen = j;
           break;
         }
       }
       ASSERT(chosen != nullptr);
 
-      EmitCallOneOverload(scope_def, starting_block, landing_block, compiler,
-                          chosen, yield_args.Transform([](auto const &p) {
-                            return type::Typed(p.first, p.second.type());
-                          }),
+      auto name_to_block = JumpDispatchTable::EmitCall(
+          chosen, compiler, yield_args.Transform([](auto const &p) {
+            return type::Typed(p.first, p.second.type());
+          }),
+          block_interps.at(scope_def));
+      EmitCallOneOverload(name_to_block, scope_def, compiler,
                           block_interps.at(scope_def));
+      bldr.CurrentBlock() = landing_block;
     }
   }
 
