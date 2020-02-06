@@ -107,6 +107,7 @@ void Compiler::Visit(type::Primitive const *t, ir::Results const &val,
     case type::BasicType::NullPtr:
     case type::BasicType::EmptyArray:
     case type::BasicType::Module:
+    case type::BasicType::Label:
     case type::BasicType::Block: UNREACHABLE();
     case type::BasicType::ByteView:
       builder().Print(val.get<std::string_view>(0));

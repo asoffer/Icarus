@@ -48,6 +48,7 @@ core::Bytes Primitive::bytes(core::Arch const &a) const {
     case BasicType::Module: return core::Host.pointer().bytes();
     case BasicType::Scope: return core::Host.pointer().bytes();
     case BasicType::Block: return core::Host.pointer().bytes();
+    case BasicType::Label: return core::Host.pointer().bytes();
     case BasicType::ByteView:
       // TODO generalize to other architectures.
       return core::Bytes{sizeof(std::string_view)};
@@ -77,6 +78,7 @@ core::Alignment Primitive::alignment(core::Arch const &a) const {
     case BasicType::Module: return core::Host.pointer().alignment();
     case BasicType::Scope: return core::Host.pointer().alignment();
     case BasicType::Block: return core::Host.pointer().alignment();
+    case BasicType::Label: return core::Host.pointer().alignment();
     case BasicType::ByteView:
       // TODO generalize to other architectures.
       return core::Alignment{alignof(std::string_view)};
