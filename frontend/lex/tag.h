@@ -40,6 +40,7 @@ enum Tag : uint64_t {
   id            = 1ull << 32,
   yield         = 1ull << 33,
   label         = 1ull << 34,
+  sop_l         = 1ull << 35,
 };
 
 inline std::string stringify(Tag t) { return std::to_string(t); }

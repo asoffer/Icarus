@@ -31,3 +31,17 @@ cc_library(
     ],
     test_deps = None,
 )
+
+cc_binary(
+    name = "parse_fuzz_test",
+    srcs = ["parse_fuzz_test.cc"],
+    deps = [
+        ":parse",
+        "//diagnostic/consumer:trivial",
+        "//frontend/source:cursor",
+        "//frontend/source:string",
+    ],
+    copts = ["-fsanitize=fuzzer"],
+    linkopts = ["-fsanitize=fuzzer"],
+    testonly = True,
+)

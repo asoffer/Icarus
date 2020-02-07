@@ -215,6 +215,17 @@ struct NonWhitespaceAfterNewlineEscape {
   frontend::SourceRange range;
 };
 
+struct EmptySource {
+  static constexpr std::string_view kCategory = "parse-error";
+  static constexpr std::string_view kName     = "empty-source";
+
+  DiagnosticMessage ToMessage() const {
+    return DiagnosticMessage(
+        Text("Source file is empty or contains only whitespace."));
+  }
+  // TODO source file identifier?
+};
+
 struct CommaSeparatedListStatement {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName = "comma-separated-list-statement";
@@ -598,7 +609,7 @@ struct NotAType {
   }
 
   frontend::SourceRange range;
-  type::Type const * type;
+  type::Type const* type;
 };
 
 struct ComparingIncomparables {
@@ -612,8 +623,8 @@ struct ComparingIncomparables {
              lhs->to_string(), rhs->to_string()));
   }
 
-  type::Type const *lhs;
-  type::Type const *rhs;
+  type::Type const* lhs;
+  type::Type const* rhs;
   frontend::SourceRange range;
 };
 
@@ -626,7 +637,7 @@ struct NoDefaultValue {
         "There is no default value for the type `%s`.", type->to_string()));
   }
 
-  type::Type const *type;
+  type::Type const* type;
   frontend::SourceRange range;
 };
 
@@ -669,7 +680,7 @@ struct UninferrableType {
   frontend::SourceRange range;
 };
 
-struct UninitializedConstant  {
+struct UninitializedConstant {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "uninitialized-constant";
 
@@ -681,7 +692,7 @@ struct UninitializedConstant  {
   frontend::SourceRange range;
 };
 
-struct ShadowingDeclaration  {
+struct ShadowingDeclaration {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "shadowing-declaration";
 
@@ -696,7 +707,7 @@ struct ShadowingDeclaration  {
   frontend::SourceRange range2;
 };
 
-struct CyclicDependency  {
+struct CyclicDependency {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "cyclic-dependency";
 
@@ -821,7 +832,7 @@ struct IndexingTupleOutOfBounds {
   }
 
   frontend::SourceRange range;
-  type::Tuple const * tuple;
+  type::Tuple const* tuple;
   int64_t index;
 };
 
@@ -908,7 +919,7 @@ struct DereferencingNonPointer {
              type->to_string()));
   }
 
-  type::Type const *type;
+  type::Type const* type;
   frontend::SourceRange range;
 };
 
@@ -923,7 +934,7 @@ struct WhichNonVariant {
              type->to_string()));
   }
 
-  type::Type const *type;
+  type::Type const* type;
   frontend::SourceRange range;
 };
 

@@ -298,17 +298,6 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
       call_exprs.push_back(move_as<ast::Call>(nodes[1]));
     }
     return std::make_unique<ast::Goto>(std::move(span), std::move(call_exprs));
-  } else if (tk == "print") {
-    auto span =
-        SourceRange(nodes.front()->span.begin(), nodes.back()->span.end());
-    std::vector<std::unique_ptr<ast::Expression>> exprs;
-    if (auto *cl = nodes[1]->if_as<ast::CommaList>();
-        cl and not cl->parenthesized_) {
-      exprs = std::move(*cl).extract();
-    } else {
-      exprs.push_back(move_as<ast::Expression>(nodes[1]));
-    }
-    return std::make_unique<ast::PrintStmt>(std::move(span), std::move(exprs));
   } else if (tk == "return") {
     auto span =
         SourceRange(nodes.front()->span.begin(), nodes.back()->span.end());
@@ -701,6 +690,30 @@ std::unique_ptr<ast::Node> BuildOneElementCommaList(
   comma_list->exprs_.push_back(move_as<ast::Expression>(nodes[1]));
   comma_list->parenthesized_ = true;
   return comma_list;
+}
+
+std::unique_ptr<ast::Node> BuildStatementLeftUnop(
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
+  auto stmts = std::make_unique<Statements>();
+  auto range =
+      SourceRange(nodes.front()->span.begin(), nodes.back()->span.end());
+  stmts->span = range;
+
+  const std::string &tk = nodes[0]->as<Token>().token;
+
+  if (tk == "print") {
+    std::vector<std::unique_ptr<ast::Expression>> exprs;
+    if (auto *cl = nodes[1]->if_as<ast::CommaList>();
+        cl and not cl->parenthesized_) {
+      exprs = std::move(*cl).extract();
+    } else {
+      exprs.push_back(move_as<ast::Expression>(nodes[1]));
+    }
+    stmts->append(
+        std::make_unique<ast::PrintStmt>(std::move(range), std::move(exprs)));
+  }
+  return stmts;
 }
 
 std::unique_ptr<ast::Node> BuildOneStatement(
@@ -1169,6 +1182,7 @@ static std::array Rules{
 
     ParseRule(expr, {EXPR, op_r}, BuildRightUnop),
     ParseRule(expr, {(op_l | op_bl | op_lt), EXPR}, BuildLeftUnop),
+    ParseRule(stmts, {sop_l, EXPR}, BuildStatementLeftUnop),
 
     ParseRule(stmts, {yield, EXPR}, BuildUnlabeledYield),
     ParseRule(stmts, {label, yield, EXPR}, BuildLabeledYield),
@@ -1419,25 +1433,30 @@ std::vector<std::unique_ptr<ast::Node>> Parse(
   CleanUpReduction(&state);
 
   // end()
-  if (state.node_stack_.size() > 1) {
-    std::vector<SourceRange> lines;
-
-    for (size_t i = 0; i < state.node_stack_.size(); ++i) {
-      if (state.tag_stack_[i] &
-          (braced_stmts | l_paren | r_paren | l_bracket | r_bracket | l_brace |
-           r_brace | semicolon | fn_arrow | expr)) {
-        lines.push_back(state.node_stack_[i]->span);
-      }
+  switch (state.node_stack_.size()) {
+    case 0: UNREACHABLE();
+    case 1: {
+      // TODO extract errors from the log if they exist.
+      return std::move(move_as<Statements>(state.node_stack_.back())->content_);
     }
+    default: {
+      std::vector<SourceRange> lines;
 
-    // This is an exceedingly crappy error message.
-    diag.Consume(diagnostic::UnknownParseError{
-        .lines = std::move(lines),
-    });
+      for (size_t i = 0; i < state.node_stack_.size(); ++i) {
+        if (state.tag_stack_[i] &
+            (braced_stmts | l_paren | r_paren | l_bracket | r_bracket |
+             l_brace | r_brace | semicolon | fn_arrow | expr)) {
+          lines.push_back(state.node_stack_[i]->span);
+        }
+      }
+
+      // This is an exceedingly crappy error message.
+      diag.Consume(diagnostic::UnknownParseError{
+          .lines = std::move(lines),
+      });
+      return {};
+    }
   }
-
-  // TODO extract errors from the log if they exist.
-  return std::move(move_as<Statements>(state.node_stack_.back())->content_);
 }
 
 }  // namespace frontend

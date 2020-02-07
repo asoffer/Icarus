@@ -4,9 +4,9 @@
 #include <memory>
 #include <vector>
 
-#include "frontend/source/source.h"
-#include "ast/ast_fwd.h"
+#include "ast/node.h"
 #include "diagnostic/consumer/consumer.h"
+#include "frontend/source/source.h"
 
 namespace frontend {
 
