@@ -7,6 +7,7 @@
 #include "absl/types/span.h"
 #include "ir/any_func.h"
 #include "ir/compiled_fn.h"  // TODO remove once anyfunc depends on this.
+#include "type/cast.h"
 #include "type/function.h"
 #include "type/type.h"
 
@@ -29,29 +30,26 @@ struct OverloadSet {
                            create = Closed)
       : create_(std::move(create)) {
     for (AnyFunc f : fns) {
-      auto *fn_type         = f.is_fn() ? f.func()->type() : f.foreign().type();
-      auto [iter, inserted] = fns_.emplace(fn_type->input(), f);
-      static_cast<void>(inserted);
-      ASSERT(inserted == true);
+      auto *fn_type = f.is_fn() ? f.func()->type() : f.foreign().type();
+      fns_.emplace_back(fn_type->input(), f);
     }
   }
 
-  // TODO Change to a named method. This doesn't feel as great as I thought it
-  // would.
-  std::optional<AnyFunc> operator[](
-      core::FnParams<type::Type const *> const &inputs) {
-    auto [iter, inserted] = fns_.emplace(inputs, std::nullopt);
-    if (not inserted) { return iter->second; }
-    iter->second = create_(inputs);
-    return iter->second;
+  std::optional<AnyFunc> Lookup(core::FnArgs<type::Type const *> const &args) {
+    for (auto const &[params, fn] : fns_) {
+      if (core::IsCallable(params, args, type::CanCast)) { return fn; }
+    }
+    return std::nullopt;
+    // TODO
+    // return fns_.emplace_back(args, create_(args)).second;
   }
 
  private:
   std::function<std::optional<AnyFunc>(
       core::FnParams<type::Type const *> const &)>
       create_;
-  absl::flat_hash_map<core::FnParams<type::Type const *>,
-                      std::optional<AnyFunc>>
+  std::vector<
+      std::pair<core::FnParams<type::Type const *>, std::optional<AnyFunc>>>
       fns_;
 };
 

@@ -13,7 +13,6 @@ cc_lib(
         "//diagnostic/consumer",
         "//diagnostic:errors",
         "//frontend/source:cursor",
-        "//ir:block_def",
         "//ir:results",
         "//ir:str",
         "//type:basic_type",

@@ -371,6 +371,7 @@ cc_library(
     deps = [
         ":any_func",
         ":compiled_fn", # Remove once AnyFunc depends on this.
+        "//type:cast",
         "//type:function",
         "//type:type",
         "@com_google_absl//absl/container:flat_hash_map",

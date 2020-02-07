@@ -16,23 +16,6 @@
 namespace compiler {
 namespace {
 
-// TODO this doesn't entirely make sense. We use the parameters to pick out the
-// correct overload set member, but really that should be done with arguments?
-// Something is fishy here.
-std::pair<core::FnParams<type::Type const *>, std::vector<ir::Results>>
-ExtractArgsAndParams(core::FnArgs<type::Typed<ir::Results>> const &args) {
-  core::FnParams<type::Type const *> arg_params;
-  std::vector<ir::Results> arg_results;
-  arg_results.reserve(args.size());
-  // TODO this is the wrong linearization. We have tools for this with FnArgs
-  // and FnParams.
-  args.Apply([&](type::Typed<ir::Results> const &arg) {
-    arg_params.append("", arg.type());
-    arg_results.push_back(arg.get());
-  });
-  return std::pair(std::move(arg_params), std::move(arg_results));
-}
-
 // TODO organize the parameters here, they're getting to be too much.
 void EmitCallOneOverload(
     absl::flat_hash_map<std::string_view,
@@ -49,15 +32,20 @@ void EmitCallOneOverload(
     ir::BlockDef *block_def =
         ASSERT_NOT_NULL(scope_def->block(next_block_name));
 
+    core::FnArgs<type::Type const *> arg_types =
+        block_args.Transform([](auto const &arg) { return arg.type(); });
+
     // TODO make an overload set and call it appropriately.
     // TODO We're calling operator* on an optional. Are we sure that's safe?
     // Did we check it during type-verification? If so why do we need the
     // create_ function in ir::OverloadSet?
-    auto [arg_params, arg_results]      = ExtractArgsAndParams(block_args);
-    std::optional<ir::AnyFunc> maybe_fn = block_def->before_[arg_params];
+    std::optional<ir::AnyFunc> maybe_fn = block_def->before_.Lookup(arg_types);
     ASSERT(maybe_fn.has_value() == true);
     ir::AnyFunc fn = *maybe_fn;
     auto *fn_type  = fn.is_fn() ? fn.func()->type() : fn.foreign().type();
+
+    std::vector<ir::Results> arg_results =
+        PrepareCallArguments(compiler, fn_type->input(), block_args);
 
     ir::OutParams outs = bldr.OutParams(fn_type->output());
     bldr.Call(fn, fn_type, arg_results, outs);

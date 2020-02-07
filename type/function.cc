@@ -36,6 +36,10 @@ void Function::WriteTo(std::string *result) const {
   std::string_view sep = "";
   for (auto const &param : input()) {
     result->append(sep);
+    if (not param.name.empty()) {
+      result->append(param.name);
+      result->append(": ");
+    }
     param.value->WriteTo(result);
     sep = ", ";
   }

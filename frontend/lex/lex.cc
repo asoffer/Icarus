@@ -10,7 +10,6 @@
 #include "frontend/lex/numbers.h"
 #include "frontend/lex/operators.h"
 #include "frontend/lex/syntax.h"
-#include "ir/block_def.h"
 #include "ir/results.h"
 #include "ir/str.h"
 #include "type/basic_type.h"
