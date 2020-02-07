@@ -41,8 +41,6 @@ Inline(Builder &bldr, Jump *to_be_inlined,
 
   inl.InlineAllBlocks();
 
-  // TODO Merge allocations
-
   bldr.CurrentBlock() = start_block;
   bldr.UncondJump(bldr.CurrentGroup()->blocks()[inlined_start_index]);
 

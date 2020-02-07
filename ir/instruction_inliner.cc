@@ -105,6 +105,11 @@ void InstructionInliner::InlineAllBlocks() {
   // number.
   into_->num_regs_ += to_be_inlined_->num_regs();
 
+  to_be_inlined_->allocs().for_each([&](type::Type const* t, Reg r) {
+    Inline(r);
+    into_->allocs_.allocate(t, r);
+  });
+
   for (auto [ignored, block] : blocks_) {
     DEBUG_LOG("inliner-before")(*block);
 
