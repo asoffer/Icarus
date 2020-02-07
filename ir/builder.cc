@@ -63,7 +63,7 @@ void Builder::Call(RegOr<AnyFunc> const &fn, type::Function const *f,
   // TODO this call should return the constructed registers rather than forcing
   // the caller to do it.
   CurrentBlock()->storage_cache_.clear();
-  ASSERT(args.size() == f->input().size());
+  ASSERT(args.size() == f->params().size());
   auto inst = std::make_unique<CallInstruction>(f, fn, std::move(args),
                                                 std::move(outs));
   CurrentBlock()->instructions_.push_back(std::move(inst));

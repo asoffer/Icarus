@@ -45,7 +45,7 @@ void EmitCallOneOverload(
     auto *fn_type  = fn.is_fn() ? fn.func()->type() : fn.foreign().type();
 
     std::vector<ir::Results> arg_results =
-        PrepareCallArguments(compiler, fn_type->input(), block_args);
+        PrepareCallArguments(compiler, fn_type->params(), block_args);
 
     ir::OutParams outs = bldr.OutParams(fn_type->output());
     bldr.Call(fn, fn_type, arg_results, outs);

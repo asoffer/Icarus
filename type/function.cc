@@ -34,7 +34,7 @@ Function const *Func(core::FnParams<Type const *> in,
 void Function::WriteTo(std::string *result) const {
   result->append("(");
   std::string_view sep = "";
-  for (auto const &param : input()) {
+  for (auto const &param : params()) {
     result->append(sep);
     if (not param.name.empty()) {
       result->append(param.name);
@@ -65,7 +65,7 @@ core::Alignment Function::alignment(core::Arch const &a) const {
 core::FnParams<type::Typed<ast::Declaration const *>>
 Function::AnonymousFnParams() const {
   core::FnParams<type::Typed<ast::Declaration const *>> result;
-  for (auto const& param: input()) {
+  for (auto const& param: params()) {
     result.append("",
                   type::Typed<ast::Declaration const *>(nullptr, param.value),
                   core::MUST_NOT_NAME);

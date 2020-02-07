@@ -534,7 +534,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     DEBUG_LOG("call")(f, ": ", fn_type->to_string());
 
     // TODO you probably want interpretter::Arguments or something.
-    size_t num_inputs  = fn_type->input().size();
+    size_t num_inputs  = fn_type->params().size();
     size_t num_regs    = f.is_fn() ? f.func()->num_regs() : 0;
     size_t num_entries = num_inputs + num_regs;
     auto call_buf     = base::untyped_buffer::MakeFull(num_entries * kMaxSize);
@@ -548,7 +548,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
             /*    src = */ reg,
             /* length = */ kMaxSize);
       } else {
-        type::Type const *t = fn_type->input().at(i).value;
+        type::Type const *t = fn_type->params().at(i).value;
         if (t->is_big()) {
           NOT_YET();
         } else {

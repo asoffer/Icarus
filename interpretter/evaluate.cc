@@ -18,7 +18,7 @@ base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
   // construct the buffer
   Execute(&fn,
           base::untyped_buffer::MakeFull(
-              (fn.type()->input().size() + fn.num_regs()) * 16),
+              (fn.type()->params().size() + fn.num_regs()) * 16),
           ret_slots, &exec_context);
   return ret_buf;
 }

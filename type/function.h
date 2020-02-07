@@ -27,9 +27,9 @@ struct GenericFunction : public Callable {
 struct Function : public Callable {
   TYPE_FNS(Function);
   Function(core::FnParams<Type const *> in, std::vector<Type const *> out)
-      : input_(std::move(in)), output_(std::move(out)) {
+      : params_(std::move(in)), output_(std::move(out)) {
 #if defined(ICARUS_DEBUG)
-    for (auto const &p : input_) { ASSERT(p.value != nullptr); }
+    for (auto const &p : params_) { ASSERT(p.value != nullptr); }
     for (auto *t : output_) { ASSERT(t != nullptr); }
 #endif  // defined(ICARUS_DEBUG)
   }
@@ -44,9 +44,8 @@ struct Function : public Callable {
   core::FnParams<type::Typed<ast::Declaration const *>> AnonymousFnParams()
       const;
 
-  // TODO rename to `params()`
-  core::FnParams<Type const *> const &input() const { return input_; }
-  absl::Span<Type const * const> output() const { return output_; }
+  core::FnParams<Type const *> const &params() const { return params_; }
+  absl::Span<Type const *const> output() const { return output_; }
 
  private:
   // Each `Param<Type const*>` has a `std::string_view` member representing the
@@ -58,7 +57,7 @@ struct Function : public Callable {
   // TODO either fix this, or come up with a simple and robust rule we can
   // follow to ensure this is safe. Do we keep the syntax tree around for the
   // lifetime of the program? Any program?
-  core::FnParams<Type const*> input_;
+  core::FnParams<Type const *> params_;
   std::vector<Type const *> output_;
 };
 

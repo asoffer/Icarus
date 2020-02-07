@@ -163,20 +163,20 @@ static type::QualType VerifySpecialFunctions(Compiler *visitor,
         NOT_YET("output must be empty");
       }
 
-      if (f->input().size() != 2 or
-          f->input().at(0).value != f->input().at(1).value or
-          not f->input().at(0).value->is<type::Pointer>() or
-          not f->input()
+      if (f->params().size() != 2 or
+          f->params().at(0).value != f->params().at(1).value or
+          not f->params().at(0).value->is<type::Pointer>() or
+          not f->params()
                   .at(0)
                   .value->as<type::Pointer>()
                   .pointee->is<type::Struct>()) {
         error = true;
-        NOT_YET("incorrect input type");
+        NOT_YET("incorrect params type");
       } else {
         // TODO should you check that they're exported consistently in some way?
         // Note that you don't export the struct but rather declarations bound
         // to it so it's not totally clear how you would do that.
-        auto const &s = f->input()
+        auto const &s = f->params()
                             .at(0)
                             .value->as<type::Pointer>()
                             .pointee->as<type::Struct>();
@@ -203,20 +203,20 @@ static type::QualType VerifySpecialFunctions(Compiler *visitor,
         NOT_YET("output must be empty");
       }
 
-      if (f->input().size() != 2 or
-          f->input().at(0).value != f->input().at(1).value or
-          not f->input().at(0).value->is<type::Pointer>() or
-          not f->input()
+      if (f->params().size() != 2 or
+          f->params().at(0).value != f->params().at(1).value or
+          not f->params().at(0).value->is<type::Pointer>() or
+          not f->params()
                   .at(0)
                   .value->as<type::Pointer>()
                   .pointee->is<type::Struct>()) {
         error = true;
-        NOT_YET("incorrect input type");
+        NOT_YET("incorrect params type");
       } else {
         // TODO should you check that they're exported consistently in some way?
         // Note that you don't export the struct but rather declarations bound
         // to it so it's not totally clear how you would do that.
-        auto const &s = f->input()
+        auto const &s = f->params()
                             .at(0)
                             .value->as<type::Pointer>()
                             .pointee->as<type::Struct>();
@@ -293,7 +293,7 @@ static diagnostic::UninferrableType::Reason Inferrable(type::Type const *t) {
       }
     }
   } else if (auto *f = t->if_as<type::Function>()) {
-    for (auto const &param : f->input()) {
+    for (auto const &param : f->params()) {
       auto reason = Inferrable(param.value);
       if (reason != diagnostic::UninferrableType::Reason::kInferrable) {
         return reason;

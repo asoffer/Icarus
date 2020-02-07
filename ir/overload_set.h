@@ -31,7 +31,7 @@ struct OverloadSet {
       : create_(std::move(create)) {
     for (AnyFunc f : fns) {
       auto *fn_type = f.is_fn() ? f.func()->type() : f.foreign().type();
-      fns_.emplace_back(fn_type->input(), f);
+      fns_.emplace_back(fn_type->params(), f);
     }
   }
 
