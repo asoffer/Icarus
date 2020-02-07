@@ -2121,14 +2121,14 @@ type::QualType Compiler::Visit(ast::Unop const *node, VerifyTypeTag) {
         return type::QualType::Error();
       }
     case frontend::Operator::And:
-      // TODO  does it make sense to take the address of a constant? I think it
+      // TODO does it make sense to take the address of a constant? I think it
       // has to but it also has to have some special meaning. Things we take the
       // address of in run-time code need to be made available at run-time.
       return set_result(
           node, type::QualType(type::Ptr(operand_type), result.constant()));
     case frontend::Operator::Mul:
       if (operand_type != type::Type_) {
-        NOT_YET("log an error, ", operand_type, node);
+        NOT_YET("log an error, ", operand_type->to_string(), node->DebugString());
         return type::QualType::Error();
       } else {
         return set_result(node, type::QualType(type::Type_, result.constant()));

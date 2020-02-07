@@ -155,7 +155,6 @@ std::unique_ptr<ast::Node> BuildControlHandler(
     std::unique_ptr<ast::Node> node) {
   auto &tk = node->as<Token>().token;
   if (tk == "return") { return std::make_unique<ast::ReturnStmt>(node->span); }
-  if (tk == "<<") { return std::make_unique<ast::YieldStmt>(node->span); }
   UNREACHABLE();
 }
 
@@ -321,17 +320,6 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
       exprs.push_back(move_as<ast::Expression>(nodes[1]));
     }
     return std::make_unique<ast::ReturnStmt>(std::move(span), std::move(exprs));
-  } else if (tk == "<<") {
-    auto span =
-        SourceRange(nodes.front()->span.begin(), nodes.back()->span.end());
-    std::vector<std::unique_ptr<ast::Expression>> exprs;
-    if (auto *cl = nodes[1]->if_as<ast::CommaList>();
-        cl and not cl->parenthesized_) {
-      exprs = std::move(*cl).extract();
-    } else {
-      exprs.push_back(move_as<ast::Expression>(nodes[1]));
-    }
-    return std::make_unique<ast::YieldStmt>(std::move(span), std::move(exprs));
   } else if (tk == "'") {
     SourceRange span(nodes.front()->span.begin(), nodes.back()->span.end());
     return BuildCallImpl(std::move(span), move_as<ast::Expression>(nodes[1]),
@@ -358,6 +346,48 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
     });
   }
   return unop;
+}
+
+std::unique_ptr<ast::Node> BuildLabeledYield(
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
+  auto span =
+      SourceRange(nodes.front()->span.begin(), nodes.back()->span.end());
+
+  std::vector<std::unique_ptr<ast::Expression>> exprs;
+  if (nodes.size() > 2) {
+    if (auto *cl = nodes[2]->if_as<ast::CommaList>();
+        cl and not cl->parenthesized_) {
+      exprs = std::move(*cl).extract();
+    } else {
+      exprs.push_back(move_as<ast::Expression>(nodes[1]));
+    }
+  }
+
+  auto stmts  = std::make_unique<Statements>();
+  stmts->span = span;
+  stmts->append(std::make_unique<ast::YieldStmt>(
+      std::move(span), std::move(exprs), move_as<ast::Label>(nodes[0])));
+  return stmts;
+}
+
+std::unique_ptr<ast::Node> BuildUnlabeledYield(
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
+  auto span =
+      SourceRange(nodes.front()->span.begin(), nodes.back()->span.end());
+  std::vector<std::unique_ptr<ast::Expression>> exprs;
+  if (auto *cl = nodes[1]->if_as<ast::CommaList>();
+      cl and not cl->parenthesized_) {
+    exprs = std::move(*cl).extract();
+  } else {
+    exprs.push_back(move_as<ast::Expression>(nodes[1]));
+  }
+
+  auto stmts  = std::make_unique<Statements>();
+  stmts->span = span;
+  stmts->append(std::make_unique<ast::YieldStmt>(span, std::move(exprs)));
+  return stmts;
 }
 
 std::unique_ptr<ast::Node> BuildChainOp(
@@ -1066,7 +1096,7 @@ std::unique_ptr<ast::Node> BuildOperatorIdentifier(
                                            move_as<Token>(nodes[1])->token);
 }
 
-constexpr uint64_t OP_B = op_b | comma | colon | eq;
+constexpr uint64_t OP_B = op_b | comma | colon | eq | yield;
 constexpr uint64_t EXPR = expr | fn_expr | scope_expr | fn_call_expr;
 // Used in error productions only!
 constexpr uint64_t RESERVED = kw_struct | kw_block_head | op_lt;
@@ -1139,6 +1169,11 @@ static std::array Rules{
 
     ParseRule(expr, {EXPR, op_r}, BuildRightUnop),
     ParseRule(expr, {(op_l | op_bl | op_lt), EXPR}, BuildLeftUnop),
+
+    ParseRule(stmts, {yield, EXPR}, BuildUnlabeledYield),
+    ParseRule(stmts, {label, yield, EXPR}, BuildLabeledYield),
+    ParseRule(stmts, {label, yield}, BuildLabeledYield),
+
     ParseRule(expr, {RESERVED, (OP_B | op_bl), EXPR}, ReservedKeywords<1, 0>),
     ParseRule(expr, {l_paren | l_ref, EXPR, r_paren}, Parenthesize),
     ParseRule(expr, {l_bracket, EXPR, r_bracket}, BuildArrayLiteral),
@@ -1244,7 +1279,7 @@ struct ParseState {
     }
 
     constexpr uint64_t OP = hashtag | op_r | op_l | op_b | colon | eq | comma |
-                            op_bl | op_lt | fn_arrow;
+                            op_bl | op_lt | fn_arrow | yield;
     if (get_type<2>() & OP) {
       if (get_type<1>() == r_paren) {
         // TODO this feels like a hack, but maybe this whole function is.

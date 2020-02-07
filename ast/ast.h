@@ -882,7 +882,7 @@ struct Label : Expression {
       : Expression(std::move(span)), label_(std::move(label)) {}
   ~Label() override {}
 
-  ir::Label label() const { return ir::Label(label_); }
+  ir::Label value() const { return ir::Label(label_); }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
@@ -1301,23 +1301,28 @@ struct Unop : Expression {
 // YieldStmt:
 // Represents a yield statement. Arbitrarily many expressions can be passed.
 //
-// Example:
-//  ```
-//  yield "hello", 42
-//  ```
+// Examples:
+//  * `<< "hello", 42`
+//  * `#.my_label << "hello", 42`
+//  * `#.my_label <<`
 //
 struct YieldStmt : Node {
   explicit YieldStmt(frontend::SourceRange span,
-                     std::vector<std::unique_ptr<Expression>> exprs = {})
+                     std::vector<std::unique_ptr<Expression>> exprs,
+                     std::unique_ptr<ast::Label> label = nullptr)
       : Node(std::move(span)), exprs_(std::move(exprs)) {}
   ~YieldStmt() override {}
 
   base::PtrSpan<Expression> exprs() { return exprs_; }
   base::PtrSpan<Expression const> exprs() const { return exprs_; }
 
+  ast::Label *label() { return label_.get(); }
+  ast::Label const *label() const { return label_.get(); }
+
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
+  std::unique_ptr<ast::Label> label_;
   std::vector<std::unique_ptr<Expression>> exprs_;
 };
 

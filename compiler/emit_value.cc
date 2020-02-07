@@ -772,7 +772,7 @@ ir::Results Compiler::Visit(ast::Goto const *node, EmitValueTag) {
 }
 
 ir::Results Compiler::Visit(ast::Label const *node, EmitValueTag) {
-  return ir::Results{node->label()};
+  return ir::Results{node->value()};
 }
 
 ir::Results Compiler::Visit(ast::Jump const *node, EmitValueTag) {

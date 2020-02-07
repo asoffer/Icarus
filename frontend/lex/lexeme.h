@@ -3,6 +3,7 @@
 
 #include <iostream>
 
+#include "ast/ast.h"
 #include "ast/node.h"
 #include "base/meta.h"
 #include "frontend/lex/operators.h"
@@ -39,7 +40,11 @@ struct Lexeme {
           } else if constexpr (std::is_same_v<T, Operator>) {
             return TagFrom(x);
           } else if constexpr (std::is_same_v<T, std::unique_ptr<ast::Node>>) {
-            return expr;
+            if (x->template is<ast::Label>()) {
+              return label;
+            } else {
+              return expr;
+            }
           } else if constexpr (std::is_same_v<T, ast::Hashtag>) {
             return hashtag;
           } else {

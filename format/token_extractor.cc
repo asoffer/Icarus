@@ -102,6 +102,10 @@ void TokenExtractor::Visit(ast::Jump const *node) {
   // TODO
 }
 
+void TokenExtractor::Visit(ast::Label const *node) {
+  line_builder_.write(node->value().value);
+}
+
 void TokenExtractor::Visit(ast::PrintStmt const *node) {
   Join(this, node->exprs(), ",");
 }
