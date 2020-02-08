@@ -16,14 +16,15 @@
 namespace compiler {
 namespace {
 
-// TODO organize the parameters here, they're getting to be too much.
-void EmitCallOneOverload(
+// Returns ir::OutParams that get passed on to `exit`
+std::pair<ir::BasicBlock const *, ir::OutParams> EmitCallOneOverload(
     absl::flat_hash_map<std::string_view,
                         std::pair<ir::BasicBlock *,
                                   core::FnArgs<type::Typed<ir::Results>>>> const
         &name_to_block,
     ir::ScopeDef const *scope_def, Compiler *compiler,
     ir::LocalBlockInterpretation const &block_interp) {
+  std::pair<ir::BasicBlock const *, ir::OutParams> exit_outs;
   auto &bldr = compiler->builder();
 
   for (auto &[next_block_name, block_and_args] : name_to_block) {
@@ -52,15 +53,20 @@ void EmitCallOneOverload(
 
     // TODO only null because there's no start/exit block node. can we fake it
     // to make this work nicer?
-    if (auto *block_node = block_interp.block_node(next_block_name)) {
+
+    if (next_block_name == "exit") {
+      exit_outs.first  = bldr.CurrentBlock();
+      exit_outs.second = std::move(outs);
+
+    } else if (auto *block_node = block_interp.block_node(next_block_name)) {
       auto const &params = block_node->params();
 
       size_t i = 0;
       for (auto *param : params) {
         // TODO should be a decl already
-        ir::Reg addr = compiler->addr(&param->as<ast::Declaration>());
-        type::Type const *param_type =
-            compiler->type_of(&param->as<ast::Declaration>());
+        auto &param_decl             = param->as<ast::Declaration>();
+        ir::Reg addr                 = compiler->addr(&param_decl);
+        type::Type const *param_type = compiler->type_of(&param_decl);
 
         compiler->EmitMoveInit(
             fn_type->output()[i], ir::Results{outs[i]},
@@ -73,6 +79,7 @@ void EmitCallOneOverload(
   }
 
   DEBUG_LOG("EmitCallOneOverload")(*bldr.CurrentGroup());
+  return exit_outs;
 }
 
 }  // namespace
@@ -217,6 +224,9 @@ ir::Results ScopeDispatchTable::EmitCall(
   ("Emitting a table with ", init_map_.size(), " entries.");
   auto &bldr = compiler->builder();
 
+  std::vector<ir::BasicBlock const *> exit_blocks;
+  std::vector<ir::OutParams> exit_outs;
+
   auto *landing_block  = bldr.AddBlock();
   auto callee_to_block = bldr.AddBlocks(init_map_);
   auto *starting_block = bldr.CurrentBlock();
@@ -241,8 +251,12 @@ ir::Results ScopeDispatchTable::EmitCall(
 
     auto name_to_block = JumpDispatchTable::EmitCallOneOverload(
         jump, compiler, args, block_interps.at(scope_def));
-    EmitCallOneOverload(name_to_block, scope_def, compiler,
-                        block_interps.at(scope_def));
+    auto [block, outs] = EmitCallOneOverload(name_to_block, scope_def, compiler,
+                                             block_interps.at(scope_def));
+    if (not outs.empty()) {
+      exit_blocks.push_back(block);
+      exit_outs.push_back(std::move(outs));
+    }
   }
   bldr.CurrentBlock() = landing_block;
 
@@ -277,8 +291,12 @@ ir::Results ScopeDispatchTable::EmitCall(
 
         auto name_to_block = JumpDispatchTable::EmitCallOneOverload(
             jump, compiler, yield_typed_results, block_interps.at(scope_def));
-        EmitCallOneOverload(name_to_block, scope_def, compiler,
-                            block_interps.at(scope_def));
+        auto [block, outs] = EmitCallOneOverload(
+            name_to_block, scope_def, compiler, block_interps.at(scope_def));
+        if (not outs.empty()) {
+          exit_blocks.push_back(block);
+          exit_outs.push_back(std::move(outs));
+        }
       }
     }
   }
@@ -286,7 +304,19 @@ ir::Results ScopeDispatchTable::EmitCall(
   bldr.block_termination_state() = state;
   bldr.CurrentBlock()            = landing_block;
   DEBUG_LOG("EmitCall")(*bldr.CurrentGroup());
-  return ir::Results{};
+  switch (exit_outs.size()) {
+    case 0: return ir::Results{};
+    case 1: {
+      ir::Results results;
+      // TODO direct outparams -> results conversion?
+      auto &out_params = exit_outs[0];
+      for (size_t i = 0; i < out_params.size(); ++i) {
+        results.append(out_params[i]);
+      }
+      return results;
+    }
+    default: NOT_YET();
+  }
 }
 
 }  // namespace compiler

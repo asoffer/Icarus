@@ -17,6 +17,7 @@ struct OutParams {
 
   Reg operator[](size_t n) const { return regs_[n]; }
   size_t size() const { return regs_.size(); }
+  bool empty() const { return regs_.empty(); }
 
   void WriteByteCode(ByteCodeWriter *writer) const {
     writer->Write<uint16_t>(regs_.size());
