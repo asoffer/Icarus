@@ -284,6 +284,30 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
     auto span = SourceRange(nodes[0]->span.begin(), nodes[1]->span.end());
     return std::make_unique<ast::Import>(std::move(span),
                                          move_as<ast::Expression>(nodes[1]));
+  } else if (tk == "goto") {
+    auto range =
+        SourceRange(nodes.front()->span.begin(), nodes.back()->span.end());
+    std::vector<std::unique_ptr<ast::Expression>> exprs;
+    std::vector<std::unique_ptr<ast::Call>> call_exprs;
+    if (auto *c = nodes[1]->if_as<ast::ChainOp>();
+        c and not c->parenthesized_) {
+      exprs = std::move(*c).extract();
+      for (auto &expr : exprs) {
+        if (expr->is<ast::Call>()) {
+          call_exprs.push_back(move_as<ast::Call>(expr));
+        } else {
+          diag.Consume(diagnostic::Todo{});
+        }
+      }
+    } else {
+      if (nodes[1]->is<ast::Call>()) {
+        call_exprs.push_back(move_as<ast::Call>(nodes[1]));
+      } else {
+        diag.Consume(diagnostic::Todo{});
+      }
+    }
+    return std::make_unique<ast::Goto>(std::move(range), std::move(call_exprs));
+
   } else if (tk == "'") {
     SourceRange span(nodes.front()->span.begin(), nodes.back()->span.end());
     return BuildCallImpl(std::move(span), move_as<ast::Expression>(nodes[1]),
@@ -699,30 +723,6 @@ std::unique_ptr<ast::Node> BuildStatementLeftUnop(
     }
     stmts->append(
         std::make_unique<ast::PrintStmt>(std::move(range), std::move(exprs)));
-  } else if (tk == "goto") {
-    auto range =
-        SourceRange(nodes.front()->span.begin(), nodes.back()->span.end());
-    std::vector<std::unique_ptr<ast::Expression>> exprs;
-    std::vector<std::unique_ptr<ast::Call>> call_exprs;
-    if (auto *c = nodes[1]->if_as<ast::ChainOp>();
-        c and not c->parenthesized_) {
-      exprs = std::move(*c).extract();
-      for (auto &expr : exprs) {
-        if (expr->is<ast::Call>()) {
-          call_exprs.push_back(move_as<ast::Call>(expr));
-        } else {
-          diag.Consume(diagnostic::Todo{});
-        }
-      }
-    } else {
-      if (nodes[1]->is<ast::Call>()) {
-        call_exprs.push_back(move_as<ast::Call>(nodes[1]));
-      } else {
-        diag.Consume(diagnostic::Todo{});
-      }
-    }
-    stmts->append(
-        std::make_unique<ast::Goto>(std::move(range), std::move(call_exprs)));
   } else if (tk == "return") {
     auto span =
         SourceRange(nodes.front()->span.begin(), nodes.back()->span.end());
@@ -1141,7 +1141,7 @@ constexpr uint64_t KW_BLOCK = kw_struct | kw_block_head | kw_block;
 // list (second line of each rule). If so, then the function given in the third
 // line of each rule is applied, replacing the matched nodes. Lastly, the new
 // nodes type is set to the given type in the first line.
-static std::array Rules{
+static std::array kRules{
     ParseRule(fn_expr, {EXPR, fn_arrow, EXPR | kw_block}, BuildBinaryOperator),
     ParseRule(expr, {EXPR, (op_bl | OP_B), EXPR}, BuildBinaryOperator),
     ParseRule(op_b, {colon, eq}, CombineColonEq),
@@ -1171,8 +1171,6 @@ static std::array Rules{
               ReservedKeywords<0, 1>),
     ParseRule(expr, {l_bracket, RESERVED, semicolon, RESERVED, r_bracket},
               ReservedKeywords<0, 1, 3>),
-    ParseRule(eof, {newline, eof}, drop_all_but<1>),
-    ParseRule(stmts, {stmts, eof}, drop_all_but<0>),
     ParseRule(r_paren, {newline, r_paren}, drop_all_but<1>),
     ParseRule(r_bracket, {newline, r_bracket}, drop_all_but<1>),
     ParseRule(r_brace, {newline, r_brace}, drop_all_but<1>),
@@ -1244,6 +1242,8 @@ static std::array Rules{
     ParseRule(scope_expr, {scope_expr, block_expr}, ExtendScopeNode),
     ParseRule(scope_expr, {scope_expr, expr, scope_expr},
               SugaredExtendScopeNode),
+    ParseRule(eof, {newline, eof}, drop_all_but<1>),
+    ParseRule(stmts, {stmts, eof}, drop_all_but<0>),
 };
 
 enum class ShiftState : char { NeedMore, EndOfExpr, MustReduce };
@@ -1317,7 +1317,7 @@ struct ParseState {
     }
 
     constexpr uint64_t OP = hashtag | op_r | op_l | op_b | colon | eq | comma |
-                            op_bl | op_lt | fn_arrow | yield;
+                            op_bl | op_lt | fn_arrow | yield | sop_l | sop_lt;
     if (get_type<2>() & OP) {
       if (get_type<1>() == r_paren) {
         // TODO this feels like a hack, but maybe this whole function is.
@@ -1406,7 +1406,7 @@ void Shift(ParseState *ps) {
 
 bool Reduce(ParseState *ps) {
   const ParseRule *matched_rule_ptr = nullptr;
-  for (ParseRule const &rule : Rules) {
+  for (ParseRule const &rule : kRules) {
     if (rule.Match(ps->tag_stack_)) {
       matched_rule_ptr = &rule;
       break;
