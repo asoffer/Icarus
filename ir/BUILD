@@ -89,6 +89,7 @@ cc_lib(
         "//base:move_func",
         "//core:fn_params",
         "//type:jump",
+        "//type:qual_type",
     ],
     header_only = True,
     test_deps = None,
@@ -373,6 +374,7 @@ cc_library(
         ":compiled_fn", # Remove once AnyFunc depends on this.
         "//type:cast",
         "//type:function",
+        "//type:qual_type",
         "//type:type",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/types:span",

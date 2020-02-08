@@ -16,7 +16,7 @@ struct Compiler;  // TODO move into it's own header.
 
 struct JumpDispatchTable {
   static base::expected<JumpDispatchTable> Verify(
-      ast::ScopeNode const *node, absl::Span<ir::Jump *const> jumps,
+      absl::Span<ir::Jump *const> jumps,
       core::FnArgs<type::QualType> const &args);
 
   // TODO long-term the `jump` parameter should read from `table_`.

@@ -61,11 +61,13 @@ struct CompilationData {
     return nullptr;
   }
 
-  void set_scope_dispatch_table(ast::Expression const *expr,
-                                ScopeDispatchTable &&table) {
+  type::QualType set_scope_dispatch_table(ast::Expression const *expr,
+                                          ScopeDispatchTable &&table) {
+    auto qual_type = table.qual_type();
     ICARUS_DEBUG_ONLY(auto [iter, success] =)
     scope_dispatch_tables_.emplace(expr, std::move(table));
     ASSERT(success == true);
+    return set_result(expr, qual_type);
   }
 
   ScopeDispatchTable const *scope_dispatch_table(
@@ -88,8 +90,7 @@ struct CompilationData {
     return iter == type_verification_results_.end() ? nullptr : &iter->second;
   }
 
-  type::QualType set_result(ast::ExprPtr expr, type::QualType r) {
-    type_verification_results_.emplace(expr, r);
+  type::QualType set_result(ast::ExprPtr expr, type::QualType r) { type_verification_results_.emplace(expr, r);
     return r;
   }
 
@@ -143,6 +144,7 @@ struct CompilationData {
   diagnostic::StreamingConsumer diag_{stderr};
 
   absl::node_hash_map<ast::Jump const *, ir::Jump> jumps_;
+
   absl::flat_hash_map<ast::ExprPtr, type::QualType> type_verification_results_;
 
   absl::flat_hash_map<ast::Declaration const *, ir::Reg> addr_;

@@ -77,6 +77,91 @@ void EmitCallOneOverload(
 
 }  // namespace
 
+void internal::OneTable::VerifyBlocks(Compiler *compiler,
+                                      ast::ScopeNode const *node) {
+  for (auto const &block : node->blocks()) {
+    DEBUG_LOG("VerifyBlocks")
+    ("Verifying dispatch for block `", block.name(), "`");
+    auto const *block_def = scope_def_->block(block.name());
+    if (not block_def) { NOT_YET("log an error"); }
+    auto block_results = compiler->VerifyBlockNode(&block);
+    DEBUG_LOG("VerifyBlocks")("    ", block_results);
+    if (block_results.empty()) {
+      // There are no relevant yield statements
+      DEBUG_LOG("VerifyBlocks")("    ... empty block results");
+
+      ASSIGN_OR(continue,  //
+                auto jump_table,
+                JumpDispatchTable::Verify(block_def->after_, {}));
+      bool success = blocks.emplace(&block, std::move(jump_table)).second;
+      static_cast<void>(success);
+      ASSERT(success == true);
+    } else {
+      // Find an `after` that matches
+      for (auto const &fn_args : block_results) {
+        DEBUG_LOG("VerifyBlocks")("    ... result = ", fn_args);
+        ASSIGN_OR(continue,  //
+                  auto jump_table,
+                  JumpDispatchTable::Verify(block_def->after_, fn_args));
+        bool success = blocks.emplace(&block, std::move(jump_table)).second;
+        static_cast<void>(success);
+        ASSERT(success == true);
+      }
+    }
+    DEBUG_LOG("VerifyBlocks")("    ... done.");
+  }
+}
+
+void internal::OneTable::VerifyJumps() {
+  // The types that get passed out of a `before` function into the next block.
+  absl::flat_hash_map<std::string_view,
+                      std::vector<absl::Span<type::Type const *const>>>
+      next_types;
+  for (auto const &[node, table] : blocks) {
+    for (auto const &[jump, expr_data] : table.table_) {
+      auto jump_exit_paths = jump->ExtractExitPaths();
+      for (auto const &[block_name, arg_type_calls] : jump_exit_paths) {
+        auto &block_def = *ASSERT_NOT_NULL(scope_def_->block(block_name));
+        for (auto const &arg_types : arg_type_calls) {
+          std::optional<ir::AnyFunc> maybe_fn =
+              block_def.before_.Lookup(arg_types);
+          ASSERT(maybe_fn.has_value() == true);
+          ir::AnyFunc fn = *maybe_fn;
+          core::FnParams<type::Typed<ast::Declaration const *>> fn_params;
+          if (fn.is_fn()) {
+            fn_params = fn.func()->params();
+          } else {
+            NOT_YET();
+          }
+
+          auto result = MatchArgsToParams(fn_params, arg_types);
+
+          if (result) {
+            next_types[block_name].push_back(fn.func()->type()->output());
+          } else {
+            DEBUG_LOG("VerifyJumps")(result.error());
+            // This is entirely reasonable. It just means this particular path
+            // into a block can't be used but others are possible.
+            NOT_YET();
+          }
+
+          // TODO check that ParamsCoverArgs and otherwise emit a diagnostic.
+        }
+      }
+    }
+  }
+
+  if (auto iter = next_types.find("exit"); iter != next_types.end()) {
+    // Note: If `exit` is not found in `next_types` it's because it is
+    // impossible to jump to. This means we'll never exit a scope via a normal
+    // call to `exit()` so it's safe to assume that the result type is void
+    // (which is correctly default constructed so there's nothing to do).
+    result_types_ = type::MultiVar(iter->second);
+  }
+
+  // TODO assign types for all the other blocks? Check that they're correct?
+}
+
 base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
     Compiler *compiler, ast::ScopeNode const *node,
     absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> inits,
@@ -88,11 +173,12 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
   table.scope_node_ = node;
   table.init_map_   = std::move(inits);
   for (auto [jump, scope] : table.init_map_) {
-    auto result = MatchArgsToParams(jump->params(), args);
-    if (not result) {
-      failures[scope].emplace(jump, result.error());
+    if (auto result = MatchArgsToParams(jump->params(), args)) {
+      auto &one_table = table.tables_[scope];
+      one_table.inits.emplace(jump, *result);
+      one_table.scope_def_ = scope;
     } else {
-      table.tables_[scope].inits.emplace(jump, *result);
+      failures[scope].emplace(jump, result.error());
     }
   }
 
@@ -109,43 +195,18 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
   // corresponding names, we should exit.
 
   DEBUG_LOG("ScopeNode")("Num tables = ", table.tables_.size());
-  for (auto &[scope_def, one_table] : table.tables_) {
-    for (auto const &block : node->blocks()) {
-      DEBUG_LOG("ScopeNode")
-      ("Verifying dispatch for block `", block.name(), "`");
-      auto const *block_def = scope_def->block(block.name());
-      if (not block_def) { NOT_YET("log an error"); }
-      auto block_results = compiler->VerifyBlockNode(&block);
-      DEBUG_LOG("ScopeNode")("    ", block_results);
-      if (block_results.empty()) {
-        // There are no relevant yield statements
-        DEBUG_LOG("ScopeNode")("    ... empty block results");
-
-        ASSIGN_OR(continue,  //
-                  auto jump_table,
-                  JumpDispatchTable::Verify(node, block_def->after_, {}));
-        bool success =
-            one_table.blocks.emplace(&block, std::move(jump_table)).second;
-        static_cast<void>(success);
-        ASSERT(success == true);
-      } else {
-        // Find an `after` that matches
-        for (auto const &fn_args : block_results) {
-          DEBUG_LOG("ScopeNode")("    ... result = ", fn_args);
-          ASSIGN_OR(continue,  //
-                    auto jump_table,
-                    JumpDispatchTable::Verify(node, block_def->after_, fn_args));
-
-          bool success =
-              one_table.blocks.emplace(&block, std::move(jump_table)).second;
-          static_cast<void>(success);
-          ASSERT(success == true);
-        }
-      }
-      DEBUG_LOG("ScopeNode")("    ... done.");
-    }
+  for (auto &[_, one_table] : table.tables_) {
+    one_table.VerifyBlocks(compiler, node);
+    one_table.VerifyJumps();
   }
 
+  std::vector<absl::Span<type::Type const * const>> result_types;
+  result_types.reserve(table.tables_.size());
+  for (auto const &[_,one_table] : table.tables_) {
+    result_types.push_back(one_table.result_types());
+  }
+  table.qual_type_ =
+      type::QualType::NonConstant(type::Tup(type::MultiVar(result_types)));
   return table;
 }
 

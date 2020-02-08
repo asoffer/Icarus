@@ -100,6 +100,10 @@ struct JumpCmd {
 
   Reg CondReg() const { return std::get<CondJump>(jump_).reg; }
 
+  ChooseJump const* IfAsChooseJump() const {
+    return std::get_if<ChooseJump>(&jump_);
+  }
+
   BasicBlock* CondTarget(bool b) const {
     if (auto* u = std::get_if<CondJump>(&jump_)) {
       return b ? u->true_block : u->false_block;

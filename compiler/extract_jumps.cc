@@ -91,7 +91,7 @@ void ExtractJumps::Visit(ast::Goto const *node) {
       Visit(expr.get());
     }
   }
-  data_[static_cast<std::underlying_type_t<Kind>>(Kind::Jump)].push_back(node);
+  data_[static_cast<std::underlying_type_t<Kind>>(Kind::Goto)].push_back(node);
 }
 
 void ExtractJumps::Visit(ast::Label const *node) {}

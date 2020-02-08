@@ -10,7 +10,7 @@
 namespace compiler {
 
 base::expected<JumpDispatchTable> JumpDispatchTable::Verify(
-    ast::ScopeNode const *node, absl::Span<ir::Jump *const> jumps,
+    absl::Span<ir::Jump *const> jumps,
     core::FnArgs<type::QualType> const &args) {
   DEBUG_LOG("dispatch-verify")
   ("Verifying overload set with ", jumps.size(), " members.");
@@ -39,7 +39,6 @@ base::expected<JumpDispatchTable> JumpDispatchTable::Verify(
                           [](auto const &, internal::ExprData const &data)
                               -> decltype(auto) { return data.params(); })) {
     DEBUG_LOG()(args.to_string());
-    DEBUG_LOG()(node->DebugString());
     NOT_YET("log an error");
   }
   return table;

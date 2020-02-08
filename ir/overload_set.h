@@ -10,6 +10,7 @@
 #include "type/cast.h"
 #include "type/function.h"
 #include "type/type.h"
+#include "type/qual_type.h"
 
 namespace ir {
 
@@ -33,6 +34,11 @@ struct OverloadSet {
       auto *fn_type = f.is_fn() ? f.func()->type() : f.foreign().type();
       fns_.emplace_back(fn_type->params(), f);
     }
+  }
+
+  // TODO use this version everywhere.
+  std::optional<AnyFunc> Lookup(core::FnArgs<type::QualType> const &args) {
+    return Lookup(args.Transform([](auto const &qt) { return qt.type(); }));
   }
 
   std::optional<AnyFunc> Lookup(core::FnArgs<type::Type const *> const &args) {

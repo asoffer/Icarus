@@ -1845,6 +1845,9 @@ type::QualType Compiler::Visit(ast::Jump const *node, VerifyTypeTag) {
         err |= not v.ok();
         return v.type();
       });
+
+  for (auto const *stmt : node->stmts()) { Visit(stmt, VerifyTypeTag{}); }
+
   return set_result(node,
                     err ? type::QualType::Error()
                         : type::QualType::Constant(type::Jmp(param_types)));
@@ -1937,10 +1940,7 @@ type::QualType Compiler::Visit(ast::ScopeNode const *node, VerifyTypeTag) {
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto table,
                    ScopeDispatchTable::Verify(this, node, inits, arg_results));
-  data_.set_scope_dispatch_table(node, std::move(table));
-  // TODO might be constant? Actually handle yields correctly.
-  auto result = type::QualType::NonConstant(type::Void());
-  return set_result(node, result);
+  return data_.set_scope_dispatch_table(node, std::move(table));
 }
 
 type::QualType Compiler::Visit(ast::StructLiteral const *node, VerifyTypeTag) {

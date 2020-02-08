@@ -16,7 +16,7 @@ struct ExtractJumps : ast::Visitor<void()> {
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
 
-  enum class Kind { Return, Yield, Jump };
+  enum class Kind { Return, Yield, Goto };
   absl::Span<ast::Node const *const> jumps(Kind k) const;
 
  private:
