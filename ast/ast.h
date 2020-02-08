@@ -23,6 +23,7 @@
 #include "core/fn_params.h"
 #include "core/ordered_fn_args.h"
 #include "frontend/lex/operators.h"
+#include "ir/addr.h"
 #include "ir/label.h"
 #include "ir/results.h"
 #include "type/basic_type.h"
@@ -1206,7 +1207,7 @@ struct Terminal : Expression {
     } else if constexpr (std::is_same_v<T, type::BasicType>) {
       t_ = value;
     } else {
-      UNREACHABLE(typeid(T).name());
+      addr_ = value;
     }
   }
   ~Terminal() override {}
@@ -1230,6 +1231,7 @@ struct Terminal : Expression {
       case BasicType::ByteView: return ir::Results{sv_};
       case BasicType::Bool: return ir::Results{b_};
       case BasicType::Type_: return ir::Results{type::Prim(t_)};
+      case BasicType::NullPtr: return ir::Results{addr_};
       default:;
     }
     UNREACHABLE();
@@ -1252,6 +1254,8 @@ struct Terminal : Expression {
       return f32_;
     } else if constexpr (std::is_same_v<T, double>) {
       return f64_;
+    } else if constexpr (std::is_same_v<T, ir::Addr>) {
+      return addr_;
     } else {
       NOT_YET();
     }
@@ -1269,6 +1273,7 @@ struct Terminal : Expression {
     double f64_;
     std::string_view sv_;
     type::BasicType t_;
+    ir::Addr addr_;
   };
 };
 

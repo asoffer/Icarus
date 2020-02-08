@@ -21,32 +21,33 @@ TEST(OverloadSet, Construction) {
                     type::Func({core::AnonymousParam(type::Bool)}, {}))});
 
   {
-    core::FnParams<type::Type const *> p;
-    auto fn = os[p];
+    core::FnArgs<type::Type const *> a;
+    auto fn = os.Lookup(a);
     ASSERT_TRUE(fn.has_value());
     EXPECT_EQ(fn->foreign().get(), static_cast<void (*)()>(TestFn1));
   }
   {
-    core::FnParams<type::Type const *> p{core::AnonymousParam(type::Int64)};
-    auto fn = os[p];
+    core::FnArgs<type::Type const *> a{{type::Int64}, {}};
+    auto fn = os.Lookup(a);
     ASSERT_TRUE(fn.has_value());
     EXPECT_EQ(fn->foreign().get(), static_cast<void (*)()>(TestFn2));
   }
   {
-    core::FnParams<type::Type const *> p{core::AnonymousParam(type::Bool)};
-    auto fn = os[p];
+    core::FnArgs<type::Type const *> a{{type::Bool}, {}};
+    auto fn = os.Lookup(a);
     ASSERT_TRUE(fn.has_value());
     EXPECT_EQ(fn->foreign().get(), static_cast<void (*)()>(TestFn3));
   }
 }
 
+// TODO intentionally broke this. It needs to be fixed.
 TEST(OverloadSet, Callable) {
   ir::OverloadSet os(absl::Span<ir::AnyFunc const>{},
                      [](core::FnParams<type::Type const *> const &)
                          -> std::optional<ir::AnyFunc> {
                        return ir::ForeignFn(TestFn1, type::Func({}, {}));
                      });
-  auto fn = os[core::FnParams<type::Type const *>()];
+  auto fn = os.Lookup(core::FnArgs<type::Type const *>());
   ASSERT_TRUE(fn.has_value());
   ASSERT_FALSE(fn->is_fn());
   EXPECT_EQ(fn->foreign().get(), static_cast<void (*)()>(TestFn1));
@@ -55,9 +56,9 @@ TEST(OverloadSet, Callable) {
 TEST(OverloadSet, FailsToConstruct) {
   ir::OverloadSet os(absl::Span<ir::AnyFunc const>{});
 
-  // Check twice because operator[] caches state.
-  EXPECT_FALSE(os[core::FnParams<type::Type const *>()].has_value());
-  EXPECT_FALSE(os[core::FnParams<type::Type const *>()].has_value());
+  // Check twice because `Lookup()` caches state.
+  EXPECT_FALSE(os.Lookup(core::FnArgs<type::Type const *>()).has_value());
+  EXPECT_FALSE(os.Lookup(core::FnArgs<type::Type const *>()).has_value());
 }
 
 }  // namespace

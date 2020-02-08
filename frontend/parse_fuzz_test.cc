@@ -42,7 +42,8 @@ static constexpr auto kTokens = std::array{
     std::string_view{"module"}, std::string_view{"byte_view"},
     // Other
     std::string_view{"block"}, std::string_view{"scope"},
-    std::string_view{"#{export}"}, std::string_view{"\n"},
+    std::string_view{"#{export}"}, std::string_view{R"(\)"},
+    std::string_view{R"(\\)"}, std::string_view{"\n"},
     // Values
     std::string_view{"true"}, std::string_view{"false"},
     std::string_view{"null"}, std::string_view{"1234"},

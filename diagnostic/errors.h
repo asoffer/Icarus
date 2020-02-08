@@ -949,6 +949,15 @@ struct ParametersDoNotCoverArguments {
   core::FnArgs<type::QualType> const& args;
 };
 
+struct Todo {
+  static constexpr std::string_view kCategory = "todo";
+  static constexpr std::string_view kName = "todo";
+
+  DiagnosticMessage ToMessage() const {
+    return DiagnosticMessage(Text("TODO"));
+  }
+};
+
 }  // namespace diagnostic
 
 #endif  // ICARUS_DIAGNOSTIC_ERRORS_H

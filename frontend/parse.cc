@@ -22,6 +22,10 @@ namespace frontend {
 namespace {
 using ::matcher::InheritsFrom;
 
+std::unique_ptr<ast::Identifier> MakeInvalidNode(SourceRange range = SourceRange()) {
+  return std::make_unique<ast::Identifier>(range, "invalid_node");
+}
+
 struct Statements : public ast::Node {
   Statements() {}
   ~Statements() override {}
@@ -81,6 +85,7 @@ void ValidateStatementSyntax(ast::Node *node,
                              diagnostic::DiagnosticConsumer &diag) {
   if (auto *cl = node->if_as<ast::CommaList>()) {
     diag.Consume(diagnostic::CommaSeparatedListStatement{.range = cl->span});
+    NOT_YET();
   }
 }
 
@@ -103,19 +108,19 @@ constexpr size_t precedence(Operator op) {
 
 std::unique_ptr<ast::Node> AddHashtag(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
-    diagnostic::DiagnosticConsumer &) {
+    diagnostic::DiagnosticConsumer & diag) {
   auto expr = move_as<ast::Expression>(nodes.back());
   auto iter = BuiltinHashtagMap.find(nodes.front()->as<Token>().token);
   if (iter != BuiltinHashtagMap.end()) {
     expr->hashtags_.emplace_back(iter->second);
   } else {
-    NOT_YET(nodes.front()->as<Token>().token);
+    diag.Consume(diagnostic::Todo{});
   }
   return expr;
 }
 
 std::unique_ptr<ast::Switch> BuildSwitch(std::unique_ptr<Statements> stmts,
-                                         diagnostic::DiagnosticConsumer &) {
+                                         diagnostic::DiagnosticConsumer &diag) {
   auto switch_expr  = std::make_unique<ast::Switch>();
   switch_expr->span = stmts->span;  // TODO it's really bigger than this because
                                     // it involves the keyword too.
@@ -126,7 +131,7 @@ std::unique_ptr<ast::Switch> BuildSwitch(std::unique_ptr<Statements> stmts,
       switch_expr->cases_.emplace_back(std::move(switch_when->body),
                                        std::move(switch_when->cond));
     } else {
-      NOT_YET("handle error");
+      diag.Consume(diagnostic::Todo{});
     }
   }
 
@@ -279,36 +284,6 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
     auto span = SourceRange(nodes[0]->span.begin(), nodes[1]->span.end());
     return std::make_unique<ast::Import>(std::move(span),
                                          move_as<ast::Expression>(nodes[1]));
-  } else if (tk == "goto") {
-    auto span =
-        SourceRange(nodes.front()->span.begin(), nodes.back()->span.end());
-    std::vector<std::unique_ptr<ast::Expression>> exprs;
-    std::vector<std::unique_ptr<ast::Call>> call_exprs;
-    if (auto *c = nodes[1]->if_as<ast::ChainOp>();
-        c and not c->parenthesized_) {
-      exprs = std::move(*c).extract();
-      for (auto &expr : exprs) {
-        if (expr->is<ast::Call>()) {
-          call_exprs.push_back(move_as<ast::Call>(expr));
-        } else {
-          UNREACHABLE();
-        }
-      }
-    } else {
-      call_exprs.push_back(move_as<ast::Call>(nodes[1]));
-    }
-    return std::make_unique<ast::Goto>(std::move(span), std::move(call_exprs));
-  } else if (tk == "return") {
-    auto span =
-        SourceRange(nodes.front()->span.begin(), nodes.back()->span.end());
-    std::vector<std::unique_ptr<ast::Expression>> exprs;
-    if (auto *cl = nodes[1]->if_as<ast::CommaList>();
-        cl and not cl->parenthesized_) {
-      exprs = std::move(*cl).extract();
-    } else {
-      exprs.push_back(move_as<ast::Expression>(nodes[1]));
-    }
-    return std::make_unique<ast::ReturnStmt>(std::move(span), std::move(exprs));
   } else if (tk == "'") {
     SourceRange span(nodes.front()->span.begin(), nodes.back()->span.end());
     return BuildCallImpl(std::move(span), move_as<ast::Expression>(nodes[1]),
@@ -325,16 +300,25 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
       {"$", Operator::Eval},        {"..", Operator::VariadicPack},
   };
 
-  SourceRange span(nodes[0]->span.begin(), nodes[1]->span.end());
-  auto unop = std::make_unique<ast::Unop>(span, kUnopMap.at(tk),
-                                          move_as<ast::Expression>(nodes[1]));
+  SourceRange range(nodes[0]->span.begin(), nodes[1]->span.end());
 
-  if (unop->operand()->is<ast::Declaration>()) {
+  auto& operand = nodes[1];
+  Operator op   = kUnopMap.find(tk)->second;
+
+  if (operand->is<ast::Declaration>()) {
     diag.Consume(diagnostic::DeclarationUsedInUnaryOperator{
-        .range = unop->operand()->span,
+        .range = range,
     });
+    return std::make_unique<ast::Unop>(range, op, MakeInvalidNode(nodes[1]->span));
+
+  } else if (not operand->is<ast::Expression>()) {
+    diag.Consume(diagnostic::Todo{});
+    return std::make_unique<ast::Unop>(range, op, MakeInvalidNode(nodes[1]->span));
+
+  } else {
+    return std::make_unique<ast::Unop>(range, op,
+                                       move_as<ast::Expression>(nodes[1]));
   }
-  return unop;
 }
 
 std::unique_ptr<ast::Node> BuildLabeledYield(
@@ -429,6 +413,8 @@ std::unique_ptr<ast::Node> BuildAccess(
     diag.Consume(diagnostic::AccessRhsNotIdentifier{
         .range = nodes[2]->span,
     });
+    return std::make_unique<ast::Access>(span, std::move(operand),
+                                         "invalid_node");
   }
 
   return std::make_unique<ast::Access>(
@@ -547,7 +533,8 @@ std::unique_ptr<ast::Node> BuildDeclaration(
 }
 
 std::vector<std::unique_ptr<ast::Declaration>> ExtractInputs(
-    std::unique_ptr<ast::Expression> args) {
+    std::unique_ptr<ast::Expression> args,
+    diagnostic::DiagnosticConsumer &diag) {
   std::vector<std::unique_ptr<ast::Declaration>> inputs;
   if (args->is<ast::Declaration>()) {
     inputs.push_back(move_as<ast::Declaration>(args));
@@ -559,11 +546,11 @@ std::vector<std::unique_ptr<ast::Declaration>> ExtractInputs(
       if (expr->is<ast::Declaration>()) {
         inputs.push_back(move_as<ast::Declaration>(expr));
       } else {
-        NOT_YET("log an error: ", args->DebugString());
+        diag.Consume(diagnostic::Todo{});
       }
     }
   } else {
-    NOT_YET("log an error: ", args->DebugString());
+    diag.Consume(diagnostic::Todo{});
   }
   return inputs;
 }
@@ -620,11 +607,11 @@ std::unique_ptr<ast::Node> BuildDesignatedInitializer(
           initializers.emplace_back(std::move(*lhs_id).extract(),
                                     std::move(rhs));
         } else {
-          NOT_YET("log an error");
+          diag.Consume(diagnostic::Todo{});
           continue;
         }
       } else {
-        NOT_YET("log an error");
+        diag.Consume(diagnostic::Todo{});
         continue;
       }
     }
@@ -647,7 +634,7 @@ std::unique_ptr<ast::Node> BuildNormalFunctionLiteral(
   auto *binop = &nodes[0]->as<ast::Binop>();
   auto [lhs, rhs] = std::move(*binop).extract();
   return BuildFunctionLiteral(
-      std::move(span), ExtractInputs(std::move(lhs)), std::move(rhs),
+      std::move(span), ExtractInputs(std::move(lhs), diag), std::move(rhs),
       std::move(nodes[1]->as<Statements>()), false, diag);
 }
 
@@ -656,7 +643,7 @@ std::unique_ptr<ast::Node> BuildInferredFunctionLiteral(
     diagnostic::DiagnosticConsumer &diag) {
   auto span = SourceRange(nodes[0]->span.begin(), nodes.back()->span.end());
   return BuildFunctionLiteral(
-      std::move(span), ExtractInputs(move_as<ast::Expression>(nodes[0])),
+      std::move(span), ExtractInputs(move_as<ast::Expression>(nodes[0]), diag),
       nullptr, std::move(nodes[2]->as<Statements>()), false, diag);
 }
 
@@ -666,7 +653,7 @@ std::unique_ptr<ast::Node> BuildShortFunctionLiteral(
     std::unique_ptr<ast::Expression> body,
     diagnostic::DiagnosticConsumer &diag) {
   auto span   = SourceRange(args->span.begin(), body->span.end());
-  auto inputs = ExtractInputs(std::move(args));
+  auto inputs = ExtractInputs(std::move(args), diag);
 
   std::vector<std::unique_ptr<ast::Expression>> ret_vals;
   if (auto *cl = body->if_as<ast::CommaList>()) {
@@ -712,6 +699,42 @@ std::unique_ptr<ast::Node> BuildStatementLeftUnop(
     }
     stmts->append(
         std::make_unique<ast::PrintStmt>(std::move(range), std::move(exprs)));
+  } else if (tk == "goto") {
+    auto range =
+        SourceRange(nodes.front()->span.begin(), nodes.back()->span.end());
+    std::vector<std::unique_ptr<ast::Expression>> exprs;
+    std::vector<std::unique_ptr<ast::Call>> call_exprs;
+    if (auto *c = nodes[1]->if_as<ast::ChainOp>();
+        c and not c->parenthesized_) {
+      exprs = std::move(*c).extract();
+      for (auto &expr : exprs) {
+        if (expr->is<ast::Call>()) {
+          call_exprs.push_back(move_as<ast::Call>(expr));
+        } else {
+          diag.Consume(diagnostic::Todo{});
+        }
+      }
+    } else {
+      if (nodes[1]->is<ast::Call>()) {
+        call_exprs.push_back(move_as<ast::Call>(nodes[1]));
+      } else {
+        diag.Consume(diagnostic::Todo{});
+      }
+    }
+    stmts->append(
+        std::make_unique<ast::Goto>(std::move(range), std::move(call_exprs)));
+  } else if (tk == "return") {
+    auto span =
+        SourceRange(nodes.front()->span.begin(), nodes.back()->span.end());
+    std::vector<std::unique_ptr<ast::Expression>> exprs;
+    if (auto *cl = nodes[1]->if_as<ast::CommaList>();
+        cl and not cl->parenthesized_) {
+      exprs = std::move(*cl).extract();
+    } else {
+      exprs.push_back(move_as<ast::Expression>(nodes[1]));
+    }
+    stmts->append(
+        std::make_unique<ast::ReturnStmt>(std::move(span), std::move(exprs)));
   }
   return stmts;
 }
@@ -787,7 +810,8 @@ std::unique_ptr<ast::Node> BuildBlockNode(
 
   } else {
     for (auto const &n : nodes) { DEBUG_LOG()(n->DebugString()); }
-    NOT_YET("log an error");
+    diag.Consume(diagnostic::Todo{});
+    return nullptr;
   }
 }
 
@@ -835,9 +859,6 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
   if (tk == ".") {
     return BuildAccess(std::move(nodes), diag);
 
-  } else if (tk == "`") {
-    NOT_YET();
-
   } else if (tk == ":" or tk == ":=") {
     return BuildDeclaration<false>(std::move(nodes), diag);
 
@@ -852,7 +873,7 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
       if (nodes[0]->as<ast::Declaration>().IsInferred()) {
         // NOTE: It might be that this was supposed to be a bool ==? How can we
         // give a good error message if that's what is intended?
-        NOT_YET();
+        diag.Consume(diagnostic::Todo{});
         return move_as<ast::Declaration>(nodes[0]);
       }
 
@@ -882,14 +903,14 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
                          move_as<ast::Expression>(nodes[0]), diag);
   }
 
-  static absl::flat_hash_map<std::string_view, Operator> const symbols = {
+  static absl::flat_hash_map<std::string_view, Operator> const kSymbols = {
       {"->", Operator::Arrow}, {"|=", Operator::OrEq},  {"&=", Operator::AndEq},
       {"^=", Operator::XorEq}, {"+=", Operator::AddEq}, {"-=", Operator::SubEq},
       {"*=", Operator::MulEq}, {"/=", Operator::DivEq}, {"%=", Operator::ModEq},
       {"+", Operator::Add},    {"-", Operator::Sub},    {"*", Operator::Mul},
       {"/", Operator::Div},    {"%", Operator::Mod}};
   return std::make_unique<ast::Binop>(move_as<ast::Expression>(nodes[0]),
-                                      symbols.at(tk),
+                                      kSymbols.find(tk)->second,
                                       move_as<ast::Expression>(nodes[2]));
 }
 
@@ -911,21 +932,22 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
                                             kind);
 }
 
-std::unique_ptr<ast::Node> BuildScopeLiteral(std::unique_ptr<Statements> stmts,
-                                             SourceRange span) {
+std::unique_ptr<ast::Node> BuildScopeLiteral(
+    std::unique_ptr<Statements> stmts, SourceRange span,
+    diagnostic::DiagnosticConsumer &diag) {
   std::vector<std::unique_ptr<ast::Declaration>> decls;
   for (auto &stmt : stmts->content_) {
     if (stmt->is<ast::Declaration>()) {
       decls.push_back(move_as<ast::Declaration>(stmt));
     } else {
-      NOT_YET(stmt);
+      diag.Consume(diagnostic::Todo{});
     }
   }
   return std::make_unique<ast::ScopeLiteral>(std::move(span), std::move(decls));
 }
 
 std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
-                                      diagnostic::DiagnosticConsumer &) {
+                                      diagnostic::DiagnosticConsumer &diag) {
   auto span = stmts->span;  // TODO it's really bigger than this because it
                             // involves the keyword too.
 
@@ -937,10 +959,10 @@ std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
       } else if (decl->id() == "after") {
         after.push_back(move_as<ast::Declaration>(stmt));
       } else {
-        NOT_YET(stmt->DebugString());
+        diag.Consume(diagnostic::Todo{});
       }
     } else {
-      NOT_YET();
+      diag.Consume(diagnostic::Todo{});
     }
   }
   return std::make_unique<ast::BlockLiteral>(span, std::move(before),
@@ -1004,7 +1026,8 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
         std::move(nodes.back()->as<Statements>()).extract());
 
   } else if (tk == "struct") {
-    NOT_YET();
+    diag.Consume(diagnostic::Todo{});
+    return nullptr;
   } else {
     UNREACHABLE();
   }
@@ -1038,7 +1061,7 @@ std::unique_ptr<ast::Node> BuildKWBlock(
 
     } else if (tk == "scope") {
       SourceRange span(nodes.front()->span.begin(), nodes.back()->span.end());
-      return BuildScopeLiteral(move_as<Statements>(nodes[1]), span);
+      return BuildScopeLiteral(move_as<Statements>(nodes[1]), span, diag);
 
     } else if (tk == "block") {
       return BuildBlock(move_as<Statements>(nodes[1]), diag);
@@ -1097,8 +1120,7 @@ std::unique_ptr<ast::Node> ReservedKeywords(
        .keyword = nodes[ReservedIndices]->as<Token>().token,
    }),
    ...);
-  return std::make_unique<ast::Identifier>(nodes[ReturnIndex]->span,
-                                           "invalid_node");
+  return MakeInvalidNode(nodes[ReturnIndex]->span);
 }
 
 std::unique_ptr<ast::Node> BuildOperatorIdentifier(
@@ -1109,7 +1131,7 @@ std::unique_ptr<ast::Node> BuildOperatorIdentifier(
                                            move_as<Token>(nodes[1])->token);
 }
 
-constexpr uint64_t OP_B = op_b | comma | colon | eq | yield;
+constexpr uint64_t OP_B = op_b | comma | colon | eq;
 constexpr uint64_t EXPR = expr | fn_expr | scope_expr | fn_call_expr;
 // Used in error productions only!
 constexpr uint64_t RESERVED = kw_struct | kw_block_head | op_lt;
@@ -1128,8 +1150,9 @@ static std::array Rules{
               ReservedKeywords<1, 0>),
     ParseRule(fn_expr, {RESERVED, fn_arrow, RESERVED},
               ReservedKeywords<1, 0, 2>),
-    ParseRule(expr, {EXPR, (OP_B | op_bl), RESERVED}, ReservedKeywords<1, 2>),
-    ParseRule(expr, {RESERVED, (OP_B | op_bl), RESERVED},
+    ParseRule(expr, {EXPR, (OP_B | yield | op_bl), RESERVED},
+              ReservedKeywords<1, 2>),
+    ParseRule(expr, {RESERVED, (OP_B | yield | op_bl), RESERVED},
               ReservedKeywords<1, 0, 2>),
     ParseRule(fn_call_expr, {EXPR, l_paren, EXPR, r_paren}, BuildCall),
     ParseRule(fn_call_expr, {EXPR, l_paren, r_paren}, BuildEmptyParen),
@@ -1182,13 +1205,14 @@ static std::array Rules{
 
     ParseRule(expr, {EXPR, op_r}, BuildRightUnop),
     ParseRule(expr, {(op_l | op_bl | op_lt), EXPR}, BuildLeftUnop),
-    ParseRule(stmts, {sop_l, EXPR}, BuildStatementLeftUnop),
+    ParseRule(stmts, {sop_lt | sop_l, EXPR}, BuildStatementLeftUnop),
 
     ParseRule(stmts, {yield, EXPR}, BuildUnlabeledYield),
     ParseRule(stmts, {label, yield, EXPR}, BuildLabeledYield),
     ParseRule(stmts, {label, yield}, BuildLabeledYield),
 
-    ParseRule(expr, {RESERVED, (OP_B | op_bl), EXPR}, ReservedKeywords<1, 0>),
+    ParseRule(expr, {RESERVED, (OP_B | yield | op_bl), EXPR},
+              ReservedKeywords<1, 0>),
     ParseRule(expr, {l_paren | l_ref, EXPR, r_paren}, Parenthesize),
     ParseRule(expr, {l_bracket, EXPR, r_bracket}, BuildArrayLiteral),
     ParseRule(expr, {l_paren, RESERVED, r_paren}, ReservedKeywords<1, 1>),
@@ -1435,10 +1459,11 @@ std::vector<std::unique_ptr<ast::Node>> Parse(
   // end()
   switch (state.node_stack_.size()) {
     case 0: UNREACHABLE();
-    case 1: {
-      // TODO extract errors from the log if they exist.
+    case 1:
+      // TODO log an error
+      if (state.tag_stack_.back() & (eof | bof)) { return {}; }
       return std::move(move_as<Statements>(state.node_stack_.back())->content_);
-    }
+
     default: {
       std::vector<SourceRange> lines;
 
