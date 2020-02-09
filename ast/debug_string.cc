@@ -134,8 +134,8 @@ void BlockNode::DebugStrAppend(std::string *out, size_t indent) const {
   if (not params().empty()) {
     absl::StrAppend(out, " [",
                     absl::StrJoin(params(), ", ",
-                                  [&](std::string *out, auto const &elem) {
-                                    return Joiner(elem, out, indent);
+                                  [&](std::string *out, auto const &p) {
+                                    p.value->DebugStrAppend(out, indent);
                                   }),
                     "]");
   }

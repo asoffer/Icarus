@@ -404,12 +404,29 @@ struct BlockNode : ScopeExpr<ExecScope> {
         name_(std::move(name)),
         stmts_(std::move(stmts)) {}
   explicit BlockNode(frontend::SourceRange span, std::string name,
-                     std::vector<std::unique_ptr<Expression>> params,
+                     std::vector<std::unique_ptr<Declaration>> params,
                      std::vector<std::unique_ptr<Node>> stmts)
       : ScopeExpr<ExecScope>(std::move(span)),
         name_(std::move(name)),
-        params_(std::move(params)),
-        stmts_(std::move(stmts)) {}
+        stmts_(std::move(stmts)) {
+    for (auto &param : params) {
+      // NOTE: This is safe because the declaration is behind a unique_ptr so
+      // the string is never moved. You need to be careful if you ever decide to
+      // use make this declaration inline because SSO might mean moving the
+      // declaration (which can happen if core::FnParams internal vector gets
+      // reallocated) could invalidate the string_view unintentionally.
+      std::string_view name = param->id();
+
+      // Note the weird naming here: A declaration which is default initialized
+      // means there is no `=` as part of the declaration. This means that the
+      // declaration, when thougth of as a parameter to a function, has no
+      // default value.
+      core::FnParamFlags flags{};
+      if (not param->IsDefaultInitialized()) { flags = core::HAS_DEFAULT; }
+      params_.append(name, std::move(param), flags);
+    }
+  }
+
   ~BlockNode() override {}
   BlockNode(BlockNode &&) noexcept = default;
   BlockNode &operator=(BlockNode &&) noexcept = default;
@@ -418,14 +435,15 @@ struct BlockNode : ScopeExpr<ExecScope> {
   base::PtrSpan<Node> stmts() { return stmts_; }
   base::PtrSpan<Node const> stmts() const { return stmts_; }
   // TODO params() should be a reference to core::FnParams?
-  base::PtrSpan<Expression> params() { return params_; }
-  base::PtrSpan<Expression const> params() const { return params_; }
+  using params_type = core::FnParams<std::unique_ptr<Declaration>>;
+  params_type const &params() const { return params_; }
+  params_type &params() { return params_; }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
   std::string name_;
-  std::vector<std::unique_ptr<Expression>> params_;
+  core::FnParams<std::unique_ptr<ast::Declaration>> params_;
   std::vector<std::unique_ptr<Node>> stmts_;
 };
 
@@ -662,8 +680,8 @@ struct FunctionLiteral : ScopeExpr<FnScope> {
 
   // TODO core::FnParamsRef to erase the unique_ptr?
   using params_type = core::FnParams<std::unique_ptr<Declaration>>;
-  params_type const &params() const { return inputs_; }
-  params_type &params() { return inputs_; }
+  params_type const &params() const { return params_; }
+  params_type &params() { return params_; }
 
   std::optional<base::PtrSpan<Expression>> outputs() {
     if (not outputs_) { return std::nullopt; }
@@ -716,13 +734,13 @@ struct FunctionLiteral : ScopeExpr<FnScope> {
       core::FnParamFlags flags{};
       if (not input->IsDefaultInitialized()) { flags = core::HAS_DEFAULT; }
 
-      inputs_.append(name, std::move(input), flags);
+      params_.append(name, std::move(input), flags);
     }
   }
 
   // TODO This is storing both the name in the declaration and pulls the
   // string_view of the name out in core::FnParams::Param.
-  core::FnParams<std::unique_ptr<Declaration>> inputs_;
+  core::FnParams<std::unique_ptr<Declaration>> params_;
   std::optional<std::vector<std::unique_ptr<Expression>>> outputs_;
   std::vector<std::unique_ptr<Node>> statements_;
   bool is_short_;
@@ -923,7 +941,7 @@ struct Jump : ScopeExpr<FnScope> {
       // default value.
       core::FnParamFlags flags{};
       if (not input->IsDefaultInitialized()) { flags = core::HAS_DEFAULT; }
-      inputs_.append(name, std::move(input), flags);
+      params_.append(name, std::move(input), flags);
     }
   }
 
@@ -931,13 +949,13 @@ struct Jump : ScopeExpr<FnScope> {
 
   // TODO core::FnParamsRef to erase the unique_ptr?
   using params_type = core::FnParams<std::unique_ptr<Declaration>>;
-  params_type const &params() const { return inputs_; }
-  params_type &params() { return inputs_; }
+  params_type const &params() const { return params_; }
+  params_type &params() { return params_; }
   base::PtrSpan<Node> stmts() { return stmts_; }
   base::PtrSpan<Node const> stmts() const { return stmts_; }
 
  private:
-  core::FnParams<std::unique_ptr<ast::Declaration>> inputs_;
+  core::FnParams<std::unique_ptr<ast::Declaration>> params_;
   std::vector<std::unique_ptr<Node>> stmts_;
 };
 

@@ -798,15 +798,19 @@ std::unique_ptr<ast::Node> BuildBlockNode(
         std::move(nodes.back()->as<Statements>()).extract());
   } else if (auto *index = nodes.front()->if_as<ast::Index>()) {
     auto [lhs, rhs] = std::move(*index).extract();
-    std::vector<std::unique_ptr<ast::Expression>> args;
+    std::vector<std::unique_ptr<ast::Declaration>> params;
     if (auto *cl = rhs->if_as<ast::CommaList>()) {
-      args = std::move(*cl).extract();
+      auto exprs = std::move(*cl).extract();
+      for (auto &expr : exprs) {
+        params.push_back(move_as<ast::Declaration>(expr));
+      }
+
     } else {
-      args.push_back(std::move(rhs));
+      params.push_back(move_as<ast::Declaration>(rhs));
     }
     return std::make_unique<ast::BlockNode>(
         std::move(span), std::string{lhs->as<ast::Identifier>().token()},
-        std::move(args), std::move(nodes.back()->as<Statements>()).extract());
+        std::move(params), std::move(nodes.back()->as<Statements>()).extract());
 
   } else {
     for (auto const &n : nodes) { DEBUG_LOG()(n->DebugString()); }

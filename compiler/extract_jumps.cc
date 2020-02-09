@@ -93,6 +93,7 @@ struct Extractor : ast::Visitor<void()> {
     if (not outputs) { return; }
     ICARUS_SCOPE(SaveVar(node_stack_, node)) {
       for (auto *out : *outputs) { Visit(out); }
+      for (auto *stmt : node->stmts()) { Visit(stmt); }
     }
   }
 
@@ -131,7 +132,13 @@ struct Extractor : ast::Visitor<void()> {
 
   void Visit(ast::ReturnStmt const *node) final {
     for (auto *expr : node->exprs()) { Visit(expr); }
-    (*jumps_)[node_stack_.back()].push_back(node);
+    for (auto iter = node_stack_.rbegin(); iter != node_stack_.rend(); ++iter) {
+      if ((*iter)->is<ast::FunctionLiteral>()) {
+        (*jumps_)[*iter].push_back(node);
+        return;
+      }
+    }
+    UNREACHABLE();
   }
 
   void Visit(ast::YieldStmt const *node) final {

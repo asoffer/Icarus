@@ -885,7 +885,7 @@ type::QualType Compiler::Visit(ast::BlockLiteral const *node, VerifyTypeTag) {
 
 std::vector<core::FnArgs<type::QualType>> Compiler::VerifyBlockNode(
     ast::BlockNode const *node) {
-  for (auto *param : node->params()) { Visit(param, VerifyTypeTag{}); }
+  for (auto &param : node->params()) { Visit(param.value.get(), VerifyTypeTag{}); }
   for (auto *stmt : node->stmts()) { Visit(stmt, VerifyTypeTag{}); }
   set_result(node, type::QualType::Constant(type::Block));
 

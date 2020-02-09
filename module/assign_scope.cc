@@ -49,7 +49,9 @@ void AssignScope::Visit(ast::BlockLiteral *node, ast::Scope *scope) {
 void AssignScope::Visit(ast::BlockNode *node, ast::Scope *scope) {
   node->scope_ = scope;
   node->set_body_with_parent(scope);
-  SetAllScopes(this, node->params(), node->body_scope());
+  for (auto &param : node->params()) {
+    Visit(param.value.get(), node->body_scope());
+  }
   SetAllScopes(this, node->stmts(), node->body_scope());
 }
 

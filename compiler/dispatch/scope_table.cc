@@ -62,15 +62,12 @@ std::pair<ir::BasicBlock const *, ir::OutParams> EmitCallOneOverload(
       auto const &params = block_node->params();
 
       size_t i = 0;
-      for (auto *param : params) {
-        // TODO should be a decl already
-        auto &param_decl             = param->as<ast::Declaration>();
-        ir::Reg addr                 = compiler->addr(&param_decl);
-        type::Type const *param_type = compiler->type_of(&param_decl);
-
+      for (auto &param : params) {
         compiler->EmitMoveInit(
             fn_type->output()[i], ir::Results{outs[i]},
-            type::Typed<ir::Reg>(addr, type::Ptr(param_type)));
+            type::Typed<ir::Reg>(
+                compiler->addr(param.value.get()),
+                type::Ptr(compiler->type_of(param.value.get()))));
         ++i;
       }
     }
