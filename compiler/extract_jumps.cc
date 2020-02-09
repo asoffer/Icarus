@@ -39,16 +39,12 @@ struct Extractor : ast::Visitor<void()> {
   }
 
   void Visit(ast::BlockLiteral const *node) final {
-    ICARUS_SCOPE(SaveVar(node_stack_, node)) {
-      for (auto const *b : node->before()) { Visit(b); }
-      for (auto const *a : node->after()) { Visit(a); }
-    }
+    for (auto const *b : node->before()) { Visit(b); }
+    for (auto const *a : node->after()) { Visit(a); }
   }
 
   void Visit(ast::BlockNode const *node) final {
-    ICARUS_SCOPE(SaveVar(node_stack_, node)) {
-      for (auto const *stmt : node->stmts()) { Visit(stmt); }
-    }
+    for (auto const *stmt : node->stmts()) { Visit(stmt); }
   }
 
   void Visit(ast::BuiltinFn const *node) final {}
@@ -82,9 +78,7 @@ struct Extractor : ast::Visitor<void()> {
   }
 
   void Visit(ast::EnumLiteral const *node) final {
-    ICARUS_SCOPE(SaveVar(node_stack_, node)) {
-      for (auto const *elem : node->elems()) { Visit(elem); }
-    }
+    for (auto const *elem : node->elems()) { Visit(elem); }
   }
 
   void Visit(ast::FunctionLiteral const *node) final {
@@ -147,7 +141,7 @@ struct Extractor : ast::Visitor<void()> {
       ir::Label yield_label_val = label->value();
       for (auto iter = node_stack_.rbegin(); iter != node_stack_.rend();
            ++iter) {
-        auto *scope_node = node->if_as<ast::ScopeNode>();
+        auto *scope_node = (*iter)->if_as<ast::ScopeNode>();
         if (not scope_node) { continue; }
         auto *scope_node_label = scope_node->label();
         if (not scope_node_label) { continue; }
@@ -157,33 +151,37 @@ struct Extractor : ast::Visitor<void()> {
         }
       }
     } else {
-      (*jumps_)[node_stack_.back()].push_back(node);
+      for (auto iter = node_stack_.rbegin(); iter != node_stack_.rend();
+           ++iter) {
+        auto *scope_node = (*iter)->if_as<ast::ScopeNode>();
+        if (not scope_node) { continue; }
+        (*jumps_)[scope_node].push_back(node);
+        return;
+      }
     }
+    UNREACHABLE();
   }
 
   void Visit(ast::ScopeLiteral const *node) final {
-    ICARUS_SCOPE(SaveVar(node_stack_, node)) {
-      for (auto const *decl : node->decls()) { Visit(decl); }
-    }
+    for (auto const *decl : node->decls()) { Visit(decl); }
   }
 
   void Visit(ast::ScopeNode const *node) final {
     Visit(node->name());
     for (auto const *expr : node->args()) { Visit(expr); }
-    for (auto const &block : node->blocks()) { Visit(&block); }
+
+    ICARUS_SCOPE(SaveVar(node_stack_, node)) {
+      for (auto const &block : node->blocks()) { Visit(&block); }
+    }
   }
 
   void Visit(ast::StructLiteral const *node) final {
-    ICARUS_SCOPE(SaveVar(node_stack_, node)) {
-      for (auto const &f : node->fields()) { Visit(&f); }
-    }
+    for (auto const &f : node->fields()) { Visit(&f); }
   }
 
   void Visit(ast::ParameterizedStructLiteral const *node) final {
-    ICARUS_SCOPE(SaveVar(node_stack_, node)) {
-      for (auto const &p : node->params()) { Visit(&p); }
-      for (auto const &f : node->fields()) { Visit(&f); }
-    }
+    for (auto const &p : node->params()) { Visit(&p); }
+    for (auto const &f : node->fields()) { Visit(&f); }
   }
 
   void Visit(ast::StructType const *node) final {
@@ -192,11 +190,9 @@ struct Extractor : ast::Visitor<void()> {
 
   void Visit(ast::Switch const *node) final {
     if (node->expr_) { Visit(node->expr_.get()); }
-    ICARUS_SCOPE(SaveVar(node_stack_, node)) {
-      for (auto &[body, cond] : node->cases_) {
-        Visit(body.get());
-        Visit(cond.get());
-      }
+    for (auto &[body, cond] : node->cases_) {
+      Visit(body.get());
+      Visit(cond.get());
     }
   }
 
