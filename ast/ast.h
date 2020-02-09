@@ -1126,6 +1126,10 @@ struct ScopeNode : Expression {
   absl::Span<BlockNode const> blocks() const { return blocks_; }
   absl::Span<BlockNode> blocks() { return absl::MakeSpan(blocks_); }
 
+  ast::Label *label() { return label_.get(); }
+  ast::Label const *label() const { return label_.get(); }
+  void set_label(std::unique_ptr<Label> label) { label_ = std::move(label); }
+
   // Appends the given block not necessarily to this ScopeNode, but to the scope
   // that makes sense syntactically. For instance, in the first example above,
   // the inner `if` ScopeNode checking `condition2` would be appended to.
@@ -1139,6 +1143,8 @@ struct ScopeNode : Expression {
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
+  // TODO Don't need to store this indirectly.
+  std::unique_ptr<Label> label_;
   std::unique_ptr<Expression> name_;
   core::OrderedFnArgs<Expression> args_;
   std::vector<BlockNode> blocks_;

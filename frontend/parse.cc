@@ -1135,6 +1135,22 @@ std::unique_ptr<ast::Node> BuildOperatorIdentifier(
                                            move_as<Token>(nodes[1])->token);
 }
 
+std::unique_ptr<ast::Node> LabelScopeNode(
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
+  auto scope_node = move_as<ast::ScopeNode>(nodes[1]);
+  if (scope_node->label()) {
+    diag.Consume(diagnostic::ScopeNodeAlreadyHasLabel{
+        .label_range = scope_node->label()->span,
+        .range       = scope_node->span,
+    });
+  } else {
+    scope_node->span = SourceRange(nodes[0]->span.begin(), scope_node->span.end());
+    scope_node->set_label(move_as<ast::Label>(nodes[0]));
+  }
+  return scope_node;
+}
+
 constexpr uint64_t OP_B = op_b | comma | colon | eq;
 constexpr uint64_t EXPR = expr | fn_expr | scope_expr | fn_call_expr;
 // Used in error productions only!
@@ -1150,6 +1166,7 @@ static std::array kRules{
     ParseRule(scope_expr, {scope_expr, block_expr}, ExtendScopeNode),
     ParseRule(scope_expr, {scope_expr, expr, scope_expr},
               SugaredExtendScopeNode),
+    ParseRule(scope_expr, {label, scope_expr}, LabelScopeNode),
     ParseRule(fn_expr, {EXPR, fn_arrow, EXPR | kw_block}, BuildBinaryOperator),
     ParseRule(expr, {EXPR, (op_bl | OP_B), EXPR}, BuildBinaryOperator),
     ParseRule(op_b, {colon, eq}, CombineColonEq),

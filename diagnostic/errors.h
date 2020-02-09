@@ -943,10 +943,25 @@ struct ParametersDoNotCoverArguments {
   static constexpr std::string_view kName = "parameters-do-not-cover-arguments";
 
   DiagnosticMessage ToMessage() const {
-    return DiagnosticMessage(Text("Parameters do not cover arguments"));
+    return DiagnosticMessage(Text("Parameters do not cover arguments."));
   }
 
   core::FnArgs<type::QualType> const& args;
+};
+
+// TODO do we want to talk about this as already having a label, or giving it
+// multiple labels? "multiple labels" seems clearer because it doesn't refer to
+// parser state.
+struct ScopeNodeAlreadyHasLabel {
+  static constexpr std::string_view kCategory = "parse-error";
+  static constexpr std::string_view kName = "scope-already-has-label";
+
+  DiagnosticMessage ToMessage() const {
+    return DiagnosticMessage(Text("This scope already has a label."));
+  }
+
+  frontend::SourceRange label_range;
+  frontend::SourceRange range;
 };
 
 struct Todo {
