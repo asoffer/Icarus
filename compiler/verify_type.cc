@@ -316,15 +316,12 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node) {
   for (auto const *stmt : node->stmts()) { c->Visit(stmt, VerifyTypeTag{}); }
   // TODO propogate cyclic dependencies.
 
-  ExtractJumps extractor;
-  for (auto const *stmt : node->stmts()) { extractor.Visit(stmt); }
-
   // TODO we can have yields and returns, or yields and jumps, but not jumps and
   // returns. Check this.
   absl::flat_hash_set<type::Type const *> types;
   absl::flat_hash_map<ast::ReturnStmt const *, type::Type const *>
       saved_ret_types;
-  for (auto const *n : extractor.jumps(ExtractJumps::Kind::Return)) {
+  for (auto const *n : c->data_.extraction_map_[node]) {
     if (auto const *ret_node = n->if_as<ast::ReturnStmt>()) {
       std::vector<type::Type const *> ret_types;
       for (auto const *expr : ret_node->exprs()) {
@@ -357,7 +354,7 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node) {
     switch (outs.size()) {
       case 0: {
         bool err = false;
-        for (auto *n : extractor.jumps(ExtractJumps::Kind::Return)) {
+        for (auto *n : c->data_.extraction_map_[node]) {
           if (auto *ret_node = n->if_as<ast::ReturnStmt>()) {
             if (not ret_node->exprs().empty()) {
               c->diag().Consume(diagnostic::NoReturnTypes{
@@ -374,7 +371,7 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node) {
       } break;
       case 1: {
         bool err = false;
-        for (auto *n : extractor.jumps(ExtractJumps::Kind::Return)) {
+        for (auto *n : c->data_.extraction_map_[node]) {
           if (auto *ret_node = n->if_as<ast::ReturnStmt>()) {
             auto *t = ASSERT_NOT_NULL(saved_ret_types.at(ret_node));
             if (t == outs[0]) { continue; }
@@ -392,7 +389,7 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node) {
                    : type::QualType::Constant(node_type);
       } break;
       default: {
-        for (auto *n : extractor.jumps(ExtractJumps::Kind::Return)) {
+        for (auto *n : c->data_.extraction_map_[node]) {
           if (auto *ret_node = n->if_as<ast::ReturnStmt>()) {
             auto *expr_type = ASSERT_NOT_NULL(saved_ret_types.at(ret_node));
             if (expr_type->is<type::Tuple>()) {
@@ -892,9 +889,7 @@ std::vector<core::FnArgs<type::QualType>> Compiler::VerifyBlockNode(
   for (auto *stmt : node->stmts()) { Visit(stmt, VerifyTypeTag{}); }
   set_result(node, type::QualType::Constant(type::Block));
 
-  ExtractJumps extractor;
-  for (auto const *stmt : node->stmts()) { extractor.Visit(stmt); }
-  auto yields = extractor.jumps(ExtractJumps::Kind::Yield);
+  auto yields = data_.extraction_map_[node];
   // TODO this setup is definitely wrong because it doesn't account for
   // multiple yields correctly. For example,
   //

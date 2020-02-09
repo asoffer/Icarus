@@ -158,6 +158,11 @@ struct CompilationData {
 
   absl::flat_hash_map<ast::Import const *, module::Pending<LibraryModule>>
       imported_module_;
+
+  absl::flat_hash_map</* to = */ ast::Node const *,
+                      /* from = */ std::vector<ast::Node const *>>
+      extraction_map_;
 };
+
 }  // namespace compiler
 #endif  // ICARUS_COMPILER_DATA_H

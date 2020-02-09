@@ -3,6 +3,7 @@
 
 #include "compiler/compiler.h"
 #include "compiler/emit_function_call_infrastructure.h"
+#include "compiler/extract_jumps.h"
 #include "compiler/module.h"
 #include "diagnostic/consumer/streaming.h"
 #include "ir/compiled_fn.h"
@@ -35,6 +36,10 @@ struct ExecutableModule : CompiledModule {
         }
       }
       deferred.push_back(node);
+    }
+
+    for (ast::Node const *node : nodes) {
+      ExtractJumps(&c.data_.extraction_map_, node);
     }
 
     for (ast::Node const *node : deferred) { c.Visit(node, VerifyTypeTag{}); }

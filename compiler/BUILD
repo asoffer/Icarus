@@ -34,7 +34,6 @@ cc_library(
         ":data",
         ":emit_function_call_infrastructure",
         ":executable_module",
-        ":extract_jumps",
         ":library_module",
         ":module",
         ":special_function",
@@ -170,6 +169,7 @@ cc_lib(
     deps = [
         "//ast:visitor",
         "//ast:ast",
+        "//base:scope",
     ],
     test_deps = None,
 )
@@ -196,6 +196,7 @@ cc_library(
     hdrs = ["library_module.h"],
     deps = [
         ":compiler_header",
+        ":extract_jumps",
         ":module",
         "//diagnostic/consumer:streaming",
     ],
@@ -207,6 +208,7 @@ cc_library(
     deps = [
         ":compiler_header",
         ":emit_function_call_infrastructure",
+        ":extract_jumps",
         ":module",
         "//diagnostic/consumer:streaming",
         "//ir:compiled_fn",

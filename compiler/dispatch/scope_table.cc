@@ -315,7 +315,12 @@ ir::Results ScopeDispatchTable::EmitCall(
       }
       return results;
     }
-    default: NOT_YET();
+    default: {
+      std::vector<ir::RegOr<int64_t>> values;
+      values.reserve(exit_blocks.size());
+      for (auto &out_params : exit_outs) { values.emplace_back(out_params[0]); }
+      return ir::Results{bldr.Phi(exit_blocks, std::move(values))};
+    }
   }
 }
 
