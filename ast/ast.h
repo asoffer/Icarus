@@ -1339,7 +1339,9 @@ struct YieldStmt : Node {
   explicit YieldStmt(frontend::SourceRange span,
                      std::vector<std::unique_ptr<Expression>> exprs,
                      std::unique_ptr<ast::Label> label = nullptr)
-      : Node(std::move(span)), exprs_(std::move(exprs)) {}
+      : Node(std::move(span)),
+        exprs_(std::move(exprs)),
+        label_(std::move(label)) {}
   ~YieldStmt() override {}
 
   base::PtrSpan<Expression> exprs() { return exprs_; }
@@ -1351,8 +1353,8 @@ struct YieldStmt : Node {
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
-  std::unique_ptr<ast::Label> label_;
   std::vector<std::unique_ptr<Expression>> exprs_;
+  std::unique_ptr<ast::Label> label_;
 };
 
 #undef ICARUS_AST_VIRTUAL_METHODS

@@ -353,11 +353,12 @@ std::unique_ptr<ast::Node> BuildLabeledYield(
 
   std::vector<std::unique_ptr<ast::Expression>> exprs;
   if (nodes.size() > 2) {
+    ASSERT(nodes.size() == 3);
     if (auto *cl = nodes[2]->if_as<ast::CommaList>();
         cl and not cl->parenthesized_) {
       exprs = std::move(*cl).extract();
     } else {
-      exprs.push_back(move_as<ast::Expression>(nodes[1]));
+      exprs.push_back(move_as<ast::Expression>(nodes[2]));
     }
   }
 
@@ -1230,8 +1231,8 @@ static std::array kRules{
     ParseRule(expr, {(op_l | op_bl | op_lt), EXPR}, BuildLeftUnop),
     ParseRule(stmts, {sop_lt | sop_l, EXPR}, BuildStatementLeftUnop),
 
-    ParseRule(stmts, {yield, EXPR}, BuildUnlabeledYield),
     ParseRule(stmts, {label, yield, EXPR}, BuildLabeledYield),
+    ParseRule(stmts, {yield, EXPR}, BuildUnlabeledYield),
     ParseRule(stmts, {label, yield}, BuildLabeledYield),
 
     ParseRule(expr, {RESERVED, (OP_B | yield | op_bl), EXPR},
@@ -1316,7 +1317,7 @@ struct ParseState {
       return ShiftState::MustReduce;
     }
 
-    if (get_type<1>() == op_lt and ahead.tag_ != newline) {
+    if (get_type<1>() & (op_lt | yield) and ahead.tag_ != newline) {
       return ShiftState::NeedMore;
     }
 
