@@ -143,7 +143,22 @@ struct Extractor : ast::Visitor<void()> {
 
   void Visit(ast::YieldStmt const *node) final {
     for (auto *expr : node->exprs()) { Visit(expr); }
-    (*jumps_)[node_stack_.back()].push_back(node);
+    if (auto *label = node->label()) {
+      ir::Label yield_label_val = label->value();
+      for (auto iter = node_stack_.rbegin(); iter != node_stack_.rend();
+           ++iter) {
+        auto *scope_node = node->if_as<ast::ScopeNode>();
+        if (not scope_node) { continue; }
+        auto *scope_node_label = scope_node->label();
+        if (not scope_node_label) { continue; }
+        if (label->value() == yield_label_val) {
+          (*jumps_)[scope_node].push_back(node);
+          return;
+        }
+      }
+    } else {
+      (*jumps_)[node_stack_.back()].push_back(node);
+    }
   }
 
   void Visit(ast::ScopeLiteral const *node) final {

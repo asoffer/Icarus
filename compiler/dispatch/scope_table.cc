@@ -267,16 +267,36 @@ ir::Results ScopeDispatchTable::EmitCall(
       bldr.CurrentBlock() = block_interps.at(scope_def)[node];
       bldr.block_termination_state() =
           ir::Builder::BlockTerminationState::kMoreStatements;
-      auto yield_args = compiler->EmitBlockNode(node);
+      auto yield_results = compiler->EmitBlockNode(node);
 
       // TODO skipping after-handlers is incorrect. We need a guaranteed
       // exit path.
-      if (bldr.block_termination_state() ==
-          ir::Builder::BlockTerminationState::kReturn) {
-        continue;
+      auto scope_landings_span = compiler->scope_landings();
+      switch (bldr.block_termination_state()) {
+        case ir::Builder::BlockTerminationState::kLabeledYield: {
+          for (auto iter = scope_landings_span.rbegin();
+               iter != scope_landings_span.rend(); ++iter) {
+            auto &[label, scope_landing_block] = *iter;
+            if (label == yield_results.label) {
+              bldr.UncondJump(scope_landing_block);
+              // Update phi-node?!
+            } else {
+              // TODO call skip.
+            }
+          }
+        }
+          continue;
+        case ir::Builder::BlockTerminationState::kReturn: {
+          for (auto iter = scope_landings_span.rbegin();
+               iter != scope_landings_span.rend(); ++iter) {
+            // TODO call skip
+          }
+          continue;
+          default: break;
+        }
       }
 
-      auto yield_typed_results = yield_args.Transform(
+      auto yield_typed_results = yield_results.vals.Transform(
           [](auto const &p) { return type::Typed(p.first, p.second.type()); });
 
       auto callee_to_block = bldr.AddBlocks(table.table_);

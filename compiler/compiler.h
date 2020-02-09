@@ -75,13 +75,13 @@ struct LibraryModule;  // TODO remove me.
 // particular order. Certainly for any given AST node we need to verify its type
 // before emitting code for it. However, we may need to emit and execute code
 // for some nodes to compute a type at compile-time. For this reason these steps
-// require the same contextual data and therefore should be placed into a simple
+// require the same contextual data and therefore should be placed into a single
 // visitor type.
 //
 // Note that tying these together has a cost. C++ ties together these steps as
 // well as parsing and it has compile-time performance cost as well as language
-// semantic restrictions. This was design was not chosen lightly. We believe
-// that the primary problem with C++ is that parsing is lumped together with
+// semantic restrictions. This design was not chosen lightly. We believe that
+// the primary problem with C++ is that parsing is lumped together with
 // type-verification and code generation and that the primary benefits that
 // surface from separation are from separating parsing from these two stages
 // rather than separating all stages. In time we will see if this belief holds
@@ -99,6 +99,11 @@ struct Compiler
                          EmitMoveAssignTag),
                     void(ir::RegOr<ir::Addr>, type::Typed<ir::Results> const &,
                          EmitCopyAssignTag)> {
+  struct YieldResult {
+    core::FnArgs<std::pair<ir::Results, type::QualType>> vals;
+    ir::Label label;
+  };
+
   type::QualType Visit(ast::Node const *node, VerifyTypeTag) {
     return ast::SingleVisitor<type::QualType(VerifyTypeTag)>::Visit(
         node, VerifyTypeTag{});
@@ -174,6 +179,11 @@ struct Compiler
   void set_jump_table(ast::ExprPtr jump_expr, ast::ExprPtr node,
                       ast::DispatchTable &&table);
 
+  absl::Span<std::pair<ir::Label, ir::BasicBlock *> const> scope_landings()
+      const {
+    return scope_landings_;
+  }
+
   ir::CompiledFn *AddFunc(
       type::Function const *fn_type,
       core::FnParams<type::Typed<ast::Declaration const *>> params);
@@ -214,8 +224,7 @@ struct Compiler
 
   std::vector<core::FnArgs<type::QualType>> VerifyBlockNode(
       ast::BlockNode const *node);
-  core::FnArgs<std::pair<ir::Results, type::QualType>> EmitBlockNode(
-      ast::BlockNode const *node);
+  YieldResult EmitBlockNode(ast::BlockNode const *node);
 
   type::QualType VerifyConcreteFnLit(ast::FunctionLiteral const *node);
 
@@ -305,9 +314,14 @@ struct Compiler
   void EmitCopyInit(type::Type const *from_type, ir::Results const &from_val,
                     type::Typed<ir::Reg> to_var);
 
+  // TODO Make these private
   CompilationData &data_;
   ConstantBindingTree::Node *current_constants_;
   diagnostic::DiagnosticConsumer &diag_consumer_;
+
+ private:
+  std::vector<std::pair<ir::Label, ir::BasicBlock *>> scope_landings_;
+  std::vector<YieldResult> yields_stack_;
 };
 
 }  // namespace compiler

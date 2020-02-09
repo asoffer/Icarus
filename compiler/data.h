@@ -32,6 +32,8 @@
 namespace compiler {
 struct LibraryModule;
 
+// TODO this struct has developed some cruft. Probably some fields are unused at
+// this point. Audit.
 struct CompilationData {
   explicit CompilationData(module::BasicModule *mod);
   ~CompilationData();
@@ -102,17 +104,8 @@ struct CompilationData {
     return &iter->second;
   }
 
-  // TODO this looks useful in bindings too. maybe give it a better name and
-  // use it more frequently?
-  struct YieldResult {
-    YieldResult(ast::Expression const *expr, ir::Results val)
-        : expr_(expr), val_(std::move(val)) {}
-
-    ast::Expression const *expr_;
-    ir::Results val_;
-  };
-  std::vector<std::vector<YieldResult>> yields_stack_;
-
+  // TODO this is transient compiler state and therefore shouldn't be stored in
+  // `CompilationData`.
   // During validation, when a cyclic dependency is encountered, we write it
   // down here. That way, we can bubble up from the dependency until we see it
   // again, at each step adding the nodes to the error log involved in the
@@ -125,6 +118,8 @@ struct CompilationData {
   // requires a deeper refactoring to have things linke ir::ResultView, etc.
   absl::flat_hash_map<ir::Reg, ir::Results> *inline_ = nullptr;
 
+  // TODO this is transient compiler state and therefore shouldn't be stored in
+  // `CompilationData`.
   base::guarded<absl::node_hash_map<ast::Node const *, base::move_func<void()>>>
       deferred_work_;
 

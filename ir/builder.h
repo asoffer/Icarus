@@ -477,9 +477,10 @@ struct Builder {
 
   enum class BlockTerminationState {
     kMoreStatements,  // Not at the end of the block yet
-    kNoTerminator,    // Block complete; no `return` or `<<`.
+    kNoTerminator,    // Block complete; no `return` or `<<`
     kReturn,          // Block completed with `return`
-    kYield,           // Block completed with `<<`.
+    kLabeledYield,    // Block completed with `#.my_label << `
+    kYield,           // Block completed with `<<`
   };
   constexpr BlockTerminationState block_termination_state() const {
     return current_.block_termination_state_;

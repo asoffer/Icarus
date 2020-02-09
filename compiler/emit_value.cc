@@ -411,19 +411,13 @@ struct PushVec : public base::UseWithScope {
 template <typename T, typename... Args>
 PushVec(std::vector<T> *, Args &&...)->PushVec<T>;
 
-core::FnArgs<std::pair<ir::Results, type::QualType>> Compiler::EmitBlockNode(
+Compiler::YieldResult Compiler::EmitBlockNode(
     ast::BlockNode const *node) {
   core::FnArgs<std::pair<ir::Results, type::QualType>> results;
-  ICARUS_SCOPE(PushVec(&data_.yields_stack_)) {
+  ICARUS_SCOPE(PushVec(&yields_stack_)) {
     EmitIrForStatements(this, node->stmts());
-
-    for (auto &yield : data_.yields_stack_.back()) {
-      // TODO what if they yield named values? Store FnArgs in yield result
-      results.pos_emplace(std::move(yield.val_), *qual_type_of(yield.expr_));
-    }
+    return yields_stack_.back();
   }
-
-  return results;
 }
 
 ir::Results Compiler::Visit(ast::BlockNode const *node, EmitValueTag) {
@@ -860,20 +854,22 @@ ir::Results Compiler::Visit(ast::YieldStmt const *node, EmitValueTag) {
   // Can't return these because we need to pass them up at least through the
   // containing statements this and maybe further if we allow labelling
   // scopes to be yielded to.
-  data_.yields_stack_.back().clear();
-  data_.yields_stack_.back().reserve(arg_vals.size());
+  auto &yield_result = yields_stack_.back();
+
   // TODO one problem with this setup is that we look things up in a context
   // after returning, so the `after` method has access to a different
   // (smaller) collection of bound constants. This can change the meaning of
   // things or at least make them not compile if the `after` function takes
   // a compile-time constant argument.
   for (size_t i = 0; i < arg_vals.size(); ++i) {
-    data_.yields_stack_.back().emplace_back(node->exprs()[i],
-                                            arg_vals[i].second);
+    yield_result.vals.pos_emplace(
+        arg_vals[i].second, *ASSERT_NOT_NULL(qual_type_of(node->exprs()[i])));
   }
+  yield_result.label = node->label() ? node->label()->value() : ir::Label{};
 
   builder().block_termination_state() =
-      ir::Builder::BlockTerminationState::kYield;
+      node->label() ? ir::Builder::BlockTerminationState::kLabeledYield
+                    : ir::Builder::BlockTerminationState::kYield;
   return ir::Results{};
 }
 
