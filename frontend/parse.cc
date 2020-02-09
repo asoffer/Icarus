@@ -1142,6 +1142,10 @@ constexpr uint64_t KW_BLOCK = kw_struct | kw_block_head | kw_block;
 // line of each rule is applied, replacing the matched nodes. Lastly, the new
 // nodes type is set to the given type in the first line.
 static std::array kRules{
+    ParseRule(scope_expr, {fn_call_expr, block_expr}, BuildScopeNode),
+    ParseRule(scope_expr, {scope_expr, block_expr}, ExtendScopeNode),
+    ParseRule(scope_expr, {scope_expr, expr, scope_expr},
+              SugaredExtendScopeNode),
     ParseRule(fn_expr, {EXPR, fn_arrow, EXPR | kw_block}, BuildBinaryOperator),
     ParseRule(expr, {EXPR, (op_bl | OP_B), EXPR}, BuildBinaryOperator),
     ParseRule(op_b, {colon, eq}, CombineColonEq),
@@ -1238,10 +1242,6 @@ static std::array kRules{
     // TODO also need to handle labels with yields.
     ParseRule(stmts, {op_lt}, BuildControlHandler),
     ParseRule(block_expr, {expr, braced_stmts}, BuildBlockNode),
-    ParseRule(scope_expr, {fn_call_expr, block_expr}, BuildScopeNode),
-    ParseRule(scope_expr, {scope_expr, block_expr}, ExtendScopeNode),
-    ParseRule(scope_expr, {scope_expr, expr, scope_expr},
-              SugaredExtendScopeNode),
     ParseRule(eof, {newline, eof}, drop_all_but<1>),
     ParseRule(stmts, {stmts, eof}, drop_all_but<0>),
 };
@@ -1269,6 +1269,11 @@ struct ParseState {
     const auto &ahead = Next();
     if (ahead.tag_ == newline) {
       return brace_count == 0 ? ShiftState::EndOfExpr : ShiftState::MustReduce;
+    }
+
+    if (ahead.tag_ == expr and
+        (get_type<1>() == fn_call_expr or get_type<1>() == scope_expr)) {
+      return ShiftState::NeedMore;
     }
 
     if (ahead.tag_ == l_brace and (get_type<1>() & kw_block) and
