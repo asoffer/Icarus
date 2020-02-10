@@ -14,7 +14,7 @@
 #include "ir/instructions.h"
 #include "ir/local_block_interpretation.h"
 #include "ir/out_params.h"
-#include "ir/reg.h"
+#include "ir/value/reg.h"
 #include "ir/struct_field.h"
 #include "type/jump.h"
 #include "type/typed_value.h"

@@ -4,7 +4,7 @@
 #include <optional>
 #include <string_view>
 
-#include "ir/reg_or.h"
+#include "ir/value/reg_or.h"
 #include "type/type.h"
 
 namespace ir {

@@ -1,8 +1,8 @@
-#ifndef ICARUS_IR_REG_OR_H
-#define ICARUS_IR_REG_OR_H
+#ifndef ICARUS_IR_VALUE_REG_OR_H
+#define ICARUS_IR_VALUE_REG_OR_H
 
 #include "base/stringify.h"
-#include "ir/reg.h"
+#include "ir/value/reg.h"
 
 namespace ir {
 
@@ -59,13 +59,13 @@ struct RegOr {
 };
 
 template <typename T>
-ICARUS_CONSTEXPR bool operator==(RegOr<T> const &lhs, RegOr<T> const &rhs) {
+bool operator==(RegOr<T> const &lhs, RegOr<T> const &rhs) {
   if (lhs.is_reg()) { return rhs.is_reg() and lhs.reg() == rhs.reg(); }
   return not rhs.is_reg() and lhs.value() == rhs.value();
 }
 
 template <typename T>
-ICARUS_CONSTEXPR bool operator!=(RegOr<T> const &lhs, RegOr<T> const &rhs) {
+bool operator!=(RegOr<T> const &lhs, RegOr<T> const &rhs) {
   return not(lhs == rhs);
 }
 
@@ -82,4 +82,4 @@ constexpr bool IsRegOrV = IsRegOr<T>::value;
 
 }  // namespace ir
 
-#endif  // ICARUS_IR_REG_OR_H
+#endif  // ICARUS_IR_VALUE_REG_OR_H

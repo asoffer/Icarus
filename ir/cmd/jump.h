@@ -13,7 +13,7 @@
 #include "base/stringify.h"
 #include "base/meta.h"
 #include "core/fn_args.h"
-#include "ir/reg.h"
+#include "ir/value/reg.h"
 #include "ir/results.h"
 #include "type/typed_value.h"
 

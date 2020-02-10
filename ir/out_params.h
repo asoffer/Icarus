@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "ir/byte_code_writer.h"
-#include "ir/reg.h"
+#include "ir/value/reg.h"
 
 namespace ir {
 // `OutParams` represent a collection of output parameters from a function or

@@ -8,7 +8,7 @@
 #include "ir/basic_block.h"
 #include "ir/builder.h"
 #include "ir/components.h"
-#include "ir/reg_or.h"
+#include "ir/value/reg_or.h"
 #include "ir/results.h"
 #include "type/typed_value.h"
 

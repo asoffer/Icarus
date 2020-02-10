@@ -22,7 +22,7 @@
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
 #include "ir/jump.h"
-#include "ir/reg.h"
+#include "ir/value/reg.h"
 #include "ir/results.h"
 #include "ir/scope_def.h"
 #include "module/module.h"

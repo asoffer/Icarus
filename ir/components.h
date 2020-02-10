@@ -3,7 +3,7 @@
 
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
-#include "ir/reg.h"
+#include "ir/value/reg.h"
 
 namespace ir {
 base::Tagged<Addr, Reg> Index(type::Pointer const *t, Reg array_ptr,

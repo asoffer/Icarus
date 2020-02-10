@@ -7,8 +7,8 @@
 #include "base/untyped_buffer.h"
 #include "base/untyped_buffer_view.h"
 #include "core/bytes.h"
-#include "ir/reg.h"
-#include "ir/reg_or.h"
+#include "ir/value/reg.h"
+#include "ir/value/reg_or.h"
 
 namespace ir {
 

@@ -12,7 +12,7 @@
 #include "ir/builtin_ir.h"
 #include "ir/components.h"
 #include "ir/jump.h"
-#include "ir/reg.h"
+#include "ir/value/reg.h"
 #include "ir/struct_field.h"
 #include "type/jump.h"
 #include "type/type.h"

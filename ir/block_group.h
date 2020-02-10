@@ -12,7 +12,7 @@
 #include "core/bytes.h"
 #include "core/fn_params.h"
 #include "ir/basic_block.h"
-#include "ir/reg.h"
+#include "ir/value/reg.h"
 #include "ir/stack_frame_allocations.h"
 #include "type/type_fwd.h"
 #include "type/typed_value.h"

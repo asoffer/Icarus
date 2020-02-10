@@ -104,10 +104,10 @@ cc_lib(
         ":instructions",
         ":local_block_interpretation",
         ":struct_field",
-        ":reg",
         "//base:debug",
         "//base:scope",
         "//base:tag",
+        "//ir/value:reg",
         "//type:typed_value",
         "//type:util",
         "@com_google_absl//absl/types:span",
@@ -124,11 +124,11 @@ cc_library(
         ":block_group",
         ":instructions_base",
         ":local_block_interpretation",
-        ":reg",
-        ":reg_or",
         ":results",
         "//base:debug",
         "//ir/cmd:jump",
+        "//ir/value:reg",
+        "//ir/value:reg_or",
         "//type:typed_value",
         "@com_google_absl//absl/container:flat_hash_map",
     ]
@@ -172,11 +172,11 @@ cc_library(
         ":instruction_inliner",
         ":instruction_op_codes",
         ":out_params",
-        ":reg_or",
         ":scope_def",
         ":struct_field",
         "//ast/scope",
         "//base:clone",
+        "//ir/value:reg_or",
         "//type",
         "//type:array",
         "//type:enum",
@@ -254,10 +254,10 @@ cc_lib(
         ":instruction_inliner",
         ":jump",
         ":local_block_interpretation",
-        ":reg",
         ":results",
         ":stack_frame_allocations",
         "//base:macros",
+        "//ir/value:reg",
         "//type:function",
         "//type:type",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -282,7 +282,7 @@ cc_library(
     hdrs = ["out_params.h"],
     deps = [
         ":byte_code_writer",
-        ":reg",
+        "//ir/value:reg",
     ],
 )
 
@@ -294,29 +294,13 @@ cc_lib(
 )
 
 cc_lib(
-    name = "reg",
-    deps = [
-        "//base:debug",
-        "@com_google_absl//absl/strings",
-    ],
-    test_deps = [],
-)
-
-cc_lib(
-    name = "reg_or",
-    deps = [":reg"],
-    header_only = True,
-    test_deps = [],
-)
-
-cc_lib(
     name = "results",
     deps = [
-        ":reg",
-        ":reg_or",
         "//base:untyped_buffer",
         "//base:untyped_buffer_view",
         "//core:bytes",
+        "//ir/value:reg",
+        "//ir/value:reg_or",
         "@com_google_absl//absl/strings",
     ],
     test_deps = [],
@@ -336,8 +320,8 @@ cc_lib(
     name = "stack_frame_allocations",
     deps = [
         ":addr",
-        ":reg",
         "//base:stringify",
+        "//ir/value:reg",
         "//type",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
@@ -361,7 +345,7 @@ cc_library(
     name = "struct_field",
     hdrs = ["struct_field.h"],
     deps = [
-        ":reg_or",
+        "//ir/value:reg_or",
         "//type",
     ],
 )

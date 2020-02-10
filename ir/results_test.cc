@@ -1,6 +1,6 @@
 #include "ir/results.h"
 
-#include "ir/reg.h"
+#include "ir/value/reg.h"
 #include "test/catch.h"
 
 namespace ir {

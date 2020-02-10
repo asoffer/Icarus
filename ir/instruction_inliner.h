@@ -10,8 +10,8 @@
 #include "ir/block_group.h"
 #include "ir/cmd/jump.h"
 #include "ir/local_block_interpretation.h"
-#include "ir/reg.h"
-#include "ir/reg_or.h"
+#include "ir/value/reg.h"
+#include "ir/value/reg_or.h"
 #include "ir/results.h"
 
 namespace ir {

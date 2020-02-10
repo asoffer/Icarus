@@ -16,7 +16,7 @@
 #include "frontend/source/source.h"
 #include "ir/addr.h"
 #include "ir/builder.h"
-#include "ir/reg.h"
+#include "ir/value/reg.h"
 #include "ir/results.h"
 #include "module/module.h"
 #include "type/qual_type.h"

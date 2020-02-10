@@ -1,5 +1,5 @@
-#ifndef ICARUS_IR_REG_H
-#define ICARUS_IR_REG_H
+#ifndef ICARUS_IR_VALUE_REG_H
+#define ICARUS_IR_VALUE_REG_H
 
 #include <string>
 
@@ -18,17 +18,17 @@ struct Reg {
  public:
   constexpr Reg() = default;
 
-  ICARUS_CONSTEXPR explicit Reg(underlying_type val) : val_(val) {
+  explicit Reg(underlying_type val) : val_(val) {
     ASSERT(is_arg() == false);
     ASSERT(is_out() == false);
   }
 
-  ICARUS_CONSTEXPR static Reg Arg(underlying_type val) {
+  static Reg Arg(underlying_type val) {
     ASSERT((val & arg_mask) == 0u);
     return MakeReg(val | arg_mask);
   }
 
-  ICARUS_CONSTEXPR static Reg Out(underlying_type val) {
+  static Reg Out(underlying_type val) {
     ASSERT((val & out_mask) == 0u);
     return MakeReg(val | out_mask);
   }
@@ -36,17 +36,17 @@ struct Reg {
   constexpr bool is_arg() const { return val_ & arg_mask; }
   constexpr bool is_out() const { return val_ & out_mask; }
 
-  ICARUS_CONSTEXPR auto arg_value() const {
+  auto arg_value() const {
     ASSERT(is_arg() == true);
     return val_ & ~arg_mask;
   }
 
-  ICARUS_CONSTEXPR auto out_value() const {
+  auto out_value() const {
     ASSERT(is_out() == true);
     return val_ & ~out_mask;
   }
 
-  ICARUS_CONSTEXPR auto value() const {
+  auto value() const {
     ASSERT(is_arg() == false);
     ASSERT(is_out() == false);
     return val_;
@@ -59,7 +59,7 @@ struct Reg {
 
   friend std::string stringify(Reg r);
 
-  friend ICARUS_CONSTEXPR bool operator==(Reg lhs, Reg rhs) {
+  constexpr friend bool operator==(Reg lhs, Reg rhs) {
     return lhs.val_ == rhs.val_;
   }
 
@@ -78,8 +78,8 @@ struct Reg {
   underlying_type val_ = (std::numeric_limits<underlying_type>::max)();
 };
 
-ICARUS_CONSTEXPR bool operator!=(Reg lhs, Reg rhs) { return not(lhs == rhs); }
+constexpr bool operator!=(Reg lhs, Reg rhs) { return not(lhs == rhs); }
 
 }  // namespace ir
 
-#endif  // ICARUS_IR_REG_H
+#endif  // ICARUS_IR_VALUE_REG_H

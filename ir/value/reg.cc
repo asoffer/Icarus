@@ -1,4 +1,4 @@
-#include "ir/reg.h"
+#include "ir/value/reg.h"
 
 #include "absl/strings/str_cat.h"
 

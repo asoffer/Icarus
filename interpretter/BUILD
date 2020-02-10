@@ -16,7 +16,7 @@ cc_library(
     deps = [
         "//base:untyped_buffer",
         "//base:untyped_buffer_view",
-        "//ir:reg",
+        "//ir/value:reg",
     ],
 )
 
@@ -67,9 +67,9 @@ cc_library(
         "//ir:instructions",
         "//ir:jump",
         "//ir:read_only_data",
-        "//ir:reg",
-        "//ir:reg_or",
         "//ir:scope_def",
+        "//ir/value:reg",
+        "//ir/value:reg_or",
         "//type:opaque",
         "@com_google_absl//absl/types:span",
     ],

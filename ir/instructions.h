@@ -15,7 +15,7 @@
 #include "ir/instruction_op_codes.h"
 #include "ir/instructions_base.h"
 #include "ir/out_params.h"
-#include "ir/reg_or.h"
+#include "ir/value/reg_or.h"
 #include "ir/struct_field.h"
 #include "ir/values.h"
 #include "type/array.h"

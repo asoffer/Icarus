@@ -9,8 +9,8 @@
 #include "ir/addr.h"
 #include "ir/any_func.h"
 #include "ir/basic_block.h"
-#include "ir/reg.h"
-#include "ir/reg_or.h"
+#include "ir/value/reg.h"
+#include "ir/value/reg_or.h"
 
 namespace interpretter {
 
@@ -29,7 +29,7 @@ struct ExecutionContext {
   }
 
   // TODO determine if this is actually used and if not, remove the #include
-  // "ir/reg_or.h".
+  // "ir/value/reg_or.h".
   template <typename T>
   T resolve(ir::RegOr<T> val) const {
     return val.resolve([&](ir::Reg r) { return resolve<T>(r); });
