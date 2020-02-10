@@ -1014,9 +1014,17 @@ static type::QualType VerifyCall(
               .message = "Second argument to `foreign` must be a constant."});
         }
       }
-      return type::QualType::Constant(
-          interpretter::EvaluateAs<type::Type const *>(
-              c->MakeThunk(args.at(1), type::Type_)));
+      auto *foreign_type = interpretter::EvaluateAs<type::Type const *>(
+          c->MakeThunk(args.at(1), type::Type_));
+      if (not foreign_type->template is<type::Function>() and
+          not foreign_type->template is<type::Pointer>()) {
+        c->diag().Consume(diagnostic::BuiltinError{
+            .range   = b->span,
+            .message = "Builtin `foreign` may only be called when the second "
+                       "argument is a pointer or a function type.",
+        });
+      }
+      return type::QualType::Constant(foreign_type);
     } break;
     case core::Builtin::Opaque:
       if (not arg_results.empty()) {

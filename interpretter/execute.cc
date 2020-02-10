@@ -588,10 +588,9 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
                                      ir::AnyFunc{ir::ForeignFn(sym, fn_type)});
     } else if (type->is<type::Pointer>()) {
       void *sym = LoadDataSymbol(name);
-      ctx->current_frame().regs_.set(
-          reg, ir::Addr::Heap(*static_cast<void **>(sym)));
+      ctx->current_frame().regs_.set(reg, ir::Addr::Heap(sym));
     } else {
-      NOT_YET(type->to_string());
+      UNREACHABLE(type->to_string());
     }
 
   } else if constexpr (std::is_same_v<Inst, ir::TypeInfoInstruction>) {
