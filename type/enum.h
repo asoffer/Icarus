@@ -20,6 +20,8 @@ struct Enum : public type::Type {
     for (auto &[name, val] : vals_) { members_.emplace(val, name); }
   }
 
+  bool is_big() const override { return false; }
+
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }

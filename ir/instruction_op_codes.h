@@ -78,9 +78,13 @@ inline constexpr auto kSetReturnInstructionRange = CmdRange{
     .start  = kPhiInstructionRange.end(),
     .length = 22,
 };
+inline constexpr auto kCastInstructionRange = CmdRange{
+    .start  = kSetReturnInstructionRange.end(),
+    .length = 10,
+};
 
 inline constexpr cmd_index_t kEndRangedInstructions =
-    kSetReturnInstructionRange.end();
+    kCastInstructionRange.end();
 inline constexpr uint16_t kAdHocStart = kEndRangedInstructions;
 
 inline constexpr cmd_index_t kNotInstructionNumber           = kAdHocStart + 0;
@@ -112,13 +116,6 @@ inline constexpr cmd_index_t kByteViewLengthInstructionNumber =
     kAdHocStart + 24;
 inline constexpr cmd_index_t kByteViewDataInstructionNumber = kAdHocStart + 25;
 inline constexpr cmd_index_t kDebugIrInstructionNumber      = kAdHocStart + 26;
-
-// TODO not yet implemented.
-inline constexpr uint8_t kTypeBits    = 8;
-inline constexpr cmd_index_t kCastInstructionIndex     = 17 << kTypeBits;
-
-// Note: These are not used here but it's worthwhile to list them here so we
-// know they're taken.
 
 }  // namespace internal
 }  // namespace ir

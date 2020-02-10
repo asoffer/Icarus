@@ -552,18 +552,22 @@ struct SetTemporaries : public base::UseWithScope {
 template <typename ToType, typename FromType>
 RegOr<ToType> Cast(RegOr<FromType> r) {
   if (r.is_reg()) {
-    auto inst   = std::make_unique<CastInstruction<ToType, FromType>>(r);
+    auto inst = std::make_unique<CastInstruction<FromType>>(
+        r, internal::PrimitiveIndex<ToType>());
     auto result = inst->result = GetBuilder().CurrentGroup()->Reserve();
     GetBuilder().CurrentBlock()->instructions_.push_back(std::move(inst));
     return result;
   } else {
-    return ToType(r.value());
+    return static_cast<ToType>(r.value());
   }
 }
 
 template <typename ToType>
 RegOr<ToType> CastTo(type::Type const* from_type, ir::Results const& r) {
-  if (from_type == type::Get<ToType>()) { return r.get<ToType>(0); }
+  if constexpr (not std::is_same_v<ToType, ir::EnumVal> and
+                not std::is_same_v<ToType, ir::FlagsVal>) {
+    if (from_type == type::Get<ToType>()) { return r.get<ToType>(0); }
+  }
   if (from_type == type::Int8) {
     return Cast<ToType, int8_t>(r.get<int8_t>(0));
   } else if (from_type == type::Nat8) {

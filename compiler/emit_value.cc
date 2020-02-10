@@ -513,13 +513,24 @@ ir::Results Compiler::Visit(ast::Cast const *node, EmitValueTag) {
     return ir::Results{type::Tup(entries)};
   }
   auto *from_type = type_of(node->expr());
-  // TODO enum, flags, ptrs?
-  return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                          uint32_t, uint64_t, float, double>(
-      to_type, [&](auto tag) {
+  if (type::IsNumeric(from_type)) {
+    if (type::IsIntegral(from_type)) {
+      return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
+                              uint16_t, uint32_t, uint64_t, float, double,
+                              ir::EnumVal, ir::FlagsVal>(
+          to_type, [&](auto tag) {
+            return ir::Results{
+                ir::CastTo<typename decltype(tag)::type>(from_type, results)};
+          });
+    } else {
+      return type::ApplyTypes<float, double>(to_type, [&](auto tag) {
         return ir::Results{
             ir::CastTo<typename decltype(tag)::type>(from_type, results)};
       });
+    }
+  } else {
+    NOT_YET();
+  }
 }
 
 ir::Results Compiler::Visit(ast::CommaList const *node, EmitValueTag) {
@@ -642,7 +653,7 @@ ir::Results Compiler::Visit(ast::EnumLiteral const *node, EmitValueTag) {
       names.push_back(id->token());
     } else if (auto *decl = elem->if_as<ast::Declaration>()) {
       names.push_back(decl->id());
-      if (not decl->IsCustomInitialized()) {
+      if (decl->IsCustomInitialized()) {
         specified_values.emplace(
             names.size() - 1,
             Visit(decl->init_val(), EmitValueTag{}).get<enum_t>(0));

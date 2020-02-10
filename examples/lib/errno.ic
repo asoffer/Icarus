@@ -37,14 +37,6 @@ error ::= enum {
   ERANGE  ::= 34  // Math result not representable
 }
 
-// #{export} get ::= () -> error {
-// return switch {
-//   error.EPERM  when @foreign("errno", *int32) == EPERM
-//   error.ENOENT when @foreign("errno", *int32) == ENOENT
-//   error.OTHER  when true
-// }
-
-#{export} get ::= () -> {
-  val := @foreign("errno", *int32)
-  return val as error
+#{export} get ::= () -> error {
+  return @foreign("errno", *int32) as error
 }

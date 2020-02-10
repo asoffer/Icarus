@@ -195,7 +195,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
       uint64_t index        = iter->read<uint64_t>();
       auto b                = iter->read<bool>();
       enum_t val            = ReadAndResolve<enum_t>(b, iter, ctx);
-      enumerators[i].second = val;
+      enumerators[index].second = val;
       vals.insert(val);
     }
 
@@ -315,8 +315,8 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
   } else if constexpr (std::is_same_v<Inst, ir::PrintEnumInstruction>) {
     bool is_reg = iter->read<bool>().get();
     auto val    = ReadAndResolve<ir::EnumVal>(is_reg, iter, ctx);
-    std::optional<std::string_view> name =
-        iter->read<type::Enum const *>().get()->name(val);
+    auto *enum_type = iter->read<type::Enum const *>().get();
+    std::optional<std::string_view> name = enum_type->name(val);
     std::cerr << name.value_or(absl::StrCat(val.value));
   } else if constexpr (std::is_same_v<Inst, ir::PrintFlagsInstruction>) {
     bool is_reg      = iter->read<bool>().get();
@@ -463,6 +463,63 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     type val          = ReadAndResolve<type>(is_reg, iter, ctx);
     ASSERT(ret_slot.kind() == ir::Addr::Kind::Heap);
     *ASSERT_NOT_NULL(static_cast<type *>(ret_slot.heap())) = val;
+
+  } else if constexpr (ir::internal::kCastInstructionRange.contains(
+                           Inst::kIndex)) {
+    using type           = typename Inst::from_type;
+    bool is_reg          = iter->read<bool>();
+    type val             = ReadAndResolve<type>(is_reg, iter, ctx);
+    uint8_t to_type_byte = iter->read<uint8_t>();
+
+    switch (to_type_byte) {
+      case ir::internal::PrimitiveIndex<int8_t>(): {
+        ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
+                                       static_cast<int8_t>(val));
+      } break;
+      case ir::internal::PrimitiveIndex<uint8_t>(): {
+        ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
+                                       static_cast<uint8_t>(val));
+      } break;
+      case ir::internal::PrimitiveIndex<int16_t>(): {
+        ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
+                                       static_cast<int16_t>(val));
+      } break;
+      case ir::internal::PrimitiveIndex<uint16_t>(): {
+        ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
+                                       static_cast<uint16_t>(val));
+      } break;
+      case ir::internal::PrimitiveIndex<int32_t>(): {
+        ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
+                                       static_cast<int32_t>(val));
+      } break;
+      case ir::internal::PrimitiveIndex<uint32_t>(): {
+        ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
+                                       static_cast<uint32_t>(val));
+      } break;
+      case ir::internal::PrimitiveIndex<int64_t>(): {
+        ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
+                                       static_cast<int64_t>(val));
+      } break;
+      case ir::internal::PrimitiveIndex<uint64_t>(): {
+        ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
+                                       static_cast<uint64_t>(val));
+      } break;
+      case ir::internal::PrimitiveIndex<float>(): {
+        ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
+                                       static_cast<float>(val));
+      } break;
+      case ir::internal::PrimitiveIndex<double>(): {
+        ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
+                                       static_cast<double>(val));
+      } break;
+      case ir::internal::PrimitiveIndex<ir::EnumVal>(): {
+        ctx->current_frame().regs_.set(iter->read<ir::Reg>(), ir::EnumVal(val));
+      } break;
+      case ir::internal::PrimitiveIndex<ir::FlagsVal>(): {
+        ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
+                                       ir::FlagsVal(val));
+      } break;
+    }
 
   } else if constexpr (std::is_same_v<Inst, ir::GetReturnInstruction>) {
     uint16_t index = iter->read<uint16_t>();
@@ -648,13 +705,6 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     DEBUG_LOG("variant")(reg);
     ctx->current_frame().regs_.set(reg, addr);
 
-  } else if constexpr (ir::IsCastInstruction<Inst>) {
-    using to_type   = typename Inst::to_type;
-    using from_type = typename Inst::from_type;
-    bool is_reg     = iter->read<bool>();
-    from_type value = ReadAndResolve<from_type>(is_reg, iter, ctx);
-    ir::Reg reg     = iter->read<ir::Reg>();
-    ctx->current_frame().regs_.set(reg, static_cast<to_type>(value));
   } else if constexpr (std::is_same_v<Inst, ir::DebugIrInstruction>) {
     std::cerr << *ctx->current_frame().fn_;
   } else {
@@ -871,6 +921,18 @@ constexpr auto kInstructions = std::array{
     ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::ScopeDef const *>>,
     ExecuteAdHocInstruction<
         ir::SetReturnInstruction<module::BasicModule const *>>,
+
+    ExecuteAdHocInstruction<ir::CastInstruction<uint8_t>>,
+    ExecuteAdHocInstruction<ir::CastInstruction<int8_t>>,
+    ExecuteAdHocInstruction<ir::CastInstruction<uint16_t>>,
+    ExecuteAdHocInstruction<ir::CastInstruction<int16_t>>,
+    ExecuteAdHocInstruction<ir::CastInstruction<uint32_t>>,
+    ExecuteAdHocInstruction<ir::CastInstruction<int32_t>>,
+    ExecuteAdHocInstruction<ir::CastInstruction<uint64_t>>,
+    ExecuteAdHocInstruction<ir::CastInstruction<int64_t>>,
+    ExecuteAdHocInstruction<ir::CastInstruction<float>>,
+    ExecuteAdHocInstruction<ir::CastInstruction<double>>,
+
     ExecuteInstruction<ir::NotInstruction>,
     ExecuteInstruction<ir::XorFlagsInstruction>,
     ExecuteInstruction<ir::AndFlagsInstruction>,

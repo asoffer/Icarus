@@ -679,25 +679,27 @@ struct SetReturnInstruction
   RegOr<T> value;
 };
 
-template <typename ToType, typename FromType>
-struct CastInstruction : Instruction {
-  static constexpr cmd_index_t kIndex = internal::kCastInstructionIndex;
-  using to_type                       = ToType;
-  using from_type                     = FromType;
+template <typename FromType>
+struct CastInstruction : base::Clone<CastInstruction<FromType>, Instruction> {
+  static constexpr cmd_index_t kIndex = internal::kCastInstructionRange.start +
+                                        internal::PrimitiveIndex<FromType>();
+  using from_type = FromType;
 
-  explicit CastInstruction(RegOr<FromType> const& value) : value(value) {}
+  explicit CastInstruction(RegOr<FromType> const& value, uint8_t to_type_byte)
+      : value(value), to_type_byte(to_type_byte) {}
   ~CastInstruction() override {}
 
   std::string to_string() const override {
     using base::stringify;
-    return absl::StrCat(stringify(result), " = cast ", stringify(value), " to ",
-                        TypeToString<ToType>());
+    return absl::StrCat(stringify(result), " = cast ", stringify(value),
+                        " to type indexed by ", static_cast<int>(to_type_byte));
   }
 
   void WriteByteCode(ByteCodeWriter* writer) const override {
     writer->Write(kIndex);
     writer->Write(value.is_reg());
     value.apply([&](auto v) { writer->Write(v); });
+    writer->Write(to_type_byte);
     writer->Write(result);
   }
 
@@ -707,6 +709,7 @@ struct CastInstruction : Instruction {
   }
 
   RegOr<FromType> value;
+  uint8_t to_type_byte;
   Reg result;
 };
 
@@ -731,10 +734,6 @@ struct NegInstruction : UnaryInstruction<NumType> {
     this->WriteByteCodeUnary(kIndex, writer);
   }
 };
-
-template <typename Inst>
-inline constexpr bool IsCastInstruction = (Inst::kIndex ==
-                                           internal::kCastInstructionIndex);
 
 struct GetReturnInstruction : base::Clone<GetReturnInstruction, Instruction> {
   static constexpr cmd_index_t kIndex = internal::kGetReturnInstructionIndex;

@@ -26,6 +26,8 @@ struct Flags : public type::Type {
     DEBUG_LOG("flags")(members_);
   }
 
+  bool is_big() const override { return false; }
+
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }

@@ -70,16 +70,19 @@ void CallForeignFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
     pointer_values.reserve(fn_type->params().size());
     if (ffi_type == &ffi_type_pointer) {
       ir::Addr addr = arguments.get<ir::Addr>(16 * i++);
+      DEBUG_LOG("CallForeignFn")("Pushing pointer addr = ", addr);
       switch (addr.kind()) {
-        case ir::Addr::Kind::Heap: NOT_YET();
+        case ir::Addr::Kind::Heap: {
+          pointer_values.push_back(addr.heap());
+        } break;
         case ir::Addr::Kind::Stack: {
           pointer_values.push_back(stack->raw(addr.stack()));
-          arg_vals.push_back(&pointer_values.back());
         } break;
         case ir::Addr::Kind::ReadOnly: {
           pointer_values.push_back(ir::ReadOnlyData.raw(addr.rodata()));
         } break;
       }
+      arg_vals.push_back(&pointer_values.back());
     } else {
       arg_vals.push_back(const_cast<char *>(arguments.raw(16 * i++)));
     }
