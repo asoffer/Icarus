@@ -179,10 +179,16 @@ struct Compiler
   void set_jump_table(ast::ExprPtr jump_expr, ast::ExprPtr node,
                       ast::DispatchTable &&table);
 
-  absl::Span<std::pair<ir::Label, ir::BasicBlock *> const> scope_landings()
-      const {
+  absl::Span<std::tuple<ir::Label, ir::BasicBlock *,
+                        ir::PhiInstruction<int64_t> *> const>
+  scope_landings() const {
     return scope_landings_;
   }
+  void add_scope_landing(ir::Label label, ir::BasicBlock *block,
+                    ir::PhiInstruction<int64_t> *phi) {
+    scope_landings_.emplace_back(label, block, phi);
+  }
+  void pop_scope_landing() { scope_landings_.pop_back(); }
 
   ir::CompiledFn *AddFunc(
       type::Function const *fn_type,
@@ -320,7 +326,9 @@ struct Compiler
   diagnostic::DiagnosticConsumer &diag_consumer_;
 
  private:
-  std::vector<std::pair<ir::Label, ir::BasicBlock *>> scope_landings_;
+  std::vector<
+      std::tuple<ir::Label, ir::BasicBlock *, ir::PhiInstruction<int64_t> *>>
+      scope_landings_;
   std::vector<YieldResult> yields_stack_;
 };
 

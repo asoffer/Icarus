@@ -28,6 +28,9 @@ struct OneTable {
   void VerifyBlocks(Compiler *compiler, ast::ScopeNode const *node);
   void VerifyJumps();
 
+  void EmitCall(Compiler *compiler, ir::ScopeDef const *scope_def,
+                ir::LocalBlockInterpretation const &block_interp) const;
+
   absl::flat_hash_map<ir::Jump *,
                       core::FnParams<type::Typed<ast::Declaration const *>>>
       inits;
@@ -51,6 +54,19 @@ struct ScopeDispatchTable {
       core::FnArgs<type::Typed<ir::Results>> const &args) const;
 
  private:
+  // Given a value of type `A | B` passed into the scope, there may be no
+  // specific scope in the scope overload set which accepts an initial value of
+  // this type, but there could be scopes separately that accept values of type
+  // `A` and `B`. Just as we do with function dispatch over variants, we will
+  // dispatch to separate scopes. Note that this only happens on initial scope
+  // entry. We cannot jump between blocks associated with a scope instantiated
+  // for `A` and blocks associated with a scope instantiated for `B`.
+  void EmitSplittingDispatch(
+      Compiler *compiler,
+      absl::flat_hash_map<ir::ScopeDef const *,
+                          ir::LocalBlockInterpretation> const &block_interps,
+      core::FnArgs<type::Typed<ir::Results>> const &args) const;
+
   ast::ScopeNode const *scope_node_;
   absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> init_map_;
   // TODO this is really more of a hash_set. We only use the lookup

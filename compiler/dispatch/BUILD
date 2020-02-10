@@ -57,6 +57,7 @@ cc_library(
         ":scope_table_header",
         ":runtime",
         "//base:debug",
+        "//base:defer",
         "//compiler:compiler_header",
         "//ir:builder",
         "//ir:components",

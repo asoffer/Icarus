@@ -2,6 +2,7 @@
 
 #include "ast/expression.h"
 #include "base/debug.h"
+#include "base/defer.h"
 #include "compiler/compiler.h"
 #include "compiler/dispatch/parameters_and_arguments.h"
 #include "compiler/dispatch/runtime.h"
@@ -214,6 +215,99 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
   return table;
 }
 
+void ScopeDispatchTable::EmitSplittingDispatch(
+    Compiler *compiler,
+  absl::flat_hash_map<ir::ScopeDef const *, ir::LocalBlockInterpretation>const &block_interps,
+    core::FnArgs<type::Typed<ir::Results>> const &args) const {
+  auto &bldr           = compiler->builder();
+  auto callee_to_block = bldr.AddBlocks(init_map_);
+  EmitRuntimeDispatch(bldr, init_map_, callee_to_block, args);
+
+  for (auto const &[jump, scope_def] : init_map_) {
+    auto const &block_interp = block_interps.find(scope_def)->second;
+    bldr.CurrentBlock() = callee_to_block[jump];
+    // Argument preparation is done inside EmitCallOneOverload
+
+    auto name_to_block = JumpDispatchTable::EmitCallOneOverload(
+        jump, compiler, args, block_interp);
+    auto [block, outs] =
+        EmitCallOneOverload(name_to_block, scope_def, compiler, block_interp);
+    if (not outs.empty()) {
+      // TODO I think we need a phi-node per scope and then to combine them.
+      // exit_blocks.push_back(block);
+      // exit_outs.push_back(std::move(outs));
+      // ASSERT_NOT_NULL(land_phi)->add(block, 1);
+      NOT_YET();
+    }
+  }
+  bldr.CurrentBlock() = std::get<1>(compiler->scope_landings().back());
+}
+
+void internal::OneTable::EmitCall(
+    Compiler *compiler, ir::ScopeDef const *scope_def,
+    ir::LocalBlockInterpretation const &block_interp) const {
+  for (auto const &[node, table] : blocks) {
+    auto &bldr = compiler->builder();
+    DEBUG_LOG("EmitCall")(node->DebugString());
+
+    bldr.CurrentBlock() = block_interp[node];
+    bldr.block_termination_state() =
+        ir::Builder::BlockTerminationState::kMoreStatements;
+    auto yield_results       = compiler->EmitBlockNode(node);
+    auto yield_typed_results = yield_results.vals.Transform(
+        [](auto const &p) { return type::Typed(p.first, p.second.type()); });
+
+    // TODO skipping after-handlers is incorrect. We need a guaranteed
+    // exit path.
+    auto scope_landings_span = compiler->scope_landings();
+    switch (bldr.block_termination_state()) {
+      case ir::Builder::BlockTerminationState::kLabeledYield: {
+        for (auto iter = scope_landings_span.rbegin();
+             iter != scope_landings_span.rend(); ++iter) {
+          auto &[label, scope_landing_block, phi_inst] = *iter;
+          if (label == yield_results.label) {
+            bldr.UncondJump(scope_landing_block);
+            phi_inst->add(bldr.CurrentBlock(), 17);
+            break;
+            // Update phi-node?!
+          } else {
+            // TODO call skip.
+          }
+        }
+        continue;
+      }
+      case ir::Builder::BlockTerminationState::kReturn: {
+        for (auto iter = scope_landings_span.rbegin();
+             iter != scope_landings_span.rend(); ++iter) {
+          // TODO call skip
+        }
+        continue;
+        default: break;
+      }
+    }
+
+    auto callee_to_block = bldr.AddBlocks(table.table_);
+    EmitRuntimeDispatch(bldr, table.table_, callee_to_block,
+                        yield_typed_results);
+
+    for (auto const &[jump, expr_data] : table.table_) {
+      bldr.CurrentBlock() = callee_to_block[jump];
+
+      auto name_to_block = JumpDispatchTable::EmitCallOneOverload(
+          jump, compiler, yield_typed_results, block_interp);
+      auto [block, outs] =
+          EmitCallOneOverload(name_to_block, scope_def, compiler, block_interp);
+      if (not outs.empty()) {
+        // TODO
+        // exit_blocks.push_back(block);
+        // exit_outs.push_back(std::move(outs));
+        // ASSERT_NOT_NULL(land_phi)->add(block, 1);
+        NOT_YET();
+      }
+    }
+  }
+}
+
 ir::Results ScopeDispatchTable::EmitCall(
     Compiler *compiler,
     core::FnArgs<type::Typed<ir::Results>> const &args) const {
@@ -221,12 +315,19 @@ ir::Results ScopeDispatchTable::EmitCall(
   ("Emitting a table with ", init_map_.size(), " entries.");
   auto &bldr = compiler->builder();
 
-  std::vector<ir::BasicBlock const *> exit_blocks;
-  std::vector<ir::OutParams> exit_outs;
-
   auto *landing_block  = bldr.AddBlock();
-  auto callee_to_block = bldr.AddBlocks(init_map_);
   auto *starting_block = bldr.CurrentBlock();
+
+  ir::PhiInstruction<int64_t> *land_phi = nullptr;
+  if (compiler->type_of(scope_node_) != type::Void()) {
+    bldr.CurrentBlock() = landing_block;
+    land_phi            = bldr.PhiInst<int64_t>();
+    bldr.CurrentBlock() = starting_block;
+  }
+  compiler->add_scope_landing(
+      scope_node_->label() ? scope_node_->label()->value() : ir::Label(),
+      landing_block, land_phi);
+  base::defer d = [&] { compiler->pop_scope_landing(); };
 
   // Add basic blocks for each block node in the scope (for each scope
   // definition which might be callable).
@@ -240,104 +341,21 @@ ir::Results ScopeDispatchTable::EmitCall(
     ASSERT(success == true);
   }
 
-  EmitRuntimeDispatch(bldr, init_map_, callee_to_block, args);
-
-  for (auto const &[jump, scope_def] : init_map_) {
-    bldr.CurrentBlock() = callee_to_block[jump];
-    // Argument preparation is done inside EmitCallOneOverload
-
-    auto name_to_block = JumpDispatchTable::EmitCallOneOverload(
-        jump, compiler, args, block_interps.at(scope_def));
-    auto [block, outs] = EmitCallOneOverload(name_to_block, scope_def, compiler,
-                                             block_interps.at(scope_def));
-    if (not outs.empty()) {
-      exit_blocks.push_back(block);
-      exit_outs.push_back(std::move(outs));
-    }
-  }
-  bldr.CurrentBlock() = landing_block;
-
-  // TODO handle results
+  EmitSplittingDispatch(compiler, block_interps, args);
 
   auto state = bldr.block_termination_state();
   for (auto const &[scope_def, one_table] : tables_) {
-    for (auto const &[node, table] : one_table.blocks) {
-      DEBUG_LOG("EmitCall")(node->DebugString());
-
-      bldr.CurrentBlock() = block_interps.at(scope_def)[node];
-      bldr.block_termination_state() =
-          ir::Builder::BlockTerminationState::kMoreStatements;
-      auto yield_results = compiler->EmitBlockNode(node);
-
-      // TODO skipping after-handlers is incorrect. We need a guaranteed
-      // exit path.
-      auto scope_landings_span = compiler->scope_landings();
-      switch (bldr.block_termination_state()) {
-        case ir::Builder::BlockTerminationState::kLabeledYield: {
-          for (auto iter = scope_landings_span.rbegin();
-               iter != scope_landings_span.rend(); ++iter) {
-            auto &[label, scope_landing_block] = *iter;
-            if (label == yield_results.label) {
-              bldr.UncondJump(scope_landing_block);
-              // Update phi-node?!
-            } else {
-              // TODO call skip.
-            }
-          }
-        }
-          continue;
-        case ir::Builder::BlockTerminationState::kReturn: {
-          for (auto iter = scope_landings_span.rbegin();
-               iter != scope_landings_span.rend(); ++iter) {
-            // TODO call skip
-          }
-          continue;
-          default: break;
-        }
-      }
-
-      auto yield_typed_results = yield_results.vals.Transform(
-          [](auto const &p) { return type::Typed(p.first, p.second.type()); });
-
-      auto callee_to_block = bldr.AddBlocks(table.table_);
-      EmitRuntimeDispatch(bldr, table.table_, callee_to_block,
-                          yield_typed_results);
-
-      for (auto const &[jump, expr_data] : table.table_) {
-        bldr.CurrentBlock() = callee_to_block[jump];
-
-        auto name_to_block = JumpDispatchTable::EmitCallOneOverload(
-            jump, compiler, yield_typed_results, block_interps.at(scope_def));
-        auto [block, outs] = EmitCallOneOverload(
-            name_to_block, scope_def, compiler, block_interps.at(scope_def));
-        if (not outs.empty()) {
-          exit_blocks.push_back(block);
-          exit_outs.push_back(std::move(outs));
-        }
-      }
-    }
+    one_table.EmitCall(compiler, scope_def,
+                       block_interps.find(scope_def)->second);
   }
 
   bldr.block_termination_state() = state;
   bldr.CurrentBlock()            = landing_block;
   DEBUG_LOG("EmitCall")(*bldr.CurrentGroup());
-  switch (exit_outs.size()) {
-    case 0: return ir::Results{};
-    case 1: {
-      ir::Results results;
-      // TODO direct outparams -> results conversion?
-      auto &out_params = exit_outs[0];
-      for (size_t i = 0; i < out_params.size(); ++i) {
-        results.append(out_params[i]);
-      }
-      return results;
-    }
-    default: {
-      std::vector<ir::RegOr<int64_t>> values;
-      values.reserve(exit_blocks.size());
-      for (auto &out_params : exit_outs) { values.emplace_back(out_params[0]); }
-      return ir::Results{bldr.Phi(exit_blocks, std::move(values))};
-    }
+  if (land_phi) {
+    return ir::Results{land_phi->result};
+  } else {
+    return ir::Results{};
   }
 }
 
