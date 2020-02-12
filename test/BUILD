@@ -73,3 +73,14 @@ cc_lib(
     test_deps = None,
     testonly = True,
 )
+
+cc_library(
+    name = "failing_diagnostic_consumer",
+    hdrs = ["failing_diagnostic_consumer.h"],
+    deps = [
+        "//base:meta",
+        "//diagnostic/consumer",
+        "//diagnostic:message",
+        "@com_google_googletest//:gtest",
+    ],
+)
