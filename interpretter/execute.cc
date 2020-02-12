@@ -271,7 +271,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
           return ctx->resolve<type::Type const *>(reg);
         });
 
-    core::FnParams<type::Type const*> in_params;
+    core::FnParams<type::Type const *> in_params;
     in_params.reserve(ins.size());
     for (auto *t : ins) { in_params.append(core::AnonymousParam(t)); }
 
@@ -280,14 +280,14 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         type::Func(std::move(in_params), std::move(outs)));
   } else if constexpr (std::is_same_v<Inst, ir::PrintInstruction<bool>>) {
     bool is_reg = iter->read<bool>();
-    std::cerr << (ReadAndResolve<bool>(is_reg, iter, ctx) ? "true" : "false");
+    ctx->os_ << (ReadAndResolve<bool>(is_reg, iter, ctx) ? "true" : "false");
   } else if constexpr (std::is_same_v<Inst, ir::PrintInstruction<uint8_t>> or
                        std::is_same_v<Inst, ir::PrintInstruction<int8_t>>) {
     using type  = typename Inst::type;
     bool is_reg = iter->read<bool>();
     // Cast to a larger type to ensure we print as an integer rather than a
     // character.
-    std::cerr << static_cast<int16_t>(ReadAndResolve<type>(is_reg, iter, ctx));
+    ctx->os_ << static_cast<int16_t>(ReadAndResolve<type>(is_reg, iter, ctx));
   } else if constexpr (std::is_same_v<Inst, ir::PrintInstruction<uint16_t>> or
                        std::is_same_v<Inst, ir::PrintInstruction<int16_t>> or
                        std::is_same_v<Inst, ir::PrintInstruction<uint32_t>> or
@@ -304,20 +304,20 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     using type  = typename Inst::type;
     bool is_reg = iter->read<bool>();
     if constexpr (std::is_same_v<type, ::type::Type const *>) {
-      std::cerr << ReadAndResolve<type>(is_reg, iter, ctx)->to_string();
+      ctx->os_ << ReadAndResolve<type>(is_reg, iter, ctx)->to_string();
 
     } else if constexpr (std::is_same_v<type, ir::Addr>) {
-      std::cerr << ReadAndResolve<type>(is_reg, iter, ctx).to_string();
+      ctx->os_ << ReadAndResolve<type>(is_reg, iter, ctx).to_string();
 
     } else {
-      std::cerr << ReadAndResolve<type>(is_reg, iter, ctx);
+      ctx->os_ << ReadAndResolve<type>(is_reg, iter, ctx);
     }
   } else if constexpr (std::is_same_v<Inst, ir::PrintEnumInstruction>) {
     bool is_reg = iter->read<bool>().get();
     auto val    = ReadAndResolve<ir::EnumVal>(is_reg, iter, ctx);
     std::optional<std::string_view> name =
         iter->read<type::Enum const *>().get()->name(val);
-    std::cerr << name.value_or(absl::StrCat(val.value));
+    ctx->os_ << name.value_or(absl::StrCat(val.value));
   } else if constexpr (std::is_same_v<Inst, ir::PrintFlagsInstruction>) {
     bool is_reg      = iter->read<bool>().get();
     auto val         = ReadAndResolve<ir::FlagsVal>(is_reg, iter, ctx);
@@ -336,11 +336,11 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     }
 
     if (vals.empty()) {
-      std::cerr << "(empty)";
+      ctx->os_ << "(empty)";
     } else {
       auto iter = vals.begin();
-      std::cerr << *iter++;
-      while (iter != vals.end()) { std::cerr << " | " << *iter++; }
+      ctx->os_ << *iter++;
+      while (iter != vals.end()) { ctx->os_ << " | " << *iter++; }
     }
   } else if constexpr (ir::internal::kStoreInstructionRange.contains(
                            Inst::kIndex)) {

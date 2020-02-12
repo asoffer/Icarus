@@ -15,6 +15,7 @@
 namespace interpretter {
 
 struct ExecutionContext {
+  ExecutionContext(std::ostream& os = std::cout) : os_(os) {}
   void ExecuteBlocks(absl::Span<ir::Addr const> ret_slots);
 
   StackFrame const &current_frame() const { return call_stack_.back(); }
@@ -35,6 +36,7 @@ struct ExecutionContext {
     return val.resolve([&](ir::Reg r) { return resolve<T>(r); });
   }
 
+  std::ostream& os_;
   std::vector<StackFrame> call_stack_;
   base::untyped_buffer stack_;
 };

@@ -406,7 +406,6 @@ restart:
         state->cursor_.remove_prefix(1);
         auto word_cursor       = NextSimpleWord(&state->cursor_);
         std::string_view token = word_cursor.view();
-        auto range             = word_cursor.range();
 
         return Lexeme(std::make_unique<ast::Label>(word_cursor.range(),
                                                    std::string{token}));
