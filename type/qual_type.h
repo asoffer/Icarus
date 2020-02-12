@@ -79,6 +79,10 @@ struct Quals {
     return *this;
   }
 
+  friend constexpr Quals operator~(Quals q) {
+    return Quals(All().val_ - q.val_);
+  }
+
   friend constexpr bool operator==(Quals lhs, Quals rhs) {
     return lhs.val_ == rhs.val_;
   }
