@@ -21,7 +21,6 @@ namespace type {
 // * Expansion-size: The number of identifiers that can be bound to this
 //   expression.
 // * Value category: Whether this expression can have it's address taken.
-//   (Planned, not yet implemented)
 //
 // `QualType` also has a builtin error value (the default constructed value).
 //
@@ -59,37 +58,78 @@ namespace type {
 // f ::= () -> (int64, bool) { return 3, true }
 // (n, b) := f()
 // ```
+struct Quals {
+  static constexpr Quals Unqualified() { return Quals(0); }
+  static constexpr Quals Const() { return Quals(1); }
+  static constexpr Quals Ref() { return Quals(2); }
+  static constexpr Quals All() { return Quals(3); }
+
+  friend constexpr Quals operator|(Quals lhs, Quals rhs) {
+    return Quals(lhs.val_ | rhs.val_);
+  }
+  friend constexpr Quals operator&(Quals lhs, Quals rhs) {
+    return Quals(lhs.val_ & rhs.val_);
+  }
+  constexpr Quals &operator|=(Quals rhs) {
+    val_ |= rhs.val_;
+    return *this;
+  }
+  constexpr Quals &operator&=(Quals rhs) {
+    val_ &= rhs.val_;
+    return *this;
+  }
+
+  friend constexpr bool operator==(Quals lhs, Quals rhs) {
+    return lhs.val_ == rhs.val_;
+  }
+  friend constexpr bool operator!=(Quals lhs, Quals rhs) {
+    return not(lhs == rhs);
+  }
+
+ private:
+  friend struct QualType;
+  constexpr explicit Quals(uint8_t val) : val_(val) {}
+  uint8_t val_;
+};
+
+
 struct QualType {
-  explicit constexpr QualType() : QualType(nullptr, false) {}
+  explicit constexpr QualType() : QualType(nullptr, Quals::Unqualified()) {}
 
   // Use SFINAE in to disable braced-initialization for the type parameter. This
   // allows it to fallback to meaning the vector initializer.
   template <typename Arg,
             std::enable_if_t<std::is_convertible_v<Arg, Type const *>, int> = 0>
-  explicit constexpr QualType(Arg t, bool b)
-      : data_(reinterpret_cast<uintptr_t>(t) | b) {}
+  explicit constexpr QualType(Arg t, Quals quals)
+      : data_(reinterpret_cast<uintptr_t>(t) |
+              static_cast<uintptr_t>(quals.val_)) {}
 
-  explicit QualType(std::vector<Type const *> ts, bool b) {
+  explicit QualType(std::vector<Type const *> ts, Quals quals) {
     num_     = ts.size();
     auto tup = type::Tup(std::move(ts));
-    data_    = reinterpret_cast<uintptr_t>(tup) | b;
+    data_    = reinterpret_cast<uintptr_t>(tup) | quals.val_;
   }
 
-  static constexpr QualType Error() { return QualType(nullptr, false); }
+  static constexpr QualType Error() {
+    return QualType(nullptr, Quals::Unqualified());
+  }
 
   static constexpr QualType Constant(Type const *t) {
-    return QualType(t, true);
+    return QualType(t, Quals::Const());
   }
 
   static constexpr QualType NonConstant(Type const *t) {
-    return QualType(t, false);
+    return QualType(t, Quals::Unqualified());
   }
 
   Type const *type() const {
-    return reinterpret_cast<Type const *>(data_ & ~uintptr_t{1});
+    return reinterpret_cast<Type const *>(
+        data_ & ~static_cast<uintptr_t>(Quals::All().val_));
   }
 
-  constexpr bool constant() const { return data_ & uintptr_t{1}; }
+  Quals quals() const { return Quals(data_ & 0x3); }
+
+  constexpr bool constant() const { return (quals() & Quals::Const()).val_; }
   constexpr size_t expansion_size() const { return num_; }
 
   explicit constexpr operator bool() const { return data_ != 0; }

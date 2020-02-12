@@ -5,6 +5,8 @@
 
 namespace {
 
+// TODO test calls to quals() and check kRef
+
 TEST(QualType, Regularity) {
   EXPECT_EQ(type::QualType::Error(), type::QualType::Error());
 
@@ -21,15 +23,16 @@ TEST(QualType, Regularity) {
             type::QualType::NonConstant(type::Int64));
 
   EXPECT_EQ(type::QualType::NonConstant(type::Int32),
-            type::QualType({type::Int32}, false));
+            type::QualType({type::Int32}, type::Quals::Unqualified()));
 
   EXPECT_EQ(type::QualType::Constant(type::Int32),
-            type::QualType({type::Int32}, true));
+            type::QualType({type::Int32}, type::Quals::Const()));
 
-  EXPECT_EQ(type::QualType({type::Int32, type::Bool}, true),
-            type::QualType({type::Int32, type::Bool}, true));
-  EXPECT_NE(type::QualType({type::Int32, type::Bool}, false),
-            type::QualType({type::Int32, type::Bool}, true));
+  EXPECT_EQ(type::QualType({type::Int32, type::Bool}, type::Quals::Const()),
+            type::QualType({type::Int32, type::Bool}, type::Quals::Const()));
+  EXPECT_NE(
+      type::QualType({type::Int32, type::Bool}, type::Quals::Unqualified()),
+      type::QualType({type::Int32, type::Bool}, type::Quals::Const()));
 
   auto q = type::QualType::Constant(type::Int64);
 
@@ -67,7 +70,7 @@ TEST(QualType, Streaming) {
 
   {
     std::stringstream ss;
-    auto q = type::QualType({type::Int64, type::Bool}, true);
+    auto q = type::QualType({type::Int64, type::Bool}, type::Quals::Const());
     ss << q;
     EXPECT_EQ(ss.str(), "const(int64, bool)");
   }
@@ -82,10 +85,12 @@ TEST(QualType, Ok) {
 
 TEST(QualType, ExpansionSize) {
   EXPECT_EQ(type::QualType::Constant(type::Int32).expansion_size(), 1);
-  EXPECT_EQ(type::QualType({type::Int32}, true).expansion_size(), 1);
+  EXPECT_EQ(
+      type::QualType({type::Int32}, type::Quals::Const()).expansion_size(), 1);
 
-  EXPECT_EQ(type::QualType({}, true).expansion_size(), 0);
-  EXPECT_EQ(type::QualType({type::Int32, type::Bool}, true).expansion_size(),
+  EXPECT_EQ(type::QualType({}, type::Quals::Const()).expansion_size(), 0);
+  EXPECT_EQ(type::QualType({type::Int32, type::Bool}, type::Quals::Const())
+                .expansion_size(),
             2);
 }
 

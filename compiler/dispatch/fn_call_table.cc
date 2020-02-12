@@ -111,7 +111,7 @@ type::QualType FnCallDispatchTable::ComputeResultQualType(
     }
   }
 
-  return type::QualType(type::MultiVar(results), false);
+  return type::QualType(type::MultiVar(results), type::Quals::Unqualified());
 }
 
 ir::Results FnCallDispatchTable::EmitCall(
