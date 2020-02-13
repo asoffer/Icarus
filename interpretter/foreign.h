@@ -13,6 +13,7 @@ namespace interpretter {
 void *LoadDataSymbol(std::string_view name);
 void (*LoadFunctionSymbol(std::string_view name))();
 
+// TODO arguments can be a view now.
 void CallForeignFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
                    absl::Span<ir::Addr const> return_slots,
                    base::untyped_buffer *stack);

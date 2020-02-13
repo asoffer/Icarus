@@ -90,7 +90,7 @@ T ReadAndResolve(bool is_reg, base::untyped_buffer::const_iterator *iter,
   }
 }
 
-void CallFunction(ir::CompiledFn *fn, base::untyped_buffer arguments,
+void CallFunction(ir::CompiledFn *fn, StackFrame *frame,
                   absl::Span<ir::Addr const> ret_slots, ExecutionContext *ctx) {
   ASSERT(fn != nullptr);
   // TODO: Understand why and how work-items may not be complete and add an
@@ -108,9 +108,10 @@ void CallFunction(ir::CompiledFn *fn, base::untyped_buffer arguments,
     fn->WriteByteCode();
   }
 
-  ctx->call_stack_.emplace_back(fn, std::move(arguments), &ctx->stack_);
+  auto *old_frame     = &ctx->current_frame();
+  ctx->current_frame_ = frame;
   ctx->ExecuteBlocks(ret_slots);
-  ctx->call_stack_.pop_back();
+  ctx->current_frame_ = old_frame;
 }
 
 }  // namespace
@@ -120,7 +121,8 @@ void CallFunction(ir::CompiledFn *fn, base::untyped_buffer arguments,
 void Execute(ir::AnyFunc fn, base::untyped_buffer arguments,
              absl::Span<ir::Addr const> ret_slots, ExecutionContext *ctx) {
   if (fn.is_fn()) {
-    CallFunction(fn.func(), std::move(arguments), ret_slots, ctx);
+    StackFrame frame(fn.func(), std::move(arguments), &ctx->stack_);
+    CallFunction(fn.func(), &frame, ret_slots, ctx);
   } else {
     CallForeignFn(fn.foreign(), arguments, ret_slots, &ctx->stack_);
   }
@@ -384,6 +386,8 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     auto kind = iter->read<ir::TypeManipulationInstruction::Kind>();
     type::Type const *t =
         ASSERT_NOT_NULL(iter->read<type::Type const *>().get());
+    // TODO it's not actually optional, we just need deferred construction.
+    std::optional<StackFrame> frame;
     switch (kind) {
       case ir::TypeManipulationInstruction::Kind::Init: {
         if (auto *s = t->if_as<type::Struct>()) {
@@ -395,10 +399,10 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         } else {
           NOT_YET();
         }
-        call_buf = base::untyped_buffer::MakeFull(kMaxSize *
-                                                  (1 + f.func()->num_regs()));
-        call_buf.set(kMaxSize * f.func()->num_regs(),
-                     ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get()));
+
+        frame.emplace(f.func(), &ctx->stack_);
+        frame->regs_.set(ir::Reg::Arg(0),
+                        ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get()));
 
       } break;
       case ir::TypeManipulationInstruction::Kind::Destroy: {
@@ -411,11 +415,10 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         } else {
           NOT_YET();
         }
-        call_buf = base::untyped_buffer::MakeFull(kMaxSize *
-                                                  (1 + f.func()->num_regs()));
-        call_buf.set(kMaxSize * f.func()->num_regs(),
-                     ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get()));
 
+        frame.emplace(f.func(), &ctx->stack_);
+        frame->regs_.set(ir::Reg::Arg(0),
+                        ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get()));
       } break;
       case ir::TypeManipulationInstruction::Kind::Move: {
         auto from   = ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get());
@@ -432,11 +435,9 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
           NOT_YET();
         }
 
-        call_buf = base::untyped_buffer::MakeFull(kMaxSize *
-                                                  (2 + f.func()->num_regs()));
-        call_buf.set(kMaxSize * f.func()->num_regs(), from);
-        call_buf.set(kMaxSize * (f.func()->num_regs() + 1), to);
-
+        frame.emplace(f.func(), &ctx->stack_);
+        frame->regs_.set(ir::Reg::Arg(0), from);
+        frame->regs_.set(ir::Reg::Arg(1), to);
       } break;
       case ir::TypeManipulationInstruction::Kind::Copy: {
         auto from   = ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get());
@@ -452,15 +453,15 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
           NOT_YET();
         }
 
-        call_buf = base::untyped_buffer::MakeFull(kMaxSize *
-                                                  (2 + f.func()->num_regs()));
-        call_buf.set(kMaxSize * f.func()->num_regs(), from);
-        call_buf.set(kMaxSize * (f.func()->num_regs() + 1), to);
-
+        frame.emplace(f.func(), &ctx->stack_);
+        frame->regs_.set(ir::Reg::Arg(0), from);
+        frame->regs_.set(ir::Reg::Arg(1), to);
       } break;
     }
 
-    Execute(f, std::move(call_buf), {}, ctx);
+    // TODO This could be foreign I guess?
+    ASSERT(f.is_fn() == true);
+    CallFunction(f.func(), &*frame, {}, ctx);
 
   } else if constexpr (ir::internal::kSetReturnInstructionRange.contains(
                            Inst::kIndex)) {
@@ -604,20 +605,35 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     size_t num_regs    = f.is_fn() ? f.func()->num_regs() : 0;
     size_t num_entries = num_inputs + num_regs;
     auto call_buf     = base::untyped_buffer::MakeFull(num_entries * kMaxSize);
+
+    // TODO not actually optional once we handle foreign functions, we just need
+    // deferred construction?
+    std::optional<StackFrame> frame;
+    if (f.is_fn()) { frame.emplace(f.func(), &ctx->stack_); }
+
+
     for (size_t i = 0; i < num_inputs; ++i) {
       if (iter->read<bool>()) {
         ir::Reg reg = iter->read<ir::Reg>();
         DEBUG_LOG("call")(reg);
 
+        if (frame) {
+          frame->regs_.set_raw(ir::Reg::Arg(i),
+                               ctx->current_frame().regs_.raw(reg), kMaxSize);
+        }
         ctx->MemCpyRegisterBytes(
             /*    dst = */ call_buf.raw((num_regs + i) * kMaxSize),
             /*    src = */ reg,
             /* length = */ kMaxSize);
+
       } else {
         type::Type const *t = fn_type->params().at(i).value;
         if (t->is_big()) {
           NOT_YET();
         } else {
+          if (frame) {
+            frame->regs_.set_raw(ir::Reg::Arg(i), iter->raw(), kMaxSize);
+          }
           std::memcpy(call_buf.raw((num_regs + i) * kMaxSize), iter->raw(),
                       kMaxSize);
           iter->skip(t->bytes(kArchitecture).value());
@@ -642,7 +658,11 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
       return_slots.push_back(addr);
     }
 
-    Execute(f, std::move(call_buf), return_slots, ctx);
+    if (f.is_fn()) {
+      CallFunction(f.func(), &*frame, return_slots, ctx);
+    } else {
+      CallForeignFn(f.foreign(), call_buf, return_slots, &ctx->stack_);
+    }
   } else if constexpr (std::is_same_v<Inst, ir::LoadSymbolInstruction>) {
     std::string_view name  = iter->read<std::string_view>();
     type::Type const *type = iter->read<type::Type const *>();
@@ -726,7 +746,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
 
 void ExecutionContext::MemCpyRegisterBytes(void *dst, ir::Reg reg,
                                            size_t length) {
-  std::memcpy(dst, call_stack_.back().regs_.raw(reg), length);
+  std::memcpy(dst, current_frame().regs_.raw(reg), length);
 }
 
 // Note: The ordering here is very important

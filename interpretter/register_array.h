@@ -10,6 +10,10 @@ namespace interpretter {
 // Represents a a collection of registers available within a given stack frame.
 struct RegisterArray {
   static constexpr size_t kMaxSize = 16;
+  explicit RegisterArray(size_t num_regs, size_t num_args)
+      : num_regs_(num_regs),
+        data_(
+            base::untyped_buffer::MakeFull((num_regs + num_args) * kMaxSize)) {}
   explicit RegisterArray(size_t num_regs, base::untyped_buffer args)
       : num_regs_(num_regs), data_(std::move(args)) {
     ASSERT(num_regs_ * kMaxSize <= data_.size());
@@ -43,7 +47,7 @@ struct RegisterArray {
     return data_.set<T>(r.value() * kMaxSize, val);
   }
 
-  void set_raw(ir::Reg r, void *src, uint16_t num_bytes) {
+  void set_raw(ir::Reg r, void const *src, uint16_t num_bytes) {
     ASSERT(num_bytes <= kMaxSize);
     void *dst;
     if (r.is_arg()) {

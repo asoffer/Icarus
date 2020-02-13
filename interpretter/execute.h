@@ -18,15 +18,15 @@ struct ExecutionContext {
   ExecutionContext(std::ostream& os = std::cout) : os_(os) {}
   void ExecuteBlocks(absl::Span<ir::Addr const> ret_slots);
 
-  StackFrame const &current_frame() const { return call_stack_.back(); }
-  StackFrame &current_frame() { return call_stack_.back(); }
+  StackFrame const &current_frame() const { return *current_frame_; }
+  StackFrame &current_frame() { return *current_frame_; }
 
   // Copies `length` bytes stored in `reg` to `dst`.
   void MemCpyRegisterBytes(void *dst, ir::Reg reg, size_t length);
 
   template <typename T>
   T resolve(ir::Reg r) const {
-    return call_stack_.back().regs_.get<T>(r);
+    return current_frame().regs_.get<T>(r);
   }
 
   // TODO determine if this is actually used and if not, remove the #include
@@ -37,7 +37,7 @@ struct ExecutionContext {
   }
 
   std::ostream& os_;
-  std::vector<StackFrame> call_stack_;
+  StackFrame *current_frame_;
   base::untyped_buffer stack_;
 };
 

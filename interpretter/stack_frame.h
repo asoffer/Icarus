@@ -11,6 +11,7 @@ struct ExecutionContext;
 
 struct StackFrame {
   StackFrame() = delete;
+  StackFrame(ir::CompiledFn *fn, base::untyped_buffer *stack);
   StackFrame(ir::CompiledFn *fn, base::untyped_buffer arguments,
              base::untyped_buffer *stack);
 
