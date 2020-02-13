@@ -1617,7 +1617,7 @@ type::QualType Compiler::Visit(ast::DesignatedInitializer const *node,
   // TODO constant only when all fields are constant.
   auto type_type = Visit(node->type(), VerifyTypeTag{});
   if (type_type != type::QualType::Constant(type::Type_)) {
-    NOT_YET("log an error");
+    NOT_YET("log an error", type_type, " vs ", type::QualType::Constant(type::Type_));
   }
 
   type::Type const *expr_type = interpretter::EvaluateAs<type::Type const *>(
@@ -2007,8 +2007,7 @@ type::QualType Compiler::Visit(ast::StructLiteral const *node, VerifyTypeTag) {
       NOT_YET("Log an error, type must be constant");
     }
 
-    if (field.init_val() and field.init_val() and
-        init_val_result != type_expr_result) {
+    if (field.init_val() and init_val_result != type_expr_result) {
       err = true;
       NOT_YET("log an error, type mismatch");
     }

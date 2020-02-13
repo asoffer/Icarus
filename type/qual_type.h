@@ -1,6 +1,7 @@
 #ifndef ICARUS_TYPE_QUAL_TYPE_H
 #define ICARUS_TYPE_QUAL_TYPE_H
 
+#include <array>
 #include <iosfwd>
 #include <type_traits>
 #include <vector>
@@ -96,6 +97,19 @@ struct Quals {
   uint8_t val_;
 };
 
+inline std::ostream &operator<<(std::ostream &os, Quals quals) {
+  static constexpr std::array kPrintData{std::pair{Quals::Const(), "const"},
+                                         std::pair{Quals::Ref(), "ref"}};
+  char const *sep = "";
+  os << "[";
+  for (auto [q, s] : kPrintData) {
+    if ((quals & q) == q) {
+      os << sep << s;
+      sep = ",";
+    }
+  }
+  return os << "]";
+}
 
 struct QualType {
   explicit constexpr QualType() : QualType(nullptr, Quals::Unqualified()) {}
@@ -151,7 +165,7 @@ struct QualType {
 
   friend std::ostream &operator<<(std::ostream &os, QualType q) {
     if (not q) { return os << "error"; }
-    return os << (q.constant() ? "const" : "non-const")
+    return os << q.quals()
               << (q.expansion_size() == 1
                       ? absl::StrCat("(", q.type()->to_string(), ")")
                       : q.type()->to_string());

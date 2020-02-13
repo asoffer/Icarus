@@ -115,7 +115,8 @@ void CallFunction(ir::CompiledFn *fn, base::untyped_buffer arguments,
 
 }  // namespace
 
-// TODO rename the `arguments` parameter. It actually should be arguments and space for registers.
+// TODO rename the `arguments` parameter. It actually should be arguments and
+// space for registers.
 void Execute(ir::AnyFunc fn, base::untyped_buffer arguments,
              absl::Span<ir::Addr const> ret_slots, ExecutionContext *ctx) {
   if (fn.is_fn()) {
@@ -192,9 +193,9 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     absl::flat_hash_set<enum_t> vals;
 
     for (uint16_t i = 0; i < num_specified; ++i) {
-      uint64_t index        = iter->read<uint64_t>();
-      auto b                = iter->read<bool>();
-      enum_t val            = ReadAndResolve<enum_t>(b, iter, ctx);
+      uint64_t index            = iter->read<uint64_t>();
+      auto b                    = iter->read<bool>();
+      enum_t val                = ReadAndResolve<enum_t>(b, iter, ctx);
       enumerators[index].second = val;
       vals.insert(val);
     }
@@ -349,6 +350,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     auto ctrl     = iter->read<typename Inst::control_bits>().get();
     type val      = ReadAndResolve<type>(ctrl.value_is_reg, iter, ctx);
     ir::Addr addr = ReadAndResolve<ir::Addr>(ctrl.location_is_reg, iter, ctx);
+
     switch (addr.kind()) {
       case ir::Addr::Kind::Stack: ctx->stack_.set(addr.stack(), val); break;
       case ir::Addr::Kind::ReadOnly:
@@ -357,6 +359,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
             "initialization?");
         break;
       case ir::Addr::Kind::Heap:
+        std::cerr << *ctx->current_frame().fn_;
         *ASSERT_NOT_NULL(static_cast<type *>(addr.heap())) = val;
     }
   } else if constexpr (ir::internal::kPhiInstructionRange.contains(
@@ -383,10 +386,6 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         ASSERT_NOT_NULL(iter->read<type::Type const *>().get());
     switch (kind) {
       case ir::TypeManipulationInstruction::Kind::Init: {
-        call_buf = base::untyped_buffer::MakeFull(kMaxSize *
-                                                  (1 + f.func()->num_regs()));
-        call_buf.set(0, ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get()));
-
         if (auto *s = t->if_as<type::Struct>()) {
           f = s->init_func_.get();
         } else if (auto *tup = t->if_as<type::Tuple>()) {
@@ -396,12 +395,13 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         } else {
           NOT_YET();
         }
-      } break;
-      case ir::TypeManipulationInstruction::Kind::Destroy: {
         call_buf = base::untyped_buffer::MakeFull(kMaxSize *
                                                   (1 + f.func()->num_regs()));
-        call_buf.set(0, ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get()));
+        call_buf.set(kMaxSize * f.func()->num_regs(),
+                     ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get()));
 
+      } break;
+      case ir::TypeManipulationInstruction::Kind::Destroy: {
         if (auto *s = t->if_as<type::Struct>()) {
           f = s->destroy_func_.get();
         } else if (auto *tup = t->if_as<type::Tuple>()) {
@@ -411,15 +411,16 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         } else {
           NOT_YET();
         }
+        call_buf = base::untyped_buffer::MakeFull(kMaxSize *
+                                                  (1 + f.func()->num_regs()));
+        call_buf.set(kMaxSize * f.func()->num_regs(),
+                     ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get()));
+
       } break;
       case ir::TypeManipulationInstruction::Kind::Move: {
         auto from   = ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get());
         bool is_reg = iter->read<bool>();
         auto to     = ReadAndResolve<ir::Addr>(is_reg, iter, ctx);
-        call_buf    = base::untyped_buffer::MakeFull(kMaxSize *
-                                                  (2 + f.func()->num_regs()));
-        call_buf.set(0, from);
-        call_buf.set(kMaxSize, to);
 
         if (auto *s = t->if_as<type::Struct>()) {
           f = s->move_assign_func_.get();
@@ -430,16 +431,17 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         } else {
           NOT_YET();
         }
+
+        call_buf = base::untyped_buffer::MakeFull(kMaxSize *
+                                                  (2 + f.func()->num_regs()));
+        call_buf.set(kMaxSize * f.func()->num_regs(), from);
+        call_buf.set(kMaxSize * (f.func()->num_regs() + 1), to);
+
       } break;
       case ir::TypeManipulationInstruction::Kind::Copy: {
         auto from   = ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get());
         bool is_reg = iter->read<bool>();
         auto to     = ReadAndResolve<ir::Addr>(is_reg, iter, ctx);
-        call_buf    = base::untyped_buffer::MakeFull(kMaxSize *
-                                                  (2 + f.func()->num_regs()));
-        call_buf.set(0, from);
-        call_buf.set(kMaxSize, to);
-
         if (auto *s = t->if_as<type::Struct>()) {
           f = s->copy_assign_func_.get();
         } else if (auto *tup = t->if_as<type::Tuple>()) {
@@ -449,6 +451,12 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         } else {
           NOT_YET();
         }
+
+        call_buf = base::untyped_buffer::MakeFull(kMaxSize *
+                                                  (2 + f.func()->num_regs()));
+        call_buf.set(kMaxSize * f.func()->num_regs(), from);
+        call_buf.set(kMaxSize * (f.func()->num_regs() + 1), to);
+
       } break;
     }
 
@@ -681,6 +689,9 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
           index;
       ctx->current_frame().regs_.set(reg, addr + offset);
     } else {
+      DEBUG_LOG()(*ctx->current_frame().fn_);
+      DEBUG_LOG()(addr, " ", index, " ", reg, " ", type->to_string(), " ",
+       type->offset(index, kArchitecture));
       ctx->current_frame().regs_.set(reg,
                                      addr + type->offset(index, kArchitecture));
     }
