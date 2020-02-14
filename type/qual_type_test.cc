@@ -58,21 +58,21 @@ TEST(QualType, Streaming) {
     std::stringstream ss;
     auto q = type::QualType::Constant(type::Int32);
     ss << q;
-    EXPECT_EQ(ss.str(), "const(int32)");
+    EXPECT_EQ(ss.str(), "[const](int32)");
   }
 
   {
     std::stringstream ss;
     auto q = type::QualType::NonConstant(type::Bool);
     ss << q;
-    EXPECT_EQ(ss.str(), "non-const(bool)");
+    EXPECT_EQ(ss.str(), "[](bool)");
   }
 
   {
     std::stringstream ss;
     auto q = type::QualType({type::Int64, type::Bool}, type::Quals::Const());
     ss << q;
-    EXPECT_EQ(ss.str(), "const(int64, bool)");
+    EXPECT_EQ(ss.str(), "[const](int64, bool)");
   }
 }
 
