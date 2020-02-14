@@ -451,10 +451,12 @@ void Terminal::DebugStrAppend(std::string *out, size_t indent) const {
     case type::BasicType::ByteView:
       absl::StrAppend(out, "\"", as<std::string_view>(), "\"");
       return;
-
+    case type::BasicType::NullPtr:
+      absl::StrAppend(out, "null");
+      return;
     default:;
   }
-  UNREACHABLE();
+  UNREACHABLE(static_cast<int>(basic_type()));
 }
 
 void Unop::DebugStrAppend(std::string *out, size_t indent) const {
