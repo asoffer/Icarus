@@ -192,7 +192,8 @@ static type::QualType VerifySpecialFunctions(Compiler *visitor,
               "type");
         }
 
-        if (s.contains_hashtag(ast::Hashtag::Builtin::Uncopyable)) {
+        if (s.contains_hashtag(
+                ast::Hashtag(ast::Hashtag::Builtin::Uncopyable))) {
           NOT_YET("defined (copy) on a non-copyable type");
         }
       }
@@ -232,7 +233,8 @@ static type::QualType VerifySpecialFunctions(Compiler *visitor,
               "type");
         }
 
-        if (s.contains_hashtag(ast::Hashtag::Builtin::Immovable)) {
+        if (s.contains_hashtag(
+                ast::Hashtag(ast::Hashtag::Builtin::Immovable))) {
           error = true;
           NOT_YET("defined (move) for an immovable type");
         }
@@ -598,7 +600,8 @@ static type::QualType AccessStructMember(Compiler *c, ast::Access const *node,
     return type::QualType::Error();
   }
   if (c->module() != s.defining_module() and
-      not member->contains_hashtag(ast::Hashtag::Builtin::Export)) {
+      not member->contains_hashtag(
+          ast::Hashtag(ast::Hashtag::Builtin::Export))) {
     c->diag().Consume(diagnostic::NonExportedMember{
         .member = std::string{node->member_name()},
         .type   = &s,

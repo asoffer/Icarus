@@ -24,7 +24,7 @@ struct Expression : public Node {
 
   bool contains_hashtag(Hashtag needle) const {
     for (auto const &tag : hashtags_) {
-      if (tag.kind_ == needle.kind_) { return true; }
+      if (tag == needle) { return true; }
     }
     return false;
   }

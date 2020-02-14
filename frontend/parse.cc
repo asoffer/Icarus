@@ -103,18 +103,25 @@ constexpr size_t precedence(Operator op) {
 #include "frontend/lex/operators.xmacro.h"
 #undef OPERATOR_MACRO
   }
-  __builtin_unreachable();
+  UNREACHABLE();
 }
 
 std::unique_ptr<ast::Node> AddHashtag(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
-    diagnostic::DiagnosticConsumer & diag) {
-  auto expr = move_as<ast::Expression>(nodes.back());
-  auto iter = BuiltinHashtagMap.find(nodes.front()->as<Token>().token);
-  if (iter != BuiltinHashtagMap.end()) {
+    diagnostic::DiagnosticConsumer &diag) {
+  auto expr              = move_as<ast::Expression>(nodes.back());
+  std::string_view token = nodes.front()->as<Token>().token;
+  if (auto iter = BuiltinHashtagMap.find(token);
+      iter != BuiltinHashtagMap.end()) {
     expr->hashtags_.emplace_back(iter->second);
+  } else if (token.front() == '{' or token.back() == '}') {
+    diag.Consume(diagnostic::UnknownBuiltinHashtag{
+        .token = std::string{token},
+        .range = nodes.front()->span,
+    });
   } else {
-    diag.Consume(diagnostic::Todo{});
+    // User-defined hashtag.
+    expr->hashtags_.emplace_back(std::string{token});
   }
   return expr;
 }

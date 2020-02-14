@@ -29,7 +29,7 @@ struct TaggedNode {
             node_ = std::move(x);
           } else {
             std::string token;
-            switch (x.kind_) {
+            switch (x.kind()) {
               case ast::Hashtag::Builtin::Export: token = "{export}"; break;
               case ast::Hashtag::Builtin::NoDefault:
                 token = "{no_default}";
@@ -41,6 +41,7 @@ struct TaggedNode {
                 token = "{immovable}";
                 break;
               case ast::Hashtag::Builtin::Inline: token = "{inline}"; break;
+              case ast::Hashtag::Builtin::User: token = x.user_tag(); break;
             }
             node_ = std::make_unique<Token>(span, token, true);
           }

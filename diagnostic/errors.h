@@ -964,6 +964,18 @@ struct ScopeNodeAlreadyHasLabel {
   frontend::SourceRange range;
 };
 
+struct UnknownBuiltinHashtag {
+  static constexpr std::string_view kCategory = "parse-error";
+  static constexpr std::string_view kName = "scope-already-has-label";
+
+  DiagnosticMessage ToMessage() const {
+    return DiagnosticMessage(Text("Unknown builtin hashtag #%s", token));
+  }
+
+  std::string token;
+  frontend::SourceRange range;
+};
+
 struct Todo {
   static constexpr std::string_view kCategory = "todo";
   static constexpr std::string_view kName = "todo";

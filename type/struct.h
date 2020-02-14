@@ -27,8 +27,7 @@ struct Struct : public Type {
 
     bool contains_hashtag(ast::Hashtag needle) const {
       for (auto const &h : hashtags_) {
-        // TODO this isn't always enough to determine equality.
-        if (h.kind_ == needle.kind_) { return true; }
+        if (h == needle) { return true; }
       }
       return false;
     }

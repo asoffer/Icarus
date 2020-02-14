@@ -1,21 +1,45 @@
 #ifndef ICARUS_AST_HASHTAG_H
 #define ICARUS_AST_HASHTAG_H
 
+#include <string>
+#include <variant>
+
+#include "base/debug.h"
+
 namespace ast {
 // TODO move out of ast?
 struct Hashtag {
-  enum class Builtin { Export, NoDefault, Uncopyable, Immovable, Inline } kind_;
+  enum class Builtin {
+    Export,
+    NoDefault,
+    Uncopyable,
+    Immovable,
+    Inline,
+    User,
+  };
+
+  Builtin kind() const { return kind_; }
+  std::string_view user_tag() const {
+    ASSERT(kind_ == Builtin::User);
+    return user_;
+  }
 
   Hashtag() = delete;
-  Hashtag(Builtin b) : kind_(b) {}
+  explicit Hashtag(Builtin b) : kind_(b) {}
+  explicit Hashtag(std::string tag)
+      : kind_(Builtin::User), user_(std::move(tag)) {}
 
-  Hashtag(Hashtag&&) noexcept      = default;
-  Hashtag(Hashtag const&) noexcept = default;
-  Hashtag& operator=(Hashtag&&) noexcept = default;
-  Hashtag& operator=(Hashtag const&) noexcept = default;
+  friend bool operator==(Hashtag const &lhs, Hashtag const &rhs) {
+    return (lhs.kind_ == rhs.kind_) and
+           (lhs.kind_ != Builtin::User or lhs.user_ == rhs.user_);
+  }
+  friend bool operator!=(Hashtag const &lhs, Hashtag const &rhs) {
+    return not(lhs == rhs);
+  }
 
-  // In the future we will probably also store a string for user-defined
-  // hashtags.
+ private:
+  Builtin kind_;
+  std::string user_;  // Only meaningful when `kind_ == Builtin::User`.
 };
 }  // namespace ast
 

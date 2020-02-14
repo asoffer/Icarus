@@ -17,10 +17,10 @@ void BasicModule::InitializeNodes(base::PtrSpan<ast::Node> nodes) {
     auto *decl = node->if_as<ast::Declaration>();
     if (not decl) { continue; }
 
-    bool exported = absl::c_any_of(decl->hashtags_, [](ast::Hashtag h) {
-      return h.kind_ == ast::Hashtag::Builtin::Export;
-    });
-    if (not exported) { continue; }
+    if (not decl->contains_hashtag(
+            ast::Hashtag(ast::Hashtag::Builtin::Export))) {
+      continue;
+    }
 
     top_level_decls_[decl->id()].push_back(decl);
   }

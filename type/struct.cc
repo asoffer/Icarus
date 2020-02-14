@@ -44,7 +44,7 @@ void Struct::WriteTo(std::string *result) const {
 
 bool Struct::contains_hashtag(ast::Hashtag needle) const {
   for (auto const &tag : hashtags_) {
-    if (tag.kind_ == needle.kind_) { return true; }
+    if (tag == needle) { return true; }
   }
   return false;
 }
@@ -60,18 +60,18 @@ bool Struct::IsCopyable() const {
   for (auto const &field : fields_) {
     if (not field.type->IsCopyable()) { return false; }
   }
-  return absl::c_none_of(hashtags_, [](ast::Hashtag tag) {
-    return tag.kind_ == ast::Hashtag::Builtin::Uncopyable;
-  });
+  return absl::c_find(hashtags_,
+                      ast::Hashtag(ast::Hashtag::Builtin::Uncopyable)) ==
+         hashtags_.end();
 }
 
 bool Struct::IsMovable() const {
   for (auto const &field : fields_) {
     if (not field.type->IsMovable()) { return false; }
   }
-  return absl::c_none_of(hashtags_, [](ast::Hashtag tag) {
-    return tag.kind_ == ast::Hashtag::Builtin::Immovable;
-  });
+  return absl::c_find(hashtags_,
+                      ast::Hashtag(ast::Hashtag::Builtin::Immovable)) ==
+         hashtags_.end();
 }
 
 core::Bytes Struct::bytes(core::Arch const &a) const {

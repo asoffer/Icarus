@@ -68,7 +68,7 @@ cc_lib(
 
 cc_lib(
     name = "hashtag",
-    deps = [],
+    deps = ["//base:debug"],
     header_only = True,
     test_deps = None,
 )
