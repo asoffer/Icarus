@@ -1,5 +1,5 @@
 OPERATOR_MACRO(Hashtag, "", hashtag, 0, non_assoc)
-OPERATOR_MACRO(When, "when", op_b, 0, non_assoc)
+OPERATOR_MACRO(When, "when", when, 0, non_assoc)
 OPERATOR_MACRO(Import, "import", op_l, 1, non_assoc)
 OPERATOR_MACRO(Return, "return", sop_lt, 1, non_assoc)
 OPERATOR_MACRO(Goto, "goto", sop_l, 1, non_assoc)

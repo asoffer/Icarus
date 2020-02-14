@@ -846,6 +846,23 @@ std::unique_ptr<ast::Node> SugaredExtendScopeNode(
   return std::move(nodes[0]);
 }
 
+std::unique_ptr<ast::Node> BuildWhen(
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
+  std::unique_ptr<ast::Node> node;
+  if (auto *stmts = nodes[0]->if_as<Statements>()) {
+    ASSERT(stmts->content_.size() == 1u);
+    node = std::move(stmts->content_[0]);
+  } else {
+    node = std::move(nodes[0]);
+  }
+  auto when  = std::make_unique<SwitchWhen>();
+  when->span = SourceRange(node->span.begin(), nodes[2]->span.end());
+  when->body = move_as<ast::Node>(node);
+  when->cond = move_as<ast::Expression>(nodes[2]);
+  return when;
+}
+
 std::unique_ptr<ast::Node> BuildBinaryOperator(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
@@ -899,11 +916,8 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
                                        move_as<ast::Expression>(nodes[0]),
                                        move_as<ast::Expression>(nodes[2]));
   } else if (tk == "when") {
-    auto when  = std::make_unique<SwitchWhen>();
-    when->span = SourceRange(nodes[0]->span.begin(), nodes[2]->span.end());
-    when->body = move_as<ast::Node>(nodes[0]);
-    when->cond = move_as<ast::Expression>(nodes[2]);
-    return when;
+    return BuildWhen(nodes, diag);
+
   } else if (tk == "'") {
     SourceRange span(nodes.front()->span.begin(), nodes.back()->span.end());
     return BuildCallImpl(std::move(span), move_as<ast::Expression>(nodes[2]),
@@ -1171,16 +1185,16 @@ static std::array kRules{
               SugaredExtendScopeNode),
     ParseRule(scope_expr, {label, scope_expr}, LabelScopeNode),
     ParseRule(fn_expr, {EXPR, fn_arrow, EXPR}, BuildBinaryOperator),
-    ParseRule(expr, {EXPR, (op_bl | OP_B), EXPR}, BuildBinaryOperator),
+    ParseRule(expr, {EXPR, (op_bl | when | OP_B), EXPR}, BuildBinaryOperator),
     ParseRule(op_b, {colon, eq}, CombineColonEq),
     ParseRule(fn_expr, {EXPR, fn_arrow, RESERVED}, ReservedKeywords<1, 2>),
     ParseRule(fn_expr, {RESERVED, fn_arrow, EXPR | kw_block},
               ReservedKeywords<1, 0>),
     ParseRule(fn_expr, {RESERVED, fn_arrow, RESERVED},
               ReservedKeywords<1, 0, 2>),
-    ParseRule(expr, {EXPR, (OP_B | yield | op_bl), RESERVED},
+    ParseRule(expr, {EXPR, (OP_B | yield | when | op_bl), RESERVED},
               ReservedKeywords<1, 2>),
-    ParseRule(expr, {RESERVED, (OP_B | yield | op_bl), RESERVED},
+    ParseRule(expr, {RESERVED, (OP_B | yield | when | op_bl), RESERVED},
               ReservedKeywords<1, 0, 2>),
     ParseRule(fn_call_expr, {EXPR, l_paren, EXPR, r_paren}, BuildCall),
     ParseRule(fn_call_expr, {EXPR, l_paren, r_paren}, BuildEmptyParen),
@@ -1232,6 +1246,7 @@ static std::array kRules{
     ParseRule(expr, {EXPR, op_r}, BuildRightUnop),
     ParseRule(expr, {(op_l | op_bl | op_lt), EXPR}, BuildLeftUnop),
     ParseRule(stmts, {sop_lt | sop_l, EXPR}, BuildStatementLeftUnop),
+    ParseRule(expr, {stmts , when, EXPR}, BuildWhen),
 
     ParseRule(stmts, {label, yield, EXPR}, BuildLabeledYield),
     ParseRule(stmts, {yield, EXPR}, BuildUnlabeledYield),
@@ -1348,7 +1363,8 @@ struct ParseState {
     }
 
     constexpr uint64_t OP = hashtag | op_r | op_l | op_b | colon | eq | comma |
-                            op_bl | op_lt | fn_arrow | yield | sop_l | sop_lt;
+                            op_bl | op_lt | fn_arrow | yield | sop_l | sop_lt |
+                            when;
     if (get_type<2>() & OP) {
       if (get_type<1>() == r_paren) {
         // TODO this feels like a hack, but maybe this whole function is.
