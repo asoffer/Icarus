@@ -37,12 +37,11 @@ enum Tag : uint64_t {
   fn_arrow      = 1ull << 29,
   kw_block      = 1ull << 30,
   fn_call_expr  = 1ull << 31,
-  id            = 1ull << 32,
-  yield         = 1ull << 33,
-  label         = 1ull << 34,
-  sop_l         = 1ull << 35,
-  sop_lt        = 1ull << 36,
-  when          = 1ull << 37,
+  yield         = 1ull << 32,
+  label         = 1ull << 33,
+  sop_l         = 1ull << 34,
+  sop_lt        = 1ull << 35,
+  when          = 1ull << 36,
 };
 
 inline std::string stringify(Tag t) { return std::to_string(t); }

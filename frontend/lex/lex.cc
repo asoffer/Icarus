@@ -80,7 +80,7 @@ static const std::array<
         {"@", {Operator::At}},         {",", {Operator::Comma}},
         {"[*]", {Operator::BufPtr}},   {"$", {Operator::Eval}},
         {"+=", {Operator::AddEq}},     {"+", {Operator::Add}},
-        {"--", {Syntax::Hole}},        {"-=", {Operator::SubEq}},
+        {"-=", {Operator::SubEq}},     {"..", {Operator::VariadicPack}},
         {"->", {Operator::Arrow}},     {"-", {Operator::Sub}},
         {"*=", {Operator::MulEq}},     {"*", {Operator::Mul}},
         {"%=", {Operator::ModEq}},     {"%", {Operator::Mod}},
@@ -90,7 +90,7 @@ static const std::array<
         {">=", {Operator::Ge}},        {">", {Operator::Gt}},
         {"!=", {Operator::Ne}},        {"::=", {Operator::DoubleColonEq}},
         {":?", {Operator::TypeOf}},    {"::", {Operator::DoubleColon}},
-        {":=", {Operator::ColonEq}},   {"..", {Operator::VariadicPack}},
+        {":=", {Operator::ColonEq}},   {".", {Syntax::Dot}},
         {":", {Operator::Colon}},      {"<<", {Operator::Yield}},
         {"<=", {Operator::Le}},        {"<", {Operator::Lt}},
         {"!", {Operator::Not}},        {"==", {Operator::Eq}},
@@ -99,7 +99,6 @@ static const std::array<
         {")", {Syntax::RightParen}},   {"[", {Syntax::LeftBracket}},
         {"]", {Syntax::RightBracket}}, {"{", {Syntax::LeftBrace}},
         {"}", {Syntax::RightBrace}},   {";", {Syntax::Semicolon}},
-        {".", {Syntax::Dot}},
     }};
 
 Lexeme NextOperator(SourceCursor *cursor, Source *src) {
@@ -115,6 +114,11 @@ Lexeme NextOperator(SourceCursor *cursor, Source *src) {
         std::make_unique<match::BindingNode>(match::BindingId{token}, span));
   }
 #endif
+
+  if (BeginsWith("--", cursor->view())) {
+    auto span = cursor->remove_prefix(2).range();
+    return Lexeme(std::make_unique<ast::Identifier>(span, ""));
+  }
 
   for (auto [prefix, x] : kOps) {
     if (BeginsWith(prefix, cursor->view())) {

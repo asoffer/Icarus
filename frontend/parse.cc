@@ -85,7 +85,7 @@ void ValidateStatementSyntax(ast::Node *node,
                              diagnostic::DiagnosticConsumer &diag) {
   if (auto *cl = node->if_as<ast::CommaList>()) {
     diag.Consume(diagnostic::CommaSeparatedListStatement{.range = cl->span});
-    NOT_YET();
+    // TODO Do we call this more than once?
   }
 }
 
@@ -284,30 +284,6 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
     auto span = SourceRange(nodes[0]->span.begin(), nodes[1]->span.end());
     return std::make_unique<ast::Import>(std::move(span),
                                          move_as<ast::Expression>(nodes[1]));
-  } else if (tk == "goto") {
-    auto range =
-        SourceRange(nodes.front()->span.begin(), nodes.back()->span.end());
-    std::vector<std::unique_ptr<ast::Expression>> exprs;
-    std::vector<std::unique_ptr<ast::Call>> call_exprs;
-    if (auto *c = nodes[1]->if_as<ast::ChainOp>();
-        c and not c->parenthesized_) {
-      exprs = std::move(*c).extract();
-      for (auto &expr : exprs) {
-        if (expr->is<ast::Call>()) {
-          call_exprs.push_back(move_as<ast::Call>(expr));
-        } else {
-          diag.Consume(diagnostic::Todo{});
-        }
-      }
-    } else {
-      if (nodes[1]->is<ast::Call>()) {
-        call_exprs.push_back(move_as<ast::Call>(nodes[1]));
-      } else {
-        diag.Consume(diagnostic::Todo{});
-      }
-    }
-    return std::make_unique<ast::Goto>(std::move(range), std::move(call_exprs));
-
   } else if (tk == "'") {
     SourceRange span(nodes.front()->span.begin(), nodes.back()->span.end());
     return BuildCallImpl(std::move(span), move_as<ast::Expression>(nodes[1]),
@@ -724,6 +700,32 @@ std::unique_ptr<ast::Node> BuildStatementLeftUnop(
     }
     stmts->append(
         std::make_unique<ast::PrintStmt>(std::move(range), std::move(exprs)));
+  } else if (tk == "goto") {
+    auto range =
+        SourceRange(nodes.front()->span.begin(), nodes.back()->span.end());
+    std::vector<std::unique_ptr<ast::Expression>> exprs;
+    std::vector<std::unique_ptr<ast::Call>> call_exprs;
+    if (auto *c = nodes[1]->if_as<ast::ChainOp>();
+        c and not c->parenthesized_) {
+      exprs = std::move(*c).extract();
+      for (auto &expr : exprs) {
+        if (expr->is<ast::Call>()) {
+          call_exprs.push_back(move_as<ast::Call>(expr));
+        } else {
+          diag.Consume(diagnostic::Todo{});
+        }
+      }
+    } else {
+      if (nodes[1]->is<ast::Call>()) {
+        call_exprs.push_back(move_as<ast::Call>(nodes[1]));
+      } else {
+        diag.Consume(diagnostic::Todo{});
+      }
+    }
+
+    stmts->append(
+        std::make_unique<ast::Goto>(std::move(range), std::move(call_exprs)));
+
   } else if (tk == "return") {
     auto span =
         SourceRange(nodes.front()->span.begin(), nodes.back()->span.end());
@@ -1168,7 +1170,7 @@ static std::array kRules{
     ParseRule(scope_expr, {scope_expr, expr, scope_expr},
               SugaredExtendScopeNode),
     ParseRule(scope_expr, {label, scope_expr}, LabelScopeNode),
-    ParseRule(fn_expr, {EXPR, fn_arrow, EXPR | kw_block}, BuildBinaryOperator),
+    ParseRule(fn_expr, {EXPR, fn_arrow, EXPR}, BuildBinaryOperator),
     ParseRule(expr, {EXPR, (op_bl | OP_B), EXPR}, BuildBinaryOperator),
     ParseRule(op_b, {colon, eq}, CombineColonEq),
     ParseRule(fn_expr, {EXPR, fn_arrow, RESERVED}, ReservedKeywords<1, 2>),
@@ -1248,7 +1250,9 @@ static std::array kRules{
     ParseRule(expr, {kw_struct, l_paren, r_paren, braced_stmts},
               BuildParameterizedKeywordScope),
     ParseRule(expr, {KW_BLOCK, braced_stmts}, BuildKWBlock),
-    ParseRule(expr, {KW_BLOCK, newline}, drop_all_but<0>),
+    ParseRule(kw_struct, {kw_struct, newline}, drop_all_but<0>),
+    ParseRule(kw_block_head, {kw_block_head, newline}, drop_all_but<0>),
+    ParseRule(kw_block, {kw_block, newline}, drop_all_but<0>),
 
     ParseRule(expr, {(op_l | op_bl | op_lt), RESERVED}, ReservedKeywords<0, 1>),
     // TODO does this rule prevent chained scope blocks on new lines or is it
