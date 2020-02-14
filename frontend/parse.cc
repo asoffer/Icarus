@@ -1179,11 +1179,30 @@ constexpr uint64_t KW_BLOCK = kw_struct | kw_block_head | kw_block;
 // line of each rule is applied, replacing the matched nodes. Lastly, the new
 // nodes type is set to the given type in the first line.
 static std::array kRules{
+    // Construction of braced statements
+    ParseRule(braced_stmts, {l_brace, stmts, stmts | EXPR, r_brace},
+              BracedStatementsSameLineEnd),
+    ParseRule(braced_stmts, {l_brace, stmts, op_lt, r_brace},
+              BracedStatementsJumpSameLineEnd),
+    ParseRule(braced_stmts, {l_brace, stmts, r_brace}, drop_all_but<1>),
+    ParseRule(braced_stmts, {l_brace, r_brace}, EmptyBraces),
+    ParseRule(braced_stmts, {l_brace, EXPR, r_brace}, OneBracedStatement),
+    ParseRule(braced_stmts, {l_brace, op_lt, r_brace}, OneBracedJump),
+
+    // Construction of block expressions
+    ParseRule(block_expr, {expr, braced_stmts}, BuildBlockNode),
+
+    // Construction of scope expressions
     ParseRule(scope_expr, {fn_call_expr, block_expr}, BuildScopeNode),
     ParseRule(scope_expr, {scope_expr, block_expr}, ExtendScopeNode),
     ParseRule(scope_expr, {scope_expr, expr, scope_expr},
               SugaredExtendScopeNode),
     ParseRule(scope_expr, {label, scope_expr}, LabelScopeNode),
+
+    // Construction of function call expressions
+    ParseRule(fn_call_expr, {EXPR, l_paren, EXPR, r_paren}, BuildCall),
+    ParseRule(fn_call_expr, {EXPR, l_paren, r_paren}, BuildEmptyParen),
+
     ParseRule(fn_expr, {EXPR, fn_arrow, EXPR}, BuildBinaryOperator),
     ParseRule(expr, {EXPR, (op_bl | when | OP_B), EXPR}, BuildBinaryOperator),
     ParseRule(op_b, {colon, eq}, CombineColonEq),
@@ -1196,8 +1215,6 @@ static std::array kRules{
               ReservedKeywords<1, 2>),
     ParseRule(expr, {RESERVED, (OP_B | yield | when | op_bl), RESERVED},
               ReservedKeywords<1, 0, 2>),
-    ParseRule(fn_call_expr, {EXPR, l_paren, EXPR, r_paren}, BuildCall),
-    ParseRule(fn_call_expr, {EXPR, l_paren, r_paren}, BuildEmptyParen),
     ParseRule(expr, {l_paren, op_l | op_b | eq | op_bl, r_paren},
               BuildOperatorIdentifier),
     ParseRule(expr, {l_paren, r_paren}, BuildEmptyCommaList),
@@ -1213,28 +1230,12 @@ static std::array kRules{
               ReservedKeywords<0, 1>),
     ParseRule(expr, {l_bracket, RESERVED, semicolon, RESERVED, r_bracket},
               ReservedKeywords<0, 1, 3>),
-    ParseRule(r_paren, {newline, r_paren}, drop_all_but<1>),
-    ParseRule(r_bracket, {newline, r_bracket}, drop_all_but<1>),
-    ParseRule(r_brace, {newline, r_brace}, drop_all_but<1>),
-    ParseRule(l_brace, {newline, l_brace}, drop_all_but<1>),
-    ParseRule(stmts, {newline, stmts}, drop_all_but<1>),
-    ParseRule(r_paren, {r_paren, newline}, drop_all_but<0>),
-    ParseRule(r_bracket, {r_bracket, newline}, drop_all_but<0>),
-    ParseRule(r_brace, {r_brace, newline}, drop_all_but<0>),
     // TODO more specifically, the op_b needs to be a '.'
     ParseRule(expr, {expr, op_b, braced_stmts}, BuildDesignatedInitializer),
-    ParseRule(braced_stmts, {l_brace, stmts, stmts | EXPR, r_brace},
-              BracedStatementsSameLineEnd),
-    ParseRule(braced_stmts, {l_brace, stmts, op_lt, r_brace},
-              BracedStatementsJumpSameLineEnd),
-    ParseRule(braced_stmts, {l_brace, stmts, r_brace}, drop_all_but<1>),
-    ParseRule(braced_stmts, {l_brace, r_brace}, EmptyBraces),
-    ParseRule(braced_stmts, {l_brace, EXPR, r_brace}, OneBracedStatement),
-    ParseRule(braced_stmts, {l_brace, op_lt, r_brace}, OneBracedJump),
+
     ParseRule(expr, {fn_expr, braced_stmts}, BuildNormalFunctionLiteral),
     ParseRule(expr, {expr, fn_arrow, braced_stmts},
               BuildInferredFunctionLiteral),
-    ParseRule(hashtag, {hashtag, newline}, drop_all_but<0>),
     ParseRule(expr, {hashtag, EXPR}, AddHashtag),
 
     // Call and index operator with reserved words. We can't put reserved words
@@ -1246,7 +1247,7 @@ static std::array kRules{
     ParseRule(expr, {EXPR, op_r}, BuildRightUnop),
     ParseRule(expr, {(op_l | op_bl | op_lt), EXPR}, BuildLeftUnop),
     ParseRule(stmts, {sop_lt | sop_l, EXPR}, BuildStatementLeftUnop),
-    ParseRule(expr, {stmts , when, EXPR}, BuildWhen),
+    ParseRule(expr, {stmts, when, EXPR}, BuildWhen),
 
     ParseRule(stmts, {label, yield, EXPR}, BuildLabeledYield),
     ParseRule(stmts, {yield, EXPR}, BuildUnlabeledYield),
@@ -1265,25 +1266,15 @@ static std::array kRules{
     ParseRule(expr, {kw_struct, l_paren, r_paren, braced_stmts},
               BuildParameterizedKeywordScope),
     ParseRule(expr, {KW_BLOCK, braced_stmts}, BuildKWBlock),
-    ParseRule(kw_struct, {kw_struct, newline}, drop_all_but<0>),
-    ParseRule(kw_block_head, {kw_block_head, newline}, drop_all_but<0>),
-    ParseRule(kw_block, {kw_block, newline}, drop_all_but<0>),
 
     ParseRule(expr, {(op_l | op_bl | op_lt), RESERVED}, ReservedKeywords<0, 1>),
     // TODO does this rule prevent chained scope blocks on new lines or is it
     // preceeded by a shift rule that eats newlines after a right-brace?
     ParseRule(stmts, {EXPR, (newline | eof)}, BuildOneStatement),
     ParseRule(expr, {l_paren, EXPR, comma, r_paren}, BuildOneElementCommaList),
-    ParseRule(comma, {comma, newline}, drop_all_but<0>),
-    ParseRule(l_paren, {l_paren, newline}, drop_all_but<0>),
-    ParseRule(l_bracket, {l_bracket, newline}, drop_all_but<0>),
-    ParseRule(l_brace, {l_brace, newline}, drop_all_but<0>),
-    ParseRule(stmts, {stmts, newline}, drop_all_but<0>),
 
     // TODO also need to handle labels with yields.
     ParseRule(stmts, {op_lt}, BuildControlHandler),
-    ParseRule(block_expr, {expr, braced_stmts}, BuildBlockNode),
-    ParseRule(eof, {newline, eof}, drop_all_but<1>),
     ParseRule(stmts, {stmts, eof}, drop_all_but<0>),
 };
 
@@ -1460,9 +1451,28 @@ bool Reduce(ParseState *ps) {
     }
   }
 
-  // If you make it to the end of the rules and still haven't matched, then
-  // return false
-  if (matched_rule_ptr == nullptr) { return false; }
+  if (matched_rule_ptr == nullptr) {
+    // If there are no good rules to match, look for some defaults. We could
+    // encode these in `kRules` as well, but typically these do strange things
+    // like preserving the tag type, so we'd have to encode it many times if it
+    // were in `kRules`.
+    if (ps->get_type<2>() == newline) {
+      auto tag = ps->tag_stack_.back();
+      ps->tag_stack_.pop_back();
+      ps->tag_stack_.back() = tag;
+
+      auto node = std::move(ps->node_stack_.back());
+      ps->node_stack_.pop_back();
+      ps->node_stack_.back() = std::move(node);
+    } else if (ps->get_type<1>() == newline) {
+      ps->tag_stack_.pop_back();
+      ps->node_stack_.pop_back();
+    } else {
+      return false;
+    }
+
+    return true; 
+  }
 
   matched_rule_ptr->Apply(&ps->node_stack_, &ps->tag_stack_, ps->diag_);
 
