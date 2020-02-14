@@ -1,15 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 load("//:defs.bzl", "cc_lib")
 
-cc_lib(
-    name = "addr",
-    deps = [
-        "//core:bytes",
-        "//base:debug",
-    ],
-    test_deps = [],
-)
-
 cc_library(
     name = "any_func",
     hdrs = ["any_func.h"],
@@ -98,7 +89,6 @@ cc_lib(
 cc_lib(
     name = "builder",
     deps = [
-        ":addr",
         ":basic_block",
         ":block_group",
         ":instructions",
@@ -107,6 +97,7 @@ cc_lib(
         "//base:debug",
         "//base:scope",
         "//base:tag",
+        "//ir/value:addr",
         "//ir/value:reg",
         "//type:typed_value",
         "//type:util",
@@ -211,13 +202,6 @@ cc_lib(
 )
 
 cc_lib(
-    name = "values",
-    deps = ["//base:strong_types"],
-    header_only = True,
-    test_deps = [],
-)
-
-cc_lib(
     name = "foreign_fn",
     deps = [
         "//base:debug",
@@ -319,8 +303,8 @@ cc_lib(
 cc_lib(
     name = "stack_frame_allocations",
     deps = [
-        ":addr",
         "//base:stringify",
+        "//ir/value:addr",
         "//ir/value:reg",
         "//type",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -332,10 +316,10 @@ cc_lib(
 cc_lib(
     name = "str",
     deps = [
-        ":addr",
         ":read_only_data",
         "//base:guarded",
         "//base:untyped_buffer",
+        "//ir/value:addr",
         "@com_google_absl//absl/container:node_hash_map",
     ],
     test_deps = None,
@@ -376,10 +360,4 @@ cc_test(
         "//type:primitive",
         "@com_google_googletest//:gtest_main",
     ]
-)
-
-cc_library(
-    name = "label",
-    hdrs = ["label.h"],
-    deps = ["//base:strong_types"],
 )

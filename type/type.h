@@ -9,10 +9,10 @@
 #include "base/meta.h"
 #include "base/tag.h"
 #include "core/arch.h"
-#include "ir/addr.h"
+#include "ir/value/addr.h"
 #include "ir/results.h"
 #include "ir/value/reg.h"
-#include "ir/values.h"
+#include "ir/value/enum_and_flags.h"
 #include "type/basic_type.h"
 #include "type/visitor_base.h"
 

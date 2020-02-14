@@ -8,7 +8,7 @@
 #include "base/scope.h"
 #include "base/tag.h"
 #include "base/untyped_buffer.h"
-#include "ir/addr.h"
+#include "ir/value/addr.h"
 #include "ir/basic_block.h"
 #include "ir/block_group.h"
 #include "ir/instructions.h"

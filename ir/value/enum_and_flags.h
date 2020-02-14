@@ -1,5 +1,5 @@
-#ifndef ICARUS_VALUES_VAL
-#define ICARUS_VALUES_VAL
+#ifndef ICARUS_VALUE_ENUM_AND_FLAGS_H
+#define ICARUS_VALUE_ENUM_AND_FLAGS_H
 
 #include "base/strong_types.h"
 
@@ -27,4 +27,4 @@ constexpr bool operator<(FlagsVal lhs, FlagsVal rhs) {
 constexpr bool operator>(FlagsVal lhs, FlagsVal rhs) { return rhs < lhs; }
 }  // namespace ir
 
-#endif  // ICARUS_VALUES_VAL
+#endif  // ICARUS_VALUE_ENUM_AND_FLAGS_H

@@ -1,5 +1,5 @@
-#ifndef ICARUS_IR_ADDR_H
-#define ICARUS_IR_ADDR_H
+#ifndef ICARUS_IR_VALUE_ADDR_H
+#define ICARUS_IR_VALUE_ADDR_H
 
 #include <string>
 
@@ -60,4 +60,4 @@ std::string stringify(Addr::Kind k);
 
 }  // namespace ir
 
-#endif  // ICARUS_IR_ADDR_H
+#endif  // ICARUS_IR_VALUE_ADDR_H

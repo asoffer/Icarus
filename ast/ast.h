@@ -23,9 +23,9 @@
 #include "core/fn_params.h"
 #include "core/ordered_fn_args.h"
 #include "frontend/lex/operators.h"
-#include "ir/addr.h"
-#include "ir/label.h"
+#include "ir/value/addr.h"
 #include "ir/results.h"
+#include "ir/value/label.h"
 #include "type/basic_type.h"
 
 namespace ast {

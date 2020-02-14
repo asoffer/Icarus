@@ -3,7 +3,7 @@
 
 // TODO rename this... to what?
 #include <string_view>
-#include "ir/addr.h"
+#include "ir/value/addr.h"
 
 namespace ir {
 std::string_view SaveStringGlobally(std::string const &str);

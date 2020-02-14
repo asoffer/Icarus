@@ -17,7 +17,7 @@
 #include "ir/out_params.h"
 #include "ir/value/reg_or.h"
 #include "ir/struct_field.h"
-#include "ir/values.h"
+#include "ir/value/enum_and_flags.h"
 #include "type/array.h"
 #include "type/enum.h"
 #include "type/flags.h"

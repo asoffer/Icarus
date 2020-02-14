@@ -6,7 +6,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "base/debug.h"
-#include "ir/values.h"
+#include "ir/value/enum_and_flags.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 

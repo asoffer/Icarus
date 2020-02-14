@@ -8,7 +8,7 @@
 #include "ir/compiled_fn.h"
 #include "ir/components.h"
 #include "ir/results.h"
-#include "ir/values.h"
+#include "ir/value/enum_and_flags.h"
 #include "type/array.h"
 #include "type/function.h"
 #include "type/pointer.h"

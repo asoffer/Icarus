@@ -14,7 +14,7 @@
 #include "compiler/module.h"
 #include "diagnostic/consumer/consumer.h"
 #include "frontend/source/source.h"
-#include "ir/addr.h"
+#include "ir/value/addr.h"
 #include "ir/builder.h"
 #include "ir/value/reg.h"
 #include "ir/results.h"

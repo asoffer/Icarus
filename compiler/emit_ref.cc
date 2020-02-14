@@ -3,7 +3,7 @@
 #include "ast/ast.h"
 
 #include "interpretter/evaluate.h"
-#include "ir/addr.h"
+#include "ir/value/addr.h"
 #include "ir/components.h"
 #include "ir/str.h"
 #include "type/type.h"

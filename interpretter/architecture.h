@@ -2,7 +2,7 @@
 #define ICARUS_INTERPRETTER_ARCHITECTURE_H
 
 #include "core/arch.h"
-#include "ir/addr.h"
+#include "ir/value/addr.h"
 #include "ir/any_func.h"
 
 namespace interpretter {
