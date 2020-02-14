@@ -1806,10 +1806,11 @@ type::QualType Compiler::Visit(ast::Index const *node, VerifyTypeTag) {
     });
   }
 
-  auto quals = lhs_qual_type.quals();
+  auto quals = lhs_qual_type.quals() | type::Quals::Ref();
   if (not rhs_qual_type.constant()) { quals &= ~type::Quals::Const(); }
   if (lhs_qual_type.type() == type::ByteView) {
-    return set_result(node, type::QualType(type::Nat8, quals));
+    return set_result(node,
+                      type::QualType(type::Nat8, quals));
   } else if (auto *lhs_array_type =
                  lhs_qual_type.type()->if_as<type::Array>()) {
     return set_result(node, type::QualType(lhs_array_type->data_type, quals));
@@ -2158,14 +2159,15 @@ type::QualType Compiler::Visit(ast::Unop const *node, VerifyTypeTag) {
         return type::QualType::Error();
       }
     case frontend::Operator::And:
-      // TODO does it make sense to take the address of a constant? I think it
-      // has to but it also has to have some special meaning. Things we take the
-      // address of in run-time code need to be made available at run-time.
-      if ((result.quals() & type::Quals::Const()) == type::Quals::Const()) {
-        NOT_YET("Log an error, address of a constant");
+      if ((result.quals() & type::Quals::Ref()) == type::Quals::Ref()) {
+        result = type::QualType(type::Ptr(operand_type), result.quals());
+      } else {
+        diag().Consume(diagnostic::NonAddressableExpression{
+            .range = node->span,
+        });
+        result = type::QualType::Error();
       }
-      return set_result(node, type::QualType(type::Ptr(operand_type),
-                                             type::Quals::Unqualified()));
+      return set_result(node, result);
     case frontend::Operator::Mul:
       if (operand_type == type::Type_) {
         return set_result(node,

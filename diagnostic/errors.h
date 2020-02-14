@@ -966,13 +966,24 @@ struct ScopeNodeAlreadyHasLabel {
 
 struct UnknownBuiltinHashtag {
   static constexpr std::string_view kCategory = "parse-error";
-  static constexpr std::string_view kName = "scope-already-has-label";
+  static constexpr std::string_view kName = "unknown-builtin-hashtag";
 
   DiagnosticMessage ToMessage() const {
     return DiagnosticMessage(Text("Unknown builtin hashtag #%s", token));
   }
 
   std::string token;
+  frontend::SourceRange range;
+};
+
+struct NonAddressableExpression {
+  static constexpr std::string_view kCategory = "value-category-error";
+  static constexpr std::string_view kName = "non-addressable-expression";
+
+  DiagnosticMessage ToMessage() const {
+    return DiagnosticMessage(Text("Expression is not addresable."));
+  }
+
   frontend::SourceRange range;
 };
 

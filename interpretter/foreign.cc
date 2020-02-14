@@ -59,11 +59,18 @@ void CallForeignFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
   std::vector<void *> arg_vals;
   arg_vals.reserve(fn_type->params().size());
 
+  // Note: libffi expects a void*[] for it's arguments but we can't just take
+  // pointers into `arguments` when the arguments are in a different format
+  // (e.g., when they are pointers and tehrefore stored as ir::Addr rather than
+  // void *). So we extract those values appropriately and store them here so
+  // that we can take a pointer into `pointer_values`.
+  std::vector<void *> pointer_values;
+
   size_t i = 0;
   for (auto const &in : fn_type->params()) {
     auto ffi_type = ToFfiType(in.value);
     arg_types.push_back(ffi_type);
-    std::vector<void *> pointer_values;
+
     // This is more than we need to reserve, but it's sufficient to ensure that
     // push_back will never cause a reallocation so the pointers we take to
     // elements are stable.
