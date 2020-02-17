@@ -8,12 +8,12 @@ namespace compiler {
 namespace {
 
 std::optional<FailedMatch> MatchPositionalArgsToParams(
-    core::Params<type::Typed<ast::Declaration const *>> const &params,
+    core::ParamsRef<type::Typed<ast::Declaration const *>> params,
     core::FnArgs<type::QualType> const &args,
     core::Params<type::Typed<ast::Declaration const *>> *matched_params) {
   if (args.size() > params.size()) { return FailedMatch{}; }
   for (size_t i = 0; i < args.pos().size(); ++i) {
-    auto const &param      = params.at(i);
+    auto const &param      = params[i];
     type::Type const *meet = type::Meet(args.at(i).type(), param.value.type());
     if (not meet) { return FailedMatch{}; }
     matched_params->append(param.name, type::Typed(param.value.get(), meet),
@@ -23,11 +23,11 @@ std::optional<FailedMatch> MatchPositionalArgsToParams(
 }
 
 std::optional<FailedMatch> MatchNamedArgsToParams(
-    core::Params<type::Typed<ast::Declaration const *>> const &params,
+    core::ParamsRef<type::Typed<ast::Declaration const *>> params,
     core::FnArgs<type::QualType> const &args,
     core::Params<type::Typed<ast::Declaration const *>> *matched_params) {
   for (size_t i = args.pos().size(); i < params.size(); ++i) {
-    auto const &param = params.at(i);
+    auto const &param = params[i];
     if (auto *result = args.at_or_null(param.name)) {
       if ((*param.value)->flags() & ast::Declaration::f_IsConst) {
         NOT_YET();
@@ -53,11 +53,9 @@ std::optional<FailedMatch> MatchNamedArgsToParams(
 
 }  // namespace
 
-base::expected<core::Params<type::Typed<ast::Declaration const *>>,
-               FailedMatch>
-MatchArgsToParams(
-    core::Params<type::Typed<ast::Declaration const *>> const &params,
-    core::FnArgs<type::QualType> const &args) {
+base::expected<core::Params<type::Typed<ast::Declaration const *>>, FailedMatch>
+MatchArgsToParams(core::ParamsRef<type::Typed<ast::Declaration const *>> params,
+                  core::FnArgs<type::QualType> const &args) {
   if (args.size() > params.size()) { return FailedMatch{}; }
 
   core::Params<type::Typed<ast::Declaration const *>> matched_params;

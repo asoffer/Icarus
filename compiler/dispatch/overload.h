@@ -3,6 +3,7 @@
 
 #include "ast/ast.h"
 #include "core/params.h"
+#include "core/params_ref.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 
@@ -21,10 +22,10 @@ struct ExprData {
 
   type::Type const *type() const { return type_; }
 
-  core::Params<type::Typed<ast::Declaration const *>> &params() {
+  core::Params<type::Typed<ast::Declaration const *>> &mutable_params() {
     return params_;
   }
-  core::Params<type::Typed<ast::Declaration const *>> const &params() const {
+  core::ParamsRef<type::Typed<ast::Declaration const *>> params() const {
     return params_;
   }
 

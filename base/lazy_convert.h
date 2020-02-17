@@ -1,6 +1,8 @@
 #ifndef ICARUS_BASE_LAZY_CONVERT_H
 #define ICARUS_BASE_LAZY_CONVERT_H
 
+#include <utility>
+
 namespace base {
 template <typename Fn>
 struct lazy_convert {

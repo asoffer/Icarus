@@ -25,11 +25,10 @@ bool ParamsCoverArgs(core::FnArgs<type::QualType> const &args,
   for (auto const &expanded_arg : expanded_fnargs) {
     DEBUG_LOG("ParamsCoverArgs")("Expansion: ", expanded_arg.to_string());
     for (auto const &[k, v] : table) {
-      static_assert(
-          std::is_same_v<
-              decltype(get_params(k, v)),
-              core::Params<type::Typed<ast::Declaration const *>> const &>);
-      auto const &params = get_params(k, v);
+      static_assert(std::is_same_v<
+                    decltype(get_params(k, v)),
+                    core::ParamsRef<type::Typed<ast::Declaration const *>>>);
+      auto params = get_params(k, v);
       DEBUG_LOG("ParamsCoverArgs")("Params: ", stringify(params));
 
       // TODO take constness into account for callability.

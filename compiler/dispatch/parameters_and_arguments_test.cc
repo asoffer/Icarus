@@ -128,16 +128,16 @@ TEST(ParamsCoverArgs, EmptyArguments) {
 
   {  // One overload
     absl::flat_hash_map<int, internal::ExprData> table;
-    table[0].params().append(
+    table[0].mutable_params().append(
         "param0", type::Typed<ast::Declaration const *>(nullptr, type::Bool));
     EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 
   {  // Multiple overloads
     absl::flat_hash_map<int, internal::ExprData> table;
-    table[0].params().append(
+    table[0].mutable_params().append(
         "param0", type::Typed<ast::Declaration const *>(nullptr, type::Bool));
-    table[0].params().append(
+    table[0].mutable_params().append(
         "param1", type::Typed<ast::Declaration const *>(nullptr, type::Bool));
     EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
@@ -158,14 +158,14 @@ TEST(ParamsCoverArgs, OnePositionalArgument) {
 
   {  // One overload
     absl::flat_hash_map<int, internal::ExprData> table;
-    table[0].params().append(
+    table[0].mutable_params().append(
         "param0", type::Typed<ast::Declaration const *>(nullptr, type::Bool));
     EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 
   {  // One parameter, matches
     absl::flat_hash_map<int, internal::ExprData> table;
-    table[0].params().append(
+    table[0].mutable_params().append(
         "param0",
         type::Typed<ast::Declaration const *>(
             nullptr, type::Var({type::Int64, type::Type_, type::Bool})));
@@ -174,10 +174,10 @@ TEST(ParamsCoverArgs, OnePositionalArgument) {
 
   {  // Multiple overloads
     absl::flat_hash_map<int, internal::ExprData> table;
-    table[0].params().append(
+    table[0].mutable_params().append(
         "param0", type::Typed<ast::Declaration const *>(nullptr, type::Type_));
 
-    table[1].params().append(
+    table[1].mutable_params().append(
         "param1", type::Typed<ast::Declaration const *>(
                       nullptr, type::Var({type::Float64, type::Int64})));
     EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
@@ -185,10 +185,10 @@ TEST(ParamsCoverArgs, OnePositionalArgument) {
 
   {  // Multiple overloads, matches
     absl::flat_hash_map<int, internal::ExprData> table;
-    table[0].params().append(
+    table[0].mutable_params().append(
         "param0", type::Typed<ast::Declaration const *>(
                       nullptr, type::Var({type::Type_, type::Bool})));
-    table[1].params().append(
+    table[1].mutable_params().append(
         "param1",
         type::Typed<ast::Declaration const *>(
             nullptr, type::Var({type::Ptr(type::Bool), type::Int64})));
@@ -210,21 +210,21 @@ TEST(ParamsCoverArgs, OneNamedArgument) {
 
   {  // One parameter, type mismatch
     absl::flat_hash_map<int, internal::ExprData> table;
-    table[0].params().append(
+    table[0].mutable_params().append(
         "x", type::Typed<ast::Declaration const *>(nullptr, type::Bool));
     EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 
   {  // One parameter, name mismatch
     absl::flat_hash_map<int, internal::ExprData> table;
-    table[0].params().append("y",
-                             type::Typed<ast::Declaration const *>(nullptr, t));
+    table[0].mutable_params().append(
+        "y", type::Typed<ast::Declaration const *>(nullptr, t));
     EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 
   {  // One parameter, matches
     absl::flat_hash_map<int, internal::ExprData> table;
-    table[0].params().append(
+    table[0].mutable_params().append(
         "x", type::Typed<ast::Declaration const *>(
                  nullptr, type::Var({type::Int64, type::Type_, type::Bool})));
     EXPECT_TRUE(ParamsCoverArgs(args, table, GetParams));
@@ -232,10 +232,10 @@ TEST(ParamsCoverArgs, OneNamedArgument) {
 
   {  // Multiple overload coverage, mismatch args
     absl::flat_hash_map<int, internal::ExprData> table;
-    table[0].params().append(
+    table[0].mutable_params().append(
         "x", type::Typed<ast::Declaration const *>(nullptr, type::Type_));
 
-    table[1].params().append(
+    table[1].mutable_params().append(
         "x", type::Typed<ast::Declaration const *>(
                  nullptr, type::Var({type::Float64, type::Int64})));
     EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
@@ -243,10 +243,10 @@ TEST(ParamsCoverArgs, OneNamedArgument) {
 
   {  // Multiple overload coverage, mismatched name
     absl::flat_hash_map<int, internal::ExprData> table;
-    table[0].params().append(
+    table[0].mutable_params().append(
         "x", type::Typed<ast::Declaration const *>(
                  nullptr, type::Var({type::Type_, type::Bool})));
-    table[1].params().append(
+    table[1].mutable_params().append(
         "y", type::Typed<ast::Declaration const *>(
                  nullptr, type::Var({type::Ptr(type::Bool), type::Int64})));
     EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
@@ -254,10 +254,10 @@ TEST(ParamsCoverArgs, OneNamedArgument) {
 
   {  // Multiple overload coverage, matches
     absl::flat_hash_map<int, internal::ExprData> table;
-    table[0].params().append(
+    table[0].mutable_params().append(
         "x", type::Typed<ast::Declaration const *>(
                  nullptr, type::Var({type::Type_, type::Bool})));
-    table[1].params().append(
+    table[1].mutable_params().append(
         "x", type::Typed<ast::Declaration const *>(
                  nullptr, type::Var({type::Ptr(type::Bool), type::Int64})));
     EXPECT_TRUE(ParamsCoverArgs(args, table, GetParams));

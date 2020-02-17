@@ -8,7 +8,6 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/str_join.h"
 #include "base/debug.h"
-#include "base/lazy_convert.h"
 #include "base/macros.h"
 #include "core/fn_args.h"
 
@@ -310,68 +309,6 @@ bool AmbiguouslyCallable(Params<T> const& params1, Params<T> const& params2,
   }
 
   return false;
-}
-
-// Returns true if and only if a callable with `params` can be called with
-// `args`.
-template <typename T, typename U, typename ConvertibleFn>
-bool IsCallable(Params<T> const& params, FnArgs<U> const& args,
-                ConvertibleFn fn) {
-  if (params.size() < args.size()) {
-    DEBUG_LOG("core::IsCallable")
-    ("IsCallable = false due to size mismatch (", params.size(), " vs ",
-     args.size());
-    return false;
-  }
-
-  for (size_t i = 0; i < args.pos().size(); ++i) {
-    if (not fn(args.pos()[i], params[i].value)) {
-      DEBUG_LOG("core::IsCallable")
-      ("IsCallable = false due to convertible failure at ", i);
-      return false;
-    }
-  }
-
-  for (auto const& [name, type] : args.named()) {
-    ASSIGN_OR(
-        {
-          DEBUG_LOG("core::IsCallable")
-          ("No such parameter named \"", name, "\"");
-          return false;
-        },
-        auto const& index, params.at_or_null(name));
-    if (not fn(type, params[index].value)) {
-      DEBUG_LOG("core::IsCallable")
-      ("IsCallable = false due to convertible failure on \"", name, "\"");
-      return false;
-    }
-  }
-
-  for (size_t i = args.pos().size(); i < params.size(); ++i) {
-    auto const& param = params[i];
-    if (param.flags & HAS_DEFAULT) { continue; }
-    if (args.at_or_null(param.name) == nullptr) {
-      DEBUG_LOG("core::IsCallable")
-      ("No argument for non-default parameter named \"", param.name, "\"");
-      return false;
-    }
-  }
-
-  DEBUG_LOG("core::IsCallable")("Yes, it's callable");
-  return true;
-}
-
-// For each parameter in `params` for which `args` has chosen to use the default
-// value, update `args` to contain the appropriate default value, as chosen by
-// `fn(param.value)`.
-template <typename P, typename A, typename Fn>
-void FillMissingArgs(Params<P> const& params, FnArgs<A>* args, Fn fn) {
-  for (size_t i = args->pos().size(); i < params.size(); ++i) {
-    auto const& p = params[i];
-    if (p.name.empty()) { continue; }
-    args->named_emplace(p.name,
-                        base::lazy_convert{[&]() { return fn(p.value); }});
-  }
 }
 
 }  // namespace core

@@ -16,11 +16,17 @@ core::Params<type::Typed<ast::Declaration const *>> ExtractParams(
     if (auto const *fn_type = decl_type->if_as<type::Function>()) {
       auto f = interpretter::EvaluateAs<ir::AnyFunc>(
           compiler->MakeThunk(decl, decl_type));
-      return f.is_fn() ? f.func()->params() : fn_type->AnonymousParams();
-    } else if (auto *jump_type = decl_type ->if_as<type::Jump>()) {
+
+      return f.is_fn()
+                 ? static_cast<
+                       core::Params<type::Typed<ast::Declaration const *>>>(
+                       f.func()->params())
+                 : fn_type->AnonymousParams();
+    } else if (auto *jump_type = decl_type->if_as<type::Jump>()) {
       auto j = interpretter::EvaluateAs<ir::Jump const *>(
           compiler->MakeThunk(decl, decl_type));
-      return j->params();
+      return static_cast<core::Params<type::Typed<ast::Declaration const *>>>(
+          j->params());
     } else if (decl_type == type::Generic) {
         // TODO determine how to evaluate this with an interpretter.
         if (auto *fn_lit = decl->init_val()->if_as<ast::FunctionLiteral>()) {
@@ -38,7 +44,8 @@ core::Params<type::Typed<ast::Declaration const *>> ExtractParams(
     }
   } else {
     if (auto const *fn_type = decl_type->if_as<type::Function>()) {
-      return fn_type->AnonymousParams();
+      return static_cast<core::Params<type::Typed<ast::Declaration const *>>>(
+          fn_type->AnonymousParams());
     } else {
       NOT_YET(decl->DebugString());
     }

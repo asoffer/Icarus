@@ -23,7 +23,10 @@ base::expected<JumpDispatchTable> JumpDispatchTable::Verify(
     // TODO the type of the specific overload could *correctly* be null and
     // we need to handle that case.
     DEBUG_LOG("dispatch-verify")("Verifying ", jump);
-    auto result = MatchArgsToParams(jump->params(), args);
+    // TODO const params ref?
+    auto params = jump->params();
+    core::ParamsRef params_ref = params;
+    auto result = MatchArgsToParams(params_ref, args);
     if (not result) {
       failures.emplace(jump, result.error());
     } else {
@@ -36,8 +39,9 @@ base::expected<JumpDispatchTable> JumpDispatchTable::Verify(
   }
 
   if (not ParamsCoverArgs(args, table.table_,
-                          [](auto const &, internal::ExprData const &data)
-                              -> decltype(auto) { return data.params(); })) {
+                          [](auto const &, internal::ExprData const &data) {
+                            return data.params();
+                          })) {
     DEBUG_LOG()(args.to_string());
     NOT_YET("log an error");
   }

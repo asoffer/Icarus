@@ -11,6 +11,7 @@
 #include "core/alignment.h"
 #include "core/bytes.h"
 #include "core/params.h"
+#include "core/params_ref.h"
 #include "ir/basic_block.h"
 #include "ir/value/reg.h"
 #include "ir/stack_frame_allocations.h"
@@ -46,7 +47,7 @@ struct BlockGroup {
     return b;
   }
 
-  core::Params<type::Typed<ast::Declaration const *>> const &params() const {
+  core::ParamsRef<type::Typed<ast::Declaration const *>> params() const {
     return params_;
   }
 

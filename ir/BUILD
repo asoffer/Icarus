@@ -55,6 +55,7 @@ cc_lib(
         "//core:alignment",
         "//core:bytes",
         "//core:params",
+        "//core:params_ref",
         "//type:pointer",
         "//type:type_fwd",
         "//type:typed_value",
@@ -342,6 +343,7 @@ cc_library(
     deps = [
         ":any_func",
         ":compiled_fn", # Remove once AnyFunc depends on this.
+        "//core:params_ref",
         "//type:cast",
         "//type:function",
         "//type:qual_type",

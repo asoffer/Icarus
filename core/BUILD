@@ -69,6 +69,7 @@ cc_library(
     hdrs = ["params_ref.h"],
     deps = [
         ":params",
+        ":fn_args",
     ],
 )
 

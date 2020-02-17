@@ -4,6 +4,7 @@
 #include "compiler/dispatch/match.h"
 #include "compiler/dispatch/parameters_and_arguments.h"
 #include "compiler/dispatch/runtime.h"
+#include "core/params_ref.h"
 #include "ir/components.h"
 #include "ir/out_params.h"
 #include "ir/results.h"
@@ -71,7 +72,8 @@ base::expected<FnCallDispatchTable> FnCallDispatchTable::Verify(
     // need to handle that case.
     DEBUG_LOG("dispatch-verify")
     ("Verifying ", overload, ": ", overload->DebugString());
-    auto result = MatchArgsToParams(ExtractParams(compiler, overload), args);
+    auto params = ExtractParams(compiler, overload);
+    auto result = MatchArgsToParams(params, args);
     if (not result) {
       failures.emplace(overload, result.error());
     } else {
@@ -83,8 +85,9 @@ base::expected<FnCallDispatchTable> FnCallDispatchTable::Verify(
   }
 
   if (not ParamsCoverArgs(args, table.table_,
-                          [](auto const &, internal::ExprData const &data)
-                              -> decltype(auto) { return data.params(); })) {
+                          [](auto const &, internal::ExprData const &data) {
+                            return data.params();
+                          })) {
     // TODO Return a failuere-match-reason.
     return base::unexpected("Match failure");
   }

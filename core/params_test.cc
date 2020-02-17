@@ -120,52 +120,5 @@ TEST_CASE("set") {
   CHECK(p.at_or_null("n") != nullptr);
 }
 
-TEST_CASE("IsCallable") {
-  auto convertible = [](int from, int to) { return from == to; };
-
-  SECTION("Empty params") {
-    Params<int> p;
-    CHECK(IsCallable(p, FnArgs<int>{}, convertible));
-    CHECK_FALSE(IsCallable(p, FnArgs<int>{{3}, {}}, convertible));
-    CHECK_FALSE(IsCallable(p, FnArgs<int>{{}, {{"a", 4}}}, convertible));
-    CHECK_FALSE(IsCallable(p, FnArgs<int>{{3}, {{"a", 4}}}, convertible));
-  }
-
-  SECTION("One param without default") {
-    Params<int> p{Param<int>{"a", 4}};
-    CHECK_FALSE(IsCallable(p, FnArgs<int>{}, convertible));
-    CHECK_FALSE(IsCallable(p, FnArgs<int>{{3}, {}}, convertible));
-    CHECK(IsCallable(p, FnArgs<int>{{4}, {}}, convertible));
-    CHECK(IsCallable(p, FnArgs<int>{{}, {{"a", 4}}}, convertible));
-    CHECK_FALSE(IsCallable(p, FnArgs<int>{{}, {{"b", 4}}}, convertible));
-    CHECK_FALSE(IsCallable(p, FnArgs<int>{{4}, {{"a", 4}}}, convertible));
-    CHECK_FALSE(IsCallable(p, FnArgs<int>{{4}, {{"a", 5}}}, convertible));
-  }
-
-  SECTION("One param with default") {
-    Params<int> p{Param<int>{"a", 4, HAS_DEFAULT}};
-    CHECK(IsCallable(p, FnArgs<int>{}, convertible));
-    CHECK_FALSE(IsCallable(p, FnArgs<int>{{3}, {}}, convertible));
-    CHECK(IsCallable(p, FnArgs<int>{{4}, {}}, convertible));
-    CHECK(IsCallable(p, FnArgs<int>{{}, {{"a", 4}}}, convertible));
-    CHECK_FALSE(IsCallable(p, FnArgs<int>{{}, {{"b", 4}}}, convertible));
-    CHECK_FALSE(IsCallable(p, FnArgs<int>{{4}, {{"a", 4}}}, convertible));
-    CHECK_FALSE(IsCallable(p, FnArgs<int>{{4}, {{"a", 5}}}, convertible));
-  }
-
-  SECTION("Multiple parameters with non-trailing default") {
-    Params<int> p{Param<int>{"a", 4, HAS_DEFAULT}, Param<int>{"b", 7}};
-    CHECK_FALSE(IsCallable(p, FnArgs<int>{}, convertible));
-    CHECK_FALSE(IsCallable(p, FnArgs<int>{{3}, {}}, convertible));
-    CHECK_FALSE(IsCallable(p, FnArgs<int>{{4}, {}}, convertible));
-    CHECK(IsCallable(p, FnArgs<int>{{4, 7}, {}}, convertible));
-    CHECK_FALSE(IsCallable(p, FnArgs<int>{{}, {{"a", 4}}}, convertible));
-    CHECK(IsCallable(p, FnArgs<int>{{4}, {{"b", 7}}}, convertible));
-    CHECK(IsCallable(p, FnArgs<int>{{}, {{"a", 4}, {"b", 7}}}, convertible));
-  }
-}
-
-// TODO tests for FillMissingArgs
-
 }  // namespace
 }  // namespace core

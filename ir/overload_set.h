@@ -5,12 +5,13 @@
 #include <optional>
 
 #include "absl/types/span.h"
+#include "core/params_ref.h"
 #include "ir/any_func.h"
 #include "ir/compiled_fn.h"  // TODO remove once anyfunc depends on this.
 #include "type/cast.h"
 #include "type/function.h"
-#include "type/type.h"
 #include "type/qual_type.h"
+#include "type/type.h"
 
 namespace ir {
 
@@ -43,7 +44,10 @@ struct OverloadSet {
 
   std::optional<AnyFunc> Lookup(core::FnArgs<type::Type const *> const &args) {
     for (auto const &[params, fn] : fns_) {
-      if (core::IsCallable(params, args, type::CanCast)) { return fn; }
+      if (core::IsCallable(core::ParamsRef<type::Type const *>(params), args,
+                           type::CanCast)) {
+        return fn;
+      }
     }
     return std::nullopt;
     // TODO

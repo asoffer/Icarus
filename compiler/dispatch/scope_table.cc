@@ -132,14 +132,10 @@ void internal::OneTable::VerifyJumps() {
               block_def.before_.Lookup(arg_types);
           ASSERT(maybe_fn.has_value() == true);
           ir::AnyFunc fn = *maybe_fn;
-          core::Params<type::Typed<ast::Declaration const *>> fn_params;
-          if (fn.is_fn()) {
-            fn_params = fn.func()->params();
-          } else {
-            NOT_YET();
-          }
-
-          auto result = MatchArgsToParams(fn_params, arg_types);
+          if (not fn.is_fn()) { NOT_YET(); }
+          auto params                = fn.func()->params();
+          core::ParamsRef params_ref = params;
+          auto result                = MatchArgsToParams(params_ref, arg_types);
 
           if (result) {
             next_types[block_name].push_back(fn.func()->type()->output());
@@ -178,7 +174,10 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
   table.scope_node_ = node;
   table.init_map_   = std::move(inits);
   for (auto [jump, scope] : table.init_map_) {
-    if (auto result = MatchArgsToParams(jump->params(), args)) {
+    auto params                = jump->params();
+    core::ParamsRef params_ref = params;
+    if (scope->state_type_) { params_ref.remove_prefix(1); }
+    if (auto result = MatchArgsToParams(params_ref, args)) {
       auto &one_table = table.tables_[scope];
       one_table.inits.emplace(jump, *result);
       one_table.scope_def_ = scope;
@@ -187,10 +186,9 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
     }
   }
 
-  if (not ParamsCoverArgs(args, table.init_map_,
-                          [](ir::Jump *jump, auto const &) -> decltype(auto) {
-                            return jump->params();
-                          })) {
+  if (not ParamsCoverArgs(
+          args, table.init_map_,
+          [](ir::Jump *jump, auto const &) { return jump->params(); })) {
     compiler->diag().Consume(diagnostic::ParametersDoNotCoverArguments{
         .args = args,
     });
