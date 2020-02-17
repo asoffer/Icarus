@@ -133,7 +133,7 @@ void Compiler::CompleteDeferredBodies() {
 
 ir::CompiledFn *Compiler::AddFunc(
     type::Function const *fn_type,
-    core::FnParams<type::Typed<ast::Declaration const *>> params) {
+    core::Params<type::Typed<ast::Declaration const *>> params) {
   return data_.fns_
       .emplace_back(
           std::make_unique<ir::CompiledFn>(fn_type, std::move(params)))
@@ -142,7 +142,7 @@ ir::CompiledFn *Compiler::AddFunc(
 
 ir::CompiledFn *Compiler::AddJump(
     type::Jump const *jump_type,
-    core::FnParams<type::Typed<ast::Declaration const *>> params) {
+    core::Params<type::Typed<ast::Declaration const *>> params) {
   return data_.fns_
       .emplace_back(std::make_unique<ir::CompiledFn>(jump_type->ToFunction(),
                                                      std::move(params)))
@@ -152,7 +152,7 @@ ir::CompiledFn *Compiler::AddJump(
 ir::CompiledFn Compiler::MakeThunk(ast::Expression const *expr,
                                    type::Type const *type) {
   ir::CompiledFn fn(type::Func({}, {ASSERT_NOT_NULL(type)}),
-                    core::FnParams<type::Typed<ast::Declaration const *>>{});
+                    core::Params<type::Typed<ast::Declaration const *>>{});
   ICARUS_SCOPE(ir::SetCurrent(&fn)) {
     // TODO this is essentially a copy of the body of FunctionLiteral::EmitValue
     // Factor these out together.

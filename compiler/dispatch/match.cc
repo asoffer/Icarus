@@ -8,9 +8,9 @@ namespace compiler {
 namespace {
 
 std::optional<FailedMatch> MatchPositionalArgsToParams(
-    core::FnParams<type::Typed<ast::Declaration const *>> const &params,
+    core::Params<type::Typed<ast::Declaration const *>> const &params,
     core::FnArgs<type::QualType> const &args,
-    core::FnParams<type::Typed<ast::Declaration const *>> *matched_params) {
+    core::Params<type::Typed<ast::Declaration const *>> *matched_params) {
   if (args.size() > params.size()) { return FailedMatch{}; }
   for (size_t i = 0; i < args.pos().size(); ++i) {
     auto const &param      = params.at(i);
@@ -23,9 +23,9 @@ std::optional<FailedMatch> MatchPositionalArgsToParams(
 }
 
 std::optional<FailedMatch> MatchNamedArgsToParams(
-    core::FnParams<type::Typed<ast::Declaration const *>> const &params,
+    core::Params<type::Typed<ast::Declaration const *>> const &params,
     core::FnArgs<type::QualType> const &args,
-    core::FnParams<type::Typed<ast::Declaration const *>> *matched_params) {
+    core::Params<type::Typed<ast::Declaration const *>> *matched_params) {
   for (size_t i = args.pos().size(); i < params.size(); ++i) {
     auto const &param = params.at(i);
     if (auto *result = args.at_or_null(param.name)) {
@@ -53,14 +53,14 @@ std::optional<FailedMatch> MatchNamedArgsToParams(
 
 }  // namespace
 
-base::expected<core::FnParams<type::Typed<ast::Declaration const *>>,
+base::expected<core::Params<type::Typed<ast::Declaration const *>>,
                FailedMatch>
 MatchArgsToParams(
-    core::FnParams<type::Typed<ast::Declaration const *>> const &params,
+    core::Params<type::Typed<ast::Declaration const *>> const &params,
     core::FnArgs<type::QualType> const &args) {
   if (args.size() > params.size()) { return FailedMatch{}; }
 
-  core::FnParams<type::Typed<ast::Declaration const *>> matched_params;
+  core::Params<type::Typed<ast::Declaration const *>> matched_params;
   if (auto failure =
           MatchPositionalArgsToParams(params, args, &matched_params)) {
     return *failure;

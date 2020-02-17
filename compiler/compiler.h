@@ -192,10 +192,10 @@ struct Compiler
 
   ir::CompiledFn *AddFunc(
       type::Function const *fn_type,
-      core::FnParams<type::Typed<ast::Declaration const *>> params);
+      core::Params<type::Typed<ast::Declaration const *>> params);
   ir::CompiledFn *AddJump(
       type::Jump const *jump_type,
-      core::FnParams<type::Typed<ast::Declaration const *>> params);
+      core::Params<type::Typed<ast::Declaration const *>> params);
 
   ast::DispatchTable const *dispatch_table(ast::ExprPtr expr) const;
   ast::DispatchTable const *jump_table(ast::ExprPtr jump_expr,

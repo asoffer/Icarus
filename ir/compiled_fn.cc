@@ -7,7 +7,7 @@
 namespace ir {
 
 CompiledFn::CompiledFn(type::Function const *fn_type,
-                       core::FnParams<type::Typed<ast::Declaration const *>> p)
+                       core::Params<type::Typed<ast::Declaration const *>> p)
     : internal::BlockGroup(std::move(p)), type_(fn_type) {
   // TODO is this still true with variadics?
   ASSERT(params().size() == fn_type->params().size());

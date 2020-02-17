@@ -17,7 +17,7 @@ struct Jump;
 
 inline CompiledFn &TrivialFunction() {
   static CompiledFn f(type::Func({}, {}),
-                      core::FnParams<type::Typed<ast::Declaration const *>>{});
+                      core::Params<type::Typed<ast::Declaration const *>>{});
   return f;
 }
 

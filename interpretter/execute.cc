@@ -274,7 +274,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
           return ctx->resolve<type::Type const *>(reg);
         });
 
-    core::FnParams<type::Type const *> in_params;
+    core::Params<type::Type const *> in_params;
     in_params.reserve(ins.size());
     for (auto *t : ins) { in_params.append(core::AnonymousParam(t)); }
 

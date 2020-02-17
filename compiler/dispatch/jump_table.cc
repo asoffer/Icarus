@@ -4,7 +4,7 @@
 #include "compiler/compiler.h"
 #include "compiler/dispatch/match.h"
 #include "compiler/dispatch/parameters_and_arguments.h"
-#include "core/fn_params.h"
+#include "core/params.h"
 #include "ir/inliner.h"
 
 namespace compiler {

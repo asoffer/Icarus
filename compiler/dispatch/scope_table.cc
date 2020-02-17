@@ -6,7 +6,7 @@
 #include "compiler/compiler.h"
 #include "compiler/dispatch/parameters_and_arguments.h"
 #include "compiler/dispatch/runtime.h"
-#include "core/fn_params.h"
+#include "core/params.h"
 #include "diagnostic/errors.h"
 #include "ir/builder.h"
 #include "ir/components.h"
@@ -132,7 +132,7 @@ void internal::OneTable::VerifyJumps() {
               block_def.before_.Lookup(arg_types);
           ASSERT(maybe_fn.has_value() == true);
           ir::AnyFunc fn = *maybe_fn;
-          core::FnParams<type::Typed<ast::Declaration const *>> fn_params;
+          core::Params<type::Typed<ast::Declaration const *>> fn_params;
           if (fn.is_fn()) {
             fn_params = fn.func()->params();
           } else {

@@ -15,10 +15,10 @@ core::Alignment GenericFunction::alignment(core::Arch const &) const {
 }
 
 static base::guarded<
-    absl::flat_hash_map<core::FnParams<Type const *>,
+    absl::flat_hash_map<core::Params<Type const *>,
                         std::map<std::vector<Type const *>, Function>>>
     funcs_;
-Function const *Func(core::FnParams<Type const *> in,
+Function const *Func(core::Params<Type const *> in,
                      std::vector<Type const *> out) {
   // TODO if void is unit in some way we shouldn't do this.
   auto f = Function(in, out);
@@ -62,9 +62,9 @@ core::Alignment Function::alignment(core::Arch const &a) const {
   return a.function().alignment();
 }
 
-core::FnParams<type::Typed<ast::Declaration const *>>
-Function::AnonymousFnParams() const {
-  core::FnParams<type::Typed<ast::Declaration const *>> result;
+core::Params<type::Typed<ast::Declaration const *>>
+Function::AnonymousParams() const {
+  core::Params<type::Typed<ast::Declaration const *>> result;
   for (auto const& param: params()) {
     result.append("",
                   type::Typed<ast::Declaration const *>(nullptr, param.value),

@@ -10,7 +10,7 @@
 #include "base/strong_types.h"
 #include "core/alignment.h"
 #include "core/bytes.h"
-#include "core/fn_params.h"
+#include "core/params.h"
 #include "ir/basic_block.h"
 #include "ir/value/reg.h"
 #include "ir/stack_frame_allocations.h"
@@ -27,7 +27,7 @@ namespace ir::internal {
 // to both.
 struct BlockGroup {
   explicit BlockGroup(
-      core::FnParams<type::Typed<ast::Declaration const *>> params);
+      core::Params<type::Typed<ast::Declaration const *>> params);
 
   base::PtrSpan<BasicBlock const> blocks() const { return blocks_; }
   base::PtrSpan<BasicBlock> blocks() { return blocks_; }
@@ -46,7 +46,7 @@ struct BlockGroup {
     return b;
   }
 
-  core::FnParams<type::Typed<ast::Declaration const *>> const &params() const {
+  core::Params<type::Typed<ast::Declaration const *>> const &params() const {
     return params_;
   }
 
@@ -73,7 +73,7 @@ struct BlockGroup {
  private:
   friend struct ir::InstructionInliner;
 
-  core::FnParams<type::Typed<ast::Declaration const *>> params_;
+  core::Params<type::Typed<ast::Declaration const *>> params_;
   std::vector<std::unique_ptr<BasicBlock>> blocks_;
   StackFrameAllocations allocs_;
 

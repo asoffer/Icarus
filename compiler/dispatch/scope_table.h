@@ -10,7 +10,7 @@
 #include "compiler/dispatch/match.h"
 #include "compiler/dispatch/overload.h"
 #include "core/fn_args.h"
-#include "core/fn_params.h"
+#include "core/params.h"
 #include "ir/jump.h"
 #include "ir/scope_def.h"
 #include "type/qual_type.h"
@@ -32,7 +32,7 @@ struct OneTable {
                 ir::LocalBlockInterpretation const &block_interp) const;
 
   absl::flat_hash_map<ir::Jump *,
-                      core::FnParams<type::Typed<ast::Declaration const *>>>
+                      core::Params<type::Typed<ast::Declaration const *>>>
       inits;
   absl::flat_hash_map<ast::BlockNode const *, JumpDispatchTable> blocks;
   ir::ScopeDef const *scope_def_;

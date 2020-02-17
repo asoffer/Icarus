@@ -26,7 +26,7 @@ cc_lib(
         "//ast:expression",
         "//base:untyped_buffer",
         "//compiler:compiler",
-        "//core:fn_params",
+        "//core:params",
         "//diagnostic/consumer:streaming",
         "//frontend/source:repl",
         "//frontend:parse",

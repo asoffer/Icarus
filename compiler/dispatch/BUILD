@@ -40,7 +40,7 @@ cc_library(
         "//ast:overload_set",
         "//base:expected",
         "//core:fn_args",
-        "//core:fn_params",
+        "//core:params",
         "//ir:builder",
         "//type:qual_type",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -76,7 +76,7 @@ cc_library(
         "//ast:overload_set",
         "//base:expected",
         "//core:fn_args",
-        "//core:fn_params",
+        "//core:params",
         "//ir:results",
         "//type:qual_type",
         "//type:type",
@@ -124,7 +124,7 @@ cc_library(
         "//ast:ast",
         "//type:type",
         "//type:typed_value",
-        "//core:fn_params",
+        "//core:params",
     ]
 )
 
@@ -163,7 +163,7 @@ cc_lib(
         "//base:expected",
         "//type:cast",
         "//core:fn_args",
-        "//core:fn_params",
+        "//core:params",
         "//type:qual_type",
         "//type:type",
         "//type:typed_value",
@@ -184,7 +184,7 @@ cc_library(
     deps = [
         "//base:meta",
         "//core:fn_args",
-        "//core:fn_params",
+        "//core:params",
         "//ir:basic_block",
         "//ir:builder",
         "//ir:components",

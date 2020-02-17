@@ -1,4 +1,4 @@
-#include "core/fn_params.h"
+#include "core/params.h"
 
 #include "test/catch.h"
 
@@ -7,7 +7,7 @@ namespace {
 constexpr bool Ambiguity(int lhs, int rhs) { return (lhs & rhs) != 0; }
 
 TEST_CASE("creation") {
-  FnParams<double> params;
+  Params<double> params;
   CHECK(params.size() == 0u);
   params.append("pi", 3.14, MUST_NOT_NAME);
   params.append("", 1234);
@@ -17,14 +17,14 @@ TEST_CASE("creation") {
 }
 
 TEST_CASE("append") {
-  FnParams<double> params;
+  Params<double> params;
   CHECK(params.size() == 0u);
   params.append("pi", 3.14, MUST_NOT_NAME);
   params.append("", 1234);
 }
 
 TEST_CASE("index") {
-  FnParams<double> params{Param<double>{"pi", 3.14}, Param<double>{"e", 2.718},
+  Params<double> params{Param<double>{"pi", 3.14}, Param<double>{"e", 2.718},
                           Param<double>{"", 1234}, Param<double>{"", 5678},
                           Param<double>{"phi", 1.618}};
 
@@ -35,9 +35,9 @@ TEST_CASE("index") {
 }
 
 TEST_CASE("transform") {
-  FnParams<int> int_params{Param<int>{"a", 1, MUST_NOT_NAME},
+  Params<int> int_params{Param<int>{"a", 1, MUST_NOT_NAME},
                            Param<int>{"b", 2}, Param<int>{"", 3}};
-  FnParams<double> double_params =
+  Params<double> double_params =
       int_params.Transform([](int n) { return n * 0.5; });
 
   CHECK(double_params.size() == 3u);
@@ -51,68 +51,68 @@ TEST_CASE("transform") {
 
 TEST_CASE("ambiguously callable") {
   SECTION("Both empty") {
-    FnParams<int> p1, p2;
+    Params<int> p1, p2;
     CHECK(AmbiguouslyCallable(p1, p2, Ambiguity));
     CHECK(AmbiguouslyCallable(p2, p1, Ambiguity));
   }
 
   SECTION("One empty") {
-    FnParams<int> p1{Param<int>{"a", 1}};
-    FnParams<int> p2;
+    Params<int> p1{Param<int>{"a", 1}};
+    Params<int> p2;
     CHECK_FALSE(AmbiguouslyCallable(p1, p2, Ambiguity));
     CHECK_FALSE(AmbiguouslyCallable(p2, p1, Ambiguity));
   }
 
   SECTION("One empty but has default") {
-    FnParams<int> p1{Param<int>{"a", 1, HAS_DEFAULT}};
-    FnParams<int> p2;
+    Params<int> p1{Param<int>{"a", 1, HAS_DEFAULT}};
+    Params<int> p2;
     CHECK(AmbiguouslyCallable(p1, p2, Ambiguity));
     CHECK(AmbiguouslyCallable(p2, p1, Ambiguity));
   }
 
   SECTION("Same type, different names") {
-    FnParams<int> p1{Param<int>{"a1", 1}};
-    FnParams<int> p2{Param<int>{"a2", 1}};
+    Params<int> p1{Param<int>{"a1", 1}};
+    Params<int> p2{Param<int>{"a2", 1}};
     CHECK(AmbiguouslyCallable(p1, p2, Ambiguity));
     CHECK(AmbiguouslyCallable(p2, p1, Ambiguity));
   }
 
   SECTION("Same type, same name") {
-    FnParams<int> p{Param<int>{"a1", 1}};
+    Params<int> p{Param<int>{"a1", 1}};
     CHECK(AmbiguouslyCallable(p, p, Ambiguity));
   }
 
   SECTION("Same name different types") {
-    FnParams<int> p1{Param<int>{"a", 1}};
-    FnParams<int> p2{Param<int>{"a", 2}};
+    Params<int> p1{Param<int>{"a", 1}};
+    Params<int> p2{Param<int>{"a", 2}};
     CHECK_FALSE(AmbiguouslyCallable(p1, p2, Ambiguity));
     CHECK_FALSE(AmbiguouslyCallable(p2, p1, Ambiguity));
   }
 
   SECTION("Unambiguous because a parameter would have to be named.") {
-    FnParams<int> p1{Param<int>{"a", 1}, Param<int>{"b", 2, HAS_DEFAULT}};
-    FnParams<int> p2{Param<int>{"b", 2}};
+    Params<int> p1{Param<int>{"a", 1}, Param<int>{"b", 2, HAS_DEFAULT}};
+    Params<int> p2{Param<int>{"b", 2}};
     CHECK_FALSE(AmbiguouslyCallable(p1, p2, Ambiguity));
     CHECK_FALSE(AmbiguouslyCallable(p2, p1, Ambiguity));
   }
 
   SECTION("Both defaultable of different types") {
-    FnParams<int> p1{Param<int>{"a", 1, HAS_DEFAULT}};
-    FnParams<int> p2{Param<int>{"b", 2, HAS_DEFAULT}};
+    Params<int> p1{Param<int>{"a", 1, HAS_DEFAULT}};
+    Params<int> p2{Param<int>{"b", 2, HAS_DEFAULT}};
     CHECK(AmbiguouslyCallable(p1, p2, Ambiguity));
     CHECK(AmbiguouslyCallable(p2, p1, Ambiguity));
   }
 
   // TODO Many many more tests covering MUST_NOT_NAME
   SECTION("Anonymous") {
-    FnParams<int> p1{Param<int>{"", 1, MUST_NOT_NAME}};
-    FnParams<int> p2{Param<int>{"", 2, MUST_NOT_NAME}};
+    Params<int> p1{Param<int>{"", 1, MUST_NOT_NAME}};
+    Params<int> p2{Param<int>{"", 2, MUST_NOT_NAME}};
     CHECK_FALSE(AmbiguouslyCallable(p1, p2, Ambiguity));
   }
 }
 
 TEST_CASE("set") {
-  FnParams<int> p(2);
+  Params<int> p(2);
 
   CHECK(p.at_or_null("n") == nullptr);
 
@@ -124,7 +124,7 @@ TEST_CASE("IsCallable") {
   auto convertible = [](int from, int to) { return from == to; };
 
   SECTION("Empty params") {
-    FnParams<int> p;
+    Params<int> p;
     CHECK(IsCallable(p, FnArgs<int>{}, convertible));
     CHECK_FALSE(IsCallable(p, FnArgs<int>{{3}, {}}, convertible));
     CHECK_FALSE(IsCallable(p, FnArgs<int>{{}, {{"a", 4}}}, convertible));
@@ -132,7 +132,7 @@ TEST_CASE("IsCallable") {
   }
 
   SECTION("One param without default") {
-    FnParams<int> p{Param<int>{"a", 4}};
+    Params<int> p{Param<int>{"a", 4}};
     CHECK_FALSE(IsCallable(p, FnArgs<int>{}, convertible));
     CHECK_FALSE(IsCallable(p, FnArgs<int>{{3}, {}}, convertible));
     CHECK(IsCallable(p, FnArgs<int>{{4}, {}}, convertible));
@@ -143,7 +143,7 @@ TEST_CASE("IsCallable") {
   }
 
   SECTION("One param with default") {
-    FnParams<int> p{Param<int>{"a", 4, HAS_DEFAULT}};
+    Params<int> p{Param<int>{"a", 4, HAS_DEFAULT}};
     CHECK(IsCallable(p, FnArgs<int>{}, convertible));
     CHECK_FALSE(IsCallable(p, FnArgs<int>{{3}, {}}, convertible));
     CHECK(IsCallable(p, FnArgs<int>{{4}, {}}, convertible));
@@ -154,7 +154,7 @@ TEST_CASE("IsCallable") {
   }
 
   SECTION("Multiple parameters with non-trailing default") {
-    FnParams<int> p{Param<int>{"a", 4, HAS_DEFAULT}, Param<int>{"b", 7}};
+    Params<int> p{Param<int>{"a", 4, HAS_DEFAULT}, Param<int>{"b", 7}};
     CHECK_FALSE(IsCallable(p, FnArgs<int>{}, convertible));
     CHECK_FALSE(IsCallable(p, FnArgs<int>{{3}, {}}, convertible));
     CHECK_FALSE(IsCallable(p, FnArgs<int>{{4}, {}}, convertible));

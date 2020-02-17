@@ -38,7 +38,7 @@ static ir::Results ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
         type::Func({core::AnonymousParam(type::Ptr(lhs_type)),
                     core::AnonymousParam(type::Ptr(rhs_type))},
                    {type::Bool});
-    auto *fn = compiler->AddFunc(fn_type, fn_type->AnonymousFnParams());
+    auto *fn = compiler->AddFunc(fn_type, fn_type->AnonymousParams());
 
     ICARUS_SCOPE(ir::SetCurrent(fn)) {
       bldr.CurrentBlock() = fn->entry();

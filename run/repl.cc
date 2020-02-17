@@ -7,7 +7,7 @@
 #include "ast/scope/scope.h"
 #include "base/untyped_buffer.h"
 #include "compiler/compiler.h"
-#include "core/fn_params.h"
+#include "core/params.h"
 #include "diagnostic/consumer/streaming.h"
 #include "frontend/parse.h"
 #include "frontend/source/repl.h"

@@ -9,14 +9,14 @@
 
 namespace compiler {
 namespace {
-core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
+core::Params<type::Typed<ast::Declaration const *>> ExtractParams(
     Compiler *compiler, ast::Declaration const *decl) {
   auto *decl_type = ASSERT_NOT_NULL(compiler->type_of(decl));
   if (decl->flags() & ast::Declaration::f_IsConst) {
     if (auto const *fn_type = decl_type->if_as<type::Function>()) {
       auto f = interpretter::EvaluateAs<ir::AnyFunc>(
           compiler->MakeThunk(decl, decl_type));
-      return f.is_fn() ? f.func()->params() : fn_type->AnonymousFnParams();
+      return f.is_fn() ? f.func()->params() : fn_type->AnonymousParams();
     } else if (auto *jump_type = decl_type ->if_as<type::Jump>()) {
       auto j = interpretter::EvaluateAs<ir::Jump const *>(
           compiler->MakeThunk(decl, decl_type));
@@ -24,7 +24,7 @@ core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
     } else if (decl_type == type::Generic) {
         // TODO determine how to evaluate this with an interpretter.
         if (auto *fn_lit = decl->init_val()->if_as<ast::FunctionLiteral>()) {
-          core::FnParams<type::Typed<ast::Declaration const *>> params;
+          core::Params<type::Typed<ast::Declaration const *>> params;
           return fn_lit->params().Transform([&](auto const &p) {
             type::Type const *t = interpretter::EvaluateAs<type::Type const *>(
                 compiler->MakeThunk(p->type_expr(), type::Type_));
@@ -38,14 +38,14 @@ core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
     }
   } else {
     if (auto const *fn_type = decl_type->if_as<type::Function>()) {
-      return fn_type->AnonymousFnParams();
+      return fn_type->AnonymousParams();
     } else {
       NOT_YET(decl->DebugString());
     }
   }
 }
 
-core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
+core::Params<type::Typed<ast::Declaration const *>> ExtractParams(
     Compiler *compiler, ast::FunctionLiteral const *fn_lit) {
   return fn_lit->params().Transform([compiler](auto const &expr) {
     return type::Typed<ast::Declaration const *>(expr.get(),
@@ -128,7 +128,7 @@ std::vector<core::FnArgs<type::Type const *>> ExpandedFnArgs(
   return all_expanded_options;
 }
 
-core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
+core::Params<type::Typed<ast::Declaration const *>> ExtractParams(
     Compiler *compiler, ast::Expression const *expr) {
   if (auto const *decl = expr->if_as<ast::Declaration>()) {
     return ExtractParams(compiler, decl);
@@ -140,7 +140,7 @@ core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
 }
 
 std::vector<ir::Results> PrepareCallArguments(
-    Compiler *compiler, core::FnParams<type::Type const *> const &params,
+    Compiler *compiler, core::Params<type::Type const *> const &params,
     core::FnArgs<type::Typed<ir::Results>> const &args) {
   std::vector<ir::Results> arg_results;
   arg_results.reserve(params.size());

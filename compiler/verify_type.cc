@@ -462,7 +462,7 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
   //
   // TODO we can actually continue so long as we don't use a dependency of a
   // failure.
-  core::FnParams<type::Type const *> input_type_params;
+  core::Params<type::Type const *> input_type_params;
   input_type_params.reserve(node->params().size());
   for (auto &d : node->params()) {
     ASSIGN_OR(return _, auto result, Visit(d.value.get(), VerifyTypeTag{}));
@@ -1880,7 +1880,7 @@ type::QualType Compiler::Visit(ast::Label const *node, VerifyTypeTag) {
 type::QualType Compiler::Visit(ast::Jump const *node, VerifyTypeTag) {
   DEBUG_LOG("Jump")(node->DebugString());
   bool err = false;
-  core::FnParams<type::Type const *> param_types =
+  core::Params<type::Type const *> param_types =
       node->params().Transform([&](auto const &param) {
         auto v = Visit(param.get(), VerifyTypeTag{});
         err |= not v.ok();
@@ -1929,7 +1929,7 @@ type::QualType Compiler::Visit(ast::YieldStmt const *node, VerifyTypeTag) {
 }
 
 bool StartsWithState(type::Pointer const *state_type_ptr,
-                     core::FnParams<type::Type const *> const &params) {
+                     core::Params<type::Type const *> const &params) {
   return not params.empty() and params[0].value == state_type_ptr;
 }
 

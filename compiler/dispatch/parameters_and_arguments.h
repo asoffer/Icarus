@@ -5,7 +5,7 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/dispatch/overload.h"
-#include "core/fn_params.h"
+#include "core/params.h"
 #include "ir/results.h"
 #include "type/cast.h"
 #include "type/type.h"
@@ -28,7 +28,7 @@ bool ParamsCoverArgs(core::FnArgs<type::QualType> const &args,
       static_assert(
           std::is_same_v<
               decltype(get_params(k, v)),
-              core::FnParams<type::Typed<ast::Declaration const *>> const &>);
+              core::Params<type::Typed<ast::Declaration const *>> const &>);
       auto const &params = get_params(k, v);
       DEBUG_LOG("ParamsCoverArgs")("Params: ", stringify(params));
 
@@ -52,7 +52,7 @@ bool ParamsCoverArgs(core::FnArgs<type::QualType> const &args,
   return true;
 }
 
-core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
+core::Params<type::Typed<ast::Declaration const *>> ExtractParams(
     Compiler *compiler, ast::Expression const *expr);
 
 // Given arguments `args` for a function-call with parameters `params`, emits
@@ -82,7 +82,7 @@ core::FnParams<type::Typed<ast::Declaration const *>> ExtractParams(
 // relying on any defaulted parameters). Any such parameter should be used to
 // fill the arguments before calling this function.
 std::vector<ir::Results> PrepareCallArguments(
-    Compiler *compiler, core::FnParams<type::Type const *> const &params,
+    Compiler *compiler, core::Params<type::Type const *> const &params,
     core::FnArgs<type::Typed<ir::Results>> const &args);
 
 }  // namespace compiler

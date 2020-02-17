@@ -2,7 +2,7 @@
 #define ICARUS_IR_COMPILED_FN_H
 
 #include "base/move_func.h"
-#include "core/fn_params.h"
+#include "core/params.h"
 #include "ir/block_group.h"
 #include "type/typed_value.h"
 
@@ -18,7 +18,7 @@ namespace ir {
 
 struct CompiledFn : internal::BlockGroup {
   CompiledFn(type::Function const *fn_type,
-             core::FnParams<type::Typed<ast::Declaration const *>> p);
+             core::Params<type::Typed<ast::Declaration const *>> p);
 
   std::string name() const;
 

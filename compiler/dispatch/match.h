@@ -4,7 +4,7 @@
 #include "ast/ast_fwd.h"
 #include "base/expected.h"
 #include "core/fn_args.h"
-#include "core/fn_params.h"
+#include "core/params.h"
 #include "type/qual_type.h"
 #include "type/typed_value.h"
 
@@ -12,10 +12,10 @@ namespace compiler {
 
 struct FailedMatch {};
 
-base::expected<core::FnParams<type::Typed<ast::Declaration const *>>,
+base::expected<core::Params<type::Typed<ast::Declaration const *>>,
                FailedMatch>
 MatchArgsToParams(
-    core::FnParams<type::Typed<ast::Declaration const *>> const &params,
+    core::Params<type::Typed<ast::Declaration const *>> const &params,
     core::FnArgs<type::QualType> const &args);
 
 }  // namespace compiler

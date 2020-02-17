@@ -21,13 +21,13 @@ namespace ir {
 // is instantiated.
 struct OverloadSet {
   static std::optional<AnyFunc> Closed(
-      core::FnParams<type::Type const *> const &) {
+      core::Params<type::Type const *> const &) {
     return std::nullopt;
   }
 
   explicit OverloadSet(absl::Span<AnyFunc const> fns = {},
                        std::function<std::optional<AnyFunc>(
-                           core::FnParams<type::Type const *> const &)>
+                           core::Params<type::Type const *> const &)>
                            create = Closed)
       : create_(std::move(create)) {
     for (AnyFunc f : fns) {
@@ -52,10 +52,10 @@ struct OverloadSet {
 
  private:
   std::function<std::optional<AnyFunc>(
-      core::FnParams<type::Type const *> const &)>
+      core::Params<type::Type const *> const &)>
       create_;
   std::vector<
-      std::pair<core::FnParams<type::Type const *>, std::optional<AnyFunc>>>
+      std::pair<core::Params<type::Type const *>, std::optional<AnyFunc>>>
       fns_;
 };
 

@@ -20,7 +20,7 @@
 #include "base/ptr_span.h"
 #include "core/builtin.h"
 #include "core/fn_args.h"
-#include "core/fn_params.h"
+#include "core/params.h"
 #include "core/ordered_fn_args.h"
 #include "frontend/lex/operators.h"
 #include "ir/value/addr.h"
@@ -413,7 +413,7 @@ struct BlockNode : ScopeExpr<ExecScope> {
       // NOTE: This is safe because the declaration is behind a unique_ptr so
       // the string is never moved. You need to be careful if you ever decide to
       // use make this declaration inline because SSO might mean moving the
-      // declaration (which can happen if core::FnParams internal vector gets
+      // declaration (which can happen if core::Params internal vector gets
       // reallocated) could invalidate the string_view unintentionally.
       std::string_view name = param->id();
 
@@ -421,7 +421,7 @@ struct BlockNode : ScopeExpr<ExecScope> {
       // means there is no `=` as part of the declaration. This means that the
       // declaration, when thougth of as a parameter to a function, has no
       // default value.
-      core::FnParamFlags flags{};
+      core::ParamFlags flags{};
       if (not param->IsDefaultInitialized()) { flags = core::HAS_DEFAULT; }
       params_.append(name, std::move(param), flags);
     }
@@ -434,8 +434,8 @@ struct BlockNode : ScopeExpr<ExecScope> {
   std::string_view name() const { return name_; }
   base::PtrSpan<Node> stmts() { return stmts_; }
   base::PtrSpan<Node const> stmts() const { return stmts_; }
-  // TODO params() should be a reference to core::FnParams?
-  using params_type = core::FnParams<std::unique_ptr<Declaration>>;
+  // TODO params() should be a reference to core::Params?
+  using params_type = core::Params<std::unique_ptr<Declaration>>;
   params_type const &params() const { return params_; }
   params_type &params() { return params_; }
 
@@ -443,7 +443,7 @@ struct BlockNode : ScopeExpr<ExecScope> {
 
  private:
   std::string name_;
-  core::FnParams<std::unique_ptr<ast::Declaration>> params_;
+  core::Params<std::unique_ptr<ast::Declaration>> params_;
   std::vector<std::unique_ptr<Node>> stmts_;
 };
 
@@ -678,8 +678,8 @@ struct FunctionLiteral : ScopeExpr<FnScope> {
   base::PtrSpan<Node> stmts() { return statements_; }
   base::PtrSpan<Node const> stmts() const { return statements_; }
 
-  // TODO core::FnParamsRef to erase the unique_ptr?
-  using params_type = core::FnParams<std::unique_ptr<Declaration>>;
+  // TODO core::ParamsRef to erase the unique_ptr?
+  using params_type = core::Params<std::unique_ptr<Declaration>>;
   params_type const &params() const { return params_; }
   params_type &params() { return params_; }
 
@@ -723,7 +723,7 @@ struct FunctionLiteral : ScopeExpr<FnScope> {
       // NOTE: This is safe because the declaration is behind a unique_ptr so
       // the string is never moved. You need to be careful if you ever decide to
       // use make this declaration inline because SSO might mean moving the
-      // declaration (which can happen if core::FnParams internal vector gets
+      // declaration (which can happen if core::Params internal vector gets
       // reallocated) could invalidate the string_view unintentionally.
       std::string_view name = input->id();
 
@@ -731,7 +731,7 @@ struct FunctionLiteral : ScopeExpr<FnScope> {
       // means there is no `=` as part of the declaration. This means that the
       // declaration, when thougth of as a parameter to a function, has no
       // default value.
-      core::FnParamFlags flags{};
+      core::ParamFlags flags{};
       if (not input->IsDefaultInitialized()) { flags = core::HAS_DEFAULT; }
 
       params_.append(name, std::move(input), flags);
@@ -739,8 +739,8 @@ struct FunctionLiteral : ScopeExpr<FnScope> {
   }
 
   // TODO This is storing both the name in the declaration and pulls the
-  // string_view of the name out in core::FnParams::Param.
-  core::FnParams<std::unique_ptr<Declaration>> params_;
+  // string_view of the name out in core::Params::Param.
+  core::Params<std::unique_ptr<Declaration>> params_;
   std::optional<std::vector<std::unique_ptr<Expression>>> outputs_;
   std::vector<std::unique_ptr<Node>> statements_;
   bool is_short_;
@@ -931,7 +931,7 @@ struct Jump : ScopeExpr<FnScope> {
       // NOTE: This is safe because the declaration is behind a unique_ptr so
       // the string is never moved. You need to be careful if you ever decide to
       // use make this declaration inline because SSO might mean moving the
-      // declaration (which can happen if core::FnParams internal vector gets
+      // declaration (which can happen if core::Params internal vector gets
       // reallocated) could invalidate the string_view unintentionally.
       std::string_view name = input->id();
 
@@ -939,7 +939,7 @@ struct Jump : ScopeExpr<FnScope> {
       // means there is no `=` as part of the declaration. This means that the
       // declaration, when thougth of as a parameter to a function, has no
       // default value.
-      core::FnParamFlags flags{};
+      core::ParamFlags flags{};
       if (not input->IsDefaultInitialized()) { flags = core::HAS_DEFAULT; }
       params_.append(name, std::move(input), flags);
     }
@@ -947,15 +947,15 @@ struct Jump : ScopeExpr<FnScope> {
 
   ICARUS_AST_VIRTUAL_METHODS;
 
-  // TODO core::FnParamsRef to erase the unique_ptr?
-  using params_type = core::FnParams<std::unique_ptr<Declaration>>;
+  // TODO core::ParamsRef to erase the unique_ptr?
+  using params_type = core::Params<std::unique_ptr<Declaration>>;
   params_type const &params() const { return params_; }
   params_type &params() { return params_; }
   base::PtrSpan<Node> stmts() { return stmts_; }
   base::PtrSpan<Node const> stmts() const { return stmts_; }
 
  private:
-  core::FnParams<std::unique_ptr<ast::Declaration>> params_;
+  core::Params<std::unique_ptr<ast::Declaration>> params_;
   std::vector<std::unique_ptr<Node>> stmts_;
 };
 

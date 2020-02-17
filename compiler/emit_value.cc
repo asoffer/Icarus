@@ -961,7 +961,7 @@ ir::Results Compiler::Visit(ast::ParameterizedStructLiteral const *node,
   //   auto const &arg_types =
   //   type_of(node)->as<type::GenericStruct>().deps_;
 
-  //   core::FnParams<type::Typed<ast::Expression const *>> params;
+  //   core::Params<type::Typed<ast::Expression const *>> params;
   //   params.reserve(node->params().size());
   //   size_t i = 0;
   //   for (auto const &d : node->params()) {

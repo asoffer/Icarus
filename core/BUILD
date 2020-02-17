@@ -43,8 +43,9 @@ cc_lib(
     test_deps = [],
 )
 
-cc_lib(
-    name = "fn_params",
+cc_library(
+    name = "params",
+    hdrs = ["params.h"],
     deps = [
         ":fn_args",
         "//base:debug",
@@ -52,8 +53,15 @@ cc_lib(
         "//base:macros",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
-    header_only = True,
-    test_deps = [],
+)
+
+cc_test(
+    name = "params_test",
+    srcs = ["params_test.cc"],
+    deps = [
+        ":params",
+        "//test",
+    ],
 )
 
 cc_lib(

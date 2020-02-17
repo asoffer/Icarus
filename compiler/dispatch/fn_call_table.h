@@ -8,7 +8,7 @@
 #include "base/expected.h"
 #include "compiler/dispatch/overload.h"
 #include "core/fn_args.h"
-#include "core/fn_params.h"
+#include "core/params.h"
 #include "type/qual_type.h"
 #include "type/type.h"
 #include "type/typed_value.h"

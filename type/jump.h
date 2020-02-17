@@ -2,22 +2,22 @@
 #define ICARUS_TYPE_JUMP_H
 
 #include "absl/types/span.h"
-#include "core/fn_params.h"
+#include "core/params.h"
 #include "function.h"
 #include "type.h"
 
 namespace type {
 struct Jump : public Type {
   TYPE_FNS(Jump);
-  Jump(core::FnParams<Type const *> const &ts) : params_(std::move(ts)) {}
+  Jump(core::Params<Type const *> const &ts) : params_(std::move(ts)) {}
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
 
   // TODO rename to `params()`.
-  core::FnParams<type::Type const *> const &args() const { return params_; }
-  core::FnParams<type::Type const *> const &params() const { return params_; }
+  core::Params<type::Type const *> const &args() const { return params_; }
+  core::Params<type::Type const *> const &params() const { return params_; }
 
   template <typename H>
   friend H AbslHashValue(H h, Jump const &j) {
@@ -33,9 +33,9 @@ struct Jump : public Type {
   }
 
  private:
-  core::FnParams<Type const *> params_;
+  core::Params<Type const *> params_;
 };
 
-Jump const *Jmp(core::FnParams<Type const *> const &args);
+Jump const *Jmp(core::Params<Type const *> const &args);
 }  // namespace type
 #endif  // ICARUS_TYPE_JUMP_H

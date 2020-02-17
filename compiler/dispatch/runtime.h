@@ -4,7 +4,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "base/meta.h"
 #include "core/fn_args.h"
-#include "core/fn_params.h"
+#include "core/params.h"
 #include "ir/basic_block.h"
 #include "ir/builder.h"
 #include "ir/components.h"
@@ -21,7 +21,7 @@ namespace compiler {
 // there must be a cast from the actual argument type to the parameter type
 // (usually due to a cast such as `int64` casting to `int64 | bool`).
 ir::RegOr<bool> EmitRuntimeDispatchOneComparison(
-    ir::Builder &bldr, core::FnParams<type::Type const *> const &params,
+    ir::Builder &bldr, core::Params<type::Type const *> const &params,
     core::FnArgs<type::Typed<ir::Results>> const &args);
 
 // Emits code which jumps to the appropriate argument-prep-and-function-call
@@ -49,7 +49,7 @@ void EmitRuntimeDispatch(
       break;
     }
 
-    core::FnParams<type::Type const *> params;
+    core::Params<type::Type const *> params;
     if constexpr (std::is_same_v<Key, ast::Expression const *>) {
       params = val.params().Transform([](auto const &p) { return p.type(); });
     } else if constexpr (std::is_same_v<Key, ir::Jump *>) {

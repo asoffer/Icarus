@@ -7,7 +7,7 @@
 namespace type {
 
 static base::guarded<absl::node_hash_set<Jump>> jmps_;
-Jump const *Jmp(core::FnParams<Type const *> const &args) {
+Jump const *Jmp(core::Params<Type const *> const &args) {
   return &*jmps_.lock()->emplace(args).first;
 }
 

@@ -19,8 +19,8 @@ void Compiler::Visit(type::Array const *a, ir::Results const &val,
   a->repr_func_.init([=]() {
     // TODO special function?
     auto const *fn_type = type::Func(
-        core::FnParams<type::Type const *>{core::AnonymousParam(a)}, {});
-    ir::CompiledFn *fn  = AddFunc(fn_type, fn_type->AnonymousFnParams());
+        core::Params<type::Type const *>{core::AnonymousParam(a)}, {});
+    ir::CompiledFn *fn  = AddFunc(fn_type, fn_type->AnonymousParams());
 
     ICARUS_SCOPE(ir::SetCurrent(fn)) {
       builder().CurrentBlock() = fn->entry();
@@ -146,8 +146,8 @@ void Compiler::Visit(type::Variant const *t, ir::Results const &val,
   std::unique_lock lock(t->mtx_);
   if (not t->repr_func_) {
     auto const *fn_type = type::Func(
-        core::FnParams<type::Type const *>{core::AnonymousParam(t)}, {});
-    t->repr_func_       = AddFunc(fn_type, fn_type->AnonymousFnParams());
+        core::Params<type::Type const *>{core::AnonymousParam(t)}, {});
+    t->repr_func_       = AddFunc(fn_type, fn_type->AnonymousParams());
 
     ICARUS_SCOPE(ir::SetCurrent(t->repr_func_)) {
       builder().CurrentBlock() = t->repr_func_->entry();

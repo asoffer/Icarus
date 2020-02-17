@@ -43,7 +43,7 @@ TEST(OverloadSet, Construction) {
 // TODO intentionally broke this. It needs to be fixed.
 TEST(OverloadSet, Callable) {
   ir::OverloadSet os(absl::Span<ir::AnyFunc const>{},
-                     [](core::FnParams<type::Type const *> const &)
+                     [](core::Params<type::Type const *> const &)
                          -> std::optional<ir::AnyFunc> {
                        return ir::ForeignFn(TestFn1, type::Func({}, {}));
                      });

@@ -4,7 +4,7 @@
 #include <cstring>
 
 #include "ast/ast.h"
-#include "core/fn_params.h"
+#include "core/params.h"
 #include "type/callable.h"
 #include "type/typed_value.h"
 
@@ -26,7 +26,7 @@ struct GenericFunction : public Callable {
 
 struct Function : public Callable {
   TYPE_FNS(Function);
-  Function(core::FnParams<Type const *> in, std::vector<Type const *> out)
+  Function(core::Params<Type const *> in, std::vector<Type const *> out)
       : params_(std::move(in)), output_(std::move(out)) {
 #if defined(ICARUS_DEBUG)
     for (auto const &p : params_) { ASSERT(p.value != nullptr); }
@@ -41,10 +41,10 @@ struct Function : public Callable {
   bool is_big() const override { return false; }
 
   // TODO This doesn't need to be anonymous anymore!
-  core::FnParams<type::Typed<ast::Declaration const *>> AnonymousFnParams()
+  core::Params<type::Typed<ast::Declaration const *>> AnonymousParams()
       const;
 
-  core::FnParams<Type const *> const &params() const { return params_; }
+  core::Params<Type const *> const &params() const { return params_; }
   absl::Span<Type const *const> output() const { return output_; }
 
  private:
@@ -57,11 +57,11 @@ struct Function : public Callable {
   // TODO either fix this, or come up with a simple and robust rule we can
   // follow to ensure this is safe. Do we keep the syntax tree around for the
   // lifetime of the program? Any program?
-  core::FnParams<Type const *> params_;
+  core::Params<Type const *> params_;
   std::vector<Type const *> output_;
 };
 
-Function const *Func(core::FnParams<Type const *> in,
+Function const *Func(core::Params<Type const *> in,
                      std::vector<Type const *> out);
 
 }  // namespace type

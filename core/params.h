@@ -1,5 +1,5 @@
-#ifndef ICARUS_CORE_FN_PARAMS_H
-#define ICARUS_CORE_FN_PARAMS_H
+#ifndef ICARUS_CORE_PARAMS_H
+#define ICARUS_CORE_PARAMS_H
 
 #include <algorithm>
 #include <string_view>
@@ -13,7 +13,7 @@
 #include "core/fn_args.h"
 
 namespace core {
-enum FnParamFlags : uint8_t {
+enum ParamFlags : uint8_t {
   HAS_DEFAULT = 1,
   // At most one of MUST_NAME and MUST_NOT_NAME should be set.
   MUST_NAME = 2,  // TODO: Not yet supported
@@ -25,13 +25,13 @@ enum FnParamFlags : uint8_t {
 template <typename T>
 struct Param {
   Param() = default;
-  Param(std::string_view s, T t, FnParamFlags f = FnParamFlags{})
+  Param(std::string_view s, T t, ParamFlags f = ParamFlags{})
       : name(s), value(std::move(t)), flags(f) {}
 
- template <typename U, std::enable_if_t<not std::is_same_v<T, U> and
-                                            std::is_convertible_v<U, T>,
-                                        int> = 0>
- Param(Param<U> const& p) : Param(p.name, static_cast<T>(p.value), p.flags) {}
+  template <typename U, std::enable_if_t<not std::is_same_v<T, U> and
+                                             std::is_convertible_v<U, T>,
+                                         int> = 0>
+  Param(Param<U> const& p) : Param(p.name, static_cast<T>(p.value), p.flags) {}
 
   Param(Param&&) noexcept(std::is_nothrow_move_constructible_v<T>) = default;
   Param& operator=(Param&&) noexcept(std::is_nothrow_move_assignable_v<T>) =
@@ -49,16 +49,16 @@ struct Param {
 
   friend constexpr bool operator!=(Param<T> const& lhs, Param<T> const& rhs) {
     return not(lhs == rhs);
- }
+  }
 
- template <typename H>
- friend H AbslHashValue(H h, Param const& p) {
-   return H::combine(std::move(h), p.name, p.value, p.flags);
+  template <typename H>
+  friend H AbslHashValue(H h, Param const& p) {
+    return H::combine(std::move(h), p.name, p.value, p.flags);
   }
 
   std::string_view name = "";
   T value{};
-  FnParamFlags flags{};
+  ParamFlags flags{};
 };
 
 template <typename T>
@@ -70,19 +70,19 @@ Param<std::decay_t<T>> AnonymousParam(T&& val) {
 // TODO ParamRef would be useful here.
 
 template <typename T>
-struct FnParams {
+struct Params {
   using value_type     = Param<T>;
   using const_iterator = typename std::vector<Param<T>>::const_iterator;
 
-  // Construct a FnParams object representing `n` parameters all of which must
+  // Construct a Params object representing `n` parameters all of which must
   // not be named.
 
-  FnParams() {}
-  explicit FnParams(size_t n) : params_(n) {
+  Params() {}
+  explicit Params(size_t n) : params_(n) {
     for (auto& p : params_) { p = Param<T>("", T{}, MUST_NOT_NAME); }
   }
 
-  FnParams(std::initializer_list<Param<T>> params) : params_(params) {
+  Params(std::initializer_list<Param<T>> params) : params_(params) {
     size_t i = 0;
     for (auto const& p : params_) {
       if (not p.name.empty()) { lookup_.emplace(p.name, i); }
@@ -93,7 +93,7 @@ struct FnParams {
   template <typename U, std::enable_if_t<not std::is_same_v<T, U> and
                                              std::is_convertible_v<U, T>,
                                          int> = 0>
-  FnParams(std::initializer_list<Param<U>> params) {
+  Params(std::initializer_list<Param<U>> params) {
     params_.reserve(params.size());
     for (auto const& p : params) {
       params_.push_back(static_cast<Param<T>>(p));
@@ -114,7 +114,7 @@ struct FnParams {
   template <typename Fn>
   auto Transform(Fn&& fn) const {
     using out_t = decltype(fn(params_[0].value));
-    FnParams<out_t> result;
+    Params<out_t> result;
     result.params_.reserve(params_.size());
     for (auto const& param : params_) {
       result.params_.emplace_back(param.name, fn(param.value), param.flags);
@@ -155,32 +155,31 @@ struct FnParams {
     params_.push_back(std::move(p));
   }
 
-  void append(std::string_view name, T val,
-              FnParamFlags flags = FnParamFlags{}) {
+  void append(std::string_view name, T val, ParamFlags flags = ParamFlags{}) {
     if (not name.empty()) { lookup_.emplace(name, params_.size()); }
     params_.emplace_back(name, std::move(val), flags);
   }
 
   template <typename H>
-  friend H AbslHashValue(H h, FnParams const& params) {
+  friend H AbslHashValue(H h, Params const& params) {
     return H::combine_contiguous(std::move(h), params.params_.data(),
                                  params.params_.size());
   }
 
-  friend bool operator==(FnParams const& lhs, FnParams const& rhs) {
+  friend bool operator==(Params const& lhs, Params const& rhs) {
     return lhs.params_ == rhs.params_;
   }
 
-  friend bool operator!=(FnParams const& lhs, FnParams const& rhs) {
+  friend bool operator!=(Params const& lhs, Params const& rhs) {
     return not(lhs == rhs);
   }
 
  private:
   template <typename U>
-  friend struct FnParams;
+  friend struct Params;
   template <typename U, typename AmbiguityFn>
-  friend bool AmbiguouslyCallable(FnParams<U> const& params1,
-                                  FnParams<U> const& params2,
+  friend bool AmbiguouslyCallable(Params<U> const& params1,
+                                  Params<U> const& params2,
                                   AmbiguityFn&& ambiguity);
 
   // Maps the string name of the declared argument to it's index:
@@ -192,8 +191,8 @@ struct FnParams {
 };
 
 template <typename T>
-std::string stringify(FnParams<T> const& fn_params) {
-  return absl::StrCat("fnparams[",
+std::string stringify(Params<T> const& fn_params) {
+  return absl::StrCat("params[",
                       absl::StrJoin(fn_params, ", ",
                                     [](std::string* out, auto const& param) {
                                       using base::stringify;
@@ -208,7 +207,7 @@ namespace internal {
 // MUST_NOT_NAME is the last parameter, then we return params.size(). If it is
 // not present at all, we return 0.
 template <typename T>
-size_t MustNotNameTailIndex(FnParams<T> const& params) {
+size_t MustNotNameTailIndex(Params<T> const& params) {
   if (params.empty()) { return 0; }
   for (int i = params.size() - 1; i >= 0; --i) {
     if (params[i].flags & MUST_NOT_NAME) { return i + 1; }
@@ -218,7 +217,7 @@ size_t MustNotNameTailIndex(FnParams<T> const& params) {
 }  // namespace internal
 
 template <typename T, typename AmbiguityFn>
-bool AmbiguouslyCallable(FnParams<T> const& params1, FnParams<T> const& params2,
+bool AmbiguouslyCallable(Params<T> const& params1, Params<T> const& params2,
                          AmbiguityFn&& ambiguity) {
   // In order to determine ambiguity, we consider separately each case where we
   // have a given number of positional arguments. This allows us to use an
@@ -316,7 +315,7 @@ bool AmbiguouslyCallable(FnParams<T> const& params1, FnParams<T> const& params2,
 // Returns true if and only if a callable with `params` can be called with
 // `args`.
 template <typename T, typename U, typename ConvertibleFn>
-bool IsCallable(FnParams<T> const& params, FnArgs<U> const& args,
+bool IsCallable(Params<T> const& params, FnArgs<U> const& args,
                 ConvertibleFn fn) {
   if (params.size() < args.size()) {
     DEBUG_LOG("core::IsCallable")
@@ -366,7 +365,7 @@ bool IsCallable(FnParams<T> const& params, FnArgs<U> const& args,
 // value, update `args` to contain the appropriate default value, as chosen by
 // `fn(param.value)`.
 template <typename P, typename A, typename Fn>
-void FillMissingArgs(FnParams<P> const& params, FnArgs<A>* args, Fn fn) {
+void FillMissingArgs(Params<P> const& params, FnArgs<A>* args, Fn fn) {
   for (size_t i = args->pos().size(); i < params.size(); ++i) {
     auto const& p = params[i];
     if (p.name.empty()) { continue; }
@@ -377,4 +376,4 @@ void FillMissingArgs(FnParams<P> const& params, FnArgs<A>* args, Fn fn) {
 
 }  // namespace core
 
-#endif  // ICARUS_CORE_FN_PARAMS_H
+#endif  // ICARUS_CORE_PARAMS_H

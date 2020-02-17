@@ -3,7 +3,7 @@
 namespace compiler {
 
 ir::RegOr<bool> EmitRuntimeDispatchOneComparison(
-    ir::Builder &bldr, core::FnParams<type::Type const *> const &params,
+    ir::Builder &bldr, core::Params<type::Type const *> const &params,
     core::FnArgs<type::Typed<ir::Results>> const &args) {
   size_t i = 0;
   for (; i < args.pos().size(); ++i) {

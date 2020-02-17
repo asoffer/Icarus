@@ -1087,7 +1087,7 @@ struct ArrowInstruction : base::Clone<ArrowInstruction, Instruction> {
   static type::Type const* Apply(std::vector<type::Type const*> const& lhs,
                                  std::vector<type::Type const*> rhs) {
     // TODO named arguments
-    core::FnParams<type::Type const*> params;
+    core::Params<type::Type const*> params;
     params.reserve(lhs.size());
     for (auto* t : lhs) { params.append(core::AnonymousParam(t)); }
     return type::Func(std::move(params), std::move(rhs));

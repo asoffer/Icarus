@@ -271,7 +271,7 @@ RegOr<type::Function const *> Builder::Arrow(
           ins, [](RegOr<type::Type const *> r) { return not r.is_reg(); }) and
       absl::c_all_of(
           outs, [](RegOr<type::Type const *> r) { return not r.is_reg(); })) {
-    core::FnParams<type::Type const *> in_params;
+    core::Params<type::Type const *> in_params;
     std::vector<type::Type const *> out_vec;
     in_params.reserve(ins.size());
     for (auto in : ins) { in_params.append(core::AnonymousParam(in.value())); }
