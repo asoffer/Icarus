@@ -296,6 +296,7 @@ cc_lib(
     deps = [
         ":overload_set",
         "//base:move_func",
+        "//type",
     ],
     header_only = True,
     test_deps = None,

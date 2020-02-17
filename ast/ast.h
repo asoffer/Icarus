@@ -1069,17 +1069,24 @@ struct ReturnStmt : Node {
 //  }
 //  ```
 struct ScopeLiteral : ScopeExpr<ScopeLitScope> {
-  ScopeLiteral(frontend::SourceRange span,
+  explicit ScopeLiteral(frontend::SourceRange span,
+               std::unique_ptr<Expression> state_type,
                std::vector<std::unique_ptr<Declaration>> decls)
-      : ScopeExpr<ScopeLitScope>(std::move(span)), decls_(std::move(decls)) {}
+      : ScopeExpr<ScopeLitScope>(std::move(span)),
+        state_type_(std::move(state_type)),
+        decls_(std::move(decls)) {}
   ~ScopeLiteral() override {}
 
   base::PtrSpan<Declaration const> decls() const { return decls_; }
   base::PtrSpan<Declaration> decls() { return decls_; }
 
+  Expression const *state_type() const { return state_type_.get(); }
+  Expression *state_type() { return state_type_.get(); }
+
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
+  std::unique_ptr<Expression> state_type_;
   std::vector<std::unique_ptr<Declaration>> decls_;
 };
 

@@ -311,7 +311,7 @@ void internal::OneTable::EmitCall(
 ir::Results ScopeDispatchTable::EmitCall(
     Compiler *compiler,
     core::FnArgs<type::Typed<ir::Results>> const &args) const {
-  DEBUG_LOG("ScopelDispatchTable")
+  DEBUG_LOG("ScopeDispatchTable")
   ("Emitting a table with ", init_map_.size(), " entries.");
   auto &bldr = compiler->builder();
 

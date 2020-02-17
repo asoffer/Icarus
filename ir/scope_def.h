@@ -10,6 +10,7 @@
 #include "ir/block_def.h"
 #include "ir/overload_set.h"
 #include "module/module.h"
+#include "type/type.h"
 
 namespace ir {
 struct Jump;
@@ -23,8 +24,10 @@ inline CompiledFn &TrivialFunction() {
 // TODO Calls to EvaluateAs should probably take this as const, so we can be
 // sure no one modifies blocks_ and invalidates pointers.
 struct ScopeDef {
-  explicit ScopeDef(module::BasicModule const *mod)
+  explicit ScopeDef(module::BasicModule const *mod,
+                    type::Type const *state_type = nullptr)
       : mod_(mod),
+        state_type_(state_type),
         start_(std::make_unique<BlockDef>()),
         exit_(std::make_unique<BlockDef>()) {
     blocks_.emplace("start", start_.get());
@@ -44,6 +47,7 @@ struct ScopeDef {
   }
 
   module::BasicModule const *mod_ = nullptr;
+  type::Type const * state_type_;
   absl::flat_hash_map<std::string_view, BlockDef *> blocks_;
   // TODO figure out move/lifetime for this so we don't need separate
   // allocations.

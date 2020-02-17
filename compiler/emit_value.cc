@@ -885,6 +885,11 @@ ir::Results Compiler::Visit(ast::YieldStmt const *node, EmitValueTag) {
 }
 
 ir::Results Compiler::Visit(ast::ScopeLiteral const *node, EmitValueTag) {
+  auto *state_type = node->state_type()
+                         ? interpretter::EvaluateAs<type::Type const *>(
+                               MakeThunk(node->state_type(), type::Type_))
+                         : nullptr;
+
   absl::flat_hash_map<std::string_view, ir::BlockDef *> blocks;
   std::vector<ir::RegOr<ir::Jump *>> inits;
   std::vector<ir::RegOr<ir::AnyFunc>> dones;
@@ -900,7 +905,7 @@ ir::Results Compiler::Visit(ast::ScopeLiteral const *node, EmitValueTag) {
     }
   }
 
-  return ir::Results{builder().MakeScope(data_.add_scope(module()),
+  return ir::Results{builder().MakeScope(data_.add_scope(module(), state_type),
                                          std::move(inits), std::move(dones),
                                          std::move(blocks))};
 }

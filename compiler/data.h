@@ -38,8 +38,9 @@ struct CompilationData {
   explicit CompilationData(module::BasicModule *mod);
   ~CompilationData();
 
-  ir::ScopeDef *add_scope(module::BasicModule const *mod) {
-    return &scope_defs_.emplace_front(mod);
+  ir::ScopeDef *add_scope(module::BasicModule const *mod,
+                          type::Type const *state_type) {
+    return &scope_defs_.emplace_front(mod, state_type);
   }
   ir::BlockDef *add_block() { return &block_defs_.emplace_front(); }
 

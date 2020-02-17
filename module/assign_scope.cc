@@ -200,6 +200,7 @@ void AssignScope::Visit(ast::YieldStmt *node, ast::Scope *scope) {
 void AssignScope::Visit(ast::ScopeLiteral *node, ast::Scope *scope) {
   node->scope_ = scope;
   node->set_body_with_parent(scope, node);
+  if (node->state_type()) { Visit(node->state_type(), scope); }
   for (auto *decl : node->decls()) { Visit(decl, node->body_scope()); }
 }
 

@@ -961,7 +961,8 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
 }
 
 std::unique_ptr<ast::Node> BuildScopeLiteral(
-    std::unique_ptr<Statements> stmts, SourceRange span,
+    std::unique_ptr<ast::Expression> state_type,
+    std::unique_ptr<Statements> stmts, SourceRange const &range,
     diagnostic::DiagnosticConsumer &diag) {
   std::vector<std::unique_ptr<ast::Declaration>> decls;
   for (auto &stmt : stmts->content_) {
@@ -971,7 +972,8 @@ std::unique_ptr<ast::Node> BuildScopeLiteral(
       diag.Consume(diagnostic::Todo{});
     }
   }
-  return std::make_unique<ast::ScopeLiteral>(std::move(span), std::move(decls));
+  return std::make_unique<ast::ScopeLiteral>(range, std::move(state_type),
+                                             std::move(decls));
 }
 
 std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
@@ -1053,6 +1055,11 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
         std::move(span), std::move(params),
         std::move(nodes.back()->as<Statements>()).extract());
 
+  } else if (tk == "scope") {
+    SourceRange range(nodes.front()->span.begin(), nodes.back()->span.end());
+    return BuildScopeLiteral(move_as<ast::Expression>(nodes[2]),
+                             move_as<Statements>(nodes.back()), range, diag);
+
   } else if (tk == "struct") {
     diag.Consume(diagnostic::Todo{});
     return nullptr;
@@ -1088,8 +1095,8 @@ std::unique_ptr<ast::Node> BuildKWBlock(
       return BuildSwitch(move_as<Statements>(nodes[1]), diag);
 
     } else if (tk == "scope") {
-      SourceRange span(nodes.front()->span.begin(), nodes.back()->span.end());
-      return BuildScopeLiteral(move_as<Statements>(nodes[1]), span, diag);
+      SourceRange range(nodes.front()->span.begin(), nodes.back()->span.end());
+      return BuildScopeLiteral(nullptr, move_as<Statements>(nodes[1]), range, diag);
 
     } else if (tk == "block") {
       return BuildBlock(move_as<Statements>(nodes[1]), diag);

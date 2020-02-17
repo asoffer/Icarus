@@ -986,6 +986,17 @@ struct NonAddressableExpression {
 
   frontend::SourceRange range;
 };
+struct NonTypeScopeState {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName = "non-type-scope-state";
+
+  DiagnosticMessage ToMessage() const {
+    return DiagnosticMessage(Text("TODO"));
+  }
+
+  type::Type const * type;
+  frontend::SourceRange range;
+};
 
 struct Todo {
   static constexpr std::string_view kCategory = "todo";

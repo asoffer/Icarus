@@ -1928,18 +1928,57 @@ type::QualType Compiler::Visit(ast::YieldStmt const *node, VerifyTypeTag) {
   return type::QualType(type::Void(), quals);
 }
 
+bool StartsWithState(type::Pointer const *state_type_ptr,
+                     core::FnParams<type::Type const *> const &params) {
+  return not params.empty() and params[0].value == state_type_ptr;
+}
+
 type::QualType Compiler::Visit(ast::ScopeLiteral const *node, VerifyTypeTag) {
   auto verify_result = set_result(node, type::QualType::Constant(type::Scope));
   bool error         = false;
+  if (node->state_type()) {
+    type::QualType state_qual_type = Visit(node->state_type(), VerifyTypeTag{});
+    if (state_qual_type != type::QualType(type::Type_, type::Quals::Const())) {
+      DEBUG_LOG()(state_qual_type);
+      // TODO check for non-const vs. not a type.
+      diag().Consume(diagnostic::NonTypeScopeState{
+          .type  = state_qual_type.type(),
+          .range = node->state_type()->span,
+      });
+      error = true;
+    }
+  }
+
+  absl::flat_hash_map<ast::Declaration const *, type::Type const *> types;
   for (auto const *decl : node->decls()) {
-    auto result = Visit(decl, VerifyTypeTag{});
-    if (not result.constant()) {
+    auto qual_type= Visit(decl, VerifyTypeTag{});
+    if (not qual_type.constant()) {
       error = true;
       NOT_YET("log an error");
     }
+    types.emplace(decl, qual_type.type());
   }
   // TODO verify that it has at least one entry and exit point each.
   if (error) { return type::QualType::Error(); }
+
+  if (not node->state_type()) { return verify_result; }
+  auto *state_type_ptr = type::Ptr(interpretter::EvaluateAs<type::Type const *>(
+      MakeThunk(node->state_type(), type::Type_)));
+  for (auto const [decl, decl_type] : types) {
+    if (decl->id() == "init") {
+      auto *jump_type = decl_type->if_as<type::Jump>();
+      if (not jump_type) { NOT_YET(); }
+      if (not StartsWithState(state_type_ptr, jump_type->params())) {
+        NOT_YET();
+      }
+    } else if (decl->id() == "done") {
+      auto *fn_type = decl_type->if_as<type::Function>();
+      if (not fn_type) { NOT_YET(); }
+      if (not StartsWithState(state_type_ptr, fn_type->params())) { NOT_YET(); }
+    } else {
+      // TODO
+    }
+  }
   return verify_result;
 }
 
@@ -1978,7 +2017,8 @@ type::QualType Compiler::Visit(ast::ScopeNode const *node, VerifyTypeTag) {
 
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto table,
-                   ScopeDispatchTable::Verify(this, node, inits, arg_results));
+                   ScopeDispatchTable::Verify(this, node, std::move(inits),
+                                              arg_results));
   return data_.set_scope_dispatch_table(node, std::move(table));
 }
 
