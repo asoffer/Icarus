@@ -1,6 +1,7 @@
 #ifndef ICARUS_BASE_PTR_SPAN_H
 #define ICARUS_BASE_PTR_SPAN_H
 
+#include <type_traits>
 #include <memory>
 
 namespace base {

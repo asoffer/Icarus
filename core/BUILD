@@ -64,6 +64,23 @@ cc_test(
     ],
 )
 
+cc_library(
+    name = "params_ref",
+    hdrs = ["params_ref.h"],
+    deps = [
+        ":params",
+    ],
+)
+
+cc_test(
+    name = "params_ref_test",
+    srcs = ["params_ref_test.cc"],
+    deps = [
+        ":params_ref",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 cc_lib(
     name = "ordered_fn_args",
     deps = [

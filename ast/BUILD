@@ -27,7 +27,7 @@ cc_library(
         "//base:ptr_span",
         "//core:builtin",
         "//core:fn_args",
-        "//core:params",
+        "//core:params_ref",
         "//core:ordered_fn_args",
         "//frontend/lex:operators",
         "//ir/value:addr",
