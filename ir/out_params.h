@@ -3,6 +3,7 @@
 
 #include <vector>
 
+#include "absl/types/span.h"
 #include "ir/byte_code_writer.h"
 #include "ir/value/reg.h"
 
@@ -14,6 +15,9 @@ namespace ir {
 struct OutParams {
   explicit OutParams() = default;
   explicit OutParams(std::vector<Reg> regs) : regs_(std::move(regs)) {}
+
+  absl::Span<Reg> regs() { return absl::MakeSpan(regs_); }
+  absl::Span<Reg const> regs() const { return regs_; }
 
   Reg operator[](size_t n) const { return regs_[n]; }
   size_t size() const { return regs_.size(); }

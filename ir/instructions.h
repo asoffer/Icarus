@@ -1196,20 +1196,20 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
 
   CallInstruction(type::Function const* fn_type, RegOr<AnyFunc> const& fn,
                   std::vector<Results> args, OutParams outs)
-      : fn_type(fn_type), fn(fn), args(std::move(args)), outs(std::move(outs)) {
-    ASSERT(this->outs.size() == this->fn_type->output().size());
-    ASSERT(this->args.size() == this->fn_type->params().size());
+      : fn_type_(fn_type), fn_(fn), args_(std::move(args)), outs_(std::move(outs)) {
+    ASSERT(this->outs_.size() == fn_type_->output().size());
+    ASSERT(args_.size() == fn_type_->params().size());
   }
   ~CallInstruction() override {}
 
   std::string to_string() const override {
     using base::stringify;
-    std::string result = absl::StrCat("call ", stringify(fn));
-    for (auto const& arg : args) {
+    std::string result = absl::StrCat("call ", stringify(fn_));
+    for (auto const& arg : args_) {
       absl::StrAppend(&result, "\n      -> ", stringify(arg));
     }
-    for (size_t i = 0; i < fn_type->output().size(); ++i) {
-      absl::StrAppend(&result, "\n      <- ", stringify(outs[i]));
+    for (size_t i = 0; i < fn_type_->output().size(); ++i) {
+      absl::StrAppend(&result, "\n      <- ", stringify(outs_[i]));
     }
 
     return result;
@@ -1217,17 +1217,17 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
 
   void WriteByteCode(ByteCodeWriter* writer) const override {
     writer->Write(kIndex);
-    writer->Write(fn.is_reg());
-    fn.apply([&](auto v) { writer->Write(v); });
+    writer->Write(fn_.is_reg());
+    fn_.apply([&](auto v) { writer->Write(v); });
     size_t bytes_written_slot = writer->buf_->reserve<core::Bytes>();
 
     size_t arg_index = 0;
-    for (Results const& arg : args) {
+    for (Results const& arg : args_) {
       writer->Write(arg.is_reg(0));
       if (arg.is_reg(0)) {
         writer->Write(arg.get<Reg>(0));
       } else {
-        type::Apply(fn_type->params().at(arg_index).value, [&](auto tag) {
+        type::Apply(fn_type_->params().at(arg_index).value, [&](auto tag) {
           using T = typename decltype(tag)::type;
           writer->Write(arg.get<T>(0).value());
         });
@@ -1235,25 +1235,27 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
       ++arg_index;
     }
 
-    outs.WriteByteCode(writer);
+    outs_.WriteByteCode(writer);
 
     writer->buf_->set(bytes_written_slot,
                       core::Bytes{writer->buf_->size() - bytes_written_slot -
                                   sizeof(core::Bytes)});
   }
 
+  RegOr<AnyFunc> func() { return fn_; }
+
   void Inline(InstructionInliner const& inliner) override {
-    inliner.Inline(fn);
-    NOT_YET();  // Because we need to do this for args and out params too, it's
-                // tricky.
+    inliner.Inline(fn_);
+    for (auto& arg : args_) { inliner.Inline(arg); }
+    for (auto& reg : outs_.regs()) { inliner.Inline(reg); }
   }
 
-  type::Function const* fn_type;
-  RegOr<AnyFunc> fn;
 
  private:
-  std::vector<Results> args;
-  OutParams outs;
+  type::Function const* fn_type_;
+  RegOr<AnyFunc> fn_;
+  std::vector<Results> args_;
+  OutParams outs_;
 };
 
 struct LoadSymbolInstruction : base::Clone<LoadSymbolInstruction, Instruction> {

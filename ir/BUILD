@@ -267,6 +267,7 @@ cc_library(
     deps = [
         ":byte_code_writer",
         "//ir/value:reg",
+        "@com_google_absl//absl/types:span",
     ],
 )
 
