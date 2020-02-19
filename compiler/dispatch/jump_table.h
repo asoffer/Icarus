@@ -16,14 +16,15 @@ struct Compiler;  // TODO move into it's own header.
 
 struct JumpDispatchTable {
   static base::expected<JumpDispatchTable> Verify(
-      absl::Span<ir::Jump *const> jumps,
+      type::Type const *state_type, absl::Span<ir::Jump *const> jumps,
       core::FnArgs<type::QualType> const &args);
 
   // TODO long-term the `jump` parameter should read from `table_`.
   static absl::flat_hash_map<
       std::string_view,
       std::pair<ir::BasicBlock *, core::FnArgs<type::Typed<ir::Results>>>>
-  EmitCallOneOverload(ir::Jump *jump, Compiler *compiler,
+  EmitCallOneOverload(type::Type const *state_type, ir::Jump *jump,
+                      Compiler *compiler,
                       core::FnArgs<type::Typed<ir::Results>> args,
                       ir::LocalBlockInterpretation const &block_interp);
 

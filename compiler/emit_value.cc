@@ -584,7 +584,7 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
             interpretter::EvaluateToBuffer(MakeThunk(node->init_val(), t));
         if (diag().num_consumed() > 0u) {
           // TODO we reserved a slot and haven't cleaned it up. Do we care?
-          NOT_YET("Found errors but haven't handeled them.");
+          NOT_YET("Found errors but haven't handled them.");
           return ir::Results{};
         }
         current_constants_->binding().set_slot(node, buf);

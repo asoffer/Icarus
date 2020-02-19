@@ -10,7 +10,7 @@
 namespace compiler {
 
 base::expected<JumpDispatchTable> JumpDispatchTable::Verify(
-    absl::Span<ir::Jump *const> jumps,
+    type::Type const *state_type, absl::Span<ir::Jump *const> jumps,
     core::FnArgs<type::QualType> const &args) {
   DEBUG_LOG("dispatch-verify")
   ("Verifying overload set with ", jumps.size(), " members.");
@@ -23,10 +23,11 @@ base::expected<JumpDispatchTable> JumpDispatchTable::Verify(
     // TODO the type of the specific overload could *correctly* be null and
     // we need to handle that case.
     DEBUG_LOG("dispatch-verify")("Verifying ", jump);
-    // TODO const params ref?
-    auto params = jump->params();
-    core::ParamsRef params_ref = params;
-    auto result = MatchArgsToParams(params_ref, args);
+
+    auto p = jump->params();
+    if (state_type) { p.remove_prefix(1); }
+
+    auto result = MatchArgsToParams(p, args);
     if (not result) {
       failures.emplace(jump, result.error());
     } else {
@@ -52,11 +53,21 @@ absl::flat_hash_map<
     std::string_view,
     std::pair<ir::BasicBlock *, core::FnArgs<type::Typed<ir::Results>>>>
 JumpDispatchTable::EmitCallOneOverload(
-    ir::Jump *jump, Compiler *compiler,
+    type::Type const *state_type, ir::Jump *jump, Compiler *compiler,
     core::FnArgs<type::Typed<ir::Results>> args,
     ir::LocalBlockInterpretation const &block_interp) {
+
+  auto jump_params = jump->params();
+  if (state_type) {
+    // For stateful scopes, we stack-allocate a temporary state object and pass
+    // it through implicitly.
+    ir::Reg r = compiler->builder().TmpAlloca(state_type);
+    args.pos_emplace(ir::Results{r}, type::Ptr(state_type));
+    jump_params.remove_prefix(1);
+  }
+
   // TODO actually choose correctly.
-  core::FillMissingArgs(jump->params(), &args, [compiler](auto const &p) {
+  core::FillMissingArgs(jump_params, &args, [compiler](auto const &p) {
     return type::Typed(
         ir::Results{compiler->Visit(ASSERT_NOT_NULL(p.get()->init_val()),
                                     EmitValueTag{})},
@@ -66,7 +77,6 @@ JumpDispatchTable::EmitCallOneOverload(
   auto arg_results = PrepareCallArguments(
       compiler,
       jump->params().Transform([](auto const &p) { return p.type(); }), args);
-
   return ir::Inline(compiler->builder(), jump, arg_results, block_interp);
 }
 

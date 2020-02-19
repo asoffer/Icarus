@@ -97,7 +97,8 @@ void internal::OneTable::VerifyBlocks(Compiler *compiler,
 
       ASSIGN_OR(continue,  //
                 auto jump_table,
-                JumpDispatchTable::Verify(block_def->after_, {}));
+                JumpDispatchTable::Verify(scope_def_->state_type_,
+                                          block_def->after_, {}));
       bool success = blocks.emplace(&block, std::move(jump_table)).second;
       static_cast<void>(success);
       ASSERT(success == true);
@@ -107,7 +108,8 @@ void internal::OneTable::VerifyBlocks(Compiler *compiler,
         DEBUG_LOG("VerifyBlocks")("    ... result = ", fn_args);
         ASSIGN_OR(continue,  //
                   auto jump_table,
-                  JumpDispatchTable::Verify(block_def->after_, fn_args));
+                  JumpDispatchTable::Verify(scope_def_->state_type_,
+                                            block_def->after_, fn_args));
         bool success = blocks.emplace(&block, std::move(jump_table)).second;
         static_cast<void>(success);
         ASSERT(success == true);
@@ -124,7 +126,7 @@ void internal::OneTable::VerifyJumps() {
       next_types;
   for (auto const &[node, table] : blocks) {
     for (auto const &[jump, expr_data] : table.table_) {
-      auto jump_exit_paths = jump->ExtractExitPaths();
+      auto jump_exit_paths = jump->ExtractExitPaths(scope_def_->state_type_);
       for (auto const &[block_name, arg_type_calls] : jump_exit_paths) {
         auto &block_def = *ASSERT_NOT_NULL(scope_def_->block(block_name));
         for (auto const &arg_types : arg_type_calls) {
@@ -186,9 +188,12 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
     }
   }
 
-  if (not ParamsCoverArgs(
-          args, table.init_map_,
-          [](ir::Jump *jump, auto const &) { return jump->params(); })) {
+  if (not ParamsCoverArgs(args, table.init_map_,
+                          [](ir::Jump *jump, auto const &) {
+                            auto p = jump->params();
+                            if (jump->state_type()) { p.remove_prefix(1); }
+                            return p;
+                          })) {
     compiler->diag().Consume(diagnostic::ParametersDoNotCoverArguments{
         .args = args,
     });
@@ -227,7 +232,7 @@ void ScopeDispatchTable::EmitSplittingDispatch(
     // Argument preparation is done inside EmitCallOneOverload
 
     auto name_to_block = JumpDispatchTable::EmitCallOneOverload(
-        jump, compiler, args, block_interp);
+        scope_def->state_type_, jump, compiler, args, block_interp);
     auto [block, outs] =
         EmitCallOneOverload(name_to_block, scope_def, compiler, block_interp);
     if (not outs.empty()) {
@@ -292,7 +297,8 @@ void internal::OneTable::EmitCall(
       bldr.CurrentBlock() = callee_to_block[jump];
 
       auto name_to_block = JumpDispatchTable::EmitCallOneOverload(
-          jump, compiler, yield_typed_results, block_interp);
+          scope_def->state_type_, jump, compiler, yield_typed_results,
+          block_interp);
       auto [block, outs] =
           EmitCallOneOverload(name_to_block, scope_def, compiler, block_interp);
       if (not outs.empty()) {

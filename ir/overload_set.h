@@ -44,8 +44,7 @@ struct OverloadSet {
 
   std::optional<AnyFunc> Lookup(core::FnArgs<type::Type const *> const &args) {
     for (auto const &[params, fn] : fns_) {
-      if (core::IsCallable(core::ParamsRef<type::Type const *>(params), args,
-                           type::CanCast)) {
+      if (core::IsCallable(core::ParamsRef(params), args, type::CanCast)) {
         return fn;
       }
     }
