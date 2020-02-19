@@ -140,15 +140,6 @@ ir::CompiledFn *Compiler::AddFunc(
       .get();
 }
 
-ir::CompiledFn *Compiler::AddJump(
-    type::Jump const *jump_type,
-    core::Params<type::Typed<ast::Declaration const *>> params) {
-  return data_.fns_
-      .emplace_back(std::make_unique<ir::CompiledFn>(jump_type->ToFunction(),
-                                                     std::move(params)))
-      .get();
-}
-
 ir::CompiledFn Compiler::MakeThunk(ast::Expression const *expr,
                                    type::Type const *type) {
   ir::CompiledFn fn(type::Func({}, {ASSERT_NOT_NULL(type)}),
