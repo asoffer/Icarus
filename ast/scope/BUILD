@@ -1,8 +1,9 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib")
 
-cc_lib(
+cc_library(
     name = "scope",
+    hdrs = ["scope.h"],
+    srcs = ["scope.cc"],
     deps = [
         "//ast:ast_fwd",
         "//base:cast",
@@ -11,50 +12,46 @@ cc_lib(
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/types:span"
     ],
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "decl",
+    hdrs = ["decl.h"],
     deps = [":scope"],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "scope_lit",
+    hdrs = ["scope_lit.h"],
     deps = [":scope"],
-    header_only = True,
-    test_deps = None,
 )
 
 
-cc_lib(
+cc_library(
     name = "exec",
+    hdrs = ["exec.h"],
+    srcs = ["exec.cc"],
     deps = [
         ":scope",
         ":fn",
     ],
-    test_deps = None,
 )
 
 
-cc_lib(
+cc_library(
     name = "fn",
+    hdrs = ["fn.h"],
     deps = [
         ":scope",
         "@com_google_absl//absl/types:span"
     ],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "module",
+    hdrs = ["module.h"],
     deps = [
         ":fn",
         ":scope",
     ],
-    header_only = True,
-    test_deps = None,
 )

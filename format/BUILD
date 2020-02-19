@@ -1,5 +1,4 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib")
 
 cc_binary(
     name = "format",
@@ -17,13 +16,14 @@ cc_binary(
     ],
 )
 
-cc_lib(
+cc_library(
     name = "token_extractor",
+    hdrs = ["token_extractor.h"],
+    srcs = ["token_extractor.cc"],
     deps = [
         "//ast:ast",
         "//ast:ast_fwd",
         "//ast:visitor",
         "//base:debug",
     ],
-    test_deps = None,
 )

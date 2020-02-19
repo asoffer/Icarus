@@ -1,8 +1,8 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib")
 
-cc_lib(
+cc_library(
     name = "compiler",
+    srcs = ["compiler.cc"],
     deps = [
         "//base:defer",
         "//base:untyped_buffer",
@@ -15,12 +15,11 @@ cc_lib(
         "//module:module",
         "//opt",
     ],
-    no_header = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "repl",
+    srcs = ["repl.cc"],
     deps = [
         "//ast:ast",
         "//ast:expression",
@@ -36,6 +35,4 @@ cc_lib(
         "//type:function",
         "//type:tuple",
     ],
-    no_header = True,
-    test_deps = None,
 )

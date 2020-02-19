@@ -1,24 +1,21 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib")
 
-cc_lib(
+cc_library(
     name = "source",
+    hdrs = ["source.h"],
     deps = [
         "//base:cast",
         "//base:expected",
     ],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "cursor",
+    hdrs = ["cursor.h"],
     deps = [
         ":range",
         "//base:debug",
     ],
-    header_only = True,
-    test_deps = None,
 )
 
 cc_library(
@@ -74,33 +71,49 @@ cc_test(
     ],
 )
 
-cc_lib(
+cc_library(
     name = "id",
+    hdrs = ["id.h"],
+    srcs = ["id.cc"],
     deps = [],
-    test_deps = []
 )
 
-cc_lib(
+cc_test(
+    name = "id_test",
+    srcs = ["id_test.cc"],
+    deps = [
+        ":id",
+        "//test",
+    ],
+)
+
+cc_library(
     name = "repl",
+    hdrs = ["repl.h"],
     deps = [":source"],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "string",
+    hdrs = ["string.h"],
     deps = [":source"],
-    header_only = True,
-    test_deps = [],
 )
 
-cc_lib(
+cc_test(
+    name = "string_test",
+    srcs = ["string_test.cc"],
+    deps = [
+        ":string",
+        "//test",
+    ],
+)
+
+cc_library(
     name = "range",
+    hdrs = ["range.h"],
     deps = [
         "//base:debug",
         "//base:interval",
         "//base:strong_types",
     ],
-    header_only = True,
-    test_deps = None,
 )

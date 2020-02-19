@@ -1,5 +1,4 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib")
 
 cc_library(
     name = "test",
@@ -19,11 +18,10 @@ cc_library(
     testonly = True,
 )
 
-cc_lib(
+cc_library(
     name = "elements_are",
+    hdrs = ["elements_are.h"],
     deps = [],
-    header_only = True,
-    test_deps = None,
     testonly = True,
 )
 
@@ -34,16 +32,16 @@ cc_library(
     testonly = True,
 )
 
-cc_lib(
+cc_library(
     name = "ordered_elements_are",
+    hdrs = ["ordered_elements_are.h"],
     deps = [],
-    header_only = True,
-    test_deps = None,
     testonly = True,
 )
 
-cc_lib(
+cc_library(
     name = "module",
+    hdrs = ["module.h"],
     deps = [
         ":util",
         "//ast:ast",
@@ -55,13 +53,12 @@ cc_lib(
         "//frontend/source:range",
         "//module:module",
     ],
-    header_only = True,
-    test_deps = None,
     testonly = True,
 )
 
-cc_lib(
+cc_library(
     name = "util",
+    hdrs = ["util.h"],
     deps = [
         "//diagnostic/consumer:aborting",
         "//frontend:parse",
@@ -69,8 +66,6 @@ cc_lib(
         "//module:module",
         "//type:function",
     ],
-    header_only = True,
-    test_deps = None,
     testonly = True,
 )
 

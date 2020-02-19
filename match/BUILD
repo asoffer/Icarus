@@ -1,36 +1,45 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib")
 
-cc_lib(
+cc_library(
     name = "match_expr",
+    hdrs = ["match_expr.h"],
+    srcs = ["match_expr.cc"],
     deps = [
         ":binding_node",
         "//ast:ast",
         "//ast:ast_fwd",
         "//ast:visitor",
     ],
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "binding_id",
+    hdrs = ["binding_id.h"],
+    srcs = ["binding_id.cc"],
     deps = [
         "//base:guarded",
         "@com_google_absl//absl/container:node_hash_set",
         "@com_google_absl//absl/strings",
     ],
-    test_deps = [],
 )
 
-cc_lib(
+cc_test(
+    name = "binding_id_test",
+    srcs = ["binding_id_test.cc"],
+    deps = [
+        ":binding_id",
+        "//test",
+    ],
+)
+
+cc_library(
     name = "binding_node",
+    hdrs = ["binding_node.h"],
     deps = [
         ":binding_id",
         "//ast:expression",
         "//module:assign_scope",
     ],
-    header_only = True,
-    test_deps = None,
 )
 
 cc_binary(

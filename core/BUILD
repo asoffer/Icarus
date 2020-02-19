@@ -1,46 +1,58 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib")
 
-cc_lib(
+cc_library(
     name = "alignment",
+    hdrs = ["alignment.h"],
     deps = [],
-    header_only = True,
-    test_deps = None,
 )
-cc_lib(
+cc_library(
     name = "bytes",
+    hdrs = ["bytes.h"],
     deps = [],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "arch",
+    hdrs = ["arch.h"],
     deps = [
         ":alignment",
         ":bytes",
         ":type_contour",
     ],
-    header_only = True,
-    test_deps = [],
 )
 
-cc_lib(
+cc_test(
+    name = "arch_test",
+    srcs = ["arch_test.cc"],
+    deps = [
+        ":arch",
+        "//test",
+    ]
+)
+
+cc_library(
     name = "builtin",
+    hdrs = ["builtin.h"],
     textual_hdrs = ["builtin.xmacro.h"],
     deps = ["//base:debug"],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "fn_args",
+    hdrs = ["fn_args.h"],
     deps = [
         "//base:stringify",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
-    header_only = True,
-    test_deps = [],
+)
+
+cc_test(
+    name = "fn_args_test",
+    srcs = ["fn_args_test.cc"],
+    deps = [
+        ":fn_args",
+        "//test",
+    ],
 )
 
 cc_library(
@@ -82,16 +94,24 @@ cc_test(
     ],
 )
 
-cc_lib(
+cc_library(
     name = "ordered_fn_args",
+    hdrs = ["ordered_fn_args.h"],
     deps = [
         ":fn_args",
         "//base:stringify",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/types:span",
     ],
-    header_only = True,
-    test_deps = [],
+)
+
+cc_test(
+    name = "ordered_fn_args_test",
+    srcs = ["ordered_fn_args_test.cc"],
+    deps = [
+        ":ordered_fn_args",
+        "//test",
+    ],
 )
 
 cc_library(

@@ -1,5 +1,4 @@
 package(default_visibility = ["//visibility:public"]) # TODO compiler:__subpackages__"])
-load("//:defs.bzl", "cc_lib")
 
 cc_library(
     name = "jump_table_header",
@@ -155,8 +154,10 @@ cc_test(
     ],
 )
 
-cc_lib(
+cc_library(
     name = "match",
+    hdrs = ["match.h"],
+    srcs = ["match.cc"],
     deps = [
         "//ast:ast",
         "//ast:ast_fwd",
@@ -168,9 +169,16 @@ cc_lib(
         "//type:type",
         "//type:typed_value",
     ],
-    test_deps = [
+)
+
+cc_test(
+    name = "match_test",
+    srcs = ["match_test.cc"],
+    deps = [
+        ":match",
         ":parameters_and_arguments",
         "//compiler:compiler",
+        "//test",
         "//test:module",
         "//type:variant",
         "//type:function",

@@ -1,13 +1,11 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib")
 
 cc_library(name = "node_xmacro", textual_hdrs = ["node.xmacro.h"])
 
-cc_lib(
+cc_library(
     name = "ast_fwd",
+    hdrs = ["ast_fwd.h"],
     deps = [":node_xmacro"],
-    header_only = True,
-    test_deps = None,
 )
 
 cc_library(
@@ -37,44 +35,42 @@ cc_library(
     ],
 )
 
-cc_lib(
+cc_library(
     name = "expression",
+    hdrs = ["expression.h"],
     deps = [
         ":expr_ptr",
         ":hashtag",
         ":node",
     ],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "node",
+    hdrs = ["node.h"],
     deps = [
         ":visitor_base",
         "//base:cast",
         "//frontend/source:range",
     ],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "expr_ptr",
+    hdrs = ["expr_ptr.h"],
     deps = [],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "hashtag",
+    hdrs = ["hashtag.h"],
     deps = ["//base:debug"],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "overload_set",
+    hdrs = ["overload_set.h"],
+    srcs = ["overload_set.cc"],
     deps = [
         "//ast:ast",
         "//ast/scope:scope",
@@ -84,22 +80,20 @@ cc_lib(
     test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "visitor_base",
+    hdrs = ["visitor_base.h"],
     deps = [
         ":ast_fwd",
         "//base:debug",
     ],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "visitor",
+    hdrs = ["visitor.h"],
     deps = [
         ":ast",
         ":visitor_base",
     ],
-    header_only = True,
-    test_deps = None,
 )

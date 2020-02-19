@@ -1,9 +1,10 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib")
 
 # TODO handle match
-cc_lib(
+cc_library(
     name = "lex",
+    hdrs = ["lex.h"],
+    srcs = ["lex.cc"],
     deps = [
         ":lexeme",
         ":numbers",
@@ -18,7 +19,6 @@ cc_lib(
         "//type:basic_type",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
-    test_deps = None,
 )
 
 cc_binary(
@@ -48,10 +48,11 @@ cc_library(
     ],
 )
 
-cc_lib(
+cc_library(
     name = "numbers",
+    hdrs = ["numbers.h"],
+    srcs = ["numbers.cc"],
     deps = ["//base:expected"],
-    test_deps = None,
 )
 
 cc_test(
@@ -63,43 +64,38 @@ cc_test(
     ],
 )
 
-cc_lib(
+cc_library(
     name = "operators",
+    hdrs = ["operators.h"],
     textual_hdrs = ["operators.xmacro.h"],
     deps = [":tag", "//base:debug"],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "syntax",
+    hdrs = ["syntax.h"],
     textual_hdrs = ["syntax.xmacro.h"],
     deps = [":tag", "//base:debug"],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "tag",
+    hdrs = ["tag.h"],
     deps = [],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "tagged_node",
+    hdrs = ["tagged_node.h"],
     deps = [":tag", ":lexeme"],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "token",
+    hdrs = ["token.h"],
     deps = [
         ":operators",
         "//ast:node",
         "//base:debug",
     ],
-    header_only = True,
-    test_deps = None,
 )

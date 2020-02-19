@@ -1,17 +1,17 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib")
 
 cc_library(name = "type_xmacro", textual_hdrs = ["type.xmacro.h"])
 
-cc_lib(
+cc_library(
     name = "type_fwd",
+    hdrs = ["type_fwd.h"],
     deps = [":type_xmacro"],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "array",
+    hdrs = ["array.h"],
+    srcs = ["array.cc"],
     deps = [
         ":function",
         ":pointer",
@@ -25,14 +25,12 @@ cc_lib(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "callable",
+    hdrs = ["callable.h"],
     deps = [":type"],
-    header_only = True,
-    test_deps = None,
 )
 
 CONCRETE_TYPES = [
@@ -75,18 +73,21 @@ cc_test(
     ],
 )
 
-cc_lib(
+cc_library(
     name = "enum",
+    hdrs = ["enum.h"],
+    srcs = ["enum.cc"],
     deps = [
         ":type",
         ":typed_value",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "flags",
+    hdrs = ["flags.h"],
+    srcs = ["flags.cc"],
     deps = [
         ":type",
         ":typed_value",
@@ -95,11 +96,12 @@ cc_lib(
         "@com_google_absl//absl/random",
         "@com_google_absl//absl/random:distributions",
     ],
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "function",
+    hdrs = ["function.h"],
+    srcs = ["function.cc"],
     deps = [
         ":callable",
         ":typed_value",
@@ -107,11 +109,12 @@ cc_lib(
         "//core:params",
         "//base:guarded",
     ],
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "generic_struct",
+    hdrs = ["generic_struct.h"],
+    srcs = ["generic_struct.cc"],
     deps = [
         ":callable",
         ":type",
@@ -119,11 +122,12 @@ cc_lib(
         "//ast/scope:scope",
         "//ast/scope:module",
     ],
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "jump",
+    hdrs = ["jump.h"],
+    srcs = ["jump.cc"],
     deps = [
         ":type",
         ":function",
@@ -133,20 +137,22 @@ cc_lib(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
     ],
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "opaque",
+    hdrs = ["opaque.h"],
+    srcs = ["opaque.cc"],
     deps = [
         ":type",
         "//base:debug",
     ],
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "pointer",
+    hdrs = ["pointer.h"],
+    srcs = ["pointer.cc"],
     deps = [
         ":function",
         ":type",
@@ -154,36 +160,36 @@ cc_lib(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "parameter_pack",
+    hdrs = ["parameter_pack.h"],
+    srcs = ["parameter_pack.cc"],
     deps = [
         ":type",
         "//base:guarded",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "basic_type",
+    hdrs = ["basic_type.h"],
     textual_hdrs = ["primitive.xmacro.h"],
     deps = ["//base:debug"],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "primitive",
+    hdrs = ["primitive.h"],
+    srcs = ["primitive.cc"],
     textual_hdrs = ["primitive.xmacro.h"],
     deps = [
         ":type",
         ":array",
         ":pointer",
     ],
-    test_deps = None,
 )
 
 cc_library(
@@ -205,8 +211,10 @@ cc_test(
     ],
 )
 
-cc_lib(
+cc_library(
     name = "struct",
+    hdrs = ["struct.h"],
+    srcs = ["struct.cc"],
     deps = [
         ":function",
         ":pointer",
@@ -220,11 +228,12 @@ cc_lib(
         "//module:module",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "tuple",
+    hdrs = ["tuple.h"],
+    srcs = ["tuple.cc"],
     deps = [
         ":function",
         ":pointer",
@@ -234,21 +243,21 @@ cc_lib(
         "//core:arch",
         "//ir:any_func",
     ],
-    test_deps = None,
 )
 
-cc_lib(
-    name = "typed_value",
+cc_library(
+    name = "typed_value", 
+    hdrs = ["typed_value.h"],
     deps = [
         "//base:stringify",
         "@com_google_absl//absl/strings",
     ],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "type",
+    hdrs = ["type.h"],
+    srcs = ["type.cc"],
     textual_hdrs = ["primitive.xmacro.h"],
     deps = [
         ":basic_type",
@@ -264,14 +273,12 @@ cc_lib(
         "//ir/value:reg",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "util",
+    hdrs = ["util.h"],
     deps = CONCRETE_TYPES,
-    header_only = True,
-    test_deps = None,
 )
 
 cc_library(
@@ -296,22 +303,20 @@ cc_test(
     ],
 )
 
-cc_lib(
+cc_library(
     name = "visitor_base",
+    hdrs = ["visitor_base.h"],
     deps = [
         ":type_fwd",
         "//base:debug",
     ],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "visitor",
+    hdrs = ["visitor.h"],
     deps = [
         ":type",
         ":visitor_base",
     ],
-    header_only = True,
-    test_deps = None,
 )

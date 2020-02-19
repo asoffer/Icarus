@@ -1,5 +1,4 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib")
 
 cc_library(
     name = "clone",
@@ -16,11 +15,10 @@ cc_test(
     ]
 )
 
-cc_lib(
+cc_library(
     name = "debug",
+    hdrs = ["debug.h"],
     deps = [":matchers", ":log"],
-    header_only = True,
-    test_deps = None,
 )
 
 cc_library(
@@ -38,30 +36,25 @@ cc_test(
     ],
 )
 
-cc_lib(
+cc_library(
     name = "expected",
+    hdrs = ["expected.h"],
     deps = [":stringify"],
-    header_only = True,
-    test_deps = None,
 )
 
-
-cc_lib(
+cc_library(
     name = "cast",
+    hdrs = ["cast.h"],
     deps = [":debug"],
-    header_only = True,
-    test_deps = None,
 )
 
-
-cc_lib(
+cc_library(
     name = "graph",
+    hdrs = ["graph.h"],
     deps = [
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
-    header_only = True,
-    test_deps = None,
 )
  
 cc_library(
@@ -79,29 +72,28 @@ cc_test(
     ],
 )
 
-cc_lib(
+cc_library(
     name = "interval",
+    hdrs = ["interval.h"],
     deps = [":debug"],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "lazy", 
+    hdrs = ["lazy.h"],
     deps = [":debug"],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "lazy_convert",
+    hdrs = ["lazy_convert.h"],
     deps = [],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "log",
+    hdrs = ["log.h"],
+    srcs = ["log.cc"],
     deps = [
         ":guarded",
         ":stringify",
@@ -109,28 +101,33 @@ cc_lib(
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/strings",
     ],
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "macros",
+    hdrs = ["macros.h"],
     deps = [],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "matchers",
+    hdrs = ["matchers.h"],
     deps = [":tuple"],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "meta",
+    hdrs = ["meta.h"],
     deps = [],
-    header_only = True,
-    test_deps = [],
+)
+
+cc_test(
+    name = "meta_test",
+    srcs = ["meta_test.cc"],
+    deps = [
+        ":meta",
+        "//test",
+    ],
 )
 
 cc_library(
@@ -147,11 +144,10 @@ cc_test(
     ],
 )
 
-cc_lib(
+cc_library(
     name = "permutation", 
+    hdrs = ["permutation.h"],
     deps = ["@com_google_absl//absl/random"],
-    header_only = True,
-    test_deps = None,
 )
 
 cc_library(
@@ -169,47 +165,51 @@ cc_test(
     ]
 )
 
-cc_lib(
+cc_library(
     name = "scope",
+    hdrs = ["scope.h"],
     deps = [":macros"],
-    header_only = True,
-    test_deps = [],
 )
 
-cc_lib(
+cc_library(
     name = "stringify",
+    hdrs = ["stringify.h"],
     deps = [
         ":tuple",
         ":unaligned_ref",
     ],
-    header_only = True,
-    test_deps = [],
 )
 
-cc_lib(
+cc_library(
     name = "strong_types",
+    hdrs = ["strong_types.h"],
     deps = [
         ":debug",
         ":meta",
         ":stringify",
         "@com_google_absl//absl/strings",
     ],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "tag",
+    hdrs = ["tag.h"],
     deps = [],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "tuple",
+    hdrs = ["tuple.h"],
     deps = [],
-    header_only = True,
-    test_deps = [],
+)
+
+cc_test(
+    name = "tuple_test",
+    srcs = ["tuple_test.cc"],
+    deps = [
+        ":tuple",
+        "//test",
+    ],
 )
 
 cc_library(
@@ -269,17 +269,8 @@ cc_test(
     ],
 )
 
-
-cc_lib(
-    name = "util",
-    deps = [],
-    header_only = True,
-    test_deps = None,
-)
-
-cc_lib(
+cc_library(
     name = "ptr_span",
+    hdrs = ["ptr_span.h"],
     deps = [],
-    header_only = True,
-    test_deps = None,
 )

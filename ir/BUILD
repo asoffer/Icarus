@@ -1,5 +1,4 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib")
 
 cc_library(
     name = "any_func",
@@ -22,8 +21,10 @@ cc_test(
     ],
 )
 
-cc_lib(
+cc_library(
     name = "basic_block",
+    hdrs = ["basic_block.h"],
+    srcs = ["basic_block.cc"],
     deps = [
         ":byte_code_writer",
         ":instructions_base",
@@ -32,20 +33,22 @@ cc_lib(
         "//base:untyped_buffer",
         "//type:type",
     ],
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "block_def",
+    hdrs = ["block_def.h"],
+    srcs = ["block_def.cc"],
     deps = [
         ":overload_set",
         "//base:debug",
     ],
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "block_group",
+    hdrs = ["block_group.h"],
+    srcs = ["block_group.cc"],
     deps = [
         ":basic_block",
         ":stack_frame_allocations",
@@ -60,7 +63,6 @@ cc_lib(
         "//type:type_fwd",
         "//type:typed_value",
     ],
-    test_deps = None,
 )
 
 cc_library(
@@ -73,8 +75,9 @@ cc_library(
     ],
 )
 
-cc_lib(
+cc_library(
     name = "jump",
+    hdrs = ["jump.h"],
     deps = [
         ":block_group",
         "//ast:ast",
@@ -83,12 +86,12 @@ cc_lib(
         "//type:jump",
         "//type:qual_type",
     ],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "builder",
+    hdrs = ["builder.h"],
+    srcs = ["builder.cc"],
     deps = [
         ":basic_block",
         ":block_group",
@@ -104,7 +107,6 @@ cc_lib(
         "//type:util",
         "@com_google_absl//absl/types:span",
     ],
-    test_deps = None,
 )
 
 cc_library(
@@ -183,37 +185,42 @@ cc_library(
 
 # TODO now that ':builtin'; doesn't need any IR, move it up to ast and rename
 # this to ':builtin'
-cc_lib(
+cc_library(
     name = "builtin_ir",
+    hdrs = ["builtin_ir.h"],
+    srcs = ["builtin_ir.cc"],
     deps = [
         ":any_func",
         ":builder",
         ":compiled_fn",
     ],
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "components",
+    hdrs = ["components.h"],
+    srcs = ["components.cc"],
     deps = [
         ":builder",
         ":compiled_fn",
     ],
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "foreign_fn",
+    hdrs = ["foreign_fn.h"],
+    srcs = ["foreign_fn.cc"],
     deps = [
         "//base:debug",
         "//base:guarded",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "compiled_fn",
+    hdrs = ["compiled_fn.h"],
+    srcs = ["compiled_fn.cc"],
     deps = [
         ":basic_block",
         ":block_group",
@@ -227,11 +234,12 @@ cc_lib(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "inliner",
+    hdrs = ["inliner.h"],
+    srcs = ["inliner.cc"],
     deps = [
         ":basic_block",
         ":builder",
@@ -247,7 +255,6 @@ cc_lib(
         "//type:type",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
-    test_deps = None,
 )
 
 cc_library(
@@ -272,15 +279,16 @@ cc_library(
     ],
 )
 
-cc_lib(
+cc_library(
     name = "read_only_data",
+    hdrs = ["read_only_data.h"],
     deps = ["//base:untyped_buffer"],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "results",
+    hdrs = ["results.h"],
+    srcs = ["results.cc"],
     deps = [
         "//base:untyped_buffer",
         "//base:untyped_buffer_view",
@@ -289,22 +297,30 @@ cc_lib(
         "//ir/value:reg_or",
         "@com_google_absl//absl/strings",
     ],
-    test_deps = [],
 )
 
-cc_lib(
+cc_test(
+    name = "results_test",
+    srcs = ["results_test.cc"],
+    deps = [
+        ":results",
+        "//test",
+    ],
+)
+
+cc_library(
     name = "scope_def",
+    hdrs = ["scope_def.h"],
     deps = [
         ":overload_set",
         "//base:move_func",
         "//type",
     ],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "stack_frame_allocations",
+    hdrs = ["stack_frame_allocations.h"],
     deps = [
         "//base:stringify",
         "//ir/value:addr",
@@ -312,12 +328,12 @@ cc_lib(
         "//type",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "str",
+    hdrs = ["str.h"],
+    srcs = ["str.cc"],
     deps = [
         ":read_only_data",
         "//base:guarded",
@@ -325,7 +341,6 @@ cc_lib(
         "//ir/value:addr",
         "@com_google_absl//absl/container:node_hash_map",
     ],
-    test_deps = None,
 )
 
 cc_library(

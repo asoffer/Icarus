@@ -1,5 +1,4 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib")
 
 cc_library(
     name = "errors",
@@ -13,22 +12,22 @@ cc_library(
     ],
 )
 
-cc_lib(
+cc_library(
     name = "message",
+    hdrs = ["message.h"],
     deps = [
         "//frontend/source",
         "//frontend/source:range",
         "@com_google_absl//absl/strings:str_format",
     ],
-    header_only = True,
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "console_renderer",
+    hdrs = ["console_renderer.h"],
+    srcs = ["console_renderer.cc"],
     deps = [
         ":message",
         "//base:meta",
     ],
-    test_deps = None,
 )

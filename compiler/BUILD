@@ -1,5 +1,4 @@
 package(default_visibility = ["//visibility:public"])
-load("//:defs.bzl", "cc_lib")
 
 cc_library(
     name = "emit_function_call_infrastructure",
@@ -126,8 +125,10 @@ cc_library(
     ],
 )
 
-cc_lib(
+cc_library(
     name = "special_function",
+    hdrs = ["special_function.h"],
+    srcs = ["special_function.cc"],
     deps = [
         ":compiler_header",
         "//ir:any_func",
@@ -136,12 +137,13 @@ cc_lib(
         "//type:pointer",
         "//type:struct",
     ],
-    test_deps = None,
 )
 
 # TODO rename
-cc_lib(
+cc_library(
     name = "data",
+    hdrs = ["data.h"],
+    srcs = ["data.cc"],
     deps = [
         "//ast:ast",
         "//base:guarded",
@@ -161,21 +163,23 @@ cc_lib(
         "//module:pending",
         "//type:qual_type",
     ],
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "extract_jumps",
+    hdrs = ["extract_jumps.h"],
+    srcs = ["extract_jumps.cc"],
     deps = [
         "//ast:visitor",
         "//ast:ast",
         "//base:scope",
     ],
-    test_deps = None,
 )
 
-cc_lib(
+cc_library(
     name = "module",
+    hdrs = ["module.h"],
+    srcs = ["module.cc"],
     deps = [
         ":data",
         "//ast:ast",
@@ -188,7 +192,6 @@ cc_lib(
         "//module:module",
         "//type:type_fwd",
     ],
-    test_deps = None,
 )
 
 cc_library(
