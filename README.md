@@ -7,8 +7,8 @@ fast to compile, fast to run, and easy to migrate.
 
 Compiling from source requires one of the following compilers:
 
-* g++ version >=8.3.0
-* clang++ version >=9.0.0
+* g++ version >= 8.3.0
+* clang++ version >= 9.0.0
 
 You will also need [Bazel](http://bazel.build) version >= 2.0.0.
 
