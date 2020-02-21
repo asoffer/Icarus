@@ -37,7 +37,6 @@ namespace compiler {
 using ::matcher::InheritsFrom;
 
 type::QualType VerifyBody(Compiler *compiler, ast::FunctionLiteral const *node);
-void VerifyBody(Compiler *compiler, ast::Jump const *node);
 
 namespace {
 
@@ -47,8 +46,7 @@ base::move_func<void()> *DeferBody(Compiler *compiler, NodeType const *node) {
   // executed as part of work deferral of `compiler` before the compiler is
   // destroyed.
   return compiler->AddWork(node, [compiler, node]() mutable {
-    if constexpr (std::is_same_v<NodeType, ast::FunctionLiteral> or
-                  std::is_same_v<NodeType, ast::Jump>) {
+    if constexpr (std::is_same_v<NodeType, ast::FunctionLiteral>) {
       VerifyBody(compiler, node);
     }
     CompleteBody(compiler, node);
@@ -799,11 +797,11 @@ ir::Results Compiler::Visit(ast::Jump const *node, EmitValueTag) {
 }
 
 static std::vector<std::pair<ast::Expression const *, ir::Results>>
-EmitValueWithExpand(Compiler *v, base::PtrSpan<ast::Expression const> exprs) {
+EmitValueWithExpand(Compiler *c, base::PtrSpan<ast::Expression const> exprs) {
   // TODO expansion
   std::vector<std::pair<ast::Expression const *, ir::Results>> results;
   for (auto *expr : exprs) {
-    results.emplace_back(expr, v->Visit(expr, EmitValueTag{}));
+    results.emplace_back(expr, c->Visit(expr, EmitValueTag{}));
   }
   return results;
 }

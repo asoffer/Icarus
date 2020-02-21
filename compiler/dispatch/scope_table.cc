@@ -47,7 +47,7 @@ std::pair<ir::BasicBlock const *, ir::OutParams> EmitCallOneOverload(
     auto *fn_type  = fn.is_fn() ? fn.func()->type() : fn.foreign().type();
 
     std::vector<ir::Results> arg_results =
-        PrepareCallArguments(compiler, fn_type->params(), block_args);
+        PrepareCallArguments(compiler, nullptr, fn_type->params(), block_args);
 
     ir::OutParams outs = bldr.OutParams(fn_type->output());
     bldr.Call(fn, fn_type, arg_results, outs);
@@ -126,7 +126,7 @@ void internal::OneTable::VerifyJumps() {
       next_types;
   for (auto const &[node, table] : blocks) {
     for (auto const &[jump, expr_data] : table.table_) {
-      auto jump_exit_paths = jump->ExtractExitPaths(scope_def_->state_type_);
+      auto jump_exit_paths = jump->ExtractExitPaths();
       for (auto const &[block_name, arg_type_calls] : jump_exit_paths) {
         auto &block_def = *ASSERT_NOT_NULL(scope_def_->block(block_name));
         for (auto const &arg_types : arg_type_calls) {
@@ -135,9 +135,7 @@ void internal::OneTable::VerifyJumps() {
           ASSERT(maybe_fn.has_value() == true);
           ir::AnyFunc fn = *maybe_fn;
           if (not fn.is_fn()) { NOT_YET(); }
-          auto params                = fn.func()->params();
-          core::ParamsRef params_ref = params;
-          auto result                = MatchArgsToParams(params_ref, arg_types);
+          auto result = MatchArgsToParams(fn.func()->params(), arg_types);
 
           if (result) {
             next_types[block_name].push_back(fn.func()->type()->output());
@@ -176,10 +174,7 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
   table.scope_node_ = node;
   table.init_map_   = std::move(inits);
   for (auto [jump, scope] : table.init_map_) {
-    auto params                = jump->params();
-    core::ParamsRef params_ref = params;
-    if (scope->state_type_) { params_ref.remove_prefix(1); }
-    if (auto result = MatchArgsToParams(params_ref, args)) {
+    if (auto result = MatchArgsToParams(jump->params(), args)) {
       auto &one_table = table.tables_[scope];
       one_table.inits.emplace(jump, *result);
       one_table.scope_def_ = scope;
@@ -188,12 +183,9 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
     }
   }
 
-  if (not ParamsCoverArgs(args, table.init_map_,
-                          [](ir::Jump *jump, auto const &) {
-                            auto p = jump->params();
-                            if (jump->state_type()) { p.remove_prefix(1); }
-                            return p;
-                          })) {
+  if (not ParamsCoverArgs(
+          args, table.init_map_,
+          [](ir::Jump *jump, auto const &) { return jump->params(); })) {
     compiler->diag().Consume(diagnostic::ParametersDoNotCoverArguments{
         .args = args,
     });
@@ -220,7 +212,9 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
 
 void ScopeDispatchTable::EmitSplittingDispatch(
     Compiler *compiler,
-  absl::flat_hash_map<ir::ScopeDef const *, ir::LocalBlockInterpretation>const &block_interps,
+    absl::flat_hash_map<ir::ScopeDef const *, ir::Reg> const &state_regs,
+    absl::flat_hash_map<ir::ScopeDef const *,
+                        ir::LocalBlockInterpretation> const &block_interps,
     core::FnArgs<type::Typed<ir::Results>> const &args) const {
   auto &bldr           = compiler->builder();
   auto callee_to_block = bldr.AddBlocks(init_map_);
@@ -231,8 +225,12 @@ void ScopeDispatchTable::EmitSplittingDispatch(
     bldr.CurrentBlock() = callee_to_block[jump];
     // Argument preparation is done inside EmitCallOneOverload
 
+    std::optional<ir::Reg> state_reg;
+    if (auto iter = state_regs.find(scope_def); iter != state_regs.end()) {
+      state_reg = iter->second;
+    }
     auto name_to_block = JumpDispatchTable::EmitCallOneOverload(
-        scope_def->state_type_, jump, compiler, args, block_interp);
+        state_reg, jump, compiler, args, block_interp);
     auto [block, outs] =
         EmitCallOneOverload(name_to_block, scope_def, compiler, block_interp);
     if (not outs.empty()) {
@@ -248,6 +246,7 @@ void ScopeDispatchTable::EmitSplittingDispatch(
 
 void internal::OneTable::EmitCall(
     Compiler *compiler, ir::ScopeDef const *scope_def,
+    std::optional<ir::Reg> state_reg,
     ir::LocalBlockInterpretation const &block_interp) const {
   for (auto const &[node, table] : blocks) {
     auto &bldr = compiler->builder();
@@ -297,8 +296,7 @@ void internal::OneTable::EmitCall(
       bldr.CurrentBlock() = callee_to_block[jump];
 
       auto name_to_block = JumpDispatchTable::EmitCallOneOverload(
-          scope_def->state_type_, jump, compiler, yield_typed_results,
-          block_interp);
+          state_reg, jump, compiler, yield_typed_results, block_interp);
       auto [block, outs] =
           EmitCallOneOverload(name_to_block, scope_def, compiler, block_interp);
       if (not outs.empty()) {
@@ -337,19 +335,30 @@ ir::Results ScopeDispatchTable::EmitCall(
   // definition which might be callable).
   absl::flat_hash_map<ir::ScopeDef const *, ir::LocalBlockInterpretation>
       block_interps;
-  for (auto const &[scope_def, _] : tables_) {
+
+  absl::flat_hash_map<ir::ScopeDef const *, ir::Reg> state_regs;
+
+  for (auto const &[scope_def, one_table] : tables_) {
     auto [iter, success] = block_interps.emplace(
         scope_def, bldr.MakeLocalBlockInterpretation(
                        scope_node_, starting_block, landing_block));
     static_cast<void>(success);
     ASSERT(success == true);
+
+    if (scope_def->state_type_) {
+      state_regs[scope_def] =
+          compiler->builder().TmpAlloca(scope_def->state_type_);
+    }
   }
 
-  EmitSplittingDispatch(compiler, block_interps, args);
+  EmitSplittingDispatch(compiler, state_regs, block_interps, args);
 
   auto state = bldr.block_termination_state();
   for (auto const &[scope_def, one_table] : tables_) {
     one_table.EmitCall(compiler, scope_def,
+                       scope_def->state_type_
+                           ? std::optional(state_regs.find(scope_def)->second)
+                           : std::nullopt,
                        block_interps.find(scope_def)->second);
   }
 

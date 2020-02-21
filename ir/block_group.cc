@@ -6,10 +6,11 @@
 namespace ir::internal {
 
 BlockGroup::BlockGroup(
-    core::Params<type::Typed<ast::Declaration const *>> params)
+    core::Params<type::Typed<ast::Declaration const *>> params,
+    size_t num_state_args)
     : params_(std::move(params)),
-      num_regs_(params_.size()),
-      num_args_(params_.size()) {
+      num_regs_(params_.size() + num_state_args),
+      num_args_(params_.size() + num_state_args) {
   // Ensure the existence of an entry block. The entry block marks itself as
   // incoming so it is never accidentally cleaned up.
   auto *b = AppendBlock();

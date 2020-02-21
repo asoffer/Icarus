@@ -31,7 +31,13 @@ Inline(Builder &bldr, Jump *to_be_inlined,
 
   bldr.CurrentBlock() = start_block;
   size_t i            = 0;
-  for (auto const& p : to_be_inlined->type()->args()) {
+  if (auto *state_type = to_be_inlined->type()->state()) {
+    type::Apply(state_type, [&](auto tag) -> Reg {
+      using T = typename decltype(tag)::type;
+      return MakeReg(arguments[i++].get<T>(0));
+    });
+  }
+  for (auto const& p : to_be_inlined->type()->params()) {
     type::Apply(p.value, [&](auto tag) -> Reg {
       using T = typename decltype(tag)::type;
       return MakeReg(arguments[i++].get<T>(0));

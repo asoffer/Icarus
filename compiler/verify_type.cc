@@ -452,10 +452,6 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node) {
   }
 }
 
-void VerifyBody(Compiler *c, ast::Jump const *node) {
-  for (auto const *stmt : node->stmts()) { c->Visit(stmt, VerifyTypeTag{}); }
-}
-
 type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
   // Parameter types can be dependent, so we in general need to bail out after
   // any error.
@@ -1879,7 +1875,16 @@ type::QualType Compiler::Visit(ast::Label const *node, VerifyTypeTag) {
 
 type::QualType Compiler::Visit(ast::Jump const *node, VerifyTypeTag) {
   DEBUG_LOG("Jump")(node->DebugString());
+
   bool err = false;
+  type::Type const *state = nullptr;
+
+  if (node->state()) {
+    auto state_qual_type = Visit(node->state(), VerifyTypeTag{});
+    err                  = not state_qual_type.ok();
+    if (not err) { state = state_qual_type.type(); }
+  }
+
   core::Params<type::Type const *> param_types =
       node->params().Transform([&](auto const &param) {
         auto v = Visit(param.get(), VerifyTypeTag{});
@@ -1891,7 +1896,7 @@ type::QualType Compiler::Visit(ast::Jump const *node, VerifyTypeTag) {
 
   return set_result(node,
                     err ? type::QualType::Error()
-                        : type::QualType::Constant(type::Jmp(param_types)));
+                        : type::QualType::Constant(type::Jmp(state, param_types)));
 }
 
 type::QualType Compiler::Visit(ast::PrintStmt const *node, VerifyTypeTag) {
@@ -1926,11 +1931,6 @@ type::QualType Compiler::Visit(ast::YieldStmt const *node, VerifyTypeTag) {
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto quals, VerifyAndGetQuals(this, node->exprs()));
   return type::QualType(type::Void(), quals);
-}
-
-bool StartsWithState(type::Pointer const *state_type_ptr,
-                     core::Params<type::Type const *> const &params) {
-  return not params.empty() and params[0].value == state_type_ptr;
 }
 
 type::QualType Compiler::Visit(ast::ScopeLiteral const *node, VerifyTypeTag) {
@@ -1968,13 +1968,15 @@ type::QualType Compiler::Visit(ast::ScopeLiteral const *node, VerifyTypeTag) {
     if (decl->id() == "init") {
       auto *jump_type = decl_type->if_as<type::Jump>();
       if (not jump_type) { NOT_YET(); }
-      if (not StartsWithState(state_type_ptr, jump_type->params())) {
-        NOT_YET();
+      if (state_type_ptr != jump_type->state()) {
+        NOT_YET(state_type_ptr ? state_type_ptr->to_string() : "NULL", " vs ",
+                (jump_type and jump_type->state())
+                    ? jump_type->state()->to_string()
+                    : "NULL");
       }
     } else if (decl->id() == "done") {
       auto *fn_type = decl_type->if_as<type::Function>();
       if (not fn_type) { NOT_YET(); }
-      if (not StartsWithState(state_type_ptr, fn_type->params())) { NOT_YET(); }
     } else {
       // TODO
     }

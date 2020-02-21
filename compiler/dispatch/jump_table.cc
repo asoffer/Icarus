@@ -24,10 +24,7 @@ base::expected<JumpDispatchTable> JumpDispatchTable::Verify(
     // we need to handle that case.
     DEBUG_LOG("dispatch-verify")("Verifying ", jump);
 
-    auto p = jump->params();
-    if (state_type) { p.remove_prefix(1); }
-
-    auto result = MatchArgsToParams(p, args);
+    auto result = MatchArgsToParams(jump->params(), args);
     if (not result) {
       failures.emplace(jump, result.error());
     } else {
@@ -53,29 +50,23 @@ absl::flat_hash_map<
     std::string_view,
     std::pair<ir::BasicBlock *, core::FnArgs<type::Typed<ir::Results>>>>
 JumpDispatchTable::EmitCallOneOverload(
-    type::Type const *state_type, ir::Jump *jump, Compiler *compiler,
+    std::optional<ir::Reg> state_reg, ir::Jump *jump, Compiler *compiler,
     core::FnArgs<type::Typed<ir::Results>> args,
     ir::LocalBlockInterpretation const &block_interp) {
-
-  auto jump_params = jump->params();
-  if (state_type) {
-    // For stateful scopes, we stack-allocate a temporary state object and pass
-    // it through implicitly.
-    ir::Reg r = compiler->builder().TmpAlloca(state_type);
-    args.pos_emplace(ir::Results{r}, type::Ptr(state_type));
-    jump_params.remove_prefix(1);
-  }
-
   // TODO actually choose correctly.
-  core::FillMissingArgs(jump_params, &args, [compiler](auto const &p) {
-    return type::Typed(
-        ir::Results{compiler->Visit(ASSERT_NOT_NULL(p.get()->init_val()),
-                                    EmitValueTag{})},
-        p.type());
-  });
+  if (state_reg) {
+    args.pos_emplace(ir::Results{*state_reg}, jump->type()->state());
+  }
+  core::FillMissingArgs(
+      core::ParamsRef(jump->params()), &args, [compiler](auto const &p) {
+        return type::Typed(
+            ir::Results{compiler->Visit(ASSERT_NOT_NULL(p.get()->init_val()),
+                                        EmitValueTag{})},
+            p.type());
+      });
 
   auto arg_results = PrepareCallArguments(
-      compiler,
+      compiler, jump->type()->state(),
       jump->params().Transform([](auto const &p) { return p.type(); }), args);
   return ir::Inline(compiler->builder(), jump, arg_results, block_interp);
 }

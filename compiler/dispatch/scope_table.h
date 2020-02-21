@@ -29,6 +29,7 @@ struct OneTable {
   void VerifyJumps();
 
   void EmitCall(Compiler *compiler, ir::ScopeDef const *scope_def,
+                std::optional<ir::Reg> state_reg,
                 ir::LocalBlockInterpretation const &block_interp) const;
 
   absl::flat_hash_map<ir::Jump *,
@@ -63,6 +64,7 @@ struct ScopeDispatchTable {
   // for `A` and blocks associated with a scope instantiated for `B`.
   void EmitSplittingDispatch(
       Compiler *compiler,
+      absl::flat_hash_map<ir::ScopeDef const *, ir::Reg> const &state_regs,
       absl::flat_hash_map<ir::ScopeDef const *,
                           ir::LocalBlockInterpretation> const &block_interps,
       core::FnArgs<type::Typed<ir::Results>> const &args) const;

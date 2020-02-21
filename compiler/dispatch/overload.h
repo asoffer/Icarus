@@ -25,7 +25,7 @@ struct ExprData {
   core::Params<type::Typed<ast::Declaration const *>> &mutable_params() {
     return params_;
   }
-  core::ParamsRef<type::Typed<ast::Declaration const *>> params() const {
+  core::Params<type::Typed<ast::Declaration const *>> const &params() const {
     return params_;
   }
 

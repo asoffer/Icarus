@@ -54,8 +54,9 @@ std::optional<FailedMatch> MatchNamedArgsToParams(
 }  // namespace
 
 base::expected<core::Params<type::Typed<ast::Declaration const *>>, FailedMatch>
-MatchArgsToParams(core::ParamsRef<type::Typed<ast::Declaration const *>> params,
-                  core::FnArgs<type::QualType> const &args) {
+MatchArgsToParams(
+    core::Params<type::Typed<ast::Declaration const *>> const &params,
+    core::FnArgs<type::QualType> const &args) {
   if (args.size() > params.size()) { return FailedMatch{}; }
 
   core::Params<type::Typed<ast::Declaration const *>> matched_params;

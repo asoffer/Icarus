@@ -36,16 +36,17 @@ ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
   (args.Transform([](auto const &x) { return x.type()->to_string(); })
        .to_string());
 
-  core::FillMissingArgs(data.params(), &args, [compiler](auto const &p) {
-    return type::Typed(
-        ir::Results{compiler->Visit(ASSERT_NOT_NULL(p.get()->init_val()),
-                                    EmitValueTag{})},
-        p.type());
-  });
+  core::FillMissingArgs(
+      core::ParamsRef(data.params()), &args, [compiler](auto const &p) {
+        return type::Typed(
+            ir::Results{compiler->Visit(ASSERT_NOT_NULL(p.get()->init_val()),
+                                        EmitValueTag{})},
+            p.type());
+      });
 
   auto arg_results = PrepareCallArguments(
-      compiler, data.params().Transform([](auto const &p) { return p.type(); }),
-      args);
+      compiler, nullptr,
+      data.params().Transform([](auto const &p) { return p.type(); }), args);
 
   auto [out_results, out_params] = SetReturns(compiler->builder(), data, {});
   compiler->builder().Call(
@@ -72,8 +73,7 @@ base::expected<FnCallDispatchTable> FnCallDispatchTable::Verify(
     // need to handle that case.
     DEBUG_LOG("dispatch-verify")
     ("Verifying ", overload, ": ", overload->DebugString());
-    auto params = ExtractParams(compiler, overload);
-    auto result = MatchArgsToParams(params, args);
+    auto result = MatchArgsToParams(ExtractParams(compiler, overload), args);
     if (not result) {
       failures.emplace(overload, result.error());
     } else {

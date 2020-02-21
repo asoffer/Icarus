@@ -195,6 +195,7 @@ void CompleteBody(Compiler *compiler, ast::Jump const *node) {
     // TODO arguments should be renumbered to not waste space on const
     // values
     int32_t i = 0;
+    if (node->state()) { compiler->set_addr(node->state(), ir::Reg::Arg(i++)); }
     for (auto const &param : node->params()) {
       compiler->set_addr(param.value.get(), ir::Reg::Arg(i++));
     }

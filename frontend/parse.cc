@@ -1020,6 +1020,56 @@ std::unique_ptr<ast::StructLiteral> BuildStructLiteral(
                                               std::move(fields));
 }
 
+std::unique_ptr<ast::Node> BuildStatefulJump(
+    absl::Span<std::unique_ptr<ast::Node>> nodes,
+    diagnostic::DiagnosticConsumer &diag) {
+  auto const &tk = nodes[0]->as<Token>().token;
+  if (tk != "jump") {
+    diag.Consume(diagnostic::Todo{});
+    return nullptr;
+  }
+
+  SourceRange range(nodes.front()->span.begin(), nodes.back()->span.end());
+  std::vector<std::unique_ptr<ast::Declaration>> params;
+  if (nodes.size() == 6) {
+    if (nodes[2]->is<ast::CommaList>()) {
+      for (auto &expr : nodes[3]->as<ast::CommaList>().exprs_) {
+        ASSERT(expr,
+               InheritsFrom<ast::Declaration>());  // TODO handle failure
+        auto decl = move_as<ast::Declaration>(expr);
+        decl->flags() |= ast::Declaration::f_IsFnParam;
+        params.push_back(std::move(decl));
+      }
+    } else {
+      auto decl = move_as<ast::Declaration>(nodes[3]);
+      decl->flags() |= ast::Declaration::f_IsFnParam;
+      params.push_back(std::move(decl));
+    }
+  }
+
+  auto &state_node = nodes[1];
+  auto *array_expr = state_node->if_as<ast::ArrayLiteral>();
+  if (not array_expr) {
+    diag.Consume(diagnostic::Todo{});
+    return nullptr;
+  }
+  if (array_expr->size() != 1) {
+    diag.Consume(diagnostic::Todo{});
+    return nullptr;
+  }
+
+  std::unique_ptr<ast::Expression> state_expr =
+      std::move(std::move(*array_expr).extract()[0]);
+  if (not state_expr->is<ast::Declaration>()) {
+    diag.Consume(diagnostic::Todo{});
+    return nullptr;
+  }
+
+  return std::make_unique<ast::Jump>(
+      range, move_as<ast::Declaration>(state_expr), std::move(params),
+      std::move(nodes.back()->as<Statements>()).extract());
+}
+
 // TODO rename this now that it supports switch statements too.
 std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
@@ -1052,7 +1102,7 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
     }
 
     return std::make_unique<ast::Jump>(
-        std::move(span), std::move(params),
+        std::move(span), nullptr, std::move(params),
         std::move(nodes.back()->as<Statements>()).extract());
 
   } else if (tk == "scope") {
@@ -1279,6 +1329,10 @@ static std::array kRules{
               BuildParameterizedKeywordScope),
     ParseRule(expr, {kw_struct, l_paren, r_paren, braced_stmts},
               BuildParameterizedKeywordScope),
+    ParseRule(expr, {kw_struct, expr, l_paren, r_paren, braced_stmts},
+              BuildStatefulJump),
+    ParseRule(expr, {kw_struct, expr, l_paren, expr, r_paren, braced_stmts},
+              BuildStatefulJump),
     ParseRule(expr, {KW_BLOCK, braced_stmts}, BuildKWBlock),
 
     ParseRule(expr, {(op_l | op_bl | op_lt), RESERVED}, ReservedKeywords<0, 1>),

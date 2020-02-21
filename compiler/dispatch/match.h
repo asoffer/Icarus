@@ -13,10 +13,9 @@ namespace compiler {
 
 struct FailedMatch {};
 
-base::expected<core::Params<type::Typed<ast::Declaration const *>>,
-               FailedMatch>
+base::expected<core::Params<type::Typed<ast::Declaration const *>>, FailedMatch>
 MatchArgsToParams(
-    core::ParamsRef<type::Typed<ast::Declaration const *>> params,
+    core::Params<type::Typed<ast::Declaration const *>> const &params,
     core::FnArgs<type::QualType> const &args);
 
 }  // namespace compiler

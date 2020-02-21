@@ -147,16 +147,21 @@ core::Params<type::Typed<ast::Declaration const *>> ExtractParams(
 }
 
 std::vector<ir::Results> PrepareCallArguments(
-    Compiler *compiler, core::Params<type::Type const *> const &params,
+    Compiler *compiler, type::Type const *state_type,
+    core::Params<type::Type const *> const &params,
     core::FnArgs<type::Typed<ir::Results>> const &args) {
   std::vector<ir::Results> arg_results;
   arg_results.reserve(params.size());
 
   auto &bldr = compiler->builder();
   size_t i   = 0;
+  size_t j   = 0;
+  if (state_type) {
+    arg_results.push_back(PrepareOneArg(compiler, args[i++], state_type));
+  }
   DEBUG_LOG("PrepareCallArguments")(params.size(), args.pos().size(), args.named().size());
-  for (; i < args.pos().size(); ++i) {
-    arg_results.push_back(PrepareOneArg(compiler, args[i], params[i].value));
+  while (i < args.pos().size()) {
+    arg_results.push_back(PrepareOneArg(compiler, args[i++], params[j++].value));
   }
 
   for (; i < params.size(); ++i) {

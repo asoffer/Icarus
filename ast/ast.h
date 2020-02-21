@@ -923,9 +923,13 @@ struct Label : Expression {
 //  ```
 struct Jump : ScopeExpr<FnScope> {
   explicit Jump(frontend::SourceRange span,
+                std::unique_ptr<ast::Declaration> state,
                 std::vector<std::unique_ptr<Declaration>> in_params,
                 std::vector<std::unique_ptr<Node>> stmts)
-      : ScopeExpr<FnScope>(std::move(span)), stmts_(std::move(stmts)) {
+      : ScopeExpr<FnScope>(std::move(span)),
+        state_(std::move(state)),
+        stmts_(std::move(stmts)) {
+    if (state_) { state_->flags() |= Declaration::f_IsFnParam; }
     for (auto &input : in_params) {
       input->flags() |= Declaration::f_IsFnParam;
       // NOTE: This is safe because the declaration is behind a unique_ptr so
@@ -947,6 +951,8 @@ struct Jump : ScopeExpr<FnScope> {
 
   ICARUS_AST_VIRTUAL_METHODS;
 
+  Declaration const *state() const { return state_.get(); }
+  Declaration *state() { return state_.get(); }
   // TODO core::ParamsRef to erase the unique_ptr?
   using params_type = core::Params<std::unique_ptr<Declaration>>;
   params_type const &params() const { return params_; }
@@ -955,6 +961,7 @@ struct Jump : ScopeExpr<FnScope> {
   base::PtrSpan<Node const> stmts() const { return stmts_; }
 
  private:
+  std::unique_ptr<ast::Declaration> state_;
   core::Params<std::unique_ptr<ast::Declaration>> params_;
   std::vector<std::unique_ptr<Node>> stmts_;
 };
