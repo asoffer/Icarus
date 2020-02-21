@@ -28,7 +28,8 @@ namespace ir::internal {
 // to both.
 struct BlockGroup {
   explicit BlockGroup(
-      core::Params<type::Typed<ast::Declaration const *>> params);
+      core::Params<type::Typed<ast::Declaration const *>> params,
+      size_t num_state_args = 0);
 
   base::PtrSpan<BasicBlock const> blocks() const { return blocks_; }
   base::PtrSpan<BasicBlock> blocks() { return blocks_; }
@@ -47,7 +48,7 @@ struct BlockGroup {
     return b;
   }
 
-  core::ParamsRef<type::Typed<ast::Declaration const *>> params() const {
+  core::Params<type::Typed<ast::Declaration const *>> const &params() const {
     return params_;
   }
 

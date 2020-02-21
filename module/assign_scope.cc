@@ -172,6 +172,7 @@ void AssignScope::Visit(ast::Goto *node, ast::Scope *scope) {
 void AssignScope::Visit(ast::Jump *node, ast::Scope *scope) {
   node->scope_ = scope;
   node->set_body_with_parent(scope);
+  if (node->state()) { Visit(node->state(), node->body_scope()); }
   for (auto &param : node->params()) {
     Visit(param.value.get(), node->body_scope());
   }

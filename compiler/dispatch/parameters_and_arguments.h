@@ -25,15 +25,15 @@ bool ParamsCoverArgs(core::FnArgs<type::QualType> const &args,
   for (auto const &expanded_arg : expanded_fnargs) {
     DEBUG_LOG("ParamsCoverArgs")("Expansion: ", expanded_arg.to_string());
     for (auto const &[k, v] : table) {
-      static_assert(std::is_same_v<
-                    decltype(get_params(k, v)),
-                    core::ParamsRef<type::Typed<ast::Declaration const *>>>);
+      static_assert(
+          std::is_same_v<std::decay_t<decltype(get_params(k, v))>,
+                         core::Params<type::Typed<ast::Declaration const *>>>);
       auto params = get_params(k, v);
       DEBUG_LOG("ParamsCoverArgs")("Params: ", stringify(params));
 
       // TODO take constness into account for callability.
       bool callable =
-          core::IsCallable(params, expanded_arg,
+          core::IsCallable(core::ParamsRef(params), expanded_arg,
                            [](type::Type const *arg,
                               type::Typed<ast::Declaration const *> param) {
                              bool result = type::CanCast(arg, param.type());
@@ -81,7 +81,8 @@ core::Params<type::Typed<ast::Declaration const *>> ExtractParams(
 // relying on any defaulted parameters). Any such parameter should be used to
 // fill the arguments before calling this function.
 std::vector<ir::Results> PrepareCallArguments(
-    Compiler *compiler, core::Params<type::Type const *> const &params,
+    Compiler *compiler, type::Type const *state_type,
+    core::Params<type::Type const *> const &params,
     core::FnArgs<type::Typed<ir::Results>> const &args);
 
 }  // namespace compiler

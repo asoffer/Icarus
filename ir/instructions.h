@@ -502,7 +502,7 @@ struct StoreInstruction : base::Clone<StoreInstruction<T>, Instruction> {
   std::string to_string() const override {
     using base::stringify;
     return absl::StrCat(TypeToString<T>(), " store ", stringify(this->value),
-                        " -> ", stringify(location));
+                        " -> [", stringify(location), "]");
   }
 
   struct control_bits {

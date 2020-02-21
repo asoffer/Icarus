@@ -7,12 +7,21 @@
 namespace type {
 
 static base::guarded<absl::node_hash_set<Jump>> jmps_;
-Jump const *Jmp(core::Params<Type const *> const &args) {
-  return &*jmps_.lock()->emplace(args).first;
+Jump const *Jmp(type::Type const *state,
+                core::Params<Type const *> const &params) {
+  return &*jmps_.lock()->emplace(state, params).first;
 }
 
 void Jump::WriteTo(std::string *r) const {
-  absl::StrAppend(r, "jump(",
+  if (state_) {
+    absl::StrAppend(r, "jump[");
+    state_->WriteTo(r);
+    absl::StrAppend(r, "] (");
+  } else {
+    absl::StrAppend(r, "jump (");
+  }
+
+  absl::StrAppend(r, "jump (",
                   absl::StrJoin(params_, ", ",
                                 [](std::string *out, auto const &p) {
                                   if (not p.name.empty()) {

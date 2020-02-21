@@ -23,7 +23,7 @@ struct JumpDispatchTable {
   static absl::flat_hash_map<
       std::string_view,
       std::pair<ir::BasicBlock *, core::FnArgs<type::Typed<ir::Results>>>>
-  EmitCallOneOverload(type::Type const *state_type, ir::Jump *jump,
+  EmitCallOneOverload(std::optional<ir::Reg> state_reg, ir::Jump *jump,
                       Compiler *compiler,
                       core::FnArgs<type::Typed<ir::Results>> args,
                       ir::LocalBlockInterpretation const &block_interp);

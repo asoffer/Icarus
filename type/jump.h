@@ -9,7 +9,8 @@
 namespace type {
 struct Jump : public Type {
   TYPE_FNS(Jump);
-  Jump(core::Params<Type const *> const &ts) : params_(std::move(ts)) {}
+  Jump(type::Type const *state, core::Params<Type const *> const &ts)
+      : state_(state), params_(std::move(ts)) {}
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
@@ -21,21 +22,26 @@ struct Jump : public Type {
 
   template <typename H>
   friend H AbslHashValue(H h, Jump const &j) {
-    return H::combine(std::move(h), j.params_);
+    return H::combine(std::move(h), j.state_, j.params_);
   }
 
   type::Function const *ToFunction() const { return type::Func(params_, {}); }
 
   bool is_big() const override { return false; }
 
+  type::Type const *state() const { return state_; }
+
   friend bool operator==(Jump const &lhs, Jump const &rhs) {
     return lhs.params_ == rhs.params_;
   }
 
  private:
+  type::Type const *state_;
   core::Params<Type const *> params_;
 };
 
-Jump const *Jmp(core::Params<Type const *> const &args);
+Jump const *Jmp(type::Type const *state,
+                core::Params<Type const *> const &params);
+
 }  // namespace type
 #endif  // ICARUS_TYPE_JUMP_H
