@@ -11,7 +11,7 @@ cc_test(
     srcs = ["clone_test.cc"],
     deps = [
         ":clone",
-        "//test",
+        "@com_google_googletest//:gtest_main",
     ]
 )
 
@@ -126,7 +126,7 @@ cc_test(
     srcs = ["meta_test.cc"],
     deps = [
         ":meta",
-        "//test",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -140,7 +140,7 @@ cc_test(
     srcs = ["move_func_test.cc"],
     deps = [
         ":move_func",
-        "//test",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -208,7 +208,7 @@ cc_test(
     srcs = ["tuple_test.cc"],
     deps = [
         ":tuple",
-        "//test",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -223,7 +223,7 @@ cc_test(
     srcs = ["unaligned_ref_test.cc"],
     deps = [
         ":unaligned_ref",
-        "//test",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -244,7 +244,7 @@ cc_test(
     srcs = ["untyped_buffer_test.cc"],
     deps = [
         ":untyped_buffer",
-        "//test",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 

@@ -1,16 +1,17 @@
 #include "base/move_func.h"
-#include "test/catch.h"
 
-TEST_CASE("move_func") {
+#include "gtest/gtest.h"
+
+TEST(MoveFunc, Call) {
   base::move_func<int(int)> f = [](int n) { return n * n; };
-  CHECK(std::move(f)(3) == 9);
-  CHECK(f == nullptr);
+  EXPECT_EQ(std::move(f)(3), 9);
+  EXPECT_EQ(f, nullptr);
 }
 
-TEST_CASE("cast to bool") {
+TEST(MoveFunc, CastToBool) {
   base::move_func<int(int)> f = [](int n) { return n * n; };
-  CHECK(f);
+  EXPECT_TRUE(f);
   auto g = std::move(f);
-  CHECK_FALSE(f);
-  CHECK(g);
+  EXPECT_FALSE(f);
+  EXPECT_TRUE(g);
 }

@@ -1,8 +1,9 @@
 #include "base/clone.h"
-#include "test/catch.h"
 
 #include <iostream>
 #include <memory>
+
+#include "gtest/gtest.h"
 
 namespace {
 
@@ -28,7 +29,7 @@ struct Derived : base::Clone<Derived, Base> {
   int* derived_copy_counter;
 };
 
-TEST_CASE("Copy count") {
+TEST(Clone, CopyCount) {
   int base_count    = 0;
   int derived_count = 0;
   Derived d(&base_count, &derived_count);
@@ -37,11 +38,11 @@ TEST_CASE("Copy count") {
   static_cast<void>(d2);
   static_cast<void>(d3);
 
-  CHECK(base_count == 2);
-  CHECK(derived_count == 2);
+  EXPECT_EQ(base_count, 2);
+  EXPECT_EQ(derived_count, 2);
 }
 
-TEST_CASE("Clone") {
+TEST(Clone, Clone) {
   int base_count    = 0;
   int derived_count = 0;
 
@@ -51,16 +52,16 @@ TEST_CASE("Clone") {
   static_assert(std::is_same_v<decltype(p), std::unique_ptr<Base>>);
 
   auto* d_ptr = dynamic_cast<Derived*>(p.get());
-  REQUIRE(d_ptr != nullptr);
+  ASSERT_NE(d_ptr, nullptr);
 
-  CHECK(base_count == 1);
-  CHECK(derived_count == 1);
+  EXPECT_EQ(base_count, 1);
+  EXPECT_EQ(derived_count, 1);
 }
 
 struct X : base::Clone<X, void> {};
 struct Y : base::Clone<Y, X> {};
 
-TEST_CASE("Default copy exists") {
+TEST(Clone, DefaultCopyExists) {
   Y y1;
   Y y2 = y1;
   static_cast<void>(y2);
