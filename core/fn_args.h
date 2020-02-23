@@ -29,10 +29,10 @@ struct FnArgs {
       : pos_(std::move(pos)), named_(std::move(named)) {}
 
   absl::Span<T const> pos() const & { return pos_; }
-  std::vector<T> &&pos() && { return pos_; }
+  std::vector<T> &&pos() && { return std::move(pos_); }
 
   absl::flat_hash_map<StringType, T> const &named() const & { return named_; }
-  absl::flat_hash_map<StringType, T> &&named() && { return named_; }
+  absl::flat_hash_map<StringType, T> &&named() && { return std::move(named_); }
 
   template <typename... Args>
   void pos_emplace(Args &&... args) & {

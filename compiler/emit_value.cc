@@ -56,8 +56,7 @@ base::move_func<void()> *DeferBody(Compiler *compiler, NodeType const *node) {
 }  // namespace
 
 ir::Results Compiler::Visit(ast::Access const *node, EmitValueTag) {
-  auto *this_type = type_of(node);
-  if (this_type == type::Module) {
+  if (type_of(node->operand()) == type::Module) {
     // TODO we already did this evaluation in type verification. Can't we just
     // save and reuse it?
     auto decls = interpretter::EvaluateAs<module::BasicModule const *>(
@@ -70,6 +69,7 @@ ir::Results Compiler::Visit(ast::Access const *node, EmitValueTag) {
     }
   }
 
+  auto *this_type = type_of(node);
   if (this_type->is<type::Enum>()) {
     auto lit = this_type->as<type::Enum>().EmitLiteral(node->member_name());
     return ir::Results{lit};

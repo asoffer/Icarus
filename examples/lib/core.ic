@@ -35,3 +35,26 @@ while ::= scope {
 
   done ::= () -> () {}
 }
+
+#{export}
+repeat ::= scope (int64) {
+  init ::= jump [state: *int64] (n: int64) {
+    print n
+    @state = n
+    goto do() 
+  }
+
+  do ::= block {
+    before ::= () -> () {}
+    after ::= jump [state: *int64] () { 
+      @state -= 1
+      print @state
+      switch {
+        goto exit() when @state == 0
+        goto do() when @state != 0
+      }
+    }
+  }
+
+  done ::= () -> () {}
+}

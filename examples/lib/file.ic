@@ -1,40 +1,37 @@
--- ::= import "examples/lib/core.ic"
-
-C_FILE ::= 'opaque
+errno ::= import "examples/lib/errno.ic"
 
 #{export}
-File ::= struct {
-  _handle: *C_FILE
-}
+CFile ::= 'opaque
 
 #{export}
-Mode ::= flags { Read \\ Write }
-
-#{export}
-Open ::= (filename: *nat8, m: Mode) -> File {
-  fopen ::= foreign("fopen", (*nat8, *nat8) -> *C_FILE)
-
-  mode_str := switch {
-    &"r"[0]  when m == Mode.Read
-    &"w"[0]  when m == Mode.Write
-    &"r+"[0] when m == (Mode.Read | Mode.Write)
-  }
-  f: File
-  f._handle = fopen(filename, mode_str)
-  return f
-}
-
-#{export}
-ReadChar ::= (f: File) -> int32 {
-  fgetc ::= foreign("fgetc", *C_FILE -> int32)
-  n := fgetc(f._handle)
+ReadChar ::= (f: *CFile) -> int32 {
+  fgetc ::= foreign("fgetc", *CFile -> int32)
+  n := fgetc(f)
 
   return n
 }
 
-// TODO: unwrap int32 return value as an error code
 #{export}
-Close ::= (f: File) -> int32 {
-  fclose ::= foreign("fclose", *C_FILE -> int32)
-  return fclose(f._handle)
+File ::= scope(*CFile) {
+  init ::= jump [state: **CFile] (name: *nat8) {
+    fopen ::= foreign("fopen", (*nat8, *nat8) -> *CFile)
+    @state = fopen(name, &"r"[0])
+
+    e := errno.get()
+    switch {
+      goto open(@state) when e == errno.error.SUCCESS
+      goto exit()       when e != errno.error.SUCCESS
+    }
+  }
+
+  open ::= block {
+    before ::= (f: *CFile) -> *CFile { return f }
+    after ::= jump [state: **CFile] () {
+      fclose ::= foreign("fclose", *CFile -> int32)
+      fclose(@state)
+      goto exit() 
+    }
+  }
+
+  done ::= () -> () {}
 }

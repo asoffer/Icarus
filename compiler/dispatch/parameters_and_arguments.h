@@ -81,7 +81,7 @@ core::Params<type::Typed<ast::Declaration const *>> ExtractParams(
 // relying on any defaulted parameters). Any such parameter should be used to
 // fill the arguments before calling this function.
 std::vector<ir::Results> PrepareCallArguments(
-    Compiler *compiler, type::Type const *state_type,
+    Compiler *compiler, type::Type const *state_ptr_type,
     core::Params<type::Type const *> const &params,
     core::FnArgs<type::Typed<ir::Results>> const &args);
 

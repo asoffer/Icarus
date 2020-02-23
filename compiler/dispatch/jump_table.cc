@@ -55,15 +55,21 @@ JumpDispatchTable::EmitCallOneOverload(
     ir::LocalBlockInterpretation const &block_interp) {
   // TODO actually choose correctly.
   if (state_reg) {
-    args.pos_emplace(ir::Results{*state_reg}, jump->type()->state());
+    auto pos   = std::move(args).pos();
+    auto named = std::move(args).named();
+    pos.insert(pos.begin(), type::Typed<ir::Results>(ir::Results{*state_reg},
+                                                     jump->type()->state()));
+    args = core::FnArgs(std::move(pos), std::move(named));
   }
   core::FillMissingArgs(
-      core::ParamsRef(jump->params()), &args, [compiler](auto const &p) {
+      core::ParamsRef(jump->params()), &args,
+      [compiler](auto const &p) {
         return type::Typed(
             ir::Results{compiler->Visit(ASSERT_NOT_NULL(p.get()->init_val()),
                                         EmitValueTag{})},
             p.type());
-      });
+      },
+      state_reg ? 1 : 0);
 
   auto arg_results = PrepareCallArguments(
       compiler, jump->type()->state(),

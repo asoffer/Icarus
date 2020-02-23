@@ -116,10 +116,12 @@ bool IsCallable(ParamsRef<T> params, FnArgs<U> const& args, ConvertibleFn fn) {
 // For each parameter in `params` for which `args` has chosen to use the default
 // value, update `args` to contain the appropriate default value, as chosen by
 // `fn(param.value)`.
+//
+// TODO this offset is a hack to get scope state working. Simplify.
 template <typename P, typename A, typename Fn>
-void FillMissingArgs(ParamsRef<P> params, FnArgs<A>* args, Fn fn) {
+void FillMissingArgs(ParamsRef<P> params, FnArgs<A>* args, Fn fn, size_t offset = 0) {
   for (size_t i = args->pos().size(); i < params.size(); ++i) {
-    auto const& p = params[i];
+    auto const& p = params[i + offset];
     if (p.name.empty()) { continue; }
     args->named_emplace(p.name,
                         base::lazy_convert{[&]() { return fn(p.value); }});
