@@ -19,8 +19,8 @@ File ::= scope(*CFile) {
 
     e := errno.get()
     switch {
-      goto open(@state) when e == errno.error.SUCCESS
-      goto exit()       when e != errno.error.SUCCESS
+      goto open(@state)      when e == errno.error.SUCCESS
+      goto error(e) | exit() when e != errno.error.SUCCESS
     }
   }
 
@@ -30,6 +30,13 @@ File ::= scope(*CFile) {
       fclose ::= foreign("fclose", *CFile -> int32)
       fclose(@state)
       goto exit() 
+    }
+  }
+
+  error ::= block {
+    before ::= (e: errno.error) -> errno.error { return e }
+    after ::= jump [state: **CFile] () {
+      goto exit()
     }
   }
 
