@@ -6,7 +6,7 @@
 #include "absl/types/span.h"
 #include "base/untyped_buffer.h"
 #include "ir/value/addr.h"
-#include "ir/foreign_fn.h"
+#include "ir/value/foreign_fn.h"
 
 namespace interpretter {
 

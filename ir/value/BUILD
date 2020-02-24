@@ -37,6 +37,28 @@ cc_test(
 )
 
 cc_library(
+    name = "foreign_fn",
+    hdrs = ["foreign_fn.h"],
+    srcs = ["foreign_fn.cc"],
+    deps = [
+        "//base:debug",
+        "//base:guarded",
+        "//type:function",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
+
+cc_test(
+    name = "foreign_fn_test",
+    srcs = ["foreign_fn_test.cc"],
+    deps = [
+        ":foreign_fn",
+        "//type:primitive",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "label",
     hdrs = ["label.h"],
     deps = ["//base:strong_types"],

@@ -4,8 +4,8 @@ cc_library(
     name = "any_func",
     hdrs = ["any_func.h"],
     deps = [
-        ":foreign_fn",
         "//base:debug",
+        "//ir/value:foreign_fn",
     ],
 )
 
@@ -207,17 +207,6 @@ cc_library(
 )
 
 cc_library(
-    name = "foreign_fn",
-    hdrs = ["foreign_fn.h"],
-    srcs = ["foreign_fn.cc"],
-    deps = [
-        "//base:debug",
-        "//base:guarded",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-)
-
-cc_library(
     name = "compiled_fn",
     hdrs = ["compiled_fn.h"],
     srcs = ["compiled_fn.cc"],
@@ -373,8 +362,8 @@ cc_test(
     srcs = ["overload_set_test.cc"],
     deps = [
         ":any_func",
-        ":foreign_fn",
         ":overload_set",
+        "//ir/value:foreign_fn",
         "//type:type",
         "//type:primitive",
         "@com_google_googletest//:gtest_main",

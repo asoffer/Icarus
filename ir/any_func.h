@@ -6,7 +6,7 @@
 #include <ostream>
 
 #include "base/debug.h"
-#include "ir/foreign_fn.h"
+#include "ir/value/foreign_fn.h"
 
 namespace type {
 struct Function;
@@ -24,25 +24,23 @@ struct AnyFunc {
 
   AnyFunc(CompiledFn *fn = nullptr) {
     std::memcpy(&data_, &fn, sizeof(fn));
-    data_ |= 1;
     ASSERT(is_fn() == true);
   }
   AnyFunc(ForeignFn foreign) {
-    void (*fn)() = foreign.get();
     uintptr_t data;
-    std::memcpy(&data, &fn, sizeof(void (*)()));
+    std::memcpy(&data, &foreign, sizeof(void (*)()));
     constexpr uintptr_t high_bit =
         uintptr_t{1} << (std::numeric_limits<uintptr_t>::digits - 1);
     ASSERT((data & high_bit) == 0u);
     data_ = (data << uintptr_t{1});
+    data_ |= 1;
     ASSERT(is_fn() == false);
   }
 
   CompiledFn *func() const {
     ASSERT(is_fn() == true);
     CompiledFn *f;
-    uintptr_t data = data_ - 1;
-    std::memcpy(&f, &data, sizeof(CompiledFn *));
+    std::memcpy(&f, &data_, sizeof(CompiledFn *));
     return f;
   }
 
@@ -50,11 +48,11 @@ struct AnyFunc {
     ASSERT(is_fn() == false);
     uintptr_t data = data_ >> 1;
     ForeignFn f;
-    std::memcpy(&f.fn_, &data, sizeof(void *));
+    std::memcpy(&f, &data, sizeof(void *));
     return f;
   }
 
-  bool is_fn() const { return (data_ & 0x1u) == 1u; }
+  bool is_fn() const { return (data_ & 0x1u) == 0u; }
 
  private:
   uintptr_t data_;

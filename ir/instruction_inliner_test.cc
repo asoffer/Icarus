@@ -27,7 +27,7 @@ void InitBlockGroupsForTest(ir::CompiledFn *f, ir::Jump *j) {
 
 TEST_CASE("Reg") {
   ir::CompiledFn f(type::Func({}, {}), {});
-  ir::Jump j(type::Jmp({}), {});
+  ir::Jump j(type::Jmp(nullptr, {}), {});
   InitBlockGroupsForTest(&f, &j);
 
   ir::InstructionInliner i(&j, &f,
@@ -42,7 +42,7 @@ TEST_CASE("Reg") {
 
 TEST_CASE("RegOr") {
   ir::CompiledFn f(type::Func({}, {}), {});
-  ir::Jump j(type::Jmp({}), {});
+  ir::Jump j(type::Jmp(nullptr, {}), {});
   InitBlockGroupsForTest(&f, &j);
 
   ir::InstructionInliner i(&j, &f,
@@ -68,7 +68,7 @@ TEST_CASE("Container") {
   };
 
   ir::CompiledFn f(type::Func({}, {}), {});
-  ir::Jump j(type::Jmp({}), {});
+  ir::Jump j(type::Jmp(nullptr, {}), {});
   InitBlockGroupsForTest(&f, &j);
 
   ir::InstructionInliner i(&j, &f,

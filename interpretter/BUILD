@@ -82,9 +82,9 @@ cc_library(
     deps = [
         "//base:debug",
         "//base:untyped_buffer",
-        "//ir:foreign_fn",
         "//ir:read_only_data",
         "//ir/value:addr",
+        "//ir/value:foreign_fn",
         "//type:function",
         "//type:pointer",
         "//type:primitive",

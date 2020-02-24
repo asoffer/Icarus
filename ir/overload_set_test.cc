@@ -3,7 +3,7 @@
 #include <cstdio>
 
 #include "gtest/gtest.h"
-#include "ir/foreign_fn.h"
+#include "ir/value/foreign_fn.h"
 #include "type/primitive.h"
 
 namespace {

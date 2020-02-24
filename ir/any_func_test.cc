@@ -2,7 +2,7 @@
 
 #include "gtest/gtest.h"
 #include "ir/compiled_fn.h"
-#include "ir/foreign_fn.h"
+#include "ir/value/foreign_fn.h"
 #include "type/function.h"
 #include "type/type.h"
 
