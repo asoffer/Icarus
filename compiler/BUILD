@@ -65,6 +65,7 @@ cc_library(
         "//ir:str",
         "//ir:struct_field",
         "//ir/value:reg",
+        "//ir/value:string",
         "//module:module",
         "//module:pending",
         "//type:cast",

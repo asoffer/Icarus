@@ -267,10 +267,11 @@ cc_library(
         "//base:meta",
         "//base:tag",
         "//core:arch",
-        "//ir/value:addr",
         "//ir:results",
+        "//ir/value:addr",
         "//ir/value:enum_and_flags",
         "//ir/value:reg",
+        "//ir/value:string",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
 )

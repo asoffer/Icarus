@@ -788,8 +788,8 @@ struct MissingModule {
                                : absl::StrCat("\"", requestor, "\".")));
   }
 
-  std::string_view source;
-  std::string_view requestor;
+  std::string source;
+  std::string requestor;
 };
 
 struct InvalidIndexType {

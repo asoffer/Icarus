@@ -1768,13 +1768,13 @@ type::QualType Compiler::Visit(ast::Import const *node, VerifyTypeTag) {
 
   if (err) { return type::QualType::Error(); }
   // TODO storing node might not be safe.
-  auto src = interpretter::EvaluateAs<std::string_view>(
+  auto src = interpretter::EvaluateAs<ir::String>(
       MakeThunk(node->operand(), type::ByteView));
   // TODO source name?
 
-  frontend::FileName file_name{std::string(src)};
+  frontend::FileName file_name{src.get()};
   ASSIGN_OR(diag().Consume(diagnostic::MissingModule{
-      .source    = src,
+      .source    = src.get(),
       .requestor = "TODO source",
   });
             return type::QualType::Error(),  //
@@ -1939,7 +1939,6 @@ type::QualType Compiler::Visit(ast::ScopeLiteral const *node, VerifyTypeTag) {
   if (node->state_type()) {
     type::QualType state_qual_type = Visit(node->state_type(), VerifyTypeTag{});
     if (state_qual_type != type::QualType(type::Type_, type::Quals::Const())) {
-      DEBUG_LOG()(state_qual_type);
       // TODO check for non-const vs. not a type.
       diag().Consume(diagnostic::NonTypeScopeState{
           .type  = state_qual_type.type(),

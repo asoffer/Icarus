@@ -4,6 +4,7 @@
 #include "base/untyped_buffer.h"
 
 namespace ir {
+// TODO Access to this is thread compatible but we have no external locks to take!
 inline base::untyped_buffer ReadOnlyData;
 }  // namespace ir
 

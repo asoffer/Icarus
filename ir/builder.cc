@@ -136,8 +136,7 @@ void Builder::Copy(type::Type const *t, Reg from, RegOr<Addr> to) {
   CurrentBlock()->instructions_.push_back(std::move(inst));
 }
 
-type::Typed<Reg> Builder::LoadSymbol(std::string_view name,
-                                     type::Type const *type) {
+type::Typed<Reg> Builder::LoadSymbol(String name, type::Type const *type) {
   auto inst   = std::make_unique<LoadSymbolInstruction>(name, type);
   auto result = inst->result = CurrentGroup()->Reserve();
   CurrentBlock()->instructions_.push_back(std::move(inst));
@@ -168,16 +167,16 @@ base::Tagged<Addr, Reg> Builder::PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
   return result;
 }
 
-RegOr<int64_t> Builder::ByteViewLength(RegOr<std::string_view> val) {
-  if (not val.is_reg()) { return val.value().size(); }
+RegOr<int64_t> Builder::ByteViewLength(RegOr<ir::String> val) {
+  if (not val.is_reg()) { return val.value().get().size(); }
   auto inst   = std::make_unique<ByteViewLengthInstruction>(val.reg());
   auto result = inst->result = CurrentGroup()->Reserve();
   CurrentBlock()->instructions_.push_back(std::move(inst));
   return result;
 }
 
-RegOr<Addr> Builder::ByteViewData(RegOr<std::string_view> val) {
-  if (not val.is_reg()) { NOT_YET(); }
+RegOr<Addr> Builder::ByteViewData(RegOr<ir::String> val) {
+  if (not val.is_reg()) { return val.value().addr(); }
   auto inst   = std::make_unique<ByteViewDataInstruction>(val.reg());
   auto result = inst->result = CurrentGroup()->Reserve();
   CurrentBlock()->instructions_.push_back(std::move(inst));

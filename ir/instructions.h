@@ -15,9 +15,10 @@
 #include "ir/instruction_op_codes.h"
 #include "ir/instructions_base.h"
 #include "ir/out_params.h"
-#include "ir/value/reg_or.h"
 #include "ir/struct_field.h"
 #include "ir/value/enum_and_flags.h"
+#include "ir/value/reg_or.h"
+#include "ir/value/string.h"
 #include "type/array.h"
 #include "type/enum.h"
 #include "type/flags.h"
@@ -52,7 +53,7 @@ constexpr uint8_t PrimitiveIndex() {
     return 0x0d;
   } else if constexpr (std::is_same_v<T, bool>) {
     return 0x0e;
-  } else if constexpr (std::is_same_v<T, std::string_view>) {
+  } else if constexpr (std::is_same_v<T, ir::String>) {
     return 0x0f;
   } else if constexpr (std::is_same_v<T, AnyFunc>) {
     return 0x10;
@@ -1260,12 +1261,12 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
 
 struct LoadSymbolInstruction : base::Clone<LoadSymbolInstruction, Instruction> {
   static constexpr cmd_index_t kIndex = internal::kLoadSymbolInstructionNumber;
-  LoadSymbolInstruction(std::string_view name, type::Type const* type)
+  LoadSymbolInstruction(String name, type::Type const* type)
       : name(name), type(type) {}
   ~LoadSymbolInstruction() override {}
 
   std::string to_string() const override {
-    return absl::StrCat("load-symbol ", name, ": ", type->to_string());
+    return absl::StrCat("load-symbol ", name.get(), ": ", type->to_string());
   }
 
   void WriteByteCode(ByteCodeWriter* writer) const override {
@@ -1279,7 +1280,7 @@ struct LoadSymbolInstruction : base::Clone<LoadSymbolInstruction, Instruction> {
     inliner.Inline(result);
   }
 
-  std::string_view name;
+  String name;
   type::Type const* type;
   Reg result;
 };

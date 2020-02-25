@@ -391,8 +391,8 @@ struct Builder {
   base::Tagged<Addr, Reg> PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
                                   type::Pointer const* t);
   // TODO should this be unsigned?
-  RegOr<int64_t> ByteViewLength(RegOr<std::string_view> val);
-  RegOr<Addr> ByteViewData(RegOr<std::string_view> val);
+  RegOr<int64_t> ByteViewLength(RegOr<ir::String> val);
+  RegOr<Addr> ByteViewData(RegOr<ir::String> val);
 
   // Type construction commands
   RegOr<type::Function const*> Arrow(
@@ -418,8 +418,9 @@ struct Builder {
     if constexpr (IsRegOr<T>::value) {
       auto inst = std::make_unique<PrintInstruction<typename T::type>>(r);
       CurrentBlock()->instructions_.push_back(std::move(inst));
-    } else if constexpr (std::is_same_v<T, char const*>) {
-      Print(RegOr<std::string_view>(r));
+    } else if constexpr (std::is_same_v<T, char const*> or
+                         std::is_same_v<T, std::string_view>) {
+      Print(RegOr<ir::String>(r));
     } else {
       Print(RegOr<T>(r));
     }
@@ -440,7 +441,7 @@ struct Builder {
     }
   }
 
-  type::Typed<Reg> LoadSymbol(std::string_view name, type::Type const* type);
+  type::Typed<Reg> LoadSymbol(String name, type::Type const* type);
 
   // Low-level size/alignment commands
   base::Tagged<core::Alignment, Reg> Align(RegOr<type::Type const*> r);

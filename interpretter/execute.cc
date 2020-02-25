@@ -302,8 +302,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
                        std::is_same_v<Inst, ir::PrintInstruction<ir::Addr>> or
                        std::is_same_v<
                            Inst, ir::PrintInstruction<type::Type const *>> or
-                       std::is_same_v<Inst,
-                                      ir::PrintInstruction<std::string_view>>) {
+                       std::is_same_v<Inst, ir::PrintInstruction<ir::String>>) {
     using type  = typename Inst::type;
     bool is_reg = iter->read<bool>();
     if constexpr (std::is_same_v<type, ::type::Type const *>) {
@@ -664,7 +663,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
       CallForeignFn(f.foreign(), call_buf, return_slots, &ctx->stack_);
     }
   } else if constexpr (std::is_same_v<Inst, ir::LoadSymbolInstruction>) {
-    std::string_view name  = iter->read<std::string_view>();
+    std::string name       = iter->read<ir::String>().get().get();
     type::Type const *type = iter->read<type::Type const *>();
     ir::Reg reg            = iter->read<ir::Reg>();
 
@@ -894,7 +893,7 @@ constexpr auto kInstructions = std::array{
     ExecuteAdHocInstruction<ir::PrintEnumInstruction>,
     ExecuteAdHocInstruction<ir::PrintFlagsInstruction>,
     ExecuteAdHocInstruction<ir::PrintInstruction<bool>>,
-    ExecuteAdHocInstruction<ir::PrintInstruction<std::string_view>>,
+    ExecuteAdHocInstruction<ir::PrintInstruction<ir::String>>,
     ExecuteAdHocInstruction<ir::StoreInstruction<uint8_t>>,
     ExecuteAdHocInstruction<ir::StoreInstruction<int8_t>>,
     ExecuteAdHocInstruction<ir::StoreInstruction<uint16_t>>,
@@ -910,7 +909,7 @@ constexpr auto kInstructions = std::array{
     ExecuteAdHocInstruction<ir::StoreInstruction<ir::EnumVal>>,
     ExecuteAdHocInstruction<ir::StoreInstruction<ir::FlagsVal>>,
     ExecuteAdHocInstruction<ir::StoreInstruction<bool>>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<std::string_view>>,
+    ExecuteAdHocInstruction<ir::StoreInstruction<ir::String>>,
     ExecuteAdHocInstruction<ir::PhiInstruction<uint8_t>>,
     ExecuteAdHocInstruction<ir::PhiInstruction<int8_t>>,
     ExecuteAdHocInstruction<ir::PhiInstruction<uint16_t>>,
@@ -926,7 +925,7 @@ constexpr auto kInstructions = std::array{
     ExecuteAdHocInstruction<ir::PhiInstruction<ir::EnumVal>>,
     ExecuteAdHocInstruction<ir::PhiInstruction<ir::FlagsVal>>,
     ExecuteAdHocInstruction<ir::PhiInstruction<bool>>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<std::string_view>>,
+    ExecuteAdHocInstruction<ir::PhiInstruction<ir::String>>,
     ExecuteAdHocInstruction<ir::SetReturnInstruction<uint8_t>>,
     ExecuteAdHocInstruction<ir::SetReturnInstruction<int8_t>>,
     ExecuteAdHocInstruction<ir::SetReturnInstruction<uint16_t>>,
@@ -942,7 +941,7 @@ constexpr auto kInstructions = std::array{
     ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::EnumVal>>,
     ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::FlagsVal>>,
     ExecuteAdHocInstruction<ir::SetReturnInstruction<bool>>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<std::string_view>>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::String>>,
     ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::AnyFunc>>,
     ExecuteAdHocInstruction<ir::SetReturnInstruction<core::Bytes>>,
     ExecuteAdHocInstruction<ir::SetReturnInstruction<core::Alignment>>,

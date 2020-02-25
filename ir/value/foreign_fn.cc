@@ -2,6 +2,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "base/debug.h"
+#include "base/flyweight_map.h"
 #include "base/guarded.h"
 
 namespace ir {
@@ -43,38 +44,19 @@ struct ForeignFnData {
   }
 };
 
-struct FlyweightMap {
- public:
-  size_t get(void (*fn)(), type::Function const *t) {
-    auto [iter, inserted] =
-        index_.emplace(ForeignFnData{.fn = fn, .type = t}, index_.size());
-    if (inserted) { data_.push_back(ForeignFnData{.fn = fn, .type = t}); }
-    return iter->second;
-  }
-
-  type::Function const *type(size_t id) const { return data_[id].type; }
-
-  using void_fn_ptr = void (*)();
-  void_fn_ptr fn(size_t id) const { return data_[id].fn; }
-
- private:
-  absl::flat_hash_map<ForeignFnData, size_t> index_;
-  std::vector<ForeignFnData> data_;
-};
-
-base::guarded<FlyweightMap> foreign_fns;
+base::guarded<base::flyweight_map<ForeignFnData>> foreign_fns;
 
 }  // namespace
 
 ForeignFn::ForeignFn(void (*fn)(), type::Function const *t)
-    : id_(foreign_fns.lock()->get(fn, t)) {}
+    : id_(foreign_fns.lock()->get(ForeignFnData{fn, t})) {}
 
 type::Function const *ForeignFn::type() const {
-  return foreign_fns.lock()->type(id_);
+  return foreign_fns.lock()->get(id_).type;
 }
 
 ForeignFn::void_fn_ptr ForeignFn::get() const {
-  return foreign_fns.lock()->fn(id_);
+  return foreign_fns.lock()->get(id_).fn;
 }
 
 }  // namespace ir

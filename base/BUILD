@@ -1,6 +1,12 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "cast",
+    hdrs = ["cast.h"],
+    deps = [":debug"],
+)
+
+cc_library(
     name = "clone",
     hdrs = ["clone.h"],
     deps = []
@@ -43,9 +49,12 @@ cc_library(
 )
 
 cc_library(
-    name = "cast",
-    hdrs = ["cast.h"],
-    deps = [":debug"],
+    name = "flyweight_map",
+    hdrs =["flyweight_map.h"],
+    deps = [
+        ":debug",
+        "@com_google_absl//absl/container:node_hash_map",
+    ],
 )
 
 cc_library(

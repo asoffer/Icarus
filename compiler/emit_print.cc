@@ -16,57 +16,7 @@ namespace compiler {
 
 void Compiler::Visit(type::Array const *a, ir::Results const &val,
                      EmitPrintTag) {
-  a->repr_func_.init([=]() {
-    // TODO special function?
-    auto const *fn_type = type::Func(
-        core::Params<type::Type const *>{core::AnonymousParam(a)}, {});
-    ir::CompiledFn *fn  = AddFunc(fn_type, fn_type->AnonymousParams());
-
-    ICARUS_SCOPE(ir::SetCurrent(fn)) {
-      builder().CurrentBlock() = fn->entry();
-
-      builder().Print("[");
-      auto *data_ptr_type = type::Ptr(a->data_type);
-      auto ptr     = builder().PtrIncr(ir::Reg::Arg(0), 0, data_ptr_type);
-      auto end_ptr = builder().PtrIncr(ptr, a->len, data_ptr_type);
-
-      auto *loop_body  = builder().AddBlock();
-      auto *land_block = builder().AddBlock();
-      auto *cond_block = builder().AddBlock();
-
-      builder().UncondJump(cond_block);
-
-      builder().CurrentBlock() = cond_block;
-      auto *phi                = builder().PhiInst<ir::Addr>();
-      auto *sep                = builder().PhiInst<std::string_view>();
-      builder().CondJump(
-          builder().Eq(ir::RegOr<ir::Addr>(phi->result), end_ptr), land_block,
-          loop_body);
-
-      builder().CurrentBlock() = loop_body;
-      builder().Print(ir::RegOr<std::string_view>(sep->result));
-      Visit(a->data_type, ir::Results{ir::PtrFix(phi->result, a->data_type)},
-            EmitPrintTag{});
-
-      ir::Reg next = builder().PtrIncr(phi->result, 1, data_ptr_type);
-      builder().UncondJump(cond_block);
-
-      phi->add(fn->entry(), ptr);
-      phi->add(builder().CurrentBlock(), next);
-      sep->add(fn->entry(), std::string_view(""));
-      sep->add(builder().CurrentBlock(), std::string_view(", "));
-
-      builder().CurrentBlock() = land_block;
-
-      builder().Print("]");
-      builder().ReturnJump();
-    }
-    fn->WriteByteCode();
-    return fn;
-  });
-
-  builder().Call(ir::AnyFunc{a->repr_func_.get()}, a->repr_func_.get()->type_,
-                 {val}, ir::OutParams());
+  NOT_YET("About to remove this");
 }
 
 void Compiler::Visit(type::Enum const *t, ir::Results const &val,
@@ -110,31 +60,14 @@ void Compiler::Visit(type::Primitive const *t, ir::Results const &val,
     case type::BasicType::Label:
     case type::BasicType::Block: UNREACHABLE();
     case type::BasicType::ByteView:
-      builder().Print(val.get<std::string_view>(0));
+      builder().Print(val.get<ir::String>(0));
       break;
   }
 }
 
 void Compiler::Visit(type::Tuple const *t, ir::Results const &val,
                      EmitPrintTag) {
-  auto reg = val.get<ir::Reg>(0);
-  builder().Print("(");
-  for (int i = 0; i < static_cast<int>(t->entries_.size()) - 1; ++i) {
-    Visit(t->entries_[i],
-          ir::Results{
-              ir::PtrFix(builder().Field(reg, t, i).get(), t->entries_[i])},
-          EmitPrintTag{});
-    builder().Print(", ");
-  }
-
-  if (not t->entries_.empty()) {
-    Visit(t->entries_.back(),
-          ir::Results{
-              ir::PtrFix(builder().Field(reg, t, t->entries_.size() - 1).get(),
-                         t->entries_.back())},
-          EmitPrintTag{});
-  }
-  builder().Print(")");
+  NOT_YET("About to remove this");
 }
 
 void Compiler::Visit(type::Variant const *t, ir::Results const &val,

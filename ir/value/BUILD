@@ -42,6 +42,7 @@ cc_library(
     srcs = ["foreign_fn.cc"],
     deps = [
         "//base:debug",
+        "//base:flyweight_map",
         "//base:guarded",
         "//type:function",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -96,6 +97,26 @@ cc_test(
     deps = [
         ":reg_or",
         "//base:stringify",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "string",
+    hdrs = ["string.h"],
+    srcs = ["string.cc"],
+    deps = [
+        ":addr",
+        "//ir:read_only_data",
+        "//ir:str",
+    ],
+)
+
+cc_test(
+    name = "string_test",
+    srcs = ["string_test.cc"],
+    deps = [
+        ":string",
         "@com_google_googletest//:gtest_main",
     ],
 )

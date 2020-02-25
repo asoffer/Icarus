@@ -9,10 +9,11 @@
 #include "base/meta.h"
 #include "base/tag.h"
 #include "core/arch.h"
-#include "ir/value/addr.h"
 #include "ir/results.h"
-#include "ir/value/reg.h"
+#include "ir/value/addr.h"
 #include "ir/value/enum_and_flags.h"
+#include "ir/value/reg.h"
+#include "ir/value/string.h"
 #include "type/basic_type.h"
 #include "type/visitor_base.h"
 
@@ -117,7 +118,7 @@ bool Compare(::type::Type const *t) {
     return t == ::type::Type_;
   } else if constexpr (std::is_same_v<T, ::type::Struct const *>) {
     return t->is<::type::Struct>();
-  } else if constexpr (std::is_same_v<T, std::string_view>) {
+  } else if constexpr (std::is_same_v<T, ir::String>) {
     return t == type::ByteView;
   } else if constexpr (std::is_same_v<T, ir::EnumVal>) {
     return t->is<::type::Enum>();
@@ -175,7 +176,7 @@ template <typename Fn>
 auto Apply(Type const *t, Fn &&fn) {
   return ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                     uint32_t, uint64_t, float, double, type::Type const *,
-                    ir::EnumVal, ir::FlagsVal, ir::Addr, std::string_view,
+                    ir::EnumVal, ir::FlagsVal, ir::Addr, ir::String,
                     module::BasicModule *, ir::ScopeDef *, ir::AnyFunc,
                     ir::BlockDef const *>(t, std::forward<Fn>(fn));
 }

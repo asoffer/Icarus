@@ -171,6 +171,7 @@ cc_library(
         "//ast/scope",
         "//base:clone",
         "//ir/value:reg_or",
+        "//ir/value:string",
         "//type",
         "//type:array",
         "//type:enum",

@@ -79,7 +79,7 @@ ir::Results Compiler::Visit(ast::Access const *node, EmitValueTag) {
   } else if (type_of(node->operand()) == type::ByteView) {
     ASSERT(node->member_name() == "length");
     return ir::Results{builder().ByteViewLength(
-        Visit(node->operand(), EmitValueTag{}).get<std::string_view>(0))};
+        Visit(node->operand(), EmitValueTag{}).get<ir::String>(0))};
   } else {
     auto reg = Visit(node->operand(), EmitRefTag{})[0];
     auto *t  = type_of(node->operand());
@@ -431,7 +431,7 @@ ir::Results EmitBuiltinCall(
     core::FnArgs<ast::Expression const *, std::string_view> const &args) {
   switch (callee->value()) {
     case core::Builtin::Foreign: {
-      auto name = interpretter::EvaluateAs<std::string_view>(
+      auto name = interpretter::EvaluateAs<ir::String>(
           c->MakeThunk(args.at(0), type::ByteView));
       auto *foreign_type = interpretter::EvaluateAs<type::Type const *>(
           c->MakeThunk(args.at(1), type::Type_));
@@ -734,7 +734,7 @@ ir::Results Compiler::Visit(ast::Import const *node, EmitValueTag) {
 ir::Results Compiler::Visit(ast::Index const *node, EmitValueTag) {
   if (type_of(node->lhs()) == type::ByteView) {
     auto data = builder().ByteViewData(
-        Visit(node->lhs(), EmitValueTag{}).get<std::string_view>(0));
+        Visit(node->lhs(), EmitValueTag{}).get<ir::String>(0));
     auto addr = builder().PtrIncr(
         data, Visit(node->rhs(), EmitValueTag{}).get<int64_t>(0),
         type::Ptr(type::Nat8));

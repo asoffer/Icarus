@@ -20,12 +20,13 @@
 #include "base/ptr_span.h"
 #include "core/builtin.h"
 #include "core/fn_args.h"
-#include "core/params.h"
 #include "core/ordered_fn_args.h"
+#include "core/params.h"
 #include "frontend/lex/operators.h"
-#include "ir/value/addr.h"
 #include "ir/results.h"
+#include "ir/value/addr.h"
 #include "ir/value/label.h"
+#include "ir/value/string.h"
 #include "type/basic_type.h"
 
 namespace ast {
@@ -1266,7 +1267,7 @@ struct Terminal : Expression {
       case BasicType::Nat64: return ir::Results{u64_};
       case BasicType::Float32: return ir::Results{f32_};
       case BasicType::Float64: return ir::Results{f64_};
-      case BasicType::ByteView: return ir::Results{sv_};
+      case BasicType::ByteView: return ir::Results{ir::String(sv_)};
       case BasicType::Bool: return ir::Results{b_};
       case BasicType::Type_: return ir::Results{type::Prim(t_)};
       case BasicType::NullPtr: return ir::Results{addr_};

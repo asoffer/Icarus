@@ -30,6 +30,7 @@ cc_library(
         "//frontend/lex:operators",
         "//ir/value:addr",
         "//ir/value:label",
+        "//ir/value:string",
         "//ir:results",
         "//type:basic_type",
     ],

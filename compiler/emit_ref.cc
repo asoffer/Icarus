@@ -69,10 +69,13 @@ std::vector<ir::RegOr<ir::Addr>> Compiler::Visit(ast::Index const *node,
     // entirely.
     auto index =
         ir::CastTo<int64_t>(rhs_type, Visit(node->rhs(), EmitValueTag{}));
-    return {builder().PtrIncr(ir::GetString(Visit(node->lhs(), EmitValueTag{})
-                                                .get<std::string_view>(0)
-                                                .value()),
-                              index, type::Ptr(type::Nat8))};
+    auto str = Visit(node->lhs(), EmitValueTag{}).get<ir::String>(0);
+    if (str.is_reg()) {
+      return {builder().PtrIncr(str.reg(), index, type::Ptr(type::Nat8))};
+    } else {
+      return {
+          builder().PtrIncr(str.value().addr(), index, type::Ptr(type::Nat8))};
+    }
   } else if (auto *tup = lhs_type->if_as<type::Tuple>()) {
     auto index =
         ir::CastTo<int64_t>(
