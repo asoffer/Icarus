@@ -224,7 +224,7 @@ std::string_view TypeToString() {
     return "float32";
   } else if constexpr (std::is_same_v<T, double>) {
     return "float64";
-  } else if constexpr (std::is_same_v<T, std::string_view>) {
+  } else if constexpr (std::is_same_v<T, String>) {
     return "bytes";
   } else if constexpr (std::is_same_v<T, EnumVal>) {
     return "enum";
@@ -232,7 +232,7 @@ std::string_view TypeToString() {
     return "flags";
   } else if constexpr (std::is_same_v<T, type::Type const*>) {
     return "type";
-  } else if constexpr (std::is_same_v<T, ir::Addr>) {
+  } else if constexpr (std::is_same_v<T, Addr>) {
     return "addr";
   } else {
     DEBUG_LOG()(typeid(T).name());
@@ -466,7 +466,7 @@ struct LeInstruction
 struct LoadInstruction : base::Clone<LoadInstruction, Instruction> {
   static constexpr cmd_index_t kIndex = internal::kLoadInstructionNumber;
 
-  explicit LoadInstruction(Reg addr, uint16_t num_bytes)
+  explicit LoadInstruction(RegOr<Addr> addr, uint16_t num_bytes)
       : num_bytes(num_bytes), addr(addr) {}
   ~LoadInstruction() override {}
 
@@ -478,7 +478,8 @@ struct LoadInstruction : base::Clone<LoadInstruction, Instruction> {
   void WriteByteCode(ByteCodeWriter* writer) const override {
     writer->Write(kIndex);
     writer->Write(num_bytes);
-    writer->Write(addr);
+    writer->Write(addr.is_reg());
+    addr.apply([&](auto v) { writer->Write(v); });
     writer->Write(result);
   }
 
@@ -488,7 +489,8 @@ struct LoadInstruction : base::Clone<LoadInstruction, Instruction> {
   }
 
   uint16_t num_bytes;
-  Reg addr, result;
+  RegOr<Addr> addr;
+  Reg result;
 };
 
 template <typename T>

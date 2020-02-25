@@ -1141,7 +1141,7 @@ ir::Results Compiler::Visit(ast::Unop const *node, EmitValueTag) {
     case frontend::Operator::At: {
       auto *t = type_of(node);
       return ir::Results{
-          ir::Load(Visit(node->operand(), EmitValueTag{}).get<ir::Reg>(0), t)};
+          ir::Load(Visit(node->operand(), EmitValueTag{}).get<ir::Addr>(0), t)};
     }
     case frontend::Operator::Needs: {
       NOT_YET();

@@ -196,7 +196,7 @@ void Compiler::Visit(type::Primitive const *t, ir::RegOr<ir::Addr> to,
     case type::BasicType::Float32: ir::Store(from->get<float>(0), to); break;
     case type::BasicType::Float64: ir::Store(from->get<double>(0), to); break;
     case type::BasicType::ByteView:
-      ir::Store(ir::String(from->get<std::string_view>(0).value()), to);
+      ir::Store(from->get<ir::String>(0), to);
       break;
     default: UNREACHABLE();
   }

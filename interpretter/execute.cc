@@ -1019,7 +1019,8 @@ void ExecutionContext::ExecuteBlocks(absl::Span<ir::Addr const> ret_slots) {
       } break;
       case ir::LoadInstruction::kIndex: {
         uint16_t num_bytes = iter.read<uint16_t>();
-        ir::Addr addr      = resolve<ir::Addr>(iter.read<ir::Reg>());
+        bool is_reg        = iter.read<bool>();
+        ir::Addr addr      = ReadAndResolve<ir::Addr>(is_reg, &iter, this);
         auto result_reg    = iter.read<ir::Reg>().get();
         DEBUG_LOG("load-instruction")(num_bytes, " ", addr, " ", result_reg);
         switch (addr.kind()) {

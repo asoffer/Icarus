@@ -600,17 +600,21 @@ base::Tagged<T, Reg> Load(RegOr<Addr> addr) {
 
   // TODO Just take a Reg. RegOr<Addr> is overkill and not possible because
   // constants don't have addresses.
-  ASSERT(addr.is_reg() == true);
-  auto& cache_results = blk.storage_cache_[addr.reg()];
-  if (not cache_results.empty()) {
-    // TODO may not be Reg. could be anything of the right type.
-    return cache_results.get<Reg>(0);
+  Results* cache_results = nullptr;
+  if (addr.is_reg()) {
+    cache_results = &blk.storage_cache_[addr.reg()];
+    if (not cache_results->empty()) {
+      // TODO may not be Reg. could be anything of the right type.
+      return cache_results->get<Reg>(0);
+    }
   }
 
-  auto inst   = std::make_unique<LoadInstruction>(addr.reg(),
-                                                core::Bytes::Get<T>().value());
+  auto inst =
+      std::make_unique<LoadInstruction>(addr, core::Bytes::Get<T>().value());
   auto result = inst->result = GetBuilder().CurrentGroup()->Reserve();
-  cache_results.append(result);
+
+  if (cache_results) { cache_results->append(result); }
+
   blk.instructions_.push_back(std::move(inst));
   return result;
 }
@@ -621,8 +625,8 @@ inline Reg Load(RegOr<Addr> r, type::Type const* t) {
   if (t->is<type::Function>()) { return Load<AnyFunc>(r); }
   return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
                           uint16_t, uint32_t, uint64_t, float, double,
-                          type::Type const*, EnumVal, FlagsVal, Addr,
-                          std::string_view, AnyFunc>(t, [&](auto tag) -> Reg {
+                          type::Type const*, EnumVal, FlagsVal, Addr, String,
+                          AnyFunc>(t, [&](auto tag) -> Reg {
     using T = typename decltype(tag)::type;
     return Load<T>(r);
   });
