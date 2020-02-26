@@ -1,16 +1,18 @@
 -- ::= import "examples/lib/core.ic"
+io ::= import "examples/lib/io.ic"
 
 i := 0
 while (i < 100) do {
   if (i % 15 == 0) then {
-    print "FizzBuzz\n"
+    io.Print("FizzBuzz\n")
   } else if (i % 3 == 0) then {
-    print "Fizz\n"
+    io.Print("Fizz\n")
   } else if (i % 5 == 0) then {
-    print "Buzz\n"
+    io.Print("Buzz\n")
   } else {
-    print i, "\n"
+    io.Print(i)
+    io.Print("\n")
   }
   i += 1
 }
-print "\n"
+io.Print("\n")

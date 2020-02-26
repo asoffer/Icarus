@@ -1,4 +1,5 @@
 -- ::= import "examples/lib/core.ic"
+io ::= import "examples/lib/io.ic"
 
 num := 0
 upper ::= 2_000_000
@@ -17,4 +18,9 @@ while (n <= upper) do {
   if (!found_div) then { num += 1 }
   n += 1
 }
-print "There are ", num, " prime numbers less than or equal to ", upper, "\n"
+
+io.Print("There are ")
+io.Print(num)
+io.Print(" prime numbers less than or equal to ")
+io.Print(upper)
+io.Print("\n")

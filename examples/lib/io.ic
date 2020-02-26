@@ -1,0 +1,34 @@
+#{export} Print ::= (n: int8) -> () { Print(n as int64) }
+#{export} Print ::= (n: int16) -> () { Print(n as int64) }
+#{export} Print ::= (n: int32) -> () { Print(n as int64) }
+#{export} Print ::= (n: int64) -> () {
+  printf ::= foreign("printf", (*nat8, int64) -> int32)
+  printf(&"%lld"[0], n)
+}
+
+#{export} Print ::= (n: nat8) -> () { Print(n as nat64) }
+#{export} Print ::= (n: nat16) -> () { Print(n as nat64) }
+#{export} Print ::= (n: nat32) -> () { Print(n as nat64) }
+#{export} Print ::= (n: nat64) -> () {
+  printf ::= foreign("printf", (*nat8, nat64) -> int32)
+  printf(&"%llu"[0], n)
+}
+
+#{export} Print ::= (b: bool) -> () {
+  Print(switch {
+    "true" when b
+    "false" when !b
+  })
+}
+
+#{export} Print ::= (s: byte_view) -> () {
+  printf ::= foreign("printf", (*nat8, *nat8) -> int32)
+  printf(&"%s"[0], &s[0])
+}
+
+#{export} Print ::= (f: float32) -> () { Print(f as float64) }
+
+#{export} Print ::= (f: float64) -> () {
+  printf ::= foreign("printf", (*nat8, float64) -> int32)
+  printf(&"%f"[0], f)
+}

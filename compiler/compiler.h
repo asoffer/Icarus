@@ -62,7 +62,6 @@ struct EmitCopyInitTag {};
 struct EmitMoveInitTag {};
 struct EmitValueTag {};
 struct VerifyTypeTag {};
-struct EmitPrintTag {};
 struct EmitDestroyTag {};
 struct EmitDefaultInitTag {};
 struct EmitCopyAssignTag {};
@@ -92,8 +91,7 @@ struct Compiler
                    void(type::Typed<ir::Reg>, EmitMoveInitTag),
                    void(type::Typed<ir::Reg>, EmitCopyInitTag),
                    std::vector<ir::RegOr<ir::Addr>>(EmitRefTag)>,
-      type::Visitor<void(ir::Results const &, EmitPrintTag),
-                    void(ir::Reg, EmitDestroyTag),
+      type::Visitor<void(ir::Reg, EmitDestroyTag),
                     void(ir::Reg, EmitDefaultInitTag),
                     void(ir::RegOr<ir::Addr>, type::Typed<ir::Results> const &,
                          EmitMoveAssignTag),
@@ -127,11 +125,6 @@ struct Compiler
   std::vector<ir::RegOr<ir::Addr>> Visit(ast::Node const *node, EmitRefTag) {
     return ast::SingleVisitor<std::vector<ir::RegOr<ir::Addr>>(
         EmitRefTag)>::Visit(node, EmitRefTag{});
-  }
-
-  void Visit(type::Type const *t, ir::Results const &val, EmitPrintTag) {
-    type::SingleVisitor<void(ir::Results const &, EmitPrintTag)>::Visit(
-        t, val, EmitPrintTag{});
   }
 
   void Visit(type::Type const *t, ir::Reg r, EmitDestroyTag) {
@@ -238,14 +231,6 @@ struct Compiler
                                          EmitRefTag);
   std::vector<ir::RegOr<ir::Addr>> Visit(ast::Index const *node, EmitRefTag);
   std::vector<ir::RegOr<ir::Addr>> Visit(ast::Unop const *node, EmitRefTag);
-
-  void Visit(type::Array const *t, ir::Results const &val, EmitPrintTag);
-  void Visit(type::Enum const *t, ir::Results const &val, EmitPrintTag);
-  void Visit(type::Flags const *t, ir::Results const &val, EmitPrintTag);
-  void Visit(type::Pointer const *t, ir::Results const &val, EmitPrintTag);
-  void Visit(type::Primitive const *t, ir::Results const &val, EmitPrintTag);
-  void Visit(type::Tuple const *t, ir::Results const &val, EmitPrintTag);
-  void Visit(type::Variant const *t, ir::Results const &val, EmitPrintTag);
 
   void Visit(type::Struct const *t, ir::Reg reg, EmitDestroyTag);
   void Visit(type::Variant const *t, ir::Reg reg, EmitDestroyTag);

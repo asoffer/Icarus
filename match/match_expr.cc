@@ -78,8 +78,6 @@ void Match::Visit(ast::Label const *node, MatchState *state) {}
 
 void Match::Visit(ast::Jump const *node, MatchState *state) {}
 
-void Match::Visit(ast::PrintStmt const *node, MatchState *state) {}
-
 void Match::Visit(ast::YieldStmt const *node, MatchState *state) {}
 
 void Match::Visit(ast::ReturnStmt const *node, MatchState *state) {}

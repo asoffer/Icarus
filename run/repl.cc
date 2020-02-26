@@ -29,7 +29,7 @@ static void ReplEval(ast::Expression const *expr,
     // TODO compiler->CompleteDeferredBodies();
     auto *expr_type = compiler->type_of(expr);
     if (expr_type != type::Void()) {
-      compiler->Visit(expr_type, expr_val, compiler::EmitPrintTag{});
+      NOT_YET();
     }
     compiler->builder().ReturnJump();
   }

@@ -512,20 +512,6 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
   }
 }
 
-static std::optional<
-    std::vector<std::pair<ast::Expression const *, type::QualType>>>
-VerifySpan(Compiler *v, base::PtrSpan<ast::Expression const> exprs) {
-  // TODO expansion
-  std::vector<std::pair<ast::Expression const *, type::QualType>> results;
-  bool err = false;
-  for (auto *expr : exprs) {
-    results.emplace_back(expr, v->Visit(expr, VerifyTypeTag{}));
-    err |= not results.back().second.ok();
-  }
-  if (err) { return std::nullopt; }
-  return results;
-}
-
 static std::optional<type::Quals> VerifyAndGetQuals(
     Compiler *v, base::PtrSpan<ast::Expression const> exprs) {
   bool err          = false;
@@ -1897,28 +1883,6 @@ type::QualType Compiler::Visit(ast::Jump const *node, VerifyTypeTag) {
   return set_result(node,
                     err ? type::QualType::Error()
                         : type::QualType::Constant(type::Jmp(state, param_types)));
-}
-
-type::QualType Compiler::Visit(ast::PrintStmt const *node, VerifyTypeTag) {
-  auto verify_results = VerifySpan(this, node->exprs());
-  if (not verify_results) { return type::QualType::Error(); }
-  for (auto &verify_result : *verify_results) {
-    auto *expr_type = verify_result.second.type();
-    // TODO print arrays?
-    if (expr_type->is<type::Primitive>() or expr_type->is<type::Pointer>() or
-        expr_type == type::ByteView or expr_type->is<type::Enum>() or
-        expr_type->is<type::Flags>()) {
-      continue;
-    } else {
-      ast::OverloadSet os(node->scope_, "print");
-      AddAdl(&os, "print", expr_type);
-      // TODO using expr.get() for the dispatch table is super janky. node is
-      // used so we don't collide with the table for the actual expression as
-      // `print f(x)` needs a table both for the printing and for the call to
-      // `f`. Test node thoroughly.
-    }
-  }
-  return type::QualType::NonConstant(type::Void());
 }
 
 type::QualType Compiler::Visit(ast::ReturnStmt const *node, VerifyTypeTag) {

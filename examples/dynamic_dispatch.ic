@@ -1,3 +1,4 @@
+io ::= import "examples/lib/io.ic"
 'main
 
 main ::= () -> () {
@@ -22,17 +23,33 @@ main ::= () -> () {
 }
 
 foo ::= (x: bool, y: bool) -> () {
-  print "foo(x: bool = ", x, ", y: bool = ", y, ")\n"
+  io.Print("foo(x: bool = ")
+  io.Print(x)
+  io.Print(", y: bool = ")
+  io.Print(y)
+  io.Print(")\n")
 }
 
 foo ::= (x: bool, y: int64) -> () {
-  print "foo(x: bool = ", x, ", y: int64 = ", y, ")\n"
+  io.Print("foo(x: bool = ")
+  io.Print(x)
+  io.Print(", y: int64 = ")
+  io.Print(y)
+  io.Print(")\n")
 }
 
 foo ::= (x: int64, y: bool) -> () {
-  print "foo(x: int64 = ", x, ", y: bool = ", y, ")\n"
+  io.Print("foo(x: int64 = ")
+  io.Print(x)
+  io.Print(", y: bool = ")
+  io.Print(y)
+  io.Print(")\n")
 }
 
 foo ::= (x: int64, y: int64) -> () {
-  print "foo(x: int64 = ", x, ", y: int64 = ", y, ")\n"
+  io.Print("foo(x: int64 = ")
+  io.Print(x)
+  io.Print(", y: int64 = ")
+  io.Print(y)
+  io.Print(")\n")
 }

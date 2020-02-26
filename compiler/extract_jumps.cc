@@ -120,10 +120,6 @@ struct Extractor : ast::Visitor<void()> {
     }
   }
 
-  void Visit(ast::PrintStmt const *node) final {
-    for (auto *expr : node->exprs()) { Visit(expr); }
-  }
-
   void Visit(ast::ReturnStmt const *node) final {
     for (auto *expr : node->exprs()) { Visit(expr); }
     for (auto iter = node_stack_.rbegin(); iter != node_stack_.rend(); ++iter) {

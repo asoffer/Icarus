@@ -1,6 +1,10 @@
 num := 0
 while (num <= 10) do {
-  print "fib(", num, ") = ", fibonacci(num), "\n"
+  io.Print("fib(")
+  io.Print(num)
+  io.Print(") = ")
+  io.Print(fibonacci(num))
+  io.Print("\n")
   num += 1
 }
 
@@ -10,3 +14,4 @@ fibonacci ::= (n: int64) -> int64 {
 }
 
 -- ::= import "examples/lib/core.ic"
+io ::= import "examples/lib/io.ic"

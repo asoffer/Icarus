@@ -806,20 +806,6 @@ EmitValueWithExpand(Compiler *c, base::PtrSpan<ast::Expression const> exprs) {
   return results;
 }
 
-ir::Results Compiler::Visit(ast::PrintStmt const *node, EmitValueTag) {
-  auto results = EmitValueWithExpand(this, node->exprs());
-  for (auto &result : results) {
-    if (auto const *table = dispatch_table(ast::ExprPtr{result.first, 0x01})) {
-      table->EmitCall(
-          this, core::FnArgs<std::pair<ast::Expression const *, ir::Results>>(
-                    {std::move(result)}, {}));
-    } else {
-      Visit(type_of(result.first), result.second, EmitPrintTag{});
-    }
-  }
-  return ir::Results{};
-}
-
 ir::Results Compiler::Visit(ast::ReturnStmt const *node, EmitValueTag) {
   auto arg_vals  = EmitValueWithExpand(this, node->exprs());
   auto *fn_scope = ASSERT_NOT_NULL(node->scope_->Containing<ast::FnScope>());
@@ -1015,9 +1001,6 @@ ir::Results Compiler::Visit(ast::Switch const *node, EmitValueTag) {
       phi_args.emplace(builder().CurrentBlock(),
                        Visit(body.get(), EmitValueTag{}));
       builder().UncondJump(land_block);
-    } else if (body->is<ast::PrintStmt>()) {
-      Visit(body.get(), EmitValueTag{});
-      builder().UncondJump(land_block);
     } else {
       // It must be a jump/yield/return, which we've verified in VerifyType.
       Visit(body.get(), EmitValueTag{});
@@ -1034,9 +1017,6 @@ ir::Results Compiler::Visit(ast::Switch const *node, EmitValueTag) {
   if (node->cases_.back().first->is<ast::Expression>()) {
     phi_args.emplace(builder().CurrentBlock(),
                      Visit(node->cases_.back().first.get(), EmitValueTag{}));
-    builder().UncondJump(land_block);
-  } else if (node->cases_.back().first->is<ast::PrintStmt>()) {
-    Visit(node->cases_.back().first.get(), EmitValueTag{});
     builder().UncondJump(land_block);
   } else {
     // It must be a jump/yield/return, which we've verified in VerifyType.

@@ -697,17 +697,7 @@ std::unique_ptr<ast::Node> BuildStatementLeftUnop(
 
   const std::string &tk = nodes[0]->as<Token>().token;
 
-  if (tk == "print") {
-    std::vector<std::unique_ptr<ast::Expression>> exprs;
-    if (auto *cl = nodes[1]->if_as<ast::CommaList>();
-        cl and not cl->parenthesized_) {
-      exprs = std::move(*cl).extract();
-    } else {
-      exprs.push_back(move_as<ast::Expression>(nodes[1]));
-    }
-    stmts->append(
-        std::make_unique<ast::PrintStmt>(std::move(range), std::move(exprs)));
-  } else if (tk == "goto") {
+  if (tk == "goto") {
     auto range =
         SourceRange(nodes.front()->span.begin(), nodes.back()->span.end());
     std::vector<std::unique_ptr<ast::Expression>> exprs;

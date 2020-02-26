@@ -1,7 +1,9 @@
+io ::= import "examples/lib/io.ic"
+
 foo () ping {
-  print "sending..."
+  io.Print("sending...")
 } pong {
-  print "received!\n"
+  io.Print("received!\n")
 }
 
 foo ::= scope {

@@ -183,11 +183,6 @@ void AssignScope::Visit(ast::Label *node, ast::Scope *scope) {
   node->scope_ = scope;
 }
 
-void AssignScope::Visit(ast::PrintStmt *node, ast::Scope *scope) {
-  node->scope_ = scope;
-  SetAllScopes(this, node->exprs(), scope);
-}
-
 void AssignScope::Visit(ast::ReturnStmt *node, ast::Scope *scope) {
   node->scope_ = scope;
   SetAllScopes(this, node->exprs(), scope);

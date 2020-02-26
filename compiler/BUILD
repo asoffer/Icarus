@@ -22,7 +22,6 @@ cc_library(
         "emit_default_init.cc",
         "emit_destroy.cc",
         "emit_move_init.cc",
-        "emit_print.cc",
         "emit_ref.cc",
         "emit_value.cc",
         "emit_chainop.cc",

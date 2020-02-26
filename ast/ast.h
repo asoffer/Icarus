@@ -1006,29 +1006,6 @@ struct ParameterizedStructLiteral : ScopeExpr<DeclScope> {
   std::vector<Declaration> params_, fields_;
 };
 
-// PrintStmt:
-// Represents a print statement. Arbitrarily many expressions can be passed.
-//
-// Example:
-//  ```
-//  print "hello", 42
-//  ```
-//
-struct PrintStmt : Node {
-  explicit PrintStmt(frontend::SourceRange span,
-                     std::vector<std::unique_ptr<Expression>> exprs)
-      : Node(std::move(span)), exprs_(std::move(exprs)) {}
-  ~PrintStmt() override {}
-
-  base::PtrSpan<Expression> exprs() { return exprs_; }
-  base::PtrSpan<Expression const> exprs() const { return exprs_; }
-
-  ICARUS_AST_VIRTUAL_METHODS;
-
- private:
-  std::vector<std::unique_ptr<Expression>> exprs_;
-};
-
 // ReturnStmt:
 // Represents a return statement. Arbitrarily many expressions can be passed.
 //

@@ -36,7 +36,6 @@ char const *OpStr(frontend::Operator op) {
     case frontend::Operator::Goto: return "goto ";
     case frontend::Operator::Return: return "return ";
     case frontend::Operator::Yield: return "<< ";
-    case frontend::Operator::Print: return "print ";
     case frontend::Operator::Which: return "which ";
     case frontend::Operator::Not: return "!";
     case frontend::Operator::At: return "@";
@@ -308,14 +307,6 @@ void Goto::DebugStrAppend(std::string *out, size_t indent) const {
 
 void Label::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, "#.", label_);
-}
-
-void PrintStmt::DebugStrAppend(std::string *out, size_t indent) const {
-  absl::StrAppend(
-      out, "print ",
-      absl::StrJoin(exprs(), ", ", [&](std::string *out, auto const &elem) {
-        return Joiner(elem, out, indent);
-      }));
 }
 
 void ReturnStmt::DebugStrAppend(std::string *out, size_t indent) const {
