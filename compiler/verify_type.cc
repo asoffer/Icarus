@@ -904,7 +904,7 @@ std::vector<core::FnArgs<type::QualType>> Compiler::VerifyBlockNode(
   for (auto *stmt : node->stmts()) { Visit(stmt, VerifyTypeTag{}); }
   set_result(node, type::QualType::Constant(type::Block));
 
-  auto yields = data_.extraction_map_[node];
+  auto const &yields = data_.extraction_map_[node];
   // TODO this setup is definitely wrong because it doesn't account for
   // multiple yields correctly. For example,
   //

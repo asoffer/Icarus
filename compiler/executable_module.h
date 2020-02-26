@@ -24,6 +24,10 @@ struct ExecutableModule : CompiledModule {
     diagnostic::StreamingConsumer consumer(stderr);
     compiler::Compiler c(this, consumer);
 
+    for (ast::Node const *node : nodes) {
+      ExtractJumps(&c.data_.extraction_map_, node);
+    }
+
     // Do one pass of verification over constant declarations. Then come
     // back a second time to handle the remaining.
     // TODO this may be necessary in library modules too.
@@ -36,10 +40,6 @@ struct ExecutableModule : CompiledModule {
         }
       }
       deferred.push_back(node);
-    }
-
-    for (ast::Node const *node : nodes) {
-      ExtractJumps(&c.data_.extraction_map_, node);
     }
 
     for (ast::Node const *node : deferred) { c.Visit(node, VerifyTypeTag{}); }

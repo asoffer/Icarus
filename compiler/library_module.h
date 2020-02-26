@@ -15,6 +15,7 @@ struct LibraryModule : CompiledModule {
   void ProcessNodes(base::PtrSpan<ast::Node const> nodes) override {
     diagnostic::StreamingConsumer consumer(stderr);
     compiler::Compiler c(this, consumer);
+
     for (ast::Node const *node : nodes) {
       ExtractJumps(&c.data_.extraction_map_, node);
     }

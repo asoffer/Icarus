@@ -84,9 +84,10 @@ struct Extractor : ast::Visitor<void()> {
   void Visit(ast::FunctionLiteral const *node) final {
     for (auto const &param : node->params()) { Visit(param.value.get()); }
     auto outputs = node->outputs();
-    if (not outputs) { return; }
     ICARUS_SCOPE(SaveVar(node_stack_, node)) {
-      for (auto *out : *outputs) { Visit(out); }
+      if (outputs) {
+        for (auto *out : *outputs) { Visit(out); }
+      }
       for (auto *stmt : node->stmts()) { Visit(stmt); }
     }
   }
