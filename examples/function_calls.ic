@@ -72,10 +72,10 @@ basic_calls ::= () -> () {
   // literals (often referred to as "lambdas") can be called in exactly the same
   // way.
   io.Print("3^2 = ")
-  // TODO io.Print(((n: int64) => n * n)(3))
+  io.Print(((n: int64) => n * n)(3))
   io.Print("\n")
   io.Print("4^2 = ")
-  // TODO io.Print(4'((n: int64) => n * n))
+  io.Print(4'((n: int64) => n * n))
   io.Print("\n")
 }
 
@@ -112,21 +112,22 @@ named_arguments ::= () -> () {
 
   // Once again, there is nothing special about the fact that we gave a name to
   // the function f. We colud just as well have called a lambda:
-  // TODO (x: int64, y: int64) -> () {
-  //   io.Print("lambda called with x = ")
-  //   io.Print(x)
-  //   io.Print(" and y = ")
-  //   io.Print(y)
-  //   io.Print("\n")
-  // }(y = 3, x = 4)
+  (x: int64, y: int64) -> () {
+    io.Print("lambda called with x = ")
+    io.Print(x)
+    io.Print(" and y = ")
+    io.Print(y)
+    io.Print("\n")
+  }(y = 3, x = 4)
 
+  // TODO the rules have changed on this now that names are part of the type.
   // However, to use named arguments, a function must be known at compile-time.
   // If a function is not a compile-time constant, as below (note the use of :=
   // instead of ::=), attempting to use a named argument will result in a
   // compilation error. This is because the function could be reassigned while
   // the program is running to a new value with different names for its
   // arguments.
-  // TODO g := (n: int64) => n * n
+  // g := (n: int64) => n * n
   // Uncomment the following line to get a compilation error:
   // io.Print(g(n = 3))
 }
@@ -252,20 +253,19 @@ dynamic_dispatch ::= () -> () {
   // The functions used in a dynamic dispatch need not have the same return
   // type. The type of the result of a dynamic dispatch call will be a variant
   // of all possible return types.
-  // TODO squared ::= (n: int64) => n * n
-  // TODO squared ::= (r: float64) => r * r
+  squared ::= (n: int64) => n * n
+  squared ::= (r: float64) => r * r
   // TODO number: int64 | float64 = 17
-  // TODO io.Print("17^2 = ")
+  io.Print("17^2 = ")
   // TODO io.Print(number'squared)
-  // TODO io.Print("\n")
+  io.Print("\n")
   // TODO number = 1.7
-  // TODO io.Print("1.7^2 = ")
+  io.Print("1.7^2 = ")
   // TODO io.Print(number'squared)
-  // TODO io.Print("\n")
+  io.Print("\n")
 }
 
 multiple_return_values ::= () -> () {
-// TODO
 //   // Functions can have multiple return values
 //   f ::= (n: int64) => (n, n * n)
 // 

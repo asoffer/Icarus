@@ -963,6 +963,9 @@ std::optional<ast::OverloadSet> MakeOverloadSet(
           c->MakeThunk(acc->operand(), type::Module));
       return FindOverloads(mod->scope(), acc->member_name(), args);
     }
+  } else {
+    ASSIGN_OR(return std::nullopt,  //
+                     auto result, c->Visit(expr, VerifyTypeTag{}));
   }
 
   ast::OverloadSet os;
