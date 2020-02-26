@@ -321,19 +321,6 @@ cc_library(
 )
 
 cc_library(
-    name = "str",
-    hdrs = ["str.h"],
-    srcs = ["str.cc"],
-    deps = [
-        ":read_only_data",
-        "//base:guarded",
-        "//base:untyped_buffer",
-        "//ir/value:addr",
-        "@com_google_absl//absl/container:node_hash_map",
-    ],
-)
-
-cc_library(
     name = "struct_field",
     hdrs = ["struct_field.h"],
     deps = [

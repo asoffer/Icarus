@@ -1214,8 +1214,8 @@ struct Terminal : Expression {
       i64_ = value;
     } else if constexpr (std::is_integral_v<T> and std::is_unsigned_v<T>) {
       u64_ = value;
-    } else if constexpr (std::is_same_v<T, std::string_view>) {
-      sv_ = value;
+    } else if constexpr (std::is_same_v<T, ir::String>) {
+      str_ = value;
     } else if constexpr (std::is_same_v<T, float>) {
       f32_ = value;
     } else if constexpr (std::is_same_v<T, double>) {
@@ -1244,7 +1244,7 @@ struct Terminal : Expression {
       case BasicType::Nat64: return ir::Results{u64_};
       case BasicType::Float32: return ir::Results{f32_};
       case BasicType::Float64: return ir::Results{f64_};
-      case BasicType::ByteView: return ir::Results{ir::String(sv_)};
+      case BasicType::ByteView: return ir::Results{str_};
       case BasicType::Bool: return ir::Results{b_};
       case BasicType::Type_: return ir::Results{type::Prim(t_)};
       case BasicType::NullPtr: return ir::Results{addr_};
@@ -1262,8 +1262,8 @@ struct Terminal : Expression {
       return static_cast<T>(u64_);
     } else if constexpr (std::is_same_v<T, bool>) {
       return b_;
-    } else if constexpr (std::is_same_v<T, std::string_view>) {
-      return sv_;
+    } else if constexpr (std::is_same_v<T, ir::String>) {
+      return str_;
     } else if constexpr (std::is_same_v<T, type::BasicType>) {
       return t_;
     } else if constexpr (std::is_same_v<T, float>) {
@@ -1287,7 +1287,7 @@ struct Terminal : Expression {
     uint64_t u64_;
     float f32_;
     double f64_;
-    std::string_view sv_;
+    ir::String str_;
     type::BasicType t_;
     ir::Addr addr_;
   };

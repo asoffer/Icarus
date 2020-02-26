@@ -61,7 +61,6 @@ cc_library(
         "//ir:components",
         "//ir:jump",
         "//ir:results",
-        "//ir:str",
         "//ir:struct_field",
         "//ir/value:reg",
         "//ir/value:string",

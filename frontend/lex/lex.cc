@@ -11,7 +11,7 @@
 #include "frontend/lex/operators.h"
 #include "frontend/lex/syntax.h"
 #include "ir/results.h"
-#include "ir/str.h"
+#include "ir/value/string.h"
 #include "type/basic_type.h"
 #ifdef ICARUS_MATCHER
 #include "match/binding_id.h"
@@ -399,9 +399,8 @@ restart:
             .range  = range,
         });
       }
-      return Lexeme(std::make_unique<ast::Terminal>(std::move(range),
-                                                    ir::SaveStringGlobally(str),
-                                                    type::BasicType::ByteView));
+      return Lexeme(std::make_unique<ast::Terminal>(
+          std::move(range), ir::String(str), type::BasicType::ByteView));
 
     } break;
     case '#': {

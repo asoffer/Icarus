@@ -108,7 +108,7 @@ cc_library(
     deps = [
         ":addr",
         "//ir:read_only_data",
-        "//ir:str",
+        "@com_google_absl//absl/container:node_hash_map",
     ],
 )
 

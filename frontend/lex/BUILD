@@ -15,7 +15,7 @@ cc_library(
         "//diagnostic:errors",
         "//frontend/source:cursor",
         "//ir:results",
-        "//ir:str",
+        "//ir/value:string",
         "//type:basic_type",
         "@com_google_absl//absl/container:flat_hash_map",
     ],

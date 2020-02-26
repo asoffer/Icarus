@@ -5,7 +5,6 @@
 #include "interpretter/evaluate.h"
 #include "ir/value/addr.h"
 #include "ir/components.h"
-#include "ir/str.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 
