@@ -36,7 +36,7 @@ cc_test(
     srcs = ["file_test.cc"],
     deps = [
         ":file",
-        "//test",
+        "@com_google_googletest//:gtest_main",
     ],
     data = [
         "testdata/empty_file.txt",
@@ -62,28 +62,12 @@ cc_test(
     srcs = ["file_name_test.cc"],
     deps = [
         ":file_name",
-        "//test",
+        "@com_google_googletest//:gtest_main",
     ],
     data = [
         "testdata/empty_file.txt",
         "testdata/one_line_file.txt",
         "testdata/multi_line_file.txt",
-    ],
-)
-
-cc_library(
-    name = "id",
-    hdrs = ["id.h"],
-    srcs = ["id.cc"],
-    deps = [],
-)
-
-cc_test(
-    name = "id_test",
-    srcs = ["id_test.cc"],
-    deps = [
-        ":id",
-        "//test",
     ],
 )
 
@@ -104,7 +88,7 @@ cc_test(
     srcs = ["string_test.cc"],
     deps = [
         ":string",
-        "//test",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
