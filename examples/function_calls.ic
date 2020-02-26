@@ -127,7 +127,7 @@ named_arguments ::= () -> () {
   // compilation error. This is because the function could be reassigned while
   // the program is running to a new value with different names for its
   // arguments.
-  // g := (n: int64) => n * n
+  g := (n: int64) => n * n
   // Uncomment the following line to get a compilation error:
   // io.Print(g(n = 3))
 }

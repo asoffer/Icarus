@@ -103,7 +103,9 @@ constexpr size_t precedence(Operator op) {
 #include "frontend/lex/operators.xmacro.h"
 #undef OPERATOR_MACRO
   }
-  UNREACHABLE();
+  // Use the builtin directly rather than `UNREACHABLE()` because
+  // `UNREACHABLE()` cannot be used in constexpr.
+  __builtin_unreachable();
 }
 
 std::unique_ptr<ast::Node> AddHashtag(

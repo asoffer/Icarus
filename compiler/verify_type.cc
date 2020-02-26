@@ -965,7 +965,7 @@ std::optional<ast::OverloadSet> MakeOverloadSet(
     }
   } else {
     ASSIGN_OR(return std::nullopt,  //
-                     auto result, c->Visit(expr, VerifyTypeTag{}));
+                     std::ignore, c->Visit(expr, VerifyTypeTag{}));
   }
 
   ast::OverloadSet os;

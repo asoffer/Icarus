@@ -30,7 +30,8 @@ struct ForeignFn {
 
  private:
   using id_t = uintptr_t;
-  ForeignFn() {}
+  ForeignFn() = default;
+  ForeignFn(id_t id) : id_(id) {}
 
   friend struct AnyFunc;
 

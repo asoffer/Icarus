@@ -46,10 +46,7 @@ struct AnyFunc {
 
   ForeignFn foreign() const {
     ASSERT(is_fn() == false);
-    uintptr_t data = data_ >> 1;
-    ForeignFn f;
-    std::memcpy(&f, &data, sizeof(void *));
-    return f;
+    return ForeignFn(data_ >> 1);
   }
 
   bool is_fn() const { return (data_ & 0x1u) == 0u; }
