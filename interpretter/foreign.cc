@@ -15,6 +15,8 @@
 namespace interpretter {
 using void_fn_ptr = void (*)();
 
+constexpr int kMaxSize = 8;
+
 namespace {
 template <typename T>
 void ExtractReturnValue(ffi_arg *ret, ir::Addr ret_addr) {
@@ -76,7 +78,7 @@ void CallForeignFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
     // elements are stable.
     pointer_values.reserve(fn_type->params().size());
     if (ffi_type == &ffi_type_pointer) {
-      ir::Addr addr = arguments.get<ir::Addr>(16 * i++);
+      ir::Addr addr = arguments.get<ir::Addr>(kMaxSize * i++);
       DEBUG_LOG("CallForeignFn")("Pushing pointer addr = ", addr);
       switch (addr.kind()) {
         case ir::Addr::Kind::Heap: {
@@ -91,7 +93,7 @@ void CallForeignFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
       }
       arg_vals.push_back(&pointer_values.back());
     } else {
-      arg_vals.push_back(const_cast<char *>(arguments.raw(16 * i++)));
+      arg_vals.push_back(const_cast<char *>(arguments.raw(kMaxSize * i++)));
     }
   }
 

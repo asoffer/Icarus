@@ -9,7 +9,7 @@ namespace interpretter {
 
 // Represents a a collection of registers available within a given stack frame.
 struct RegisterArray {
-  static constexpr size_t kMaxSize = 16;
+  static constexpr size_t kMaxSize = 8;
   explicit RegisterArray(size_t num_regs, size_t num_args)
       : num_regs_(num_regs),
         data_(

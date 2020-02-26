@@ -17,7 +17,7 @@ namespace interpretter {
 namespace {
 
 // Maximum size of any primitive type we may write
-constexpr size_t kMaxSize = 16;
+constexpr size_t kMaxSize = 8;
 
 constexpr uint8_t ReverseByte(uint8_t byte) {
   byte = ((byte & 0b11110000) >> 4) | ((byte & 0b00001111) << 4);
@@ -713,12 +713,12 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     }
   } else if constexpr (std::is_same_v<Inst, ir::ByteViewLengthInstruction>) {
     int64_t length =
-        ctx->resolve<std::string_view>(iter->read<ir::Reg>().get()).size();
+        ctx->resolve<ir::String>(iter->read<ir::Reg>().get()).get().size();
     ir::Reg result = iter->read<ir::Reg>();
     ctx->current_frame().regs_.set(result, length);
   } else if constexpr (std::is_same_v<Inst, ir::ByteViewDataInstruction>) {
     auto data_addr = ir::Addr::Heap(const_cast<char *>(
-        ctx->resolve<std::string_view>(iter->read<ir::Reg>().get()).data()));
+        ctx->resolve<ir::String>(iter->read<ir::Reg>().get()).get().data()));
     ir::Reg result = iter->read<ir::Reg>();
     ctx->current_frame().regs_.set(result, data_addr);
   } else if constexpr (std::is_same_v<Inst, ir::VariantAccessInstruction>) {

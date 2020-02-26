@@ -7,6 +7,8 @@
 #include "type/function.h"
 
 namespace interpretter {
+constexpr int kMaxSize = 8;
+
 base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
   size_t bytes_needed = fn.type()->output()[0]->bytes(kArchitecture).value();
   auto ret_buf        = base::untyped_buffer::MakeFull(bytes_needed);
@@ -14,11 +16,10 @@ base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
 
   ret_slots.push_back(ir::Addr::Heap(ret_buf.raw(0)));
   ExecutionContext exec_context;
-  // TODO replace 16 with kMaxSize. But actually just have a good way to
-  // construct the buffer
+  // TODO actually just have a good way to construct the buffer
   Execute(&fn,
           base::untyped_buffer::MakeFull(
-              (fn.type()->params().size() + fn.num_regs()) * 16),
+              (fn.type()->params().size() + fn.num_regs()) * kMaxSize),
           ret_slots, &exec_context);
   return ret_buf;
 }
