@@ -281,70 +281,6 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     ctx->current_frame().regs_.set(
         iter->read<ir::Reg>(),
         type::Func(std::move(in_params), std::move(outs)));
-  } else if constexpr (std::is_same_v<Inst, ir::PrintInstruction<bool>>) {
-    bool is_reg = iter->read<bool>();
-    ctx->os_ << (ReadAndResolve<bool>(is_reg, iter, ctx) ? "true" : "false");
-  } else if constexpr (std::is_same_v<Inst, ir::PrintInstruction<uint8_t>> or
-                       std::is_same_v<Inst, ir::PrintInstruction<int8_t>>) {
-    using type  = typename Inst::type;
-    bool is_reg = iter->read<bool>();
-    // Cast to a larger type to ensure we print as an integer rather than a
-    // character.
-    ctx->os_ << static_cast<int16_t>(ReadAndResolve<type>(is_reg, iter, ctx));
-  } else if constexpr (std::is_same_v<Inst, ir::PrintInstruction<uint16_t>> or
-                       std::is_same_v<Inst, ir::PrintInstruction<int16_t>> or
-                       std::is_same_v<Inst, ir::PrintInstruction<uint32_t>> or
-                       std::is_same_v<Inst, ir::PrintInstruction<int32_t>> or
-                       std::is_same_v<Inst, ir::PrintInstruction<uint64_t>> or
-                       std::is_same_v<Inst, ir::PrintInstruction<int64_t>> or
-                       std::is_same_v<Inst, ir::PrintInstruction<float>> or
-                       std::is_same_v<Inst, ir::PrintInstruction<double>> or
-                       std::is_same_v<Inst, ir::PrintInstruction<ir::Addr>> or
-                       std::is_same_v<
-                           Inst, ir::PrintInstruction<type::Type const *>> or
-                       std::is_same_v<Inst, ir::PrintInstruction<ir::String>>) {
-    using type  = typename Inst::type;
-    bool is_reg = iter->read<bool>();
-    if constexpr (std::is_same_v<type, ::type::Type const *>) {
-      ctx->os_ << ReadAndResolve<type>(is_reg, iter, ctx)->to_string();
-
-    } else if constexpr (std::is_same_v<type, ir::Addr>) {
-      ctx->os_ << ReadAndResolve<type>(is_reg, iter, ctx).to_string();
-
-    } else {
-      ctx->os_ << ReadAndResolve<type>(is_reg, iter, ctx);
-    }
-  } else if constexpr (std::is_same_v<Inst, ir::PrintEnumInstruction>) {
-    bool is_reg = iter->read<bool>().get();
-    auto val    = ReadAndResolve<ir::EnumVal>(is_reg, iter, ctx);
-
-    auto *enum_type = iter->read<type::Enum const *>().get();
-    std::optional<std::string_view> name = enum_type->name(val);
-    ctx->os_ << name.value_or(absl::StrCat(val.value));
-  } else if constexpr (std::is_same_v<Inst, ir::PrintFlagsInstruction>) {
-    bool is_reg      = iter->read<bool>().get();
-    auto val         = ReadAndResolve<ir::FlagsVal>(is_reg, iter, ctx);
-    auto numeric_val = val.value;
-    std::vector<std::string> vals;
-    type::Flags const *flags_type = iter->read<type::Flags const *>();
-
-    while (numeric_val != 0) {
-      size_t mask = (numeric_val & ((~numeric_val) + 1));
-      numeric_val -= mask;
-
-      std::optional<std::string_view> name =
-          flags_type->name(ir::FlagsVal(mask));
-      vals.emplace_back(name.has_value() ? std::string{*name}
-                                         : std::to_string(mask));
-    }
-
-    if (vals.empty()) {
-      ctx->os_ << "(empty)";
-    } else {
-      auto iter = vals.begin();
-      ctx->os_ << *iter++;
-      while (iter != vals.end()) { ctx->os_ << " | " << *iter++; }
-    }
   } else if constexpr (ir::internal::kStoreInstructionRange.contains(
                            Inst::kIndex)) {
     using type    = typename Inst::type;
@@ -878,22 +814,6 @@ constexpr auto kInstructions = std::array{
     ExecuteInstruction<ir::RegisterInstruction<ir::EnumVal>>,
     ExecuteInstruction<ir::RegisterInstruction<ir::FlagsVal>>,
     ExecuteInstruction<ir::RegisterInstruction<bool>>,
-    ExecuteAdHocInstruction<ir::PrintInstruction<uint8_t>>,
-    ExecuteAdHocInstruction<ir::PrintInstruction<int8_t>>,
-    ExecuteAdHocInstruction<ir::PrintInstruction<uint16_t>>,
-    ExecuteAdHocInstruction<ir::PrintInstruction<int16_t>>,
-    ExecuteAdHocInstruction<ir::PrintInstruction<uint32_t>>,
-    ExecuteAdHocInstruction<ir::PrintInstruction<int32_t>>,
-    ExecuteAdHocInstruction<ir::PrintInstruction<uint64_t>>,
-    ExecuteAdHocInstruction<ir::PrintInstruction<int64_t>>,
-    ExecuteAdHocInstruction<ir::PrintInstruction<float>>,
-    ExecuteAdHocInstruction<ir::PrintInstruction<double>>,
-    ExecuteAdHocInstruction<ir::PrintInstruction<type::Type const *>>,
-    ExecuteAdHocInstruction<ir::PrintInstruction<ir::Addr>>,
-    ExecuteAdHocInstruction<ir::PrintEnumInstruction>,
-    ExecuteAdHocInstruction<ir::PrintFlagsInstruction>,
-    ExecuteAdHocInstruction<ir::PrintInstruction<bool>>,
-    ExecuteAdHocInstruction<ir::PrintInstruction<ir::String>>,
     ExecuteAdHocInstruction<ir::StoreInstruction<uint8_t>>,
     ExecuteAdHocInstruction<ir::StoreInstruction<int8_t>>,
     ExecuteAdHocInstruction<ir::StoreInstruction<uint16_t>>,
@@ -910,6 +830,7 @@ constexpr auto kInstructions = std::array{
     ExecuteAdHocInstruction<ir::StoreInstruction<ir::FlagsVal>>,
     ExecuteAdHocInstruction<ir::StoreInstruction<bool>>,
     ExecuteAdHocInstruction<ir::StoreInstruction<ir::String>>,
+    ExecuteAdHocInstruction<ir::StoreInstruction<ir::AnyFunc>>,
     ExecuteAdHocInstruction<ir::PhiInstruction<uint8_t>>,
     ExecuteAdHocInstruction<ir::PhiInstruction<int8_t>>,
     ExecuteAdHocInstruction<ir::PhiInstruction<uint16_t>>,

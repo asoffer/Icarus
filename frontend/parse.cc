@@ -103,6 +103,7 @@ constexpr size_t precedence(Operator op) {
 #include "frontend/lex/operators.xmacro.h"
 #undef OPERATOR_MACRO
   }
+
   // Use the builtin directly rather than `UNREACHABLE()` because
   // `UNREACHABLE()` cannot be used in constexpr.
   __builtin_unreachable();

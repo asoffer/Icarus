@@ -234,6 +234,8 @@ std::string_view TypeToString() {
     return "type";
   } else if constexpr (std::is_same_v<T, Addr>) {
     return "addr";
+  } else if constexpr (std::is_same_v<T, AnyFunc>) {
+    return "fn";
   } else {
     DEBUG_LOG()(typeid(T).name());
     return "[[unknown]]";
@@ -530,36 +532,6 @@ struct StoreInstruction : base::Clone<StoreInstruction<T>, Instruction> {
   RegOr<Addr> location;
 };
 
-template <typename T>
-struct PrintInstruction : base::Clone<PrintInstruction<T>, Instruction> {
-  static constexpr cmd_index_t kIndex =
-      internal::kPrintInstructionRange.start + internal::PrimitiveIndex<T>();
-  using type = T;
-  PrintInstruction(RegOr<T> const& value) : value(value) {}
-  ~PrintInstruction() override {}
-
-  std::string to_string() const override {
-    using base::stringify;
-    return absl::StrCat("print ", TypeToString<T>(), " ", stringify(value));
-  }
-
-  struct control_bits {
-    bool value_is_reg;
-  };
-
-  void WriteByteCode(ByteCodeWriter* writer) const override {
-    writer->Write(kIndex);
-    writer->Write(control_bits{.value_is_reg = value.is_reg()});
-    value.apply([&](auto v) { writer->Write(v); });
-  }
-
-  void Inline(InstructionInliner const& inliner) override {
-    inliner.Inline(value);
-  }
-
-  RegOr<T> value;
-};
-
 // TODO consider changing these to something like 'basic block arguments'
 template <typename T>
 struct PhiInstruction : base::Clone<PhiInstruction<T>, Instruction> {
@@ -812,65 +784,6 @@ struct BufPtrInstruction : UnaryInstruction<::type::Type const*> {
   void WriteByteCode(ByteCodeWriter* writer) const override {
     this->WriteByteCodeUnary(kIndex, writer);
   }
-};
-
-struct PrintEnumInstruction : base::Clone<PrintEnumInstruction, Instruction> {
-  static constexpr cmd_index_t kIndex = internal::kPrintInstructionRange.start +
-                                        internal::PrimitiveIndex<EnumVal>();
-
-  PrintEnumInstruction(RegOr<EnumVal> const& value, type::Enum const* enum_type)
-      : value(value), enum_type(enum_type) {}
-  ~PrintEnumInstruction() override {}
-
-  std::string to_string() const override {
-    using base::stringify;
-    return absl::StrCat("print enum ", enum_type->to_string(), " ",
-                        stringify(value));
-  }
-
-  void WriteByteCode(ByteCodeWriter* writer) const override {
-    writer->Write(kIndex);
-    writer->Write(value.is_reg());
-    value.apply([&](auto v) { writer->Write(v); });
-    writer->Write(enum_type);
-  }
-
-  void Inline(InstructionInliner const& inliner) override {
-    inliner.Inline(value);
-  }
-
-  RegOr<EnumVal> value;
-  type::Enum const* enum_type;
-};
-
-struct PrintFlagsInstruction : base::Clone<PrintFlagsInstruction, Instruction> {
-  static constexpr cmd_index_t kIndex = internal::kPrintInstructionRange.start +
-                                        internal::PrimitiveIndex<FlagsVal>();
-
-  PrintFlagsInstruction(RegOr<FlagsVal> const& value,
-                        type::Flags const* flags_type)
-      : value(value), flags_type(flags_type) {}
-  ~PrintFlagsInstruction() override {}
-
-  std::string to_string() const override {
-    using base::stringify;
-    return absl::StrCat("print flags ", flags_type->to_string(), " ",
-                        stringify(value));
-  }
-
-  void WriteByteCode(ByteCodeWriter* writer) const override {
-    writer->Write(kIndex);
-    writer->Write(value.is_reg());
-    value.apply([&](auto v) { writer->Write(v); });
-    writer->Write(flags_type);
-  }
-
-  void Inline(InstructionInliner const& inliner) override {
-    inliner.Inline(value);
-  }
-
-  RegOr<FlagsVal> value;
-  type::Flags const* flags_type;
 };
 
 // TODO Morph this into interpretter break-point instructions.

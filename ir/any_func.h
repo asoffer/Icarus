@@ -27,6 +27,7 @@ struct AnyFunc {
     ASSERT(is_fn() == true);
   }
   AnyFunc(ForeignFn foreign) {
+    DEBUG_LOG()(foreign);
     uintptr_t data;
     std::memcpy(&data, &foreign, sizeof(void (*)()));
     constexpr uintptr_t high_bit =
@@ -56,7 +57,8 @@ struct AnyFunc {
 };
 
 inline std::ostream &operator<<(std::ostream &os, AnyFunc a) {
-  return a.is_fn() ? (os << a.func()) : (os << a.foreign());
+  return a.is_fn() ? (os << "NativeFn(" << a.func() << ")")
+                   : (os << a.foreign());
 }
 
 }  // namespace ir
