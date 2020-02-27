@@ -214,6 +214,7 @@ void CompleteBody(Compiler *compiler, ast::Jump const *node) {
 
 void ProcessExecutableBody(Compiler *c, base::PtrSpan<ast::Node const> nodes,
                            ir::CompiledFn *main_fn) {
+  ASSERT(nodes.size() > 0);
   ast::ModuleScope *mod_scope = &nodes.front()->scope_->as<ast::ModuleScope>();
   ICARUS_SCOPE(ir::SetCurrent(main_fn, &c->builder())) {
     MakeAllStackAllocations(c, mod_scope);
