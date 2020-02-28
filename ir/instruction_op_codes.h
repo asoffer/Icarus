@@ -62,13 +62,9 @@ inline constexpr auto kRegisterInstructionRange = CmdRange{
     .start  = kNegInstructionRange.end(),
     .length = 15,
 };
-inline constexpr auto kPrintInstructionRange = CmdRange{
-    .start  = kRegisterInstructionRange.end(),
-    .length = 16,
-};
 inline constexpr auto kStoreInstructionRange = CmdRange{
-    .start  = kPrintInstructionRange.end(),
-    .length = 16,
+    .start  = kRegisterInstructionRange.end(),
+    .length = 17,
 };
 inline constexpr auto kPhiInstructionRange = CmdRange{
     .start  = kStoreInstructionRange.end(),

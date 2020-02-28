@@ -145,7 +145,7 @@ struct QualType {
         data_ & ~static_cast<uintptr_t>(Quals::All().val_));
   }
 
-  Quals quals() const { return Quals(data_ & 0x3); }
+  constexpr Quals quals() const { return Quals(data_ & 0x3); }
 
   constexpr bool constant() const { return (quals() & Quals::Const()).val_; }
   constexpr size_t expansion_size() const { return num_; }

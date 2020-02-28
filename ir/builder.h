@@ -412,35 +412,6 @@ struct Builder {
   Reg Flags(module::BasicModule* mod, std::vector<std::string_view> names,
             absl::flat_hash_map<uint64_t, RegOr<uint64_t>> specified_values);
 
-  // Print commands
-  template <typename T>
-  void Print(T r) {
-    if constexpr (IsRegOr<T>::value) {
-      auto inst = std::make_unique<PrintInstruction<typename T::type>>(r);
-      CurrentBlock()->instructions_.push_back(std::move(inst));
-    } else if constexpr (std::is_same_v<T, char const*> or
-                         std::is_same_v<T, std::string_view>) {
-      Print(RegOr<ir::String>(r));
-    } else {
-      Print(RegOr<T>(r));
-    }
-  }
-
-  template <typename T,
-            typename std::enable_if_t<std::is_same_v<T, EnumVal> or
-                                      std::is_same_v<T, FlagsVal>>* = nullptr>
-  void Print(RegOr<T> r, type::Type const* t) {
-    if constexpr (std::is_same_v<T, EnumVal>) {
-      auto inst =
-          std::make_unique<PrintEnumInstruction>(r, &t->as<type::Enum>());
-      CurrentBlock()->instructions_.push_back(std::move(inst));
-    } else {
-      auto inst =
-          std::make_unique<PrintFlagsInstruction>(r, &t->as<type::Flags>());
-      CurrentBlock()->instructions_.push_back(std::move(inst));
-    }
-  }
-
   type::Typed<Reg> LoadSymbol(String name, type::Type const* type);
 
   // Low-level size/alignment commands
