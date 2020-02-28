@@ -27,7 +27,6 @@ struct AnyFunc {
     ASSERT(is_fn() == true);
   }
   AnyFunc(ForeignFn foreign) {
-    DEBUG_LOG()(foreign);
     uintptr_t data;
     std::memcpy(&data, &foreign, sizeof(void (*)()));
     constexpr uintptr_t high_bit =

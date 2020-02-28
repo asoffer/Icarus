@@ -48,10 +48,31 @@ ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
       compiler, nullptr,
       data.params().Transform([](auto const &p) { return p.type(); }), args);
 
-  auto [out_results, out_params] = SetReturns(compiler->builder(), data, {});
-  compiler->builder().Call(
-      compiler->Visit(fn, EmitValueTag{}).get<ir::AnyFunc>(0),
-      &compiler->type_of(fn)->as<type::Function>(), arg_results, out_params);
+  auto[out_results, out_params] = SetReturns(compiler->builder(), data, {});
+
+  auto callee_qual_type         = *ASSERT_NOT_NULL(compiler->qual_type_of(fn));
+  auto callee                   = [&]() -> ir::RegOr<ir::AnyFunc> {
+    if (callee_qual_type.constant()) {
+      return compiler->Visit(fn, EmitValueTag{}).get<ir::AnyFunc>(0);
+    } else {
+      // NOTE: If the overload is a declaration, it's not because a declaration
+      // is syntactically the callee. Rather, it's because the callee is an
+      // identifier (or module_name.identifier, etc.) and this is one possible
+      // resolution of that identifier. We cannot directly ask to emit IR for
+      // the declaration because that will emit the initialization for the
+      // declaration. Instead, we need load the address.
+      if (auto *fn_decl = fn->if_as<ast::Declaration>()) {
+        return ir::Load<ir::AnyFunc>(compiler->addr(fn_decl));
+      } else {
+        return ir::Load<ir::AnyFunc>(
+            compiler->Visit(fn, EmitValueTag{}).get<ir::Addr>(0));
+      }
+    }
+  }();
+
+  compiler->builder().Call(callee,
+                           &callee_qual_type.type()->as<type::Function>(),
+                           arg_results, out_params);
   return std::move(out_results);
 }
 

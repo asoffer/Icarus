@@ -13,7 +13,8 @@ void Compiler::EmitCopyInit(type::Type const *from_type,
   auto *to_type = to_var.type()->as<type::Pointer>().pointee;
   // TODO Optimize once you understand the semantics better.
   if (not to_type->is<type::Primitive>() and
-      not to_type->is<type::Function>() and not to_type->is<type::Variant>()) {
+      not to_type->is<type::Function>() and not to_type->is<type::Variant>() and
+      not to_type->is<type::Enum>() and not to_type->is<type::Flags>()) {
     Visit(to_type, to_var.get(), EmitDefaultInitTag{});
   }
 

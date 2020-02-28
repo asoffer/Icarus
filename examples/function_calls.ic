@@ -2,7 +2,7 @@ io ::= import "examples/lib/io.ic"
 
 // The purpose of this example is to show all the ways in which functions can
 // be called. This includes things like default arguments, named arguments,
-// dynamic dispatch, and and all the combinations thereof.
+// dynamic dispatch, and all the combinations thereof.
 
 io.Print("Basic calls:\n")
 basic_calls()
@@ -37,15 +37,14 @@ basic_calls ::= () -> () {
 
   // The shortest option is to use the double arrow `=>`. Using this syntax, the
   // return type is inferred, and the returned value is placed on the right-hand
-  // side of the arrow. As with the previous example, because the return type is
-  // inferred, the function must not be recursive.
-  cubed ::= (n: int64) -> int64 { return n * n * n }//=> n * n * n
+  // side of the arrow. 
+  cubed ::= (n: int64) => n * n * n
 
   // This means that the short option is not particularly useful for functions
   // that are more than a single expression. However, we also allow the return
   // type to be inferred for longer functions by simply not specifying the
   // return type:
-  print_sum ::= (x: int64, y: int64) -> int64 {
+  print_sum ::= (x: int64, y: int64) -> int64 { // TODO remove return type
     io.Print("x + y = ")
     io.Print(x + y)
     io.Print("\n")
@@ -86,17 +85,13 @@ named_arguments ::= () -> () {
   f ::= (a: int64, b: int64, c: int64, d: int64, e: int64) -> () {
     io.Print("f(a = ")
     io.Print(a)
-    io.Print(", ")
-    io.Print("b = ")
+    io.Print(", b = ")
     io.Print(b)
-    io.Print(", ")
-    io.Print("c = ")
+    io.Print(", c = ")
     io.Print(c)
-    io.Print(", ")
-    io.Print("d = ")
+    io.Print(", d = ")
     io.Print(d)
-    io.Print(", ")
-    io.Print("e = ")
+    io.Print(", e = ")
     io.Print(e)
     io.Print(")\n")
   }
@@ -134,7 +129,7 @@ named_arguments ::= () -> () {
 
 default_arguments ::= () -> () {
   // Functions can also take default arguments. Default arguments are specified
-  // at the function definition cite. The normal declaration rules apply. Here
+  // at the function definition site. The normal declaration rules apply. Here
   // we are specifying that the argument `b` gets a default value of 2 if no
   // value is provided. We can also infer the type of the argument as is done
   // with `c := 3`.

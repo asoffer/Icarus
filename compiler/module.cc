@@ -4,12 +4,13 @@
 
 namespace compiler {
 
+type::QualType const *CompiledModule::qual_type_of(ast::Expression const *expr) const {
+  return data_.root_value().result(expr);
+}
+
 type::Type const *CompiledModule::type_of(ast::Expression const *expr) const {
   auto const *result = data_.root_value().result(expr);
-  if (result and result->type()) { return result->type(); }
-
-  // TODO embedded modules?
-  return nullptr;
+  return result ? result->type() : nullptr;
 }
 
 }  // namespace compiler
