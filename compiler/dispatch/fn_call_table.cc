@@ -96,6 +96,7 @@ base::expected<FnCallDispatchTable> FnCallDispatchTable::Verify(
     ("Verifying ", overload, ": ", overload->DebugString());
     auto result = MatchArgsToParams(ExtractParams(compiler, overload), args);
     if (not result) {
+      DEBUG_LOG("dispatch-verify")(result.error());
       failures.emplace(overload, result.error());
     } else {
       // TODO you also call compiler->type_of inside ExtractParams, so it's

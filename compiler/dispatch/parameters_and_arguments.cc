@@ -43,8 +43,9 @@ core::Params<type::Typed<ast::Declaration const *>> ExtractParams(
     }
   } else {
     if (auto const *fn_type = decl_type->if_as<type::Function>()) {
-      return static_cast<core::Params<type::Typed<ast::Declaration const *>>>(
-          fn_type->AnonymousParams());
+      return fn_type->params().Transform([](type::Type const *t) {
+        return type::Typed<ast::Declaration const *>(nullptr, t);
+      });
     } else {
       NOT_YET(decl->DebugString());
     }

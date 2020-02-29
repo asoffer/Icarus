@@ -8,6 +8,10 @@ io.Print("Basic calls:\n")
 basic_calls()
 io.Print("----------------------------------------------------------------\n")
 
+io.Print("Non-constants:\n")
+non_constants()
+io.Print("----------------------------------------------------------------\n")
+
 io.Print("Named arguments:\n")
 named_arguments()
 io.Print("----------------------------------------------------------------\n")
@@ -40,14 +44,12 @@ basic_calls ::= () -> () {
   // side of the arrow. 
   cubed ::= (n: int64) => n * n * n
 
-  // This means that the short option is not particularly useful for functions
+  // This means that the `=>` is not particularly useful for functions
   // that are more than a single expression. However, we also allow the return
   // type to be inferred for longer functions by simply not specifying the
   // return type:
-  print_sum ::= (x: int64, y: int64) -> int64 { // TODO remove return type
-    io.Print("x + y = ")
-    io.Print(x + y)
-    io.Print("\n")
+  sum ::= (x: int64, y: int64) -> {
+    return x + y
   }
 
   // Functions can be called by passing arguments in parentheses after the name
@@ -55,14 +57,14 @@ basic_calls ::= () -> () {
   io.Print("2^2 = ")
   io.Print(squared(2))
   io.Print("\n")
-  print_sum(3, 4)
+  io.Print(sum(3, 4))
 
   // Functions may also be called by following the arguments with a single quote
   // character ' and then the function name.
   io.Print("2^3 = ")
-  io.Print(2'cubed)
-  io.Print("\n")
-  (3, 4)'print_sum
+  2'cubed'io.Print
+  "\n"'io.Print
+  (3, 4)'sum'io.Print
   io.Print("2^3^3 = ")
   io.Print(2'cubed'cubed)
   io.Print("\n")
@@ -78,10 +80,27 @@ basic_calls ::= () -> () {
   io.Print("\n")
 }
 
+non_constants ::= () -> () {
+  // So far all examples of functions you have seen have been declared with the
+  // symbol `::=`. The double-colon means that these variable bindings are
+  // compile-time constants. Functions can also be declared as non-constants
+  // with `:=`. This will mean their value can be rebound.
+  f := (n: int64) => n * n
+  io.Print("3 * 3 = ")
+  io.Print(f(3))
+  io.Print("\n")
+
+  f = (n: int64) => n * n * n
+  io.Print("3 * 3 * 3 = ")
+  io.Print(f(3))
+  io.Print("\n")
+}
+
 named_arguments ::= () -> () {
-  // Functions which are compile-time constants can have their arguments called
-  // with names. You may specify the names in any order, but once a named
-  // argument is used, all further arguments must also be named.
+  // The names of function parameters are a part of the function type. This
+  // allows functions to be called with named arguments. You may specify the
+  // names in any order, but once a named argument is used, all further
+  // arguments must also be named.
   f ::= (a: int64, b: int64, c: int64, d: int64, e: int64) -> () {
     io.Print("f(a = ")
     io.Print(a)
@@ -115,25 +134,20 @@ named_arguments ::= () -> () {
     io.Print("\n")
   }(y = 3, x = 4)
 
-  // TODO the rules have changed on this now that names are part of the type.
-  // However, to use named arguments, a function must be known at compile-time.
-  // If a function is not a compile-time constant, as below (note the use of :=
-  // instead of ::=), attempting to use a named argument will result in a
-  // compilation error. This is because the function could be reassigned while
-  // the program is running to a new value with different names for its
-  // arguments.
-  g := (n: int64) => n * n
-  // Uncomment the following line to get a compilation error:
-  // io.Print(g(n = 3))
+  // Because parameter names are a part of the function type, even non-constant 
+  // functions can be called with named arguments.
+  g := (a: int64, b: int64) => a + b * b
+  io.Print("4 + 3 * 3 = ")
+  io.Print(g(a = 4, b = 3))
+  io.Print("\n")
 }
 
 default_arguments ::= () -> () {
   // Functions can also take default arguments. Default arguments are specified
   // at the function definition site. The normal declaration rules apply. Here
-  // we are specifying that the argument `b` gets a default value of 2 if no
-  // value is provided. We can also infer the type of the argument as is done
+  // we are specifying that the parameter `b` gets a default value of 2 if no
+  // argument is provided. We can also infer the type of the parameter as is done
   // with `c := 3`.
-  // 5`.
   f ::= (a: int64, b: int64 = 2, c := 3) -> () {
     io.Print("f(a = ")
     io.Print(a)

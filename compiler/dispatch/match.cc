@@ -28,8 +28,11 @@ std::optional<FailedMatch> MatchNamedArgsToParams(
     core::Params<type::Typed<ast::Declaration const *>> *matched_params) {
   for (size_t i = args.pos().size(); i < params.size(); ++i) {
     auto const &param = params[i];
+    DEBUG_LOG("match")
+    ("Matching param in position ", i, "(name = ", param.name, ")");
     if (auto *result = args.at_or_null(param.name)) {
-      if ((*param.value)->flags() & ast::Declaration::f_IsConst) {
+      if (param.value.get() and
+          (*param.value)->flags() & ast::Declaration::f_IsConst) {
         NOT_YET();
       } else {
         type::Type const *meet = type::Meet(result->type(), param.value.type());
