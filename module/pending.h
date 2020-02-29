@@ -92,13 +92,13 @@ base::expected<Pending<ModType>> ImportModule(
       std::async(std::launch::async,
                  [canonical_src(dependee.first),
                   mod(&iter->second.second)]() -> BasicModule * {
-                   diagnostic::StreamingConsumer diag(stderr);
                    // TODO error messages.
                    ASSIGN_OR(return nullptr,  //
                                     frontend::FileSource file_src,
                                     frontend::FileSource::Make(*canonical_src));
                    auto *src = frontend::Source::Make<frontend::FileSource>(
                        std::move(file_src));
+                   diagnostic::StreamingConsumer diag(stderr, src);
                    *mod = std::make_unique<ModType>();
                    (*mod)->ProcessFromSource(src, diag);
                    return mod->get();

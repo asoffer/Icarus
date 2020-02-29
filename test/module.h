@@ -32,7 +32,8 @@ struct TestModule : compiler::CompiledModule {
   compiler::Compiler compiler;
 
  protected:
-  void ProcessNodes(base::PtrSpan<ast::Node const> nodes) override {
+  void ProcessNodes(base::PtrSpan<ast::Node const> nodes,
+                    diagnostic::DiagnosticConsumer& diag) override {
     for (ast::Node const* node : nodes) {
       compiler.Visit(node, compiler::VerifyTypeTag{});
     }

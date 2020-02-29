@@ -22,8 +22,7 @@ struct Highlight {
 };
 
 struct SourceQuote {
-  explicit SourceQuote() {}
-  explicit SourceQuote(frontend::Source*) {}
+  explicit SourceQuote(frontend::Source const* source) : source(source) {}
 
   // TODO implement for real.
   SourceQuote& Highlighted(frontend::SourceRange range, Style style) {
@@ -39,7 +38,7 @@ struct SourceQuote {
     return *this;
   }
 
-  frontend::Source* source = nullptr;
+  frontend::Source const* source;
   base::IntervalSet<frontend::LineNum> lines;
   std::vector<Highlight> highlights;
 };

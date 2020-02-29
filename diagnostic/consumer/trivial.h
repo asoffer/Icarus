@@ -7,6 +7,7 @@
 namespace diagnostic {
 
 struct TrivialConsumer : DiagnosticConsumer {
+  explicit TrivialConsumer() : DiagnosticConsumer(nullptr) {}
   ~TrivialConsumer() override {}
 
  protected:

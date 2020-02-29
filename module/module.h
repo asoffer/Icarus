@@ -36,8 +36,10 @@ struct BasicModule : base::Cast<BasicModule> {
   BasicModule(BasicModule const &) = delete;
   BasicModule &operator=(BasicModule const &) = delete;
 
-  void AppendNode(std::unique_ptr<ast::Node> node);
-  void AppendNodes(std::vector<std::unique_ptr<ast::Node>> nodes);
+  void AppendNode(std::unique_ptr<ast::Node> node,
+                  diagnostic::DiagnosticConsumer &diag);
+  void AppendNodes(std::vector<std::unique_ptr<ast::Node>> nodes,
+                   diagnostic::DiagnosticConsumer &diag);
 
   absl::Span<ast::Declaration const *const> declarations(
       std::string_view name) const;
@@ -48,7 +50,8 @@ struct BasicModule : base::Cast<BasicModule> {
                          diagnostic::DiagnosticConsumer &diag);
 
  protected:
-  virtual void ProcessNodes(base::PtrSpan<ast::Node const>) = 0;
+  virtual void ProcessNodes(base::PtrSpan<ast::Node const>,
+                            diagnostic::DiagnosticConsumer &) = 0;
 
  private:
   void InitializeNodes(base::PtrSpan<ast::Node> nodes);

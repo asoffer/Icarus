@@ -26,22 +26,27 @@ void BasicModule::InitializeNodes(base::PtrSpan<ast::Node> nodes) {
   }
 }
 
-void BasicModule::AppendNode(std::unique_ptr<ast::Node> node) {
+void BasicModule::AppendNode(std::unique_ptr<ast::Node> node,
+                             diagnostic::DiagnosticConsumer &diag) {
   InitializeNodes(base::PtrSpan<ast::Node>(&node, 1));
-  ProcessNodes(base::PtrSpan<ast::Node const>(&node, 1));
+  ProcessNodes(base::PtrSpan<ast::Node const>(&node, 1), diag);
   nodes_.push_back(std::move(node));
 }
 
-void BasicModule::AppendNodes(std::vector<std::unique_ptr<ast::Node>> nodes) {
+// TODO not sure this is necessary.
+void BasicModule::AppendNodes(std::vector<std::unique_ptr<ast::Node>> nodes,
+                              diagnostic::DiagnosticConsumer &diag) {
   InitializeNodes(nodes);
-  ProcessNodes(nodes);
+  ProcessNodes(nodes, diag);
   nodes_.insert(nodes_.end(), std::make_move_iterator(nodes.begin()),
                 std::make_move_iterator(nodes.end()));
 }
 
 void BasicModule::ProcessFromSource(frontend::Source *src,
                                     diagnostic::DiagnosticConsumer &diag) {
-  AppendNodes(frontend::Parse(src, diag));
+  auto nodes = frontend::Parse(src, diag);
+  if (diag.num_consumed() > 0) { return; }
+  AppendNodes(std::move(nodes), diag);
 }
 
 absl::Span<ast::Declaration const *const> BasicModule::declarations(

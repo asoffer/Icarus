@@ -4,7 +4,7 @@
 #include "compiler/compiler.h"
 #include "compiler/extract_jumps.h"
 #include "compiler/module.h"
-#include "diagnostic/consumer/streaming.h"
+#include "diagnostic/consumer/consumer.h"
 
 namespace compiler {
 struct LibraryModule : CompiledModule {
@@ -12,9 +12,9 @@ struct LibraryModule : CompiledModule {
   ~LibraryModule() override {}
 
  protected:
-  void ProcessNodes(base::PtrSpan<ast::Node const> nodes) override {
-    diagnostic::StreamingConsumer consumer(stderr);
-    compiler::Compiler c(this, consumer);
+  void ProcessNodes(base::PtrSpan<ast::Node const> nodes,
+                    diagnostic::DiagnosticConsumer &diag) override {
+    compiler::Compiler c(this, diag);
 
     for (ast::Node const *node : nodes) {
       ExtractJumps(&c.data_.extraction_map_, node);

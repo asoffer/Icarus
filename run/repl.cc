@@ -39,12 +39,11 @@ static void ReplEval(ast::Expression const *expr,
 }
 
 struct ReplModule : public compiler::CompiledModule {
-  explicit ReplModule() {}
   ~ReplModule() override {}
 
-  void ProcessNodes(base::PtrSpan<ast::Node const> nodes) override {
-    diagnostic::StreamingConsumer consumer(stderr);
-    compiler::Compiler compiler(this, consumer);
+  void ProcessNodes(base::PtrSpan<ast::Node const> nodes,
+                    diagnostic::DiagnosticConsumer &diag) override {
+    compiler::Compiler compiler(this, diag);
     for (ast::Node const *node : nodes) {
       if (node->is<ast::Declaration>()) {
         auto *decl = &node->as<ast::Declaration>();
@@ -70,8 +69,8 @@ struct ReplModule : public compiler::CompiledModule {
 int RunRepl() {
   std::puts("Icarus REPL (v0.1)");
 
-  diagnostic::StreamingConsumer diag(stderr);
   auto *repl = frontend::Source::Make<frontend::ReplSource>();
+  diagnostic::StreamingConsumer diag(stderr, repl);
   ReplModule mod;
 
   // TODO Parse can fail.

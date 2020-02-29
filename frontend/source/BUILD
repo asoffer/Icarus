@@ -73,8 +73,25 @@ cc_test(
 )
 
 cc_library(
+    name = "range",
+    hdrs = ["range.h"],
+    deps = [
+        "//base:debug",
+        "//base:interval",
+        "//base:strong_types",
+    ],
+)
+
+cc_library(
     name = "repl",
     hdrs = ["repl.h"],
+    deps = [":source"],
+)
+
+cc_library(
+    name = "shared",
+    hdrs = ["shared.h"],
+    srcs = ["shared.cc"],
     deps = [":source"],
 )
 
@@ -90,15 +107,5 @@ cc_test(
     deps = [
         ":string",
         "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
-    name = "range",
-    hdrs = ["range.h"],
-    deps = [
-        "//base:debug",
-        "//base:interval",
-        "//base:strong_types",
     ],
 )

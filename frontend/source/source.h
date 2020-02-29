@@ -35,7 +35,7 @@ struct Source : base::Cast<Source> {
   // the next call to ReadUntil.
   virtual SourceChunk ReadUntil(char delim) = 0;
 
-  virtual std::vector<std::string> LoadLines() = 0;
+  virtual std::vector<std::string> LoadLines() const = 0;
 
  private:
   // TODO Just keeping all the sources around forever is a bad idea. For sources

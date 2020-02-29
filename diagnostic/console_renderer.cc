@@ -16,8 +16,10 @@ inline int NumDigits(frontend::LineNum line) {
   return counter;
 }
 
-static absl::flat_hash_map<frontend::Source *, std::vector<std::string>> lines;
-std::string const &LoadLine(frontend::Source *src, frontend::LineNum line) {
+static absl::flat_hash_map<frontend::Source const *, std::vector<std::string>>
+    lines;
+std::string const &LoadLine(frontend::Source const *src,
+                            frontend::LineNum line) {
   auto iter = lines.find(src);
   if (iter == lines.end()) {
     iter = lines.emplace(src, src->LoadLines()).first;
@@ -34,7 +36,7 @@ void ConsoleRenderer::Flush() {
   std::fflush(out_);
 }
 
-void ConsoleRenderer::WriteSourceQuote(frontend::Source *source,
+void ConsoleRenderer::WriteSourceQuote(frontend::Source const *source,
                                        SourceQuote const &quote) {
   int border_alignment = NumDigits(quote.lines.endpoints_.back() - 1) + 2;
   for (base::Interval<frontend::LineNum> line_range : quote.lines) {
@@ -47,7 +49,7 @@ void ConsoleRenderer::WriteSourceQuote(frontend::Source *source,
   }
 }
 
-void ConsoleRenderer::Add(frontend::Source *source, Category cat,
+void ConsoleRenderer::Add(frontend::Source const *source, Category cat,
                           DiagnosticMessage const &diag) {
   has_data_ = true;
   diag.for_each_component([&](auto const &component) {

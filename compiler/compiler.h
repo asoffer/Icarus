@@ -155,12 +155,9 @@ struct Compiler
 
   module::BasicModule *module() const { return data_.mod_; }
   ir::Builder &builder() { return data_.bldr_; };
+  diagnostic::DiagnosticConsumer &diag() { return diag_consumer_; }
 
   ir::CompiledFn MakeThunk(ast::Expression const *expr, type::Type const *type);
-
-  // TODO Depending on if we're streaming or batching errors, we may want one
-  // log per module, or one per compiler instance.
-  diagnostic::DiagnosticConsumer &diag() { return data_.diag_; }
 
   type::QualType const *qual_type_of(ast::ExprPtr expr) const;
   type::Type const *type_of(ast::Expression const *expr) const;

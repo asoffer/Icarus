@@ -33,7 +33,7 @@ struct ReplSource : public Source {
     return {result, not view_.empty()};
   }
 
-  std::vector<std::string> LoadLines() override { return lines_; }
+  std::vector<std::string> LoadLines() const override { return lines_; }
 
   std::vector<std::string> lines_;
   std::string_view view_;

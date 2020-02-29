@@ -49,7 +49,7 @@ cc_library(
         "//compiler/dispatch:scope_table",
         "//diagnostic:errors",
         "//diagnostic/consumer",
-        "//diagnostic/consumer:streaming",
+        "//diagnostic/consumer:trivial",
         "//frontend:parse",
         "//frontend/source:file_name",
         "//interpretter:evaluate",
@@ -119,7 +119,7 @@ cc_library(
         ":compiler_header",
         ":visitors",
         "//base:defer",
-        "//diagnostic/consumer:streaming",
+        "//diagnostic/consumer",
     ],
 )
 
@@ -150,7 +150,6 @@ cc_library(
         "//compiler/constant:binding_tree",
         "//compiler/dispatch:fn_call_table_header",
         "//compiler/dispatch:scope_table_header",
-        "//diagnostic/consumer:streaming",
         "//ir:block_def",
         "//ir:builder",
         "//ir:compiled_fn",
@@ -199,7 +198,7 @@ cc_library(
         ":compiler_header",
         ":extract_jumps",
         ":module",
-        "//diagnostic/consumer:streaming",
+        "//diagnostic/consumer",
     ],
 )
 
@@ -211,7 +210,7 @@ cc_library(
         ":emit_function_call_infrastructure",
         ":extract_jumps",
         ":module",
-        "//diagnostic/consumer:streaming",
+        "//diagnostic/consumer",
         "//ir:compiled_fn",
     ],
 )

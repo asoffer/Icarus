@@ -6,13 +6,16 @@
 namespace diagnostic {
 
 struct DiagnosticConsumer {
+  explicit DiagnosticConsumer(frontend::Source const* src) : src_(src) {}
   virtual ~DiagnosticConsumer() {}
 
   template <typename Diag>
   void Consume(Diag const& diag) {
-    ConsumeImpl(diag.ToMessage());
+    ConsumeImpl(diag.ToMessage(src_));
     ++num_consumed_;
   }
+
+  frontend::Source const* source() const { return src_; }
 
   // TODO this should be overridable. What it means to count the number consumed
   // is dependent on what it consumes. For example, if warnings are considered
@@ -23,6 +26,7 @@ struct DiagnosticConsumer {
   virtual void ConsumeImpl(DiagnosticMessage&& diag) = 0;
 
  private:
+  frontend::Source const* src_;
   size_t num_consumed_ = 0;
 };
 

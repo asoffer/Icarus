@@ -32,7 +32,7 @@ struct FileSource : public Source {
     }
   }
 
-  std::vector<std::string> LoadLines() override {
+  std::vector<std::string> LoadLines() const override {
     std::vector<std::string> lines{1};
 
     auto src = *FileSource::Make(name_);

@@ -11,6 +11,7 @@
 #include "diagnostic/errors.h"
 #include "frontend/parse.h"
 #include "frontend/source/file_name.h"
+#include "frontend/source/shared.h"
 #include "interpretter/execute.h"
 #include "ir/compiled_fn.h"
 #include "module/module.h"
@@ -22,7 +23,7 @@ int RunCompiler(frontend::FileName const &file_name) {
   ASSERT(libc_handle != nullptr);
   base::defer d([libc_handle] { dlclose(libc_handle); });
 
-  diagnostic::StreamingConsumer diag(stderr);
+  diagnostic::StreamingConsumer diag(stderr, frontend::SharedSource());
   auto expected_pending_mod =
       module::ImportModule<compiler::ExecutableModule>(file_name);
   if (not expected_pending_mod) {

@@ -13,6 +13,7 @@ cc_library(
     hdrs = ["streaming.h"],
     deps = [
         ":consumer",
+        "//base:debug",
         "//diagnostic:console_renderer",
         "//diagnostic:message",
     ],

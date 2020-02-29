@@ -5,7 +5,7 @@
 #include "compiler/emit_function_call_infrastructure.h"
 #include "compiler/extract_jumps.h"
 #include "compiler/module.h"
-#include "diagnostic/consumer/streaming.h"
+#include "diagnostic/consumer/consumer.h"
 #include "ir/compiled_fn.h"
 
 namespace compiler {
@@ -20,9 +20,9 @@ struct ExecutableModule : CompiledModule {
   void set_main(ir::CompiledFn *main_fn) {}
 
  protected:
-  void ProcessNodes(base::PtrSpan<ast::Node const> nodes) override {
-    diagnostic::StreamingConsumer consumer(stderr);
-    compiler::Compiler c(this, consumer);
+  void ProcessNodes(base::PtrSpan<ast::Node const> nodes,
+                    diagnostic::DiagnosticConsumer &diag) override {
+    compiler::Compiler c(this, diag);
 
     for (ast::Node const *node : nodes) {
       ExtractJumps(&c.data_.extraction_map_, node);
@@ -44,7 +44,7 @@ struct ExecutableModule : CompiledModule {
 
     for (ast::Node const *node : deferred) { c.Visit(node, VerifyTypeTag{}); }
 
-    if (consumer.num_consumed() > 0) { return; }
+    if (diag.num_consumed() > 0) { return; }
 
     ProcessExecutableBody(&c, nodes, main());
   }

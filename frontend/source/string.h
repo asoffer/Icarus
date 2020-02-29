@@ -32,7 +32,7 @@ struct StringSource : public Source {
     return {result, not view_.empty()};
   }
 
-  std::vector<std::string> LoadLines() override {
+  std::vector<std::string> LoadLines() const override {
     std::vector<std::string> lines{1};
 
     std::string_view all{src_};

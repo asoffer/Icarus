@@ -9,6 +9,7 @@ cc_library(
         "//compiler:compiler",
         "//compiler:executable_module",
         "//frontend/source:file_name",
+        "//frontend/source:shared",
         "//module:pending",
         "//interpretter:execute",
         "//ir:compiled_fn",

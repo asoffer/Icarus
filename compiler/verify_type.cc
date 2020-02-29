@@ -13,7 +13,7 @@
 #include "compiler/extract_jumps.h"
 #include "compiler/library_module.h"
 #include "compiler/verify_assignment_and_initialization.h"
-#include "diagnostic/consumer/streaming.h"
+#include "diagnostic/consumer/trivial.h"
 #include "diagnostic/errors.h"
 #include "frontend/lex/operators.h"
 #include "interpretter/evaluate.h"
@@ -52,7 +52,7 @@ void AddAdl(ast::OverloadSet *overload_set, std::string_view id,
 
   for (auto *mod : modules) {
     auto decls = mod->declarations(id);
-    diagnostic::StreamingConsumer consumer(stderr);
+    diagnostic::TrivialConsumer consumer;
 
     for (auto *d : decls) {
       // TODO Wow this is a terrible way to access the type.
@@ -528,7 +528,7 @@ static std::optional<type::Quals> VerifyAndGetQuals(
 static type::QualType AccessTypeMember(Compiler *c, ast::Access const *node,
                                        type::QualType operand_result) {
   if (not operand_result.constant()) {
-    c->diag_consumer_.Consume(
+    c->diag().Consume(
         diagnostic::NonConstantTypeMemberAccess{.range = node->span});
     return type::QualType::Error();
   }
@@ -730,7 +730,7 @@ type::QualType Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
   switch (node->op()) {
     case Operator::Assign: {
       // TODO if lhs is reserved?
-      if (not VerifyAssignment(diag_consumer_, node->span, lhs_qual_type,
+      if (not VerifyAssignment(diag(), node->span, lhs_qual_type,
                                rhs_qual_type)) {
         return type::QualType::Error();
       }
@@ -780,12 +780,11 @@ type::QualType Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
       if (lhs_qual_type.type() == rhs_qual_type.type()) {                      \
         return set_result(node, type::QualType((return_type), quals));         \
       } else {                                                                 \
-        diag_consumer_.Consume(                                                \
-            diagnostic::ArithmeticBinaryOperatorTypeMismatch{                  \
-                .lhs_type = lhs_qual_type.type(),                              \
-                .rhs_type = rhs_qual_type.type(),                              \
-                .range    = node->span,                                        \
-            });                                                                \
+        diag().Consume(diagnostic::ArithmeticBinaryOperatorTypeMismatch{       \
+            .lhs_type = lhs_qual_type.type(),                                  \
+            .rhs_type = rhs_qual_type.type(),                                  \
+            .range    = node->span,                                            \
+        });                                                                    \
         return type::QualType::Error();                                        \
       }                                                                        \
     } else {                                                                   \
@@ -828,11 +827,10 @@ type::QualType Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
           return set_result(
               node, type::QualType(lhs_qual_type.type(),quals));
         } else {
-          diag_consumer_.Consume(
-              diagnostic::ArithmeticBinaryOperatorTypeMismatch{
-                  .lhs_type = lhs_qual_type.type(),
-                  .rhs_type = rhs_qual_type.type(),
-                  .range    = node->span});
+          diag().Consume(diagnostic::ArithmeticBinaryOperatorTypeMismatch{
+              .lhs_type = lhs_qual_type.type(),
+              .rhs_type = rhs_qual_type.type(),
+              .range    = node->span});
           return type::QualType::Error();
         }
       } else {
@@ -847,11 +845,10 @@ type::QualType Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
         if (lhs_qual_type.type() == rhs_qual_type.type()) {
           return set_result(node, type::QualType(type::Void(), quals));
         } else {
-          diag_consumer_.Consume(
-              diagnostic::ArithmeticBinaryOperatorTypeMismatch{
-                  .lhs_type = lhs_qual_type.type(),
-                  .rhs_type = rhs_qual_type.type(),
-                  .range    = node->span});
+          diag().Consume(diagnostic::ArithmeticBinaryOperatorTypeMismatch{
+              .lhs_type = lhs_qual_type.type(),
+              .rhs_type = rhs_qual_type.type(),
+              .range    = node->span});
           return type::QualType::Error();
         }
       } else {
@@ -1180,7 +1177,7 @@ type::QualType Compiler::Visit(ast::Cast const *node, VerifyTypeTag) {
     return VerifyUnaryOverload(this, "as", node, expr_result);
   } else {
     if (not type::CanCast(expr_result.type(), t)) {
-      diag_consumer_.Consume(diagnostic::InvalidCast{
+      diag().Consume(diagnostic::InvalidCast{
           .from  = expr_result.type(),
           .to    = t,
           .range = node->span,
@@ -1420,7 +1417,7 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
         return set_result(node, type::QualType::Error());
       }
 
-      if (not VerifyInitialization(diag_consumer_, node->span, init_val_result,
+      if (not VerifyInitialization(diag(), node->span, init_val_result,
                                    init_val_result)) {
         return set_result(node, type::QualType::Error());
       }
@@ -1465,8 +1462,8 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
         }
 
         if (node_qual_type and init_val_qual_type) {
-          error |= not VerifyInitialization(diag_consumer_, node->span,
-                                            node_qual_type, init_val_qual_type);
+          error |= not VerifyInitialization(diag(), node->span, node_qual_type,
+                                            init_val_qual_type);
         }
       } else {
         diag().Consume(diagnostic::NotAType{
