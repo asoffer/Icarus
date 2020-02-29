@@ -834,7 +834,8 @@ type::QualType Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
           return type::QualType::Error();
         }
       } else {
-        VerifyBinaryOverload(this, "+", node, lhs_qual_type, rhs_qual_type);
+        return VerifyBinaryOverload(this, "+", node, lhs_qual_type,
+                                    rhs_qual_type);
       }
     } break;
     case Operator::AddEq: {
@@ -880,7 +881,7 @@ type::QualType Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
     }
     default: UNREACHABLE();
   }
-  UNREACHABLE(static_cast<int>(node->op()));
+  UNREACHABLE(stringify(node->op()));
 }
 
 type::QualType Compiler::Visit(ast::BlockLiteral const *node, VerifyTypeTag) {

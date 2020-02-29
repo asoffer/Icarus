@@ -440,7 +440,7 @@ void Terminal::DebugStrAppend(std::string *out, size_t indent) const {
       absl::StrAppend(out, as<bool>() ? "true" : "false");
       return;
     case type::BasicType::ByteView:
-      absl::StrAppend(out, "\"", as<std::string_view>(), "\"");
+      absl::StrAppend(out, "\"", as<ir::String>().get(), "\"");
       return;
     case type::BasicType::NullPtr:
       absl::StrAppend(out, "null");

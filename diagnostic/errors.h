@@ -1,6 +1,7 @@
 #ifndef ICARUS_DIAGNOSTIC_ERRORS_H
 #define ICARUS_DIAGNOSTIC_ERRORS_H
 
+#include <experimental/source_location>
 #include <string_view>
 #include <vector>
 
@@ -1069,8 +1070,12 @@ struct Todo {
   static constexpr std::string_view kName     = "todo";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("TODO"));
+    return DiagnosticMessage(Text("TODO: Diagnostic emit from %s, line %u.",
+                                  loc.file_name(), loc.line()));
   }
+
+  std::experimental::source_location loc =
+      std::experimental::source_location::current();
 };
 
 }  // namespace diagnostic

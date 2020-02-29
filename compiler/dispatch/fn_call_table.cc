@@ -5,6 +5,7 @@
 #include "compiler/dispatch/parameters_and_arguments.h"
 #include "compiler/dispatch/runtime.h"
 #include "core/params_ref.h"
+#include "diagnostic/errors.h"
 #include "ir/out_params.h"
 #include "ir/results.h"
 #include "type/cast.h"
@@ -108,6 +109,9 @@ base::expected<FnCallDispatchTable> FnCallDispatchTable::Verify(
                           [](auto const &, internal::ExprData const &data) {
                             return data.params();
                           })) {
+    // Note: If the overload set is empty, ParamsCoverArgs will emit no
+    // diagnostics!
+    compiler->diag().Consume(diagnostic::Todo{});
     // TODO Return a failuere-match-reason.
     return base::unexpected("Match failure");
   }

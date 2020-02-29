@@ -1273,7 +1273,7 @@ struct Terminal : Expression {
     } else if constexpr (std::is_same_v<T, ir::Addr>) {
       return addr_;
     } else {
-      NOT_YET();
+      NOT_YET(typeid(T).name());
     }
   }
 
