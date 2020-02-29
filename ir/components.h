@@ -24,10 +24,6 @@ inline Reg PtrFix(Reg r, type::Type const *desired_type) {
   return desired_type->is_big() ? r : Load(r, desired_type);
 }
 
-// TODO: Typed<Results>
-RegOr<bool> EmitEq(type::Type const *lhs_type, Results const &lhs_val,
-                   type::Type const *rhs_type, Results const &rhs_val);
-
 }  // namespace ir
 
 #endif  // ICARUS_IR_COMPONENTS_H

@@ -198,6 +198,17 @@ struct Builder {
     }
   }
 
+  RegOr<bool> Eq(type::Type const* common_type, ir::Results const& lhs_val,
+                 ir::Results const& rhs_val) {
+    return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                            uint16_t, uint32_t, uint64_t, float, double,
+                            ir::EnumVal, ir::FlagsVal>(
+        common_type, [&](auto tag) {
+          using T = typename decltype(tag)::type;
+          return Eq(lhs_val.get<T>(0), rhs_val.get<T>(0));
+        });
+  }
+
   template <typename Lhs, typename Rhs>
   RegOr<bool> Ne(Lhs const& lhs, Rhs const& rhs) {
     using type = reduced_type_t<Lhs>;

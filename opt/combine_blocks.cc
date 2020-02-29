@@ -101,6 +101,11 @@ void ReduceEmptyBlocks(ir::CompiledFn* fn) {
     for (auto* inc : block->incoming_) {
       if (inc->jump_.kind() == ir::JumpCmd::Kind::Uncond) {
         inc->Append(std::move(*block));
+      } else if (inc->jump_.kind() == ir::JumpCmd::Kind::Cond) {
+        // TODO this might be okay, but it might be an issue with phi-nodes.
+        // Even when it's not an issue for one branch it might be an issue if
+        // more than one are combined.
+        continue;
       } else if (block->jump_.kind() == ir::JumpCmd::Kind::Uncond) {
         auto* target = ASSERT_NOT_NULL(block->jump_.UncondTarget());
         inc->ReplaceJumpTargets(block.get(), target);

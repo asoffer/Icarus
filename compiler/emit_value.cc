@@ -987,12 +987,16 @@ ir::Results Compiler::Visit(ast::Switch const *node, EmitValueTag) {
   for (size_t i = 0; i + 1 < node->cases_.size(); ++i) {
     auto &[body, match_cond] = node->cases_[i];
     auto *expr_block         = builder().AddBlock();
-
-    ir::Results match_val = Visit(match_cond.get(), EmitValueTag{});
-    ir::RegOr<bool> cond  = node->expr_
-                               ? ir::EmitEq(type_of(match_cond.get()),
-                                            match_val, expr_type, expr_results)
-                               : match_val.get<bool>(0);
+    auto *match_cond_ptr     = match_cond.get();
+    ir::Results match_val = Visit(match_cond_ptr, EmitValueTag{});
+    ir::RegOr<bool> cond  = [&] {
+      if (node->expr_) {
+        ASSERT(expr_type == type_of(match_cond_ptr));
+        return builder().Eq(expr_type, match_val, expr_results);
+      } else {
+        return match_val.get<bool>(0);
+      }
+    }();
 
     auto next_block = ir::EarlyExitOn<true>(expr_block, cond);
 
