@@ -1,4 +1,7 @@
-print "Basic enums:\n"
+-- ::= import "examples/lib/core.ic"
+io ::= import "examples/lib/io.ic"
+
+io.Print("Basic enums:\n")
 // Enums are defined by simply listing the values without commas, one per
 // line.
 Suit ::= enum {
@@ -19,59 +22,97 @@ Boolean ::= enum { TRUE \\ FALSE }
 trump := Suit.SPADE
 
 // When printed, enumerators show just the enumerator name.
-print trump, "\n"
+PrintEnum(trump)
+io.Print("\n")
 
-// Enums can be compared for (in)equality 
-print "(CLUB == DIAMOND): ", Suit.CLUB == Suit.DIAMOND, "\n"
+// Enums can be compared for (in)equality
+io.Print("(CLUB == DIAMOND): ")
+io.Print(Suit.CLUB == Suit.DIAMOND)
+io.Print("\n")
 
 // However enumerators do not come with any particular ordering, so operators
 // like (<) will not work.
 
-print "--------------------------------------------------------------------\n"
+io.Print("--------------------------------------------------------------------\n")
 
-print "Basic flags:\n"
+io.Print("Basic flags:\n")
 // Flags are like enums but whereas enums can only hold one value at a time,
 // flags can have each option set or unset.
 Color ::= flags { RED \\ GREEN \\ BLUE }
-print "My favorite color is ", Color.RED, "\n"
+io.Print("My favorite color is ")
+PrintFlag(Color.RED)
+io.Print("\n")
 
 // To set more than one option, use the or-operator (|).
 cyan ::= (Color.GREEN | Color.BLUE)
 magenta ::= (Color.RED | Color.BLUE)
 yellow ::= (Color.GREEN | Color.RED)
-print "Yellow is just ", yellow, "\n"
+io.Print("Yellow is just ")
+PrintFlag(yellow)
+io.Print("\n")
 
 // Flag values have a default initial value consisting of all enumerators
 // unset.
 black: Color
 // Printing an empty enumerator shows:
-print "Black is ", black, "\n"
+io.Print("Black is ")
+PrintFlag(black)
+io.Print("\n")
 
 // Flag values can also be negated:
-print "Cyan is ", !Color.RED, "\n"
+io.Print("Cyan is ")
+PrintFlag(!Color.RED)
+io.Print("\n")
 
 // Flags do come with a partial ordering where "less than" means having a
 // subset of the enumerators set.
-print "Red is \"less than\" magenta: ", Color.RED < magenta,
-      "\n"
-print "However, Red and blue are not comparable:\n",
-       "  RED < BLUE: ", (Color.RED < Color.BLUE), "\n",
-       "  BLUE < RED: ", (Color.BLUE < Color.RED), "\n"
+io.Print("Red is \"less than\" magenta: ")
+io.Print(Color.RED < magenta)
+io.Print("\n")
+io.Print("However, Red and blue are not comparable:\n")
+io.Print("  RED < BLUE: ")
+io.Print(Color.RED < Color.BLUE)
+io.Print("\n")
+io.Print("  BLUE < RED: ")
+io.Print(Color.BLUE < Color.RED)
+io.Print("\n")
 
 // Flags can be xor-ed together:
-print "Cyan is ", magenta ^ yellow, "\n"
+io.Print("Cyan is ")
+PrintFlag(magenta ^ yellow)
+io.Print("\n")
 
 // Lastly, enumerators can be intersected with the and-operator (&).
-print "(not red and not blue) is ", !Color.RED & !Color.BLUE, "\n"
+io.Print("(not red and not blue) is ")
+PrintFlag(!Color.RED & !Color.BLUE)
+io.Print("\n")
 
-// Note that enumerator printing is intended purely for debugging purposes.
-// Specifically with flags, this program may print "RED | GREEN" or
-// "GREEN | RED". These are both valid. It is guaranteed that a compiled
-// program will always use the same ordering. It is not guaranteed however
-// that successive compilations will have the same ordering:
-print "Magenta is ", Color.RED | Color.BLUE, "\n"
-print "Magenta is ", Color.RED | Color.BLUE, "\n"
-print "Magenta is ", Color.RED | Color.BLUE, "\n"
-print "Magenta is ", Color.RED | Color.BLUE, "\n"
+io.Print("Magenta is ")
+PrintFlag(Color.RED | Color.BLUE)
+io.Print("\n")
 
-print "--------------------------------------------------------------------\n"
+io.Print("--------------------------------------------------------------------\n")
+
+// Workarounds for the lack of generics at the moment.
+PrintEnum ::= (x: Suit) -> () {
+  io.Print(switch (x) {
+    "CLUB" when Suit.CLUB
+    "DIAMOND" when Suit.DIAMOND
+    "HEART" when Suit.HEART
+    "SPADE" when Suit.SPADE
+  })
+}
+PrintEnum ::= (x: Boolean) -> () {
+  io.Print(switch (x) {
+    "TRUE" when Boolean.TRUE
+    "FALSE" when Boolean.FALSE
+  })
+}
+PrintFlag ::= (x: Color) -> () {
+  io.Print("Color[")
+  if ((x & Color.RED) == Color.RED) then { io.Print("RED") }
+  if ((x & Color.GREEN) == Color.GREEN) then { io.Print("GREEN") }
+  if ((x & Color.BLUE) == Color.BLUE) then { io.Print("BLUE") }
+  io.Print("]")
+}
+
