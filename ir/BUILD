@@ -198,16 +198,6 @@ cc_library(
 )
 
 cc_library(
-    name = "components",
-    hdrs = ["components.h"],
-    srcs = ["components.cc"],
-    deps = [
-        ":builder",
-        ":compiled_fn",
-    ],
-)
-
-cc_library(
     name = "compiled_fn",
     hdrs = ["compiled_fn.h"],
     srcs = ["compiled_fn.cc"],

@@ -5,7 +5,6 @@
 #include "compiler/special_function.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
-#include "ir/components.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 
@@ -59,11 +58,11 @@ void Compiler::Visit(type::Variant const *t, ir::Reg reg, EmitDestroyTag) {
         auto *found_block = builder().AddBlock();
 
         builder().CurrentBlock() = found_block;
-        Visit(v, ir::PtrFix(var_val, v), EmitDestroyTag{});
+        Visit(v, builder().PtrFix(var_val, v), EmitDestroyTag{});
         builder().UncondJump(landing);
 
         builder().CurrentBlock() = old_block;
-        builder().CurrentBlock() = ir::EarlyExitOn<true>(
+        builder().CurrentBlock() = builder().EarlyExitOn<true>(
             found_block, builder().Eq(ir::RegOr<type::Type const *>(type), v));
       }
 

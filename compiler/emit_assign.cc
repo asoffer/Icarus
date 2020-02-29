@@ -5,7 +5,6 @@
 #include "compiler/special_function.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
-#include "ir/components.h"
 #include "ir/results.h"
 #include "type/primitive.h"
 
@@ -44,17 +43,17 @@ static ir::CompiledFn *CreateAssign(Compiler *compiler, type::Array const *a) {
 
     bldr.CurrentBlock() = loop_body;
     if constexpr (Cat == Copy) {
-      compiler->Visit(
-          a->data_type, to_phi->result,
-          type::Typed{ir::Results{ir::PtrFix(from_phi->result, a->data_type)},
-                      a->data_type},
-          EmitCopyAssignTag{});
+      compiler->Visit(a->data_type, to_phi->result,
+                      type::Typed{ir::Results{compiler->builder().PtrFix(
+                                      from_phi->result, a->data_type)},
+                                  a->data_type},
+                      EmitCopyAssignTag{});
     } else if constexpr (Cat == Move) {
-      compiler->Visit(
-          a->data_type, to_phi->result,
-          type::Typed{ir::Results{ir::PtrFix(from_phi->result, a->data_type)},
-                      a->data_type},
-          EmitMoveAssignTag{});
+      compiler->Visit(a->data_type, to_phi->result,
+                      type::Typed{ir::Results{compiler->builder().PtrFix(
+                                      from_phi->result, a->data_type)},
+                                  a->data_type},
+                      EmitMoveAssignTag{});
     } else {
       UNREACHABLE();
     }
@@ -92,8 +91,8 @@ static ir::AnyFunc CreateAssign(Compiler *compiler, type::Struct const *s) {
 
     for (size_t i = 0; i < s->fields_.size(); ++i) {
       auto *field_type = s->fields_.at(i).type;
-      auto from =
-          ir::Results{ir::PtrFix(bldr.Field(val, s, i).get(), field_type)};
+      auto from        = ir::Results{
+          compiler->builder().PtrFix(bldr.Field(val, s, i).get(), field_type)};
       auto to = bldr.Field(var, s, i).get();
 
       // TODO use the tag in place of `Cat`.
@@ -225,7 +224,7 @@ void Compiler::Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
            base::make_random_permutation(absl::BitGen{}, t->entries_.size())) {
         auto *entry = t->entries_.at(i);
         Visit(entry, builder().Field(var, t, i).get(),
-              type::Typed{ir::Results{ir::PtrFix(
+              type::Typed{ir::Results{builder().PtrFix(
                               builder().Field(val, t, i).get(), entry)},
                           entry},
               EmitCopyAssignTag{});
@@ -257,7 +256,7 @@ void Compiler::Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
            base::make_random_permutation(absl::BitGen{}, t->entries_.size())) {
         auto *entry = t->entries_.at(i);
         Visit(entry, builder().Field(var, t, i).get(),
-              type::Typed{ir::Results{ir::PtrFix(
+              type::Typed{ir::Results{builder().PtrFix(
                               builder().Field(val, t, i).get(), entry)},
                           entry},
               EmitMoveAssignTag{});
@@ -286,11 +285,11 @@ void Compiler::Visit(type::Variant const *t, ir::RegOr<ir::Addr> to,
     auto var_val = builder().VariantValue(from_var_type, from->get<ir::Reg>(0));
     for (type::Type const *v : from_var_type->variants_) {
       auto *next_block = builder().AddBlock();
-      builder().CurrentBlock() =
-          ir::EarlyExitOn<false>(next_block, builder().Eq(actual_type, v));
+      builder().CurrentBlock() = builder().EarlyExitOn<false>(
+          next_block, builder().Eq(actual_type, v));
       ir::Store(v, builder().VariantType(to));
       Visit(v, builder().VariantValue(t, to),
-            type::Typed{ir::Results{ir::PtrFix(var_val, v)}, v},
+            type::Typed{ir::Results{builder().PtrFix(var_val, v)}, v},
             EmitCopyAssignTag{});
       builder().UncondJump(landing);
       builder().CurrentBlock() = next_block;
@@ -320,11 +319,11 @@ void Compiler::Visit(type::Variant const *t, ir::RegOr<ir::Addr> to,
     auto var_val = builder().VariantValue(from_var_type, from->get<ir::Reg>(0));
     for (type::Type const *v : from_var_type->variants_) {
       auto *next_block = builder().AddBlock();
-      builder().CurrentBlock() =
-          ir::EarlyExitOn<false>(next_block, builder().Eq(actual_type, v));
+      builder().CurrentBlock() = builder().EarlyExitOn<false>(
+          next_block, builder().Eq(actual_type, v));
       ir::Store(v, builder().VariantType(to));
       Visit(v, builder().VariantValue(t, to),
-            type::Typed{ir::Results{ir::PtrFix(var_val, v)}, v},
+            type::Typed{ir::Results{builder().PtrFix(var_val, v)}, v},
             EmitMoveAssignTag{});
       builder().UncondJump(landing);
       builder().CurrentBlock() = next_block;

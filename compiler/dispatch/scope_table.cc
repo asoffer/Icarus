@@ -9,7 +9,6 @@
 #include "core/params.h"
 #include "diagnostic/errors.h"
 #include "ir/builder.h"
-#include "ir/components.h"
 #include "type/cast.h"
 #include "type/type.h"
 #include "type/variant.h"

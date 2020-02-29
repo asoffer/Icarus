@@ -4,7 +4,6 @@
 #include "interpretter/evaluate.h"
 #include "ir/any_func.h"
 #include "ir/compiled_fn.h"
-#include "ir/components.h"
 #include "type/function.h"
 
 namespace compiler {
@@ -97,7 +96,7 @@ ir::Results PrepareOneArg(Compiler *c, type::Typed<ir::Results> const &arg,
   if (arg_var and param_var) {
     NOT_YET();
   } else if (arg_var) {
-    return ir::Results{ir::PtrFix(
+    return ir::Results{bldr.PtrFix(
         bldr.VariantValue(nullptr, arg->get<ir::Addr>(0)), param_type)};
   } else if (param_var) {
     auto tmp = bldr.TmpAlloca(param_var);

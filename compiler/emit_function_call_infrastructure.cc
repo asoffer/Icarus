@@ -131,7 +131,8 @@ void CompleteBody(Compiler *compiler,
   //     *>(cache_slot_addr);
   //
   //     auto land_block         = builder().AddBlock();
-  //     ir::GetBuilder().CurrentBlock() = ir::EarlyExitOn<false>(
+  //     compiler->builder().CurrentBlock() =
+  //     compiler->builder().EarlyExitOn<false>(
   //         land_block,
   //         builder().Eq(cache_slot, static_cast<type::Type const
   //         *>(nullptr)));

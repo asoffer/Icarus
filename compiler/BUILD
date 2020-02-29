@@ -58,7 +58,6 @@ cc_library(
         "//ir:builder",
         "//ir:builtin_ir",
         "//ir:compiled_fn",
-        "//ir:components",
         "//ir:jump",
         "//ir:results",
         "//ir:struct_field",

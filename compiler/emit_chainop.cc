@@ -6,7 +6,6 @@
 #include "compiler/compiler.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
-#include "ir/components.h"
 #include "ir/results.h"
 #include "ir/value/enum_and_flags.h"
 #include "type/array.h"
@@ -62,8 +61,10 @@ static ir::Results ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
       bldr.ReturnJump();
 
       bldr.CurrentBlock() = equal_len_block;
-      auto lhs_start      = ir::Index(Ptr(lhs_type), ir::Reg::Arg(0), 0);
-      auto rhs_start      = ir::Index(Ptr(rhs_type), ir::Reg::Arg(1), 0);
+      auto lhs_start =
+          compiler->builder().Index(Ptr(lhs_type), ir::Reg::Arg(0), 0);
+      auto rhs_start =
+          compiler->builder().Index(Ptr(rhs_type), ir::Reg::Arg(1), 0);
       auto lhs_end =
           bldr.PtrIncr(lhs_start, lhs_type->len, Ptr(rhs_type->data_type));
       bldr.UncondJump(phi_block);

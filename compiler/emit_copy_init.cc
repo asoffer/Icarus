@@ -1,7 +1,6 @@
 #include "compiler/compiler.h"
 
 #include "ast/ast.h"
-#include "ir/components.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 
@@ -31,7 +30,7 @@ void Compiler::Visit(ast::ArrayLiteral const *node, type::Typed<ir::Reg> reg,
                      EmitCopyInitTag) {
   type::Array const &array_type = type_of(node)->as<type::Array>();
   auto *data_type_ptr           = type::Ptr(array_type.data_type);
-  auto elem = ir::Index(type::Ptr(&array_type), reg.get(), 0);
+  auto elem = builder().Index(type::Ptr(&array_type), reg.get(), 0);
   for (size_t i = 0; i + 1 < array_type.len; ++i) {
     Visit(node->elem(i), type::Typed<ir::Reg>(elem, data_type_ptr),
           EmitCopyInitTag{});

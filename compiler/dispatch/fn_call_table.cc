@@ -5,7 +5,6 @@
 #include "compiler/dispatch/parameters_and_arguments.h"
 #include "compiler/dispatch/runtime.h"
 #include "core/params_ref.h"
-#include "ir/components.h"
 #include "ir/out_params.h"
 #include "ir/results.h"
 #include "type/cast.h"

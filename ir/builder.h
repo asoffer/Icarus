@@ -22,6 +22,8 @@
 
 namespace ir {
 
+Reg Load(RegOr<Addr> r, type::Type const* t);
+
 struct Builder {
   BasicBlock* AddBlock();
   BasicBlock* AddBlock(BasicBlock const& to_copy);
@@ -349,6 +351,15 @@ struct Builder {
     CurrentBlock() = land_block;
   }
 
+  Reg PtrFix(Reg r, type::Type const* desired_type) {
+    return desired_type->is_big() ? r : Load(r, desired_type);
+  }
+
+  Reg Index(type::Pointer const* t, Reg array_ptr, RegOr<int64_t> offset) {
+    return PtrIncr(array_ptr, offset,
+                   type::Ptr(t->pointee->as<type::Array>().data_type));
+  }
+
   // Emits a function-call instruction, calling `fn` of type `f` with the given
   // `arguments` and output parameters. If output parameters are not present,
   // the function must return nothing.
@@ -375,6 +386,17 @@ struct Builder {
   void ChooseJump(std::vector<std::string_view> names,
                   std::vector<BasicBlock *> blocks,
                   std::vector<core::FnArgs<type::Typed<Results>>> args);
+
+  template <bool B>
+  BasicBlock* EarlyExitOn(BasicBlock* exit_block, RegOr<bool> cond) {
+    auto* continue_block = AddBlock();
+    if constexpr (B) {
+      CondJump(cond, exit_block, continue_block);
+    } else {
+      CondJump(cond, continue_block, exit_block);
+    }
+    return continue_block;
+  }
 
   // Special members function instructions. Calling these typically calls
   // builtin functions (or, in the case of primitive types, do nothing).

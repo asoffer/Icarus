@@ -10,7 +10,6 @@
 #include "interpretter/evaluate.h"
 #include "ir/builder.h"
 #include "ir/builtin_ir.h"
-#include "ir/components.h"
 #include "ir/jump.h"
 #include "ir/value/reg.h"
 #include "ir/struct_field.h"
@@ -94,7 +93,7 @@ ir::Results Compiler::Visit(ast::Access const *node, EmitValueTag) {
     auto *struct_type = &t->as<type::Struct>();
     auto field        = builder().Field(reg, struct_type,
                                  struct_type->index(node->member_name()));
-    return ir::Results{ir::PtrFix(field.get(), this_type)};
+    return ir::Results{builder().PtrFix(field.get(), this_type)};
   }
 }
 
@@ -105,10 +104,11 @@ ir::Results Compiler::Visit(ast::ArrayLiteral const *node, EmitValueTag) {
   if (not node->empty()) {
     auto *data_type = this_type->as<type::Array>().data_type;
     for (size_t i = 0; i < node->size(); ++i) {
-      EmitMoveInit(data_type, Visit(node->elem(i), EmitValueTag{}),
-                   type::Typed<ir::Reg>(ir::Index(type::Ptr(this_type), alloc,
-                                                  static_cast<int32_t>(i)),
-                                        type::Ptr(data_type)));
+      EmitMoveInit(
+          data_type, Visit(node->elem(i), EmitValueTag{}),
+          type::Typed<ir::Reg>(builder().Index(type::Ptr(this_type), alloc,
+                                               static_cast<int32_t>(i)),
+                               type::Ptr(data_type)));
     }
   }
   return ir::Results{alloc};
@@ -719,7 +719,7 @@ ir::Results Compiler::Visit(ast::Identifier const *node, EmitValueTag) {
     auto *t   = ASSERT_NOT_NULL(type_of(node));
     auto lval = Visit(node, EmitRefTag{})[0];
     if (not lval.is_reg()) { NOT_YET(); }
-    return ir::Results{ir::PtrFix(lval.reg(), t)};
+    return ir::Results{builder().PtrFix(lval.reg(), t)};
   }
 }
 
@@ -741,7 +741,7 @@ ir::Results Compiler::Visit(ast::Index const *node, EmitValueTag) {
     return ir::Results{ir::Load(addr, type::Nat8)};
   }
   return ir::Results{
-      ir::PtrFix(Visit(node, EmitRefTag{})[0].reg(), type_of(node))};
+      builder().PtrFix(Visit(node, EmitRefTag{})[0].reg(), type_of(node))};
 }
 
 ir::Results Compiler::Visit(ast::Goto const *node, EmitValueTag) {
@@ -998,7 +998,7 @@ ir::Results Compiler::Visit(ast::Switch const *node, EmitValueTag) {
       }
     }();
 
-    auto next_block = ir::EarlyExitOn<true>(expr_block, cond);
+    auto next_block = builder().EarlyExitOn<true>(expr_block, cond);
 
     builder().CurrentBlock() = expr_block;
     if (body->is<ast::Expression>()) {

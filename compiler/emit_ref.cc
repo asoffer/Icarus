@@ -4,7 +4,6 @@
 
 #include "interpretter/evaluate.h"
 #include "ir/value/addr.h"
-#include "ir/components.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 
@@ -55,7 +54,8 @@ std::vector<ir::RegOr<ir::Addr>> Compiler::Visit(ast::Index const *node,
 
     auto lval = Visit(node->lhs(), EmitRefTag{})[0];
     if (not lval.is_reg()) { NOT_YET(this, type_of(node)); }
-    return {ir::Index(type::Ptr(type_of(node->lhs())), lval.reg(), index)};
+    return {
+        builder().Index(type::Ptr(type_of(node->lhs())), lval.reg(), index)};
   } else if (auto *buf_ptr_type = lhs_type->if_as<type::BufferPointer>()) {
     auto index =
         ir::CastTo<int64_t>(rhs_type, Visit(node->rhs(), EmitValueTag{}));

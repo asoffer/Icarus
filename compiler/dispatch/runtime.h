@@ -7,7 +7,6 @@
 #include "core/params.h"
 #include "ir/basic_block.h"
 #include "ir/builder.h"
-#include "ir/components.h"
 #include "ir/value/reg_or.h"
 #include "ir/results.h"
 #include "type/typed_value.h"
@@ -60,7 +59,7 @@ void EmitRuntimeDispatch(
 
     ir::RegOr<bool> match =
         EmitRuntimeDispatchOneComparison(bldr, params, args);
-    bldr.CurrentBlock() = ir::EarlyExitOn<true>(block, match);
+    bldr.CurrentBlock() = bldr.EarlyExitOn<true>(block, match);
   }
 }
 
