@@ -23,8 +23,8 @@ struct ArithmeticBinaryOperatorTypeMismatch {
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
         Text("Mismatched types `%s` and `%s` in binary operator.",
-             lhs_type->to_string(), rhs_type->to_string())
-        /*SourceQuote{}.Highlighted(range, Style{})*/);
+             lhs_type->to_string(), rhs_type->to_string()),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   type::Type const *lhs_type;
@@ -38,7 +38,8 @@ struct NonConstantTypeMemberAccess {
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
-        Text("Cannot access a member of a non-constant type."));
+        Text("Cannot access a member of a non-constant type."),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -65,7 +66,8 @@ struct ImmovableType {
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
-        Text("Attempting to move an immovable type `%s`.", from->to_string()));
+        Text("Attempting to move an immovable type `%s`.", from->to_string()),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   type::Type const *from;
@@ -80,7 +82,8 @@ struct MismatchedAssignmentCount {
     return DiagnosticMessage(
         Text("Assigning multiple values but left-hand and right-hand side have "
              "different numbers of elements (`%d` vs. `%d`).",
-             to, from));
+             to, from),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   size_t to;
@@ -96,7 +99,8 @@ struct MismatchedInitializationCount {
     return DiagnosticMessage(
         Text("Initializing multiple values but left-hand and right-hand side "
              "have different numbers of elements (`%d` vs. `%d`).",
-             to, from));
+             to, from),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   size_t to;
@@ -113,7 +117,8 @@ struct AssigningToConstant {
     return DiagnosticMessage(
         Text("It is not allowed to assign to a constant expression. In this "
              "case, the left-hand side of the assignment has type `%s`",
-             to->to_string()));
+             to->to_string()),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   type::Type const *to;
@@ -144,7 +149,8 @@ struct NumberParsingFailure {
         break;
     }
 
-    return DiagnosticMessage(Text("%s", message));
+    return DiagnosticMessage(Text("%s", message),
+                             SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::NumberParsingError error;
@@ -159,7 +165,8 @@ struct UnprintableSourceCharacter {
     return DiagnosticMessage(
         Text("Uncountered unprintable character with integral value '%d' "
              "encountered in source.",
-             value));
+             value),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   int value;
@@ -172,7 +179,8 @@ struct InvalidSourceCharacter {
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
-        Text("Invalid character '%c' encountered in source.", value));
+        Text("Invalid character '%c' encountered in source.", value),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   char value;
@@ -234,7 +242,8 @@ struct CommaSeparatedListStatement {
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
-        Text("Comma-separated lists are not allowed as statements"));
+        Text("Comma-separated lists are not allowed as statements"),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -247,7 +256,8 @@ struct DeclarationUsedInUnaryOperator {
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
-        Text("Declarations cannot be used as argument to unary operator."));
+        Text("Declarations cannot be used as argument to unary operator."),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -259,13 +269,14 @@ struct PositionalArgumentFollowingNamed {
       "positional-argument-followed-by-named";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    // SourceQuote quote(src_);
-    // quote.Highlighted(named_range, Style{});
-    // for (auto const &pos_range : pos_ranges) {
-    //   quote.Highlighted(pos_range, Style{});
-    // }
+    SourceQuote quote(src);
+    quote.Highlighted(last_named, Style{});
+    for (auto const &pos_range : pos_ranges) {
+      quote.Highlighted(pos_range, Style{});
+    }
     return DiagnosticMessage(
-        Text("Positional function arguments cannot follow a named argument."));
+        Text("Positional function arguments cannot follow a named argument."),
+        std::move(quote));
   }
 
   std::vector<frontend::SourceRange> pos_ranges;
@@ -277,7 +288,8 @@ struct AccessRhsNotIdentifier {
   static constexpr std::string_view kName     = "access-rhs-not-identifier";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("Right-hand side must be an identifier"));
+    return DiagnosticMessage(Text("Right-hand side must be an identifier"),
+                             SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -289,7 +301,8 @@ struct ReservedKeyword {
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
-        Text("Identifier `%s` is a reserved keyword.", keyword));
+        Text("Identifier `%s` is a reserved keyword.", keyword),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -301,7 +314,8 @@ struct CallingDeclaration {
   static constexpr std::string_view kName     = "calling-declaration";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("Declarations cannot be called"));
+    return DiagnosticMessage(Text("Declarations cannot be called"),
+                             SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -312,7 +326,8 @@ struct IndexingDeclaration {
   static constexpr std::string_view kName     = "indexing-declaration";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("Declarations cannot be indexed"));
+    return DiagnosticMessage(Text("Declarations cannot be indexed"),
+                             SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -324,7 +339,8 @@ struct NonDeclarationInStruct {
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
-        Text("Each struct member must be defined using a declaration."));
+        Text("Each struct member must be defined using a declaration."),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -335,13 +351,13 @@ struct UnknownParseError {
   static constexpr std::string_view kName     = "unknown-parse-error";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    // TODO
-    // SourceQuote quote(src_);
-    // for (auto const& range : lines) {
-    //   quote.Highlighted(range, Style{});
-    // }
+    SourceQuote quote(src);
+    for (auto const& range : lines) {
+      quote.Highlighted(range, Style{});
+    }
     return DiagnosticMessage(
-        Text("Parse errors found in \"<SOME FILE>\" on the following lines:"));
+        Text("Parse errors found in \"<SOME FILE>\" on the following lines:"),
+        std::move(quote));
   }
 
   std::vector<frontend::SourceRange> lines;
@@ -353,7 +369,8 @@ struct NoReturnTypes {
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
-        Text("Attempting to return a value when function returns nothing."));
+        Text("Attempting to return a value when function returns nothing."),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -364,7 +381,8 @@ struct TypeHasNoMembers {
   static constexpr std::string_view kName     = "type-has-no-members";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("Cannot access a member of `type`."));
+    return DiagnosticMessage(Text("Cannot access a member of `type`."),
+                             SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -376,7 +394,8 @@ struct NonConstantModuleMemberAccess {
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
-        Text("Cannot access a member of a non-constant module."));
+        Text("Cannot access a member of a non-constant module."),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -388,7 +407,8 @@ struct NoExportedSymbol {
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
-        Text("No exported symbol of given name in this module."));
+        Text("No exported symbol of given name in this module."),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -400,7 +420,8 @@ struct InconsistentArrayType {
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
-        Text("Type error: Array literal must have consistent type"));
+        Text("Type error: Array literal must have consistent type"),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -411,7 +432,8 @@ struct NonIntegralArrayLength {
   static constexpr std::string_view kName     = "non-integral-array-length";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("Array length indexed by non-integral type"));
+    return DiagnosticMessage(Text("Array length indexed by non-integral type"),
+                             SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -424,7 +446,8 @@ struct ArrayDataTypeNotAType {
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
         Text("Array type has underlying data type specified as a value which "
-             "is not a type."));
+             "is not a type."),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -436,7 +459,8 @@ struct XorEqNeedsBoolOrFlags {
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
-        Text("Operator '^=' must take boolean or flags arguments."));
+        Text("Operator '^=' must take boolean or flags arguments."),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -448,7 +472,8 @@ struct OrEqNeedsBoolOrFlags {
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
-        Text("Operator '|=' must take boolean or flags arguments."));
+        Text("Operator '|=' must take boolean or flags arguments."),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -460,7 +485,8 @@ struct AndEqNeedsBoolOrFlags {
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
-        Text("Operator '&=' must take boolean or flags arguments."));
+        Text("Operator '&=' must take boolean or flags arguments."),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -472,7 +498,8 @@ struct NonTypeFunctionInput {
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
-        Text("The specified input type for a function must be a type."));
+        Text("The specified input type for a function must be a type."),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
   frontend::SourceRange range;
 };
@@ -483,7 +510,8 @@ struct NonTypeFunctionOutput {
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
-        Text("The specified return type for a function must be a type."));
+        Text("The specified return type for a function must be a type."),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
   frontend::SourceRange range;
 };
@@ -493,7 +521,8 @@ struct BuiltinError {
   static constexpr std::string_view kName     = "builtin-error";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("%s", message));
+    return DiagnosticMessage(Text("%s", message),
+                             SourceQuote(src).Highlighted(range, Style{}));
   }
   frontend::SourceRange range;
   std::string message;
@@ -506,7 +535,8 @@ struct MissingMember {
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
         Text("Expressions of type `%s` have no member named `%s`.",
-             type->to_string(), member));
+             type->to_string(), member),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
   frontend::SourceRange range;
   std::string member;
@@ -521,7 +551,8 @@ struct ReturnTypeMismatch {
     return DiagnosticMessage(
         Text("Returning an expression of type `%s` from a function which "
              "returns `%s`.",
-             actual->to_string(), expected->to_string()));
+             actual->to_string(), expected->to_string()),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   type::Type const *actual;
@@ -537,7 +568,8 @@ struct ReturningWrongNumber {
     return DiagnosticMessage(
         Text("Attempting to return %u values from a function which has %u "
              "return values.",
-             actual, expected));
+             actual, expected),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   size_t actual;
@@ -550,10 +582,12 @@ struct IndexedReturnTypeMismatch {
   static constexpr std::string_view kName     = "indexed-return-type-mismatch";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text(
-        "Returning an expression in slot #%u (zero-indexed) of type `%s` but "
-        "function expects a value of type `%s` in that slot.",
-        index, actual->to_string(), expected->to_string()));
+    return DiagnosticMessage(
+        Text("Returning an expression in slot #%u (zero-indexed) of type `%s` "
+             "but "
+             "function expects a value of type `%s` in that slot.",
+             index, actual->to_string(), expected->to_string()),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   size_t index;
@@ -569,7 +603,8 @@ struct NonExportedMember {
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
         Text("Expressions of type `%s` do not export the member `%s`.",
-             type->to_string(), member));
+             type->to_string(), member),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   std::string member;
@@ -582,7 +617,8 @@ struct CastToNonType {
   static constexpr std::string_view kName     = "cast-to-non-type";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("Cannot cast to a non-type."));
+    return DiagnosticMessage(Text("Cannot cast to a non-type."),
+                             SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -594,7 +630,8 @@ struct CastToNonConstantType {
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
-        Text("Cannot cast to a type which is not declared constant."));
+        Text("Cannot cast to a type which is not declared constant."),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -605,9 +642,10 @@ struct NotAType {
   static constexpr std::string_view kName     = "not-a-type";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text(
-        "Expression was expected to be a type, but instead was of type `%s`.",
-        type->to_string()));
+    return DiagnosticMessage(Text("Expression was expected to be a type, but "
+                                  "instead was of type `%s`.",
+                                  type->to_string()),
+                             SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -622,7 +660,8 @@ struct ComparingIncomparables {
     return DiagnosticMessage(
         Text("Values of type `%s` and `%s` are being compared but no such "
              "comparison is allowed:",
-             lhs->to_string(), rhs->to_string()));
+             lhs->to_string(), rhs->to_string()),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   type::Type const *lhs;
@@ -635,8 +674,9 @@ struct NoDefaultValue {
   static constexpr std::string_view kName     = "no-default-value";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text(
-        "There is no default value for the type `%s`.", type->to_string()));
+    return DiagnosticMessage(
+        Text("There is no default value for the type `%s`.", type->to_string()),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   type::Type const *type;
@@ -675,7 +715,8 @@ struct UninferrableType {
         break;
     }
 
-    return DiagnosticMessage(Text(text));
+    return DiagnosticMessage(Text(text),
+                             SourceQuote(src).Highlighted(range, Style{}));
   }
 
   Reason reason;
@@ -688,7 +729,8 @@ struct UninitializedConstant {
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
-        Text("Attempting to define a constant with an uninitialized value."));
+        Text("Attempting to define a constant with an uninitialized value."),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -699,10 +741,10 @@ struct ShadowingDeclaration {
   static constexpr std::string_view kName     = "shadowing-declaration";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("Ambiguous declarations:"));
-    // SourceQuote(src_)
-    //     .Line(span1.begin().line_num)
-    //     .Line(span2.begin().line_num)));
+    return DiagnosticMessage(Text("Ambiguous declarations:"),
+                             SourceQuote(src)
+                                 .Line(range1.begin().line_num)
+                                 .Line(range2.begin().line_num));
   }
 
   frontend::SourceRange range1;
@@ -715,7 +757,7 @@ struct CyclicDependency {
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(Text("Found a cyclic dependency:"));
-    // TODO
+    // TODO source quote
   }
 
   std::vector<std::pair<frontend::SourceRange, std::string_view>> cycle;
@@ -726,7 +768,8 @@ struct UndeclaredIdentifier {
   static constexpr std::string_view kName     = "cyclic-dependency";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("Found an undeclared identifier:"));
+    return DiagnosticMessage(Text("Found an undeclared identifier:"),
+                             SourceQuote(src).Highlighted(range, Style{}));
     // TODO
   }
 
@@ -740,7 +783,8 @@ struct UnspecifiedOverload {
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
-        Text("Attempting to access an overloaded function by name."));
+        Text("Attempting to access an overloaded function by name."),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -762,7 +806,8 @@ struct InvalidImport {
   static constexpr std::string_view kName     = "invalid-import";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("Cannot import a non-constant module."));
+    return DiagnosticMessage(Text("Cannot import a non-constant module."),
+                             SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -773,7 +818,8 @@ struct NonConstantImport {
   static constexpr std::string_view kName     = "non-constant-import";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("Scope names must be constant."));
+    return DiagnosticMessage(Text("Scope names must be constant."),
+                             SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -799,10 +845,13 @@ struct InvalidIndexType {
   static constexpr std::string_view kName     = "invalid-index-type";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text(
-        "Attempting to index a value of type `%s` with a non-integral index. "
-        "Indices must be integers, but you provided an index of type `%s`.",
-        type->to_string(), index_type->to_string()));
+    return DiagnosticMessage(
+        Text(
+            "Attempting to index a value of type `%s` with a non-integral "
+            "index. "
+            "Indices must be integers, but you provided an index of type `%s`.",
+            type->to_string(), index_type->to_string()),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -816,7 +865,8 @@ struct NonConstantTupleIndex {
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
-        Text("Index into a tuple must be a compile-time constant."));
+        Text("Index into a tuple must be a compile-time constant."),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -830,7 +880,8 @@ struct IndexingTupleOutOfBounds {
     return DiagnosticMessage(
         Text("Tuple is indexed out of bounds. Tuple of type `%s` has size %u "
              "but you are attempting to access position %d.",
-             tuple->to_string(), tuple->entries_.size(), index));
+             tuple->to_string(), tuple->entries_.size(), index),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -846,7 +897,8 @@ struct InvalidIndexing {
     return DiagnosticMessage(
         Text("Cannot index into a non-array, non-buffer type. Indexed type is "
              "a `%s`.",
-             type->to_string()));
+             type->to_string()),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -861,7 +913,8 @@ struct SwitchConditionNeedsBool {
     return DiagnosticMessage(
         Text("Expressionless switch conditions must evaluate to a `bool`, but "
              "you provided a `%s`.",
-             type->to_string()));
+             type->to_string()),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   type::Type const *type;
@@ -876,7 +929,8 @@ struct PreconditionNeedsBool {
     return DiagnosticMessage(
         Text("Function precondition must be of type bool, but you provided an "
              "expression of type %s.",
-             type->to_string()));
+             type->to_string()),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   type::Type const *type;
@@ -891,7 +945,8 @@ struct PostconditionNeedsBool {
     return DiagnosticMessage(
         Text("Function postcondition must be of type bool, but you provided an "
              "expression of type %s.",
-             type->to_string()));
+             type->to_string()),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   type::Type const *type;
@@ -904,7 +959,8 @@ struct NonConstantEvaluation {
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
-        Text("Cannot evaluate a non-constant at compile-time."));
+        Text("Cannot evaluate a non-constant at compile-time."),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
@@ -918,7 +974,8 @@ struct DereferencingNonPointer {
     return DiagnosticMessage(
         Text("Attempting to dereference an object of type `%s` which is not a "
              "pointer",
-             type->to_string()));
+             type->to_string()),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   type::Type const *type;
@@ -933,7 +990,8 @@ struct WhichNonVariant {
     return DiagnosticMessage(
         Text("Attempting to call `which` an object of type `%s` which is not a "
              "variant.",
-             type->to_string()));
+             type->to_string()),
+        SourceQuote(src).Highlighted(range, Style{}));
   }
 
   type::Type const *type;
@@ -945,6 +1003,7 @@ struct ParametersDoNotCoverArguments {
   static constexpr std::string_view kName = "parameters-do-not-cover-arguments";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    // TODO
     return DiagnosticMessage(Text("Parameters do not cover arguments."));
   }
 
@@ -959,7 +1018,8 @@ struct ScopeNodeAlreadyHasLabel {
   static constexpr std::string_view kName     = "scope-already-has-label";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("This scope already has a label."));
+    return DiagnosticMessage(Text("This scope already has a label."),
+                             SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange label_range;
@@ -971,7 +1031,8 @@ struct UnknownBuiltinHashtag {
   static constexpr std::string_view kName     = "unknown-builtin-hashtag";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("Unknown builtin hashtag #%s", token));
+    return DiagnosticMessage(Text("Unknown builtin hashtag #%s", token),
+                             SourceQuote(src).Highlighted(range, Style{}));
   }
 
   std::string token;
@@ -983,17 +1044,20 @@ struct NonAddressableExpression {
   static constexpr std::string_view kName     = "non-addressable-expression";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("Expression is not addresable."));
+    return DiagnosticMessage(Text("Expression is not addresable."),
+                             SourceQuote(src).Highlighted(range, Style{}));
   }
 
   frontend::SourceRange range;
 };
+
 struct NonTypeScopeState {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "non-type-scope-state";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("TODO"));
+    return DiagnosticMessage(Text("TODO"),
+                             SourceQuote(src).Highlighted(range, Style{}));
   }
 
   type::Type const *type;

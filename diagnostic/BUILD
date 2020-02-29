@@ -28,6 +28,9 @@ cc_library(
     srcs = ["console_renderer.cc"],
     deps = [
         ":message",
+        "//base:macros",
         "//base:meta",
+        "//base:interval",
+        "@com_google_absl//absl/strings:str_format",
     ],
 )
