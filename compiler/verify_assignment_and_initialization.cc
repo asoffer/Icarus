@@ -9,7 +9,7 @@ namespace compiler {
 
 template <bool IsInit>
 static bool VerifyImpl(diagnostic::DiagnosticConsumer &diag,
-                       frontend::SourceRange const &span, type::QualType to,
+                       frontend::SourceRange const &range, type::QualType to,
                        type::QualType from) {
   if constexpr (not IsInit) {
     // `to` cannot be a constant if we're assigning, but for initializations
@@ -17,7 +17,7 @@ static bool VerifyImpl(diagnostic::DiagnosticConsumer &diag,
     if (to.constant()) {
       diag.Consume(diagnostic::AssigningToConstant{
           .to    = to.type(),
-          .range = span,
+          .range = range,
       });
 
       return false;
@@ -31,7 +31,7 @@ static bool VerifyImpl(diagnostic::DiagnosticConsumer &diag,
     diag.Consume(DiagnosticType{
         .to    = to.expansion_size(),
         .from  = from.expansion_size(),
-        .range = span,
+        .range = range,
     });
     return false;
   }
@@ -44,7 +44,7 @@ static bool VerifyImpl(diagnostic::DiagnosticConsumer &diag,
     if (not from_type->IsMovable()) {
       diag.Consume(diagnostic::ImmovableType{
           .from  = from_type,
-          .range = span,
+          .range = range,
       });
       return false;
     }
@@ -55,7 +55,7 @@ static bool VerifyImpl(diagnostic::DiagnosticConsumer &diag,
     diag.Consume(diagnostic::InvalidCast{
         .from  = from_type,
         .to    = to_type,
-        .range = span,
+        .range = range,
     });
     return false;
   } else {
@@ -64,15 +64,15 @@ static bool VerifyImpl(diagnostic::DiagnosticConsumer &diag,
 }
 
 bool VerifyInitialization(diagnostic::DiagnosticConsumer &diag,
-                          frontend::SourceRange const &span, type::QualType to,
+                          frontend::SourceRange const &range, type::QualType to,
                           type::QualType from) {
-  return VerifyImpl<true>(diag, span, to, from);
+  return VerifyImpl<true>(diag, range, to, from);
 }
 
 bool VerifyAssignment(diagnostic::DiagnosticConsumer &diag,
-                      frontend::SourceRange const &span, type::QualType to,
+                      frontend::SourceRange const &range, type::QualType to,
                       type::QualType from) {
-  return VerifyImpl<false>(diag, span, to, from);
+  return VerifyImpl<false>(diag, range, to, from);
 }
 
 }  // namespace compiler

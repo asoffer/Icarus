@@ -66,11 +66,11 @@ TEST_CASE("non-constant (b: bool) -> ()") {
             &mod.compiler, ast::OverloadSet({fn}),
             core::FnArgs<type::QualType>{/* pos = */ {q}, /* named = */ {}})
             .has_value());
-  CHECK_FALSE(FnCallDispatchTable::Verify(
-                  &mod.compiler, ast::OverloadSet({fn}),
-                  core::FnArgs<type::QualType>{/* pos = */ {},
-                                               /* named = */ {{"b", q}}})
-                  .has_value());
+  CHECK(FnCallDispatchTable::Verify(
+            &mod.compiler, ast::OverloadSet({fn}),
+            core::FnArgs<type::QualType>{/* pos = */ {},
+                                         /* named = */ {{"b", q}}})
+            .has_value());
   CHECK_FALSE(FnCallDispatchTable::Verify(
                   &mod.compiler, ast::OverloadSet({fn}),
                   core::FnArgs<type::QualType>{/* pos = */ {},

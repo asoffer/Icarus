@@ -19,7 +19,7 @@ namespace test {
 template <typename T>
 std::unique_ptr<T> ParseAs(std::string s) {
   frontend::StringSource source(std::move(s));
-  diagnostic::AbortingConsumer diag;
+  diagnostic::AbortingConsumer diag(&source);
   auto stmts     = frontend::Parse(&source, diag);
   auto* cast_ptr = stmts[0]->template if_as<T>();
   if (not cast_ptr) { return nullptr; }

@@ -24,7 +24,8 @@ struct StrongTypeCrtp : public Tags... {};
 
 template <typename Tag, typename UnderlyingType, typename CrtpTags>
 struct Strong {
-  using tag_type = Tag;
+  using tag_type        = Tag;
+  using underlying_type = UnderlyingType;
 
   constexpr Strong() = default;
   constexpr explicit Strong(UnderlyingType num) : value(num) {}
@@ -220,30 +221,28 @@ constexpr bool operator!=(Strong<Tag, UnderlyingType, CrtpTags> lhs,
 
 #define ICARUS_BASE_DEFINE_STRONG_TYPE(name, default_value, ...)               \
   struct name : public base::internal::Strong<                                 \
-                    name, decltype(default_value),                             \
+                    name, std::decay_t<decltype(default_value)>,               \
                     base::internal::StrongTypeCrtp<__VA_ARGS__>> {             \
     name()                                                                     \
-        : base::internal::Strong<name, decltype(default_value),                \
+        : base::internal::Strong<name, underlying_type,                        \
                                  base::internal::StrongTypeCrtp<__VA_ARGS__>>( \
               default_value) {}                                                \
                                                                                \
-    template <                                                                 \
-        typename T,                                                            \
-        std::enable_if_t<std::is_convertible_v<T, decltype(default_value)> and \
-                             std::is_arithmetic_v<T>,                          \
-                         int> = 0>                                             \
+    template <typename T,                                                      \
+              std::enable_if_t<std::is_convertible_v<T, underlying_type> and   \
+                                   std::is_arithmetic_v<T>,                    \
+                               int> = 0>                                       \
     explicit constexpr name(T val)                                             \
-        : base::internal::Strong<name, decltype(default_value),                \
+        : base::internal::Strong<name, underlying_type,                        \
                                  base::internal::StrongTypeCrtp<__VA_ARGS__>>( \
               val) {}                                                          \
                                                                                \
-    template <                                                                 \
-        typename T,                                                            \
-        std::enable_if_t<std::is_convertible_v<T, decltype(default_value)> and \
-                             not std::is_arithmetic_v<T>,                      \
-                         int> = 0>                                             \
+    template <typename T,                                                      \
+              std::enable_if_t<std::is_convertible_v<T, underlying_type> and   \
+                                   not std::is_arithmetic_v<T>,                \
+                               int> = 0>                                       \
     explicit name(T val)                                                       \
-        : base::internal::Strong<name, decltype(default_value),                \
+        : base::internal::Strong<name, underlying_type,                        \
                                  base::internal::StrongTypeCrtp<__VA_ARGS__>>( \
               val) {}                                                          \
                                                                                \

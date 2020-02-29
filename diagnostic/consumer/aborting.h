@@ -15,12 +15,11 @@ struct AbortingConsumer : DiagnosticConsumer {
       : DiagnosticConsumer(src), renderer_(stderr) {}
   ~AbortingConsumer() override {}
   void ConsumeImpl(DiagnosticMessage&& d) override {
-    renderer_.AddError(source_, d);
+    renderer_.AddError(source(), d);
     std::abort();
   }
 
  private:
-  frontend::Source* source_;
   ConsoleRenderer renderer_;
 };
 

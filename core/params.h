@@ -1,6 +1,7 @@
 #ifndef ICARUS_CORE_PARAMS_H
 #define ICARUS_CORE_PARAMS_H
 
+#include <iostream>
 #include <algorithm>
 #include <string_view>
 #include <vector>
@@ -41,12 +42,12 @@ struct Param {
   Param& operator=(Param const&)  // clang-format goof
       noexcept(std::is_nothrow_copy_assignable_v<T>) = default;
 
-  friend constexpr bool operator==(Param<T> const& lhs, Param<T> const& rhs) {
+  friend constexpr bool operator==(Param const& lhs, Param const& rhs) {
     return lhs.name == rhs.name and lhs.value == rhs.value and
            lhs.flags == rhs.flags;
   }
 
-  friend constexpr bool operator!=(Param<T> const& lhs, Param<T> const& rhs) {
+  friend constexpr bool operator!=(Param const& lhs, Param const& rhs) {
     return not(lhs == rhs);
   }
 
@@ -54,6 +55,13 @@ struct Param {
   friend H AbslHashValue(H h, Param const& p) {
     return H::combine(std::move(h), p.name, p.value, p.flags);
   }
+
+  friend std::ostream& operator<<(std::ostream& os, Param const& param) {
+    using base::stringify;
+    return os << param.name << ": " << stringify(param.value)
+              << "(flags = " << static_cast<int>(param.flags) << ")";
+  }
+
 
   std::string_view name = "";
   T value{};
@@ -173,6 +181,17 @@ struct Params {
     return not(lhs == rhs);
   }
 
+  friend std::ostream& operator<<(std::ostream& os, Params const& fn_params) {
+    return os << "params["
+              << absl::StrJoin(fn_params, ", ",
+                               [](std::string* out, auto const& param) {
+                                 using base::stringify;
+                                 absl::StrAppend(out, param.name, ": ",
+                                                 stringify(param.value));
+                               })
+              << "]";
+  }
+
  private:
   template <typename U>
   friend struct Params;
@@ -189,17 +208,6 @@ struct Params {
   std::vector<Param<T>> params_;
 };
 
-template <typename T>
-std::string stringify(Params<T> const& fn_params) {
-  return absl::StrCat("params[",
-                      absl::StrJoin(fn_params, ", ",
-                                    [](std::string* out, auto const& param) {
-                                      using base::stringify;
-                                      absl::StrAppend(out, param.name, ": ",
-                                                      stringify(param.value));
-                                    }),
-                      "]");
-}
 
 namespace internal {
 // Returns the index just after the last instance of MUST_NOT_NAME. If

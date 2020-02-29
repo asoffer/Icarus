@@ -49,7 +49,7 @@ cc_library(
         "//ast:overload_set",
         "//base:ptr_span",
         "//compiler",
-        "//diagnostic/consumer:streaming",
+        "//diagnostic/consumer:trivial",
         "//frontend/source:range",
         "//module:module",
     ],

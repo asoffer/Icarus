@@ -10,10 +10,10 @@ namespace compiler {
 // TODO instead accept a diagnostic consumer, and have a mock we can query to
 // ensure the proper errors were logged.
 bool VerifyInitialization(diagnostic::DiagnosticConsumer& diag,
-                          frontend::SourceRange const& span, type::QualType to,
+                          frontend::SourceRange const& range, type::QualType to,
                           type::QualType from);
 bool VerifyAssignment(diagnostic::DiagnosticConsumer& diag,
-                      frontend::SourceRange const& span, type::QualType to,
+                      frontend::SourceRange const& range, type::QualType to,
                       type::QualType from);
 
 }  // namespace compiler

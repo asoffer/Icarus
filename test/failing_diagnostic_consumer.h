@@ -14,7 +14,7 @@ namespace test {
 // `FailingConsumer` is a diagnostic consumer which emits GoogleTest errors for
 // each diagnostic that is consumed.
 struct FailingConsumer : diagnostic::DiagnosticConsumer {
-  explicit FailingConsumer() {}
+  explicit FailingConsumer() : diagnostic::DiagnosticConsumer(nullptr) {}
   ~FailingConsumer() override {}
 
   void ConsumeImpl(diagnostic::DiagnosticMessage&& d) override {

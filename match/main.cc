@@ -20,7 +20,7 @@ int MatchParse(frontend::FileName const &expr_file,
   ASSIGN_OR(return 1,  //
                    frontend::FileSource expr_src,
                    frontend::FileSource::Make(canonical_expr_file));
-  diagnostic::StreamingConsumer diag(stderr);
+  diagnostic::StreamingConsumer diag(stderr, &expr_src);
   auto expr_stmts = frontend::Parse(&expr_src, diag);
   if (expr_stmts.size() != 1) { return 2; }
   auto *expr = expr_stmts[0]->if_as<ast::Expression>();

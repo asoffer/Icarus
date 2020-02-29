@@ -21,7 +21,7 @@ template <typename NodeType>
 NodeType const *Make(test::TestModule *mod, std::string code) {
   auto node       = test::ParseAs<NodeType>(std::move(code));
   auto const *ptr = node.get();
-  mod->AppendNode(std::move(node));
+  mod->AppendNode(std::move(node), mod->consumer);
   mod->compiler.CompleteDeferredBodies();
   return ptr;
 }
@@ -97,17 +97,17 @@ TEST(ExtractParams, NonConstantDeclaration) {
         ExtractParams(&mod.compiler,
                       Make<ast::Declaration>(&mod, "f := (b: bool) -> () {}"))
             .Transform(ExtractType),
-        ElementsAre(param_type("", type::Bool, core::MUST_NOT_NAME)));
+        ElementsAre(param_type("b", type::Bool)));
   }
 
   {  // Multiple arguments
     test::TestModule mod;
-    EXPECT_THAT(ExtractParams(&mod.compiler,
-                              Make<ast::Declaration>(
-                                  &mod, "f := (b: bool, n: int32) -> () {}"))
-                    .Transform(ExtractType),
-                ElementsAre(param_type("", type::Bool, core::MUST_NOT_NAME),
-                            param_type("", type::Int32, core::MUST_NOT_NAME)));
+    EXPECT_THAT(
+        ExtractParams(
+            &mod.compiler,
+            Make<ast::Declaration>(&mod, "f := (b: bool, n: int32) -> () {}"))
+            .Transform(ExtractType),
+        ElementsAre(param_type("b", type::Bool), param_type("n", type::Int32)));
   }
 }
 

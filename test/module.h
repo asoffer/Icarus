@@ -9,7 +9,7 @@
 #include "ast/expression.h"
 #include "ast/overload_set.h"
 #include "base/ptr_span.h"
-#include "diagnostic/consumer/streaming.h"
+#include "diagnostic/consumer/trivial.h"
 #include "frontend/source/range.h"
 #include "module/module.h"
 #include "test/util.h"
@@ -17,18 +17,20 @@
 namespace test {
 
 struct TestModule : compiler::CompiledModule {
-  TestModule() : consumer(stderr), compiler(this, consumer) {}
+  TestModule() : compiler(this, consumer) {}
   ~TestModule() { compiler.CompleteDeferredBodies(); }
 
   template <typename NodeType>
   NodeType const* Append(std::string code) {
     auto node       = test::ParseAs<NodeType>(std::move(code));
     auto const* ptr = node.get();
-    AppendNode(std::move(node));
+    AppendNode(std::move(node), consumer);
     return ptr;
   }
 
-  diagnostic::StreamingConsumer consumer;
+  // TODO this is not a good consumer choice for tests. FailingConsumer is
+  // ideal.
+  diagnostic::TrivialConsumer consumer;
   compiler::Compiler compiler;
 
  protected:
@@ -51,7 +53,7 @@ std::pair<ast::OverloadSet, ast::Call*> MakeCall(
   ast::OverloadSet os;
   os.insert(call_expr->callee());
   auto* expr = call_expr.get();
-  module->AppendNode(std::move(call_expr));
+  module->AppendNode(std::move(call_expr), module->consumer);
   module->compiler.CompleteDeferredBodies();
   return std::pair(std::move(os), expr);
 }
