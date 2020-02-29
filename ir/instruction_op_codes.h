@@ -40,11 +40,11 @@ inline constexpr auto kModInstructionRange = CmdRange{
 };
 inline constexpr auto kLtInstructionRange = CmdRange{
     .start  = kModInstructionRange.end(),
-    .length = 10,
+    .length = 14,
 };
 inline constexpr auto kLeInstructionRange = CmdRange{
     .start  = kLtInstructionRange.end(),
-    .length = 10,
+    .length = 14,
 };
 inline constexpr auto kEqInstructionRange = CmdRange{
     .start  = kLeInstructionRange.end(),

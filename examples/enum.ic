@@ -109,10 +109,11 @@ PrintEnum ::= (x: Boolean) -> () {
   })
 }
 PrintFlag ::= (x: Color) -> () {
+  sep := ""
   io.Print("Color[")
-  if ((x & Color.RED) == Color.RED) then { io.Print("RED") }
-  if ((x & Color.GREEN) == Color.GREEN) then { io.Print("GREEN") }
-  if ((x & Color.BLUE) == Color.BLUE) then { io.Print("BLUE") }
+  if (Color.RED <= x) then { io.Print("RED") \\ sep = ", " }
+  if (Color.GREEN <= x) then { io.Print(sep) \\ io.Print("GREEN") \\ sep = ", " }
+  if (Color.BLUE <= x) then { io.Print(sep) \\ io.Print("BLUE") }
   io.Print("]")
 }
 
