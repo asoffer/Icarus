@@ -15,9 +15,7 @@ struct FileSource : public Source {
   static base::expected<FileSource> Make(CanonicalFileName file_name);
 
   FileSource(FileSource const &) = delete;
-
-  FileSource(FileSource &&f)
-      : name_(std::move(f.name_)), f_(std::exchange(f.f_, nullptr)) {}
+  FileSource(FileSource &&f)     = default;
 
   ~FileSource() override { std::free(buf_); }
 

@@ -71,9 +71,9 @@ int RunRepl() {
   std::puts("Icarus REPL (v0.1)");
 
   diagnostic::StreamingConsumer diag(stderr);
-  frontend::ReplSource repl;
+  auto *repl = frontend::Source::Make<frontend::ReplSource>();
   ReplModule mod;
 
   // TODO Parse can fail.
-  while (true) { mod.ProcessFromSource(&repl, diag); }
+  while (true) { mod.ProcessFromSource(repl, diag); }
 }

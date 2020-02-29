@@ -3,6 +3,7 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "source",
     hdrs = ["source.h"],
+    srcs = ["source.cc"],
     deps = [
         "//base:cast",
         "//base:expected",

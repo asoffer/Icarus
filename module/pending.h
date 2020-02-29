@@ -97,8 +97,10 @@ base::expected<Pending<ModType>> ImportModule(
                    ASSIGN_OR(return nullptr,  //
                                     frontend::FileSource file_src,
                                     frontend::FileSource::Make(*canonical_src));
+                   auto *src = frontend::Source::Make<frontend::FileSource>(
+                       std::move(file_src));
                    *mod = std::make_unique<ModType>();
-                   (*mod)->ProcessFromSource(&file_src, diag);
+                   (*mod)->ProcessFromSource(src, diag);
                    return mod->get();
                  }));
   return Pending<ModType>{fut};
