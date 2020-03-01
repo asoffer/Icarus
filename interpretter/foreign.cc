@@ -152,16 +152,21 @@ void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
   }
 }
 
-void *LoadDataSymbol(std::string_view name) {
-  return ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, std::string(name).c_str()));
+base::expected<void *> LoadDataSymbol(std::string_view name) {
+  dlerror();  // Clear previous errors.
+  void *result    = dlsym(RTLD_DEFAULT, std::string(name).c_str());
+  std::string err = dlerror();
+  if (err.empty()) { return result; }
+  return base::unexpected(err);
 }
 
-void_fn_ptr LoadFunctionSymbol(std::string_view name) {
-  // Note: This cast is in general not safe but valid on POSIX compliant
-  // systems.
-  // TODO: Figure out a portable way of handling this if at all possible.
-  return reinterpret_cast<void_fn_ptr>(
-      ASSERT_NOT_NULL(dlsym(RTLD_DEFAULT, std::string(name).c_str())));
+base::expected<void_fn_ptr> LoadFunctionSymbol(std::string_view name) {
+  dlerror();  // Clear previous errors.
+  auto result = reinterpret_cast<void_fn_ptr>(
+      dlsym(RTLD_DEFAULT, std::string(name).c_str()));
+  char const *err = dlerror();
+  if (not err) { return result; }
+  return base::unexpected(err);
 }
 
 }  // namespace interpretter

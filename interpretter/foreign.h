@@ -4,14 +4,15 @@
 #include <string_view>
 
 #include "absl/types/span.h"
+#include "base/expected.h"
 #include "base/untyped_buffer.h"
 #include "ir/value/addr.h"
 #include "ir/value/foreign_fn.h"
 
 namespace interpretter {
 
-void *LoadDataSymbol(std::string_view name);
-void (*LoadFunctionSymbol(std::string_view name))();
+base::expected<void *> LoadDataSymbol(std::string_view name);
+base::expected<void (*)()> LoadFunctionSymbol(std::string_view name);
 
 // TODO arguments can be a view now.
 void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,

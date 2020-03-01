@@ -1,8 +1,10 @@
 #include "interpretter/execute.h"
 
+#include <string_view>
 #include <vector>
 
 #include "absl/random/random.h"
+#include "absl/strings/str_format.h"
 #include "base/meta.h"
 #include "interpretter/architecture.h"
 #include "interpretter/foreign.h"
@@ -18,6 +20,18 @@
 
 namespace interpretter {
 namespace {
+[[noreturn]] void FatalInterpretterError(std::string_view err_msg) {
+  // TODO: Add a diagnostic explaining the failure.
+  absl::FPrintF(stderr,
+                R"(
+  ----------------------------------------
+  Fatal interpretter failure:
+    %s
+  ----------------------------------------)"
+                "\n",
+                err_msg);
+  std::terminate();
+}
 
 // Maximum size of any primitive type we may write
 constexpr size_t kMaxSize = 8;
@@ -609,10 +623,12 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     ir::Reg reg            = iter->read<ir::Reg>();
 
     if (auto *fn_type = type->if_as<type::Function>()) {
-      void (*sym)() = LoadFunctionSymbol(name);
+      ASSIGN_OR(FatalInterpretterError(_.error().to_string()),  //
+                void (*sym)(), LoadFunctionSymbol(name));
       ctx->current_frame().regs_.set(reg, ir::Fn(ir::ForeignFn(sym, fn_type)));
     } else if (type->is<type::Pointer>()) {
-      void *sym = LoadDataSymbol(name);
+      ASSIGN_OR(FatalInterpretterError(_.error().to_string()),  //
+                void *sym, LoadDataSymbol(name));
       ctx->current_frame().regs_.set(reg, ir::Addr::Heap(sym));
     } else {
       UNREACHABLE(type->to_string());
