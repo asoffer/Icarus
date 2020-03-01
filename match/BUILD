@@ -28,7 +28,7 @@ cc_test(
     srcs = ["binding_id_test.cc"],
     deps = [
         ":binding_id",
-        "//test",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 

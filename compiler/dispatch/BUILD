@@ -104,13 +104,13 @@ cc_library(
 )
 
 cc_test(
-    name = "fn_call_table-test",
+    name = "fn_call_table_test",
     srcs = ["fn_call_table_test.cc"],
     deps = [
         ":fn_call_table",
         "//compiler:compiler",
-        "//test",
         "//test:module",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -175,10 +175,10 @@ cc_test(
         ":match",
         ":parameters_and_arguments",
         "//compiler:compiler",
-        "//test",
         "//test:module",
         "//type:variant",
         "//type:function",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 

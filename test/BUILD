@@ -1,40 +1,8 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "test",
-    deps = [
-        ":catch",
-        ":elements_are",
-        ":ordered_elements_are",
-    ],
-    testonly = True,
-)
-
-cc_library(
-    name = "catch",
-    hdrs = ["catch.h", "Catch2/single_include/catch2/catch.hpp"],
-    srcs = ["catch.cc"],
-    deps = ["//base:macros"],
-    testonly = True,
-)
-
-cc_library(
-    name = "elements_are",
-    hdrs = ["elements_are.h"],
-    deps = [],
-    testonly = True,
-)
-
-cc_library(
     name = "fuzz",
     hdrs = ["fuzz.h"],
-    deps = [],
-    testonly = True,
-)
-
-cc_library(
-    name = "ordered_elements_are",
-    hdrs = ["ordered_elements_are.h"],
     deps = [],
     testonly = True,
 )

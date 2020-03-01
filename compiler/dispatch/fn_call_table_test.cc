@@ -1,166 +1,171 @@
 #include "compiler/dispatch/fn_call_table.h"
 
 #include "compiler/compiler.h"
-#include "test/catch.h"
+#include "gtest/gtest.h"
 #include "test/module.h"
 #include "test/util.h"
 
 namespace compiler {
 
-TEST_CASE("() -> ()") {
+TEST(FnCallDispatchTable, TrivialFunction) {
   test::TestModule mod;
   auto *fn = mod.Append<ast::Declaration>("f ::= () -> () {}");
   auto q   = type::QualType::Constant(type::Int64);
 
-  CHECK(FnCallDispatchTable::Verify(
-            &mod.compiler, ast::OverloadSet({fn}),
-            core::FnArgs<type::QualType>{/* pos = */ {}, /* named = */ {}})
-            .has_value());
-  CHECK_FALSE(
+  EXPECT_TRUE(FnCallDispatchTable::Verify(&mod.compiler, ast::OverloadSet({fn}),
+                                          core::FnArgs<type::QualType>{
+                                              /* pos = */ {}, /* named = */ {}})
+                  .has_value());
+  EXPECT_FALSE(
       FnCallDispatchTable::Verify(
           &mod.compiler, ast::OverloadSet({fn}),
           core::FnArgs<type::QualType>{/* pos = */ {q}, /* named = */ {}})
           .has_value());
-  CHECK_FALSE(FnCallDispatchTable::Verify(
-                  &mod.compiler, ast::OverloadSet({fn}),
-                  core::FnArgs<type::QualType>{/* pos = */ {},
-                                               /* named = */ {{"a", q}}})
-                  .has_value());
+  EXPECT_FALSE(FnCallDispatchTable::Verify(
+                   &mod.compiler, ast::OverloadSet({fn}),
+                   core::FnArgs<type::QualType>{/* pos = */ {},
+                                                /* named = */ {{"a", q}}})
+                   .has_value());
 }
 
-TEST_CASE("constant (b: bool) -> ()") {
+TEST(FnCallDispatchTable, ConstantBoolToVoid) {
   test::TestModule mod;
   auto *fn = mod.Append<ast::Declaration>("f ::= (b: bool) -> () {}");
   auto q   = type::QualType::Constant(type::Bool);
 
-  CHECK_FALSE(FnCallDispatchTable::Verify(&mod.compiler, ast::OverloadSet({fn}),
-                                          core::FnArgs<type::QualType>{
-                                              /* pos = */ {}, /* named = */ {}})
-                  .has_value());
-  CHECK(FnCallDispatchTable::Verify(
-            &mod.compiler, ast::OverloadSet({fn}),
-            core::FnArgs<type::QualType>{/* pos = */ {q}, /* named = */ {}})
-            .has_value());
-  CHECK(FnCallDispatchTable::Verify(
-            &mod.compiler, ast::OverloadSet({fn}),
-            core::FnArgs<type::QualType>{/* pos = */ {},
-                                         /* named = */ {{"b", q}}})
-            .has_value());
-  CHECK_FALSE(FnCallDispatchTable::Verify(
+  EXPECT_FALSE(
+      FnCallDispatchTable::Verify(
+          &mod.compiler, ast::OverloadSet({fn}),
+          core::FnArgs<type::QualType>{/* pos = */ {}, /* named = */ {}})
+          .has_value());
+  EXPECT_TRUE(
+      FnCallDispatchTable::Verify(
+          &mod.compiler, ast::OverloadSet({fn}),
+          core::FnArgs<type::QualType>{/* pos = */ {q}, /* named = */ {}})
+          .has_value());
+  EXPECT_TRUE(FnCallDispatchTable::Verify(
                   &mod.compiler, ast::OverloadSet({fn}),
                   core::FnArgs<type::QualType>{/* pos = */ {},
-                                               /* named = */ {{"c", q}}})
+                                               /* named = */ {{"b", q}}})
                   .has_value());
+  EXPECT_FALSE(FnCallDispatchTable::Verify(
+                   &mod.compiler, ast::OverloadSet({fn}),
+                   core::FnArgs<type::QualType>{/* pos = */ {},
+                                                /* named = */ {{"c", q}}})
+                   .has_value());
 }
 
-TEST_CASE("non-constant (b: bool) -> ()") {
+TEST(FnCallDispatchTable, NonConstantBoolToVoid) {
   test::TestModule mod;
   auto *fn = mod.Append<ast::Declaration>("f := (b: bool) -> () {}");
   auto q   = type::QualType::Constant(type::Bool);
 
-  CHECK_FALSE(FnCallDispatchTable::Verify(&mod.compiler, ast::OverloadSet({fn}),
-                                          core::FnArgs<type::QualType>{
-                                              /* pos = */ {}, /* named = */ {}})
-                  .has_value());
-  CHECK(FnCallDispatchTable::Verify(
-            &mod.compiler, ast::OverloadSet({fn}),
-            core::FnArgs<type::QualType>{/* pos = */ {q}, /* named = */ {}})
-            .has_value());
-  CHECK(FnCallDispatchTable::Verify(
-            &mod.compiler, ast::OverloadSet({fn}),
-            core::FnArgs<type::QualType>{/* pos = */ {},
-                                         /* named = */ {{"b", q}}})
-            .has_value());
-  CHECK_FALSE(FnCallDispatchTable::Verify(
+  EXPECT_FALSE(
+      FnCallDispatchTable::Verify(
+          &mod.compiler, ast::OverloadSet({fn}),
+          core::FnArgs<type::QualType>{/* pos = */ {}, /* named = */ {}})
+          .has_value());
+  EXPECT_TRUE(
+      FnCallDispatchTable::Verify(
+          &mod.compiler, ast::OverloadSet({fn}),
+          core::FnArgs<type::QualType>{/* pos = */ {q}, /* named = */ {}})
+          .has_value());
+  EXPECT_TRUE(FnCallDispatchTable::Verify(
                   &mod.compiler, ast::OverloadSet({fn}),
                   core::FnArgs<type::QualType>{/* pos = */ {},
-                                               /* named = */ {{"c", q}}})
+                                               /* named = */ {{"b", q}}})
                   .has_value());
+  EXPECT_FALSE(FnCallDispatchTable::Verify(
+                   &mod.compiler, ast::OverloadSet({fn}),
+                   core::FnArgs<type::QualType>{/* pos = */ {},
+                                                /* named = */ {{"c", q}}})
+                   .has_value());
 }
 
-TEST_CASE("simple overload-set") {
+TEST(FnCallDispatchTable, SimpleOverloadSet) {
   test::TestModule mod;
   auto *f1 = mod.Append<ast::Declaration>("f ::= (x: bool | type) -> () {}");
   auto *f2 = mod.Append<ast::Declaration>("f ::= (x: int64 | *int64) -> () {}");
 
-  CHECK_FALSE(
+  EXPECT_FALSE(
       FnCallDispatchTable::Verify(
           &mod.compiler, ast::OverloadSet({f1, f2}),
           core::FnArgs<type::QualType>{/* pos = */ {}, /* named = */ {}})
           .has_value());
-  CHECK(FnCallDispatchTable::Verify(
-            &mod.compiler, ast::OverloadSet({f1, f2}),
-            core::FnArgs<type::QualType>{
-                /* pos = */ {type::QualType::NonConstant(type::Bool)},
-                /* named = */ {}})
-            .has_value());
-  CHECK(FnCallDispatchTable::Verify(
-            &mod.compiler, ast::OverloadSet({f1, f2}),
-            core::FnArgs<type::QualType>{
-                /* pos = */ {type::QualType::NonConstant(type::Int64)},
-                /* named = */ {}})
-            .has_value());
-  CHECK(FnCallDispatchTable::Verify(
-            &mod.compiler, ast::OverloadSet({f1, f2}),
-            core::FnArgs<type::QualType>{
-                /* pos = */ {type::QualType::NonConstant(
-                    type::Var({type::Bool, type::Int64}))},
-                /* named = */ {}})
-            .has_value());
+  EXPECT_TRUE(FnCallDispatchTable::Verify(
+                  &mod.compiler, ast::OverloadSet({f1, f2}),
+                  core::FnArgs<type::QualType>{
+                      /* pos = */ {type::QualType::NonConstant(type::Bool)},
+                      /* named = */ {}})
+                  .has_value());
+  EXPECT_TRUE(FnCallDispatchTable::Verify(
+                  &mod.compiler, ast::OverloadSet({f1, f2}),
+                  core::FnArgs<type::QualType>{
+                      /* pos = */ {type::QualType::NonConstant(type::Int64)},
+                      /* named = */ {}})
+                  .has_value());
+  EXPECT_TRUE(FnCallDispatchTable::Verify(
+                  &mod.compiler, ast::OverloadSet({f1, f2}),
+                  core::FnArgs<type::QualType>{
+                      /* pos = */ {type::QualType::NonConstant(
+                          type::Var({type::Bool, type::Int64}))},
+                      /* named = */ {}})
+                  .has_value());
 
-  CHECK_FALSE(
+  EXPECT_FALSE(
       FnCallDispatchTable::Verify(
           &mod.compiler, ast::OverloadSet({f1, f2}),
           core::FnArgs<type::QualType>{
               /* pos = */ {},
               /* named = */ {{"b", type::QualType::NonConstant(type::Bool)}}})
           .has_value());
-  CHECK(FnCallDispatchTable::Verify(
-            &mod.compiler, ast::OverloadSet({f1, f2}),
-            core::FnArgs<type::QualType>{
-                /* pos = */ {},
-                /* named = */ {{"x", type::QualType::NonConstant(type::Bool)}}})
-            .has_value());
+  EXPECT_TRUE(
+      FnCallDispatchTable::Verify(
+          &mod.compiler, ast::OverloadSet({f1, f2}),
+          core::FnArgs<type::QualType>{
+              /* pos = */ {},
+              /* named = */ {{"x", type::QualType::NonConstant(type::Bool)}}})
+          .has_value());
 }
 
-TEST_CASE("overload-set with defaults") {
+TEST(FnCallDispatchTable, OverloadSetWithDefaults) {
   test::TestModule mod;
   auto *f1 = mod.Append<ast::Declaration>("f ::= (x: bool) -> () {}");
   auto *f2 = mod.Append<ast::Declaration>("f ::= (x: int64, y := 0) -> () {}");
 
-  CHECK_FALSE(
+  EXPECT_FALSE(
       FnCallDispatchTable::Verify(
           &mod.compiler, ast::OverloadSet({f1, f2}),
           core::FnArgs<type::QualType>{/* pos = */ {}, /* named = */ {}})
           .has_value());
-  CHECK(FnCallDispatchTable::Verify(
-            &mod.compiler, ast::OverloadSet({f1, f2}),
-            core::FnArgs<type::QualType>{
-                /* pos = */ {type::QualType::NonConstant(type::Bool)},
-                /* named = */ {}})
-            .has_value());
-  CHECK(FnCallDispatchTable::Verify(
-            &mod.compiler, ast::OverloadSet({f1, f2}),
-            core::FnArgs<type::QualType>{
-                /* pos = */ {type::QualType::NonConstant(type::Int64)},
-                /* named = */ {}})
-            .has_value());
-  CHECK(FnCallDispatchTable::Verify(
-            &mod.compiler, ast::OverloadSet({f1, f2}),
-            core::FnArgs<type::QualType>{
-                /* pos = */ {type::QualType::NonConstant(
-                    type::Var({type::Bool, type::Int64}))},
-                /* named = */ {}})
-            .has_value());
+  EXPECT_TRUE(FnCallDispatchTable::Verify(
+                  &mod.compiler, ast::OverloadSet({f1, f2}),
+                  core::FnArgs<type::QualType>{
+                      /* pos = */ {type::QualType::NonConstant(type::Bool)},
+                      /* named = */ {}})
+                  .has_value());
+  EXPECT_TRUE(FnCallDispatchTable::Verify(
+                  &mod.compiler, ast::OverloadSet({f1, f2}),
+                  core::FnArgs<type::QualType>{
+                      /* pos = */ {type::QualType::NonConstant(type::Int64)},
+                      /* named = */ {}})
+                  .has_value());
+  EXPECT_TRUE(FnCallDispatchTable::Verify(
+                  &mod.compiler, ast::OverloadSet({f1, f2}),
+                  core::FnArgs<type::QualType>{
+                      /* pos = */ {type::QualType::NonConstant(
+                          type::Var({type::Bool, type::Int64}))},
+                      /* named = */ {}})
+                  .has_value());
 
-  CHECK(
+  EXPECT_TRUE(
       FnCallDispatchTable::Verify(
           &mod.compiler, ast::OverloadSet({f1, f2}),
           core::FnArgs<type::QualType>{
               /* pos = */ {type::QualType::NonConstant(type::Int64)},
               /* named = */ {{"y", type::QualType::NonConstant(type::Int64)}}})
           .has_value());
-  CHECK_FALSE(
+  EXPECT_FALSE(
       FnCallDispatchTable::Verify(
           &mod.compiler, ast::OverloadSet({f1, f2}),
           core::FnArgs<type::QualType>{

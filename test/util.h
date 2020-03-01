@@ -42,15 +42,4 @@ core::OrderedFnArgs<ast::Expression> MakeFnArgs(
 
 }  // namespace test
 
-#define REQUIRE_OK_AND_ASSIGN(var, expr)                                       \
-  REQUIRE_OK_AND_ASSIGN_IMPL1(var, expr, ICARUS_CAT(expr__, __LINE__, __))
-
-#define REQUIRE_OK_AND_ASSIGN_IMPL1(var, expr, temp)                           \
-  REQUIRE_OK_AND_ASSIGN_IMPL2(var, expr, temp)
-
-#define REQUIRE_OK_AND_ASSIGN_IMPL2(var, expr, temp)                           \
-  auto temp = (expr);                                                          \
-  REQUIRE(static_cast<bool>(temp));                                            \
-  var = *std::move(temp)
-
 #endif  // ICARUS_TEST_UTIL_H

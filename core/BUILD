@@ -26,7 +26,7 @@ cc_test(
     srcs = ["arch_test.cc"],
     deps = [
         ":arch",
-        "//test",
+        "@com_google_googletest//:gtest_main",
     ]
 )
 
@@ -51,7 +51,7 @@ cc_test(
     srcs = ["fn_args_test.cc"],
     deps = [
         ":fn_args",
-        "//test",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -72,7 +72,7 @@ cc_test(
     srcs = ["params_test.cc"],
     deps = [
         ":params",
-        "//test",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -110,7 +110,7 @@ cc_test(
     srcs = ["ordered_fn_args_test.cc"],
     deps = [
         ":ordered_fn_args",
-        "//test",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 

@@ -180,6 +180,15 @@ cc_library(
     deps = [":macros"],
 )
 
+cc_test(
+    name = "scope_test",
+    srcs = ["scope_test.cc"],
+    deps = [
+        ":scope",
+        "@com_google_googletest//:gtest_main",
+    ]
+)
+
 cc_library(
     name = "stringify",
     hdrs = ["stringify.h"],
@@ -187,6 +196,15 @@ cc_library(
         ":tuple",
         ":unaligned_ref",
     ],
+)
+
+cc_test(
+    name = "stringify_test",
+    srcs = ["stringify_test.cc"],
+    deps = [
+        ":stringify",
+        "@com_google_googletest//:gtest_main",
+    ]
 )
 
 cc_library(

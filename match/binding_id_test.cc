@@ -1,17 +1,17 @@
 #include "match/binding_id.h"
 
-#include "test/catch.h"
+#include "gtest/gtest.h"
 
 namespace match {
 namespace {
 
-TEST_CASE("bindings") {
+TEST(BindingId, Comparison) {
   std::string a = "a";
   std::string b = "b";
-  CHECK(BindingId(a) == BindingId("a"));
-  CHECK(BindingId(b) == BindingId("b"));
-  CHECK(BindingId("a") != BindingId("b"));
-  CHECK(BindingId("a") != BindingId(b));
+  EXPECT_EQ(BindingId(a), BindingId("a"));
+  EXPECT_EQ(BindingId(b), BindingId("b"));
+  EXPECT_NE(BindingId("a"), BindingId("b"));
+  EXPECT_NE(BindingId("a"), BindingId(b));
 }
 
 }  // namespace

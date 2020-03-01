@@ -139,7 +139,7 @@ cc_test(
         "//type",
         "//type:function",
         "//type:jump",
-        "//test",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -284,7 +284,7 @@ cc_test(
     srcs = ["results_test.cc"],
     deps = [
         ":results",
-        "//test",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
