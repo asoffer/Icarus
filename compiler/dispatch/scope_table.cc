@@ -33,8 +33,11 @@ std::pair<ir::BasicBlock const *, ir::OutParams> EmitCallOneOverload(
     ir::BlockDef *block_def =
         ASSERT_NOT_NULL(scope_def->block(next_block_name));
 
-    core::FnArgs<type::Type const *> arg_types =
-        block_args.Transform([](auto const &arg) { return arg.type(); });
+    // TODO extract qualifiers correctly. here.
+    core::FnArgs<type::QualType> arg_types =
+        block_args.Transform([](auto const &arg) {
+          return type::QualType::NonConstant(arg.type());
+        });
 
     // TODO make an overload set and call it appropriately.
     // TODO We're calling operator* on an optional. Are we sure that's safe?

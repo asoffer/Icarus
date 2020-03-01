@@ -37,20 +37,16 @@ struct OverloadSet {
     }
   }
 
-  // TODO use this version everywhere.
   std::optional<AnyFunc> Lookup(core::FnArgs<type::QualType> const &args) {
-    return Lookup(args.Transform([](auto const &qt) { return qt.type(); }));
-  }
-
-  std::optional<AnyFunc> Lookup(core::FnArgs<type::Type const *> const &args) {
     for (auto const &[params, fn] : fns_) {
-      if (core::IsCallable(core::ParamsRef(params), args, type::CanCast)) {
+      if (core::IsCallable(core::ParamsRef(params), args,
+                           [](type::QualType a, type::Type const *p) {
+                             return type::CanCast(p, a.type());
+                           })) {
         return fn;
       }
     }
     return std::nullopt;
-    // TODO
-    // return fns_.emplace_back(args, create_(args)).second;
   }
 
  private:

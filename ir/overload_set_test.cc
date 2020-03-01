@@ -5,6 +5,7 @@
 #include "gtest/gtest.h"
 #include "ir/value/foreign_fn.h"
 #include "type/primitive.h"
+#include "type/qual_type.h"
 
 namespace {
 
@@ -21,44 +22,28 @@ TEST(OverloadSet, Construction) {
                     type::Func({core::AnonymousParam(type::Bool)}, {}))});
 
   {
-    core::FnArgs<type::Type const *> a;
-    auto fn = os.Lookup(a);
-    ASSERT_TRUE(fn.has_value());
-    EXPECT_EQ(fn->foreign().get(), static_cast<void (*)()>(TestFn1));
+    core::FnArgs<type::QualType> a;
+    ASSIGN_OR(FAIL(), auto fn, os.Lookup(a));
+    EXPECT_EQ(fn.foreign().get(), static_cast<void (*)()>(TestFn1));
   }
   {
-    core::FnArgs<type::Type const *> a{{type::Int64}, {}};
-    auto fn = os.Lookup(a);
-    ASSERT_TRUE(fn.has_value());
-    EXPECT_EQ(fn->foreign().get(), static_cast<void (*)()>(TestFn2));
+    core::FnArgs<type::QualType> a{{type::QualType::Constant(type::Int64)}, {}};
+    ASSIGN_OR(FAIL(), auto fn, os.Lookup(a));
+    EXPECT_EQ(fn.foreign().get(), static_cast<void (*)()>(TestFn2));
   }
   {
-    core::FnArgs<type::Type const *> a{{type::Bool}, {}};
-    auto fn = os.Lookup(a);
-    ASSERT_TRUE(fn.has_value());
-    EXPECT_EQ(fn->foreign().get(), static_cast<void (*)()>(TestFn3));
+    core::FnArgs<type::QualType> a{{type::QualType::Constant(type::Bool)}, {}};
+    ASSIGN_OR(FAIL(), auto fn, os.Lookup(a));
+    EXPECT_EQ(fn.foreign().get(), static_cast<void (*)()>(TestFn3));
   }
-}
-
-// TODO intentionally broke this. It needs to be fixed.
-TEST(OverloadSet, Callable) {
-  ir::OverloadSet os(absl::Span<ir::AnyFunc const>{},
-                     [](core::Params<type::Type const *> const &)
-                         -> std::optional<ir::AnyFunc> {
-                       return ir::ForeignFn(TestFn1, type::Func({}, {}));
-                     });
-  auto fn = os.Lookup(core::FnArgs<type::Type const *>());
-  ASSERT_TRUE(fn.has_value());
-  ASSERT_FALSE(fn->is_fn());
-  EXPECT_EQ(fn->foreign().get(), static_cast<void (*)()>(TestFn1));
 }
 
 TEST(OverloadSet, FailsToConstruct) {
   ir::OverloadSet os(absl::Span<ir::AnyFunc const>{});
 
   // Check twice because `Lookup()` caches state.
-  EXPECT_FALSE(os.Lookup(core::FnArgs<type::Type const *>()).has_value());
-  EXPECT_FALSE(os.Lookup(core::FnArgs<type::Type const *>()).has_value());
+  EXPECT_FALSE(os.Lookup(core::FnArgs<type::QualType>()).has_value());
+  EXPECT_FALSE(os.Lookup(core::FnArgs<type::QualType>()).has_value());
 }
 
 }  // namespace
