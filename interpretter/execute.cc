@@ -326,11 +326,11 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     switch (kind) {
       case ir::TypeManipulationInstruction::Kind::Init: {
         if (auto *s = t->if_as<type::Struct>()) {
-          *f = s->init_func_.get();
+          f = s->init_func_.get();
         } else if (auto *tup = t->if_as<type::Tuple>()) {
-          *f = tup->init_func_.get();
+          f = tup->init_func_.get();
         } else if (auto *a = t->if_as<type::Array>()) {
-          *f = a->init_func_.get();
+          f = a->init_func_.get();
         } else {
           NOT_YET();
         }
@@ -342,11 +342,11 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
       } break;
       case ir::TypeManipulationInstruction::Kind::Destroy: {
         if (auto *s = t->if_as<type::Struct>()) {
-          *f = s->destroy_func_.get();
+          f = s->destroy_func_.get();
         } else if (auto *tup = t->if_as<type::Tuple>()) {
-          *f = tup->destroy_func_.get();
+          f = tup->destroy_func_.get();
         } else if (auto *a = t->if_as<type::Array>()) {
-          *f = a->destroy_func_.get();
+          f = a->destroy_func_.get();
         } else {
           NOT_YET();
         }
@@ -361,11 +361,11 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         auto to     = ReadAndResolve<ir::Addr>(is_reg, iter, ctx);
 
         if (auto *s = t->if_as<type::Struct>()) {
-          *f = s->move_assign_func_.get();
+          f = s->move_assign_func_.get();
         } else if (auto *tup = t->if_as<type::Tuple>()) {
-          *f = tup->move_assign_func_.get();
+          f = tup->move_assign_func_.get();
         } else if (auto *a = t->if_as<type::Array>()) {
-          *f = a->move_assign_func_.get();
+          f = a->move_assign_func_.get();
         } else {
           NOT_YET();
         }
@@ -379,11 +379,11 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         bool is_reg = iter->read<bool>();
         auto to     = ReadAndResolve<ir::Addr>(is_reg, iter, ctx);
         if (auto *s = t->if_as<type::Struct>()) {
-          *f = s->copy_assign_func_.get();
+          f = s->copy_assign_func_.get();
         } else if (auto *tup = t->if_as<type::Tuple>()) {
-          *f = tup->copy_assign_func_.get();
+          f = tup->copy_assign_func_.get();
         } else if (auto *a = t->if_as<type::Array>()) {
-          *f = a->copy_assign_func_.get();
+          f = a->copy_assign_func_.get();
         } else {
           NOT_YET();
         }
@@ -674,7 +674,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     ctx->current_frame().regs_.set(reg, addr);
 
   } else if constexpr (std::is_same_v<Inst, ir::DebugIrInstruction>) {
-    std::cerr << ctx->current_frame().fn_;
+    std::cerr << *ctx->current_frame().fn_.get();
   } else {
     static_assert(base::always_false<Inst>());
   }

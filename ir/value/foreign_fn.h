@@ -33,12 +33,11 @@ struct ForeignFn {
   }
 
  private:
+  friend struct Fn;
+
   using id_t  = uintptr_t;
   ForeignFn() = default;
   ForeignFn(id_t id) : id_(id) {}
-
-  friend struct AnyFunc;
-  friend struct Fn;
 
   id_t id_;
 };

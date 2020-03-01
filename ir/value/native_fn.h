@@ -3,11 +3,14 @@
 
 #include <cstring>
 #include <iostream>
+#include <memory>
+#include <vector>
 
 #include "ir/compiled_fn.h"
 #include "type/function.h"
 
 namespace ir {
+struct NativeFnSet;
 
 // `NativeFn` represents a function callable in the language that is defined
 // internally. These are "just normal functions" in the language. The are
@@ -15,13 +18,16 @@ namespace ir {
 struct NativeFn {
   explicit NativeFn(CompiledFn *fn);
 
+  explicit NativeFn(NativeFnSet *set, type::Function const *fn_type,
+                    core::Params<type::Typed<ast::Declaration const *>> p);
+
   CompiledFn *get() const;
   type::Function const *type() const;
 
   CompiledFn *operator->() { return get(); }
 
   friend std::ostream &operator<<(std::ostream &os, NativeFn f) {
-    return os << "NativeFn(id = " << f.fn_ << ")";
+    return os << "NativeFn(fn = " << f.fn_ << ")";
   }
 
   friend bool operator==(NativeFn lhs, NativeFn rhs) {
@@ -34,11 +40,14 @@ struct NativeFn {
 
  private:
   friend struct Fn;
-  friend struct NativeFnSet;
 
   NativeFn() = default;
 
   CompiledFn *fn_;
+};
+
+struct NativeFnSet {
+  std::vector<std::unique_ptr<CompiledFn>> fns;
 };
 
 }  // namespace ir

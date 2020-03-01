@@ -677,21 +677,22 @@ ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
   }
 
   // TODO Use correct constants
-  ir::CompiledFn *&ir_func = data_.ir_funcs_[node];
-  if (not ir_func) {
-    auto *work_item_ptr = DeferBody(this, node);
+  ir::NativeFn ir_func =
+      data_.ir_funcs_
+          .emplace(node, base::lazy_convert([&] {
+                     auto *fn_type = &type_of(node)->as<type::Function>();
 
-    auto *fn_type = &type_of(node)->as<type::Function>();
-
-    ir_func = AddFunc(
-        fn_type, node->params().Transform(
-                     [fn_type, i = 0](
-                         std::unique_ptr<ast::Declaration> const &d) mutable {
-                       return type::Typed<ast::Declaration const *>(
-                           d.get(), fn_type->params().at(i++).value);
-                     }));
-    if (work_item_ptr) { ir_func->work_item = work_item_ptr; }
-  }
+                     auto f = AddFunc(
+                         fn_type,
+                         node->params().Transform(
+                             [fn_type, i = 0](auto const &d) mutable {
+                               return type::Typed<ast::Declaration const *>(
+                                   d.get(), fn_type->params().at(i++).value);
+                             }));
+                     f->work_item = DeferBody(this, node);
+                     return f;
+                   }))
+          .first->second;
 
   return ir::Results{ir::Fn{ir_func}};
 }

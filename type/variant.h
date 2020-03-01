@@ -6,6 +6,7 @@
 
 #include "absl/types/span.h"
 #include "core/arch.h"
+#include "ir/value/native_fn.h"
 #include "type.h"
 
 namespace ir {
@@ -47,7 +48,7 @@ struct Variant : public Type {
   std::vector<Type const *> variants_;
 
   mutable std::mutex mtx_;
-  mutable ir::CompiledFn *repr_func_ = nullptr, *destroy_func_ = nullptr;
+  mutable std::optional<ir::NativeFn> destroy_func_;
 };
 
 }  // namespace type

@@ -71,7 +71,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node) {
 
   auto *t = compiler->type_of(node);
 
-  ir::CompiledFn *&ir_func = compiler->data_.ir_funcs_[node];
+  ir::NativeFn ir_func = compiler->data_.ir_funcs_.find(node)->second;
 
   ICARUS_SCOPE(ir::SetCurrent(ir_func)) {
     // TODO arguments should be renumbered to not waste space on const values

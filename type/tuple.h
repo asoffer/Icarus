@@ -2,7 +2,7 @@
 #define ICARUS_TYPE_TUPLE_H
 
 #include "base/lazy.h"
-#include "ir/compiled_fn.h"
+#include "ir/value/native_fn.h"
 #include "type/type.h"
 
 namespace type {
@@ -30,10 +30,10 @@ struct Tuple : public Type {
 
   std::vector<Type const *> entries_;
 
-  base::lazy<ir::CompiledFn *> destroy_func_;
-  base::lazy<ir::CompiledFn *> init_func_;
-  base::lazy<ir::CompiledFn *> copy_assign_func_;
-  base::lazy<ir::CompiledFn *> move_assign_func_;
+  base::lazy<ir::NativeFn> destroy_func_;
+  base::lazy<ir::NativeFn> init_func_;
+  base::lazy<ir::NativeFn> copy_assign_func_;
+  base::lazy<ir::NativeFn> move_assign_func_;
 };
 
 Type const *Tup(std::vector<Type const *> entries);

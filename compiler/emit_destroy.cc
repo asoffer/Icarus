@@ -13,12 +13,12 @@ namespace compiler {
 void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDestroyTag) {
   if (not t->HasDestructor()) { return; }
   t->destroy_func_.init([=]() {
-    if (auto fn = SpecialFunction(this, t, "~")) { return fn->native().get(); }
+    if (auto fn = SpecialFunction(this, t, "~")) { return fn->native(); }
 
     type::Type const *pt = type::Ptr(t);
     auto const *fn_type  = type::Func(
         core::Params<type::Type const *>{core::AnonymousParam(t)}, {});
-    ir::CompiledFn *fn = AddFunc(fn_type, fn_type->AnonymousParams());
+    ir::NativeFn fn = AddFunc(fn_type, fn_type->AnonymousParams());
 
     ICARUS_SCOPE(ir::SetCurrent(fn)) {
       builder().CurrentBlock() = builder().CurrentGroup()->entry();
@@ -44,9 +44,10 @@ void Compiler::Visit(type::Variant const *t, ir::Reg reg, EmitDestroyTag) {
   if (not t->destroy_func_) {
     auto const *fn_type = type::Func(
         core::Params<type::Type const *>{core::AnonymousParam(t)}, {});
-    t->destroy_func_    = AddFunc(fn_type, fn_type->AnonymousParams());
-    ICARUS_SCOPE(ir::SetCurrent(t->destroy_func_)) {
-      builder().CurrentBlock() = t->destroy_func_->entry();
+    ir::NativeFn f = AddFunc(fn_type, fn_type->AnonymousParams());
+    t->destroy_func_    = f;
+    ICARUS_SCOPE(ir::SetCurrent(f)) {
+      builder().CurrentBlock() = f->entry();
       auto *landing            = builder().AddBlock();
       auto type =
           ir::Load<type::Type const *>(builder().VariantType(ir::Reg::Arg(0)));
@@ -72,7 +73,7 @@ void Compiler::Visit(type::Variant const *t, ir::Reg reg, EmitDestroyTag) {
     }
   }
 
-  builder().Call(ir::Fn{t->destroy_func_}, t->destroy_func_->type(),
+  builder().Call(ir::Fn{*t->destroy_func_}, t->destroy_func_->type(),
                  {ir::Results{reg}}, ir::OutParams());
 }
 
@@ -82,7 +83,7 @@ void Compiler::Visit(type::Tuple const *t, ir::Reg reg, EmitDestroyTag) {
     auto const *fn_type = type::Func(
         core::Params<type::Type const *>{core::AnonymousParam(type::Ptr(t))},
         {});
-    auto *fn            = AddFunc(fn_type, fn_type->AnonymousParams());
+    ir::NativeFn fn = AddFunc(fn_type, fn_type->AnonymousParams());
     ICARUS_SCOPE(ir::SetCurrent(fn)) {
       builder().CurrentBlock() = builder().CurrentGroup()->entry();
       auto var                 = ir::Reg::Arg(0);
@@ -107,7 +108,7 @@ void Compiler::Visit(type::Array const *t, ir::Reg reg, EmitDestroyTag) {
     auto const *fn_type = type::Func(
         core::Params<type::Type const *>{core::AnonymousParam(type::Ptr(t))},
         {});
-    auto *fn            = AddFunc(fn_type, fn_type->AnonymousParams());
+    ir::NativeFn fn = AddFunc(fn_type, fn_type->AnonymousParams());
     ICARUS_SCOPE(ir::SetCurrent(fn)) {
       builder().CurrentBlock() = fn->entry();
       builder().OnEachArrayElement(t, ir::Reg::Arg(0), [=](ir::Reg r) {

@@ -2,6 +2,7 @@
 #define ICARUS_TYPE_ARRAY_H
 
 #include "base/lazy.h"
+#include "ir/value/native_fn.h"
 #include "type/type.h"
 
 namespace ir {
@@ -27,11 +28,10 @@ struct Array : public Type {
   size_t len;
   Type const *data_type;
 
-  base::lazy<ir::CompiledFn *> copy_assign_func_;
-  base::lazy<ir::CompiledFn *> move_assign_func_;
-  base::lazy<ir::CompiledFn *> init_func_;
-  base::lazy<ir::CompiledFn *> destroy_func_;
-  base::lazy<ir::CompiledFn *> repr_func_;
+  base::lazy<ir::NativeFn> copy_assign_func_;
+  base::lazy<ir::NativeFn> move_assign_func_;
+  base::lazy<ir::NativeFn> init_func_;
+  base::lazy<ir::NativeFn> destroy_func_;
 };
 
 Array const *Arr(size_t len, Type const *t);

@@ -21,6 +21,7 @@ cc_library(
         "//base:tuple",
         "//core:params",
         "//core:arch",
+        "//ir/value:native_fn",
         "//module:module",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
@@ -242,7 +243,7 @@ cc_library(
         "//base:lazy",
         "//base:guarded",
         "//core:arch",
-        "//ir:compiled_fn",
+        "//ir/value:native_fn",
     ],
 )
 

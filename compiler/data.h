@@ -123,7 +123,7 @@ struct CompilationData {
   base::guarded<absl::node_hash_map<ast::Node const *, base::move_func<void()>>>
       deferred_work_;
 
-  std::vector<std::unique_ptr<ir::CompiledFn>> fns_;
+  ir::NativeFnSet fns_;
 
   // std::forward_list makes sense for many of the strutures below because we
   // never traverse them and we need pointer stability. A vector of unique_ptrs
@@ -143,7 +143,7 @@ struct CompilationData {
   absl::flat_hash_map<ast::Declaration const *, ir::Reg> addr_;
 
   // TODO probably make these funcs constant.
-  absl::node_hash_map<ast::Expression const *, ir::CompiledFn *> ir_funcs_;
+  absl::node_hash_map<ast::Expression const *, ir::NativeFn> ir_funcs_;
 
   // TODO absl::flat_hash_map<ast::ExprPtr, ast::DispatchTable>
   // dispatch_tables_;

@@ -133,13 +133,10 @@ void Compiler::CompleteDeferredBodies() {
   }
 }
 
-ir::CompiledFn *Compiler::AddFunc(
+ir::NativeFn Compiler::AddFunc(
     type::Function const *fn_type,
     core::Params<type::Typed<ast::Declaration const *>> params) {
-  return data_.fns_
-      .emplace_back(
-          std::make_unique<ir::CompiledFn>(fn_type, std::move(params)))
-      .get();
+  return ir::NativeFn(&data_.fns_, fn_type, std::move(params));
 }
 
 ir::CompiledFn Compiler::MakeThunk(ast::Expression const *expr,

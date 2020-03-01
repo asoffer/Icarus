@@ -14,10 +14,11 @@
 #include "compiler/module.h"
 #include "diagnostic/consumer/consumer.h"
 #include "frontend/source/source.h"
-#include "ir/value/addr.h"
 #include "ir/builder.h"
-#include "ir/value/reg.h"
 #include "ir/results.h"
+#include "ir/value/addr.h"
+#include "ir/value/native_fn.h"
+#include "ir/value/reg.h"
 #include "module/module.h"
 #include "type/qual_type.h"
 #include "type/type_fwd.h"
@@ -180,7 +181,7 @@ struct Compiler
   }
   void pop_scope_landing() { scope_landings_.pop_back(); }
 
-  ir::CompiledFn *AddFunc(
+  ir::NativeFn AddFunc(
       type::Function const *fn_type,
       core::Params<type::Typed<ast::Declaration const *>> params);
 

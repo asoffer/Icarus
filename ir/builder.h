@@ -532,7 +532,8 @@ struct Builder {
 Builder& GetBuilder();
 
 struct SetCurrent : public base::UseWithScope {
-  SetCurrent(internal::BlockGroup* fn, Builder* builder = nullptr);
+  explicit SetCurrent(internal::BlockGroup* fn, Builder* builder = nullptr);
+  explicit SetCurrent(NativeFn fn) : SetCurrent(fn.get()) {}
   ~SetCurrent();
 
  private:

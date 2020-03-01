@@ -10,7 +10,7 @@
 #include "ast/hashtag.h"
 #include "ast/scope/scope.h"
 #include "base/lazy.h"
-#include "ir/value/fn.h"
+#include "ir/value/native_fn.h"
 #include "type/type.h"
 
 namespace ast {
@@ -68,10 +68,10 @@ struct Struct : public Type {
   ast::Scope const *scope_  = nullptr;
   module::BasicModule *mod_ = nullptr;
 
-  base::lazy<ir::CompiledFn *> init_func_;
-  base::lazy<ir::CompiledFn *> destroy_func_;
-  base::lazy<ir::CompiledFn *> copy_assign_func_;
-  base::lazy<ir::CompiledFn *> move_assign_func_;
+  base::lazy<ir::NativeFn> init_func_;
+  base::lazy<ir::NativeFn> destroy_func_;
+  base::lazy<ir::NativeFn> copy_assign_func_;
+  base::lazy<ir::NativeFn> move_assign_func_;
 
   std::vector<ast::Hashtag> hashtags_;
   std::vector<Field> fields_;
