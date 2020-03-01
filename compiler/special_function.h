@@ -4,7 +4,7 @@
 #include <optional>
 
 #include "compiler/compiler.h"
-#include "ir/any_func.h"
+#include "ir/value/fn.h"
 #include "type/struct.h"
 
 namespace compiler {
@@ -17,9 +17,8 @@ constexpr char const *Name() {
   if constexpr (Cat == Copy) { return "copy"; }
 }
 
-std::optional<ir::AnyFunc> SpecialFunction(Compiler *compiler,
-                                           type::Struct const *s,
-                                           char const *symbol);
+std::optional<ir::Fn> SpecialFunction(Compiler *compiler, type::Struct const *s,
+                                      char const *symbol);
 
 }  // namespace compiler
 #endif  // ICARUS_COMPILER_SPECIAL_FUNCTION

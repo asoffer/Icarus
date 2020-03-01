@@ -13,14 +13,14 @@ namespace compiler {
 void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDestroyTag) {
   if (not t->HasDestructor()) { return; }
   t->destroy_func_.init([=]() {
-    if (auto fn = SpecialFunction(this, t, "~")) { return *fn; }
+    if (auto fn = SpecialFunction(this, t, "~")) { return fn->native().get(); }
 
     type::Type const *pt = type::Ptr(t);
     auto const *fn_type  = type::Func(
         core::Params<type::Type const *>{core::AnonymousParam(t)}, {});
-    ir::AnyFunc fn = AddFunc(fn_type, fn_type->AnonymousParams());
+    ir::CompiledFn *fn = AddFunc(fn_type, fn_type->AnonymousParams());
 
-    ICARUS_SCOPE(ir::SetCurrent(fn.func())) {
+    ICARUS_SCOPE(ir::SetCurrent(fn)) {
       builder().CurrentBlock() = builder().CurrentGroup()->entry();
       auto var                 = ir::Reg::Arg(0);
 
@@ -30,10 +30,10 @@ void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDestroyTag) {
       }
 
       builder().ReturnJump();
-      }
-      return fn;
-    });
-    builder().Destroy(t, reg);
+    }
+    return fn;
+  });
+  builder().Destroy(t, reg);
 }
 
 void Compiler::Visit(type::Variant const *t, ir::Reg reg, EmitDestroyTag) {
@@ -72,7 +72,7 @@ void Compiler::Visit(type::Variant const *t, ir::Reg reg, EmitDestroyTag) {
     }
   }
 
-  builder().Call(ir::AnyFunc{t->destroy_func_}, t->destroy_func_->type(),
+  builder().Call(ir::Fn{t->destroy_func_}, t->destroy_func_->type(),
                  {ir::Results{reg}}, ir::OutParams());
 }
 

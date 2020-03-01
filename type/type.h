@@ -26,7 +26,7 @@ struct FunctionLiteral;
 }  // namespace ast
 
 namespace ir {
-struct AnyFunc;
+struct Fn;
 struct BlockDef;
 struct FlagsVal;
 struct ScopeDef;
@@ -130,7 +130,7 @@ bool Compare(::type::Type const *t) {
     return t == ::type::Scope;
   } else if constexpr (std::is_same_v<T, ::type::Struct const *>) {
     return t->is<::type::Struct>();
-  } else if constexpr (std::is_same_v<T, ir::AnyFunc>) {
+  } else if constexpr (std::is_same_v<T, ir::Fn>) {
     return t->is<::type::Function>();
   } else if constexpr (std::is_same_v<T, ::type::Jump>) {
     return t->is<::type::Jump>();
@@ -177,7 +177,7 @@ auto Apply(Type const *t, Fn &&fn) {
   return ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                     uint32_t, uint64_t, float, double, type::Type const *,
                     ir::EnumVal, ir::FlagsVal, ir::Addr, ir::String,
-                    module::BasicModule *, ir::ScopeDef *, ir::AnyFunc,
+                    module::BasicModule *, ir::ScopeDef *, ir::Fn,
                     ir::BlockDef const *>(t, std::forward<Fn>(fn));
 }
 

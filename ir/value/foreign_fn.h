@@ -7,17 +7,21 @@
 #include "type/function.h"
 
 namespace ir {
-struct AnyFunc;
-
+// `ForeignFn` represents a function callable in the language that is defined
+// externally. New foreign functions can only be created in the intermediate
+// representation by calling the `foreign` builtin.
 struct ForeignFn {
+ private:
+  using void_fn_ptr = void (*)();
+
+ public:
   explicit ForeignFn(void (*fn)(), type::Function const *t);
 
-  using void_fn_ptr = void (*)();
   void_fn_ptr get() const;
   type::Function const *type() const;
 
   friend std::ostream &operator<<(std::ostream &os, ForeignFn f) {
-    return os << "Foreign(id = " << f.id_ << ")";
+    return os << "ForeignFn(id = " << f.id_ << ")";
   }
 
   friend bool operator==(ForeignFn lhs, ForeignFn rhs) {
@@ -25,15 +29,16 @@ struct ForeignFn {
   }
 
   friend bool operator!=(ForeignFn lhs, ForeignFn rhs) {
-    return not (lhs == rhs);
+    return not(lhs == rhs);
   }
 
  private:
-  using id_t = uintptr_t;
+  using id_t  = uintptr_t;
   ForeignFn() = default;
   ForeignFn(id_t id) : id_(id) {}
 
   friend struct AnyFunc;
+  friend struct Fn;
 
   id_t id_;
 };

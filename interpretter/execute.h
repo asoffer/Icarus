@@ -6,9 +6,9 @@
 #include "absl/types/span.h"
 #include "base/untyped_buffer.h"
 #include "interpretter/stack_frame.h"
-#include "ir/value/addr.h"
-#include "ir/any_func.h"
 #include "ir/basic_block.h"
+#include "ir/value/addr.h"
+#include "ir/value/fn.h"
 #include "ir/value/reg.h"
 #include "ir/value/reg_or.h"
 
@@ -41,7 +41,7 @@ struct ExecutionContext {
   base::untyped_buffer stack_;
 };
 
-void Execute(ir::AnyFunc fn, base::untyped_buffer arguments,
+void Execute(ir::Fn fn, base::untyped_buffer arguments,
              absl::Span<ir::Addr const> ret_slots, ExecutionContext *ctx);
 
 }  // namespace interpretter

@@ -2,8 +2,7 @@
 
 #include "ast/ast.h"
 #include "interpretter/evaluate.h"
-#include "ir/any_func.h"
-#include "ir/compiled_fn.h"
+#include "ir/value/fn.h"
 #include "type/function.h"
 
 namespace compiler {
@@ -13,14 +12,16 @@ core::Params<type::Typed<ast::Declaration const *>> ExtractParams(
   auto *decl_type = ASSERT_NOT_NULL(compiler->type_of(decl));
   if (decl->flags() & ast::Declaration::f_IsConst) {
     if (auto const *fn_type = decl_type->if_as<type::Function>()) {
-      auto f = interpretter::EvaluateAs<ir::AnyFunc>(
+      auto f = interpretter::EvaluateAs<ir::Fn>(
           compiler->MakeThunk(decl, decl_type));
 
-      return f.is_fn()
-                 ? static_cast<
-                       core::Params<type::Typed<ast::Declaration const *>>>(
-                       f.func()->params())
-                 : fn_type->AnonymousParams();
+      switch (f.kind()) {
+        case ir::Fn::Kind::Native:
+          return static_cast<
+              core::Params<type::Typed<ast::Declaration const *>>>(
+              f.native()->params());
+        case ir::Fn::Kind::Foreign: return fn_type->AnonymousParams();
+      }
     } else if (auto *jump_type = decl_type->if_as<type::Jump>()) {
       auto j = interpretter::EvaluateAs<ir::Jump const *>(
           compiler->MakeThunk(decl, decl_type));

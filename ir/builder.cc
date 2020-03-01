@@ -58,7 +58,7 @@ ir::OutParams Builder::OutParams(absl::Span<type::Type const *const> types) {
   return ir::OutParams(std::move(regs));
 }
 
-void Builder::Call(RegOr<AnyFunc> const &fn, type::Function const *f,
+void Builder::Call(RegOr<Fn> const &fn, type::Function const *f,
                    std::vector<Results> args, ir::OutParams outs) {
   // TODO this call should return the constructed registers rather than forcing
   // the caller to do it.
@@ -214,7 +214,7 @@ Reg Builder::VariantValue(type::Variant const *v, RegOr<Addr> const &r) {
 }
 
 Reg Builder::MakeBlock(BlockDef *block_def,
-                       std::vector<RegOr<AnyFunc>> befores,
+                       std::vector<RegOr<Fn>> befores,
                        std::vector<RegOr<Jump *>> afters) {
   auto inst = std::make_unique<MakeBlockInstruction>(
       block_def, std::move(befores), std::move(afters));
@@ -225,7 +225,7 @@ Reg Builder::MakeBlock(BlockDef *block_def,
 
 Reg Builder::MakeScope(
     ScopeDef *scope_def, std::vector<RegOr<Jump *>> inits,
-    std::vector<RegOr<AnyFunc>> dones,
+    std::vector<RegOr<Fn>> dones,
     absl::flat_hash_map<std::string_view, BlockDef *> blocks) {
   auto inst = std::make_unique<MakeScopeInstruction>(
       scope_def, std::move(inits), std::move(dones), std::move(blocks));

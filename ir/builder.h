@@ -363,7 +363,7 @@ struct Builder {
   // Emits a function-call instruction, calling `fn` of type `f` with the given
   // `arguments` and output parameters. If output parameters are not present,
   // the function must return nothing.
-  void Call(RegOr<AnyFunc> const& fn, type::Function const* f,
+  void Call(RegOr<Fn> const& fn, type::Function const* f,
             std::vector<Results> args, ir::OutParams outs);
 
   // Jump instructions must be the last instruction in a basic block. They
@@ -454,10 +454,10 @@ struct Builder {
   base::Tagged<Addr, Reg> Alloca(type::Type const* t);
   base::Tagged<Addr, Reg> TmpAlloca(type::Type const* t);
 
-  Reg MakeBlock(ir::BlockDef* block_def, std::vector<RegOr<AnyFunc>> befores,
+  Reg MakeBlock(ir::BlockDef* block_def, std::vector<RegOr<Fn>> befores,
                 std::vector<RegOr<Jump*>> afters);
   Reg MakeScope(ir::ScopeDef* scope_def, std::vector<RegOr<Jump*>> inits,
-                std::vector<RegOr<AnyFunc>> dones,
+                std::vector<RegOr<Fn>> dones,
                 absl::flat_hash_map<std::string_view, BlockDef*> blocks);
 
   void DebugIr() {
@@ -626,11 +626,11 @@ base::Tagged<T, Reg> Load(RegOr<Addr> addr) {
 inline Reg Load(RegOr<Addr> r, type::Type const* t) {
   using base::stringify;
   DEBUG_LOG("Load")("Calling Load(", stringify(r), ", ", t->to_string(), ")");
-  if (t->is<type::Function>()) { return Load<AnyFunc>(r); }
+  if (t->is<type::Function>()) { return Load<Fn>(r); }
   return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
                           uint16_t, uint32_t, uint64_t, float, double,
                           type::Type const*, EnumVal, FlagsVal, Addr, String,
-                          AnyFunc>(t, [&](auto tag) -> Reg {
+                          Fn>(t, [&](auto tag) -> Reg {
     using T = typename decltype(tag)::type;
     return Load<T>(r);
   });
@@ -672,13 +672,13 @@ inline base::Tagged<Addr, Reg> GetRet(uint16_t n, type::Type const* t) {
 
 inline void SetRet(uint16_t n, type::Typed<Results> const& r) {
   // if (r.type()->is<type::GenericStruct>()) {
-  //   SetRet(n, r->get<AnyFunc>(0));
+  //   SetRet(n, r->get<Fn>(0));
   // }
   if (r.type()->is<type::Jump>()) {
     // TODO currently this has to be implemented outside type::Apply because
     // that's in type.h which is wrong because it forces weird instantiation
     // order issues (type/type.h can't depend on type/jump.h).
-    SetRet(n, r->get<AnyFunc>(0));
+    SetRet(n, r->get<Fn>(0));
   } else {
     ASSERT(r.type()->is_big() == false) << r.type()->to_string();
     type::Apply(r.type(), [&](auto tag) {

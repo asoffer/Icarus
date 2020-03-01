@@ -50,10 +50,10 @@ ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
 
   auto[out_results, out_params] = SetReturns(compiler->builder(), data, {});
 
-  auto callee_qual_type         = *ASSERT_NOT_NULL(compiler->qual_type_of(fn));
-  auto callee                   = [&]() -> ir::RegOr<ir::AnyFunc> {
+  auto callee_qual_type = *ASSERT_NOT_NULL(compiler->qual_type_of(fn));
+  auto callee           = [&]() -> ir::RegOr<ir::Fn> {
     if (callee_qual_type.constant()) {
-      return compiler->Visit(fn, EmitValueTag{}).get<ir::AnyFunc>(0);
+      return compiler->Visit(fn, EmitValueTag{}).get<ir::Fn>(0);
     } else {
       // NOTE: If the overload is a declaration, it's not because a declaration
       // is syntactically the callee. Rather, it's because the callee is an
@@ -62,9 +62,9 @@ ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
       // the declaration because that will emit the initialization for the
       // declaration. Instead, we need load the address.
       if (auto *fn_decl = fn->if_as<ast::Declaration>()) {
-        return ir::Load<ir::AnyFunc>(compiler->addr(fn_decl));
+        return ir::Load<ir::Fn>(compiler->addr(fn_decl));
       } else {
-        return ir::Load<ir::AnyFunc>(
+        return ir::Load<ir::Fn>(
             compiler->Visit(fn, EmitValueTag{}).get<ir::Addr>(0));
       }
     }

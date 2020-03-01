@@ -43,10 +43,10 @@ std::pair<ir::BasicBlock const *, ir::OutParams> EmitCallOneOverload(
     // TODO We're calling operator* on an optional. Are we sure that's safe?
     // Did we check it during type-verification? If so why do we need the
     // create_ function in ir::OverloadSet?
-    std::optional<ir::AnyFunc> maybe_fn = block_def->before_.Lookup(arg_types);
+    std::optional<ir::Fn> maybe_fn = block_def->before_.Lookup(arg_types);
     ASSERT(maybe_fn.has_value() == true);
-    ir::AnyFunc fn = *maybe_fn;
-    auto *fn_type  = fn.is_fn() ? fn.func()->type() : fn.foreign().type();
+    ir::Fn fn     = *maybe_fn;
+    auto *fn_type = fn.type();
 
     std::vector<ir::Results> arg_results =
         PrepareCallArguments(compiler, nullptr, fn_type->params(), block_args);
@@ -132,23 +132,30 @@ void internal::OneTable::VerifyJumps() {
       for (auto const &[block_name, arg_type_calls] : jump_exit_paths) {
         auto &block_def = *ASSERT_NOT_NULL(scope_def_->block(block_name));
         for (auto const &arg_types : arg_type_calls) {
-          std::optional<ir::AnyFunc> maybe_fn =
-              block_def.before_.Lookup(arg_types);
+          std::optional<ir::Fn> maybe_fn = block_def.before_.Lookup(arg_types);
           ASSERT(maybe_fn.has_value() == true);
-          ir::AnyFunc fn = *maybe_fn;
-          if (not fn.is_fn()) { NOT_YET(); }
-          auto result = MatchArgsToParams(fn.func()->params(), arg_types);
+          ir::Fn fn = *maybe_fn;
+          switch (fn.kind()) {
+            case ir::Fn::Kind::Native: {
+              auto result = MatchArgsToParams(fn.native()->params(), arg_types);
 
-          if (result) {
-            next_types[block_name].push_back(fn.func()->type()->output());
-          } else {
-            DEBUG_LOG("VerifyJumps")(result.error());
-            // This is entirely reasonable. It just means this particular path
-            // into a block can't be used but others are possible.
-            NOT_YET();
+              if (result) {
+                next_types[block_name].push_back(fn.native()->type()->output());
+              } else {
+                DEBUG_LOG("VerifyJumps")(result.error());
+                // This is entirely reasonable. It just means this particular
+                // path into a block can't be used but others are possible.
+                NOT_YET();
+              }
+
+              // TODO check that ParamsCoverArgs and otherwise emit a
+              // diagnostic.
+
+            } break;
+            case ir::Fn::Kind::Foreign: {
+              NOT_YET();
+            } break;
           }
-
-          // TODO check that ParamsCoverArgs and otherwise emit a diagnostic.
         }
       }
     }

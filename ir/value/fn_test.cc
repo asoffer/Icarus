@@ -1,8 +1,8 @@
-#include "ir/any_func.h"
+#include "ir/value/fn.h"
 
 #include "gtest/gtest.h"
-#include "ir/compiled_fn.h"
 #include "ir/value/foreign_fn.h"
+#include "ir/value/native_fn.h"
 #include "type/function.h"
 #include "type/type.h"
 
@@ -10,10 +10,10 @@ void TestFn() {}
 
 namespace {
 
-TEST(AnyFunc, Foreign) {
+TEST(Fn, ForeignFn) {
   ir::ForeignFn f(TestFn, type::Func({}, {}));
-  ir::AnyFunc a(f);
-  ASSERT_FALSE(a.is_fn());
+  ir::Fn a(f);
+  ASSERT_EQ(a.kind(), ir::Fn::Kind::Foreign);
 
   uintptr_t lhs, rhs;
   void (*fnptr)() = a.foreign().get();
@@ -24,11 +24,11 @@ TEST(AnyFunc, Foreign) {
   ASSERT_EQ(lhs, rhs);
 }
 
-TEST(AnyFunc, CompiledFn) {
+TEST(Fn, NativeFn) {
   ir::CompiledFn f(type::Func({}, {}), {});
-  ir::AnyFunc a(&f);
-  ASSERT_TRUE(a.is_fn());
-  ASSERT_EQ(a.func(), &f);
+  ir::Fn a(&f);
+  ASSERT_EQ(a.kind(), ir::Fn::Kind::Native);
+  ASSERT_EQ(a.native(), ir::NativeFn(&f));
 }
 
 }  // namespace

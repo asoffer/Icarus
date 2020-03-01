@@ -37,6 +37,24 @@ cc_test(
 )
 
 cc_library(
+    name = "fn",
+    hdrs = ["fn.h"],
+    deps = [
+        ":foreign_fn",
+        ":native_fn",
+    ],
+)
+
+cc_test(
+    name = "fn_test",
+    srcs = ["fn_test.cc"],
+    deps = [
+        ":fn",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "foreign_fn",
     hdrs = ["foreign_fn.h"],
     srcs = ["foreign_fn.cc"],
@@ -63,6 +81,27 @@ cc_library(
     name = "label",
     hdrs = ["label.h"],
     deps = ["//base:strong_types"],
+)
+
+cc_library(
+    name = "native_fn",
+    hdrs = ["native_fn.h"],
+    srcs = ["native_fn.cc"],
+    deps = [
+        "//base:debug",
+        "//ir:compiled_fn",
+        "//type:function",
+    ],
+)
+
+cc_test(
+    name = "native_fn_test",
+    srcs = ["native_fn_test.cc"],
+    deps = [
+        ":native_fn",
+        "//type:primitive",
+        "@com_google_googletest//:gtest_main",
+    ],
 )
 
 cc_library(

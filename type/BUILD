@@ -224,7 +224,8 @@ cc_library(
         "//base:guarded",
         "//base:lazy",
         "//core:arch",
-        "//ir:any_func",
+        "//ir:compiled_fn",
+        "//ir/value:fn",
         "//module:module",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
@@ -241,7 +242,7 @@ cc_library(
         "//base:lazy",
         "//base:guarded",
         "//core:arch",
-        "//ir:any_func",
+        "//ir:compiled_fn",
     ],
 )
 

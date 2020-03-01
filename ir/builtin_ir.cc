@@ -8,7 +8,7 @@
 
 namespace ir {
 
-AnyFunc BytesFn() {
+CompiledFn *BytesFn() {
   static CompiledFn *bytes_func_ = [&]() {
     auto const *fn_type =
         type::Func({core::AnonymousParam(type::Type_)}, {type::Int64});
@@ -21,10 +21,10 @@ AnyFunc BytesFn() {
     }
     return fn;
   }();
-  return AnyFunc{bytes_func_};
+  return bytes_func_;
 }
 
-AnyFunc AlignmentFn() {
+CompiledFn *AlignmentFn() {
   static CompiledFn *alignment_func_ = [&]() {
     auto const *fn_type =
         type::Func({core::AnonymousParam(type::Type_)}, {type::Int64});
@@ -37,7 +37,7 @@ AnyFunc AlignmentFn() {
     }
     return fn;
   }();
-  return AnyFunc{alignment_func_};
+  return alignment_func_;
 }
 
 }  // namespace ir

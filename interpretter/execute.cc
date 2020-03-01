@@ -11,6 +11,9 @@
 #include "ir/jump.h"
 #include "ir/read_only_data.h"
 #include "ir/scope_def.h"
+#include "ir/value/fn.h"
+#include "ir/value/foreign_fn.h"
+#include "ir/value/native_fn.h"
 #include "type/opaque.h"
 
 namespace interpretter {
@@ -74,11 +77,6 @@ auto Deserialize(Iter *iter, Fn &&fn) {
   }
 }
 
-type::Function const *GetType(ir::AnyFunc f) {
-  return f.is_fn() ? f.func()->type()
-                   : &f.foreign().type()->as<type::Function>();
-}
-
 template <typename T>
 T ReadAndResolve(bool is_reg, base::untyped_buffer::const_iterator *iter,
                  ExecutionContext *ctx) {
@@ -90,9 +88,8 @@ T ReadAndResolve(bool is_reg, base::untyped_buffer::const_iterator *iter,
   }
 }
 
-void CallFunction(ir::CompiledFn *fn, StackFrame *frame,
-                  absl::Span<ir::Addr const> ret_slots, ExecutionContext *ctx) {
-  ASSERT(fn != nullptr);
+void CallFn(ir::NativeFn fn, StackFrame *frame,
+            absl::Span<ir::Addr const> ret_slots, ExecutionContext *ctx) {
   // TODO: Understand why and how work-items may not be complete and add an
   // explanation here. I'm quite confident this is really possible with the
   // generics model I have, but I can't quite articulate exactly why it only
@@ -118,13 +115,16 @@ void CallFunction(ir::CompiledFn *fn, StackFrame *frame,
 
 // TODO rename the `arguments` parameter. It actually should be arguments and
 // space for registers.
-void Execute(ir::AnyFunc fn, base::untyped_buffer arguments,
+void Execute(ir::Fn fn, base::untyped_buffer arguments,
              absl::Span<ir::Addr const> ret_slots, ExecutionContext *ctx) {
-  if (fn.is_fn()) {
-    StackFrame frame(fn.func(), std::move(arguments), &ctx->stack_);
-    CallFunction(fn.func(), &frame, ret_slots, ctx);
-  } else {
-    CallForeignFn(fn.foreign(), arguments, ret_slots, &ctx->stack_);
+  switch (fn.kind()) {
+    case ir::Fn::Kind::Native: {
+      StackFrame frame(fn.native(), std::move(arguments), &ctx->stack_);
+      CallFn(fn.native(), &frame, ret_slots, ctx);
+    } break;
+    case ir::Fn::Kind::Foreign: {
+      CallFn(fn.foreign(), arguments, ret_slots, &ctx->stack_);
+    } break;
   }
 }
 
@@ -296,7 +296,6 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
             "initialization?");
         break;
       case ir::Addr::Kind::Heap:
-        std::cerr << *ctx->current_frame().fn_;
         *ASSERT_NOT_NULL(static_cast<type *>(addr.heap())) = val;
     }
   } else if constexpr (ir::internal::kPhiInstructionRange.contains(
@@ -316,7 +315,8 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     ctx->current_frame().regs_.set(iter->read<ir::Reg>(), type{results[index]});
     DEBUG_LOG("phi-instruction")(results[index]);
   } else if constexpr (std::is_same_v<Inst, ir::TypeManipulationInstruction>) {
-    ir::AnyFunc f;
+    // TODO optional just for delayed construction.
+    std::optional<ir::Fn> f;
     base::untyped_buffer call_buf(sizeof(ir::Addr));
     auto kind = iter->read<ir::TypeManipulationInstruction::Kind>();
     type::Type const *t =
@@ -326,32 +326,32 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     switch (kind) {
       case ir::TypeManipulationInstruction::Kind::Init: {
         if (auto *s = t->if_as<type::Struct>()) {
-          f = s->init_func_.get();
+          *f = s->init_func_.get();
         } else if (auto *tup = t->if_as<type::Tuple>()) {
-          f = tup->init_func_.get();
+          *f = tup->init_func_.get();
         } else if (auto *a = t->if_as<type::Array>()) {
-          f = a->init_func_.get();
+          *f = a->init_func_.get();
         } else {
           NOT_YET();
         }
 
-        frame.emplace(f.func(), &ctx->stack_);
+        frame.emplace(f->native(), &ctx->stack_);
         frame->regs_.set(ir::Reg::Arg(0),
                         ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get()));
 
       } break;
       case ir::TypeManipulationInstruction::Kind::Destroy: {
         if (auto *s = t->if_as<type::Struct>()) {
-          f = s->destroy_func_.get();
+          *f = s->destroy_func_.get();
         } else if (auto *tup = t->if_as<type::Tuple>()) {
-          f = tup->destroy_func_.get();
+          *f = tup->destroy_func_.get();
         } else if (auto *a = t->if_as<type::Array>()) {
-          f = a->destroy_func_.get();
+          *f = a->destroy_func_.get();
         } else {
           NOT_YET();
         }
 
-        frame.emplace(f.func(), &ctx->stack_);
+        frame.emplace(f->native(), &ctx->stack_);
         frame->regs_.set(ir::Reg::Arg(0),
                         ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get()));
       } break;
@@ -361,16 +361,16 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         auto to     = ReadAndResolve<ir::Addr>(is_reg, iter, ctx);
 
         if (auto *s = t->if_as<type::Struct>()) {
-          f = s->move_assign_func_.get();
+          *f = s->move_assign_func_.get();
         } else if (auto *tup = t->if_as<type::Tuple>()) {
-          f = tup->move_assign_func_.get();
+          *f = tup->move_assign_func_.get();
         } else if (auto *a = t->if_as<type::Array>()) {
-          f = a->move_assign_func_.get();
+          *f = a->move_assign_func_.get();
         } else {
           NOT_YET();
         }
 
-        frame.emplace(f.func(), &ctx->stack_);
+        frame.emplace(f->native(), &ctx->stack_);
         frame->regs_.set(ir::Reg::Arg(0), from);
         frame->regs_.set(ir::Reg::Arg(1), to);
       } break;
@@ -379,24 +379,24 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         bool is_reg = iter->read<bool>();
         auto to     = ReadAndResolve<ir::Addr>(is_reg, iter, ctx);
         if (auto *s = t->if_as<type::Struct>()) {
-          f = s->copy_assign_func_.get();
+          *f = s->copy_assign_func_.get();
         } else if (auto *tup = t->if_as<type::Tuple>()) {
-          f = tup->copy_assign_func_.get();
+          *f = tup->copy_assign_func_.get();
         } else if (auto *a = t->if_as<type::Array>()) {
-          f = a->copy_assign_func_.get();
+          *f = a->copy_assign_func_.get();
         } else {
           NOT_YET();
         }
 
-        frame.emplace(f.func(), &ctx->stack_);
+        frame.emplace(f->native(), &ctx->stack_);
         frame->regs_.set(ir::Reg::Arg(0), from);
         frame->regs_.set(ir::Reg::Arg(1), to);
       } break;
     }
 
     // TODO This could be foreign I guess?
-    ASSERT(f.is_fn() == true);
-    CallFunction(f.func(), &*frame, {}, ctx);
+    ASSERT(f->kind() == ir::Fn::Kind::Native);
+    CallFn(f->native(), &*frame, {}, ctx);
 
   } else if constexpr (ir::internal::kSetReturnInstructionRange.contains(
                            Inst::kIndex)) {
@@ -476,8 +476,8 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     scope_def->start_->after_ = Deserialize<uint16_t, ir::Jump *>(
         iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::Jump *>(reg); });
     scope_def->exit_->before_ = ir::OverloadSet(
-        Deserialize<uint16_t, ir::AnyFunc>(iter, [ctx](ir::Reg reg) {
-          return ctx->resolve<ir::AnyFunc>(reg);
+        Deserialize<uint16_t, ir::Fn>(iter, [ctx](ir::Reg reg) {
+          return ctx->resolve<ir::Fn>(reg);
         }));
 
     uint16_t num_blocks = iter->read<uint16_t>();
@@ -491,8 +491,8 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
 
   } else if constexpr (std::is_same_v<Inst, ir::MakeBlockInstruction>) {
     ir::BlockDef *block_def = iter->read<ir::BlockDef *>();
-    block_def->before_ = ir::OverloadSet(Deserialize<uint16_t, ir::AnyFunc>(
-        iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::AnyFunc>(reg); }));
+    block_def->before_ = ir::OverloadSet(Deserialize<uint16_t, ir::Fn>(
+        iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::Fn>(reg); }));
     block_def->after_  = Deserialize<uint16_t, ir::Jump *>(
         iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::Jump *>(reg); });
     ctx->current_frame().regs_.set(iter->read<ir::Reg>(), block_def);
@@ -529,23 +529,25 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
                                    type::Arr(len, data_type));
   } else if constexpr (std::is_same_v<Inst, ir::CallInstruction>) {
     bool fn_is_reg = iter->read<bool>();
-    ir::AnyFunc f  = ReadAndResolve<ir::AnyFunc>(fn_is_reg, iter, ctx);
+    ir::Fn f       = ReadAndResolve<ir::Fn>(fn_is_reg, iter, ctx);
     iter->read<core::Bytes>().get();
 
-    type::Function const *fn_type = GetType(f);
+    type::Function const *fn_type = f.type();
     DEBUG_LOG("call")(f, ": ", fn_type->to_string());
 
     // TODO you probably want interpretter::Arguments or something.
-    size_t num_inputs  = fn_type->params().size();
-    size_t num_regs    = f.is_fn() ? f.func()->num_regs() : 0;
+    size_t num_inputs = fn_type->params().size();
+    size_t num_regs =
+        f.kind() == ir::Fn::Kind::Native ? f.native()->num_regs() : 0;
     size_t num_entries = num_inputs + num_regs;
-    auto call_buf     = base::untyped_buffer::MakeFull(num_entries * kMaxSize);
+    auto call_buf      = base::untyped_buffer::MakeFull(num_entries * kMaxSize);
 
     // TODO not actually optional once we handle foreign functions, we just need
     // deferred construction?
     std::optional<StackFrame> frame;
-    if (f.is_fn()) { frame.emplace(f.func(), &ctx->stack_); }
-
+    if (f.kind() == ir::Fn::Kind::Native) {
+      frame.emplace(f.native(), &ctx->stack_);
+    }
 
     for (size_t i = 0; i < num_inputs; ++i) {
       if (iter->read<bool>()) {
@@ -593,10 +595,13 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
       return_slots.push_back(addr);
     }
 
-    if (f.is_fn()) {
-      CallFunction(f.func(), &*frame, return_slots, ctx);
-    } else {
-      CallForeignFn(f.foreign(), call_buf, return_slots, &ctx->stack_);
+    switch (f.kind()) {
+      case ir::Fn::Kind::Native: {
+        CallFn(f.native(), &*frame, return_slots, ctx);
+      } break;
+      case ir::Fn::Kind::Foreign: {
+        CallFn(f.foreign(), call_buf, return_slots, &ctx->stack_);
+      }
     }
   } else if constexpr (std::is_same_v<Inst, ir::LoadSymbolInstruction>) {
     std::string name       = iter->read<ir::String>().get().get();
@@ -605,8 +610,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
 
     if (auto *fn_type = type->if_as<type::Function>()) {
       void (*sym)() = LoadFunctionSymbol(name);
-      ctx->current_frame().regs_.set(reg,
-                                     ir::AnyFunc{ir::ForeignFn(sym, fn_type)});
+      ctx->current_frame().regs_.set(reg, ir::Fn(ir::ForeignFn(sym, fn_type)));
     } else if (type->is<type::Pointer>()) {
       void *sym = LoadDataSymbol(name);
       ctx->current_frame().regs_.set(reg, ir::Addr::Heap(sym));
@@ -670,7 +674,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     ctx->current_frame().regs_.set(reg, addr);
 
   } else if constexpr (std::is_same_v<Inst, ir::DebugIrInstruction>) {
-    std::cerr << *ctx->current_frame().fn_;
+    std::cerr << ctx->current_frame().fn_;
   } else {
     static_assert(base::always_false<Inst>());
   }
@@ -838,7 +842,7 @@ constexpr auto kInstructions = std::array{
     ExecuteAdHocInstruction<ir::StoreInstruction<ir::FlagsVal>>,
     ExecuteAdHocInstruction<ir::StoreInstruction<bool>>,
     ExecuteAdHocInstruction<ir::StoreInstruction<ir::String>>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<ir::AnyFunc>>,
+    ExecuteAdHocInstruction<ir::StoreInstruction<ir::Fn>>,
     ExecuteAdHocInstruction<ir::PhiInstruction<uint8_t>>,
     ExecuteAdHocInstruction<ir::PhiInstruction<int8_t>>,
     ExecuteAdHocInstruction<ir::PhiInstruction<uint16_t>>,
@@ -871,7 +875,7 @@ constexpr auto kInstructions = std::array{
     ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::FlagsVal>>,
     ExecuteAdHocInstruction<ir::SetReturnInstruction<bool>>,
     ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::String>>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::AnyFunc>>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::Fn>>,
     ExecuteAdHocInstruction<ir::SetReturnInstruction<core::Bytes>>,
     ExecuteAdHocInstruction<ir::SetReturnInstruction<core::Alignment>>,
     ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::BlockDef const *>>,

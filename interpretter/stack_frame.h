@@ -4,15 +4,15 @@
 #include "base/untyped_buffer_view.h"
 #include "interpretter/register_array.h"
 #include "ir/basic_block.h"
-#include "ir/compiled_fn.h"
+#include "ir/value/native_fn.h"
 
 namespace interpretter {
 struct ExecutionContext;
 
 struct StackFrame {
   StackFrame() = delete;
-  StackFrame(ir::CompiledFn *fn, base::untyped_buffer *stack);
-  StackFrame(ir::CompiledFn *fn, base::untyped_buffer arguments,
+  StackFrame(ir::NativeFn fn, base::untyped_buffer *stack);
+  StackFrame(ir::NativeFn fn, base::untyped_buffer arguments,
              base::untyped_buffer *stack);
 
   void MoveTo(ir::BasicBlock const *block) {
@@ -24,7 +24,7 @@ struct StackFrame {
 
   constexpr ir::BasicBlock const *current_block() const { return current_; }
 
-  ir::CompiledFn *fn_ = nullptr;
+  ir::NativeFn fn_;
   ir::BasicBlock const *current_;
   ir::BasicBlock const *prev_;
 

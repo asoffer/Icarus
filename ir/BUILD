@@ -1,27 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "any_func",
-    hdrs = ["any_func.h"],
-    deps = [
-        "//base:debug",
-        "//ir/value:foreign_fn",
-    ],
-)
-
-cc_test(
-    name = "any_func_test",
-    srcs = ["any_func_test.cc"],
-    deps = [
-        ":any_func",
-        ":compiled_fn",
-        "//type:type",
-        "//type:function",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
     name = "basic_block",
     hdrs = ["basic_block.h"],
     srcs = ["basic_block.cc"],
@@ -170,6 +149,7 @@ cc_library(
         ":struct_field",
         "//ast/scope",
         "//base:clone",
+        "//ir/value:fn",
         "//ir/value:reg_or",
         "//ir/value:string",
         "//type",
@@ -191,7 +171,6 @@ cc_library(
     hdrs = ["builtin_ir.h"],
     srcs = ["builtin_ir.cc"],
     deps = [
-        ":any_func",
         ":builder",
         ":compiled_fn",
     ],
@@ -323,9 +302,8 @@ cc_library(
     name = "overload_set",
     hdrs = ["overload_set.h"],
     deps = [
-        ":any_func",
-        ":compiled_fn", # Remove once AnyFunc depends on this.
         "//core:params_ref",
+        "//ir/value:fn",
         "//type:cast",
         "//type:function",
         "//type:qual_type",
@@ -339,9 +317,8 @@ cc_test(
     name = "overload_set_test",
     srcs = ["overload_set_test.cc"],
     deps = [
-        ":any_func",
         ":overload_set",
-        "//ir/value:foreign_fn",
+        "//ir/value:fn",
         "//type:type",
         "//type:primitive",
         "@com_google_googletest//:gtest_main",

@@ -43,14 +43,6 @@ constexpr type::Type const *Get() {
     return type::Float64;
   } else if constexpr (std::is_same_v<T, std::string_view>) {
     return type::ByteView;
-  } else if constexpr (std::is_same_v<T, ir::EnumVal>) {
-    UNREACHABLE();
-  } else if constexpr (std::is_same_v<T, ir::FlagsVal>) {
-    UNREACHABLE();
-  } else if constexpr (std::is_same_v<T, ir::AnyFunc>) {
-    UNREACHABLE();
-  } else if constexpr (std::is_same_v<T, ir::Addr>) {
-    UNREACHABLE();
   } else if constexpr (std::is_same_v<T, ir::BlockDef const *>) {
     return type::Block;  // Maybe opt-block?
   } else if constexpr (std::is_same_v<T, type::Type const *>) {

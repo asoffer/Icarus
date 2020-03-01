@@ -82,9 +82,9 @@ struct untyped_buffer {
   T get(size_t offset) const {
     static_assert(std::is_trivially_copyable_v<T>);
     ASSERT(offset + sizeof(T) <= size_);
-    T result{};
-    std::memcpy(&result, data_ + offset, sizeof(T));
-    return result;
+    alignas(T) char buf[sizeof(T)];
+    std::memcpy(buf, data_ + offset, sizeof(T));
+    return *reinterpret_cast<T *>(buf);
   }
 
   char *raw(size_t offset) {

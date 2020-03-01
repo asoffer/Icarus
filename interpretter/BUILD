@@ -5,8 +5,8 @@ cc_library(
     hdrs = ["architecture.h"],
     deps = [
         "//core:arch",
-        "//ir:any_func",
         "//ir/value:addr",
+        "//ir/value:fn",
     ],
 )
 
@@ -46,7 +46,7 @@ cc_library(
         "//base:untyped_buffer_view",
         "//core:arch",
         "//ir:basic_block",
-        "//ir:compiled_fn",
+        "//ir/value:native_fn",
         "//type:type",
     ],
 )
@@ -61,13 +61,15 @@ cc_library(
         ":stack_frame",
         "//base:meta",
         "//base:untyped_buffer",
-        "//ir:any_func",
         "//ir:block_def",
         "//ir:instructions",
         "//ir:jump",
         "//ir:read_only_data",
         "//ir:scope_def",
         "//ir/value:addr",
+        "//ir/value:foreign_fn",
+        "//ir/value:fn",
+        "//ir/value:native_fn",
         "//ir/value:reg",
         "//ir/value:reg_or",
         "//type:opaque",

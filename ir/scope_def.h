@@ -9,6 +9,7 @@
 #include "base/move_func.h"
 #include "ir/block_def.h"
 #include "ir/overload_set.h"
+#include "ir/value/fn.h"
 #include "module/module.h"
 #include "type/type.h"
 
@@ -32,7 +33,7 @@ struct ScopeDef {
         exit_(std::make_unique<BlockDef>()) {
     blocks_.emplace("start", start_.get());
     blocks_.emplace("exit", exit_.get());
-    start_->before_ = OverloadSet({AnyFunc(&TrivialFunction())});
+    start_->before_ = OverloadSet({Fn(&TrivialFunction())});
   }
 
   module::BasicModule const *module() const { return mod_; }

@@ -2,7 +2,7 @@
 #define ICARUS_TYPE_TUPLE_H
 
 #include "base/lazy.h"
-#include "ir/any_func.h"
+#include "ir/compiled_fn.h"
 #include "type/type.h"
 
 namespace type {

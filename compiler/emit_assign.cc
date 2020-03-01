@@ -6,6 +6,7 @@
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
 #include "ir/results.h"
+#include "ir/value/fn.h"
 #include "type/primitive.h"
 
 namespace compiler {
@@ -75,8 +76,8 @@ static ir::CompiledFn *CreateAssign(Compiler *compiler, type::Array const *a) {
 }
 
 template <SpecialFunctionCategory Cat>
-static ir::AnyFunc CreateAssign(Compiler *compiler, type::Struct const *s) {
-  if (auto fn = SpecialFunction(compiler, s, Name<Cat>())) { return *fn; }
+static ir::CompiledFn *CreateAssign(Compiler *compiler, type::Struct const *s) {
+  if (auto fn = SpecialFunction(compiler, s, Name<Cat>())) { return fn->native().get(); }
   auto &bldr              = compiler->builder();
   type::Pointer const *pt = type::Ptr(s);
   auto fn_type =
@@ -150,7 +151,7 @@ void Compiler::Visit(type::Flags const *t, ir::RegOr<ir::Addr> to,
 void Compiler::Visit(type::Function const *t, ir::RegOr<ir::Addr> to,
                      type::Typed<ir::Results> const &from, EmitCopyAssignTag) {
   ASSERT(t == from.type());
-  ir::Store(from->get<ir::AnyFunc>(0), to);
+  ir::Store(from->get<ir::Fn>(0), to);
 }
 
 void Compiler::Visit(type::Function const *t, ir::RegOr<ir::Addr> to,

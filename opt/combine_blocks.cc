@@ -157,9 +157,11 @@ void RemoveTrivialFunctionCalls(ir::CompiledFn* fn) {
     for (auto& inst : block->instructions_) {
       if (auto* call_inst = inst->if_as<ir::CallInstruction>()) {
         if (call_inst->func().is_reg()) { continue; }
-        if (not call_inst->func().value().is_fn()) { continue; }
-        auto* called_fn = call_inst->func().value().func();
-        if (called_fn->type() != type::Func({}, {})) { continue; }
+        if (call_inst->func().value().kind() != ir::Fn::Kind::Native) {
+          continue;
+        }
+        auto called_fn = call_inst->func().value().native();
+        if (called_fn.type() != type::Func({}, {})) { continue; }
         ASSERT(called_fn->work_item == nullptr);
         // TODO track this as you go.
         for (auto const* called_block : called_fn->blocks()) {

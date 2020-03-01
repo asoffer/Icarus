@@ -377,12 +377,12 @@ ir::Results Compiler::Visit(ast::Binop const *node, EmitValueTag) {
 }
 
 ir::Results Compiler::Visit(ast::BlockLiteral const *node, EmitValueTag) {
-  std::vector<ir::RegOr<ir::AnyFunc>> befores;
+  std::vector<ir::RegOr<ir::Fn>> befores;
   std::vector<ir::RegOr<ir::Jump *>> afters;
   befores.reserve(node->before().size());
   for (auto const &decl : node->before()) {
     ASSERT((decl->flags() & ast::Declaration::f_IsConst) != 0);
-    befores.push_back(Visit(decl, EmitValueTag{}).get<ir::AnyFunc>(0));
+    befores.push_back(Visit(decl, EmitValueTag{}).get<ir::Fn>(0));
   }
 
   for (auto const &decl : node->after()) {
@@ -445,7 +445,7 @@ ir::Results EmitBuiltinCall(
           ir::BuiltinType(core::Builtin::Bytes)->as<type::Function>();
       ir::OutParams outs = c->builder().OutParams(fn_type.output());
       ir::Reg reg        = outs[0];
-      c->builder().Call(ir::BytesFn(), &fn_type,
+      c->builder().Call(ir::Fn{ir::BytesFn()}, &fn_type,
                         {c->Visit(args.at(0), EmitValueTag{})},
                         std::move(outs));
 
@@ -457,7 +457,7 @@ ir::Results EmitBuiltinCall(
           ir::BuiltinType(core::Builtin::Alignment)->as<type::Function>();
       ir::OutParams outs = c->builder().OutParams(fn_type.output());
       ir::Reg reg        = outs[0];
-      c->builder().Call(ir::AlignmentFn(), &fn_type,
+      c->builder().Call(ir::Fn{ir::AlignmentFn()}, &fn_type,
                         {c->Visit(args.at(0), EmitValueTag{})},
                         std::move(outs));
 
@@ -693,7 +693,7 @@ ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
     if (work_item_ptr) { ir_func->work_item = work_item_ptr; }
   }
 
-  return ir::Results{ir::AnyFunc{ir_func}};
+  return ir::Results{ir::Fn{ir_func}};
 }
 
 ir::Results Compiler::Visit(ast::Identifier const *node, EmitValueTag) {
@@ -876,12 +876,12 @@ ir::Results Compiler::Visit(ast::ScopeLiteral const *node, EmitValueTag) {
 
   absl::flat_hash_map<std::string_view, ir::BlockDef *> blocks;
   std::vector<ir::RegOr<ir::Jump *>> inits;
-  std::vector<ir::RegOr<ir::AnyFunc>> dones;
+  std::vector<ir::RegOr<ir::Fn>> dones;
   for (auto const *decl : node->decls()) {
     if (decl->id() == "init") {
       inits.push_back(Visit(decl, EmitValueTag{}).get<ir::Jump *>(0));
     } else if (decl->id() == "done") {
-      dones.push_back(Visit(decl, EmitValueTag{}).get<ir::AnyFunc>(0));
+      dones.push_back(Visit(decl, EmitValueTag{}).get<ir::Fn>(0));
     } else {
       blocks.emplace(
           decl->id(),
@@ -959,7 +959,7 @@ ir::Results Compiler::Visit(ast::ParameterizedStructLiteral const *node,
   //   ir_func->work_item = work_item_ptr;
   // }
 
-  // return ir::Results{ir::AnyFunc{ir_func}};
+  // return ir::Results{ir::Fn{ir_func}};
 }
 
 ir::Results Compiler::Visit(ast::StructType const *node, EmitValueTag) {

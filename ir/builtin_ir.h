@@ -1,8 +1,8 @@
-#include "ir/any_func.h"
+#include "ir/compiled_fn.h"
 
 namespace ir {
 
-AnyFunc BytesFn();
-AnyFunc AlignmentFn();
+CompiledFn* BytesFn();
+CompiledFn* AlignmentFn();
 
 }  // namespace ir

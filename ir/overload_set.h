@@ -6,8 +6,7 @@
 
 #include "absl/types/span.h"
 #include "core/params_ref.h"
-#include "ir/any_func.h"
-#include "ir/compiled_fn.h"  // TODO remove once anyfunc depends on this.
+#include "ir/value/fn.h"
 #include "type/cast.h"
 #include "type/function.h"
 #include "type/qual_type.h"
@@ -21,23 +20,19 @@ namespace ir {
 // we need to be able to produce new functions whenever a new generic function
 // is instantiated.
 struct OverloadSet {
-  static std::optional<AnyFunc> Closed(
-      core::Params<type::Type const *> const &) {
+  static std::optional<Fn> Closed(core::Params<type::Type const *> const &) {
     return std::nullopt;
   }
 
-  explicit OverloadSet(absl::Span<AnyFunc const> fns = {},
-                       std::function<std::optional<AnyFunc>(
-                           core::Params<type::Type const *> const &)>
-                           create = Closed)
+  explicit OverloadSet(
+      absl::Span<Fn const> fns = {},
+      std::function<std::optional<Fn>(core::Params<type::Type const *> const &)>
+          create = Closed)
       : create_(std::move(create)) {
-    for (AnyFunc f : fns) {
-      auto *fn_type = f.is_fn() ? f.func()->type() : f.foreign().type();
-      fns_.emplace_back(fn_type->params(), f);
-    }
+    for (Fn f : fns) { fns_.emplace_back(f.type()->params(), f); }
   }
 
-  std::optional<AnyFunc> Lookup(core::FnArgs<type::QualType> const &args) {
+  std::optional<Fn> Lookup(core::FnArgs<type::QualType> const &args) {
     for (auto const &[params, fn] : fns_) {
       if (core::IsCallable(core::ParamsRef(params), args,
                            [](type::QualType a, type::Type const *p) {
@@ -50,11 +45,9 @@ struct OverloadSet {
   }
 
  private:
-  std::function<std::optional<AnyFunc>(
-      core::Params<type::Type const *> const &)>
+  std::function<std::optional<Fn>(core::Params<type::Type const *> const &)>
       create_;
-  std::vector<
-      std::pair<core::Params<type::Type const *>, std::optional<AnyFunc>>>
+  std::vector<std::pair<core::Params<type::Type const *>, std::optional<Fn>>>
       fns_;
 };
 

@@ -14,7 +14,7 @@ void TestFn2() { std::puts("TestFn2"); }
 void TestFn3() { std::puts("TestFn3"); }
 
 TEST(OverloadSet, Construction) {
-  ir::OverloadSet os(absl::Span<ir::AnyFunc const>{
+  ir::OverloadSet os(absl::Span<ir::Fn const>{
       ir::ForeignFn(TestFn1, type::Func({}, {})),
       ir::ForeignFn(TestFn2,
                     type::Func({core::AnonymousParam(type::Int64)}, {})),
@@ -39,7 +39,7 @@ TEST(OverloadSet, Construction) {
 }
 
 TEST(OverloadSet, FailsToConstruct) {
-  ir::OverloadSet os(absl::Span<ir::AnyFunc const>{});
+  ir::OverloadSet os(absl::Span<ir::Fn const>{});
 
   // Check twice because `Lookup()` caches state.
   EXPECT_FALSE(os.Lookup(core::FnArgs<type::QualType>()).has_value());

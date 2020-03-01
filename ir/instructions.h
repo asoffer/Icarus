@@ -17,6 +17,7 @@
 #include "ir/out_params.h"
 #include "ir/struct_field.h"
 #include "ir/value/enum_and_flags.h"
+#include "ir/value/fn.h"
 #include "ir/value/reg_or.h"
 #include "ir/value/string.h"
 #include "type/array.h"
@@ -53,9 +54,9 @@ constexpr uint8_t PrimitiveIndex() {
     return 0x0d;
   } else if constexpr (std::is_same_v<T, bool>) {
     return 0x0e;
-  } else if constexpr (std::is_same_v<T, ir::String>) {
+  } else if constexpr (std::is_same_v<T, String>) {
     return 0x0f;
-  } else if constexpr (std::is_same_v<T, AnyFunc>) {
+  } else if constexpr (std::is_same_v<T, Fn>) {
     return 0x10;
   } else if constexpr (std::is_same_v<T, core::Alignment>) {
     return 0x11;
@@ -234,7 +235,7 @@ std::string_view TypeToString() {
     return "type";
   } else if constexpr (std::is_same_v<T, Addr>) {
     return "addr";
-  } else if constexpr (std::is_same_v<T, AnyFunc>) {
+  } else if constexpr (std::is_same_v<T, Fn>) {
     return "fn";
   } else {
     DEBUG_LOG()(typeid(T).name());
@@ -1110,7 +1111,7 @@ struct TypeManipulationInstruction
 struct CallInstruction : base::Clone<CallInstruction, Instruction> {
   static constexpr cmd_index_t kIndex = internal::kCallInstructionNumber;
 
-  CallInstruction(type::Function const* fn_type, RegOr<AnyFunc> const& fn,
+  CallInstruction(type::Function const* fn_type, RegOr<Fn> const& fn,
                   std::vector<Results> args, OutParams outs)
       : fn_type_(fn_type), fn_(fn), args_(std::move(args)), outs_(std::move(outs)) {
     ASSERT(this->outs_.size() == fn_type_->output().size());
@@ -1158,7 +1159,7 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
                                   sizeof(core::Bytes)});
   }
 
-  RegOr<AnyFunc> func() { return fn_; }
+  RegOr<Fn> func() { return fn_; }
 
   void Inline(InstructionInliner const& inliner) override {
     inliner.Inline(fn_);
@@ -1169,7 +1170,7 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
 
  private:
   type::Function const* fn_type_;
-  RegOr<AnyFunc> fn_;
+  RegOr<Fn> fn_;
   std::vector<Results> args_;
   OutParams outs_;
 };
@@ -1320,7 +1321,7 @@ struct TypeInfoInstruction : base::Clone<TypeInfoInstruction, Instruction> {
 struct MakeBlockInstruction : base::Clone<MakeBlockInstruction, Instruction> {
   static constexpr cmd_index_t kIndex = internal::kMakeBlockInstructionNumber;
 
-  MakeBlockInstruction(BlockDef* block_def, std::vector<RegOr<AnyFunc>> befores,
+  MakeBlockInstruction(BlockDef* block_def, std::vector<RegOr<Fn>> befores,
                        std::vector<RegOr<Jump*>> afters)
       : block_def(block_def),
         befores(std::move(befores)),
@@ -1333,9 +1334,9 @@ struct MakeBlockInstruction : base::Clone<MakeBlockInstruction, Instruction> {
   void WriteByteCode(ByteCodeWriter* writer) const override {
     writer->Write(kIndex);
     writer->Write(block_def);
-    internal::WriteBits<uint16_t, RegOr<AnyFunc>>(
-        writer, befores, [](RegOr<AnyFunc> const& r) { return r.is_reg(); });
-    absl::c_for_each(befores, [&](RegOr<AnyFunc> x) {
+    internal::WriteBits<uint16_t, RegOr<Fn>>(
+        writer, befores, [](RegOr<Fn> const& r) { return r.is_reg(); });
+    absl::c_for_each(befores, [&](RegOr<Fn> x) {
       x.apply([&](auto v) { writer->Write(v); });
     });
     internal::WriteBits<uint16_t, RegOr<Jump*>>(
@@ -1353,7 +1354,7 @@ struct MakeBlockInstruction : base::Clone<MakeBlockInstruction, Instruction> {
   }
 
   BlockDef* block_def;
-  std::vector<RegOr<AnyFunc>> befores;
+  std::vector<RegOr<Fn>> befores;
   std::vector<RegOr<Jump*>> afters;
   Reg result;
 };
@@ -1362,7 +1363,7 @@ struct MakeScopeInstruction : base::Clone<MakeScopeInstruction, Instruction> {
   static constexpr cmd_index_t kIndex = internal::kMakeScopeInstructionNumber;
 
   MakeScopeInstruction(ScopeDef* scope_def, std::vector<RegOr<Jump*>> inits,
-                       std::vector<RegOr<AnyFunc>> dones,
+                       std::vector<RegOr<Fn>> dones,
                        absl::flat_hash_map<std::string_view, BlockDef*> blocks)
       : scope_def(scope_def),
         inits(std::move(inits)),
@@ -1382,9 +1383,9 @@ struct MakeScopeInstruction : base::Clone<MakeScopeInstruction, Instruction> {
     absl::c_for_each(inits, [&](RegOr<Jump*> x) {
       x.apply([&](auto v) { writer->Write(v); });
     });
-    internal::WriteBits<uint16_t, RegOr<AnyFunc>>(
-        writer, dones, [](RegOr<AnyFunc> const& r) { return r.is_reg(); });
-    absl::c_for_each(dones, [&](RegOr<AnyFunc> x) {
+    internal::WriteBits<uint16_t, RegOr<Fn>>(
+        writer, dones, [](RegOr<Fn> const& r) { return r.is_reg(); });
+    absl::c_for_each(dones, [&](RegOr<Fn> x) {
       x.apply([&](auto v) { writer->Write(v); });
     });
 
@@ -1404,7 +1405,7 @@ struct MakeScopeInstruction : base::Clone<MakeScopeInstruction, Instruction> {
 
   ScopeDef* scope_def;
   std::vector<RegOr<Jump*>> inits;
-  std::vector<RegOr<AnyFunc>> dones;
+  std::vector<RegOr<Fn>> dones;
   absl::flat_hash_map<std::string_view, BlockDef*> blocks;
   Reg result;
 };

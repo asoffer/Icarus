@@ -50,9 +50,9 @@ ffi_type *ToFfiType(type::Type const *t) {
 
 // TODO return slot is always small enough that we should be able to use a
 // stack-allocated buffer for this.
-void CallForeignFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
-                   absl::Span<ir::Addr const> return_slots,
-                   base::untyped_buffer *stack) {
+void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
+            absl::Span<ir::Addr const> return_slots,
+            base::untyped_buffer *stack) {
   type::Function const *fn_type = f.type();
 
   std::vector<ffi_type *> arg_types;
@@ -79,7 +79,7 @@ void CallForeignFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
     pointer_values.reserve(fn_type->params().size());
     if (ffi_type == &ffi_type_pointer) {
       ir::Addr addr = arguments.get<ir::Addr>(kMaxSize * i++);
-      DEBUG_LOG("CallForeignFn")("Pushing pointer addr = ", addr);
+      DEBUG_LOG("CallFn")("Pushing pointer addr = ", addr);
       switch (addr.kind()) {
         case ir::Addr::Kind::Heap: {
           pointer_values.push_back(addr.heap());

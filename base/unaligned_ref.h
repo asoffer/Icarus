@@ -21,9 +21,9 @@ struct unaligned_ref {
   }
 
   T get() const {
-    T t;
-    std::memcpy(&t, reinterpret_cast<void const *>(ptr_), sizeof(T));
-    return t;
+    alignas(T) char buf[sizeof(T)];
+    std::memcpy(buf, reinterpret_cast<void const *>(ptr_), sizeof(T));
+    return *reinterpret_cast<T *>(buf);
   }
 
   operator T() const { return get(); }
@@ -50,9 +50,9 @@ struct unaligned_ref<T const> {
   constexpr unaligned_ref(T const &t) : ptr_(reinterpret_cast<uintptr_t>(&t)) {}
 
   T get() const {
-    T t;
-    std::memcpy(&t, reinterpret_cast<void const *>(ptr_), sizeof(T));
-    return t;
+    alignas(T) char buf[sizeof(T)];
+    std::memcpy(buf, reinterpret_cast<void const *>(ptr_), sizeof(T));
+    return *reinterpret_cast<T *>(buf);
   }
 
   operator T() const { return get(); }
