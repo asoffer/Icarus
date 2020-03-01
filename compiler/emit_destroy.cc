@@ -72,7 +72,7 @@ void Compiler::Visit(type::Variant const *t, ir::Reg reg, EmitDestroyTag) {
     }
   }
 
-  builder().Call(ir::AnyFunc{t->destroy_func_}, t->destroy_func_->type_,
+  builder().Call(ir::AnyFunc{t->destroy_func_}, t->destroy_func_->type(),
                  {ir::Results{reg}}, ir::OutParams());
 }
 

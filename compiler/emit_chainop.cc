@@ -97,7 +97,7 @@ static ir::Results ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
 
   ir::OutParams outs = compiler->builder().OutParams({type::Bool});
   auto result        = outs[0];
-  bldr.Call(ir::AnyFunc{iter->second}, iter->second->type_, {lhs_ir, rhs_ir},
+  bldr.Call(ir::AnyFunc{iter->second}, iter->second->type(), {lhs_ir, rhs_ir},
             std::move(outs));
   return ir::Results{result};
 }

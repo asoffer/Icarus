@@ -15,14 +15,8 @@ CompiledFn::CompiledFn(type::Function const *fn_type,
 
 std::ostream &operator<<(std::ostream &os, ir::CompiledFn const &f) {
   return os << "\n"
-            << f.name() << ": " << f.type_->to_string()
+            << &f << ": " << f.type_->to_string()
             << static_cast<internal::BlockGroup const &>(f);
-}
-
-std::string CompiledFn::name() const {
-  std::stringstream ss;
-  ss << this;
-  return ss.str();
 }
 
 }  // namespace ir

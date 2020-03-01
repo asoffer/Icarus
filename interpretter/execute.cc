@@ -75,7 +75,7 @@ auto Deserialize(Iter *iter, Fn &&fn) {
 }
 
 type::Function const *GetType(ir::AnyFunc f) {
-  return f.is_fn() ? f.func()->type_
+  return f.is_fn() ? f.func()->type()
                    : &f.foreign().type()->as<type::Function>();
 }
 
