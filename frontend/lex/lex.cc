@@ -4,13 +4,13 @@
 #include "absl/container/flat_hash_map.h"
 #include "ast/ast.h"
 #include "base/meta.h"
-#include "core/builtin.h"
 #include "diagnostic/errors.h"
 #include "frontend/lex/lex.h"
 #include "frontend/lex/numbers.h"
 #include "frontend/lex/operators.h"
 #include "frontend/lex/syntax.h"
 #include "ir/results.h"
+#include "ir/value/builtin_fn.h"
 #include "ir/value/string.h"
 #include "type/basic_type.h"
 #ifdef ICARUS_MATCHER
@@ -167,12 +167,12 @@ static absl::flat_hash_map<std::string_view, type::BasicType> const
                    {"module", type::BasicType::Module},
                    {"byte_view", type::BasicType::ByteView}};
 
-static absl::flat_hash_map<std::string_view, core::Builtin> const kBuiltinFns{
-#define ICARUS_CORE_BUILTIN_X(enumerator, str, t)                              \
-  {str, core::Builtin::enumerator},
-#include "core/builtin.xmacro.h"
-#undef ICARUS_CORE_BUILTIN_X
-};
+static absl::flat_hash_map<std::string_view, ir::BuiltinFn> const kBuiltinFns{
+    {"foreign", ir::BuiltinFn::Foreign()},
+    {"opaque", ir::BuiltinFn::Opaque()},
+    {"bytes", ir::BuiltinFn::Bytes()},
+    {"alignment", ir::BuiltinFn::Alignment()},
+    {"debug_ir", ir::BuiltinFn::DebugIr()}};
 
 Lexeme NextWord(SourceCursor *cursor, Source *src) {
   // Match [a-zA-Z_][a-zA-Z0-9_]*
@@ -197,20 +197,19 @@ Lexeme NextWord(SourceCursor *cursor, Source *src) {
                                                   type::BasicType::Type_));
   }
 
-  if (auto iter = kBuiltinFns.find(token); iter != kBuiltinFns.end()) {
-    return Lexeme(std::make_unique<ast::BuiltinFn>(span, iter->second));
+  if (auto maybe_builtin = ir::BuiltinFn::ByName(token)) {
+    return Lexeme(std::make_unique<ast::BuiltinFn>(span, *maybe_builtin));
   }
 
   if (auto iter = kKeywords.find(token); iter != kKeywords.end()) {
     return std::visit([&](auto x) { return Lexeme(x, span); }, iter->second);
   }
 
-  // "block" is special because it is also the name of the type of such a block.
-  // That is, `block { ... }` has type `block`. This means that a function
-  // returning a block will look like `() -> block { ... }` and there is an
-  // ambiguity whereby we can't tell if this should be parsed as
-  // A: () -> (block { ... }), or
-  // B: (() -> block) { ... }
+  // "block" is special because it is also the name of the type of such a
+  // block. That is, `block { ... }` has type `block`. This means that a
+  // function returning a block will look like `() -> block { ... }` and there
+  // is an ambiguity whereby we can't tell if this should be parsed as A: ()
+  // -> (block { ... }), or B: (() -> block) { ... }
   //
   // We can fix this in the parser easily (by checking for a `->` beforehand
   // and prefering (B). Users can specifically add parentheses to get (A), but

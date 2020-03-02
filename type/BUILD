@@ -106,7 +106,7 @@ cc_library(
     deps = [
         ":callable",
         ":typed_value",
-        "//ast:ast",
+        "//ast:ast_fwd",
         "//core:params",
         "//base:guarded",
     ],

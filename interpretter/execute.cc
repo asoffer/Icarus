@@ -102,6 +102,15 @@ T ReadAndResolve(bool is_reg, base::untyped_buffer::const_iterator *iter,
   }
 }
 
+void CallFn(ir::BuiltinFn fn, base::untyped_buffer_view arguments,
+            absl::Span<ir::Addr const> ret_slots, ExecutionContext *ctx) {
+  // size_t i = 0;
+  // for (auto const &result : fn.Call(arguments)) {
+  //   ASSERT(ret_slot.kind() == ir::Addr::Kind::Heap);
+  //   *ASSERT_NOT_NULL(static_cast<type *>(ret_slot.heap())) = val;
+  // }
+}
+
 void CallFn(ir::NativeFn fn, StackFrame *frame,
             absl::Span<ir::Addr const> ret_slots, ExecutionContext *ctx) {
   // TODO: Understand why and how work-items may not be complete and add an
@@ -135,6 +144,9 @@ void Execute(ir::Fn fn, base::untyped_buffer arguments,
     case ir::Fn::Kind::Native: {
       StackFrame frame(fn.native(), std::move(arguments), &ctx->stack_);
       CallFn(fn.native(), &frame, ret_slots, ctx);
+    } break;
+    case ir::Fn::Kind::Builtin: {
+      CallFn(fn.builtin(), arguments, ret_slots, ctx);
     } break;
     case ir::Fn::Kind::Foreign: {
       CallFn(fn.foreign(), arguments, ret_slots, &ctx->stack_);
@@ -609,14 +621,8 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
       return_slots.push_back(addr);
     }
 
-    switch (f.kind()) {
-      case ir::Fn::Kind::Native: {
-        CallFn(f.native(), &*frame, return_slots, ctx);
-      } break;
-      case ir::Fn::Kind::Foreign: {
-        CallFn(f.foreign(), call_buf, return_slots, &ctx->stack_);
-      }
-    }
+    Execute(f, std::move(call_buf), return_slots, ctx);
+
   } else if constexpr (std::is_same_v<Inst, ir::LoadSymbolInstruction>) {
     std::string name       = iter->read<ir::String>().get().get();
     type::Type const *type = iter->read<type::Type const *>();

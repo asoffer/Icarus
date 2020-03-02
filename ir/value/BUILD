@@ -20,6 +20,23 @@ cc_test(
 )
 
 cc_library(
+    name = "builtin_fn",
+    hdrs = ["builtin_fn.h"],
+    deps = [
+        "//type:function",
+    ],
+)
+
+cc_test(
+    name = "builtin_fn_test",
+    srcs = ["builtin_fn.cc"],
+    deps = [
+        ":builtin_fn",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "enum_and_flags",
     hdrs = ["enum_and_flags.h"],
     deps = [
@@ -40,6 +57,7 @@ cc_library(
     name = "fn",
     hdrs = ["fn.h"],
     deps = [
+        ":builtin_fn",
         ":foreign_fn",
         ":native_fn",
     ],

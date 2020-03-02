@@ -162,15 +162,8 @@ void Jump::DebugStrAppend(std::string *out, size_t indent) const {
 }
 
 void BuiltinFn::DebugStrAppend(std::string *out, size_t indent) const {
-  switch (value()) {
-#define ICARUS_CORE_BUILTIN_X(enumerator, str, t)                              \
-  case core::Builtin::enumerator:                                              \
-    absl::StrAppend(out, str);                                                 \
-    return;
-#include "core/builtin.xmacro.h"
-#undef ICARUS_CORE_BUILTIN_X
-  }
-  UNREACHABLE();
+  using base::stringify;
+  out->append(stringify(value()));
 }
 
 void Call::DebugStrAppend(std::string *out, size_t indent) const {

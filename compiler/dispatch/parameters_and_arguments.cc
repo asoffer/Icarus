@@ -20,6 +20,7 @@ core::Params<type::Typed<ast::Declaration const *>> ExtractParams(
           return static_cast<
               core::Params<type::Typed<ast::Declaration const *>>>(
               f.native()->params());
+        case ir::Fn::Kind::Builtin: return fn_type->AnonymousParams();
         case ir::Fn::Kind::Foreign: return fn_type->AnonymousParams();
       }
     } else if (auto *jump_type = decl_type->if_as<type::Jump>()) {

@@ -152,6 +152,9 @@ void internal::OneTable::VerifyJumps() {
               // diagnostic.
 
             } break;
+            case ir::Fn::Kind::Builtin: {
+              NOT_YET();
+            } break;
             case ir::Fn::Kind::Foreign: {
               NOT_YET();
             } break;

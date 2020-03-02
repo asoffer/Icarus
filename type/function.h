@@ -3,7 +3,7 @@
 
 #include <cstring>
 
-#include "ast/ast.h"
+#include "ast/ast_fwd.h" // TODO remove AnonymousParams
 #include "core/params.h"
 #include "type/callable.h"
 #include "type/typed_value.h"

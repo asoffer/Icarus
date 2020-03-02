@@ -18,13 +18,13 @@
 #include "ast/visitor_base.h"
 #include "base/graph.h"
 #include "base/ptr_span.h"
-#include "core/builtin.h"
 #include "core/fn_args.h"
 #include "core/ordered_fn_args.h"
 #include "core/params.h"
 #include "frontend/lex/operators.h"
 #include "ir/results.h"
 #include "ir/value/addr.h"
+#include "ir/value/builtin_fn.h"
 #include "ir/value/label.h"
 #include "ir/value/string.h"
 #include "type/basic_type.h"
@@ -453,16 +453,16 @@ struct BlockNode : ScopeExpr<ExecScope> {
 // type with no known size or alignment (users can pass around pointers to
 // values of an opaque type, but not actual values).
 struct BuiltinFn : Expression {
-  explicit BuiltinFn(frontend::SourceRange span, core::Builtin b)
+  explicit BuiltinFn(frontend::SourceRange span, ir::BuiltinFn b)
       : Expression(std::move(span)), val_(b) {}
   ~BuiltinFn() override {}
 
-  core::Builtin value() const { return val_; }
+  ir::BuiltinFn value() const { return val_; }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
-  core::Builtin val_;
+  ir::BuiltinFn val_;
 };
 
 // Call:

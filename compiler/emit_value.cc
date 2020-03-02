@@ -9,28 +9,13 @@
 #include "frontend/parse.h"
 #include "interpretter/evaluate.h"
 #include "ir/builder.h"
-#include "ir/builtin_ir.h"
 #include "ir/jump.h"
-#include "ir/value/reg.h"
 #include "ir/struct_field.h"
+#include "ir/value/builtin_fn.h"
+#include "ir/value/reg.h"
 #include "type/jump.h"
 #include "type/type.h"
 #include "type/typed_value.h"
-
-namespace ir {
-// TODO duplicated in verify_type
-static type::Type const *BuiltinType(core::Builtin b) {
-  switch (b) {
-#define ICARUS_CORE_BUILTIN_X(enumerator, str, t)                              \
-  case core::Builtin::enumerator:                                              \
-    return t;
-#include "core/builtin.xmacro.h"
-#undef ICARUS_CORE_BUILTIN_X
-  }
-  UNREACHABLE();
-}
-
-}  // namespace ir
 
 namespace compiler {
 using ::matcher::InheritsFrom;
@@ -429,8 +414,8 @@ ir::Results Compiler::Visit(ast::BuiltinFn const *node, EmitValueTag) {
 ir::Results EmitBuiltinCall(
     Compiler *c, ast::BuiltinFn const *callee,
     core::FnArgs<ast::Expression const *, std::string_view> const &args) {
-  switch (callee->value()) {
-    case core::Builtin::Foreign: {
+  switch (callee->value().which()) {
+    case ir::BuiltinFn::Which::Foreign: {
       auto name = interpretter::EvaluateAs<ir::String>(
           c->MakeThunk(args.at(0), type::ByteView));
       auto *foreign_type = interpretter::EvaluateAs<type::Type const *>(
@@ -438,33 +423,33 @@ ir::Results EmitBuiltinCall(
       return ir::Results{c->builder().LoadSymbol(name, foreign_type).get()};
     } break;
 
-    case core::Builtin::Opaque:
+    case ir::BuiltinFn::Which::Opaque:
       return ir::Results{c->builder().OpaqueType(c->module())};
-    case core::Builtin::Bytes: {
-      auto const &fn_type =
-          ir::BuiltinType(core::Builtin::Bytes)->as<type::Function>();
+    case ir::BuiltinFn::Which::Bytes: {
+      auto const &fn_type = *ir::BuiltinFn::Bytes().type();
       ir::OutParams outs = c->builder().OutParams(fn_type.output());
       ir::Reg reg        = outs[0];
-      c->builder().Call(ir::Fn{ir::BytesFn()}, &fn_type,
+      c->builder().Call(ir::Fn{ir::BuiltinFn::Bytes()}, &fn_type,
                         {c->Visit(args.at(0), EmitValueTag{})},
                         std::move(outs));
 
       return ir::Results{reg};
     } break;
 
-    case core::Builtin::Alignment: {
-      auto const &fn_type =
-          ir::BuiltinType(core::Builtin::Alignment)->as<type::Function>();
+    case ir::BuiltinFn::Which::Alignment: {
+      auto const &fn_type = *ir::BuiltinFn::Alignment().type();
       ir::OutParams outs = c->builder().OutParams(fn_type.output());
       ir::Reg reg        = outs[0];
-      c->builder().Call(ir::Fn{ir::AlignmentFn()}, &fn_type,
+      c->builder().Call(ir::Fn{ir::BuiltinFn::Alignment()}, &fn_type,
                         {c->Visit(args.at(0), EmitValueTag{})},
                         std::move(outs));
 
       return ir::Results{reg};
     } break;
 
-    case core::Builtin::DebugIr: c->builder().DebugIr(); return ir::Results{};
+    case ir::BuiltinFn::Which::DebugIr:
+      c->builder().DebugIr();
+      return ir::Results{};
   }
   UNREACHABLE();
 }

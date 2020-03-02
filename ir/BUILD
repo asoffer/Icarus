@@ -164,18 +164,6 @@ cc_library(
     ],
 )
 
-# TODO now that ':builtin'; doesn't need any IR, move it up to ast and rename
-# this to ':builtin'
-cc_library(
-    name = "builtin_ir",
-    hdrs = ["builtin_ir.h"],
-    srcs = ["builtin_ir.cc"],
-    deps = [
-        ":builder",
-        ":compiled_fn",
-    ],
-)
-
 cc_library(
     name = "compiled_fn",
     hdrs = ["compiled_fn.h"],

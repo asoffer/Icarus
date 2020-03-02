@@ -27,21 +27,6 @@
 #include "type/typed_value.h"
 #include "type/util.h"
 
-namespace ir {
-
-// TODO Duplicated in emit_value.h
-static type::Type const *BuiltinType(core::Builtin b) {
-  switch (b) {
-#define ICARUS_CORE_BUILTIN_X(enumerator, str, t)                              \
-  case core::Builtin::enumerator:                                              \
-    return t;
-#include "core/builtin.xmacro.h"
-#undef ICARUS_CORE_BUILTIN_X
-  }
-  UNREACHABLE();
-}
-}  // namespace ir
-
 namespace compiler {
 namespace {
 
@@ -824,8 +809,7 @@ type::QualType Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
       if (type::IsNumeric(lhs_qual_type.type()) and
           type::IsNumeric(rhs_qual_type.type())) {
         if (lhs_qual_type.type() == rhs_qual_type.type()) {
-          return set_result(
-              node, type::QualType(lhs_qual_type.type(),quals));
+          return set_result(node, type::QualType(lhs_qual_type.type(), quals));
         } else {
           diag().Consume(diagnostic::ArithmeticBinaryOperatorTypeMismatch{
               .lhs_type = lhs_qual_type.type(),
@@ -932,8 +916,11 @@ type::QualType Compiler::Visit(ast::BlockNode const *node, VerifyTypeTag) {
 }
 
 type::QualType Compiler::Visit(ast::BuiltinFn const *node, VerifyTypeTag) {
-  return set_result(node,
-                    type::QualType::Constant(ir::BuiltinType(node->value())));
+  if (node->value() == ir::BuiltinFn::Foreign()) {
+    return set_result(node, type::QualType::Constant(type::Generic));
+  } else {
+    return set_result(node, type::QualType::Constant(node->value().type()));
+  }
 }
 
 static ast::OverloadSet FindOverloads(
@@ -978,8 +965,8 @@ static type::QualType VerifyCall(
     core::FnArgs<EPtr, StrType> const &args,
     core::FnArgs<type::QualType> const &arg_results) {
   // TODO for builtin's consider moving all the messages into an enum.
-  switch (b->value()) {
-    case core::Builtin::Foreign: {
+  switch (b->value().which()) {
+    case ir::BuiltinFn::Which::Foreign: {
       bool err = false;
       if (not arg_results.named().empty()) {
         c->diag().Consume(diagnostic::BuiltinError{
@@ -1042,17 +1029,16 @@ static type::QualType VerifyCall(
       }
       return type::QualType::Constant(foreign_type);
     } break;
-    case core::Builtin::Opaque:
+    case ir::BuiltinFn::Which::Opaque:
       if (not arg_results.empty()) {
         c->diag().Consume(diagnostic::BuiltinError{
             .range   = b->span,
             .message = "Built-in function `opaque` takes no arguments."});
       }
-      return type::QualType::Constant(ir::BuiltinType(core::Builtin::Opaque)
-                                          ->as<type::Function>()
-                                          .output()[0]);
+      return type::QualType::Constant(
+          ir::BuiltinFn::Opaque().type()->output()[0]);
 
-    case core::Builtin::Bytes: {
+    case ir::BuiltinFn::Which::Bytes: {
       size_t size = arg_results.size();
       if (not arg_results.named().empty()) {
         c->diag().Consume(diagnostic::BuiltinError{
@@ -1075,11 +1061,10 @@ static type::QualType VerifyCall(
                              "argument of type `type` (You provided a(n) ",
                              arg_results.at(0).type()->to_string(), ").")});
       }
-      return type::QualType::Constant(ir::BuiltinType(core::Builtin::Bytes)
-                                          ->as<type::Function>()
-                                          .output()[0]);
+      return type::QualType::Constant(
+          ir::BuiltinFn::Bytes().type()->output()[0]);
     }
-    case core::Builtin::Alignment: {
+    case ir::BuiltinFn::Which::Alignment: {
       size_t size = arg_results.size();
       if (not arg_results.named().empty()) {
         c->diag().Consume(diagnostic::BuiltinError{
@@ -1098,17 +1083,16 @@ static type::QualType VerifyCall(
       } else if (arg_results.at(0).type() != type::Type_) {
         c->diag().Consume(diagnostic::BuiltinError{
             .range = b->span,
-            absl::StrCat(
-                "Built-in function `alignment` must take a single argument of "
-                "type `type` (you provided a(n) ",
-                arg_results.at(0).type()->to_string(), ")"),
+            absl::StrCat("Built-in function `alignment` must take a single "
+                         "argument of "
+                         "type `type` (you provided a(n) ",
+                         arg_results.at(0).type()->to_string(), ")"),
         });
       }
-      return type::QualType::Constant(ir::BuiltinType(core::Builtin::Alignment)
-                                          ->as<type::Function>()
-                                          .output()[0]);
+      return type::QualType::Constant(
+          ir::BuiltinFn::Alignment().type()->output()[0]);
     }
-    case core::Builtin::DebugIr:
+    case ir::BuiltinFn::Which::DebugIr:
       // This is for debugging the compiler only, so there's no need to write
       // decent errors here.
       ASSERT(arg_results.size() == 0u);
@@ -1226,8 +1210,9 @@ not_blocks:
 
   // TODO Can we recover from errors here? Should we?
 
-  // Safe to just check first because to be on the same chain they must all have
-  // the same precedence, and ^, &, and | uniquely hold a given precedence.
+  // Safe to just check first because to be on the same chain they must all
+  // have the same precedence, and ^, &, and | uniquely hold a given
+  // precedence.
   switch (node->ops()[0]) {
     case frontend::Operator::Or:
     case frontend::Operator::And:
@@ -1359,9 +1344,9 @@ type::QualType Compiler::Visit(ast::CommaList const *node, VerifyTypeTag) {
 
 // TODO set qualifiers correctly here.
 type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
-  // Declarations may have already been computed. Essentially the first time we
-  // see an identifier (either a real identifier node, or a declaration, we need
-  // to verify the type, but we only want to do node once.
+  // Declarations may have already been computed. Essentially the first time
+  // we see an identifier (either a real identifier node, or a declaration, we
+  // need to verify the type, but we only want to do node once.
   if (auto *attempt = qual_type_of(node)) { return *attempt; }
   type::QualType node_qual_type;
   switch (node->kind()) {
@@ -1530,8 +1515,8 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
   // declarations of this identifier.
   //
   // It's tempting to assume we only need to look in one direction because we
-  // would catch any ambiguity at a later time. However this is not correct. For
-  // instance, consider this example:
+  // would catch any ambiguity at a later time. However this is not correct.
+  // For instance, consider this example:
   //
   // ```
   // if (cond) then {
@@ -1542,26 +1527,26 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
   //
   // There is a redeclaration of `a` that needs to be caught. However, If we
   // only look towards the root of the scope tree, we will first see `a := 4`
-  // which is not ambiguous. Later we will find `a := 3` which should have been
-  // found but wasn't due to the fact that we saw the declaration that was
-  // further from the root first while processing.
+  // which is not ambiguous. Later we will find `a := 3` which should have
+  // been found but wasn't due to the fact that we saw the declaration that
+  // was further from the root first while processing.
   //
   // The problem can be described mathematically as follows:
   //
   // Define *scope tree order* to be the partial order defined by D1 <= D2 iff
-  // D1's path to the scope tree root is a prefix of D2's path to the scope tree
-  // root. Define *processing order* to be the order in which nodes have their
-  // types verified.
+  // D1's path to the scope tree root is a prefix of D2's path to the scope
+  // tree root. Define *processing order* to be the order in which nodes have
+  // their types verified.
   //
   // The problem is that scope tree order does not have processing order as a
   // linear extension.
   //
   // To fix this particular problem, we need to make sure we check all
-  // declarations that may be ambiguous regardless of whether they are above or
-  // below `node` on the scope tree. However, we only want to look at the ones
-  // which have been previously processed. This can be checked by looking to see
-  // if we have saved the result of this declaration. We can also skip out if
-  // the result was an error.
+  // declarations that may be ambiguous regardless of whether they are above
+  // or below `node` on the scope tree. However, we only want to look at the
+  // ones which have been previously processed. This can be checked by looking
+  // to see if we have saved the result of this declaration. We can also skip
+  // out if the result was an error.
   //
   // TODO Skipping out on errors *might* reduce the fidelity of future
   // compilation work by not finding ambiguities that we should have.
@@ -1588,9 +1573,9 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
 
   if (failed_shadowing) {
     // TODO node may actually overshoot what we want. It may declare the
-    // higher-up-the-scope-tree identifier as the shadow when something else on
-    // a different branch could find it unambiguously. It's also just a hack
-    // from the get-go so maybe we should just do it the right way.
+    // higher-up-the-scope-tree identifier as the shadow when something else
+    // on a different branch could find it unambiguously. It's also just a
+    // hack from the get-go so maybe we should just do it the right way.
     return set_result(node, type::QualType::Error());
   }
 
@@ -1603,7 +1588,8 @@ type::QualType Compiler::Visit(ast::DesignatedInitializer const *node,
   // TODO constant only when all fields are constant.
   auto type_type = Visit(node->type(), VerifyTypeTag{});
   if (type_type != type::QualType::Constant(type::Type_)) {
-    NOT_YET("log an error", type_type, " vs ", type::QualType::Constant(type::Type_));
+    NOT_YET("log an error", type_type, " vs ",
+            type::QualType::Constant(type::Type_));
   }
 
   type::Type const *expr_type = interpretter::EvaluateAs<type::Type const *>(
@@ -1617,8 +1603,8 @@ type::QualType Compiler::Visit(ast::DesignatedInitializer const *node,
     type::QualType initializer_qual_type = Visit(expr.get(), VerifyTypeTag{});
     if (not initializer_qual_type) {
       // If there was an error we still want to verify all other initializers
-      // and we still want to claim this expression has the same type, but we'll
-      // just give up on it being a constant.
+      // and we still want to claim this expression has the same type, but
+      // we'll just give up on it being a constant.
       quals = type::Quals::Unqualified();
       continue;
     }
@@ -1627,7 +1613,7 @@ type::QualType Compiler::Visit(ast::DesignatedInitializer const *node,
         NOT_YET("log an error: ", initializer_qual_type.type()->to_string(),
                 struct_field->type->to_string());
       }
-      quals &=  initializer_qual_type.quals();
+      quals &= initializer_qual_type.quals();
     } else {
       NOT_YET("log an error");
       quals = type::Quals::Unqualified();
@@ -1678,13 +1664,13 @@ type::QualType Compiler::Visit(ast::Identifier const *node, VerifyTypeTag) {
   data_.cyc_deps_.push_back(node);
   base::defer d([&] { data_.cyc_deps_.pop_back(); });
 
-  // `node->decl()` is not necessarily null. Because we may call VerifyType many
-  // times in multiple contexts, it is null the first time, but not on future
-  // iterations.
+  // `node->decl()` is not necessarily null. Because we may call VerifyType
+  // many times in multiple contexts, it is null the first time, but not on
+  // future iterations.
   //
   // TODO that means we should probably resolve identifiers ahead of
-  // type verification, but I think we rely on type information to figure it out
-  // for now so you'll have to undo that first.
+  // type verification, but I think we rely on type information to figure it
+  // out for now so you'll have to undo that first.
   if (node->decl() == nullptr) {
     auto potential_decls =
         module::AllDeclsTowardsRoot(node->scope_, node->token());
@@ -1721,10 +1707,10 @@ type::QualType Compiler::Visit(ast::Identifier const *node, VerifyTypeTag) {
     }
   }
 
-  // TODO node is because we may have determined the declartaion previously with
-  // a different generic setup but not bound the type for node context. But node
-  // is wrong in the sense that the declaration bound is possibly dependent on
-  // the context.
+  // TODO node is because we may have determined the declartaion previously
+  // with a different generic setup but not bound the type for node context.
+  // But node is wrong in the sense that the declaration bound is possibly
+  // dependent on the context.
   type::Type const *t = type_of(node->decl());
 
   if (t == nullptr) { return type::QualType::Error(); }
@@ -1792,8 +1778,7 @@ type::QualType Compiler::Visit(ast::Index const *node, VerifyTypeTag) {
   auto quals = lhs_qual_type.quals() | type::Quals::Ref();
   if (not rhs_qual_type.constant()) { quals &= ~type::Quals::Const(); }
   if (lhs_qual_type.type() == type::ByteView) {
-    return set_result(node,
-                      type::QualType(type::Nat8, quals));
+    return set_result(node, type::QualType(type::Nat8, quals));
   } else if (auto *lhs_array_type =
                  lhs_qual_type.type()->if_as<type::Array>()) {
     return set_result(node, type::QualType(lhs_array_type->data_type, quals));
@@ -1863,7 +1848,7 @@ type::QualType Compiler::Visit(ast::Label const *node, VerifyTypeTag) {
 type::QualType Compiler::Visit(ast::Jump const *node, VerifyTypeTag) {
   DEBUG_LOG("Jump")(node->DebugString());
 
-  bool err = false;
+  bool err                = false;
   type::Type const *state = nullptr;
 
   if (node->state()) {
@@ -1881,9 +1866,9 @@ type::QualType Compiler::Visit(ast::Jump const *node, VerifyTypeTag) {
 
   for (auto const *stmt : node->stmts()) { Visit(stmt, VerifyTypeTag{}); }
 
-  return set_result(node,
-                    err ? type::QualType::Error()
-                        : type::QualType::Constant(type::Jmp(state, param_types)));
+  return set_result(
+      node, err ? type::QualType::Error()
+                : type::QualType::Constant(type::Jmp(state, param_types)));
 }
 
 type::QualType Compiler::Visit(ast::ReturnStmt const *node, VerifyTypeTag) {
@@ -1915,7 +1900,7 @@ type::QualType Compiler::Visit(ast::ScopeLiteral const *node, VerifyTypeTag) {
 
   absl::flat_hash_map<ast::Declaration const *, type::Type const *> types;
   for (auto const *decl : node->decls()) {
-    auto qual_type= Visit(decl, VerifyTypeTag{});
+    auto qual_type = Visit(decl, VerifyTypeTag{});
     if (not qual_type.constant()) {
       error = true;
       NOT_YET("log an error");
@@ -2089,7 +2074,8 @@ type::QualType Compiler::Visit(ast::Switch const *node, VerifyTypeTag) {
   }
   if (err) { return type::QualType::Error(); }
 
-  // TODO check to ensure that the type is either exhaustable or has a default.
+  // TODO check to ensure that the type is either exhaustable or has a
+  // default.
 
   if (types.empty()) {
     return set_result(node, type::QualType(type::Void(), quals));

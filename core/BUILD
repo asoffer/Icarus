@@ -31,13 +31,6 @@ cc_test(
 )
 
 cc_library(
-    name = "builtin",
-    hdrs = ["builtin.h"],
-    textual_hdrs = ["builtin.xmacro.h"],
-    deps = ["//base:debug"],
-)
-
-cc_library(
     name = "fn_args",
     hdrs = ["fn_args.h"],
     deps = [
