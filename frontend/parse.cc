@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/strings/str_format.h"
 #include "ast/ast.h"
 #include "base/debug.h"
 #include "base/guarded.h"
@@ -22,7 +23,8 @@ namespace frontend {
 namespace {
 using ::matcher::InheritsFrom;
 
-std::unique_ptr<ast::Identifier> MakeInvalidNode(SourceRange range = SourceRange()) {
+std::unique_ptr<ast::Identifier> MakeInvalidNode(
+    SourceRange range = SourceRange()) {
   return std::make_unique<ast::Identifier>(range, "invalid_node");
 }
 
@@ -312,18 +314,20 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
 
   SourceRange range(nodes[0]->span.begin(), nodes[1]->span.end());
 
-  auto& operand = nodes[1];
+  auto &operand = nodes[1];
   Operator op   = kUnopMap.find(tk)->second;
 
   if (operand->is<ast::Declaration>()) {
     diag.Consume(diagnostic::DeclarationUsedInUnaryOperator{
         .range = range,
     });
-    return std::make_unique<ast::Unop>(range, op, MakeInvalidNode(nodes[1]->span));
+    return std::make_unique<ast::Unop>(range, op,
+                                       MakeInvalidNode(nodes[1]->span));
 
   } else if (not operand->is<ast::Expression>()) {
     diag.Consume(diagnostic::Todo{});
-    return std::make_unique<ast::Unop>(range, op, MakeInvalidNode(nodes[1]->span));
+    return std::make_unique<ast::Unop>(range, op,
+                                       MakeInvalidNode(nodes[1]->span));
 
   } else {
     return std::make_unique<ast::Unop>(range, op,
@@ -1139,7 +1143,8 @@ std::unique_ptr<ast::Node> BuildKWBlock(
 
     } else if (tk == "scope") {
       SourceRange range(nodes.front()->span.begin(), nodes.back()->span.end());
-      return BuildScopeLiteral(nullptr, move_as<Statements>(nodes[1]), range, diag);
+      return BuildScopeLiteral(nullptr, move_as<Statements>(nodes[1]), range,
+                               diag);
 
     } else if (tk == "block") {
       return BuildBlock(move_as<Statements>(nodes[1]), diag);
@@ -1219,7 +1224,8 @@ std::unique_ptr<ast::Node> LabelScopeNode(
         .range       = scope_node->span,
     });
   } else {
-    scope_node->span = SourceRange(nodes[0]->span.begin(), scope_node->span.end());
+    scope_node->span =
+        SourceRange(nodes[0]->span.begin(), scope_node->span.end());
     scope_node->set_label(move_as<ast::Label>(nodes[0]));
   }
   return scope_node;
@@ -1478,9 +1484,9 @@ struct ParseState {
 // Print out the debug information for the parse stack, and pause.
 void Debug(ParseState *ps) {
   // Clear the screen
-  fprintf(stderr, "\033[2J\033[1;1H\n");
-  for (auto x : ps->tag_stack_) { fprintf(stderr, "%lu, ", x); }
-  fprintf(stderr, " -> %lu\n", ps->Next().tag_);
+  fputs("\033[2J\033[1;1H\n", stderr);
+  for (auto x : ps->tag_stack_) { absl::FPrintF(stderr, "%s, ", stringify(x)); }
+  absl::FPrintF(stderr, " -> %s\n", stringify(ps->Next().tag_));
 
   for (const auto &node_ptr : ps->node_stack_) {
     fputs(node_ptr->DebugString().c_str(), stderr);
@@ -1532,7 +1538,7 @@ bool Reduce(ParseState *ps) {
       return false;
     }
 
-    return true; 
+    return true;
   }
 
   matched_rule_ptr->Apply(&ps->node_stack_, &ps->tag_stack_, ps->diag_);
@@ -1591,6 +1597,10 @@ std::vector<std::unique_ptr<ast::Node>> Parse(
              l_brace | r_brace | semicolon | fn_arrow | expr)) {
           lines.push_back(state.node_stack_[i]->span);
         }
+      }
+      if (lines.empty()) {
+        // We really have no idea what happened, just shove all the lines in.
+        for (const auto &ns : state.node_stack_) { lines.push_back(ns->span); }
       }
 
       // This is an exceedingly crappy error message.
