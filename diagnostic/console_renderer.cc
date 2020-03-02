@@ -47,6 +47,10 @@ void ConsoleRenderer::Flush() {
 
 void ConsoleRenderer::WriteSourceQuote(frontend::Source const *source,
                                        SourceQuote const &quote) {
+  if (quote.lines.empty()) {
+    std::fputs("Internal Error: SourceQuote is empty\n", out_);
+    return;
+  }
   int border_alignment = NumDigits(quote.lines.endpoints_.back() - 1) + 2;
   for (base::Interval<frontend::LineNum> line_range : quote.lines) {
     for (frontend::LineNum line = line_range.begin(); line != line_range.end();

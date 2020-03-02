@@ -48,6 +48,7 @@ struct IntervalSet {
   IntervalSet(std::initializer_list<base::Interval<T>> intervals) {
     for (const auto &interval : intervals) { insert(interval); }
   }
+  bool empty() const { return endpoints_.empty(); }
 
  private:
   using container_type = std::vector<T>;
