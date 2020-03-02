@@ -1,6 +1,7 @@
 #include "ir/value/fn.h"
 
 #include "gtest/gtest.h"
+#include "ir/value/builtin_fn.h"
 #include "ir/value/foreign_fn.h"
 #include "ir/value/native_fn.h"
 #include "type/function.h"
@@ -29,6 +30,13 @@ TEST(Fn, NativeFn) {
   ir::Fn a(&f);
   ASSERT_EQ(a.kind(), ir::Fn::Kind::Native);
   ASSERT_EQ(a.native(), ir::NativeFn(&f));
+}
+
+TEST(Fn, BuiltinFn) {
+  ASSIGN_OR(FAIL(), auto f, ir ::BuiltinFn::ByName("opaque"));
+  ir::Fn a(f);
+  ASSERT_EQ(a.kind(), ir::Fn::Kind::Builtin);
+  ASSERT_EQ(a.builtin(), ir::BuiltinFn::Opaque());
 }
 
 }  // namespace

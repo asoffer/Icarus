@@ -64,7 +64,7 @@ struct Fn {
     ASSERT((data & high_bits) == 0u);
     data_ = (data << underlying_type{2});
     data_ |= 1;
-    ASSERT(kind() == Kind::Foreign);
+    ASSERT(kind() == Kind::Builtin);
   }
 
   NativeFn native() const {

@@ -19,7 +19,7 @@ struct BuiltinFn {
 
   static BuiltinFn Bytes() { return BuiltinFn(Which::Bytes); }
   static BuiltinFn Alignment() { return BuiltinFn(Which::Alignment); }
-  static BuiltinFn Opaque() { return BuiltinFn(Which::Alignment); }
+  static BuiltinFn Opaque() { return BuiltinFn(Which::Opaque); }
   static BuiltinFn Foreign() { return BuiltinFn(Which::Foreign); }
   static BuiltinFn DebugIr() { return BuiltinFn(Which::DebugIr); }
 
@@ -40,11 +40,11 @@ struct BuiltinFn {
       case Which::Alignment:
         return type::Func({core::AnonymousParam(type::Type_)}, {type::Int64});
       case Which::Opaque: return type::Func({}, {type::Type_});
-      case Which::DebugIr:
-        return type::Func({}, {});
+      case Which::Foreign:
         // NOTE: We don't have a good way to handle generic builtins yet so this
         // will have to be done by the callee first.
-      case Which::Foreign: UNREACHABLE();
+        UNREACHABLE();
+      case Which::DebugIr: return type::Func({}, {});
     }
   }
 
