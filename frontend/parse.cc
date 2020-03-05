@@ -609,6 +609,19 @@ std::unique_ptr<ast::Node> BuildFunctionLiteral(
 std::unique_ptr<ast::Node> BuildDesignatedInitializer(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
+  if (auto *tok = nodes[1]->if_as<Token>()) {
+    // TODO maybe 'dot' should be it's own special thing for parsing. rather
+    // than just an op_b.
+    if (tok->token != ".") {
+      diag.Consume(diagnostic::Todo{});
+      return MakeInvalidNode(
+          SourceRange(nodes.front()->span.begin(), nodes.back()->span.end()));
+    }
+  } else {
+    diag.Consume(diagnostic::Todo{});
+    return MakeInvalidNode(
+        SourceRange(nodes.front()->span.begin(), nodes.back()->span.end()));
+  }
   auto span = SourceRange(nodes[0]->span.begin(), nodes.back()->span.end());
   if (auto *stmts = nodes[2]->if_as<Statements>()) {
     auto extracted_stmts = std::move(*stmts).extract();
