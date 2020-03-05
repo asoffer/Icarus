@@ -3,7 +3,7 @@
 Icarus is an experimental general-purpose programming language, designed to be
 fast to compile, fast to run, and easy to migrate.
 
-## Design priorities
+## Design Priorities
 
 In designing Icarus, we have the following ordered list of priorities. We hold
 these priorities as important axiomatically. Not every language should have the
@@ -24,7 +24,7 @@ self-consistent user experience. Remember that simplicity does not mean
 familiarity. We are willing to be (and often are very) different if we think it 
 provides a better user experience.
 
-## Where this leads us
+## Where This Leads Us
 
 There are two common questions that are directed to any new programming language.
 Let us answer them directly:
@@ -32,10 +32,16 @@ Let us answer them directly:
 * *Icarus has no garbage collector.* Debates about the precise cost of garbage
 collection aside, garbage colleciton fundamentally violates our priorities for
 performance, because it takes away the ability for users to make fine-grained 
-ecisions about how they want to manage memory.
+ecisions about how they want to manage memory. While we believe there is a place
+for garbage-collected languages, Icarus is designed to fill a different role.
 
-* *Icarus has a strong static type system.* The invariants provided by a static
+* **Icarus has a strong static type system.** The invariants provided by a static
 type system greatly increase software understandability and maintainability.
+While we believe there is a place for dynamically typed languages, Icarus is
+designed to fill a different role.
 
-## A tour
-TODO: A quick tour of the language
+## More information
+
+* [A tour of Icarus](tour.md)
+* [See the compiler source code](https://github.com/asoffer/Icarus)
+
