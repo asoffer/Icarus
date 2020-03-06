@@ -1,3 +1,8 @@
+---
+title: Icarus
+author: Andy Soffer
+---
+
 # Icarus
 
 Icarus is an experimental general-purpose programming language, designed to be
@@ -42,6 +47,6 @@ designed to fill a different role.
 
 ## More information
 
-* [A tour of Icarus](tour.md)
+* [A tour of Icarus](tour)
 * [See the compiler source code](https://github.com/asoffer/Icarus)
 
