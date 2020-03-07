@@ -26,21 +26,19 @@ bool ParamsCoverArgs(core::FnArgs<type::QualType> const &args,
     DEBUG_LOG("ParamsCoverArgs")("Expansion: ", expanded_arg.to_string());
     DEBUG_LOG("ParamsCoverArgs")("table.size(): ", table.size());
     for (auto const &[k, v] : table) {
-      static_assert(
-          std::is_same_v<std::decay_t<decltype(get_params(k, v))>,
-                         core::Params<type::Typed<ast::Declaration const *>>>);
+      static_assert(std::is_same_v<std::decay_t<decltype(get_params(k, v))>,
+                                   core::Params<type::Type const *>>);
       auto params = get_params(k, v);
       DEBUG_LOG("ParamsCoverArgs")("Params: ", stringify(params));
 
       // TODO take constness into account for callability.
       bool callable =
           core::IsCallable(core::ParamsRef(params), expanded_arg,
-                           [](type::Type const *arg,
-                              type::Typed<ast::Declaration const *> param) {
-                             bool result = type::CanCast(arg, param.type());
+                           [](type::Type const *arg, type::Type const *param) {
+                             bool result = type::CanCast(arg, param);
                              DEBUG_LOG("ParamsCoverArgs")
                              ("    ... CanCast(", arg->to_string(), ", ",
-                              param.type()->to_string(), ") = ", result);
+                              param->to_string(), ") = ", result);
                              return result;
                            });
       DEBUG_LOG("ParamsCoverArgs")(" Callable: ", callable);

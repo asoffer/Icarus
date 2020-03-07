@@ -13,8 +13,7 @@ namespace compiler {
 
 struct FailedMatch {};
 
-base::expected<core::Params<type::Typed<ast::Declaration const *>>, FailedMatch>
-MatchArgsToParams(
+base::expected<core::Params<type::Type const *>, FailedMatch> MatchArgsToParams(
     core::Params<type::Typed<ast::Declaration const *>> const &params,
     core::FnArgs<type::QualType> const &args);
 

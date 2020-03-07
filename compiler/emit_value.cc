@@ -656,7 +656,7 @@ ir::Results Compiler::Visit(ast::EnumLiteral const *node, EmitValueTag) {
 ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
   for (auto const &param : node->params()) {
     auto *p = param.value.get();
-    if (p->flags() & ast::Declaration::f_IsConst) { NOT_YET(); }
+    if (p->flags() & ast::Declaration::f_IsConst) { return ir::Results{}; }
 
     for (auto *dep : node->param_dep_graph_.sink_deps(p)) { NOT_YET(); }
   }

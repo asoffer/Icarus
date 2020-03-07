@@ -36,18 +36,6 @@ ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
   (args.Transform([](auto const &x) { return x.type()->to_string(); })
        .to_string());
 
-  core::FillMissingArgs(
-      core::ParamsRef(data.params()), &args, [compiler](auto const &p) {
-        return type::Typed(
-            ir::Results{compiler->Visit(ASSERT_NOT_NULL(p.get()->init_val()),
-                                        EmitValueTag{})},
-            p.type());
-      });
-
-  auto arg_results = PrepareCallArguments(
-      compiler, nullptr,
-      data.params().Transform([](auto const &p) { return p.type(); }), args);
-
   auto[out_results, out_params] = SetReturns(compiler->builder(), data, {});
 
   auto callee_qual_type = *ASSERT_NOT_NULL(compiler->qual_type_of(fn));
@@ -69,6 +57,25 @@ ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
       }
     }
   }();
+
+  if (not callee.is_reg()) {
+    switch (callee.value().kind()) {
+      case ir::Fn::Kind::Native: {
+        core::FillMissingArgs(
+            core::ParamsRef(callee.value().native().get()->params()), &args,
+            [compiler](auto const &p) {
+              return type::Typed(
+                  ir::Results{compiler->Visit(
+                      ASSERT_NOT_NULL(p.get()->init_val()), EmitValueTag{})},
+                  p.type());
+            });
+      } break;
+      default: break;
+    }
+  }
+
+  auto arg_results =
+      PrepareCallArguments(compiler, nullptr, data.params(), args);
 
   compiler->builder().Call(callee,
                            &callee_qual_type.type()->as<type::Function>(),
@@ -133,7 +140,7 @@ type::QualType FnCallDispatchTable::ComputeResultQualType(
       auto out_span = fn_type->output();
       results.push_back(out_span);
     } else if (expr_data.type() == type::Generic) {
-      results.emplace_back(); // NOT_YET figuring out the real answer.
+      results.emplace_back();  // NOT_YET figuring out the real answer.
     } else {
       NOT_YET(expr_data.type()->to_string());
     }

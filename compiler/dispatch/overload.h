@@ -16,22 +16,16 @@ struct ExprData {
   // non-const params() method.
   explicit ExprData() = default;
 
-  explicit ExprData(type::Type const *t,
-                    core::Params<type::Typed<ast::Declaration const *>> p)
+  explicit ExprData(type::Type const *t, core::Params<type::Type const *> p)
       : type_(t), params_(std::move(p)) {}
 
   type::Type const *type() const { return type_; }
 
-  core::Params<type::Typed<ast::Declaration const *>> &mutable_params() {
-    return params_;
-  }
-  core::Params<type::Typed<ast::Declaration const *>> const &params() const {
-    return params_;
-  }
+  core::Params<type::Type const *> const &params() const & { return params_; }
 
  private:
   type::Type const *type_ = nullptr;
-  core::Params<type::Typed<ast::Declaration const *>> params_;
+  core::Params<type::Type const *> params_;
 };
 
 }  // namespace internal

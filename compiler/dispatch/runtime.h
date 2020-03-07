@@ -50,7 +50,7 @@ void EmitRuntimeDispatch(
 
     core::Params<type::Type const *> params;
     if constexpr (std::is_same_v<Key, ast::Expression const *>) {
-      params = val.params().Transform([](auto const &p) { return p.type(); });
+      params = val.params();
     } else if constexpr (std::is_same_v<Key, ir::Jump *>) {
       params = key->params().Transform([](auto const &p) { return p.type(); });
     } else {

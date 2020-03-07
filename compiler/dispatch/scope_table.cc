@@ -195,9 +195,11 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
     }
   }
 
-  if (not ParamsCoverArgs(
-          args, table.init_map_,
-          [](ir::Jump *jump, auto const &) { return jump->params(); })) {
+  if (not ParamsCoverArgs(args, table.init_map_,
+                          [](ir::Jump *jump, auto const &) {
+                            return jump->params().Transform(
+                                [](auto const &p) { return p.type(); });
+                          })) {
     compiler->diag().Consume(diagnostic::ParametersDoNotCoverArguments{
         .args = args,
     });
