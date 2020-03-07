@@ -155,8 +155,8 @@ void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
 base::expected<void *> LoadDataSymbol(std::string_view name) {
   dlerror();  // Clear previous errors.
   void *result    = dlsym(RTLD_DEFAULT, std::string(name).c_str());
-  std::string err = dlerror();
-  if (err.empty()) { return result; }
+  char const *err = dlerror();
+  if (not err) { return result; }
   return base::unexpected(err);
 }
 
