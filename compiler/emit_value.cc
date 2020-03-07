@@ -843,8 +843,9 @@ ir::Results Compiler::Visit(ast::YieldStmt const *node, EmitValueTag) {
   // things or at least make them not compile if the `after` function takes
   // a compile-time constant argument.
   for (size_t i = 0; i < arg_vals.size(); ++i) {
-    yield_result.vals.pos_emplace(
-        arg_vals[i].second, *ASSERT_NOT_NULL(qual_type_of(node->exprs()[i])));
+    auto qt = qual_type_of(node->exprs()[i]);
+    ASSERT(qt.has_value() == true);
+    yield_result.vals.pos_emplace(arg_vals[i].second, *qt);
   }
   yield_result.label = node->label() ? node->label()->value() : ir::Label{};
 

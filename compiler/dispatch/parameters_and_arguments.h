@@ -50,8 +50,8 @@ bool ParamsCoverArgs(core::FnArgs<type::QualType> const &args,
   return true;
 }
 
-core::Params<type::Typed<ast::Declaration const *>> ExtractParams(
-    Compiler *compiler, ast::Expression const *expr);
+core::Params<type::QualType> ExtractParams(Compiler *compiler,
+                                           ast::Expression const *expr);
 
 // Given arguments `args` for a function-call with parameters `params`, emits
 // the necessary code to prepare the arguments for being called (without

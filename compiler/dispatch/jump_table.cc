@@ -24,7 +24,10 @@ base::expected<JumpDispatchTable> JumpDispatchTable::Verify(
     // we need to handle that case.
     DEBUG_LOG("dispatch-verify")("Verifying ", jump);
 
-    auto result = MatchArgsToParams(jump->params(), args);
+    auto result = MatchArgsToParams(jump->params().Transform([](auto const &p) {
+      return type::QualType::NonConstant(p.type());
+    }),
+                                    args);
     if (not result) {
       failures.emplace(jump, result.error());
     } else {

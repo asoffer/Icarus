@@ -904,7 +904,9 @@ std::vector<core::FnArgs<type::QualType>> Compiler::VerifyBlockNode(
     auto &back = result.emplace_back();
     // TODO actually fill a fnargs
     for (auto *yield_expr : yields[0]->as<ast::YieldStmt>().exprs()) {
-      back.pos_emplace(*ASSERT_NOT_NULL(qual_type_of(yield_expr)));
+      auto q = qual_type_of(yield_expr);
+      ASSERT(q.has_value() == true);
+      back.pos_emplace(*q);
     }
   }
 
@@ -1347,7 +1349,7 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
   // Declarations may have already been computed. Essentially the first time
   // we see an identifier (either a real identifier node, or a declaration, we
   // need to verify the type, but we only want to do node once.
-  if (auto *attempt = qual_type_of(node)) { return *attempt; }
+  if (auto q = qual_type_of(node)) { return *q; }
   type::QualType node_qual_type;
   switch (node->kind()) {
     case ast::Declaration::kDefaultInit: {
@@ -1367,9 +1369,13 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
       auto *type_expr_type = type_expr_result.type();
       if (type_expr_type == type::Type_) {
         node_qual_type = set_result(
-            node, type::QualType::Constant(ASSERT_NOT_NULL(
-                      interpretter::EvaluateAs<type::Type const *>(
-                          MakeThunk(node->type_expr(), type_expr_type)))));
+            node,
+            type::QualType(
+                ASSERT_NOT_NULL(interpretter::EvaluateAs<type::Type const *>(
+                    MakeThunk(node->type_expr(), type_expr_type))),
+                (node->flags() & ast::Declaration::f_IsConst)
+                    ? type::Quals::Const()
+                    : type::Quals::Unqualified()));
 
         if (not(node->flags() & ast::Declaration::f_IsFnParam) and
             not node_qual_type.type()->IsDefaultInitializable()) {
@@ -1556,9 +1562,9 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
   for (auto const *decl :
        module::AllAccessibleDecls(node->scope_, node->id())) {
     if (decl == node) { continue; }
-    auto *r = qual_type_of(decl);
-    if (not r) { continue; }
-    auto *t = r->type();
+    auto q = qual_type_of(decl);
+    if (not q) { continue; }
+    auto *t = q->type();
     if (not t) { continue; }
 
     type::Typed<ast::Declaration const *> typed_decl(decl, t);

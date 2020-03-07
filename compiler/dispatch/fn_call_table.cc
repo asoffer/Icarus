@@ -38,9 +38,10 @@ ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
 
   auto[out_results, out_params] = SetReturns(compiler->builder(), data, {});
 
-  auto callee_qual_type = *ASSERT_NOT_NULL(compiler->qual_type_of(fn));
-  auto callee           = [&]() -> ir::RegOr<ir::Fn> {
-    if (callee_qual_type.constant()) {
+  auto callee_qual_type = compiler->qual_type_of(fn);
+  ASSERT(callee_qual_type.has_value() == true);
+  auto callee = [&]() -> ir::RegOr<ir::Fn> {
+    if (callee_qual_type->constant()) {
       return compiler->Visit(fn, EmitValueTag{}).get<ir::Fn>(0);
     } else {
       // NOTE: If the overload is a declaration, it's not because a declaration
@@ -78,7 +79,7 @@ ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
       PrepareCallArguments(compiler, nullptr, data.params(), args);
 
   compiler->builder().Call(callee,
-                           &callee_qual_type.type()->as<type::Function>(),
+                           &callee_qual_type->type()->as<type::Function>(),
                            arg_results, out_params);
   return std::move(out_results);
 }

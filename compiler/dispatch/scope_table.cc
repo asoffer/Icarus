@@ -137,7 +137,11 @@ void internal::OneTable::VerifyJumps() {
           ir::Fn fn = *maybe_fn;
           switch (fn.kind()) {
             case ir::Fn::Kind::Native: {
-              auto result = MatchArgsToParams(fn.native()->params(), arg_types);
+              auto result = MatchArgsToParams(
+                  fn.native()->params().Transform([](auto const &p) {
+                    return type::QualType::NonConstant(p.type());
+                  }),
+                  arg_types);
 
               if (result) {
                 next_types[block_name].push_back(fn.native()->type()->output());
@@ -186,7 +190,11 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
   table.scope_node_ = node;
   table.init_map_   = std::move(inits);
   for (auto [jump, scope] : table.init_map_) {
-    if (auto result = MatchArgsToParams(jump->params(), args)) {
+    if (auto result =
+            MatchArgsToParams(jump->params().Transform([](auto const &p) {
+              return type::QualType::NonConstant(p.type());
+            }),
+                              args)) {
       auto &one_table = table.tables_[scope];
       one_table.inits.emplace(jump, *result);
       one_table.scope_def_ = scope;

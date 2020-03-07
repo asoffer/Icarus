@@ -7,8 +7,8 @@
 
 namespace compiler {
 namespace {
-core::Params<type::Typed<ast::Declaration const *>> ExtractParams(
-    Compiler *compiler, ast::Declaration const *decl) {
+core::Params<type::QualType> ExtractParams(Compiler *compiler,
+                                           ast::Declaration const *decl) {
   auto *decl_type = ASSERT_NOT_NULL(compiler->type_of(decl));
   if (decl->flags() & ast::Declaration::f_IsConst) {
     if (auto const *fn_type = decl_type->if_as<type::Function>()) {
@@ -17,25 +17,28 @@ core::Params<type::Typed<ast::Declaration const *>> ExtractParams(
 
       switch (f.kind()) {
         case ir::Fn::Kind::Native:
-          return static_cast<
-              core::Params<type::Typed<ast::Declaration const *>>>(
-              f.native()->params());
-        case ir::Fn::Kind::Builtin: return fn_type->AnonymousParams();
-        case ir::Fn::Kind::Foreign: return fn_type->AnonymousParams();
+          return f.native()->params().Transform([](auto const &p) {
+            return type::QualType::NonConstant(p.type());
+          });
+        case ir::Fn::Kind::Builtin:
+          return fn_type->params().Transform(
+              [](auto const &p) { return type::QualType::NonConstant(p); });
+        case ir::Fn::Kind::Foreign:
+          return fn_type->params().Transform(
+              [](auto const &p) { return type::QualType::NonConstant(p); });
       }
     } else if (auto *jump_type = decl_type->if_as<type::Jump>()) {
       auto j = interpretter::EvaluateAs<ir::Jump const *>(
           compiler->MakeThunk(decl, decl_type));
-      return static_cast<core::Params<type::Typed<ast::Declaration const *>>>(
-          j->params());
+      return j->params().Transform(
+          [](auto const &p) { return type::QualType::NonConstant(p.type()); });
     } else if (decl_type == type::Generic) {
         // TODO determine how to evaluate this with an interpretter.
         if (auto *fn_lit = decl->init_val()->if_as<ast::FunctionLiteral>()) {
-          core::Params<type::Typed<ast::Declaration const *>> params;
           return fn_lit->params().Transform([&](auto const &p) {
             type::Type const *t = interpretter::EvaluateAs<type::Type const *>(
                 compiler->MakeThunk(p->type_expr(), type::Type_));
-            return type::Typed<ast::Declaration const *>(p.get(), t);
+            return type::QualType::NonConstant(t);
           });
         } else {
           NOT_YET(decl->init_val()->DebugString());
@@ -45,20 +48,20 @@ core::Params<type::Typed<ast::Declaration const *>> ExtractParams(
     }
   } else {
     if (auto const *fn_type = decl_type->if_as<type::Function>()) {
-      return fn_type->params().Transform([](type::Type const *t) {
-        return type::Typed<ast::Declaration const *>(nullptr, t);
-      });
+      return fn_type->params().Transform(
+          [](type::Type const *t) { return type::QualType::NonConstant(t); });
     } else {
       NOT_YET(decl->DebugString());
     }
   }
 }
 
-core::Params<type::Typed<ast::Declaration const *>> ExtractParams(
-    Compiler *compiler, ast::FunctionLiteral const *fn_lit) {
+core::Params<type::QualType> ExtractParams(Compiler *compiler,
+                                           ast::FunctionLiteral const *fn_lit) {
   return fn_lit->params().Transform([compiler](auto const &expr) {
-    return type::Typed<ast::Declaration const *>(expr.get(),
-                                                 compiler->type_of(expr.get()));
+    auto qt = compiler->qual_type_of(expr.get());
+    ASSERT(qt.has_value() == true);
+    return *qt;
   });
 }
 
@@ -137,8 +140,8 @@ std::vector<core::FnArgs<type::Type const *>> ExpandedFnArgs(
   return all_expanded_options;
 }
 
-core::Params<type::Typed<ast::Declaration const *>> ExtractParams(
-    Compiler *compiler, ast::Expression const *expr) {
+core::Params<type::QualType> ExtractParams(Compiler *compiler,
+                                           ast::Expression const *expr) {
   if (auto const *decl = expr->if_as<ast::Declaration>()) {
     return ExtractParams(compiler, decl);
   } else if (auto const *fn_lit = expr->if_as<ast::FunctionLiteral>()) {

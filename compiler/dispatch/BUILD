@@ -156,8 +156,6 @@ cc_library(
     hdrs = ["match.h"],
     srcs = ["match.cc"],
     deps = [
-        "//ast:ast",
-        "//ast:ast_fwd",
         "//base:expected",
         "//type:cast",
         "//core:fn_args",

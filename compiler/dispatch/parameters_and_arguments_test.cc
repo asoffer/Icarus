@@ -13,9 +13,7 @@ using param_type = core::Param<type::Type const *>;
 
 using ::testing::ElementsAre;
 
-type::Type const *ExtractType(type::Typed<ast::Declaration const *> decl) {
-  return decl.type();
-}
+type::Type const *ExtractType(type::QualType qt) { return qt.type(); }
 
 template <typename NodeType>
 NodeType const *Make(test::TestModule *mod, std::string code) {
