@@ -16,17 +16,22 @@ namespace compiler {
 namespace {
 
 std::pair<ir::Results, ir::OutParams> SetReturns(
-    ir::Builder &bldr, internal::ExprData const &expr_data,
-    absl::Span<type::Type const *> final_out_types) {
-  auto ret_types = expr_data.type()->as<type::Function>().output();
-  ir::Results results;
-  ir::OutParams out_params = bldr.OutParams(ret_types);
-  // TODO find a better way to extract these. Figure out why you even need to.
-  for (size_t i = 0; i < ret_types.size(); ++i) {
-    results.append(out_params[i]);
+    ir::Builder &bldr, internal::ExprData const &expr_data) {
+  if (auto *fn_type = expr_data.type()->if_as<type::Function>()) {
+    auto ret_types = fn_type->output();
+    ir::Results results;
+    ir::OutParams out_params = bldr.OutParams(ret_types);
+    // TODO find a better way to extract these. Figure out why you even need to.
+    for (size_t i = 0; i < ret_types.size(); ++i) {
+      results.append(out_params[i]);
+    }
+    return std::pair<ir::Results, ir::OutParams>(std::move(results),
+                                                 std::move(out_params));
+  } else if (expr_data.type() == type::Generic) {
+    NOT_YET();
+  } else {
+    NOT_YET(expr_data.type()->to_string());
   }
-  return std::pair<ir::Results, ir::OutParams>(std::move(results),
-                                               std::move(out_params));
 }
 
 ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
@@ -36,7 +41,7 @@ ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
   (args.Transform([](auto const &x) { return x.type()->to_string(); })
        .to_string());
 
-  auto[out_results, out_params] = SetReturns(compiler->builder(), data, {});
+  auto [out_results, out_params] = SetReturns(compiler->builder(), data);
 
   auto callee_qual_type = compiler->qual_type_of(fn);
   ASSERT(callee_qual_type.has_value() == true);
