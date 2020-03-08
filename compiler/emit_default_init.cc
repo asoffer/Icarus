@@ -14,7 +14,10 @@ void Compiler::Visit(type::Array const *t, ir::Reg reg, EmitDefaultInitTag) {
     auto const *fn_type = type::Func(
         core::Params<type::Type const *>{core::AnonymousParam(type::Ptr(t))},
         {});
-    ir::NativeFn fn = AddFunc(fn_type, fn_type->AnonymousParams());
+    ir::NativeFn fn =
+        AddFunc(fn_type, fn_type->params().Transform([](type::Type const *p) {
+          return type::Typed<ast::Declaration const *>(nullptr, p);
+        }));
     ICARUS_SCOPE(ir::SetCurrent(fn)) {
       builder().CurrentBlock() = fn->entry();
       builder().OnEachArrayElement(t, ir::Reg::Arg(0), [=](ir::Reg r) {
@@ -69,7 +72,10 @@ void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDefaultInitTag) {
     type::Pointer const *pt = type::Ptr(t);
     auto const *fn_type     = type::Func(
         core::Params<type::Type const *>{core::AnonymousParam(pt)}, {});
-    ir::NativeFn fn = AddFunc(fn_type, fn_type->AnonymousParams());
+    ir::NativeFn fn =
+        AddFunc(fn_type, fn_type->params().Transform([](type::Type const *p) {
+          return type::Typed<ast::Declaration const *>(nullptr, p);
+        }));
 
     ICARUS_SCOPE(ir::SetCurrent(fn)) {
       builder().CurrentBlock() = builder().CurrentGroup()->entry();
@@ -95,7 +101,10 @@ void Compiler::Visit(type::Tuple const *t, ir::Reg reg, EmitDefaultInitTag) {
         core::Params<type::Type const *>{core::AnonymousParam(type::Ptr(t))},
         {});
 
-    ir::NativeFn fn = AddFunc(fn_type, fn_type->AnonymousParams());
+    ir::NativeFn fn =
+        AddFunc(fn_type, fn_type->params().Transform([](type::Type const *p) {
+          return type::Typed<ast::Declaration const *>(nullptr, p);
+        }));
 
     ICARUS_SCOPE(ir::SetCurrent(fn)) {
       builder().CurrentBlock() = builder().CurrentGroup()->entry();

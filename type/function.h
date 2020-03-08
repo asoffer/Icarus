@@ -3,28 +3,13 @@
 
 #include <cstring>
 
-#include "ast/ast_fwd.h" // TODO remove AnonymousParams
 #include "core/params.h"
-#include "type/callable.h"
+#include "type/type.h"
 #include "type/typed_value.h"
 
 namespace type {
-struct GenericFunction : public Callable {
-  GenericFunction() {}
-  ~GenericFunction() override {}
-  void WriteTo(std::string *result) const override {
-    result->append("generic");
-  }
 
-  void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-
-  core::Bytes bytes(core::Arch const &arch) const override;
-  core::Alignment alignment(core::Arch const &arch) const override;
-};
-
-struct Function : public Callable {
+struct Function : public Type {
   TYPE_FNS(Function);
   Function(core::Params<Type const *> in, std::vector<Type const *> out)
       : params_(std::move(in)), output_(std::move(out)) {
@@ -39,10 +24,6 @@ struct Function : public Callable {
   }
 
   bool is_big() const override { return false; }
-
-  // TODO This doesn't need to be anonymous anymore!
-  core::Params<type::Typed<ast::Declaration const *>> AnonymousParams()
-      const;
 
   core::Params<Type const *> const &params() const { return params_; }
   absl::Span<Type const *const> output() const { return output_; }

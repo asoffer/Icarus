@@ -28,12 +28,6 @@ cc_library(
     ],
 )
 
-cc_library(
-    name = "callable",
-    hdrs = ["callable.h"],
-    deps = [":type"],
-)
-
 CONCRETE_TYPES = [
     ":array",
     ":enum",
@@ -104,11 +98,20 @@ cc_library(
     hdrs = ["function.h"],
     srcs = ["function.cc"],
     deps = [
-        ":callable",
+        ":type",
         ":typed_value",
-        "//ast:ast_fwd",
         "//core:params",
         "//base:guarded",
+    ],
+)
+
+cc_library(
+    name = "generic_function",
+    hdrs = ["generic_function.h"],
+    srcs = ["generic_function.cc"],
+    deps = [
+        ":type",
+        "//core:arch",
     ],
 )
 
@@ -117,10 +120,9 @@ cc_library(
     hdrs = ["generic_struct.h"],
     srcs = ["generic_struct.cc"],
     deps = [
-        ":callable",
         ":type",
         "//module:module",
-        "//ast/scope:scope",
+        "//ast/scope",
         "//ast/scope:module",
     ],
 )
@@ -220,7 +222,7 @@ cc_library(
         ":function",
         ":pointer",
         ":type",
-        "//ast/scope:scope",
+        "//ast/scope",
         "//ast:hashtag",
         "//base:guarded",
         "//base:lazy",

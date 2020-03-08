@@ -19,6 +19,7 @@
 #include "interpretter/evaluate.h"
 #include "ir/compiled_fn.h"
 #include "type/cast.h"
+#include "type/generic_function.h"
 #include "type/generic_struct.h"
 #include "type/jump.h"
 #include "type/parameter_pack.h"

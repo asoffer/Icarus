@@ -19,7 +19,10 @@ static ir::NativeFn CreateAssign(Compiler *compiler, type::Array const *a) {
       core::Params<type::Type const *>{core::AnonymousParam(ptr_type),
                                          core::AnonymousParam(ptr_type)},
       {});
-  ir::NativeFn fn = compiler->AddFunc(fn_type, fn_type->AnonymousParams());
+  ir::NativeFn fn = compiler->AddFunc(
+      fn_type, fn_type->params().Transform([](type::Type const *p) {
+        return type::Typed<ast::Declaration const *>(nullptr, p);
+      }));
   ICARUS_SCOPE(ir::SetCurrent(fn)) {
     auto &bldr          = compiler->builder();
     bldr.CurrentBlock() = fn->entry();
@@ -86,7 +89,10 @@ static ir::NativeFn CreateAssign(Compiler *compiler, type::Struct const *s) {
       type::Func(core::Params<type::Type const *>{core::AnonymousParam(pt),
                                                     core::AnonymousParam(pt)},
                  {});
-  ir::NativeFn fn = compiler->AddFunc(fn_type, fn_type->AnonymousParams());
+  ir::NativeFn fn = compiler->AddFunc(
+      fn_type, fn_type->params().Transform([](type::Type const *p) {
+        return type::Typed<ast::Declaration const *>(nullptr, p);
+      }));
   ICARUS_SCOPE(ir::SetCurrent(fn)) {
     bldr.CurrentBlock() = fn->entry();
     auto val            = ir::Reg::Arg(0);
@@ -217,7 +223,10 @@ void Compiler::Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
         type::Func(core::Params<type::Type const *>{core::AnonymousParam(p),
                                                       core::AnonymousParam(p)},
                    {});
-    ir::NativeFn fn = AddFunc(fn_type, fn_type->AnonymousParams());
+    ir::NativeFn fn =
+        AddFunc(fn_type, fn_type->params().Transform([](type::Type const *p) {
+          return type::Typed<ast::Declaration const *>(nullptr, p);
+        }));
     ICARUS_SCOPE(ir::SetCurrent(fn)) {
       builder().CurrentBlock() = fn->entry();
       auto val                 = ir::Reg::Arg(0);
@@ -249,7 +258,10 @@ void Compiler::Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
         type::Func(core::Params<type::Type const *>{core::AnonymousParam(p),
                                                       core::AnonymousParam(p)},
                    {});
-    ir::NativeFn fn = AddFunc(fn_type, fn_type->AnonymousParams());
+    ir::NativeFn fn =
+        AddFunc(fn_type, fn_type->params().Transform([](type::Type const *p) {
+          return type::Typed<ast::Declaration const *>(nullptr, p);
+        }));
     ICARUS_SCOPE(ir::SetCurrent(fn)) {
       builder().CurrentBlock() = fn->entry();
       auto val                 = ir::Reg::Arg(0);

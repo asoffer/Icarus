@@ -4,15 +4,6 @@
 #include "type/typed_value.h"
 
 namespace type {
-Type const *Generic = new GenericFunction;
-
-core::Bytes GenericFunction::bytes(core::Arch const &) const {
-  return core::Host.pointer().bytes();
-}
-
-core::Alignment GenericFunction::alignment(core::Arch const &) const {
-  return core::Host.pointer().alignment();
-}
 
 static base::guarded<
     absl::flat_hash_map<core::Params<Type const *>,
@@ -60,17 +51,6 @@ core::Bytes Function::bytes(core::Arch const &a) const {
 
 core::Alignment Function::alignment(core::Arch const &a) const {
   return a.function().alignment();
-}
-
-core::Params<type::Typed<ast::Declaration const *>>
-Function::AnonymousParams() const {
-  core::Params<type::Typed<ast::Declaration const *>> result;
-  for (auto const& param: params()) {
-    result.append("",
-                  type::Typed<ast::Declaration const *>(nullptr, param.value),
-                  core::MUST_NOT_NAME);
-  }
-  return result;
 }
 
 }  // namespace type

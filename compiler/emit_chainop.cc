@@ -37,7 +37,10 @@ static ir::Results ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
         type::Func({core::AnonymousParam(type::Ptr(lhs_type)),
                     core::AnonymousParam(type::Ptr(rhs_type))},
                    {type::Bool});
-    ir::NativeFn fn = compiler->AddFunc(fn_type, fn_type->AnonymousParams());
+    ir::NativeFn fn = compiler->AddFunc(
+        fn_type, fn_type->params().Transform([](type::Type const *p) {
+          return type::Typed<ast::Declaration const *>(nullptr, p);
+        }));
 
     ICARUS_SCOPE(ir::SetCurrent(fn)) {
       bldr.CurrentBlock() = fn->entry();
