@@ -112,6 +112,7 @@ cc_library(
     deps = [
         ":type",
         "//core:arch",
+        "//ir/value:native_fn",
     ],
 )
 

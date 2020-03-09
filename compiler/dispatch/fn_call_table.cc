@@ -10,6 +10,7 @@
 #include "ir/results.h"
 #include "type/cast.h"
 #include "type/function.h"
+#include "type/generic_function.h"
 #include "type/type.h"
 
 namespace compiler {
@@ -27,7 +28,7 @@ std::pair<ir::Results, ir::OutParams> SetReturns(
     }
     return std::pair<ir::Results, ir::OutParams>(std::move(results),
                                                  std::move(out_params));
-  } else if (expr_data.type() == type::Generic) {
+  } else if (expr_data.type()->is<type::GenericFunction>()) {
     NOT_YET();
   } else {
     NOT_YET(expr_data.type()->to_string());
@@ -145,7 +146,7 @@ type::QualType FnCallDispatchTable::ComputeResultQualType(
     if (auto *fn_type = expr_data.type()->if_as<type::Function>()) {
       auto out_span = fn_type->output();
       results.push_back(out_span);
-    } else if (expr_data.type() == type::Generic) {
+    } else if (expr_data.type()->is<type::GenericFunction>()) {
       results.emplace_back();  // NOT_YET figuring out the real answer.
     } else {
       NOT_YET(expr_data.type()->to_string());

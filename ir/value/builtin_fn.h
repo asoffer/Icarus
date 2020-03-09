@@ -41,9 +41,13 @@ struct BuiltinFn {
         return type::Func({core::AnonymousParam(type::Type_)}, {type::Int64});
       case Which::Opaque: return type::Func({}, {type::Type_});
       case Which::Foreign:
-        // NOTE: We don't have a good way to handle generic builtins yet so this
-        // will have to be done by the callee first.
-        UNREACHABLE();
+        // Note: We do not allow passing `foreign` around as a function object.
+        // It is call-only, which means the generic part can be handled in the
+        // type checker. The value here may be stored, but it will never be
+        // accessed again.
+        //
+        // TODO: Why not allow passing it around?
+        return nullptr;
       case Which::DebugIr: return type::Func({}, {});
     }
   }

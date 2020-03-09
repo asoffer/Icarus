@@ -4,6 +4,7 @@
 #include "interpretter/evaluate.h"
 #include "ir/value/fn.h"
 #include "type/function.h"
+#include "type/generic_function.h"
 
 namespace compiler {
 namespace {
@@ -32,17 +33,17 @@ core::Params<type::QualType> ExtractParams(Compiler *compiler,
           compiler->MakeThunk(decl, decl_type));
       return j->params().Transform(
           [](auto const &p) { return type::QualType::NonConstant(p.type()); });
-    } else if (decl_type == type::Generic) {
-        // TODO determine how to evaluate this with an interpretter.
-        if (auto *fn_lit = decl->init_val()->if_as<ast::FunctionLiteral>()) {
-          return fn_lit->params().Transform([&](auto const &p) {
-            type::Type const *t = interpretter::EvaluateAs<type::Type const *>(
-                compiler->MakeThunk(p->type_expr(), type::Type_));
-            return type::QualType::NonConstant(t);
-          });
-        } else {
-          NOT_YET(decl->init_val()->DebugString());
-        }
+    } else if (decl_type->is<type::GenericFunction>()) {
+      // TODO determine how to evaluate this with an interpretter.
+      if (auto *fn_lit = decl->init_val()->if_as<ast::FunctionLiteral>()) {
+        return fn_lit->params().Transform([&](auto const &p) {
+          type::Type const *t = interpretter::EvaluateAs<type::Type const *>(
+              compiler->MakeThunk(p->type_expr(), type::Type_));
+          return type::QualType::NonConstant(t);
+        });
+      } else {
+        NOT_YET(decl->init_val()->DebugString());
+      }
     } else {
       UNREACHABLE(decl->DebugString(), decl_type->to_string());
     }

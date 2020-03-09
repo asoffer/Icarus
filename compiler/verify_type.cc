@@ -245,7 +245,8 @@ static type::QualType VerifySpecialFunctions(Compiler *visitor,
 bool Shadow(Compiler *compiler, type::Typed<ast::Declaration const *> decl1,
             type::Typed<ast::Declaration const *> decl2) {
   // TODO Don't worry about generic shadowing? It'll be checked later?
-  if (decl1.type() == type::Generic or decl2.type() == type::Generic) {
+  if (decl1.type()->is<type::GenericFunction>() or
+      decl2.type()->is<type::GenericFunction>()) {
     return false;
   }
 
@@ -919,11 +920,7 @@ type::QualType Compiler::Visit(ast::BlockNode const *node, VerifyTypeTag) {
 }
 
 type::QualType Compiler::Visit(ast::BuiltinFn const *node, VerifyTypeTag) {
-  if (node->value() == ir::BuiltinFn::Foreign()) {
-    return set_result(node, type::QualType::Constant(type::Generic));
-  } else {
-    return set_result(node, type::QualType::Constant(node->value().type()));
-  }
+  return set_result(node, type::QualType::Constant(node->value().type()));
 }
 
 static ast::OverloadSet FindOverloads(
@@ -1647,7 +1644,8 @@ type::QualType Compiler::Visit(ast::FunctionLiteral const *node,
   for (auto const &p : node->params()) {
     if ((p.value->flags() & ast::Declaration::f_IsConst) or
         not node->param_dep_graph_.at(p.value.get()).empty()) {
-      return set_result(node, type::QualType::Constant(type::Generic));
+      NOT_YET();
+      // return set_result(node, type::QualType::Constant(type::Generic));
     }
   }
 

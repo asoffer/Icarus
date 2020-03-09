@@ -3,13 +3,14 @@
 
 #include <string>
 
-#include "type/type.h"
 #include "core/arch.h"
+#include "ir/value/native_fn.h"
+#include "type/type.h"
 
 namespace type {
 
 struct GenericFunction : public Type {
-  GenericFunction() {}
+  explicit GenericFunction(ir::NativeFn fn) : gen_fn_(fn) {}
   ~GenericFunction() override {}
   void WriteTo(std::string *result) const override {
     result->append("generic");
@@ -21,9 +22,10 @@ struct GenericFunction : public Type {
 
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;
-};
 
-extern Type const *Generic;
+ private:
+  [[maybe_unused]] ir::NativeFn gen_fn_;
+};
 
 }  // namespace type
 

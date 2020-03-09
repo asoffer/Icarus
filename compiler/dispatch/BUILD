@@ -79,6 +79,7 @@ cc_library(
         "//type:qual_type",
         "//type:type",
         "//type:typed_value",
+        "//type:generic_function",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
@@ -137,6 +138,7 @@ cc_library(
         "//type:cast",
         "//type:type",
         "//type:function",
+        "//type:generic_function",
     ],
 )
 
