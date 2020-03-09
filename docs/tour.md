@@ -80,7 +80,7 @@ square(3) // Evaluates to 9.
 Notice that we declared a constant `square` and defined it to have the
 value of this function. You will see this pattern in Icarus a lot. Where other
 languages have special syntax for defining functions, types, or modules, Icarus
-uses the same syntax for all types of definitions.
+uses the same syntax for all types of declarations.
 
 In addition to the standard function call syntax, Icarus supports a few other
 styles for calling a function:
@@ -115,7 +115,7 @@ half   ::= (x := 1.0) => x / 2.0
 
 Arrays are contiguous, fixed-size chunks of memory that hold data all of the
 same type. The type of an array is written `[N; T]` where `T` is the type
-of data held in the array, and `N` is the size of the array.
+of data held in the array, and `N` is the length of the array.
 Arrays can be constructed with a comma-separated list of values
 surrounded by square brackets.
 
@@ -146,7 +146,7 @@ which v // Evaluates to bool.
 
 ## Enums and Flags
 
-An enum is type whose value can be listed as exactly one value from a set of
+An enum is a type whose value can be listed as exactly one value from a set of
 alternatives. For instance, we might use an enum to represent the suit in a
 card game.
 
@@ -189,8 +189,8 @@ Point ::= struct {
 }
 ```
 
-You instantiate them and access members as you might expect from other languages
-with similar constructs:
+Struct instantiation and member access uses syntax similar to many
+Algol-like programming languages.
 
 ```
 // Create a default-initialized Point named p.
@@ -232,8 +232,8 @@ sqrt_impl ::= (x: float64) -> float64 { ... }
 # Control Flow
 
 Perhaps the most distinguishing feature of Icarus is that the core language has
-neither if statements nor while loops. It turns out that both of these are
-definable in libraries via the "user-defined scopes" feature.
+neither `if` statements nor `while` loops. It turns out that both of these are
+definable in libraries via user-defined scopes.
 
 ```
 -- ::= import "examples/lib/core.ic"
@@ -253,13 +253,14 @@ while (i < 10) do {
 
 Defining your own scope requires a few pieces:
 1. What parameters are used to initialize your scope? (In a while-loop, this is
-   the boolean condition).
-2. What blocks can be jumped to. (In an if-statement, these are the "then" and
-   "else" blocks)
+   the boolean condition.)
+2. What blocks can be jumped to? (In an if-statement, these are the "then" and
+   "else" block.)
 3. How should the blocks be connected together? 
 4. What are the exit conditions?
 
 To define a scope that runs a "do" block forever, we would write:
+
 ```
 forever ::= scope {
   init ::= jump() { goto do() }
@@ -273,6 +274,14 @@ forever ::= scope {
 
   // There's no need for an exit condition, because there's no way to
   // exit.
+}
+```
+
+Using this new scope is simple:
+
+```
+forever () do {
+  io.Print("yes\n")
 }
 ```
 

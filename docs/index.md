@@ -33,15 +33,15 @@ these performance requirements. For this reason, rather than making a tradeoff
 in the language, we want to give programmers the ability to design for the
 particular performance characteristics relevant to their application.
 
-1. **Freedom.** Users are free to write software in the format that makes
+1. **Freedom.** Users should be free to write software in the format that makes
 sense for their use case, and it is not up to the designers of Icarus to make
 value judgments or prohibitions.
 
 1. **Simplicity.** All else equal, Icarus strives to provide a simple and
 self-consistent user experience. Note that simplicity does not necessarily mean
-familiarity! We are willing to be (and often are) different if we think it 
+familiarity; we are willing to be (and often are) different if we think it 
 provides a better user experience. We provide simplicity where it does not
-conflict with the above priorities.
+conflict with the above priorities, but we will never impose it.
 
 ## Where This Leads Us
 
@@ -50,9 +50,8 @@ Here are our answers to some of them:
 
 * **Icarus has no built-in garbage collector.**
 Language-provided garbage collection fundamentally violates our performance
-priority, as it restricts users from making fine-grained decisions about
-memory management. Users are of course free to use a library implementation
-of garbage collection.
+priority, as it carries a non-zero cost and restricts users from making
+fine-grained decisions about memory management.
 
 * **Icarus has a strong static type system.**
 We believe that the invariants provided by a static type system greatly improve
