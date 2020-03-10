@@ -6,8 +6,8 @@ author: Andy Soffer
 # A Tour of Icarus
 
 This is not a complete language specification (design is still in progress, so a
-complete specification does not exist yet). Rather this is a quick guided tour of
-some of the Icarus essentials.
+complete specification does not exist yet).
+Rather, this is a quick guided tour of some of the Icarus essentials.
 
 If you are new to programming entirely, this tour is probably not going to be
 particularly helpful. This tour frequently references other languages for means
@@ -21,18 +21,18 @@ program in Icarus*.
 Variable declarations are expressed with a `:` separating the variable name from
 its type. You may optionally initialize the variable with a value. If no
 initialization is present, the value will be initialized to a "zero-like" value.
-This means zero for numberic types, and `false` for booleans.
+This means zero for numeric types and `false` for booleans.
 
 ```
-// Initializes a 64-bit integer named `x` to zero
-x:  int64
+// Initialize a 64-bit integer named `x` to zero.
+x: int64
 
-// Initializes a 64-bit floating-point number named `pi` to 3.14.
+// Initialize a 64-bit floating-point number named `pi` to 3.14.
 pi: float64 = 3.14
 ```
 
 Types can often be deduced from the values that initialize them. To deduce the
-type, simply omit the type from the declaration. This is typically stylized as
+type, simply omit it from the declaration. This is typically stylized as
 `:=`, but it is perfectly valid to have whitespace between the `:` and the `=`.
 
 ```
@@ -41,21 +41,22 @@ pi := 3.14
 ```
 
 There are times in which it may be a useful performance optimization to leave
-variables uninitialized. While this is not the default, it is possible to leave
-variables uninitialized by assigning to them from `--`.
+variables uninitialized. Assigning the special value `--` denotes this.
 
 ```
-x: int32 = -- // An uninitialized 32-bit integer
+// An uninitialized 32-bit integer
+x: int32 = --
 ```
 
 ## Constants
 
-Icarus also allows you to define constants known to the compiler at
-compile-time. Syntactically this looks very much like a variable declaration,
-but is done with `::` rather than `:`.
+Icarus allows you to define constants with values known at compile-time.
+These look like normal variable declarations,
+replacing `:` with `::`.
 
 ```
 days_per_week :: int64 = 7
+// Type deduction works for constants, too.
 pi ::= 3.14
 ```
 
@@ -67,31 +68,30 @@ Functions in Icarus take the form
 `<parameters> -> <return-type> { <statements> }`. For example,
 
 ```
-// Defining a squaring function
+// Define a squaring function.
 square ::= (n: int64) -> int64 {
   return n * n
 }
 
-// Calling the squaring function
+// Call the squaring function.
 square(3) // Evaluates to 9.
-
 ```
 
-Notice that we have declared a constant `square` and defined it to have the
+Notice that we declared a constant `square` and defined it to have the
 value of this function. You will see this pattern in Icarus a lot. Where other
 languages have special syntax for defining functions, types, or modules, Icarus
-consistently uses the same syntax for all of these.
+uses the same syntax for all types of declarations.
 
-Function calls may look as you would have expected, but there are a few other
-ways that a function can be called.
+In addition to the standard function call syntax, Icarus supports a few other
+styles for calling a function:
 
 ```
-3'square       // Same a `square(3)`
+3'square       // Same as `square(3)`.
 square(n = 3)  // Icarus also supports named arguments...
 (n = 3)'square // ...even when the arguments are passed first.
 ```
 
-Icarus also supports default arguments.
+Icarus functions can have arguments with default values.
 
 ```
 half ::= (x: float64 = 1.0) -> float64 { return x / 2.0 }
@@ -100,10 +100,11 @@ half(3.0) // Evaluates to 1.5.
 half()    // Use the default. Evaluates to 0.5.
 ```
 
-All of the functions shown so far are simple enough that we would like a fast
-and simple way to write them. Icarus allows you to use `=>` to avoid specifying
-the return type and simply expressing the returned value to the right of the
-`=>`. The return type is deduced.
+All of the functions shown so far are simple enough that the standard function
+syntax is overly verbose. Icarus provides a shorthand syntax that replaces
+`->` with `=>`, and replaces the return type with a single-expression
+function body.
+The return type is deduced.
 
 ```
 square ::= (n: int64) => n * n
@@ -112,11 +113,11 @@ half   ::= (x := 1.0) => x / 2.0
 
 ## Arrays
 
-Arrays are contiguous chunks of memory of a fixed size holding data all of the
-same type. The type of an array can be written as `[N; T]` where `T` is the type
-of data held in the array, and `N` is the number of contigous values of that
-type. Array's can be constructed with a comma-separated list of values
-surrounded by square-brackets.
+Arrays are contiguous, fixed-size chunks of memory that hold data all of the
+same type. The type of an array is written `[N; T]` where `T` is the type
+of data held in the array, and `N` is the length of the array.
+Arrays can be constructed with a comma-separated list of values
+surrounded by square brackets.
 
 ```
 a: [3; int64] = [1, 4, 9]
@@ -131,10 +132,10 @@ TODO
 
 ## Variants
 A variant is a value which can be one of a handful of different types. Variant
-types can be constructed from other types with the `|` binary operator. The type
-currently held in the variant can be accessed with the `which` operator. However
-the type returned from `which` is not a compile-time constant and so it cannot
-be used as the type in a variable declaration.
+types are constructed from other types with the `|` binary operator. The type
+currently held in the variant is accessed with the `which` keyword.
+Note that the type returned from `which` is not a compile-time constant,
+so it cannot be used in a variable declaration.
 
 ```
 v: int64 | bool = 3
@@ -145,8 +146,8 @@ which v // Evaluates to bool.
 
 ## Enums and Flags
 
-An enum is type whose value can be listed as exactly one value in a set of
-alternatives. For instance, one might use an enum to represent the suit in a
+An enum is a type whose value can be listed as exactly one value from a set of
+alternatives. For instance, we might use an enum to represent the suit in a
 card game.
 
 ```
@@ -161,10 +162,10 @@ my_suit := Suit.Clubs
 ```
 
 Unlike C or C++, enum types must take on exactly one of the listed values. In
-those languages, it is common to use enums to hold a collection of flags any
-number of which might be set. For this use-case, Icarus has an entirely
-different construct. Icarus uses `flags` to indicate that the members are not
-mutually exclusive. You can use the binary `&` (and), `|` (or), or `^` (xor) to
+those languages, it is common to use enums to hold a collection of flags, any
+number of which might be set. For this use-case, Icarus has a separate
+construct called `flags`. This indicates that members are not mutually
+exclusive. You can use the binary `&` (and), `|` (or), or `^` (xor) to
 operate on flags.
 
 ```
@@ -188,17 +189,19 @@ Point ::= struct {
 }
 ```
 
-And instantiate them and access members as you might expect from other languages
-with similar constructs:
+Struct instantiation and member access uses syntax similar to many
+Algol-like programming languages.
 
 ```
+// Create a default-initialized Point named p.
 p: Point
+// Update the x member.
 p.x = 3.0
 ```
 
 # Modules
 
-Icarus uses the module as the unit of encapsulation. The importer of a module
+Icarus modules are the primary unit of encapsulation. The importer of a module
 gets to choose the name associated to that module.
 
 ```
@@ -206,8 +209,8 @@ math ::= import "examples/lib/math.ic"
 math.sqrt(9.0) // Evaluates to 3.0.
 ```
 
-Modules can also be assigned to `--` to indicate that their contents should be
-available directly without using the `math.` prefix.
+Modules can also be assigned to `--`, which makes their contents available
+directly without using module's name as a prefix.
 
 ```
 -- ::= import "examples/lib/math.ic"
@@ -215,10 +218,10 @@ sqrt(9.0) // Evaluates to 3.0.
 ```
 
 When defining your own module, declarations are not exposed publicly by default.
-To make a declaration visible, be sure to mark it as `#{export}`.
+To make a declaration visible, mark it with `#{export}` tag.
 
 ```
-// Possible implementation in math.ic
+// Possible implementation in math.ic.
 #{export}
 sqrt ::= (x: float64) => sqrt_impl(x)
 
@@ -228,9 +231,9 @@ sqrt_impl ::= (x: float64) -> float64 { ... }
 
 # Control Flow
 
-Perhaps the most distinguishing feature of Icarus is that the core languages has
-neither if-statements nor while loops. It turns out that both of these scopes
-(and more!) are definable in libraries.
+Perhaps the most distinguishing feature of Icarus is that the core language has
+neither `if` statements nor `while` loops. It turns out that both of these are
+definable in libraries via user-defined scopes.
 
 ```
 -- ::= import "examples/lib/core.ic"
@@ -250,13 +253,14 @@ while (i < 10) do {
 
 Defining your own scope requires a few pieces:
 1. What parameters are used to initialize your scope? (In a while-loop, this is
-   the boolean condition).
-2. What blocks can be jumped to. (In an if-statement, these are the "then" and
-   "else" blocks)
+   the boolean condition.)
+2. What blocks can be jumped to? (In an if-statement, these are the "then" and
+   "else" block.)
 3. How should the blocks be connected together? 
 4. What are the exit conditions?
 
-To define a scope that runs a "do" block forever, we would write
+To define a scope that runs a "do" block forever, we would write:
+
 ```
 forever ::= scope {
   init ::= jump() { goto do() }
@@ -270,6 +274,14 @@ forever ::= scope {
 
   // There's no need for an exit condition, because there's no way to
   // exit.
+}
+```
+
+Using this new scope is simple:
+
+```
+forever () do {
+  io.Print("yes\n")
 }
 ```
 
