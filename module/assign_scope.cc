@@ -112,39 +112,6 @@ void AssignScope::Visit(ast::FunctionLiteral *node, ast::Scope *scope) {
     for (auto *out : *outputs) { Visit(out, node->body_scope()); }
   }
   SetAllScopes(this, node->stmts(), node->body_scope());
-
-  DependentDecls dep_decls;
-  for (auto const &param : node->params()) {
-    dep_decls.decl_graph_.graph_.add_node(param.value.get());
-    if (param.value->type_expr()) {
-      dep_decls.Visit(param.value->type_expr(), param.value.get());
-    }
-    if (param.value->init_val()) {
-      dep_decls.Visit(param.value->init_val(), param.value.get());
-    }
-  }
-
-  absl::flat_hash_map<std::string_view, ast::Declaration *> decls_by_id;
-  for (auto const &param : node->params()) {
-    decls_by_id.emplace(param.value->id(), param.value.get());
-  }
-
-  node->param_dep_graph_ = std::move(dep_decls.decl_graph_.graph_);
-  for (auto &[id, decls] : dep_decls.decl_graph_.ids_) {
-    auto iter = decls_by_id.find(id);
-    if (iter == decls_by_id.end()) { continue; }
-    for (auto *d : decls) { node->param_dep_graph_.add_edge(d, iter->second); }
-  }
-
-  node->sorted_params_.reserve(node->param_dep_graph_.num_nodes());
-  node->param_dep_graph_.topologically([node](ast::Declaration const *decl) {
-    node->sorted_params_.push_back(decl);
-  });
-
-  size_t i = 0;
-  for (auto const &param : node->params()) {
-    node->decl_to_param_.emplace(param.value.get(), i++);
-  }
 }
 
 void AssignScope::Visit(ast::Identifier *node, ast::Scope *scope) {

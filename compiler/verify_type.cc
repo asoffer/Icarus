@@ -1642,8 +1642,8 @@ type::QualType Compiler::Visit(ast::EnumLiteral const *node, VerifyTypeTag) {
 type::QualType Compiler::Visit(ast::FunctionLiteral const *node,
                                VerifyTypeTag) {
   for (auto const &p : node->params()) {
-    if ((p.value->flags() & ast::Declaration::f_IsConst) or
-        not node->param_dep_graph_.at(p.value.get()).empty()) {
+    if (p.value->flags() & ast::Declaration::f_IsConst) {
+      DEBUG_LOG()(p.value->DebugString());
       NOT_YET();
       // return set_result(node, type::QualType::Constant(type::Generic));
     }

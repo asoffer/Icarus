@@ -702,11 +702,6 @@ struct FunctionLiteral : ScopeExpr<FnScope> {
   // function parameters such that earlier parameters never depend on later
   // ones. It's filled in assign_scope because that's when we have enough
   // information to do so and it guarantees it's only called once.
-  //
-  // TODO rename assign_scope.
-  std::vector<Declaration const *> sorted_params_;
-  absl::flat_hash_map<Declaration const *, size_t> decl_to_param_;
-  base::Graph<Declaration const *> param_dep_graph_;
 
  private:
   explicit FunctionLiteral(
