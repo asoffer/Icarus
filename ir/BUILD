@@ -17,7 +17,6 @@ cc_library(
 cc_library(
     name = "block_def",
     hdrs = ["block_def.h"],
-    srcs = ["block_def.cc"],
     deps = [
         ":overload_set",
         "//base:debug",

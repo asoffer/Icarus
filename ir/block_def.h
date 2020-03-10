@@ -14,9 +14,6 @@ namespace ir {
 struct Jump;
 
 struct BlockDef {
-  static BlockDef const *Start();
-  static BlockDef const *Exit();
-
   inline friend std::ostream &operator<<(std::ostream &os, BlockDef const &b) {
     return os << "blockdef";
   }
