@@ -23,9 +23,9 @@ cc_library(
     hdrs = ["module.h"],
     srcs = ["module.cc"],
     deps = [
-        ":assign_scope",
         "//ast:ast",
         "//ast:ast_fwd",
+        "//ast:initialize",
         "//ast/scope:module",
         "//base:cast",
         "//base:macros",
@@ -46,20 +46,5 @@ cc_library(
         "//ast:ast_fwd",
         "//ast:visitor",
         "//base:graph",
-    ],
-)
-
-cc_library(
-    name = "assign_scope",
-    hdrs = ["assign_scope.h"],
-    srcs = ["assign_scope.cc"],
-    deps = [
-        ":dependent_decls",
-        "//ast:ast",
-        "//ast:ast_fwd",
-        "//ast:visitor",
-        "//ast/scope:decl",
-        "//ast/scope:fn",
-        "//ast/scope:scope",
     ],
 )

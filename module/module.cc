@@ -2,8 +2,8 @@
 
 #include "absl/algorithm/container.h"
 #include "ast/ast.h"
+#include "ast/initialize.h"
 #include "frontend/parse.h"
-#include "module/assign_scope.h"
 
 namespace module {
 // Can't declare this in header because unique_ptr's destructor needs to know
@@ -12,7 +12,7 @@ BasicModule::BasicModule() : scope_(this) {}
 BasicModule::~BasicModule() = default;
 
 void BasicModule::InitializeNodes(base::PtrSpan<ast::Node> nodes) {
-  AssignScope::To(nodes, &scope_);
+  ast::InitializeNodes(nodes, &scope_);
   for (ast::Node const *node : nodes) {
     auto *decl = node->if_as<ast::Declaration>();
     if (not decl) { continue; }

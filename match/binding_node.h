@@ -6,8 +6,6 @@
 #include "absl/strings/str_cat.h"
 #include "ast/expression.h"
 #include "match/binding_id.h"
-#include "module/assign_scope.h"
-#include "module/dependent_decls.h"
 
 namespace match {
 inline constexpr std::string_view kMatchPrefix = "@%";

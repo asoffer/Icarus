@@ -98,3 +98,17 @@ cc_library(
         ":visitor_base",
     ],
 )
+
+cc_library(
+    name = "initialize",
+    hdrs = ["initialize.h"],
+    srcs = ["initialize.cc"],
+    deps = [
+        ":ast",
+        ":visitor",
+        "//ast/scope:decl",
+        "//ast/scope:fn",
+        "//ast/scope:scope",
+        # "//module:dependent_decls",
+    ],
+)

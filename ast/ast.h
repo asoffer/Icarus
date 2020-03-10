@@ -697,12 +697,6 @@ struct FunctionLiteral : ScopeExpr<FnScope> {
 
   ICARUS_AST_VIRTUAL_METHODS;
 
-  // Note this field is computed, but it is independent of any type or
-  // context-specific information. It holds a topologically sorted list of
-  // function parameters such that earlier parameters never depend on later
-  // ones. It's filled in assign_scope because that's when we have enough
-  // information to do so and it guarantees it's only called once.
-
  private:
   explicit FunctionLiteral(
       frontend::SourceRange span,
