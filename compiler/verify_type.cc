@@ -57,7 +57,7 @@ void AddAdl(ast::OverloadSet *overload_set, std::string_view id,
 type::QualType VerifyUnaryOverload(Compiler *c, char const *symbol,
                                    ast::Expression const *node,
                                    type::QualType operand_result) {
-  ast::OverloadSet os(node->scope_, symbol);
+  ast::OverloadSet os(node->scope(), symbol);
   AddAdl(&os, symbol, operand_result.type());
   ASSIGN_OR(
       return type::QualType::Error(), auto table,
@@ -71,7 +71,7 @@ type::QualType VerifyBinaryOverload(Compiler *c, char const *symbol,
                                     ast::Expression const *node,
                                     type::QualType lhs_result,
                                     type::QualType rhs_result) {
-  ast::OverloadSet os(node->scope_, symbol);
+  ast::OverloadSet os(node->scope(), symbol);
   AddAdl(&os, symbol, lhs_result.type());
   AddAdl(&os, symbol, rhs_result.type());
   ASSIGN_OR(
@@ -171,7 +171,7 @@ static type::QualType VerifySpecialFunctions(Compiler *visitor,
                             .value->as<type::Pointer>()
                             .pointee->as<type::Struct>();
 
-        if (decl->scope_ != s.scope_) {
+        if (decl->scope() != s.scope_) {
           error = true;
           NOT_YET(
               "(copy) must be defined in the same scope as the corresponding "
@@ -212,7 +212,7 @@ static type::QualType VerifySpecialFunctions(Compiler *visitor,
                             .value->as<type::Pointer>()
                             .pointee->as<type::Struct>();
 
-        if (decl->scope_ != s.scope_) {
+        if (decl->scope() != s.scope_) {
           error = true;
           NOT_YET(
               "(move) must be defined in the same scope as the corresponding "
@@ -937,7 +937,7 @@ std::optional<ast::OverloadSet> MakeOverloadSet(
     Compiler *c, ast::Expression const *expr,
     core::FnArgs<type::QualType, std::string_view> const &args) {
   if (auto *id = expr->if_as<ast::Identifier>()) {
-    return FindOverloads(expr->scope_, id->token(), args);
+    return FindOverloads(expr->scope(), id->token(), args);
   } else if (auto *acc = expr->if_as<ast::Access>()) {
     ASSIGN_OR(return std::nullopt,  //
                      auto result, c->Visit(acc->operand(), VerifyTypeTag{}));
@@ -1502,7 +1502,7 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
     if (node_qual_type.type() == type::Module) {
       // TODO check shadowing against other modules?
       // TODO what if no init val is provded? what if not constant?
-      node->scope_->embedded_modules_.insert(
+      node->scope()->embedded_modules_.insert(
           interpretter::EvaluateAs<module::BasicModule const *>(
               MakeThunk(node->init_val(), type::Module)));
       return set_result(node, type::QualType::Constant(type::Module));
@@ -1558,7 +1558,7 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
   type::Typed<ast::Declaration const *> typed_node_decl(node,
                                                         node_qual_type.type());
   for (auto const *decl :
-       module::AllAccessibleDecls(node->scope_, node->id())) {
+       module::AllAccessibleDecls(node->scope(), node->id())) {
     if (decl == node) { continue; }
     auto q = qual_type_of(decl);
     if (not q) { continue; }
@@ -1678,7 +1678,7 @@ type::QualType Compiler::Visit(ast::Identifier const *node, VerifyTypeTag) {
   // out for now so you'll have to undo that first.
   if (node->decl() == nullptr) {
     auto potential_decls =
-        module::AllDeclsTowardsRoot(node->scope_, node->token());
+        module::AllDeclsTowardsRoot(node->scope(), node->token());
     DEBUG_LOG("Identifier")(node->DebugString(), ": ", potential_decls);
     switch (potential_decls.size()) {
       case 1: {
@@ -2029,7 +2029,7 @@ type::QualType Compiler::Visit(ast::ParameterizedStructLiteral const *node,
   }
 
   return set_result(node, type::QualType::Constant(
-                              type::GenStruct(node->scope_, std::move(ts))));
+                              type::GenStruct(node->scope(), std::move(ts))));
 }
 
 type::QualType Compiler::Visit(ast::StructType const *node, VerifyTypeTag) {

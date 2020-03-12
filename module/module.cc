@@ -2,7 +2,6 @@
 
 #include "absl/algorithm/container.h"
 #include "ast/ast.h"
-#include "ast/initialize.h"
 #include "frontend/parse.h"
 
 namespace module {

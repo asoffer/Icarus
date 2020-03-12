@@ -25,7 +25,6 @@ cc_library(
     deps = [
         "//ast:ast",
         "//ast:ast_fwd",
-        "//ast:initialize",
         "//ast/scope:module",
         "//base:cast",
         "//base:macros",

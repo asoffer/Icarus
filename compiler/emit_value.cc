@@ -792,7 +792,7 @@ EmitValueWithExpand(Compiler *c, base::PtrSpan<ast::Expression const> exprs) {
 
 ir::Results Compiler::Visit(ast::ReturnStmt const *node, EmitValueTag) {
   auto arg_vals  = EmitValueWithExpand(this, node->exprs());
-  auto *fn_scope = ASSERT_NOT_NULL(node->scope_->Containing<ast::FnScope>());
+  auto *fn_scope = ASSERT_NOT_NULL(node->scope()->Containing<ast::FnScope>());
   auto *fn_lit   = ASSERT_NOT_NULL(fn_scope->fn_lit_);
 
   auto *fn_type = &ASSERT_NOT_NULL(type_of(fn_lit))->as<type::Function>();
@@ -813,7 +813,7 @@ ir::Results Compiler::Visit(ast::ReturnStmt const *node, EmitValueTag) {
 
   // Rather than doing this on each block it'd be better to have each
   // scope's destructors jump you to the correct next block for destruction.
-  auto *scope = node->scope_;
+  auto *scope = node->scope();
   while (auto *exec = scope->if_as<ast::ExecScope>()) {
     MakeAllDestructions(this, exec);
     if (not exec->parent) { break; }
@@ -827,7 +827,7 @@ ir::Results Compiler::Visit(ast::ReturnStmt const *node, EmitValueTag) {
 ir::Results Compiler::Visit(ast::YieldStmt const *node, EmitValueTag) {
   auto arg_vals = EmitValueWithExpand(this, node->exprs());
   // TODO store this as an exec_scope.
-  MakeAllDestructions(this, &node->scope_->as<ast::ExecScope>());
+  MakeAllDestructions(this, &node->scope()->as<ast::ExecScope>());
   // TODO pretty sure this is all wrong.
 
   // Can't return these because we need to pass them up at least through the
@@ -908,7 +908,7 @@ ir::Results Compiler::Visit(ast::StructLiteral const *node, EmitValueTag) {
         Visit(field.type_expr(), EmitValueTag{}).get<type::Type const *>(0));
   }
 
-  return ir::Results{builder().Struct(node->scope_, fields)};
+  return ir::Results{builder().Struct(node->scope(), fields)};
 }
 
 ir::Results Compiler::Visit(ast::ParameterizedStructLiteral const *node,

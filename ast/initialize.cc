@@ -1,5 +1,3 @@
-#include "ast/initialize.h"
-
 #include "ast/ast.h"
 #include "ast/scope/decl.h"
 // #include "module/dependent_decls.h"
@@ -7,198 +5,191 @@
 namespace ast {
 
 template <typename T>
-static void SetAllScopes(Initialize *a, base::PtrSpan<T> span, Scope *scope) {
-  for (auto *n : span) { a->Visit(n, scope); }
+static void SetAllScopes(std::vector<std::unique_ptr<T>> *nodes, Scope *scope) {
+  for (auto &n : *nodes) { n->Initialize(scope); }
 }
 
 void InitializeNodes(base::PtrSpan<Node> nodes, Scope *scope) {
-  Initialize i;
-  SetAllScopes(&i, nodes, scope);
+  for (auto *n : nodes) { n->Initialize(scope); }
 }
 
-void Initialize::Visit(ast::Access *node, ast::Scope *scope) {
-  node->scope_ = scope;
-  Visit(node->operand(), scope);
+void Access::Initialize(Scope *scope) {
+  scope_ = scope;
+  operand_->Initialize(scope);
 }
 
-void Initialize::Visit(ArrayLiteral *node, Scope *scope) {
-  node->scope_ = scope;
-  for (auto *expr : node->elems()) { Visit(expr, scope); }
+void ArrayLiteral::Initialize(Scope *scope) {
+  scope_ = scope;
+  for (auto &expr : elems_) { expr->Initialize(scope); }
 }
 
-void Initialize::Visit(ArrayType *node, Scope *scope) {
-  node->scope_ = scope;
-  for (auto const &len : node->lengths()) { Visit(len, scope); }
-  Visit(node->data_type(), scope);
+void ArrayType::Initialize(Scope *scope) {
+  scope_ = scope;
+  for (auto const &len : lengths_) { len->Initialize(scope); }
+  data_type_->Initialize(scope);
 }
 
-void Initialize::Visit(Binop *node, Scope *scope) {
-  node->scope_ = scope;
-  Visit(node->lhs(), scope);
-  Visit(node->rhs(), scope);
+void Binop::Initialize(Scope *scope) {
+  scope_ = scope;
+  lhs_->Initialize(scope);
+  rhs_->Initialize(scope);
 }
 
-void Initialize::Visit(BlockLiteral *node, Scope *scope) {
-  node->scope_ = scope;
-  node->set_body_with_parent(scope);
-  SetAllScopes(this, node->before(), node->body_scope());
-  SetAllScopes(this, node->after(), node->body_scope());
+void BlockLiteral::Initialize(Scope *scope) {
+  scope_ = scope;
+  set_body_with_parent(scope);
+  SetAllScopes(&before_, body_scope());
+  SetAllScopes(&after_, body_scope());
 }
 
-void Initialize::Visit(BlockNode *node, Scope *scope) {
-  node->scope_ = scope;
-  node->set_body_with_parent(scope);
-  for (auto &param : node->params()) {
-    Visit(param.value.get(), node->body_scope());
-  }
-  SetAllScopes(this, node->stmts(), node->body_scope());
+void BlockNode::Initialize(Scope *scope) {
+  scope_ = scope;
+  set_body_with_parent(scope);
+  for (auto &param : params_) { param.value->Initialize(body_scope()); }
+  SetAllScopes(&stmts_, body_scope());
 }
 
-void Initialize::Visit(BuiltinFn *node, Scope *scope) { node->scope_ = scope; }
+void BuiltinFn::Initialize(Scope *scope) { scope_ = scope; }
 
-void Initialize::Visit(Call *node, Scope *scope) {
-  node->scope_ = scope;
-  Visit(node->callee(), scope);
-  node->Apply([this, scope](Expression *expr) { Visit(expr, scope); });
+void Call::Initialize(Scope *scope) {
+  scope_ = scope;
+  callee_->Initialize(scope);
+  args_.Apply([scope](Expression *expr) { expr->Initialize(scope); });
 }
 
-void Initialize::Visit(Cast *node, Scope *scope) {
-  node->scope_ = scope;
-  Visit(node->expr(), scope);
-  Visit(node->type(), scope);
+void Cast::Initialize(Scope *scope) {
+  scope_ = scope;
+  expr_->Initialize(scope);
+  type_->Initialize(scope);
 }
 
-void Initialize::Visit(ChainOp *node, Scope *scope) {
-  node->scope_ = scope;
-  for (auto *expr : node->exprs()) { Visit(expr, scope); }
+void ChainOp::Initialize(Scope *scope) {
+  scope_ = scope;
+  for (auto &expr : exprs_) { expr->Initialize(scope); }
 }
 
-void Initialize::Visit(CommaList *node, Scope *scope) {
-  node->scope_ = scope;
-  for (auto &expr : node->exprs_) { Visit(expr.get(), scope); }
+void CommaList::Initialize(Scope *scope) {
+  scope_ = scope;
+  for (auto &expr : exprs_) { expr->Initialize(scope); }
 }
 
-void Initialize::Visit(Declaration *node, Scope *scope) {
+void Declaration::Initialize(Scope *scope) {
   ASSERT(scope != nullptr);
-  node->scope_ = scope;
-  node->scope_->InsertDecl(node->id(), node);
-  if (node->type_expr()) { Visit(node->type_expr(), scope); }
-  if (node->init_val()) { Visit(node->init_val(), scope); }
+  scope_ = scope;
+  scope_->InsertDecl(id(), this);
+  if (type_expr_.get()) { type_expr_->Initialize(scope); }
+  if (init_val_.get()) { init_val_->Initialize(scope); }
 }
 
-void Initialize::Visit(DesignatedInitializer *node, Scope *scope) {
-  node->scope_ = scope;
-  Visit(node->type(), scope);
-  for (auto &[field, expr] : node->assignments()) { Visit(expr.get(), scope); }
+void DesignatedInitializer::Initialize(Scope *scope) {
+  scope_ = scope;
+  type_->Initialize(scope);
+  for (auto &[field, expr] : assignments_) { expr->Initialize(scope); }
 }
 
-void Initialize::Visit(EnumLiteral *node, Scope *scope) {
-  node->scope_ = scope;
-  node->set_body_with_parent(scope);
-  SetAllScopes(this, node->elems(), node->body_scope());
+void EnumLiteral::Initialize(Scope *scope) {
+  scope_ = scope;
+  set_body_with_parent(scope);
+  SetAllScopes(&elems_, body_scope());
 }
 
-void Initialize::Visit(FunctionLiteral *node, Scope *scope) {
-  node->scope_ = scope;
-  node->set_body_with_parent(scope, node);
+void FunctionLiteral::Initialize(Scope *scope) {
+  scope_ = scope;
+  set_body_with_parent(scope, this);
 
-  for (auto &param : node->params()) {
-    Visit(param.value.get(), node->body_scope());
+  for (auto &param : params_) { param.value->Initialize(body_scope()); }
+  if (outputs_) {
+    for (auto &out : *outputs_) { out->Initialize(body_scope()); }
   }
-  if (auto outputs = node->outputs()) {
-    for (auto *out : *outputs) { Visit(out, node->body_scope()); }
-  }
-  SetAllScopes(this, node->stmts(), node->body_scope());
+  SetAllScopes(&stmts_, body_scope());
 }
 
-void Initialize::Visit(Identifier *node, Scope *scope) { node->scope_ = scope; }
+void Identifier::Initialize(Scope *scope) { scope_ = scope; }
 
-void Initialize::Visit(Import *node, Scope *scope) {
-  node->scope_ = scope;
-  Visit(node->operand(), scope);
+void Import::Initialize(Scope *scope) {
+  scope_ = scope;
+  operand_->Initialize(scope);
 }
 
-void Initialize::Visit(Index *node, Scope *scope) {
-  node->scope_ = scope;
-  Visit(node->lhs(), scope);
-  Visit(node->rhs(), scope);
+void Index::Initialize(Scope *scope) {
+  scope_ = scope;
+  lhs_->Initialize(scope);
+  rhs_->Initialize(scope);
 }
 
-void Initialize::Visit(Goto *node, Scope *scope) {
-  node->scope_ = scope;
-  for (auto &opt : node->options()) {
-    opt.args().Apply([this, scope](auto &expr) { Visit(expr.get(), scope); });
+void Goto::Initialize(Scope *scope) {
+  scope_ = scope;
+  for (auto &opt : options_) {
+    opt.args_.Apply([scope](auto &expr) { expr->Initialize(scope); });
   }
 }
 
-void Initialize::Visit(Jump *node, Scope *scope) {
-  node->scope_ = scope;
-  node->set_body_with_parent(scope);
-  if (node->state()) { Visit(node->state(), node->body_scope()); }
-  for (auto &param : node->params()) {
-    Visit(param.value.get(), node->body_scope());
-  }
-  SetAllScopes(this, node->stmts(), node->body_scope());
+void Jump::Initialize(Scope *scope) {
+  scope_ = scope;
+  set_body_with_parent(scope);
+  if (state_.get()) { state_->Initialize(body_scope()); }
+  for (auto &param : params_) { param.value->Initialize(body_scope()); }
+  SetAllScopes(&stmts_, body_scope());
 }
 
-void Initialize::Visit(Label *node, Scope *scope) { node->scope_ = scope; }
+void Label::Initialize(Scope *scope) { scope_ = scope; }
 
-void Initialize::Visit(ReturnStmt *node, Scope *scope) {
-  node->scope_ = scope;
-  SetAllScopes(this, node->exprs(), scope);
+void ReturnStmt::Initialize(Scope *scope) {
+  scope_ = scope;
+  SetAllScopes(&exprs_, scope);
 }
 
-void Initialize::Visit(YieldStmt *node, Scope *scope) {
-  node->scope_ = scope;
-  SetAllScopes(this, node->exprs(), scope);
+void YieldStmt::Initialize(Scope *scope) {
+  scope_ = scope;
+  SetAllScopes(&exprs_, scope);
 }
 
-void Initialize::Visit(ScopeLiteral *node, Scope *scope) {
-  node->scope_ = scope;
-  node->set_body_with_parent(scope, node);
-  if (node->state_type()) { Visit(node->state_type(), scope); }
-  for (auto *decl : node->decls()) { Visit(decl, node->body_scope()); }
+void ScopeLiteral::Initialize(Scope *scope) {
+  scope_ = scope;
+  set_body_with_parent(scope, this);
+  if (state_type_) { state_type_->Initialize(scope); }
+  for (auto &decl : decls_) { decl->Initialize(body_scope()); }
 }
 
-void Initialize::Visit(ScopeNode *node, Scope *scope) {
-  node->scope_ = scope;
-  Visit(node->name(), scope);
-  node->Apply([this, scope](Expression *expr) { Visit(expr, scope); });
+void ScopeNode::Initialize(Scope *scope) {
+  scope_ = scope;
+  name_->Initialize(scope);
+  args_.Apply([scope](Expression *expr) { expr->Initialize(scope); });
 
-  for (auto &block : node->blocks()) { Visit(&block, scope); }
+  for (auto &block : blocks_) { block.Initialize(scope); }
 }
 
-void Initialize::Visit(StructLiteral *node, Scope *scope) {
-  node->scope_ = scope;
-  node->set_body_with_parent(scope);
-  for (auto &field : node->fields()) { Visit(&field, node->body_scope()); }
+void StructLiteral::Initialize(Scope *scope) {
+  scope_ = scope;
+  set_body_with_parent(scope);
+  for (auto &field : fields_) { field.Initialize(body_scope()); }
 }
 
-void Initialize::Visit(ParameterizedStructLiteral *node, Scope *scope) {
-  node->scope_ = scope;
-  node->set_body_with_parent(scope);
-  for (auto &param : node->params()) { Visit(&param, node->body_scope()); }
-  for (auto &field : node->fields()) { Visit(&field, node->body_scope()); }
+void ParameterizedStructLiteral::Initialize(Scope *scope) {
+  scope_ = scope;
+  set_body_with_parent(scope);
+  for (auto &param : params_) { param.Initialize(body_scope()); }
+  for (auto &field : fields_) { field.Initialize(body_scope()); }
 }
 
-void Initialize::Visit(StructType *node, Scope *scope) {
-  for (auto &arg : node->args_) { Visit(arg.get(), scope); }
+void StructType::Initialize(Scope *scope) {
+  for (auto &arg : args_) { arg->Initialize(scope); }
 }
 
-void Initialize::Visit(Switch *node, Scope *scope) {
-  node->scope_ = scope;
-  if (node->expr_) { Visit(node->expr_.get(), scope); }
-  for (auto &[body, cond] : node->cases_) {
-    Visit(body.get(), scope);
-    Visit(cond.get(), scope);
+void Switch::Initialize(Scope *scope) {
+  scope_ = scope;
+  if (expr_) { expr_->Initialize(scope); }
+  for (auto &[body, cond] : cases_) {
+    body->Initialize(scope);
+    cond->Initialize(scope);
   }
 }
 
-void Initialize::Visit(Terminal *node, Scope *scope) { node->scope_ = scope; }
+void Terminal::Initialize(Scope *scope) { scope_ = scope; }
 
-void Initialize::Visit(Unop *node, Scope *scope) {
-  node->scope_ = scope;
-  Visit(node->operand(), scope);
+void Unop::Initialize(Scope *scope) {
+  scope_ = scope;
+  operand_->Initialize(scope);
 }
 
 }  // namespace ast
