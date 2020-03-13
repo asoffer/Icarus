@@ -1642,14 +1642,47 @@ type::QualType Compiler::Visit(ast::EnumLiteral const *node, VerifyTypeTag) {
 type::QualType Compiler::Visit(ast::FunctionLiteral const *node,
                                VerifyTypeTag) {
   for (auto const &p : node->params()) {
+    if (p.value->flags() & ast::Declaration::f_IsConst) { goto generic; }
+
+    // TODO There are other ways this could be generic. For example
+    // (x: $x) -> () { .. }
+  }
+  return VerifyConcreteFnLit(node);
+
+generic:
+  absl::flat_hash_set<ast::DependencyNode> deps;
+  for (auto const &p : node->params()) {
+    deps.insert(ast::DependencyNode::MakeType(p.value.get()));
     if (p.value->flags() & ast::Declaration::f_IsConst) {
-      DEBUG_LOG()(p.value->DebugString());
-      NOT_YET();
-      // return set_result(node, type::QualType::Constant(type::Generic));
+      deps.insert(ast::DependencyNode::MakeValue(p.value.get()));
     }
   }
 
-  return VerifyConcreteFnLit(node);
+  std::vector<ast::DependencyNode> ordered_nodes;
+  node->parameter_dependency_graph().topologically([&](auto dep_node) {
+    if (not deps.contains(dep_node)) { return; }
+    ordered_nodes.push_back(dep_node);
+  });
+
+  auto gen = [ordered_nodes(std::move(ordered_nodes))]() {
+    for (auto dep_node : ordered_nodes) {
+      switch (dep_node.kind()) {
+        case ast::DependencyNode::Kind::ArgValue: NOT_YET();
+        case ast::DependencyNode::Kind::ArgType: NOT_YET();
+        case ast::DependencyNode::Kind::ParamType:
+          DEBUG_LOG()(dep_node.decl());
+          // interpretter::Evaluate(
+          // MakeThunk(dep_node.decl().type_expr(), type::Type_));
+          break;
+        case ast::DependencyNode::Kind::ParamValue:
+          DEBUG_LOG()(dep_node.decl());
+          NOT_YET();
+      }
+    }
+  };
+
+  return set_result(node, type::QualType::Constant(
+                              new type::GenericFunction(std::move(gen))));
 }
 
 type::QualType Compiler::Visit(ast::Identifier const *node, VerifyTypeTag) {

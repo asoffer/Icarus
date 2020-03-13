@@ -1,6 +1,6 @@
 #include "ast/ast.h"
+#include "ast/build_param_dependency_graph.h"
 #include "ast/scope/decl.h"
-// #include "module/dependent_decls.h"
 
 namespace ast {
 
@@ -102,6 +102,8 @@ void FunctionLiteral::Initialize(Scope *scope) {
     for (auto &out : *outputs_) { out->Initialize(body_scope()); }
   }
   SetAllScopes(&stmts_, body_scope());
+
+  dep_graph_ = BuildParamDependencyGraph(params_);
 }
 
 void Identifier::Initialize(Scope *scope) { scope_ = scope; }

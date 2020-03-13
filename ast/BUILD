@@ -10,14 +10,20 @@ cc_library(
 
 cc_library(
     name = "ast",
-    hdrs = ["ast.h"],
+    hdrs = [
+        "ast.h",
+        "visitor.h"
+    ],
     srcs = [
+        "build_param_dependency_graph.h",
+        "build_param_dependency_graph.cc",
         "debug_string.cc",
         "initialize.cc",
     ],
     deps = [
         ":expression",
         ":node",
+        ":visitor_base",
         "//ast/scope:decl",
         "//ast/scope:exec",
         "//ast/scope:fn",
@@ -95,7 +101,7 @@ cc_library(
 
 cc_library(
     name = "visitor",
-    hdrs = ["visitor.h"],
+    hdrs = [],
     deps = [
         ":ast",
         ":visitor_base",

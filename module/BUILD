@@ -35,15 +35,3 @@ cc_library(
         "@com_google_absl//absl/algorithm:container",
     ],
 )
-
-cc_library(
-    name = "dependent_decls",
-    hdrs = ["dependent_decls.h"],
-    srcs = ["dependent_decls.cc"],
-    deps = [
-        "//ast:ast",
-        "//ast:ast_fwd",
-        "//ast:visitor",
-        "//base:graph",
-    ],
-)

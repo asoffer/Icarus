@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "absl/types/span.h"
+#include "ast/build_param_dependency_graph.h"
 #include "ast/expression.h"
 #include "ast/hashtag.h"
 #include "ast/node.h"
@@ -656,6 +657,10 @@ struct FunctionLiteral : ScopeExpr<FnScope> {
     return *outputs_;
   }
 
+  base::Graph<DependencyNode> const &parameter_dependency_graph() const {
+    return dep_graph_;
+  }
+
   bool is_short() const { return is_short_; }
 
   ICARUS_AST_VIRTUAL_METHODS;
@@ -697,6 +702,7 @@ struct FunctionLiteral : ScopeExpr<FnScope> {
   std::optional<std::vector<std::unique_ptr<Expression>>> outputs_;
   std::vector<std::unique_ptr<Node>> stmts_;
   bool is_short_;
+  base::Graph<DependencyNode> dep_graph_;
 };
 
 // Identifier:

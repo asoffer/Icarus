@@ -4,13 +4,12 @@
 #include <string>
 
 #include "core/arch.h"
-#include "ir/value/native_fn.h"
 #include "type/type.h"
 
 namespace type {
 
 struct GenericFunction : public Type {
-  explicit GenericFunction(ir::NativeFn fn) : gen_fn_(fn) {}
+  explicit GenericFunction(std::function<void()> fn) : gen_fn_(std::move(fn)) {}
   ~GenericFunction() override {}
   void WriteTo(std::string *result) const override {
     result->append("generic");
@@ -24,7 +23,8 @@ struct GenericFunction : public Type {
   core::Alignment alignment(core::Arch const &arch) const override;
 
  private:
-  [[maybe_unused]] ir::NativeFn gen_fn_;
+  // TODO Eventually we will want a serializable version of this.
+  std::function<void()> gen_fn_;
 };
 
 }  // namespace type
