@@ -1130,14 +1130,35 @@ struct StructType : Expression {
   std::vector<std::unique_ptr<Expression>> args_;
 };
 
-// TODO comment
-// TODO consider separating this into two classes given that we know when we
-// parse if it has parens or not.
+// Switch:
+//
+// Represents a `switch` expression, of which there are two forms:
+// If there is no parenthesized expression following the `switch` keyword, then
+// the body consists of a collection of pairs of the form `<value> when
+// <condition>`. The semantics are that exactly one condition must be met and
+// the expression evaluates to the first `<value>` for which the corresponding
+// `<condition>` is true. If there is a parenthesized expression, the the body
+// is a collection of pairs of the form `<value> when <test-value>` and
+// evaluates to the first `<value>` for which `<test-value>` compares equal to
+// the parenthesized expression.
 struct Switch : Expression {
+  explicit Switch(
+      frontend::SourceRange range, std::unique_ptr<Expression> expr,
+      std::vector<std::pair<std::unique_ptr<Node>, std::unique_ptr<Expression>>>
+          cases)
+      : Expression(range), expr_(std::move(expr)), cases_(std::move(cases)) {}
   ~Switch() override {}
 
   ICARUS_AST_VIRTUAL_METHODS;
 
+  Expression const *expr() const { return expr_.get(); }
+  absl::Span<
+      std::pair<std::unique_ptr<Node>, std::unique_ptr<Expression>> const>
+  cases() const {
+    return cases_;
+  }
+
+ private:
   std::unique_ptr<Expression> expr_;
   std::vector<std::pair<std::unique_ptr<Node>, std::unique_ptr<Expression>>>
       cases_;

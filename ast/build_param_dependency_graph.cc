@@ -170,8 +170,8 @@ struct ParamDependencyGraphBuilder : Visitor<void(DependencyNode)> {
   }
 
   void Visit(Switch const *node, DependencyNode d) {
-    if (node->expr_) { Visit(node->expr_.get(), d); }
-    for (auto &[body, cond] : node->cases_) {
+    if (node->expr()) { Visit(node->expr(), d); }
+    for (auto &[body, cond] : node->cases()) {
       Visit(body.get(), d);
       Visit(cond.get(), d);
     }

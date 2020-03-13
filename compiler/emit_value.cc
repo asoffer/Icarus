@@ -963,19 +963,19 @@ ir::Results Compiler::Visit(ast::Switch const *node, EmitValueTag) {
   // TODO handle switching on tuples/multiple values?
   ir::Results expr_results;
   type::Type const *expr_type = nullptr;
-  if (node->expr_) {
-    expr_results = Visit(node->expr_.get(), EmitValueTag{});
-    expr_type    = type_of(node->expr_.get());
+  if (node->expr()) {
+    expr_results = Visit(node->expr(), EmitValueTag{});
+    expr_type    = type_of(node->expr());
   }
 
   absl::flat_hash_map<ir::BasicBlock *, ir::Results> phi_args;
-  for (size_t i = 0; i + 1 < node->cases_.size(); ++i) {
-    auto &[body, match_cond] = node->cases_[i];
+  for (size_t i = 0; i + 1 < node->cases().size(); ++i) {
+    auto &[body, match_cond] = node->cases()[i];
     auto *expr_block         = builder().AddBlock();
     auto *match_cond_ptr     = match_cond.get();
     ir::Results match_val = Visit(match_cond_ptr, EmitValueTag{});
     ir::RegOr<bool> cond  = [&] {
-      if (node->expr_) {
+      if (node->expr()) {
         ASSERT(expr_type == type_of(match_cond_ptr));
         return builder().Eq(expr_type, match_val, expr_results);
       } else {
@@ -1003,13 +1003,13 @@ ir::Results Compiler::Visit(ast::Switch const *node, EmitValueTag) {
     builder().CurrentBlock() = next_block;
   }
 
-  if (node->cases_.back().first->is<ast::Expression>()) {
+  if (node->cases().back().first->is<ast::Expression>()) {
     phi_args.emplace(builder().CurrentBlock(),
-                     Visit(node->cases_.back().first.get(), EmitValueTag{}));
+                     Visit(node->cases().back().first.get(), EmitValueTag{}));
     builder().UncondJump(land_block);
   } else {
     // It must be a jump/yield/return, which we've verified in VerifyType.
-    Visit(node->cases_.back().first.get(), EmitValueTag{});
+    Visit(node->cases().back().first.get(), EmitValueTag{});
     if (not all_paths_jump) {
       builder().block_termination_state() =
           ir::Builder::BlockTerminationState::kMoreStatements;

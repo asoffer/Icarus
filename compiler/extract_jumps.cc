@@ -186,8 +186,8 @@ struct Extractor : ast::Visitor<void()> {
   }
 
   void Visit(ast::Switch const *node) final {
-    if (node->expr_) { Visit(node->expr_.get()); }
-    for (auto &[body, cond] : node->cases_) {
+    if (node->expr()) { Visit(node->expr()); }
+    for (auto &[body, cond] : node->cases()) {
       Visit(body.get());
       Visit(cond.get());
     }

@@ -2074,15 +2074,15 @@ type::QualType Compiler::Visit(ast::Switch const *node, VerifyTypeTag) {
   // Don't allow switch to return references.
   type::Quals quals           = type::Quals::Const();
   type::Type const *expr_type = nullptr;
-  if (node->expr_) {
-    ASSIGN_OR(return _, auto result, Visit(node->expr_.get(), VerifyTypeTag{}));
+  if (node->expr()) {
+    ASSIGN_OR(return _, auto result, Visit(node->expr(), VerifyTypeTag{}));
     quals &= result.quals();
     expr_type = result.type();
   }
 
   absl::flat_hash_set<type::Type const *> types;
   bool err = false;
-  for (auto &[body, cond] : node->cases_) {
+  for (auto &[body, cond] : node->cases()) {
     auto cond_result = Visit(cond.get(), VerifyTypeTag{});
     auto body_result = Visit(body.get(), VerifyTypeTag{});
     err |= not cond_result or not body_result;
@@ -2092,7 +2092,7 @@ type::QualType Compiler::Visit(ast::Switch const *node, VerifyTypeTag) {
     }
 
     quals &= cond_result.quals() & body_result.quals();
-    if (node->expr_) {
+    if (node->expr()) {
       static_cast<void>(expr_type);
       // TODO dispatch table
     } else {
