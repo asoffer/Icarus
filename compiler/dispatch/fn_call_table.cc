@@ -90,26 +90,28 @@ ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
   return std::move(out_results);
 }
 
-}  // namespace
 
+// // TODO move this somewhere where it's reusable/testable once you figure out what it is.
+// base::expected<core::Params<type::Type const *>, FailedMatch> MatchArgsToParams(
+//     Compiler *compiler, core::Params<ast::Declaration const *> const &params,
+//     core::FnArgs<type::Typed<ir::Results>> const &args) {
+// }
+
+
+}  // namespace
 
 base::expected<FnCallDispatchTable> FnCallDispatchTable::Verify(
     Compiler *compiler, ast::OverloadSet const &os,
     core::FnArgs<type::Typed<ir::Results>> const &args) {
-  return Verify(compiler, os, args.Transform([](auto const &t) {
-    return type::QualType::NonConstant(t.type());
-  }));
-}
-
-base::expected<FnCallDispatchTable> FnCallDispatchTable::Verify(
-    Compiler *compiler, ast::OverloadSet const &os,
-    core::FnArgs<type::QualType> const &args) {
   DEBUG_LOG("dispatch-verify")
   ("Verifying overload set with ", os.members().size(), " members.");
 
   // Keep a collection of failed matches around so we can give better
   // diagnostics.
   absl::flat_hash_map<ast::Expression const *, FailedMatch> failures;
+
+  auto args_qt = args.Transform(
+      [](auto const &t) { return type::QualType::NonConstant(t.type()); });
 
   FnCallDispatchTable table;
   for (ast::Expression const *overload : os.members()) {
@@ -119,21 +121,22 @@ base::expected<FnCallDispatchTable> FnCallDispatchTable::Verify(
     ("Verifying ", overload, ": ", overload->DebugString());
     if (auto *gen =
             compiler->type_of(overload)->if_as<type::GenericFunction>()) {
-      NOT_YET();
+      DEBUG_LOG()(gen->concrete(args)->to_string());
     }
-    auto result = MatchArgsToParams(ExtractParams(compiler, overload), args);
-    if (not result) {
-      DEBUG_LOG("dispatch-verify")(result.error());
-      failures.emplace(overload, result.error());
-    } else {
-      // TODO you also call compiler->type_of inside ExtractParams, so it's
+
+    if (auto result =
+            MatchArgsToParams(ExtractParamTypes(compiler, overload), args_qt)) {
+      // TODO you also call compiler->type_of inside ExtractParamTypess, so it's
       // probably worth reducing the number of lookups.
       table.table_.emplace(
           overload, internal::ExprData{compiler->type_of(overload), *result});
+    } else {
+      DEBUG_LOG("dispatch-verify")(result.error());
+      failures.emplace(overload, result.error());
     }
   }
 
-  if (not ParamsCoverArgs(args, table.table_,
+  if (not ParamsCoverArgs(args_qt, table.table_,
                           [](auto const &, internal::ExprData const &data) {
                             return data.params();
                           })) {

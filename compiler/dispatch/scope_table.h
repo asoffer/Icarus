@@ -53,11 +53,6 @@ struct ScopeDispatchTable {
       core::FnArgs<type::Typed<ir::Results>> const &args) const;
 
  private:
-  static base::expected<ScopeDispatchTable> Verify(
-      Compiler *compiler, ast::ScopeNode const *node,
-      absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> inits,
-      core::FnArgs<type::QualType> const &args);
-
   // Given a value of type `A | B` passed into the scope, there may be no
   // specific scope in the scope overload set which accepts an initial value of
   // this type, but there could be scopes separately that accept values of type

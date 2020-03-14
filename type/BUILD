@@ -19,7 +19,6 @@ cc_library(
         "//base:guarded",
         "//base:lazy",
         "//base:tuple",
-        "//core:params",
         "//core:arch",
         "//ir/value:native_fn",
         "//module:module",
@@ -110,9 +109,12 @@ cc_library(
     hdrs = ["generic_function.h"],
     srcs = ["generic_function.cc"],
     deps = [
+        ":function",
         ":type",
+        ":typed_value",
         "//core:arch",
-        "//ir/value:native_fn",
+        "//core:fn_args",
+        "//ir:results",
     ],
 )
 

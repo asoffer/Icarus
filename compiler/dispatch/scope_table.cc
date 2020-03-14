@@ -183,15 +183,9 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
     Compiler *compiler, ast::ScopeNode const *node,
     absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> inits,
     core::FnArgs<type::Typed<ir::Results>> const &args) {
-  return Verify(compiler, node, inits, args.Transform([](auto const &t) {
-    return type::QualType::NonConstant(t.type());
-  }));
-}
+  auto args_qt = args.Transform(
+      [](auto const &t) { return type::QualType::NonConstant(t.type()); });
 
-base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
-    Compiler *compiler, ast::ScopeNode const *node,
-    absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> inits,
-    core::FnArgs<type::QualType> const &args) {
   absl::flat_hash_map<ir::ScopeDef const *,
                       absl::flat_hash_map<ir::Jump *, FailedMatch>>
       failures;
@@ -201,9 +195,10 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
   for (auto [jump, scope] : table.init_map_) {
     if (auto result =
             MatchArgsToParams(jump->params().Transform([](auto const &p) {
+              // TODO This should be constant sometimes.
               return type::QualType::NonConstant(p.type());
             }),
-                              args)) {
+                              args_qt)) {
       auto &one_table = table.tables_[scope];
       one_table.inits.emplace(jump, *result);
       one_table.scope_def_ = scope;
@@ -212,13 +207,13 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
     }
   }
 
-  if (not ParamsCoverArgs(args, table.init_map_,
+  if (not ParamsCoverArgs(args_qt, table.init_map_,
                           [](ir::Jump *jump, auto const &) {
                             return jump->params().Transform(
                                 [](auto const &p) { return p.type(); });
                           })) {
     compiler->diag().Consume(diagnostic::ParametersDoNotCoverArguments{
-        .args = args,
+        .args = args_qt,
     });
   }
 

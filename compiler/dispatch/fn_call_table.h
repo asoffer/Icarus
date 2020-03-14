@@ -25,10 +25,6 @@ struct FnCallDispatchTable {
       Compiler *compiler, ast::OverloadSet const &os,
       core::FnArgs<type::Typed<ir::Results>> const &args);
 
-  static base::expected<FnCallDispatchTable> Verify(
-      Compiler *compiler, ast::OverloadSet const &os,
-      core::FnArgs<type::QualType> const &args);
-
   type::QualType result_qual_type() const { return result_type_; }
 
   ir::Results EmitCall(

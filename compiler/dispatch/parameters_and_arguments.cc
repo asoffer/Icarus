@@ -8,8 +8,8 @@
 
 namespace compiler {
 namespace {
-core::Params<type::QualType> ExtractParams(Compiler *compiler,
-                                           ast::Declaration const *decl) {
+core::Params<type::QualType> ExtractParamTypes(Compiler *compiler,
+                                               ast::Declaration const *decl) {
   auto *decl_type = ASSERT_NOT_NULL(compiler->type_of(decl));
   if (decl->flags() & ast::Declaration::f_IsConst) {
     if (auto const *fn_type = decl_type->if_as<type::Function>()) {
@@ -57,8 +57,8 @@ core::Params<type::QualType> ExtractParams(Compiler *compiler,
   }
 }
 
-core::Params<type::QualType> ExtractParams(Compiler *compiler,
-                                           ast::FunctionLiteral const *fn_lit) {
+core::Params<type::QualType> ExtractParamTypes(
+    Compiler *compiler, ast::FunctionLiteral const *fn_lit) {
   return fn_lit->params().Transform([compiler](auto const &expr) {
     auto qt = compiler->qual_type_of(expr.get());
     ASSERT(qt.has_value() == true);
@@ -141,12 +141,12 @@ std::vector<core::FnArgs<type::Type const *>> ExpandedFnArgs(
   return all_expanded_options;
 }
 
-core::Params<type::QualType> ExtractParams(Compiler *compiler,
-                                           ast::Expression const *expr) {
+core::Params<type::QualType> ExtractParamTypes(Compiler *compiler,
+                                               ast::Expression const *expr) {
   if (auto const *decl = expr->if_as<ast::Declaration>()) {
-    return ExtractParams(compiler, decl);
+    return ExtractParamTypes(compiler, decl);
   } else if (auto const *fn_lit = expr->if_as<ast::FunctionLiteral>()) {
-    return ExtractParams(compiler, fn_lit);
+    return ExtractParamTypes(compiler, fn_lit);
   } else {
     NOT_YET();
   }

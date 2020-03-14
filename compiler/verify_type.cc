@@ -56,32 +56,40 @@ void AddAdl(ast::OverloadSet *overload_set, std::string_view id,
 
 type::QualType VerifyUnaryOverload(Compiler *c, char const *symbol,
                                    ast::Expression const *node,
-                                   type::QualType operand_result) {
+                                   type::Typed<ir::Results> operand) {
   ast::OverloadSet os(node->scope(), symbol);
-  AddAdl(&os, symbol, operand_result.type());
+  AddAdl(&os, symbol, operand.type());
+  std::vector<type::Typed<ir::Results>> pos_args;
+  pos_args.push_back(std::move(operand));
   ASSIGN_OR(
       return type::QualType::Error(), auto table,
-             FnCallDispatchTable::Verify(
-                 c, os, core::FnArgs<type::QualType>({operand_result}, {})));
+             FnCallDispatchTable::Verify(c, os,
+                                         core::FnArgs<type::Typed<ir::Results>>(
+                                             std::move(pos_args), {})));
   c->data_.set_dispatch_table(node, std::move(table));
   return c->set_result(node, table.result_qual_type());
 }
 
 type::QualType VerifyBinaryOverload(Compiler *c, char const *symbol,
                                     ast::Expression const *node,
-                                    type::QualType lhs_result,
-                                    type::QualType rhs_result) {
+                                    type::Typed<ir::Results> lhs,
+                                    type::Typed<ir::Results> rhs) {
   ast::OverloadSet os(node->scope(), symbol);
-  AddAdl(&os, symbol, lhs_result.type());
-  AddAdl(&os, symbol, rhs_result.type());
+  AddAdl(&os, symbol, lhs.type());
+  AddAdl(&os, symbol, rhs.type());
+
+  std::vector<type::Typed<ir::Results>> pos_args;
+  pos_args.push_back(std::move(lhs));
+  pos_args.push_back(std::move(rhs));
   ASSIGN_OR(
       return type::QualType::Error(), auto table,
-             FnCallDispatchTable::Verify(
-                 c, os,
-                 core::FnArgs<type::QualType>({lhs_result, rhs_result}, {})));
+             FnCallDispatchTable::Verify(c, os,
+                                         core::FnArgs<type::Typed<ir::Results>>(
+                                             std::move(pos_args), {})));
   c->data_.set_dispatch_table(node, std::move(table));
   return c->set_result(node, table.result_qual_type());
 }
+
 // NOTE: the order of these enumerators is meaningful and relied upon! They are
 // ordered from strongest relation to weakest.
 enum class Cmp { Order, Equality, None };
@@ -251,10 +259,10 @@ bool Shadow(Compiler *compiler, type::Typed<ast::Declaration const *> decl1,
   }
 
   return core::AmbiguouslyCallable(
-      ExtractParams(compiler, *decl1).Transform([](auto const &typed_decl) {
+      ExtractParamTypes(compiler, *decl1).Transform([](auto const &typed_decl) {
         return typed_decl.type();
       }),
-      ExtractParams(compiler, *decl2).Transform([](auto const &typed_decl) {
+      ExtractParamTypes(compiler, *decl2).Transform([](auto const &typed_decl) {
         return typed_decl.type();
       }),
       [](type::Type const *lhs, type::Type const *rhs) {
@@ -775,8 +783,11 @@ type::QualType Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
         return type::QualType::Error();                                        \
       }                                                                        \
     } else {                                                                   \
-      return VerifyBinaryOverload(this, symbol, node, lhs_qual_type,           \
-                                  rhs_qual_type);                              \
+      /* TODO Support calling with constants */                                \
+      return VerifyBinaryOverload(                                             \
+          this, symbol, node,                                                  \
+          type::Typed(ir::Results{}, lhs_qual_type.type()),                    \
+          type::Typed(ir::Results{}, rhs_qual_type.type()));                   \
     }                                                                          \
   } while (false)
 
@@ -820,8 +831,10 @@ type::QualType Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
           return type::QualType::Error();
         }
       } else {
-        return VerifyBinaryOverload(this, "+", node, lhs_qual_type,
-                                    rhs_qual_type);
+        // TODO support calling with constants.
+        return VerifyBinaryOverload(
+            this, "+", node, type::Typed(ir::Results{}, lhs_qual_type.type()),
+            type::Typed(ir::Results{}, rhs_qual_type.type()));
       }
     } break;
     case Operator::AddEq: {
@@ -839,8 +852,10 @@ type::QualType Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
           return type::QualType::Error();
         }
       } else {
-        return VerifyBinaryOverload(this, "+=", node, lhs_qual_type,
-                                    rhs_qual_type);
+        // TODO support calling with constants.
+        return VerifyBinaryOverload(
+            this, "+=", node, type::Typed(ir::Results{}, lhs_qual_type.type()),
+            type::Typed(ir::Results{}, rhs_qual_type.type()));
       }
     } break;
     case Operator::Arrow: {
@@ -1107,6 +1122,8 @@ static type::Typed<ir::Results> EvaluateIfConstant(Compiler *c,
                                                    ast::Expression const *expr,
                                                    type::QualType qt) {
   if (qt.constant()) {
+    DEBUG_LOG("EvaluateIfConstant")
+    ("Evaluating constant: ", expr->DebugString());
     return type::Typed(interpretter::Evaluate(c->MakeThunk(expr, qt.type())),
                        qt.type());
   } else {
@@ -1123,6 +1140,7 @@ VerifyFnArgs(
     auto expr_qual_type = c->Visit(expr, VerifyTypeTag{});
     err |= not expr_qual_type.ok();
     if (err) {
+      DEBUG_LOG("VerifyFnArgs")("Error with: ", expr->DebugString());
       return type::Typed(ir::Results{},
                          static_cast<type::Type const *>(nullptr));
     }
@@ -1159,9 +1177,9 @@ type::QualType Compiler::Visit(ast::Call const *node, VerifyTypeTag) {
 }
 
 type::QualType Compiler::Visit(ast::Cast const *node, VerifyTypeTag) {
-  auto expr_result = Visit(node->expr(), VerifyTypeTag{});
+  auto expr_qual_type = Visit(node->expr(), VerifyTypeTag{});
   auto type_result = Visit(node->type(), VerifyTypeTag{});
-  if (not expr_result.ok() or not type_result.ok()) {
+  if (not expr_qual_type.ok() or not type_result.ok()) {
     return type::QualType::Error();
   }
 
@@ -1180,18 +1198,20 @@ type::QualType Compiler::Visit(ast::Cast const *node, VerifyTypeTag) {
   auto *t = ASSERT_NOT_NULL(interpretter::EvaluateAs<type::Type const *>(
       MakeThunk(node->type(), type::Type_)));
   if (t->is<type::Struct>()) {
-    return VerifyUnaryOverload(this, "as", node, expr_result);
+    // TODO do you ever want to support overlaods that accepts constants?
+    return VerifyUnaryOverload(
+        this, "as", node, type::Typed(ir::Results{}, expr_qual_type.type()));
   } else {
-    if (not type::CanCast(expr_result.type(), t)) {
+    if (not type::CanCast(expr_qual_type.type(), t)) {
       diag().Consume(diagnostic::InvalidCast{
-          .from  = expr_result.type(),
+          .from  = expr_qual_type.type(),
           .to    = t,
           .range = node->span,
       });
-      NOT_YET("log an error", expr_result.type(), t);
+      NOT_YET("log an error", expr_qual_type.type(), t);
     }
 
-    return set_result(node, type::QualType(t, expr_result.quals()));
+    return set_result(node, type::QualType(t, expr_qual_type.quals()));
   }
 }
 
@@ -1288,8 +1308,11 @@ not_blocks:
         if (lhs_qual_type.type()->is<type::Struct>() or
             lhs_qual_type.type()->is<type::Struct>()) {
           // TODO overwriting type a bunch of times?
-          return VerifyBinaryOverload(this, token, node, lhs_qual_type,
-                                      rhs_qual_type);
+          // TODO support calling with constants.
+          return VerifyBinaryOverload(
+              this, token, node,
+              type::Typed(ir::Results{}, lhs_qual_type.type()),
+              type::Typed(ir::Results{}, rhs_qual_type.type()));
         }
 
         if (lhs_qual_type.type() != rhs_qual_type.type() and
@@ -1685,21 +1708,38 @@ generic:
     ordered_nodes.push_back(dep_node);
   });
 
-  auto gen = [ordered_nodes(std::move(ordered_nodes))]() {
+  // TODO: Capturing `this` compiler is dangerous and definitely wrong. We'll
+  // have use-after-free bugs for anything cross-module.
+  auto gen = [this, ordered_nodes(std::move(ordered_nodes))](
+                 core::FnArgs<type::Typed<ir::Results>> const &args)
+      -> type::Function const * {
+    // TODO Add a new constant binding node for this.
+
+    // TODO use the proper ordering.
+    core::Params<type::Type const *> params;
     for (auto dep_node : ordered_nodes) {
       switch (dep_node.kind()) {
         case ast::DependencyNode::Kind::ArgValue: NOT_YET();
         case ast::DependencyNode::Kind::ArgType: NOT_YET();
-        case ast::DependencyNode::Kind::ParamType:
-          DEBUG_LOG()(dep_node.decl());
-          // interpretter::Evaluate(
-          // MakeThunk(dep_node.decl().type_expr(), type::Type_));
-          break;
-        case ast::DependencyNode::Kind::ParamValue:
-          DEBUG_LOG()(dep_node.decl());
-          NOT_YET();
+        case ast::DependencyNode::Kind::ParamType: {
+          // TODO check that it is indeed a type?
+          // TODO What if there's no type_expr?
+          // TODO always constant
+          Visit(dep_node.decl()->type_expr(), VerifyTypeTag{});
+          set_result(dep_node.decl()->type_expr(), type::QualType::Constant(type::Type_));
+          auto const *t = interpretter::EvaluateAs<type::Type const *>(
+              MakeThunk(dep_node.decl()->type_expr(), type::Type_));
+          set_result(dep_node.decl(), type::QualType::Constant(t));
+          params.append(dep_node.decl()->id(), t);
+        } break;
+        case ast::DependencyNode::Kind::ParamValue: {
+          // TODO argument get the argument associated to this parameter.
+          current_constants_->binding().set_slot(
+              dep_node.decl(), ir::Results(*args.pos()[0]).extract_buffer());
+        } break;
       }
     }
+    return type::Func(std::move(params), {});
   };
 
   return set_result(node, type::QualType::Constant(
@@ -2235,7 +2275,9 @@ type::QualType Compiler::Visit(ast::Unop const *node, VerifyTypeTag) {
             node, type::QualType(operand_type,
                                  result.quals() & type::Quals::Const()));
       } else if (operand_type->is<type::Struct>()) {
-        return VerifyUnaryOverload(this, "-", node, result);
+        // TODO do you ever want to support overlaods that accepts constants?
+        return VerifyUnaryOverload(this, "-", node,
+                                   type::Typed(ir::Results{}, result.type()));
       }
       NOT_YET();
       return type::QualType::Error();
@@ -2247,7 +2289,9 @@ type::QualType Compiler::Visit(ast::Unop const *node, VerifyTypeTag) {
                                  result.quals() & type::Quals::Const()));
       }
       if (operand_type->is<type::Struct>()) {
-        return VerifyUnaryOverload(this, "!", node, result);
+        // TODO do you ever want to support overlaods that accepts constants?
+        return VerifyUnaryOverload(this, "-", node,
+                                   type::Typed(ir::Results{}, result.type()));
       } else {
         NOT_YET("log an error");
         return type::QualType::Error();
