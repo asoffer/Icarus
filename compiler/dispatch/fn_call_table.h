@@ -9,6 +9,7 @@
 #include "compiler/dispatch/overload.h"
 #include "core/fn_args.h"
 #include "core/params.h"
+#include "ir/results.h"
 #include "type/qual_type.h"
 #include "type/type.h"
 #include "type/typed_value.h"
@@ -20,6 +21,10 @@ struct Compiler;  // TODO move into it's own header.
 // and jump in terms of the interface. Should probably inline TableImpl and
 // separate out these headers.
 struct FnCallDispatchTable {
+  static base::expected<FnCallDispatchTable> Verify(
+      Compiler *compiler, ast::OverloadSet const &os,
+      core::FnArgs<type::Typed<ir::Results>> const &args);
+
   static base::expected<FnCallDispatchTable> Verify(
       Compiler *compiler, ast::OverloadSet const &os,
       core::FnArgs<type::QualType> const &args);

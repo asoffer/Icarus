@@ -925,9 +925,11 @@ type::QualType Compiler::Visit(ast::BuiltinFn const *node, VerifyTypeTag) {
 
 static ast::OverloadSet FindOverloads(
     ast::Scope const *scope, std::string_view token,
-    core::FnArgs<type::QualType, std::string_view> args) {
+    core::FnArgs<type::Typed<ir::Results>> const &args) {
   ast::OverloadSet os(scope, token);
-  for (type::QualType result : args) { AddAdl(&os, token, result.type()); };
+  for (type::Typed<ir::Results> const &result : args) {
+    AddAdl(&os, token, result.type());
+  };
   DEBUG_LOG("FindOverloads")
   ("Found ", os.members().size(), " overloads for '", token, "'");
   return os;
@@ -935,7 +937,7 @@ static ast::OverloadSet FindOverloads(
 
 std::optional<ast::OverloadSet> MakeOverloadSet(
     Compiler *c, ast::Expression const *expr,
-    core::FnArgs<type::QualType, std::string_view> const &args) {
+    core::FnArgs<type::Typed<ir::Results>> const &args) {
   if (auto *id = expr->if_as<ast::Identifier>()) {
     return FindOverloads(expr->scope(), id->token(), args);
   } else if (auto *acc = expr->if_as<ast::Access>()) {
@@ -963,7 +965,7 @@ template <typename EPtr, typename StrType>
 static type::QualType VerifyCall(
     Compiler *c, ast::BuiltinFn const *b,
     core::FnArgs<EPtr, StrType> const &args,
-    core::FnArgs<type::QualType> const &arg_results) {
+    core::FnArgs<type::Typed<ir::Results>> const &arg_results) {
   // TODO for builtin's consider moving all the messages into an enum.
   switch (b->value().which()) {
     case ir::BuiltinFn::Which::Foreign: {
@@ -998,7 +1000,7 @@ static type::QualType VerifyCall(
                                arg_results.at(0).type()->to_string(), ")."),
           });
         }
-        if (not arg_results.at(0).constant()) {
+        if (arg_results.at(0)->empty()) {
           c->diag().Consume(diagnostic::BuiltinError{
               .range   = b->span,
               .message = "First argument to `foreign` must be a constant."});
@@ -1011,7 +1013,7 @@ static type::QualType VerifyCall(
                                "(You provided a(n) ",
                                arg_results.at(0).type()->to_string(), ").")});
         }
-        if (not arg_results.at(1).constant()) {
+        if (arg_results.at(1)->empty()) {
           c->diag().Consume(diagnostic::BuiltinError{
               .range   = b->span,
               .message = "Second argument to `foreign` must be a constant."});
@@ -1101,23 +1103,42 @@ static type::QualType VerifyCall(
   UNREACHABLE();
 }
 
-template <typename EPtr, typename StrType>
-static std::pair<core::FnArgs<type::QualType, StrType>, bool> VerifyFnArgs(
-    Compiler *visitor, core::FnArgs<EPtr, StrType> const &args) {
+static type::Typed<ir::Results> EvaluateIfConstant(Compiler *c,
+                                                   ast::Expression const *expr,
+                                                   type::QualType qt) {
+  if (qt.constant()) {
+    return type::Typed(interpretter::Evaluate(c->MakeThunk(expr, qt.type())),
+                       qt.type());
+  } else {
+    return type::Typed(ir::Results{}, qt.type());
+  }
+}
+
+static std::optional<core::FnArgs<type::Typed<ir::Results>, std::string_view>>
+VerifyFnArgs(
+    Compiler *c,
+    core::FnArgs<ast::Expression const *, std::string_view> const &args) {
   bool err         = false;
-  auto arg_results = args.Transform([&](EPtr const &expr) {
-    auto expr_result = visitor->Visit(expr, VerifyTypeTag{});
-    err |= not expr_result.ok();
-    return expr_result;
+  auto arg_results = args.Transform([&](ast::Expression const *expr) {
+    auto expr_qual_type = c->Visit(expr, VerifyTypeTag{});
+    err |= not expr_qual_type.ok();
+    if (err) {
+      return type::Typed(ir::Results{},
+                         static_cast<type::Type const *>(nullptr));
+    }
+    return EvaluateIfConstant(c, expr, expr_qual_type);
   });
 
-  return std::pair{std::move(arg_results), err};
+  if (err) { return std::nullopt; }
+  return arg_results;
 }
 
 type::QualType Compiler::Visit(ast::Call const *node, VerifyTypeTag) {
-  auto [arg_results, err] = VerifyFnArgs(this, node->args());
+  ASSIGN_OR(
+      return type::QualType::Error(),  //
+             auto arg_results,
+             VerifyFnArgs(this, node->args()));
   // TODO handle cyclic dependencies in call arguments.
-  if (err) { return type::QualType::Error(); }
 
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
     // TODO: Should we allow these to be overloaded?
@@ -1993,16 +2014,17 @@ static absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> MakeJumpInits(
 
 type::QualType Compiler::Visit(ast::ScopeNode const *node, VerifyTypeTag) {
   DEBUG_LOG("ScopeNode")(node->DebugString());
+  ASSIGN_OR(
+      return type::QualType::Error(),  //
+             auto arg_results,
+             VerifyFnArgs(this, node->args()));
+  // TODO handle cyclic dependencies in call arguments.
 
-  auto [arg_results, err] = VerifyFnArgs(this, node->args());
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto os, MakeOverloadSet(this, node->name(), arg_results));
   auto inits = MakeJumpInits(this, os);
 
   DEBUG_LOG("ScopeNode")(inits);
-
-  // TODO handle cyclic dependencies in call arguments.
-  if (err) { return type::QualType::Error(); }
 
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto table,

@@ -92,6 +92,15 @@ ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
 
 }  // namespace
 
+
+base::expected<FnCallDispatchTable> FnCallDispatchTable::Verify(
+    Compiler *compiler, ast::OverloadSet const &os,
+    core::FnArgs<type::Typed<ir::Results>> const &args) {
+  return Verify(compiler, os, args.Transform([](auto const &t) {
+    return type::QualType::NonConstant(t.type());
+  }));
+}
+
 base::expected<FnCallDispatchTable> FnCallDispatchTable::Verify(
     Compiler *compiler, ast::OverloadSet const &os,
     core::FnArgs<type::QualType> const &args) {
@@ -108,6 +117,10 @@ base::expected<FnCallDispatchTable> FnCallDispatchTable::Verify(
     // need to handle that case.
     DEBUG_LOG("dispatch-verify")
     ("Verifying ", overload, ": ", overload->DebugString());
+    if (auto *gen =
+            compiler->type_of(overload)->if_as<type::GenericFunction>()) {
+      NOT_YET();
+    }
     auto result = MatchArgsToParams(ExtractParams(compiler, overload), args);
     if (not result) {
       DEBUG_LOG("dispatch-verify")(result.error());
@@ -148,6 +161,7 @@ type::QualType FnCallDispatchTable::ComputeResultQualType(
       results.push_back(out_span);
     } else if (expr_data.type()->is<type::GenericFunction>()) {
       results.emplace_back();  // NOT_YET figuring out the real answer.
+      NOT_YET();
     } else {
       NOT_YET(expr_data.type()->to_string());
     }

@@ -182,6 +182,15 @@ void internal::OneTable::VerifyJumps() {
 base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
     Compiler *compiler, ast::ScopeNode const *node,
     absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> inits,
+    core::FnArgs<type::Typed<ir::Results>> const &args) {
+  return Verify(compiler, node, inits, args.Transform([](auto const &t) {
+    return type::QualType::NonConstant(t.type());
+  }));
+}
+
+base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
+    Compiler *compiler, ast::ScopeNode const *node,
+    absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> inits,
     core::FnArgs<type::QualType> const &args) {
   absl::flat_hash_map<ir::ScopeDef const *,
                       absl::flat_hash_map<ir::Jump *, FailedMatch>>
