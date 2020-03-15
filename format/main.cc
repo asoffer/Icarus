@@ -1,8 +1,7 @@
-#include <vector>
-
 #include "absl/debugging/failure_signal_handler.h"
 #include "absl/debugging/symbolize.h"
 #include "ast/node.h"
+#include "base/no_destructor.h"
 #include "diagnostic/consumer/streaming.h"
 #include "format/token_extractor.h"
 #include "frontend/parse.h"
@@ -25,9 +24,9 @@ void cli::Usage() {
   Flag("help") << "Show usage information." << [] { execute = cli::ShowUsage; };
 
   // TODO error-out if more than one file is provided
-  static char const *file;
-  HandleOther = [](char const *arg) { file = arg; };
-  execute     = [] { return format::FormatFile(frontend::FileName(file)); };
+  static base::NoDestructor<frontend::FileName> file;
+  HandleOther = [](char const *arg) { file = frontend::FileName(arg); };
+  execute     = [] { return format::FormatFile(*file); };
 }
 
 int main(int argc, char *argv[]) {

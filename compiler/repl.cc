@@ -30,8 +30,9 @@ extern bool optimize_ir;
 }  // namespace debug
 
 namespace compiler {
+namespace {
 
-static void ReplEval(ast::Expression const *expr, Compiler *compiler) {
+void ReplEval(ast::Expression const *expr, Compiler *compiler) {
   // TODO is nullptr for module okay here?
   ir::CompiledFn fn(type::Func({}, {}), {});
   ICARUS_SCOPE(ir::SetCurrent(&fn)) {
@@ -89,6 +90,7 @@ int Repl() {
   while (true) { mod.ProcessFromSource(repl, diag); }
 }
 
+}  // namespace
 }  // namespace compiler
 
 void cli::Usage() {

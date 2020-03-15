@@ -249,6 +249,7 @@ cc_binary(
         ":executable_module",
         "//base:defer",
         "//base:log",
+        "//base:no_destructor",
         "//base:untyped_buffer",
         "//frontend/source:file_name",
         "//frontend/source:shared",

@@ -1,4 +1,5 @@
 #include "frontend/source/shared.h"
+#include "base/no_destructor.h"
 
 namespace frontend {
 namespace {
@@ -11,8 +12,8 @@ struct SharedSourceType : Source {
 }  // namespace
 
 frontend::Source const *SharedSource() {
-  static auto *src = new SharedSourceType;
-  return src;
+  static base::NoDestructor<SharedSourceType> src;
+  return &*src;
 }
 
 }  // namespace frontend

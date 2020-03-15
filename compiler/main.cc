@@ -6,6 +6,7 @@
 #include "absl/debugging/symbolize.h"
 #include "absl/strings/str_split.h"
 #include "base/expected.h"
+#include "base/no_destructor.h"
 #include "base/log.h"
 #include "base/untyped_buffer.h"
 #include "compiler/compiler.h"
@@ -29,6 +30,7 @@ extern bool optimize_ir;
 }  // namespace debug
 
 namespace compiler {
+namespace {
 
 int Compile(frontend::FileName const &file_name) {
   diagnostic::StreamingConsumer diag(stderr, frontend::SharedSource());
@@ -65,11 +67,12 @@ int Compile(frontend::FileName const &file_name) {
   return 0;
 }
 
+}  // namespace
 }  // namespace compiler
 
 void cli::Usage() {
-  static char const *file;
-  execute = [] { return compiler::Compile(frontend::FileName(file)); };
+  static base::NoDestructor<frontend::FileName> file;
+  execute = [] { return compiler::Compile(*file); };
 
   Flag("help") << "Show usage information."
                << []() { execute = cli::ShowUsage; };
@@ -94,7 +97,7 @@ void cli::Usage() {
                     static_cast<void>(ASSERT_NOT_NULL(dlopen(lib, RTLD_LAZY)));
                   };
 
-  HandleOther = [](char const *arg) { file = arg; };
+  HandleOther = [](char const *arg) { *file = frontend::FileName(arg); };
 }
 
 int main(int argc, char *argv[]) {

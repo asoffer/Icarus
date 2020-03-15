@@ -5,6 +5,7 @@
 #include "ast/expression.h"
 #include "ast/node.h"
 #include "base/macros.h"
+#include "base/no_destructor.h"
 #include "diagnostic/consumer/streaming.h"
 #include "frontend/parse.h"
 #include "frontend/source/file.h"
@@ -45,17 +46,14 @@ int MatchParse(frontend::FileName const &expr_file,
 void cli::Usage() {
   Flag("help") << "Show usage information." << [] { execute = cli::ShowUsage; };
 
-  static char const *expr_file;
+  static base::NoDestructor<frontend::FileName> expr_file;
   Flag("expr") << "The file holding the expression to be matched."
-               << [](char const *e) { expr_file = e; };
+               << [](char const *e) { *expr_file = frontend::FileName(e); };
 
   // TODO error-out if more than one file is provided
-  static char const *file;
-  HandleOther = [](char const *arg) { file = arg; };
-  execute     = [] {
-    return match::MatchParse(frontend::FileName(expr_file),
-                             frontend::FileName(file));
-  };
+  static base::NoDestructor<frontend::FileName> file;
+  HandleOther = [](char const *arg) { *file = frontend::FileName(arg); };
+  execute     = [] { return match::MatchParse(*expr_file, *file); };
 }
 
 int main(int argc, char *argv[]) {

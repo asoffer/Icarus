@@ -50,6 +50,7 @@ cc_binary(
         ":match_expr",
         "//ast:ast",
         "//base:macros",
+        "//base:no_destructor",
         "//diagnostic/consumer:streaming",
         "//frontend:parse",
         "//frontend/source:file",

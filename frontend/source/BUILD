@@ -92,7 +92,10 @@ cc_library(
     name = "shared",
     hdrs = ["shared.h"],
     srcs = ["shared.cc"],
-    deps = [":source"],
+    deps = [
+        ":source",
+        "//base:no_destructor",
+    ],
 )
 
 cc_library(
