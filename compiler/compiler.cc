@@ -21,7 +21,7 @@ Compiler::Compiler(CompiledModule *mod,
       current_constants_(mod->root_node()),
       diag_consumer_(consumer) {}
 
-type::QualType const *Compiler::qual_type_of(ast::ExprPtr expr) const {
+std::optional<type::QualType> Compiler::qual_type_of(ast::ExprPtr expr) const {
   if (auto *decl = expr.get()->if_as<ast::Declaration>()) {
     // If the declarations module is the same as this one, we haven't completed
     // compiling it yet and so we need to access it through the compiler.
@@ -32,24 +32,24 @@ type::QualType const *Compiler::qual_type_of(ast::ExprPtr expr) const {
     // really shouldn't need to pay for the check here.
     if (auto const *mod =
             ASSERT_NOT_NULL(decl->module())->if_as<CompiledModule>()) {
-      if (mod != module()) { return mod->qual_type_of(decl); }
+      if (mod != module()) {
+        auto *qt = mod->qual_type_of(decl);
+        return qt ? std::optional(*qt) : std::nullopt;
+      }
       if (auto *t = current_constants_->binding().type_of(decl)) {
-        // TODO obviously this is nonsense, but we don't store a stable QualType
-        // pointer in constants.
-        return new type::QualType(type::QualType::Constant(t));
+        return type::QualType::Constant(t);
       }
     }
   }
 
-  if (auto *result = data_.result(expr)) { return result; }
+  if (auto *result = data_.result(expr)) { return *result; }
 
   // TODO embedded modules?
-  return nullptr;
+  return std::nullopt;
 }
 
 type::Type const *Compiler::type_of(ast::Expression const *expr) const {
-  auto *q = qual_type_of(expr);
-  return q ? q->type() : nullptr;
+  return qual_type_of(expr).value_or(type::QualType{}).type();
 }
 
 void Compiler::set_addr(ast::Declaration const *decl, ir::Reg addr) {

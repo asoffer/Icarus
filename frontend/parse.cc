@@ -34,10 +34,6 @@ struct Statements : public ast::Node {
   Statements(Statements &&) noexcept = default;
   Statements &operator=(Statements &&) noexcept = default;
 
-  void Accept(ast::MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
   void Accept(ast::VisitorBase *visitor, void *ret,
               void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
@@ -64,10 +60,6 @@ struct Statements : public ast::Node {
 struct SwitchWhen : public ast::Node {
   ~SwitchWhen() override {}
 
-  void Accept(ast::MutableVisitorBase *visitor, void *ret,
-              void *arg_tuple) override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
   void Accept(ast::VisitorBase *visitor, void *ret,
               void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
@@ -131,23 +123,27 @@ std::unique_ptr<ast::Node> AddHashtag(
   return expr;
 }
 
-std::unique_ptr<ast::Switch> BuildSwitch(std::unique_ptr<Statements> stmts,
+std::unique_ptr<ast::Switch> BuildSwitch(std::unique_ptr<ast::Expression> expr,
+                                         std::unique_ptr<Statements> stmts,
                                          diagnostic::DiagnosticConsumer &diag) {
-  auto switch_expr  = std::make_unique<ast::Switch>();
-  switch_expr->span = stmts->span;  // TODO it's really bigger than this because
-                                    // it involves the keyword too.
+  // TODO it's really bigger than this because it involves the keyword too.
+  auto range = stmts->span;
+  std::vector<
+      std::pair<std::unique_ptr<ast::Node>, std::unique_ptr<ast::Expression>>>
+      cases;
+  cases.reserve(stmts->content_.size());
 
-  switch_expr->cases_.reserve(stmts->content_.size());
   for (auto &stmt : stmts->content_) {
     if (auto *switch_when = stmt->if_as<SwitchWhen>()) {
-      switch_expr->cases_.emplace_back(std::move(switch_when->body),
-                                       std::move(switch_when->cond));
+      cases.emplace_back(std::move(switch_when->body),
+                         std::move(switch_when->cond));
     } else {
       diag.Consume(diagnostic::Todo{});
     }
   }
 
-  return switch_expr;
+  return std::make_unique<ast::Switch>(range, std::move(expr),
+                                       std::move(cases));
 }
 
 std::unique_ptr<ast::Node> OneBracedStatement(
@@ -1089,8 +1085,8 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
   ASSERT(nodes[0], InheritsFrom<Token>());
   auto const &tk = nodes[0]->as<Token>().token;
   if (tk == "switch") {
-    auto sw   = BuildSwitch(move_as<Statements>(nodes[4]), diag);
-    sw->expr_ = move_as<ast::Expression>(nodes[2]);
+    auto sw = BuildSwitch(move_as<ast::Expression>(nodes[2]),
+                          move_as<Statements>(nodes[4]), diag);
     return sw;
   } else if (tk == "jump") {
     SourceRange span(nodes.front()->span.begin(), nodes.back()->span.end());
@@ -1152,7 +1148,7 @@ std::unique_ptr<ast::Node> BuildKWBlock(
       return BuildConcreteStruct(std::move(nodes), diag);
 
     } else if (tk == "switch") {
-      return BuildSwitch(move_as<Statements>(nodes[1]), diag);
+      return BuildSwitch(nullptr, move_as<Statements>(nodes[1]), diag);
 
     } else if (tk == "scope") {
       SourceRange range(nodes.front()->span.begin(), nodes.back()->span.end());

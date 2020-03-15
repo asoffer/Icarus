@@ -32,9 +32,7 @@ struct OneTable {
                 std::optional<ir::Reg> state_reg,
                 ir::LocalBlockInterpretation const &block_interp) const;
 
-  absl::flat_hash_map<ir::Jump *,
-                      core::Params<type::Typed<ast::Declaration const *>>>
-      inits;
+  absl::flat_hash_map<ir::Jump *, core::Params<type::Type const *>> inits;
   absl::flat_hash_map<ast::BlockNode const *, JumpDispatchTable> blocks;
   ir::ScopeDef const *scope_def_;
   std::vector<type::Type const *> result_types_;
@@ -46,7 +44,7 @@ struct ScopeDispatchTable {
   static base::expected<ScopeDispatchTable> Verify(
       Compiler *compiler, ast::ScopeNode const *node,
       absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> inits,
-      core::FnArgs<type::QualType> const &args);
+      core::FnArgs<type::Typed<ir::Results>> const &args);
 
   type::QualType qual_type() const { return qual_type_; }
 

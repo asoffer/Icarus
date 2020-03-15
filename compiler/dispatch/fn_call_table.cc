@@ -10,23 +10,29 @@
 #include "ir/results.h"
 #include "type/cast.h"
 #include "type/function.h"
+#include "type/generic_function.h"
 #include "type/type.h"
 
 namespace compiler {
 namespace {
 
 std::pair<ir::Results, ir::OutParams> SetReturns(
-    ir::Builder &bldr, internal::ExprData const &expr_data,
-    absl::Span<type::Type const *> final_out_types) {
-  auto ret_types = expr_data.type()->as<type::Function>().output();
-  ir::Results results;
-  ir::OutParams out_params = bldr.OutParams(ret_types);
-  // TODO find a better way to extract these. Figure out why you even need to.
-  for (size_t i = 0; i < ret_types.size(); ++i) {
-    results.append(out_params[i]);
+    ir::Builder &bldr, internal::ExprData const &expr_data) {
+  if (auto *fn_type = expr_data.type()->if_as<type::Function>()) {
+    auto ret_types = fn_type->output();
+    ir::Results results;
+    ir::OutParams out_params = bldr.OutParams(ret_types);
+    // TODO find a better way to extract these. Figure out why you even need to.
+    for (size_t i = 0; i < ret_types.size(); ++i) {
+      results.append(out_params[i]);
+    }
+    return std::pair<ir::Results, ir::OutParams>(std::move(results),
+                                                 std::move(out_params));
+  } else if (expr_data.type()->is<type::GenericFunction>()) {
+    NOT_YET();
+  } else {
+    NOT_YET(expr_data.type()->to_string());
   }
-  return std::pair<ir::Results, ir::OutParams>(std::move(results),
-                                               std::move(out_params));
 }
 
 ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
@@ -36,23 +42,12 @@ ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
   (args.Transform([](auto const &x) { return x.type()->to_string(); })
        .to_string());
 
-  core::FillMissingArgs(
-      core::ParamsRef(data.params()), &args, [compiler](auto const &p) {
-        return type::Typed(
-            ir::Results{compiler->Visit(ASSERT_NOT_NULL(p.get()->init_val()),
-                                        EmitValueTag{})},
-            p.type());
-      });
+  auto [out_results, out_params] = SetReturns(compiler->builder(), data);
 
-  auto arg_results = PrepareCallArguments(
-      compiler, nullptr,
-      data.params().Transform([](auto const &p) { return p.type(); }), args);
-
-  auto[out_results, out_params] = SetReturns(compiler->builder(), data, {});
-
-  auto callee_qual_type = *ASSERT_NOT_NULL(compiler->qual_type_of(fn));
-  auto callee           = [&]() -> ir::RegOr<ir::Fn> {
-    if (callee_qual_type.constant()) {
+  auto callee_qual_type = compiler->qual_type_of(fn);
+  ASSERT(callee_qual_type.has_value() == true);
+  auto callee = [&]() -> ir::RegOr<ir::Fn> {
+    if (callee_qual_type->constant()) {
       return compiler->Visit(fn, EmitValueTag{}).get<ir::Fn>(0);
     } else {
       // NOTE: If the overload is a declaration, it's not because a declaration
@@ -70,17 +65,44 @@ ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
     }
   }();
 
+  if (not callee.is_reg()) {
+    switch (callee.value().kind()) {
+      case ir::Fn::Kind::Native: {
+        core::FillMissingArgs(
+            core::ParamsRef(callee.value().native().get()->params()), &args,
+            [compiler](auto const &p) {
+              return type::Typed(
+                  ir::Results{compiler->Visit(
+                      ASSERT_NOT_NULL(p.get()->init_val()), EmitValueTag{})},
+                  p.type());
+            });
+      } break;
+      default: break;
+    }
+  }
+
+  auto arg_results =
+      PrepareCallArguments(compiler, nullptr, data.params(), args);
+
   compiler->builder().Call(callee,
-                           &callee_qual_type.type()->as<type::Function>(),
+                           &callee_qual_type->type()->as<type::Function>(),
                            arg_results, out_params);
   return std::move(out_results);
 }
+
+
+// // TODO move this somewhere where it's reusable/testable once you figure out what it is.
+// base::expected<core::Params<type::Type const *>, FailedMatch> MatchArgsToParams(
+//     Compiler *compiler, core::Params<ast::Declaration const *> const &params,
+//     core::FnArgs<type::Typed<ir::Results>> const &args) {
+// }
+
 
 }  // namespace
 
 base::expected<FnCallDispatchTable> FnCallDispatchTable::Verify(
     Compiler *compiler, ast::OverloadSet const &os,
-    core::FnArgs<type::QualType> const &args) {
+    core::FnArgs<type::Typed<ir::Results>> const &args) {
   DEBUG_LOG("dispatch-verify")
   ("Verifying overload set with ", os.members().size(), " members.");
 
@@ -88,25 +110,33 @@ base::expected<FnCallDispatchTable> FnCallDispatchTable::Verify(
   // diagnostics.
   absl::flat_hash_map<ast::Expression const *, FailedMatch> failures;
 
+  auto args_qt = args.Transform(
+      [](auto const &t) { return type::QualType::NonConstant(t.type()); });
+
   FnCallDispatchTable table;
   for (ast::Expression const *overload : os.members()) {
     // TODO the type of the specific overload could *correctly* be null and we
     // need to handle that case.
     DEBUG_LOG("dispatch-verify")
     ("Verifying ", overload, ": ", overload->DebugString());
-    auto result = MatchArgsToParams(ExtractParams(compiler, overload), args);
-    if (not result) {
-      DEBUG_LOG("dispatch-verify")(result.error());
-      failures.emplace(overload, result.error());
-    } else {
-      // TODO you also call compiler->type_of inside ExtractParams, so it's
+    if (auto *gen =
+            compiler->type_of(overload)->if_as<type::GenericFunction>()) {
+      DEBUG_LOG()(gen->concrete(args)->to_string());
+    }
+
+    if (auto result =
+            MatchArgsToParams(ExtractParamTypes(compiler, overload), args_qt)) {
+      // TODO you also call compiler->type_of inside ExtractParamTypess, so it's
       // probably worth reducing the number of lookups.
       table.table_.emplace(
           overload, internal::ExprData{compiler->type_of(overload), *result});
+    } else {
+      DEBUG_LOG("dispatch-verify")(result.error());
+      failures.emplace(overload, result.error());
     }
   }
 
-  if (not ParamsCoverArgs(args, table.table_,
+  if (not ParamsCoverArgs(args_qt, table.table_,
                           [](auto const &, internal::ExprData const &data) {
                             return data.params();
                           })) {
@@ -132,8 +162,9 @@ type::QualType FnCallDispatchTable::ComputeResultQualType(
     if (auto *fn_type = expr_data.type()->if_as<type::Function>()) {
       auto out_span = fn_type->output();
       results.push_back(out_span);
-    } else if (expr_data.type() == type::Generic) {
-      results.emplace_back(); // NOT_YET figuring out the real answer.
+    } else if (expr_data.type()->is<type::GenericFunction>()) {
+      results.emplace_back();  // NOT_YET figuring out the real answer.
+      NOT_YET();
     } else {
       NOT_YET(expr_data.type()->to_string());
     }

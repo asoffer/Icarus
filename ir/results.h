@@ -75,6 +75,8 @@ struct Results {
     }
   }
 
+  base::untyped_buffer extract_buffer() && { return std::move(buf_); }
+
   Results GetResult(size_t index) const;
 
   std::string to_string() const;

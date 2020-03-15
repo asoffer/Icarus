@@ -9,6 +9,7 @@
 #include "compiler/dispatch/overload.h"
 #include "core/fn_args.h"
 #include "core/params.h"
+#include "ir/results.h"
 #include "type/qual_type.h"
 #include "type/type.h"
 #include "type/typed_value.h"
@@ -22,7 +23,7 @@ struct Compiler;  // TODO move into it's own header.
 struct FnCallDispatchTable {
   static base::expected<FnCallDispatchTable> Verify(
       Compiler *compiler, ast::OverloadSet const &os,
-      core::FnArgs<type::QualType> const &args);
+      core::FnArgs<type::Typed<ir::Results>> const &args);
 
   type::QualType result_qual_type() const { return result_type_; }
 

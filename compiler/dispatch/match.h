@@ -1,7 +1,6 @@
 #ifndef ICARUS_COMPILER_DISPATCH_MATCH_H
 #define ICARUS_COMPILER_DISPATCH_MATCH_H
 
-#include "ast/ast_fwd.h"
 #include "base/expected.h"
 #include "core/fn_args.h"
 #include "core/params.h"
@@ -13,9 +12,8 @@ namespace compiler {
 
 struct FailedMatch {};
 
-base::expected<core::Params<type::Typed<ast::Declaration const *>>, FailedMatch>
-MatchArgsToParams(
-    core::Params<type::Typed<ast::Declaration const *>> const &params,
+base::expected<core::Params<type::Type const *>, FailedMatch> MatchArgsToParams(
+    core::Params<type::QualType> const &params,
     core::FnArgs<type::QualType> const &args);
 
 }  // namespace compiler

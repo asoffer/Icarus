@@ -6,11 +6,10 @@
 #include "ast/scope/module.h"
 #include "ast/scope/scope.h"
 #include "module/module.h"
-#include "type/callable.h"
 #include "type/type.h"
 
 namespace type {
-struct GenericStruct : public Callable {
+struct GenericStruct : public Type {
   TYPE_FNS(GenericStruct);
   GenericStruct(ast::Scope const *scope, std::vector<Type const *> ts)
       : scope_(scope), mod_(nullptr /* TODO */), deps_(std::move(ts)) {}

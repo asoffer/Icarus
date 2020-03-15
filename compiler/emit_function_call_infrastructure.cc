@@ -137,7 +137,7 @@ void CompleteBody(Compiler *compiler,
   //         builder().Eq(cache_slot, static_cast<type::Type const
   //         *>(nullptr)));
   //     auto ctx_reg    = ir::CreateContext(module());
-  //     auto struct_reg = ir::CreateStruct(node->scope_, node);
+  //     auto struct_reg = ir::CreateStruct(node->scope(), node);
   //
   //     // TODO why isn't implicit TypedRegister -> RegOr cast working on
   //     // either of these? On the first it's clear because we don't even
@@ -216,7 +216,7 @@ void CompleteBody(Compiler *compiler, ast::Jump const *node) {
 void ProcessExecutableBody(Compiler *c, base::PtrSpan<ast::Node const> nodes,
                            ir::CompiledFn *main_fn) {
   ASSERT(nodes.size() > 0);
-  ast::ModuleScope *mod_scope = &nodes.front()->scope_->as<ast::ModuleScope>();
+  ast::ModuleScope *mod_scope = &nodes.front()->scope()->as<ast::ModuleScope>();
   ICARUS_SCOPE(ir::SetCurrent(main_fn, &c->builder())) {
     MakeAllStackAllocations(c, mod_scope);
     EmitIrForStatements(c, nodes);

@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "absl/types/span.h"
+#include "ast/build_param_dependency_graph.h"
 #include "ast/expression.h"
 #include "ast/hashtag.h"
 #include "ast/node.h"
@@ -31,16 +32,15 @@
 
 namespace ast {
 
+void InitializeNodes(base::PtrSpan<Node> nodes, Scope *scope);
+
 #define ICARUS_AST_VIRTUAL_METHODS                                             \
-  void Accept(MutableVisitorBase *visitor, void *ret, void *arg_tuple)         \
-      override {                                                               \
-    visitor->ErasedVisit(this, ret, arg_tuple);                                \
-  }                                                                            \
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple)                \
       const override {                                                         \
     visitor->ErasedVisit(this, ret, arg_tuple);                                \
   }                                                                            \
                                                                                \
+  void Initialize(Scope *scope) override;                                      \
   void DebugStrAppend(std::string *out, size_t indent) const override
 
 template <typename S>
@@ -54,8 +54,7 @@ struct ScopeExpr : Expression {
   void set_body_with_parent(Scope *p, Args &&... args) {
     body_scope_ = p->template add_child<S>(std::forward<Args>(args)...);
   }
-  S *body_scope() { return body_scope_.get(); }
-  S const *body_scope() const { return body_scope_.get(); }
+  S *body_scope() const { return body_scope_.get(); }
 
  private:
   std::unique_ptr<S> body_scope_ = nullptr;
@@ -77,7 +76,6 @@ struct Access : Expression {
 
   std::string_view member_name() const { return member_name_; }
   Expression const *operand() const { return operand_.get(); }
-  Expression *operand() { return operand_.get(); }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
@@ -97,28 +95,27 @@ struct Access : Expression {
 //  * `[]`
 struct ArrayLiteral : Expression {
   explicit ArrayLiteral(frontend::SourceRange span,
-                        std::unique_ptr<Expression> expr)
+                        std::unique_ptr<Expression> elem)
       : Expression(std::move(span)) {
-    exprs_.push_back(std::move(expr));
+    elems_.push_back(std::move(elem));
   }
   ArrayLiteral(frontend::SourceRange span,
-               std::vector<std::unique_ptr<Expression>> exprs)
-      : Expression(std::move(span)), exprs_(std::move(exprs)) {}
+               std::vector<std::unique_ptr<Expression>> elems)
+      : Expression(std::move(span)), elems_(std::move(elems)) {}
   ~ArrayLiteral() override {}
 
-  bool empty() const { return exprs_.empty(); }
-  size_t size() const { return exprs_.size(); }
-  Expression const *elem(size_t i) const { return exprs_[i].get(); }
-  base::PtrSpan<Expression const> elems() const { return exprs_; }
-  base::PtrSpan<Expression> elems() { return exprs_; }
+  bool empty() const { return elems_.empty(); }
+  size_t size() const { return elems_.size(); }
+  Expression const *elem(size_t i) const { return elems_[i].get(); }
+  base::PtrSpan<Expression const> elems() const { return elems_; }
   std::vector<std::unique_ptr<Expression>> &&extract() && {
-    return std::move(exprs_);
+    return std::move(elems_);
   }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
-  std::vector<std::unique_ptr<Expression>> exprs_;
+  std::vector<std::unique_ptr<Expression>> elems_;
 };
 
 // ArrayType:
@@ -152,12 +149,8 @@ struct ArrayType : Expression {
   ~ArrayType() override {}
 
   base::PtrSpan<Expression const> lengths() const { return lengths_; }
-  base::PtrSpan<Expression> lengths() { return lengths_; }
-  Expression *length(size_t i) { return lengths_[i].get(); }
   Expression const *length(size_t i) const { return lengths_[i].get(); }
-
   Expression const *data_type() const { return data_type_.get(); }
-  Expression *data_type() { return data_type_.get(); }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
@@ -187,9 +180,7 @@ struct Binop : Expression {
   ~Binop() override {}
 
   Expression const *lhs() const { return lhs_.get(); }
-  Expression *lhs() { return lhs_.get(); }
   Expression const *rhs() const { return rhs_.get(); }
-  Expression *rhs() { return rhs_.get(); }
   frontend::Operator op() const { return op_; }
 
   std::pair<std::unique_ptr<Expression>, std::unique_ptr<Expression>> extract()
@@ -269,16 +260,14 @@ struct Declaration : Expression {
 
   std::string_view id() const { return id_; }
   Expression const *type_expr() const { return type_expr_.get(); }
-  Expression *type_expr() { return type_expr_.get(); }
   Expression const *init_val() const { return init_val_.get(); }
-  Expression *init_val() { return init_val_.get(); }
 
   module::BasicModule const *module() const {
     return scope_->Containing<ModuleScope>()->module();
   }
 
   Flags flags() const { return flags_; }
-  Flags &flags() { return flags_; }
+  Flags &flags() { return flags_; }  // TODO consider removing this.
 
   void set_initial_value(std::unique_ptr<Expression> expr) {
     init_val_ = std::move(expr);
@@ -317,14 +306,9 @@ struct DesignatedInitializer : Expression {
   ~DesignatedInitializer() override {}
 
   Expression const *type() const { return type_.get(); }
-  Expression *type() { return type_.get(); }
   absl::Span<std::pair<std::string, std::unique_ptr<Expression>> const>
   assignments() const {
     return assignments_;
-  }
-  absl::Span<std::pair<std::string, std::unique_ptr<Expression>>>
-  assignments() {
-    return absl::MakeSpan(assignments_);
   }
 
   ICARUS_AST_VIRTUAL_METHODS;
@@ -359,9 +343,7 @@ struct BlockLiteral : ScopeExpr<DeclScope> {
   ~BlockLiteral() override {}
 
   base::PtrSpan<Declaration const> before() const { return before_; }
-  base::PtrSpan<Declaration> before() { return before_; }
   base::PtrSpan<Declaration const> after() const { return after_; }
-  base::PtrSpan<Declaration> after() { return after_; }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
@@ -433,12 +415,10 @@ struct BlockNode : ScopeExpr<ExecScope> {
   BlockNode &operator=(BlockNode &&) noexcept = default;
 
   std::string_view name() const { return name_; }
-  base::PtrSpan<Node> stmts() { return stmts_; }
   base::PtrSpan<Node const> stmts() const { return stmts_; }
   // TODO params() should be a reference to core::Params?
   using params_type = core::Params<std::unique_ptr<Declaration>>;
   params_type const &params() const { return params_; }
-  params_type &params() { return params_; }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
@@ -481,14 +461,8 @@ struct Call : Expression {
   ~Call() override {}
 
   Expression const *callee() const { return callee_.get(); }
-  Expression *callee() { return callee_.get(); }
   core::FnArgs<Expression const *, std::string_view> const &args() const {
     return args_.args();
-  }
-
-  template <typename Fn>
-  void Apply(Fn &&fn) {
-    args_.Apply(std::forward<Fn>(fn));
   }
 
   std::pair<std::unique_ptr<Expression>, core::OrderedFnArgs<Expression>>
@@ -521,9 +495,7 @@ struct Cast : Expression {
   ~Cast() override {}
 
   Expression const *expr() const { return expr_.get(); }
-  Expression *expr() { return expr_.get(); }
   Expression const *type() const { return type_.get(); }
-  Expression *type() { return type_.get(); }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
@@ -555,9 +527,7 @@ struct ChainOp : Expression {
   }
 
   base::PtrSpan<Expression const> exprs() const { return exprs_; }
-  base::PtrSpan<Expression> exprs() { return exprs_; }
   absl::Span<frontend::Operator const> ops() const { return ops_; }
-  absl::Span<frontend::Operator> ops() { return absl::MakeSpan(ops_); }
 
   std::vector<std::unique_ptr<Expression>> &&extract() && {
     return std::move(exprs_);
@@ -630,7 +600,6 @@ struct EnumLiteral : ScopeExpr<DeclScope> {
 
   ~EnumLiteral() override {}
 
-  base::PtrSpan<Expression> elems() { return elems_; }
   base::PtrSpan<Expression const> elems() const { return elems_; }
   Kind kind() const { return kind_; }
 
@@ -676,48 +645,36 @@ struct FunctionLiteral : ScopeExpr<FnScope> {
   FunctionLiteral(FunctionLiteral &&) noexcept = default;
   ~FunctionLiteral() override {}
 
-  base::PtrSpan<Node> stmts() { return statements_; }
-  base::PtrSpan<Node const> stmts() const { return statements_; }
+  base::PtrSpan<Node const> stmts() const { return stmts_; }
 
   // TODO core::ParamsRef to erase the unique_ptr?
-  using params_type = core::Params<std::unique_ptr<Declaration>>;
-  params_type const &params() const { return params_; }
-  params_type &params() { return params_; }
-
-  std::optional<base::PtrSpan<Expression>> outputs() {
-    if (not outputs_) { return std::nullopt; }
-    return *outputs_;
+  core::Params<std::unique_ptr<Declaration>> const &params() const {
+    return params_;
   }
+
   std::optional<base::PtrSpan<Expression const>> outputs() const {
     if (not outputs_) { return std::nullopt; }
     return *outputs_;
+  }
+
+  base::Graph<DependencyNode> const &parameter_dependency_graph() const {
+    return dep_graph_;
   }
 
   bool is_short() const { return is_short_; }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
-  // Note this field is computed, but it is independent of any type or
-  // context-specific information. It holds a topologically sorted list of
-  // function parameters such that earlier parameters never depend on later
-  // ones. It's filled in assign_scope because that's when we have enough
-  // information to do so and it guarantees it's only called once.
-  //
-  // TODO rename assign_scope.
-  std::vector<Declaration const *> sorted_params_;
-  absl::flat_hash_map<Declaration const *, size_t> decl_to_param_;
-  base::Graph<Declaration const *> param_dep_graph_;
-
  private:
   explicit FunctionLiteral(
       frontend::SourceRange span,
       std::vector<std::unique_ptr<Declaration>> in_params,
-      std::vector<std::unique_ptr<Node>> statements,
+      std::vector<std::unique_ptr<Node>> stmts,
       std::optional<std::vector<std::unique_ptr<Expression>>> out_params,
       bool is_short)
       : ScopeExpr<FnScope>(std::move(span)),
         outputs_(std::move(out_params)),
-        statements_(std::move(statements)),
+        stmts_(std::move(stmts)),
         is_short_(is_short) {
     for (auto &input : in_params) {
       input->flags() |= Declaration::f_IsFnParam;
@@ -743,8 +700,9 @@ struct FunctionLiteral : ScopeExpr<FnScope> {
   // string_view of the name out in core::Params::Param.
   core::Params<std::unique_ptr<Declaration>> params_;
   std::optional<std::vector<std::unique_ptr<Expression>>> outputs_;
-  std::vector<std::unique_ptr<Node>> statements_;
+  std::vector<std::unique_ptr<Node>> stmts_;
   bool is_short_;
+  base::Graph<DependencyNode> dep_graph_;
 };
 
 // Identifier:
@@ -758,6 +716,9 @@ struct Identifier : Expression {
 
   std::string_view token() const { return token_; }
   Declaration const *decl() const { return decl_; }
+
+  // TODO this doesn't make sense for calling/overload sets but otherwise can be
+  // a useful caching mechanism.
   void set_decl(Declaration const *decl) { decl_ = decl; }
 
   std::string extract() && { return std::move(token_); }
@@ -825,15 +786,14 @@ struct Goto : Node {
     core::FnArgs<std::unique_ptr<Expression>> const &args() const {
       return args_;
     }
-    core::FnArgs<std::unique_ptr<Expression>> &args() { return args_; }
 
    private:
+    friend struct Goto;
     std::string block_;
     core::FnArgs<std::unique_ptr<Expression>> args_;
   };
 
   absl::Span<JumpOption const> options() const { return options_; }
-  absl::Span<JumpOption> options() { return absl::MakeSpan(options_); }
 
  private:
   // A jump will evaluate at compile-time to the first option for which the
@@ -853,7 +813,6 @@ struct Import : Expression {
   ~Import() override {}
 
   Expression const *operand() const { return operand_.get(); }
-  Expression *operand() { return operand_.get(); }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
@@ -877,9 +836,7 @@ struct Index : Expression {
   ~Index() override {}
 
   Expression const *lhs() const { return lhs_.get(); }
-  Expression *lhs() { return lhs_.get(); }
   Expression const *rhs() const { return rhs_.get(); }
-  Expression *rhs() { return rhs_.get(); }
   std::pair<std::unique_ptr<Expression>, std::unique_ptr<Expression>> extract()
       && {
     return std::pair(std::move(lhs_), std::move(rhs_));
@@ -906,7 +863,7 @@ struct Label : Expression {
 
   ICARUS_AST_VIRTUAL_METHODS;
 
-  private:
+ private:
   std::string label_;
 };
 
@@ -953,12 +910,10 @@ struct Jump : ScopeExpr<FnScope> {
   ICARUS_AST_VIRTUAL_METHODS;
 
   Declaration const *state() const { return state_.get(); }
-  Declaration *state() { return state_.get(); }
   // TODO core::ParamsRef to erase the unique_ptr?
-  using params_type = core::Params<std::unique_ptr<Declaration>>;
-  params_type const &params() const { return params_; }
-  params_type &params() { return params_; }
-  base::PtrSpan<Node> stmts() { return stmts_; }
+  core::Params<std::unique_ptr<Declaration>> const &params() const {
+    return params_;
+  }
   base::PtrSpan<Node const> stmts() const { return stmts_; }
 
  private:
@@ -993,9 +948,7 @@ struct ParameterizedStructLiteral : ScopeExpr<DeclScope> {
   ~ParameterizedStructLiteral() override {}
 
   absl::Span<Declaration const> fields() const { return fields_; }
-  absl::Span<Declaration> fields() { return absl::MakeSpan(fields_); }
   absl::Span<Declaration const> params() const { return params_; }
-  absl::Span<Declaration> params() { return absl::MakeSpan(params_); }
 
   ParameterizedStructLiteral &operator        =(
       ParameterizedStructLiteral &&) noexcept = default;
@@ -1020,7 +973,6 @@ struct ReturnStmt : Node {
       : Node(std::move(span)), exprs_(std::move(exprs)) {}
   ~ReturnStmt() override {}
 
-  base::PtrSpan<Expression> exprs() { return exprs_; }
   base::PtrSpan<Expression const> exprs() const { return exprs_; }
 
   ICARUS_AST_VIRTUAL_METHODS;
@@ -1055,18 +1007,15 @@ struct ReturnStmt : Node {
 //  ```
 struct ScopeLiteral : ScopeExpr<ScopeLitScope> {
   explicit ScopeLiteral(frontend::SourceRange span,
-               std::unique_ptr<Expression> state_type,
-               std::vector<std::unique_ptr<Declaration>> decls)
+                        std::unique_ptr<Expression> state_type,
+                        std::vector<std::unique_ptr<Declaration>> decls)
       : ScopeExpr<ScopeLitScope>(std::move(span)),
         state_type_(std::move(state_type)),
         decls_(std::move(decls)) {}
   ~ScopeLiteral() override {}
 
   base::PtrSpan<Declaration const> decls() const { return decls_; }
-  base::PtrSpan<Declaration> decls() { return decls_; }
-
   Expression const *state_type() const { return state_type_.get(); }
-  Expression *state_type() { return state_type_.get(); }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
@@ -1105,20 +1054,17 @@ struct ScopeNode : Expression {
   ~ScopeNode() override {}
 
   Expression const *name() const { return name_.get(); }
-  Expression *name() { return name_.get(); }
   core::FnArgs<Expression const *, std::string_view> const &args() const {
     return args_.args();
   }
 
   template <typename Fn>
-  void Apply(Fn &&fn) {
+  void Apply(Fn &&fn) const {
     args_.Apply(std::forward<Fn>(fn));
   }
 
   absl::Span<BlockNode const> blocks() const { return blocks_; }
-  absl::Span<BlockNode> blocks() { return absl::MakeSpan(blocks_); }
 
-  ast::Label *label() { return label_.get(); }
   ast::Label const *label() const { return label_.get(); }
   void set_label(std::unique_ptr<Label> label) { label_ = std::move(label); }
 
@@ -1165,7 +1111,6 @@ struct StructLiteral : ScopeExpr<DeclScope> {
   ~StructLiteral() override {}
 
   absl::Span<Declaration const> fields() const { return fields_; }
-  absl::Span<Declaration> fields() { return absl::MakeSpan(fields_); }
 
   StructLiteral &operator=(StructLiteral &&) noexcept = default;
 
@@ -1185,14 +1130,35 @@ struct StructType : Expression {
   std::vector<std::unique_ptr<Expression>> args_;
 };
 
-// TODO comment
-// TODO consider separating this into two classes given that we know when we
-// parse if it has parens or not.
+// Switch:
+//
+// Represents a `switch` expression, of which there are two forms:
+// If there is no parenthesized expression following the `switch` keyword, then
+// the body consists of a collection of pairs of the form `<value> when
+// <condition>`. The semantics are that exactly one condition must be met and
+// the expression evaluates to the first `<value>` for which the corresponding
+// `<condition>` is true. If there is a parenthesized expression, the the body
+// is a collection of pairs of the form `<value> when <test-value>` and
+// evaluates to the first `<value>` for which `<test-value>` compares equal to
+// the parenthesized expression.
 struct Switch : Expression {
+  explicit Switch(
+      frontend::SourceRange range, std::unique_ptr<Expression> expr,
+      std::vector<std::pair<std::unique_ptr<Node>, std::unique_ptr<Expression>>>
+          cases)
+      : Expression(range), expr_(std::move(expr)), cases_(std::move(cases)) {}
   ~Switch() override {}
 
   ICARUS_AST_VIRTUAL_METHODS;
 
+  Expression const *expr() const { return expr_.get(); }
+  absl::Span<
+      std::pair<std::unique_ptr<Node>, std::unique_ptr<Expression>> const>
+  cases() const {
+    return cases_;
+  }
+
+ private:
   std::unique_ptr<Expression> expr_;
   std::vector<std::pair<std::unique_ptr<Node>, std::unique_ptr<Expression>>>
       cases_;
@@ -1312,7 +1278,6 @@ struct Unop : Expression {
 
   frontend::Operator op() const { return op_; }
   Expression const *operand() const { return operand_.get(); }
-  Expression *operand() { return operand_.get(); }
 
  private:
   std::unique_ptr<Expression> operand_;
@@ -1336,10 +1301,8 @@ struct YieldStmt : Node {
         label_(std::move(label)) {}
   ~YieldStmt() override {}
 
-  base::PtrSpan<Expression> exprs() { return exprs_; }
   base::PtrSpan<Expression const> exprs() const { return exprs_; }
 
-  ast::Label *label() { return label_.get(); }
   ast::Label const *label() const { return label_.get(); }
 
   ICARUS_AST_VIRTUAL_METHODS;

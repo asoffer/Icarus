@@ -24,11 +24,14 @@ base::expected<JumpDispatchTable> JumpDispatchTable::Verify(
     // we need to handle that case.
     DEBUG_LOG("dispatch-verify")("Verifying ", jump);
 
-    auto result = MatchArgsToParams(jump->params(), args);
+    auto result = MatchArgsToParams(jump->params().Transform([](auto const &p) {
+      return type::QualType::NonConstant(p.type());
+    }),
+                                    args);
     if (not result) {
       failures.emplace(jump, result.error());
     } else {
-      // TODO you also call compiler->type_of inside ExtractParams, so it's
+      // TODO you also call compiler->type_of inside ExtractParamTypes, so it's
       // probably worth reducing the number of lookups.
       table.table_.emplace(std::piecewise_construct,
                            std::forward_as_tuple(jump),

@@ -38,7 +38,6 @@ cc_library(
     deps = [
         ":binding_id",
         "//ast:expression",
-        "//module:assign_scope",
     ],
 )
 

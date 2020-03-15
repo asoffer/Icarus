@@ -656,9 +656,7 @@ ir::Results Compiler::Visit(ast::EnumLiteral const *node, EmitValueTag) {
 ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
   for (auto const &param : node->params()) {
     auto *p = param.value.get();
-    if (p->flags() & ast::Declaration::f_IsConst) { NOT_YET(); }
-
-    for (auto *dep : node->param_dep_graph_.sink_deps(p)) { NOT_YET(); }
+    if (p->flags() & ast::Declaration::f_IsConst) { return ir::Results{}; }
   }
 
   // TODO Use correct constants
@@ -794,7 +792,7 @@ EmitValueWithExpand(Compiler *c, base::PtrSpan<ast::Expression const> exprs) {
 
 ir::Results Compiler::Visit(ast::ReturnStmt const *node, EmitValueTag) {
   auto arg_vals  = EmitValueWithExpand(this, node->exprs());
-  auto *fn_scope = ASSERT_NOT_NULL(node->scope_->Containing<ast::FnScope>());
+  auto *fn_scope = ASSERT_NOT_NULL(node->scope()->Containing<ast::FnScope>());
   auto *fn_lit   = ASSERT_NOT_NULL(fn_scope->fn_lit_);
 
   auto *fn_type = &ASSERT_NOT_NULL(type_of(fn_lit))->as<type::Function>();
@@ -815,7 +813,7 @@ ir::Results Compiler::Visit(ast::ReturnStmt const *node, EmitValueTag) {
 
   // Rather than doing this on each block it'd be better to have each
   // scope's destructors jump you to the correct next block for destruction.
-  auto *scope = node->scope_;
+  auto *scope = node->scope();
   while (auto *exec = scope->if_as<ast::ExecScope>()) {
     MakeAllDestructions(this, exec);
     if (not exec->parent) { break; }
@@ -829,7 +827,7 @@ ir::Results Compiler::Visit(ast::ReturnStmt const *node, EmitValueTag) {
 ir::Results Compiler::Visit(ast::YieldStmt const *node, EmitValueTag) {
   auto arg_vals = EmitValueWithExpand(this, node->exprs());
   // TODO store this as an exec_scope.
-  MakeAllDestructions(this, &node->scope_->as<ast::ExecScope>());
+  MakeAllDestructions(this, &node->scope()->as<ast::ExecScope>());
   // TODO pretty sure this is all wrong.
 
   // Can't return these because we need to pass them up at least through the
@@ -843,8 +841,9 @@ ir::Results Compiler::Visit(ast::YieldStmt const *node, EmitValueTag) {
   // things or at least make them not compile if the `after` function takes
   // a compile-time constant argument.
   for (size_t i = 0; i < arg_vals.size(); ++i) {
-    yield_result.vals.pos_emplace(
-        arg_vals[i].second, *ASSERT_NOT_NULL(qual_type_of(node->exprs()[i])));
+    auto qt = qual_type_of(node->exprs()[i]);
+    ASSERT(qt.has_value() == true);
+    yield_result.vals.pos_emplace(arg_vals[i].second, *qt);
   }
   yield_result.label = node->label() ? node->label()->value() : ir::Label{};
 
@@ -909,7 +908,7 @@ ir::Results Compiler::Visit(ast::StructLiteral const *node, EmitValueTag) {
         Visit(field.type_expr(), EmitValueTag{}).get<type::Type const *>(0));
   }
 
-  return ir::Results{builder().Struct(node->scope_, fields)};
+  return ir::Results{builder().Struct(node->scope(), fields)};
 }
 
 ir::Results Compiler::Visit(ast::ParameterizedStructLiteral const *node,
@@ -964,19 +963,19 @@ ir::Results Compiler::Visit(ast::Switch const *node, EmitValueTag) {
   // TODO handle switching on tuples/multiple values?
   ir::Results expr_results;
   type::Type const *expr_type = nullptr;
-  if (node->expr_) {
-    expr_results = Visit(node->expr_.get(), EmitValueTag{});
-    expr_type    = type_of(node->expr_.get());
+  if (node->expr()) {
+    expr_results = Visit(node->expr(), EmitValueTag{});
+    expr_type    = type_of(node->expr());
   }
 
   absl::flat_hash_map<ir::BasicBlock *, ir::Results> phi_args;
-  for (size_t i = 0; i + 1 < node->cases_.size(); ++i) {
-    auto &[body, match_cond] = node->cases_[i];
+  for (size_t i = 0; i + 1 < node->cases().size(); ++i) {
+    auto &[body, match_cond] = node->cases()[i];
     auto *expr_block         = builder().AddBlock();
     auto *match_cond_ptr     = match_cond.get();
     ir::Results match_val = Visit(match_cond_ptr, EmitValueTag{});
     ir::RegOr<bool> cond  = [&] {
-      if (node->expr_) {
+      if (node->expr()) {
         ASSERT(expr_type == type_of(match_cond_ptr));
         return builder().Eq(expr_type, match_val, expr_results);
       } else {
@@ -1004,13 +1003,13 @@ ir::Results Compiler::Visit(ast::Switch const *node, EmitValueTag) {
     builder().CurrentBlock() = next_block;
   }
 
-  if (node->cases_.back().first->is<ast::Expression>()) {
+  if (node->cases().back().first->is<ast::Expression>()) {
     phi_args.emplace(builder().CurrentBlock(),
-                     Visit(node->cases_.back().first.get(), EmitValueTag{}));
+                     Visit(node->cases().back().first.get(), EmitValueTag{}));
     builder().UncondJump(land_block);
   } else {
     // It must be a jump/yield/return, which we've verified in VerifyType.
-    Visit(node->cases_.back().first.get(), EmitValueTag{});
+    Visit(node->cases().back().first.get(), EmitValueTag{});
     if (not all_paths_jump) {
       builder().block_termination_state() =
           ir::Builder::BlockTerminationState::kMoreStatements;

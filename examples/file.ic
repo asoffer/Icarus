@@ -1,0 +1,27 @@
+--    ::= import "examples/lib/core.ic"
+errno ::= import "examples/lib/errno.ic"
+file  ::= import "examples/lib/file.ic"
+io    ::= import "examples/lib/io.ic"
+
+// A bit ugly but I don't have a good way to convert from a string-literal to a 
+// char-pointer. For now I access the address of the 0th byte.
+my_file ::= &"examples/file.ic"[0]
+
+// File is a user-defined scope in the file module. Given a file name it attempts
+// to open the file, creating a handle (a C++ FILE*) if it can open the file, or 
+// goes to the error block with the value assigned into errno. If it was 
+// successful, the open block is executed and then the file is closed.
+file.File (my_file) open [f: *file.CFile] {
+
+  // Iterate through all the characters and call putchar on each
+  c := 0 as int32
+  while (c >= 0 as int32) do {
+    c = file.ReadChar(f)
+    if (c > 0 as int32) then {
+      putchar ::= foreign("putchar", int32 -> int32)
+      putchar(c) 
+    }
+  }
+} error [e: errno.error] {
+  io.Print("error")
+}

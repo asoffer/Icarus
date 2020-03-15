@@ -88,7 +88,6 @@ Type const *Void();
 #define PRIMITIVE_MACRO(EnumName, name) extern Type const *EnumName;
 #include "type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
-extern Type const *Generic;
 
 template <typename T>
 bool Compare(::type::Type const *t) {
@@ -135,7 +134,7 @@ bool Compare(::type::Type const *t) {
   } else if constexpr (std::is_same_v<T, ::type::Jump>) {
     return t->is<::type::Jump>();
   } else if constexpr (std::is_same_v<T, ast::FunctionLiteral *>) {
-    return t == ::type::Generic;
+    return t->is<::type::GenericFunction>();
   } else if constexpr (std::is_same_v<T, module::BasicModule *> or
                        std::is_same_v<T, module::BasicModule const *>) {
     return t == ::type::Module;

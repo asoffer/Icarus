@@ -67,6 +67,7 @@ cc_library(
         "//module:pending",
         "//type:cast",
         "//type:function",
+        "//type:generic_function",
         "//type:generic_struct",
         "//type:jump",
         "//type:parameter_pack",

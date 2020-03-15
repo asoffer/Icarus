@@ -137,7 +137,11 @@ void internal::OneTable::VerifyJumps() {
           ir::Fn fn = *maybe_fn;
           switch (fn.kind()) {
             case ir::Fn::Kind::Native: {
-              auto result = MatchArgsToParams(fn.native()->params(), arg_types);
+              auto result = MatchArgsToParams(
+                  fn.native()->params().Transform([](auto const &p) {
+                    return type::QualType::NonConstant(p.type());
+                  }),
+                  arg_types);
 
               if (result) {
                 next_types[block_name].push_back(fn.native()->type()->output());
@@ -178,7 +182,10 @@ void internal::OneTable::VerifyJumps() {
 base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
     Compiler *compiler, ast::ScopeNode const *node,
     absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> inits,
-    core::FnArgs<type::QualType> const &args) {
+    core::FnArgs<type::Typed<ir::Results>> const &args) {
+  auto args_qt = args.Transform(
+      [](auto const &t) { return type::QualType::NonConstant(t.type()); });
+
   absl::flat_hash_map<ir::ScopeDef const *,
                       absl::flat_hash_map<ir::Jump *, FailedMatch>>
       failures;
@@ -186,7 +193,12 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
   table.scope_node_ = node;
   table.init_map_   = std::move(inits);
   for (auto [jump, scope] : table.init_map_) {
-    if (auto result = MatchArgsToParams(jump->params(), args)) {
+    if (auto result =
+            MatchArgsToParams(jump->params().Transform([](auto const &p) {
+              // TODO This should be constant sometimes.
+              return type::QualType::NonConstant(p.type());
+            }),
+                              args_qt)) {
       auto &one_table = table.tables_[scope];
       one_table.inits.emplace(jump, *result);
       one_table.scope_def_ = scope;
@@ -195,11 +207,13 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
     }
   }
 
-  if (not ParamsCoverArgs(
-          args, table.init_map_,
-          [](ir::Jump *jump, auto const &) { return jump->params(); })) {
+  if (not ParamsCoverArgs(args_qt, table.init_map_,
+                          [](ir::Jump *jump, auto const &) {
+                            return jump->params().Transform(
+                                [](auto const &p) { return p.type(); });
+                          })) {
     compiler->diag().Consume(diagnostic::ParametersDoNotCoverArguments{
-        .args = args,
+        .args = args_qt,
     });
   }
 

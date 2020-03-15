@@ -8,7 +8,6 @@
 #include "frontend/source/range.h"
 
 namespace ast {
-struct Declaration;
 struct Scope;
 
 struct Node : public base::Cast<Node> {
@@ -16,8 +15,6 @@ struct Node : public base::Cast<Node> {
       : span(std::move(span)) {}
   virtual ~Node() {}
 
-  virtual void Accept(MutableVisitorBase *visitor, void *ret,
-                      void *arg_tuple)       = 0;
   virtual void Accept(VisitorBase *visitor, void *ret,
                       void *arg_tuple) const = 0;
 
@@ -27,10 +24,16 @@ struct Node : public base::Cast<Node> {
     return out;
   }
 
-  virtual void DebugStrAppend(std::string *out, size_t indent) const {};
+  virtual void DebugStrAppend(std::string *out, size_t indent) const {}
+  virtual void Initialize(Scope *scope) {}
 
-  ast::Scope *scope_ = nullptr;
+  Scope *scope() const { return scope_; }
+
+  // TODO make private
   frontend::SourceRange span;
+
+ protected:
+  Scope *scope_ = nullptr;
 };
 
 }  // namespace ast

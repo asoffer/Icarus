@@ -2,6 +2,7 @@
 #define ICARUS_COMPILER_COMPILER_H
 
 #include <memory>
+#include <optional>
 
 #include "absl/container/flat_hash_map.h"
 #include "ast/ast_fwd.h"
@@ -160,7 +161,7 @@ struct Compiler
 
   ir::CompiledFn MakeThunk(ast::Expression const *expr, type::Type const *type);
 
-  type::QualType const *qual_type_of(ast::ExprPtr expr) const;
+  std::optional<type::QualType> qual_type_of(ast::ExprPtr expr) const;
   type::Type const *type_of(ast::Expression const *expr) const;
   void set_addr(ast::Declaration const *decl, ir::Reg addr);
   type::QualType set_result(ast::ExprPtr expr, type::QualType r);

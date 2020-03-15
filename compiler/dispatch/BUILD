@@ -79,6 +79,7 @@ cc_library(
         "//type:qual_type",
         "//type:type",
         "//type:typed_value",
+        "//type:generic_function",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
@@ -137,6 +138,7 @@ cc_library(
         "//type:cast",
         "//type:type",
         "//type:function",
+        "//type:generic_function",
     ],
 )
 
@@ -156,8 +158,6 @@ cc_library(
     hdrs = ["match.h"],
     srcs = ["match.cc"],
     deps = [
-        "//ast:ast",
-        "//ast:ast_fwd",
         "//base:expected",
         "//type:cast",
         "//core:fn_args",
