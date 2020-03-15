@@ -240,3 +240,52 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_binary(
+    name = "compile",
+    srcs = ["main.cc"],
+    deps = [
+        ":compiler",
+        ":executable_module",
+        "//base:defer",
+        "//base:log",
+        "//base:untyped_buffer",
+        "//frontend/source:file_name",
+        "//frontend/source:shared",
+        "//init:cli",
+        "//interpretter:execute",
+        "//ir:compiled_fn",
+        "//module",
+        "//module:pending",
+        "//opt",
+        "@com_google_absl//absl/debugging:failure_signal_handler",
+        "@com_google_absl//absl/debugging:symbolize",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_binary(
+    name = "repl",
+    srcs = ["repl.cc"],
+    deps = [
+        "//ast:ast",
+        "//ast:expression",
+        "//base:untyped_buffer",
+        "//compiler:compiler",
+        "//core:params",
+        "//diagnostic/consumer:streaming",
+        "//frontend/source:repl",
+        "//frontend/source:shared",
+        "//frontend:parse",
+        "//init:cli",
+        "//interpretter:execute",
+        "//ir:compiled_fn",
+        "//module",
+        "//opt",
+        "//type:function",
+        "//type:tuple",
+        "@com_google_absl//absl/debugging:failure_signal_handler",
+        "@com_google_absl//absl/debugging:symbolize",
+        "@com_google_absl//absl/strings",
+    ],
+)
