@@ -9,8 +9,8 @@
 #include "core/alignment.h"
 #include "core/bytes.h"
 #include "ir/byte_code_writer.h"
-#include "ir/cmd/jump.h"
-#include "ir/instructions_base.h"
+#include "ir/instruction/base.h"
+#include "ir/instruction/jump.h"
 #include "ir/results.h"
 
 namespace ir {

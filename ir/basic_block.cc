@@ -1,6 +1,6 @@
 #include "ir/basic_block.h"
 
-#include "ir/instruction_op_codes.h"
+#include "ir/instruction/op_codes.h"
 #include "type/type.h"
 
 namespace ir {

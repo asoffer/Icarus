@@ -6,9 +6,9 @@ cc_library(
     srcs = ["basic_block.cc"],
     deps = [
         ":byte_code_writer",
-        ":instructions_base",
-        ":instruction_op_codes",
-        "//ir/cmd:jump",
+        "//ir/instruction:base",
+        "//ir/instruction:op_codes",
+        "//ir/instruction:jump",
         "//base:untyped_buffer",
         "//type:type",
     ],
@@ -74,7 +74,7 @@ cc_library(
     deps = [
         ":basic_block",
         ":block_group",
-        ":instructions",
+        "//ir/instruction",
         ":local_block_interpretation",
         ":struct_field",
         "//base:debug",
@@ -85,82 +85,6 @@ cc_library(
         "//type:typed_value",
         "//type:util",
         "@com_google_absl//absl/types:span",
-    ],
-)
-
-cc_library(
-    name = "instruction_inliner",
-    hdrs = ["instruction_inliner.h"],
-    srcs = ["instruction_inliner.cc"],
-    deps = [
-        ":basic_block",
-        ":block_group",
-        ":instructions_base",
-        ":local_block_interpretation",
-        ":results",
-        "//base:debug",
-        "//ir/cmd:jump",
-        "//ir/value:reg",
-        "//ir/value:reg_or",
-        "//type:typed_value",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ]
-)
-
-cc_test(
-    name = "instruction_inliner_test",
-    srcs = ["instruction_inliner_test.cc"],
-    deps = [
-        ":builder",
-        ":compiled_fn",
-        ":jump",
-        ":instruction_inliner",
-        "//type",
-        "//type:function",
-        "//type:jump",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
-    name = "instruction_op_codes",
-    hdrs = ["instruction_op_codes.h"],
-)
-
-cc_library(
-    name = "instructions_base",
-    hdrs = ["instructions_base.h"],
-    deps = [
-        "//base:cast",
-        "//base:clone",
-        "//base:untyped_buffer",
-    ]
-)
-cc_library(
-    name = "instructions",
-    hdrs = ["instructions.h", "instructions_base.h"],
-    deps = [
-        ":block_def",
-        ":instructions_base",
-        ":instruction_inliner",
-        ":instruction_op_codes",
-        ":out_params",
-        ":scope_def",
-        ":struct_field",
-        "//ast/scope",
-        "//base:clone",
-        "//ir/value:fn",
-        "//ir/value:reg_or",
-        "//ir/value:string",
-        "//type",
-        "//type:array",
-        "//type:enum",
-        "//type:flags",
-        "//type:pointer",
-        "//type:struct",
-        "//type:tuple",
-        "//type:variant",
-        "@com_google_absl//absl/strings",
     ],
 )
 
@@ -191,12 +115,12 @@ cc_library(
         ":basic_block",
         ":builder",
         ":compiled_fn",
-        ":instruction_inliner",
         ":jump",
         ":local_block_interpretation",
         ":results",
         ":stack_frame_allocations",
         "//base:macros",
+        "//ir/instruction:inliner",
         "//ir/value:reg",
         "//type:function",
         "//type:type",

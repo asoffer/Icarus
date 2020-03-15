@@ -46,6 +46,7 @@ struct BuiltinFn {
         UNREACHABLE();
       case Which::DebugIr: return type::Func({}, {});
     }
+    UNREACHABLE();
   }
 
   friend std::ostream &operator<<(std::ostream &os, BuiltinFn f) {

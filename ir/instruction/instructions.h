@@ -1,5 +1,5 @@
-#ifndef ICARUS_IR_INSTRUCTIONS_H
-#define ICARUS_IR_INSTRUCTIONS_H
+#ifndef ICARUS_IR_INSTRUCTION_INSTRUCTIONS_H
+#define ICARUS_IR_INSTRUCTION_INSTRUCTIONS_H
 
 #include <memory>
 
@@ -11,9 +11,10 @@
 #include "base/clone.h"
 #include "base/meta.h"
 #include "ir/block_def.h"
-#include "ir/instruction_inliner.h"
-#include "ir/instruction_op_codes.h"
-#include "ir/instructions_base.h"
+#include "ir/instruction/base.h"
+#include "ir/instruction/op_codes.h"
+#include "ir/instruction/util.h"
+#include "ir/instruction/inliner.h"
 #include "ir/out_params.h"
 #include "ir/struct_field.h"
 #include "ir/value/enum_and_flags.h"
@@ -34,52 +35,6 @@
 // the common instructions available in the core IR.
 namespace ir {
 namespace internal {
-constexpr size_t Log2(size_t n) { return n == 1 ? 0 : 1 + Log2(n / 2); }
-
-template <typename T>
-constexpr uint8_t PrimitiveIndex() {
-  if constexpr (std::is_integral_v<T> and not std::is_same_v<T, bool>) {
-    return Log2(sizeof(T)) * 2 + std::is_signed_v<T>;
-  } else if constexpr (std::is_same_v<T, float>) {
-    return 0x08;
-  } else if constexpr (std::is_same_v<T, double>) {
-    return 0x09;
-  } else if constexpr (std::is_same_v<T, type::Type const*>) {
-    return 0x0a;
-  } else if constexpr (std::is_same_v<T, Addr>) {
-    return 0x0b;
-  } else if constexpr (std::is_same_v<T, EnumVal>) {
-    return 0x0c;
-  } else if constexpr (std::is_same_v<T, FlagsVal>) {
-    return 0x0d;
-  } else if constexpr (std::is_same_v<T, bool>) {
-    return 0x0e;
-  } else if constexpr (std::is_same_v<T, String>) {
-    return 0x0f;
-  } else if constexpr (std::is_same_v<T, Fn>) {
-    return 0x10;
-  } else if constexpr (std::is_same_v<T, core::Alignment>) {
-    return 0x11;
-  } else if constexpr (std::is_same_v<T, core::Bytes>) {
-    return 0x12;
-  } else if constexpr (std::is_same_v<T, BlockDef*> or
-                       std::is_same_v<T, BlockDef const*>) {
-    return 0x13;
-  } else if constexpr (std::is_same_v<T, ScopeDef*> or
-                       std::is_same_v<T, ScopeDef const*>) {
-    return 0x14;
-  } else if constexpr (std::is_same_v<T, module::BasicModule*> or
-                       std::is_same_v<T, module::BasicModule const*>) {
-    return 0x15;
-  } else if constexpr (std::is_same_v<T, ast::FunctionLiteral*> or
-                       std::is_same_v<T, ast::FunctionLiteral const*>) {
-    // TODO: FunctionLiteral is a short-term hack for generics. IR shouldn't
-    // depend on it.
-    return 0x16;
-  } else {
-    UNREACHABLE(typeid(T).name());
-  }
-}
 
 template <typename SizeType, typename T, typename Fn>
 void WriteBits(ByteCodeWriter* writer, absl::Span<T const> span,
@@ -201,50 +156,6 @@ struct VariadicInstruction : base::Clone<VariadicInstruction<T>, Instruction> {
   Reg result;
 };
 
-template <typename T>
-std::string_view TypeToString() {
-  if constexpr (std::is_same_v<T, bool>) {
-    return "bool";
-  } else if constexpr (std::is_same_v<T, int8_t>) {
-    return "int8";
-  } else if constexpr (std::is_same_v<T, int16_t>) {
-    return "int16";
-  } else if constexpr (std::is_same_v<T, int32_t>) {
-    return "int32";
-  } else if constexpr (std::is_same_v<T, int64_t>) {
-    return "int64";
-  } else if constexpr (std::is_same_v<T, uint8_t>) {
-    return "nat8";
-  } else if constexpr (std::is_same_v<T, uint16_t>) {
-    return "nat16";
-  } else if constexpr (std::is_same_v<T, uint32_t>) {
-    return "nat32";
-  } else if constexpr (std::is_same_v<T, uint64_t>) {
-    return "nat64";
-  } else if constexpr (std::is_same_v<T, float>) {
-    return "float32";
-  } else if constexpr (std::is_same_v<T, double>) {
-    return "float64";
-  } else if constexpr (std::is_same_v<T, String>) {
-    return "bytes";
-  } else if constexpr (std::is_same_v<T, EnumVal>) {
-    return "enum";
-  } else if constexpr (std::is_same_v<T, FlagsVal>) {
-    return "flags";
-  } else if constexpr (std::is_same_v<T, type::Type const*>) {
-    return "type";
-  } else if constexpr (std::is_same_v<T, Addr>) {
-    return "addr";
-  } else if constexpr (std::is_same_v<T, Fn>) {
-    return "fn";
-  } else {
-    DEBUG_LOG()(typeid(T).name());
-    return "[[unknown]]";
-    // TODO enumerate all possibilities
-    // static_assert(base::always_false<T>());
-  }
-}
-
 template <typename NumType>
 struct AddInstruction
     : base::Clone<AddInstruction<NumType>, BinaryInstruction<NumType>> {
@@ -260,9 +171,9 @@ struct AddInstruction
 
   std::string to_string() const override {
     using base::stringify;
-    return absl::StrCat(TypeToString<NumType>(), " ", stringify(this->result),
-                        " = add ", stringify(this->lhs), " ",
-                        stringify(this->rhs));
+    return absl::StrCat(internal::TypeToString<NumType>(), " ",
+                        stringify(this->result), " = add ",
+                        stringify(this->lhs), " ", stringify(this->rhs));
   }
 
   void WriteByteCode(ByteCodeWriter* writer) const override {
@@ -285,9 +196,9 @@ struct SubInstruction
 
   std::string to_string() const override {
     using base::stringify;
-    return absl::StrCat(TypeToString<NumType>(), " ", stringify(this->result),
-                        " = sub ", stringify(this->lhs), " ",
-                        stringify(this->rhs));
+    return absl::StrCat(internal::TypeToString<NumType>(), " ",
+                        stringify(this->result), " = sub ",
+                        stringify(this->lhs), " ", stringify(this->rhs));
   }
 
   void WriteByteCode(ByteCodeWriter* writer) const override {
@@ -310,9 +221,9 @@ struct MulInstruction
 
   std::string to_string() const override {
     using base::stringify;
-    return absl::StrCat(TypeToString<NumType>(), " ", stringify(this->result),
-                        " = mul ", stringify(this->lhs), " ",
-                        stringify(this->rhs));
+    return absl::StrCat(internal::TypeToString<NumType>(), " ",
+                        stringify(this->result), " = mul ",
+                        stringify(this->lhs), " ", stringify(this->rhs));
   }
 
   void WriteByteCode(ByteCodeWriter* writer) const override {
@@ -335,9 +246,9 @@ struct DivInstruction
 
   std::string to_string() const override {
     using base::stringify;
-    return absl::StrCat(TypeToString<NumType>(), " ", stringify(this->result),
-                        " = div ", stringify(this->lhs), " ",
-                        stringify(this->rhs));
+    return absl::StrCat(internal::TypeToString<NumType>(), " ",
+                        stringify(this->result), " = div ",
+                        stringify(this->lhs), " ", stringify(this->rhs));
   }
 
   void WriteByteCode(ByteCodeWriter* writer) const override {
@@ -360,9 +271,9 @@ struct ModInstruction
 
   std::string to_string() const override {
     using base::stringify;
-    return absl::StrCat(TypeToString<NumType>(), " ", stringify(this->result),
-                        " = mod ", stringify(this->lhs), " ",
-                        stringify(this->rhs));
+    return absl::StrCat(internal::TypeToString<NumType>(), " ",
+                        stringify(this->result), " = mod ",
+                        stringify(this->lhs), " ", stringify(this->rhs));
   }
 
   void WriteByteCode(ByteCodeWriter* writer) const override {
@@ -507,8 +418,9 @@ struct StoreInstruction : base::Clone<StoreInstruction<T>, Instruction> {
 
   std::string to_string() const override {
     using base::stringify;
-    return absl::StrCat(TypeToString<T>(), " store ", stringify(this->value),
-                        " -> [", stringify(location), "]");
+    return absl::StrCat(internal::TypeToString<T>(), " store ",
+                        stringify(this->value), " -> [", stringify(location),
+                        "]");
   }
 
   struct control_bits {
@@ -554,7 +466,7 @@ struct PhiInstruction : base::Clone<PhiInstruction<T>, Instruction> {
   std::string to_string() const override {
     using base::stringify;
     std::string s =
-        absl::StrCat(stringify(result), " = phi ", TypeToString<T>());
+        absl::StrCat(stringify(result), " = phi ", internal::TypeToString<T>());
     for (size_t i = 0; i < blocks.size(); ++i) {
       absl::StrAppend(&s, "\n      ", stringify(blocks[i]), ": ",
                       stringify(values[i]));
@@ -607,7 +519,8 @@ struct RegisterInstruction : UnaryInstruction<T> {
 
   std::string to_string() const override {
     using base::stringify;
-    return absl::StrCat(TypeToString<T>(), " ", stringify(this->result), " = ",
+    return absl::StrCat(internal::TypeToString<T>(), " ",
+                        stringify(this->result), " = ",
                         stringify(this->operand));
   }
 
@@ -634,11 +547,11 @@ struct SetReturnInstruction
     using base::stringify;
     if constexpr (std::is_same_v<T, ::type::Type const*>) {
       return absl::StrCat(
-          "set-ret ", index, " = ", TypeToString<T>(), " ",
+          "set-ret ", index, " = ", internal::TypeToString<T>(), " ",
           value.is_reg() ? stringify(value) : value.value()->to_string());
     } else {
-      return absl::StrCat("set-ret ", index, " = ", TypeToString<T>(), " ",
-                          stringify(value));
+      return absl::StrCat("set-ret ", index, " = ", internal::TypeToString<T>(),
+                          " ", stringify(value));
     }
   }
 
@@ -702,8 +615,9 @@ struct NegInstruction : UnaryInstruction<NumType> {
 
   std::string to_string() const override {
     using base::stringify;
-    return absl::StrCat(TypeToString<NumType>(), " ", stringify(this->result),
-                        " = neg ", stringify(this->operand));
+    return absl::StrCat(internal::TypeToString<NumType>(), " ",
+                        stringify(this->result), " = neg ",
+                        stringify(this->operand));
   }
 
   void WriteByteCode(ByteCodeWriter* writer) const override {
@@ -746,8 +660,9 @@ struct NotInstruction : UnaryInstruction<bool> {
 
   std::string to_string() const override {
     using base::stringify;
-    return absl::StrCat(TypeToString<bool>(), " ", stringify(this->result),
-                        " = not ", stringify(this->operand));
+    return absl::StrCat(internal::TypeToString<bool>(), " ",
+                        stringify(this->result), " = not ",
+                        stringify(this->operand));
   }
 
   void WriteByteCode(ByteCodeWriter* writer) const override {
@@ -1641,4 +1556,4 @@ struct VariantAccessInstruction
 
 }  // namespace ir
 
-#endif  // ICARUS_IR_INSTRUCTIONS_H
+#endif  // ICARUS_IR_INSTRUCTION_INSTRUCTIONS_H

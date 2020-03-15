@@ -1,5 +1,5 @@
-#ifndef ICARUS_IR_CMD_JUMP_H
-#define ICARUS_IR_CMD_JUMP_H
+#ifndef ICARUS_IR_INSTRUCTIONS_JUMP_H
+#define ICARUS_IR_INSTRUCTIONS_JUMP_H
 
 #include <cstring>
 #include <memory>
@@ -153,4 +153,4 @@ struct JumpCmd {
 
 }  // namespace ir
 
-#endif  // ICARUS_IR_CMD_JUMP_H
+#endif  // ICARUS_IR_INSTRUCTIONS_JUMP_H

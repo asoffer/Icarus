@@ -3,9 +3,9 @@
 #include "base/macros.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
-#include "ir/instruction_inliner.h"
-#include "ir/value/reg.h"
+#include "ir/instruction/inliner.h"
 #include "ir/stack_frame_allocations.h"
+#include "ir/value/reg.h"
 #include "type/function.h"
 #include "type/type.h"
 

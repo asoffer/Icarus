@@ -4,6 +4,7 @@
 #include <cstring>
 #include <iostream>
 
+#include "base/debug.h"
 #include "ir/value/builtin_fn.h"
 #include "ir/value/foreign_fn.h"
 #include "ir/value/native_fn.h"
@@ -15,8 +16,10 @@ namespace ir {
 struct Fn {
  private:
   using underlying_type = uintptr_t;
+  static_assert(alignof(BuiltinFn) <= alignof(underlying_type));
   static_assert(alignof(NativeFn) <= alignof(underlying_type));
   static_assert(alignof(ForeignFn) <= alignof(underlying_type));
+  static_assert(sizeof(BuiltinFn) <= sizeof(underlying_type));
   static_assert(sizeof(NativeFn) <= sizeof(underlying_type));
   static_assert(sizeof(ForeignFn) <= sizeof(underlying_type));
 
@@ -41,6 +44,7 @@ struct Fn {
       case Kind::Builtin: return builtin().type();
       case Kind::Foreign: return foreign().type();
     }
+    UNREACHABLE();
   }
 
   Fn(ForeignFn f) {
@@ -70,7 +74,7 @@ struct Fn {
   NativeFn native() const {
     ASSERT(kind() == Kind::Native);
     NativeFn f;
-    std::memcpy(&f, &data_, sizeof(CompiledFn *));
+    std::memcpy(&f.fn_, &data_, sizeof(CompiledFn *));
     return f;
   }
 
@@ -94,6 +98,7 @@ inline std::ostream &operator<<(std::ostream &os, Fn f) {
     case Fn::Kind::Builtin: return os << f.builtin();
     case Fn::Kind::Foreign: return os << f.foreign();
   }
+  UNREACHABLE();
 }
 
 }  // namespace ir

@@ -1,4 +1,4 @@
-#include "ir/instruction_inliner.h"
+#include "ir/instruction/inliner.h"
 
 #include <vector>
 

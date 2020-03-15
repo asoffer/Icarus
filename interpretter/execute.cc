@@ -9,7 +9,7 @@
 #include "interpretter/architecture.h"
 #include "interpretter/foreign.h"
 #include "ir/block_def.h"
-#include "ir/instructions.h"
+#include "ir/instruction/instructions.h"
 #include "ir/jump.h"
 #include "ir/read_only_data.h"
 #include "ir/scope_def.h"

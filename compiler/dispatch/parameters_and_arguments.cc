@@ -1,6 +1,7 @@
 #include "compiler/dispatch/parameters_and_arguments.h"
 
 #include "ast/ast.h"
+#include "base/debug.h"
 #include "interpretter/evaluate.h"
 #include "ir/value/fn.h"
 #include "type/function.h"
@@ -23,23 +24,24 @@ core::Params<type::Typed<ast::Declaration const *>> ExtractParams(
         case ir::Fn::Kind::Builtin: return fn_type->AnonymousParams();
         case ir::Fn::Kind::Foreign: return fn_type->AnonymousParams();
       }
+      UNREACHABLE();
     } else if (auto *jump_type = decl_type->if_as<type::Jump>()) {
       auto j = interpretter::EvaluateAs<ir::Jump const *>(
           compiler->MakeThunk(decl, decl_type));
       return static_cast<core::Params<type::Typed<ast::Declaration const *>>>(
           j->params());
     } else if (decl_type == type::Generic) {
-        // TODO determine how to evaluate this with an interpretter.
-        if (auto *fn_lit = decl->init_val()->if_as<ast::FunctionLiteral>()) {
-          core::Params<type::Typed<ast::Declaration const *>> params;
-          return fn_lit->params().Transform([&](auto const &p) {
-            type::Type const *t = interpretter::EvaluateAs<type::Type const *>(
-                compiler->MakeThunk(p->type_expr(), type::Type_));
-            return type::Typed<ast::Declaration const *>(p.get(), t);
-          });
-        } else {
-          NOT_YET(decl->init_val()->DebugString());
-        }
+      // TODO determine how to evaluate this with an interpretter.
+      if (auto *fn_lit = decl->init_val()->if_as<ast::FunctionLiteral>()) {
+        core::Params<type::Typed<ast::Declaration const *>> params;
+        return fn_lit->params().Transform([&](auto const &p) {
+          type::Type const *t = interpretter::EvaluateAs<type::Type const *>(
+              compiler->MakeThunk(p->type_expr(), type::Type_));
+          return type::Typed<ast::Declaration const *>(p.get(), t);
+        });
+      } else {
+        NOT_YET(decl->init_val()->DebugString());
+      }
     } else {
       UNREACHABLE(decl->DebugString(), decl_type->to_string());
     }
