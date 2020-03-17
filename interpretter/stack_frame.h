@@ -3,7 +3,7 @@
 
 #include "base/untyped_buffer_view.h"
 #include "interpretter/register_array.h"
-#include "ir/basic_block.h"
+#include "ir/blocks/basic.h"
 #include "ir/value/native_fn.h"
 
 namespace interpretter {

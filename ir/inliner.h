@@ -1,8 +1,8 @@
 #ifndef ICARUS_IR_CMD_INLINER_H
 #define ICARUS_IR_CMD_INLINER_H
 
-#include "ir/basic_block.h"
 #include "ir/block_group.h"
+#include "ir/blocks/basic.h"
 #include "ir/builder.h"
 #include "ir/jump.h"
 #include "ir/local_block_interpretation.h"

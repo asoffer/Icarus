@@ -4,7 +4,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "ir/basic_block.h"
+#include "ir/blocks/basic.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
 #include "ir/jump.h"

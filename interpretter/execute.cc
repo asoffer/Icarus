@@ -500,6 +500,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::Jump *>(reg); });
     scope_def->exit_->before_ = ir::OverloadSet(
         Deserialize<uint16_t, ir::Fn>(iter, [ctx](ir::Reg reg) {
+          DEBUG_LOG()(ctx->resolve<ir::Fn>(reg));
           return ctx->resolve<ir::Fn>(reg);
         }));
 
@@ -514,8 +515,11 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
 
   } else if constexpr (std::is_same_v<Inst, ir::MakeBlockInstruction>) {
     ir::BlockDef *block_def = iter->read<ir::BlockDef *>();
-    block_def->before_ = ir::OverloadSet(Deserialize<uint16_t, ir::Fn>(
-        iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::Fn>(reg); }));
+    block_def->before_ =
+        ir::OverloadSet(Deserialize<uint16_t, ir::Fn>(iter, [ctx](ir::Reg reg) {
+          DEBUG_LOG()(ctx->resolve<ir::Fn>(reg));
+          return ctx->resolve<ir::Fn>(reg);
+        }));
     block_def->after_  = Deserialize<uint16_t, ir::Jump *>(
         iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::Jump *>(reg); });
     ctx->current_frame().regs_.set(iter->read<ir::Reg>(), block_def);

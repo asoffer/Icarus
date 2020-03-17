@@ -62,44 +62,45 @@ void Builder::Call(RegOr<Fn> const &fn, type::Function const *f,
                    std::vector<Results> args, ir::OutParams outs) {
   // TODO this call should return the constructed registers rather than forcing
   // the caller to do it.
-  CurrentBlock()->storage_cache_.clear();
+  CurrentBlock()->ClearCache();
   ASSERT(args.size() == f->params().size());
   auto inst = std::make_unique<CallInstruction>(f, fn, std::move(args),
                                                 std::move(outs));
-  CurrentBlock()->instructions_.push_back(std::move(inst));
+  CurrentBlock()->AddInstruction(std::move(inst));
 }
 
-static void ClearJumps(JumpCmd *jump, BasicBlock *from) {
-  jump->Visit([&](auto &j) {
+static void ClearJumps(JumpCmd const &jump, BasicBlock *from) {
+  jump.Visit([&](auto &j) {
     using type = std::decay_t<decltype(j)>;
     using base::stringify;
     if constexpr (std::is_same_v<type, JumpCmd::UncondJump>) {
-      j.block->incoming_.erase(from);
+      j.block->erase_incoming(from);
     } else if constexpr (std::is_same_v<type, JumpCmd::CondJump>) {
-      j.true_block->incoming_.erase(from);
-      j.false_block->incoming_.erase(from);
+      j.true_block->erase_incoming(from);
+      j.false_block->erase_incoming(from);
     }
   });
 }
 
 void Builder::UncondJump(BasicBlock *block) {
-  ClearJumps(&CurrentBlock()->jump_, CurrentBlock());
-  block->incoming_.insert(CurrentBlock());
-  CurrentBlock()->jump_ = JumpCmd::Uncond(block);
+  ClearJumps(CurrentBlock()->jump(), CurrentBlock());
+  block->insert_incoming(CurrentBlock());
+  CurrentBlock()->set_jump(JumpCmd::Uncond(block));
 }
 
 void Builder::ReturnJump() {
   block_termination_state() = BlockTerminationState::kReturn;
-  CurrentBlock()->jump_     = JumpCmd::Return();
+  CurrentBlock()->set_jump(JumpCmd::Return());
 }
 
 void Builder::CondJump(RegOr<bool> cond, BasicBlock *true_block,
                        BasicBlock *false_block) {
-  ClearJumps(&CurrentBlock()->jump_, CurrentBlock());
+  ClearJumps(CurrentBlock()->jump(), CurrentBlock());
   if (cond.is_reg()) {
-    true_block->incoming_.insert(CurrentBlock());
-    false_block->incoming_.insert(CurrentBlock());
-    CurrentBlock()->jump_ = JumpCmd::Cond(cond.reg(), true_block, false_block);
+    true_block->insert_incoming(CurrentBlock());
+    false_block->insert_incoming(CurrentBlock());
+    CurrentBlock()->set_jump(
+        JumpCmd::Cond(cond.reg(), true_block, false_block));
   } else {
     return UncondJump(cond.value() ? true_block : false_block);
   }
@@ -108,38 +109,38 @@ void Builder::CondJump(RegOr<bool> cond, BasicBlock *true_block,
 void Builder::ChooseJump(std::vector<std::string_view> names,
                          std::vector<BasicBlock *> blocks,
                          std::vector<core::FnArgs<type::Typed<Results>>> args) {
-  CurrentBlock()->jump_ =
-      JumpCmd::Choose(std::move(names), std::move(blocks), std::move(args));
+  CurrentBlock()->set_jump(
+      JumpCmd::Choose(std::move(names), std::move(blocks), std::move(args)));
 }
 
 void Builder::Init(type::Type const *t, Reg r) {
   auto inst = std::make_unique<TypeManipulationInstruction>(
       TypeManipulationInstruction::Kind::Init, t, r);
-  CurrentBlock()->instructions_.push_back(std::move(inst));
+  CurrentBlock()->AddInstruction(std::move(inst));
 }
 
 void Builder::Destroy(type::Type const *t, Reg r) {
   auto inst = std::make_unique<TypeManipulationInstruction>(
       TypeManipulationInstruction::Kind::Destroy, t, r);
-  CurrentBlock()->instructions_.push_back(std::move(inst));
+  CurrentBlock()->AddInstruction(std::move(inst));
 }
 
 void Builder::Move(type::Type const *t, Reg from, RegOr<Addr> to) {
   auto inst = std::make_unique<TypeManipulationInstruction>(
       TypeManipulationInstruction::Kind::Move, t, from, to);
-  CurrentBlock()->instructions_.push_back(std::move(inst));
+  CurrentBlock()->AddInstruction(std::move(inst));
 }
 
 void Builder::Copy(type::Type const *t, Reg from, RegOr<Addr> to) {
   auto inst = std::make_unique<TypeManipulationInstruction>(
       TypeManipulationInstruction::Kind::Copy, t, from, to);
-  CurrentBlock()->instructions_.push_back(std::move(inst));
+  CurrentBlock()->AddInstruction(std::move(inst));
 }
 
 type::Typed<Reg> Builder::LoadSymbol(String name, type::Type const *type) {
   auto inst   = std::make_unique<LoadSymbolInstruction>(name, type);
   auto result = inst->result = CurrentGroup()->Reserve();
-  CurrentBlock()->instructions_.push_back(std::move(inst));
+  CurrentBlock()->AddInstruction(std::move(inst));
   return type::Typed<Reg>(result, type);
 }
 
@@ -147,7 +148,7 @@ base::Tagged<core::Alignment, Reg> Builder::Align(RegOr<type::Type const *> r) {
   auto inst = std::make_unique<TypeInfoInstruction>(
       TypeInfoInstruction::Kind::Alignment, r);
   auto result = inst->result = CurrentGroup()->Reserve();
-  CurrentBlock()->instructions_.push_back(std::move(inst));
+  CurrentBlock()->AddInstruction(std::move(inst));
   return result;
 }
 
@@ -155,7 +156,7 @@ base::Tagged<core::Bytes, Reg> Builder::Bytes(RegOr<type::Type const *> r) {
   auto inst = std::make_unique<TypeInfoInstruction>(
       TypeInfoInstruction::Kind::Bytes, r);
   auto result = inst->result = CurrentGroup()->Reserve();
-  CurrentBlock()->instructions_.push_back(std::move(inst));
+  CurrentBlock()->AddInstruction(std::move(inst));
   return result;
 }
 
@@ -163,7 +164,7 @@ base::Tagged<Addr, Reg> Builder::PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
                                          type::Pointer const *t) {
   auto inst   = std::make_unique<PtrIncrInstruction>(ptr, inc, t);
   auto result = inst->result = CurrentGroup()->Reserve();
-  CurrentBlock()->instructions_.push_back(std::move(inst));
+  CurrentBlock()->AddInstruction(std::move(inst));
   return result;
 }
 
@@ -171,7 +172,7 @@ RegOr<int64_t> Builder::ByteViewLength(RegOr<ir::String> val) {
   if (not val.is_reg()) { return val.value().get().size(); }
   auto inst   = std::make_unique<ByteViewLengthInstruction>(val.reg());
   auto result = inst->result = CurrentGroup()->Reserve();
-  CurrentBlock()->instructions_.push_back(std::move(inst));
+  CurrentBlock()->AddInstruction(std::move(inst));
   return result;
 }
 
@@ -179,7 +180,7 @@ RegOr<Addr> Builder::ByteViewData(RegOr<ir::String> val) {
   if (not val.is_reg()) { return val.value().addr(); }
   auto inst   = std::make_unique<ByteViewDataInstruction>(val.reg());
   auto result = inst->result = CurrentGroup()->Reserve();
-  CurrentBlock()->instructions_.push_back(std::move(inst));
+  CurrentBlock()->AddInstruction(std::move(inst));
   return result;
 }
 
@@ -187,7 +188,7 @@ type::Typed<Reg> Builder::Field(RegOr<Addr> r, type::Tuple const *t,
                                 int64_t n) {
   auto inst   = std::make_unique<TupleIndexInstruction>(r, n, t);
   auto result = inst->result = CurrentGroup()->Reserve();
-  CurrentBlock()->instructions_.push_back(std::move(inst));
+  CurrentBlock()->AddInstruction(std::move(inst));
   return type::Typed<Reg>(result, type::Ptr(t->entries_.at(n)));
 }
 
@@ -195,31 +196,30 @@ type::Typed<Reg> Builder::Field(RegOr<Addr> r, type::Struct const *t,
                                 int64_t n) {
   auto inst   = std::make_unique<StructIndexInstruction>(r, n, t);
   auto result = inst->result = CurrentGroup()->Reserve();
-  CurrentBlock()->instructions_.push_back(std::move(inst));
+  CurrentBlock()->AddInstruction(std::move(inst));
   return type::Typed<Reg>(result, type::Ptr(t->fields()[n].type));
 }
 
 Reg Builder::VariantType(RegOr<Addr> const &r) {
   auto inst   = std::make_unique<VariantAccessInstruction>(r, false);
   auto result = inst->result = CurrentGroup()->Reserve();
-  CurrentBlock()->instructions_.push_back(std::move(inst));
+  CurrentBlock()->AddInstruction(std::move(inst));
   return result;
 }
 
 Reg Builder::VariantValue(type::Variant const *v, RegOr<Addr> const &r) {
   auto inst   = std::make_unique<VariantAccessInstruction>(r, true);
   auto result = inst->result = CurrentGroup()->Reserve();
-  CurrentBlock()->instructions_.push_back(std::move(inst));
+  CurrentBlock()->AddInstruction(std::move(inst));
   return result;
 }
 
-Reg Builder::MakeBlock(BlockDef *block_def,
-                       std::vector<RegOr<Fn>> befores,
+Reg Builder::MakeBlock(BlockDef *block_def, std::vector<RegOr<Fn>> befores,
                        std::vector<RegOr<Jump *>> afters) {
   auto inst = std::make_unique<MakeBlockInstruction>(
       block_def, std::move(befores), std::move(afters));
   auto result = inst->result = CurrentGroup()->Reserve();
-  CurrentBlock()->instructions_.push_back(std::move(inst));
+  CurrentBlock()->AddInstruction(std::move(inst));
   return result;
 }
 
@@ -230,7 +230,7 @@ Reg Builder::MakeScope(
   auto inst = std::make_unique<MakeScopeInstruction>(
       scope_def, std::move(inits), std::move(dones), std::move(blocks));
   auto result = inst->result = CurrentGroup()->Reserve();
-  CurrentBlock()->instructions_.push_back(std::move(inst));
+  CurrentBlock()->AddInstruction(std::move(inst));
   return result;
 }
 
@@ -241,7 +241,7 @@ Reg Builder::Enum(
       EnumerationInstruction::Kind::Enum, mod, std::move(names),
       std::move(specified_values));
   auto result = inst->result = CurrentGroup()->Reserve();
-  CurrentBlock()->instructions_.push_back(std::move(inst));
+  CurrentBlock()->AddInstruction(std::move(inst));
   return result;
 }
 
@@ -252,14 +252,14 @@ Reg Builder::Flags(
       EnumerationInstruction::Kind::Flags, mod, std::move(names),
       std::move(specified_values));
   auto result = inst->result = CurrentGroup()->Reserve();
-  CurrentBlock()->instructions_.push_back(std::move(inst));
+  CurrentBlock()->AddInstruction(std::move(inst));
   return result;
 }
 
 Reg Builder::Struct(ast::Scope const *scope, std::vector<StructField> fields) {
   auto inst   = std::make_unique<StructInstruction>(scope, std::move(fields));
   auto result = inst->result = CurrentGroup()->Reserve();
-  CurrentBlock()->instructions_.push_back(std::move(inst));
+  CurrentBlock()->AddInstruction(std::move(inst));
   return result;
 }
 
@@ -281,14 +281,14 @@ RegOr<type::Function const *> Builder::Arrow(
   auto inst =
       std::make_unique<ArrowInstruction>(std::move(ins), std::move(outs));
   auto result = inst->result = CurrentGroup()->Reserve();
-  CurrentBlock()->instructions_.push_back(std::move(inst));
+  CurrentBlock()->AddInstruction(std::move(inst));
   return result;
 }
 
 Reg Builder::OpaqueType(module::BasicModule const *mod) {
   auto inst   = std::make_unique<OpaqueTypeInstruction>(mod);
   auto result = inst->result = CurrentGroup()->Reserve();
-  CurrentBlock()->instructions_.push_back(std::move(inst));
+  CurrentBlock()->AddInstruction(std::move(inst));
   return result;
 }
 
@@ -300,12 +300,13 @@ RegOr<type::Type const *> Builder::Array(RegOr<ArrayInstruction::length_t> len,
 
   auto inst   = std::make_unique<ArrayInstruction>(len, data_type);
   auto result = inst->result = CurrentGroup()->Reserve();
-  CurrentBlock()->instructions_.push_back(std::move(inst));
+  CurrentBlock()->AddInstruction(std::move(inst));
   return result;
 }
 
 LocalBlockInterpretation Builder::MakeLocalBlockInterpretation(
-    ast::ScopeNode const *node, BasicBlock *starting_block, BasicBlock *landing_block) {
+    ast::ScopeNode const *node, BasicBlock *starting_block,
+    BasicBlock *landing_block) {
   absl::flat_hash_map<ast::BlockNode const *, BasicBlock *> interp_map;
   for (auto const &block : node->blocks()) {
     interp_map.emplace(&block, AddBlock());

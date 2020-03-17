@@ -1,20 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "basic_block",
-    hdrs = ["basic_block.h"],
-    srcs = ["basic_block.cc"],
-    deps = [
-        ":byte_code_writer",
-        "//ir/instruction:base",
-        "//ir/instruction:op_codes",
-        "//ir/instruction:jump",
-        "//base:untyped_buffer",
-        "//type:type",
-    ],
-)
-
-cc_library(
     name = "block_def",
     hdrs = ["block_def.h"],
     deps = [
@@ -28,7 +14,6 @@ cc_library(
     hdrs = ["block_group.h"],
     srcs = ["block_group.cc"],
     deps = [
-        ":basic_block",
         ":stack_frame_allocations",
         "//ast:ast_fwd",
         "//base:ptr_span",
@@ -37,6 +22,7 @@ cc_library(
         "//core:bytes",
         "//core:params",
         "//core:params_ref",
+        "//ir/blocks:basic",
         "//type:pointer",
         "//type:type_fwd",
         "//type:typed_value",
@@ -71,8 +57,8 @@ cc_library(
     hdrs = ["builder.h"],
     srcs = ["builder.cc"],
     deps = [
-        ":basic_block",
         ":block_group",
+        "//ir/blocks:basic",
         "//ir/instruction",
         ":local_block_interpretation",
         ":struct_field",
@@ -92,7 +78,6 @@ cc_library(
     hdrs = ["compiled_fn.h"],
     srcs = ["compiled_fn.cc"],
     deps = [
-        ":basic_block",
         ":block_group",
         "//ast:ast",
         "//base:move_func",
@@ -100,6 +85,7 @@ cc_library(
         "//base:scope",
         "//core:arch",
         "//core:params",
+        "//ir/blocks:basic",
         "//type:function",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
@@ -111,7 +97,6 @@ cc_library(
     hdrs = ["inliner.h"],
     srcs = ["inliner.cc"],
     deps = [
-        ":basic_block",
         ":builder",
         ":compiled_fn",
         ":jump",
@@ -120,6 +105,7 @@ cc_library(
         ":stack_frame_allocations",
         "//base:macros",
         "//ir/instruction:inliner",
+        "//ir/blocks:basic",
         "//ir/value:reg",
         "//type:function",
         "//type:type",
@@ -132,9 +118,9 @@ cc_library(
     hdrs = ["local_block_interpretation.h"],
     srcs = [],
     deps = [
-        ":basic_block",
         "//ast:ast",
         "//base:macros",
+        "//ir/blocks:basic",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
@@ -184,6 +170,7 @@ cc_library(
     deps = [
         ":overload_set",
         "//base:move_func",
+        "//base:no_destructor",
         "//type",
     ],
 )

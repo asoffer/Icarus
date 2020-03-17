@@ -7,6 +7,7 @@
 
 #include "ast/scope/scope.h"
 #include "base/move_func.h"
+#include "base/no_destructor.h"
 #include "ir/block_def.h"
 #include "ir/overload_set.h"
 #include "ir/value/fn.h"
@@ -17,9 +18,13 @@ namespace ir {
 struct Jump;
 
 inline CompiledFn &TrivialFunction() {
-  static CompiledFn f(type::Func({}, {}),
-                      core::Params<type::Typed<ast::Declaration const *>>{});
-  return f;
+  static base::NoDestructor<CompiledFn> f = [] {
+    CompiledFn f(type::Func({}, {}),
+                 core::Params<type::Typed<ast::Declaration const *>>{});
+    f.WriteByteCode();
+    return f;
+  }();
+  return *f;
 }
 
 // TODO Calls to EvaluateAs should probably take this as const, so we can be

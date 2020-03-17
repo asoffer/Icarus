@@ -45,7 +45,7 @@ cc_library(
         ":register_array",
         "//base:untyped_buffer_view",
         "//core:arch",
-        "//ir:basic_block",
+        "//ir/blocks:basic",
         "//ir/value:native_fn",
         "//type:type",
     ],

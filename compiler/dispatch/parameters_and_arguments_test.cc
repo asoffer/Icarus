@@ -24,38 +24,11 @@ NodeType const *Make(test::TestModule *mod, std::string code) {
   return ptr;
 }
 
-TEST(ExtractParams, FunctionLiteral) {
+TEST(ExtractParamTypes, FunctionLiteral) {
   {  // Empty
     test::TestModule mod;
-    EXPECT_THAT(ExtractParams(&mod.compiler,
-                              Make<ast::FunctionLiteral>(&mod, "() -> () {}"))
-                    .Transform(ExtractType),
-                ElementsAre());
-  }
-
-  {  // One argument
-    test::TestModule mod;
-    EXPECT_THAT(ExtractParams(&mod.compiler, Make<ast::FunctionLiteral>(
-                                                 &mod, "(b: bool) -> () {}"))
-                    .Transform(ExtractType),
-                ElementsAre(param_type("b", type::Bool)));
-  }
-
-  {  // Multiple arguments
-    test::TestModule mod;
-    EXPECT_THAT(
-        ExtractParams(&mod.compiler, Make<ast::FunctionLiteral>(
-                                         &mod, "(b: bool, n: int32) -> () {}"))
-            .Transform(ExtractType),
-        ElementsAre(param_type("b", type::Bool), param_type("n", type::Int32)));
-  }
-}
-
-TEST(ExtractParams, ConstantDeclaration) {
-  {  // Empty
-    test::TestModule mod;
-    EXPECT_THAT(ExtractParams(&mod.compiler,
-                              Make<ast::Declaration>(&mod, "f ::= () -> () {}"))
+    EXPECT_THAT(ExtractParamTypes(&mod.compiler, Make<ast::FunctionLiteral>(
+                                                     &mod, "() -> () {}"))
                     .Transform(ExtractType),
                 ElementsAre());
   }
@@ -63,8 +36,8 @@ TEST(ExtractParams, ConstantDeclaration) {
   {  // One argument
     test::TestModule mod;
     EXPECT_THAT(
-        ExtractParams(&mod.compiler,
-                      Make<ast::Declaration>(&mod, "f ::= (b: bool) -> () {}"))
+        ExtractParamTypes(&mod.compiler, Make<ast::FunctionLiteral>(
+                                             &mod, "(b: bool) -> () {}"))
             .Transform(ExtractType),
         ElementsAre(param_type("b", type::Bool)));
   }
@@ -72,7 +45,36 @@ TEST(ExtractParams, ConstantDeclaration) {
   {  // Multiple arguments
     test::TestModule mod;
     EXPECT_THAT(
-        ExtractParams(
+        ExtractParamTypes(
+            &mod.compiler,
+            Make<ast::FunctionLiteral>(&mod, "(b: bool, n: int32) -> () {}"))
+            .Transform(ExtractType),
+        ElementsAre(param_type("b", type::Bool), param_type("n", type::Int32)));
+  }
+}
+
+TEST(ExtractParamTypes, ConstantDeclaration) {
+  {  // Empty
+    test::TestModule mod;
+    EXPECT_THAT(ExtractParamTypes(&mod.compiler, Make<ast::Declaration>(
+                                                     &mod, "f ::= () -> () {}"))
+                    .Transform(ExtractType),
+                ElementsAre());
+  }
+
+  {  // One argument
+    test::TestModule mod;
+    EXPECT_THAT(
+        ExtractParamTypes(&mod.compiler, Make<ast::Declaration>(
+                                             &mod, "f ::= (b: bool) -> () {}"))
+            .Transform(ExtractType),
+        ElementsAre(param_type("b", type::Bool)));
+  }
+
+  {  // Multiple arguments
+    test::TestModule mod;
+    EXPECT_THAT(
+        ExtractParamTypes(
             &mod.compiler,
             Make<ast::Declaration>(&mod, "f ::= (b: bool, n: int32) -> () {}"))
             .Transform(ExtractType),
@@ -80,11 +82,11 @@ TEST(ExtractParams, ConstantDeclaration) {
   }
 }
 
-TEST(ExtractParams, NonConstantDeclaration) {
+TEST(ExtractParamTypes, NonConstantDeclaration) {
   {  // Empty
     test::TestModule mod;
-    EXPECT_THAT(ExtractParams(&mod.compiler,
-                              Make<ast::Declaration>(&mod, "f := () -> () {}"))
+    EXPECT_THAT(ExtractParamTypes(&mod.compiler, Make<ast::Declaration>(
+                                                     &mod, "f := () -> () {}"))
                     .Transform(ExtractType),
                 ElementsAre());
   }
@@ -92,8 +94,8 @@ TEST(ExtractParams, NonConstantDeclaration) {
   {  // One argument
     test::TestModule mod;
     EXPECT_THAT(
-        ExtractParams(&mod.compiler,
-                      Make<ast::Declaration>(&mod, "f := (b: bool) -> () {}"))
+        ExtractParamTypes(&mod.compiler, Make<ast::Declaration>(
+                                             &mod, "f := (b: bool) -> () {}"))
             .Transform(ExtractType),
         ElementsAre(param_type("b", type::Bool)));
   }
@@ -101,7 +103,7 @@ TEST(ExtractParams, NonConstantDeclaration) {
   {  // Multiple arguments
     test::TestModule mod;
     EXPECT_THAT(
-        ExtractParams(
+        ExtractParamTypes(
             &mod.compiler,
             Make<ast::Declaration>(&mod, "f := (b: bool, n: int32) -> () {}"))
             .Transform(ExtractType),

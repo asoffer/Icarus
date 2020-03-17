@@ -12,9 +12,9 @@
 #include "core/bytes.h"
 #include "core/params.h"
 #include "core/params_ref.h"
-#include "ir/basic_block.h"
-#include "ir/value/reg.h"
+#include "ir/blocks/basic.h"
 #include "ir/stack_frame_allocations.h"
+#include "ir/value/reg.h"
 #include "type/type_fwd.h"
 #include "type/typed_value.h"
 
@@ -43,9 +43,8 @@ struct BlockGroup {
   }
 
   BasicBlock *AppendBlock(BasicBlock const &to_copy) {
-    auto *b = blocks_.emplace_back(std::make_unique<BasicBlock>(to_copy)).get();
-    b->group_ = this;
-    return b;
+    return blocks_.emplace_back(std::make_unique<BasicBlock>(to_copy, this))
+        .get();
   }
 
   core::Params<type::Typed<ast::Declaration const *>> const &params() const {

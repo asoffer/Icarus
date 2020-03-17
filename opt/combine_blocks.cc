@@ -41,17 +41,17 @@ static void RemoveDeadBlocks(std::queue<ir::BasicBlock*> to_check,
 
   while (not to_check.empty()) {
     auto* block = to_check.front();
-    block->jump_.Visit([&](auto const& j) {
+    block->jump().Visit([&](auto const& j) {
       using type = std::decay_t<decltype(j)>;
       if constexpr (std::is_same_v<type, ir::JumpCmd::UncondJump>) {
-        j.block->incoming_.erase(block);
-        if (j.block->num_incoming() == 0) { to_check.push(j.block); }
+        j.block->erase_incoming(block);
+        if (j.block->incoming().empty()) { to_check.push(j.block); }
       } else if constexpr (std::is_same_v<type, ir::JumpCmd::CondJump>) {
-        j.true_block->incoming_.erase(block);
-        if (j.true_block->num_incoming() == 0) { to_check.push(j.true_block); }
+        j.true_block->erase_incoming(block);
+        if (j.true_block->incoming().empty()) { to_check.push(j.true_block); }
 
-        j.false_block->incoming_.erase(block);
-        if (j.false_block->num_incoming() == 0) {
+        j.false_block->erase_incoming(block);
+        if (j.false_block->incoming().empty()) {
           to_check.push(j.false_block);
         }
       }
@@ -67,7 +67,7 @@ void CombineBlocksStartingAt(ir::BasicBlock* block) {
   auto& bldr = ir::GetBuilder();
 
   while (auto* next_block =
-             block->jump_.Visit([](auto const& j) -> ir::BasicBlock* {
+             block->jump().Visit([](auto const& j) -> ir::BasicBlock* {
                using type = std::decay_t<decltype(j)>;
                if constexpr (std::is_same_v<type, ir::JumpCmd::UncondJump>) {
                  return j.block;
@@ -76,7 +76,7 @@ void CombineBlocksStartingAt(ir::BasicBlock* block) {
                }
              })) {
     DEBUG_LOG("opt")("Combining ", next_block, " into ", block);
-    if (next_block->num_incoming() != 1) { break; }
+    if (next_block->incoming().size() != 1) { break; }
     block->Append(std::move(*next_block));
 
     // TODO should be part of moved-from state.
@@ -97,22 +97,22 @@ void ReduceEmptyBlocks(ir::CompiledFn* fn) {
 
   for (; iter != mut_blocks.end(); ++iter) {
     auto& block = *iter;
-    if (not block->instructions_.empty()) { continue; }
-    for (auto* inc : block->incoming_) {
-      if (inc->jump_.kind() == ir::JumpCmd::Kind::Uncond) {
+    if (not block->instructions().empty()) { continue; }
+    for (auto* inc : block->incoming()) {
+      if (inc->jump().kind() == ir::JumpCmd::Kind::Uncond) {
         inc->Append(std::move(*block));
-      } else if (inc->jump_.kind() == ir::JumpCmd::Kind::Cond) {
+      } else if (inc->jump().kind() == ir::JumpCmd::Kind::Cond) {
         // TODO this might be okay, but it might be an issue with phi-nodes.
         // Even when it's not an issue for one branch it might be an issue if
         // more than one are combined.
         continue;
-      } else if (block->jump_.kind() == ir::JumpCmd::Kind::Uncond) {
-        auto* target = ASSERT_NOT_NULL(block->jump_.UncondTarget());
+      } else if (block->jump().kind() == ir::JumpCmd::Kind::Uncond) {
+        auto* target = ASSERT_NOT_NULL(block->jump().UncondTarget());
         inc->ReplaceJumpTargets(block.get(), target);
       }
     }
 
-    if (block->num_incoming() == 0u) {
+    if (block->incoming().empty()) {
       bldr.CurrentBlock() = block.get();
       bldr.ReturnJump();
     }
@@ -128,7 +128,7 @@ void CombineBlocks(ir::CompiledFn* fn) {
 
   // TODO use something like a base::bag
   for (auto& block : fn->mutable_blocks()) {
-    switch (block->num_incoming()) {
+    switch (block->incoming().size()) {
       case 0: dead_sources.push(block.get()); break;
       // There's no sense in doing block combining for dead blocks.
       // A block is the start of a chain of combinable blocks if either:
@@ -136,13 +136,13 @@ void CombineBlocks(ir::CompiledFn* fn) {
       // blocks. (b). It has multiple incoming blocks and a single outgoing
       // block. multiple incoming blocks
       case 1: {  // case (a).
-        auto* inc_block = *block->incoming_.begin();
-        if (inc_block->jump_.kind() == ir::JumpCmd::Kind::Cond) {
+        auto* inc_block = *block->incoming().begin();
+        if (inc_block->jump().kind() == ir::JumpCmd::Kind::Cond) {
           CombineBlocksStartingAt(inc_block);
         }
       } break;
       default:  // case (b).
-        if (block->jump_.kind() == ir::JumpCmd::Kind::Uncond) {
+        if (block->jump().kind() == ir::JumpCmd::Kind::Uncond) {
           CombineBlocksStartingAt(block.get());
         }
         break;
@@ -154,7 +154,7 @@ void CombineBlocks(ir::CompiledFn* fn) {
 
 void RemoveTrivialFunctionCalls(ir::CompiledFn* fn) {
   for (auto& block : fn->mutable_blocks()) {
-    for (auto& inst : block->instructions_) {
+    for (auto const* inst : block->instructions()) {
       if (auto* call_inst = inst->if_as<ir::CallInstruction>()) {
         if (call_inst->func().is_reg()) { continue; }
         if (call_inst->func().value().kind() != ir::Fn::Kind::Native) {
@@ -166,7 +166,7 @@ void RemoveTrivialFunctionCalls(ir::CompiledFn* fn) {
         // TODO track this as you go.
         for (auto const* called_block : called_fn->blocks()) {
           // What if it's null?
-          if (not called_block->instructions_.empty()) { goto next_inst; }
+          if (not called_block->instructions().empty()) { goto next_inst; }
         }
         inst = nullptr;
       }

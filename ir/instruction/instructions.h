@@ -1074,7 +1074,7 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
                                   sizeof(core::Bytes)});
   }
 
-  RegOr<Fn> func() { return fn_; }
+  RegOr<Fn> func() const { return fn_; }
 
   void Inline(InstructionInliner const& inliner) override {
     inliner.Inline(fn_);

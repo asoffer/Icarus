@@ -5,7 +5,7 @@
 #include "base/meta.h"
 #include "core/fn_args.h"
 #include "core/params.h"
-#include "ir/basic_block.h"
+#include "ir/blocks/basic.h"
 #include "ir/builder.h"
 #include "ir/value/reg_or.h"
 #include "ir/results.h"

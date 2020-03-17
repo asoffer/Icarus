@@ -54,8 +54,7 @@ void InstructionInliner::InlineJump(BasicBlock* block) {
   block->jump_.Visit([&](auto& j) {
     using type = std::decay_t<decltype(j)>;
     if constexpr (std::is_same_v<type, JumpCmd::RetJump>) {
-      landing_block_->incoming_.insert(block);
-      block->jump_ = JumpCmd::Uncond(landing_block_);
+      landing_block_->insert_incoming(block);
 
     } else if constexpr (std::is_same_v<type, JumpCmd::UncondJump>) {
       Inline(j.block, block);
@@ -92,8 +91,7 @@ void InstructionInliner::InlineJump(BasicBlock* block) {
             });
       }
 
-      block->jump_ = JumpCmd::Uncond(entry.first);
-      entry.first->incoming_.insert(block);
+      entry.first->insert_incoming(block);
     } else {
       static_assert(base::always_false<type>());
     }

@@ -34,7 +34,7 @@ struct Jump : internal::BlockGroup {
     }
     // TODO no reason to repeat this work multiple times.
     for (auto const *block : blocks()) {
-      if (auto const *j = block->jump_.IfAsChooseJump()) {
+      if (auto const *j = block->jump().IfAsChooseJump()) {
         for (size_t i = 0; i < j->size(); ++i) {
           result[j->names()[i]].push_back(
               j->args()[i].Transform([](auto const &a) {

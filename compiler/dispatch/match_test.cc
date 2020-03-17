@@ -21,8 +21,8 @@ NodeType const *Make(test::TestModule *mod, std::string code) {
 
 TEST(Match, NoParams) {
   test::TestModule mod;
-  auto params = ExtractParams(&mod.compiler,
-                              Make<ast::FunctionLiteral>(&mod, "() -> () {}"));
+  auto params = ExtractParamTypes(
+      &mod.compiler, Make<ast::FunctionLiteral>(&mod, "() -> () {}"));
 
   {  // No args
     auto args = core::FnArgs<type::QualType>({}, {});
@@ -46,7 +46,7 @@ TEST(Match, NoParams) {
 
 TEST(Match, OneParam) {
   test::TestModule mod;
-  auto params = ExtractParams(
+  auto params = ExtractParamTypes(
       &mod.compiler, Make<ast::FunctionLiteral>(&mod, "(n: int32) -> () {}"));
 
   {  // Call without args
@@ -97,7 +97,7 @@ TEST(Match, OneParam) {
 
 TEST(Match, TwoParamsOneDefaulted) {
   test::TestModule mod;
-  auto params = ExtractParams(
+  auto params = ExtractParamTypes(
       &mod.compiler,
       Make<ast::FunctionLiteral>(&mod, "(n: int32, b := true) -> () {}"));
 
@@ -166,7 +166,7 @@ TEST(Match, TwoParamsOneDefaulted) {
 
 TEST(Match, OneVariantParam) {
   test::TestModule mod;
-  auto params = ExtractParams(
+  auto params = ExtractParamTypes(
       &mod.compiler,
       Make<ast::FunctionLiteral>(&mod, "(x: int32 | bool) -> () {}"));
 

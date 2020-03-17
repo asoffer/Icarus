@@ -11,7 +11,6 @@ namespace ir {
 struct CompiledFn : internal::BlockGroup {
   CompiledFn(type::Function const *fn_type,
              core::Params<type::Typed<ast::Declaration const *>> p);
-
   type::Function const *type() const { return type_; }
 
   base::move_func<void()> *work_item = nullptr;
@@ -19,7 +18,7 @@ struct CompiledFn : internal::BlockGroup {
   friend std::ostream &operator<<(std::ostream &, CompiledFn const &);
 
  private:
-  type::Function const *const type_ = nullptr;
+  type::Function const *type_ = nullptr;
 };
 
 static_assert(alignof(CompiledFn) > 1);

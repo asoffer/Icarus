@@ -4,7 +4,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "ast/ast.h"
 #include "base/macros.h"
-#include "ir/basic_block.h"
+#include "ir/blocks/basic.h"
 
 namespace ir {
 // LocalBlockInterpretation:

@@ -14,7 +14,7 @@ BlockGroup::BlockGroup(
   // Ensure the existence of an entry block. The entry block marks itself as
   // incoming so it is never accidentally cleaned up.
   auto *b = AppendBlock();
-  b->incoming_.insert(b);
+  b->insert_incoming(b);
 }
 
 Reg BlockGroup::Alloca(type::Type const *t) {

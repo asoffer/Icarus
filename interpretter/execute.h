@@ -6,7 +6,6 @@
 #include "absl/types/span.h"
 #include "base/untyped_buffer.h"
 #include "interpretter/stack_frame.h"
-#include "ir/basic_block.h"
 #include "ir/value/addr.h"
 #include "ir/value/fn.h"
 #include "ir/value/reg.h"

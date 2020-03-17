@@ -6,13 +6,13 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "base/debug.h"
-#include "ir/basic_block.h"
 #include "ir/block_group.h"
+#include "ir/blocks/basic.h"
 #include "ir/instruction/jump.h"
 #include "ir/local_block_interpretation.h"
+#include "ir/results.h"
 #include "ir/value/reg.h"
 #include "ir/value/reg_or.h"
-#include "ir/results.h"
 
 namespace ir {
 struct BasicBlock;
