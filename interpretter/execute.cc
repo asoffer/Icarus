@@ -123,10 +123,7 @@ void CallFn(ir::NativeFn fn, StackFrame *frame,
   //
   // TODO log an error if you're asked to execute a function that had an
   // error.
-  if (fn->work_item and *fn->work_item) {
-    (std::move(*fn->work_item))();
-    fn->WriteByteCode();
-  }
+  if (fn->work_item and *fn->work_item) { (std::move(*fn->work_item))(); }
 
   auto *old_frame     = &ctx->current_frame();
   ctx->current_frame_ = frame;

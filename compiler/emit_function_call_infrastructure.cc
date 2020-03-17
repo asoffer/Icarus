@@ -112,8 +112,9 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node) {
       compiler->builder().ReturnJump();
     }
   }
-  ir_func->WriteByteCode();
+
   ir_func->work_item = nullptr;
+  ir_func->WriteByteCode();
 }
 
 void CompleteBody(Compiler *compiler,

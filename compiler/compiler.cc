@@ -174,6 +174,8 @@ ir::CompiledFn Compiler::MakeThunk(ast::Expression const *expr,
     }
     builder().ReturnJump();
   }
+
+  ASSERT(fn.work_item == nullptr);
   fn.WriteByteCode();
 
   return fn;

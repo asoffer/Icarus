@@ -121,18 +121,20 @@ base::expected<FnCallDispatchTable> FnCallDispatchTable::Verify(
     ("Verifying ", overload, ": ", overload->DebugString());
     if (auto *gen =
             compiler->type_of(overload)->if_as<type::GenericFunction>()) {
-      DEBUG_LOG()(gen->concrete(args)->to_string());
-    }
-
-    if (auto result =
-            MatchArgsToParams(ExtractParamTypes(compiler, overload), args_qt)) {
-      // TODO you also call compiler->type_of inside ExtractParamTypess, so it's
-      // probably worth reducing the number of lookups.
-      table.table_.emplace(
-          overload, internal::ExprData{compiler->type_of(overload), *result});
+      type::Function const *concrete = gen->concrete(args);
+      table.table_.emplace(overload,
+                           internal::ExprData{concrete, concrete->params()});
     } else {
-      DEBUG_LOG("dispatch-verify")(result.error());
-      failures.emplace(overload, result.error());
+      if (auto result = MatchArgsToParams(ExtractParamTypes(compiler, overload),
+                                          args_qt)) {
+        // TODO you also call compiler->type_of inside ExtractParamTypess, so
+        // it's probably worth reducing the number of lookups.
+        table.table_.emplace(
+            overload, internal::ExprData{compiler->type_of(overload), *result});
+      } else {
+        DEBUG_LOG("dispatch-verify")(result.error());
+        failures.emplace(overload, result.error());
+      }
     }
   }
 
@@ -164,7 +166,6 @@ type::QualType FnCallDispatchTable::ComputeResultQualType(
       results.push_back(out_span);
     } else if (expr_data.type()->is<type::GenericFunction>()) {
       results.emplace_back();  // NOT_YET figuring out the real answer.
-      NOT_YET();
     } else {
       NOT_YET(expr_data.type()->to_string());
     }

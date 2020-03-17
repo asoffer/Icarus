@@ -74,6 +74,7 @@ static ir::NativeFn CreateAssign(Compiler *compiler, type::Array const *a) {
     bldr.CurrentBlock() = land_block;
     bldr.ReturnJump();
   }
+
   fn->WriteByteCode();
   return fn;
 }
