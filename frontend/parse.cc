@@ -1532,7 +1532,7 @@ bool Reduce(ParseState *ps) {
     // encode these in `kRules` as well, but typically these do strange things
     // like preserving the tag type, so we'd have to encode it many times if it
     // were in `kRules`.
-    if (ps->get_type<2>() == newline) {
+    if (ps->tag_stack_.size() >= 2 and ps->get_type<2>() == newline) {
       auto tag = ps->tag_stack_.back();
       ps->tag_stack_.pop_back();
       ps->tag_stack_.back() = tag;
