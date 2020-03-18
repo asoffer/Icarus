@@ -23,6 +23,7 @@ cc_library(
         ":basic",
         ":stack_frame_allocations",
         "//ast:ast_fwd",
+        "//base:move_func",
         "//base:ptr_span",
         "//base:strong_types",
         "//core:alignment",

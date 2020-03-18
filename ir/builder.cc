@@ -16,7 +16,7 @@ BasicBlock *Builder::AddBlock(BasicBlock const &to_copy) {
   return CurrentGroup()->AppendBlock(to_copy);
 }
 
-SetCurrent::SetCurrent(internal::BlockGroup *group, Builder *builder)
+SetCurrent::SetCurrent(internal::BlockGroupBase *group, Builder *builder)
     : builder_(builder ? builder : &GetBuilder()),
       old_group_(builder_->CurrentGroup()),
       old_block_(builder_->CurrentBlock()),

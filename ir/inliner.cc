@@ -5,6 +5,7 @@
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
 #include "ir/instruction/inliner.h"
+#include "ir/jump.h"
 #include "ir/value/reg.h"
 #include "type/function.h"
 #include "type/type.h"

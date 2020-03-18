@@ -9,10 +9,6 @@
 #include "ir/value/native_fn.h"
 #include "type.h"
 
-namespace ir {
-struct CompiledFn;
-}  // namespace ir
-
 namespace type {
 Type const *Var(std::vector<Type const *> variants);
 

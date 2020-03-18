@@ -16,7 +16,7 @@
 
 namespace ir {
 namespace internal {
-struct BlockGroup;
+struct BlockGroupBase;
 }  // namespace internal
 
 // BasicBlock:
@@ -25,8 +25,8 @@ struct BlockGroup;
 // executed each instruction will execute in order. `BasicBlock`s also have a
 // jump describing which basic block to execute next.
 struct BasicBlock {
-  // Each BasicBlock belongs to a `BlockGroup` and needs a pointer back to that group.
-  explicit BasicBlock(internal::BlockGroup *group) : group_(group) {}
+  // Each BasicBlock belongs to a `BlockGroupBase` and needs a pointer back to that group.
+  explicit BasicBlock(internal::BlockGroupBase *group) : group_(group) {}
 
   BasicBlock(BasicBlock const &b) noexcept;
   BasicBlock(BasicBlock &&) noexcept;
@@ -34,7 +34,7 @@ struct BasicBlock {
   BasicBlock &operator=(BasicBlock &&) noexcept;
 
   // Copies the block and updates the internal block group to `group`.
-  explicit BasicBlock(BasicBlock const &b, internal::BlockGroup *group) noexcept
+  explicit BasicBlock(BasicBlock const &b, internal::BlockGroupBase *group) noexcept
       : BasicBlock(b) {
     group_ = group;
   }
@@ -42,9 +42,9 @@ struct BasicBlock {
   void ReplaceJumpTargets(BasicBlock *old_target, BasicBlock *new_target);
   void Append(BasicBlock &&b);
 
-  // Returns the `BlockGroup` this `BasicBlock` belongs to.
-  internal::BlockGroup *group() { return group_; }
-  internal::BlockGroup const *group() const { return group_; }
+  // Returns the `BlockGroupBase` this `BasicBlock` belongs to.
+  internal::BlockGroupBase *group() { return group_; }
+  internal::BlockGroupBase const *group() const { return group_; }
 
   // While building basic blocks, we cache information that is known about the
   // values/registers stored in each allocation on this block. On each load, we
@@ -93,7 +93,7 @@ struct BasicBlock {
   void ExchangeJumps(BasicBlock const *b);
 
   std::vector<std::unique_ptr<Instruction>> instructions_;
-  internal::BlockGroup *group_;
+  internal::BlockGroupBase *group_;
 
   // A cache of what values we know are held in these addresses.
   absl::flat_hash_map<Reg, Results> storage_cache_;

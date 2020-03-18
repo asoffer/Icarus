@@ -5,10 +5,6 @@
 #include "ir/value/native_fn.h"
 #include "type/type.h"
 
-namespace ir {
-struct CompiledFn;
-}  // namespace ir
-
 namespace type {
 
 struct Array : public Type {

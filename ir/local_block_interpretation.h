@@ -10,7 +10,7 @@ namespace ir {
 // LocalBlockInterpretation:
 //
 // Represents a mapping between blocks (i.e., targets of the `goto` keyword) and
-// an an actual block local to a function (or internal::BlockGroup, more
+// an an actual block local to a function (or internal::BlockGroupBase, more
 // generally, because scopes such as `if` can just as easily be embedded in
 // jumps.
 struct LocalBlockInterpretation {
@@ -18,7 +18,7 @@ struct LocalBlockInterpretation {
       absl::flat_hash_map<ast::BlockNode const *, BasicBlock *> data,
       BasicBlock *starting_block, BasicBlock *landing_block)
       : data_(std::move(data)), start_(starting_block), exit_(landing_block) {
-    for (auto [block_node, _] : data_) {
+    for (auto[block_node, _] : data_) {
       name_to_node_.emplace(block_node->name(), block_node);
     }
   }

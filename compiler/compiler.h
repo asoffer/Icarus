@@ -26,7 +26,6 @@
 #include "type/visitor.h"
 
 namespace ir {
-struct CompiledFn;
 struct ScopeDef;
 struct BlockDef;
 }  // namespace ir

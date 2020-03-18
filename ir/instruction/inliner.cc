@@ -5,8 +5,8 @@
 
 namespace ir {
 
-InstructionInliner::InstructionInliner(internal::BlockGroup* to_be_inlined,
-                                       internal::BlockGroup* into,
+InstructionInliner::InstructionInliner(internal::BlockGroupBase* to_be_inlined,
+                                       internal::BlockGroupBase* into,
                                        LocalBlockInterpretation block_interp)
     : to_be_inlined_(to_be_inlined),
       into_(into),
@@ -64,7 +64,7 @@ void InstructionInliner::InlineJump(BasicBlock* block) {
       Inline(j.false_block, block);
     } else if constexpr (std::is_same_v<type, JumpCmd::ChooseJump>) {
       std::string_view next_name = "";
-      size_t i = 0;
+      size_t i                   = 0;
       for (std::string_view name : j.names()) {
         DEBUG_LOG("InlineJump")(name);
         if (name == "start" or name == "exit" or
@@ -109,7 +109,7 @@ void InstructionInliner::InlineAllBlocks() {
     into_->allocs_.allocate(t, r);
   });
 
-  for (auto [ignored, block] : blocks_) {
+  for (auto[ignored, block] : blocks_) {
     DEBUG_LOG("inliner-before")(*block);
 
     for (auto& inst : block->instructions_) { inst->Inline(*this); }

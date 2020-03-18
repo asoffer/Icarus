@@ -24,7 +24,6 @@ cc_library(
     hdrs = ["jump.h"],
     deps = [
         "//ast:ast",
-        "//base:move_func",
         "//core:params",
         "//ir/blocks:group",
         "//type:jump",
@@ -56,19 +55,9 @@ cc_library(
 cc_library(
     name = "compiled_fn",
     hdrs = ["compiled_fn.h"],
-    srcs = ["compiled_fn.cc"],
     deps = [
-        "//ast:ast",
-        "//base:move_func",
-        "//base:ptr_span",
-        "//base:scope",
-        "//core:arch",
-        "//core:params",
-        "//ir/blocks:basic",
         "//ir/blocks:group",
         "//type:function",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/container:flat_hash_set",
     ],
 )
 

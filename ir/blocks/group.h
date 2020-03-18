@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "ast/ast_fwd.h"
+#include "base/move_func.h"
 #include "base/ptr_span.h"
 #include "base/strong_types.h"
 #include "core/alignment.h"
@@ -18,18 +19,20 @@
 #include "type/type_fwd.h"
 #include "type/typed_value.h"
 
-namespace ir::internal {
+namespace ir {
+namespace internal {
 
-// BlockGroup:
+// BlockGroupBase:
 //
 // Represents a collection of `BasicBlock`s which make sense together as a
 // coherent entity. One might normally call such a collection of `BasicBlock`s a
 // function, but Icarus has at least one other useful example: A `Jump`. The IR
 // for a Jump is largely similar to that of a function with a few differences. A
-// `BlockGroup` represents the parts common to both.
-struct BlockGroup {
+// `BlockGroupBase` represents the parts common to both.
+struct BlockGroupBase {
   // TODO We should not need to store anything to do with the AST here.
-  explicit BlockGroup(
+  // TODO blocks need to know how to handle initial values for their parameters.
+  explicit BlockGroupBase(
       core::Params<type::Typed<ast::Declaration const *>> params,
       size_t num_state_args = 0);
 
@@ -73,6 +76,8 @@ struct BlockGroup {
   constexpr size_t num_regs() const { return num_regs_; }
   constexpr size_t num_args() const { return num_args_; }
 
+  base::move_func<void()> *work_item = nullptr;
+
  private:
   friend struct ir::InstructionInliner;
 
@@ -86,8 +91,29 @@ struct BlockGroup {
   base::untyped_buffer byte_code_;
 };
 
-std::ostream &operator<<(std::ostream &os, BlockGroup const &b);
+std::ostream &operator<<(std::ostream &os, BlockGroupBase const &b);
 
-}  // namespace ir::internal
+}  // namespace internal
+
+template <typename T>
+struct BlockGroup : internal::BlockGroupBase {
+  BlockGroup(T const *t,
+             core::Params<type::Typed<ast::Declaration const *>> params,
+             size_t num_state_args = 0)
+      : internal::BlockGroupBase(std::move(params)), type_(t) {}
+
+  T const *type() const { return type_; }
+
+  friend std::ostream &operator<<(std::ostream &os, BlockGroup const &b) {
+    return os << "\n"
+              << &b << ": " << b.type()->to_string()
+              << static_cast<internal::BlockGroupBase const &>(b);
+  }
+
+ private:
+  T const *type_;
+};
+
+}  // namespace ir
 
 #endif  // ICARUS_IR_BLOCKS_GROUP_H

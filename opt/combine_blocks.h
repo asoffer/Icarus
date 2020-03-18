@@ -1,9 +1,7 @@
 #ifndef ICARUS_OPT_COMBINE_BLOCKS_H
 #define ICARUS_OPT_COMBINE_BLOCKS_H
 
-namespace ir {
-struct CompiledFn;
-}  // namespace ir
+#include "ir/compiled_fn.h"
 
 namespace opt {
 

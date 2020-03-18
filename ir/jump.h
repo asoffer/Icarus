@@ -2,25 +2,18 @@
 #define ICARUS_IR_JUMP_H
 
 #include "ast/ast.h"
-#include "base/move_func.h"
 #include "core/params.h"
 #include "ir/blocks/group.h"
 #include "type/jump.h"
-#include "type/pointer.h"
 #include "type/qual_type.h"
 #include "type/type.h"
 
 namespace ir {
 
-struct Jump : internal::BlockGroup {
+struct Jump : BlockGroup<type::Jump> {
   explicit Jump(type::Jump const *jump_type,
                 core::Params<type::Typed<ast::Declaration const *>> p)
-      : internal::BlockGroup(std::move(p), jump_type->state() ? 1 : 0),
-        type_(jump_type) {}
-
-  type::Jump const *type() const { return type_; }
-
-  base::move_func<void()> *work_item = nullptr;
+      : BlockGroup(jump_type, std::move(p), jump_type->state() ? 1 : 0) {}
 
   absl::flat_hash_map<std::string_view,
                       std::vector<core::FnArgs<type::QualType>>>
@@ -45,9 +38,6 @@ struct Jump : internal::BlockGroup {
     }
     return result;
   }
-
- private:
-  type::Jump const *const type_ = nullptr;
 };
 
 }  // namespace ir

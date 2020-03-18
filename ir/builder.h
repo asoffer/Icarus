@@ -38,7 +38,7 @@ struct Builder {
     return result;
   }
 
-  internal::BlockGroup*& CurrentGroup() { return current_.group_; }
+  internal::BlockGroupBase*& CurrentGroup() { return current_.group_; }
   BasicBlock*& CurrentBlock() { return current_.block_; }
 
   template <typename T>
@@ -517,7 +517,7 @@ struct Builder {
   friend struct SetTemporaries;
 
   struct State {
-    internal::BlockGroup* group_ = nullptr;
+    internal::BlockGroupBase* group_ = nullptr;
     BasicBlock* block_;
 
     // Temporaries need to be destroyed at the end of each statement.
@@ -532,13 +532,13 @@ struct Builder {
 Builder& GetBuilder();
 
 struct SetCurrent : public base::UseWithScope {
-  explicit SetCurrent(internal::BlockGroup* fn, Builder* builder = nullptr);
+  explicit SetCurrent(internal::BlockGroupBase* fn, Builder* builder = nullptr);
   explicit SetCurrent(NativeFn fn) : SetCurrent(fn.get()) {}
   ~SetCurrent();
 
  private:
   Builder* builder_;
-  internal::BlockGroup* old_group_;
+  internal::BlockGroupBase* old_group_;
   BasicBlock* old_block_;
   Builder::BlockTerminationState old_termination_state_;
 };
