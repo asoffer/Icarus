@@ -6,8 +6,8 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "base/debug.h"
-#include "ir/block_group.h"
 #include "ir/blocks/basic.h"
+#include "ir/blocks/group.h"
 #include "ir/instruction/jump.h"
 #include "ir/local_block_interpretation.h"
 #include "ir/results.h"

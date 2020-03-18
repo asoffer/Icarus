@@ -1,5 +1,5 @@
-#ifndef ICARUS_IR_BLOCK_GROUP_H
-#define ICARUS_IR_BLOCK_GROUP_H
+#ifndef ICARUS_IR_BLOCKS_GROUP_H
+#define ICARUS_IR_BLOCKS_GROUP_H
 
 #include <iostream>
 #include <memory>
@@ -13,20 +13,22 @@
 #include "core/params.h"
 #include "core/params_ref.h"
 #include "ir/blocks/basic.h"
-#include "ir/stack_frame_allocations.h"
+#include "ir/blocks/stack_frame_allocations.h"
 #include "ir/value/reg.h"
 #include "type/type_fwd.h"
 #include "type/typed_value.h"
 
 namespace ir::internal {
 
-// A `BlockGroup` represents a collection of `BasicBlock`s which make sense
-// together as a coherent entity. One might normally call such a collection of
-// `BasicBlock`s a function, but Icarus has at least one other useful example: A
-// `Jump`. The IR for a Jump is largely similar to that of a
-// function with a few differences. A `BlockGroup` represents the parts common
-// to both.
+// BlockGroup:
+//
+// Represents a collection of `BasicBlock`s which make sense together as a
+// coherent entity. One might normally call such a collection of `BasicBlock`s a
+// function, but Icarus has at least one other useful example: A `Jump`. The IR
+// for a Jump is largely similar to that of a function with a few differences. A
+// `BlockGroup` represents the parts common to both.
 struct BlockGroup {
+  // TODO We should not need to store anything to do with the AST here.
   explicit BlockGroup(
       core::Params<type::Typed<ast::Declaration const *>> params,
       size_t num_state_args = 0);
@@ -88,4 +90,4 @@ std::ostream &operator<<(std::ostream &os, BlockGroup const &b);
 
 }  // namespace ir::internal
 
-#endif  // ICARUS_IR_BLOCK_GROUP_H
+#endif  // ICARUS_IR_BLOCKS_GROUP_H

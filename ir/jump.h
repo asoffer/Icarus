@@ -4,7 +4,7 @@
 #include "ast/ast.h"
 #include "base/move_func.h"
 #include "core/params.h"
-#include "ir/block_group.h"
+#include "ir/blocks/group.h"
 #include "type/jump.h"
 #include "type/pointer.h"
 #include "type/qual_type.h"

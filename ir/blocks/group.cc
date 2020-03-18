@@ -1,4 +1,4 @@
-#include "ir/block_group.h"
+#include "ir/blocks/group.h"
 
 #include "core/arch.h"
 #include "type/pointer.h"

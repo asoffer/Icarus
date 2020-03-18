@@ -10,26 +10,6 @@ cc_library(
 )
 
 cc_library(
-    name = "block_group",
-    hdrs = ["block_group.h"],
-    srcs = ["block_group.cc"],
-    deps = [
-        ":stack_frame_allocations",
-        "//ast:ast_fwd",
-        "//base:ptr_span",
-        "//base:strong_types",
-        "//core:alignment",
-        "//core:bytes",
-        "//core:params",
-        "//core:params_ref",
-        "//ir/blocks:basic",
-        "//type:pointer",
-        "//type:type_fwd",
-        "//type:typed_value",
-    ],
-)
-
-cc_library(
     name = "byte_code_writer",
     hdrs = ["byte_code_writer.h"],
     deps = [
@@ -43,10 +23,10 @@ cc_library(
     name = "jump",
     hdrs = ["jump.h"],
     deps = [
-        ":block_group",
         "//ast:ast",
         "//base:move_func",
         "//core:params",
+        "//ir/blocks:group",
         "//type:jump",
         "//type:qual_type",
     ],
@@ -57,14 +37,14 @@ cc_library(
     hdrs = ["builder.h"],
     srcs = ["builder.cc"],
     deps = [
-        ":block_group",
-        "//ir/blocks:basic",
-        "//ir/instruction",
         ":local_block_interpretation",
         ":struct_field",
         "//base:debug",
         "//base:scope",
         "//base:tag",
+        "//ir/blocks:basic",
+        "//ir/blocks:group",
+        "//ir/instruction",
         "//ir/value:addr",
         "//ir/value:reg",
         "//type:typed_value",
@@ -78,7 +58,6 @@ cc_library(
     hdrs = ["compiled_fn.h"],
     srcs = ["compiled_fn.cc"],
     deps = [
-        ":block_group",
         "//ast:ast",
         "//base:move_func",
         "//base:ptr_span",
@@ -86,6 +65,7 @@ cc_library(
         "//core:arch",
         "//core:params",
         "//ir/blocks:basic",
+        "//ir/blocks:group",
         "//type:function",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
@@ -102,10 +82,10 @@ cc_library(
         ":jump",
         ":local_block_interpretation",
         ":results",
-        ":stack_frame_allocations",
         "//base:macros",
         "//ir/instruction:inliner",
         "//ir/blocks:basic",
+        "//ir/blocks:stack_frame_allocations",
         "//ir/value:reg",
         "//type:function",
         "//type:type",
@@ -172,18 +152,6 @@ cc_library(
         "//base:move_func",
         "//base:no_destructor",
         "//type",
-    ],
-)
-
-cc_library(
-    name = "stack_frame_allocations",
-    hdrs = ["stack_frame_allocations.h"],
-    deps = [
-        "//base:stringify",
-        "//ir/value:addr",
-        "//ir/value:reg",
-        "//type",
-        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
 

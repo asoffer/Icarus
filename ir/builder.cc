@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "ir/block_group.h"
+#include "ir/blocks/group.h"
 
 namespace ir {
 

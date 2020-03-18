@@ -1,8 +1,8 @@
-#ifndef ICARUS_IR_CMD_INLINER_H
-#define ICARUS_IR_CMD_INLINER_H
+#ifndef ICARUS_IR_INLINER_H
+#define ICARUS_IR_INLINER_H
 
-#include "ir/block_group.h"
 #include "ir/blocks/basic.h"
+#include "ir/blocks/group.h"
 #include "ir/builder.h"
 #include "ir/jump.h"
 #include "ir/local_block_interpretation.h"
@@ -22,4 +22,4 @@ Inline(Builder &bldr, Jump *to_be_inlined,
 
 }  // namespace ir
 
-#endif  // ICARUS_IR_CMD_INLINER_H
+#endif  // ICARUS_IR_INLINER_H

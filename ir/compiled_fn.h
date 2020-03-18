@@ -3,7 +3,7 @@
 
 #include "base/move_func.h"
 #include "core/params.h"
-#include "ir/block_group.h"
+#include "ir/blocks/group.h"
 #include "type/function.h"
 
 namespace ir {
