@@ -21,6 +21,7 @@ inline CompiledFn &TrivialFunction() {
   static base::NoDestructor<CompiledFn> f = [] {
     CompiledFn f(type::Func({}, {}),
                  core::Params<type::Typed<ast::Declaration const *>>{});
+    f.entry()->set_jump(JumpCmd::Return());
     f.WriteByteCode();
     return f;
   }();

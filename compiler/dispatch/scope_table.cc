@@ -267,6 +267,7 @@ void ScopeDispatchTable::EmitSplittingDispatch(
       NOT_YET();
     }
   }
+
   bldr.CurrentBlock() = std::get<1>(compiler->scope_landings().back());
 }
 
@@ -274,8 +275,8 @@ void internal::OneTable::EmitCall(
     Compiler *compiler, ir::ScopeDef const *scope_def,
     std::optional<ir::Reg> state_reg,
     ir::LocalBlockInterpretation const &block_interp) const {
+  auto &bldr = compiler->builder();
   for (auto const &[node, table] : blocks) {
-    auto &bldr = compiler->builder();
     DEBUG_LOG("EmitCall")(node->DebugString());
 
     bldr.CurrentBlock() = block_interp[node];

@@ -128,6 +128,11 @@ struct untyped_buffer {
     size_t old_size = size_;
     size_t new_size = old_size + num;
     if (new_size > capacity_) { reallocate(new_size); }
+
+#if defined(ICARUS_DEBUG)
+    std::memset(data_ + old_size, kUnusedByte, num);
+#endif  // defined(ICARUS_DEBUG)
+
     size_ = new_size;
     return old_size;
   }

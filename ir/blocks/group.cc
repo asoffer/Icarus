@@ -11,9 +11,6 @@ BlockGroupBase::BlockGroupBase(
     : params_(std::move(params)),
       num_regs_(params_.size() + num_state_args),
       num_args_(params_.size() + num_state_args) {
-  // TODO is this still true with variadics?
-  ASSERT(params().size() == fn_type->params().size());
-
   // Ensure the existence of an entry block. The entry block marks itself as
   // incoming so it is never accidentally cleaned up.
   auto *b = AppendBlock();
