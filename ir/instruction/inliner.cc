@@ -102,11 +102,9 @@ void InstructionInliner::InlineAllBlocks() {
   // Update the register count. This must be done after we've added the
   // register-forwarding instructions which use this count to choose a register
   // number.
-  into_->num_regs_ += to_be_inlined_->num_regs();
-
-  to_be_inlined_->allocs().for_each([&](type::Type const* t, Reg r) {
+  into_->alloc_.MergeFrom(to_be_inlined_->alloc_, [&](Reg r) {
     Inline(r);
-    into_->allocs_.allocate(t, r);
+    return r;
   });
 
   for (auto[ignored, block] : blocks_) {

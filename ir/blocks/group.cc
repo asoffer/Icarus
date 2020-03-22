@@ -8,9 +8,7 @@ namespace ir::internal {
 BlockGroupBase::BlockGroupBase(
     core::Params<type::Typed<ast::Declaration const *>> params,
     size_t num_state_args)
-    : params_(std::move(params)),
-      num_regs_(params_.size() + num_state_args),
-      num_args_(params_.size() + num_state_args) {
+    : params_(std::move(params)), alloc_(params_.size() + num_state_args) {
   // Ensure the existence of an entry block. The entry block marks itself as
   // incoming so it is never accidentally cleaned up.
   auto *b = AppendBlock();
@@ -18,13 +16,11 @@ BlockGroupBase::BlockGroupBase(
 }
 
 Reg BlockGroupBase::Alloca(type::Type const *t) {
-  Reg r = Reserve();
-  allocs_.allocate(ASSERT_NOT_NULL(t), r);
-  return r;
+  return alloc_.StackAllocate(ASSERT_NOT_NULL(t));
 }
 
 std::ostream &operator<<(std::ostream &os, BlockGroupBase const &b) {
-  os << "\n" << b.allocs();
+  os << "\n" << b.alloc_;
   for (size_t i = 0; i < b.blocks().size(); ++i) {
     using base::stringify;
     os << "\n block #" << i << " (" << stringify(b.blocks()[i]) << ")\n"

@@ -74,7 +74,6 @@ cc_library(
         "//base:macros",
         "//ir/instruction:inliner",
         "//ir/blocks:basic",
-        "//ir/blocks:stack_frame_allocations",
         "//ir/value:reg",
         "//type:function",
         "//type:type",

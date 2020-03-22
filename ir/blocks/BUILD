@@ -21,7 +21,7 @@ cc_library(
     srcs = ["group.cc"],
     deps = [
         ":basic",
-        ":stack_frame_allocations",
+        ":register_allocator",
         "//ast:ast_fwd",
         "//base:move_func",
         "//base:ptr_span",
@@ -37,13 +37,23 @@ cc_library(
 )
 
 cc_library(
-    name = "stack_frame_allocations",
-    hdrs = ["stack_frame_allocations.h"],
+    name = "register_allocator",
+    hdrs = ["register_allocator.h"],
     deps = [
         "//base:stringify",
         "//ir/value:addr",
         "//ir/value:reg",
         "//type",
         "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
+
+cc_test(
+    name = "register_allocator_test",
+    srcs = ["register_allocator_test.cc"],
+    deps = [
+        ":register_allocator",
+        "//type:primitive",
+        "@com_google_googletest//:gtest_main",
     ],
 )

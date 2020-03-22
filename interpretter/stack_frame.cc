@@ -13,7 +13,7 @@ StackFrame::StackFrame(ir::NativeFn fn, base::untyped_buffer arguments,
       prev_(fn_->entry()),
       regs_(fn_->num_regs(), std::move(arguments)) {
   core::Bytes next_reg_loc = core::Bytes(stack->size());
-  fn->allocs().for_each([&](type::Type const *t, ir::Reg r) {
+  fn->for_each_alloc([&](type::Type const *t, ir::Reg r) {
     ASSERT(t != nullptr);
     next_reg_loc = core::FwdAlign(next_reg_loc, t->alignment(kArchitecture));
     regs_.set(r, ir::Addr::Stack(next_reg_loc.value()));
@@ -28,7 +28,7 @@ StackFrame::StackFrame(ir::NativeFn fn, base::untyped_buffer *stack)
       prev_(fn_->entry()),
       regs_(fn_->num_regs(), fn->type()->params().size()) {
   core::Bytes next_reg_loc = core::Bytes(stack->size());
-  fn->allocs().for_each([&](type::Type const *t, ir::Reg r) {
+  fn->for_each_alloc([&](type::Type const *t, ir::Reg r) {
     ASSERT(t != nullptr);
     next_reg_loc = core::FwdAlign(next_reg_loc, t->alignment(kArchitecture));
     regs_.set(r, ir::Addr::Stack(next_reg_loc.value()));

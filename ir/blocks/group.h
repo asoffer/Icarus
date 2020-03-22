@@ -14,7 +14,7 @@
 #include "core/params.h"
 #include "core/params_ref.h"
 #include "ir/blocks/basic.h"
-#include "ir/blocks/stack_frame_allocations.h"
+#include "ir/blocks/register_allocator.h"
 #include "ir/value/reg.h"
 #include "type/type_fwd.h"
 #include "type/typed_value.h"
@@ -68,30 +68,30 @@ struct BlockGroupBase {
     writer.MakeReplacements();
   }
 
-  StackFrameAllocations const &allocs() const { return allocs_; }
+  template <typename Fn>
+  void for_each_alloc(Fn &&f) {
+    alloc_.for_each_alloc(std::forward<Fn>(f));
+  }
 
-  Reg Reserve() { return Reg(num_regs_++); }
+  Reg Reserve() { return alloc_.Reserve(); }
   Reg Alloca(type::Type const *t);
 
-  constexpr size_t num_regs() const { return num_regs_; }
-  constexpr size_t num_args() const { return num_args_; }
+  constexpr size_t num_regs() const { return alloc_.num_regs(); }
+  constexpr size_t num_args() const { return alloc_.num_args(); }
 
   base::move_func<void()> *work_item = nullptr;
+
+  friend std::ostream &operator<<(std::ostream &os, BlockGroupBase const &b);
 
  private:
   friend struct ir::InstructionInliner;
 
   core::Params<type::Typed<ast::Declaration const *>> params_;
   std::vector<std::unique_ptr<BasicBlock>> blocks_;
-  StackFrameAllocations allocs_;
-
-  size_t num_regs_ = 0;
-  size_t num_args_ = 0;
-
+  RegisterAllocator alloc_;
   base::untyped_buffer byte_code_;
 };
 
-std::ostream &operator<<(std::ostream &os, BlockGroupBase const &b);
 
 }  // namespace internal
 

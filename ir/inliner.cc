@@ -1,7 +1,6 @@
 #include "ir/inliner.h"
 
 #include "base/macros.h"
-#include "ir/blocks/stack_frame_allocations.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
 #include "ir/instruction/inliner.h"
