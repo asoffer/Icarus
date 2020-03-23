@@ -11,7 +11,7 @@ ir::RegOr<bool> EmitRuntimeDispatchOneComparison(
     auto *arg_var = arg.type()->if_as<type::Variant>();
     if (not arg_var) { continue; }
     auto runtime_type =
-        ir::Load<type::Type const *>(bldr.VariantType(arg->get<ir::Addr>(0)));
+        bldr.Load<type::Type const *>(bldr.VariantType(arg->get<ir::Addr>(0)));
     // TODO Equality isn't the right thing to check
     return bldr.Eq(runtime_type, params[i].value);
   }

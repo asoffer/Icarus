@@ -58,6 +58,55 @@ constexpr bool always_false() {
   return false;
 }
 
+struct MetaValue {
+  template <typename H>
+  friend H AbslHashValue(H h, MetaValue m) {
+    return H::combine(std::move(h), m.value_);
+  }
+
+  friend constexpr bool operator==(MetaValue lhs, MetaValue rhs) {
+    return lhs.value_ == rhs.value_;
+  }
+
+  friend constexpr bool operator!=(MetaValue lhs, MetaValue rhs) {
+    return not(lhs == rhs);
+  }
+
+  template <typename T>
+  friend struct Meta;
+
+ private:
+  explicit constexpr MetaValue(uintptr_t val) : value_(val) {}
+  uintptr_t value_;
+};
+
+template <typename T>
+struct Meta {
+  static MetaValue value() {
+    return MetaValue{reinterpret_cast<uintptr_t>(data_)};
+  }
+  /* implicit */ operator MetaValue() { return value(); }
+
+ private:
+  static void const* const data_;
+};
+
+template <typename T>
+void const* const Meta<T>::data_ = &Meta<T>::data_;
+
+template <typename T>
+Meta<T> meta;
+
+template <typename Lhs, typename Rhs>
+constexpr bool operator==(Meta<Lhs>, Meta<Rhs>) {
+  return std::is_same_v<Lhs, Rhs>;
+}
+
+template <typename Lhs, typename Rhs>
+constexpr bool operator!=(Meta<Lhs> lhs, Meta<Rhs> rhs) {
+  return not(lhs == rhs);
+}
+
 }  // namespace base
 
 #endif  // ICARUS_BASE_META_H

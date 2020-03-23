@@ -44,6 +44,12 @@ struct RegOr {
                     : std::forward<Fn>(fn)(value());
   }
 
+  template <typename H>
+  friend H AbslHashValue(H h, RegOr<T> r) {
+    return r.is_reg() ? H::combine(std::move(h), true, r.reg())
+                      : H::combine(std::move(h), false, r.value());
+  }
+
   friend std::string stringify(RegOr const &r) {
     using base::stringify;
     return r.is_reg() ? stringify(r.reg()) : stringify(r.value());

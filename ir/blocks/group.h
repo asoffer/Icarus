@@ -44,12 +44,11 @@ struct BlockGroupBase {
   BasicBlock *entry() { return blocks()[0]; }
 
   BasicBlock *AppendBlock() {
-    return blocks_.emplace_back(std::make_unique<BasicBlock>(this)).get();
+    return blocks_.emplace_back(std::make_unique<BasicBlock>()).get();
   }
 
   BasicBlock *AppendBlock(BasicBlock const &to_copy) {
-    return blocks_.emplace_back(std::make_unique<BasicBlock>(to_copy, this))
-        .get();
+    return blocks_.emplace_back(std::make_unique<BasicBlock>(to_copy)).get();
   }
 
   core::Params<type::Typed<ast::Declaration const *>> const &params() const {

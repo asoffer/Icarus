@@ -48,5 +48,10 @@ TEST(Meta, TypeListConcatenation) {
           type_list<bool, int, char, int>>));
 }
 
+TEST(Meta, Comparison) {
+  EXPECT_EQ(meta<int>, meta<int>);
+  EXPECT_NE(meta<int>, meta<bool>);
+}
+
 }  // namespace
 }  // namespace base

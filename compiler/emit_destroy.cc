@@ -51,12 +51,12 @@ void Compiler::Visit(type::Variant const *t, ir::Reg reg, EmitDestroyTag) {
         AddFunc(fn_type, fn_type->params().Transform([](type::Type const *p) {
           return type::Typed<ast::Declaration const *>(nullptr, p);
         }));
-    t->destroy_func_    = f;
+    t->destroy_func_ = f;
     ICARUS_SCOPE(ir::SetCurrent(f)) {
       builder().CurrentBlock() = f->entry();
       auto *landing            = builder().AddBlock();
-      auto type =
-          ir::Load<type::Type const *>(builder().VariantType(ir::Reg::Arg(0)));
+      auto type                = builder().Load<type::Type const *>(
+          builder().VariantType(ir::Reg::Arg(0)));
 
       auto var_val = builder().VariantValue(t, ir::Reg::Arg(0));
       for (type::Type const *v : t->variants_) {

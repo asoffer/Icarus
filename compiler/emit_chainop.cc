@@ -82,8 +82,8 @@ static ir::Results ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
 
       bldr.CurrentBlock() = body_block;
       // TODO what if data type is an array?
-      bldr.CondJump(bldr.Eq(ir::Load<ir::Addr>(lhs_phi_reg),
-                            ir::Load<ir::Addr>(rhs_phi_reg)),
+      bldr.CondJump(bldr.Eq(bldr.Load<ir::Addr>(lhs_phi_reg),
+                            bldr.Load<ir::Addr>(rhs_phi_reg)),
                     incr_block, false_block);
 
       bldr.CurrentBlock() = incr_block;

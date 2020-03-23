@@ -22,8 +22,6 @@
 
 namespace ir {
 
-Reg Load(RegOr<Addr> r, type::Type const* t);
-
 struct Builder {
   BasicBlock* AddBlock();
   BasicBlock* AddBlock(BasicBlock const& to_copy);
@@ -352,7 +350,43 @@ struct Builder {
   }
 
   Reg PtrFix(Reg r, type::Type const* desired_type) {
-    return desired_type->is_big() ? r : Load(r, desired_type);
+    // TODO must this be a register if it's loaded?
+    return desired_type->is_big() ? r : Load(r, desired_type).get<Reg>(0);
+  }
+
+  template <typename T>
+  RegOr<T> Load(RegOr<Addr> addr) {
+    auto& blk = *CurrentBlock();
+
+    // TODO Just take a Reg. RegOr<Addr> is overkill and not possible because
+    // constants don't have addresses.
+    Results& cache_results = blk.load_store_cache().slot<T>(addr);
+    if (not cache_results.empty()) {
+      // TODO may not be Reg. could be anything of the right type.
+      return cache_results.get<T>(0);
+    }
+
+    auto inst =
+        std::make_unique<LoadInstruction>(addr, core::Bytes::Get<T>().value());
+    auto result = inst->result = CurrentGroup()->Reserve();
+
+    cache_results.append(result);
+
+    blk.AddInstruction(std::move(inst));
+    return result;
+  }
+
+  Results Load(RegOr<Addr> r, type::Type const* t) {
+    using base::stringify;
+    DEBUG_LOG("Load")("Calling Load(", stringify(r), ", ", t->to_string(), ")");
+    if (t->is<type::Function>()) { return Results{Load<Fn>(r)}; }
+    return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                            uint16_t, uint32_t, uint64_t, float, double,
+                            type::Type const*, EnumVal, FlagsVal, Addr, String,
+                            Fn>(t, [&](auto tag) -> Results {
+      using T = typename decltype(tag)::type;
+      return Results{Load<T>(r)};
+    });
   }
 
   Reg Index(type::Pointer const* t, Reg array_ptr, RegOr<int64_t> offset) {
@@ -600,44 +634,6 @@ RegOr<ToType> CastTo(type::Type const* from_type, ir::Results const& r) {
 }
 
 template <typename T>
-base::Tagged<T, Reg> Load(RegOr<Addr> addr) {
-  auto& blk = *GetBuilder().CurrentBlock();
-
-  // TODO Just take a Reg. RegOr<Addr> is overkill and not possible because
-  // constants don't have addresses.
-  Results* cache_results = nullptr;
-  if (addr.is_reg()) {
-    cache_results = &blk.CacheSlot(addr.reg());
-    if (not cache_results->empty()) {
-      // TODO may not be Reg. could be anything of the right type.
-      return cache_results->get<Reg>(0);
-    }
-  }
-
-  auto inst =
-      std::make_unique<LoadInstruction>(addr, core::Bytes::Get<T>().value());
-  auto result = inst->result = GetBuilder().CurrentGroup()->Reserve();
-
-  if (cache_results) { cache_results->append(result); }
-
-  blk.AddInstruction(std::move(inst));
-  return result;
-}
-
-inline Reg Load(RegOr<Addr> r, type::Type const* t) {
-  using base::stringify;
-  DEBUG_LOG("Load")("Calling Load(", stringify(r), ", ", t->to_string(), ")");
-  if (t->is<type::Function>()) { return Load<Fn>(r); }
-  return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                          uint16_t, uint32_t, uint64_t, float, double,
-                          type::Type const*, EnumVal, FlagsVal, Addr, String,
-                          Fn>(t, [&](auto tag) -> Reg {
-    using T = typename decltype(tag)::type;
-    return Load<T>(r);
-  });
-}
-
-template <typename T>
 Reg MakeReg(T t) {
   static_assert(not std::is_same_v<T, Reg>);
   if constexpr (IsRegOr<T>::value) {
@@ -693,7 +689,7 @@ template <typename T>
 void Store(T r, RegOr<Addr> addr) {
   if constexpr (IsRegOr<T>::value) {
     auto& blk = *GetBuilder().CurrentBlock();
-    blk.ClearCache();
+    blk.load_store_cache().clear<T>();
     auto inst = std::make_unique<StoreInstruction<typename T::type>>(r, addr);
     blk.AddInstruction(std::move(inst));
   } else {

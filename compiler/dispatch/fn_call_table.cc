@@ -57,9 +57,9 @@ ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
       // the declaration because that will emit the initialization for the
       // declaration. Instead, we need load the address.
       if (auto *fn_decl = fn->if_as<ast::Declaration>()) {
-        return ir::Load<ir::Fn>(compiler->addr(fn_decl));
+        return compiler->builder().Load<ir::Fn>(compiler->addr(fn_decl));
       } else {
-        return ir::Load<ir::Fn>(
+        return compiler->builder().Load<ir::Fn>(
             compiler->Visit(fn, EmitValueTag{}).get<ir::Addr>(0));
       }
     }

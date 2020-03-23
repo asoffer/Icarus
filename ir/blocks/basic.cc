@@ -1,7 +1,6 @@
 #include "ir/blocks/basic.h"
 
 #include "ir/instruction/op_codes.h"
-#include "type/type.h"
 
 namespace ir {
 
@@ -15,8 +14,7 @@ std::ostream &operator<<(std::ostream &os, BasicBlock const &b) {
   return os;
 }
 
-BasicBlock::BasicBlock(BasicBlock const &b) noexcept
-    : group_(b.group_), jump_(b.jump_) {
+BasicBlock::BasicBlock(BasicBlock const &b) noexcept : jump_(b.jump_) {
   instructions_.reserve(b.instructions_.size());
   for (auto const &inst : b.instructions_) {
     instructions_.push_back(inst->clone());
@@ -25,9 +23,7 @@ BasicBlock::BasicBlock(BasicBlock const &b) noexcept
 }
 
 BasicBlock::BasicBlock(BasicBlock &&b) noexcept
-    : instructions_(std::move(b.instructions_)),
-      group_(b.group_),
-      jump_(std::move(b.jump_)) {
+    : instructions_(std::move(b.instructions_)), jump_(std::move(b.jump_)) {
   ExchangeJumps(&b);
   b.jump_ = JumpCmd::Return();
 }
@@ -36,7 +32,6 @@ BasicBlock &BasicBlock::operator=(BasicBlock const &b) noexcept {
   RemoveOutgoingJumps();
   AddOutgoingJumps(b.jump_);
 
-  group_ = b.group_;
   instructions_.clear();
   instructions_.reserve(b.instructions_.size());
   for (auto const &inst : b.instructions_) {
@@ -104,7 +99,6 @@ BasicBlock &BasicBlock::operator=(BasicBlock &&b) noexcept {
   RemoveOutgoingJumps();
   ExchangeJumps(&b);
 
-  group_        = b.group_;
   instructions_ = std::move(b.instructions_);
   jump_         = std::exchange(b.jump_, JumpCmd::Return());
   return *this;

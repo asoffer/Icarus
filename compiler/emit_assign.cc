@@ -295,7 +295,7 @@ void Compiler::Visit(type::Variant const *t, ir::RegOr<ir::Addr> to,
 
   if (type::Variant const *from_var_type =
           from.type()->if_as<type::Variant>()) {
-    auto actual_type = ir::Load<type::Type const *>(
+    auto actual_type = builder().Load<type::Type const *>(
         builder().VariantType(from->get<ir::Reg>(0)));
     auto *landing = builder().AddBlock();
     auto var_val = builder().VariantValue(from_var_type, from->get<ir::Reg>(0));
@@ -329,7 +329,7 @@ void Compiler::Visit(type::Variant const *t, ir::RegOr<ir::Addr> to,
 
   if (type::Variant const *from_var_type =
           from.type()->if_as<type::Variant>()) {
-    auto actual_type = ir::Load<type::Type const *>(
+    auto actual_type = builder().Load<type::Type const *>(
         builder().VariantType(from->get<ir::Reg>(0)));
     auto *landing = builder().AddBlock();
     auto var_val = builder().VariantValue(from_var_type, from->get<ir::Reg>(0));

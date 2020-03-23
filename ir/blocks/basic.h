@@ -5,59 +5,33 @@
 #include <memory>
 #include <vector>
 
+#include "base/meta.h"
 #include "base/ptr_span.h"
 #include "base/untyped_buffer.h"
-#include "core/alignment.h"
-#include "core/bytes.h"
+#include "ir/blocks/load_store_cache.h"
 #include "ir/byte_code_writer.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/jump.h"
 #include "ir/results.h"
+#include "ir/value/addr.h"
+#include "ir/value/reg_or.h"
 
 namespace ir {
-namespace internal {
-struct BlockGroupBase;
-}  // namespace internal
 
 // BasicBlock:
 //
 // A basic block is an ordered collection of instructions with no branches. When
-// executed each instruction will execute in order. `BasicBlock`s also have a
+// executed, each instruction will execute in order. `BasicBlock`s also have a
 // jump describing which basic block to execute next.
 struct BasicBlock {
-  // Each BasicBlock belongs to a `BlockGroupBase` and needs a pointer back to that group.
-  explicit BasicBlock(internal::BlockGroupBase *group) : group_(group) {}
-
+  BasicBlock() = default;
   BasicBlock(BasicBlock const &b) noexcept;
   BasicBlock(BasicBlock &&) noexcept;
   BasicBlock &operator=(BasicBlock const &) noexcept;
   BasicBlock &operator=(BasicBlock &&) noexcept;
 
-  // Copies the block and updates the internal block group to `group`.
-  explicit BasicBlock(BasicBlock const &b, internal::BlockGroupBase *group) noexcept
-      : BasicBlock(b) {
-    group_ = group;
-  }
-
   void ReplaceJumpTargets(BasicBlock *old_target, BasicBlock *new_target);
   void Append(BasicBlock &&b);
-
-  // Returns the `BlockGroupBase` this `BasicBlock` belongs to.
-  internal::BlockGroupBase *group() { return group_; }
-  internal::BlockGroupBase const *group() const { return group_; }
-
-  // While building basic blocks, we cache information that is known about the
-  // values/registers stored in each allocation on this block. On each load, we
-  // cache the register the value is loaded into so that subsequent loads from
-  // the same address can reuse this register rather than emitting a redundant
-  // load instruction. The cache is invalidated conservatively. Any function
-  // call, or any store will invalidate the cache.
-  //
-  // TODO stores should only erase the one value that was cached, though if the
-  // location we're storing to is not a constant, we may need to invalidate
-  // more. Perhaps invalidating every cache entry for the given type?
-  Results &CacheSlot(Reg r) { return storage_cache_[r]; }
-  void ClearCache() { storage_cache_.clear(); }
 
   // All `BasicBlocks` which can jump to this one. Some may jump unconditionally
   // whereas others may jump only conditionally.
@@ -67,6 +41,8 @@ struct BasicBlock {
     incoming_.insert(b);
     b->jump_ = JumpCmd::Uncond(this);
   }
+
+  LoadStoreCache &load_store_cache() { return cache_; }
 
   void erase_incoming(BasicBlock *b) { incoming_.erase(b); }
 
@@ -93,10 +69,8 @@ struct BasicBlock {
   void ExchangeJumps(BasicBlock const *b);
 
   std::vector<std::unique_ptr<Instruction>> instructions_;
-  internal::BlockGroupBase *group_;
 
-  // A cache of what values we know are held in these addresses.
-  absl::flat_hash_map<Reg, Results> storage_cache_;
+ LoadStoreCache cache_;
   absl::flat_hash_set<BasicBlock *> incoming_;
 
   JumpCmd jump_ = JumpCmd::Return();

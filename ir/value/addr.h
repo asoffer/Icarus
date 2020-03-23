@@ -40,6 +40,11 @@ struct Addr {
     return lhs.data_ == rhs.data_;
   }
 
+  template <typename H>
+  friend H AbslHashValue(H h, Addr a) {
+    return H::combine(std::move(h), a.data_);
+  }
+
   constexpr Kind kind() const { return static_cast<Kind>(data_ & 0b11); }
   constexpr uint64_t stack() const { return data_ >> 2; }
   constexpr uint64_t rodata() const { return data_ >> 2; }

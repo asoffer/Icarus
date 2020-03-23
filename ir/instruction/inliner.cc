@@ -78,7 +78,7 @@ void InstructionInliner::InlineJump(BasicBlock* block) {
 
       auto& entry = named_blocks_[next_name];
       if (entry.first == nullptr) {
-        entry.first = block->group()->AppendBlock();
+        entry.first = into_->AppendBlock();
 
         *entry.first = *j.blocks()[i];
         for (auto& inst : entry.first->instructions_) { inst->Inline(*this); }

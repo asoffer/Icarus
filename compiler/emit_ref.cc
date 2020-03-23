@@ -17,7 +17,7 @@ std::vector<ir::RegOr<ir::Addr>> Compiler::Visit(ast::Access const *node,
 
   while (auto *tp = t->if_as<type::Pointer>()) {
     t   = tp->pointee;
-    reg = ir::Load<ir::Addr>(reg);
+    reg = builder().Load<ir::Addr>(reg);
   }
 
   ASSERT(t, InheritsFrom<type::Struct>());
