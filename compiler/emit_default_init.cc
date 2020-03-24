@@ -33,36 +33,30 @@ void Compiler::Visit(type::Array const *t, ir::Reg reg, EmitDefaultInitTag) {
 }
 
 void Compiler::Visit(type::Flags const *t, ir::Reg reg, EmitDefaultInitTag) {
-  ir::Store(ir::FlagsVal{0}, reg);
+  builder().Store(ir::FlagsVal{0}, reg);
 }
 
 void Compiler::Visit(type::Pointer const *t, ir::Reg reg, EmitDefaultInitTag) {
-  ir::Store(ir::Addr::Null(), reg);
+  builder().Store(ir::Addr::Null(), reg);
 }
 
 void Compiler::Visit(type::Primitive const *t, ir::Reg reg,
                      EmitDefaultInitTag) {
   switch (t->type_) {
-    case type::BasicType::Type_: ir::Store(type::Void(), reg); break;
+    case type::BasicType::Type_: builder().Store(type::Void(), reg); break;
     case type::BasicType::NullPtr: UNREACHABLE();
     case type::BasicType::EmptyArray: UNREACHABLE();
-    case type::BasicType::Bool: ir::Store(false, reg); break;
-    case type::BasicType::Int8: ir::Store(static_cast<int8_t>(0), reg); break;
-    case type::BasicType::Int16: ir::Store(static_cast<int16_t>(0), reg); break;
-    case type::BasicType::Int32: ir::Store(static_cast<int32_t>(0), reg); break;
-    case type::BasicType::Int64: ir::Store(static_cast<int64_t>(0), reg); break;
-    case type::BasicType::Nat8: ir::Store(static_cast<uint8_t>(0), reg); break;
-    case type::BasicType::Nat16:
-      ir::Store(static_cast<uint16_t>(0), reg);
-      break;
-    case type::BasicType::Nat32:
-      ir::Store(static_cast<uint32_t>(0), reg);
-      break;
-    case type::BasicType::Nat64:
-      ir::Store(static_cast<uint64_t>(0), reg);
-      break;
-    case type::BasicType::Float32: ir::Store(0.0f, reg); break;
-    case type::BasicType::Float64: ir::Store(0.0, reg); break;
+    case type::BasicType::Bool: builder().Store(false, reg); break;
+    case type::BasicType::Int8: builder().Store(int8_t{0}, reg); break;
+    case type::BasicType::Int16: builder().Store(int16_t{0}, reg); break;
+    case type::BasicType::Int32: builder().Store(int32_t{0}, reg); break;
+    case type::BasicType::Int64: builder().Store(int64_t{0}, reg); break;
+    case type::BasicType::Nat8: builder().Store(uint8_t{0}, reg); break;
+    case type::BasicType::Nat16: builder().Store(uint16_t{0}, reg); break;
+    case type::BasicType::Nat32: builder().Store(uint32_t{0}, reg); break;
+    case type::BasicType::Nat64: builder().Store(uint64_t{0}, reg); break;
+    case type::BasicType::Float32: builder().Store(float{0}, reg); break;
+    case type::BasicType::Float64: builder().Store(double{0}, reg); break;
     default: UNREACHABLE();
   }
 }

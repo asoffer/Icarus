@@ -87,7 +87,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node) {
         if (not out_decl) { continue; }
         auto *out_decl_type = ASSERT_NOT_NULL(compiler->type_of(out_decl));
         auto alloc          = out_decl_type->is_big()
-                         ? ir::GetRet(i, out_decl_type)
+                         ? compiler->builder().GetRet(i, out_decl_type)
                          : compiler->builder().Alloca(out_decl_type);
 
         compiler->set_addr(out_decl, alloc);
@@ -147,7 +147,7 @@ void CompleteBody(Compiler *compiler,
   //     // typedRegister, but this is a note to remind you to make that work.
   //     On the
   //     // second... I don't know.
-  //     ir::Store(static_cast<ir::RegOr<type::Type const *>>(struct_reg),
+  //     builder().Store(static_cast<ir::RegOr<type::Type const *>>(struct_reg),
   //               cache_slot_addr);
   //     for (auto &arg : node->params()) {  // TODO const-ref
   //       ir::AddBoundConstant(ctx_reg, &arg, addr(&arg));
@@ -177,7 +177,7 @@ void CompleteBody(Compiler *compiler,
   //
   //     // Exit path from creating a new struct.
   //     ir::SetRet(0, static_cast<ir::RegOr<type::Type const *>>(result));
-  //     ir::Store(static_cast<ir::RegOr<type::Type const *>>(result),
+  //     builder().Store(static_cast<ir::RegOr<type::Type const *>>(result),
   //               cache_slot_addr);
   //     compiler->builder().ReturnJump();
   //

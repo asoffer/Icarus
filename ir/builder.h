@@ -389,6 +389,25 @@ struct Builder {
     });
   }
 
+  template <typename T>
+  void Store(T r, RegOr<Addr> addr) {
+    if constexpr (IsRegOr<T>::value) {
+      auto& blk = *CurrentBlock();
+      blk.load_store_cache().clear<T>();
+      auto inst = std::make_unique<StoreInstruction<typename T::type>>(r, addr);
+      blk.AddInstruction(std::move(inst));
+    } else {
+      Store(RegOr<T>(r), addr);
+    }
+  }
+
+  Reg GetRet(uint16_t n, type::Type const* t) {
+    auto inst   = std::make_unique<GetReturnInstruction>(n);
+    auto result = inst->result = CurrentGroup()->Reserve();
+    CurrentBlock()->AddInstruction(std::move(inst));
+    return result;
+  }
+
   Reg Index(type::Pointer const* t, Reg array_ptr, RegOr<int64_t> offset) {
     return PtrIncr(array_ptr, offset,
                    type::Ptr(t->pointee->as<type::Array>().data_type));
@@ -660,13 +679,6 @@ void SetRet(uint16_t n, T val) {
   }
 }
 
-inline base::Tagged<Addr, Reg> GetRet(uint16_t n, type::Type const* t) {
-  auto inst   = std::make_unique<GetReturnInstruction>(n);
-  auto result = inst->result = GetBuilder().CurrentGroup()->Reserve();
-  GetBuilder().CurrentBlock()->AddInstruction(std::move(inst));
-  return result;
-}
-
 inline void SetRet(uint16_t n, type::Typed<Results> const& r) {
   // if (r.type()->is<type::GenericStruct>()) {
   //   SetRet(n, r->get<Fn>(0));
@@ -682,18 +694,6 @@ inline void SetRet(uint16_t n, type::Typed<Results> const& r) {
       using T = typename decltype(tag)::type;
       SetRet(n, r->get<T>(0));
     });
-  }
-}
-
-template <typename T>
-void Store(T r, RegOr<Addr> addr) {
-  if constexpr (IsRegOr<T>::value) {
-    auto& blk = *GetBuilder().CurrentBlock();
-    blk.load_store_cache().clear<T>();
-    auto inst = std::make_unique<StoreInstruction<typename T::type>>(r, addr);
-    blk.AddInstruction(std::move(inst));
-  } else {
-    Store(RegOr<T>(r), addr);
   }
 }
 

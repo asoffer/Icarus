@@ -229,10 +229,11 @@ ir::Results Compiler::Visit(ast::Binop const *node, EmitValueTag) {
       auto *this_type = type_of(node);
       if (this_type->is<type::Flags>()) {
         auto lhs_lval = Visit(node->lhs(), EmitRefTag{})[0];
-        ir::Store(builder().OrFlags(
-                      builder().Load<ir::FlagsVal>(lhs_lval),
-                      Visit(node->rhs(), EmitValueTag{}).get<ir::FlagsVal>(0)),
-                  lhs_lval);
+        builder().Store(
+            builder().OrFlags(
+                builder().Load<ir::FlagsVal>(lhs_lval),
+                Visit(node->rhs(), EmitValueTag{}).get<ir::FlagsVal>(0)),
+            lhs_lval);
         return ir::Results{};
       }
       auto *land_block = builder().AddBlock();
@@ -256,10 +257,11 @@ ir::Results Compiler::Visit(ast::Binop const *node, EmitValueTag) {
       auto *this_type = type_of(node);
       if (this_type->is<type::Flags>()) {
         auto lhs_lval = Visit(node->lhs(), EmitRefTag{})[0];
-        ir::Store(builder().AndFlags(
-                      builder().Load<ir::FlagsVal>(lhs_lval),
-                      Visit(node->rhs(), EmitValueTag{}).get<ir::FlagsVal>(0)),
-                  lhs_lval);
+        builder().Store(
+            builder().AndFlags(
+                builder().Load<ir::FlagsVal>(lhs_lval),
+                Visit(node->rhs(), EmitValueTag{}).get<ir::FlagsVal>(0)),
+            lhs_lval);
         return ir::Results{};
       }
 
@@ -288,7 +290,7 @@ ir::Results Compiler::Visit(ast::Binop const *node, EmitValueTag) {
                        uint32_t, uint64_t, float, double>(
           rhs_type, [&](auto tag) {
             using T = typename decltype(tag)::type;
-            ir::Store(
+            builder().Store(
                 builder().Add(builder().Load<T>(lhs_lval), rhs_ir.get<T>(0)),
                 lhs_lval);
           });
@@ -301,7 +303,7 @@ ir::Results Compiler::Visit(ast::Binop const *node, EmitValueTag) {
                        uint32_t, uint64_t, float, double>(
           rhs_type, [&](auto tag) {
             using T = typename decltype(tag)::type;
-            ir::Store(
+            builder().Store(
                 builder().Sub(builder().Load<T>(lhs_lval), rhs_ir.get<T>(0)),
                 lhs_lval);
           });
@@ -314,7 +316,7 @@ ir::Results Compiler::Visit(ast::Binop const *node, EmitValueTag) {
                        uint32_t, uint64_t, float, double>(
           rhs_type, [&](auto tag) {
             using T = typename decltype(tag)::type;
-            ir::Store(
+            builder().Store(
                 builder().Div(builder().Load<T>(lhs_lval), rhs_ir.get<T>(0)),
                 lhs_lval);
           });
@@ -326,8 +328,9 @@ ir::Results Compiler::Visit(ast::Binop const *node, EmitValueTag) {
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t>(rhs_type, [&](auto tag) {
         using T = typename decltype(tag)::type;
-        ir::Store(builder().Div(builder().Load<T>(lhs_lval), rhs_ir.get<T>(0)),
-                  lhs_lval);
+        builder().Store(
+            builder().Div(builder().Load<T>(lhs_lval), rhs_ir.get<T>(0)),
+            lhs_lval);
       });
       return ir::Results{};
     } break;
@@ -338,7 +341,7 @@ ir::Results Compiler::Visit(ast::Binop const *node, EmitValueTag) {
                        uint32_t, uint64_t, float, double>(
           rhs_type, [&](auto tag) {
             using T = typename decltype(tag)::type;
-            ir::Store(
+            builder().Store(
                 builder().Mul(builder().Load<T>(lhs_lval), rhs_ir.get<T>(0)),
                 lhs_lval);
           });
@@ -348,13 +351,13 @@ ir::Results Compiler::Visit(ast::Binop const *node, EmitValueTag) {
       if (lhs_type == type::Bool) {
         auto lhs_lval = Visit(node->lhs(), EmitRefTag{})[0];
         auto rhs_ir   = Visit(node->rhs(), EmitValueTag{}).get<bool>(0);
-        ir::Store(builder().Ne(builder().Load<bool>(lhs_lval), rhs_ir),
-                  lhs_lval);
+        builder().Store(builder().Ne(builder().Load<bool>(lhs_lval), rhs_ir),
+                        lhs_lval);
       } else if (lhs_type->is<type::Flags>()) {
         auto *flags_type = &lhs_type->as<type::Flags>();
         auto lhs_lval    = Visit(node->lhs(), EmitRefTag{})[0];
         auto rhs_ir = Visit(node->rhs(), EmitValueTag{}).get<ir::FlagsVal>(0);
-        ir::Store(
+        builder().Store(
             builder().XorFlags(builder().Load<ir::FlagsVal>(lhs_lval), rhs_ir),
             lhs_lval);
       } else {
@@ -809,7 +812,8 @@ ir::Results Compiler::Visit(ast::ReturnStmt const *node, EmitValueTag) {
       // TODO guaranteed move-elision
       ASSERT(arg_vals[i].second.size() == 1u);
       EmitMoveInit(ret_type, arg_vals[i].second,
-                   type::Typed(ir::GetRet(i, ret_type), type::Ptr(ret_type)));
+                   type::Typed<ir::Reg>(builder().GetRet(i, ret_type),
+                                        type::Ptr(ret_type)));
 
     } else {
       ir::SetRet(i, type::Typed{arg_vals[i].second, ret_type});

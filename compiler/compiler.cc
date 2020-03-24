@@ -165,8 +165,9 @@ ir::CompiledFn Compiler::MakeThunk(ast::Expression const *expr,
         // TODO guaranteed move-elision
 
         ASSERT(vals.GetResult(i).size() == 1u);
-        EmitMoveInit(t, vals.GetResult(i),
-                     type::Typed(ir::GetRet(i, t), type::Ptr(t)));
+        EmitMoveInit(
+            t, vals.GetResult(i),
+            type::Typed<ir::Reg>(builder().GetRet(i, t), type::Ptr(t)));
 
       } else {
         ir::SetRet(i, type::Typed{vals.GetResult(i), t});

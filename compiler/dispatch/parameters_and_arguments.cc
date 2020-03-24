@@ -111,7 +111,7 @@ ir::Results PrepareOneArg(Compiler *c, type::Typed<ir::Results> const &arg,
     auto tmp = bldr.TmpAlloca(param_var);
     static_cast<void>(tmp);
     // TODO type::ApplyTypes<>
-    // ir::Store(arg_var , tmp);
+    // builder().Store(arg_var , tmp);
     NOT_YET(tmp);
   } else {
     // TODO other implicit conversions?

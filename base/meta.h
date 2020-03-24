@@ -1,6 +1,10 @@
 #ifndef ICARUS_BASE_META_H
 #define ICARUS_BASE_META_H
 
+#include <cstdint>
+#include <type_traits>
+#include <utility>
+
 namespace base {
 
 template <typename T>

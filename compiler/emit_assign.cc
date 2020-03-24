@@ -17,7 +17,7 @@ static ir::NativeFn CreateAssign(Compiler *compiler, type::Array const *a) {
   auto *data_ptr_type           = type::Ptr(a->data_type);
   auto fn_type                  = type::Func(
       core::Params<type::Type const *>{core::AnonymousParam(ptr_type),
-                                         core::AnonymousParam(ptr_type)},
+                                       core::AnonymousParam(ptr_type)},
       {});
   ir::NativeFn fn = compiler->AddFunc(
       fn_type, fn_type->params().Transform([](type::Type const *p) {
@@ -88,7 +88,7 @@ static ir::NativeFn CreateAssign(Compiler *compiler, type::Struct const *s) {
   type::Pointer const *pt = type::Ptr(s);
   auto fn_type =
       type::Func(core::Params<type::Type const *>{core::AnonymousParam(pt),
-                                                    core::AnonymousParam(pt)},
+                                                  core::AnonymousParam(pt)},
                  {});
   ir::NativeFn fn = compiler->AddFunc(
       fn_type, fn_type->params().Transform([](type::Type const *p) {
@@ -138,7 +138,7 @@ void Compiler::Visit(type::Array const *t, ir::RegOr<ir::Addr> to,
 void Compiler::Visit(type::Enum const *t, ir::RegOr<ir::Addr> to,
                      type::Typed<ir::Results> const &from, EmitCopyAssignTag) {
   ASSERT(t == from.type());
-  ir::Store(from->get<ir::EnumVal>(0), to);
+  builder().Store(from->get<ir::EnumVal>(0), to);
 }
 
 void Compiler::Visit(type::Enum const *t, ir::RegOr<ir::Addr> to,
@@ -149,7 +149,7 @@ void Compiler::Visit(type::Enum const *t, ir::RegOr<ir::Addr> to,
 void Compiler::Visit(type::Flags const *t, ir::RegOr<ir::Addr> to,
                      type::Typed<ir::Results> const &from, EmitCopyAssignTag) {
   ASSERT(t == from.type());
-  ir::Store(from->get<ir::FlagsVal>(0), to);
+  builder().Store(from->get<ir::FlagsVal>(0), to);
 }
 
 void Compiler::Visit(type::Flags const *t, ir::RegOr<ir::Addr> to,
@@ -160,7 +160,7 @@ void Compiler::Visit(type::Flags const *t, ir::RegOr<ir::Addr> to,
 void Compiler::Visit(type::Function const *t, ir::RegOr<ir::Addr> to,
                      type::Typed<ir::Results> const &from, EmitCopyAssignTag) {
   ASSERT(t == from.type());
-  ir::Store(from->get<ir::Fn>(0), to);
+  builder().Store(from->get<ir::Fn>(0), to);
 }
 
 void Compiler::Visit(type::Function const *t, ir::RegOr<ir::Addr> to,
@@ -171,9 +171,9 @@ void Compiler::Visit(type::Function const *t, ir::RegOr<ir::Addr> to,
 void Compiler::Visit(type::Pointer const *t, ir::RegOr<ir::Addr> to,
                      type::Typed<ir::Results> const &from, EmitCopyAssignTag) {
   if (t == from.type()) {
-    ir::Store(from->get<ir::Addr>(0), to);
+    builder().Store(from->get<ir::Addr>(0), to);
   } else if (from.type() == type::NullPtr) {
-    ir::Store(ir::Addr::Null(), to);
+    builder().Store(ir::Addr::Null(), to);
   } else {
     UNREACHABLE();
   }
@@ -189,23 +189,43 @@ void Compiler::Visit(type::Primitive const *t, ir::RegOr<ir::Addr> to,
   ASSERT(t == from.type());
   switch (t->type_) {
     case type::BasicType::Type_:
-      ir::Store(from->get<type::Type const *>(0), to);
+      builder().Store(from->get<type::Type const *>(0), to);
       break;
     case type::BasicType::NullPtr: UNREACHABLE();
     case type::BasicType::EmptyArray: UNREACHABLE();
-    case type::BasicType::Bool: ir::Store(from->get<bool>(0), to); break;
-    case type::BasicType::Int8: ir::Store(from->get<int8_t>(0), to); break;
-    case type::BasicType::Int16: ir::Store(from->get<int16_t>(0), to); break;
-    case type::BasicType::Int32: ir::Store(from->get<int32_t>(0), to); break;
-    case type::BasicType::Int64: ir::Store(from->get<int64_t>(0), to); break;
-    case type::BasicType::Nat8: ir::Store(from->get<uint8_t>(0), to); break;
-    case type::BasicType::Nat16: ir::Store(from->get<uint16_t>(0), to); break;
-    case type::BasicType::Nat32: ir::Store(from->get<uint32_t>(0), to); break;
-    case type::BasicType::Nat64: ir::Store(from->get<uint64_t>(0), to); break;
-    case type::BasicType::Float32: ir::Store(from->get<float>(0), to); break;
-    case type::BasicType::Float64: ir::Store(from->get<double>(0), to); break;
+    case type::BasicType::Bool: builder().Store(from->get<bool>(0), to); break;
+    case type::BasicType::Int8:
+      builder().Store(from->get<int8_t>(0), to);
+      break;
+    case type::BasicType::Int16:
+      builder().Store(from->get<int16_t>(0), to);
+      break;
+    case type::BasicType::Int32:
+      builder().Store(from->get<int32_t>(0), to);
+      break;
+    case type::BasicType::Int64:
+      builder().Store(from->get<int64_t>(0), to);
+      break;
+    case type::BasicType::Nat8:
+      builder().Store(from->get<uint8_t>(0), to);
+      break;
+    case type::BasicType::Nat16:
+      builder().Store(from->get<uint16_t>(0), to);
+      break;
+    case type::BasicType::Nat32:
+      builder().Store(from->get<uint32_t>(0), to);
+      break;
+    case type::BasicType::Nat64:
+      builder().Store(from->get<uint64_t>(0), to);
+      break;
+    case type::BasicType::Float32:
+      builder().Store(from->get<float>(0), to);
+      break;
+    case type::BasicType::Float64:
+      builder().Store(from->get<double>(0), to);
+      break;
     case type::BasicType::ByteView:
-      ir::Store(from->get<ir::String>(0), to);
+      builder().Store(from->get<ir::String>(0), to);
       break;
     default: UNREACHABLE();
   }
@@ -222,7 +242,7 @@ void Compiler::Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
     type::Pointer const *p = type::Ptr(t);
     auto fn_type =
         type::Func(core::Params<type::Type const *>{core::AnonymousParam(p),
-                                                      core::AnonymousParam(p)},
+                                                    core::AnonymousParam(p)},
                    {});
     ir::NativeFn fn =
         AddFunc(fn_type, fn_type->params().Transform([](type::Type const *p) {
@@ -257,7 +277,7 @@ void Compiler::Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
     type::Pointer const *p = type::Ptr(t);
     auto fn_type =
         type::Func(core::Params<type::Type const *>{core::AnonymousParam(p),
-                                                      core::AnonymousParam(p)},
+                                                    core::AnonymousParam(p)},
                    {});
     ir::NativeFn fn =
         AddFunc(fn_type, fn_type->params().Transform([](type::Type const *p) {
@@ -300,10 +320,10 @@ void Compiler::Visit(type::Variant const *t, ir::RegOr<ir::Addr> to,
     auto *landing = builder().AddBlock();
     auto var_val = builder().VariantValue(from_var_type, from->get<ir::Reg>(0));
     for (type::Type const *v : from_var_type->variants_) {
-      auto *next_block = builder().AddBlock();
+      auto *next_block         = builder().AddBlock();
       builder().CurrentBlock() = builder().EarlyExitOn<false>(
           next_block, builder().Eq(actual_type, v));
-      ir::Store(v, builder().VariantType(to));
+      builder().Store(v, builder().VariantType(to));
       Visit(v, builder().VariantValue(t, to),
             type::Typed{ir::Results{builder().PtrFix(var_val, v)}, v},
             EmitCopyAssignTag{});
@@ -313,7 +333,7 @@ void Compiler::Visit(type::Variant const *t, ir::RegOr<ir::Addr> to,
     builder().UncondJump(landing);
     builder().CurrentBlock() = landing;
   } else {
-    ir::Store(from.type(), builder().VariantType(to));
+    builder().Store(from.type(), builder().VariantType(to));
     // TODO Find the best match amongst the variants available.
     type::Type const *best_match = from.type();
     Visit(best_match, builder().VariantValue(t, to), from, EmitCopyAssignTag{});
@@ -334,10 +354,10 @@ void Compiler::Visit(type::Variant const *t, ir::RegOr<ir::Addr> to,
     auto *landing = builder().AddBlock();
     auto var_val = builder().VariantValue(from_var_type, from->get<ir::Reg>(0));
     for (type::Type const *v : from_var_type->variants_) {
-      auto *next_block = builder().AddBlock();
+      auto *next_block         = builder().AddBlock();
       builder().CurrentBlock() = builder().EarlyExitOn<false>(
           next_block, builder().Eq(actual_type, v));
-      ir::Store(v, builder().VariantType(to));
+      builder().Store(v, builder().VariantType(to));
       Visit(v, builder().VariantValue(t, to),
             type::Typed{ir::Results{builder().PtrFix(var_val, v)}, v},
             EmitMoveAssignTag{});
@@ -347,7 +367,7 @@ void Compiler::Visit(type::Variant const *t, ir::RegOr<ir::Addr> to,
     builder().UncondJump(landing);
     builder().CurrentBlock() = landing;
   } else {
-    ir::Store(from.type(), builder().VariantType(to));
+    builder().Store(from.type(), builder().VariantType(to));
     // TODO Find the best match amongst the variants available.
     type::Type const *best_match = from.type();
     Visit(best_match, builder().VariantValue(t, to), from, EmitMoveAssignTag{});
