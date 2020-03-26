@@ -29,6 +29,7 @@ struct Results {
   template <typename T,
             typename = std::enable_if_t<not std::is_base_of_v<Reg, T>>>
   RegOr<T> get(size_t index) const {
+    ASSERT(index < size());
     if constexpr (std::is_same_v<T, IsRegOr<T>>) {
       return get<typename IsRegOr<T>::type>(index);
     } else {
@@ -42,6 +43,7 @@ struct Results {
 
   template <typename T, typename = std::enable_if_t<std::is_base_of_v<Reg, T>>>
   Reg get(size_t index) const {
+    ASSERT(index < size());
     ASSERT(is_reg(index) == true);
     return buf_.get<Reg>(offset_[index]);
   }

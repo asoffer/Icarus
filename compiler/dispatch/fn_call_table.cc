@@ -68,9 +68,9 @@ ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
   if (not callee.is_reg()) {
     switch (callee.value().kind()) {
       case ir::Fn::Kind::Native: {
+        auto params = callee.value().native()->params();
         core::FillMissingArgs(
-            core::ParamsRef(callee.value().native().get()->params()), &args,
-            [compiler](auto const &p) {
+            core::ParamsRef(params), &args, [compiler](auto const &p) {
               return type::Typed(
                   ir::Results{compiler->Visit(
                       ASSERT_NOT_NULL(p.get()->init_val()), EmitValueTag{})},

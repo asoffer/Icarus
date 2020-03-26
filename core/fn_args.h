@@ -75,11 +75,11 @@ struct FnArgs {
     std::string result = "fnargs[";
     char const *sep    = "";
     for (auto &&val : pos_) {
-      absl::StrAppend(&result, stringify(val), sep);
+      absl::StrAppend(&result,sep, stringify(val));
       sep = ", ";
     }
     for (auto &&[key, val] : named_) {
-      absl::StrAppend(&result, key, ": ", stringify(val), sep);
+      absl::StrAppend(&result, sep, key, ": ", stringify(val));
       sep = ", ";
     }
     absl::StrAppend(&result, "]");
