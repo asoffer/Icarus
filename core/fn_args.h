@@ -188,6 +188,25 @@ struct FnArgs {
   absl::flat_hash_map<StringType, T> named_;
 };
 
+template <typename T>
+bool operator==(FnArgs<T> const &lhs, FnArgs<T> const &rhs) {
+  if (lhs.pos() != rhs.pos()) { return false; }
+  if (lhs.named().size() != rhs.named().size()) { return false; }
+  auto const &rhs_named = rhs.named();
+  for (auto const & [ k, v ] : lhs.named()) {
+    if (auto iter = rhs_named.find(k);
+        iter == rhs_named.end() or iter->second != v) {
+      return false;
+    }
+  }
+  return true;
+}
+
+template <typename T>
+bool operator!=(FnArgs<T> const &lhs, FnArgs<T> const &rhs) {
+  return not(lhs == rhs);
+}
+
 }  // namespace core
 
 #endif  // ICARUS_CORE_FN_ARGS_H

@@ -9,8 +9,8 @@
 #include "base/move_func.h"
 #include "base/no_destructor.h"
 #include "ir/block_def.h"
-#include "ir/overload_set.h"
 #include "ir/value/fn.h"
+#include "ir/value/overload_set.h"
 #include "module/module.h"
 #include "type/type.h"
 

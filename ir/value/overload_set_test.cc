@@ -1,20 +1,23 @@
-#include "ir/overload_set.h"
+#include "ir/value/overload_set.h"
 
 #include <cstdio>
+#include <vector>
 
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "ir/value/foreign_fn.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"
 
 namespace {
+using testing::Optional;
 
 void TestFn1() { std::puts("TestFn1"); }
 void TestFn2() { std::puts("TestFn2"); }
 void TestFn3() { std::puts("TestFn3"); }
 
 TEST(OverloadSet, Construction) {
-  ir::OverloadSet os(absl::Span<ir::Fn const>{
+  ir::OverloadSet os(std::vector<ir::Fn>{
       ir::ForeignFn(TestFn1, type::Func({}, {})),
       ir::ForeignFn(TestFn2,
                     type::Func({core::AnonymousParam(type::Int64)}, {})),
@@ -39,7 +42,7 @@ TEST(OverloadSet, Construction) {
 }
 
 TEST(OverloadSet, FailsToConstruct) {
-  ir::OverloadSet os(absl::Span<ir::Fn const>{});
+  ir::OverloadSet os(std::vector<ir::Fn>{});
 
   // Check twice because `Lookup()` caches state.
   EXPECT_FALSE(os.Lookup(core::FnArgs<type::QualType>()).has_value());

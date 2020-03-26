@@ -4,7 +4,7 @@
 #include <iostream>
 
 #include "base/debug.h"
-#include "ir/overload_set.h"
+#include "ir/value/overload_set.h"
 
 namespace type {
 struct Jump;
