@@ -53,17 +53,20 @@ void ConsoleRenderer::WriteSourceQuote(frontend::Source const *source,
     std::fputs("Internal Error: SourceQuote is empty\n", out_);
     return;
   }
+
   int border_alignment = NumDigits(quote.lines.endpoints_.back() - 1) + 2;
-  frontend::LineNum last_line_num = (*quote.lines.begin()).begin();
+  frontend::LineNum prev_line_num = (*quote.lines.begin()).begin();
   for (base::Interval<frontend::LineNum> line_range : quote.lines) {
-    switch (line_range.begin().value - last_line_num.value) {
-      case 0: break;
+    // If there's only one line between two intervals, we might as well print
+    // it. Otherwise we add some ellipsis.
+    switch (line_range.begin().value - prev_line_num.value) {
+      case 0:
       case 1: break;
       case 2: {
-        ASSIGN_OR(std::abort(), auto line_str,
-                  LoadLine(source, last_line_num + 1));
+        ASSIGN_OR(std::abort(),  //
+                  auto line_str, LoadLine(source, prev_line_num + 1));
         absl::FPrintF(out_, "\033[97;1m%*d | \033[0m%s\n", border_alignment,
-                      last_line_num.value + 1, line_str);
+                      prev_line_num.value + 1, line_str);
       } break;
       default: {
         absl::FPrintF(out_, "\033[97;1m%*s.. | \033[0m\n", border_alignment - 2,
@@ -71,11 +74,52 @@ void ConsoleRenderer::WriteSourceQuote(frontend::Source const *source,
       } break;
     }
 
+    auto highlight_iter                       = quote.highlights.begin();
+    bool inside_highlight                     = false;
+    frontend::SourceLoc next_highlight_change = highlight_iter->range.begin();
+
     for (frontend::LineNum line = line_range.begin(); line != line_range.end();
          ++line) {
+      absl::FPrintF(out_, "\033[97;1m%*d | ", border_alignment, line.value);
+
+      auto set_highlight = [&] {
+        if (inside_highlight) {
+          absl::FPrintF(out_, "\033[3%d;1m",
+                        static_cast<int>(highlight_iter->style.color));
+        } else {
+          absl::FPrintF(out_, "\033[0m");
+        }
+      };
+
+      set_highlight();
+
       ASSIGN_OR(continue, auto line_str, LoadLine(source, line));
-      absl::FPrintF(out_, "\033[97;1m%*d | \033[0m%s\n", border_alignment,
-                    line.value, line_str);
+      if (next_highlight_change.line_num > line) {
+        absl::FPrintF(out_, "%s", line_str);
+        continue;
+      }
+
+      ASSERT(next_highlight_change.line_num == line);
+
+      frontend::Offset off{0};
+      while (next_highlight_change.line_num == line) {
+        absl::FPrintF(
+            out_, "%s",
+            line_str.substr(off.value,
+                            next_highlight_change.offset.value - off.value));
+
+        off = next_highlight_change.offset;
+        if (inside_highlight) {
+          inside_highlight = false;
+          ++highlight_iter;
+          next_highlight_change = highlight_iter->range.begin();
+        } else {
+          inside_highlight = true;
+          next_highlight_change = highlight_iter->range.end();
+        }
+        set_highlight();
+      }
+      absl::FPrintF(out_, "%s", line_str.substr(off.value));
     }
   }
 }

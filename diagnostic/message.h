@@ -12,7 +12,20 @@ namespace diagnostic {
 // TODO Do you need `Fatal`?
 enum class Category { Note, Warning, Error, Fatal };
 
-struct Style {};
+struct Style {
+  enum class Color : uint8_t {
+    Black   = 0,
+    Red     = 1,
+    Green   = 2,
+    Yellow  = 3,
+    Blue    = 4,
+    Magenta = 5,
+    Cyan    = 6,
+    White   = 7
+  } color = Color::White;
+
+  static constexpr Style ErrorText() { return Style{.color = Color::Red}; }
+};
 
 struct Highlight {
   Highlight(frontend::SourceRange range, Style style)

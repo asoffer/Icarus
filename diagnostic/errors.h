@@ -769,9 +769,9 @@ struct UndeclaredIdentifier {
   static constexpr std::string_view kName     = "cyclic-dependency";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("Found an undeclared identifier:"),
-                             SourceQuote(src).Highlighted(range, Style{}));
-    // TODO
+    return DiagnosticMessage(
+        Text("Found an undeclared identifier:"),
+        SourceQuote(src).Highlighted(range, Style::ErrorText()));
   }
 
   std::string_view id;
