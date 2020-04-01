@@ -468,7 +468,8 @@ ir::Results Compiler::Visit(ast::Call const *node, EmitValueTag) {
     return EmitBuiltinCall(this, b, node->args());
   }
 
-  auto const &table = *ASSERT_NOT_NULL(data_.dispatch_table(node));
+  ASSIGN_OR(return ir::Results{},  //
+                   auto const &table, data_.dispatch_table(node));
   // Look at all the possible calls and generate the dispatching code
   // TODO implement this with a lookup table instead of this branching insanity.
 
