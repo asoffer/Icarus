@@ -3,8 +3,10 @@
 
 #include <optional>
 #include <string_view>
+#include <variant>
 
 #include "ir/value/reg_or.h"
+#include "ir/value/value.h"
 #include "type/type.h"
 
 namespace ir {
@@ -19,24 +21,33 @@ namespace ir {
 // the data pertaining to a specific field that needs to be passed to the
 // struct-creating command.
 struct StructField {
-  explicit constexpr StructField(std::string_view name,
-                                 RegOr<type::Type const*> type)
-      : name_(name), type_(type) {}
+  explicit StructField(std::string_view name, RegOr<type::Type const *> type)
+      : name_(name), data_(type) {}
 
-  RegOr<type::Type const*>& type() { return type_; }
-  RegOr<type::Type const*> type() const { return type_; }
+  RegOr<type::Type const *> &type() {
+    return std::get<RegOr<type::Type const *>>(data_);
+  }
+
+  RegOr<type::Type const *> type() const {
+    return std::get<RegOr<type::Type const *>>(data_);
+  }
+
+  // Returns the name of the struct field.
   std::string_view name() const { return name_; }
 
  private:
   std::string_view name_;
 
-  // If no type is present in the syntax tree, then we must have an initial
-  // value so we would end up populating the type from that. In other words this
-  // type is guaranteed to be present here even if it is not present in the
-  // syntax tree.
-  RegOr<type::Type const*> type_;
+  struct WithInitialValue {
+    type::Type const *type_;
+    Value val_;
+  };
 
-  // TODO hashtags and initial values.
+  // TODO we're  creating the variant but only ever using one part of it. We
+  // need to start potentially populating initial values and using them.
+  std::variant<WithInitialValue, RegOr<type::Type const *>> data_;
+
+  // TODO hashtags.
 };
 
 }  // namespace ir

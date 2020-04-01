@@ -147,6 +147,7 @@ cc_library(
     name = "struct_field",
     hdrs = ["struct_field.h"],
     deps = [
+        "//ir/value",
         "//ir/value:reg_or",
         "//type",
     ],

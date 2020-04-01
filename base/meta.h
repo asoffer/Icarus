@@ -111,6 +111,26 @@ constexpr bool operator!=(Meta<Lhs> lhs, Meta<Rhs> rhs) {
   return not(lhs == rhs);
 }
 
+template <typename T>
+constexpr bool operator==(Meta<T> lhs, MetaValue rhs) {
+  return lhs.value() == rhs;
+}
+
+template <typename T>
+constexpr bool operator==(MetaValue lhs, Meta<T> rhs) {
+  return lhs == rhs.value();
+}
+
+template <typename T>
+constexpr bool operator!=(Meta<T> lhs, MetaValue rhs) {
+  return not(lhs == rhs);
+}
+
+template <typename T>
+constexpr bool operator!=(MetaValue lhs, Meta<T> rhs) {
+  return not(lhs == rhs);
+}
+
 }  // namespace base
 
 #endif  // ICARUS_BASE_META_H

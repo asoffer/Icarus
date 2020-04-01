@@ -204,3 +204,25 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_library(
+    name = "value",
+    hdrs = ["value.h"],
+    deps = [
+        ":addr",
+        ":fn",
+        ":reg",
+        ":string",
+        "//base:meta",
+        "//type",
+    ],
+)
+
+cc_test(
+    name = "value_test",
+    srcs = ["value_test.cc"],
+    deps = [
+        ":value",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
