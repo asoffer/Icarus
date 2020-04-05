@@ -31,6 +31,25 @@ cc_test(
 )
 
 cc_library(
+    name = "call",
+    hdrs = ["call.h"],
+    deps = [
+        ":fn_args",
+        ":params",
+        ":params_ref",
+    ],
+)
+
+cc_test(
+    name = "call_test",
+    srcs = ["call_test.cc"],
+    deps = [
+        ":call",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "fn_args",
     hdrs = ["fn_args.h"],
     deps = [

@@ -4,7 +4,6 @@
 
 namespace core {
 namespace {
-constexpr bool Ambiguity(int lhs, int rhs) { return (lhs & rhs) != 0; }
 
 TEST(Params, Creation) {
   Params<double> params;
@@ -47,68 +46,6 @@ TEST(Params, Transform) {
 
   EXPECT_EQ(*double_params.at_or_null("a"), 0u);
   EXPECT_EQ(*double_params.at_or_null("b"), 1u);
-}
-
-TEST(Params, AmbiguouslyCallable) {
-  {  // Both empty
-    Params<int> p1, p2;
-    EXPECT_TRUE(AmbiguouslyCallable(p1, p2, Ambiguity));
-    EXPECT_TRUE(AmbiguouslyCallable(p2, p1, Ambiguity));
-  }
-
-  {  // One empty
-    Params<int> p1{Param<int>{"a", 1}};
-    Params<int> p2;
-    EXPECT_FALSE(AmbiguouslyCallable(p1, p2, Ambiguity));
-    EXPECT_FALSE(AmbiguouslyCallable(p2, p1, Ambiguity));
-  }
-
-  {  // One empty but has default
-    Params<int> p1{Param<int>{"a", 1, HAS_DEFAULT}};
-    Params<int> p2;
-    EXPECT_TRUE(AmbiguouslyCallable(p1, p2, Ambiguity));
-    EXPECT_TRUE(AmbiguouslyCallable(p2, p1, Ambiguity));
-  }
-
-  {  // Same type, different names
-    Params<int> p1{Param<int>{"a1", 1}};
-    Params<int> p2{Param<int>{"a2", 1}};
-    EXPECT_TRUE(AmbiguouslyCallable(p1, p2, Ambiguity));
-    EXPECT_TRUE(AmbiguouslyCallable(p2, p1, Ambiguity));
-  }
-
-  {  // Same type, same name
-    Params<int> p{Param<int>{"a1", 1}};
-    EXPECT_TRUE(AmbiguouslyCallable(p, p, Ambiguity));
-  }
-
-  {  // Same name different types
-    Params<int> p1{Param<int>{"a", 1}};
-    Params<int> p2{Param<int>{"a", 2}};
-    EXPECT_FALSE(AmbiguouslyCallable(p1, p2, Ambiguity));
-    EXPECT_FALSE(AmbiguouslyCallable(p2, p1, Ambiguity));
-  }
-
-  {  // Unambiguous because a parameter would have to be named.
-    Params<int> p1{Param<int>{"a", 1}, Param<int>{"b", 2, HAS_DEFAULT}};
-    Params<int> p2{Param<int>{"b", 2}};
-    EXPECT_FALSE(AmbiguouslyCallable(p1, p2, Ambiguity));
-    EXPECT_FALSE(AmbiguouslyCallable(p2, p1, Ambiguity));
-  }
-
-  {  // Both defaultable of different types
-    Params<int> p1{Param<int>{"a", 1, HAS_DEFAULT}};
-    Params<int> p2{Param<int>{"b", 2, HAS_DEFAULT}};
-    EXPECT_TRUE(AmbiguouslyCallable(p1, p2, Ambiguity));
-    EXPECT_TRUE(AmbiguouslyCallable(p2, p1, Ambiguity));
-  }
-
-  // TODO Many many more tests covering MUST_NOT_NAME
-  {  // Anonymous
-    Params<int> p1{Param<int>{"", 1, MUST_NOT_NAME}};
-    Params<int> p2{Param<int>{"", 2, MUST_NOT_NAME}};
-    EXPECT_FALSE(AmbiguouslyCallable(p1, p2, Ambiguity));
-  }
 }
 
 TEST(Params, Set) {

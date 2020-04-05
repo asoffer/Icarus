@@ -126,6 +126,7 @@ cc_library(
     name = "overload_set",
     hdrs = ["overload_set.h"],
     deps = [
+        "//core:call",
         "//core:params_ref",
         "//ir/value:fn",
         "//type:cast",

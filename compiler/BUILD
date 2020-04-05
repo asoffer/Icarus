@@ -47,6 +47,7 @@ cc_library(
         "//base:tag",
         "//compiler/dispatch:fn_call_table",
         "//compiler/dispatch:scope_table",
+        "//core:call",
         "//diagnostic:errors",
         "//diagnostic/consumer",
         "//diagnostic/consumer:trivial",

@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "absl/types/span.h"
+#include "core/call.h"
 #include "core/params_ref.h"
 #include "ir/value/fn.h"
 #include "type/cast.h"

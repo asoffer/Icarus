@@ -13,6 +13,7 @@
 #include "compiler/extract_jumps.h"
 #include "compiler/library_module.h"
 #include "compiler/verify_assignment_and_initialization.h"
+#include "core/call.h"
 #include "diagnostic/consumer/trivial.h"
 #include "diagnostic/errors.h"
 #include "frontend/lex/operators.h"
