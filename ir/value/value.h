@@ -17,6 +17,9 @@ namespace ir {
 // A `Value` represents any register or value constant usable in the
 // intermediate representation.
 struct Value {
+  // Constructs a `Value` from the passed in type. The parameter may be of any
+  // type supported by `Value` or an `ir::RegOr<T>` where `T` is an type
+  // supported by `Value`.
   template <typename T>
   Value(T val) : type_(base::meta<T>) {
     if constexpr (IsRegOr<T>::value) {
@@ -33,23 +36,32 @@ struct Value {
     }
   }
 
+  // Returns the stored value. Behavior is undefined if the stored type is not
+  // the same as the template parameter.
   template <typename T>
   T get() const {
     return get_ref<T>();
   }
 
+
+  // Returns a pointer to the stored value if it is of the given type, and null
+  // otherwise.
   template <typename T>
   T const* get_if() const {
     if (type_ == base::meta<T>) { return &get_ref<T>(); }
     return nullptr;
   }
 
+  // Returns a pointer to the stored value if it is of the given type, and null
+  // otherwise.
   template <typename T>
   T* get_if() {
-    if (type_ == base::meta<T>) { return &get_ref<T>(); }
-    return nullptr;
+    return const_cast<T*>(
+        static_cast<Value const*>(this)->template get_if<T>());
   }
 
+  // Calls `f` on the held type. `f` must be callable with any type
+  // storable by `Value`.
   template <typename F>
   constexpr void apply(F&& f) {
     apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
@@ -57,7 +69,7 @@ struct Value {
                String, EnumVal, FlagsVal, Fn, Reg>(std::forward<F>(f));
   }
 
- // private:
+ private:
   template <typename... Ts, typename F>
   void apply_impl(F&& f) {
     if (((this->template get_if<Ts>()
