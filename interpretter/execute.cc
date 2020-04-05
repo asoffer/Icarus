@@ -17,6 +17,7 @@
 #include "ir/value/foreign_fn.h"
 #include "ir/value/native_fn.h"
 #include "type/opaque.h"
+#include "type/primitive.h"
 
 namespace interpretter {
 namespace {
@@ -530,20 +531,35 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
 
     std::vector<type::Struct::Field> fields;
     fields.reserve(num);
-
     for (uint16_t i = 0; i < num; ++i) {
-      auto &field = fields.emplace_back();
-      field.name  = iter->read<std::string_view>();
+      std::string_view name = iter->read<std::string_view>();
+      if (iter->read<bool>()) {
+        type::Type const *t = iter->read<type::Type const *>();
+        DEBUG_LOG()(t->to_string());
+        ir::Value init_val  = iter->read<ir::Value>();
+        if (t->is<type::Primitive>()) {
+          fields.push_back(type::Struct::Field{
+              .name          = std::string(name),
+              .type          = t,
+              .initial_value = init_val,
+              .hashtags_     = {},
+          });
+        } else {
+          NOT_YET();
+        }
+      } else {
+        fields.push_back(type::Struct::Field{
+            .name = std::string(name),
+            .type =
+                ctx->resolve(iter->read<ir::RegOr<type::Type const *>>().get()),
+            .initial_value = std::nullopt,
+            .hashtags_     = {},
+        });
+      }
     }
 
-    std::vector<type::Type const *> types =
-        Deserialize<uint16_t, type::Type const *>(iter, [&](ir::Reg reg) {
-          return ctx->resolve<type::Type const *>(reg);
-        });
-    for (uint16_t i = 0; i < num; ++i) { fields[i].type = types[i]; }
-
     ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
-                                   new type::Struct(scope, fields));
+                                   new type::Struct(scope, std::move(fields)));
 
   } else if constexpr (std::is_same_v<Inst, ir::ArrayInstruction>) {
     using length_t = ir::ArrayInstruction::length_t;

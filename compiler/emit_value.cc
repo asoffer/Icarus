@@ -912,10 +912,26 @@ ir::Results Compiler::Visit(ast::StructLiteral const *node, EmitValueTag) {
   std::vector<ir::StructField> fields;
   fields.reserve(node->fields().size());
   for (auto const &field : node->fields()) {
-    // TODO hashtags and initial values.
-    fields.emplace_back(
-        field.id(),
-        Visit(field.type_expr(), EmitValueTag{}).get<type::Type const *>(0));
+    // TODO hashtags.
+    if (auto *init_val = field.init_val()) {
+      // TODO init_val type may not be the same.
+      auto *t              = qual_type_of(init_val)->type();
+      auto init_val_result = Visit(init_val, EmitValueTag{});
+      // TODO Other initial value types I'm missing but also why not have
+      // direct conversion from ir::Results?
+      fields.emplace_back(
+          field.id(), ASSERT_NOT_NULL(t),
+          type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                           uint16_t, uint32_t, uint64_t, float, double>(
+              t, [&](auto tag) -> ir::Value {
+                using T = typename decltype(tag)::type;
+                return ir::Value(init_val_result.template get<T>(0));
+              }));
+    } else {
+      fields.emplace_back(
+          field.id(),
+          Visit(field.type_expr(), EmitValueTag{}).get<type::Type const *>(0));
+    }
   }
 
   return ir::Results{builder().Struct(node->scope(), fields)};

@@ -76,8 +76,19 @@ void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDefaultInitTag) {
       auto var                 = ir::Reg::Arg(0);
 
       for (size_t i = 0; i < t->fields_.size(); ++i) {
-        Visit(t->fields_[i].type, builder().Field(var, t, i).get(),
-              EmitDefaultInitTag{});
+        auto &field = t->fields_[i];
+        if (field.initial_value) {
+          if (field.type == type::Int64) {
+            EmitCopyInit(field.type,
+                         ir::Results{field.initial_value->get<int64_t>()},
+                         builder().Field(var, t, i));
+          } else {
+            NOT_YET();
+          }
+        } else {
+          Visit(field.type, builder().Field(var, t, i).get(),
+                EmitDefaultInitTag{});
+        }
       }
 
       builder().ReturnJump();

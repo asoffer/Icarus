@@ -2079,36 +2079,42 @@ type::QualType Compiler::Visit(ast::ScopeNode const *node, VerifyTypeTag) {
 type::QualType Compiler::Visit(ast::StructLiteral const *node, VerifyTypeTag) {
   bool err = false;
   for (auto const &field : node->fields()) {
-    type::QualType type_expr_result;
+    type::QualType type_expr_qt;
     if (field.type_expr()) {
-      type_expr_result = Visit(field.type_expr(), VerifyTypeTag{});
+      type_expr_qt = Visit(field.type_expr(), VerifyTypeTag{});
     }
 
-    type::QualType init_val_result;
+    type::QualType init_val_qt;
     if (field.init_val()) {
-      init_val_result = Visit(field.init_val(), VerifyTypeTag{});
+      init_val_qt = Visit(field.init_val(), VerifyTypeTag{});
     }
 
-    if ((field.type_expr() and not type_expr_result) or
-        (field.init_val() and not init_val_result)) {
+    if ((field.type_expr() and not type_expr_qt) or
+        (field.init_val() and not init_val_qt)) {
       err = true;
       continue;
     }
 
-    if (field.type_expr() and not type_expr_result.constant()) {
+    if (field.type_expr() and not type_expr_qt.constant()) {
       err = true;
       NOT_YET("Log an error, type must be constant");
     }
 
-    if (field.init_val() and not init_val_result.constant()) {
+    if (field.init_val() and not init_val_qt.constant()) {
       err = true;
-      NOT_YET("Log an error, type must be constant");
+      NOT_YET("Log an error, initial value must be constant");
     }
 
-    if (field.init_val() and init_val_result != type_expr_result) {
-      err = true;
-      NOT_YET("log an error, type mismatch");
+    if (field.init_val()) {
+      auto *t = interpretter::EvaluateAs<type::Type const *>(
+          MakeThunk(field.type_expr(), type::Type_));
+      if (t != init_val_qt.type()) {
+        err = true;
+        NOT_YET("log an error, type mismatch", init_val_qt, t);
+      }
     }
+
+    // TODO set field results?
   }
 
   if (err) { return set_result(node, type::QualType::Error()); }

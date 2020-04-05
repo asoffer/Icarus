@@ -1177,23 +1177,28 @@ struct StructInstruction : base::Clone<StructInstruction, Instruction> {
     writer->Write(scope);
 
     // TODO shuffling fields order?
-    for (auto const& field : fields) { writer->Write(field.name()); }
-
-    std::vector<RegOr<type::Type const*>> types;
-    types.reserve(fields.size());
-    for (auto const& field : fields) { types.push_back(field.type()); }
-    internal::WriteBits<uint16_t, RegOr<type::Type const*>>(
-        writer, types,
-        [](RegOr<type::Type const*> const& r) { return r.is_reg(); });
-    absl::c_for_each(types, [&](RegOr<type::Type const*> x) {
-      x.apply([&](auto v) { writer->Write(v); });
-    });
+    for (auto const& field : fields) {
+      writer->Write(field.name());
+      if (auto* v = field.initial_value()) {
+        writer->Write(true);
+        writer->Write(field.type().value());
+        writer->Write(*v);
+      } else {
+        writer->Write(false);
+        writer->Write(field.type());
+      }
+    }
 
     writer->Write(result);
   }
 
   void Inline(InstructionInliner const& inliner) override {
-    for (auto& field : fields) { inliner.Inline(field.type()); }
+    for (auto& field : fields) {
+      if (auto* r = field.type_reg()) { inliner.Inline(*r); }
+      if (auto* v = field.initial_value()) {
+        if (auto* r = v->get_if<Reg>()) { inliner.Inline(*r); }
+      }
+    }
   }
 
   ast::Scope const* scope;

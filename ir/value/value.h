@@ -19,7 +19,18 @@ namespace ir {
 struct Value {
   template <typename T>
   Value(T val) : type_(base::meta<T>) {
-    get_ref<T>() = val;
+    if constexpr (IsRegOr<T>::value) {
+      if (val.is_reg()) {
+        type_ = base::meta<Reg>;
+        get_ref<Reg>() = val.reg();
+      } else {
+        type_ = base::meta<typename IsRegOr<T>::type>;
+        get_ref<typename IsRegOr<T>::type>() = val.value();
+      }
+    } else {
+      static_assert(IsSupported<T>());
+      get_ref<T>() = val;
+    }
   }
 
   template <typename T>
@@ -27,7 +38,59 @@ struct Value {
     return get_ref<T>();
   }
 
- private:
+  template <typename T>
+  T const* get_if() const {
+    if (type_ == base::meta<T>) { return &get_ref<T>(); }
+    return nullptr;
+  }
+
+  template <typename T>
+  T* get_if() {
+    if (type_ == base::meta<T>) { return &get_ref<T>(); }
+    return nullptr;
+  }
+
+  template <typename F>
+  constexpr void apply(F&& f) {
+    apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+               uint32_t, uint64_t, float, double, type::Type const*, Addr,
+               String, EnumVal, FlagsVal, Fn, Reg>(std::forward<F>(f));
+  }
+
+ // private:
+  template <typename... Ts, typename F>
+  void apply_impl(F&& f) {
+    if (((this->template get_if<Ts>()
+              ? (std::forward<F>(f)(*this->template get_if<Ts>()), true)
+              : false) or
+         ...)) {
+      return;
+    }
+    UNREACHABLE(type_.get());
+  }
+
+  template <typename T>
+  static constexpr bool IsSupported() {
+    return (base::meta<T> == base::meta<bool>) or
+           (base::meta<T> == base::meta<int8_t>) or
+           (base::meta<T> == base::meta<int16_t>) or
+           (base::meta<T> == base::meta<int32_t>) or
+           (base::meta<T> == base::meta<int64_t>) or
+           (base::meta<T> == base::meta<uint8_t>) or
+           (base::meta<T> == base::meta<uint16_t>) or
+           (base::meta<T> == base::meta<uint32_t>) or
+           (base::meta<T> == base::meta<uint64_t>) or
+           (base::meta<T> == base::meta<float>) or
+           (base::meta<T> == base::meta<double>) or
+           (base::meta<T> == base::meta<type::Type const*>) or
+           (base::meta<T> == base::meta<Addr>) or
+           (base::meta<T> == base::meta<String>) or
+           (base::meta<T> == base::meta<EnumVal>) or
+           (base::meta<T> == base::meta<FlagsVal>) or
+           (base::meta<T> == base::meta<Fn>) or
+           (base::meta<T> == base::meta<Reg>);
+  }
+
   template <typename T>
   T const& get_ref() const {
     ASSERT(type_ == base::meta<T>);
@@ -67,6 +130,11 @@ struct Value {
     } else {
       static_assert(base::always_false<T>());
     }
+  }
+
+  friend std::ostream& operator<<(std::ostream& os, Value value) {
+    value.apply([&](auto val) { os << val; });
+    return os;
   }
 
   template <typename T>

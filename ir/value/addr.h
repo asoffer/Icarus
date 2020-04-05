@@ -52,6 +52,10 @@ struct Addr {
 
   std::string to_string() const;
 
+  friend std::ostream &operator<<(std::ostream &os, Addr addr) {
+    return os << addr.to_string();
+  }
+
  private:
   uintptr_t data_;
 };

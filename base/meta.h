@@ -76,6 +76,8 @@ struct MetaValue {
     return not(lhs == rhs);
   }
 
+  constexpr uintptr_t get() const { return value_; }
+
   template <typename T>
   friend struct Meta;
 

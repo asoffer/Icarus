@@ -1,6 +1,7 @@
 #ifndef ICARUS_IR_VALUE_REG_H
 #define ICARUS_IR_VALUE_REG_H
 
+#include <iostream>
 #include <string>
 
 #include "base/debug.h"
@@ -58,6 +59,10 @@ struct Reg {
   }
 
   friend std::string stringify(Reg r);
+
+  friend std::ostream& operator<<(std::ostream& os, Reg r) {
+    return os << stringify(r);
+  }
 
   constexpr friend bool operator==(Reg lhs, Reg rhs) {
     return lhs.val_ == rhs.val_;

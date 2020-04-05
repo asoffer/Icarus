@@ -251,6 +251,10 @@ constexpr bool operator!=(Strong<Tag, UnderlyingType, CrtpTags> lhs,
     name& operator=(name&&) noexcept = default;                                \
     name& operator=(name const&) = default;                                    \
                                                                                \
+    friend std::ostream& operator<<(std::ostream& os, name val) {              \
+      return os << absl::StrCat(#name, "(", val.value, ")");                   \
+    }                                                                          \
+                                                                               \
     friend std::string stringify(name val) {                                   \
       return absl::StrCat(#name, "(", val.value, ")");                         \
     }                                                                          \

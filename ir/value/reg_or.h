@@ -23,6 +23,11 @@ struct RegOr {
 
   constexpr bool is_reg() const { return is_reg_; }
 
+  ICARUS_CONSTEXPR Reg &reg() {
+    ASSERT(is_reg() == true);
+    return reg_;
+  }
+
   ICARUS_CONSTEXPR Reg reg() const {
     ASSERT(is_reg() == true);
     return reg_;

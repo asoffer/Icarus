@@ -231,6 +231,7 @@ cc_library(
         "//base:lazy",
         "//core:arch",
         "//ir:compiled_fn",
+        "//ir/value",
         "//ir/value:fn",
         "//module:module",
         "@com_google_absl//absl/container:flat_hash_map",

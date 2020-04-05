@@ -3,6 +3,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "base/debug.h"
+#include "base/meta.h"
 #include "base/untyped_buffer.h"
 
 namespace ir {
@@ -13,8 +14,8 @@ struct ByteCodeWriter {
   ~ByteCodeWriter() { ASSERT(replacements_.size() == 0u); }
 
   template <typename T,
-            std::enable_if_t<not std::is_same_v<T, BasicBlock*> and
-                                 not std::is_same_v<T, BasicBlock const*>,
+            std::enable_if_t<base::meta<T> != base::meta<BasicBlock*> and
+                                 base::meta<T> != base::meta<BasicBlock const*>,
                              int> = 0>
   void Write(T val) {
     buf_->append(val);

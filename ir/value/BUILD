@@ -222,6 +222,7 @@ cc_test(
     name = "value_test",
     srcs = ["value_test.cc"],
     deps = [
+        ":reg_or",
         ":value",
         "@com_google_googletest//:gtest_main",
     ],

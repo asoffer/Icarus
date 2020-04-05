@@ -11,6 +11,7 @@
 #include "ast/scope/scope.h"
 #include "base/lazy.h"
 #include "ir/value/native_fn.h"
+#include "ir/value/value.h"
 #include "type/type.h"
 
 namespace ast {
@@ -21,8 +22,6 @@ namespace type {
 
 struct Struct : public Type {
   struct Field {
-    explicit Field() = default;
-    explicit Field(type::Type const *t) : type(t) {}
     // TODO make a string_view but deal with trickiness of moving
 
     bool contains_hashtag(ast::Hashtag needle) const {
@@ -34,6 +33,7 @@ struct Struct : public Type {
 
     std::string name;
     Type const *type = nullptr;
+    std::optional<ir::Value> initial_value;
     std::vector<ast::Hashtag> hashtags_;
   };
 

@@ -24,16 +24,49 @@ struct StructField {
   explicit StructField(std::string_view name, RegOr<type::Type const *> type)
       : name_(name), data_(type) {}
 
-  RegOr<type::Type const *> &type() {
-    return std::get<RegOr<type::Type const *>>(data_);
-  }
-
-  RegOr<type::Type const *> type() const {
-    return std::get<RegOr<type::Type const *>>(data_);
-  }
+  explicit StructField(std::string_view name, type::Type const *t,
+                       ir::Value val)
+      : name_(name), data_(WithInitialValue{.type_ = t, .val_ = val}) {}
 
   // Returns the name of the struct field.
   std::string_view name() const { return name_; }
+
+  // Returns a pointer to the register representing the type if it exists, and a
+  // null pointer otherwise.
+  Reg *type_reg() {
+    if (auto *reg_or = std::get_if<RegOr<type::Type const *>>(&data_)) {
+      if (reg_or->is_reg()) { return &reg_or->reg(); }
+    }
+    return nullptr;
+  }
+
+  RegOr<type::Type const *> type() const {
+    return std::visit(
+        [](auto const &data) -> RegOr<type::Type const *> {
+          using data_type = std::decay_t<decltype(data)>;
+          if constexpr (base::meta<data_type> == base::meta<WithInitialValue>) {
+            return data.type_;
+          } else {
+            return data;
+          }
+        },
+        data_);
+  }
+
+  // Returns a pointer to an initial value if one exists and a null pointer
+  // otherwise.
+  Value const *initial_value() const {
+    if (auto *init_val = std::get_if<WithInitialValue>(&data_)) {
+      return &init_val->val_;
+    } else {
+      return nullptr;
+    }
+  }
+
+  Value *initial_value() {
+    return const_cast<Value *>(
+        static_cast<StructField const *>(this)->initial_value());
+  }
 
  private:
   std::string_view name_;
