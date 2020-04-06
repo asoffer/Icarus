@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <vector>
 
+#include "absl/types/span.h"
+#include "core/dependency_node.h"
 #include "core/fn_args.h"
 #include "core/params.h"
 #include "core/params_ref.h"

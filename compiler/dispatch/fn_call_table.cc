@@ -48,6 +48,7 @@ ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
   ASSERT(callee_qual_type.has_value() == true);
   auto callee = [&]() -> ir::RegOr<ir::Fn> {
     if (callee_qual_type->constant()) {
+      DEBUG_LOG()("got here", fn->DebugString());
       return compiler->Visit(fn, EmitValueTag{}).get<ir::Fn>(0);
     } else {
       // NOTE: If the overload is a declaration, it's not because a declaration
@@ -65,12 +66,21 @@ ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
     }
   }();
 
+  DEBUG_LOG()("got here", callee);
   if (not callee.is_reg()) {
     switch (callee.value().kind()) {
       case ir::Fn::Kind::Native: {
-        auto params = callee.value().native()->params();
+        DEBUG_LOG()("got here");
+        auto native_fn = callee.value().native();
+        DEBUG_LOG()(native_fn->params().size());
+        native_fn->params().Transform([](auto const &decl) {
+          DEBUG_LOG()(decl.get() ? (*decl)->DebugString() : "null");
+          return 0;
+        });
         core::FillMissingArgs(
-            core::ParamsRef(params), &args, [compiler](auto const &p) {
+            core::ParamsRef(callee.value().native()->params()), &args,
+            [compiler](auto const &p) {
+              DEBUG_LOG()(p.type()->to_string());
               return type::Typed(
                   ir::Results{compiler->Visit(
                       ASSERT_NOT_NULL(p.get()->init_val()), EmitValueTag{})},

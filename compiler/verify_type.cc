@@ -1695,51 +1695,70 @@ type::QualType Compiler::Visit(ast::FunctionLiteral const *node,
   return VerifyConcreteFnLit(node);
 
 generic:
-  absl::flat_hash_set<ast::DependencyNode> deps;
+  absl::flat_hash_set<core::DependencyNode<ast::Declaration>> deps;
   for (auto const &p : node->params()) {
-    deps.insert(ast::DependencyNode::MakeType(p.value.get()));
+    deps.insert(
+        core::DependencyNode<ast::Declaration>::MakeType(p.value.get()));
     if (p.value->flags() & ast::Declaration::f_IsConst) {
-      deps.insert(ast::DependencyNode::MakeValue(p.value.get()));
+      deps.insert(
+          core::DependencyNode<ast::Declaration>::MakeValue(p.value.get()));
     }
   }
 
-  std::vector<ast::DependencyNode> ordered_nodes;
+  std::vector<core::DependencyNode<ast::Declaration>> ordered_nodes;
   node->parameter_dependency_graph().topologically([&](auto dep_node) {
     if (not deps.contains(dep_node)) { return; }
+    DEBUG_LOG("generic-fn")
+    ("adding node = ", dep_node.node()->DebugString(), " of kind ",
+     static_cast<int>(dep_node.kind()));
     ordered_nodes.push_back(dep_node);
   });
 
   // TODO: Capturing `this` compiler is dangerous and definitely wrong. We'll
   // have use-after-free bugs for anything cross-module.
-  auto gen = [this, ordered_nodes(std::move(ordered_nodes))](
-                 core::FnArgs<type::Typed<ir::Results>> const &args)
-      -> type::Function const * {
+  auto gen =
+      [
+        this, ordered_nodes(std::move(ordered_nodes)),
+        node_params(&node->params())
+      ](core::FnArgs<type::Typed<ir::Results>> const &args)
+          ->type::Function const * {
+    DEBUG_LOG("generic-fn")
+    ("Creating a concrete implementation with ",
+     args.Transform([](auto const &a) { return a.type()->to_string(); }));
     // TODO Add a new constant binding node for this.
 
     // TODO use the proper ordering.
-    core::Params<type::Type const *> params;
+    core::Params<type::Type const *> params(node_params->size());
     for (auto dep_node : ordered_nodes) {
       switch (dep_node.kind()) {
-        case ast::DependencyNode::Kind::ArgValue: NOT_YET();
-        case ast::DependencyNode::Kind::ArgType: NOT_YET();
-        case ast::DependencyNode::Kind::ParamType: {
+        using kind_t = core::DependencyNode<ast::Declaration>::Kind;
+        case kind_t::ArgValue: NOT_YET();
+        case kind_t::ArgType: NOT_YET();
+        case kind_t::ParamType: {
           // TODO check that it is indeed a type?
           // TODO What if there's no type_expr?
           // TODO always constant
-          Visit(dep_node.decl()->type_expr(), VerifyTypeTag{});
-          set_result(dep_node.decl()->type_expr(), type::QualType::Constant(type::Type_));
+          Visit(dep_node.node()->type_expr(), VerifyTypeTag{});
           auto const *t = interpretter::EvaluateAs<type::Type const *>(
-              MakeThunk(dep_node.decl()->type_expr(), type::Type_));
-          set_result(dep_node.decl(), type::QualType::Constant(t));
-          params.append(dep_node.decl()->id(), t);
+              MakeThunk(dep_node.node()->type_expr(), type::Type_));
+          set_result(dep_node.node(), type::QualType::Constant(t));
+          size_t index =
+              *ASSERT_NOT_NULL(node_params->at_or_null(dep_node.node()->id()));
+          params.set(index,
+                     core::Param<type::Type const *>(dep_node.node()->id(), t));
         } break;
-        case ast::DependencyNode::Kind::ParamValue: {
+        case kind_t::ParamValue: {
           // TODO argument get the argument associated to this parameter.
           current_constants_->binding().set_slot(
-              dep_node.decl(), ir::Results(*args.pos()[0]).extract_buffer());
+              dep_node.node(), ir::Results(*args.pos()[0]).extract_buffer());
         } break;
       }
     }
+
+    for (auto const &p : params) {
+      DEBUG_LOG("generic-fn")(p.name, ": ", p.value->to_string());
+    }
+
     return type::Func(std::move(params), {});
   };
 

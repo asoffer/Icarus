@@ -563,16 +563,21 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
       }
     } else {
       auto *t = ASSERT_NOT_NULL(type_of(node));
-
       base::untyped_buffer_view slot =
           current_constants_->binding().reserve_slot(node, t);
-      if (not slot.empty()) { return ir::Results::FromRaw(slot); }
+      if (not slot.empty()) {
+        DEBUG_LOG("EmitValueDeclaration")("Returning from slot");
+        return ir::Results::FromRaw(slot);
+      }
 
       if (node->IsCustomInitialized()) {
         // TODO there's a lot of inefficiency here. `buf` is copied into the
         // constants slot and the copied to an ir::Results object to be
-        // returned. In reality, we could write directly to the buffer and only
-        // copy once if Evaluate* took an out-parameter.
+        // returned. In reality, we could write directly to the buffer and
+        // only copy once if Evaluate* took an out-parameter.
+
+        DEBUG_LOG("EmitValueDeclaration")
+        ("Computing slot with ", node->init_val()->DebugString());
         base::untyped_buffer buf =
             interpretter::EvaluateToBuffer(MakeThunk(node->init_val(), t));
         if (diag().num_consumed() > 0u) {
@@ -580,6 +585,7 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
           NOT_YET("Found errors but haven't handled them.");
           return ir::Results{};
         }
+        DEBUG_LOG("EmitValueDeclaration")("Setting slot", buf.to_string());
         current_constants_->binding().set_slot(node, buf);
         return ir::Results::FromRaw(buf);
       } else if (node->IsDefaultInitialized()) {
@@ -587,8 +593,9 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
       } else {
         UNREACHABLE();
       }
+
+      UNREACHABLE(node->DebugString());
     }
-    UNREACHABLE(node->DebugString());
   } else {
     if (node->IsUninitialized()) { return ir::Results{}; }
     auto *t = type_of(node);
@@ -666,7 +673,16 @@ ir::Results Compiler::Visit(ast::EnumLiteral const *node, EmitValueTag) {
 ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
   for (auto const &param : node->params()) {
     auto *p = param.value.get();
-    if (p->flags() & ast::Declaration::f_IsConst) { return ir::Results{}; }
+    if (p->flags() & ast::Declaration::f_IsConst) {
+      auto constant = current_constants_->binding().get_constant(p);
+      if (constant.empty()) {
+        DEBUG_LOG()("Failed to find anything. Still generic");
+        return ir::Results{};
+      } else {
+        DEBUG_LOG()("Found it: ", constant.to_string());
+        continue;
+      }
+    }
   }
 
   // TODO Use correct constants
@@ -686,7 +702,7 @@ ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
                      return f;
                    }))
           .first->second;
-
+  DEBUG_LOG()(ir_func);
   return ir::Results{ir::Fn{ir_func}};
 }
 

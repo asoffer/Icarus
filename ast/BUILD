@@ -33,6 +33,7 @@ cc_library(
         "//base:graph",
         "//base:ptr_span",
         "//core:fn_args",
+        "//core:dependency_node",
         "//core:params_ref",
         "//core:ordered_fn_args",
         "//frontend/lex:operators",

@@ -657,7 +657,8 @@ struct FunctionLiteral : ScopeExpr<FnScope> {
     return *outputs_;
   }
 
-  base::Graph<DependencyNode> const &parameter_dependency_graph() const {
+  base::Graph<core::DependencyNode<Declaration>> const &
+  parameter_dependency_graph() const {
     return dep_graph_;
   }
 
@@ -702,7 +703,7 @@ struct FunctionLiteral : ScopeExpr<FnScope> {
   std::optional<std::vector<std::unique_ptr<Expression>>> outputs_;
   std::vector<std::unique_ptr<Node>> stmts_;
   bool is_short_;
-  base::Graph<DependencyNode> dep_graph_;
+  base::Graph<core::DependencyNode<Declaration>> dep_graph_;
 };
 
 // Identifier:

@@ -34,9 +34,11 @@ cc_library(
     name = "call",
     hdrs = ["call.h"],
     deps = [
+        ":dependency_node",
         ":fn_args",
         ":params",
         ":params_ref",
+        "@com_google_absl//absl/types:span",
     ],
 )
 
@@ -48,6 +50,14 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_library(
+    name = "dependency_node",
+    hdrs = ["dependency_node.h"],
+    deps = []
+)
+
+# TODO dependency_node_test
 
 cc_library(
     name = "fn_args",
