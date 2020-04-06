@@ -29,9 +29,10 @@ cc_library(
 
 cc_test(
     name = "builtin_fn_test",
-    srcs = ["builtin_fn.cc"],
+    srcs = ["builtin_fn_test.cc"],
     deps = [
         ":builtin_fn",
+        "//type:primitive",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -208,20 +209,32 @@ cc_test(
 
 cc_library(
     name = "value",
-    hdrs = ["value.h"],
+    hdrs = [
+        "value.h",
+        "generic_fn.h",
+    ],
+    srcs = [
+        "generic_fn.cc",
+    ],
     deps = [
         ":addr",
         ":fn",
         ":reg",
         ":string",
+        "//base:guarded",
         "//base:meta",
+        "//core:fn_args",
         "//type",
+        "//type:typed_value",
     ],
 )
 
 cc_test(
     name = "value_test",
-    srcs = ["value_test.cc"],
+    srcs = [
+        "value_test.cc",
+        "generic_fn_test.cc",
+    ],
     deps = [
         ":reg_or",
         ":value",

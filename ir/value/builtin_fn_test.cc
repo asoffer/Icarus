@@ -2,7 +2,6 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "type/function.h"
 #include "type/primitive.h"
 
 namespace {

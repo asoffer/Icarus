@@ -8,6 +8,7 @@
 #include "ir/value/addr.h"
 #include "ir/value/enum_and_flags.h"
 #include "ir/value/fn.h"
+#include "ir/value/generic_fn.h"
 #include "ir/value/reg.h"
 #include "ir/value/string.h"
 #include "type/type.h"
@@ -66,7 +67,8 @@ struct Value {
   constexpr void apply(F&& f) {
     apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                uint32_t, uint64_t, float, double, type::Type const*, Addr,
-               String, EnumVal, FlagsVal, Fn, Reg>(std::forward<F>(f));
+               String, EnumVal, FlagsVal, Fn, GenericFn, Reg>(
+        std::forward<F>(f));
   }
 
  private:
@@ -100,6 +102,7 @@ struct Value {
            (base::meta<T> == base::meta<EnumVal>) or
            (base::meta<T> == base::meta<FlagsVal>) or
            (base::meta<T> == base::meta<Fn>) or
+           (base::meta<T> == base::meta<GenericFn>) or
            (base::meta<T> == base::meta<Reg>);
   }
 
@@ -136,7 +139,8 @@ struct Value {
       return flags_;
     } else if constexpr (base::meta<T> == base::meta<Fn>) {
       return fn_;
-
+    } else if constexpr (base::meta<T> == base::meta<GenericFn>) {
+      return gen_fn_;
     } else if constexpr (base::meta<T> == base::meta<Reg>) {
       return reg_;
     } else {
@@ -173,6 +177,9 @@ struct Value {
     EnumVal enum_;
     FlagsVal flags_;
     Fn fn_;
+    // Note: The `Fn` type erases more specific function types (foreign,
+    // builtin, native) but is intentionally distinct from `GenericFn`.
+    GenericFn gen_fn_;
     Reg reg_;
   };
 };
