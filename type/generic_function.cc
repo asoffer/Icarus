@@ -13,7 +13,7 @@ core::Alignment GenericFunction::alignment(core::Arch const &) const {
 }
 
 Function const *GenericFunction::concrete(
-    core::FnArgs<Typed<ir::Results>> const &args) const {
+    core::FnArgs<Typed<ir::Value>> const &args) const {
   return gen_fn_(args);
 }
 

@@ -35,78 +35,87 @@ std::pair<ir::Results, ir::OutParams> SetReturns(
   }
 }
 
+type::Typed<ir::Fn, type::Function> ComputeConcreteFn(
+    Compiler *compiler, ast::Expression const *fn,
+    type::GenericFunction const *gf_type,
+    core::FnArgs<type::Typed<ir::Value>> const &args) {
+  auto *fn_type = gf_type->concrete(args);
+  NOT_YET(fn_type->to_string());
+}
+
+ir::RegOr<ir::Fn> ComputeConcreteFn(Compiler *compiler,
+                                    ast::Expression const *fn,
+                                    type::Function const *f_type,
+                                    type::Quals quals) {
+  if (type::Quals::Const() <= quals) {
+    return compiler->Visit(fn, EmitValueTag{}).get<ir::Fn>(0);
+  } else {
+    // NOTE: If the overload is a declaration, it's not because a
+    // declaration is syntactically the callee. Rather, it's because the
+    // callee is an identifier (or module_name.identifier, etc.) and this
+    // is one possible resolution of that identifier. We cannot directly
+    // ask to emit IR for the declaration because that will emit the
+    // initialization for the declaration. Instead, we need load the
+    // address.
+    if (auto *fn_decl = fn->if_as<ast::Declaration>()) {
+      return compiler->builder().Load<ir::Fn>(compiler->addr(fn_decl));
+    } else {
+      return compiler->builder().Load<ir::Fn>(
+          compiler->Visit(fn, EmitValueTag{}).get<ir::Addr>(0));
+    }
+  }
+}
+
 ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
                                 internal::ExprData const &data,
-                                core::FnArgs<type::Typed<ir::Results>> args) {
-  DEBUG_LOG("EmitCallOneOverload")
-  (args.Transform([](auto const &x) { return x.type()->to_string(); })
-       .to_string());
-
-  auto [out_results, out_params] = SetReturns(compiler->builder(), data);
-
+                                core::FnArgs<type::Typed<ir::Value>> const &args) {
   auto callee_qual_type = compiler->qual_type_of(fn);
   ASSERT(callee_qual_type.has_value() == true);
-  auto callee = [&]() -> ir::RegOr<ir::Fn> {
-    if (callee_qual_type->constant()) {
-      DEBUG_LOG()("got here", fn->DebugString());
-      return compiler->Visit(fn, EmitValueTag{}).get<ir::Fn>(0);
+
+  type::Function const *fn_type = nullptr;
+  ir::RegOr<ir::Fn> callee      = [&]() -> ir::RegOr<ir::Fn> {
+    if (auto const *gf_type =
+            callee_qual_type->type()->if_as<type::GenericFunction>()) {
+      auto typed_fn = ComputeConcreteFn(compiler, fn, gf_type, args);
+      fn_type       = typed_fn.type();
+      return *typed_fn;
+    } else if (auto const *f_type =
+                   callee_qual_type->type()->if_as<type::Function>()) {
+      fn_type = f_type;
+      return ComputeConcreteFn(compiler, fn, f_type, callee_qual_type->quals());
     } else {
-      // NOTE: If the overload is a declaration, it's not because a declaration
-      // is syntactically the callee. Rather, it's because the callee is an
-      // identifier (or module_name.identifier, etc.) and this is one possible
-      // resolution of that identifier. We cannot directly ask to emit IR for
-      // the declaration because that will emit the initialization for the
-      // declaration. Instead, we need load the address.
-      if (auto *fn_decl = fn->if_as<ast::Declaration>()) {
-        return compiler->builder().Load<ir::Fn>(compiler->addr(fn_decl));
-      } else {
-        return compiler->builder().Load<ir::Fn>(
-            compiler->Visit(fn, EmitValueTag{}).get<ir::Addr>(0));
-      }
+      UNREACHABLE();
     }
   }();
 
-  DEBUG_LOG()("got here", callee);
+  auto arg_results = args.Transform([](auto const &a) {
+    ir::Results res;
+    a->apply([&res](auto x) { res.append(x); });
+    return type::Typed<ir::Results>(res, a.type());
+  });
+
   if (not callee.is_reg()) {
     switch (callee.value().kind()) {
       case ir::Fn::Kind::Native: {
-        DEBUG_LOG()("got here");
-        auto native_fn = callee.value().native();
-        DEBUG_LOG()(native_fn->params().size());
-        native_fn->params().Transform([](auto const &decl) {
-          DEBUG_LOG()(decl.get() ? (*decl)->DebugString() : "null");
-          return 0;
-        });
         core::FillMissingArgs(
-            core::ParamsRef(callee.value().native()->params()), &args,
+            core::ParamsRef(callee.value().native()->params()), &arg_results,
             [compiler](auto const &p) {
-              DEBUG_LOG()(p.type()->to_string());
-              return type::Typed(
-                  ir::Results{compiler->Visit(
-                      ASSERT_NOT_NULL(p.get()->init_val()), EmitValueTag{})},
-                  p.type());
+              auto results = compiler->Visit(
+                  ASSERT_NOT_NULL(p.get()->init_val()), EmitValueTag{});
+              return type::Typed(results, p.type());
             });
       } break;
       default: break;
     }
   }
 
-  auto arg_results =
-      PrepareCallArguments(compiler, nullptr, data.params(), args);
-
-  compiler->builder().Call(callee,
-                           &callee_qual_type->type()->as<type::Function>(),
-                           arg_results, out_params);
+  auto[out_results, out_params] = SetReturns(compiler->builder(), data);
+  compiler->builder().Call(
+      callee, fn_type,
+      PrepareCallArguments(compiler, nullptr, data.params(), arg_results),
+      out_params);
   return std::move(out_results);
 }
-
-
-// // TODO move this somewhere where it's reusable/testable once you figure out what it is.
-// base::expected<core::Params<type::Type const *>, FailedMatch> MatchArgsToParams(
-//     Compiler *compiler, core::Params<ast::Declaration const *> const &params,
-//     core::FnArgs<type::Typed<ir::Results>> const &args) {
-// }
-
 
 }  // namespace
 
@@ -131,7 +140,19 @@ base::expected<FnCallDispatchTable> FnCallDispatchTable::Verify(
     ("Verifying ", overload, ": ", overload->DebugString());
     if (auto *gen =
             compiler->type_of(overload)->if_as<type::GenericFunction>()) {
-      type::Function const *concrete = gen->concrete(args);
+      type::Function const *concrete =
+          gen->concrete(args.Transform([](auto const &a) {
+            ir::Value val(false);
+            type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                             uint16_t, uint32_t, uint64_t, float, double,
+                             type::Type const *, ir::EnumVal, ir::FlagsVal,
+                             ir::Addr, ir::String, ir::Fn>(
+                a.type(), [&](auto tag) -> void {
+                  using T = typename decltype(tag)::type;
+                  val     = ir::Value(a->template get<T>(0));
+                });
+            return type::Typed<ir::Value>(val, a.type());
+          }));
       table.table_.emplace(overload,
                            internal::ExprData{concrete, concrete->params()});
     } else {
@@ -189,13 +210,26 @@ ir::Results FnCallDispatchTable::EmitCall(
     core::FnArgs<type::Typed<ir::Results>> const &args) const {
   DEBUG_LOG("FnCallDispatchTable")
   ("Emitting a table with ", table_.size(), " entries.");
+
+  auto value_args = args.Transform([](auto const &a) {
+    ir::Value val(false);
+    type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                     uint32_t, uint64_t, float, double, type::Type const *,
+                     ir::EnumVal, ir::FlagsVal, ir::Addr, ir::String, ir::Fn>(
+        a.type(), [&](auto tag) -> void {
+          using T = typename decltype(tag)::type;
+          val     = ir::Value(a->template get<T>(0));
+        });
+    return type::Typed<ir::Value>(val, a.type());
+  });
+
   if (table_.size() == 1) {
     // If there's just one entry in the table we can avoid doing all the work to
     // generate runtime dispatch code. It will amount to only a few
     // unconditional jumps between blocks which will be optimized out, but
     // there's no sense in generating them in the first place..
     auto const &[overload, expr_data] = *table_.begin();
-    return EmitCallOneOverload(compiler, overload, expr_data, args);
+    return EmitCallOneOverload(compiler, overload, expr_data, value_args);
   } else {
     auto &bldr           = compiler->builder();
     auto *land_block     = bldr.AddBlock();
@@ -206,7 +240,7 @@ ir::Results FnCallDispatchTable::EmitCall(
     for (auto const &[overload, expr_data] : table_) {
       bldr.CurrentBlock() = callee_to_block[overload];
       // Argument preparation is done inside EmitCallOneOverload
-      EmitCallOneOverload(compiler, overload, expr_data, args);
+      EmitCallOneOverload(compiler, overload, expr_data, value_args);
       // TODO phi-node to coalesce return values.
       bldr.UncondJump(land_block);
     }

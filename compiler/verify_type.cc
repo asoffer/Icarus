@@ -1720,7 +1720,7 @@ generic:
       [
         this, ordered_nodes(std::move(ordered_nodes)),
         node_params(&node->params())
-      ](core::FnArgs<type::Typed<ir::Results>> const &args)
+      ](core::FnArgs<type::Typed<ir::Value>> const &args)
           ->type::Function const * {
     DEBUG_LOG("generic-fn")
     ("Creating a concrete implementation with ",
@@ -1749,8 +1749,9 @@ generic:
         } break;
         case kind_t::ParamValue: {
           // TODO argument get the argument associated to this parameter.
-          current_constants_->binding().set_slot(
-              dep_node.node(), ir::Results(*args.pos()[0]).extract_buffer());
+          base::untyped_buffer buf;
+          args.pos()[0]->apply([&buf](auto x) { buf.append(x); });
+          current_constants_->binding().set_slot(dep_node.node(), buf);
         } break;
       }
     }

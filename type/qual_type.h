@@ -90,6 +90,12 @@ struct Quals {
   friend constexpr bool operator!=(Quals lhs, Quals rhs) {
     return not(lhs == rhs);
   }
+  friend bool operator<(Quals lhs, Quals rhs) {
+    return (lhs | rhs) == lhs and lhs != rhs;
+  }
+  friend bool operator>(Quals lhs, Quals rhs) { return rhs < lhs; }
+  friend bool operator<=(Quals lhs, Quals rhs) { return (lhs | rhs) == lhs; }
+  friend bool operator>=(Quals lhs, Quals rhs) { return rhs <= lhs; }
 
  private:
   friend struct QualType;

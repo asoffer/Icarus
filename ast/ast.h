@@ -633,6 +633,7 @@ struct FunctionLiteral : ScopeExpr<FnScope> {
         std::move(span), std::move(in_params), std::move(statements),
         std::move(out_params), false)};
   }
+
   static std::unique_ptr<FunctionLiteral> MakeShort(
       frontend::SourceRange span,
       std::vector<std::unique_ptr<Declaration>> in_params,
@@ -662,7 +663,12 @@ struct FunctionLiteral : ScopeExpr<FnScope> {
     return dep_graph_;
   }
 
-  bool is_short() const { return is_short_; }
+  // Retruns whether the function is expressed with `=>`
+  constexpr bool is_short() const { return is_short_; }
+
+  // Returns whether the function is generic (has constant or parameters or
+  // parameters with inferred types).
+  constexpr bool is_generic() const { return is_generic_; };
 
   ICARUS_AST_VIRTUAL_METHODS;
 
@@ -692,6 +698,7 @@ struct FunctionLiteral : ScopeExpr<FnScope> {
       // default value.
       core::ParamFlags flags{};
       if (not input->IsDefaultInitialized()) { flags = core::HAS_DEFAULT; }
+      is_generic_ |= (input->flags() & Declaration::f_IsConst);
 
       params_.append(name, std::move(input), flags);
     }
@@ -702,7 +709,8 @@ struct FunctionLiteral : ScopeExpr<FnScope> {
   core::Params<std::unique_ptr<Declaration>> params_;
   std::optional<std::vector<std::unique_ptr<Expression>>> outputs_;
   std::vector<std::unique_ptr<Node>> stmts_;
-  bool is_short_;
+  bool is_short_   = false;
+  bool is_generic_ = false;
   base::Graph<core::DependencyNode<Declaration>> dep_graph_;
 };
 

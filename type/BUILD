@@ -114,7 +114,7 @@ cc_library(
         ":typed_value",
         "//core:arch",
         "//core:fn_args",
-        "//ir:results",
+        "//ir/value",
     ],
 )
 

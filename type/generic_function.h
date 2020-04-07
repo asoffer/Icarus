@@ -6,7 +6,7 @@
 
 #include "core/arch.h"
 #include "core/fn_args.h"
-#include "ir/results.h"
+#include "ir/value/value.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 
@@ -14,7 +14,7 @@ namespace type {
 
 struct GenericFunction : public Type {
   explicit GenericFunction(
-      std::function<Function const *(core::FnArgs<Typed<ir::Results>> const &)>
+      std::function<Function const *(core::FnArgs<Typed<ir::Value>> const &)>
           fn)
       : gen_fn_(std::move(fn)) {}
   ~GenericFunction() override {}
@@ -22,7 +22,7 @@ struct GenericFunction : public Type {
     result->append("generic");
   }
 
-  Function const *concrete(core::FnArgs<Typed<ir::Results>> const &) const;
+  Function const *concrete(core::FnArgs<Typed<ir::Value>> const &) const;
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
@@ -33,7 +33,7 @@ struct GenericFunction : public Type {
 
  private:
   // TODO Eventually we will want a serializable version of this.
-  std::function<Function const *(core::FnArgs<Typed<ir::Results>> const &)>
+  std::function<Function const *(core::FnArgs<Typed<ir::Value>> const &)>
       gen_fn_;
 };
 

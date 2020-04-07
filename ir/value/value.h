@@ -64,7 +64,7 @@ struct Value {
   // Calls `f` on the held type. `f` must be callable with any type
   // storable by `Value`.
   template <typename F>
-  constexpr void apply(F&& f) {
+  constexpr void apply(F&& f) const {
     apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                uint32_t, uint64_t, float, double, type::Type const*, Addr,
                String, EnumVal, FlagsVal, Fn, GenericFn, Reg>(
@@ -73,7 +73,7 @@ struct Value {
 
  private:
   template <typename... Ts, typename F>
-  void apply_impl(F&& f) {
+  void apply_impl(F&& f) const {
     if (((this->template get_if<Ts>()
               ? (std::forward<F>(f)(*this->template get_if<Ts>()), true)
               : false) or

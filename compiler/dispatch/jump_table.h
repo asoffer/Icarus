@@ -9,6 +9,7 @@
 #include "core/fn_args.h"
 #include "ir/jump.h"
 #include "ir/local_block_interpretation.h"
+#include "ir/results.h"
 #include "type/qual_type.h"
 
 namespace compiler {

@@ -671,18 +671,12 @@ ir::Results Compiler::Visit(ast::EnumLiteral const *node, EmitValueTag) {
 }
 
 ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
-  for (auto const &param : node->params()) {
-    auto *p = param.value.get();
-    if (p->flags() & ast::Declaration::f_IsConst) {
-      auto constant = current_constants_->binding().get_constant(p);
-      if (constant.empty()) {
-        DEBUG_LOG()("Failed to find anything. Still generic");
-        return ir::Results{};
-      } else {
-        DEBUG_LOG()("Found it: ", constant.to_string());
-        continue;
-      }
-    }
+  if (node->is_generic()) {
+    return ir::Results{ir::GenericFn(
+        [](core::FnArgs<type::Typed<ir::Value>> const &args) -> ir::NativeFn {
+          NOT_YET();
+          return ir::NativeFn(nullptr);
+        })};
   }
 
   // TODO Use correct constants
@@ -702,7 +696,6 @@ ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
                      return f;
                    }))
           .first->second;
-  DEBUG_LOG()(ir_func);
   return ir::Results{ir::Fn{ir_func}};
 }
 

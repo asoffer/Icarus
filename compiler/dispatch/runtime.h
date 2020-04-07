@@ -8,7 +8,7 @@
 #include "ir/blocks/basic.h"
 #include "ir/builder.h"
 #include "ir/value/reg_or.h"
-#include "ir/results.h"
+#include "ir/value/value.h"
 #include "type/typed_value.h"
 
 namespace compiler {
