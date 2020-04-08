@@ -44,6 +44,17 @@ CONCRETE_TYPES = [
 ]
 
 cc_library(
+    name = "callable",
+    hdrs = ["callable.h"],
+    deps = [
+        ":type",
+        ":typed_value",
+        "//core:fn_args",
+        "//ir:results",
+    ],
+)
+
+cc_library(
     name = "cast",
     hdrs = ["cast.h"],
     srcs = ["cast.cc"],
@@ -97,6 +108,7 @@ cc_library(
     hdrs = ["function.h"],
     srcs = ["function.cc"],
     deps = [
+        ":callable",
         ":type",
         ":typed_value",
         "//core:params",
@@ -109,6 +121,7 @@ cc_library(
     hdrs = ["generic_function.h"],
     srcs = ["generic_function.cc"],
     deps = [
+        ":callable",
         ":function",
         ":type",
         ":typed_value",
@@ -152,6 +165,17 @@ cc_library(
     deps = [
         ":type",
         "//base:debug",
+    ],
+)
+
+cc_library(
+    name = "overload_set",
+    hdrs = ["overload_set.h"],
+    srcs = ["overload_set.cc"],
+    deps = [
+        ":callable",
+        ":type",
+        ":variant",
     ],
 )
 

@@ -1,15 +1,16 @@
 #ifndef ICARUS_TYPE_FUNCTION_H
 #define ICARUS_TYPE_FUNCTION_H
 
-#include <cstring>
+#include <vector>
 
 #include "core/params.h"
+#include "type/callable.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 
 namespace type {
 
-struct Function : public Type {
+struct Function : public Callable {
   TYPE_FNS(Function);
   Function(core::Params<Type const *> in, std::vector<Type const *> out)
       : params_(std::move(in)), output_(std::move(out)) {
@@ -21,6 +22,12 @@ struct Function : public Type {
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
+  }
+
+  std::vector<type::Type const *> return_types(
+      core::FnArgs<type::Typed<ir::Results>> const &args) const override {
+    // TODO multiple return types?
+    return output_;
   }
 
   bool is_big() const override { return false; }

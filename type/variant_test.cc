@@ -48,23 +48,24 @@ TEST(Variant, Flattening) {
 TEST(Variant, MultiVar) {
   //   EXPECT_DEATH({
   //       type::MultiVar(
-  //           {std::vector{type::Int64}, std::vector{type::Int64,
+  //           std::vector{std::vector{type::Int64}, std::vector{type::Int64,
   //           type::Bool}}),
   //   });
 
-  EXPECT_THAT(type::MultiVar({}), IsEmpty());
+  EXPECT_THAT(type::MultiVar(std::vector<std::vector<type::Type const*>>{}),
+              IsEmpty());
 
   auto v1 = std::vector{type::Int64, type::Bool};
   auto v2 = std::vector{type::Int64, type::Bool};
-  EXPECT_THAT(
-      type::MultiVar({absl::MakeConstSpan(v1), absl::MakeConstSpan(v2)}),
-      ElementsAre(type::Int64, type::Bool));
+  EXPECT_THAT(type::MultiVar(std::vector{absl::MakeConstSpan(v1),
+                                         absl::MakeConstSpan(v2)}),
+              ElementsAre(type::Int64, type::Bool));
 
   auto v3 = std::vector{type::Int64, type::Bool};
   auto v4 = std::vector{type::Int64, type::Int64};
-  EXPECT_THAT(
-      type::MultiVar({absl::MakeConstSpan(v3), absl::MakeConstSpan(v4)}),
-      ElementsAre(type::Int64, type::Var({type::Bool, type::Int64})));
+  EXPECT_THAT(type::MultiVar(std::vector{absl::MakeConstSpan(v3),
+                                         absl::MakeConstSpan(v4)}),
+              ElementsAre(type::Int64, type::Var({type::Bool, type::Int64})));
 }
 
 TEST(Variant, Contains) {

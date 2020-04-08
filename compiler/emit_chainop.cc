@@ -120,18 +120,7 @@ static ir::RegOr<bool> EmitChainOpPair(Compiler *compiler,
                         op == frontend::Operator::Eq)
         .get<bool>(0);
   } else if (lhs_type->is<type::Struct>() or rhs_type->is<type::Struct>()) {
-    auto results =
-        ASSERT_NOT_NULL(
-            compiler->dispatch_table(reinterpret_cast<ast::Expression *>(
-                reinterpret_cast<uintptr_t>(chain_op->exprs()[index]) | 0x1)))
-            ->EmitCall(
-                compiler,
-                core::FnArgs<std::pair<ast::Expression const *, ir::Results>>(
-                    {std::pair(chain_op->exprs()[index], lhs_ir),
-                     std::pair(chain_op->exprs()[index + 1], rhs_ir)},
-                    {}));
-    ASSERT(results.size() == 1u);
-    return results.get<bool>(0);
+    NOT_YET();
 
   } else {
     switch (op) {

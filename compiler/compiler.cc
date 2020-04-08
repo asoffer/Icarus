@@ -63,51 +63,9 @@ ir::Reg Compiler::addr(ast::Declaration const *decl) const {
   return data_.addr_.at(decl);
 }
 
-void Compiler::set_dispatch_table(ast::ExprPtr expr,
-                                  ast::DispatchTable &&table) {
-  // TODO data_.dispatch_tables_.emplace(expr,
-  // std::move(table));
-  // TODO in some situations you may be trying to set the dispatch table more
-  // than once. This has come up with generic structs and you should
-  // investigate.
-  //
-  // static_cast<void>(iter);
-  // ASSERT(success) << expr;
-}
-
-void Compiler::set_jump_table(ast::ExprPtr jump_expr, ast::ExprPtr node,
-                              ast::DispatchTable &&table) {
-  // TODO data_.jump_tables_.emplace(std::pair{jump_expr,
-  // node},
-  //                                        std::move(table));
-  // TODO in some situations you may be trying to set the dispatch table more
-  // than once. This has come up with generic structs and you should
-  // investigate.
-  //
-  // static_cast<void>(iter);
-  // ASSERT(success) << expr;
-}
-
 void Compiler::set_pending_module(ast::Import const *import_node,
                                   module::Pending<LibraryModule> mod) {
   data_.imported_module_.emplace(import_node, std::move(mod));
-}
-
-ast::DispatchTable const *Compiler::dispatch_table(ast::ExprPtr expr) const {
-  /* TODO auto &table = data_.dispatch_tables_;
-  if (auto iter = table.find(expr); iter != table.end()) {
-    return &iter->second;
-  }*/
-  return nullptr;
-}
-
-ast::DispatchTable const *Compiler::jump_table(ast::ExprPtr jump_expr,
-                                               ast::ExprPtr node) const {
-  /* TODOauto &table = data_.jump_tables_;
-  if (auto iter = table.find(std::pair(jump_expr, node)); iter != table.end()) {
-    return &iter->second;
-  }*/
-  return nullptr;
 }
 
 module::Pending<LibraryModule> *Compiler::pending_module(

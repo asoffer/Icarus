@@ -91,7 +91,33 @@ void internal::OneTable::VerifyBlocks(Compiler *compiler,
     ("Verifying dispatch for block `", block.name(), "`");
     auto const *block_def = scope_def_->block(block.name());
     if (not block_def) { NOT_YET("log an error"); }
-    auto block_results = compiler->VerifyBlockNode(&block);
+
+    std::vector<core::FnArgs<type::QualType>> block_results;
+    {
+      auto const &yields = compiler->data_.extraction_map_[node];
+      // TODO this setup is definitely wrong because it doesn't account for
+      // multiple yields correctly. For example,
+      //
+      // ```
+      //  result: int32 | bool = if (cond) then {
+      //    << 3
+      //  } else if (other_cond) then {
+      //    << 4
+      //  } else {
+      //    << true
+      //  }
+      //  ```
+      for (auto *yield : yields) {
+        auto &back = block_results.emplace_back();
+        // TODO actually fill a fnargs
+        for (auto *yield_expr : yields[0]->as<ast::YieldStmt>().exprs()) {
+          auto q = compiler->qual_type_of(yield_expr);
+          ASSERT(q.has_value() == true);
+          back.pos_emplace(*q);
+        }
+      }
+    }
+
     DEBUG_LOG("VerifyBlocks")("    ", block_results);
     if (block_results.empty()) {
       // There are no relevant yield statements
@@ -221,6 +247,7 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
   // corresponding names, we should exit.
 
   DEBUG_LOG("ScopeNode")("Num tables = ", table.tables_.size());
+
   for (auto &[_, one_table] : table.tables_) {
     one_table.VerifyBlocks(compiler, node);
     one_table.VerifyJumps();

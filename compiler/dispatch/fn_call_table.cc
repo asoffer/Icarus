@@ -119,6 +119,36 @@ ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
 
 }  // namespace
 
+// std::variant<, diagnostic::Todo> FnCallDispatchTable::Verify(
+//     type::Callable const *callable,
+//     core::FnArgs<type::Typed<ir::Value>> const &args) {
+// 
+//   FnCallDispatchTable table;
+//   std::vector<type::Function const *> concrete_fns;
+//   if (auto const *f = callable->concretize(args, &concrete_fns)) {
+//     auto args_qt = args.Transform(
+//         [](auto const &t) { return type::QualType::NonConstant(t.type()); });
+// 
+//     if (not ParamsCoverArgs(args_qt, table.table_,
+//                             [](auto const &, internal::ExprData const &data) {
+//                               return data.params();
+//                             })) {
+//       // Note: If the overload set is empty, ParamsCoverArgs will emit no
+//       // diagnostics!
+//       compiler->diag().Consume(diagnostic::Todo{});
+//       // TODO Return a failuere-match-reason.
+//       return base::unexpected("Match failure");
+//     }
+// 
+//   } else {
+//     DEBUG_LOG("dispatch-verify")(result.error());
+//   }
+// 
+// 
+//   table.result_type_ = ComputeResultQualType(table.table_);
+//   return table;
+// }
+
 base::expected<FnCallDispatchTable> FnCallDispatchTable::Verify(
     Compiler *compiler, ast::OverloadSet const &os,
     core::FnArgs<type::Typed<ir::Results>> const &args) {
@@ -182,6 +212,13 @@ base::expected<FnCallDispatchTable> FnCallDispatchTable::Verify(
 
   table.result_type_ = ComputeResultQualType(table.table_);
   return table;
+}
+
+type::QualType FnCallDispatchTable::ComputeResultQualType(
+    absl::Span<type::Function const *const> &fn_types) {
+  std::vector<absl::Span<type::Type const *const>> results;
+  for (auto const *fn_type : fn_types) { results.push_back(fn_type->output()); }
+  return type::QualType(type::MultiVar(results), type::Quals::Unqualified());
 }
 
 type::QualType FnCallDispatchTable::ComputeResultQualType(

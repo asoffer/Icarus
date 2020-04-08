@@ -71,6 +71,7 @@ cc_library(
         "//type:generic_function",
         "//type:generic_struct",
         "//type:jump",
+        "//type:overload_set",
         "//type:parameter_pack",
         "//type:pointer",
         "//type:qual_type",

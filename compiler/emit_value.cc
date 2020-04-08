@@ -6,6 +6,7 @@
 #include "compiler/emit_function_call_infrastructure.h"
 #include "compiler/executable_module.h"
 #include "diagnostic/consumer/streaming.h"
+#include "diagnostic/consumer/trivial.h"
 #include "frontend/parse.h"
 #include "interpretter/evaluate.h"
 #include "ir/builder.h"
@@ -23,6 +24,91 @@ using ::matcher::InheritsFrom;
 type::QualType VerifyBody(Compiler *compiler, ast::FunctionLiteral const *node);
 
 namespace {
+
+absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> MakeJumpInits(
+    Compiler *c, ast::OverloadSet const &os) {
+  absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> inits;
+  DEBUG_LOG("ScopeNode")
+  ("Overload set for inits has size ", os.members().size());
+  for (ast::Expression const *member : os.members()) {
+    DEBUG_LOG("ScopeNode")(member->DebugString());
+    auto *def = interpretter::EvaluateAs<ir::ScopeDef *>(
+        c->MakeThunk(member, type::Scope));
+    DEBUG_LOG("ScopeNode")(def);
+    if (def->work_item and *def->work_item) {
+      (std::move(*def->work_item))();
+      def->work_item = nullptr;
+    }
+    for (auto *init : def->start_->after_) {
+      bool success = inits.emplace(init, def).second;
+      static_cast<void>(success);
+      ASSERT(success == true);
+    }
+  }
+  return inits;
+}
+
+
+void AddAdl(ast::OverloadSet *overload_set, std::string_view id,
+            type::Type const *t) {
+  absl::flat_hash_set<CompiledModule *> modules;
+  // TODO t->ExtractDefiningModules(&modules);
+
+  for (auto *mod : modules) {
+    auto decls = mod->declarations(id);
+    diagnostic::TrivialConsumer consumer;
+
+    for (auto *d : decls) {
+      // TODO Wow this is a terrible way to access the type.
+      ASSIGN_OR(continue, auto &t, Compiler(mod, consumer).type_of(d));
+      // TODO handle this case. I think it's safe to just discard it.
+      for (auto const *expr : overload_set->members()) {
+        if (d == expr) { return; }
+      }
+
+      // TODO const
+      overload_set->insert(d);
+    }
+  }
+}
+
+ast::OverloadSet FindOverloads(
+    ast::Scope const *scope, std::string_view token,
+    core::FnArgs<type::Typed<ir::Results>> const &args) {
+  ast::OverloadSet os(scope, token);
+  for (type::Typed<ir::Results> const &result : args) {
+    AddAdl(&os, token, result.type());
+  };
+  DEBUG_LOG("FindOverloads")
+  ("Found ", os.members().size(), " overloads for '", token, "'");
+  return os;
+}
+
+std::optional<ast::OverloadSet> MakeOverloadSet(
+    Compiler *c, ast::Expression const *expr,
+    core::FnArgs<type::Typed<ir::Results>> const &args) {
+  if (auto *id = expr->if_as<ast::Identifier>()) {
+    return FindOverloads(expr->scope(), id->token(), args);
+  } else if (auto *acc = expr->if_as<ast::Access>()) {
+    ASSIGN_OR(return std::nullopt,  //
+                     auto result, c->Visit(acc->operand(), VerifyTypeTag{}));
+    if (result.type() == type::Module) {
+      // TODO this is a common pattern for dealing with imported modules.
+      // Extract it.
+      auto *mod = interpretter::EvaluateAs<CompiledModule const *>(
+          c->MakeThunk(acc->operand(), type::Module));
+      return FindOverloads(mod->scope(), acc->member_name(), args);
+    }
+  } else {
+    ASSIGN_OR(return std::nullopt,  //
+                     std::ignore, c->Visit(expr, VerifyTypeTag{}));
+  }
+
+  ast::OverloadSet os;
+  os.insert(expr);
+  // TODO ADL for node?
+  return os;
+}
 
 template <typename NodeType>
 base::move_func<void()> *DeferBody(Compiler *compiler, NodeType const *node) {
@@ -115,14 +201,7 @@ ir::Results Compiler::Visit(ast::Binop const *node, EmitValueTag) {
   auto *lhs_type = type_of(node->lhs());
   auto *rhs_type = type_of(node->rhs());
 
-  if (auto *table = dispatch_table(node)) {
-    // TODO struct is not exactly right. we really mean user-defined
-    return table->EmitCall(
-        this, core::FnArgs<std::pair<ast::Expression const *, ir::Results>>(
-                  {std::pair(node->lhs(), Visit(node->lhs(), EmitValueTag{})),
-                   std::pair(node->rhs(), Visit(node->rhs(), EmitValueTag{}))},
-                  {}));
-  }
+  // TODO user-defined types (with a dispatch table).
 
   switch (node->op()) {
     case frontend::Operator::Add: {
@@ -403,8 +482,7 @@ struct PushVec : public base::UseWithScope {
 template <typename T, typename... Args>
 PushVec(std::vector<T> *, Args &&...)->PushVec<T>;
 
-Compiler::YieldResult Compiler::EmitBlockNode(
-    ast::BlockNode const *node) {
+Compiler::YieldResult Compiler::EmitBlockNode(ast::BlockNode const *node) {
   core::FnArgs<std::pair<ir::Results, type::QualType>> results;
   ICARUS_SCOPE(PushVec(&yields_stack_)) {
     EmitIrForStatements(this, node->stmts());
@@ -436,8 +514,8 @@ ir::Results EmitBuiltinCall(
       return ir::Results{c->builder().OpaqueType(c->module())};
     case ir::BuiltinFn::Which::Bytes: {
       auto const &fn_type = *ir::BuiltinFn::Bytes().type();
-      ir::OutParams outs = c->builder().OutParams(fn_type.output());
-      ir::Reg reg        = outs[0];
+      ir::OutParams outs  = c->builder().OutParams(fn_type.output());
+      ir::Reg reg         = outs[0];
       c->builder().Call(ir::Fn{ir::BuiltinFn::Bytes()}, &fn_type,
                         {c->Visit(args.at(0), EmitValueTag{})},
                         std::move(outs));
@@ -447,8 +525,8 @@ ir::Results EmitBuiltinCall(
 
     case ir::BuiltinFn::Which::Alignment: {
       auto const &fn_type = *ir::BuiltinFn::Alignment().type();
-      ir::OutParams outs = c->builder().OutParams(fn_type.output());
-      ir::Reg reg        = outs[0];
+      ir::OutParams outs  = c->builder().OutParams(fn_type.output());
+      ir::Reg reg         = outs[0];
       c->builder().Call(ir::Fn{ir::BuiltinFn::Alignment()}, &fn_type,
                         {c->Visit(args.at(0), EmitValueTag{})},
                         std::move(outs));
@@ -468,8 +546,6 @@ ir::Results Compiler::Visit(ast::Call const *node, EmitValueTag) {
     return EmitBuiltinCall(this, b, node->args());
   }
 
-  ASSIGN_OR(return ir::Results{},  //
-                   auto const &table, data_.dispatch_table(node));
   // Look at all the possible calls and generate the dispatching code
   // TODO implement this with a lookup table instead of this branching insanity.
 
@@ -480,19 +556,19 @@ ir::Results Compiler::Visit(ast::Call const *node, EmitValueTag) {
     return type::Typed(Visit(expr, EmitValueTag{}), type_of(expr));
   });
 
-  return table.EmitCall(this, args);
+  // TODO this shouldn't be able to fail.
+  ASSIGN_OR(return ir::Results{},  //
+                   auto os, MakeOverloadSet(this, node->callee(), args));
+  ASSIGN_OR(return ir::Results{},  //
+                   auto table, FnCallDispatchTable::Verify(this, os, args));
+  auto result = table.EmitCall(this, args);
+  data_.set_dispatch_table(node, std::move(table));
+  return result;
   // TODO node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
 }
 
 ir::Results Compiler::Visit(ast::Cast const *node, EmitValueTag) {
-  if (auto *table = dispatch_table(node)) {
-    return table->EmitCall(
-        this,
-        core::FnArgs<std::pair<ast::Expression const *, ir::Results>>(
-            {std::pair(node->expr(), Visit(node->expr(), EmitValueTag{})),
-             std::pair(node->type(), Visit(node->type(), EmitValueTag{}))},
-            {}));
-  }
+  // TODO user-defined-types
 
   auto *to_type = ASSERT_NOT_NULL(type_of(node));
   auto results  = Visit(node->expr(), EmitValueTag{});
@@ -612,7 +688,8 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
   UNREACHABLE();
 }
 
-ir::Results Compiler::Visit(ast::DesignatedInitializer const *node, EmitValueTag) {
+ir::Results Compiler::Visit(ast::DesignatedInitializer const *node,
+                            EmitValueTag) {
   // TODO actual initialization with these field members.
   auto *t    = type_of(node);
   auto alloc = builder().TmpAlloca(t);
@@ -622,7 +699,7 @@ ir::Results Compiler::Visit(ast::DesignatedInitializer const *node, EmitValueTag
   for (size_t i = 0; i < fields.size(); ++i) {
     auto const &field = fields[i];
 
-    for (auto &[field_name, expr] : node->assignments()) {
+    for (auto & [ field_name, expr ] : node->assignments()) {
       // Skip default initialization if we're going to use the designated
       // initializer.
       if (field_name == field.name) { goto next_field; }
@@ -634,7 +711,7 @@ ir::Results Compiler::Visit(ast::DesignatedInitializer const *node, EmitValueTag
   }
 
   // TODO initialize fields not listed in the designated initializer.
-  for (auto &[field, expr] : node->assignments()) {
+  for (auto & [ field, expr ] : node->assignments()) {
     auto *f            = struct_type.field(field);
     size_t field_index = struct_type.index(f->name);
     Visit(expr.get(), builder().Field(alloc, &struct_type, field_index),
@@ -686,12 +763,11 @@ ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
                      auto *fn_type = &type_of(node)->as<type::Function>();
 
                      auto f = AddFunc(
-                         fn_type,
-                         node->params().Transform(
-                             [fn_type, i = 0](auto const &d) mutable {
-                               return type::Typed<ast::Declaration const *>(
-                                   d.get(), fn_type->params().at(i++).value);
-                             }));
+                         fn_type, node->params().Transform([ fn_type, i = 0 ](
+                                      auto const &d) mutable {
+                           return type::Typed<ast::Declaration const *>(
+                               d.get(), fn_type->params().at(i++).value);
+                         }));
                      f->work_item = DeferBody(this, node);
                      return f;
                    }))
@@ -901,8 +977,21 @@ ir::Results Compiler::Visit(ast::ScopeLiteral const *node, EmitValueTag) {
 ir::Results Compiler::Visit(ast::ScopeNode const *node, EmitValueTag) {
   DEBUG_LOG("ScopeNode")("Emitting IR for ScopeNode");
 
-  auto const &scope_dispatch_table =
-      *ASSERT_NOT_NULL(data_.scope_dispatch_table(node));
+  // TODO recomputation of args :(
+  auto args = node->args().Transform([this](ast::Expression const *expr) {
+    return type::Typed(Visit(expr, EmitValueTag{}), type_of(expr));
+  });
+
+  ASSIGN_OR(return ir::Results{},  //
+                   auto os, MakeOverloadSet(this, node->name(), args));
+
+  auto inits = MakeJumpInits(this, os);
+  DEBUG_LOG("ScopeNode")(inits);
+
+  ASSIGN_OR(
+      return ir::Results{},  //
+             auto table,
+             ScopeDispatchTable::Verify(this, node, std::move(inits), args));
 
   // Jump to a new block in case some scope ends up with `goto start()` in order
   // to re-evealuate arguments.
@@ -910,11 +999,12 @@ ir::Results Compiler::Visit(ast::ScopeNode const *node, EmitValueTag) {
   builder().UncondJump(args_block);
   builder().CurrentBlock() = args_block;
 
-  auto args = node->args().Transform([this](ast::Expression const *expr) {
+  args = node->args().Transform([this](ast::Expression const *expr) {
     return type::Typed(Visit(expr, EmitValueTag{}), type_of(expr));
   });
 
-  return scope_dispatch_table.EmitCall(this, args);
+
+  return table.EmitCall(this, args);
 }
 
 ir::Results Compiler::Visit(ast::StructLiteral const *node, EmitValueTag) {
@@ -1005,11 +1095,11 @@ ir::Results Compiler::Visit(ast::Switch const *node, EmitValueTag) {
 
   absl::flat_hash_map<ir::BasicBlock *, ir::Results> phi_args;
   for (size_t i = 0; i + 1 < node->cases().size(); ++i) {
-    auto &[body, match_cond] = node->cases()[i];
-    auto *expr_block         = builder().AddBlock();
-    auto *match_cond_ptr     = match_cond.get();
-    ir::Results match_val = Visit(match_cond_ptr, EmitValueTag{});
-    ir::RegOr<bool> cond  = [&] {
+    auto & [ body, match_cond ] = node->cases()[i];
+    auto *expr_block            = builder().AddBlock();
+    auto *match_cond_ptr        = match_cond.get();
+    ir::Results match_val       = Visit(match_cond_ptr, EmitValueTag{});
+    ir::RegOr<bool> cond        = [&] {
       if (node->expr()) {
         ASSERT(expr_type == type_of(match_cond_ptr));
         return builder().Eq(expr_type, match_val, expr_results);
@@ -1063,7 +1153,7 @@ ir::Results Compiler::Visit(ast::Switch const *node, EmitValueTag) {
       vals.reserve(phi_args.size());
       std::vector<ir::BasicBlock const *> blocks;
       blocks.reserve(phi_args.size());
-      for (auto const &[key, val] : phi_args) {
+      for (auto const & [ key, val ] : phi_args) {
         blocks.push_back(key);
         vals.push_back(val.template get<T>(0));
       }
@@ -1079,14 +1169,7 @@ ir::Results Compiler::Visit(ast::Terminal const *node, EmitValueTag) {
 
 ir::Results Compiler::Visit(ast::Unop const *node, EmitValueTag) {
   auto *operand_type = type_of(node->operand());
-  if (auto const *table = dispatch_table(node)) {
-    // TODO struct is not exactly right. we really mean user-defined
-    return table->EmitCall(
-        this, core::FnArgs<std::pair<ast::Expression const *, ir::Results>>(
-                  {std::pair(node->operand(),
-                             Visit(node->operand(), EmitValueTag{}))},
-                  {}));
-  }
+  // TODO user-defined-types
 
   switch (node->op()) {
     case frontend::Operator::Copy: {

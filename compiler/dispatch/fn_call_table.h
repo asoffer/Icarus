@@ -11,6 +11,7 @@
 #include "core/params.h"
 #include "ir/results.h"
 #include "ir/value/value.h"
+#include "type/callable.h"
 #include "type/qual_type.h"
 #include "type/type.h"
 #include "type/typed_value.h"
@@ -36,6 +37,8 @@ struct FnCallDispatchTable {
   static type::QualType ComputeResultQualType(
       absl::flat_hash_map<ast::Expression const *, internal::ExprData> const
           &table);
+  static type::QualType ComputeResultQualType(
+      absl::Span<type::Function const *const> &fn_types);
 
   absl::flat_hash_map<ast::Expression const *, internal::ExprData> table_;
   type::QualType result_type_;

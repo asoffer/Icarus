@@ -107,8 +107,8 @@ core::Alignment Variant::alternative_alignment(core::Arch const &a) const {
   return align;
 }
 
-std::vector<Type const *> MultiVar(
-    absl::Span<absl::Span<Type const *const> const> type_vecs) {
+template <typename Container>
+std::vector<Type const *> MultiVarImpl(absl::Span<Container const> type_vecs) {
   if (type_vecs.empty()) { return {}; }
 
 #if defined(ICARUS_DEBUG)
@@ -119,7 +119,7 @@ std::vector<Type const *> MultiVar(
   }
 
   ASSERT(min_size == max_size);
-#endif  // defined(ICARUS_DEBUG
+#endif  // defined(ICARUS_DEBUG)
 
   size_t num = type_vecs[0].size();
   std::vector<type::Type const *> vars;
@@ -132,6 +132,16 @@ std::vector<Type const *> MultiVar(
   }
 
   return vars;
+}
+
+std::vector<Type const *> MultiVar(
+    absl::Span<std::vector<Type const *> const> type_vecs) {
+  return MultiVarImpl(type_vecs);
+}
+
+std::vector<Type const *> MultiVar(
+    absl::Span<absl::Span<Type const *const> const> type_vecs) {
+  return MultiVarImpl(type_vecs);
 }
 
 }  // namespace type

@@ -30,33 +30,6 @@ struct ScopeDef;
 struct BlockDef;
 }  // namespace ir
 
-namespace ast {
-struct DispatchTable {
-  // TODO obviously wrong but we're deprecating anyway
-  ir::Results EmitInlineCall(
-      compiler::Compiler *visitor,
-      core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
-      absl::flat_hash_map<ir::BlockDef const *, ir::BasicBlock *> const
-          &block_map) const {
-    return ir::Results{};
-  }
-  ir::Results EmitCall(
-      compiler::Compiler *visitor,
-      core::FnArgs<std::pair<Expression const *, ir::Results>> const &args,
-      bool is_inline = false) const {
-    return ir::Results{};
-  }
-};
-
-inline type::QualType VerifyJumpDispatch(
-    void *visitor, ExprPtr expr, absl::Span<ir::Jump const *const> overload_set,
-    core::FnArgs<std::pair<Expression const *, type::QualType>> const &args,
-    std::vector<ir::BlockDef const *> *block_defs) {
-  return type::QualType::Error();
-}
-
-}  // namespace ast
-
 namespace compiler {
 struct EmitRefTag {};
 struct EmitCopyInitTag {};
@@ -166,9 +139,6 @@ struct Compiler
   type::QualType set_result(ast::ExprPtr expr, type::QualType r);
 
   ir::Reg addr(ast::Declaration const *decl) const;
-  void set_dispatch_table(ast::ExprPtr expr, ast::DispatchTable &&table);
-  void set_jump_table(ast::ExprPtr jump_expr, ast::ExprPtr node,
-                      ast::DispatchTable &&table);
 
   absl::Span<std::tuple<ir::Label, ir::BasicBlock *,
                         ir::PhiInstruction<int64_t> *> const>
@@ -184,10 +154,6 @@ struct Compiler
   ir::NativeFn AddFunc(
       type::Function const *fn_type,
       core::Params<type::Typed<ast::Declaration const *>> params);
-
-  ast::DispatchTable const *dispatch_table(ast::ExprPtr expr) const;
-  ast::DispatchTable const *jump_table(ast::ExprPtr jump_expr,
-                                       ast::ExprPtr node) const;
 
   module::Pending<LibraryModule> *pending_module(
       ast::Import const *import_node) const;
@@ -216,8 +182,6 @@ struct Compiler
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
 
-  std::vector<core::FnArgs<type::QualType>> VerifyBlockNode(
-      ast::BlockNode const *node);
   YieldResult EmitBlockNode(ast::BlockNode const *node);
 
   type::QualType VerifyConcreteFnLit(ast::FunctionLiteral const *node);

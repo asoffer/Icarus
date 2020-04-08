@@ -501,7 +501,6 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::Jump *>(reg); });
     scope_def->exit_->before_ = ir::OverloadSet(
         Deserialize<uint16_t, ir::Fn>(iter, [ctx](ir::Reg reg) {
-          DEBUG_LOG()(ctx->resolve<ir::Fn>(reg));
           return ctx->resolve<ir::Fn>(reg);
         }));
 
@@ -518,7 +517,6 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     ir::BlockDef *block_def = iter->read<ir::BlockDef *>();
     block_def->before_ =
         ir::OverloadSet(Deserialize<uint16_t, ir::Fn>(iter, [ctx](ir::Reg reg) {
-          DEBUG_LOG()(ctx->resolve<ir::Fn>(reg));
           return ctx->resolve<ir::Fn>(reg);
         }));
     block_def->after_  = Deserialize<uint16_t, ir::Jump *>(
@@ -535,7 +533,6 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
       std::string_view name = iter->read<std::string_view>();
       if (iter->read<bool>()) {
         type::Type const *t = iter->read<type::Type const *>();
-        DEBUG_LOG()(t->to_string());
         ir::Value init_val  = iter->read<ir::Value>();
         if (t->is<type::Primitive>()) {
           fields.push_back(type::Struct::Field{

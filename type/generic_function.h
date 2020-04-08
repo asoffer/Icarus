@@ -8,11 +8,13 @@
 #include "core/fn_args.h"
 #include "ir/value/value.h"
 #include "type/type.h"
+#include "type/function.h"
+#include "type/callable.h"
 #include "type/typed_value.h"
 
 namespace type {
 
-struct GenericFunction : public Type {
+struct GenericFunction : public Callable {
   explicit GenericFunction(
       std::function<Function const *(core::FnArgs<Typed<ir::Value>> const &)>
           fn)
@@ -23,6 +25,11 @@ struct GenericFunction : public Type {
   }
 
   Function const *concrete(core::FnArgs<Typed<ir::Value>> const &) const;
+  std::vector<type::Type const *> return_types(
+      core::FnArgs<type::Typed<ir::Results>> const &args) const override {
+    NOT_YET();
+    return {};
+  }
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);

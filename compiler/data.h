@@ -63,24 +63,6 @@ struct CompilationData {
     return nullptr;
   }
 
-  type::QualType set_scope_dispatch_table(ast::Expression const *expr,
-                                          ScopeDispatchTable &&table) {
-    auto qual_type = table.qual_type();
-    ICARUS_DEBUG_ONLY(auto [iter, success] =)
-    scope_dispatch_tables_.emplace(expr, std::move(table));
-    ASSERT(success == true);
-    return set_result(expr, qual_type);
-  }
-
-  ScopeDispatchTable const *scope_dispatch_table(
-      ast::Expression const *expr) const {
-    if (auto iter = scope_dispatch_tables_.find(expr);
-        iter != scope_dispatch_tables_.end()) {
-      return &iter->second;
-    }
-    return nullptr;
-  }
-
   ir::Jump *jump(ast::Jump const *expr) {
     auto iter = jumps_.find(expr);
     if (iter == jumps_.end()) { return nullptr; }
@@ -133,8 +115,6 @@ struct CompilationData {
 
   absl::flat_hash_map<ast::Expression const *, FnCallDispatchTable>
       fn_call_dispatch_tables_;
-  absl::flat_hash_map<ast::Expression const *, ScopeDispatchTable>
-      scope_dispatch_tables_;
 
   absl::node_hash_map<ast::Jump const *, ir::Jump> jumps_;
 
@@ -144,10 +124,6 @@ struct CompilationData {
 
   // TODO probably make these funcs constant.
   absl::node_hash_map<ast::Expression const *, ir::NativeFn> ir_funcs_;
-
-  // TODO absl::flat_hash_map<ast::ExprPtr, ast::DispatchTable>
-  // dispatch_tables_;
-
 
   absl::flat_hash_map<ast::Import const *, module::Pending<LibraryModule>>
       imported_module_;

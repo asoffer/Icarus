@@ -23,6 +23,7 @@
 #include "type/generic_function.h"
 #include "type/generic_struct.h"
 #include "type/jump.h"
+#include "type/overload_set.h"
 #include "type/parameter_pack.h"
 #include "type/qual_type.h"
 #include "type/type.h"
@@ -329,10 +330,11 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node) {
     if (auto const *ret_node = n->if_as<ast::ReturnStmt>()) {
       std::vector<type::Type const *> ret_types;
       for (auto const *expr : ret_node->exprs()) {
-        ret_types.push_back(c->type_of(expr));
+        ret_types.push_back(ASSERT_NOT_NULL(c->type_of(expr)));
       }
-      auto *t = Tup(std::move(ret_types));
+      auto *t = type::Tup(std::move(ret_types));
       types.emplace(t);
+
       saved_ret_types.emplace(ret_node, t);
     } else {
       UNREACHABLE();  // TODO
@@ -628,7 +630,26 @@ static type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
 
     } break;
     default: {
-      NOT_YET("Ambiguous, multiple possible symbols exported by module.");
+      type::Quals quals = type::Quals::Const();
+      absl::flat_hash_set<type::Callable const *> member_types;
+      for (auto const *decl : decls) {
+        ASSIGN_OR(return type::QualType::Error(),  //
+                         auto qt, c->qual_type_of(decl));
+        if (auto *c = qt.type()->if_as<type::Callable>()) {
+          quals &= qt.quals();
+          auto[iter, inserted] = member_types.insert(c);
+          // TODO currently because of ADL, it's possible to have overload
+          // sets that want to have the same type appear more than once. I
+          // don't yet know how I want to deal with this.
+          if (not inserted) { NOT_YET(); }
+          member_types.insert(c);
+        } else {
+          NOT_YET();
+        }
+      }
+      return c->set_result(
+          node, type::QualType(type::MakeOverloadSet(std::move(member_types)),
+                               quals));
     } break;
   }
   UNREACHABLE();
@@ -896,85 +917,16 @@ type::QualType Compiler::Visit(ast::BlockLiteral const *node, VerifyTypeTag) {
   return set_result(node, type::QualType::Constant(type::Block));
 }
 
-std::vector<core::FnArgs<type::QualType>> Compiler::VerifyBlockNode(
-    ast::BlockNode const *node) {
+type::QualType Compiler::Visit(ast::BlockNode const *node, VerifyTypeTag) {
   for (auto &param : node->params()) {
     Visit(param.value.get(), VerifyTypeTag{});
   }
   for (auto *stmt : node->stmts()) { Visit(stmt, VerifyTypeTag{}); }
-  set_result(node, type::QualType::Constant(type::Block));
-
-  auto const &yields = data_.extraction_map_[node];
-  // TODO this setup is definitely wrong because it doesn't account for
-  // multiple yields correctly. For example,
-  //
-  // ```
-  //  result: int32 | bool = if (cond) then {
-  //    << 3
-  //  } else if (other_cond) then {
-  //    << 4
-  //  } else {
-  //    << true
-  //  }
-  //  ```
-  std::vector<core::FnArgs<type::QualType>> result;
-  for (auto *yield : yields) {
-    auto &back = result.emplace_back();
-    // TODO actually fill a fnargs
-    for (auto *yield_expr : yields[0]->as<ast::YieldStmt>().exprs()) {
-      auto q = qual_type_of(yield_expr);
-      ASSERT(q.has_value() == true);
-      back.pos_emplace(*q);
-    }
-  }
-
-  return result;
-}
-
-type::QualType Compiler::Visit(ast::BlockNode const *node, VerifyTypeTag) {
-  UNREACHABLE("Should be called via Compiler::VerifyBlockNode");
+  return set_result(node, type::QualType::Constant(type::Block));
 }
 
 type::QualType Compiler::Visit(ast::BuiltinFn const *node, VerifyTypeTag) {
   return set_result(node, type::QualType::Constant(node->value().type()));
-}
-
-static ast::OverloadSet FindOverloads(
-    ast::Scope const *scope, std::string_view token,
-    core::FnArgs<type::Typed<ir::Results>> const &args) {
-  ast::OverloadSet os(scope, token);
-  for (type::Typed<ir::Results> const &result : args) {
-    AddAdl(&os, token, result.type());
-  };
-  DEBUG_LOG("FindOverloads")
-  ("Found ", os.members().size(), " overloads for '", token, "'");
-  return os;
-}
-
-std::optional<ast::OverloadSet> MakeOverloadSet(
-    Compiler *c, ast::Expression const *expr,
-    core::FnArgs<type::Typed<ir::Results>> const &args) {
-  if (auto *id = expr->if_as<ast::Identifier>()) {
-    return FindOverloads(expr->scope(), id->token(), args);
-  } else if (auto *acc = expr->if_as<ast::Access>()) {
-    ASSIGN_OR(return std::nullopt,  //
-                     auto result, c->Visit(acc->operand(), VerifyTypeTag{}));
-    if (result.type() == type::Module) {
-      // TODO this is a common pattern for dealing with imported modules.
-      // Extract it.
-      auto *mod = interpretter::EvaluateAs<CompiledModule const *>(
-          c->MakeThunk(acc->operand(), type::Module));
-      return FindOverloads(mod->scope(), acc->member_name(), args);
-    }
-  } else {
-    ASSIGN_OR(return std::nullopt,  //
-                     std::ignore, c->Visit(expr, VerifyTypeTag{}));
-  }
-
-  ast::OverloadSet os;
-  os.insert(expr);
-  // TODO ADL for node?
-  return os;
 }
 
 template <typename EPtr, typename StrType>
@@ -1153,28 +1105,35 @@ VerifyFnArgs(
 }
 
 type::QualType Compiler::Visit(ast::Call const *node, VerifyTypeTag) {
-  ASSIGN_OR(
-      return type::QualType::Error(),  //
-             auto arg_results,
-             VerifyFnArgs(this, node->args()));
+  ASSIGN_OR(return type::QualType::Error(),  //
+                   auto arg_results, VerifyFnArgs(this, node->args()));
   // TODO handle cyclic dependencies in call arguments.
 
+  // Note: Currently `foreign` being generic means that we can't easily make
+  // builtins overloadable, not that it ever makes sense to do so (because
+  // they're globally available).
+  //
+  // TODO Once type::OverloadSet becomes more robust, we can make generics more
+  // robust, then have `foreign` use generics and make this part of the overload
+  // set code too.
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
     // TODO: Should we allow these to be overloaded?
     ASSIGN_OR(return type::QualType::Error(), auto result,
                      VerifyCall(this, b, node->args(), arg_results));
-    return set_result(node, type::QualType(result.type(), result.quals()));
+    return set_result(node, result);
   }
 
   ASSIGN_OR(return type::QualType::Error(),  //
-                   auto os, MakeOverloadSet(this, node->callee(), arg_results));
-  ASSIGN_OR(return type::QualType::Error(),  //
-                   auto table,
-                   FnCallDispatchTable::Verify(this, os, arg_results));
-  auto result = table.result_qual_type();
-  data_.set_dispatch_table(node, std::move(table));
-  DEBUG_LOG("dispatch-verify")("Resulting type of dispatch is ", result);
-  return set_result(node, result);
+                   auto callee_qt, Visit(node->callee(), VerifyTypeTag{}));
+  if (auto *c = callee_qt.type()->if_as<type::Callable>()){
+    auto ret_types = c->return_types(arg_results);
+    // Can this be constant?
+    return set_result(node,
+               type::QualType::NonConstant(type::Tup(std::move(ret_types))));
+  } else {
+    diag().Consume(diagnostic::Todo{});
+    return set_result(node, type::QualType::Error());
+  }
 }
 
 type::QualType Compiler::Visit(ast::Cast const *node, VerifyTypeTag) {
@@ -1768,7 +1727,6 @@ generic:
 }
 
 type::QualType Compiler::Visit(ast::Identifier const *node, VerifyTypeTag) {
-  DEBUG_LOG("Identifier")(node->DebugString());
   for (auto iter = data_.cyc_deps_.begin(); iter != data_.cyc_deps_.end();
        ++iter) {
     if (*iter == node) {
@@ -1791,17 +1749,31 @@ type::QualType Compiler::Visit(ast::Identifier const *node, VerifyTypeTag) {
   // TODO that means we should probably resolve identifiers ahead of
   // type verification, but I think we rely on type information to figure it
   // out for now so you'll have to undo that first.
-  if (node->decl() == nullptr) {
+  type::QualType qt;
+  if (auto *decl = node->decl()) {
+    qt = *qual_type_of(decl);
+  } else {
     auto potential_decls =
         module::AllDeclsTowardsRoot(node->scope(), node->token());
-    DEBUG_LOG("Identifier")(node->DebugString(), ": ", potential_decls);
+    DEBUG_LOG("Identifier")(node->DebugString(), ": ", node, " ", potential_decls);
     switch (potential_decls.size()) {
       case 1: {
-        // TODO could it be that evn though there is only one declaration,
+        // TODO could it be that even though there is only one declaration,
         // there's a bound constant of the same name? If so, we need to deal
         // with node case.
         const_cast<ast::Identifier *>(node)->set_decl(potential_decls[0]);
         if (node->decl() == nullptr) { return type::QualType::Error(); }
+        qt = *qual_type_of(potential_decls[0]);
+
+        if (not(node->decl()->flags() & ast::Declaration::f_IsConst) and
+            node->span.begin() < node->decl()->span.begin()) {
+          diag().Consume(diagnostic::DeclOutOfOrder{
+              .id         = node->token(),
+              .decl_range = node->decl()->span,
+              .use_range  = node->span,
+          });
+        }
+
       } break;
       case 0:
         diag().Consume(diagnostic::UndeclaredIdentifier{
@@ -1809,35 +1781,35 @@ type::QualType Compiler::Visit(ast::Identifier const *node, VerifyTypeTag) {
             .range = node->span,
         });
         return type::QualType::Error();
-      default:
-        // TODO Should we allow the overload?
-        diag().Consume(diagnostic::UnspecifiedOverload{
-            .range = node->span,
-        });
-        return type::QualType::Error();
-    }
+      default: {
+        type::Quals quals = type::Quals::Const();
+        absl::flat_hash_set<type::Callable const *> member_types;
+        for (auto const *decl : potential_decls) {
+          ASSIGN_OR(return type::QualType::Error(),  //
+                           auto qt, qual_type_of(decl));
+          if (auto *c = qt.type()->if_as<type::Callable>()) {
+            quals &= qt.quals();
+            auto[iter, inserted] = member_types.insert(c);
+            // TODO currently because of ADL, it's possible to have overload
+            // sets that want to have the same type appear more than once. I
+            // don't yet know how I want to deal with this.
+            if (not inserted) { NOT_YET(); }
+            member_types.insert(c);
+          } else {
+            NOT_YET();
+          }
+        }
 
-    if (not(node->decl()->flags() & ast::Declaration::f_IsConst) and
-        node->span.begin() < node->decl()->span.begin()) {
-      diag().Consume(diagnostic::DeclOutOfOrder{
-          .id         = node->token(),
-          .decl_range = node->decl()->span,
-          .use_range  = node->span,
-      });
+        qt = type::QualType(type::MakeOverloadSet(std::move(member_types)),
+                            quals);
+
+      } break;
     }
   }
 
-  // TODO node is because we may have determined the declartaion previously
-  // with a different generic setup but not bound the type for node context.
-  // But node is wrong in the sense that the declaration bound is possibly
-  // dependent on the context.
-  type::Type const *t = type_of(node->decl());
-
-  if (t == nullptr) { return type::QualType::Error(); }
-  return set_result(node, type::QualType(t, (node->decl()->flags() &
-                                             ast::Declaration::f_IsConst)
-                                                ? type::Quals::Const()
-                                                : type::Quals::Ref()));
+  set_result(node, qt);
+  ASSERT(qt.type() != nullptr);
+  return set_result(node, qt);
 }
 
 type::QualType Compiler::Visit(ast::Import const *node, VerifyTypeTag) {
@@ -2053,48 +2025,16 @@ type::QualType Compiler::Visit(ast::ScopeLiteral const *node, VerifyTypeTag) {
   return verify_result;
 }
 
-static absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> MakeJumpInits(
-    Compiler *c, ast::OverloadSet const &os) {
-  absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> inits;
-  DEBUG_LOG("ScopeNode")
-  ("Overload set for inits has size ", os.members().size());
-  for (ast::Expression const *member : os.members()) {
-    DEBUG_LOG("ScopeNode")(member->DebugString());
-    auto *def = interpretter::EvaluateAs<ir::ScopeDef *>(
-        c->MakeThunk(member, type::Scope));
-    DEBUG_LOG("ScopeNode")(def);
-    if (def->work_item and *def->work_item) {
-      (std::move(*def->work_item))();
-      def->work_item = nullptr;
-    }
-    for (auto *init : def->start_->after_) {
-      bool success = inits.emplace(init, def).second;
-      static_cast<void>(success);
-      ASSERT(success == true);
-    }
-  }
-  return inits;
-}
-
 type::QualType Compiler::Visit(ast::ScopeNode const *node, VerifyTypeTag) {
   DEBUG_LOG("ScopeNode")(node->DebugString());
-  ASSIGN_OR(
-      return type::QualType::Error(),  //
-             auto arg_results,
-             VerifyFnArgs(this, node->args()));
+  ASSIGN_OR(return type::QualType::Error(),  //
+                   auto arg_results, VerifyFnArgs(this, node->args()));
   // TODO handle cyclic dependencies in call arguments.
 
-  ASSIGN_OR(return type::QualType::Error(),  //
-                   auto os, MakeOverloadSet(this, node->name(), arg_results));
-  auto inits = MakeJumpInits(this, os);
+  for (auto const &block : node->blocks()) { Visit(&block, VerifyTypeTag{}); }
 
-  DEBUG_LOG("ScopeNode")(inits);
-
-  ASSIGN_OR(return type::QualType::Error(),  //
-                   auto table,
-                   ScopeDispatchTable::Verify(this, node, std::move(inits),
-                                              arg_results));
-  return data_.set_scope_dispatch_table(node, std::move(table));
+  // TODO hack. Set this for real.
+  return set_result(node, type::QualType::NonConstant(type::Void()));
 }
 
 type::QualType Compiler::Visit(ast::StructLiteral const *node, VerifyTypeTag) {
