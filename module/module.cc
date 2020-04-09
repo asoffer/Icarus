@@ -60,25 +60,10 @@ absl::Span<ast::Declaration const *const> BasicModule::declarations(
 std::vector<ast::Declaration const *> AllDeclsTowardsRoot(
     ast::Scope const *starting_scope, std::string_view id) {
   std::vector<ast::Declaration const *> decls;
-  for (auto scope_ptr = starting_scope; scope_ptr != nullptr;
-       scope_ptr      = scope_ptr->parent) {
-    if (auto iter = scope_ptr->decls_.find(id);
-        iter != scope_ptr->decls_.end()) {
-      for (auto *decl : iter->second) { decls.push_back(decl); }
-    }
-
-    for (auto const *mod : scope_ptr->embedded_modules_) {
-      DEBUG_LOG("AllDeclsTowardsRoot")(starting_scope, " ", mod);
-      // TODO use the right bound constants? or kill bound constants?
-      for (auto *decl : mod->declarations(id)) {
-        DEBUG_LOG("AllDeclsTowardsRoot")("   ", id);
-        // TODO what about transitivity for embedded modules?
-        // New context will lookup with no constants.
-        decls.push_back(decl);
-      }
-    }
-  }
-
+  ForEachDeclTowardsRoot(starting_scope, id, [&](ast::Declaration const *d) {
+    decls.push_back(d);
+    return true;
+  });
   return decls;
 }
 

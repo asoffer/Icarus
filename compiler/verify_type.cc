@@ -5,11 +5,9 @@
 #include <string_view>
 
 #include "ast/ast.h"
-#include "ast/overload_set.h"
 #include "base/defer.h"
 #include "compiler/compiler.h"
 #include "compiler/dispatch/parameters_and_arguments.h"
-#include "compiler/dispatch/scope_table.h"
 #include "compiler/extract_jumps.h"
 #include "compiler/library_module.h"
 #include "compiler/verify_assignment_and_initialization.h"
@@ -33,8 +31,8 @@
 namespace compiler {
 namespace {
 
-void AddAdl(ast::OverloadSet *overload_set, std::string_view id,
-            type::Type const *t) {
+template <typename Fn>
+void AddAdl(std::string_view id, type::Type const *t, Fn fn) {
   absl::flat_hash_set<CompiledModule *> modules;
   // TODO t->ExtractDefiningModules(&modules);
 
@@ -45,13 +43,8 @@ void AddAdl(ast::OverloadSet *overload_set, std::string_view id,
     for (auto *d : decls) {
       // TODO Wow this is a terrible way to access the type.
       ASSIGN_OR(continue, auto &t, Compiler(mod, consumer).type_of(d));
-      // TODO handle this case. I think it's safe to just discard it.
-      for (auto const *expr : overload_set->members()) {
-        if (d == expr) { return; }
-      }
 
-      // TODO const
-      overload_set->insert(d);
+      if (not fn(d)) { return; }
     }
   }
 }
@@ -59,37 +52,76 @@ void AddAdl(ast::OverloadSet *overload_set, std::string_view id,
 type::QualType VerifyUnaryOverload(Compiler *c, char const *symbol,
                                    ast::Expression const *node,
                                    type::Typed<ir::Results> operand) {
-  ast::OverloadSet os(node->scope(), symbol);
-  AddAdl(&os, symbol, operand.type());
+  type::Quals quals = type::Quals::All();
+  absl::flat_hash_set<type::Callable const *> member_types;
+
+  auto extract_callable_type = [&](ast::Expression const *expr) {
+    ASSIGN_OR(return false, auto qt, c->qual_type_of(expr));
+    if (auto *c = qt.type()->if_as<type::Callable>()) {
+      quals &= qt.quals();
+      auto[iter, inserted] = member_types.insert(c);
+      // TODO currently because of ADL, it's possible to have overload
+      // sets that want to have the same type appear more than once. I
+      // don't yet know how I want to deal with this.
+      if (not inserted) { NOT_YET(); }
+      member_types.insert(c);
+    } else {
+      NOT_YET();
+    }
+    return true;
+  };
+
+  module::ForEachDeclTowardsRoot(node->scope(), symbol, extract_callable_type);
+  AddAdl(symbol, operand.type(), extract_callable_type);
+
   std::vector<type::Typed<ir::Results>> pos_args;
   pos_args.push_back(std::move(operand));
-  ASSIGN_OR(
-      return type::QualType::Error(), auto table,
-             FnCallDispatchTable::Verify(c, os,
-                                         core::FnArgs<type::Typed<ir::Results>>(
-                                             std::move(pos_args), {})));
-  c->data_.set_dispatch_table(node, std::move(table));
-  return c->set_result(node, table.result_qual_type());
+
+  return c->set_result(
+      node,
+      type::QualType(type::MakeOverloadSet(std::move(member_types))
+                         ->return_types(core::FnArgs<type::Typed<ir::Results>>(
+                             std::move(pos_args), {})),
+                     quals));
 }
 
 type::QualType VerifyBinaryOverload(Compiler *c, char const *symbol,
                                     ast::Expression const *node,
                                     type::Typed<ir::Results> lhs,
                                     type::Typed<ir::Results> rhs) {
-  ast::OverloadSet os(node->scope(), symbol);
-  AddAdl(&os, symbol, lhs.type());
-  AddAdl(&os, symbol, rhs.type());
+  type::Quals quals = type::Quals::All();
+  absl::flat_hash_set<type::Callable const *> member_types;
+
+  auto extract_callable_type = [&](ast::Expression const *expr) {
+    ASSIGN_OR(return false, auto qt, c->qual_type_of(expr));
+    if (auto *c = qt.type()->if_as<type::Callable>()) {
+      quals &= qt.quals();
+      auto[iter, inserted] = member_types.insert(c);
+      // TODO currently because of ADL, it's possible to have overload
+      // sets that want to have the same type appear more than once. I
+      // don't yet know how I want to deal with this.
+      if (not inserted) { NOT_YET(); }
+      member_types.insert(c);
+    } else {
+      NOT_YET();
+    }
+    return true;
+  };
+
+  module::ForEachDeclTowardsRoot(node->scope(), symbol, extract_callable_type);
+  AddAdl(symbol, lhs.type(), extract_callable_type);
+  AddAdl(symbol, rhs.type(), extract_callable_type);
 
   std::vector<type::Typed<ir::Results>> pos_args;
   pos_args.push_back(std::move(lhs));
   pos_args.push_back(std::move(rhs));
-  ASSIGN_OR(
-      return type::QualType::Error(), auto table,
-             FnCallDispatchTable::Verify(c, os,
-                                         core::FnArgs<type::Typed<ir::Results>>(
-                                             std::move(pos_args), {})));
-  c->data_.set_dispatch_table(node, std::move(table));
-  return c->set_result(node, table.result_qual_type());
+
+  return c->set_result(
+      node,
+      type::QualType(type::MakeOverloadSet(std::move(member_types))
+                         ->return_types(core::FnArgs<type::Typed<ir::Results>>(
+                             std::move(pos_args), {})),
+                     quals));
 }
 
 // NOTE: the order of these enumerators is meaningful and relied upon! They are

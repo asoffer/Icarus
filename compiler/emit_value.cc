@@ -3,6 +3,8 @@
 #include "ast/ast.h"
 #include "ast/scope/exec.h"
 #include "base/guarded.h"
+#include "compiler/dispatch/fn_call_table.h"
+#include "compiler/dispatch/scope_table.h"
 #include "compiler/emit_function_call_infrastructure.h"
 #include "compiler/executable_module.h"
 #include "diagnostic/consumer/streaming.h"
@@ -561,9 +563,7 @@ ir::Results Compiler::Visit(ast::Call const *node, EmitValueTag) {
                    auto os, MakeOverloadSet(this, node->callee(), args));
   ASSIGN_OR(return ir::Results{},  //
                    auto table, FnCallDispatchTable::Verify(this, os, args));
-  auto result = table.EmitCall(this, args);
-  data_.set_dispatch_table(node, std::move(table));
-  return result;
+  return table.EmitCall(this, args);
   // TODO node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
 }
 
@@ -977,7 +977,12 @@ ir::Results Compiler::Visit(ast::ScopeLiteral const *node, EmitValueTag) {
 ir::Results Compiler::Visit(ast::ScopeNode const *node, EmitValueTag) {
   DEBUG_LOG("ScopeNode")("Emitting IR for ScopeNode");
 
-  // TODO recomputation of args :(
+  // Jump to a new block in case some scope ends up with `goto start()` in order
+  // to re-evealuate arguments.
+  auto *args_block = builder().AddBlock();
+  builder().UncondJump(args_block);
+  builder().CurrentBlock() = args_block;
+
   auto args = node->args().Transform([this](ast::Expression const *expr) {
     return type::Typed(Visit(expr, EmitValueTag{}), type_of(expr));
   });
@@ -992,17 +997,6 @@ ir::Results Compiler::Visit(ast::ScopeNode const *node, EmitValueTag) {
       return ir::Results{},  //
              auto table,
              ScopeDispatchTable::Verify(this, node, std::move(inits), args));
-
-  // Jump to a new block in case some scope ends up with `goto start()` in order
-  // to re-evealuate arguments.
-  auto *args_block = builder().AddBlock();
-  builder().UncondJump(args_block);
-  builder().CurrentBlock() = args_block;
-
-  args = node->args().Transform([this](ast::Expression const *expr) {
-    return type::Typed(Visit(expr, EmitValueTag{}), type_of(expr));
-  });
-
 
   return table.EmitCall(this, args);
 }

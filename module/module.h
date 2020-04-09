@@ -67,6 +67,32 @@ struct BasicModule : base::Cast<BasicModule> {
 std::vector<ast::Declaration const *> AllDeclsTowardsRoot(
     ast::Scope const *starting_scope, std::string_view id);
 
+// Calls `fn` on each declaration in this scope and in parent scopes with the
+// given identifier.
+template <typename Fn>
+bool ForEachDeclTowardsRoot(ast::Scope const *starting_scope,
+                            std::string_view id, Fn fn) {
+  for (auto scope_ptr = starting_scope; scope_ptr != nullptr;
+       scope_ptr      = scope_ptr->parent) {
+    if (auto iter = scope_ptr->decls_.find(id);
+        iter != scope_ptr->decls_.end()) {
+      for (auto *decl : iter->second) {
+        if (not fn(decl)) { return false; }
+      }
+    }
+
+    for (auto const *mod : scope_ptr->embedded_modules_) {
+      // TODO use the right bound constants? or kill bound constants?
+      for (auto *decl : mod->declarations(id)) {
+        // TODO what about transitivity for embedded modules?
+        // New context will lookup with no constants.
+        if (not fn(decl)) { return false; }
+      }
+    }
+  }
+  return true;
+}
+
 // Returns a container of all declaration with the given identifier that are in
 // a scope directly related to this one (i.e., one of the scopes is an ancestor
 // of the other, or is the root scope of an embedded module).

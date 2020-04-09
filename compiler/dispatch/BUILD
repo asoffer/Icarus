@@ -132,6 +132,7 @@ cc_library(
     hdrs = ["parameters_and_arguments.h"],
     srcs = ["parameters_and_arguments.cc"],
     deps = [
+        ":overload",
         "//ast:ast",
         "//compiler:compiler_header",
         "//interpretter:evaluate",

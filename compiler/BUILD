@@ -6,11 +6,13 @@ cc_library(
     srcs = ["emit_function_call_infrastructure.cc"],
     deps = [
         ":compiler_header",
+        ":extract_jumps",
         "//base:ptr_span",
         "//ast/scope:exec",
         "//ast/scope:fn"
     ],
 )
+
 
 # TODO split this up and rename the parts.
 cc_library(
@@ -25,7 +27,6 @@ cc_library(
         "emit_ref.cc",
         "emit_value.cc",
         "emit_chainop.cc",
-        "verify_type.cc",
     ],
     deps = [
         ":compiler_header",
@@ -35,7 +36,6 @@ cc_library(
         ":library_module",
         ":module",
         ":special_function",
-        ":verify_assignment_and_initialization",
         "//ast:ast",
         "//ast:overload_set",
         "//ast:visitor",
@@ -84,10 +84,8 @@ cc_library(
         "@com_google_absl//absl/container:node_hash_map",
         "@com_google_absl//absl/random",
     ],
-    test_deps = None,
     alwayslink = 1,
 )
-
 
 cc_library(
     name = "compiler_header",
@@ -120,6 +118,7 @@ cc_library(
     srcs = ["compiler.cc"],
     deps = [
         ":compiler_header",
+        ":verify_type",
         ":visitors",
         "//base:defer",
         "//diagnostic/consumer",
@@ -151,8 +150,6 @@ cc_library(
         "//base:lazy_convert",
         "//compiler/constant:binding",
         "//compiler/constant:binding_tree",
-        "//compiler/dispatch:fn_call_table_header",
-        "//compiler/dispatch:scope_table_header",
         "//ir:block_def",
         "//ir:builder",
         "//ir:compiled_fn",
@@ -290,5 +287,58 @@ cc_binary(
         "@com_google_absl//absl/debugging:failure_signal_handler",
         "@com_google_absl//absl/debugging:symbolize",
         "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "verify_type",
+    hdrs = [],
+    srcs = [
+        "verify_type.cc",
+    ],
+    deps = [
+        ":compiler_header",
+        ":data",
+        ":library_module",
+        ":module",
+        ":special_function",
+        ":verify_assignment_and_initialization",
+        "//ast",
+        "//base:debug",
+        "//base:defer",
+        "//compiler/dispatch:parameters_and_arguments",
+        "//diagnostic/consumer",
+        "//diagnostic/consumer:trivial",
+        "//diagnostic:errors",
+        "//frontend/source:file_name",
+        "//interpretter:evaluate",
+        "//ir/value:addr",
+        "//ir:builder",
+        "//ir:compiled_fn",
+        "//ir:jump",
+        "//ir:results",
+        "//ir:struct_field",
+        "//ir/value:builtin_fn",
+        "//ir/value:fn",
+        "//ir/value:reg",
+        "//ir/value:string",
+        "//module:module",
+        "//module:pending",
+        "//type:cast",
+        "//type:function",
+        "//type:generic_function",
+        "//type:generic_struct",
+        "//type:jump",
+        "//type:overload_set",
+        "//type:parameter_pack",
+        "//type:pointer",
+        "//type:qual_type",
+        "//type:struct",
+        "//type:type",
+        "//type:type_fwd",
+        "//type:typed_value",
+        "//type:visitor",
+        "@com_google_absl//absl/algorithm:container",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )

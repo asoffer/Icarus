@@ -15,8 +15,6 @@
 #include "base/lazy_convert.h"
 #include "compiler/constant/binding.h"
 #include "compiler/constant/binding_tree.h"
-#include "compiler/dispatch/fn_call_table.h"
-#include "compiler/dispatch/scope_table.h"
 #include "ir/block_def.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
@@ -45,23 +43,6 @@ struct CompilationData {
 
   module::BasicModule *mod_;
   ir::Builder &bldr_;
-
-  // TODO rename to be more specific to the kind of dispatch table (in this
-  // case, fn_call).
-  void set_dispatch_table(ast::Expression const *expr,
-                          FnCallDispatchTable &&table) {
-    ICARUS_DEBUG_ONLY(auto [iter, success] =)
-    fn_call_dispatch_tables_.emplace(expr, std::move(table));
-    ASSERT(success == true);
-  }
-
-  FnCallDispatchTable const *dispatch_table(ast::Expression const *expr) const {
-    if (auto iter = fn_call_dispatch_tables_.find(expr);
-        iter != fn_call_dispatch_tables_.end()) {
-      return &iter->second;
-    }
-    return nullptr;
-  }
 
   ir::Jump *jump(ast::Jump const *expr) {
     auto iter = jumps_.find(expr);
@@ -112,9 +93,6 @@ struct CompilationData {
   // would also work, but would unnecessarily reallocate with some frequency.
   std::forward_list<ir::ScopeDef> scope_defs_;
   std::forward_list<ir::BlockDef> block_defs_;
-
-  absl::flat_hash_map<ast::Expression const *, FnCallDispatchTable>
-      fn_call_dispatch_tables_;
 
   absl::node_hash_map<ast::Jump const *, ir::Jump> jumps_;
 
