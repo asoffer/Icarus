@@ -50,7 +50,7 @@ cc_library(
         ":type",
         ":typed_value",
         "//core:fn_args",
-        "//ir:results",
+        "//ir/value",
     ],
 )
 

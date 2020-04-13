@@ -25,8 +25,8 @@ struct Function : public Callable {
   }
 
   std::vector<type::Type const *> return_types(
-      core::FnArgs<type::Typed<ir::Results>> const &args) const override {
-    // TODO multiple return types?
+      core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args)
+      const override {
     return output_;
   }
 

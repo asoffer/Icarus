@@ -1,5 +1,6 @@
 #include "type/generic_function.h"
 
+#include "base/stringify.h"
 #include "type/function.h"
 
 namespace type {
@@ -13,8 +14,13 @@ core::Alignment GenericFunction::alignment(core::Arch const &) const {
 }
 
 Function const *GenericFunction::concrete(
-    core::FnArgs<Typed<ir::Value>> const &args) const {
+    core::FnArgs<Typed<std::optional<ir::Value>>> const &args) const {
   return gen_fn_(args);
+}
+
+std::vector<type::Type const *> GenericFunction::return_types(
+    core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args) const {
+  return concrete(args)->return_types(args);
 }
 
 }  // namespace type

@@ -1,7 +1,6 @@
 #ifndef ICARUS_COMPILER_MODULE_H
 #define ICARUS_COMPILER_MODULE_H
 
-#include <list>
 #include <memory>
 #include <utility>
 

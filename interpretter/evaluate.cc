@@ -17,6 +17,7 @@ base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
   ret_slots.push_back(ir::Addr::Heap(ret_buf.raw(0)));
   ExecutionContext exec_context;
   // TODO actually just have a good way to construct the buffer
+  DEBUG_LOG("EvaluateToBuffer")(fn);
   Execute(&fn,
           base::untyped_buffer::MakeFull(
               (fn.type()->params().size() + fn.num_regs()) * kMaxSize),

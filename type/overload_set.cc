@@ -26,7 +26,7 @@ core::Alignment OverloadSet::alignment(core::Arch const &arch) const {
 }
 
 std::vector<type::Type const *> OverloadSet::return_types(
-    core::FnArgs<type::Typed<ir::Results>> const &args) const {
+    core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args) const {
   std::vector<std::vector<type::Type const *>> results;
   results.reserve(callables_.size());
   for (auto const *callable : callables_) {

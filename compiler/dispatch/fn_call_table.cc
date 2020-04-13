@@ -8,6 +8,7 @@
 #include "diagnostic/errors.h"
 #include "ir/out_params.h"
 #include "ir/results.h"
+#include "ir/value/generic_fn.h"
 #include "type/cast.h"
 #include "type/function.h"
 #include "type/generic_function.h"
@@ -35,14 +36,6 @@ std::pair<ir::Results, ir::OutParams> SetReturns(
   }
 }
 
-type::Typed<ir::Fn, type::Function> ComputeConcreteFn(
-    Compiler *compiler, ast::Expression const *fn,
-    type::GenericFunction const *gf_type,
-    core::FnArgs<type::Typed<ir::Value>> const &args) {
-  auto *fn_type = gf_type->concrete(args);
-  NOT_YET(fn_type->to_string());
-}
-
 ir::RegOr<ir::Fn> ComputeConcreteFn(Compiler *compiler,
                                     ast::Expression const *fn,
                                     type::Function const *f_type,
@@ -66,9 +59,23 @@ ir::RegOr<ir::Fn> ComputeConcreteFn(Compiler *compiler,
   }
 }
 
-ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
-                                internal::ExprData const &data,
-                                core::FnArgs<type::Typed<ir::Value>> const &args) {
+type::Typed<ir::Fn, type::Function> ComputeConcreteFn(
+    Compiler *compiler, ast::Expression const *fn,
+    type::GenericFunction const *gf_type, type::Quals quals,
+    core::FnArgs<type::Typed<ir::Value>> const &args) {
+  auto *fn_type = gf_type->concrete(args.Transform([](auto const &x) {
+    return type::Typed<std::optional<ir::Value>>(*x, x.type());
+  }));
+  ASSERT(type::Quals::Const() <= quals);
+  ir::GenericFn gen_fn =
+      compiler->Visit(fn, EmitValueTag{}).get<ir::GenericFn>(0).value();
+  return type::Typed<ir::Fn, type::Function>(gen_fn.concrete(args), fn_type);
+}
+
+ir::Results EmitCallOneOverload(
+    Compiler *compiler, ast::Expression const *fn,
+    internal::ExprData const &data,
+    core::FnArgs<type::Typed<ir::Value>> const &args) {
   auto callee_qual_type = compiler->qual_type_of(fn);
   ASSERT(callee_qual_type.has_value() == true);
 
@@ -76,7 +83,8 @@ ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
   ir::RegOr<ir::Fn> callee      = [&]() -> ir::RegOr<ir::Fn> {
     if (auto const *gf_type =
             callee_qual_type->type()->if_as<type::GenericFunction>()) {
-      auto typed_fn = ComputeConcreteFn(compiler, fn, gf_type, args);
+      auto typed_fn = ComputeConcreteFn(compiler, fn, gf_type,
+                                        callee_qual_type->quals(), args);
       fn_type       = typed_fn.type();
       return *typed_fn;
     } else if (auto const *f_type =
@@ -181,7 +189,7 @@ base::expected<FnCallDispatchTable> FnCallDispatchTable::Verify(
                   using T = typename decltype(tag)::type;
                   val     = ir::Value(a->template get<T>(0));
                 });
-            return type::Typed<ir::Value>(val, a.type());
+            return type::Typed<std::optional<ir::Value>>(val, a.type());
           }));
       table.table_.emplace(overload,
                            internal::ExprData{concrete, concrete->params()});

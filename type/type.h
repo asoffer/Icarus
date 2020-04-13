@@ -26,9 +26,10 @@ struct FunctionLiteral;
 }  // namespace ast
 
 namespace ir {
-struct Fn;
 struct BlockDef;
 struct FlagsVal;
+struct Fn;
+struct GenericFn;
 struct ScopeDef;
 }  // namespace ir
 
@@ -43,9 +44,10 @@ namespace type {
 
 struct Jump;
 struct Function;
-struct Struct;
+struct GenericFn;
 struct GenericStruct;
 struct Pointer;
+struct Struct;
 
 struct Type : public base::Cast<Type> {
  public:
@@ -133,7 +135,7 @@ bool Compare(::type::Type const *t) {
     return t->is<::type::Function>();
   } else if constexpr (std::is_same_v<T, ::type::Jump>) {
     return t->is<::type::Jump>();
-  } else if constexpr (std::is_same_v<T, ast::FunctionLiteral *>) {
+  } else if constexpr (std::is_same_v<T, ir::GenericFn>) {
     return t->is<::type::GenericFunction>();
   } else if constexpr (std::is_same_v<T, module::BasicModule *> or
                        std::is_same_v<T, module::BasicModule const *>) {
@@ -177,7 +179,8 @@ auto Apply(Type const *t, Fn &&fn) {
                     uint32_t, uint64_t, float, double, type::Type const *,
                     ir::EnumVal, ir::FlagsVal, ir::Addr, ir::String,
                     module::BasicModule *, ir::ScopeDef *, ir::Fn,
-                    ir::BlockDef const *>(t, std::forward<Fn>(fn));
+                    ir::BlockDef const *, ir::GenericFn>(t,
+                                                         std::forward<Fn>(fn));
 }
 
 // TODO lay these out adjacent in memory so the tests can be faster.

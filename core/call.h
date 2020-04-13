@@ -127,8 +127,10 @@ template <typename P, typename A, typename Fn>
 void FillMissingArgs(ParamsRef<P> params, FnArgs<A>* args, Fn fn,
                      size_t offset = 0) {
   for (size_t i = args->pos().size(); i < params.size(); ++i) {
+    ASSERT(i + offset < params.size());
     auto const& p = params[i + offset];
     if (p.name.empty()) { continue; }
+    DEBUG_LOG()("For named-parameter ", p.name, "inserting.");
     args->named_emplace(p.name,
                         base::lazy_convert{[&]() { return fn(p.value); }});
   }

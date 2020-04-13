@@ -65,11 +65,10 @@ void EmitIrForStatements(Compiler *compiler,
   }
 }
 
-void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node) {
+void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
+                  type::Function const *t) {
   // TODO have validate return a bool distinguishing if there are errors and
   // whether or not we can proceed.
-
-  auto *t = compiler->type_of(node);
 
   ir::NativeFn ir_func = compiler->data_.ir_funcs_.find(node)->second;
 
@@ -106,7 +105,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node) {
     EmitIrForStatements(compiler, node->stmts());
     MakeAllDestructions(compiler, node->body_scope());
 
-    if (t->as<type::Function>().output().empty()) {
+    if (t->output().empty()) {
       // TODO even this is wrong. Figure out the right jumping strategy
       // between here and where you call SetReturn
       compiler->builder().ReturnJump();

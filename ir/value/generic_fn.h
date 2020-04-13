@@ -5,10 +5,10 @@
 #include <iostream>
 
 #include "core/fn_args.h"
-#include "ir/value/native_fn.h"
 #include "type/typed_value.h"
 
 namespace ir {
+struct NativeFn;
 struct Value;
 
 // A `GenericFn` is a callable object which either requires some of the arguments
@@ -24,6 +24,8 @@ struct Value;
 struct GenericFn {
   explicit GenericFn(
       std::function<NativeFn(core::FnArgs<type::Typed<Value>> const &)> gen);
+
+  NativeFn concrete(core::FnArgs<type::Typed<Value>> const &args) const;
 
   friend std::ostream &operator<<(std::ostream &os, GenericFn f) {
     return os << "GenericFn(id = " << f.id_ << ")";

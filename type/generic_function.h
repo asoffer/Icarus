@@ -16,7 +16,8 @@ namespace type {
 
 struct GenericFunction : public Callable {
   explicit GenericFunction(
-      std::function<Function const *(core::FnArgs<Typed<ir::Value>> const &)>
+      std::function<Function const *(
+          core::FnArgs<Typed<std::optional<ir::Value>>> const &)>
           fn)
       : gen_fn_(std::move(fn)) {}
   ~GenericFunction() override {}
@@ -24,12 +25,14 @@ struct GenericFunction : public Callable {
     result->append("generic");
   }
 
-  Function const *concrete(core::FnArgs<Typed<ir::Value>> const &) const;
+  bool is_big() const override { return false; }
+
+  Function const *concrete(
+      core::FnArgs<Typed<std::optional<ir::Value>>> const &) const;
+
   std::vector<type::Type const *> return_types(
-      core::FnArgs<type::Typed<ir::Results>> const &args) const override {
-    NOT_YET();
-    return {};
-  }
+      core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args)
+      const override;
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
@@ -40,7 +43,8 @@ struct GenericFunction : public Callable {
 
  private:
   // TODO Eventually we will want a serializable version of this.
-  std::function<Function const *(core::FnArgs<Typed<ir::Value>> const &)>
+  std::function<Function const *(
+      core::FnArgs<Typed<std::optional<ir::Value>>> const &)>
       gen_fn_;
 };
 

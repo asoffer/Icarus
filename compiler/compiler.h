@@ -264,6 +264,10 @@ struct Compiler
   void EmitCopyInit(type::Type const *from_type, ir::Results const &from_val,
                     type::Typed<ir::Reg> to_var);
 
+ private:
+  CompiledModule *mod_;
+
+ public:
   // TODO Make these private
   CompilationData &data_;
   ConstantBindingTree::Node *current_constants_;

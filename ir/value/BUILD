@@ -97,6 +97,29 @@ cc_test(
 )
 
 cc_library(
+    name = "generic_fn",
+    hdrs = ["generic_fn.h"],
+    srcs = ["generic_fn.cc"],
+    deps = [
+        ":native_fn",
+        "//base:guarded",
+        "//core:fn_args",
+        "//type",
+        "//type:typed_value",
+    ],
+)
+
+cc_test(
+    name = "generic_fn_test",
+    srcs = ["generic_fn_test.cc"],
+    deps = [
+        ":reg_or",
+        ":value",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "label",
     hdrs = ["label.h"],
     deps = ["//base:strong_types"],
@@ -209,18 +232,8 @@ cc_test(
 
 cc_library(
     name = "value",
-    hdrs = [
-        "value.h",
-        "generic_fn.h",
-    ],
-    srcs = [
-        "generic_fn.cc",
-    ],
+    hdrs = ["value.h"],
     deps = [
-        ":addr",
-        ":fn",
-        ":reg",
-        ":string",
         "//base:guarded",
         "//base:meta",
         "//core:fn_args",

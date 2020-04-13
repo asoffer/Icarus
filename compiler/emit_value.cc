@@ -15,6 +15,7 @@
 #include "ir/jump.h"
 #include "ir/struct_field.h"
 #include "ir/value/builtin_fn.h"
+#include "ir/value/generic_fn.h"
 #include "ir/value/reg.h"
 #include "type/jump.h"
 #include "type/type.h"
@@ -23,7 +24,8 @@
 namespace compiler {
 using ::matcher::InheritsFrom;
 
-type::QualType VerifyBody(Compiler *compiler, ast::FunctionLiteral const *node);
+type::QualType VerifyBody(Compiler *compiler, ast::FunctionLiteral const *node,
+                          type::Type const *fn_type = nullptr);
 
 namespace {
 
@@ -113,15 +115,18 @@ std::optional<ast::OverloadSet> MakeOverloadSet(
 }
 
 template <typename NodeType>
-base::move_func<void()> *DeferBody(Compiler *compiler, NodeType const *node) {
+base::move_func<void()> *DeferBody(Compiler *compiler, NodeType const *node,
+                                   type::Type const *t) {
   // It's safe to capture `compiler` because we know this lambda will be
   // executed as part of work deferral of `compiler` before the compiler is
   // destroyed.
-  return compiler->AddWork(node, [compiler, node]() mutable {
+  return compiler->AddWork(node, [compiler, node, t]() mutable {
     if constexpr (std::is_same_v<NodeType, ast::FunctionLiteral>) {
-      VerifyBody(compiler, node);
+      VerifyBody(compiler, node, t);
+      CompleteBody(compiler, node, &t->as<type::Function>());
+    } else {
+      CompleteBody(compiler, node);
     }
-    CompleteBody(compiler, node);
   });
 }
 
@@ -749,11 +754,31 @@ ir::Results Compiler::Visit(ast::EnumLiteral const *node, EmitValueTag) {
 
 ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
   if (node->is_generic()) {
-    return ir::Results{ir::GenericFn(
-        [](core::FnArgs<type::Typed<ir::Value>> const &args) -> ir::NativeFn {
-          NOT_YET();
-          return ir::NativeFn(nullptr);
-        })};
+    auto gen_fn = ir::GenericFn([
+      c(Compiler(mod_, diag())), node
+    ](core::FnArgs<type::Typed<ir::Value>> const &args) mutable->ir::NativeFn {
+      return c.data_.ir_funcs_
+          .emplace(
+              node, base::lazy_convert([&] {
+                auto *fn_type =
+                    c.type_of(node)->as<type::GenericFunction>().concrete(
+                        args.Transform([](auto const &x) {
+                          return type::Typed<std::optional<ir::Value>>(
+                              *x, x.type());
+                        }));
+
+                auto f = c.AddFunc(
+                    fn_type, node->params().Transform([ fn_type, i = 0 ](
+                                 auto const &d) mutable {
+                      return type::Typed<ast::Declaration const *>(
+                          d.get(), fn_type->params().at(i++).value);
+                    }));
+                f->work_item = DeferBody(&c, node, fn_type);
+                return f;
+              }))
+          .first->second;
+    });
+    return ir::Results{gen_fn};
   }
 
   // TODO Use correct constants
@@ -768,7 +793,7 @@ ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
                            return type::Typed<ast::Declaration const *>(
                                d.get(), fn_type->params().at(i++).value);
                          }));
-                     f->work_item = DeferBody(this, node);
+                     f->work_item = DeferBody(this, node, fn_type);
                      return f;
                    }))
           .first->second;
@@ -858,8 +883,8 @@ ir::Results Compiler::Visit(ast::Label const *node, EmitValueTag) {
 
 ir::Results Compiler::Visit(ast::Jump const *node, EmitValueTag) {
   return ir::Results{data_.add_jump(node, [this, node] {
-    auto work_item_ptr = DeferBody(this, node);
     auto *jmp_type     = &type_of(node)->as<type::Jump>();
+    auto work_item_ptr = DeferBody(this, node, jmp_type);
 
     size_t i    = 0;
     auto params = node->params().Transform([&](auto const &decl) {
@@ -1044,7 +1069,7 @@ ir::Results Compiler::Visit(ast::ParameterizedStructLiteral const *node,
   // // (which is single-threaded).
   // ir::CompiledFn *&ir_func = data_.ir_funcs_[node];
   // if (not ir_func) {
-  auto work_item_ptr = DeferBody(this, node);
+  // auto work_item_ptr = DeferBody(this, node);
 
   //   auto const &arg_types =
   //   type_of(node)->as<type::GenericStruct>().deps_;

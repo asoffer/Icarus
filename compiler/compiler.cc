@@ -17,7 +17,8 @@ namespace compiler {
 
 Compiler::Compiler(CompiledModule *mod,
                    diagnostic::DiagnosticConsumer &consumer)
-    : data_(mod->root_data()),
+    : mod_(mod),
+      data_(mod->root_data()),
       current_constants_(mod->root_node()),
       diag_consumer_(consumer) {}
 
@@ -119,6 +120,7 @@ ir::CompiledFn Compiler::MakeThunk(ast::Expression const *expr,
     // TODO is_big()?
     for (size_t i = 0; i < vals.size(); ++i) {
       auto const *t = extracted_types[i];
+      DEBUG_LOG("MakeThunk")(*t);
       if (t->is_big()) {
         // TODO must `r` be holding a register?
         // TODO guaranteed move-elision

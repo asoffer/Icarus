@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "core/fn_args.h"
-#include "ir/results.h"
+#include "ir/value/value.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 
@@ -13,7 +13,8 @@ namespace type {
 struct Callable : Type {
   ~Callable() override {};
   virtual std::vector<type::Type const*> return_types(
-      core::FnArgs<type::Typed<ir::Results>> const& args) const = 0;
+      core::FnArgs<type::Typed<std::optional<ir::Value>>> const& args)
+      const = 0;
 };
 
 }  // namespace type

@@ -17,6 +17,11 @@ struct ConstantBindingMap {
   T const& root_value() const { return *map_.find(tree_.root())->second; }
   T& root_value() { return *map_.find(tree_.root())->second; }
 
+  ConstantBindingTree::Node const* AddChildTo(
+      ConstantBindingTree::Node const* node) {
+    return tree_.AddChildTo(node);
+  }
+
   void emplace(ConstantBindingTree::Node const* node, T val) {
     map_[node] = std::make_unique<T>(std::move(val));
   }

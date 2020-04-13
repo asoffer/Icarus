@@ -320,6 +320,7 @@ cc_library(
         "//ir:struct_field",
         "//ir/value:builtin_fn",
         "//ir/value:fn",
+        "//ir/value:generic_fn",
         "//ir/value:reg",
         "//ir/value:string",
         "//module:module",

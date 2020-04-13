@@ -8,12 +8,6 @@
 
 namespace {
 
-std::string ToString(ir::Value val) {
-  std::stringstream ss;
-  ss << val;
-  return ss.str();
-}
-
 TEST(Value, BasicConstruction) {
   EXPECT_TRUE(ir::Value(true).get<bool>());
   EXPECT_FALSE(ir::Value(false).get<bool>());
@@ -43,9 +37,4 @@ TEST(Value, GetIf) {
   }
 }
 
-TEST(Value, Ostream) {
-  EXPECT_EQ(ToString(ir::Value(int64_t{3})), "3");
-  EXPECT_EQ(ToString(ir::Value(ir::RegOr<int64_t>(3))), "3");
-  EXPECT_EQ(ToString(ir::Value(ir::RegOr<int64_t>(ir::Reg(3)))), "r.3");
-}
 }  // namespace

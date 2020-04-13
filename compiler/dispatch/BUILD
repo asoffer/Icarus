@@ -77,6 +77,7 @@ cc_library(
         "//core:params",
         "//ir:results",
         "//ir/value",
+        "//ir/value:generic_fn",
         "//type:qual_type",
         "//type:type",
         "//type:typed_value",

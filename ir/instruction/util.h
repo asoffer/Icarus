@@ -3,6 +3,7 @@
 #include "ir/value/addr.h"
 #include "ir/value/enum_and_flags.h"
 #include "ir/value/fn.h"
+#include "ir/value/generic_fn.h"
 #include "ir/value/string.h"
 #include "module/module.h"
 #include "type/type.h"
@@ -46,6 +47,8 @@ constexpr uint8_t PrimitiveIndex() {
   } else if constexpr (std::is_same_v<T, module::BasicModule*> or
                        std::is_same_v<T, module::BasicModule const*>) {
     return 0x15;
+  } else if constexpr (std::is_same_v<T, GenericFn>) {
+    return 0x16;
   } else {
     UNREACHABLE(typeid(T).name());
   }
@@ -96,6 +99,8 @@ std::string_view TypeToString() {
   } else if constexpr (std::is_same_v<T, ir::BlockDef*> or
                        std::is_same_v<T, ir::BlockDef const*>) {
     return "block";
+  } else if constexpr (std::is_same_v<T, ir::GenericFn>) {
+    return "generic-fn";
   } else {
     static_assert(base::always_false<T>());
   }
