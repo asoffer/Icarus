@@ -14,7 +14,7 @@ namespace compiler {
 template <SpecialFunctionCategory Cat>
 static ir::NativeFn CreateAssign(Compiler *compiler, type::Array const *a) {
   type::Pointer const *ptr_type = type::Ptr(a);
-  auto *data_ptr_type           = type::Ptr(a->data_type);
+  auto *data_ptr_type           = type::Ptr(a->data_type());
   auto fn_type                  = type::Func(
       core::Params<type::Type const *>{core::AnonymousParam(ptr_type),
                                        core::AnonymousParam(ptr_type)},
@@ -30,7 +30,7 @@ static ir::NativeFn CreateAssign(Compiler *compiler, type::Array const *a) {
     auto var            = ir::Reg::Arg(1);
 
     auto from_ptr     = bldr.PtrIncr(val, 0, data_ptr_type);
-    auto from_end_ptr = bldr.PtrIncr(from_ptr, a->len, data_ptr_type);
+    auto from_end_ptr = bldr.PtrIncr(from_ptr, a->length(), data_ptr_type);
     auto to_ptr       = bldr.PtrIncr(var, 0, data_ptr_type);
 
     auto *loop_body  = bldr.AddBlock();
@@ -47,16 +47,16 @@ static ir::NativeFn CreateAssign(Compiler *compiler, type::Array const *a) {
 
     bldr.CurrentBlock() = loop_body;
     if constexpr (Cat == Copy) {
-      compiler->Visit(a->data_type, to_phi->result,
+      compiler->Visit(a->data_type(), to_phi->result,
                       type::Typed{ir::Results{compiler->builder().PtrFix(
-                                      from_phi->result, a->data_type)},
-                                  a->data_type},
+                                      from_phi->result, a->data_type())},
+                                  a->data_type()},
                       EmitCopyAssignTag{});
     } else if constexpr (Cat == Move) {
-      compiler->Visit(a->data_type, to_phi->result,
+      compiler->Visit(a->data_type(), to_phi->result,
                       type::Typed{ir::Results{compiler->builder().PtrFix(
-                                      from_phi->result, a->data_type)},
-                                  a->data_type},
+                                      from_phi->result, a->data_type())},
+                                  a->data_type()},
                       EmitMoveAssignTag{});
     } else {
       UNREACHABLE();
@@ -125,13 +125,15 @@ static ir::NativeFn CreateAssign(Compiler *compiler, type::Struct const *s) {
 
 void Compiler::Visit(type::Array const *t, ir::RegOr<ir::Addr> to,
                      type::Typed<ir::Results> const &from, EmitCopyAssignTag) {
-  t->copy_assign_func_.init([=]() { return CreateAssign<Copy>(this, t); });
+  data_.copy_assign_.emplace(
+      t, base::lazy_convert{[&] { return CreateAssign<Copy>(this, t); }});
   builder().Copy(t, from->get<ir::Reg>(0), to);
 }
 
 void Compiler::Visit(type::Array const *t, ir::RegOr<ir::Addr> to,
                      type::Typed<ir::Results> const &from, EmitMoveAssignTag) {
-  t->move_assign_func_.init([=]() { return CreateAssign<Move>(this, t); });
+  data_.move_assign_.emplace(
+      t, base::lazy_convert{[&] { return CreateAssign<Move>(this, t); }});
   builder().Move(t, from->get<ir::Reg>(0), to);
 }
 

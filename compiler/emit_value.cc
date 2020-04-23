@@ -180,7 +180,7 @@ ir::Results Compiler::Visit(ast::ArrayLiteral const *node, EmitValueTag) {
   auto *this_type = type_of(node);
   auto alloc      = builder().TmpAlloca(this_type);
   if (not node->empty()) {
-    auto *data_type = this_type->as<type::Array>().data_type;
+    auto *data_type = this_type->as<type::Array>().data_type();
     for (size_t i = 0; i < node->size(); ++i) {
       EmitMoveInit(
           data_type, Visit(node->elem(i), EmitValueTag{}),

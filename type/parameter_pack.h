@@ -7,7 +7,7 @@ namespace type {
 
 struct ParameterPack : public Type {
   TYPE_FNS(ParameterPack);
-  ParameterPack(Type const *t) : elem(t) {}
+  ParameterPack(Type const *t) : Type(t->flags()), elem(t) {}
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);

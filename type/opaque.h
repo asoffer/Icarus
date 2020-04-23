@@ -1,11 +1,17 @@
 #ifndef ICARUS_TYPE_OPAQUE_H
 #define ICARUS_TYPE_OPAQUE_H
 
+#include "module/module.h"
 #include "type/type.h"
 
 namespace type {
 struct Opaque : public Type {
-  Opaque(module::BasicModule const *mod) : mod_(mod) {}
+  explicit Opaque(module::BasicModule const *mod)
+      : Type(Type::Flags{.is_default_initializable = 0,
+                         .is_copyable              = 0,
+                         .is_movable               = 0,
+                         .has_destructor           = 0}),
+        mod_(mod) {}
   ~Opaque() override {}
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {

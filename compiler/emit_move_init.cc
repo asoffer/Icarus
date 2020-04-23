@@ -29,9 +29,9 @@ void Compiler::Visit(ast::Expression const *node, type::Typed<ir::Reg> reg,
 void Compiler::Visit(ast::ArrayLiteral const *node, type::Typed<ir::Reg> reg,
                      EmitMoveInitTag) {
   type::Array const &array_type = type_of(node)->as<type::Array>();
-  auto *data_type_ptr           = type::Ptr(array_type.data_type);
+  auto *data_type_ptr           = type::Ptr(array_type.data_type());
   auto elem = builder().Index(type::Ptr(&array_type), reg.get(), 0);
-  for (size_t i = 0; i + 1 < array_type.len; ++i) {
+  for (size_t i = 0; i + 1 < array_type.length(); ++i) {
     Visit(node->elem(i), type::Typed<ir::Reg>(elem, data_type_ptr),
           EmitMoveInitTag{});
     elem = builder().PtrIncr(elem, 1, data_type_ptr);

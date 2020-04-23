@@ -20,14 +20,8 @@ std::vector<Type const *> MultiVar(
 
 struct Variant : public Type {
   TYPE_FNS(Variant);
-  Variant(std::vector<Type const *> variants)
-      : variants_(std::move(variants)) {}
+  Variant(std::vector<Type const *> variants);
   size_t size() const { return variants_.size(); }
-
-  bool IsDefaultInitializable() const { return false; }
-  bool IsCopyable() const;
-  bool IsMovable() const;
-  bool HasDestructor() const;
 
   // Alignment of the alternatives present in the variant, excluding the type
   // tag. For example, if a type requires 8-byte alignment, then the alignment

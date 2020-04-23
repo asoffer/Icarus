@@ -1,16 +1,22 @@
 #include "type/primitive.h"
 
-#include "type/array.h"
-#include "type/pointer.h"
+#include "ir/value/string.h"
 
 namespace type {
-#define PRIMITIVE_MACRO(EnumName, name)                                        \
-  Type const *EnumName = new Primitive(BasicType::EnumName);
-#include "type/primitive.xmacro.h"
-#undef PRIMITIVE_MACRO
 
 void Primitive::WriteTo(std::string *result) const {
   result->append(ToString(type_));
+}
+
+Type const *Prim(BasicType b) {
+  switch (b) {
+#define PRIMITIVE_MACRO(EnumName, name)                                        \
+  case BasicType::EnumName:                                                    \
+    return EnumName;
+#include "type/primitive.xmacro.h"
+#undef PRIMITIVE_MACRO
+  }
+  UNREACHABLE();
 }
 
 bool Primitive::is_integral() const {
@@ -85,16 +91,6 @@ core::Alignment Primitive::alignment(core::Arch const &a) const {
     default:;
   }
   UNREACHABLE(to_string());
-}
-
-bool Primitive::TestEquality(void const *lhs, void const *rhs) const {
-  switch (type_) {
-    case BasicType::Int64:
-      return reinterpret_cast<uintptr_t>(lhs) ==
-             reinterpret_cast<uintptr_t>(rhs);
-    default:;
-  }
-  UNREACHABLE();
 }
 
 }  // namespace type

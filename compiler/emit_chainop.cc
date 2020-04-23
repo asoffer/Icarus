@@ -52,7 +52,7 @@ static ir::Results ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
       auto *body_block      = bldr.AddBlock();
       auto *incr_block      = bldr.AddBlock();
 
-      bldr.CondJump(bldr.Eq(lhs_type->len, rhs_type->len), equal_len_block,
+      bldr.CondJump(bldr.Eq(lhs_type->length(), rhs_type->length()), equal_len_block,
                     false_block);
 
       bldr.CurrentBlock() = true_block;
@@ -69,7 +69,7 @@ static ir::Results ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
       auto rhs_start =
           compiler->builder().Index(Ptr(rhs_type), ir::Reg::Arg(1), 0);
       auto lhs_end =
-          bldr.PtrIncr(lhs_start, lhs_type->len, Ptr(rhs_type->data_type));
+          bldr.PtrIncr(lhs_start, lhs_type->length(), Ptr(rhs_type->data_type()));
       bldr.UncondJump(phi_block);
 
       bldr.CurrentBlock() = phi_block;
@@ -87,8 +87,8 @@ static ir::Results ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
                     incr_block, false_block);
 
       bldr.CurrentBlock() = incr_block;
-      auto lhs_incr = bldr.PtrIncr(lhs_phi_reg, 1, Ptr(lhs_type->data_type));
-      auto rhs_incr = bldr.PtrIncr(rhs_phi_reg, 1, Ptr(rhs_type->data_type));
+      auto lhs_incr = bldr.PtrIncr(lhs_phi_reg, 1, Ptr(lhs_type->data_type()));
+      auto rhs_incr = bldr.PtrIncr(rhs_phi_reg, 1, Ptr(rhs_type->data_type()));
       bldr.UncondJump(phi_block);
 
       bldr.Phi<ir::Addr>(lhs_phi_reg, {equal_len_block, incr_block},

@@ -322,10 +322,10 @@ struct Builder {
 
   template <typename F>
   void OnEachArrayElement(type::Array const* t, Reg array_reg, F fn) {
-    auto* data_ptr_type = type::Ptr(t->data_type);
+    auto* data_ptr_type = type::Ptr(t->data_type());
 
     auto ptr     = PtrIncr(array_reg, 0, type::Ptr(data_ptr_type));
-    auto end_ptr = PtrIncr(ptr, static_cast<int32_t>(t->len), data_ptr_type);
+    auto end_ptr = PtrIncr(ptr, static_cast<int32_t>(t->length()), data_ptr_type);
 
     auto* start_block = CurrentBlock();
     auto* loop_body   = AddBlock();
@@ -410,7 +410,7 @@ struct Builder {
 
   Reg Index(type::Pointer const* t, Reg array_ptr, RegOr<int64_t> offset) {
     return PtrIncr(array_ptr, offset,
-                   type::Ptr(t->pointee->as<type::Array>().data_type));
+                   type::Ptr(t->pointee->as<type::Array>().data_type()));
   }
 
   // Emits a function-call instruction, calling `fn` of type `f` with the given

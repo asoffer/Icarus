@@ -354,7 +354,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         } else if (auto *tup = t->if_as<type::Tuple>()) {
           f = tup->init_func_.get();
         } else if (auto *a = t->if_as<type::Array>()) {
-          f = a->init_func_.get();
+          NOT_YET(); // f = a->init_func_.get();
         } else {
           NOT_YET();
         }
@@ -370,7 +370,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         } else if (auto *tup = t->if_as<type::Tuple>()) {
           f = tup->destroy_func_.get();
         } else if (auto *a = t->if_as<type::Array>()) {
-          f = a->destroy_func_.get();
+          NOT_YET(); // f = a->destroy_func_.get();
         } else {
           NOT_YET();
         }
@@ -389,7 +389,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         } else if (auto *tup = t->if_as<type::Tuple>()) {
           f = tup->move_assign_func_.get();
         } else if (auto *a = t->if_as<type::Array>()) {
-          f = a->move_assign_func_.get();
+          NOT_YET(); // f = a->move_assign_func_.get();
         } else {
           NOT_YET();
         }
@@ -407,7 +407,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         } else if (auto *tup = t->if_as<type::Tuple>()) {
           f = tup->copy_assign_func_.get();
         } else if (auto *a = t->if_as<type::Array>()) {
-          f = a->copy_assign_func_.get();
+          NOT_YET(); // f = a->copy_assign_func_.get();
         } else {
           NOT_YET();
         }

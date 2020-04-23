@@ -12,7 +12,13 @@ namespace type {
 struct GenericStruct : public Type {
   TYPE_FNS(GenericStruct);
   GenericStruct(ast::Scope const *scope, std::vector<Type const *> ts)
-      : scope_(scope), mod_(nullptr /* TODO */), deps_(std::move(ts)) {}
+      : Type(Type::Flags{.is_default_initializable = 0,
+                         .is_copyable              = 1,
+                         .is_movable               = 1,
+                         .has_destructor           = 0}),
+        scope_(scope),
+        mod_(nullptr /* TODO */),
+        deps_(std::move(ts)) {}
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);

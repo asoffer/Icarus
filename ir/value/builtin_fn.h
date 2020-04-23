@@ -8,6 +8,7 @@
 #include "base/debug.h"
 #include "core/params.h"
 #include "type/function.h"
+#include "type/primitive.h"
 
 namespace ir {
 

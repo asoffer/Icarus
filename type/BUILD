@@ -13,17 +13,24 @@ cc_library(
     hdrs = ["array.h"],
     srcs = ["array.cc"],
     deps = [
-        ":function",
-        ":pointer",
         ":type",
         "//base:guarded",
         "//base:lazy",
-        "//base:tuple",
+        "//base:no_destructor",
         "//core:arch",
         "//ir/value:native_fn",
-        "//module:module",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/container:node_hash_set",
+        "@com_google_absl//absl/strings:str_format",
+    ],
+)
+
+cc_test(
+    name = "array_test",
+    srcs = ["array_test.cc"],
+    deps = [
+        ":array",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -85,6 +92,8 @@ cc_library(
     deps = [
         ":type",
         ":typed_value",
+        "//ir/value:enum_and_flags",
+        "//module",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
@@ -97,6 +106,7 @@ cc_library(
         ":type",
         ":typed_value",
         "//ir/value:enum_and_flags",
+        "//module",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/random",
         "@com_google_absl//absl/random:distributions",
@@ -165,6 +175,7 @@ cc_library(
     deps = [
         ":type",
         "//base:debug",
+        "//module",
     ],
 )
 
@@ -207,7 +218,10 @@ cc_library(
     name = "basic_type",
     hdrs = ["basic_type.h"],
     textual_hdrs = ["primitive.xmacro.h"],
-    deps = ["//base:debug"],
+    deps = [
+        "//base:debug",
+        "//ir/value:string",
+    ],
 )
 
 cc_library(
@@ -216,9 +230,8 @@ cc_library(
     srcs = ["primitive.cc"],
     textual_hdrs = ["primitive.xmacro.h"],
     deps = [
+        ":basic_type",
         ":type",
-        ":array",
-        ":pointer",
     ],
 )
 
@@ -289,29 +302,30 @@ cc_library(
 cc_library(
     name = "type",
     hdrs = ["type.h"],
-    srcs = ["type.cc"],
     textual_hdrs = ["primitive.xmacro.h"],
     deps = [
-        ":basic_type",
         ":visitor_base",
         "//base:cast",
-        "//base:debug",
-        "//base:meta",
-        "//base:tag",
         "//core:arch",
-        "//ir:results",
-        "//ir/value:addr",
-        "//ir/value:enum_and_flags",
         "//ir/value:reg",
-        "//ir/value:string",
-        "@com_google_absl//absl/container:flat_hash_set",
+    ],
+)
+
+cc_test(
+    name = "type_test",
+    srcs = ["type_test.cc"],
+    deps = [
+        ":type",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
 cc_library(
     name = "util",
     hdrs = ["util.h"],
-    deps = CONCRETE_TYPES,
+    deps = CONCRETE_TYPES + [
+        "//base:tag",
+    ],
 )
 
 cc_library(

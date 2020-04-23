@@ -96,6 +96,7 @@ ir::Results EmitCallOneOverload(
     }
   }();
 
+    DEBUG_LOG()(fn->DebugString());
   auto arg_results = args.Transform([](auto const &a) {
     ir::Results res;
     a->apply([&res](auto x) { res.append(x); });

@@ -55,7 +55,8 @@ struct CompilationData {
     return iter == type_verification_results_.end() ? nullptr : &iter->second;
   }
 
-  type::QualType set_result(ast::ExprPtr expr, type::QualType r) { type_verification_results_.emplace(expr, r);
+  type::QualType set_result(ast::ExprPtr expr, type::QualType r) {
+    type_verification_results_.emplace(expr, r);
     return r;
   }
 
@@ -109,6 +110,9 @@ struct CompilationData {
   absl::flat_hash_map</* to = */ ast::Node const *,
                       /* from = */ std::vector<ast::Node const *>>
       extraction_map_;
+
+  absl::flat_hash_map<type::Type const *, ir::NativeFn> init_, copy_assign_,
+      move_assign_, destroy_;
 };
 
 }  // namespace compiler

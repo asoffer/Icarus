@@ -6,7 +6,12 @@
 namespace type {
 struct Pointer : public Type {
   TYPE_FNS(Pointer);
-  Pointer(Type const *t) : pointee(t) {}
+  Pointer(Type const *t)
+      : Type(Type::Flags{.is_default_initializable = 1,
+                         .is_copyable              = 1,
+                         .is_movable               = 1,
+                         .has_destructor           = 0}),
+        pointee(t) {}
 
   bool is_big() const override { return false; }
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {

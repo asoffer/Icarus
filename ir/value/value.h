@@ -5,6 +5,7 @@
 
 #include "base/debug.h"
 #include "base/meta.h"
+#include "ir/value/reg_or.h"
 #include "type/type.h"
 
 namespace ir {
@@ -60,8 +61,8 @@ struct Value {
   template <typename F>
   constexpr void apply(F&& f) const {
     apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-               uint32_t, uint64_t, float, double, type::Type const*, Addr,
-               String, EnumVal, FlagsVal, Fn, GenericFn, Reg>(
+               uint32_t, uint64_t, float, double, type::Type const* /*, Addr,
+               String, EnumVal, FlagsVal, Fn, GenericFn, Reg*/>(
         std::forward<F>(f));
   }
 

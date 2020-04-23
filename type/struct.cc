@@ -9,13 +9,27 @@
 
 namespace type {
 Struct::Struct(ast::Scope const *scope, std::vector<Struct::Field> fields)
-    : scope_(scope),
+    : Type(Type::Flags{.is_default_initializable = 1,
+                       .is_copyable              = 1,
+                       .is_movable               = 1,
+                       .has_destructor           = 0}),
+      scope_(scope),
       mod_(const_cast<ast::Scope *>(scope)
                ->Containing<ast::ModuleScope>()
                ->module()),
       fields_(std::move(fields)) {
   size_t i = 0;
-  for (auto const &field : fields_) { field_indices_.emplace(field.name, i++); }
+  for (auto const &field : fields_) {
+    field_indices_.emplace(field.name, i++);
+    flags_.is_default_initializable &=
+        field.type->IsDefaultInitializable() or field.initial_value;
+    flags_.is_copyable &= field.type->IsCopyable();
+    flags_.is_movable &= field.type->IsMovable();
+    flags_.has_destructor |= field.type->HasDestructor();
+  }
+  // TODO HasDestructor is also dependent on the existence of it as a
+  // free-function?
+  // TODO 
 }
 
 core::Bytes Struct::offset(size_t field_num, core::Arch const &a) const {
@@ -47,31 +61,6 @@ bool Struct::contains_hashtag(ast::Hashtag needle) const {
     if (tag == needle) { return true; }
   }
   return false;
-}
-
-bool Struct::IsDefaultInitializable() const {
-  for (auto const &field : fields_) {
-    if (not field.type->IsDefaultInitializable()) { return false; }
-  }
-  return true;
-}
-
-bool Struct::IsCopyable() const {
-  for (auto const &field : fields_) {
-    if (not field.type->IsCopyable()) { return false; }
-  }
-  return absl::c_find(hashtags_,
-                      ast::Hashtag(ast::Hashtag::Builtin::Uncopyable)) ==
-         hashtags_.end();
-}
-
-bool Struct::IsMovable() const {
-  for (auto const &field : fields_) {
-    if (not field.type->IsMovable()) { return false; }
-  }
-  return absl::c_find(hashtags_,
-                      ast::Hashtag(ast::Hashtag::Builtin::Immovable)) ==
-         hashtags_.end();
 }
 
 core::Bytes Struct::bytes(core::Arch const &a) const {

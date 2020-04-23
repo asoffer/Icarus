@@ -148,7 +148,7 @@ Cmp Comparator(type::Type const *t) {
   if (auto *tup = t->if_as<type::Tuple>()) { return MinCmp(tup->entries_); }
   if (auto *a = t->if_as<type::Array>()) {
     return static_cast<Cmp>(
-        std::min(static_cast<cmp_t>(Comparator(a->data_type)),
+        std::min(static_cast<cmp_t>(Comparator(a->data_type())),
                  static_cast<cmp_t>(Cmp::Equality)));
   } else if (auto *p = t->if_as<type::Primitive>()) {
     return type::IsNumeric(p) ? Cmp::Order : Cmp::Equality;
@@ -314,7 +314,7 @@ static diagnostic::UninferrableType::Reason Inferrable(type::Type const *t) {
   if (t == type::EmptyArray) {
     return diagnostic::UninferrableType::Reason::kEmptyArray;
   }
-  if (auto *a = t->if_as<type::Array>()) { return Inferrable(a->data_type); }
+  if (auto *a = t->if_as<type::Array>()) { return Inferrable(a->data_type()); }
   if (auto *p = t->if_as<type::Pointer>()) { return Inferrable(p->pointee); }
   if (auto *v = t->if_as<type::Variant>()) {
     // TODO only returning the first failure here and not even givving a good
@@ -1926,7 +1926,7 @@ type::QualType Compiler::Visit(ast::Index const *node, VerifyTypeTag) {
     return set_result(node, type::QualType(type::Nat8, quals));
   } else if (auto *lhs_array_type =
                  lhs_qual_type.type()->if_as<type::Array>()) {
-    return set_result(node, type::QualType(lhs_array_type->data_type, quals));
+    return set_result(node, type::QualType(lhs_array_type->data_type(), quals));
   } else if (auto *lhs_buf_type =
                  lhs_qual_type.type()->if_as<type::BufferPointer>()) {
     return set_result(node, type::QualType(lhs_buf_type->pointee, quals));

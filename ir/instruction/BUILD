@@ -88,6 +88,7 @@ cc_library(
         "//type:pointer",
         "//type:struct",
         "//type:tuple",
+        "//type:util",
         "//type:variant",
         "@com_google_absl//absl/strings",
     ],

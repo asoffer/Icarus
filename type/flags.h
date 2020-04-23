@@ -8,6 +8,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "base/debug.h"
 #include "ir/value/enum_and_flags.h"
+#include "module/module.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 
@@ -17,7 +18,12 @@ struct Flags : public type::Type {
 
   Flags(module::BasicModule const *mod,
         absl::flat_hash_map<std::string, ir::FlagsVal> vals)
-      : mod_(mod), vals_(std::move(vals)) {
+      : Type(Type::Flags{.is_default_initializable = 1,
+                         .is_copyable              = 1,
+                         .is_movable               = 1,
+                         .has_destructor           = 0}),
+        mod_(mod),
+        vals_(std::move(vals)) {
     for (auto &[name, val] : vals_) {
       All |= val.value;
       members_.emplace(val, name);

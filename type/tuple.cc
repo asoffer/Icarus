@@ -47,32 +47,18 @@ void Tuple::WriteTo(std::string *result) const {
   result->append(")");
 }
 
-bool Tuple::IsDefaultInitializable() const {
-  for (auto const *t : entries_) {
-    if (not t->IsDefaultInitializable()) { return false; }
+Tuple::Tuple(std::vector<Type const *> entries)
+    : Type(Type::Flags{.is_default_initializable = 1,
+                       .is_copyable              = 1,
+                       .is_movable               = 1,
+                       .has_destructor           = 0}),
+      entries_(std::move(entries)) {
+  for (auto const *entry : entries_) {
+    flags_.is_default_initializable &= entry->IsDefaultInitializable();
+    flags_.is_copyable &= entry->IsCopyable();
+    flags_.is_movable &= entry->IsMovable();
+    flags_.has_destructor |= entry->HasDestructor();
   }
-  return true;
-}
-
-bool Tuple::IsCopyable() const {
-  for (auto const *t : entries_) {
-    if (not t->IsCopyable()) { return false; }
-  }
-  return true;
-}
-
-bool Tuple::IsMovable() const {
-  for (auto const *t : entries_) {
-    if (not t->IsMovable()) { return false; }
-  }
-  return true;
-}
-
-bool Tuple::HasDestructor() const {
-  for (auto const *t : entries_) {
-    if (not t->HasDestructor()) { return false; }
-  }
-  return true;
 }
 
 core::Bytes Tuple::bytes(core::Arch const &a) const {

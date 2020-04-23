@@ -10,7 +10,12 @@ namespace type {
 struct Jump : public Type {
   TYPE_FNS(Jump);
   Jump(type::Type const *state, core::Params<Type const *> const &ts)
-      : state_(state), params_(std::move(ts)) {}
+      : Type(Type::Flags{.is_default_initializable = 0,
+                         .is_copyable              = 0,
+                         .is_movable               = 0,
+                         .has_destructor           = 0}),
+        state_(state),
+        params_(std::move(ts)) {}
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);

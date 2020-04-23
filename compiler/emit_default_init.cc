@@ -1,5 +1,6 @@
 #include "absl/random/random.h"
 #include "ast/ast.h"
+#include "base/lazy_convert.h"
 #include "base/permutation.h"
 #include "compiler/compiler.h"
 #include "ir/builder.h"
@@ -10,24 +11,26 @@
 namespace compiler {
 
 void Compiler::Visit(type::Array const *t, ir::Reg reg, EmitDefaultInitTag) {
-  t->init_func_.init([=]() {
-    auto const *fn_type = type::Func(
-        core::Params<type::Type const *>{core::AnonymousParam(type::Ptr(t))},
-        {});
-    ir::NativeFn fn =
-        AddFunc(fn_type, fn_type->params().Transform([](type::Type const *p) {
-          return type::Typed<ast::Declaration const *>(nullptr, p);
-        }));
-    ICARUS_SCOPE(ir::SetCurrent(fn)) {
-      builder().CurrentBlock() = fn->entry();
-      builder().OnEachArrayElement(t, ir::Reg::Arg(0), [=](ir::Reg r) {
-        Visit(t->data_type, r, EmitDefaultInitTag{});
-      });
-      builder().ReturnJump();
-    }
-    fn->WriteByteCode();
-    return fn;
-  });
+  data_.init_.emplace(
+      t, base::lazy_convert{[&] {
+        auto const *fn_type = type::Func(
+            core::Params<type::Type const *>{
+                core::AnonymousParam(type::Ptr(t))},
+            {});
+        ir::NativeFn fn = AddFunc(
+            fn_type, fn_type->params().Transform([](type::Type const *p) {
+              return type::Typed<ast::Declaration const *>(nullptr, p);
+            }));
+        ICARUS_SCOPE(ir::SetCurrent(fn)) {
+          builder().CurrentBlock() = fn->entry();
+          builder().OnEachArrayElement(t, ir::Reg::Arg(0), [=](ir::Reg r) {
+            Visit(t->data_type(), r, EmitDefaultInitTag{});
+          });
+          builder().ReturnJump();
+        }
+        fn->WriteByteCode();
+        return fn;
+      }});
 
   builder().Init(t, reg);
 }

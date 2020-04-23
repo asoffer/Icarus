@@ -11,6 +11,11 @@
 namespace type {
 
 struct Callable : Type {
+  Callable()
+      : Type(Type::Flags{.is_default_initializable = 0,
+                         .is_copyable              = 1,
+                         .is_movable               = 1,
+                         .has_destructor           = 0}) {}
   ~Callable() override {};
   virtual std::vector<type::Type const*> return_types(
       core::FnArgs<type::Typed<std::optional<ir::Value>>> const& args)

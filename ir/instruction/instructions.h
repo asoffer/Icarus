@@ -24,6 +24,7 @@
 #include "ir/value/string.h"
 #include "type/array.h"
 #include "type/enum.h"
+#include "type/util.h"
 #include "type/flags.h"
 #include "type/function.h"
 #include "type/generic_function.h"

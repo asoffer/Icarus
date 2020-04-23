@@ -9,7 +9,7 @@ namespace type {
 struct Tuple : public Type {
   Tuple() = delete;
   ~Tuple() {}
-  Tuple(std::vector<Type const *> entries) : entries_(std::move(entries)) {}
+  Tuple(std::vector<Type const *> entries);
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
@@ -23,11 +23,6 @@ struct Tuple : public Type {
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;
 
-  bool IsDefaultInitializable() const;
-  bool IsCopyable() const;
-  bool IsMovable() const;
-  bool HasDestructor() const;
-
   std::vector<Type const *> entries_;
 
   base::lazy<ir::NativeFn> destroy_func_;
@@ -37,6 +32,8 @@ struct Tuple : public Type {
 };
 
 Type const *Tup(std::vector<Type const *> entries);
+
+Type const *Void();
 
 }  // namespace type
 

@@ -24,6 +24,7 @@ cc_library(
     hdrs = ["builtin_fn.h"],
     deps = [
         "//type:function",
+        "//type:primitive",
     ],
 )
 
@@ -234,6 +235,7 @@ cc_library(
     name = "value",
     hdrs = ["value.h"],
     deps = [
+        ":reg_or",
         "//base:guarded",
         "//base:meta",
         "//core:fn_args",

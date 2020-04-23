@@ -7,6 +7,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "base/debug.h"
 #include "ir/value/enum_and_flags.h"
+#include "module/module.h"
 #include "type/type.h"
 #include "type/typed_value.h"
 
@@ -14,9 +15,14 @@ namespace type {
 struct Enum : public type::Type {
   TYPE_FNS(Enum);
 
-  Enum(module::BasicModule const *mod,
-       absl::flat_hash_map<std::string, ir::EnumVal> vals)
-      : mod_(mod), vals_(std::move(vals)) {
+  explicit Enum(module::BasicModule const *mod,
+                absl::flat_hash_map<std::string, ir::EnumVal> vals)
+      : Type(Type::Flags{.is_default_initializable = 0,
+                         .is_copyable              = 1,
+                         .is_movable               = 1,
+                         .has_destructor           = 0}),
+        mod_(mod),
+        vals_(std::move(vals)) {
     for (auto &[name, val] : vals_) { members_.emplace(val, name); }
   }
 

@@ -90,7 +90,7 @@ bool CanCast(Type const *from, Type const *to) {
 
   if (from == EmptyArray) {
     if (auto *to_arr = to->if_as<Array>()) {
-      return to_arr->len == 0;
+      return to_arr->length() == 0;
     } else {
       return false;
     }
@@ -98,9 +98,9 @@ bool CanCast(Type const *from, Type const *to) {
 
   if (auto *from_arr = from->if_as<Array>()) {
     if (auto *to_arr = to->if_as<Array>()) {
-      if (from_arr->len != to_arr->len) { return false; }
-      if (auto *from_p = from_arr->data_type->if_as<Pointer>()) {
-        if (auto *to_p = to_arr->data_type->if_as<Pointer>()) {
+      if (from_arr->length() != to_arr->length()) { return false; }
+      if (auto *from_p = from_arr->data_type()->if_as<Pointer>()) {
+        if (auto *to_p = to_arr->data_type()->if_as<Pointer>()) {
           return CanCastPointer(from_p, to_p);
         }
       }
@@ -157,9 +157,9 @@ Type const *Meet(Type const *lhs, Type const *rhs) {
                                          rhs->as<Pointer>().pointee))
                               : nullptr;
   } else if (lhs->is<Array>() and rhs->is<Array>()) {
-    if (lhs->as<Array>().len != rhs->as<Array>().len) { return nullptr; }
-    auto *result = Meet(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
-    return result ? Arr(lhs->as<Array>().len, result) : result;
+    if (lhs->as<Array>().length() != rhs->as<Array>().length()) { return nullptr; }
+    auto *result = Meet(lhs->as<Array>().data_type(), rhs->as<Array>().data_type());
+    return result ? Arr(lhs->as<Array>().length(), result) : result;
   } else if (lhs->is<Variant>()) {
     // TODO this feels very fishy, cf. ([3; int] | [4; int]) with [--; int]
     std::vector<Type const *> results;

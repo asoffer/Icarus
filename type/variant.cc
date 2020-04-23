@@ -4,6 +4,7 @@
 
 #include "absl/algorithm/container.h"
 #include "base/guarded.h"
+#include "type/primitive.h"
 #include "type/tuple.h"
 
 namespace type {
@@ -14,6 +15,20 @@ bool Variant::contains(Type const *t) const {
     if (v == t) { return true; }
   }
   return false;
+}
+
+Variant::Variant(std::vector<Type const *> variants)
+    : Type(Type::Flags{.is_default_initializable = 0,
+                       .is_copyable              = 1,
+                       .is_movable               = 1,
+                       .has_destructor           = 0}),
+      variants_(std::move(variants)) {
+  for (auto const *variant : variants_) {
+    flags_.is_default_initializable &= variant->IsDefaultInitializable();
+    flags_.is_copyable &= variant->IsCopyable();
+    flags_.is_movable &= variant->IsMovable();
+    flags_.has_destructor |= variant->HasDestructor();
+  }
 }
 
 static base::guarded<std::map<std::vector<Type const *>, Variant>>
@@ -62,27 +77,6 @@ void Variant::WriteTo(std::string *result) const {
     result->append(" | ");
     (*iter)->WriteTo(result);
   }
-}
-
-bool Variant::IsCopyable() const {
-  for (auto const *t : variants_) {
-    if (not t->IsCopyable()) { return false; }
-  }
-  return true;
-}
-
-bool Variant::IsMovable() const {
-  for (auto const *t : variants_) {
-    if (not t->IsMovable()) { return false; }
-  }
-  return true;
-}
-
-bool Variant::HasDestructor() const {
-  for (auto const *t : variants_) {
-    if (not t->HasDestructor()) { return false; }
-  }
-  return true;
 }
 
 core::Bytes Variant::bytes(core::Arch const &a) const {
