@@ -235,6 +235,9 @@ cc_library(
     name = "value",
     hdrs = ["value.h"],
     deps = [
+        ":addr",
+        ":enum_and_flags",
+        ":string",
         ":reg_or",
         "//base:guarded",
         "//base:meta",

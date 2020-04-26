@@ -5,11 +5,15 @@
 
 #include "base/debug.h"
 #include "base/meta.h"
+#include "ir/value/addr.h"
+#include "ir/value/enum_and_flags.h"
 #include "ir/value/reg_or.h"
-#include "type/type.h"
+#include "ir/value/string.h"
+#include "type/type_fwd.h"
 
 namespace ir {
 struct GenericFn;
+struct Fn;
 
 // A `Value` represents any register or value constant usable in the
 // intermediate representation.
@@ -61,8 +65,8 @@ struct Value {
   template <typename F>
   constexpr void apply(F&& f) const {
     apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-               uint32_t, uint64_t, float, double, type::Type const* /*, Addr,
-               String, EnumVal, FlagsVal, Fn, GenericFn, Reg*/>(
+               uint32_t, uint64_t, float, double, type::Type const*, Addr,
+               String, EnumVal, FlagsVal, Fn, GenericFn, Reg>(
         std::forward<F>(f));
   }
 
@@ -87,8 +91,6 @@ struct Value {
   }
 
   friend std::ostream& operator<<(std::ostream& os, Value value) {
-    // TODO
-    // value.apply([&](auto val) { os << val; });
     value.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                      uint32_t, uint64_t, float, double, type::Type const*>(
         [&os](auto x) { os << x; });

@@ -64,7 +64,8 @@ constexpr type::Type const *Get() {
     return type::Float32;
   } else if constexpr (std::is_same_v<T, double>) {
     return type::Float64;
-  } else if constexpr (std::is_same_v<T, std::string_view>) {
+  } else if constexpr (std::is_same_v<T, std::string_view> or
+                       std::is_same_v<T, ir::String>) {
     return type::ByteView;
   } else if constexpr (std::is_same_v<T, ir::BlockDef const *>) {
     return type::Block;  // Maybe opt-block?
@@ -110,7 +111,8 @@ bool Compare(::type::Type const *t) {
     return t == ::type::Type_;
   } else if constexpr (std::is_same_v<T, ::type::Struct const *>) {
     return t->is<::type::Struct>();
-  } else if constexpr (std::is_same_v<T, ir::String>) {
+  } else if constexpr (std::is_same_v<T, std::string_view> or
+                       std::is_same_v<T, ir::String>) {
     return t == type::ByteView;
   } else if constexpr (std::is_same_v<T, ir::EnumVal>) {
     return t->is<::type::Enum>();
@@ -159,7 +161,7 @@ auto ApplyTypes(Type const *t, Fn &&fn) {
   // function we want to call.
   size_t index = 0;
   bool found   = ((++index, type::Compare<Ts>(t)) or ...);
-  ASSERT(found == true);
+  ASSERT(found == true) << *t;
 
   return (*kFnToCall)[index - 1](std::forward<Fn>(fn));
 }

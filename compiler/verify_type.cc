@@ -1166,13 +1166,14 @@ type::QualType Compiler::Visit(ast::Call const *node, VerifyTypeTag) {
                                                          r.type());
           }
           // TODO other types too.
-          return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
-                                  uint16_t, uint32_t, uint64_t, float, double,
-                                  ir::Addr>(r.type(), [&](auto tag) {
-            using T = typename decltype(tag)::type;
-            return type::Typed<std::optional<ir::Value>>(
-                ir::Value(r->template get<T>(0)), r.type());
-          });
+          return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t,
+                                  uint8_t, uint16_t, uint32_t, uint64_t, float,
+                                  double, ir::Addr, ir::String>(
+              r.type(), [&](auto tag) {
+                using T = typename decltype(tag)::type;
+                return type::Typed<std::optional<ir::Value>>(
+                    ir::Value(r->template get<T>(0)), r.type());
+              });
         }));
     // Can this be constant?
     return set_result(node,
