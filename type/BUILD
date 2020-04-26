@@ -3,6 +3,17 @@ package(default_visibility = ["//visibility:public"])
 cc_library(name = "type_xmacro", textual_hdrs = ["type.xmacro.h"])
 
 cc_library(
+    name =  "fake",
+    hdrs = ["fake.h"],
+    deps = [
+        ":type",
+        "//base:no_destructor",
+        "//core:arch",
+    ],
+    testonly = True,
+)
+
+cc_library(
     name = "type_fwd",
     hdrs = ["type_fwd.h"],
     deps = [":type_xmacro"],
@@ -29,6 +40,7 @@ cc_test(
     srcs = ["array_test.cc"],
     deps = [
         ":array",
+        ":fake",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_googletest//:gtest_main",
     ],
@@ -159,19 +171,28 @@ cc_library(
     srcs = ["jump.cc"],
     deps = [
         ":type",
-        ":function",
+        "//base:no_destructor",
         "//base:guarded",
         "//core:params",
         "@com_google_absl//absl/container:node_hash_set",
         "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_test(
+    name = "jump_test",
+    srcs = ["jump_test.cc"],
+    deps = [
+        ":fake",
+        ":jump",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
 cc_library(
     name = "opaque",
     hdrs = ["opaque.h"],
-    srcs = ["opaque.cc"],
     deps = [
         ":type",
         "//base:debug",
@@ -206,6 +227,7 @@ cc_test(
     name = "pointer_test",
     srcs = ["pointer_test.cc"],
     deps = [
+        ":fake",
         ":pointer",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_googletest//:gtest_main",

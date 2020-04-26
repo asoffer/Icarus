@@ -1,6 +1,7 @@
 #ifndef ICARUS_TYPE_OPAQUE_H
 #define ICARUS_TYPE_OPAQUE_H
 
+#include "base/debug.h"
 #include "module/module.h"
 #include "type/type.h"
 
@@ -18,14 +19,22 @@ struct Opaque : public Type {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
 
-  void WriteTo(std::string *result) const override;
+  void WriteTo(std::string *result) const override {
+    result->append("<opaque>");
+  }
 
-  core::Bytes bytes(core::Arch const &arch) const override;
-  core::Alignment alignment(core::Arch const &arch) const override;
+  core::Bytes bytes(core::Arch const &arch) const override {
+    UNREACHABLE("Must not request the size of an opaque type");
+  }
+
+  core::Alignment alignment(core::Arch const &arch) const override {
+    UNREACHABLE("Must not request the alignment of an opaque type");
+  }
 
   // TODO is this right?
   bool IsDefaultInitializable() const { return false; }
 
+ private:
   module::BasicModule const *mod_;
 };
 

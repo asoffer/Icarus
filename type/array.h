@@ -9,9 +9,6 @@
 
 namespace type {
 
-struct Array;
-Array const *Arr(size_t len, Type const *t);
-
 // `Array` is a type representing a fixed number (the `length`) of contiguous
 // values of a given type (the `data_type`).
 struct Array : Type {
@@ -51,15 +48,9 @@ struct Array : Type {
 
   size_t len_;
   Type const *data_type_;
-
-
- public:
-  // TODO Make these private and initialize them well.
-  // base::lazy<ir::NativeFn> copy_assign_func_;
-  // base::lazy<ir::NativeFn> move_assign_func_;
-  // base::lazy<ir::NativeFn> init_func_;
-  // base::lazy<ir::NativeFn> destroy_func_;
 };
+
+Array const *Arr(size_t len, Type const *t);
 
 }  // namespace type
 #endif  // ICARUS_TYPE_ARRAY_H

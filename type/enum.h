@@ -2,6 +2,7 @@
 #define ICARUS_TYPE_ENUM_H
 
 #include <optional>
+#include <string>
 #include <string_view>
 
 #include "absl/container/flat_hash_map.h"
@@ -12,9 +13,7 @@
 #include "type/typed_value.h"
 
 namespace type {
-struct Enum : public type::Type {
-  TYPE_FNS(Enum);
-
+struct Enum : type::Type {
   explicit Enum(module::BasicModule const *mod,
                 absl::flat_hash_map<std::string, ir::EnumVal> vals)
       : Type(Type::Flags{.is_default_initializable = 0,
@@ -25,6 +24,12 @@ struct Enum : public type::Type {
         vals_(std::move(vals)) {
     for (auto &[name, val] : vals_) { members_.emplace(val, name); }
   }
+
+  ~Enum() override {}
+
+  void WriteTo(std::string *buf) const override;
+  core::Bytes bytes(core::Arch const &arch) const override;
+  core::Alignment alignment(core::Arch const &arch) const override;
 
   bool is_big() const override { return false; }
 
@@ -41,12 +46,9 @@ struct Enum : public type::Type {
     return it->second;
   }
 
-  bool IsDefaultInitializable() const { return false; }
-
+ private:
   module::BasicModule const *mod_;
 
-  ICARUS_PRIVATE
-  // TODO combine these into a single bidirectional map?
   absl::flat_hash_map<std::string, ir::EnumVal> vals_;
   absl::flat_hash_map<ir::EnumVal, std::string_view> members_;
 };

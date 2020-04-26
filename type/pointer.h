@@ -4,10 +4,9 @@
 #include "type/type.h"
 
 namespace type {
-struct Pointer;
 
-Pointer const *Ptr(Type const *t);
-
+// `Pointer` is a type representing the address of an object of the given
+// pointed-to type (the `pointee`).
 struct Pointer : Type {
   friend Pointer const *Ptr(Type const *t);
 
@@ -36,11 +35,10 @@ struct Pointer : Type {
   Type const *pointee_;
 };
 
-struct BufferPoniter;
-
-BufferPointer const *BufPtr(Type const *t);
-
-// Like Pointer but allows indexing and pointer arithmetic.
+// `BufferPointer` is a type representing the address of an object, inside an
+// a contiguous block of objects of that type. It is similar to `Pointer`, but
+// it also supports arithmetic. `BufferPointer`s are implicitly convertible to
+// `Pointer`s with the same `pointee` type.
 struct BufferPointer : Pointer {
   friend BufferPointer const *BufPtr(Type const *t);
 
@@ -53,6 +51,9 @@ struct BufferPointer : Pointer {
   BufferPointer() = delete;
   BufferPointer(Type const *t) : Pointer(t) {}
 };
+
+Pointer const *Ptr(Type const *t);
+BufferPointer const *BufPtr(Type const *t);
 
 }  // namespace type
 #endif  // ICARUS_TYPE_POINTER_H

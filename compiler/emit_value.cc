@@ -889,7 +889,7 @@ ir::Results Compiler::Visit(ast::Jump const *node, EmitValueTag) {
     size_t i    = 0;
     auto params = node->params().Transform([&](auto const &decl) {
       return type::Typed<ast::Declaration const *>(
-          decl.get(), jmp_type->args().at(i++).value);
+          decl.get(), jmp_type->params()[i++].value);
     });
 
     DEBUG_LOG("Jump")("Jump type = ", jmp_type->to_string());
