@@ -679,8 +679,8 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
 
     if constexpr (std::is_same_v<Inst, ir::PtrIncrInstruction>) {
       core::Bytes offset =
-          core::FwdAlign(type->pointee->bytes(kArchitecture),
-                         type->pointee->alignment(kArchitecture)) *
+          core::FwdAlign(type->pointee()->bytes(kArchitecture),
+                         type->pointee()->alignment(kArchitecture)) *
           index;
       ctx->current_frame().regs_.set(reg, addr + offset);
     } else {

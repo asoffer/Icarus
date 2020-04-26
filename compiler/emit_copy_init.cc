@@ -9,7 +9,7 @@ namespace compiler {
 void Compiler::EmitCopyInit(type::Type const *from_type,
                             ir::Results const &from_val,
                             type::Typed<ir::Reg> to_var) {
-  auto *to_type = to_var.type()->as<type::Pointer>().pointee;
+  auto *to_type = to_var.type()->as<type::Pointer>().pointee();
   // TODO Optimize once you understand the semantics better.
   if (not to_type->is<type::Primitive>() and
       not to_type->is<type::Function>() and not to_type->is<type::Variant>() and
@@ -43,7 +43,7 @@ void Compiler::Visit(ast::ArrayLiteral const *node, type::Typed<ir::Reg> reg,
 void Compiler::Visit(ast::CommaList const *node, type::Typed<ir::Reg> reg,
                      EmitCopyInitTag) {
   size_t index  = 0;
-  auto const &t = reg.type()->as<type::Pointer>().pointee->as<type::Tuple>();
+  auto const &t = reg.type()->as<type::Pointer>().pointee()->as<type::Tuple>();
   for (auto &expr : node->exprs_) {
     Visit(expr.get(), builder().Field(reg.get(), &t, index), EmitCopyInitTag{});
     ++index;

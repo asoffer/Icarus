@@ -195,11 +195,20 @@ cc_library(
     hdrs = ["pointer.h"],
     srcs = ["pointer.cc"],
     deps = [
-        ":function",
         ":type",
         "//base:guarded",
+        "//base:no_destructor",
         "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/container:flat_hash_set",
+    ],
+)
+
+cc_test(
+    name = "pointer_test",
+    srcs = ["pointer_test.cc"],
+    deps = [
+        ":pointer",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 

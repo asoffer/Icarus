@@ -410,7 +410,7 @@ struct Builder {
 
   Reg Index(type::Pointer const* t, Reg array_ptr, RegOr<int64_t> offset) {
     return PtrIncr(array_ptr, offset,
-                   type::Ptr(t->pointee->as<type::Array>().data_type()));
+                   type::Ptr(t->pointee()->as<type::Array>().data_type()));
   }
 
   // Emits a function-call instruction, calling `fn` of type `f` with the given

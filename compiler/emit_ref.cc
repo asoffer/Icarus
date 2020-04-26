@@ -16,7 +16,7 @@ std::vector<ir::RegOr<ir::Addr>> Compiler::Visit(ast::Access const *node,
   auto *t  = type_of(node->operand());
 
   while (auto *tp = t->if_as<type::Pointer>()) {
-    t   = tp->pointee;
+    t   = tp->pointee();
     reg = builder().Load<ir::Addr>(reg);
   }
 
@@ -62,7 +62,7 @@ std::vector<ir::RegOr<ir::Addr>> Compiler::Visit(ast::Index const *node,
 
     return {
         builder().PtrIncr(Visit(node->lhs(), EmitValueTag{}).get<ir::Reg>(0),
-                          index, type::Ptr(buf_ptr_type->pointee))};
+                          index, type::Ptr(buf_ptr_type->pointee()))};
   } else if (lhs_type == type::ByteView) {
     // TODO interim until you remove string_view and replace it with Addr
     // entirely.

@@ -42,18 +42,19 @@ FakeType const *MyFakeType() {
 }
 
 TEST(Array, Construction) {
-  EXPECT_EQ(Arr(3, MyFakeType<1, 2>()), Arr(3, MyFakeType<1, 2>()));
-  EXPECT_NE(Arr(3, MyFakeType<1, 2>()), Arr(4, MyFakeType<1, 2>()));
-  EXPECT_NE(Arr(3, MyFakeType<1, 2>()), Arr(3, MyFakeType<2, 1>()));
+  EXPECT_EQ(type::Arr(3, MyFakeType<1, 2>()), type::Arr(3, MyFakeType<1, 2>()));
+  EXPECT_NE(type::Arr(3, MyFakeType<1, 2>()), type::Arr(4, MyFakeType<1, 2>()));
+  EXPECT_NE(type::Arr(3, MyFakeType<1, 2>()), type::Arr(3, MyFakeType<2, 1>()));
 
-  EXPECT_EQ(Arr(3, MyFakeType<1, 2>())->bytes(core::Host), core::Bytes{6});
-  EXPECT_EQ(Arr(3, MyFakeType<3, 2>())->bytes(core::Host), core::Bytes{12});
-  EXPECT_EQ(Arr(3, MyFakeType<3, 4>())->bytes(core::Host), core::Bytes{12});
-  EXPECT_EQ(Arr(3, MyFakeType<1, 2>())->alignment(core::Host),
+  EXPECT_EQ(type::Arr(3, MyFakeType<1, 2>())->bytes(core::Host),
+            core::Bytes{6});
+  EXPECT_EQ(type::Arr(3, MyFakeType<3, 2>())->bytes(core::Host),
+            core::Bytes{12});
+  EXPECT_EQ(type::Arr(3, MyFakeType<3, 4>())->bytes(core::Host),
+            core::Bytes{12});
+  EXPECT_EQ(type::Arr(3, MyFakeType<1, 2>())->alignment(core::Host),
             core::Alignment{2});
 }
-
-
 
 TEST(Array, ToString) {
   EXPECT_EQ(type::Arr(3, MyFakeType<1, 2>())->to_string(), "[3; FakeType(1, 2)]");

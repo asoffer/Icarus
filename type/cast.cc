@@ -21,12 +21,12 @@ static bool CanCastPointer(Pointer const *from, Pointer const *to) {
   if (to->is<BufferPointer>() and not from->is<BufferPointer>()) {
     return false;
   }
-  if (auto *from_p = from->pointee->if_as<Pointer>()) {
-    if (auto *to_p = to->pointee->if_as<Pointer>()) {
+  if (auto *from_p = from->pointee()->if_as<Pointer>()) {
+    if (auto *to_p = to->pointee()->if_as<Pointer>()) {
       return CanCastPointer(from_p, to_p);
     }
   }
-  return from->pointee == to->pointee;
+  return from->pointee() == to->pointee();
 }
 
 // TODO much of this should be moved to virtual methods.
@@ -153,8 +153,8 @@ Type const *Meet(Type const *lhs, Type const *rhs) {
     return nullptr;
   }
   if (lhs->is<Pointer>()) {
-    return rhs->is<Pointer>() ? Ptr(Meet(lhs->as<Pointer>().pointee,
-                                         rhs->as<Pointer>().pointee))
+    return rhs->is<Pointer>() ? Ptr(Meet(lhs->as<Pointer>().pointee(),
+                                         rhs->as<Pointer>().pointee()))
                               : nullptr;
   } else if (lhs->is<Array>() and rhs->is<Array>()) {
     if (lhs->as<Array>().length() != rhs->as<Array>().length()) { return nullptr; }

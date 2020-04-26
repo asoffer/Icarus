@@ -164,7 +164,7 @@ Cmp Comparator(type::Type const *t) {
 std::pair<type::Type const *, int> DereferenceAll(type::Type const *t) {
   int num_derefs = 0;
   while (auto *p = t->if_as<type::Pointer>()) {
-    t = p->pointee;
+    t = p->pointee();
     ++num_derefs;
   }
   return std::pair(t, num_derefs);
@@ -204,7 +204,7 @@ static type::QualType VerifySpecialFunctions(Compiler *visitor,
           not f->params()
                   .at(0)
                   .value->as<type::Pointer>()
-                  .pointee->is<type::Struct>()) {
+                  .pointee()->is<type::Struct>()) {
         error = true;
         NOT_YET("incorrect params type");
       } else {
@@ -214,7 +214,7 @@ static type::QualType VerifySpecialFunctions(Compiler *visitor,
         auto const &s = f->params()
                             .at(0)
                             .value->as<type::Pointer>()
-                            .pointee->as<type::Struct>();
+                            .pointee()->as<type::Struct>();
 
         if (decl->scope() != s.scope_) {
           error = true;
@@ -245,7 +245,7 @@ static type::QualType VerifySpecialFunctions(Compiler *visitor,
           not f->params()
                   .at(0)
                   .value->as<type::Pointer>()
-                  .pointee->is<type::Struct>()) {
+                  .pointee()->is<type::Struct>()) {
         error = true;
         NOT_YET("incorrect params type");
       } else {
@@ -255,7 +255,7 @@ static type::QualType VerifySpecialFunctions(Compiler *visitor,
         auto const &s = f->params()
                             .at(0)
                             .value->as<type::Pointer>()
-                            .pointee->as<type::Struct>();
+                            .pointee()->as<type::Struct>();
 
         if (decl->scope() != s.scope_) {
           error = true;
@@ -315,7 +315,7 @@ static diagnostic::UninferrableType::Reason Inferrable(type::Type const *t) {
     return diagnostic::UninferrableType::Reason::kEmptyArray;
   }
   if (auto *a = t->if_as<type::Array>()) { return Inferrable(a->data_type()); }
-  if (auto *p = t->if_as<type::Pointer>()) { return Inferrable(p->pointee); }
+  if (auto *p = t->if_as<type::Pointer>()) { return Inferrable(p->pointee()); }
   if (auto *v = t->if_as<type::Variant>()) {
     // TODO only returning the first failure here and not even givving a good
     // explanation of precisely what the problem is. Fix here and below.
@@ -1930,7 +1930,7 @@ type::QualType Compiler::Visit(ast::Index const *node, VerifyTypeTag) {
     return set_result(node, type::QualType(lhs_array_type->data_type(), quals));
   } else if (auto *lhs_buf_type =
                  lhs_qual_type.type()->if_as<type::BufferPointer>()) {
-    return set_result(node, type::QualType(lhs_buf_type->pointee, quals));
+    return set_result(node, type::QualType(lhs_buf_type->pointee(), quals));
   } else if (auto *tup = lhs_qual_type.type()->if_as<type::Tuple>()) {
     if (not rhs_qual_type.constant()) {
       diag().Consume(diagnostic::NonConstantTupleIndex{
@@ -2265,7 +2265,7 @@ type::QualType Compiler::Visit(ast::Unop const *node, VerifyTypeTag) {
     case frontend::Operator::At:
       if (operand_type->is<type::Pointer>()) {
         return set_result(
-            node, type::QualType(operand_type->as<type::Pointer>().pointee,
+            node, type::QualType(operand_type->as<type::Pointer>().pointee(),
                                  result.quals()));
       } else {
         diag().Consume(diagnostic::DereferencingNonPointer{

@@ -161,9 +161,9 @@ ir::Results Compiler::Visit(ast::Access const *node, EmitValueTag) {
     auto reg = Visit(node->operand(), EmitRefTag{})[0];
     auto *t  = type_of(node->operand());
 
-    if (t->is<type::Pointer>()) { t = t->as<type::Pointer>().pointee; }
+    if (t->is<type::Pointer>()) { t = t->as<type::Pointer>().pointee(); }
     while (auto *p = t->if_as<type::Pointer>()) {
-      t   = p->pointee;
+      t   = p->pointee();
       reg = builder().Load<ir::Addr>(reg);
     }
 
