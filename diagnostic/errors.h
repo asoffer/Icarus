@@ -795,10 +795,15 @@ struct DeclOutOfOrder {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "declaration-out-of-order";
 
-  DiagnosticMessage ToMessage(frontend::Source const *src) const { NOT_YET(); }
+  DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return DiagnosticMessage(Text("Variable `%s` used before it was declared.", id),
+                             SourceQuote(src)
+                                 .Highlighted(use_range, Style::ErrorText())
+                                 .Highlighted(id_range, Style::ErrorText()));
+  }
 
   std::string_view id;
-  frontend::SourceRange decl_range;
+  frontend::SourceRange id_range;
   frontend::SourceRange use_range;
 };
 
@@ -1062,6 +1067,19 @@ struct NonTypeScopeState {
   }
 
   type::Type const *type;
+  frontend::SourceRange range;
+};
+
+struct UncallableExpression {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "uncallable-expression";
+
+  DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return DiagnosticMessage(
+        Text("Uncallable expression"),
+        SourceQuote(src).Highlighted(range, Style::ErrorText()));
+  }
+
   frontend::SourceRange range;
 };
 

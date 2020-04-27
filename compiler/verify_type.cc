@@ -1179,7 +1179,9 @@ type::QualType Compiler::Visit(ast::Call const *node, VerifyTypeTag) {
     return set_result(node,
                type::QualType::NonConstant(type::Tup(std::move(ret_types))));
   } else {
-    diag().Consume(diagnostic::Todo{});
+    diag().Consume(diagnostic::UncallableExpression{
+        .range = node->callee()->span,
+    });
     return set_result(node, type::QualType::Error());
   }
 }
@@ -1822,9 +1824,9 @@ type::QualType Compiler::Visit(ast::Identifier const *node, VerifyTypeTag) {
         if (not(node->decl()->flags() & ast::Declaration::f_IsConst) and
             node->span.begin() < node->decl()->span.begin()) {
           diag().Consume(diagnostic::DeclOutOfOrder{
-              .id         = node->token(),
-              .decl_range = node->decl()->span,
-              .use_range  = node->span,
+              .id        = node->token(),
+              .id_range  = node->decl()->id_range(),
+              .use_range = node->span,
           });
         }
 

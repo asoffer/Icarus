@@ -54,6 +54,10 @@ void ConsoleRenderer::WriteSourceQuote(frontend::Source const *source,
     return;
   }
 
+  auto highlight_iter                       = quote.highlights.begin();
+  bool inside_highlight                     = false;
+  frontend::SourceLoc next_highlight_change = highlight_iter->range.begin();
+
   int border_alignment = NumDigits(quote.lines.endpoints_.back() - 1) + 2;
   frontend::LineNum prev_line_num = (*quote.lines.begin()).begin();
   for (base::Interval<frontend::LineNum> line_range : quote.lines) {
@@ -74,10 +78,6 @@ void ConsoleRenderer::WriteSourceQuote(frontend::Source const *source,
       } break;
     }
 
-    auto highlight_iter                       = quote.highlights.begin();
-    bool inside_highlight                     = false;
-    frontend::SourceLoc next_highlight_change = highlight_iter->range.begin();
-
     for (frontend::LineNum line = line_range.begin(); line != line_range.end();
          ++line) {
       absl::FPrintF(out_, "\033[97;1m%*d | ", border_alignment, line.value);
@@ -94,6 +94,7 @@ void ConsoleRenderer::WriteSourceQuote(frontend::Source const *source,
       set_highlight();
 
       ASSIGN_OR(continue, auto line_str, LoadLine(source, line));
+
       if (next_highlight_change.line_num > line) {
         absl::FPrintF(out_, "%s", line_str);
         continue;
@@ -119,7 +120,7 @@ void ConsoleRenderer::WriteSourceQuote(frontend::Source const *source,
         }
         set_highlight();
       }
-      absl::FPrintF(out_, "%s", line_str.substr(off.value));
+      absl::FPrintF(out_, "%s\n", line_str.substr(off.value));
     }
   }
 }

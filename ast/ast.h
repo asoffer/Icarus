@@ -219,11 +219,13 @@ struct Declaration : Expression {
   static constexpr Flags f_IsConst    = 0x04;
   static constexpr Flags f_InitIsHole = 0x08;
 
-  explicit Declaration(frontend::SourceRange span, std::string id,
+  explicit Declaration(frontend::SourceRange const &range, std::string id,
+                       frontend::SourceRange const &id_range,
                        std::unique_ptr<Expression> type_expression,
                        std::unique_ptr<Expression> initial_val, Flags flags)
-      : Expression(std::move(span)),
+      : Expression(range),
         id_(std::move(id)),
+        id_range_(id_range),
         type_expr_(std::move(type_expression)),
         init_val_(std::move(initial_val)),
         flags_(flags) {}
@@ -259,6 +261,7 @@ struct Declaration : Expression {
   }
 
   std::string_view id() const { return id_; }
+  frontend::SourceRange const &id_range() const { return id_range_; }
   Expression const *type_expr() const { return type_expr_.get(); }
   Expression const *init_val() const { return init_val_.get(); }
 
@@ -277,6 +280,7 @@ struct Declaration : Expression {
 
  private:
   std::string id_;
+  frontend::SourceRange id_range_;
   std::unique_ptr<Expression> type_expr_, init_val_;
   Flags flags_;
 };

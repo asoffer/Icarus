@@ -525,10 +525,12 @@ std::unique_ptr<ast::Node> BuildDeclaration(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
   auto op = nodes[1]->as<Token>().op;
-  SourceRange span(nodes.front()->span.begin(), nodes.back()->span.end());
+  SourceRange decl_range(nodes.front()->span.begin(), nodes.back()->span.end());
   std::string id;
+  SourceRange id_range;
   if (nodes[0]->is<ast::Identifier>()) {
-    id = std::string{nodes[0]->as<ast::Identifier>().token()};
+    id_range = nodes[0]->span;
+    id = std::string(nodes[0]->as<ast::Identifier>().token());
   }
 
   std::unique_ptr<ast::Expression> type_expr, init_val;
@@ -539,8 +541,8 @@ std::unique_ptr<ast::Node> BuildDeclaration(
   }
 
   return std::make_unique<ast::Declaration>(
-      std::move(span), std::move(id), std::move(type_expr), std::move(init_val),
-      IsConst ? ast::Declaration::f_IsConst : 0);
+      decl_range, std::move(id), id_range, std::move(type_expr),
+      std::move(init_val), IsConst ? ast::Declaration::f_IsConst : 0);
 }
 
 std::vector<std::unique_ptr<ast::Declaration>> ExtractInputs(
