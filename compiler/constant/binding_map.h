@@ -17,13 +17,17 @@ struct ConstantBindingMap {
   T const& root_value() const { return *map_.find(tree_.root())->second; }
   T& root_value() { return *map_.find(tree_.root())->second; }
 
-  ConstantBindingTree::Node const* AddChildTo(
-      ConstantBindingTree::Node const* node) {
-    return tree_.AddChildTo(node);
+  template <typename... Args>
+  ConstantBindingTree::Node* AddChildTo(ConstantBindingTree::Node* node,
+                                        Args&&... args) {
+    auto* result = tree_.AddChildTo(node);
+    map_.emplace(result, std::make_unique<T>(std::forward<Args>(args)...));
+    return result;
   }
 
-  void emplace(ConstantBindingTree::Node const* node, T val) {
-    map_[node] = std::make_unique<T>(std::move(val));
+  template <typename... Args>
+  void try_emplace(ConstantBindingTree::Node* node, Args&&... args) {
+    map_[node] = std::make_unique<T>(std::forward<Args>(args)...);
   }
 
   ConstantBindingTree::Node const* root() const { return tree_.root(); }

@@ -2,6 +2,7 @@
 
 #include "ast/ast.h"
 #include "ast/scope/exec.h"
+#include "base/defer.h"
 #include "base/guarded.h"
 #include "compiler/dispatch/fn_call_table.h"
 #include "compiler/dispatch/scope_table.h"
@@ -122,8 +123,22 @@ base::move_func<void()> *DeferBody(Compiler *compiler, NodeType const *node,
   // destroyed.
   return compiler->AddWork(node, [compiler, node, t]() mutable {
     if constexpr (std::is_same_v<NodeType, ast::FunctionLiteral>) {
+      if (node->is_generic()) {
+        DEBUG_LOG()("Was ", compiler->current_constants_);
+        compiler->current_constants_ =
+            compiler->module()->as<CompiledModule>().data().AddChildTo(
+                compiler->current_constants_, compiler->module());
+        DEBUG_LOG()("Setting to ", compiler->current_constants_);
+      }
+
       VerifyBody(compiler, node, t);
       CompleteBody(compiler, node, &t->as<type::Function>());
+
+      if (node->is_generic()) {
+        DEBUG_LOG()("Was ", compiler->current_constants_);
+        compiler->current_constants_ = compiler->current_constants_->parent();
+        DEBUG_LOG()("Resetting to ", compiler->current_constants_);
+      }
     } else {
       CompleteBody(compiler, node);
     }
@@ -566,9 +581,7 @@ ir::Results Compiler::Visit(ast::Call const *node, EmitValueTag) {
   // TODO this shouldn't be able to fail.
   ASSIGN_OR(return ir::Results{},  //
                    auto os, MakeOverloadSet(this, node->callee(), args));
-  ASSIGN_OR(return ir::Results{},  //
-                   auto table, FnCallDispatchTable::Verify(this, os, args));
-  return table.EmitCall(this, args);
+  return FnCallDispatchTable::Emit(this, os, args);
   // TODO node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
 }
 
@@ -624,26 +637,27 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
   DEBUG_LOG("EmitValueDeclaration")(node->id());
   if (node->flags() & ast::Declaration::f_IsConst) {
     if (node->module() != module()) {
+      // Constant declarations from other modules should already be stored on
+      // that module. They must be at the root of the binding tree map,
+      // otherwise they would be local to some function/jump/etc. and not be
+      // exported.
       base::untyped_buffer_view result = node->module()
                                              ->as<CompiledModule>()
                                              .root_node()
                                              ->binding()
                                              .get_constant(node);
-      if (not result.empty()) { return ir::Results::FromRaw(result); }
-
-      UNREACHABLE("should have found it already.");
+      ASSERT(result.size() != 0u);
+      return ir::Results::FromRaw(result);
     }
 
-    // TODO
     if (node->flags() & ast::Declaration::f_IsFnParam) {
-      if (auto result = current_constants_->binding().get_constant(node);
-          not result.empty()) {
-        return ir::Results::FromRaw(result);
-      } else {
-        UNREACHABLE();
-      }
+      DEBUG_LOG()(current_constants_);
+      auto result = current_constants_->find_constant(node);
+      ASSERT(result.size() != 0u);
+      return ir::Results::FromRaw(result);
     } else {
       auto *t = ASSERT_NOT_NULL(type_of(node));
+      DEBUG_LOG()(current_constants_, node->DebugString());
       base::untyped_buffer_view slot =
           current_constants_->binding().reserve_slot(node, t);
       if (not slot.empty()) {
@@ -667,6 +681,7 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
           return ir::Results{};
         }
         DEBUG_LOG("EmitValueDeclaration")("Setting slot", buf.to_string());
+        DEBUG_LOG()(current_constants_);
         current_constants_->binding().set_slot(node, buf);
         return ir::Results::FromRaw(buf);
       } else if (node->IsDefaultInitialized()) {
@@ -752,31 +767,39 @@ ir::Results Compiler::Visit(ast::EnumLiteral const *node, EmitValueTag) {
   }
 }
 
-ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
-  if (node->is_generic()) {
-    auto gen_fn = ir::GenericFn([
-      c(Compiler(mod_, diag())), node
-    ](core::FnArgs<type::Typed<ir::Value>> const &args) mutable->ir::NativeFn {
-      return c.data_.ir_funcs_
-          .emplace(
-              node, base::lazy_convert([&] {
-                auto *fn_type =
-                    c.type_of(node)->as<type::GenericFunction>().concrete(
-                        args.Transform([](auto const &x) {
-                          return type::Typed<std::optional<ir::Value>>(
-                              *x, x.type());
-                        }));
+ir::NativeFn Compiler::MakeConcreteFromGeneric(
+    ast::FunctionLiteral const *node,
+    core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args) {
+  ASSERT(node->is_generic() == true);
 
-                auto f = c.AddFunc(
+  return data_.ir_funcs_
+      .emplace(
+          node,
+          base::lazy_convert(
+              [&] {
+                auto *fn_type =
+                    type_of(node)->as<type::GenericFunction>().concrete(args);
+
+                auto f = AddFunc(
                     fn_type, node->params().Transform([ fn_type, i = 0 ](
                                  auto const &d) mutable {
                       return type::Typed<ast::Declaration const *>(
                           d.get(), fn_type->params().at(i++).value);
                     }));
-                f->work_item = DeferBody(&c, node, fn_type);
+                f->work_item = DeferBody(this, node, fn_type);
                 return f;
               }))
-          .first->second;
+      .first->second;
+    }
+
+ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
+  if (node->is_generic()) {
+    auto gen_fn = ir::GenericFn([
+      c(Compiler(mod_, diag())), node
+    ](core::FnArgs<type::Typed<ir::Value>> const &args) mutable->ir::NativeFn {
+      return c.MakeConcreteFromGeneric(node, args.Transform([](auto const &x) {
+        return type::Typed<std::optional<ir::Value>>(*x, x.type());
+      }));
     });
     return ir::Results{gen_fn};
   }
@@ -1058,37 +1081,6 @@ ir::Results Compiler::Visit(ast::StructLiteral const *node, EmitValueTag) {
 ir::Results Compiler::Visit(ast::ParameterizedStructLiteral const *node,
                             EmitValueTag) {
   NOT_YET();
-  // // TODO A bunch of things need to be fixed here.
-  // // * Lock access during creation so two requestors don't clobber each
-  // other.
-  // // * Add a way for one requestor to wait for another to have created
-  // the
-  // // object and be notified.
-  // //
-  // // For now, it's safe to do this from within a single module compilation
-  // // (which is single-threaded).
-  // ir::CompiledFn *&ir_func = data_.ir_funcs_[node];
-  // if (not ir_func) {
-  // auto work_item_ptr = DeferBody(this, node);
-
-  //   auto const &arg_types =
-  //   type_of(node)->as<type::GenericStruct>().deps_;
-
-  //   core::Params<type::Typed<ast::Expression const *>> params;
-  //   params.reserve(node->params().size());
-  //   size_t i = 0;
-  //   for (auto const &d : node->params()) {
-  //     params.append(d.id(), type::Typed<ast::Expression const *>(
-  //                               d.init_val(), arg_types.at(i++)));
-  //   }
-  //
-  //   ir_func = AddFunc(type::Func(arg_types, {type::Type_}),
-  //   std::move(params));
-  //
-  //   ir_func->work_item = work_item_ptr;
-  // }
-
-  // return ir::Results{ir::Fn{ir_func}};
 }
 
 ir::Results Compiler::Visit(ast::StructType const *node, EmitValueTag) {

@@ -59,19 +59,6 @@ ir::RegOr<ir::Fn> ComputeConcreteFn(Compiler *compiler,
   }
 }
 
-type::Typed<ir::Fn, type::Function> ComputeConcreteFn(
-    Compiler *compiler, ast::Expression const *fn,
-    type::GenericFunction const *gf_type, type::Quals quals,
-    core::FnArgs<type::Typed<ir::Value>> const &args) {
-  auto *fn_type = gf_type->concrete(args.Transform([](auto const &x) {
-    return type::Typed<std::optional<ir::Value>>(*x, x.type());
-  }));
-  ASSERT(type::Quals::Const() <= quals);
-  ir::GenericFn gen_fn =
-      compiler->Visit(fn, EmitValueTag{}).get<ir::GenericFn>(0).value();
-  return type::Typed<ir::Fn, type::Function>(gen_fn.concrete(args), fn_type);
-}
-
 ir::Results EmitCallOneOverload(
     Compiler *compiler, ast::Expression const *fn,
     internal::ExprData const &data,
@@ -83,10 +70,10 @@ ir::Results EmitCallOneOverload(
   ir::RegOr<ir::Fn> callee      = [&]() -> ir::RegOr<ir::Fn> {
     if (auto const *gf_type =
             callee_qual_type->type()->if_as<type::GenericFunction>()) {
-      auto typed_fn = ComputeConcreteFn(compiler, fn, gf_type,
-                                        callee_qual_type->quals(), args);
-      fn_type       = typed_fn.type();
-      return *typed_fn;
+      fn_type = &data.type()->as<type::Function>();
+      ir::GenericFn gen_fn =
+          compiler->Visit(fn, EmitValueTag{}).get<ir::GenericFn>(0).value();
+      return ir::Fn(gen_fn.concrete(args));
     } else if (auto const *f_type =
                    callee_qual_type->type()->if_as<type::Function>()) {
       fn_type = f_type;
@@ -125,41 +112,70 @@ ir::Results EmitCallOneOverload(
   return std::move(out_results);
 }
 
-}  // namespace
+type::Typed<ir::Value> ResultsToValue(type::Typed<ir::Results>const& results) {
+  ir::Value val(false);
+  type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                   uint32_t, uint64_t, float, double, type::Type const *,
+                   ir::EnumVal, ir::FlagsVal, ir::Addr, ir::String, ir::Fn>(
+      results.type(), [&](auto tag) -> void {
+        using T = typename decltype(tag)::type;
+        val     = ir::Value(results->template get<T>(0));
+      });
+  return type::Typed<ir::Value>(val, results.type());
+}
 
-// std::variant<, diagnostic::Todo> FnCallDispatchTable::Verify(
-//     type::Callable const *callable,
-//     core::FnArgs<type::Typed<ir::Value>> const &args) {
-// 
-//   FnCallDispatchTable table;
-//   std::vector<type::Function const *> concrete_fns;
-//   if (auto const *f = callable->concretize(args, &concrete_fns)) {
-//     auto args_qt = args.Transform(
-//         [](auto const &t) { return type::QualType::NonConstant(t.type()); });
-// 
-//     if (not ParamsCoverArgs(args_qt, table.table_,
-//                             [](auto const &, internal::ExprData const &data) {
-//                               return data.params();
-//                             })) {
-//       // Note: If the overload set is empty, ParamsCoverArgs will emit no
-//       // diagnostics!
-//       compiler->diag().Consume(diagnostic::Todo{});
-//       // TODO Return a failuere-match-reason.
-//       return base::unexpected("Match failure");
-//     }
-// 
-//   } else {
-//     DEBUG_LOG("dispatch-verify")(result.error());
-//   }
-// 
-// 
-//   table.result_type_ = ComputeResultQualType(table.table_);
-//   return table;
-// }
+type::Typed<ir::Results> ValueToResults(type::Typed<ir::Value> const &v) {
+  ir::Results r;
+  v->apply([&](auto x) { r = ir::Results{x}; });
+  return type::Typed<ir::Results>(r, v.type());
+}
 
-base::expected<FnCallDispatchTable> FnCallDispatchTable::Verify(
-    Compiler *compiler, ast::OverloadSet const &os,
+core::FnArgs<type::Typed<ir::Results>> ToResultsArgs(
+    core::FnArgs<type::Typed<ir::Value>> const &args) {
+  return args.Transform(ValueToResults);
+}
+
+core::FnArgs<type::Typed<ir::Value>> ToValueArgs(
     core::FnArgs<type::Typed<ir::Results>> const &args) {
+  return args.Transform(ResultsToValue);
+}
+
+ir::Results EmitCall(Compiler *compiler,
+                     absl::flat_hash_map<ast::Expression const *,
+                                         internal::ExprData> const &table,
+                     core::FnArgs<type::Typed<ir::Value>> const &args) {
+  DEBUG_LOG("FnCallDispatchTable")
+  ("Emitting a table with ", table.size(), " entries.");
+
+  if (table.size() == 1) {
+    // If there's just one entry in the table we can avoid doing all the work to
+    // generate runtime dispatch code. It will amount to only a few
+    // unconditional jumps between blocks which will be optimized out, but
+    // there's no sense in generating them in the first place..
+    auto const & [ overload, expr_data ] = *table.begin();
+    return EmitCallOneOverload(compiler, overload, expr_data, args);
+  } else {
+    auto &bldr           = compiler->builder();
+    auto *land_block     = bldr.AddBlock();
+    auto callee_to_block = bldr.AddBlocks(table);
+
+    EmitRuntimeDispatch(bldr, table, callee_to_block, ToResultsArgs(args));
+
+    for (auto const & [ overload, expr_data ] : table) {
+      bldr.CurrentBlock() = callee_to_block[overload];
+      // Argument preparation is done inside EmitCallOneOverload
+      EmitCallOneOverload(compiler, overload, expr_data, args);
+      // TODO phi-node to coalesce return values.
+      bldr.UncondJump(land_block);
+    }
+    bldr.CurrentBlock() = land_block;
+    return ir::Results{};
+  }
+}
+
+base::expected<absl::flat_hash_map<ast::Expression const *, internal::ExprData>>
+Verify(Compiler *compiler, ast::OverloadSet const &os,
+       core::FnArgs<type::Typed<ir::Value>> const &args) {
   DEBUG_LOG("dispatch-verify")
   ("Verifying overload set with ", os.members().size(), " members.");
 
@@ -170,7 +186,7 @@ base::expected<FnCallDispatchTable> FnCallDispatchTable::Verify(
   auto args_qt = args.Transform(
       [](auto const &t) { return type::QualType::NonConstant(t.type()); });
 
-  FnCallDispatchTable table;
+  absl::flat_hash_map<ast::Expression const *, internal::ExprData> table;
   for (ast::Expression const *overload : os.members()) {
     // TODO the type of the specific overload could *correctly* be null and we
     // need to handle that case.
@@ -178,28 +194,20 @@ base::expected<FnCallDispatchTable> FnCallDispatchTable::Verify(
     ("Verifying ", overload, ": ", overload->DebugString());
     if (auto *gen =
             compiler->type_of(overload)->if_as<type::GenericFunction>()) {
-      type::Function const *concrete =
-          gen->concrete(args.Transform([](auto const &a) {
-            ir::Value val(false);
-            type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                             uint16_t, uint32_t, uint64_t, float, double,
-                             type::Type const *, ir::EnumVal, ir::FlagsVal,
-                             ir::Addr, ir::String, ir::Fn>(
-                a.type(), [&](auto tag) -> void {
-                  using T = typename decltype(tag)::type;
-                  val     = ir::Value(a->template get<T>(0));
-                });
-            return type::Typed<std::optional<ir::Value>>(val, a.type());
-          }));
-      table.table_.emplace(overload,
-                           internal::ExprData{concrete, concrete->params()});
+      auto val_args                  = args.Transform([](auto const &a) {
+        return type::Typed<std::optional<ir::Value>>(a.get(), a.type());
+      });
+      type::Function const *concrete = gen->concrete(val_args);
+      table.emplace(overload,
+                    internal::ExprData{concrete, concrete->params(),
+                                       concrete->return_types(val_args)});
     } else {
       if (auto result = MatchArgsToParams(ExtractParamTypes(compiler, overload),
                                           args_qt)) {
         // TODO you also call compiler->type_of inside ExtractParamTypess, so
         // it's probably worth reducing the number of lookups.
-        table.table_.emplace(
-            overload, internal::ExprData{compiler->type_of(overload), *result});
+        table.emplace(overload,
+                      internal::ExprData{compiler->type_of(overload), *result});
       } else {
         DEBUG_LOG("dispatch-verify")(result.error());
         failures.emplace(overload, result.error());
@@ -207,7 +215,7 @@ base::expected<FnCallDispatchTable> FnCallDispatchTable::Verify(
     }
   }
 
-  if (not ParamsCoverArgs(args_qt, table.table_,
+  if (not ParamsCoverArgs(args_qt, table,
                           [](auto const &, internal::ExprData const &data) {
                             return data.params();
                           })) {
@@ -218,8 +226,18 @@ base::expected<FnCallDispatchTable> FnCallDispatchTable::Verify(
     return base::unexpected("Match failure");
   }
 
-  table.result_type_ = ComputeResultQualType(table.table_);
   return table;
+}
+
+}  // namespace
+
+ir::Results FnCallDispatchTable::Emit(
+    Compiler *c, ast::OverloadSet const &os,
+    core::FnArgs<type::Typed<ir::Results>> const &r_args) {
+  auto args = ToValueArgs(r_args);
+  ASSIGN_OR(return ir::Results{},  //
+                   auto table, Verify(c, os, args));
+  return EmitCall(c, table, args);
 }
 
 type::QualType FnCallDispatchTable::ComputeResultQualType(
@@ -233,7 +251,7 @@ type::QualType FnCallDispatchTable::ComputeResultQualType(
     absl::flat_hash_map<ast::Expression const *, internal::ExprData> const
         &table) {
   std::vector<absl::Span<type::Type const *const>> results;
-  for (auto const &[overload, expr_data] : table) {
+  for (auto const & [ overload, expr_data ] : table) {
     DEBUG_LOG("dispatch-verify")
     ("Extracting return type for ", overload->DebugString(), " of type ",
      expr_data.type()->to_string());
@@ -248,50 +266,6 @@ type::QualType FnCallDispatchTable::ComputeResultQualType(
   }
 
   return type::QualType(type::MultiVar(results), type::Quals::Unqualified());
-}
-
-ir::Results FnCallDispatchTable::EmitCall(
-    Compiler *compiler,
-    core::FnArgs<type::Typed<ir::Results>> const &args) const {
-  DEBUG_LOG("FnCallDispatchTable")
-  ("Emitting a table with ", table_.size(), " entries.");
-
-  auto value_args = args.Transform([](auto const &a) {
-    ir::Value val(false);
-    type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                     uint32_t, uint64_t, float, double, type::Type const *,
-                     ir::EnumVal, ir::FlagsVal, ir::Addr, ir::String, ir::Fn>(
-        a.type(), [&](auto tag) -> void {
-          using T = typename decltype(tag)::type;
-          val     = ir::Value(a->template get<T>(0));
-        });
-    return type::Typed<ir::Value>(val, a.type());
-  });
-
-  if (table_.size() == 1) {
-    // If there's just one entry in the table we can avoid doing all the work to
-    // generate runtime dispatch code. It will amount to only a few
-    // unconditional jumps between blocks which will be optimized out, but
-    // there's no sense in generating them in the first place..
-    auto const &[overload, expr_data] = *table_.begin();
-    return EmitCallOneOverload(compiler, overload, expr_data, value_args);
-  } else {
-    auto &bldr           = compiler->builder();
-    auto *land_block     = bldr.AddBlock();
-    auto callee_to_block = bldr.AddBlocks(table_);
-
-    EmitRuntimeDispatch(bldr, table_, callee_to_block, args);
-
-    for (auto const &[overload, expr_data] : table_) {
-      bldr.CurrentBlock() = callee_to_block[overload];
-      // Argument preparation is done inside EmitCallOneOverload
-      EmitCallOneOverload(compiler, overload, expr_data, value_args);
-      // TODO phi-node to coalesce return values.
-      bldr.UncondJump(land_block);
-    }
-    bldr.CurrentBlock() = land_block;
-    return ir::Results{};
-  }
 }
 
 }  // namespace compiler

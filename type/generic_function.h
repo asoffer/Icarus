@@ -28,7 +28,9 @@ struct GenericFunction : public Callable {
   bool is_big() const override { return false; }
 
   Function const *concrete(
-      core::FnArgs<Typed<std::optional<ir::Value>>> const &) const;
+      core::FnArgs<Typed<std::optional<ir::Value>>> const &,
+      std::experimental::source_location loc =
+          std::experimental::source_location::current()) const;
 
   std::vector<type::Type const *> return_types(
       core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args)

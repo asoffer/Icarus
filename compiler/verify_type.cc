@@ -1137,6 +1137,21 @@ VerifyFnArgs(
   return arg_results;
 }
 
+type::Typed<std::optional<ir::Value>> TypedResultsToTypedOptionalValue(
+    type::Typed<ir::Results> const &r) {
+  if (r->empty()) {
+    return type::Typed<std::optional<ir::Value>>(std::nullopt, r.type());
+  }
+  // TODO other types too.
+  return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                          uint16_t, uint32_t, uint64_t, float, double, ir::Addr,
+                          ir::String>(r.type(), [&](auto tag) {
+    using T = typename decltype(tag)::type;
+    return type::Typed<std::optional<ir::Value>>(
+        ir::Value(r->template get<T>(0)), r.type());
+  });
+}
+
 type::QualType Compiler::Visit(ast::Call const *node, VerifyTypeTag) {
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto arg_results, VerifyFnArgs(this, node->args()));
@@ -1159,22 +1174,11 @@ type::QualType Compiler::Visit(ast::Call const *node, VerifyTypeTag) {
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto callee_qt, Visit(node->callee(), VerifyTypeTag{}));
   if (auto *c = callee_qt.type()->if_as<type::Callable>()) {
-    auto ret_types = c->return_types(arg_results.Transform(
-        [](type::Typed<ir::Results> const &r) -> type::Typed<std::optional<ir::Value>> {
-          if (r->empty()) {
-            return type::Typed<std::optional<ir::Value>>(std::nullopt,
-                                                         r.type());
-          }
-          // TODO other types too.
-          return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t,
-                                  uint8_t, uint16_t, uint32_t, uint64_t, float,
-                                  double, ir::Addr, ir::String>(
-              r.type(), [&](auto tag) {
-                using T = typename decltype(tag)::type;
-                return type::Typed<std::optional<ir::Value>>(
-                    ir::Value(r->template get<T>(0)), r.type());
-              });
-        }));
+    DEBUG_LOG("Call.VerifyType")("Callee's qual-type: ", callee_qt);
+    auto ret_types = c->return_types(
+        arg_results.Transform(TypedResultsToTypedOptionalValue));
+    DEBUG_LOG("Call.VerifyType")
+    ("Return types for this instantiation: ", type::Tup(ret_types)->to_string());
     // Can this be constant?
     return set_result(node,
                type::QualType::NonConstant(type::Tup(std::move(ret_types))));
@@ -1731,6 +1735,13 @@ generic:
     ("Creating a concrete implementation with ",
      args.Transform([](auto const &a) { return a.type()->to_string(); }));
     // TODO Add a new constant binding node for this.
+
+    // TODO don't do this more than necessary. Cache it based on the args passed
+    // in..
+    DEBUG_LOG()("Was ", c.current_constants_);
+    c.current_constants_ = c.module()->as<CompiledModule>().data().AddChildTo(
+        c.current_constants_, c.module());
+    DEBUG_LOG()("Setting to ", c.current_constants_);
 
     // TODO use the proper ordering.
     core::Params<type::Type const *> params(node_params->size());

@@ -3,6 +3,8 @@
 
 #include <memory>
 
+#include "ast/ast_fwd.h"
+#include "base/untyped_buffer_view.h"
 #include "compiler/constant/binding.h"
 
 namespace compiler {
@@ -38,15 +40,23 @@ namespace compiler {
 //
 struct ConstantBindingTree {
   struct Node {
-    explicit Node(Node const* parent) : parent_(parent) {}
+    explicit Node(Node* parent) : parent_(parent) {}
 
     Node const* parent() const { return parent_; }
+    Node* parent() { return parent_; }
     ConstantBinding const& binding() const { return binding_; }
     ConstantBinding& binding() { return binding_; }
 
+    base::untyped_buffer_view find_constant(ast::Declaration const* decl) {
+      auto result = binding().get_constant(decl);
+      if (not result.empty()) { return result; }
+      if (auto* p = parent()) { return parent()->find_constant(decl); }
+      return base::untyped_buffer_view{};
+    }
+
    private:
     ConstantBinding binding_;
-    Node const* parent_ = nullptr;
+    Node* parent_ = nullptr;
   };
 
   ConstantBindingTree() {
@@ -57,7 +67,7 @@ struct ConstantBindingTree {
   Node const* root() const { return nodes_[0].get(); }
   Node* root() { return nodes_[0].get(); }
 
-  Node* AddChildTo(Node const* parent) {
+  Node* AddChildTo(Node* parent) {
     nodes_.push_back(std::make_unique<Node>(parent));
     return nodes_.back().get();
   }

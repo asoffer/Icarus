@@ -1,6 +1,5 @@
 #include "compiler/constant/binding.h"
 #include "ast/ast.h"
-#include "ir/results.h"
 #include "type/type.h"
 
 namespace compiler {

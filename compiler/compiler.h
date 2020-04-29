@@ -151,6 +151,10 @@ struct Compiler
   }
   void pop_scope_landing() { scope_landings_.pop_back(); }
 
+  ir::NativeFn MakeConcreteFromGeneric(
+      ast::FunctionLiteral const *node,
+      core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args);
+
   ir::NativeFn AddFunc(
       type::Function const *fn_type,
       core::Params<type::Typed<ast::Declaration const *>> params);
@@ -264,16 +268,11 @@ struct Compiler
   void EmitCopyInit(type::Type const *from_type, ir::Results const &from_val,
                     type::Typed<ir::Reg> to_var);
 
- private:
   CompiledModule *mod_;
-
- public:
-  // TODO Make these private
   CompilationData &data_;
   ConstantBindingTree::Node *current_constants_;
   diagnostic::DiagnosticConsumer &diag_consumer_;
 
- private:
   std::vector<
       std::tuple<ir::Label, ir::BasicBlock *, ir::PhiInstruction<int64_t> *>>
       scope_landings_;

@@ -23,15 +23,8 @@ struct Compiler;  // TODO move into it's own header.
 // and jump in terms of the interface. Should probably inline TableImpl and
 // separate out these headers.
 struct FnCallDispatchTable {
-  static base::expected<FnCallDispatchTable> Verify(
-      Compiler *compiler, ast::OverloadSet const &os,
-      core::FnArgs<type::Typed<ir::Results>> const &args);
-
-  type::QualType result_qual_type() const { return result_type_; }
-
-  ir::Results EmitCall(
-      Compiler *compiler,
-      core::FnArgs<type::Typed<ir::Results>> const &args) const;
+  static ir::Results Emit(Compiler *c, ast::OverloadSet const &os,
+                          core::FnArgs<type::Typed<ir::Results>> const &args);
 
  private:
   static type::QualType ComputeResultQualType(

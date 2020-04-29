@@ -8,8 +8,6 @@
 #include "ast/ast_fwd.h"
 #include "base/untyped_buffer.h"
 #include "base/untyped_buffer_view.h"
-#include "core/bytes.h"
-#include "ir/results.h"
 #include "type/type.h"
 
 namespace compiler {

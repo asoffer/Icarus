@@ -38,6 +38,8 @@ struct CompiledModule : module::BasicModule {
   CompilationData const &root_data() const { return data_.root_value(); }
   CompilationData &root_data() { return data_.root_value(); }
 
+  ConstantBindingMap<CompilationData> &data() { return data_; }
+
  private:
   ConstantBindingMap<CompilationData> data_;
 };
