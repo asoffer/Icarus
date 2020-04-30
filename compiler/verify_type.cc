@@ -1738,14 +1738,22 @@ generic:
 
     // TODO don't do this more than necessary. Cache it based on the args passed
     // in..
-    DEBUG_LOG()("Was ", c.current_constants_);
     c.current_constants_ = c.module()->as<CompiledModule>().data().AddChildTo(
         c.current_constants_, c.module());
-    DEBUG_LOG()("Setting to ", c.current_constants_);
+    DEBUG_LOG("generic-fn")
+    ("Tree is now ", c.current_constants_->DebugString());
+
+    base::defer d = [&] {
+      c.current_constants_ = c.current_constants_->parent();
+      DEBUG_LOG("generic-fn")
+      ("Tree is now ", c.current_constants_->DebugString());
+    };
 
     // TODO use the proper ordering.
     core::Params<type::Type const *> params(node_params->size());
     for (auto dep_node : ordered_nodes) {
+      DEBUG_LOG("generic-fn")
+      ("Handling dep-node of kind ", static_cast<int>(dep_node.kind()));
       switch (dep_node.kind()) {
         using kind_t = core::DependencyNode<ast::Declaration>::Kind;
         case kind_t::ArgValue: NOT_YET();
@@ -1770,6 +1778,8 @@ generic:
             (*args.pos()[0])->apply([&buf](auto x) { buf.append(x); });
             DEBUG_LOG("generic-fn")(**args.pos()[0], ": ", *args.pos()[0].type());
             auto &binding = c.current_constants_->binding();
+            c.current_constants_->binding().reserve_slot(dep_node.node(),
+                                                         args.pos()[0].type());
             if (binding.get_constant(dep_node.node()).empty()) {
               c.current_constants_->binding().set_slot(dep_node.node(), buf);
             }
@@ -1783,6 +1793,9 @@ generic:
     for (auto const &p : params) {
       DEBUG_LOG("generic-fn")(p.name, ": ", p.value->to_string());
     }
+
+    DEBUG_LOG("generic-fn")
+    ("Tree is now ", c.current_constants_->DebugString());
 
     auto const *f = type::Func(std::move(params), {});
     DEBUG_LOG("generic-fn")(f->to_string());

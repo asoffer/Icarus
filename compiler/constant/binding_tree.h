@@ -2,6 +2,7 @@
 #define ICARUS_COMPILER_CONSTANT_BINDING_TREE_H
 
 #include <memory>
+#include <string>
 
 #include "ast/ast_fwd.h"
 #include "base/untyped_buffer_view.h"
@@ -40,23 +41,29 @@ namespace compiler {
 //
 struct ConstantBindingTree {
   struct Node {
-    explicit Node(Node* parent) : parent_(parent) {}
+    explicit Node(Node* parent) : parent_(parent) {
+#if defined(ICARUS_DEBUG)
+      if (parent_) { ++parent_->num_children_; }
+#endif
+    }
 
     Node const* parent() const { return parent_; }
     Node* parent() { return parent_; }
     ConstantBinding const& binding() const { return binding_; }
     ConstantBinding& binding() { return binding_; }
 
-    base::untyped_buffer_view find_constant(ast::Declaration const* decl) {
-      auto result = binding().get_constant(decl);
-      if (not result.empty()) { return result; }
-      if (auto* p = parent()) { return parent()->find_constant(decl); }
-      return base::untyped_buffer_view{};
-    }
+    base::untyped_buffer_view find_constant(ast::Declaration const* decl);
+
+    std::string DebugString() const;
+
+#if defined(ICARUS_DEBUG)
+    size_t num_children_ = 0;
+#endif
 
    private:
     ConstantBinding binding_;
     Node* parent_ = nullptr;
+
   };
 
   ConstantBindingTree() {
@@ -67,10 +74,7 @@ struct ConstantBindingTree {
   Node const* root() const { return nodes_[0].get(); }
   Node* root() { return nodes_[0].get(); }
 
-  Node* AddChildTo(Node* parent) {
-    nodes_.push_back(std::make_unique<Node>(parent));
-    return nodes_.back().get();
-  }
+  Node* AddChildTo(Node* parent);
 
  private:
   std::vector<std::unique_ptr<Node>> nodes_;

@@ -18,7 +18,7 @@ struct ConstantBinding {
 
   type::Type const* type_of(ast::Declaration const* decl) const {
     if (auto iter = bindings_.find(decl); iter != bindings_.end()) {
-      return iter->second.type_;
+      return iter->second.type;
     }
     return nullptr;
   }
@@ -29,10 +29,15 @@ struct ConstantBinding {
 
   base::untyped_buffer_view get_constant(ast::Declaration const* decl) const;
 
+  template <typename Fn>
+  void ForEach(Fn f) const {
+    for (auto const& [decl, binding] : bindings_) { f(decl, binding); }
+  }
+
  private:
   struct Binding {
-    type::Type const* type_;
-    base::untyped_buffer buf_;
+    type::Type const* type;
+    base::untyped_buffer buffer;
   };
 
   // Note: While the `Binding` itself may move around on rehash, the underlying

@@ -125,20 +125,16 @@ base::move_func<void()> *DeferBody(Compiler *compiler, NodeType const *node,
     static_cast<void>(t);
     if constexpr (std::is_same_v<NodeType, ast::FunctionLiteral>) {
       if (node->is_generic()) {
-        DEBUG_LOG()("Was ", compiler->current_constants_);
         compiler->current_constants_ =
             compiler->module()->as<CompiledModule>().data().AddChildTo(
                 compiler->current_constants_, compiler->module());
-        DEBUG_LOG()("Setting to ", compiler->current_constants_);
       }
 
       VerifyBody(compiler, node, t);
       CompleteBody(compiler, node, &t->as<type::Function>());
 
       if (node->is_generic()) {
-        DEBUG_LOG()("Was ", compiler->current_constants_);
         compiler->current_constants_ = compiler->current_constants_->parent();
-        DEBUG_LOG()("Resetting to ", compiler->current_constants_);
       }
     } else {
       CompleteBody(compiler, node);
@@ -652,13 +648,11 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
     }
 
     if (node->flags() & ast::Declaration::f_IsFnParam) {
-      DEBUG_LOG()(current_constants_);
       auto result = current_constants_->find_constant(node);
       ASSERT(result.size() != 0u);
       return ir::Results::FromRaw(result);
     } else {
       auto *t = ASSERT_NOT_NULL(type_of(node));
-      DEBUG_LOG()(current_constants_, node->DebugString());
       base::untyped_buffer_view slot =
           current_constants_->binding().reserve_slot(node, t);
       if (not slot.empty()) {
@@ -682,7 +676,6 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
           return ir::Results{};
         }
         DEBUG_LOG("EmitValueDeclaration")("Setting slot", buf.to_string());
-        DEBUG_LOG()(current_constants_);
         current_constants_->binding().set_slot(node, buf);
         return ir::Results::FromRaw(buf);
       } else if (node->IsDefaultInitialized()) {

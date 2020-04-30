@@ -21,7 +21,14 @@ cc_library(
 cc_library(
     name = "binding_tree",
     hdrs = ["binding_tree.h"],
-    deps = [":binding"],
+    srcs = ["binding_tree.cc"],
+    deps = [
+        "//ast",
+        "//base:stringify",
+        "//type:util",
+        ":binding",
+        "@com_google_absl//absl/strings",
+    ],
 )
 
 cc_test(
