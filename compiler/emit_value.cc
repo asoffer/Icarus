@@ -122,6 +122,7 @@ base::move_func<void()> *DeferBody(Compiler *compiler, NodeType const *node,
   // executed as part of work deferral of `compiler` before the compiler is
   // destroyed.
   return compiler->AddWork(node, [compiler, node, t]() mutable {
+    static_cast<void>(t);
     if constexpr (std::is_same_v<NodeType, ast::FunctionLiteral>) {
       if (node->is_generic()) {
         DEBUG_LOG()("Was ", compiler->current_constants_);

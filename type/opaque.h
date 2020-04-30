@@ -7,12 +7,12 @@
 
 namespace type {
 struct Opaque : public Type {
-  explicit Opaque(module::BasicModule const *mod)
+  explicit Opaque(module::BasicModule const *)
       : Type(Type::Flags{.is_default_initializable = 0,
                          .is_copyable              = 0,
                          .is_movable               = 0,
-                         .has_destructor           = 0}),
-        mod_(mod) {}
+                         .has_destructor           = 0})
+         {}
   ~Opaque() override {}
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
@@ -33,9 +33,6 @@ struct Opaque : public Type {
 
   // TODO is this right?
   bool IsDefaultInitializable() const { return false; }
-
- private:
-  module::BasicModule const *mod_;
 };
 
 }  // namespace type

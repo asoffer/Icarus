@@ -14,13 +14,12 @@
 
 namespace type {
 struct Enum : type::Type {
-  explicit Enum(module::BasicModule const *mod,
+  explicit Enum(module::BasicModule const *,
                 absl::flat_hash_map<std::string, ir::EnumVal> vals)
       : Type(Type::Flags{.is_default_initializable = 0,
                          .is_copyable              = 1,
                          .is_movable               = 1,
                          .has_destructor           = 0}),
-        mod_(mod),
         vals_(std::move(vals)) {
     for (auto &[name, val] : vals_) { members_.emplace(val, name); }
   }
@@ -47,8 +46,6 @@ struct Enum : type::Type {
   }
 
  private:
-  module::BasicModule const *mod_;
-
   absl::flat_hash_map<std::string, ir::EnumVal> vals_;
   absl::flat_hash_map<ir::EnumVal, std::string_view> members_;
 };

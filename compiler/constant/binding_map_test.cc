@@ -11,7 +11,7 @@ TEST(ConstantBindingMap, DefaultConstruction) {
 
 TEST(ConstantBindingMap, Emplace) {
   compiler::ConstantBindingMap<int> map;
-  map.emplace(map.root(), 17);
+  map.try_emplace(map.root(), 17);
   EXPECT_EQ(map.root_value(), 17);
 }
 }  // namespace

@@ -50,11 +50,9 @@ cc_library(
     name = "file_name",
     hdrs = ["file_name.h"],
     srcs = ["file_name.cc"],
-    linkopts = ["-lstdc++fs"],
     deps = [
         "//base:expected",
         "//base:strong_types",
-        "@com_google_absl//absl/strings:str_format",
     ],
 )
 

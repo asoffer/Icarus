@@ -4,11 +4,11 @@
 #include <functional>
 #include <iostream>
 
+#include "ir/value/native_fn.h"
 #include "core/fn_args.h"
 #include "type/typed_value.h"
 
 namespace ir {
-struct NativeFn;
 struct Value;
 
 // A `GenericFn` is a callable object which either requires some of the arguments

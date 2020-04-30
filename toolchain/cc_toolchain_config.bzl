@@ -118,7 +118,12 @@ def _impl(ctx):
         compiler = "gcc",
         abi_version = "unknown",
         abi_libc_version = "unknown",
-        cxx_builtin_include_directories = ["/usr/lib/llvm-9", "/usr/include", "/usr/lib/gcc"],
+        cxx_builtin_include_directories = [
+            "/usr/lib/llvm-9",
+            "/usr/include",
+            "/usr/lib/gcc",
+            "/usr/local/include",
+        ],
         tool_paths = tool_paths,
         features = features + [
             feature(name = "dbg"),

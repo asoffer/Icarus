@@ -114,6 +114,7 @@ cc_test(
     name = "generic_fn_test",
     srcs = ["generic_fn_test.cc"],
     deps = [
+        ":generic_fn",
         ":reg_or",
         ":value",
         "@com_google_googletest//:gtest_main",
@@ -249,10 +250,7 @@ cc_library(
 
 cc_test(
     name = "value_test",
-    srcs = [
-        "value_test.cc",
-        "generic_fn_test.cc",
-    ],
+    srcs = ["value_test.cc"],
     deps = [
         ":reg_or",
         ":value",

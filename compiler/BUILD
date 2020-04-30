@@ -36,6 +36,7 @@ cc_library(
         ":library_module",
         ":module",
         ":special_function",
+        ":verify_type",
         "//ast:ast",
         "//ast:overload_set",
         "//ast:visitor",

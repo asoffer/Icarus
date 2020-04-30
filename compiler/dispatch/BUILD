@@ -106,16 +106,16 @@ cc_library(
     ],
 )
 
-cc_test(
-    name = "fn_call_table_test",
-    srcs = ["fn_call_table_test.cc"],
-    deps = [
-        ":fn_call_table",
-        "//compiler:compiler",
-        "//test:module",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
+# cc_test(
+#     name = "fn_call_table_test",
+#     srcs = ["fn_call_table_test.cc"],
+#     deps = [
+#         ":fn_call_table",
+#         "//compiler:compiler",
+#         "//test:module",
+#         "@com_google_googletest//:gtest_main",
+#     ],
+# )
 
 cc_library(
     name = "overload",
