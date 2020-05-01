@@ -43,13 +43,10 @@ void InitializeNodes(base::PtrSpan<Node> nodes, Scope *scope);
   void Initialize(Scope *scope) override;                                      \
   void DebugStrAppend(std::string *out, size_t indent) const override
 
+// WithScope:
+// A mixin which adds a scope of the given type `S`.
 template <typename S>
-struct ScopeExpr : Expression {
-  ScopeExpr(frontend::SourceRange &&span) : Expression(std::move(span)) {}
-  ~ScopeExpr() override {}
-  ScopeExpr(ScopeExpr &&) noexcept = default;
-  ScopeExpr &operator=(ScopeExpr &&) noexcept = default;
-
+struct WithScope {
   template <typename... Args>
   void set_body_with_parent(Scope *p, Args &&... args) {
     body_scope_ = p->template add_child<S>(std::forward<Args>(args)...);
@@ -67,9 +64,9 @@ struct ScopeExpr : Expression {
 //  * `my_pair.first_element`
 //  * `(some + computation).member`
 struct Access : Expression {
-  explicit Access(frontend::SourceRange span,
+  explicit Access(frontend::SourceRange const &range,
                   std::unique_ptr<Expression> operand, std::string member_name)
-      : Expression(std::move(span)),
+      : Expression(range),
         operand_(std::move(operand)),
         member_name_(std::move(member_name)) {}
   ~Access() override {}
@@ -94,14 +91,14 @@ struct Access : Expression {
 //  * `[im_the_only_thing]`
 //  * `[]`
 struct ArrayLiteral : Expression {
-  explicit ArrayLiteral(frontend::SourceRange span,
+  explicit ArrayLiteral(frontend::SourceRange const &range,
                         std::unique_ptr<Expression> elem)
-      : Expression(std::move(span)) {
+      : Expression(range) {
     elems_.push_back(std::move(elem));
   }
-  ArrayLiteral(frontend::SourceRange span,
+  ArrayLiteral(frontend::SourceRange const &range,
                std::vector<std::unique_ptr<Expression>> elems)
-      : Expression(std::move(span)), elems_(std::move(elems)) {}
+      : Expression(range), elems_(std::move(elems)) {}
   ~ArrayLiteral() override {}
 
   bool empty() const { return elems_.empty(); }
@@ -134,16 +131,16 @@ struct ArrayLiteral : Expression {
 //                         8-bit integers.
 //  * `[3, 2; int8]`   ... A shorthand syntax for `[3; [2; int8]]`
 struct ArrayType : Expression {
-  explicit ArrayType(frontend::SourceRange span,
+  explicit ArrayType(frontend::SourceRange const &range,
                      std::unique_ptr<Expression> length,
                      std::unique_ptr<Expression> data_type)
-      : Expression(std::move(span)), data_type_(std::move(data_type)) {
+      : Expression(range), data_type_(std::move(data_type)) {
     lengths_.push_back(std::move(length));
   }
-  ArrayType(frontend::SourceRange span,
+  ArrayType(frontend::SourceRange const &range,
             std::vector<std::unique_ptr<Expression>> lengths,
             std::unique_ptr<Expression> data_type)
-      : Expression(std::move(span)),
+      : Expression(range),
         lengths_(std::move(lengths)),
         data_type_(std::move(data_type)) {}
   ~ArrayType() override {}
@@ -285,6 +282,51 @@ struct Declaration : Expression {
   Flags flags_;
 };
 
+// WithParameters:
+// This is a parent-class for all nodes that have parameters, allowing us to
+// handle those parameters uniformly. oreover, this gives us the ability to key
+// hash-tables on `ParameterizedExpression const *`.
+struct ParameterizedExpression : Expression {
+  ParameterizedExpression(frontend::SourceRange const &range)
+      : Expression(range) {}
+
+  ParameterizedExpression(frontend::SourceRange const &range,
+                          std::vector<std::unique_ptr<Declaration>> params)
+      : Expression(range) {
+    for (auto &param : params) {
+      // NOTE: This is safe because the declaration is behind a unique_ptr so
+      // the string is never moved. You need to be careful if you ever decide to
+      // use make this declaration inline because SSO might mean moving the
+      // declaration (which can happen if core::Params internal vector gets
+      // reallocated) could invalidate the string_view unintentionally.
+      std::string_view name = param->id();
+
+      // Note the weird naming here: A declaration which is default initialized
+      // means there is no `=` as part of the declaration. This means that the
+      // declaration, when thougth of as a parameter to a function, has no
+      // default value.
+      core::ParamFlags flags{};
+      if (not param->IsDefaultInitialized()) { flags = core::HAS_DEFAULT; }
+      is_generic_ |= (param->flags() & Declaration::f_IsConst);
+      // TODO or if it's deduced.
+      params_.append(name, std::move(param), flags);
+    }
+  }
+
+  // TODO params() should be a reference to core::Params?
+  using params_type = core::Params<std::unique_ptr<Declaration>>;
+  params_type const &params() const { return params_; }
+
+  // Returns true if the expression accepts a generic parameter (i.e., a
+  // constant parameter or a parameter with a deduced type).
+  constexpr bool is_generic() const { return is_generic_; }
+
+ protected:
+  core::Params<std::unique_ptr<ast::Declaration>> params_;
+  bool is_generic_ = false;
+};
+
+
 // DesignatedInitializer:
 //
 // Represents an initializer for the given struct.
@@ -300,10 +342,10 @@ struct Declaration : Expression {
 // ```
 struct DesignatedInitializer : Expression {
   DesignatedInitializer(
-      frontend::SourceRange span, std::unique_ptr<Expression> type,
+      frontend::SourceRange const &range, std::unique_ptr<Expression> type,
       std::vector<std::pair<std::string, std::unique_ptr<Expression>>>
           assignments)
-      : Expression(std::move(span)),
+      : Expression(range),
         type_(std::move(type)),
         assignments_(std::move(assignments)) {}
 
@@ -337,11 +379,11 @@ struct DesignatedInitializer : Expression {
 //    after  ::= () -> () { jump exit() }
 //  }
 //  ```
-struct BlockLiteral : ScopeExpr<DeclScope> {
-  explicit BlockLiteral(frontend::SourceRange span,
+struct BlockLiteral : Expression, WithScope<DeclScope> {
+  explicit BlockLiteral(frontend::SourceRange const &range,
                         std::vector<std::unique_ptr<Declaration>> before,
                         std::vector<std::unique_ptr<Declaration>> after)
-      : ScopeExpr<DeclScope>(std::move(span)),
+      : Expression(range),
         before_(std::move(before)),
         after_(std::move(after)) {}
   ~BlockLiteral() override {}
@@ -384,35 +426,18 @@ struct BlockLiteral : ScopeExpr<DeclScope> {
 // Note: Today blocks have names and statements but cannot take any arguments.
 // This will likely change in the future so that blocks can take arguments
 // (likely in the form of `core::FnArgs<std::unique_ptr<ast::Expression>>`).
-struct BlockNode : ScopeExpr<ExecScope> {
-  explicit BlockNode(frontend::SourceRange span, std::string name,
+struct BlockNode : ParameterizedExpression, WithScope<ExecScope> {
+  explicit BlockNode(frontend::SourceRange range, std::string name,
                      std::vector<std::unique_ptr<Node>> stmts)
-      : ScopeExpr<ExecScope>(std::move(span)),
+      : ParameterizedExpression(range),
         name_(std::move(name)),
         stmts_(std::move(stmts)) {}
-  explicit BlockNode(frontend::SourceRange span, std::string name,
+  explicit BlockNode(frontend::SourceRange range, std::string name,
                      std::vector<std::unique_ptr<Declaration>> params,
                      std::vector<std::unique_ptr<Node>> stmts)
-      : ScopeExpr<ExecScope>(std::move(span)),
+      : ParameterizedExpression(range, std::move(params)),
         name_(std::move(name)),
-        stmts_(std::move(stmts)) {
-    for (auto &param : params) {
-      // NOTE: This is safe because the declaration is behind a unique_ptr so
-      // the string is never moved. You need to be careful if you ever decide to
-      // use make this declaration inline because SSO might mean moving the
-      // declaration (which can happen if core::Params internal vector gets
-      // reallocated) could invalidate the string_view unintentionally.
-      std::string_view name = param->id();
-
-      // Note the weird naming here: A declaration which is default initialized
-      // means there is no `=` as part of the declaration. This means that the
-      // declaration, when thougth of as a parameter to a function, has no
-      // default value.
-      core::ParamFlags flags{};
-      if (not param->IsDefaultInitialized()) { flags = core::HAS_DEFAULT; }
-      params_.append(name, std::move(param), flags);
-    }
-  }
+        stmts_(std::move(stmts)) {}
 
   ~BlockNode() override {}
   BlockNode(BlockNode &&) noexcept = default;
@@ -420,15 +445,11 @@ struct BlockNode : ScopeExpr<ExecScope> {
 
   std::string_view name() const { return name_; }
   base::PtrSpan<Node const> stmts() const { return stmts_; }
-  // TODO params() should be a reference to core::Params?
-  using params_type = core::Params<std::unique_ptr<Declaration>>;
-  params_type const &params() const { return params_; }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
   std::string name_;
-  core::Params<std::unique_ptr<ast::Declaration>> params_;
   std::vector<std::unique_ptr<Node>> stmts_;
 };
 
@@ -437,8 +458,8 @@ struct BlockNode : ScopeExpr<ExecScope> {
 // type with no known size or alignment (users can pass around pointers to
 // values of an opaque type, but not actual values).
 struct BuiltinFn : Expression {
-  explicit BuiltinFn(frontend::SourceRange span, ir::BuiltinFn b)
-      : Expression(std::move(span)), val_(b) {}
+  explicit BuiltinFn(frontend::SourceRange const &range, ir::BuiltinFn b)
+      : Expression(range), val_(b) {}
   ~BuiltinFn() override {}
 
   ir::BuiltinFn value() const { return val_; }
@@ -456,9 +477,9 @@ struct BuiltinFn : Expression {
 //  * `f(a, b, c = 3)`
 //  * `arg'func`
 struct Call : Expression {
-  explicit Call(frontend::SourceRange span, std::unique_ptr<Expression> callee,
+  explicit Call(frontend::SourceRange const &range, std::unique_ptr<Expression> callee,
                 core::OrderedFnArgs<Expression> args)
-      : Expression(std::move(span)),
+      : Expression(range),
         callee_(std::move(callee)),
         args_(std::move(args)) {}
 
@@ -491,9 +512,9 @@ struct Call : Expression {
 //  * `3 as nat32`
 //  * `null as *int64`
 struct Cast : Expression {
-  explicit Cast(frontend::SourceRange span, std::unique_ptr<Expression> expr,
+  explicit Cast(frontend::SourceRange const &range, std::unique_ptr<Expression> expr,
                 std::unique_ptr<Expression> type_expr)
-      : Expression(std::move(span)),
+      : Expression(range),
         expr_(std::move(expr)),
         type_(std::move(type_expr)) {}
   ~Cast() override {}
@@ -519,8 +540,8 @@ struct Cast : Expression {
 //  `a < b == c < d`
 struct ChainOp : Expression {
   // TODO consider having a construct-or-append static function.
-  explicit ChainOp(frontend::SourceRange span, std::unique_ptr<Expression> expr)
-      : Expression(std::move(span)) {
+  explicit ChainOp(frontend::SourceRange const &range, std::unique_ptr<Expression> expr)
+      : Expression(range) {
     exprs_.push_back(std::move(expr));
   }
   ~ChainOp() override {}
@@ -593,12 +614,12 @@ struct CommaList : Expression {
 //  }
 //  ```
 //
-struct EnumLiteral : ScopeExpr<DeclScope> {
+struct EnumLiteral : Expression, WithScope<DeclScope> {
   enum Kind : char { Enum, Flags };
 
-  EnumLiteral(frontend::SourceRange span,
+  EnumLiteral(frontend::SourceRange const &range,
               std::vector<std::unique_ptr<Expression>> elems, Kind kind)
-      : ScopeExpr<DeclScope>(std::move(span)),
+      : Expression(range),
         elems_(std::move(elems)),
         kind_(kind) {}
 
@@ -626,24 +647,24 @@ struct EnumLiteral : ScopeExpr<DeclScope> {
 // * `(n: int32, m: int32) => n * m`
 // * `(T :: type, val: T) => val`
 //
-struct FunctionLiteral : ScopeExpr<FnScope> {
+struct FunctionLiteral : ParameterizedExpression, WithScope<FnScope> {
   static std::unique_ptr<FunctionLiteral> MakeLong(
-      frontend::SourceRange span,
+      frontend::SourceRange range,
       std::vector<std::unique_ptr<Declaration>> in_params,
       std::vector<std::unique_ptr<Node>> statements,
       std::optional<std::vector<std::unique_ptr<Expression>>> out_params =
           std::nullopt) {
-    return std::unique_ptr<FunctionLiteral>{new FunctionLiteral(
-        std::move(span), std::move(in_params), std::move(statements),
-        std::move(out_params), false)};
+    return std::unique_ptr<FunctionLiteral>{
+        new FunctionLiteral(range, std::move(in_params), std::move(statements),
+                            std::move(out_params), false)};
   }
 
   static std::unique_ptr<FunctionLiteral> MakeShort(
-      frontend::SourceRange span,
+      frontend::SourceRange range,
       std::vector<std::unique_ptr<Declaration>> in_params,
       std::vector<std::unique_ptr<Node>> statements) {
     return std::unique_ptr<FunctionLiteral>{
-        new FunctionLiteral(std::move(span), std::move(in_params),
+        new FunctionLiteral(range, std::move(in_params),
                             std::move(statements), std::nullopt, true)};
   }
 
@@ -651,11 +672,6 @@ struct FunctionLiteral : ScopeExpr<FnScope> {
   ~FunctionLiteral() override {}
 
   base::PtrSpan<Node const> stmts() const { return stmts_; }
-
-  // TODO core::ParamsRef to erase the unique_ptr?
-  core::Params<std::unique_ptr<Declaration>> const &params() const {
-    return params_;
-  }
 
   std::optional<base::PtrSpan<Expression const>> outputs() const {
     if (not outputs_) { return std::nullopt; }
@@ -670,47 +686,20 @@ struct FunctionLiteral : ScopeExpr<FnScope> {
   // Retruns whether the function is expressed with `=>`
   constexpr bool is_short() const { return is_short_; }
 
-  // Returns whether the function is generic (has constant or parameters or
-  // parameters with inferred types).
-  constexpr bool is_generic() const { return is_generic_; };
-
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
   explicit FunctionLiteral(
-      frontend::SourceRange span,
+      frontend::SourceRange const &range,
       std::vector<std::unique_ptr<Declaration>> in_params,
       std::vector<std::unique_ptr<Node>> stmts,
       std::optional<std::vector<std::unique_ptr<Expression>>> out_params,
       bool is_short)
-      : ScopeExpr<FnScope>(std::move(span)),
+      : ParameterizedExpression(range, std::move(in_params)),
         outputs_(std::move(out_params)),
         stmts_(std::move(stmts)),
-        is_short_(is_short) {
-    for (auto &input : in_params) {
-      input->flags() |= Declaration::f_IsFnParam;
-      // NOTE: This is safe because the declaration is behind a unique_ptr so
-      // the string is never moved. You need to be careful if you ever decide to
-      // use make this declaration inline because SSO might mean moving the
-      // declaration (which can happen if core::Params internal vector gets
-      // reallocated) could invalidate the string_view unintentionally.
-      std::string_view name = input->id();
+        is_short_(is_short) {}
 
-      // Note the weird naming here: A declaration which is default initialized
-      // means there is no `=` as part of the declaration. This means that the
-      // declaration, when thougth of as a parameter to a function, has no
-      // default value.
-      core::ParamFlags flags{};
-      if (not input->IsDefaultInitialized()) { flags = core::HAS_DEFAULT; }
-      is_generic_ |= (input->flags() & Declaration::f_IsConst);
-
-      params_.append(name, std::move(input), flags);
-    }
-  }
-
-  // TODO This is storing both the name in the declaration and pulls the
-  // string_view of the name out in core::Params::Param.
-  core::Params<std::unique_ptr<Declaration>> params_;
   std::optional<std::vector<std::unique_ptr<Expression>>> outputs_;
   std::vector<std::unique_ptr<Node>> stmts_;
   bool is_short_   = false;
@@ -721,8 +710,8 @@ struct FunctionLiteral : ScopeExpr<FnScope> {
 // Identifier:
 // Represents any user-defined identifier.
 struct Identifier : Expression {
-  Identifier(frontend::SourceRange span, std::string token)
-      : Expression(std::move(span)), token_(std::move(token)) {}
+  Identifier(frontend::SourceRange const &range, std::string token)
+      : Expression(range), token_(std::move(token)) {}
   ~Identifier() override {}
 
   ICARUS_AST_VIRTUAL_METHODS;
@@ -764,9 +753,9 @@ struct Identifier : Expression {
 //  Note: We generally try to keep these alphabetical, but in this case, the
 //  body depends on `Identifier`.
 struct Goto : Node {
-  explicit Goto(frontend::SourceRange span,
+  explicit Goto(frontend::SourceRange const &range,
                 std::vector<std::unique_ptr<Call>> calls)
-      : Node(std::move(span)) {
+      : Node(range) {
     for (auto &call : calls) {
       auto [callee, ordered_args] = std::move(*call).extract();
       if (auto *id = callee->if_as<Identifier>()) {
@@ -821,8 +810,8 @@ struct Goto : Node {
 //  * `import "a_module.ic"`
 //  * `import function_returning_a_string()`
 struct Import : Expression {
-  explicit Import(frontend::SourceRange span, std::unique_ptr<Expression> expr)
-      : Expression(std::move(span)), operand_(std::move(expr)) {}
+  explicit Import(frontend::SourceRange const &range, std::unique_ptr<Expression> expr)
+      : Expression(range), operand_(std::move(expr)) {}
   ~Import() override {}
 
   Expression const *operand() const { return operand_.get(); }
@@ -841,9 +830,9 @@ struct Import : Expression {
 //  * `buf_ptr[3]`
 //  * `my_array[4]`
 struct Index : Expression {
-  explicit Index(frontend::SourceRange span, std::unique_ptr<Expression> lhs,
+  explicit Index(frontend::SourceRange const &range, std::unique_ptr<Expression> lhs,
                  std::unique_ptr<Expression> rhs)
-      : Expression(std::move(span)),
+      : Expression(range),
         lhs_(std::move(lhs)),
         rhs_(std::move(rhs)) {}
   ~Index() override {}
@@ -868,8 +857,8 @@ struct Index : Expression {
 // Example:
 // `#.my_label`
 struct Label : Expression {
-  explicit Label(frontend::SourceRange span, std::string label)
-      : Expression(std::move(span)), label_(std::move(label)) {}
+  explicit Label(frontend::SourceRange const &range, std::string label)
+      : Expression(range), label_(std::move(label)) {}
   ~Label() override {}
 
   ir::Label value() const { return ir::Label(label_); }
@@ -892,46 +881,24 @@ struct Label : Expression {
 //    goto exit()
 //  }
 //  ```
-struct Jump : ScopeExpr<FnScope> {
-  explicit Jump(frontend::SourceRange span,
+struct Jump : ParameterizedExpression, WithScope<FnScope> {
+  explicit Jump(frontend::SourceRange const &range,
                 std::unique_ptr<ast::Declaration> state,
                 std::vector<std::unique_ptr<Declaration>> in_params,
                 std::vector<std::unique_ptr<Node>> stmts)
-      : ScopeExpr<FnScope>(std::move(span)),
+      : ParameterizedExpression(range, std::move(in_params)),
         state_(std::move(state)),
         stmts_(std::move(stmts)) {
     if (state_) { state_->flags() |= Declaration::f_IsFnParam; }
-    for (auto &input : in_params) {
-      input->flags() |= Declaration::f_IsFnParam;
-      // NOTE: This is safe because the declaration is behind a unique_ptr so
-      // the string is never moved. You need to be careful if you ever decide to
-      // use make this declaration inline because SSO might mean moving the
-      // declaration (which can happen if core::Params internal vector gets
-      // reallocated) could invalidate the string_view unintentionally.
-      std::string_view name = input->id();
-
-      // Note the weird naming here: A declaration which is default initialized
-      // means there is no `=` as part of the declaration. This means that the
-      // declaration, when thougth of as a parameter to a function, has no
-      // default value.
-      core::ParamFlags flags{};
-      if (not input->IsDefaultInitialized()) { flags = core::HAS_DEFAULT; }
-      params_.append(name, std::move(input), flags);
-    }
   }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
   Declaration const *state() const { return state_.get(); }
-  // TODO core::ParamsRef to erase the unique_ptr?
-  core::Params<std::unique_ptr<Declaration>> const &params() const {
-    return params_;
-  }
   base::PtrSpan<Node const> stmts() const { return stmts_; }
 
  private:
   std::unique_ptr<ast::Declaration> state_;
-  core::Params<std::unique_ptr<ast::Declaration>> params_;
   std::vector<std::unique_ptr<Node>> stmts_;
 };
 
@@ -952,11 +919,11 @@ struct Jump : ScopeExpr<FnScope> {
 //   square ::= N * N
 // }
 // ```
-struct ParameterizedStructLiteral : ScopeExpr<DeclScope> {
-  ParameterizedStructLiteral(frontend::SourceRange span,
+struct ParameterizedStructLiteral : Expression, WithScope<DeclScope> {
+  ParameterizedStructLiteral(frontend::SourceRange const &range,
                              std::vector<Declaration> params,
                              std::vector<Declaration> fields)
-      : ScopeExpr<DeclScope>(std::move(span)), fields_(std::move(fields)) {}
+      : Expression(range), fields_(std::move(fields)) {}
 
   ~ParameterizedStructLiteral() override {}
 
@@ -981,9 +948,9 @@ struct ParameterizedStructLiteral : ScopeExpr<DeclScope> {
 //  ```
 //
 struct ReturnStmt : Node {
-  explicit ReturnStmt(frontend::SourceRange span,
+  explicit ReturnStmt(frontend::SourceRange const &range,
                       std::vector<std::unique_ptr<Expression>> exprs = {})
-      : Node(std::move(span)), exprs_(std::move(exprs)) {}
+      : Node(range), exprs_(std::move(exprs)) {}
   ~ReturnStmt() override {}
 
   base::PtrSpan<Expression const> exprs() const { return exprs_; }
@@ -1018,11 +985,11 @@ struct ReturnStmt : Node {
 //    done ::= () -> () {}
 //  }
 //  ```
-struct ScopeLiteral : ScopeExpr<ScopeLitScope> {
-  explicit ScopeLiteral(frontend::SourceRange span,
+struct ScopeLiteral : Expression, WithScope<ScopeLitScope> {
+  explicit ScopeLiteral(frontend::SourceRange const &range,
                         std::unique_ptr<Expression> state_type,
                         std::vector<std::unique_ptr<Declaration>> decls)
-      : ScopeExpr<ScopeLitScope>(std::move(span)),
+      : Expression(range),
         state_type_(std::move(state_type)),
         decls_(std::move(decls)) {}
   ~ScopeLiteral() override {}
@@ -1057,9 +1024,9 @@ struct ScopeLiteral : ScopeExpr<ScopeLitScope> {
 //  `unwrap (maybe_object) or { return -1 }`
 //
 struct ScopeNode : Expression {
-  ScopeNode(frontend::SourceRange span, std::unique_ptr<Expression> name,
+  ScopeNode(frontend::SourceRange const &range, std::unique_ptr<Expression> name,
             core::OrderedFnArgs<Expression> args, std::vector<BlockNode> blocks)
-      : Expression(std::move(span)),
+      : Expression(range),
         name_(std::move(name)),
         args_(std::move(args)),
         blocks_(std::move(blocks)) {}
@@ -1116,10 +1083,10 @@ struct ScopeNode : Expression {
 //
 // struct {}
 // ```
-struct StructLiteral : ScopeExpr<DeclScope> {
-  explicit StructLiteral(frontend::SourceRange span,
+struct StructLiteral : Expression, WithScope<DeclScope> {
+  explicit StructLiteral(frontend::SourceRange const &range,
                          std::vector<Declaration> fields)
-      : ScopeExpr<DeclScope>(std::move(span)), fields_(std::move(fields)) {}
+      : Expression(range), fields_(std::move(fields)) {}
 
   ~StructLiteral() override {}
 
@@ -1135,7 +1102,7 @@ struct StructLiteral : ScopeExpr<DeclScope> {
 
 // TODO
 struct StructType : Expression {
-  StructType(frontend::SourceRange span) : Expression(span) {}
+  StructType(frontend::SourceRange const &range) : Expression(range) {}
   ~StructType() override {}
 
   ICARUS_AST_VIRTUAL_METHODS;
@@ -1184,8 +1151,8 @@ struct Switch : Expression {
 struct Terminal : Expression {
   template <typename T,
             std::enable_if_t<std::is_trivially_copyable_v<T>, int> = 0>
-  explicit Terminal(frontend::SourceRange span, T value, type::BasicType t)
-      : Expression(std::move(span)), basic_(t) {
+  explicit Terminal(frontend::SourceRange const &range, T value, type::BasicType t)
+      : Expression(range), basic_(t) {
     static_cast<void>(value);
     if constexpr (std::is_same_v<T, bool>) {
       b_ = value;
@@ -1282,9 +1249,9 @@ struct Terminal : Expression {
 //  * `what_type_am_i:?`
 //  * `@some_ptr`
 struct Unop : Expression {
-  Unop(frontend::SourceRange span, frontend::Operator op,
+  Unop(frontend::SourceRange const &range, frontend::Operator op,
        std::unique_ptr<Expression> operand)
-      : Expression(span), operand_(std::move(operand)), op_(op) {}
+      : Expression(range), operand_(std::move(operand)), op_(op) {}
   ~Unop() override {}
 
   ICARUS_AST_VIRTUAL_METHODS;
@@ -1306,10 +1273,10 @@ struct Unop : Expression {
 //  * `#.my_label <<`
 //
 struct YieldStmt : Node {
-  explicit YieldStmt(frontend::SourceRange span,
+  explicit YieldStmt(frontend::SourceRange const &range,
                      std::vector<std::unique_ptr<Expression>> exprs,
                      std::unique_ptr<ast::Label> label = nullptr)
-      : Node(std::move(span)),
+      : Node(range),
         exprs_(std::move(exprs)),
         label_(std::move(label)) {}
   ~YieldStmt() override {}
