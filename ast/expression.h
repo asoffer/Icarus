@@ -1,7 +1,6 @@
 #ifndef ICARUS_AST_EXPRESSION_H
 #define ICARUS_AST_EXPRESSION_H
 
-#include "ast/expr_ptr.h"
 #include "ast/hashtag.h"
 #include "ast/node.h"
 #include "ast/scope/scope.h"

@@ -50,7 +50,6 @@ cc_library(
     name = "expression",
     hdrs = ["expression.h"],
     deps = [
-        ":expr_ptr",
         ":hashtag",
         ":node",
     ],
@@ -64,12 +63,6 @@ cc_library(
         "//base:cast",
         "//frontend/source:range",
     ],
-)
-
-cc_library(
-    name = "expr_ptr",
-    hdrs = ["expr_ptr.h"],
-    deps = [],
 )
 
 cc_library(

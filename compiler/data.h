@@ -10,7 +10,6 @@
 #include "absl/container/node_hash_map.h"
 #include "ast/ast.h"
 #include "ast/ast_fwd.h"
-#include "ast/expr_ptr.h"
 #include "base/guarded.h"
 #include "base/lazy_convert.h"
 #include "compiler/constant/binding.h"
@@ -50,12 +49,12 @@ struct CompilationData {
     return &iter->second;
   }
 
-  type::QualType const *result(ast::ExprPtr expr) const {
+  type::QualType const *result(ast::Expression const *expr) const {
     auto iter = type_verification_results_.find(expr);
     return iter == type_verification_results_.end() ? nullptr : &iter->second;
   }
 
-  type::QualType set_result(ast::ExprPtr expr, type::QualType r) {
+  type::QualType set_result(ast::Expression const *expr, type::QualType r) {
     type_verification_results_.emplace(expr, r);
     return r;
   }
@@ -97,7 +96,8 @@ struct CompilationData {
 
   absl::node_hash_map<ast::Jump const *, ir::Jump> jumps_;
 
-  absl::flat_hash_map<ast::ExprPtr, type::QualType> type_verification_results_;
+  absl::flat_hash_map<ast::Expression const *, type::QualType>
+      type_verification_results_;
 
   absl::flat_hash_map<ast::Declaration const *, ir::Reg> addr_;
 

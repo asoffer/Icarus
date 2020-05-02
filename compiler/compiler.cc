@@ -1,7 +1,6 @@
 #include "compiler/compiler.h"
 
 #include "ast/ast.h"
-#include "ast/expr_ptr.h"
 #include "compiler/compiler.h"
 #include "compiler/executable_module.h"
 #include "compiler/module.h"
@@ -22,8 +21,9 @@ Compiler::Compiler(CompiledModule *mod,
       current_constants_(mod->root_node()),
       diag_consumer_(consumer) {}
 
-std::optional<type::QualType> Compiler::qual_type_of(ast::ExprPtr expr) const {
-  if (auto *decl = expr.get()->if_as<ast::Declaration>()) {
+std::optional<type::QualType> Compiler::qual_type_of(
+    ast::Expression const *expr) const {
+  if (auto *decl = expr->if_as<ast::Declaration>()) {
     // If the declarations module is the same as this one, we haven't completed
     // compiling it yet and so we need to access it through the compiler.
     // Otherwise, we have finished compiling, so we access it through the
@@ -56,7 +56,8 @@ type::Type const *Compiler::type_of(ast::Expression const *expr) const {
 void Compiler::set_addr(ast::Declaration const *decl, ir::Reg addr) {
   data_.addr_[decl] = addr;
 }
-type::QualType Compiler::set_result(ast::ExprPtr expr, type::QualType r) {
+type::QualType Compiler::set_result(ast::Expression const *expr,
+                                    type::QualType r) {
   return data_.set_result(expr, r);
 }
 
