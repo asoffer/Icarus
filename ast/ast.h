@@ -170,7 +170,8 @@ struct ArrayType : Expression {
 struct Binop : Expression {
   explicit Binop(std::unique_ptr<Expression> lhs, frontend::Operator op,
                  std::unique_ptr<Expression> rhs)
-      : Expression(frontend::SourceRange(lhs->span.begin(), rhs->span.end())),
+      : Expression(
+            frontend::SourceRange(lhs->range().begin(), rhs->range().end())),
         op_(op),
         lhs_(std::move(lhs)),
         rhs_(std::move(rhs)) {}
@@ -427,12 +428,12 @@ struct BlockLiteral : Expression, WithScope<DeclScope> {
 // This will likely change in the future so that blocks can take arguments
 // (likely in the form of `core::FnArgs<std::unique_ptr<ast::Expression>>`).
 struct BlockNode : ParameterizedExpression, WithScope<ExecScope> {
-  explicit BlockNode(frontend::SourceRange range, std::string name,
+  explicit BlockNode(frontend::SourceRange const &range, std::string name,
                      std::vector<std::unique_ptr<Node>> stmts)
       : ParameterizedExpression(range),
         name_(std::move(name)),
         stmts_(std::move(stmts)) {}
-  explicit BlockNode(frontend::SourceRange range, std::string name,
+  explicit BlockNode(frontend::SourceRange const &range, std::string name,
                      std::vector<std::unique_ptr<Declaration>> params,
                      std::vector<std::unique_ptr<Node>> stmts)
       : ParameterizedExpression(range, std::move(params)),
@@ -567,7 +568,8 @@ struct ChainOp : Expression {
 
 // TODO
 struct CommaList : Expression {
-  CommaList() = default;
+  explicit CommaList(frontend::SourceRange const &range = {})
+      : Expression(range) {}
   ~CommaList() override {}
 
   CommaList(CommaList const &) noexcept = default;
@@ -649,7 +651,7 @@ struct EnumLiteral : Expression, WithScope<DeclScope> {
 //
 struct FunctionLiteral : ParameterizedExpression, WithScope<FnScope> {
   static std::unique_ptr<FunctionLiteral> MakeLong(
-      frontend::SourceRange range,
+      frontend::SourceRange const &range,
       std::vector<std::unique_ptr<Declaration>> in_params,
       std::vector<std::unique_ptr<Node>> statements,
       std::optional<std::vector<std::unique_ptr<Expression>>> out_params =
@@ -660,7 +662,7 @@ struct FunctionLiteral : ParameterizedExpression, WithScope<FnScope> {
   }
 
   static std::unique_ptr<FunctionLiteral> MakeShort(
-      frontend::SourceRange range,
+      frontend::SourceRange const &range,
       std::vector<std::unique_ptr<Declaration>> in_params,
       std::vector<std::unique_ptr<Node>> statements) {
     return std::unique_ptr<FunctionLiteral>{
@@ -1123,7 +1125,7 @@ struct StructType : Expression {
 // the parenthesized expression.
 struct Switch : Expression {
   explicit Switch(
-      frontend::SourceRange range, std::unique_ptr<Expression> expr,
+      frontend::SourceRange const &range, std::unique_ptr<Expression> expr,
       std::vector<std::pair<std::unique_ptr<Node>, std::unique_ptr<Expression>>>
           cases)
       : Expression(range), expr_(std::move(expr)), cases_(std::move(cases)) {}

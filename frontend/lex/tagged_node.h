@@ -17,14 +17,14 @@ struct TaggedNode {
   TaggedNode() = default;
 
   /* implicit */ TaggedNode(Lexeme &&l) : tag_(l.tag()) {
-    auto span = l.span();
+    auto range = l.range();
     std::visit(
         [&](auto &&x) {
           using T = std::decay_t<decltype(x)>;
           if constexpr (std::is_same_v<T, Syntax>) {
-            node_ = std::make_unique<Token>(span, stringify(x), false);
+            node_ = std::make_unique<Token>(range, stringify(x), false);
           } else if constexpr (std::is_same_v<T, Operator>) {
-            node_ = std::make_unique<Token>(span, stringify(x), false);
+            node_ = std::make_unique<Token>(range, stringify(x), false);
           } else if constexpr (std::is_same_v<T, std::unique_ptr<ast::Node>>) {
             node_ = std::move(x);
           } else {
@@ -43,7 +43,7 @@ struct TaggedNode {
               case ast::Hashtag::Builtin::Inline: token = "{inline}"; break;
               case ast::Hashtag::Builtin::User: token = x.user_tag(); break;
             }
-            node_ = std::make_unique<Token>(span, token, true);
+            node_ = std::make_unique<Token>(range, token, true);
           }
         },
         std::move(l).get());

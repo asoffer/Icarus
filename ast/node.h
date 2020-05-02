@@ -11,8 +11,9 @@ namespace ast {
 struct Scope;
 
 struct Node : public base::Cast<Node> {
-  Node(frontend::SourceRange span = frontend::SourceRange())
-      : span(std::move(span)) {}
+  explicit constexpr Node(frontend::SourceRange const &range = {})
+      : range_(range) {}
+
   virtual ~Node() {}
 
   virtual void Accept(VisitorBase *visitor, void *ret,
@@ -27,12 +28,11 @@ struct Node : public base::Cast<Node> {
   virtual void DebugStrAppend(std::string *out, size_t indent) const {}
   virtual void Initialize(Scope *scope) {}
 
+  constexpr frontend::SourceRange range() const { return range_; }
   Scope *scope() const { return scope_; }
 
-  // TODO make private
-  frontend::SourceRange span;
-
  protected:
+  frontend::SourceRange range_;
   Scope *scope_ = nullptr;
 };
 

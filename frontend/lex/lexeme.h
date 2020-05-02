@@ -17,12 +17,13 @@ namespace frontend {
 struct Lexeme {
   explicit Lexeme(std::unique_ptr<ast::Node>&& n)
       : value_(std::move(n)),
-        span_(std::get<std::unique_ptr<ast::Node>>(value_)->span) {}
-  explicit Lexeme(Operator op, SourceRange const& span)
-      : value_(op), span_(span) {}
-  explicit Lexeme(Syntax s, SourceRange const& span) : value_(s), span_(span) {}
-  explicit Lexeme(ast::Hashtag h, SourceRange const& span)
-      : value_(h), span_(span) {}
+        range_(std::get<std::unique_ptr<ast::Node>>(value_)->range()) {}
+  explicit Lexeme(Operator op, SourceRange const& range)
+      : value_(op), range_(range) {}
+  explicit Lexeme(Syntax s, SourceRange const& range)
+      : value_(s), range_(range) {}
+  explicit Lexeme(ast::Hashtag h, SourceRange const& range)
+      : value_(h), range_(range) {}
 
   constexpr Operator op() const { return std::get<Operator>(value_); }
 
@@ -54,12 +55,12 @@ struct Lexeme {
         value_);
   }
 
-  SourceRange span() const { return span_; }
+  SourceRange range() const { return range_; }
 
  private:
   std::variant<std::unique_ptr<ast::Node>, Operator, Syntax, ast::Hashtag>
       value_;
-  SourceRange span_;
+  SourceRange range_;
 };
 
 }  // namespace frontend

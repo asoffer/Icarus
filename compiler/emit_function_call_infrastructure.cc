@@ -35,7 +35,7 @@ void MakeAllDestructions(Compiler *compiler, ast::ExecScope const *exec_scope) {
 
   // TODO eek, don't use line number to determine destruction order!
   absl::c_sort(ordered_decls, [](ast::Declaration *lhs, ast::Declaration *rhs) {
-    return (lhs->span.begin() > rhs->span.begin());
+    return (lhs->range().begin() > rhs->range().begin());
   });
 
   for (auto *decl : ordered_decls) {

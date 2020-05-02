@@ -29,7 +29,7 @@ std::unique_ptr<ast::Identifier> MakeInvalidNode(
 }
 
 struct Statements : public ast::Node {
-  Statements() {}
+  Statements(frontend::SourceRange const &range) : ast::Node(range) {}
   ~Statements() override {}
   Statements(Statements &&) noexcept = default;
   Statements &operator=(Statements &&) noexcept = default;
@@ -38,6 +38,8 @@ struct Statements : public ast::Node {
               void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
+
+  void set_range(frontend::SourceRange const &range) { range_ = range; }
 
   size_t size() const { return content_.size(); }
   void append(std::unique_ptr<ast::Node> &&node) {
@@ -58,6 +60,7 @@ struct Statements : public ast::Node {
 // Temporary node which never appears in the AST but is useful during parsing to
 // distinguish 'when' from other binary operators.
 struct SwitchWhen : public ast::Node {
+  explicit SwitchWhen(SourceRange const &range) : ast::Node(range) {}
   ~SwitchWhen() override {}
 
   void Accept(ast::VisitorBase *visitor, void *ret,
@@ -78,7 +81,7 @@ std::unique_ptr<To> move_as(std::unique_ptr<From> &val) {
 void ValidateStatementSyntax(ast::Node *node,
                              diagnostic::DiagnosticConsumer &diag) {
   if (auto *cl = node->if_as<ast::CommaList>()) {
-    diag.Consume(diagnostic::CommaSeparatedListStatement{.range = cl->span});
+    diag.Consume(diagnostic::CommaSeparatedListStatement{.range = cl->range()});
     // TODO Do we call this more than once?
   }
 }
@@ -114,7 +117,7 @@ std::unique_ptr<ast::Node> AddHashtag(
   } else if (token.front() == '{' or token.back() == '}') {
     diag.Consume(diagnostic::UnknownBuiltinHashtag{
         .token = std::string{token},
-        .range = nodes.front()->span,
+        .range = nodes.front()->range(),
     });
   } else {
     // User-defined hashtag.
@@ -127,7 +130,7 @@ std::unique_ptr<ast::Switch> BuildSwitch(std::unique_ptr<ast::Expression> expr,
                                          std::unique_ptr<Statements> stmts,
                                          diagnostic::DiagnosticConsumer &diag) {
   // TODO it's really bigger than this because it involves the keyword too.
-  auto range = stmts->span;
+  auto range = stmts->range();
   std::vector<
       std::pair<std::unique_ptr<ast::Node>, std::unique_ptr<ast::Expression>>>
       cases;
@@ -149,8 +152,8 @@ std::unique_ptr<ast::Switch> BuildSwitch(std::unique_ptr<ast::Expression> expr,
 std::unique_ptr<ast::Node> OneBracedStatement(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  auto stmts  = std::make_unique<Statements>();
-  stmts->span = SourceRange(nodes[0]->span.begin(), nodes[2]->span.end());
+  auto stmts = std::make_unique<Statements>(
+      SourceRange(nodes[0]->range().begin(), nodes[2]->range().end()));
   stmts->append(std::move(nodes[1]));
   ValidateStatementSyntax(stmts->content_.back().get(), diag);
   return stmts;
@@ -159,15 +162,16 @@ std::unique_ptr<ast::Node> OneBracedStatement(
 std::unique_ptr<ast::Node> EmptyBraces(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &) {
-  auto stmts  = std::make_unique<Statements>();
-  stmts->span = SourceRange(nodes[0]->span.begin(), nodes[1]->span.end());
-  return stmts;
+  return std::make_unique<Statements>(
+      SourceRange(nodes[0]->range().begin(), nodes[1]->range().end()));
 }
 
 std::unique_ptr<ast::Node> BuildControlHandler(
     std::unique_ptr<ast::Node> node) {
   auto &tk = node->as<Token>().token;
-  if (tk == "return") { return std::make_unique<ast::ReturnStmt>(node->span); }
+  if (tk == "return") {
+    return std::make_unique<ast::ReturnStmt>(node->range());
+  }
   UNREACHABLE();
 }
 
@@ -175,7 +179,8 @@ std::unique_ptr<ast::Node> BracedStatementsSameLineEnd(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
   auto stmts  = move_as<Statements>(nodes[1]);
-  stmts->span = SourceRange(nodes[0]->span.begin(), nodes[2]->span.end());
+  stmts->set_range(
+      SourceRange(nodes[0]->range().begin(), nodes[2]->range().end()));
   if (nodes[2]->is<Statements>()) {
     for (auto &stmt : nodes[2]->as<Statements>().content_) {
       stmts->append(std::move(stmt));
@@ -200,13 +205,13 @@ std::unique_ptr<ast::Node> BuildRightUnop(
     diagnostic::DiagnosticConsumer &diag) {
   const std::string &tk = nodes[1]->as<Token>().token;
   if (tk == ":?") {
-    SourceRange span(nodes[0]->span.begin(), nodes[1]->span.end());
-    auto unop = std::make_unique<ast::Unop>(span, Operator::TypeOf,
+    SourceRange range(nodes[0]->range().begin(), nodes[1]->range().end());
+    auto unop = std::make_unique<ast::Unop>(range, Operator::TypeOf,
                                             move_as<ast::Expression>(nodes[0]));
 
     if (unop->operand()->is<ast::Declaration>()) {
       diag.Consume(diagnostic::DeclarationUsedInUnaryOperator{
-          .range = unop->operand()->span,
+          .range = unop->operand()->range(),
       });
     }
 
@@ -217,11 +222,11 @@ std::unique_ptr<ast::Node> BuildRightUnop(
 }
 
 std::unique_ptr<ast::Node> BuildCallImpl(
-    SourceRange span, std::unique_ptr<ast::Expression> callee,
+    SourceRange range, std::unique_ptr<ast::Expression> callee,
     std::unique_ptr<ast::Expression> args_expr,
     diagnostic::DiagnosticConsumer &diag) {
   if (not args_expr) {
-    return std::make_unique<ast::Call>(std::move(span), std::move(callee),
+    return std::make_unique<ast::Call>(range, std::move(callee),
                                        core::OrderedFnArgs<ast::Expression>{});
   }
 
@@ -234,14 +239,14 @@ std::unique_ptr<ast::Node> BuildCallImpl(
       if (auto *b = expr->if_as<ast::Binop>();
           b and b->op() == Operator::Assign) {
         if (positional_error_ranges.empty()) {
-          last_named_range_before_error = b->lhs()->span;
+          last_named_range_before_error = b->lhs()->range();
         }
         auto [lhs, rhs] = std::move(*b).extract();
         args.emplace_back(std::string{lhs->as<ast::Identifier>().token()},
                           std::move(rhs));
       } else {
         if (last_named_range_before_error.has_value()) {
-          positional_error_ranges.push_back(expr->span);
+          positional_error_ranges.push_back(expr->range());
         }
         args.emplace_back("", std::move(expr));
       }
@@ -266,20 +271,20 @@ std::unique_ptr<ast::Node> BuildCallImpl(
 
   if (callee->is<ast::Declaration>()) {
     diag.Consume(diagnostic::CallingDeclaration{
-        .range = callee->span,
+        .range = callee->range(),
     });
   }
 
   return std::make_unique<ast::Call>(
-      std::move(span), std::move(callee),
+      range, std::move(callee),
       core::OrderedFnArgs<ast::Expression>(std::move(args)));
 }
 
 std::unique_ptr<ast::Node> BuildCall(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  SourceRange span(nodes.front()->span.begin(), nodes.back()->span.end());
-  return BuildCallImpl(std::move(span), move_as<ast::Expression>(nodes[0]),
+  SourceRange range(nodes.front()->range().begin(), nodes.back()->range().end());
+  return BuildCallImpl(range, move_as<ast::Expression>(nodes[0]),
                        move_as<ast::Expression>(nodes[2]), diag);
 }
 
@@ -289,13 +294,14 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
   const std::string &tk = nodes[0]->as<Token>().token;
 
   if (tk == "import") {
-    auto span = SourceRange(nodes[0]->span.begin(), nodes[1]->span.end());
-    return std::make_unique<ast::Import>(std::move(span),
+    auto range = SourceRange(nodes[0]->range().begin(), nodes[1]->range().end());
+    return std::make_unique<ast::Import>(range,
                                          move_as<ast::Expression>(nodes[1]));
   } else if (tk == "'") {
-    SourceRange span(nodes.front()->span.begin(), nodes.back()->span.end());
-    return BuildCallImpl(std::move(span), move_as<ast::Expression>(nodes[1]),
-                         nullptr, diag);
+    SourceRange range(nodes.front()->range().begin(),
+                     nodes.back()->range().end());
+    return BuildCallImpl(range, move_as<ast::Expression>(nodes[1]), nullptr,
+                         diag);
   }
 
   static absl::flat_hash_map<std::string_view, Operator> const kUnopMap{
@@ -308,7 +314,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
       {"$", Operator::Eval},        {"..", Operator::VariadicPack},
   };
 
-  SourceRange range(nodes[0]->span.begin(), nodes[1]->span.end());
+  SourceRange range(nodes[0]->range().begin(), nodes[1]->range().end());
 
   auto &operand = nodes[1];
   Operator op   = kUnopMap.find(tk)->second;
@@ -318,12 +324,12 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
         .range = range,
     });
     return std::make_unique<ast::Unop>(range, op,
-                                       MakeInvalidNode(nodes[1]->span));
+                                       MakeInvalidNode(nodes[1]->range()));
 
   } else if (not operand->is<ast::Expression>()) {
     diag.Consume(diagnostic::Todo{});
     return std::make_unique<ast::Unop>(range, op,
-                                       MakeInvalidNode(nodes[1]->span));
+                                       MakeInvalidNode(nodes[1]->range()));
 
   } else {
     return std::make_unique<ast::Unop>(range, op,
@@ -334,8 +340,8 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
 std::unique_ptr<ast::Node> BuildLabeledYield(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  auto span =
-      SourceRange(nodes.front()->span.begin(), nodes.back()->span.end());
+  auto range =
+      SourceRange(nodes.front()->range().begin(), nodes.back()->range().end());
 
   std::vector<std::unique_ptr<ast::Expression>> exprs;
   if (nodes.size() > 2) {
@@ -348,18 +354,17 @@ std::unique_ptr<ast::Node> BuildLabeledYield(
     }
   }
 
-  auto stmts  = std::make_unique<Statements>();
-  stmts->span = span;
+  auto stmts = std::make_unique<Statements>(range);
   stmts->append(std::make_unique<ast::YieldStmt>(
-      std::move(span), std::move(exprs), move_as<ast::Label>(nodes[0])));
+      range, std::move(exprs), move_as<ast::Label>(nodes[0])));
   return stmts;
 }
 
 std::unique_ptr<ast::Node> BuildUnlabeledYield(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  auto span =
-      SourceRange(nodes.front()->span.begin(), nodes.back()->span.end());
+  auto range =
+      SourceRange(nodes.front()->range().begin(), nodes.back()->range().end());
   std::vector<std::unique_ptr<ast::Expression>> exprs;
   if (auto *cl = nodes[1]->if_as<ast::CommaList>();
       cl and not cl->parenthesized_) {
@@ -368,9 +373,8 @@ std::unique_ptr<ast::Node> BuildUnlabeledYield(
     exprs.push_back(move_as<ast::Expression>(nodes[1]));
   }
 
-  auto stmts  = std::make_unique<Statements>();
-  stmts->span = span;
-  stmts->append(std::make_unique<ast::YieldStmt>(span, std::move(exprs)));
+  auto stmts = std::make_unique<Statements>(range);
+  stmts->append(std::make_unique<ast::YieldStmt>(range, std::move(exprs)));
   return stmts;
 }
 
@@ -388,8 +392,8 @@ std::unique_ptr<ast::Node> BuildChainOp(
     chain = move_as<ast::ChainOp>(nodes[0]);
 
   } else {
-    SourceRange span(nodes[0]->span.begin(), nodes[2]->span.end());
-    chain = std::make_unique<ast::ChainOp>(std::move(span),
+    SourceRange range(nodes[0]->range().begin(), nodes[2]->range().end());
+    chain = std::make_unique<ast::ChainOp>(range,
                                            move_as<ast::Expression>(nodes[0]));
   }
 
@@ -405,45 +409,44 @@ std::unique_ptr<ast::Node> BuildCommaList(
       not nodes[0]->as<ast::CommaList>().parenthesized_) {
     comma_list = move_as<ast::CommaList>(nodes[0]);
   } else {
-    comma_list = std::make_unique<ast::CommaList>();
-    comma_list->span =
-        SourceRange(nodes[0]->span.begin(), nodes[2]->span.end());
+    comma_list = std::make_unique<ast::CommaList>(
+        SourceRange(nodes[0]->range().begin(), nodes[2]->range().end()));
     comma_list->exprs_.push_back(move_as<ast::Expression>(nodes[0]));
   }
   comma_list->exprs_.push_back(move_as<ast::Expression>(nodes[2]));
-  comma_list->span.end() = comma_list->exprs_.back()->span.end();
+  comma_list->range().end() = comma_list->exprs_.back()->range().end();
   return comma_list;
 }
 
 std::unique_ptr<ast::Node> BuildAccess(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  auto span      = SourceRange(nodes[0]->span.begin(), nodes[2]->span.end());
+  auto range = SourceRange(nodes[0]->range().begin(), nodes[2]->range().end());
   auto &&operand = move_as<ast::Expression>(nodes[0]);
   if (not nodes[2]->is<ast::Identifier>()) {
     diag.Consume(diagnostic::AccessRhsNotIdentifier{
-        .range = nodes[2]->span,
+        .range = nodes[2]->range(),
     });
-    return std::make_unique<ast::Access>(span, std::move(operand),
+    return std::make_unique<ast::Access>(range, std::move(operand),
                                          "invalid_node");
   }
 
   return std::make_unique<ast::Access>(
-      span, std::move(operand),
+      range, std::move(operand),
       std::string{nodes[2]->as<ast::Identifier>().token()});
 }
 
 std::unique_ptr<ast::Node> BuildIndexOperator(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  auto span  = SourceRange(nodes[0]->span.begin(), nodes[2]->span.end());
-  auto index = std::make_unique<ast::Index>(std::move(span),
-                                            move_as<ast::Expression>(nodes[0]),
-                                            move_as<ast::Expression>(nodes[2]));
+  auto range = SourceRange(nodes[0]->range().begin(), nodes[2]->range().end());
+  auto index =
+      std::make_unique<ast::Index>(range, move_as<ast::Expression>(nodes[0]),
+                                   move_as<ast::Expression>(nodes[2]));
 
   if (index->lhs()->is<ast::Declaration>()) {
     diag.Consume(diagnostic::IndexingDeclaration{
-        .range = nodes[0]->span,
+        .range = nodes[0]->range(),
     });
   }
 
@@ -453,7 +456,7 @@ std::unique_ptr<ast::Node> BuildIndexOperator(
   // catch it. Probably we should have a frontend-only temporary node that
   // converts to an index or block node once we're sure we know which it is.
   // if (index->rhs()->is<ast::Declaration>()) {
-  //   error_log->DeclarationInIndex(index->rhs()->span);
+  //   error_log->DeclarationInIndex(index->rhs()->range());
   // }
 
   return index;
@@ -463,16 +466,15 @@ std::unique_ptr<ast::Node> BuildEmptyArray(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
   return std::make_unique<ast::ArrayLiteral>(
-      SourceRange(nodes.front()->span.begin(), nodes.back()->span.end()),
+      SourceRange(nodes.front()->range().begin(), nodes.back()->range().end()),
       std::vector<std::unique_ptr<ast::Expression>>{});
 }
 
 std::unique_ptr<ast::Node> BuildEmptyCommaList(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  auto comma_list  = std::make_unique<ast::CommaList>();
-  comma_list->span = SourceRange(nodes[0]->span.begin(), nodes[1]->span.end());
-  return comma_list;
+  return std::make_unique<ast::CommaList>(
+      SourceRange(nodes[0]->range().begin(), nodes[1]->range().end()));
 }
 
 std::unique_ptr<ast::Node> BuildArrayLiteral(
@@ -480,11 +482,11 @@ std::unique_ptr<ast::Node> BuildArrayLiteral(
     diagnostic::DiagnosticConsumer &diag) {
   if (auto *cl = nodes[1]->if_as<ast::CommaList>();
       cl and not cl->parenthesized_) {
-    return std::make_unique<ast::ArrayLiteral>(nodes[0]->span,
+    return std::make_unique<ast::ArrayLiteral>(nodes[0]->range(),
                                                std::move(*cl).extract());
   } else {
     return std::make_unique<ast::ArrayLiteral>(
-        nodes[0]->span, move_as<ast::Expression>(nodes[1]));
+        nodes[0]->range(), move_as<ast::Expression>(nodes[1]));
   }
 }
 
@@ -492,7 +494,7 @@ std::unique_ptr<ast::Node> BuildGenericStructType(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
   auto result = std::make_unique<ast::StructType>(
-      SourceRange(nodes.front()->span.begin(), nodes.back()->span.end()));
+      SourceRange(nodes.front()->range().begin(), nodes.back()->range().end()));
   if (nodes[1]->is<ast::CommaList>() and
       not nodes[1]->as<ast::CommaList>().parenthesized_) {
     result->args_ = std::move(nodes[1]->as<ast::CommaList>().exprs_);
@@ -508,13 +510,12 @@ std::unique_ptr<ast::Node> BuildArrayType(
     diagnostic::DiagnosticConsumer &diag) {
   if (auto *cl = nodes[1]->if_as<ast::CommaList>();
       cl and not cl->parenthesized_) {
-    auto span =
-        SourceRange(nodes.front()->span.begin(), nodes.back()->span.end());
-    return std::make_unique<ast::ArrayType>(std::move(span),
-                                            std::move(*cl).extract(),
+    auto range = SourceRange(nodes.front()->range().begin(),
+                            nodes.back()->range().end());
+    return std::make_unique<ast::ArrayType>(range, std::move(*cl).extract(),
                                             move_as<ast::Expression>(nodes[3]));
   } else {
-    return std::make_unique<ast::ArrayType>(nodes[0]->span,
+    return std::make_unique<ast::ArrayType>(nodes[0]->range(),
                                             move_as<ast::Expression>(nodes[1]),
                                             move_as<ast::Expression>(nodes[3]));
   }
@@ -525,12 +526,13 @@ std::unique_ptr<ast::Node> BuildDeclaration(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
   auto op = nodes[1]->as<Token>().op;
-  SourceRange decl_range(nodes.front()->span.begin(), nodes.back()->span.end());
+  SourceRange decl_range(nodes.front()->range().begin(),
+                         nodes.back()->range().end());
   std::string id;
   SourceRange id_range;
   if (nodes[0]->is<ast::Identifier>()) {
-    id_range = nodes[0]->span;
-    id = std::string(nodes[0]->as<ast::Identifier>().token());
+    id_range = nodes[0]->range();
+    id       = std::string(nodes[0]->as<ast::Identifier>().token());
   }
 
   std::unique_ptr<ast::Expression> type_expr, init_val;
@@ -569,15 +571,15 @@ std::vector<std::unique_ptr<ast::Declaration>> ExtractInputs(
 }
 
 std::unique_ptr<ast::Node> BuildFunctionLiteral(
-    SourceRange span, std::vector<std::unique_ptr<ast::Declaration>> inputs,
+    SourceRange range, std::vector<std::unique_ptr<ast::Declaration>> inputs,
     std::unique_ptr<ast::Expression> output, Statements &&stmts, bool is_short,
     diagnostic::DiagnosticConsumer &diag) {
   if (output == nullptr) {
     if (is_short) {
-      return ast::FunctionLiteral::MakeShort(std::move(span), std::move(inputs),
+      return ast::FunctionLiteral::MakeShort(range, std::move(inputs),
                                              std::move(stmts).extract());
     } else {
-      return ast::FunctionLiteral::MakeLong(std::move(span), std::move(inputs),
+      return ast::FunctionLiteral::MakeLong(range, std::move(inputs),
                                             std::move(stmts).extract());
     }
   }
@@ -599,9 +601,8 @@ std::unique_ptr<ast::Node> BuildFunctionLiteral(
     }
     outputs.push_back(std::move(output));
   }
-  return ast::FunctionLiteral::MakeLong(std::move(span), std::move(inputs),
-                                        std::move(stmts).extract(),
-                                        std::move(outputs));
+  return ast::FunctionLiteral::MakeLong(
+      range, std::move(inputs), std::move(stmts).extract(), std::move(outputs));
 }
 
 std::unique_ptr<ast::Node> BuildDesignatedInitializer(
@@ -612,15 +613,16 @@ std::unique_ptr<ast::Node> BuildDesignatedInitializer(
     // than just an op_b.
     if (tok->token != ".") {
       diag.Consume(diagnostic::Todo{});
-      return MakeInvalidNode(
-          SourceRange(nodes.front()->span.begin(), nodes.back()->span.end()));
+      return MakeInvalidNode(SourceRange(nodes.front()->range().begin(),
+                                         nodes.back()->range().end()));
     }
   } else {
     diag.Consume(diagnostic::Todo{});
-    return MakeInvalidNode(
-        SourceRange(nodes.front()->span.begin(), nodes.back()->span.end()));
+    return MakeInvalidNode(SourceRange(nodes.front()->range().begin(),
+                                       nodes.back()->range().end()));
   }
-  auto span = SourceRange(nodes[0]->span.begin(), nodes.back()->span.end());
+  auto range =
+      SourceRange(nodes[0]->range().begin(), nodes.back()->range().end());
   if (auto *stmts = nodes[2]->if_as<Statements>()) {
     auto extracted_stmts = std::move(*stmts).extract();
     std::vector<std::pair<std::string, std::unique_ptr<ast::Expression>>>
@@ -643,11 +645,10 @@ std::unique_ptr<ast::Node> BuildDesignatedInitializer(
     }
 
     return std::make_unique<ast::DesignatedInitializer>(
-        std::move(span), move_as<ast::Expression>(nodes[0]),
-        std::move(initializers));
+        range, move_as<ast::Expression>(nodes[0]), std::move(initializers));
   } else {
     return std::make_unique<ast::DesignatedInitializer>(
-        std::move(span), move_as<ast::Expression>(nodes[0]),
+        range, move_as<ast::Expression>(nodes[0]),
         std::vector<
             std::pair<std::string, std::unique_ptr<ast::Expression>>>{});
   }
@@ -656,21 +657,23 @@ std::unique_ptr<ast::Node> BuildDesignatedInitializer(
 std::unique_ptr<ast::Node> BuildNormalFunctionLiteral(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  auto span   = SourceRange(nodes[0]->span.begin(), nodes.back()->span.end());
-  auto *binop = &nodes[0]->as<ast::Binop>();
+  auto range =
+      SourceRange(nodes[0]->range().begin(), nodes.back()->range().end());
+  auto *binop     = &nodes[0]->as<ast::Binop>();
   auto [lhs, rhs] = std::move(*binop).extract();
   return BuildFunctionLiteral(
-      std::move(span), ExtractInputs(std::move(lhs), diag), std::move(rhs),
+      range, ExtractInputs(std::move(lhs), diag), std::move(rhs),
       std::move(nodes[1]->as<Statements>()), false, diag);
 }
 
 std::unique_ptr<ast::Node> BuildInferredFunctionLiteral(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  auto span = SourceRange(nodes[0]->span.begin(), nodes.back()->span.end());
+  auto range =
+      SourceRange(nodes[0]->range().begin(), nodes.back()->range().end());
   return BuildFunctionLiteral(
-      std::move(span), ExtractInputs(move_as<ast::Expression>(nodes[0]), diag),
-      nullptr, std::move(nodes[2]->as<Statements>()), false, diag);
+      range, ExtractInputs(move_as<ast::Expression>(nodes[0]), diag), nullptr,
+      std::move(nodes[2]->as<Statements>()), false, diag);
 }
 
 // TODO this loses syntactic information that a formatter cares about.
@@ -678,7 +681,7 @@ std::unique_ptr<ast::Node> BuildShortFunctionLiteral(
     std::unique_ptr<ast::Expression> args,
     std::unique_ptr<ast::Expression> body,
     diagnostic::DiagnosticConsumer &diag) {
-  auto span   = SourceRange(args->span.begin(), body->span.end());
+  auto range  = SourceRange(args->range().begin(), body->range().end());
   auto inputs = ExtractInputs(std::move(args), diag);
 
   std::vector<std::unique_ptr<ast::Expression>> ret_vals;
@@ -688,18 +691,17 @@ std::unique_ptr<ast::Node> BuildShortFunctionLiteral(
     ret_vals.push_back(std::move(body));
   }
 
-  Statements stmts;
-  stmts.append(
-      std::make_unique<ast::ReturnStmt>(std::move(span), std::move(ret_vals)));
-  return BuildFunctionLiteral(std::move(span), std::move(inputs), nullptr,
+  Statements stmts(range);
+  stmts.append(std::make_unique<ast::ReturnStmt>(range, std::move(ret_vals)));
+  return BuildFunctionLiteral(range, std::move(inputs), nullptr,
                               std::move(stmts), true, diag);
 }
 
 std::unique_ptr<ast::Node> BuildOneElementCommaList(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  auto comma_list  = std::make_unique<ast::CommaList>();
-  comma_list->span = SourceRange(nodes[0]->span.begin(), nodes[3]->span.end());
+  auto comma_list = std::make_unique<ast::CommaList>(
+      SourceRange(nodes[0]->range().begin(), nodes[3]->range().end()));
   comma_list->exprs_.push_back(move_as<ast::Expression>(nodes[1]));
   comma_list->parenthesized_ = true;
   return comma_list;
@@ -708,16 +710,13 @@ std::unique_ptr<ast::Node> BuildOneElementCommaList(
 std::unique_ptr<ast::Node> BuildStatementLeftUnop(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  auto stmts = std::make_unique<Statements>();
-  auto range =
-      SourceRange(nodes.front()->span.begin(), nodes.back()->span.end());
-  stmts->span = range;
-
+  auto stmts = std::make_unique<Statements>(
+      SourceRange(nodes.front()->range().begin(), nodes.back()->range().end()));
   const std::string &tk = nodes[0]->as<Token>().token;
 
   if (tk == "goto") {
-    auto range =
-        SourceRange(nodes.front()->span.begin(), nodes.back()->span.end());
+    auto range = SourceRange(nodes.front()->range().begin(),
+                             nodes.back()->range().end());
     std::vector<std::unique_ptr<ast::Expression>> exprs;
     std::vector<std::unique_ptr<ast::Call>> call_exprs;
     if (auto *c = nodes[1]->if_as<ast::ChainOp>();
@@ -738,12 +737,11 @@ std::unique_ptr<ast::Node> BuildStatementLeftUnop(
       }
     }
 
-    stmts->append(
-        std::make_unique<ast::Goto>(std::move(range), std::move(call_exprs)));
+    stmts->append(std::make_unique<ast::Goto>(range, std::move(call_exprs)));
 
   } else if (tk == "return") {
-    auto span =
-        SourceRange(nodes.front()->span.begin(), nodes.back()->span.end());
+    auto range = SourceRange(nodes.front()->range().begin(),
+                            nodes.back()->range().end());
     std::vector<std::unique_ptr<ast::Expression>> exprs;
     if (auto *cl = nodes[1]->if_as<ast::CommaList>();
         cl and not cl->parenthesized_) {
@@ -751,8 +749,7 @@ std::unique_ptr<ast::Node> BuildStatementLeftUnop(
     } else {
       exprs.push_back(move_as<ast::Expression>(nodes[1]));
     }
-    stmts->append(
-        std::make_unique<ast::ReturnStmt>(std::move(span), std::move(exprs)));
+    stmts->append(std::make_unique<ast::ReturnStmt>(range, std::move(exprs)));
   }
   return stmts;
 }
@@ -760,8 +757,7 @@ std::unique_ptr<ast::Node> BuildStatementLeftUnop(
 std::unique_ptr<ast::Node> BuildOneStatement(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  auto stmts  = std::make_unique<Statements>();
-  stmts->span = nodes[0]->span;
+  auto stmts = std::make_unique<Statements>(nodes[0]->range());
   stmts->append(std::move(nodes[0]));
   ValidateStatementSyntax(stmts->content_.back().get(), diag);
   return stmts;
@@ -779,8 +775,8 @@ std::unique_ptr<ast::Node> BuildMoreStatements(
 std::unique_ptr<ast::Node> OneBracedJump(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  auto stmts  = std::make_unique<Statements>();
-  stmts->span = SourceRange(nodes[0]->span.begin(), nodes[2]->span.end());
+  auto stmts = std::make_unique<Statements>(
+      SourceRange(nodes[0]->range().begin(), nodes[2]->range().end()));
   stmts->append(BuildControlHandler(std::move(nodes[1])));
   ValidateStatementSyntax(stmts->content_.back().get(), diag);
   return stmts;
@@ -795,24 +791,23 @@ std::unique_ptr<ast::Node> BuildControlHandler(
 std::unique_ptr<ast::Node> BuildScopeNode(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  SourceRange span(nodes.front()->span.begin(), nodes.back()->span.end());
+  SourceRange range(nodes.front()->range().begin(), nodes.back()->range().end());
   auto [callee, ordered_fn_args] =
       std::move(nodes[0]->as<ast::Call>()).extract();
   std::vector<ast::BlockNode> blocks;
   blocks.push_back(std::move(nodes[1]->as<ast::BlockNode>()));
-  return std::make_unique<ast::ScopeNode>(std::move(span), std::move(callee),
-                                          std::move(ordered_fn_args),
-                                          std::move(blocks));
+  return std::make_unique<ast::ScopeNode>(
+      range, std::move(callee), std::move(ordered_fn_args), std::move(blocks));
 }
 
 std::unique_ptr<ast::Node> BuildBlockNode(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  auto span =
-      SourceRange(nodes.front()->span.begin(), nodes.back()->span.end());
+  auto range =
+      SourceRange(nodes.front()->range().begin(), nodes.back()->range().end());
   if (auto *id = nodes.front()->if_as<ast::Identifier>()) {
     return std::make_unique<ast::BlockNode>(
-        std::move(span), std::string{id->token()},
+        range, std::string{id->token()},
         std::move(nodes.back()->as<Statements>()).extract());
   } else if (auto *index = nodes.front()->if_as<ast::Index>()) {
     auto [lhs, rhs] = std::move(*index).extract();
@@ -827,7 +822,7 @@ std::unique_ptr<ast::Node> BuildBlockNode(
       params.push_back(move_as<ast::Declaration>(rhs));
     }
     return std::make_unique<ast::BlockNode>(
-        std::move(span), std::string{lhs->as<ast::Identifier>().token()},
+        range, std::string{lhs->as<ast::Identifier>().token()},
         std::move(params), std::move(nodes.back()->as<Statements>()).extract());
 
   } else {
@@ -848,13 +843,13 @@ std::unique_ptr<ast::Node> ExtendScopeNode(
 std::unique_ptr<ast::Node> SugaredExtendScopeNode(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  SourceRange span(nodes.front()->span.begin(), nodes.back()->span.end());
+  SourceRange range(nodes.front()->range().begin(), nodes.back()->range().end());
   auto *updated_last_scope_node = &nodes[2]->as<ast::ScopeNode>();
   std::vector<std::unique_ptr<ast::Node>> block_stmt_nodes;
   block_stmt_nodes.push_back(std::move(nodes[2]));
 
   nodes[0]->as<ast::ScopeNode>().append_block_syntactically(
-      ast::BlockNode(std::move(span),
+      ast::BlockNode(range,
                      std::string{nodes[1]->as<ast::Identifier>().token()},
                      std::move(block_stmt_nodes)),
       updated_last_scope_node);
@@ -871,8 +866,8 @@ std::unique_ptr<ast::Node> BuildWhen(
   } else {
     node = std::move(nodes[0]);
   }
-  auto when  = std::make_unique<SwitchWhen>();
-  when->span = SourceRange(node->span.begin(), nodes[2]->span.end());
+  auto when = std::make_unique<SwitchWhen>(
+      SourceRange(node->range().begin(), nodes[2]->range().end()));
   when->body = move_as<ast::Node>(node);
   when->cond = move_as<ast::Expression>(nodes[2]);
   return when;
@@ -926,16 +921,17 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
                                           move_as<ast::Expression>(nodes[2]));
     }
   } else if (tk == "as") {
-    SourceRange span(nodes[0]->span.begin(), nodes[2]->span.end());
-    return std::make_unique<ast::Cast>(std::move(span),
+    SourceRange range(nodes[0]->range().begin(), nodes[2]->range().end());
+    return std::make_unique<ast::Cast>(range,
                                        move_as<ast::Expression>(nodes[0]),
                                        move_as<ast::Expression>(nodes[2]));
   } else if (tk == "when") {
     return BuildWhen(nodes, diag);
 
   } else if (tk == "'") {
-    SourceRange span(nodes.front()->span.begin(), nodes.back()->span.end());
-    return BuildCallImpl(std::move(span), move_as<ast::Expression>(nodes[2]),
+    SourceRange range(nodes.front()->range().begin(),
+                     nodes.back()->range().end());
+    return BuildCallImpl(range, move_as<ast::Expression>(nodes[2]),
                          move_as<ast::Expression>(nodes[0]), diag);
   }
 
@@ -953,7 +949,7 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
 std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
     absl::Span<std::unique_ptr<ast::Node>> nodes, ast::EnumLiteral::Kind kind,
     diagnostic::DiagnosticConsumer &) {
-  SourceRange span(nodes[0]->span.begin(), nodes[1]->span.end());
+  SourceRange range(nodes[0]->range().begin(), nodes[1]->range().end());
   std::vector<std::unique_ptr<ast::Expression>> elems;
   if (auto *stmts = nodes[1]->if_as<Statements>()) {
     // TODO if you want these values to depend on compile-time parameters,
@@ -964,8 +960,7 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
     }
   }
 
-  return std::make_unique<ast::EnumLiteral>(std::move(span), std::move(elems),
-                                            kind);
+  return std::make_unique<ast::EnumLiteral>(range, std::move(elems), kind);
 }
 
 std::unique_ptr<ast::Node> BuildScopeLiteral(
@@ -986,8 +981,8 @@ std::unique_ptr<ast::Node> BuildScopeLiteral(
 
 std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
                                       diagnostic::DiagnosticConsumer &diag) {
-  auto span = stmts->span;  // TODO it's really bigger than this because it
-                            // involves the keyword too.
+  auto range = stmts->range();  // TODO it's really bigger than this because it
+                               // involves the keyword too.
 
   std::vector<std::unique_ptr<ast::Declaration>> before, after;
   for (auto &stmt : stmts->content_) {
@@ -1003,12 +998,12 @@ std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
       diag.Consume(diagnostic::Todo{});
     }
   }
-  return std::make_unique<ast::BlockLiteral>(span, std::move(before),
+  return std::make_unique<ast::BlockLiteral>(range, std::move(before),
                                              std::move(after));
 }
 
 std::unique_ptr<ast::StructLiteral> BuildStructLiteral(
-    Statements &&stmts, SourceRange span,
+    Statements &&stmts, SourceRange range,
     diagnostic::DiagnosticConsumer &diag) {
   std::vector<std::unique_ptr<ast::Node>> node_stmts =
       std::move(stmts).extract();
@@ -1019,13 +1014,12 @@ std::unique_ptr<ast::StructLiteral> BuildStructLiteral(
       fields.push_back(std::move(*decl));
     } else {
       diag.Consume(diagnostic::NonDeclarationInStruct{
-          .range = stmt->span,
+          .range = stmt->range(),
       });
     }
   }
 
-  return std::make_unique<ast::StructLiteral>(std::move(span),
-                                              std::move(fields));
+  return std::make_unique<ast::StructLiteral>(range, std::move(fields));
 }
 
 std::unique_ptr<ast::Node> BuildStatefulJump(
@@ -1037,7 +1031,8 @@ std::unique_ptr<ast::Node> BuildStatefulJump(
     return nullptr;
   }
 
-  SourceRange range(nodes.front()->span.begin(), nodes.back()->span.end());
+  SourceRange range(nodes.front()->range().begin(),
+                    nodes.back()->range().end());
   std::vector<std::unique_ptr<ast::Declaration>> params;
   if (nodes.size() == 6) {
     if (nodes[2]->is<ast::CommaList>()) {
@@ -1091,7 +1086,8 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
                           move_as<Statements>(nodes[4]), diag);
     return sw;
   } else if (tk == "jump") {
-    SourceRange span(nodes.front()->span.begin(), nodes.back()->span.end());
+    SourceRange range(nodes.front()->range().begin(),
+                     nodes.back()->range().end());
     std::vector<std::unique_ptr<ast::Declaration>> params;
     if (nodes.size() == 5) {
       if (nodes[2]->is<ast::CommaList>()) {
@@ -1110,11 +1106,12 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
     }
 
     return std::make_unique<ast::Jump>(
-        std::move(span), nullptr, std::move(params),
+        range, nullptr, std::move(params),
         std::move(nodes.back()->as<Statements>()).extract());
 
   } else if (tk == "scope") {
-    SourceRange range(nodes.front()->span.begin(), nodes.back()->span.end());
+    SourceRange range(nodes.front()->range().begin(),
+                      nodes.back()->range().end());
     return BuildScopeLiteral(move_as<ast::Expression>(nodes[2]),
                              move_as<Statements>(nodes.back()), range, diag);
 
@@ -1131,7 +1128,8 @@ std::unique_ptr<ast::Node> BuildConcreteStruct(
     diagnostic::DiagnosticConsumer &diag) {
   return BuildStructLiteral(
       std::move(nodes[1]->as<Statements>()),
-      SourceRange(nodes.front()->span.begin(), nodes.back()->span.end()), diag);
+      SourceRange(nodes.front()->range().begin(), nodes.back()->range().end()),
+      diag);
 }
 
 std::unique_ptr<ast::Node> BuildKWBlock(
@@ -1153,7 +1151,8 @@ std::unique_ptr<ast::Node> BuildKWBlock(
       return BuildSwitch(nullptr, move_as<Statements>(nodes[1]), diag);
 
     } else if (tk == "scope") {
-      SourceRange range(nodes.front()->span.begin(), nodes.back()->span.end());
+      SourceRange range(nodes.front()->range().begin(),
+                        nodes.back()->range().end());
       return BuildScopeLiteral(nullptr, move_as<Statements>(nodes[1]), range,
                                diag);
 
@@ -1180,12 +1179,11 @@ std::unique_ptr<ast::Node> BuildEmptyParen(
     diagnostic::DiagnosticConsumer &diag) {
   if (nodes[0]->is<ast::Declaration>()) {
     diag.Consume(diagnostic::CallingDeclaration{
-        .range = nodes[0]->span,
+        .range = nodes[0]->range(),
     });
   }
-  SourceRange span(nodes[0]->span.begin(), nodes[2]->span.end());
-  return std::make_unique<ast::Call>(std::move(span),
-                                     move_as<ast::Expression>(nodes[0]),
+  SourceRange range(nodes[0]->range().begin(), nodes[2]->range().end());
+  return std::make_unique<ast::Call>(range, move_as<ast::Expression>(nodes[0]),
                                      core::OrderedFnArgs<ast::Expression>{});
 }
 
@@ -1210,18 +1208,18 @@ std::unique_ptr<ast::Node> ReservedKeywords(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
   (diag.Consume(diagnostic::ReservedKeyword{
-       .range   = nodes[ReservedIndices]->span,
+       .range   = nodes[ReservedIndices]->range(),
        .keyword = nodes[ReservedIndices]->as<Token>().token,
    }),
    ...);
-  return MakeInvalidNode(nodes[ReturnIndex]->span);
+  return MakeInvalidNode(nodes[ReturnIndex]->range());
 }
 
 std::unique_ptr<ast::Node> BuildOperatorIdentifier(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  auto span = nodes[1]->span;
-  return std::make_unique<ast::Identifier>(span,
+  auto range = nodes[1]->range();
+  return std::make_unique<ast::Identifier>(range,
                                            move_as<Token>(nodes[1])->token);
 }
 
@@ -1231,12 +1229,12 @@ std::unique_ptr<ast::Node> LabelScopeNode(
   auto scope_node = move_as<ast::ScopeNode>(nodes[1]);
   if (scope_node->label()) {
     diag.Consume(diagnostic::ScopeNodeAlreadyHasLabel{
-        .label_range = scope_node->label()->span,
-        .range       = scope_node->span,
+        .label_range = scope_node->label()->range(),
+        .range       = scope_node->range(),
     });
   } else {
-    scope_node->span =
-        SourceRange(nodes[0]->span.begin(), scope_node->span.end());
+    scope_node->range() =
+        SourceRange(nodes[0]->range().begin(), scope_node->range().end());
     scope_node->set_label(move_as<ast::Label>(nodes[0]));
   }
   return scope_node;
@@ -1606,12 +1604,14 @@ std::vector<std::unique_ptr<ast::Node>> Parse(
         if (state.tag_stack_[i] &
             (braced_stmts | l_paren | r_paren | l_bracket | r_bracket |
              l_brace | r_brace | semicolon | fn_arrow | expr)) {
-          lines.push_back(state.node_stack_[i]->span);
+          lines.push_back(state.node_stack_[i]->range());
         }
       }
       if (lines.empty()) {
         // We really have no idea what happened, just shove all the lines in.
-        for (const auto &ns : state.node_stack_) { lines.push_back(ns->span); }
+        for (const auto &ns : state.node_stack_) {
+          lines.push_back(ns->range());
+        }
       }
 
       // This is an exceedingly crappy error message.
