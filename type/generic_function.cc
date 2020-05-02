@@ -14,9 +14,7 @@ core::Alignment GenericFunction::alignment(core::Arch const &) const {
 }
 
 Function const *GenericFunction::concrete(
-    core::FnArgs<Typed<std::optional<ir::Value>>> const &args,
-    std::experimental::source_location loc) const {
-  DEBUG_LOG()(loc.file_name(), " ", loc.line());
+    core::FnArgs<Typed<std::optional<ir::Value>>> const &args) const {
   return gen_fn_(args);
 }
 

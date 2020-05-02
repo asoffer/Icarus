@@ -125,7 +125,8 @@ struct Compiler
         EmitCopyAssignTag)>::Visit(t, to, from, EmitCopyAssignTag{});
   }
 
-  Compiler(CompiledModule *mod, diagnostic::DiagnosticConsumer &consumer);
+  Compiler(CompiledModule *mod, CompilationData &data,
+           diagnostic::DiagnosticConsumer &consumer);
 
   module::BasicModule *module() const { return data_.mod_; }
   ir::Builder &builder() { return data_.bldr_; };

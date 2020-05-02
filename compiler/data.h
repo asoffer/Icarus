@@ -8,19 +8,19 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/node_hash_map.h"
+#include "absl/hash/hash.h"
 #include "ast/ast.h"
 #include "ast/ast_fwd.h"
 #include "base/guarded.h"
 #include "base/lazy_convert.h"
 #include "compiler/constant/binding.h"
-#include "compiler/constant/binding_tree.h"
 #include "ir/block_def.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
 #include "ir/jump.h"
-#include "ir/value/reg.h"
 #include "ir/results.h"
 #include "ir/scope_def.h"
+#include "ir/value/reg.h"
 #include "module/module.h"
 #include "module/pending.h"
 #include "type/qual_type.h"
@@ -113,6 +113,45 @@ struct CompilationData {
 
   absl::flat_hash_map<type::Type const *, ir::NativeFn> init_, copy_assign_,
       move_assign_, destroy_;
+
+  // TODO Swiss-tables do not store the hash, but recomputing the argument hash
+  // on each lookup can be expensive. Instead, we can use the optimization
+  // technique where we store the arguments in a separate vector, and store the
+  // hash and an index into the vector. In fact, just storing the hash adjacent
+  // is probably a good chunk of the wins anyway.
+  struct ArgsHash {
+    size_t operator()(
+        core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args) const {
+      // Ew, this hash is awful. Make this better.
+      std::vector<
+          std::tuple<std::string_view, type::Type const *, bool, ir::Value>>
+          elems;
+      for (auto const &arg : args.pos()) {
+        elems.emplace_back("", arg.type(), arg->has_value(),
+                           arg->value_or(false));
+      }
+      for (auto const &[name, arg] : args.named()) {
+        elems.emplace_back(name, arg.type(), arg->has_value(),
+                           arg->value_or(false));
+      }
+      std::sort(elems.begin(), elems.end(),
+                [](auto const &lhs, auto const &rhs) {
+                  return std::get<0>(lhs) < std::get<0>(rhs);
+                });
+      return absl::Hash<decltype(elems)>{}(elems);
+    }
+  };
+
+  // ast::ParameterizedExpression const *parent_ = nullptr;
+
+  ConstantBinding constants_;
+  absl::flat_hash_map<
+      ast::ParameterizedExpression const *,
+      absl::node_hash_map<
+          core::FnArgs<type::Typed<std::optional<ir::Value>>>,
+          std::pair<core::Params<type::Type const *>, CompilationData>,
+          ArgsHash>>
+      dependent_data_;
 };
 
 }  // namespace compiler

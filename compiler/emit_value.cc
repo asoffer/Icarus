@@ -65,7 +65,8 @@ void AddAdl(ast::OverloadSet *overload_set, std::string_view id,
 
     for (auto *d : decls) {
       // TODO Wow this is a terrible way to access the type.
-      ASSIGN_OR(continue, auto &t, Compiler(mod, consumer).type_of(d));
+      ASSIGN_OR(continue, auto &t,
+                Compiler(mod, mod->root_data(), consumer).type_of(d));
       // TODO handle this case. I think it's safe to just discard it.
       for (auto const *expr : overload_set->members()) {
         if (d == expr) { return; }
@@ -789,7 +790,7 @@ ir::NativeFn Compiler::MakeConcreteFromGeneric(
 ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
   if (node->is_generic()) {
     auto gen_fn = ir::GenericFn([
-      c(Compiler(mod_, diag())), node
+      c(Compiler(mod_, mod_->root_data(), diag())), node
     ](core::FnArgs<type::Typed<ir::Value>> const &args) mutable->ir::NativeFn {
       return c.MakeConcreteFromGeneric(node, args.Transform([](auto const &x) {
         return type::Typed<std::optional<ir::Value>>(*x, x.type());

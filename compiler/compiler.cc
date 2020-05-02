@@ -14,10 +14,10 @@
 
 namespace compiler {
 
-Compiler::Compiler(CompiledModule *mod,
+Compiler::Compiler(CompiledModule *mod, CompilationData &data,
                    diagnostic::DiagnosticConsumer &consumer)
     : mod_(mod),
-      data_(mod->root_data()),
+      data_(data),
       current_constants_(mod->root_node()),
       diag_consumer_(consumer) {}
 

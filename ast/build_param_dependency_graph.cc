@@ -196,7 +196,6 @@ struct ParamDependencyGraphBuilder
 base::Graph<core::DependencyNode<Declaration>> BuildParamDependencyGraph(
     core::Params<std::unique_ptr<Declaration>> const &params) {
   return ParamDependencyGraphBuilder(params).Visit();
-  return base::Graph<core::DependencyNode<Declaration>>{};
 }
 
 }  // namespace ast

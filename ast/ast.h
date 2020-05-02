@@ -323,8 +323,14 @@ struct ParameterizedExpression : Expression {
   // constant parameter or a parameter with a deduced type).
   constexpr bool is_generic() const { return is_generic_; }
 
+  base::Graph<core::DependencyNode<Declaration>> const &
+  parameter_dependency_graph() const {
+    return dep_graph_;
+  }
+
  protected:
   core::Params<std::unique_ptr<ast::Declaration>> params_;
+  base::Graph<core::DependencyNode<Declaration>> dep_graph_;
   bool is_generic_ = false;
 };
 
@@ -681,11 +687,6 @@ struct FunctionLiteral : ParameterizedExpression, WithScope<FnScope> {
     return *outputs_;
   }
 
-  base::Graph<core::DependencyNode<Declaration>> const &
-  parameter_dependency_graph() const {
-    return dep_graph_;
-  }
-
   // Retruns whether the function is expressed with `=>`
   constexpr bool is_short() const { return is_short_; }
 
@@ -706,8 +707,6 @@ struct FunctionLiteral : ParameterizedExpression, WithScope<FnScope> {
   std::optional<std::vector<std::unique_ptr<Expression>>> outputs_;
   std::vector<std::unique_ptr<Node>> stmts_;
   bool is_short_   = false;
-  bool is_generic_ = false;
-  base::Graph<core::DependencyNode<Declaration>> dep_graph_;
 };
 
 // Identifier:

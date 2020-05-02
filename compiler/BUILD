@@ -150,7 +150,6 @@ cc_library(
         "//base:guarded",
         "//base:lazy_convert",
         "//compiler/constant:binding",
-        "//compiler/constant:binding_tree",
         "//ir:block_def",
         "//ir:builder",
         "//ir:compiled_fn",

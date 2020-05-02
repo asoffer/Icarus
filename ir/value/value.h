@@ -70,6 +70,15 @@ struct Value {
         std::forward<F>(f));
   }
 
+  template <typename H>
+  friend H AbslHashValue(H h, Value const& v) {
+    v.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                 uint32_t, uint64_t, float, double, type::Type const*, Addr,
+                 /*String,*/ EnumVal, FlagsVal, /* Fn, GenericFn, */ Reg>(
+        [&](auto x) { h = H::combine(std::move(h), v.type_.get(), x); });
+    return h;
+  }
+
  private:
   template <typename... Ts, typename F>
   void apply_impl(F&& f) const {
@@ -88,6 +97,19 @@ struct Value {
     static_assert(sizeof(T) <= 8);
     ASSERT(type_ == base::meta<T>);
     return *reinterpret_cast<T const *>(buf_);
+  }
+
+  friend bool operator==(Value const& lhs, Value const &rhs) {
+    if (lhs.type_ != rhs.type_) { return false; }
+    bool eq;
+    lhs.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                   uint32_t, uint64_t, float, double, type::Type const*>(
+        [&rhs, &eq](auto x) { eq = (x == rhs.get<std::decay_t<decltype(x)>>()); });
+    return eq;
+  }
+
+  friend bool operator!=(Value const& lhs, Value const& rhs) {
+    return not(lhs == rhs);
   }
 
   friend std::ostream& operator<<(std::ostream& os, Value value) {

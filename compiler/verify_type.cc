@@ -43,7 +43,8 @@ void AddAdl(std::string_view id, type::Type const *t, Fn fn) {
 
     for (auto *d : decls) {
       // TODO Wow this is a terrible way to access the type.
-      ASSIGN_OR(continue, auto &t, Compiler(mod, consumer).type_of(d));
+      ASSIGN_OR(continue, auto &t,
+                Compiler(mod, mod->root_data(), consumer).type_of(d));
 
       if (not fn(d)) { return; }
     }
@@ -1699,17 +1700,8 @@ type::QualType Compiler::Visit(ast::EnumLiteral const *node, VerifyTypeTag) {
   return set_result(node, type::QualType::Constant(type::Type_));
 }
 
-type::QualType Compiler::Visit(ast::FunctionLiteral const *node,
-                               VerifyTypeTag) {
-  for (auto const &p : node->params()) {
-    if (p.value->flags() & ast::Declaration::f_IsConst) { goto generic; }
-
-    // TODO There are other ways this could be generic. For example
-    // (x: $x) -> () { .. }
-  }
-  return VerifyConcreteFnLit(node);
-
-generic:
+static std::vector<core::DependencyNode<ast::Declaration>>
+OrderedDependencyNodes(ast::ParameterizedExpression const *node) {
   absl::flat_hash_set<core::DependencyNode<ast::Declaration>> deps;
   for (auto const &p : node->params()) {
     deps.insert(
@@ -1728,33 +1720,37 @@ generic:
      static_cast<int>(dep_node.kind()));
     ordered_nodes.push_back(dep_node);
   });
+  return ordered_nodes;
+}
 
-  // TODO Ensure this is only called once with a given set of arguments.
-  auto gen = [c(Compiler(mod_, diag())),
-              ordered_nodes(std::move(ordered_nodes)),
-              node_params(&node->params())](
+type::QualType Compiler::Visit(ast::FunctionLiteral const *node,
+                               VerifyTypeTag) {
+  if (not node->is_generic()) { return VerifyConcreteFnLit(node); }
+
+  auto ordered_nodes = OrderedDependencyNodes(node);
+
+  auto *data_map = &data_.dependent_data_[node];
+  auto *diag_consumer = &diag();
+  auto gen = [node, mod(mod_), data_map, diag_consumer,
+              ordered_nodes(std::move(ordered_nodes))](
                  core::FnArgs<type::Typed<std::optional<ir::Value>>> const
                      &args) mutable -> type::Function const * {
     DEBUG_LOG("generic-fn")
     ("Creating a concrete implementation with ",
      args.Transform([](auto const &a) { return a.type()->to_string(); }));
-    // TODO Add a new constant binding node for this.
 
-    // TODO don't do this more than necessary. Cache it based on the args passed
-    // in..
-    c.current_constants_ = c.module()->as<CompiledModule>().data().AddChildTo(
-        c.current_constants_, c.module());
-    DEBUG_LOG("generic-fn")
-    ("Tree is now ", c.current_constants_->DebugString());
-
-    base::defer d = [&] {
-      c.current_constants_ = c.current_constants_->parent();
-      DEBUG_LOG("generic-fn")
-      ("Tree is now ", c.current_constants_->DebugString());
-    };
+    auto [iter, inserted] =
+        data_map->try_emplace(args, std::piecewise_construct,
+                              std::forward_as_tuple(node->params().size()),
+                              std::forward_as_tuple(mod));
+    auto& [params, data] = iter->second;
+    if (not inserted) {
+      DEBUG_LOG()("again");
+      return type::Func(params, {});
+    }
+    Compiler c(mod, iter->second.second, *diag_consumer);
 
     // TODO use the proper ordering.
-    core::Params<type::Type const *> params(node_params->size());
     for (auto dep_node : ordered_nodes) {
       DEBUG_LOG("generic-fn")
       ("Handling dep-node of kind ", static_cast<int>(dep_node.kind()));
@@ -1770,8 +1766,8 @@ generic:
           auto const *t = interpretter::EvaluateAs<type::Type const *>(
               c.MakeThunk(dep_node.node()->type_expr(), type::Type_));
           c.set_result(dep_node.node(), type::QualType::Constant(t));
-          size_t index =
-              *ASSERT_NOT_NULL(node_params->at_or_null(dep_node.node()->id()));
+          size_t index = *ASSERT_NOT_NULL(
+              node->params().at_or_null(dep_node.node()->id()));
           params.set(index,
                      core::Param<type::Type const *>(dep_node.node()->id(), t));
         } break;
@@ -1782,11 +1778,10 @@ generic:
             (*args.pos()[0])->apply([&buf](auto x) { buf.append(x); });
             DEBUG_LOG("generic-fn")
             (**args.pos()[0], ": ", *args.pos()[0].type());
-            auto &binding = c.current_constants_->binding();
-            c.current_constants_->binding().reserve_slot(dep_node.node(),
-                                                         args.pos()[0].type());
-            if (binding.get_constant(dep_node.node()).empty()) {
-              c.current_constants_->binding().set_slot(dep_node.node(), buf);
+            c.data_.constants_.reserve_slot(dep_node.node(),
+                                             args.pos()[0].type());
+            if (c.data_.constants_.get_constant(dep_node.node()).empty()) {
+              c.data_.constants_.set_slot(dep_node.node(), buf);
             }
           } else {
             DEBUG_LOG("generic-fn")("empty");
@@ -1795,16 +1790,7 @@ generic:
       }
     }
 
-    for (auto const &p : params) {
-      DEBUG_LOG("generic-fn")(p.name, ": ", p.value->to_string());
-    }
-
-    DEBUG_LOG("generic-fn")
-    ("Tree is now ", c.current_constants_->DebugString());
-
-    auto const *f = type::Func(std::move(params), {});
-    DEBUG_LOG("generic-fn")(f->to_string());
-    return f;
+    return type::Func(params, {});
   };
 
   return set_result(node, type::QualType::Constant(
