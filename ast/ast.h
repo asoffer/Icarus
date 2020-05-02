@@ -283,7 +283,7 @@ struct Declaration : Expression {
   Flags flags_;
 };
 
-// WithParameters:
+// ParameterizedExpression:
 // This is a parent-class for all nodes that have parameters, allowing us to
 // handle those parameters uniformly. oreover, this gives us the ability to key
 // hash-tables on `ParameterizedExpression const *`.
@@ -295,6 +295,7 @@ struct ParameterizedExpression : Expression {
                           std::vector<std::unique_ptr<Declaration>> params)
       : Expression(range) {
     for (auto &param : params) {
+      param->flags() |= Declaration::f_IsFnParam;
       // NOTE: This is safe because the declaration is behind a unique_ptr so
       // the string is never moved. You need to be careful if you ever decide to
       // use make this declaration inline because SSO might mean moving the
