@@ -1740,14 +1740,13 @@ type::QualType Compiler::Visit(ast::FunctionLiteral const *node,
     ("Creating a concrete implementation with ",
      args.Transform([](auto const &a) { return a.type()->to_string(); }));
 
-    auto [iter, inserted] = comp_data->InsertDependent(node, args);
-    auto &[params, data]  = iter->second;
+    auto [params, data, inserted] = comp_data->InsertDependent(node, args);
     if (not inserted) { return type::Func(params, {}); }
 
     // TODO not the consumer we want... but capturing the one from the parent
     // compiler is dangerous because this lambda may outlive it.
     diagnostic::TrivialConsumer consumer;
-    Compiler c(mod, iter->second.second, consumer /**diag_consumer*/);
+    Compiler c(mod, data, consumer /**diag_consumer*/);
 
     // TODO use the proper ordering.
     for (auto dep_node : ordered_nodes) {

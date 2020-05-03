@@ -72,9 +72,18 @@ struct DependentComputedData {
   module::BasicModule *mod_;
   ir::Builder &bldr_;
 
-  ir::Jump *jump(ast::Jump const *expr) {
-    auto iter = jumps_.find(expr);
-    if (iter == jumps_.end()) { return nullptr; }
+  // Returns a pointer to the `ir::Jump` corresponding to the compilation of
+  // `expr`, if it exists. Otherwise, returns a null pointer.
+  ir::Jump *jump(ast::Jump const *expr);
+
+  // If an  `ir::Jump` corresponding to the compilation of `expr` already
+  // exists, returns a pointer to that object. Otherwise, constructs a new one
+  // by calling `fn`.
+  template <typename Fn>
+  ir::Jump *add_jump(ast::Jump const *expr, Fn &&fn) {
+    auto [iter, success] =
+        jumps_.emplace(expr, base::lazy_convert{std::forward<Fn>(fn)});
+    ASSERT(success == true);
     return &iter->second;
   }
 
@@ -86,14 +95,6 @@ struct DependentComputedData {
   type::QualType set_result(ast::Expression const *expr, type::QualType r) {
     type_verification_results_.emplace(expr, r);
     return r;
-  }
-
-  template <typename Fn>
-  ir::Jump *add_jump(ast::Jump const *expr, Fn &&fn) {
-    auto [iter, success] =
-        jumps_.emplace(expr, base::lazy_convert{std::forward<Fn>(fn)});
-    ASSERT(success == true);
-    return &iter->second;
   }
 
   // TODO this is transient compiler state and therefore shouldn't be stored in
@@ -117,8 +118,6 @@ struct DependentComputedData {
   std::forward_list<ir::ScopeDef> scope_defs_;
   std::forward_list<ir::BlockDef> block_defs_;
 
-  absl::node_hash_map<ast::Jump const *, ir::Jump> jumps_;
-
   absl::flat_hash_map<ast::Expression const *, type::QualType>
       type_verification_results_;
 
@@ -134,67 +133,39 @@ struct DependentComputedData {
   absl::flat_hash_map<type::Type const *, ir::NativeFn> init_, copy_assign_,
       move_assign_, destroy_;
 
-  // TODO Swiss-tables do not store the hash, but recomputing the argument hash
-  // on each lookup can be expensive. Instead, we can use the optimization
-  // technique where we store the arguments in a separate vector, and store the
-  // hash and an index into the vector. In fact, just storing the hash adjacent
-  // is probably a good chunk of the wins anyway.
-  struct ArgsHash {
-    size_t operator()(
-        core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args) const {
-      // Ew, this hash is awful. Make this better.
-      std::vector<
-          std::tuple<std::string_view, type::Type const *, bool, ir::Value>>
-          elems;
-      for (auto const &arg : args.pos()) {
-        elems.emplace_back("", arg.type(), arg->has_value(),
-                           arg->value_or(false));
-      }
-      for (auto const &[name, arg] : args.named()) {
-        elems.emplace_back(name, arg.type(), arg->has_value(),
-                           arg->value_or(false));
-      }
-      std::sort(elems.begin(), elems.end(),
-                [](auto const &lhs, auto const &rhs) {
-                  return std::get<0>(lhs) < std::get<0>(rhs);
-                });
-      return absl::Hash<decltype(elems)>{}(elems);
-    }
+  // InsertDependent:
+  //
+  // Returns an `InsertDependentResult`. The `inserted` bool member  indicates
+  // whether a dependency was inserted. In either case (inserted or already
+  // present) the reference members `params` and `data` refer to the
+  // correspondingly computed parameter types and `DependentComputedData` into
+  // which new computed data dependent on this set of generic context can be
+  // added.
+  struct InsertDependentResult {
+    core::Params<type::Type const *> &params;
+    DependentComputedData &data;
+    bool inserted;
   };
 
-  using DependencyMap = absl::node_hash_map<
-      core::FnArgs<type::Typed<std::optional<ir::Value>>>,
-      std::pair<core::Params<type::Type const *>, DependentComputedData>,
-      ArgsHash>;
-
-  // Returns an iterator and a bool. The bool indicates whether a dependency was
-  // inserted. In either case the iterator refers to the node in the map (either
-  // newly inserted or already present).
-  std::pair<DependencyMap::iterator, bool> InsertDependent(
+  InsertDependentResult InsertDependent(
       ast::ParameterizedExpression const *node,
-      core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args) {
-    auto &dep = dependent_data_[node];
-    if (not dep.map) { dep.map = std::make_unique<DependencyMap>(); }
-    dep.parent = this;
-    auto [iter, inserted] =
-        dep.map->try_emplace(args, std::piecewise_construct,
-                             std::forward_as_tuple(node->params().size()),
-                             std::forward_as_tuple(mod_));
-    if (inserted) { iter->second.second.parent_ = this; }
-    return std::pair(iter, inserted);
-  }
+      core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args);
 
-  // Returns an iterator referring to the `DependentComputedData` corresponding
-  // to the given `node` and `args`. child. Such a `DependentComputedData` must
+  // FindDependent:
+  //
+  // Returns a `FindDependentResult`. The reference members `params` and `data`
+  // refer to the correspondingly computed parameter types and
+  // `DependentComputedData` into which new computed data dependent on this set
+  // of generic context can be added. Such a `DependentComputedData` must
   // already be present as a child.
-  DependencyMap::iterator FindDependent(
+  struct FindDependentResult {
+    core::Params<type::Type const *> &params;
+    DependentComputedData &data;
+  };
+
+  FindDependentResult FindDependent(
       ast::ParameterizedExpression const *node,
-      core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args) {
-    auto &dep = dependent_data_.find(node)->second;
-    auto iter = dep.map->find(args);
-    ASSERT(iter != dep.map->end());
-    return iter;
-  }
+      core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args);
 
   template <
       typename Ctor,
@@ -222,8 +193,41 @@ struct DependentComputedData {
 
  private:
   struct DependentDataChild {
+    // TODO Swiss-tables do not store the hash, but recomputing the argument
+    // hash on each lookup can be expensive. Instead, we can use the
+    // optimization technique where we store the arguments in a separate vector,
+    // and store the hash and an index into the vector. In fact, just storing
+    // the hash adjacent is probably a good chunk of the wins anyway.
+    struct ArgsHash {
+      size_t operator()(
+          core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args)
+          const {
+        // Ew, this hash is awful. Make this better.
+        std::vector<
+            std::tuple<std::string_view, type::Type const *, bool, ir::Value>>
+            elems;
+        for (auto const &arg : args.pos()) {
+          elems.emplace_back("", arg.type(), arg->has_value(),
+                             arg->value_or(false));
+        }
+        for (auto const &[name, arg] : args.named()) {
+          elems.emplace_back(name, arg.type(), arg->has_value(),
+                             arg->value_or(false));
+        }
+        std::sort(elems.begin(), elems.end(),
+                  [](auto const &lhs, auto const &rhs) {
+                    return std::get<0>(lhs) < std::get<0>(rhs);
+                  });
+        return absl::Hash<decltype(elems)>{}(elems);
+      }
+    };
+
     DependentComputedData *parent = nullptr;
-    std::unique_ptr<DependencyMap> map;
+    absl::node_hash_map<
+        core::FnArgs<type::Typed<std::optional<ir::Value>>>,
+        std::pair<core::Params<type::Type const *>, DependentComputedData>,
+        ArgsHash>
+        map;
   };
 
   // The parent node containing the generic that is instantiated to produce this
@@ -234,6 +238,8 @@ struct DependentComputedData {
 
   // All functions, whether they're directly compiled or generated by a generic.
   absl::node_hash_map<ast::Expression const *, ir::NativeFn> ir_funcs_;
+  // All jumps, whether they're directly compiled or generated by a generic.
+  absl::node_hash_map<ast::Jump const *, ir::Jump> jumps_;
 };
 
 }  // namespace compiler

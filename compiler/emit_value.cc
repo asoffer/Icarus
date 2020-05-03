@@ -757,11 +757,13 @@ ir::NativeFn Compiler::MakeConcreteFromGeneric(
     core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args) {
   ASSERT(node->is_generic() == true);
 
-  auto iter = data_.FindDependent(node, args);
-  auto &data = iter->second.second;
+  // Note: Cannot use structured bindings because the bindings need to be
+  // captured in the lambda.
+  auto find_dependent_result = data_.FindDependent(node, args);
+  auto &params               = find_dependent_result.params;
+  auto &data                 = find_dependent_result.data;
 
   return data.EmplaceNativeFn(node, [&] {
-    auto &params = iter->second.first;
     Compiler c(&module()->as<CompiledModule>(), data, diag());
     auto *fn_type = type::Func(params, {});
     auto f        = c.AddFunc(
