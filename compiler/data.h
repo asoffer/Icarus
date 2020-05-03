@@ -28,11 +28,40 @@
 namespace compiler {
 struct LibraryModule;
 
-// TODO this struct has developed some cruft. Probably some fields are unused at
-// this point. Audit.
-struct CompilationData {
-  explicit CompilationData(module::BasicModule *mod);
-  ~CompilationData();
+// DependentComputedData holds all data that the compiler computes about the
+// program by traversing the syntax tree. This includes type information,
+// compiled functions and jumps, etc. Note that this data may be dependent on
+// constant parameters to a function, jump, or struct. To account for such
+// dependencies, DependentComputedData is intrusively a tree. Each
+// DependentComputedData has a pointer to it's parent (except the root whose
+// parent-pointer is null), as well as a map keyed on arguments whose values
+// hold child DependentComputedData.
+//
+// For instance, the program
+// ```
+// f ::= (n :: int64) -> () {
+//   size ::= n * n
+//   arr: [size; bool]
+//   ...
+// }
+//
+// f(1)
+// f(2)
+// ```
+//
+// would have there DependentComputedData nodes. The root node, which has the
+// other two nodes as children. These nodes are keyed on the arguments to `f`,
+// one where `n` is 1 and one where `n` is 2. Note that the type of `array` is
+// not available at the root node as it's type is dependent on `n`. Rather, on
+// the two child nodes it has type `[1; bool]` and `[4; bool]` respectively.
+// Moreover, even the type of `size` (despite always being `int64` is not
+// available on the root node. Instead, it is available on all child nodes with
+// the same value of `int64`.
+//
+// TODO audit.
+struct DependentComputedData {
+  explicit DependentComputedData(module::BasicModule *mod);
+  ~DependentComputedData();
 
   ir::ScopeDef *add_scope(module::BasicModule const *mod,
                           type::Type const *state_type) {
@@ -68,21 +97,15 @@ struct CompilationData {
   }
 
   // TODO this is transient compiler state and therefore shouldn't be stored in
-  // `CompilationData`.
+  // `DependentComputedData`.
   // During validation, when a cyclic dependency is encountered, we write it
   // down here. That way, we can bubble up from the dependency until we see it
   // again, at each step adding the nodes to the error log involved in the
   // dependency. Once complete, we reset this to null
   std::vector<ast::Identifier const *> cyc_deps_;
 
-  // TODO Because you already have arguments, it's perhaps better to just be a
-  // pointer into the arguments buffer, to avoid the
-  // reallocation/double-storage, but we can deal with this later. Probably
-  // requires a deeper refactoring to have things linke ir::ResultView, etc.
-  absl::flat_hash_map<ir::Reg, ir::Results> *inline_ = nullptr;
-
   // TODO this is transient compiler state and therefore shouldn't be stored in
-  // `CompilationData`.
+  // `DependentComputedData`.
   base::guarded<absl::node_hash_map<ast::Node const *, base::move_func<void()>>>
       deferred_work_;
 
@@ -141,21 +164,36 @@ struct CompilationData {
 
   using DependencyMap = absl::node_hash_map<
       core::FnArgs<type::Typed<std::optional<ir::Value>>>,
-      std::pair<core::Params<type::Type const *>, CompilationData>, ArgsHash>;
+      std::pair<core::Params<type::Type const *>, DependentComputedData>,
+      ArgsHash>;
 
+  // Returns an iterator and a bool. The bool indicates whether a dependency was
+  // inserted. In either case the iterator refers to the node in the map (either
+  // newly inserted or already present).
   std::pair<DependencyMap::iterator, bool> InsertDependent(
       ast::ParameterizedExpression const *node,
-      core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args,
-      module::BasicModule *mod) {
+      core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args) {
     auto &dep = dependent_data_[node];
-    if (not dep.map_) { dep.map_ = std::make_unique<DependencyMap>(); }
-    dep.parent_ = this;
+    if (not dep.map) { dep.map = std::make_unique<DependencyMap>(); }
+    dep.parent = this;
     auto [iter, inserted] =
-        dep.map_->try_emplace(args, std::piecewise_construct,
-                              std::forward_as_tuple(node->params().size()),
-                              std::forward_as_tuple(mod));
+        dep.map->try_emplace(args, std::piecewise_construct,
+                             std::forward_as_tuple(node->params().size()),
+                             std::forward_as_tuple(mod_));
     if (inserted) { iter->second.second.parent_ = this; }
     return std::pair(iter, inserted);
+  }
+
+  // Returns an iterator referring to the `DependentComputedData` corresponding
+  // to the given `node` and `args`. child. Such a `DependentComputedData` must
+  // already be present as a child.
+  DependencyMap::iterator FindDependent(
+      ast::ParameterizedExpression const *node,
+      core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args) {
+    auto &dep = dependent_data_.find(node)->second;
+    auto iter = dep.map->find(args);
+    ASSERT(iter != dep.map->end());
+    return iter;
   }
 
   template <
@@ -180,17 +218,21 @@ struct CompilationData {
     return nullptr;
   }
 
-  struct DependentDataNode { // TODO name this.
-    CompilationData *parent_ = nullptr;
-    std::unique_ptr<DependencyMap> map_;
-  };
-
-  CompilationData *parent_ = nullptr;
   ConstantBinding constants_;
-  absl::flat_hash_map<ast::ParameterizedExpression const *, DependentDataNode>
-      dependent_data_;
 
  private:
+  struct DependentDataChild {
+    DependentComputedData *parent = nullptr;
+    std::unique_ptr<DependencyMap> map;
+  };
+
+  // The parent node containing the generic that is instantiated to produce this
+  // `DependentComputedData`.
+  DependentComputedData *parent_ = nullptr;
+  absl::flat_hash_map<ast::ParameterizedExpression const *, DependentDataChild>
+      dependent_data_;
+
+  // All functions, whether they're directly compiled or generated by a generic.
   absl::node_hash_map<ast::Expression const *, ir::NativeFn> ir_funcs_;
 };
 

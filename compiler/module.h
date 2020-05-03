@@ -30,11 +30,11 @@ struct CompiledModule : module::BasicModule {
 
   // TODO We probably don't need these. There are likely better ways to expose
   // the requisite information.
-  CompilationData const &data() const { return data_; }
-  CompilationData &data() { return data_; }
+  DependentComputedData const &data() const { return data_; }
+  DependentComputedData &data() { return data_; }
 
  private:
-  CompilationData data_;
+  DependentComputedData data_;
 };
 
 }  // namespace compiler

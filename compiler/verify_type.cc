@@ -1740,7 +1740,7 @@ type::QualType Compiler::Visit(ast::FunctionLiteral const *node,
     ("Creating a concrete implementation with ",
      args.Transform([](auto const &a) { return a.type()->to_string(); }));
 
-    auto [iter, inserted] = comp_data->InsertDependent(node, args, mod);
+    auto [iter, inserted] = comp_data->InsertDependent(node, args);
     auto &[params, data]  = iter->second;
     if (not inserted) { return type::Func(params, {}); }
 

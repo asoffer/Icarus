@@ -17,7 +17,7 @@
 namespace test {
 
 struct TestModule : compiler::CompiledModule {
-  TestModule() : compiler(this, consumer) {}
+  TestModule() : compiler(this, data(), consumer) {}
   ~TestModule() { compiler.CompleteDeferredBodies(); }
 
   template <typename NodeType>

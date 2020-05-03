@@ -125,7 +125,7 @@ struct Compiler
         EmitCopyAssignTag)>::Visit(t, to, from, EmitCopyAssignTag{});
   }
 
-  Compiler(CompiledModule *mod, CompilationData &data,
+  Compiler(CompiledModule *mod, DependentComputedData &data,
            diagnostic::DiagnosticConsumer &consumer);
 
   module::BasicModule *module() const { return data_.mod_; }
@@ -270,7 +270,7 @@ struct Compiler
                     type::Typed<ir::Reg> to_var);
 
   CompiledModule *mod_;
-  CompilationData &data_;
+  DependentComputedData &data_;
   diagnostic::DiagnosticConsumer &diag_consumer_;
 
   std::vector<

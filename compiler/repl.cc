@@ -56,7 +56,7 @@ struct ReplModule : public CompiledModule {
 
   void ProcessNodes(base::PtrSpan<ast::Node const> nodes,
                     diagnostic::DiagnosticConsumer &diag) override {
-    Compiler compiler(this, diag);
+    Compiler compiler(this, data(), diag);
     for (ast::Node const *node : nodes) {
       if (node->is<ast::Declaration>()) {
         auto *decl = &node->as<ast::Declaration>();

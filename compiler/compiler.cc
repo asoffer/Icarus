@@ -14,7 +14,7 @@
 
 namespace compiler {
 
-Compiler::Compiler(CompiledModule *mod, CompilationData &data,
+Compiler::Compiler(CompiledModule *mod, DependentComputedData &data,
                    diagnostic::DiagnosticConsumer &consumer)
     : mod_(mod), data_(data), diag_consumer_(consumer) {}
 

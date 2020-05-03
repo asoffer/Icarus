@@ -757,14 +757,13 @@ ir::NativeFn Compiler::MakeConcreteFromGeneric(
     core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args) {
   ASSERT(node->is_generic() == true);
 
-  auto &dep = data_.dependent_data_[node];
-  auto iter = dep.map_->find(args);
-  ASSERT(iter != dep.map_->end());
-  auto& data = iter->second.second;
+  auto iter = data_.FindDependent(node, args);
+  auto &data = iter->second.second;
 
   return data.EmplaceNativeFn(node, [&] {
-    Compiler c(&module()->as<CompiledModule>(), iter->second.second, diag());
-    auto *fn_type = type::Func(iter->second.first, {});
+    auto &params = iter->second.first;
+    Compiler c(&module()->as<CompiledModule>(), data, diag());
+    auto *fn_type = type::Func(params, {});
     auto f        = c.AddFunc(
         fn_type,
         node->params().Transform([fn_type, i = 0](auto const &d) mutable {
@@ -815,12 +814,6 @@ ir::Results Compiler::Visit(ast::Identifier const *node, EmitValueTag) {
   if (node->decl()->flags() & ast::Declaration::f_IsFnParam) {
     auto *t     = type_of(node);
     ir::Reg reg = addr(node->decl());
-    if (data_.inline_) {
-      ir::Results reg_results = (*data_.inline_)[reg];
-      if (not reg_results.is_reg(0)) { return reg_results; }
-      reg = reg_results.get<ir::Reg>(0);
-    }
-
     return (node->decl()->flags() & ast::Declaration::f_IsOutput) and
                    not t->is_big()
                ? builder().Load(reg, t)
