@@ -56,11 +56,11 @@ static ir::Results ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
                     false_block);
 
       bldr.CurrentBlock() = true_block;
-      ir::SetRet(0, true);
+      bldr.SetRet(0, true);
       bldr.ReturnJump();
 
       bldr.CurrentBlock() = false_block;
-      ir::SetRet(0, false);
+      bldr.SetRet(0, false);
       bldr.ReturnJump();
 
       bldr.CurrentBlock() = equal_len_block;

@@ -21,7 +21,7 @@ SetCurrent::SetCurrent(internal::BlockGroupBase *group, Builder *builder)
       old_group_(builder_->CurrentGroup()),
       old_block_(builder_->CurrentBlock()),
       old_termination_state_(builder_->current_.block_termination_state_) {
-  builder_->CurrentGroup()  = group;
+  builder_->CurrentGroup()  = ASSERT_NOT_NULL(group);
   builder_->current_.block_ = group->entry();
   builder_->current_.block_termination_state_ =
       Builder::BlockTerminationState::kMoreStatements;

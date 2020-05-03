@@ -37,7 +37,7 @@ std::optional<type::QualType> Compiler::qual_type_of(
         auto *qt = mod->qual_type_of(decl);
         return qt ? std::optional(*qt) : std::nullopt;
       }
-      if (auto *t = current_constants_->binding().type_of(decl)) {
+      if (auto *t = data_.constants_.type_of(decl)) {
         return type::QualType::Constant(t);
       }
     }
@@ -103,7 +103,7 @@ ir::CompiledFn Compiler::MakeThunk(ast::Expression const *expr,
                                    type::Type const *type) {
   ir::CompiledFn fn(type::Func({}, {ASSERT_NOT_NULL(type)}),
                     core::Params<type::Typed<ast::Declaration const *>>{});
-  ICARUS_SCOPE(ir::SetCurrent(&fn)) {
+  ICARUS_SCOPE(ir::SetCurrent(&fn, &builder())) {
     // TODO this is essentially a copy of the body of FunctionLiteral::EmitValue
     // Factor these out together.
     builder().CurrentBlock() = fn.entry();
@@ -132,7 +132,7 @@ ir::CompiledFn Compiler::MakeThunk(ast::Expression const *expr,
             type::Typed<ir::Reg>(builder().GetRet(i, t), type::Ptr(t)));
 
       } else {
-        ir::SetRet(i, type::Typed{vals.GetResult(i), t});
+        builder().SetRet(i, type::Typed{vals.GetResult(i), t});
       }
     }
     builder().ReturnJump();

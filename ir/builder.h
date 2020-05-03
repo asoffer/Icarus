@@ -566,6 +566,38 @@ struct Builder {
     return result;
   }
 
+  template <typename T>
+  void SetRet(uint16_t n, T val) {
+    if constexpr (IsRegOr<T>::value) {
+      auto inst =
+          std::make_unique<SetReturnInstruction<typename T::type>>(n, val);
+      CurrentBlock()->AddInstruction(std::move(inst));
+    } else if constexpr (base::IsTaggedV<T>) {
+      static_assert(std::is_same_v<typename T::base_type, Reg>);
+      SetRet(n, RegOr<typename T::tag_type>(val));
+    } else {
+      SetRet(n, RegOr<T>(val));
+    }
+  }
+
+  inline void SetRet(uint16_t n, type::Typed<Results> const& r) {
+    // if (r.type()->is<type::GenericStruct>()) {
+    //   SetRet(n, r->get<Fn>(0));
+    // }
+    if (r.type()->is<type::Jump>()) {
+      // TODO currently this has to be implemented outside type::Apply because
+      // that's in type.h which is wrong because it forces weird instantiation
+      // order issues (type/type.h can't depend on type/jump.h).
+      SetRet(n, r->get<Fn>(0));
+    } else {
+      ASSERT(r.type()->is_big() == false) << r.type()->to_string();
+      type::Apply(r.type(), [&](auto tag) {
+        using T = typename decltype(tag)::type;
+        SetRet(n, r->get<T>(0));
+      });
+    }
+  }
+
   friend struct SetCurrent;
   friend struct SetTemporaries;
 
@@ -662,38 +694,6 @@ Reg MakeReg(T t) {
     return result;
   } else {
     return MakeReg(RegOr<T>{t});
-  }
-}
-
-template <typename T>
-void SetRet(uint16_t n, T val) {
-  if constexpr (IsRegOr<T>::value) {
-    auto inst =
-        std::make_unique<SetReturnInstruction<typename T::type>>(n, val);
-    GetBuilder().CurrentBlock()->AddInstruction(std::move(inst));
-  } else if constexpr (base::IsTaggedV<T>) {
-    static_assert(std::is_same_v<typename T::base_type, Reg>);
-    SetRet(n, RegOr<typename T::tag_type>(val));
-  } else {
-    SetRet(n, RegOr<T>(val));
-  }
-}
-
-inline void SetRet(uint16_t n, type::Typed<Results> const& r) {
-  // if (r.type()->is<type::GenericStruct>()) {
-  //   SetRet(n, r->get<Fn>(0));
-  // }
-  if (r.type()->is<type::Jump>()) {
-    // TODO currently this has to be implemented outside type::Apply because
-    // that's in type.h which is wrong because it forces weird instantiation
-    // order issues (type/type.h can't depend on type/jump.h).
-    SetRet(n, r->get<Fn>(0));
-  } else {
-    ASSERT(r.type()->is_big() == false) << r.type()->to_string();
-    type::Apply(r.type(), [&](auto tag) {
-      using T = typename decltype(tag)::type;
-      SetRet(n, r->get<T>(0));
-    });
   }
 }
 

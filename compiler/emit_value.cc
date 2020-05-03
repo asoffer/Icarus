@@ -119,28 +119,20 @@ std::optional<ast::OverloadSet> MakeOverloadSet(
 template <typename NodeType>
 base::move_func<void()> *DeferBody(Compiler *compiler, NodeType const *node,
                                    type::Type const *t) {
-  // It's safe to capture `compiler` because we know this lambda will be
-  // executed as part of work deferral of `compiler` before the compiler is
-  // destroyed.
-  return compiler->AddWork(node, [compiler, node, t]() mutable {
-    static_cast<void>(t);
-    if constexpr (std::is_same_v<NodeType, ast::FunctionLiteral>) {
-      if (node->is_generic()) {
-        compiler->current_constants_ =
-            compiler->module()->as<CompiledModule>().data().AddChildTo(
-                compiler->current_constants_, compiler->module());
-      }
-
-      VerifyBody(compiler, node, t);
-      CompleteBody(compiler, node, &t->as<type::Function>());
-
-      if (node->is_generic()) {
-        compiler->current_constants_ = compiler->current_constants_->parent();
-      }
-    } else {
-      CompleteBody(compiler, node);
-    }
-  });
+  return compiler->AddWork(
+      node, [mod  = &compiler->module()->as<CompiledModule>(),
+             data = &compiler->data_, node, t]() mutable {
+        // TODO Not the consumer we want but lambda can outlive `this->diag()`.
+        diagnostic::TrivialConsumer consumer;
+        Compiler c(mod, *data, consumer);
+        if constexpr (std::is_same_v<NodeType, ast::FunctionLiteral>) {
+          VerifyBody(&c, node, t);
+          CompleteBody(&c, node, &t->as<type::Function>());
+        } else {
+          static_cast<void>(t);
+          CompleteBody(&c, node);
+        }
+      });
 }
 
 }  // namespace
@@ -641,21 +633,20 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
       // exported.
       base::untyped_buffer_view result = node->module()
                                              ->as<CompiledModule>()
-                                             .root_node()
-                                             ->binding()
-                                             .get_constant(node);
+                                             .root_data()
+                                             .constants_.get_constant(node);
       ASSERT(result.size() != 0u);
       return ir::Results::FromRaw(result);
     }
 
     if (node->flags() & ast::Declaration::f_IsFnParam) {
-      auto result = current_constants_->find_constant(node);
+      auto result = data_.LoadConstantParam(node);
+      DEBUG_LOG("EmitValueDeclaration")(result);
       ASSERT(result.size() != 0u);
       return ir::Results::FromRaw(result);
     } else {
       auto *t = ASSERT_NOT_NULL(type_of(node));
-      base::untyped_buffer_view slot =
-          current_constants_->binding().reserve_slot(node, t);
+      base::untyped_buffer_view slot = data_.constants_.reserve_slot(node, t);
       if (not slot.empty()) {
         DEBUG_LOG("EmitValueDeclaration")("Returning from slot");
         return ir::Results::FromRaw(slot);
@@ -677,7 +668,7 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
           return ir::Results{};
         }
         DEBUG_LOG("EmitValueDeclaration")("Setting slot", buf.to_string());
-        current_constants_->binding().set_slot(node, buf);
+        data_.constants_.set_slot(node, buf);
         return ir::Results::FromRaw(buf);
       } else if (node->IsDefaultInitialized()) {
         UNREACHABLE();
@@ -767,31 +758,34 @@ ir::NativeFn Compiler::MakeConcreteFromGeneric(
     core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args) {
   ASSERT(node->is_generic() == true);
 
-  return data_.ir_funcs_
-      .emplace(
-          node,
-          base::lazy_convert(
-              [&] {
-                auto *fn_type =
-                    type_of(node)->as<type::GenericFunction>().concrete(args);
+  auto &dep = data_.dependent_data_[node];
+  auto iter = dep.map_->find(args);
+  ASSERT(iter != dep.map_->end());
+  auto& data = iter->second.second;
 
-                auto f = AddFunc(
-                    fn_type, node->params().Transform([ fn_type, i = 0 ](
-                                 auto const &d) mutable {
-                      return type::Typed<ast::Declaration const *>(
-                          d.get(), fn_type->params().at(i++).value);
-                    }));
-                f->work_item = DeferBody(this, node, fn_type);
-                return f;
-              }))
-      .first->second;
-    }
+  return data.EmplaceNativeFn(node, [&] {
+    Compiler c(&module()->as<CompiledModule>(), iter->second.second, diag());
+    auto *fn_type = type::Func(iter->second.first, {});
+    auto f        = c.AddFunc(
+        fn_type,
+        node->params().Transform([fn_type, i = 0](auto const &d) mutable {
+          return type::Typed<ast::Declaration const *>(
+              d.get(), fn_type->params().at(i++).value);
+        }));
+
+    f->work_item = DeferBody(&c, node, fn_type);
+    return f;
+  });
+}
 
 ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
   if (node->is_generic()) {
-    auto gen_fn = ir::GenericFn([
-      c(Compiler(mod_, mod_->root_data(), diag())), node
-    ](core::FnArgs<type::Typed<ir::Value>> const &args) mutable->ir::NativeFn {
+    auto gen_fn = ir::GenericFn([mod = mod_, node](
+                                    core::FnArgs<type::Typed<ir::Value>> const
+                                        &args) mutable -> ir::NativeFn {
+        // TODO Not the consumer we want but lambda can outlive `this->diag()`.
+      diagnostic::TrivialConsumer consumer;
+      Compiler c(mod, mod->root_data(), consumer);
       return c.MakeConcreteFromGeneric(node, args.Transform([](auto const &x) {
         return type::Typed<std::optional<ir::Value>>(*x, x.type());
       }));
@@ -800,21 +794,17 @@ ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
   }
 
   // TODO Use correct constants
-  ir::NativeFn ir_func =
-      data_.ir_funcs_
-          .emplace(node, base::lazy_convert([&] {
-                     auto *fn_type = &type_of(node)->as<type::Function>();
-
-                     auto f = AddFunc(
-                         fn_type, node->params().Transform([ fn_type, i = 0 ](
-                                      auto const &d) mutable {
+  ir::NativeFn ir_func = data_.EmplaceNativeFn(node, [&] {
+    auto *fn_type = &type_of(node)->as<type::Function>();
+    auto f        = AddFunc(fn_type,
+                     node->params().Transform(
+                         [fn_type, i = 0](auto const &d) mutable {
                            return type::Typed<ast::Declaration const *>(
                                d.get(), fn_type->params().at(i++).value);
                          }));
-                     f->work_item = DeferBody(this, node, fn_type);
-                     return f;
-                   }))
-          .first->second;
+    f->work_item = DeferBody(this, node, fn_type);
+    return f;
+  });
   return ir::Results{ir::Fn{ir_func}};
 }
 
@@ -945,7 +935,7 @@ ir::Results Compiler::Visit(ast::ReturnStmt const *node, EmitValueTag) {
                                         type::Ptr(ret_type)));
 
     } else {
-      ir::SetRet(i, type::Typed{arg_vals[i].second, ret_type});
+      builder().SetRet(i, type::Typed{arg_vals[i].second, ret_type});
     }
   }
 

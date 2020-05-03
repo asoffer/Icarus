@@ -15,8 +15,13 @@ void MakeAllStackAllocations(Compiler *compiler, ast::FnScope const *fn_scope) {
       for (auto *decl : val) {
         if (decl->flags() &
             (ast::Declaration::f_IsConst | ast::Declaration::f_IsFnParam)) {
+          DEBUG_LOG("MakeAllStackAllocations")
+          ("skipping constant/param decl ", decl->id());
           continue;
         }
+
+        DEBUG_LOG("MakeAllStackAllocations")
+        ("allocating ", decl->id());
 
         compiler->set_addr(decl,
                            compiler->builder().Alloca(compiler->type_of(decl)));
@@ -70,9 +75,12 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
   // TODO have validate return a bool distinguishing if there are errors and
   // whether or not we can proceed.
 
-  ir::NativeFn ir_func = compiler->data_.ir_funcs_.find(node)->second;
+  ir::NativeFn ir_func = *ASSERT_NOT_NULL(compiler->data_.FindNativeFn(node));
 
-  ICARUS_SCOPE(ir::SetCurrent(ir_func)) {
+  auto& bldr = compiler->builder();
+  ICARUS_SCOPE(ir::SetCurrent(ir_func.get(), &bldr)) {
+    bldr.CurrentBlock() = bldr.CurrentGroup()->entry();
+
     // TODO arguments should be renumbered to not waste space on const values
     size_t i = 0;
     for (auto const &param : node->params()) {
@@ -85,9 +93,8 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
         auto *out_decl = (*outputs)[i]->if_as<ast::Declaration>();
         if (not out_decl) { continue; }
         auto *out_decl_type = ASSERT_NOT_NULL(compiler->type_of(out_decl));
-        auto alloc          = out_decl_type->is_big()
-                         ? compiler->builder().GetRet(i, out_decl_type)
-                         : compiler->builder().Alloca(out_decl_type);
+        auto alloc = out_decl_type->is_big() ? bldr.GetRet(i, out_decl_type)
+                                             : bldr.Alloca(out_decl_type);
 
         compiler->set_addr(out_decl, alloc);
         if (out_decl->IsDefaultInitialized()) {
@@ -108,7 +115,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
     if (t->output().empty()) {
       // TODO even this is wrong. Figure out the right jumping strategy
       // between here and where you call SetReturn
-      compiler->builder().ReturnJump();
+      bldr.ReturnJump();
     }
   }
 
@@ -175,14 +182,14 @@ void CompleteBody(Compiler *compiler,
   //     ir::DestroyContext(ctx_reg);
   //
   //     // Exit path from creating a new struct.
-  //     ir::SetRet(0, static_cast<ir::RegOr<type::Type const *>>(result));
+  //     builder().SetRet(0, static_cast<ir::RegOr<type::Type const *>>(result));
   //     builder().Store(static_cast<ir::RegOr<type::Type const *>>(result),
   //               cache_slot_addr);
   //     compiler->builder().ReturnJump();
   //
   //     // Exit path from finding the cache
   //     ir::GetBuilder().CurrentBlock() = land_block;
-  //     ir::SetRet(0, static_cast<ir::RegOr<type::Type const *>>(cache_slot));
+  //     builder().SetRet(0, static_cast<ir::RegOr<type::Type const *>>(cache_slot));
   //     compiler->builder().ReturnJump();
   //   }
 }

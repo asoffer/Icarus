@@ -126,8 +126,8 @@ void CallFn(ir::NativeFn fn, StackFrame *frame,
   // error.
   if (fn->work_item and *fn->work_item) { (std::move(*fn->work_item))(); }
 
-  auto *old_frame     = &ctx->current_frame();
-  ctx->current_frame_ = frame;
+  auto *old_frame = ctx->current_frame();
+  ctx->current_frame_ = ASSERT_NOT_NULL(frame);
   ctx->ExecuteBlocks(ret_slots);
   ctx->current_frame_ = old_frame;
 }
@@ -166,7 +166,9 @@ void ExecuteInstruction(base::untyped_buffer::const_iterator *iter,
   type lhs     = ReadAndResolve<type>(ctrl.lhs_is_reg, iter, ctx);
   type rhs     = ReadAndResolve<type>(ctrl.rhs_is_reg, iter, ctx);
   auto result  = BinInst::Apply(lhs, rhs);
-  ctx->current_frame().regs_.set(iter->read<ir::Reg>(), result);
+  auto reg     = iter->read<ir::Reg>();
+  DEBUG_LOG("binary-instruction")(lhs, " ", lhs, " -> ", result, " into ", reg);
+  ctx->current_frame()->regs_.set(reg, result);
 }
 
 template <
@@ -180,7 +182,7 @@ void ExecuteInstruction(base::untyped_buffer::const_iterator *iter,
   using type  = typename UnInst::type;
   bool is_reg = iter->read<bool>();
   auto result = UnInst::Apply(ReadAndResolve<type>(is_reg, iter, ctx));
-  ctx->current_frame().regs_.set(iter->read<ir::Reg>(), result);
+  ctx->current_frame()->regs_.set(iter->read<ir::Reg>(), result);
 }
 
 template <typename VarInst,
@@ -195,7 +197,7 @@ void ExecuteInstruction(base::untyped_buffer::const_iterator *iter,
 
   auto vals = Deserialize<uint16_t, type>(
       iter, [ctx](ir::Reg reg) { return ctx->resolve<type>(reg); });
-  ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
+  ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
                                  VarInst::Apply(std::move(vals)));
 }
 
@@ -281,12 +283,12 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
       result = new type::Flags(mod, std::move(mapping));
     }
 
-    ctx->current_frame().regs_.set(iter->read<ir::Reg>(), result);
+    ctx->current_frame()->regs_.set(iter->read<ir::Reg>(), result);
 
   } else if constexpr (std::is_same_v<Inst, ir::OpaqueTypeInstruction>) {
     module::BasicModule const *mod = iter->read<module::BasicModule const *>();
-    ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
-                                   new type::Opaque(mod));
+    ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
+                                    new type::Opaque(mod));
 
   } else if constexpr (std::is_same_v<Inst, ir::ArrowInstruction>) {
     std::vector<type::Type const *> ins =
@@ -302,7 +304,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     in_params.reserve(ins.size());
     for (auto *t : ins) { in_params.append(core::AnonymousParam(t)); }
 
-    ctx->current_frame().regs_.set(
+    ctx->current_frame()->regs_.set(
         iter->read<ir::Reg>(),
         type::Func(std::move(in_params), std::move(outs)));
   } else if constexpr (ir::internal::kStoreInstructionRange.contains(
@@ -327,7 +329,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     uint16_t num   = iter->read<uint16_t>();
     uint64_t index = std::numeric_limits<uint64_t>::max();
     for (uint16_t i = 0; i < num; ++i) {
-      if (ctx->current_frame().prev_index_ == iter->read<uintptr_t>()) {
+      if (ctx->current_frame()->prev_index_ == iter->read<uintptr_t>()) {
         index = i;
       }
     }
@@ -336,7 +338,8 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     using type                = typename Inst::type;
     std::vector<type> results = Deserialize<uint16_t, type>(
         iter, [ctx](ir::Reg reg) { return ctx->resolve<type>(reg); });
-    ctx->current_frame().regs_.set(iter->read<ir::Reg>(), type{results[index]});
+    ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
+                                    type{results[index]});
     DEBUG_LOG("phi-instruction")(results[index]);
   } else if constexpr (std::is_same_v<Inst, ir::TypeManipulationInstruction>) {
     // TODO optional just for delayed construction.
@@ -354,14 +357,14 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         } else if (auto *tup = t->if_as<type::Tuple>()) {
           f = tup->init_func_.get();
         } else if (auto *a = t->if_as<type::Array>()) {
-          NOT_YET(); // f = a->init_func_.get();
+          NOT_YET();  // f = a->init_func_.get();
         } else {
           NOT_YET();
         }
 
         frame.emplace(f->native(), &ctx->stack_);
         frame->regs_.set(ir::Reg::Arg(0),
-                        ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get()));
+                         ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get()));
 
       } break;
       case ir::TypeManipulationInstruction::Kind::Destroy: {
@@ -370,14 +373,14 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         } else if (auto *tup = t->if_as<type::Tuple>()) {
           f = tup->destroy_func_.get();
         } else if (auto *a = t->if_as<type::Array>()) {
-          NOT_YET(); // f = a->destroy_func_.get();
+          NOT_YET();  // f = a->destroy_func_.get();
         } else {
           NOT_YET();
         }
 
         frame.emplace(f->native(), &ctx->stack_);
         frame->regs_.set(ir::Reg::Arg(0),
-                        ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get()));
+                         ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get()));
       } break;
       case ir::TypeManipulationInstruction::Kind::Move: {
         auto from   = ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get());
@@ -389,7 +392,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         } else if (auto *tup = t->if_as<type::Tuple>()) {
           f = tup->move_assign_func_.get();
         } else if (auto *a = t->if_as<type::Array>()) {
-          NOT_YET(); // f = a->move_assign_func_.get();
+          NOT_YET();  // f = a->move_assign_func_.get();
         } else {
           NOT_YET();
         }
@@ -407,7 +410,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         } else if (auto *tup = t->if_as<type::Tuple>()) {
           f = tup->copy_assign_func_.get();
         } else if (auto *a = t->if_as<type::Array>()) {
-          NOT_YET(); // f = a->copy_assign_func_.get();
+          NOT_YET();  // f = a->copy_assign_func_.get();
         } else {
           NOT_YET();
         }
@@ -442,67 +445,66 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
 
     switch (to_type_byte) {
       case ir::internal::PrimitiveIndex<int8_t>(): {
-        ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
-                                       static_cast<int8_t>(val));
+        ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
+                                        static_cast<int8_t>(val));
       } break;
       case ir::internal::PrimitiveIndex<uint8_t>(): {
-        ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
-                                       static_cast<uint8_t>(val));
+        ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
+                                        static_cast<uint8_t>(val));
       } break;
       case ir::internal::PrimitiveIndex<int16_t>(): {
-        ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
-                                       static_cast<int16_t>(val));
+        ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
+                                        static_cast<int16_t>(val));
       } break;
       case ir::internal::PrimitiveIndex<uint16_t>(): {
-        ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
-                                       static_cast<uint16_t>(val));
+        ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
+                                        static_cast<uint16_t>(val));
       } break;
       case ir::internal::PrimitiveIndex<int32_t>(): {
-        ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
-                                       static_cast<int32_t>(val));
+        ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
+                                        static_cast<int32_t>(val));
       } break;
       case ir::internal::PrimitiveIndex<uint32_t>(): {
-        ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
-                                       static_cast<uint32_t>(val));
+        ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
+                                        static_cast<uint32_t>(val));
       } break;
       case ir::internal::PrimitiveIndex<int64_t>(): {
-        ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
-                                       static_cast<int64_t>(val));
+        ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
+                                        static_cast<int64_t>(val));
       } break;
       case ir::internal::PrimitiveIndex<uint64_t>(): {
-        ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
-                                       static_cast<uint64_t>(val));
+        ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
+                                        static_cast<uint64_t>(val));
       } break;
       case ir::internal::PrimitiveIndex<float>(): {
-        ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
-                                       static_cast<float>(val));
+        ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
+                                        static_cast<float>(val));
       } break;
       case ir::internal::PrimitiveIndex<double>(): {
-        ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
-                                       static_cast<double>(val));
+        ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
+                                        static_cast<double>(val));
       } break;
       case ir::internal::PrimitiveIndex<ir::EnumVal>(): {
-        ctx->current_frame().regs_.set(iter->read<ir::Reg>(), ir::EnumVal(val));
+        ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
+                                        ir::EnumVal(val));
       } break;
       case ir::internal::PrimitiveIndex<ir::FlagsVal>(): {
-        ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
-                                       ir::FlagsVal(val));
+        ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
+                                        ir::FlagsVal(val));
       } break;
     }
 
   } else if constexpr (std::is_same_v<Inst, ir::GetReturnInstruction>) {
     uint16_t index = iter->read<uint16_t>();
-    ctx->current_frame().regs_.set(iter->read<ir::Reg>(), ret_slots[index]);
+    ctx->current_frame()->regs_.set(iter->read<ir::Reg>(), ret_slots[index]);
 
   } else if constexpr (std::is_same_v<Inst, ir::MakeScopeInstruction>) {
     ir::ScopeDef *scope_def = iter->read<ir::ScopeDef *>();
 
     scope_def->start_->after_ = Deserialize<uint16_t, ir::Jump *>(
         iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::Jump *>(reg); });
-    scope_def->exit_->before_ = ir::OverloadSet(
-        Deserialize<uint16_t, ir::Fn>(iter, [ctx](ir::Reg reg) {
-          return ctx->resolve<ir::Fn>(reg);
-        }));
+    scope_def->exit_->before_ = ir::OverloadSet(Deserialize<uint16_t, ir::Fn>(
+        iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::Fn>(reg); }));
 
     uint16_t num_blocks = iter->read<uint16_t>();
     for (uint16_t i = 0; i < num_blocks; ++i) {
@@ -511,17 +513,15 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
       scope_def->blocks_.emplace(name, block);
     }
 
-    ctx->current_frame().regs_.set(iter->read<ir::Reg>(), scope_def);
+    ctx->current_frame()->regs_.set(iter->read<ir::Reg>(), scope_def);
 
   } else if constexpr (std::is_same_v<Inst, ir::MakeBlockInstruction>) {
     ir::BlockDef *block_def = iter->read<ir::BlockDef *>();
-    block_def->before_ =
-        ir::OverloadSet(Deserialize<uint16_t, ir::Fn>(iter, [ctx](ir::Reg reg) {
-          return ctx->resolve<ir::Fn>(reg);
-        }));
-    block_def->after_  = Deserialize<uint16_t, ir::Jump *>(
+    block_def->before_      = ir::OverloadSet(Deserialize<uint16_t, ir::Fn>(
+        iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::Fn>(reg); }));
+    block_def->after_       = Deserialize<uint16_t, ir::Jump *>(
         iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::Jump *>(reg); });
-    ctx->current_frame().regs_.set(iter->read<ir::Reg>(), block_def);
+    ctx->current_frame()->regs_.set(iter->read<ir::Reg>(), block_def);
 
   } else if constexpr (std::is_same_v<Inst, ir::StructInstruction>) {
     uint16_t num            = iter->read<uint16_t>();
@@ -555,8 +555,8 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
       }
     }
 
-    ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
-                                   new type::Struct(scope, std::move(fields)));
+    ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
+                                    new type::Struct(scope, std::move(fields)));
 
   } else if constexpr (std::is_same_v<Inst, ir::ArrayInstruction>) {
     using length_t = ir::ArrayInstruction::length_t;
@@ -565,8 +565,8 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     auto data_type =
         ReadAndResolve<type::Type const *>(ctrl_bits.type_is_reg, iter, ctx);
 
-    ctx->current_frame().regs_.set(iter->read<ir::Reg>(),
-                                   type::Arr(len, data_type));
+    ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
+                                    type::Arr(len, data_type));
   } else if constexpr (std::is_same_v<Inst, ir::CallInstruction>) {
     bool fn_is_reg = iter->read<bool>();
     ir::Fn f       = ReadAndResolve<ir::Fn>(fn_is_reg, iter, ctx);
@@ -577,8 +577,13 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
 
     // TODO you probably want interpretter::Arguments or something.
     size_t num_inputs = fn_type->params().size();
-    size_t num_regs =
-        f.kind() == ir::Fn::Kind::Native ? f.native()->num_regs() : 0;
+    size_t num_regs   = 0;
+    if (f.kind() == ir::Fn::Kind::Native) {
+      if (f.native()->work_item and *f.native()->work_item) {
+        (std::move(*f.native()->work_item))();
+      }
+      num_regs = f.native()->num_regs();
+    }
     size_t num_entries = num_inputs + num_regs;
     auto call_buf      = base::untyped_buffer::MakeFull(num_entries * kMaxSize);
 
@@ -596,7 +601,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
 
         if (frame) {
           frame->regs_.set_raw(ir::Reg::Arg(i),
-                               ctx->current_frame().regs_.raw(reg), kMaxSize);
+                               ctx->current_frame()->regs_.raw(reg), kMaxSize);
         }
         ctx->MemCpyRegisterBytes(
             /*    dst = */ call_buf.raw((num_regs + i) * kMaxSize),
@@ -627,9 +632,10 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
       ir::Reg reg = iter->read<ir::Reg>();
       // NOTE: This is a hack using heap address slots to represent registers
       // since they are both void* and are used identically in the interpretter.
-      ir::Addr addr = (fn_type->output()[i]->is_big())
-                          ? ctx->resolve<ir::Addr>(reg)
-                          : ir::Addr::Heap(ctx->current_frame().regs_.raw(reg));
+      ir::Addr addr =
+          (fn_type->output()[i]->is_big())
+              ? ctx->resolve<ir::Addr>(reg)
+              : ir::Addr::Heap(ctx->current_frame()->regs_.raw(reg));
 
       DEBUG_LOG("call")("Ret addr = ", addr);
       return_slots.push_back(addr);
@@ -645,11 +651,11 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     if (auto *fn_type = type->if_as<type::Function>()) {
       ASSIGN_OR(FatalInterpretterError(_.error().to_string()),  //
                 void (*sym)(), LoadFunctionSymbol(name));
-      ctx->current_frame().regs_.set(reg, ir::Fn(ir::ForeignFn(sym, fn_type)));
+      ctx->current_frame()->regs_.set(reg, ir::Fn(ir::ForeignFn(sym, fn_type)));
     } else if (type->is<type::Pointer>()) {
       ASSIGN_OR(FatalInterpretterError(_.error().to_string()),  //
                 void *sym, LoadDataSymbol(name));
-      ctx->current_frame().regs_.set(reg, ir::Addr::Heap(sym));
+      ctx->current_frame()->regs_.set(reg, ir::Addr::Heap(sym));
     } else {
       UNREACHABLE(type->to_string());
     }
@@ -660,10 +666,10 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     ir::Reg reg = iter->read<ir::Reg>();
 
     if (ctrl_bits & 0x02) {
-      ctx->current_frame().regs_.set(reg, type->alignment(kArchitecture));
+      ctx->current_frame()->regs_.set(reg, type->alignment(kArchitecture));
 
     } else {
-      ctx->current_frame().regs_.set(reg, type->bytes(kArchitecture));
+      ctx->current_frame()->regs_.set(reg, type->bytes(kArchitecture));
     }
 
   } else if constexpr (std::is_same_v<Inst, ir::StructIndexInstruction> or
@@ -682,21 +688,21 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
           core::FwdAlign(type->pointee()->bytes(kArchitecture),
                          type->pointee()->alignment(kArchitecture)) *
           index;
-      ctx->current_frame().regs_.set(reg, addr + offset);
+      ctx->current_frame()->regs_.set(reg, addr + offset);
     } else {
-      ctx->current_frame().regs_.set(reg,
-                                     addr + type->offset(index, kArchitecture));
+      ctx->current_frame()->regs_.set(
+          reg, addr + type->offset(index, kArchitecture));
     }
   } else if constexpr (std::is_same_v<Inst, ir::ByteViewLengthInstruction>) {
     int64_t length =
         ctx->resolve<ir::String>(iter->read<ir::Reg>().get()).get().size();
     ir::Reg result = iter->read<ir::Reg>();
-    ctx->current_frame().regs_.set(result, length);
+    ctx->current_frame()->regs_.set(result, length);
   } else if constexpr (std::is_same_v<Inst, ir::ByteViewDataInstruction>) {
     auto data_addr = ir::Addr::Heap(const_cast<char *>(
         ctx->resolve<ir::String>(iter->read<ir::Reg>().get()).get().data()));
     ir::Reg result = iter->read<ir::Reg>();
-    ctx->current_frame().regs_.set(result, data_addr);
+    ctx->current_frame()->regs_.set(result, data_addr);
   } else if constexpr (std::is_same_v<Inst, ir::VariantAccessInstruction>) {
     bool get_val = iter->read<bool>();
     bool is_reg  = iter->read<bool>();
@@ -707,10 +713,10 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
 
     ir::Reg reg = iter->read<ir::Reg>();
     DEBUG_LOG("variant")(reg);
-    ctx->current_frame().regs_.set(reg, addr);
+    ctx->current_frame()->regs_.set(reg, addr);
 
   } else if constexpr (std::is_same_v<Inst, ir::DebugIrInstruction>) {
-    std::cerr << *ctx->current_frame().fn_.get();
+    std::cerr << *ctx->current_frame()->fn_.get();
   } else {
     static_assert(base::always_false<Inst>());
   }
@@ -718,7 +724,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
 
 void ExecutionContext::MemCpyRegisterBytes(void *dst, ir::Reg reg,
                                            size_t length) {
-  std::memcpy(dst, current_frame().regs_.raw(reg), length);
+  std::memcpy(dst, current_frame()->regs_.raw(reg), length);
 }
 
 // Note: The ordering here is very important
@@ -961,8 +967,8 @@ constexpr auto kInstructions = std::array{
 };
 
 void ExecutionContext::ExecuteBlocks(absl::Span<ir::Addr const> ret_slots) {
-  DEBUG_LOG("dbg-buffer")(*current_frame().current_block());
-  auto &buffer = current_frame().fn_->byte_code();
+  DEBUG_LOG("dbg-buffer")(*current_frame()->current_block());
+  auto &buffer = current_frame()->fn_->byte_code();
 
   auto iter = buffer.begin();
   while (true) {
@@ -974,8 +980,8 @@ void ExecutionContext::ExecuteBlocks(absl::Span<ir::Addr const> ret_slots) {
       case ir::internal::kReturnInstruction: return;
       case ir::internal::kUncondJumpInstruction: {
         uintptr_t offset = iter.read<uintptr_t>();
-        current_frame().MoveTo(offset);
-        iter = current_frame().fn_->byte_code().begin();
+        current_frame()->MoveTo(offset);
+        iter = current_frame()->fn_->byte_code().begin();
         iter.skip(offset);
       } break;
       case ir::internal::kCondJumpInstruction: {
@@ -983,8 +989,8 @@ void ExecutionContext::ExecuteBlocks(absl::Span<ir::Addr const> ret_slots) {
         uintptr_t true_block  = iter.read<uintptr_t>();
         uintptr_t false_block = iter.read<uintptr_t>();
         uintptr_t offset      = resolve<bool>(r) ? true_block : false_block;
-        current_frame().MoveTo(offset);
-        iter = current_frame().fn_->byte_code().begin();
+        current_frame()->MoveTo(offset);
+        iter = current_frame()->fn_->byte_code().begin();
         iter.skip(offset);
       } break;
       case ir::LoadInstruction::kIndex: {
@@ -995,15 +1001,15 @@ void ExecutionContext::ExecuteBlocks(absl::Span<ir::Addr const> ret_slots) {
         DEBUG_LOG("load-instruction")(num_bytes, " ", addr, " ", result_reg);
         switch (addr.kind()) {
           case ir::Addr::Kind::Stack: {
-            current_frame().regs_.set_raw(result_reg, stack_.raw(addr.stack()),
-                                          num_bytes);
+            current_frame()->regs_.set_raw(result_reg, stack_.raw(addr.stack()),
+                                           num_bytes);
           } break;
           case ir::Addr::Kind::ReadOnly:
-            current_frame().regs_.set_raw(
+            current_frame()->regs_.set_raw(
                 result_reg, ir::ReadOnlyData.raw(addr.rodata()), num_bytes);
             break;
           case ir::Addr::Kind::Heap: {
-            current_frame().regs_.set_raw(result_reg, addr.heap(), num_bytes);
+            current_frame()->regs_.set_raw(result_reg, addr.heap(), num_bytes);
           } break;
         }
       } break;

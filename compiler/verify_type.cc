@@ -1135,6 +1135,7 @@ VerifyFnArgs(
       return type::Typed(ir::Results{},
                          static_cast<type::Type const *>(nullptr));
     }
+    DEBUG_LOG("VerifyFnArgs")("constant: ", expr->DebugString());
     return EvaluateIfConstant(c, expr, expr_qual_type);
   });
 
@@ -1729,26 +1730,24 @@ type::QualType Compiler::Visit(ast::FunctionLiteral const *node,
 
   auto ordered_nodes = OrderedDependencyNodes(node);
 
-  auto *data_map = &data_.dependent_data_[node];
-  auto *diag_consumer = &diag();
-  auto gen = [node, mod(mod_), data_map, diag_consumer,
+  // auto *diag_consumer = &diag();
+  auto gen            = [node, mod(mod_), comp_data = &data_, //diag_consumer,
               ordered_nodes(std::move(ordered_nodes))](
                  core::FnArgs<type::Typed<std::optional<ir::Value>>> const
                      &args) mutable -> type::Function const * {
+
     DEBUG_LOG("generic-fn")
     ("Creating a concrete implementation with ",
      args.Transform([](auto const &a) { return a.type()->to_string(); }));
 
-    auto [iter, inserted] =
-        data_map->try_emplace(args, std::piecewise_construct,
-                              std::forward_as_tuple(node->params().size()),
-                              std::forward_as_tuple(mod));
-    auto& [params, data] = iter->second;
-    if (not inserted) {
-      DEBUG_LOG()("again");
-      return type::Func(params, {});
-    }
-    Compiler c(mod, iter->second.second, *diag_consumer);
+    auto [iter, inserted] = comp_data->InsertDependent(node, args, mod);
+    auto &[params, data]  = iter->second;
+    if (not inserted) { return type::Func(params, {}); }
+
+    // TODO not the consumer we want... but capturing the one from the parent
+    // compiler is dangerous because this lambda may outlive it.
+    diagnostic::TrivialConsumer consumer;
+    Compiler c(mod, iter->second.second, consumer /**diag_consumer*/);
 
     // TODO use the proper ordering.
     for (auto dep_node : ordered_nodes) {
@@ -1779,7 +1778,7 @@ type::QualType Compiler::Visit(ast::FunctionLiteral const *node,
             DEBUG_LOG("generic-fn")
             (**args.pos()[0], ": ", *args.pos()[0].type());
             c.data_.constants_.reserve_slot(dep_node.node(),
-                                             args.pos()[0].type());
+                                            args.pos()[0].type());
             if (c.data_.constants_.get_constant(dep_node.node()).empty()) {
               c.data_.constants_.set_slot(dep_node.node(), buf);
             }

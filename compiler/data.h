@@ -101,9 +101,6 @@ struct CompilationData {
 
   absl::flat_hash_map<ast::Declaration const *, ir::Reg> addr_;
 
-  // TODO probably make these funcs constant.
-  absl::node_hash_map<ast::Expression const *, ir::NativeFn> ir_funcs_;
-
   absl::flat_hash_map<ast::Import const *, module::Pending<LibraryModule>>
       imported_module_;
 
@@ -142,16 +139,59 @@ struct CompilationData {
     }
   };
 
-  // ast::ParameterizedExpression const *parent_ = nullptr;
+  using DependencyMap = absl::node_hash_map<
+      core::FnArgs<type::Typed<std::optional<ir::Value>>>,
+      std::pair<core::Params<type::Type const *>, CompilationData>, ArgsHash>;
 
+  std::pair<DependencyMap::iterator, bool> InsertDependent(
+      ast::ParameterizedExpression const *node,
+      core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args,
+      module::BasicModule *mod) {
+    auto &dep = dependent_data_[node];
+    if (not dep.map_) { dep.map_ = std::make_unique<DependencyMap>(); }
+    dep.parent_ = this;
+    auto [iter, inserted] =
+        dep.map_->try_emplace(args, std::piecewise_construct,
+                              std::forward_as_tuple(node->params().size()),
+                              std::forward_as_tuple(mod));
+    if (inserted) { iter->second.second.parent_ = this; }
+    return std::pair(iter, inserted);
+  }
+
+  template <
+      typename Ctor,
+      std::enable_if_t<base::meta<Ctor> != base::meta<ir::NativeFn>, int> = 0>
+  ir::NativeFn EmplaceNativeFn(ast::Expression const *expr, Ctor &&ctor) {
+    return ir_funcs_.emplace(expr, base::lazy_convert(std::forward<Ctor>(ctor)))
+        .first->second;
+  }
+
+  base::untyped_buffer_view LoadConstantParam(ast::Declaration const *decl) {
+    auto buf_view = constants_.get_constant(decl);
+    if (not buf_view.empty()) { return buf_view; }
+    if (parent_) { buf_view = parent_->LoadConstantParam(decl); }
+    return buf_view;
+  }
+
+  ir::NativeFn *FindNativeFn(ast::Expression const *expr) {
+    auto iter = ir_funcs_.find(expr);
+    if (iter != ir_funcs_.end()) { return &iter->second; }
+    if (parent_) { return parent_->FindNativeFn(expr); }
+    return nullptr;
+  }
+
+  struct DependentDataNode { // TODO name this.
+    CompilationData *parent_ = nullptr;
+    std::unique_ptr<DependencyMap> map_;
+  };
+
+  CompilationData *parent_ = nullptr;
   ConstantBinding constants_;
-  absl::flat_hash_map<
-      ast::ParameterizedExpression const *,
-      absl::node_hash_map<
-          core::FnArgs<type::Typed<std::optional<ir::Value>>>,
-          std::pair<core::Params<type::Type const *>, CompilationData>,
-          ArgsHash>>
+  absl::flat_hash_map<ast::ParameterizedExpression const *, DependentDataNode>
       dependent_data_;
+
+ private:
+  absl::node_hash_map<ast::Expression const *, ir::NativeFn> ir_funcs_;
 };
 
 }  // namespace compiler
