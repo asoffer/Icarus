@@ -223,6 +223,11 @@ struct DependentComputedData {
     };
 
     DependentComputedData *parent = nullptr;
+    // TODO keying on arguments is actually wrong, because specifying the same
+    // arguments in a named vs positional manner should produce the same
+    // function. We may still want to cache them but we should be keying on
+    // parameters. But this also means we need to run the arg/param matching
+    // code every time.
     absl::node_hash_map<
         core::FnArgs<type::Typed<std::optional<ir::Value>>>,
         std::pair<core::Params<type::Type const *>, DependentComputedData>,

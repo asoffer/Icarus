@@ -130,7 +130,7 @@ void FillMissingArgs(ParamsRef<P> params, FnArgs<A>* args, Fn fn,
     ASSERT(i + offset < params.size());
     auto const& p = params[i + offset];
     if (p.name.empty()) { continue; }
-    DEBUG_LOG()("For named-parameter ", p.name, "inserting.");
+    DEBUG_LOG("fill-missing-args")("For named-parameter ", p.name, "inserting.");
     args->named_emplace(p.name,
                         base::lazy_convert{[&]() { return fn(p.value); }});
   }

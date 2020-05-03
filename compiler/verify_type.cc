@@ -1151,7 +1151,7 @@ type::Typed<std::optional<ir::Value>> TypedResultsToTypedOptionalValue(
   // TODO other types too.
   return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
                           uint16_t, uint32_t, uint64_t, float, double, ir::Addr,
-                          ir::String>(r.type(), [&](auto tag) {
+                          ir::String, type::Type const *>(r.type(), [&](auto tag) {
     using T = typename decltype(tag)::type;
     return type::Typed<std::optional<ir::Value>>(
         ir::Value(r->template get<T>(0)), r.type());
@@ -1701,7 +1701,7 @@ type::QualType Compiler::Visit(ast::EnumLiteral const *node, VerifyTypeTag) {
   return set_result(node, type::QualType::Constant(type::Type_));
 }
 
-static std::vector<core::DependencyNode<ast::Declaration>>
+static std::vector<std::pair<int, core::DependencyNode<ast::Declaration>>>
 OrderedDependencyNodes(ast::ParameterizedExpression const *node) {
   absl::flat_hash_set<core::DependencyNode<ast::Declaration>> deps;
   for (auto const &p : node->params()) {
@@ -1713,14 +1713,29 @@ OrderedDependencyNodes(ast::ParameterizedExpression const *node) {
     }
   }
 
-  std::vector<core::DependencyNode<ast::Declaration>> ordered_nodes;
+  std::vector<std::pair<int, core::DependencyNode<ast::Declaration>>>
+      ordered_nodes;
   node->parameter_dependency_graph().topologically([&](auto dep_node) {
     if (not deps.contains(dep_node)) { return; }
     DEBUG_LOG("generic-fn")
-    ("adding node = ", dep_node.node()->DebugString(), " of kind ",
+    ("adding node = `", dep_node.node()->DebugString(), "` of kind ",
      static_cast<int>(dep_node.kind()));
-    ordered_nodes.push_back(dep_node);
+    ordered_nodes.emplace_back(0, dep_node);
   });
+
+  // Compute and set the index or `ordered_nodes` so that each node knows the
+  // ordering in source code. This allows us to match parameters to arguments
+  // efficiently.
+  absl::flat_hash_map<ast::Declaration const *, int> param_index;
+  int index = 0;
+  for (auto const &param : node->params()) {
+    param_index.emplace(param.value.get(), index++);
+  }
+
+  for (auto &[index, node] : ordered_nodes) {
+    index = param_index.find(node.node())->second;
+  }
+
   return ordered_nodes;
 }
 
@@ -1731,7 +1746,7 @@ type::QualType Compiler::Visit(ast::FunctionLiteral const *node,
   auto ordered_nodes = OrderedDependencyNodes(node);
 
   // auto *diag_consumer = &diag();
-  auto gen            = [node, mod(mod_), comp_data = &data_, //diag_consumer,
+  auto gen = [node, mod(mod_), comp_data = &data_,  // diag_consumer,
               ordered_nodes(std::move(ordered_nodes))](
                  core::FnArgs<type::Typed<std::optional<ir::Value>>> const
                      &args) mutable -> type::Function const * {
@@ -1749,9 +1764,10 @@ type::QualType Compiler::Visit(ast::FunctionLiteral const *node,
     Compiler c(mod, data, consumer /**diag_consumer*/);
 
     // TODO use the proper ordering.
-    for (auto dep_node : ordered_nodes) {
+    for (auto [index, dep_node] : ordered_nodes) {
       DEBUG_LOG("generic-fn")
-      ("Handling dep-node of kind ", static_cast<int>(dep_node.kind()));
+      ("Handling dep-node `", dep_node.node()->DebugString(), "` of kind ",
+       static_cast<int>(dep_node.kind()));
       switch (dep_node.kind()) {
         using kind_t = core::DependencyNode<ast::Declaration>::Kind;
         case kind_t::ArgValue: NOT_YET();
@@ -1764,20 +1780,29 @@ type::QualType Compiler::Visit(ast::FunctionLiteral const *node,
           auto const *t = interpretter::EvaluateAs<type::Type const *>(
               c.MakeThunk(dep_node.node()->type_expr(), type::Type_));
           c.set_result(dep_node.node(), type::QualType::Constant(t));
-          size_t index = *ASSERT_NOT_NULL(
+          DEBUG_LOG("generic-fn")("Computed type to be ", t->to_string());
+          size_t i = *ASSERT_NOT_NULL(
               node->params().at_or_null(dep_node.node()->id()));
-          params.set(index,
+          params.set(i,
                      core::Param<type::Type const *>(dep_node.node()->id(), t));
         } break;
         case kind_t::ParamValue: {
+          // Find the argument associated with this parameter.
+          // TODO, if the type is wrong but there is an implicit cast, deal with that.
+
           // TODO argument get the argument associated to this parameter.
           base::untyped_buffer buf;
-          if (*args.pos()[0]) {
-            (*args.pos()[0])->apply([&buf](auto x) { buf.append(x); });
-            DEBUG_LOG("generic-fn")
-            (**args.pos()[0], ": ", *args.pos()[0].type());
-            c.data_.constants_.reserve_slot(dep_node.node(),
-                                            args.pos()[0].type());
+
+          type::Typed<std::optional<ir::Value>> arg;
+          if (index < args.pos().size()) {
+            arg = args[index];
+          } else {
+            arg = args[dep_node.node()->id()];
+          }
+          if (arg->has_value()) {
+            (*arg)->apply([&buf](auto x) { buf.append(x); });
+            DEBUG_LOG("generic-fn")(**arg, ": ", *arg.type());
+            c.data_.constants_.reserve_slot(dep_node.node(), arg.type());
             if (c.data_.constants_.get_constant(dep_node.node()).empty()) {
               c.data_.constants_.set_slot(dep_node.node(), buf);
             }
@@ -2205,7 +2230,7 @@ type::QualType Compiler::Visit(ast::Switch const *node, VerifyTypeTag) {
         });
       }
     }
-    // TODO if there's an error, an unorderded_set is not helpful for giving
+    // TODO if there's an error, an unordereded_set is not helpful for giving
     // good error messages.
     if (body->is<ast::Expression>()) {
       // TODO check that it's actually a jump
