@@ -15,45 +15,4 @@ cc_library(
         "//type:type",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
-    test_deps = None,
-)
-
-cc_library(
-    name = "binding_tree",
-    hdrs = ["binding_tree.h"],
-    srcs = ["binding_tree.cc"],
-    deps = [
-        "//ast",
-        "//base:stringify",
-        "//type:util",
-        ":binding",
-        "@com_google_absl//absl/strings",
-    ],
-)
-
-cc_test(
-    name = "binding_tree_test",
-    srcs = ["binding_tree_test.cc"],
-    deps = [
-        ":binding_tree",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
-    name = "binding_map",
-    hdrs = ["binding_map.h"],
-    deps = [
-        ":binding_tree",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-)
-
-cc_test(
-    name = "binding_map_test",
-    srcs = ["binding_map_test.cc"],
-    deps = [
-        ":binding_map",
-        "@com_google_googletest//:gtest_main",
-    ],
 )

@@ -66,7 +66,7 @@ void AddAdl(ast::OverloadSet *overload_set, std::string_view id,
     for (auto *d : decls) {
       // TODO Wow this is a terrible way to access the type.
       ASSIGN_OR(continue, auto &t,
-                Compiler(mod, mod->root_data(), consumer).type_of(d));
+                Compiler(mod, mod->data(), consumer).type_of(d));
       // TODO handle this case. I think it's safe to just discard it.
       for (auto const *expr : overload_set->members()) {
         if (d == expr) { return; }
@@ -631,10 +631,9 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
       // that module. They must be at the root of the binding tree map,
       // otherwise they would be local to some function/jump/etc. and not be
       // exported.
-      base::untyped_buffer_view result = node->module()
-                                             ->as<CompiledModule>()
-                                             .root_data()
-                                             .constants_.get_constant(node);
+      base::untyped_buffer_view result =
+          node->module()->as<CompiledModule>().data().constants_.get_constant(
+              node);
       ASSERT(result.size() != 0u);
       return ir::Results::FromRaw(result);
     }
@@ -785,7 +784,7 @@ ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
                                         &args) mutable -> ir::NativeFn {
         // TODO Not the consumer we want but lambda can outlive `this->diag()`.
       diagnostic::TrivialConsumer consumer;
-      Compiler c(mod, mod->root_data(), consumer);
+      Compiler c(mod, mod->data(), consumer);
       return c.MakeConcreteFromGeneric(node, args.Transform([](auto const &x) {
         return type::Typed<std::optional<ir::Value>>(*x, x.type());
       }));

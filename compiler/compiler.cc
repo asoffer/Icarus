@@ -16,10 +16,7 @@ namespace compiler {
 
 Compiler::Compiler(CompiledModule *mod, CompilationData &data,
                    diagnostic::DiagnosticConsumer &consumer)
-    : mod_(mod),
-      data_(data),
-      current_constants_(mod->root_node()),
-      diag_consumer_(consumer) {}
+    : mod_(mod), data_(data), diag_consumer_(consumer) {}
 
 std::optional<type::QualType> Compiler::qual_type_of(
     ast::Expression const *expr) const {

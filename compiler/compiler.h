@@ -271,7 +271,6 @@ struct Compiler
 
   CompiledModule *mod_;
   CompilationData &data_;
-  ConstantBindingTree::Node *current_constants_;
   diagnostic::DiagnosticConsumer &diag_consumer_;
 
   std::vector<

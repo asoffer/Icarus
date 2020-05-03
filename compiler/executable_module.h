@@ -22,7 +22,7 @@ struct ExecutableModule : CompiledModule {
  protected:
   void ProcessNodes(base::PtrSpan<ast::Node const> nodes,
                     diagnostic::DiagnosticConsumer &diag) override {
-    compiler::Compiler c(this, root_data(), diag);
+    Compiler c(this, data(), diag);
 
     for (ast::Node const *node : nodes) {
       ExtractJumps(&c.data_.extraction_map_, node);

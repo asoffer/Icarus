@@ -44,7 +44,7 @@ void AddAdl(std::string_view id, type::Type const *t, Fn fn) {
     for (auto *d : decls) {
       // TODO Wow this is a terrible way to access the type.
       ASSIGN_OR(continue, auto &t,
-                Compiler(mod, mod->root_data(), consumer).type_of(d));
+                Compiler(mod, mod->data(), consumer).type_of(d));
 
       if (not fn(d)) { return; }
     }
