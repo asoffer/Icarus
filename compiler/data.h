@@ -72,6 +72,13 @@ struct DependentComputedData {
   module::BasicModule *mod_;
   ir::Builder &bldr_;
 
+  ir::Reg addr(ast::Declaration const *decl) const {
+    auto iter = addr_.find(decl);
+    if (iter != addr_.end()) { return iter->second; }
+    if (parent_) { return parent_->addr(decl); }
+    UNREACHABLE();
+  }
+
   // Returns a pointer to the `ir::Jump` corresponding to the compilation of
   // `expr`, if it exists. Otherwise, returns a null pointer.
   ir::Jump *jump(ast::Jump const *expr);

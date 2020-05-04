@@ -59,7 +59,7 @@ type::QualType Compiler::set_result(ast::Expression const *expr,
 }
 
 ir::Reg Compiler::addr(ast::Declaration const *decl) const {
-  return data_.addr_.at(decl);
+  return data_.addr(decl);
 }
 
 void Compiler::set_pending_module(ast::Import const *import_node,

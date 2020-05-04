@@ -42,6 +42,7 @@ void InitializeNodes(base::PtrSpan<Node> nodes, Scope *scope);
   }                                                                            \
                                                                                \
   void Initialize(Scope *scope) override;                                      \
+  bool IsGeneric() const override;                                             \
   void DebugStrAppend(std::string *out, size_t indent) const override
 
 // WithScope:
@@ -323,24 +324,13 @@ struct ParameterizedExpression : Expression {
                           std::vector<std::unique_ptr<Declaration>> params)
       : Expression(range) {
     for (auto &param : params) {
-      param->flags() |= Declaration::f_IsFnParam;
-      // NOTE: This is safe because the declaration is behind a unique_ptr so
-      // the string is never moved. You need to be careful if you ever decide to
-      // use make this declaration inline because SSO might mean moving the
-      // declaration (which can happen if core::Params internal vector gets
-      // reallocated) could invalidate the string_view unintentionally.
-      std::string_view name = param->id();
-
-      // Note the weird naming here: A declaration which is default initialized
-      // means there is no `=` as part of the declaration. This means that the
-      // declaration, when thougth of as a parameter to a function, has no
-      // default value.
-      core::ParamFlags flags{};
-      if (not param->IsDefaultInitialized()) { flags = core::HAS_DEFAULT; }
-      is_generic_ |= (param->flags() & Declaration::f_IsConst);
-      // TODO or if it's deduced.
-      params_.append(name, std::move(param), flags);
+      // NOTE: It's save to save a `std::string_view` to a parameter because
+      // both the declaration and this will live for the length of the syntax
+      // tree.
+      params_.append(param->id(), std::move(param));
     }
+
+    InitializeParams();
   }
 
   // TODO params() should be a reference to core::Params?
@@ -357,6 +347,19 @@ struct ParameterizedExpression : Expression {
   }
 
  protected:
+  void InitializeParams() {
+    for (auto &param : params_) {
+      param.value->flags() |= Declaration::f_IsFnParam;
+      if (not param.value->IsDefaultInitialized()) {
+        param.flags = core::HAS_DEFAULT;
+      }
+      if (not is_generic_) {
+        is_generic_ = (param.value->flags() & Declaration::f_IsConst) or
+                      param.value->IsGeneric();
+      }
+    }
+  }
+
   core::Params<std::unique_ptr<ast::Declaration>> params_;
   base::Graph<core::DependencyNode<Declaration>> dep_graph_;
   bool is_generic_ = false;

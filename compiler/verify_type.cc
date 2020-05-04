@@ -1826,7 +1826,10 @@ type::QualType Compiler::Visit(ast::FunctionLiteral const *node,
             }
             t = interpretter::EvaluateAs<type::Type const *>(
                 c.MakeThunk(type_expr, type::Type_));
-            c.set_result(dep_node.node(), type::QualType::Constant(t));
+            auto qt = (dep_node.node()->flags() & ast::Declaration::f_IsConst)
+                          ? type::QualType::Constant(t)
+                          : type::QualType::NonConstant(t);
+            c.set_result(dep_node.node(), qt);
           } else {
             t = c.Visit(dep_node.node()->init_val(), VerifyTypeTag{}).type();
           }

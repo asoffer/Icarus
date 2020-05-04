@@ -27,6 +27,7 @@ struct Node : public base::Cast<Node> {
 
   virtual void DebugStrAppend(std::string *out, size_t indent) const {}
   virtual void Initialize(Scope *scope) {}
+  virtual bool IsGeneric() const { return false; }
 
   constexpr frontend::SourceRange range() const { return range_; }
   Scope *scope() const { return scope_; }
