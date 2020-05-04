@@ -15,7 +15,7 @@ struct ParamDependencyGraphBuilder
   }
 
   base::Graph<core::DependencyNode<Declaration>> Visit() && {
-    for (auto[id, decl] : relevant_decls_) {
+    for (auto [id, decl] : relevant_decls_) {
       graph_.add_edge(core::DependencyNode<Declaration>::MakeValue(decl),
                       core::DependencyNode<Declaration>::MakeType(decl));
       graph_.add_edge(core::DependencyNode<Declaration>::MakeArgValue(decl),
@@ -26,12 +26,19 @@ struct ParamDependencyGraphBuilder
       }
     }
 
-    for (auto[id, decl] : relevant_decls_) {
-      if (decl->type_expr()) {
-        Visit(decl->type_expr(),
-              core::DependencyNode<Declaration>::MakeType(decl));
+    for (auto [id, decl] : relevant_decls_) {
+      if (auto const *n = decl->type_expr()) {
+        Visit(n, core::DependencyNode<Declaration>::MakeType(decl));
+      } else {
+        graph_.add_edge(core::DependencyNode<Declaration>::MakeType(decl),
+                        core::DependencyNode<Declaration>::MakeArgType(decl));
+      }
+
+      if (auto const *n = decl->init_val()) {
+        Visit(n, core::DependencyNode<Declaration>::MakeValue(decl));
       }
     }
+
     return std::move(graph_);
   }
 
@@ -41,6 +48,14 @@ struct ParamDependencyGraphBuilder
 
   void Visit(Access const *node, core::DependencyNode<Declaration> d) {
     Visit(node->operand(), d);
+  }
+
+  void Visit(ArgumentType const *node, core::DependencyNode<Declaration> d) {
+    if (auto iter = relevant_decls_.find(node->name());
+        iter != relevant_decls_.end()) {
+      graph_.add_edge(
+          d, core::DependencyNode<Declaration>::MakeArgType(iter->second));
+    }
   }
 
   void Visit(ArrayLiteral const *node, core::DependencyNode<Declaration> d) {

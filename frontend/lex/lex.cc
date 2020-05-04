@@ -78,7 +78,7 @@ static const std::array<
     std::pair<std::string_view, std::variant<Operator, Syntax>>, 45>
     kOps = {{
         {"@", {Operator::At}},         {",", {Operator::Comma}},
-        {"[*]", {Operator::BufPtr}},   {"$", {Operator::Eval}},
+        {"[*]", {Operator::BufPtr}},   {"`", {Operator::Eval}},
         {"+=", {Operator::AddEq}},     {"+", {Operator::Add}},
         {"-=", {Operator::SubEq}},     {"..", {Operator::VariadicPack}},
         {"->", {Operator::Arrow}},     {"-", {Operator::Sub}},
@@ -99,6 +99,7 @@ static const std::array<
         {")", {Syntax::RightParen}},   {"[", {Syntax::LeftBracket}},
         {"]", {Syntax::RightBracket}}, {"{", {Syntax::LeftBrace}},
         {"}", {Syntax::RightBrace}},   {";", {Syntax::Semicolon}},
+        {"$", {Operator::ArgType}},
     }};
 
 Lexeme NextOperator(SourceCursor *cursor, Source *src) {

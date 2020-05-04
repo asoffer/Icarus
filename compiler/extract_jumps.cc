@@ -24,6 +24,8 @@ struct Extractor : ast::Visitor<void()> {
 
   void Visit(ast::Access const *node) final { Visit(node->operand()); }
 
+  void Visit(ast::ArgumentType const *node) final {}
+
   void Visit(ast::ArrayLiteral const *node) final {
     for (auto const *expr : node->elems()) { Visit(expr); }
   }

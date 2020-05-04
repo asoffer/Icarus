@@ -726,6 +726,10 @@ type::QualType Compiler::Visit(ast::Access const *node, VerifyTypeTag) {
   }
 }
 
+type::QualType Compiler::Visit(ast::ArgumentType const *node, VerifyTypeTag) {
+  return set_result(node, type::QualType::Constant(type::Type_));
+}
+
 type::QualType Compiler::Visit(ast::ArrayLiteral const *node, VerifyTypeTag) {
   if (node->empty()) {
     return set_result(node, type::QualType::Constant(type::EmptyArray));
@@ -1706,10 +1710,16 @@ OrderedDependencyNodes(ast::ParameterizedExpression const *node) {
   absl::flat_hash_set<core::DependencyNode<ast::Declaration>> deps;
   for (auto const &p : node->params()) {
     deps.insert(
+        core::DependencyNode<ast::Declaration>::MakeArgType(p.value.get()));
+    deps.insert(
         core::DependencyNode<ast::Declaration>::MakeType(p.value.get()));
     if (p.value->flags() & ast::Declaration::f_IsConst) {
       deps.insert(
           core::DependencyNode<ast::Declaration>::MakeValue(p.value.get()));
+      deps.insert(
+          core::DependencyNode<ast::Declaration>::MakeArgType(p.value.get()));
+      deps.insert(
+          core::DependencyNode<ast::Declaration>::MakeArgValue(p.value.get()));
     }
   }
 
@@ -1718,7 +1728,7 @@ OrderedDependencyNodes(ast::ParameterizedExpression const *node) {
   node->parameter_dependency_graph().topologically([&](auto dep_node) {
     if (not deps.contains(dep_node)) { return; }
     DEBUG_LOG("generic-fn")
-    ("adding node = `", dep_node.node()->DebugString(), "` of kind ",
+    ("adding node = `", dep_node.node()->id(), "` of kind ",
      static_cast<int>(dep_node.kind()));
     ordered_nodes.emplace_back(0, dep_node);
   });
@@ -1766,21 +1776,63 @@ type::QualType Compiler::Visit(ast::FunctionLiteral const *node,
     // TODO use the proper ordering.
     for (auto [index, dep_node] : ordered_nodes) {
       DEBUG_LOG("generic-fn")
-      ("Handling dep-node `", dep_node.node()->DebugString(), "` of kind ",
+      ("Handling dep-node `", dep_node.node()->id(), "` of kind ",
        static_cast<int>(dep_node.kind()));
       switch (dep_node.kind()) {
         using kind_t = core::DependencyNode<ast::Declaration>::Kind;
-        case kind_t::ArgValue: NOT_YET();
-        case kind_t::ArgType: NOT_YET();
+        case kind_t::ArgValue: {
+          ir::Value val = false;
+          if (index < args.pos().size()) {
+            val = **args[index];
+          } else if (auto const *a = args.at_or_null(dep_node.node()->id())) {
+            val = ***a;
+          } else {
+            auto const *init_val = ASSERT_NOT_NULL(dep_node.node()->init_val());
+            auto const *t = ASSERT_NOT_NULL(c.data_.arg_type(dep_node.node()->id()));
+            type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                             uint16_t, uint32_t, uint64_t, float, double,
+                             ir::Addr, ir::String, type::Type const *>(
+                t, [&](auto tag) {
+                  using T = typename decltype(tag)::type;
+                  val = interpretter::EvaluateAs<T>(c.MakeThunk(init_val, t));
+                });
+
+          }
+
+          DEBUG_LOG("generic-fn")
+          ("Argument to `", dep_node.node()->id(), "` has value ", val);
+          c.data_.set_arg_value(dep_node.node()->id(), val);
+        } break;
+        case kind_t::ArgType: {
+          type::Type const *arg_type = nullptr;
+          if (index < args.pos().size()) {
+            arg_type = args[index].type();
+          } else if (auto const *a = args.at_or_null(dep_node.node()->id())) {
+            arg_type = a->type();
+          } else {
+            auto *init_val = ASSERT_NOT_NULL(dep_node.node()->init_val());
+            arg_type = c.Visit(init_val, VerifyTypeTag{}).type();
+          }
+          DEBUG_LOG("generic-fn")("Computed argument type to be ", *arg_type);
+          data.set_arg_type(dep_node.node()->id(), arg_type);
+        } break;
         case kind_t::ParamType: {
-          // TODO check that it is indeed a type?
-          // TODO What if there's no type_expr?
-          // TODO always constant
-          c.Visit(dep_node.node()->type_expr(), VerifyTypeTag{});
-          auto const *t = interpretter::EvaluateAs<type::Type const *>(
-              c.MakeThunk(dep_node.node()->type_expr(), type::Type_));
-          c.set_result(dep_node.node(), type::QualType::Constant(t));
-          DEBUG_LOG("generic-fn")("Computed type to be ", t->to_string());
+          type::Type const *t = nullptr;
+          if (auto const *type_expr = dep_node.node()->type_expr()) {
+            auto type_expr_type = c.Visit(type_expr, VerifyTypeTag{});
+            if (type_expr_type != type::QualType::Constant(type::Type_)) {
+              NOT_YET("log an error");
+            }
+            t = interpretter::EvaluateAs<type::Type const *>(
+                c.MakeThunk(type_expr, type::Type_));
+            c.set_result(dep_node.node(), type::QualType::Constant(t));
+          } else {
+            t = c.Visit(dep_node.node()->init_val(), VerifyTypeTag{}).type();
+          }
+          // TODO: Once a parameter type has been computed, we know it's
+          // argument type has already been computed so we can verify that the
+          // implicit casts are allowed.
+          DEBUG_LOG("generic-fn")("Computed parameter type to be ", t->to_string());
           size_t i = *ASSERT_NOT_NULL(
               node->params().at_or_null(dep_node.node()->id()));
           params.set(i,
@@ -1789,26 +1841,40 @@ type::QualType Compiler::Visit(ast::FunctionLiteral const *node,
         case kind_t::ParamValue: {
           // Find the argument associated with this parameter.
           // TODO, if the type is wrong but there is an implicit cast, deal with that.
-
-          // TODO argument get the argument associated to this parameter.
           base::untyped_buffer buf;
-
           type::Typed<std::optional<ir::Value>> arg;
+          DEBUG_LOG()(index);
           if (index < args.pos().size()) {
             arg = args[index];
-          } else {
-            arg = args[dep_node.node()->id()];
-          }
-          if (arg->has_value()) {
-            (*arg)->apply([&buf](auto x) { buf.append(x); });
-            DEBUG_LOG("generic-fn")(**arg, ": ", *arg.type());
-            c.data_.constants_.reserve_slot(dep_node.node(), arg.type());
-            if (c.data_.constants_.get_constant(dep_node.node()).empty()) {
-              c.data_.constants_.set_slot(dep_node.node(), buf);
+            if (arg->has_value()) {
+              (*arg)->apply([&buf](auto x) { buf.append(x); });
+              DEBUG_LOG("generic-fn")(**arg, ": ", *arg.type());
+            } else {
+              DEBUG_LOG("generic-fn")("empty");
             }
+
+          } else if (auto const *a = args.at_or_null(dep_node.node()->id())) {
+            arg = *a;
+            if (arg->has_value()) {
+              (*arg)->apply([&buf](auto x) { buf.append(x); });
+              DEBUG_LOG("generic-fn")(**arg, ": ", *arg.type());
+            } else {
+              DEBUG_LOG("generic-fn")("empty");
+            }
+
           } else {
-            DEBUG_LOG("generic-fn")("empty");
+            auto const *t = ASSERT_NOT_NULL(c.type_of(dep_node.node()));
+            buf           = interpretter::EvaluateToBuffer(
+                c.MakeThunk(ASSERT_NOT_NULL(dep_node.node()->init_val()), t));
+            arg = type::Typed<std::optional<ir::Value>>(std::nullopt, t);
+            DEBUG_LOG("generic-fn")(dep_node.node()->DebugString());
           }
+
+          c.data_.constants_.reserve_slot(dep_node.node(), arg.type());
+          if (c.data_.constants_.get_constant(dep_node.node()).empty()) {
+            c.data_.constants_.set_slot(dep_node.node(), buf);
+          }
+
         } break;
       }
     }

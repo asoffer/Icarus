@@ -18,6 +18,8 @@ void Access::Initialize(Scope *scope) {
   operand_->Initialize(scope);
 }
 
+void ArgumentType::Initialize(Scope *scope) { scope_ = scope; }
+
 void ArrayLiteral::Initialize(Scope *scope) {
   scope_ = scope;
   for (auto &expr : elems_) { expr->Initialize(scope); }

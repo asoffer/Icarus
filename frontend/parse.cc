@@ -302,6 +302,15 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
                      nodes.back()->range().end());
     return BuildCallImpl(range, move_as<ast::Expression>(nodes[1]), nullptr,
                          diag);
+  } else if (tk == "$") {
+    SourceRange range(nodes[0]->range().begin(), nodes[1]->range().end());
+    if (auto *id = nodes[1]->if_as<ast::Identifier>()) {
+      return std::make_unique<ast::ArgumentType>(range,
+                                                 std::move(*id).extract());
+    } else {
+      diag.Consume(diagnostic::Todo{});
+      return std::make_unique<ast::ArgumentType>(range, "");
+    }
   }
 
   static absl::flat_hash_map<std::string_view, Operator> const kUnopMap{
@@ -311,7 +320,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
       {"-", Operator::Sub},         {"needs", Operator::Needs},
       {"!", Operator::Not},         {"copy", Operator::Copy},
       {"ensure", Operator::Ensure}, {"move", Operator::Move},
-      {"$", Operator::Eval},        {"..", Operator::VariadicPack},
+      {"`", Operator::Eval},        {"..", Operator::VariadicPack},
   };
 
   SourceRange range(nodes[0]->range().begin(), nodes[1]->range().end());

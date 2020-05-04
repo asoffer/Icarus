@@ -84,6 +84,10 @@ void Access::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, ".", member_name());
 }
 
+void ArgumentType::DebugStrAppend(std::string *out, size_t indent) const {
+  absl::StrAppend(out, "$", name());
+}
+
 void ArrayLiteral::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, "[",
                   absl::StrJoin(elems(), ", ",

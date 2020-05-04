@@ -189,9 +189,32 @@ struct DependentComputedData {
     return nullptr;
   }
 
+  type::Type const *arg_type(std::string_view name) const {
+    auto iter = arg_type_.find(name);
+    return iter == arg_type_.end() ? nullptr : iter->second;
+  }
+
+  void set_arg_type(std::string_view name, type::Type const *t) {
+    arg_type_.emplace(name, t);
+  }
+
+  ir::Value arg_value(std::string_view name) const {
+    auto iter = arg_val_.find(name);
+    return iter == arg_val_.end() ? nullptr : iter->second;
+  }
+
+  void set_arg_value(std::string_view name, ir::Value const &value) {
+    arg_val_.emplace(name, value);
+  }
+
   ConstantBinding constants_;
 
  private:
+  // Stores the types of argument bound to the parameter with the given name.
+  absl::flat_hash_map<std::string_view, type::Type const *> arg_type_;
+  // TODO: If you could store the decl on the ast-node you could use ConstantBinding for this.
+  absl::flat_hash_map<std::string_view, ir::Value> arg_val_;
+
   struct DependentDataChild {
     // TODO Swiss-tables do not store the hash, but recomputing the argument
     // hash on each lookup can be expensive. Instead, we can use the

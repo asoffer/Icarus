@@ -1,4 +1,5 @@
 ICARUS_AST_NODE_X(Access)
+ICARUS_AST_NODE_X(ArgumentType)
 ICARUS_AST_NODE_X(ArrayLiteral)
 ICARUS_AST_NODE_X(ArrayType)
 ICARUS_AST_NODE_X(Binop)

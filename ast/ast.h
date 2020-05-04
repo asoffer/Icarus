@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <vector>
 
@@ -79,6 +80,33 @@ struct Access : Expression {
  private:
   std::unique_ptr<Expression> operand_;
   std::string member_name_;
+};
+
+// ArgumentType:
+// Reperesnts the type of the argument bound to a parameter of the given name in
+// generic parameter lists. Syntactically, this is spelled with a `$` optionally
+// followed by the name of a parameter. If missing, the name is implicitly the
+// name of the surrounding declaration. For example,
+//
+// ```
+// f ::= (x: $, y: $x) -> () { ... }
+// ```
+//
+// In this example, `f` is a generic function that accepts two arguments of the
+// same type. The types of the parameter `x` will be inferred from the argument
+// bound to `x`. The type of the parameter `y` must match the type of the
+// argument bound to `x`.
+struct ArgumentType : Expression {
+  explicit ArgumentType(frontend::SourceRange const &range, std::string name)
+      : Expression(range), name_(std::move(name)) {}
+  ~ArgumentType() override {}
+
+  std::string_view name() const { return name_; }
+
+  ICARUS_AST_VIRTUAL_METHODS;
+
+ private:
+  std::string name_;
 };
 
 // ArrayLiteral:

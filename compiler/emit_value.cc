@@ -180,6 +180,10 @@ ir::Results Compiler::Visit(ast::Access const *node, EmitValueTag) {
   }
 }
 
+ir::Results Compiler::Visit(ast::ArgumentType const *node, EmitValueTag) {
+  return ir::Results{ASSERT_NOT_NULL(data_.arg_type(node->name()))};
+}
+
 ir::Results Compiler::Visit(ast::ArrayLiteral const *node, EmitValueTag) {
   // TODO If this is a constant we can just store it somewhere.
   auto *this_type = type_of(node);
