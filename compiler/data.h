@@ -89,7 +89,9 @@ struct DependentComputedData {
 
   type::QualType const *result(ast::Expression const *expr) const {
     auto iter = type_verification_results_.find(expr);
-    return iter == type_verification_results_.end() ? nullptr : &iter->second;
+    if (iter != type_verification_results_.end()) { return &iter->second; }
+    if (parent_) { return parent_->result(expr); }
+    return nullptr;
   }
 
   type::QualType set_result(ast::Expression const *expr, type::QualType r) {

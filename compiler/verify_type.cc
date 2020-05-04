@@ -1184,7 +1184,8 @@ type::QualType Compiler::Visit(ast::Call const *node, VerifyTypeTag) {
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto callee_qt, Visit(node->callee(), VerifyTypeTag{}));
   if (auto *c = callee_qt.type()->if_as<type::Callable>()) {
-    DEBUG_LOG("Call.VerifyType")("Callee's qual-type: ", callee_qt);
+    DEBUG_LOG("Call.VerifyType")
+    ("Callee's (", node->callee()->DebugString(), ") qual-type: ", callee_qt);
     auto ret_types = c->return_types(
         arg_results.Transform(TypedResultsToTypedOptionalValue));
     DEBUG_LOG("Call.VerifyType")
@@ -1843,7 +1844,6 @@ type::QualType Compiler::Visit(ast::FunctionLiteral const *node,
           // TODO, if the type is wrong but there is an implicit cast, deal with that.
           base::untyped_buffer buf;
           type::Typed<std::optional<ir::Value>> arg;
-          DEBUG_LOG()(index);
           if (index < args.pos().size()) {
             arg = args[index];
             if (arg->has_value()) {
@@ -1924,7 +1924,8 @@ type::QualType Compiler::Visit(ast::Identifier const *node, VerifyTypeTag) {
         // with node case.
         const_cast<ast::Identifier *>(node)->set_decl(potential_decls[0]);
         if (node->decl() == nullptr) { return type::QualType::Error(); }
-        qt = *qual_type_of(potential_decls[0]);
+        ASSIGN_OR(return type::QualType::Error(),  //
+                         qt, qual_type_of(potential_decls[0]));
 
         if (not(node->decl()->flags() & ast::Declaration::f_IsConst) and
             node->range().begin() < node->decl()->range().begin()) {
@@ -1957,7 +1958,7 @@ type::QualType Compiler::Visit(ast::Identifier const *node, VerifyTypeTag) {
             if (not inserted) { NOT_YET(); }
             member_types.insert(c);
           } else {
-            NOT_YET();
+            NOT_YET(*qt.type());
           }
         }
 
@@ -1968,7 +1969,6 @@ type::QualType Compiler::Visit(ast::Identifier const *node, VerifyTypeTag) {
     }
   }
 
-  set_result(node, qt);
   ASSERT(qt.type() != nullptr);
   return set_result(node, qt);
 }
