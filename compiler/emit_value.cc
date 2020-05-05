@@ -782,6 +782,11 @@ ir::NativeFn Compiler::MakeConcreteFromGeneric(
   });
 }
 
+ir::Results Compiler::Visit(ast::ShortFunctionLiteral const *node,
+                            EmitValueTag) {
+  NOT_YET();
+}
+
 ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
   if (node->is_generic()) {
     auto gen_fn = ir::GenericFn([mod = mod_, node](

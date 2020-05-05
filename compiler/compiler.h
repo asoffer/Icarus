@@ -190,6 +190,7 @@ struct Compiler
   YieldResult EmitBlockNode(ast::BlockNode const *node);
 
   type::QualType VerifyConcreteFnLit(ast::FunctionLiteral const *node);
+  type::QualType VerifyConcreteFnLit(ast::ShortFunctionLiteral const *node);
 
   std::vector<ir::RegOr<ir::Addr>> Visit(ast::Access const *node, EmitRefTag);
   std::vector<ir::RegOr<ir::Addr>> Visit(ast::CommaList const *node,

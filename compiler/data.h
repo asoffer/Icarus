@@ -94,17 +94,8 @@ struct DependentComputedData {
     return &iter->second;
   }
 
-  type::QualType const *result(ast::Expression const *expr) const {
-    auto iter = type_verification_results_.find(expr);
-    if (iter != type_verification_results_.end()) { return &iter->second; }
-    if (parent_) { return parent_->result(expr); }
-    return nullptr;
-  }
-
-  type::QualType set_result(ast::Expression const *expr, type::QualType r) {
-    type_verification_results_.emplace(expr, r);
-    return r;
-  }
+  type::QualType const *result(ast::Expression const *expr) const;
+  type::QualType set_result(ast::Expression const *expr, type::QualType r);
 
   // TODO this is transient compiler state and therefore shouldn't be stored in
   // `DependentComputedData`.
@@ -217,6 +208,9 @@ struct DependentComputedData {
   }
 
   ConstantBinding constants_;
+
+  absl::flat_hash_map<ast::ReturnStmt const *, type::Function const *>
+      return_to_fn_type_;
 
  private:
   // Stores the types of argument bound to the parameter with the given name.

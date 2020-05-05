@@ -174,6 +174,11 @@ struct Extractor : ast::Visitor<void()> {
     }
   }
 
+  void Visit(ast::ShortFunctionLiteral const *node) final {
+    for (auto const &param : node->params()) { Visit(param.value.get()); }
+    ICARUS_SCOPE(SaveVar(node_stack_, node)) { Visit(node->body()); }
+  }
+
   void Visit(ast::StructLiteral const *node) final {
     for (auto const &f : node->fields()) { Visit(&f); }
   }

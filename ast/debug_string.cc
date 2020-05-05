@@ -253,28 +253,21 @@ void FunctionLiteral::DebugStrAppend(std::string *out, size_t indent) const {
                                 [&](std::string *out, auto const &p) {
                                   p.value->DebugStrAppend(out, indent);
                                 }),
-                  ")");
-
-  if (is_short()) {
-    absl::StrAppend(out, " => ");
-    stmts()[0]->DebugStrAppend(out, indent);
-  } else {
-    absl::StrAppend(out, " -> ");
-    if (outputs()) {
-      absl::StrAppend(out, "(",
-                      absl::StrJoin(*outputs(), ", ",
-                                    [&](std::string *out, auto const &elem) {
-                                      return Joiner(elem, out, indent);
-                                    }),
-                      ")");
-    }
-    absl::StrAppend(out, "{");
-    for (auto const *stmt : stmts()) {
-      absl::StrAppend(out, "\n", indentation(indent));
-      stmt->DebugStrAppend(out, indent + 1);
-    }
-    absl::StrAppend(out, "\n", indentation(indent), "}");
+                  ") -> ");
+  if (outputs()) {
+    absl::StrAppend(out, "(",
+                    absl::StrJoin(*outputs(), ", ",
+                                  [&](std::string *out, auto const &elem) {
+                                    return Joiner(elem, out, indent);
+                                  }),
+                    ")");
   }
+  absl::StrAppend(out, "{");
+  for (auto const *stmt : stmts()) {
+    absl::StrAppend(out, "\n", indentation(indent));
+    stmt->DebugStrAppend(out, indent + 1);
+  }
+  absl::StrAppend(out, "\n", indentation(indent), "}");
 }
 
 void Identifier::DebugStrAppend(std::string *out, size_t indent) const {
@@ -342,6 +335,17 @@ void ScopeNode::DebugStrAppend(std::string *out, size_t indent) const {
     absl::StrAppend(out, ")");
   }
   for (auto const &block : blocks()) { block.DebugStrAppend(out, indent); }
+}
+
+void ShortFunctionLiteral::DebugStrAppend(std::string *out,
+                                          size_t indent) const {
+  absl::StrAppend(out, "(",
+                  absl::StrJoin(params(), ", ",
+                                [&](std::string *out, auto const &p) {
+                                  p.value->DebugStrAppend(out, indent);
+                                }),
+                  ") => ");
+  body()->DebugStrAppend(out, indent);
 }
 
 void StructLiteral::DebugStrAppend(std::string *out, size_t indent) const {

@@ -492,18 +492,40 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node,
   }
 }
 
-type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
-  // Parameter types can be dependent, so we in general need to bail out after
-  // any error.
-  //
-  // TODO we can actually continue so long as we don't use a dependency of a
-  // failure.
-  core::Params<type::Type const *> input_type_params;
-  input_type_params.reserve(node->params().size());
-  for (auto &d : node->params()) {
-    ASSIGN_OR(return _, auto result, Visit(d.value.get(), VerifyTypeTag{}));
-    input_type_params.append(d.name, result.type(), d.flags);
+std::optional<core::Params<type::Type const *>> VerifyParams(
+    Compiler *c,
+    core::Params<std::unique_ptr<ast::Declaration>> const &params) {
+  // Parameter types cannot be dependent in concrete implementations so it is
+  // safe to verify each of them separately (to generate more errors that are
+  // likely correct).
+  core::Params<type::Type const *> type_params;
+  type_params.reserve(params.size());
+  bool err = false;
+  for (auto &d : params) {
+    ASSIGN_OR(
+        {
+          err = true;
+          continue;
+        },
+        auto result, c->Visit(d.value.get(), VerifyTypeTag{}));
+    type_params.append(d.name, result.type(), d.flags);
   }
+  if (err) { return std::nullopt; }
+  return type_params;
+}
+
+type::QualType Compiler::VerifyConcreteFnLit(
+    ast::ShortFunctionLiteral const *node) {
+  ASSIGN_OR(return type::QualType::Error(),  //
+                   auto params, VerifyParams(this, node->params()));
+  ASSIGN_OR(return _, auto body_qt, Visit(node->body(), VerifyTypeTag{}));
+  return set_result(node, type::QualType::Constant(
+                              type::Func(std::move(params), {body_qt.type()})));
+}
+
+type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
+  ASSIGN_OR(return type::QualType::Error(),  //
+                   auto params, VerifyParams(this, node->params()));
 
   std::vector<type::Type const *> output_type_vec;
   bool error   = false;
@@ -545,7 +567,7 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
     }
 
     return set_result(
-        node, type::QualType::Constant(type::Func(std::move(input_type_params),
+        node, type::QualType::Constant(type::Func(std::move(params),
                                                   std::move(output_type_vec))));
   } else {
     return set_result(node, VerifyBody(this, node));
@@ -1761,7 +1783,6 @@ type::QualType Compiler::Visit(ast::FunctionLiteral const *node,
               ordered_nodes(std::move(ordered_nodes))](
                  core::FnArgs<type::Typed<std::optional<ir::Value>>> const
                      &args) mutable -> type::Function const * {
-
     DEBUG_LOG("generic-fn")
     ("Creating a concrete implementation with ",
      args.Transform([](auto const &a) { return a.type()->to_string(); }));
@@ -1822,25 +1843,27 @@ type::QualType Compiler::Visit(ast::FunctionLiteral const *node,
           if (auto const *type_expr = dep_node.node()->type_expr()) {
             auto type_expr_type = c.Visit(type_expr, VerifyTypeTag{});
             if (type_expr_type != type::QualType::Constant(type::Type_)) {
-              NOT_YET("log an error");
+              NOT_YET("log an error: ", type_expr_type);
             }
             t = interpretter::EvaluateAs<type::Type const *>(
                 c.MakeThunk(type_expr, type::Type_));
-            auto qt = (dep_node.node()->flags() & ast::Declaration::f_IsConst)
-                          ? type::QualType::Constant(t)
-                          : type::QualType::NonConstant(t);
-            c.set_result(dep_node.node(), qt);
           } else {
             t = c.Visit(dep_node.node()->init_val(), VerifyTypeTag{}).type();
           }
+
+          auto qt = (dep_node.node()->flags() & ast::Declaration::f_IsConst)
+                        ? type::QualType::Constant(t)
+                        : type::QualType::NonConstant(t);
+          c.set_result(dep_node.node(), qt);
+
           // TODO: Once a parameter type has been computed, we know it's
           // argument type has already been computed so we can verify that the
           // implicit casts are allowed.
           DEBUG_LOG("generic-fn")("Computed parameter type to be ", t->to_string());
           size_t i = *ASSERT_NOT_NULL(
               node->params().at_or_null(dep_node.node()->id()));
-          params.set(i,
-                     core::Param<type::Type const *>(dep_node.node()->id(), t));
+          params.set(i, core::Param<type::Type const *>(
+                            dep_node.node()->id(), t, node->params()[i].flags));
         } break;
         case kind_t::ParamValue: {
           // Find the argument associated with this parameter.
@@ -1887,6 +1910,12 @@ type::QualType Compiler::Visit(ast::FunctionLiteral const *node,
 
   return set_result(node, type::QualType::Constant(
                               new type::GenericFunction(std::move(gen))));
+}
+
+type::QualType Compiler::Visit(ast::ShortFunctionLiteral const *node,
+                               VerifyTypeTag) {
+  if (not node->is_generic()) { return VerifyConcreteFnLit(node); }
+  NOT_YET();
 }
 
 type::QualType Compiler::Visit(ast::Identifier const *node, VerifyTypeTag) {

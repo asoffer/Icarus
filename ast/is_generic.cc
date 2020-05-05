@@ -135,6 +135,11 @@ bool ScopeNode::IsGeneric() const {
   return false;
 }
 
+bool ShortFunctionLiteral::IsGeneric() const {
+  // TODO
+  return false;
+}
+
 bool StructLiteral::IsGeneric() const {
   // TODO
   return false;

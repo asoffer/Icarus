@@ -163,6 +163,14 @@ void ScopeNode::Initialize(Scope *scope) {
   for (auto &block : blocks_) { block.Initialize(scope); }
 }
 
+void ShortFunctionLiteral::Initialize(Scope *scope) {
+  scope_ = scope;
+  set_body_with_parent(scope);
+  for (auto &param : params_) { param.value->Initialize(body_scope()); }
+  body_->Initialize(scope);
+  dep_graph_ = BuildParamDependencyGraph(params_);
+}
+
 void StructLiteral::Initialize(Scope *scope) {
   scope_ = scope;
   set_body_with_parent(scope);

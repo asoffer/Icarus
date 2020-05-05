@@ -45,4 +45,18 @@ ir::Jump *DependentComputedData::jump(ast::Jump const *expr) {
   return iter == jumps_.end() ? nullptr : &iter->second;
 }
 
+type::QualType const *DependentComputedData::result(
+    ast::Expression const *expr) const {
+  auto iter = type_verification_results_.find(expr);
+  if (iter != type_verification_results_.end()) { return &iter->second; }
+  if (parent_) { return parent_->result(expr); }
+  return nullptr;
+}
+
+type::QualType DependentComputedData::set_result(ast::Expression const *expr,
+                                                 type::QualType r) {
+  type_verification_results_.emplace(expr, r);
+  return r;
+}
+
 }  // namespace compiler

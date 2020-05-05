@@ -317,11 +317,12 @@ struct Declaration : Expression {
 // handle those parameters uniformly. oreover, this gives us the ability to key
 // hash-tables on `ParameterizedExpression const *`.
 struct ParameterizedExpression : Expression {
-  ParameterizedExpression(frontend::SourceRange const &range)
+  explicit ParameterizedExpression(frontend::SourceRange const &range)
       : Expression(range) {}
 
-  ParameterizedExpression(frontend::SourceRange const &range,
-                          std::vector<std::unique_ptr<Declaration>> params)
+  explicit ParameterizedExpression(
+      frontend::SourceRange const &range,
+      std::vector<std::unique_ptr<Declaration>> params)
       : Expression(range) {
     for (auto &param : params) {
       // NOTE: It's save to save a `std::string_view` to a parameter because
@@ -675,6 +676,7 @@ struct EnumLiteral : Expression, WithScope<DeclScope> {
   Kind kind_;
 };
 
+
 // FunctionLiteral:
 //
 // Represents a literal function. Functions may have deduced return-type, which
@@ -688,27 +690,16 @@ struct EnumLiteral : Expression, WithScope<DeclScope> {
 // * `(T :: type, val: T) => val`
 //
 struct FunctionLiteral : ParameterizedExpression, WithScope<FnScope> {
-  static std::unique_ptr<FunctionLiteral> MakeLong(
+  explicit FunctionLiteral(
       frontend::SourceRange const &range,
       std::vector<std::unique_ptr<Declaration>> in_params,
-      std::vector<std::unique_ptr<Node>> statements,
+      std::vector<std::unique_ptr<Node>> stmts,
       std::optional<std::vector<std::unique_ptr<Expression>>> out_params =
-          std::nullopt) {
-    return std::unique_ptr<FunctionLiteral>{
-        new FunctionLiteral(range, std::move(in_params), std::move(statements),
-                            std::move(out_params), false)};
-  }
+          std::nullopt)
+      : ParameterizedExpression(range, std::move(in_params)),
+        outputs_(std::move(out_params)),
+        stmts_(std::move(stmts)) {}
 
-  static std::unique_ptr<FunctionLiteral> MakeShort(
-      frontend::SourceRange const &range,
-      std::vector<std::unique_ptr<Declaration>> in_params,
-      std::vector<std::unique_ptr<Node>> statements) {
-    return std::unique_ptr<FunctionLiteral>{
-        new FunctionLiteral(range, std::move(in_params),
-                            std::move(statements), std::nullopt, true)};
-  }
-
-  FunctionLiteral(FunctionLiteral &&) noexcept = default;
   ~FunctionLiteral() override {}
 
   base::PtrSpan<Node const> stmts() const { return stmts_; }
@@ -718,26 +709,11 @@ struct FunctionLiteral : ParameterizedExpression, WithScope<FnScope> {
     return *outputs_;
   }
 
-  // Retruns whether the function is expressed with `=>`
-  constexpr bool is_short() const { return is_short_; }
-
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
-  explicit FunctionLiteral(
-      frontend::SourceRange const &range,
-      std::vector<std::unique_ptr<Declaration>> in_params,
-      std::vector<std::unique_ptr<Node>> stmts,
-      std::optional<std::vector<std::unique_ptr<Expression>>> out_params,
-      bool is_short)
-      : ParameterizedExpression(range, std::move(in_params)),
-        outputs_(std::move(out_params)),
-        stmts_(std::move(stmts)),
-        is_short_(is_short) {}
-
   std::optional<std::vector<std::unique_ptr<Expression>>> outputs_;
   std::vector<std::unique_ptr<Node>> stmts_;
-  bool is_short_   = false;
 };
 
 // Identifier:
@@ -1100,6 +1076,35 @@ struct ScopeNode : Expression {
   core::OrderedFnArgs<Expression> args_;
   std::vector<BlockNode> blocks_;
   ScopeNode *last_scope_node_ = nullptr;
+};
+
+// ShortFunctionLiteral:
+//
+// Represents a literal function which is syntactically "short". That is, it
+// uses `=>`, has it's return type inferred and has its body consist of a single
+// expression.
+//
+// Examples:
+// * `(n: int32, m: int32) => n * m`
+// * `(T :: type, val: T) => val`
+// * `(x: $x) => x`
+//
+struct ShortFunctionLiteral : ParameterizedExpression, WithScope<FnScope> {
+  explicit ShortFunctionLiteral(
+      frontend::SourceRange const &range,
+      std::vector<std::unique_ptr<Declaration>> params,
+      std::unique_ptr<Expression> body)
+      : ParameterizedExpression(range, std::move(params)),
+        body_(std::move(body)) {}
+
+  ~ShortFunctionLiteral() override {}
+
+  Expression const *body() const { return body_.get(); }
+
+  ICARUS_AST_VIRTUAL_METHODS;
+
+ private:
+  std::unique_ptr<Expression> body_;
 };
 
 // StructLiteral:
