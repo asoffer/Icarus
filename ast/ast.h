@@ -41,9 +41,9 @@ void InitializeNodes(base::PtrSpan<Node> nodes, Scope *scope);
     visitor->ErasedVisit(this, ret, arg_tuple);                                \
   }                                                                            \
                                                                                \
+  void DebugStrAppend(std::string *out, size_t indent) const override;         \
   void Initialize(Scope *scope) override;                                      \
-  bool IsGeneric() const override;                                             \
-  void DebugStrAppend(std::string *out, size_t indent) const override
+  bool IsDependent() const override
 
 // WithScope:
 // A mixin which adds a scope of the given type `S`.
@@ -356,7 +356,7 @@ struct ParameterizedExpression : Expression {
       }
       if (not is_generic_) {
         is_generic_ = (param.value->flags() & Declaration::f_IsConst) or
-                      param.value->IsGeneric();
+                      param.value->IsDependent();
       }
     }
   }
