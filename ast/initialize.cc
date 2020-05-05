@@ -167,7 +167,7 @@ void ShortFunctionLiteral::Initialize(Scope *scope) {
   scope_ = scope;
   set_body_with_parent(scope);
   for (auto &param : params_) { param.value->Initialize(body_scope()); }
-  body_->Initialize(scope);
+  body_->Initialize(body_scope());
   dep_graph_ = BuildParamDependencyGraph(params_);
 }
 

@@ -125,8 +125,12 @@ base::move_func<void()> *DeferBody(Compiler *compiler, NodeType const *node,
         // TODO Not the consumer we want but lambda can outlive `this->diag()`.
         diagnostic::TrivialConsumer consumer;
         Compiler c(mod, *data, consumer);
-        if constexpr (std::is_same_v<NodeType, ast::FunctionLiteral>) {
+        if constexpr (base::meta<NodeType> ==
+                      base::meta<ast::FunctionLiteral>) {
           VerifyBody(&c, node, t);
+          CompleteBody(&c, node, &t->as<type::Function>());
+        } else if constexpr (base::meta<NodeType> ==
+                             base::meta<ast::ShortFunctionLiteral>) {
           CompleteBody(&c, node, &t->as<type::Function>());
         } else {
           static_cast<void>(t);
@@ -784,7 +788,20 @@ ir::NativeFn Compiler::MakeConcreteFromGeneric(
 
 ir::Results Compiler::Visit(ast::ShortFunctionLiteral const *node,
                             EmitValueTag) {
-  NOT_YET();
+  if (node->is_generic()) { NOT_YET(); }
+  ir::NativeFn ir_func = data_.EmplaceNativeFn(node, [&] {
+    auto *fn_type = &type_of(node)->as<type::Function>();
+    auto f        = AddFunc(fn_type,
+                     node->params().Transform(
+                         [fn_type, i = 0](auto const &d) mutable {
+                           return type::Typed<ast::Declaration const *>(
+                               d.get(), fn_type->params().at(i++).value);
+                         }));
+    f->work_item = DeferBody(this, node, fn_type);
+    return f;
+  });
+  return ir::Results{ir::Fn{ir_func}};
+
 }
 
 ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {

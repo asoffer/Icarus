@@ -70,6 +70,38 @@ void EmitIrForStatements(Compiler *compiler,
   }
 }
 
+void CompleteBody(Compiler *compiler, ast::ShortFunctionLiteral const *node,
+                  type::Function const *t) {
+  // TODO have validate return a bool distinguishing if there are errors and
+  // whether or not we can proceed.
+
+  ir::NativeFn ir_func = *ASSERT_NOT_NULL(compiler->data_.FindNativeFn(node));
+
+  auto& bldr = compiler->builder();
+  ICARUS_SCOPE(ir::SetCurrent(ir_func.get(), &bldr)) {
+    bldr.CurrentBlock() = bldr.CurrentGroup()->entry();
+
+    // TODO arguments should be renumbered to not waste space on const values
+    size_t i = 0;
+    for (auto const &param : node->params()) {
+      compiler->set_addr(param.value.get(), ir::Reg::Arg(i++));
+    }
+
+    MakeAllStackAllocations(compiler, node->body_scope());
+    auto results = compiler->Visit(node->body(), EmitValueTag{});
+    bldr.FinishTemporariesWith([compiler](type::Typed<ir::Reg> r) {
+      compiler->Visit(r.type(), r.get(), EmitDestroyTag{});
+    });
+    bldr.SetRet(0,
+                type::Typed<ir::Results>(std::move(results), t->output()[0]));
+    MakeAllDestructions(compiler, node->body_scope());
+    bldr.ReturnJump();
+  }
+
+  ir_func->work_item = nullptr;
+  ir_func->WriteByteCode();
+}
+
 void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
                   type::Function const *t) {
   // TODO have validate return a bool distinguishing if there are errors and
@@ -126,72 +158,6 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
 void CompleteBody(Compiler *compiler,
                   ast::ParameterizedStructLiteral const *node) {
   NOT_YET();
-  //   ir::CompiledFn *&ir_func = data_.ir_funcs_[node];
-  //   for (size_t i = 0; i < node->params().size(); ++i) {
-  //     set_addr(&node->params()[i], ir::Reg::Arg(i));
-  //   }
-  //
-  //   ICARUS_SCOPE(ir::SetCurrent(ir_func)) {
-  //     ir::GetBuilder().CurrentBlock() = ir_func->entry();
-  //     auto cache_slot_addr    = ir::ArgumentCache(node);
-  //     auto cache_slot         = ir::Load<type::Type const
-  //     *>(cache_slot_addr);
-  //
-  //     auto land_block         = builder().AddBlock();
-  //     compiler->builder().CurrentBlock() =
-  //     compiler->builder().EarlyExitOn<false>(
-  //         land_block,
-  //         builder().Eq(cache_slot, static_cast<type::Type const
-  //         *>(nullptr)));
-  //     auto ctx_reg    = ir::CreateContext(module());
-  //     auto struct_reg = ir::CreateStruct(node->scope(), node);
-  //
-  //     // TODO why isn't implicit TypedRegister -> RegOr cast working on
-  //     // either of these? On the first it's clear because we don't even
-  //     return
-  //     a
-  //     // typedRegister, but this is a note to remind you to make that work.
-  //     On the
-  //     // second... I don't know.
-  //     builder().Store(static_cast<ir::RegOr<type::Type const *>>(struct_reg),
-  //               cache_slot_addr);
-  //     for (auto &arg : node->params()) {  // TODO const-ref
-  //       ir::AddBoundConstant(ctx_reg, &arg, addr(&arg));
-  //     }
-  //
-  //     for (auto &field : node->fields_) {  // TODO const-ref
-  //       ir::VerifyType(&field, ctx_reg);
-  //
-  //       // TODO exit early if verifytype fails.
-  //
-  //       auto type_reg = ir::EvaluateAsType(field.type_expr(), ctx_reg);
-  //
-  //       ir::CreateStructField(struct_reg, type_reg);
-  //       ir::SetStructFieldName(struct_reg, field.id());
-  //
-  //       // for (auto const &hashtag : field.hashtags_) {
-  //       //   ir::AddHashtagToField(struct_reg, hashtag);
-  //       // }
-  //     }
-  //
-  //     // for (auto hashtag : node->hashtags_) {
-  //     //   ir::AddHashtagToStruct(struct_reg, hashtag);
-  //     // }
-  //
-  //     ir::RegOr<type::Type const *> result = ir::FinalizeStruct(struct_reg);
-  //     ir::DestroyContext(ctx_reg);
-  //
-  //     // Exit path from creating a new struct.
-  //     builder().SetRet(0, static_cast<ir::RegOr<type::Type const *>>(result));
-  //     builder().Store(static_cast<ir::RegOr<type::Type const *>>(result),
-  //               cache_slot_addr);
-  //     compiler->builder().ReturnJump();
-  //
-  //     // Exit path from finding the cache
-  //     ir::GetBuilder().CurrentBlock() = land_block;
-  //     builder().SetRet(0, static_cast<ir::RegOr<type::Type const *>>(cache_slot));
-  //     compiler->builder().ReturnJump();
-  //   }
 }
 
 void CompleteBody(Compiler *compiler, ast::Jump const *node) {

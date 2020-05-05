@@ -14,6 +14,8 @@ void MakeAllDestructions(Compiler *compiler, ast::ExecScope const *exec_scope);
 void EmitIrForStatements(Compiler *compiler,
                          base::PtrSpan<ast::Node const> span);
 
+void CompleteBody(Compiler *compiler, ast::ShortFunctionLiteral const *node,
+                  type::Function const *t);
 void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
                   type::Function const *t);
 void CompleteBody(Compiler *compiler,
