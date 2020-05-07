@@ -152,10 +152,6 @@ struct Compiler
   }
   void pop_scope_landing() { scope_landings_.pop_back(); }
 
-  ir::NativeFn MakeConcreteFromGeneric(
-      ast::FunctionLiteral const *node,
-      core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args);
-
   ir::NativeFn AddFunc(
       type::Function const *fn_type,
       core::Params<type::Typed<ast::Declaration const *>> params);
@@ -190,7 +186,6 @@ struct Compiler
   YieldResult EmitBlockNode(ast::BlockNode const *node);
 
   type::QualType VerifyConcreteFnLit(ast::FunctionLiteral const *node);
-  type::QualType VerifyConcreteFnLit(ast::ShortFunctionLiteral const *node);
 
   std::vector<ir::RegOr<ir::Addr>> Visit(ast::Access const *node, EmitRefTag);
   std::vector<ir::RegOr<ir::Addr>> Visit(ast::CommaList const *node,

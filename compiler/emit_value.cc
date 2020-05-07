@@ -760,21 +760,22 @@ ir::Results Compiler::Visit(ast::EnumLiteral const *node, EmitValueTag) {
   }
 }
 
-ir::NativeFn Compiler::MakeConcreteFromGeneric(
-    ast::FunctionLiteral const *node,
+template <typename NodeType>
+ir::NativeFn MakeConcreteFromGeneric(
+    Compiler *compiler, NodeType const *node,
     core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args) {
   ASSERT(node->is_generic() == true);
 
   // Note: Cannot use structured bindings because the bindings need to be
   // captured in the lambda.
-  auto find_dependent_result = data_.FindDependent(node, args);
-  auto &params               = find_dependent_result.params;
+  auto find_dependent_result = compiler->data_.FindDependent(node, args);
+  auto const *fn_type        = find_dependent_result.fn_type;
   auto &data                 = find_dependent_result.data;
 
   return data.EmplaceNativeFn(node, [&] {
-    Compiler c(&module()->as<CompiledModule>(), data, diag());
-    auto *fn_type = type::Func(params, {});
-    auto f        = c.AddFunc(
+    Compiler c(&compiler->module()->as<CompiledModule>(), data,
+               compiler->diag());
+    auto f = c.AddFunc(
         fn_type,
         node->params().Transform([fn_type, i = 0](auto const &d) mutable {
           return type::Typed<ast::Declaration const *>(
@@ -788,7 +789,20 @@ ir::NativeFn Compiler::MakeConcreteFromGeneric(
 
 ir::Results Compiler::Visit(ast::ShortFunctionLiteral const *node,
                             EmitValueTag) {
-  if (node->is_generic()) { NOT_YET(); }
+  if (node->is_generic()) {
+    auto gen_fn = ir::GenericFn([mod = mod_, node](
+                                    core::FnArgs<type::Typed<ir::Value>> const
+                                        &args) mutable -> ir::NativeFn {
+      // TODO Not the consumer we want but lambda can outlive `this->diag()`.
+      diagnostic::TrivialConsumer consumer;
+      Compiler c(mod, mod->data(), consumer);
+      return MakeConcreteFromGeneric(&c, node, args.Transform([](auto const &x) {
+        return type::Typed<std::optional<ir::Value>>(*x, x.type());
+      }));
+    });
+    return ir::Results{gen_fn};
+  }
+
   ir::NativeFn ir_func = data_.EmplaceNativeFn(node, [&] {
     auto *fn_type = &type_of(node)->as<type::Function>();
     auto f        = AddFunc(fn_type,
@@ -812,7 +826,7 @@ ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
         // TODO Not the consumer we want but lambda can outlive `this->diag()`.
       diagnostic::TrivialConsumer consumer;
       Compiler c(mod, mod->data(), consumer);
-      return c.MakeConcreteFromGeneric(node, args.Transform([](auto const &x) {
+      return MakeConcreteFromGeneric(&c, node, args.Transform([](auto const &x) {
         return type::Typed<std::optional<ir::Value>>(*x, x.type());
       }));
     });
