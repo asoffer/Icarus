@@ -1780,7 +1780,7 @@ MakeConcrete(
 
   Compiler c({
       .builder             = ir::GetBuilder(),
-      .data                = &data,
+      .data                = data,
       .diagnostic_consumer = diag,
   });
 
@@ -1917,7 +1917,7 @@ type::QualType Compiler::Visit(ast::FunctionLiteral const *node,
       // TODO there's also order dependence here too.
       Compiler c({
           .builder             = ir::GetBuilder(),
-          .data                = data,
+          .data                = *data,
           .diagnostic_consumer = *diag_consumer,
       });
 
@@ -1966,7 +1966,7 @@ type::QualType Compiler::Visit(ast::ShortFunctionLiteral const *node,
 
     Compiler c({
         .builder             = ir::GetBuilder(),
-        .data                = data,
+        .data                = *data,
         .diagnostic_consumer = *diag_consumer,
     });
     auto body_qt = c.Visit(node->body(), VerifyTypeTag{});

@@ -75,11 +75,7 @@ struct Compiler
   // any Compiler construction.
   struct PersistentResources {
     ir::Builder &builder;
-
-    // Must not be null. Only a pointer (instead of a reference to enable
-    // rebinding).
-    DependentComputedData *data;
-
+    DependentComputedData &data;
     diagnostic::DiagnosticConsumer &diagnostic_consumer;
   };
 
@@ -155,7 +151,7 @@ struct Compiler
   // resources.
   Compiler WithPersistent() const;
 
-  DependentComputedData &data() const { return *resources_.data; }
+  DependentComputedData &data() const { return resources_.data; }
   ir::Builder &builder() { return resources_.builder; };
   diagnostic::DiagnosticConsumer &diag() const {
     return resources_.diagnostic_consumer;
@@ -190,15 +186,6 @@ struct Compiler
                           module::Pending<LibraryModule> mod);
 
   void CompleteDeferredBodies();
-
-  template <typename Fn>
-  base::move_func<void()> *AddWork(ast::Node const *node, Fn &&fn) {
-    DEBUG_LOG("AddWork")(node->DebugString());
-    auto [iter, success] =
-        data().deferred_work_.lock()->emplace(node, std::forward<Fn>(fn));
-    ASSERT(success == true);
-    return &iter->second;
-  }
 
 #define ICARUS_AST_NODE_X(name)                                                \
   ir::Results Visit(ast::name const *node, EmitValueTag);

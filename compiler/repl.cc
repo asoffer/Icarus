@@ -58,7 +58,7 @@ struct ReplModule : public CompiledModule {
                     diagnostic::DiagnosticConsumer &diag) override {
     Compiler compiler({
         .builder             = ir::GetBuilder(),
-        .data                = &data(),
+        .data                = data(),
         .diagnostic_consumer = diag,
     });
     for (ast::Node const *node : nodes) {

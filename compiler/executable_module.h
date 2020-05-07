@@ -23,7 +23,7 @@ struct ExecutableModule : CompiledModule {
   void ProcessNodes(base::PtrSpan<ast::Node const> nodes,
                     diagnostic::DiagnosticConsumer &diag) override {
     Compiler c({.builder             = ir::GetBuilder(),
-                .data                = &data(),
+                .data                = data(),
                 .diagnostic_consumer = diag});
 
     for (ast::Node const *node : nodes) {

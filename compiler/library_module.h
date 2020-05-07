@@ -16,7 +16,7 @@ struct LibraryModule : CompiledModule {
                     diagnostic::DiagnosticConsumer &diag) override {
     Compiler c({
         .builder             = ir::GetBuilder(),
-        .data                = &data(),
+        .data                = data(),
         .diagnostic_consumer = diag,
     });
 

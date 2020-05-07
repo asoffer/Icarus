@@ -20,7 +20,7 @@ struct TestModule : compiler::CompiledModule {
   TestModule()
       : compiler({
             .builder             = ir::GetBuilder(),
-            .data                = &data(),
+            .data                = data(),
             .diagnostic_consumer = consumer,
         }) {}
   ~TestModule() { compiler.CompleteDeferredBodies(); }

@@ -68,7 +68,7 @@ void AddAdl(ast::OverloadSet *overload_set, std::string_view id,
       ASSIGN_OR(continue, auto &t,
                 Compiler({
                              .builder             = ir::GetBuilder(),
-                             .data                = &mod->data(),
+                             .data                = mod->data(),
                              .diagnostic_consumer = consumer,
                          })
                     .type_of(d));
@@ -122,10 +122,11 @@ std::optional<ast::OverloadSet> MakeOverloadSet(
 }
 
 template <typename NodeType>
-base::move_func<void()> *DeferBody(Compiler *compiler, NodeType const *node,
-                                   type::Type const *t) {
-  return compiler->AddWork(
-      node, [c = compiler->WithPersistent(), node, t]() mutable {
+base::move_func<void()> *DeferBody(Compiler::PersistentResources resources,
+                                   NodeType const *node, type::Type const *t) {
+  DEBUG_LOG("DeferBody")(node->DebugString());
+  auto [iter, success] = resources.data.deferred_work_.lock()->emplace(
+      node, [c = Compiler(resources), node, t]() mutable {
         if constexpr (base::meta<NodeType> ==
                       base::meta<ast::FunctionLiteral>) {
           VerifyBody(&c, node, t);
@@ -138,6 +139,8 @@ base::move_func<void()> *DeferBody(Compiler *compiler, NodeType const *node,
           CompleteBody(&c, node);
         }
       });
+  ASSERT(success == true);
+  return &iter->second;
 }
 
 }  // namespace
@@ -654,7 +657,7 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
       ASSERT(result.size() != 0u);
       return ir::Results::FromRaw(result);
     } else {
-      auto *t = ASSERT_NOT_NULL(type_of(node));
+      auto *t                        = ASSERT_NOT_NULL(type_of(node));
       base::untyped_buffer_view slot = data().constants_.reserve_slot(node, t);
       if (not slot.empty()) {
         DEBUG_LOG("EmitValueDeclaration")("Returning from slot");
@@ -714,7 +717,7 @@ ir::Results Compiler::Visit(ast::DesignatedInitializer const *node,
   for (size_t i = 0; i < fields.size(); ++i) {
     auto const &field = fields[i];
 
-    for (auto & [ field_name, expr ] : node->assignments()) {
+    for (auto &[field_name, expr] : node->assignments()) {
       // Skip default initialization if we're going to use the designated
       // initializer.
       if (field_name == field.name) { goto next_field; }
@@ -726,7 +729,7 @@ ir::Results Compiler::Visit(ast::DesignatedInitializer const *node,
   }
 
   // TODO initialize fields not listed in the designated initializer.
-  for (auto & [ field, expr ] : node->assignments()) {
+  for (auto &[field, expr] : node->assignments()) {
     auto *f            = struct_type.field(field);
     size_t field_index = struct_type.index(f->name);
     Visit(expr.get(), builder().Field(alloc, &struct_type, field_index),
@@ -764,22 +767,6 @@ ir::Results Compiler::Visit(ast::EnumLiteral const *node, EmitValueTag) {
   }
 }
 
-template <typename T>
-struct SetTemporarily : public base::UseWithScope {
-  template <typename... Args>
-  SetTemporarily(T &var, T val)
-      : var_(var), old_(std::exchange(var_, std::move(val))) {}
-
-  ~SetTemporarily() { var_ = std::move(old_); }
-
- private:
-  T &var_;
-  T old_;
-};
-
-template <typename T>
-SetTemporarily(T &, T)->SetTemporarily<T>;
-
 template <typename NodeType>
 ir::NativeFn MakeConcreteFromGeneric(
     Compiler *compiler, NodeType const *node,
@@ -793,16 +780,20 @@ ir::NativeFn MakeConcreteFromGeneric(
   auto &data                 = find_dependent_result.data;
 
   return data.EmplaceNativeFn(node, [&]() {
-    ICARUS_SCOPE(SetTemporarily(compiler->resources_.data, &data)) {
-      auto f = compiler->AddFunc(
-          fn_type,
-          node->params().Transform([fn_type, i = 0](auto const &d) mutable {
-            return type::Typed<ast::Declaration const *>(
-                d.get(), fn_type->params().at(i++).value);
-          }));
-      f->work_item = DeferBody(compiler, node, fn_type);
-      return f;
-    }
+    ir::NativeFn f(
+        &data.fns_, fn_type,
+        node->params().Transform([fn_type, i = 0](auto const &d) mutable {
+          return type::Typed<ast::Declaration const *>(
+              d.get(), fn_type->params().at(i++).value);
+        }));
+    f->work_item = DeferBody(
+        {
+            .builder             = compiler->builder(),
+            .data                = data,
+            .diagnostic_consumer = compiler->diag(),
+        },
+        node, fn_type);
+    return f;
   });
 }
 
@@ -823,17 +814,16 @@ ir::Results Compiler::Visit(ast::ShortFunctionLiteral const *node,
 
   ir::NativeFn ir_func = data().EmplaceNativeFn(node, [&] {
     auto *fn_type = &type_of(node)->as<type::Function>();
-    auto f        = AddFunc(fn_type,
-                     node->params().Transform(
-                         [fn_type, i = 0](auto const &d) mutable {
-                           return type::Typed<ast::Declaration const *>(
-                               d.get(), fn_type->params().at(i++).value);
-                         }));
-    f->work_item = DeferBody(this, node, fn_type);
+    auto f        = AddFunc(
+        fn_type,
+        node->params().Transform([fn_type, i = 0](auto const &d) mutable {
+          return type::Typed<ast::Declaration const *>(
+              d.get(), fn_type->params().at(i++).value);
+        }));
+    f->work_item = DeferBody(resources_, node, fn_type);
     return f;
   });
   return ir::Results{ir::Fn{ir_func}};
-
 }
 
 ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
@@ -853,13 +843,13 @@ ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
   // TODO Use correct constants
   ir::NativeFn ir_func = data().EmplaceNativeFn(node, [&] {
     auto *fn_type = &type_of(node)->as<type::Function>();
-    auto f        = AddFunc(fn_type,
-                     node->params().Transform(
-                         [fn_type, i = 0](auto const &d) mutable {
-                           return type::Typed<ast::Declaration const *>(
-                               d.get(), fn_type->params().at(i++).value);
-                         }));
-    f->work_item = DeferBody(this, node, fn_type);
+    auto f        = AddFunc(
+        fn_type,
+        node->params().Transform([fn_type, i = 0](auto const &d) mutable {
+          return type::Typed<ast::Declaration const *>(
+              d.get(), fn_type->params().at(i++).value);
+        }));
+    f->work_item = DeferBody(resources_, node, fn_type);
     return f;
   });
   return ir::Results{ir::Fn{ir_func}};
@@ -943,7 +933,7 @@ ir::Results Compiler::Visit(ast::Label const *node, EmitValueTag) {
 ir::Results Compiler::Visit(ast::Jump const *node, EmitValueTag) {
   return ir::Results{data().add_jump(node, [this, node] {
     auto *jmp_type     = &type_of(node)->as<type::Jump>();
-    auto work_item_ptr = DeferBody(this, node, jmp_type);
+    auto work_item_ptr = DeferBody(resources_, node, jmp_type);
 
     size_t i    = 0;
     auto params = node->params().Transform([&](auto const &decl) {
@@ -1142,11 +1132,11 @@ ir::Results Compiler::Visit(ast::Switch const *node, EmitValueTag) {
 
   absl::flat_hash_map<ir::BasicBlock *, ir::Results> phi_args;
   for (size_t i = 0; i + 1 < node->cases().size(); ++i) {
-    auto & [ body, match_cond ] = node->cases()[i];
-    auto *expr_block            = builder().AddBlock();
-    auto *match_cond_ptr        = match_cond.get();
-    ir::Results match_val       = Visit(match_cond_ptr, EmitValueTag{});
-    ir::RegOr<bool> cond        = [&] {
+    auto &[body, match_cond] = node->cases()[i];
+    auto *expr_block         = builder().AddBlock();
+    auto *match_cond_ptr     = match_cond.get();
+    ir::Results match_val    = Visit(match_cond_ptr, EmitValueTag{});
+    ir::RegOr<bool> cond     = [&] {
       if (node->expr()) {
         ASSERT(expr_type == type_of(match_cond_ptr));
         return builder().Eq(expr_type, match_val, expr_results);
@@ -1200,7 +1190,7 @@ ir::Results Compiler::Visit(ast::Switch const *node, EmitValueTag) {
       vals.reserve(phi_args.size());
       std::vector<ir::BasicBlock const *> blocks;
       blocks.reserve(phi_args.size());
-      for (auto const & [ key, val ] : phi_args) {
+      for (auto const &[key, val] : phi_args) {
         blocks.push_back(key);
         vals.push_back(val.template get<T>(0));
       }
