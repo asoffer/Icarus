@@ -125,14 +125,14 @@ static ir::NativeFn CreateAssign(Compiler *compiler, type::Struct const *s) {
 
 void Compiler::Visit(type::Array const *t, ir::RegOr<ir::Addr> to,
                      type::Typed<ir::Results> const &from, EmitCopyAssignTag) {
-  data_.copy_assign_.emplace(
+  data().copy_assign_.emplace(
       t, base::lazy_convert{[&] { return CreateAssign<Copy>(this, t); }});
   builder().Copy(t, from->get<ir::Reg>(0), to);
 }
 
 void Compiler::Visit(type::Array const *t, ir::RegOr<ir::Addr> to,
                      type::Typed<ir::Results> const &from, EmitMoveAssignTag) {
-  data_.move_assign_.emplace(
+  data().move_assign_.emplace(
       t, base::lazy_convert{[&] { return CreateAssign<Move>(this, t); }});
   builder().Move(t, from->get<ir::Reg>(0), to);
 }

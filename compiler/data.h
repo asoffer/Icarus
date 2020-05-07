@@ -27,6 +27,7 @@
 
 namespace compiler {
 struct LibraryModule;
+struct CompiledModule;
 
 // DependentComputedData holds all data that the compiler computes about the
 // program by traversing the syntax tree. This includes type information,
@@ -60,17 +61,20 @@ struct LibraryModule;
 //
 // TODO audit.
 struct DependentComputedData {
-  explicit DependentComputedData(module::BasicModule *mod);
+  explicit DependentComputedData(CompiledModule *mod);
   ~DependentComputedData();
 
-  ir::ScopeDef *add_scope(module::BasicModule const *mod,
+  ir::ScopeDef *add_scope(CompiledModule const *mod,
                           type::Type const *state_type) {
-    return &scope_defs_.emplace_front(mod, state_type);
+    // TODO reinterpret_cast because of awful layering issue.
+    return &scope_defs_.emplace_front(
+        reinterpret_cast<module::BasicModule const *>(mod), state_type);
   }
   ir::BlockDef *add_block() { return &block_defs_.emplace_front(); }
 
-  module::BasicModule *mod_;
-  ir::Builder &bldr_;
+  CompiledModule *module() const { return mod_; }
+
+  CompiledModule *mod_;
 
   ir::Reg addr(ast::Declaration const *decl) const {
     auto iter = addr_.find(decl);

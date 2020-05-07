@@ -17,7 +17,12 @@
 namespace test {
 
 struct TestModule : compiler::CompiledModule {
-  TestModule() : compiler(this, data(), consumer) {}
+  TestModule()
+      : compiler({
+            .builder             = ir::GetBuilder(),
+            .data                = &data(),
+            .diagnostic_consumer = consumer,
+        }) {}
   ~TestModule() { compiler.CompleteDeferredBodies(); }
 
   template <typename NodeType>

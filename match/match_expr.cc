@@ -40,6 +40,8 @@ void Match::Visit(ast::Access const *node, MatchState *state) {
 
 void Match::Visit(ast::ArrayLiteral const *node, MatchState *state) {}
 
+void Match::Visit(ast::ArgumentType const *node, MatchState *state) {}
+
 void Match::Visit(ast::ArrayType const *node, MatchState *state) {}
 
 void Match::Visit(ast::Binop const *node, MatchState *state) {}
@@ -65,6 +67,8 @@ void Match::Visit(ast::DesignatedInitializer const *node, MatchState *state) {}
 void Match::Visit(ast::EnumLiteral const *node, MatchState *state) {}
 
 void Match::Visit(ast::FunctionLiteral const *node, MatchState *state) {}
+
+void Match::Visit(ast::ShortFunctionLiteral const *node, MatchState *state) {}
 
 void Match::Visit(ast::Identifier const *node, MatchState *state) {}
 

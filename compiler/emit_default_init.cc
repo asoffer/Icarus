@@ -11,7 +11,7 @@
 namespace compiler {
 
 void Compiler::Visit(type::Array const *t, ir::Reg reg, EmitDefaultInitTag) {
-  data_.init_.emplace(
+  data().init_.emplace(
       t, base::lazy_convert{[&] {
         auto const *fn_type = type::Func(
             core::Params<type::Type const *>{

@@ -66,7 +66,12 @@ void AddAdl(ast::OverloadSet *overload_set, std::string_view id,
     for (auto *d : decls) {
       // TODO Wow this is a terrible way to access the type.
       ASSIGN_OR(continue, auto &t,
-                Compiler(mod, mod->data(), consumer).type_of(d));
+                Compiler({
+                             .builder             = ir::GetBuilder(),
+                             .data                = &mod->data(),
+                             .diagnostic_consumer = consumer,
+                         })
+                    .type_of(d));
       // TODO handle this case. I think it's safe to just discard it.
       for (auto const *expr : overload_set->members()) {
         if (d == expr) { return; }
@@ -120,10 +125,7 @@ template <typename NodeType>
 base::move_func<void()> *DeferBody(Compiler *compiler, NodeType const *node,
                                    type::Type const *t) {
   return compiler->AddWork(
-      node,
-      [mod = &compiler->module()->as<CompiledModule>(), data = &compiler->data_,
-       consumer = &compiler->diag(), node, t]() mutable {
-        Compiler c(mod, *data, *consumer);
+      node, [c = compiler->WithPersistent(), node, t]() mutable {
         if constexpr (base::meta<NodeType> ==
                       base::meta<ast::FunctionLiteral>) {
           VerifyBody(&c, node, t);
@@ -184,7 +186,7 @@ ir::Results Compiler::Visit(ast::Access const *node, EmitValueTag) {
 }
 
 ir::Results Compiler::Visit(ast::ArgumentType const *node, EmitValueTag) {
-  return ir::Results{ASSERT_NOT_NULL(data_.arg_type(node->name()))};
+  return ir::Results{ASSERT_NOT_NULL(data().arg_type(node->name()))};
 }
 
 ir::Results Compiler::Visit(ast::ArrayLiteral const *node, EmitValueTag) {
@@ -482,7 +484,7 @@ ir::Results Compiler::Visit(ast::BlockLiteral const *node, EmitValueTag) {
     afters.push_back(Visit(decl, EmitValueTag{}).get<ir::Jump *>(0));
   }
 
-  return ir::Results{builder().MakeBlock(data_.add_block(), std::move(befores),
+  return ir::Results{builder().MakeBlock(data().add_block(), std::move(befores),
                                          std::move(afters))};
 }
 
@@ -501,11 +503,12 @@ struct PushVec : public base::UseWithScope {
 template <typename T, typename... Args>
 PushVec(std::vector<T> *, Args &&...)->PushVec<T>;
 
-Compiler::YieldResult Compiler::EmitBlockNode(ast::BlockNode const *node) {
+Compiler::TransientFunctionState::YieldedArguments Compiler::EmitBlockNode(
+    ast::BlockNode const *node) {
   core::FnArgs<std::pair<ir::Results, type::QualType>> results;
-  ICARUS_SCOPE(PushVec(&yields_stack_)) {
+  ICARUS_SCOPE(PushVec(&state_.yields)) {
     EmitIrForStatements(this, node->stmts());
-    return yields_stack_.back();
+    return state_.yields.back();
   }
 }
 
@@ -530,7 +533,7 @@ ir::Results EmitBuiltinCall(
     } break;
 
     case ir::BuiltinFn::Which::Opaque:
-      return ir::Results{c->builder().OpaqueType(c->module())};
+      return ir::Results{c->builder().OpaqueType(c->data().module())};
     case ir::BuiltinFn::Which::Bytes: {
       auto const &fn_type = *ir::BuiltinFn::Bytes().type();
       ir::OutParams outs  = c->builder().OutParams(fn_type.output());
@@ -633,7 +636,7 @@ ir::Results Compiler::Visit(ast::CommaList const *node, EmitValueTag) {
 ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
   DEBUG_LOG("EmitValueDeclaration")(node->id());
   if (node->flags() & ast::Declaration::f_IsConst) {
-    if (node->module() != module()) {
+    if (node->module() != data().module()) {
       // Constant declarations from other modules should already be stored on
       // that module. They must be at the root of the binding tree map,
       // otherwise they would be local to some function/jump/etc. and not be
@@ -646,13 +649,13 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
     }
 
     if (node->flags() & ast::Declaration::f_IsFnParam) {
-      auto result = data_.LoadConstantParam(node);
+      auto result = data().LoadConstantParam(node);
       DEBUG_LOG("EmitValueDeclaration")(result);
       ASSERT(result.size() != 0u);
       return ir::Results::FromRaw(result);
     } else {
       auto *t = ASSERT_NOT_NULL(type_of(node));
-      base::untyped_buffer_view slot = data_.constants_.reserve_slot(node, t);
+      base::untyped_buffer_view slot = data().constants_.reserve_slot(node, t);
       if (not slot.empty()) {
         DEBUG_LOG("EmitValueDeclaration")("Returning from slot");
         return ir::Results::FromRaw(slot);
@@ -674,7 +677,7 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
           return ir::Results{};
         }
         DEBUG_LOG("EmitValueDeclaration")("Setting slot", buf.to_string());
-        data_.constants_.set_slot(node, buf);
+        data().constants_.set_slot(node, buf);
         return ir::Results::FromRaw(buf);
       } else if (node->IsDefaultInitialized()) {
         UNREACHABLE();
@@ -752,12 +755,30 @@ ir::Results Compiler::Visit(ast::EnumLiteral const *node, EmitValueTag) {
 
   switch (node->kind()) {
     case ast::EnumLiteral::Kind::Enum:
-      return ir::Results{builder().Enum(module(), names, specified_values)};
+      return ir::Results{
+          builder().Enum(data().module(), names, specified_values)};
     case ast::EnumLiteral::Kind::Flags:
-      return ir::Results{builder().Flags(module(), names, specified_values)};
+      return ir::Results{
+          builder().Flags(data().module(), names, specified_values)};
     default: UNREACHABLE();
   }
 }
+
+template <typename T>
+struct SetTemporarily : public base::UseWithScope {
+  template <typename... Args>
+  SetTemporarily(T &var, T val)
+      : var_(var), old_(std::exchange(var_, std::move(val))) {}
+
+  ~SetTemporarily() { var_ = std::move(old_); }
+
+ private:
+  T &var_;
+  T old_;
+};
+
+template <typename T>
+SetTemporarily(T &, T)->SetTemporarily<T>;
 
 template <typename NodeType>
 ir::NativeFn MakeConcreteFromGeneric(
@@ -767,40 +788,40 @@ ir::NativeFn MakeConcreteFromGeneric(
 
   // Note: Cannot use structured bindings because the bindings need to be
   // captured in the lambda.
-  auto find_dependent_result = compiler->data_.FindDependent(node, args);
+  auto find_dependent_result = compiler->data().FindDependent(node, args);
   auto const *fn_type        = find_dependent_result.fn_type;
   auto &data                 = find_dependent_result.data;
 
-  return data.EmplaceNativeFn(node, [&] {
-    Compiler c(&compiler->module()->as<CompiledModule>(), data,
-               compiler->diag());
-    auto f = c.AddFunc(
-        fn_type,
-        node->params().Transform([fn_type, i = 0](auto const &d) mutable {
-          return type::Typed<ast::Declaration const *>(
-              d.get(), fn_type->params().at(i++).value);
-        }));
-    f->work_item = DeferBody(&c, node, fn_type);
-    return f;
+  return data.EmplaceNativeFn(node, [&]() {
+    ICARUS_SCOPE(SetTemporarily(compiler->resources_.data, &data)) {
+      auto f = compiler->AddFunc(
+          fn_type,
+          node->params().Transform([fn_type, i = 0](auto const &d) mutable {
+            return type::Typed<ast::Declaration const *>(
+                d.get(), fn_type->params().at(i++).value);
+          }));
+      f->work_item = DeferBody(compiler, node, fn_type);
+      return f;
+    }
   });
 }
 
 ir::Results Compiler::Visit(ast::ShortFunctionLiteral const *node,
                             EmitValueTag) {
   if (node->is_generic()) {
-    auto *diag_consumer = &diag();
-    auto gen_fn         = ir::GenericFn([mod = mod_, node, diag_consumer](
-                                    core::FnArgs<type::Typed<ir::Value>> const
-                                        &args) mutable -> ir::NativeFn {
-      Compiler c(mod, mod->data(), *diag_consumer);
-      return MakeConcreteFromGeneric(&c, node, args.Transform([](auto const &x) {
-        return type::Typed<std::optional<ir::Value>>(*x, x.type());
-      }));
-    });
+    auto gen_fn = ir::GenericFn(
+        [c = this->WithPersistent(),
+         node](core::FnArgs<type::Typed<ir::Value>> const &args) mutable
+        -> ir::NativeFn {
+          return MakeConcreteFromGeneric(
+              &c, node, args.Transform([](auto const &x) {
+                return type::Typed<std::optional<ir::Value>>(*x, x.type());
+              }));
+        });
     return ir::Results{gen_fn};
   }
 
-  ir::NativeFn ir_func = data_.EmplaceNativeFn(node, [&] {
+  ir::NativeFn ir_func = data().EmplaceNativeFn(node, [&] {
     auto *fn_type = &type_of(node)->as<type::Function>();
     auto f        = AddFunc(fn_type,
                      node->params().Transform(
@@ -818,10 +839,9 @@ ir::Results Compiler::Visit(ast::ShortFunctionLiteral const *node,
 ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
   if (node->is_generic()) {
     auto gen_fn = ir::GenericFn(
-        [mod = mod_, node, diag = &diag()](
-            core::FnArgs<type::Typed<ir::Value>> const &args) mutable
+        [c = this->WithPersistent(),
+         node](core::FnArgs<type::Typed<ir::Value>> const &args) mutable
         -> ir::NativeFn {
-          Compiler c(mod, mod->data(), *diag);
           return MakeConcreteFromGeneric(
               &c, node, args.Transform([](auto const &x) {
                 return type::Typed<std::optional<ir::Value>>(*x, x.type());
@@ -831,7 +851,7 @@ ir::Results Compiler::Visit(ast::FunctionLiteral const *node, EmitValueTag) {
   }
 
   // TODO Use correct constants
-  ir::NativeFn ir_func = data_.EmplaceNativeFn(node, [&] {
+  ir::NativeFn ir_func = data().EmplaceNativeFn(node, [&] {
     auto *fn_type = &type_of(node)->as<type::Function>();
     auto f        = AddFunc(fn_type,
                      node->params().Transform(
@@ -921,7 +941,7 @@ ir::Results Compiler::Visit(ast::Label const *node, EmitValueTag) {
 }
 
 ir::Results Compiler::Visit(ast::Jump const *node, EmitValueTag) {
-  return ir::Results{data_.add_jump(node, [this, node] {
+  return ir::Results{data().add_jump(node, [this, node] {
     auto *jmp_type     = &type_of(node)->as<type::Jump>();
     auto work_item_ptr = DeferBody(this, node, jmp_type);
 
@@ -992,7 +1012,7 @@ ir::Results Compiler::Visit(ast::YieldStmt const *node, EmitValueTag) {
   // Can't return these because we need to pass them up at least through the
   // containing statements this and maybe further if we allow labelling
   // scopes to be yielded to.
-  auto &yield_result = yields_stack_.back();
+  auto &yielded_args = state_.yields.back();
 
   // TODO one problem with this setup is that we look things up in a context
   // after returning, so the `after` method has access to a different
@@ -1002,9 +1022,9 @@ ir::Results Compiler::Visit(ast::YieldStmt const *node, EmitValueTag) {
   for (size_t i = 0; i < arg_vals.size(); ++i) {
     auto qt = qual_type_of(node->exprs()[i]);
     ASSERT(qt.has_value() == true);
-    yield_result.vals.pos_emplace(arg_vals[i].second, *qt);
+    yielded_args.vals.pos_emplace(arg_vals[i].second, *qt);
   }
-  yield_result.label = node->label() ? node->label()->value() : ir::Label{};
+  yielded_args.label = node->label() ? node->label()->value() : ir::Label{};
 
   builder().block_termination_state() =
       node->label() ? ir::Builder::BlockTerminationState::kLabeledYield
@@ -1033,9 +1053,9 @@ ir::Results Compiler::Visit(ast::ScopeLiteral const *node, EmitValueTag) {
     }
   }
 
-  return ir::Results{builder().MakeScope(data_.add_scope(module(), state_type),
-                                         std::move(inits), std::move(dones),
-                                         std::move(blocks))};
+  return ir::Results{builder().MakeScope(
+      data().add_scope(data().module(), state_type), std::move(inits),
+      std::move(dones), std::move(blocks))};
 }
 
 ir::Results Compiler::Visit(ast::ScopeNode const *node, EmitValueTag) {

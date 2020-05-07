@@ -75,7 +75,7 @@ void CompleteBody(Compiler *compiler, ast::ShortFunctionLiteral const *node,
   // TODO have validate return a bool distinguishing if there are errors and
   // whether or not we can proceed.
 
-  ir::NativeFn ir_func = *ASSERT_NOT_NULL(compiler->data_.FindNativeFn(node));
+  ir::NativeFn ir_func = *ASSERT_NOT_NULL(compiler->data().FindNativeFn(node));
 
   auto& bldr = compiler->builder();
   ICARUS_SCOPE(ir::SetCurrent(ir_func.get(), &bldr)) {
@@ -107,7 +107,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
   // TODO have validate return a bool distinguishing if there are errors and
   // whether or not we can proceed.
 
-  ir::NativeFn ir_func = *ASSERT_NOT_NULL(compiler->data_.FindNativeFn(node));
+  ir::NativeFn ir_func = *ASSERT_NOT_NULL(compiler->data().FindNativeFn(node));
 
   auto& bldr = compiler->builder();
   ICARUS_SCOPE(ir::SetCurrent(ir_func.get(), &bldr)) {
@@ -161,7 +161,7 @@ void CompleteBody(Compiler *compiler,
 }
 
 void CompleteBody(Compiler *compiler, ast::Jump const *node) {
-  ir::Jump *jmp = ASSERT_NOT_NULL(compiler->data_.jump(node));
+  ir::Jump *jmp = ASSERT_NOT_NULL(compiler->data().jump(node));
 
   ICARUS_SCOPE(ir::SetCurrent(jmp, &compiler->builder())) {
     ASSERT(compiler != nullptr);

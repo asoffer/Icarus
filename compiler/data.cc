@@ -2,8 +2,7 @@
 
 namespace compiler {
 
-DependentComputedData::DependentComputedData(module::BasicModule *mod)
-    : mod_(mod), bldr_(ir::GetBuilder()) {}
+DependentComputedData::DependentComputedData(CompiledModule *mod) : mod_(mod) {}
 
 DependentComputedData::~DependentComputedData() {
   // TODO figure out what's being dropped?

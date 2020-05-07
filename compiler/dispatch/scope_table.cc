@@ -94,7 +94,7 @@ void internal::OneTable::VerifyBlocks(Compiler *compiler,
 
     std::vector<core::FnArgs<type::QualType>> block_results;
     {
-      auto const &yields = compiler->data_.extraction_map_[node];
+      auto const &yields = compiler->data().extraction_map_[node];
       // TODO this setup is definitely wrong because it doesn't account for
       // multiple yields correctly. For example,
       //
@@ -295,7 +295,7 @@ void ScopeDispatchTable::EmitSplittingDispatch(
     }
   }
 
-  bldr.CurrentBlock() = std::get<1>(compiler->scope_landings().back());
+  bldr.CurrentBlock() = compiler->scope_landings().back().block;
 }
 
 void internal::OneTable::EmitCall(
@@ -381,8 +381,12 @@ ir::Results ScopeDispatchTable::EmitCall(
     bldr.CurrentBlock() = starting_block;
   }
   compiler->add_scope_landing(
-      scope_node_->label() ? scope_node_->label()->value() : ir::Label(),
-      landing_block, land_phi);
+      Compiler::TransientFunctionState::ScopeLandingState{
+          .label = scope_node_->label() ? scope_node_->label()->value()
+                                        : ir::Label(),
+          .block = landing_block,
+          .phi   = land_phi,
+      });
   base::defer d = [&] { compiler->pop_scope_landing(); };
 
   // Add basic blocks for each block node in the scope (for each scope

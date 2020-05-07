@@ -14,10 +14,14 @@ struct LibraryModule : CompiledModule {
  protected:
   void ProcessNodes(base::PtrSpan<ast::Node const> nodes,
                     diagnostic::DiagnosticConsumer &diag) override {
-    Compiler c(this, data(), diag);
+    Compiler c({
+        .builder             = ir::GetBuilder(),
+        .data                = &data(),
+        .diagnostic_consumer = diag,
+    });
 
     for (ast::Node const *node : nodes) {
-      ExtractJumps(&c.data_.extraction_map_, node);
+      ExtractJumps(&c.data().extraction_map_, node);
     }
     for (ast::Node const *node : nodes) { c.Visit(node, VerifyTypeTag{}); }
     if (c.diag().num_consumed() > 0) { return; }

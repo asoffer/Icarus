@@ -26,6 +26,11 @@ void TokenExtractor::Visit(ast::Access const *node) {
   line_builder_.write(node->member_name());
 }
 
+void TokenExtractor::Visit(ast::ArgumentType const *node) {
+  line_builder_.write("$");
+  line_builder_.write(node->name());
+}
+
 void TokenExtractor::Visit(ast::ArrayLiteral const *node) {
   line_builder_.write("[");
   Join(this, node->elems(), ",");
@@ -82,6 +87,10 @@ void TokenExtractor::Visit(ast::EnumLiteral const *node) {
 }
 
 void TokenExtractor::Visit(ast::FunctionLiteral const *node) {
+  // TODO
+}
+
+void TokenExtractor::Visit(ast::ShortFunctionLiteral const *node) {
   // TODO
 }
 

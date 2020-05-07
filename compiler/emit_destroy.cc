@@ -113,7 +113,7 @@ void Compiler::Visit(type::Tuple const *t, ir::Reg reg, EmitDestroyTag) {
 
 void Compiler::Visit(type::Array const *t, ir::Reg reg, EmitDestroyTag) {
   if (not t->HasDestructor()) { return; }
-  data_.destroy_.emplace(
+  data().destroy_.emplace(
       t, base::lazy_convert{[&] {
         auto const *fn_type = type::Func(
             core::Params<type::Type const *>{

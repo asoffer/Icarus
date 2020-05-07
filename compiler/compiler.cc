@@ -14,9 +14,9 @@
 
 namespace compiler {
 
-Compiler::Compiler(CompiledModule *mod, DependentComputedData &data,
-                   diagnostic::DiagnosticConsumer &consumer)
-    : mod_(mod), data_(data), diag_consumer_(consumer) {}
+Compiler::Compiler(PersistentResources const &resources)
+    : resources_(resources) {}
+Compiler Compiler::WithPersistent() const { return Compiler(resources_); }
 
 std::optional<type::QualType> Compiler::qual_type_of(
     ast::Expression const *expr) const {
@@ -29,18 +29,18 @@ std::optional<type::QualType> Compiler::qual_type_of(
     // TODO This could be a TestModule which doesn't have a .type_of(). we
     // really shouldn't need to pay for the check here.
     if (auto const *mod =
-            ASSERT_NOT_NULL(decl->module())->if_as<CompiledModule>()) {
-      if (mod != module()) {
+            &ASSERT_NOT_NULL(decl->module())->as<CompiledModule>()) {
+      if (mod != data().module()) {
         auto *qt = mod->qual_type_of(decl);
         return qt ? std::optional(*qt) : std::nullopt;
       }
-      if (auto *t = data_.constants_.type_of(decl)) {
+      if (auto *t = data().constants_.type_of(decl)) {
         return type::QualType::Constant(t);
       }
     }
   }
 
-  if (auto *result = data_.result(expr)) { return *result; }
+  if (auto *result = data().result(expr)) { return *result; }
 
   // TODO embedded modules?
   return std::nullopt;
@@ -51,26 +51,26 @@ type::Type const *Compiler::type_of(ast::Expression const *expr) const {
 }
 
 void Compiler::set_addr(ast::Declaration const *decl, ir::Reg addr) {
-  data_.addr_[decl] = addr;
+  data().addr_[decl] = addr;
 }
 type::QualType Compiler::set_result(ast::Expression const *expr,
                                     type::QualType r) {
-  return data_.set_result(expr, r);
+  return data().set_result(expr, r);
 }
 
 ir::Reg Compiler::addr(ast::Declaration const *decl) const {
-  return data_.addr(decl);
+  return data().addr(decl);
 }
 
 void Compiler::set_pending_module(ast::Import const *import_node,
                                   module::Pending<LibraryModule> mod) {
-  data_.imported_module_.emplace(import_node, std::move(mod));
+  data().imported_module_.emplace(import_node, std::move(mod));
 }
 
 module::Pending<LibraryModule> *Compiler::pending_module(
     ast::Import const *import_node) const {
-  if (auto iter = data_.imported_module_.find(import_node);
-      iter != data_.imported_module_.end()) {
+  if (auto iter = data().imported_module_.find(import_node);
+      iter != data().imported_module_.end()) {
     return &iter->second;
   }
   return nullptr;
@@ -80,7 +80,7 @@ void Compiler::CompleteDeferredBodies() {
   base::move_func<void()> f;
   while (true) {
     {
-      auto handle = data_.deferred_work_.lock();
+      auto handle = data().deferred_work_.lock();
       if (handle->empty()) { return; }
       auto nh = handle->extract(handle->begin());
       DEBUG_LOG("CompleteDeferredBodies")(nh.key()->DebugString());
@@ -93,7 +93,7 @@ void Compiler::CompleteDeferredBodies() {
 ir::NativeFn Compiler::AddFunc(
     type::Function const *fn_type,
     core::Params<type::Typed<ast::Declaration const *>> params) {
-  return ir::NativeFn(&data_.fns_, fn_type, std::move(params));
+  return ir::NativeFn(&data().fns_, fn_type, std::move(params));
 }
 
 ir::CompiledFn Compiler::MakeThunk(ast::Expression const *expr,

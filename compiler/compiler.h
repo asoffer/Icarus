@@ -71,9 +71,33 @@ struct Compiler
                          EmitMoveAssignTag),
                     void(ir::RegOr<ir::Addr>, type::Typed<ir::Results> const &,
                          EmitCopyAssignTag)> {
-  struct YieldResult {
-    core::FnArgs<std::pair<ir::Results, type::QualType>> vals;
-    ir::Label label;
+  // Resources and pointers/references to data that are guaranteed to outlive
+  // any Compiler construction.
+  struct PersistentResources {
+    ir::Builder &builder;
+
+    // Must not be null. Only a pointer (instead of a reference to enable
+    // rebinding).
+    DependentComputedData *data;
+
+    diagnostic::DiagnosticConsumer &diagnostic_consumer;
+  };
+
+  // Compiler state that needs to be tracked during the compilation of a single
+  // function or jump, but otherwise does not need to be saved.
+  struct TransientFunctionState {
+    struct ScopeLandingState {
+      ir::Label label;
+      ir::BasicBlock *block;
+      ir::PhiInstruction<int64_t> *phi;
+    };
+    std::vector<ScopeLandingState> scope_landings;
+
+    struct YieldedArguments {
+      core::FnArgs<std::pair<ir::Results, type::QualType>> vals;
+      ir::Label label;
+    };
+    std::vector<YieldedArguments> yields;
   };
 
   type::QualType Visit(ast::Node const *node, VerifyTypeTag) {
@@ -125,12 +149,17 @@ struct Compiler
         EmitCopyAssignTag)>::Visit(t, to, from, EmitCopyAssignTag{});
   }
 
-  Compiler(CompiledModule *mod, DependentComputedData &data,
-           diagnostic::DiagnosticConsumer &consumer);
+  explicit Compiler(PersistentResources const &resources);
 
-  module::BasicModule *module() const { return data_.mod_; }
-  ir::Builder &builder() { return data_.bldr_; };
-  diagnostic::DiagnosticConsumer &diag() { return diag_consumer_; }
+  // Returns a new `Compiler` instance which points to the same persistent
+  // resources.
+  Compiler WithPersistent() const;
+
+  DependentComputedData &data() const { return *resources_.data; }
+  ir::Builder &builder() { return resources_.builder; };
+  diagnostic::DiagnosticConsumer &diag() const {
+    return resources_.diagnostic_consumer;
+  }
 
   ir::CompiledFn MakeThunk(ast::Expression const *expr, type::Type const *type);
 
@@ -141,16 +170,14 @@ struct Compiler
 
   ir::Reg addr(ast::Declaration const *decl) const;
 
-  absl::Span<std::tuple<ir::Label, ir::BasicBlock *,
-                        ir::PhiInstruction<int64_t> *> const>
-  scope_landings() const {
-    return scope_landings_;
+  absl::Span<TransientFunctionState::ScopeLandingState const> scope_landings()
+      const {
+    return state_.scope_landings;
   }
-  void add_scope_landing(ir::Label label, ir::BasicBlock *block,
-                    ir::PhiInstruction<int64_t> *phi) {
-    scope_landings_.emplace_back(label, block, phi);
+  void add_scope_landing(TransientFunctionState::ScopeLandingState state) {
+    state_.scope_landings.push_back(std::move(state));
   }
-  void pop_scope_landing() { scope_landings_.pop_back(); }
+  void pop_scope_landing() { state_.scope_landings.pop_back(); }
 
   ir::NativeFn AddFunc(
       type::Function const *fn_type,
@@ -168,7 +195,7 @@ struct Compiler
   base::move_func<void()> *AddWork(ast::Node const *node, Fn &&fn) {
     DEBUG_LOG("AddWork")(node->DebugString());
     auto [iter, success] =
-        data_.deferred_work_.lock()->emplace(node, std::forward<Fn>(fn));
+        data().deferred_work_.lock()->emplace(node, std::forward<Fn>(fn));
     ASSERT(success == true);
     return &iter->second;
   }
@@ -183,7 +210,8 @@ struct Compiler
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
 
-  YieldResult EmitBlockNode(ast::BlockNode const *node);
+  TransientFunctionState::YieldedArguments EmitBlockNode(
+      ast::BlockNode const *node);
 
   type::QualType VerifyConcreteFnLit(ast::FunctionLiteral const *node);
 
@@ -265,14 +293,10 @@ struct Compiler
   void EmitCopyInit(type::Type const *from_type, ir::Results const &from_val,
                     type::Typed<ir::Reg> to_var);
 
-  CompiledModule *mod_;
-  DependentComputedData &data_;
-  diagnostic::DiagnosticConsumer &diag_consumer_;
+  PersistentResources resources_;
 
-  std::vector<
-      std::tuple<ir::Label, ir::BasicBlock *, ir::PhiInstruction<int64_t> *>>
-      scope_landings_;
-  std::vector<YieldResult> yields_stack_;
+ private:
+  TransientFunctionState state_;
 };
 
 }  // namespace compiler

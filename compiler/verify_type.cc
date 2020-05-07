@@ -42,10 +42,8 @@ void AddAdl(std::string_view id, type::Type const *t, Fn fn) {
     diagnostic::TrivialConsumer consumer;
 
     for (auto *d : decls) {
-      // TODO Wow this is a terrible way to access the type.
-      ASSIGN_OR(continue, auto &t,
-                Compiler(mod, mod->data(), consumer).type_of(d));
-
+      ASSIGN_OR(continue, auto qt, mod->data().result(d));
+      ASSIGN_OR(continue, auto &t, qt.type());
       if (not fn(d)) { return; }
     }
   }
@@ -368,7 +366,7 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node,
   absl::flat_hash_set<type::Type const *> types;
   absl::flat_hash_map<ast::ReturnStmt const *, type::Type const *>
       saved_ret_types;
-  for (auto const *n : c->data_.extraction_map_[node]) {
+  for (auto const *n : c->data().extraction_map_[node]) {
     if (auto const *ret_node = n->if_as<ast::ReturnStmt>()) {
       std::vector<type::Type const *> ret_types;
       for (auto const *expr : ret_node->exprs()) {
@@ -402,7 +400,7 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node,
     switch (outs.size()) {
       case 0: {
         bool err = false;
-        for (auto *n : c->data_.extraction_map_[node]) {
+        for (auto *n : c->data().extraction_map_[node]) {
           if (auto *ret_node = n->if_as<ast::ReturnStmt>()) {
             if (not ret_node->exprs().empty()) {
               c->diag().Consume(diagnostic::NoReturnTypes{
@@ -419,7 +417,7 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node,
       } break;
       case 1: {
         bool err = false;
-        for (auto *n : c->data_.extraction_map_[node]) {
+        for (auto *n : c->data().extraction_map_[node]) {
           if (auto *ret_node = n->if_as<ast::ReturnStmt>()) {
             auto *t = ASSERT_NOT_NULL(saved_ret_types.at(ret_node));
             if (t == outs[0]) { continue; }
@@ -437,7 +435,7 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node,
                    : type::QualType::Constant(node_type);
       } break;
       default: {
-        for (auto *n : c->data_.extraction_map_[node]) {
+        for (auto *n : c->data().extraction_map_[node]) {
           if (auto *ret_node = n->if_as<ast::ReturnStmt>()) {
             auto *expr_type = ASSERT_NOT_NULL(saved_ret_types.at(ret_node));
             if (expr_type->is<type::Tuple>()) {
@@ -634,7 +632,7 @@ static type::QualType AccessStructMember(Compiler *c, ast::Access const *node,
     });
     return type::QualType::Error();
   }
-  if (c->module() != s.defining_module() and
+  if (c->data().module() != s.defining_module() and
       not member->contains_hashtag(
           ast::Hashtag(ast::Hashtag::Builtin::Export))) {
     c->diag().Consume(diagnostic::NonExportedMember{
@@ -1780,7 +1778,11 @@ MakeConcrete(
       compiler_data.InsertDependent(node, args);
   if (not inserted) { return std::tuple(params, &rets, &data); }
 
-  Compiler c(mod, data, diag);
+  Compiler c({
+      .builder             = ir::GetBuilder(),
+      .data                = &data,
+      .diagnostic_consumer = diag,
+  });
 
   // TODO use the proper ordering.
   for (auto [index, dep_node] : ordered_nodes) {
@@ -1798,7 +1800,7 @@ MakeConcrete(
         } else {
           auto const *init_val = ASSERT_NOT_NULL(dep_node.node()->init_val());
           auto const *t =
-              ASSERT_NOT_NULL(c.data_.arg_type(dep_node.node()->id()));
+              ASSERT_NOT_NULL(c.data().arg_type(dep_node.node()->id()));
           type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
                            uint16_t, uint32_t, uint64_t, float, double,
                            ir::Addr, ir::String, type::Type const *>(
@@ -1810,7 +1812,7 @@ MakeConcrete(
 
         DEBUG_LOG("generic-fn")
         ("Argument to `", dep_node.node()->id(), "` has value ", val);
-        c.data_.set_arg_value(dep_node.node()->id(), val);
+        c.data().set_arg_value(dep_node.node()->id(), val);
       } break;
       case kind_t::ArgType: {
         type::Type const *arg_type = nullptr;
@@ -1885,9 +1887,9 @@ MakeConcrete(
           DEBUG_LOG("generic-fn")(dep_node.node()->DebugString());
         }
 
-        c.data_.constants_.reserve_slot(dep_node.node(), arg.type());
-        if (c.data_.constants_.get_constant(dep_node.node()).empty()) {
-          c.data_.constants_.set_slot(dep_node.node(), buf);
+        c.data().constants_.reserve_slot(dep_node.node(), arg.type());
+        if (c.data().constants_.get_constant(dep_node.node()).empty()) {
+          c.data().constants_.set_slot(dep_node.node(), buf);
         }
 
       } break;
@@ -1904,15 +1906,20 @@ type::QualType Compiler::Visit(ast::FunctionLiteral const *node,
   auto ordered_nodes = OrderedDependencyNodes(node);
 
   auto *diag_consumer = &diag();
-  auto gen            = [node, mod(mod_), compiler_data = &data_, diag_consumer,
+  auto gen            = [node, compiler_data = &data(), diag_consumer,
               ordered_nodes(std::move(ordered_nodes))](
                  core::FnArgs<type::Typed<std::optional<ir::Value>>> const
                      &args) mutable -> type::Function const * {
-    auto [params, rets, data] = MakeConcrete(node, mod, ordered_nodes, args,
-                                             *compiler_data, *diag_consumer);
+    auto [params, rets, data] =
+        MakeConcrete(node, compiler_data->module(), ordered_nodes, args,
+                     *compiler_data, *diag_consumer);
     if (auto outputs = node->outputs()) {
       // TODO there's also order dependence here too.
-      Compiler c(mod, *data, *diag_consumer);
+      Compiler c({
+          .builder             = ir::GetBuilder(),
+          .data                = data,
+          .diagnostic_consumer = *diag_consumer,
+      });
 
       // TODO shouldn't need to clear this.
       rets->clear();
@@ -1948,15 +1955,20 @@ type::QualType Compiler::Visit(ast::ShortFunctionLiteral const *node,
   auto ordered_nodes = OrderedDependencyNodes(node);
 
   auto *diag_consumer = &diag();
-  auto gen            = [node, mod(mod_), compiler_data = &data_, diag_consumer,
+  auto gen            = [node, compiler_data = &data(), diag_consumer,
               ordered_nodes(std::move(ordered_nodes))](
                  core::FnArgs<type::Typed<std::optional<ir::Value>>> const
                      &args) mutable -> type::Function const * {
     // TODO handle compilation failures.
-    auto [params, rets, data] = MakeConcrete(node, mod, ordered_nodes, args,
-                                             *compiler_data, *diag_consumer);
+    auto [params, rets, data] =
+        MakeConcrete(node, compiler_data->module(), ordered_nodes, args,
+                     *compiler_data, *diag_consumer);
 
-    Compiler c(mod, *data, *diag_consumer);
+    Compiler c({
+        .builder             = ir::GetBuilder(),
+        .data                = data,
+        .diagnostic_consumer = *diag_consumer,
+    });
     auto body_qt = c.Visit(node->body(), VerifyTypeTag{});
     *rets        = {body_qt.type()};
     return type::Func(std::move(params), *rets);
@@ -1967,20 +1979,20 @@ type::QualType Compiler::Visit(ast::ShortFunctionLiteral const *node,
 }
 
 type::QualType Compiler::Visit(ast::Identifier const *node, VerifyTypeTag) {
-  for (auto iter = data_.cyc_deps_.begin(); iter != data_.cyc_deps_.end();
+  for (auto iter = data().cyc_deps_.begin(); iter != data().cyc_deps_.end();
        ++iter) {
     if (*iter == node) {
       diagnostic::CyclicDependency cyclic_dep;
-      cyclic_dep.cycle.reserve(std::distance(iter, data_.cyc_deps_.end()));
-      for (; iter != data_.cyc_deps_.end(); ++iter) {
+      cyclic_dep.cycle.reserve(std::distance(iter, data().cyc_deps_.end()));
+      for (; iter != data().cyc_deps_.end(); ++iter) {
         cyclic_dep.cycle.emplace_back((*iter)->range(), (*iter)->token());
       }
       diag().Consume(std::move(cyclic_dep));
       return type::QualType::Error();
     }
   }
-  data_.cyc_deps_.push_back(node);
-  base::defer d([&] { data_.cyc_deps_.pop_back(); });
+  data().cyc_deps_.push_back(node);
+  base::defer d([&] { data().cyc_deps_.pop_back(); });
 
   // `node->decl()` is not necessarily null. Because we may call VerifyType
   // many times in multiple contexts, it is null the first time, but not on
