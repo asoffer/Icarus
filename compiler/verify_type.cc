@@ -1765,12 +1765,13 @@ OrderedDependencyNodes(ast::ParameterizedExpression const *node) {
 
 std::tuple<core::Params<type::Type const *>, std::vector<type::Type const *> *,
            DependentComputedData *>
-MakeConcreteParameters(
+MakeConcrete(
     ast::ParameterizedExpression const *node, CompiledModule *mod,
     absl::Span<std::pair<int, core::DependencyNode<ast::Declaration>> const>
         ordered_nodes,
     core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args,
-    DependentComputedData &compiler_data) {
+    DependentComputedData &compiler_data,
+    diagnostic::DiagnosticConsumer &diag) {
   DEBUG_LOG("generic-fn")
   ("Creating a concrete implementation with ",
    args.Transform([](auto const &a) { return a.type()->to_string(); }));
@@ -1779,10 +1780,7 @@ MakeConcreteParameters(
       compiler_data.InsertDependent(node, args);
   if (not inserted) { return std::tuple(params, &rets, &data); }
 
-  // TODO not the consumer we want... but capturing the one from the parent
-  // compiler is dangerous because this lambda may outlive it.
-  diagnostic::TrivialConsumer consumer;
-  Compiler c(mod, data, consumer /**diag_consumer*/);
+  Compiler c(mod, data, diag);
 
   // TODO use the proper ordering.
   for (auto [index, dep_node] : ordered_nodes) {
@@ -1905,14 +1903,32 @@ type::QualType Compiler::Visit(ast::FunctionLiteral const *node,
 
   auto ordered_nodes = OrderedDependencyNodes(node);
 
-  // auto *diag_consumer = &diag();
-  auto gen = [node, mod(mod_), compiler_data = &data_,  // diag_consumer,
+  auto *diag_consumer = &diag();
+  auto gen            = [node, mod(mod_), compiler_data = &data_, diag_consumer,
               ordered_nodes(std::move(ordered_nodes))](
                  core::FnArgs<type::Typed<std::optional<ir::Value>>> const
                      &args) mutable -> type::Function const * {
-    return type::Func(std::get<0>(MakeConcreteParameters(
-                          node, mod, ordered_nodes, args, *compiler_data)),
-                      {});
+    auto [params, rets, data] = MakeConcrete(node, mod, ordered_nodes, args,
+                                             *compiler_data, *diag_consumer);
+    if (auto outputs = node->outputs()) {
+      // TODO there's also order dependence here too.
+      Compiler c(mod, *data, *diag_consumer);
+
+      // TODO shouldn't need to clear this.
+      rets->clear();
+      for (auto const *o : *outputs) {
+        auto qt = c.Visit(o, VerifyTypeTag{});
+        ASSERT(qt == type::QualType::Constant(type::Type_));
+        auto const *result = interpretter::EvaluateAs<type::Type const *>(
+            c.MakeThunk(o, type::Type_));
+        rets->push_back(result);
+      }
+
+      return type::Func(params, *rets);
+    } else {
+      // TODO returns
+      return type::Func(params, {});
+    }
   };
 
   return set_result(node, type::QualType::Constant(
@@ -1931,17 +1947,16 @@ type::QualType Compiler::Visit(ast::ShortFunctionLiteral const *node,
 
   auto ordered_nodes = OrderedDependencyNodes(node);
 
-  // auto *diag_consumer = &diag();
-  auto gen = [node, mod(mod_), compiler_data = &data_,  // diag_consumer,
+  auto *diag_consumer = &diag();
+  auto gen            = [node, mod(mod_), compiler_data = &data_, diag_consumer,
               ordered_nodes(std::move(ordered_nodes))](
                  core::FnArgs<type::Typed<std::optional<ir::Value>>> const
                      &args) mutable -> type::Function const * {
     // TODO handle compilation failures.
-    auto [params, rets, data] =
-        MakeConcreteParameters(node, mod, ordered_nodes, args, *compiler_data);
+    auto [params, rets, data] = MakeConcrete(node, mod, ordered_nodes, args,
+                                             *compiler_data, *diag_consumer);
 
-    diagnostic::TrivialConsumer consumer;
-    Compiler c(mod, *data, consumer /**diag_consumer*/);
+    Compiler c(mod, *data, *diag_consumer);
     auto body_qt = c.Visit(node->body(), VerifyTypeTag{});
     *rets        = {body_qt.type()};
     return type::Func(std::move(params), *rets);

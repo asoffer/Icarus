@@ -114,7 +114,7 @@ struct Asserter {
   false and base::Logger(+[](std::experimental::source_location const &)       \
                              -> std::string { return ""; },                    \
                          nullptr)
-#define ASSERT_NOT_NULL(...) __VA_ARGS__
+#define ASSERT_NOT_NULL(...) (__VA_ARGS__)
 #define UNREACHABLE(...) __builtin_unreachable();
 #define DUMP(...) ""
 #endif  // defined(ICARUS_DEBUG)

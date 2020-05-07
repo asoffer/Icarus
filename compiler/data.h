@@ -210,9 +210,6 @@ struct DependentComputedData {
 
   ConstantBinding constants_;
 
-  absl::flat_hash_map<ast::ReturnStmt const *, type::Function const *>
-      return_to_fn_type_;
-
  private:
   // Stores the types of argument bound to the parameter with the given name.
   absl::flat_hash_map<std::string_view, type::Type const *> arg_type_;
