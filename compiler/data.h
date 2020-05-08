@@ -98,8 +98,13 @@ struct DependentComputedData {
     return &iter->second;
   }
 
-  type::QualType const *result(ast::Expression const *expr) const;
-  type::QualType set_result(ast::Expression const *expr, type::QualType r);
+  type::QualType set_qual_type(ast::Expression const *expr, type::QualType qt);
+  type::QualType const *qual_type(ast::Expression const *expr) const;
+
+  void set_addr(ast::Declaration const *decl, ir::Reg addr) {
+    addr_.emplace(decl, addr);
+  }
+
 
   // TODO this is transient compiler state and therefore shouldn't be stored in
   // `DependentComputedData`.

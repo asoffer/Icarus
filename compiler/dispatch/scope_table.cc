@@ -69,7 +69,7 @@ std::pair<ir::BasicBlock const *, ir::OutParams> EmitCallOneOverload(
         compiler->EmitMoveInit(
             fn_type->output()[i], ir::Results{outs[i]},
             type::Typed<ir::Reg>(
-                compiler->addr(param.value.get()),
+                compiler->data().addr(param.value.get()),
                 type::Ptr(compiler->type_of(param.value.get()))));
         ++i;
       }

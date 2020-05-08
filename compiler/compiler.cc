@@ -31,7 +31,7 @@ std::optional<type::QualType> Compiler::qual_type_of(
     if (auto const *mod =
             &ASSERT_NOT_NULL(decl->module())->as<CompiledModule>()) {
       if (mod != data().module()) {
-        auto *qt = mod->qual_type_of(decl);
+        auto *qt = mod->data().qual_type(decl);
         return qt ? std::optional(*qt) : std::nullopt;
       }
       if (auto *t = data().constants_.type_of(decl)) {
@@ -40,7 +40,7 @@ std::optional<type::QualType> Compiler::qual_type_of(
     }
   }
 
-  if (auto *result = data().result(expr)) { return *result; }
+  if (auto *result = data().qual_type(expr)) { return *result; }
 
   // TODO embedded modules?
   return std::nullopt;
@@ -48,18 +48,6 @@ std::optional<type::QualType> Compiler::qual_type_of(
 
 type::Type const *Compiler::type_of(ast::Expression const *expr) const {
   return qual_type_of(expr).value_or(type::QualType{}).type();
-}
-
-void Compiler::set_addr(ast::Declaration const *decl, ir::Reg addr) {
-  data().addr_[decl] = addr;
-}
-type::QualType Compiler::set_result(ast::Expression const *expr,
-                                    type::QualType r) {
-  return data().set_result(expr, r);
-}
-
-ir::Reg Compiler::addr(ast::Declaration const *decl) const {
-  return data().addr(decl);
 }
 
 void Compiler::set_pending_module(ast::Import const *import_node,

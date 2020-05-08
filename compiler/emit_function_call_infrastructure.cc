@@ -23,8 +23,8 @@ void MakeAllStackAllocations(Compiler *compiler, ast::FnScope const *fn_scope) {
         DEBUG_LOG("MakeAllStackAllocations")
         ("allocating ", decl->id());
 
-        compiler->set_addr(decl,
-                           compiler->builder().Alloca(compiler->type_of(decl)));
+        compiler->data().set_addr(
+            decl, compiler->builder().Alloca(compiler->type_of(decl)));
       }
     }
   }
@@ -46,7 +46,7 @@ void MakeAllDestructions(Compiler *compiler, ast::ExecScope const *exec_scope) {
   for (auto *decl : ordered_decls) {
     auto *t = ASSERT_NOT_NULL(compiler->type_of(decl));
     if (not t->HasDestructor()) { continue; }
-    compiler->Visit(t, compiler->addr(decl), EmitDestroyTag{});
+    compiler->Visit(t, compiler->data().addr(decl), EmitDestroyTag{});
   }
 }
 
@@ -84,7 +84,7 @@ void CompleteBody(Compiler *compiler, ast::ShortFunctionLiteral const *node,
     // TODO arguments should be renumbered to not waste space on const values
     size_t i = 0;
     for (auto const &param : node->params()) {
-      compiler->set_addr(param.value.get(), ir::Reg::Arg(i++));
+      compiler->data().set_addr(param.value.get(), ir::Reg::Arg(i++));
     }
 
     MakeAllStackAllocations(compiler, node->body_scope());
@@ -116,7 +116,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
     // TODO arguments should be renumbered to not waste space on const values
     size_t i = 0;
     for (auto const &param : node->params()) {
-      compiler->set_addr(param.value.get(), ir::Reg::Arg(i++));
+      compiler->data().set_addr(param.value.get(), ir::Reg::Arg(i++));
     }
 
     MakeAllStackAllocations(compiler, node->body_scope());
@@ -128,7 +128,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
         auto alloc = out_decl_type->is_big() ? bldr.GetRet(i, out_decl_type)
                                              : bldr.Alloca(out_decl_type);
 
-        compiler->set_addr(out_decl, alloc);
+        compiler->data().set_addr(out_decl, alloc);
         if (out_decl->IsDefaultInitialized()) {
           compiler->Visit(out_decl_type, alloc, EmitDefaultInitTag{});
         } else {
@@ -169,9 +169,9 @@ void CompleteBody(Compiler *compiler, ast::Jump const *node) {
     // TODO arguments should be renumbered to not waste space on const
     // values
     int32_t i = 0;
-    if (node->state()) { compiler->set_addr(node->state(), ir::Reg::Arg(i++)); }
+    if (node->state()) { compiler->data().set_addr(node->state(), ir::Reg::Arg(i++)); }
     for (auto const &param : node->params()) {
-      compiler->set_addr(param.value.get(), ir::Reg::Arg(i++));
+      compiler->data().set_addr(param.value.get(), ir::Reg::Arg(i++));
     }
 
     MakeAllStackAllocations(compiler, node->body_scope());

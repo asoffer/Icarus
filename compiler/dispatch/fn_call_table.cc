@@ -51,7 +51,7 @@ ir::RegOr<ir::Fn> ComputeConcreteFn(Compiler *compiler,
     // initialization for the declaration. Instead, we need load the
     // address.
     if (auto *fn_decl = fn->if_as<ast::Declaration>()) {
-      return compiler->builder().Load<ir::Fn>(compiler->addr(fn_decl));
+      return compiler->builder().Load<ir::Fn>(compiler->data().addr(fn_decl));
     } else {
       return compiler->builder().Load<ir::Fn>(
           compiler->Visit(fn, EmitValueTag{}).get<ir::Addr>(0));

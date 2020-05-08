@@ -40,7 +40,7 @@ std::vector<ir::RegOr<ir::Addr>> Compiler::Visit(ast::CommaList const *node,
 std::vector<ir::RegOr<ir::Addr>> Compiler::Visit(ast::Identifier const *node,
                                                  EmitRefTag) {
   ASSERT(node->decl() != nullptr) << node->DebugString();
-  return {addr(node->decl())};
+  return {data().addr(node->decl())};
 }
 
 std::vector<ir::RegOr<ir::Addr>> Compiler::Visit(ast::Index const *node,

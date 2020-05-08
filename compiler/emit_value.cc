@@ -693,7 +693,7 @@ ir::Results Compiler::Visit(ast::Declaration const *node, EmitValueTag) {
   } else {
     if (node->IsUninitialized()) { return ir::Results{}; }
     auto *t = type_of(node);
-    auto a  = addr(node);
+    auto a  = data().addr(node);
     if (node->IsCustomInitialized()) {
       Visit(node->init_val(), type::Typed(a, type::Ptr(t)), EmitMoveInitTag{});
     } else {
@@ -862,7 +862,7 @@ ir::Results Compiler::Visit(ast::Identifier const *node, EmitValueTag) {
   }
   if (node->decl()->flags() & ast::Declaration::f_IsFnParam) {
     auto *t     = type_of(node);
-    ir::Reg reg = addr(node->decl());
+    ir::Reg reg = data().addr(node->decl());
     return (node->decl()->flags() & ast::Declaration::f_IsOutput) and
                    not t->is_big()
                ? builder().Load(reg, t)

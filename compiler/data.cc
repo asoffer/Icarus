@@ -59,16 +59,16 @@ ir::Jump *DependentComputedData::jump(ast::Jump const *expr) {
   return iter == jumps_.end() ? nullptr : &iter->second;
 }
 
-type::QualType const *DependentComputedData::result(
+type::QualType const *DependentComputedData::qual_type(
     ast::Expression const *expr) const {
   auto iter = type_verification_results_.find(expr);
   if (iter != type_verification_results_.end()) { return &iter->second; }
-  if (parent_) { return parent_->result(expr); }
+  if (parent_) { return parent_->qual_type(expr); }
   return nullptr;
 }
 
-type::QualType DependentComputedData::set_result(ast::Expression const *expr,
-                                                 type::QualType r) {
+type::QualType DependentComputedData::set_qual_type(ast::Expression const *expr,
+                                                    type::QualType r) {
   type_verification_results_.emplace(expr, r);
   return r;
 }

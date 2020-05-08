@@ -161,10 +161,6 @@ struct Compiler
 
   std::optional<type::QualType> qual_type_of(ast::Expression const *expr) const;
   type::Type const *type_of(ast::Expression const *expr) const;
-  void set_addr(ast::Declaration const *decl, ir::Reg addr);
-  type::QualType set_result(ast::Expression const *expr, type::QualType r);
-
-  ir::Reg addr(ast::Declaration const *decl) const;
 
   absl::Span<TransientFunctionState::ScopeLandingState const> scope_landings()
       const {
@@ -281,7 +277,6 @@ struct Compiler
                     type::Typed<ir::Reg> to_var);
 
   PersistentResources resources_;
-
  private:
   TransientFunctionState state_;
 };
