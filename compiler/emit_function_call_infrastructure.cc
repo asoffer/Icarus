@@ -57,7 +57,7 @@ void EmitIrForStatements(Compiler *compiler,
   ICARUS_SCOPE(ir::SetTemporaries(compiler->builder())) {
     for (auto *stmt : span) {
       DEBUG_LOG("EmitIrForStatements")(stmt->DebugString());
-      compiler->Visit(stmt, EmitValueTag{});
+      compiler->EmitValue(stmt);
       compiler->builder().FinishTemporariesWith(
           [compiler](type::Typed<ir::Reg> r) {
             compiler->Visit(r.type(), r.get(), EmitDestroyTag{});
@@ -88,7 +88,7 @@ void CompleteBody(Compiler *compiler, ast::ShortFunctionLiteral const *node,
     }
 
     MakeAllStackAllocations(compiler, node->body_scope());
-    auto results = compiler->Visit(node->body(), EmitValueTag{});
+    auto results = compiler->EmitValue(node->body());
     bldr.FinishTemporariesWith([compiler](type::Typed<ir::Reg> r) {
       compiler->Visit(r.type(), r.get(), EmitDestroyTag{});
     });
@@ -134,7 +134,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
         } else {
           compiler->Visit(
               out_decl_type, alloc,
-              type::Typed{compiler->Visit(out_decl->init_val(), EmitValueTag{}),
+              type::Typed{compiler->EmitValue(out_decl->init_val()),
                           out_decl_type},
               EmitCopyAssignTag{});
         }

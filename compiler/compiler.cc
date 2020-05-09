@@ -93,7 +93,7 @@ ir::CompiledFn Compiler::MakeThunk(ast::Expression const *expr,
     // Factor these out together.
     builder().CurrentBlock() = fn.entry();
 
-    auto vals = Visit(expr, compiler::EmitValueTag{});
+    auto vals = EmitValue(expr);
     // TODO wrap this up into SetRet(vector)
     std::vector<type::Type const *> extracted_types;
     if (auto *tup = type->if_as<type::Tuple>()) {

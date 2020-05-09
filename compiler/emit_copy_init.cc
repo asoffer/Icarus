@@ -21,47 +21,38 @@ void Compiler::EmitCopyInit(type::Type const *from_type,
         EmitCopyAssignTag{});
 }
 
-void Compiler::Visit(ast::Expression const *node, type::Typed<ir::Reg> reg,
-                     EmitCopyInitTag) {
-  EmitCopyInit(type_of(node), Visit(node, EmitValueTag{}), reg);
+void Compiler::EmitCopyInit(ast::Expression const *node,
+                            type::Typed<ir::Reg> reg) {
+  EmitCopyInit(type_of(node), EmitValue(node), reg);
 }
 
-void Compiler::Visit(ast::ArrayLiteral const *node, type::Typed<ir::Reg> reg,
-                     EmitCopyInitTag) {
+void Compiler::EmitCopyInit(ast::ArrayLiteral const *node,
+                            type::Typed<ir::Reg> reg) {
   type::Array const &array_type = type_of(node)->as<type::Array>();
   auto *data_type_ptr           = type::Ptr(array_type.data_type());
   auto elem = builder().Index(type::Ptr(&array_type), reg.get(), 0);
   for (size_t i = 0; i + 1 < array_type.length(); ++i) {
-    Visit(node->elem(i), type::Typed<ir::Reg>(elem, data_type_ptr),
-          EmitCopyInitTag{});
+    EmitCopyInit(node->elem(i), type::Typed<ir::Reg>(elem, data_type_ptr));
     elem = builder().PtrIncr(elem, 1, data_type_ptr);
   }
-  Visit(node->elems().back(), type::Typed<ir::Reg>(elem, data_type_ptr),
-        EmitCopyInitTag{});
+  EmitCopyInit(node->elems().back(), type::Typed<ir::Reg>(elem, data_type_ptr));
 }
 
-void Compiler::Visit(ast::CommaList const *node, type::Typed<ir::Reg> reg,
-                     EmitCopyInitTag) {
+void Compiler::EmitCopyInit(ast::CommaList const *node,
+                            type::Typed<ir::Reg> reg) {
   size_t index  = 0;
   auto const &t = reg.type()->as<type::Pointer>().pointee()->as<type::Tuple>();
   for (auto &expr : node->exprs_) {
-    Visit(expr.get(), builder().Field(reg.get(), &t, index), EmitCopyInitTag{});
+    EmitCopyInit(expr.get(), builder().Field(reg.get(), &t, index));
     ++index;
   }
 }
 
-void Compiler::Visit(ast::Unop const *node, type::Typed<ir::Reg> reg,
-                     EmitCopyInitTag) {
+void Compiler::EmitCopyInit(ast::Unop const *node, type::Typed<ir::Reg> reg) {
   switch (node->op()) {
-    case frontend::Operator::Move:
-      Visit(node->operand(), reg, EmitMoveInitTag{});
-      break;
-    case frontend::Operator::Copy:
-      Visit(node->operand(), reg, EmitCopyInitTag{});
-      break;
-    default:
-      EmitCopyInit(type_of(node), Visit(node, EmitValueTag{}), reg);
-      break;
+    case frontend::Operator::Move: EmitMoveInit(node->operand(), reg); break;
+    case frontend::Operator::Copy: EmitCopyInit(node->operand(), reg); break;
+    default: EmitCopyInit(type_of(node), EmitValue(node), reg); break;
   }
 }
 

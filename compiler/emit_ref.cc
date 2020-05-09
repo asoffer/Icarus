@@ -10,9 +10,8 @@
 namespace compiler {
 using ::matcher::InheritsFrom;
 
-std::vector<ir::RegOr<ir::Addr>> Compiler::Visit(ast::Access const *node,
-                                                 EmitRefTag) {
-  auto reg = Visit(node->operand(), EmitRefTag{})[0];
+std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(ast::Access const *node) {
+  auto reg = EmitRef(node->operand())[0];
   auto *t  = type_of(node->operand());
 
   while (auto *tp = t->if_as<type::Pointer>()) {
@@ -27,48 +26,41 @@ std::vector<ir::RegOr<ir::Addr>> Compiler::Visit(ast::Access const *node,
               .get()};
 }
 
-std::vector<ir::RegOr<ir::Addr>> Compiler::Visit(ast::CommaList const *node,
-                                                 EmitRefTag) {
+std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(ast::CommaList const *node) {
   std::vector<ir::RegOr<ir::Addr>> results;
   results.reserve(node->exprs_.size());
   for (auto &expr : node->exprs_) {
-    results.push_back(Visit(expr.get(), EmitRefTag{})[0]);
+    results.push_back(EmitRef(expr.get())[0]);
   }
   return results;
 }
 
-std::vector<ir::RegOr<ir::Addr>> Compiler::Visit(ast::Identifier const *node,
-                                                 EmitRefTag) {
+std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(ast::Identifier const *node) {
   ASSERT(node->decl() != nullptr) << node->DebugString();
   return {data().addr(node->decl())};
 }
 
-std::vector<ir::RegOr<ir::Addr>> Compiler::Visit(ast::Index const *node,
-                                                 EmitRefTag) {
+std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(ast::Index const *node) {
   auto *lhs_type = type_of(node->lhs());
   auto *rhs_type = type_of(node->rhs());
 
   if (lhs_type->is<type::Array>()) {
-    auto index =
-        ir::CastTo<int64_t>(rhs_type, Visit(node->rhs(), EmitValueTag{}));
+    auto index = ir::CastTo<int64_t>(rhs_type, EmitValue(node->rhs()));
 
-    auto lval = Visit(node->lhs(), EmitRefTag{})[0];
+    auto lval = EmitRef(node->lhs())[0];
     if (not lval.is_reg()) { NOT_YET(this, type_of(node)); }
     return {
         builder().Index(type::Ptr(type_of(node->lhs())), lval.reg(), index)};
   } else if (auto *buf_ptr_type = lhs_type->if_as<type::BufferPointer>()) {
-    auto index =
-        ir::CastTo<int64_t>(rhs_type, Visit(node->rhs(), EmitValueTag{}));
+    auto index = ir::CastTo<int64_t>(rhs_type, EmitValue(node->rhs()));
 
-    return {
-        builder().PtrIncr(Visit(node->lhs(), EmitValueTag{}).get<ir::Reg>(0),
-                          index, type::Ptr(buf_ptr_type->pointee()))};
+    return {builder().PtrIncr(EmitValue(node->lhs()).get<ir::Reg>(0), index,
+                              type::Ptr(buf_ptr_type->pointee()))};
   } else if (lhs_type == type::ByteView) {
     // TODO interim until you remove string_view and replace it with Addr
     // entirely.
-    auto index =
-        ir::CastTo<int64_t>(rhs_type, Visit(node->rhs(), EmitValueTag{}));
-    auto str = Visit(node->lhs(), EmitValueTag{}).get<ir::String>(0);
+    auto index = ir::CastTo<int64_t>(rhs_type, EmitValue(node->rhs()));
+    auto str   = EmitValue(node->lhs()).get<ir::String>(0);
     if (str.is_reg()) {
       return {builder().PtrIncr(str.reg(), index, type::Ptr(type::Nat8))};
     } else {
@@ -81,15 +73,14 @@ std::vector<ir::RegOr<ir::Addr>> Compiler::Visit(ast::Index const *node,
             rhs_type, interpretter::Evaluate(MakeThunk(node->rhs(), rhs_type)))
             .value();
     return {
-        builder().Field(Visit(node->lhs(), EmitRefTag{})[0], tup, index).get()};
+        builder().Field(EmitRef(node->lhs())[0], tup, index).get()};
   }
   UNREACHABLE(*this);
 }
 
-std::vector<ir::RegOr<ir::Addr>> Compiler::Visit(ast::Unop const *node,
-                                                 EmitRefTag) {
+std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(ast::Unop const *node) {
   ASSERT(node->op() == frontend::Operator::At);
-  return {Visit(node->operand(), EmitValueTag{}).get<ir::Reg>(0)};
+  return {EmitValue(node->operand()).get<ir::Reg>(0)};
 }
 
 }  // namespace compiler

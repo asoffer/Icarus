@@ -39,7 +39,7 @@ void ReplEval(ast::Expression const *expr, Compiler *compiler) {
     ir::GetBuilder().CurrentBlock() = fn.entry();
 
     // TODO support multiple values computed simultaneously?
-    auto expr_val = compiler->Visit(expr, EmitValueTag{});
+    auto expr_val = compiler->EmitValue(expr);
     if (compiler->diag().num_consumed() != 0) { return; }
     // TODO compiler->CompleteDeferredBodies();
     auto *expr_type = compiler->type_of(expr);
@@ -66,8 +66,8 @@ struct ReplModule : public CompiledModule {
         auto *decl = &node->as<ast::Declaration>();
 
         {
-          compiler.Visit(decl, VerifyTypeTag{});
-          compiler.Visit(decl, EmitValueTag{});
+          compiler.VerifyType(decl);
+          compiler.EmitValue(decl);
           // TODO compiler.CompleteDeferredBodies();
           if (compiler.diag().num_consumed() != 0) { return; }
         }

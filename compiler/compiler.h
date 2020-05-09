@@ -61,10 +61,11 @@ struct LibraryModule;  // TODO remove me.
 // water.
 
 struct Compiler
-    : ast::Visitor<type::QualType(VerifyTypeTag), ir::Results(EmitValueTag),
-                   void(type::Typed<ir::Reg>, EmitMoveInitTag),
-                   void(type::Typed<ir::Reg>, EmitCopyInitTag),
-                   std::vector<ir::RegOr<ir::Addr>>(EmitRefTag)>,
+    : ast::Visitor<EmitMoveInitTag, void(type::Typed<ir::Reg>)>,
+      ast::Visitor<EmitCopyInitTag, void(type::Typed<ir::Reg>)>,
+      ast::Visitor<EmitRefTag, std::vector<ir::RegOr<ir::Addr>>()>,
+      ast::Visitor<EmitValueTag, ir::Results()>,
+      ast::Visitor<VerifyTypeTag, type::QualType()>,
       type::Visitor<void(ir::Reg, EmitDestroyTag),
                     void(ir::Reg, EmitDefaultInitTag),
                     void(ir::RegOr<ir::Addr>, type::Typed<ir::Results> const &,
@@ -96,29 +97,27 @@ struct Compiler
     std::vector<YieldedArguments> yields;
   };
 
-  type::QualType Visit(ast::Node const *node, VerifyTypeTag) {
-    return ast::SingleVisitor<type::QualType(VerifyTypeTag)>::Visit(
-        node, VerifyTypeTag{});
+  type::QualType VerifyType(ast::Node const *node) {
+    return ast::Visitor<VerifyTypeTag, type::QualType()>::Visit(node);
   }
 
-  ir::Results Visit(ast::Node const *node, EmitValueTag) {
-    return ast::SingleVisitor<ir::Results(EmitValueTag)>::Visit(node,
-                                                                EmitValueTag{});
+  ir::Results EmitValue(ast::Node const *node) {
+    return ast::Visitor<EmitValueTag, ir::Results()>::Visit(node);
   }
 
-  void Visit(ast::Node const *node, type::Typed<ir::Reg> reg, EmitCopyInitTag) {
-    ast::SingleVisitor<void(type::Typed<ir::Reg> reg, EmitCopyInitTag)>::Visit(
-        node, reg, EmitCopyInitTag{});
+  void EmitCopyInit(ast::Node const *node, type::Typed<ir::Reg> reg) {
+    ast::Visitor<EmitCopyInitTag, void(type::Typed<ir::Reg> reg)>::Visit(node,
+                                                                         reg);
   }
 
-  void Visit(ast::Node const *node, type::Typed<ir::Reg> reg, EmitMoveInitTag) {
-    ast::SingleVisitor<void(type::Typed<ir::Reg> reg, EmitMoveInitTag)>::Visit(
-        node, reg, EmitMoveInitTag{});
+  void EmitMoveInit(ast::Node const *node, type::Typed<ir::Reg> reg) {
+    ast::Visitor<EmitMoveInitTag, void(type::Typed<ir::Reg> reg)>::Visit(node,
+                                                                         reg);
   }
 
-  std::vector<ir::RegOr<ir::Addr>> Visit(ast::Node const *node, EmitRefTag) {
-    return ast::SingleVisitor<std::vector<ir::RegOr<ir::Addr>>(
-        EmitRefTag)>::Visit(node, EmitRefTag{});
+  std::vector<ir::RegOr<ir::Addr>> EmitRef(ast::Node const *node) {
+    return ast::Visitor<EmitRefTag, std::vector<ir::RegOr<ir::Addr>>()>::Visit(
+        node);
   }
 
   void Visit(type::Type const *t, ir::Reg r, EmitDestroyTag) {
@@ -184,12 +183,15 @@ struct Compiler
   void CompleteDeferredBodies();
 
 #define ICARUS_AST_NODE_X(name)                                                \
-  ir::Results Visit(ast::name const *node, EmitValueTag);
-#include "ast/node.xmacro.h"
-#undef ICARUS_AST_NODE_X
-
-#define ICARUS_AST_NODE_X(name)                                                \
-  type::QualType Visit(ast::name const *node, VerifyTypeTag);
+  type::QualType VerifyType(ast::name const *node);                            \
+  type::QualType Visit(VerifyTypeTag, ast::name const *node) override {        \
+    return VerifyType(node);                                                   \
+  }                                                                            \
+                                                                               \
+  ir::Results EmitValue(ast::name const *node);                                \
+  ir::Results Visit(EmitValueTag, ast::name const *node) override {            \
+    return EmitValue(node);                                                    \
+  }
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
 
@@ -198,80 +200,126 @@ struct Compiler
 
   type::QualType VerifyConcreteFnLit(ast::FunctionLiteral const *node);
 
-  std::vector<ir::RegOr<ir::Addr>> Visit(ast::Access const *node, EmitRefTag);
-  std::vector<ir::RegOr<ir::Addr>> Visit(ast::CommaList const *node,
-                                         EmitRefTag);
-  std::vector<ir::RegOr<ir::Addr>> Visit(ast::Identifier const *node,
-                                         EmitRefTag);
-  std::vector<ir::RegOr<ir::Addr>> Visit(ast::Index const *node, EmitRefTag);
-  std::vector<ir::RegOr<ir::Addr>> Visit(ast::Unop const *node, EmitRefTag);
+  std::vector<ir::RegOr<ir::Addr>> EmitRef(ast::Access const *node);
+  std::vector<ir::RegOr<ir::Addr>> Visit(EmitRefTag,
+                                         ast::Access const *node) override {
+    return EmitRef(node);
+  }
+  std::vector<ir::RegOr<ir::Addr>> EmitRef(ast::CommaList const *node);
+  std::vector<ir::RegOr<ir::Addr>> Visit(EmitRefTag,
+                                         ast::CommaList const *node) override {
+    return EmitRef(node);
+  }
+  std::vector<ir::RegOr<ir::Addr>> EmitRef(ast::Identifier const *node);
+  std::vector<ir::RegOr<ir::Addr>> Visit(EmitRefTag,
+                                         ast::Identifier const *node) override {
+    return EmitRef(node);
+  }
+  std::vector<ir::RegOr<ir::Addr>> EmitRef(ast::Index const *node);
+  std::vector<ir::RegOr<ir::Addr>> Visit(EmitRefTag,
+                                         ast::Index const *node) override {
+    return EmitRef(node);
+  }
+  std::vector<ir::RegOr<ir::Addr>> EmitRef(ast::Unop const *node);
+  std::vector<ir::RegOr<ir::Addr>> Visit(EmitRefTag,
+                                         ast::Unop const *node) override {
+    return EmitRef(node);
+  }
 
-  void Visit(type::Struct const *t, ir::Reg reg, EmitDestroyTag);
-  void Visit(type::Variant const *t, ir::Reg reg, EmitDestroyTag);
-  void Visit(type::Tuple const *t, ir::Reg reg, EmitDestroyTag);
-  void Visit(type::Array const *t, ir::Reg reg, EmitDestroyTag);
+  void Visit(type::Struct const *t, ir::Reg reg, EmitDestroyTag) override;
+  void Visit(type::Variant const *t, ir::Reg reg, EmitDestroyTag) override;
+  void Visit(type::Tuple const *t, ir::Reg reg, EmitDestroyTag) override;
+  void Visit(type::Array const *t, ir::Reg reg, EmitDestroyTag) override;
 
   void Visit(type::Array const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitCopyAssignTag);
+             type::Typed<ir::Results> const &from, EmitCopyAssignTag) override;
   void Visit(type::Enum const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitCopyAssignTag);
+             type::Typed<ir::Results> const &from, EmitCopyAssignTag) override;
   void Visit(type::Flags const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitCopyAssignTag);
+             type::Typed<ir::Results> const &from, EmitCopyAssignTag) override;
   void Visit(type::Function const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitCopyAssignTag);
+             type::Typed<ir::Results> const &from, EmitCopyAssignTag) override;
   void Visit(type::Pointer const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitCopyAssignTag);
+             type::Typed<ir::Results> const &from, EmitCopyAssignTag) override;
   void Visit(type::Primitive const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitCopyAssignTag);
+             type::Typed<ir::Results> const &from, EmitCopyAssignTag) override;
   void Visit(type::Struct const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitCopyAssignTag);
+             type::Typed<ir::Results> const &from, EmitCopyAssignTag) override;
   void Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitCopyAssignTag);
+             type::Typed<ir::Results> const &from, EmitCopyAssignTag) override;
   void Visit(type::Variant const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitCopyAssignTag);
+             type::Typed<ir::Results> const &from, EmitCopyAssignTag) override;
 
   void Visit(type::Array const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitMoveAssignTag);
+             type::Typed<ir::Results> const &from, EmitMoveAssignTag) override;
   void Visit(type::Enum const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitMoveAssignTag);
+             type::Typed<ir::Results> const &from, EmitMoveAssignTag) override;
   void Visit(type::Flags const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitMoveAssignTag);
+             type::Typed<ir::Results> const &from, EmitMoveAssignTag) override;
   void Visit(type::Function const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitMoveAssignTag);
+             type::Typed<ir::Results> const &from, EmitMoveAssignTag) override;
   void Visit(type::Pointer const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitMoveAssignTag);
+             type::Typed<ir::Results> const &from, EmitMoveAssignTag) override;
   void Visit(type::Primitive const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitMoveAssignTag);
+             type::Typed<ir::Results> const &from, EmitMoveAssignTag) override;
   void Visit(type::Struct const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitMoveAssignTag);
+             type::Typed<ir::Results> const &from, EmitMoveAssignTag) override;
   void Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitMoveAssignTag);
+             type::Typed<ir::Results> const &from, EmitMoveAssignTag) override;
   void Visit(type::Variant const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitMoveAssignTag);
+             type::Typed<ir::Results> const &from, EmitMoveAssignTag) override;
 
-  void Visit(type::Array const *t, ir::Reg reg, EmitDefaultInitTag);
-  void Visit(type::Flags const *t, ir::Reg reg, EmitDefaultInitTag);
-  void Visit(type::Pointer const *t, ir::Reg reg, EmitDefaultInitTag);
-  void Visit(type::Primitive const *t, ir::Reg reg, EmitDefaultInitTag);
-  void Visit(type::Struct const *t, ir::Reg reg, EmitDefaultInitTag);
-  void Visit(type::Tuple const *t, ir::Reg reg, EmitDefaultInitTag);
+  void Visit(type::Array const *t, ir::Reg reg, EmitDefaultInitTag)override;
+  void Visit(type::Flags const *t, ir::Reg reg, EmitDefaultInitTag)override;
+  void Visit(type::Pointer const *t, ir::Reg reg, EmitDefaultInitTag)override;
+  void Visit(type::Primitive const *t, ir::Reg reg, EmitDefaultInitTag)override;
+  void Visit(type::Struct const *t, ir::Reg reg, EmitDefaultInitTag)override;
+  void Visit(type::Tuple const *t, ir::Reg reg, EmitDefaultInitTag)override;
 
-  void Visit(ast::Expression const *, type::Typed<ir::Reg> reg,
-             EmitMoveInitTag);
-  void Visit(ast::ArrayLiteral const *, type::Typed<ir::Reg> reg,
-             EmitMoveInitTag);
-  void Visit(ast::CommaList const *, type::Typed<ir::Reg> reg, EmitMoveInitTag);
-  void Visit(ast::Unop const *, type::Typed<ir::Reg> reg, EmitMoveInitTag);
+  void EmitMoveInit(ast::Expression const *node, type::Typed<ir::Reg> reg);
+  void Visit(EmitMoveInitTag, ast::Expression const *node,
+             type::Typed<ir::Reg> reg) {
+    return EmitMoveInit(node, reg);
+  }
+  void EmitMoveInit(ast::ArrayLiteral const *node, type::Typed<ir::Reg> reg);
+  void Visit(EmitMoveInitTag, ast::ArrayLiteral const *node,
+             type::Typed<ir::Reg> reg) override {
+    return EmitMoveInit(node, reg);
+  }
+  void EmitMoveInit(ast::CommaList const *node, type::Typed<ir::Reg> reg);
+  void Visit(EmitMoveInitTag, ast::CommaList const *node,
+             type::Typed<ir::Reg> reg) override {
+    return EmitMoveInit(node, reg);
+  }
+  void EmitMoveInit(ast::Unop const *node, type::Typed<ir::Reg> reg);
+  void Visit(EmitMoveInitTag, ast::Unop const *node,
+             type::Typed<ir::Reg> reg) override {
+    return EmitMoveInit(node, reg);
+  }
 
   void EmitMoveInit(type::Type const *from_type, ir::Results const &from_val,
                     type::Typed<ir::Reg> to_var);
 
-  void Visit(ast::Expression const *, type::Typed<ir::Reg> reg,
-             EmitCopyInitTag);
-  void Visit(ast::ArrayLiteral const *, type::Typed<ir::Reg> reg,
-             EmitCopyInitTag);
-  void Visit(ast::CommaList const *, type::Typed<ir::Reg> reg, EmitCopyInitTag);
-  void Visit(ast::Unop const *, type::Typed<ir::Reg> reg, EmitCopyInitTag);
+  void EmitCopyInit(ast::Expression const *node, type::Typed<ir::Reg> reg);
+  void Visit(EmitCopyInitTag, ast::Expression const *node,
+             type::Typed<ir::Reg> reg) {
+    return EmitCopyInit(node, reg);
+  }
+  void EmitCopyInit(ast::ArrayLiteral const *node, type::Typed<ir::Reg> reg);
+  void Visit(EmitCopyInitTag, ast::ArrayLiteral const *node,
+             type::Typed<ir::Reg> reg) override {
+    return EmitCopyInit(node, reg);
+  }
+  void EmitCopyInit(ast::CommaList const *node, type::Typed<ir::Reg> reg);
+  void Visit(EmitCopyInitTag, ast::CommaList const *node,
+             type::Typed<ir::Reg> reg) override {
+    return EmitCopyInit(node, reg);
+  }
+  void EmitCopyInit(ast::Unop const *node, type::Typed<ir::Reg> reg);
+  void Visit(EmitCopyInitTag, ast::Unop const *node,
+             type::Typed<ir::Reg> reg) override {
+    return EmitCopyInit(node, reg);
+  }
 
   void EmitCopyInit(type::Type const *from_type, ir::Results const &from_val,
                     type::Typed<ir::Reg> to_var);

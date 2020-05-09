@@ -23,10 +23,10 @@ struct LibraryModule : CompiledModule {
     for (ast::Node const *node : nodes) {
       ExtractJumps(&c.data().extraction_map_, node);
     }
-    for (ast::Node const *node : nodes) { c.Visit(node, VerifyTypeTag{}); }
+    for (ast::Node const *node : nodes) { c.VerifyType(node); }
     if (c.diag().num_consumed() > 0) { return; }
 
-    for (ast::Node const *node : nodes) { c.Visit(node, EmitValueTag{}); }
+    for (ast::Node const *node : nodes) { c.EmitValue(node); }
     c.CompleteDeferredBodies();
   }
 };

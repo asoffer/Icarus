@@ -41,7 +41,7 @@ ir::RegOr<ir::Fn> ComputeConcreteFn(Compiler *compiler,
                                     type::Function const *f_type,
                                     type::Quals quals) {
   if (type::Quals::Const() <= quals) {
-    return compiler->Visit(fn, EmitValueTag{}).get<ir::Fn>(0);
+    return compiler->EmitValue(fn).get<ir::Fn>(0);
   } else {
     // NOTE: If the overload is a declaration, it's not because a
     // declaration is syntactically the callee. Rather, it's because the
@@ -54,7 +54,7 @@ ir::RegOr<ir::Fn> ComputeConcreteFn(Compiler *compiler,
       return compiler->builder().Load<ir::Fn>(compiler->data().addr(fn_decl));
     } else {
       return compiler->builder().Load<ir::Fn>(
-          compiler->Visit(fn, EmitValueTag{}).get<ir::Addr>(0));
+          compiler->EmitValue(fn).get<ir::Addr>(0));
     }
   }
 }
@@ -72,7 +72,7 @@ ir::Results EmitCallOneOverload(
             callee_qual_type->type()->if_as<type::GenericFunction>()) {
       fn_type = &data.type()->as<type::Function>();
       ir::GenericFn gen_fn =
-          compiler->Visit(fn, EmitValueTag{}).get<ir::GenericFn>(0).value();
+          compiler->EmitValue(fn).get<ir::GenericFn>(0).value();
       return ir::Fn(gen_fn.concrete(args));
     } else if (auto const *f_type =
                    callee_qual_type->type()->if_as<type::Function>()) {
@@ -95,8 +95,8 @@ ir::Results EmitCallOneOverload(
         core::FillMissingArgs(
             core::ParamsRef(callee.value().native()->params()), &arg_results,
             [compiler](auto const &p) {
-              auto results = compiler->Visit(
-                  ASSERT_NOT_NULL(p.get()->init_val()), EmitValueTag{});
+              auto results =
+                  compiler->EmitValue(ASSERT_NOT_NULL(p.get()->init_val()));
               return type::Typed(results, p.type());
             });
       } break;

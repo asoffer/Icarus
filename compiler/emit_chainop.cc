@@ -31,7 +31,7 @@ static ir::Results ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
   auto &funcs = equality ? eq_funcs : ne_funcs;
   auto handle = funcs.lock();
 
-  auto[iter, success] = (*handle)[lhs_type].emplace(rhs_type, nullptr);
+  auto [iter, success] = (*handle)[lhs_type].emplace(rhs_type, nullptr);
   if (success) {
     auto const *fn_type =
         type::Func({core::AnonymousParam(type::Ptr(lhs_type)),
@@ -52,8 +52,8 @@ static ir::Results ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
       auto *body_block      = bldr.AddBlock();
       auto *incr_block      = bldr.AddBlock();
 
-      bldr.CondJump(bldr.Eq(lhs_type->length(), rhs_type->length()), equal_len_block,
-                    false_block);
+      bldr.CondJump(bldr.Eq(lhs_type->length(), rhs_type->length()),
+                    equal_len_block, false_block);
 
       bldr.CurrentBlock() = true_block;
       bldr.SetRet(0, true);
@@ -68,8 +68,8 @@ static ir::Results ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
           compiler->builder().Index(Ptr(lhs_type), ir::Reg::Arg(0), 0);
       auto rhs_start =
           compiler->builder().Index(Ptr(rhs_type), ir::Reg::Arg(1), 0);
-      auto lhs_end =
-          bldr.PtrIncr(lhs_start, lhs_type->length(), Ptr(rhs_type->data_type()));
+      auto lhs_end = bldr.PtrIncr(lhs_start, lhs_type->length(),
+                                  Ptr(rhs_type->data_type()));
       bldr.UncondJump(phi_block);
 
       bldr.CurrentBlock() = phi_block;
@@ -190,15 +190,14 @@ static ir::RegOr<bool> EmitChainOpPair(Compiler *compiler,
   }
 }
 
-ir::Results Compiler::Visit(ast::ChainOp const *node, EmitValueTag) {
+ir::Results Compiler::EmitValue(ast::ChainOp const *node) {
   auto *t = type_of(node);
   if (node->ops()[0] == frontend::Operator::Xor) {
     if (t == type::Bool) {
       return ir::Results{std::accumulate(
           node->exprs().begin(), node->exprs().end(), ir::RegOr<bool>(false),
           [&](ir::RegOr<bool> acc, auto *expr) {
-            return builder().Ne(
-                acc, Visit(expr, EmitValueTag{}).template get<bool>(0));
+            return builder().Ne(acc, EmitValue(expr).template get<bool>(0));
           })};
     } else if (t->is<type::Flags>()) {
       return ir::Results{std::accumulate(
@@ -206,7 +205,7 @@ ir::Results Compiler::Visit(ast::ChainOp const *node, EmitValueTag) {
           ir::RegOr<ir::FlagsVal>(ir::FlagsVal{0}),
           [&](ir::RegOr<ir::FlagsVal> acc, auto *expr) {
             return builder().XorFlags(
-                acc, Visit(expr, EmitValueTag{}).template get<ir::FlagsVal>(0));
+                acc, EmitValue(expr).template get<ir::FlagsVal>(0));
           })};
     } else {
       UNREACHABLE();
@@ -215,19 +214,17 @@ ir::Results Compiler::Visit(ast::ChainOp const *node, EmitValueTag) {
   } else if (node->ops()[0] == frontend::Operator::Or and
              t->is<type::Flags>()) {
     auto iter = node->exprs().begin();
-    auto val  = Visit(*iter, EmitValueTag{}).get<ir::FlagsVal>(0);
+    auto val  = EmitValue(*iter).get<ir::FlagsVal>(0);
     while (++iter != node->exprs().end()) {
-      val = builder().OrFlags(
-          val, Visit(*iter, EmitValueTag{}).get<ir::FlagsVal>(0));
+      val = builder().OrFlags(val, EmitValue(*iter).get<ir::FlagsVal>(0));
     }
     return ir::Results{val};
   } else if (node->ops()[0] == frontend::Operator::And and
              t->is<type::Flags>()) {
     auto iter = node->exprs().begin();
-    auto val  = Visit(*iter, EmitValueTag{}).get<ir::FlagsVal>(0);
+    auto val  = EmitValue(*iter).get<ir::FlagsVal>(0);
     while (++iter != node->exprs().end()) {
-      val = builder().AndFlags(
-          val, Visit(*iter, EmitValueTag{}).get<ir::FlagsVal>(0));
+      val = builder().AndFlags(val, EmitValue(*iter).get<ir::FlagsVal>(0));
     }
     return ir::Results{val};
   } else if (node->ops()[0] == frontend::Operator::Or and t == type::Type_) {
@@ -236,7 +233,7 @@ ir::Results Compiler::Visit(ast::ChainOp const *node, EmitValueTag) {
     std::vector<ir::RegOr<type::Type const *>> args;
     args.reserve(node->exprs().size());
     for (auto const *expr : node->exprs()) {
-      args.push_back(Visit(expr, EmitValueTag{}).get<type::Type const *>(0));
+      args.push_back(EmitValue(expr).get<type::Type const *>(0));
     }
     auto reg_or_type = builder().Var(args);
     return ir::Results{reg_or_type};
@@ -250,7 +247,7 @@ ir::Results Compiler::Visit(ast::ChainOp const *node, EmitValueTag) {
     std::vector<ir::RegOr<bool>> phi_results;
     bool is_or = (node->ops()[0] == frontend::Operator::Or);
     for (size_t i = 0; i + 1 < node->exprs().size(); ++i) {
-      auto val = Visit(node->exprs()[i], EmitValueTag{}).get<bool>(0);
+      auto val = EmitValue(node->exprs()[i]).get<bool>(0);
 
       auto *next_block = builder().AddBlock();
       builder().CondJump(val, is_or ? land_block : next_block,
@@ -262,8 +259,7 @@ ir::Results Compiler::Visit(ast::ChainOp const *node, EmitValueTag) {
     }
 
     phi_blocks.push_back(builder().CurrentBlock());
-    phi_results.push_back(
-        Visit(node->exprs().back(), EmitValueTag{}).get<bool>(0));
+    phi_results.push_back(EmitValue(node->exprs().back()).get<bool>(0));
     builder().UncondJump(land_block);
 
     builder().CurrentBlock() = land_block;
@@ -273,17 +269,17 @@ ir::Results Compiler::Visit(ast::ChainOp const *node, EmitValueTag) {
 
   } else {
     if (node->ops().size() == 1) {
-      auto lhs_ir = Visit(node->exprs()[0], EmitValueTag{});
-      auto rhs_ir = Visit(node->exprs()[1], EmitValueTag{});
+      auto lhs_ir = EmitValue(node->exprs()[0]);
+      auto rhs_ir = EmitValue(node->exprs()[1]);
       return ir::Results{EmitChainOpPair(this, node, 0, lhs_ir, rhs_ir)};
 
     } else {
       std::vector<ir::BasicBlock const *> phi_blocks;
       std::vector<ir::RegOr<bool>> phi_values;
-      auto lhs_ir      = Visit(node->exprs().front(), EmitValueTag{});
+      auto lhs_ir      = EmitValue(node->exprs().front());
       auto *land_block = builder().AddBlock();
       for (size_t i = 0; i + 1 < node->ops().size(); ++i) {
-        auto rhs_ir = Visit(node->exprs()[i + 1], EmitValueTag{});
+        auto rhs_ir = EmitValue(node->exprs()[i + 1]);
         auto cmp    = EmitChainOpPair(this, node, i, lhs_ir, rhs_ir);
 
         phi_blocks.push_back(builder().CurrentBlock());
@@ -295,7 +291,7 @@ ir::Results Compiler::Visit(ast::ChainOp const *node, EmitValueTag) {
       }
 
       // Once more for the last element, but don't do a conditional jump.
-      auto rhs_ir = Visit(node->exprs().back(), EmitValueTag{});
+      auto rhs_ir = EmitValue(node->exprs().back());
       phi_blocks.push_back(builder().CurrentBlock());
       phi_values.push_back(EmitChainOpPair(this, node, node->exprs().size() - 2,
                                            lhs_ir, rhs_ir));

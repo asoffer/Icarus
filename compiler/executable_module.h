@@ -37,14 +37,14 @@ struct ExecutableModule : CompiledModule {
     for (ast::Node const *node : nodes) {
       if (auto const *decl = node->if_as<ast::Declaration>()) {
         if (decl->flags() & ast::Declaration::f_IsConst) {
-          c.Visit(decl, VerifyTypeTag{});
+          c.VerifyType(decl);
           continue;
         }
       }
       deferred.push_back(node);
     }
 
-    for (ast::Node const *node : deferred) { c.Visit(node, VerifyTypeTag{}); }
+    for (ast::Node const *node : deferred) { c.VerifyType(node); }
 
     if (diag.num_consumed() > 0) { return; }
 

@@ -11,33 +11,88 @@
 
 namespace ast {
 
-template <typename>
-struct SingleVisitor;
+template <typename...>
+struct Visitor;
+
+template <typename Tag, typename Ret, typename... Args>
+struct Visitor<Tag, Ret(Args...)> : VisitorBase {
+#define ICARUS_AST_NODE_X(node_type)                                           \
+  void ErasedVisit(node_type const *node, void *erased_ret, void *erased_args) \
+      final {                                                                  \
+    if constexpr (base::meta<Ret> == base::meta<void>) {                       \
+      static_cast<void>(erased_ret);                                           \
+      if constexpr (sizeof...(Args) == 0) {                                    \
+        this->Visit(Tag{}, node);                                              \
+      } else if constexpr (sizeof...(Args) == 1) {                             \
+        this->Visit(Tag{}, node,                                               \
+                    std::forward<Args>(*static_cast<Args *>(erased_args))...); \
+      } else {                                                                 \
+        static_assert(base::always_false<Tag>(), "Currently unsupported");     \
+      }                                                                        \
+    } else {                                                                   \
+      if constexpr (sizeof...(Args) == 0) {                                    \
+        new (static_cast<Ret *>(erased_ret)) Ret(this->Visit(Tag{}, node));    \
+      } else if constexpr (sizeof...(Args) == 1) {                             \
+        this->Visit(Tag{}, node, std::forward<Args...>(erased_args));          \
+      } else {                                                                 \
+        static_assert(base::always_false<Tag>(), "Currently unsupported");     \
+      }                                                                        \
+    }                                                                          \
+  }                                                                            \
+                                                                               \
+  virtual Ret Visit(Tag, node_type const *node, Args... args) {                \
+    UNREACHABLE(#node_type);                                                   \
+  }
+#include "ast/node.xmacro.h"
+#undef ICARUS_AST_NODE_X
+
+  Ret Visit(Node const *node, Args... args) {
+    if constexpr (base::meta<Ret> == base::meta<void>) {
+      if constexpr (sizeof...(Args) == 0) {
+        node->Accept(this, nullptr, nullptr);
+      } else if constexpr (sizeof...(Args) == 1) {
+        node->Accept(this, nullptr, &args...);
+      } else {
+        static_assert(base::always_false<Tag>(), "Currently unsupported");
+      }
+    } else {
+      alignas(alignof(Ret)) char r[sizeof(Ret)];
+      if constexpr (sizeof...(Args) == 0) {
+        node->Accept(this, r, nullptr);
+      } else if constexpr (sizeof...(Args) == 1) {
+        node->Accept(this, r, &args...);
+      } else {
+        static_assert(base::always_false<Tag>(), "Currently unsupported");
+      }
+
+      return *reinterpret_cast<Ret *>(r);
+    }
+  }
+};
 
 template <typename Ret, typename... Args>
-struct SingleVisitor<Ret(Args...)> : VisitorBase {
-  ~SingleVisitor() override {}
-
+struct Visitor<Ret(Args...)> : VisitorBase {
 #define ICARUS_AST_NODE_X(node_type)                                           \
-  void ErasedVisit(node_type const *node, void *erased_ret,                    \
-                   void *erased_arg_tuple) final {                             \
-    static_cast<void>(erased_ret);                                             \
-    auto *tup_ptr = static_cast<std::tuple<Args...> *>(erased_arg_tuple);      \
-    if constexpr (std::is_void_v<Ret>) {                                       \
-      std::apply(                                                              \
-          [this, node](auto &&... call_args) {                                 \
-            this->Visit(node,                                                  \
-                        std::forward<decltype(call_args)>(call_args)...);      \
-          },                                                                   \
-          std::move(*tup_ptr));                                                \
+  void ErasedVisit(node_type const *node, void *erased_ret, void *erased_args) \
+      final {                                                                  \
+    if constexpr (base::meta<Ret> == base::meta<void>) {                       \
+      static_cast<void>(erased_ret);                                           \
+      if constexpr (sizeof...(Args) == 0) {                                    \
+        this->Visit(node);                                                     \
+      } else if constexpr (sizeof...(Args) == 1) {                             \
+        this->Visit(node,                                                      \
+                    std::forward<Args>(*static_cast<Args *>(erased_args))...); \
+      } else {                                                                 \
+        static_assert(base::always_false<Ret>(), "Currently unsupported");     \
+      }                                                                        \
     } else {                                                                   \
-      auto *ret_ptr = static_cast<Ret *>(erased_ret);                          \
-      *ret_ptr      = std::apply(                                              \
-          [this, node](auto &&... call_args) {                            \
-            return this->Visit(                                           \
-                node, std::forward<decltype(call_args)>(call_args)...);   \
-          },                                                              \
-          std::move(*tup_ptr));                                           \
+      if constexpr (sizeof...(Args) == 0) {                                    \
+        new (static_cast<Ret *>(erased_ret)) Ret(this->Visit(node));           \
+      } else if constexpr (sizeof...(Args) == 1) {                             \
+        this->Visit(node, std::forward<Args...>(erased_args));                 \
+      } else {                                                                 \
+        static_assert(base::always_false<Ret>(), "Currently unsupported");     \
+      }                                                                        \
     }                                                                          \
   }                                                                            \
                                                                                \
@@ -48,20 +103,29 @@ struct SingleVisitor<Ret(Args...)> : VisitorBase {
 #undef ICARUS_AST_NODE_X
 
   Ret Visit(Node const *node, Args... args) {
-    if constexpr (std::is_void_v<Ret>) {
-      std::tuple<Args...> arg_tup(std::forward<Args>(args)...);
-      node->Accept(this, nullptr, &arg_tup);
+    if constexpr (base::meta<Ret> == base::meta<void>) {
+      if constexpr (sizeof...(Args) == 0) {
+        node->Accept(this, nullptr, nullptr);
+      } else if constexpr (sizeof...(Args) == 1) {
+        node->Accept(this, nullptr, &args...);
+      } else {
+        static_assert(base::always_false<Ret>(), "Currently unsupported");
+      }
     } else {
-      Ret r;
-      std::tuple<Args...> arg_tup(std::forward<Args>(args)...);
-      node->Accept(this, &r, &arg_tup);
-      return r;
+      alignas(alignof(Ret)) char r[sizeof(Ret)];
+      if constexpr (sizeof...(Args) == 0) {
+        node->Accept(this, r, nullptr);
+      } else if constexpr (sizeof...(Args) == 1) {
+        node->Accept(this, r, &args...);
+      } else {
+        static_assert(base::always_false<Ret>(), "Currently unsupported");
+      }
+
+      return *reinterpret_cast<Ret *>(r);
     }
   }
-};
 
-template <typename... Signatures>
-struct Visitor : SingleVisitor<Signatures>... {};
+};
 
 }  // namespace ast
 

@@ -18,17 +18,6 @@ struct VisitorBase {
 #undef ICARUS_AST_NODE_X
 };
 
-struct MutableVisitorBase {
-  virtual ~MutableVisitorBase() {}
-
-  virtual void ErasedVisit(Node *, void *, void *) { UNREACHABLE(); }
-
-#define ICARUS_AST_NODE_X(node_type)                                           \
-  virtual void ErasedVisit(node_type *, void *, void *) = 0;
-#include "ast/node.xmacro.h"
-#undef ICARUS_AST_NODE_X
-};
-
 }  // namespace ast
 
 #endif  // ICARUS_AST_VISITOR_BASE_H

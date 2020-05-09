@@ -64,15 +64,14 @@ JumpDispatchTable::EmitCallOneOverload(
                                                      jump->type()->state()));
     args = core::FnArgs(std::move(pos), std::move(named));
   }
-  core::FillMissingArgs(
-      core::ParamsRef(jump->params()), &args,
-      [compiler](auto const &p) {
-        return type::Typed(
-            ir::Results{compiler->Visit(ASSERT_NOT_NULL(p.get()->init_val()),
-                                        EmitValueTag{})},
-            p.type());
-      },
-      state_reg ? 1 : 0);
+  core::FillMissingArgs(core::ParamsRef(jump->params()), &args,
+                        [compiler](auto const &p) {
+                          return type::Typed(
+                              ir::Results{compiler->EmitValue(
+                                  ASSERT_NOT_NULL(p.get()->init_val()))},
+                              p.type());
+                        },
+                        state_reg ? 1 : 0);
 
   auto arg_results = PrepareCallArguments(
       compiler, jump->type()->state(),

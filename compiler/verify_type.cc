@@ -12,7 +12,6 @@
 #include "compiler/library_module.h"
 #include "compiler/verify_assignment_and_initialization.h"
 #include "core/call.h"
-#include "diagnostic/consumer/trivial.h"
 #include "diagnostic/errors.h"
 #include "frontend/lex/operators.h"
 #include "interpretter/evaluate.h"
@@ -39,7 +38,6 @@ void AddAdl(std::string_view id, type::Type const *t, Fn fn) {
 
   for (auto *mod : modules) {
     auto decls = mod->declarations(id);
-    diagnostic::TrivialConsumer consumer;
 
     for (auto *d : decls) {
       ASSIGN_OR(continue, auto qt, mod->data().qual_type(d));
@@ -176,7 +174,7 @@ static std::optional<std::vector<type::QualType>> VerifyWithoutSetting(
   std::vector<type::QualType> results;
   results.reserve(exprs.size());
   for (auto const &expr : exprs) {
-    auto r = visitor->Visit(expr, VerifyTypeTag{});
+    auto r = visitor->VerifyType(expr);
     results.push_back(r);
   }
   if (absl::c_any_of(results,
@@ -358,7 +356,7 @@ static diagnostic::UninferrableType::Reason Inferrable(type::Type const *t) {
 type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node,
                           type::Type const *t = nullptr) {
   if (not t) { t = ASSERT_NOT_NULL(c->type_of(node)); }
-  for (auto const *stmt : node->stmts()) { c->Visit(stmt, VerifyTypeTag{}); }
+  for (auto const *stmt : node->stmts()) { c->VerifyType(stmt); }
   // TODO propogate cyclic dependencies.
 
   // TODO we can have yields and returns, or yields and jumps, but not jumps and
@@ -505,7 +503,7 @@ std::optional<core::Params<type::Type const *>> VerifyParams(
           err = true;
           continue;
         },
-        auto result, c->Visit(d.value.get(), VerifyTypeTag{}));
+        auto result, c->VerifyType(d.value.get()));
     type_params.append(d.name, result.type(), d.flags);
   }
   if (err) { return std::nullopt; }
@@ -522,7 +520,7 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
   if (outputs) {
     output_type_vec.reserve(outputs->size());
     for (auto *output : *outputs) {
-      auto result = Visit(output, VerifyTypeTag{});
+      auto result = VerifyType(output);
       output_type_vec.push_back(result.type());
       if (result.type() != nullptr and not result.constant()) {
         // TODO this feels wrong because output could be a decl. And that decl
@@ -568,7 +566,7 @@ static std::optional<type::Quals> VerifyAndGetQuals(
   bool err          = false;
   type::Quals quals = type::Quals::All();
   for (auto *expr : exprs) {
-    auto r = v->Visit(expr, VerifyTypeTag{});
+    auto r = v->VerifyType(expr);
     err |= not r.ok();
     if (not err) { quals &= r.quals(); }
   }
@@ -708,10 +706,9 @@ static type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
   UNREACHABLE();
 }
 
-type::QualType Compiler::Visit(ast::Access const *node, VerifyTypeTag) {
+type::QualType Compiler::VerifyType(ast::Access const *node) {
   ASSIGN_OR(return type::QualType::Error(),  //
-                   auto operand_result,
-                   Visit(node->operand(), VerifyTypeTag{}));
+                   auto operand_result, VerifyType(node->operand()));
 
   auto [base_type, num_derefs] = DereferenceAll(operand_result.type());
   if (base_type == type::Type_) {
@@ -737,11 +734,11 @@ type::QualType Compiler::Visit(ast::Access const *node, VerifyTypeTag) {
   }
 }
 
-type::QualType Compiler::Visit(ast::ArgumentType const *node, VerifyTypeTag) {
+type::QualType Compiler::VerifyType(ast::ArgumentType const *node) {
   return data().set_qual_type(node, type::QualType::Constant(type::Type_));
 }
 
-type::QualType Compiler::Visit(ast::ArrayLiteral const *node, VerifyTypeTag) {
+type::QualType Compiler::VerifyType(ast::ArrayLiteral const *node) {
   if (node->empty()) {
     return data().set_qual_type(node,
                                 type::QualType::Constant(type::EmptyArray));
@@ -764,12 +761,12 @@ type::QualType Compiler::Visit(ast::ArrayLiteral const *node, VerifyTypeTag) {
       node, type::QualType(type::Arr(expr_results.size(), t), quals));
 }
 
-type::QualType Compiler::Visit(ast::ArrayType const *node, VerifyTypeTag) {
+type::QualType Compiler::VerifyType(ast::ArrayType const *node) {
   std::vector<type::QualType> length_results;
   length_results.reserve(node->lengths().size());
   auto quals = type::Quals::Const();
   for (auto const &len : node->lengths()) {
-    auto result = Visit(len, VerifyTypeTag{});
+    auto result = VerifyType(len);
     quals &= result.quals();
     length_results.push_back(result);
     if (result.type() != type::Int64) {
@@ -779,7 +776,7 @@ type::QualType Compiler::Visit(ast::ArrayType const *node, VerifyTypeTag) {
     }
   }
 
-  auto data_qual_type = Visit(node->data_type(), VerifyTypeTag{});
+  auto data_qual_type = VerifyType(node->data_type());
   quals &= data_qual_type.quals();
   if (data_qual_type.type() != type::Type_) {
     diag().Consume(diagnostic::ArrayDataTypeNotAType{
@@ -794,9 +791,9 @@ static bool IsTypeOrTupleOfTypes(type::Type const *t) {
   return t == type::Type_ or t->is<type::Tuple>();
 }
 
-type::QualType Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
-  auto lhs_qual_type = Visit(node->lhs(), VerifyTypeTag{});
-  auto rhs_qual_type = Visit(node->rhs(), VerifyTypeTag{});
+type::QualType Compiler::VerifyType(ast::Binop const *node) {
+  auto lhs_qual_type = VerifyType(node->lhs());
+  auto rhs_qual_type = VerifyType(node->rhs());
   if (not lhs_qual_type.ok() or not rhs_qual_type.ok()) {
     return type::QualType::Error();
   }
@@ -964,25 +961,23 @@ type::QualType Compiler::Visit(ast::Binop const *node, VerifyTypeTag) {
   UNREACHABLE(stringify(node->op()));
 }
 
-type::QualType Compiler::Visit(ast::BlockLiteral const *node, VerifyTypeTag) {
+type::QualType Compiler::VerifyType(ast::BlockLiteral const *node) {
   // TODO consider not verifying the types of the bodies. They almost certainly
   // contain circular references in the jump statements, and if the functions
   // require verifying the body upfront, things can maybe go wrong?
-  for (auto *b : node->before()) { Visit(b, VerifyTypeTag{}); }
-  for (auto *a : node->after()) { Visit(a, VerifyTypeTag{}); }
+  for (auto *b : node->before()) { VerifyType(b); }
+  for (auto *a : node->after()) { VerifyType(a); }
 
   return data().set_qual_type(node, type::QualType::Constant(type::Block));
 }
 
-type::QualType Compiler::Visit(ast::BlockNode const *node, VerifyTypeTag) {
-  for (auto &param : node->params()) {
-    Visit(param.value.get(), VerifyTypeTag{});
-  }
-  for (auto *stmt : node->stmts()) { Visit(stmt, VerifyTypeTag{}); }
+type::QualType Compiler::VerifyType(ast::BlockNode const *node) {
+  for (auto &param : node->params()) { VerifyType(param.value.get()); }
+  for (auto *stmt : node->stmts()) { VerifyType(stmt); }
   return data().set_qual_type(node, type::QualType::Constant(type::Block));
 }
 
-type::QualType Compiler::Visit(ast::BuiltinFn const *node, VerifyTypeTag) {
+type::QualType Compiler::VerifyType(ast::BuiltinFn const *node) {
   return data().set_qual_type(node,
                               type::QualType::Constant(node->value().type()));
 }
@@ -1148,7 +1143,7 @@ VerifyFnArgs(
     core::FnArgs<ast::Expression const *, std::string_view> const &args) {
   bool err         = false;
   auto arg_results = args.Transform([&](ast::Expression const *expr) {
-    auto expr_qual_type = c->Visit(expr, VerifyTypeTag{});
+    auto expr_qual_type = c->VerifyType(expr);
     err |= not expr_qual_type.ok();
     if (err) {
       DEBUG_LOG("VerifyFnArgs")("Error with: ", expr->DebugString());
@@ -1179,7 +1174,7 @@ type::Typed<std::optional<ir::Value>> TypedResultsToTypedOptionalValue(
       });
 }
 
-type::QualType Compiler::Visit(ast::Call const *node, VerifyTypeTag) {
+type::QualType Compiler::VerifyType(ast::Call const *node) {
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto arg_results, VerifyFnArgs(this, node->args()));
   // TODO handle cyclic dependencies in call arguments.
@@ -1199,7 +1194,7 @@ type::QualType Compiler::Visit(ast::Call const *node, VerifyTypeTag) {
   }
 
   ASSIGN_OR(return type::QualType::Error(),  //
-                   auto callee_qt, Visit(node->callee(), VerifyTypeTag{}));
+                   auto callee_qt, VerifyType(node->callee()));
   if (auto *c = callee_qt.type()->if_as<type::Callable>()) {
     DEBUG_LOG("Call.VerifyType")
     ("Callee's (", node->callee()->DebugString(), ") qual-type: ", callee_qt);
@@ -1219,9 +1214,9 @@ type::QualType Compiler::Visit(ast::Call const *node, VerifyTypeTag) {
   }
 }
 
-type::QualType Compiler::Visit(ast::Cast const *node, VerifyTypeTag) {
-  auto expr_qual_type = Visit(node->expr(), VerifyTypeTag{});
-  auto type_result    = Visit(node->type(), VerifyTypeTag{});
+type::QualType Compiler::VerifyType(ast::Cast const *node) {
+  auto expr_qual_type = VerifyType(node->expr());
+  auto type_result    = VerifyType(node->type());
   if (not expr_qual_type.ok() or not type_result.ok()) {
     return type::QualType::Error();
   }
@@ -1258,12 +1253,10 @@ type::QualType Compiler::Visit(ast::Cast const *node, VerifyTypeTag) {
   }
 }
 
-type::QualType Compiler::Visit(ast::ChainOp const *node, VerifyTypeTag) {
+type::QualType Compiler::VerifyType(ast::ChainOp const *node) {
   std::vector<type::QualType> results;
   results.reserve(node->exprs().size());
-  for (auto *expr : node->exprs()) {
-    results.push_back(Visit(expr, VerifyTypeTag{}));
-  }
+  for (auto *expr : node->exprs()) { results.push_back(VerifyType(expr)); }
   if (absl::c_any_of(results,
                      [](type::QualType const &v) { return not v.ok(); })) {
     return type::QualType::Error();
@@ -1412,7 +1405,7 @@ not_blocks:
   }
 }
 
-type::QualType Compiler::Visit(ast::CommaList const *node, VerifyTypeTag) {
+type::QualType Compiler::VerifyType(ast::CommaList const *node) {
   ASSIGN_OR(
       return type::QualType::Error(), auto results,
              VerifyWithoutSetting(
@@ -1428,7 +1421,7 @@ type::QualType Compiler::Visit(ast::CommaList const *node, VerifyTypeTag) {
 }
 
 // TODO set qualifiers correctly here.
-type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
+type::QualType Compiler::VerifyType(ast::Declaration const *node) {
   // Declarations may have already been computed. Essentially the first time
   // we see an identifier (either a real identifier node, or a declaration, we
   // need to verify the type, but we only want to do node once.
@@ -1436,7 +1429,7 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
   type::QualType node_qual_type;
   switch (node->kind()) {
     case ast::Declaration::kDefaultInit: {
-      auto type_expr_result = Visit(node->type_expr(), VerifyTypeTag{});
+      auto type_expr_result = VerifyType(node->type_expr());
       if (not type_expr_result) {
         return data().set_qual_type(node, type::QualType::Error());
       } else if (not type_expr_result.constant()) {
@@ -1480,8 +1473,7 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
       DEBUG_LOG("Declaration")("Verifying, ", node->id());
 
       ASSIGN_OR(return data().set_qual_type(node, type::QualType::Error()),
-                       auto init_val_result,
-                       Visit(node->init_val(), VerifyTypeTag{}));
+                       auto init_val_result, VerifyType(node->init_val()));
 
       auto reason = Inferrable(init_val_result.type());
       if (reason != diagnostic::UninferrableType::Reason::kInferrable) {
@@ -1518,9 +1510,9 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
       return data().set_qual_type(node, type::QualType::Error());
     } break;
     case ast::Declaration::kCustomInit: {
-      auto init_val_qual_type = Visit(node->init_val(), VerifyTypeTag{});
+      auto init_val_qual_type = VerifyType(node->init_val());
       bool error              = not init_val_qual_type.ok();
-      auto type_expr_result   = Visit(node->type_expr(), VerifyTypeTag{});
+      auto type_expr_result   = VerifyType(node->type_expr());
       auto *type_expr_type    = type_expr_result.type();
 
       if (type_expr_type == nullptr) {
@@ -1552,8 +1544,7 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
     } break;
     case ast::Declaration::kUninitialized: {
       ASSIGN_OR(return data().set_qual_type(node, type::QualType::Error()),
-                       auto type_expr_result,
-                       Visit(node->type_expr(), VerifyTypeTag{}));
+                       auto type_expr_result, VerifyType(node->type_expr()));
       auto *type_expr_type = type_expr_result.type();
       if (type_expr_type == type::Type_) {
         if (not type_expr_result.constant()) {
@@ -1671,11 +1662,10 @@ type::QualType Compiler::Visit(ast::Declaration const *node, VerifyTypeTag) {
   return VerifySpecialFunctions(this, node, node_qual_type.type());
 }
 
-type::QualType Compiler::Visit(ast::DesignatedInitializer const *node,
-                               VerifyTypeTag) {
+type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
   // TODO include fields.
   // TODO constant only when all fields are constant.
-  auto type_type = Visit(node->type(), VerifyTypeTag{});
+  auto type_type = VerifyType(node->type());
   if (type_type != type::QualType::Constant(type::Type_)) {
     NOT_YET("log an error", type_type, " vs ",
             type::QualType::Constant(type::Type_));
@@ -1689,7 +1679,7 @@ type::QualType Compiler::Visit(ast::DesignatedInitializer const *node,
 
   type::Quals quals = type::Quals::Const();
   for (auto &[field, expr] : node->assignments()) {
-    type::QualType initializer_qual_type = Visit(expr.get(), VerifyTypeTag{});
+    type::QualType initializer_qual_type = VerifyType(expr.get());
     if (not initializer_qual_type) {
       // If there was an error we still want to verify all other initializers
       // and we still want to claim this expression has the same type, but
@@ -1712,10 +1702,10 @@ type::QualType Compiler::Visit(ast::DesignatedInitializer const *node,
   return data().set_qual_type(node, type::QualType(struct_type, quals));
 }
 
-type::QualType Compiler::Visit(ast::EnumLiteral const *node, VerifyTypeTag) {
+type::QualType Compiler::VerifyType(ast::EnumLiteral const *node) {
   for (auto const &elem : node->elems()) {
     if (auto *decl = elem->if_as<ast::Declaration>()) {
-      auto *t = Visit(decl->init_val(), VerifyTypeTag{}).type();
+      auto *t = VerifyType(decl->init_val()).type();
       ASSERT(type::IsIntegral(t) == true);
       // TODO determine what is allowed here and how to generate errors.
     }
@@ -1797,8 +1787,7 @@ MakeConcrete(
     ("Handling dep-node `", dep_node.node()->id(), "` of kind ",
      static_cast<int>(dep_node.kind()));
     switch (dep_node.kind()) {
-      using kind_t = core::DependencyNode<ast::Declaration>::Kind;
-      case kind_t::ArgValue: {
+      case core::DependencyNodeKind::ArgValue: {
         ir::Value val = false;
         if (index < args.pos().size()) {
           val = **args[index];
@@ -1821,7 +1810,7 @@ MakeConcrete(
         ("Argument to `", dep_node.node()->id(), "` has value ", val);
         c.data().set_arg_value(dep_node.node()->id(), val);
       } break;
-      case kind_t::ArgType: {
+      case core::DependencyNodeKind::ArgType: {
         type::Type const *arg_type = nullptr;
         if (index < args.pos().size()) {
           arg_type = args[index].type();
@@ -1829,22 +1818,22 @@ MakeConcrete(
           arg_type = a->type();
         } else {
           auto *init_val = ASSERT_NOT_NULL(dep_node.node()->init_val());
-          arg_type       = c.Visit(init_val, VerifyTypeTag{}).type();
+          arg_type       = c.VerifyType(init_val).type();
         }
         DEBUG_LOG("generic-fn")("Computed argument type to be ", *arg_type);
         data.set_arg_type(dep_node.node()->id(), arg_type);
       } break;
-      case kind_t::ParamType: {
+      case core::DependencyNodeKind::ParamType: {
         type::Type const *t = nullptr;
         if (auto const *type_expr = dep_node.node()->type_expr()) {
-          auto type_expr_type = c.Visit(type_expr, VerifyTypeTag{});
+          auto type_expr_type = c.VerifyType(type_expr);
           if (type_expr_type != type::QualType::Constant(type::Type_)) {
             NOT_YET("log an error: ", type_expr_type);
           }
           t = interpretter::EvaluateAs<type::Type const *>(
               c.MakeThunk(type_expr, type::Type_));
         } else {
-          t = c.Visit(dep_node.node()->init_val(), VerifyTypeTag{}).type();
+          t = c.VerifyType(dep_node.node()->init_val()).type();
         }
 
         auto qt = (dep_node.node()->flags() & ast::Declaration::f_IsConst)
@@ -1862,7 +1851,7 @@ MakeConcrete(
         params.set(i, core::Param<type::Type const *>(dep_node.node()->id(), t,
                                                       node->params()[i].flags));
       } break;
-      case kind_t::ParamValue: {
+      case core::DependencyNodeKind::ParamValue: {
         // Find the argument associated with this parameter.
         // TODO, if the type is wrong but there is an implicit cast, deal with
         // that.
@@ -1906,8 +1895,7 @@ MakeConcrete(
   return std::tuple(params, &rets, &data);
 }
 
-type::QualType Compiler::Visit(ast::FunctionLiteral const *node,
-                               VerifyTypeTag) {
+type::QualType Compiler::VerifyType(ast::FunctionLiteral const *node) {
   if (not node->is_generic()) { return VerifyConcreteFnLit(node); }
 
   auto ordered_nodes = OrderedDependencyNodes(node);
@@ -1931,7 +1919,7 @@ type::QualType Compiler::Visit(ast::FunctionLiteral const *node,
       // TODO shouldn't need to clear this.
       rets->clear();
       for (auto const *o : *outputs) {
-        auto qt = c.Visit(o, VerifyTypeTag{});
+        auto qt = c.VerifyType(o);
         ASSERT(qt == type::QualType::Constant(type::Type_));
         auto const *result = interpretter::EvaluateAs<type::Type const *>(
             c.MakeThunk(o, type::Type_));
@@ -1950,12 +1938,11 @@ type::QualType Compiler::Visit(ast::FunctionLiteral const *node,
       type::QualType::Constant(new type::GenericFunction(std::move(gen))));
 }
 
-type::QualType Compiler::Visit(ast::ShortFunctionLiteral const *node,
-                               VerifyTypeTag) {
+type::QualType Compiler::VerifyType(ast::ShortFunctionLiteral const *node) {
   if (not node->is_generic()) {
     ASSIGN_OR(return type::QualType::Error(),  //
                      auto params, VerifyParams(this, node->params()));
-    ASSIGN_OR(return _, auto body_qt, Visit(node->body(), VerifyTypeTag{}));
+    ASSIGN_OR(return _, auto body_qt, VerifyType(node->body()));
     return data().set_qual_type(
         node, type::QualType::Constant(
                   type::Func(std::move(params), {body_qt.type()})));
@@ -1978,7 +1965,7 @@ type::QualType Compiler::Visit(ast::ShortFunctionLiteral const *node,
         .data                = *data,
         .diagnostic_consumer = *diag_consumer,
     });
-    auto body_qt = c.Visit(node->body(), VerifyTypeTag{});
+    auto body_qt = c.VerifyType(node->body());
     *rets        = {body_qt.type()};
     return type::Func(std::move(params), *rets);
   };
@@ -1988,7 +1975,7 @@ type::QualType Compiler::Visit(ast::ShortFunctionLiteral const *node,
       type::QualType::Constant(new type::GenericFunction(std::move(gen))));
 }
 
-type::QualType Compiler::Visit(ast::Identifier const *node, VerifyTypeTag) {
+type::QualType Compiler::VerifyType(ast::Identifier const *node) {
   for (auto iter = data().cyc_deps_.begin(); iter != data().cyc_deps_.end();
        ++iter) {
     if (*iter == node) {
@@ -2075,9 +2062,9 @@ type::QualType Compiler::Visit(ast::Identifier const *node, VerifyTypeTag) {
   return data().set_qual_type(node, qt);
 }
 
-type::QualType Compiler::Visit(ast::Import const *node, VerifyTypeTag) {
+type::QualType Compiler::VerifyType(ast::Import const *node) {
   DEBUG_LOG("Import")(node->DebugString());
-  ASSIGN_OR(return _, auto result, Visit(node->operand(), VerifyTypeTag{}));
+  ASSIGN_OR(return _, auto result, VerifyType(node->operand()));
   bool err = false;
   if (result.type() != type::ByteView) {
     // TODO allow (import) overload
@@ -2114,9 +2101,9 @@ type::QualType Compiler::Visit(ast::Import const *node, VerifyTypeTag) {
   return data().set_qual_type(node, type::QualType::Constant(type::Module));
 }
 
-type::QualType Compiler::Visit(ast::Index const *node, VerifyTypeTag) {
-  auto lhs_qual_type = Visit(node->lhs(), VerifyTypeTag{});
-  auto rhs_qual_type = Visit(node->rhs(), VerifyTypeTag{});
+type::QualType Compiler::VerifyType(ast::Index const *node) {
+  auto lhs_qual_type = VerifyType(node->lhs());
+  auto rhs_qual_type = VerifyType(node->rhs());
   if (not lhs_qual_type.ok() or not rhs_qual_type.ok()) {
     return type::QualType::Error();
   }
@@ -2190,63 +2177,61 @@ type::QualType Compiler::Visit(ast::Index const *node, VerifyTypeTag) {
   }
 }
 
-type::QualType Compiler::Visit(ast::Goto const *node, VerifyTypeTag) {
+type::QualType Compiler::VerifyType(ast::Goto const *node) {
   for (auto const &option : node->options()) {
-    for (auto const &expr : option.args()) {
-      Visit(expr.get(), VerifyTypeTag{});
-    }
+    for (auto const &expr : option.args()) { VerifyType(expr.get()); }
   }
   return type::QualType::Constant(type::Void());
 }
 
-type::QualType Compiler::Visit(ast::Label const *node, VerifyTypeTag) {
+type::QualType Compiler::VerifyType(ast::Label const *node) {
   return data().set_qual_type(node, type::QualType::Constant(type::Label));
 }
 
-type::QualType Compiler::Visit(ast::Jump const *node, VerifyTypeTag) {
+type::QualType Compiler::VerifyType(ast::Jump const *node) {
   DEBUG_LOG("Jump")(node->DebugString());
 
   bool err                = false;
   type::Type const *state = nullptr;
 
   if (node->state()) {
-    auto state_qual_type = Visit(node->state(), VerifyTypeTag{});
+    auto state_qual_type = VerifyType(node->state());
     err                  = not state_qual_type.ok();
     if (not err) { state = state_qual_type.type(); }
   }
 
   core::Params<type::Type const *> param_types =
       node->params().Transform([&](auto const &param) {
-        auto v = Visit(param.get(), VerifyTypeTag{});
+        auto v = VerifyType(param.get());
         err |= not v.ok();
         return v.type();
       });
 
-  for (auto const *stmt : node->stmts()) { Visit(stmt, VerifyTypeTag{}); }
+  for (auto const *stmt : node->stmts()) { VerifyType(stmt); }
 
   return data().set_qual_type(
       node, err ? type::QualType::Error()
                 : type::QualType::Constant(type::Jmp(state, param_types)));
 }
 
-type::QualType Compiler::Visit(ast::ReturnStmt const *node, VerifyTypeTag) {
+type::QualType Compiler::VerifyType(ast::ReturnStmt const *node) {
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto quals, VerifyAndGetQuals(this, node->exprs()));
   return type::QualType(type::Void(), quals);
 }
 
-type::QualType Compiler::Visit(ast::YieldStmt const *node, VerifyTypeTag) {
+type::QualType Compiler::VerifyType(ast::YieldStmt const *node) {
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto quals, VerifyAndGetQuals(this, node->exprs()));
   return type::QualType(type::Void(), quals);
 }
 
-type::QualType Compiler::Visit(ast::ScopeLiteral const *node, VerifyTypeTag) {
+type::QualType Compiler::VerifyType(ast::ScopeLiteral const *node) {
   auto verify_result =
       data().set_qual_type(node, type::QualType::Constant(type::Scope));
   bool error = false;
   if (node->state_type()) {
-    type::QualType state_qual_type = Visit(node->state_type(), VerifyTypeTag{});
+    type::QualType state_qual_type = VerifyType(node->state_type());
     if (state_qual_type != type::QualType(type::Type_, type::Quals::Const())) {
       // TODO check for non-const vs. not a type.
       diag().Consume(diagnostic::NonTypeScopeState{
@@ -2259,7 +2244,7 @@ type::QualType Compiler::Visit(ast::ScopeLiteral const *node, VerifyTypeTag) {
 
   absl::flat_hash_map<ast::Declaration const *, type::Type const *> types;
   for (auto const *decl : node->decls()) {
-    auto qual_type = Visit(decl, VerifyTypeTag{});
+    auto qual_type = VerifyType(decl);
     if (not qual_type.constant()) {
       error = true;
       NOT_YET("log an error");
@@ -2292,30 +2277,26 @@ type::QualType Compiler::Visit(ast::ScopeLiteral const *node, VerifyTypeTag) {
   return verify_result;
 }
 
-type::QualType Compiler::Visit(ast::ScopeNode const *node, VerifyTypeTag) {
+type::QualType Compiler::VerifyType(ast::ScopeNode const *node) {
   DEBUG_LOG("ScopeNode")(node->DebugString());
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto arg_results, VerifyFnArgs(this, node->args()));
   // TODO handle cyclic dependencies in call arguments.
 
-  for (auto const &block : node->blocks()) { Visit(&block, VerifyTypeTag{}); }
+  for (auto const &block : node->blocks()) { VerifyType(&block); }
 
   // TODO hack. Set this for real.
   return data().set_qual_type(node, type::QualType::NonConstant(type::Void()));
 }
 
-type::QualType Compiler::Visit(ast::StructLiteral const *node, VerifyTypeTag) {
+type::QualType Compiler::VerifyType(ast::StructLiteral const *node) {
   bool err = false;
   for (auto const &field : node->fields()) {
     type::QualType type_expr_qt;
-    if (field.type_expr()) {
-      type_expr_qt = Visit(field.type_expr(), VerifyTypeTag{});
-    }
+    if (field.type_expr()) { type_expr_qt = VerifyType(field.type_expr()); }
 
     type::QualType init_val_qt;
-    if (field.init_val()) {
-      init_val_qt = Visit(field.init_val(), VerifyTypeTag{});
-    }
+    if (field.init_val()) { init_val_qt = VerifyType(field.init_val()); }
 
     if ((field.type_expr() and not type_expr_qt) or
         (field.init_val() and not init_val_qt)) {
@@ -2349,13 +2330,11 @@ type::QualType Compiler::Visit(ast::StructLiteral const *node, VerifyTypeTag) {
   return data().set_qual_type(node, type::QualType::Constant(type::Type_));
 }
 
-type::QualType Compiler::Visit(ast::ParameterizedStructLiteral const *node,
-                               VerifyTypeTag) {
+type::QualType Compiler::VerifyType(
+    ast::ParameterizedStructLiteral const *node) {
   std::vector<type::Type const *> ts;
   ts.reserve(node->params().size());
-  for (auto const &a : node->params()) {
-    ts.push_back(Visit(&a, VerifyTypeTag{}).type());
-  }
+  for (auto const &a : node->params()) { ts.push_back(VerifyType(&a).type()); }
   if (absl::c_any_of(ts, [](type::Type const *t) { return t == nullptr; })) {
     return type::QualType::Error();
   }
@@ -2364,17 +2343,17 @@ type::QualType Compiler::Visit(ast::ParameterizedStructLiteral const *node,
                                         node->scope(), std::move(ts))));
 }
 
-type::QualType Compiler::Visit(ast::StructType const *node, VerifyTypeTag) {
-  for (auto &arg : node->args_) { Visit(arg.get(), VerifyTypeTag{}); }
+type::QualType Compiler::VerifyType(ast::StructType const *node) {
+  for (auto &arg : node->args_) { VerifyType(arg.get()); }
   return data().set_qual_type(node, type::QualType::Constant(type::Type_));
 }
 
-type::QualType Compiler::Visit(ast::Switch const *node, VerifyTypeTag) {
+type::QualType Compiler::VerifyType(ast::Switch const *node) {
   // Don't allow switch to return references.
   type::Quals quals           = type::Quals::Const();
   type::Type const *expr_type = nullptr;
   if (node->expr()) {
-    ASSIGN_OR(return _, auto result, Visit(node->expr(), VerifyTypeTag{}));
+    ASSIGN_OR(return _, auto result, VerifyType(node->expr()));
     quals &= result.quals();
     expr_type = result.type();
   }
@@ -2382,8 +2361,8 @@ type::QualType Compiler::Visit(ast::Switch const *node, VerifyTypeTag) {
   absl::flat_hash_set<type::Type const *> types;
   bool err = false;
   for (auto &[body, cond] : node->cases()) {
-    auto cond_result = Visit(cond.get(), VerifyTypeTag{});
-    auto body_result = Visit(body.get(), VerifyTypeTag{});
+    auto cond_result = VerifyType(cond.get());
+    auto body_result = VerifyType(body.get());
     err |= not cond_result or not body_result;
     if (err) {
       NOT_YET();
@@ -2428,14 +2407,14 @@ type::QualType Compiler::Visit(ast::Switch const *node, VerifyTypeTag) {
   }
 }
 
-type::QualType Compiler::Visit(ast::Terminal const *node, VerifyTypeTag) {
+type::QualType Compiler::VerifyType(ast::Terminal const *node) {
   return data().set_qual_type(
       node, type::QualType::Constant(type::Prim(node->basic_type())));
 }
 
-type::QualType Compiler::Visit(ast::Unop const *node, VerifyTypeTag) {
+type::QualType Compiler::VerifyType(ast::Unop const *node) {
   ASSIGN_OR(return type::QualType::Error(), auto result,
-                   Visit(node->operand(), VerifyTypeTag{}));
+                   VerifyType(node->operand()));
   auto *operand_type = result.type();
 
   switch (node->op()) {
