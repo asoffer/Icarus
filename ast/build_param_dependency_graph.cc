@@ -67,6 +67,11 @@ struct ParamDependencyGraphBuilder
     Visit(node->data_type(), d);
   }
 
+  void Visit(Assignment const *node, core::DependencyNode<Declaration> d) {
+    for (auto const *l : (node->lhs())) { Visit(l, d); }
+    for (auto const *r : (node->rhs())) { Visit(r, d); }
+  }
+
   void Visit(Binop const *node, core::DependencyNode<Declaration> d) {
     Visit(node->lhs(), d);
     Visit(node->rhs(), d);

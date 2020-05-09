@@ -236,14 +236,14 @@ std::unique_ptr<ast::Node> BuildCallImpl(
     std::vector<SourceRange> positional_error_ranges;
 
     for (auto &expr : cl->exprs_) {
-      if (auto *b = expr->if_as<ast::Binop>();
-          b and b->op() == Operator::Assign) {
+      if (auto *a = expr->if_as<ast::Assignment>()) {
         if (positional_error_ranges.empty()) {
-          last_named_range_before_error = b->lhs()->range();
+          last_named_range_before_error = a->lhs()[0]->range();
         }
-        auto [lhs, rhs] = std::move(*b).extract();
-        args.emplace_back(std::string{lhs->as<ast::Identifier>().token()},
-                          std::move(rhs));
+        // TODO Error if there are multiple entries in this assignment.
+        auto [lhs, rhs] = std::move(*a).extract();
+        args.emplace_back(std::string{lhs[0]->as<ast::Identifier>().token()},
+                          std::move(rhs[0]));
       } else {
         if (last_named_range_before_error.has_value()) {
           positional_error_ranges.push_back(expr->range());
@@ -259,11 +259,11 @@ std::unique_ptr<ast::Node> BuildCallImpl(
       });
     }
   } else {
-    if (ast::Binop *b = args_expr->if_as<ast::Binop>();
-        b and b->op() == Operator::Assign) {
-      auto [lhs, rhs] = std::move(*b).extract();
-      args.emplace_back(std::string{lhs->as<ast::Identifier>().token()},
-                        std::move(rhs));
+    if (auto *a = args_expr->if_as<ast::Assignment>()) {
+      auto [lhs, rhs] = std::move(*a).extract();
+      // TODO Error if there are multiple entries in this assignment.
+      args.emplace_back(std::string{lhs[0]->as<ast::Identifier>().token()},
+                        std::move(rhs[0]));
     } else {
       args.emplace_back("", std::move(args_expr));
     }
@@ -908,6 +908,8 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
     return BuildShortFunctionLiteral(move_as<ast::Expression>(nodes[0]),
                                      move_as<ast::Expression>(nodes[2]), diag);
   } else if (tk == "=") {
+    SourceRange range(nodes[0]->range().begin(), nodes[2]->range().end());
+
     if (nodes[0]->is<ast::Declaration>()) {
       if (nodes[0]->as<ast::Declaration>().IsInferred()) {
         // NOTE: It might be that this was supposed to be a bool ==? How can we
@@ -921,9 +923,20 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
       return decl;
 
     } else {
-      return std::make_unique<ast::Binop>(move_as<ast::Expression>(nodes[0]),
-                                          Operator::Assign,
-                                          move_as<ast::Expression>(nodes[2]));
+      std::vector<std::unique_ptr<ast::Expression>> lhs, rhs;
+      if (auto *l = nodes[0]->if_as<ast::CommaList>()) {
+        lhs = std::move(*l).extract();
+      } else {
+        lhs.push_back(move_as<ast::Expression>(nodes[0]));
+      }
+
+      if (auto *r = nodes[2]->if_as<ast::CommaList>()) {
+        rhs = std::move(*r).extract();
+      } else {
+        rhs.push_back(move_as<ast::Expression>(nodes[2]));
+      }
+
+      return std::make_unique<ast::Assignment>(range, std::move(lhs), std::move(rhs));
     }
   } else if (tk == "as") {
     SourceRange range(nodes[0]->range().begin(), nodes[2]->range().end());

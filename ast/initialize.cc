@@ -31,6 +31,12 @@ void ArrayType::Initialize(Scope *scope) {
   data_type_->Initialize(scope);
 }
 
+void Assignment::Initialize(Scope *scope) {
+  scope_ = scope;
+  SetAllScopes(&lhs_, scope);
+  SetAllScopes(&rhs_, scope);
+}
+
 void Binop::Initialize(Scope *scope) {
   scope_ = scope;
   lhs_->Initialize(scope);

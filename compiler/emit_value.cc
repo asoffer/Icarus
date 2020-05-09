@@ -169,7 +169,7 @@ ir::Results Compiler::EmitValue(ast::Access const *node) {
     return ir::Results{builder().ByteViewLength(
         EmitValue(node->operand()).get<ir::String>(0))};
   } else {
-    auto reg = EmitRef(node->operand())[0];
+    auto reg = EmitRef(node->operand());
     auto *t  = type_of(node->operand());
 
     if (t->is<type::Pointer>()) { t = t->as<type::Pointer>().pointee(); }
@@ -217,6 +217,34 @@ ir::Results Compiler::EmitValue(ast::ArrayType const *node) {
         builder().Array(EmitValue(node->length(i)).get<int64_t>(0), result);
   }
   return ir::Results{result};
+}
+
+ir::Results Compiler::EmitValue(ast::Assignment const *node) {
+  std::vector<type::Typed<ir::RegOr<ir::Addr>>> lhs_refs;
+  lhs_refs.reserve(node->lhs().size());
+
+  for (auto const *l : node->lhs()) {
+    lhs_refs.push_back(
+        type::Typed<ir::RegOr<ir::Addr>>(EmitRef(l), type_of(l)));
+  }
+
+  auto ref_iter = lhs_refs.begin();
+  for (auto const *r : node->rhs()) {
+    auto *rhs_type = type_of(r);
+    if (auto const *rhs_tup = rhs_type->if_as<type::Tuple>()) {
+      for (auto const *t : rhs_tup->entries_) {
+        type::Typed<ir::RegOr<ir::Addr>> ref = *ref_iter++;
+        Visit(ref.type(), *ref, type::Typed{EmitValue(r), rhs_type},
+              EmitMoveAssignTag{});
+      }
+    } else {
+      type::Typed<ir::RegOr<ir::Addr>> ref = *ref_iter++;
+      Visit(ref.type(), *ref, type::Typed{EmitValue(r), rhs_type},
+            EmitMoveAssignTag{});
+    }
+  }
+
+  return ir::Results{};
 }
 
 ir::Results Compiler::EmitValue(ast::Binop const *node) {
@@ -301,31 +329,10 @@ ir::Results Compiler::EmitValue(ast::Binop const *node) {
 
       return ir::Results{builder().Arrow(lhs_vals, rhs_vals)};
     } break;
-    case frontend::Operator::Assign: {
-      // TODO support splatting.
-      auto lhs_lvals = EmitRef(node->lhs());
-      auto rhs_vals  = EmitValue(node->rhs());
-      ASSERT(lhs_lvals.size() == rhs_vals.size());
-      if (lhs_lvals.size() == 1) {
-        Visit(lhs_type, lhs_lvals[0], type::Typed{rhs_vals, rhs_type},
-              EmitMoveAssignTag{});
-
-      } else {
-        auto const &rhs_tup_type = rhs_type->as<type::Tuple>();
-        auto const &lhs_tup_type = lhs_type->as<type::Tuple>();
-        for (size_t i = 0; i < lhs_lvals.size(); ++i) {
-          Visit(lhs_tup_type.entries_[i], lhs_lvals[i],
-                type::Typed{rhs_vals.GetResult(i), rhs_tup_type.entries_[i]},
-                EmitMoveAssignTag{});
-        }
-      }
-
-      return ir::Results{};
-    } break;
     case frontend::Operator::OrEq: {
       auto *this_type = type_of(node);
       if (this_type->is<type::Flags>()) {
-        auto lhs_lval = EmitRef(node->lhs())[0];
+        auto lhs_lval = EmitRef(node->lhs());
         builder().Store(
             builder().OrFlags(builder().Load<ir::FlagsVal>(lhs_lval),
                               EmitValue(node->rhs()).get<ir::FlagsVal>(0)),
@@ -352,7 +359,7 @@ ir::Results Compiler::EmitValue(ast::Binop const *node) {
     case frontend::Operator::AndEq: {
       auto *this_type = type_of(node);
       if (this_type->is<type::Flags>()) {
-        auto lhs_lval = EmitRef(node->lhs())[0];
+        auto lhs_lval = EmitRef(node->lhs());
         builder().Store(
             builder().AndFlags(builder().Load<ir::FlagsVal>(lhs_lval),
                                EmitValue(node->rhs()).get<ir::FlagsVal>(0)),
@@ -379,7 +386,7 @@ ir::Results Compiler::EmitValue(ast::Binop const *node) {
           {lhs_end_block, rhs_end_block}, {rhs_val, ir::RegOr<bool>(false)})};
     } break;
     case frontend::Operator::AddEq: {
-      auto lhs_lval = EmitRef(node->lhs())[0];
+      auto lhs_lval = EmitRef(node->lhs());
       auto rhs_ir   = EmitValue(node->rhs());
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t, float, double>(
@@ -392,7 +399,7 @@ ir::Results Compiler::EmitValue(ast::Binop const *node) {
       return ir::Results{};
     } break;
     case frontend::Operator::SubEq: {
-      auto lhs_lval = EmitRef(node->lhs())[0];
+      auto lhs_lval = EmitRef(node->lhs());
       auto rhs_ir   = EmitValue(node->rhs());
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t, float, double>(
@@ -405,7 +412,7 @@ ir::Results Compiler::EmitValue(ast::Binop const *node) {
       return ir::Results{};
     } break;
     case frontend::Operator::DivEq: {
-      auto lhs_lval = EmitRef(node->lhs())[0];
+      auto lhs_lval = EmitRef(node->lhs());
       auto rhs_ir   = EmitValue(node->rhs());
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t, float, double>(
@@ -418,7 +425,7 @@ ir::Results Compiler::EmitValue(ast::Binop const *node) {
       return ir::Results{};
     } break;
     case frontend::Operator::ModEq: {
-      auto lhs_lval = EmitRef(node->lhs())[0];
+      auto lhs_lval = EmitRef(node->lhs());
       auto rhs_ir   = EmitValue(node->rhs());
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t>(rhs_type, [&](auto tag) {
@@ -430,7 +437,7 @@ ir::Results Compiler::EmitValue(ast::Binop const *node) {
       return ir::Results{};
     } break;
     case frontend::Operator::MulEq: {
-      auto lhs_lval = EmitRef(node->lhs())[0];
+      auto lhs_lval = EmitRef(node->lhs());
       auto rhs_ir   = EmitValue(node->rhs());
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t, float, double>(
@@ -444,13 +451,13 @@ ir::Results Compiler::EmitValue(ast::Binop const *node) {
     } break;
     case frontend::Operator::XorEq: {
       if (lhs_type == type::Bool) {
-        auto lhs_lval = EmitRef(node->lhs())[0];
+        auto lhs_lval = EmitRef(node->lhs());
         auto rhs_ir   = EmitValue(node->rhs()).get<bool>(0);
         builder().Store(builder().Ne(builder().Load<bool>(lhs_lval), rhs_ir),
                         lhs_lval);
       } else if (lhs_type->is<type::Flags>()) {
         auto *flags_type = &lhs_type->as<type::Flags>();
-        auto lhs_lval    = EmitRef(node->lhs())[0];
+        auto lhs_lval    = EmitRef(node->lhs());
         auto rhs_ir      = EmitValue(node->rhs()).get<ir::FlagsVal>(0);
         builder().Store(
             builder().XorFlags(builder().Load<ir::FlagsVal>(lhs_lval), rhs_ir),
@@ -853,7 +860,7 @@ ir::Results Compiler::EmitValue(ast::Identifier const *node) {
                : ir::Results{reg};
   } else {
     auto *t   = ASSERT_NOT_NULL(type_of(node));
-    auto lval = EmitRef(node)[0];
+    auto lval = EmitRef(node);
     if (not lval.is_reg()) { NOT_YET(); }
     return ir::Results{builder().PtrFix(lval.reg(), t)};
   }
@@ -875,7 +882,7 @@ ir::Results Compiler::EmitValue(ast::Index const *node) {
                                   type::Ptr(type::Nat8));
     return builder().Load(addr, type::Nat8);
   }
-  return ir::Results{builder().PtrFix(EmitRef(node)[0].reg(), type_of(node))};
+  return ir::Results{builder().PtrFix(EmitRef(node).reg(), type_of(node))};
 }
 
 ir::Results Compiler::EmitValue(ast::Goto const *node) {
@@ -1225,7 +1232,7 @@ ir::Results Compiler::EmitValue(ast::Unop const *node) {
       return ir::Results{builder().Load<type::Type const *>(
           builder().VariantType(EmitValue(node->operand()).get<ir::Reg>(0)))};
     case frontend::Operator::And:
-      return ir::Results{EmitRef(node->operand())[0]};
+      return ir::Results{EmitRef(node->operand())};
     case frontend::Operator::Eval: {
       // Guaranteed to be constant by VerifyType
       // TODO what if there's an error during evaluation?

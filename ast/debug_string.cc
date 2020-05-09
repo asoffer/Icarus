@@ -14,7 +14,6 @@ char const *OpStr(frontend::Operator op) {
     case frontend::Operator::Mul: return " * ";
     case frontend::Operator::Div: return " / ";
     case frontend::Operator::Mod: return " % ";
-    case frontend::Operator::Assign: return " = ";
     case frontend::Operator::OrEq: return " |= ";
     case frontend::Operator::XorEq: return " ^= ";
     case frontend::Operator::AndEq: return " &= ";
@@ -106,6 +105,20 @@ void ArrayType::DebugStrAppend(std::string *out, size_t indent) const {
                   "; ");
   data_type()->DebugStrAppend(out, indent);
   absl::StrAppend(out, "]");
+}
+
+
+void Assignment::DebugStrAppend(std::string *out, size_t indent) const {
+  absl::StrAppend(
+      out,
+      absl::StrJoin(lhs(), ", ",
+                    [&](std::string *out, auto const &elem) {
+                      return Joiner(elem, out, indent);
+                    }),
+      " = ",
+      absl::StrJoin(rhs(), ", ", [&](std::string *out, auto const &elem) {
+        return Joiner(elem, out, indent);
+      }));
 }
 
 void Binop::DebugStrAppend(std::string *out, size_t indent) const {

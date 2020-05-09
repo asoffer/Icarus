@@ -63,7 +63,7 @@ struct LibraryModule;  // TODO remove me.
 struct Compiler
     : ast::Visitor<EmitMoveInitTag, void(type::Typed<ir::Reg>)>,
       ast::Visitor<EmitCopyInitTag, void(type::Typed<ir::Reg>)>,
-      ast::Visitor<EmitRefTag, std::vector<ir::RegOr<ir::Addr>>()>,
+      ast::Visitor<EmitRefTag, ir::RegOr<ir::Addr>()>,
       ast::Visitor<EmitValueTag, ir::Results()>,
       ast::Visitor<VerifyTypeTag, type::QualType()>,
       type::Visitor<void(ir::Reg, EmitDestroyTag),
@@ -115,9 +115,8 @@ struct Compiler
                                                                          reg);
   }
 
-  std::vector<ir::RegOr<ir::Addr>> EmitRef(ast::Node const *node) {
-    return ast::Visitor<EmitRefTag, std::vector<ir::RegOr<ir::Addr>>()>::Visit(
-        node);
+  ir::RegOr<ir::Addr> EmitRef(ast::Node const *node) {
+    return ast::Visitor<EmitRefTag, ir::RegOr<ir::Addr>()>::Visit(node);
   }
 
   void Visit(type::Type const *t, ir::Reg r, EmitDestroyTag) {
@@ -200,29 +199,24 @@ struct Compiler
 
   type::QualType VerifyConcreteFnLit(ast::FunctionLiteral const *node);
 
-  std::vector<ir::RegOr<ir::Addr>> EmitRef(ast::Access const *node);
-  std::vector<ir::RegOr<ir::Addr>> Visit(EmitRefTag,
-                                         ast::Access const *node) override {
+  ir::RegOr<ir::Addr> EmitRef(ast::Access const *node);
+  ir::RegOr<ir::Addr> Visit(EmitRefTag, ast::Access const *node) override {
     return EmitRef(node);
   }
-  std::vector<ir::RegOr<ir::Addr>> EmitRef(ast::CommaList const *node);
-  std::vector<ir::RegOr<ir::Addr>> Visit(EmitRefTag,
-                                         ast::CommaList const *node) override {
+  ir::RegOr<ir::Addr> EmitRef(ast::CommaList const *node);
+  ir::RegOr<ir::Addr> Visit(EmitRefTag, ast::CommaList const *node) override {
     return EmitRef(node);
   }
-  std::vector<ir::RegOr<ir::Addr>> EmitRef(ast::Identifier const *node);
-  std::vector<ir::RegOr<ir::Addr>> Visit(EmitRefTag,
-                                         ast::Identifier const *node) override {
+  ir::RegOr<ir::Addr> EmitRef(ast::Identifier const *node);
+  ir::RegOr<ir::Addr> Visit(EmitRefTag, ast::Identifier const *node) override {
     return EmitRef(node);
   }
-  std::vector<ir::RegOr<ir::Addr>> EmitRef(ast::Index const *node);
-  std::vector<ir::RegOr<ir::Addr>> Visit(EmitRefTag,
-                                         ast::Index const *node) override {
+  ir::RegOr<ir::Addr> EmitRef(ast::Index const *node);
+  ir::RegOr<ir::Addr> Visit(EmitRefTag, ast::Index const *node) override {
     return EmitRef(node);
   }
-  std::vector<ir::RegOr<ir::Addr>> EmitRef(ast::Unop const *node);
-  std::vector<ir::RegOr<ir::Addr>> Visit(EmitRefTag,
-                                         ast::Unop const *node) override {
+  ir::RegOr<ir::Addr> EmitRef(ast::Unop const *node);
+  ir::RegOr<ir::Addr> Visit(EmitRefTag, ast::Unop const *node) override {
     return EmitRef(node);
   }
 
@@ -324,8 +318,8 @@ struct Compiler
   void EmitCopyInit(type::Type const *from_type, ir::Results const &from_val,
                     type::Typed<ir::Reg> to_var);
 
-  PersistentResources resources_;
  private:
+  PersistentResources resources_;
   TransientFunctionState state_;
 };
 

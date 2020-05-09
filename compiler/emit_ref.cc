@@ -10,8 +10,8 @@
 namespace compiler {
 using ::matcher::InheritsFrom;
 
-std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(ast::Access const *node) {
-  auto reg = EmitRef(node->operand())[0];
+ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Access const *node) {
+  auto reg = EmitRef(node->operand());
   auto *t  = type_of(node->operand());
 
   while (auto *tp = t->if_as<type::Pointer>()) {
@@ -21,66 +21,57 @@ std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(ast::Access const *node) {
 
   ASSERT(t, InheritsFrom<type::Struct>());
   auto *struct_type = &t->as<type::Struct>();
-  return {builder()
-              .Field(reg, struct_type, struct_type->index(node->member_name()))
-              .get()};
+  return builder()
+      .Field(reg, struct_type, struct_type->index(node->member_name()))
+      .get();
 }
 
-std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(ast::CommaList const *node) {
-  std::vector<ir::RegOr<ir::Addr>> results;
-  results.reserve(node->exprs_.size());
-  for (auto &expr : node->exprs_) {
-    results.push_back(EmitRef(expr.get())[0]);
-  }
-  return results;
-}
+ir::RegOr<ir::Addr> Compiler::EmitRef(ast::CommaList const *node) { NOT_YET(); }
 
-std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(ast::Identifier const *node) {
+ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Identifier const *node) {
   ASSERT(node->decl() != nullptr) << node->DebugString();
-  return {data().addr(node->decl())};
+  return data().addr(node->decl());
 }
 
-std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(ast::Index const *node) {
+ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Index const *node) {
   auto *lhs_type = type_of(node->lhs());
   auto *rhs_type = type_of(node->rhs());
 
   if (lhs_type->is<type::Array>()) {
     auto index = ir::CastTo<int64_t>(rhs_type, EmitValue(node->rhs()));
 
-    auto lval = EmitRef(node->lhs())[0];
+    auto lval = EmitRef(node->lhs());
     if (not lval.is_reg()) { NOT_YET(this, type_of(node)); }
-    return {
-        builder().Index(type::Ptr(type_of(node->lhs())), lval.reg(), index)};
+    return builder().Index(type::Ptr(type_of(node->lhs())), lval.reg(), index);
   } else if (auto *buf_ptr_type = lhs_type->if_as<type::BufferPointer>()) {
     auto index = ir::CastTo<int64_t>(rhs_type, EmitValue(node->rhs()));
 
-    return {builder().PtrIncr(EmitValue(node->lhs()).get<ir::Reg>(0), index,
-                              type::Ptr(buf_ptr_type->pointee()))};
+    return builder().PtrIncr(EmitValue(node->lhs()).get<ir::Reg>(0), index,
+                             type::Ptr(buf_ptr_type->pointee()));
   } else if (lhs_type == type::ByteView) {
     // TODO interim until you remove string_view and replace it with Addr
     // entirely.
     auto index = ir::CastTo<int64_t>(rhs_type, EmitValue(node->rhs()));
     auto str   = EmitValue(node->lhs()).get<ir::String>(0);
     if (str.is_reg()) {
-      return {builder().PtrIncr(str.reg(), index, type::Ptr(type::Nat8))};
+      return builder().PtrIncr(str.reg(), index, type::Ptr(type::Nat8));
     } else {
-      return {
-          builder().PtrIncr(str.value().addr(), index, type::Ptr(type::Nat8))};
+      return builder().PtrIncr(str.value().addr(), index,
+                               type::Ptr(type::Nat8));
     }
   } else if (auto *tup = lhs_type->if_as<type::Tuple>()) {
     auto index =
         ir::CastTo<int64_t>(
             rhs_type, interpretter::Evaluate(MakeThunk(node->rhs(), rhs_type)))
             .value();
-    return {
-        builder().Field(EmitRef(node->lhs())[0], tup, index).get()};
+    return builder().Field(EmitRef(node->lhs()), tup, index).get();
   }
   UNREACHABLE(*this);
 }
 
-std::vector<ir::RegOr<ir::Addr>> Compiler::EmitRef(ast::Unop const *node) {
+ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Unop const *node) {
   ASSERT(node->op() == frontend::Operator::At);
-  return {EmitValue(node->operand()).get<ir::Reg>(0)};
+  return EmitValue(node->operand()).get<ir::Reg>(0);
 }
 
 }  // namespace compiler

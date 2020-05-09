@@ -791,6 +791,20 @@ static bool IsTypeOrTupleOfTypes(type::Type const *t) {
   return t == type::Type_ or t->is<type::Tuple>();
 }
 
+type::QualType Compiler::VerifyType(ast::Assignment const *node) {
+  std::vector<type::Type const *> lhs_types;
+  lhs_types.reserve(node->lhs().size());
+  for (auto const *l : node->lhs()) {
+    // TODO check can't be constant. must be references
+    lhs_types.push_back(VerifyType(l).type());
+  }
+
+  for (auto const *r : node->rhs()) { VerifyType(r); }
+  // TODO Verify the assignment is valid.
+
+  return type::QualType::Constant(type::Void());
+}
+
 type::QualType Compiler::VerifyType(ast::Binop const *node) {
   auto lhs_qual_type = VerifyType(node->lhs());
   auto rhs_qual_type = VerifyType(node->rhs());
@@ -800,14 +814,6 @@ type::QualType Compiler::VerifyType(ast::Binop const *node) {
 
   using frontend::Operator;
   switch (node->op()) {
-    case Operator::Assign: {
-      // TODO if lhs is reserved?
-      if (not VerifyAssignment(diag(), node->range(), lhs_qual_type,
-                               rhs_qual_type)) {
-        return type::QualType::Error();
-      }
-      return type::QualType::NonConstant(type::Void());
-    } break;
     case Operator::XorEq:
       if (lhs_qual_type.type() == rhs_qual_type.type() and
           (lhs_qual_type.type() == type::Bool or

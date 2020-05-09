@@ -144,6 +144,41 @@ struct ArrayLiteral : Expression {
   std::vector<std::unique_ptr<Expression>> elems_;
 };
 
+// Assignment:
+// Represents an assignment of one or more values to one or more references.
+// The number of values must match the number of references.
+//
+// TODO: To allow multiple return values to be extracted from a function, we
+// should allow the righthand-side to be any expression or list of expressions.
+//
+// Examples:
+// * `a = b`
+// * `(a, b) = (c, d)`
+struct Assignment : Node {
+  explicit Assignment(frontend::SourceRange const &range,
+                      std::vector<std::unique_ptr<Expression>> lhs,
+                      std::vector<std::unique_ptr<Expression>> rhs)
+      : Node(range), lhs_(std::move(lhs)), rhs_(std::move(rhs)) {
+    ASSERT(lhs_.size() == rhs_.size());
+  }
+  ~Assignment() override {}
+
+  base::PtrSpan<Expression const> lhs() const { return lhs_; }
+  base::PtrSpan<Expression const> rhs() const { return rhs_; }
+
+  std::pair<std::vector<std::unique_ptr<Expression>>,
+            std::vector<std::unique_ptr<Expression>>>
+  extract() && {
+    return std::pair{std::move(lhs_), std::move(rhs_)};
+  }
+
+  ICARUS_AST_VIRTUAL_METHODS;
+
+ private:
+  std::vector<std::unique_ptr<Expression>> lhs_;
+  std::vector<std::unique_ptr<Expression>> rhs_;
+};
+
 // ArrayType:
 // Represents the syntactic construction for expressing the type of an array.
 // The relevant data for describing the full type of an array is its length and

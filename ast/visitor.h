@@ -1,8 +1,6 @@
 #ifndef ICARUS_AST_VISITOR_H
 #define ICARUS_AST_VISITOR_H
 
-#include <tuple>
-#include <type_traits>
 #include <utility>
 
 #include "ast/ast.h"

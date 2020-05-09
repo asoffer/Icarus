@@ -35,6 +35,11 @@ struct Extractor : ast::Visitor<void()> {
     Visit(node->data_type());
   }
 
+  void Visit(ast::Assignment const *node) final {
+    for (auto const *l : node->lhs()) { Visit(l); }
+    for (auto const *r : node->rhs()) { Visit(r); }
+  }
+
   void Visit(ast::Binop const *node) final {
     Visit(node->lhs());
     Visit(node->rhs());

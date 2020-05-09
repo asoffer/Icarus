@@ -21,6 +21,16 @@ bool ArrayType::IsDependent() const {
   return false;
 }
 
+bool Assignment::IsDependent() const {
+  for (auto const *l : lhs()) {
+    if (l->IsDependent()) { return true; }
+  }
+  for (auto const *r : rhs()) {
+    if (r->IsDependent()) { return true; }
+  }
+  return false;
+}
+
 bool Binop::IsDependent() const {
   return lhs()->IsDependent() or rhs()->IsDependent();
 }
