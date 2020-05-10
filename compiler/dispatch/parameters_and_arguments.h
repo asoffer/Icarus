@@ -79,10 +79,10 @@ core::Params<type::QualType> ExtractParamTypes(Compiler *compiler,
 // This function assumes that all arguments are present (i.e., we are not
 // relying on any defaulted parameters). Any such parameter should be used to
 // fill the arguments before calling this function.
-std::vector<ir::Results> PrepareCallArguments(
+std::vector<ir::Value> PrepareCallArguments(
     Compiler *compiler, type::Type const *state_ptr_type,
     core::Params<type::Type const *> const &params,
-    core::FnArgs<type::Typed<ir::Results>> const &args);
+    core::FnArgs<type::Typed<ir::Value>> const &args);
 
 }  // namespace compiler
 

@@ -80,7 +80,7 @@ void Compiler::Visit(type::Variant const *t, ir::Reg reg, EmitDestroyTag) {
   }
 
   builder().Call(ir::Fn{*t->destroy_func_}, t->destroy_func_->type(),
-                 {ir::Results{reg}}, ir::OutParams());
+                 std::vector<ir::Results>{ir::Results{reg}}, ir::OutParams());
 }
 
 void Compiler::Visit(type::Tuple const *t, ir::Reg reg, EmitDestroyTag) {

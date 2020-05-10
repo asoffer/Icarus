@@ -17,8 +17,8 @@ cc_library(
         "//base:meta",
         "//base:stringify",
         "//core:fn_args",
+        "//ir/value",
         "//ir/value:reg",
-        "//ir:results",
         "//type:typed_value",
     ],
 )

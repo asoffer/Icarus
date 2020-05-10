@@ -1146,12 +1146,12 @@ type::Typed<std::optional<ir::Value>> TypedResultsToTypedOptionalValue(
   // TODO other types too.
   return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
                           uint16_t, uint32_t, uint64_t, float, double, ir::Addr,
-                          ir::String, type::Type const *>(
-      r.type(), [&](auto tag) {
-        using T = typename decltype(tag)::type;
-        return type::Typed<std::optional<ir::Value>>(
-            ir::Value(r->template get<T>(0)), r.type());
-      });
+                          ir::String, type::Type const *, ir::EnumVal,
+                          ir::FlagsVal>(r.type(), [&](auto tag) {
+    using T = typename decltype(tag)::type;
+    return type::Typed<std::optional<ir::Value>>(
+        ir::Value(r->template get<T>(0)), r.type());
+  });
 }
 
 type::QualType Compiler::VerifyType(ast::Call const *node) {
@@ -1702,8 +1702,7 @@ OrderedDependencyNodes(ast::ParameterizedExpression const *node) {
   node->parameter_dependency_graph().topologically([&](auto dep_node) {
     if (not deps.contains(dep_node)) { return; }
     DEBUG_LOG("generic-fn")
-    ("adding node = `", dep_node.node()->id(), "` of kind ",
-     static_cast<int>(dep_node.kind()));
+    ("adding ", ToString(dep_node.kind()), "`", dep_node.node()->id(), "`");
     ordered_nodes.emplace_back(0, dep_node);
   });
 
@@ -1749,8 +1748,8 @@ MakeConcrete(
   // TODO use the proper ordering.
   for (auto [index, dep_node] : ordered_nodes) {
     DEBUG_LOG("generic-fn")
-    ("Handling dep-node `", dep_node.node()->id(), "` of kind ",
-     static_cast<int>(dep_node.kind()));
+    ("Handling dep-node ", ToString(dep_node.kind()), "`",
+     dep_node.node()->id(), "`");
     switch (dep_node.kind()) {
       case core::DependencyNodeKind::ArgValue: {
         ir::Value val = false;
@@ -1771,8 +1770,16 @@ MakeConcrete(
               });
         }
 
-        DEBUG_LOG("generic-fn")
-        ("Argument to `", dep_node.node()->id(), "` has value ", val);
+        auto tostr = [](ir::Value v) {
+          if (auto **t = v.get_if<type::Type const *>()) {
+            return (*t)->to_string();
+          } else {
+            std::stringstream ss;
+            ss << v;
+            return ss.str();
+          }
+        };
+        DEBUG_LOG("generic-fn")("... ", tostr(val));
         c.data().set_arg_value(dep_node.node()->id(), val);
       } break;
       case core::DependencyNodeKind::ArgType: {
@@ -1785,7 +1792,7 @@ MakeConcrete(
           auto *init_val = ASSERT_NOT_NULL(dep_node.node()->init_val());
           arg_type       = c.VerifyType(init_val).type();
         }
-        DEBUG_LOG("generic-fn")("Computed argument type to be ", *arg_type);
+        DEBUG_LOG("generic-fn")("... ", *arg_type);
         data.set_arg_type(dep_node.node()->id(), arg_type);
       } break;
       case core::DependencyNodeKind::ParamType: {
@@ -1809,8 +1816,7 @@ MakeConcrete(
         // TODO: Once a parameter type has been computed, we know it's
         // argument type has already been computed so we can verify that the
         // implicit casts are allowed.
-        DEBUG_LOG("generic-fn")
-        ("Computed parameter type to be ", t->to_string());
+        DEBUG_LOG("generic-fn")("... ", t->to_string());
         size_t i =
             *ASSERT_NOT_NULL(node->params().at_or_null(dep_node.node()->id()));
         params.set(i, core::Param<type::Type const *>(dep_node.node()->id(), t,

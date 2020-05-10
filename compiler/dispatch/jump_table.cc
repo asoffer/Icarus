@@ -51,32 +51,33 @@ base::expected<JumpDispatchTable> JumpDispatchTable::Verify(
 
 absl::flat_hash_map<
     std::string_view,
-    std::pair<ir::BasicBlock *, core::FnArgs<type::Typed<ir::Results>>>>
+    std::pair<ir::BasicBlock *, core::FnArgs<type::Typed<ir::Value>>>>
 JumpDispatchTable::EmitCallOneOverload(
     std::optional<ir::Reg> state_reg, ir::Jump *jump, Compiler *compiler,
-    core::FnArgs<type::Typed<ir::Results>> args,
+    core::FnArgs<type::Typed<ir::Value>> args,
     ir::LocalBlockInterpretation const &block_interp) {
   // TODO actually choose correctly.
   if (state_reg) {
     auto pos   = std::move(args).pos();
     auto named = std::move(args).named();
-    pos.insert(pos.begin(), type::Typed<ir::Results>(ir::Results{*state_reg},
-                                                     jump->type()->state()));
+    pos.insert(pos.begin(),
+               type::Typed<ir::Value>(*state_reg, jump->type()->state()));
     args = core::FnArgs(std::move(pos), std::move(named));
   }
   core::FillMissingArgs(core::ParamsRef(jump->params()), &args,
-                        [compiler](auto const &p) {
-                          return type::Typed(
-                              ir::Results{compiler->EmitValue(
-                                  ASSERT_NOT_NULL(p.get()->init_val()))},
-                              p.type());
+                        [](auto const &p) -> type::Typed<ir::Value> {
+                          NOT_YET();
+                          // return type::Typed(
+                          //     ir::Results{compiler->EmitValue(
+                          //         ASSERT_NOT_NULL(p.get()->init_val()))},
+                          //     p.type());
                         },
                         state_reg ? 1 : 0);
 
-  auto arg_results = PrepareCallArguments(
+  auto arg_values = PrepareCallArguments(
       compiler, jump->type()->state(),
       jump->params().Transform([](auto const &p) { return p.type(); }), args);
-  return ir::Inline(compiler->builder(), jump, arg_results, block_interp);
+  return ir::Inline(compiler->builder(), jump, arg_values, block_interp);
 }
 
 }  // namespace compiler

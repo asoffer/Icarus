@@ -84,19 +84,31 @@ void AddAdl(ast::OverloadSet *overload_set, std::string_view id,
 
 ast::OverloadSet FindOverloads(
     ast::Scope const *scope, std::string_view token,
-    core::FnArgs<type::Typed<ir::Results>> const &args) {
+    core::FnArgs<type::Typed<ir::Value>> const &args) {
   ast::OverloadSet os(scope, token);
-  for (type::Typed<ir::Results> const &result : args) {
-    AddAdl(&os, token, result.type());
+  for (type::Typed<ir::Value> const &arg : args) {
+    AddAdl(&os, token, arg.type());
   };
   DEBUG_LOG("FindOverloads")
   ("Found ", os.members().size(), " overloads for '", token, "'");
   return os;
 }
 
+type::Typed<ir::Value> ResultsToValue(type::Typed<ir::Results> const &results) {
+  ir::Value val(false);
+  type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                   uint32_t, uint64_t, float, double, type::Type const *,
+                   ir::EnumVal, ir::FlagsVal, ir::Addr, ir::String, ir::Fn>(
+      results.type(), [&](auto tag) -> void {
+        using T = typename decltype(tag)::type;
+        val     = ir::Value(results->template get<T>(0));
+      });
+  return type::Typed<ir::Value>(val, results.type());
+}
+
 std::optional<ast::OverloadSet> MakeOverloadSet(
     Compiler *c, ast::Expression const *expr,
-    core::FnArgs<type::Typed<ir::Results>> const &args) {
+    core::FnArgs<type::Typed<ir::Value>> const &args) {
   if (auto *id = expr->if_as<ast::Identifier>()) {
     return FindOverloads(expr->scope(), id->token(), args);
   } else if (auto *acc = expr->if_as<ast::Access>()) {
@@ -187,7 +199,6 @@ ir::Results Compiler::EmitValue(ast::Access const *node) {
 }
 
 ir::Results Compiler::EmitValue(ast::ArgumentType const *node) {
-  DEBUG_LOG()("Getting arg-type on ", &data());
   return ir::Results{ASSERT_NOT_NULL(data().arg_type(node->name()))};
 }
 
@@ -199,7 +210,8 @@ ir::Results Compiler::EmitValue(ast::ArrayLiteral const *node) {
     auto *data_type = this_type->as<type::Array>().data_type();
     for (size_t i = 0; i < node->size(); ++i) {
       EmitMoveInit(
-          data_type, EmitValue(node->elem(i)),
+          data_type,
+          *ResultsToValue(type::Typed{EmitValue(node->elem(i)), data_type}),
           type::Typed<ir::Reg>(builder().Index(type::Ptr(this_type), alloc,
                                                static_cast<int32_t>(i)),
                                type::Ptr(data_type)));
@@ -521,7 +533,8 @@ ir::Results EmitBuiltinCall(
       ir::OutParams outs  = c->builder().OutParams(fn_type.output());
       ir::Reg reg         = outs[0];
       c->builder().Call(ir::Fn{ir::BuiltinFn::Bytes()}, &fn_type,
-                        {c->EmitValue(args.at(0))}, std::move(outs));
+                        std::vector<ir::Results>{c->EmitValue(args.at(0))},
+                        std::move(outs));
 
       return ir::Results{reg};
     } break;
@@ -531,7 +544,8 @@ ir::Results EmitBuiltinCall(
       ir::OutParams outs  = c->builder().OutParams(fn_type.output());
       ir::Reg reg         = outs[0];
       c->builder().Call(ir::Fn{ir::BuiltinFn::Alignment()}, &fn_type,
-                        {c->EmitValue(args.at(0))}, std::move(outs));
+                        std::vector<ir::Results>{c->EmitValue(args.at(0))},
+                        std::move(outs));
 
       return ir::Results{reg};
     } break;
@@ -555,7 +569,7 @@ ir::Results Compiler::EmitValue(ast::Call const *node) {
   // into a single variant buffer, because we know we need something that big
   // anyway, and their use cannot overlap.
   auto args = node->args().Transform([this](ast::Expression const *expr) {
-    return type::Typed(EmitValue(expr), type_of(expr));
+    return ResultsToValue(type::Typed(EmitValue(expr), type_of(expr)));
   });
 
   // TODO this shouldn't be able to fail.
@@ -876,7 +890,7 @@ ir::Results Compiler::EmitValue(ast::Goto const *node) {
   std::vector<ir::BasicBlock *> blocks;
   blocks.reserve(node->options().size());
 
-  std::vector<core::FnArgs<type::Typed<ir::Results>>> args;
+  std::vector<core::FnArgs<type::Typed<ir::Value>>> args;
   args.reserve(node->options().size());
 
   auto current_block = builder().CurrentBlock();
@@ -889,7 +903,8 @@ ir::Results Compiler::EmitValue(ast::Goto const *node) {
     builder().CurrentBlock() = block;
 
     args.push_back(opt.args().Transform([this](auto const &expr) {
-      return type::Typed(EmitValue(expr.get()), type_of(expr.get()));
+      return ResultsToValue(
+          type::Typed(EmitValue(expr.get()), type_of(expr.get())));
     }));
   }
 
@@ -941,7 +956,8 @@ ir::Results Compiler::EmitValue(ast::ReturnStmt const *node) {
       // TODO must `r` be holding a register?
       // TODO guaranteed move-elision
       ASSERT(arg_vals[i].second.size() == 1u);
-      EmitMoveInit(ret_type, arg_vals[i].second,
+      EmitMoveInit(ret_type,
+                   *ResultsToValue(type::Typed{arg_vals[i].second, ret_type}),
                    type::Typed<ir::Reg>(builder().GetRet(i, ret_type),
                                         type::Ptr(ret_type)));
 
@@ -982,7 +998,8 @@ ir::Results Compiler::EmitValue(ast::YieldStmt const *node) {
   for (size_t i = 0; i < arg_vals.size(); ++i) {
     auto qt = qual_type_of(node->exprs()[i]);
     ASSERT(qt.has_value() == true);
-    yielded_args.vals.pos_emplace(arg_vals[i].second, *qt);
+    yielded_args.vals.pos_emplace(
+        *ResultsToValue(type::Typed{arg_vals[i].second, qt->type()}), *qt);
   }
   yielded_args.label = node->label() ? node->label()->value() : ir::Label{};
 
@@ -1027,7 +1044,7 @@ ir::Results Compiler::EmitValue(ast::ScopeNode const *node) {
   builder().CurrentBlock() = args_block;
 
   auto args = node->args().Transform([this](ast::Expression const *expr) {
-    return type::Typed(EmitValue(expr), type_of(expr));
+    return ResultsToValue(type::Typed(EmitValue(expr), type_of(expr)));
   });
 
   ASSIGN_OR(return ir::Results{},  //
@@ -1175,13 +1192,17 @@ ir::Results Compiler::EmitValue(ast::Unop const *node) {
   switch (node->op()) {
     case frontend::Operator::Copy: {
       auto reg = builder().TmpAlloca(operand_type);
-      EmitCopyInit(operand_type, EmitValue(node->operand()),
+      EmitCopyInit(operand_type,
+                   *ResultsToValue(
+                       type::Typed{EmitValue(node->operand()), operand_type}),
                    type::Typed<ir::Reg>(reg, operand_type));
       return ir::Results{reg};
     } break;
     case frontend::Operator::Move: {
       auto reg = builder().TmpAlloca(operand_type);
-      EmitMoveInit(operand_type, EmitValue(node->operand()),
+      EmitMoveInit(operand_type,
+                   *ResultsToValue(
+                       type::Typed{EmitValue(node->operand()), operand_type}),
                    type::Typed<ir::Reg>(reg, operand_type));
       return ir::Results{reg};
     } break;

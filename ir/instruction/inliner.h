@@ -13,6 +13,7 @@
 #include "ir/results.h"
 #include "ir/value/reg.h"
 #include "ir/value/reg_or.h"
+#include "ir/value/value.h"
 
 namespace ir {
 struct BasicBlock;
@@ -24,6 +25,7 @@ struct InstructionInliner {
 
   void Inline(Reg &r) const;
   void Inline(Results &r) const;
+  void Inline(Value &v) const;
   void Inline(BasicBlock *&block, BasicBlock *incoming_block) const;
   void InlineJump(BasicBlock *block);
 
@@ -40,7 +42,7 @@ struct InstructionInliner {
 
   absl::flat_hash_map<
       std::string_view,
-      std::pair<BasicBlock *, core::FnArgs<type::Typed<ir::Results>>>>
+      std::pair<BasicBlock *, core::FnArgs<type::Typed<ir::Value>>>>
   ExtractNamedBlockMapping() {
     return std::move(named_blocks_);
   }
@@ -64,7 +66,7 @@ struct InstructionInliner {
 
   absl::flat_hash_map<
       std::string_view,
-      std::pair<BasicBlock *, core::FnArgs<type::Typed<ir::Results>>>>
+      std::pair<BasicBlock *, core::FnArgs<type::Typed<ir::Value>>>>
       named_blocks_;
   LocalBlockInterpretation block_interp_;
 

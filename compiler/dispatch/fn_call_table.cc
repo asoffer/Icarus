@@ -59,10 +59,21 @@ ir::RegOr<ir::Fn> ComputeConcreteFn(Compiler *compiler,
   }
 }
 
-ir::Results EmitCallOneOverload(
-    Compiler *compiler, ast::Expression const *fn,
-    internal::ExprData const &data,
-    core::FnArgs<type::Typed<ir::Value>> const &args) {
+type::Typed<ir::Value> ResultsToValue(type::Typed<ir::Results> const &results) {
+  ir::Value val(false);
+  type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                   uint32_t, uint64_t, float, double, type::Type const *,
+                   ir::EnumVal, ir::FlagsVal, ir::Addr, ir::String, ir::Fn>(
+      results.type(), [&](auto tag) -> void {
+        using T = typename decltype(tag)::type;
+        val     = ir::Value(results->template get<T>(0));
+      });
+  return type::Typed<ir::Value>(val, results.type());
+}
+
+ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
+                                internal::ExprData const &data,
+                                core::FnArgs<type::Typed<ir::Value>> args) {
   auto callee_qual_type = compiler->qual_type_of(fn);
   ASSERT(callee_qual_type.has_value() == true);
 
@@ -83,21 +94,15 @@ ir::Results EmitCallOneOverload(
     }
   }();
 
-  auto arg_results = args.Transform([](auto const &a) {
-    ir::Results res;
-    a->apply([&res](auto x) { res.append(x); });
-    return type::Typed<ir::Results>(res, a.type());
-  });
-
   if (not callee.is_reg()) {
     switch (callee.value().kind()) {
       case ir::Fn::Kind::Native: {
         core::FillMissingArgs(
-            core::ParamsRef(callee.value().native()->params()), &arg_results,
+            core::ParamsRef(callee.value().native()->params()), &args,
             [compiler](auto const &p) {
               auto results =
                   compiler->EmitValue(ASSERT_NOT_NULL(p.get()->init_val()));
-              return type::Typed(results, p.type());
+              return ResultsToValue(type::Typed(results, p.type()));
             });
       } break;
       default: break;
@@ -107,37 +112,8 @@ ir::Results EmitCallOneOverload(
   auto[out_results, out_params] = SetReturns(compiler->builder(), data);
   compiler->builder().Call(
       callee, fn_type,
-      PrepareCallArguments(compiler, nullptr, data.params(), arg_results),
-      out_params);
+      PrepareCallArguments(compiler, nullptr, data.params(), args), out_params);
   return std::move(out_results);
-}
-
-type::Typed<ir::Value> ResultsToValue(type::Typed<ir::Results>const& results) {
-  ir::Value val(false);
-  type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                   uint32_t, uint64_t, float, double, type::Type const *,
-                   ir::EnumVal, ir::FlagsVal, ir::Addr, ir::String, ir::Fn>(
-      results.type(), [&](auto tag) -> void {
-        using T = typename decltype(tag)::type;
-        val     = ir::Value(results->template get<T>(0));
-      });
-  return type::Typed<ir::Value>(val, results.type());
-}
-
-type::Typed<ir::Results> ValueToResults(type::Typed<ir::Value> const &v) {
-  ir::Results r;
-  v->apply([&](auto x) { r = ir::Results{x}; });
-  return type::Typed<ir::Results>(r, v.type());
-}
-
-core::FnArgs<type::Typed<ir::Results>> ToResultsArgs(
-    core::FnArgs<type::Typed<ir::Value>> const &args) {
-  return args.Transform(ValueToResults);
-}
-
-core::FnArgs<type::Typed<ir::Value>> ToValueArgs(
-    core::FnArgs<type::Typed<ir::Results>> const &args) {
-  return args.Transform(ResultsToValue);
 }
 
 ir::Results EmitCall(Compiler *compiler,
@@ -159,7 +135,7 @@ ir::Results EmitCall(Compiler *compiler,
     auto *land_block     = bldr.AddBlock();
     auto callee_to_block = bldr.AddBlocks(table);
 
-    EmitRuntimeDispatch(bldr, table, callee_to_block, ToResultsArgs(args));
+    EmitRuntimeDispatch(bldr, table, callee_to_block, args);
 
     for (auto const & [ overload, expr_data ] : table) {
       bldr.CurrentBlock() = callee_to_block[overload];
@@ -233,8 +209,7 @@ Verify(Compiler *compiler, ast::OverloadSet const &os,
 
 ir::Results FnCallDispatchTable::Emit(
     Compiler *c, ast::OverloadSet const &os,
-    core::FnArgs<type::Typed<ir::Results>> const &r_args) {
-  auto args = ToValueArgs(r_args);
+    core::FnArgs<type::Typed<ir::Value>> const &args) {
   ASSIGN_OR(return ir::Results{},  //
                    auto table, Verify(c, os, args));
   return EmitCall(c, table, args);

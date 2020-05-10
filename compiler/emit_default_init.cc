@@ -6,6 +6,7 @@
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
 #include "ir/results.h"
+#include "ir/value/value.h"
 #include "type/primitive.h"
 
 namespace compiler {
@@ -83,7 +84,7 @@ void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDefaultInitTag) {
         if (field.initial_value) {
           if (field.type == type::Int64) {
             EmitCopyInit(field.type,
-                         ir::Results{field.initial_value->get<int64_t>()},
+                         ir::Value(field.initial_value->get<int64_t>()),
                          builder().Field(var, t, i));
           } else {
             NOT_YET();

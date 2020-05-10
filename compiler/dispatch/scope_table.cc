@@ -18,9 +18,9 @@ namespace {
 
 // Returns ir::OutParams that get passed on to `exit`
 std::pair<ir::BasicBlock const *, ir::OutParams> EmitCallOneOverload(
-    absl::flat_hash_map<std::string_view,
-                        std::pair<ir::BasicBlock *,
-                                  core::FnArgs<type::Typed<ir::Results>>>> const
+    absl::flat_hash_map<
+        std::string_view,
+        std::pair<ir::BasicBlock *, core::FnArgs<type::Typed<ir::Value>>>> const
         &name_to_block,
     ir::ScopeDef const *scope_def, Compiler *compiler,
     ir::LocalBlockInterpretation const &block_interp) {
@@ -48,11 +48,11 @@ std::pair<ir::BasicBlock const *, ir::OutParams> EmitCallOneOverload(
     ir::Fn fn     = *maybe_fn;
     auto *fn_type = fn.type();
 
-    std::vector<ir::Results> arg_results =
+    std::vector<ir::Value> arg_values =
         PrepareCallArguments(compiler, nullptr, fn_type->params(), block_args);
 
     ir::OutParams outs = bldr.OutParams(fn_type->output());
-    bldr.Call(fn, fn_type, arg_results, outs);
+    bldr.Call(fn, fn_type, arg_values, outs);
 
     // TODO only null because there's no start/exit block node. can we fake it
     // to make this work nicer?
@@ -67,7 +67,7 @@ std::pair<ir::BasicBlock const *, ir::OutParams> EmitCallOneOverload(
       size_t i = 0;
       for (auto &param : params) {
         compiler->EmitMoveInit(
-            fn_type->output()[i], ir::Results{outs[i]},
+            fn_type->output()[i], ir::Value(outs[i]),
             type::Typed<ir::Reg>(
                 compiler->data().addr(param.value.get()),
                 type::Ptr(compiler->type_of(param.value.get()))));
@@ -208,7 +208,7 @@ void internal::OneTable::VerifyJumps() {
 base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
     Compiler *compiler, ast::ScopeNode const *node,
     absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> inits,
-    core::FnArgs<type::Typed<ir::Results>> const &args) {
+    core::FnArgs<type::Typed<ir::Value>> const &args) {
   auto args_qt = args.Transform(
       [](auto const &t) { return type::QualType::NonConstant(t.type()); });
 
@@ -268,7 +268,7 @@ void ScopeDispatchTable::EmitSplittingDispatch(
     absl::flat_hash_map<ir::ScopeDef const *, ir::Reg> const &state_regs,
     absl::flat_hash_map<ir::ScopeDef const *,
                         ir::LocalBlockInterpretation> const &block_interps,
-    core::FnArgs<type::Typed<ir::Results>> const &args) const {
+    core::FnArgs<type::Typed<ir::Value>> const &args) const {
   auto &bldr           = compiler->builder();
   auto callee_to_block = bldr.AddBlocks(init_map_);
   EmitRuntimeDispatch(bldr, init_map_, callee_to_block, args);
@@ -309,9 +309,10 @@ void internal::OneTable::EmitCall(
     bldr.CurrentBlock() = block_interp[node];
     bldr.block_termination_state() =
         ir::Builder::BlockTerminationState::kMoreStatements;
-    auto yield_results       = compiler->EmitBlockNode(node);
-    auto yield_typed_results = yield_results.vals.Transform(
-        [](auto const &p) { return type::Typed(p.first, p.second.type()); });
+    auto yield_results      = compiler->EmitBlockNode(node);
+    auto yield_typed_values = yield_results.vals.Transform([](auto const &p) {
+      return type::Typed<ir::Value>(p.first, p.second.type());
+    });
 
     // TODO skipping after-handlers is incorrect. We need a guaranteed
     // exit path.
@@ -344,13 +345,13 @@ void internal::OneTable::EmitCall(
 
     auto callee_to_block = bldr.AddBlocks(table.table_);
     EmitRuntimeDispatch(bldr, table.table_, callee_to_block,
-                        yield_typed_results);
+                        yield_typed_values);
 
     for (auto const &[jump, expr_data] : table.table_) {
       bldr.CurrentBlock() = callee_to_block[jump];
 
       auto name_to_block = JumpDispatchTable::EmitCallOneOverload(
-          state_reg, jump, compiler, yield_typed_results, block_interp);
+          state_reg, jump, compiler, yield_typed_values, block_interp);
       auto [block, outs] =
           EmitCallOneOverload(name_to_block, scope_def, compiler, block_interp);
       if (not outs.empty()) {
@@ -366,7 +367,7 @@ void internal::OneTable::EmitCall(
 
 ir::Results ScopeDispatchTable::EmitCall(
     Compiler *compiler,
-    core::FnArgs<type::Typed<ir::Results>> const &args) const {
+    core::FnArgs<type::Typed<ir::Value>> const &args) const {
   DEBUG_LOG("ScopeDispatchTable")
   ("Emitting a table with ", init_map_.size(), " entries.");
   auto &bldr = compiler->builder();

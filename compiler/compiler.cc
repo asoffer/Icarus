@@ -84,6 +84,20 @@ ir::NativeFn Compiler::AddFunc(
   return ir::NativeFn(&data().fns_, fn_type, std::move(params));
 }
 
+static type::Typed<ir::Value> ResultsToValue(
+    type::Typed<ir::Results> const &results) {
+  ir::Value val(false);
+  type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                   uint32_t, uint64_t, float, double, type::Type const *,
+                   ir::EnumVal, ir::FlagsVal, ir::Addr, ir::String, ir::Fn>(
+      results.type(), [&](auto tag) -> void {
+        using T = typename decltype(tag)::type;
+        val     = ir::Value(results->template get<T>(0));
+      });
+  return type::Typed<ir::Value>(val, results.type());
+}
+
+
 ir::CompiledFn Compiler::MakeThunk(ast::Expression const *expr,
                                    type::Type const *type) {
   ir::CompiledFn fn(type::Func({}, {ASSERT_NOT_NULL(type)}),
@@ -113,7 +127,7 @@ ir::CompiledFn Compiler::MakeThunk(ast::Expression const *expr,
 
         ASSERT(vals.GetResult(i).size() == 1u);
         EmitMoveInit(
-            t, vals.GetResult(i),
+            t, *ResultsToValue(type::Typed{vals.GetResult(i),t}),
             type::Typed<ir::Reg>(builder().GetRet(i, t), type::Ptr(t)));
 
       } else {

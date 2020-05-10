@@ -1026,8 +1026,29 @@ struct TypeManipulationInstruction
   RegOr<Addr> to;  // Only meaningful for copy and move
 };
 
+inline type::Typed<ir::Results> ValueToResults(
+    type::Typed<ir::Value> const& v) {
+  ir::Results r;
+  v->apply([&](auto x) { r = ir::Results{x}; });
+  return type::Typed<ir::Results>(r, v.type());
+}
+
 struct CallInstruction : base::Clone<CallInstruction, Instruction> {
   static constexpr cmd_index_t kIndex = internal::kCallInstructionNumber;
+
+  CallInstruction(type::Function const* fn_type, RegOr<Fn> const& fn,
+                  std::vector<Value> args, OutParams outs)
+      : fn_type_(fn_type),
+        fn_(fn),
+        args_(args.size()),
+        outs_(std::move(outs)) {
+    ASSERT(this->outs_.size() == fn_type_->output().size());
+    ASSERT(args_.size() == fn_type_->params().size());
+    for (size_t i = 0; i < args.size(); ++i) {
+      args_[i] =
+          *ValueToResults(type::Typed(args[i], fn_type_->params()[i].value));
+    }
+  }
 
   CallInstruction(type::Function const* fn_type, RegOr<Fn> const& fn,
                   std::vector<Results> args, OutParams outs)

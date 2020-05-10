@@ -97,16 +97,16 @@ void AddType(IndexT &&index, type::Type const *t,
   }
 }
 
-ir::Results PrepareOneArg(Compiler *c, type::Typed<ir::Results> const &arg,
-                          type::Type const *param_type) {
+ir::Value PrepareOneArg(Compiler *c, type::Typed<ir::Value> const &arg,
+                        type::Type const *param_type) {
   auto &bldr      = c->builder();
   auto *arg_var   = arg.type()->if_as<type::Variant>();
   auto *param_var = param_type->if_as<type::Variant>();
   if (arg_var and param_var) {
     NOT_YET();
   } else if (arg_var) {
-    return ir::Results{bldr.PtrFix(
-        bldr.VariantValue(nullptr, arg->get<ir::Addr>(0)), param_type)};
+    return ir::Value(bldr.PtrFix(
+        bldr.VariantValue(nullptr, arg->get<ir::Addr>()), param_type));
   } else if (param_var) {
     auto tmp = bldr.TmpAlloca(param_var);
     static_cast<void>(tmp);
@@ -119,7 +119,7 @@ ir::Results PrepareOneArg(Compiler *c, type::Typed<ir::Results> const &arg,
     if (t->is_big()) {
       auto r = bldr.TmpAlloca(t);
       c->EmitMoveInit(t, arg.get(), type::Typed(r, type::Ptr(t)));
-      return ir::Results{r};
+      return ir::Value(r);
     } else {
       return arg.get();
     }
@@ -154,29 +154,29 @@ core::Params<type::QualType> ExtractParamTypes(Compiler *compiler,
   }
 }
 
-std::vector<ir::Results> PrepareCallArguments(
+std::vector<ir::Value> PrepareCallArguments(
     Compiler *compiler, type::Type const *state_ptr_type,
     core::Params<type::Type const *> const &params,
-    core::FnArgs<type::Typed<ir::Results>> const &args) {
-  std::vector<ir::Results> arg_results;
-  arg_results.reserve(params.size());
+    core::FnArgs<type::Typed<ir::Value>> const &args) {
+  std::vector<ir::Value> arg_values;
+  arg_values.reserve(params.size());
 
   auto &bldr = compiler->builder();
   size_t i   = 0;
   size_t j   = 0;
   if (state_ptr_type) {
-    arg_results.push_back(PrepareOneArg(compiler, args[i++], state_ptr_type));
+    arg_values.push_back(PrepareOneArg(compiler, args[i++], state_ptr_type));
   }
   while (i < args.pos().size()) {
-    arg_results.push_back(PrepareOneArg(compiler, args[i++], params[j++].value));
+    arg_values.push_back(PrepareOneArg(compiler, args[i++], params[j++].value));
   }
 
   for (; i < params.size(); ++i) {
-    arg_results.push_back(
+    arg_values.push_back(
         PrepareOneArg(compiler, args[params[i].name], params[i].value));
   }
 
-  return arg_results;
+  return arg_values;
 }
 
 }  // namespace compiler

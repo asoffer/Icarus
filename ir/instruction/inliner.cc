@@ -30,6 +30,10 @@ InstructionInliner::InstructionInliner(internal::BlockGroupBase* to_be_inlined,
   landing_block_ = into->AppendBlock();
 }
 
+void InstructionInliner::Inline(Value& v) const {
+  if (auto* r = v.get_if<Reg>()) { Inline(*r); }
+}
+
 void InstructionInliner::Inline(Results& r) const {
   r.for_each_reg([this](Reg& reg) { Inline(reg); });
 }
@@ -84,7 +88,7 @@ void InstructionInliner::InlineJump(BasicBlock* block) {
         for (auto& inst : entry.first->instructions_) { inst->Inline(*this); }
 
         entry.second =
-            j.args()[i].Transform([&](::type::Typed<Results> const& r) {
+            j.args()[i].Transform([&](::type::Typed<Value> const& r) {
               auto copy = r;
               Inline(copy.get());
               return copy;

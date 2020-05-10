@@ -6,7 +6,7 @@
 #include "ir/builder.h"
 #include "ir/jump.h"
 #include "ir/local_block_interpretation.h"
-#include "ir/results.h"
+#include "ir/value/value.h"
 
 namespace ir {
 
@@ -15,10 +15,9 @@ namespace ir {
 // newly allocated BasicBlock that we use as the corresponding landing pad.
 absl::flat_hash_map<
     std::string_view,
-    std::pair<BasicBlock *, core::FnArgs<type::Typed<ir::Results>>>>
+    std::pair<BasicBlock *, core::FnArgs<type::Typed<ir::Value>>>>
 Inline(Builder &bldr, Jump *to_be_inlined,
-       absl::Span<ir::Results const> arguments,
-       LocalBlockInterpretation const &);
+       absl::Span<ir::Value const> arguments, LocalBlockInterpretation const &);
 
 }  // namespace ir
 

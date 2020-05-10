@@ -69,6 +69,17 @@ void Builder::Call(RegOr<Fn> const &fn, type::Function const *f,
   CurrentBlock()->AddInstruction(std::move(inst));
 }
 
+void Builder::Call(RegOr<Fn> const &fn, type::Function const *f,
+                   std::vector<Value> args, ir::OutParams outs) {
+  // TODO this call should return the constructed registers rather than forcing
+  // the caller to do it.
+  CurrentBlock()->load_store_cache().clear();
+  ASSERT(args.size() == f->params().size());
+  auto inst = std::make_unique<CallInstruction>(f, fn, std::move(args),
+                                                std::move(outs));
+  CurrentBlock()->AddInstruction(std::move(inst));
+}
+
 static void ClearJumps(JumpCmd const &jump, BasicBlock *from) {
   jump.Visit([&](auto &j) {
     using type = std::decay_t<decltype(j)>;
@@ -108,7 +119,7 @@ void Builder::CondJump(RegOr<bool> cond, BasicBlock *true_block,
 
 void Builder::ChooseJump(std::vector<std::string_view> names,
                          std::vector<BasicBlock *> blocks,
-                         std::vector<core::FnArgs<type::Typed<Results>>> args) {
+                         std::vector<core::FnArgs<type::Typed<Value>>> args) {
   CurrentBlock()->set_jump(
       JumpCmd::Choose(std::move(names), std::move(blocks), std::move(args)));
 }

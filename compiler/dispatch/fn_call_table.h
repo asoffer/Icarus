@@ -24,7 +24,7 @@ struct Compiler;  // TODO move into it's own header.
 // separate out these headers.
 struct FnCallDispatchTable {
   static ir::Results Emit(Compiler *c, ast::OverloadSet const &os,
-                          core::FnArgs<type::Typed<ir::Results>> const &args);
+                          core::FnArgs<type::Typed<ir::Value>> const &args);
 
  private:
   static type::QualType ComputeResultQualType(

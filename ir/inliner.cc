@@ -13,9 +13,9 @@ namespace ir {
 
 absl::flat_hash_map<
     std::string_view,
-    std::pair<BasicBlock *, core::FnArgs<type::Typed<ir::Results>>>>
+    std::pair<BasicBlock *, core::FnArgs<type::Typed<ir::Value>>>>
 Inline(Builder &bldr, Jump *to_be_inlined,
-       absl::Span<ir::Results const> arguments,
+       absl::Span<ir::Value const> arguments,
        LocalBlockInterpretation const &block_interp) {
   DEBUG_LOG("inliner")(*to_be_inlined);
   if (to_be_inlined->work_item) {
@@ -34,13 +34,23 @@ Inline(Builder &bldr, Jump *to_be_inlined,
   if (auto *state_type = to_be_inlined->type()->state()) {
     type::Apply(state_type, [&](auto tag) -> Reg {
       using T = typename decltype(tag)::type;
-      return MakeReg(arguments[i++].get<T>(0));
+      auto a  = arguments[i++];
+      if (Reg *r = a.get_if<Reg>()) {
+        return MakeReg<RegOr<T>>(*r);
+      } else {
+        return MakeReg<RegOr<T>>(a.get<T>());
+      }
     });
   }
-  for (auto const& p : to_be_inlined->type()->params()) {
+  for (auto const &p : to_be_inlined->type()->params()) {
     type::Apply(p.value, [&](auto tag) -> Reg {
       using T = typename decltype(tag)::type;
-      return MakeReg(arguments[i++].get<T>(0));
+      auto a  = arguments[i++];
+      if (Reg *r = a.get_if<Reg>()) {
+        return MakeReg<RegOr<T>>(*r);
+      } else {
+        return MakeReg<RegOr<T>>(a.get<T>());
+      }
     });
     // TODO Handle types not covered by Apply (structs, etc).
   }

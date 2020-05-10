@@ -9,7 +9,7 @@
 #include "core/fn_args.h"
 #include "ir/jump.h"
 #include "ir/local_block_interpretation.h"
-#include "ir/results.h"
+#include "ir/value/value.h"
 #include "type/qual_type.h"
 
 namespace compiler {
@@ -23,13 +23,13 @@ struct JumpDispatchTable {
   // TODO long-term the `jump` parameter should read from `table_`.
   static absl::flat_hash_map<
       std::string_view,
-      std::pair<ir::BasicBlock *, core::FnArgs<type::Typed<ir::Results>>>>
+      std::pair<ir::BasicBlock *, core::FnArgs<type::Typed<ir::Value>>>>
   EmitCallOneOverload(std::optional<ir::Reg> state_reg, ir::Jump *jump,
                       Compiler *compiler,
-                      core::FnArgs<type::Typed<ir::Results>> args,
+                      core::FnArgs<type::Typed<ir::Value>> args,
                       ir::LocalBlockInterpretation const &block_interp);
 
-  void EmitCall(Compiler *compiler, core::FnArgs<type::Typed<ir::Results>> args,
+  void EmitCall(Compiler *compiler, core::FnArgs<type::Typed<ir::Value>> args,
            ir::LocalBlockInterpretation const &block_interp);
 
   // private:

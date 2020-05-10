@@ -419,6 +419,12 @@ struct Builder {
   void Call(RegOr<Fn> const& fn, type::Function const* f,
             std::vector<Results> args, ir::OutParams outs);
 
+  // Emits a function-call instruction, calling `fn` of type `f` with the given
+  // `arguments` and output parameters. If output parameters are not present,
+  // the function must return nothing.
+  void Call(RegOr<Fn> const& fn, type::Function const* f,
+            std::vector<Value> args, ir::OutParams outs);
+
   // Jump instructions must be the last instruction in a basic block. They
   // handle control-flow, indicating which basic block control should be
   // transferred to next.
@@ -438,7 +444,7 @@ struct Builder {
   // TODO: Probably better to have a data structure for this.
   void ChooseJump(std::vector<std::string_view> names,
                   std::vector<BasicBlock*> blocks,
-                  std::vector<core::FnArgs<type::Typed<Results>>> args);
+                  std::vector<core::FnArgs<type::Typed<Value>>> args);
 
   template <bool B>
   BasicBlock* EarlyExitOn(BasicBlock* exit_block, RegOr<bool> cond) {

@@ -91,7 +91,7 @@ struct Compiler
     std::vector<ScopeLandingState> scope_landings;
 
     struct YieldedArguments {
-      core::FnArgs<std::pair<ir::Results, type::QualType>> vals;
+      core::FnArgs<std::pair<ir::Value, type::QualType>> vals;
       ir::Label label;
     };
     std::vector<YieldedArguments> yields;
@@ -282,7 +282,7 @@ struct Compiler
     return EmitMoveInit(node, reg);
   }
 
-  void EmitMoveInit(type::Type const *from_type, ir::Results const &from_val,
+  void EmitMoveInit(type::Type const *from_type, ir::Value from_val,
                     type::Typed<ir::Reg> to_var);
 
   void EmitCopyInit(ast::Expression const *node, type::Typed<ir::Reg> reg);
@@ -301,7 +301,7 @@ struct Compiler
     return EmitCopyInit(node, reg);
   }
 
-  void EmitCopyInit(type::Type const *from_type, ir::Results const &from_val,
+  void EmitCopyInit(type::Type const *from_type, ir::Value from_val,
                     type::Typed<ir::Reg> to_var);
 
  private:

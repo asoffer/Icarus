@@ -21,7 +21,7 @@ namespace compiler {
 // (usually due to a cast such as `int64` casting to `int64 | bool`).
 ir::RegOr<bool> EmitRuntimeDispatchOneComparison(
     ir::Builder &bldr, core::Params<type::Type const *> const &params,
-    core::FnArgs<type::Typed<ir::Results>> const &args);
+    core::FnArgs<type::Typed<ir::Value>> const &args);
 
 // Emits code which jumps to the appropriate argument-prep-and-function-call
 // after testing variants for the right type.
@@ -29,7 +29,7 @@ template <typename Key, typename Value>
 void EmitRuntimeDispatch(
     ir::Builder &bldr, absl::flat_hash_map<Key, Value> const &table,
     absl::flat_hash_map<Key, ir::BasicBlock *> const &callee_to_block,
-    core::FnArgs<type::Typed<ir::Results>> const &args) {
+    core::FnArgs<type::Typed<ir::Value>> const &args) {
   // TODO This is a simple linear search through the table which is certainly a
   // bad idea. We can optimize it later. Likely the right way to do this is to
   // find a perfect hash of the function variants that produces an index into a

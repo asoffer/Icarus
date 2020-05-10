@@ -44,13 +44,12 @@ struct ScopeDispatchTable {
   static base::expected<ScopeDispatchTable> Verify(
       Compiler *compiler, ast::ScopeNode const *node,
       absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> inits,
-      core::FnArgs<type::Typed<ir::Results>> const &args);
+      core::FnArgs<type::Typed<ir::Value>> const &args);
 
   type::QualType qual_type() const { return qual_type_; }
 
-  ir::Results EmitCall(
-      Compiler *compiler,
-      core::FnArgs<type::Typed<ir::Results>> const &args) const;
+  ir::Results EmitCall(Compiler *compiler,
+                       core::FnArgs<type::Typed<ir::Value>> const &args) const;
 
  private:
   // Given a value of type `A | B` passed into the scope, there may be no
@@ -65,7 +64,7 @@ struct ScopeDispatchTable {
       absl::flat_hash_map<ir::ScopeDef const *, ir::Reg> const &state_regs,
       absl::flat_hash_map<ir::ScopeDef const *,
                           ir::LocalBlockInterpretation> const &block_interps,
-      core::FnArgs<type::Typed<ir::Results>> const &args) const;
+      core::FnArgs<type::Typed<ir::Value>> const &args) const;
 
   ast::ScopeNode const *scope_node_;
   absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> init_map_;
