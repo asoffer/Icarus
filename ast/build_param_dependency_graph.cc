@@ -129,6 +129,11 @@ struct ParamDependencyGraphBuilder
     }
   }
 
+  void Visit(FunctionType const *node, core::DependencyNode<Declaration> d) {
+    for (auto const *param : node->params()) { Visit(param, d); }
+    for (auto const *out : node->outputs()) { Visit(out, d); }
+  }
+
   void Visit(ShortFunctionLiteral const *node,
              core::DependencyNode<Declaration> d) {
     for (auto const &param : node->params()) { Visit(param.value.get(), d); }

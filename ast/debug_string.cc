@@ -8,7 +8,6 @@ namespace ast {
 namespace {
 char const *OpStr(frontend::Operator op) {
   switch (op) {
-    case frontend::Operator::Arrow: return " -> ";
     case frontend::Operator::Add: return " + ";
     case frontend::Operator::Sub: return " - ";
     case frontend::Operator::Mul: return " * ";
@@ -281,6 +280,20 @@ void FunctionLiteral::DebugStrAppend(std::string *out, size_t indent) const {
     stmt->DebugStrAppend(out, indent + 1);
   }
   absl::StrAppend(out, "\n", indentation(indent), "}");
+}
+
+void FunctionType::DebugStrAppend(std::string *out, size_t indent) const {
+  absl::StrAppend(out, "(",
+                  absl::StrJoin(params(), ", ",
+                                [&](std::string *out, auto const &p) {
+                                  p->DebugStrAppend(out, indent);
+                                }),
+                  ") -> (",
+                  absl::StrJoin(outputs(), ", ",
+                                [&](std::string *out, auto const *elem) {
+                                  elem->DebugStrAppend(out, indent);
+                                }),
+                  ")");
 }
 
 void Identifier::DebugStrAppend(std::string *out, size_t indent) const {

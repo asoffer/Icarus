@@ -109,6 +109,11 @@ bool FunctionLiteral::IsDependent() const {
   return false;
 }
 
+bool FunctionType::IsDependent() const {
+  // TODO
+  return false;
+}
+
 bool Identifier::IsDependent() const {
   // TODO
   return false;

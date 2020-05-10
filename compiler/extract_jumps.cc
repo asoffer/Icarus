@@ -99,6 +99,11 @@ struct Extractor : ast::Visitor<void()> {
     }
   }
 
+  void Visit(ast::FunctionType const *node) final {
+    for (auto const *param : node->params()) { Visit(param); }
+    for (auto *out : node->outputs()) { Visit(out); }
+  }
+
   void Visit(ast::Identifier const *node) final {}
 
   void Visit(ast::Import const *node) final { Visit(node->operand()); }

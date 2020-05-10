@@ -787,10 +787,6 @@ type::QualType Compiler::VerifyType(ast::ArrayType const *node) {
   return data().set_qual_type(node, type::QualType(type::Type_, quals));
 }
 
-static bool IsTypeOrTupleOfTypes(type::Type const *t) {
-  return t == type::Type_ or t->is<type::Tuple>();
-}
-
 type::QualType Compiler::VerifyType(ast::Assignment const *node) {
   std::vector<type::Type const *> lhs_types;
   lhs_types.reserve(node->lhs().size());
@@ -940,28 +936,6 @@ type::QualType Compiler::VerifyType(ast::Binop const *node) {
                                     rhs_qual_type.type());
       }
     } break;
-    case Operator::Arrow: {
-      type::Type const *t = type::Type_;
-      if (not IsTypeOrTupleOfTypes(lhs_qual_type.type())) {
-        t = nullptr;
-        diag().Consume(diagnostic::NonTypeFunctionInput{
-            .range = node->range(),
-        });
-      }
-
-      if (not IsTypeOrTupleOfTypes(rhs_qual_type.type())) {
-        t = nullptr;
-        diag().Consume(diagnostic::NonTypeFunctionOutput{
-            .range = node->range(),
-        });
-      }
-
-      if (t == nullptr) { return type::QualType::Error(); }
-
-      return data().set_qual_type(
-          node, type::QualType(type::Type_,
-                               lhs_qual_type.quals() & rhs_qual_type.quals()));
-    }
     default: UNREACHABLE();
   }
   UNREACHABLE(stringify(node->op()));
@@ -1942,6 +1916,36 @@ type::QualType Compiler::VerifyType(ast::FunctionLiteral const *node) {
   return data().set_qual_type(
       node,
       type::QualType::Constant(new type::GenericFunction(std::move(gen))));
+}
+
+type::QualType Compiler::VerifyType(ast::FunctionType const *node) {
+  type::Type const *t = type::Type_;
+  type::Quals quals   = type::Quals::Const();
+
+  for (auto const *p : node->params()) {
+    auto qt = VerifyType(p);
+    quals &= qt.quals();
+    if (qt.type() != type::Type_) {
+      t = nullptr;
+      diag().Consume(diagnostic::NonTypeFunctionInput{
+          .range = p->range(),
+      });
+    }
+  }
+
+  for (auto const *p : node->outputs()) {
+    auto qt = VerifyType(p);
+    quals &= qt.quals();
+    if (qt.type() != type::Type_) {
+      t = nullptr;
+      diag().Consume(diagnostic::NonTypeFunctionInput{
+          .range = p->range(),
+      });
+    }
+  }
+
+  if (t == nullptr) { return type::QualType::Error(); }
+  return data().set_qual_type(node, type::QualType(type::Type_, quals));
 }
 
 type::QualType Compiler::VerifyType(ast::ShortFunctionLiteral const *node) {

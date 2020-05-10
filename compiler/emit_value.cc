@@ -309,26 +309,6 @@ ir::Results Compiler::EmitValue(ast::Binop const *node) {
                 builder().Mod(lhs_ir.get<T>(0), rhs_ir.get<T>(0))};
           });
     } break;
-    case frontend::Operator::Arrow: {
-      // TODO ugly hack.
-      std::vector<ir::RegOr<type::Type const *>> lhs_vals, rhs_vals;
-      if (auto *l = node->lhs()->if_as<ast::CommaList>()) {
-        for (auto &e : l->exprs_) {
-          lhs_vals.push_back(EmitValue(e.get()).get<type::Type const *>(0));
-        }
-      } else {
-        lhs_vals.push_back(EmitValue(node->lhs()).get<type::Type const *>(0));
-      }
-      if (auto *r = node->rhs()->if_as<ast::CommaList>()) {
-        for (auto &e : r->exprs_) {
-          rhs_vals.push_back(EmitValue(e.get()).get<type::Type const *>(0));
-        }
-      } else {
-        rhs_vals.push_back(EmitValue(node->rhs()).get<type::Type const *>(0));
-      }
-
-      return ir::Results{builder().Arrow(lhs_vals, rhs_vals)};
-    } break;
     case frontend::Operator::OrEq: {
       auto *this_type = type_of(node);
       if (this_type->is<type::Flags>()) {
@@ -844,6 +824,21 @@ ir::Results Compiler::EmitValue(ast::FunctionLiteral const *node) {
     return f;
   });
   return ir::Results{ir::Fn{ir_func}};
+}
+
+ir::Results Compiler::EmitValue(ast::FunctionType const *node) {
+  std::vector<ir::RegOr<type::Type const *>> param_vals, out_vals;
+  param_vals.reserve(node->params().size());
+  out_vals.reserve(node->outputs().size());
+  for (auto const *p : node->params()) {
+    param_vals.push_back(EmitValue(p).get<type::Type const *>(0));
+  }
+  for (auto const *o : node->outputs()) {
+    out_vals.push_back(EmitValue(o).get<type::Type const *>(0));
+  }
+
+  return ir::Results{
+      builder().Arrow(std::move(param_vals), std::move(out_vals))};
 }
 
 ir::Results Compiler::EmitValue(ast::Identifier const *node) {

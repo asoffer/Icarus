@@ -169,7 +169,7 @@ struct Assignment : Node {
   std::pair<std::vector<std::unique_ptr<Expression>>,
             std::vector<std::unique_ptr<Expression>>>
   extract() && {
-    return std::pair{std::move(lhs_), std::move(rhs_)};
+    return std::pair(std::move(lhs_), std::move(rhs_));
   }
 
   ICARUS_AST_VIRTUAL_METHODS;
@@ -749,6 +749,45 @@ struct FunctionLiteral : ParameterizedExpression, WithScope<FnScope> {
  private:
   std::optional<std::vector<std::unique_ptr<Expression>>> outputs_;
   std::vector<std::unique_ptr<Node>> stmts_;
+};
+
+
+// FunctionType:
+//
+// Represents an expression involving the `->` token, which represnts a function
+// type. Note that despite being embedded inside function literals,
+// `FunctionLiteral` does not explicitly rely on `FunctionType`. This is
+// because `FunctionType` may involve function types where the input
+// parameters are not declarations.
+//
+// Examples:
+// * `int64 -> bool`
+// * `(b: bool) -> ()`
+// * `(n: int64, b: bool) -> (float32, float32)
+//
+struct FunctionType  : Expression{
+  FunctionType(frontend::SourceRange const &range,
+               std::vector<std::unique_ptr<Expression>> params,
+               std::vector<std::unique_ptr<Expression>> output)
+      : Expression(range),
+        params_(std::move(params)),
+        output_(std::move(output)) {}
+  ~FunctionType() override {}
+
+  base::PtrSpan<Expression const> params() const { return params_; }
+  base::PtrSpan<Expression const> outputs() const { return output_; }
+
+  ICARUS_AST_VIRTUAL_METHODS;
+
+  std::pair<std::vector<std::unique_ptr<Expression>>,
+            std::vector<std::unique_ptr<Expression>>>
+  extract() && {
+    return std::pair(std::move(params_), std::move(output_));
+  }
+
+ private:
+  std::vector<std::unique_ptr<Expression>> params_;
+  std::vector<std::unique_ptr<Expression>> output_;
 };
 
 // Identifier:

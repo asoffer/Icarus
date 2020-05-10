@@ -556,57 +556,60 @@ std::unique_ptr<ast::Node> BuildDeclaration(
       std::move(init_val), IsConst ? ast::Declaration::f_IsConst : 0);
 }
 
+static std::vector<std::unique_ptr<ast::Expression>> ExtractIfCommaList(
+    std::unique_ptr<ast::Expression> expr) {
+  std::vector<std::unique_ptr<ast::Expression>> exprs;
+  if (auto *e = expr->if_as<ast::CommaList>()) {
+    exprs = std::move(*e).extract();
+  } else {
+    exprs.push_back(std::move(expr));
+  }
+  return exprs;
+}
+
 std::vector<std::unique_ptr<ast::Declaration>> ExtractInputs(
-    std::unique_ptr<ast::Expression> args,
+    std::vector<std::unique_ptr<ast::Expression>> params,
     diagnostic::DiagnosticConsumer &diag) {
   std::vector<std::unique_ptr<ast::Declaration>> inputs;
-  if (args->is<ast::Declaration>()) {
-    inputs.push_back(move_as<ast::Declaration>(args));
+  inputs.reserve(params.size());
 
-  } else if (auto *decls = args->if_as<ast::CommaList>()) {
-    inputs.reserve(decls->exprs_.size());
-
-    for (auto &expr : decls->exprs_) {
-      if (expr->is<ast::Declaration>()) {
-        inputs.push_back(move_as<ast::Declaration>(expr));
-      } else {
-        diag.Consume(diagnostic::Todo{});
-      }
+  for (auto &expr : params) {
+    if (expr->is<ast::Declaration>()) {
+      inputs.push_back(move_as<ast::Declaration>(expr));
+    } else {
+      diag.Consume(diagnostic::Todo{});
     }
-  } else {
-    diag.Consume(diagnostic::Todo{});
   }
   return inputs;
 }
 
+std::vector<std::unique_ptr<ast::Declaration>> ExtractInputs(
+    std::unique_ptr<ast::Expression> params,
+    diagnostic::DiagnosticConsumer &diag) {
+  return ExtractInputs(ExtractIfCommaList(std::move(params)), diag);
+}
+
 std::unique_ptr<ast::Node> BuildFunctionLiteral(
-    SourceRange range, std::vector<std::unique_ptr<ast::Declaration>> inputs,
+    SourceRange const& range, std::vector<std::unique_ptr<ast::Declaration>> inputs,
+    std::vector<std::unique_ptr<ast::Expression>> output, Statements &&stmts,
+    diagnostic::DiagnosticConsumer &diag) {
+  return std::make_unique<ast::FunctionLiteral>(
+      range, std::move(inputs), std::move(stmts).extract(), std::move(output));
+}
+
+std::unique_ptr<ast::Node> BuildFunctionLiteral(
+    SourceRange const &range,
+    std::vector<std::unique_ptr<ast::Declaration>> inputs,
     std::unique_ptr<ast::Expression> output, Statements &&stmts,
     diagnostic::DiagnosticConsumer &diag) {
   if (output == nullptr) {
     return std::make_unique<ast::FunctionLiteral>(range, std::move(inputs),
                                                   std::move(stmts).extract());
-  }
-
-  std::vector<std::unique_ptr<ast::Expression>> outputs;
-  if (auto *cl = output->if_as<ast::CommaList>()) {
-    for (auto &expr : cl->exprs_) {
-      if (auto *decl = expr->if_as<ast::Declaration>()) {
-        decl->flags() |=
-            (ast::Declaration::f_IsFnParam | ast::Declaration::f_IsOutput);
-      }
-      outputs.push_back(std::move(expr));
-    }
   } else {
-    if (auto *decl = output->if_as<ast::Declaration>()) {
-      decl->flags() |=
-          (ast::Declaration::f_IsFnParam | ast::Declaration::f_IsOutput);
-    }
-    outputs.push_back(std::move(output));
+    return BuildFunctionLiteral(range, std::move(inputs),
+                                ExtractIfCommaList(std::move(output)),
+                                std::move(stmts), diag);
   }
-
-  return std::make_unique<ast::FunctionLiteral>(
-      range, std::move(inputs), std::move(stmts).extract(), std::move(outputs));
 }
 
 std::unique_ptr<ast::Node> BuildDesignatedInitializer(
@@ -663,10 +666,9 @@ std::unique_ptr<ast::Node> BuildNormalFunctionLiteral(
     diagnostic::DiagnosticConsumer &diag) {
   auto range =
       SourceRange(nodes[0]->range().begin(), nodes.back()->range().end());
-  auto *binop     = &nodes[0]->as<ast::Binop>();
-  auto [lhs, rhs] = std::move(*binop).extract();
+  auto [params, outs]   = std::move(nodes[0]->as<ast::FunctionType>()).extract();
   return BuildFunctionLiteral(
-      range, ExtractInputs(std::move(lhs), diag), std::move(rhs),
+      range, ExtractInputs(std::move(params), diag), std::move(outs),
       std::move(nodes[1]->as<Statements>()),  diag);
 }
 
@@ -923,20 +925,10 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
       return decl;
 
     } else {
-      std::vector<std::unique_ptr<ast::Expression>> lhs, rhs;
-      if (auto *l = nodes[0]->if_as<ast::CommaList>()) {
-        lhs = std::move(*l).extract();
-      } else {
-        lhs.push_back(move_as<ast::Expression>(nodes[0]));
-      }
-
-      if (auto *r = nodes[2]->if_as<ast::CommaList>()) {
-        rhs = std::move(*r).extract();
-      } else {
-        rhs.push_back(move_as<ast::Expression>(nodes[2]));
-      }
-
-      return std::make_unique<ast::Assignment>(range, std::move(lhs), std::move(rhs));
+      auto lhs = ExtractIfCommaList(move_as<ast::Expression>(nodes[0]));
+      auto rhs = ExtractIfCommaList(move_as<ast::Expression>(nodes[2]));
+      return std::make_unique<ast::Assignment>(range, std::move(lhs),
+                                               std::move(rhs));
     }
   } else if (tk == "as") {
     SourceRange range(nodes[0]->range().begin(), nodes[2]->range().end());
@@ -951,14 +943,21 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
                      nodes.back()->range().end());
     return BuildCallImpl(range, move_as<ast::Expression>(nodes[2]),
                          move_as<ast::Expression>(nodes[0]), diag);
+  } else if (tk == "->") {
+    SourceRange range(nodes.front()->range().begin(),
+                      nodes.back()->range().end());
+    auto params = ExtractIfCommaList(move_as<ast::Expression>(nodes[0]));
+    auto outs   = ExtractIfCommaList(move_as<ast::Expression>(nodes[2]));
+    return std::make_unique<ast::FunctionType>(range, std::move(params),
+                                               std::move(outs));
   }
 
   static absl::flat_hash_map<std::string_view, Operator> const kSymbols = {
-      {"->", Operator::Arrow}, {"|=", Operator::OrEq},  {"&=", Operator::AndEq},
-      {"^=", Operator::XorEq}, {"+=", Operator::AddEq}, {"-=", Operator::SubEq},
-      {"*=", Operator::MulEq}, {"/=", Operator::DivEq}, {"%=", Operator::ModEq},
-      {"+", Operator::Add},    {"-", Operator::Sub},    {"*", Operator::Mul},
-      {"/", Operator::Div},    {"%", Operator::Mod}};
+      {"|=", Operator::OrEq},  {"&=", Operator::AndEq}, {"^=", Operator::XorEq},
+      {"+=", Operator::AddEq}, {"-=", Operator::SubEq}, {"*=", Operator::MulEq},
+      {"/=", Operator::DivEq}, {"%=", Operator::ModEq}, {"+", Operator::Add},
+      {"-", Operator::Sub},    {"*", Operator::Mul},    {"/", Operator::Div},
+      {"%", Operator::Mod}};
   return std::make_unique<ast::Binop>(move_as<ast::Expression>(nodes[0]),
                                       kSymbols.find(tk)->second,
                                       move_as<ast::Expression>(nodes[2]));

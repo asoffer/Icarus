@@ -114,6 +114,12 @@ void FunctionLiteral::Initialize(Scope *scope) {
   dep_graph_ = BuildParamDependencyGraph(params_);
 }
 
+void FunctionType::Initialize(Scope *scope) {
+  scope_ = scope;
+  SetAllScopes(&params_, scope);
+  SetAllScopes(&output_, scope);
+}
+
 void Identifier::Initialize(Scope *scope) { scope_ = scope; }
 
 void Import::Initialize(Scope *scope) {
