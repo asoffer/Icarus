@@ -14,6 +14,19 @@
 
 namespace compiler {
 
+static type::Typed<ir::Value> ResultsToValue(
+    type::Typed<ir::Results> const &results) {
+  ir::Value val(false);
+  type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                   uint32_t, uint64_t, float, double, type::Type const *,
+                   ir::EnumVal, ir::FlagsVal, ir::Addr, ir::String, ir::Fn>(
+      results.type(), [&](auto tag) -> void {
+        using T = typename decltype(tag)::type;
+        val     = ir::Value(results->template get<T>(0));
+      });
+  return type::Typed<ir::Value>(val, results.type());
+}
+
 static base::guarded<absl::flat_hash_map<
     type::Array const *,
     absl::flat_hash_map<type::Array const *, ir::CompiledFn *>>>
@@ -101,7 +114,9 @@ static ir::Results ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
   ir::OutParams outs = compiler->builder().OutParams({type::Bool});
   auto result        = outs[0];
   bldr.Call(ir::Fn{iter->second}, iter->second->type(),
-            std::vector<ir::Results>{lhs_ir, rhs_ir}, std::move(outs));
+            {*ResultsToValue(type::Typed{lhs_ir, lhs_type->data_type()}),
+             *ResultsToValue(type::Typed{rhs_ir, rhs_type->data_type()})},
+            std::move(outs));
   return ir::Results{result};
 }
 

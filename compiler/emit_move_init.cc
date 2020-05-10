@@ -29,7 +29,7 @@ void Compiler::EmitMoveInit(type::Type const *from_type, ir::Value from_val,
     Visit(to_type, to_var.get(), EmitDefaultInitTag{});
   }
 
-  Visit(to_type, to_var.get(), ValueToResults(type::Typed{from_val, from_type}),
+  Visit(to_type, to_var.get(), type::Typed{from_val, from_type},
         EmitMoveAssignTag{});
 }
 

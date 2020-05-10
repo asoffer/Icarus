@@ -34,23 +34,13 @@ Inline(Builder &bldr, Jump *to_be_inlined,
   if (auto *state_type = to_be_inlined->type()->state()) {
     type::Apply(state_type, [&](auto tag) -> Reg {
       using T = typename decltype(tag)::type;
-      auto a  = arguments[i++];
-      if (Reg *r = a.get_if<Reg>()) {
-        return MakeReg<RegOr<T>>(*r);
-      } else {
-        return MakeReg<RegOr<T>>(a.get<T>());
-      }
+      return MakeReg<RegOr<T>>(arguments[i++].get<RegOr<T>>());
     });
   }
   for (auto const &p : to_be_inlined->type()->params()) {
     type::Apply(p.value, [&](auto tag) -> Reg {
       using T = typename decltype(tag)::type;
-      auto a  = arguments[i++];
-      if (Reg *r = a.get_if<Reg>()) {
-        return MakeReg<RegOr<T>>(*r);
-      } else {
-        return MakeReg<RegOr<T>>(a.get<T>());
-      }
+      return MakeReg<RegOr<T>>(arguments[i++].get<RegOr<T>>());
     });
     // TODO Handle types not covered by Apply (structs, etc).
   }

@@ -417,12 +417,6 @@ struct Builder {
   // `arguments` and output parameters. If output parameters are not present,
   // the function must return nothing.
   void Call(RegOr<Fn> const& fn, type::Function const* f,
-            std::vector<Results> args, ir::OutParams outs);
-
-  // Emits a function-call instruction, calling `fn` of type `f` with the given
-  // `arguments` and output parameters. If output parameters are not present,
-  // the function must return nothing.
-  void Call(RegOr<Fn> const& fn, type::Function const* f,
             std::vector<Value> args, ir::OutParams outs);
 
   // Jump instructions must be the last instruction in a basic block. They
@@ -564,6 +558,24 @@ struct Builder {
       SetRet(n, RegOr<typename T::tag_type>(val));
     } else {
       SetRet(n, RegOr<T>(val));
+    }
+  }
+
+  void SetRet(uint16_t n, type::Typed<Value> const& r) {
+    // if (r.type()->is<type::GenericStruct>()) {
+    //   SetRet(n, r->get<Fn>(0));
+    // }
+    if (r.type()->is<type::Jump>()) {
+      // TODO currently this has to be implemented outside type::Apply because
+      // that's in type.h which is wrong because it forces weird instantiation
+      // order issues (type/type.h can't depend on type/jump.h).
+      SetRet(n, r->get<RegOr<Fn>>());
+    } else {
+      ASSERT(r.type()->is_big() == false) << r.type()->to_string();
+      type::Apply(r.type(), [&](auto tag) {
+        using T = typename decltype(tag)::type;
+        SetRet(n, r->get<RegOr<T>>());
+      });
     }
   }
 

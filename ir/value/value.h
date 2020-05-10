@@ -40,9 +40,13 @@ struct Value {
   // the same as the template parameter.
   template <typename T>
   T get() const {
-    return get_ref<T>();
+    if constexpr (IsRegOr<T>::value) {
+      if (auto const* r = get_if<Reg>()) { return *r; }
+      return get<typename IsRegOr<T>::type>();
+    } else {
+      return get_ref<T>();
+    }
   }
-
 
   // Returns a pointer to the stored value if it is of the given type, and null
   // otherwise.

@@ -59,17 +59,6 @@ ir::OutParams Builder::OutParams(absl::Span<type::Type const *const> types) {
 }
 
 void Builder::Call(RegOr<Fn> const &fn, type::Function const *f,
-                   std::vector<Results> args, ir::OutParams outs) {
-  // TODO this call should return the constructed registers rather than forcing
-  // the caller to do it.
-  CurrentBlock()->load_store_cache().clear();
-  ASSERT(args.size() == f->params().size());
-  auto inst = std::make_unique<CallInstruction>(f, fn, std::move(args),
-                                                std::move(outs));
-  CurrentBlock()->AddInstruction(std::move(inst));
-}
-
-void Builder::Call(RegOr<Fn> const &fn, type::Function const *f,
                    std::vector<Value> args, ir::OutParams outs) {
   // TODO this call should return the constructed registers rather than forcing
   // the caller to do it.

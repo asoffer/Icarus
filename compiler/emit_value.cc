@@ -246,12 +246,14 @@ ir::Results Compiler::EmitValue(ast::Assignment const *node) {
     if (auto const *rhs_tup = rhs_type->if_as<type::Tuple>()) {
       for (auto const *t : rhs_tup->entries_) {
         type::Typed<ir::RegOr<ir::Addr>> ref = *ref_iter++;
-        Visit(ref.type(), *ref, type::Typed{EmitValue(r), rhs_type},
+        Visit(ref.type(), *ref,
+              ResultsToValue(type::Typed{EmitValue(r), rhs_type}),
               EmitMoveAssignTag{});
       }
     } else {
       type::Typed<ir::RegOr<ir::Addr>> ref = *ref_iter++;
-      Visit(ref.type(), *ref, type::Typed{EmitValue(r), rhs_type},
+      Visit(ref.type(), *ref,
+            ResultsToValue(type::Typed{EmitValue(r), rhs_type}),
             EmitMoveAssignTag{});
     }
   }
@@ -532,9 +534,10 @@ ir::Results EmitBuiltinCall(
       auto const &fn_type = *ir::BuiltinFn::Bytes().type();
       ir::OutParams outs  = c->builder().OutParams(fn_type.output());
       ir::Reg reg         = outs[0];
-      c->builder().Call(ir::Fn{ir::BuiltinFn::Bytes()}, &fn_type,
-                        std::vector<ir::Results>{c->EmitValue(args.at(0))},
-                        std::move(outs));
+      c->builder().Call(
+          ir::Fn{ir::BuiltinFn::Bytes()}, &fn_type,
+          {ir::Value(c->EmitValue(args.at(0)).get<type::Type const *>(0))},
+          std::move(outs));
 
       return ir::Results{reg};
     } break;
@@ -543,9 +546,10 @@ ir::Results EmitBuiltinCall(
       auto const &fn_type = *ir::BuiltinFn::Alignment().type();
       ir::OutParams outs  = c->builder().OutParams(fn_type.output());
       ir::Reg reg         = outs[0];
-      c->builder().Call(ir::Fn{ir::BuiltinFn::Alignment()}, &fn_type,
-                        std::vector<ir::Results>{c->EmitValue(args.at(0))},
-                        std::move(outs));
+      c->builder().Call(
+          ir::Fn{ir::BuiltinFn::Alignment()}, &fn_type,
+          {ir::Value(c->EmitValue(args.at(0)).get<type::Type const *>(0))},
+          std::move(outs));
 
       return ir::Results{reg};
     } break;
@@ -935,12 +939,15 @@ ir::Results Compiler::EmitValue(ast::Jump const *node) {
   })};
 }
 
-static std::vector<std::pair<ast::Expression const *, ir::Results>>
+static std::vector<std::pair<ast::Expression const *, ir::Value>>
 EmitValueWithExpand(Compiler *c, base::PtrSpan<ast::Expression const> exprs) {
   // TODO expansion
-  std::vector<std::pair<ast::Expression const *, ir::Results>> results;
-  for (auto *expr : exprs) { results.emplace_back(expr, c->EmitValue(expr)); }
-  return results;
+  std::vector<std::pair<ast::Expression const *, ir::Value>> vals;
+  for (auto *expr : exprs) {
+    vals.emplace_back(expr, *ResultsToValue(type::Typed{c->EmitValue(expr),
+                                                        c->type_of(expr)}));
+  }
+  return vals;
 }
 
 ir::Results Compiler::EmitValue(ast::ReturnStmt const *node) {
@@ -955,9 +962,7 @@ ir::Results Compiler::EmitValue(ast::ReturnStmt const *node) {
     if (ret_type->is_big()) {
       // TODO must `r` be holding a register?
       // TODO guaranteed move-elision
-      ASSERT(arg_vals[i].second.size() == 1u);
-      EmitMoveInit(ret_type,
-                   *ResultsToValue(type::Typed{arg_vals[i].second, ret_type}),
+      EmitMoveInit(ret_type, arg_vals[i].second,
                    type::Typed<ir::Reg>(builder().GetRet(i, ret_type),
                                         type::Ptr(ret_type)));
 
@@ -998,8 +1003,7 @@ ir::Results Compiler::EmitValue(ast::YieldStmt const *node) {
   for (size_t i = 0; i < arg_vals.size(); ++i) {
     auto qt = qual_type_of(node->exprs()[i]);
     ASSERT(qt.has_value() == true);
-    yielded_args.vals.pos_emplace(
-        *ResultsToValue(type::Typed{arg_vals[i].second, qt->type()}), *qt);
+    yielded_args.vals.pos_emplace(arg_vals[i].second, *qt);
   }
   yielded_args.label = node->label() ? node->label()->value() : ir::Label{};
 

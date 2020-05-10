@@ -68,9 +68,9 @@ struct Compiler
       ast::Visitor<VerifyTypeTag, type::QualType()>,
       type::Visitor<void(ir::Reg, EmitDestroyTag),
                     void(ir::Reg, EmitDefaultInitTag),
-                    void(ir::RegOr<ir::Addr>, type::Typed<ir::Results> const &,
+                    void(ir::RegOr<ir::Addr>, type::Typed<ir::Value> const &,
                          EmitMoveAssignTag),
-                    void(ir::RegOr<ir::Addr>, type::Typed<ir::Results> const &,
+                    void(ir::RegOr<ir::Addr>, type::Typed<ir::Value> const &,
                          EmitCopyAssignTag)> {
   // Resources and pointers/references to data that are guaranteed to outlive
   // any Compiler construction.
@@ -130,16 +130,16 @@ struct Compiler
   }
 
   void Visit(type::Type const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitMoveAssignTag) {
+             type::Typed<ir::Value> const &from, EmitMoveAssignTag) {
     type::SingleVisitor<void(
-        ir::RegOr<ir::Addr>, type::Typed<ir::Results> const &,
+        ir::RegOr<ir::Addr>, type::Typed<ir::Value> const &,
         EmitMoveAssignTag)>::Visit(t, to, from, EmitMoveAssignTag{});
   }
 
   void Visit(type::Type const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitCopyAssignTag) {
+             type::Typed<ir::Value> const &from, EmitCopyAssignTag) {
     type::SingleVisitor<void(
-        ir::RegOr<ir::Addr>, type::Typed<ir::Results> const &,
+        ir::RegOr<ir::Addr>, type::Typed<ir::Value> const &,
         EmitCopyAssignTag)>::Visit(t, to, from, EmitCopyAssignTag{});
   }
 
@@ -222,42 +222,42 @@ struct Compiler
   void Visit(type::Array const *t, ir::Reg reg, EmitDestroyTag) override;
 
   void Visit(type::Array const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitCopyAssignTag) override;
+             type::Typed<ir::Value> const &from, EmitCopyAssignTag) override;
   void Visit(type::Enum const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitCopyAssignTag) override;
+             type::Typed<ir::Value> const &from, EmitCopyAssignTag) override;
   void Visit(type::Flags const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitCopyAssignTag) override;
+             type::Typed<ir::Value> const &from, EmitCopyAssignTag) override;
   void Visit(type::Function const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitCopyAssignTag) override;
+             type::Typed<ir::Value> const &from, EmitCopyAssignTag) override;
   void Visit(type::Pointer const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitCopyAssignTag) override;
+             type::Typed<ir::Value> const &from, EmitCopyAssignTag) override;
   void Visit(type::Primitive const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitCopyAssignTag) override;
+             type::Typed<ir::Value> const &from, EmitCopyAssignTag) override;
   void Visit(type::Struct const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitCopyAssignTag) override;
+             type::Typed<ir::Value> const &from, EmitCopyAssignTag) override;
   void Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitCopyAssignTag) override;
+             type::Typed<ir::Value> const &from, EmitCopyAssignTag) override;
   void Visit(type::Variant const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitCopyAssignTag) override;
+             type::Typed<ir::Value> const &from, EmitCopyAssignTag) override;
 
   void Visit(type::Array const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitMoveAssignTag) override;
+             type::Typed<ir::Value> const &from, EmitMoveAssignTag) override;
   void Visit(type::Enum const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitMoveAssignTag) override;
+             type::Typed<ir::Value> const &from, EmitMoveAssignTag) override;
   void Visit(type::Flags const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitMoveAssignTag) override;
+             type::Typed<ir::Value> const &from, EmitMoveAssignTag) override;
   void Visit(type::Function const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitMoveAssignTag) override;
+             type::Typed<ir::Value> const &from, EmitMoveAssignTag) override;
   void Visit(type::Pointer const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitMoveAssignTag) override;
+             type::Typed<ir::Value> const &from, EmitMoveAssignTag) override;
   void Visit(type::Primitive const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitMoveAssignTag) override;
+             type::Typed<ir::Value> const &from, EmitMoveAssignTag) override;
   void Visit(type::Struct const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitMoveAssignTag) override;
+             type::Typed<ir::Value> const &from, EmitMoveAssignTag) override;
   void Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitMoveAssignTag) override;
+             type::Typed<ir::Value> const &from, EmitMoveAssignTag) override;
   void Visit(type::Variant const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Results> const &from, EmitMoveAssignTag) override;
+             type::Typed<ir::Value> const &from, EmitMoveAssignTag) override;
 
   void Visit(type::Array const *t, ir::Reg reg, EmitDefaultInitTag)override;
   void Visit(type::Flags const *t, ir::Reg reg, EmitDefaultInitTag)override;

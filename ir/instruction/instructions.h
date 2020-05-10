@@ -1026,13 +1026,6 @@ struct TypeManipulationInstruction
   RegOr<Addr> to;  // Only meaningful for copy and move
 };
 
-inline type::Typed<ir::Results> ValueToResults(
-    type::Typed<ir::Value> const& v) {
-  ir::Results r;
-  v->apply([&](auto x) { r = ir::Results{x}; });
-  return type::Typed<ir::Results>(r, v.type());
-}
-
 struct CallInstruction : base::Clone<CallInstruction, Instruction> {
   static constexpr cmd_index_t kIndex = internal::kCallInstructionNumber;
 
@@ -1040,22 +1033,12 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
                   std::vector<Value> args, OutParams outs)
       : fn_type_(fn_type),
         fn_(fn),
-        args_(args.size()),
+        args_(std::move(args)),
         outs_(std::move(outs)) {
     ASSERT(this->outs_.size() == fn_type_->output().size());
     ASSERT(args_.size() == fn_type_->params().size());
-    for (size_t i = 0; i < args.size(); ++i) {
-      args_[i] =
-          *ValueToResults(type::Typed(args[i], fn_type_->params()[i].value));
-    }
   }
 
-  CallInstruction(type::Function const* fn_type, RegOr<Fn> const& fn,
-                  std::vector<Results> args, OutParams outs)
-      : fn_type_(fn_type), fn_(fn), args_(std::move(args)), outs_(std::move(outs)) {
-    ASSERT(this->outs_.size() == fn_type_->output().size());
-    ASSERT(args_.size() == fn_type_->params().size());
-  }
   ~CallInstruction() override {}
 
   std::string to_string() const override {
@@ -1078,14 +1061,15 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
     size_t bytes_written_slot = writer->buf_->reserve<core::Bytes>();
 
     size_t arg_index = 0;
-    for (Results const& arg : args_) {
-      writer->Write(arg.is_reg(0));
-      if (arg.is_reg(0)) {
-        writer->Write(arg.get<Reg>(0));
+    for (Value const& arg : args_) {
+      Reg const* r = arg.get_if<Reg>();
+      writer->Write(static_cast<bool>(r));
+      if (r) {
+        writer->Write(*r);
       } else {
         type::Apply(fn_type_->params().at(arg_index).value, [&](auto tag) {
           using T = typename decltype(tag)::type;
-          writer->Write(arg.get<T>(0).value());
+          writer->Write(arg.get<T>());
         });
       }
       ++arg_index;
@@ -1110,7 +1094,7 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
  private:
   type::Function const* fn_type_;
   RegOr<Fn> fn_;
-  std::vector<Results> args_;
+  std::vector<Value> args_;
   OutParams outs_;
 };
 
