@@ -206,22 +206,6 @@ void ChainOp::DebugStrAppend(std::string *out, size_t indent) const {
   exprs().back()->DebugStrAppend(out, indent);
 }
 
-void CommaList::DebugStrAppend(std::string *out, size_t indent) const {
-  if (parenthesized_) {
-    absl::StrAppend(out, "(",
-                    absl::StrJoin(exprs_, ", ",
-                                  [&](std::string *out, auto const &elem) {
-                                    return Joiner(elem, out, indent);
-                                  }),
-                    ")");
-  } else {
-    absl::StrAppend(out, absl::StrJoin(exprs_, ", ",
-                                       [&](std::string *out, auto const &elem) {
-                                         return Joiner(elem, out, indent);
-                                       }));
-  }
-}
-
 void Declaration::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, id());
   if (type_expr()) {

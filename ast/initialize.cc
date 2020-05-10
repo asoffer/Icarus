@@ -76,11 +76,6 @@ void ChainOp::Initialize(Scope *scope) {
   for (auto &expr : exprs_) { expr->Initialize(scope); }
 }
 
-void CommaList::Initialize(Scope *scope) {
-  scope_ = scope;
-  for (auto &expr : exprs_) { expr->Initialize(scope); }
-}
-
 void Declaration::Initialize(Scope *scope) {
   ASSERT(scope != nullptr);
   scope_ = scope;

@@ -203,10 +203,6 @@ struct Compiler
   ir::RegOr<ir::Addr> Visit(EmitRefTag, ast::Access const *node) override {
     return EmitRef(node);
   }
-  ir::RegOr<ir::Addr> EmitRef(ast::CommaList const *node);
-  ir::RegOr<ir::Addr> Visit(EmitRefTag, ast::CommaList const *node) override {
-    return EmitRef(node);
-  }
   ir::RegOr<ir::Addr> EmitRef(ast::Identifier const *node);
   ir::RegOr<ir::Addr> Visit(EmitRefTag, ast::Identifier const *node) override {
     return EmitRef(node);
@@ -280,11 +276,6 @@ struct Compiler
              type::Typed<ir::Reg> reg) override {
     return EmitMoveInit(node, reg);
   }
-  void EmitMoveInit(ast::CommaList const *node, type::Typed<ir::Reg> reg);
-  void Visit(EmitMoveInitTag, ast::CommaList const *node,
-             type::Typed<ir::Reg> reg) override {
-    return EmitMoveInit(node, reg);
-  }
   void EmitMoveInit(ast::Unop const *node, type::Typed<ir::Reg> reg);
   void Visit(EmitMoveInitTag, ast::Unop const *node,
              type::Typed<ir::Reg> reg) override {
@@ -301,11 +292,6 @@ struct Compiler
   }
   void EmitCopyInit(ast::ArrayLiteral const *node, type::Typed<ir::Reg> reg);
   void Visit(EmitCopyInitTag, ast::ArrayLiteral const *node,
-             type::Typed<ir::Reg> reg) override {
-    return EmitCopyInit(node, reg);
-  }
-  void EmitCopyInit(ast::CommaList const *node, type::Typed<ir::Reg> reg);
-  void Visit(EmitCopyInitTag, ast::CommaList const *node,
              type::Typed<ir::Reg> reg) override {
     return EmitCopyInit(node, reg);
   }

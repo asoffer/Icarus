@@ -103,10 +103,6 @@ struct ParamDependencyGraphBuilder
     for (auto const *expr : node->exprs()) { Visit(expr, d); }
   }
 
-  void Visit(CommaList const *node, core::DependencyNode<Declaration> d) {
-    for (auto const &expr : node->exprs_) { Visit(expr.get(), d); }
-  }
-
   void Visit(Declaration const *node, core::DependencyNode<Declaration> d) {
     if (node->type_expr()) { Visit(node->type_expr(), d); }
     if (node->init_val()) { Visit(node->init_val(), d); }

@@ -38,16 +38,6 @@ void Compiler::EmitMoveInit(ast::ArrayLiteral const *node,
   EmitMoveInit(node->elems().back(), type::Typed<ir::Reg>(elem, data_type_ptr));
 }
 
-void Compiler::EmitMoveInit(ast::CommaList const *node,
-                            type::Typed<ir::Reg> reg) {
-  size_t index  = 0;
-  auto const &t = reg.type()->as<type::Pointer>().pointee()->as<type::Tuple>();
-  for (auto &expr : node->exprs_) {
-    EmitMoveInit(expr.get(), builder().Field(reg.get(), &t, index));
-    ++index;
-  }
-}
-
 void Compiler::EmitMoveInit(ast::Unop const *node, type::Typed<ir::Reg> reg) {
   switch (node->op()) {
     case frontend::Operator::Move: EmitMoveInit(node->operand(), reg); break;

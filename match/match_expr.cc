@@ -44,6 +44,8 @@ void Match::Visit(ast::ArgumentType const *node, MatchState *state) {}
 
 void Match::Visit(ast::ArrayType const *node, MatchState *state) {}
 
+void Match::Visit(ast::Assignment const *node, MatchState *state) {}
+
 void Match::Visit(ast::Binop const *node, MatchState *state) {}
 
 void Match::Visit(ast::BlockLiteral const *node, MatchState *state) {}
@@ -58,8 +60,6 @@ void Match::Visit(ast::Cast const *node, MatchState *state) {}
 
 void Match::Visit(ast::ChainOp const *node, MatchState *state) {}
 
-void Match::Visit(ast::CommaList const *node, MatchState *state) {}
-
 void Match::Visit(ast::Declaration const *node, MatchState *state) {}
 
 void Match::Visit(ast::DesignatedInitializer const *node, MatchState *state) {}
@@ -67,6 +67,8 @@ void Match::Visit(ast::DesignatedInitializer const *node, MatchState *state) {}
 void Match::Visit(ast::EnumLiteral const *node, MatchState *state) {}
 
 void Match::Visit(ast::FunctionLiteral const *node, MatchState *state) {}
+
+void Match::Visit(ast::FunctionType const *node, MatchState *state) {}
 
 void Match::Visit(ast::ShortFunctionLiteral const *node, MatchState *state) {}
 

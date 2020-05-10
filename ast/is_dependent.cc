@@ -81,13 +81,6 @@ bool ChainOp::IsDependent() const {
   return false;
 }
 
-bool CommaList::IsDependent() const {
-  for (auto const &expr : exprs_) {
-    if (expr->IsDependent()) { return true; }
-  }
-  return false;
-}
-
 bool Declaration::IsDependent() const {
   if (auto *t = type_expr(); t and t->IsDependent()) { return true; }
   if (auto *i = init_val(); i and i->IsDependent()) { return true; }

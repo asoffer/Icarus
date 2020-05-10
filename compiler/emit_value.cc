@@ -600,17 +600,6 @@ ir::Results Compiler::EmitValue(ast::Cast const *node) {
   }
 }
 
-ir::Results Compiler::EmitValue(ast::CommaList const *node) {
-  auto *tuple_type = &type_of(node)->as<type::Tuple>();
-  // TODO this is a hack. I'm still not sure what counts as a tuple and what
-  // counts as atype
-  if (tuple_type->entries_.empty()) { return ir::Results{type::Tup({})}; }
-
-  ir::Results results;
-  for (auto &expr : node->exprs_) { results.append(EmitValue(expr.get())); }
-  return results;
-}
-
 ir::Results Compiler::EmitValue(ast::Declaration const *node) {
   DEBUG_LOG("EmitValueDeclaration")(node->id());
   if (node->flags() & ast::Declaration::f_IsConst) {

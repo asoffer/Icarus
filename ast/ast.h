@@ -640,26 +640,6 @@ struct ChainOp : Expression {
   std::vector<std::unique_ptr<Expression>> exprs_;
 };
 
-// TODO
-struct CommaList : Expression {
-  explicit CommaList(frontend::SourceRange const &range = {})
-      : Expression(range) {}
-  ~CommaList() override {}
-
-  CommaList(CommaList const &) noexcept = default;
-  CommaList(CommaList &&) noexcept      = default;
-  CommaList &operator=(CommaList const &) noexcept = default;
-  CommaList &operator=(CommaList &&) noexcept = default;
-
-  ICARUS_AST_VIRTUAL_METHODS;
-
-  std::vector<std::unique_ptr<Expression>> &&extract() && {
-    return std::move(exprs_);
-  }
-
-  std::vector<std::unique_ptr<Expression>> exprs_;
-};
-
 // EnumLiteral:
 //
 // Represents the literal expression evaluating to an enum-type or flags-type.

@@ -26,8 +26,6 @@ ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Access const *node) {
       .get();
 }
 
-ir::RegOr<ir::Addr> Compiler::EmitRef(ast::CommaList const *node) { NOT_YET(); }
-
 ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Identifier const *node) {
   ASSERT(node->decl() != nullptr) << node->DebugString();
   return data().addr(node->decl());

@@ -45,6 +45,10 @@ void TokenExtractor::Visit(ast::ArrayType const *node) {
   line_builder_.write("]");
 }
 
+void TokenExtractor::Visit(ast::Assignment const *node) {
+  // TODO
+}
+
 void TokenExtractor::Visit(ast::Binop const *node) {
   Visit(node->lhs());
   line_builder_.write(stringify(node->op()));
@@ -73,9 +77,6 @@ void TokenExtractor::Visit(ast::ChainOp const *node) {
   for (auto *expr : node->exprs()) { Visit(expr); }
 }
 
-void TokenExtractor::Visit(ast::CommaList const *node) {
-  // TODO Join(this, node->exprs_, ",");
-}
 ///////////////////////////////////////////////////////////////////////////
 void TokenExtractor::Visit(ast::Declaration const *node) {
   if (node->type_expr()) { Visit(node->type_expr()); }
@@ -87,6 +88,10 @@ void TokenExtractor::Visit(ast::EnumLiteral const *node) {
 }
 
 void TokenExtractor::Visit(ast::FunctionLiteral const *node) {
+  // TODO
+}
+
+void TokenExtractor::Visit(ast::FunctionType const *node) {
   // TODO
 }
 

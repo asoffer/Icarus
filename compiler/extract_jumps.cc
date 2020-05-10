@@ -70,10 +70,6 @@ struct Extractor : ast::Visitor<void()> {
     for (auto *expr : node->exprs()) { Visit(expr); }
   }
 
-  void Visit(ast::CommaList const *node) final {
-    for (auto &expr : node->exprs_) { Visit(expr.get()); }
-  }
-
   void Visit(ast::Declaration const *node) final {
     if (node->type_expr()) { Visit(node->type_expr()); }
     if (node->init_val()) { Visit(node->init_val()); }

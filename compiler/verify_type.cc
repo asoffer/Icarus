@@ -1385,21 +1385,6 @@ not_blocks:
   }
 }
 
-type::QualType Compiler::VerifyType(ast::CommaList const *node) {
-  ASSIGN_OR(
-      return type::QualType::Error(), auto results,
-             VerifyWithoutSetting(
-                 this, base::PtrSpan<ast::Expression const>(node->exprs_)));
-  std::vector<type::Type const *> ts;
-  ts.reserve(results.size());
-  type::Quals quals = type::Quals::Const();
-  for (auto const &r : results) {
-    ts.push_back(r.type());
-    quals &= r.quals();
-  }
-  return data().set_qual_type(node, type::QualType(std::move(ts), quals));
-}
-
 // TODO set qualifiers correctly here.
 type::QualType Compiler::VerifyType(ast::Declaration const *node) {
   // Declarations may have already been computed. Essentially the first time
