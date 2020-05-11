@@ -334,7 +334,7 @@ square(1.1) // Evaluates to 1.21
 ```
 
 In this example, when the argument `3` is bound to the parameter `x`, we deduce
-that `$x` must be `int64, the type of `3`. From there the entire function must
+that `$x` must be `int64`, the type of `3`. From there the entire function must
 have type `int64 -> int64`. Similarly, when `1.1` is bound, `$x` is deduced as
 `float64` meaning the entire function type is deduced as `float64 -> float64`.
 
