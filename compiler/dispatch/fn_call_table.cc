@@ -77,13 +77,35 @@ ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
   auto callee_qual_type = compiler->qual_type_of(fn);
   ASSERT(callee_qual_type.has_value() == true);
 
-  type::Function const *fn_type = nullptr;
+  DependentComputedData *dependent_data = nullptr;
+  type::Function const *fn_type         = nullptr;
   ir::RegOr<ir::Fn> callee      = [&]() -> ir::RegOr<ir::Fn> {
     if (auto const *gf_type =
             callee_qual_type->type()->if_as<type::GenericFunction>()) {
       fn_type = &data.type()->as<type::Function>();
       ir::GenericFn gen_fn =
           compiler->EmitValue(fn).get<ir::GenericFn>(0).value();
+
+      // TODO declarations aren't callable so we shouldn't have to check this
+      // here.
+
+      if (auto const *decl = fn->if_as<ast::Declaration>()) {
+        // TODO make this more robust.
+        fn = decl->init_val();
+      }
+      auto find_dependent_result = compiler->data().FindDependent(
+          &fn->as<ast::ParameterizedExpression>(),
+          args.Transform([](type::Typed<ir::Value> typed_val) {
+            if (typed_val->get_if<ir::Reg>()) {
+              return type::Typed<std::optional<ir::Value>>(std::nullopt,
+                                                           typed_val.type());
+            } else {
+              return type::Typed<std::optional<ir::Value>>(*typed_val,
+                                                           typed_val.type());
+            }
+          }));
+      fn_type        = find_dependent_result.fn_type;
+      dependent_data = &find_dependent_result.data;
       return ir::Fn(gen_fn.concrete(args));
     } else if (auto const *f_type =
                    callee_qual_type->type()->if_as<type::Function>()) {
@@ -94,14 +116,19 @@ ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
     }
   }();
 
+  Compiler c({
+      .builder = ir::GetBuilder(),
+      .data    = dependent_data ? *dependent_data : compiler->data(),
+      .diagnostic_consumer = compiler->diag(),
+  });
+
   if (not callee.is_reg()) {
     switch (callee.value().kind()) {
       case ir::Fn::Kind::Native: {
         core::FillMissingArgs(
             core::ParamsRef(callee.value().native()->params()), &args,
-            [compiler](auto const &p) {
-              auto results =
-                  compiler->EmitValue(ASSERT_NOT_NULL(p.get()->init_val()));
+            [&c](auto const &p) {
+              auto results = c.EmitValue(ASSERT_NOT_NULL(p.get()->init_val()));
               return ResultsToValue(type::Typed(results, p.type()));
             });
       } break;
@@ -109,10 +136,10 @@ ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
     }
   }
 
-  auto[out_results, out_params] = SetReturns(compiler->builder(), data);
-  compiler->builder().Call(
-      callee, fn_type,
-      PrepareCallArguments(compiler, nullptr, data.params(), args), out_params);
+  auto[out_results, out_params] = SetReturns(c.builder(), data);
+  c.builder().Call(callee, fn_type,
+                   PrepareCallArguments(&c, nullptr, data.params(), args),
+                   out_params);
   return std::move(out_results);
 }
 
