@@ -2,6 +2,11 @@
 
 namespace ir {
 
+MultiValue::~MultiValue() {
+  if (not data_) { return; }
+  for (size_t i = 0; i < size(); ++i) { (*this)[i].~Value(); }
+}
+
 MultiValue::MultiValue(absl::Span<Value const> values) {
   data_ =
       std::unique_ptr<char[]>(new char[sizeof(Value) * (values.size() + 1)]);
@@ -13,8 +18,7 @@ MultiValue::MultiValue(absl::Span<Value const> values) {
 
 MultiValue::MultiValue(MultiValue const& v) : MultiValue(v.span()) {}
 MultiValue& MultiValue::operator=(MultiValue const& v) {
-  auto copy    = v;
-  return *this = std::move(copy);
+  return *this = MultiValue(v.span());
 }
 
 absl::Span<Value> MultiValue::span() {
@@ -31,6 +35,14 @@ Value& MultiValue::operator[](size_t n) { return span()[n]; }
 
 size_t MultiValue::size() const {
   return *reinterpret_cast<size_t*>(data_.get());
+}
+
+bool operator==(MultiValue const& lhs, MultiValue const& rhs) {
+  if (lhs.size() != rhs.size()) { return false; }
+  for (size_t i = 0; i < lhs.size(); ++i) {
+    if (lhs[i] != rhs[i]) { return false; }
+  }
+  return true;
 }
 
 }  // namespace ir

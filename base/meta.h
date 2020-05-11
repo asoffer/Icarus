@@ -77,6 +77,9 @@ struct MetaValue {
   }
 
   constexpr uintptr_t get() const { return value_; }
+  char const* name() const {
+    return *reinterpret_cast<char const* const*>(value_);
+  }
 
   template <typename T>
   friend struct Meta;
@@ -89,16 +92,18 @@ struct MetaValue {
 template <typename T>
 struct Meta {
   static MetaValue value() {
-    return MetaValue{reinterpret_cast<uintptr_t>(data_)};
+    return MetaValue{reinterpret_cast<uintptr_t>(&name_)};
   }
   /* implicit */ operator MetaValue() { return value(); }
 
+ char const* name() const { return name_; }
+
  private:
-  static void const* const data_;
+  static char const* const name_;
 };
 
 template <typename T>
-void const* const Meta<T>::data_ = &Meta<T>::data_;
+char const* const Meta<T>::name_ = typeid(T).name();
 
 template <typename T>
 Meta<T> meta;

@@ -3,6 +3,7 @@
 
 #include <cstdint>
 
+#include "absl/types/span.h"
 #include "base/debug.h"
 #include "base/meta.h"
 #include "ir/value/addr.h"
@@ -14,6 +15,36 @@
 namespace ir {
 struct GenericFn;
 struct Fn;
+struct Value;
+
+// A `MultiValue` represents a sequence of `Value`s (defined below) packed in
+// such a way that they can be stored inside a single `Value`.
+struct MultiValue {
+  MultiValue(absl::Span<Value const> values);
+  MultiValue(MultiValue const&);
+  MultiValue(MultiValue&&) = default;
+
+  MultiValue& operator=(MultiValue const&);
+  MultiValue& operator=(MultiValue&&) = default;
+
+  ~MultiValue();
+
+  Value const& operator[](size_t n) const;
+  Value& operator[](size_t n);
+
+  size_t size() const;
+
+  absl::Span<Value const> span() const;
+  absl::Span<Value> span();
+
+  friend bool operator==(MultiValue const& lhs, MultiValue const& rhs);
+  friend bool operator!=(MultiValue const& lhs, MultiValue const& rhs) {
+    return not(lhs == rhs);
+  }
+
+ private:
+  std::unique_ptr<char[]> data_;
+};
 
 // A `Value` represents any register or value constant usable in the
 // intermediate representation.
@@ -25,14 +56,73 @@ struct Value {
   Value(T val) : type_(base::meta<T>) {
     if constexpr (IsRegOr<T>::value) {
       if (val.is_reg()) {
-        type_ = base::meta<Reg>;
+        type_          = base::meta<Reg>;
         get_ref<Reg>() = val.reg();
       } else {
         type_ = base::meta<typename IsRegOr<T>::type>;
-        get_ref<typename IsRegOr<T>::type>() = val.value();
+        get_ref<typename IsRegOr<T>::type>() = std::move(val).value();
       }
     } else {
-      get_ref<T>() = val;
+      new (&get_ref<T>()) T(std::move(val));
+    }
+  }
+
+  Value(Value const& v) : type_(v.type_) {
+    if (v.type_ == base::meta<MultiValue>) {
+      new (&get_ref<MultiValue>()) MultiValue(v.get_ref<MultiValue>());
+    } else {
+      std::memcpy(buf_, v.buf_, sizeof(buf_));
+    }
+  }
+
+  Value(Value&& v) : type_(v.type_) {
+    if (v.type_ == base::meta<MultiValue>) {
+      new (&get_ref<MultiValue>()) MultiValue(v.get<MultiValue>());
+    } else {
+      std::memcpy(buf_, v.buf_, sizeof(buf_));
+    }
+  }
+
+  Value& operator=(Value const& v) {
+    if (v.type_ == base::meta<MultiValue>) {
+      if (type_ == base::meta<MultiValue>) {
+        get_ref<MultiValue>() = v.get<MultiValue>();
+      } else {
+        type_ = base::meta<MultiValue>;
+        new (&get_ref<MultiValue>()) MultiValue(v.get<MultiValue>());
+      }
+    } else {
+      if (type_ == base::meta<MultiValue>) {
+        get_ref<MultiValue>().~MultiValue();
+      }
+      std::memcpy(buf_, v.buf_, sizeof(buf_));
+    }
+    type_ = v.type_;
+    return *this;
+  }
+
+  Value& operator=(Value&& v) {
+    if (type_ == base::meta<MultiValue>) {
+      if (type_ == base::meta<MultiValue>) {
+        get_ref<MultiValue>() = std::move(v.get_ref<MultiValue>());
+      } else {
+        type_ = v.type_;
+        new (&get_ref<MultiValue>())
+            MultiValue(std::move(v.get_ref<MultiValue>()));
+      }
+    } else {
+      if (type_ == base::meta<MultiValue>) {
+        get_ref<MultiValue>().~MultiValue();
+      }
+      std::memcpy(buf_, v.buf_, sizeof(buf_));
+    }
+    type_ = v.type_;
+    return *this;
+  }
+
+  ~Value() {
+    if (type_ == base::meta<MultiValue>) {
+      get_ref<MultiValue>().~MultiValue();
     }
   }
 
@@ -92,23 +182,24 @@ struct Value {
          ...)) {
       return;
     }
-    UNREACHABLE(type_.get());
+    UNREACHABLE(type_.name());
   }
-
 
   template <typename T>
   T const& get_ref() const {
     static_assert(sizeof(T) <= 8);
     ASSERT(type_ == base::meta<T>);
-    return *reinterpret_cast<T const *>(buf_);
+    return *reinterpret_cast<T const*>(buf_);
   }
 
-  friend bool operator==(Value const& lhs, Value const &rhs) {
+  friend bool operator==(Value const& lhs, Value const& rhs) {
     if (lhs.type_ != rhs.type_) { return false; }
     bool eq;
     lhs.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                   uint32_t, uint64_t, float, double, type::Type const*>(
-        [&rhs, &eq](auto x) { eq = (x == rhs.get<std::decay_t<decltype(x)>>()); });
+                   uint32_t, uint64_t, float, double, type::Type const*, Reg,
+                   MultiValue>([&rhs, &eq](auto x) {
+      eq = (x == rhs.get<std::decay_t<decltype(x)>>());
+    });
     return eq;
   }
 

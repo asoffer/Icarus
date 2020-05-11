@@ -235,6 +235,7 @@ cc_test(
 cc_library(
     name = "value",
     hdrs = ["value.h"],
+    srcs = ["value.cc"],
     deps = [
         ":addr",
         ":enum_and_flags",
