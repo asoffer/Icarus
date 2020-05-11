@@ -1,7 +1,5 @@
 #include "type/array.h"
 
-#include "absl/strings/str_format.h"
-#include "base/no_destructor.h"
 #include "gtest/gtest.h"
 #include "type/fake.h"
 

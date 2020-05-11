@@ -285,13 +285,88 @@ forever () do {
 }
 ```
 
-# Generics Functions
+# Generic Functions
 
 ## Types as Values
-TODO
+Icarus treats types as values just like integers, strings, and bools.
+This means types can be passed into and out of functions, used in expressions, etc.
+
+```
+get_int ::= (signed: bool) -> type {
+  if (signed) then {
+    return int64
+  } else {
+    return nat64
+  }
+}
+
+my_int :: type = get_int(signed = true)
+```
+
+There are two oddities that come out of this. First, because a type such as
+`bool` is a value, it must itself have a type. In the same way `true` has type
+`bool`, `bool` has type `type`. But going one step further, `type` is itself a
+value of type `type`.
+
+The second oddity is that, there are restrictions on when a type can be used to
+declare a variable. In particular, a type can only be used to declare a variable
+if the type is a constant known at compile-time.
+
+```
+f ::= (constant_type :: type, nonconstant_type: type) -> () {
+  x: constant_type // Okay, `constant_type` is a constant.
+  // `y: nonconstant_type` would be a compiler error.
+}
+```
 
 ## Type Deduction
-TODO
+
+Rather than use some complex predefined rules for type deduction, Icarus lets
+generic functions dictate which types should be deduced. This is done via `$`,
+which computes the type of the argument bound to the given parameter. Let's see
+an example:
+
+```
+square ::= (x: $x) => x * x
+
+square(3) // Evaluates to 9
+square(1.1) // Evaluates to 1.21
+```
+
+In this example, when the argument `3` is bound to the parameter `x`, we deduce
+that `$x` must be `int64, the type of `3`. From there the entire function must
+have type `int64 -> int64`. Similarly, when `1.1` is bound, `$x` is deduced as
+`float64` meaning the entire function type is deduced as `float64 -> float64`.
+
+This can be used in a variety of ways. Below we show the same generic function
+five times implemented with slightly different deduction semantics.
+```
+// Deduce the type of the parameters from $x
+max ::= (x: $x, y: $x) -> $x {
+  if (x < y) then { return y } else { return x }
+}
+
+// Deduce the type of the parameters from $y
+max ::= (x: $y, y: $y) -> $y { ... }
+
+// Deduce the type of the parameters from $x, but allow it to be explicitly
+// overridden by specifying a value for `T`
+max ::= (x: T, y: T, T ::= $x) -> $y { ... }
+
+
+common_type ::= (lhs: type, rhs: type) -> type { ... }
+
+// Looking at the types of both arguments passed in, find a common type that
+both convert to and use that.
+max ::= (x: common_type($x, $y),
+         y: common_type($x, $y)) -> common_type($x, $y) { ... }
+
+eq ::= (lhs: type, rhs: type) {
+  if (lhs == rhs) then { return lhs } else { return error("Type mismatch") }
+}
+// Fail to compile if the types do not match.
+max ::= (x: $x, y: eq($x, $y)) -> $x { ... }
+```
 
 # Parameterized Structs
 TODO

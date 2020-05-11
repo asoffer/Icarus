@@ -1896,7 +1896,7 @@ type::QualType Compiler::VerifyType(ast::FunctionLiteral const *node) {
             c.MakeThunk(o, type::Type_));
         rets->push_back(result);
       }
-
+      DEBUG_LOG()(*type::Func(params, *rets));
       return type::Func(params, *rets);
     } else {
       // TODO returns

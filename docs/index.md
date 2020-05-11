@@ -3,7 +3,7 @@ title: Icarus
 author: Andy Soffer
 ---
 
-# Icarus
+#Icarus
 
 Icarus is an experimental general-purpose programming language, designed to be
 fast to compile, fast to run, and easy to migrate.
@@ -27,11 +27,12 @@ to evolve as the field of computing advances.
 
 1. **Performance.** Users should have the ability to tune their software to
 obtain the highest performance their hardware can support.
-This may mean memory usage, battery life, binary size, or execution time. We
-recognize that it will often be impossible to simultaneously address all of
-these performance requirements. For this reason, rather than making a tradeoff
-in the language, we want to give programmers the ability to design for the
-particular performance characteristics relevant to their application.
+This may mean memory usage, battery life, binary size, execution time, network
+bandwidth, or any other resource. We recognize that it will often be impossible
+to simultaneously address all of these performance requirements. For this
+reason, rather than making a tradeoff in the language, we want to give
+programmers the ability to design for the particular performance characteristics
+relevant to their application.
 
 1. **Freedom.** Users should be free to write software in the format that makes
 sense for their use case, and it is not up to the designers of Icarus to make

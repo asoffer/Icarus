@@ -9,6 +9,7 @@ cc_library(
         ":type",
         "//base:no_destructor",
         "//core:arch",
+        "@com_google_absl//absl/strings:str_format",
     ],
     testonly = True,
 )
@@ -41,7 +42,6 @@ cc_test(
     deps = [
         ":array",
         ":fake",
-        "@com_google_absl//absl/strings:str_format",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -229,7 +229,6 @@ cc_test(
     deps = [
         ":fake",
         ":pointer",
-        "@com_google_absl//absl/strings:str_format",
         "@com_google_googletest//:gtest_main",
     ],
 )
