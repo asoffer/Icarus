@@ -132,8 +132,8 @@ ir::Value EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
         core::FillMissingArgs(
             core::ParamsRef(callee.value().native()->params()), &args,
             [&c](auto const &p) {
-              auto results = c.EmitValue(ASSERT_NOT_NULL(p.get()->init_val()));
-              return ResultsToValue(type::Typed(results, p.type()));
+              return ResultsToValue(type::Typed(
+                  c.EmitValue(ASSERT_NOT_NULL(p.get()->init_val())), p.type()));
             });
       } break;
       default: break;

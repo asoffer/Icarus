@@ -769,13 +769,10 @@ ir::NativeFn MakeConcreteFromGeneric(
           return type::Typed<ast::Declaration const *>(
               d.get(), fn_type->params().at(i++).value);
         }));
-    f->work_item = DeferBody(
-        {
-            .builder             = compiler->builder(),
-            .data                = data,
-            .diagnostic_consumer = compiler->diag(),
-        },
-        node, fn_type);
+    f->work_item = DeferBody({.builder             = compiler->builder(),
+                              .data                = data,
+                              .diagnostic_consumer = compiler->diag()},
+                             node, fn_type);
     return f;
   });
 }

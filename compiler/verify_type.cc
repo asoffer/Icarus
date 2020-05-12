@@ -1180,8 +1180,7 @@ type::QualType Compiler::VerifyType(ast::Call const *node) {
     ("Callee's (", node->callee()->DebugString(), ") qual-type: ", callee_qt);
     auto ret_types = c->return_types(
         arg_results.Transform(TypedResultsToTypedOptionalValue));
-    DEBUG_LOG("Call.VerifyType")
-    ("Return types for this instantiation: ",
+    DEBUG_LOG("Call.VerifyType")("Return types for this instantiation: ",
      type::Tup(ret_types)->to_string());
     // Can this be constant?
     return data().set_qual_type(
@@ -1879,6 +1878,7 @@ type::QualType Compiler::VerifyType(ast::FunctionLiteral const *node) {
     auto [params, rets, data] =
         MakeConcrete(node, compiler_data->module(), ordered_nodes, args,
                      *compiler_data, *diag_consumer);
+    type::Function const *ft = nullptr;
     if (auto outputs = node->outputs()) {
       // TODO there's also order dependence here too.
       Compiler c({
@@ -1896,12 +1896,13 @@ type::QualType Compiler::VerifyType(ast::FunctionLiteral const *node) {
             c.MakeThunk(o, type::Type_));
         rets->push_back(result);
       }
-      DEBUG_LOG()(*type::Func(params, *rets));
-      return type::Func(params, *rets);
+      ft = type::Func(params, *rets);
     } else {
       // TODO returns
-      return type::Func(params, {});
+      ft = type::Func(params, {});
     }
+    data->set_qual_type(node, type::QualType::Constant(ft));
+    return ft;
   };
 
   return data().set_qual_type(
