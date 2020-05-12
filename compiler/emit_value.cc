@@ -579,7 +579,11 @@ ir::Results Compiler::EmitValue(ast::Call const *node) {
   // TODO this shouldn't be able to fail.
   ASSIGN_OR(return ir::Results{},  //
                    auto os, MakeOverloadSet(this, node->callee(), args));
-  return FnCallDispatchTable::Emit(this, os, args);
+  ASSIGN_OR(return ir::Results{}, auto val,
+                   FnCallDispatchTable::Emit(this, os, args));
+  ir::Results results;
+  val.apply([&](auto const &v) { results.append(v); });
+  return results;
   // TODO node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
 }
 

@@ -533,7 +533,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
       std::string_view name = iter->read<std::string_view>();
       if (iter->read<bool>()) {
         type::Type const *t = iter->read<type::Type const *>();
-        ir::Value init_val  = iter->read<ir::Value>();
+        ir::Value init_val  = false; // TODO = iter->read<ir::Value>();
         if (t->is<type::Primitive>()) {
           fields.push_back(type::Struct::Field{
               .name          = std::string(name),

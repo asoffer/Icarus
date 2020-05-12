@@ -17,18 +17,22 @@
 namespace compiler {
 namespace {
 
-std::pair<ir::Results, ir::OutParams> SetReturns(
+std::pair<ir::Value, ir::OutParams> SetReturns(
     ir::Builder &bldr, internal::ExprData const &expr_data) {
   if (auto *fn_type = expr_data.type()->if_as<type::Function>()) {
     auto ret_types = fn_type->output();
-    ir::Results results;
+    std::vector<ir::Value> outs;
     ir::OutParams out_params = bldr.OutParams(ret_types);
     // TODO find a better way to extract these. Figure out why you even need to.
     for (size_t i = 0; i < ret_types.size(); ++i) {
-      results.append(out_params[i]);
+      outs.push_back(out_params[i]);
     }
-    return std::pair<ir::Results, ir::OutParams>(std::move(results),
-                                                 std::move(out_params));
+    return std::pair<ir::Value, ir::OutParams>(
+        outs.empty()
+            ? ir::Value(false)
+            : outs.size() == 1 ? outs[0]
+                               : ir::Value(ir::MultiValue(std::move(outs))),
+        std::move(out_params));
   } else if (expr_data.type()->is<type::GenericFunction>()) {
     NOT_YET();
   } else {
@@ -71,9 +75,9 @@ type::Typed<ir::Value> ResultsToValue(type::Typed<ir::Results> const &results) {
   return type::Typed<ir::Value>(val, results.type());
 }
 
-ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
-                                internal::ExprData const &data,
-                                core::FnArgs<type::Typed<ir::Value>> args) {
+ir::Value EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
+                              internal::ExprData const &data,
+                              core::FnArgs<type::Typed<ir::Value>> args) {
   auto callee_qual_type = compiler->qual_type_of(fn);
   ASSERT(callee_qual_type.has_value() == true);
 
@@ -136,17 +140,18 @@ ir::Results EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
     }
   }
 
-  auto[out_results, out_params] = SetReturns(c.builder(), data);
+  auto[outs, out_params] = SetReturns(c.builder(), data);
   c.builder().Call(callee, fn_type,
                    PrepareCallArguments(&c, nullptr, data.params(), args),
                    out_params);
-  return std::move(out_results);
+  return std::move(outs);
 }
 
-ir::Results EmitCall(Compiler *compiler,
-                     absl::flat_hash_map<ast::Expression const *,
-                                         internal::ExprData> const &table,
-                     core::FnArgs<type::Typed<ir::Value>> const &args) {
+std::optional<ir::Value> EmitCall(
+    Compiler *compiler,
+    absl::flat_hash_map<ast::Expression const *, internal::ExprData> const
+        &table,
+    core::FnArgs<type::Typed<ir::Value>> const &args) {
   DEBUG_LOG("FnCallDispatchTable")
   ("Emitting a table with ", table.size(), " entries.");
 
@@ -155,7 +160,7 @@ ir::Results EmitCall(Compiler *compiler,
     // generate runtime dispatch code. It will amount to only a few
     // unconditional jumps between blocks which will be optimized out, but
     // there's no sense in generating them in the first place..
-    auto const & [ overload, expr_data ] = *table.begin();
+    auto const &[overload, expr_data] = *table.begin();
     return EmitCallOneOverload(compiler, overload, expr_data, args);
   } else {
     auto &bldr           = compiler->builder();
@@ -164,7 +169,7 @@ ir::Results EmitCall(Compiler *compiler,
 
     EmitRuntimeDispatch(bldr, table, callee_to_block, args);
 
-    for (auto const & [ overload, expr_data ] : table) {
+    for (auto const &[overload, expr_data] : table) {
       bldr.CurrentBlock() = callee_to_block[overload];
       // Argument preparation is done inside EmitCallOneOverload
       EmitCallOneOverload(compiler, overload, expr_data, args);
@@ -172,7 +177,7 @@ ir::Results EmitCall(Compiler *compiler,
       bldr.UncondJump(land_block);
     }
     bldr.CurrentBlock() = land_block;
-    return ir::Results{};
+    return 0;  // Doesn't matter what we return for void returns.
   }
 }
 
@@ -234,10 +239,10 @@ Verify(Compiler *compiler, ast::OverloadSet const &os,
 
 }  // namespace
 
-ir::Results FnCallDispatchTable::Emit(
+std::optional<ir::Value> FnCallDispatchTable::Emit(
     Compiler *c, ast::OverloadSet const &os,
     core::FnArgs<type::Typed<ir::Value>> const &args) {
-  ASSIGN_OR(return ir::Results{},  //
+  ASSIGN_OR(return std::nullopt,  //
                    auto table, Verify(c, os, args));
   return EmitCall(c, table, args);
 }

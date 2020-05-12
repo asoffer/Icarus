@@ -1190,7 +1190,7 @@ struct StructInstruction : base::Clone<StructInstruction, Instruction> {
       if (auto* v = field.initial_value()) {
         writer->Write(true);
         writer->Write(field.type().value());
-        writer->Write(*v);
+        // TODO serialize a different way writer->Write(*v);
       } else {
         writer->Write(false);
         writer->Write(field.type());
