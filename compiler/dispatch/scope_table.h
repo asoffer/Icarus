@@ -48,8 +48,8 @@ struct ScopeDispatchTable {
 
   type::QualType qual_type() const { return qual_type_; }
 
-  ir::Results EmitCall(Compiler *compiler,
-                       core::FnArgs<type::Typed<ir::Value>> const &args) const;
+  ir::Value EmitCall(Compiler *compiler,
+                     core::FnArgs<type::Typed<ir::Value>> const &args) const;
 
  private:
   // Given a value of type `A | B` passed into the scope, there may be no

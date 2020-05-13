@@ -72,7 +72,7 @@ inline constexpr auto kPhiInstructionRange = CmdRange{
 };
 inline constexpr auto kSetReturnInstructionRange = CmdRange{
     .start  = kPhiInstructionRange.end(),
-    .length = 23,
+    .length = 24,
 };
 inline constexpr auto kCastInstructionRange = CmdRange{
     .start  = kSetReturnInstructionRange.end(),

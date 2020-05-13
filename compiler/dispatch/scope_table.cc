@@ -365,7 +365,7 @@ void internal::OneTable::EmitCall(
   }
 }
 
-ir::Results ScopeDispatchTable::EmitCall(
+ir::Value ScopeDispatchTable::EmitCall(
     Compiler *compiler,
     core::FnArgs<type::Typed<ir::Value>> const &args) const {
   DEBUG_LOG("ScopeDispatchTable")
@@ -425,9 +425,9 @@ ir::Results ScopeDispatchTable::EmitCall(
   bldr.CurrentBlock()            = landing_block;
   DEBUG_LOG("EmitCall")(*bldr.CurrentGroup());
   if (land_phi) {
-    return ir::Results{land_phi->result};
+    return ir::Value(land_phi->result);
   } else {
-    return ir::Results{};
+    return ir::Value();
   }
 }
 

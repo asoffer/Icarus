@@ -5,7 +5,6 @@
 #include "compiler/compiler.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
-#include "ir/results.h"
 #include "ir/value/value.h"
 #include "type/primitive.h"
 

@@ -45,7 +45,7 @@ ir::RegOr<ir::Fn> ComputeConcreteFn(Compiler *compiler,
                                     type::Function const *f_type,
                                     type::Quals quals) {
   if (type::Quals::Const() <= quals) {
-    return compiler->EmitValue(fn).get<ir::Fn>(0);
+    return compiler->EmitValue(fn).get<ir::RegOr<ir::Fn>>();
   } else {
     // NOTE: If the overload is a declaration, it's not because a
     // declaration is syntactically the callee. Rather, it's because the
@@ -58,21 +58,9 @@ ir::RegOr<ir::Fn> ComputeConcreteFn(Compiler *compiler,
       return compiler->builder().Load<ir::Fn>(compiler->data().addr(fn_decl));
     } else {
       return compiler->builder().Load<ir::Fn>(
-          compiler->EmitValue(fn).get<ir::Addr>(0));
+          compiler->EmitValue(fn).get<ir::RegOr<ir::Addr>>());
     }
   }
-}
-
-type::Typed<ir::Value> ResultsToValue(type::Typed<ir::Results> const &results) {
-  ir::Value val(false);
-  type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                   uint32_t, uint64_t, float, double, type::Type const *,
-                   ir::EnumVal, ir::FlagsVal, ir::Addr, ir::String, ir::Fn>(
-      results.type(), [&](auto tag) -> void {
-        using T = typename decltype(tag)::type;
-        val     = ir::Value(results->template get<T>(0));
-      });
-  return type::Typed<ir::Value>(val, results.type());
 }
 
 ir::Value EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
@@ -88,7 +76,7 @@ ir::Value EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
             callee_qual_type->type()->if_as<type::GenericFunction>()) {
       fn_type = &data.type()->as<type::Function>();
       ir::GenericFn gen_fn =
-          compiler->EmitValue(fn).get<ir::GenericFn>(0).value();
+          compiler->EmitValue(fn).get<ir::RegOr<ir::GenericFn>>().value();
 
       // TODO declarations aren't callable so we shouldn't have to check this
       // here.
@@ -132,8 +120,8 @@ ir::Value EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
         core::FillMissingArgs(
             core::ParamsRef(callee.value().native()->params()), &args,
             [&c](auto const &p) {
-              return ResultsToValue(type::Typed(
-                  c.EmitValue(ASSERT_NOT_NULL(p.get()->init_val())), p.type()));
+              return type::Typed(
+                  c.EmitValue(ASSERT_NOT_NULL(p.get()->init_val())), p.type());
             });
       } break;
       default: break;

@@ -1821,37 +1821,24 @@ MakeConcrete(
         // Find the argument associated with this parameter.
         // TODO, if the type is wrong but there is an implicit cast, deal with
         // that.
-        base::untyped_buffer buf;
         type::Typed<std::optional<ir::Value>> arg;
         if (index < args.pos().size()) {
           arg = args[index];
-          if (arg->has_value()) {
-            (*arg)->apply([&buf](auto x) { buf.append(x); });
-            DEBUG_LOG("generic-fn")(**arg, ": ", *arg.type());
-          } else {
-            DEBUG_LOG("generic-fn")("empty");
-          }
-
         } else if (auto const *a = args.at_or_null(dep_node.node()->id())) {
           arg = *a;
-          if (arg->has_value()) {
-            (*arg)->apply([&buf](auto x) { buf.append(x); });
-            DEBUG_LOG("generic-fn")(**arg, ": ", *arg.type());
-          } else {
-            DEBUG_LOG("generic-fn")("empty");
-          }
-
         } else {
           auto const *t = ASSERT_NOT_NULL(c.type_of(dep_node.node()));
-          buf           = interpretter::EvaluateToBuffer(
-              c.MakeThunk(ASSERT_NOT_NULL(dep_node.node()->init_val()), t));
-          arg = type::Typed<std::optional<ir::Value>>(std::nullopt, t);
+          arg           = type::Typed<std::optional<ir::Value>>(
+              interpretter::Evaluate(
+                  c.MakeThunk(ASSERT_NOT_NULL(dep_node.node()->init_val()), t)),
+              t);
           DEBUG_LOG("generic-fn")(dep_node.node()->DebugString());
         }
 
         c.data().constants_.reserve_slot(dep_node.node(), arg.type());
         if (c.data().constants_.get_constant(dep_node.node()).empty()) {
-          c.data().constants_.set_slot(dep_node.node(), buf);
+          c.data().constants_.set_slot(dep_node.node(),
+                                       arg->value_or(ir::Value()));
         }
 
       } break;

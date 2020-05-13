@@ -9,19 +9,6 @@
 
 namespace compiler {
 
-static type::Typed<ir::Value> ResultsToValue(
-    type::Typed<ir::Results> const &results) {
-  ir::Value val(false);
-  type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                   uint32_t, uint64_t, float, double, type::Type const *,
-                   ir::EnumVal, ir::FlagsVal, ir::Addr, ir::String, ir::Fn>(
-      results.type(), [&](auto tag) -> void {
-        using T = typename decltype(tag)::type;
-        val     = ir::Value(results->template get<T>(0));
-      });
-  return type::Typed<ir::Value>(val, results.type());
-}
-
 using ::matcher::InheritsFrom;
 
 ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Access const *node) {
@@ -50,24 +37,24 @@ ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Index const *node) {
   auto *rhs_type = type_of(node->rhs());
 
   if (lhs_type->is<type::Array>()) {
-    auto index = builder().CastTo<int64_t>(ResultsToValue(
-        type::Typed<ir::Results>(EmitValue(node->rhs()), rhs_type)));
+    auto index = builder().CastTo<int64_t>(
+        type::Typed<ir::Value>(EmitValue(node->rhs()), rhs_type));
 
     auto lval = EmitRef(node->lhs());
     if (not lval.is_reg()) { NOT_YET(this, type_of(node)); }
     return builder().Index(type::Ptr(type_of(node->lhs())), lval.reg(), index);
   } else if (auto *buf_ptr_type = lhs_type->if_as<type::BufferPointer>()) {
-    auto index = builder().CastTo<int64_t>(ResultsToValue(
-        type::Typed<ir::Results>(EmitValue(node->rhs()), rhs_type)));
+    auto index = builder().CastTo<int64_t>(
+        type::Typed<ir::Value>(EmitValue(node->rhs()), rhs_type));
 
-    return builder().PtrIncr(EmitValue(node->lhs()).get<ir::Reg>(0), index,
+    return builder().PtrIncr(EmitValue(node->lhs()).get<ir::Reg>(), index,
                              type::Ptr(buf_ptr_type->pointee()));
   } else if (lhs_type == type::ByteView) {
     // TODO interim until you remove string_view and replace it with Addr
     // entirely.
-    auto index = builder().CastTo<int64_t>(ResultsToValue(
-        type::Typed<ir::Results>(EmitValue(node->rhs()), rhs_type)));
-    auto str   = EmitValue(node->lhs()).get<ir::String>(0);
+    auto index = builder().CastTo<int64_t>(
+        type::Typed<ir::Value>(EmitValue(node->rhs()), rhs_type));
+    auto str = EmitValue(node->lhs()).get<ir::RegOr<ir::String>>();
     if (str.is_reg()) {
       return builder().PtrIncr(str.reg(), index, type::Ptr(type::Nat8));
     } else {
@@ -88,7 +75,7 @@ ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Index const *node) {
 
 ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Unop const *node) {
   ASSERT(node->op() == frontend::Operator::At);
-  return EmitValue(node->operand()).get<ir::Reg>(0);
+  return EmitValue(node->operand()).get<ir::Reg>();
 }
 
 }  // namespace compiler

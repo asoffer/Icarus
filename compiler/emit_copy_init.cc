@@ -6,19 +6,6 @@
 
 namespace compiler {
 
-static type::Typed<ir::Value> ResultsToValue(
-    type::Typed<ir::Results> const &results) {
-  ir::Value val(false);
-  type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                   uint32_t, uint64_t, float, double, type::Type const *,
-                   ir::EnumVal, ir::FlagsVal, ir::Addr, ir::String, ir::Fn>(
-      results.type(), [&](auto tag) -> void {
-        using T = typename decltype(tag)::type;
-        val     = ir::Value(results->template get<T>(0));
-      });
-  return type::Typed<ir::Value>(val, results.type());
-}
-
 void Compiler::EmitCopyInit(type::Type const *from_type, ir::Value from_val,
                             type::Typed<ir::Reg> to_var) {
   auto *to_type = to_var.type()->as<type::Pointer>().pointee();
@@ -35,9 +22,7 @@ void Compiler::EmitCopyInit(type::Type const *from_type, ir::Value from_val,
 
 void Compiler::EmitCopyInit(ast::Expression const *node,
                             type::Typed<ir::Reg> reg) {
-  EmitCopyInit(type_of(node),
-               *ResultsToValue(type::Typed{EmitValue(node), type_of(node)}),
-               reg);
+  EmitCopyInit(type_of(node), EmitValue(node), reg);
 }
 
 void Compiler::EmitCopyInit(ast::ArrayLiteral const *node,
@@ -56,11 +41,7 @@ void Compiler::EmitCopyInit(ast::Unop const *node, type::Typed<ir::Reg> reg) {
   switch (node->op()) {
     case frontend::Operator::Move: EmitMoveInit(node->operand(), reg); break;
     case frontend::Operator::Copy: EmitCopyInit(node->operand(), reg); break;
-    default:
-      EmitCopyInit(type_of(node),
-                   *ResultsToValue(type::Typed{EmitValue(node), type_of(node)}),
-                   reg);
-      break;
+    default: EmitCopyInit(type_of(node), EmitValue(node), reg); break;
   }
 }
 

@@ -133,8 +133,11 @@ bool Compare(::type::Type const *t) {
   } else if constexpr (std::is_same_v<T, module::BasicModule *> or
                        std::is_same_v<T, module::BasicModule const *>) {
     return t == ::type::Module;
-  } else if constexpr (std::is_same_v<T, ir::BlockDef const *>) {
+  } else if constexpr (std::is_same_v<T, ir::BlockDef const *> or
+                       std::is_same_v<T, ir::BlockDef *>) {
     return t == ::type::Block;
+  } else if constexpr (std::is_same_v<T, ir::Jump *>) {
+    return t->is<type::Jump>();
   } else {
     UNREACHABLE(t->to_string(), " vs ", typeid(T).name());
   }

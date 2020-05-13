@@ -263,7 +263,7 @@ Reg Builder::Struct(ast::Scope const *scope, std::vector<StructField> fields) {
   return result;
 }
 
-RegOr<type::Function const *> Builder::Arrow(
+RegOr<type::Type const *> Builder::Arrow(
     std::vector<RegOr<type::Type const *>> const &ins,
     std::vector<RegOr<type::Type const *>> const &outs) {
   if (absl::c_all_of(

@@ -8,6 +8,7 @@
 #include "base/meta.h"
 #include "ir/value/addr.h"
 #include "ir/value/enum_and_flags.h"
+#include "ir/value/label.h"
 #include "ir/value/reg_or.h"
 #include "ir/value/string.h"
 #include "type/type_fwd.h"
@@ -49,6 +50,11 @@ struct MultiValue {
 // A `Value` represents any register or value constant usable in the
 // intermediate representation.
 struct Value {
+  // `Empty` is a special tag to hold empty values.
+  struct Empty{};
+
+  explicit Value() : Value(Empty{}) {}
+
   // Constructs a `Value` from the passed in type. The parameter may be of any
   // type supported by `Value` or an `ir::RegOr<T>` where `T` is an type
   // supported by `Value`.
@@ -66,6 +72,8 @@ struct Value {
       new (&get_ref<T>()) T(std::move(val));
     }
   }
+
+  bool empty() const { return get_if<Empty>(); }
 
   Value(Value const& v) : type_(v.type_) {
     if (v.type_ == base::meta<MultiValue>) {
@@ -188,7 +196,7 @@ struct Value {
   template <typename T>
   T const& get_ref() const {
     static_assert(sizeof(T) <= 8);
-    ASSERT(type_ == base::meta<T>) << type_.name() << " vs " << base::meta<T>.name();
+    ASSERT(type_ == base::meta<T>);
     return *reinterpret_cast<T const*>(buf_);
   }
 

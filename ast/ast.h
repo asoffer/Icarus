@@ -1269,23 +1269,23 @@ struct Terminal : Expression {
   type::BasicType basic_type() const { return basic_; }
 
   // TODO remove. This should be a variant or union.
-  ir::Results value() const {
+  ir::Value value() const {
     switch (basic_) {
       using type::BasicType;
-      case BasicType::Int8: return ir::Results{static_cast<int8_t>(i64_)};
-      case BasicType::Nat8: return ir::Results{static_cast<uint8_t>(u64_)};
-      case BasicType::Int16: return ir::Results{static_cast<int16_t>(i64_)};
-      case BasicType::Nat16: return ir::Results{static_cast<uint16_t>(u64_)};
-      case BasicType::Int32: return ir::Results{static_cast<int32_t>(i64_)};
-      case BasicType::Nat32: return ir::Results{static_cast<uint32_t>(u64_)};
-      case BasicType::Int64: return ir::Results{i64_};
-      case BasicType::Nat64: return ir::Results{u64_};
-      case BasicType::Float32: return ir::Results{f32_};
-      case BasicType::Float64: return ir::Results{f64_};
-      case BasicType::ByteView: return ir::Results{str_};
-      case BasicType::Bool: return ir::Results{b_};
-      case BasicType::Type_: return ir::Results{type::Prim(t_)};
-      case BasicType::NullPtr: return ir::Results{addr_};
+      case BasicType::Int8: return ir::Value(static_cast<int8_t>(i64_));
+      case BasicType::Nat8: return ir::Value(static_cast<uint8_t>(u64_));
+      case BasicType::Int16: return ir::Value(static_cast<int16_t>(i64_));
+      case BasicType::Nat16: return ir::Value(static_cast<uint16_t>(u64_));
+      case BasicType::Int32: return ir::Value(static_cast<int32_t>(i64_));
+      case BasicType::Nat32: return ir::Value(static_cast<uint32_t>(u64_));
+      case BasicType::Int64: return ir::Value(i64_);
+      case BasicType::Nat64: return ir::Value(u64_);
+      case BasicType::Float32: return ir::Value(f32_);
+      case BasicType::Float64: return ir::Value(f64_);
+      case BasicType::ByteView: return ir::Value(str_);
+      case BasicType::Bool: return ir::Value(b_);
+      case BasicType::Type_: return ir::Value(type::Prim(t_));
+      case BasicType::NullPtr: return ir::Value(addr_);
       default:;
     }
     UNREACHABLE();

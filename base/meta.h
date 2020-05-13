@@ -85,6 +85,8 @@ struct MetaValue {
   template <typename T>
   friend struct Meta;
 
+ friend char const* stringify(MetaValue m) { return m.name(); }
+
  private:
   explicit constexpr MetaValue(uintptr_t val) : value_(val) {}
   uintptr_t value_;
@@ -99,8 +101,10 @@ struct Meta {
 
  char const* name() const { return name_; }
 
- private:
-  static char const* const name_;
+ friend char const* stringify(Meta<T>) { return name_; }
+
+private:
+ static char const* const name_;
 };
 
 template <typename T>

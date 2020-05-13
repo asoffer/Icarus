@@ -183,7 +183,7 @@ struct Builder {
   template <typename Lhs, typename Rhs>
   RegOr<bool> Eq(Lhs const& lhs, Rhs const& rhs) {
     using type = reduced_type_t<Lhs>;
-    if constexpr (std::is_same_v<type, bool>) {
+    if constexpr (base::meta<type> == base::meta<bool>) {
       return EqBool(lhs, rhs);
     } else if constexpr (IsRegOr<Lhs>::value and IsRegOr<Rhs>::value) {
       if (not lhs.is_reg() and not rhs.is_reg()) {
@@ -198,14 +198,14 @@ struct Builder {
     }
   }
 
-  RegOr<bool> Eq(type::Type const* common_type, ir::Results const& lhs_val,
-                 ir::Results const& rhs_val) {
+  RegOr<bool> Eq(type::Type const* common_type, ir::Value const& lhs_val,
+                 ir::Value const& rhs_val) {
     return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
                             uint16_t, uint32_t, uint64_t, float, double,
                             ir::EnumVal, ir::FlagsVal>(
         common_type, [&](auto tag) {
           using T = typename decltype(tag)::type;
-          return Eq(lhs_val.get<T>(0), rhs_val.get<T>(0));
+          return Eq(lhs_val.get<RegOr<T>>(), rhs_val.get<RegOr<T>>());
         });
   }
 
@@ -237,7 +237,10 @@ struct Builder {
     return result;
   }
 
-  RegOr<type::BufferPointer const*> BufPtr(
+  // Note: Even though this must return a more specific type (BufferPointer
+  // instead of Type), we use Type to ensure that if this gets routed into an
+  // ir::Value, it will be tagged correctly.
+  RegOr<type::Type const*> BufPtr(
       RegOr<type::Type const*> const& val) {
     using InstrT = BufPtrInstruction;
     if (not val.is_reg()) { return InstrT::Apply(val.value()); }
@@ -247,7 +250,10 @@ struct Builder {
     return result;
   }
 
-  RegOr<type::Pointer const*> Ptr(RegOr<type::Type const*> const& val) {
+  // Note: Even though this must return a more specific type (Pointer instead of
+  // Type), we use Type to ensure that if this gets routed into an ir::Value, it
+  // will be tagged correctly.
+  RegOr<type::Type const*> Ptr(RegOr<type::Type const*> const& val) {
     using InstrT = PtrInstruction;
     if (not val.is_reg()) { return InstrT::Apply(val.value()); }
     auto inst   = std::make_unique<InstrT>(val);
@@ -383,7 +389,7 @@ struct Builder {
 
   Reg PtrFix(Reg r, type::Type const* desired_type) {
     // TODO must this be a register if it's loaded?
-    return desired_type->is_big() ? r : Load(r, desired_type).get<Reg>(0);
+    return desired_type->is_big() ? r : Load(r, desired_type).get<Reg>();
   }
 
   template <typename T>
@@ -408,16 +414,16 @@ struct Builder {
     return result;
   }
 
-  Results Load(RegOr<Addr> r, type::Type const* t) {
+  Value Load(RegOr<Addr> r, type::Type const* t) {
     using base::stringify;
     DEBUG_LOG("Load")("Calling Load(", stringify(r), ", ", t->to_string(), ")");
-    if (t->is<type::Function>()) { return Results{Load<Fn>(r)}; }
+    if (t->is<type::Function>()) { return Value(Load<Fn>(r)); }
     return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
                             uint16_t, uint32_t, uint64_t, float, double,
                             type::Type const*, EnumVal, FlagsVal, Addr, String,
-                            Fn>(t, [&](auto tag) -> Results {
+                            Fn>(t, [&](auto tag) {
       using T = typename decltype(tag)::type;
-      return Results{Load<T>(r)};
+      return Value(Load<T>(r));
     });
   }
 
@@ -513,7 +519,11 @@ struct Builder {
   RegOr<Addr> ByteViewData(RegOr<ir::String> val);
 
   // Type construction commands
-  RegOr<type::Function const*> Arrow(
+
+  // Note: Even though this must return a more specific type (Function instead
+  // of Type), we use Type to ensure that if this gets routed into an ir::Value,
+  // it will be tagged correctly.
+  RegOr<type::Type const*> Arrow(
       std::vector<RegOr<type::Type const*>> const& ins,
       std::vector<RegOr<type::Type const*>> const& outs);
 
@@ -601,7 +611,7 @@ struct Builder {
       // TODO currently this has to be implemented outside type::Apply because
       // that's in type.h which is wrong because it forces weird instantiation
       // order issues (type/type.h can't depend on type/jump.h).
-      SetRet(n, r->get<RegOr<Fn>>());
+      SetRet(n, r->get<RegOr<Jump *>>());
     } else {
       ASSERT(r.type()->is_big() == false) << r.type()->to_string();
       type::Apply(r.type(), [&](auto tag) {

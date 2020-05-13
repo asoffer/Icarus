@@ -8,6 +8,7 @@
 #include "ast/ast_fwd.h"
 #include "base/untyped_buffer.h"
 #include "base/untyped_buffer_view.h"
+#include "ir/value/value.h"
 #include "type/type.h"
 
 namespace compiler {
@@ -23,11 +24,10 @@ struct ConstantBinding {
     return nullptr;
   }
 
-  base::untyped_buffer_view reserve_slot(ast::Declaration const* decl,
-                                         type::Type const* t);
-  void set_slot(ast::Declaration const* decl, base::untyped_buffer_view buf);
+  ir::Value reserve_slot(ast::Declaration const* decl, type::Type const* t);
+  void set_slot(ast::Declaration const* decl, ir::Value const&);
 
-  base::untyped_buffer_view get_constant(ast::Declaration const* decl) const;
+  ir::Value get_constant(ast::Declaration const* decl) const;
 
   template <typename Fn>
   void ForEach(Fn f) const {
@@ -37,7 +37,7 @@ struct ConstantBinding {
  private:
   struct Binding {
     type::Type const* type;
-    base::untyped_buffer buffer;
+    ir::Value value;
   };
 
   // Note: While the `Binding` itself may move around on rehash, the underlying

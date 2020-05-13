@@ -7,20 +7,6 @@
 
 namespace compiler {
 
-static type::Typed<ir::Value> ResultsToValue(
-    type::Typed<ir::Results> const &results) {
-  ir::Value val(false);
-  type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                   uint32_t, uint64_t, float, double, type::Type const *,
-                   ir::EnumVal, ir::FlagsVal, ir::Addr, ir::String, ir::Fn>(
-      results.type(), [&](auto tag) -> void {
-        using T = typename decltype(tag)::type;
-        val     = ir::Value(results->template get<T>(0));
-      });
-  return type::Typed<ir::Value>(val, results.type());
-}
-
-
 void MakeAllStackAllocations(Compiler *compiler, ast::FnScope const *fn_scope) {
   for (auto *scope : fn_scope->descendants()) {
     if (scope != fn_scope and scope->is<ast::FnScope>()) { continue; }
@@ -102,12 +88,11 @@ void CompleteBody(Compiler *compiler, ast::ShortFunctionLiteral const *node,
     }
 
     MakeAllStackAllocations(compiler, node->body_scope());
-    auto results = compiler->EmitValue(node->body());
+    auto vals = compiler->EmitValue(node->body());
     bldr.FinishTemporariesWith([compiler](type::Typed<ir::Reg> r) {
       compiler->Visit(r.type(), r.get(), EmitDestroyTag{});
     });
-    bldr.SetRet(0,
-                type::Typed<ir::Results>(std::move(results), t->output()[0]));
+    bldr.SetRet(0, type::Typed<ir::Value>(std::move(vals), t->output()[0]));
     MakeAllDestructions(compiler, node->body_scope());
     bldr.ReturnJump();
   }
@@ -146,11 +131,10 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
         if (out_decl->IsDefaultInitialized()) {
           compiler->Visit(out_decl_type, alloc, EmitDefaultInitTag{});
         } else {
-          compiler->Visit(
-              out_decl_type, alloc,
-              ResultsToValue(type::Typed{
-                  compiler->EmitValue(out_decl->init_val()), out_decl_type}),
-              EmitCopyAssignTag{});
+          compiler->Visit(out_decl_type, alloc,
+                          type::Typed{compiler->EmitValue(out_decl->init_val()),
+                                      out_decl_type},
+                          EmitCopyAssignTag{});
         }
       }
     }

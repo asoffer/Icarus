@@ -4,8 +4,11 @@
 #include "interpretter/architecture.h"
 #include "interpretter/execute.h"
 #include "ir/compiled_fn.h"
-#include "type/util.h"
+#include "ir/jump.h"
+#include "ir/value/generic_fn.h"
 #include "type/function.h"
+#include "type/generic_function.h"
+#include "type/util.h"
 
 namespace interpretter {
 constexpr int kMaxSize = 8;
@@ -36,8 +39,8 @@ ir::Value Evaluate(ir::CompiledFn &&fn) {
     type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                      uint32_t, uint64_t, float, double, type::Type const *,
                      ir::EnumVal, ir::FlagsVal, ir::Addr, ir::String,
-                     module::BasicModule *, ir::ScopeDef *, ir::Fn,
-                     ir::BlockDef const *>(t, [&](auto tag) {
+                     module::BasicModule *, ir::ScopeDef *, ir::Fn, ir::Jump *,
+                     ir::BlockDef *, ir::GenericFn>(t, [&](auto tag) {
       using T = typename decltype(tag)::type;
       T val   = iter.read<T>();
       values.push_back(ir::Value(val));
@@ -45,7 +48,7 @@ ir::Value Evaluate(ir::CompiledFn &&fn) {
   }
 
   switch (values.size()) {
-    case 0: return ir::Value(false);  // TODO
+    case 0: return ir::Value();
     case 1: return values[0];
     default: return ir::Value(ir::MultiValue(std::move(values)));
   }

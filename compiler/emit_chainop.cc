@@ -14,19 +14,6 @@
 
 namespace compiler {
 
-static type::Typed<ir::Value> ResultsToValue(
-    type::Typed<ir::Results> const &results) {
-  ir::Value val(false);
-  type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                   uint32_t, uint64_t, float, double, type::Type const *,
-                   ir::EnumVal, ir::FlagsVal, ir::Addr, ir::String, ir::Fn>(
-      results.type(), [&](auto tag) -> void {
-        using T = typename decltype(tag)::type;
-        val     = ir::Value(results->template get<T>(0));
-      });
-  return type::Typed<ir::Value>(val, results.type());
-}
-
 static base::guarded<absl::flat_hash_map<
     type::Array const *,
     absl::flat_hash_map<type::Array const *, ir::CompiledFn *>>>
@@ -35,11 +22,12 @@ static base::guarded<absl::flat_hash_map<
     type::Array const *,
     absl::flat_hash_map<type::Array const *, ir::CompiledFn *>>>
     ne_funcs;
-// TODO this should early exit if the types aren't equal.
-static ir::Results ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
-                                ir::Results const &lhs_ir,
-                                type::Array const *rhs_type,
-                                ir::Results const &rhs_ir, bool equality) {
+// TODO this should early exit if the types aren't equal. Should also accept
+// Typed<Value, Array>
+static ir::Value ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
+                              ir::Value const &lhs_ir,
+                              type::Array const *rhs_type,
+                              ir::Value const &rhs_ir, bool equality) {
   auto &bldr  = compiler->builder();
   auto &funcs = equality ? eq_funcs : ne_funcs;
   auto handle = funcs.lock();
@@ -113,17 +101,15 @@ static ir::Results ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
 
   ir::OutParams outs = compiler->builder().OutParams({type::Bool});
   auto result        = outs[0];
-  bldr.Call(ir::Fn{iter->second}, iter->second->type(),
-            {*ResultsToValue(type::Typed{lhs_ir, lhs_type->data_type()}),
-             *ResultsToValue(type::Typed{rhs_ir, rhs_type->data_type()})},
+  bldr.Call(ir::Fn{iter->second}, iter->second->type(), {lhs_ir, rhs_ir},
             std::move(outs));
-  return ir::Results{result};
+  return ir::Value(result);
 }
 
 static ir::RegOr<bool> EmitChainOpPair(Compiler *compiler,
                                        ast::ChainOp const *chain_op,
-                                       size_t index, ir::Results const &lhs_ir,
-                                       ir::Results const &rhs_ir) {
+                                       size_t index, ir::Value const &lhs_ir,
+                                       ir::Value const &rhs_ir) {
   auto &bldr     = compiler->builder();
   auto *lhs_type = compiler->type_of(chain_op->exprs()[index]);
   auto *rhs_type = compiler->type_of(chain_op->exprs()[index + 1]);
@@ -133,7 +119,7 @@ static ir::RegOr<bool> EmitChainOpPair(Compiler *compiler,
     return ArrayCompare(compiler, &lhs_type->as<type::Array>(), lhs_ir,
                         &rhs_type->as<type::Array>(), rhs_ir,
                         op == frontend::Operator::Eq)
-        .get<bool>(0);
+        .get<ir::RegOr<bool>>();
   } else if (lhs_type->is<type::Struct>() or rhs_type->is<type::Struct>()) {
     NOT_YET();
 
@@ -144,19 +130,21 @@ static ir::RegOr<bool> EmitChainOpPair(Compiler *compiler,
                                 uint16_t, uint32_t, uint64_t, float, double,
                                 ir::FlagsVal>(lhs_type, [&](auto tag) {
           using T = typename decltype(tag)::type;
-          return bldr.Lt(lhs_ir.get<T>(0), rhs_ir.get<T>(0));
+          return bldr.Lt(lhs_ir.get<ir::RegOr<T>>(),
+                         rhs_ir.get<ir::RegOr<T>>());
         });
       case frontend::Operator::Le:
         return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                                 uint16_t, uint32_t, uint64_t, float, double,
                                 ir::FlagsVal>(lhs_type, [&](auto tag) {
           using T = typename decltype(tag)::type;
-          return bldr.Le(lhs_ir.get<T>(0), rhs_ir.get<T>(0));
+          return bldr.Le(lhs_ir.get<ir::RegOr<T>>(),
+                         rhs_ir.get<ir::RegOr<T>>());
         });
       case frontend::Operator::Eq:
         if (lhs_type == type::Block) {
-          auto val1 = lhs_ir.get<ir::BlockDef *>(0);
-          auto val2 = rhs_ir.get<ir::BlockDef *>(0);
+          auto val1 = lhs_ir.get<ir::RegOr<ir::BlockDef *>>();
+          auto val2 = rhs_ir.get<ir::RegOr<ir::BlockDef *>>();
           if (not val1.is_reg() and not val2.is_reg()) {
             return val1.value() == val2.value();
           }
@@ -167,12 +155,13 @@ static ir::RegOr<bool> EmitChainOpPair(Compiler *compiler,
                                 ir::FlagsVal, ir::Addr>(
             lhs_type, [&](auto tag) {
               using T = typename decltype(tag)::type;
-              return bldr.Eq(lhs_ir.get<T>(0), rhs_ir.get<T>(0));
+              return bldr.Eq(lhs_ir.get<ir::RegOr<T>>(),
+                             rhs_ir.get<ir::RegOr<T>>());
             });
       case frontend::Operator::Ne:
         if (lhs_type == type::Block) {
-          auto val1 = lhs_ir.get<ir::BlockDef *>(0);
-          auto val2 = rhs_ir.get<ir::BlockDef *>(0);
+          auto val1 = lhs_ir.get<ir::RegOr<ir::BlockDef *>>();
+          auto val2 = rhs_ir.get<ir::RegOr<ir::BlockDef *>>();
           if (not val1.is_reg() and not val2.is_reg()) {
             return val1.value() == val2.value();
           }
@@ -183,21 +172,24 @@ static ir::RegOr<bool> EmitChainOpPair(Compiler *compiler,
                                 ir::FlagsVal, ir::Addr>(
             lhs_type, [&](auto tag) {
               using T = typename decltype(tag)::type;
-              return bldr.Ne(lhs_ir.get<T>(0), rhs_ir.get<T>(0));
+              return bldr.Ne(lhs_ir.get<ir::RegOr<T>>(),
+                             rhs_ir.get<ir::RegOr<T>>());
             });
       case frontend::Operator::Ge:
         return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                                 uint16_t, uint32_t, uint64_t, float, double,
                                 ir::FlagsVal>(lhs_type, [&](auto tag) {
           using T = typename decltype(tag)::type;
-          return bldr.Ge(lhs_ir.get<T>(0), rhs_ir.get<T>(0));
+          return bldr.Ge(lhs_ir.get<ir::RegOr<T>>(),
+                         rhs_ir.get<ir::RegOr<T>>());
         });
       case frontend::Operator::Gt:
         return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                                 uint16_t, uint32_t, uint64_t, float, double,
                                 ir::FlagsVal>(lhs_type, [&](auto tag) {
           using T = typename decltype(tag)::type;
-          return bldr.Gt(lhs_ir.get<T>(0), rhs_ir.get<T>(0));
+          return bldr.Gt(lhs_ir.get<ir::RegOr<T>>(),
+                         rhs_ir.get<ir::RegOr<T>>());
         });
         // TODO case frontend::Operator::And: cmp = lhs_ir; break;
       default: UNREACHABLE();
@@ -205,23 +197,24 @@ static ir::RegOr<bool> EmitChainOpPair(Compiler *compiler,
   }
 }
 
-ir::Results Compiler::EmitValue(ast::ChainOp const *node) {
+ir::Value Compiler::EmitValue(ast::ChainOp const *node) {
   auto *t = type_of(node);
   if (node->ops()[0] == frontend::Operator::Xor) {
     if (t == type::Bool) {
-      return ir::Results{std::accumulate(
+      return ir::Value(std::accumulate(
           node->exprs().begin(), node->exprs().end(), ir::RegOr<bool>(false),
           [&](ir::RegOr<bool> acc, auto *expr) {
-            return builder().Ne(acc, EmitValue(expr).template get<bool>(0));
-          })};
+            return builder().Ne(
+                acc, EmitValue(expr).template get<ir::RegOr<bool>>());
+          }));
     } else if (t->is<type::Flags>()) {
-      return ir::Results{std::accumulate(
+      return ir::Value(std::accumulate(
           node->exprs().begin(), node->exprs().end(),
           ir::RegOr<ir::FlagsVal>(ir::FlagsVal{0}),
           [&](ir::RegOr<ir::FlagsVal> acc, auto *expr) {
             return builder().XorFlags(
-                acc, EmitValue(expr).template get<ir::FlagsVal>(0));
-          })};
+                acc, EmitValue(expr).template get<ir::RegOr<ir::FlagsVal>>());
+          }));
     } else {
       UNREACHABLE();
     }
@@ -229,29 +222,30 @@ ir::Results Compiler::EmitValue(ast::ChainOp const *node) {
   } else if (node->ops()[0] == frontend::Operator::Or and
              t->is<type::Flags>()) {
     auto iter = node->exprs().begin();
-    auto val  = EmitValue(*iter).get<ir::FlagsVal>(0);
+    auto val  = EmitValue(*iter).get<ir::RegOr<ir::FlagsVal>>();
     while (++iter != node->exprs().end()) {
-      val = builder().OrFlags(val, EmitValue(*iter).get<ir::FlagsVal>(0));
+      val = builder().OrFlags(val,
+                              EmitValue(*iter).get<ir::RegOr<ir::FlagsVal>>());
     }
-    return ir::Results{val};
+    return ir::Value(val);
   } else if (node->ops()[0] == frontend::Operator::And and
              t->is<type::Flags>()) {
     auto iter = node->exprs().begin();
-    auto val  = EmitValue(*iter).get<ir::FlagsVal>(0);
+    auto val  = EmitValue(*iter).get<ir::RegOr<ir::FlagsVal>>();
     while (++iter != node->exprs().end()) {
-      val = builder().AndFlags(val, EmitValue(*iter).get<ir::FlagsVal>(0));
+      val = builder().AndFlags(val, EmitValue(*iter).get<ir::RegOr<ir::FlagsVal>>());
     }
-    return ir::Results{val};
+    return ir::Value(val);
   } else if (node->ops()[0] == frontend::Operator::Or and t == type::Type_) {
     // TODO probably want to check that each expression is a type? What if I
     // overload | to take my own stuff and have it return a type?
     std::vector<ir::RegOr<type::Type const *>> args;
     args.reserve(node->exprs().size());
     for (auto const *expr : node->exprs()) {
-      args.push_back(EmitValue(expr).get<type::Type const *>(0));
+      args.push_back(EmitValue(expr).get<ir::RegOr<type::Type const *>>());
     }
     auto reg_or_type = builder().Var(args);
-    return ir::Results{reg_or_type};
+    return ir::Value(reg_or_type);
   } else if (node->ops()[0] == frontend::Operator::Or and t == type::Block) {
     NOT_YET();
   } else if (node->ops()[0] == frontend::Operator::And or
@@ -262,7 +256,7 @@ ir::Results Compiler::EmitValue(ast::ChainOp const *node) {
     std::vector<ir::RegOr<bool>> phi_results;
     bool is_or = (node->ops()[0] == frontend::Operator::Or);
     for (size_t i = 0; i + 1 < node->exprs().size(); ++i) {
-      auto val = EmitValue(node->exprs()[i]).get<bool>(0);
+      auto val = EmitValue(node->exprs()[i]).get<ir::RegOr<bool>>();
 
       auto *next_block = builder().AddBlock();
       builder().CondJump(val, is_or ? land_block : next_block,
@@ -274,19 +268,18 @@ ir::Results Compiler::EmitValue(ast::ChainOp const *node) {
     }
 
     phi_blocks.push_back(builder().CurrentBlock());
-    phi_results.push_back(EmitValue(node->exprs().back()).get<bool>(0));
+    phi_results.push_back(EmitValue(node->exprs().back()).get<ir::RegOr<bool>>());
     builder().UncondJump(land_block);
 
     builder().CurrentBlock() = land_block;
 
-    return ir::Results{
-        builder().Phi<bool>(std::move(phi_blocks), std::move(phi_results))};
+    return ir::Value(builder().Phi<bool>(std::move(phi_blocks), std::move(phi_results)));
 
   } else {
     if (node->ops().size() == 1) {
       auto lhs_ir = EmitValue(node->exprs()[0]);
       auto rhs_ir = EmitValue(node->exprs()[1]);
-      return ir::Results{EmitChainOpPair(this, node, 0, lhs_ir, rhs_ir)};
+      return ir::Value(EmitChainOpPair(this, node, 0, lhs_ir, rhs_ir));
 
     } else {
       std::vector<ir::BasicBlock const *> phi_blocks;
@@ -314,8 +307,7 @@ ir::Results Compiler::EmitValue(ast::ChainOp const *node) {
 
       builder().CurrentBlock() = land_block;
 
-      return ir::Results{
-          builder().Phi<bool>(std::move(phi_blocks), std::move(phi_values))};
+      return ir::Value(builder().Phi<bool>(std::move(phi_blocks), std::move(phi_values)));
     }
   }
   UNREACHABLE();

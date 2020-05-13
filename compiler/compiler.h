@@ -16,10 +16,10 @@
 #include "diagnostic/consumer/consumer.h"
 #include "frontend/source/source.h"
 #include "ir/builder.h"
-#include "ir/results.h"
 #include "ir/value/addr.h"
 #include "ir/value/native_fn.h"
 #include "ir/value/reg.h"
+#include "ir/value/value.h"
 #include "module/module.h"
 #include "type/qual_type.h"
 #include "type/type_fwd.h"
@@ -64,7 +64,7 @@ struct Compiler
     : ast::Visitor<EmitMoveInitTag, void(type::Typed<ir::Reg>)>,
       ast::Visitor<EmitCopyInitTag, void(type::Typed<ir::Reg>)>,
       ast::Visitor<EmitRefTag, ir::RegOr<ir::Addr>()>,
-      ast::Visitor<EmitValueTag, ir::Results()>,
+      ast::Visitor<EmitValueTag, ir::Value()>,
       ast::Visitor<VerifyTypeTag, type::QualType()>,
       type::Visitor<void(ir::Reg, EmitDestroyTag),
                     void(ir::Reg, EmitDefaultInitTag),
@@ -101,8 +101,8 @@ struct Compiler
     return ast::Visitor<VerifyTypeTag, type::QualType()>::Visit(node);
   }
 
-  ir::Results EmitValue(ast::Node const *node) {
-    return ast::Visitor<EmitValueTag, ir::Results()>::Visit(node);
+  ir::Value EmitValue(ast::Node const *node) {
+    return ast::Visitor<EmitValueTag, ir::Value()>::Visit(node);
   }
 
   void EmitCopyInit(ast::Node const *node, type::Typed<ir::Reg> reg) {
@@ -187,8 +187,8 @@ struct Compiler
     return VerifyType(node);                                                   \
   }                                                                            \
                                                                                \
-  ir::Results EmitValue(ast::name const *node);                                \
-  ir::Results Visit(EmitValueTag, ast::name const *node) override {            \
+  ir::Value EmitValue(ast::name const *node);                                  \
+  ir::Value Visit(EmitValueTag, ast::name const *node) override {              \
     return EmitValue(node);                                                    \
   }
 #include "ast/node.xmacro.h"

@@ -239,6 +239,7 @@ cc_library(
     deps = [
         ":addr",
         ":enum_and_flags",
+        ":label",
         ":string",
         ":reg_or",
         "//base:guarded",

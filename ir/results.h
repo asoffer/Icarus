@@ -91,6 +91,7 @@ struct Results {
 
  private:
   void AppendValue(Value const& v) {
+    if (v.empty()) { return; }
     if (auto* m = v.get_if<ir::MultiValue>()) {
       for (auto const& val : m->span()) { AppendValue(val); }
     } else {

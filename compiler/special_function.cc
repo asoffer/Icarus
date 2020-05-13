@@ -17,7 +17,7 @@ std::optional<ir::Fn> SpecialFunction(Compiler *compiler, type::Struct const *s,
     auto *fn_type = t->if_as<type::Function>();
     if (fn_type == nullptr) { continue; }
     if (fn_type->params().at(0).value != ptr_to_s) { continue; }
-    return compiler->EmitValue(decl).get<ir::Fn>(0).value();
+    return compiler->EmitValue(decl).get<ir::RegOr<ir::Fn>>().value();
   }
   return std::nullopt;
 }

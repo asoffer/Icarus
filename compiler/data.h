@@ -185,11 +185,11 @@ struct DependentComputedData {
         .first->second;
   }
 
-  base::untyped_buffer_view LoadConstantParam(ast::Declaration const *decl) {
-    auto buf_view = constants_.get_constant(decl);
-    if (not buf_view.empty()) { return buf_view; }
-    if (parent_) { buf_view = parent_->LoadConstantParam(decl); }
-    return buf_view;
+  ir::Value LoadConstantParam(ast::Declaration const *decl) {
+    ir::Value val = constants_.get_constant(decl);
+    if (not val.empty()) { return val; }
+    if (parent_) { val = parent_->LoadConstantParam(decl); }
+    return val;
   }
 
   ir::NativeFn *FindNativeFn(ast::Expression const *expr) {
