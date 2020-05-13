@@ -608,13 +608,13 @@ ir::Results Compiler::EmitValue(ast::Cast const *node) {
                               uint16_t, uint32_t, uint64_t, float, double,
                               ir::EnumVal, ir::FlagsVal>(
           to_type, [&](auto tag) {
-            return ir::Results{
-                ir::CastTo<typename decltype(tag)::type>(from_type, results)};
+            return ir::Results{builder().CastTo<typename decltype(tag)::type>(
+                ResultsToValue(type::Typed(results, from_type)))};
           });
     } else {
       return type::ApplyTypes<float, double>(to_type, [&](auto tag) {
-        return ir::Results{
-            ir::CastTo<typename decltype(tag)::type>(from_type, results)};
+        return ir::Results{builder().CastTo<typename decltype(tag)::type>(
+            ResultsToValue(type::Typed(results, from_type)))};
       });
     }
   } else {
@@ -1246,8 +1246,8 @@ ir::Results Compiler::EmitValue(ast::Unop const *node) {
     case frontend::Operator::Eval: {
       // Guaranteed to be constant by VerifyType
       // TODO what if there's an error during evaluation?
-      return interpretter::Evaluate(
-          MakeThunk(node->operand(), type_of(node->operand())));
+      return ir::Results(interpretter::Evaluate(
+          MakeThunk(node->operand(), type_of(node->operand()))));
     }
     case frontend::Operator::Mul:
       return ir::Results{

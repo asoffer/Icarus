@@ -280,6 +280,38 @@ struct Builder {
     return result;
   }
 
+  template <typename ToType>
+  RegOr<ToType> CastTo(type::Typed<ir::Value> v) {
+    if constexpr (base::meta<ToType> != base::meta<ir::EnumVal> and
+                  base::meta<ToType> != base::meta<ir::FlagsVal>) {
+      if (v.type() == type::Get<ToType>()) { return v->get<RegOr<ToType>>(); }
+    }
+
+    if (v.type() == type::Int8) {
+      return Cast<ToType, int8_t>(v->get<RegOr<int8_t>>());
+    } else if (v.type() == type::Nat8) {
+      return Cast<ToType, uint8_t>(v->get<RegOr<uint8_t>>());
+    } else if (v.type() == type::Int16) {
+      return Cast<ToType, int16_t>(v->get<RegOr<int16_t>>());
+    } else if (v.type() == type::Nat16) {
+      return Cast<ToType, uint16_t>(v->get<RegOr<uint16_t>>());
+    } else if (v.type() == type::Int32) {
+      return Cast<ToType, int32_t>(v->get<RegOr<int32_t>>());
+    } else if (v.type() == type::Nat32) {
+      return Cast<ToType, uint32_t>(v->get<RegOr<uint32_t>>());
+    } else if (v.type() == type::Int64) {
+      return Cast<ToType, int64_t>(v->get<RegOr<int64_t>>());
+    } else if (v.type() == type::Nat64) {
+      return Cast<ToType, uint64_t>(v->get<RegOr<uint64_t>>());
+    } else if (v.type() == type::Float32) {
+      return Cast<ToType, float>(v->get<RegOr<float>>());
+    } else if (v.type() == type::Float64) {
+      return Cast<ToType, double>(v->get<RegOr<double>>());
+    } else {
+      UNREACHABLE();
+    }
+  }
+
   // Phi instruction. Takes a span of basic blocks and a span of (registers or)
   // values. As a precondition, the number of blocks must be equal to the number
   // of values. This instruction evaluates to the value `values[i]` if the
@@ -597,7 +629,20 @@ struct Builder {
     }
   }
 
-  ICARUS_PRIVATE
+ private:
+  template <typename ToType, typename FromType>
+  RegOr<ToType> Cast(RegOr<FromType> r) {
+    if (r.is_reg()) {
+      auto inst = std::make_unique<CastInstruction<FromType>>(
+          r, internal::PrimitiveIndex<ToType>());
+      auto result = inst->result = CurrentGroup()->Reserve();
+      CurrentBlock()->AddInstruction(std::move(inst));
+      return result;
+    } else {
+      return static_cast<ToType>(r.value());
+    }
+  }
+
   RegOr<bool> EqBool(RegOr<bool> const& lhs, RegOr<bool> const& rhs) {
     if (not lhs.is_reg()) { return lhs.value() ? rhs : Not(rhs); }
     if (not rhs.is_reg()) { return rhs.value() ? lhs : Not(lhs); }
@@ -657,50 +702,6 @@ struct SetTemporaries : public base::UseWithScope {
   std::vector<type::Typed<Reg>> old_temporaries_;
   Builder& bldr_;
 };
-
-template <typename ToType, typename FromType>
-RegOr<ToType> Cast(RegOr<FromType> r) {
-  if (r.is_reg()) {
-    auto inst = std::make_unique<CastInstruction<FromType>>(
-        r, internal::PrimitiveIndex<ToType>());
-    auto result = inst->result = GetBuilder().CurrentGroup()->Reserve();
-    GetBuilder().CurrentBlock()->AddInstruction(std::move(inst));
-    return result;
-  } else {
-    return static_cast<ToType>(r.value());
-  }
-}
-
-template <typename ToType>
-RegOr<ToType> CastTo(type::Type const* from_type, ir::Results const& r) {
-  if constexpr (not std::is_same_v<ToType, ir::EnumVal> and
-                not std::is_same_v<ToType, ir::FlagsVal>) {
-    if (from_type == type::Get<ToType>()) { return r.get<ToType>(0); }
-  }
-  if (from_type == type::Int8) {
-    return Cast<ToType, int8_t>(r.get<int8_t>(0));
-  } else if (from_type == type::Nat8) {
-    return Cast<ToType, uint8_t>(r.get<uint8_t>(0));
-  } else if (from_type == type::Int16) {
-    return Cast<ToType, int16_t>(r.get<int16_t>(0));
-  } else if (from_type == type::Nat16) {
-    return Cast<ToType, uint16_t>(r.get<uint16_t>(0));
-  } else if (from_type == type::Int32) {
-    return Cast<ToType, int32_t>(r.get<int32_t>(0));
-  } else if (from_type == type::Nat32) {
-    return Cast<ToType, uint32_t>(r.get<uint32_t>(0));
-  } else if (from_type == type::Int64) {
-    return Cast<ToType, int64_t>(r.get<int64_t>(0));
-  } else if (from_type == type::Nat64) {
-    return Cast<ToType, uint64_t>(r.get<uint64_t>(0));
-  } else if (from_type == type::Float32) {
-    return Cast<ToType, float>(r.get<float>(0));
-  } else if (from_type == type::Float64) {
-    return Cast<ToType, double>(r.get<double>(0));
-  } else {
-    UNREACHABLE();
-  }
-}
 
 template <typename T>
 Reg MakeReg(T t) {

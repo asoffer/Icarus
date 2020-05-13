@@ -4,6 +4,7 @@
 #include "interpretter/architecture.h"
 #include "interpretter/execute.h"
 #include "ir/compiled_fn.h"
+#include "type/util.h"
 #include "type/function.h"
 
 namespace interpretter {
@@ -25,19 +26,29 @@ base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
   return ret_buf;
 }
 
-ir::Results Evaluate(ir::CompiledFn &&fn) {
-  std::vector<uint32_t> offsets;
+ir::Value Evaluate(ir::CompiledFn &&fn) {
   auto buf = EvaluateToBuffer(std::move(fn));
+  std::vector<ir::Value> values;
+  values.reserve(fn.type()->output().size());
 
-  offsets.reserve(fn.type()->output().size());
-  auto offset = core::Bytes{0};
+  auto iter = buf.begin();
   for (auto *t : fn.type()->output()) {
-    offset = core::FwdAlign(offset, t->alignment(kArchitecture));
-    offsets.push_back(offset.value());
-    offset += t->bytes(kArchitecture);
+    type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                     uint32_t, uint64_t, float, double, type::Type const *,
+                     ir::EnumVal, ir::FlagsVal, ir::Addr, ir::String,
+                     module::BasicModule *, ir::ScopeDef *, ir::Fn,
+                     ir::BlockDef const *>(t, [&](auto tag) {
+      using T = typename decltype(tag)::type;
+      T val   = iter.read<T>();
+      values.push_back(ir::Value(val));
+    });
   }
 
-  return ir::Results::FromUntypedBuffer(std::move(offsets), std::move(buf));
+  switch (values.size()) {
+    case 0: return ir::Value(false);  // TODO
+    case 1: return values[0];
+    default: return ir::Value(ir::MultiValue(std::move(values)));
+  }
 }
 
 }  // namespace interpretter

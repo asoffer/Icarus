@@ -6,10 +6,10 @@
 #include "base/debug.h"
 #include "base/untyped_buffer.h"
 #include "ir/compiled_fn.h"
-#include "ir/results.h"
+#include "ir/value/value.h"
 
 namespace interpretter {
-ir::Results Evaluate(ir::CompiledFn &&fn);
+ir::Value Evaluate(ir::CompiledFn &&fn);
 base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn);
 
 template <typename T>

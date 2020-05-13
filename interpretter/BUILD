@@ -31,7 +31,7 @@ cc_library(
         "//base:untyped_buffer",
         "//core:arch",
         "//ir:compiled_fn",
-        "//ir:results",
+        "//ir/value",
         "//type:function",
     ],
 )

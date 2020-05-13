@@ -9,11 +9,16 @@
 #include "core/bytes.h"
 #include "ir/value/reg.h"
 #include "ir/value/reg_or.h"
+#include "ir/value/value.h"
 
 namespace ir {
 
 struct Results {
  public:
+  explicit Results(Value v) {
+    v.apply([&](auto x) { append<std::decay_t<decltype(x)>>(x); });
+  }
+
   template <typename... Args>
   explicit Results(Args... args) {
     (append<Args>(args), ...);

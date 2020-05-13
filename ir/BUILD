@@ -117,6 +117,7 @@ cc_library(
         "//base:untyped_buffer",
         "//base:untyped_buffer_view",
         "//core:bytes",
+        "//ir/value",
         "//ir/value:reg",
         "//ir/value:reg_or",
         "@com_google_absl//absl/strings",

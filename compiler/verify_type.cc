@@ -1104,28 +1104,13 @@ static type::QualType VerifyCall(
   UNREACHABLE();
 }
 
-static type::Typed<ir::Value> ResultsToValue(
-    type::Typed<ir::Results> const &results) {
-  ir::Value val(false);
-  type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                   uint32_t, uint64_t, float, double, type::Type const *,
-                   ir::EnumVal, ir::FlagsVal, ir::Addr, ir::String, ir::Fn>(
-      results.type(), [&](auto tag) -> void {
-        using T = typename decltype(tag)::type;
-        val     = ir::Value(results->template get<T>(0));
-      });
-  return type::Typed<ir::Value>(val, results.type());
-}
-
 static type::Typed<std::optional<ir::Value>> EvaluateIfConstant(
     Compiler *c, ast::Expression const *expr, type::QualType qt) {
   if (qt.constant()) {
     DEBUG_LOG("EvaluateIfConstant")
     ("Evaluating constant: ", expr->DebugString());
     return type::Typed<std::optional<ir::Value>>(
-        *ResultsToValue(type::Typed(
-            interpretter::Evaluate(c->MakeThunk(expr, qt.type())), qt.type())),
-        qt.type());
+        interpretter::Evaluate(c->MakeThunk(expr, qt.type())), qt.type());
   } else {
     return type::Typed<std::optional<ir::Value>>(std::nullopt, qt.type());
   }
@@ -2151,21 +2136,16 @@ type::QualType Compiler::VerifyType(ast::Index const *node) {
     }
 
     int64_t index = [&]() -> int64_t {
+      // TODO handle overflow?
       auto results = interpretter::Evaluate(MakeThunk(node->rhs(), index_type));
-      if (index_type == type::Int8) { return results.get<int8_t>(0).value(); }
-      if (index_type == type::Int16) { return results.get<int16_t>(0).value(); }
-      if (index_type == type::Int32) { return results.get<int32_t>(0).value(); }
-      if (index_type == type::Int64) { return results.get<int64_t>(0).value(); }
-      if (index_type == type::Nat8) { return results.get<uint8_t>(0).value(); }
-      if (index_type == type::Nat16) {
-        return results.get<uint16_t>(0).value();
-      }
-      if (index_type == type::Nat32) {
-        return results.get<uint32_t>(0).value();
-      }
-      if (index_type == type::Nat64) {
-        return results.get<uint64_t>(0).value();
-      }
+      if (index_type == type::Int8) { return results.get<int8_t>(); }
+      if (index_type == type::Int16) { return results.get<int16_t>(); }
+      if (index_type == type::Int32) { return results.get<int32_t>(); }
+      if (index_type == type::Int64) { return results.get<int64_t>(); }
+      if (index_type == type::Nat8) { return results.get<uint8_t>(); }
+      if (index_type == type::Nat16) { return results.get<uint16_t>(); }
+      if (index_type == type::Nat32) { return results.get<uint32_t>(); }
+      if (index_type == type::Nat64) { return results.get<uint64_t>(); }
       UNREACHABLE();
     }();
 

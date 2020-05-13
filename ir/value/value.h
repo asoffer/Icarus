@@ -160,7 +160,7 @@ struct Value {
   constexpr void apply(F&& f) const {
     apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                uint32_t, uint64_t, float, double, type::Type const*, Addr,
-               String, EnumVal, FlagsVal, Fn, GenericFn, Reg>(
+               String, EnumVal, FlagsVal, /*Fn, GenericFn,*/ Reg>(
         std::forward<F>(f));
   }
 
@@ -188,7 +188,7 @@ struct Value {
   template <typename T>
   T const& get_ref() const {
     static_assert(sizeof(T) <= 8);
-    ASSERT(type_ == base::meta<T>);
+    ASSERT(type_ == base::meta<T>) << type_.name() << " vs " << base::meta<T>.name();
     return *reinterpret_cast<T const*>(buf_);
   }
 
