@@ -3,11 +3,11 @@
 // TODO this file is terribly named.
 
 #include "base/tag.h"
-#include "ir/results.h"
 #include "ir/value/addr.h"
 #include "ir/value/enum_and_flags.h"
 #include "ir/value/reg.h"
 #include "ir/value/string.h"
+#include "ir/value/value.h"
 #include "type/array.h"
 #include "type/basic_type.h"
 #include "type/enum.h"

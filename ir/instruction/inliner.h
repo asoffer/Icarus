@@ -10,7 +10,6 @@
 #include "ir/blocks/group.h"
 #include "ir/instruction/jump.h"
 #include "ir/local_block_interpretation.h"
-#include "ir/results.h"
 #include "ir/value/reg.h"
 #include "ir/value/reg_or.h"
 #include "ir/value/value.h"
@@ -24,7 +23,6 @@ struct InstructionInliner {
                               LocalBlockInterpretation block_interp);
 
   void Inline(Reg &r) const;
-  void Inline(Results &r) const;
   void Inline(Value &v) const;
   void Inline(BasicBlock *&block, BasicBlock *incoming_block) const;
   void InlineJump(BasicBlock *block);

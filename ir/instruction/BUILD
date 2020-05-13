@@ -37,7 +37,6 @@ cc_library(
         ":jump",
         "//base:debug",
         "//ir:local_block_interpretation",
-        "//ir:results",
         "//ir/blocks:basic",
         "//ir/blocks:group",
         "//ir/value:reg",

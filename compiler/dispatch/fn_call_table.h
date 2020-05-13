@@ -9,7 +9,6 @@
 #include "compiler/dispatch/overload.h"
 #include "core/fn_args.h"
 #include "core/params.h"
-#include "ir/results.h"
 #include "ir/value/value.h"
 #include "type/callable.h"
 #include "type/qual_type.h"

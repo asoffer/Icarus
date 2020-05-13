@@ -398,17 +398,17 @@ struct Builder {
 
     // TODO Just take a Reg. RegOr<Addr> is overkill and not possible because
     // constants don't have addresses.
-    Results& cache_results = blk.load_store_cache().slot<T>(addr);
+    Value& cache_results = blk.load_store_cache().slot<T>(addr);
     if (not cache_results.empty()) {
       // TODO may not be Reg. could be anything of the right type.
-      return cache_results.get<T>(0);
+      return cache_results.get<RegOr<T>>();
     }
 
     auto inst =
         std::make_unique<LoadInstruction>(addr, core::Bytes::Get<T>().value());
     auto result = inst->result = CurrentGroup()->Reserve();
 
-    cache_results.append(result);
+    cache_results = result;
 
     blk.AddInstruction(std::move(inst));
     return result;
@@ -617,24 +617,6 @@ struct Builder {
       type::Apply(r.type(), [&](auto tag) {
         using T = typename decltype(tag)::type;
         SetRet(n, r->get<RegOr<T>>());
-      });
-    }
-  }
-
-  void SetRet(uint16_t n, type::Typed<Results> const& r) {
-    // if (r.type()->is<type::GenericStruct>()) {
-    //   SetRet(n, r->get<Fn>(0));
-    // }
-    if (r.type()->is<type::Jump>()) {
-      // TODO currently this has to be implemented outside type::Apply because
-      // that's in type.h which is wrong because it forces weird instantiation
-      // order issues (type/type.h can't depend on type/jump.h).
-      SetRet(n, r->get<Fn>(0));
-    } else {
-      ASSERT(r.type()->is_big() == false) << r.type()->to_string();
-      type::Apply(r.type(), [&](auto tag) {
-        using T = typename decltype(tag)::type;
-        SetRet(n, r->get<T>(0));
       });
     }
   }

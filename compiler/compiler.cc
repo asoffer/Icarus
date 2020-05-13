@@ -9,7 +9,7 @@
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
 #include "ir/jump.h"
-#include "ir/results.h"
+#include "ir/value/value.h"
 #include "type/jump.h"
 
 namespace compiler {

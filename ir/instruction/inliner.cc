@@ -34,10 +34,6 @@ void InstructionInliner::Inline(Value& v) const {
   if (auto* r = v.get_if<Reg>()) { Inline(*r); }
 }
 
-void InstructionInliner::Inline(Results& r) const {
-  r.for_each_reg([this](Reg& reg) { Inline(reg); });
-}
-
 void InstructionInliner::Inline(BasicBlock*& block,
                                 BasicBlock* incoming_block) const {
   auto iter = blocks_.find(block);

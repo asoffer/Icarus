@@ -70,7 +70,6 @@ cc_library(
         ":compiled_fn",
         ":jump",
         ":local_block_interpretation",
-        ":results",
         "//base:macros",
         "//ir/instruction:inliner",
         "//ir/blocks:basic",
@@ -107,30 +106,6 @@ cc_library(
     name = "read_only_data",
     hdrs = ["read_only_data.h"],
     deps = ["//base:untyped_buffer"],
-)
-
-cc_library(
-    name = "results",
-    hdrs = ["results.h"],
-    srcs = ["results.cc"],
-    deps = [
-        "//base:untyped_buffer",
-        "//base:untyped_buffer_view",
-        "//core:bytes",
-        "//ir/value",
-        "//ir/value:reg",
-        "//ir/value:reg_or",
-        "@com_google_absl//absl/strings",
-    ],
-)
-
-cc_test(
-    name = "results_test",
-    srcs = ["results_test.cc"],
-    deps = [
-        ":results",
-        "@com_google_googletest//:gtest_main",
-    ],
 )
 
 cc_library(

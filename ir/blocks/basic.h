@@ -12,9 +12,9 @@
 #include "ir/byte_code_writer.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/jump.h"
-#include "ir/results.h"
 #include "ir/value/addr.h"
 #include "ir/value/reg_or.h"
+#include "ir/value/value.h"
 
 namespace ir {
 

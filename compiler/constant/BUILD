@@ -10,7 +10,7 @@ cc_library(
         "//base:untyped_buffer_view",
         "//core:arch",
         "//core:bytes",
-        "//ir:results",
+        "//ir/value",
         "//type:type_fwd",
         "//type:type",
         "@com_google_absl//absl/container:flat_hash_map",

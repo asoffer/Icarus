@@ -483,7 +483,6 @@ PushVec(std::vector<T> *, Args &&...)->PushVec<T>;
 
 Compiler::TransientFunctionState::YieldedArguments Compiler::EmitBlockNode(
     ast::BlockNode const *node) {
-  core::FnArgs<std::pair<ir::Results, type::QualType>> results;
   ICARUS_SCOPE(PushVec(&state_.yields)) {
     EmitIrForStatements(this, node->stmts());
     return state_.yields.back();
@@ -632,11 +631,6 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
       }
 
       if (node->IsCustomInitialized()) {
-        // TODO there's a lot of inefficiency here. `buf` is copied into the
-        // constants slot and the copied to an ir::Results object to be
-        // returned. In reality, we could write directly to the buffer and
-        // only copy once if Evaluate* took an out-parameter.
-
         DEBUG_LOG("EmitValueDeclaration")
         ("Computing slot with ", node->init_val()->DebugString());
         ir::Value val = interpretter::Evaluate(MakeThunk(node->init_val(), t));
@@ -1089,7 +1083,7 @@ ir::Value Compiler::EmitValue(ast::Switch const *node) {
     expr_type    = type_of(node->expr());
   }
 
-  absl::flat_hash_map<ir::BasicBlock *, ir::Results> phi_args;
+  absl::flat_hash_map<ir::BasicBlock *, ir::Value> phi_args;
   for (size_t i = 0; i + 1 < node->cases().size(); ++i) {
     auto &[body, match_cond] = node->cases()[i];
     auto *expr_block         = builder().AddBlock();
@@ -1150,7 +1144,7 @@ ir::Value Compiler::EmitValue(ast::Switch const *node) {
       blocks.reserve(phi_args.size());
       for (auto const &[key, val] : phi_args) {
         blocks.push_back(key);
-        vals.push_back(val.template get<T>(0));
+        vals.push_back(val.template get<ir::RegOr<T>>());
       }
       return ir::Value(builder().Phi<T>(blocks, vals));
     });

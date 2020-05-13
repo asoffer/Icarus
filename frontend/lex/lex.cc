@@ -9,7 +9,6 @@
 #include "frontend/lex/numbers.h"
 #include "frontend/lex/operators.h"
 #include "frontend/lex/syntax.h"
-#include "ir/results.h"
 #include "ir/value/builtin_fn.h"
 #include "ir/value/string.h"
 #include "type/basic_type.h"

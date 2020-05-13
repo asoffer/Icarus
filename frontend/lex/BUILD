@@ -13,7 +13,6 @@ cc_library(
         "//diagnostic/consumer",
         "//diagnostic:errors",
         "//frontend/source:cursor",
-        "//ir:results",
         "//ir/value:builtin_fn",
         "//ir/value:string",
         "//type:basic_type",

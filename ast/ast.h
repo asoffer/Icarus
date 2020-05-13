@@ -24,11 +24,11 @@
 #include "core/ordered_fn_args.h"
 #include "core/params.h"
 #include "frontend/lex/operators.h"
-#include "ir/results.h"
 #include "ir/value/addr.h"
 #include "ir/value/builtin_fn.h"
 #include "ir/value/label.h"
 #include "ir/value/string.h"
+#include "ir/value/value.h"
 #include "type/basic_type.h"
 
 namespace ast {

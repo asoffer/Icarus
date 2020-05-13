@@ -3,9 +3,9 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "base/meta.h"
-#include "ir/results.h"
 #include "ir/value/addr.h"
 #include "ir/value/reg_or.h"
+#include "ir/value/value.h"
 
 namespace ir {
 
@@ -24,7 +24,7 @@ struct LoadStoreCache {
   // reference to the value held in the cache whcih can be populated or read
   // from.
   template <typename T>
-  Results &slot(RegOr<Addr> r) {
+  Value &slot(RegOr<Addr> r) {
     return storage_[base::meta<T>][r];
   }
 
@@ -60,8 +60,7 @@ struct LoadStoreCache {
   }
 
  private:
-  absl::flat_hash_map<base::MetaValue,
-                      absl::flat_hash_map<RegOr<Addr>, Results>>
+  absl::flat_hash_map<base::MetaValue, absl::flat_hash_map<RegOr<Addr>, Value>>
       storage_;
 };
 

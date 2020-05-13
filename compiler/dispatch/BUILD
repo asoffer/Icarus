@@ -75,7 +75,6 @@ cc_library(
         "//base:expected",
         "//core:fn_args",
         "//core:params",
-        "//ir:results",
         "//ir/value",
         "//ir/value:generic_fn",
         "//type:qual_type",
@@ -97,7 +96,6 @@ cc_library(
         "//base:debug",
         "//compiler:compiler_header",
         "//ir:builder",
-        "//ir:results",
         "//type",
         "//type:cast",
         "//type:qual_type",
@@ -105,17 +103,6 @@ cc_library(
         "//type:variant",
     ],
 )
-
-# cc_test(
-#     name = "fn_call_table_test",
-#     srcs = ["fn_call_table_test.cc"],
-#     deps = [
-#         ":fn_call_table",
-#         "//compiler:compiler",
-#         "//test:module",
-#         "@com_google_googletest//:gtest_main",
-#     ],
-# )
 
 cc_library(
     name = "overload",
@@ -137,7 +124,6 @@ cc_library(
         "//ast:ast",
         "//compiler:compiler_header",
         "//interpretter:evaluate",
-        "//ir:results",
         "//type:cast",
         "//type:type",
         "//type:function",
@@ -194,7 +180,6 @@ cc_library(
         "//core:fn_args",
         "//core:params",
         "//ir:builder",
-        "//ir:results",
         "//ir/blocks:basic",
         "//ir/value:reg_or",
         "//type:typed_value",

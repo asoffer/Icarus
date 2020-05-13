@@ -42,7 +42,7 @@ cc_library(
         "//ir/value:builtin_fn",
         "//ir/value:label",
         "//ir/value:string",
-        "//ir:results",
+        "//ir/value",
         "//type:basic_type",
     ],
 )
