@@ -966,12 +966,12 @@ template <typename EPtr, typename StrType>
 static type::QualType VerifyCall(
     Compiler *c, ast::BuiltinFn const *b,
     core::FnArgs<EPtr, StrType> const &args,
-    core::FnArgs<type::Typed<ir::Results>> const &arg_results) {
+    core::FnArgs<type::Typed<std::optional<ir::Value>>> const &arg_vals) {
   // TODO for builtin's consider moving all the messages into an enum.
   switch (b->value().which()) {
     case ir::BuiltinFn::Which::Foreign: {
       bool err = false;
-      if (not arg_results.named().empty()) {
+      if (not arg_vals.named().empty()) {
         c->diag().Consume(diagnostic::BuiltinError{
             .range   = b->range(),
             .message = "Built-in function `foreign` cannot be called with "
@@ -980,7 +980,7 @@ static type::QualType VerifyCall(
         err = true;
       }
 
-      size_t size = arg_results.size();
+      size_t size = arg_vals.size();
       if (size != 2u) {
         c->diag().Consume(diagnostic::BuiltinError{
             .range   = b->range(),
@@ -992,29 +992,29 @@ static type::QualType VerifyCall(
       }
 
       if (not err) {
-        if (arg_results.at(0).type() != type::ByteView) {
+        if (arg_vals.at(0).type() != type::ByteView) {
           c->diag().Consume(diagnostic::BuiltinError{
               .range = b->range(),
               .message =
                   absl::StrCat("First argument to `foreign` must be a "
                                "byte-view (You provided a(n) ",
-                               arg_results.at(0).type()->to_string(), ")."),
+                               arg_vals.at(0).type()->to_string(), ")."),
           });
         }
-        if (arg_results.at(0)->empty()) {
+        if (not arg_vals.at(0)->has_value()) {
           c->diag().Consume(diagnostic::BuiltinError{
               .range   = b->range(),
               .message = "First argument to `foreign` must be a constant."});
         }
-        if (arg_results.at(1).type() != type::Type_) {
+        if (arg_vals.at(1).type() != type::Type_) {
           c->diag().Consume(diagnostic::BuiltinError{
               .range = b->range(),
               .message =
                   absl::StrCat("Second argument to `foreign` must be a type "
                                "(You provided a(n) ",
-                               arg_results.at(0).type()->to_string(), ").")});
+                               arg_vals.at(0).type()->to_string(), ").")});
         }
-        if (arg_results.at(1)->empty()) {
+        if (not arg_vals.at(1)->has_value()) {
           c->diag().Consume(diagnostic::BuiltinError{
               .range   = b->range(),
               .message = "Second argument to `foreign` must be a constant."});
@@ -1033,7 +1033,7 @@ static type::QualType VerifyCall(
       return type::QualType::Constant(foreign_type);
     } break;
     case ir::BuiltinFn::Which::Opaque:
-      if (not arg_results.empty()) {
+      if (not arg_vals.empty()) {
         c->diag().Consume(diagnostic::BuiltinError{
             .range   = b->range(),
             .message = "Built-in function `opaque` takes no arguments."});
@@ -1042,8 +1042,8 @@ static type::QualType VerifyCall(
           ir::BuiltinFn::Opaque().type()->output()[0]);
 
     case ir::BuiltinFn::Which::Bytes: {
-      size_t size = arg_results.size();
-      if (not arg_results.named().empty()) {
+      size_t size = arg_vals.size();
+      if (not arg_vals.named().empty()) {
         c->diag().Consume(diagnostic::BuiltinError{
             .range   = b->range(),
             .message = "Built-in function `bytes` cannot be called with named "
@@ -1056,20 +1056,20 @@ static type::QualType VerifyCall(
                 "(You provided ",
                 size, ")."),
         });
-      } else if (arg_results.at(0).type() != type::Type_) {
+      } else if (arg_vals.at(0).type() != type::Type_) {
         c->diag().Consume(diagnostic::BuiltinError{
             .range = b->range(),
             .message =
                 absl::StrCat("Built-in function `bytes` must take a single "
                              "argument of type `type` (You provided a(n) ",
-                             arg_results.at(0).type()->to_string(), ").")});
+                             arg_vals.at(0).type()->to_string(), ").")});
       }
       return type::QualType::Constant(
           ir::BuiltinFn::Bytes().type()->output()[0]);
     }
     case ir::BuiltinFn::Which::Alignment: {
-      size_t size = arg_results.size();
-      if (not arg_results.named().empty()) {
+      size_t size = arg_vals.size();
+      if (not arg_vals.named().empty()) {
         c->diag().Consume(diagnostic::BuiltinError{
             .range   = b->range(),
             .message = "Built-in function `alignment` cannot be called with "
@@ -1083,13 +1083,13 @@ static type::QualType VerifyCall(
                                     size, ")."),
         });
 
-      } else if (arg_results.at(0).type() != type::Type_) {
+      } else if (arg_vals.at(0).type() != type::Type_) {
         c->diag().Consume(diagnostic::BuiltinError{
             .range = b->range(),
             absl::StrCat("Built-in function `alignment` must take a single "
                          "argument of "
                          "type `type` (you provided a(n) ",
-                         arg_results.at(0).type()->to_string(), ")"),
+                         arg_vals.at(0).type()->to_string(), ")"),
         });
       }
       return type::QualType::Constant(
@@ -1098,65 +1098,65 @@ static type::QualType VerifyCall(
     case ir::BuiltinFn::Which::DebugIr:
       // This is for debugging the compiler only, so there's no need to write
       // decent errors here.
-      ASSERT(arg_results.size() == 0u);
+      ASSERT(arg_vals.size() == 0u);
       return type::QualType::Constant(type::Void());
   }
   UNREACHABLE();
 }
 
-static type::Typed<ir::Results> EvaluateIfConstant(Compiler *c,
-                                                   ast::Expression const *expr,
-                                                   type::QualType qt) {
+static type::Typed<ir::Value> ResultsToValue(
+    type::Typed<ir::Results> const &results) {
+  ir::Value val(false);
+  type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
+                   uint32_t, uint64_t, float, double, type::Type const *,
+                   ir::EnumVal, ir::FlagsVal, ir::Addr, ir::String, ir::Fn>(
+      results.type(), [&](auto tag) -> void {
+        using T = typename decltype(tag)::type;
+        val     = ir::Value(results->template get<T>(0));
+      });
+  return type::Typed<ir::Value>(val, results.type());
+}
+
+static type::Typed<std::optional<ir::Value>> EvaluateIfConstant(
+    Compiler *c, ast::Expression const *expr, type::QualType qt) {
   if (qt.constant()) {
     DEBUG_LOG("EvaluateIfConstant")
     ("Evaluating constant: ", expr->DebugString());
-    return type::Typed(interpretter::Evaluate(c->MakeThunk(expr, qt.type())),
-                       qt.type());
+    return type::Typed<std::optional<ir::Value>>(
+        *ResultsToValue(type::Typed(
+            interpretter::Evaluate(c->MakeThunk(expr, qt.type())), qt.type())),
+        qt.type());
   } else {
-    return type::Typed(ir::Results{}, qt.type());
+    return type::Typed<std::optional<ir::Value>>(std::nullopt, qt.type());
   }
 }
 
-static std::optional<core::FnArgs<type::Typed<ir::Results>, std::string_view>>
+static std::optional<
+    core::FnArgs<type::Typed<std::optional<ir::Value>>, std::string_view>>
 VerifyFnArgs(
     Compiler *c,
     core::FnArgs<ast::Expression const *, std::string_view> const &args) {
-  bool err         = false;
-  auto arg_results = args.Transform([&](ast::Expression const *expr) {
+  bool err      = false;
+  auto arg_vals = args.Transform([&](ast::Expression const *expr) {
     auto expr_qual_type = c->VerifyType(expr);
     err |= not expr_qual_type.ok();
     if (err) {
       DEBUG_LOG("VerifyFnArgs")("Error with: ", expr->DebugString());
-      return type::Typed(ir::Results{},
-                         static_cast<type::Type const *>(nullptr));
+      return type::Typed<std::optional<ir::Value>>(
+          std::nullopt, static_cast<type::Type const *>(nullptr));
     }
     DEBUG_LOG("VerifyFnArgs")("constant: ", expr->DebugString());
     return EvaluateIfConstant(c, expr, expr_qual_type);
   });
 
   if (err) { return std::nullopt; }
-  return arg_results;
+  return arg_vals;
 }
 
-type::Typed<std::optional<ir::Value>> TypedResultsToTypedOptionalValue(
-    type::Typed<ir::Results> const &r) {
-  if (r->empty()) {
-    return type::Typed<std::optional<ir::Value>>(std::nullopt, r.type());
-  }
-  // TODO other types too.
-  return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                          uint16_t, uint32_t, uint64_t, float, double, ir::Addr,
-                          ir::String, type::Type const *, ir::EnumVal,
-                          ir::FlagsVal>(r.type(), [&](auto tag) {
-    using T = typename decltype(tag)::type;
-    return type::Typed<std::optional<ir::Value>>(
-        ir::Value(r->template get<T>(0)), r.type());
-  });
-}
 
 type::QualType Compiler::VerifyType(ast::Call const *node) {
   ASSIGN_OR(return type::QualType::Error(),  //
-                   auto arg_results, VerifyFnArgs(this, node->args()));
+                   auto arg_vals, VerifyFnArgs(this, node->args()));
   // TODO handle cyclic dependencies in call arguments.
 
   // Note: Currently `foreign` being generic means that we can't easily make
@@ -1169,7 +1169,7 @@ type::QualType Compiler::VerifyType(ast::Call const *node) {
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
     // TODO: Should we allow these to be overloaded?
     ASSIGN_OR(return type::QualType::Error(), auto result,
-                     VerifyCall(this, b, node->args(), arg_results));
+                     VerifyCall(this, b, node->args(), arg_vals));
     return data().set_qual_type(node, result);
   }
 
@@ -1178,13 +1178,24 @@ type::QualType Compiler::VerifyType(ast::Call const *node) {
   if (auto *c = callee_qt.type()->if_as<type::Callable>()) {
     DEBUG_LOG("Call.VerifyType")
     ("Callee's (", node->callee()->DebugString(), ") qual-type: ", callee_qt);
-    auto ret_types = c->return_types(
-        arg_results.Transform(TypedResultsToTypedOptionalValue));
+    auto ret_types = c->return_types(arg_vals);
     DEBUG_LOG("Call.VerifyType")("Return types for this instantiation: ",
      type::Tup(ret_types)->to_string());
     // Can this be constant?
+    bool constant = true;
+    arg_vals.Apply([&](auto const &x) {
+      if (not constant) { return; }
+      constant = x->has_value();
+    });
+
+    // TODO There's still the question of the implementation needing
+    // non-constant stuff.
+
     return data().set_qual_type(
-        node, type::QualType::NonConstant(type::Tup(std::move(ret_types))));
+        node,
+        constant
+            ? type::QualType::Constant(type::Tup(std::move(ret_types)))
+            : type::QualType::NonConstant(type::Tup(std::move(ret_types))));
   } else {
     diag().Consume(diagnostic::UncallableExpression{
         .range = node->callee()->range(),
@@ -2282,7 +2293,7 @@ type::QualType Compiler::VerifyType(ast::ScopeLiteral const *node) {
 type::QualType Compiler::VerifyType(ast::ScopeNode const *node) {
   DEBUG_LOG("ScopeNode")(node->DebugString());
   ASSIGN_OR(return type::QualType::Error(),  //
-                   auto arg_results, VerifyFnArgs(this, node->args()));
+                   std::ignore, VerifyFnArgs(this, node->args()));
   // TODO handle cyclic dependencies in call arguments.
 
   for (auto const &block : node->blocks()) { VerifyType(&block); }
