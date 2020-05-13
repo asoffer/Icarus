@@ -15,9 +15,7 @@ namespace ir {
 
 struct Results {
  public:
-  explicit Results(Value v) {
-    v.apply([&](auto x) { append<std::decay_t<decltype(x)>>(x); });
-  }
+  explicit Results(Value const& v) { AppendValue(v); }
 
   template <typename... Args>
   explicit Results(Args... args) {
@@ -92,6 +90,14 @@ struct Results {
   size_t empty() const { return offset_.empty(); }
 
  private:
+  void AppendValue(Value const& v) {
+    if (auto* m = v.get_if<ir::MultiValue>()) {
+      for (auto const& val : m->span()) { AppendValue(val); }
+    } else {
+      v.apply([&](auto x) { append<std::decay_t<decltype(x)>>(x); });
+    }
+  }
+
   std::vector<bool> is_reg_;
   std::vector<uint32_t> offset_;
   base::untyped_buffer buf_{16};

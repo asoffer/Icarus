@@ -1,12 +1,10 @@
 cc_test(
-    name = "test",
-    srcs = ["test.cc"],
+    name = "function_calls_test",
+    srcs = ["function_calls_test.cc"],
     deps = [
         "//compiler",
-        "//compiler:executable_module",
-        "//frontend/source:string",
-        "//interpretter:execute",
-        "//test:failing_diagnostic_consumer",
+        "//interpretter:evaluate",
+        "//test:module",
         "@com_google_googletest//:gtest_main",
     ],
 )

@@ -46,19 +46,17 @@ struct TestModule : compiler::CompiledModule {
   }
 };
 
-std::pair<ast::OverloadSet, ast::Call*> MakeCall(
+ast::Call const* MakeCall(
     std::string fn, std::vector<std::string> pos_args,
     absl::flat_hash_map<std::string, std::string> named_args,
     TestModule* module) {
   auto call_expr = std::make_unique<ast::Call>(
       frontend::SourceRange{}, ParseAs<ast::Expression>(std::move(fn)),
       MakeFnArgs(std::move(pos_args), std::move(named_args)));
-  ast::OverloadSet os;
-  os.insert(call_expr->callee());
   auto* expr = call_expr.get();
   module->AppendNode(std::move(call_expr), module->consumer);
   module->compiler.CompleteDeferredBodies();
-  return std::pair(std::move(os), expr);
+  return expr;
 }
 
 }  // namespace test

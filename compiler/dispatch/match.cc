@@ -13,14 +13,10 @@ std::optional<FailedMatch> MatchPositionalArgsToParams(
   if (args.size() > params.size()) { return FailedMatch{}; }
   for (size_t i = 0; i < args.pos().size(); ++i) {
     auto const &param = params[i];
-    if (param.value.constant()) {
-      NOT_YET(param.value);
-    } else {
-      type::Type const *meet =
-          type::Meet(args.at(i).type(), param.value.type());
-      if (not meet) { return FailedMatch{}; }
-      matched_params->append(param.name, meet, param.flags);
-    }
+    // TODO constant parameters
+    type::Type const *meet = type::Meet(args.at(i).type(), param.value.type());
+    if (not meet) { return FailedMatch{}; }
+    matched_params->append(param.name, meet, param.flags);
   }
   return std::nullopt;
 }
@@ -34,13 +30,10 @@ std::optional<FailedMatch> MatchNamedArgsToParams(
     DEBUG_LOG("match")
     ("Matching param in position ", i, "(name = ", param.name, ")");
     if (auto *result = args.at_or_null(param.name)) {
-      if (param.value.constant()) {
-        NOT_YET(param.value);
-      } else {
-        type::Type const *meet = type::Meet(result->type(), param.value.type());
-        if (not meet) { return FailedMatch{}; }
-        matched_params->append(param.name, meet, param.flags);
-      }
+      // TODO constant parameters
+      type::Type const *meet = type::Meet(result->type(), param.value.type());
+      if (not meet) { return FailedMatch{}; }
+      matched_params->append(param.name, meet, param.flags);
     } else {
       // No argument provided by that name? This could be because we have
       // default parameters or an empty variadic pack.

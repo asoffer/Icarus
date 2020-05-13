@@ -60,6 +60,14 @@ core::Params<type::QualType> ExtractParamTypes(Compiler *compiler,
 }
 
 core::Params<type::QualType> ExtractParamTypes(
+    Compiler *compiler, ast::ShortFunctionLiteral const *fn_lit) {
+  return fn_lit->params().Transform([compiler](auto const &expr) {
+    auto qt = compiler->qual_type_of(expr.get());
+    ASSERT(qt.has_value() == true);
+    return *qt;
+  });
+}
+core::Params<type::QualType> ExtractParamTypes(
     Compiler *compiler, ast::FunctionLiteral const *fn_lit) {
   return fn_lit->params().Transform([compiler](auto const &expr) {
     auto qt = compiler->qual_type_of(expr.get());
@@ -149,8 +157,10 @@ core::Params<type::QualType> ExtractParamTypes(Compiler *compiler,
     return ExtractParamTypes(compiler, decl);
   } else if (auto const *fn_lit = expr->if_as<ast::FunctionLiteral>()) {
     return ExtractParamTypes(compiler, fn_lit);
+  } else if (auto const *fn_lit = expr->if_as<ast::ShortFunctionLiteral>()) {
+    return ExtractParamTypes(compiler, fn_lit);
   } else {
-    NOT_YET();
+    NOT_YET(expr->DebugString());
   }
 }
 
