@@ -18,8 +18,7 @@ struct Callable : Type {
                          .has_destructor           = 0}) {}
   ~Callable() override {};
   virtual std::vector<type::Type const*> return_types(
-      core::FnArgs<type::Typed<std::optional<ir::Value>>> const& args)
-      const = 0;
+      core::FnArgs<type::Typed<ir::Value>> const& args) const = 0;
 };
 
 }  // namespace type

@@ -86,16 +86,7 @@ ir::Value EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
         fn = decl->init_val();
       }
       auto find_dependent_result = compiler->data().FindDependent(
-          &fn->as<ast::ParameterizedExpression>(),
-          args.Transform([](type::Typed<ir::Value> typed_val) {
-            if (typed_val->get_if<ir::Reg>()) {
-              return type::Typed<std::optional<ir::Value>>(std::nullopt,
-                                                           typed_val.type());
-            } else {
-              return type::Typed<std::optional<ir::Value>>(*typed_val,
-                                                           typed_val.type());
-            }
-          }));
+          &fn->as<ast::ParameterizedExpression>(), args);
       fn_type        = find_dependent_result.fn_type;
       dependent_data = &find_dependent_result.data;
       return ir::Fn(gen_fn.concrete(args));
@@ -135,11 +126,10 @@ ir::Value EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
   return std::move(outs);
 }
 
-std::optional<ir::Value> EmitCall(
-    Compiler *compiler,
-    absl::flat_hash_map<ast::Expression const *, internal::ExprData> const
-        &table,
-    core::FnArgs<type::Typed<ir::Value>> const &args) {
+ir::Value EmitCall(Compiler *compiler,
+                   absl::flat_hash_map<ast::Expression const *,
+                                       internal::ExprData> const &table,
+                   core::FnArgs<type::Typed<ir::Value>> const &args) {
   DEBUG_LOG("FnCallDispatchTable")
   ("Emitting a table with ", table.size(), " entries.");
 
@@ -165,7 +155,7 @@ std::optional<ir::Value> EmitCall(
       bldr.UncondJump(land_block);
     }
     bldr.CurrentBlock() = land_block;
-    return 0;  // Doesn't matter what we return for void returns.
+    return ir::Value();
   }
 }
 
@@ -190,13 +180,9 @@ Verify(Compiler *compiler, ast::OverloadSet const &os,
     ("Verifying ", overload, ": ", overload->DebugString());
     if (auto *gen =
             compiler->type_of(overload)->if_as<type::GenericFunction>()) {
-      auto val_args                  = args.Transform([](auto const &a) {
-        return type::Typed<std::optional<ir::Value>>(a.get(), a.type());
-      });
-      type::Function const *concrete = gen->concrete(val_args);
-      table.emplace(overload,
-                    internal::ExprData{concrete, concrete->params(),
-                                       concrete->return_types(val_args)});
+      type::Function const *concrete = gen->concrete(args);
+      table.emplace(overload, internal::ExprData{concrete, concrete->params(),
+                                                 concrete->return_types(args)});
     } else {
       if (auto result = MatchArgsToParams(ExtractParamTypes(compiler, overload),
                                           args_qt)) {
@@ -227,10 +213,10 @@ Verify(Compiler *compiler, ast::OverloadSet const &os,
 
 }  // namespace
 
-std::optional<ir::Value> FnCallDispatchTable::Emit(
+ir::Value FnCallDispatchTable::Emit(
     Compiler *c, ast::OverloadSet const &os,
     core::FnArgs<type::Typed<ir::Value>> const &args) {
-  ASSIGN_OR(return std::nullopt,  //
+  ASSIGN_OR(return ir::Value(),  //
                    auto table, Verify(c, os, args));
   return EmitCall(c, table, args);
 }

@@ -21,8 +21,7 @@ struct OverloadSet : Callable {
   }
 
   std::vector<type::Type const *> return_types(
-      core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args)
-      const override;
+      core::FnArgs<type::Typed<ir::Value>> const &args) const override;
 
   // Not considered big because it only makes sense to pass around at
   // compile-time anyway.

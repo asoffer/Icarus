@@ -560,9 +560,7 @@ ir::Value Compiler::EmitValue(ast::Call const *node) {
   // TODO this shouldn't be able to fail.
   ASSIGN_OR(return ir::Value(),  //
                    auto os, MakeOverloadSet(this, node->callee(), args));
-  ASSIGN_OR(return ir::Value(), auto val,
-                   FnCallDispatchTable::Emit(this, os, args));
-  return ir::Value(val);
+  return FnCallDispatchTable::Emit(this, os, args);
   // TODO node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
 }
 
@@ -726,7 +724,7 @@ ir::Value Compiler::EmitValue(ast::EnumLiteral const *node) {
 template <typename NodeType>
 ir::NativeFn MakeConcreteFromGeneric(
     Compiler *compiler, NodeType const *node,
-    core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args) {
+    core::FnArgs<type::Typed<ir::Value>> const &args) {
   ASSERT(node->is_generic() == true);
 
   // Note: Cannot use structured bindings because the bindings need to be
@@ -755,12 +753,7 @@ ir::Value Compiler::EmitValue(ast::ShortFunctionLiteral const *node) {
     auto gen_fn = ir::GenericFn(
         [c = this->WithPersistent(),
          node](core::FnArgs<type::Typed<ir::Value>> const &args) mutable
-        -> ir::NativeFn {
-          return MakeConcreteFromGeneric(
-              &c, node, args.Transform([](auto const &x) {
-                return type::Typed<std::optional<ir::Value>>(*x, x.type());
-              }));
-        });
+        -> ir::NativeFn { return MakeConcreteFromGeneric(&c, node, args); });
     return ir::Value(gen_fn);
   }
 
@@ -783,12 +776,7 @@ ir::Value Compiler::EmitValue(ast::FunctionLiteral const *node) {
     auto gen_fn = ir::GenericFn(
         [c = this->WithPersistent(),
          node](core::FnArgs<type::Typed<ir::Value>> const &args) mutable
-        -> ir::NativeFn {
-          return MakeConcreteFromGeneric(
-              &c, node, args.Transform([](auto const &x) {
-                return type::Typed<std::optional<ir::Value>>(*x, x.type());
-              }));
-        });
+        -> ir::NativeFn { return MakeConcreteFromGeneric(&c, node, args); });
     return ir::Value(gen_fn);
   }
 

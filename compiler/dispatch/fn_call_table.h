@@ -1,8 +1,6 @@
 #ifndef ICARUS_COMPILER_DISPATCH_FN_CALL_TABLE_H
 #define ICARUS_COMPILER_DISPATCH_FN_CALL_TABLE_H
 
-#include <optional>
-
 #include "absl/container/flat_hash_map.h"
 #include "ast/overload_set.h"
 #include "base/expected.h"
@@ -22,9 +20,8 @@ struct Compiler;  // TODO move into it's own header.
 // and jump in terms of the interface. Should probably inline TableImpl and
 // separate out these headers.
 struct FnCallDispatchTable {
-  static std::optional<ir::Value> Emit(
-      Compiler *c, ast::OverloadSet const &os,
-      core::FnArgs<type::Typed<ir::Value>> const &args);
+  static ir::Value Emit(Compiler *c, ast::OverloadSet const &os,
+                        core::FnArgs<type::Typed<ir::Value>> const &args);
 
  private:
   static type::QualType ComputeResultQualType(

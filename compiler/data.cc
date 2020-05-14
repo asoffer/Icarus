@@ -18,7 +18,7 @@ struct DependentComputedData::DependentDataChild::DataImpl {
 DependentComputedData::InsertDependentResult
 DependentComputedData::InsertDependent(
     ast::ParameterizedExpression const *node,
-    core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args) {
+    core::FnArgs<type::Typed<ir::Value>> const &args) {
   auto &[parent, map] = dependent_data_[node];
   parent              = this;
   auto [iter, inserted] = map.try_emplace(args);
@@ -43,7 +43,7 @@ DependentComputedData::InsertDependent(
 
 DependentComputedData::FindDependentResult DependentComputedData::FindDependent(
     ast::ParameterizedExpression const *node,
-    core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args) {
+    core::FnArgs<type::Typed<ir::Value>> const &args) {
   auto &map = dependent_data_.find(node)->second.map;
   auto iter = map.find(args);
   ASSERT(iter != map.end());

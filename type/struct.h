@@ -33,7 +33,7 @@ struct Struct : public Type {
 
     std::string name;
     Type const *type = nullptr;
-    std::optional<ir::Value> initial_value;
+    ir::Value initial_value;
     std::vector<ast::Hashtag> hashtags_;
   };
 

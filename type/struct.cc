@@ -22,7 +22,7 @@ Struct::Struct(ast::Scope const *scope, std::vector<Struct::Field> fields)
   for (auto const &field : fields_) {
     field_indices_.emplace(field.name, i++);
     flags_.is_default_initializable &=
-        field.type->IsDefaultInitializable() or field.initial_value;
+        field.type->IsDefaultInitializable() or not field.initial_value.empty();
     flags_.is_copyable &= field.type->IsCopyable();
     flags_.is_movable &= field.type->IsMovable();
     flags_.has_destructor |= field.type->HasDestructor();

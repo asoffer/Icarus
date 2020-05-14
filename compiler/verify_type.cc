@@ -72,16 +72,15 @@ type::QualType VerifyUnaryOverload(Compiler *c, char const *symbol,
   module::ForEachDeclTowardsRoot(node->scope(), symbol, extract_callable_type);
   AddAdl(symbol, operand_type, extract_callable_type);
 
-  std::vector<type::Typed<std::optional<ir::Value>>> pos_args;
-  pos_args.emplace_back(std::nullopt, operand_type);
+  std::vector<type::Typed<ir::Value>> pos_args;
+  pos_args.emplace_back(ir::Value(), operand_type);
 
   return c->data().set_qual_type(
-      node, type::QualType(
-                type::MakeOverloadSet(std::move(member_types))
-                    ->return_types(
-                        core::FnArgs<type::Typed<std::optional<ir::Value>>>(
-                            std::move(pos_args), {})),
-                quals));
+      node,
+      type::QualType(type::MakeOverloadSet(std::move(member_types))
+                         ->return_types(core::FnArgs<type::Typed<ir::Value>>(
+                             std::move(pos_args), {})),
+                     quals));
 }
 
 type::QualType VerifyBinaryOverload(Compiler *c, char const *symbol,
@@ -111,17 +110,16 @@ type::QualType VerifyBinaryOverload(Compiler *c, char const *symbol,
   AddAdl(symbol, lhs_type, extract_callable_type);
   AddAdl(symbol, rhs_type, extract_callable_type);
 
-  std::vector<type::Typed<std::optional<ir::Value>>> pos_args;
+  std::vector<type::Typed<ir::Value>> pos_args;
   pos_args.emplace_back(std::nullopt, lhs_type);
   pos_args.emplace_back(std::nullopt, rhs_type);
 
   return c->data().set_qual_type(
-      node, type::QualType(
-                type::MakeOverloadSet(std::move(member_types))
-                    ->return_types(
-                        core::FnArgs<type::Typed<std::optional<ir::Value>>>(
-                            std::move(pos_args), {})),
-                quals));
+      node,
+      type::QualType(type::MakeOverloadSet(std::move(member_types))
+                         ->return_types(core::FnArgs<type::Typed<ir::Value>>(
+                             std::move(pos_args), {})),
+                     quals));
 }
 
 // NOTE: the order of these enumerators is meaningful and relied upon! They are
@@ -966,7 +964,7 @@ template <typename EPtr, typename StrType>
 static type::QualType VerifyCall(
     Compiler *c, ast::BuiltinFn const *b,
     core::FnArgs<EPtr, StrType> const &args,
-    core::FnArgs<type::Typed<std::optional<ir::Value>>> const &arg_vals) {
+    core::FnArgs<type::Typed<ir::Value>> const &arg_vals) {
   // TODO for builtin's consider moving all the messages into an enum.
   switch (b->value().which()) {
     case ir::BuiltinFn::Which::Foreign: {
@@ -1001,7 +999,7 @@ static type::QualType VerifyCall(
                                arg_vals.at(0).type()->to_string(), ")."),
           });
         }
-        if (not arg_vals.at(0)->has_value()) {
+        if (arg_vals.at(0)->empty()) {
           c->diag().Consume(diagnostic::BuiltinError{
               .range   = b->range(),
               .message = "First argument to `foreign` must be a constant."});
@@ -1014,7 +1012,7 @@ static type::QualType VerifyCall(
                                "(You provided a(n) ",
                                arg_vals.at(0).type()->to_string(), ").")});
         }
-        if (not arg_vals.at(1)->has_value()) {
+        if (arg_vals.at(1)->empty()) {
           c->diag().Consume(diagnostic::BuiltinError{
               .range   = b->range(),
               .message = "Second argument to `foreign` must be a constant."});
@@ -1104,20 +1102,20 @@ static type::QualType VerifyCall(
   UNREACHABLE();
 }
 
-static type::Typed<std::optional<ir::Value>> EvaluateIfConstant(
-    Compiler *c, ast::Expression const *expr, type::QualType qt) {
+static type::Typed<ir::Value> EvaluateIfConstant(Compiler *c,
+                                                 ast::Expression const *expr,
+                                                 type::QualType qt) {
   if (qt.constant()) {
     DEBUG_LOG("EvaluateIfConstant")
     ("Evaluating constant: ", expr->DebugString());
-    return type::Typed<std::optional<ir::Value>>(
+    return type::Typed<ir::Value>(
         interpretter::Evaluate(c->MakeThunk(expr, qt.type())), qt.type());
   } else {
-    return type::Typed<std::optional<ir::Value>>(std::nullopt, qt.type());
+    return type::Typed<ir::Value>(ir::Value(), qt.type());
   }
 }
 
-static std::optional<
-    core::FnArgs<type::Typed<std::optional<ir::Value>>, std::string_view>>
+static std::optional<core::FnArgs<type::Typed<ir::Value>, std::string_view>>
 VerifyFnArgs(
     Compiler *c,
     core::FnArgs<ast::Expression const *, std::string_view> const &args) {
@@ -1127,8 +1125,7 @@ VerifyFnArgs(
     err |= not expr_qual_type.ok();
     if (err) {
       DEBUG_LOG("VerifyFnArgs")("Error with: ", expr->DebugString());
-      return type::Typed<std::optional<ir::Value>>(
-          std::nullopt, static_cast<type::Type const *>(nullptr));
+      return type::Typed<ir::Value>(ir::Value(), nullptr);
     }
     DEBUG_LOG("VerifyFnArgs")("constant: ", expr->DebugString());
     return EvaluateIfConstant(c, expr, expr_qual_type);
@@ -1170,7 +1167,7 @@ type::QualType Compiler::VerifyType(ast::Call const *node) {
     bool constant = true;
     arg_vals.Apply([&](auto const &x) {
       if (not constant) { return; }
-      constant = x->has_value();
+      constant = not x->empty();
     });
 
     // TODO There's still the question of the implementation needing
@@ -1723,7 +1720,7 @@ MakeConcrete(
     ast::ParameterizedExpression const *node, CompiledModule *mod,
     absl::Span<std::pair<int, core::DependencyNode<ast::Declaration>> const>
         ordered_nodes,
-    core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args,
+    core::FnArgs<type::Typed<ir::Value>> const &args,
     DependentComputedData &compiler_data,
     diagnostic::DiagnosticConsumer &diag) {
   DEBUG_LOG("generic-fn")
@@ -1749,9 +1746,9 @@ MakeConcrete(
       case core::DependencyNodeKind::ArgValue: {
         ir::Value val = false;
         if (index < args.pos().size()) {
-          val = **args[index];
+          val = *args[index];
         } else if (auto const *a = args.at_or_null(dep_node.node()->id())) {
-          val = ***a;
+          val = **a;
         } else {
           auto const *init_val = ASSERT_NOT_NULL(dep_node.node()->init_val());
           auto const *t =
@@ -1821,14 +1818,14 @@ MakeConcrete(
         // Find the argument associated with this parameter.
         // TODO, if the type is wrong but there is an implicit cast, deal with
         // that.
-        type::Typed<std::optional<ir::Value>> arg;
+        type::Typed<ir::Value> arg;
         if (index < args.pos().size()) {
           arg = args[index];
         } else if (auto const *a = args.at_or_null(dep_node.node()->id())) {
           arg = *a;
         } else {
           auto const *t = ASSERT_NOT_NULL(c.type_of(dep_node.node()));
-          arg           = type::Typed<std::optional<ir::Value>>(
+          arg           = type::Typed<ir::Value>(
               interpretter::Evaluate(
                   c.MakeThunk(ASSERT_NOT_NULL(dep_node.node()->init_val()), t)),
               t);
@@ -1837,8 +1834,7 @@ MakeConcrete(
 
         c.data().constants_.reserve_slot(dep_node.node(), arg.type());
         if (c.data().constants_.get_constant(dep_node.node()).empty()) {
-          c.data().constants_.set_slot(dep_node.node(),
-                                       arg->value_or(ir::Value()));
+          c.data().constants_.set_slot(dep_node.node(), *arg);
         }
 
       } break;
@@ -1856,8 +1852,8 @@ type::QualType Compiler::VerifyType(ast::FunctionLiteral const *node) {
   auto *diag_consumer = &diag();
   auto gen            = [node, compiler_data = &data(), diag_consumer,
               ordered_nodes(std::move(ordered_nodes))](
-                 core::FnArgs<type::Typed<std::optional<ir::Value>>> const
-                     &args) mutable -> type::Function const * {
+                 core::FnArgs<type::Typed<ir::Value>> const &args) mutable
+      -> type::Function const * {
     auto [params, rets, data] =
         MakeConcrete(node, compiler_data->module(), ordered_nodes, args,
                      *compiler_data, *diag_consumer);
@@ -1938,8 +1934,8 @@ type::QualType Compiler::VerifyType(ast::ShortFunctionLiteral const *node) {
   auto *diag_consumer = &diag();
   auto gen            = [node, compiler_data = &data(), diag_consumer,
               ordered_nodes(std::move(ordered_nodes))](
-                 core::FnArgs<type::Typed<std::optional<ir::Value>>> const
-                     &args) mutable -> type::Function const * {
+                 core::FnArgs<type::Typed<ir::Value>> const &args) mutable
+      -> type::Function const * {
     // TODO handle compilation failures.
     auto [params, rets, data] =
         MakeConcrete(node, compiler_data->module(), ordered_nodes, args,

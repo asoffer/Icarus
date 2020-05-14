@@ -159,7 +159,7 @@ struct DependentComputedData {
 
   InsertDependentResult InsertDependent(
       ast::ParameterizedExpression const *node,
-      core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args);
+      core::FnArgs<type::Typed<ir::Value>> const &args);
 
   // FindDependent:
   //
@@ -175,7 +175,7 @@ struct DependentComputedData {
 
   FindDependentResult FindDependent(
       ast::ParameterizedExpression const *node,
-      core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args);
+      core::FnArgs<type::Typed<ir::Value>> const &args);
 
   template <
       typename Ctor,
@@ -231,21 +231,20 @@ struct DependentComputedData {
     // optimization technique where we store the arguments in a separate vector,
     // and store the hash and an index into the vector. In fact, just storing
     // the hash adjacent is probably a good chunk of the wins anyway.
+    //
+    // TODO we also want to be hashing the parameters computed, not the
+    // arguments.
     struct ArgsHash {
       size_t operator()(
-          core::FnArgs<type::Typed<std::optional<ir::Value>>> const &args)
-          const {
+          core::FnArgs<type::Typed<ir::Value>> const &args) const {
         // Ew, this hash is awful. Make this better.
-        std::vector<
-            std::tuple<std::string_view, type::Type const *, bool, ir::Value>>
+        std::vector<std::tuple<std::string_view, type::Type const *, ir::Value>>
             elems;
         for (auto const &arg : args.pos()) {
-          elems.emplace_back("", arg.type(), arg->has_value(),
-                             arg->value_or(false));
+          elems.emplace_back("", arg.type(), *arg);
         }
         for (auto const &[name, arg] : args.named()) {
-          elems.emplace_back(name, arg.type(), arg->has_value(),
-                             arg->value_or(false));
+          elems.emplace_back(name, arg.type(), *arg);
         }
         std::sort(elems.begin(), elems.end(),
                   [](auto const &lhs, auto const &rhs) {
@@ -263,7 +262,7 @@ struct DependentComputedData {
     // code every time.
     struct DataImpl;
 
-    absl::flat_hash_map<core::FnArgs<type::Typed<std::optional<ir::Value>>>,
+    absl::flat_hash_map<core::FnArgs<type::Typed<ir::Value>>,
                         std::unique_ptr<DataImpl>, ArgsHash>
         map;
   };

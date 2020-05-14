@@ -549,7 +549,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
             .name = std::string(name),
             .type =
                 ctx->resolve(iter->read<ir::RegOr<type::Type const *>>().get()),
-            .initial_value = std::nullopt,
+            .initial_value = ir::Value(),
             .hashtags_     = {},
         });
       }
