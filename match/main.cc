@@ -15,9 +15,7 @@
 namespace match {
 int MatchParse(frontend::FileName const &expr_file,
                frontend::FileName const &file) {
-  ASSIGN_OR(return 1,  //
-                   auto canonical_expr_file,
-                   frontend::CanonicalFileName::Make(expr_file));
+  auto canonical_expr_file = frontend::CanonicalFileName::Make(expr_file);
   ASSIGN_OR(return 1,  //
                    frontend::FileSource expr_src,
                    frontend::FileSource::Make(canonical_expr_file));
@@ -27,9 +25,7 @@ int MatchParse(frontend::FileName const &expr_file,
   auto *expr = expr_stmts[0]->if_as<ast::Expression>();
   if (not expr) { return 2; }
 
-  ASSIGN_OR(return 1,  //
-                   auto canonical_file,
-                   frontend::CanonicalFileName::Make(file));
+  auto canonical_file = frontend::CanonicalFileName::Make(file);
   ASSIGN_OR(return 1,  //
                    frontend::FileSource src,
                    frontend::FileSource::Make(canonical_file));

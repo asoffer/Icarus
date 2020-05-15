@@ -20,7 +20,6 @@
 #include "interpretter/execute.h"
 #include "ir/compiled_fn.h"
 #include "module/module.h"
-#include "module/pending.h"
 #include "opt/opt.h"
 
 namespace debug {

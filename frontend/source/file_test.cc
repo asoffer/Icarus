@@ -8,8 +8,7 @@ namespace {
 TEST(FileSource, EmptyFile) {
   auto name = CanonicalFileName::Make(
       FileName{"frontend/source/testdata/empty_file.txt"});
-  ASSERT_TRUE(name.has_value());
-  auto src = FileSource::Make(*name);
+  auto src = FileSource::Make(name);
   ASSERT_TRUE(src.has_value());
 
   auto chunk = src->ReadUntil('\n');
@@ -20,8 +19,7 @@ TEST(FileSource, EmptyFile) {
 TEST(FileSource, OneLine) {
   auto name = CanonicalFileName::Make(
       FileName{"frontend/source/testdata/one_line_file.txt"});
-  ASSERT_TRUE(name.has_value());
-  auto src = FileSource::Make(*name);
+  auto src = FileSource::Make(name);
   ASSERT_TRUE(src.has_value());
 
   auto chunk = src->ReadUntil('\n');
@@ -36,8 +34,7 @@ TEST(FileSource, OneLine) {
 TEST(FileSource, MultilineFile) {
   auto name = CanonicalFileName::Make(
       FileName{"frontend/source/testdata/multi_line_file.txt"});
-  ASSERT_TRUE(name.has_value());
-  auto src = FileSource::Make(*name);
+  auto src = FileSource::Make(name);
   ASSERT_TRUE(src.has_value());
 
   auto chunk = src->ReadUntil('\n');

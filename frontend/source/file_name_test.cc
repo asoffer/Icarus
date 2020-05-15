@@ -10,9 +10,7 @@ TEST(CanonicalizeFileName, DifferentFiles) {
       FileName{"frontend/source/testdata/empty_file.txt"});
   auto name2 = CanonicalFileName::Make(
       FileName{"frontend/source/testdata/one_line_file.txt"});
-  ASSERT_TRUE(name1.has_value());
-  ASSERT_TRUE(name2.has_value());
-  EXPECT_NE(*name1, *name2);
+  EXPECT_NE(name1, name2);
 }
 
 // TODO canonicalize
@@ -29,8 +27,7 @@ TEST(CanonicalizeFileName, DifferentFiles) {
 TEST(CanonicalFileName, OpenReadOnly) {
   auto name = CanonicalFileName::Make(
       FileName{"frontend/source/testdata/one_line_file.txt"});
-  ASSERT_TRUE(name.has_value());
-  auto file         = name->OpenReadOnly();
+  auto file         = name.OpenReadOnly();
   char *buf         = nullptr;
   size_t n          = 0;
   ssize_t num_chars = getdelim(&buf, &n, '\n', file.get());
