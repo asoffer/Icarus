@@ -58,7 +58,8 @@ void AddAdl(ast::OverloadSet *overload_set, std::string_view id,
   // TODO t->ExtractDefiningModules(&modules);
 
   for (auto *mod : modules) {
-    auto decls = mod->declarations(id);
+    auto decls = mod->ExportedDeclarations(id);
+    mod->Wait();
     diagnostic::TrivialConsumer consumer;
 
     for (auto *d : decls) {
@@ -146,9 +147,11 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
   if (type_of(node->operand()) == type::Module) {
     // TODO we already did this evaluation in type verification. Can't we just
     // save and reuse it?
-    auto decls = interpretter::EvaluateAs<module::BasicModule const *>(
-                     MakeThunk(node->operand(), type::Module))
-                     ->declarations(node->member_name());
+    auto const *mod = interpretter::EvaluateAs<module::BasicModule const *>(
+        MakeThunk(node->operand(), type::Module));
+    ASSERT(mod != data().module());
+    auto decls = mod->ExportedDeclarations(node->member_name());
+    mod->Wait();
     switch (decls.size()) {
       case 0: NOT_YET();
       case 1: return EmitValue(decls[0]);

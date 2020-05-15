@@ -16,13 +16,16 @@ void BasicModule::InitializeNodes(base::PtrSpan<ast::Node> nodes) {
     auto *decl = node->if_as<ast::Declaration>();
     if (not decl) { continue; }
 
-    if (not decl->contains_hashtag(
-            ast::Hashtag(ast::Hashtag::Builtin::Export))) {
-      continue;
+    // TODO: This presumes we don't have conditional exports.
+    if (decl->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Export))) {
+      exported_declarations_[decl->id()].push_back(decl);
     }
-
-    top_level_decls_[decl->id()].push_back(decl);
   }
+}
+
+void BasicModule::Complete() const {
+  exports_complete_.Notify();
+  complete_.Notify();
 }
 
 void BasicModule::AppendNode(std::unique_ptr<ast::Node> node,
@@ -46,12 +49,14 @@ void BasicModule::ProcessFromSource(frontend::Source *src,
   auto nodes = frontend::Parse(src, diag);
   if (diag.num_consumed() > 0) { return; }
   AppendNodes(std::move(nodes), diag);
+  Complete();
 }
 
-absl::Span<ast::Declaration const *const> BasicModule::declarations(
+absl::Span<ast::Declaration const *const> BasicModule::ExportedDeclarations(
     std::string_view name) const {
-  auto iter = top_level_decls_.find(name);
-  if (iter == top_level_decls_.end()) { return {}; }
+  exports_complete_.WaitForNotification();
+  auto iter = exported_declarations_.find(name);
+  if (iter == exported_declarations_.end()) { return {}; }
 
   // TODO handle exported embedded modules here too.
   return iter->second;

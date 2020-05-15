@@ -38,6 +38,7 @@ int Compile(frontend::FileName const &file_name) {
 
   auto *exec_mod =
       module::ImportModule<compiler::ExecutableModule>(canonical_file_name);
+  exec_mod->Wait();
 
   if (not exec_mod->main()) {
     // TODO make this an actual error?

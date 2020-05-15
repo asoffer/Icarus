@@ -37,10 +37,11 @@ void AddAdl(std::string_view id, type::Type const *t, Fn fn) {
   // TODO t->ExtractDefiningModules(&modules);
 
   for (auto *mod : modules) {
-    auto decls = mod->declarations(id);
+    auto decls = mod->ExportedDeclarations(id);
 
+    auto const &data = mod->data();
     for (auto *d : decls) {
-      ASSIGN_OR(continue, auto qt, mod->data().qual_type(d));
+      ASSIGN_OR(continue, auto qt, data.qual_type(d));
       ASSIGN_OR(continue, auto &t, qt.type());
       if (not fn(d)) { return; }
     }
@@ -659,9 +660,11 @@ static type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
   // it.
   auto *mod = interpretter::EvaluateAs<CompiledModule const *>(
       c->MakeThunk(node->operand(), type::Module));
-  auto decls = mod->declarations(node->member_name());
+  ASSERT(mod != c->data().module());
+  auto decls = mod->ExportedDeclarations(node->member_name());
   switch (decls.size()) {
     case 0: {
+      // Note: No reason to wait for the module to be compiled here.
       NOT_YET("Log an error, no such symbol in module.");
     } break;
     case 1: {
@@ -681,17 +684,18 @@ static type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
     default: {
       type::Quals quals = type::Quals::Const();
       absl::flat_hash_set<type::Callable const *> member_types;
+      auto const& data = mod->data();
       for (auto const *decl : decls) {
         ASSIGN_OR(return type::QualType::Error(),  //
-                         auto qt, c->qual_type_of(decl));
-        if (auto *c = qt.type()->if_as<type::Callable>()) {
+                         auto qt, data.qual_type(decl));
+        if (auto *callable = qt.type()->if_as<type::Callable>()) {
           quals &= qt.quals();
-          auto [iter, inserted] = member_types.insert(c);
+          auto [iter, inserted] = member_types.insert(callable);
           // TODO currently because of ADL, it's possible to have overload
           // sets that want to have the same type appear more than once. I
           // don't yet know how I want to deal with this.
           if (not inserted) { NOT_YET(); }
-          member_types.insert(c);
+          member_types.insert(callable);
         } else {
           NOT_YET();
         }

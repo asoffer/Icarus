@@ -55,13 +55,15 @@ struct BasicModule : base::Cast<BasicModule> {
   void AppendNodes(std::vector<std::unique_ptr<ast::Node>> nodes,
                    diagnostic::DiagnosticConsumer &diag);
 
-  absl::Span<ast::Declaration const *const> declarations(
+  absl::Span<ast::Declaration const *const> ExportedDeclarations(
       std::string_view name) const;
 
   constexpr ast::ModuleScope const *scope() const { return &scope_; }
 
   void ProcessFromSource(frontend::Source *src,
                          diagnostic::DiagnosticConsumer &diag);
+
+  void Wait() const { complete_.WaitForNotification(); }
 
  protected:
   virtual void ProcessNodes(base::PtrSpan<ast::Node const>,
@@ -70,10 +72,16 @@ struct BasicModule : base::Cast<BasicModule> {
  private:
   void InitializeNodes(base::PtrSpan<ast::Node> nodes);
 
+  void Complete() const;
+
   ast::ModuleScope scope_;
   absl::flat_hash_map<std::string_view, std::vector<ast::Declaration const *>>
-      top_level_decls_;
+      exported_declarations_;
   std::vector<std::unique_ptr<ast::Node>> nodes_;
+
+  // Notifies when exports are ready to be consumed.
+  mutable absl::Notification exports_complete_;
+  mutable absl::Notification complete_;
 };
 
 // Returns a container of all declarations in this scope and in parent scopes
@@ -97,7 +105,7 @@ bool ForEachDeclTowardsRoot(ast::Scope const *starting_scope,
 
     for (auto const *mod : scope_ptr->embedded_modules_) {
       // TODO use the right bound constants? or kill bound constants?
-      for (auto *decl : mod->declarations(id)) {
+      for (auto *decl : mod->ExportedDeclarations(id)) {
         // TODO what about transitivity for embedded modules?
         // New context will lookup with no constants.
         if (not fn(decl)) { return false; }
@@ -122,12 +130,17 @@ inline base::guarded<
 
 }  // namespace internal
 
+// Returns a pointer to a module of type given by the template parameter, by
+// loading the module from the filesystem denoted by the file named `file_name`.
+// When the module is returned it may not be ready for consumption yet as the
+// processing is started in a separate thread. Each module implementation has
+// its own criteria for which parts are available when and how to access them.
+// BasicModule provides no such guarantees.
 template <typename ModType>
 ModType *ImportModule(frontend::CanonicalFileName const &file_name) {
   auto id = ir::ModuleId::FromFile(file_name);
 
-  ModType *m;
-  absl::Notification notification;
+  ModType *result;
   {
     auto handle = internal::modules.lock();
 
@@ -139,19 +152,19 @@ ModType *ImportModule(frontend::CanonicalFileName const &file_name) {
     auto [iter, inserted] = handle->try_emplace(id);
     auto &mod             = iter->second;
 
-    if (not inserted) { return reinterpret_cast<ModType *>(mod.get()); }
+    if (not inserted) { return &mod->as<ModType>(); }
+
+    auto derived_mod = std::make_unique<ModType>();
+    result           = derived_mod.get();
+    mod              = std::move(derived_mod);
 
     if (auto maybe_file_src = frontend::FileSource::Make(id.filename())) {
-      std::thread t([mod      = &mod, &m, &notification,
+      std::thread t([mod      = &mod,
                      file_src = std::move(*maybe_file_src)]() mutable {
         auto *src =
             frontend::Source::Make<frontend::FileSource>(std::move(file_src));
         diagnostic::StreamingConsumer diag(stderr, src);
-        auto unique_m = std::make_unique<ModType>();
-        m             = unique_m.get();
-        *mod          = std::move(unique_m);
         (*mod)->ProcessFromSource(src, diag);
-        notification.Notify();
       });
       t.detach();
     } else {
@@ -164,8 +177,7 @@ ModType *ImportModule(frontend::CanonicalFileName const &file_name) {
     }
   }
 
-  notification.WaitForNotification();
-  return m;
+  return result;
 }
 
 }  // namespace module
