@@ -73,4 +73,16 @@ type::QualType DependentComputedData::set_qual_type(ast::Expression const *expr,
   return r;
 }
 
+LibraryModule *DependentComputedData::imported_module(ast::Import const *node) {
+  auto iter = imported_modules_.find(node);
+  if (iter != imported_modules_.end()) { return iter->second; }
+  if (parent_) { return parent_->imported_module(node); }
+  return nullptr;
+}
+
+void DependentComputedData::set_imported_module(ast::Import const *node,
+                                                LibraryModule *module) {
+  imported_modules_.emplace(node, module);
+}
+
 }  // namespace compiler

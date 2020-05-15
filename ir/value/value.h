@@ -9,6 +9,7 @@
 #include "ir/value/addr.h"
 #include "ir/value/enum_and_flags.h"
 #include "ir/value/label.h"
+#include "ir/value/module_id.h"
 #include "ir/value/reg_or.h"
 #include "ir/value/string.h"
 #include "type/type_fwd.h"
@@ -168,7 +169,7 @@ struct Value {
   constexpr void apply(F&& f) const {
     apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                uint32_t, uint64_t, float, double, type::Type const*, Addr,
-               String, EnumVal, FlagsVal, /*Fn, GenericFn,*/ Reg>(
+               String, EnumVal, FlagsVal, /*Fn, GenericFn,*/ Reg, ModuleId>(
         std::forward<F>(f));
   }
 
@@ -176,7 +177,8 @@ struct Value {
   friend H AbslHashValue(H h, Value const& v) {
     v.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                  uint32_t, uint64_t, float, double, type::Type const*, Addr,
-                 /*String,*/ EnumVal, FlagsVal, /* Fn, GenericFn, */ Reg>(
+                 /*String,*/ EnumVal, FlagsVal, /* Fn, GenericFn, */ Reg,
+                 ModuleId>(
         [&](auto x) { h = H::combine(std::move(h), v.type_.get(), x); });
     return h;
   }
@@ -205,7 +207,7 @@ struct Value {
     bool eq;
     lhs.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                    uint32_t, uint64_t, float, double, type::Type const*, Reg,
-                   MultiValue>([&rhs, &eq](auto x) {
+                   ModuleId, MultiValue>([&rhs, &eq](auto x) {
       eq = (x == rhs.get<std::decay_t<decltype(x)>>());
     });
     return eq;
@@ -217,8 +219,8 @@ struct Value {
 
   friend std::ostream& operator<<(std::ostream& os, Value value) {
     value.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                     uint32_t, uint64_t, float, double, type::Type const*>(
-        [&os](auto x) { os << x; });
+                     uint32_t, uint64_t, float, double, type::Type const*,
+                     ModuleId>([&os](auto x) { os << x; });
     return os;
   }
 

@@ -50,10 +50,7 @@ cc_library(
     name = "file_name",
     hdrs = ["file_name.h"],
     srcs = ["file_name.cc"],
-    deps = [
-        "//base:expected",
-        "//base:strong_types",
-    ],
+    deps = ["//base:strong_types"],
 )
 
 cc_test(

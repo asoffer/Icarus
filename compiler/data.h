@@ -22,7 +22,6 @@
 #include "ir/value/reg.h"
 #include "ir/value/value.h"
 #include "module/module.h"
-#include "module/pending.h"
 #include "type/qual_type.h"
 
 namespace compiler {
@@ -132,15 +131,15 @@ struct DependentComputedData {
 
   absl::flat_hash_map<ast::Declaration const *, ir::Reg> addr_;
 
-  absl::flat_hash_map<ast::Import const *, module::Pending<LibraryModule>>
-      imported_module_;
-
   absl::flat_hash_map</* to = */ ast::Node const *,
                       /* from = */ std::vector<ast::Node const *>>
       extraction_map_;
 
   absl::flat_hash_map<type::Type const *, ir::NativeFn> init_, copy_assign_,
       move_assign_, destroy_;
+
+  LibraryModule *imported_module(ast::Import const *node);
+  void set_imported_module(ast::Import const *node, LibraryModule *module);
 
   // InsertDependent:
   //
@@ -224,6 +223,9 @@ struct DependentComputedData {
   absl::flat_hash_map<std::string_view, type::Type const *> arg_type_;
   // TODO: If you could store the decl on the ast-node you could use ConstantBinding for this.
   absl::flat_hash_map<std::string_view, ir::Value> arg_val_;
+
+  // Colleciton of modules imported by this one.
+  absl::flat_hash_map<ast::Import const *, LibraryModule *> imported_modules_;
 
   struct DependentDataChild {
     // TODO Swiss-tables do not store the hash, but recomputing the argument

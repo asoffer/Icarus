@@ -28,6 +28,7 @@ struct flyweight_map {
     return *data_[id];
   }
 
+ private:
   absl::node_hash_map<Data, size_t> ids_;
   std::vector<Data const *> data_;
 };

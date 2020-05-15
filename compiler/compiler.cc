@@ -50,20 +50,6 @@ type::Type const *Compiler::type_of(ast::Expression const *expr) const {
   return qual_type_of(expr).value_or(type::QualType{}).type();
 }
 
-void Compiler::set_pending_module(ast::Import const *import_node,
-                                  module::Pending<LibraryModule> mod) {
-  data().imported_module_.emplace(import_node, std::move(mod));
-}
-
-module::Pending<LibraryModule> *Compiler::pending_module(
-    ast::Import const *import_node) const {
-  if (auto iter = data().imported_module_.find(import_node);
-      iter != data().imported_module_.end()) {
-    return &iter->second;
-  }
-  return nullptr;
-}
-
 void Compiler::CompleteDeferredBodies() {
   base::move_func<void()> f;
   while (true) {

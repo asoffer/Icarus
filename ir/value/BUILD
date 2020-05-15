@@ -128,6 +128,18 @@ cc_library(
 )
 
 cc_library(
+    name = "module_id",
+    hdrs = ["module_id.h"],
+    srcs = ["module_id.cc"],
+    deps = [
+        "//base:flyweight_map",
+        "//base:guarded",
+        "//base:no_destructor",
+        "//frontend/source:file_name",
+    ],
+)
+
+cc_library(
     name = "native_fn",
     hdrs = ["native_fn.h"],
     srcs = ["native_fn.cc"],
@@ -240,6 +252,7 @@ cc_library(
         ":addr",
         ":enum_and_flags",
         ":label",
+        ":module_id",
         ":string",
         ":reg_or",
         "//base:guarded",

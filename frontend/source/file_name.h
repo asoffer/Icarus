@@ -6,7 +6,6 @@
 #include <string>
 #include <string_view>
 
-#include "base/expected.h"
 #include "base/strong_types.h"
 
 namespace frontend {
@@ -20,7 +19,7 @@ using file_handle_t = std::unique_ptr<std::FILE, void (*)(std::FILE*)>;
 // Represents a file name that has already been canonicalized and therefore can
 // be safely compared for equality/hashed.
 struct CanonicalFileName {
-  static base::expected<CanonicalFileName> Make(FileName name);
+  static CanonicalFileName Make(FileName name);
 
   template <typename H>
   friend H AbslHashValue(H h, CanonicalFileName const& name) {

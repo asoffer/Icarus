@@ -10,6 +10,7 @@
 #include "diagnostic/message.h"
 #include "frontend/lex/lex.h"
 #include "frontend/lex/numbers.h"
+#include "frontend/source/file_name.h"
 #include "frontend/source/range.h"
 #include "frontend/source/source.h"
 #include "type/qual_type.h"
@@ -836,13 +837,13 @@ struct MissingModule {
   static constexpr std::string_view kName     = "missing-module";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Could not find module named \"%s\" requested from %s", source,
-             requestor.empty() ? "command line"
-                               : absl::StrCat("\"", requestor, "\".")));
+    return DiagnosticMessage(Text(
+        "Could not find module named \"%s\" requested from %s", source.name(),
+        requestor.empty() ? "command line"
+                          : absl::StrCat("\"", requestor, "\".")));
   }
 
-  std::string source;
+  frontend::CanonicalFileName source;
   std::string requestor;
 };
 

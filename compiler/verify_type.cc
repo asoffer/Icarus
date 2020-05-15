@@ -2063,22 +2063,15 @@ type::QualType Compiler::VerifyType(ast::Import const *node) {
   }
 
   if (err) { return type::QualType::Error(); }
-  // TODO storing node might not be safe.
+
   auto src = interpretter::EvaluateAs<ir::String>(
       MakeThunk(node->operand(), type::ByteView));
-  // TODO source name?
 
-  frontend::FileName file_name{src.get()};
-  ASSIGN_OR(diag().Consume(diagnostic::MissingModule{
-      .source    = src.get(),
-      .requestor = "TODO source",
-  });
-            return type::QualType::Error(),  //
-                   auto pending_mod,
-                   module::ImportModule<LibraryModule>(file_name));
-
-  if (not pending_mod.valid()) { return type::QualType::Error(); }
-  set_pending_module(node, pending_mod);
+  auto canonical_file_name =
+      frontend::CanonicalFileName::Make(frontend::FileName(src.get()));
+  auto *mod = module::ImportModule<LibraryModule>(canonical_file_name);
+  if (not mod) { return type::QualType::Error(); }
+  data().set_imported_module(node, mod);
   return data().set_qual_type(node, type::QualType::Constant(type::Module));
 }
 

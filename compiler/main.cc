@@ -6,12 +6,13 @@
 #include "absl/debugging/symbolize.h"
 #include "absl/strings/str_split.h"
 #include "base/expected.h"
-#include "base/no_destructor.h"
 #include "base/log.h"
+#include "base/no_destructor.h"
 #include "base/untyped_buffer.h"
 #include "compiler/compiler.h"
 #include "compiler/executable_module.h"
 #include "compiler/module.h"
+#include "diagnostic/consumer/streaming.h"
 #include "diagnostic/errors.h"
 #include "frontend/parse.h"
 #include "frontend/source/file_name.h"
@@ -20,7 +21,6 @@
 #include "interpretter/execute.h"
 #include "ir/compiled_fn.h"
 #include "module/module.h"
-#include "module/pending.h"
 #include "opt/opt.h"
 
 namespace debug {
@@ -34,21 +34,10 @@ namespace {
 
 int Compile(frontend::FileName const &file_name) {
   diagnostic::StreamingConsumer diag(stderr, frontend::SharedSource());
-  auto expected_pending_mod =
-      module::ImportModule<compiler::ExecutableModule>(file_name);
-  if (not expected_pending_mod) {
-    diag.Consume(diagnostic::MissingModule{
-        .source    = file_name.value,
-        .requestor = "",
-    });
-  }
+  auto canonical_file_name = frontend::CanonicalFileName::Make(file_name);
 
-  if (diag.num_consumed() > 0) { return 0; }
-
-  module::AwaitAllModulesTransitively();
-  // TODO remove reinterpret_cast
-  auto *exec_mod = reinterpret_cast<compiler::ExecutableModule *>(
-      expected_pending_mod->get());
+  auto *exec_mod =
+      module::ImportModule<compiler::ExecutableModule>(canonical_file_name);
 
   if (not exec_mod->main()) {
     // TODO make this an actual error?

@@ -2,7 +2,8 @@
 
 namespace frontend {
 
-base::expected<CanonicalFileName> CanonicalFileName::Make(FileName name) {
+CanonicalFileName CanonicalFileName::Make(FileName name) {
+  // TODO implement me.
   return CanonicalFileName{name.value};
 }
 

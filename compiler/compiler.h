@@ -173,12 +173,6 @@ struct Compiler
       type::Function const *fn_type,
       core::Params<type::Typed<ast::Declaration const *>> params);
 
-  module::Pending<LibraryModule> *pending_module(
-      ast::Import const *import_node) const;
-
-  void set_pending_module(ast::Import const *import_node,
-                          module::Pending<LibraryModule> mod);
-
   void CompleteDeferredBodies();
 
 #define ICARUS_AST_NODE_X(name)                                                \

@@ -8,7 +8,6 @@
 #include "compiler/dispatch/scope_table.h"
 #include "compiler/emit_function_call_infrastructure.h"
 #include "compiler/executable_module.h"
-#include "diagnostic/consumer/streaming.h"
 #include "diagnostic/consumer/trivial.h"
 #include "frontend/parse.h"
 #include "interpretter/evaluate.h"
@@ -830,17 +829,13 @@ ir::Value Compiler::EmitValue(ast::Identifier const *node) {
 }
 
 ir::Value Compiler::EmitValue(ast::Import const *node) {
-  auto *pending_mod = ASSERT_NOT_NULL(pending_module(node));
-  DEBUG_LOG("Import")("Waiting for ", pending_mod);
-  auto *mod = pending_mod->get();
-  DEBUG_LOG("Import")("Completed compilation of ", pending_mod, " as ", mod);
-
   // Note: Even though this must return a more specific type (LibraryModule
   // instead of BasicModule), we use Type to ensure that if this gets routed
   // into an ir::Value, it will be tagged correctly.
   //
   // TODO compiler doesn't know about inheritence here.
-  return ir::Value(reinterpret_cast<module::BasicModule *>(mod));
+  return ir::Value(reinterpret_cast<module::BasicModule *>(
+      ASSERT_NOT_NULL(data().imported_module(node))));
 }
 
 ir::Value Compiler::EmitValue(ast::Index const *node) {
