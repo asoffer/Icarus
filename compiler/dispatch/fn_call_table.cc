@@ -85,8 +85,13 @@ ir::Value EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
         // TODO make this more robust.
         fn = decl->init_val();
       }
+
+      auto *parameterized_expr = &fn->as<ast::ParameterizedExpression>();
+      auto params              = compiler->ComputeParamsFromArgs(
+          parameterized_expr, OrderedDependencyNodes(parameterized_expr), args);
+
       auto find_dependent_result = compiler->data().FindDependent(
-          &fn->as<ast::ParameterizedExpression>(), args);
+          &fn->as<ast::ParameterizedExpression>(), params);
       fn_type        = find_dependent_result.fn_type;
       dependent_data = &find_dependent_result.data;
       return ir::Fn(gen_fn.concrete(args));

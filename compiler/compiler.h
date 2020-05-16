@@ -60,6 +60,9 @@ struct LibraryModule;  // TODO remove me.
 // rather than separating all stages. In time we will see if this belief holds
 // water.
 
+std::vector<std::pair<int, core::DependencyNode<ast::Declaration>>>
+OrderedDependencyNodes(ast::ParameterizedExpression const *node);
+
 struct Compiler
     : ast::Visitor<EmitMoveInitTag, void(type::Typed<ir::Reg>)>,
       ast::Visitor<EmitCopyInitTag, void(type::Typed<ir::Reg>)>,
@@ -156,6 +159,12 @@ struct Compiler
   }
 
   ir::CompiledFn MakeThunk(ast::Expression const *expr, type::Type const *type);
+
+  core::Params<type::Type const *> ComputeParamsFromArgs(
+      ast::ParameterizedExpression const *node,
+      absl::Span<std::pair<int, core::DependencyNode<ast::Declaration>> const>
+          ordered_nodes,
+      core::FnArgs<type::Typed<ir::Value>> const &args);
 
   std::optional<type::QualType> qual_type_of(ast::Expression const *expr) const;
   type::Type const *type_of(ast::Expression const *expr) const;

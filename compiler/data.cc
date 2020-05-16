@@ -18,10 +18,10 @@ struct DependentComputedData::DependentDataChild::DataImpl {
 DependentComputedData::InsertDependentResult
 DependentComputedData::InsertDependent(
     ast::ParameterizedExpression const *node,
-    core::FnArgs<type::Typed<ir::Value>> const &args) {
-  auto &[parent, map] = dependent_data_[node];
-  parent              = this;
-  auto [iter, inserted] = map.try_emplace(args);
+    core::Params<type::Type const *> const &params) {
+  auto &[parent, map]   = dependent_data_[node];
+  parent                = this;
+  auto [iter, inserted] = map.try_emplace(params);
 
   if (inserted) {
     iter->second = std::unique_ptr<DependentDataChild::DataImpl>(
@@ -32,9 +32,9 @@ DependentComputedData::InsertDependent(
         });
     iter->second->data.parent_ = this;
   }
-  auto &[params, rets, data] = *iter->second;
+  auto &[parameters, rets, data] = *iter->second;
   return InsertDependentResult{
-      .params   = params,
+      .params   = parameters,
       .rets     = rets,
       .data     = data,
       .inserted = inserted,
@@ -43,13 +43,13 @@ DependentComputedData::InsertDependent(
 
 DependentComputedData::FindDependentResult DependentComputedData::FindDependent(
     ast::ParameterizedExpression const *node,
-    core::FnArgs<type::Typed<ir::Value>> const &args) {
+    core::Params<type::Type const *> const &params) {
   auto &map = dependent_data_.find(node)->second.map;
-  auto iter = map.find(args);
+  auto iter = map.find(params);
   ASSERT(iter != map.end());
-  auto &[params, rets, data] = *iter->second;
+  auto &[parameters, rets, data] = *iter->second;
   return FindDependentResult{
-      .fn_type = type::Func(params, rets),
+      .fn_type = type::Func(parameters, rets),
       .data    = data,
   };
 }

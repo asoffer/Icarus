@@ -733,7 +733,9 @@ ir::NativeFn MakeConcreteFromGeneric(
 
   // Note: Cannot use structured bindings because the bindings need to be
   // captured in the lambda.
-  auto find_dependent_result = compiler->data().FindDependent(node, args);
+  auto params =
+      compiler->ComputeParamsFromArgs(node, OrderedDependencyNodes(node), args);
+  auto find_dependent_result = compiler->data().FindDependent(node, params);
   auto const *fn_type        = find_dependent_result.fn_type;
   auto &data                 = find_dependent_result.data;
 

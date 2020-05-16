@@ -158,7 +158,7 @@ struct DependentComputedData {
 
   InsertDependentResult InsertDependent(
       ast::ParameterizedExpression const *node,
-      core::FnArgs<type::Typed<ir::Value>> const &args);
+      core::Params<type::Type const *> const &params);
 
   // FindDependent:
   //
@@ -174,7 +174,7 @@ struct DependentComputedData {
 
   FindDependentResult FindDependent(
       ast::ParameterizedExpression const *node,
-      core::FnArgs<type::Typed<ir::Value>> const &args);
+      core::Params<type::Type const *> const &params);
 
   template <
       typename Ctor,
@@ -228,51 +228,10 @@ struct DependentComputedData {
   absl::flat_hash_map<ast::Import const *, LibraryModule *> imported_modules_;
 
   struct DependentDataChild {
-    // TODO Swiss-tables do not store the hash, but recomputing the argument
-    // hash on each lookup can be expensive. Instead, we can use the
-    // optimization technique where we store the arguments in a separate vector,
-    // and store the hash and an index into the vector. In fact, just storing
-    // the hash adjacent is probably a good chunk of the wins anyway.
-    //
-    // TODO we also want to be hashing the parameters computed, not the
-    // arguments.
-    struct ArgsHash {
-      size_t operator()(
-          core::FnArgs<type::Typed<ir::Value>> const &args) const {
-        // Ew, this hash is awful. Make this better.
-        std::vector<std::tuple<std::string_view, type::Typed<ir::Value>>> elems;
-        for (auto const &arg : args.pos()) {
-          if (arg->get_if<ir::Reg>()) {
-            elems.emplace_back("", type::Typed(ir::Value(), arg.type()));
-          } else {
-            elems.emplace_back("", arg);
-          }
-        }
-        for (auto const &[name, arg] : args.named()) {
-          if (arg->get_if<ir::Reg>()) {
-            elems.emplace_back("", type::Typed(ir::Value(), arg.type()));
-          } else {
-            elems.emplace_back(name, arg);
-          }
-        }
-        std::sort(elems.begin(), elems.end(),
-                  [](auto const &lhs, auto const &rhs) {
-                    return std::get<0>(lhs) < std::get<0>(rhs);
-                  });
-        return absl::Hash<decltype(elems)>{}(elems);
-      }
-    };
-
     DependentComputedData *parent = nullptr;
-    // TODO keying on arguments is actually wrong, because specifying the same
-    // arguments in a named vs positional manner should produce the same
-    // function. We may still want to cache them but we should be keying on
-    // parameters. But this also means we need to run the arg/param matching
-    // code every time.
     struct DataImpl;
-
-    absl::flat_hash_map<core::FnArgs<type::Typed<ir::Value>>,
-                        std::unique_ptr<DataImpl>, ArgsHash>
+    absl::flat_hash_map<core::Params<type::Type const *>,
+                        std::unique_ptr<DataImpl>>
         map;
   };
 

@@ -1676,7 +1676,7 @@ type::QualType Compiler::VerifyType(ast::EnumLiteral const *node) {
   return data().set_qual_type(node, type::QualType::Constant(type::Type_));
 }
 
-static std::vector<std::pair<int, core::DependencyNode<ast::Declaration>>>
+std::vector<std::pair<int, core::DependencyNode<ast::Declaration>>>
 OrderedDependencyNodes(ast::ParameterizedExpression const *node) {
   absl::flat_hash_set<core::DependencyNode<ast::Declaration>> deps;
   for (auto const &p : node->params()) {
@@ -1719,28 +1719,18 @@ OrderedDependencyNodes(ast::ParameterizedExpression const *node) {
   return ordered_nodes;
 }
 
-std::tuple<core::Params<type::Type const *>, std::vector<type::Type const *> *,
-           DependentComputedData *>
-MakeConcrete(
-    ast::ParameterizedExpression const *node, CompiledModule *mod,
+core::Params<type::Type const *> Compiler::ComputeParamsFromArgs(
+    ast::ParameterizedExpression const *node,
     absl::Span<std::pair<int, core::DependencyNode<ast::Declaration>> const>
         ordered_nodes,
-    core::FnArgs<type::Typed<ir::Value>> const &args,
-    DependentComputedData &compiler_data,
-    diagnostic::DiagnosticConsumer &diag) {
+    core::FnArgs<type::Typed<ir::Value>> const &args) {
   DEBUG_LOG("generic-fn")
   ("Creating a concrete implementation with ",
    args.Transform([](auto const &a) { return a.type()->to_string(); }));
 
-  auto [params, rets, data, inserted] =
-      compiler_data.InsertDependent(node, args);
-  if (not inserted) { return std::tuple(params, &rets, &data); }
-
-  Compiler c({
-      .builder             = ir::GetBuilder(),
-      .data                = data,
-      .diagnostic_consumer = diag,
-  });
+  absl::flat_hash_map<std::string_view, ir::Value> arg_vals;
+  absl::flat_hash_map<std::string_view, type::Type const *> arg_types;
+  core::Params<type::Type const *> param_types;
 
   // TODO use the proper ordering.
   for (auto [index, dep_node] : ordered_nodes) {
@@ -1756,15 +1746,16 @@ MakeConcrete(
           val = **a;
         } else {
           auto const *init_val = ASSERT_NOT_NULL(dep_node.node()->init_val());
-          auto const *t =
-              ASSERT_NOT_NULL(c.data().arg_type(dep_node.node()->id()));
+          auto arg_type_iter   = arg_types.find(dep_node.node()->id());
+          ASSERT(arg_type_iter != arg_types.end());
+          auto const *t = arg_type_iter->second;
           type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
                            uint16_t, uint32_t, uint64_t, float, double,
                            ir::Addr, ir::String, type::Type const *>(
               t, [&](auto tag) {
                 using T = typename decltype(tag)::type;
                 val     = ir::Value(
-                    interpretter::EvaluateAs<T>(c.MakeThunk(init_val, t)));
+                    interpretter::EvaluateAs<T>(MakeThunk(init_val, t)));
               });
         }
 
@@ -1778,7 +1769,7 @@ MakeConcrete(
           }
         };
         DEBUG_LOG("generic-fn")("... ", tostr(val));
-        c.data().set_arg_value(dep_node.node()->id(), val);
+        arg_vals.emplace(dep_node.node()->id(), val);
       } break;
       case core::DependencyNodeKind::ArgType: {
         type::Type const *arg_type = nullptr;
@@ -1788,28 +1779,28 @@ MakeConcrete(
           arg_type = a->type();
         } else {
           auto *init_val = ASSERT_NOT_NULL(dep_node.node()->init_val());
-          arg_type       = c.VerifyType(init_val).type();
+          arg_type       = VerifyType(init_val).type();
         }
         DEBUG_LOG("generic-fn")("... ", *arg_type);
-        data.set_arg_type(dep_node.node()->id(), arg_type);
+        arg_types.emplace(dep_node.node()->id(), arg_type);
       } break;
       case core::DependencyNodeKind::ParamType: {
         type::Type const *t = nullptr;
         if (auto const *type_expr = dep_node.node()->type_expr()) {
-          auto type_expr_type = c.VerifyType(type_expr);
+          auto type_expr_type = VerifyType(type_expr);
           if (type_expr_type != type::QualType::Constant(type::Type_)) {
             NOT_YET("log an error: ", type_expr_type);
           }
           t = interpretter::EvaluateAs<type::Type const *>(
-              c.MakeThunk(type_expr, type::Type_));
+              MakeThunk(type_expr, type::Type_));
         } else {
-          t = c.VerifyType(dep_node.node()->init_val()).type();
+          t = VerifyType(dep_node.node()->init_val()).type();
         }
 
         auto qt = (dep_node.node()->flags() & ast::Declaration::f_IsConst)
                       ? type::QualType::Constant(t)
                       : type::QualType::NonConstant(t);
-        c.data().set_qual_type(dep_node.node(), qt);
+        data().set_qual_type(dep_node.node(), qt);
 
         // TODO: Once a parameter type has been computed, we know it's
         // argument type has already been computed so we can verify that the
@@ -1817,8 +1808,9 @@ MakeConcrete(
         DEBUG_LOG("generic-fn")("... ", t->to_string());
         size_t i =
             *ASSERT_NOT_NULL(node->params().at_or_null(dep_node.node()->id()));
-        params.set(i, core::Param<type::Type const *>(dep_node.node()->id(), t,
-                                                      node->params()[i].flags));
+        param_types.set(
+            i, core::Param<type::Type const *>(dep_node.node()->id(), t,
+                                               node->params()[i].flags));
       } break;
       case core::DependencyNodeKind::ParamValue: {
         // Find the argument associated with this parameter.
@@ -1830,22 +1822,48 @@ MakeConcrete(
         } else if (auto const *a = args.at_or_null(dep_node.node()->id())) {
           arg = *a;
         } else {
-          auto const *t = ASSERT_NOT_NULL(c.type_of(dep_node.node()));
+          auto const *t  = ASSERT_NOT_NULL(type_of(dep_node.node()));
           auto maybe_val = interpretter::Evaluate(
-              c.MakeThunk(ASSERT_NOT_NULL(dep_node.node()->init_val()), t));
+              MakeThunk(ASSERT_NOT_NULL(dep_node.node()->init_val()), t));
           if (not maybe_val) { NOT_YET(); }
           arg = type::Typed<ir::Value>(*maybe_val, t);
           DEBUG_LOG("generic-fn")(dep_node.node()->DebugString());
         }
 
-        c.data().constants_.reserve_slot(dep_node.node(), arg.type());
-        if (c.data().constants_.get_constant(dep_node.node()).empty()) {
-          c.data().constants_.set_slot(dep_node.node(), *arg);
+        NOT_YET();
+        data().constants_.reserve_slot(dep_node.node(), arg.type());
+        if (data().constants_.get_constant(dep_node.node()).empty()) {
+          data().constants_.set_slot(dep_node.node(), *arg);
         }
 
       } break;
     }
   }
+  return param_types;
+}
+
+std::tuple<core::Params<type::Type const *>, std::vector<type::Type const *> *,
+           DependentComputedData *>
+MakeConcrete(
+    ast::ParameterizedExpression const *node, CompiledModule *mod,
+    absl::Span<std::pair<int, core::DependencyNode<ast::Declaration>> const>
+        ordered_nodes,
+    core::FnArgs<type::Typed<ir::Value>> const &args,
+    DependentComputedData &compiler_data,
+    diagnostic::DiagnosticConsumer &diag) {
+  Compiler c({
+      .builder             = ir::GetBuilder(),
+      .data                = compiler_data,
+      .diagnostic_consumer = diag,
+  });
+
+  auto parameters = c.ComputeParamsFromArgs(node, ordered_nodes, args);
+
+  auto [params, rets, data, inserted] =
+      compiler_data.InsertDependent(node, parameters);
+  if (not inserted) { return std::tuple(params, &rets, &data); }
+
+  params = parameters;
 
   return std::tuple(params, &rets, &data);
 }
