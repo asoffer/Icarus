@@ -60,8 +60,8 @@ JumpDispatchTable::EmitCallOneOverload(
   if (state_reg) {
     auto pos   = std::move(args).pos();
     auto named = std::move(args).named();
-    pos.insert(pos.begin(),
-               type::Typed<ir::Value>(*state_reg, jump->type()->state()));
+    pos.insert(pos.begin(), type::Typed<ir::Value>(ir::Value(*state_reg),
+                                                   jump->type()->state()));
     args = core::FnArgs(std::move(pos), std::move(named));
   }
   core::FillMissingArgs(core::ParamsRef(jump->params()), &args,

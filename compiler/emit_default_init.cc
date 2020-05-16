@@ -82,7 +82,7 @@ void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDefaultInitTag) {
         auto &field = t->fields_[i];
         if (not field.initial_value.empty()) {
           if (field.type == type::Int64) {
-            EmitCopyInit(field.type, field.initial_value.get<int64_t>(),
+            EmitCopyInit(field.type, field.initial_value,
                          builder().Field(var, t, i));
           } else {
             NOT_YET();

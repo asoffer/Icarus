@@ -408,7 +408,7 @@ struct Builder {
         std::make_unique<LoadInstruction>(addr, core::Bytes::Get<T>().value());
     auto result = inst->result = CurrentGroup()->Reserve();
 
-    cache_results = result;
+    cache_results = Value(result);
 
     blk.AddInstruction(std::move(inst));
     return result;

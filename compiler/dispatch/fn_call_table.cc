@@ -25,11 +25,11 @@ std::pair<ir::Value, ir::OutParams> SetReturns(
     ir::OutParams out_params = bldr.OutParams(ret_types);
     // TODO find a better way to extract these. Figure out why you even need to.
     for (size_t i = 0; i < ret_types.size(); ++i) {
-      outs.push_back(out_params[i]);
+      outs.emplace_back(out_params[i]);
     }
     return std::pair<ir::Value, ir::OutParams>(
         outs.empty()
-            ? ir::Value(false)
+            ? ir::Value()
             : outs.size() == 1 ? outs[0]
                                : ir::Value(ir::MultiValue(std::move(outs))),
         std::move(out_params));

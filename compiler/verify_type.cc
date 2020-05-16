@@ -1749,7 +1749,7 @@ MakeConcrete(
      dep_node.node()->id(), "`");
     switch (dep_node.kind()) {
       case core::DependencyNodeKind::ArgValue: {
-        ir::Value val = false;
+        ir::Value val;
         if (index < args.pos().size()) {
           val = *args[index];
         } else if (auto const *a = args.at_or_null(dep_node.node()->id())) {
@@ -1763,7 +1763,8 @@ MakeConcrete(
                            ir::Addr, ir::String, type::Type const *>(
               t, [&](auto tag) {
                 using T = typename decltype(tag)::type;
-                val     = interpretter::EvaluateAs<T>(c.MakeThunk(init_val, t));
+                val     = ir::Value(
+                    interpretter::EvaluateAs<T>(c.MakeThunk(init_val, t)));
               });
         }
 

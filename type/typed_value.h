@@ -30,6 +30,11 @@ struct Typed {
   T const* type() const { return type_; }
   void set_type(T const* t) { type_ = t; }
 
+  template <typename H>
+  friend H AbslHashValue(H h, Typed<V, T> const& tv) {
+    return H::combine(std::move(h), tv.type(), *tv);
+  }
+
   template <typename W, typename U,
             typename = std::enable_if_t<
                 std::is_convertible_v<V, W> and std::is_base_of_v<U, T> and

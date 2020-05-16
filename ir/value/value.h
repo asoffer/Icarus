@@ -57,6 +57,7 @@ struct Value {
     friend H AbslHashValue(H h, Empty) {
       return h;
     }
+    friend std::ostream& operator<<(std::ostream& os, Empty) { return os << "(empty)"; }
     friend constexpr bool operator==(Empty, Empty) { return true; }
     friend constexpr bool operator!=(Empty, Empty) { return false; }
   };
@@ -67,7 +68,7 @@ struct Value {
   // type supported by `Value` or an `ir::RegOr<T>` where `T` is an type
   // supported by `Value`.
   template <typename T>
-  Value(T val) : type_(base::meta<T>) {
+  explicit Value(T val) : type_(base::meta<T>) {
     if constexpr (IsRegOr<T>::value) {
       if (val.is_reg()) {
         type_          = base::meta<Reg>;
@@ -226,7 +227,7 @@ struct Value {
 
   friend std::ostream& operator<<(std::ostream& os, Value value) {
     value.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                     uint32_t, uint64_t, float, double, type::Type const*,
+                     uint32_t, uint64_t, float, double, type::Type const*, Reg,
                      ModuleId, Empty>([&os](auto x) { os << x; });
     return os;
   }

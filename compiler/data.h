@@ -209,7 +209,7 @@ struct DependentComputedData {
 
   ir::Value arg_value(std::string_view name) const {
     auto iter = arg_val_.find(name);
-    return iter == arg_val_.end() ? nullptr : iter->second;
+    return iter == arg_val_.end() ? ir::Value() : iter->second;
   }
 
   void set_arg_value(std::string_view name, ir::Value const &value) {
@@ -240,13 +240,20 @@ struct DependentComputedData {
       size_t operator()(
           core::FnArgs<type::Typed<ir::Value>> const &args) const {
         // Ew, this hash is awful. Make this better.
-        std::vector<std::tuple<std::string_view, type::Type const *, ir::Value>>
-            elems;
+        std::vector<std::tuple<std::string_view, type::Typed<ir::Value>>> elems;
         for (auto const &arg : args.pos()) {
-          elems.emplace_back("", arg.type(), *arg);
+          if (arg->get_if<ir::Reg>()) {
+            elems.emplace_back("", type::Typed(ir::Value(), arg.type()));
+          } else {
+            elems.emplace_back("", arg);
+          }
         }
         for (auto const &[name, arg] : args.named()) {
-          elems.emplace_back(name, arg.type(), *arg);
+          if (arg->get_if<ir::Reg>()) {
+            elems.emplace_back("", type::Typed(ir::Value(), arg.type()));
+          } else {
+            elems.emplace_back(name, arg);
+          }
         }
         std::sort(elems.begin(), elems.end(),
                   [](auto const &lhs, auto const &rhs) {
