@@ -58,6 +58,15 @@ cc_library(
 )
 
 cc_library(
+    name = "global",
+    hdrs = ["global.h"],
+    deps = [
+        ":guarded",
+        ":no_destructor",
+    ],
+)
+
+cc_library(
     name = "graph",
     hdrs = ["graph.h"],
     deps = [

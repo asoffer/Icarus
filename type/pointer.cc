@@ -1,28 +1,25 @@
 #include "type/pointer.h"
 
 #include "absl/container/flat_hash_map.h"
-#include "base/guarded.h"
-#include "base/no_destructor.h"
+#include "base/global.h"
 
 namespace type {
 
-static base::NoDestructor<
-    base::guarded<absl::flat_hash_map<Type const *, Pointer const *>>>
+static base::Global<absl::flat_hash_map<Type const *, Pointer const *>>
     pointer_cache;
 
 Pointer const *Ptr(Type const *t) {
-  auto handle = pointer_cache->lock();
+  auto handle = pointer_cache.lock();
   auto &p     = (*handle)[t];
   if (not p) { p = new Pointer(t); }
   return p;
 }
 
-static base::NoDestructor<
-    base::guarded<absl::flat_hash_map<Type const *, BufferPointer const *>>>
+static base::Global<absl::flat_hash_map<Type const *, BufferPointer const *>>
     buffer_pointer_cache;
 
 BufferPointer const *BufPtr(Type const *t) {
-  auto handle = buffer_pointer_cache->lock();
+  auto handle = buffer_pointer_cache.lock();
   auto &p     = (*handle)[t];
   if (not p) { p = new BufferPointer(t); }
   return p;

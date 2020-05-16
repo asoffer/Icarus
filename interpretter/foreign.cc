@@ -88,7 +88,8 @@ void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
           pointer_values.push_back(stack->raw(addr.stack()));
         } break;
         case ir::Addr::Kind::ReadOnly: {
-          pointer_values.push_back(ir::ReadOnlyData.raw(addr.rodata()));
+          void *ptr = ir::ReadOnlyData.lock()->raw(addr.rodata());
+          pointer_values.push_back(ptr);
         } break;
       }
       arg_vals.push_back(&pointer_values.back());

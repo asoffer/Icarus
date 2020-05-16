@@ -18,14 +18,6 @@
 #endif  // ICARUS_MATCHER
 
 namespace frontend {
-
-absl::flat_hash_map<std::string_view, ast::Hashtag::Builtin> const
-    BuiltinHashtagMap = {{"{export}", ast::Hashtag::Builtin::Export},
-                         {"{uncopyable}", ast::Hashtag::Builtin::Uncopyable},
-                         {"{immovable}", ast::Hashtag::Builtin::Immovable},
-                         {"{inline}", ast::Hashtag::Builtin::Inline},
-                         {"{no_default}", ast::Hashtag::Builtin::NoDefault}};
-
 namespace {
 
 constexpr inline bool IsLower(char c) { return ('a' <= c and c <= 'z'); }
@@ -50,16 +42,16 @@ SourceCursor NextSimpleWord(SourceCursor *cursor) {
   return cursor->ConsumeWhile(IsAlphaNumericOrUnderscore);
 }
 
-static absl::flat_hash_map<std::string_view,
-                           std::variant<Operator, Syntax>> const kKeywords = {
-    {"which", {Operator::Which}}, {"ensure", {Operator::Ensure}},
-    {"needs", {Operator::Needs}}, {"import", {Operator::Import}},
-    {"flags", {Syntax::Flags}},   {"enum", {Syntax::Enum}},
-    {"struct", {Syntax::Struct}}, {"return", {Operator::Return}},
-    {"goto", {Operator::Goto}},   {"jump", {Syntax::Jump}},
-    {"switch", {Syntax::Switch}}, {"when", {Operator::When}},
-    {"as", {Operator::As}},       {"copy", {Operator::Copy}},
-    {"move", {Operator::Move}}};
+static base::Global kKeywords =
+    absl::flat_hash_map<std::string_view, std::variant<Operator, Syntax>>{
+        {"which", {Operator::Which}}, {"ensure", {Operator::Ensure}},
+        {"needs", {Operator::Needs}}, {"import", {Operator::Import}},
+        {"flags", {Syntax::Flags}},   {"enum", {Syntax::Enum}},
+        {"struct", {Syntax::Struct}}, {"return", {Operator::Return}},
+        {"goto", {Operator::Goto}},   {"jump", {Syntax::Jump}},
+        {"switch", {Syntax::Switch}}, {"when", {Operator::When}},
+        {"as", {Operator::As}},       {"copy", {Operator::Copy}},
+        {"move", {Operator::Move}}};
 
 static bool BeginsWith(std::string_view prefix, std::string_view s) {
   if (s.size() < prefix.size()) { return false; }
@@ -73,33 +65,33 @@ static bool BeginsWith(std::string_view prefix, std::string_view s) {
 
 // Note: The order here is somewhat important. Because we choose the first
 // match, we cannot, for example, put `:` before `::=`.
-static const std::array<
-    std::pair<std::string_view, std::variant<Operator, Syntax>>, 45>
-    kOps = {{
-        {"@", {Operator::At}},         {",", {Operator::Comma}},
-        {"[*]", {Operator::BufPtr}},   {"`", {Operator::Eval}},
-        {"+=", {Operator::AddEq}},     {"+", {Operator::Add}},
-        {"-=", {Operator::SubEq}},     {"..", {Operator::VariadicPack}},
-        {"->", {Operator::Arrow}},     {"-", {Operator::Sub}},
-        {"*=", {Operator::MulEq}},     {"*", {Operator::Mul}},
-        {"%=", {Operator::ModEq}},     {"%", {Operator::Mod}},
-        {"&=", {Operator::AndEq}},     {"&", {Operator::And}},
-        {"|=", {Operator::OrEq}},      {"|", {Operator::Or}},
-        {"^=", {Operator::XorEq}},     {"^", {Operator::Xor}},
-        {">=", {Operator::Ge}},        {">", {Operator::Gt}},
-        {"!=", {Operator::Ne}},        {"::=", {Operator::DoubleColonEq}},
-        {":?", {Operator::TypeOf}},    {"::", {Operator::DoubleColon}},
-        {":=", {Operator::ColonEq}},   {".", {Syntax::Dot}},
-        {":", {Operator::Colon}},      {"<<", {Operator::Yield}},
-        {"<=", {Operator::Le}},        {"<", {Operator::Lt}},
-        {"!", {Operator::Not}},        {"==", {Operator::Eq}},
-        {"=>", {Operator::Rocket}},    {"=", {Operator::Assign}},
-        {"'", {Operator::Call}},       {"(", {Syntax::LeftParen}},
-        {")", {Syntax::RightParen}},   {"[", {Syntax::LeftBracket}},
-        {"]", {Syntax::RightBracket}}, {"{", {Syntax::LeftBrace}},
-        {"}", {Syntax::RightBrace}},   {";", {Syntax::Semicolon}},
-        {"$", {Operator::ArgType}},
-    }};
+static base::Global kOps =
+    std::array<std::pair<std::string_view, std::variant<Operator, Syntax>>, 45>{
+        {
+            {"@", {Operator::At}},         {",", {Operator::Comma}},
+            {"[*]", {Operator::BufPtr}},   {"`", {Operator::Eval}},
+            {"+=", {Operator::AddEq}},     {"+", {Operator::Add}},
+            {"-=", {Operator::SubEq}},     {"..", {Operator::VariadicPack}},
+            {"->", {Operator::Arrow}},     {"-", {Operator::Sub}},
+            {"*=", {Operator::MulEq}},     {"*", {Operator::Mul}},
+            {"%=", {Operator::ModEq}},     {"%", {Operator::Mod}},
+            {"&=", {Operator::AndEq}},     {"&", {Operator::And}},
+            {"|=", {Operator::OrEq}},      {"|", {Operator::Or}},
+            {"^=", {Operator::XorEq}},     {"^", {Operator::Xor}},
+            {">=", {Operator::Ge}},        {">", {Operator::Gt}},
+            {"!=", {Operator::Ne}},        {"::=", {Operator::DoubleColonEq}},
+            {":?", {Operator::TypeOf}},    {"::", {Operator::DoubleColon}},
+            {":=", {Operator::ColonEq}},   {".", {Syntax::Dot}},
+            {":", {Operator::Colon}},      {"<<", {Operator::Yield}},
+            {"<=", {Operator::Le}},        {"<", {Operator::Lt}},
+            {"!", {Operator::Not}},        {"==", {Operator::Eq}},
+            {"=>", {Operator::Rocket}},    {"=", {Operator::Assign}},
+            {"'", {Operator::Call}},       {"(", {Syntax::LeftParen}},
+            {")", {Syntax::RightParen}},   {"[", {Syntax::LeftBracket}},
+            {"]", {Syntax::RightBracket}}, {"{", {Syntax::LeftBrace}},
+            {"}", {Syntax::RightBrace}},   {";", {Syntax::Semicolon}},
+            {"$", {Operator::ArgType}},
+        }};
 
 Lexeme NextOperator(SourceCursor *cursor, Source *src) {
 #ifdef ICARUS_MATCHER
@@ -120,7 +112,7 @@ Lexeme NextOperator(SourceCursor *cursor, Source *src) {
     return Lexeme(std::make_unique<ast::Identifier>(span, ""));
   }
 
-  for (auto [prefix, x] : kOps) {
+  for (auto [prefix, x] : *kOps) {
     if (BeginsWith(prefix, cursor->view())) {
       auto span = cursor->remove_prefix(prefix.size()).range();
       return std::visit([&](auto x) { return Lexeme(x, span); }, x);
@@ -151,28 +143,22 @@ std::optional<std::pair<SourceRange, Operator>> NextSlashInitiatedToken(
   }
 }
 
-static absl::flat_hash_map<std::string_view, type::BasicType> const
-    kReservedTypes{{"bool", type::BasicType::Bool},
-                   {"int8", type::BasicType::Int8},
-                   {"int16", type::BasicType::Int16},
-                   {"int32", type::BasicType::Int32},
-                   {"int64", type::BasicType::Int64},
-                   {"nat8", type::BasicType::Nat8},
-                   {"nat16", type::BasicType::Nat16},
-                   {"nat32", type::BasicType::Nat32},
-                   {"nat64", type::BasicType::Nat64},
-                   {"float32", type::BasicType::Float32},
-                   {"float64", type::BasicType::Float64},
-                   {"type", type::BasicType::Type_},
-                   {"module", type::BasicType::Module},
-                   {"byte_view", type::BasicType::ByteView}};
-
-static absl::flat_hash_map<std::string_view, ir::BuiltinFn> const kBuiltinFns{
-    {"foreign", ir::BuiltinFn::Foreign()},
-    {"opaque", ir::BuiltinFn::Opaque()},
-    {"bytes", ir::BuiltinFn::Bytes()},
-    {"alignment", ir::BuiltinFn::Alignment()},
-    {"debug_ir", ir::BuiltinFn::DebugIr()}};
+static base::Global kReservedTypes =
+    absl::flat_hash_map<std::string_view, type::BasicType>{
+        {"bool", type::BasicType::Bool},
+        {"int8", type::BasicType::Int8},
+        {"int16", type::BasicType::Int16},
+        {"int32", type::BasicType::Int32},
+        {"int64", type::BasicType::Int64},
+        {"nat8", type::BasicType::Nat8},
+        {"nat16", type::BasicType::Nat16},
+        {"nat32", type::BasicType::Nat32},
+        {"nat64", type::BasicType::Nat64},
+        {"float32", type::BasicType::Float32},
+        {"float64", type::BasicType::Float64},
+        {"type", type::BasicType::Type_},
+        {"module", type::BasicType::Module},
+        {"byte_view", type::BasicType::ByteView}};
 
 Lexeme NextWord(SourceCursor *cursor, Source *src) {
   // Match [a-zA-Z_][a-zA-Z0-9_]*
@@ -192,7 +178,7 @@ Lexeme NextWord(SourceCursor *cursor, Source *src) {
         std::move(span), ir::Addr::Null(), type::BasicType::NullPtr));
   }
 
-  if (auto iter = kReservedTypes.find(token); iter != kReservedTypes.end()) {
+  if (auto iter = kReservedTypes->find(token); iter != kReservedTypes->end()) {
     return Lexeme(std::make_unique<ast::Terminal>(std::move(span), iter->second,
                                                   type::BasicType::Type_));
   }
@@ -201,7 +187,7 @@ Lexeme NextWord(SourceCursor *cursor, Source *src) {
     return Lexeme(std::make_unique<ast::BuiltinFn>(span, *maybe_builtin));
   }
 
-  if (auto iter = kKeywords.find(token); iter != kKeywords.end()) {
+  if (auto iter = kKeywords->find(token); iter != kKeywords->end()) {
     return std::visit([&](auto x) { return Lexeme(x, span); }, iter->second);
   }
 
@@ -304,8 +290,8 @@ base::expected<Lexeme, HashtagError> NextHashtag(SourceCursor *cursor,
     cursor->remove_prefix(1);
     span = span.expanded(Offset(1));
 
-    if (auto iter = BuiltinHashtagMap.find(token);
-        iter != BuiltinHashtagMap.end()) {
+    if (auto iter = BuiltinHashtagMap->find(token);
+        iter != BuiltinHashtagMap->end()) {
       return Lexeme(ast::Hashtag{iter->second}, span);
     }
 
@@ -398,8 +384,8 @@ restart:
             .range  = range,
         });
       }
-      return Lexeme(std::make_unique<ast::Terminal>(
-          std::move(range), ir::String(str), type::BasicType::ByteView));
+      return Lexeme(std::make_unique<ast::Terminal>(range, ir::String(str),
+                                                    type::BasicType::ByteView));
 
     } break;
     case '#': {

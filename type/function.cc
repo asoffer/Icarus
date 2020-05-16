@@ -1,13 +1,12 @@
 #include "type/function.h"
 
-#include "base/guarded.h"
 #include "type/typed_value.h"
+#include "base/global.h"
 
 namespace type {
 
-static base::guarded<
-    absl::flat_hash_map<core::Params<Type const *>,
-                        std::map<std::vector<Type const *>, Function>>>
+static base::Global<absl::flat_hash_map<
+    core::Params<Type const *>, std::map<std::vector<Type const *>, Function>>>
     funcs_;
 Function const *Func(core::Params<Type const *> in,
                      std::vector<Type const *> out) {

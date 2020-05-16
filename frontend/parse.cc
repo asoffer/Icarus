@@ -6,7 +6,7 @@
 #include "absl/strings/str_format.h"
 #include "ast/ast.h"
 #include "base/debug.h"
-#include "base/guarded.h"
+#include "base/global.h"
 #include "diagnostic/errors.h"
 #include "frontend/lex/lex.h"
 #include "frontend/lex/operators.h"
@@ -135,8 +135,8 @@ std::unique_ptr<ast::Node> AddHashtag(
     diagnostic::DiagnosticConsumer &diag) {
   auto expr              = move_as<ast::Expression>(nodes.back());
   std::string_view token = nodes.front()->as<Token>().token;
-  if (auto iter = BuiltinHashtagMap.find(token);
-      iter != BuiltinHashtagMap.end()) {
+  if (auto iter = BuiltinHashtagMap->find(token);
+      iter != BuiltinHashtagMap->end()) {
     expr->hashtags_.emplace_back(iter->second);
   } else if (token.front() == '{' or token.back() == '}') {
     diag.Consume(diagnostic::UnknownBuiltinHashtag{
@@ -337,20 +337,21 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
     }
   }
 
-  static absl::flat_hash_map<std::string_view, Operator> const kUnopMap{
-      {"*", Operator::Mul},         {"[*]", Operator::BufPtr},
-      {"@", Operator::At},          {"import", Operator::Import},
-      {"&", Operator::And},         {"which", Operator::Which},
-      {"-", Operator::Sub},         {"needs", Operator::Needs},
-      {"!", Operator::Not},         {"copy", Operator::Copy},
-      {"ensure", Operator::Ensure}, {"move", Operator::Move},
-      {"`", Operator::Eval},        {"..", Operator::VariadicPack},
-  };
+  static base::Global kUnopMap =
+      absl::flat_hash_map<std::string_view, Operator>{
+          {"*", Operator::Mul},         {"[*]", Operator::BufPtr},
+          {"@", Operator::At},          {"import", Operator::Import},
+          {"&", Operator::And},         {"which", Operator::Which},
+          {"-", Operator::Sub},         {"needs", Operator::Needs},
+          {"!", Operator::Not},         {"copy", Operator::Copy},
+          {"ensure", Operator::Ensure}, {"move", Operator::Move},
+          {"`", Operator::Eval},        {"..", Operator::VariadicPack},
+      };
 
   SourceRange range(nodes[0]->range().begin(), nodes[1]->range().end());
 
   auto &operand = nodes[1];
-  Operator op   = kUnopMap.find(tk)->second;
+  Operator op   = kUnopMap->find(tk)->second;
 
   if (operand->is<ast::Declaration>()) {
     diag.Consume(diagnostic::DeclarationUsedInUnaryOperator{
@@ -907,14 +908,15 @@ std::unique_ptr<ast::Node> BuildWhen(
 std::unique_ptr<ast::Node> BuildBinaryOperator(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  static absl::flat_hash_map<std::string_view, Operator> const kChainOps{
-      {",", Operator::Comma}, {"==", Operator::Eq}, {"!=", Operator::Ne},
-      {"<", Operator::Lt},    {">", Operator::Gt},  {"<=", Operator::Le},
-      {">=", Operator::Ge},   {"&", Operator::And}, {"|", Operator::Or},
-      {"^", Operator::Xor}};
+  static base::Global kChainOps =
+      absl::flat_hash_map<std::string_view, Operator>{
+          {",", Operator::Comma}, {"==", Operator::Eq}, {"!=", Operator::Ne},
+          {"<", Operator::Lt},    {">", Operator::Gt},  {"<=", Operator::Le},
+          {">=", Operator::Ge},   {"&", Operator::And}, {"|", Operator::Or},
+          {"^", Operator::Xor}};
 
   std::string const &tk = nodes[1]->as<Token>().token;
-  if (auto iter = kChainOps.find(tk); iter != kChainOps.end()) {
+  if (auto iter = kChainOps->find(tk); iter != kChainOps->end()) {
     nodes[1]->as<Token>().op = iter->second;
     return (iter->second == Operator::Comma)
                ? BuildCommaList(std::move(nodes), diag)
@@ -1291,7 +1293,7 @@ constexpr uint64_t KW_BLOCK = kw_struct | kw_block_head | kw_block;
 // list (second line of each rule). If so, then the function given in the third
 // line of each rule is applied, replacing the matched nodes. Lastly, the new
 // nodes type is set to the given type in the first line.
-static std::array kRules{
+static base::Global kRules = std::array{
     // Construction of braced statements
     ParseRule(braced_stmts, {l_brace, stmts, stmts | EXPR, r_brace},
               BracedStatementsSameLineEnd),
@@ -1561,7 +1563,7 @@ void Shift(ParseState *ps) {
 
 bool Reduce(ParseState *ps) {
   const ParseRule *matched_rule_ptr = nullptr;
-  for (ParseRule const &rule : kRules) {
+  for (ParseRule const &rule : *kRules) {
     if (rule.Match(ps->tag_stack_)) {
       matched_rule_ptr = &rule;
       break;

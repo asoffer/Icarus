@@ -3,16 +3,15 @@
 #include "absl/container/node_hash_set.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
-#include "base/guarded.h"
-#include "base/no_destructor.h"
+#include "base/global.h"
 
 namespace type {
 
-static base::NoDestructor<base::guarded<absl::node_hash_set<Jump>>> jmps;
+static base::Global<absl::node_hash_set<Jump>> jmps;
 
 Jump const *Jmp(type::Type const *state,
                 core::Params<Type const *> const &params) {
-  return &*jmps->lock()->insert(Jump(state, params)).first;
+  return &*jmps.lock()->insert(Jump(state, params)).first;
 }
 
 void Jump::WriteTo(std::string *r) const {

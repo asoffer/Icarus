@@ -35,23 +35,33 @@ namespace {
 int Compile(frontend::FileName const &file_name) {
   diagnostic::StreamingConsumer diag(stderr, frontend::SharedSource());
   auto canonical_file_name = frontend::CanonicalFileName::Make(file_name);
+  auto maybe_file_src      = frontend::FileSource::Make(canonical_file_name);
+  if (not maybe_file_src) {
+    diag.Consume(diagnostic::MissingModule{
+        .source    = canonical_file_name,
+        .requestor = "",
+    });
+    return 1;
+  }
 
-  auto *exec_mod =
-      module::ImportModule<compiler::ExecutableModule>(canonical_file_name);
-  exec_mod->Wait();
+  auto *src =
+      frontend::Source::Make<frontend::FileSource>(*std::move(maybe_file_src));
 
-  if (not exec_mod->main()) {
+  compiler::ExecutableModule exec_mod;
+  exec_mod.ProcessFromSource(src, diag);
+  auto *main_fn = exec_mod.main();
+
+  if (not main_fn) {
     // TODO make this an actual error?
     std::cerr << "No compiled module has a `main` function.\n";
   }
 
   // TODO All the functions? In all the modules?
-  opt::RunAllOptimizations(exec_mod->main());
-  exec_mod->main()->WriteByteCode();
+  opt::RunAllOptimizations(main_fn);
+  main_fn->WriteByteCode();
   interpretter::ExecutionContext exec_ctx;
   interpretter::Execute(
-      exec_mod->main(),
-      base::untyped_buffer::MakeFull(exec_mod->main()->num_regs() * 16), {},
+      main_fn, base::untyped_buffer::MakeFull(main_fn->num_regs() * 16), {},
       &exec_ctx);
 
   return 0;

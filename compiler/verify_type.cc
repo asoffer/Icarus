@@ -2074,10 +2074,12 @@ type::QualType Compiler::VerifyType(ast::Import const *node) {
 
   auto canonical_file_name =
       frontend::CanonicalFileName::Make(frontend::FileName(src.get()));
-  auto *mod = module::ImportModule<LibraryModule>(canonical_file_name);
-  if (not mod) { return type::QualType::Error(); }
-  data().set_imported_module(node, mod);
-  return data().set_qual_type(node, type::QualType::Constant(type::Module));
+  if (auto *mod = ImportLibraryModule(canonical_file_name)) {
+    data().set_imported_module(node, mod);
+    return data().set_qual_type(node, type::QualType::Constant(type::Module));
+  } else {
+    return type::QualType::Error();
+  }
 }
 
 type::QualType Compiler::VerifyType(ast::Index const *node) {

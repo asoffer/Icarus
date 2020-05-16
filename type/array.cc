@@ -1,14 +1,13 @@
 #include "type/array.h"
 
 #include "absl/strings/str_format.h"
-#include "base/guarded.h"
-#include "base/no_destructor.h"
+#include "base/global.h"
 
 namespace type {
 
-static base::NoDestructor<base::guarded<absl::node_hash_set<Array>>> cache;
+static base::Global<absl::node_hash_set<Array>> cache;
 Array const *Arr(size_t len, Type const *t) {
-  return &*cache->lock()->insert(Array(len, t)).first;
+  return &*cache.lock()->insert(Array(len, t)).first;
 }
 
 void Array::WriteTo(std::string *result) const {

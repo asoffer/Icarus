@@ -105,7 +105,10 @@ cc_library(
 cc_library(
     name = "read_only_data",
     hdrs = ["read_only_data.h"],
-    deps = ["//base:untyped_buffer"],
+    deps = [
+        "//base:global",
+        "//base:untyped_buffer",
+    ],
 )
 
 cc_library(

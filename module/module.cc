@@ -8,7 +8,6 @@ namespace module {
 // Can't declare this in header because unique_ptr's destructor needs to know
 // the size of ir::CompiledFn which we want to forward declare.
 BasicModule::BasicModule() : scope_(this) {}
-BasicModule::~BasicModule() = default;
 
 void BasicModule::InitializeNodes(base::PtrSpan<ast::Node> nodes) {
   ast::InitializeNodes(nodes, &scope_);
@@ -23,10 +22,7 @@ void BasicModule::InitializeNodes(base::PtrSpan<ast::Node> nodes) {
   }
 }
 
-void BasicModule::Complete() const {
-  exports_complete_.Notify();
-  complete_.Notify();
-}
+void BasicModule::ExportsComplete() { exports_complete_.Notify(); }
 
 void BasicModule::AppendNode(std::unique_ptr<ast::Node> node,
                              diagnostic::DiagnosticConsumer &diag) {
@@ -49,7 +45,6 @@ void BasicModule::ProcessFromSource(frontend::Source *src,
   auto nodes = frontend::Parse(src, diag);
   if (diag.num_consumed() > 0) { return; }
   AppendNodes(std::move(nodes), diag);
-  Complete();
 }
 
 absl::Span<ast::Declaration const *const> BasicModule::ExportedDeclarations(

@@ -10,6 +10,7 @@ cc_library(
         ":numbers",
         "//ast:ast",
         "//ast:hashtag",
+        "//base:global",
         "//diagnostic/consumer",
         "//diagnostic:errors",
         "//frontend/source:cursor",

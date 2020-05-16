@@ -3,6 +3,7 @@
 
 #include "ast/hashtag.h"
 #include "base/expected.h"
+#include "base/global.h"
 #include "diagnostic/consumer/consumer.h"
 #include "frontend/lex/lexeme.h"
 #include "frontend/source/cursor.h"
@@ -10,8 +11,14 @@
 #include "frontend/source/source.h"
 
 namespace frontend {
-extern absl::flat_hash_map<std::string_view, ast::Hashtag::Builtin> const
-    BuiltinHashtagMap;
+
+inline base::Global BuiltinHashtagMap =
+    absl::flat_hash_map<std::string_view, ast::Hashtag::Builtin>{
+        {"{export}", ast::Hashtag::Builtin::Export},
+        {"{uncopyable}", ast::Hashtag::Builtin::Uncopyable},
+        {"{immovable}", ast::Hashtag::Builtin::Immovable},
+        {"{inline}", ast::Hashtag::Builtin::Inline},
+        {"{no_default}", ast::Hashtag::Builtin::NoDefault}};
 
 struct LexState {
   LexState(Source *src, diagnostic::DiagnosticConsumer &diag)

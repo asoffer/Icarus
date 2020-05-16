@@ -1005,10 +1005,11 @@ void ExecutionContext::ExecuteBlocks(absl::Span<ir::Addr const> ret_slots) {
             current_frame()->regs_.set_raw(result_reg, stack_.raw(addr.stack()),
                                            num_bytes);
           } break;
-          case ir::Addr::Kind::ReadOnly:
+          case ir::Addr::Kind::ReadOnly: {
+            auto handle = ir::ReadOnlyData.lock();
             current_frame()->regs_.set_raw(
-                result_reg, ir::ReadOnlyData.raw(addr.rodata()), num_bytes);
-            break;
+                result_reg, handle->raw(addr.rodata()), num_bytes);
+          } break;
           case ir::Addr::Kind::Heap: {
             current_frame()->regs_.set_raw(result_reg, addr.heap(), num_bytes);
           } break;

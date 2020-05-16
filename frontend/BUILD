@@ -6,6 +6,7 @@ cc_library(
     srcs = ["parse_rule.cc"],
     deps = [
         "//ast:node",
+        "//base:no_destructor",
         "//diagnostic/consumer",
         "//frontend/lex:tag",
         "@com_google_absl//absl/types:span",
@@ -21,7 +22,7 @@ cc_library(
         ":parse_rule",
         "//ast:ast",
         "//ast:ast_fwd",
-        "//base:guarded",
+        "//base:global",
         "//diagnostic/consumer",
         "//frontend/lex:lex",
         "//frontend/lex:tagged_node",

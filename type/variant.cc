@@ -3,7 +3,7 @@
 #include <algorithm>
 
 #include "absl/algorithm/container.h"
-#include "base/guarded.h"
+#include "base/global.h"
 #include "type/primitive.h"
 #include "type/tuple.h"
 
@@ -31,8 +31,7 @@ Variant::Variant(std::vector<Type const *> variants)
   }
 }
 
-static base::guarded<std::map<std::vector<Type const *>, Variant>>
-    all_variants_;
+static base::Global<std::map<std::vector<Type const *>, Variant>> all_variants_;
 Type const *Var(std::vector<Type const *> variants) {
   if (variants.empty()) { return Void(); }
   if (variants.size() == 1) { return variants[0]; }

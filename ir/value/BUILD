@@ -230,6 +230,7 @@ cc_library(
     srcs = ["string.cc"],
     deps = [
         ":addr",
+        "//base:no_destructor",
         "//ir:read_only_data",
         "@com_google_absl//absl/container:node_hash_map",
     ],

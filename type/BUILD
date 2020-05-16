@@ -26,7 +26,7 @@ cc_library(
     srcs = ["array.cc"],
     deps = [
         ":type",
-        "//base:guarded",
+        "//base:global",
         "//base:lazy",
         "//base:no_destructor",
         "//core:arch",
@@ -134,7 +134,7 @@ cc_library(
         ":type",
         ":typed_value",
         "//core:params",
-        "//base:guarded",
+        "//base:global",
     ],
 )
 
@@ -171,8 +171,7 @@ cc_library(
     srcs = ["jump.cc"],
     deps = [
         ":type",
-        "//base:no_destructor",
-        "//base:guarded",
+        "//base:global",
         "//core:params",
         "@com_google_absl//absl/container:node_hash_set",
         "@com_google_absl//absl/strings",
@@ -217,8 +216,7 @@ cc_library(
     srcs = ["pointer.cc"],
     deps = [
         ":type",
-        "//base:guarded",
-        "//base:no_destructor",
+        "//base:global",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
@@ -239,7 +237,7 @@ cc_library(
     srcs = ["parameter_pack.cc"],
     deps = [
         ":type",
-        "//base:guarded",
+        "//base:global",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
@@ -294,7 +292,7 @@ cc_library(
         ":type",
         "//ast/scope",
         "//ast:hashtag",
-        "//base:guarded",
+        "//base:global",
         "//base:lazy",
         "//core:arch",
         "//ir:compiled_fn",
@@ -314,7 +312,7 @@ cc_library(
         ":pointer",
         ":type",
         "//base:lazy",
-        "//base:guarded",
+        "//base:global",
         "//core:arch",
         "//ir/value:native_fn",
     ],
@@ -366,7 +364,7 @@ cc_library(
         ":primitive",
         ":type",
         ":tuple",
-        "//base:guarded",
+        "//base:global",
         "@com_google_absl//absl/algorithm:container",
     ],
 )

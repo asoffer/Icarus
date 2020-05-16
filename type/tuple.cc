@@ -2,7 +2,7 @@
 
 #include <utility>
 
-#include "base/guarded.h"
+#include "base/global.h"
 #include "core/arch.h"
 #include "type/function.h"
 #include "type/pointer.h"
@@ -13,12 +13,13 @@
 namespace type {
 Type const *Void() { return Tup({}); }
 
-static base::guarded<std::map<std::vector<Type const *>, Tuple const>> tups_;
+static base::Global<std::map<std::vector<Type const *>, Tuple const>> tups_;
 Type const *Tup(std::vector<Type const *> entries) {
   if (entries.size() == 1) { return entries[0]; }
-  auto [iter, success] = tups_.lock()->emplace(std::piecewise_construct,
-                                               std::forward_as_tuple(entries),
-                                               std::forward_as_tuple(entries));
+  auto handle = tups_.lock();
+  auto [iter, success] =
+      handle->emplace(std::piecewise_construct, std::forward_as_tuple(entries),
+                      std::forward_as_tuple(entries));
   return &iter->second;
 }
 

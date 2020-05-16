@@ -28,6 +28,9 @@ struct alignas(T) NoDestructor {
    char buf_[sizeof(T)];
 };
 
+template <typename T>
+NoDestructor(T)->NoDestructor<T>;
+
 }  // namespace base
 
 #endif  // ICARUS_BASE_NO_DESTRUCTOR_H

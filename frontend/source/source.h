@@ -21,10 +21,8 @@ struct Source : base::Cast<Source> {
 
   template <typename T, typename... Args>
   static T* Make(Args&&... args) {
-    auto src  = std::make_unique<T>(std::forward<Args>(args)...);
-    auto* ptr = src.get();
-    sources_.insert(std::move(src));
-    return ptr;
+    // TODO Don't keep these around forever.
+    return new T(std::forward<Args>(args)...);
   }
 
   // Reads data from the source until the delimeter is found, dropping the
@@ -38,12 +36,6 @@ struct Source : base::Cast<Source> {
   virtual std::vector<std::string> LoadLines() const = 0;
 
  private:
-  // TODO Just keeping all the sources around forever is a bad idea. For sources
-  // that own file handles, we should close them. If a repl is open long enough,
-  // lines should be written out to memory. If we need to emit diagnostics,
-  // reopening and skipping forward to the approripate point in the file is
-  // probably preferable.
-  static absl::flat_hash_set<std::unique_ptr<Source>> sources_;
 };
 
 }  // namespace frontend

@@ -37,7 +37,7 @@ struct ExtendedModule;
 // explicit.
 struct BasicModule : base::Cast<BasicModule> {
   BasicModule();
-  virtual ~BasicModule();
+  virtual ~BasicModule() {}
 
   // Pointers to modules are passed around, so moving a module is not safe.
   BasicModule(BasicModule &&) noexcept = delete;
@@ -63,20 +63,17 @@ struct BasicModule : base::Cast<BasicModule> {
   void ProcessFromSource(frontend::Source *src,
                          diagnostic::DiagnosticConsumer &diag);
 
-  void Wait() const {
-    // TODO this is redundant.
-    exports_complete_.WaitForNotification();
-    complete_.WaitForNotification();
-  }
-
  protected:
   virtual void ProcessNodes(base::PtrSpan<ast::Node const>,
                             diagnostic::DiagnosticConsumer &) = 0;
 
+  // Child classes must call this when they no longer append nodes to the syntax
+  // tree. This notifies users of the module that it is safe to consume the
+  // syntaxt tree.
+  void ExportsComplete();
+
  private:
   void InitializeNodes(base::PtrSpan<ast::Node> nodes);
-
-  void Complete() const;
 
   ast::ModuleScope scope_;
   absl::flat_hash_map<std::string_view, std::vector<ast::Declaration const *>>
@@ -84,8 +81,7 @@ struct BasicModule : base::Cast<BasicModule> {
   std::vector<std::unique_ptr<ast::Node>> nodes_;
 
   // Notifies when exports are ready to be consumed.
-  mutable absl::Notification exports_complete_;
-  mutable absl::Notification complete_;
+  absl::Notification exports_complete_;
 };
 
 // Returns a container of all declarations in this scope and in parent scopes
@@ -124,65 +120,6 @@ bool ForEachDeclTowardsRoot(ast::Scope const *starting_scope,
 // of the other, or is the root scope of an embedded module).
 std::vector<ast::Declaration const *> AllAccessibleDecls(
     ast::Scope const *starting_scope, std::string_view id);
-
-
-namespace internal {
-
-inline base::guarded<
-    absl::flat_hash_map<ir::ModuleId, std::unique_ptr<BasicModule>>>
-    modules;
-
-}  // namespace internal
-
-// Returns a pointer to a module of type given by the template parameter, by
-// loading the module from the filesystem denoted by the file named `file_name`.
-// When the module is returned it may not be ready for consumption yet as the
-// processing is started in a separate thread. Each module implementation has
-// its own criteria for which parts are available when and how to access them.
-// BasicModule provides no such guarantees.
-template <typename ModType>
-ModType *ImportModule(frontend::CanonicalFileName const &file_name) {
-  auto id = ir::ModuleId::FromFile(file_name);
-
-  ModType *result;
-  {
-    auto handle = internal::modules.lock();
-
-    // TODO Need to add dependencies even if the node was already scheduled
-    // (hence the "already scheduled" check is done after this).
-    //
-    // TODO detect dependency cycles.
-
-    auto [iter, inserted] = handle->try_emplace(id);
-    auto &mod             = iter->second;
-
-    if (not inserted) { return &mod->as<ModType>(); }
-
-    auto derived_mod = std::make_unique<ModType>();
-    result           = derived_mod.get();
-    mod              = std::move(derived_mod);
-
-    if (auto maybe_file_src = frontend::FileSource::Make(id.filename())) {
-      std::thread t([mod      = &mod,
-                     file_src = std::move(*maybe_file_src)]() mutable {
-        auto *src =
-            frontend::Source::Make<frontend::FileSource>(std::move(file_src));
-        diagnostic::StreamingConsumer diag(stderr, src);
-        (*mod)->ProcessFromSource(src, diag);
-      });
-      t.detach();
-    } else {
-      diagnostic::StreamingConsumer diag(stderr, frontend::SharedSource());
-      diag.Consume(diagnostic::MissingModule{
-          .source    = id.filename(),
-          .requestor = "",
-      });
-      return nullptr;
-    }
-  }
-
-  return result;
-}
 
 }  // namespace module
 

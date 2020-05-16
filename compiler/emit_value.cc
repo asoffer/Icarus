@@ -59,7 +59,8 @@ void AddAdl(ast::OverloadSet *overload_set, std::string_view id,
 
   for (auto *mod : modules) {
     auto decls = mod->ExportedDeclarations(id);
-    mod->Wait();
+    // TODO accessing module from another thread is bad news!
+    auto & data = mod->data();
     diagnostic::TrivialConsumer consumer;
 
     for (auto *d : decls) {
@@ -67,7 +68,7 @@ void AddAdl(ast::OverloadSet *overload_set, std::string_view id,
       ASSIGN_OR(continue, auto &t,
                 Compiler({
                              .builder             = ir::GetBuilder(),
-                             .data                = mod->data(),
+                             .data                = data,
                              .diagnostic_consumer = consumer,
                          })
                     .type_of(d));
@@ -151,7 +152,8 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
         MakeThunk(node->operand(), type::Module));
     ASSERT(mod != data().module());
     auto decls = mod->ExportedDeclarations(node->member_name());
-    mod->Wait();
+    NOT_YET();
+    // TODO accessing a decl across module boundaries
     switch (decls.size()) {
       case 0: NOT_YET();
       case 1: return EmitValue(decls[0]);

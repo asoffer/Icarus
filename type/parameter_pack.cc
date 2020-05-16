@@ -1,10 +1,10 @@
 #include "type/parameter_pack.h"
 
 #include "absl/container/flat_hash_map.h"
-#include "base/guarded.h"
+#include "base/global.h"
 
 namespace type {
-static base::guarded<
+static base::Global<
     absl::flat_hash_map<Type const *, std::unique_ptr<ParameterPack const>>>
     packs_;
 ParameterPack const *Pack(Type const *t) {
