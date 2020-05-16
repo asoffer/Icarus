@@ -103,7 +103,7 @@ cc_library(
     srcs = ["generic_fn.cc"],
     deps = [
         ":native_fn",
-        "//base:guarded",
+        "//base:global",
         "//core:fn_args",
         "//type",
         "//type:typed_value",

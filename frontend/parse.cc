@@ -978,14 +978,17 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
                                                std::move(outs));
   }
 
-  static absl::flat_hash_map<std::string_view, Operator> const kSymbols = {
-      {"|=", Operator::OrEq},  {"&=", Operator::AndEq}, {"^=", Operator::XorEq},
-      {"+=", Operator::AddEq}, {"-=", Operator::SubEq}, {"*=", Operator::MulEq},
-      {"/=", Operator::DivEq}, {"%=", Operator::ModEq}, {"+", Operator::Add},
-      {"-", Operator::Sub},    {"*", Operator::Mul},    {"/", Operator::Div},
-      {"%", Operator::Mod}};
+  static base::Global kSymbols =
+      absl::flat_hash_map<std::string_view, Operator>{
+          {"|=", Operator::OrEq},  {"&=", Operator::AndEq},
+          {"^=", Operator::XorEq}, {"+=", Operator::AddEq},
+          {"-=", Operator::SubEq}, {"*=", Operator::MulEq},
+          {"/=", Operator::DivEq}, {"%=", Operator::ModEq},
+          {"+", Operator::Add},    {"-", Operator::Sub},
+          {"*", Operator::Mul},    {"/", Operator::Div},
+          {"%", Operator::Mod}};
   return std::make_unique<ast::Binop>(move_as<ast::Expression>(nodes[0]),
-                                      kSymbols.find(tk)->second,
+                                      kSymbols->find(tk)->second,
                                       move_as<ast::Expression>(nodes[2]));
 }
 

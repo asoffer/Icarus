@@ -2,15 +2,15 @@
 
 #include <vector>
 
-#include "base/guarded.h"
+#include "base/global.h"
 #include "ir/value/native_fn.h"
 #include "ir/value/value.h"
 
 namespace ir {
 namespace {
 
-base::guarded<std::vector<
-    std::function<NativeFn(core::FnArgs<type::Typed<Value>> const&)>>>
+base::Global<std::vector<
+    std::function<NativeFn(core::FnArgs<type::Typed<Value>> const &)>>>
     gen_fns;
 
 }  // namespace
