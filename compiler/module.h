@@ -20,6 +20,10 @@ struct CompiledModule : module::BasicModule {
   explicit CompiledModule() : data_(this) {}
   ~CompiledModule() override {}
 
+  ir::Value ExportedValue(ast::Declaration const *decl) const {
+    return data().constants_.get_constant(decl);
+  }
+
   // TODO We probably don't need these. There are likely better ways to expose
   // the requisite information.
   DependentComputedData const &data() const {

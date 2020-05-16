@@ -148,15 +148,15 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
   if (type_of(node->operand()) == type::Module) {
     // TODO we already did this evaluation in type verification. Can't we just
     // save and reuse it?
-    auto const *mod = interpretter::EvaluateAs<module::BasicModule const *>(
-        MakeThunk(node->operand(), type::Module));
+    auto const *mod = &interpretter::EvaluateAs<module::BasicModule const *>(
+                           MakeThunk(node->operand(), type::Module))
+                           ->as<CompiledModule>();
+
     ASSERT(mod != data().module());
     auto decls = mod->ExportedDeclarations(node->member_name());
-    NOT_YET();
-    // TODO accessing a decl across module boundaries
     switch (decls.size()) {
       case 0: NOT_YET();
-      case 1: return EmitValue(decls[0]);
+      case 1: return mod->ExportedValue(decls[0]);
       default: NOT_YET();
     }
   }
