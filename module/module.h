@@ -63,7 +63,11 @@ struct BasicModule : base::Cast<BasicModule> {
   void ProcessFromSource(frontend::Source *src,
                          diagnostic::DiagnosticConsumer &diag);
 
-  void Wait() const { complete_.WaitForNotification(); }
+  void Wait() const {
+    // TODO this is redundant.
+    exports_complete_.WaitForNotification();
+    complete_.WaitForNotification();
+  }
 
  protected:
   virtual void ProcessNodes(base::PtrSpan<ast::Node const>,

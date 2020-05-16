@@ -112,8 +112,8 @@ type::QualType VerifyBinaryOverload(Compiler *c, char const *symbol,
   AddAdl(symbol, rhs_type, extract_callable_type);
 
   std::vector<type::Typed<ir::Value>> pos_args;
-  pos_args.emplace_back(std::nullopt, lhs_type);
-  pos_args.emplace_back(std::nullopt, rhs_type);
+  pos_args.emplace_back(ir::Value(), lhs_type);
+  pos_args.emplace_back(ir::Value(), rhs_type);
 
   return c->data().set_qual_type(
       node,
@@ -1112,8 +1112,9 @@ static type::Typed<ir::Value> EvaluateIfConstant(Compiler *c,
   if (qt.constant()) {
     DEBUG_LOG("EvaluateIfConstant")
     ("Evaluating constant: ", expr->DebugString());
-    return type::Typed<ir::Value>(
-        interpretter::Evaluate(c->MakeThunk(expr, qt.type())), qt.type());
+    auto maybe_val = interpretter::Evaluate(c->MakeThunk(expr, qt.type()));
+    if (not maybe_val) { NOT_YET(); }
+    return type::Typed<ir::Value>(*maybe_val, qt.type());
   } else {
     return type::Typed<ir::Value>(ir::Value(), qt.type());
   }
@@ -1829,10 +1830,10 @@ MakeConcrete(
           arg = *a;
         } else {
           auto const *t = ASSERT_NOT_NULL(c.type_of(dep_node.node()));
-          arg           = type::Typed<ir::Value>(
-              interpretter::Evaluate(
-                  c.MakeThunk(ASSERT_NOT_NULL(dep_node.node()->init_val()), t)),
-              t);
+          auto maybe_val = interpretter::Evaluate(
+              c.MakeThunk(ASSERT_NOT_NULL(dep_node.node()->init_val()), t));
+          if (not maybe_val) { NOT_YET(); }
+          arg = type::Typed<ir::Value>(*maybe_val, t);
           DEBUG_LOG("generic-fn")(dep_node.node()->DebugString());
         }
 
@@ -2117,7 +2118,10 @@ type::QualType Compiler::VerifyType(ast::Index const *node) {
 
     int64_t index = [&]() -> int64_t {
       // TODO handle overflow?
-      auto results = interpretter::Evaluate(MakeThunk(node->rhs(), index_type));
+      auto maybe_results =
+          interpretter::Evaluate(MakeThunk(node->rhs(), index_type));
+      if (not maybe_results) { NOT_YET(); }
+      auto &results = *maybe_results;
       if (index_type == type::Int8) { return results.get<int8_t>(); }
       if (index_type == type::Int16) { return results.get<int16_t>(); }
       if (index_type == type::Int32) { return results.get<int32_t>(); }

@@ -633,15 +633,15 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
       if (node->IsCustomInitialized()) {
         DEBUG_LOG("EmitValueDeclaration")
         ("Computing slot with ", node->init_val()->DebugString());
-        ir::Value val = interpretter::Evaluate(MakeThunk(node->init_val(), t));
-        if (diag().num_consumed() > 0u) {
+        auto maybe_val = interpretter::Evaluate(MakeThunk(node->init_val(), t));
+        if (not maybe_val) {
           // TODO we reserved a slot and haven't cleaned it up. Do we care?
-          NOT_YET("Found errors but haven't handled them.");
+          NOT_YET("Found errors but haven't handled them.", diag().num_consumed());
           return ir::Value();
         }
-        DEBUG_LOG("EmitValueDeclaration")("Setting slot = ", val);
-        data().constants_.set_slot(node, val);
-        return val;
+        DEBUG_LOG("EmitValueDeclaration")("Setting slot = ", *maybe_val);
+        data().constants_.set_slot(node, *maybe_val);
+        return *maybe_val;
       } else if (node->IsDefaultInitialized()) {
         UNREACHABLE();
       } else {
@@ -1191,9 +1191,10 @@ ir::Value Compiler::EmitValue(ast::Unop const *node) {
     case frontend::Operator::And: return ir::Value(EmitRef(node->operand()));
     case frontend::Operator::Eval: {
       // Guaranteed to be constant by VerifyType
-      // TODO what if there's an error during evaluation?
-      return ir::Value(interpretter::Evaluate(
-          MakeThunk(node->operand(), type_of(node->operand()))));
+      auto maybe_val = interpretter::Evaluate(
+          MakeThunk(node->operand(), type_of(node->operand())));
+      if (not maybe_val) { NOT_YET(); }
+      return *maybe_val;
     }
     case frontend::Operator::Mul:
       return ir::Value(

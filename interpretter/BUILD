@@ -28,6 +28,7 @@ cc_library(
         ":architecture",
         ":execute",
         "//base:debug",
+        "//base:expected",
         "//base:untyped_buffer",
         "//core:arch",
         "//ir:compiled_fn",

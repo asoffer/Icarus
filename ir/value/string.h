@@ -17,6 +17,10 @@ struct String {
 
   std::string get() const;
 
+  friend bool operator==(String lhs, String rhs) {
+    return lhs.addr() == rhs.addr() or lhs.get() == rhs.get();
+  }
+
   friend std::ostream& operator<<(std::ostream& os, String s);
 
  private:

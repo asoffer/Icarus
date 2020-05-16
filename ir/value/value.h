@@ -52,7 +52,14 @@ struct MultiValue {
 // intermediate representation.
 struct Value {
   // `Empty` is a special tag to hold empty values.
-  struct Empty{};
+  struct Empty {
+    template <typename H>
+    friend H AbslHashValue(H h, Empty) {
+      return h;
+    }
+    friend constexpr bool operator==(Empty, Empty) { return true; }
+    friend constexpr bool operator!=(Empty, Empty) { return false; }
+  };
 
   explicit Value() : Value(Empty{}) {}
 
@@ -169,7 +176,7 @@ struct Value {
   constexpr void apply(F&& f) const {
     apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                uint32_t, uint64_t, float, double, type::Type const*, Addr,
-               String, EnumVal, FlagsVal, /*Fn, GenericFn,*/ Reg, ModuleId>(
+               String, EnumVal, FlagsVal, /*Fn, GenericFn,*/ Reg, ModuleId, Empty>(
         std::forward<F>(f));
   }
 
@@ -178,7 +185,7 @@ struct Value {
     v.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                  uint32_t, uint64_t, float, double, type::Type const*, Addr,
                  /*String,*/ EnumVal, FlagsVal, /* Fn, GenericFn, */ Reg,
-                 ModuleId>(
+                 ModuleId, Empty>(
         [&](auto x) { h = H::combine(std::move(h), v.type_.get(), x); });
     return h;
   }
@@ -207,7 +214,7 @@ struct Value {
     bool eq;
     lhs.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                    uint32_t, uint64_t, float, double, type::Type const*, Reg,
-                   ModuleId, MultiValue>([&rhs, &eq](auto x) {
+                   ModuleId, MultiValue, Empty>([&rhs, &eq](auto x) {
       eq = (x == rhs.get<std::decay_t<decltype(x)>>());
     });
     return eq;
@@ -220,7 +227,7 @@ struct Value {
   friend std::ostream& operator<<(std::ostream& os, Value value) {
     value.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                      uint32_t, uint64_t, float, double, type::Type const*,
-                     ModuleId>([&os](auto x) { os << x; });
+                     ModuleId, Empty>([&os](auto x) { os << x; });
     return os;
   }
 
