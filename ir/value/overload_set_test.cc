@@ -20,9 +20,13 @@ TEST(OverloadSet, Construction) {
   ir::OverloadSet os(std::vector<ir::Fn>{
       ir::ForeignFn(TestFn1, type::Func({}, {})),
       ir::ForeignFn(TestFn2,
-                    type::Func({core::AnonymousParam(type::Int64)}, {})),
+                    type::Func({core::AnonymousParam(
+                                   type::QualType::NonConstant(type::Int64))},
+                               {})),
       ir::ForeignFn(TestFn3,
-                    type::Func({core::AnonymousParam(type::Bool)}, {}))});
+                    type::Func({core::AnonymousParam(
+                                   type::QualType::NonConstant(type::Bool))},
+                               {}))});
 
   {
     core::FnArgs<type::QualType> a;

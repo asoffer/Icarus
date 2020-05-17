@@ -922,9 +922,12 @@ struct ArrowInstruction : base::Clone<ArrowInstruction, Instruction> {
   static type::Type const* Apply(std::vector<type::Type const*> const& lhs,
                                  std::vector<type::Type const*> rhs) {
     // TODO named arguments
-    core::Params<type::Type const*> params;
+    core::Params<type::QualType> params;
     params.reserve(lhs.size());
-    for (auto* t : lhs) { params.append(core::AnonymousParam(t)); }
+    for (auto* t : lhs) {
+      // TODO push qualtype into `Apply` parameters
+      params.append(core::AnonymousParam(type::QualType::NonConstant(t)));
+    }
     return type::Func(std::move(params), std::move(rhs));
   }
 
@@ -1067,7 +1070,7 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
       if (r) {
         writer->Write(*r);
       } else {
-        type::Apply(fn_type_->params()[arg_index].value, [&](auto tag) {
+        type::Apply(fn_type_->params()[arg_index].value.type(), [&](auto tag) {
           using T = typename decltype(tag)::type;
           writer->Write(arg.get<T>());
         });

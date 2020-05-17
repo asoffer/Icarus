@@ -20,7 +20,7 @@ namespace compiler {
 // there must be a cast from the actual argument type to the parameter type
 // (usually due to a cast such as `int64` casting to `int64 | bool`).
 ir::RegOr<bool> EmitRuntimeDispatchOneComparison(
-    ir::Builder &bldr, core::Params<type::Type const *> const &params,
+    ir::Builder &bldr, core::Params<type::QualType> const &params,
     core::FnArgs<type::Typed<ir::Value>> const &args);
 
 // Emits code which jumps to the appropriate argument-prep-and-function-call
@@ -48,11 +48,13 @@ void EmitRuntimeDispatch(
       break;
     }
 
-    core::Params<type::Type const *> params;
+    core::Params<type::QualType> params;
     if constexpr (std::is_same_v<Key, ast::Expression const *>) {
-      params = val.params();
+      params = val.params().Transform(
+          [](auto const &p) { return type::QualType::NonConstant(p.type()); });
     } else if constexpr (std::is_same_v<Key, ir::Jump *>) {
-      params = key->params().Transform([](auto const &p) { return p.type(); });
+      params = key->params().Transform(
+          [](auto const &p) { return type::QualType::NonConstant(p.type()); });
     } else {
       static_assert(base::always_false<Key>());
     }

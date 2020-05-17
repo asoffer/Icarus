@@ -149,7 +149,7 @@ struct DependentComputedData {
   // which new computed data dependent on this set of generic context can be
   // added.
   struct InsertDependentResult {
-    core::Params<type::Type const *> &params;
+    core::Params<type::QualType> &params;
     std::vector<type::Type const *> &rets;
     DependentComputedData &data;
     bool inserted;
@@ -157,7 +157,7 @@ struct DependentComputedData {
 
   InsertDependentResult InsertDependent(
       ast::ParameterizedExpression const *node,
-      core::Params<type::Type const *> const &params,
+      core::Params<type::QualType> const &params,
       ConstantBinding const &constants);
 
   // FindDependent:
@@ -172,9 +172,8 @@ struct DependentComputedData {
     DependentComputedData &data;
   };
 
-  FindDependentResult FindDependent(
-      ast::ParameterizedExpression const *node,
-      core::Params<type::Type const *> const &params);
+  FindDependentResult FindDependent(ast::ParameterizedExpression const *node,
+                                    core::Params<type::QualType> const &params);
 
   template <
       typename Ctor,
@@ -231,8 +230,7 @@ struct DependentComputedData {
   struct DependentDataChild {
     DependentComputedData *parent = nullptr;
     struct DataImpl;
-    absl::flat_hash_map<core::Params<type::Type const *>,
-                        std::unique_ptr<DataImpl>>
+    absl::flat_hash_map<core::Params<type::QualType>, std::unique_ptr<DataImpl>>
         map;
   };
 

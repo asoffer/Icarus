@@ -10,7 +10,7 @@ DependentComputedData::~DependentComputedData() {
 }
 
 struct DependentComputedData::DependentDataChild::DataImpl {
-  core::Params<type::Type const *> params;
+  core::Params<type::QualType> params;
   std::vector<type::Type const *> rets;
   DependentComputedData data;
 };
@@ -18,7 +18,7 @@ struct DependentComputedData::DependentDataChild::DataImpl {
 DependentComputedData::InsertDependentResult
 DependentComputedData::InsertDependent(
     ast::ParameterizedExpression const *node,
-    core::Params<type::Type const *> const &params,
+    core::Params<type::QualType> const &params,
     ConstantBinding const &constants) {
   auto &[parent, map]   = dependent_data_[node];
   parent                = this;
@@ -41,10 +41,7 @@ DependentComputedData::InsertDependent(
     iter->second->data.parent_ = this;
     for (size_t i = 0; i < node->params().size(); ++i) {
       auto const *decl = node->params()[i].value.get();
-      iter->second->data.set_qual_type(
-          decl, decl->flags() & ast::Declaration::f_IsConst
-                    ? type::QualType::Constant(params[i].value)
-                    : type::QualType::NonConstant(params[i].value));
+      iter->second->data.set_qual_type(decl, params[i].value);
     }
   }
   auto &[parameters, rets, data] = *iter->second;
@@ -58,7 +55,7 @@ DependentComputedData::InsertDependent(
 
 DependentComputedData::FindDependentResult DependentComputedData::FindDependent(
     ast::ParameterizedExpression const *node,
-    core::Params<type::Type const *> const &params) {
+    core::Params<type::QualType> const &params) {
   auto &map = dependent_data_.find(node)->second.map;
   auto iter = map.find(params);
   ASSERT(iter != map.end());

@@ -9,11 +9,9 @@
 
 namespace compiler {
 namespace {
-using param_type = core::Param<type::Type const *>;
+using param_type = core::Param<type::QualType>;
 
 using ::testing::ElementsAre;
-
-type::Type const *ExtractType(type::QualType qt) { return qt.type(); }
 
 template <typename NodeType>
 NodeType const *Make(test::TestModule *mod, std::string code) {
@@ -28,8 +26,7 @@ TEST(ExtractParamTypes, FunctionLiteral) {
   {  // Empty
     test::TestModule mod;
     EXPECT_THAT(ExtractParamTypes(&mod.compiler, Make<ast::FunctionLiteral>(
-                                                     &mod, "() -> () {}"))
-                    .Transform(ExtractType),
+                                                     &mod, "() -> () {}")),
                 ElementsAre());
   }
 
@@ -37,9 +34,8 @@ TEST(ExtractParamTypes, FunctionLiteral) {
     test::TestModule mod;
     EXPECT_THAT(
         ExtractParamTypes(&mod.compiler, Make<ast::FunctionLiteral>(
-                                             &mod, "(b: bool) -> () {}"))
-            .Transform(ExtractType),
-        ElementsAre(param_type("b", type::Bool)));
+                                             &mod, "(b: bool) -> () {}")),
+        ElementsAre(param_type("b", type::QualType::NonConstant(type::Bool))));
   }
 
   {  // Multiple arguments
@@ -47,28 +43,27 @@ TEST(ExtractParamTypes, FunctionLiteral) {
     EXPECT_THAT(
         ExtractParamTypes(
             &mod.compiler,
-            Make<ast::FunctionLiteral>(&mod, "(b: bool, n: int32) -> () {}"))
-            .Transform(ExtractType),
-        ElementsAre(param_type("b", type::Bool), param_type("n", type::Int32)));
+            Make<ast::FunctionLiteral>(&mod, "(b: bool, n: int32) -> () {}")),
+        ElementsAre(param_type("b", type::QualType::NonConstant(type::Bool)),
+                    param_type("n", type::QualType::NonConstant(type::Int32))));
   }
 }
 
 TEST(ExtractParamTypes, ConstantDeclaration) {
   {  // Empty
     test::TestModule mod;
-    EXPECT_THAT(ExtractParamTypes(&mod.compiler, Make<ast::Declaration>(
-                                                     &mod, "f ::= () -> () {}"))
-                    .Transform(ExtractType),
-                ElementsAre());
+    EXPECT_THAT(
+        ExtractParamTypes(&mod.compiler,
+                          Make<ast::Declaration>(&mod, "f ::= () -> () {}")),
+        ElementsAre());
   }
 
   {  // One argument
     test::TestModule mod;
     EXPECT_THAT(
         ExtractParamTypes(&mod.compiler, Make<ast::Declaration>(
-                                             &mod, "f ::= (b: bool) -> () {}"))
-            .Transform(ExtractType),
-        ElementsAre(param_type("b", type::Bool)));
+                                             &mod, "f ::= (b: bool) -> () {}")),
+        ElementsAre(param_type("b", type::QualType::NonConstant(type::Bool))));
   }
 
   {  // Multiple arguments
@@ -76,9 +71,9 @@ TEST(ExtractParamTypes, ConstantDeclaration) {
     EXPECT_THAT(
         ExtractParamTypes(
             &mod.compiler,
-            Make<ast::Declaration>(&mod, "f ::= (b: bool, n: int32) -> () {}"))
-            .Transform(ExtractType),
-        ElementsAre(param_type("b", type::Bool), param_type("n", type::Int32)));
+            Make<ast::Declaration>(&mod, "f ::= (b: bool, n: int32) -> () {}")),
+        ElementsAre(param_type("b", type::QualType::NonConstant(type::Bool)),
+                    param_type("n", type::QualType::NonConstant(type::Int32))));
   }
 }
 
@@ -86,8 +81,7 @@ TEST(ExtractParamTypes, NonConstantDeclaration) {
   {  // Empty
     test::TestModule mod;
     EXPECT_THAT(ExtractParamTypes(&mod.compiler, Make<ast::Declaration>(
-                                                     &mod, "f := () -> () {}"))
-                    .Transform(ExtractType),
+                                                     &mod, "f := () -> () {}")),
                 ElementsAre());
   }
 
@@ -95,9 +89,8 @@ TEST(ExtractParamTypes, NonConstantDeclaration) {
     test::TestModule mod;
     EXPECT_THAT(
         ExtractParamTypes(&mod.compiler, Make<ast::Declaration>(
-                                             &mod, "f := (b: bool) -> () {}"))
-            .Transform(ExtractType),
-        ElementsAre(param_type("b", type::Bool)));
+                                             &mod, "f := (b: bool) -> () {}")),
+        ElementsAre(param_type("b", type::QualType::NonConstant(type::Bool))));
   }
 
   {  // Multiple arguments
@@ -105,9 +98,9 @@ TEST(ExtractParamTypes, NonConstantDeclaration) {
     EXPECT_THAT(
         ExtractParamTypes(
             &mod.compiler,
-            Make<ast::Declaration>(&mod, "f := (b: bool, n: int32) -> () {}"))
-            .Transform(ExtractType),
-        ElementsAre(param_type("b", type::Bool), param_type("n", type::Int32)));
+            Make<ast::Declaration>(&mod, "f := (b: bool, n: int32) -> () {}")),
+        ElementsAre(param_type("b", type::QualType::NonConstant(type::Bool)),
+                    param_type("n", type::QualType::NonConstant(type::Int32))));
   }
 }
 
@@ -127,15 +120,15 @@ TEST(ParamsCoverArgs, EmptyArguments) {
   }
 
   {  // One overload
-    core::Params params{core::Param<type::Type const *>("param0", type::Bool)};
+    core::Params params{param_type("param0", type::QualType::NonConstant(type::Bool))};
     absl::flat_hash_map<int, internal::ExprData> table{
         {0, internal::ExprData(nullptr, params)}};
     EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 
   {  // Multiple overloads
-    core::Params params{core::Param<type::Type const *>("param0", type::Bool),
-                        core::Param<type::Type const *>("param1", type::Bool)};
+    core::Params params{param_type("param0", type::QualType::NonConstant(type::Bool)),
+                        param_type("param1", type::QualType::NonConstant(type::Bool))};
     absl::flat_hash_map<int, internal::ExprData> table{
         {0, internal::ExprData(nullptr, params)}};
     EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
@@ -156,15 +149,16 @@ TEST(ParamsCoverArgs, OnePositionalArgument) {
   }
 
   {  // One overload
-    core::Params params{core::Param<type::Type const *>("param0", type::Bool)};
+    core::Params params{param_type("param0", type::QualType::NonConstant(type::Bool))};
     absl::flat_hash_map<int, internal::ExprData> table{
         {0, internal::ExprData(nullptr, params)}};
     EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 
   {  // One parameter, matches
-    core::Params params{core::Param<type::Type const *>(
-        "param0", type::Var({type::Int64, type::Type_, type::Bool}))};
+    core::Params params{param_type(
+        "param0", type::QualType::NonConstant(
+                      type::Var({type::Int64, type::Type_, type::Bool})))};
     absl::flat_hash_map<int, internal::ExprData> table{
         {0, internal::ExprData(nullptr, params)}};
     EXPECT_TRUE(ParamsCoverArgs(args, table, GetParams));
@@ -172,10 +166,10 @@ TEST(ParamsCoverArgs, OnePositionalArgument) {
 
   {  // Multiple overloads
 
-    core::Params params0{
-        core::Param<type::Type const *>("param0", type::Type_)};
-    core::Params params1{core::Param<type::Type const *>(
-        "param1", type::Var({type::Float64, type::Int64}))};
+    core::Params params0{param_type("param0", type::QualType::NonConstant(type::Type_))};
+    core::Params params1{param_type(
+        "param1",
+        type::QualType::NonConstant(type::Var({type::Float64, type::Int64})))};
 
     absl::flat_hash_map<int, internal::ExprData> table{
         {0, internal::ExprData(nullptr, params0)},
@@ -184,10 +178,12 @@ TEST(ParamsCoverArgs, OnePositionalArgument) {
   }
 
   {  // Multiple overloads, matches
-    core::Params params0{core::Param<type::Type const *>(
-        "param0", type::Var({type::Type_, type::Bool}))};
-    core::Params params1{core::Param<type::Type const *>(
-        "param1", type::Var({type::Ptr(type::Bool), type::Int64}))};
+    core::Params params0{param_type(
+        "param0",
+        type::QualType::NonConstant(type::Var({type::Type_, type::Bool})))};
+    core::Params params1{param_type(
+        "param1", type::QualType::NonConstant(
+                      type::Var({type::Ptr(type::Bool), type::Int64})))};
 
     absl::flat_hash_map<int, internal::ExprData> table{
         {0, internal::ExprData(nullptr, params0)},
@@ -209,31 +205,33 @@ TEST(ParamsCoverArgs, OneNamedArgument) {
   }
 
   {  // One parameter, type mismatch
-    core::Params params{core::Param<type::Type const *>("x", type::Bool)};
+    core::Params params{param_type("x", type::QualType::NonConstant(type::Bool))};
     absl::flat_hash_map<int, internal::ExprData> table{
         {0, internal::ExprData(nullptr, std::move(params))}};
     EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 
   {  // One parameter, name mismatch
-    core::Params params{core::Param<type::Type const *>("y", type::Bool)};
+    core::Params params{
+        param_type("y", type::QualType::NonConstant(type::Bool))};
     absl::flat_hash_map<int, internal::ExprData> table{
         {0, internal::ExprData(nullptr, std::move(params))}};
     EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 
   {  // One parameter, matches
-    core::Params params{core::Param<type::Type const *>(
-        "x", type::Var({type::Int64, type::Type_, type::Bool}))};
+    core::Params params{
+        param_type("x", type::QualType::NonConstant(
+                         type::Var({type::Int64, type::Type_, type::Bool})))};
     absl::flat_hash_map<int, internal::ExprData> table{
         {0, internal::ExprData(nullptr, std::move(params))}};
     EXPECT_TRUE(ParamsCoverArgs(args, table, GetParams));
   }
 
   {  // Multiple overload coverage, mismatch args
-    core::Params params0{core::Param<type::Type const *>("x", type::Type_)};
-    core::Params params1{core::Param<type::Type const *>(
-        "x", type::Var({type::Int64, type::Float64}))};
+    core::Params params0{param_type("x", type::QualType::NonConstant(type::Type_))};
+    core::Params params1{param_type("x", type::QualType::NonConstant(type::Var(
+                                          {type::Int64, type::Float64})))};
     absl::flat_hash_map<int, internal::ExprData> table{
         {0, internal::ExprData(nullptr, std::move(params0))},
         {1, internal::ExprData(nullptr, std::move(params1))}};
@@ -242,10 +240,11 @@ TEST(ParamsCoverArgs, OneNamedArgument) {
   }
 
   {  // Multiple overload coverage, mismatched name
-    core::Params params0{core::Param<type::Type const *>(
-        "x", type::Var({type::Type_, type::Bool}))};
-    core::Params params1{core::Param<type::Type const *>(
-        "y", type::Var({type::Ptr(type::Bool), type::Int64}))};
+    core::Params params0{param_type("x", type::QualType::NonConstant(type::Var(
+                                          {type::Type_, type::Bool})))};
+    core::Params params1{
+        param_type("y", type::QualType::NonConstant(
+                         type::Var({type::Ptr(type::Bool), type::Int64})))};
     absl::flat_hash_map<int, internal::ExprData> table{
         {0, internal::ExprData(nullptr, std::move(params0))},
         {1, internal::ExprData(nullptr, std::move(params1))}};
@@ -254,10 +253,11 @@ TEST(ParamsCoverArgs, OneNamedArgument) {
   }
 
   {  // Multiple overload coverage, matches
-    core::Params params0{core::Param<type::Type const *>(
-        "x", type::Var({type::Type_, type::Bool}))};
-    core::Params params1{core::Param<type::Type const *>(
-        "x", type::Var({type::Ptr(type::Bool), type::Int64}))};
+    core::Params params0{param_type("x", type::QualType::NonConstant(type::Var(
+                                          {type::Type_, type::Bool})))};
+    core::Params params1{
+        param_type("x", type::QualType::NonConstant(
+                         type::Var({type::Ptr(type::Bool), type::Int64})))};
 
     absl::flat_hash_map<int, internal::ExprData> table{
         {0, internal::ExprData(nullptr, std::move(params0))},

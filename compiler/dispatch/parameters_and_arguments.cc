@@ -24,11 +24,7 @@ core::Params<type::QualType> ExtractParamTypes(Compiler *compiler,
             return type::QualType::NonConstant(p.type());
           });
         case ir::Fn::Kind::Builtin:
-          return fn_type->params().Transform(
-              [](auto const &p) { return type::QualType::NonConstant(p); });
-        case ir::Fn::Kind::Foreign:
-          return fn_type->params().Transform(
-              [](auto const &p) { return type::QualType::NonConstant(p); });
+        case ir::Fn::Kind::Foreign: return fn_type->params();
       }
       UNREACHABLE();
     } else if (auto *jump_type = decl_type->if_as<type::Jump>()) {
@@ -55,8 +51,7 @@ core::Params<type::QualType> ExtractParamTypes(Compiler *compiler,
     }
   } else {
     if (auto const *fn_type = decl_type->if_as<type::Function>()) {
-      return fn_type->params().Transform(
-          [](type::Type const *t) { return type::QualType::NonConstant(t); });
+      return fn_type->params();
     } else {
       NOT_YET(decl->DebugString());
     }
@@ -170,7 +165,7 @@ core::Params<type::QualType> ExtractParamTypes(Compiler *compiler,
 
 std::vector<ir::Value> PrepareCallArguments(
     Compiler *compiler, type::Type const *state_ptr_type,
-    core::Params<type::Type const *> const &params,
+    core::Params<type::QualType> const &params,
     core::FnArgs<type::Typed<ir::Value>> const &args) {
   std::vector<ir::Value> arg_values;
   arg_values.reserve(params.size());
@@ -182,12 +177,12 @@ std::vector<ir::Value> PrepareCallArguments(
     arg_values.push_back(PrepareOneArg(compiler, args[i++], state_ptr_type));
   }
   while (i < args.pos().size()) {
-    arg_values.push_back(PrepareOneArg(compiler, args[i++], params[j++].value));
+    arg_values.push_back(PrepareOneArg(compiler, args[i++], params[j++].value.type()));
   }
 
   for (; i < params.size(); ++i) {
     arg_values.push_back(
-        PrepareOneArg(compiler, args[params[i].name], params[i].value));
+        PrepareOneArg(compiler, args[params[i].name], params[i].value.type()));
   }
 
   return arg_values;

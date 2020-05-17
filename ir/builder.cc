@@ -270,10 +270,14 @@ RegOr<type::Type const *> Builder::Arrow(
           ins, [](RegOr<type::Type const *> r) { return not r.is_reg(); }) and
       absl::c_all_of(
           outs, [](RegOr<type::Type const *> r) { return not r.is_reg(); })) {
-    core::Params<type::Type const *> in_params;
+    core::Params<type::QualType> in_params;
     std::vector<type::Type const *> out_vec;
     in_params.reserve(ins.size());
-    for (auto in : ins) { in_params.append(core::AnonymousParam(in.value())); }
+    for (auto in : ins) { 
+      // TODO push QualType into parameters
+      in_params.append(
+          core::AnonymousParam(type::QualType::NonConstant(in.value())));
+    }
     out_vec.reserve(outs.size());
     for (auto out : outs) { out_vec.push_back(out.value()); }
     return type::Func(std::move(in_params), std::move(out_vec));

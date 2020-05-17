@@ -12,7 +12,7 @@ namespace compiler {
 
 struct FailedMatch {};
 
-base::expected<core::Params<type::Type const *>, FailedMatch> MatchArgsToParams(
+base::expected<core::Params<type::QualType>, FailedMatch> MatchArgsToParams(
     core::Params<type::QualType> const &params,
     core::FnArgs<type::QualType> const &args);
 

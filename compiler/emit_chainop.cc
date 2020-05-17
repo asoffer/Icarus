@@ -34,13 +34,14 @@ static ir::Value ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
 
   auto [iter, success] = (*handle)[lhs_type].emplace(rhs_type, nullptr);
   if (success) {
-    auto const *fn_type =
-        type::Func({core::AnonymousParam(type::Ptr(lhs_type)),
-                    core::AnonymousParam(type::Ptr(rhs_type))},
-                   {type::Bool});
+    auto const *fn_type = type::Func(
+        {core::AnonymousParam(type::QualType::NonConstant(type::Ptr(lhs_type))),
+         core::AnonymousParam(
+             type::QualType::NonConstant(type::Ptr(rhs_type)))},
+        {type::Bool});
     ir::NativeFn fn = compiler->AddFunc(
-        fn_type, fn_type->params().Transform([](type::Type const *p) {
-          return type::Typed<ast::Declaration const *>(nullptr, p);
+        fn_type, fn_type->params().Transform([](type::QualType q) {
+          return type::Typed<ast::Declaration const *>(nullptr, q.type());
         }));
 
     ICARUS_SCOPE(ir::SetCurrent(fn)) {

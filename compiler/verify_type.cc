@@ -196,9 +196,10 @@ static type::QualType VerifySpecialFunctions(Compiler *visitor,
 
       if (f->params().size() != 2 or
           f->params()[0].value != f->params()[1].value or
-          not f->params()[0].value->is<type::Pointer>() or
+          not f->params()[0].value.type()->is<type::Pointer>() or
           not f->params()[0]
-                  .value->as<type::Pointer>()
+                  .value.type()
+                  ->as<type::Pointer>()
                   .pointee()
                   ->is<type::Struct>()) {
         error = true;
@@ -208,7 +209,7 @@ static type::QualType VerifySpecialFunctions(Compiler *visitor,
         // Note that you don't export the struct but rather declarations bound
         // to it so it's not totally clear how you would do that.
         auto const &s = f->params()[0]
-                            .value->as<type::Pointer>()
+                            .value.type()->as<type::Pointer>()
                             .pointee()
                             ->as<type::Struct>();
 
@@ -237,9 +238,10 @@ static type::QualType VerifySpecialFunctions(Compiler *visitor,
 
       if (f->params().size() != 2 or
           f->params()[0].value != f->params()[1].value or
-          not f->params()[0].value->is<type::Pointer>() or
+          not f->params()[0].value.type()->is<type::Pointer>() or
           not f->params()[0]
-                  .value->as<type::Pointer>()
+                  .value.type()
+                  ->as<type::Pointer>()
                   .pointee()
                   ->is<type::Struct>()) {
         error = true;
@@ -249,7 +251,8 @@ static type::QualType VerifySpecialFunctions(Compiler *visitor,
         // Note that you don't export the struct but rather declarations bound
         // to it so it's not totally clear how you would do that.
         auto const &s = f->params()[0]
-                            .value->as<type::Pointer>()
+                            .value.type()
+                            ->as<type::Pointer>()
                             .pointee()
                             ->as<type::Struct>();
 
@@ -330,7 +333,7 @@ static diagnostic::UninferrableType::Reason Inferrable(type::Type const *t) {
     }
   } else if (auto *f = t->if_as<type::Function>()) {
     for (auto const &param : f->params()) {
-      auto reason = Inferrable(param.value);
+      auto reason = Inferrable(param.value.type());
       if (reason != diagnostic::UninferrableType::Reason::kInferrable) {
         return reason;
       }
@@ -375,7 +378,9 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node,
   }
 
   auto type_params = node->params().Transform([&](auto const &param) {
-    return ASSERT_NOT_NULL(c->type_of(param.get()));
+    auto maybe_qt = c->qual_type_of(param.get());
+    ASSERT(maybe_qt != std::nullopt);
+    return *maybe_qt;
   });
 
   if (not node->outputs()) {
@@ -483,13 +488,13 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node,
   }
 }
 
-std::optional<core::Params<type::Type const *>> VerifyParams(
+std::optional<core::Params<type::QualType>> VerifyParams(
     Compiler *c,
     core::Params<std::unique_ptr<ast::Declaration>> const &params) {
   // Parameter types cannot be dependent in concrete implementations so it is
   // safe to verify each of them separately (to generate more errors that are
   // likely correct).
-  core::Params<type::Type const *> type_params;
+  core::Params<type::QualType> type_params;
   type_params.reserve(params.size());
   bool err = false;
   for (auto &d : params) {
@@ -499,7 +504,7 @@ std::optional<core::Params<type::Type const *>> VerifyParams(
           continue;
         },
         auto result, c->VerifyType(d.value.get()));
-    type_params.append(d.name, result.type(), d.flags);
+    type_params.append(d.name, result, d.flags);
   }
   if (err) { return std::nullopt; }
   return type_params;
@@ -1713,7 +1718,7 @@ OrderedDependencyNodes(ast::ParameterizedExpression const *node) {
 
 // TODO: There's something strange about this: We want to work on a temporary
 // data/compiler, but using `this` makes it feel more permanent.
-std::pair<core::Params<type::Type const *>, ConstantBinding>
+std::pair<core::Params<type::QualType>, ConstantBinding>
 Compiler::ComputeParamsFromArgs(
     ast::ParameterizedExpression const *node,
     absl::Span<std::pair<int, core::DependencyNode<ast::Declaration>> const>
@@ -1724,7 +1729,7 @@ Compiler::ComputeParamsFromArgs(
   ("Creating a concrete implementation with ",
    args.Transform([](auto const &a) { return a.type()->to_string(); }));
 
-  core::Params<type::Type const *> param_types(node->params().size());
+  core::Params<type::QualType> param_types(node->params().size());
 
   // TODO use the proper ordering.
   for (auto [index, dep_node] : ordered_nodes) {
@@ -1797,11 +1802,11 @@ Compiler::ComputeParamsFromArgs(
         // TODO: Once a parameter type has been computed, we know it's
         // argument type has already been computed so we can verify that the
         // implicit casts are allowed.
-        DEBUG_LOG("generic-fn")("... ", t->to_string());
+        DEBUG_LOG("generic-fn")("... ", qt);
         size_t i =
             *ASSERT_NOT_NULL(node->params().at_or_null(dep_node.node()->id()));
         param_types.set(
-            i, core::Param<type::Type const *>(dep_node.node()->id(), t,
+            i, core::Param<type::QualType>(dep_node.node()->id(), qt,
                                                node->params()[i].flags));
       } break;
       case core::DependencyNodeKind::ParamValue: {
@@ -1832,11 +1837,11 @@ Compiler::ComputeParamsFromArgs(
       } break;
     }
   }
-  return std::pair<core::Params<type::Type const *>, ConstantBinding>(
+  return std::pair<core::Params<type::QualType>, ConstantBinding>(
       std::move(param_types), std::move(constants));
 }
 
-std::tuple<core::Params<type::Type const *>, std::vector<type::Type const *> *,
+std::tuple<core::Params<type::QualType>, std::vector<type::Type const *> *,
            DependentComputedData *>
 MakeConcrete(
     ast::ParameterizedExpression const *node, CompiledModule *mod,

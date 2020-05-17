@@ -7,7 +7,7 @@
 namespace {
 
 TEST(NativeFn, Equality) {
-  auto *fn_type = type::Func(core::Params<type::Type const *>{}, {});
+  auto *fn_type = type::Func(core::Params<type::QualType>{}, {});
 
   ir::CompiledFn cf1(fn_type, {});
   ir::CompiledFn cf2(fn_type, {});
@@ -20,7 +20,7 @@ TEST(NativeFn, Equality) {
 }
 
 TEST(NativeFn, Value) {
-  auto *fn_type = type::Func(core::Params<type::Type const *>{}, {});
+  auto *fn_type = type::Func(core::Params<type::QualType>{}, {});
 
   ir::CompiledFn cf(fn_type, {});
 

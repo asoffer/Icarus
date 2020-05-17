@@ -118,7 +118,9 @@ bool CanCast(Type const *from, Type const *to) {
         auto const &from_param = from_fn->params()[i];
         auto const &to_param   = to_fn->params()[i];
 
-        if (not CanCast(from_param.value, to_param.value)) { return false; }
+        if (not CanCast(from_param.value.type(), to_param.value.type())) {
+          return false;
+        }
         if (from_param.flags & core::MUST_NOT_NAME) {
           if (not(to_param.flags & core::MUST_NOT_NAME)) { return false; }
         } else if (from_param.flags & core::MUST_NAME) {

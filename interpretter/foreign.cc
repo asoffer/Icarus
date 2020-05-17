@@ -70,7 +70,8 @@ void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
 
   size_t i = 0;
   for (auto const &in : fn_type->params()) {
-    auto ffi_type = ToFfiType(in.value);
+    ASSERT(in.value.constant() == false);
+    auto ffi_type = ToFfiType(in.value.type());
     arg_types.push_back(ffi_type);
 
     // This is more than we need to reserve, but it's sufficient to ensure that

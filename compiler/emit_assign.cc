@@ -13,15 +13,15 @@ namespace compiler {
 
 template <SpecialFunctionCategory Cat>
 static ir::NativeFn CreateAssign(Compiler *compiler, type::Array const *a) {
-  type::Pointer const *ptr_type = type::Ptr(a);
-  auto *data_ptr_type           = type::Ptr(a->data_type());
-  auto fn_type                  = type::Func(
-      core::Params<type::Type const *>{core::AnonymousParam(ptr_type),
-                                       core::AnonymousParam(ptr_type)},
-      {});
+  type::QualType q    = type::QualType::NonConstant(type::Ptr(a));
+  auto *data_ptr_type = type::Ptr(a->data_type());
+  auto fn_type =
+      type::Func(core::Params<type::QualType>{core::AnonymousParam(q),
+                                              core::AnonymousParam(q)},
+                 {});
   ir::NativeFn fn = compiler->AddFunc(
-      fn_type, fn_type->params().Transform([](type::Type const *p) {
-        return type::Typed<ast::Declaration const *>(nullptr, p);
+      fn_type, fn_type->params().Transform([](type::QualType q) {
+        return type::Typed<ast::Declaration const *>(nullptr, q.type());
       }));
   ICARUS_SCOPE(ir::SetCurrent(fn)) {
     auto &bldr          = compiler->builder();
@@ -84,15 +84,15 @@ static ir::NativeFn CreateAssign(Compiler *compiler, type::Struct const *s) {
   if (auto fn = SpecialFunction(compiler, s, Name<Cat>())) {
     return fn->native();
   }
-  auto &bldr              = compiler->builder();
-  type::Pointer const *pt = type::Ptr(s);
+  auto &bldr       = compiler->builder();
+  type::QualType q = type::QualType::NonConstant(type::Ptr(s));
   auto fn_type =
-      type::Func(core::Params<type::Type const *>{core::AnonymousParam(pt),
-                                                  core::AnonymousParam(pt)},
+      type::Func(core::Params<type::QualType>{core::AnonymousParam(q),
+                                              core::AnonymousParam(q)},
                  {});
   ir::NativeFn fn = compiler->AddFunc(
-      fn_type, fn_type->params().Transform([](type::Type const *p) {
-        return type::Typed<ast::Declaration const *>(nullptr, p);
+      fn_type, fn_type->params().Transform([](type::QualType q) {
+        return type::Typed<ast::Declaration const *>(nullptr, q.type());
       }));
   ICARUS_SCOPE(ir::SetCurrent(fn)) {
     bldr.CurrentBlock() = fn->entry();
@@ -243,14 +243,14 @@ void Compiler::Visit(type::Primitive const *t, ir::RegOr<ir::Addr> to,
 void Compiler::Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
                      type::Typed<ir::Value> const &from, EmitCopyAssignTag) {
   t->copy_assign_func_.init([=]() {
-    type::Pointer const *p = type::Ptr(t);
+    type::QualType q = type::QualType::NonConstant(type::Ptr(t));
     auto fn_type =
-        type::Func(core::Params<type::Type const *>{core::AnonymousParam(p),
-                                                    core::AnonymousParam(p)},
+        type::Func(core::Params<type::QualType>{core::AnonymousParam(q),
+                                                core::AnonymousParam(q)},
                    {});
     ir::NativeFn fn =
-        AddFunc(fn_type, fn_type->params().Transform([](type::Type const *p) {
-          return type::Typed<ast::Declaration const *>(nullptr, p);
+        AddFunc(fn_type, fn_type->params().Transform([](type::QualType q) {
+          return type::Typed<ast::Declaration const *>(nullptr, q.type());
         }));
     ICARUS_SCOPE(ir::SetCurrent(fn)) {
       builder().CurrentBlock() = fn->entry();
@@ -278,14 +278,14 @@ void Compiler::Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
 void Compiler::Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
                      type::Typed<ir::Value> const &from, EmitMoveAssignTag) {
   t->move_assign_func_.init([=]() {
-    type::Pointer const *p = type::Ptr(t);
+    type::QualType q = type::QualType::NonConstant(type::Ptr(t));
     auto fn_type =
-        type::Func(core::Params<type::Type const *>{core::AnonymousParam(p),
-                                                    core::AnonymousParam(p)},
+        type::Func(core::Params<type::QualType>{core::AnonymousParam(q),
+                                                core::AnonymousParam(q)},
                    {});
     ir::NativeFn fn =
-        AddFunc(fn_type, fn_type->params().Transform([](type::Type const *p) {
-          return type::Typed<ast::Declaration const *>(nullptr, p);
+        AddFunc(fn_type, fn_type->params().Transform([](type::QualType q) {
+          return type::Typed<ast::Declaration const *>(nullptr, q.type());
         }));
     ICARUS_SCOPE(ir::SetCurrent(fn)) {
       builder().CurrentBlock() = fn->entry();

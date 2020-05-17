@@ -32,7 +32,7 @@ struct OneTable {
                 std::optional<ir::Reg> state_reg,
                 ir::LocalBlockInterpretation const &block_interp) const;
 
-  absl::flat_hash_map<ir::Jump *, core::Params<type::Type const *>> inits;
+  absl::flat_hash_map<ir::Jump *, core::Params<type::QualType>> inits;
   absl::flat_hash_map<ast::BlockNode const *, JumpDispatchTable> blocks;
   ir::ScopeDef const *scope_def_;
   std::vector<type::Type const *> result_types_;

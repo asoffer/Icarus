@@ -235,8 +235,9 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
 
   if (not ParamsCoverArgs(args_qt, table.init_map_,
                           [](ir::Jump *jump, auto const &) {
-                            return jump->params().Transform(
-                                [](auto const &p) { return p.type(); });
+                            return jump->params().Transform([](auto const &p) {
+                              return type::QualType::NonConstant(p.type());
+                            });
                           })) {
     compiler->diag().Consume(diagnostic::ParametersDoNotCoverArguments{
         .args = args_qt,

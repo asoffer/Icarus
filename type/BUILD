@@ -131,7 +131,7 @@ cc_library(
     srcs = ["function.cc"],
     deps = [
         ":callable",
-        # ":qual_type",
+        ":qual_type",
         ":type",
         ":typed_value",
         "//core:params",

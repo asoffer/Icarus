@@ -15,12 +15,12 @@ void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDestroyTag) {
   t->destroy_func_.init([=]() {
     if (auto fn = SpecialFunction(this, t, "~")) { return fn->native(); }
 
-    type::Type const *pt = type::Ptr(t);
-    auto const *fn_type  = type::Func(
-        core::Params<type::Type const *>{core::AnonymousParam(t)}, {});
+    type::QualType q = type::QualType::NonConstant(type::Ptr(t));
+    auto const *fn_type =
+        type::Func(core::Params<type::QualType>{core::AnonymousParam(q)}, {});
     ir::NativeFn fn =
-        AddFunc(fn_type, fn_type->params().Transform([](type::Type const *p) {
-          return type::Typed<ast::Declaration const *>(nullptr, p);
+        AddFunc(fn_type, fn_type->params().Transform([](type::QualType q) {
+          return type::Typed<ast::Declaration const *>(nullptr, q.type());
         }));
 
     ICARUS_SCOPE(ir::SetCurrent(fn)) {
@@ -46,10 +46,12 @@ void Compiler::Visit(type::Variant const *t, ir::Reg reg, EmitDestroyTag) {
   std::unique_lock lock(t->mtx_);
   if (not t->destroy_func_) {
     auto const *fn_type = type::Func(
-        core::Params<type::Type const *>{core::AnonymousParam(t)}, {});
+        core::Params<type::QualType>{
+            core::AnonymousParam(type::QualType::NonConstant(t))},
+        {});
     ir::NativeFn f =
-        AddFunc(fn_type, fn_type->params().Transform([](type::Type const *p) {
-          return type::Typed<ast::Declaration const *>(nullptr, p);
+        AddFunc(fn_type, fn_type->params().Transform([](type::QualType q) {
+          return type::Typed<ast::Declaration const *>(nullptr, q.type());
         }));
     t->destroy_func_ = f;
     ICARUS_SCOPE(ir::SetCurrent(f)) {
@@ -87,11 +89,12 @@ void Compiler::Visit(type::Tuple const *t, ir::Reg reg, EmitDestroyTag) {
   if (not t->HasDestructor()) { return; }
   t->destroy_func_.init([=]() {
     auto const *fn_type = type::Func(
-        core::Params<type::Type const *>{core::AnonymousParam(type::Ptr(t))},
+        core::Params<type::QualType>{
+            core::AnonymousParam(type::QualType::NonConstant(type::Ptr(t)))},
         {});
     ir::NativeFn fn =
-        AddFunc(fn_type, fn_type->params().Transform([](type::Type const *p) {
-          return type::Typed<ast::Declaration const *>(nullptr, p);
+        AddFunc(fn_type, fn_type->params().Transform([](type::QualType q) {
+          return type::Typed<ast::Declaration const *>(nullptr, q.type());
         }));
     ICARUS_SCOPE(ir::SetCurrent(fn)) {
       builder().CurrentBlock() = builder().CurrentGroup()->entry();
@@ -115,13 +118,13 @@ void Compiler::Visit(type::Array const *t, ir::Reg reg, EmitDestroyTag) {
   if (not t->HasDestructor()) { return; }
   data().destroy_.emplace(
       t, base::lazy_convert{[&] {
-        auto const *fn_type = type::Func(
-            core::Params<type::Type const *>{
-                core::AnonymousParam(type::Ptr(t))},
-            {});
-        ir::NativeFn fn = AddFunc(
-            fn_type, fn_type->params().Transform([](type::Type const *p) {
-              return type::Typed<ast::Declaration const *>(nullptr, p);
+        auto const *fn_type =
+            type::Func(core::Params<type::QualType>{core::AnonymousParam(
+                           type::QualType::NonConstant(type::Ptr(t)))},
+                       {});
+        ir::NativeFn fn =
+            AddFunc(fn_type, fn_type->params().Transform([](type::QualType q) {
+              return type::Typed<ast::Declaration const *>(nullptr, q.type());
             }));
         ICARUS_SCOPE(ir::SetCurrent(fn)) {
           builder().CurrentBlock() = fn->entry();

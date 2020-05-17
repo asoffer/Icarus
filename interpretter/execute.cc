@@ -300,9 +300,12 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
           return ctx->resolve<type::Type const *>(reg);
         });
 
-    core::Params<type::Type const *> in_params;
+    core::Params<type::QualType> in_params;
     in_params.reserve(ins.size());
-    for (auto *t : ins) { in_params.append(core::AnonymousParam(t)); }
+    for (auto *t : ins) {
+      // Write qualifiers as well.
+      in_params.append(core::AnonymousParam(type::QualType::NonConstant(t)));
+    }
 
     ctx->current_frame()->regs_.set(
         iter->read<ir::Reg>(),
@@ -609,7 +612,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
             /* length = */ kMaxSize);
 
       } else {
-        type::Type const *t = fn_type->params()[i].value;
+        type::Type const *t = fn_type->params()[i].value.type();
         if (t->is_big()) {
           NOT_YET();
         } else {

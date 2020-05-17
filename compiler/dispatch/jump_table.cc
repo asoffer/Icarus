@@ -74,9 +74,13 @@ JumpDispatchTable::EmitCallOneOverload(
                         },
                         state_reg ? 1 : 0);
 
-  auto arg_values = PrepareCallArguments(
-      compiler, jump->type()->state(),
-      jump->params().Transform([](auto const &p) { return p.type(); }), args);
+  // TODO qualtype? non constant?
+  auto arg_values =
+      PrepareCallArguments(compiler, jump->type()->state(),
+                           jump->params().Transform([](auto const &p) {
+                             return type::QualType::NonConstant(p.type());
+                           }),
+                           args);
   return ir::Inline(compiler->builder(), jump, arg_values, block_interp);
 }
 

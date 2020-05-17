@@ -5,10 +5,9 @@
 namespace type {
 
 static base::Global<absl::flat_hash_map<
-    core::Params<Type const *>, std::map<std::vector<Type const *>, Function>>>
+    core::Params<QualType>, std::map<std::vector<Type const *>, Function>>>
     funcs_;
-Function const *Func(core::Params<Type const *> in,
-                     std::vector<Type const *> out) {
+Function const *Func(core::Params<QualType> in, std::vector<Type const *> out) {
   // TODO if void is unit in some way we shouldn't do this.
   auto f = Function(in, out);
 
@@ -26,10 +25,10 @@ void Function::WriteTo(std::string *result) const {
   for (auto const &param : params()) {
     result->append(sep);
     if (not param.name.empty()) {
-      result->append(param.name);
-      result->append(": ");
+      absl::StrAppend(result, param.name,
+                      param.value.constant() ? ": " : ":: ");
     }
-    param.value->WriteTo(result);
+    param.value.type()->WriteTo(result);
     sep = ", ";
   }
   result->append(") -> (");

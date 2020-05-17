@@ -3,7 +3,7 @@
 namespace compiler {
 
 ir::RegOr<bool> EmitRuntimeDispatchOneComparison(
-    ir::Builder &bldr, core::Params<type::Type const *> const &params,
+    ir::Builder &bldr, core::Params<type::QualType> const &params,
     core::FnArgs<type::Typed<ir::Value>> const &args) {
   size_t i = 0;
   for (; i < args.pos().size(); ++i) {
@@ -13,7 +13,7 @@ ir::RegOr<bool> EmitRuntimeDispatchOneComparison(
     auto runtime_type =
         bldr.Load<type::Type const *>(bldr.VariantType(arg->get<ir::Addr>()));
     // TODO Equality isn't the right thing to check
-    return bldr.Eq(runtime_type, params[i].value);
+    return bldr.Eq(runtime_type, params[i].value.type());
   }
   for (; i < params.size(); ++i) {
     auto *arg = args.at_or_null(params[i].name);

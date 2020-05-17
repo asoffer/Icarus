@@ -774,7 +774,7 @@ ir::NativeFn MakeConcreteFromGeneric(
         &data.fns_, fn_type,
         node->params().Transform([fn_type, i = 0](auto const &d) mutable {
           return type::Typed<ast::Declaration const *>(
-              d.get(), fn_type->params()[i++].value);
+              d.get(), fn_type->params()[i++].value.type());
         }));
     f->work_item = DeferBody({.builder             = compiler->builder(),
                               .data                = data,
@@ -799,7 +799,7 @@ ir::Value Compiler::EmitValue(ast::ShortFunctionLiteral const *node) {
         fn_type,
         node->params().Transform([fn_type, i = 0](auto const &d) mutable {
           return type::Typed<ast::Declaration const *>(
-              d.get(), fn_type->params()[i++].value);
+              d.get(), fn_type->params()[i++].value.type());
         }));
     f->work_item = DeferBody(resources_, node, fn_type);
     return f;
@@ -823,7 +823,7 @@ ir::Value Compiler::EmitValue(ast::FunctionLiteral const *node) {
         fn_type,
         node->params().Transform([fn_type, i = 0](auto const &d) mutable {
           return type::Typed<ast::Declaration const *>(
-              d.get(), fn_type->params()[i++].value);
+              d.get(), fn_type->params()[i++].value.type());
         }));
     f->work_item = DeferBody(resources_, node, fn_type);
     return f;

@@ -157,6 +157,7 @@ struct QualType {
   }
 
   Type const *type() const {
+    ASSERT(num_ == 1u);
     return reinterpret_cast<Type const *>(
         data_ & ~static_cast<uintptr_t>(Quals::All().val_));
   }
@@ -180,11 +181,20 @@ struct QualType {
   constexpr QualType const &operator*() const { return *this; }
 
   friend constexpr bool operator==(QualType lhs, QualType rhs) {
+    // Even when these are holding pointers to expanded data, it's okay to test
+    // for equality because we deduplicate them on insertion.
     return lhs.data_ == rhs.data_;
   }
 
   friend constexpr bool operator!=(QualType lhs, QualType rhs) {
     return !(lhs == rhs);
+  }
+
+  template <typename H>
+  friend H AbslHashValue(H h, QualType q) {
+    // Even when these are holding pointers to expanded data, it's okay to hash
+    // because we deduplicate them on insertion.
+    return H::combine(std::move(h), q.data_, q.num_);
   }
 
   friend std::ostream &operator<<(std::ostream &os, QualType q);
