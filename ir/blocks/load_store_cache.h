@@ -25,6 +25,7 @@ struct LoadStoreCache {
   // from.
   template <typename T>
   Value &slot(RegOr<Addr> r) {
+    static_assert(not ir::IsRegOr<T>::value);
     return storage_[base::meta<T>][r];
   }
 
@@ -52,6 +53,7 @@ struct LoadStoreCache {
   // undefined-behavior as an optimization mechanism.
   template <typename T = void>
   void clear() {
+    static_assert(not ir::IsRegOr<T>::value);
     if constexpr (base::meta<T> == base::meta<void>) {
       storage_.clear();
     } else {

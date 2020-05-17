@@ -431,7 +431,7 @@ struct Builder {
   void Store(T r, RegOr<Addr> addr) {
     if constexpr (IsRegOr<T>::value) {
       auto& blk = *CurrentBlock();
-      blk.load_store_cache().clear<T>();
+      blk.load_store_cache().clear<typename T::type>();
       auto inst = std::make_unique<StoreInstruction<typename T::type>>(r, addr);
       blk.AddInstruction(std::move(inst));
     } else {

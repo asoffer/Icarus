@@ -1170,21 +1170,10 @@ type::QualType Compiler::VerifyType(ast::Call const *node) {
     DEBUG_LOG("Call.VerifyType")
     ("Return types for this instantiation: ",
      type::Tup(ret_types)->to_string());
-    // Can this be constant?
-    bool constant = true;
-    arg_vals.Apply([&](auto const &x) {
-      if (not constant) { return; }
-      constant = not x->empty();
-    });
-
-    // TODO There's still the question of the implementation needing
-    // non-constant stuff.
-
+    // TODO under what circumstances can we prove that the implementation
+    // doesn't need to be run at runtime?
     return data().set_qual_type(
-        node,
-        constant
-            ? type::QualType::Constant(type::Tup(std::move(ret_types)))
-            : type::QualType::NonConstant(type::Tup(std::move(ret_types))));
+        node, type::QualType::NonConstant(type::Tup(std::move(ret_types))));
   } else {
     diag().Consume(diagnostic::UncallableExpression{
         .range = node->callee()->range(),
@@ -1871,9 +1860,19 @@ MakeConcrete(
 
   auto [params, rets, data, inserted] =
       compiler_data.InsertDependent(node, parameters);
-  if (not inserted) { return std::tuple(params, &rets, &data); }
-
-  params = parameters;
+  if (inserted) {
+    if (auto const *fn_node = node->if_as<ast::FunctionLiteral>()) {
+      if (auto outputs = fn_node->outputs(); outputs and not outputs->empty()) {
+        for (auto const *o : *outputs) {
+          auto qt = c.VerifyType(o);
+          ASSERT(qt == type::QualType::Constant(type::Type_));
+          auto maybe_type = c.EvaluateAs<type::Type const *>(o);
+          if (not maybe_type) { NOT_YET(); }
+          rets.push_back(ASSERT_NOT_NULL(*maybe_type));
+        }
+      }
+    }
+  }
 
   return std::tuple(params, &rets, &data);
 }
@@ -1891,29 +1890,7 @@ type::QualType Compiler::VerifyType(ast::FunctionLiteral const *node) {
     auto [params, rets, data] =
         MakeConcrete(node, compiler_data->module(), ordered_nodes, args,
                      *compiler_data, *diag_consumer);
-    type::Function const *ft = nullptr;
-    if (auto outputs = node->outputs()) {
-      // TODO there's also order dependence here too.
-      Compiler c({
-          .builder             = ir::GetBuilder(),
-          .data                = *data,
-          .diagnostic_consumer = *diag_consumer,
-      });
-
-      // TODO shouldn't need to clear this.
-      rets->clear();
-      for (auto const *o : *outputs) {
-        auto qt = c.VerifyType(o);
-        ASSERT(qt == type::QualType::Constant(type::Type_));
-        auto maybe_type = c.EvaluateAs<type::Type const *>(o);
-        if (not maybe_type) { NOT_YET(); }
-        rets->push_back(ASSERT_NOT_NULL(*maybe_type));
-      }
-      ft = type::Func(params, *rets);
-    } else {
-      // TODO returns
-      ft = type::Func(params, {});
-    }
+    type::Function const *ft = type::Func(params, *rets);
     data->set_qual_type(node, type::QualType::Constant(ft));
     return ft;
   };

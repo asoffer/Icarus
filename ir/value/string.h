@@ -21,6 +21,11 @@ struct String {
     return lhs.addr() == rhs.addr() or lhs.get() == rhs.get();
   }
 
+  template <typename H>
+  H AbslHashValue(H h, String s) {
+    return H::combine(std::move(h), s.get());
+  }
+
   friend std::ostream& operator<<(std::ostream& os, String s);
 
  private:

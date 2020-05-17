@@ -26,7 +26,7 @@ DependentComputedData::InsertDependent(
   if (inserted) {
     iter->second = std::unique_ptr<DependentDataChild::DataImpl>(
         new DependentDataChild::DataImpl{
-            .params = core::Params<type::Type const *>(node->params().size()),
+            .params = params,
             .rets   = {},
             .data   = DependentComputedData(mod_),
         });
