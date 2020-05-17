@@ -60,8 +60,8 @@ TEST(Match, OneParam) {
     ASSIGN_OR(FAIL(),  //
               auto matched_params, MatchArgsToParams(params, args));
     EXPECT_EQ(matched_params.size(), 1);
-    EXPECT_EQ(matched_params.at(0).name, "n");
-    EXPECT_EQ(matched_params.at(0).value, type::Int32);
+    EXPECT_EQ(matched_params[0].name, "n");
+    EXPECT_EQ(matched_params[0].value, type::Int32);
   }
 
   {  // Call positionally with incorrect type
@@ -76,8 +76,8 @@ TEST(Match, OneParam) {
     ASSIGN_OR(FAIL(),  //
               auto matched_params, MatchArgsToParams(params, args));
     EXPECT_EQ(matched_params.size(), 1);
-    EXPECT_EQ(matched_params.at(0).name, "n");
-    EXPECT_EQ(matched_params.at(0).value, type::Int32);
+    EXPECT_EQ(matched_params[0].name, "n");
+    EXPECT_EQ(matched_params[0].value, type::Int32);
   }
 
   {  // Call named with incorrect type
@@ -112,10 +112,10 @@ TEST(Match, TwoParamsOneDefaulted) {
     ASSIGN_OR(FAIL(),  //
               auto matched_params, MatchArgsToParams(params, args));
     EXPECT_EQ(matched_params.size(), 2);
-    EXPECT_EQ(matched_params.at(0).name, "n");
-    EXPECT_EQ(matched_params.at(0).value, type::Int32);
-    EXPECT_EQ(matched_params.at(1).name, "b");
-    EXPECT_EQ(matched_params.at(1).value, type::Bool);
+    EXPECT_EQ(matched_params[0].name, "n");
+    EXPECT_EQ(matched_params[0].value, type::Int32);
+    EXPECT_EQ(matched_params[1].name, "b");
+    EXPECT_EQ(matched_params[1].value, type::Bool);
   }
 
   {  // Call positionally with incorrect type
@@ -130,10 +130,10 @@ TEST(Match, TwoParamsOneDefaulted) {
     ASSIGN_OR(FAIL(),  //
               auto matched_params, MatchArgsToParams(params, args));
     EXPECT_EQ(matched_params.size(), 2);
-    EXPECT_EQ(matched_params.at(0).name, "n");
-    EXPECT_EQ(matched_params.at(0).value, type::Int32);
-    EXPECT_EQ(matched_params.at(1).name, "b");
-    EXPECT_EQ(matched_params.at(1).value, type::Bool);
+    EXPECT_EQ(matched_params[0].name, "n");
+    EXPECT_EQ(matched_params[0].value, type::Int32);
+    EXPECT_EQ(matched_params[1].name, "b");
+    EXPECT_EQ(matched_params[1].value, type::Bool);
   }
 
   {  // Call named with explicit second argument
@@ -143,10 +143,10 @@ TEST(Match, TwoParamsOneDefaulted) {
     ASSIGN_OR(FAIL(),  //
               auto matched_params, MatchArgsToParams(params, args));
     EXPECT_EQ(matched_params.size(), 2);
-    EXPECT_EQ(matched_params.at(0).name, "n");
-    EXPECT_EQ(matched_params.at(0).value, type::Int32);
-    EXPECT_EQ(matched_params.at(1).name, "b");
-    EXPECT_EQ(matched_params.at(1).value, type::Bool);
+    EXPECT_EQ(matched_params[0].name, "n");
+    EXPECT_EQ(matched_params[0].value, type::Int32);
+    EXPECT_EQ(matched_params[1].name, "b");
+    EXPECT_EQ(matched_params[1].value, type::Bool);
   }
 
   {  // Call named with incorrect type
@@ -182,8 +182,8 @@ TEST(Match, OneVariantParam) {
     ASSIGN_OR(FAIL(),  //
               auto matched_params, MatchArgsToParams(params, args));
     EXPECT_EQ(matched_params.size(), 1);
-    EXPECT_EQ(matched_params.at(0).name, "x");
-    EXPECT_EQ(matched_params.at(0).value, type::Int32);
+    EXPECT_EQ(matched_params[0].name, "x");
+    EXPECT_EQ(matched_params[0].value, type::Int32);
   }
 
   {  // Call positionally with matching type
@@ -192,8 +192,8 @@ TEST(Match, OneVariantParam) {
     ASSIGN_OR(FAIL(),  //
               auto matched_params, MatchArgsToParams(params, args));
     EXPECT_EQ(matched_params.size(), 1);
-    EXPECT_EQ(matched_params.at(0).name, "x");
-    EXPECT_EQ(matched_params.at(0).value, type::Bool);
+    EXPECT_EQ(matched_params[0].name, "x");
+    EXPECT_EQ(matched_params[0].value, type::Bool);
   }
 
   {  // Call positionally with overlapping type
@@ -202,8 +202,8 @@ TEST(Match, OneVariantParam) {
     ASSIGN_OR(FAIL(),  //
               auto matched_params, MatchArgsToParams(params, args));
     EXPECT_EQ(matched_params.size(), 1);
-    EXPECT_EQ(matched_params.at(0).name, "x");
-    EXPECT_EQ(matched_params.at(0).value, type::Bool);
+    EXPECT_EQ(matched_params[0].name, "x");
+    EXPECT_EQ(matched_params[0].value, type::Bool);
   }
 
   {  // Call positionally with non-overlapping type
@@ -220,8 +220,8 @@ TEST(Match, OneVariantParam) {
     ASSIGN_OR(FAIL(),  //
               auto matched_params, MatchArgsToParams(params, args));
     EXPECT_EQ(matched_params.size(), 1);
-    EXPECT_EQ(matched_params.at(0).name, "x");
-    EXPECT_EQ(matched_params.at(0).value, type::Int32);
+    EXPECT_EQ(matched_params[0].name, "x");
+    EXPECT_EQ(matched_params[0].value, type::Int32);
   }
 
   {  // Call named with matching type
@@ -230,8 +230,8 @@ TEST(Match, OneVariantParam) {
     ASSIGN_OR(FAIL(),  //
               auto matched_params, MatchArgsToParams(params, args));
     EXPECT_EQ(matched_params.size(), 1);
-    EXPECT_EQ(matched_params.at(0).name, "x");
-    EXPECT_EQ(matched_params.at(0).value, type::Bool);
+    EXPECT_EQ(matched_params[0].name, "x");
+    EXPECT_EQ(matched_params[0].value, type::Bool);
   }
 
   {  // Call named with overlapping type
@@ -241,8 +241,8 @@ TEST(Match, OneVariantParam) {
     ASSIGN_OR(FAIL(),  //
               auto matched_params, MatchArgsToParams(params, args));
     EXPECT_EQ(matched_params.size(), 1);
-    EXPECT_EQ(matched_params.at(0).name, "x");
-    EXPECT_EQ(matched_params.at(0).value, type::Bool);
+    EXPECT_EQ(matched_params[0].name, "x");
+    EXPECT_EQ(matched_params[0].value, type::Bool);
   }
 
   {  // Call named with non-overlapping type

@@ -1067,7 +1067,7 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
       if (r) {
         writer->Write(*r);
       } else {
-        type::Apply(fn_type_->params().at(arg_index).value, [&](auto tag) {
+        type::Apply(fn_type_->params()[arg_index].value, [&](auto tag) {
           using T = typename decltype(tag)::type;
           writer->Write(arg.get<T>());
         });

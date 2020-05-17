@@ -62,7 +62,7 @@ void AddAdl(ast::OverloadSet *overload_set, std::string_view id,
   for (auto *mod : modules) {
     auto decls = mod->ExportedDeclarations(id);
     // TODO accessing module from another thread is bad news!
-    auto & data = mod->data();
+    auto &data = mod->data();
     diagnostic::TrivialConsumer consumer;
 
     for (auto *d : decls) {
@@ -215,12 +215,13 @@ ir::Value Compiler::EmitValue(ast::ArrayLiteral const *node) {
 }
 
 ir::Value Compiler::EmitValue(ast::ArrayType const *node) {
-  auto result = EmitValue(node->data_type()).get<ir::RegOr<type::Type const *>>();
+  auto result =
+      EmitValue(node->data_type()).get<ir::RegOr<type::Type const *>>();
   // Size must be at least 1 by construction, so `.size() - 1` will not
   // overflow.
   for (int i = node->lengths().size() - 1; i >= 0; --i) {
-    result =
-        builder().Array(EmitValue(node->length(i)).get<ir::RegOr<int64_t>>(), result);
+    result = builder().Array(
+        EmitValue(node->length(i)).get<ir::RegOr<int64_t>>(), result);
   }
   return ir::Value(result);
 }
@@ -267,7 +268,8 @@ ir::Value Compiler::EmitValue(ast::Binop const *node) {
                               uint16_t, uint32_t, uint64_t, float, double>(
           rhs_type, [&](auto tag) {
             using T = typename decltype(tag)::type;
-            return ir::Value(builder().Add(lhs_ir.get<ir::RegOr<T>>(), rhs_ir.get<ir::RegOr<T>>()));
+            return ir::Value(builder().Add(lhs_ir.get<ir::RegOr<T>>(),
+                                           rhs_ir.get<ir::RegOr<T>>()));
           });
     } break;
     case frontend::Operator::Sub: {
@@ -277,7 +279,8 @@ ir::Value Compiler::EmitValue(ast::Binop const *node) {
                               uint16_t, uint32_t, uint64_t, float, double>(
           rhs_type, [&](auto tag) {
             using T = typename decltype(tag)::type;
-            return ir::Value(builder().Sub(lhs_ir.get<ir::RegOr<T>>(), rhs_ir.get<ir::RegOr<T>>()));
+            return ir::Value(builder().Sub(lhs_ir.get<ir::RegOr<T>>(),
+                                           rhs_ir.get<ir::RegOr<T>>()));
           });
     } break;
     case frontend::Operator::Mul: {
@@ -287,7 +290,8 @@ ir::Value Compiler::EmitValue(ast::Binop const *node) {
                               uint16_t, uint32_t, uint64_t, float, double>(
           rhs_type, [&](auto tag) {
             using T = typename decltype(tag)::type;
-            return ir::Value(builder().Mul(lhs_ir.get<ir::RegOr<T>>(), rhs_ir.get<ir::RegOr<T>>()));
+            return ir::Value(builder().Mul(lhs_ir.get<ir::RegOr<T>>(),
+                                           rhs_ir.get<ir::RegOr<T>>()));
           });
     } break;
     case frontend::Operator::Div: {
@@ -297,7 +301,8 @@ ir::Value Compiler::EmitValue(ast::Binop const *node) {
                               uint16_t, uint32_t, uint64_t, float, double>(
           rhs_type, [&](auto tag) {
             using T = typename decltype(tag)::type;
-            return ir::Value(builder().Div(lhs_ir.get<ir::RegOr<T>>(), rhs_ir.get<ir::RegOr<T>>()));
+            return ir::Value(builder().Div(lhs_ir.get<ir::RegOr<T>>(),
+                                           rhs_ir.get<ir::RegOr<T>>()));
           });
     } break;
     case frontend::Operator::Mod: {
@@ -307,7 +312,8 @@ ir::Value Compiler::EmitValue(ast::Binop const *node) {
                               uint16_t, uint32_t, uint64_t>(
           rhs_type, [&](auto tag) {
             using T = typename decltype(tag)::type;
-            return ir::Value(builder().Mod(lhs_ir.get<ir::RegOr<T>>(), rhs_ir.get<ir::RegOr<T>>()));
+            return ir::Value(builder().Mod(lhs_ir.get<ir::RegOr<T>>(),
+                                           rhs_ir.get<ir::RegOr<T>>()));
           });
     } break;
     case frontend::Operator::OrEq: {
@@ -315,8 +321,9 @@ ir::Value Compiler::EmitValue(ast::Binop const *node) {
       if (this_type->is<type::Flags>()) {
         auto lhs_lval = EmitRef(node->lhs());
         builder().Store(
-            builder().OrFlags(builder().Load<ir::FlagsVal>(lhs_lval),
-                              EmitValue(node->rhs()).get<ir::RegOr<ir::FlagsVal>>()),
+            builder().OrFlags(
+                builder().Load<ir::FlagsVal>(lhs_lval),
+                EmitValue(node->rhs()).get<ir::RegOr<ir::FlagsVal>>()),
             lhs_lval);
         return ir::Value();
       }
@@ -342,8 +349,9 @@ ir::Value Compiler::EmitValue(ast::Binop const *node) {
       if (this_type->is<type::Flags>()) {
         auto lhs_lval = EmitRef(node->lhs());
         builder().Store(
-            builder().AndFlags(builder().Load<ir::FlagsVal>(lhs_lval),
-                               EmitValue(node->rhs()).get<ir::RegOr<ir::FlagsVal>>()),
+            builder().AndFlags(
+                builder().Load<ir::FlagsVal>(lhs_lval),
+                EmitValue(node->rhs()).get<ir::RegOr<ir::FlagsVal>>()),
             lhs_lval);
         return ir::Value();
       }
@@ -373,9 +381,9 @@ ir::Value Compiler::EmitValue(ast::Binop const *node) {
                        uint32_t, uint64_t, float, double>(
           rhs_type, [&](auto tag) {
             using T = typename decltype(tag)::type;
-            builder().Store(
-                builder().Add(builder().Load<T>(lhs_lval), rhs_ir.get<ir::RegOr<T>>()),
-                lhs_lval);
+            builder().Store(builder().Add(builder().Load<T>(lhs_lval),
+                                          rhs_ir.get<ir::RegOr<T>>()),
+                            lhs_lval);
           });
       return ir::Value();
     } break;
@@ -386,9 +394,9 @@ ir::Value Compiler::EmitValue(ast::Binop const *node) {
                        uint32_t, uint64_t, float, double>(
           rhs_type, [&](auto tag) {
             using T = typename decltype(tag)::type;
-            builder().Store(
-                builder().Sub(builder().Load<T>(lhs_lval), rhs_ir.get<ir::RegOr<T>>()),
-                lhs_lval);
+            builder().Store(builder().Sub(builder().Load<T>(lhs_lval),
+                                          rhs_ir.get<ir::RegOr<T>>()),
+                            lhs_lval);
           });
       return ir::Value();
     } break;
@@ -399,9 +407,9 @@ ir::Value Compiler::EmitValue(ast::Binop const *node) {
                        uint32_t, uint64_t, float, double>(
           rhs_type, [&](auto tag) {
             using T = typename decltype(tag)::type;
-            builder().Store(
-                builder().Div(builder().Load<T>(lhs_lval), rhs_ir.get<ir::RegOr<T>>()),
-                lhs_lval);
+            builder().Store(builder().Div(builder().Load<T>(lhs_lval),
+                                          rhs_ir.get<ir::RegOr<T>>()),
+                            lhs_lval);
           });
       return ir::Value();
     } break;
@@ -411,9 +419,9 @@ ir::Value Compiler::EmitValue(ast::Binop const *node) {
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t>(rhs_type, [&](auto tag) {
         using T = typename decltype(tag)::type;
-        builder().Store(
-            builder().Div(builder().Load<T>(lhs_lval), rhs_ir.get<ir::RegOr<T>>()),
-            lhs_lval);
+        builder().Store(builder().Div(builder().Load<T>(lhs_lval),
+                                      rhs_ir.get<ir::RegOr<T>>()),
+                        lhs_lval);
       });
       return ir::Value();
     } break;
@@ -424,9 +432,9 @@ ir::Value Compiler::EmitValue(ast::Binop const *node) {
                        uint32_t, uint64_t, float, double>(
           rhs_type, [&](auto tag) {
             using T = typename decltype(tag)::type;
-            builder().Store(
-                builder().Mul(builder().Load<T>(lhs_lval), rhs_ir.get<ir::RegOr<T>>()),
-                lhs_lval);
+            builder().Store(builder().Mul(builder().Load<T>(lhs_lval),
+                                          rhs_ir.get<ir::RegOr<T>>()),
+                            lhs_lval);
           });
       return ir::Value();
     } break;
@@ -439,7 +447,7 @@ ir::Value Compiler::EmitValue(ast::Binop const *node) {
       } else if (lhs_type->is<type::Flags>()) {
         auto *flags_type = &lhs_type->as<type::Flags>();
         auto lhs_lval    = EmitRef(node->lhs());
-        auto rhs_ir      = EmitValue(node->rhs()).get<ir::RegOr<ir::FlagsVal>>();
+        auto rhs_ir = EmitValue(node->rhs()).get<ir::RegOr<ir::FlagsVal>>();
         builder().Store(
             builder().XorFlags(builder().Load<ir::FlagsVal>(lhs_lval), rhs_ir),
             lhs_lval);
@@ -524,7 +532,8 @@ ir::Value EmitBuiltinCall(
       ir::Reg reg         = outs[0];
       c->builder().Call(
           ir::Fn{ir::BuiltinFn::Bytes()}, &fn_type,
-          {ir::Value(c->EmitValue(args.at(0)).get<ir::RegOr<type::Type const *>>())},
+          {ir::Value(
+              c->EmitValue(args[0]).get<ir::RegOr<type::Type const *>>())},
           std::move(outs));
 
       return ir::Value(reg);
@@ -536,7 +545,8 @@ ir::Value EmitBuiltinCall(
       ir::Reg reg         = outs[0];
       c->builder().Call(
           ir::Fn{ir::BuiltinFn::Alignment()}, &fn_type,
-          {ir::Value(c->EmitValue(args.at(0)).get<ir::RegOr<type::Type const *>>())},
+          {ir::Value(
+              c->EmitValue(args[0]).get<ir::RegOr<type::Type const *>>())},
           std::move(outs));
 
       return ir::Value(reg);
@@ -641,7 +651,8 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
         auto maybe_val = Evaluate(type::Typed(node->init_val(), t));
         if (not maybe_val) {
           // TODO we reserved a slot and haven't cleaned it up. Do we care?
-          NOT_YET("Found errors but haven't handled them.", diag().num_consumed());
+          NOT_YET("Found errors but haven't handled them.",
+                  diag().num_consumed());
           return ir::Value();
         }
         DEBUG_LOG("EmitValueDeclaration")("Setting slot = ", *maybe_val);
@@ -711,8 +722,9 @@ ir::Value Compiler::EmitValue(ast::EnumLiteral const *node) {
     } else if (auto *decl = elem->if_as<ast::Declaration>()) {
       names.push_back(decl->id());
       if (decl->IsCustomInitialized()) {
-        specified_values.emplace(names.size() - 1,
-                                 EmitValue(decl->init_val()).get<ir::RegOr<enum_t>>());
+        specified_values.emplace(
+            names.size() - 1,
+            EmitValue(decl->init_val()).get<ir::RegOr<enum_t>>());
       }
     }
   }
@@ -782,7 +794,7 @@ ir::Value Compiler::EmitValue(ast::ShortFunctionLiteral const *node) {
         fn_type,
         node->params().Transform([fn_type, i = 0](auto const &d) mutable {
           return type::Typed<ast::Declaration const *>(
-              d.get(), fn_type->params().at(i++).value);
+              d.get(), fn_type->params()[i++].value);
         }));
     f->work_item = DeferBody(resources_, node, fn_type);
     return f;
@@ -806,7 +818,7 @@ ir::Value Compiler::EmitValue(ast::FunctionLiteral const *node) {
         fn_type,
         node->params().Transform([fn_type, i = 0](auto const &d) mutable {
           return type::Typed<ast::Declaration const *>(
-              d.get(), fn_type->params().at(i++).value);
+              d.get(), fn_type->params()[i++].value);
         }));
     f->work_item = DeferBody(resources_, node, fn_type);
     return f;
@@ -860,10 +872,11 @@ ir::Value Compiler::EmitValue(ast::Import const *node) {
 
 ir::Value Compiler::EmitValue(ast::Index const *node) {
   if (type_of(node->lhs()) == type::ByteView) {
-    auto data =
-        builder().ByteViewData(EmitValue(node->lhs()).get<ir::RegOr<ir::String>>());
-    auto addr = builder().PtrIncr(data, EmitValue(node->rhs()).get<ir::RegOr<int64_t>>(),
-                                  type::Ptr(type::Nat8));
+    auto data = builder().ByteViewData(
+        EmitValue(node->lhs()).get<ir::RegOr<ir::String>>());
+    auto addr = builder().PtrIncr(
+        data, EmitValue(node->rhs()).get<ir::RegOr<int64_t>>(),
+        type::Ptr(type::Nat8));
     return builder().Load(addr, type::Nat8);
   }
   return ir::Value(builder().PtrFix(EmitRef(node).reg(), type_of(node)));
@@ -924,9 +937,7 @@ static std::vector<std::pair<ast::Expression const *, ir::Value>>
 EmitValueWithExpand(Compiler *c, base::PtrSpan<ast::Expression const> exprs) {
   // TODO expansion
   std::vector<std::pair<ast::Expression const *, ir::Value>> vals;
-  for (auto *expr : exprs) {
-    vals.emplace_back(expr, c->EmitValue(expr));
-  }
+  for (auto *expr : exprs) { vals.emplace_back(expr, c->EmitValue(expr)); }
   return vals;
 }
 
@@ -1188,9 +1199,9 @@ ir::Value Compiler::EmitValue(ast::Unop const *node) {
         return ir::Value(
             builder().Not(EmitValue(node->operand()).get<ir::RegOr<bool>>()));
       } else if (t->is<type::Flags>()) {
-        return ir::Value(
-            builder().XorFlags(EmitValue(node->operand()).get<ir::RegOr<ir::FlagsVal>>(),
-                               ir::FlagsVal{t->as<type::Flags>().All}));
+        return ir::Value(builder().XorFlags(
+            EmitValue(node->operand()).get<ir::RegOr<ir::FlagsVal>>(),
+            ir::FlagsVal{t->as<type::Flags>().All}));
 
       } else {
         NOT_YET();
@@ -1217,11 +1228,12 @@ ir::Value Compiler::EmitValue(ast::Unop const *node) {
       return *maybe_val;
     }
     case frontend::Operator::Mul:
-      return ir::Value(
-          builder().Ptr(EmitValue(node->operand()).get<ir::RegOr<type::Type const *>>()));
+      return ir::Value(builder().Ptr(
+          EmitValue(node->operand()).get<ir::RegOr<type::Type const *>>()));
     case frontend::Operator::At: {
       auto *t = type_of(node);
-      return builder().Load(EmitValue(node->operand()).get<ir::RegOr<ir::Addr>>(), t);
+      return builder().Load(
+          EmitValue(node->operand()).get<ir::RegOr<ir::Addr>>(), t);
     }
     case frontend::Operator::Needs: {
       NOT_YET();

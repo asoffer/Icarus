@@ -14,7 +14,7 @@ std::optional<FailedMatch> MatchPositionalArgsToParams(
   for (size_t i = 0; i < args.pos().size(); ++i) {
     auto const &param = params[i];
     // TODO constant parameters
-    type::Type const *meet = type::Meet(args.at(i).type(), param.value.type());
+    type::Type const *meet = type::Meet(args[i].type(), param.value.type());
     if (not meet) { return FailedMatch{}; }
     matched_params->append(param.name, meet, param.flags);
   }

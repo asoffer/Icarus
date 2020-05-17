@@ -52,13 +52,6 @@ struct FnArgs {
     return named_.find(s)->second;
   }
 
-  // TODO deprecate `at` methods. Prefer operator[].
-  T &at(size_t i) { return pos_.at(i); }
-  T const &at(size_t i) const { return pos_.at(i); }
-
-  T &at(std::string_view s) { return named_.at(s); }
-  T const &at(std::string_view s) const { return named_.at(s); }
-
   T *at_or_null(std::string_view s) {
     auto iter = named_.find(s);
     if (iter == named_.end()) { return nullptr; }

@@ -69,7 +69,7 @@ bool CanCast(Type const *from, Type const *to) {
     if (auto *to_tup = to->if_as<Tuple>()) {
       if (from_tup->size() != to_tup->size()) { return false; }
       for (size_t i = 0; i < from_tup->size(); ++i) {
-        if (not CanCast(from_tup->entries_.at(i), to_tup->entries_.at(i))) {
+        if (not CanCast(from_tup->entries_[i], to_tup->entries_[i])) {
           return false;
         }
       }
@@ -115,8 +115,8 @@ bool CanCast(Type const *from, Type const *to) {
 
       size_t num_params = from_fn->params().size();
       for (size_t i = 0; i < num_params; ++i) {
-        auto const &from_param = from_fn->params().at(i);
-        auto const &to_param   = to_fn->params().at(i);
+        auto const &from_param = from_fn->params()[i];
+        auto const &to_param   = to_fn->params()[i];
 
         if (not CanCast(from_param.value, to_param.value)) { return false; }
         if (from_param.flags & core::MUST_NOT_NAME) {

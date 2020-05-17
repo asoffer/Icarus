@@ -152,9 +152,6 @@ struct Params {
     return &iter->second;
   }
 
-  // TODO deprecate `at` method. Prefer operator[]
-  Param<T> const& at(size_t i) const& { return params_.at(i); }
-
   Param<T> const& operator[](size_t i) const& { return params_[i]; }
 
   void append(Param<T> p) {

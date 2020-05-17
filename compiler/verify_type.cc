@@ -195,10 +195,9 @@ static type::QualType VerifySpecialFunctions(Compiler *visitor,
       }
 
       if (f->params().size() != 2 or
-          f->params().at(0).value != f->params().at(1).value or
-          not f->params().at(0).value->is<type::Pointer>() or
-          not f->params()
-                  .at(0)
+          f->params()[0].value != f->params()[1].value or
+          not f->params()[0].value->is<type::Pointer>() or
+          not f->params()[0]
                   .value->as<type::Pointer>()
                   .pointee()
                   ->is<type::Struct>()) {
@@ -208,8 +207,7 @@ static type::QualType VerifySpecialFunctions(Compiler *visitor,
         // TODO should you check that they're exported consistently in some way?
         // Note that you don't export the struct but rather declarations bound
         // to it so it's not totally clear how you would do that.
-        auto const &s = f->params()
-                            .at(0)
+        auto const &s = f->params()[0]
                             .value->as<type::Pointer>()
                             .pointee()
                             ->as<type::Struct>();
@@ -238,10 +236,9 @@ static type::QualType VerifySpecialFunctions(Compiler *visitor,
       }
 
       if (f->params().size() != 2 or
-          f->params().at(0).value != f->params().at(1).value or
-          not f->params().at(0).value->is<type::Pointer>() or
-          not f->params()
-                  .at(0)
+          f->params()[0].value != f->params()[1].value or
+          not f->params()[0].value->is<type::Pointer>() or
+          not f->params()[0]
                   .value->as<type::Pointer>()
                   .pointee()
                   ->is<type::Struct>()) {
@@ -251,8 +248,7 @@ static type::QualType VerifySpecialFunctions(Compiler *visitor,
         // TODO should you check that they're exported consistently in some way?
         // Note that you don't export the struct but rather declarations bound
         // to it so it's not totally clear how you would do that.
-        auto const &s = f->params()
-                            .at(0)
+        auto const &s = f->params()[0]
                             .value->as<type::Pointer>()
                             .pointee()
                             ->as<type::Struct>();
@@ -416,7 +412,7 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node,
         bool err = false;
         for (auto *n : c->data().extraction_map_[node]) {
           if (auto *ret_node = n->if_as<ast::ReturnStmt>()) {
-            auto *t = ASSERT_NOT_NULL(saved_ret_types.at(ret_node));
+            auto *t = ASSERT_NOT_NULL(saved_ret_types[ret_node]);
             if (t == outs[0]) { continue; }
             c->diag().Consume(diagnostic::ReturnTypeMismatch{
                 .actual   = t,
@@ -434,7 +430,7 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node,
       default: {
         for (auto *n : c->data().extraction_map_[node]) {
           if (auto *ret_node = n->if_as<ast::ReturnStmt>()) {
-            auto *expr_type = ASSERT_NOT_NULL(saved_ret_types.at(ret_node));
+            auto *expr_type = ASSERT_NOT_NULL(saved_ret_types[ret_node]);
             if (expr_type->is<type::Tuple>()) {
               auto const &tup_entries = expr_type->as<type::Tuple>().entries_;
               if (tup_entries.size() != outs.size()) {
@@ -449,7 +445,7 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node,
               } else {
                 bool err = false;
                 for (size_t i = 0; i < tup_entries.size(); ++i) {
-                  if (tup_entries.at(i) != outs.at(i)) {
+                  if (tup_entries[i] != outs[i]) {
                     // TODO if this is a commalist we can point to it more
                     // carefully but if we're just passing on multiple return
                     // values it's harder.
@@ -544,12 +540,12 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
   if (outputs) {
     for (size_t i = 0; i < output_type_vec.size(); ++i) {
       if (auto *decl = (*outputs)[i]->if_as<ast::Declaration>()) {
-        output_type_vec.at(i) = type_of(decl);
+        output_type_vec[i] = type_of(decl);
       } else {
-        ASSERT(output_type_vec.at(i) == type::Type_);
+        ASSERT(output_type_vec[i] == type::Type_);
         auto maybe_type = EvaluateAs<type::Type const *>((*outputs)[i]);
         if (not maybe_type) { NOT_YET(); }
-        output_type_vec.at(i) = *maybe_type;
+        output_type_vec[i] = *maybe_type;
       }
     }
 
@@ -689,7 +685,7 @@ static type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
     default: {
       type::Quals quals = type::Quals::Const();
       absl::flat_hash_set<type::Callable const *> member_types;
-      auto const& data = mod->data();
+      auto const &data = mod->data();
       for (auto const *decl : decls) {
         ASSIGN_OR(return type::QualType::Error(),  //
                          auto qt, data.qual_type(decl));
@@ -999,36 +995,35 @@ static type::QualType VerifyCall(
       }
 
       if (not err) {
-        if (arg_vals.at(0).type() != type::ByteView) {
+        if (arg_vals[0].type() != type::ByteView) {
           c->diag().Consume(diagnostic::BuiltinError{
-              .range = b->range(),
-              .message =
-                  absl::StrCat("First argument to `foreign` must be a "
-                               "byte-view (You provided a(n) ",
-                               arg_vals.at(0).type()->to_string(), ")."),
+              .range   = b->range(),
+              .message = absl::StrCat("First argument to `foreign` must be a "
+                                      "byte-view (You provided a(n) ",
+                                      arg_vals[0].type()->to_string(), ")."),
           });
         }
-        if (arg_vals.at(0)->empty()) {
+        if (arg_vals[0]->empty()) {
           c->diag().Consume(diagnostic::BuiltinError{
               .range   = b->range(),
               .message = "First argument to `foreign` must be a constant."});
         }
-        if (arg_vals.at(1).type() != type::Type_) {
+        if (arg_vals[1].type() != type::Type_) {
           c->diag().Consume(diagnostic::BuiltinError{
               .range = b->range(),
               .message =
                   absl::StrCat("Second argument to `foreign` must be a type "
                                "(You provided a(n) ",
-                               arg_vals.at(0).type()->to_string(), ").")});
+                               arg_vals[0].type()->to_string(), ").")});
         }
-        if (arg_vals.at(1)->empty()) {
+        if (arg_vals[1]->empty()) {
           c->diag().Consume(diagnostic::BuiltinError{
               .range   = b->range(),
               .message = "Second argument to `foreign` must be a constant."});
         }
       }
 
-      auto maybe_type = c->EvaluateAs<type::Type const *>(args.at(1));
+      auto maybe_type = c->EvaluateAs<type::Type const *>(args[1]);
       if (not maybe_type) { NOT_YET(); }
       auto const *foreign_type = *maybe_type;
       if (not foreign_type->template is<type::Function>() and
@@ -1065,13 +1060,13 @@ static type::QualType VerifyCall(
                 "(You provided ",
                 size, ")."),
         });
-      } else if (arg_vals.at(0).type() != type::Type_) {
+      } else if (arg_vals[0].type() != type::Type_) {
         c->diag().Consume(diagnostic::BuiltinError{
             .range = b->range(),
             .message =
                 absl::StrCat("Built-in function `bytes` must take a single "
                              "argument of type `type` (You provided a(n) ",
-                             arg_vals.at(0).type()->to_string(), ").")});
+                             arg_vals[0].type()->to_string(), ").")});
       }
       return type::QualType::Constant(
           ir::BuiltinFn::Bytes().type()->output()[0]);
@@ -1092,13 +1087,13 @@ static type::QualType VerifyCall(
                                     size, ")."),
         });
 
-      } else if (arg_vals.at(0).type() != type::Type_) {
+      } else if (arg_vals[0].type() != type::Type_) {
         c->diag().Consume(diagnostic::BuiltinError{
             .range = b->range(),
             absl::StrCat("Built-in function `alignment` must take a single "
                          "argument of "
                          "type `type` (you provided a(n) ",
-                         arg_vals.at(0).type()->to_string(), ")"),
+                         arg_vals[0].type()->to_string(), ")"),
         });
       }
       return type::QualType::Constant(
@@ -1147,7 +1142,6 @@ VerifyFnArgs(
   return arg_vals;
 }
 
-
 type::QualType Compiler::VerifyType(ast::Call const *node) {
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto arg_vals, VerifyFnArgs(this, node->args()));
@@ -1173,7 +1167,8 @@ type::QualType Compiler::VerifyType(ast::Call const *node) {
     DEBUG_LOG("Call.VerifyType")
     ("Callee's (", node->callee()->DebugString(), ") qual-type: ", callee_qt);
     auto ret_types = c->return_types(arg_vals);
-    DEBUG_LOG("Call.VerifyType")("Return types for this instantiation: ",
+    DEBUG_LOG("Call.VerifyType")
+    ("Return types for this instantiation: ",
      type::Tup(ret_types)->to_string());
     // Can this be constant?
     bool constant = true;

@@ -609,7 +609,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
             /* length = */ kMaxSize);
 
       } else {
-        type::Type const *t = fn_type->params().at(i).value;
+        type::Type const *t = fn_type->params()[i].value;
         if (t->is_big()) {
           NOT_YET();
         } else {
