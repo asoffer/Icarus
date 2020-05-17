@@ -17,7 +17,7 @@ struct ByteCodeWriter;
 
 // Instruction:
 // This is the base class for all instructions in the intermediate
-// representation. 
+// representation.
 struct Instruction : base::Clone<Instruction, void>, base::Cast<Instruction> {
   virtual ~Instruction() {}
   virtual std::string to_string() const { return "[[unknown]]"; }

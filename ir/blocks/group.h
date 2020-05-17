@@ -91,7 +91,6 @@ struct BlockGroupBase {
   base::untyped_buffer byte_code_;
 };
 
-
 }  // namespace internal
 
 template <typename T>

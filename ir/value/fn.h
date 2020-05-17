@@ -34,9 +34,7 @@ struct Fn {
     ASSERT(kind() == Kind::Native);
   }
 
-  constexpr Kind kind() const {
-    return static_cast<Kind>(data_ & 3);
-  }
+  constexpr Kind kind() const { return static_cast<Kind>(data_ & 3); }
 
   type::Function const *type() const {
     switch (kind()) {

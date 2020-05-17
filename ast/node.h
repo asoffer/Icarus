@@ -32,7 +32,6 @@ struct Node : public base::Cast<Node> {
   constexpr frontend::SourceRange range() const { return range_; }
   Scope *scope() const { return scope_; }
 
-
   frontend::SourceRange range_;
   Scope *scope_ = nullptr;
 };

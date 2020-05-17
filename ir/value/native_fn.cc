@@ -13,8 +13,6 @@ NativeFn::NativeFn(NativeFnSet *set, type::Function const *fn_type,
 
 type::Function const *NativeFn::type() const { return get()->type(); }
 
-CompiledFn *NativeFn::get() const {
-  return fn_;
-}
+CompiledFn *NativeFn::get() const { return fn_; }
 
 }  // namespace ir

@@ -16,7 +16,7 @@ base::Global<std::vector<
 }  // namespace
 
 GenericFn::GenericFn(
-    std::function<NativeFn(core::FnArgs<type::Typed<Value>> const&)> gen) {
+    std::function<NativeFn(core::FnArgs<type::Typed<Value>> const &)> gen) {
   auto handle = gen_fns.lock();
   id_         = handle->size();
   handle->push_back(std::move(gen));

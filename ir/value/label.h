@@ -6,7 +6,8 @@
 
 namespace ir {
 
-ICARUS_BASE_DEFINE_STRONG_TYPE(Label, std::string_view(""), base::EnableHashing);
+ICARUS_BASE_DEFINE_STRONG_TYPE(Label, std::string_view(""),
+                               base::EnableHashing);
 
 }  // namespace ir
 

@@ -112,9 +112,7 @@ bool Identifier::IsDependent() const {
   return false;
 }
 
-bool Import::IsDependent() const {
-  return operand()->IsDependent();
-}
+bool Import::IsDependent() const { return operand()->IsDependent(); }
 
 bool Index::IsDependent() const {
   return lhs()->IsDependent() or rhs()->IsDependent();

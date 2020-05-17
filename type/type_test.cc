@@ -51,9 +51,7 @@ TEST(Type, Flags) {
   EXPECT_TRUE(f3.HasDestructor());
 }
 
-TEST(Type, WriteTo) {
-  EXPECT_EQ(FakeType(0).to_string(), "[[FakeType]]");
-}
+TEST(Type, WriteTo) { EXPECT_EQ(FakeType(0).to_string(), "[[FakeType]]"); }
 
 TEST(Type, Layout) {
   EXPECT_EQ(FakeType(0).bytes(core::Host), core::Bytes{17});

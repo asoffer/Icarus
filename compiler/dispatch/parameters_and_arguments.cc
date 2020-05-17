@@ -34,7 +34,7 @@ core::Params<type::QualType> ExtractParamTypes(Compiler *compiler,
     } else if (auto *jump_type = decl_type->if_as<type::Jump>()) {
       auto maybe_j = compiler->Evaluate(type::Typed(decl, decl_type));
       if (not maybe_j) { NOT_YET(); }
-      auto j = maybe_j->get<ir::Jump const*>();
+      auto j = maybe_j->get<ir::Jump const *>();
 
       return j->params().Transform(
           [](auto const &p) { return type::QualType::NonConstant(p.type()); });

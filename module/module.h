@@ -1,12 +1,11 @@
 #ifndef ICARUS_MODULE_MODULE_H
 #define ICARUS_MODULE_MODULE_H
 
+#include <forward_list>
 #include <memory>
 #include <string_view>
 #include <utility>
 #include <vector>
-#include <forward_list>
-#include <utility>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/node_hash_map.h"

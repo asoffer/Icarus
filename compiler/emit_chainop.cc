@@ -233,7 +233,8 @@ ir::Value Compiler::EmitValue(ast::ChainOp const *node) {
     auto iter = node->exprs().begin();
     auto val  = EmitValue(*iter).get<ir::RegOr<ir::FlagsVal>>();
     while (++iter != node->exprs().end()) {
-      val = builder().AndFlags(val, EmitValue(*iter).get<ir::RegOr<ir::FlagsVal>>());
+      val = builder().AndFlags(val,
+                               EmitValue(*iter).get<ir::RegOr<ir::FlagsVal>>());
     }
     return ir::Value(val);
   } else if (node->ops()[0] == frontend::Operator::Or and t == type::Type_) {
@@ -268,12 +269,14 @@ ir::Value Compiler::EmitValue(ast::ChainOp const *node) {
     }
 
     phi_blocks.push_back(builder().CurrentBlock());
-    phi_results.push_back(EmitValue(node->exprs().back()).get<ir::RegOr<bool>>());
+    phi_results.push_back(
+        EmitValue(node->exprs().back()).get<ir::RegOr<bool>>());
     builder().UncondJump(land_block);
 
     builder().CurrentBlock() = land_block;
 
-    return ir::Value(builder().Phi<bool>(std::move(phi_blocks), std::move(phi_results)));
+    return ir::Value(
+        builder().Phi<bool>(std::move(phi_blocks), std::move(phi_results)));
 
   } else {
     if (node->ops().size() == 1) {
@@ -307,7 +310,8 @@ ir::Value Compiler::EmitValue(ast::ChainOp const *node) {
 
       builder().CurrentBlock() = land_block;
 
-      return ir::Value(builder().Phi<bool>(std::move(phi_blocks), std::move(phi_values)));
+      return ir::Value(
+          builder().Phi<bool>(std::move(phi_blocks), std::move(phi_values)));
     }
   }
   UNREACHABLE();

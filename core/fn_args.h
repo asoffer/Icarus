@@ -68,7 +68,7 @@ struct FnArgs {
     std::string result = "fnargs[";
     char const *sep    = "";
     for (auto &&val : pos_) {
-      absl::StrAppend(&result,sep, stringify(val));
+      absl::StrAppend(&result, sep, stringify(val));
       sep = ", ";
     }
     for (auto &&[key, val] : named_) {
@@ -186,7 +186,7 @@ bool operator==(FnArgs<T> const &lhs, FnArgs<T> const &rhs) {
   if (lhs.pos() != rhs.pos()) { return false; }
   if (lhs.named().size() != rhs.named().size()) { return false; }
   auto const &rhs_named = rhs.named();
-  for (auto const & [ k, v ] : lhs.named()) {
+  for (auto const &[k, v] : lhs.named()) {
     if (auto iter = rhs_named.find(k);
         iter == rhs_named.end() or iter->second != v) {
       return false;

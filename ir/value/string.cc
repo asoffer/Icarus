@@ -31,8 +31,7 @@ Addr SaveStringGlobally(std::string const& str) {
 
 String::String(char const* str) : String(std::string(str)) {}
 String::String(std::string_view str) : String(std::string(str)) {}
-String::String(std::string const& str)
-    : addr_(SaveStringGlobally(str)) {}
+String::String(std::string const& str) : addr_(SaveStringGlobally(str)) {}
 
 std::string String::get() const {
   std::string result;

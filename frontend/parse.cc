@@ -79,8 +79,6 @@ struct CommaList : ast::Expression {
   std::vector<std::unique_ptr<ast::Expression>> exprs_;
 };
 
-
-
 // Temporary node which never appears in the AST but is useful during parsing to
 // distinguish 'when' from other binary operators.
 struct SwitchWhen : public ast::Node {
@@ -202,7 +200,7 @@ std::unique_ptr<ast::Node> BuildControlHandler(
 std::unique_ptr<ast::Node> BracedStatementsSameLineEnd(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  auto stmts  = move_as<Statements>(nodes[1]);
+  auto stmts = move_as<Statements>(nodes[1]);
   stmts->set_range(
       SourceRange(nodes[0]->range().begin(), nodes[2]->range().end()));
   if (nodes[2]->is<Statements>()) {
@@ -307,7 +305,8 @@ std::unique_ptr<ast::Node> BuildCallImpl(
 std::unique_ptr<ast::Node> BuildCall(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  SourceRange range(nodes.front()->range().begin(), nodes.back()->range().end());
+  SourceRange range(nodes.front()->range().begin(),
+                    nodes.back()->range().end());
   return BuildCallImpl(range, move_as<ast::Expression>(nodes[0]),
                        move_as<ast::Expression>(nodes[2]), diag);
 }
@@ -318,12 +317,13 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
   const std::string &tk = nodes[0]->as<Token>().token;
 
   if (tk == "import") {
-    auto range = SourceRange(nodes[0]->range().begin(), nodes[1]->range().end());
+    auto range =
+        SourceRange(nodes[0]->range().begin(), nodes[1]->range().end());
     return std::make_unique<ast::Import>(range,
                                          move_as<ast::Expression>(nodes[1]));
   } else if (tk == "'") {
     SourceRange range(nodes.front()->range().begin(),
-                     nodes.back()->range().end());
+                      nodes.back()->range().end());
     return BuildCallImpl(range, move_as<ast::Expression>(nodes[1]), nullptr,
                          diag);
   } else if (tk == "$") {
@@ -400,8 +400,7 @@ std::unique_ptr<ast::Node> BuildUnlabeledYield(
   auto range =
       SourceRange(nodes.front()->range().begin(), nodes.back()->range().end());
   std::vector<std::unique_ptr<ast::Expression>> exprs;
-  if (auto *cl = nodes[1]->if_as<CommaList>();
-      cl and not cl->parenthesized_) {
+  if (auto *cl = nodes[1]->if_as<CommaList>(); cl and not cl->parenthesized_) {
     exprs = std::move(*cl).extract();
   } else {
     exprs.push_back(move_as<ast::Expression>(nodes[1]));
@@ -514,8 +513,7 @@ std::unique_ptr<ast::Node> BuildEmptyCommaList(
 std::unique_ptr<ast::Node> BuildArrayLiteral(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  if (auto *cl = nodes[1]->if_as<CommaList>();
-      cl and not cl->parenthesized_) {
+  if (auto *cl = nodes[1]->if_as<CommaList>(); cl and not cl->parenthesized_) {
     return std::make_unique<ast::ArrayLiteral>(nodes[0]->range(),
                                                std::move(*cl).extract());
   } else {
@@ -542,10 +540,9 @@ std::unique_ptr<ast::Node> BuildGenericStructType(
 std::unique_ptr<ast::Node> BuildArrayType(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  if (auto *cl = nodes[1]->if_as<CommaList>();
-      cl and not cl->parenthesized_) {
+  if (auto *cl = nodes[1]->if_as<CommaList>(); cl and not cl->parenthesized_) {
     auto range = SourceRange(nodes.front()->range().begin(),
-                            nodes.back()->range().end());
+                             nodes.back()->range().end());
     return std::make_unique<ast::ArrayType>(range, std::move(*cl).extract(),
                                             move_as<ast::Expression>(nodes[3]));
   } else {
@@ -615,7 +612,8 @@ std::vector<std::unique_ptr<ast::Declaration>> ExtractInputs(
 }
 
 std::unique_ptr<ast::Node> BuildFunctionLiteral(
-    SourceRange const& range, std::vector<std::unique_ptr<ast::Declaration>> inputs,
+    SourceRange const &range,
+    std::vector<std::unique_ptr<ast::Declaration>> inputs,
     std::vector<std::unique_ptr<ast::Expression>> output, Statements &&stmts,
     diagnostic::DiagnosticConsumer &diag) {
   return std::make_unique<ast::FunctionLiteral>(
@@ -691,10 +689,10 @@ std::unique_ptr<ast::Node> BuildNormalFunctionLiteral(
     diagnostic::DiagnosticConsumer &diag) {
   auto range =
       SourceRange(nodes[0]->range().begin(), nodes.back()->range().end());
-  auto [params, outs]   = std::move(nodes[0]->as<ast::FunctionType>()).extract();
-  return BuildFunctionLiteral(
-      range, ExtractInputs(std::move(params), diag), std::move(outs),
-      std::move(nodes[1]->as<Statements>()),  diag);
+  auto [params, outs] = std::move(nodes[0]->as<ast::FunctionType>()).extract();
+  return BuildFunctionLiteral(range, ExtractInputs(std::move(params), diag),
+                              std::move(outs),
+                              std::move(nodes[1]->as<Statements>()), diag);
 }
 
 std::unique_ptr<ast::Node> BuildInferredFunctionLiteral(
@@ -725,8 +723,8 @@ std::unique_ptr<ast::Node> BuildShortFunctionLiteral(
   if (ret_vals.size() != 1u) {
     NOT_YET("Haven't handled multiple returns yet.");
   }
-  return std::make_unique<ast::ShortFunctionLiteral>(
-      range, std::move(inputs), std::move(ret_vals[0]));
+  return std::make_unique<ast::ShortFunctionLiteral>(range, std::move(inputs),
+                                                     std::move(ret_vals[0]));
 }
 
 std::unique_ptr<ast::Node> BuildOneElementCommaList(
@@ -773,7 +771,7 @@ std::unique_ptr<ast::Node> BuildStatementLeftUnop(
 
   } else if (tk == "return") {
     auto range = SourceRange(nodes.front()->range().begin(),
-                            nodes.back()->range().end());
+                             nodes.back()->range().end());
     std::vector<std::unique_ptr<ast::Expression>> exprs;
     if (auto *cl = nodes[1]->if_as<CommaList>();
         cl and not cl->parenthesized_) {
@@ -823,7 +821,8 @@ std::unique_ptr<ast::Node> BuildControlHandler(
 std::unique_ptr<ast::Node> BuildScopeNode(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  SourceRange range(nodes.front()->range().begin(), nodes.back()->range().end());
+  SourceRange range(nodes.front()->range().begin(),
+                    nodes.back()->range().end());
   auto [callee, ordered_fn_args] =
       std::move(nodes[0]->as<ast::Call>()).extract();
   std::vector<ast::BlockNode> blocks;
@@ -875,7 +874,8 @@ std::unique_ptr<ast::Node> ExtendScopeNode(
 std::unique_ptr<ast::Node> SugaredExtendScopeNode(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  SourceRange range(nodes.front()->range().begin(), nodes.back()->range().end());
+  SourceRange range(nodes.front()->range().begin(),
+                    nodes.back()->range().end());
   auto *updated_last_scope_node = &nodes[2]->as<ast::ScopeNode>();
   std::vector<std::unique_ptr<ast::Node>> block_stmt_nodes;
   block_stmt_nodes.push_back(std::move(nodes[2]));
@@ -966,7 +966,7 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
 
   } else if (tk == "'") {
     SourceRange range(nodes.front()->range().begin(),
-                     nodes.back()->range().end());
+                      nodes.back()->range().end());
     return BuildCallImpl(range, move_as<ast::Expression>(nodes[2]),
                          move_as<ast::Expression>(nodes[0]), diag);
   } else if (tk == "->") {
@@ -1028,7 +1028,7 @@ std::unique_ptr<ast::Node> BuildScopeLiteral(
 std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
                                       diagnostic::DiagnosticConsumer &diag) {
   auto range = stmts->range();  // TODO it's really bigger than this because it
-                               // involves the keyword too.
+                                // involves the keyword too.
 
   std::vector<std::unique_ptr<ast::Declaration>> before, after;
   for (auto &stmt : stmts->content_) {
@@ -1133,7 +1133,7 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
     return sw;
   } else if (tk == "jump") {
     SourceRange range(nodes.front()->range().begin(),
-                     nodes.back()->range().end());
+                      nodes.back()->range().end());
     std::vector<std::unique_ptr<ast::Declaration>> params;
     if (nodes.size() == 5) {
       if (nodes[2]->is<CommaList>()) {

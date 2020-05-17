@@ -115,7 +115,7 @@ void ConsoleRenderer::WriteSourceQuote(frontend::Source const *source,
           ++highlight_iter;
           next_highlight_change = highlight_iter->range.begin();
         } else {
-          inside_highlight = true;
+          inside_highlight      = true;
           next_highlight_change = highlight_iter->range.end();
         }
         set_highlight();

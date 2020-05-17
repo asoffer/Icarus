@@ -51,9 +51,7 @@ static void RemoveDeadBlocks(std::queue<ir::BasicBlock*> to_check,
         if (j.true_block->incoming().empty()) { to_check.push(j.true_block); }
 
         j.false_block->erase_incoming(block);
-        if (j.false_block->incoming().empty()) {
-          to_check.push(j.false_block);
-        }
+        if (j.false_block->incoming().empty()) { to_check.push(j.false_block); }
       }
     });
     to_delete.insert(block);

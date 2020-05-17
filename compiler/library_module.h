@@ -76,7 +76,8 @@ LibraryModule *ImportLibraryModule(
               frontend::Source::Make<frontend::FileSource>(std::move(file_src));
           diagnostic::StreamingConsumer diag(stderr, src);
           mod->ProcessFromSource(src, diag);
-          // TODO annoying we have to do these together. ProcessFromSource needs to be split.
+          // TODO annoying we have to do these together. ProcessFromSource needs
+          // to be split.
         });
     t.detach();
     return mod.get();

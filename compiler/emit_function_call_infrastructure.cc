@@ -77,7 +77,7 @@ void CompleteBody(Compiler *compiler, ast::ShortFunctionLiteral const *node,
 
   ir::NativeFn ir_func = *ASSERT_NOT_NULL(compiler->data().FindNativeFn(node));
 
-  auto& bldr = compiler->builder();
+  auto &bldr = compiler->builder();
   ICARUS_SCOPE(ir::SetCurrent(ir_func.get(), &bldr)) {
     bldr.CurrentBlock() = bldr.CurrentGroup()->entry();
 
@@ -108,7 +108,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
 
   ir::NativeFn ir_func = *ASSERT_NOT_NULL(compiler->data().FindNativeFn(node));
 
-  auto& bldr = compiler->builder();
+  auto &bldr = compiler->builder();
   ICARUS_SCOPE(ir::SetCurrent(ir_func.get(), &bldr)) {
     bldr.CurrentBlock() = bldr.CurrentGroup()->entry();
 
@@ -167,7 +167,9 @@ void CompleteBody(Compiler *compiler, ast::Jump const *node) {
     // TODO arguments should be renumbered to not waste space on const
     // values
     int32_t i = 0;
-    if (node->state()) { compiler->data().set_addr(node->state(), ir::Reg::Arg(i++)); }
+    if (node->state()) {
+      compiler->data().set_addr(node->state(), ir::Reg::Arg(i++));
+    }
     for (auto const &param : node->params()) {
       compiler->data().set_addr(param.value.get(), ir::Reg::Arg(i++));
     }

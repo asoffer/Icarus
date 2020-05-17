@@ -5,14 +5,14 @@ namespace frontend {
 
 // TODO debug stringify.
 enum Tag : uint64_t {
-  bof           = 1ull << 0,
-  eof           = 1ull << 1,
-  newline       = 1ull << 2,
+  bof     = 1ull << 0,
+  eof     = 1ull << 1,
+  newline = 1ull << 2,
 
-  braced_stmts  = 1ull << 3,
-  scope_expr    = 1ull << 4,
-  block_expr    = 1ull << 5,
-  fn_call_expr  = 1ull << 6,
+  braced_stmts = 1ull << 3,
+  scope_expr   = 1ull << 4,
+  block_expr   = 1ull << 5,
+  fn_call_expr = 1ull << 6,
 
   stmts         = 1ull << 7,
   expr          = 1ull << 8,

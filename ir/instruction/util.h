@@ -20,7 +20,7 @@ constexpr uint8_t PrimitiveIndex() {
     return 0x08;
   } else if constexpr (std::is_same_v<T, double>) {
     return 0x09;
-  } else if constexpr (std::is_same_v<T, type::Type const*>) {
+  } else if constexpr (std::is_same_v<T, type::Type const *>) {
     return 0x0a;
   } else if constexpr (std::is_same_v<T, Addr>) {
     return 0x0b;
@@ -38,14 +38,14 @@ constexpr uint8_t PrimitiveIndex() {
     return 0x11;
   } else if constexpr (std::is_same_v<T, core::Bytes>) {
     return 0x12;
-  } else if constexpr (std::is_same_v<T, BlockDef*> or
-                       std::is_same_v<T, BlockDef const*>) {
+  } else if constexpr (std::is_same_v<T, BlockDef *> or
+                       std::is_same_v<T, BlockDef const *>) {
     return 0x13;
-  } else if constexpr (std::is_same_v<T, ScopeDef*> or
-                       std::is_same_v<T, ScopeDef const*>) {
+  } else if constexpr (std::is_same_v<T, ScopeDef *> or
+                       std::is_same_v<T, ScopeDef const *>) {
     return 0x14;
-  } else if constexpr (std::is_same_v<T, module::BasicModule*> or
-                       std::is_same_v<T, module::BasicModule const*>) {
+  } else if constexpr (std::is_same_v<T, module::BasicModule *> or
+                       std::is_same_v<T, module::BasicModule const *>) {
     return 0x15;
   } else if constexpr (std::is_same_v<T, GenericFn>) {
     return 0x16;
@@ -86,20 +86,20 @@ std::string_view TypeToString() {
     return "enum";
   } else if constexpr (std::is_same_v<T, FlagsVal>) {
     return "flags";
-  } else if constexpr (std::is_same_v<T, type::Type const*>) {
+  } else if constexpr (std::is_same_v<T, type::Type const *>) {
     return "type";
   } else if constexpr (std::is_same_v<T, Addr>) {
     return "addr";
   } else if constexpr (std::is_same_v<T, Fn>) {
     return "fn";
-  } else if constexpr (std::is_same_v<T, module::BasicModule*> or
-                       std::is_same_v<T, module::BasicModule const*>) {
+  } else if constexpr (std::is_same_v<T, module::BasicModule *> or
+                       std::is_same_v<T, module::BasicModule const *>) {
     return "module";
-  } else if constexpr (std::is_same_v<T, ir::ScopeDef*> or
-                       std::is_same_v<T, ir::ScopeDef const*>) {
+  } else if constexpr (std::is_same_v<T, ir::ScopeDef *> or
+                       std::is_same_v<T, ir::ScopeDef const *>) {
     return "scope";
-  } else if constexpr (std::is_same_v<T, ir::BlockDef*> or
-                       std::is_same_v<T, ir::BlockDef const*>) {
+  } else if constexpr (std::is_same_v<T, ir::BlockDef *> or
+                       std::is_same_v<T, ir::BlockDef const *>) {
     return "block";
   } else if constexpr (std::is_same_v<T, ir::GenericFn>) {
     return "generic-fn";

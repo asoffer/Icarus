@@ -126,7 +126,7 @@ void CallFn(ir::NativeFn fn, StackFrame *frame,
   // error.
   if (fn->work_item and *fn->work_item) { (std::move(*fn->work_item))(); }
 
-  auto *old_frame = ctx->current_frame();
+  auto *old_frame     = ctx->current_frame();
   ctx->current_frame_ = ASSERT_NOT_NULL(frame);
   ctx->ExecuteBlocks(ret_slots);
   ctx->current_frame_ = old_frame;
@@ -198,7 +198,7 @@ void ExecuteInstruction(base::untyped_buffer::const_iterator *iter,
   auto vals = Deserialize<uint16_t, type>(
       iter, [ctx](ir::Reg reg) { return ctx->resolve<type>(reg); });
   ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
-                                 VarInst::Apply(std::move(vals)));
+                                  VarInst::Apply(std::move(vals)));
 }
 
 template <typename Inst>

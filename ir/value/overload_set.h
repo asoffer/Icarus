@@ -55,7 +55,7 @@ struct OverloadSet {
   // `Fn` may be an instantiation of a generic function.
   std::optional<Fn> Lookup(core::FnArgs<type::QualType> const &args) {
     // TODO search doesn't need to be linear.
-    for (auto const & [ cached_args, index ] : cache_) {
+    for (auto const &[cached_args, index] : cache_) {
       if (args != cached_args) { continue; }
       if (index == -1) { return std::nullopt; }
       return fns_[index];

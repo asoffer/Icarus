@@ -6,9 +6,9 @@
 
 namespace ir {
 namespace {
+using testing::_;
 using testing::MockFunction;
 using testing::Return;
-using testing::_;
 
 TEST(RegisterAllocator, NumRegs) {
   RegisterAllocator a(3);
@@ -25,7 +25,6 @@ TEST(RegisterAllocator, NumRegs) {
   EXPECT_EQ(a.num_regs(), 7);
   EXPECT_EQ(a.num_args(), 3);
 }
-
 
 TEST(RegisterAllocator, ForEachAlloc) {
   RegisterAllocator a(3);

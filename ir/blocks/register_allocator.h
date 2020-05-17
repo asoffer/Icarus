@@ -55,9 +55,7 @@ struct RegisterAllocator {
   template <typename Fn>
   void MergeFrom(RegisterAllocator const& a, Fn&& f) {
     num_regs_ += a.num_regs_;
-    for (auto const & [ t, reg ] : a.allocs_) {
-      allocs_.emplace_back(t, f(reg));
-    }
+    for (auto const& [t, reg] : a.allocs_) { allocs_.emplace_back(t, f(reg)); }
   }
 
   // Iterate through each allocation, calling `f` on each (type, register)-pair.
@@ -67,12 +65,12 @@ struct RegisterAllocator {
   // type rather than the type itself.
   template <typename Fn>
   void for_each_alloc(Fn&& f) const {
-    for (auto const & [ t, reg ] : allocs_) { f(t, reg); }
+    for (auto const& [t, reg] : allocs_) { f(t, reg); }
   }
 
   friend std::ostream& operator<<(std::ostream& os,
                                   RegisterAllocator const& a) {
-    for (auto const & [ t, reg ] : a.allocs_) {
+    for (auto const& [t, reg] : a.allocs_) {
       os << "  " << stringify(reg) << ": " << t->to_string() << "\n";
     }
     return os;

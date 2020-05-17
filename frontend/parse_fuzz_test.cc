@@ -68,10 +68,9 @@ extern "C" int LLVMFuzzerTestOneInput(uint8_t const* data, size_t length) {
   }
 
   std::cerr << "=============== SOURCE ===============\n"
-            << string_source
-            << "\n======================================\n";
+            << string_source << "\n======================================\n";
 
-      frontend::StringSource src(std::move(string_source));
+  frontend::StringSource src(std::move(string_source));
   diagnostic::TrivialConsumer diag;
   frontend::Parse(&src, diag);
 

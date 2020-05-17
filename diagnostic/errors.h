@@ -354,9 +354,7 @@ struct UnknownParseError {
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     SourceQuote quote(src);
-    for (auto const& range : lines) {
-      quote.Highlighted(range, Style{});
-    }
+    for (auto const &range : lines) { quote.Highlighted(range, Style{}); }
     return DiagnosticMessage(
         Text("Parse errors found in \"<SOME FILE>\" on the following lines:"),
         std::move(quote));
@@ -797,10 +795,11 @@ struct DeclOutOfOrder {
   static constexpr std::string_view kName     = "declaration-out-of-order";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("Variable `%s` used before it was declared.", id),
-                             SourceQuote(src)
-                                 .Highlighted(use_range, Style::ErrorText())
-                                 .Highlighted(id_range, Style::ErrorText()));
+    return DiagnosticMessage(
+        Text("Variable `%s` used before it was declared.", id),
+        SourceQuote(src)
+            .Highlighted(use_range, Style::ErrorText())
+            .Highlighted(id_range, Style::ErrorText()));
   }
 
   std::string_view id;

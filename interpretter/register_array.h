@@ -1,8 +1,8 @@
 #ifndef ICARUS_INTERPRETTER_REGISTER_ARRAY_H
 #define ICARUS_INTERPRETTER_REGISTER_ARRAY_H
 
-#include "base/untyped_buffer_view.h"
 #include "base/untyped_buffer.h"
+#include "base/untyped_buffer_view.h"
 #include "ir/value/reg.h"
 
 namespace interpretter {
@@ -60,7 +60,7 @@ struct RegisterArray {
     std::memcpy(dst, src, num_bytes);
   }
 
- // private:
+  // private:
   size_t num_regs_;
   base::untyped_buffer data_;
 };

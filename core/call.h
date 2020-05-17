@@ -43,7 +43,7 @@ bool AmbiguouslyCallable(Params<T> const& params1, Params<T> const& params2,
     if (size_t const* j = params2.at_or_null(p1.name)) {
       auto const& p2 = params2[*j];
       if (p2.flags & HAS_DEFAULT) { continue; }
-      auto[min, max] = std::minmax(i, *j);
+      auto [min, max] = std::minmax(i, *j);
       diffs[min]++;
       diffs[max]--;
       if (max > min_size) { return false; }
@@ -74,7 +74,7 @@ bool AmbiguouslyCallable(Params<T> const& params1, Params<T> const& params2,
     if (accumulator != 0 or i < starting_named_index) { continue; }
     // Ensure that any parameter name has a default value if it only appears in
     // one parameter set.
-    for (auto[name, index1] : params1.lookup_) {
+    for (auto [name, index1] : params1.lookup_) {
       if (index1 < i) { continue; }
       auto const& p1 = params1[index1];
       if (p1.flags & HAS_DEFAULT) {
@@ -88,7 +88,7 @@ bool AmbiguouslyCallable(Params<T> const& params1, Params<T> const& params2,
       }
     }
 
-    for (auto[name, index2] : params2.lookup_) {
+    for (auto [name, index2] : params2.lookup_) {
       if (index2 < i) { continue; }
       auto const& p2 = params2[index2];
       if (p2.flags & HAS_DEFAULT) {
@@ -130,7 +130,8 @@ void FillMissingArgs(ParamsRef<P> params, FnArgs<A>* args, Fn fn,
     ASSERT(i + offset < params.size());
     auto const& p = params[i + offset];
     if (p.name.empty()) { continue; }
-    DEBUG_LOG("fill-missing-args")("For named-parameter ", p.name, "inserting.");
+    DEBUG_LOG("fill-missing-args")
+    ("For named-parameter ", p.name, "inserting.");
     args->named_emplace(p.name,
                         base::lazy_convert{[&]() { return fn(p.value); }});
   }
@@ -155,7 +156,7 @@ bool IsCallable(ParamsRef<T> params, FnArgs<U> const& args, ConvertibleFn fn) {
     }
   }
 
-  for (auto const & [ name, type ] : args.named()) {
+  for (auto const& [name, type] : args.named()) {
     int index = params.index(name);
     if (index < 0) {
       DEBUG_LOG("core::IsCallable")

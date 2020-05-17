@@ -9,7 +9,7 @@ namespace ir {
 
 // A value-type representing a module (unit of compilation).
 struct ModuleId {
-  static ModuleId FromFile(frontend::CanonicalFileName const &filename);
+  static ModuleId FromFile(frontend::CanonicalFileName const& filename);
 
   frontend::CanonicalFileName const& filename() const;
 

@@ -57,7 +57,9 @@ struct Value {
     friend H AbslHashValue(H h, Empty) {
       return h;
     }
-    friend std::ostream& operator<<(std::ostream& os, Empty) { return os << "(empty)"; }
+    friend std::ostream& operator<<(std::ostream& os, Empty) {
+      return os << "(empty)";
+    }
     friend constexpr bool operator==(Empty, Empty) { return true; }
     friend constexpr bool operator!=(Empty, Empty) { return false; }
   };
@@ -177,8 +179,8 @@ struct Value {
   constexpr void apply(F&& f) const {
     apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                uint32_t, uint64_t, float, double, type::Type const*, Addr,
-               String, EnumVal, FlagsVal, /*Fn, GenericFn,*/ Reg, ModuleId, Empty>(
-        std::forward<F>(f));
+               String, EnumVal, FlagsVal, /*Fn, GenericFn,*/ Reg, ModuleId,
+               Empty>(std::forward<F>(f));
   }
 
   template <typename H>

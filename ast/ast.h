@@ -401,7 +401,6 @@ struct ParameterizedExpression : Expression {
   bool is_generic_ = false;
 };
 
-
 // DesignatedInitializer:
 //
 // Represents an initializer for the given struct.
@@ -552,11 +551,10 @@ struct BuiltinFn : Expression {
 //  * `f(a, b, c = 3)`
 //  * `arg'func`
 struct Call : Expression {
-  explicit Call(frontend::SourceRange const &range, std::unique_ptr<Expression> callee,
+  explicit Call(frontend::SourceRange const &range,
+                std::unique_ptr<Expression> callee,
                 core::OrderedFnArgs<Expression> args)
-      : Expression(range),
-        callee_(std::move(callee)),
-        args_(std::move(args)) {}
+      : Expression(range), callee_(std::move(callee)), args_(std::move(args)) {}
 
   ~Call() override {}
 
@@ -587,7 +585,8 @@ struct Call : Expression {
 //  * `3 as nat32`
 //  * `null as *int64`
 struct Cast : Expression {
-  explicit Cast(frontend::SourceRange const &range, std::unique_ptr<Expression> expr,
+  explicit Cast(frontend::SourceRange const &range,
+                std::unique_ptr<Expression> expr,
                 std::unique_ptr<Expression> type_expr)
       : Expression(range),
         expr_(std::move(expr)),
@@ -615,7 +614,8 @@ struct Cast : Expression {
 //  `a < b == c < d`
 struct ChainOp : Expression {
   // TODO consider having a construct-or-append static function.
-  explicit ChainOp(frontend::SourceRange const &range, std::unique_ptr<Expression> expr)
+  explicit ChainOp(frontend::SourceRange const &range,
+                   std::unique_ptr<Expression> expr)
       : Expression(range) {
     exprs_.push_back(std::move(expr));
   }
@@ -675,9 +675,7 @@ struct EnumLiteral : Expression, WithScope<DeclScope> {
 
   EnumLiteral(frontend::SourceRange const &range,
               std::vector<std::unique_ptr<Expression>> elems, Kind kind)
-      : Expression(range),
-        elems_(std::move(elems)),
-        kind_(kind) {}
+      : Expression(range), elems_(std::move(elems)), kind_(kind) {}
 
   ~EnumLiteral() override {}
 
@@ -690,7 +688,6 @@ struct EnumLiteral : Expression, WithScope<DeclScope> {
   std::vector<std::unique_ptr<Expression>> elems_;
   Kind kind_;
 };
-
 
 // FunctionLiteral:
 //
@@ -731,7 +728,6 @@ struct FunctionLiteral : ParameterizedExpression, WithScope<FnScope> {
   std::vector<std::unique_ptr<Node>> stmts_;
 };
 
-
 // FunctionType:
 //
 // Represents an expression involving the `->` token, which represnts a function
@@ -745,7 +741,7 @@ struct FunctionLiteral : ParameterizedExpression, WithScope<FnScope> {
 // * `(b: bool) -> ()`
 // * `(n: int64, b: bool) -> (float32, float32)
 //
-struct FunctionType  : Expression{
+struct FunctionType : Expression {
   FunctionType(frontend::SourceRange const &range,
                std::vector<std::unique_ptr<Expression>> params,
                std::vector<std::unique_ptr<Expression>> output)
@@ -873,7 +869,8 @@ struct Goto : Node {
 //  * `import "a_module.ic"`
 //  * `import function_returning_a_string()`
 struct Import : Expression {
-  explicit Import(frontend::SourceRange const &range, std::unique_ptr<Expression> expr)
+  explicit Import(frontend::SourceRange const &range,
+                  std::unique_ptr<Expression> expr)
       : Expression(range), operand_(std::move(expr)) {}
   ~Import() override {}
 
@@ -893,11 +890,10 @@ struct Import : Expression {
 //  * `buf_ptr[3]`
 //  * `my_array[4]`
 struct Index : Expression {
-  explicit Index(frontend::SourceRange const &range, std::unique_ptr<Expression> lhs,
+  explicit Index(frontend::SourceRange const &range,
+                 std::unique_ptr<Expression> lhs,
                  std::unique_ptr<Expression> rhs)
-      : Expression(range),
-        lhs_(std::move(lhs)),
-        rhs_(std::move(rhs)) {}
+      : Expression(range), lhs_(std::move(lhs)), rhs_(std::move(rhs)) {}
   ~Index() override {}
 
   Expression const *lhs() const { return lhs_.get(); }
@@ -1087,7 +1083,8 @@ struct ScopeLiteral : Expression, WithScope<ScopeLitScope> {
 //  `unwrap (maybe_object) or { return -1 }`
 //
 struct ScopeNode : Expression {
-  ScopeNode(frontend::SourceRange const &range, std::unique_ptr<Expression> name,
+  ScopeNode(frontend::SourceRange const &range,
+            std::unique_ptr<Expression> name,
             core::OrderedFnArgs<Expression> args, std::vector<BlockNode> blocks)
       : Expression(range),
         name_(std::move(name)),
@@ -1243,7 +1240,8 @@ struct Switch : Expression {
 struct Terminal : Expression {
   template <typename T,
             std::enable_if_t<std::is_trivially_copyable_v<T>, int> = 0>
-  explicit Terminal(frontend::SourceRange const &range, T value, type::BasicType t)
+  explicit Terminal(frontend::SourceRange const &range, T value,
+                    type::BasicType t)
       : Expression(range), basic_(t) {
     static_cast<void>(value);
     if constexpr (std::is_same_v<T, bool>) {
@@ -1368,9 +1366,7 @@ struct YieldStmt : Node {
   explicit YieldStmt(frontend::SourceRange const &range,
                      std::vector<std::unique_ptr<Expression>> exprs,
                      std::unique_ptr<ast::Label> label = nullptr)
-      : Node(range),
-        exprs_(std::move(exprs)),
-        label_(std::move(label)) {}
+      : Node(range), exprs_(std::move(exprs)), label_(std::move(label)) {}
   ~YieldStmt() override {}
 
   base::PtrSpan<Expression const> exprs() const { return exprs_; }

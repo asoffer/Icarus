@@ -23,7 +23,8 @@ struct Global {
   NoDestructor<guarded<T>> data_;
 };
 
-// Constant globals should still not be destroyed but there's no need to lock them.
+// Constant globals should still not be destroyed but there's no need to lock
+// them.
 template <typename T>
 struct Global<T const> {
   explicit Global() {}

@@ -1,10 +1,10 @@
 #include "ir/value/value.h"
 
-#include <sstream>
 #include <cstdint>
+#include <sstream>
 
-#include "gtest/gtest.h"
 #include "gmock/gmock.h"
+#include "gtest/gtest.h"
 #include "ir/value/reg_or.h"
 
 namespace {
@@ -67,8 +67,8 @@ TEST(MultiValue, Basic) {
   EXPECT_EQ(m[1], ir::Value(true));
   EXPECT_EQ(m[2], ir::Value(ir::Reg(3)));
 
-  EXPECT_THAT(m.span(),
-              ElementsAre(ir::Value(3), ir::Value(true), ir::Value(ir::Reg(3))));
+  EXPECT_THAT(m.span(), ElementsAre(ir::Value(3), ir::Value(true),
+                                    ir::Value(ir::Reg(3))));
 }
 
 TEST(MultiValue, Copy) {
@@ -112,7 +112,7 @@ TEST(MultiValue, Move) {
   EXPECT_EQ(m[2], ir::Value(ir::Reg(3)));
 
   EXPECT_THAT(m.span(), ElementsAre(ir::Value(3), ir::Value(true),
-                                       ir::Value(ir::Reg(3))));
+                                    ir::Value(ir::Reg(3))));
 }
 
 TEST(MultiValue, Equality) {

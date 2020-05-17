@@ -8,7 +8,7 @@
 namespace base {
 
 template <typename T>
-struct  alignas(T) lazy {
+struct alignas(T) lazy {
   T get() const { return *reinterpret_cast<T*>(val_); }
   ~lazy() {
     bool was_called = true;

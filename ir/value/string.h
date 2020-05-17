@@ -10,8 +10,8 @@ namespace ir {
 
 struct String {
   explicit String(std::string_view str = "");
-  explicit String(char const * str);
-  explicit String(std::string const &str);
+  explicit String(char const* str);
+  explicit String(std::string const& str);
 
   Addr addr() const { return addr_; }
 

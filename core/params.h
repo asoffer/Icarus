@@ -1,8 +1,8 @@
 #ifndef ICARUS_CORE_PARAMS_H
 #define ICARUS_CORE_PARAMS_H
 
-#include <iostream>
 #include <algorithm>
+#include <iostream>
 #include <string_view>
 #include <vector>
 
@@ -61,7 +61,6 @@ struct Param {
     return os << param.name << ": " << stringify(param.value)
               << "(flags = " << static_cast<int>(param.flags) << ")";
   }
-
 
   std::string_view name = "";
   T value{};

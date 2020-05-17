@@ -157,8 +157,11 @@ Type const *Meet(Type const *lhs, Type const *rhs) {
                                          rhs->as<Pointer>().pointee()))
                               : nullptr;
   } else if (lhs->is<Array>() and rhs->is<Array>()) {
-    if (lhs->as<Array>().length() != rhs->as<Array>().length()) { return nullptr; }
-    auto *result = Meet(lhs->as<Array>().data_type(), rhs->as<Array>().data_type());
+    if (lhs->as<Array>().length() != rhs->as<Array>().length()) {
+      return nullptr;
+    }
+    auto *result =
+        Meet(lhs->as<Array>().data_type(), rhs->as<Array>().data_type());
     return result ? Arr(lhs->as<Array>().length(), result) : result;
   } else if (lhs->is<Variant>()) {
     // TODO this feels very fishy, cf. ([3; int] | [4; int]) with [--; int]

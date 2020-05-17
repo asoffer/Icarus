@@ -4,11 +4,11 @@
 #include <cstring>
 #include <memory>
 #include <string>
-#include <vector>
 #include <string_view>
 #include <type_traits>
 #include <utility>
 #include <variant>
+#include <vector>
 
 #include "base/meta.h"
 #include "base/stringify.h"
@@ -67,7 +67,7 @@ struct JumpCmd {
 
    private:
     std::vector<std::string_view> names_;
-    std::vector<BasicBlock *> blocks_;
+    std::vector<BasicBlock*> blocks_;
     std::vector<core::FnArgs<type::Typed<Value>>> args_;
   };
 

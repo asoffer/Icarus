@@ -70,7 +70,7 @@ struct BasicBlock {
 
   std::vector<std::unique_ptr<Instruction>> instructions_;
 
- LoadStoreCache cache_;
+  LoadStoreCache cache_;
   absl::flat_hash_set<BasicBlock *> incoming_;
 
   JumpCmd jump_ = JumpCmd::Return();

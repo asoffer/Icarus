@@ -2,8 +2,8 @@
 
 #include "gtest/gtest.h"
 #include "type/array.h"
-#include "type/pointer.h"
 #include "type/function.h"
+#include "type/pointer.h"
 #include "type/primitive.h"
 #include "type/tuple.h"
 #include "type/variant.h"
@@ -222,7 +222,7 @@ TEST(CanCast, Function) {
                        Func({core::AnonymousParam(Int64)}, {})));
 
   EXPECT_TRUE(CanCast(Func({core::Param("name", Bool)}, {}),
-                       Func({core::AnonymousParam(Bool)}, {})));
+                      Func({core::AnonymousParam(Bool)}, {})));
 
   EXPECT_FALSE(CanCast(Func({core::Param("name", Bool, core::MUST_NAME)}, {}),
                        Func({core::AnonymousParam(Bool)}, {})));
@@ -230,8 +230,9 @@ TEST(CanCast, Function) {
   EXPECT_FALSE(CanCast(Func({core::AnonymousParam(Bool)}, {}),
                        Func({core::Param("name", Bool, core::MUST_NAME)}, {})));
 
-  EXPECT_FALSE(CanCast(Func({core::Param("name1", Bool, core::MUST_NAME)}, {}),
-                       Func({core::Param("name2", Bool, core::MUST_NAME)}, {})));
+  EXPECT_FALSE(
+      CanCast(Func({core::Param("name1", Bool, core::MUST_NAME)}, {}),
+              Func({core::Param("name2", Bool, core::MUST_NAME)}, {})));
 
   EXPECT_FALSE(CanCast(Func({core::Param("name1", Bool)}, {}),
                        Func({core::Param("name2", Bool)}, {})));

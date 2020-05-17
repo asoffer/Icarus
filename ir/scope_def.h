@@ -54,7 +54,7 @@ struct ScopeDef {
   }
 
   module::BasicModule const *mod_ = nullptr;
-  type::Type const * state_type_;
+  type::Type const *state_type_;
   absl::flat_hash_map<std::string_view, BlockDef *> blocks_;
   // TODO figure out move/lifetime for this so we don't need separate
   // allocations.

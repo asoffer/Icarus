@@ -4,16 +4,16 @@
 #include <functional>
 #include <iostream>
 
-#include "ir/value/native_fn.h"
 #include "core/fn_args.h"
+#include "ir/value/native_fn.h"
 #include "type/typed_value.h"
 
 namespace ir {
 struct Value;
 
-// A `GenericFn` is a callable object which either requires some of the arguments
-// passed in to be known at compile-time and/or deduces the types of parameters
-// from the types of arguments.
+// A `GenericFn` is a callable object which either requires some of the
+// arguments passed in to be known at compile-time and/or deduces the types of
+// parameters from the types of arguments.
 //
 // TODO: There is an important distinction to be made here: Some functions
 // require arguments to be known at compile-time but the type may not depend on

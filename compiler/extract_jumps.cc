@@ -212,8 +212,7 @@ struct Extractor : ast::Visitor<void()> {
 
   std::vector<ast::Node const *> node_stack_;
   absl::flat_hash_map</* to = */ ast::Node const *,
-                      /* from = */ std::vector<ast::Node const *>>*
-      jumps_;
+                      /* from = */ std::vector<ast::Node const *>> *jumps_;
 };
 
 }  // namespace
@@ -228,4 +227,3 @@ void ExtractJumps(
 }
 
 }  // namespace compiler
-

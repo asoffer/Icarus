@@ -240,8 +240,7 @@ struct Builder {
   // Note: Even though this must return a more specific type (BufferPointer
   // instead of Type), we use Type to ensure that if this gets routed into an
   // ir::Value, it will be tagged correctly.
-  RegOr<type::Type const*> BufPtr(
-      RegOr<type::Type const*> const& val) {
+  RegOr<type::Type const*> BufPtr(RegOr<type::Type const*> const& val) {
     using InstrT = BufPtrInstruction;
     if (not val.is_reg()) { return InstrT::Apply(val.value()); }
     auto inst   = std::make_unique<InstrT>(val);
@@ -362,8 +361,9 @@ struct Builder {
   void OnEachArrayElement(type::Array const* t, Reg array_reg, F fn) {
     auto* data_ptr_type = type::Ptr(t->data_type());
 
-    auto ptr     = PtrIncr(array_reg, 0, type::Ptr(data_ptr_type));
-    auto end_ptr = PtrIncr(ptr, static_cast<int32_t>(t->length()), data_ptr_type);
+    auto ptr = PtrIncr(array_reg, 0, type::Ptr(data_ptr_type));
+    auto end_ptr =
+        PtrIncr(ptr, static_cast<int32_t>(t->length()), data_ptr_type);
 
     auto* start_block = CurrentBlock();
     auto* loop_body   = AddBlock();
@@ -611,7 +611,7 @@ struct Builder {
       // TODO currently this has to be implemented outside type::Apply because
       // that's in type.h which is wrong because it forces weird instantiation
       // order issues (type/type.h can't depend on type/jump.h).
-      SetRet(n, r->get<RegOr<Jump *>>());
+      SetRet(n, r->get<RegOr<Jump*>>());
     } else {
       ASSERT(r.type()->is_big() == false) << r.type()->to_string();
       type::Apply(r.type(), [&](auto tag) {

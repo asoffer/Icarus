@@ -40,7 +40,9 @@ bool IntRepresentableInBase(std::string_view s) {
 template <int Base>
 std::variant<int64_t, double, NumberParsingError> ParseIntInBase(
     std::string_view s) {
-  if (not IntRepresentableInBase<Base>(s)) { return NumberParsingError::kTooLarge; }
+  if (not IntRepresentableInBase<Base>(s)) {
+    return NumberParsingError::kTooLarge;
+  }
   int64_t result = 0;
   for (char c : s) {
     int64_t digit = DigitInBase<Base>(c);

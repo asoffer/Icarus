@@ -71,7 +71,7 @@ ir::Value EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
 
   DependentComputedData *dependent_data = nullptr;
   type::Function const *fn_type         = nullptr;
-  ir::RegOr<ir::Fn> callee      = [&]() -> ir::RegOr<ir::Fn> {
+  ir::RegOr<ir::Fn> callee              = [&]() -> ir::RegOr<ir::Fn> {
     if (auto const *gf_type =
             callee_qual_type->type()->if_as<type::GenericFunction>()) {
       fn_type = &data.type()->as<type::Function>();
@@ -133,7 +133,7 @@ ir::Value EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
     }
   }
 
-  auto[outs, out_params] = SetReturns(c.builder(), data);
+  auto [outs, out_params] = SetReturns(c.builder(), data);
   c.builder().Call(callee, fn_type,
                    PrepareCallArguments(&c, nullptr, data.params(), args),
                    out_params);
@@ -246,7 +246,7 @@ type::QualType FnCallDispatchTable::ComputeResultQualType(
     absl::flat_hash_map<ast::Expression const *, internal::ExprData> const
         &table) {
   std::vector<absl::Span<type::Type const *const>> results;
-  for (auto const & [ overload, expr_data ] : table) {
+  for (auto const &[overload, expr_data] : table) {
     DEBUG_LOG("dispatch-verify")
     ("Extracting return type for ", overload->DebugString(), " of type ",
      expr_data.type()->to_string());

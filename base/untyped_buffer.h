@@ -114,7 +114,7 @@ struct untyped_buffer {
     return old_size;
   }
 
-  void write(size_t offset, char const * data, size_t len) {
+  void write(size_t offset, char const *data, size_t len) {
     append_bytes(len);
     std::memcpy(data_ + offset, data, len);
   }

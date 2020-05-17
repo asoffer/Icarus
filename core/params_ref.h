@@ -62,7 +62,7 @@ struct ParamsRef {
 
  private:
   Params<T> const* params_ = nullptr;
-  uint32_t lhs_trim_ = 0;
+  uint32_t lhs_trim_       = 0;
 };
 
 }  // namespace core

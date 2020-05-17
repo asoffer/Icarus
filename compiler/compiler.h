@@ -157,7 +157,7 @@ struct Compiler
   }
 
   template <typename T>
-  base::expected<T> EvaluateAs(ast::Expression const * expr) {
+  base::expected<T> EvaluateAs(ast::Expression const *expr) {
     ASSIGN_OR(return _.error(), auto val,
                      Evaluate(type::Typed(expr, type::Get<T>())));
     return val.template get<T>();

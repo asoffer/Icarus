@@ -106,7 +106,6 @@ void ArrayType::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, "]");
 }
 
-
 void Assignment::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(
       out,
@@ -453,9 +452,7 @@ void Terminal::DebugStrAppend(std::string *out, size_t indent) const {
     case type::BasicType::ByteView:
       absl::StrAppend(out, "\"", as<ir::String>().get(), "\"");
       return;
-    case type::BasicType::NullPtr:
-      absl::StrAppend(out, "null");
-      return;
+    case type::BasicType::NullPtr: absl::StrAppend(out, "null"); return;
     default:;
   }
   UNREACHABLE(static_cast<int>(basic_type()));

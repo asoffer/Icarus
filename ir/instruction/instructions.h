@@ -24,7 +24,6 @@
 #include "ir/value/string.h"
 #include "type/array.h"
 #include "type/enum.h"
-#include "type/util.h"
 #include "type/flags.h"
 #include "type/function.h"
 #include "type/generic_function.h"
@@ -32,6 +31,7 @@
 #include "type/struct.h"
 #include "type/tuple.h"
 #include "type/type.h"
+#include "type/util.h"
 #include "type/variant.h"
 
 // This file defines the interface required for IR instructions as well as all
@@ -607,8 +607,8 @@ struct CastInstruction : base::Clone<CastInstruction<FromType>, Instruction> {
 
 template <typename NumType>
 struct NegInstruction : UnaryInstruction<NumType> {
-  static constexpr cmd_index_t kIndex =
-      internal::kNegInstructionRange.start + internal::PrimitiveIndex<NumType>();
+  static constexpr cmd_index_t kIndex = internal::kNegInstructionRange.start +
+                                        internal::PrimitiveIndex<NumType>();
 
   explicit NegInstruction(RegOr<NumType> const& operand)
       : UnaryInstruction<NumType>(operand) {}
@@ -797,12 +797,12 @@ struct TupleInstruction : VariadicInstruction<::type::Type const*> {
 
   std::string to_string() const override {
     using base::stringify;
-    return absl::StrCat(
-        "type ", stringify(this->result), " = tup ",
-        absl::StrJoin(this->values, " ",
-                      [](std::string* out, RegOr<::type::Type const*> const& r) {
-                        out->append(stringify(r));
-                      }));
+    return absl::StrCat("type ", stringify(this->result), " = tup ",
+                        absl::StrJoin(this->values, " ",
+                                      [](std::string* out,
+                                         RegOr<::type::Type const*> const& r) {
+                                        out->append(stringify(r));
+                                      }));
   }
 
   void WriteByteCode(ByteCodeWriter* writer) const override {
@@ -823,12 +823,12 @@ struct VariantInstruction : VariadicInstruction<::type::Type const*> {
 
   std::string to_string() const override {
     using base::stringify;
-    return absl::StrCat(
-        "type ", stringify(this->result), " = var ",
-        absl::StrJoin(this->values, " ",
-                      [](std::string* out, RegOr<::type::Type const*> const& r) {
-                        out->append(stringify(r));
-                      }));
+    return absl::StrCat("type ", stringify(this->result), " = var ",
+                        absl::StrJoin(this->values, " ",
+                                      [](std::string* out,
+                                         RegOr<::type::Type const*> const& r) {
+                                        out->append(stringify(r));
+                                      }));
   }
 
   void WriteByteCode(ByteCodeWriter* writer) const override {
@@ -1089,7 +1089,6 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
     for (auto& arg : args_) { inliner.Inline(arg); }
     for (auto& reg : outs_.regs()) { inliner.Inline(reg); }
   }
-
 
  private:
   type::Function const* fn_type_;

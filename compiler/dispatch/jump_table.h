@@ -30,7 +30,7 @@ struct JumpDispatchTable {
                       ir::LocalBlockInterpretation const &block_interp);
 
   void EmitCall(Compiler *compiler, core::FnArgs<type::Typed<ir::Value>> args,
-           ir::LocalBlockInterpretation const &block_interp);
+                ir::LocalBlockInterpretation const &block_interp);
 
   // private:
   absl::flat_hash_map<ir::Jump *, internal::ExprData> table_;

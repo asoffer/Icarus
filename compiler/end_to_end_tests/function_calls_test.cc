@@ -4,8 +4,9 @@
 #include "test/module.h"
 
 // TODO handle evaluation failures.
-ir::Value EvaluateCall(std::string fn, std::vector<std::string> pos_args,
-                   absl::flat_hash_map<std::string, std::string> named_args) {
+ir::Value EvaluateCall(
+    std::string fn, std::vector<std::string> pos_args,
+    absl::flat_hash_map<std::string, std::string> named_args) {
   test::TestModule mod;
   auto const *expr = test::MakeCall(std::move(fn), std::move(pos_args),
                                     std::move(named_args), &mod);
@@ -28,11 +29,9 @@ TEST(FunctionCall, ShortOneArgFunctions) {
   EXPECT_EQ(EvaluateCall("(x: int64) => x * x", {}, {{"x", "3"}}),
             ir::Value(int64_t{9}));
 
-  EXPECT_EQ(EvaluateCall("(x: float64) => x * x", {"3.0"}, {}),
-            ir::Value(9.0));
+  EXPECT_EQ(EvaluateCall("(x: float64) => x * x", {"3.0"}, {}), ir::Value(9.0));
   EXPECT_EQ(EvaluateCall("(x: float64) => x * x", {}, {{"x", "3.0"}}),
             ir::Value(9.0));
-
 
   EXPECT_EQ(EvaluateCall("(x: int64 = 2) => x * x", {}, {}),
             ir::Value(int64_t{4}));

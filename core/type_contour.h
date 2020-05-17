@@ -1,8 +1,8 @@
 #ifndef ICARUS_CORE_TYPE_CONTOUR_H
 #define ICARUS_CORE_TYPE_CONTOUR_H
 
-#include "core/bytes.h"
 #include "core/alignment.h"
+#include "core/bytes.h"
 
 namespace core {
 

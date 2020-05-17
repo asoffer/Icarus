@@ -104,7 +104,6 @@ struct DependentComputedData {
     addr_.emplace(decl, addr);
   }
 
-
   // TODO this is transient compiler state and therefore shouldn't be stored in
   // `DependentComputedData`.
   // During validation, when a cyclic dependency is encountered, we write it
@@ -221,7 +220,8 @@ struct DependentComputedData {
  private:
   // Stores the types of argument bound to the parameter with the given name.
   absl::flat_hash_map<std::string_view, type::Type const *> arg_type_;
-  // TODO: If you could store the decl on the ast-node you could use ConstantBinding for this.
+  // TODO: If you could store the decl on the ast-node you could use
+  // ConstantBinding for this.
   absl::flat_hash_map<std::string_view, ir::Value> arg_val_;
 
   // Colleciton of modules imported by this one.

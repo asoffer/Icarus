@@ -122,7 +122,6 @@ struct Visitor<Ret(Args...)> : VisitorBase {
       return *reinterpret_cast<Ret *>(r);
     }
   }
-
 };
 
 }  // namespace ast

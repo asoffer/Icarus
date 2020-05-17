@@ -34,9 +34,7 @@ struct NativeFn {
     return lhs.fn_ == rhs.fn_;
   }
 
-  friend bool operator!=(NativeFn lhs, NativeFn rhs) {
-    return not(lhs == rhs);
-  }
+  friend bool operator!=(NativeFn lhs, NativeFn rhs) { return not(lhs == rhs); }
 
  private:
   friend struct Fn;

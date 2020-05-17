@@ -29,7 +29,7 @@ Struct::Struct(ast::Scope const *scope, std::vector<Struct::Field> fields)
   }
   // TODO HasDestructor is also dependent on the existence of it as a
   // free-function?
-  // TODO 
+  // TODO
 }
 
 core::Bytes Struct::offset(size_t field_num, core::Arch const &a) const {

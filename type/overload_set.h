@@ -3,9 +3,9 @@
 
 #include <vector>
 
-#include "type/type.h"
-#include "type/callable.h"
 #include "absl/container/flat_hash_set.h"
+#include "type/callable.h"
+#include "type/type.h"
 
 namespace type {
 

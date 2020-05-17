@@ -49,7 +49,7 @@ struct SourceLoc {
     return lhs.value() == rhs.value();
   }
 
-  friend std::ostream& operator<<(std::ostream& os, SourceLoc const& loc) {
+  friend std::ostream &operator<<(std::ostream &os, SourceLoc const &loc) {
     return os << "SourceLoc{ .line_num = " << loc.line_num.value
               << ", .offset = " << loc.offset.value << " }";
   }

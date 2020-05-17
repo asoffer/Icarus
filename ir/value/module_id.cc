@@ -10,7 +10,7 @@ static base::NoDestructor<
     base::guarded<base::flyweight_map<frontend::CanonicalFileName>>>
     ids;
 
-ModuleId ModuleId::FromFile(frontend::CanonicalFileName const &filename) {
+ModuleId ModuleId::FromFile(frontend::CanonicalFileName const& filename) {
   return ModuleId(ids->lock()->get(filename));
 }
 

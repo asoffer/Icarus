@@ -63,7 +63,6 @@ TEST(UntypedBufferView, RemovePrefixWithGet) {
   EXPECT_EQ(view.get<int>(0), 3);
 }
 
-
 TEST(UntypedBufferView, RemoveSuffixChangesSize) {
   base::untyped_buffer buf;
   buf.append(1);

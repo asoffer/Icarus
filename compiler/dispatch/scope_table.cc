@@ -253,9 +253,9 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
     one_table.VerifyJumps();
   }
 
-  std::vector<absl::Span<type::Type const * const>> result_types;
+  std::vector<absl::Span<type::Type const *const>> result_types;
   result_types.reserve(table.tables_.size());
-  for (auto const &[_,one_table] : table.tables_) {
+  for (auto const &[_, one_table] : table.tables_) {
     result_types.push_back(one_table.result_types());
   }
   table.qual_type_ =
@@ -275,7 +275,7 @@ void ScopeDispatchTable::EmitSplittingDispatch(
 
   for (auto const &[jump, scope_def] : init_map_) {
     auto const &block_interp = block_interps.find(scope_def)->second;
-    bldr.CurrentBlock() = callee_to_block[jump];
+    bldr.CurrentBlock()      = callee_to_block[jump];
     // Argument preparation is done inside EmitCallOneOverload
 
     std::optional<ir::Reg> state_reg;

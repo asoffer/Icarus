@@ -119,8 +119,8 @@ TEST(ParseNumber, Base2Real) {
               VariantWith<NumberParsingError>(NumberParsingError::kNoDigits));
   EXPECT_THAT(ParseNumber("0b."),
               VariantWith<NumberParsingError>(NumberParsingError::kNoDigits));
-  EXPECT_THAT(ParseNumber("0b.10.10"),
-              VariantWith<NumberParsingError>(NumberParsingError::kTooManyDots));
+  EXPECT_THAT(ParseNumber("0b.10.10"), VariantWith<NumberParsingError>(
+                                           NumberParsingError::kTooManyDots));
   // TODO overflow and underflow
 }
 
@@ -137,8 +137,8 @@ TEST(ParseNumber, Base8Real) {
               VariantWith<NumberParsingError>(NumberParsingError::kNoDigits));
   EXPECT_THAT(ParseNumber("0o."),
               VariantWith<NumberParsingError>(NumberParsingError::kNoDigits));
-  EXPECT_THAT(ParseNumber("0o.12.34"),
-              VariantWith<NumberParsingError>(NumberParsingError::kTooManyDots));
+  EXPECT_THAT(ParseNumber("0o.12.34"), VariantWith<NumberParsingError>(
+                                           NumberParsingError::kTooManyDots));
   // TODO overflow and underflow
 }
 
@@ -164,10 +164,10 @@ TEST(ParseNumber, Base10Real) {
               VariantWith<NumberParsingError>(NumberParsingError::kNoDigits));
   EXPECT_THAT(ParseNumber("0d."),
               VariantWith<NumberParsingError>(NumberParsingError::kNoDigits));
-  EXPECT_THAT(ParseNumber("0.12.34"),
-              VariantWith<NumberParsingError>(NumberParsingError::kTooManyDots));
-  EXPECT_THAT(ParseNumber("0d.12.34"),
-              VariantWith<NumberParsingError>(NumberParsingError::kTooManyDots));
+  EXPECT_THAT(ParseNumber("0.12.34"), VariantWith<NumberParsingError>(
+                                          NumberParsingError::kTooManyDots));
+  EXPECT_THAT(ParseNumber("0d.12.34"), VariantWith<NumberParsingError>(
+                                           NumberParsingError::kTooManyDots));
   // TODO overflow and underflow
 }
 
@@ -183,8 +183,8 @@ TEST(ParseNumber, Base16Real) {
               VariantWith<NumberParsingError>(NumberParsingError::kNoDigits));
   EXPECT_THAT(ParseNumber("0x."),
               VariantWith<NumberParsingError>(NumberParsingError::kNoDigits));
-  EXPECT_THAT(ParseNumber("0x.12.34"),
-              VariantWith<NumberParsingError>(NumberParsingError::kTooManyDots));
+  EXPECT_THAT(ParseNumber("0x.12.34"), VariantWith<NumberParsingError>(
+                                           NumberParsingError::kTooManyDots));
   // TODO overflow and underflow
 }
 

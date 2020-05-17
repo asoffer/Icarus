@@ -33,7 +33,7 @@ struct LexState {
 
   Source *src_;
   SourceCursor cursor_;
-  diagnostic::DiagnosticConsumer& diag_;
+  diagnostic::DiagnosticConsumer &diag_;
 };
 
 struct StringLiteralError {

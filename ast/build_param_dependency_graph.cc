@@ -111,7 +111,7 @@ struct ParamDependencyGraphBuilder
   void Visit(DesignatedInitializer const *node,
              core::DependencyNode<Declaration> d) {
     Visit(node->type(), d);
-    for (auto & [ field, expr ] : node->assignments()) { Visit(expr.get(), d); }
+    for (auto &[field, expr] : node->assignments()) { Visit(expr.get(), d); }
   }
 
   void Visit(EnumLiteral const *node, core::DependencyNode<Declaration> d) {
@@ -202,7 +202,7 @@ struct ParamDependencyGraphBuilder
 
   void Visit(Switch const *node, core::DependencyNode<Declaration> d) {
     if (node->expr()) { Visit(node->expr(), d); }
-    for (auto & [ body, cond ] : node->cases()) {
+    for (auto &[body, cond] : node->cases()) {
       Visit(body.get(), d);
       Visit(cond.get(), d);
     }

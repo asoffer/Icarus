@@ -9,8 +9,8 @@ namespace base {
 // arguments for the callable if possible.
 template <typename Fn>
 struct defer {
-  defer(Fn &&fn) : fn_(static_cast<Fn&&>(fn)) {}
-  ~defer() { static_cast<Fn&&>(fn_)(); }
+  defer(Fn &&fn) : fn_(static_cast<Fn &&>(fn)) {}
+  ~defer() { static_cast<Fn &&>(fn_)(); }
 
  private:
   Fn fn_;

@@ -107,7 +107,7 @@ void InstructionInliner::InlineAllBlocks() {
     return r;
   });
 
-  for (auto[ignored, block] : blocks_) {
+  for (auto [ignored, block] : blocks_) {
     DEBUG_LOG("inliner-before")(*block);
 
     for (auto& inst : block->instructions_) { inst->Inline(*this); }

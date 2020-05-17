@@ -14,4 +14,4 @@ inline constexpr auto kArchitecture = core::Arch::Get<ir::Addr, ir::Fn>();
 
 }  // namespace interpretter
 
-#endif // ICARUS_INTERPRETTER_ARCHITECTURE_H
+#endif  // ICARUS_INTERPRETTER_ARCHITECTURE_H

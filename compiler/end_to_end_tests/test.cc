@@ -74,7 +74,6 @@ TEST(DesignatedInitializer, Empty) {
   EXPECT_EQ(output, "");
 }
 
-
 TEST(DesignatedInitializer, OneFieldBool) {
   std::string output = RunProgram(R"(
   S ::= struct { b: bool }
@@ -128,6 +127,5 @@ TEST(DesignatedInitializer, Nested) {
   )");
   EXPECT_EQ(output, "0false0false 1true0false");
 }
-
 
 }  // namespace

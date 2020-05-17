@@ -2,9 +2,9 @@
 
 #include "gtest/gtest.h"
 
-#include "type/primitive.h"
 #include "diagnostic/consumer/trivial.h"
 #include "type/pointer.h"
+#include "type/primitive.h"
 
 namespace {
 
