@@ -198,12 +198,10 @@ Verify(Compiler *compiler, ast::OverloadSet const &os,
       table.emplace(overload, internal::ExprData{concrete, concrete->params(),
                                                  concrete->return_types(args)});
     } else {
-      if (auto result = MatchArgsToParams(ExtractParamTypes(compiler, overload),
-                                          args_qt)) {
-        // TODO you also call compiler->type_of inside ExtractParamTypess, so
-        // it's probably worth reducing the number of lookups.
-        table.emplace(overload,
-                      internal::ExprData{compiler->type_of(overload), *result});
+      type::Type const *overload_type = compiler->type_of(overload);
+      if (auto result = MatchArgsToParams(
+              overload_type->as<type::Function>().params(), args_qt)) {
+        table.emplace(overload, internal::ExprData{overload_type, *result});
       } else {
         DEBUG_LOG("dispatch-verify")(result.error());
         failures.emplace(overload, result.error());

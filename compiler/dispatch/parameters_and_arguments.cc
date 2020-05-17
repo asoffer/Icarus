@@ -9,71 +9,6 @@
 
 namespace compiler {
 namespace {
-core::Params<type::QualType> ExtractParamTypes(Compiler *compiler,
-                                               ast::Declaration const *decl) {
-  auto *decl_type = ASSERT_NOT_NULL(compiler->type_of(decl));
-  if (decl->flags() & ast::Declaration::f_IsConst) {
-    if (auto const *fn_type = decl_type->if_as<type::Function>()) {
-      auto maybe_f = compiler->Evaluate(type::Typed(decl, decl_type));
-      if (not maybe_f) { NOT_YET(); }
-      auto f = maybe_f->get<ir::Fn>();
-
-      switch (f.kind()) {
-        case ir::Fn::Kind::Native:
-          return f.native()->params().Transform([](auto const &p) {
-            return type::QualType::NonConstant(p.type());
-          });
-        case ir::Fn::Kind::Builtin:
-        case ir::Fn::Kind::Foreign: return fn_type->params();
-      }
-      UNREACHABLE();
-    } else if (auto *jump_type = decl_type->if_as<type::Jump>()) {
-      auto maybe_j = compiler->Evaluate(type::Typed(decl, decl_type));
-      if (not maybe_j) { NOT_YET(); }
-      auto j = maybe_j->get<ir::Jump const *>();
-
-      return j->params().Transform(
-          [](auto const &p) { return type::QualType::NonConstant(p.type()); });
-    } else if (decl_type->is<type::GenericFunction>()) {
-      // TODO determine how to evaluate this with an interpretter.
-      if (auto *fn_lit = decl->init_val()->if_as<ast::FunctionLiteral>()) {
-        return fn_lit->params().Transform([&](auto const &p) {
-          auto maybe_type =
-              compiler->EvaluateAs<type::Type const *>(p->type_expr());
-          if (not maybe_type) { NOT_YET(); }
-          return type::QualType::NonConstant(*maybe_type);
-        });
-      } else {
-        NOT_YET(decl->init_val()->DebugString());
-      }
-    } else {
-      UNREACHABLE(decl->DebugString(), decl_type->to_string());
-    }
-  } else {
-    if (auto const *fn_type = decl_type->if_as<type::Function>()) {
-      return fn_type->params();
-    } else {
-      NOT_YET(decl->DebugString());
-    }
-  }
-}
-
-core::Params<type::QualType> ExtractParamTypes(
-    Compiler *compiler, ast::ShortFunctionLiteral const *fn_lit) {
-  return fn_lit->params().Transform([compiler](auto const &expr) {
-    auto qt = compiler->qual_type_of(expr.get());
-    ASSERT(qt.has_value() == true);
-    return *qt;
-  });
-}
-core::Params<type::QualType> ExtractParamTypes(
-    Compiler *compiler, ast::FunctionLiteral const *fn_lit) {
-  return fn_lit->params().Transform([compiler](auto const &expr) {
-    auto qt = compiler->qual_type_of(expr.get());
-    ASSERT(qt.has_value() == true);
-    return *qt;
-  });
-}
 
 template <typename IndexT>
 void AddType(IndexT &&index, type::Type const *t,
@@ -148,19 +83,6 @@ std::vector<core::FnArgs<type::Type const *>> ExpandedFnArgs(
   });
 
   return all_expanded_options;
-}
-
-core::Params<type::QualType> ExtractParamTypes(Compiler *compiler,
-                                               ast::Expression const *expr) {
-  if (auto const *decl = expr->if_as<ast::Declaration>()) {
-    return ExtractParamTypes(compiler, decl);
-  } else if (auto const *fn_lit = expr->if_as<ast::FunctionLiteral>()) {
-    return ExtractParamTypes(compiler, fn_lit);
-  } else if (auto const *fn_lit = expr->if_as<ast::ShortFunctionLiteral>()) {
-    return ExtractParamTypes(compiler, fn_lit);
-  } else {
-    NOT_YET(expr->DebugString());
-  }
 }
 
 std::vector<ir::Value> PrepareCallArguments(

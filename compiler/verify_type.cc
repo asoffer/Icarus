@@ -295,14 +295,10 @@ bool Shadow(Compiler *compiler, type::Typed<ast::Declaration const *> decl1,
   }
 
   return core::AmbiguouslyCallable(
-      ExtractParamTypes(compiler, *decl1).Transform([](auto const &typed_decl) {
-        return typed_decl.type();
-      }),
-      ExtractParamTypes(compiler, *decl2).Transform([](auto const &typed_decl) {
-        return typed_decl.type();
-      }),
-      [](type::Type const *lhs, type::Type const *rhs) {
-        return type::Meet(lhs, rhs) != nullptr;
+      compiler->type_of(*decl1)->as<type::Function>().params(),
+      compiler->type_of(*decl2)->as<type::Function>().params(),
+      [](type::QualType lhs, type::QualType rhs) {
+        return type::Meet(lhs.type(), rhs.type()) != nullptr;
       });
 }
 

@@ -21,8 +21,10 @@ NodeType const *Make(test::TestModule *mod, std::string code) {
 
 TEST(Match, NoParams) {
   test::TestModule mod;
-  auto params = ExtractParamTypes(
-      &mod.compiler, Make<ast::FunctionLiteral>(&mod, "() -> () {}"));
+  auto params =
+      mod.compiler.type_of(Make<ast::FunctionLiteral>(&mod, "() -> () {}"))
+          ->as<type::Function>()
+          .params();
 
   {  // No args
     auto args = core::FnArgs<type::QualType>({}, {});
@@ -46,8 +48,11 @@ TEST(Match, NoParams) {
 
 TEST(Match, OneParam) {
   test::TestModule mod;
-  auto params = ExtractParamTypes(
-      &mod.compiler, Make<ast::FunctionLiteral>(&mod, "(n: int32) -> () {}"));
+  auto params =
+      mod.compiler
+          .type_of(Make<ast::FunctionLiteral>(&mod, "(n: int32) -> () {}"))
+          ->as<type::Function>()
+          .params();
 
   {  // Call without args
     auto args = core::FnArgs<type::QualType>({}, {});
@@ -99,9 +104,11 @@ TEST(Match, OneParam) {
 
 TEST(Match, TwoParamsOneDefaulted) {
   test::TestModule mod;
-  auto params = ExtractParamTypes(
-      &mod.compiler,
-      Make<ast::FunctionLiteral>(&mod, "(n: int32, b := true) -> () {}"));
+  auto params = mod.compiler
+                    .type_of(Make<ast::FunctionLiteral>(
+                        &mod, "(n: int32, b := true) -> () {}"))
+                    ->as<type::Function>()
+                    .params();
 
   {  // Call without args
     auto args = core::FnArgs<type::QualType>({}, {});
@@ -171,9 +178,11 @@ TEST(Match, TwoParamsOneDefaulted) {
 
 TEST(Match, OneVariantParam) {
   test::TestModule mod;
-  auto params = ExtractParamTypes(
-      &mod.compiler,
-      Make<ast::FunctionLiteral>(&mod, "(x: int32 | bool) -> () {}"));
+  auto params = mod.compiler
+                    .type_of(Make<ast::FunctionLiteral>(
+                        &mod, "(x: int32 | bool) -> () {}"))
+                    ->as<type::Function>()
+                    .params();
 
   {  // Call without args
     auto args           = core::FnArgs<type::QualType>({}, {});

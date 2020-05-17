@@ -31,8 +31,6 @@ base::expected<JumpDispatchTable> JumpDispatchTable::Verify(
     if (not result) {
       failures.emplace(jump, result.error());
     } else {
-      // TODO you also call compiler->type_of inside ExtractParamTypes, so it's
-      // probably worth reducing the number of lookups.
       table.table_.emplace(std::piecewise_construct,
                            std::forward_as_tuple(jump),
                            std::forward_as_tuple(jump->type(), *result));
