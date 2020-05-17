@@ -102,7 +102,7 @@ static ir::CompiledFn MakeThunk(Compiler::PersistentResources const &resources,
         // TODO guaranteed move-elision
 
         c.EmitMoveInit(
-            t, v,
+            type::Typed<ir::Value>(v, t),
             type::Typed<ir::Reg>(resources.builder.GetRet(i, t), type::Ptr(t)));
 
       } else {

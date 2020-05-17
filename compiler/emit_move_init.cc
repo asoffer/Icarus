@@ -6,23 +6,20 @@
 
 namespace compiler {
 
-void Compiler::EmitMoveInit(type::Type const *from_type, ir::Value from_val,
+void Compiler::EmitMoveInit(type::Typed<ir::Value> from_val,
                             type::Typed<ir::Reg> to_var) {
   auto *to_type = to_var.type()->as<type::Pointer>().pointee();
   // TODO Optimize once you understand the semantics better.
-  if (not to_type->is<type::Primitive>() and
-      not to_type->is<type::Function>() and not to_type->is<type::Variant>() and
-      not to_type->is<type::Enum>() and not to_type->is<type::Flags>()) {
+  if (to_type->IsDefaultInitializable()) {
     Visit(to_type, to_var.get(), EmitDefaultInitTag{});
   }
 
-  Visit(to_type, to_var.get(), type::Typed{from_val, from_type},
-        EmitMoveAssignTag{});
+  Visit(to_type, to_var.get(), from_val, EmitMoveAssignTag{});
 }
 
 void Compiler::EmitMoveInit(ast::Expression const *node,
                             type::Typed<ir::Reg> reg) {
-  EmitMoveInit(type_of(node), EmitValue(node), reg);
+  EmitMoveInit(type::Typed(EmitValue(node), type_of(node)), reg);
 }
 
 void Compiler::EmitMoveInit(ast::ArrayLiteral const *node,
@@ -41,7 +38,9 @@ void Compiler::EmitMoveInit(ast::Unop const *node, type::Typed<ir::Reg> reg) {
   switch (node->op()) {
     case frontend::Operator::Move: EmitMoveInit(node->operand(), reg); break;
     case frontend::Operator::Copy: EmitCopyInit(node->operand(), reg); break;
-    default: EmitMoveInit(type_of(node), EmitValue(node), reg); break;
+    default:
+      EmitMoveInit(type::Typed(EmitValue(node), type_of(node)), reg);
+      break;
   }
 }
 

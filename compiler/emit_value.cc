@@ -205,7 +205,7 @@ ir::Value Compiler::EmitValue(ast::ArrayLiteral const *node) {
     auto *data_type = this_type->as<type::Array>().data_type();
     for (size_t i = 0; i < node->size(); ++i) {
       EmitMoveInit(
-          data_type, EmitValue(node->elem(i)),
+          type::Typed(EmitValue(node->elem(i)), data_type),
           type::Typed<ir::Reg>(builder().Index(type::Ptr(this_type), alloc,
                                                static_cast<int32_t>(i)),
                                type::Ptr(data_type)));
@@ -932,7 +932,7 @@ ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
     if (ret_type->is_big()) {
       // TODO must `r` be holding a register?
       // TODO guaranteed move-elision
-      EmitMoveInit(ret_type, arg_vals[i].second,
+      EmitMoveInit(type::Typed(arg_vals[i].second, ret_type),
                    type::Typed<ir::Reg>(builder().GetRet(i, ret_type),
                                         type::Ptr(ret_type)));
 
@@ -1159,13 +1159,13 @@ ir::Value Compiler::EmitValue(ast::Unop const *node) {
   switch (node->op()) {
     case frontend::Operator::Copy: {
       auto reg = builder().TmpAlloca(operand_type);
-      EmitCopyInit(operand_type, EmitValue(node->operand()),
+      EmitCopyInit(type::Typed(EmitValue(node->operand()), operand_type),
                    type::Typed<ir::Reg>(reg, operand_type));
       return ir::Value(reg);
     } break;
     case frontend::Operator::Move: {
       auto reg = builder().TmpAlloca(operand_type);
-      EmitMoveInit(operand_type, EmitValue(node->operand()),
+      EmitMoveInit(type::Typed(EmitValue(node->operand()), operand_type),
                    type::Typed<ir::Reg>(reg, operand_type));
       return ir::Value(reg);
     } break;

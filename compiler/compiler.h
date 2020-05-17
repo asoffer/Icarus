@@ -266,12 +266,13 @@ struct Compiler
   void Visit(type::Variant const *t, ir::RegOr<ir::Addr> to,
              type::Typed<ir::Value> const &from, EmitMoveAssignTag) override;
 
-  void Visit(type::Array const *t, ir::Reg reg, EmitDefaultInitTag)override;
-  void Visit(type::Flags const *t, ir::Reg reg, EmitDefaultInitTag)override;
-  void Visit(type::Pointer const *t, ir::Reg reg, EmitDefaultInitTag)override;
-  void Visit(type::Primitive const *t, ir::Reg reg, EmitDefaultInitTag)override;
-  void Visit(type::Struct const *t, ir::Reg reg, EmitDefaultInitTag)override;
-  void Visit(type::Tuple const *t, ir::Reg reg, EmitDefaultInitTag)override;
+  void Visit(type::Array const *t, ir::Reg reg, EmitDefaultInitTag) override;
+  void Visit(type::Flags const *t, ir::Reg reg, EmitDefaultInitTag) override;
+  void Visit(type::Pointer const *t, ir::Reg reg, EmitDefaultInitTag) override;
+  void Visit(type::Primitive const *t, ir::Reg reg,
+             EmitDefaultInitTag) override;
+  void Visit(type::Struct const *t, ir::Reg reg, EmitDefaultInitTag) override;
+  void Visit(type::Tuple const *t, ir::Reg reg, EmitDefaultInitTag) override;
 
   void EmitMoveInit(ast::Expression const *node, type::Typed<ir::Reg> reg);
   void Visit(EmitMoveInitTag, ast::Expression const *node,
@@ -289,7 +290,7 @@ struct Compiler
     return EmitMoveInit(node, reg);
   }
 
-  void EmitMoveInit(type::Type const *from_type, ir::Value from_val,
+  void EmitMoveInit(type::Typed<ir::Value> from_val,
                     type::Typed<ir::Reg> to_var);
 
   void EmitCopyInit(ast::Expression const *node, type::Typed<ir::Reg> reg);
@@ -308,7 +309,7 @@ struct Compiler
     return EmitCopyInit(node, reg);
   }
 
-  void EmitCopyInit(type::Type const *from_type, ir::Value from_val,
+  void EmitCopyInit(type::Typed<ir::Value> from_val,
                     type::Typed<ir::Reg> to_var);
 
  private:
