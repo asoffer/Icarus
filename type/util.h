@@ -42,39 +42,40 @@ namespace type {
 
 template <typename T>
 constexpr type::Type const *Get() {
-  if constexpr (std::is_same_v<T, bool>) {
+  if constexpr (base::meta<T> == base::meta<bool>) {
     return type::Bool;
-  } else if constexpr (std::is_same_v<T, int8_t>) {
+  } else if constexpr (base::meta<T> == base::meta<int8_t>) {
     return type::Int8;
-  } else if constexpr (std::is_same_v<T, int16_t>) {
+  } else if constexpr (base::meta<T> == base::meta<int16_t>) {
     return type::Int16;
-  } else if constexpr (std::is_same_v<T, int32_t>) {
+  } else if constexpr (base::meta<T> == base::meta<int32_t>) {
     return type::Int32;
-  } else if constexpr (std::is_same_v<T, int64_t>) {
+  } else if constexpr (base::meta<T> == base::meta<int64_t>) {
     return type::Int64;
-  } else if constexpr (std::is_same_v<T, uint8_t>) {
+  } else if constexpr (base::meta<T> == base::meta<uint8_t>) {
     return type::Nat8;
-  } else if constexpr (std::is_same_v<T, uint16_t>) {
+  } else if constexpr (base::meta<T> == base::meta<uint16_t>) {
     return type::Nat16;
-  } else if constexpr (std::is_same_v<T, uint32_t>) {
+  } else if constexpr (base::meta<T> == base::meta<uint32_t>) {
     return type::Nat32;
-  } else if constexpr (std::is_same_v<T, uint64_t>) {
+  } else if constexpr (base::meta<T> == base::meta<uint64_t>) {
     return type::Nat64;
-  } else if constexpr (std::is_same_v<T, float>) {
+  } else if constexpr (base::meta<T> == base::meta<float>) {
     return type::Float32;
-  } else if constexpr (std::is_same_v<T, double>) {
+  } else if constexpr (base::meta<T> == base::meta<double>) {
     return type::Float64;
-  } else if constexpr (std::is_same_v<T, std::string_view> or
-                       std::is_same_v<T, ir::String>) {
+  } else if constexpr (base::meta<T> == base::meta<std::string_view> or
+                       base::meta<T> == base::meta<ir::String>) {
     return type::ByteView;
-  } else if constexpr (std::is_same_v<T, ir::BlockDef const *>) {
+  } else if constexpr (base::meta<T> == base::meta<ir::BlockDef const *>) {
     return type::Block;  // Maybe opt-block?
-  } else if constexpr (std::is_same_v<T, type::Type const *>) {
+  } else if constexpr (base::meta<T> == base::meta<type::Type const *>) {
     return type::Type_;
-  } else if constexpr (std::is_same_v<T, module::BasicModule *> or
-                       std::is_same_v<T, module::BasicModule const *>) {
+  } else if constexpr (std::is_base_of_v<
+                           module::BasicModule,
+                           std::decay_t<decltype(*std::declval<T>())>>) {
     return type::Module;
-  } else if constexpr (std::is_same_v<T, ir::ScopeDef *>) {
+  } else if constexpr (base::meta<T> == base::meta<ir::ScopeDef *>) {
     return type::Scope;
   } else if constexpr (std::is_pointer_v<T>) {
     return Ptr(Get<std::decay_t<decltype(*std::declval<T>())>>());
@@ -85,58 +86,59 @@ constexpr type::Type const *Get() {
 
 template <typename T>
 bool Compare(::type::Type const *t) {
-  if constexpr (std::is_same_v<T, bool>) {
+  if constexpr (base::meta<T> == base::meta<bool>) {
     return t == ::type::Bool;
-  } else if constexpr (std::is_same_v<T, int8_t>) {
+  } else if constexpr (base::meta<T> == base::meta<int8_t>) {
     return t == ::type::Int8;
-  } else if constexpr (std::is_same_v<T, int16_t>) {
+  } else if constexpr (base::meta<T> == base::meta<int16_t>) {
     return t == ::type::Int16;
-  } else if constexpr (std::is_same_v<T, int32_t>) {
+  } else if constexpr (base::meta<T> == base::meta<int32_t>) {
     return t == ::type::Int32;
-  } else if constexpr (std::is_same_v<T, int64_t>) {
+  } else if constexpr (base::meta<T> == base::meta<int64_t>) {
     return t == ::type::Int64;
-  } else if constexpr (std::is_same_v<T, uint8_t>) {
+  } else if constexpr (base::meta<T> == base::meta<uint8_t>) {
     return t == ::type::Nat8;
-  } else if constexpr (std::is_same_v<T, uint16_t>) {
+  } else if constexpr (base::meta<T> == base::meta<uint16_t>) {
     return t == ::type::Nat16;
-  } else if constexpr (std::is_same_v<T, uint32_t>) {
+  } else if constexpr (base::meta<T> == base::meta<uint32_t>) {
     return t == ::type::Nat32;
-  } else if constexpr (std::is_same_v<T, uint64_t>) {
+  } else if constexpr (base::meta<T> == base::meta<uint64_t>) {
     return t == ::type::Nat64;
-  } else if constexpr (std::is_same_v<T, float>) {
+  } else if constexpr (base::meta<T> == base::meta<float>) {
     return t == ::type::Float32;
-  } else if constexpr (std::is_same_v<T, double>) {
+  } else if constexpr (base::meta<T> == base::meta<double>) {
     return t == ::type::Float64;
-  } else if constexpr (std::is_same_v<T, ::type::Type const *>) {
+  } else if constexpr (base::meta<T> == base::meta<::type::Type const *>) {
     return t == ::type::Type_;
-  } else if constexpr (std::is_same_v<T, ::type::Struct const *>) {
+  } else if constexpr (base::meta<T> == base::meta<::type::Struct const *>) {
     return t->is<::type::Struct>();
-  } else if constexpr (std::is_same_v<T, std::string_view> or
-                       std::is_same_v<T, ir::String>) {
+  } else if constexpr (base::meta<T> == base::meta<std::string_view> or
+                       base::meta<T> == base::meta<ir::String>) {
     return t == type::ByteView;
-  } else if constexpr (std::is_same_v<T, ir::EnumVal>) {
+  } else if constexpr (base::meta<T> == base::meta<ir::EnumVal>) {
     return t->is<::type::Enum>();
-  } else if constexpr (std::is_same_v<T, ir::FlagsVal>) {
+  } else if constexpr (base::meta<T> == base::meta<ir::FlagsVal>) {
     return t->is<::type::Flags>();
-  } else if constexpr (std::is_same_v<T, ir::Addr>) {
+  } else if constexpr (base::meta<T> == base::meta<ir::Addr>) {
     return t->is<::type::Pointer>();
-  } else if constexpr (std::is_same_v<T, ir::ScopeDef *>) {
+  } else if constexpr (base::meta<T> == base::meta<ir::ScopeDef *>) {
     return t == ::type::Scope;
-  } else if constexpr (std::is_same_v<T, ::type::Struct const *>) {
+  } else if constexpr (base::meta<T> == base::meta<::type::Struct const *>) {
     return t->is<::type::Struct>();
-  } else if constexpr (std::is_same_v<T, ir::Fn>) {
+  } else if constexpr (base::meta<T> == base::meta<ir::Fn>) {
     return t->is<::type::Function>();
-  } else if constexpr (std::is_same_v<T, ::type::Jump>) {
+  } else if constexpr (base::meta<T> == base::meta<::type::Jump>) {
     return t->is<::type::Jump>();
-  } else if constexpr (std::is_same_v<T, ir::GenericFn>) {
+  } else if constexpr (base::meta<T> == base::meta<ir::GenericFn>) {
     return t->is<::type::GenericFunction>();
-  } else if constexpr (std::is_same_v<T, module::BasicModule *> or
-                       std::is_same_v<T, module::BasicModule const *>) {
+  } else if constexpr (base::meta<T> == base::meta<module::BasicModule *> or
+                       base::meta<T> ==
+                           base::meta<module::BasicModule const *>) {
     return t == ::type::Module;
-  } else if constexpr (std::is_same_v<T, ir::BlockDef const *> or
-                       std::is_same_v<T, ir::BlockDef *>) {
+  } else if constexpr (base::meta<T> == base::meta<ir::BlockDef const *> or
+                       base::meta<T> == base::meta<ir::BlockDef *>) {
     return t == ::type::Block;
-  } else if constexpr (std::is_same_v<T, ir::Jump *>) {
+  } else if constexpr (base::meta<T> == base::meta<ir::Jump *>) {
     return t->is<type::Jump>();
   } else {
     UNREACHABLE(t->to_string(), " vs ", typeid(T).name());

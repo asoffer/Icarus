@@ -3,13 +3,16 @@
 #include "interpretter/evaluate.h"
 #include "test/module.h"
 
+// TODO handle evaluation failures.
 ir::Value EvaluateCall(std::string fn, std::vector<std::string> pos_args,
                    absl::flat_hash_map<std::string, std::string> named_args) {
   test::TestModule mod;
   auto const *expr = test::MakeCall(std::move(fn), std::move(pos_args),
                                     std::move(named_args), &mod);
-  return interpretter::Evaluate(
-      mod.compiler.MakeThunk(expr, mod.data().qual_type(expr)->type()));
+  auto value       = mod.compiler.Evaluate(
+      type::Typed(expr, mod.data().qual_type(expr)->type()));
+  ASSERT(static_cast<bool>(value) == true);
+  return *std::move(value);
 }
 
 TEST(FunctionCall, ShortNoArgFunctions) {

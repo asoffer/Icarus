@@ -5,8 +5,8 @@
 
 namespace {
 struct MockMutex {
-  void lock() { is_locked_ = true; }
-  void unlock() { is_locked_ = false; }
+  void Lock() { is_locked_ = true; }
+  void Unlock() { is_locked_ = false; }
 
   static bool locked() { return is_locked_; }
 

@@ -6,7 +6,7 @@
 #include "absl/synchronization/mutex.h"
 
 namespace base {
-template <typename T>
+template <typename T, typename MutexT = absl::Mutex>
 struct guarded {
   template <typename... Args>
   explicit guarded(Args&&... args) : val_(std::forward<Args>(args)...) {}
@@ -18,7 +18,7 @@ struct guarded {
   }
 
  private:
-  mutable absl::Mutex mu_;
+  mutable MutexT mu_;
   T val_;
 };
 }  // namespace base

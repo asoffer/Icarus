@@ -6,6 +6,7 @@
 #include "compiler/module.h"
 #include "diagnostic/consumer/consumer.h"
 #include "frontend/parse.h"
+#include "interpretter/evaluate.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
 #include "ir/jump.h"
@@ -70,16 +71,18 @@ ir::NativeFn Compiler::AddFunc(
   return ir::NativeFn(&data().fns_, fn_type, std::move(params));
 }
 
-ir::CompiledFn Compiler::MakeThunk(ast::Expression const *expr,
-                                   type::Type const *type) {
+static ir::CompiledFn MakeThunk(Compiler::PersistentResources const &resources,
+                                ast::Expression const *expr,
+                                type::Type const *type) {
+  Compiler c(resources);
   ir::CompiledFn fn(type::Func({}, {ASSERT_NOT_NULL(type)}),
                     core::Params<type::Typed<ast::Declaration const *>>{});
-  ICARUS_SCOPE(ir::SetCurrent(&fn, &builder())) {
+  ICARUS_SCOPE(ir::SetCurrent(&fn, &resources.builder)) {
     // TODO this is essentially a copy of the body of FunctionLiteral::EmitValue
     // Factor these out together.
-    builder().CurrentBlock() = fn.entry();
+    resources.builder.CurrentBlock() = fn.entry();
 
-    auto val = EmitValue(expr);
+    auto val = c.EmitValue(expr);
     // TODO wrap this up into SetRet(vector)
     std::vector<type::Type const *> extracted_types;
     if (auto *tup = type->if_as<type::Tuple>()) {
@@ -98,11 +101,12 @@ ir::CompiledFn Compiler::MakeThunk(ast::Expression const *expr,
         // TODO must `r` be holding a register?
         // TODO guaranteed move-elision
 
-        EmitMoveInit(
-            t, v, type::Typed<ir::Reg>(builder().GetRet(i, t), type::Ptr(t)));
+        c.EmitMoveInit(
+            t, v,
+            type::Typed<ir::Reg>(resources.builder.GetRet(i, t), type::Ptr(t)));
 
       } else {
-        builder().SetRet(i, type::Typed<ir::Value>(v, t));
+        resources.builder.SetRet(i, type::Typed<ir::Value>(v, t));
       }
     };
 
@@ -115,13 +119,18 @@ ir::CompiledFn Compiler::MakeThunk(ast::Expression const *expr,
       handle_result(extracted_types[0], val);
     }
 
-    builder().ReturnJump();
+    resources.builder.ReturnJump();
   }
 
   ASSERT(fn.work_item == nullptr);
   fn.WriteByteCode();
 
   return fn;
+}
+
+base::expected<ir::Value> Compiler::Evaluate(
+    type::Typed<ast::Expression const *> expr) {
+  return interpretter::Evaluate(MakeThunk(resources_, *expr, expr.type()));
 }
 
 }  // namespace compiler

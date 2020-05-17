@@ -547,8 +547,9 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
         output_type_vec.at(i) = type_of(decl);
       } else {
         ASSERT(output_type_vec.at(i) == type::Type_);
-        output_type_vec.at(i) = interpretter::EvaluateAs<type::Type const *>(
-            MakeThunk((*outputs)[i], type::Type_));
+        auto maybe_type = EvaluateAs<type::Type const *>((*outputs)[i]);
+        if (not maybe_type) { NOT_YET(); }
+        output_type_vec.at(i) = *maybe_type;
       }
     }
 
@@ -583,8 +584,10 @@ static type::QualType AccessTypeMember(Compiler *c, ast::Access const *node,
   // TODO We may not be allowed to evaluate node:
   //    f ::= (T: type) => T.key
   // We need to know that T is const
-  auto *evaled_type = interpretter::EvaluateAs<type::Type const *>(
-      c->MakeThunk(node->operand(), operand_result.type()));
+
+  auto maybe_type = c->EvaluateAs<type::Type const *>(node->operand());
+  if (not maybe_type) { NOT_YET(); }
+  auto *evaled_type = *maybe_type;
 
   // For enums and flags, regardless of whether we can get the value, it's
   // clear that node is supposed to be a member so we should emit an error but
@@ -658,8 +661,10 @@ static type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
   DEBUG_LOG("AccessModuleMember")(node->DebugString());
   // TODO this is a common pattern for dealing with imported modules. Extract
   // it.
-  auto *mod = interpretter::EvaluateAs<CompiledModule const *>(
-      c->MakeThunk(node->operand(), type::Module));
+  auto maybe_mod = c->EvaluateAs<module::BasicModule *>(node->operand());
+  if (not maybe_mod) { NOT_YET(); }
+  auto const *mod = &(*maybe_mod)->as<CompiledModule>();
+
   ASSERT(mod != c->data().module());
   auto decls = mod->ExportedDeclarations(node->member_name());
   switch (decls.size()) {
@@ -1022,8 +1027,10 @@ static type::QualType VerifyCall(
               .message = "Second argument to `foreign` must be a constant."});
         }
       }
-      auto *foreign_type = interpretter::EvaluateAs<type::Type const *>(
-          c->MakeThunk(args.at(1), type::Type_));
+
+      auto maybe_type = c->EvaluateAs<type::Type const *>(args.at(1));
+      if (not maybe_type) { NOT_YET(); }
+      auto const *foreign_type = *maybe_type;
       if (not foreign_type->template is<type::Function>() and
           not foreign_type->template is<type::Pointer>()) {
         c->diag().Consume(diagnostic::BuiltinError{
@@ -1112,7 +1119,7 @@ static type::Typed<ir::Value> EvaluateIfConstant(Compiler *c,
   if (qt.constant()) {
     DEBUG_LOG("EvaluateIfConstant")
     ("Evaluating constant: ", expr->DebugString());
-    auto maybe_val = interpretter::Evaluate(c->MakeThunk(expr, qt.type()));
+    auto maybe_val = c->Evaluate(type::Typed(expr, qt.type()));
     if (not maybe_val) { NOT_YET(); }
     return type::Typed<ir::Value>(*maybe_val, qt.type());
   } else {
@@ -1210,8 +1217,10 @@ type::QualType Compiler::VerifyType(ast::Cast const *node) {
     });
     return type::QualType::Error();
   }
-  auto *t = ASSERT_NOT_NULL(interpretter::EvaluateAs<type::Type const *>(
-      MakeThunk(node->type(), type::Type_)));
+
+  auto maybe_type = EvaluateAs<type::Type const *>(node->type());
+  if (not maybe_type) { NOT_YET(); }
+  auto const *t = *maybe_type;
   if (t->is<type::Struct>()) {
     // TODO do you ever want to support overlaods that accepts constants?
     return VerifyUnaryOverload(this, "as", node, expr_qual_type.type());
@@ -1406,14 +1415,15 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
       }
       auto *type_expr_type = type_expr_result.type();
       if (type_expr_type == type::Type_) {
+        auto maybe_type = EvaluateAs<type::Type const *>(node->type_expr());
+        if (not maybe_type) { NOT_YET(); }
+        auto const *t = ASSERT_NOT_NULL(*maybe_type);
+
         node_qual_type = data().set_qual_type(
             node,
-            type::QualType(
-                ASSERT_NOT_NULL(interpretter::EvaluateAs<type::Type const *>(
-                    MakeThunk(node->type_expr(), type_expr_type))),
-                (node->flags() & ast::Declaration::f_IsConst)
-                    ? type::Quals::Const()
-                    : type::Quals::Unqualified()));
+            type::QualType(t, (node->flags() & ast::Declaration::f_IsConst)
+                                  ? type::Quals::Const()
+                                  : type::Quals::Unqualified()));
 
         if (not(node->flags() & ast::Declaration::f_IsFnParam) and
             not node_qual_type.type()->IsDefaultInitializable()) {
@@ -1484,10 +1494,12 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
           NOT_YET("log an error");
           error = true;
         } else {
-          node_qual_type = data().set_qual_type(
-              node, type::QualType::Constant(
-                        interpretter::EvaluateAs<type::Type const *>(
-                            MakeThunk(node->type_expr(), type::Type_))));
+          auto maybe_type = EvaluateAs<type::Type const *>(node->type_expr());
+          if (not maybe_type) { NOT_YET(); }
+          auto const *t = ASSERT_NOT_NULL(*maybe_type);
+
+          node_qual_type =
+              data().set_qual_type(node, type::QualType::Constant(t));
         }
 
         if (node_qual_type and init_val_qual_type) {
@@ -1513,10 +1525,12 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
           NOT_YET("log an error");
           return data().set_qual_type(node, type::QualType::Error());
         }
-        node_qual_type = data().set_qual_type(
-            node, type::QualType::Constant(
-                      interpretter::EvaluateAs<type::Type const *>(
-                          MakeThunk(node->type_expr(), type::Type_))));
+        auto maybe_type = EvaluateAs<type::Type const *>(node->type_expr());
+        if (not maybe_type) { NOT_YET(); }
+        auto const *t = ASSERT_NOT_NULL(*maybe_type);
+
+        node_qual_type =
+            data().set_qual_type(node, type::QualType::Constant(t));
       } else {
         diag().Consume(diagnostic::NotAType{
             .range = node->type_expr()->range(),
@@ -1540,9 +1554,9 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
     if (node_qual_type.type() == type::Module) {
       // TODO check shadowing against other modules?
       // TODO what if no init val is provded? what if not constant?
-      node->scope()->embedded_modules_.insert(
-          interpretter::EvaluateAs<module::BasicModule const *>(
-              MakeThunk(node->init_val(), type::Module)));
+      auto maybe_mod = EvaluateAs<module::BasicModule *>(node->init_val());
+      if (not maybe_mod) { NOT_YET(); }
+      node->scope()->embedded_modules_.insert(*maybe_mod);
       return data().set_qual_type(node, type::QualType::Constant(type::Module));
     } else {
       NOT_YET(node_qual_type, node->DebugString());
@@ -1633,8 +1647,9 @@ type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
             type::QualType::Constant(type::Type_));
   }
 
-  type::Type const *expr_type = interpretter::EvaluateAs<type::Type const *>(
-      MakeThunk(node->type(), type::Type_));
+  auto maybe_type = EvaluateAs<type::Type const *>(node->type());
+  if (not maybe_type) { NOT_YET(); }
+  type::Type const *expr_type = ASSERT_NOT_NULL(*maybe_type);
 
   auto *struct_type = expr_type->if_as<type::Struct>();
   if (not struct_type) { NOT_YET("log an error"); }
@@ -1748,15 +1763,10 @@ core::Params<type::Type const *> Compiler::ComputeParamsFromArgs(
           auto const *init_val = ASSERT_NOT_NULL(dep_node.node()->init_val());
           auto arg_type_iter   = arg_types.find(dep_node.node()->id());
           ASSERT(arg_type_iter != arg_types.end());
-          auto const *t = arg_type_iter->second;
-          type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                           uint16_t, uint32_t, uint64_t, float, double,
-                           ir::Addr, ir::String, type::Type const *>(
-              t, [&](auto tag) {
-                using T = typename decltype(tag)::type;
-                val     = ir::Value(
-                    interpretter::EvaluateAs<T>(MakeThunk(init_val, t)));
-              });
+          auto const *t  = arg_type_iter->second;
+          auto maybe_val = Evaluate(type::Typed(init_val, t));
+          if (not maybe_val) { NOT_YET(); }
+          val = *maybe_val;
         }
 
         auto tostr = [](ir::Value v) {
@@ -1791,8 +1801,10 @@ core::Params<type::Type const *> Compiler::ComputeParamsFromArgs(
           if (type_expr_type != type::QualType::Constant(type::Type_)) {
             NOT_YET("log an error: ", type_expr_type);
           }
-          t = interpretter::EvaluateAs<type::Type const *>(
-              MakeThunk(type_expr, type::Type_));
+
+          auto maybe_type = EvaluateAs<type::Type const *>(type_expr);
+          if (not maybe_type) { NOT_YET(); }
+          t = ASSERT_NOT_NULL(*maybe_type);
         } else {
           t = VerifyType(dep_node.node()->init_val()).type();
         }
@@ -1823,8 +1835,8 @@ core::Params<type::Type const *> Compiler::ComputeParamsFromArgs(
           arg = *a;
         } else {
           auto const *t  = ASSERT_NOT_NULL(type_of(dep_node.node()));
-          auto maybe_val = interpretter::Evaluate(
-              MakeThunk(ASSERT_NOT_NULL(dep_node.node()->init_val()), t));
+          auto maybe_val = Evaluate(
+              type::Typed(ASSERT_NOT_NULL(dep_node.node()->init_val()), t));
           if (not maybe_val) { NOT_YET(); }
           arg = type::Typed<ir::Value>(*maybe_val, t);
           DEBUG_LOG("generic-fn")(dep_node.node()->DebugString());
@@ -1895,9 +1907,9 @@ type::QualType Compiler::VerifyType(ast::FunctionLiteral const *node) {
       for (auto const *o : *outputs) {
         auto qt = c.VerifyType(o);
         ASSERT(qt == type::QualType::Constant(type::Type_));
-        auto const *result = interpretter::EvaluateAs<type::Type const *>(
-            c.MakeThunk(o, type::Type_));
-        rets->push_back(result);
+        auto maybe_type = c.EvaluateAs<type::Type const *>(o);
+        if (not maybe_type) { NOT_YET(); }
+        rets->push_back(ASSERT_NOT_NULL(*maybe_type));
       }
       ft = type::Func(params, *rets);
     } else {
@@ -2088,11 +2100,11 @@ type::QualType Compiler::VerifyType(ast::Import const *node) {
 
   if (err) { return type::QualType::Error(); }
 
-  auto src = interpretter::EvaluateAs<ir::String>(
-      MakeThunk(node->operand(), type::ByteView));
+  auto maybe_src = EvaluateAs<ir::String>(node->operand());
+  if (not maybe_src) { NOT_YET(); }
 
   auto canonical_file_name =
-      frontend::CanonicalFileName::Make(frontend::FileName(src.get()));
+      frontend::CanonicalFileName::Make(frontend::FileName(maybe_src->get()));
   if (auto *mod = ImportLibraryModule(canonical_file_name)) {
     data().set_imported_module(node, mod);
     return data().set_qual_type(node, type::QualType::Constant(type::Module));
@@ -2139,8 +2151,7 @@ type::QualType Compiler::VerifyType(ast::Index const *node) {
 
     int64_t index = [&]() -> int64_t {
       // TODO handle overflow?
-      auto maybe_results =
-          interpretter::Evaluate(MakeThunk(node->rhs(), index_type));
+      auto maybe_results = Evaluate(type::Typed(node->rhs(), index_type));
       if (not maybe_results) { NOT_YET(); }
       auto &results = *maybe_results;
       if (index_type == type::Int8) { return results.get<int8_t>(); }
@@ -2253,8 +2264,9 @@ type::QualType Compiler::VerifyType(ast::ScopeLiteral const *node) {
   if (error) { return type::QualType::Error(); }
 
   if (not node->state_type()) { return verify_result; }
-  auto *state_type_ptr = type::Ptr(interpretter::EvaluateAs<type::Type const *>(
-      MakeThunk(node->state_type(), type::Type_)));
+  auto maybe_type = EvaluateAs<type::Type const *>(node->state_type());
+  if (not maybe_type) { NOT_YET(); }
+  auto const *state_type_ptr = type::Ptr(ASSERT_NOT_NULL(*maybe_type));
   for (auto const [decl, decl_type] : types) {
     if (decl->id() == "init") {
       auto *jump_type = decl_type->if_as<type::Jump>();
@@ -2313,8 +2325,9 @@ type::QualType Compiler::VerifyType(ast::StructLiteral const *node) {
     }
 
     if (field.init_val()) {
-      auto *t = interpretter::EvaluateAs<type::Type const *>(
-          MakeThunk(field.type_expr(), type::Type_));
+      auto maybe_type = EvaluateAs<type::Type const *>(field.type_expr());
+      if (not maybe_type) { NOT_YET(); }
+      auto const *t = ASSERT_NOT_NULL(*maybe_type);
       if (t != init_val_qt.type()) {
         err = true;
         NOT_YET("log an error, type mismatch", init_val_qt, t);

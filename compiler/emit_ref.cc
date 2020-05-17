@@ -62,7 +62,7 @@ ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Index const *node) {
                                type::Ptr(type::Nat8));
     }
   } else if (auto *tup = lhs_type->if_as<type::Tuple>()) {
-    auto maybe_val = interpretter::Evaluate(MakeThunk(node->rhs(), rhs_type));
+    auto maybe_val = Evaluate(type::Typed(node->rhs(), rhs_type));
     if (not maybe_val) { NOT_YET(); }
     auto index =
         builder().CastTo<int64_t>(type::Typed(*maybe_val, rhs_type)).value();

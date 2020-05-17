@@ -41,8 +41,6 @@ struct EmitDefaultInitTag {};
 struct EmitCopyAssignTag {};
 struct EmitMoveAssignTag {};
 
-struct LibraryModule;  // TODO remove me.
-
 // These are the steps in a traditional compiler of verifying types and emitting
 // code. They're tied together because they don't necessarily happen in a
 // particular order. Certainly for any given AST node we need to verify its type
@@ -158,7 +156,13 @@ struct Compiler
     return resources_.diagnostic_consumer;
   }
 
-  ir::CompiledFn MakeThunk(ast::Expression const *expr, type::Type const *type);
+  template <typename T>
+  base::expected<T> EvaluateAs(ast::Expression const * expr) {
+    ASSIGN_OR(return _.error(), auto val,
+                     Evaluate(type::Typed(expr, type::Get<T>())));
+    return val.template get<T>();
+  }
+  base::expected<ir::Value> Evaluate(type::Typed<ast::Expression const *> expr);
 
   core::Params<type::Type const *> ComputeParamsFromArgs(
       ast::ParameterizedExpression const *node,

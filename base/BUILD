@@ -78,7 +78,9 @@ cc_library(
 cc_library(
     name = "guarded", 
     hdrs = ["guarded.h"],
-    deps = [],
+    deps = [
+        "@com_google_absl//absl/synchronization",
+    ],
 )
 
 cc_test(

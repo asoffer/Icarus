@@ -14,8 +14,9 @@ core::Params<type::QualType> ExtractParamTypes(Compiler *compiler,
   auto *decl_type = ASSERT_NOT_NULL(compiler->type_of(decl));
   if (decl->flags() & ast::Declaration::f_IsConst) {
     if (auto const *fn_type = decl_type->if_as<type::Function>()) {
-      auto f = interpretter::EvaluateAs<ir::Fn>(
-          compiler->MakeThunk(decl, decl_type));
+      auto maybe_f = compiler->Evaluate(type::Typed(decl, decl_type));
+      if (not maybe_f) { NOT_YET(); }
+      auto f = maybe_f->get<ir::Fn>();
 
       switch (f.kind()) {
         case ir::Fn::Kind::Native:
@@ -31,17 +32,20 @@ core::Params<type::QualType> ExtractParamTypes(Compiler *compiler,
       }
       UNREACHABLE();
     } else if (auto *jump_type = decl_type->if_as<type::Jump>()) {
-      auto j = interpretter::EvaluateAs<ir::Jump const *>(
-          compiler->MakeThunk(decl, decl_type));
+      auto maybe_j = compiler->Evaluate(type::Typed(decl, decl_type));
+      if (not maybe_j) { NOT_YET(); }
+      auto j = maybe_j->get<ir::Jump const*>();
+
       return j->params().Transform(
           [](auto const &p) { return type::QualType::NonConstant(p.type()); });
     } else if (decl_type->is<type::GenericFunction>()) {
       // TODO determine how to evaluate this with an interpretter.
       if (auto *fn_lit = decl->init_val()->if_as<ast::FunctionLiteral>()) {
         return fn_lit->params().Transform([&](auto const &p) {
-          type::Type const *t = interpretter::EvaluateAs<type::Type const *>(
-              compiler->MakeThunk(p->type_expr(), type::Type_));
-          return type::QualType::NonConstant(t);
+          auto maybe_type =
+              compiler->EvaluateAs<type::Type const *>(p->type_expr());
+          if (not maybe_type) { NOT_YET(); }
+          return type::QualType::NonConstant(*maybe_type);
         });
       } else {
         NOT_YET(decl->init_val()->DebugString());

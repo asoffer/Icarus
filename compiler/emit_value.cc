@@ -36,8 +36,10 @@ absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> MakeJumpInits(
   ("Overload set for inits has size ", os.members().size());
   for (ast::Expression const *member : os.members()) {
     DEBUG_LOG("ScopeNode")(member->DebugString());
-    auto *def = interpretter::EvaluateAs<ir::ScopeDef *>(
-        c->MakeThunk(member, type::Scope));
+
+    auto maybe_def = c->EvaluateAs<ir::ScopeDef *>(member);
+    if (not maybe_def) { NOT_YET(); }
+    auto *def = *maybe_def;
     DEBUG_LOG("ScopeNode")(def);
     if (def->work_item and *def->work_item) {
       (std::move(*def->work_item))();
@@ -104,10 +106,9 @@ std::optional<ast::OverloadSet> MakeOverloadSet(
     ASSIGN_OR(return std::nullopt,  //
                      auto result, c->VerifyType(acc->operand()));
     if (result.type() == type::Module) {
-      // TODO this is a common pattern for dealing with imported modules.
-      // Extract it.
-      auto *mod = interpretter::EvaluateAs<CompiledModule const *>(
-          c->MakeThunk(acc->operand(), type::Module));
+      auto maybe_mod = c->EvaluateAs<module::BasicModule *>(acc->operand());
+      if (not maybe_mod) { NOT_YET(); }
+      auto const *mod = &(*maybe_mod)->as<CompiledModule>();
       return FindOverloads(mod->scope(), acc->member_name(), args);
     }
   } else {
@@ -148,9 +149,9 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
   if (type_of(node->operand()) == type::Module) {
     // TODO we already did this evaluation in type verification. Can't we just
     // save and reuse it?
-    auto const *mod = &interpretter::EvaluateAs<module::BasicModule const *>(
-                           MakeThunk(node->operand(), type::Module))
-                           ->as<CompiledModule>();
+    auto maybe_mod = EvaluateAs<module::BasicModule *>(node->operand());
+    if (not maybe_mod) { NOT_YET(); }
+    auto const *mod = &(*maybe_mod)->as<CompiledModule>();
 
     ASSERT(mod != data().module());
     auto decls = mod->ExportedDeclarations(node->member_name());
@@ -506,11 +507,13 @@ ir::Value EmitBuiltinCall(
     core::FnArgs<ast::Expression const *, std::string_view> const &args) {
   switch (callee->value().which()) {
     case ir::BuiltinFn::Which::Foreign: {
-      auto name = interpretter::EvaluateAs<ir::String>(
-          c->MakeThunk(args.at(0), type::ByteView));
-      auto *foreign_type = interpretter::EvaluateAs<type::Type const *>(
-          c->MakeThunk(args.at(1), type::Type_));
-      return ir::Value(c->builder().LoadSymbol(name, foreign_type).get());
+      auto maybe_name         = c->EvaluateAs<ir::String>(args[0]);
+      auto maybe_foreign_type = c->EvaluateAs<type::Type const *>(args[1]);
+      if (not maybe_name) { NOT_YET(); }
+      if (not maybe_foreign_type) { NOT_YET(); }
+
+      return ir::Value(
+          c->builder().LoadSymbol(*maybe_name, *maybe_foreign_type).get());
     } break;
 
     case ir::BuiltinFn::Which::Opaque:
@@ -635,7 +638,7 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
       if (node->IsCustomInitialized()) {
         DEBUG_LOG("EmitValueDeclaration")
         ("Computing slot with ", node->init_val()->DebugString());
-        auto maybe_val = interpretter::Evaluate(MakeThunk(node->init_val(), t));
+        auto maybe_val = Evaluate(type::Typed(node->init_val(), t));
         if (not maybe_val) {
           // TODO we reserved a slot and haven't cleaned it up. Do we care?
           NOT_YET("Found errors but haven't handled them.", diag().num_consumed());
@@ -981,10 +984,13 @@ ir::Value Compiler::EmitValue(ast::YieldStmt const *node) {
 }
 
 ir::Value Compiler::EmitValue(ast::ScopeLiteral const *node) {
-  auto *state_type = node->state_type()
-                         ? interpretter::EvaluateAs<type::Type const *>(
-                               MakeThunk(node->state_type(), type::Type_))
-                         : nullptr;
+  DEBUG_LOG("ScopeLiteral")(node->state_type());
+  type::Type const *state_type = nullptr;
+  if (node->state_type()) {
+    auto maybe_type = EvaluateAs<type::Type const *>(node->state_type());
+    if (not maybe_type) { NOT_YET(); }
+    state_type = *maybe_type;
+  }
 
   absl::flat_hash_map<std::string_view, ir::BlockDef *> blocks;
   std::vector<ir::RegOr<ir::Jump *>> inits;
@@ -1195,8 +1201,8 @@ ir::Value Compiler::EmitValue(ast::Unop const *node) {
     case frontend::Operator::And: return ir::Value(EmitRef(node->operand()));
     case frontend::Operator::Eval: {
       // Guaranteed to be constant by VerifyType
-      auto maybe_val = interpretter::Evaluate(
-          MakeThunk(node->operand(), type_of(node->operand())));
+      auto maybe_val =
+          Evaluate(type::Typed(node->operand(), type_of(node->operand())));
       if (not maybe_val) { NOT_YET(); }
       return *maybe_val;
     }
