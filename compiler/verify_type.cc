@@ -666,7 +666,8 @@ static type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
   switch (decls.size()) {
     case 0: {
       // Note: No reason to wait for the module to be compiled here.
-      NOT_YET("Log an error, no such symbol in module.");
+      NOT_YET("Log an error, no such symbol in module (", node->member_name(),
+              ").");
     } break;
     case 1: {
       type::Type const *t = mod->data().qual_type(decls[0])->type();
@@ -1387,17 +1388,9 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
       auto type_expr_result = VerifyType(node->type_expr());
       if (not type_expr_result) {
         return data().set_qual_type(node, type::QualType::Error());
-      } else if (not type_expr_result.constant()) {
-        // Hmm, not necessarily an error. Example (not necessarily minimal):
-        //
-        //   S ::= (x: any`T) => struct {
-        //     _val: T = x
-        //   }
-        //
-        NOT_YET("log an error", node->DebugString());
-        return data().set_qual_type(node, type::QualType::Error());
       }
       auto *type_expr_type = type_expr_result.type();
+
       if (type_expr_type == type::Type_) {
         auto maybe_type = EvaluateAs<type::Type const *>(node->type_expr());
         if (not maybe_type) { NOT_YET(); }

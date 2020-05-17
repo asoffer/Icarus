@@ -108,8 +108,13 @@ std::optional<ast::OverloadSet> MakeOverloadSet(
     if (result.type() == type::Module) {
       auto maybe_mod = c->EvaluateAs<module::BasicModule *>(acc->operand());
       if (not maybe_mod) { NOT_YET(); }
-      auto const *mod = &(*maybe_mod)->as<CompiledModule>();
-      return FindOverloads(mod->scope(), acc->member_name(), args);
+      auto const *mod         = &(*maybe_mod)->as<CompiledModule>();
+      std::string_view member = acc->member_name();
+      ast::OverloadSet os(mod->ExportedDeclarations(member));
+      for (type::Typed<ir::Value> const &arg : args) {
+        AddAdl(&os, member, arg.type());
+      };
+      return os;
     }
   } else {
     ASSIGN_OR(return std::nullopt, std::ignore, c->VerifyType(expr));
@@ -967,7 +972,7 @@ ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
   auto *scope = node->scope();
   while (auto *exec = scope->if_as<ast::ExecScope>()) {
     MakeAllDestructions(this, exec);
-    if (not exec->parent) { break; }
+    if (not exec->parent or exec->is<ast::FnScope>()) { break; }
     scope = exec->parent;
   }
 

@@ -699,8 +699,8 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     ir::Reg result = iter->read<ir::Reg>();
     ctx->current_frame()->regs_.set(result, length);
   } else if constexpr (std::is_same_v<Inst, ir::ByteViewDataInstruction>) {
-    auto data_addr = ir::Addr::Heap(const_cast<char *>(
-        ctx->resolve<ir::String>(iter->read<ir::Reg>().get()).get().data()));
+    ir::Reg reg    = iter->read<ir::Reg>();
+    auto data_addr = ctx->resolve<ir::String>(reg).addr();
     ir::Reg result = iter->read<ir::Reg>();
     ctx->current_frame()->regs_.set(result, data_addr);
   } else if constexpr (std::is_same_v<Inst, ir::VariantAccessInstruction>) {

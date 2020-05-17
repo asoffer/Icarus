@@ -34,7 +34,9 @@ void MakeAllDestructions(Compiler *compiler, ast::ExecScope const *exec_scope) {
   // TODO store these in the appropriate order so we don't have to compute this?
   // Will this be faster?
   std::vector<ast::Declaration *> ordered_decls;
+  DEBUG_LOG("MakeAllDestructions")("decls in this scope:");
   for (auto &[name, decls] : exec_scope->decls_) {
+    DEBUG_LOG("MakeAllDestructions")("... ", name);
     ordered_decls.insert(ordered_decls.end(), decls.begin(), decls.end());
   }
 
@@ -103,6 +105,7 @@ void CompleteBody(Compiler *compiler, ast::ShortFunctionLiteral const *node,
 
 void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
                   type::Function const *t) {
+  DEBUG_LOG("CompleteBody")(node->DebugString());
   // TODO have validate return a bool distinguishing if there are errors and
   // whether or not we can proceed.
 
