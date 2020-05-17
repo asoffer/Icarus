@@ -1713,11 +1713,13 @@ OrderedDependencyNodes(ast::ParameterizedExpression const *node) {
 
 // TODO: There's something strange about this: We want to work on a temporary
 // data/compiler, but using `this` makes it feel more permanent.
-core::Params<type::Type const *> Compiler::ComputeParamsFromArgs(
+std::pair<core::Params<type::Type const *>, ConstantBinding>
+Compiler::ComputeParamsFromArgs(
     ast::ParameterizedExpression const *node,
     absl::Span<std::pair<int, core::DependencyNode<ast::Declaration>> const>
         ordered_nodes,
     core::FnArgs<type::Typed<ir::Value>> const &args) {
+  ConstantBinding constants;
   DEBUG_LOG("generic-fn")
   ("Creating a concrete implementation with ",
    args.Transform([](auto const &a) { return a.type()->to_string(); }));
@@ -1776,9 +1778,9 @@ core::Params<type::Type const *> Compiler::ComputeParamsFromArgs(
       case core::DependencyNodeKind::ParamType: {
         type::Type const *t = nullptr;
         if (auto const *type_expr = dep_node.node()->type_expr()) {
-          auto type_expr_type = VerifyType(type_expr);
-          if (type_expr_type != type::QualType::Constant(type::Type_)) {
-            NOT_YET("log an error: ", type_expr_type);
+          auto type_expr_type = VerifyType(type_expr).type();
+          if (type_expr_type != type::Type_) {
+            NOT_YET("log an error: ", type_expr->DebugString(), ": ", type_expr_type);
           }
 
           auto maybe_type = EvaluateAs<type::Type const *>(type_expr);
@@ -1820,16 +1822,18 @@ core::Params<type::Type const *> Compiler::ComputeParamsFromArgs(
           DEBUG_LOG("generic-fn")(dep_node.node()->DebugString());
         }
 
-        NOT_YET();
         data().constants_.reserve_slot(dep_node.node(), arg.type());
         if (data().constants_.get_constant(dep_node.node()).empty()) {
           data().constants_.set_slot(dep_node.node(), *arg);
         }
+        constants.reserve_slot(dep_node.node(), arg.type());
+        constants.set_slot(dep_node.node(), *arg);
 
       } break;
     }
   }
-  return param_types;
+  return std::pair<core::Params<type::Type const *>, ConstantBinding>(
+      std::move(param_types), std::move(constants));
 }
 
 std::tuple<core::Params<type::Type const *>, std::vector<type::Type const *> *,
@@ -1849,10 +1853,11 @@ MakeConcrete(
   });
   temp_data.parent_ = &compiler_data;
 
-  auto parameters = c.ComputeParamsFromArgs(node, ordered_nodes, args);
+  auto [parameters, constants] =
+      c.ComputeParamsFromArgs(node, ordered_nodes, args);
 
   auto [params, rets, data, inserted] =
-      compiler_data.InsertDependent(node, parameters);
+      compiler_data.InsertDependent(node, parameters, std::move(constants));
   if (inserted) {
     if (auto const *fn_node = node->if_as<ast::FunctionLiteral>()) {
       if (auto outputs = fn_node->outputs(); outputs and not outputs->empty()) {

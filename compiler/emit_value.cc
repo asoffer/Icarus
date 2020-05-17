@@ -763,7 +763,7 @@ ir::NativeFn MakeConcreteFromGeneric(
       .diagnostic_consumer = compiler->diag(),
   });
   temp_data.parent_ = &compiler->data();
-  auto params =
+  auto [params, constants] =
       c.ComputeParamsFromArgs(node, OrderedDependencyNodes(node), args);
   auto find_dependent_result = compiler->data().FindDependent(node, params);
   auto const *fn_type        = find_dependent_result.fn_type;

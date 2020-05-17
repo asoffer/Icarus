@@ -164,7 +164,8 @@ struct Compiler
   }
   base::expected<ir::Value> Evaluate(type::Typed<ast::Expression const *> expr);
 
-  core::Params<type::Type const *> ComputeParamsFromArgs(
+  std::pair<core::Params<type::Type const *>, ConstantBinding>
+  ComputeParamsFromArgs(
       ast::ParameterizedExpression const *node,
       absl::Span<std::pair<int, core::DependencyNode<ast::Declaration>> const>
           ordered_nodes,

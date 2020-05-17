@@ -18,7 +18,8 @@ struct DependentComputedData::DependentDataChild::DataImpl {
 DependentComputedData::InsertDependentResult
 DependentComputedData::InsertDependent(
     ast::ParameterizedExpression const *node,
-    core::Params<type::Type const *> const &params) {
+    core::Params<type::Type const *> const &params,
+    ConstantBinding const &constants) {
   auto &[parent, map]   = dependent_data_[node];
   parent                = this;
   auto [iter, inserted] = map.try_emplace(params);
@@ -30,6 +31,13 @@ DependentComputedData::InsertDependent(
             .rets   = {},
             .data   = DependentComputedData(mod_),
         });
+
+    auto &constant_binding = iter->second->data.constants_;
+    constants.ForEach([&](auto const *decl, auto const &binding) {
+      constant_binding.reserve_slot(decl, binding.type);
+      constant_binding.set_slot(decl, binding.value);
+    });
+
     iter->second->data.parent_ = this;
     for (size_t i = 0; i < node->params().size(); ++i) {
       auto const *decl = node->params()[i].value.get();

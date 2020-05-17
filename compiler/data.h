@@ -157,7 +157,8 @@ struct DependentComputedData {
 
   InsertDependentResult InsertDependent(
       ast::ParameterizedExpression const *node,
-      core::Params<type::Type const *> const &params);
+      core::Params<type::Type const *> const &params,
+      ConstantBinding const &constants);
 
   // FindDependent:
   //
