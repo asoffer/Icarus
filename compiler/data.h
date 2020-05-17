@@ -237,7 +237,10 @@ struct DependentComputedData {
 
   // The parent node containing the generic that is instantiated to produce this
   // `DependentComputedData`.
+ public:
   DependentComputedData *parent_ = nullptr;
+
+ private:
   std::unordered_map<ast::ParameterizedExpression const *, DependentDataChild>
       dependent_data_;
 

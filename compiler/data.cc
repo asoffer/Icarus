@@ -31,6 +31,13 @@ DependentComputedData::InsertDependent(
             .data   = DependentComputedData(mod_),
         });
     iter->second->data.parent_ = this;
+    for (size_t i = 0; i < node->params().size(); ++i) {
+      auto const *decl = node->params()[i].value.get();
+      iter->second->data.set_qual_type(
+          decl, decl->flags() & ast::Declaration::f_IsConst
+                    ? type::QualType::Constant(params[i].value)
+                    : type::QualType::NonConstant(params[i].value));
+    }
   }
   auto &[parameters, rets, data] = *iter->second;
   return InsertDependentResult{

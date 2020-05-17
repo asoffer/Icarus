@@ -1734,6 +1734,8 @@ OrderedDependencyNodes(ast::ParameterizedExpression const *node) {
   return ordered_nodes;
 }
 
+// TODO: There's something strange about this: We want to work on a temporary
+// data/compiler, but using `this` makes it feel more permanent.
 core::Params<type::Type const *> Compiler::ComputeParamsFromArgs(
     ast::ParameterizedExpression const *node,
     absl::Span<std::pair<int, core::DependencyNode<ast::Declaration>> const>
@@ -1743,9 +1745,7 @@ core::Params<type::Type const *> Compiler::ComputeParamsFromArgs(
   ("Creating a concrete implementation with ",
    args.Transform([](auto const &a) { return a.type()->to_string(); }));
 
-  absl::flat_hash_map<std::string_view, ir::Value> arg_vals;
-  absl::flat_hash_map<std::string_view, type::Type const *> arg_types;
-  core::Params<type::Type const *> param_types;
+  core::Params<type::Type const *> param_types(node->params().size());
 
   // TODO use the proper ordering.
   for (auto [index, dep_node] : ordered_nodes) {
@@ -1761,13 +1761,15 @@ core::Params<type::Type const *> Compiler::ComputeParamsFromArgs(
           val = **a;
         } else {
           auto const *init_val = ASSERT_NOT_NULL(dep_node.node()->init_val());
-          auto arg_type_iter   = arg_types.find(dep_node.node()->id());
-          ASSERT(arg_type_iter != arg_types.end());
-          auto const *t  = arg_type_iter->second;
+          type::Type const *t =
+              ASSERT_NOT_NULL(data().arg_type(dep_node.node()->id()));
           auto maybe_val = Evaluate(type::Typed(init_val, t));
           if (not maybe_val) { NOT_YET(); }
           val = *maybe_val;
         }
+
+        // Erase values not known at compile-time.
+        if (val.get_if<ir::Reg>()) { val = ir::Value(); }
 
         auto tostr = [](ir::Value v) {
           if (auto **t = v.get_if<type::Type const *>()) {
@@ -1779,7 +1781,7 @@ core::Params<type::Type const *> Compiler::ComputeParamsFromArgs(
           }
         };
         DEBUG_LOG("generic-fn")("... ", tostr(val));
-        arg_vals.emplace(dep_node.node()->id(), val);
+        data().set_arg_value(dep_node.node()->id(), val);
       } break;
       case core::DependencyNodeKind::ArgType: {
         type::Type const *arg_type = nullptr;
@@ -1792,7 +1794,7 @@ core::Params<type::Type const *> Compiler::ComputeParamsFromArgs(
           arg_type       = VerifyType(init_val).type();
         }
         DEBUG_LOG("generic-fn")("... ", *arg_type);
-        arg_types.emplace(dep_node.node()->id(), arg_type);
+        data().set_arg_type(dep_node.node()->id(), arg_type);
       } break;
       case core::DependencyNodeKind::ParamType: {
         type::Type const *t = nullptr;
@@ -1812,7 +1814,6 @@ core::Params<type::Type const *> Compiler::ComputeParamsFromArgs(
         auto qt = (dep_node.node()->flags() & ast::Declaration::f_IsConst)
                       ? type::QualType::Constant(t)
                       : type::QualType::NonConstant(t);
-        data().set_qual_type(dep_node.node(), qt);
 
         // TODO: Once a parameter type has been computed, we know it's
         // argument type has already been computed so we can verify that the
@@ -1863,11 +1864,13 @@ MakeConcrete(
     core::FnArgs<type::Typed<ir::Value>> const &args,
     DependentComputedData &compiler_data,
     diagnostic::DiagnosticConsumer &diag) {
+  DependentComputedData temp_data(mod);
   Compiler c({
       .builder             = ir::GetBuilder(),
-      .data                = compiler_data,
+      .data                = temp_data,
       .diagnostic_consumer = diag,
   });
+  temp_data.parent_ = &compiler_data;
 
   auto parameters = c.ComputeParamsFromArgs(node, ordered_nodes, args);
 

@@ -87,7 +87,16 @@ ir::Value EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
       }
 
       auto *parameterized_expr = &fn->as<ast::ParameterizedExpression>();
-      auto params              = compiler->ComputeParamsFromArgs(
+
+      DependentComputedData temp_data(compiler->data().module());
+      Compiler c({
+          .builder             = compiler->builder(),
+          .data                = temp_data,
+          .diagnostic_consumer = compiler->diag(),
+      });
+      temp_data.parent_ = &compiler->data();
+
+      auto params = c.ComputeParamsFromArgs(
           parameterized_expr, OrderedDependencyNodes(parameterized_expr), args);
 
       auto find_dependent_result = compiler->data().FindDependent(

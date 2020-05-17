@@ -736,8 +736,18 @@ ir::NativeFn MakeConcreteFromGeneric(
 
   // Note: Cannot use structured bindings because the bindings need to be
   // captured in the lambda.
+
+  // TODO: Rather than recompute this we colud store the `Call` node in the
+  // dependent context.
+  DependentComputedData temp_data(compiler->data().module());
+  Compiler c({
+      .builder             = compiler->builder(),
+      .data                = temp_data,
+      .diagnostic_consumer = compiler->diag(),
+  });
+  temp_data.parent_ = &compiler->data();
   auto params =
-      compiler->ComputeParamsFromArgs(node, OrderedDependencyNodes(node), args);
+      c.ComputeParamsFromArgs(node, OrderedDependencyNodes(node), args);
   auto find_dependent_result = compiler->data().FindDependent(node, params);
   auto const *fn_type        = find_dependent_result.fn_type;
   auto &data                 = find_dependent_result.data;
@@ -747,7 +757,7 @@ ir::NativeFn MakeConcreteFromGeneric(
         &data.fns_, fn_type,
         node->params().Transform([fn_type, i = 0](auto const &d) mutable {
           return type::Typed<ast::Declaration const *>(
-              d.get(), fn_type->params().at(i++).value);
+              d.get(), fn_type->params()[i++].value);
         }));
     f->work_item = DeferBody({.builder             = compiler->builder(),
                               .data                = data,
