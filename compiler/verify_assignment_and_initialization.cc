@@ -24,7 +24,8 @@ static bool VerifyImpl(diagnostic::DiagnosticConsumer &diag,
     }
   }
 
-  if (to.expansion_size() != from.expansion_size()) {
+  size_t expansion_size = to.expansion_size();
+  if (expansion_size != from.expansion_size()) {
     using DiagnosticType =
         std::conditional_t<IsInit, diagnostic::MismatchedInitializationCount,
                            diagnostic::MismatchedAssignmentCount>;
@@ -36,8 +37,14 @@ static bool VerifyImpl(diagnostic::DiagnosticConsumer &diag,
     return false;
   }
 
-  type::Type const *to_type   = to.type();
-  type::Type const *from_type = from.type();
+  type::Type const *to_type =
+      expansion_size == 1
+          ? to.type()
+          : type::Tup({to.expanded().begin(), to.expanded().end()});
+  type::Type const *from_type =
+      expansion_size == 1
+          ? from.type()
+          : type::Tup({from.expanded().begin(), from.expanded().end()});
 
   if constexpr (not IsInit) {
     // Initializations do not care about movability.

@@ -14,6 +14,7 @@
 #include "frontend/source/range.h"
 #include "frontend/source/source.h"
 #include "type/qual_type.h"
+#include "type/tuple.h"
 
 namespace diagnostic {
 

@@ -131,6 +131,7 @@ cc_library(
     srcs = ["function.cc"],
     deps = [
         ":callable",
+        # ":qual_type",
         ":type",
         ":typed_value",
         "//core:params",
@@ -266,9 +267,13 @@ cc_library(
 cc_library(
     name = "qual_type",
     hdrs = ["qual_type.h"],
+    srcs = ["qual_type.cc"],
     deps = [
         ":type",
-        ":tuple",
+        "//base:global",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
     ],
 )
 

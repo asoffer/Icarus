@@ -9,6 +9,7 @@ cc_library(
         "//frontend/source",
         "//frontend/source:range",
         "//type:qual_type",
+        "//type:tuple",
     ],
 )
 

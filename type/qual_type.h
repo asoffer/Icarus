@@ -6,7 +6,6 @@
 #include <type_traits>
 #include <vector>
 
-#include "type/tuple.h"
 #include "type/type.h"
 
 namespace type {
@@ -117,6 +116,12 @@ inline std::ostream &operator<<(std::ostream &os, Quals quals) {
   return os << "]";
 }
 
+namespace internal_type {
+
+absl::Span<Type const *const> AddPack(absl::Span<Type const *const> types);
+
+}  // namespace internal_type
+
 struct QualType {
   explicit constexpr QualType() : QualType(nullptr, Quals::Unqualified()) {}
 
@@ -128,10 +133,15 @@ struct QualType {
       : data_(reinterpret_cast<uintptr_t>(t) |
               static_cast<uintptr_t>(quals.val_)) {}
 
-  explicit QualType(std::vector<Type const *> ts, Quals quals) {
-    num_     = ts.size();
-    auto tup = type::Tup(std::move(ts));
-    data_    = reinterpret_cast<uintptr_t>(tup) | quals.val_;
+  explicit QualType(absl::Span<Type const * const> ts, Quals quals) {
+    num_ = ts.size();
+    if (ts.size() == 1) {
+      data_ = reinterpret_cast<uintptr_t>(ts[0]) |
+              static_cast<uintptr_t>(quals.val_);
+    } else {
+      auto pack = internal_type::AddPack(ts);
+      data_     = reinterpret_cast<uintptr_t>(pack.data()) | quals.val_;
+    }
   }
 
   static constexpr QualType Error() {
@@ -156,6 +166,14 @@ struct QualType {
   constexpr bool constant() const { return (quals() & Quals::Const()).val_; }
   constexpr size_t expansion_size() const { return num_; }
 
+  absl::Span<type::Type const *const> expanded() const {
+    ASSERT(expansion_size() != 1u);
+    return absl::MakeConstSpan(
+        reinterpret_cast<Type const *const *>(
+            data_ & ~static_cast<uintptr_t>(Quals::All().val_)),
+        num_);
+  }
+
   explicit constexpr operator bool() const { return data_ != 0; }
   constexpr bool ok() const { return data_ != 0; }
 
@@ -169,13 +187,7 @@ struct QualType {
     return !(lhs == rhs);
   }
 
-  friend std::ostream &operator<<(std::ostream &os, QualType q) {
-    if (not q) { return os << "error"; }
-    return os << q.quals()
-              << (q.expansion_size() == 1
-                      ? absl::StrCat("(", q.type()->to_string(), ")")
-                      : q.type()->to_string());
-  }
+  friend std::ostream &operator<<(std::ostream &os, QualType q);
 
  private:
   uintptr_t data_ = 0;

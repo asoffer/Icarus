@@ -1,7 +1,6 @@
 #include "type/function.h"
 
 #include "base/global.h"
-#include "type/typed_value.h"
 
 namespace type {
 
