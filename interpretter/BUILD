@@ -38,6 +38,12 @@ cc_library(
 )
 
 cc_library(
+    name = "evaluation_failure",
+    hdrs = ["evaluation_failure.h"],
+    deps = [],
+)
+
+cc_library(
     name = "stack_frame",
     hdrs = ["stack_frame.h"],
     srcs = ["stack_frame.cc"],

@@ -14,8 +14,10 @@ struct AbortingConsumer : DiagnosticConsumer {
   explicit AbortingConsumer(frontend::Source const* src)
       : DiagnosticConsumer(src), renderer_(stderr) {}
   ~AbortingConsumer() override {}
-  void ConsumeImpl(DiagnosticMessage&& d) override {
-    renderer_.AddError(source(), d);
+
+  void ConsumeImpl(std::string_view category, std::string_view name,
+                   DiagnosticMessage&& diag) override {
+    renderer_.AddError(source(), diag);
     std::abort();
   }
 

@@ -29,7 +29,7 @@ base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
   return ret_buf;
 }
 
-base::expected<ir::Value> Evaluate(ir::CompiledFn &&fn) {
+base::expected<ir::Value, EvaluationFailure> Evaluate(ir::CompiledFn &&fn) {
   auto buf = EvaluateToBuffer(std::move(fn));
   std::vector<ir::Value> values;
   values.reserve(fn.type()->output().size());

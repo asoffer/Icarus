@@ -287,6 +287,7 @@ cc_library(
     name = "verify_type",
     hdrs = [],
     srcs = [
+        "verify/access.cc",
         "verify_type.cc",
     ],
     deps = [
@@ -332,5 +333,15 @@ cc_library(
         "//type:visitor",
         "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
+
+cc_test(
+    name = "access_test",
+    srcs = ["verify/access_test.cc"],
+    deps = [
+        ":verify_type",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
     ],
 )

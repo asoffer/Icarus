@@ -11,7 +11,7 @@ struct DiagnosticConsumer {
 
   template <typename Diag>
   void Consume(Diag const& diag) {
-    ConsumeImpl(diag.ToMessage(src_));
+    ConsumeImpl(Diag::kCategory, Diag::kName, diag.ToMessage(src_));
     ++num_consumed_;
   }
 
@@ -23,7 +23,8 @@ struct DiagnosticConsumer {
   constexpr size_t num_consumed() const { return num_consumed_; }
 
  protected:
-  virtual void ConsumeImpl(DiagnosticMessage&& diag) = 0;
+  virtual void ConsumeImpl(std::string_view category, std::string_view name,
+                           DiagnosticMessage&& diag) = 0;
 
  private:
   frontend::Source const* src_;

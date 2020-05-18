@@ -128,7 +128,7 @@ static ir::CompiledFn MakeThunk(Compiler::PersistentResources const &resources,
   return fn;
 }
 
-base::expected<ir::Value> Compiler::Evaluate(
+base::expected<ir::Value, interpretter::EvaluationFailure> Compiler::Evaluate(
     type::Typed<ast::Expression const *> expr) {
   return interpretter::Evaluate(MakeThunk(resources_, *expr, expr.type()));
 }

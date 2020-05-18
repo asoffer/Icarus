@@ -20,6 +20,8 @@ cc_library(
         "//diagnostic/consumer:trivial",
         "//frontend/source:range",
         "//module:module",
+        "@com_google_absl//absl/types:span",
+        "@com_google_absl//absl/container:flat_hash_map",
     ],
     testonly = True,
 )

@@ -162,6 +162,25 @@ struct QualType {
         data_ & ~static_cast<uintptr_t>(Quals::All().val_));
   }
 
+  // Sets an indicator on this QualType indicating that the expression with this
+  // `QualType` is indeed known to have this type but that the was an
+  // irrecoverable error found while processing it. This allows type-checking to
+  // proceed but has later stages of code emission (either for runtime or
+  // compile-time evaluation) to recognize a failure. A simple example would be:
+  //
+  // ```
+  //  Suit ::= enum { Clubs \\ Diamonds \\ Hearts \\ Spades }
+  //
+  //  my_suit := Suit.Club // Error
+  //  ```
+  //
+  //  It is clear that `my_suit` has type `Suit`, but the enumerator chosen is
+  //  mispelled so while it is safe to proceed with type-checking,
+  //  code-generation must not happen.
+  constexpr void MarkError() {
+    // Not yet.
+  }
+
   constexpr Quals quals() const { return Quals(data_ & 0x3); }
 
   constexpr bool constant() const { return (quals() & Quals::Const()).val_; }

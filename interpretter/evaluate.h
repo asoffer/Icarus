@@ -6,11 +6,13 @@
 #include "base/debug.h"
 #include "base/expected.h"
 #include "base/untyped_buffer.h"
+#include "interpretter/evaluation_failure.h"
 #include "ir/compiled_fn.h"
 #include "ir/value/value.h"
 
 namespace interpretter {
-base::expected<ir::Value> Evaluate(ir::CompiledFn &&fn);
+
+base::expected<ir::Value, EvaluationFailure> Evaluate(ir::CompiledFn &&fn);
 
 // TODO wrap output in expected.
 base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn);

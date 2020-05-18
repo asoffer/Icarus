@@ -15,6 +15,7 @@
 #include "compiler/module.h"
 #include "diagnostic/consumer/consumer.h"
 #include "frontend/source/source.h"
+#include "interpretter/evaluate.h"
 #include "ir/builder.h"
 #include "ir/value/addr.h"
 #include "ir/value/native_fn.h"
@@ -157,12 +158,14 @@ struct Compiler
   }
 
   template <typename T>
-  base::expected<T> EvaluateAs(ast::Expression const *expr) {
+  base::expected<T, interpretter::EvaluationFailure> EvaluateAs(
+      ast::Expression const *expr) {
     ASSIGN_OR(return _.error(), auto val,
                      Evaluate(type::Typed(expr, type::Get<T>())));
     return val.template get<T>();
   }
-  base::expected<ir::Value> Evaluate(type::Typed<ast::Expression const *> expr);
+  base::expected<ir::Value, interpretter::EvaluationFailure> Evaluate(
+      type::Typed<ast::Expression const *> expr);
 
   std::pair<core::Params<type::QualType>, ConstantBinding>
   ComputeParamsFromArgs(

@@ -11,7 +11,8 @@ struct TrivialConsumer : DiagnosticConsumer {
   ~TrivialConsumer() override {}
 
  protected:
-  void ConsumeImpl(DiagnosticMessage&& diag) override {}
+  void ConsumeImpl(std::string_view category, std::string_view name,
+                   DiagnosticMessage&& diag) override {}
 };
 
 }  // namespace diagnostic

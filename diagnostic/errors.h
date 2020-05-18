@@ -13,6 +13,7 @@
 #include "frontend/source/file_name.h"
 #include "frontend/source/range.h"
 #include "frontend/source/source.h"
+#include "interpretter/evaluation_failure.h"
 #include "type/qual_type.h"
 #include "type/tuple.h"
 
@@ -32,19 +33,6 @@ struct ArithmeticBinaryOperatorTypeMismatch {
 
   type::Type const *lhs_type;
   type::Type const *rhs_type;
-  frontend::SourceRange range;
-};
-
-struct NonConstantTypeMemberAccess {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName = "non-constant-type-member-access";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Cannot access a member of a non-constant type."),
-        SourceQuote(src).Highlighted(range, Style{}));
-  }
-
   frontend::SourceRange range;
 };
 
@@ -377,44 +365,6 @@ struct NoReturnTypes {
   frontend::SourceRange range;
 };
 
-struct TypeHasNoMembers {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "type-has-no-members";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("Cannot access a member of `type`."),
-                             SourceQuote(src).Highlighted(range, Style{}));
-  }
-
-  frontend::SourceRange range;
-};
-
-struct NonConstantModuleMemberAccess {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName = "non-constant-module-member-access";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Cannot access a member of a non-constant module."),
-        SourceQuote(src).Highlighted(range, Style{}));
-  }
-
-  frontend::SourceRange range;
-};
-
-struct NoExportedSymbol {
-  static constexpr std::string_view kCategory = "build-error";
-  static constexpr std::string_view kName     = "no-exported-symbol";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("No exported symbol of given name in this module."),
-        SourceQuote(src).Highlighted(range, Style{}));
-  }
-
-  frontend::SourceRange range;
-};
-
 struct InconsistentArrayType {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "inconsistent-array-type";
@@ -529,21 +479,6 @@ struct BuiltinError {
   std::string message;
 };
 
-struct MissingMember {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "missing-member";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Expressions of type `%s` have no member named `%s`.",
-             type->to_string(), member),
-        SourceQuote(src).Highlighted(range, Style{}));
-  }
-  frontend::SourceRange range;
-  std::string member;
-  type::Type const *type;
-};
-
 struct ReturnTypeMismatch {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "return-type-mismatch";
@@ -594,22 +529,6 @@ struct IndexedReturnTypeMismatch {
   size_t index;
   type::Type const *actual;
   type::Type const *expected;
-  frontend::SourceRange range;
-};
-
-struct NonExportedMember {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "non-exported-member";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Expressions of type `%s` do not export the member `%s`.",
-             type->to_string(), member),
-        SourceQuote(src).Highlighted(range, Style{}));
-  }
-
-  std::string member;
-  type::Type const *type;
   frontend::SourceRange range;
 };
 
@@ -766,7 +685,7 @@ struct CyclicDependency {
 
 struct UndeclaredIdentifier {
   static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "cyclic-dependency";
+  static constexpr std::string_view kName     = "undeclared-identifier";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
@@ -1081,6 +1000,20 @@ struct UncallableExpression {
         SourceQuote(src).Highlighted(range, Style::ErrorText()));
   }
 
+  frontend::SourceRange range;
+};
+
+struct EvaluationFailure {
+  static constexpr std::string_view kCategory = "interpretter";
+  static constexpr std::string_view kName     = "evaluation-failure";
+
+  DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return DiagnosticMessage(
+        Text("Compile-time interpretter failed to evaluate expression."),
+        SourceQuote(src).Highlighted(range, Style::ErrorText()));
+  }
+
+  interpretter::EvaluationFailure failure;
   frontend::SourceRange range;
 };
 
