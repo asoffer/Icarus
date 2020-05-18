@@ -551,32 +551,6 @@ type::QualType Compiler::VerifyType(ast::ArgumentType const *node) {
   return data().set_qual_type(node, type::QualType::Constant(type::Type_));
 }
 
-type::QualType Compiler::VerifyType(ast::ArrayType const *node) {
-  std::vector<type::QualType> length_results;
-  length_results.reserve(node->lengths().size());
-  auto quals = type::Quals::Const();
-  for (auto const &len : node->lengths()) {
-    auto result = VerifyType(len);
-    quals &= result.quals();
-    length_results.push_back(result);
-    if (result.type() != type::Int64) {
-      diag().Consume(diagnostic::NonIntegralArrayLength{
-          .range = node->range(),
-      });
-    }
-  }
-
-  auto data_qual_type = VerifyType(node->data_type());
-  quals &= data_qual_type.quals();
-  if (data_qual_type.type() != type::Type_) {
-    diag().Consume(diagnostic::ArrayDataTypeNotAType{
-        .range = node->data_type()->range(),
-    });
-  }
-
-  return data().set_qual_type(node, type::QualType(type::Type_, quals));
-}
-
 type::QualType Compiler::VerifyType(ast::Assignment const *node) {
   std::vector<type::Type const *> lhs_types;
   lhs_types.reserve(node->lhs().size());

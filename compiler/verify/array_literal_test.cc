@@ -10,7 +10,7 @@ using ::testing::IsEmpty;
 using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
 
-TEST(Access, EmptyArray) {
+TEST(ArrayLiteral, EmptyArray) {
   test::TestModule mod;
   auto const *expr = mod.Append<ast::Expression>(R"([])");
   auto const *qt   = mod.data().qual_type(expr);
@@ -19,7 +19,7 @@ TEST(Access, EmptyArray) {
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
-TEST(Access, OneElement) {
+TEST(ArrayLiteral, OneElement) {
   test::TestModule mod;
   {
     auto const *expr = mod.Append<ast::Expression>(R"([0])");
@@ -49,7 +49,7 @@ TEST(Access, OneElement) {
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
-TEST(Access, MultipleMatchingElements) {
+TEST(ArrayLiteral, MultipleMatchingElements) {
   test::TestModule mod;
   {
     auto const *expr = mod.Append<ast::Expression>(R"([0, 0])");
@@ -80,7 +80,7 @@ TEST(Access, MultipleMatchingElements) {
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
-TEST(Access, ElementTypeMismatch) {
+TEST(ArrayLiteral, ElementTypeMismatch) {
   test::TestModule mod;
   auto const *expr = mod.Append<ast::Expression>(R"([0, 0.0])");
   auto const *qt   = mod.data().qual_type(expr);

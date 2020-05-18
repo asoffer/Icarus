@@ -365,32 +365,6 @@ struct NoReturnTypes {
   frontend::SourceRange range;
 };
 
-struct NonIntegralArrayLength {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "non-integral-array-length";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("Array length indexed by non-integral type"),
-                             SourceQuote(src).Highlighted(range, Style{}));
-  }
-
-  frontend::SourceRange range;
-};
-
-struct ArrayDataTypeNotAType {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "array-data-type-not-a-type";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Array type has underlying data type specified as a value which "
-             "is not a type."),
-        SourceQuote(src).Highlighted(range, Style{}));
-  }
-
-  frontend::SourceRange range;
-};
-
 struct XorEqNeedsBoolOrFlags {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "xor-needs-bool-or-flags";
