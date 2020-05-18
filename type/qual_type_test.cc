@@ -1,9 +1,12 @@
 #include "type/qual_type.h"
 
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "type/primitive.h"
 
 namespace {
+
+using ::testing::MockFunction;
 
 // TODO test calls to quals() and check kRef
 
@@ -92,6 +95,22 @@ TEST(QualType, ExpansionSize) {
   EXPECT_EQ(type::QualType({type::Int32, type::Bool}, type::Quals::Const())
                 .expansion_size(),
             2);
+}
+
+TEST(QualType, ForEach) {
+  {
+    MockFunction<void(type::Type const *)> mock_fn;
+    EXPECT_CALL(mock_fn, Call(type::Bool)).Times(1);
+    type::QualType::Constant(type::Bool).ForEach(mock_fn.AsStdFunction());
+  }
+
+  {
+    MockFunction<void(type::Type const *)> mock_fn;
+    EXPECT_CALL(mock_fn, Call(type::Bool)).Times(1);
+    EXPECT_CALL(mock_fn, Call(type::Int64)).Times(1);
+    type::QualType({type::Bool, type::Int64}, type::Quals::Const())
+        .ForEach(mock_fn.AsStdFunction());
+  }
 }
 
 }  // namespace

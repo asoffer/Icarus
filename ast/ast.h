@@ -148,9 +148,6 @@ struct ArrayLiteral : Expression {
 // Represents an assignment of one or more values to one or more references.
 // The number of values must match the number of references.
 //
-// TODO: To allow multiple return values to be extracted from a function, we
-// should allow the righthand-side to be any expression or list of expressions.
-//
 // Examples:
 // * `a = b`
 // * `(a, b) = (c, d)`
@@ -158,9 +155,7 @@ struct Assignment : Node {
   explicit Assignment(frontend::SourceRange const &range,
                       std::vector<std::unique_ptr<Expression>> lhs,
                       std::vector<std::unique_ptr<Expression>> rhs)
-      : Node(range), lhs_(std::move(lhs)), rhs_(std::move(rhs)) {
-    ASSERT(lhs_.size() == rhs_.size());
-  }
+      : Node(range), lhs_(std::move(lhs)), rhs_(std::move(rhs)) {}
   ~Assignment() override {}
 
   base::PtrSpan<Expression const> lhs() const { return lhs_; }

@@ -1175,7 +1175,7 @@ type::QualType Compiler::VerifyType(ast::Call const *node) {
     // TODO under what circumstances can we prove that the implementation
     // doesn't need to be run at runtime?
     return data().set_qual_type(
-        node, type::QualType::NonConstant(type::Tup(std::move(ret_types))));
+        node, type::QualType(ret_types, type::Quals::Unqualified()));
   } else {
     diag().Consume(diagnostic::UncallableExpression{
         .range = node->callee()->range(),

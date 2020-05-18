@@ -235,24 +235,28 @@ ir::Value Compiler::EmitValue(ast::Assignment const *node) {
   std::vector<type::Typed<ir::RegOr<ir::Addr>>> lhs_refs;
   lhs_refs.reserve(node->lhs().size());
 
+  // TODO understand the precise semantics you care about here and document
+  // them. Must references be computed first?
   for (auto const *l : node->lhs()) {
-    lhs_refs.push_back(
-        type::Typed<ir::RegOr<ir::Addr>>(EmitRef(l), type_of(l)));
+    lhs_refs.push_back(type::Typed<ir::RegOr<ir::Addr>>(
+        EmitRef(l), ASSERT_NOT_NULL(data().qual_type(l))->type()));
   }
 
   auto ref_iter = lhs_refs.begin();
   for (auto const *r : node->rhs()) {
-    auto *rhs_type = type_of(r);
-    if (auto const *rhs_tup = rhs_type->if_as<type::Tuple>()) {
-      for (auto const *t : rhs_tup->entries_) {
+    auto rhs_qt  = *ASSERT_NOT_NULL(data().qual_type(r));
+    auto rhs_val = EmitValue(r);
+    if (rhs_qt.expansion_size() == 1) {
+      type::Typed<ir::RegOr<ir::Addr>> ref = *ref_iter++;
+      Visit(ref.type(), *ref, type::Typed{rhs_val, rhs_qt.type()},
+            EmitMoveAssignTag{});
+    } else {
+      auto val_iter = rhs_val.get<ir::MultiValue>().span().begin();
+      for (auto *t : rhs_qt.expanded()) {
         type::Typed<ir::RegOr<ir::Addr>> ref = *ref_iter++;
-        Visit(ref.type(), *ref, type::Typed{EmitValue(r), rhs_type},
+        Visit(ref.type(), *ref, type::Typed{*val_iter++, t},
               EmitMoveAssignTag{});
       }
-    } else {
-      type::Typed<ir::RegOr<ir::Addr>> ref = *ref_iter++;
-      Visit(ref.type(), *ref, type::Typed{EmitValue(r), rhs_type},
-            EmitMoveAssignTag{});
     }
   }
 

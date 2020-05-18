@@ -175,6 +175,15 @@ struct QualType {
         num_);
   }
 
+  template <typename F>
+  void ForEach(F f) const {
+    if (expansion_size() == 1) {
+      f(type());
+    } else {
+      for (auto const *t : expanded()) { f(t); }
+    }
+  }
+
   explicit constexpr operator bool() const { return data_ != 0; }
   constexpr bool ok() const { return data_ != 0; }
 
