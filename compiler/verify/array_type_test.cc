@@ -33,6 +33,12 @@ TEST(ArrayType, Correct) {
     ASSERT_NE(qt, nullptr);
     EXPECT_EQ(*qt, type::QualType::Constant(type::Type_));
   }
+  {
+    auto const *expr = mod.Append<ast::Expression>(R"([1 as int8; int64])");
+    auto const *qt   = mod.data().qual_type(expr);
+    ASSERT_NE(qt, nullptr);
+    EXPECT_EQ(*qt, type::QualType::Constant(type::Type_));
+  }
 
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }

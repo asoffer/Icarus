@@ -47,7 +47,7 @@ type::QualType Compiler::VerifyType(ast::ArrayType const *node) {
     auto result = VerifyType(len);
     quals &= result.quals();
     length_results.push_back(result);
-    if (result.type() != type::Int64) {
+    if (not type::IsIntegral(result.type())) {
       diag().Consume(NonIntegralArrayLength{
           .range = node->range(),
       });
