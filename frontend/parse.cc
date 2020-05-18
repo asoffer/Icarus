@@ -1403,8 +1403,9 @@ static base::Global kRules = std::array{
 enum class ShiftState : char { NeedMore, EndOfExpr, MustReduce };
 struct ParseState {
   // TODO storing the `diag` reference twice is unnecessary.
-  explicit ParseState(Source *src, diagnostic::DiagnosticConsumer &diag)
-      : lex_state_(src, diag), diag_(diag) {}
+  explicit ParseState(Source *src, diagnostic::DiagnosticConsumer &diag,
+                      LineNum initial_line_num = LineNum(1))
+      : lex_state_(src, diag, initial_line_num), diag_(diag) {}
 
   template <size_t N>
   inline Tag get_type() const {
@@ -1618,8 +1619,9 @@ void CleanUpReduction(ParseState *state) {
 }  // namespace
 
 std::vector<std::unique_ptr<ast::Node>> Parse(
-    Source *src, diagnostic::DiagnosticConsumer &diag) {
-  ParseState state(src, diag);
+    Source *src, diagnostic::DiagnosticConsumer &diag,
+    LineNum initial_line_num) {
+  ParseState state(src, diag, initial_line_num);
   Shift(&state);
 
   while (state.Next().tag_ != eof) {

@@ -45,10 +45,19 @@ struct TestModule : compiler::CompiledModule {
         }) {}
   ~TestModule() { compiler.CompleteDeferredBodies(); }
 
+  void AppendCode(std::string code) {
+    code.push_back('\n');
+    frontend::StringSource source(std::move(code));
+    AppendNodes(frontend::Parse(&source, consumer, next_line_num), consumer);
+    next_line_num += 100;
+  }
+
   template <typename NodeType>
   NodeType const* Append(std::string code) {
-    auto node       = test::ParseAs<NodeType>(std::move(code));
+    code.push_back('\n');
+    auto node       = test::ParseAs<NodeType>(std::move(code), next_line_num);
     auto const* ptr = ASSERT_NOT_NULL(node.get());
+    next_line_num += 100;
     AppendNode(std::move(node), consumer);
     return ptr;
   }
@@ -62,6 +71,9 @@ struct TestModule : compiler::CompiledModule {
     for (ast::Node const* node : nodes) { compiler.VerifyType(node); }
     compiler.CompleteDeferredBodies();
   }
+
+ private:
+  frontend::LineNum next_line_num = frontend::LineNum(1);
 };
 
 ast::Call const* MakeCall(

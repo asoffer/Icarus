@@ -365,19 +365,6 @@ struct NoReturnTypes {
   frontend::SourceRange range;
 };
 
-struct InconsistentArrayType {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "inconsistent-array-type";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Type error: Array literal must have consistent type"),
-        SourceQuote(src).Highlighted(range, Style{}));
-  }
-
-  frontend::SourceRange range;
-};
-
 struct NonIntegralArrayLength {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "non-integral-array-length";

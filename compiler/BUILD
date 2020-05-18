@@ -288,6 +288,7 @@ cc_library(
     hdrs = [],
     srcs = [
         "verify/access.cc",
+        "verify/array_literal.cc",
         "verify_type.cc",
     ],
     deps = [
@@ -339,6 +340,16 @@ cc_library(
 cc_test(
     name = "access_test",
     srcs = ["verify/access_test.cc"],
+    deps = [
+        ":verify_type",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "array_literal_test",
+    srcs = ["verify/array_literal_test.cc"],
     deps = [
         ":verify_type",
         "//test:module",

@@ -17,10 +17,11 @@
 namespace test {
 
 template <typename T>
-std::unique_ptr<T> ParseAs(std::string s) {
+std::unique_ptr<T> ParseAs(
+    std::string s, frontend::LineNum initial_line_num = frontend::LineNum(1)) {
   frontend::StringSource source(std::move(s));
   diagnostic::AbortingConsumer diag(&source);
-  auto stmts     = frontend::Parse(&source, diag);
+  auto stmts     = frontend::Parse(&source, diag, initial_line_num);
   auto* cast_ptr = stmts[0]->template if_as<T>();
   if (not cast_ptr) { return nullptr; }
   stmts[0].release();
@@ -31,11 +32,16 @@ core::OrderedFnArgs<ast::Expression> MakeFnArgs(
     std::vector<std::string> pos_args,
     absl::flat_hash_map<std::string, std::string> named_args) {
   std::vector<std::pair<std::string, std::unique_ptr<ast::Expression>>> vec;
+  frontend::LineNum line_num(1);
   for (auto pos_arg : pos_args) {
-    vec.emplace_back("", ParseAs<ast::Expression>(std::move(pos_arg)));
+    vec.emplace_back("",
+                     ParseAs<ast::Expression>(std::move(pos_arg), line_num));
+    ++line_num;
   }
   for (auto& [name, arg] : named_args) {
-    vec.emplace_back(std::move(name), ParseAs<ast::Expression>(std::move(arg)));
+    vec.emplace_back(std::move(name),
+                     ParseAs<ast::Expression>(std::move(arg), line_num));
+    ++line_num;
   }
   return core::OrderedFnArgs<ast::Expression>(std::move(vec));
 }

@@ -10,7 +10,8 @@ size_t NumNonConstants(
     core::Params<type::Typed<ast::Declaration const *>> const &params) {
   size_t num = 0;
   for (auto const &param : params) {
-    if (not(param.value.get()->flags() & ast::Declaration::f_IsConst)) {
+    if (param.value.get() and
+        not(param.value.get()->flags() & ast::Declaration::f_IsConst)) {
       ++num;
     }
   }

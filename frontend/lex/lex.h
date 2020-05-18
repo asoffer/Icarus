@@ -21,9 +21,11 @@ inline base::Global BuiltinHashtagMap =
         {"{no_default}", ast::Hashtag::Builtin::NoDefault}};
 
 struct LexState {
-  LexState(Source *src, diagnostic::DiagnosticConsumer &diag)
+  LexState(Source *src, diagnostic::DiagnosticConsumer &diag,
+           LineNum initial_line_num = LineNum(1))
       : src_(src),
-        cursor_(SourceLoc(LineNum(1), Offset(0)), src_->ReadUntil('\n').view),
+        cursor_(SourceLoc(initial_line_num, Offset(0)),
+                src_->ReadUntil('\n').view),
         diag_(diag) {}
 
   char peek() {

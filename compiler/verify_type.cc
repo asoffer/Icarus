@@ -159,21 +159,6 @@ Cmp Comparator(type::Type const *t) {
 
 }  // namespace
 
-static std::optional<std::vector<type::QualType>> VerifyWithoutSetting(
-    Compiler *visitor, base::PtrSpan<ast::Expression const> exprs) {
-  std::vector<type::QualType> results;
-  results.reserve(exprs.size());
-  for (auto const &expr : exprs) {
-    auto r = visitor->VerifyType(expr);
-    results.push_back(r);
-  }
-  if (absl::c_any_of(results,
-                     [](type::QualType const &r) { return not r.ok(); })) {
-    return std::nullopt;
-  }
-  return results;
-}
-
 static type::QualType VerifySpecialFunctions(Compiler *visitor,
                                              ast::Declaration const *decl,
                                              type::Type const *decl_type) {
@@ -564,29 +549,6 @@ static std::optional<type::Quals> VerifyAndGetQuals(
 
 type::QualType Compiler::VerifyType(ast::ArgumentType const *node) {
   return data().set_qual_type(node, type::QualType::Constant(type::Type_));
-}
-
-type::QualType Compiler::VerifyType(ast::ArrayLiteral const *node) {
-  if (node->empty()) {
-    return data().set_qual_type(node,
-                                type::QualType::Constant(type::EmptyArray));
-  }
-
-  ASSIGN_OR(return type::QualType::Error(), auto expr_results,
-                   VerifyWithoutSetting(this, node->elems()));
-  auto *t           = expr_results.front().type();
-  type::Quals quals = type::Quals::Const();
-  for (auto expr_result : expr_results) {
-    quals &= expr_result.quals();
-    if (expr_result.type() != t) {
-      diag().Consume(diagnostic::InconsistentArrayType{
-          .range = node->range(),
-      });
-      return type::QualType::Error();
-    }
-  }
-  return data().set_qual_type(
-      node, type::QualType(type::Arr(expr_results.size(), t), quals));
 }
 
 type::QualType Compiler::VerifyType(ast::ArrayType const *node) {

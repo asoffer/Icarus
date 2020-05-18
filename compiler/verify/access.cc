@@ -1,6 +1,5 @@
-#include "compiler/compiler.h"
-
 #include "ast/ast.h"
+#include "compiler/compiler.h"
 #include "diagnostic/errors.h"
 #include "diagnostic/message.h"
 #include "type/enum.h"
@@ -190,7 +189,7 @@ type::QualType AccessStructMember(Compiler *c, ast::Access const *node,
     return type::QualType::Error();
   }
 
-  type::QualType qt(member->type, quals);
+  type::QualType qt(member->type, quals | type::Quals::Ref());
 
   // Struct field members need to be exported in addition to the struct itself.
   if (c->data().module() != s->defining_module() and
@@ -213,8 +212,8 @@ type::QualType AccessStructMember(Compiler *c, ast::Access const *node,
 // Verifies access to a symbol in a different module. If there are multiple
 // symbols of the same name, verify that they form a valid overload set.
 type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
-                                  type::QualType operand_result) {
-  if (not operand_result.constant()) {
+                                  type::QualType operand_qt) {
+  if (not operand_qt.constant()) {
     c->diag().Consume(NonConstantModuleMemberAccess{
         .range = node->range(),
     });
