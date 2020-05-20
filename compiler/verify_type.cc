@@ -1247,7 +1247,7 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
       } else {
         diag().Consume(diagnostic::NotAType{
             .range = node->type_expr()->range(),
-            type_expr_type,
+            .type  = type_expr_type,
         });
         error = true;
       }
@@ -1272,7 +1272,7 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
       } else {
         diag().Consume(diagnostic::NotAType{
             .range = node->type_expr()->range(),
-            type_expr_type,
+            .type  = type_expr_type,
         });
         return data().set_qual_type(node, type::QualType::Error());
       }
