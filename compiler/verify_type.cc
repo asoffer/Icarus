@@ -853,8 +853,7 @@ static type::QualType VerifyCall(
             .range = b->range(),
             .message =
                 absl::StrCat("Built-in function `alignment` must take a single "
-                             "argument of "
-                             "type `type` (you provided a(n) ",
+                             "argument of type `type` (you provided a(n) ",
                              arg_vals[0].type()->to_string(), ")"),
         });
       }
@@ -1374,47 +1373,6 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
   }
 
   return VerifySpecialFunctions(this, node, node_qual_type.type());
-}
-
-type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
-  // TODO include fields.
-  // TODO constant only when all fields are constant.
-  auto type_type = VerifyType(node->type());
-  if (type_type != type::QualType::Constant(type::Type_)) {
-    NOT_YET("log an error", type_type, " vs ",
-            type::QualType::Constant(type::Type_));
-  }
-
-  auto maybe_type = EvaluateAs<type::Type const *>(node->type());
-  if (not maybe_type) { NOT_YET(); }
-  type::Type const *expr_type = ASSERT_NOT_NULL(*maybe_type);
-
-  auto *struct_type = expr_type->if_as<type::Struct>();
-  if (not struct_type) { NOT_YET("log an error"); }
-
-  type::Quals quals = type::Quals::Const();
-  for (auto &[field, expr] : node->assignments()) {
-    type::QualType initializer_qual_type = VerifyType(expr.get());
-    if (not initializer_qual_type) {
-      // If there was an error we still want to verify all other initializers
-      // and we still want to claim this expression has the same type, but
-      // we'll just give up on it being a constant.
-      quals = type::Quals::Unqualified();
-      continue;
-    }
-    if (auto *struct_field = struct_type->field(field)) {
-      if (not type::CanCast(initializer_qual_type.type(), struct_field->type)) {
-        NOT_YET("log an error: ", initializer_qual_type.type()->to_string(),
-                struct_field->type->to_string());
-      }
-      quals &= initializer_qual_type.quals();
-    } else {
-      NOT_YET("log an error");
-      quals = type::Quals::Unqualified();
-    }
-  }
-
-  return data().set_qual_type(node, type::QualType(struct_type, quals));
 }
 
 type::QualType Compiler::VerifyType(ast::EnumLiteral const *node) {

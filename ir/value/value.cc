@@ -13,7 +13,7 @@ MultiValue::MultiValue(absl::Span<Value const> values) {
   *reinterpret_cast<size_t*>(data_.get()) = values.size();
 
   auto* val_ptr = reinterpret_cast<Value*>(data_.get()) + 1;
-  for (Value const v : values) { *val_ptr++ = v; }
+  for (Value const& v : values) { *val_ptr++ = v; }
 }
 
 MultiValue::MultiValue(MultiValue const& v) : MultiValue(v.span()) {}

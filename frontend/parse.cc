@@ -659,15 +659,19 @@ std::unique_ptr<ast::Node> BuildDesignatedInitializer(
         initializers;
     initializers.reserve(extracted_stmts.size());
     for (auto &stmt : extracted_stmts) {
-      if (auto *binop = stmt->if_as<ast::Binop>()) {
-        auto [lhs, rhs] = std::move(*binop).extract();
-        if (auto *lhs_id = lhs->if_as<ast::Identifier>()) {
-          initializers.emplace_back(std::move(*lhs_id).extract(),
-                                    std::move(rhs));
-        } else {
-          diag.Consume(diagnostic::Todo{});
-          continue;
+      if (auto *assignment = stmt->if_as<ast::Assignment>()) {
+        auto [lhs, rhs] = std::move(*assignment).extract();
+        if (lhs.size() != rhs.size()) { NOT_YET(); }
+        for (size_t i = 0; i < lhs.size(); ++i) {
+          if (auto *lhs_id = lhs[i]->if_as<ast::Identifier>()) {
+            initializers.emplace_back(std::move(*lhs_id).extract(),
+                                      std::move(rhs[i]));
+          } else {
+            diag.Consume(diagnostic::Todo{});
+            continue;
+          }
         }
+
       } else {
         diag.Consume(diagnostic::Todo{});
         continue;

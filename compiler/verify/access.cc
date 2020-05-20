@@ -228,7 +228,7 @@ type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
     });
     return type::QualType::Error();
   }
-  // TODO Rather than evaluating as a BasicModule and then down-casting to
+  // TODO: Rather than evaluating as a BasicModule and then down-casting to
   // CompiledModule, we should make this cast unnecessary.
   auto const *mod = &(*maybe_mod)->as<CompiledModule>();
 

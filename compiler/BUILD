@@ -290,6 +290,7 @@ cc_library(
         "verify/access.cc",
         "verify/array_literal.cc",
         "verify/array_type.cc",
+        "verify/designated_initializer.cc",
         "verify/index.cc",
         "verify_type.cc",
     ],
@@ -362,6 +363,16 @@ cc_test(
 cc_test(
     name = "array_type_test",
     srcs = ["verify/array_type_test.cc"],
+    deps = [
+        ":verify_type",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "designated_initializer_test",
+    srcs = ["verify/designated_initializer_test.cc"],
     deps = [
         ":verify_type",
         "//test:module",
