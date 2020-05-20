@@ -226,7 +226,21 @@ void Declaration::DebugStrAppend(std::string *out, size_t indent) const {
 void DesignatedInitializer::DebugStrAppend(std::string *out,
                                            size_t indent) const {
   type()->DebugStrAppend(out, indent);
-  out->append(".{}");
+  out->append(".{");
+  for (auto const *assignment : assignments()) {
+    absl::StrAppend(out, "(",
+                    absl::StrJoin(assignment->lhs(), ", ",
+                                  [&](std::string *out, auto const *expr) {
+                                    expr->DebugStrAppend(out, indent + 1);
+                                  }),
+                    ") = ",
+                    absl::StrJoin(assignment->rhs(), ", ",
+                                  [&](std::string *out, auto const *expr) {
+                                    expr->DebugStrAppend(out, indent + 1);
+                                  }),
+                    "\n", indentation(indent + 1));
+  }
+  out->append("}");
 }
 
 void EnumLiteral::DebugStrAppend(std::string *out, size_t indent) const {

@@ -111,7 +111,7 @@ struct ParamDependencyGraphBuilder
   void Visit(DesignatedInitializer const *node,
              core::DependencyNode<Declaration> d) {
     Visit(node->type(), d);
-    for (auto &[field, expr] : node->assignments()) { Visit(expr.get(), d); }
+    for (auto const *assignment : node->assignments()) { Visit(assignment, d); }
   }
 
   void Visit(EnumLiteral const *node, core::DependencyNode<Declaration> d) {

@@ -1,4 +1,5 @@
 #include "ast/ast.h"
+#include "base/defer.h"
 #include "compiler/compiler.h"
 #include "diagnostic/errors.h"
 #include "type/primitive.h"
@@ -112,10 +113,13 @@ type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
   }
   if (error) { return type::QualType::Error(); }
 
-  std::vector<type::QualType> initializer_qts;
+  std::vector<std::vector<type::QualType>> initializer_qts;
   initializer_qts.reserve(node->assignments().size());
-  for (auto &[field, expr] : node->assignments()) {
-    initializer_qts.push_back(VerifyType(expr.get()));
+  for (auto const *assignment : node->assignments()) {
+    auto &back = initializer_qts.emplace_back();
+    for (auto const *expr : assignment->rhs()) {
+      back.push_back(VerifyType(expr));
+    }
   }
 
   // Evaluate the type next so that the default ordering of error messages makes
@@ -141,44 +145,67 @@ type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
   bool recovered_error  = false;
   type::Quals quals     = type::Quals::Const();
   auto initializer_iter = initializer_qts.begin();
-  for (auto &[field, expr] : node->assignments()) {
-    type::QualType initializer_qual_type = *initializer_iter;
-    if (not initializer_qual_type) {
-      // If there was an error we still want to verify all other initializers
-      // and we still want to claim this expression has the same type, but
-      // we'll just give up on it being a constant.
-      quals           = type::Quals::Unqualified();
-      recovered_error = true;
-      continue;
-    }
+  for (auto const *assignment : node->assignments()) {
+    auto const &initializer_qt_vec = *initializer_iter;
+    ++initializer_iter;
 
-    if (auto *struct_field = struct_type->field(field)) {
-      if (not type::CanCast(initializer_qual_type.type(), struct_field->type)) {
-        diag().Consume(InvalidInitializerType{
-            .expected = struct_field->type,
-            .actual   = initializer_qual_type.type(),
-            // TODO: this range is wrong, it should point to the field not the
-            // expression initializing it. Skipping for now because we do not
-            // save source ranges for this.
-            .range = expr->range(),
+    size_t qt_index  = 0;
+    size_t qt_offset = 0;
+    DEBUG_LOG()(assignment->lhs().size());
+    for (auto const *field : assignment->lhs()) {
+      DEBUG_LOG()(field->DebugString());
+      std::string_view field_name   = field->as<ast::Identifier>().token();
+      type::QualType initializer_qt = initializer_qt_vec[qt_index];
+      if (not initializer_qt.ok()) {
+        // If there was an error we still want to verify all other initializers
+        // and we still want to claim this expression has the same type, but
+        // we'll just give up on it being a constant.
+        quals           = type::Quals::Unqualified();
+        recovered_error = true;
+        DEBUG_LOG()("HUH????");
+        goto next_assignment;
+      }
+
+      type::Type const *t = [&] {
+        if (initializer_qt.expansion_size() == 1) {
+          ++qt_offset;
+          return initializer_qt.type();
+        } else {
+          return initializer_qt.expanded()[qt_offset++];
+        }
+      }();
+
+      base::defer d = [&] {
+        if (qt_offset == initializer_qt.expansion_size()) {
+          qt_offset = 0;
+          ++qt_index;
+        }
+      };
+
+      if (auto *struct_field = struct_type->field(field_name)) {
+        if (not type::CanCast(t, struct_field->type)) {
+          diag().Consume(InvalidInitializerType{
+              .expected = struct_field->type,
+              .actual   = t,
+              .range    = field->range(),
+          });
+          recovered_error = true;
+          quals           = type::Quals::Unqualified();
+        } else {
+          quals &= initializer_qt.quals();
+        }
+      } else {
+        diag().Consume(MissingStructField{
+            .member_name = std::string(field_name),
+            .struct_type = struct_type,
+            .range       = field->range(),
         });
         recovered_error = true;
         quals           = type::Quals::Unqualified();
-      } else {
-        quals &= initializer_qual_type.quals();
       }
-    } else {
-      diag().Consume(MissingStructField{
-          .member_name = field,
-          .struct_type = struct_type,
-          // TODO: this range is wrong, it should point to the field not the
-          // expression initializing it. Skipping for now because we do not save
-          // source ranges for this.
-          .range = expr->range(),
-      });
-      recovered_error = true;
-      quals           = type::Quals::Unqualified();
     }
+
+  next_assignment:;
   }
 
   type::QualType qt(struct_type, quals);

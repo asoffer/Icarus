@@ -87,7 +87,7 @@ void Declaration::Initialize(Scope *scope) {
 void DesignatedInitializer::Initialize(Scope *scope) {
   scope_ = scope;
   type_->Initialize(scope);
-  for (auto &[field, expr] : assignments_) { expr->Initialize(scope); }
+  for (auto &assignment : assignments_) { assignment->Initialize(scope); }
 }
 
 void EnumLiteral::Initialize(Scope *scope) {

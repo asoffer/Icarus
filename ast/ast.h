@@ -405,32 +405,42 @@ struct ParameterizedExpression : Expression {
 //
 // ```
 // S.{
-//   .x = 3
-//   .y = 17
+//   x = 3
+//   y = 17
 // }
 // ```
+//
+// Note that it is an invariant of this struct that the left-hand side of every
+// assigment returned in `assignments()` is an `Identifier`.
+//
+// TODO: Consider using a stronger type than `Assignment` that guarantees
+// left-hand sides are identifiers.
 struct DesignatedInitializer : Expression {
-  DesignatedInitializer(
-      frontend::SourceRange const &range, std::unique_ptr<Expression> type,
-      std::vector<std::pair<std::string, std::unique_ptr<Expression>>>
-          assignments)
+  // The `assignments` passed in to this constructor must have all left-hand
+  // sides be `Identifier`s.
+  DesignatedInitializer(frontend::SourceRange const &range,
+                        std::unique_ptr<Expression> type,
+                        std::vector<std::unique_ptr<Assignment>> assignments)
       : Expression(range),
         type_(std::move(type)),
-        assignments_(std::move(assignments)) {}
+        assignments_(std::move(assignments)) {
+    for (auto const *assignment : this->assignments()) {
+      for (auto const *expr : assignment->lhs()) {
+        ASSERT(expr->is<ast::Identifier>() == true);
+      }
+    }
+  }
 
   ~DesignatedInitializer() override {}
 
   Expression const *type() const { return type_.get(); }
-  absl::Span<std::pair<std::string, std::unique_ptr<Expression>> const>
-  assignments() const {
-    return assignments_;
-  }
+  base::PtrSpan<Assignment const> assignments() const { return assignments_; }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
   std::unique_ptr<Expression> type_;
-  std::vector<std::pair<std::string, std::unique_ptr<Expression>>> assignments_;
+  std::vector<std::unique_ptr<Assignment>> assignments_;
 };
 
 // BlockLiteral:

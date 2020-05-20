@@ -77,7 +77,11 @@ struct Extractor : ast::Visitor<void()> {
 
   void Visit(ast::DesignatedInitializer const *node) final {
     Visit(node->type());
-    for (auto &[field, expr] : node->assignments()) { Visit(expr.get()); }
+    for (auto const *assignment : node->assignments()) {
+      // Note: lhs is guaranteed to be an identifier and therefore doesn't need
+      // to be extracted.
+      for (auto const *expr : assignment->rhs()) { Visit(expr); }
+    }
   }
 
   void Visit(ast::EnumLiteral const *node) final {

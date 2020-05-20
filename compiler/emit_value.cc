@@ -700,10 +700,13 @@ ir::Value Compiler::EmitValue(ast::DesignatedInitializer const *node) {
   for (size_t i = 0; i < fields.size(); ++i) {
     auto const &field = fields[i];
 
-    for (auto &[field_name, expr] : node->assignments()) {
-      // Skip default initialization if we're going to use the designated
-      // initializer.
-      if (field_name == field.name) { goto next_field; }
+    for (auto const *assignment : node->assignments()) {
+      for (auto const *expr : assignment->lhs()) {
+        std::string_view field_name = expr->as<ast::Identifier>().token();
+        // Skip default initialization if we're going to use the designated
+        // initializer.
+        if (field_name == field.name) { goto next_field; }
+      }
     }
 
     Visit(field.type, builder().Field(alloc, &struct_type, i).get(),
@@ -711,11 +714,11 @@ ir::Value Compiler::EmitValue(ast::DesignatedInitializer const *node) {
   next_field:;
   }
 
-  // TODO initialize fields not listed in the designated initializer.
-  for (auto &[field, expr] : node->assignments()) {
-    auto *f            = struct_type.field(field);
-    size_t field_index = struct_type.index(f->name);
-    EmitMoveInit(expr.get(), builder().Field(alloc, &struct_type, field_index));
+  for (auto const *assignment : node->assignments()) {
+    NOT_YET();
+    // auto *f            = struct_type.field(field);
+    // size_t field_index = struct_type.index(f->name);
+    // EmitMoveInit(expr.get(), builder().Field(alloc, &struct_type, field_index));
   }
   return ir::Value(alloc);
 }

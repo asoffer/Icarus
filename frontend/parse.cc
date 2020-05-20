@@ -655,23 +655,16 @@ std::unique_ptr<ast::Node> BuildDesignatedInitializer(
       SourceRange(nodes[0]->range().begin(), nodes.back()->range().end());
   if (auto *stmts = nodes[2]->if_as<Statements>()) {
     auto extracted_stmts = std::move(*stmts).extract();
-    std::vector<std::pair<std::string, std::unique_ptr<ast::Expression>>>
-        initializers;
+    std::vector<std::unique_ptr<ast::Assignment>> initializers;
     initializers.reserve(extracted_stmts.size());
     for (auto &stmt : extracted_stmts) {
-      if (auto *assignment = stmt->if_as<ast::Assignment>()) {
-        auto [lhs, rhs] = std::move(*assignment).extract();
-        if (lhs.size() != rhs.size()) { NOT_YET(); }
-        for (size_t i = 0; i < lhs.size(); ++i) {
-          if (auto *lhs_id = lhs[i]->if_as<ast::Identifier>()) {
-            initializers.emplace_back(std::move(*lhs_id).extract(),
-                                      std::move(rhs[i]));
-          } else {
+      if (auto const *assignment = stmt->if_as<ast::Assignment>()) {
+        initializers.push_back(move_as<ast::Assignment>(stmt));
+        for (auto const *expr : assignment->lhs()) {
+          if (not expr->is<ast::Identifier>()) {
             diag.Consume(diagnostic::Todo{});
-            continue;
           }
         }
-
       } else {
         diag.Consume(diagnostic::Todo{});
         continue;
@@ -683,8 +676,7 @@ std::unique_ptr<ast::Node> BuildDesignatedInitializer(
   } else {
     return std::make_unique<ast::DesignatedInitializer>(
         range, move_as<ast::Expression>(nodes[0]),
-        std::vector<
-            std::pair<std::string, std::unique_ptr<ast::Expression>>>{});
+        std::vector<std::unique_ptr<ast::Assignment>>{});
   }
 }
 

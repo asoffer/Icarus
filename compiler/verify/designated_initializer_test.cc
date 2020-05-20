@@ -151,6 +151,53 @@ TEST(DesignatedInitializer, Valid) {
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
+TEST(DesignatedInitializer, MultipleMemberAssignments) {
+  // Verify that errors on fields are emit even when there's an error on the
+  // struct type.
+  test::TestModule mod;
+  mod.AppendCode(R"(
+  f ::= () -> (int64, bool) { return 3, true }
+  S ::= struct {
+    n: int64
+    b: bool
+  }
+  )");
+  auto const *expr = mod.Append<ast::Expression>(R"(S.{
+    (n, b) = f()
+  }
+  )");
+  auto const *qt   = mod.data().qual_type(expr);
+  ASSERT_NE(qt, nullptr);
+  EXPECT_TRUE(qt->type()->is<type::Struct>());
+  EXPECT_EQ(qt->quals(), type::Quals::Unqualified());
+  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+}
+
+TEST(DesignatedInitializer, MultipleMemberInvalidAssignments) {
+  // Verify that errors on fields are emit even when there's an error on the
+  // struct type.
+  test::TestModule mod;
+  mod.AppendCode(R"(
+  f ::= () -> (int64, int64) { return 3, 4 }
+  S ::= struct {
+    n: int64
+    b: bool
+  }
+  )");
+  auto const *expr = mod.Append<ast::Expression>(R"(S.{
+    (n, b) = f()
+  }
+  )");
+  auto const *qt   = mod.data().qual_type(expr);
+  ASSERT_NE(qt, nullptr);
+  EXPECT_TRUE(qt->type()->is<type::Struct>());
+  EXPECT_EQ(qt->quals(), type::Quals::Unqualified());
+  EXPECT_THAT(
+      mod.consumer.diagnostics(),
+      UnorderedElementsAre(Pair("type-error", "invalid-initializer-type")));
+}
+
+
 TEST(DesignatedInitializer, MemberValidConversion) {
   // Verify that errors on fields are emit even when there's an error on the
   // struct type.
