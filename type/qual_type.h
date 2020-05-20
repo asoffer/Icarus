@@ -93,7 +93,7 @@ struct Quals {
     return (lhs | rhs) == lhs and lhs != rhs;
   }
   friend bool operator>(Quals lhs, Quals rhs) { return rhs < lhs; }
-  friend bool operator<=(Quals lhs, Quals rhs) { return (lhs | rhs) == lhs; }
+  friend bool operator<=(Quals lhs, Quals rhs) { return (lhs | rhs) == rhs; }
   friend bool operator>=(Quals lhs, Quals rhs) { return rhs <= lhs; }
 
  private:
