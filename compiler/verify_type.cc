@@ -851,10 +851,11 @@ static type::QualType VerifyCall(
       } else if (arg_vals[0].type() != type::Type_) {
         c->diag().Consume(diagnostic::BuiltinError{
             .range = b->range(),
-            absl::StrCat("Built-in function `alignment` must take a single "
-                         "argument of "
-                         "type `type` (you provided a(n) ",
-                         arg_vals[0].type()->to_string(), ")"),
+            .message =
+                absl::StrCat("Built-in function `alignment` must take a single "
+                             "argument of "
+                             "type `type` (you provided a(n) ",
+                             arg_vals[0].type()->to_string(), ")"),
         });
       }
       return type::QualType::Constant(
