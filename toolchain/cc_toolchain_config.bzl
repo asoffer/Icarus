@@ -119,9 +119,8 @@ def _impl(ctx):
         abi_version = "unknown",
         abi_libc_version = "unknown",
         cxx_builtin_include_directories = [
-            "/usr/lib/llvm-9",
+            "/usr/lib",
             "/usr/include",
-            "/usr/lib/gcc",
             "/usr/local/include",
         ],
         tool_paths = tool_paths,
