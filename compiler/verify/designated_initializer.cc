@@ -1,3 +1,4 @@
+#include "absl/container/flat_hash_map.h"
 #include "ast/ast.h"
 #include "base/defer.h"
 #include "compiler/compiler.h"
@@ -149,12 +150,30 @@ type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
     auto const &initializer_qt_vec = *initializer_iter;
     ++initializer_iter;
 
+    // Check all struct fields first to ensure we generate errors for them even
+    // if there are errors in the initializers.
+
+    absl::flat_hash_map<std::string_view, type::Struct::Field const *>
+        name_to_field;
+    for (auto const *field : assignment->lhs()) {
+      std::string_view field_name = field->as<ast::Identifier>().token();
+      if (auto *struct_field = struct_type->field(field_name)) {
+        name_to_field.emplace(field_name, struct_field);
+      } else {
+        diag().Consume(MissingStructField{
+            .member_name = std::string(field_name),
+            .struct_type = struct_type,
+            .range       = field->range(),
+        });
+        recovered_error = true;
+        quals           = type::Quals::Unqualified();
+      }
+    }
+
     size_t qt_index  = 0;
     size_t qt_offset = 0;
-    DEBUG_LOG()(assignment->lhs().size());
     for (auto const *field : assignment->lhs()) {
-      DEBUG_LOG()(field->DebugString());
-      std::string_view field_name   = field->as<ast::Identifier>().token();
+      std::string_view field_name = field->as<ast::Identifier>().token();
       type::QualType initializer_qt = initializer_qt_vec[qt_index];
       if (not initializer_qt.ok()) {
         // If there was an error we still want to verify all other initializers
@@ -162,7 +181,6 @@ type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
         // we'll just give up on it being a constant.
         quals           = type::Quals::Unqualified();
         recovered_error = true;
-        DEBUG_LOG()("HUH????");
         goto next_assignment;
       }
 
@@ -182,26 +200,20 @@ type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
         }
       };
 
-      if (auto *struct_field = struct_type->field(field_name)) {
-        if (not type::CanCast(t, struct_field->type)) {
-          diag().Consume(InvalidInitializerType{
-              .expected = struct_field->type,
-              .actual   = t,
-              .range    = field->range(),
-          });
-          recovered_error = true;
-          quals           = type::Quals::Unqualified();
-        } else {
-          quals &= initializer_qt.quals();
-        }
-      } else {
-        diag().Consume(MissingStructField{
-            .member_name = std::string(field_name),
-            .struct_type = struct_type,
-            .range       = field->range(),
+      auto iter = name_to_field.find(field_name);
+      if (iter == name_to_field.end()) { continue; }
+      type::Struct::Field const *struct_field = iter->second;
+
+      if (not type::CanCast(t, struct_field->type)) {
+        diag().Consume(InvalidInitializerType{
+            .expected = struct_field->type,
+            .actual   = t,
+            .range    = field->range(),
         });
         recovered_error = true;
         quals           = type::Quals::Unqualified();
+      } else {
+        quals &= initializer_qt.quals();
       }
     }
 

@@ -220,5 +220,29 @@ TEST(DesignatedInitializer, MemberValidConversion) {
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
+TEST(DesignatedInitializer, ErrorInInitializerAndField) {
+  // Verify that errors on fields are emit even when there's an error on the
+  // struct type.
+  test::TestModule mod;
+  mod.AppendCode(R"(
+  NotAType ::= 0
+  S ::= struct {
+    n: int64
+  }
+  )");
+  auto const *expr = mod.Append<ast::Expression>(R"(S.{
+    m = NotAType.{}  // Still generate missing-struct-field for `m`.
+  }
+  )");
+  auto const *qt   = mod.data().qual_type(expr);
+  ASSERT_NE(qt, nullptr);
+  EXPECT_TRUE(qt->type()->is<type::Struct>());
+  EXPECT_EQ(qt->quals(), type::Quals::Unqualified());
+  EXPECT_THAT(mod.consumer.diagnostics(),
+              UnorderedElementsAre(
+                  Pair("type-error", "non-type-designated-initializer-type"),
+                  Pair("type-error", "missing-struct-field")));
+}
+
 }  // namespace
 }  // namespace compiler
