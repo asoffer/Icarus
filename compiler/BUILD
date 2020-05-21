@@ -290,6 +290,7 @@ cc_library(
         "verify/access.cc",
         "verify/array_literal.cc",
         "verify/array_type.cc",
+        "verify/assignment.cc",
         "verify/designated_initializer.cc",
         "verify/index.cc",
         "verify_type.cc",
@@ -305,6 +306,7 @@ cc_library(
         "//base:debug",
         "//base:defer",
         "//compiler/dispatch:parameters_and_arguments",
+        "//compiler/verify/internal:qual_type_iterator",
         "//diagnostic/consumer",
         "//diagnostic/consumer:trivial",
         "//diagnostic:errors",
@@ -363,6 +365,16 @@ cc_test(
 cc_test(
     name = "array_type_test",
     srcs = ["verify/array_type_test.cc"],
+    deps = [
+        ":verify_type",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "assignment_test",
+    srcs = ["verify/assignment_test.cc"],
     deps = [
         ":verify_type",
         "//test:module",

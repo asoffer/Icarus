@@ -2,6 +2,7 @@
 #include "ast/ast.h"
 #include "base/defer.h"
 #include "compiler/compiler.h"
+#include "compiler/verify/internal/qual_type_iterator.h"
 #include "diagnostic/errors.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"
@@ -148,7 +149,7 @@ type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
   auto initializer_iter = initializer_qts.begin();
   for (auto const *assignment : node->assignments()) {
     auto const &initializer_qt_vec = *initializer_iter;
-    ++initializer_iter;
+    base::defer d                  = [&] { ++initializer_iter; };
 
     // Check all struct fields first to ensure we generate errors for them even
     // if there are errors in the initializers.
@@ -170,11 +171,14 @@ type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
       }
     }
 
-    size_t qt_index  = 0;
-    size_t qt_offset = 0;
+    internal::QualTypeIterator qt_iter(initializer_iter->begin());
+    internal::QualTypeIterator const qt_end(initializer_iter->end());
+
     for (auto const *field : assignment->lhs()) {
-      std::string_view field_name = field->as<ast::Identifier>().token();
-      type::QualType initializer_qt = initializer_qt_vec[qt_index];
+      std::string_view field_name   = field->as<ast::Identifier>().token();
+      type::QualType initializer_qt = *qt_iter;
+      ++qt_iter;
+
       if (not initializer_qt.ok()) {
         // If there was an error we still want to verify all other initializers
         // and we still want to claim this expression has the same type, but
@@ -184,30 +188,14 @@ type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
         goto next_assignment;
       }
 
-      type::Type const *t = [&] {
-        if (initializer_qt.expansion_size() == 1) {
-          ++qt_offset;
-          return initializer_qt.type();
-        } else {
-          return initializer_qt.expanded()[qt_offset++];
-        }
-      }();
-
-      base::defer d = [&] {
-        if (qt_offset == initializer_qt.expansion_size()) {
-          qt_offset = 0;
-          ++qt_index;
-        }
-      };
-
       auto iter = name_to_field.find(field_name);
       if (iter == name_to_field.end()) { continue; }
       type::Struct::Field const *struct_field = iter->second;
 
-      if (not type::CanCast(t, struct_field->type)) {
+      if (not type::CanCast(initializer_qt.type(), struct_field->type)) {
         diag().Consume(InvalidInitializerType{
             .expected = struct_field->type,
-            .actual   = t,
+            .actual   = initializer_qt.type(),
             .range    = field->range(),
         });
         recovered_error = true;

@@ -551,20 +551,6 @@ type::QualType Compiler::VerifyType(ast::ArgumentType const *node) {
   return data().set_qual_type(node, type::QualType::Constant(type::Type_));
 }
 
-type::QualType Compiler::VerifyType(ast::Assignment const *node) {
-  std::vector<type::Type const *> lhs_types;
-  lhs_types.reserve(node->lhs().size());
-  for (auto const *l : node->lhs()) {
-    // TODO check can't be constant. must be references
-    lhs_types.push_back(VerifyType(l).type());
-  }
-
-  for (auto const *r : node->rhs()) { VerifyType(r); }
-  // TODO Verify the assignment is valid.
-
-  return type::QualType::Constant(type::Void());
-}
-
 type::QualType Compiler::VerifyType(ast::Binop const *node) {
   auto lhs_qual_type = VerifyType(node->lhs());
   auto rhs_qual_type = VerifyType(node->rhs());
