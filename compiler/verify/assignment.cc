@@ -49,8 +49,12 @@ type::QualType Compiler::VerifyType(ast::Assignment const *node) {
   internal::QualTypeIterator lhs_iter(lhs_qts.begin());
   internal::QualTypeIterator rhs_iter(rhs_qts.begin());
 
-  internal::QualTypeIterator const lhs_end(lhs_qts.end());
-  internal::QualTypeIterator const rhs_end(rhs_qts.end());
+  internal::QualTypeIterator const lhs_end(
+      (first_lhs_error_index == -1) ? lhs_qts.end()
+                                    : lhs_qts.begin() + first_lhs_error_index);
+  internal::QualTypeIterator const rhs_end(
+      (first_rhs_error_index == -1) ? rhs_qts.end()
+                                    : rhs_qts.begin() + first_rhs_error_index);
 
   while (true) {
     if (lhs_iter == lhs_end or rhs_iter == rhs_end) { break; }

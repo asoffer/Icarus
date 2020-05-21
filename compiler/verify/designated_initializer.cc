@@ -190,11 +190,12 @@ type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
 
       auto iter = name_to_field.find(field_name);
       if (iter == name_to_field.end()) { continue; }
-      type::Struct::Field const *struct_field = iter->second;
 
-      if (not type::CanCast(initializer_qt.type(), struct_field->type)) {
+      type::Type const *lhs_type = initializer_qt.type();
+      type::Type const *rhs_type = iter->second->type;
+      if (not type::CanCast(lhs_type, rhs_type)) {
         diag().Consume(InvalidInitializerType{
-            .expected = struct_field->type,
+            .expected = rhs_type,
             .actual   = initializer_qt.type(),
             .range    = field->range(),
         });
