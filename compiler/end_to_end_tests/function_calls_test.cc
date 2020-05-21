@@ -16,13 +16,13 @@ ir::Value EvaluateCall(
   return *std::move(value);
 }
 
-TEST(FunctionCall, ShortNoArgFunctions) {
-  EXPECT_EQ(EvaluateCall("() => 3", {}, {}), ir::Value(int64_t{3}));
-  EXPECT_EQ(EvaluateCall("() => true", {}, {}), ir::Value(true));
-  EXPECT_EQ(EvaluateCall("() => 3.14", {}, {}), ir::Value(3.14));
-  // TODO multiple returns
-}
-
+// TEST(FunctionCall, ShortNoArgFunctions) {
+//   EXPECT_EQ(EvaluateCall("() => 3", {}, {}), ir::Value(int64_t{3}));
+//   EXPECT_EQ(EvaluateCall("() => true", {}, {}), ir::Value(true));
+//   EXPECT_EQ(EvaluateCall("() => 3.14", {}, {}), ir::Value(3.14));
+//   // TODO multiple returns
+// }
+// 
 TEST(FunctionCall, ShortOneArgFunctions) {
   EXPECT_EQ(EvaluateCall("(x: int64) => x * x", {"3"}, {}),
             ir::Value(int64_t{9}));

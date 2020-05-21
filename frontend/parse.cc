@@ -853,7 +853,6 @@ std::unique_ptr<ast::Node> BuildBlockNode(
         std::move(params), std::move(nodes.back()->as<Statements>()).extract());
 
   } else {
-    for (auto const &n : nodes) { DEBUG_LOG()(n->DebugString()); }
     diag.Consume(diagnostic::Todo{});
     return nullptr;
   }

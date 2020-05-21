@@ -121,6 +121,7 @@ cc_library(
         "//base:defer",
         "//diagnostic/consumer",
     ],
+    alwayslink = True, # TODO: Figure out a good way to remove this.
 )
 
 cc_library(
@@ -291,6 +292,7 @@ cc_library(
         "verify/array_literal.cc",
         "verify/array_type.cc",
         "verify/assignment.cc",
+        "verify/declaration.cc",
         "verify/designated_initializer.cc",
         "verify/index.cc",
         "verify_type.cc",

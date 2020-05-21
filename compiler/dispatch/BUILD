@@ -136,6 +136,7 @@ cc_test(
     srcs = ["parameters_and_arguments_test.cc"],
     deps = [
         "//compiler:compiler",
+        "//compiler:visitors",
         "//test:module",
         "//type:function",
         "@com_google_googletest//:gtest_main",

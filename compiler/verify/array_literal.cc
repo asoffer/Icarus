@@ -1,6 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
-#include "type//array.h"
+#include "type/array.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"
 

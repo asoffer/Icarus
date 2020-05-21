@@ -151,11 +151,15 @@ struct ArrayLiteral : Expression {
 // Examples:
 // * `a = b`
 // * `(a, b) = (c, d)`
-struct Assignment : Node {
+//
+// TODO: Because assignments can appear as nodes in call expressions temporarily
+// during parsing, we treat assignments as expressions. This debt should be paid
+// down.
+struct Assignment : Expression {
   explicit Assignment(frontend::SourceRange const &range,
                       std::vector<std::unique_ptr<Expression>> lhs,
                       std::vector<std::unique_ptr<Expression>> rhs)
-      : Node(range), lhs_(std::move(lhs)), rhs_(std::move(rhs)) {}
+      : Expression(range), lhs_(std::move(lhs)), rhs_(std::move(rhs)) {}
   ~Assignment() override {}
 
   base::PtrSpan<Expression const> lhs() const { return lhs_; }

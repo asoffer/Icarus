@@ -116,8 +116,6 @@ std::optional<ast::OverloadSet> MakeOverloadSet(
       };
       return os;
     }
-  } else {
-    ASSIGN_OR(return std::nullopt, std::ignore, c->VerifyType(expr));
   }
 
   ast::OverloadSet os;
