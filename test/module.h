@@ -26,13 +26,15 @@ struct TrackingConsumer : diagnostic::DiagnosticConsumer {
     diagnostics_.emplace_back(category, name);
   }
 
-  absl::Span<std::pair<std::string_view, std::string_view> const> diagnostics()
-      const {
+  absl::Span<std::pair<std::string, std::string> const> diagnostics() const {
     return diagnostics_;
   }
 
  private:
-  std::vector<std::pair<std::string_view, std::string_view>> diagnostics_;
+  // TODO: These could be string_view, but currently GoogleTest doesn't support
+  // pretty-printing std::string_view, so we're using strings to make the test
+  // error output readable.
+  std::vector<std::pair<std::string, std::string>> diagnostics_;
 };
 
 

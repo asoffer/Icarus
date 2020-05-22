@@ -385,6 +385,16 @@ cc_test(
 )
 
 cc_test(
+    name = "declaration_test",
+    srcs = ["verify/declaration_test.cc"],
+    deps = [
+        ":verify_type",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "designated_initializer_test",
     srcs = ["verify/designated_initializer_test.cc"],
     deps = [

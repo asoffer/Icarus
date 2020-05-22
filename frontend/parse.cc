@@ -573,9 +573,16 @@ std::unique_ptr<ast::Node> BuildDeclaration(
     init_val = move_as<ast::Expression>(nodes[2]);
   }
 
+  bool initial_value_is_hole = false;
+  if (auto const *init_id = init_val->if_as<ast::Identifier>()) {
+    if (init_id->token() == "") { initial_value_is_hole = true; }
+  }
+
   return std::make_unique<ast::Declaration>(
       decl_range, std::move(id), id_range, std::move(type_expr),
-      std::move(init_val), IsConst ? ast::Declaration::f_IsConst : 0);
+      std::move(init_val),
+      (initial_value_is_hole ? ast::Declaration::f_InitIsHole : 0) |
+          (IsConst ? ast::Declaration::f_IsConst : 0));
 }
 
 static std::vector<std::unique_ptr<ast::Expression>> ExtractIfCommaList(

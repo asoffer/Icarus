@@ -162,6 +162,7 @@ Type const *Meet(Type const *lhs, Type const *rhs) {
     if (lhs->as<Array>().length() != rhs->as<Array>().length()) {
       return nullptr;
     }
+    if (lhs->as<Array>().length() == 0) { return type::EmptyArray; }
     auto *result =
         Meet(lhs->as<Array>().data_type(), rhs->as<Array>().data_type());
     return result ? Arr(lhs->as<Array>().length(), result) : result;

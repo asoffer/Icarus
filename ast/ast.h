@@ -308,16 +308,13 @@ struct Declaration : Expression {
     kDefaultInit              = 0,
     kCustomInit               = 2,
     kInferred                 = 3,
-    kUninitialized            = 4,
+    kUninitialized            = 6,
     kInferredAndUninitialized = 7,  // This is an error
   };
   Kind kind() const {
     int k = IsInferred() ? 1 : 0;
-    if (IsUninitialized()) {
-      k |= kUninitialized;
-    } else if (IsCustomInitialized()) {
-      k |= kCustomInit;
-    }
+    if (IsUninitialized()) { k |= kUninitialized; }
+    if (IsCustomInitialized()) { k |= kCustomInit; }
     return static_cast<Kind>(k);
   }
 
@@ -333,9 +330,7 @@ struct Declaration : Expression {
   Flags flags() const { return flags_; }
   Flags &flags() { return flags_; }  // TODO consider removing this.
 
-  void set_initial_value(std::unique_ptr<Expression> expr) {
-    init_val_ = std::move(expr);
-  }
+  void set_initial_value(std::unique_ptr<Expression> expr);
 
   ICARUS_AST_VIRTUAL_METHODS;
 
@@ -1390,6 +1385,14 @@ struct YieldStmt : Node {
 };
 
 #undef ICARUS_AST_VIRTUAL_METHODS
+
+inline void Declaration::set_initial_value(std::unique_ptr<Expression> expr) {
+  ASSERT(init_val_ == nullptr);
+  if (auto const *id = expr->if_as<Identifier>()) {
+    if (id->token().empty()) { flags_ |= f_InitIsHole; }
+  }
+  init_val_ = std::move(expr);
+}
 
 }  // namespace ast
 
