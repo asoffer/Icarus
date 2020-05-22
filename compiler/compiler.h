@@ -4,6 +4,7 @@
 #include <memory>
 #include <optional>
 
+#include "absl/types/span.h"
 #include "absl/container/flat_hash_map.h"
 #include "ast/ast_fwd.h"
 #include "ast/overload_set.h"
@@ -91,6 +92,35 @@ struct Compiler
       ir::PhiInstruction<int64_t> *phi;
     };
     std::vector<ScopeLandingState> scope_landings;
+
+    // During type-verification, when a dependency on an identifier is
+    // encountered, we write it down here. If the same dependency is encountered
+    // more than once, That way, we can bubble up from the dependency until we
+    // see it again, at each step adding the nodes to the diagnostic.
+    //
+    // // TODO not function state
+    struct DependencyChain {
+     public:
+      absl::Span<ast::Identifier const *const> PushDependency(
+          ast::Identifier const *id) {
+        dependencies_.push_back(id);
+        auto iter = dependencies_.begin();
+        for (; iter != dependencies_.end(); ++iter) {
+          if (*iter == id) { break; }
+        }
+
+        return absl::Span<ast::Identifier const *const>(
+            &*iter, std::distance(iter, std::prev(dependencies_.end())));
+      }
+
+      void PopDependency() {
+        ASSERT(dependencies_.size() != 0u);
+        dependencies_.pop_back();
+      }
+
+     private:
+      std::vector<ast::Identifier const *> dependencies_;
+    } dependency_chain;
 
     struct YieldedArguments {
       core::FnArgs<std::pair<ir::Value, type::QualType>> vals;

@@ -270,6 +270,7 @@ cc_library(
         "verify/assignment.cc",
         "verify/declaration.cc",
         "verify/designated_initializer.cc",
+        "verify/identifier.cc",
         "verify/index.cc",
         "verify_type.cc",
     ],
@@ -373,6 +374,16 @@ cc_test(
 cc_test(
     name = "designated_initializer_test",
     srcs = ["verify/designated_initializer_test.cc"],
+    deps = [
+        ":verify_type",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "identifier_test",
+    srcs = ["verify/identifier_test.cc"],
     deps = [
         ":verify_type",
         "//test:module",

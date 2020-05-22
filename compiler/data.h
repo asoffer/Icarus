@@ -106,14 +106,6 @@ struct DependentComputedData {
 
   // TODO this is transient compiler state and therefore shouldn't be stored in
   // `DependentComputedData`.
-  // During validation, when a cyclic dependency is encountered, we write it
-  // down here. That way, we can bubble up from the dependency until we see it
-  // again, at each step adding the nodes to the error log involved in the
-  // dependency. Once complete, we reset this to null
-  std::vector<ast::Identifier const *> cyc_deps_;
-
-  // TODO this is transient compiler state and therefore shouldn't be stored in
-  // `DependentComputedData`.
   base::guarded<absl::node_hash_map<ast::Node const *, base::move_func<void()>>>
       deferred_work_;
 
@@ -217,12 +209,31 @@ struct DependentComputedData {
 
   ConstantBinding constants_;
 
+  absl::Span<ast::Declaration const *const> decls(
+      ast::Identifier const *id) const;
+  void set_decls(ast::Identifier const *id,
+                 std::vector<ast::Declaration const *> decls);
+
+  bool cyclic_error(ast::Identifier const *id) const;
+  void set_cyclic_error(ast::Identifier const *id);
+
  private:
   // Stores the types of argument bound to the parameter with the given name.
   absl::flat_hash_map<std::string_view, type::Type const *> arg_type_;
   // TODO: If you could store the decl on the ast-node you could use
   // ConstantBinding for this.
   absl::flat_hash_map<std::string_view, ir::Value> arg_val_;
+
+  // A map from each identifier to all possible declarations that the identifier
+  // might refer to.
+  absl::flat_hash_map<ast::Identifier const *,
+                      std::vector<ast::Declaration const *>>
+      decls_;
+
+  // Collection of identifiers that are already known to have errors. This
+  // allows us to emit cyclic dependencies exactly once rather than one time per
+  // loop in the cycle.
+  absl::flat_hash_set<ast::Identifier const*> cyclic_error_ids_;
 
   // Colleciton of modules imported by this one.
   absl::flat_hash_map<ast::Import const *, LibraryModule *> imported_modules_;

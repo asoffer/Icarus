@@ -780,17 +780,11 @@ struct Identifier : Expression {
   ICARUS_AST_VIRTUAL_METHODS;
 
   std::string_view token() const { return token_; }
-  Declaration const *decl() const { return decl_; }
-
-  // TODO this doesn't make sense for calling/overload sets but otherwise can be
-  // a useful caching mechanism.
-  void set_decl(Declaration const *decl) { decl_ = decl; }
 
   std::string extract() && { return std::move(token_); }
 
  private:
   std::string token_;
-  Declaration const *decl_ = nullptr;
 };
 
 // Goto:

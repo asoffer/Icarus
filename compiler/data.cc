@@ -97,4 +97,27 @@ void DependentComputedData::set_imported_module(ast::Import const *node,
   imported_modules_.emplace(node, module);
 }
 
+absl::Span<ast::Declaration const *const> DependentComputedData::decls(
+    ast::Identifier const *id) const {
+  auto iter = decls_.find(id);
+  if (iter == decls_.end()) { return ASSERT_NOT_NULL(parent_)->decls(id); }
+  return iter->second;
+}
+
+void DependentComputedData::set_decls(
+    ast::Identifier const *id, std::vector<ast::Declaration const *> decls) {
+  decls_.emplace(id, std::move(decls));
+}
+
+bool DependentComputedData::cyclic_error(ast::Identifier const *id) const {
+  auto iter = cyclic_error_ids_.find(id);
+  if (iter != cyclic_error_ids_.end()) { return true; }
+  if (not parent_) { return false; }
+  return parent_->cyclic_error(id);
+}
+
+void DependentComputedData::set_cyclic_error(ast::Identifier const *id) {
+  cyclic_error_ids_.insert(id);
+}
+
 }  // namespace compiler

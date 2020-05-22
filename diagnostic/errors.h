@@ -550,32 +550,6 @@ struct ComparingIncomparables {
   frontend::SourceRange range;
 };
 
-struct CyclicDependency {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "cyclic-dependency";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("Found a cyclic dependency:"));
-    // TODO source quote
-  }
-
-  std::vector<std::pair<frontend::SourceRange, std::string_view>> cycle;
-};
-
-struct UndeclaredIdentifier {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "undeclared-identifier";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Found an undeclared identifier:"),
-        SourceQuote(src).Highlighted(range, Style::ErrorText()));
-  }
-
-  std::string_view id;
-  frontend::SourceRange range;
-};
-
 struct UnspecifiedOverload {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "unspecified-overload";
@@ -587,23 +561,6 @@ struct UnspecifiedOverload {
   }
 
   frontend::SourceRange range;
-};
-
-struct DeclOutOfOrder {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "declaration-out-of-order";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Variable `%s` used before it was declared.", id),
-        SourceQuote(src)
-            .Highlighted(use_range, Style::ErrorText())
-            .Highlighted(id_range, Style::ErrorText()));
-  }
-
-  std::string_view id;
-  frontend::SourceRange id_range;
-  frontend::SourceRange use_range;
 };
 
 struct InvalidImport {

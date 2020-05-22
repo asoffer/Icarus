@@ -28,8 +28,9 @@ ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Access const *node) {
 }
 
 ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Identifier const *node) {
-  ASSERT(node->decl() != nullptr) << node->DebugString();
-  return data().addr(node->decl());
+  auto decl_span = data().decls(node);
+  ASSERT(decl_span.size() == 1u);
+  return data().addr(decl_span[0]);
 }
 
 ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Index const *node) {

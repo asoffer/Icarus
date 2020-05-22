@@ -851,14 +851,15 @@ ir::Value Compiler::EmitValue(ast::FunctionType const *node) {
 }
 
 ir::Value Compiler::EmitValue(ast::Identifier const *node) {
-  ASSERT(node->decl() != nullptr) << node->DebugString();
-  if (node->decl()->flags() & ast::Declaration::f_IsConst) {
-    return EmitValue(node->decl());
+  auto decl_span = data().decls(node);
+  ASSERT(decl_span.size() != 0u);
+  if (decl_span[0]->flags() & ast::Declaration::f_IsConst) {
+    return EmitValue(decl_span[0]);
   }
-  if (node->decl()->flags() & ast::Declaration::f_IsFnParam) {
+  if (decl_span[0]->flags() & ast::Declaration::f_IsFnParam) {
     auto *t     = type_of(node);
-    ir::Reg reg = data().addr(node->decl());
-    return (node->decl()->flags() & ast::Declaration::f_IsOutput) and
+    ir::Reg reg = data().addr(decl_span[0]);
+    return (decl_span[0]->flags() & ast::Declaration::f_IsOutput) and
                    not t->is_big()
                ? builder().Load(reg, t)
                : ir::Value(reg);
