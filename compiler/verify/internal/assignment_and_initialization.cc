@@ -1,16 +1,17 @@
-#include "compiler/verify_assignment_and_initialization.h"
+#include "compiler/verify/internal/assignment_and_initialization.h"
 
 #include <type_traits>
 
 #include "diagnostic/errors.h"
 #include "type/cast.h"
 
-namespace compiler {
+namespace compiler::internal {
+namespace {
 
 template <bool IsInit>
-static bool VerifyImpl(diagnostic::DiagnosticConsumer &diag,
-                       frontend::SourceRange const &range, type::QualType to,
-                       type::QualType from) {
+bool VerifyImpl(diagnostic::DiagnosticConsumer &diag,
+                frontend::SourceRange const &range, type::QualType to,
+                type::QualType from) {
   if constexpr (not IsInit) {
     // `to` cannot be a constant if we're assigning, but for initializations
     // it's okay (we could be initializing a constant).
@@ -70,6 +71,8 @@ static bool VerifyImpl(diagnostic::DiagnosticConsumer &diag,
   }
 }
 
+}  // namespace
+
 bool VerifyInitialization(diagnostic::DiagnosticConsumer &diag,
                           frontend::SourceRange const &range, type::QualType to,
                           type::QualType from) {
@@ -82,4 +85,4 @@ bool VerifyAssignment(diagnostic::DiagnosticConsumer &diag,
   return VerifyImpl<false>(diag, range, to, from);
 }
 
-}  // namespace compiler
+}  // namespace compiler::internal

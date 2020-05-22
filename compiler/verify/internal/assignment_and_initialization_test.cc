@@ -1,4 +1,4 @@
-#include "compiler/verify_assignment_and_initialization.h"
+#include "compiler/verify/internal/assignment_and_initialization.h"
 
 #include "gtest/gtest.h"
 
@@ -6,57 +6,57 @@
 #include "type/pointer.h"
 #include "type/primitive.h"
 
+namespace compiler::internal {
 namespace {
 
 TEST(ExpansionSize, Matches) {
   diagnostic::TrivialConsumer diag;
 
-  EXPECT_TRUE(compiler::VerifyInitialization(
-      diag, frontend::SourceRange{},
-      type::QualType({}, type::Quals::Unqualified()),
-      type::QualType({}, type::Quals::Const())));
   EXPECT_TRUE(
-      compiler::VerifyAssignment(diag, frontend::SourceRange{},
-                                 type::QualType({}, type::Quals::Unqualified()),
-                                 type::QualType({}, type::Quals::Const())));
+      VerifyInitialization(diag, frontend::SourceRange{},
+                           type::QualType({}, type::Quals::Unqualified()),
+                           type::QualType({}, type::Quals::Const())));
+  EXPECT_TRUE(VerifyAssignment(diag, frontend::SourceRange{},
+                               type::QualType({}, type::Quals::Unqualified()),
+                               type::QualType({}, type::Quals::Const())));
 
-  EXPECT_TRUE(compiler::VerifyInitialization(
-      diag, frontend::SourceRange{}, type::QualType::NonConstant(type::Int64),
-      type::QualType::Constant(type::Int64)));
-  EXPECT_TRUE(compiler::VerifyAssignment(
-      diag, frontend::SourceRange{}, type::QualType::NonConstant(type::Int64),
-      type::QualType::Constant(type::Int64)));
+  EXPECT_TRUE(VerifyInitialization(diag, frontend::SourceRange{},
+                                   type::QualType::NonConstant(type::Int64),
+                                   type::QualType::Constant(type::Int64)));
+  EXPECT_TRUE(VerifyAssignment(diag, frontend::SourceRange{},
+                               type::QualType::NonConstant(type::Int64),
+                               type::QualType::Constant(type::Int64)));
 
-  EXPECT_TRUE(compiler::VerifyInitialization(
+  EXPECT_TRUE(VerifyInitialization(
       diag, frontend::SourceRange{},
       type::QualType({type::Int64, type::Float64}, type::Quals::Unqualified()),
       type::QualType({type::Int64, type::Int64}, type::Quals::Const())));
 
-  EXPECT_TRUE(compiler::VerifyAssignment(
+  EXPECT_TRUE(VerifyAssignment(
       diag, frontend::SourceRange{},
       type::QualType({type::Int64, type::Float64}, type::Quals::Unqualified()),
       type::QualType({type::Int64, type::Int64}, type::Quals::Const())));
 
   EXPECT_EQ(diag.num_consumed(), 0);
-  EXPECT_FALSE(compiler::VerifyInitialization(
+  EXPECT_FALSE(VerifyInitialization(
       diag, frontend::SourceRange{},
       type::QualType({type::Int64, type::Float64}, type::Quals::Unqualified()),
       type::QualType({type::Int64}, type::Quals::Const())));
   EXPECT_EQ(diag.num_consumed(), 1);
 
-  EXPECT_FALSE(compiler::VerifyAssignment(
+  EXPECT_FALSE(VerifyAssignment(
       diag, frontend::SourceRange{},
       type::QualType({type::Int64, type::Float64}, type::Quals::Unqualified()),
       type::QualType({type::Int64}, type::Quals::Const())));
   EXPECT_EQ(diag.num_consumed(), 2);
 
-  EXPECT_FALSE(compiler::VerifyInitialization(
+  EXPECT_FALSE(VerifyInitialization(
       diag, frontend::SourceRange{},
       type::QualType({type::Int64}, type::Quals::Unqualified()),
       type::QualType({type::Int64, type::Int64}, type::Quals::Const())));
   EXPECT_EQ(diag.num_consumed(), 3);
 
-  EXPECT_FALSE(compiler::VerifyAssignment(
+  EXPECT_FALSE(VerifyAssignment(
       diag, frontend::SourceRange{},
       type::QualType({type::Int64}, type::Quals::Unqualified()),
       type::QualType({type::Int64, type::Int64}, type::Quals::Const())));
@@ -66,13 +66,13 @@ TEST(ExpansionSize, Matches) {
 TEST(Initialization, AllowsConstants) {
   diagnostic::TrivialConsumer diag;
 
-  EXPECT_TRUE(compiler::VerifyInitialization(
-      diag, frontend::SourceRange{}, type::QualType::Constant(type::Int64),
-      type::QualType::Constant(type::Int64)));
+  EXPECT_TRUE(VerifyInitialization(diag, frontend::SourceRange{},
+                                   type::QualType::Constant(type::Int64),
+                                   type::QualType::Constant(type::Int64)));
 
-  EXPECT_TRUE(compiler::VerifyInitialization(
-      diag, frontend::SourceRange{}, type::QualType::Constant(type::Float32),
-      type::QualType::Constant(type::Int64)));
+  EXPECT_TRUE(VerifyInitialization(diag, frontend::SourceRange{},
+                                   type::QualType::Constant(type::Float32),
+                                   type::QualType::Constant(type::Int64)));
 }
 
 TEST(Assignment, AllowsConstants) {
@@ -80,15 +80,15 @@ TEST(Assignment, AllowsConstants) {
 
   EXPECT_EQ(diag.num_consumed(), 0);
 
-  EXPECT_FALSE(compiler::VerifyAssignment(
-      diag, frontend::SourceRange{}, type::QualType::Constant(type::Int64),
-      type::QualType::Constant(type::Int64)));
+  EXPECT_FALSE(VerifyAssignment(diag, frontend::SourceRange{},
+                                type::QualType::Constant(type::Int64),
+                                type::QualType::Constant(type::Int64)));
 
   EXPECT_EQ(diag.num_consumed(), 1);
 
-  EXPECT_FALSE(compiler::VerifyAssignment(
-      diag, frontend::SourceRange{}, type::QualType::Constant(type::Float32),
-      type::QualType::Constant(type::Int64)));
+  EXPECT_FALSE(VerifyAssignment(diag, frontend::SourceRange{},
+                                type::QualType::Constant(type::Float32),
+                                type::QualType::Constant(type::Int64)));
 
   EXPECT_EQ(diag.num_consumed(), 2);
 }
@@ -99,15 +99,16 @@ TEST(Assignment, AllowsConstants) {
 TEST(Casts, AreAllowed) {
   diagnostic::TrivialConsumer diag;
 
-  EXPECT_TRUE(compiler::VerifyInitialization(
+  EXPECT_TRUE(VerifyInitialization(
       diag, frontend::SourceRange{},
       type::QualType::NonConstant(type::Ptr(type::Ptr(type::Int64))),
       type::QualType::NonConstant(type::BufPtr(type::BufPtr(type::Int64)))));
 
-  EXPECT_TRUE(compiler::VerifyAssignment(
+  EXPECT_TRUE(VerifyAssignment(
       diag, frontend::SourceRange{},
       type::QualType::NonConstant(type::Ptr(type::Ptr(type::Int64))),
       type::QualType::NonConstant(type::BufPtr(type::BufPtr(type::Int64)))));
 }
 
 }  // namespace
+}  // namespace compiler::internal

@@ -10,7 +10,6 @@
 #include "compiler/dispatch/parameters_and_arguments.h"
 #include "compiler/extract_jumps.h"
 #include "compiler/library_module.h"
-#include "compiler/verify_assignment_and_initialization.h"
 #include "core/call.h"
 #include "diagnostic/errors.h"
 #include "frontend/lex/operators.h"

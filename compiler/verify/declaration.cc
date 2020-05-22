@@ -1,6 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
-#include "compiler/verify_assignment_and_initialization.h"
+#include "compiler/verify/internal/assignment_and_initialization.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"
 #include "type/typed_value.h"
@@ -245,8 +245,8 @@ type::QualType VerifyInferred(Compiler *compiler,
     return type::QualType::Error();
   }
 
-  if (not VerifyInitialization(compiler->diag(), node->range(), init_val_qt,
-                               init_val_qt)) {
+  if (not internal::VerifyInitialization(compiler->diag(), node->range(),
+                                         init_val_qt, init_val_qt)) {
     return type::QualType::Error();
   }
 
@@ -264,8 +264,8 @@ type::QualType VerifyCustom(Compiler *compiler, ast::Declaration const *node) {
                    VerifyDeclarationType(compiler, node));
 
   if (not init_val_qt.ok() or
-      not VerifyInitialization(compiler->diag(), node->range(), qt,
-                               init_val_qt)) {
+      not internal::VerifyInitialization(compiler->diag(), node->range(), qt,
+                                         init_val_qt)) {
     qt.MarkError();
   }
 

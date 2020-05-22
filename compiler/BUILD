@@ -210,30 +210,6 @@ cc_library(
 )
 
 
-cc_library(
-    name = "verify_assignment_and_initialization",
-    hdrs = ["verify_assignment_and_initialization.h"],
-    srcs = ["verify_assignment_and_initialization.cc"],
-    deps = [
-        "//diagnostic/consumer",
-        "//diagnostic:errors",
-        "//frontend/source:range",
-        "//type:cast",
-        "//type:qual_type",
-    ],
-)
-
-cc_test(
-    name = "verify_assignment_and_initialization_test",
-    srcs = ["verify_assignment_and_initialization_test.cc"],
-    deps = [
-        ":verify_assignment_and_initialization",
-        "//diagnostic/consumer:trivial",
-        "//type:pointer",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
 cc_binary(
     name = "compile",
     srcs = ["main.cc"],
@@ -303,11 +279,11 @@ cc_library(
         ":library_module",
         ":module",
         ":special_function",
-        ":verify_assignment_and_initialization",
         "//ast",
         "//base:debug",
         "//base:defer",
         "//compiler/dispatch:parameters_and_arguments",
+        "//compiler/verify/internal:assignment_and_initialization",
         "//compiler/verify/internal:qual_type_iterator",
         "//diagnostic/consumer",
         "//diagnostic/consumer:trivial",
