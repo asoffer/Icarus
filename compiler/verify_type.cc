@@ -158,15 +158,15 @@ Cmp Comparator(type::Type const *t) {
 
 }  // namespace
 
-// TODO there's not that much shared between the inferred and uninferred cases,
-// so probably break them out.
+// TODO there's not that much shared between the inferred and uninferred
+// cases, so probably break them out.
 type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node,
                           type::Type const *t = nullptr) {
   if (not t) { t = ASSERT_NOT_NULL(c->type_of(node)); }
   for (auto const *stmt : node->stmts()) { c->VerifyType(stmt); }
 
-  // TODO we can have yields and returns, or yields and jumps, but not jumps and
-  // returns. Check this.
+  // TODO we can have yields and returns, or yields and jumps, but not jumps
+  // and returns. Check this.
   absl::flat_hash_set<type::Type const *> types;
   absl::flat_hash_map<ast::ReturnStmt const *, type::Type const *>
       saved_ret_types;
@@ -296,6 +296,11 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node,
   }
 }
 
+bool Compiler::VerifyBody(ast::FunctionLiteral const *node) {
+  return ::compiler::VerifyBody(this, node, data().qual_type(node)->type())
+      .ok();
+}
+
 std::optional<core::Params<type::QualType>> VerifyParams(
     Compiler *c,
     core::Params<std::unique_ptr<ast::Declaration>> const &params) {
@@ -362,6 +367,7 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
       }
     }
 
+    state_.body_verification_queue.push(node);
     return data().set_qual_type(
         node, type::QualType::Constant(
                   type::Func(std::move(params), std::move(output_type_vec))));
@@ -527,13 +533,18 @@ type::QualType Compiler::VerifyType(ast::Binop const *node) {
   UNREACHABLE(stringify(node->op()));
 }
 
-type::QualType Compiler::VerifyType(ast::BlockLiteral const *node) {
+bool Compiler::VerifyBody(ast::BlockLiteral const *node) {
+  bool success = true;
   // TODO consider not verifying the types of the bodies. They almost certainly
   // contain circular references in the jump statements, and if the functions
   // require verifying the body upfront, things can maybe go wrong?
-  for (auto *b : node->before()) { VerifyType(b); }
-  for (auto *a : node->after()) { VerifyType(a); }
+  for (auto *b : node->before()) { success &= VerifyType(b).ok(); }
+  for (auto *a : node->after()) { success &= VerifyType(a).ok(); }
+  return success;
+}
 
+type::QualType Compiler::VerifyType(ast::BlockLiteral const *node) {
+  state_.body_verification_queue.push(node);
   return data().set_qual_type(node, type::QualType::Constant(type::Block));
 }
 
@@ -954,15 +965,21 @@ not_blocks:
   }
 }
 
-type::QualType Compiler::VerifyType(ast::EnumLiteral const *node) {
+bool Compiler::VerifyBody(ast::EnumLiteral const *node) {
+  bool success = true;
   for (auto const &elem : node->elems()) {
     if (auto *decl = elem->if_as<ast::Declaration>()) {
       auto *t = VerifyType(decl->init_val()).type();
       ASSERT(type::IsIntegral(t) == true);
+      success = type::IsIntegral(t);
       // TODO determine what is allowed here and how to generate errors.
     }
   }
+  return success;
+}
 
+type::QualType Compiler::VerifyType(ast::EnumLiteral const *node) {
+  state_.body_verification_queue.push(node);
   return data().set_qual_type(node, type::QualType::Constant(type::Type_));
 }
 
@@ -1078,7 +1095,8 @@ Compiler::ComputeParamsFromArgs(
         if (auto const *type_expr = dep_node.node()->type_expr()) {
           auto type_expr_type = VerifyType(type_expr).type();
           if (type_expr_type != type::Type_) {
-            NOT_YET("log an error: ", type_expr->DebugString(), ": ", type_expr_type);
+            NOT_YET("log an error: ", type_expr->DebugString(), ": ",
+                    type_expr_type);
           }
 
           auto maybe_type = EvaluateAs<type::Type const *>(type_expr);
@@ -1098,9 +1116,9 @@ Compiler::ComputeParamsFromArgs(
         DEBUG_LOG("generic-fn")("... ", qt);
         size_t i =
             *ASSERT_NOT_NULL(node->params().at_or_null(dep_node.node()->id()));
-        param_types.set(
-            i, core::Param<type::QualType>(dep_node.node()->id(), qt,
-                                               node->params()[i].flags));
+        param_types.set(i,
+                        core::Param<type::QualType>(dep_node.node()->id(), qt,
+                                                    node->params()[i].flags));
       } break;
       case core::DependencyNodeKind::ParamValue: {
         // Find the argument associated with this parameter.
@@ -1308,6 +1326,12 @@ type::QualType Compiler::VerifyType(ast::Label const *node) {
   return data().set_qual_type(node, type::QualType::Constant(type::Label));
 }
 
+bool Compiler::VerifyBody(ast::Jump const *node) {
+  bool success = true;
+  for (auto const *stmt : node->stmts()) { success &= VerifyType(stmt).ok(); }
+  return success;
+}
+
 type::QualType Compiler::VerifyType(ast::Jump const *node) {
   DEBUG_LOG("Jump")(node->DebugString());
 
@@ -1327,8 +1351,7 @@ type::QualType Compiler::VerifyType(ast::Jump const *node) {
         return v.type();
       });
 
-  for (auto const *stmt : node->stmts()) { VerifyType(stmt); }
-
+  state_.body_verification_queue.push(node);
   return data().set_qual_type(
       node, err ? type::QualType::Error()
                 : type::QualType::Constant(type::Jmp(state, param_types)));
@@ -1351,13 +1374,19 @@ type::QualType Compiler::VerifyType(ast::ScopeNode const *node) {
   ASSIGN_OR(return type::QualType::Error(),  //
                    std::ignore, VerifyFnArgs(node->args()));
   for (auto const &block : node->blocks()) { VerifyType(&block); }
-
   // TODO hack. Set this for real.
   return data().set_qual_type(node, type::QualType::NonConstant(type::Void()));
 }
 
+bool Compiler::VerifyBody(ast::ParameterizedStructLiteral const *node) {
+  NOT_YET();
+  return false;
+}
+
 type::QualType Compiler::VerifyType(
     ast::ParameterizedStructLiteral const *node) {
+  state_.body_verification_queue.push(node);
+
   std::vector<type::Type const *> ts;
   ts.reserve(node->params().size());
   for (auto const &a : node->params()) { ts.push_back(VerifyType(&a).type()); }

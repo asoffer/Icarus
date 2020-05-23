@@ -264,7 +264,15 @@ struct Compiler
   TransientFunctionState::YieldedArguments EmitBlockNode(
       ast::BlockNode const *node);
 
+  // The reason to separate out type/body verification is if the body might
+  // transitively have identifiers referring to a declaration that is assigned
+  // directly to this node.
   bool VerifyBody(ast::Expression const *node) { return true; /* TODO */ }
+  bool VerifyBody(ast::BlockLiteral const *node);
+  bool VerifyBody(ast::EnumLiteral const *node);
+  bool VerifyBody(ast::FunctionLiteral const *node);
+  bool VerifyBody(ast::Jump const *node);
+  bool VerifyBody(ast::ParameterizedStructLiteral const *node);
   bool VerifyBody(ast::StructLiteral const *node);
 
   type::QualType VerifyConcreteFnLit(ast::FunctionLiteral const *node);

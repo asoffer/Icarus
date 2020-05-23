@@ -469,6 +469,9 @@ ir::Value Compiler::EmitValue(ast::Binop const *node) {
 }
 
 ir::Value Compiler::EmitValue(ast::BlockLiteral const *node) {
+  // TODO: Check the result of body verification.
+  if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
+
   std::vector<ir::RegOr<ir::Fn>> befores;
   std::vector<ir::RegOr<ir::Jump *>> afters;
   befores.reserve(node->before().size());
@@ -722,6 +725,9 @@ ir::Value Compiler::EmitValue(ast::DesignatedInitializer const *node) {
 }
 
 ir::Value Compiler::EmitValue(ast::EnumLiteral const *node) {
+  // TODO: Check the result of body verification.
+  if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
+
   using enum_t = uint64_t;
   std::vector<std::string_view> names;
   absl::flat_hash_map<uint64_t, ir::RegOr<enum_t>> specified_values;
@@ -820,6 +826,9 @@ ir::Value Compiler::EmitValue(ast::FunctionLiteral const *node) {
         -> ir::NativeFn { return MakeConcreteFromGeneric(&c, node, args); });
     return ir::Value(gen_fn);
   }
+
+  // TODO: Check the result of body verification.
+  if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
 
   // TODO Use correct constants
   ir::NativeFn ir_func = data().EmplaceNativeFn(node, [&] {
@@ -927,6 +936,9 @@ ir::Value Compiler::EmitValue(ast::Label const *node) {
 }
 
 ir::Value Compiler::EmitValue(ast::Jump const *node) {
+  // TODO: Check the result of body verification.
+  if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
+
   return ir::Value(data().add_jump(node, [this, node] {
     auto *jmp_type     = &type_of(node)->as<type::Jump>();
     auto work_item_ptr = DeferBody(resources_, node, jmp_type);
@@ -1092,6 +1104,9 @@ ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
 }
 
 ir::Value Compiler::EmitValue(ast::ParameterizedStructLiteral const *node) {
+  // TODO: Check the result of body verification.
+  if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
+
   NOT_YET();
 }
 
