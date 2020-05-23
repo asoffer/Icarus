@@ -2,6 +2,8 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "test/module.h"
+#include "type/pointer.h"
+#include "type/struct.h"
 
 namespace compiler {
 namespace {
@@ -47,5 +49,48 @@ TEST(StructLiteral, FieldError) {
               UnorderedElementsAre(Pair("type-error", "not-a-type")));
 }
 
+TEST(StructLiteral, SelfReferential) {
+  test::TestModule mod;
+  mod.AppendCode(R"(
+  list ::= struct {
+    data: int64
+    next: *list
+  }
+  l: list
+  )");
+  auto const *qt = mod.data().qual_type(mod.Append<ast::Identifier>("l"));
+  ASSERT_NE(qt, nullptr);
+  type::Struct const *s = qt->type()->if_as<type::Struct>();
+  ASSERT_NE(s, nullptr);
+  type::Struct::Field const *field = s->field("next");
+  ASSERT_NE(field, nullptr);
+  EXPECT_EQ(type::Ptr(s), field->type);
+  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+}
+
+TEST(StructLiteral, MutuallyReferential) {
+  test::TestModule mod;
+  mod.AppendCode(R"(
+  A ::= struct { b_ptr: *B }
+  B ::= struct { a_ptr: *A }
+  a: A
+  b: B
+  )");
+  auto const *a_qt = mod.data().qual_type(mod.Append<ast::Identifier>("a"));
+  auto const *b_qt = mod.data().qual_type(mod.Append<ast::Identifier>("b"));
+  ASSERT_NE(a_qt, nullptr);
+  ASSERT_NE(b_qt, nullptr);
+  type::Struct const *a_struct = a_qt->type()->if_as<type::Struct>();
+  type::Struct const *b_struct = b_qt->type()->if_as<type::Struct>();
+  ASSERT_NE(a_struct, nullptr);
+  ASSERT_NE(b_struct, nullptr);
+  type::Struct::Field const *ab_field = a_struct->field("b_ptr");
+  type::Struct::Field const *ba_field = b_struct->field("a_ptr");
+  ASSERT_NE(ab_field, nullptr);
+  ASSERT_NE(ba_field, nullptr);
+  EXPECT_EQ(type::Ptr(a_struct), ba_field->type);
+  EXPECT_EQ(type::Ptr(b_struct), ab_field->type);
+  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+}
 }  // namespace
 }  // namespace compiler

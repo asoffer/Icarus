@@ -387,6 +387,8 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
 
   type::Typed<ast::Declaration const *> typed_node_decl(node,
                                                         node_qual_type.type());
+  // TODO: struct field decls shouldn't have issues with shadowing local
+  // variables.
   for (auto const *decl :
        module::AllAccessibleDecls(node->scope(), node->id())) {
     if (decl == node) { continue; }

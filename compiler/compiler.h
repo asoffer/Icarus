@@ -127,7 +127,8 @@ struct Compiler
       std::vector<ast::Identifier const *> dependencies_;
     } dependency_chain;
 
-    std::queue<ast::Node const *> body_verification_queue;
+    enum class WorkType { VerifyBody, CompleteStruct };
+    std::queue<std::pair<ast::Node const *, WorkType>> work_queue;
 
     struct YieldedArguments {
       core::FnArgs<std::pair<ir::Value, type::QualType>> vals;
@@ -140,10 +141,23 @@ struct Compiler
 
   void VerifyAll(base::PtrSpan<ast::Node const> nodes) {
     for (ast::Node const *node : nodes) { VerifyType(node); }
-    while (not state_.body_verification_queue.empty()) {
-      auto const *node = state_.body_verification_queue.front();
-      state_.body_verification_queue.pop();
-      if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
+    CompleteWorkQueue();
+  }
+  void CompleteWorkQueue() {
+    while (not state_.work_queue.empty()) {
+      auto [node, work_type] = state_.work_queue.front();
+      state_.work_queue.pop();
+      // TODO: you also need to pass around some known contexts becuase you may
+      // enter into some generic context push work, and then exit. When you get
+      // to it again, you need to be sure to reenter that same context.
+      switch (work_type) {
+        case TransientFunctionState::WorkType::VerifyBody: {
+          if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
+        } break;
+        case TransientFunctionState::WorkType::CompleteStruct: {
+          CompleteStruct(&node->as<ast::StructLiteral>());
+        } break;
+      }
     }
   }
 
@@ -384,6 +398,8 @@ struct Compiler
                     type::Typed<ir::Reg> to_var);
 
  private:
+  void CompleteStruct(ast::StructLiteral const *node);
+
   type::Typed<ir::Value> EvaluateIfConstant(ast::Expression const *expr,
                                             type::QualType qt);
 

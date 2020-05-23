@@ -173,7 +173,7 @@ void Compiler::Visit(type::Function const *t, ir::RegOr<ir::Addr> to,
 void Compiler::Visit(type::Pointer const *t, ir::RegOr<ir::Addr> to,
                      type::Typed<ir::Value> const &from, EmitCopyAssignTag) {
   if (t == from.type()) {
-    builder().Store(from->get<ir::Addr>(), to);
+    builder().Store(from->get<ir::RegOr<ir::Addr>>(), to);
   } else if (from.type() == type::NullPtr) {
     builder().Store(ir::Addr::Null(), to);
   } else {

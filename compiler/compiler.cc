@@ -71,16 +71,14 @@ ir::NativeFn Compiler::AddFunc(
   return ir::NativeFn(&data().fns_, fn_type, std::move(params));
 }
 
-static ir::CompiledFn MakeThunk(Compiler::PersistentResources const &resources,
-                                ast::Expression const *expr,
+static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
                                 type::Type const *type) {
-  Compiler c(resources);
   ir::CompiledFn fn(type::Func({}, {ASSERT_NOT_NULL(type)}),
                     core::Params<type::Typed<ast::Declaration const *>>{});
-  ICARUS_SCOPE(ir::SetCurrent(&fn, &resources.builder)) {
+  ICARUS_SCOPE(ir::SetCurrent(&fn, &c.builder())) {
     // TODO this is essentially a copy of the body of FunctionLiteral::EmitValue
     // Factor these out together.
-    resources.builder.CurrentBlock() = fn.entry();
+    c.builder().CurrentBlock() = fn.entry();
 
     auto val = c.EmitValue(expr);
     // TODO wrap this up into SetRet(vector)
@@ -103,10 +101,10 @@ static ir::CompiledFn MakeThunk(Compiler::PersistentResources const &resources,
 
         c.EmitMoveInit(
             type::Typed<ir::Value>(v, t),
-            type::Typed<ir::Reg>(resources.builder.GetRet(i, t), type::Ptr(t)));
+            type::Typed<ir::Reg>(c.builder().GetRet(i, t), type::Ptr(t)));
 
       } else {
-        resources.builder.SetRet(i, type::Typed<ir::Value>(v, t));
+        c.builder().SetRet(i, type::Typed<ir::Value>(v, t));
       }
     };
 
@@ -119,7 +117,7 @@ static ir::CompiledFn MakeThunk(Compiler::PersistentResources const &resources,
       handle_result(extracted_types[0], val);
     }
 
-    resources.builder.ReturnJump();
+    c.builder().ReturnJump();
   }
 
   ASSERT(fn.work_item == nullptr);
@@ -130,7 +128,11 @@ static ir::CompiledFn MakeThunk(Compiler::PersistentResources const &resources,
 
 base::expected<ir::Value, interpretter::EvaluationFailure> Compiler::Evaluate(
     type::Typed<ast::Expression const *> expr) {
-  return interpretter::Evaluate(MakeThunk(resources_, *expr, expr.type()));
+  Compiler c(resources_);
+  auto result = interpretter::Evaluate(MakeThunk(c, *expr, expr.type()));
+  if (not result) { return result; }
+  c.CompleteWorkQueue();
+  return result;
 }
 
 }  // namespace compiler

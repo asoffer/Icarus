@@ -37,7 +37,8 @@ struct Struct : public Type {
     std::vector<ast::Hashtag> hashtags_;
   };
 
-  Struct(ast::Scope const *scope, std::vector<Field> fields);
+  Struct(module::BasicModule const *mod);
+  void AppendFields(std::vector<Field> fields);
 
   ~Struct() override {}
   void WriteTo(std::string *buf) const override;
@@ -60,8 +61,8 @@ struct Struct : public Type {
 
   bool contains_hashtag(ast::Hashtag needle) const;
 
-  ast::Scope const *scope_  = nullptr;
-  module::BasicModule *mod_ = nullptr;
+  module::BasicModule const *mod_ = nullptr;
+  bool complete_;
 
   base::lazy<ir::NativeFn> init_func_;
   base::lazy<ir::NativeFn> destroy_func_;

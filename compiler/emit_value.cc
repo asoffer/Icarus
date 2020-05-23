@@ -11,6 +11,7 @@
 #include "diagnostic/consumer/trivial.h"
 #include "frontend/parse.h"
 #include "interpretter/evaluate.h"
+#include "interpretter/execute.h"
 #include "ir/builder.h"
 #include "ir/jump.h"
 #include "ir/struct_field.h"
@@ -1082,25 +1083,51 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
   return table.EmitCall(this, args);
 }
 
+void Compiler::CompleteStruct(ast::StructLiteral const *node) {
+  type::Struct *s = data().get_struct(node);
+  if (s->complete_) { return; }
+
+  ir::CompiledFn fn(type::Func({}, {}),
+                    core::Params<type::Typed<ast::Declaration const *>>{});
+  ICARUS_SCOPE(ir::SetCurrent(&fn, &builder())) {
+    // TODO this is essentially a copy of the body of FunctionLiteral::EmitValue
+    // Factor these out together.
+    builder().CurrentBlock() = fn.entry();
+
+    std::vector<ir::StructField> fields;
+    fields.reserve(node->fields().size());
+    for (auto const &field : node->fields()) {
+      // TODO hashtags.
+      if (auto *init_val = field.init_val()) {
+        // TODO init_val type may not be the same.
+        auto *t = ASSERT_NOT_NULL(qual_type_of(init_val)->type());
+        fields.emplace_back(field.id(), t, EmitValue(init_val));
+      } else {
+        fields.emplace_back(
+            field.id(), EmitValue(field.type_expr()).get<type::Type const *>());
+      }
+    }
+    builder().Struct(data().module(), s, std::move(fields));
+    builder().ReturnJump();
+  }
+
+  fn.WriteByteCode();
+  interpretter::Execute(std::move(fn));
+}
+
 ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
   // TODO: Check the result of body verification.
   if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
 
-  std::vector<ir::StructField> fields;
-  fields.reserve(node->fields().size());
-  for (auto const &field : node->fields()) {
-    // TODO hashtags.
-    if (auto *init_val = field.init_val()) {
-      // TODO init_val type may not be the same.
-      auto *t = ASSERT_NOT_NULL(qual_type_of(init_val)->type());
-      fields.emplace_back(field.id(), t, EmitValue(init_val));
-    } else {
-      fields.emplace_back(
-          field.id(), EmitValue(field.type_expr()).get<type::Type const *>());
-    }
+  if (type::Struct *s = data().get_struct(node)) {
+    return ir::Value(static_cast<type::Type const *>(s));
+  } else {
+    s = new type::Struct(data().module());
+    data().set_struct(node, s);
+    state_.work_queue.emplace(node,
+                              TransientFunctionState::WorkType::CompleteStruct);
+    return ir::Value(static_cast<type::Type const *>(s));
   }
-
-  return ir::Value(builder().Struct(node->scope(), fields));
 }
 
 ir::Value Compiler::EmitValue(ast::ParameterizedStructLiteral const *node) {

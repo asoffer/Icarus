@@ -132,6 +132,18 @@ void DependentComputedData::set_cyclic_error(ast::Identifier const *id) {
   cyclic_error_ids_.insert(id);
 }
 
+type::Struct *DependentComputedData::get_struct(ast::StructLiteral const *s) const {
+  auto iter = structs_.find(s);
+  if (iter != structs_.end()) { return iter->second; }
+  if (not parent_) { return nullptr; }
+  return parent_->get_struct(s);
+}
+
+void DependentComputedData::set_struct(ast::StructLiteral const *sl,
+                                       type::Struct *s) {
+  structs_.emplace(sl, s);
+}
+
 bool DependentComputedData::ShouldVerifyBody(ast::Node const *node) {
   return body_verification_complete_.insert(node).second;
 }

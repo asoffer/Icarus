@@ -13,7 +13,20 @@
 namespace interpretter {
 constexpr int kMaxSize = 8;
 
+// TODO: Return potential errors.
+void Execute(ir::CompiledFn &&fn) {
+  ASSERT(fn.type()->output().size() == 0u);
+  ExecutionContext exec_context;
+  // TODO actually just have a good way to construct the buffer
+  DEBUG_LOG("Execute")(fn);
+  Execute(&fn,
+          base::untyped_buffer::MakeFull(
+              (fn.type()->params().size() + fn.num_regs()) * kMaxSize),
+          {}, &exec_context);
+}
+
 base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
+  ASSERT(fn.type()->output().size() != 0u);
   size_t bytes_needed = fn.type()->output()[0]->bytes(kArchitecture).value();
   auto ret_buf        = base::untyped_buffer::MakeFull(bytes_needed);
   std::vector<ir::Addr> ret_slots;
@@ -29,6 +42,7 @@ base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
   return ret_buf;
 }
 
+// TODO why an r-value reference?
 base::expected<ir::Value, EvaluationFailure> Evaluate(ir::CompiledFn &&fn) {
   auto buf = EvaluateToBuffer(std::move(fn));
   std::vector<ir::Value> values;

@@ -1167,8 +1167,9 @@ struct ArrayInstruction : base::Clone<ArrayInstruction, Instruction> {
 
 struct StructInstruction : base::Clone<StructInstruction, Instruction> {
   static constexpr cmd_index_t kIndex = internal::kStructInstructionNumber;
-  StructInstruction(ast::Scope const* scope, std::vector<StructField> fields)
-      : scope(scope), fields(std::move(fields)) {}
+  StructInstruction(module::BasicModule const* mod, type::Struct* s,
+                    std::vector<StructField> fields)
+      : mod(mod), struct_(s), fields(std::move(fields)) {}
   ~StructInstruction() override {}
 
   std::string to_string() const override {
@@ -1184,7 +1185,8 @@ struct StructInstruction : base::Clone<StructInstruction, Instruction> {
   void WriteByteCode(ByteCodeWriter* writer) const override {
     writer->Write(kIndex);
     writer->Write<uint16_t>(fields.size());
-    writer->Write(scope);
+    writer->Write(mod);
+    writer->Write(struct_);
 
     // TODO shuffling fields order?
     for (auto const& field : fields) {
@@ -1211,7 +1213,8 @@ struct StructInstruction : base::Clone<StructInstruction, Instruction> {
     }
   }
 
-  ast::Scope const* scope;
+  module::BasicModule const* mod;
+  type::Struct* struct_;
   std::vector<StructField> fields;
   Reg result;
 };

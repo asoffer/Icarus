@@ -532,7 +532,8 @@ struct Builder {
 
   Reg OpaqueType(module::BasicModule const* mod);
 
-  Reg Struct(ast::Scope const* scope, std::vector<StructField> fields);
+  Reg Struct(module::BasicModule const* mod, type::Struct* s,
+             std::vector<StructField> fields);
 
   // TODO use scopes instead of modules.
   Reg Enum(module::BasicModule* mod, std::vector<std::string_view> names,

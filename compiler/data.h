@@ -219,6 +219,9 @@ struct DependentComputedData {
   bool cyclic_error(ast::Identifier const *id) const;
   void set_cyclic_error(ast::Identifier const *id);
 
+  type::Struct *get_struct(ast::StructLiteral const *s) const;
+  void set_struct(ast::StructLiteral const *sl, type::Struct *s);
+
   bool ShouldVerifyBody(ast::Node const *node);
 
  private:
@@ -238,6 +241,8 @@ struct DependentComputedData {
   // allows us to emit cyclic dependencies exactly once rather than one time per
   // loop in the cycle.
   absl::flat_hash_set<ast::Identifier const*> cyclic_error_ids_;
+
+  absl::flat_hash_map<ast::StructLiteral const *, type::Struct *> structs_;
 
   // Colleciton of modules imported by this one.
   absl::flat_hash_map<ast::Import const *, LibraryModule *> imported_modules_;

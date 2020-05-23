@@ -527,8 +527,9 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     ctx->current_frame()->regs_.set(iter->read<ir::Reg>(), block_def);
 
   } else if constexpr (std::is_same_v<Inst, ir::StructInstruction>) {
-    uint16_t num            = iter->read<uint16_t>();
-    ast::Scope const *scope = iter->read<ast::Scope const *>();
+    uint16_t num                   = iter->read<uint16_t>();
+    module::BasicModule const *mod = iter->read<module::BasicModule const *>();
+    type::Struct *struct_type      = iter->read<type::Struct *>();
 
     std::vector<type::Struct::Field> fields;
     fields.reserve(num);
@@ -558,8 +559,9 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
       }
     }
 
-    ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
-                                    new type::Struct(scope, std::move(fields)));
+    struct_type->AppendFields(std::move(fields));
+    type::Struct const *const_struct_type = struct_type;
+    ctx->current_frame()->regs_.set(iter->read<ir::Reg>(), const_struct_type);
 
   } else if constexpr (std::is_same_v<Inst, ir::ArrayInstruction>) {
     using length_t = ir::ArrayInstruction::length_t;

@@ -8,17 +8,18 @@
 #include "type/pointer.h"
 
 namespace type {
-Struct::Struct(ast::Scope const *scope, std::vector<Struct::Field> fields)
+
+Struct::Struct(module::BasicModule const *mod)
     : Type(Type::Flags{.is_default_initializable = 1,
                        .is_copyable              = 1,
                        .is_movable               = 1,
                        .has_destructor           = 0}),
-      scope_(scope),
-      mod_(const_cast<ast::Scope *>(scope)
-               ->Containing<ast::ModuleScope>()
-               ->module()),
-      fields_(std::move(fields)) {
-  size_t i = 0;
+      mod_(mod), complete_(false) {}
+
+void Struct::AppendFields(std::vector<Struct::Field> fields) {
+  complete_ = true;
+  fields_   = std::move(fields);
+  size_t i  = 0;
   for (auto const &field : fields_) {
     field_indices_.emplace(field.name, i++);
     flags_.is_default_initializable &=
