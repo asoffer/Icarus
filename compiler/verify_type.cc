@@ -164,7 +164,6 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node,
                           type::Type const *t = nullptr) {
   if (not t) { t = ASSERT_NOT_NULL(c->type_of(node)); }
   for (auto const *stmt : node->stmts()) { c->VerifyType(stmt); }
-  // TODO propogate cyclic dependencies.
 
   // TODO we can have yields and returns, or yields and jumps, but not jumps and
   // returns. Check this.
@@ -729,8 +728,6 @@ VerifyFnArgs(
 type::QualType Compiler::VerifyType(ast::Call const *node) {
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto arg_vals, VerifyFnArgs(this, node->args()));
-  // TODO handle cyclic dependencies in call arguments.
-
   // Note: Currently `foreign` being generic means that we can't easily make
   // builtins overloadable, not that it ever makes sense to do so (because
   // they're globally available).
@@ -1351,110 +1348,14 @@ type::QualType Compiler::VerifyType(ast::YieldStmt const *node) {
   return type::QualType(type::Void(), quals);
 }
 
-type::QualType Compiler::VerifyType(ast::ScopeLiteral const *node) {
-  auto verify_result =
-      data().set_qual_type(node, type::QualType::Constant(type::Scope));
-  bool error = false;
-  if (node->state_type()) {
-    type::QualType state_qual_type = VerifyType(node->state_type());
-    if (state_qual_type != type::QualType(type::Type_, type::Quals::Const())) {
-      // TODO check for non-const vs. not a type.
-      diag().Consume(diagnostic::NonTypeScopeState{
-          .type  = state_qual_type.type(),
-          .range = node->state_type()->range(),
-      });
-      error = true;
-    }
-  }
-
-  absl::flat_hash_map<ast::Declaration const *, type::Type const *> types;
-  for (auto const *decl : node->decls()) {
-    auto qual_type = VerifyType(decl);
-    if (not qual_type.constant()) {
-      error = true;
-      NOT_YET("log an error");
-    }
-    types.emplace(decl, qual_type.type());
-  }
-  // TODO verify that it has at least one entry and exit point each.
-  if (error) { return type::QualType::Error(); }
-
-  if (not node->state_type()) { return verify_result; }
-  auto maybe_type = EvaluateAs<type::Type const *>(node->state_type());
-  if (not maybe_type) { NOT_YET(); }
-  auto const *state_type_ptr = type::Ptr(ASSERT_NOT_NULL(*maybe_type));
-  for (auto const [decl, decl_type] : types) {
-    if (decl->id() == "init") {
-      auto *jump_type = decl_type->if_as<type::Jump>();
-      if (not jump_type) { NOT_YET(); }
-      if (state_type_ptr != jump_type->state()) {
-        NOT_YET(state_type_ptr ? state_type_ptr->to_string() : "NULL", " vs ",
-                (jump_type and jump_type->state())
-                    ? jump_type->state()->to_string()
-                    : "NULL");
-      }
-    } else if (decl->id() == "done") {
-      auto *fn_type = decl_type->if_as<type::Function>();
-      if (not fn_type) { NOT_YET(); }
-    } else {
-      // TODO
-    }
-  }
-  return verify_result;
-}
-
 type::QualType Compiler::VerifyType(ast::ScopeNode const *node) {
   DEBUG_LOG("ScopeNode")(node->DebugString());
   ASSIGN_OR(return type::QualType::Error(),  //
                    std::ignore, VerifyFnArgs(this, node->args()));
-  // TODO handle cyclic dependencies in call arguments.
-
   for (auto const &block : node->blocks()) { VerifyType(&block); }
 
   // TODO hack. Set this for real.
   return data().set_qual_type(node, type::QualType::NonConstant(type::Void()));
-}
-
-type::QualType Compiler::VerifyType(ast::StructLiteral const *node) {
-  bool err = false;
-  for (auto const &field : node->fields()) {
-    type::QualType type_expr_qt;
-    if (field.type_expr()) { type_expr_qt = VerifyType(field.type_expr()); }
-
-    type::QualType init_val_qt;
-    if (field.init_val()) { init_val_qt = VerifyType(field.init_val()); }
-
-    if ((field.type_expr() and not type_expr_qt) or
-        (field.init_val() and not init_val_qt)) {
-      err = true;
-      continue;
-    }
-
-    if (field.type_expr() and not type_expr_qt.constant()) {
-      err = true;
-      NOT_YET("Log an error, type must be constant");
-    }
-
-    if (field.init_val() and not init_val_qt.constant()) {
-      err = true;
-      NOT_YET("Log an error, initial value must be constant");
-    }
-
-    if (field.init_val()) {
-      auto maybe_type = EvaluateAs<type::Type const *>(field.type_expr());
-      if (not maybe_type) { NOT_YET(); }
-      auto const *t = ASSERT_NOT_NULL(*maybe_type);
-      if (t != init_val_qt.type()) {
-        err = true;
-        NOT_YET("log an error, type mismatch", init_val_qt, t);
-      }
-    }
-
-    // TODO set field results?
-  }
-
-  if (err) { return data().set_qual_type(node, type::QualType::Error()); }
-  return data().set_qual_type(node, type::QualType::Constant(type::Type_));
 }
 
 type::QualType Compiler::VerifyType(

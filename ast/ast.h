@@ -1045,20 +1045,20 @@ struct ReturnStmt : Node {
 struct ScopeLiteral : Expression, WithScope<ScopeLitScope> {
   explicit ScopeLiteral(frontend::SourceRange const &range,
                         std::unique_ptr<Expression> state_type,
-                        std::vector<std::unique_ptr<Declaration>> decls)
+                        std::vector<Declaration> decls)
       : Expression(range),
         state_type_(std::move(state_type)),
         decls_(std::move(decls)) {}
   ~ScopeLiteral() override {}
 
-  base::PtrSpan<Declaration const> decls() const { return decls_; }
+  absl::Span<Declaration const> decls() const { return decls_; }
   Expression const *state_type() const { return state_type_.get(); }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
   std::unique_ptr<Expression> state_type_;
-  std::vector<std::unique_ptr<Declaration>> decls_;
+  std::vector<Declaration> decls_;
 };
 
 // ScopeNode:

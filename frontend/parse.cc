@@ -1015,10 +1015,10 @@ std::unique_ptr<ast::Node> BuildScopeLiteral(
     std::unique_ptr<ast::Expression> state_type,
     std::unique_ptr<Statements> stmts, SourceRange const &range,
     diagnostic::DiagnosticConsumer &diag) {
-  std::vector<std::unique_ptr<ast::Declaration>> decls;
+  std::vector<ast::Declaration> decls;
   for (auto &stmt : stmts->content_) {
-    if (stmt->is<ast::Declaration>()) {
-      decls.push_back(move_as<ast::Declaration>(stmt));
+    if (auto *decl = stmt->if_as<ast::Declaration>()) {
+      decls.push_back(std::move(*decl));
     } else {
       diag.Consume(diagnostic::Todo{});
     }

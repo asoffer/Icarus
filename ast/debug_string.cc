@@ -340,9 +340,9 @@ void YieldStmt::DebugStrAppend(std::string *out, size_t indent) const {
 
 void ScopeLiteral::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, "scope {\n");
-  for (auto const *decl : decls()) {
+  for (auto const &decl : decls()) {
     absl::StrAppend(out, indentation(indent));
-    decl->DebugStrAppend(out, indent + 1);
+    decl.DebugStrAppend(out, indent + 1);
     absl::StrAppend(out, "\n");
   }
   absl::StrAppend(out, indentation(indent), "}");

@@ -1,0 +1,217 @@
+#include "ast/ast.h"
+#include "compiler/compiler.h"
+#include "type/jump.h"
+#include "type/primitive.h"
+#include "type/qual_type.h"
+#include "type/typed_value.h"
+
+namespace compiler {
+namespace {
+
+struct StateTypeMismatch {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "state-type-mismatch";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    if (expected_type) {
+      if (actual_type) {
+        return diagnostic::DiagnosticMessage(
+            diagnostic::Text("Jump state expected to be a pointer to `%s`, but "
+                             "encountered a `%s`.",
+                             expected_type->to_string(),
+                             actual_type->to_string()),
+            diagnostic::SourceQuote(src).Highlighted(range,
+                                                     diagnostic::Style{}));
+      } else {
+        return diagnostic::DiagnosticMessage(
+            diagnostic::Text("Jump state expected to be a pointer to `%s`, but "
+                             "is stateless.",
+                             expected_type->to_string()),
+            diagnostic::SourceQuote(src).Highlighted(range,
+                                                     diagnostic::Style{}));
+      }
+    } else {
+      return diagnostic::DiagnosticMessage(
+          diagnostic::Text(
+              "Jump expected to be stateless, but has state of type `%s`.",
+              actual_type->to_string()),
+          diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+    }
+  }
+
+  type::Type const *actual_type;
+  type::Type const *expected_type;
+  frontend::SourceRange range;
+};
+
+struct NonJumpInit {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "non-jump-init";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Scope `init` must have a `jump` type, but here it "
+                         "was defined to have type `%s`.",
+                         type->to_string()),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  }
+
+  type::Type const *type;
+  frontend::SourceRange range;
+};
+
+struct NonCallableDone {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "non-callable-done";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Scope `done` must have a callable type but here it "
+                         "was defined to have type `%s`.",
+                         type->to_string()),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  }
+
+  type::Type const *type;
+  frontend::SourceRange range;
+};
+
+struct NonTypeScopeState {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "non-type-scope-state";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Scope state must be a type, but encountered a `%s`.",
+                         type->to_string()),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  }
+
+  type::Type const *type;
+  frontend::SourceRange range;
+};
+
+struct NonConstantScopeMember {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "non-constant-scope-member";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("All members of scope literals must be constant."),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  }
+
+  frontend::SourceRange range;
+};
+
+struct NonConstantScopeStateType {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "non-constant-scope-state-type";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Scope state types must be constant."),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  }
+
+  frontend::SourceRange range;
+};
+
+// TODO: Rename "init" and "done"
+
+bool VerifyInit(diagnostic::DiagnosticConsumer &diag,
+                ast::Declaration const *decl, type::Type const *decl_type,
+                type::Pointer const *state_type_ptr) {
+  auto *jump_type = decl_type->if_as<type::Jump>();
+  if (not jump_type) {
+    diag.Consume(NonJumpInit{
+        .type  = decl_type,
+        .range = decl->id_range(),
+    });
+    return false;
+  } else if (state_type_ptr != jump_type->state()) {
+    // TODO: Generics where the state-type is generic?
+    diag.Consume(StateTypeMismatch{
+        .actual_type   = jump_type->state(),
+        .expected_type = state_type_ptr ? state_type_ptr->pointee() : nullptr,
+        .range         = decl->id_range(),
+    });
+    return false;
+  } else {
+    return true;
+  }
+}
+
+bool VerifyDone(diagnostic::DiagnosticConsumer &diag,
+                ast::Declaration const *decl, type::Type const *decl_type) {
+  auto const *callable = decl_type->if_as<type::Callable>();
+  if (not callable) {
+    diag.Consume(NonCallableDone{
+        .type  = decl_type,
+        .range = decl->id_range(),
+    });
+    return false;
+  } else {
+    return true;
+  }
+}
+
+}  // namespace
+
+type::QualType Compiler::VerifyType(ast::ScopeLiteral const *node) {
+  auto qt = data().set_qual_type(node, type::QualType::Constant(type::Scope));
+
+  type::Type const *state_type = nullptr;
+  if (node->state_type()) {
+    type::QualType state_qual_type = VerifyType(node->state_type());
+    if (state_qual_type.type() != type::Type_) {
+      diag().Consume(NonTypeScopeState{
+          .type  = state_qual_type.type(),
+          .range = node->state_type()->range(),
+      });
+      qt.MarkError();
+    }
+
+    if (not(state_qual_type.quals() >= type::Quals::Const())) {
+      diag().Consume(NonConstantScopeStateType{
+          .range = node->state_type()->range(),
+      });
+      qt.MarkError();
+    }
+
+    auto maybe_type = EvaluateAs<type::Type const *>(node->state_type());
+    if (not maybe_type) {
+      diag().Consume(diagnostic::EvaluationFailure{
+          .failure = maybe_type.error(),
+          .range   = node->range(),
+      });
+      return type::QualType::Error();
+    }
+    state_type = *maybe_type;
+  }
+
+  auto const *state_type_ptr = state_type ? type::Ptr(state_type) : nullptr;
+
+  for (auto const &decl : node->decls()) {
+    auto qual_type = VerifyType(&decl);
+    if (not qual_type.constant()) {
+      diag().Consume(NonConstantScopeMember{.range = decl.range()});
+      qt.MarkError();
+    }
+
+    if (decl.id() == "init") {
+      if (not VerifyInit(diag(), &decl, qual_type.type(), state_type_ptr)) {
+        qt.MarkError();
+      }
+    } else if (decl.id() == "done") {
+      if (not VerifyDone(diag(), &decl, qual_type.type())) { qt.MarkError(); }
+    } else {
+      // TODO: Quick-Done
+      // TODO: Anything else must be a block.
+    }
+  }
+
+  return qt;
+}
+
+}  // namespace compiler

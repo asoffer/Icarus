@@ -1027,14 +1027,14 @@ ir::Value Compiler::EmitValue(ast::ScopeLiteral const *node) {
   absl::flat_hash_map<std::string_view, ir::BlockDef *> blocks;
   std::vector<ir::RegOr<ir::Jump *>> inits;
   std::vector<ir::RegOr<ir::Fn>> dones;
-  for (auto const *decl : node->decls()) {
-    if (decl->id() == "init") {
-      inits.push_back(EmitValue(decl).get<ir::RegOr<ir::Jump *>>());
-    } else if (decl->id() == "done") {
-      dones.push_back(EmitValue(decl).get<ir::RegOr<ir::Fn>>());
+  for (auto const &decl : node->decls()) {
+    if (decl.id() == "init") {
+      inits.push_back(EmitValue(&decl).get<ir::RegOr<ir::Jump *>>());
+    } else if (decl.id() == "done") {
+      dones.push_back(EmitValue(&decl).get<ir::RegOr<ir::Fn>>());
     } else {
-      blocks.emplace(decl->id(),
-                     EmitValue(decl).get<ir::RegOr<ir::BlockDef *>>().value());
+      blocks.emplace(decl.id(),
+                     EmitValue(&decl).get<ir::RegOr<ir::BlockDef *>>().value());
     }
   }
 

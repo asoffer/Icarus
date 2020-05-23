@@ -159,7 +159,7 @@ void ScopeLiteral::Initialize(Scope *scope) {
   scope_ = scope;
   set_body_with_parent(scope, this);
   if (state_type_) { state_type_->Initialize(scope); }
-  for (auto &decl : decls_) { decl->Initialize(body_scope()); }
+  for (auto &decl : decls_) { decl.Initialize(body_scope()); }
 }
 
 void ScopeNode::Initialize(Scope *scope) {

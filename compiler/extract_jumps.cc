@@ -172,7 +172,7 @@ struct Extractor : ast::Visitor<void()> {
   }
 
   void Visit(ast::ScopeLiteral const *node) final {
-    for (auto const *decl : node->decls()) { Visit(decl); }
+    for (auto const &decl : node->decls()) { Visit(&decl); }
   }
 
   void Visit(ast::ScopeNode const *node) final {

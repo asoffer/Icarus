@@ -272,6 +272,8 @@ cc_library(
         "verify/designated_initializer.cc",
         "verify/identifier.cc",
         "verify/index.cc",
+        "verify/struct_literal.cc",
+        "verify/scope_literal.cc",
         "verify_type.cc",
     ],
     deps = [
@@ -397,6 +399,28 @@ cc_test(
     deps = [
         ":verify_type",
         "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "struct_literal_test",
+    srcs = ["verify/struct_literal_test.cc"],
+    deps = [
+        ":verify_type",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "scope_literal_test",
+    srcs = ["verify/scope_literal_test.cc"],
+    deps = [
+        ":verify_type",
+        "//test:module",
+        "//type:primitive",
+        "//type:jump",
         "@com_google_googletest//:gtest_main",
     ],
 )

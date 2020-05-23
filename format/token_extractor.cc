@@ -129,7 +129,7 @@ void TokenExtractor::Visit(ast::YieldStmt const *node) {
 }
 
 void TokenExtractor::Visit(ast::ScopeLiteral const *node) {
-  for (auto *decl : node->decls()) { Visit(decl); }
+  for (auto const &decl : node->decls()) { Visit(&decl); }
 }
 
 void TokenExtractor::Visit(ast::ScopeNode const *node) {
