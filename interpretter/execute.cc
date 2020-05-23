@@ -695,6 +695,9 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
           index;
       ctx->current_frame()->regs_.set(reg, addr + offset);
     } else {
+      DEBUG_LOG("struct-index-instruction")
+      ("Reg = ", reg, " addr = ", addr,
+       " offset = ", type->offset(index, kArchitecture));
       ctx->current_frame()->regs_.set(
           reg, addr + type->offset(index, kArchitecture));
     }

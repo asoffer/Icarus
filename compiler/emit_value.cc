@@ -183,7 +183,6 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
     auto reg = EmitRef(node->operand());
     auto *t  = type_of(node->operand());
 
-    if (t->is<type::Pointer>()) { t = t->as<type::Pointer>().pointee(); }
     while (auto *p = t->if_as<type::Pointer>()) {
       t   = p->pointee();
       reg = builder().Load<ir::Addr>(reg);
