@@ -125,6 +125,10 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
         }
       }
 
+      if (not qt.constant()) {
+        // TODO: shouldn't need to reconstruct just to set the quals.
+        qt = type::QualType(qt.type(), qt.quals() | type::Quals::Ref());
+      }
       data().set_decls(node, std::move(potential_decls));
     } break;
     case 0: {
@@ -139,7 +143,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
       absl::flat_hash_set<type::Callable const *> member_types;
       bool error = false;
       for (auto const *decl : potential_decls) {
-        auto qt = *ASSERT_NOT_NULL(data().qual_type(decl));
+        qt = *ASSERT_NOT_NULL(data().qual_type(decl));
         if (not qt.ok()) { return type::QualType::Error(); }
 
         if (auto *c = qt.type()->if_as<type::Callable>()) {

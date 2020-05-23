@@ -18,7 +18,7 @@ TEST(Declaration, DefaultInitSuccess) {
     )");
     auto const *qt = mod.data().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType::NonConstant(type::Int64));
+    EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Ref()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 
@@ -29,7 +29,7 @@ TEST(Declaration, DefaultInitSuccess) {
     )");
     auto const *qt = mod.data().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType::Constant(type::Int64));
+    EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Const()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 }
@@ -86,8 +86,8 @@ TEST(Declaration, DefaultInitNonDefaultable) {
     )");
     auto const *qt = mod.data().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(
-        *qt, type::QualType::NonConstant(type::Var({type::Int64, type::Bool})));
+    EXPECT_EQ(*qt, type::QualType(type::Var({type::Int64, type::Bool}),
+                                  type::Quals::Ref()));
     EXPECT_THAT(mod.consumer.diagnostics(),
                 UnorderedElementsAre(Pair("type-error", "no-default-value")));
   }
@@ -99,8 +99,8 @@ TEST(Declaration, DefaultInitNonDefaultable) {
     )");
     auto const *qt = mod.data().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt,
-              type::QualType::Constant(type::Var({type::Int64, type::Bool})));
+    EXPECT_EQ(*qt, type::QualType(type::Var({type::Int64, type::Bool}),
+                                  type::Quals::Const()));
     EXPECT_THAT(mod.consumer.diagnostics(),
                 UnorderedElementsAre(Pair("type-error", "no-default-value")));
   }
@@ -114,7 +114,7 @@ TEST(Declaration, InferredSuccess) {
     )");
     auto const *qt = mod.data().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType::NonConstant(type::Int64));
+    EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Ref()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 
@@ -125,7 +125,7 @@ TEST(Declaration, InferredSuccess) {
     )");
     auto const *qt = mod.data().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType::Constant(type::Int64));
+    EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Const()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 }
@@ -180,7 +180,7 @@ TEST(Declaration, CustomInitSuccess) {
     )");
     auto const *qt = mod.data().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType::NonConstant(type::Int64));
+    EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Ref()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 
@@ -191,7 +191,7 @@ TEST(Declaration, CustomInitSuccess) {
     )");
     auto const *qt = mod.data().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType::Constant(type::Int64));
+    EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Const()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 }
@@ -248,7 +248,8 @@ TEST(Declaration, CustomInitAllowsConversions) {
     )");
     auto const *qt = mod.data().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType::NonConstant(type::Arr(0, type::Int64)));
+    EXPECT_EQ(*qt,
+              type::QualType(type::Arr(0, type::Int64), type::Quals::Ref()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 
@@ -259,7 +260,8 @@ TEST(Declaration, CustomInitAllowsConversions) {
     )");
     auto const *qt = mod.data().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType::Constant(type::Arr(0, type::Int64)));
+    EXPECT_EQ(*qt,
+              type::QualType(type::Arr(0, type::Int64), type::Quals::Const()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 }
@@ -272,7 +274,7 @@ TEST(Declaration, UninitializedSuccess) {
     )");
     auto const *qt = mod.data().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType::NonConstant(type::Int64));
+    EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Ref()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 
@@ -283,7 +285,7 @@ TEST(Declaration, UninitializedSuccess) {
     )");
     auto const *qt = mod.data().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType::Constant(type::Int64));
+    EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Const()));
     EXPECT_THAT(
         mod.consumer.diagnostics(),
         UnorderedElementsAre(Pair("type-error", "uninitialized-constant")));

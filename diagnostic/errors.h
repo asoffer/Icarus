@@ -741,7 +741,7 @@ struct NonAddressableExpression {
   static constexpr std::string_view kName     = "non-addressable-expression";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("Expression is not addresable."),
+    return DiagnosticMessage(Text("Expression is not addressable."),
                              SourceQuote(src).Highlighted(range, Style{}));
   }
 

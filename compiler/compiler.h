@@ -347,6 +347,13 @@ struct Compiler
                     type::Typed<ir::Reg> to_var);
 
  private:
+  type::Typed<ir::Value> EvaluateIfConstant(ast::Expression const *expr,
+                                            type::QualType qt);
+
+  std::optional<core::FnArgs<type::Typed<ir::Value>, std::string_view>>
+  VerifyFnArgs(
+      core::FnArgs<ast::Expression const *, std::string_view> const &args);
+
   PersistentResources resources_;
   TransientFunctionState state_;
 };

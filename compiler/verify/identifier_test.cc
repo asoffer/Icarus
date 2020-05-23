@@ -21,7 +21,7 @@ TEST(Identifier, Success) {
   auto const *qt = mod.data().qual_type(id);
   ASSERT_NE(qt, nullptr);
   EXPECT_THAT(mod.data().decls(id), SizeIs(1));
-  EXPECT_EQ(*qt, type::QualType::NonConstant(type::Int64));
+  EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Ref()));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 

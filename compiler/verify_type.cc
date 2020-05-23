@@ -691,13 +691,12 @@ static type::QualType VerifyCall(
   UNREACHABLE();
 }
 
-static type::Typed<ir::Value> EvaluateIfConstant(Compiler *c,
-                                                 ast::Expression const *expr,
-                                                 type::QualType qt) {
+type::Typed<ir::Value> Compiler::EvaluateIfConstant(ast::Expression const *expr,
+                                                    type::QualType qt) {
   if (qt.constant()) {
     DEBUG_LOG("EvaluateIfConstant")
     ("Evaluating constant: ", expr->DebugString());
-    auto maybe_val = c->Evaluate(type::Typed(expr, qt.type()));
+    auto maybe_val = Evaluate(type::Typed(expr, qt.type()));
     if (not maybe_val) { NOT_YET(); }
     return type::Typed<ir::Value>(*maybe_val, qt.type());
   } else {
@@ -705,20 +704,19 @@ static type::Typed<ir::Value> EvaluateIfConstant(Compiler *c,
   }
 }
 
-static std::optional<core::FnArgs<type::Typed<ir::Value>, std::string_view>>
-VerifyFnArgs(
-    Compiler *c,
+std::optional<core::FnArgs<type::Typed<ir::Value>, std::string_view>>
+Compiler::VerifyFnArgs(
     core::FnArgs<ast::Expression const *, std::string_view> const &args) {
   bool err      = false;
   auto arg_vals = args.Transform([&](ast::Expression const *expr) {
-    auto expr_qual_type = c->VerifyType(expr);
+    auto expr_qual_type = VerifyType(expr);
     err |= not expr_qual_type.ok();
     if (err) {
       DEBUG_LOG("VerifyFnArgs")("Error with: ", expr->DebugString());
       return type::Typed<ir::Value>(ir::Value(), nullptr);
     }
     DEBUG_LOG("VerifyFnArgs")("constant: ", expr->DebugString());
-    return EvaluateIfConstant(c, expr, expr_qual_type);
+    return EvaluateIfConstant(expr, expr_qual_type);
   });
 
   if (err) { return std::nullopt; }
@@ -727,7 +725,7 @@ VerifyFnArgs(
 
 type::QualType Compiler::VerifyType(ast::Call const *node) {
   ASSIGN_OR(return type::QualType::Error(),  //
-                   auto arg_vals, VerifyFnArgs(this, node->args()));
+                   auto arg_vals, VerifyFnArgs(node->args()));
   // Note: Currently `foreign` being generic means that we can't easily make
   // builtins overloadable, not that it ever makes sense to do so (because
   // they're globally available).
@@ -1351,7 +1349,7 @@ type::QualType Compiler::VerifyType(ast::YieldStmt const *node) {
 type::QualType Compiler::VerifyType(ast::ScopeNode const *node) {
   DEBUG_LOG("ScopeNode")(node->DebugString());
   ASSIGN_OR(return type::QualType::Error(),  //
-                   std::ignore, VerifyFnArgs(this, node->args()));
+                   std::ignore, VerifyFnArgs(node->args()));
   for (auto const &block : node->blocks()) { VerifyType(&block); }
 
   // TODO hack. Set this for real.
