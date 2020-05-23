@@ -14,9 +14,10 @@ struct ExecutableModule : CompiledModule {
   explicit ExecutableModule() {}
   ~ExecutableModule() override {}
 
+  // TODO: This no longer needs to be a pointer?
   ir::CompiledFn *main() { return &main_; }
 
-  // TODO hide this
+  // TODO: Remove this
   void set_main(ir::CompiledFn *main_fn) {}
 
  protected:

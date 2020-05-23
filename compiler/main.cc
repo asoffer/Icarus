@@ -50,12 +50,8 @@ int Compile(frontend::FileName const &file_name) {
   diag = diagnostic::StreamingConsumer(stderr, src);
   compiler::ExecutableModule exec_mod;
   exec_mod.ProcessFromSource(src, diag);
-  auto *main_fn = exec_mod.main();
-
-  if (not main_fn) {
-    // TODO make this an actual error?
-    std::cerr << "No compiled module has a `main` function.\n";
-  }
+  if (diag.num_consumed() != 0) { return 1; }
+  auto *main_fn = ASSERT_NOT_NULL(exec_mod.main());
 
   // TODO All the functions? In all the modules?
   opt::RunAllOptimizations(main_fn);
