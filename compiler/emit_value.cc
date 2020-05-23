@@ -1071,6 +1071,9 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
 }
 
 ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
+  // TODO: Check the result of body verification.
+  if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
+
   std::vector<ir::StructField> fields;
   fields.reserve(node->fields().size());
   for (auto const &field : node->fields()) {

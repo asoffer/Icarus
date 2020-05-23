@@ -31,22 +31,7 @@ struct ExecutableModule : CompiledModule {
       ExtractJumps(&c.data().extraction_map_, node);
     }
 
-    // Do one pass of verification over constant declarations. Then come
-    // back a second time to handle the remaining.
-    // TODO this may be necessary in library modules too.
-    std::vector<ast::Node const *> deferred;
-    for (ast::Node const *node : nodes) {
-      if (auto const *decl = node->if_as<ast::Declaration>()) {
-        if (decl->flags() & ast::Declaration::f_IsConst) {
-          c.VerifyType(decl);
-          continue;
-        }
-      }
-      deferred.push_back(node);
-    }
-
-    for (ast::Node const *node : deferred) { c.VerifyType(node); }
-
+    c.VerifyAll(nodes);
     if (diag.num_consumed() > 0) { return; }
 
     ProcessExecutableBody(&c, nodes, main());

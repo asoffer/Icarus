@@ -282,7 +282,6 @@ type::QualType VerifyUninitialized(Compiler *compiler,
 
 }  // namespace
 
-// TODO set qualifiers correctly here.
 type::QualType Compiler::VerifyType(ast::Declaration const *node) {
   DEBUG_LOG("Declaration")("Verifying ", node->id());
 
@@ -316,6 +315,7 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
     } break;
     default: UNREACHABLE(node->DebugString());
   }
+
   data().set_qual_type(node, node_qual_type);
 
   if (node->id().empty()) {

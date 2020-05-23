@@ -27,7 +27,7 @@ struct LibraryModule : CompiledModule {
     for (ast::Node const *node : nodes) {
       ExtractJumps(&c.data().extraction_map_, node);
     }
-    for (ast::Node const *node : nodes) { c.VerifyType(node); }
+    c.VerifyAll(nodes);
     if (c.diag().num_consumed() > 0) { return; }
 
     for (ast::Node const *node : nodes) { c.EmitValue(node); }

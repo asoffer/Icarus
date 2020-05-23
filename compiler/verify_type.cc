@@ -366,7 +366,7 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
         node, type::QualType::Constant(
                   type::Func(std::move(params), std::move(output_type_vec))));
   } else {
-    return data().set_qual_type(node, VerifyBody(this, node));
+    return data().set_qual_type(node, ::compiler::VerifyBody(this, node));
   }
 }
 

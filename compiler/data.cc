@@ -85,6 +85,18 @@ type::QualType DependentComputedData::set_qual_type(ast::Expression const *expr,
   return r;
 }
 
+void DependentComputedData::CompleteType(ast::Expression const *expr,
+                                         bool success) {
+  if (auto iter = type_verification_results_.find(expr);
+      iter != type_verification_results_.end()) {
+    if (not success) { iter->second.MarkError(); }
+    return;
+  }
+  // Note: It is possible that we never find the type, because the original
+  // verification had an error.
+  if (parent_) { parent_->CompleteType(expr, success); }
+}
+
 LibraryModule *DependentComputedData::imported_module(ast::Import const *node) {
   auto iter = imported_modules_.find(node);
   if (iter != imported_modules_.end()) { return iter->second; }
@@ -118,6 +130,10 @@ bool DependentComputedData::cyclic_error(ast::Identifier const *id) const {
 
 void DependentComputedData::set_cyclic_error(ast::Identifier const *id) {
   cyclic_error_ids_.insert(id);
+}
+
+bool DependentComputedData::ShouldVerifyBody(ast::Node const *node) {
+  return body_verification_complete_.insert(node).second;
 }
 
 }  // namespace compiler

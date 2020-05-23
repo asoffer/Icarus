@@ -100,6 +100,8 @@ struct DependentComputedData {
   type::QualType set_qual_type(ast::Expression const *expr, type::QualType qt);
   type::QualType const *qual_type(ast::Expression const *expr) const;
 
+  void CompleteType(ast::Expression const *expr, bool success);
+
   void set_addr(ast::Declaration const *decl, ir::Reg addr) {
     addr_.emplace(decl, addr);
   }
@@ -217,6 +219,8 @@ struct DependentComputedData {
   bool cyclic_error(ast::Identifier const *id) const;
   void set_cyclic_error(ast::Identifier const *id);
 
+  bool ShouldVerifyBody(ast::Node const *node);
+
  private:
   // Stores the types of argument bound to the parameter with the given name.
   absl::flat_hash_map<std::string_view, type::Type const *> arg_type_;
@@ -237,6 +241,8 @@ struct DependentComputedData {
 
   // Colleciton of modules imported by this one.
   absl::flat_hash_map<ast::Import const *, LibraryModule *> imported_modules_;
+
+  absl::flat_hash_set<ast::Node const *> body_verification_complete_;
 
   struct DependentDataChild {
     DependentComputedData *parent = nullptr;

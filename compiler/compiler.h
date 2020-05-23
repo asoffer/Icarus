@@ -38,6 +38,7 @@ struct EmitCopyInitTag {};
 struct EmitMoveInitTag {};
 struct EmitValueTag {};
 struct VerifyTypeTag {};
+struct VerifyBodyTag {};
 struct EmitDestroyTag {};
 struct EmitDefaultInitTag {};
 struct EmitCopyAssignTag {};
@@ -69,6 +70,7 @@ struct Compiler
       ast::Visitor<EmitRefTag, ir::RegOr<ir::Addr>()>,
       ast::Visitor<EmitValueTag, ir::Value()>,
       ast::Visitor<VerifyTypeTag, type::QualType()>,
+      ast::Visitor<VerifyBodyTag, bool()>,
       type::Visitor<void(ir::Reg, EmitDestroyTag),
                     void(ir::Reg, EmitDefaultInitTag),
                     void(ir::RegOr<ir::Addr>, type::Typed<ir::Value> const &,
@@ -86,6 +88,9 @@ struct Compiler
   // Compiler state that needs to be tracked during the compilation of a single
   // function or jump, but otherwise does not need to be saved.
   struct TransientFunctionState {
+    // TODO: With a work queue we want to make sure the *right* transient state
+    // passes from one work item to the next.
+
     struct ScopeLandingState {
       ir::Label label;
       ir::BasicBlock *block;
@@ -122,15 +127,32 @@ struct Compiler
       std::vector<ast::Identifier const *> dependencies_;
     } dependency_chain;
 
+    std::queue<ast::Node const *> body_verification_queue;
+
     struct YieldedArguments {
       core::FnArgs<std::pair<ir::Value, type::QualType>> vals;
       ir::Label label;
     };
     std::vector<YieldedArguments> yields;
+
+   private:
   };
+
+  void VerifyAll(base::PtrSpan<ast::Node const> nodes) {
+    for (ast::Node const *node : nodes) { VerifyType(node); }
+    while (not state_.body_verification_queue.empty()) {
+      auto const *node = state_.body_verification_queue.front();
+      state_.body_verification_queue.pop();
+      if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
+    }
+  }
 
   type::QualType VerifyType(ast::Node const *node) {
     return ast::Visitor<VerifyTypeTag, type::QualType()>::Visit(node);
+  }
+
+  bool VerifyBody(ast::Node const *node) {
+    return ast::Visitor<VerifyBodyTag, bool()>::Visit(node);
   }
 
   ir::Value EmitValue(ast::Node const *node) {
@@ -228,6 +250,10 @@ struct Compiler
     return VerifyType(node);                                                   \
   }                                                                            \
                                                                                \
+  bool Visit(VerifyBodyTag, ast::name const *node) override {                  \
+    return VerifyBody(node);                                                   \
+  }                                                                            \
+                                                                               \
   ir::Value EmitValue(ast::name const *node);                                  \
   ir::Value Visit(EmitValueTag, ast::name const *node) override {              \
     return EmitValue(node);                                                    \
@@ -237,6 +263,9 @@ struct Compiler
 
   TransientFunctionState::YieldedArguments EmitBlockNode(
       ast::BlockNode const *node);
+
+  bool VerifyBody(ast::Expression const *node) { return true; /* TODO */ }
+  bool VerifyBody(ast::StructLiteral const *node);
 
   type::QualType VerifyConcreteFnLit(ast::FunctionLiteral const *node);
 

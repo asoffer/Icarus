@@ -70,7 +70,7 @@ struct TestModule : compiler::CompiledModule {
  protected:
   void ProcessNodes(base::PtrSpan<ast::Node const> nodes,
                     diagnostic::DiagnosticConsumer& diag) override {
-    for (ast::Node const* node : nodes) { compiler.VerifyType(node); }
+    compiler.VerifyAll(nodes);
     compiler.CompleteDeferredBodies();
   }
 
