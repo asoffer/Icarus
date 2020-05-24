@@ -14,7 +14,7 @@ namespace base {
 template <typename T>
 struct Global {
   explicit Global() {}
-  Global(T&& val) : data_(std::forward<T>(val)) {}
+  constexpr Global(T&& val) : data_(std::forward<T>(val)) {}
 
   // Forwards `guarded`s lock handle.
   auto lock() { return data_->lock(); }
@@ -27,8 +27,8 @@ struct Global {
 // them.
 template <typename T>
 struct Global<T const> {
-  explicit Global() {}
-  Global(T&& val) : data_(std::forward<T>(val)) {}
+  constexpr explicit Global() {}
+  constexpr Global(T&& val) : data_(std::forward<T>(val)) {}
 
   T const* lock() { return &*data_; }
 

@@ -249,6 +249,7 @@ cc_library(
     textual_hdrs = ["primitive.xmacro.h"],
     deps = [
         "//base:debug",
+        "//base:global",
         "//ir/value:string",
     ],
 )

@@ -30,23 +30,6 @@
 namespace compiler {
 namespace {
 
-template <typename Fn>
-void AddAdl(std::string_view id, type::Type const *t, Fn fn) {
-  absl::flat_hash_set<CompiledModule *> modules;
-  // TODO t->ExtractDefiningModules(&modules);
-
-  for (auto *mod : modules) {
-    auto decls = mod->ExportedDeclarations(id);
-
-    auto const &data = mod->data();
-    for (auto *d : decls) {
-      ASSIGN_OR(continue, auto qt, data.qual_type(d));
-      ASSIGN_OR(continue, auto &t, qt.type());
-      if (not fn(d)) { return; }
-    }
-  }
-}
-
 // NOTE: the order of these enumerators is meaningful and relied upon! They are
 // ordered from strongest relation to weakest.
 enum class Cmp { Order, Equality, None };

@@ -1,6 +1,7 @@
 #ifndef ICARUS_TYPE_PRIMITIVE_H
 #define ICARUS_TYPE_PRIMITIVE_H
 
+#include "base/global.h"
 #include "type/basic_type.h"
 #include "type/type.h"
 
@@ -26,35 +27,49 @@ struct Primitive : public Type {
   BasicType type_;
 };
 
-#define PRIMITIVE_MACRO(EnumName, name)                                        \
-  namespace internal {                                                         \
-  inline Primitive const EnumName##_Primitive{BasicType::EnumName};            \
-  }                                                                            \
-  inline constexpr Type const *EnumName = &internal::EnumName##_Primitive;
-#include "type/primitive.xmacro.h"
-#undef PRIMITIVE_MACRO
+namespace internal {
 
-// TODO lay these out adjacent in memory so the tests can be faster.
-inline bool IsIntegral(Type const *t) {
-  return t == Int8 or t == Int16 or t == Int32 or t == Int64 or t == Nat8 or
-         t == Nat16 or t == Nat32 or t == Nat64;
-}
+inline base::Global kPrimitiveArray = std::array{
+    Primitive(BasicType::Nat8),    Primitive(BasicType::Nat16),
+    Primitive(BasicType::Nat32),   Primitive(BasicType::Nat64),
+    Primitive(BasicType::Int8),    Primitive(BasicType::Int16),
+    Primitive(BasicType::Int32),   Primitive(BasicType::Int64),
+    Primitive(BasicType::Float32), Primitive(BasicType::Float64),
+    Primitive(BasicType::Bool),    Primitive(BasicType::Type_),
+    Primitive(BasicType::NullPtr), Primitive(BasicType::EmptyArray),
+    Primitive(BasicType::Scope),   Primitive(BasicType::Block),
+    Primitive(BasicType::Module),  Primitive(BasicType::ByteView),
+    Primitive(BasicType::Label),
+};
 
-inline bool IsUnsignedNumeric(Type const *t) {
-  return t == Nat8 or t == Nat16 or t == Nat32 or t == Nat64;
-}
+}  // namespace internal
 
+inline Type const *Nat8       = &(*internal::kPrimitiveArray)[0];
+inline Type const *Nat16      = &(*internal::kPrimitiveArray)[1];
+inline Type const *Nat32      = &(*internal::kPrimitiveArray)[2];
+inline Type const *Nat64      = &(*internal::kPrimitiveArray)[3];
+inline Type const *Int8       = &(*internal::kPrimitiveArray)[4];
+inline Type const *Int16      = &(*internal::kPrimitiveArray)[5];
+inline Type const *Int32      = &(*internal::kPrimitiveArray)[6];
+inline Type const *Int64      = &(*internal::kPrimitiveArray)[7];
+inline Type const *Float32    = &(*internal::kPrimitiveArray)[8];
+inline Type const *Float64    = &(*internal::kPrimitiveArray)[9];
+inline Type const *Bool       = &(*internal::kPrimitiveArray)[10];
+inline Type const *Type_      = &(*internal::kPrimitiveArray)[11];
+inline Type const *NullPtr    = &(*internal::kPrimitiveArray)[12];
+inline Type const *EmptyArray = &(*internal::kPrimitiveArray)[13];
+inline Type const *Scope      = &(*internal::kPrimitiveArray)[14];
+inline Type const *Block      = &(*internal::kPrimitiveArray)[15];
+inline Type const *Module     = &(*internal::kPrimitiveArray)[16];
+inline Type const *ByteView   = &(*internal::kPrimitiveArray)[17];
+inline Type const *Label      = &(*internal::kPrimitiveArray)[18];
+
+inline bool IsNumeric(Type const *t) { return t >= Nat8 and t <= Float64; }
+inline bool IsIntegral(Type const *t) { return t >= Nat8 and t <= Int64; }
+inline bool IsUnsignedNumeric(Type const *t) { return t >= Nat8 and t <= Nat64; }
+inline bool IsSignedNumeric(Type const *t) { return t >= Int8 and t <= Int64; }
 inline bool IsFloatingPoint(Type const *t) {
-  return t == Float32 or t == Float64;
-}
-
-inline bool IsSignedNumeric(Type const *t) {
-  return t == Int8 or t == Int16 or t == Int32 or t == Int64 or
-         IsFloatingPoint(t);
-}
-
-inline bool IsNumeric(Type const *t) {
-  return IsIntegral(t) or IsFloatingPoint(t);
+  return t >= Float32 and t <= Float64;
 }
 
 }  // namespace type

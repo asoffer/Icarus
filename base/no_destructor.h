@@ -8,7 +8,7 @@ template <typename T>
 struct alignas(T) NoDestructor {
  public:
   template <typename... Args>
-  NoDestructor(Args &&... args) {
+  constexpr NoDestructor(Args &&... args) {
     new (buf_) T(std::forward<Args>(args)...);
   }
 
