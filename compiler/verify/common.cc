@@ -53,7 +53,7 @@ Compiler::VerifyFnArgs(
 type::QualType Compiler::VerifyUnaryOverload(char const *symbol,
                                              ast::Expression const *node,
                                              type::Type const *operand_type) {
-  type::Quals quals = type::Quals::All();
+  type::Quals quals = type::Quals::All() & ~type::Quals::Const();
   absl::flat_hash_set<type::Callable const *> member_types;
 
   module::ForEachDeclTowardsRoot(
@@ -70,13 +70,11 @@ type::QualType Compiler::VerifyUnaryOverload(char const *symbol,
   std::vector<type::Typed<ir::Value>> pos_args;
   pos_args.emplace_back(ir::Value(), operand_type);
 
-  // TODO: This could fail?
-  return data().set_qual_type(
-      node,
-      type::QualType(type::MakeOverloadSet(std::move(member_types))
-                         ->return_types(core::FnArgs<type::Typed<ir::Value>>(
-                             std::move(pos_args), {})),
-                     quals));
+  if (member_types.empty()) { return type::QualType::Error(); }
+  return type::QualType(type::MakeOverloadSet(std::move(member_types))
+                            ->return_types(core::FnArgs<type::Typed<ir::Value>>(
+                                std::move(pos_args), {})),
+                        quals);
 }
 
 type::QualType Compiler::VerifyBinaryOverload(char const *symbol,

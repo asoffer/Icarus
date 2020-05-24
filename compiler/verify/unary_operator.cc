@@ -17,11 +17,12 @@ struct InvalidUnaryOperatorCall {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
-            "Invalid call to unary operator with argument type `%s`",
+            "Invalid call to unary operator (%s) with argument type `%s`", op,
             type->to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
+  char const * op;
   type::Type const *type;
   frontend::SourceRange range;
 };
@@ -146,16 +147,12 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
       qt = type::QualType::Constant(type::Type_);
     } break;
     case frontend::Operator::Eval: {
+      qt = type::QualType::Constant(operand_type);
       if (not operand_qt.constant()) {
-        // TODO here you could return a correct type and just have there
-        // be an error regarding constness. When you do node probably worth a
-        // full pass over all verification code.
         diag().Consume(NonConstantEvaluation{
             .range = node->operand()->range(),
         });
-        return type::QualType::Error();
-      } else {
-        qt = type::QualType::Constant(operand_type);
+        qt.MarkError();
       }
     } break;
     case frontend::Operator::Which: {
@@ -211,10 +208,18 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
         });
         return type::QualType::Error();
       } else if (operand_type->is<type::Struct>()) {
-        // TODO do you ever want to support overlaods that accepts constants?
-        qt = VerifyUnaryOverload("-", node, operand_qt.type());
+        ASSIGN_OR(
+            {
+              diag().Consume(diagnostic::InvalidUnaryOperatorOverload{
+                  .op    = "-",
+                  .range = node->range(),
+              });
+              return type::QualType::Error();
+            },
+            qt, VerifyUnaryOverload("-", node, operand_qt.type()));
       } else {
         diag().Consume(InvalidUnaryOperatorCall{
+            .op    = "-",
             .type  = operand_type,
             .range = node->range(),
         });
@@ -226,10 +231,18 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
         qt = type::QualType(operand_type,
                             operand_qt.quals() & type::Quals::Const());
       } else if (operand_type->is<type::Struct>()) {
-        // TODO do you ever want to support overlaods that accepts constants?
-        return VerifyUnaryOverload("-", node, operand_qt.type());
+        ASSIGN_OR(
+            {
+              diag().Consume(diagnostic::InvalidUnaryOperatorOverload{
+                  .op    = "!",
+                  .range = node->range(),
+              });
+              return type::QualType::Error();
+            },
+            qt, VerifyUnaryOverload("!", node, operand_qt.type()));
       } else {
         diag().Consume(InvalidUnaryOperatorCall{
+            .op    = "!",
             .type  = operand_type,
             .range = node->range(),
         });

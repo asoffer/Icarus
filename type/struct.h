@@ -37,7 +37,11 @@ struct Struct : public Type {
     std::vector<ast::Hashtag> hashtags_;
   };
 
-  Struct(module::BasicModule const *mod);
+  struct Options {
+    uint8_t is_copyable : 1;
+    uint8_t is_movable : 1;
+  };
+  Struct(module::BasicModule const *mod, Options options);
   void AppendFields(std::vector<Field> fields);
 
   ~Struct() override {}

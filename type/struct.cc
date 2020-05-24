@@ -9,12 +9,13 @@
 
 namespace type {
 
-Struct::Struct(module::BasicModule const *mod)
+Struct::Struct(module::BasicModule const *mod, Struct::Options options)
     : Type(Type::Flags{.is_default_initializable = 1,
-                       .is_copyable              = 1,
-                       .is_movable               = 1,
+                       .is_copyable              = options.is_copyable,
+                       .is_movable               = options.is_movable,
                        .has_destructor           = 0}),
-      mod_(mod), complete_(false) {}
+      mod_(mod),
+      complete_(false) {}
 
 void Struct::AppendFields(std::vector<Struct::Field> fields) {
   complete_ = true;

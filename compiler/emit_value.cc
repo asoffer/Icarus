@@ -1123,7 +1123,13 @@ ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
     return ir::Value(static_cast<type::Type const *>(s));
   }
 
-  type::Struct *s = new type::Struct(data().module());
+  type::Struct *s = new type::Struct(
+      data().module(), {
+                           .is_copyable = not node->contains_hashtag(
+                               ast::Hashtag(ast::Hashtag::Builtin::Uncopyable)),
+                           .is_movable = not node->contains_hashtag(
+                               ast::Hashtag(ast::Hashtag::Builtin::Immovable)),
+                       });
   data().set_struct(node, s);
   if (state_.must_complete) {
     state_.work_queue.emplace(node,

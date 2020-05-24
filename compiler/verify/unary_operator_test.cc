@@ -36,7 +36,23 @@ TEST(Copy, Success) {
   }
 }
 
-// TODO: Test error message for an uncopyable type.
+TEST(Copy, Uncopyable) {
+  test::TestModule mod;
+  mod.AppendCode(R"(
+  T ::= #{uncopyable} struct {}
+  t: T
+  )");
+  auto const *id      = mod.Append<ast::Identifier>("t");
+  auto const *id_qt   = mod.data().qual_type(id);
+  auto const *expr    = mod.Append<ast::UnaryOperator>("copy t");
+  auto const *expr_qt = mod.data().qual_type(expr);
+  ASSERT_NE(expr_qt, nullptr);
+  ASSERT_NE(id_qt, nullptr);
+  EXPECT_EQ(*expr_qt, type::QualType(id_qt->type(),
+                                     id_qt->quals() & ~type::Quals::Ref()));
+  EXPECT_THAT(mod.consumer.diagnostics(),
+              UnorderedElementsAre(Pair("type-error", "uncopyable-type")));
+}
 
 TEST(Move, Success) {
   {
@@ -61,7 +77,23 @@ TEST(Move, Success) {
   }
 }
 
-// TODO: Test error message for an immovable type.
+TEST(Move, Immovable) {
+  test::TestModule mod;
+  mod.AppendCode(R"(
+  T ::= #{immovable} struct {}
+  t: T
+  )");
+  auto const *id      = mod.Append<ast::Identifier>("t");
+  auto const *id_qt   = mod.data().qual_type(id);
+  auto const *expr    = mod.Append<ast::UnaryOperator>("move t");
+  auto const *expr_qt = mod.data().qual_type(expr);
+  ASSERT_NE(expr_qt, nullptr);
+  ASSERT_NE(id_qt, nullptr);
+  EXPECT_EQ(*expr_qt, type::QualType(id_qt->type(),
+                                     id_qt->quals() & ~type::Quals::Ref()));
+  EXPECT_THAT(mod.consumer.diagnostics(),
+              UnorderedElementsAre(Pair("type-error", "immovable-type")));
+}
 
 TEST(BufferPointer, Success) {
   {
@@ -120,7 +152,8 @@ TEST(Eval, NonConstant) {
   )");
   auto const *expr = mod.Append<ast::UnaryOperator>("`n");
   auto const *qt   = mod.data().qual_type(expr);
-  ASSERT_EQ(qt, nullptr);
+  ASSERT_NE(qt, nullptr);
+  EXPECT_EQ(*qt, type::QualType::Constant(type::Int64));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(
                   Pair("evaluation-error", "non-constant-evaluation")));
@@ -349,8 +382,31 @@ TEST(Sub, InvalidType) {
   }
 }
 
+TEST(Sub, Overload) {
+  test::TestModule mod;
+  mod.AppendCode(R"(
+    S ::= struct {}
+    (-) ::= (s: S) -> int64 { return 0 }
+    )");
+  auto const *expr = mod.Append<ast::UnaryOperator>("-S.{}");
+  auto const *qt   = mod.data().qual_type(expr);
+  ASSERT_NE(qt, nullptr);
+  EXPECT_EQ(*qt, type::QualType::NonConstant(type::Int64));
+  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+}
 
-// TODO: tests for Sub operator overloading
+TEST(Sub, MissingOverload) {
+  test::TestModule mod;
+  mod.AppendCode(R"(
+    S ::= struct {}
+    )");
+  auto const *expr = mod.Append<ast::UnaryOperator>("-S.{}");
+  auto const *qt   = mod.data().qual_type(expr);
+  ASSERT_EQ(qt, nullptr);
+  EXPECT_THAT(mod.consumer.diagnostics(),
+              UnorderedElementsAre(
+                  Pair("type-error", "invalid-unary-operator-overload")));
+}
 
 TEST(Not, Bool) {
   {
@@ -434,7 +490,31 @@ TEST(Not, InvalidType) {
   }
 }
 
-// TODO: tests for Not operator overloading
+TEST(Not, Overload) {
+  test::TestModule mod;
+  mod.AppendCode(R"(
+    S ::= struct {}
+    (!) ::= (s: S) -> int64 { return 0 }
+    )");
+  auto const *expr = mod.Append<ast::UnaryOperator>("!S.{}");
+  auto const *qt   = mod.data().qual_type(expr);
+  ASSERT_NE(qt, nullptr);
+  EXPECT_EQ(*qt, type::QualType::NonConstant(type::Int64));
+  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+}
+
+TEST(Not, MissingOverload) {
+  test::TestModule mod;
+  mod.AppendCode(R"(
+    S ::= struct {}
+    )");
+  auto const *expr = mod.Append<ast::UnaryOperator>("!S.{}");
+  auto const *qt   = mod.data().qual_type(expr);
+  ASSERT_EQ(qt, nullptr);
+  EXPECT_THAT(mod.consumer.diagnostics(),
+              UnorderedElementsAre(
+                  Pair("type-error", "invalid-unary-operator-overload")));
+}
 
 }  // namespace
 }  // namespace compiler
