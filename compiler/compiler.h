@@ -136,7 +136,7 @@ struct Compiler
     };
     std::vector<YieldedArguments> yields;
 
-   private:
+    bool must_complete = true;
   };
 
   void VerifyAll(base::PtrSpan<ast::Node const> nodes) {
@@ -231,7 +231,7 @@ struct Compiler
     return val.template get<T>();
   }
   base::expected<ir::Value, interpretter::EvaluationFailure> Evaluate(
-      type::Typed<ast::Expression const *> expr);
+      type::Typed<ast::Expression const *> expr, bool must_complete = true);
 
   std::pair<core::Params<type::QualType>, ConstantBinding>
   ComputeParamsFromArgs(

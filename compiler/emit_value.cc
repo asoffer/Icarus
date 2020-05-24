@@ -658,7 +658,8 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
       if (node->IsCustomInitialized()) {
         DEBUG_LOG("EmitValueDeclaration")
         ("Computing slot with ", node->init_val()->DebugString());
-        auto maybe_val = Evaluate(type::Typed(node->init_val(), t));
+        auto maybe_val =
+            Evaluate(type::Typed(node->init_val(), t), state_.must_complete);
         if (not maybe_val) {
           // TODO we reserved a slot and haven't cleaned it up. Do we care?
           NOT_YET("Found errors but haven't handled them.",
@@ -1120,13 +1121,15 @@ ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
 
   if (type::Struct *s = data().get_struct(node)) {
     return ir::Value(static_cast<type::Type const *>(s));
-  } else {
-    s = new type::Struct(data().module());
-    data().set_struct(node, s);
+  }
+
+  type::Struct *s = new type::Struct(data().module());
+  data().set_struct(node, s);
+  if (state_.must_complete) {
     state_.work_queue.emplace(node,
                               TransientFunctionState::WorkType::CompleteStruct);
-    return ir::Value(static_cast<type::Type const *>(s));
   }
+  return ir::Value(static_cast<type::Type const *>(s));
 }
 
 ir::Value Compiler::EmitValue(ast::ParameterizedStructLiteral const *node) {
@@ -1282,9 +1285,16 @@ ir::Value Compiler::EmitValue(ast::Unop const *node) {
       if (not maybe_val) { NOT_YET(); }
       return *maybe_val;
     }
-    case frontend::Operator::Mul:
-      return ir::Value(builder().Ptr(
+    case frontend::Operator::Mul: {
+      state_.must_complete = false;
+
+      ir::Value value(builder().Ptr(
           EmitValue(node->operand()).get<ir::RegOr<type::Type const *>>()));
+
+      state_.must_complete = true;
+
+      return value;
+    } break;
     case frontend::Operator::At: {
       auto *t = type_of(node);
       return builder().Load(
