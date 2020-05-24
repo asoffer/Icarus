@@ -67,7 +67,7 @@ inline Type const *Label      = &(*internal::kPrimitiveArray)[18];
 inline bool IsNumeric(Type const *t) { return t >= Nat8 and t <= Float64; }
 inline bool IsIntegral(Type const *t) { return t >= Nat8 and t <= Int64; }
 inline bool IsUnsignedNumeric(Type const *t) { return t >= Nat8 and t <= Nat64; }
-inline bool IsSignedNumeric(Type const *t) { return t >= Int8 and t <= Int64; }
+inline bool IsSignedNumeric(Type const *t) { return t >= Int8 and t <= Float64; }
 inline bool IsFloatingPoint(Type const *t) {
   return t >= Float32 and t <= Float64;
 }

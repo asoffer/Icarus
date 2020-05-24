@@ -1084,8 +1084,13 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
 }
 
 void Compiler::CompleteStruct(ast::StructLiteral const *node) {
+  DEBUG_LOG("struct")("Completing struct-literal emission: ", node);
+
   type::Struct *s = data().get_struct(node);
-  if (s->complete_) { return; }
+  if (s->complete_) {
+    DEBUG_LOG("struct")("Already complete, exiting:", node);
+    return;
+  }
 
   ir::CompiledFn fn(type::Func({}, {}),
                     core::Params<type::Typed<ast::Declaration const *>>{});
@@ -1111,26 +1116,49 @@ void Compiler::CompleteStruct(ast::StructLiteral const *node) {
     builder().ReturnJump();
   }
 
+  // TODO: What if execution fails.
   fn.WriteByteCode();
   interpretter::Execute(std::move(fn));
+  DEBUG_LOG("struct")
+  ("Completed ", node->DebugString(), " which is a struct ", *s, " with ",
+   s->fields().size(), " field(s).");
 }
 
 ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
-  // TODO: Check the result of body verification.
-  if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
+  DEBUG_LOG("struct")
+  ("Starting struct-literal emission: ", node,
+   state_.must_complete ? " (must complete)" : " (need not complete)");
 
   if (type::Struct *s = data().get_struct(node)) {
     return ir::Value(static_cast<type::Type const *>(s));
   }
 
   type::Struct *s = new type::Struct(
-      data().module(), {
-                           .is_copyable = not node->contains_hashtag(
-                               ast::Hashtag(ast::Hashtag::Builtin::Uncopyable)),
-                           .is_movable = not node->contains_hashtag(
-                               ast::Hashtag(ast::Hashtag::Builtin::Immovable)),
-                       });
+      data().module(), {.is_copyable = not node->contains_hashtag(
+                            ast::Hashtag(ast::Hashtag::Builtin::Uncopyable)),
+                        .is_movable = not node->contains_hashtag(
+                            ast::Hashtag(ast::Hashtag::Builtin::Immovable))});
+
+  DEBUG_LOG("struct")("Allocating a new struct ", s, " for ", node);
   data().set_struct(node, s);
+
+  // Note: VerifyBody may end up triggering EmitValue calls for member types
+  // that depend on this incomplete type. For this reason it is important that
+  // we have already allocated the struct so we do not get a double-allocation.
+  //
+  // The process, as you can see above is to
+  // 1. Check if it has already been allocated. Return if it has been.
+  // 2. Allocated ourselves.
+  // 3. Start body verification.
+  // 4. Schedule completion.
+  //
+  // Notably, steps 1 and 2 must not be separated. Moreover, because body
+  // verification could end up calling this function again, we must "set up
+  // guards" (i.e., steps 1 and 2) before step 3 runs.
+  //
+  // TODO: Check the result of body verification.
+  if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
+
   if (state_.must_complete) {
     state_.work_queue.emplace(node,
                               TransientFunctionState::WorkType::CompleteStruct);
