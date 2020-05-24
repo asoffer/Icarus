@@ -206,7 +206,7 @@ void Switch::Initialize(Scope *scope) {
 
 void Terminal::Initialize(Scope *scope) { scope_ = scope; }
 
-void Unop::Initialize(Scope *scope) {
+void UnaryOperator::Initialize(Scope *scope) {
   scope_ = scope;
   operand_->Initialize(scope);
 }

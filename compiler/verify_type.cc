@@ -47,81 +47,6 @@ void AddAdl(std::string_view id, type::Type const *t, Fn fn) {
   }
 }
 
-type::QualType VerifyUnaryOverload(Compiler *c, char const *symbol,
-                                   ast::Expression const *node,
-                                   type::Type const *operand_type) {
-  type::Quals quals = type::Quals::All();
-  absl::flat_hash_set<type::Callable const *> member_types;
-
-  auto extract_callable_type = [&](ast::Expression const *expr) {
-    ASSIGN_OR(return false, auto qt, c->qual_type_of(expr));
-    if (auto *c = qt.type()->if_as<type::Callable>()) {
-      quals &= qt.quals();
-      auto [iter, inserted] = member_types.insert(c);
-      // TODO currently because of ADL, it's possible to have overload
-      // sets that want to have the same type appear more than once. I
-      // don't yet know how I want to deal with this.
-      if (not inserted) { NOT_YET(); }
-      member_types.insert(c);
-    } else {
-      NOT_YET();
-    }
-    return true;
-  };
-
-  module::ForEachDeclTowardsRoot(node->scope(), symbol, extract_callable_type);
-  AddAdl(symbol, operand_type, extract_callable_type);
-
-  std::vector<type::Typed<ir::Value>> pos_args;
-  pos_args.emplace_back(ir::Value(), operand_type);
-
-  return c->data().set_qual_type(
-      node,
-      type::QualType(type::MakeOverloadSet(std::move(member_types))
-                         ->return_types(core::FnArgs<type::Typed<ir::Value>>(
-                             std::move(pos_args), {})),
-                     quals));
-}
-
-type::QualType VerifyBinaryOverload(Compiler *c, char const *symbol,
-                                    ast::Expression const *node,
-                                    type::Type const *lhs_type,
-                                    type::Type const *rhs_type) {
-  type::Quals quals = type::Quals::All();
-  absl::flat_hash_set<type::Callable const *> member_types;
-
-  auto extract_callable_type = [&](ast::Expression const *expr) {
-    ASSIGN_OR(return false, auto qt, c->qual_type_of(expr));
-    if (auto *c = qt.type()->if_as<type::Callable>()) {
-      quals &= qt.quals();
-      auto [iter, inserted] = member_types.insert(c);
-      // TODO currently because of ADL, it's possible to have overload
-      // sets that want to have the same type appear more than once. I
-      // don't yet know how I want to deal with this.
-      if (not inserted) { NOT_YET(); }
-      member_types.insert(c);
-    } else {
-      NOT_YET();
-    }
-    return true;
-  };
-
-  module::ForEachDeclTowardsRoot(node->scope(), symbol, extract_callable_type);
-  AddAdl(symbol, lhs_type, extract_callable_type);
-  AddAdl(symbol, rhs_type, extract_callable_type);
-
-  std::vector<type::Typed<ir::Value>> pos_args;
-  pos_args.emplace_back(ir::Value(), lhs_type);
-  pos_args.emplace_back(ir::Value(), rhs_type);
-
-  return c->data().set_qual_type(
-      node,
-      type::QualType(type::MakeOverloadSet(std::move(member_types))
-                         ->return_types(core::FnArgs<type::Typed<ir::Value>>(
-                             std::move(pos_args), {})),
-                     quals));
-}
-
 // NOTE: the order of these enumerators is meaningful and relied upon! They are
 // ordered from strongest relation to weakest.
 enum class Cmp { Order, Equality, None };
@@ -457,7 +382,7 @@ type::QualType Compiler::VerifyType(ast::Binop const *node) {
       }                                                                        \
     } else {                                                                   \
       /* TODO Support calling with constants */                                \
-      return VerifyBinaryOverload(this, symbol, node, lhs_qual_type.type(),    \
+      return VerifyBinaryOverload(symbol, node, lhs_qual_type.type(),          \
                                   rhs_qual_type.type());                       \
     }                                                                          \
   } while (false)
@@ -504,7 +429,7 @@ type::QualType Compiler::VerifyType(ast::Binop const *node) {
         }
       } else {
         // TODO support calling with constants.
-        return VerifyBinaryOverload(this, "+", node, lhs_qual_type.type(),
+        return VerifyBinaryOverload("+", node, lhs_qual_type.type(),
                                     rhs_qual_type.type());
       }
     } break;
@@ -525,7 +450,7 @@ type::QualType Compiler::VerifyType(ast::Binop const *node) {
         }
       } else {
         // TODO support calling with constants.
-        return VerifyBinaryOverload(this, "+=", node, lhs_qual_type.type(),
+        return VerifyBinaryOverload("+=", node, lhs_qual_type.type(),
                                     rhs_qual_type.type());
       }
     } break;
@@ -703,38 +628,6 @@ static type::QualType VerifyCall(
   UNREACHABLE();
 }
 
-type::Typed<ir::Value> Compiler::EvaluateIfConstant(ast::Expression const *expr,
-                                                    type::QualType qt) {
-  if (qt.constant()) {
-    DEBUG_LOG("EvaluateIfConstant")
-    ("Evaluating constant: ", expr->DebugString());
-    auto maybe_val = Evaluate(type::Typed(expr, qt.type()));
-    if (not maybe_val) { NOT_YET(); }
-    return type::Typed<ir::Value>(*maybe_val, qt.type());
-  } else {
-    return type::Typed<ir::Value>(ir::Value(), qt.type());
-  }
-}
-
-std::optional<core::FnArgs<type::Typed<ir::Value>, std::string_view>>
-Compiler::VerifyFnArgs(
-    core::FnArgs<ast::Expression const *, std::string_view> const &args) {
-  bool err      = false;
-  auto arg_vals = args.Transform([&](ast::Expression const *expr) {
-    auto expr_qual_type = VerifyType(expr);
-    err |= not expr_qual_type.ok();
-    if (err) {
-      DEBUG_LOG("VerifyFnArgs")("Error with: ", expr->DebugString());
-      return type::Typed<ir::Value>(ir::Value(), nullptr);
-    }
-    DEBUG_LOG("VerifyFnArgs")("constant: ", expr->DebugString());
-    return EvaluateIfConstant(expr, expr_qual_type);
-  });
-
-  if (err) { return std::nullopt; }
-  return arg_vals;
-}
-
 type::QualType Compiler::VerifyType(ast::Call const *node) {
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto arg_vals, VerifyFnArgs(node->args()));
@@ -798,7 +691,7 @@ type::QualType Compiler::VerifyType(ast::Cast const *node) {
   auto const *t = *maybe_type;
   if (t->is<type::Struct>()) {
     // TODO do you ever want to support overlaods that accepts constants?
-    return VerifyUnaryOverload(this, "as", node, expr_qual_type.type());
+    return VerifyUnaryOverload("as", node, expr_qual_type.type());
   } else {
     if (not type::CanCast(expr_qual_type.type(), t)) {
       diag().Consume(diagnostic::InvalidCast{
@@ -906,7 +799,7 @@ not_blocks:
             lhs_qual_type.type()->is<type::Struct>()) {
           // TODO overwriting type a bunch of times?
           // TODO support calling with constants.
-          return VerifyBinaryOverload(this, token, node, lhs_qual_type.type(),
+          return VerifyBinaryOverload( token, node, lhs_qual_type.type(),
                                       rhs_qual_type.type());
         }
 
@@ -1466,143 +1359,6 @@ type::QualType Compiler::VerifyType(ast::Switch const *node) {
 type::QualType Compiler::VerifyType(ast::Terminal const *node) {
   return data().set_qual_type(
       node, type::QualType::Constant(type::Prim(node->basic_type())));
-}
-
-type::QualType Compiler::VerifyType(ast::Unop const *node) {
-  ASSIGN_OR(return type::QualType::Error(), auto result,
-                   VerifyType(node->operand()));
-  auto *operand_type = result.type();
-
-  switch (node->op()) {
-    case frontend::Operator::Copy:
-      if (not operand_type->IsCopyable()) {
-        NOT_YET("log an error. not copyable");
-      }
-      // TODO Are copies always consts?
-      return data().set_qual_type(node,
-                                  type::QualType(operand_type, result.quals()));
-    case frontend::Operator::Move:
-      if (not operand_type->IsMovable()) {
-        NOT_YET("log an error. not movable");
-      }
-      // TODO Are copies always consts?
-      return data().set_qual_type(node,
-                                  type::QualType(operand_type, result.quals()));
-    case frontend::Operator::BufPtr:
-      return data().set_qual_type(node,
-                                  type::QualType(operand_type, result.quals()));
-    case frontend::Operator::TypeOf:
-      return data().set_qual_type(node,
-                                  type::QualType(operand_type, result.quals()));
-    case frontend::Operator::Eval:
-      if (not result.constant()) {
-        // TODO here you could return a correct type and just have there
-        // be an error regarding constness. When you do node probably worth a
-        // full pass over all verification code.
-        diag().Consume(diagnostic::NonConstantEvaluation{
-            .range = node->operand()->range(),
-        });
-        return type::QualType::Error();
-      } else {
-        return data().set_qual_type(
-            node, type::QualType(operand_type, result.quals()));
-      }
-    case frontend::Operator::Which:
-      if (not operand_type->is<type::Variant>()) {
-        diag().Consume(diagnostic::WhichNonVariant{
-            .type  = operand_type,
-            .range = node->range(),
-        });
-      }
-      return data().set_qual_type(node,
-                                  type::QualType(type::Type_, result.quals()));
-    case frontend::Operator::At:
-      if (operand_type->is<type::Pointer>()) {
-        return data().set_qual_type(
-            node, type::QualType(operand_type->as<type::Pointer>().pointee(),
-                                 result.quals()));
-      } else {
-        diag().Consume(diagnostic::DereferencingNonPointer{
-            .type  = operand_type,
-            .range = node->range(),
-        });
-        return type::QualType::Error();
-      }
-    case frontend::Operator::And:
-      if ((result.quals() & type::Quals::Ref()) == type::Quals::Ref()) {
-        result = type::QualType(type::Ptr(operand_type), result.quals());
-      } else {
-        diag().Consume(diagnostic::NonAddressableExpression{
-            .range = node->range(),
-        });
-        result = type::QualType::Error();
-      }
-      return data().set_qual_type(node, result);
-    case frontend::Operator::Mul:
-      if (operand_type == type::Type_) {
-        return data().set_qual_type(
-            node, type::QualType(type::Type_, type::Quals::Const()));
-      } else {
-        NOT_YET("log an error, ", operand_type->to_string(),
-                node->DebugString());
-        return type::QualType::Error();
-      }
-    case frontend::Operator::Sub:
-      if (type::IsNumeric(operand_type)) {
-        return data().set_qual_type(
-            node, type::QualType(operand_type,
-                                 result.quals() & type::Quals::Const()));
-      } else if (operand_type->is<type::Struct>()) {
-        // TODO do you ever want to support overlaods that accepts constants?
-        return VerifyUnaryOverload(this, "-", node, result.type());
-      }
-      NOT_YET();
-      return type::QualType::Error();
-    case frontend::Operator::Not:
-      if (operand_type == type::Bool or operand_type->is<type::Enum>() or
-          operand_type->is<type::Flags>()) {
-        return data().set_qual_type(
-            node, type::QualType(operand_type,
-                                 result.quals() & type::Quals::Const()));
-      }
-      if (operand_type->is<type::Struct>()) {
-        // TODO do you ever want to support overlaods that accepts constants?
-        return VerifyUnaryOverload(this, "-", node, result.type());
-      } else {
-        NOT_YET("log an error");
-        return type::QualType::Error();
-      }
-    case frontend::Operator::Needs:
-      if (operand_type != type::Bool) {
-        diag().Consume(diagnostic::PreconditionNeedsBool{
-            .type  = operand_type,
-            .range = node->operand()->range(),
-        });
-      }
-      if (not result.constant()) { NOT_YET(); }
-      return data().set_qual_type(node, type::QualType::Constant(type::Void()));
-    case frontend::Operator::Ensure:
-      if (operand_type != type::Bool) {
-        diag().Consume(diagnostic::PostconditionNeedsBool{
-            .type  = operand_type,
-            .range = node->operand()->range(),
-        });
-      }
-      if (not result.constant()) { NOT_YET(); }
-      return data().set_qual_type(node, type::QualType::Constant(type::Void()));
-    case frontend::Operator::VariadicPack: {
-      if (not result.constant()) { NOT_YET("Log an error"); }
-      // TODO could be a type, or a function returning a ty
-      if (result.type() == type::Type_) {
-        return data().set_qual_type(node,
-                                    type::QualType::Constant(type::Type_));
-      } else if (result.type()->is<type::Function>()) {
-        NOT_YET();
-      }
-      NOT_YET(*node);
-    }
-    default: UNREACHABLE(*node);
-  }
 }
 
 }  // namespace compiler

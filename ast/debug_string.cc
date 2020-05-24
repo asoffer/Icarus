@@ -472,7 +472,7 @@ void Terminal::DebugStrAppend(std::string *out, size_t indent) const {
   UNREACHABLE(static_cast<int>(basic_type()));
 }
 
-void Unop::DebugStrAppend(std::string *out, size_t indent) const {
+void UnaryOperator::DebugStrAppend(std::string *out, size_t indent) const {
   if (op() == frontend::Operator::TypeOf) {
     absl::StrAppend(out, "(");
     operand()->DebugStrAppend(out, indent);

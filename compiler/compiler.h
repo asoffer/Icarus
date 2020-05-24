@@ -303,8 +303,8 @@ struct Compiler
   ir::RegOr<ir::Addr> Visit(EmitRefTag, ast::Index const *node) override {
     return EmitRef(node);
   }
-  ir::RegOr<ir::Addr> EmitRef(ast::Unop const *node);
-  ir::RegOr<ir::Addr> Visit(EmitRefTag, ast::Unop const *node) override {
+  ir::RegOr<ir::Addr> EmitRef(ast::UnaryOperator const *node);
+  ir::RegOr<ir::Addr> Visit(EmitRefTag, ast::UnaryOperator const *node) override {
     return EmitRef(node);
   }
 
@@ -369,8 +369,8 @@ struct Compiler
              type::Typed<ir::Reg> reg) override {
     return EmitMoveInit(node, reg);
   }
-  void EmitMoveInit(ast::Unop const *node, type::Typed<ir::Reg> reg);
-  void Visit(EmitMoveInitTag, ast::Unop const *node,
+  void EmitMoveInit(ast::UnaryOperator const *node, type::Typed<ir::Reg> reg);
+  void Visit(EmitMoveInitTag, ast::UnaryOperator const *node,
              type::Typed<ir::Reg> reg) override {
     return EmitMoveInit(node, reg);
   }
@@ -388,8 +388,8 @@ struct Compiler
              type::Typed<ir::Reg> reg) override {
     return EmitCopyInit(node, reg);
   }
-  void EmitCopyInit(ast::Unop const *node, type::Typed<ir::Reg> reg);
-  void Visit(EmitCopyInitTag, ast::Unop const *node,
+  void EmitCopyInit(ast::UnaryOperator const *node, type::Typed<ir::Reg> reg);
+  void Visit(EmitCopyInitTag, ast::UnaryOperator const *node,
              type::Typed<ir::Reg> reg) override {
     return EmitCopyInit(node, reg);
   }
@@ -400,12 +400,17 @@ struct Compiler
  private:
   void CompleteStruct(ast::StructLiteral const *node);
 
-  type::Typed<ir::Value> EvaluateIfConstant(ast::Expression const *expr,
-                                            type::QualType qt);
-
   std::optional<core::FnArgs<type::Typed<ir::Value>, std::string_view>>
   VerifyFnArgs(
       core::FnArgs<ast::Expression const *, std::string_view> const &args);
+
+  type::QualType VerifyUnaryOverload(char const *symbol,
+                                     ast::Expression const *node,
+                                     type::Type const *expr_type);
+  type::QualType VerifyBinaryOverload(char const *symbol,
+                                      ast::Expression const *node,
+                                      type::Type const *lhs_type,
+                                      type::Type const *rhs_type);
 
   PersistentResources resources_;
   TransientFunctionState state_;

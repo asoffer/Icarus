@@ -268,12 +268,14 @@ cc_library(
         "verify/array_literal.cc",
         "verify/array_type.cc",
         "verify/assignment.cc",
+        "verify/common.cc",
         "verify/declaration.cc",
         "verify/designated_initializer.cc",
         "verify/identifier.cc",
         "verify/index.cc",
         "verify/struct_literal.cc",
         "verify/scope_literal.cc",
+        "verify/unary_operator.cc",
         "verify_type.cc",
     ],
     deps = [
@@ -421,6 +423,18 @@ cc_test(
         "//test:module",
         "//type:primitive",
         "//type:jump",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "unary_operator_test",
+    srcs = ["verify/unary_operator_test.cc"],
+    deps = [
+        ":verify_type",
+        "//test:module",
+        "//type:array",
+        "//type:primitive",
         "@com_google_googletest//:gtest_main",
     ],
 )

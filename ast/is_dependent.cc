@@ -172,6 +172,6 @@ bool Switch::IsDependent() const {
 
 bool Terminal::IsDependent() const { return false; }
 
-bool Unop::IsDependent() const { return operand()->IsDependent(); }
+bool UnaryOperator::IsDependent() const { return operand()->IsDependent(); }
 
 }  // namespace ast

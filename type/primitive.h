@@ -40,8 +40,17 @@ inline bool IsIntegral(Type const *t) {
          t == Nat16 or t == Nat32 or t == Nat64;
 }
 
+inline bool IsUnsignedNumeric(Type const *t) {
+  return t == Nat8 or t == Nat16 or t == Nat32 or t == Nat64;
+}
+
 inline bool IsFloatingPoint(Type const *t) {
   return t == Float32 or t == Float64;
+}
+
+inline bool IsSignedNumeric(Type const *t) {
+  return t == Int8 or t == Int16 or t == Int32 or t == Int64 or
+         IsFloatingPoint(t);
 }
 
 inline bool IsNumeric(Type const *t) {

@@ -228,7 +228,7 @@ std::unique_ptr<ast::Node> BuildRightUnop(
   const std::string &tk = nodes[1]->as<Token>().token;
   if (tk == ":?") {
     SourceRange range(nodes[0]->range().begin(), nodes[1]->range().end());
-    auto unop = std::make_unique<ast::Unop>(range, Operator::TypeOf,
+    auto unop = std::make_unique<ast::UnaryOperator>(range, Operator::TypeOf,
                                             move_as<ast::Expression>(nodes[0]));
 
     if (unop->operand()->is<ast::Declaration>()) {
@@ -357,16 +357,16 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
     diag.Consume(diagnostic::DeclarationUsedInUnaryOperator{
         .range = range,
     });
-    return std::make_unique<ast::Unop>(range, op,
+    return std::make_unique<ast::UnaryOperator>(range, op,
                                        MakeInvalidNode(nodes[1]->range()));
 
   } else if (not operand->is<ast::Expression>()) {
     diag.Consume(diagnostic::Todo{});
-    return std::make_unique<ast::Unop>(range, op,
+    return std::make_unique<ast::UnaryOperator>(range, op,
                                        MakeInvalidNode(nodes[1]->range()));
 
   } else {
-    return std::make_unique<ast::Unop>(range, op,
+    return std::make_unique<ast::UnaryOperator>(range, op,
                                        move_as<ast::Expression>(nodes[1]));
   }
 }

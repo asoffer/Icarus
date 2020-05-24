@@ -1327,7 +1327,7 @@ struct Terminal : Expression {
   };
 };
 
-// Unop:
+// UnaryOperator:
 //
 // Represents a call to a unary operator.
 //
@@ -1336,11 +1336,11 @@ struct Terminal : Expression {
 //  * `!some_boolean`
 //  * `what_type_am_i:?`
 //  * `@some_ptr`
-struct Unop : Expression {
-  Unop(frontend::SourceRange const &range, frontend::Operator op,
+struct UnaryOperator : Expression {
+  UnaryOperator(frontend::SourceRange const &range, frontend::Operator op,
        std::unique_ptr<Expression> operand)
       : Expression(range), operand_(std::move(operand)), op_(op) {}
-  ~Unop() override {}
+  ~UnaryOperator() override {}
 
   ICARUS_AST_VIRTUAL_METHODS;
 

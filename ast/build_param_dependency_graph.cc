@@ -210,7 +210,7 @@ struct ParamDependencyGraphBuilder
 
   void Visit(Terminal const *node, core::DependencyNode<Declaration> d) {}
 
-  void Visit(Unop const *node, core::DependencyNode<Declaration> d) {
+  void Visit(UnaryOperator const *node, core::DependencyNode<Declaration> d) {
     Visit(node->operand(), d);
   }
 

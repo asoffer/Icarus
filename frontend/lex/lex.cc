@@ -66,7 +66,7 @@ static bool BeginsWith(std::string_view prefix, std::string_view s) {
 // Note: The order here is somewhat important. Because we choose the first
 // match, we cannot, for example, put `:` before `::=`.
 static base::Global kOps =
-    std::array<std::pair<std::string_view, std::variant<Operator, Syntax>>, 45>{
+    std::array<std::pair<std::string_view, std::variant<Operator, Syntax>>, 46>{
         {
             {"@", {Operator::At}},         {",", {Operator::Comma}},
             {"[*]", {Operator::BufPtr}},   {"`", {Operator::Eval}},
@@ -90,7 +90,7 @@ static base::Global kOps =
             {")", {Syntax::RightParen}},   {"[", {Syntax::LeftBracket}},
             {"]", {Syntax::RightBracket}}, {"{", {Syntax::LeftBrace}},
             {"}", {Syntax::RightBrace}},   {";", {Syntax::Semicolon}},
-            {"$", {Operator::ArgType}},
+            {"`", {Operator::Eval}},       {"$", {Operator::ArgType}},
         }};
 
 Lexeme NextOperator(SourceCursor *cursor, Source *src) {
@@ -421,7 +421,6 @@ restart:
     case '\v':
     case '\t':
     case ' ': state->cursor_.ConsumeWhile(IsWhitespace); goto restart;
-    case '`':
     case '~':
     case '?': {
       auto loc = state->cursor_.loc();

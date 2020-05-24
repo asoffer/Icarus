@@ -160,7 +160,7 @@ void TokenExtractor::Visit(ast::Switch const *node) {
   }
 }
 
-void TokenExtractor::Visit(ast::Unop const *node) {
+void TokenExtractor::Visit(ast::UnaryOperator const *node) {
   // TODO
   Visit(node->operand());
 }

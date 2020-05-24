@@ -65,6 +65,20 @@ struct ImmovableType {
   frontend::SourceRange range;
 };
 
+struct UncopyableType {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "uncopyable-type";
+
+  DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return DiagnosticMessage(
+        Text("Attempting to copy an uncopyable type `%s`.", from->to_string()),
+        SourceQuote(src).Highlighted(range, Style{}));
+  }
+
+  type::Type const *from;
+  frontend::SourceRange range;
+};
+
 struct MismatchedAssignmentCount {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "mismatched-assignment-count";
@@ -650,51 +664,6 @@ struct PostconditionNeedsBool {
   frontend::SourceRange range;
 };
 
-struct NonConstantEvaluation {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "non-constant-evaluation";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Cannot evaluate a non-constant at compile-time."),
-        SourceQuote(src).Highlighted(range, Style{}));
-  }
-
-  frontend::SourceRange range;
-};
-
-struct DereferencingNonPointer {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "dereferencing-non-pointer";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Attempting to dereference an object of type `%s` which is not a "
-             "pointer",
-             type->to_string()),
-        SourceQuote(src).Highlighted(range, Style{}));
-  }
-
-  type::Type const *type;
-  frontend::SourceRange range;
-};
-
-struct WhichNonVariant {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "which-non-variant";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Attempting to call `which` an object of type `%s` which is not a "
-             "variant.",
-             type->to_string()),
-        SourceQuote(src).Highlighted(range, Style{}));
-  }
-
-  type::Type const *type;
-  frontend::SourceRange range;
-};
-
 struct ParametersDoNotCoverArguments {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName = "parameters-do-not-cover-arguments";
@@ -733,18 +702,6 @@ struct UnknownBuiltinHashtag {
   }
 
   std::string token;
-  frontend::SourceRange range;
-};
-
-struct NonAddressableExpression {
-  static constexpr std::string_view kCategory = "value-category-error";
-  static constexpr std::string_view kName     = "non-addressable-expression";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("Expression is not addressable."),
-                             SourceQuote(src).Highlighted(range, Style{}));
-  }
-
   frontend::SourceRange range;
 };
 

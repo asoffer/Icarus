@@ -212,7 +212,7 @@ struct Extractor : ast::Visitor<void()> {
 
   void Visit(ast::Terminal const *node) final {}
 
-  void Visit(ast::Unop const *node) final { Visit(node->operand()); }
+  void Visit(ast::UnaryOperator const *node) final { Visit(node->operand()); }
 
   std::vector<ast::Node const *> node_stack_;
   absl::flat_hash_map</* to = */ ast::Node const *,

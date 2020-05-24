@@ -6,6 +6,7 @@
 #include "diagnostic/errors.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"
+#include "type/struct.h"
 
 namespace compiler {
 namespace {

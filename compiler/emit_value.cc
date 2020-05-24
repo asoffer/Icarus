@@ -1231,7 +1231,7 @@ ir::Value Compiler::EmitValue(ast::Terminal const *node) {
   return node->value();
 }
 
-ir::Value Compiler::EmitValue(ast::Unop const *node) {
+ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
   auto *operand_type = type_of(node->operand());
   // TODO user-defined-types
 

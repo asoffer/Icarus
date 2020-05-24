@@ -8,10 +8,8 @@ namespace compiler {
 bool Compiler::VerifyBody(ast::StructLiteral const *node) {
   bool error = false;
   for (auto const &field : node->fields()) {
-    DEBUG_LOG()(field.DebugString());
     auto field_qt = VerifyType(&field);
     if (not field_qt.ok()) { error = true; }
-    DEBUG_LOG()(field.DebugString());
   }
 
   return not error;
