@@ -257,8 +257,10 @@ Reg Builder::Flags(
 }
 
 Reg Builder::Struct(module::BasicModule const *mod, type::Struct *s,
-                    std::vector<StructField> fields) {
-  auto inst   = std::make_unique<StructInstruction>(mod, s, std::move(fields));
+                    std::vector<StructField> fields,
+                    std::optional<ir::Fn> dtor) {
+  auto inst =
+      std::make_unique<StructInstruction>(mod, s, std::move(fields), dtor);
   auto result = inst->result = CurrentGroup()->Reserve();
   CurrentBlock()->AddInstruction(std::move(inst));
   return result;

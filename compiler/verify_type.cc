@@ -205,6 +205,7 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node,
 }
 
 bool Compiler::VerifyBody(ast::FunctionLiteral const *node) {
+  DEBUG_LOG("function")("function-literal body verification: ", node);
   return ::compiler::VerifyBody(this, node, data().qual_type(node)->type())
       .ok();
 }
@@ -232,6 +233,8 @@ std::optional<core::Params<type::QualType>> VerifyParams(
 }
 
 type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
+  DEBUG_LOG("function")("Starting function-literal verification: ", node);
+
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto params, VerifyParams(this, node->params()));
 

@@ -34,6 +34,16 @@ void Struct::AppendFields(std::vector<Struct::Field> fields) {
   // TODO
 }
 
+void Struct::SetDestructor(ir::Fn dtor) {
+  flags_.has_destructor = true;
+  dtor_                 = dtor;
+}
+
+ir::Fn Struct::Destructor() const {
+  ASSERT(dtor_.has_value() == true);
+  return *dtor_;
+}
+
 core::Bytes Struct::offset(size_t field_num, core::Arch const &a) const {
   auto offset = core::Bytes{0};
   for (size_t i = 0; i < field_num; ++i) {

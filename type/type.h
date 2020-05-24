@@ -48,6 +48,7 @@ struct Type : base::Cast<Type> {
   // // TODO make this pure virtual
   virtual bool is_big() const { return false; }
 
+  // TODO: Can we ensure structs are complete before we set these?
   struct Flags {
     uint8_t is_default_initializable : 1;
     uint8_t is_copyable : 1;

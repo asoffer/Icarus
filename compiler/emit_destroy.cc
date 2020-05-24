@@ -12,30 +12,7 @@ namespace compiler {
 
 void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDestroyTag) {
   if (not t->HasDestructor()) { return; }
-  t->destroy_func_.init([=]() {
-    if (auto fn = SpecialFunction(this, t, "~")) { return fn->native(); }
-
-    type::QualType q = type::QualType::NonConstant(type::Ptr(t));
-    auto const *fn_type =
-        type::Func(core::Params<type::QualType>{core::AnonymousParam(q)}, {});
-    ir::NativeFn fn =
-        AddFunc(fn_type, fn_type->params().Transform([](type::QualType q) {
-          return type::Typed<ast::Declaration const *>(nullptr, q.type());
-        }));
-
-    ICARUS_SCOPE(ir::SetCurrent(fn)) {
-      builder().CurrentBlock() = builder().CurrentGroup()->entry();
-      auto var                 = ir::Reg::Arg(0);
-
-      for (int i = static_cast<int>(t->fields_.size()) - 1; i >= 0; --i) {
-        Visit(t->fields_.at(i).type, builder().Field(var, t, i).get(),
-              EmitDestroyTag{});
-      }
-
-      builder().ReturnJump();
-    }
-    return fn;
-  });
+  // TODO: Call fields dtors.
   builder().Destroy(t, reg);
 }
 

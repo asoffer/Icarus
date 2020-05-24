@@ -23,9 +23,13 @@ struct MissingMember {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Expressions of type `%s` have no member named `%s`.",
                          type->to_string(), member),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+        diagnostic::SourceQuote(src)
+            .Highlighted(expr_range, diagnostic::Style{})
+            .Highlighted(member_range, diagnostic::Style::ErrorText()));
   }
-  frontend::SourceRange range;
+
+  frontend::SourceRange expr_range;
+  frontend::SourceRange member_range;
   std::string member;
   type::Type const *type;
 };
@@ -142,9 +146,10 @@ type::QualType AccessTypeMember(Compiler *c, ast::Access const *node,
   if (auto *e = evaled_type->if_as<type::Enum>()) {
     if (not e->Get(node->member_name()).has_value()) {
       c->diag().Consume(MissingMember{
-          .range  = node->range(),
-          .member = std::string{node->member_name()},
-          .type   = evaled_type,
+          .expr_range   = node->operand()->range(),
+          .member_range = node->member_range(),
+          .member       = std::string{node->member_name()},
+          .type         = evaled_type,
       });
 
       // We can continue passed this error because we are confident that this is
@@ -157,9 +162,10 @@ type::QualType AccessTypeMember(Compiler *c, ast::Access const *node,
   if (auto *f = evaled_type->if_as<type::Flags>()) {
     if (not f->Get(node->member_name()).has_value()) {
       c->diag().Consume(MissingMember{
-          .range  = node->range(),
-          .member = std::string{node->member_name()},
-          .type   = evaled_type,
+          .expr_range   = node->operand()->range(),
+          .member_range = node->member_range(),
+          .member       = std::string{node->member_name()},
+          .type         = evaled_type,
       });
 
       // We can continue passed this error because we are confident that this is
@@ -182,9 +188,10 @@ type::QualType AccessStructMember(Compiler *c, ast::Access const *node,
   auto const *member = s->field(node->member_name());
   if (member == nullptr) {
     c->diag().Consume(MissingMember{
-        .range  = node->range(),
-        .member = std::string{node->member_name()},
-        .type   = s,
+        .expr_range   = node->operand()->range(),
+        .member_range = node->member_range(),
+        .member       = std::string{node->member_name()},
+        .type         = s,
     });
     return type::QualType::Error();
   }
@@ -317,9 +324,10 @@ type::QualType Compiler::VerifyType(ast::Access const *node) {
             node, type::QualType(type::Int64, quals | type::Quals::Const()));
       } else {
         diag().Consume(MissingMember{
-            .range  = node->range(),
-            .member = std::string{node->member_name()},
-            .type   = type::ByteView,
+            .expr_range   = node->operand()->range(),
+            .member_range = node->member_range(),
+            .member       = std::string{node->member_name()},
+            .type         = type::ByteView,
         });
         return type::QualType::Error();
       }
@@ -330,9 +338,10 @@ type::QualType Compiler::VerifyType(ast::Access const *node) {
       // missing but that we don't even think it's allowed to have a member on a
       // value of this type.
       diag().Consume(MissingMember{
-          .range  = node->range(),
-          .member = std::string{node->member_name()},
-          .type   = base_type,
+          .expr_range   = node->operand()->range(),
+          .member_range = node->member_range(),
+          .member       = std::string{node->member_name()},
+          .type         = base_type,
       });
       return type::QualType::Error();
     }

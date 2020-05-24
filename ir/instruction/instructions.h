@@ -1168,8 +1168,8 @@ struct ArrayInstruction : base::Clone<ArrayInstruction, Instruction> {
 struct StructInstruction : base::Clone<StructInstruction, Instruction> {
   static constexpr cmd_index_t kIndex = internal::kStructInstructionNumber;
   StructInstruction(module::BasicModule const* mod, type::Struct* s,
-                    std::vector<StructField> fields)
-      : mod(mod), struct_(s), fields(std::move(fields)) {}
+                    std::vector<StructField> fields, std::optional<ir::Fn> dtor)
+      : mod(mod), struct_(s), fields(std::move(fields)), dtor(dtor) {}
   ~StructInstruction() override {}
 
   std::string to_string() const override {
@@ -1201,6 +1201,9 @@ struct StructInstruction : base::Clone<StructInstruction, Instruction> {
       }
     }
 
+    writer->Write(dtor.has_value());
+    if (dtor.has_value()) { writer->Write(*dtor); }
+
     writer->Write(result);
   }
 
@@ -1216,6 +1219,7 @@ struct StructInstruction : base::Clone<StructInstruction, Instruction> {
   module::BasicModule const* mod;
   type::Struct* struct_;
   std::vector<StructField> fields;
+  std::optional<ir::Fn> dtor;
   Reg result;
 };
 

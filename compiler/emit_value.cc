@@ -666,9 +666,19 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
                   diag().num_consumed());
           return ir::Value();
         }
+
+        // TODO: This is a struct-speficic hack.
+        if (type::Type const **type_val =
+                maybe_val->get_if<type::Type const *>()) {
+          if (auto const *struct_type = (*type_val)->if_as<type::Struct>()) {
+            if (not struct_type->complete_) { return *maybe_val; }
+          }
+        }
+
         DEBUG_LOG("EmitValueDeclaration")("Setting slot = ", *maybe_val);
         data().constants_.set_slot(node, *maybe_val);
         return *maybe_val;
+
       } else if (node->IsDefaultInitialized()) {
         UNREACHABLE();
       } else {
@@ -1101,18 +1111,34 @@ void Compiler::CompleteStruct(ast::StructLiteral const *node) {
 
     std::vector<ir::StructField> fields;
     fields.reserve(node->fields().size());
+
+    std::optional<ir::Fn> dtor;
     for (auto const &field : node->fields()) {
       // TODO hashtags.
-      if (auto *init_val = field.init_val()) {
-        // TODO init_val type may not be the same.
-        auto *t = ASSERT_NOT_NULL(qual_type_of(init_val)->type());
-        fields.emplace_back(field.id(), t, EmitValue(init_val));
+      if (field.id() == "destroy") {
+        // TODO handle potential errors here.
+        ASSIGN_OR(
+            continue,  //
+            auto dtor_value,
+            Evaluate(type::Typed(
+                field.init_val(),
+                type::Func({core::AnonymousParam(
+                               type::QualType::NonConstant(type::Ptr(s)))},
+                           {}))));
+        ASSIGN_OR(continue, dtor, dtor_value.get_if<ir::Fn>());
       } else {
-        fields.emplace_back(
-            field.id(), EmitValue(field.type_expr()).get<type::Type const *>());
+        if (auto *init_val = field.init_val()) {
+          // TODO init_val type may not be the same.
+          auto *t = ASSERT_NOT_NULL(qual_type_of(init_val)->type());
+          fields.emplace_back(field.id(), t, EmitValue(init_val));
+        } else {
+          fields.emplace_back(
+              field.id(),
+              EmitValue(field.type_expr()).get<type::Type const *>());
+        }
       }
     }
-    builder().Struct(data().module(), s, std::move(fields));
+    builder().Struct(data().module(), s, std::move(fields), dtor);
     builder().ReturnJump();
   }
 

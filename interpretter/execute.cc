@@ -372,7 +372,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
       } break;
       case ir::TypeManipulationInstruction::Kind::Destroy: {
         if (auto *s = t->if_as<type::Struct>()) {
-          f = s->destroy_func_.get();
+          f = s->Destructor();
         } else if (auto *tup = t->if_as<type::Tuple>()) {
           f = tup->destroy_func_.get();
         } else if (auto *a = t->if_as<type::Array>()) {
@@ -537,17 +537,14 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
       std::string_view name = iter->read<std::string_view>();
       if (iter->read<bool>()) {
         type::Type const *t = iter->read<type::Type const *>();
-        ir::Value init_val;  // TODO = iter->read<ir::Value>();
-        if (t->is<type::Primitive>()) {
-          fields.push_back(type::Struct::Field{
-              .name          = std::string(name),
-              .type          = t,
-              .initial_value = init_val,
-              .hashtags_     = {},
-          });
-        } else {
-          NOT_YET();
-        }
+        // TODO: initial values.
+        ir::Value init_val;
+        fields.push_back(type::Struct::Field{
+            .name          = std::string(name),
+            .type          = t,
+            .initial_value = init_val,
+            .hashtags_     = {},
+        });
       } else {
         fields.push_back(type::Struct::Field{
             .name = std::string(name),
@@ -560,6 +557,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     }
 
     struct_type->AppendFields(std::move(fields));
+    if (iter->read<bool>()) { struct_type->SetDestructor(iter->read<ir::Fn>()); }
     type::Struct const *const_struct_type = struct_type;
     ctx->current_frame()->regs_.set(iter->read<ir::Reg>(), const_struct_type);
 

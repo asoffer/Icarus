@@ -10,6 +10,7 @@
 #include "ast/hashtag.h"
 #include "ast/scope/scope.h"
 #include "base/lazy.h"
+#include "ir/value/fn.h"
 #include "ir/value/native_fn.h"
 #include "ir/value/value.h"
 #include "type/type.h"
@@ -43,6 +44,8 @@ struct Struct : public Type {
   };
   Struct(module::BasicModule const *mod, Options options);
   void AppendFields(std::vector<Field> fields);
+  void SetDestructor(ir::Fn dtor);
+  ir::Fn Destructor() const;
 
   ~Struct() override {}
   void WriteTo(std::string *buf) const override;
@@ -75,6 +78,7 @@ struct Struct : public Type {
 
   std::vector<ast::Hashtag> hashtags_;
   std::vector<Field> fields_;
+  std::optional<ir::Fn> dtor_;
   absl::flat_hash_map<std::string_view, size_t> field_indices_;
 };
 

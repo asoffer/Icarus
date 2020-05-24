@@ -73,7 +73,10 @@ struct Access : Expression {
         member_name_(std::move(member_name)) {}
   ~Access() override {}
 
-  std::string_view member_name() const { return member_name_; }
+  constexpr std::string_view member_name() const { return member_name_; }
+  constexpr frontend::SourceRange member_range() const {
+    return frontend::SourceRange(operand_->range().end(), range().end());
+  }
   Expression const *operand() const { return operand_.get(); }
 
   ICARUS_AST_VIRTUAL_METHODS;

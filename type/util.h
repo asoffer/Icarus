@@ -71,14 +71,16 @@ constexpr type::Type const *Get() {
     return type::Block;  // Maybe opt-block?
   } else if constexpr (base::meta<T> == base::meta<type::Type const *>) {
     return type::Type_;
-  } else if constexpr (std::is_base_of_v<
-                           module::BasicModule,
-                           std::decay_t<decltype(*std::declval<T>())>>) {
-    return type::Module;
   } else if constexpr (base::meta<T> == base::meta<ir::ScopeDef *>) {
     return type::Scope;
   } else if constexpr (std::is_pointer_v<T>) {
-    return Ptr(Get<std::decay_t<decltype(*std::declval<T>())>>());
+    if constexpr (std::is_base_of_v<
+                      module::BasicModule,
+                      std::decay_t<decltype(*std::declval<T>())>>) {
+      return type::Module;
+    } else {
+      return Ptr(Get<std::decay_t<decltype(*std::declval<T>())>>());
+    }
   } else {
     UNREACHABLE(typeid(T).name());
   }
