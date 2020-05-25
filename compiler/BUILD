@@ -209,6 +209,30 @@ cc_library(
     ],
 )
 
+cc_binary(
+    name = "dump_cfg",
+    srcs = ["dump_cfg.cc"],
+    deps = [
+        ":compiler",
+        ":executable_module",
+        "//base:defer",
+        "//base:log",
+        "//base:no_destructor",
+        "//base:untyped_buffer",
+        "//diagnostic/consumer:streaming",
+        "//frontend/source:file_name",
+        "//frontend/source:shared",
+        "//init:cli",
+        "//interpretter:execute",
+        "//ir:compiled_fn",
+        "//module",
+        "//opt",
+        "@com_google_absl//absl/debugging:failure_signal_handler",
+        "@com_google_absl//absl/debugging:symbolize",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+    ],
+)
 
 cc_binary(
     name = "compile",
