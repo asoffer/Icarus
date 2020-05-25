@@ -95,4 +95,17 @@ core::Alignment Struct::alignment(core::Arch const &a) const {
   return align;
 }
 
+bool Struct::DeepCompleteImpl(absl::flat_hash_set<Type const *> &ts) const {
+  if (not complete_) { return false; }
+  if (ts.insert(this).second) { return true; }
+
+  // TODO this is problematic because you can have self-referentiality here.
+  for (auto const &field : fields_) {
+    if (not field.type->DeepCompleteImpl(ts)) { return false; }
+  }
+
+  return true;
+
+}
+
 }  // namespace type

@@ -18,6 +18,8 @@ struct Array : Type {
 
   ~Array() override {}
 
+  bool DeepCompleteImpl(absl::flat_hash_set<Type const *> &ts) const override;
+
   void WriteTo(std::string *buf) const override;
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;

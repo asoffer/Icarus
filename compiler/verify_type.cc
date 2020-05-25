@@ -71,6 +71,7 @@ Cmp Comparator(type::Type const *t) {
 type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node,
                           type::Type const *t = nullptr) {
   if (not t) { t = ASSERT_NOT_NULL(c->type_of(node)); }
+  auto const& fn_type = t->as<type::Function>();
   for (auto const *stmt : node->stmts()) { c->VerifyType(stmt); }
 
   // TODO we can have yields and returns, or yields and jumps, but not jumps
@@ -206,6 +207,17 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node,
 
 bool Compiler::VerifyBody(ast::FunctionLiteral const *node) {
   DEBUG_LOG("function")("function-literal body verification: ", node);
+  auto const &fn_type = type_of(node)->as<type::Function>();
+  for (auto const &param : fn_type.params()) {
+    if (not param.value.type()->DeepComplete()) {
+      DEBUG_LOG("function")("rescheduled");
+      data().ClearVerifyBody(node);
+      state_.work_queue.emplace(node,
+                                TransientFunctionState::WorkType::VerifyBody);
+      return true;
+    }
+  }
+
   return ::compiler::VerifyBody(this, node, data().qual_type(node)->type())
       .ok();
 }

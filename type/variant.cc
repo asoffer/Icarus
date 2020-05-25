@@ -137,4 +137,11 @@ std::vector<Type const *> MultiVar(
   return MultiVarImpl(type_vecs);
 }
 
+bool Variant::DeepCompleteImpl(absl::flat_hash_set<Type const *> &ts) const {
+  for (auto const *t : variants_) {
+    if (not t->DeepCompleteImpl(ts)) { return false; }
+  }
+  return true;
+}
+
 }  // namespace type

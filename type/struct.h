@@ -52,6 +52,8 @@ struct Struct : public Type {
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;
 
+  bool DeepCompleteImpl(absl::flat_hash_set<Type const *> &ts) const override;
+
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }

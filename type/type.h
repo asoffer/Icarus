@@ -34,6 +34,16 @@ struct Type : base::Cast<Type> {
   bool IsMovable() const { return flags_.is_movable; }
   bool HasDestructor() const { return flags_.has_destructor; }
 
+  // TODO tests on all sub-classes
+  bool DeepComplete() const {
+    absl::flat_hash_set<Type const *> ts;
+    return DeepCompleteImpl(ts);
+  }
+
+  virtual bool DeepCompleteImpl(absl::flat_hash_set<Type const *> &ts) const {
+    return true;
+  }
+
   virtual void Accept(VisitorBase *visitor, void *ret,
                       void *arg_tuple) const = 0;
 

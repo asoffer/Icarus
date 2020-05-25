@@ -148,4 +148,8 @@ bool DependentComputedData::ShouldVerifyBody(ast::Node const *node) {
   return body_verification_complete_.insert(node).second;
 }
 
+void DependentComputedData::ClearVerifyBody(ast::Node const *node) {
+  body_verification_complete_.erase(node);
+}
+
 }  // namespace compiler

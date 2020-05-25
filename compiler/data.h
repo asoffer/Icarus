@@ -223,6 +223,7 @@ struct DependentComputedData {
   void set_struct(ast::StructLiteral const *sl, type::Struct *s);
 
   bool ShouldVerifyBody(ast::Node const *node);
+  void ClearVerifyBody(ast::Node const *node);
 
  private:
   // Stores the types of argument bound to the parameter with the given name.

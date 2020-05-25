@@ -17,11 +17,16 @@ struct Pointer : Type {
   core::Alignment alignment(core::Arch const &arch) const override;
 
   bool is_big() const override { return false; }
+
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
 
   constexpr Type const *pointee() const { return pointee_; }
+
+  bool DeepCompleteImpl(absl::flat_hash_set<Type const *> &ts) const override {
+    return pointee()->DeepCompleteImpl(ts);
+  }
 
  protected:
   Pointer(Type const *t)

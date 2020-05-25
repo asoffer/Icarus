@@ -11,6 +11,8 @@ struct Tuple : public Type {
   ~Tuple() {}
   Tuple(std::vector<Type const *> entries);
 
+  bool DeepCompleteImpl(absl::flat_hash_set<Type const *> &ts) const override;
+
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
