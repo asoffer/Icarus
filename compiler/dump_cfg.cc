@@ -57,23 +57,28 @@ int DumpControlFlowGraph(frontend::FileName const &file_name) {
 
   opt::RunAllOptimizations(main_fn);
 
-  std::string output = "digraph {\n";
+  std::string output =
+      "digraph {\n"
+      "  node [shape=record];\n";
   for (auto const *block : main_fn->blocks()) {
     block->jump().Visit([&](auto j) {
       using type = std::decay_t<decltype(j)>;
       if constexpr (base::meta<type> == base::meta<ir::JumpCmd::RetJump>) {
-        absl::StrAppendFormat(&output, "  block%p -> return;\n", block);
-      } else if constexpr (base::meta<type> ==
-                           base::meta<ir::JumpCmd::UncondJump>) {
-        absl::StrAppendFormat(&output, "  block%p -> block%p;\n", block, j.block);
-      } else if constexpr (base::meta<type> ==
-                           base::meta<ir::JumpCmd::CondJump>) {
-        absl::StrAppendFormat(&output,
-                              "  block%p -> block%p;\n"
-                              "  block%p -> block%p;\n",
-                              block, j.true_block, block, j.false_block);
+        if (block->incoming().empty()) { return; }
+        absl::StrAppendFormat(&output, "  \"%p\" -> return;\n", block);
       } else {
-        absl::StrAppendFormat(&output, "  block%p -> choose;\n", block);
+        if constexpr (base::meta<type> == base::meta<ir::JumpCmd::UncondJump>) {
+          absl::StrAppendFormat(&output, "  \"%p\" -> \"%p\";\n", block,
+                                j.block);
+        } else if constexpr (base::meta<type> ==
+                             base::meta<ir::JumpCmd::CondJump>) {
+          absl::StrAppendFormat(&output,
+                                "  \"%p\" -> \"%p\";\n"
+                                "  \"%p\" -> \"%p\";\n",
+                                block, j.true_block, block, j.false_block);
+        } else {
+          absl::StrAppendFormat(&output, "  \"%p\" -> choose;\n", block);
+        }
       }
     });
   }
