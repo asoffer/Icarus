@@ -56,7 +56,6 @@ struct TestModule : compiler::CompiledModule {
 
   template <typename NodeType>
   NodeType const* Append(std::string code) {
-    code.push_back('\n');
     auto node       = test::ParseAs<NodeType>(std::move(code), next_line_num);
     auto const* ptr = ASSERT_NOT_NULL(node.get());
     next_line_num += 100;

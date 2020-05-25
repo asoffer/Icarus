@@ -442,18 +442,6 @@ struct NonTypeFunctionOutput {
   frontend::SourceRange range;
 };
 
-struct BuiltinError {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "builtin-error";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("%s", message),
-                             SourceQuote(src).Highlighted(range, Style{}));
-  }
-  frontend::SourceRange range;
-  std::string message;
-};
-
 struct ReturnTypeMismatch {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "return-type-mismatch";
@@ -716,19 +704,6 @@ struct UnknownBuiltinHashtag {
   }
 
   std::string token;
-  frontend::SourceRange range;
-};
-
-struct UncallableExpression {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "uncallable-expression";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Uncallable expression"),
-        SourceQuote(src).Highlighted(range, Style::ErrorText()));
-  }
-
   frontend::SourceRange range;
 };
 
