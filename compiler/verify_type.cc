@@ -261,7 +261,6 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
   std::vector<type::Type const *> output_type_vec;
   bool error   = false;
   auto outputs = node->outputs();
-    DEBUG_LOG("function")("got here");
   if (outputs) {
     output_type_vec.reserve(outputs->size());
     for (auto *output : *outputs) {
@@ -276,7 +275,6 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
     }
   }
 
-    DEBUG_LOG("function")("got here");
   if (error or absl::c_any_of(output_type_vec, [](type::Type const *t) {
         return t == nullptr;
       })) {
@@ -284,7 +282,6 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
     return type::QualType::Error();
   }
 
-    DEBUG_LOG("function")("got here");
   // TODO need a better way to say if there was an error recorded in a
   // particular section of compilation. Right now we just have the grad total
   // count.

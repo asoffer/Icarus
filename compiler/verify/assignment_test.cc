@@ -19,6 +19,17 @@ TEST(Assignment, SimpleSuccess) {
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
+TEST(Assignment, NonReference) {
+  test::TestModule mod;
+  mod.AppendCode(R"(
+  f ::= () => 3
+  f() = 4
+  )");
+  EXPECT_THAT(mod.consumer.diagnostics(),
+              UnorderedElementsAre(
+                  Pair("value-category-error", "assigning-to-non-reference")));
+}
+
 TEST(Assignment, Constant) {
   test::TestModule mod;
   mod.AppendCode(R"(

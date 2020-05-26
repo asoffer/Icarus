@@ -8,6 +8,23 @@
 #include "type/qual_type.h"
 
 namespace compiler {
+namespace {
+
+struct AssigningToNonReference {
+  static constexpr std::string_view kCategory = "value-category-error";
+  static constexpr std::string_view kName     = "assigning-to-non-reference";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Assigning to a non-reference expression:"),
+        diagnostic::SourceQuote(src).Highlighted(
+            lhs, diagnostic::Style::ErrorText()));
+  }
+
+  frontend::SourceRange lhs;
+};
+
+}  // namespace
 
 type::QualType Compiler::VerifyType(ast::Assignment const *node) {
   std::vector<type::QualType> lhs_qts, rhs_qts;
@@ -17,22 +34,17 @@ type::QualType Compiler::VerifyType(ast::Assignment const *node) {
   int first_lhs_error_index = -1;
   for (int i = 0; i < node->lhs().size(); ++i) {
     auto const *l = node->lhs()[i];
-    // TODO check can't be constant. must be references
+
     auto qt = VerifyType(l);
     if (not qt.ok()) {
       if (first_lhs_error_index == -1) { first_lhs_error_index = i; }
     }
     lhs_qts.push_back(qt);
-    if (not(qt.quals() >= type::Quals::Ref())) {
-      // TODO log an error
-    }
     if (qt.quals() >= type::Quals::Const()) {
-      diag().Consume(diagnostic::AssigningToConstant{
-          .to = qt.type(),
-          // TODO set the range to point more directly to the things we care
-          // about.
-          .range = node->range(),
-      });
+      diag().Consume(diagnostic::AssigningToConstant{.to    = qt.type(),
+                                                     .range = l->range()});
+    } else if (not(qt.quals() >= type::Quals::Ref())) {
+      diag().Consume(AssigningToNonReference{.lhs = l->range()});
     }
   }
 
@@ -59,14 +71,14 @@ type::QualType Compiler::VerifyType(ast::Assignment const *node) {
   while (true) {
     if (lhs_iter == lhs_end or rhs_iter == rhs_end) { break; }
 
-    // TODO deal with immovable and uncopyable types.
+    // TODO: deal with immovable and uncopyable types.
     type::Type const *lhs_type = (*lhs_iter).type();
     type::Type const *rhs_type = (*rhs_iter).type();
     if (not type::CanCast(lhs_type, rhs_type)) {
       diag().Consume(diagnostic::InvalidCast{
           .from = lhs_type,
           .to   = rhs_type,
-          // TODO set the range to point more directly to the things we care
+          // TODO: set the range to point more directly to the things we care
           // about.
           .range = node->range(),
       });

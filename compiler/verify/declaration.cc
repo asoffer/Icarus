@@ -128,7 +128,7 @@ UninferrableType::Reason Inferrable(type::Type const *t) {
   if (auto *a = t->if_as<type::Array>()) { return Inferrable(a->data_type()); }
   if (auto *p = t->if_as<type::Pointer>()) { return Inferrable(p->pointee()); }
   if (auto *v = t->if_as<type::Variant>()) {
-    // TODO only returning the first failure here and not even givving a good
+    // TODO: only returning the first failure here and not even giving a good
     // explanation of precisely what the problem is. Fix here and below.
     for (auto const *var : v->variants_) {
       auto reason = Inferrable(var);
@@ -149,11 +149,11 @@ UninferrableType::Reason Inferrable(type::Type const *t) {
       if (reason != UninferrableType::Reason::kInferrable) { return reason; }
     }
   }
-  // TODO higher order types?
+
   return UninferrableType::Reason::kInferrable;
 }
 
-// TODO what about shadowing of symbols across module boundaries imported with
+// TODO: what about shadowing of symbols across module boundaries imported with
 // -- ::= ?
 // Or when you import two modules verifying that symbols don't conflict.
 bool Shadow(type::Typed<ast::Declaration const *> decl1,
@@ -162,7 +162,7 @@ bool Shadow(type::Typed<ast::Declaration const *> decl1,
   type::Type const *callable2 = decl2.type()->if_as<type::Callable>();
   if (not callable1 or not callable2) { return true; }
 
-  // TODO Don't worry about generic shadowing? It'll be checked later?
+  // TODO: Don't worry about generic shadowing? It'll be checked later?
   if (callable1->is<type::GenericFunction>() or
       callable2->is<type::GenericFunction>()) {
     return false;
@@ -320,9 +320,9 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
 
   if (node->id().empty()) {
     if (node_qual_type.type() == type::Module) {
-      // TODO check if it's constant?
-      // TODO check shadowing against other modules?
-      // TODO what if no init val is provded? what if not constant?
+      // TODO: check if it's constant?
+      // TODO: check shadowing against other modules?
+      // TODO: what if no init val is provded? what if not constant?
       auto maybe_mod = EvaluateAs<module::BasicModule *>(node->init_val());
       if (not maybe_mod) {
         diag().Consume(diagnostic::EvaluationFailure{
@@ -403,7 +403,7 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
     }
   }
 
-  // TODO verify special function signatures (copy, move, etc).
+  // TODO: verify special function signatures (copy, move, etc).
   return node_qual_type;
 }
 
