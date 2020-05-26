@@ -385,8 +385,8 @@ void ParameterizedStructLiteral::DebugStrAppend(std::string *out,
                                                 size_t indent) const {
   absl::StrAppend(out, "struct (",
                   absl::StrJoin(params(), ", ",
-                                [&](std::string *out, Declaration const &d) {
-                                  d.DebugStrAppend(out, indent);
+                                [&](std::string *out, auto const &p) {
+                                  p.value->DebugStrAppend(out, indent);
                                 }),
                   ") {\n");
   for (auto const &f : fields()) {

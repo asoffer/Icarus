@@ -1164,8 +1164,29 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
                              move_as<Statements>(nodes.back()), range, diag);
 
   } else if (tk == "struct") {
-    diag.Consume(diagnostic::Todo{});
-    return nullptr;
+    auto &stmts = nodes.back()->as<Statements>();
+    std::vector<ast::Declaration> fields;
+    for (auto &stmt : stmts.content_) {
+      if (auto *decl = stmt->if_as<ast::Declaration>()) {
+        fields.push_back(std::move(*decl));
+      } else {
+        diag.Consume(diagnostic::Todo{});
+      }
+    }
+    auto inputs = ExtractInputs(move_as<ast::Expression>(nodes[2]), diag);
+    std::vector<std::unique_ptr<ast::Declaration>> params;
+    for (auto &expr : inputs) {
+      if (expr->is<ast::Declaration>()) {
+        params.push_back(move_as<ast::Declaration>(expr));
+      } else {
+        diag.Consume(diagnostic::Todo{});
+      }
+    }
+
+    return std::make_unique<ast::ParameterizedStructLiteral>(
+        frontend::SourceRange(nodes.front()->range().begin(),
+                              nodes.back()->range().end()),
+        std::move(params), std::move(fields));
   } else {
     UNREACHABLE();
   }

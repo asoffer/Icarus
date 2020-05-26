@@ -144,7 +144,7 @@ void TokenExtractor::Visit(ast::StructLiteral const *node) {
 }
 
 void TokenExtractor::Visit(ast::ParameterizedStructLiteral const *node) {
-  for (auto &a : node->params()) { Visit(&a); }
+  for (auto &a : node->params()) { Visit(a.value.get()); }
   for (auto &f : node->fields()) { Visit(&f); }
 }
 

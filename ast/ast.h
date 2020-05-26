@@ -979,16 +979,17 @@ struct Jump : ParameterizedExpression, WithScope<FnScope> {
 //   square ::= N * N
 // }
 // ```
-struct ParameterizedStructLiteral : Expression, WithScope<DeclScope> {
+struct ParameterizedStructLiteral : ParameterizedExpression,
+                                    WithScope<DeclScope> {
   ParameterizedStructLiteral(frontend::SourceRange const &range,
-                             std::vector<Declaration> params,
+                             std::vector<std::unique_ptr<Declaration>> params,
                              std::vector<Declaration> fields)
-      : Expression(range), fields_(std::move(fields)) {}
+      : ParameterizedExpression(range, std::move(params)),
+        fields_(std::move(fields)) {}
 
   ~ParameterizedStructLiteral() override {}
 
   absl::Span<Declaration const> fields() const { return fields_; }
-  absl::Span<Declaration const> params() const { return params_; }
 
   ParameterizedStructLiteral &operator        =(
       ParameterizedStructLiteral &&) noexcept = default;

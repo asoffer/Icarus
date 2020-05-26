@@ -194,7 +194,7 @@ struct Extractor : ast::Visitor<void()> {
   }
 
   void Visit(ast::ParameterizedStructLiteral const *node) final {
-    for (auto const &p : node->params()) { Visit(&p); }
+    for (auto const &p : node->params()) { Visit(p.value.get()); }
     for (auto const &f : node->fields()) { Visit(&f); }
   }
 

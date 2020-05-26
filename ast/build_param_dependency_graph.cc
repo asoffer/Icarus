@@ -192,7 +192,7 @@ struct ParamDependencyGraphBuilder
 
   void Visit(ParameterizedStructLiteral const *node,
              core::DependencyNode<Declaration> d) {
-    for (auto const &p : node->params()) { Visit(&p, d); }
+    for (auto const &param : node->params()) { Visit(param.value.get(), d); }
     for (auto const &f : node->fields()) { Visit(&f, d); }
   }
 

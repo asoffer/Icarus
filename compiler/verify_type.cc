@@ -1115,15 +1115,27 @@ type::QualType Compiler::VerifyType(
     ast::ParameterizedStructLiteral const *node) {
   state_.work_queue.emplace(node, TransientFunctionState::WorkType::VerifyBody);
 
-  std::vector<type::Type const *> ts;
-  ts.reserve(node->params().size());
-  for (auto const &a : node->params()) { ts.push_back(VerifyType(&a).type()); }
-  if (absl::c_any_of(ts, [](type::Type const *t) { return t == nullptr; })) {
-    return type::QualType::Error();
-  }
+  auto ordered_nodes = OrderedDependencyNodes(node);
 
-  return data().set_qual_type(node, type::QualType::Constant(type::GenStruct(
-                                        node->scope(), std::move(ts))));
+  NOT_YET();
+  // auto *diag_consumer = &diag();
+  // auto gen            = [node, compiler_data = &data(), diag_consumer,
+  //             ordered_nodes(std::move(ordered_nodes))](
+  //                core::FnArgs<type::Typed<ir::Value>> const &args) mutable
+  //     -> type::Function const * {
+  //   auto [params, rets, data] =
+  //       MakeConcrete(node, compiler_data->module(), ordered_nodes, args,
+  //                    *compiler_data, *diag_consumer);
+  //   type::Function const *ft = type::Func(params, *rets);
+  //   data->set_qual_type(node, type::QualType::Constant(ft));
+  //   return ft;
+  // };
+
+  // return data().set_qual_type(
+  //     node,
+  //     type::QualType::Constant(new type::GenericFunction(std::move(gen))));
+  // return data().set_qual_type(node, type::QualType::Constant(type::GenStruct(
+  //                                       node->scope(), std::move(ts))));
 }
 
 type::QualType Compiler::VerifyType(ast::StructType const *node) {
