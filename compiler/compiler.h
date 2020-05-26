@@ -144,7 +144,12 @@ struct Compiler
     CompleteWorkQueue();
   }
   void CompleteWorkQueue() {
+#ifdef ICARUS_DEBUG
+    size_t cycle_breaker_count = 0;
+#endif // ICARUS_DEBUG
+
     while (not state_.work_queue.empty()) {
+      size_t previous_queue_size = state_.work_queue.size();
       auto [node, work_type] = state_.work_queue.front();
       state_.work_queue.pop();
       // TODO: you also need to pass around some known contexts becuase you may
@@ -158,6 +163,13 @@ struct Compiler
           CompleteStruct(&node->as<ast::StructLiteral>());
         } break;
       }
+
+#ifdef ICARUS_DEBUG
+      cycle_breaker_count = (state_.work_queue.size() == previous_queue_size)
+                                ? cycle_breaker_count + 1
+                                : 0;
+      ASSERT(cycle_breaker_count <= previous_queue_size);
+#endif // ICARUS_DEBUG
     }
   }
 

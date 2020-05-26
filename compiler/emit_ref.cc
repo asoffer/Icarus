@@ -15,8 +15,10 @@ ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Access const *node) {
   auto reg = EmitRef(node->operand());
   auto *t  = type_of(node->operand());
 
+  if (auto const *tp = t->if_as<type::Pointer>()) { t = tp->pointee(); }
+
   while (auto *tp = t->if_as<type::Pointer>()) {
-    t   = tp->pointee();
+    t = tp->pointee();
     reg = builder().Load<ir::Addr>(reg);
   }
 

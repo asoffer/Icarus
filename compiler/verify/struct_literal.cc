@@ -13,6 +13,7 @@ bool Compiler::VerifyBody(ast::StructLiteral const *node) {
     if (not field_qt.ok()) { error = true; }
   }
 
+  DEBUG_LOG("struct")("Struct-literal body verification complete: ", node);
   return not error;
 }
 

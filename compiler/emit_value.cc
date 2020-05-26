@@ -180,19 +180,8 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
     return ir::Value(builder().ByteViewLength(
         EmitValue(node->operand()).get<ir::RegOr<ir::String>>()));
   } else {
-    auto reg = EmitRef(node->operand());
-    auto *t  = type_of(node->operand());
-
-    while (auto *p = t->if_as<type::Pointer>()) {
-      t   = p->pointee();
-      reg = builder().Load<ir::Addr>(reg);
-    }
-
-    ASSERT(t, InheritsFrom<type::Struct>()) << t->to_string();
-    auto *struct_type = &t->as<type::Struct>();
-    auto field        = builder().Field(reg, struct_type,
-                                 struct_type->index(node->member_name()));
-    return ir::Value(builder().PtrFix(field.get(), this_type));
+    // TODO: Can this be an address?
+    return ir::Value(builder().PtrFix(EmitRef(node).reg(), this_type));
   }
 }
 
@@ -630,6 +619,8 @@ ir::Value Compiler::EmitValue(ast::Cast const *node) {
 }
 
 ir::Value Compiler::EmitValue(ast::Declaration const *node) {
+  // TODO: The entirety of constant-caching mechanism here is weird and broken
+  // and needs a cleanup.
   DEBUG_LOG("EmitValueDeclaration")(node->id());
   if (node->flags() & ast::Declaration::f_IsConst) {
     if (node->module() != data().module()) {
@@ -637,10 +628,7 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
       // that module. They must be at the root of the binding tree map,
       // otherwise they would be local to some function/jump/etc. and not be
       // exported.
-      return node->module()
-          ->as<CompiledModule>()
-          .data()
-          .constants_.get_constant(node);
+      return node->module()->as<CompiledModule>().data().Constant(node)->value;
     }
 
     if (node->flags() & ast::Declaration::f_IsFnParam) {
@@ -648,12 +636,10 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
       DEBUG_LOG("EmitValueDeclaration")(val);
       return val;
     } else {
-      auto const *t = ASSERT_NOT_NULL(type_of(node));
-      auto slot     = data().constants_.reserve_slot(node, t);
-      if (not slot.empty()) {
-        DEBUG_LOG("EmitValueDeclaration")("Returning from slot");
-        return slot;
-      }
+      auto *constant_value = data().Constant(node);
+      auto const *t = type_of(node);
+      // TODO schedule completion for structs?
+      if (constant_value) { return constant_value->value; }
 
       if (node->IsCustomInitialized()) {
         DEBUG_LOG("EmitValueDeclaration")
@@ -667,16 +653,18 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
           return ir::Value();
         }
 
+        DEBUG_LOG("EmitValueDeclaration")("Setting slot = ", *maybe_val);
+        data().SetConstant(node, *maybe_val);
+
         // TODO: This is a struct-speficic hack.
         if (type::Type const **type_val =
                 maybe_val->get_if<type::Type const *>()) {
           if (auto const *struct_type = (*type_val)->if_as<type::Struct>()) {
             if (not struct_type->complete_) { return *maybe_val; }
+            data().CompleteConstant(node);
           }
         }
 
-        DEBUG_LOG("EmitValueDeclaration")("Setting slot = ", *maybe_val);
-        data().constants_.set_slot(node, *maybe_val);
         return *maybe_val;
 
       } else if (node->IsDefaultInitialized()) {
@@ -1094,11 +1082,13 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
 }
 
 void Compiler::CompleteStruct(ast::StructLiteral const *node) {
-  DEBUG_LOG("struct")("Completing struct-literal emission: ", node);
+  DEBUG_LOG("struct")
+  ("Completing struct-literal emission: ", node,
+   " must-complete = ", state_.must_complete);
 
   type::Struct *s = data().get_struct(node);
   if (s->complete_) {
-    DEBUG_LOG("struct")("Already complete, exiting:", node);
+    DEBUG_LOG("struct")("Already complete, exiting: ", node);
     return;
   }
 

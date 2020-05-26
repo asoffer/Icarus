@@ -206,8 +206,10 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node,
 }
 
 bool Compiler::VerifyBody(ast::FunctionLiteral const *node) {
-  DEBUG_LOG("function")("function-literal body verification: ", node);
-  auto const &fn_type = type_of(node)->as<type::Function>();
+  DEBUG_LOG("function")
+  ("function-literal body verification: ", node->DebugString(), " ", &data());
+  auto const &fn_type =
+      ASSERT_NOT_NULL(data().qual_type(node))->type()->as<type::Function>();
   for (auto const &param : fn_type.params()) {
     if (not param.value.type()->DeepComplete()) {
       DEBUG_LOG("function")("rescheduled");
@@ -228,18 +230,20 @@ std::optional<core::Params<type::QualType>> VerifyParams(
   // Parameter types cannot be dependent in concrete implementations so it is
   // safe to verify each of them separately (to generate more errors that are
   // likely correct).
+
+  DEBUG_LOG("function")("got here");
   core::Params<type::QualType> type_params;
   type_params.reserve(params.size());
   bool err = false;
   for (auto &d : params) {
-    ASSIGN_OR(
-        {
-          err = true;
-          continue;
-        },
-        auto result, c->VerifyType(d.value.get()));
-    type_params.append(d.name, result, d.flags);
+    auto qt = c->VerifyType(d.value.get());
+    if (qt.ok()) {
+      type_params.append(d.name, qt, d.flags);
+    } else {
+      err = true;
+    }
   }
+  DEBUG_LOG("function")("got here", err);
   if (err) { return std::nullopt; }
   return type_params;
 }
@@ -247,12 +251,17 @@ std::optional<core::Params<type::QualType>> VerifyParams(
 type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
   DEBUG_LOG("function")("Starting function-literal verification: ", node);
 
-  ASSIGN_OR(return type::QualType::Error(),  //
-                   auto params, VerifyParams(this, node->params()));
+  ASSIGN_OR(
+      {
+        DEBUG_LOG("function")("Bailing due to errors");
+        return type::QualType::Error();
+      },  //
+      auto params, VerifyParams(this, node->params()));
 
   std::vector<type::Type const *> output_type_vec;
   bool error   = false;
   auto outputs = node->outputs();
+    DEBUG_LOG("function")("got here");
   if (outputs) {
     output_type_vec.reserve(outputs->size());
     for (auto *output : *outputs) {
@@ -267,16 +276,22 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
     }
   }
 
+    DEBUG_LOG("function")("got here");
   if (error or absl::c_any_of(output_type_vec, [](type::Type const *t) {
         return t == nullptr;
       })) {
+    DEBUG_LOG("function")("Bailing due to errors");
     return type::QualType::Error();
   }
 
+    DEBUG_LOG("function")("got here");
   // TODO need a better way to say if there was an error recorded in a
   // particular section of compilation. Right now we just have the grad total
   // count.
-  if (diag().num_consumed() > 0) { return type::QualType::Error(); }
+  if (diag().num_consumed() > 0) {
+    DEBUG_LOG("function")("Bailing due to errors");
+    return type::QualType::Error();
+  }
 
   if (outputs) {
     for (size_t i = 0; i < output_type_vec.size(); ++i) {
@@ -292,10 +307,13 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
 
     state_.work_queue.emplace(node,
                               TransientFunctionState::WorkType::VerifyBody);
-    return data().set_qual_type(
-        node, type::QualType::Constant(
-                  type::Func(std::move(params), std::move(output_type_vec))));
+    auto qt = type::QualType::Constant(
+        type::Func(std::move(params), std::move(output_type_vec)));
+    DEBUG_LOG("function")
+    ("Setting function-literal type: ", node->DebugString(), " ", qt, " ", &data());
+    return data().set_qual_type(node, qt);
   } else {
+    DEBUG_LOG("function")("Setting function-literal type");
     return data().set_qual_type(node, ::compiler::VerifyBody(this, node));
   }
 }
@@ -850,10 +868,8 @@ Compiler::ComputeParamsFromArgs(
           DEBUG_LOG("generic-fn")(dep_node.node()->DebugString());
         }
 
-        data().constants_.reserve_slot(dep_node.node(), arg.type());
-        if (data().constants_.get_constant(dep_node.node()).empty()) {
-          data().constants_.set_slot(dep_node.node(), *arg);
-        }
+        auto *constant_value = data().Constant(dep_node.node());
+        if (not constant_value) { constant_value->value = *arg; }
         constants.reserve_slot(dep_node.node(), arg.type());
         constants.set_slot(dep_node.node(), *arg);
 

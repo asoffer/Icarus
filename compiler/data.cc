@@ -152,4 +152,27 @@ void DependentComputedData::ClearVerifyBody(ast::Node const *node) {
   body_verification_complete_.erase(node);
 }
 
+void DependentComputedData::CompleteConstant(ast::Declaration const *decl) {
+  auto iter = consts_.find(decl);
+  ASSERT(iter != consts_.end());
+  iter->second.complete = true;
+}
+
+void DependentComputedData::SetConstant(ast::Declaration const *decl,
+                                        ir::Value const &value, bool complete) {
+  consts_.emplace(decl, ConstantValue{.value = value, .complete = complete});
+}
+
+DependentComputedData::ConstantValue const *DependentComputedData::Constant(
+    ast::Declaration const *decl) const {
+  auto iter = consts_.find(decl);
+  return iter != consts_.end() ? &iter->second : nullptr;
+}
+
+DependentComputedData::ConstantValue* DependentComputedData::Constant(
+    ast::Declaration const *decl) {
+  auto iter = consts_.find(decl);
+  return iter != consts_.end() ? &iter->second : nullptr;
+}
+
 }  // namespace compiler

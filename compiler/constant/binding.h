@@ -25,7 +25,8 @@ struct ConstantBinding {
   }
 
   ir::Value reserve_slot(ast::Declaration const* decl, type::Type const* t);
-  void set_slot(ast::Declaration const* decl, ir::Value const&);
+  void set_slot(ast::Declaration const* decl, ir::Value const&,
+                bool complete = true);
 
   ir::Value get_constant(ast::Declaration const* decl) const;
 
@@ -36,8 +37,9 @@ struct ConstantBinding {
 
  private:
   struct Binding {
-    type::Type const* type;
+    type::Type const* type = nullptr;
     ir::Value value;
+    bool complete = false;
   };
 
   // Note: While the `Binding` itself may move around on rehash, the underlying

@@ -13,15 +13,19 @@ ir::Value ConstantBinding::get_constant(ast::Declaration const* decl) const {
 
 ir::Value ConstantBinding::reserve_slot(ast::Declaration const* decl,
                                         type::Type const* t) {
-  return bindings_.emplace(decl, Binding{ASSERT_NOT_NULL(t), ir::Value()})
+  return bindings_
+      .emplace(decl, Binding{.type     = ASSERT_NOT_NULL(t),
+                             .value    = ir::Value(),
+                             .complete = false})
       .first->second.value;
 }
 
 void ConstantBinding::set_slot(ast::Declaration const* decl,
-                               ir::Value const& val) {
+                               ir::Value const& val, bool complete) {
   auto iter = bindings_.find(decl);
   ASSERT(iter != bindings_.end());
   iter->second.value = val;
+  iter->second.complete = complete;
 }
 
 }  // namespace compiler

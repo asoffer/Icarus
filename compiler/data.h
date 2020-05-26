@@ -225,6 +225,18 @@ struct DependentComputedData {
   bool ShouldVerifyBody(ast::Node const *node);
   void ClearVerifyBody(ast::Node const *node);
 
+  struct ConstantValue {
+    ir::Value value;
+    // Whether or not the held value is complete. This may be a struct or
+    // function whose body has not been emit yet.
+    bool complete;
+  };
+  void CompleteConstant(ast::Declaration const *decl);
+  void SetConstant(ast::Declaration const *decl, ir::Value const &value,
+                   bool complete = false);
+  ConstantValue *Constant(ast::Declaration const *decl);
+  ConstantValue const *Constant(ast::Declaration const *decl) const;
+
  private:
   // Stores the types of argument bound to the parameter with the given name.
   absl::flat_hash_map<std::string_view, type::Type const *> arg_type_;
@@ -237,6 +249,12 @@ struct DependentComputedData {
   absl::flat_hash_map<ast::Identifier const *,
                       std::vector<ast::Declaration const *>>
       decls_;
+
+  // Map of all constant declarations to their values within this dependent
+  // context.
+  //
+  // TODO: Delete `constants_` then rename this to that.
+  absl::flat_hash_map<ast::Declaration const *, ConstantValue> consts_;
 
   // Collection of identifiers that are already known to have errors. This
   // allows us to emit cyclic dependencies exactly once rather than one time per
