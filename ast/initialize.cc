@@ -187,8 +187,9 @@ void StructLiteral::Initialize(Scope *scope) {
 void ParameterizedStructLiteral::Initialize(Scope *scope) {
   scope_ = scope;
   set_body_with_parent(scope);
-  for (auto &param : params_) { param.Initialize(body_scope()); }
+  for (auto &param : params_) { param.value->Initialize(body_scope()); }
   for (auto &field : fields_) { field.Initialize(body_scope()); }
+  dep_graph_ = BuildParamDependencyGraph(params_);
 }
 
 void StructType::Initialize(Scope *scope) {

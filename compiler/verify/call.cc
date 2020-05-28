@@ -4,6 +4,8 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "diagnostic/errors.h"
+#include "type/callable.h"
+#include "type/generic_struct.h"
 #include "type/qual_type.h"
 
 namespace compiler {
@@ -233,7 +235,7 @@ type::QualType Compiler::VerifyType(ast::Call const *node) {
   qt = VerifyType(node->callee());
   if (not qt.ok()) { return qt; }
 
-  if (auto *c = qt.type()->if_as<type::Callable>()) {
+  if (auto const *c = qt.type()->if_as<type::Callable>()) {
     DEBUG_LOG("Call.VerifyType")
     ("Callee's (", node->callee()->DebugString(), ") qual-type: ", qt);
     auto ret_types = c->return_types(arg_vals);
@@ -241,6 +243,14 @@ type::QualType Compiler::VerifyType(ast::Call const *node) {
     // doesn't need to be run at runtime?
     return data().set_qual_type(
         node, type::QualType(ret_types, type::Quals::Unqualified()));
+  } else if (auto const *gen_struct = qt.type()->if_as<type::GenericStruct>()) {
+    static int x = 3;
+    DEBUG_LOG()("GenericStruct!");
+    type::Struct const *s = gen_struct->concrete(arg_vals);
+    DEBUG_LOG()(*s);
+    if (x-- == 0) { NOT_YET(); }
+    // TODO: Not always a constant
+    return type::QualType::Constant(type::Type_);
   } else {
     diag().Consume(UncallableExpression{.range = node->callee()->range()});
     return type::QualType::Error();

@@ -472,7 +472,8 @@ std::unique_ptr<ast::Node> BuildAccess(
 std::unique_ptr<ast::Node> BuildIndexOperator(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  auto range = SourceRange(nodes[0]->range().begin(), nodes[2]->range().end());
+  auto range =
+      SourceRange(nodes.front()->range().begin(), nodes.back()->range().end());
   auto index =
       std::make_unique<ast::Index>(range, move_as<ast::Expression>(nodes[0]),
                                    move_as<ast::Expression>(nodes[2]));

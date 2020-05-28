@@ -9,29 +9,38 @@
 #include "type/type.h"
 
 namespace type {
-struct GenericStruct : public Type {
-  TYPE_FNS(GenericStruct);
-  GenericStruct(ast::Scope const *scope, std::vector<Type const *> ts)
+
+struct GenericStruct : Type {
+  explicit GenericStruct(
+      std::function<Struct const *(core::FnArgs<Typed<ir::Value>> const &)> fn)
       : Type(Type::Flags{.is_default_initializable = 0,
                          .is_copyable              = 1,
                          .is_movable               = 1,
                          .has_destructor           = 0}),
-        scope_(scope),
-        mod_(nullptr /* TODO */),
-        deps_(std::move(ts)) {}
+        gen_(std::move(fn)) {}
+  ~GenericStruct() override {}
+  void WriteTo(std::string *result) const override {
+    result->append("generic-struct");
+  }
+
+  bool is_big() const override { return false; }
+
+  Struct const *concrete(core::FnArgs<Typed<ir::Value>> const &) const;
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
 
-  module::BasicModule const *defining_module() const { return mod_; }
+  core::Bytes bytes(core::Arch const &arch) const override;
+  core::Alignment alignment(core::Arch const &arch) const override;
 
-  ast::Scope const *scope_        = nullptr;
-  module::BasicModule const *mod_ = nullptr;
-  std::vector<Type const *> deps_;
+ private:
+  // TODO: Eventually we will want a serializable version of this.
+  std::function<Struct const *(core::FnArgs<Typed<ir::Value>> const &)> gen_;
 };
 
 GenericStruct *GenStruct(ast::Scope const *scope, std::vector<Type const *> ts);
+
 }  // namespace type
 
 #endif  // ICARUS_TYPE_GENERIC_STRUCT_H

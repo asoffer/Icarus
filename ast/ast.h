@@ -997,7 +997,7 @@ struct ParameterizedStructLiteral : ParameterizedExpression,
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
-  std::vector<Declaration> params_, fields_;
+  std::vector<Declaration> fields_;
 };
 
 // ReturnStmt:

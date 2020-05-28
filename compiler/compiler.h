@@ -61,8 +61,10 @@ struct EmitMoveAssignTag {};
 // rather than separating all stages. In time we will see if this belief holds
 // water.
 
+// TODO: Document.
 std::vector<std::pair<int, core::DependencyNode<ast::Declaration>>>
-OrderedDependencyNodes(ast::ParameterizedExpression const *node);
+OrderedDependencyNodes(ast::ParameterizedExpression const *node,
+                       bool all = false);
 
 struct Compiler
     : ast::Visitor<EmitMoveInitTag, void(type::Typed<ir::Reg>)>,

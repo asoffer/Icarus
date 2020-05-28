@@ -711,18 +711,16 @@ type::QualType Compiler::VerifyType(ast::EnumLiteral const *node) {
 }
 
 std::vector<std::pair<int, core::DependencyNode<ast::Declaration>>>
-OrderedDependencyNodes(ast::ParameterizedExpression const *node) {
+OrderedDependencyNodes(ast::ParameterizedExpression const *node, bool all) {
   absl::flat_hash_set<core::DependencyNode<ast::Declaration>> deps;
   for (auto const &p : node->params()) {
     deps.insert(
         core::DependencyNode<ast::Declaration>::MakeArgType(p.value.get()));
     deps.insert(
         core::DependencyNode<ast::Declaration>::MakeType(p.value.get()));
-    if (p.value->flags() & ast::Declaration::f_IsConst) {
+    if (all or (p.value->flags() & ast::Declaration::f_IsConst)) {
       deps.insert(
           core::DependencyNode<ast::Declaration>::MakeValue(p.value.get()));
-      deps.insert(
-          core::DependencyNode<ast::Declaration>::MakeArgType(p.value.get()));
       deps.insert(
           core::DependencyNode<ast::Declaration>::MakeArgValue(p.value.get()));
     }
@@ -866,7 +864,7 @@ Compiler::ComputeParamsFromArgs(
         }
 
         auto *constant_value = data().Constant(dep_node.node());
-        if (not constant_value) { constant_value->value = *arg; }
+        if (constant_value) { constant_value->value = *arg; }
         constants.reserve_slot(dep_node.node(), arg.type());
         constants.set_slot(dep_node.node(), *arg);
 
@@ -877,9 +875,7 @@ Compiler::ComputeParamsFromArgs(
       std::move(param_types), std::move(constants));
 }
 
-std::tuple<core::Params<type::QualType>, std::vector<type::Type const *> *,
-           DependentComputedData *>
-MakeConcrete(
+DependentComputedData::InsertDependentResult MakeConcrete(
     ast::ParameterizedExpression const *node, CompiledModule *mod,
     absl::Span<std::pair<int, core::DependencyNode<ast::Declaration>> const>
         ordered_nodes,
@@ -896,24 +892,7 @@ MakeConcrete(
 
   auto [parameters, constants] =
       c.ComputeParamsFromArgs(node, ordered_nodes, args);
-
-  auto [params, rets, data, inserted] =
-      compiler_data.InsertDependent(node, parameters, std::move(constants));
-  if (inserted) {
-    if (auto const *fn_node = node->if_as<ast::FunctionLiteral>()) {
-      if (auto outputs = fn_node->outputs(); outputs and not outputs->empty()) {
-        for (auto const *o : *outputs) {
-          auto qt = c.VerifyType(o);
-          ASSERT(qt == type::QualType::Constant(type::Type_));
-          auto maybe_type = c.EvaluateAs<type::Type const *>(o);
-          if (not maybe_type) { NOT_YET(); }
-          rets.push_back(ASSERT_NOT_NULL(*maybe_type));
-        }
-      }
-    }
-  }
-
-  return std::tuple(params, &rets, &data);
+  return compiler_data.InsertDependent(node, parameters, std::move(constants));
 }
 
 type::QualType Compiler::VerifyType(ast::FunctionLiteral const *node) {
@@ -926,11 +905,29 @@ type::QualType Compiler::VerifyType(ast::FunctionLiteral const *node) {
               ordered_nodes(std::move(ordered_nodes))](
                  core::FnArgs<type::Typed<ir::Value>> const &args) mutable
       -> type::Function const * {
-    auto [params, rets, data] =
+    auto [params, rets, data, inserted] =
         MakeConcrete(node, compiler_data->module(), ordered_nodes, args,
                      *compiler_data, *diag_consumer);
-    type::Function const *ft = type::Func(params, *rets);
-    data->set_qual_type(node, type::QualType::Constant(ft));
+    if (inserted) {
+      Compiler c({
+          .builder             = ir::GetBuilder(),
+          .data                = data,
+          .diagnostic_consumer = *diag_consumer,
+      });
+
+      if (auto outputs = node->outputs(); outputs and not outputs->empty()) {
+        for (auto const *o : *outputs) {
+          auto qt = c.VerifyType(o);
+          ASSERT(qt == type::QualType::Constant(type::Type_));
+          auto maybe_type = c.EvaluateAs<type::Type const *>(o);
+          if (not maybe_type) { NOT_YET(); }
+          rets.push_back(ASSERT_NOT_NULL(*maybe_type));
+        }
+      }
+    }
+
+    type::Function const *ft = type::Func(params, rets);
+    data.set_qual_type(node, type::QualType::Constant(ft));
     return ft;
   };
 
@@ -987,18 +984,16 @@ type::QualType Compiler::VerifyType(ast::ShortFunctionLiteral const *node) {
                  core::FnArgs<type::Typed<ir::Value>> const &args) mutable
       -> type::Function const * {
     // TODO handle compilation failures.
-    auto [params, rets, data] =
+    auto [params, rets, data, inserted] =
         MakeConcrete(node, compiler_data->module(), ordered_nodes, args,
                      *compiler_data, *diag_consumer);
 
-    Compiler c({
-        .builder             = ir::GetBuilder(),
-        .data                = *data,
-        .diagnostic_consumer = *diag_consumer,
-    });
-    auto body_qt = c.VerifyType(node->body());
-    *rets        = {body_qt.type()};
-    return type::Func(std::move(params), *rets);
+    auto body_qt = Compiler({.builder             = ir::GetBuilder(),
+                             .data                = data,
+                             .diagnostic_consumer = *diag_consumer})
+                       .VerifyType(node->body());
+    rets = {body_qt.type()};
+    return type::Func(std::move(params), rets);
   };
 
   return data().set_qual_type(
@@ -1110,29 +1105,30 @@ bool Compiler::VerifyBody(ast::ParameterizedStructLiteral const *node) {
 
 type::QualType Compiler::VerifyType(
     ast::ParameterizedStructLiteral const *node) {
-  state_.work_queue.emplace(node, TransientFunctionState::WorkType::VerifyBody);
+  auto ordered_nodes = OrderedDependencyNodes(node, true);
+  auto *diag_consumer = &diag();
+  auto gen            = [node, compiler_data = &data(), diag_consumer,
+              ordered_nodes(std::move(ordered_nodes))](
+                 core::FnArgs<type::Typed<ir::Value>> const &args) mutable
+      -> type::Struct const * {
+    // TODO: Need a version of MakeConcrete that doesn't generate return types
+    // because those only make sense for functions.
+    auto [params, rets, data, inserted] =
+        MakeConcrete(node, compiler_data->module(), ordered_nodes, args,
+                     *compiler_data, *diag_consumer);
+    DEBUG_LOG()(&params);
+    for (auto const &p : params) { DEBUG_LOG()(p.value); }
 
-  auto ordered_nodes = OrderedDependencyNodes(node);
+    // TODO: Generate the struct fields.
 
-  NOT_YET();
-  // auto *diag_consumer = &diag();
-  // auto gen            = [node, compiler_data = &data(), diag_consumer,
-  //             ordered_nodes(std::move(ordered_nodes))](
-  //                core::FnArgs<type::Typed<ir::Value>> const &args) mutable
-  //     -> type::Function const * {
-  //   auto [params, rets, data] =
-  //       MakeConcrete(node, compiler_data->module(), ordered_nodes, args,
-  //                    *compiler_data, *diag_consumer);
-  //   type::Function const *ft = type::Func(params, *rets);
-  //   data->set_qual_type(node, type::QualType::Constant(ft));
-  //   return ft;
-  // };
+    auto const *s =
+        new type::Struct(data.module(), {.is_copyable = 1, .is_movable = 1});
+    data.set_qual_type(node, type::QualType::Constant(s));
+    return s;
+  };
 
-  // return data().set_qual_type(
-  //     node,
-  //     type::QualType::Constant(new type::GenericFunction(std::move(gen))));
-  // return data().set_qual_type(node, type::QualType::Constant(type::GenStruct(
-  //                                       node->scope(), std::move(ts))));
+  return data().set_qual_type(
+      node, type::QualType::Constant(new type::GenericStruct(std::move(gen))));
 }
 
 type::QualType Compiler::VerifyType(ast::StructType const *node) {

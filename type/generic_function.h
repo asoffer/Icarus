@@ -14,7 +14,7 @@
 
 namespace type {
 
-struct GenericFunction : public Callable {
+struct GenericFunction : Callable {
   explicit GenericFunction(
       std::function<Function const *(core::FnArgs<Typed<ir::Value>> const &)>
           fn)
@@ -39,7 +39,7 @@ struct GenericFunction : public Callable {
   core::Alignment alignment(core::Arch const &arch) const override;
 
  private:
-  // TODO Eventually we will want a serializable version of this.
+  // TODO: Eventually we will want a serializable version of this.
   std::function<Function const *(core::FnArgs<Typed<ir::Value>> const &)>
       gen_fn_;
 };

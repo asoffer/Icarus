@@ -159,6 +159,7 @@ cc_library(
     hdrs = ["generic_struct.h"],
     srcs = ["generic_struct.cc"],
     deps = [
+        ":struct",
         ":type",
         "//module:module",
         "//ast/scope",
