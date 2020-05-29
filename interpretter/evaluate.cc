@@ -8,6 +8,7 @@
 #include "ir/value/generic_fn.h"
 #include "type/function.h"
 #include "type/generic_function.h"
+#include "type/generic_struct.h"
 #include "type/util.h"
 
 namespace interpretter {
@@ -50,15 +51,20 @@ base::expected<ir::Value, EvaluationFailure> Evaluate(ir::CompiledFn &&fn) {
 
   auto iter = buf.begin();
   for (auto *t : fn.type()->output()) {
-    type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                     uint32_t, uint64_t, float, double, type::Type const *,
-                     ir::EnumVal, ir::FlagsVal, ir::Addr, ir::String,
-                     module::BasicModule *, ir::ScopeDef *, ir::Fn, ir::Jump *,
-                     ir::BlockDef *, ir::GenericFn>(t, [&](auto tag) {
-      using T = typename decltype(tag)::type;
-      T val   = iter.read<T>();
-      values.push_back(ir::Value(val));
-    });
+    if (t->is<type::GenericStruct>()) {
+      values.push_back(ir::Value(t));
+    } else {
+      type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                       uint16_t, uint32_t, uint64_t, float, double,
+                       type::Type const *, ir::EnumVal, ir::FlagsVal, ir::Addr,
+                       ir::String, module::BasicModule *, ir::ScopeDef *,
+                       ir::Fn, ir::Jump *, ir::BlockDef *, ir::GenericFn>(
+          t, [&](auto tag) {
+            using T = typename decltype(tag)::type;
+            T val   = iter.read<T>();
+            values.push_back(ir::Value(val));
+          });
+    }
   }
 
   switch (values.size()) {

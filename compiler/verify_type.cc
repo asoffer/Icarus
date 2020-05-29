@@ -753,7 +753,7 @@ OrderedDependencyNodes(ast::ParameterizedExpression const *node, bool all) {
 
 // TODO: There's something strange about this: We want to work on a temporary
 // data/compiler, but using `this` makes it feel more permanent.
-std::pair<core::Params<type::QualType>, ConstantBinding>
+core::Params<std::pair<ir::Value, type::QualType>>
 Compiler::ComputeParamsFromArgs(
     ast::ParameterizedExpression const *node,
     absl::Span<std::pair<int, core::DependencyNode<ast::Declaration>> const>
@@ -764,7 +764,8 @@ Compiler::ComputeParamsFromArgs(
   ("Creating a concrete implementation with ",
    args.Transform([](auto const &a) { return a.type()->to_string(); }));
 
-  core::Params<type::QualType> param_types(node->params().size());
+  core::Params<std::pair<ir::Value, type::QualType>> parameters(
+      node->params().size());
 
   // TODO use the proper ordering.
   for (auto [index, dep_node] : ordered_nodes) {
@@ -841,9 +842,10 @@ Compiler::ComputeParamsFromArgs(
         DEBUG_LOG("generic-fn")("... ", qt);
         size_t i =
             *ASSERT_NOT_NULL(node->params().at_or_null(dep_node.node()->id()));
-        param_types.set(i,
-                        core::Param<type::QualType>(dep_node.node()->id(), qt,
-                                                    node->params()[i].flags));
+        parameters.set(i,
+                   core::Param<std::pair<ir::Value, type::QualType>>(
+                       dep_node.node()->id(), std::make_pair(ir::Value(), qt),
+                       node->params()[i].flags));
       } break;
       case core::DependencyNodeKind::ParamValue: {
         // Find the argument associated with this parameter.
@@ -852,6 +854,7 @@ Compiler::ComputeParamsFromArgs(
         type::Typed<ir::Value> arg;
         if (index < args.pos().size()) {
           arg = args[index];
+          DEBUG_LOG("generic-fn")(*arg, *arg.type());
         } else if (auto const *a = args.at_or_null(dep_node.node()->id())) {
           arg = *a;
         } else {
@@ -863,16 +866,18 @@ Compiler::ComputeParamsFromArgs(
           DEBUG_LOG("generic-fn")(dep_node.node()->DebugString());
         }
 
-        auto *constant_value = data().Constant(dep_node.node());
-        if (constant_value) { constant_value->value = *arg; }
-        constants.reserve_slot(dep_node.node(), arg.type());
-        constants.set_slot(dep_node.node(), *arg);
+        if (not data().Constant(dep_node.node())) {
+          // TODO complete?
+          data().SetConstant(dep_node.node(), *arg);
+        }
 
+        size_t i =
+            *ASSERT_NOT_NULL(node->params().at_or_null(dep_node.node()->id()));
+        parameters[i].value.first = *arg;
       } break;
     }
   }
-  return std::pair<core::Params<type::QualType>, ConstantBinding>(
-      std::move(param_types), std::move(constants));
+  return parameters;
 }
 
 DependentComputedData::InsertDependentResult MakeConcrete(
@@ -890,9 +895,8 @@ DependentComputedData::InsertDependentResult MakeConcrete(
   });
   temp_data.parent_ = &compiler_data;
 
-  auto [parameters, constants] =
-      c.ComputeParamsFromArgs(node, ordered_nodes, args);
-  return compiler_data.InsertDependent(node, parameters, std::move(constants));
+  auto parameters = c.ComputeParamsFromArgs(node, ordered_nodes, args);
+  return compiler_data.InsertDependent(node, parameters);
 }
 
 type::QualType Compiler::VerifyType(ast::FunctionLiteral const *node) {
@@ -926,7 +930,8 @@ type::QualType Compiler::VerifyType(ast::FunctionLiteral const *node) {
       }
     }
 
-    type::Function const *ft = type::Func(params, rets);
+    type::Function const *ft = type::Func(
+        params.Transform([](auto const &p) { return p.second; }), rets);
     data.set_qual_type(node, type::QualType::Constant(ft));
     return ft;
   };
@@ -993,7 +998,8 @@ type::QualType Compiler::VerifyType(ast::ShortFunctionLiteral const *node) {
                              .diagnostic_consumer = *diag_consumer})
                        .VerifyType(node->body());
     rets = {body_qt.type()};
-    return type::Func(std::move(params), rets);
+    return type::Func(params.Transform([](auto const &p) { return p.second; }),
+                      rets);
   };
 
   return data().set_qual_type(
@@ -1099,7 +1105,7 @@ type::QualType Compiler::VerifyType(ast::ScopeNode const *node) {
 }
 
 bool Compiler::VerifyBody(ast::ParameterizedStructLiteral const *node) {
-  NOT_YET();
+  // NOT_YET();
   return false;
 }
 
@@ -1116,15 +1122,62 @@ type::QualType Compiler::VerifyType(
     auto [params, rets, data, inserted] =
         MakeConcrete(node, compiler_data->module(), ordered_nodes, args,
                      *compiler_data, *diag_consumer);
-    DEBUG_LOG()(&params);
-    for (auto const &p : params) { DEBUG_LOG()(p.value); }
+    if (inserted) {
+      Compiler c({
+          .builder             = ir::GetBuilder(),
+          .data                = data,
+          .diagnostic_consumer = *diag_consumer,
+      });
 
-    // TODO: Generate the struct fields.
+      type::Struct *s = new type::Struct(
+          c.data().module(),
+          {.is_copyable = not node->contains_hashtag(
+               ast::Hashtag(ast::Hashtag::Builtin::Uncopyable)),
+           .is_movable = not node->contains_hashtag(
+               ast::Hashtag(ast::Hashtag::Builtin::Immovable))});
 
-    auto const *s =
-        new type::Struct(data.module(), {.is_copyable = 1, .is_movable = 1});
-    data.set_qual_type(node, type::QualType::Constant(s));
-    return s;
+      DEBUG_LOG("struct")
+      ("Allocating a new (parameterized) struct ", s, " for ", node);
+      c.data().set_struct(node, s);
+
+      // TODO: This should actually be behind a must_complete work queue item.
+      ir::CompiledFn fn(type::Func({}, {}),
+                        core::Params<type::Typed<ast::Declaration const *>>{});
+      ICARUS_SCOPE(ir::SetCurrent(&fn, &c.builder())) {
+        // TODO: this is essentially a copy of the body of
+        // FunctionLiteral::EmitValue Factor these out together.
+        c.builder().CurrentBlock() = fn.entry();
+
+        std::vector<ir::StructField> fields;
+        fields.reserve(node->fields().size());
+
+        for (auto const &field : node->fields()) {
+          // TODO hashtags, special members.
+          if (auto *init_val = field.init_val()) {
+            // TODO init_val type may not be the same.
+            auto *t = ASSERT_NOT_NULL(c.qual_type_of(init_val)->type());
+            fields.emplace_back(field.id(), t, c.EmitValue(init_val));
+          } else {
+            fields.emplace_back(
+                field.id(),
+                c.EmitValue(field.type_expr()).get<type::Type const *>());
+          }
+        }
+        c.builder().Struct(c.data().module(), s, std::move(fields),
+                           std::nullopt);
+        c.builder().ReturnJump();
+      }
+
+      // TODO: What if execution fails.
+      fn.WriteByteCode();
+      interpretter::Execute(std::move(fn));
+      DEBUG_LOG("struct")
+      ("Completed ", node->DebugString(), " which is a (parameterized) struct ",
+       *s, " with ", s->fields().size(), " field(s).");
+      return s;
+    } else {
+      return data.get_struct(node);
+    }
   };
 
   return data().set_qual_type(

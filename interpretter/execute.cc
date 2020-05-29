@@ -932,6 +932,8 @@ constexpr auto kInstructions = std::array{
         ir::SetReturnInstruction<module::BasicModule const *>>,
     ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::GenericFn>>,
     ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::Jump *>>,
+    ExecuteAdHocInstruction<
+        ir::SetReturnInstruction<type::GenericStruct const *>>,
 
     ExecuteAdHocInstruction<ir::CastInstruction<uint8_t>>,
     ExecuteAdHocInstruction<ir::CastInstruction<int8_t>>,

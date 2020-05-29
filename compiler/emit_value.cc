@@ -18,6 +18,7 @@
 #include "ir/value/builtin_fn.h"
 #include "ir/value/generic_fn.h"
 #include "ir/value/reg.h"
+#include "type/generic_struct.h"
 #include "type/jump.h"
 #include "type/type.h"
 #include "type/typed_value.h"
@@ -573,6 +574,15 @@ ir::Value Compiler::EmitValue(ast::Call const *node) {
     return type::Typed(EmitValue(expr), type_of(expr));
   });
 
+  // TODO: This is a pretty terrible hack.
+  if (auto const *gen_struct_type =
+          ASSERT_NOT_NULL(data().qual_type(node->callee()))
+              ->type()
+              ->if_as<type::GenericStruct>()) {
+    type::Type const *s = gen_struct_type->concrete(args);
+    return ir::Value(s);
+  }
+
   // TODO this shouldn't be able to fail.
   ASSIGN_OR(return ir::Value(),  //
                    auto os, MakeOverloadSet(this, node->callee(), args));
@@ -773,7 +783,7 @@ ir::NativeFn MakeConcreteFromGeneric(
       .diagnostic_consumer = compiler->diag(),
   });
   temp_data.parent_ = &compiler->data();
-  auto [params, constants] =
+  auto params =
       c.ComputeParamsFromArgs(node, OrderedDependencyNodes(node), args);
   auto find_dependent_result = compiler->data().FindDependent(node, params);
   auto const *fn_type        = find_dependent_result.fn_type;
@@ -1185,8 +1195,10 @@ ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
 ir::Value Compiler::EmitValue(ast::ParameterizedStructLiteral const *node) {
   // TODO: Check the result of body verification.
   if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
-
-  NOT_YET();
+  // NOT_YET();
+  // TODO: At least right now with the hacky version we don't look at this.
+  
+  return ir::Value(data().qual_type(node)->type());
 }
 
 ir::Value Compiler::EmitValue(ast::StructType const *node) { NOT_YET(); }

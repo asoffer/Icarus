@@ -244,11 +244,6 @@ type::QualType Compiler::VerifyType(ast::Call const *node) {
     return data().set_qual_type(
         node, type::QualType(ret_types, type::Quals::Unqualified()));
   } else if (auto const *gen_struct = qt.type()->if_as<type::GenericStruct>()) {
-    static int x = 3;
-    DEBUG_LOG()("GenericStruct!");
-    type::Struct const *s = gen_struct->concrete(arg_vals);
-    DEBUG_LOG()(*s);
-    if (x-- == 0) { NOT_YET(); }
     // TODO: Not always a constant
     return type::QualType::Constant(type::Type_);
   } else {

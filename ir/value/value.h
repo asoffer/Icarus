@@ -187,7 +187,7 @@ struct Value {
   friend H AbslHashValue(H h, Value const& v) {
     v.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                  uint32_t, uint64_t, float, double, type::Type const*, Addr,
-                 String, EnumVal, FlagsVal, /* Fn, GenericFn, */ Reg,
+                 /*String, */ EnumVal, FlagsVal, /* Fn, GenericFn, */ Reg,
                  ModuleId, Empty>(
         [&](auto x) { h = H::combine(std::move(h), v.type_.get(), x); });
     return h;

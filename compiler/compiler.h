@@ -247,8 +247,7 @@ struct Compiler
   base::expected<ir::Value, interpretter::EvaluationFailure> Evaluate(
       type::Typed<ast::Expression const *> expr, bool must_complete = true);
 
-  std::pair<core::Params<type::QualType>, ConstantBinding>
-  ComputeParamsFromArgs(
+  core::Params<std::pair<ir::Value, type::QualType>> ComputeParamsFromArgs(
       ast::ParameterizedExpression const *node,
       absl::Span<std::pair<int, core::DependencyNode<ast::Declaration>> const>
           ordered_nodes,

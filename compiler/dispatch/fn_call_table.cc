@@ -96,7 +96,7 @@ ir::Value EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
       });
       temp_data.parent_ = &compiler->data();
 
-      auto [params, constants] = c.ComputeParamsFromArgs(
+      auto params = c.ComputeParamsFromArgs(
           parameterized_expr, OrderedDependencyNodes(parameterized_expr), args);
 
       auto find_dependent_result = compiler->data().FindDependent(

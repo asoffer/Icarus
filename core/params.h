@@ -152,6 +152,7 @@ struct Params {
   }
 
   Param<T> const& operator[](size_t i) const& { return params_[i]; }
+  Param<T>& operator[](size_t i) & { return params_[i]; }
 
   void append(Param<T> p) {
     if (not p.name.empty()) { lookup_.emplace(p.name, params_.size()); }

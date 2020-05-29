@@ -143,7 +143,7 @@ struct DependentComputedData {
   // which new computed data dependent on this set of generic context can be
   // added.
   struct InsertDependentResult {
-    core::Params<type::QualType> &params;
+    core::Params<std::pair<ir::Value, type::QualType>> &params;
     std::vector<type::Type const *> &rets;
     DependentComputedData &data;
     bool inserted;
@@ -151,8 +151,7 @@ struct DependentComputedData {
 
   InsertDependentResult InsertDependent(
       ast::ParameterizedExpression const *node,
-      core::Params<type::QualType> const &params,
-      ConstantBinding const &constants);
+      core::Params<std::pair<ir::Value, type::QualType>> const &params);
 
   // FindDependent:
   //
@@ -166,8 +165,9 @@ struct DependentComputedData {
     DependentComputedData &data;
   };
 
-  FindDependentResult FindDependent(ast::ParameterizedExpression const *node,
-                                    core::Params<type::QualType> const &params);
+  FindDependentResult FindDependent(
+      ast::ParameterizedExpression const *node,
+      core::Params<std::pair<ir::Value, type::QualType>> const &params);
 
   template <
       typename Ctor,
@@ -177,11 +177,17 @@ struct DependentComputedData {
         .first->second;
   }
 
-  ir::Value LoadConstantParam(ast::Declaration const *decl) {
-    ir::Value val = constants_.get_constant(decl);
-    if (not val.empty()) { return val; }
-    if (parent_) { val = parent_->LoadConstantParam(decl); }
-    return val;
+  ir::Value LoadConstant(ast::Declaration const *decl) const {
+    if (auto iter = constants_.find(decl); iter != constants_.end()) {
+      ir::Value val = iter->second.value;
+      if (not val.empty()) { return val; }
+    }
+    if (parent_) { return parent_->LoadConstant(decl); }
+    return ir::Value();
+  }
+
+  ir::Value LoadConstantParam(ast::Declaration const *decl) const {
+    return LoadConstant(decl);
   }
 
   ir::NativeFn *FindNativeFn(ast::Expression const *expr) {
@@ -209,8 +215,6 @@ struct DependentComputedData {
     arg_val_.emplace(name, value);
   }
 
-  ConstantBinding constants_;
-
   absl::Span<ast::Declaration const *const> decls(
       ast::Identifier const *id) const;
   void set_decls(ast::Identifier const *id,
@@ -221,6 +225,9 @@ struct DependentComputedData {
 
   type::Struct *get_struct(ast::StructLiteral const *s) const;
   void set_struct(ast::StructLiteral const *sl, type::Struct *s);
+
+  type::Struct *get_struct(ast::ParameterizedStructLiteral const *s) const;
+  void set_struct(ast::ParameterizedStructLiteral const *sl, type::Struct *s);
 
   bool ShouldVerifyBody(ast::Node const *node);
   void ClearVerifyBody(ast::Node const *node);
@@ -234,14 +241,11 @@ struct DependentComputedData {
   void CompleteConstant(ast::Declaration const *decl);
   void SetConstant(ast::Declaration const *decl, ir::Value const &value,
                    bool complete = false);
-  ConstantValue *Constant(ast::Declaration const *decl);
   ConstantValue const *Constant(ast::Declaration const *decl) const;
 
  private:
   // Stores the types of argument bound to the parameter with the given name.
   absl::flat_hash_map<std::string_view, type::Type const *> arg_type_;
-  // TODO: If you could store the decl on the ast-node you could use
-  // ConstantBinding for this.
   absl::flat_hash_map<std::string_view, ir::Value> arg_val_;
 
   // A map from each identifier to all possible declarations that the identifier
@@ -252,9 +256,7 @@ struct DependentComputedData {
 
   // Map of all constant declarations to their values within this dependent
   // context.
-  //
-  // TODO: Delete `constants_` then rename this to that.
-  absl::flat_hash_map<ast::Declaration const *, ConstantValue> consts_;
+  absl::flat_hash_map<ast::Declaration const *, ConstantValue> constants_;
 
   // Collection of identifiers that are already known to have errors. This
   // allows us to emit cyclic dependencies exactly once rather than one time per
@@ -262,6 +264,8 @@ struct DependentComputedData {
   absl::flat_hash_set<ast::Identifier const*> cyclic_error_ids_;
 
   absl::flat_hash_map<ast::StructLiteral const *, type::Struct *> structs_;
+  absl::flat_hash_map<ast::ParameterizedStructLiteral const *, type::Struct *>
+      param_structs_;
 
   // Colleciton of modules imported by this one.
   absl::flat_hash_map<ast::Import const *, LibraryModule *> imported_modules_;
@@ -271,7 +275,8 @@ struct DependentComputedData {
   struct DependentDataChild {
     DependentComputedData *parent = nullptr;
     struct DataImpl;
-    absl::flat_hash_map<core::Params<type::QualType>, std::unique_ptr<DataImpl>>
+    absl::flat_hash_map<core::Params<std::pair<ir::Value, type::QualType>>,
+                        std::unique_ptr<DataImpl>>
         map;
   };
 

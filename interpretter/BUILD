@@ -34,6 +34,7 @@ cc_library(
         "//ir:compiled_fn",
         "//ir/value",
         "//type:function",
+        "//type:generic_struct",
     ],
 )
 

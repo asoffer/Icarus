@@ -11,6 +11,7 @@
 #include "ir/compiled_fn.h"
 #include "ir/jump.h"
 #include "ir/value/value.h"
+#include "type/generic_struct.h"
 #include "type/jump.h"
 
 namespace compiler {
@@ -35,13 +36,11 @@ std::optional<type::QualType> Compiler::qual_type_of(
         auto *qt = mod->data().qual_type(decl);
         return qt ? std::optional(*qt) : std::nullopt;
       }
-      if (auto *t = data().constants_.type_of(decl)) {
-        return type::QualType::Constant(t);
-      }
+      if (auto *qt = data().qual_type(decl)) { return *qt; }
     }
   }
 
-  if (auto *result = data().qual_type(expr)) { return *result; }
+  if (auto *qt = data().qual_type(expr)) { return *qt; }
 
   // TODO embedded modules?
   return std::nullopt;
@@ -103,6 +102,8 @@ static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
             type::Typed<ir::Value>(v, t),
             type::Typed<ir::Reg>(c.builder().GetRet(i, t), type::Ptr(t)));
 
+      } else if (auto const *gs = t->if_as<type::GenericStruct>()) {
+        c.builder().SetRet(i, gs);
       } else {
         c.builder().SetRet(i, type::Typed<ir::Value>(v, t));
       }

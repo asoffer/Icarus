@@ -21,7 +21,7 @@ struct CompiledModule : module::BasicModule {
   ~CompiledModule() override {}
 
   ir::Value ExportedValue(ast::Declaration const *decl) const {
-    return data().constants_.get_constant(decl);
+    return data().LoadConstant(decl);
   }
 
   // TODO We probably don't need these. There are likely better ways to expose

@@ -51,6 +51,9 @@ constexpr uint8_t PrimitiveIndex() {
     return 0x16;
   } else if constexpr (base::meta<T> == base::meta<Jump *>) {
     return 0x17;
+  } else if constexpr (base::meta<T> ==
+                       base::meta<type::GenericStruct const *>) {
+    return 0x18;
   } else {
     UNREACHABLE(typeid(T).name());
   }
@@ -105,6 +108,9 @@ std::string_view TypeToString() {
     return "generic-fn";
   } else if constexpr (base::meta<T> == base::meta<ir::Jump *>) {
     return "jump";
+  } else if constexpr (base::meta<T> ==
+                       base::meta<type::GenericStruct const *>) {
+    return "generic-struct";
   } else {
     static_assert(base::always_false<T>());
   }

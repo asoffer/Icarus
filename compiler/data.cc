@@ -10,7 +10,7 @@ DependentComputedData::~DependentComputedData() {
 }
 
 struct DependentComputedData::DependentDataChild::DataImpl {
-  core::Params<type::QualType> params;
+  core::Params<std::pair<ir::Value, type::QualType>> params;
   std::vector<type::Type const *> rets;
   DependentComputedData data;
 };
@@ -18,8 +18,7 @@ struct DependentComputedData::DependentDataChild::DataImpl {
 DependentComputedData::InsertDependentResult
 DependentComputedData::InsertDependent(
     ast::ParameterizedExpression const *node,
-    core::Params<type::QualType> const &params,
-    ConstantBinding const &constants) {
+    core::Params<std::pair<ir::Value, type::QualType>> const &params) {
   auto &[parent, map]   = dependent_data_[node];
   parent                = this;
   auto [iter, inserted] = map.try_emplace(params);
@@ -32,16 +31,16 @@ DependentComputedData::InsertDependent(
             .data   = DependentComputedData(mod_),
         });
 
-    auto &constant_binding = iter->second->data.constants_;
-    constants.ForEach([&](auto const *decl, auto const &binding) {
-      constant_binding.reserve_slot(decl, binding.type);
-      constant_binding.set_slot(decl, binding.value);
-    });
+    size_t i = 0;
+    for (auto const &p : params) {
+      if (p.value.first.empty()) { continue; }
+      iter->second->data.SetConstant(node->params()[i++].value.get(), p.value.first);
+    }
 
     iter->second->data.parent_ = this;
     for (size_t i = 0; i < node->params().size(); ++i) {
       auto const *decl = node->params()[i].value.get();
-      iter->second->data.set_qual_type(decl, params[i].value);
+      iter->second->data.set_qual_type(decl, params[i].value.second);
     }
   }
   auto &[parameters, rets, data] = *iter->second;
@@ -55,14 +54,15 @@ DependentComputedData::InsertDependent(
 
 DependentComputedData::FindDependentResult DependentComputedData::FindDependent(
     ast::ParameterizedExpression const *node,
-    core::Params<type::QualType> const &params) {
+    core::Params<std::pair<ir::Value, type::QualType>> const &params) {
   auto &map = dependent_data_.find(node)->second.map;
   auto iter = map.find(params);
   ASSERT(iter != map.end());
   auto &[parameters, rets, data] = *iter->second;
   return FindDependentResult{
-      .fn_type = type::Func(parameters, rets),
-      .data    = data,
+      .fn_type = type::Func(
+          parameters.Transform([](auto const &p) { return p.second; }), rets),
+      .data = data,
   };
 }
 
@@ -144,6 +144,19 @@ void DependentComputedData::set_struct(ast::StructLiteral const *sl,
   structs_.emplace(sl, s);
 }
 
+type::Struct *DependentComputedData::get_struct(
+    ast::ParameterizedStructLiteral const *s) const {
+  auto iter = param_structs_.find(s);
+  if (iter != param_structs_.end()) { return iter->second; }
+  if (not parent_) { return nullptr; }
+  return parent_->get_struct(s);
+}
+
+void DependentComputedData::set_struct(
+    ast::ParameterizedStructLiteral const *sl, type::Struct *s) {
+  param_structs_.emplace(sl, s);
+}
+
 bool DependentComputedData::ShouldVerifyBody(ast::Node const *node) {
   return body_verification_complete_.insert(node).second;
 }
@@ -153,26 +166,20 @@ void DependentComputedData::ClearVerifyBody(ast::Node const *node) {
 }
 
 void DependentComputedData::CompleteConstant(ast::Declaration const *decl) {
-  auto iter = consts_.find(decl);
-  ASSERT(iter != consts_.end());
+  auto iter = constants_.find(decl);
+  ASSERT(iter != constants_.end());
   iter->second.complete = true;
 }
 
 void DependentComputedData::SetConstant(ast::Declaration const *decl,
                                         ir::Value const &value, bool complete) {
-  consts_.emplace(decl, ConstantValue{.value = value, .complete = complete});
+  constants_.emplace(decl, ConstantValue{.value = value, .complete = complete});
 }
 
 DependentComputedData::ConstantValue const *DependentComputedData::Constant(
     ast::Declaration const *decl) const {
-  auto iter = consts_.find(decl);
-  return iter != consts_.end() ? &iter->second : nullptr;
-}
-
-DependentComputedData::ConstantValue* DependentComputedData::Constant(
-    ast::Declaration const *decl) {
-  auto iter = consts_.find(decl);
-  return iter != consts_.end() ? &iter->second : nullptr;
+  auto iter = constants_.find(decl);
+  return iter != constants_.end() ? &iter->second : nullptr;
 }
 
 }  // namespace compiler
