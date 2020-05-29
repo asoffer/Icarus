@@ -43,11 +43,10 @@ TEST(BuiltinForeign, BufferPointerSuccess) {
 
 TEST(BuiltinForeign, NamedArgs) {
   test::TestModule mod;
-  auto const *call =
-      mod.Append<ast::Call>(R"(
+  auto const *call = mod.Append<ast::Call>(R"(
       foreign(name = "my_function", foreign_type = int64 -> bool)
       )");
-  auto const *qt = mod.data().qual_type(call);
+  auto const *qt   = mod.data().qual_type(call);
   ASSERT_EQ(qt, nullptr);
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
@@ -70,7 +69,6 @@ TEST(BuiltinForeign, OneArg) {
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "builtin-error")));
 }
-
 
 TEST(BuiltinForeign, TooManyArgs) {
   test::TestModule mod;
@@ -114,7 +112,7 @@ TEST(BuiltinForeign, SecondParameterType) {
 TEST(BuiltinOpaque, Success) {
   test::TestModule mod;
   auto const *call = mod.Append<ast::Call>("opaque()");
-  auto const *qt = mod.data().qual_type(call);
+  auto const *qt   = mod.data().qual_type(call);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType::Constant(type::Type_));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -133,7 +131,7 @@ TEST(BuiltinOpaque, Arguments) {
 TEST(BuiltinBytes, Success) {
   test::TestModule mod;
   auto const *call = mod.Append<ast::Call>("bytes(bool)");
-  auto const *qt = mod.data().qual_type(call);
+  auto const *qt   = mod.data().qual_type(call);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType::Constant(type::Nat64));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -182,7 +180,7 @@ TEST(BuiltinBytes, WrongType) {
 TEST(BuiltinAlignment, Success) {
   test::TestModule mod;
   auto const *call = mod.Append<ast::Call>("alignment(bool)");
-  auto const *qt = mod.data().qual_type(call);
+  auto const *qt   = mod.data().qual_type(call);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType::Constant(type::Nat64));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());

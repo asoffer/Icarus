@@ -48,9 +48,10 @@ struct NonStructDesignatedInitializer {
 
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Designated initializers can only be used with structs, but you "
-             "provided a `%s`",
-             type->to_string()),
+        diagnostic::Text(
+            "Designated initializers can only be used with structs, but you "
+            "provided a `%s`",
+            type->to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 

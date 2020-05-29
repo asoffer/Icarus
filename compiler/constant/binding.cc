@@ -24,7 +24,7 @@ void ConstantBinding::set_slot(ast::Declaration const* decl,
                                ir::Value const& val, bool complete) {
   auto iter = bindings_.find(decl);
   ASSERT(iter != bindings_.end());
-  iter->second.value = val;
+  iter->second.value    = val;
   iter->second.complete = complete;
 }
 

@@ -105,7 +105,6 @@ bool Struct::DeepCompleteImpl(absl::flat_hash_set<Type const *> &ts) const {
   }
 
   return true;
-
 }
 
 }  // namespace type

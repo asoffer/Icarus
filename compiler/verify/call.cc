@@ -45,7 +45,8 @@ type::QualType VerifyForeignCall(
   if (not arg_vals.named().empty()) {
     c->diag().Consume(BuiltinError{
         .range   = range,
-        .message = "Built-in function `foreign` cannot be called with named arguments.",
+        .message = "Built-in function `foreign` cannot be called with named "
+                   "arguments.",
     });
     error = true;
   }
@@ -128,7 +129,6 @@ type::QualType VerifyOpaqueCall(
 type::QualType VerifyBytesCall(
     Compiler *c, frontend::SourceRange const &range,
     core::FnArgs<type::Typed<ir::Value>> const &arg_vals) {
-
   auto qt =
       type::QualType::Constant(ir::BuiltinFn::Bytes().type()->output()[0]);
 
@@ -165,15 +165,14 @@ type::QualType VerifyBytesCall(
 type::QualType VerifyAlignmentCall(
     Compiler *c, frontend::SourceRange const &range,
     core::FnArgs<type::Typed<ir::Value>> const &arg_vals) {
-
   auto qt =
       type::QualType::Constant(ir::BuiltinFn::Alignment().type()->output()[0]);
 
   if (not arg_vals.named().empty()) {
-    c->diag().Consume(BuiltinError{.range = range,
-                                   .message =
-                                       "Built-in function `alignment` cannot be "
-                                       "called with named arguments."});
+    c->diag().Consume(
+        BuiltinError{.range   = range,
+                     .message = "Built-in function `alignment` cannot be "
+                                "called with named arguments."});
     qt.MarkError();
   } else {
     if (size_t size = arg_vals.size(); size != 1u) {

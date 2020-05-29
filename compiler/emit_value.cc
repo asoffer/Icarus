@@ -647,7 +647,7 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
       return val;
     } else {
       auto *constant_value = data().Constant(node);
-      auto const *t = type_of(node);
+      auto const *t        = type_of(node);
       // TODO schedule completion for structs?
       if (constant_value) { return constant_value->value; }
 
@@ -728,7 +728,8 @@ ir::Value Compiler::EmitValue(ast::DesignatedInitializer const *node) {
     NOT_YET();
     // auto *f            = struct_type.field(field);
     // size_t field_index = struct_type.index(f->name);
-    // EmitMoveInit(expr.get(), builder().Field(alloc, &struct_type, field_index));
+    // EmitMoveInit(expr.get(), builder().Field(alloc, &struct_type,
+    // field_index));
   }
   return ir::Value(alloc);
 }
@@ -1197,7 +1198,7 @@ ir::Value Compiler::EmitValue(ast::ParameterizedStructLiteral const *node) {
   if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
   // NOT_YET();
   // TODO: At least right now with the hacky version we don't look at this.
-  
+
   return ir::Value(data().qual_type(node)->type());
 }
 

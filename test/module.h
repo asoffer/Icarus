@@ -37,7 +37,6 @@ struct TrackingConsumer : diagnostic::DiagnosticConsumer {
   std::vector<std::pair<std::string, std::string>> diagnostics_;
 };
 
-
 struct TestModule : compiler::CompiledModule {
   TestModule()
       : compiler({

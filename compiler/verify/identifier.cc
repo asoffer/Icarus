@@ -47,11 +47,11 @@ struct UndeclaredIdentifier {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "undeclared-identifier";
 
-   diagnostic:: DiagnosticMessage ToMessage(frontend::Source const *src) const {
-     return diagnostic::DiagnosticMessage(
-         diagnostic::Text("Found an undeclared identifier:"),
-         diagnostic::SourceQuote(src).Highlighted(
-             range, diagnostic::Style::ErrorText()));
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Found an undeclared identifier:"),
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
   }
 
   std::string_view id;

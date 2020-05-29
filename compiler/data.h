@@ -261,7 +261,7 @@ struct DependentComputedData {
   // Collection of identifiers that are already known to have errors. This
   // allows us to emit cyclic dependencies exactly once rather than one time per
   // loop in the cycle.
-  absl::flat_hash_set<ast::Identifier const*> cyclic_error_ids_;
+  absl::flat_hash_set<ast::Identifier const *> cyclic_error_ids_;
 
   absl::flat_hash_map<ast::StructLiteral const *, type::Struct *> structs_;
   absl::flat_hash_map<ast::ParameterizedStructLiteral const *, type::Struct *>

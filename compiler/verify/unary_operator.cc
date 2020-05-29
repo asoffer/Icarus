@@ -22,7 +22,7 @@ struct InvalidUnaryOperatorCall {
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  char const * op;
+  char const *op;
   type::Type const *type;
   frontend::SourceRange range;
 };
@@ -165,7 +165,7 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
         qt.MarkError();
       }
     } break;
-    case frontend::Operator::At:{
+    case frontend::Operator::At: {
       if (auto const *ptr_type = operand_type->if_as<type::Pointer>()) {
         qt = type::QualType(ptr_type->pointee(), operand_qt.quals());
       } else {

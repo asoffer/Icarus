@@ -34,7 +34,8 @@ void Compiler::EmitMoveInit(ast::ArrayLiteral const *node,
   EmitMoveInit(node->elems().back(), type::Typed<ir::Reg>(elem, data_type_ptr));
 }
 
-void Compiler::EmitMoveInit(ast::UnaryOperator const *node, type::Typed<ir::Reg> reg) {
+void Compiler::EmitMoveInit(ast::UnaryOperator const *node,
+                            type::Typed<ir::Reg> reg) {
   switch (node->op()) {
     case frontend::Operator::Move: EmitMoveInit(node->operand(), reg); break;
     case frontend::Operator::Copy: EmitCopyInit(node->operand(), reg); break;

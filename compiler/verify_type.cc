@@ -71,7 +71,7 @@ Cmp Comparator(type::Type const *t) {
 type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node,
                           type::Type const *t = nullptr) {
   if (not t) { t = ASSERT_NOT_NULL(c->type_of(node)); }
-  auto const& fn_type = t->as<type::Function>();
+  auto const &fn_type = t->as<type::Function>();
   for (auto const *stmt : node->stmts()) { c->VerifyType(stmt); }
 
   // TODO we can have yields and returns, or yields and jumps, but not jumps
@@ -307,7 +307,8 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
     auto qt = type::QualType::Constant(
         type::Func(std::move(params), std::move(output_type_vec)));
     DEBUG_LOG("function")
-    ("Setting function-literal type: ", node->DebugString(), " ", qt, " ", &data());
+    ("Setting function-literal type: ", node->DebugString(), " ", qt, " ",
+     &data());
     return data().set_qual_type(node, qt);
   } else {
     DEBUG_LOG("function")("Setting function-literal type");
@@ -632,7 +633,7 @@ not_blocks:
             lhs_qual_type.type()->is<type::Struct>()) {
           // TODO overwriting type a bunch of times?
           // TODO support calling with constants.
-          return VerifyBinaryOverload( token, node, lhs_qual_type.type(),
+          return VerifyBinaryOverload(token, node, lhs_qual_type.type(),
                                       rhs_qual_type.type());
         }
 
@@ -842,10 +843,10 @@ Compiler::ComputeParamsFromArgs(
         DEBUG_LOG("generic-fn")("... ", qt);
         size_t i =
             *ASSERT_NOT_NULL(node->params().at_or_null(dep_node.node()->id()));
-        parameters.set(i,
-                   core::Param<std::pair<ir::Value, type::QualType>>(
-                       dep_node.node()->id(), std::make_pair(ir::Value(), qt),
-                       node->params()[i].flags));
+        parameters.set(
+            i, core::Param<std::pair<ir::Value, type::QualType>>(
+                   dep_node.node()->id(), std::make_pair(ir::Value(), qt),
+                   node->params()[i].flags));
       } break;
       case core::DependencyNodeKind::ParamValue: {
         // Find the argument associated with this parameter.
@@ -1111,7 +1112,7 @@ bool Compiler::VerifyBody(ast::ParameterizedStructLiteral const *node) {
 
 type::QualType Compiler::VerifyType(
     ast::ParameterizedStructLiteral const *node) {
-  auto ordered_nodes = OrderedDependencyNodes(node, true);
+  auto ordered_nodes  = OrderedDependencyNodes(node, true);
   auto *diag_consumer = &diag();
   auto gen            = [node, compiler_data = &data(), diag_consumer,
               ordered_nodes(std::move(ordered_nodes))](

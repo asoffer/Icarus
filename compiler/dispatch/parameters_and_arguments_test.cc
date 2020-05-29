@@ -29,15 +29,17 @@ TEST(ParamsCoverArgs, EmptyArguments) {
   }
 
   {  // One overload
-    core::Params params{param_type("param0", type::QualType::NonConstant(type::Bool))};
+    core::Params params{
+        param_type("param0", type::QualType::NonConstant(type::Bool))};
     absl::flat_hash_map<int, internal::ExprData> table{
         {0, internal::ExprData(nullptr, params)}};
     EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 
   {  // Multiple overloads
-    core::Params params{param_type("param0", type::QualType::NonConstant(type::Bool)),
-                        param_type("param1", type::QualType::NonConstant(type::Bool))};
+    core::Params params{
+        param_type("param0", type::QualType::NonConstant(type::Bool)),
+        param_type("param1", type::QualType::NonConstant(type::Bool))};
     absl::flat_hash_map<int, internal::ExprData> table{
         {0, internal::ExprData(nullptr, params)}};
     EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
@@ -58,7 +60,8 @@ TEST(ParamsCoverArgs, OnePositionalArgument) {
   }
 
   {  // One overload
-    core::Params params{param_type("param0", type::QualType::NonConstant(type::Bool))};
+    core::Params params{
+        param_type("param0", type::QualType::NonConstant(type::Bool))};
     absl::flat_hash_map<int, internal::ExprData> table{
         {0, internal::ExprData(nullptr, params)}};
     EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
@@ -75,7 +78,8 @@ TEST(ParamsCoverArgs, OnePositionalArgument) {
 
   {  // Multiple overloads
 
-    core::Params params0{param_type("param0", type::QualType::NonConstant(type::Type_))};
+    core::Params params0{
+        param_type("param0", type::QualType::NonConstant(type::Type_))};
     core::Params params1{param_type(
         "param1",
         type::QualType::NonConstant(type::Var({type::Float64, type::Int64})))};
@@ -114,7 +118,8 @@ TEST(ParamsCoverArgs, OneNamedArgument) {
   }
 
   {  // One parameter, type mismatch
-    core::Params params{param_type("x", type::QualType::NonConstant(type::Bool))};
+    core::Params params{
+        param_type("x", type::QualType::NonConstant(type::Bool))};
     absl::flat_hash_map<int, internal::ExprData> table{
         {0, internal::ExprData(nullptr, std::move(params))}};
     EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
@@ -129,18 +134,19 @@ TEST(ParamsCoverArgs, OneNamedArgument) {
   }
 
   {  // One parameter, matches
-    core::Params params{
-        param_type("x", type::QualType::NonConstant(
-                         type::Var({type::Int64, type::Type_, type::Bool})))};
+    core::Params params{param_type(
+        "x", type::QualType::NonConstant(
+                 type::Var({type::Int64, type::Type_, type::Bool})))};
     absl::flat_hash_map<int, internal::ExprData> table{
         {0, internal::ExprData(nullptr, std::move(params))}};
     EXPECT_TRUE(ParamsCoverArgs(args, table, GetParams));
   }
 
   {  // Multiple overload coverage, mismatch args
-    core::Params params0{param_type("x", type::QualType::NonConstant(type::Type_))};
+    core::Params params0{
+        param_type("x", type::QualType::NonConstant(type::Type_))};
     core::Params params1{param_type("x", type::QualType::NonConstant(type::Var(
-                                          {type::Int64, type::Float64})))};
+                                             {type::Int64, type::Float64})))};
     absl::flat_hash_map<int, internal::ExprData> table{
         {0, internal::ExprData(nullptr, std::move(params0))},
         {1, internal::ExprData(nullptr, std::move(params1))}};
@@ -150,10 +156,10 @@ TEST(ParamsCoverArgs, OneNamedArgument) {
 
   {  // Multiple overload coverage, mismatched name
     core::Params params0{param_type("x", type::QualType::NonConstant(type::Var(
-                                          {type::Type_, type::Bool})))};
+                                             {type::Type_, type::Bool})))};
     core::Params params1{
         param_type("y", type::QualType::NonConstant(
-                         type::Var({type::Ptr(type::Bool), type::Int64})))};
+                            type::Var({type::Ptr(type::Bool), type::Int64})))};
     absl::flat_hash_map<int, internal::ExprData> table{
         {0, internal::ExprData(nullptr, std::move(params0))},
         {1, internal::ExprData(nullptr, std::move(params1))}};
@@ -163,10 +169,10 @@ TEST(ParamsCoverArgs, OneNamedArgument) {
 
   {  // Multiple overload coverage, matches
     core::Params params0{param_type("x", type::QualType::NonConstant(type::Var(
-                                          {type::Type_, type::Bool})))};
+                                             {type::Type_, type::Bool})))};
     core::Params params1{
         param_type("x", type::QualType::NonConstant(
-                         type::Var({type::Ptr(type::Bool), type::Int64})))};
+                            type::Var({type::Ptr(type::Bool), type::Int64})))};
 
     absl::flat_hash_map<int, internal::ExprData> table{
         {0, internal::ExprData(nullptr, std::move(params0))},

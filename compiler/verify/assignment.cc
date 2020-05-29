@@ -51,7 +51,7 @@ type::QualType Compiler::VerifyType(ast::Assignment const *node) {
   int first_rhs_error_index = -1;
   for (int i = 0; i < node->lhs().size(); ++i) {
     auto const *r = node->rhs()[i];
-    auto qt = VerifyType(r);
+    auto qt       = VerifyType(r);
     if (not qt.ok()) {
       if (first_lhs_error_index == -1) { first_lhs_error_index = i; }
     }

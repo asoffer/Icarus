@@ -120,7 +120,8 @@ TEST(Access, NoFieldInStruct) {
 // TODO: Non-constant module
 // TODO: Module evaluation failure
 // TODO: Undeclared identifier across module boundaries
-// TODO: Type error across module boundaries (other module already generated error)
+// TODO: Type error across module boundaries (other module already generated
+// error)
 // TODO: Valid access across module boundaries
 // TODO: Valid overload set across module boundary
 // TODO: Valid scope set across module boundary

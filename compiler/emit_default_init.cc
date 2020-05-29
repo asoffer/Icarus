@@ -13,10 +13,10 @@ namespace compiler {
 void Compiler::Visit(type::Array const *t, ir::Reg reg, EmitDefaultInitTag) {
   data().init_.emplace(
       t, base::lazy_convert{[&] {
-        auto const *fn_type = type::Func(
-            core::Params<type::QualType>{
-                core::AnonymousParam(type::QualType::NonConstant(type::Ptr(t)))},
-            {});
+        auto const *fn_type =
+            type::Func(core::Params<type::QualType>{core::AnonymousParam(
+                           type::QualType::NonConstant(type::Ptr(t)))},
+                       {});
         ir::NativeFn fn =
             AddFunc(fn_type, fn_type->params().Transform([](type::QualType q) {
               return type::Typed<ast::Declaration const *>(nullptr, q.type());

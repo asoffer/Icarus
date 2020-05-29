@@ -12,11 +12,10 @@ struct DeclaringHoleAsNonModule {
   static constexpr std::string_view kName     = "declaring-hole-as-non-module";
 
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
-     return diagnostic::DiagnosticMessage(
+    return diagnostic::DiagnosticMessage(
         diagnostic::Text("Declaring `--` as non-module type `%s`.",
                          type->to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
-
   }
 
   type::Type const *type;
@@ -27,12 +26,12 @@ struct ShadowingDeclaration {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "shadowing-declaration";
 
-   diagnostic:: DiagnosticMessage ToMessage(frontend::Source const *src) const {
-     return diagnostic::DiagnosticMessage(
-         diagnostic::Text("Ambiguous declarations:"),
-         diagnostic::SourceQuote(src)
-             .Line(range1.begin().line_num)
-             .Line(range2.begin().line_num));
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Ambiguous declarations:"),
+        diagnostic::SourceQuote(src)
+            .Line(range1.begin().line_num)
+            .Line(range2.begin().line_num));
   }
 
   frontend::SourceRange range1;
@@ -56,7 +55,7 @@ struct NoDefaultValue {
 
 struct NonConstantTypeInDeclaration {
   static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "non-constant-type-in-declaration";
+  static constexpr std::string_view kName = "non-constant-type-in-declaration";
 
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(

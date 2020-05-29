@@ -197,7 +197,6 @@ TEST(DesignatedInitializer, MultipleMemberInvalidAssignments) {
       UnorderedElementsAre(Pair("type-error", "invalid-initializer-type")));
 }
 
-
 TEST(DesignatedInitializer, MemberValidConversion) {
   // Verify that errors on fields are emit even when there's an error on the
   // struct type.

@@ -28,7 +28,7 @@ struct QualTypeIterator {
     return lhs.index_ == rhs.index_ and lhs.iter_ == rhs.iter_;
   }
 
- // private:
+  // private:
   std::vector<type::QualType>::iterator iter_;
   size_t index_ = 0;
 };

@@ -34,7 +34,8 @@ DependentComputedData::InsertDependent(
     size_t i = 0;
     for (auto const &p : params) {
       if (p.value.first.empty()) { continue; }
-      iter->second->data.SetConstant(node->params()[i++].value.get(), p.value.first);
+      iter->second->data.SetConstant(node->params()[i++].value.get(),
+                                     p.value.first);
     }
 
     iter->second->data.parent_ = this;
@@ -132,7 +133,8 @@ void DependentComputedData::set_cyclic_error(ast::Identifier const *id) {
   cyclic_error_ids_.insert(id);
 }
 
-type::Struct *DependentComputedData::get_struct(ast::StructLiteral const *s) const {
+type::Struct *DependentComputedData::get_struct(
+    ast::StructLiteral const *s) const {
   auto iter = structs_.find(s);
   if (iter != structs_.end()) { return iter->second; }
   if (not parent_) { return nullptr; }

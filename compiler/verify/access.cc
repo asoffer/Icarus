@@ -9,8 +9,8 @@
 #include "type/qual_type.h"
 #include "type/struct.h"
 
-#include <utility>
 #include <string>
+#include <utility>
 
 namespace compiler {
 namespace {

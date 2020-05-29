@@ -99,7 +99,8 @@ std::vector<ir::Value> PrepareCallArguments(
     arg_values.push_back(PrepareOneArg(compiler, args[i++], state_ptr_type));
   }
   while (i < args.pos().size()) {
-    arg_values.push_back(PrepareOneArg(compiler, args[i++], params[j++].value.type()));
+    arg_values.push_back(
+        PrepareOneArg(compiler, args[i++], params[j++].value.type()));
   }
 
   for (; i < params.size(); ++i) {

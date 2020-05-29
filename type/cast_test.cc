@@ -226,9 +226,10 @@ TEST(CanCast, Function) {
       CanCast(Func({core::Param("name", QualType::NonConstant(Bool))}, {}),
               Func({core::AnonymousParam(QualType::NonConstant(Bool))}, {})));
 
-  EXPECT_FALSE(
-      CanCast(Func({core::Param("name", QualType::NonConstant(Bool), core::MUST_NAME)}, {}),
-              Func({core::AnonymousParam(QualType::NonConstant(Bool))}, {})));
+  EXPECT_FALSE(CanCast(
+      Func({core::Param("name", QualType::NonConstant(Bool), core::MUST_NAME)},
+           {}),
+      Func({core::AnonymousParam(QualType::NonConstant(Bool))}, {})));
 
   EXPECT_FALSE(CanCast(
       Func({core::AnonymousParam(QualType::NonConstant(Bool))}, {}),

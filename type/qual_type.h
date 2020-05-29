@@ -133,7 +133,7 @@ struct QualType {
       : data_(reinterpret_cast<uintptr_t>(t) |
               static_cast<uintptr_t>(quals.val_)) {}
 
-  explicit QualType(absl::Span<Type const * const> ts, Quals quals) {
+  explicit QualType(absl::Span<Type const *const> ts, Quals quals) {
     num_ = ts.size();
     if (ts.size() == 1) {
       data_ = reinterpret_cast<uintptr_t>(ts[0]) |

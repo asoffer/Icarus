@@ -276,7 +276,7 @@ RegOr<type::Type const *> Builder::Arrow(
     core::Params<type::QualType> in_params;
     std::vector<type::Type const *> out_vec;
     in_params.reserve(ins.size());
-    for (auto in : ins) { 
+    for (auto in : ins) {
       // TODO push QualType into parameters
       in_params.append(
           core::AnonymousParam(type::QualType::NonConstant(in.value())));

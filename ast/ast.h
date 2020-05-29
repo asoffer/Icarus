@@ -1342,7 +1342,7 @@ struct Terminal : Expression {
 //  * `@some_ptr`
 struct UnaryOperator : Expression {
   UnaryOperator(frontend::SourceRange const &range, frontend::Operator op,
-       std::unique_ptr<Expression> operand)
+                std::unique_ptr<Expression> operand)
       : Expression(range), operand_(std::move(operand)), op_(op) {}
   ~UnaryOperator() override {}
 

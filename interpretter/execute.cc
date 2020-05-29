@@ -557,7 +557,9 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     }
 
     struct_type->AppendFields(std::move(fields));
-    if (iter->read<bool>()) { struct_type->SetDestructor(iter->read<ir::Fn>()); }
+    if (iter->read<bool>()) {
+      struct_type->SetDestructor(iter->read<ir::Fn>());
+    }
     type::Struct const *const_struct_type = struct_type;
     ctx->current_frame()->regs_.set(iter->read<ir::Reg>(), const_struct_type);
 

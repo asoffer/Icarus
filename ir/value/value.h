@@ -217,10 +217,9 @@ struct Value {
     bool eq;
     lhs.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                    uint32_t, uint64_t, float, double, type::Type const*, Reg,
-                   String, ModuleId, MultiValue, Empty>(
-        [&rhs, &eq](auto x) {
-          eq = (x == rhs.get<std::decay_t<decltype(x)>>());
-        });
+                   String, ModuleId, MultiValue, Empty>([&rhs, &eq](auto x) {
+      eq = (x == rhs.get<std::decay_t<decltype(x)>>());
+    });
     return eq;
   }
 

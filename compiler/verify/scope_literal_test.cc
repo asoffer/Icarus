@@ -48,11 +48,9 @@ TEST(ScopeLiteral, StatelessMemberTypes) {
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(qt->type(), type::Scope);
   EXPECT_TRUE(qt->constant());
-  EXPECT_THAT(
-      mod.consumer.diagnostics(),
-      UnorderedElementsAre(
-        Pair("type-error", "non-jump-init"),
-        Pair("type-error", "non-callable-done")));
+  EXPECT_THAT(mod.consumer.diagnostics(),
+              UnorderedElementsAre(Pair("type-error", "non-jump-init"),
+                                   Pair("type-error", "non-callable-done")));
 }
 
 TEST(ScopeLiteral, StatelessInitIsStateful) {
@@ -106,11 +104,9 @@ TEST(ScopeLiteral, StatefulMemberTypes) {
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(qt->type(), type::Scope);
   EXPECT_TRUE(qt->constant());
-  EXPECT_THAT(
-      mod.consumer.diagnostics(),
-      UnorderedElementsAre(
-        Pair("type-error", "non-jump-init"),
-        Pair("type-error", "non-callable-done")));
+  EXPECT_THAT(mod.consumer.diagnostics(),
+              UnorderedElementsAre(Pair("type-error", "non-jump-init"),
+                                   Pair("type-error", "non-callable-done")));
 }
 
 TEST(ScopeLiteral, StatefulInitIsStateless) {

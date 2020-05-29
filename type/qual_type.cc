@@ -3,10 +3,10 @@
 #include <vector>
 
 #include "absl/container/flat_hash_set.h"
+#include "absl/strings/str_join.h"
 #include "absl/types/span.h"
 #include "base/global.h"
 #include "type/type.h"
-#include "absl/strings/str_join.h"
 
 namespace type {
 namespace internal_type {

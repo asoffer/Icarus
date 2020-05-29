@@ -9,7 +9,7 @@ namespace {
 
 struct InconsistentArrayType {
   static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "inconsistent-array-element-type";
+  static constexpr std::string_view kName = "inconsistent-array-element-type";
 
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
@@ -19,7 +19,6 @@ struct InconsistentArrayType {
 
   frontend::SourceRange range;
 };
-
 
 // Guesses the intended array literal type. For instance, if all but one element
 // have the same type, that is probably the intended type. Returns null if it
@@ -51,7 +50,7 @@ type::QualType Compiler::VerifyType(ast::ArrayLiteral const *node) {
 
   absl::flat_hash_map<type::Type const *, int> elem_type_count;
 
-  type::Quals quals = type::Quals::All();
+  type::Quals quals   = type::Quals::All();
   size_t num_elements = 0;
   for (type::QualType qt : elem_qts) {
     num_elements += qt.expansion_size();

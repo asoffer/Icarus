@@ -12,7 +12,7 @@ std::optional<FailedMatch> MatchPositionalArgsToParams(
     core::Params<type::QualType> *matched_params) {
   if (args.size() > params.size()) { return FailedMatch{}; }
   for (size_t i = 0; i < args.pos().size(); ++i) {
-    auto const &param = params[i];
+    auto const &param      = params[i];
     type::Type const *meet = type::Meet(args[i].type(), param.value.type());
     if (not meet) { return FailedMatch{}; }
     matched_params->append(
