@@ -200,42 +200,12 @@ static ir::RegOr<bool> EmitChainOpPair(Compiler *compiler,
 
 ir::Value Compiler::EmitValue(ast::ChainOp const *node) {
   auto *t = type_of(node);
-  if (node->ops()[0] == frontend::Operator::Xor) {
-    if (t == type::Bool) {
-      return ir::Value(std::accumulate(
-          node->exprs().begin(), node->exprs().end(), ir::RegOr<bool>(false),
-          [&](ir::RegOr<bool> acc, auto *expr) {
-            return builder().Ne(
-                acc, EmitValue(expr).template get<ir::RegOr<bool>>());
-          }));
-    } else if (t->is<type::Flags>()) {
-      return ir::Value(std::accumulate(
-          node->exprs().begin(), node->exprs().end(),
-          ir::RegOr<ir::FlagsVal>(ir::FlagsVal{0}),
-          [&](ir::RegOr<ir::FlagsVal> acc, auto *expr) {
-            return builder().XorFlags(
-                acc, EmitValue(expr).template get<ir::RegOr<ir::FlagsVal>>());
-          }));
-    } else {
-      UNREACHABLE();
-    }
-
-  } else if (node->ops()[0] == frontend::Operator::Or and
-             t->is<type::Flags>()) {
+  if (node->ops()[0] == frontend::Operator::Or and t->is<type::Flags>()) {
     auto iter = node->exprs().begin();
     auto val  = EmitValue(*iter).get<ir::RegOr<ir::FlagsVal>>();
     while (++iter != node->exprs().end()) {
       val = builder().OrFlags(val,
                               EmitValue(*iter).get<ir::RegOr<ir::FlagsVal>>());
-    }
-    return ir::Value(val);
-  } else if (node->ops()[0] == frontend::Operator::And and
-             t->is<type::Flags>()) {
-    auto iter = node->exprs().begin();
-    auto val  = EmitValue(*iter).get<ir::RegOr<ir::FlagsVal>>();
-    while (++iter != node->exprs().end()) {
-      val = builder().AndFlags(val,
-                               EmitValue(*iter).get<ir::RegOr<ir::FlagsVal>>());
     }
     return ir::Value(val);
   } else if (node->ops()[0] == frontend::Operator::Or and t == type::Type_) {

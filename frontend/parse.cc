@@ -915,8 +915,7 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
       absl::flat_hash_map<std::string_view, Operator>{
           {",", Operator::Comma}, {"==", Operator::Eq}, {"!=", Operator::Ne},
           {"<", Operator::Lt},    {">", Operator::Gt},  {"<=", Operator::Le},
-          {">=", Operator::Ge},   {"&", Operator::And}, {"|", Operator::Or},
-          {"^", Operator::Xor}};
+          {">=", Operator::Ge},   {"|", Operator::Or}};
 
   std::string const &tk = nodes[1]->as<Token>().token;
   if (auto iter = kChainOps->find(tk); iter != kChainOps->end()) {
@@ -989,7 +988,8 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
           {"/=", Operator::DivEq}, {"%=", Operator::ModEq},
           {"+", Operator::Add},    {"-", Operator::Sub},
           {"*", Operator::Mul},    {"/", Operator::Div},
-          {"%", Operator::Mod}};
+          {"%", Operator::Mod},    {"^", Operator::Xor},
+          {"&", Operator::And}};
   return std::make_unique<ast::BinaryOperator>(
       move_as<ast::Expression>(nodes[0]), kSymbols->find(tk)->second,
       move_as<ast::Expression>(nodes[2]));

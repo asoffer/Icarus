@@ -258,6 +258,51 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
   // TODO user-defined types (with a dispatch table).
 
   switch (node->op()) {
+    case frontend::Operator::Xor: {
+      auto lhs_ir = EmitValue(node->lhs());
+      auto rhs_ir = EmitValue(node->rhs());
+      if (lhs_type == type::Bool) {
+        return ir::Value(builder().Ne(lhs_ir.get<ir::RegOr<bool>>(),
+                                      rhs_ir.get<ir::RegOr<bool>>()));
+      } else if (lhs_type->is<type::Flags>()) {
+        return ir::Value(
+            builder().XorFlags(lhs_ir.get<ir::RegOr<ir::FlagsVal>>(),
+                               rhs_ir.get<ir::RegOr<ir::FlagsVal>>()));
+      } else {
+        UNREACHABLE();
+      }
+    } break;
+    case frontend::Operator::And: {
+      auto lhs_ir = EmitValue(node->lhs());
+      if (lhs_type == type::Bool) {
+       auto *land_block = builder().AddBlock();
+
+       std::vector<ir::BasicBlock const *> phi_blocks;
+
+       auto *next_block = builder().AddBlock();
+       builder().CondJump(lhs_ir.get<ir::RegOr<bool>>(), next_block,
+                          land_block);
+       phi_blocks.push_back(builder().CurrentBlock());
+       builder().CurrentBlock() = next_block;
+
+       auto rhs_ir = EmitValue(node->rhs());
+       phi_blocks.push_back(builder().CurrentBlock());
+       builder().UncondJump(land_block);
+
+       builder().CurrentBlock() = land_block;
+
+       return ir::Value(builder().Phi<bool>(
+           std::move(phi_blocks), {false, rhs_ir.get<ir::RegOr<bool>>()}));
+
+      } else if (lhs_type->is<type::Flags>()) {
+        auto rhs_ir = EmitValue(node->rhs());
+        return ir::Value(
+            builder().AndFlags(lhs_ir.get<ir::RegOr<ir::FlagsVal>>(),
+                               rhs_ir.get<ir::RegOr<ir::FlagsVal>>()));
+      } else {
+        UNREACHABLE();
+      }
+    } break;
     case frontend::Operator::Add: {
       auto lhs_ir = EmitValue(node->lhs());
       auto rhs_ir = EmitValue(node->rhs());

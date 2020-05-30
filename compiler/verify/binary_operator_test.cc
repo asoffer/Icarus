@@ -298,9 +298,9 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Combine(testing::ValuesIn({"float32", "float64"}),
                      testing::ValuesIn({"+=", "-=", "*=", "/="})));
 
-using ArithmeticOperator =
+using BinaryOperator =
     testing::TestWithParam<std::tuple<char const *, char const *>>;
-TEST_P(ArithmeticOperator, Success) {
+TEST_P(BinaryOperator, Success) {
   auto [type, op] = GetParam();
   {
     test::TestModule mod;
@@ -325,17 +325,20 @@ TEST_P(ArithmeticOperator, Success) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Integers, ArithmeticOperator,
+    Integers, BinaryOperator,
     testing::Combine(testing::ValuesIn({"int8", "int16", "int32", "int64",
                                         "nat8", "nat16", "nat32", "nat64"}),
                      testing::ValuesIn({"+", "-", "*", "/", "%"})));
 INSTANTIATE_TEST_SUITE_P(
-    FloatingPoint, ArithmeticOperator,
+    FloatingPoint, BinaryOperator,
     testing::Combine(testing::ValuesIn({"float32", "float64"}),
                      testing::ValuesIn({"+", "-", "*", "/"})));
+INSTANTIATE_TEST_SUITE_P(Bool, BinaryOperator,
+                         testing::Combine(testing::ValuesIn({"bool"}),
+                                          testing::ValuesIn({"^", "&"})));
 
-using ArithmeticOperatorOverload = testing::TestWithParam<char const *>;
-TEST_P(ArithmeticOperatorOverload, Overloads) {
+using OperatorOverload = testing::TestWithParam<char const *>;
+TEST_P(OperatorOverload, Overloads) {
   test::TestModule mod;
   mod.AppendCode(absl::StrFormat(
       R"(S ::= struct {}
@@ -350,7 +353,7 @@ TEST_P(ArithmeticOperatorOverload, Overloads) {
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
-TEST_P(ArithmeticOperatorOverload, MissingOverloads) {
+TEST_P(OperatorOverload, MissingOverloads) {
   test::TestModule mod;
   mod.AppendCode(
       R"(S ::= struct {}
@@ -364,8 +367,8 @@ TEST_P(ArithmeticOperatorOverload, MissingOverloads) {
                   Pair("type-error", "invalid-binary-operator-overload")));
 }
 
-INSTANTIATE_TEST_SUITE_P(All, ArithmeticOperatorOverload,
-                         testing::ValuesIn({"+", "-", "*", "/", "%"}));
+INSTANTIATE_TEST_SUITE_P(All, OperatorOverload,
+                         testing::ValuesIn({"+", "-", "*", "/", "%", "^", "&"}));
 
 // TODO: Assignment operator overloading tests.
 

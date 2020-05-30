@@ -61,10 +61,9 @@ struct InvalidAssignmentOperatorLhsValueCategory {
   frontend::SourceRange range;
 };
 
-struct ArithmeticBinaryOperatorTypeMismatch {
+struct BinaryOperatorTypeMismatch {
   static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName =
-      "arithmetic-binary-operator-type-mismatch";
+  static constexpr std::string_view kName     = "binary-operator-type-mismatch";
 
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
@@ -93,6 +92,38 @@ struct NoMatchingBinaryOperator {
   frontend::SourceRange range;
 };
 
+type::QualType VerifyLogicalOperator(Compiler *c, std::string_view op,
+                                     ast::BinaryOperator const *node,
+                                     type::QualType lhs_qual_type,
+                                     type::QualType rhs_qual_type,
+                                     type::Type const *return_type) {
+  auto quals =
+      (lhs_qual_type.quals() & rhs_qual_type.quals() & ~type::Quals::Ref());
+  if (lhs_qual_type.type() != type::Bool or
+      rhs_qual_type.type() != type::Bool) {
+    auto qt = c->VerifyBinaryOverload(op, node, lhs_qual_type.type(),
+                                      rhs_qual_type.type());
+    if (not qt.ok()) {
+      c->diag().Consume(InvalidBinaryOperatorOverload{
+          .op    = std::string(op),
+          .range = node->range(),
+      });
+    }
+    return qt;
+  } else {
+    if (lhs_qual_type.type() == rhs_qual_type.type()) {
+      return c->data().set_qual_type(node, type::QualType(return_type, quals));
+    } else {
+      c->diag().Consume(BinaryOperatorTypeMismatch{
+          .lhs_type = lhs_qual_type.type(),
+          .rhs_type = rhs_qual_type.type(),
+          .range    = node->range(),
+      });
+      return type::QualType::Error();
+    }
+  }
+}
+
 type::QualType VerifyArithmeticOperator(Compiler *c, std::string_view op,
                                         ast::BinaryOperator const *node,
                                         type::QualType lhs_qual_type,
@@ -100,7 +131,7 @@ type::QualType VerifyArithmeticOperator(Compiler *c, std::string_view op,
                                         type::Type const *return_type) {
   auto quals =
       (lhs_qual_type.quals() & rhs_qual_type.quals() & ~type::Quals::Ref());
-  bool check_user_overload = not lhs_qual_type.type()->is<type::Primitive>() and
+  bool check_user_overload = not lhs_qual_type.type()->is<type::Primitive>() or
                              not rhs_qual_type.type()->is<type::Primitive>();
   if (check_user_overload) {
     auto qt = c->VerifyBinaryOverload(op, node, lhs_qual_type.type(),
@@ -117,7 +148,7 @@ type::QualType VerifyArithmeticOperator(Compiler *c, std::string_view op,
     if (lhs_qual_type.type() == rhs_qual_type.type()) {
       return c->data().set_qual_type(node, type::QualType(return_type, quals));
     } else {
-      c->diag().Consume(ArithmeticBinaryOperatorTypeMismatch{
+      c->diag().Consume(BinaryOperatorTypeMismatch{
           .lhs_type = lhs_qual_type.type(),
           .rhs_type = rhs_qual_type.type(),
           .range    = node->range(),
@@ -180,6 +211,12 @@ type::QualType Compiler::VerifyType(ast::BinaryOperator const *node) {
         return type::QualType::Error();
       }
     } break;
+    case Operator::Xor:
+      return VerifyLogicalOperator(this, "^", node, lhs_qual_type,
+                                   rhs_qual_type, lhs_qual_type.type());
+    case Operator::And:
+      return VerifyLogicalOperator(this, "&", node, lhs_qual_type,
+                                   rhs_qual_type, lhs_qual_type.type());
     case Operator::Add:
       return VerifyArithmeticOperator(this, "+", node, lhs_qual_type,
                                       rhs_qual_type, lhs_qual_type.type());

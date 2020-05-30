@@ -439,8 +439,6 @@ not_blocks:
   // have the same precedence, and ^, &, and | uniquely hold a given
   // precedence.
   switch (node->ops()[0]) {
-    case frontend::Operator::Or:
-    case frontend::Operator::And:
     case frontend::Operator::Xor: {
       bool failed                       = false;
       type::Quals quals                 = type::Quals::Const();
@@ -449,15 +447,6 @@ not_blocks:
       for (auto &result : results) {
         // TODO node collection of error messages could be greatly improved.
         if (result.type() != first_expr_type) {
-          auto op_str = [node] {
-            switch (node->ops()[0]) {
-              case frontend::Operator::Or: return "|";
-              case frontend::Operator::And: return "&";
-              case frontend::Operator::Xor: return "^";
-              default: UNREACHABLE();
-            }
-          }();
-
           NOT_YET("Log an error");
           quals &= result.quals();
           failed = true;
