@@ -30,9 +30,8 @@ type::Typed<ir::Value> EvaluateIfConstant(Compiler &c,
 
 }  // namespace
 
-std::optional<core::FnArgs<type::Typed<ir::Value>, std::string_view>>
-Compiler::VerifyFnArgs(
-    core::FnArgs<ast::Expression const *, std::string_view> const &args) {
+std::optional<core::FnArgs<type::Typed<ir::Value>>> Compiler::VerifyFnArgs(
+    core::FnArgs<ast::Expression const *> const &args) {
   bool err      = false;
   auto arg_vals = args.Transform([&](ast::Expression const *expr) {
     auto expr_qual_type = VerifyType(expr);

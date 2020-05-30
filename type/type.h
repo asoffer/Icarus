@@ -73,6 +73,12 @@ struct Type : base::Cast<Type> {
   Flags flags_;
 };
 
+// Intentionally leak this type.
+template <typename T, typename... Args>
+T *Allocate(Args &&... args) {
+  return new T(std::forward<Args>(args)...);
+}
+
 }  // namespace type
 
 #endif  // ICARUS_TYPE_TYPE_H

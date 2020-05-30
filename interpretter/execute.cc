@@ -253,7 +253,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         mapping.emplace(std::string(name), ir::EnumVal{maybe_val.value()});
       }
       DEBUG_LOG("enum")(vals, ", ", mapping);
-      result = new type::Enum(mod, std::move(mapping));
+      result = type::Allocate<type::Enum>(mod, std::move(mapping));
     } else {
       for (auto &[name, maybe_val] : enumerators) {
         DEBUG_LOG("flags")(name, " => ", maybe_val);
@@ -280,7 +280,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
       }
 
       DEBUG_LOG("flags")(vals, ", ", mapping);
-      result = new type::Flags(mod, std::move(mapping));
+      result = type::Allocate<type::Flags>(mod, std::move(mapping));
     }
 
     ctx->current_frame()->regs_.set(iter->read<ir::Reg>(), result);
@@ -288,7 +288,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
   } else if constexpr (std::is_same_v<Inst, ir::OpaqueTypeInstruction>) {
     module::BasicModule const *mod = iter->read<module::BasicModule const *>();
     ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
-                                    new type::Opaque(mod));
+                                    type::Allocate<type::Opaque>(mod));
 
   } else if constexpr (std::is_same_v<Inst, ir::ArrowInstruction>) {
     std::vector<type::Type const *> ins =

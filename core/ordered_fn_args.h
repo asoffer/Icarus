@@ -27,10 +27,10 @@ struct OrderedFnArgs {
   bool empty() const { return fn_args_.empty(); }
 
   absl::Span<T const *const> pos() const & { return fn_args_.pos(); }
-  absl::flat_hash_map<std::string_view, T const *> const &named() const & {
+  absl::flat_hash_map<std::string, T const *> const &named() const & {
     return fn_args_.named();
   }
-  FnArgs<T const *, std::string_view> const &args() const { return fn_args_; }
+  FnArgs<T const *, std::string> const &args() const { return fn_args_; }
 
   // TODO test
   template <typename Fn>
@@ -56,7 +56,7 @@ struct OrderedFnArgs {
   }
 
  private:
-  FnArgs<T const *, std::string_view> fn_args_;
+  FnArgs<T const *, std::string> fn_args_;
   std::vector<std::pair<std::string, std::unique_ptr<T>>> ordered_args_;
 };
 }  // namespace core

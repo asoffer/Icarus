@@ -558,9 +558,7 @@ struct Call : Expression {
   ~Call() override {}
 
   Expression const *callee() const { return callee_.get(); }
-  core::FnArgs<Expression const *, std::string_view> const &args() const {
-    return args_.args();
-  }
+  core::FnArgs<Expression const *> const &args() const { return args_.args(); }
 
   auto extract() && { return std::pair{std::move(callee_), std::move(args_)}; }
 
@@ -1078,9 +1076,7 @@ struct ScopeNode : Expression {
   ~ScopeNode() override {}
 
   Expression const *name() const { return name_.get(); }
-  core::FnArgs<Expression const *, std::string_view> const &args() const {
-    return args_.args();
-  }
+  core::FnArgs<Expression const *> const &args() const { return args_.args(); }
 
   template <typename Fn>
   void Apply(Fn &&fn) const {

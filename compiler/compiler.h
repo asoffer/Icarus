@@ -418,9 +418,8 @@ struct Compiler
  private:
   void CompleteStruct(ast::StructLiteral const *node);
 
-  std::optional<core::FnArgs<type::Typed<ir::Value>, std::string_view>>
-  VerifyFnArgs(
-      core::FnArgs<ast::Expression const *, std::string_view> const &args);
+  std::optional<core::FnArgs<type::Typed<ir::Value>>> VerifyFnArgs(
+      core::FnArgs<ast::Expression const *> const &args);
 
   type::QualType VerifyUnaryOverload(char const *symbol,
                                      ast::Expression const *node,

@@ -19,7 +19,7 @@ namespace core {
 // this struct alone is unsuitable for use in situations where text-based
 // user-input must be preserved. In those situations, something like
 // OrderedFnArgs is usually more appropriate.
-template <typename T, typename StringType = std::string_view,
+template <typename T, typename StringType = std::string,
           typename std::enable_if_t<
               std::is_same_v<StringType, std::string> or
               std::is_same_v<StringType, std::string_view>> * = nullptr>

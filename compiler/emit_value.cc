@@ -510,9 +510,8 @@ ir::Value Compiler::EmitValue(ast::BuiltinFn const *node) {
   return ir::Value(node->value());
 }
 
-ir::Value EmitBuiltinCall(
-    Compiler *c, ast::BuiltinFn const *callee,
-    core::FnArgs<ast::Expression const *, std::string_view> const &args) {
+ir::Value EmitBuiltinCall(Compiler *c, ast::BuiltinFn const *callee,
+                          core::FnArgs<ast::Expression const *> const &args) {
   switch (callee->value().which()) {
     case ir::BuiltinFn::Which::Foreign: {
       auto maybe_name         = c->EvaluateAs<ir::String>(args[0]);
@@ -1160,11 +1159,13 @@ ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
     return ir::Value(static_cast<type::Type const *>(s));
   }
 
-  type::Struct *s = new type::Struct(
-      data().module(), {.is_copyable = not node->contains_hashtag(
-                            ast::Hashtag(ast::Hashtag::Builtin::Uncopyable)),
-                        .is_movable = not node->contains_hashtag(
-                            ast::Hashtag(ast::Hashtag::Builtin::Immovable))});
+  type::Struct *s = type::Allocate<type::Struct>(
+      data().module(), type::Struct::Options{
+                           .is_copyable = not node->contains_hashtag(
+                               ast::Hashtag(ast::Hashtag::Builtin::Uncopyable)),
+                           .is_movable = not node->contains_hashtag(
+                               ast::Hashtag(ast::Hashtag::Builtin::Immovable)),
+                       });
 
   DEBUG_LOG("struct")("Allocating a new struct ", s, " for ", node);
   data().set_struct(node, s);

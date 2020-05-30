@@ -1,0 +1,11 @@
+# Types are intentionally allocated and never freed because they are long-lived.
+# Intent is specified by using `type::Allocate`).
+leak:type::Allocate
+
+# Struct/enum sub-members my have separate allocations but are leaked for the same
+# reason as above.
+leak:type::Struct::Field
+# TODO: These are for the member->value mappings. We could do these directly on
+# the enum/flags to have better fidelity
+leak:ir::EnumVal
+leak:ir::FlagsVal

@@ -47,7 +47,7 @@ struct Fn {
 
   Fn(ForeignFn f) {
     underlying_type data;
-    std::memcpy(&data, &f, sizeof(void (*)()));
+    std::memcpy(&data, &f, sizeof(f));
     constexpr underlying_type high_bits =
         underlying_type{3} << (std::numeric_limits<underlying_type>::digits -
                                2);
@@ -59,7 +59,7 @@ struct Fn {
 
   Fn(BuiltinFn f) {
     underlying_type data;
-    std::memcpy(&data, &f, sizeof(void (*)()));
+    std::memcpy(&data, &f, sizeof(f));
     constexpr underlying_type high_bits =
         underlying_type{3} << (std::numeric_limits<underlying_type>::digits -
                                2);
