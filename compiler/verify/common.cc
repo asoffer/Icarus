@@ -49,11 +49,11 @@ Compiler::VerifyFnArgs(
   return arg_vals;
 }
 
+// TODO: Support calling with constants.
 // TODO: Replace `symbol` with an enum.
 type::QualType Compiler::VerifyUnaryOverload(char const *symbol,
                                              ast::Expression const *node,
                                              type::Type const *operand_type) {
-  type::Quals quals = type::Quals::All() & ~type::Quals::Const();
   absl::flat_hash_set<type::Callable const *> member_types;
 
   module::ForEachDeclTowardsRoot(
@@ -62,26 +62,24 @@ type::QualType Compiler::VerifyUnaryOverload(char const *symbol,
         // Must be callable because we're looking at overloads for operators
         // which have previously been type-checked to ensure callability.
         auto &c = qt.type()->as<type::Callable>();
-        quals &= qt.quals();
         member_types.insert(&c);
         return true;
       });
 
+  if (member_types.empty()) { return type::QualType::Error(); }
   std::vector<type::Typed<ir::Value>> pos_args;
   pos_args.emplace_back(ir::Value(), operand_type);
-
-  if (member_types.empty()) { return type::QualType::Error(); }
   return type::QualType(type::MakeOverloadSet(std::move(member_types))
                             ->return_types(core::FnArgs<type::Typed<ir::Value>>(
                                 std::move(pos_args), {})),
-                        quals);
+                        type::Quals::Unqualified());
 }
 
-type::QualType Compiler::VerifyBinaryOverload(char const *symbol,
+// TODO: Accept frontend::Operator rather than char const*.
+type::QualType Compiler::VerifyBinaryOverload(std::string_view symbol,
                                               ast::Expression const *node,
                                               type::Type const *lhs_type,
                                               type::Type const *rhs_type) {
-  type::Quals quals = type::Quals::All();
   absl::flat_hash_set<type::Callable const *> member_types;
 
   module::ForEachDeclTowardsRoot(
@@ -90,21 +88,20 @@ type::QualType Compiler::VerifyBinaryOverload(char const *symbol,
         // Must be callable because we're looking at overloads for operators
         // which have previously been type-checked to ensure callability.
         auto &c = qt.type()->as<type::Callable>();
-        quals &= qt.quals();
         member_types.insert(&c);
         return true;
       });
 
+  if (member_types.empty()) { return type::QualType::Error(); }
   std::vector<type::Typed<ir::Value>> pos_args;
   pos_args.emplace_back(ir::Value(), lhs_type);
   pos_args.emplace_back(ir::Value(), rhs_type);
-
   return data().set_qual_type(
       node,
       type::QualType(type::MakeOverloadSet(std::move(member_types))
                          ->return_types(core::FnArgs<type::Typed<ir::Value>>(
                              std::move(pos_args), {})),
-                     quals));
+                     type::Quals::Unqualified()));
 }
 
 }  // namespace compiler

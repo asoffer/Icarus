@@ -292,6 +292,7 @@ cc_library(
         "verify/array_literal.cc",
         "verify/array_type.cc",
         "verify/assignment.cc",
+        "verify/binary_operator.cc",
         "verify/call.cc",
         "verify/common.cc",
         "verify/declaration.cc",
@@ -386,6 +387,18 @@ cc_test(
     deps = [
         ":verify_type",
         "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "binary_operator_test",
+    srcs = ["verify/binary_operator_test.cc"],
+    deps = [
+        ":verify_type",
+        "//test:module",
+        "//type:primitive",
+        "@com_google_absl//absl/strings:str_format",
         "@com_google_googletest//:gtest_main",
     ],
 )

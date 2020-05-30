@@ -19,23 +19,6 @@
 
 namespace diagnostic {
 
-struct ArithmeticBinaryOperatorTypeMismatch {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName =
-      "arithmetic-binary-operator-type-mismatch";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Mismatched types `%s` and `%s` in binary operator.",
-             lhs_type->to_string(), rhs_type->to_string()),
-        SourceQuote(src).Highlighted(range, Style{}));
-  }
-
-  type::Type const *lhs_type;
-  type::Type const *rhs_type;
-  frontend::SourceRange range;
-};
-
 struct InvalidCast {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "invalid-cast";
@@ -373,19 +356,6 @@ struct NoReturnTypes {
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
         Text("Attempting to return a value when function returns nothing."),
-        SourceQuote(src).Highlighted(range, Style{}));
-  }
-
-  frontend::SourceRange range;
-};
-
-struct XorEqNeedsBoolOrFlags {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "xor-needs-bool-or-flags";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Operator '^=' must take boolean or flags arguments."),
         SourceQuote(src).Highlighted(range, Style{}));
   }
 

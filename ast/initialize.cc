@@ -37,7 +37,7 @@ void Assignment::Initialize(Scope *scope) {
   SetAllScopes(&rhs_, scope);
 }
 
-void Binop::Initialize(Scope *scope) {
+void BinaryOperator::Initialize(Scope *scope) {
   scope_ = scope;
   lhs_->Initialize(scope);
   rhs_->Initialize(scope);

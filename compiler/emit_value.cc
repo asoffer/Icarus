@@ -251,7 +251,7 @@ ir::Value Compiler::EmitValue(ast::Assignment const *node) {
   return ir::Value();
 }
 
-ir::Value Compiler::EmitValue(ast::Binop const *node) {
+ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
   auto *lhs_type = type_of(node->lhs());
   auto *rhs_type = type_of(node->rhs());
 

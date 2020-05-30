@@ -411,6 +411,10 @@ struct Compiler
   void EmitCopyInit(type::Typed<ir::Value> from_val,
                     type::Typed<ir::Reg> to_var);
 
+  type::QualType VerifyBinaryOverload(std::string_view symbol,
+                                      ast::Expression const *node,
+                                      type::Type const *lhs_type,
+                                      type::Type const *rhs_type);
  private:
   void CompleteStruct(ast::StructLiteral const *node);
 
@@ -421,10 +425,6 @@ struct Compiler
   type::QualType VerifyUnaryOverload(char const *symbol,
                                      ast::Expression const *node,
                                      type::Type const *expr_type);
-  type::QualType VerifyBinaryOverload(char const *symbol,
-                                      ast::Expression const *node,
-                                      type::Type const *lhs_type,
-                                      type::Type const *rhs_type);
 
   PersistentResources resources_;
   TransientFunctionState state_;

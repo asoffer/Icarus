@@ -46,7 +46,7 @@ void Match::Visit(ast::ArrayType const *node, MatchState *state) {}
 
 void Match::Visit(ast::Assignment const *node, MatchState *state) {}
 
-void Match::Visit(ast::Binop const *node, MatchState *state) {}
+void Match::Visit(ast::BinaryOperator const *node, MatchState *state) {}
 
 void Match::Visit(ast::BlockLiteral const *node, MatchState *state) {}
 

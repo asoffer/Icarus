@@ -62,7 +62,20 @@ struct Param {
               << "(flags = " << static_cast<int>(param.flags) << ")";
   }
 
-  std::string_view name = "";
+  // TODO: It would be really nice to have a `string_view` here instead of a
+  // `string`, and this mostly works. The `string_view` would reference into the
+  // syntax tree which is long-lived. Unfortunately, this "long-lived"
+  // assumption is not always accurate in tests. We often create and destroy
+  // modules. If these parameters get stored as part of some type information,
+  // we need to do one of two things:
+  //
+  // 1. Make sure type information lives no longer that AST information. This
+  //    means it needs to be per-module, which is maybe not a bad idea anyway.
+  // 2. Use a string here.
+  //
+  // I think long-term #1 is the right option (especially in a world where
+  // modules may not be compiled in the same process.
+  std::string name = "";
   T value{};
   ParamFlags flags{};
 };
@@ -200,7 +213,10 @@ struct Params {
   // Maps the string name of the declared argument to it's index:
   // Example: (a: int, b: char, c: string) -> int
   //           a => 0, b => 1, c => 2
-  absl::flat_hash_map<std::string_view, size_t> lookup_;
+  //
+  // TODO: This could be keyed on `string_view` rather than `string` if the
+  // parameters themselves were also keyed on `string_view`.
+  absl::flat_hash_map<std::string, size_t> lookup_;
 
   std::vector<Param<T>> params_;
 };

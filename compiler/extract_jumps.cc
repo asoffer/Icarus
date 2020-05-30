@@ -40,7 +40,7 @@ struct Extractor : ast::Visitor<void()> {
     for (auto const *r : node->rhs()) { Visit(r); }
   }
 
-  void Visit(ast::Binop const *node) final {
+  void Visit(ast::BinaryOperator const *node) final {
     Visit(node->lhs());
     Visit(node->rhs());
   }

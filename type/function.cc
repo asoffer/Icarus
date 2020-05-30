@@ -14,9 +14,11 @@ Function const *Func(core::Params<QualType> in, std::vector<Type const *> out) {
   // output_span is backed by a vector that doesn't move even when the
   // containing function does so this is safe to reference even after `f` is
   // moved.
-  return &(*funcs_.lock())[std::move(in)]
-              .emplace(out, std::move(f))
-              .first->second;
+  auto handle           = funcs_.lock();
+  auto &ret_map         = (*handle)[std::move(in)];
+  auto [iter, inserted] = ret_map.emplace(out, std::move(f));
+  auto const &[ret, fn] = *iter;
+  return &fn;
 }
 
 void Function::WriteTo(std::string *result) const {

@@ -72,7 +72,7 @@ struct ParamDependencyGraphBuilder
     for (auto const *r : (node->rhs())) { Visit(r, d); }
   }
 
-  void Visit(Binop const *node, core::DependencyNode<Declaration> d) {
+  void Visit(BinaryOperator const *node, core::DependencyNode<Declaration> d) {
     Visit(node->lhs(), d);
     Visit(node->rhs(), d);
   }

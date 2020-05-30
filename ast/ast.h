@@ -137,9 +137,7 @@ struct ArrayLiteral : Expression {
   size_t size() const { return elems_.size(); }
   Expression const *elem(size_t i) const { return elems_[i].get(); }
   base::PtrSpan<Expression const> elems() const { return elems_; }
-  std::vector<std::unique_ptr<Expression>> &&extract() && {
-    return std::move(elems_);
-  }
+  auto &&extract() && { return std::move(elems_); }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
@@ -168,11 +166,7 @@ struct Assignment : Expression {
   base::PtrSpan<Expression const> lhs() const { return lhs_; }
   base::PtrSpan<Expression const> rhs() const { return rhs_; }
 
-  std::pair<std::vector<std::unique_ptr<Expression>>,
-            std::vector<std::unique_ptr<Expression>>>
-  extract() && {
-    return std::pair(std::move(lhs_), std::move(rhs_));
-  }
+  auto extract() && { return std::pair(std::move(lhs_), std::move(rhs_)); }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
@@ -222,7 +216,7 @@ struct ArrayType : Expression {
   std::unique_ptr<Expression> data_type_;
 };
 
-// Binop:
+// BinaryOperator:
 // Represents a call to a binary operator.
 //
 // Examples:
@@ -233,24 +227,22 @@ struct ArrayType : Expression {
 // differently (see `ChainOp`). This is because in Icarus, operators such as
 // `==` allow chains so that `x == y == z` can evaluate to `true` if and only if
 // both `x == y` and `y == z`.
-struct Binop : Expression {
-  explicit Binop(std::unique_ptr<Expression> lhs, frontend::Operator op,
-                 std::unique_ptr<Expression> rhs)
+struct BinaryOperator : Expression {
+  explicit BinaryOperator(std::unique_ptr<Expression> lhs,
+                          frontend::Operator op,
+                          std::unique_ptr<Expression> rhs)
       : Expression(
             frontend::SourceRange(lhs->range().begin(), rhs->range().end())),
         op_(op),
         lhs_(std::move(lhs)),
         rhs_(std::move(rhs)) {}
-  ~Binop() override {}
+  ~BinaryOperator() override {}
 
   Expression const *lhs() const { return lhs_.get(); }
   Expression const *rhs() const { return rhs_.get(); }
   frontend::Operator op() const { return op_; }
 
-  std::pair<std::unique_ptr<Expression>, std::unique_ptr<Expression>> extract()
-      && {
-    return std::pair{std::move(lhs_), std::move(rhs_)};
-  }
+  auto extract() && { return std::pair{std::move(lhs_), std::move(rhs_)}; }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
@@ -570,10 +562,7 @@ struct Call : Expression {
     return args_.args();
   }
 
-  std::pair<std::unique_ptr<Expression>, core::OrderedFnArgs<Expression>>
-  extract() && {
-    return std::pair{std::move(callee_), std::move(args_)};
-  }
+  auto extract() && { return std::pair{std::move(callee_), std::move(args_)}; }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
@@ -615,7 +604,7 @@ struct Cast : Expression {
 // Allowing chaining gives us more flexibility and enables us to treat some
 // user-defined operators as variadic. The canonical example in this space is
 // `+` for string concatenation. Today, `+` is treated as a binary operator, but
-// we intend to move all of the Binop nodes into ChainOp.
+// we intend to move all of the BinaryOperator nodes into ChainOp.
 //
 // Example:
 //  `a < b == c < d`
@@ -636,9 +625,7 @@ struct ChainOp : Expression {
   base::PtrSpan<Expression const> exprs() const { return exprs_; }
   absl::Span<frontend::Operator const> ops() const { return ops_; }
 
-  std::vector<std::unique_ptr<Expression>> &&extract() && {
-    return std::move(exprs_);
-  }
+  auto &&extract() && { return std::move(exprs_); }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
@@ -762,9 +749,7 @@ struct FunctionType : Expression {
 
   ICARUS_AST_VIRTUAL_METHODS;
 
-  std::pair<std::vector<std::unique_ptr<Expression>>,
-            std::vector<std::unique_ptr<Expression>>>
-  extract() && {
+  auto extract() && {
     return std::pair(std::move(params_), std::move(output_));
   }
 
@@ -899,10 +884,7 @@ struct Index : Expression {
 
   Expression const *lhs() const { return lhs_.get(); }
   Expression const *rhs() const { return rhs_.get(); }
-  std::pair<std::unique_ptr<Expression>, std::unique_ptr<Expression>> extract()
-      && {
-    return std::pair(std::move(lhs_), std::move(rhs_));
-  }
+  auto extract() && { return std::pair(std::move(lhs_), std::move(rhs_)); }
 
   ICARUS_AST_VIRTUAL_METHODS;
 

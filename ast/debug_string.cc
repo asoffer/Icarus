@@ -119,7 +119,7 @@ void Assignment::DebugStrAppend(std::string *out, size_t indent) const {
       }));
 }
 
-void Binop::DebugStrAppend(std::string *out, size_t indent) const {
+void BinaryOperator::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, "(");
   lhs()->DebugStrAppend(out, indent);
   absl::StrAppend(out, OpStr(op()));

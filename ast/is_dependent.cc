@@ -31,7 +31,7 @@ bool Assignment::IsDependent() const {
   return false;
 }
 
-bool Binop::IsDependent() const {
+bool BinaryOperator::IsDependent() const {
   return lhs()->IsDependent() or rhs()->IsDependent();
 }
 

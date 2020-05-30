@@ -990,9 +990,9 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
           {"+", Operator::Add},    {"-", Operator::Sub},
           {"*", Operator::Mul},    {"/", Operator::Div},
           {"%", Operator::Mod}};
-  return std::make_unique<ast::Binop>(move_as<ast::Expression>(nodes[0]),
-                                      kSymbols->find(tk)->second,
-                                      move_as<ast::Expression>(nodes[2]));
+  return std::make_unique<ast::BinaryOperator>(
+      move_as<ast::Expression>(nodes[0]), kSymbols->find(tk)->second,
+      move_as<ast::Expression>(nodes[2]));
 }
 
 std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
