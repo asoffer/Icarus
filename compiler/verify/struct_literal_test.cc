@@ -69,6 +69,7 @@ TEST(StructLiteral, SelfReferential) {
 }
 
 TEST(StructLiteral, MutuallyReferential) {
+  base::EnableLogging("compile-work-queue");
   test::TestModule mod;
   mod.AppendCode(R"(
   A ::= struct { b_ptr: *B }

@@ -1269,8 +1269,13 @@ ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
   if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
 
   if (state_.must_complete) {
-    state_.work_queue.emplace(node,
-                              TransientFunctionState::WorkType::CompleteStruct);
+
+  DEBUG_LOG("compile-work-queue")
+  ("Request work: ",
+   static_cast<int>(TransientFunctionState::WorkType::CompleteStruct), ": ",
+   node);
+  state_.work_queue.emplace(node,
+                            TransientFunctionState::WorkType::CompleteStruct);
   }
   return ir::Value(static_cast<type::Type const *>(s));
 }

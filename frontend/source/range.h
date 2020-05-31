@@ -94,6 +94,13 @@ struct SourceRange {
   explicit constexpr SourceRange(SourceLoc const &b, SourceLoc const &e)
       : range_(b, e) {}
 
+  // Constructs a SourceRange. If `n` is positive the range starts at `l` and
+  // has length `n`. If `n` is negative, the range ends at `l` and has length
+  // `n`. In either case, assumes that no newline characters are present inside
+  // the constructed range.
+  explicit constexpr SourceRange(SourceLoc const &l, int n)
+      : SourceRange(l + Offset{std::min(n, 0)}, l + Offset{std::max(n, 0)}) {}
+
   constexpr base::Interval<LineNum> lines() const {
     return base::Interval<LineNum>(begin().line_num, end().line_num + 1);
   }

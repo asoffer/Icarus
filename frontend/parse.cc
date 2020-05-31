@@ -23,6 +23,25 @@ namespace frontend {
 namespace {
 using ::matcher::InheritsFrom;
 
+struct BracedShortFunctionLiteral {
+  static constexpr std::string_view kCategory = "parse-error";
+  static constexpr std::string_view kName     = "braced-short-function-literal";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Unexpected braces in short function literal."),
+        diagnostic::SourceQuote(src)
+            .Highlighted(open_brace, diagnostic::Style::ErrorText())
+            .Highlighted(close_brace, diagnostic::Style::ErrorText()),
+        diagnostic::Text(
+            "Short function literals do not use braces in Icarus. Rather than "
+            "writing `(n: int64) => { n * n }`, remove the braces and write "
+            "`(n: int64) => n * n`."));
+  }
+
+  frontend::SourceRange open_brace, close_brace;
+};
+
 std::unique_ptr<ast::Identifier> MakeInvalidNode(
     SourceRange range = SourceRange()) {
   return std::make_unique<ast::Identifier>(range, "invalid_node");
@@ -137,7 +156,7 @@ std::unique_ptr<ast::Node> OneBracedStatement(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
   auto stmts = std::make_unique<Statements>(
-      SourceRange(nodes[0]->range().begin(), nodes[2]->range().end()));
+      SourceRange(nodes.front()->range().begin(), nodes.back()->range().end()));
   stmts->append(std::move(nodes[1]));
   ValidateStatementSyntax(stmts->content_.back().get(), diag);
   return stmts;
@@ -147,7 +166,7 @@ std::unique_ptr<ast::Node> EmptyBraces(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &) {
   return std::make_unique<Statements>(
-      SourceRange(nodes[0]->range().begin(), nodes[1]->range().end()));
+      SourceRange(nodes.front()->range().begin(), nodes.back()->range().end()));
 }
 
 std::unique_ptr<ast::Node> BuildControlHandler(
@@ -164,7 +183,7 @@ std::unique_ptr<ast::Node> BracedStatementsSameLineEnd(
     diagnostic::DiagnosticConsumer &diag) {
   auto stmts = move_as<Statements>(nodes[1]);
   stmts->set_range(
-      SourceRange(nodes[0]->range().begin(), nodes[2]->range().end()));
+      SourceRange(nodes.front()->range().begin(), nodes.back()->range().end()));
   if (nodes[2]->is<Statements>()) {
     for (auto &stmt : nodes[2]->as<Statements>().content_) {
       stmts->append(std::move(stmt));
@@ -590,24 +609,38 @@ std::unique_ptr<ast::Node> BuildFunctionLiteral(
   }
 }
 
+// Represents a sequence of the form:
+// `<expr> <infix-operator> <braced-statements>`
+// The only valid expressions of this form are designated initializers, where
+// `expr` is the type being initialized and the infix operator is `.`. However,
+// we should not assume that designated initializers are the intent here. For
+// example, The sequence `(n: int64) => { n * n }` would trigger this rule and
+// more clearly shows that the user likely expected a short-function literal.
+//
+// Currently, we use the operator as the signal about user intent.
 std::unique_ptr<ast::Node> BuildDesignatedInitializer(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  if (auto *tok = nodes[1]->if_as<Token>()) {
-    // TODO maybe 'dot' should be it's own special thing for parsing. rather
-    // than just an op_b.
-    if (tok->token != ".") {
-      diag.Consume(diagnostic::Todo{});
-      return MakeInvalidNode(SourceRange(nodes.front()->range().begin(),
-                                         nodes.back()->range().end()));
-    }
-  } else {
+  auto *tok = nodes[1]->if_as<Token>();
+  SourceRange range(nodes[0]->range().begin(), nodes.back()->range().end());
+  if (not tok) {
     diag.Consume(diagnostic::Todo{});
-    return MakeInvalidNode(SourceRange(nodes.front()->range().begin(),
-                                       nodes.back()->range().end()));
+    return MakeInvalidNode(range);
   }
-  auto range =
-      SourceRange(nodes[0]->range().begin(), nodes.back()->range().end());
+
+  if (tok->token == "=>") {
+    diag.Consume(BracedShortFunctionLiteral{
+        .open_brace  = SourceRange(nodes.back()->range().begin(), 1),
+        .close_brace = SourceRange(nodes.back()->range().end(), -1),
+    });
+    return MakeInvalidNode(range);
+  }
+
+  if (tok->token != ".") {
+    diag.Consume(diagnostic::Todo{});
+    return MakeInvalidNode(range);
+  }
+
   if (auto *stmts = nodes[2]->if_as<Statements>()) {
     auto extracted_stmts = std::move(*stmts).extract();
     std::vector<std::unique_ptr<ast::Assignment>> initializers;
@@ -789,7 +822,7 @@ std::unique_ptr<ast::Node> OneBracedJump(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
   auto stmts = std::make_unique<Statements>(
-      SourceRange(nodes[0]->range().begin(), nodes[2]->range().end()));
+      SourceRange(nodes.front()->range().begin(), nodes.back()->range().end()));
   stmts->append(BuildControlHandler(std::move(nodes[1])));
   ValidateStatementSyntax(stmts->content_.back().get(), diag);
   return stmts;

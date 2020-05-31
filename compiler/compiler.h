@@ -153,6 +153,7 @@ struct Compiler
     while (not state_.work_queue.empty()) {
       size_t previous_queue_size = state_.work_queue.size();
       auto [node, work_type]     = state_.work_queue.front();
+      DEBUG_LOG("compile-work-queue")("Process: ", static_cast<int>(work_type), ": ", node);
       state_.work_queue.pop();
       // TODO: you also need to pass around some known contexts becuase you may
       // enter into some generic context push work, and then exit. When you get

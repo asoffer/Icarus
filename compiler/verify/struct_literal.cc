@@ -19,6 +19,9 @@ bool Compiler::VerifyBody(ast::StructLiteral const *node) {
 
 type::QualType Compiler::VerifyType(ast::StructLiteral const *node) {
   DEBUG_LOG("struct")("Starting struct-literal verification: ", node);
+  DEBUG_LOG("compile-work-queue")
+  ("Request work: ",
+   static_cast<int>(TransientFunctionState::WorkType::VerifyBody), ": ", node);
   state_.work_queue.emplace(node, TransientFunctionState::WorkType::VerifyBody);
   return data().set_qual_type(node, type::QualType::Constant(type::Type_));
 }

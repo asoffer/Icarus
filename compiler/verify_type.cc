@@ -177,6 +177,11 @@ bool Compiler::VerifyBody(ast::FunctionLiteral const *node) {
     if (not param.value.type()->DeepComplete()) {
       DEBUG_LOG("function")("rescheduled");
       data().ClearVerifyBody(node);
+
+      DEBUG_LOG("compile-work-queue")
+      ("Request work: ",
+       static_cast<int>(TransientFunctionState::WorkType::VerifyBody), ": ",
+       node);
       state_.work_queue.emplace(node,
                                 TransientFunctionState::WorkType::VerifyBody);
       return true;
@@ -265,6 +270,10 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
       }
     }
 
+    DEBUG_LOG("compile-work-queue")
+    ("Request work: ",
+     static_cast<int>(TransientFunctionState::WorkType::VerifyBody), ": ",
+     node);
     state_.work_queue.emplace(node,
                               TransientFunctionState::WorkType::VerifyBody);
     auto qt = type::QualType::Constant(
@@ -307,6 +316,9 @@ bool Compiler::VerifyBody(ast::BlockLiteral const *node) {
 }
 
 type::QualType Compiler::VerifyType(ast::BlockLiteral const *node) {
+  DEBUG_LOG("compile-work-queue")
+  ("Request work: ",
+   static_cast<int>(TransientFunctionState::WorkType::VerifyBody), ": ", node);
   state_.work_queue.emplace(node, TransientFunctionState::WorkType::VerifyBody);
   return data().set_qual_type(node, type::QualType::Constant(type::Block));
 }
@@ -378,6 +390,9 @@ bool Compiler::VerifyBody(ast::EnumLiteral const *node) {
 }
 
 type::QualType Compiler::VerifyType(ast::EnumLiteral const *node) {
+  DEBUG_LOG("compile-work-queue")
+  ("Request work: ",
+   static_cast<int>(TransientFunctionState::WorkType::VerifyBody), ": ", node);
   state_.work_queue.emplace(node, TransientFunctionState::WorkType::VerifyBody);
   return data().set_qual_type(node, type::QualType::Constant(type::Type_));
 }
@@ -760,6 +775,9 @@ type::QualType Compiler::VerifyType(ast::Jump const *node) {
         return v.type();
       });
 
+  DEBUG_LOG("compile-work-queue")
+  ("Request work: ",
+   static_cast<int>(TransientFunctionState::WorkType::VerifyBody), ": ", node);
   state_.work_queue.emplace(node, TransientFunctionState::WorkType::VerifyBody);
   return data().set_qual_type(
       node, err ? type::QualType::Error()
