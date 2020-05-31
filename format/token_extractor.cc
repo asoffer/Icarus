@@ -156,14 +156,6 @@ void TokenExtractor::Visit(ast::StructType const *node) {
   for (auto &arg : node->args_) { Visit(arg.get()); }
 }
 
-void TokenExtractor::Visit(ast::Switch const *node) {
-  if (node->expr()) { Visit(node->expr()); }
-  for (auto &[body, cond] : node->cases()) {
-    Visit(body.get());
-    Visit(cond.get());
-  }
-}
-
 void TokenExtractor::Visit(ast::UnaryOperator const *node) {
   // TODO
   Visit(node->operand());

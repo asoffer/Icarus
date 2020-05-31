@@ -21,7 +21,6 @@ char const *OpStr(frontend::Operator op) {
     case frontend::Operator::MulEq: return " *= ";
     case frontend::Operator::DivEq: return " /= ";
     case frontend::Operator::ModEq: return " %= ";
-    case frontend::Operator::When: return " when ";
     case frontend::Operator::Or: return " | ";
     case frontend::Operator::Xor: return " ^ ";
     case frontend::Operator::And: return " & ";
@@ -421,24 +420,6 @@ void StructType::DebugStrAppend(std::string *out, size_t indent) const {
                                   return Joiner(elem, out, indent);
                                 }),
                   "; struct]");
-}
-
-void Switch::DebugStrAppend(std::string *out, size_t indent) const {
-  absl::StrAppend(out, "switch ");
-  if (expr_) {
-    absl::StrAppend(out, "(");
-    expr_.get()->DebugStrAppend(out, indent);
-    absl::StrAppend(out, ")");
-  }
-  absl::StrAppend(out, "{\n");
-  for (auto const &[body, cond] : cases_) {
-    absl::StrAppend(out, indentation(indent));
-    body.get()->DebugStrAppend(out, indent + 1);
-    absl::StrAppend(out, " when ");
-    cond.get()->DebugStrAppend(out, indent + 1);
-    absl::StrAppend(out, "\n");
-  }
-  absl::StrAppend(out, indentation(indent), "}");
 }
 
 void Terminal::DebugStrAppend(std::string *out, size_t indent) const {

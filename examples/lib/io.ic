@@ -1,3 +1,5 @@
+core ::= import "examples/lib/core.ic"
+
 #{export} Print ::= (n: int8) -> () { Print(n as int64) }
 #{export} Print ::= (n: int16) -> () { Print(n as int64) }
 #{export} Print ::= (n: int32) -> () { Print(n as int64) }
@@ -15,10 +17,7 @@
 }
 
 #{export} Print ::= (b: bool) -> () {
-  Print(switch {
-    "true" when b
-    "false" when !b
-  })
+  core.if (b) then { Print("true") } else { Print("false") }
 }
 
 #{export} Print ::= (s: byte_view) -> () {

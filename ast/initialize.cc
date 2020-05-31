@@ -207,15 +207,6 @@ void StructType::Initialize(Scope *scope) {
   for (auto &arg : args_) { arg->Initialize(scope); }
 }
 
-void Switch::Initialize(Scope *scope) {
-  scope_ = scope;
-  if (expr_) { expr_->Initialize(scope); }
-  for (auto &[body, cond] : cases_) {
-    body->Initialize(scope);
-    cond->Initialize(scope);
-  }
-}
-
 void Terminal::Initialize(Scope *scope) { scope_ = scope; }
 
 void UnaryOperator::Initialize(Scope *scope) {

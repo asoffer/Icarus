@@ -101,8 +101,6 @@ void Match::Visit(ast::ParameterizedStructLiteral const *node,
 
 void Match::Visit(ast::StructType const *node, MatchState *state) {}
 
-void Match::Visit(ast::Switch const *node, MatchState *state) {}
-
 void Match::Visit(ast::Terminal const *node, MatchState *state) {}
 
 void Match::Visit(ast::UnaryOperator const *node, MatchState *state) {}

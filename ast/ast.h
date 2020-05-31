@@ -936,10 +936,7 @@ struct ReturnStmt : Node {
 //  ```
 //  if ::= scope {
 //    init ::= (b: bool) -> () {
-//      switch (b) {
-//        jump then()           when true
-//        jump (else | exit)()  when false
-//      }
+//      goto b, then(), else() | exit()
 //    }
 //    then ::= block {
 //      before ::= () -> () {}
@@ -1105,40 +1102,6 @@ struct StructType : Expression {
   std::vector<std::unique_ptr<Expression>> args_;
 };
 
-// Switch:
-//
-// Represents a `switch` expression, of which there are two forms:
-// If there is no parenthesized expression following the `switch` keyword, then
-// the body consists of a collection of pairs of the form `<value> when
-// <condition>`. The semantics are that exactly one condition must be met and
-// the expression evaluates to the first `<value>` for which the corresponding
-// `<condition>` is true. If there is a parenthesized expression, the the body
-// is a collection of pairs of the form `<value> when <test-value>` and
-// evaluates to the first `<value>` for which `<test-value>` compares equal to
-// the parenthesized expression.
-struct Switch : Expression {
-  explicit Switch(
-      frontend::SourceRange const &range, std::unique_ptr<Expression> expr,
-      std::vector<std::pair<std::unique_ptr<Node>, std::unique_ptr<Expression>>>
-          cases)
-      : Expression(range), expr_(std::move(expr)), cases_(std::move(cases)) {}
-  ~Switch() override {}
-
-  ICARUS_AST_VIRTUAL_METHODS;
-
-  Expression const *expr() const { return expr_.get(); }
-  absl::Span<
-      std::pair<std::unique_ptr<Node>, std::unique_ptr<Expression>> const>
-  cases() const {
-    return cases_;
-  }
-
- private:
-  std::unique_ptr<Expression> expr_;
-  std::vector<std::pair<std::unique_ptr<Node>, std::unique_ptr<Expression>>>
-      cases_;
-};
-
 // Terminal:
 // Represents any node that is not an identifier but has no sub-parts. These are
 // typically numeric literals, or expressions that are also keywords such as
@@ -1188,10 +1151,7 @@ struct UnaryOperator : Expression {
 //  ```
 //  while ::= scope {
 //    init ::= jump(b: bool) {
-//      switch (b) {
-//        goto do()   when true
-//        goto exit() when false
-//      }
+//      goto b, do() | exit()
 //    }
 //    do ::= block {
 //      before ::= () -> () {}
@@ -1249,12 +1209,9 @@ struct ConditionalGoto : Node {
 //
 // Example (in context of a scope):
 //  ```
-//  while ::= scope {
+//  forever ::= scope {
 //    init ::= jump(b: bool) {
-//      switch (b) {
-//        goto do()   when true
-//        goto exit() when false
-//      }
+//      goto do()
 //    }
 //    do ::= block {
 //      before ::= () -> () {}

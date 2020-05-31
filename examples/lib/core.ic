@@ -38,10 +38,7 @@ repeat ::= scope (int64) {
     before ::= () -> () {}
     after ::= jump [state: *int64] () { 
       @state -= 1
-      switch {
-        goto exit() when @state == 0
-        goto do() when @state != 0
-      }
+      goto @state == 0, exit(), do()
     }
   }
 

@@ -214,14 +214,6 @@ struct ParamDependencyGraphBuilder
     for (auto &arg : node->args_) { Visit(arg.get(), d); }
   }
 
-  void Visit(Switch const *node, core::DependencyNode<Declaration> d) {
-    if (node->expr()) { Visit(node->expr(), d); }
-    for (auto &[body, cond] : node->cases()) {
-      Visit(body.get(), d);
-      Visit(cond.get(), d);
-    }
-  }
-
   void Visit(Terminal const *node, core::DependencyNode<Declaration> d) {}
 
   void Visit(UnaryOperator const *node, core::DependencyNode<Declaration> d) {

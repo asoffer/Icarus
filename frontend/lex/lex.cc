@@ -49,7 +49,6 @@ static base::Global kKeywords =
         {"flags", {Syntax::Flags}},   {"enum", {Syntax::Enum}},
         {"struct", {Syntax::Struct}}, {"return", {Operator::Return}},
         {"goto", {Operator::Goto}},   {"jump", {Syntax::Jump}},
-        {"switch", {Syntax::Switch}}, {"when", {Operator::When}},
         {"as", {Operator::As}},       {"copy", {Operator::Copy}},
         {"move", {Operator::Move}}};
 

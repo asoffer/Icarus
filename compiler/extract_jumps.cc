@@ -220,14 +220,6 @@ struct Extractor : ast::Visitor<void()> {
     for (auto &arg : node->args_) { Visit(arg.get()); }
   }
 
-  void Visit(ast::Switch const *node) final {
-    if (node->expr()) { Visit(node->expr()); }
-    for (auto &[body, cond] : node->cases()) {
-      Visit(body.get());
-      Visit(cond.get());
-    }
-  }
-
   void Visit(ast::Terminal const *node) final {}
 
   void Visit(ast::UnaryOperator const *node) final { Visit(node->operand()); }

@@ -79,21 +79,6 @@ struct CommaList : ast::Expression {
   std::vector<std::unique_ptr<ast::Expression>> exprs_;
 };
 
-// Temporary node which never appears in the AST but is useful during parsing to
-// distinguish 'when' from other binary operators.
-struct SwitchWhen : public ast::Node {
-  explicit SwitchWhen(SourceRange const &range) : ast::Node(range) {}
-  ~SwitchWhen() override {}
-
-  void Accept(ast::VisitorBase *visitor, void *ret,
-              void *arg_tuple) const override {
-    visitor->ErasedVisit(this, ret, arg_tuple);
-  }
-
-  std::unique_ptr<ast::Node> body;
-  std::unique_ptr<ast::Expression> cond;
-};
-
 template <typename To, typename From>
 std::unique_ptr<To> move_as(std::unique_ptr<From> &val) {
   ASSERT(val, InheritsFrom<To>());
@@ -146,29 +131,6 @@ std::unique_ptr<ast::Node> AddHashtag(
     expr->hashtags_.emplace_back(std::string{token});
   }
   return expr;
-}
-
-std::unique_ptr<ast::Switch> BuildSwitch(std::unique_ptr<ast::Expression> expr,
-                                         std::unique_ptr<Statements> stmts,
-                                         diagnostic::DiagnosticConsumer &diag) {
-  // TODO it's really bigger than this because it involves the keyword too.
-  auto range = stmts->range();
-  std::vector<
-      std::pair<std::unique_ptr<ast::Node>, std::unique_ptr<ast::Expression>>>
-      cases;
-  cases.reserve(stmts->content_.size());
-
-  for (auto &stmt : stmts->content_) {
-    if (auto *switch_when = stmt->if_as<SwitchWhen>()) {
-      cases.emplace_back(std::move(switch_when->body),
-                         std::move(switch_when->cond));
-    } else {
-      diag.Consume(diagnostic::Todo{});
-    }
-  }
-
-  return std::make_unique<ast::Switch>(range, std::move(expr),
-                                       std::move(cases));
 }
 
 std::unique_ptr<ast::Node> OneBracedStatement(
@@ -909,23 +871,6 @@ std::unique_ptr<ast::Node> SugaredExtendScopeNode(
   return std::move(nodes[0]);
 }
 
-std::unique_ptr<ast::Node> BuildWhen(
-    absl::Span<std::unique_ptr<ast::Node>> nodes,
-    diagnostic::DiagnosticConsumer &diag) {
-  std::unique_ptr<ast::Node> node;
-  if (auto *stmts = nodes[0]->if_as<Statements>()) {
-    ASSERT(stmts->content_.size() == 1u);
-    node = std::move(stmts->content_[0]);
-  } else {
-    node = std::move(nodes[0]);
-  }
-  auto when = std::make_unique<SwitchWhen>(
-      SourceRange(node->range().begin(), nodes[2]->range().end()));
-  when->body = move_as<ast::Node>(node);
-  when->cond = move_as<ast::Expression>(nodes[2]);
-  return when;
-}
-
 std::unique_ptr<ast::Node> BuildBinaryOperator(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
@@ -981,9 +926,6 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
     return std::make_unique<ast::Cast>(range,
                                        move_as<ast::Expression>(nodes[0]),
                                        move_as<ast::Expression>(nodes[2]));
-  } else if (tk == "when") {
-    return BuildWhen(nodes, diag);
-
   } else if (tk == "'") {
     SourceRange range(nodes.front()->range().begin(),
                       nodes.back()->range().end());
@@ -1140,7 +1082,6 @@ std::unique_ptr<ast::Node> BuildStatefulJump(
       std::move(nodes.back()->as<Statements>()).extract());
 }
 
-// TODO rename this now that it supports switch statements too.
 std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
@@ -1148,11 +1089,7 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
   // so we can ensure coverage/safety.
   ASSERT(nodes[0], InheritsFrom<Token>());
   auto const &tk = nodes[0]->as<Token>().token;
-  if (tk == "switch") {
-    auto sw = BuildSwitch(move_as<ast::Expression>(nodes[2]),
-                          move_as<Statements>(nodes[4]), diag);
-    return sw;
-  } else if (tk == "jump") {
+  if (tk == "jump") {
     SourceRange range(nodes.front()->range().begin(),
                       nodes.back()->range().end());
     std::vector<std::unique_ptr<ast::Declaration>> params;
@@ -1234,9 +1171,6 @@ std::unique_ptr<ast::Node> BuildKWBlock(
 
     } else if (tk == "struct") {
       return BuildConcreteStruct(std::move(nodes), diag);
-
-    } else if (tk == "switch") {
-      return BuildSwitch(nullptr, move_as<Statements>(nodes[1]), diag);
 
     } else if (tk == "scope") {
       SourceRange range(nodes.front()->range().begin(),
@@ -1364,16 +1298,16 @@ static base::Global kRules = std::array{
     ParseRule(fn_call_expr, {EXPR, l_paren, r_paren}, BuildEmptyParen),
 
     ParseRule(fn_expr, {EXPR, fn_arrow, EXPR}, BuildBinaryOperator),
-    ParseRule(expr, {EXPR, (op_bl | when | OP_B), EXPR}, BuildBinaryOperator),
+    ParseRule(expr, {EXPR, (op_bl | OP_B), EXPR}, BuildBinaryOperator),
     ParseRule(op_b, {colon, eq}, CombineColonEq),
     ParseRule(fn_expr, {EXPR, fn_arrow, RESERVED}, ReservedKeywords<1, 2>),
     ParseRule(fn_expr, {RESERVED, fn_arrow, EXPR | kw_block},
               ReservedKeywords<1, 0>),
     ParseRule(fn_expr, {RESERVED, fn_arrow, RESERVED},
               ReservedKeywords<1, 0, 2>),
-    ParseRule(expr, {EXPR, (OP_B | yield | when | op_bl), RESERVED},
+    ParseRule(expr, {EXPR, (OP_B | yield | op_bl), RESERVED},
               ReservedKeywords<1, 2>),
-    ParseRule(expr, {RESERVED, (OP_B | yield | when | op_bl), RESERVED},
+    ParseRule(expr, {RESERVED, (OP_B | yield | op_bl), RESERVED},
               ReservedKeywords<1, 0, 2>),
     ParseRule(expr, {l_paren, op_l | op_b | eq | op_bl, r_paren},
               BuildOperatorIdentifier),
@@ -1407,7 +1341,6 @@ static base::Global kRules = std::array{
     ParseRule(expr, {EXPR, op_r}, BuildRightUnop),
     ParseRule(expr, {(op_l | op_bl | op_lt), EXPR}, BuildLeftUnop),
     ParseRule(stmts, {sop_lt | sop_l, EXPR}, BuildStatementLeftUnop),
-    ParseRule(expr, {stmts, when, EXPR}, BuildWhen),
 
     ParseRule(stmts, {label, yield, EXPR}, BuildLabeledYield),
     ParseRule(stmts, {yield, EXPR}, BuildUnlabeledYield),
@@ -1519,8 +1452,7 @@ struct ParseState {
     }
 
     constexpr uint64_t OP = hashtag | op_r | op_l | op_b | colon | eq | comma |
-                            op_bl | op_lt | fn_arrow | yield | sop_l | sop_lt |
-                            when;
+                            op_bl | op_lt | fn_arrow | yield | sop_l | sop_lt;
     if (get_type<2>() & OP) {
       if (get_type<1>() == r_paren) {
         // TODO this feels like a hack, but maybe this whole function is.
