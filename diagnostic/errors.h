@@ -505,23 +505,6 @@ struct NotAType {
   type::Type const *type;
 };
 
-struct ComparingIncomparables {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "comparing-incomparables";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Values of type `%s` and `%s` are being compared but no such "
-             "comparison is allowed:",
-             lhs->to_string(), rhs->to_string()),
-        SourceQuote(src).Highlighted(range, Style{}));
-  }
-
-  type::Type const *lhs;
-  type::Type const *rhs;
-  frontend::SourceRange range;
-};
-
 struct InvalidUnaryOperatorOverload {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName = "invalid-unary-operator-overload";

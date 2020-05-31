@@ -295,6 +295,7 @@ cc_library(
         "verify/binary_operator.cc",
         "verify/call.cc",
         "verify/common.cc",
+        "verify/comparison_operator.cc",
         "verify/declaration.cc",
         "verify/designated_initializer.cc",
         "verify/identifier.cc",
@@ -414,6 +415,16 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "comparison_operator_test",
+    srcs = ["verify/comparison_operator_test.cc"],
+    deps = [
+        ":verify_type",
+        "//test:module",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
 
 cc_test(
     name = "declaration_test",

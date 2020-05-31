@@ -150,11 +150,11 @@ Type const *Meet(Type const *lhs, Type const *rhs) {
   if (lhs == rhs) { return lhs; }
   if (lhs == nullptr or rhs == nullptr) { return nullptr; }
 
-  if (lhs == NullPtr or rhs == NullPtr) {
-    // TODO It's not obvious to me that this is what I want to do.
-    return nullptr;
-  }
+  if (lhs == NullPtr and rhs->is<Pointer>()) { return rhs; }
+  if (rhs == NullPtr and lhs->is<Pointer>()) { return lhs; }
+
   if (lhs->is<Pointer>()) {
+    // TODO: This is wrong.
     return rhs->is<Pointer>() ? Ptr(Meet(lhs->as<Pointer>().pointee(),
                                          rhs->as<Pointer>().pointee()))
                               : nullptr;

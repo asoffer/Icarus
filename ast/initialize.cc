@@ -71,7 +71,7 @@ void Cast::Initialize(Scope *scope) {
   type_->Initialize(scope);
 }
 
-void ChainOp::Initialize(Scope *scope) {
+void ComparisonOperator::Initialize(Scope *scope) {
   scope_ = scope;
   for (auto &expr : exprs_) { expr->Initialize(scope); }
 }

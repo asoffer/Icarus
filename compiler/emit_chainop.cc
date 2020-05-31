@@ -108,7 +108,7 @@ static ir::Value ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
 }
 
 static ir::RegOr<bool> EmitChainOpPair(Compiler *compiler,
-                                       ast::ChainOp const *chain_op,
+                                       ast::ComparisonOperator const *chain_op,
                                        size_t index, ir::Value const &lhs_ir,
                                        ir::Value const &rhs_ir) {
   auto &bldr     = compiler->builder();
@@ -198,7 +198,7 @@ static ir::RegOr<bool> EmitChainOpPair(Compiler *compiler,
   }
 }
 
-ir::Value Compiler::EmitValue(ast::ChainOp const *node) {
+ir::Value Compiler::EmitValue(ast::ComparisonOperator const *node) {
   auto *t = type_of(node);
   if (node->ops().size() == 1) {
     auto lhs_ir = EmitValue(node->exprs()[0]);

@@ -182,6 +182,11 @@ struct QualType {
 
   constexpr Quals quals() const { return Quals(data_ & 0x3); }
 
+  constexpr void remove_constant() {
+    auto low_bits = data_ & 0x3;
+    data_ &= ~uintptr_t{0x3};
+    data_ |= (low_bits & (~Quals::Const()).val_);
+  }
   constexpr bool constant() const { return (quals() & Quals::Const()).val_; }
   constexpr size_t expansion_size() const { return num_; }
 

@@ -66,7 +66,7 @@ struct Extractor : ast::Visitor<void()> {
     Visit(node->type());
   }
 
-  void Visit(ast::ChainOp const *node) final {
+  void Visit(ast::ComparisonOperator const *node) final {
     for (auto *expr : node->exprs()) { Visit(expr); }
   }
 

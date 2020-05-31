@@ -113,4 +113,28 @@ TEST(QualType, ForEach) {
   }
 }
 
+TEST(QualType, RemoveConstant) {
+  {
+    type::QualType qt(type::Int32, type::Quals::All());
+    qt.remove_constant();
+    EXPECT_NE(qt, type::QualType::Error());
+    EXPECT_EQ(qt.quals(), type::Quals::All() & ~type::Quals::Const());
+
+    qt.remove_constant();
+    EXPECT_NE(qt, type::QualType::Error());
+    EXPECT_EQ(qt.quals(), type::Quals::All() & ~type::Quals::Const());
+  }
+
+  {
+    type::QualType qt(type::Int32, type::Quals::Const());
+    qt.remove_constant();
+    EXPECT_NE(qt, type::QualType::Error());
+    EXPECT_EQ(qt.quals(), type::Quals::Unqualified());
+
+    qt.remove_constant();
+    EXPECT_NE(qt, type::QualType::Error());
+    EXPECT_EQ(qt.quals(), type::Quals::Unqualified());
+  }
+}
+
 }  // namespace

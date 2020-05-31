@@ -83,7 +83,8 @@ struct NoMatchingBinaryOperator {
 
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
-        diagnostic::Text("No matching binary operator for types %s and %s."),
+        diagnostic::Text("No matching binary operator for types %s and %s.",
+                         lhs_type->to_string(), rhs_type->to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 

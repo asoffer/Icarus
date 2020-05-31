@@ -99,7 +99,8 @@ struct ParamDependencyGraphBuilder
     Visit(node->type(), d);
   }
 
-  void Visit(ChainOp const *node, core::DependencyNode<Declaration> d) {
+  void Visit(ComparisonOperator const *node,
+             core::DependencyNode<Declaration> d) {
     for (auto const *expr : node->exprs()) { Visit(expr, d); }
   }
 

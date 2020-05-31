@@ -195,7 +195,7 @@ void Cast::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, ")");
 }
 
-void ChainOp::DebugStrAppend(std::string *out, size_t indent) const {
+void ComparisonOperator::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, "(");
   for (size_t i = 0; i < ops().size(); ++i) {
     exprs()[i]->DebugStrAppend(out, indent);

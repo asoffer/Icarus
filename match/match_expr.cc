@@ -58,7 +58,7 @@ void Match::Visit(ast::Call const *node, MatchState *state) {}
 
 void Match::Visit(ast::Cast const *node, MatchState *state) {}
 
-void Match::Visit(ast::ChainOp const *node, MatchState *state) {}
+void Match::Visit(ast::ComparisonOperator const *node, MatchState *state) {}
 
 void Match::Visit(ast::Declaration const *node, MatchState *state) {}
 

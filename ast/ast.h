@@ -223,9 +223,9 @@ struct ArrayType : Expression {
 //  * `3 * (x + y)`
 //
 // Note that some things one might expect to be binary operators are treated
-// differently (see `ChainOp`). This is because in Icarus, operators such as
-// `==` allow chains so that `x == y == z` can evaluate to `true` if and only if
-// both `x == y` and `y == z`.
+// differently (see `ComparisonOperator`). This is because in Icarus, operators
+// such as `==` allow chains so that `x == y == z` can evaluate to `true` if and
+// only if both `x == y` and `y == z`.
 struct BinaryOperator : Expression {
   explicit BinaryOperator(std::unique_ptr<Expression> lhs,
                           frontend::Operator op,
@@ -595,24 +595,24 @@ struct Cast : Expression {
   std::unique_ptr<Expression> expr_, type_;
 };
 
-// ChainOp:
+// ComparisonOperator:
 // Represents a sequence of operators all of the same precedence. In may other
 // languages these would be characterized as compositions of binary operators.
 // Allowing chaining gives us more flexibility and enables us to treat some
 // user-defined operators as variadic. The canonical example in this space is
 // `+` for string concatenation. Today, `+` is treated as a binary operator, but
-// we intend to move all of the BinaryOperator nodes into ChainOp.
+// we intend to move all of the BinaryOperator nodes into ComparisonOperator.
 //
 // Example:
 //  `a < b == c < d`
-struct ChainOp : Expression {
+struct ComparisonOperator : Expression {
   // TODO consider having a construct-or-append static function.
-  explicit ChainOp(frontend::SourceRange const &range,
-                   std::unique_ptr<Expression> expr)
+  explicit ComparisonOperator(frontend::SourceRange const &range,
+                              std::unique_ptr<Expression> expr)
       : Expression(range) {
     exprs_.push_back(std::move(expr));
   }
-  ~ChainOp() override {}
+  ~ComparisonOperator() override {}
 
   void append(frontend::Operator op, std::unique_ptr<Expression> expr) {
     ops_.push_back(op);
@@ -621,6 +621,13 @@ struct ChainOp : Expression {
 
   base::PtrSpan<Expression const> exprs() const { return exprs_; }
   absl::Span<frontend::Operator const> ops() const { return ops_; }
+
+  // Returns a source range consisting of the `i`th (zero-indexed) operator and
+  // surrounding expressions in this chain of comparison operators.
+  frontend::SourceRange binary_range(size_t i) const {
+    return frontend::SourceRange(exprs_[i]->range().begin(),
+                                 exprs_[i + 1]->range().end());
+  }
 
   auto &&extract() && { return std::move(exprs_); }
 

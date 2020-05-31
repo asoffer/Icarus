@@ -72,7 +72,7 @@ void TokenExtractor::Visit(ast::Cast const *node) {
   Visit(node->type());
 }
 
-void TokenExtractor::Visit(ast::ChainOp const *node) {
+void TokenExtractor::Visit(ast::ComparisonOperator const *node) {
   // TODO op
   for (auto *expr : node->exprs()) { Visit(expr); }
 }

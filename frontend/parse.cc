@@ -377,19 +377,19 @@ std::unique_ptr<ast::Node> BuildChainOp(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
   auto op = nodes[1]->as<Token>().op;
-  std::unique_ptr<ast::ChainOp> chain;
+  std::unique_ptr<ast::ComparisonOperator> chain;
 
   // Add to a chain so long as the precedence levels match. The only thing at
   // that precedence level should be the operators which can be chained.
-  if (nodes[0]->is<ast::ChainOp>() and
-      precedence(nodes[0]->as<ast::ChainOp>().ops().front()) ==
+  if (nodes[0]->is<ast::ComparisonOperator>() and
+      precedence(nodes[0]->as<ast::ComparisonOperator>().ops().front()) ==
           precedence(op)) {
-    chain = move_as<ast::ChainOp>(nodes[0]);
+    chain = move_as<ast::ComparisonOperator>(nodes[0]);
 
   } else {
     SourceRange range(nodes[0]->range().begin(), nodes[2]->range().end());
-    chain = std::make_unique<ast::ChainOp>(range,
-                                           move_as<ast::Expression>(nodes[0]));
+    chain = std::make_unique<ast::ComparisonOperator>(
+        range, move_as<ast::Expression>(nodes[0]));
   }
 
   chain->append(op, move_as<ast::Expression>(nodes[2]));

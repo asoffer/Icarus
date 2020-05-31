@@ -75,6 +75,8 @@ type::QualType Compiler::VerifyUnaryOverload(char const *symbol,
 }
 
 // TODO: Accept frontend::Operator rather than char const*.
+// TODO: Support calling with constants.
+// TODO: Replace `symbol` with an enum.
 type::QualType Compiler::VerifyBinaryOverload(std::string_view symbol,
                                               ast::Expression const *node,
                                               type::Type const *lhs_type,

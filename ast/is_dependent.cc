@@ -74,7 +74,7 @@ bool Cast::IsDependent() const {
   return expr()->IsDependent() or type()->IsDependent();
 }
 
-bool ChainOp::IsDependent() const {
+bool ComparisonOperator::IsDependent() const {
   for (auto const *expr : exprs()) {
     if (expr->IsDependent()) { return true; }
   }
