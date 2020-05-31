@@ -415,6 +415,7 @@ struct Compiler
                                       ast::Expression const *node,
                                       type::Type const *lhs_type,
                                       type::Type const *rhs_type);
+
  private:
   void CompleteStruct(ast::StructLiteral const *node);
 

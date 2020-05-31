@@ -166,7 +166,8 @@ struct ParamDependencyGraphBuilder
     }
   }
 
-  void Visit(UnconditionalGoto const *node, core::DependencyNode<Declaration> d) {
+  void Visit(UnconditionalGoto const *node,
+             core::DependencyNode<Declaration> d) {
     for (auto const &opt : node->options()) {
       for (std::unique_ptr<Expression> const &expr : opt.args()) {
         Visit(expr.get(), d);

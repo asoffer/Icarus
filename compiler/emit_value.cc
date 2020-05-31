@@ -292,24 +292,24 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
     case frontend::Operator::And: {
       auto lhs_ir = EmitValue(node->lhs());
       if (lhs_type == type::Bool) {
-       auto *land_block = builder().AddBlock();
+        auto *land_block = builder().AddBlock();
 
-       std::vector<ir::BasicBlock const *> phi_blocks;
+        std::vector<ir::BasicBlock const *> phi_blocks;
 
-       auto *next_block = builder().AddBlock();
-       builder().CondJump(lhs_ir.get<ir::RegOr<bool>>(), next_block,
-                          land_block);
-       phi_blocks.push_back(builder().CurrentBlock());
-       builder().CurrentBlock() = next_block;
+        auto *next_block = builder().AddBlock();
+        builder().CondJump(lhs_ir.get<ir::RegOr<bool>>(), next_block,
+                           land_block);
+        phi_blocks.push_back(builder().CurrentBlock());
+        builder().CurrentBlock() = next_block;
 
-       auto rhs_ir = EmitValue(node->rhs());
-       phi_blocks.push_back(builder().CurrentBlock());
-       builder().UncondJump(land_block);
+        auto rhs_ir = EmitValue(node->rhs());
+        phi_blocks.push_back(builder().CurrentBlock());
+        builder().UncondJump(land_block);
 
-       builder().CurrentBlock() = land_block;
+        builder().CurrentBlock() = land_block;
 
-       return ir::Value(builder().Phi<bool>(
-           std::move(phi_blocks), {false, rhs_ir.get<ir::RegOr<bool>>()}));
+        return ir::Value(builder().Phi<bool>(
+            std::move(phi_blocks), {false, rhs_ir.get<ir::RegOr<bool>>()}));
 
       } else if (lhs_type->is<type::Flags>()) {
         auto rhs_ir = EmitValue(node->rhs());

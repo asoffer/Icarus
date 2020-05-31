@@ -11,10 +11,10 @@ struct InvalidBinaryOperatorOverload {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName = "invalid-binary-operator-overload";
 
-   diagnostic:: DiagnosticMessage ToMessage(frontend::Source const *src) const {
-     return diagnostic::DiagnosticMessage(
-         diagnostic::Text("No valid operator overload for (%s)"),
-         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("No valid operator overload for (%s)"),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
   std::string op;
@@ -36,13 +36,13 @@ struct LogicalAssignmentNeedsBoolOrFlags {
   frontend::Operator op;
   frontend::SourceRange range;
 
-  private:
-   static std::string_view OperatorToString(frontend::Operator op) {
-     if (op == frontend::Operator::XorEq) { return "^="; }
-     if (op == frontend::Operator::AndEq) { return "&="; }
-     if (op == frontend::Operator::OrEq) { return "|="; }
-     UNREACHABLE();
-   }
+ private:
+  static std::string_view OperatorToString(frontend::Operator op) {
+    if (op == frontend::Operator::XorEq) { return "^="; }
+    if (op == frontend::Operator::AndEq) { return "&="; }
+    if (op == frontend::Operator::OrEq) { return "|="; }
+    UNREACHABLE();
+  }
 };
 
 // TODO: +=, etc should really be treated as assignments.

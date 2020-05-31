@@ -379,7 +379,8 @@ restart:
             .range  = range,
         });
       }
-      return Lexeme(std::make_unique<ast::Terminal>(range, ir::Value(ir::String(str))));
+      return Lexeme(
+          std::make_unique<ast::Terminal>(range, ir::Value(ir::String(str))));
 
     } break;
     case '#': {

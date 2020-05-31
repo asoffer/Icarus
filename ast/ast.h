@@ -1193,7 +1193,6 @@ struct ConditionalGoto : Node {
   std::vector<JumpOption> true_options_, false_options_;
 };
 
-
 // UnconditionalGoto:
 // Represents a statement describing where a block should jump after completion.
 //

@@ -305,8 +305,9 @@ TEST_P(BinaryOperator, Success) {
   {
     test::TestModule mod;
     mod.AppendCode(absl::StrCat(R"(x: )", type));
-    auto const *expr = mod.Append<ast::BinaryOperator>(absl::StrFormat("x %s x", op));
-    auto const *qt   = mod.data().qual_type(expr);
+    auto const *expr =
+        mod.Append<ast::BinaryOperator>(absl::StrFormat("x %s x", op));
+    auto const *qt = mod.data().qual_type(expr);
     ASSERT_NE(qt, nullptr);
     EXPECT_EQ(qt->quals(), type::Quals::Unqualified());
     EXPECT_EQ(qt->type()->to_string(), type);
@@ -315,8 +316,9 @@ TEST_P(BinaryOperator, Success) {
   {
     test::TestModule mod;
     mod.AppendCode(absl::StrCat(R"(x :: )", type));
-    auto const *expr = mod.Append<ast::BinaryOperator>(absl::StrFormat("x %s x", op));
-    auto const *qt   = mod.data().qual_type(expr);
+    auto const *expr =
+        mod.Append<ast::BinaryOperator>(absl::StrFormat("x %s x", op));
+    auto const *qt = mod.data().qual_type(expr);
     ASSERT_NE(qt, nullptr);
     EXPECT_EQ(qt->quals(), type::Quals::Const());
     EXPECT_EQ(qt->type()->to_string(), type);
@@ -368,7 +370,8 @@ TEST_P(OperatorOverload, MissingOverloads) {
 }
 
 INSTANTIATE_TEST_SUITE_P(All, OperatorOverload,
-                         testing::ValuesIn({"+", "-", "*", "/", "%", "^", "&", "|"}));
+                         testing::ValuesIn({"+", "-", "*", "/", "%", "^", "&",
+                                            "|"}));
 
 TEST(TypeVariant, ConstantSuccess) {
   test::TestModule mod;
