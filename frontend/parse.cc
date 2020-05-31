@@ -7,7 +7,9 @@
 #include "ast/ast.h"
 #include "base/debug.h"
 #include "base/global.h"
+#include "diagnostic/consumer/consumer.h"
 #include "diagnostic/errors.h"
+#include "diagnostic/message.h"
 #include "frontend/lex/lex.h"
 #include "frontend/lex/operators.h"
 #include "frontend/lex/tagged_node.h"
@@ -23,11 +25,176 @@ namespace frontend {
 namespace {
 using ::matcher::InheritsFrom;
 
+struct AccessRhsNotIdentifier {
+  static constexpr std::string_view kCategory = "parse-error";
+  static constexpr std::string_view kName     = "access-rhs-not-identifier";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Right-hand side must be an identifier"),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  }
+
+  frontend::SourceRange range;
+};
+
+// TODO: do we want to talk about this as already having a label, or giving it
+// multiple labels? "multiple labels" seems clearer because it doesn't refer to
+// parser state.
+struct ScopeNodeAlreadyHasLabel {
+  static constexpr std::string_view kCategory = "parse-error";
+  static constexpr std::string_view kName     = "scope-already-has-label";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("This scope already has a label."),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  }
+
+  frontend::SourceRange label_range;
+  frontend::SourceRange range;
+};
+
+struct ReservedKeyword {
+  static constexpr std::string_view kCategory = "parse-error";
+  static constexpr std::string_view kName     = "reserved-keyword";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Identifier `%s` is a reserved keyword.", keyword),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  }
+
+  frontend::SourceRange range;
+  std::string keyword;
+};
+
+struct CallingDeclaration {
+  static constexpr std::string_view kCategory = "parse-error";
+  static constexpr std::string_view kName     = "calling-declaration";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Declarations cannot be called"),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  }
+
+  frontend::SourceRange range;
+};
+
+struct IndexingDeclaration {
+  static constexpr std::string_view kCategory = "parse-error";
+  static constexpr std::string_view kName     = "indexing-declaration";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Declarations cannot be indexed"),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  }
+
+  frontend::SourceRange range;
+};
+
+struct NonDeclarationInStruct {
+  static constexpr std::string_view kCategory = "parse-error";
+  static constexpr std::string_view kName     = "non-declaration-in-struct";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text(
+            "Each struct member must be defined using a declaration."),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  }
+
+  frontend::SourceRange range;
+};
+
+struct UnknownParseError {
+  static constexpr std::string_view kCategory = "parse-error";
+  static constexpr std::string_view kName     = "unknown-parse-error";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    diagnostic::SourceQuote quote(src);
+    for (auto const &range : lines) {
+      quote.Highlighted(range, diagnostic::Style{});
+    }
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text(
+            "Parse errors found in \"<SOME FILE>\" on the following lines:"),
+        std::move(quote));
+  }
+
+  std::vector<frontend::SourceRange> lines;
+};
+
+struct CommaSeparatedListStatement {
+  static constexpr std::string_view kCategory = "parse-error";
+  static constexpr std::string_view kName = "comma-separated-list-statement";
+
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Comma-separated lists are not allowed as statements"),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  }
+
+  SourceRange range;
+};
+
+struct DeclarationUsedInUnaryOperator {
+  static constexpr std::string_view kCategory = "parse-error";
+  static constexpr std::string_view kName =
+      "declaration-used-in-unary-operator";
+
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text(
+            "Declarations cannot be used as argument to unary operator."),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  }
+
+  SourceRange range;
+};
+
+struct PositionalArgumentFollowingNamed {
+  static constexpr std::string_view kCategory = "parse-error";
+  static constexpr std::string_view kName =
+      "positional-argument-followed-by-named";
+
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+    diagnostic::SourceQuote quote(src);
+    quote.Highlighted(last_named, diagnostic::Style{});
+    for (auto const &pos_range : pos_ranges) {
+      quote.Highlighted(pos_range, diagnostic::Style{});
+    }
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text(
+            "Positional function arguments cannot follow a named argument."),
+        std::move(quote));
+  }
+
+  std::vector<SourceRange> pos_ranges;
+  SourceRange last_named;
+};
+
+struct UnknownBuiltinHashtag {
+  static constexpr std::string_view kCategory = "parse-error";
+  static constexpr std::string_view kName     = "unknown-builtin-hashtag";
+
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Unknown builtin hashtag #%s", token),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  }
+
+  std::string token;
+  SourceRange range;
+};
+
 struct BracedShortFunctionLiteral {
   static constexpr std::string_view kCategory = "parse-error";
   static constexpr std::string_view kName     = "braced-short-function-literal";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text("Unexpected braces in short function literal."),
         diagnostic::SourceQuote(src)
@@ -39,7 +206,7 @@ struct BracedShortFunctionLiteral {
             "`(n: int64) => n * n`."));
   }
 
-  frontend::SourceRange open_brace, close_brace;
+  SourceRange open_brace, close_brace;
 };
 
 std::unique_ptr<ast::Identifier> MakeInvalidNode(
@@ -48,7 +215,7 @@ std::unique_ptr<ast::Identifier> MakeInvalidNode(
 }
 
 struct Statements : public ast::Node {
-  Statements(frontend::SourceRange const &range) : ast::Node(range) {}
+  Statements(SourceRange const &range) : ast::Node(range) {}
   ~Statements() override {}
   Statements(Statements &&) noexcept = default;
   Statements &operator=(Statements &&) noexcept = default;
@@ -58,7 +225,7 @@ struct Statements : public ast::Node {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
 
-  void set_range(frontend::SourceRange const &range) { range_ = range; }
+  void set_range(SourceRange const &range) { range_ = range; }
 
   size_t size() const { return content_.size(); }
   void append(std::unique_ptr<ast::Node> &&node) {
@@ -77,7 +244,7 @@ struct Statements : public ast::Node {
 };
 
 struct CommaList : ast::Expression {
-  explicit CommaList(frontend::SourceRange const &range = {})
+  explicit CommaList(SourceRange const &range = {})
       : ast::Expression(range) {}
   ~CommaList() override {}
 
@@ -107,8 +274,8 @@ std::unique_ptr<To> move_as(std::unique_ptr<From> &val) {
 void ValidateStatementSyntax(ast::Node *node,
                              diagnostic::DiagnosticConsumer &diag) {
   if (auto *cl = node->if_as<CommaList>()) {
-    diag.Consume(diagnostic::CommaSeparatedListStatement{.range = cl->range()});
-    // TODO Do we call this more than once?
+    diag.Consume(CommaSeparatedListStatement{.range = cl->range()});
+    // TODO: Do we call this more than once?
   }
 }
 
@@ -141,10 +308,8 @@ std::unique_ptr<ast::Node> AddHashtag(
       iter != BuiltinHashtagMap->end()) {
     expr->hashtags_.emplace_back(iter->second);
   } else if (token.front() == '{' or token.back() == '}') {
-    diag.Consume(diagnostic::UnknownBuiltinHashtag{
-        .token = std::string{token},
-        .range = nodes.front()->range(),
-    });
+    diag.Consume(UnknownBuiltinHashtag{.token = std::string{token},
+                                       .range = nodes.front()->range()});
   } else {
     // User-defined hashtag.
     expr->hashtags_.emplace_back(std::string{token});
@@ -213,9 +378,8 @@ std::unique_ptr<ast::Node> BuildRightUnop(
         range, Operator::TypeOf, move_as<ast::Expression>(nodes[0]));
 
     if (unop->operand()->is<ast::Declaration>()) {
-      diag.Consume(diagnostic::DeclarationUsedInUnaryOperator{
-          .range = unop->operand()->range(),
-      });
+      diag.Consume(
+          DeclarationUsedInUnaryOperator{.range = unop->operand()->range()});
     }
 
     return unop;
@@ -243,7 +407,7 @@ std::unique_ptr<ast::Node> BuildCallImpl(
         if (positional_error_ranges.empty()) {
           last_named_range_before_error = a->lhs()[0]->range();
         }
-        // TODO Error if there are multiple entries in this assignment.
+        // TODO: Error if there are multiple entries in this assignment.
         auto [lhs, rhs] = std::move(*a).extract();
         args.emplace_back(std::string{lhs[0]->as<ast::Identifier>().token()},
                           std::move(rhs[0]));
@@ -256,15 +420,14 @@ std::unique_ptr<ast::Node> BuildCallImpl(
     }
 
     if (not positional_error_ranges.empty()) {
-      diag.Consume(diagnostic::PositionalArgumentFollowingNamed{
+      diag.Consume(PositionalArgumentFollowingNamed{
           .pos_ranges = positional_error_ranges,
-          .last_named = *last_named_range_before_error,
-      });
+          .last_named = *last_named_range_before_error});
     }
   } else {
     if (auto *a = args_expr->if_as<ast::Assignment>()) {
       auto [lhs, rhs] = std::move(*a).extract();
-      // TODO Error if there are multiple entries in this assignment.
+      // TODO: Error if there are multiple entries in this assignment.
       args.emplace_back(std::string{lhs[0]->as<ast::Identifier>().token()},
                         std::move(rhs[0]));
     } else {
@@ -273,9 +436,7 @@ std::unique_ptr<ast::Node> BuildCallImpl(
   }
 
   if (callee->is<ast::Declaration>()) {
-    diag.Consume(diagnostic::CallingDeclaration{
-        .range = callee->range(),
-    });
+    diag.Consume(CallingDeclaration{.range = callee->range()});
   }
 
   return std::make_unique<ast::Call>(
@@ -335,9 +496,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
   Operator op   = kUnopMap->find(tk)->second;
 
   if (operand->is<ast::Declaration>()) {
-    diag.Consume(diagnostic::DeclarationUsedInUnaryOperator{
-        .range = range,
-    });
+    diag.Consume(DeclarationUsedInUnaryOperator{.range = range});
     return std::make_unique<ast::UnaryOperator>(
         range, op, MakeInvalidNode(nodes[1]->range()));
 
@@ -438,9 +597,7 @@ std::unique_ptr<ast::Node> BuildAccess(
   auto range = SourceRange(nodes[0]->range().begin(), nodes[2]->range().end());
   auto &&operand = move_as<ast::Expression>(nodes[0]);
   if (not nodes[2]->is<ast::Identifier>()) {
-    diag.Consume(diagnostic::AccessRhsNotIdentifier{
-        .range = nodes[2]->range(),
-    });
+    diag.Consume(AccessRhsNotIdentifier{.range = nodes[2]->range()});
     return std::make_unique<ast::Access>(range, std::move(operand),
                                          "invalid_node");
   }
@@ -460,12 +617,10 @@ std::unique_ptr<ast::Node> BuildIndexOperator(
                                    move_as<ast::Expression>(nodes[2]));
 
   if (index->lhs()->is<ast::Declaration>()) {
-    diag.Consume(diagnostic::IndexingDeclaration{
-        .range = nodes[0]->range(),
-    });
+    diag.Consume(IndexingDeclaration{.range = nodes[0]->range()});
   }
 
-  // TODO This check is correct except that we're using indexes as a temporary
+  // TODO: This check is correct except that we're using indexes as a temporary
   // state for building args in block nodes. Also this needs to check deeper.
   // For example, commalists could have declarations in them and we wouldn't
   // catch it. Probably we should have a frontend-only temporary node that
@@ -689,7 +844,7 @@ std::unique_ptr<ast::Node> BuildInferredFunctionLiteral(
       std::move(nodes[2]->as<Statements>()), diag);
 }
 
-// TODO this loses syntactic information that a formatter cares about.
+// TODO: this loses syntactic information that a formatter cares about.
 std::unique_ptr<ast::Node> BuildShortFunctionLiteral(
     std::unique_ptr<ast::Expression> args,
     std::unique_ptr<ast::Expression> body,
@@ -721,7 +876,7 @@ std::unique_ptr<ast::Node> BuildOneElementCommaList(
   return comma_list;
 }
 
-void ExtractRightChainImpl(frontend::Operator op,
+void ExtractRightChainImpl(Operator op,
                            std::unique_ptr<ast::Expression> node,
                            std::vector<std::unique_ptr<ast::Expression>> &out) {
   if (auto *b = node->if_as<ast::BinaryOperator>();
@@ -735,7 +890,7 @@ void ExtractRightChainImpl(frontend::Operator op,
 }
 
 std::vector<std::unique_ptr<ast::Expression>> ExtractRightChain(
-    frontend::Operator op, std::unique_ptr<ast::Expression> node) {
+    Operator op, std::unique_ptr<ast::Expression> node) {
   std::vector<std::unique_ptr<ast::Expression>> exprs;
   ExtractRightChainImpl(op, std::move(node), exprs);
   return exprs;
@@ -745,7 +900,7 @@ std::vector<std::unique_ptr<ast::Call>> BuildJumpOptions(
     std::unique_ptr<ast::Expression> node,
     diagnostic::DiagnosticConsumer &diag) {
   std::vector<std::unique_ptr<ast::Call>> call_exprs;
-  auto exprs = ExtractRightChain(frontend::Operator::Or, std::move(node));
+  auto exprs = ExtractRightChain(Operator::Or, std::move(node));
   for (auto &expr : exprs) {
     if (expr->is<ast::Call>()) {
       call_exprs.push_back(move_as<ast::Call>(expr));
@@ -993,7 +1148,7 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
   SourceRange range(nodes[0]->range().begin(), nodes[1]->range().end());
   std::vector<std::unique_ptr<ast::Expression>> elems;
   if (auto *stmts = nodes[1]->if_as<Statements>()) {
-    // TODO if you want these values to depend on compile-time parameters,
+    // TODO: if you want these values to depend on compile-time parameters,
     // you'll need to actually build the AST nodes.
     for (auto &stmt : stmts->content_) {
       ASSERT(stmt, InheritsFrom<ast::Expression>());
@@ -1022,7 +1177,7 @@ std::unique_ptr<ast::Node> BuildScopeLiteral(
 
 std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
                                       diagnostic::DiagnosticConsumer &diag) {
-  auto range = stmts->range();  // TODO it's really bigger than this because it
+  auto range = stmts->range();  // TODO: it's really bigger than this because it
                                 // involves the keyword too.
 
   std::vector<std::unique_ptr<ast::Declaration>> before, after;
@@ -1054,9 +1209,7 @@ std::unique_ptr<ast::StructLiteral> BuildStructLiteral(
     if (auto *decl = stmt->if_as<ast::Declaration>()) {
       fields.push_back(std::move(*decl));
     } else {
-      diag.Consume(diagnostic::NonDeclarationInStruct{
-          .range = stmt->range(),
-      });
+      diag.Consume(NonDeclarationInStruct{.range = stmt->range()});
     }
   }
 
@@ -1079,7 +1232,7 @@ std::unique_ptr<ast::Node> BuildStatefulJump(
     if (nodes[2]->is<CommaList>()) {
       for (auto &expr : nodes[3]->as<CommaList>().exprs_) {
         ASSERT(expr,
-               InheritsFrom<ast::Declaration>());  // TODO handle failure
+               InheritsFrom<ast::Declaration>());  // TODO: handle failure
         auto decl = move_as<ast::Declaration>(expr);
         decl->flags() |= ast::Declaration::f_IsFnParam;
         params.push_back(std::move(decl));
@@ -1117,7 +1270,7 @@ std::unique_ptr<ast::Node> BuildStatefulJump(
 std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  // TODO should probably not do this with a token but some sort of enumerator
+  // TODO: should probably not do this with a token but some sort of enumerator
   // so we can ensure coverage/safety.
   ASSERT(nodes[0], InheritsFrom<Token>());
   auto const &tk = nodes[0]->as<Token>().token;
@@ -1129,7 +1282,7 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
       if (nodes[2]->is<CommaList>()) {
         for (auto &expr : nodes[2]->as<CommaList>().exprs_) {
           ASSERT(expr,
-                 InheritsFrom<ast::Declaration>());  // TODO handle failure
+                 InheritsFrom<ast::Declaration>());  // TODO: handle failure
           auto decl = move_as<ast::Declaration>(expr);
           decl->flags() |= ast::Declaration::f_IsFnParam;
           params.push_back(std::move(decl));
@@ -1172,7 +1325,7 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
     }
 
     return std::make_unique<ast::ParameterizedStructLiteral>(
-        frontend::SourceRange(nodes.front()->range().begin(),
+        SourceRange(nodes.front()->range().begin(),
                               nodes.back()->range().end()),
         std::move(params), std::move(fields));
   } else {
@@ -1232,9 +1385,7 @@ std::unique_ptr<ast::Node> BuildEmptyParen(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
   if (nodes[0]->is<ast::Declaration>()) {
-    diag.Consume(diagnostic::CallingDeclaration{
-        .range = nodes[0]->range(),
-    });
+    diag.Consume(CallingDeclaration{.range = nodes[0]->range()});
   }
   SourceRange range(nodes[0]->range().begin(), nodes[2]->range().end());
   return std::make_unique<ast::Call>(range, move_as<ast::Expression>(nodes[0]),
@@ -1261,10 +1412,9 @@ template <size_t ReturnIndex, size_t... ReservedIndices>
 std::unique_ptr<ast::Node> ReservedKeywords(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
-  (diag.Consume(diagnostic::ReservedKeyword{
-       .range   = nodes[ReservedIndices]->range(),
-       .keyword = nodes[ReservedIndices]->as<Token>().token,
-   }),
+  (diag.Consume(
+       ReservedKeyword{.range   = nodes[ReservedIndices]->range(),
+                       .keyword = nodes[ReservedIndices]->as<Token>().token}),
    ...);
   return MakeInvalidNode(nodes[ReturnIndex]->range());
 }
@@ -1282,10 +1432,9 @@ std::unique_ptr<ast::Node> LabelScopeNode(
     diagnostic::DiagnosticConsumer &diag) {
   auto scope_node = move_as<ast::ScopeNode>(nodes[1]);
   if (scope_node->label()) {
-    diag.Consume(diagnostic::ScopeNodeAlreadyHasLabel{
-        .label_range = scope_node->label()->range(),
-        .range       = scope_node->range(),
-    });
+    diag.Consume(
+        ScopeNodeAlreadyHasLabel{.label_range = scope_node->label()->range(),
+                                 .range       = scope_node->range()});
   } else {
     scope_node->range() =
         SourceRange(nodes[0]->range().begin(), scope_node->range().end());
@@ -1354,7 +1503,7 @@ static base::Global kRules = std::array{
               ReservedKeywords<0, 1>),
     ParseRule(expr, {l_bracket, RESERVED, semicolon, RESERVED, r_bracket},
               ReservedKeywords<0, 1, 3>),
-    // TODO more specifically, the op_b needs to be a '.'
+    // TODO: more specifically, the op_b needs to be a '.'
     ParseRule(expr, {expr, op_b, braced_stmts}, BuildDesignatedInitializer),
 
     ParseRule(expr, {fn_expr, braced_stmts}, BuildNormalFunctionLiteral),
@@ -1395,19 +1544,19 @@ static base::Global kRules = std::array{
     ParseRule(expr, {KW_BLOCK, braced_stmts}, BuildKWBlock),
 
     ParseRule(expr, {(op_l | op_bl | op_lt), RESERVED}, ReservedKeywords<0, 1>),
-    // TODO does this rule prevent chained scope blocks on new lines or is it
+    // TODO: does this rule prevent chained scope blocks on new lines or is it
     // preceeded by a shift rule that eats newlines after a right-brace?
     ParseRule(stmts, {EXPR, (newline | eof)}, BuildOneStatement),
     ParseRule(expr, {l_paren, EXPR, comma, r_paren}, BuildOneElementCommaList),
 
-    // TODO also need to handle labels with yields.
+    // TODO: also need to handle labels with yields.
     ParseRule(stmts, {op_lt}, BuildControlHandler),
     ParseRule(stmts, {stmts, eof}, drop_all_but<0>),
 };
 
 enum class ShiftState : char { NeedMore, EndOfExpr, MustReduce };
 struct ParseState {
-  // TODO storing the `diag` reference twice is unnecessary.
+  // TODO: storing the `diag` reference twice is unnecessary.
   explicit ParseState(Source *src, diagnostic::DiagnosticConsumer &diag,
                       LineNum initial_line_num = LineNum(1))
       : lex_state_(src, diag, initial_line_num), diag_(diag) {}
@@ -1485,7 +1634,7 @@ struct ParseState {
                             op_bl | op_lt | fn_arrow | yield | sop_l | sop_lt;
     if (get_type<2>() & OP) {
       if (get_type<1>() == r_paren) {
-        // TODO this feels like a hack, but maybe this whole function is.
+        // TODO: this feels like a hack, but maybe this whole function is.
         return ShiftState::MustReduce;
       }
       auto left_prec = precedence(get<2>()->as<Token>().op);
@@ -1496,7 +1645,7 @@ struct ParseState {
         right_prec = precedence(Operator::Index);
 
       } else if (ahead.tag_ == l_paren) {
-        // TODO this might be a hack. To get the following example to parse
+        // TODO: this might be a hack. To get the following example to parse
         // correctly:
         //
         //    #tag
@@ -1645,7 +1794,7 @@ std::vector<std::unique_ptr<ast::Node>> Parse(
   switch (state.node_stack_.size()) {
     case 0: UNREACHABLE();
     case 1:
-      // TODO log an error
+      // TODO: log an error
       if (state.tag_stack_.back() & (eof | bof)) { return {}; }
       return std::move(move_as<Statements>(state.node_stack_.back())->content_);
 
@@ -1667,9 +1816,7 @@ std::vector<std::unique_ptr<ast::Node>> Parse(
       }
 
       // This is an exceedingly crappy error message.
-      diag.Consume(diagnostic::UnknownParseError{
-          .lines = std::move(lines),
-      });
+      diag.Consume(UnknownParseError{.lines = std::move(lines)});
       return {};
     }
   }
