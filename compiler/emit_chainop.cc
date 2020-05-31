@@ -200,92 +200,40 @@ static ir::RegOr<bool> EmitChainOpPair(Compiler *compiler,
 
 ir::Value Compiler::EmitValue(ast::ChainOp const *node) {
   auto *t = type_of(node);
-  if (node->ops()[0] == frontend::Operator::Or and t->is<type::Flags>()) {
-    auto iter = node->exprs().begin();
-    auto val  = EmitValue(*iter).get<ir::RegOr<ir::FlagsVal>>();
-    while (++iter != node->exprs().end()) {
-      val = builder().OrFlags(val,
-                              EmitValue(*iter).get<ir::RegOr<ir::FlagsVal>>());
-    }
-    return ir::Value(val);
-  } else if (node->ops()[0] == frontend::Operator::Or and t == type::Type_) {
-    // TODO probably want to check that each expression is a type? What if I
-    // overload | to take my own stuff and have it return a type?
-    std::vector<ir::RegOr<type::Type const *>> args;
-    args.reserve(node->exprs().size());
-    for (auto const *expr : node->exprs()) {
-      args.push_back(EmitValue(expr).get<ir::RegOr<type::Type const *>>());
-    }
-    auto reg_or_type = builder().Var(args);
-    return ir::Value(reg_or_type);
-  } else if (node->ops()[0] == frontend::Operator::Or and t == type::Block) {
-    NOT_YET();
-  } else if (node->ops()[0] == frontend::Operator::And or
-             node->ops()[0] == frontend::Operator::Or) {
-    auto *land_block = builder().AddBlock();
+  if (node->ops().size() == 1) {
+    auto lhs_ir = EmitValue(node->exprs()[0]);
+    auto rhs_ir = EmitValue(node->exprs()[1]);
+    return ir::Value(EmitChainOpPair(this, node, 0, lhs_ir, rhs_ir));
 
+  } else {
     std::vector<ir::BasicBlock const *> phi_blocks;
-    std::vector<ir::RegOr<bool>> phi_results;
-    bool is_or = (node->ops()[0] == frontend::Operator::Or);
-    for (size_t i = 0; i + 1 < node->exprs().size(); ++i) {
-      auto val = EmitValue(node->exprs()[i]).get<ir::RegOr<bool>>();
+    std::vector<ir::RegOr<bool>> phi_values;
+    auto lhs_ir      = EmitValue(node->exprs().front());
+    auto *land_block = builder().AddBlock();
+    for (size_t i = 0; i + 1 < node->ops().size(); ++i) {
+      auto rhs_ir = EmitValue(node->exprs()[i + 1]);
+      auto cmp    = EmitChainOpPair(this, node, i, lhs_ir, rhs_ir);
 
-      auto *next_block = builder().AddBlock();
-      builder().CondJump(val, is_or ? land_block : next_block,
-                         is_or ? next_block : land_block);
       phi_blocks.push_back(builder().CurrentBlock());
-      phi_results.push_back(is_or);
-
+      phi_values.push_back(false);
+      auto *next_block = builder().AddBlock();
+      builder().CondJump(cmp, next_block, land_block);
       builder().CurrentBlock() = next_block;
+      lhs_ir                   = std::move(rhs_ir);
     }
 
+    // Once more for the last element, but don't do a conditional jump.
+    auto rhs_ir = EmitValue(node->exprs().back());
     phi_blocks.push_back(builder().CurrentBlock());
-    phi_results.push_back(
-        EmitValue(node->exprs().back()).get<ir::RegOr<bool>>());
+    phi_values.push_back(
+        EmitChainOpPair(this, node, node->exprs().size() - 2, lhs_ir, rhs_ir));
     builder().UncondJump(land_block);
 
     builder().CurrentBlock() = land_block;
 
     return ir::Value(
-        builder().Phi<bool>(std::move(phi_blocks), std::move(phi_results)));
-
-  } else {
-    if (node->ops().size() == 1) {
-      auto lhs_ir = EmitValue(node->exprs()[0]);
-      auto rhs_ir = EmitValue(node->exprs()[1]);
-      return ir::Value(EmitChainOpPair(this, node, 0, lhs_ir, rhs_ir));
-
-    } else {
-      std::vector<ir::BasicBlock const *> phi_blocks;
-      std::vector<ir::RegOr<bool>> phi_values;
-      auto lhs_ir      = EmitValue(node->exprs().front());
-      auto *land_block = builder().AddBlock();
-      for (size_t i = 0; i + 1 < node->ops().size(); ++i) {
-        auto rhs_ir = EmitValue(node->exprs()[i + 1]);
-        auto cmp    = EmitChainOpPair(this, node, i, lhs_ir, rhs_ir);
-
-        phi_blocks.push_back(builder().CurrentBlock());
-        phi_values.push_back(false);
-        auto *next_block = builder().AddBlock();
-        builder().CondJump(cmp, next_block, land_block);
-        builder().CurrentBlock() = next_block;
-        lhs_ir                   = std::move(rhs_ir);
-      }
-
-      // Once more for the last element, but don't do a conditional jump.
-      auto rhs_ir = EmitValue(node->exprs().back());
-      phi_blocks.push_back(builder().CurrentBlock());
-      phi_values.push_back(EmitChainOpPair(this, node, node->exprs().size() - 2,
-                                           lhs_ir, rhs_ir));
-      builder().UncondJump(land_block);
-
-      builder().CurrentBlock() = land_block;
-
-      return ir::Value(
-          builder().Phi<bool>(std::move(phi_blocks), std::move(phi_values)));
-    }
+        builder().Phi<bool>(std::move(phi_blocks), std::move(phi_values)));
   }
-  UNREACHABLE();
 }
 
 }  // namespace compiler

@@ -410,29 +410,6 @@ type::QualType Compiler::VerifyType(ast::ChainOp const *node) {
     return type::QualType::Error();
   }
 
-  if (node->ops()[0] == frontend::Operator::Or) {
-    bool found_err = false;
-    for (size_t i = 0; i < results.size() - 1; ++i) {
-      if (results[i].type() == type::Block) {
-        if (not results[i].constant()) {
-          NOT_YET("log an error: non const block");
-        }
-      } else {
-        goto not_blocks;
-      }
-    }
-    if (found_err) { return type::QualType::Error(); }
-    auto &last = results.back();
-    if (last.type() != type::Block) {
-      goto not_blocks;
-    } else if (not results.back().constant()) {
-      NOT_YET("log an error: non const block");
-    } else {
-      return data().set_qual_type(node, type::QualType::Constant(last.type()));
-    }
-  }
-not_blocks:
-
   // TODO Can we recover from errors here? Should we?
 
   // Safe to just check first because to be on the same chain they must all

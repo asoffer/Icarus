@@ -177,9 +177,8 @@ struct QualType {
   //  It is clear that `my_suit` has type `Suit`, but the enumerator chosen is
   //  mispelled so while it is safe to proceed with type-checking,
   //  code-generation must not happen.
-  constexpr void MarkError() {
-    // Not yet.
-  }
+  constexpr void MarkError() {}                          // TODO: Implement me
+  constexpr bool HasErrorMark() const { return false; }  // TODO: Implement me
 
   constexpr Quals quals() const { return Quals(data_ & 0x3); }
 

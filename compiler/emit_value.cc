@@ -258,6 +258,23 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
   // TODO user-defined types (with a dispatch table).
 
   switch (node->op()) {
+    case frontend::Operator::Or: {
+      auto lhs_ir = EmitValue(node->lhs());
+      auto rhs_ir = EmitValue(node->rhs());
+      if (lhs_type->is<type::Flags>()) {
+        return ir::Value(
+            builder().OrFlags(lhs_ir.get<ir::RegOr<ir::FlagsVal>>(),
+                              rhs_ir.get<ir::RegOr<ir::FlagsVal>>()));
+      } else if (lhs_type == type::Type_) {
+        return ir::Value(
+            builder().Var({lhs_ir.get<ir::RegOr<type::Type const *>>(),
+                           rhs_ir.get<ir::RegOr<type::Type const *>>()}));
+      } else {
+        // `|` is not overloadable, and blocks piped together must be done
+        // syntactically in a `goto` node and are handled by the parser.
+        UNREACHABLE(*lhs_type, *rhs_type);
+      }
+    } break;
     case frontend::Operator::Xor: {
       auto lhs_ir = EmitValue(node->lhs());
       auto rhs_ir = EmitValue(node->rhs());

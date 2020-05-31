@@ -217,6 +217,36 @@ type::QualType Compiler::VerifyType(ast::BinaryOperator const *node) {
     case Operator::And:
       return VerifyLogicalOperator(this, "&", node, lhs_qual_type,
                                    rhs_qual_type, lhs_qual_type.type());
+    case Operator::Or: {
+      // Note: Block pipes are extracted in the parser so there's no need to
+      // type-check them here. They will never be expressed in the syntax tree
+      // as a binary operator.
+      if (lhs_qual_type.type() == type::Type_ or
+          rhs_qual_type.type() == type::Type_) {
+        type::QualType qt(type::Type_,
+                          (lhs_qual_type.quals() & rhs_qual_type.quals() &
+                           ~type::Quals::Ref()));
+
+        if (lhs_qual_type.HasErrorMark() or rhs_qual_type.HasErrorMark()) {
+          qt.MarkError();
+        }
+
+        if (lhs_qual_type.type() != type::Type_ or
+            rhs_qual_type.type() != type::Type_) {
+          diag().Consume(NoMatchingBinaryOperator{
+              .lhs_type = lhs_qual_type.type(),
+              .rhs_type = rhs_qual_type.type(),
+              .range    = node->range(),
+          });
+          qt.MarkError();
+        }
+
+        return data().set_qual_type(node, qt);
+      } else {
+        return VerifyLogicalOperator(this, "|", node, lhs_qual_type,
+                                     rhs_qual_type, lhs_qual_type.type());
+      }
+    }
     case Operator::Add:
       return VerifyArithmeticOperator(this, "+", node, lhs_qual_type,
                                       rhs_qual_type, lhs_qual_type.type());

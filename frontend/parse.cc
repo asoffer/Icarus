@@ -688,27 +688,39 @@ std::unique_ptr<ast::Node> BuildOneElementCommaList(
   return comma_list;
 }
 
-std::vector<std::unique_ptr<ast::Call>> BuildJumpOptions(
-    std::unique_ptr<ast::Node> node, diagnostic::DiagnosticConsumer &diag) {
-  std::vector<std::unique_ptr<ast::Expression>> exprs;
-  std::vector<std::unique_ptr<ast::Call>> call_exprs;
-  if (auto *c = node->if_as<ast::ChainOp>(); c and not c->parenthesized_) {
-    exprs = std::move(*c).extract();
-    for (auto &expr : exprs) {
-      if (expr->is<ast::Call>()) {
-        call_exprs.push_back(move_as<ast::Call>(expr));
-      } else {
-        diag.Consume(diagnostic::Todo{});
-      }
-    }
+void ExtractRightChainImpl(frontend::Operator op,
+                           std::unique_ptr<ast::Expression> node,
+                           std::vector<std::unique_ptr<ast::Expression>> &out) {
+  if (auto *b = node->if_as<ast::BinaryOperator>();
+      b and b->op() == op and not b->parenthesized_) {
+    auto [lhs, rhs] = std::move(*b).extract();
+    ExtractRightChainImpl(op, std::move(lhs), out);
+    out.push_back(std::move(rhs));
   } else {
-    if (node->is<ast::Call>()) {
-      call_exprs.push_back(move_as<ast::Call>(node));
+    out.push_back(std::move(node));
+  }
+}
+
+std::vector<std::unique_ptr<ast::Expression>> ExtractRightChain(
+    frontend::Operator op, std::unique_ptr<ast::Expression> node) {
+  std::vector<std::unique_ptr<ast::Expression>> exprs;
+  ExtractRightChainImpl(op, std::move(node), exprs);
+  return exprs;
+}
+
+std::vector<std::unique_ptr<ast::Call>> BuildJumpOptions(
+    std::unique_ptr<ast::Expression> node,
+    diagnostic::DiagnosticConsumer &diag) {
+  std::vector<std::unique_ptr<ast::Call>> call_exprs;
+  auto exprs = ExtractRightChain(frontend::Operator::Or, std::move(node));
+  for (auto &expr : exprs) {
+    if (expr->is<ast::Call>()) {
+      call_exprs.push_back(move_as<ast::Call>(expr));
     } else {
-      DEBUG_LOG()(node->DebugString());
       diag.Consume(diagnostic::Todo{});
     }
   }
+
   return call_exprs;
 }
 
@@ -725,13 +737,15 @@ std::unique_ptr<ast::Node> BuildStatementLeftUnop(
     auto exprs = ExtractIfCommaList(move_as<ast::Expression>(nodes[1]));
     switch (exprs.size()) {
       case 1: {
-        auto jumps = BuildJumpOptions(std::move(exprs[0]), diag);
+        auto jumps = BuildJumpOptions(move_as<ast::Expression>(exprs[0]), diag);
         stmts->append(
             std::make_unique<ast::UnconditionalGoto>(range, std::move(jumps)));
       } break;
       case 3: {
-        auto true_jumps  = BuildJumpOptions(std::move(exprs[1]), diag);
-        auto false_jumps = BuildJumpOptions(std::move(exprs[2]), diag);
+        auto true_jumps =
+            BuildJumpOptions(move_as<ast::Expression>(exprs[1]), diag);
+        auto false_jumps =
+            BuildJumpOptions(move_as<ast::Expression>(exprs[2]), diag);
         stmts->append(std::make_unique<ast::ConditionalGoto>(
             range, move_as<ast::Expression>(exprs[0]), std::move(true_jumps),
             std::move(false_jumps)));
@@ -863,7 +877,7 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
       absl::flat_hash_map<std::string_view, Operator>{
           {",", Operator::Comma}, {"==", Operator::Eq}, {"!=", Operator::Ne},
           {"<", Operator::Lt},    {">", Operator::Gt},  {"<=", Operator::Le},
-          {">=", Operator::Ge},   {"|", Operator::Or}};
+          {">=", Operator::Ge}};
 
   std::string const &tk = nodes[1]->as<Token>().token;
   if (auto iter = kChainOps->find(tk); iter != kChainOps->end()) {
@@ -934,7 +948,7 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
           {"+", Operator::Add},    {"-", Operator::Sub},
           {"*", Operator::Mul},    {"/", Operator::Div},
           {"%", Operator::Mod},    {"^", Operator::Xor},
-          {"&", Operator::And}};
+          {"&", Operator::And},    {"|", Operator::Or}};
   return std::make_unique<ast::BinaryOperator>(
       move_as<ast::Expression>(nodes[0]), kSymbols->find(tk)->second,
       move_as<ast::Expression>(nodes[2]));
