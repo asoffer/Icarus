@@ -5,14 +5,11 @@
 namespace type {
 
 void Primitive::WriteTo(std::string *result) const {
-  result->append(ToString(type_));
-}
-
-Type const *Prim(BasicType b) {
-  switch (b) {
+  switch (type_) {
 #define PRIMITIVE_MACRO(EnumName, name)                                        \
   case BasicType::EnumName:                                                    \
-    return EnumName;
+    result->append(name);                                                      \
+    return;
 #include "type/primitive.xmacro.h"
 #undef PRIMITIVE_MACRO
   }

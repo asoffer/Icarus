@@ -16,7 +16,7 @@ cc_library(
         "//frontend/source:cursor",
         "//ir/value:builtin_fn",
         "//ir/value:string",
-        "//type:basic_type",
+        "//type:primitive",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )

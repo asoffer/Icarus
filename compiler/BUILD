@@ -301,6 +301,7 @@ cc_library(
         "verify/index.cc",
         "verify/struct_literal.cc",
         "verify/scope_literal.cc",
+        "verify/terminal.cc",
         "verify/unary_operator.cc",
         "verify_type.cc",
     ],
@@ -472,6 +473,18 @@ cc_test(
         "//test:module",
         "//type:primitive",
         "//type:jump",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "terminal_test",
+    srcs = ["verify/terminal_test.cc"],
+    deps = [
+        ":verify_type",
+        "//test:module",
+        "//type:primitive",
+        "//type:qual_type",
         "@com_google_googletest//:gtest_main",
     ],
 )

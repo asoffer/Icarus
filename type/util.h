@@ -9,7 +9,6 @@
 #include "ir/value/string.h"
 #include "ir/value/value.h"
 #include "type/array.h"
-#include "type/basic_type.h"
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"

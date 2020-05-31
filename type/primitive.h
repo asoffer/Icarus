@@ -1,14 +1,21 @@
 #ifndef ICARUS_TYPE_PRIMITIVE_H
 #define ICARUS_TYPE_PRIMITIVE_H
 
+#include "absl/functional/function_ref.h"
 #include "base/global.h"
-#include "type/basic_type.h"
+#include "base/meta.h"
 #include "type/type.h"
 
 namespace type {
 
 struct Primitive : public Type {
  public:
+  enum class BasicType : uint8_t {
+#define PRIMITIVE_MACRO(EnumName, name) EnumName,
+#include "type/primitive.xmacro.h"
+#undef PRIMITIVE_MACRO
+  };
+
   TYPE_FNS(Primitive);
   constexpr Primitive(BasicType pt)
       : Type(Type::Flags{.is_default_initializable = 1,
@@ -21,28 +28,58 @@ struct Primitive : public Type {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
 
+  template <typename Fn>
+  void Apply(Fn &&fn) const {
+    ApplyImpl<uint8_t, uint16_t, uint32_t, uint64_t, int8_t, int16_t, int32_t,
+              int64_t, float, double, bool,
+              Type const * /* TODO: Other primitives */>(std::forward<Fn>(fn));
+  }
+
   bool is_big() const override { return false; }
   bool is_integral() const;
 
   BasicType type_;
+
+ private:
+  template <typename... Ts, typename Fn>
+  void ApplyImpl(Fn &&fn) const;
 };
 
 namespace internal {
 
 inline base::Global kPrimitiveArray = std::array{
-    Primitive(BasicType::Nat8),    Primitive(BasicType::Nat16),
-    Primitive(BasicType::Nat32),   Primitive(BasicType::Nat64),
-    Primitive(BasicType::Int8),    Primitive(BasicType::Int16),
-    Primitive(BasicType::Int32),   Primitive(BasicType::Int64),
-    Primitive(BasicType::Float32), Primitive(BasicType::Float64),
-    Primitive(BasicType::Bool),    Primitive(BasicType::Type_),
-    Primitive(BasicType::NullPtr), Primitive(BasicType::EmptyArray),
-    Primitive(BasicType::Scope),   Primitive(BasicType::Block),
-    Primitive(BasicType::Module),  Primitive(BasicType::ByteView),
-    Primitive(BasicType::Label),
+    Primitive(Primitive::BasicType::Nat8),
+    Primitive(Primitive::BasicType::Nat16),
+    Primitive(Primitive::BasicType::Nat32),
+    Primitive(Primitive::BasicType::Nat64),
+    Primitive(Primitive::BasicType::Int8),
+    Primitive(Primitive::BasicType::Int16),
+    Primitive(Primitive::BasicType::Int32),
+    Primitive(Primitive::BasicType::Int64),
+    Primitive(Primitive::BasicType::Float32),
+    Primitive(Primitive::BasicType::Float64),
+    Primitive(Primitive::BasicType::Bool),
+    Primitive(Primitive::BasicType::Type_),
+    Primitive(Primitive::BasicType::NullPtr),
+    Primitive(Primitive::BasicType::EmptyArray),
+    Primitive(Primitive::BasicType::Scope),
+    Primitive(Primitive::BasicType::Block),
+    Primitive(Primitive::BasicType::Module),
+    Primitive(Primitive::BasicType::ByteView),
+    Primitive(Primitive::BasicType::Label),
 };
 
 }  // namespace internal
+
+template <typename... Ts, typename Fn>
+void Primitive::ApplyImpl(Fn &&fn) const {
+  // Because primitive types are unique, we can compare the address to
+  // `kPrimitiveArray->data()` and use the offset to index into a collection of
+  // function of our own creation.
+  int index = static_cast<int>(this - internal::kPrimitiveArray->data());
+  std::array{absl::FunctionRef<void()>(
+      [&] { std::forward<Fn>(fn)(base::meta<Ts>); })...}[index]();
+}
 
 inline Type const *Nat8       = &(*internal::kPrimitiveArray)[0];
 inline Type const *Nat16      = &(*internal::kPrimitiveArray)[1];

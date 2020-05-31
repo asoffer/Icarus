@@ -94,6 +94,8 @@ struct MetaValue {
 
 template <typename T>
 struct Meta {
+  using type = T;
+
   static MetaValue value() {
     return MetaValue{reinterpret_cast<uintptr_t>(&name_)};
   }

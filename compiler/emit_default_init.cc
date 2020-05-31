@@ -45,23 +45,10 @@ void Compiler::Visit(type::Pointer const *t, ir::Reg reg, EmitDefaultInitTag) {
 
 void Compiler::Visit(type::Primitive const *t, ir::Reg reg,
                      EmitDefaultInitTag) {
-  switch (t->type_) {
-    case type::BasicType::Type_: builder().Store(type::Void(), reg); break;
-    case type::BasicType::NullPtr: UNREACHABLE();
-    case type::BasicType::EmptyArray: UNREACHABLE();
-    case type::BasicType::Bool: builder().Store(false, reg); break;
-    case type::BasicType::Int8: builder().Store(int8_t{0}, reg); break;
-    case type::BasicType::Int16: builder().Store(int16_t{0}, reg); break;
-    case type::BasicType::Int32: builder().Store(int32_t{0}, reg); break;
-    case type::BasicType::Int64: builder().Store(int64_t{0}, reg); break;
-    case type::BasicType::Nat8: builder().Store(uint8_t{0}, reg); break;
-    case type::BasicType::Nat16: builder().Store(uint16_t{0}, reg); break;
-    case type::BasicType::Nat32: builder().Store(uint32_t{0}, reg); break;
-    case type::BasicType::Nat64: builder().Store(uint64_t{0}, reg); break;
-    case type::BasicType::Float32: builder().Store(float{0}, reg); break;
-    case type::BasicType::Float64: builder().Store(double{0}, reg); break;
-    default: UNREACHABLE();
-  }
+  t->Apply([&](auto tag) {
+    using T = typename decltype(tag)::type;
+    builder().Store(T{}, reg);
+  });
 }
 
 void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDefaultInitTag) {

@@ -43,7 +43,6 @@ cc_library(
         "//ir/value:label",
         "//ir/value:string",
         "//ir/value",
-        "//type:basic_type",
     ],
 )
 

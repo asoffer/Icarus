@@ -27,9 +27,7 @@
 #include "ir/value/addr.h"
 #include "ir/value/builtin_fn.h"
 #include "ir/value/label.h"
-#include "ir/value/string.h"
 #include "ir/value/value.h"
-#include "type/basic_type.h"
 
 namespace ast {
 
@@ -1218,95 +1216,16 @@ struct Switch : Expression {
 // typically numeric literals, or expressions that are also keywords such as
 // `true`, `false`, or `null`.
 struct Terminal : Expression {
-  template <typename T,
-            std::enable_if_t<std::is_trivially_copyable_v<T>, int> = 0>
-  explicit Terminal(frontend::SourceRange const &range, T value,
-                    type::BasicType t)
-      : Expression(range), basic_(t) {
-    static_cast<void>(value);
-    if constexpr (std::is_same_v<T, bool>) {
-      b_ = value;
-    } else if constexpr (std::is_integral_v<T> and std::is_signed_v<T>) {
-      i64_ = value;
-    } else if constexpr (std::is_integral_v<T> and std::is_unsigned_v<T>) {
-      u64_ = value;
-    } else if constexpr (std::is_same_v<T, ir::String>) {
-      str_ = value;
-    } else if constexpr (std::is_same_v<T, float>) {
-      f32_ = value;
-    } else if constexpr (std::is_same_v<T, double>) {
-      f64_ = value;
-    } else if constexpr (std::is_same_v<T, type::BasicType>) {
-      t_ = value;
-    } else {
-      addr_ = value;
-    }
-  }
+  explicit Terminal(frontend::SourceRange const &range, ir::Value value)
+      : Expression(range), value_(std::move(value)) {}
   ~Terminal() override {}
 
-  type::BasicType basic_type() const { return basic_; }
-
-  // TODO remove. This should be a variant or union.
-  ir::Value value() const {
-    switch (basic_) {
-      using type::BasicType;
-      case BasicType::Int8: return ir::Value(static_cast<int8_t>(i64_));
-      case BasicType::Nat8: return ir::Value(static_cast<uint8_t>(u64_));
-      case BasicType::Int16: return ir::Value(static_cast<int16_t>(i64_));
-      case BasicType::Nat16: return ir::Value(static_cast<uint16_t>(u64_));
-      case BasicType::Int32: return ir::Value(static_cast<int32_t>(i64_));
-      case BasicType::Nat32: return ir::Value(static_cast<uint32_t>(u64_));
-      case BasicType::Int64: return ir::Value(i64_);
-      case BasicType::Nat64: return ir::Value(u64_);
-      case BasicType::Float32: return ir::Value(f32_);
-      case BasicType::Float64: return ir::Value(f64_);
-      case BasicType::ByteView: return ir::Value(str_);
-      case BasicType::Bool: return ir::Value(b_);
-      case BasicType::Type_: return ir::Value(type::Prim(t_));
-      case BasicType::NullPtr: return ir::Value(addr_);
-      default:;
-    }
-    UNREACHABLE();
-  }
-
-  // TODO rename to value_as, or something like that.
-  template <typename T>
-  T as() const {
-    if constexpr (std::is_integral_v<T> and std::is_signed_v<T>) {
-      return static_cast<T>(i64_);
-    } else if constexpr (std::is_integral_v<T> and std::is_unsigned_v<T>) {
-      return static_cast<T>(u64_);
-    } else if constexpr (std::is_same_v<T, bool>) {
-      return b_;
-    } else if constexpr (std::is_same_v<T, ir::String>) {
-      return str_;
-    } else if constexpr (std::is_same_v<T, type::BasicType>) {
-      return t_;
-    } else if constexpr (std::is_same_v<T, float>) {
-      return f32_;
-    } else if constexpr (std::is_same_v<T, double>) {
-      return f64_;
-    } else if constexpr (std::is_same_v<T, ir::Addr>) {
-      return addr_;
-    } else {
-      NOT_YET(typeid(T).name());
-    }
-  }
+  ir::Value const &value() const { return value_; }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
-  type::BasicType basic_;
-  union {
-    bool b_;
-    int64_t i64_;
-    uint64_t u64_;
-    float f32_;
-    double f64_;
-    ir::String str_;
-    type::BasicType t_;
-    ir::Addr addr_;
-  };
+  ir::Value value_;
 };
 
 // UnaryOperator:

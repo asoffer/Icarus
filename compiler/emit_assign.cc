@@ -189,50 +189,10 @@ void Compiler::Visit(type::Pointer const *t, ir::RegOr<ir::Addr> to,
 void Compiler::Visit(type::Primitive const *t, ir::RegOr<ir::Addr> to,
                      type::Typed<ir::Value> const &from, EmitCopyAssignTag) {
   ASSERT(t == from.type());
-  switch (t->type_) {
-    case type::BasicType::Type_:
-      builder().Store(from->get<ir::RegOr<type::Type const *>>(), to);
-      break;
-    case type::BasicType::NullPtr: UNREACHABLE();
-    case type::BasicType::EmptyArray: UNREACHABLE();
-    case type::BasicType::Bool:
-      builder().Store(from->get<ir::RegOr<bool>>(), to);
-      break;
-    case type::BasicType::Int8:
-      builder().Store(from->get<ir::RegOr<int8_t>>(), to);
-      break;
-    case type::BasicType::Int16:
-      builder().Store(from->get<ir::RegOr<int16_t>>(), to);
-      break;
-    case type::BasicType::Int32:
-      builder().Store(from->get<ir::RegOr<int32_t>>(), to);
-      break;
-    case type::BasicType::Int64:
-      builder().Store(from->get<ir::RegOr<int64_t>>(), to);
-      break;
-    case type::BasicType::Nat8:
-      builder().Store(from->get<ir::RegOr<uint8_t>>(), to);
-      break;
-    case type::BasicType::Nat16:
-      builder().Store(from->get<ir::RegOr<uint16_t>>(), to);
-      break;
-    case type::BasicType::Nat32:
-      builder().Store(from->get<ir::RegOr<uint32_t>>(), to);
-      break;
-    case type::BasicType::Nat64:
-      builder().Store(from->get<ir::RegOr<uint64_t>>(), to);
-      break;
-    case type::BasicType::Float32:
-      builder().Store(from->get<ir::RegOr<float>>(), to);
-      break;
-    case type::BasicType::Float64:
-      builder().Store(from->get<ir::RegOr<double>>(), to);
-      break;
-    case type::BasicType::ByteView:
-      builder().Store(from->get<ir::RegOr<ir::String>>(), to);
-      break;
-    default: UNREACHABLE();
-  }
+  t->Apply([&](auto tag) {
+    using T = typename decltype(tag)::type;
+    builder().Store(from->template get<ir::RegOr<T>>(), to);
+  });
 }
 
 void Compiler::Visit(type::Primitive const *t, ir::RegOr<ir::Addr> to,

@@ -245,24 +245,16 @@ cc_library(
 )
 
 cc_library(
-    name = "basic_type",
-    hdrs = ["basic_type.h"],
-    textual_hdrs = ["primitive.xmacro.h"],
-    deps = [
-        "//base:debug",
-        "//base:global",
-        "//ir/value:string",
-    ],
-)
-
-cc_library(
     name = "primitive",
     hdrs = ["primitive.h"],
     srcs = ["primitive.cc"],
     textual_hdrs = ["primitive.xmacro.h"],
     deps = [
-        ":basic_type",
         ":type",
+        "//base:meta",
+        "//base:global",
+        "//ir/value:string",
+        "@com_google_absl//absl/functional:function_ref",
     ],
 )
 

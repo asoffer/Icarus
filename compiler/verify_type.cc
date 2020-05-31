@@ -439,7 +439,7 @@ not_blocks:
   // have the same precedence, and ^, &, and | uniquely hold a given
   // precedence.
   switch (node->ops()[0]) {
-    case frontend::Operator::Xor: {
+    case frontend::Operator::Or: {
       bool failed                       = false;
       type::Quals quals                 = type::Quals::Const();
       type::Type const *first_expr_type = results[0].type();
@@ -475,7 +475,7 @@ not_blocks:
           case frontend::Operator::Ne: token = "!="; break;
           case frontend::Operator::Ge: token = ">="; break;
           case frontend::Operator::Gt: token = ">"; break;
-          default: UNREACHABLE();
+          default: UNREACHABLE(node->DebugString());
         }
 
         if (lhs_qual_type.type()->is<type::Struct>() or
@@ -1096,11 +1096,6 @@ type::QualType Compiler::VerifyType(ast::Switch const *node) {
     NOT_YET("handle type error");
     return type::QualType::Error();
   }
-}
-
-type::QualType Compiler::VerifyType(ast::Terminal const *node) {
-  return data().set_qual_type(
-      node, type::QualType::Constant(type::Prim(node->basic_type())));
 }
 
 }  // namespace compiler

@@ -425,51 +425,9 @@ void Switch::DebugStrAppend(std::string *out, size_t indent) const {
 }
 
 void Terminal::DebugStrAppend(std::string *out, size_t indent) const {
-  switch (basic_type()) {
-    case type::BasicType::Int8:
-      absl::StrAppend(out, as<int8_t>(), "_i8");
-      return;
-    case type::BasicType::Nat8:
-      absl::StrAppend(out, as<uint8_t>(), "_u8");
-      return;
-    case type::BasicType::Int16:
-      absl::StrAppend(out, as<int16_t>(), "_i16");
-      return;
-    case type::BasicType::Nat16:
-      absl::StrAppend(out, as<uint16_t>(), "_u16");
-      return;
-    case type::BasicType::Int32:
-      absl::StrAppend(out, as<int32_t>(), "_i32");
-      return;
-    case type::BasicType::Nat32:
-      absl::StrAppend(out, as<uint32_t>(), "_u32");
-      return;
-    case type::BasicType::Int64:
-      absl::StrAppend(out, as<int64_t>(), "_i64");
-      return;
-    case type::BasicType::Nat64:
-      absl::StrAppend(out, as<uint64_t>(), "_u64");
-      return;
-    case type::BasicType::Float32:
-      absl::StrAppend(out, as<float>(), "_f32");
-      return;
-    case type::BasicType::Float64:
-      absl::StrAppend(out, as<double>(), "_f64");
-      return;
-    case type::BasicType::Type_:
-      // TODO make ast not depend on this so it can once again depend ont type.
-      absl::StrAppend(out, type::ToString(as<type::BasicType>()));
-      return;
-    case type::BasicType::Bool:
-      absl::StrAppend(out, as<bool>() ? "true" : "false");
-      return;
-    case type::BasicType::ByteView:
-      absl::StrAppend(out, "\"", as<ir::String>().get(), "\"");
-      return;
-    case type::BasicType::NullPtr: absl::StrAppend(out, "null"); return;
-    default:;
-  }
-  UNREACHABLE(static_cast<int>(basic_type()));
+  std::stringstream ss;
+  ss << value_;
+  absl::StrAppend(out, ss.str());
 }
 
 void UnaryOperator::DebugStrAppend(std::string *out, size_t indent) const {

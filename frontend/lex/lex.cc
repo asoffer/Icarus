@@ -11,7 +11,7 @@
 #include "frontend/lex/syntax.h"
 #include "ir/value/builtin_fn.h"
 #include "ir/value/string.h"
-#include "type/basic_type.h"
+#include "type/primitive.h"
 #ifdef ICARUS_MATCHER
 #include "match/binding_id.h"
 #include "match/binding_node.h"
@@ -143,22 +143,18 @@ std::optional<std::pair<SourceRange, Operator>> NextSlashInitiatedToken(
   }
 }
 
+// Note: Despite these all being primitives, we want the value-type of this map
+// to be `type::Type const*` rather than `type::Primitive const *` so that when
+// passed to an `ir::Value`, the write type tag is deduced.
 static base::Global kReservedTypes =
-    absl::flat_hash_map<std::string_view, type::BasicType>{
-        {"bool", type::BasicType::Bool},
-        {"int8", type::BasicType::Int8},
-        {"int16", type::BasicType::Int16},
-        {"int32", type::BasicType::Int32},
-        {"int64", type::BasicType::Int64},
-        {"nat8", type::BasicType::Nat8},
-        {"nat16", type::BasicType::Nat16},
-        {"nat32", type::BasicType::Nat32},
-        {"nat64", type::BasicType::Nat64},
-        {"float32", type::BasicType::Float32},
-        {"float64", type::BasicType::Float64},
-        {"type", type::BasicType::Type_},
-        {"module", type::BasicType::Module},
-        {"byte_view", type::BasicType::ByteView}};
+    absl::flat_hash_map<std::string_view, type::Type const *>{
+        {"bool", type::Bool},       {"int8", type::Int8},
+        {"int16", type::Int16},     {"int32", type::Int32},
+        {"int64", type::Int64},     {"nat8", type::Nat8},
+        {"nat16", type::Nat16},     {"nat32", type::Nat32},
+        {"nat64", type::Nat64},     {"float32", type::Float32},
+        {"float64", type::Float64}, {"type", type::Type_},
+        {"module", type::Module},   {"byte_view", type::ByteView}};
 
 Lexeme NextWord(SourceCursor *cursor, Source *src) {
   // Match [a-zA-Z_][a-zA-Z0-9_]*
@@ -168,19 +164,19 @@ Lexeme NextWord(SourceCursor *cursor, Source *src) {
   auto span              = word_cursor.range();
 
   if (token == "true") {
-    return Lexeme(std::make_unique<ast::Terminal>(std::move(span), true,
-                                                  type::BasicType::Bool));
+    return Lexeme(
+        std::make_unique<ast::Terminal>(std::move(span), ir::Value(true)));
   } else if (token == "false") {
-    return Lexeme(std::make_unique<ast::Terminal>(std::move(span), false,
-                                                  type::BasicType::Bool));
+    return Lexeme(
+        std::make_unique<ast::Terminal>(std::move(span), ir::Value(false)));
   } else if (token == "null") {
-    return Lexeme(std::make_unique<ast::Terminal>(
-        std::move(span), ir::Addr::Null(), type::BasicType::NullPtr));
+    return Lexeme(std::make_unique<ast::Terminal>(std::move(span),
+                                                  ir::Value(ir::Addr::Null())));
   }
 
   if (auto iter = kReservedTypes->find(token); iter != kReservedTypes->end()) {
-    return Lexeme(std::make_unique<ast::Terminal>(std::move(span), iter->second,
-                                                  type::BasicType::Type_));
+    return Lexeme(std::make_unique<ast::Terminal>(std::move(span),
+                                                  ir::Value(iter->second)));
   }
 
   if (auto maybe_builtin = ir::BuiltinFn::ByName(token)) {
@@ -319,11 +315,11 @@ Lexeme NextNumber(SourceCursor *cursor, Source *src,
       [&](auto num) {
         using T = std::decay_t<decltype(num)>;
         if constexpr (std::is_same_v<T, int64_t>) {
-          return Lexeme(std::make_unique<ast::Terminal>(
-              std::move(span), num, type::BasicType::Int64));
+          return Lexeme(
+              std::make_unique<ast::Terminal>(std::move(span), ir::Value(num)));
         } else if constexpr (std::is_same_v<T, double>) {
-          return Lexeme(std::make_unique<ast::Terminal>(
-              std::move(span), num, type::BasicType::Float64));
+          return Lexeme(
+              std::make_unique<ast::Terminal>(std::move(span), ir::Value(num)));
         } else if constexpr (std::is_same_v<T, NumberParsingError>) {
           // Even though we could try to be helpful by guessing the type, it's
           // unlikely to be useful. The value may also be important if it's used
@@ -333,8 +329,8 @@ Lexeme NextNumber(SourceCursor *cursor, Source *src,
               .error = num,
               .range = span,
           });
-          return Lexeme(std::make_unique<ast::Terminal>(
-              std::move(span), 0, type::BasicType::Int32));
+          return Lexeme(
+              std::make_unique<ast::Terminal>(std::move(span), ir::Value(0)));
         } else {
           static_assert(base::always_false<T>());
         }
@@ -384,8 +380,7 @@ restart:
             .range  = range,
         });
       }
-      return Lexeme(std::make_unique<ast::Terminal>(range, ir::String(str),
-                                                    type::BasicType::ByteView));
+      return Lexeme(std::make_unique<ast::Terminal>(range, ir::Value(ir::String(str))));
 
     } break;
     case '#': {

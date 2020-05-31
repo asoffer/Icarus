@@ -145,6 +145,8 @@ struct Value {
     }
   }
 
+  constexpr base::MetaValue type() const { return type_; }
+
   // Returns the stored value. Behavior is undefined if the stored type is not
   // the same as the template parameter.
   template <typename T>
