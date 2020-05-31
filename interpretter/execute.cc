@@ -851,7 +851,7 @@ constexpr auto kInstructions = std::array{
     ExecuteInstruction<ir::NeInstruction<ir::Addr>>,
     ExecuteInstruction<ir::NeInstruction<ir::EnumVal>>,
     ExecuteInstruction<ir::NeInstruction<ir::FlagsVal>>,
-    kNullInstruction,
+    ExecuteInstruction<ir::NeInstruction<bool>>,
     ExecuteInstruction<ir::NegInstruction<int8_t>>,
     kNullInstruction,
     ExecuteInstruction<ir::NegInstruction<int16_t>>,
