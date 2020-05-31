@@ -1045,9 +1045,4 @@ type::QualType Compiler::VerifyType(
       node, type::QualType::Constant(new type::GenericStruct(std::move(gen))));
 }
 
-type::QualType Compiler::VerifyType(ast::StructType const *node) {
-  for (auto &arg : node->args_) { VerifyType(arg.get()); }
-  return data().set_qual_type(node, type::QualType::Constant(type::Type_));
-}
-
 }  // namespace compiler

@@ -485,21 +485,6 @@ std::unique_ptr<ast::Node> BuildArrayLiteral(
   }
 }
 
-std::unique_ptr<ast::Node> BuildGenericStructType(
-    absl::Span<std::unique_ptr<ast::Node>> nodes,
-    diagnostic::DiagnosticConsumer &diag) {
-  auto result = std::make_unique<ast::StructType>(
-      SourceRange(nodes.front()->range().begin(), nodes.back()->range().end()));
-  if (nodes[1]->is<CommaList>() and
-      not nodes[1]->as<CommaList>().parenthesized_) {
-    result->args_ = std::move(nodes[1]->as<CommaList>().exprs_);
-  } else {
-    result->args_.push_back(move_as<ast::Expression>(nodes[1]));
-  }
-
-  return result;
-}
-
 std::unique_ptr<ast::Node> BuildArrayType(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
@@ -1316,8 +1301,6 @@ static base::Global kRules = std::array{
     ParseRule(expr, {l_bracket, r_bracket}, BuildEmptyArray),
     ParseRule(expr, {l_bracket, EXPR, semicolon, EXPR, r_bracket},
               BuildArrayType),
-    ParseRule(expr, {l_bracket, EXPR, semicolon, kw_struct, r_bracket},
-              BuildGenericStructType),
     ParseRule(expr, {l_bracket, EXPR, semicolon, RESERVED, r_bracket},
               ReservedKeywords<0, 3>),
     ParseRule(expr, {l_bracket, RESERVED, semicolon, EXPR, r_bracket},

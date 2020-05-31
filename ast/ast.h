@@ -1092,16 +1092,6 @@ struct StructLiteral : Expression, WithScope<DeclScope> {
   std::vector<Declaration> fields_;
 };
 
-// TODO
-struct StructType : Expression {
-  StructType(frontend::SourceRange const &range) : Expression(range) {}
-  ~StructType() override {}
-
-  ICARUS_AST_VIRTUAL_METHODS;
-
-  std::vector<std::unique_ptr<Expression>> args_;
-};
-
 // Terminal:
 // Represents any node that is not an identifier but has no sub-parts. These are
 // typically numeric literals, or expressions that are also keywords such as

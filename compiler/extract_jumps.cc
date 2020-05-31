@@ -216,10 +216,6 @@ struct Extractor : ast::Visitor<void()> {
     for (auto const &f : node->fields()) { Visit(&f); }
   }
 
-  void Visit(ast::StructType const *node) final {
-    for (auto &arg : node->args_) { Visit(arg.get()); }
-  }
-
   void Visit(ast::Terminal const *node) final {}
 
   void Visit(ast::UnaryOperator const *node) final { Visit(node->operand()); }

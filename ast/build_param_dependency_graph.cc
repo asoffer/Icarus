@@ -210,10 +210,6 @@ struct ParamDependencyGraphBuilder
     for (auto const &f : node->fields()) { Visit(&f, d); }
   }
 
-  void Visit(StructType const *node, core::DependencyNode<Declaration> d) {
-    for (auto &arg : node->args_) { Visit(arg.get(), d); }
-  }
-
   void Visit(Terminal const *node, core::DependencyNode<Declaration> d) {}
 
   void Visit(UnaryOperator const *node, core::DependencyNode<Declaration> d) {

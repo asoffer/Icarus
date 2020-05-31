@@ -165,11 +165,6 @@ bool ParameterizedStructLiteral::IsDependent() const {
   return false;
 }
 
-bool StructType::IsDependent() const {
-  // TODO
-  return false;
-}
-
 bool Terminal::IsDependent() const { return false; }
 
 bool UnaryOperator::IsDependent() const { return operand()->IsDependent(); }

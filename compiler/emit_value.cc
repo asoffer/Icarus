@@ -1267,8 +1267,6 @@ ir::Value Compiler::EmitValue(ast::ParameterizedStructLiteral const *node) {
   return ir::Value(data().qual_type(node)->type());
 }
 
-ir::Value Compiler::EmitValue(ast::StructType const *node) { NOT_YET(); }
-
 ir::Value Compiler::EmitValue(ast::Terminal const *node) {
   return node->value();
 }

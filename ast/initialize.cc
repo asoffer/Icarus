@@ -203,10 +203,6 @@ void ParameterizedStructLiteral::Initialize(Scope *scope) {
   dep_graph_ = BuildParamDependencyGraph(params_);
 }
 
-void StructType::Initialize(Scope *scope) {
-  for (auto &arg : args_) { arg->Initialize(scope); }
-}
-
 void Terminal::Initialize(Scope *scope) { scope_ = scope; }
 
 void UnaryOperator::Initialize(Scope *scope) {

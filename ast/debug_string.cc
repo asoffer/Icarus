@@ -413,15 +413,6 @@ void ParameterizedStructLiteral::DebugStrAppend(std::string *out,
   absl::StrAppend(out, indentation(indent), "}");
 }
 
-void StructType::DebugStrAppend(std::string *out, size_t indent) const {
-  absl::StrAppend(out, "[",
-                  absl::StrJoin(args_, ", ",
-                                [&](std::string *out, auto const &elem) {
-                                  return Joiner(elem, out, indent);
-                                }),
-                  "; struct]");
-}
-
 void Terminal::DebugStrAppend(std::string *out, size_t indent) const {
   std::stringstream ss;
   ss << value_;
