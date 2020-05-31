@@ -309,7 +309,24 @@ void Index::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, "]");
 }
 
-void Goto::DebugStrAppend(std::string *out, size_t indent) const {
+void ConditionalGoto::DebugStrAppend(std::string *out, size_t indent) const {
+  absl::StrAppend(out, "goto ");
+  condition()->DebugStrAppend(out, indent);
+  absl::StrAppend(out, ", ");
+  for (auto const &opt : true_options()) {
+    absl::StrAppend(out, opt.block(), "(");
+    DumpFnArgs(out, indent, opt.args());
+    absl::StrAppend(out, ")");
+  }
+  absl::StrAppend(out, ", ");
+  for (auto const &opt : false_options()) {
+    absl::StrAppend(out, opt.block(), "(");
+    DumpFnArgs(out, indent, opt.args());
+    absl::StrAppend(out, ")");
+  }
+}
+
+void UnconditionalGoto::DebugStrAppend(std::string *out, size_t indent) const {
   absl::StrAppend(out, "goto ");
   for (auto const &opt : options()) {
     absl::StrAppend(out, opt.block(), "(");

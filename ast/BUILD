@@ -23,6 +23,7 @@ cc_library(
     ],
     deps = [
         ":expression",
+        ":jump_options",
         ":node",
         ":visitor_base",
         "//ast/scope:decl",
@@ -52,6 +53,15 @@ cc_library(
     deps = [
         ":hashtag",
         ":node",
+    ],
+)
+
+cc_library(
+    name = "jump_options",
+    hdrs = ["jump_options.h"],
+    deps = [
+        ":expression",
+        "//core:fn_args",
     ],
 )
 

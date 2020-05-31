@@ -891,7 +891,18 @@ type::QualType Compiler::VerifyType(ast::Import const *node) {
   }
 }
 
-type::QualType Compiler::VerifyType(ast::Goto const *node) {
+type::QualType Compiler::VerifyType(ast::ConditionalGoto const *node) {
+  VerifyType(node->condition());
+  for (auto const &option : node->true_options()) {
+    for (auto const &expr : option.args()) { VerifyType(expr.get()); }
+  }
+  for (auto const &option : node->false_options()) {
+    for (auto const &expr : option.args()) { VerifyType(expr.get()); }
+  }
+  return type::QualType::Constant(type::Void());
+}
+
+type::QualType Compiler::VerifyType(ast::UnconditionalGoto const *node) {
   for (auto const &option : node->options()) {
     for (auto const &expr : option.args()) { VerifyType(expr.get()); }
   }

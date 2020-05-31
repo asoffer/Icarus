@@ -106,7 +106,11 @@ void TokenExtractor::Visit(ast::Index const *node) {
   Visit(node->rhs());
 }
 
-void TokenExtractor::Visit(ast::Goto const *node) {
+void TokenExtractor::Visit(ast::ConditionalGoto const *node) {
+  // TODO
+}
+
+void TokenExtractor::Visit(ast::UnconditionalGoto const *node) {
   for (auto &opt : node->options()) {
     for (auto &expr : opt.args()) { Visit(expr.get()); }
   }

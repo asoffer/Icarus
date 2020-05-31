@@ -11,6 +11,7 @@
 #include "ast/build_param_dependency_graph.h"
 #include "ast/expression.h"
 #include "ast/hashtag.h"
+#include "ast/jump_options.h"
 #include "ast/node.h"
 #include "ast/scope/decl.h"
 #include "ast/scope/fn.h"
@@ -771,79 +772,6 @@ struct Identifier : Expression {
   std::string token_;
 };
 
-// Goto:
-// Represents a statement describing where a block should jump after completion.
-//
-// Example (in context of a scope):
-//  ```
-//  while ::= scope {
-//    init ::= jump(b: bool) {
-//      switch (b) {
-//        goto do()   when true
-//        goto exit() when false
-//      }
-//    }
-//    do ::= block {
-//      before ::= () -> () {}
-//      after ::= jump() { goto start() }
-//    }
-//    done ::= () -> () {}
-//  }
-//  ```
-//
-//  Note: We generally try to keep these alphabetical, but in this case, the
-//  body depends on `Identifier`.
-struct Goto : Node {
-  explicit Goto(frontend::SourceRange const &range,
-                std::vector<std::unique_ptr<Call>> calls)
-      : Node(range) {
-    for (auto &call : calls) {
-      auto [callee, ordered_args] = std::move(*call).extract();
-      if (auto *id = callee->if_as<Identifier>()) {
-        options_.emplace_back(std::string{id->token()},
-                              std::move(ordered_args).DropOrder());
-      } else {
-        UNREACHABLE();
-      }
-    }
-  }
-
-  ICARUS_AST_VIRTUAL_METHODS;
-
-  // A jump option is a collection of blocks that may be jumped to and the
-  // arguments to pass to such a block. When evaluating jump options, the option
-  // is chose if the collection of blocks refers to a block that is present on
-  // the scope node. In that case, the arguments are evaluated and passed to it.
-  // Otherwise, the option is discarded and the next option in the `options_`
-  // container is chosen.
-  struct JumpOption {
-    explicit JumpOption(std::string name,
-                        core::FnArgs<std::unique_ptr<Expression>> a)
-        : block_(std::move(name)), args_(std::move(a)) {}
-    JumpOption(JumpOption const &)     = default;
-    JumpOption(JumpOption &&) noexcept = default;
-    JumpOption &operator=(JumpOption const &) = default;
-    JumpOption &operator=(JumpOption &&) noexcept = default;
-
-    std::string_view block() const { return block_; }
-    core::FnArgs<std::unique_ptr<Expression>> const &args() const {
-      return args_;
-    }
-
-   private:
-    friend struct Goto;
-    std::string block_;
-    core::FnArgs<std::unique_ptr<Expression>> args_;
-  };
-
-  absl::Span<JumpOption const> options() const { return options_; }
-
- private:
-  // A jump will evaluate at compile-time to the first option for which the
-  // scope node has all possible blocks.
-  std::vector<JumpOption> options_;
-};
-
 // Import:
 // Represents a request from one module to use parts of a different module.
 //
@@ -1251,6 +1179,116 @@ struct UnaryOperator : Expression {
  private:
   std::unique_ptr<Expression> operand_;
   frontend::Operator op_;
+};
+
+// ConditionalGoto:
+// Represents a statement describing where a block should jump after completion.
+//
+// Example (in context of a scope):
+//  ```
+//  while ::= scope {
+//    init ::= jump(b: bool) {
+//      switch (b) {
+//        goto do()   when true
+//        goto exit() when false
+//      }
+//    }
+//    do ::= block {
+//      before ::= () -> () {}
+//      after ::= jump() { goto start() }
+//    }
+//    done ::= () -> () {}
+//  }
+//  ```
+//
+//  Note: We generally try to keep these alphabetical, but in this case, the
+//  body depends on `Identifier`.
+struct ConditionalGoto : Node {
+  explicit ConditionalGoto(frontend::SourceRange const &range,
+                           std::unique_ptr<Expression> condition,
+                           std::vector<std::unique_ptr<Call>> true_calls,
+                           std::vector<std::unique_ptr<Call>> false_calls)
+      : Node(range), condition_(std::move(condition)) {
+    for (auto &call : true_calls) {
+      auto [callee, ordered_args] = std::move(*call).extract();
+      if (auto *id = callee->if_as<Identifier>()) {
+        true_options_.emplace_back(std::string{id->token()},
+                                   std::move(ordered_args).DropOrder());
+      } else {
+        UNREACHABLE();
+      }
+    }
+
+    for (auto &call : false_calls) {
+      auto [callee, ordered_args] = std::move(*call).extract();
+      if (auto *id = callee->if_as<Identifier>()) {
+        false_options_.emplace_back(std::string{id->token()},
+                                    std::move(ordered_args).DropOrder());
+      } else {
+        UNREACHABLE();
+      }
+    }
+  }
+
+  ICARUS_AST_VIRTUAL_METHODS;
+
+  Expression const *condition() const { return condition_.get(); }
+  absl::Span<JumpOption const> true_options() const { return true_options_; }
+  absl::Span<JumpOption const> false_options() const { return false_options_; }
+
+ private:
+  // A jump will evaluate at compile-time to the first option for which the
+  // scope node has all possible blocks.
+  std::unique_ptr<ast::Expression> condition_;
+  std::vector<JumpOption> true_options_, false_options_;
+};
+
+
+// UnconditionalGoto:
+// Represents a statement describing where a block should jump after completion.
+//
+// Example (in context of a scope):
+//  ```
+//  while ::= scope {
+//    init ::= jump(b: bool) {
+//      switch (b) {
+//        goto do()   when true
+//        goto exit() when false
+//      }
+//    }
+//    do ::= block {
+//      before ::= () -> () {}
+//      after ::= jump() { goto start() }
+//    }
+//    done ::= () -> () {}
+//  }
+//  ```
+//
+//  Note: We generally try to keep these alphabetical, but in this case, the
+//  body depends on `Identifier`.
+struct UnconditionalGoto : Node {
+  explicit UnconditionalGoto(frontend::SourceRange const &range,
+                             std::vector<std::unique_ptr<Call>> calls)
+      : Node(range) {
+    for (auto &call : calls) {
+      auto [callee, ordered_args] = std::move(*call).extract();
+      if (auto *id = callee->if_as<Identifier>()) {
+        options_.emplace_back(std::string{id->token()},
+                              std::move(ordered_args).DropOrder());
+      } else {
+        UNREACHABLE();
+      }
+    }
+  }
+
+  ICARUS_AST_VIRTUAL_METHODS;
+
+  absl::Span<JumpOption const> options() const { return options_; }
+
+ private:
+  // A jump will evaluate at compile-time to the first option for which the
+  // scope node has all possible blocks.
+  std::vector<JumpOption> options_;
 };
 
 // YieldStmt:

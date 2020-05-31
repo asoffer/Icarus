@@ -152,7 +152,21 @@ struct ParamDependencyGraphBuilder
     Visit(node->rhs(), d);
   }
 
-  void Visit(Goto const *node, core::DependencyNode<Declaration> d) {
+  void Visit(ConditionalGoto const *node, core::DependencyNode<Declaration> d) {
+    Visit(node->condition(), d);
+    for (auto const &opt : node->true_options()) {
+      for (std::unique_ptr<Expression> const &expr : opt.args()) {
+        Visit(expr.get(), d);
+      }
+    }
+    for (auto const &opt : node->false_options()) {
+      for (std::unique_ptr<Expression> const &expr : opt.args()) {
+        Visit(expr.get(), d);
+      }
+    }
+  }
+
+  void Visit(UnconditionalGoto const *node, core::DependencyNode<Declaration> d) {
     for (auto const &opt : node->options()) {
       for (std::unique_ptr<Expression> const &expr : opt.args()) {
         Visit(expr.get(), d);

@@ -118,7 +118,12 @@ bool Index::IsDependent() const {
   return lhs()->IsDependent() or rhs()->IsDependent();
 }
 
-bool Goto::IsDependent() const {
+bool ConditionalGoto::IsDependent() const {
+  // TODO
+  return false;
+}
+
+bool UnconditionalGoto::IsDependent() const {
   // TODO
   return false;
 }

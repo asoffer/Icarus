@@ -741,6 +741,30 @@ std::unique_ptr<ast::Node> BuildOneElementCommaList(
   return comma_list;
 }
 
+std::vector<std::unique_ptr<ast::Call>> BuildJumpOptions(
+    std::unique_ptr<ast::Node> node, diagnostic::DiagnosticConsumer &diag) {
+  std::vector<std::unique_ptr<ast::Expression>> exprs;
+  std::vector<std::unique_ptr<ast::Call>> call_exprs;
+  if (auto *c = node->if_as<ast::ChainOp>(); c and not c->parenthesized_) {
+    exprs = std::move(*c).extract();
+    for (auto &expr : exprs) {
+      if (expr->is<ast::Call>()) {
+        call_exprs.push_back(move_as<ast::Call>(expr));
+      } else {
+        diag.Consume(diagnostic::Todo{});
+      }
+    }
+  } else {
+    if (node->is<ast::Call>()) {
+      call_exprs.push_back(move_as<ast::Call>(node));
+    } else {
+      DEBUG_LOG()(node->DebugString());
+      diag.Consume(diagnostic::Todo{});
+    }
+  }
+  return call_exprs;
+}
+
 std::unique_ptr<ast::Node> BuildStatementLeftUnop(
     absl::Span<std::unique_ptr<ast::Node>> nodes,
     diagnostic::DiagnosticConsumer &diag) {
@@ -751,28 +775,22 @@ std::unique_ptr<ast::Node> BuildStatementLeftUnop(
   if (tk == "goto") {
     auto range = SourceRange(nodes.front()->range().begin(),
                              nodes.back()->range().end());
-    std::vector<std::unique_ptr<ast::Expression>> exprs;
-    std::vector<std::unique_ptr<ast::Call>> call_exprs;
-    if (auto *c = nodes[1]->if_as<ast::ChainOp>();
-        c and not c->parenthesized_) {
-      exprs = std::move(*c).extract();
-      for (auto &expr : exprs) {
-        if (expr->is<ast::Call>()) {
-          call_exprs.push_back(move_as<ast::Call>(expr));
-        } else {
-          diag.Consume(diagnostic::Todo{});
-        }
-      }
-    } else {
-      if (nodes[1]->is<ast::Call>()) {
-        call_exprs.push_back(move_as<ast::Call>(nodes[1]));
-      } else {
-        diag.Consume(diagnostic::Todo{});
-      }
+    auto exprs = ExtractIfCommaList(move_as<ast::Expression>(nodes[1]));
+    switch (exprs.size()) {
+      case 1: {
+        auto jumps = BuildJumpOptions(std::move(exprs[0]), diag);
+        stmts->append(
+            std::make_unique<ast::UnconditionalGoto>(range, std::move(jumps)));
+      } break;
+      case 3: {
+        auto true_jumps  = BuildJumpOptions(std::move(exprs[1]), diag);
+        auto false_jumps = BuildJumpOptions(std::move(exprs[2]), diag);
+        stmts->append(std::make_unique<ast::ConditionalGoto>(
+            range, move_as<ast::Expression>(exprs[0]), std::move(true_jumps),
+            std::move(false_jumps)));
+      } break;
+      default: diag.Consume(diagnostic::Todo{}); return MakeInvalidNode(range);
     }
-
-    stmts->append(std::make_unique<ast::Goto>(range, std::move(call_exprs)));
-
   } else if (tk == "return") {
     auto range = SourceRange(nodes.front()->range().begin(),
                              nodes.back()->range().end());

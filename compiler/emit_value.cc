@@ -956,32 +956,51 @@ ir::Value Compiler::EmitValue(ast::Index const *node) {
   return ir::Value(builder().PtrFix(EmitRef(node).reg(), type_of(node)));
 }
 
-ir::Value Compiler::EmitValue(ast::Goto const *node) {
+void EmitJump(Compiler *c, absl::Span<ast::JumpOption const> options) {
   std::vector<std::string_view> names;
-  names.reserve(node->options().size());
+  names.reserve(options.size());
 
   std::vector<ir::BasicBlock *> blocks;
-  blocks.reserve(node->options().size());
+  blocks.reserve(options.size());
 
   std::vector<core::FnArgs<type::Typed<ir::Value>>> args;
-  args.reserve(node->options().size());
+  args.reserve(options.size());
 
-  auto current_block = builder().CurrentBlock();
+  auto current_block = c->builder().CurrentBlock();
 
-  for (auto const &opt : node->options()) {
-    ir::BasicBlock *block = builder().AddBlock();
+  for (auto const &opt : options) {
+    ir::BasicBlock *block = c->builder().AddBlock();
     blocks.push_back(block);
     names.push_back(opt.block());
 
-    builder().CurrentBlock() = block;
+    c->builder().CurrentBlock() = block;
 
-    args.push_back(opt.args().Transform([this](auto const &expr) {
-      return type::Typed(EmitValue(expr.get()), type_of(expr.get()));
+    args.push_back(opt.args().Transform([c](auto const &expr) {
+      return type::Typed(c->EmitValue(expr.get()), c->type_of(expr.get()));
     }));
   }
 
-  builder().CurrentBlock() = current_block;
-  builder().ChooseJump(std::move(names), std::move(blocks), std::move(args));
+  c->builder().CurrentBlock() = current_block;
+  c->builder().ChooseJump(std::move(names), std::move(blocks), std::move(args));
+}
+
+ir::Value Compiler::EmitValue(ast::ConditionalGoto const *node) {
+  auto condition    = EmitValue(node->condition());
+  auto *true_block  = builder().AddBlock();
+  auto *false_block = builder().AddBlock();
+  builder().CondJump(condition.get<ir::RegOr<bool>>(), true_block, false_block);
+
+  builder().CurrentBlock() = true_block;
+  EmitJump(this, node->true_options());
+
+  builder().CurrentBlock() = false_block;
+  EmitJump(this, node->false_options());
+
+  return ir::Value();
+}
+
+ir::Value Compiler::EmitValue(ast::UnconditionalGoto const *node) {
+  EmitJump(this, node->options());
   return ir::Value();
 }
 

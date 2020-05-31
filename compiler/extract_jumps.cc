@@ -113,7 +113,25 @@ struct Extractor : ast::Visitor<void()> {
     Visit(node->rhs());
   }
 
-  void Visit(ast::Goto const *node) final {
+  void Visit(ast::ConditionalGoto const *node) final {
+    Visit(node->condition());
+
+    // TODO Can you return or yield or jump from inside a jump block?!
+    for (auto const &opt : node->true_options()) {
+      for (std::unique_ptr<ast::Expression> const &expr : opt.args()) {
+        Visit(expr.get());
+      }
+    }
+
+    for (auto const &opt : node->false_options()) {
+      for (std::unique_ptr<ast::Expression> const &expr : opt.args()) {
+        Visit(expr.get());
+      }
+    }
+    (*jumps_)[node_stack_.back()].push_back(node);
+  }
+
+  void Visit(ast::UnconditionalGoto const *node) final {
     // TODO Can you return or yield or jump from inside a jump block?!
     for (auto const &opt : node->options()) {
       for (std::unique_ptr<ast::Expression> const &expr : opt.args()) {

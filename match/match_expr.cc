@@ -78,7 +78,9 @@ void Match::Visit(ast::Import const *node, MatchState *state) {}
 
 void Match::Visit(ast::Index const *node, MatchState *state) {}
 
-void Match::Visit(ast::Goto const *node, MatchState *state) {}
+void Match::Visit(ast::ConditionalGoto const *node, MatchState *state) {}
+
+void Match::Visit(ast::UnconditionalGoto const *node, MatchState *state) {}
 
 void Match::Visit(ast::Label const *node, MatchState *state) {}
 

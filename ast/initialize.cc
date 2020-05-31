@@ -128,7 +128,18 @@ void Index::Initialize(Scope *scope) {
   rhs_->Initialize(scope);
 }
 
-void Goto::Initialize(Scope *scope) {
+void ConditionalGoto::Initialize(Scope *scope) {
+  scope_ = scope;
+  condition_->Initialize(scope);
+  for (auto &opt : true_options_) {
+    opt.args_.Apply([scope](auto &expr) { expr->Initialize(scope); });
+  }
+  for (auto &opt : false_options_) {
+    opt.args_.Apply([scope](auto &expr) { expr->Initialize(scope); });
+  }
+}
+
+void UnconditionalGoto::Initialize(Scope *scope) {
   scope_ = scope;
   for (auto &opt : options_) {
     opt.args_.Apply([scope](auto &expr) { expr->Initialize(scope); });
