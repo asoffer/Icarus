@@ -48,6 +48,8 @@ cc_library(
         "//base:tag",
         "//compiler/dispatch:fn_call_table",
         "//compiler/dispatch:scope_table",
+        "//compiler/emit:terminal",
+        "//compiler/emit:unary_operator",
         "//core:call",
         "//diagnostic:errors",
         "//diagnostic/consumer",

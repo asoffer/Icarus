@@ -33,11 +33,9 @@ SetCurrent::~SetCurrent() {
   builder_->current_.block_termination_state_ = old_termination_state_;
 }
 
-base::Tagged<Addr, Reg> Builder::Alloca(type::Type const *t) {
-  return CurrentGroup()->Alloca(t);
-}
+Reg Builder::Alloca(type::Type const *t) { return CurrentGroup()->Alloca(t); }
 
-base::Tagged<Addr, Reg> Builder::TmpAlloca(type::Type const *t) {
+Reg Builder::TmpAlloca(type::Type const *t) {
   auto reg = Alloca(t);
   current_.temporaries_to_destroy_.emplace_back(reg, t);
   return reg;
@@ -144,7 +142,7 @@ type::Typed<Reg> Builder::LoadSymbol(String name, type::Type const *type) {
   return type::Typed<Reg>(result, type);
 }
 
-base::Tagged<core::Alignment, Reg> Builder::Align(RegOr<type::Type const *> r) {
+Reg Builder::Align(RegOr<type::Type const *> r) {
   auto inst = std::make_unique<TypeInfoInstruction>(
       TypeInfoInstruction::Kind::Alignment, r);
   auto result = inst->result = CurrentGroup()->Reserve();
@@ -152,7 +150,7 @@ base::Tagged<core::Alignment, Reg> Builder::Align(RegOr<type::Type const *> r) {
   return result;
 }
 
-base::Tagged<core::Bytes, Reg> Builder::Bytes(RegOr<type::Type const *> r) {
+Reg Builder::Bytes(RegOr<type::Type const *> r) {
   auto inst = std::make_unique<TypeInfoInstruction>(
       TypeInfoInstruction::Kind::Bytes, r);
   auto result = inst->result = CurrentGroup()->Reserve();
@@ -160,8 +158,8 @@ base::Tagged<core::Bytes, Reg> Builder::Bytes(RegOr<type::Type const *> r) {
   return result;
 }
 
-base::Tagged<Addr, Reg> Builder::PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
-                                         type::Pointer const *t) {
+Reg Builder::PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
+                     type::Pointer const *t) {
   auto inst   = std::make_unique<PtrIncrInstruction>(ptr, inc, t);
   auto result = inst->result = CurrentGroup()->Reserve();
   CurrentBlock()->AddInstruction(std::move(inst));

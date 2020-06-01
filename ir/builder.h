@@ -512,8 +512,7 @@ struct Builder {
   Reg VariantType(RegOr<Addr> const& r);
   Reg VariantValue(type::Variant const* v, RegOr<Addr> const& r);
 
-  base::Tagged<Addr, Reg> PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
-                                  type::Pointer const* t);
+  Reg PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc, type::Pointer const* t);
   // TODO should this be unsigned?
   RegOr<int64_t> ByteViewLength(RegOr<ir::String> val);
   RegOr<Addr> ByteViewData(RegOr<ir::String> val);
@@ -544,11 +543,11 @@ struct Builder {
   type::Typed<Reg> LoadSymbol(String name, type::Type const* type);
 
   // Low-level size/alignment commands
-  base::Tagged<core::Alignment, Reg> Align(RegOr<type::Type const*> r);
-  base::Tagged<core::Bytes, Reg> Bytes(RegOr<type::Type const*> r);
+  Reg Align(RegOr<type::Type const*> r);
+  Reg Bytes(RegOr<type::Type const*> r);
 
-  base::Tagged<Addr, Reg> Alloca(type::Type const* t);
-  base::Tagged<Addr, Reg> TmpAlloca(type::Type const* t);
+  Reg Alloca(type::Type const* t);
+  Reg TmpAlloca(type::Type const* t);
 
   Reg MakeBlock(ir::BlockDef* block_def, std::vector<RegOr<Fn>> befores,
                 std::vector<RegOr<Jump*>> afters);

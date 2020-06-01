@@ -36,6 +36,8 @@ struct Variant : public Type {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
 
+  bool is_big() const override { return true; }
+
   // TODO can do better with a pair of iterators and checking if one is a subset
   // of the other.
   bool contains(type::Type const *t) const;

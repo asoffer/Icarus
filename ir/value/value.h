@@ -69,6 +69,9 @@ struct Value {
   // Constructs a `Value` from the passed in type. The parameter may be of any
   // type supported by `Value` or an `ir::RegOr<T>` where `T` is an type
   // supported by `Value`.
+  //
+  // TODO: The instantiation taking pointers and modules is annoying due to
+  // subclasses.
   template <typename T>
   explicit Value(T val) : type_(base::meta<T>) {
     if constexpr (IsRegOr<T>::value) {
@@ -219,7 +222,8 @@ struct Value {
     bool eq;
     lhs.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                    uint32_t, uint64_t, float, double, type::Type const*, Reg,
-                   String, ModuleId, MultiValue, Empty>([&rhs, &eq](auto x) {
+                   Addr, String, EnumVal, FlagsVal, ModuleId, MultiValue,
+                   Empty>([&rhs, &eq](auto x) {
       eq = (x == rhs.get<std::decay_t<decltype(x)>>());
     });
     return eq;
@@ -232,7 +236,8 @@ struct Value {
   friend std::ostream& operator<<(std::ostream& os, Value value) {
     value.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                      uint32_t, uint64_t, float, double, type::Type const*, Reg,
-                     String, ModuleId, Empty>([&os](auto x) { os << x; });
+                     Addr, String, FlagsVal, EnumVal, ModuleId, Empty>(
+        [&os](auto x) { os << x; });
     return os;
   }
 

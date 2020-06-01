@@ -121,7 +121,7 @@ bool Compare(::type::Type const *t) {
   } else if constexpr (base::meta<T> == base::meta<ir::FlagsVal>) {
     return t->is<::type::Flags>();
   } else if constexpr (base::meta<T> == base::meta<ir::Addr>) {
-    return t->is<::type::Pointer>();
+    return t->is<::type::Pointer>() or t == type::NullPtr;
   } else if constexpr (base::meta<T> == base::meta<ir::ScopeDef *>) {
     return t == ::type::Scope;
   } else if constexpr (base::meta<T> == base::meta<::type::Struct const *>) {
