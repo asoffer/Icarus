@@ -1,6 +1,5 @@
 #include "absl/container/flat_hash_map.h"
 #include "ast/ast.h"
-#include "base/defer.h"
 #include "compiler/compiler.h"
 #include "compiler/verify/internal/qual_type_iterator.h"
 #include "diagnostic/errors.h"

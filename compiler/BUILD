@@ -83,7 +83,6 @@ cc_library(
         "@com_google_absl//absl/container:node_hash_map",
         "@com_google_absl//absl/random",
     ],
-    alwayslink = 1,
 )
 
 cc_library(
@@ -283,29 +282,9 @@ cc_binary(
         "@com_google_absl//absl/strings",
     ],
 )
-
 cc_library(
     name = "verify_type",
-    hdrs = [],
-    srcs = [
-        "verify/access.cc",
-        "verify/array_literal.cc",
-        "verify/array_type.cc",
-        "verify/assignment.cc",
-        "verify/binary_operator.cc",
-        "verify/call.cc",
-        "verify/common.cc",
-        "verify/comparison_operator.cc",
-        "verify/declaration.cc",
-        "verify/designated_initializer.cc",
-        "verify/identifier.cc",
-        "verify/index.cc",
-        "verify/struct_literal.cc",
-        "verify/scope_literal.cc",
-        "verify/terminal.cc",
-        "verify/unary_operator.cc",
-        "verify_type.cc",
-    ],
+    srcs = ["verify_type.cc"],
     deps = [
         ":compiler_header",
         ":data",
@@ -315,9 +294,23 @@ cc_library(
         "//ast",
         "//base:debug",
         "//base:defer",
+        "//compiler/verify:access",
+        "//compiler/verify:array_literal",
+        "//compiler/verify:array_type",
+        "//compiler/verify:assignment",
+        "//compiler/verify:binary_operator",
+        "//compiler/verify:call",
+        "//compiler/verify:common",
+        "//compiler/verify:comparison_operator",
+        "//compiler/verify:declaration",
+        "//compiler/verify:designated_initializer",
+        "//compiler/verify:identifier",
+        "//compiler/verify:index",
+        "//compiler/verify:struct_literal",
+        "//compiler/verify:scope_literal",
+        "//compiler/verify:terminal",
+        "//compiler/verify:unary_operator",
         "//compiler/dispatch:parameters_and_arguments",
-        "//compiler/verify/internal:assignment_and_initialization",
-        "//compiler/verify/internal:qual_type_iterator",
         "//diagnostic/consumer",
         "//diagnostic/consumer:trivial",
         "//diagnostic:errors",
@@ -353,161 +346,4 @@ cc_library(
     ],
 )
 
-cc_test(
-    name = "access_test",
-    srcs = ["verify/access_test.cc"],
-    deps = [
-        ":verify_type",
-        "//test:module",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
 
-cc_test(
-    name = "array_literal_test",
-    srcs = ["verify/array_literal_test.cc"],
-    deps = [
-        ":verify_type",
-        "//test:module",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "array_type_test",
-    srcs = ["verify/array_type_test.cc"],
-    deps = [
-        ":verify_type",
-        "//test:module",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "assignment_test",
-    srcs = ["verify/assignment_test.cc"],
-    deps = [
-        ":verify_type",
-        "//test:module",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "binary_operator_test",
-    srcs = ["verify/binary_operator_test.cc"],
-    deps = [
-        ":verify_type",
-        "//test:module",
-        "//type:primitive",
-        "@com_google_absl//absl/strings:str_format",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "call_test",
-    srcs = ["verify/call_test.cc"],
-    deps = [
-        ":verify_type",
-        "//test:module",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "comparison_operator_test",
-    srcs = ["verify/comparison_operator_test.cc"],
-    deps = [
-        ":verify_type",
-        "//test:module",
-        "@com_google_absl//absl/strings:str_format",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "declaration_test",
-    srcs = ["verify/declaration_test.cc"],
-    deps = [
-        ":verify_type",
-        "//test:module",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "designated_initializer_test",
-    srcs = ["verify/designated_initializer_test.cc"],
-    deps = [
-        ":verify_type",
-        "//test:module",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "identifier_test",
-    srcs = ["verify/identifier_test.cc"],
-    deps = [
-        ":verify_type",
-        "//test:module",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "index_test",
-    srcs = ["verify/index_test.cc"],
-    deps = [
-        ":verify_type",
-        "//test:module",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "struct_literal_test",
-    srcs = ["verify/struct_literal_test.cc"],
-    deps = [
-        ":verify_type",
-        "//test:module",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "scope_literal_test",
-    srcs = ["verify/scope_literal_test.cc"],
-    deps = [
-        ":verify_type",
-        "//test:module",
-        "//type:primitive",
-        "//type:jump",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "terminal_test",
-    srcs = ["verify/terminal_test.cc"],
-    deps = [
-        ":verify_type",
-        "//test:module",
-        "//type:primitive",
-        "//type:qual_type",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "unary_operator_test",
-    srcs = ["verify/unary_operator_test.cc"],
-    deps = [
-        ":verify_type",
-        "//test:module",
-        "//type:array",
-        "//type:primitive",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
