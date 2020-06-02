@@ -74,9 +74,4 @@ ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Index const *node) {
   UNREACHABLE(*this);
 }
 
-ir::RegOr<ir::Addr> Compiler::EmitRef(ast::UnaryOperator const *node) {
-  ASSERT(node->op() == frontend::Operator::At);
-  return EmitValue(node->operand()).get<ir::Reg>();
-}
-
 }  // namespace compiler

@@ -10,6 +10,20 @@
 namespace compiler {
 namespace {
 
+struct InvalidUnaryOperatorOverload {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName = "invalid-unary-operator-overload";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("No valid operator overload for (%s)"),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  }
+
+  char const *op;
+  frontend::SourceRange range;
+};
+
 struct InvalidUnaryOperatorCall {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "invalid-unary-operator-call";
@@ -210,10 +224,8 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
       } else if (operand_type->is<type::Struct>()) {
         ASSIGN_OR(
             {
-              diag().Consume(diagnostic::InvalidUnaryOperatorOverload{
-                  .op    = "-",
-                  .range = node->range(),
-              });
+              diag().Consume(InvalidUnaryOperatorOverload{
+                  .op = "-", .range = node->range()});
               return type::QualType::Error();
             },
             qt, VerifyUnaryOverload("-", node, operand_qt.type()));
@@ -233,10 +245,8 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
       } else if (operand_type->is<type::Struct>()) {
         ASSIGN_OR(
             {
-              diag().Consume(diagnostic::InvalidUnaryOperatorOverload{
-                  .op    = "!",
-                  .range = node->range(),
-              });
+              diag().Consume(InvalidUnaryOperatorOverload{
+                  .op = "!", .range = node->range()});
               return type::QualType::Error();
             },
             qt, VerifyUnaryOverload("!", node, operand_qt.type()));

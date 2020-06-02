@@ -380,19 +380,6 @@ struct NotAType {
   type::Type const *type;
 };
 
-struct InvalidUnaryOperatorOverload {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName = "invalid-unary-operator-overload";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("No valid operator overload for (%s)"),
-                             SourceQuote(src).Highlighted(range, Style{}));
-  }
-
-  char const *op;
-  frontend::SourceRange range;
-};
-
 struct UnspecifiedOverload {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "unspecified-overload";

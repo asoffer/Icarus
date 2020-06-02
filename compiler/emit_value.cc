@@ -23,6 +23,10 @@
 #include "type/type.h"
 #include "type/typed_value.h"
 
+// TODO: Value emission of any kind could fail even if there weren't type
+// errors. Any value emission could be a constant-evaluated function that ends
+// up dividing by zero. It's *possible* you that you can cover this stuff with
+// property checking, but that's way off in the future.
 namespace compiler {
 using ::matcher::InheritsFrom;
 
