@@ -243,7 +243,7 @@ TEST(And, NonReference) {
                   Pair("value-category-error", "non-addressable-expression")));
 }
 
-TEST(Mul, Success) {
+TEST(Pointer, Success) {
   {
     test::TestModule mod;
     auto const *expr = mod.Append<ast::UnaryOperator>("*int64");
@@ -265,7 +265,7 @@ TEST(Mul, Success) {
   }
 }
 
-TEST(Mul, NotAType) {
+TEST(Pointer, NotAType) {
   test::TestModule mod;
   auto const *expr = mod.Append<ast::UnaryOperator>("*3");
   auto const *qt   = mod.data().qual_type(expr);
@@ -274,7 +274,7 @@ TEST(Mul, NotAType) {
               UnorderedElementsAre(Pair("type-error", "not-a-type")));
 }
 
-TEST(Sub, SignedInteger) {
+TEST(Negate, SignedInteger) {
   {
     test::TestModule mod;
     mod.AppendCode(R"(
@@ -300,7 +300,7 @@ TEST(Sub, SignedInteger) {
   }
 }
 
-TEST(Sub, FloatingPoint) {
+TEST(Negate, FloatingPoint) {
   {
     test::TestModule mod;
     mod.AppendCode(R"(
@@ -326,7 +326,7 @@ TEST(Sub, FloatingPoint) {
   }
 }
 
-TEST(Sub, UnsignedInteger) {
+TEST(Negate, UnsignedInteger) {
   {
     test::TestModule mod;
     mod.AppendCode(R"(
@@ -354,7 +354,7 @@ TEST(Sub, UnsignedInteger) {
   }
 }
 
-TEST(Sub, InvalidType) {
+TEST(Negate, InvalidType) {
   {
     test::TestModule mod;
     mod.AppendCode(R"(
@@ -382,7 +382,7 @@ TEST(Sub, InvalidType) {
   }
 }
 
-TEST(Sub, Overload) {
+TEST(Negate, Overload) {
   test::TestModule mod;
   mod.AppendCode(R"(
     S ::= struct {}
@@ -395,7 +395,7 @@ TEST(Sub, Overload) {
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
-TEST(Sub, MissingOverload) {
+TEST(Negate, MissingOverload) {
   test::TestModule mod;
   mod.AppendCode(R"(
     S ::= struct {}

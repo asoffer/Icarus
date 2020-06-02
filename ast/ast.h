@@ -1126,19 +1126,33 @@ struct Terminal : Expression {
 //  * `what_type_am_i:?`
 //  * `@some_ptr`
 struct UnaryOperator : Expression {
-  UnaryOperator(frontend::SourceRange const &range, frontend::Operator op,
-                std::unique_ptr<Expression> operand)
-      : Expression(range), operand_(std::move(operand)), op_(op) {}
+  enum class Kind {
+    Copy,
+    Move,
+    BufferPointer,
+    TypeOf,
+    Evaluate,
+    Which,
+    At,
+    Pointer,
+    Address,
+    Negate,
+    Not
+  };
+
+  explicit UnaryOperator(frontend::SourceRange const &range, Kind kind,
+                         std::unique_ptr<Expression> operand)
+      : Expression(range), operand_(std::move(operand)), kind_(kind) {}
   ~UnaryOperator() override {}
 
   ICARUS_AST_VIRTUAL_METHODS;
 
-  frontend::Operator op() const { return op_; }
+  Kind kind() const { return kind_; }
   Expression const *operand() const { return operand_.get(); }
 
  private:
   std::unique_ptr<Expression> operand_;
-  frontend::Operator op_;
+  Kind kind_;
 };
 
 // ConditionalGoto:

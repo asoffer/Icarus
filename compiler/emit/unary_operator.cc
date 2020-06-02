@@ -7,8 +7,8 @@ namespace compiler {
 
 ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
   // TODO: user-defined-types
-  switch (node->op()) {
-    case frontend::Operator::Copy: {
+  switch (node->kind()) {
+    case ast::UnaryOperator::Kind::Copy: {
       auto *operand_type =
           ASSERT_NOT_NULL(data().qual_type(node->operand()))->type();
       auto reg = builder().TmpAlloca(operand_type);
@@ -16,7 +16,7 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
                    type::Typed<ir::Reg>(reg, type::Ptr(operand_type)));
       return ir::Value(builder().PtrFix(reg, operand_type));
     } break;
-    case frontend::Operator::Move: {
+    case ast::UnaryOperator::Kind::Move: {
       auto *operand_type =
           ASSERT_NOT_NULL(data().qual_type(node->operand()))->type();
       auto reg = builder().TmpAlloca(operand_type);
@@ -24,10 +24,10 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
                    type::Typed<ir::Reg>(reg, type::Ptr(operand_type)));
       return ir::Value(builder().PtrFix(reg, operand_type));
     } break;
-    case frontend::Operator::BufPtr:
+    case ast::UnaryOperator::Kind::BufferPointer:
       return ir::Value(builder().BufPtr(
           EmitValue(node->operand()).get<ir::RegOr<type::Type const *>>()));
-    case frontend::Operator::Not: {
+    case ast::UnaryOperator::Kind::Not: {
       auto *t = ASSERT_NOT_NULL(data().qual_type(node->operand()))->type();
       if (t == type::Bool) {
         return ir::Value(
@@ -38,7 +38,7 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
             ir::FlagsVal{t->as<type::Flags>().All}));
       }
     } break;
-    case frontend::Operator::Sub: {
+    case ast::UnaryOperator::Kind::Negate: {
       auto operand_ir = EmitValue(node->operand());
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, float, double>(
           ASSERT_NOT_NULL(data().qual_type(node->operand()))->type(),
@@ -47,17 +47,17 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
             return ir::Value(builder().Neg(operand_ir.get<ir::RegOr<T>>()));
           });
     } break;
-    case frontend::Operator::TypeOf:
+    case ast::UnaryOperator::Kind::TypeOf:
       return ir::Value(
           ASSERT_NOT_NULL(data().qual_type(node->operand()))->type());
-    case frontend::Operator::Which:
+    case ast::UnaryOperator::Kind::Which:
       return ir::Value(builder().Load<type::Type const *>(
           builder().VariantType(EmitValue(node->operand()).get<ir::Reg>())));
-    case frontend::Operator::And: return ir::Value(EmitRef(node->operand()));
-    case frontend::Operator::Eval: {
+    case ast::UnaryOperator::Kind::Address: return ir::Value(EmitRef(node->operand()));
+    case ast::UnaryOperator::Kind::Evaluate: {
       // TODO: There's a chance this was already computed, in which case we
       // should not execute it more than once. For example, if it was used in a
-      // context where evaluation was implicit. 
+      // context where evaluation was implicit.
       // ```
       // n: `int64
       // ```
@@ -73,7 +73,7 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
       }
       return *maybe_val;
     }
-    case frontend::Operator::Mul: {
+    case ast::UnaryOperator::Kind::Pointer: {
       state_.must_complete = false;
 
       ir::Value value(builder().Ptr(
@@ -83,20 +83,20 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
 
       return value;
     } break;
-    case frontend::Operator::At: {
+    case ast::UnaryOperator::Kind::At: {
       return builder().Load(
           EmitValue(node->operand()).get<ir::RegOr<ir::Addr>>(),
           ASSERT_NOT_NULL(data().qual_type(node))->type());
     }
-    default: UNREACHABLE("Operator is ", static_cast<int>(node->op()));
+    default: UNREACHABLE("Operator is ", static_cast<int>(node->kind()));
   }
 }
 
 void Compiler::EmitCopyInit(ast::UnaryOperator const *node,
                             type::Typed<ir::Reg> reg) {
-  switch (node->op()) {
-    case frontend::Operator::Move: EmitMoveInit(node->operand(), reg); break;
-    case frontend::Operator::Copy: EmitCopyInit(node->operand(), reg); break;
+  switch (node->kind()) {
+    case ast::UnaryOperator::Kind::Move: EmitMoveInit(node->operand(), reg); break;
+    case ast::UnaryOperator::Kind::Copy: EmitCopyInit(node->operand(), reg); break;
     default:
       EmitCopyInit(type::Typed(EmitValue(node),
                                ASSERT_NOT_NULL(data().qual_type(node))->type()),
@@ -107,9 +107,9 @@ void Compiler::EmitCopyInit(ast::UnaryOperator const *node,
 
 void Compiler::EmitMoveInit(ast::UnaryOperator const *node,
                             type::Typed<ir::Reg> reg) {
-  switch (node->op()) {
-    case frontend::Operator::Move: EmitMoveInit(node->operand(), reg); break;
-    case frontend::Operator::Copy: EmitCopyInit(node->operand(), reg); break;
+  switch (node->kind()) {
+    case ast::UnaryOperator::Kind::Move: EmitMoveInit(node->operand(), reg); break;
+    case ast::UnaryOperator::Kind::Copy: EmitCopyInit(node->operand(), reg); break;
     default:
       EmitMoveInit(type::Typed(EmitValue(node),
                                ASSERT_NOT_NULL(data().qual_type(node))->type()),
@@ -119,7 +119,7 @@ void Compiler::EmitMoveInit(ast::UnaryOperator const *node,
 }
 
 ir::RegOr<ir::Addr> Compiler::EmitRef(ast::UnaryOperator const *node) {
-  ASSERT(node->op() == frontend::Operator::At);
+  ASSERT(node->kind() == ast::UnaryOperator::Kind::At);
   return EmitValue(node->operand()).get<ir::Reg>();
 }
 

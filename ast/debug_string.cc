@@ -6,6 +6,22 @@
 
 namespace ast {
 namespace {
+char const *OpStr(UnaryOperator::Kind op) {
+  switch (op) {
+    case UnaryOperator::Kind::Move: return "copy ";
+    case UnaryOperator::Kind::Copy: return "move ";
+    case UnaryOperator::Kind::Pointer: return "*";
+    case UnaryOperator::Kind::BufferPointer: return "[*]";
+    case UnaryOperator::Kind::Which: return "which ";
+    case UnaryOperator::Kind::Not: return "!";
+    case UnaryOperator::Kind::Negate: return "-";
+    case UnaryOperator::Kind::At: return "@";
+    case UnaryOperator::Kind::Address: return "&";
+    case UnaryOperator::Kind::Evaluate: return "`";
+    case UnaryOperator::Kind::TypeOf: UNREACHABLE();
+  }
+}
+
 char const *OpStr(frontend::Operator op) {
   switch (op) {
     case frontend::Operator::Add: return " + ";
@@ -420,12 +436,12 @@ void Terminal::DebugStrAppend(std::string *out, size_t indent) const {
 }
 
 void UnaryOperator::DebugStrAppend(std::string *out, size_t indent) const {
-  if (op() == frontend::Operator::TypeOf) {
+  if (kind() == Kind::TypeOf) {
     absl::StrAppend(out, "(");
     operand()->DebugStrAppend(out, indent);
     absl::StrAppend(out, "):?");
   }
-  absl::StrAppend(out, OpStr(op()));
+  absl::StrAppend(out, OpStr(kind()));
   operand()->DebugStrAppend(out, indent);
 }
 

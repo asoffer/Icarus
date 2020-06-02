@@ -124,8 +124,8 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
 
   type::QualType qt;
 
-  switch (node->op()) {
-    case frontend::Operator::Copy: {
+  switch (node->kind()) {
+    case ast::UnaryOperator::Kind::Copy: {
       if (not operand_type->IsCopyable()) {
         diag().Consume(diagnostic::UncopyableType{
             .from  = operand_type,
@@ -135,7 +135,7 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
       qt = type::QualType(operand_type,
                           operand_qt.quals() & ~type::Quals::Ref());
     } break;
-    case frontend::Operator::Move: {
+    case ast::UnaryOperator::Kind::Move: {
       if (not operand_type->IsMovable()) {
         diag().Consume(diagnostic::ImmovableType{
             .from  = operand_type,
@@ -145,7 +145,7 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
       qt = type::QualType(operand_type,
                           operand_qt.quals() & ~type::Quals::Ref());
     } break;
-    case frontend::Operator::BufPtr: {
+    case ast::UnaryOperator::Kind::BufferPointer: {
       if (operand_type == type::Type_) {
         qt = type::QualType(operand_type,
                             operand_qt.quals() & ~type::Quals::Ref());
@@ -157,10 +157,10 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
         return type::QualType::Error();
       }
     } break;
-    case frontend::Operator::TypeOf: {
+    case ast::UnaryOperator::Kind::TypeOf: {
       qt = type::QualType::Constant(type::Type_);
     } break;
-    case frontend::Operator::Eval: {
+    case ast::UnaryOperator::Kind::Evaluate: {
       qt = type::QualType::Constant(operand_type);
       if (not operand_qt.constant()) {
         diag().Consume(NonConstantEvaluation{
@@ -169,7 +169,7 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
         qt.MarkError();
       }
     } break;
-    case frontend::Operator::Which: {
+    case ast::UnaryOperator::Kind::Which: {
       qt = type::QualType::NonConstant(type::Type_);
       if (not operand_type->is<type::Variant>()) {
         diag().Consume(WhichNonVariant{
@@ -179,7 +179,7 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
         qt.MarkError();
       }
     } break;
-    case frontend::Operator::At: {
+    case ast::UnaryOperator::Kind::At: {
       if (auto const *ptr_type = operand_type->if_as<type::Pointer>()) {
         qt = type::QualType(ptr_type->pointee(), operand_qt.quals());
       } else {
@@ -190,7 +190,7 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
         return type::QualType::Error();
       }
     } break;
-    case frontend::Operator::And: {
+    case ast::UnaryOperator::Kind::Address: {
       if (operand_qt.quals() >= type::Quals::Ref()) {
         qt =
             type::QualType(type::Ptr(operand_type), type::Quals::Unqualified());
@@ -199,7 +199,7 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
         return type::QualType::Error();
       }
     } break;
-    case frontend::Operator::Mul: {
+    case ast::UnaryOperator::Kind::Pointer: {
       if (operand_type == type::Type_) {
         qt = type::QualType(operand_type,
                             operand_qt.quals() & ~type::Quals::Ref());
@@ -211,7 +211,7 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
         return type::QualType::Error();
       }
     } break;
-    case frontend::Operator::Sub: {
+    case ast::UnaryOperator::Kind::Negate: {
       if (type::IsSignedNumeric(operand_type)) {
         qt = type::QualType(operand_type,
                             operand_qt.quals() & type::Quals::Const());
@@ -222,13 +222,14 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
         });
         return type::QualType::Error();
       } else if (operand_type->is<type::Struct>()) {
-        ASSIGN_OR(
-            {
-              diag().Consume(InvalidUnaryOperatorOverload{
-                  .op = "-", .range = node->range()});
-              return type::QualType::Error();
-            },
-            qt, VerifyUnaryOverload("-", node, operand_qt.type()));
+        qt = VerifyUnaryOverload("-", node, operand_qt.type());
+        if (not qt.ok()) {
+          diag().Consume(InvalidUnaryOperatorOverload{
+              .op    = "-",
+              .range = node->range(),
+          });
+          return type::QualType::Error();
+        }
       } else {
         diag().Consume(InvalidUnaryOperatorCall{
             .op    = "-",
@@ -238,18 +239,19 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
         return type::QualType::Error();
       }
     } break;
-    case frontend::Operator::Not: {
+    case ast::UnaryOperator::Kind::Not: {
       if (operand_type == type::Bool or operand_type->is<type::Flags>()) {
         qt = type::QualType(operand_type,
                             operand_qt.quals() & type::Quals::Const());
       } else if (operand_type->is<type::Struct>()) {
-        ASSIGN_OR(
-            {
-              diag().Consume(InvalidUnaryOperatorOverload{
-                  .op = "!", .range = node->range()});
-              return type::QualType::Error();
-            },
-            qt, VerifyUnaryOverload("!", node, operand_qt.type()));
+        qt = VerifyUnaryOverload("!", node, operand_qt.type());
+        if (not qt.ok()) {
+          diag().Consume(InvalidUnaryOperatorOverload{
+              .op    = "!",
+              .range = node->range(),
+          });
+          return type::QualType::Error();
+        }
       } else {
         diag().Consume(InvalidUnaryOperatorCall{
             .op    = "!",

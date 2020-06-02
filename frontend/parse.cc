@@ -375,7 +375,7 @@ std::unique_ptr<ast::Node> BuildRightUnop(
   if (tk == ":?") {
     SourceRange range(nodes[0]->range().begin(), nodes[1]->range().end());
     auto unop = std::make_unique<ast::UnaryOperator>(
-        range, Operator::TypeOf, move_as<ast::Expression>(nodes[0]));
+        range, ast::UnaryOperator::Kind::TypeOf, move_as<ast::Expression>(nodes[0]));
 
     if (unop->operand()->is<ast::Declaration>()) {
       diag.Consume(
@@ -479,21 +479,24 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
     }
   }
 
-  static base::Global kUnopMap =
-      absl::flat_hash_map<std::string_view, Operator>{
-          {"*", Operator::Mul},         {"[*]", Operator::BufPtr},
-          {"@", Operator::At},          {"import", Operator::Import},
-          {"&", Operator::And},         {"which", Operator::Which},
-          {"-", Operator::Sub},         {"needs", Operator::Needs},
-          {"!", Operator::Not},         {"copy", Operator::Copy},
-          {"ensure", Operator::Ensure}, {"move", Operator::Move},
-          {"`", Operator::Eval},        {"..", Operator::VariadicPack},
-      };
+  static base::Global kUnaryOperatorMap =
+      absl::flat_hash_map<std::string_view, ast::UnaryOperator::Kind>{
+          {"copy", ast::UnaryOperator::Kind::Copy},
+          {"move", ast::UnaryOperator::Kind::Move},
+          {"[*]", ast::UnaryOperator::Kind::BufferPointer},
+          {":?", ast::UnaryOperator::Kind::TypeOf},
+          {"`", ast::UnaryOperator::Kind::Evaluate},
+          {"which", ast::UnaryOperator::Kind::Which},
+          {"&", ast::UnaryOperator::Kind::Address},
+          {"@", ast::UnaryOperator::Kind::At},
+          {"*", ast::UnaryOperator::Kind::Pointer},
+          {"-", ast::UnaryOperator::Kind::Negate},
+          {"!", ast::UnaryOperator::Kind::Not}};
 
   SourceRange range(nodes[0]->range().begin(), nodes[1]->range().end());
 
   auto &operand = nodes[1];
-  Operator op   = kUnopMap->find(tk)->second;
+  auto op       = kUnaryOperatorMap->find(tk)->second;
 
   if (operand->is<ast::Declaration>()) {
     diag.Consume(DeclarationUsedInUnaryOperator{.range = range});
