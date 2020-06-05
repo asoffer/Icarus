@@ -205,8 +205,8 @@ type::QualType Compiler::VerifyType(ast::Call const *node) {
                    auto arg_vals, VerifyFnArgs(node->args()));
   // TODO: consider having `foreign` be a generic type. This would allow for the
   // possibility of overlading builtins. That's a dangerous yet principled idea.
-  type::QualType qt;
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
+    type::QualType qt;
     switch (b->value().which()) {
       case ir::BuiltinFn::Which::Foreign: {
         qt = VerifyForeignCall(this, b->range(), arg_vals);
@@ -231,20 +231,27 @@ type::QualType Compiler::VerifyType(ast::Call const *node) {
     return qt;
   }
 
-  qt = VerifyType(node->callee());
-  if (not qt.ok()) { return qt; }
+  auto [callee_qt, overload_map] = VerifyCallee(node->callee(), arg_vals);
+  if (not callee_qt.ok()) { return type::QualType::Error(); }
 
-  if (auto const *c = qt.type()->if_as<type::Callable>()) {
+  if (auto const *c = callee_qt.type()->if_as<type::Callable>()) {
     DEBUG_LOG("Call.VerifyType")
-    ("Callee's (", node->callee()->DebugString(), ") qual-type: ", qt);
-    auto ret_types = c->return_types(arg_vals);
-    // TODO under what circumstances can we prove that the implementation
+    ("Callee's (", node->callee()->DebugString(), ") qual-type: ", callee_qt);
+    auto result = VerifyCall(overload_map, arg_vals);
+    if (not result) {
+      auto arg_fails = std::move(result).error();
+      for (auto const &args : arg_fails) { DEBUG_LOG()(args); }
+      diag().Consume(diagnostic::Todo{});
+      return type::QualType::Error();
+    }
+    // TODO: under what circumstances can we prove that the implementation
     // doesn't need to be run at runtime?
-    return data().set_qual_type(
-        node, type::QualType(ret_types, type::Quals::Unqualified()));
-  } else if (auto const *gen_struct = qt.type()->if_as<type::GenericStruct>()) {
+    return data().set_qual_type(node, *result);
+  } else if (auto const *gen_struct =
+                 callee_qt.type()->if_as<type::GenericStruct>()) {
     // TODO: Not always a constant
-    return type::QualType::Constant(type::Type_);
+    // TODO: Isn't this also callable?
+    return data().set_qual_type(node, type::QualType::Constant(type::Type_));
   } else {
     diag().Consume(UncallableExpression{.range = node->callee()->range()});
     return type::QualType::Error();

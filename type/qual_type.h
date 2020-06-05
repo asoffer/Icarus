@@ -125,7 +125,7 @@ absl::Span<Type const *const> AddPack(absl::Span<Type const *const> types);
 struct QualType {
   explicit constexpr QualType() : QualType(nullptr, Quals::Unqualified()) {}
 
-  // Use SFINAE in to disable braced-initialization for the type parameter. This
+  // Use SFINAE  to disable braced-initialization for the type parameter. This
   // allows it to fallback to meaning the vector initializer.
   template <typename Arg,
             std::enable_if_t<std::is_convertible_v<Arg, Type const *>, int> = 0>
@@ -207,8 +207,8 @@ struct QualType {
     }
   }
 
-  explicit constexpr operator bool() const { return data_ != 0; }
-  constexpr bool ok() const { return data_ != 0; }
+  explicit constexpr operator bool() const { return data_ != 0 or num_ != 1; }
+  constexpr bool ok() const { return data_ != 0 or num_ != 1; }
 
   constexpr QualType const &operator*() const { return *this; }
 

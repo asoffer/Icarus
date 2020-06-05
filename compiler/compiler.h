@@ -427,6 +427,16 @@ struct Compiler
                                      ast::Expression const *node,
                                      type::Type const *expr_type);
 
+  base::expected<type::QualType, std::vector<core::FnArgs<type::QualType>>>
+  VerifyCall(absl::flat_hash_map<ast::Expression const *,
+                                 type::Callable const *> const &overload_map,
+             core::FnArgs<type::Typed<ir::Value>> const &args);
+
+  std::pair<type::QualType,
+            absl::flat_hash_map<ast::Expression const *, type::Callable const *>>
+  VerifyCallee(ast::Expression const *callee,
+               core::FnArgs<type::Typed<ir::Value>> const &args);
+
   PersistentResources resources_;
   TransientFunctionState state_;
 };

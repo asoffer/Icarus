@@ -20,6 +20,10 @@ struct OverloadSet : Callable {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
 
+  absl::flat_hash_set<type::Callable const *> const &members() const {
+    return callables_;
+  }
+
   std::vector<type::Type const *> return_types(
       core::FnArgs<type::Typed<ir::Value>> const &args) const override;
 

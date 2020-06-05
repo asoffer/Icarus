@@ -137,4 +137,10 @@ TEST(QualType, RemoveConstant) {
   }
 }
 
+TEST(QualType, EmptyVector) {
+  type::QualType qt(std::vector<type::Type const *>{},
+                    type::Quals::Unqualified());
+  EXPECT_TRUE(qt.ok());
+}
+
 }  // namespace
