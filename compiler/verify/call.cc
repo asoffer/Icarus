@@ -38,6 +38,21 @@ struct UncallableExpression {
   frontend::SourceRange range;
 };
 
+struct UncallableWithArguments {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "uncallable-with-arguments";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text(
+            "Expression cannot be called with the given arguments."),
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
+  }
+
+  frontend::SourceRange range;
+};
+
 type::QualType VerifyForeignCall(
     Compiler *c, frontend::SourceRange const &range,
     core::FnArgs<type::Typed<ir::Value>> const &arg_vals) {
@@ -239,9 +254,11 @@ type::QualType Compiler::VerifyType(ast::Call const *node) {
     ("Callee's (", node->callee()->DebugString(), ") qual-type: ", callee_qt);
     auto result = VerifyCall(overload_map, arg_vals);
     if (not result) {
-      auto arg_fails = std::move(result).error();
-      for (auto const &args : arg_fails) { DEBUG_LOG()(args); }
-      diag().Consume(diagnostic::Todo{});
+      auto call_error = std::move(result).error();
+      DEBUG_LOG("Call.VerifyType")(call_error.reasons);
+      diag().Consume(UncallableWithArguments{
+          .range = node->range(),
+      });
       return type::QualType::Error();
     }
     // TODO: under what circumstances can we prove that the implementation

@@ -417,6 +417,23 @@ struct Compiler
                                       type::Type const *lhs_type,
                                       type::Type const *rhs_type);
 
+  // TODO: Figure out where to stick these.
+  struct CallError {
+    struct TooManyArguments {
+      size_t num_provided;
+      size_t max_num_accepted;
+    };
+
+    struct MissingNonDefaultableArgument {
+      std::string name;
+    };
+
+    using ErrorReason =
+        std::variant<TooManyArguments, MissingNonDefaultableArgument, CallError>;
+
+    absl::flat_hash_map<ast::Expression const *, ErrorReason> reasons;
+  };
+
  private:
   void CompleteStruct(ast::StructLiteral const *node);
 
@@ -427,13 +444,13 @@ struct Compiler
                                      ast::Expression const *node,
                                      type::Type const *expr_type);
 
-  base::expected<type::QualType, std::vector<core::FnArgs<type::QualType>>>
-  VerifyCall(absl::flat_hash_map<ast::Expression const *,
-                                 type::Callable const *> const &overload_map,
-             core::FnArgs<type::Typed<ir::Value>> const &args);
+  base::expected<type::QualType, CallError> VerifyCall(
+      absl::flat_hash_map<ast::Expression const *, type::Callable const *> const
+          &overload_map,
+      core::FnArgs<type::Typed<ir::Value>> const &args);
 
-  std::pair<type::QualType,
-            absl::flat_hash_map<ast::Expression const *, type::Callable const *>>
+  std::pair<type::QualType, absl::flat_hash_map<ast::Expression const *,
+                                                type::Callable const *>>
   VerifyCallee(ast::Expression const *callee,
                core::FnArgs<type::Typed<ir::Value>> const &args);
 

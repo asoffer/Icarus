@@ -109,30 +109,86 @@ type::QualType Compiler::VerifyBinaryOverload(std::string_view symbol,
                      type::Quals::Unqualified()));
 }
 
+namespace {
+
+using CallMatchResult = std::variant<core::Params<type::QualType>,
+                                     Compiler::CallError::ErrorReason>;
+
+// Determines which arguments are passed to which parameters. No type-checking
+// is done in this phase. Matching arguments to parameters can be done, even on
+// generics without any type-checking.
+CallMatchResult MatchArgumentsToParameters(
+    core::Params<type::QualType> const &params,
+    core::FnArgs<type::QualType> const &args) {
+  if (args.size() > params.size()) {
+    return Compiler::CallError::TooManyArguments{
+        .num_provided     = args.size(),
+        .max_num_accepted = params.size(),
+    };
+  }
+
+  core::Params<type::QualType> matched_params;
+  // Match positional arguments
+  for (size_t i = 0; i < args.pos().size(); ++i) {
+    auto const &param = params[i];
+    matched_params.append(param.name, args[i], param.flags);
+  }
+
+  for (size_t i = args.pos().size(); i < params.size(); ++i) {
+    auto const &param = params[i];
+    DEBUG_LOG("match")
+    ("Matching param in position ", i, "(name = ", param.name, ")");
+    if (auto *result = args.at_or_null(param.name)) {
+      matched_params.append(param.name, *result, param.flags);
+    } else {
+      // No argument provided by that name? This could be because we have
+      // default parameters or an empty variadic pack.
+      // TODO: Handle variadic packs.
+      if (param.flags & core::HAS_DEFAULT) {
+        matched_params.append(param);
+      } else {
+        return Compiler::CallError::MissingNonDefaultableArgument{
+            .name = param.name,
+        };
+      }
+    }
+  }
+  return matched_params;
+}
+
+
 // TODO: Return more information than just "did this fail."
-static bool ExtractParams(
+std::optional<Compiler::CallError::ErrorReason> ExtractParams(
     type::Callable const *callable, core::FnArgs<type::QualType> const &args,
     std::vector<std::pair<type::Callable const *, core::Params<type::QualType>>>
         &overload_params) {
   if (auto const *f = callable->if_as<type::Function>()) {
-    auto params = MatchArgsToParams(f->params(), args);
-    if (params) {
-      overload_params.emplace_back(f, *std::move(params));
+    auto result = MatchArgumentsToParameters(f->params(), args);
+    if (auto *params = std::get_if<core::Params<type::QualType>>(&result)) {
+      overload_params.emplace_back(f, std::move(*params));
     } else {
-      return false;
+      return std::get<Compiler::CallError::ErrorReason>(std::move(result));
     }
 
   } else if (auto const *os = callable->if_as<type::OverloadSet>()) {
     for (auto const *overload : os->members()) {
-      if (not ExtractParams(overload, args, overload_params)) { return false; }
+      auto maybe_error = ExtractParams(overload, args, overload_params);
+      if (maybe_error.has_value()) {
+        // TODO: Show errors.
+        // error.reasons.emplace(overload, *std::move(maybe_error));
+        continue;
+      }
     }
+    if (overload_params.empty()) { return std::nullopt; }
   } else if (auto const *gf = callable->if_as<type::GenericFunction>()) {
     NOT_YET(*gf);
   } else {
     UNREACHABLE();
   }
-  return true;
+  return std::nullopt;
 }
+
+}  // namespace
 
 std::pair<type::QualType,
           absl::flat_hash_map<ast::Expression const *, type::Callable const *>>
@@ -152,8 +208,7 @@ Compiler::VerifyCallee(ast::Expression const *callee,
 // TODO: Build a data structure that holds information about which overloads did
 // not match and why, as well as which expanded argument sets were not covered
 // by the parameters.
-base::expected<type::QualType, std::vector<core::FnArgs<type::QualType>>>
-Compiler::VerifyCall(
+base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
     absl::flat_hash_map<ast::Expression const *, type::Callable const *> const
         &overload_map,
     core::FnArgs<type::Typed<ir::Value>> const &args) {
@@ -164,20 +219,19 @@ Compiler::VerifyCall(
                : type::QualType::Constant(typed_value.type());
   });
 
-  std::vector<core::FnArgs<type::QualType>> arg_fails;
-
+  // TODO: Expansion is relevant too.
+  CallError errors;
   std::vector<std::vector<type::Type const *>> return_types;
   for (auto const &expansion : ExpandedFnArgs(args_qt)) {
-    DEBUG_LOG()("Expansion!", overload_map.size());
     for (auto const &[callee, callable_type] : overload_map) {
-      DEBUG_LOG()(*callable_type);
       std::vector<
           std::pair<type::Callable const *, core::Params<type::QualType>>>
           overload_params;
-      if (not ExtractParams(callable_type, args_qt, overload_params)) {
-        return std::vector<core::FnArgs<type::QualType>>{};
+      auto maybe_error = ExtractParams(callable_type, args_qt, overload_params);
+      if (maybe_error.has_value()) {
+        errors.reasons.emplace(callee, std::move(*maybe_error));
+        return errors;
       }
-      DEBUG_LOG()(overload_params);
 
       for (auto const &[callable_type, param] : overload_params) {
         // TODO: Assuming this is unambiguously callable is a bit of a stretch.
@@ -190,8 +244,7 @@ Compiler::VerifyCall(
         }
       }
 
-      arg_fails.push_back(args_qt);
-      return arg_fails;
+      return errors;
     next_expansion:;
     }
   }
