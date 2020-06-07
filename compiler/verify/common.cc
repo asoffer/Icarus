@@ -111,13 +111,10 @@ type::QualType Compiler::VerifyBinaryOverload(std::string_view symbol,
 
 namespace {
 
-using CallMatchResult = std::variant<core::Params<type::QualType>,
-                                     Compiler::CallError::ErrorReason>;
-
 // Determines which arguments are passed to which parameters. No type-checking
 // is done in this phase. Matching arguments to parameters can be done, even on
 // generics without any type-checking.
-CallMatchResult MatchArgumentsToParameters(
+std::optional<Compiler::CallError::ErrorReason> MatchArgumentsToParameters(
     core::Params<type::QualType> const &params,
     core::FnArgs<type::QualType> const &args) {
   if (args.size() > params.size()) {
@@ -127,72 +124,52 @@ CallMatchResult MatchArgumentsToParameters(
     };
   }
 
-  core::Params<type::QualType> matched_params;
-  // Match positional arguments
-  for (size_t i = 0; i < args.pos().size(); ++i) {
-    auto const &param = params[i];
-    matched_params.append(param.name, args[i], param.flags);
-  }
-
   absl::flat_hash_set<std::string> missing_non_defaultable;
   for (size_t i = args.pos().size(); i < params.size(); ++i) {
     auto const &param = params[i];
     DEBUG_LOG("match")
     ("Matching param in position ", i, "(name = ", param.name, ")");
-    if (auto *result = args.at_or_null(param.name)) {
-      matched_params.append(param.name, *result, param.flags);
-    } else {
-      // No argument provided by that name? This could be because we have
-      // default parameters or an empty variadic pack.
-      // TODO: Handle variadic packs.
-      if (param.flags & core::HAS_DEFAULT) {
-        matched_params.append(param);
-      } else {
-        missing_non_defaultable.insert(param.name);
-      }
+    if (args.at_or_null(param.name)) { continue; }
+
+    // No argument provided by that name? This could be because we have
+    // default parameters or an empty variadic pack.
+    // TODO: Handle variadic packs.
+    if (not(param.flags & core::HAS_DEFAULT)) {
+      missing_non_defaultable.insert(param.name);
     }
   }
-  if (not missing_non_defaultable.empty()) {
-    return Compiler::CallError::MissingNonDefaultableArguments{
-        .names = std::move(missing_non_defaultable),
-    };
-  } else {
-    return matched_params;
-  }
+
+  if (missing_non_defaultable.empty()) { return std::nullopt; }
+
+  return Compiler::CallError::MissingNonDefaultableArguments{
+      .names = std::move(missing_non_defaultable),
+  };
 }
 
-
 // TODO: Return more information than just "did this fail."
-std::optional<Compiler::CallError> ExtractParams(
+void ExtractParams(
     type::Callable const *callable, core::FnArgs<type::QualType> const &args,
     std::vector<std::pair<type::Callable const *, core::Params<type::QualType>>>
-        &overload_params) {
+        &overload_params,
+    Compiler::CallError &errors) {
   Compiler::CallError error;
   if (auto const *f = callable->if_as<type::Function>()) {
-    auto result = MatchArgumentsToParameters(f->params(), args);
-    if (auto *params = std::get_if<core::Params<type::QualType>>(&result)) {
-      overload_params.emplace_back(f, std::move(*params));
+    if (auto error_reason = MatchArgumentsToParameters(f->params(), args)) {
+      errors.reasons.emplace(f, *std::move(error_reason));
+      return;
     } else {
-      error.reasons.emplace(
-          callable,
-          std::get<Compiler::CallError::ErrorReason>(std::move(result)));
-      return error;
+      overload_params.emplace_back(f, f->params());
     }
-
   } else if (auto const *os = callable->if_as<type::OverloadSet>()) {
     for (auto const *overload : os->members()) {
-      auto maybe_error = ExtractParams(overload, args, overload_params);
-      if (maybe_error.has_value()) {
-        error.reasons.emplace(overload, *std::move(maybe_error));
-      }
+      ExtractParams(overload, args, overload_params, errors);
     }
-    if (overload_params.empty()) { return error; }
+    if (overload_params.empty()) { return; }
   } else if (auto const *gf = callable->if_as<type::GenericFunction>()) {
     NOT_YET(*gf);
   } else {
     UNREACHABLE();
   }
-  return std::nullopt;
 }
 
 }  // namespace
@@ -226,31 +203,57 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
                : type::QualType::Constant(typed_value.type());
   });
 
-  // TODO: Expansion is relevant too.
   CallError errors;
+  std::vector<std::pair<type::Callable const *, core::Params<type::QualType>>>
+      overload_params;
+  for (auto const &[callee, callable_type] : overload_map) {
+    ExtractParams(callable_type, args_qt, overload_params, errors);
+  }
+
+  // TODO: Expansion is relevant too.
   std::vector<std::vector<type::Type const *>> return_types;
   for (auto const &expansion : ExpandedFnArgs(args_qt)) {
-    for (auto const &[callee, callable_type] : overload_map) {
-      std::vector<
-          std::pair<type::Callable const *, core::Params<type::QualType>>>
-          overload_params;
-      auto maybe_error = ExtractParams(callable_type, args_qt, overload_params);
-      if (maybe_error.has_value()) { return *maybe_error; }
+    for (auto const &[callable_type, params] : overload_params) {
+      // TODO: Assuming this is unambiguously callable is a bit of a stretch.
 
-      for (auto const &[callable_type, param] : overload_params) {
-        // TODO: Assuming this is unambiguously callable is a bit of a stretch.
-        if (core::IsCallable(core::ParamsRef(param), expansion,
-                             [](type::Type const *arg, type::QualType param) {
-                               return type::CanCast(arg, param.type());
-                             })) {
-          return_types.push_back(callable_type->return_types(args));
-          goto next_expansion;
+      // TODO: `core::IsCallable` already does this but doesn't give us access
+      // to writing errors. Rewriting it here and then we'll look at how to
+      // combine it later.
+      for (size_t i = 0; i < expansion.pos().size(); ++i) {
+        if (not type::CanCast(expansion[i], params[i].value.type())) {
+          // TODO: Currently as soon as we find an error with a call we move on.
+          // It'd be nice to extract all the error information for each.
+          errors.reasons.emplace(callable_type,
+                                 Compiler::CallError::TypeMismatch{
+                                     .parameter     = i,
+                                     .argument_type = expansion[i],
+                                 });
+          goto next_overload;
         }
       }
 
-      return errors;
-    next_expansion:;
+      // Note: Missing/defaultable has already been handled.
+      for (size_t i = expansion.pos().size(); i < params.size(); ++i) {
+        auto const &param = params[i];
+        if (not type::CanCast(expansion[param.name], param.value.type())) {
+          // TODO: Currently as soon as we find an error with a call we move on.
+          // It'd be nice to extract all the error information for each.
+          errors.reasons.emplace(callable_type,
+                                 Compiler::CallError::TypeMismatch{
+                                     .parameter     = param.name,
+                                     .argument_type = expansion[param.name],
+                                 });
+          goto next_overload;
+        }
+      }
+
+      return_types.push_back(callable_type->return_types(args));
+      goto next_expansion;
+    next_overload:;
     }
+
+    return errors;
+  next_expansion:;
   }
 
   return type::QualType(type::MultiVar(return_types),

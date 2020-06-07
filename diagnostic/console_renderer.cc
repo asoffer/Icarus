@@ -134,7 +134,7 @@ void ConsoleRenderer::Add(frontend::Source const *source, Category cat,
       std::fputs(component.c_str(), out_);
     } else if constexpr (std::is_same_v<T, List>) {
       for (std::string const &item : component.items()) {
-        absl::FPrintF(out_, "  * %s", item);
+        absl::FPrintF(out_, "  * %s\n", item);
       }
     } else if constexpr (std::is_same_v<T, SourceQuote>) {
       WriteSourceQuote(source, component);

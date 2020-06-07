@@ -50,19 +50,18 @@ struct UncallableWithArguments {
     for (auto const &type_and_reason : error.reasons) {
       std::visit(
           [&](auto const &err) {
+          using call_error = Compiler::CallError;
             auto const &[callable_type, reason] = type_and_reason;
             static constexpr auto type =
                 base::meta<std::decay_t<decltype(err)>>;
-            if constexpr (type ==
-                          base::meta<Compiler::CallError::TooManyArguments>) {
+            if constexpr (type == base::meta<call_error::TooManyArguments>) {
               items.push_back(absl::StrFormat(
                   "%s -- Has %d parameters, but %d arguments provided.",
                   callable_type->to_string(), err.max_num_accepted,
                   err.num_provided));
-            } else if constexpr (type ==
-                                 base::meta<
-                                     Compiler::CallError::
-                                         MissingNonDefaultableArguments>) {
+            } else if constexpr (
+                type ==
+                base::meta<call_error::MissingNonDefaultableArguments>) {
               std::vector<std::string> names(err.names.begin(),
                                              err.names.end());
               std::sort(names.begin(), names.end());
@@ -71,6 +70,20 @@ struct UncallableWithArguments {
                   " -- The following parameters do not have default arguments "
                   "and are not provided at the call-site: ",
                   absl::StrJoin(names, ", ")));
+            } else if constexpr (type == base::meta<call_error::TypeMismatch>) {
+              std::string param_str;
+              if (auto const *param_as_str =
+                      std::get_if<std::string>(&err.parameter)) {
+                param_str = absl::StrCat("named `", *param_as_str, "`");
+              } else {
+                param_str =
+                    absl::StrCat("at index ", std::get<size_t>(err.parameter));
+              }
+
+              items.push_back(absl::StrFormat(
+                  "%s -- Parameter %s cannot accept an argument of type `%s`",
+                  callable_type->to_string(), param_str,
+                  err.argument_type->to_string()));
             } else {
               // TODO: Determine how deeply to dig into this error message.
               items.push_back(absl::StrCat(callable_type->to_string(), " -- ", "TODO"));

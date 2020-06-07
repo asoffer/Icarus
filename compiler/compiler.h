@@ -428,8 +428,14 @@ struct Compiler
       absl::flat_hash_set<std::string> names;
     };
 
+    struct TypeMismatch {
+      std::variant<std::string, size_t> parameter;
+      type::Type const *argument_type;
+    };
+
     using ErrorReason =
-        std::variant<TooManyArguments, MissingNonDefaultableArguments, CallError>;
+        std::variant<TooManyArguments, MissingNonDefaultableArguments,
+                     TypeMismatch, CallError>;
 
     // TODO: It might be better to track back to the definition, but for now all
     // we have is type information.
