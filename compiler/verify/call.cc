@@ -1,6 +1,9 @@
 #include <string_view>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/str_format.h"
+#include "absl/strings/str_join.h"
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "diagnostic/errors.h"
@@ -41,15 +44,50 @@ struct UncallableExpression {
 struct UncallableWithArguments {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "uncallable-with-arguments";
-
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    std::vector<std::string> items;
+    items.reserve(error.reasons.size());
+    for (auto const &type_and_reason : error.reasons) {
+      std::visit(
+          [&](auto const &err) {
+            auto const &[callable_type, reason] = type_and_reason;
+            static constexpr auto type =
+                base::meta<std::decay_t<decltype(err)>>;
+            if constexpr (type ==
+                          base::meta<Compiler::CallError::TooManyArguments>) {
+              items.push_back(absl::StrFormat(
+                  "%s -- Has %d parameters, but %d arguments provided.",
+                  callable_type->to_string(), err.max_num_accepted,
+                  err.num_provided));
+            } else if constexpr (type ==
+                                 base::meta<
+                                     Compiler::CallError::
+                                         MissingNonDefaultableArguments>) {
+              std::vector<std::string> names(err.names.begin(),
+                                             err.names.end());
+              std::sort(names.begin(), names.end());
+              items.push_back(absl::StrCat(
+                  callable_type->to_string(),
+                  " -- The following parameters do not have default arguments "
+                  "and are not provided at the call-site: ",
+                  absl::StrJoin(names, ", ")));
+            } else {
+              // TODO: Determine how deeply to dig into this error message.
+              items.push_back(absl::StrCat(callable_type->to_string(), " -- ", "TODO"));
+            }
+          },
+          type_and_reason.second);
+    }
+
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
             "Expression cannot be called with the given arguments."),
+        diagnostic::List(std::move(items)),
         diagnostic::SourceQuote(src).Highlighted(
             range, diagnostic::Style::ErrorText()));
   }
 
+  Compiler::CallError error;
   frontend::SourceRange range;
 };
 
@@ -254,10 +292,9 @@ type::QualType Compiler::VerifyType(ast::Call const *node) {
     ("Callee's (", node->callee()->DebugString(), ") qual-type: ", callee_qt);
     auto result = VerifyCall(overload_map, arg_vals);
     if (not result) {
-      auto call_error = std::move(result).error();
-      DEBUG_LOG("Call.VerifyType")(call_error.reasons);
       diag().Consume(UncallableWithArguments{
-          .range = node->range(),
+          .error = std::move(result).error(),
+          .range = node->callee()->range(),
       });
       return type::QualType::Error();
     }

@@ -424,14 +424,16 @@ struct Compiler
       size_t max_num_accepted;
     };
 
-    struct MissingNonDefaultableArgument {
-      std::string name;
+    struct MissingNonDefaultableArguments {
+      absl::flat_hash_set<std::string> names;
     };
 
     using ErrorReason =
-        std::variant<TooManyArguments, MissingNonDefaultableArgument, CallError>;
+        std::variant<TooManyArguments, MissingNonDefaultableArguments, CallError>;
 
-    absl::flat_hash_map<ast::Expression const *, ErrorReason> reasons;
+    // TODO: It might be better to track back to the definition, but for now all
+    // we have is type information.
+    absl::flat_hash_map<type::Callable const *, ErrorReason> reasons;
   };
 
  private:

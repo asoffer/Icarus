@@ -134,6 +134,7 @@ CallMatchResult MatchArgumentsToParameters(
     matched_params.append(param.name, args[i], param.flags);
   }
 
+  absl::flat_hash_set<std::string> missing_non_defaultable;
   for (size_t i = args.pos().size(); i < params.size(); ++i) {
     auto const &param = params[i];
     DEBUG_LOG("match")
@@ -147,39 +148,45 @@ CallMatchResult MatchArgumentsToParameters(
       if (param.flags & core::HAS_DEFAULT) {
         matched_params.append(param);
       } else {
-        return Compiler::CallError::MissingNonDefaultableArgument{
-            .name = param.name,
-        };
+        missing_non_defaultable.insert(param.name);
       }
     }
   }
-  return matched_params;
+  if (not missing_non_defaultable.empty()) {
+    return Compiler::CallError::MissingNonDefaultableArguments{
+        .names = std::move(missing_non_defaultable),
+    };
+  } else {
+    return matched_params;
+  }
 }
 
 
 // TODO: Return more information than just "did this fail."
-std::optional<Compiler::CallError::ErrorReason> ExtractParams(
+std::optional<Compiler::CallError> ExtractParams(
     type::Callable const *callable, core::FnArgs<type::QualType> const &args,
     std::vector<std::pair<type::Callable const *, core::Params<type::QualType>>>
         &overload_params) {
+  Compiler::CallError error;
   if (auto const *f = callable->if_as<type::Function>()) {
     auto result = MatchArgumentsToParameters(f->params(), args);
     if (auto *params = std::get_if<core::Params<type::QualType>>(&result)) {
       overload_params.emplace_back(f, std::move(*params));
     } else {
-      return std::get<Compiler::CallError::ErrorReason>(std::move(result));
+      error.reasons.emplace(
+          callable,
+          std::get<Compiler::CallError::ErrorReason>(std::move(result)));
+      return error;
     }
 
   } else if (auto const *os = callable->if_as<type::OverloadSet>()) {
     for (auto const *overload : os->members()) {
       auto maybe_error = ExtractParams(overload, args, overload_params);
       if (maybe_error.has_value()) {
-        // TODO: Show errors.
-        // error.reasons.emplace(overload, *std::move(maybe_error));
-        continue;
+        error.reasons.emplace(overload, *std::move(maybe_error));
       }
     }
-    if (overload_params.empty()) { return std::nullopt; }
+    if (overload_params.empty()) { return error; }
   } else if (auto const *gf = callable->if_as<type::GenericFunction>()) {
     NOT_YET(*gf);
   } else {
@@ -228,10 +235,7 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
           std::pair<type::Callable const *, core::Params<type::QualType>>>
           overload_params;
       auto maybe_error = ExtractParams(callable_type, args_qt, overload_params);
-      if (maybe_error.has_value()) {
-        errors.reasons.emplace(callee, std::move(*maybe_error));
-        return errors;
-      }
+      if (maybe_error.has_value()) { return *maybe_error; }
 
       for (auto const &[callable_type, param] : overload_params) {
         // TODO: Assuming this is unambiguously callable is a bit of a stretch.

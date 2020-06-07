@@ -132,6 +132,8 @@ cc_library(
         "//type:generic_struct",
         "//type:qual_type",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
     ],
 )
 

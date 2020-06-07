@@ -28,7 +28,7 @@ void Function::WriteTo(std::string *result) const {
     result->append(sep);
     if (not param.name.empty()) {
       absl::StrAppend(result, param.name,
-                      param.value.constant() ? ": " : ":: ");
+                      param.value.constant() ? " :: " : ": ");
     }
     param.value.type()->WriteTo(result);
     sep = ", ";
