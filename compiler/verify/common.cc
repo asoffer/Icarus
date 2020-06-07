@@ -111,12 +111,15 @@ type::QualType Compiler::VerifyBinaryOverload(std::string_view symbol,
 
 namespace {
 
+// TODO: Extract just the parameter names.
+
 // Determines which arguments are passed to which parameters. No type-checking
 // is done in this phase. Matching arguments to parameters can be done, even on
 // generics without any type-checking.
+template <typename Ignored>
 std::optional<Compiler::CallError::ErrorReason> MatchArgumentsToParameters(
-    core::Params<type::QualType> const &params,
-    core::FnArgs<type::QualType> const &args) {
+    core::Params<Ignored> const &params,
+    core::FnArgs<type::Typed<ir::Value>> const &args) {
   if (args.size() > params.size()) {
     return Compiler::CallError::TooManyArguments{
         .num_provided     = args.size(),
@@ -163,7 +166,8 @@ std::optional<Compiler::CallError::ErrorReason> MatchArgumentsToParameters(
 
 // TODO: Return more information than just "did this fail."
 void ExtractParams(
-    type::Callable const *callable, core::FnArgs<type::QualType> const &args,
+    type::Callable const *callable,
+    core::FnArgs<type::Typed<ir::Value>> const &args,
     std::vector<std::pair<type::Callable const *, core::Params<type::QualType>>>
         &overload_params,
     Compiler::CallError &errors) {
@@ -181,7 +185,15 @@ void ExtractParams(
     }
     if (overload_params.empty()) { return; }
   } else if (auto const *gf = callable->if_as<type::GenericFunction>()) {
-    NOT_YET(*gf);
+    if (auto error_reason = MatchArgumentsToParameters(gf->params(), args)) {
+      errors.reasons.emplace(gf, *std::move(error_reason));
+      return;
+    } else {
+      // TODO: But this could fail and when it fails we want to capture failure
+      // reasons.
+      auto const *f = gf->concrete(args);
+      overload_params.emplace_back(f, f->params());
+    }
   } else {
     UNREACHABLE();
   }
@@ -211,22 +223,23 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
     absl::flat_hash_map<ast::Expression const *, type::Callable const *> const
         &overload_map,
     core::FnArgs<type::Typed<ir::Value>> const &args) {
+  CallError errors;
+  std::vector<std::pair<type::Callable const *, core::Params<type::QualType>>>
+      overload_params;
+
+  for (auto const &[callee, callable_type] : overload_map) {
+    ExtractParams(callable_type, args, overload_params, errors);
+  }
+
+  // TODO: Expansion is relevant too.
+  std::vector<std::vector<type::Type const *>> return_types;
+
   // TODO: Take a type::Typed<ir::Value> instead.
   auto args_qt = args.Transform([](auto const &typed_value) {
     return typed_value->empty()
                ? type::QualType::NonConstant(typed_value.type())
                : type::QualType::Constant(typed_value.type());
   });
-
-  CallError errors;
-  std::vector<std::pair<type::Callable const *, core::Params<type::QualType>>>
-      overload_params;
-  for (auto const &[callee, callable_type] : overload_map) {
-    ExtractParams(callable_type, args_qt, overload_params, errors);
-  }
-
-  // TODO: Expansion is relevant too.
-  std::vector<std::vector<type::Type const *>> return_types;
   for (auto const &expansion : ExpandedFnArgs(args_qt)) {
     for (auto const &[callable_type, params] : overload_params) {
       // TODO: Assuming this is unambiguously callable is a bit of a stretch.

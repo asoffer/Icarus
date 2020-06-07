@@ -15,10 +15,13 @@
 namespace type {
 
 struct GenericFunction : Callable {
+  struct EmptyStruct {};
+
   explicit GenericFunction(
+      core::Params<EmptyStruct> params,
       std::function<Function const *(core::FnArgs<Typed<ir::Value>> const &)>
           fn)
-      : gen_fn_(std::move(fn)) {}
+      : gen_fn_(std::move(fn)), params_(std::move(params)) {}
   ~GenericFunction() override {}
   void WriteTo(std::string *result) const override {
     result->append("generic");
@@ -31,6 +34,8 @@ struct GenericFunction : Callable {
   std::vector<type::Type const *> return_types(
       core::FnArgs<type::Typed<ir::Value>> const &args) const override;
 
+  core::Params<EmptyStruct> const &params() const { return params_; }
+
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -42,6 +47,9 @@ struct GenericFunction : Callable {
   // TODO: Eventually we will want a serializable version of this.
   std::function<Function const *(core::FnArgs<Typed<ir::Value>> const &)>
       gen_fn_;
+
+  // TODO: Shouldn't use space for the empty struct.
+  core::Params<EmptyStruct> params_;
 };
 
 }  // namespace type

@@ -497,6 +497,7 @@ Compiler::ComputeParamsFromArgs(
         } else if (auto const *a = args.at_or_null(dep_node.node()->id())) {
           arg_type = a->type();
         } else {
+          // TODO: What if this is a bug and you don't have an initial value?
           auto *init_val = ASSERT_NOT_NULL(dep_node.node()->init_val());
           arg_type       = VerifyType(init_val).type();
         }
@@ -624,8 +625,11 @@ type::QualType Compiler::VerifyType(ast::FunctionLiteral const *node) {
   };
 
   return data().set_qual_type(
-      node,
-      type::QualType::Constant(new type::GenericFunction(std::move(gen))));
+      node, type::QualType::Constant(new type::GenericFunction(
+                node->params().Transform([](auto const &p) {
+                  return type::GenericFunction::EmptyStruct{};
+                }),
+                std::move(gen))));
 }
 
 type::QualType Compiler::VerifyType(ast::FunctionType const *node) {
@@ -690,8 +694,11 @@ type::QualType Compiler::VerifyType(ast::ShortFunctionLiteral const *node) {
   };
 
   return data().set_qual_type(
-      node,
-      type::QualType::Constant(new type::GenericFunction(std::move(gen))));
+      node, type::QualType::Constant(new type::GenericFunction(
+                node->params().Transform([](auto const &p) {
+                  return type::GenericFunction::EmptyStruct{};
+                }),
+                std::move(gen))));
 }
 
 type::QualType Compiler::VerifyType(ast::Import const *node) {

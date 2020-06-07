@@ -454,6 +454,33 @@ INSTANTIATE_TEST_SUITE_P(
             .expr               = "f(n = 0)",
             .expected_qual_type = type::QualType::NonConstant(type::Int64),
         },
+        // Generic functions
+        TestCase{
+            .context            = "f ::= (x: $x) => x",
+            .expr               = "f(3)",
+            .expected_qual_type = type::QualType::NonConstant(type::Int64),
+        },
+        TestCase{
+            .context            = "f ::= (x: $x) => x",
+            .expr               = "f(true)",
+            .expected_qual_type = type::QualType::NonConstant(type::Bool),
+        },
+        TestCase{
+            .context              = "f ::= (x: $x) => x",
+            .expr                 = "f()",
+            .expected_diagnostics = UnorderedElementsAre(
+                Pair("type-error", "uncallable-with-arguments")),
+        },
+        TestCase{
+            .context            = "f ::= (x: $x = 0) => x",
+            .expr               = "f()",
+            .expected_qual_type = type::QualType::NonConstant(type::Int64),
+        },
+        TestCase{
+            .context            = "f ::= (x: $x = 0) => x",
+            .expr               = "f(true)",
+            .expected_qual_type = type::QualType::NonConstant(type::Bool),
+        },
     }));
 
 }  // namespace
