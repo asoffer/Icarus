@@ -433,9 +433,19 @@ struct Compiler
       type::Type const *argument_type;
     };
 
+    struct NoParameterNamed {
+      std::string name;
+    };
+
+    struct PositionalArgumentNamed {
+      size_t index;
+      std::string name;
+    };
+
     using ErrorReason =
         std::variant<TooManyArguments, MissingNonDefaultableArguments,
-                     TypeMismatch, CallError>;
+                     TypeMismatch, NoParameterNamed, PositionalArgumentNamed,
+                     CallError>;
 
     // TODO: It might be better to track back to the definition, but for now all
     // we have is type information.

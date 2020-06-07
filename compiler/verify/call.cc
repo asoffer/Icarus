@@ -84,6 +84,17 @@ struct UncallableWithArguments {
                   "%s -- Parameter %s cannot accept an argument of type `%s`",
                   callable_type->to_string(), param_str,
                   err.argument_type->to_string()));
+            } else if constexpr (type == base::meta<call_error::NoParameterNamed>) {
+              items.push_back(absl::StrFormat("%s -- No parameter named `%s`.",
+                                              callable_type->to_string(),
+                                              err.name));
+            } else if constexpr (type ==
+                                 base::meta<
+                                     call_error::PositionalArgumentNamed>) {
+              items.push_back(absl::StrFormat(
+                  "%s -- Named argument `%s` bound to the same parameter as "
+                  "the argument at index %d.",
+                  callable_type->to_string(), err.name, err.index));
             } else {
               // TODO: Determine how deeply to dig into this error message.
               items.push_back(absl::StrCat(callable_type->to_string(), " -- ", "TODO"));

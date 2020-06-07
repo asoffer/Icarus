@@ -125,6 +125,7 @@ std::optional<Compiler::CallError::ErrorReason> MatchArgumentsToParameters(
   }
 
   absl::flat_hash_set<std::string> missing_non_defaultable;
+
   for (size_t i = args.pos().size(); i < params.size(); ++i) {
     auto const &param = params[i];
     DEBUG_LOG("match")
@@ -139,11 +140,25 @@ std::optional<Compiler::CallError::ErrorReason> MatchArgumentsToParameters(
     }
   }
 
-  if (missing_non_defaultable.empty()) { return std::nullopt; }
+  // TODO: Instead of early exit get all relevant errors.
+  if (not missing_non_defaultable.empty()) {
+    return Compiler::CallError::MissingNonDefaultableArguments{
+        .names = std::move(missing_non_defaultable),
+    };
+  }
 
-  return Compiler::CallError::MissingNonDefaultableArguments{
-      .names = std::move(missing_non_defaultable),
-  };
+  for (auto const &[name, val] : args.named()) {
+    auto const *index = params.at_or_null(name);
+    if (not index) {
+      return Compiler::CallError::NoParameterNamed{.name = name};
+    } else if (*index < args.pos().size()) {
+      return Compiler::CallError::PositionalArgumentNamed{.index = *index,
+                                                          .name  = name};
+      // TODO: Index for argument is small!
+    }
+  }
+
+  return std::nullopt;
 }
 
 // TODO: Return more information than just "did this fail."
@@ -235,7 +250,13 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
       // Note: Missing/defaultable has already been handled.
       for (size_t i = expansion.pos().size(); i < params.size(); ++i) {
         auto const &param = params[i];
-        if (not type::CanCast(expansion[param.name], param.value.type())) {
+        auto const *arg = expansion.at_or_null(param.name);
+        // It's okay if this argument is missing. We've already checked that all
+        // required arguments (non-defaultable) are present, so this argument
+        // missing means this must be defaultable.
+        if (not arg) { continue; }
+
+        if (not type::CanCast(*arg, param.value.type())) {
           // TODO: Currently as soon as we find an error with a call we move on.
           // It'd be nice to extract all the error information for each.
           errors.reasons.emplace(callable_type,
