@@ -157,8 +157,10 @@ type::QualType Compiler::VerifyType(ast::ComparisonOperator const *node) {
         case frontend::Operator::Gt: token = ">"; break;
         default: UNREACHABLE(node->DebugString());
       }
-      auto result = VerifyBinaryOverload(token, node, lhs_qual_type.type(),
-                                         rhs_qual_type.type());
+      // TODO: Calling with constants?
+      auto result = VerifyBinaryOverload(
+          token, node, type::Typed(ir::Value(), lhs_qual_type.type()),
+          type::Typed(ir::Value(), rhs_qual_type.type()));
       qt.remove_constant();
 
       if (not result.ok()) {

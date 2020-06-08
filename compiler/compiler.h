@@ -414,8 +414,8 @@ struct Compiler
 
   type::QualType VerifyBinaryOverload(std::string_view symbol,
                                       ast::Expression const *node,
-                                      type::Type const *lhs_type,
-                                      type::Type const *rhs_type);
+                                      type::Typed<ir::Value> const &lhs,
+                                      type::Typed<ir::Value> const &rhs);
 
   // TODO: Figure out where to stick these.
   struct CallError {
@@ -460,7 +460,7 @@ struct Compiler
 
   type::QualType VerifyUnaryOverload(char const *symbol,
                                      ast::Expression const *node,
-                                     type::Type const *expr_type);
+                                     type::Typed<ir::Value> const &operand);
 
   base::expected<type::QualType, CallError> VerifyCall(
       absl::flat_hash_map<ast::Expression const *, type::Callable const *> const

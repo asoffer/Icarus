@@ -52,11 +52,10 @@ std::optional<core::FnArgs<type::Typed<ir::Value>>> Compiler::VerifyFnArgs(
   return arg_vals;
 }
 
-// TODO: Support calling with constants.
 // TODO: Replace `symbol` with an enum.
-type::QualType Compiler::VerifyUnaryOverload(char const *symbol,
-                                             ast::Expression const *node,
-                                             type::Type const *operand_type) {
+type::QualType Compiler::VerifyUnaryOverload(
+    char const *symbol, ast::Expression const *node,
+    type::Typed<ir::Value> const &operand) {
   absl::flat_hash_set<type::Callable const *> member_types;
 
   module::ForEachDeclTowardsRoot(
@@ -71,20 +70,17 @@ type::QualType Compiler::VerifyUnaryOverload(char const *symbol,
 
   if (member_types.empty()) { return type::QualType::Error(); }
   std::vector<type::Typed<ir::Value>> pos_args;
-  pos_args.emplace_back(ir::Value(), operand_type);
+  pos_args.emplace_back(operand);
   return type::QualType(type::MakeOverloadSet(std::move(member_types))
                             ->return_types(core::FnArgs<type::Typed<ir::Value>>(
                                 std::move(pos_args), {})),
                         type::Quals::Unqualified());
 }
 
-// TODO: Accept frontend::Operator rather than char const*.
-// TODO: Support calling with constants.
 // TODO: Replace `symbol` with an enum.
-type::QualType Compiler::VerifyBinaryOverload(std::string_view symbol,
-                                              ast::Expression const *node,
-                                              type::Type const *lhs_type,
-                                              type::Type const *rhs_type) {
+type::QualType Compiler::VerifyBinaryOverload(
+    std::string_view symbol, ast::Expression const *node,
+    type::Typed<ir::Value> const &lhs, type::Typed<ir::Value> const &rhs) {
   absl::flat_hash_set<type::Callable const *> member_types;
 
   module::ForEachDeclTowardsRoot(
@@ -99,8 +95,8 @@ type::QualType Compiler::VerifyBinaryOverload(std::string_view symbol,
 
   if (member_types.empty()) { return type::QualType::Error(); }
   std::vector<type::Typed<ir::Value>> pos_args;
-  pos_args.emplace_back(ir::Value(), lhs_type);
-  pos_args.emplace_back(ir::Value(), rhs_type);
+  pos_args.emplace_back(lhs);
+  pos_args.emplace_back(rhs);
   return data().set_qual_type(
       node,
       type::QualType(type::MakeOverloadSet(std::move(member_types))
@@ -110,8 +106,6 @@ type::QualType Compiler::VerifyBinaryOverload(std::string_view symbol,
 }
 
 namespace {
-
-// TODO: Extract just the parameter names.
 
 // Determines which arguments are passed to which parameters. No type-checking
 // is done in this phase. Matching arguments to parameters can be done, even on
@@ -157,14 +151,12 @@ std::optional<Compiler::CallError::ErrorReason> MatchArgumentsToParameters(
     } else if (*index < args.pos().size()) {
       return Compiler::CallError::PositionalArgumentNamed{.index = *index,
                                                           .name  = name};
-      // TODO: Index for argument is small!
     }
   }
 
   return std::nullopt;
 }
 
-// TODO: Return more information than just "did this fail."
 void ExtractParams(
     type::Callable const *callable,
     core::FnArgs<type::Typed<ir::Value>> const &args,
@@ -216,9 +208,6 @@ Compiler::VerifyCallee(ast::Expression const *callee,
   return return_type(qt, {{callee, &callable}});
 }
 
-// TODO: Build a data structure that holds information about which overloads did
-// not match and why, as well as which expanded argument sets were not covered
-// by the parameters.
 base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
     absl::flat_hash_map<ast::Expression const *, type::Callable const *> const
         &overload_map,

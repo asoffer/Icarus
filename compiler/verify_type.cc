@@ -358,9 +358,10 @@ type::QualType Compiler::VerifyType(ast::Cast const *node) {
   if (not maybe_type) { NOT_YET(); }
   auto const *t = *maybe_type;
   if (t->is<type::Struct>()) {
-    // TODO do you ever want to support overlaods that accepts constants?
+    // TODO: do you ever want to support overlaods that accepts constants?
     return data().set_qual_type(
-        node, VerifyUnaryOverload("as", node, expr_qual_type.type()));
+        node, VerifyUnaryOverload(
+                  "as", node, type::Typed(ir::Value(), expr_qual_type.type())));
   } else {
     if (not type::CanCast(expr_qual_type.type(), t)) {
       diag().Consume(diagnostic::InvalidCast{
