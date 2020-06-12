@@ -633,36 +633,6 @@ type::QualType Compiler::VerifyType(ast::FunctionLiteral const *node) {
                 std::move(gen))));
 }
 
-type::QualType Compiler::VerifyType(ast::FunctionType const *node) {
-  type::Type const *t = type::Type_;
-  type::Quals quals   = type::Quals::Const();
-
-  for (auto const *p : node->params()) {
-    auto qt = VerifyType(p);
-    quals &= qt.quals();
-    if (qt.type() != type::Type_) {
-      t = nullptr;
-      diag().Consume(diagnostic::NonTypeFunctionInput{
-          .range = p->range(),
-      });
-    }
-  }
-
-  for (auto const *p : node->outputs()) {
-    auto qt = VerifyType(p);
-    quals &= qt.quals();
-    if (qt.type() != type::Type_) {
-      t = nullptr;
-      diag().Consume(diagnostic::NonTypeFunctionInput{
-          .range = p->range(),
-      });
-    }
-  }
-
-  if (t == nullptr) { return type::QualType::Error(); }
-  return data().set_qual_type(node, type::QualType(type::Type_, quals));
-}
-
 type::QualType Compiler::VerifyType(ast::ShortFunctionLiteral const *node) {
   if (not node->is_generic()) {
     ASSIGN_OR(return type::QualType::Error(),  //

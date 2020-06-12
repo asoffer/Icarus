@@ -240,6 +240,27 @@ cc_test(
 )
 
 cc_library(
+    name = "function_type",
+    srcs = ["function_type.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+        "//type:qual_type",
+        "//type:typed_value",
+    ],
+)
+
+cc_test(
+    name = "function_type_test",
+    srcs = ["function_type_test.cc"],
+    deps = [
+        "//compiler",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "identifier",
     srcs = ["identifier.cc"],
     deps = [

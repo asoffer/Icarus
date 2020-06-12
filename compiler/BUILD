@@ -306,6 +306,7 @@ cc_library(
         "//compiler/verify:comparison_operator",
         "//compiler/verify:declaration",
         "//compiler/verify:designated_initializer",
+        "//compiler/verify:function_type",
         "//compiler/verify:identifier",
         "//compiler/verify:index",
         "//compiler/verify:struct_literal",

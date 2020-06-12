@@ -263,30 +263,6 @@ struct AndEqNeedsBoolOrFlags {
   frontend::SourceRange range;
 };
 
-struct NonTypeFunctionInput {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "non-type-function-output";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("The specified input type for a function must be a type."),
-        SourceQuote(src).Highlighted(range, Style{}));
-  }
-  frontend::SourceRange range;
-};
-
-struct NonTypeFunctionOutput {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "non-type-function-output";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("The specified return type for a function must be a type."),
-        SourceQuote(src).Highlighted(range, Style{}));
-  }
-  frontend::SourceRange range;
-};
-
 struct ReturnTypeMismatch {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "return-type-mismatch";
