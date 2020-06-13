@@ -151,10 +151,9 @@ struct UnprintableSourceCharacter {
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
-        Text("Uncountered unprintable character with integral value '%d' "
+        Text("Encountered unprintable character with integral value '%d' "
              "encountered in source.",
-             value),
-        SourceQuote(src).Highlighted(range, Style{}));
+             value));
   }
 
   int value;

@@ -44,9 +44,7 @@ int Compile(frontend::FileName const &file_name) {
     return 1;
   }
 
-  auto *src =
-      frontend::Source::Make<frontend::FileSource>(*std::move(maybe_file_src));
-
+  auto *src = &*maybe_file_src;
   diag = diagnostic::StreamingConsumer(stderr, src);
   compiler::ExecutableModule exec_mod;
   exec_mod.ProcessFromSource(src, diag);

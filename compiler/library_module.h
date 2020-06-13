@@ -72,10 +72,8 @@ LibraryModule *ImportLibraryModule(
 
     std::thread t(
         [mod = mod.get(), file_src = std::move(*maybe_file_src)]() mutable {
-          auto *src =
-              frontend::Source::Make<frontend::FileSource>(std::move(file_src));
-          diagnostic::StreamingConsumer diag(stderr, src);
-          mod->ProcessFromSource(src, diag);
+          diagnostic::StreamingConsumer diag(stderr, &file_src);
+          mod->ProcessFromSource(&file_src, diag);
           // TODO annoying we have to do these together. ProcessFromSource needs
           // to be split.
         });

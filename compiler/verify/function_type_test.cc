@@ -9,7 +9,6 @@ namespace {
 
 using ::testing::IsEmpty;
 using ::testing::Pair;
-using ::testing::SizeIs;
 using ::testing::UnorderedElementsAre;
 
 TEST(FunctionType, Empty) {

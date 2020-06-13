@@ -85,12 +85,12 @@ struct ReplModule : public CompiledModule {
 int Repl() {
   std::puts("Icarus REPL");
 
-  auto *repl = frontend::Source::Make<frontend::ReplSource>();
-  diagnostic::StreamingConsumer diag(stderr, repl);
+  frontend::ReplSource repl;
+  diagnostic::StreamingConsumer diag(stderr, &repl);
   ReplModule mod;
 
   // TODO Parse can fail.
-  while (true) { mod.ProcessFromSource(repl, diag); }
+  while (true) { mod.ProcessFromSource(&repl, diag); }
 }
 
 }  // namespace

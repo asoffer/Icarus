@@ -54,9 +54,12 @@ void ConsoleRenderer::WriteSourceQuote(frontend::Source const *source,
     return;
   }
 
-  auto highlight_iter                       = quote.highlights.begin();
-  bool inside_highlight                     = false;
-  frontend::SourceLoc next_highlight_change = highlight_iter->range.begin();
+  auto highlight_iter   = quote.highlights.begin();
+  bool inside_highlight = false;
+  std::optional<frontend::SourceLoc> next_highlight_change;
+  if (highlight_iter != quote.highlights.end()) {
+    next_highlight_change = highlight_iter->range.begin();
+  }
 
   int border_alignment = NumDigits(quote.lines.endpoints_.back() - 1) + 2;
   frontend::LineNum prev_line_num = (*quote.lines.begin()).begin();
@@ -95,28 +98,38 @@ void ConsoleRenderer::WriteSourceQuote(frontend::Source const *source,
 
       ASSIGN_OR(continue, auto line_str, LoadLine(source, line));
 
-      if (next_highlight_change.line_num > line) {
+      if (next_highlight_change and next_highlight_change->line_num > line) {
         absl::FPrintF(out_, "%s", line_str);
         continue;
       }
 
-      ASSERT(next_highlight_change.line_num == line);
+      if (next_highlight_change) {
+        ASSERT(next_highlight_change->line_num == line);
+      }
 
       frontend::Offset off{0};
-      while (next_highlight_change.line_num == line) {
+      while (next_highlight_change and next_highlight_change->line_num == line) {
         absl::FPrintF(
             out_, "%s",
             line_str.substr(off.value,
-                            next_highlight_change.offset.value - off.value));
+                            next_highlight_change->offset.value - off.value));
 
-        off = next_highlight_change.offset;
+        off = next_highlight_change->offset;
         if (inside_highlight) {
           inside_highlight = false;
           ++highlight_iter;
-          next_highlight_change = highlight_iter->range.begin();
+          if (highlight_iter == quote.highlights.end()) {
+            next_highlight_change = std::nullopt;
+          } else {
+            next_highlight_change = highlight_iter->range.begin();
+          }
         } else {
           inside_highlight      = true;
-          next_highlight_change = highlight_iter->range.end();
+          if (highlight_iter == quote.highlights.end()) {
+            next_highlight_change = std::nullopt;
+          } else {
+            next_highlight_change = highlight_iter->range.begin();
+          }
         }
         set_highlight();
       }

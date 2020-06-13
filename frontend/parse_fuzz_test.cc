@@ -58,7 +58,6 @@ extern "C" int LLVMFuzzerTestOneInput(uint8_t const* data, size_t length) {
     size += kTokens[val].size() + 1;
   }
   std::string string_source;
-  string_source.reserve(size);
 
   for (size_t i = 0; i < length; ++i) {
     uint8_t val = data[i];

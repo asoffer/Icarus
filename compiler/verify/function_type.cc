@@ -57,9 +57,7 @@ type::QualType Compiler::VerifyType(ast::FunctionType const *node) {
       t = nullptr;
       continue;
     }
-    std::cerr << quals << "\n";
     quals &= qt.quals();
-    std::cerr << quals << "\n";
     if (qt.type() != type::Type_) {
       t = nullptr;
       diag().Consume(NonTypeFunctionOutput{.range = p->range()});
