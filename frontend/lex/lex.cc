@@ -19,6 +19,106 @@
 
 namespace frontend {
 namespace {
+struct NumberParsingFailure {
+  static constexpr std::string_view kCategory = "lex";
+  static constexpr std::string_view kName     = "number-parsing-failure";
+
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+    std::string_view message;
+    switch (error) {
+      case NumberParsingError::kUnknownBase:
+        message = "Unknown base for numeric literal";
+        break;
+      case NumberParsingError::kTooManyDots:
+        message = "Too many `.` characters in numeric literal";
+        break;
+      case NumberParsingError::kNoDigits:
+        message = "No digits in numeric literal";
+        break;
+      case NumberParsingError::kInvalidDigit:
+        message = "Invalid digit encountered";
+        break;
+      case NumberParsingError::kTooLarge:
+        message = "Numeric literal is too large";
+        break;
+    }
+
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("%s", message),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  }
+
+  NumberParsingError error;
+  SourceRange range;
+};
+
+struct UnprintableSourceCharacter {
+  static constexpr std::string_view kCategory = "lex";
+  static constexpr std::string_view kName     = "unprintable-source-character";
+
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+    return diagnostic::DiagnosticMessage(diagnostic::Text(
+        "Encountered unprintable character with integral value '%d' "
+        "encountered in source.",
+        value));
+  }
+
+  int value;
+  SourceRange range;
+};
+
+struct InvalidSourceCharacter {
+  static constexpr std::string_view kCategory = "lex";
+  static constexpr std::string_view kName     = "invalid-source-character";
+
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Invalid character '%c' encountered in source.",
+                         value),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  }
+
+  char value;
+  SourceRange range;
+};
+
+struct StringLiteralParsingFailure {
+  static constexpr std::string_view kCategory = "lex";
+  static constexpr std::string_view kName = "string-literal-parsing-failure";
+
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+    // TODO: Implement
+    return diagnostic::DiagnosticMessage();
+  }
+
+  std::vector<StringLiteralError> errors;
+  SourceRange range;
+};
+
+struct HashtagParsingFailure {
+  static constexpr std::string_view kCategory = "lex";
+  static constexpr std::string_view kName     = "hashtag-parsing-failure";
+
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+    // TODO: Implement
+    return diagnostic::DiagnosticMessage();
+  }
+
+  SourceRange range;
+};
+
+struct NonWhitespaceAfterNewlineEscape {
+  static constexpr std::string_view kCategory = "lex";
+  static constexpr std::string_view kName =
+      "non-whitespace-after-newline-escape";
+
+  diagnostic::DiagnosticMessage ToMessage(Source const *src) const {
+    // TODO: Implement
+    return diagnostic::DiagnosticMessage();
+  }
+
+  SourceRange range;
+};
 
 constexpr inline bool IsLower(char c) { return ('a' <= c and c <= 'z'); }
 constexpr inline bool IsUpper(char c) { return ('A' <= c and c <= 'Z'); }
@@ -324,7 +424,7 @@ Lexeme NextNumber(SourceCursor *cursor, Source *src,
           // unlikely to be useful. The value may also be important if it's used
           // at compile-time (e.g., as an array extent). Generally proceeding
           // further if we can't lex the input is likely not going to be useful.
-          diag.Consume(diagnostic::NumberParsingFailure{
+          diag.Consume(NumberParsingFailure{
               .error = num,
               .range = span,
           });
@@ -363,7 +463,7 @@ restart:
   if (static_cast<uint8_t>(peek) >= 0x80 or not std::isprint(peek)) {
     auto loc = state->cursor_.loc();
     state->cursor_.remove_prefix(1);
-    state->diag_.Consume(diagnostic::UnprintableSourceCharacter{
+    state->diag_.Consume(UnprintableSourceCharacter{
         .value = peek,
         .range = SourceRange(loc, loc + Offset(1)),
     });
@@ -374,7 +474,7 @@ restart:
       auto [str, range, errors] =
           NextStringLiteral(&state->cursor_, state->src_);
       if (not errors.empty()) {
-        state->diag_.Consume(diagnostic::StringLiteralParsingFailure{
+        state->diag_.Consume(StringLiteralParsingFailure{
             .errors = std::move(errors),
             .range  = range,
         });
@@ -385,6 +485,10 @@ restart:
     } break;
     case '#': {
       state->cursor_.remove_prefix(1);
+      if (state->cursor_.view().empty()) {
+        state->diag_.Consume(HashtagParsingFailure{});
+        goto restart;
+      }
       if (state->peek() == '.') {
         state->cursor_.remove_prefix(1);
         auto word_cursor       = NextSimpleWord(&state->cursor_);
@@ -398,7 +502,7 @@ restart:
           return *std::move(result);
         }
 
-        state->diag_.Consume(diagnostic::HashtagParsingFailure{});
+        state->diag_.Consume(HashtagParsingFailure{});
         goto restart;
       }
     } break;
@@ -420,7 +524,7 @@ restart:
     case '?': {
       auto loc = state->cursor_.loc();
       state->cursor_.remove_prefix(1);
-      state->diag_.Consume(diagnostic::InvalidSourceCharacter{
+      state->diag_.Consume(InvalidSourceCharacter{
           .value = peek,
           .range = SourceRange(loc, loc + Offset(1)),
       });
@@ -435,8 +539,7 @@ restart:
       auto span = state->cursor_.remove_prefix(1).range();
       state->cursor_.ConsumeWhile(IsWhitespace);
       if (not state->cursor_.view().empty()) {
-        state->diag_.Consume(
-            diagnostic::NonWhitespaceAfterNewlineEscape{.range = span});
+        state->diag_.Consume(NonWhitespaceAfterNewlineEscape{.range = span});
       }
       goto restart;
     } break;
