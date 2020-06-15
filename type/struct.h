@@ -47,6 +47,8 @@ struct Struct : public Type {
   void SetDestructor(ir::Fn dtor);
   ir::Fn Destructor() const;
 
+  bool is_big() const override { return true; }
+
   ~Struct() override {}
   void WriteTo(std::string *buf) const override;
   core::Bytes bytes(core::Arch const &arch) const override;

@@ -93,7 +93,7 @@ static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
 
     size_t i           = 0;
     auto handle_result = [&](type::Type const *t, ir::Value const &v) {
-      DEBUG_LOG("MakeThunk")(*t);
+      DEBUG_LOG("MakeThunk")(*t, t->is_big());
       if (t->is_big()) {
         // TODO must `r` be holding a register?
         // TODO guaranteed move-elision

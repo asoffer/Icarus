@@ -790,11 +790,16 @@ ir::Value Compiler::EmitValue(ast::DesignatedInitializer const *node) {
   }
 
   for (auto const *assignment : node->assignments()) {
-    NOT_YET();
-    // auto *f            = struct_type.field(field);
-    // size_t field_index = struct_type.index(f->name);
-    // EmitMoveInit(expr.get(), builder().Field(alloc, &struct_type,
-    // field_index));
+    if (assignment->lhs().size() != 1) { NOT_YET(assignment->lhs().size()); }
+    if (assignment->rhs().size() != 1) { NOT_YET(assignment->rhs().size()); }
+
+    auto const &id = assignment->lhs()[0]->as<ast::Identifier>();
+    auto const *f  = struct_type.field(id.token());
+    size_t field_index = struct_type.index(f->name);
+    EmitMoveInit(
+        type::Typed<ir::Value>(EmitValue(assignment->rhs()[0]),
+                               data().qual_type(assignment->rhs()[0])->type()),
+        builder().Field(alloc, &struct_type, field_index));
   }
   return ir::Value(alloc);
 }

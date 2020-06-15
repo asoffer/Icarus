@@ -104,7 +104,21 @@ T ReadAndResolve(bool is_reg, base::untyped_buffer::const_iterator *iter,
 }
 
 void CallFn(ir::BuiltinFn fn, base::untyped_buffer_view arguments,
-            absl::Span<ir::Addr const> ret_slots, ExecutionContext *ctx) {
+            absl::Span<ir::Addr const> ret_slots, ExecutionContext *) {
+  switch (fn.which()) {
+    case ir::BuiltinFn::Which::Alignment: {
+      type::Type const *type = arguments.get<type::Type const *>(0);
+      *static_cast<uint64_t *>(ASSERT_NOT_NULL(ret_slots[0].heap())) =
+          type->alignment(kArchitecture).value();
+    } break;
+    case ir::BuiltinFn::Which::Bytes: {
+      type::Type const *type = arguments.get<type::Type const *>(0);
+      *static_cast<uint64_t *>(ASSERT_NOT_NULL(ret_slots[0].heap())) =
+          type->bytes(kArchitecture).value();
+    } break;
+    default: NOT_YET();
+  }
+
   // size_t i = 0;
   // for (auto const &result : fn.Call(arguments)) {
   //   ASSERT(ret_slot.kind() == ir::Addr::Kind::Heap);

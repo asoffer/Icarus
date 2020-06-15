@@ -1507,7 +1507,8 @@ static base::Global kRules = std::array{
     ParseRule(expr, {l_bracket, RESERVED, semicolon, RESERVED, r_bracket},
               ReservedKeywords<0, 1, 3>),
     // TODO: more specifically, the op_b needs to be a '.'
-    ParseRule(expr, {expr, op_b, braced_stmts}, BuildDesignatedInitializer),
+    ParseRule(expr, {expr | fn_call_expr, op_b, braced_stmts},
+              BuildDesignatedInitializer),
 
     ParseRule(expr, {fn_expr, braced_stmts}, BuildNormalFunctionLiteral),
     ParseRule(expr, {expr, fn_arrow, braced_stmts},

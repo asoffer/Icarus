@@ -76,6 +76,7 @@ bool Struct::contains_hashtag(ast::Hashtag needle) const {
 }
 
 core::Bytes Struct::bytes(core::Arch const &a) const {
+  ASSERT(complete_ == true);
   auto num_bytes = core::Bytes{0};
   for (auto const &field : fields_) {
     num_bytes += ASSERT_NOT_NULL(field.type)->bytes(a);
@@ -88,6 +89,7 @@ core::Bytes Struct::bytes(core::Arch const &a) const {
 }
 
 core::Alignment Struct::alignment(core::Arch const &a) const {
+  ASSERT(complete_ == true);
   auto align = core::Alignment{1};
   for (auto const &field : fields_) {
     align = std::max(align, field.type->alignment(a));

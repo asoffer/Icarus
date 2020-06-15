@@ -455,6 +455,16 @@ Compiler::ComputeParamsFromArgs(
   core::Params<std::pair<ir::Value, type::QualType>> parameters(
       node->params().size());
 
+  auto tostr = [](ir::Value v) {
+    if (auto **t = v.get_if<type::Type const *>()) {
+      return (*t)->to_string();
+    } else {
+      std::stringstream ss;
+      ss << v;
+      return ss.str();
+    }
+  };
+
   // TODO use the proper ordering.
   for (auto [index, dep_node] : ordered_nodes) {
     DEBUG_LOG("generic-fn")
@@ -479,15 +489,6 @@ Compiler::ComputeParamsFromArgs(
         // Erase values not known at compile-time.
         if (val.get_if<ir::Reg>()) { val = ir::Value(); }
 
-        auto tostr = [](ir::Value v) {
-          if (auto **t = v.get_if<type::Type const *>()) {
-            return (*t)->to_string();
-          } else {
-            std::stringstream ss;
-            ss << v;
-            return ss.str();
-          }
-        };
         DEBUG_LOG("generic-fn")("... ", tostr(val));
         data().set_arg_value(dep_node.node()->id(), val);
       } break;
@@ -543,7 +544,7 @@ Compiler::ComputeParamsFromArgs(
         type::Typed<ir::Value> arg;
         if (index < args.pos().size()) {
           arg = args[index];
-          DEBUG_LOG("generic-fn")(*arg, *arg.type());
+          DEBUG_LOG("generic-fn")(tostr(*arg), " ", *arg.type());
         } else if (auto const *a = args.at_or_null(dep_node.node()->id())) {
           arg = *a;
         } else {
@@ -818,6 +819,7 @@ type::QualType Compiler::VerifyType(
       DEBUG_LOG("struct")
       ("Allocating a new (parameterized) struct ", s, " for ", node);
       c.data().set_struct(node, s);
+      for (auto const &field : node->fields()) { c.VerifyType(&field); }
 
       // TODO: This should actually be behind a must_complete work queue item.
       ir::CompiledFn fn(type::Func({}, {}),
