@@ -52,12 +52,12 @@ int Compile(frontend::FileName const &file_name) {
   auto &main_fn = exec_mod.main();
 
   // TODO All the functions? In all the modules?
-  opt::RunAllOptimizations(main_fn);
-  main_fn->WriteByteCode();
+  opt::RunAllOptimizations(&main_fn);
+  main_fn.WriteByteCode();
   interpretter::ExecutionContext exec_ctx;
-  interpretter::Execute(
-      main_fn, base::untyped_buffer::MakeFull(main_fn->num_regs() * 16), {},
-      &exec_ctx);
+  interpretter::Execute(&main_fn,
+                        base::untyped_buffer::MakeFull(main_fn.num_regs() * 16),
+                        {}, &exec_ctx);
 
   return 0;
 }

@@ -51,14 +51,14 @@ int DumpControlFlowGraph(frontend::FileName const &file_name) {
   compiler::ExecutableModule exec_mod;
   exec_mod.ProcessFromSource(src, diag);
   if (diag.num_consumed() != 0) { return 1; }
-  auto *main_fn = ASSERT_NOT_NULL(exec_mod.main());
+  auto &main_fn = exec_mod.main();
 
-  opt::RunAllOptimizations(main_fn);
+  opt::RunAllOptimizations(&main_fn);
 
   std::string output =
       "digraph {\n"
       "  node [shape=record];\n";
-  for (auto const *block : main_fn->blocks()) {
+  for (auto const *block : main_fn.blocks()) {
     block->jump().Visit([&](auto j) {
       using type = std::decay_t<decltype(j)>;
       if constexpr (base::meta<type> == base::meta<ir::JumpCmd::RetJump>) {

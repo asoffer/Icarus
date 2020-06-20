@@ -1,4 +1,5 @@
 package(default_visibility = ["//visibility:public"])
+load("//:common.bzl", "LLVM_LINKOPTS")
 
 cc_library(
     name = "emit_function_call_infrastructure",
@@ -238,6 +239,7 @@ cc_binary(
 cc_binary(
     name = "compile",
     srcs = ["main.cc"],
+    linkopts = LLVM_LINKOPTS,
     deps = [
         ":compiler",
         ":executable_module",
