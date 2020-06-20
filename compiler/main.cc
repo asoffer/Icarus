@@ -7,6 +7,7 @@
 #include "absl/debugging/symbolize.h"
 #include "absl/strings/str_split.h"
 #include "absl/time/time.h"
+#include "backend/type.h"
 #include "base/expected.h"
 #include "base/log.h"
 #include "base/no_destructor.h"
@@ -57,6 +58,7 @@ struct InvalidTargetTriple {
 };
 
 void CompileToLLVM(ir::CompiledFn const& fn, llvm::Module& llvm_module) {
+  backend::ToLlvmType(fn.type(), llvm_module.getContext())->dump();
   // TODO: Implement me.
 }
 

@@ -1,0 +1,43 @@
+package(default_visibility = ["//visibility:public"])
+load("//:common.bzl", "LLVM_LINKOPTS")
+
+cc_library(
+    name = "type",
+    hdrs = ["type.h"],
+    srcs = ["type.cc"],
+    linkopts = LLVM_LINKOPTS,
+    deps = [
+        "//type:array",
+        "//type:enum",
+        "//type:flags",
+        "//type:function",
+        "//type:pointer",
+        "//type:primitive",
+        "//type:struct",
+        "//type:tuple",
+        "//type:type",
+        "//type:variant",
+        "//type:visitor",
+    ],
+)
+
+cc_test(
+    name = "type_test",
+    srcs = ["type_test.cc"],
+    linkopts = LLVM_LINKOPTS,
+    deps = [
+        ":type",
+        "//type:array",
+        "//type:enum",
+        "//type:flags",
+        "//type:function",
+        "//type:pointer",
+        "//type:primitive",
+        "//type:struct",
+        "//type:tuple",
+        "//type:type",
+        "//type:variant",
+        "//type:visitor",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

@@ -40,7 +40,9 @@ struct SingleVisitor<Ret(Args...)> : VisitorBase {
     }                                                                          \
   }                                                                            \
                                                                                \
-  virtual Ret Visit(subtype const *type, Args... args) {}
+  virtual Ret Visit(subtype const *type, Args... args) {                       \
+    UNREACHABLE(#subtype);                                                     \
+  }
 #include "type/type.xmacro.h"
 #undef ICARUS_TYPE_TYPE_X
 

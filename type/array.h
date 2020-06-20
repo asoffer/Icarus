@@ -31,6 +31,8 @@ struct Array : Type {
   constexpr size_t length() const { return len_; }
   constexpr type::Type const *data_type() const { return data_type_; }
 
+  bool is_big() const override { return true; }
+
   template <typename H>
   friend H AbslHashValue(H h, Array a) {
     return H::combine(std::move(h), a.length(), a.data_type());
