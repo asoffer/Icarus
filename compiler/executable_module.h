@@ -14,11 +14,8 @@ struct ExecutableModule : CompiledModule {
   explicit ExecutableModule() {}
   ~ExecutableModule() override {}
 
-  // TODO: This no longer needs to be a pointer?
-  ir::CompiledFn *main() { return &main_; }
-
-  // TODO: Remove this
-  void set_main(ir::CompiledFn *main_fn) {}
+  ir::CompiledFn &main() { return main_; }
+  ir::CompiledFn const &main() const { return main_; }
 
  protected:
   void ProcessNodes(base::PtrSpan<ast::Node const> nodes,
@@ -34,7 +31,7 @@ struct ExecutableModule : CompiledModule {
     c.VerifyAll(nodes);
     if (diag.num_consumed() > 0) { return; }
 
-    ProcessExecutableBody(&c, nodes, main());
+    ProcessExecutableBody(&c, nodes, &main());
   }
 
  private:

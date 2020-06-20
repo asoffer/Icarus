@@ -1,12 +1,10 @@
-#include <string>
-#include <string_view>
-#include <system_error>
-#include <utility>
+#include <dlfcn.h>
+#include <memory>
+#include <vector>
 
 #include "absl/debugging/failure_signal_handler.h"
 #include "absl/debugging/symbolize.h"
 #include "absl/strings/str_split.h"
-#include "absl/time/time.h"
 #include "base/expected.h"
 #include "base/log.h"
 #include "base/no_destructor.h"
@@ -22,16 +20,6 @@
 #include "init/cli.h"
 #include "interpretter/execute.h"
 #include "ir/compiled_fn.h"
-#include "llvm/ADT/Optional.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/LegacyPassManager.h"
-#include "llvm/IR/Module.h"
-#include "llvm/Support/FileSystem.h"
-#include "llvm/Support/TargetRegistry.h"
-#include "llvm/Support/TargetSelect.h"
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/Target/TargetMachine.h"
-#include "llvm/Target/TargetOptions.h"
 #include "module/module.h"
 #include "opt/opt.h"
 
@@ -44,69 +32,8 @@ extern bool optimize_ir;
 namespace compiler {
 namespace {
 
-struct InvalidTargetTriple {
-  static constexpr std::string_view kCategory = "todo";
-  static constexpr std::string_view kName     = "todo";
-
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Invalid target-triple. %s", message));
-  }
-
-  std::string message;
-};
-
-void CompileToLLVM(ir::CompiledFn const& fn, llvm::Module& llvm_module) {
-  // TODO: Implement me.
-}
-
-int CompileToObjectFile(ExecutableModule const &module,
-                        llvm::TargetMachine *target_machine) {
-  llvm::LLVMContext context;
-  llvm::Module llvm_module("module", context);
-  llvm_module.setDataLayout(target_machine->createDataLayout());
-
-  // TODO: Lift this to a flag.
-  char const filename[] = "a.out";
-  std::error_code error_code;
-  llvm::raw_fd_ostream destination(filename, error_code,
-                                   llvm::sys::fs::OF_None);
-  llvm::legacy::PassManager pass;
-  auto file_type = llvm::LLVMTargetMachine::CGFT_ObjectFile;
-
-  if (target_machine->addPassesToEmitFile(pass, destination, nullptr,
-                                          file_type)) {
-    // TODO: Add a diagnostic: The target machine cannot emit a file of this type.
-    std::cerr << "Failed";
-    return 1;
-  }
-
-  // TODO: Expand this. Start by just compiling main
-  CompileToLLVM(module.main(), llvm_module);
-
-  pass.run(llvm_module);
-
-  destination.flush();
-  return 0;
-}
-
 int Compile(frontend::FileName const &file_name) {
-  llvm::InitializeAllTargetInfos();
-  llvm::InitializeAllTargets();
-  llvm::InitializeAllTargetMCs();
-  llvm::InitializeAllAsmParsers();
-  llvm::InitializeAllAsmPrinters();
-
   diagnostic::StreamingConsumer diag(stderr, frontend::SharedSource());
-
-  auto target_triple = llvm::sys::getDefaultTargetTriple();
-  std::string error;
-  auto target = llvm::TargetRegistry::lookupTarget(target_triple, error);
-  if (not target) {
-    diag.Consume(InvalidTargetTriple{.message = std::move(error)});
-    return 1;
-  }
-
   auto canonical_file_name = frontend::CanonicalFileName::Make(file_name);
   auto maybe_file_src      = frontend::FileSource::Make(canonical_file_name);
   if (not maybe_file_src) {
@@ -117,20 +44,22 @@ int Compile(frontend::FileName const &file_name) {
     return 1;
   }
 
-  char const cpu[]      = "generic";
-  char const features[] = "";
-  llvm::TargetOptions target_options;
-  llvm::Optional<llvm::Reloc::Model> relocation_model;
-  llvm::TargetMachine *target_machine = target->createTargetMachine(
-      target_triple, cpu, features, target_options, relocation_model);
-
   auto *src = &*maybe_file_src;
   diag = diagnostic::StreamingConsumer(stderr, src);
   compiler::ExecutableModule exec_mod;
   exec_mod.ProcessFromSource(src, diag);
   if (diag.num_consumed() != 0) { return 1; }
+  auto &main_fn = exec_mod.main();
 
-  return CompileToObjectFile(exec_mod, target_machine);
+  // TODO All the functions? In all the modules?
+  opt::RunAllOptimizations(main_fn);
+  main_fn->WriteByteCode();
+  interpretter::ExecutionContext exec_ctx;
+  interpretter::Execute(
+      main_fn, base::untyped_buffer::MakeFull(main_fn->num_regs() * 16), {},
+      &exec_ctx);
+
+  return 0;
 }
 
 }  // namespace

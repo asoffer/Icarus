@@ -256,6 +256,32 @@ cc_binary(
         "@com_google_absl//absl/debugging:failure_signal_handler",
         "@com_google_absl//absl/debugging:symbolize",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
+    ],
+)
+
+cc_binary(
+    name = "interpret",
+    srcs = ["interpretter.cc"],
+    deps = [
+        ":compiler",
+        ":executable_module",
+        "//base:defer",
+        "//base:log",
+        "//base:no_destructor",
+        "//base:untyped_buffer",
+        "//diagnostic/consumer:streaming",
+        "//frontend/source:file_name",
+        "//frontend/source:shared",
+        "//init:cli",
+        "//interpretter:execute",
+        "//ir:compiled_fn",
+        "//module",
+        "//opt",
+        "@com_google_absl//absl/debugging:failure_signal_handler",
+        "@com_google_absl//absl/debugging:symbolize",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
     ],
 )
 
