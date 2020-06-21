@@ -32,10 +32,17 @@ struct CompiledModule : module::BasicModule {
   }
   DependentComputedData &data() { return data_; }
 
+  template <typename Fn>
+  void ForEachCompiledFn(Fn &&f) const {
+    for (auto const &native_fn : data_.fns_.fns) { f(native_fn.get()); }
+  }
+
  protected:
   // Child classes must call this when compilation of this module is complete
   // to notify other modules which may be waiting on data for their own
   // compilation.
+  //
+  // TODO: No one is calling this right now and that's problematic.
   void CompilationComplete() { notification_.Notify(); }
 
  private:

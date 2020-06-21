@@ -245,6 +245,7 @@ cc_binary(
         ":executable_module",
         "//base:defer",
         "//base:log",
+        "//backend:function",
         "//backend:type",
         "//base:no_destructor",
         "//base:untyped_buffer",

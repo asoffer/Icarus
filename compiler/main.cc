@@ -6,7 +6,7 @@
 #include "absl/debugging/failure_signal_handler.h"
 #include "absl/debugging/symbolize.h"
 #include "absl/strings/str_split.h"
-#include "absl/time/time.h"
+#include "backend/function.h"
 #include "backend/type.h"
 #include "base/expected.h"
 #include "base/log.h"
@@ -24,6 +24,8 @@
 #include "interpretter/execute.h"
 #include "ir/compiled_fn.h"
 #include "llvm/ADT/Optional.h"
+#include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Module.h"
@@ -57,11 +59,6 @@ struct InvalidTargetTriple {
   std::string message;
 };
 
-void CompileToLLVM(ir::CompiledFn const& fn, llvm::Module& llvm_module) {
-  backend::ToLlvmType(fn.type(), llvm_module.getContext())->dump();
-  // TODO: Implement me.
-}
-
 int CompileToObjectFile(ExecutableModule const &module,
                         llvm::TargetMachine *target_machine) {
   llvm::LLVMContext context;
@@ -78,62 +75,84 @@ int CompileToObjectFile(ExecutableModule const &module,
 
   if (target_machine->addPassesToEmitFile(pass, destination, nullptr,
                                           file_type)) {
-    // TODO: Add a diagnostic: The target machine cannot emit a file of this type.
+    // TODO: Add a diagnostic: The target machine cannot emit a file of this
+    // type.
     std::cerr << "Failed";
     return 1;
   }
 
-  // TODO: Expand this. Start by just compiling main
-  CompileToLLVM(module.main(), llvm_module);
+  // Declare all functions first so we can safely iterate through each and
+  // emit instructions. Doing so might end up calling functions, so first
+  // emiting declarations guarantees they're already available.
+  absl::flat_hash_map<ir::CompiledFn const *, llvm::Function *> llvm_fn_map;
+  module.ForEachCompiledFn([&](ir::CompiledFn const *fn) {
+    llvm_fn_map.emplace(fn,
+                        backend::DeclareLlvmFunction(*fn, module, llvm_module));
+  });
+  llvm_fn_map.emplace(
+      &module.main(),
+      llvm::Function::Create(
+          llvm::cast<llvm::FunctionType>(backend::ToLlvmType(
+              module.main().type(), llvm_module.getContext())),
+          llvm::Function::ExternalLinkage, "main", &llvm_module));
 
-  pass.run(llvm_module);
+  llvm::IRBuilder<> builder(context);
+  module.ForEachCompiledFn([&](ir::CompiledFn const *fn) {
+      backend::EmitLlvmFunction(builder, context, *fn, *llvm_fn_map.at(fn));
+  });
+  backend::EmitLlvmFunction(builder, context, module.main(),
+                            *llvm_fn_map.at(&module.main()));
 
-  destination.flush();
+  llvm_module.dump();
+
+  // pass.run(llvm_module);
+
+  // destination.flush();
   return 0;
-}
-
-int Compile(frontend::FileName const &file_name) {
-  llvm::InitializeAllTargetInfos();
-  llvm::InitializeAllTargets();
-  llvm::InitializeAllTargetMCs();
-  llvm::InitializeAllAsmParsers();
-  llvm::InitializeAllAsmPrinters();
-
-  diagnostic::StreamingConsumer diag(stderr, frontend::SharedSource());
-
-  auto target_triple = llvm::sys::getDefaultTargetTriple();
-  std::string error;
-  auto target = llvm::TargetRegistry::lookupTarget(target_triple, error);
-  if (not target) {
-    diag.Consume(InvalidTargetTriple{.message = std::move(error)});
-    return 1;
   }
 
-  auto canonical_file_name = frontend::CanonicalFileName::Make(file_name);
-  auto maybe_file_src      = frontend::FileSource::Make(canonical_file_name);
-  if (not maybe_file_src) {
-    diag.Consume(diagnostic::MissingModule{
-        .source    = canonical_file_name,
-        .requestor = "",
-    });
-    return 1;
+  int Compile(frontend::FileName const &file_name) {
+    llvm::InitializeAllTargetInfos();
+    llvm::InitializeAllTargets();
+    llvm::InitializeAllTargetMCs();
+    llvm::InitializeAllAsmParsers();
+    llvm::InitializeAllAsmPrinters();
+
+    diagnostic::StreamingConsumer diag(stderr, frontend::SharedSource());
+
+    auto target_triple = llvm::sys::getDefaultTargetTriple();
+    std::string error;
+    auto target = llvm::TargetRegistry::lookupTarget(target_triple, error);
+    if (not target) {
+      diag.Consume(InvalidTargetTriple{.message = std::move(error)});
+      return 1;
+    }
+
+    auto canonical_file_name = frontend::CanonicalFileName::Make(file_name);
+    auto maybe_file_src      = frontend::FileSource::Make(canonical_file_name);
+    if (not maybe_file_src) {
+      diag.Consume(diagnostic::MissingModule{
+          .source    = canonical_file_name,
+          .requestor = "",
+      });
+      return 1;
+    }
+
+    char const cpu[]      = "generic";
+    char const features[] = "";
+    llvm::TargetOptions target_options;
+    llvm::Optional<llvm::Reloc::Model> relocation_model;
+    llvm::TargetMachine *target_machine = target->createTargetMachine(
+        target_triple, cpu, features, target_options, relocation_model);
+
+    auto *src = &*maybe_file_src;
+    diag      = diagnostic::StreamingConsumer(stderr, src);
+    compiler::ExecutableModule exec_mod;
+    exec_mod.ProcessFromSource(src, diag);
+    if (diag.num_consumed() != 0) { return 1; }
+
+    return CompileToObjectFile(exec_mod, target_machine);
   }
-
-  char const cpu[]      = "generic";
-  char const features[] = "";
-  llvm::TargetOptions target_options;
-  llvm::Optional<llvm::Reloc::Model> relocation_model;
-  llvm::TargetMachine *target_machine = target->createTargetMachine(
-      target_triple, cpu, features, target_options, relocation_model);
-
-  auto *src = &*maybe_file_src;
-  diag = diagnostic::StreamingConsumer(stderr, src);
-  compiler::ExecutableModule exec_mod;
-  exec_mod.ProcessFromSource(src, diag);
-  if (diag.num_consumed() != 0) { return 1; }
-
-  return CompileToObjectFile(exec_mod, target_machine);
-}
 
 }  // namespace
 }  // namespace compiler
