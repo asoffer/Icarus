@@ -1,6 +1,5 @@
 #include "backend/type.h"
 
-#include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"
 #include "type/array.h"
@@ -76,27 +75,7 @@ struct LlvmTypeVisitor : type::Visitor<llvm::Type *()> {
   llvm::Type *Visit(type::Primitive const *t) override {
     llvm::Type *result;
     t->Apply([&result, this](auto metatype) {
-      if constexpr (metatype == base::meta<bool>) {
-        result = llvm::Type::getInt1Ty(context_);
-      } else if constexpr (metatype == base::meta<uint8_t> or
-                           metatype == base::meta<int8_t>) {
-        result = llvm::Type::getInt8Ty(context_);
-      } else if constexpr (metatype == base::meta<uint16_t> or
-                           metatype == base::meta<int16_t>) {
-        result = llvm::Type::getInt16Ty(context_);
-      } else if constexpr (metatype == base::meta<uint32_t> or
-                           metatype == base::meta<int32_t>) {
-        result = llvm::Type::getInt32Ty(context_);
-      } else if constexpr (metatype == base::meta<uint64_t> or
-                           metatype == base::meta<int64_t>) {
-        result = llvm::Type::getInt64Ty(context_);
-      } else if constexpr (metatype == base::meta<float>) {
-        result = llvm::Type::getFloatTy(context_);
-      } else if constexpr (metatype == base::meta<double>) {
-        result = llvm::Type::getDoubleTy(context_);
-      } else {
-        NOT_YET();
-      }
+      result = LlvmType<typename decltype(metatype)::type>(context_);
     });
     return result;
   }

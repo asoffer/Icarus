@@ -10,6 +10,7 @@ cc_library(
         ":type",
         "//compiler:module",
         "//ir:compiled_fn",
+        "//ir/instruction",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
@@ -20,6 +21,7 @@ cc_library(
     srcs = ["type.cc"],
     linkopts = LLVM_LINKOPTS,
     deps = [
+        "//base:meta",
         "//type:array",
         "//type:enum",
         "//type:flags",

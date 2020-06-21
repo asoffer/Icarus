@@ -57,6 +57,11 @@ struct PtrSpan {
   T *front() const { return ptr_->get(); }
   T *back() const { return ptr_[size_ - 1].get(); }
 
+  void remove_prefix(size_t num) {
+    ptr_ += num;
+    size_ -= num;
+  }
+
   std::unique_ptr<T> &get(size_t n) { return ptr_[n]; }
   std::unique_ptr<T> &get_front() { return get(0); }
   std::unique_ptr<T> &get_back() { return get(this->size() - 1); }
