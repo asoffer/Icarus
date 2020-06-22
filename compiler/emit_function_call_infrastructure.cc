@@ -92,7 +92,9 @@ void CompleteBody(Compiler *compiler, ast::ShortFunctionLiteral const *node,
     MakeAllStackAllocations(compiler, node->body_scope());
     auto vals = compiler->EmitValue(node->body());
     bldr.FinishTemporariesWith([compiler](type::Typed<ir::Reg> r) {
-      compiler->Visit(r.type(), r.get(), EmitDestroyTag{});
+      if (r.type()->HasDestructor()) {
+        compiler->Visit(r.type(), r.get(), EmitDestroyTag{});
+      }
     });
     bldr.SetRet(0, type::Typed<ir::Value>(std::move(vals), t->output()[0]));
     MakeAllDestructions(compiler, node->body_scope());

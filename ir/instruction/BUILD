@@ -10,6 +10,15 @@ cc_library(
     ]
 )
 
+cc_test(
+    name = "base_test",
+    srcs = ["base_test.cc"],
+    deps = [
+        ":base",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 cc_library(
     name = "jump",
     hdrs = ["jump.h"],
