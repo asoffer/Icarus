@@ -135,7 +135,7 @@ struct Inst {
   }
 
   // Returns `false` if this `Inst` is in it's moved-from state.
-  operator bool () const { return data_ == nullptr; }
+  operator bool() const { return data_ == nullptr; }
 
   template <typename T>
   T* if_as() {
@@ -155,9 +155,7 @@ struct Inst {
     }
   }
 
-  ~Inst() {
-    vtable_->destroy(data_);
-  }
+  ~Inst() { vtable_->destroy(data_); }
 
   void WriteByteCode(ByteCodeWriter* writer) const {
     vtable_->WriteByteCode(data_, writer);
@@ -179,8 +177,6 @@ struct Inst {
   void* data_;
   InstructionVTable* vtable_;
 };
-
-
 
 }  // namespace ir
 
