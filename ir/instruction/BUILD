@@ -5,7 +5,6 @@ cc_library(
     hdrs = ["base.h"],
     deps = [
         "//base:cast",
-        "//base:clone",
         "//base:untyped_buffer",
     ]
 )
@@ -78,7 +77,6 @@ cc_library(
         ":inliner",
         ":op_codes",
         "//ast/scope",
-        "//base:clone",
         "//ir:block_def",
         "//ir:out_params",
         "//ir:scope_def",

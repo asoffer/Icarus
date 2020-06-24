@@ -4,7 +4,6 @@
 #include <string>
 
 #include "base/cast.h"
-#include "base/clone.h"
 #include "base/untyped_buffer.h"
 
 // TODO rename this file so that when you forget that for dependency reasons you
@@ -14,23 +13,6 @@ namespace ir {
 
 struct InstructionInliner;
 struct ByteCodeWriter;
-
-// Instruction:
-// This is the base class for all instructions in the intermediate
-// representation.
-struct Instruction : base::Clone<Instruction, void>, base::Cast<Instruction> {
-  virtual ~Instruction() {}
-  virtual std::string to_string() const { return "[[unknown]]"; }
-
-  // Each instruction must specify how it should be serialized into byte-code.
-  // The byte-code is the format consumed by the interpretter.
-  virtual void WriteByteCode(ByteCodeWriter*) const = 0;
-
-  // Each instruction must specify how it should be inlined. Typically this
-  // involves updating register numbers as tracked by the `InstructionInliner`
-  // parameter.
-  virtual void Inline(InstructionInliner const&) = 0;
-};
 
 struct InstructionVTable {
   void* (*copy_construct)(void const*) = [](void const*) -> void* {
@@ -135,7 +117,7 @@ struct Inst {
   }
 
   // Returns `false` if this `Inst` is in it's moved-from state.
-  operator bool() const { return data_ == nullptr; }
+  operator bool() const { return data_ != nullptr; }
 
   template <typename T>
   T* if_as() {

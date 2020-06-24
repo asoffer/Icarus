@@ -8,17 +8,14 @@ std::ostream &operator<<(std::ostream &os, BasicBlock const &b) {
   os << " [with " << b.incoming().size() << " incoming]\n";
   for (auto const &inst : b.instructions_) {
     if (not inst) { continue; }
-    os << "    " << inst->to_string() << '\n';
+    os << "    " << inst.to_string() << '\n';
   }
   os << b.jump_.DebugString() << "\n";
   return os;
 }
 
-BasicBlock::BasicBlock(BasicBlock const &b) noexcept : jump_(b.jump_) {
-  instructions_.reserve(b.instructions_.size());
-  for (auto const &inst : b.instructions_) {
-    instructions_.push_back(inst->clone());
-  }
+BasicBlock::BasicBlock(BasicBlock const &b) noexcept
+    : instructions_(b.instructions_), jump_(b.jump_) {
   AddOutgoingJumps(jump_);
 }
 
@@ -32,12 +29,8 @@ BasicBlock &BasicBlock::operator=(BasicBlock const &b) noexcept {
   RemoveOutgoingJumps();
   AddOutgoingJumps(b.jump_);
 
-  instructions_.clear();
-  instructions_.reserve(b.instructions_.size());
-  for (auto const &inst : b.instructions_) {
-    instructions_.push_back(inst->clone());
-  }
-  jump_ = b.jump_;
+  instructions_ = b.instructions_;
+  jump_         = b.jump_;
   return *this;
 }
 
@@ -145,7 +138,7 @@ void BasicBlock::WriteByteCode(ByteCodeWriter *writer) {
   writer->StartBlock(this);
   for (auto const &inst : instructions_) {
     if (not inst) { continue; }
-    inst->WriteByteCode(writer);
+    inst.WriteByteCode(writer);
   }
   jump_.Visit([&](auto &j) {
     using type = std::decay_t<decltype(j)>;

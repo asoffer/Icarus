@@ -8,7 +8,6 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "ast/scope/scope.h"
-#include "base/clone.h"
 #include "base/meta.h"
 #include "ir/block_def.h"
 #include "ir/instruction/base.h"
@@ -59,13 +58,13 @@ void WriteBits(ByteCodeWriter* writer, absl::Span<T const> span,
 }  // namespace internal
 
 template <typename NumType>
-struct UnaryInstruction : base::Clone<UnaryInstruction<NumType>, Instruction> {
+struct UnaryInstruction {
   using type = NumType;
 
   explicit UnaryInstruction(RegOr<NumType> const& operand) : operand(operand) {}
-  ~UnaryInstruction() override {}
+  ~UnaryInstruction() {}
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     UNREACHABLE("Should call a child class");
   }
 
@@ -76,7 +75,7 @@ struct UnaryInstruction : base::Clone<UnaryInstruction<NumType>, Instruction> {
     writer->Write(result);
   };
 
-  void Inline(InstructionInliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) {
     inliner.Inline(operand);
     inliner.Inline(result);
   }
@@ -86,20 +85,19 @@ struct UnaryInstruction : base::Clone<UnaryInstruction<NumType>, Instruction> {
 };
 
 template <typename NumType>
-struct BinaryInstruction
-    : base::Clone<BinaryInstruction<NumType>, Instruction> {
+struct BinaryInstruction {
   using type = NumType;
 
   BinaryInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
       : lhs(lhs), rhs(rhs) {}
-  ~BinaryInstruction() override {}
+  ~BinaryInstruction() {}
 
   struct control_bits {
     uint8_t lhs_is_reg : 1;
     uint8_t rhs_is_reg : 1;
   };
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     UNREACHABLE("Should call a child class");
   }
 
@@ -115,7 +113,7 @@ struct BinaryInstruction
     writer->Write(result);
   }
 
-  void Inline(InstructionInliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) {
     inliner.Inline(lhs);
     inliner.Inline(rhs);
     inliner.Inline(result);
@@ -127,14 +125,14 @@ struct BinaryInstruction
 };
 
 template <typename T>
-struct VariadicInstruction : base::Clone<VariadicInstruction<T>, Instruction> {
+struct VariadicInstruction {
   using type = T;
 
   VariadicInstruction(std::vector<RegOr<T>> values)
       : values(std::move(values)) {}
-  ~VariadicInstruction() override {}
+  ~VariadicInstruction() {}
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     UNREACHABLE("Should call a child class");
   }
 
@@ -150,7 +148,7 @@ struct VariadicInstruction : base::Clone<VariadicInstruction<T>, Instruction> {
     writer->Write(result);
   };
 
-  void Inline(InstructionInliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) {
     inliner.Inline(values);
     inliner.Inline(result);
   }
@@ -160,239 +158,221 @@ struct VariadicInstruction : base::Clone<VariadicInstruction<T>, Instruction> {
 };
 
 template <typename NumType>
-struct AddInstruction
-    : base::Clone<AddInstruction<NumType>, BinaryInstruction<NumType>> {
+struct AddInstruction : BinaryInstruction<NumType> {
   static constexpr cmd_index_t kIndex = internal::kAddInstructionRange.start +
                                         internal::PrimitiveIndex<NumType>();
 
   AddInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
-      : base::Clone<AddInstruction<NumType>, BinaryInstruction<NumType>>(lhs,
-                                                                         rhs) {}
-  ~AddInstruction() override {}
+      : BinaryInstruction<NumType>(lhs, rhs) {}
+  ~AddInstruction() {}
 
   static NumType Apply(NumType lhs, NumType rhs) { return lhs + rhs; }
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat(internal::TypeToString<NumType>(), " ",
                         stringify(this->result), " = add ",
                         stringify(this->lhs), " ", stringify(this->rhs));
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     this->WriteByteCodeBinary(kIndex, writer);
   }
 };
 
 template <typename NumType>
-struct SubInstruction
-    : base::Clone<SubInstruction<NumType>, BinaryInstruction<NumType>> {
+struct SubInstruction : BinaryInstruction<NumType> {
   static constexpr cmd_index_t kIndex = internal::kSubInstructionRange.start +
                                         internal::PrimitiveIndex<NumType>();
 
   SubInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
-      : base::Clone<SubInstruction<NumType>, BinaryInstruction<NumType>>(lhs,
-                                                                         rhs) {}
-  ~SubInstruction() override {}
+      : BinaryInstruction<NumType>(lhs, rhs) {}
+  ~SubInstruction() {}
 
   static NumType Apply(NumType lhs, NumType rhs) { return lhs - rhs; }
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat(internal::TypeToString<NumType>(), " ",
                         stringify(this->result), " = sub ",
                         stringify(this->lhs), " ", stringify(this->rhs));
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     this->WriteByteCodeBinary(kIndex, writer);
   }
 };
 
 template <typename NumType>
-struct MulInstruction
-    : base::Clone<MulInstruction<NumType>, BinaryInstruction<NumType>> {
+struct MulInstruction : BinaryInstruction<NumType> {
   static constexpr cmd_index_t kIndex = internal::kMulInstructionRange.start +
                                         internal::PrimitiveIndex<NumType>();
 
   MulInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
-      : base::Clone<MulInstruction<NumType>, BinaryInstruction<NumType>>(lhs,
-                                                                         rhs) {}
-  ~MulInstruction() override {}
+      : BinaryInstruction<NumType>(lhs, rhs) {}
+  ~MulInstruction() {}
 
   static NumType Apply(NumType lhs, NumType rhs) { return lhs * rhs; }
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat(internal::TypeToString<NumType>(), " ",
                         stringify(this->result), " = mul ",
                         stringify(this->lhs), " ", stringify(this->rhs));
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     this->WriteByteCodeBinary(kIndex, writer);
   }
 };
 
 template <typename NumType>
-struct DivInstruction
-    : base::Clone<DivInstruction<NumType>, BinaryInstruction<NumType>> {
+struct DivInstruction : BinaryInstruction<NumType> {
   static constexpr cmd_index_t kIndex = internal::kDivInstructionRange.start +
                                         internal::PrimitiveIndex<NumType>();
 
   DivInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
-      : base::Clone<DivInstruction<NumType>, BinaryInstruction<NumType>>(lhs,
-                                                                         rhs) {}
-  ~DivInstruction() override {}
+      : BinaryInstruction<NumType>(lhs, rhs) {}
+  ~DivInstruction() {}
 
   static NumType Apply(NumType lhs, NumType rhs) { return lhs / rhs; }
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat(internal::TypeToString<NumType>(), " ",
                         stringify(this->result), " = div ",
                         stringify(this->lhs), " ", stringify(this->rhs));
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     this->WriteByteCodeBinary(kIndex, writer);
   }
 };
 
 template <typename NumType>
-struct ModInstruction
-    : base::Clone<ModInstruction<NumType>, BinaryInstruction<NumType>> {
+struct ModInstruction : BinaryInstruction<NumType> {
   static constexpr cmd_index_t kIndex = internal::kModInstructionRange.start +
                                         internal::PrimitiveIndex<NumType>();
 
   ModInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
-      : base::Clone<ModInstruction<NumType>, BinaryInstruction<NumType>>(lhs,
-                                                                         rhs) {}
-  ~ModInstruction() override {}
+      : BinaryInstruction<NumType>(lhs, rhs) {}
+  ~ModInstruction() {}
 
   static NumType Apply(NumType lhs, NumType rhs) { return lhs % rhs; }
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat(internal::TypeToString<NumType>(), " ",
                         stringify(this->result), " = mod ",
                         stringify(this->lhs), " ", stringify(this->rhs));
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     this->WriteByteCodeBinary(kIndex, writer);
   }
 };
 
 template <typename NumType>
-struct EqInstruction
-    : base::Clone<EqInstruction<NumType>, BinaryInstruction<NumType>> {
+struct EqInstruction : BinaryInstruction<NumType> {
   static constexpr cmd_index_t kIndex =
       internal::kEqInstructionRange.start + internal::PrimitiveIndex<NumType>();
 
   EqInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
-      : base::Clone<EqInstruction<NumType>, BinaryInstruction<NumType>>(lhs,
-                                                                        rhs) {}
-  ~EqInstruction() override {}
+      : BinaryInstruction<NumType>(lhs, rhs) {}
+  ~EqInstruction() {}
 
   static bool Apply(NumType lhs, NumType rhs) { return lhs == rhs; }
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat("bool ", stringify(this->result), " = eq ",
                         stringify(this->lhs), " ", stringify(this->rhs));
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     this->WriteByteCodeBinary(kIndex, writer);
   }
 };
 
 template <typename NumType>
-struct NeInstruction
-    : base::Clone<NeInstruction<NumType>, BinaryInstruction<NumType>> {
+struct NeInstruction : BinaryInstruction<NumType> {
   static constexpr cmd_index_t kIndex =
       internal::kNeInstructionRange.start + internal::PrimitiveIndex<NumType>();
 
   NeInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
-      : base::Clone<NeInstruction<NumType>, BinaryInstruction<NumType>>(lhs,
-                                                                        rhs) {}
-  ~NeInstruction() override {}
+      : BinaryInstruction<NumType>(lhs, rhs) {}
+  ~NeInstruction() {}
 
   static bool Apply(NumType lhs, NumType rhs) { return lhs != rhs; }
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat("bool ", stringify(this->result), " = ne ",
                         stringify(this->lhs), " ", stringify(this->rhs));
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     this->WriteByteCodeBinary(kIndex, writer);
   }
 };
 
 template <typename NumType>
-struct LtInstruction
-    : base::Clone<LtInstruction<NumType>, BinaryInstruction<NumType>> {
+struct LtInstruction : BinaryInstruction<NumType> {
   static constexpr cmd_index_t kIndex =
       internal::kLtInstructionRange.start + internal::PrimitiveIndex<NumType>();
 
   LtInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
-      : base::Clone<LtInstruction<NumType>, BinaryInstruction<NumType>>(lhs,
-                                                                        rhs) {}
-  ~LtInstruction() override {}
+      : BinaryInstruction<NumType>(lhs, rhs) {}
+  ~LtInstruction() {}
 
   static bool Apply(NumType lhs, NumType rhs) { return lhs < rhs; }
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat("bool ", stringify(this->result), " = lt ",
                         stringify(this->lhs), " ", stringify(this->rhs));
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     this->WriteByteCodeBinary(kIndex, writer);
   }
 };
 
 template <typename NumType>
-struct LeInstruction
-    : base::Clone<LeInstruction<NumType>, BinaryInstruction<NumType>> {
+struct LeInstruction : BinaryInstruction<NumType> {
   static constexpr cmd_index_t kIndex =
       internal::kLeInstructionRange.start + internal::PrimitiveIndex<NumType>();
 
   LeInstruction(RegOr<NumType> const& lhs, RegOr<NumType> const& rhs)
-      : base::Clone<LeInstruction<NumType>, BinaryInstruction<NumType>>(lhs,
-                                                                        rhs) {}
-  ~LeInstruction() override {}
+      : BinaryInstruction<NumType>(lhs, rhs) {}
+  ~LeInstruction() {}
 
   static bool Apply(NumType lhs, NumType rhs) { return lhs <= rhs; }
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat("bool ", stringify(this->result), " = le ",
                         stringify(this->lhs), " ", stringify(this->rhs));
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     this->WriteByteCodeBinary(kIndex, writer);
   }
 };
 
-struct LoadInstruction : base::Clone<LoadInstruction, Instruction> {
+struct LoadInstruction {
   static constexpr cmd_index_t kIndex = internal::kLoadInstructionNumber;
 
   explicit LoadInstruction(RegOr<Addr> addr, uint16_t num_bytes)
       : num_bytes(num_bytes), addr(addr) {}
-  ~LoadInstruction() override {}
+  ~LoadInstruction() {}
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat(stringify(result), " = load ", stringify(addr));
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     writer->Write(kIndex);
     writer->Write(num_bytes);
     writer->Write(addr.is_reg());
@@ -400,7 +380,7 @@ struct LoadInstruction : base::Clone<LoadInstruction, Instruction> {
     writer->Write(result);
   }
 
-  void Inline(InstructionInliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) {
     inliner.Inline(addr);
     inliner.Inline(result);
   }
@@ -411,15 +391,15 @@ struct LoadInstruction : base::Clone<LoadInstruction, Instruction> {
 };
 
 template <typename T>
-struct StoreInstruction : base::Clone<StoreInstruction<T>, Instruction> {
+struct StoreInstruction {
   static constexpr cmd_index_t kIndex =
       internal::kStoreInstructionRange.start + internal::PrimitiveIndex<T>();
   using type = T;
   StoreInstruction(RegOr<T> const& value, RegOr<Addr> const& location)
       : value(value), location(location) {}
-  ~StoreInstruction() override {}
+  ~StoreInstruction() {}
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat(internal::TypeToString<T>(), " store ",
                         stringify(this->value), " -> [", stringify(location),
@@ -431,7 +411,7 @@ struct StoreInstruction : base::Clone<StoreInstruction<T>, Instruction> {
     uint8_t location_is_reg : 1;
   };
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     writer->Write(kIndex);
     writer->Write(control_bits{.value_is_reg    = value.is_reg(),
                                .location_is_reg = location.is_reg()});
@@ -439,7 +419,7 @@ struct StoreInstruction : base::Clone<StoreInstruction<T>, Instruction> {
     location.apply([&](auto v) { writer->Write(v); });
   }
 
-  void Inline(InstructionInliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) {
     inliner.Inline(value);
     inliner.Inline(location);
   }
@@ -450,7 +430,7 @@ struct StoreInstruction : base::Clone<StoreInstruction<T>, Instruction> {
 
 // TODO consider changing these to something like 'basic block arguments'
 template <typename T>
-struct PhiInstruction : base::Clone<PhiInstruction<T>, Instruction> {
+struct PhiInstruction {
   constexpr static cmd_index_t kIndex =
       internal::kPhiInstructionRange.start + internal::PrimitiveIndex<T>();
   using type = T;
@@ -459,14 +439,14 @@ struct PhiInstruction : base::Clone<PhiInstruction<T>, Instruction> {
   PhiInstruction(std::vector<BasicBlock const*> blocks,
                  std::vector<RegOr<T>> values)
       : blocks(std::move(blocks)), values(std::move(values)) {}
-  ~PhiInstruction() override {}
+  ~PhiInstruction() {}
 
   void add(BasicBlock const* block, RegOr<T> value) {
     blocks.push_back(block);
     values.push_back(value);
   }
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     std::string s =
         absl::StrCat(stringify(result), " = phi ", internal::TypeToString<T>());
@@ -477,7 +457,7 @@ struct PhiInstruction : base::Clone<PhiInstruction<T>, Instruction> {
     return s;
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     writer->Write(kIndex);
     writer->Write<uint16_t>(values.size());
     for (auto block : blocks) { writer->Write(block); }
@@ -491,7 +471,7 @@ struct PhiInstruction : base::Clone<PhiInstruction<T>, Instruction> {
     writer->Write(result);
   }
 
-  void Inline(InstructionInliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) {
     inliner.Inline(values);
     inliner.Inline(result);
   }
@@ -518,9 +498,9 @@ struct RegisterInstruction : UnaryInstruction<T> {
 
   explicit RegisterInstruction(RegOr<T> const& operand)
       : UnaryInstruction<T>(operand) {}
-  ~RegisterInstruction() override {}
+  ~RegisterInstruction() {}
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat(internal::TypeToString<T>(), " ",
                         stringify(this->result), " = ",
@@ -529,14 +509,13 @@ struct RegisterInstruction : UnaryInstruction<T> {
 
   static T Apply(T val) { return val; }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     this->WriteByteCodeUnary(kIndex, writer);
   }
 };
 
 template <typename T>
-struct SetReturnInstruction
-    : base::Clone<SetReturnInstruction<T>, Instruction> {
+struct SetReturnInstruction {
   static constexpr cmd_index_t kIndex =
       internal::kSetReturnInstructionRange.start +
       internal::PrimitiveIndex<T>();
@@ -544,9 +523,9 @@ struct SetReturnInstruction
 
   SetReturnInstruction(uint16_t index, RegOr<T> const& value)
       : index(index), value(value) {}
-  ~SetReturnInstruction() override {}
+  ~SetReturnInstruction() {}
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     if constexpr (std::is_same_v<T, ::type::Type const*>) {
       return absl::StrCat(
@@ -558,36 +537,36 @@ struct SetReturnInstruction
     }
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     writer->Write(kIndex);
     writer->Write(index);
     writer->Write(value.is_reg());
     value.apply([&](auto v) { writer->Write(v); });
   }
 
-  void Inline(InstructionInliner const& inliner) override { NOT_YET(); }
+  void Inline(InstructionInliner const& inliner) { NOT_YET(); }
 
   uint16_t index;
   RegOr<T> value;
 };
 
 template <typename FromType>
-struct CastInstruction : base::Clone<CastInstruction<FromType>, Instruction> {
+struct CastInstruction {
   static constexpr cmd_index_t kIndex = internal::kCastInstructionRange.start +
                                         internal::PrimitiveIndex<FromType>();
   using from_type = FromType;
 
   explicit CastInstruction(RegOr<FromType> const& value, uint8_t to_type_byte)
       : value(value), to_type_byte(to_type_byte) {}
-  ~CastInstruction() override {}
+  ~CastInstruction() {}
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat(stringify(result), " = cast ", stringify(value),
                         " to type indexed by ", static_cast<int>(to_type_byte));
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     writer->Write(kIndex);
     writer->Write(value.is_reg());
     value.apply([&](auto v) { writer->Write(v); });
@@ -595,7 +574,7 @@ struct CastInstruction : base::Clone<CastInstruction<FromType>, Instruction> {
     writer->Write(result);
   }
 
-  void Inline(InstructionInliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) {
     inliner.Inline(value);
     inliner.Inline(result);
   }
@@ -612,40 +591,40 @@ struct NegInstruction : UnaryInstruction<NumType> {
 
   explicit NegInstruction(RegOr<NumType> const& operand)
       : UnaryInstruction<NumType>(operand) {}
-  ~NegInstruction() override {}
+  ~NegInstruction() {}
 
   static NumType Apply(NumType operand) { return -operand; }
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat(internal::TypeToString<NumType>(), " ",
                         stringify(this->result), " = neg ",
                         stringify(this->operand));
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     this->WriteByteCodeUnary(kIndex, writer);
   }
 };
 
-struct GetReturnInstruction : base::Clone<GetReturnInstruction, Instruction> {
+struct GetReturnInstruction {
   static constexpr cmd_index_t kIndex = internal::kGetReturnInstructionIndex;
 
   explicit GetReturnInstruction(uint16_t index) : index(index) {}
-  ~GetReturnInstruction() override {}
+  ~GetReturnInstruction() {}
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat(stringify(result), " = get-ret ", index);
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     writer->Write(kIndex);
     writer->Write(index);
     writer->Write(result);
   }
 
-  void Inline(InstructionInliner const& inliner) override { NOT_YET(); }
+  void Inline(InstructionInliner const& inliner) { NOT_YET(); }
 
   uint16_t index;
   Reg result;
@@ -657,18 +636,18 @@ struct NotInstruction : UnaryInstruction<bool> {
 
   explicit NotInstruction(RegOr<bool> const& operand)
       : UnaryInstruction<bool>(operand) {}
-  ~NotInstruction() override {}
+  ~NotInstruction() {}
 
   static bool Apply(bool operand) { return not operand; }
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat(internal::TypeToString<bool>(), " ",
                         stringify(this->result), " = not ",
                         stringify(this->operand));
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     this->WriteByteCodeUnary(kIndex, writer);
   }
 };
@@ -678,13 +657,19 @@ struct PtrInstruction : UnaryInstruction<::type::Type const*> {
 
   explicit PtrInstruction(RegOr<::type::Type const*> const& operand)
       : UnaryInstruction<::type::Type const*>(operand) {}
-  ~PtrInstruction() override {}
+  ~PtrInstruction() {}
+
+  std::string to_string() const {
+    using base::stringify;
+    return absl::StrCat("type ", stringify(this->result), " = ptr ",
+                        stringify(this->operand));
+  }
 
   static ::type::Pointer const* Apply(::type::Type const* operand) {
     return ::type::Ptr(operand);
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     this->WriteByteCodeUnary(kIndex, writer);
   }
 };
@@ -694,92 +679,92 @@ struct BufPtrInstruction : UnaryInstruction<::type::Type const*> {
 
   explicit BufPtrInstruction(RegOr<::type::Type const*> const& operand)
       : UnaryInstruction<::type::Type const*>(operand) {}
-  ~BufPtrInstruction() override {}
+  ~BufPtrInstruction() {}
 
   static ::type::BufferPointer const* Apply(::type::Type const* operand) {
     return ::type::BufPtr(operand);
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  std::string to_string() const {
+    using base::stringify;
+    return absl::StrCat("type ", stringify(this->result), " = buf-ptr ",
+                        stringify(this->operand));
+  }
+
+  void WriteByteCode(ByteCodeWriter* writer) const {
     this->WriteByteCodeUnary(kIndex, writer);
   }
 };
 
 // TODO Morph this into interpretter break-point instructions.
-struct DebugIrInstruction : base::Clone<DebugIrInstruction, Instruction> {
+struct DebugIrInstruction {
   static constexpr cmd_index_t kIndex = internal::kDebugIrInstructionNumber;
 
   DebugIrInstruction() = default;
-  ~DebugIrInstruction() override {}
+  ~DebugIrInstruction() {}
 
-  std::string to_string() const override { return "debug-ir"; }
+  std::string to_string() const { return "debug-ir"; }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     writer->Write(internal::kDebugIrInstructionNumber);
   }
 
-  void Inline(InstructionInliner const& inliner) override {}
+  void Inline(InstructionInliner const& inliner) {}
 };
 
-struct XorFlagsInstruction
-    : base::Clone<XorFlagsInstruction, BinaryInstruction<FlagsVal>> {
+struct XorFlagsInstruction : BinaryInstruction<FlagsVal> {
   static constexpr cmd_index_t kIndex = internal::kXorFlagsInstructionNumber;
   XorFlagsInstruction(RegOr<FlagsVal> const& lhs, RegOr<FlagsVal> const& rhs)
-      : base::Clone<XorFlagsInstruction, BinaryInstruction<FlagsVal>>(lhs,
-                                                                      rhs) {}
-  ~XorFlagsInstruction() override {}
+      : BinaryInstruction<FlagsVal>(lhs, rhs) {}
+  ~XorFlagsInstruction() {}
 
   static FlagsVal Apply(FlagsVal lhs, FlagsVal rhs) { return lhs ^ rhs; }
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat("flags ", stringify(this->result), " = add ",
                         stringify(this->lhs), " ", stringify(this->rhs));
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     this->WriteByteCodeBinary(kIndex, writer);
   }
 };
 
-struct AndFlagsInstruction
-    : base::Clone<AndFlagsInstruction, BinaryInstruction<FlagsVal>> {
+struct AndFlagsInstruction : BinaryInstruction<FlagsVal> {
   static constexpr cmd_index_t kIndex = internal::kAndFlagsInstructionNumber;
   AndFlagsInstruction(RegOr<FlagsVal> const& lhs, RegOr<FlagsVal> const& rhs)
-      : base::Clone<AndFlagsInstruction, BinaryInstruction<FlagsVal>>(lhs,
-                                                                      rhs) {}
-  ~AndFlagsInstruction() override {}
+      : BinaryInstruction<FlagsVal>(lhs, rhs) {}
+  ~AndFlagsInstruction() {}
 
   static FlagsVal Apply(FlagsVal lhs, FlagsVal rhs) { return lhs & rhs; }
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat("flags ", stringify(this->result), " = and ",
                         stringify(this->lhs), " ", stringify(this->rhs));
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     this->WriteByteCodeBinary(kIndex, writer);
   }
 };
 
-struct OrFlagsInstruction
-    : base::Clone<OrFlagsInstruction, BinaryInstruction<FlagsVal>> {
+struct OrFlagsInstruction : BinaryInstruction<FlagsVal> {
   static constexpr cmd_index_t kIndex = internal::kOrFlagsInstructionNumber;
   OrFlagsInstruction(RegOr<FlagsVal> const& lhs, RegOr<FlagsVal> const& rhs)
-      : base::Clone<OrFlagsInstruction, BinaryInstruction<FlagsVal>>(lhs, rhs) {
-  }
-  ~OrFlagsInstruction() override {}
+      : BinaryInstruction<FlagsVal>(lhs, rhs) {}
+  ~OrFlagsInstruction() {}
 
   static FlagsVal Apply(FlagsVal lhs, FlagsVal rhs) { return lhs | rhs; }
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat("flags ", stringify(this->result), " = or ",
                         stringify(this->lhs), " ", stringify(this->rhs));
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     this->WriteByteCodeBinary(kIndex, writer);
   }
 };
@@ -789,13 +774,13 @@ struct TupleInstruction : VariadicInstruction<::type::Type const*> {
 
   TupleInstruction(std::vector<RegOr<::type::Type const*>> values)
       : VariadicInstruction<::type::Type const*>(std::move(values)) {}
-  ~TupleInstruction() override {}
+  ~TupleInstruction() {}
 
   static ::type::Type const* Apply(std::vector<::type::Type const*> entries) {
     return ::type::Tup(std::move(entries));
   }
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat("type ", stringify(this->result), " = tup ",
                         absl::StrJoin(this->values, " ",
@@ -805,7 +790,7 @@ struct TupleInstruction : VariadicInstruction<::type::Type const*> {
                                       }));
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     WriteByteCodeVariadic(kIndex, writer);
   }
 };
@@ -815,13 +800,13 @@ struct VariantInstruction : VariadicInstruction<::type::Type const*> {
 
   VariantInstruction(std::vector<RegOr<::type::Type const*>> values)
       : VariadicInstruction<::type::Type const*>(std::move(values)) {}
-  ~VariantInstruction() override {}
+  ~VariantInstruction() {}
 
   static ::type::Type const* Apply(std::vector<::type::Type const*> entries) {
     return ::type::Var(std::move(entries));
   }
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat("type ", stringify(this->result), " = var ",
                         absl::StrJoin(this->values, " ",
@@ -831,13 +816,12 @@ struct VariantInstruction : VariadicInstruction<::type::Type const*> {
                                       }));
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     this->WriteByteCodeVariadic(kIndex, writer);
   }
 };
 
-struct EnumerationInstruction
-    : base::Clone<EnumerationInstruction, Instruction> {
+struct EnumerationInstruction {
   static constexpr cmd_index_t kIndex = internal::kEnumerationInstructionNumber;
 
   enum class Kind { Enum, Flags };
@@ -848,9 +832,9 @@ struct EnumerationInstruction
         mod_(mod),
         names_(std::move(names)),
         specified_values_(std::move(specified_values)) {}
-  ~EnumerationInstruction() override {}
+  ~EnumerationInstruction() {}
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     writer->Write(kIndex);
     writer->Write(kind_ == Kind::Enum);
     writer->Write<uint16_t>(names_.size());
@@ -868,16 +852,14 @@ struct EnumerationInstruction
     writer->Write(result);
   };
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat(stringify(result),
                         kind_ == Kind::Enum ? " = enum (" : " = flags (",
                         absl::StrJoin(names_, ", "), ")");
   }
 
-  void Inline(InstructionInliner const& inliner) override {
-    inliner.Inline(result);
-  }
+  void Inline(InstructionInliner const& inliner) { inliner.Inline(result); }
 
   Kind kind_;
   module::BasicModule* mod_;
@@ -886,37 +868,35 @@ struct EnumerationInstruction
   Reg result;
 };
 
-struct OpaqueTypeInstruction : base::Clone<OpaqueTypeInstruction, Instruction> {
+struct OpaqueTypeInstruction {
   constexpr static cmd_index_t kIndex = internal::kOpaqueTypeInstructionNumber;
   OpaqueTypeInstruction(module::BasicModule const* mod) : mod(mod) {}
-  ~OpaqueTypeInstruction() override {}
+  ~OpaqueTypeInstruction() {}
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     writer->Write(kIndex);
     writer->Write(mod);
     writer->Write(result);
   }
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat(stringify(result), " = opaque ", stringify(mod));
   }
 
-  void Inline(InstructionInliner const& inliner) override {
-    inliner.Inline(result);
-  }
+  void Inline(InstructionInliner const& inliner) { inliner.Inline(result); }
 
   module::BasicModule const* mod;
   Reg result;
 };
 
-struct ArrowInstruction : base::Clone<ArrowInstruction, Instruction> {
+struct ArrowInstruction {
   constexpr static cmd_index_t kIndex = internal::kArrowInstructionNumber;
 
   ArrowInstruction(std::vector<RegOr<type::Type const*>> lhs,
                    std::vector<RegOr<type::Type const*>> rhs)
       : lhs(std::move(lhs)), rhs(std::move(rhs)) {}
-  ~ArrowInstruction() override {}
+  ~ArrowInstruction() {}
 
   // TODO take parameters, or a span if you don't want construction of names?
   static type::Type const* Apply(std::vector<type::Type const*> const& lhs,
@@ -931,7 +911,7 @@ struct ArrowInstruction : base::Clone<ArrowInstruction, Instruction> {
     return type::Func(std::move(params), std::move(rhs));
   }
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat(
         stringify(result), " = (",
@@ -947,7 +927,7 @@ struct ArrowInstruction : base::Clone<ArrowInstruction, Instruction> {
         ")");
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     writer->Write(kIndex);
 
     internal::WriteBits<uint16_t, RegOr<type::Type const*>>(
@@ -967,7 +947,7 @@ struct ArrowInstruction : base::Clone<ArrowInstruction, Instruction> {
     writer->Write(result);
   }
 
-  void Inline(InstructionInliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) {
     inliner.Inline(lhs);
     inliner.Inline(rhs);
     inliner.Inline(result);
@@ -979,8 +959,7 @@ struct ArrowInstruction : base::Clone<ArrowInstruction, Instruction> {
 
 // Oddly named to be sure, this instruction is used to do initializations,
 // copies, moves, or destructions of the given type.
-struct TypeManipulationInstruction
-    : base::Clone<TypeManipulationInstruction, Instruction> {
+struct TypeManipulationInstruction {
   constexpr static cmd_index_t kIndex =
       internal::kTypeManipulationInstructionNumber;
 
@@ -988,9 +967,9 @@ struct TypeManipulationInstruction
   TypeManipulationInstruction(Kind k, type::Type const* type, Reg from,
                               RegOr<Addr> to = RegOr<Addr>(Reg(0)))
       : kind(k), type(type), r(from), to(to) {}
-  ~TypeManipulationInstruction() override {}
+  ~TypeManipulationInstruction() {}
 
-  std::string to_string() const override {
+  std::string to_string() const {
     char const* name;
     switch (kind) {
       case Kind::Init:
@@ -1007,7 +986,7 @@ struct TypeManipulationInstruction
     }
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     writer->Write(kIndex);
     writer->Write(kind);
     writer->Write(type);
@@ -1018,7 +997,7 @@ struct TypeManipulationInstruction
     }
   }
 
-  void Inline(InstructionInliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) {
     inliner.Inline(r);
     if (kind == Kind::Copy or kind == Kind::Move) { inliner.Inline(to); }
   }
@@ -1029,7 +1008,7 @@ struct TypeManipulationInstruction
   RegOr<Addr> to;  // Only meaningful for copy and move
 };
 
-struct CallInstruction : base::Clone<CallInstruction, Instruction> {
+struct CallInstruction {
   static constexpr cmd_index_t kIndex = internal::kCallInstructionNumber;
 
   CallInstruction(type::Function const* fn_type, RegOr<Fn> const& fn,
@@ -1042,9 +1021,9 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
     ASSERT(args_.size() == fn_type_->params().size());
   }
 
-  ~CallInstruction() override {}
+  ~CallInstruction() {}
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     std::string result = absl::StrCat("call ", stringify(fn_));
     for (auto const& arg : args_) {
@@ -1057,7 +1036,7 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
     return result;
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     writer->Write(kIndex);
     writer->Write(fn_.is_reg());
     fn_.apply([&](auto v) { writer->Write(v); });
@@ -1087,7 +1066,7 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
 
   RegOr<Fn> func() const { return fn_; }
 
-  void Inline(InstructionInliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) {
     inliner.Inline(fn_);
     for (auto& arg : args_) { inliner.Inline(arg); }
     for (auto& reg : outs_.regs()) { inliner.Inline(reg); }
@@ -1100,41 +1079,39 @@ struct CallInstruction : base::Clone<CallInstruction, Instruction> {
   OutParams outs_;
 };
 
-struct LoadSymbolInstruction : base::Clone<LoadSymbolInstruction, Instruction> {
+struct LoadSymbolInstruction {
   static constexpr cmd_index_t kIndex = internal::kLoadSymbolInstructionNumber;
   LoadSymbolInstruction(String name, type::Type const* type)
       : name(name), type(type) {}
-  ~LoadSymbolInstruction() override {}
+  ~LoadSymbolInstruction() {}
 
-  std::string to_string() const override {
+  std::string to_string() const {
     return absl::StrCat("load-symbol ", name.get(), ": ", type->to_string());
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     writer->Write(kIndex);
     writer->Write(name);
     writer->Write(type);
     writer->Write(result);
   }
 
-  void Inline(InstructionInliner const& inliner) override {
-    inliner.Inline(result);
-  }
+  void Inline(InstructionInliner const& inliner) { inliner.Inline(result); }
 
   String name;
   type::Type const* type;
   Reg result;
 };
 
-struct ArrayInstruction : base::Clone<ArrayInstruction, Instruction> {
+struct ArrayInstruction {
   static constexpr cmd_index_t kIndex = internal::kArrayInstructionNumber;
   using length_t                      = int64_t;
 
   ArrayInstruction(RegOr<length_t> length, RegOr<type::Type const*> data_type)
       : length(length), data_type(data_type) {}
-  ~ArrayInstruction() override {}
+  ~ArrayInstruction() {}
 
-  std::string to_string() const override {
+  std::string to_string() const {
     return absl::StrCat(stringify(result), " = array ", stringify(length),
                         stringify(data_type));
   }
@@ -1144,7 +1121,7 @@ struct ArrayInstruction : base::Clone<ArrayInstruction, Instruction> {
     uint8_t type_is_reg : 1;
   };
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     writer->Write(kIndex);
     writer->Write(control_bits{.length_is_reg = length.is_reg(),
                                .type_is_reg   = data_type.is_reg()});
@@ -1154,7 +1131,7 @@ struct ArrayInstruction : base::Clone<ArrayInstruction, Instruction> {
     writer->Write(result);
   }
 
-  void Inline(InstructionInliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) {
     inliner.Inline(length);
     inliner.Inline(data_type);
     inliner.Inline(result);
@@ -1165,14 +1142,14 @@ struct ArrayInstruction : base::Clone<ArrayInstruction, Instruction> {
   Reg result;
 };
 
-struct StructInstruction : base::Clone<StructInstruction, Instruction> {
+struct StructInstruction {
   static constexpr cmd_index_t kIndex = internal::kStructInstructionNumber;
   StructInstruction(module::BasicModule const* mod, type::Struct* s,
                     std::vector<StructField> fields, std::optional<ir::Fn> dtor)
       : mod(mod), struct_(s), fields(std::move(fields)), dtor(dtor) {}
-  ~StructInstruction() override {}
+  ~StructInstruction() {}
 
-  std::string to_string() const override {
+  std::string to_string() const {
     // TODO
     return absl::StrCat(stringify(result), " = struct TODO");
   }
@@ -1182,7 +1159,7 @@ struct StructInstruction : base::Clone<StructInstruction, Instruction> {
     uint8_t type_is_reg : 1;
   };
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     writer->Write(kIndex);
     writer->Write<uint16_t>(fields.size());
     writer->Write(mod);
@@ -1207,7 +1184,7 @@ struct StructInstruction : base::Clone<StructInstruction, Instruction> {
     writer->Write(result);
   }
 
-  void Inline(InstructionInliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) {
     for (auto& field : fields) {
       if (auto* r = field.type_reg()) { inliner.Inline(*r); }
       if (auto* v = field.initial_value()) {
@@ -1223,14 +1200,14 @@ struct StructInstruction : base::Clone<StructInstruction, Instruction> {
   Reg result;
 };
 
-struct TypeInfoInstruction : base::Clone<TypeInfoInstruction, Instruction> {
+struct TypeInfoInstruction {
   static constexpr cmd_index_t kIndex = internal::kTypeInfoInstructionNumber;
   enum class Kind : uint8_t { Alignment = 0, Bytes = 2 };
   TypeInfoInstruction(Kind kind, RegOr<type::Type const*> type)
       : kind(kind), type(type) {}
-  ~TypeInfoInstruction() override {}
+  ~TypeInfoInstruction() {}
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat(
         stringify(result),
@@ -1238,7 +1215,7 @@ struct TypeInfoInstruction : base::Clone<TypeInfoInstruction, Instruction> {
         type.is_reg() ? stringify(type.reg()) : type.value()->to_string());
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     writer->Write(kIndex);
     writer->Write<uint8_t>(static_cast<uint8_t>(kind) |
                            static_cast<uint8_t>(type.is_reg()));
@@ -1246,16 +1223,14 @@ struct TypeInfoInstruction : base::Clone<TypeInfoInstruction, Instruction> {
     writer->Write(result);
   }
 
-  void Inline(InstructionInliner const& inliner) override {
-    inliner.Inline(type);
-  }
+  void Inline(InstructionInliner const& inliner) { inliner.Inline(type); }
 
   Kind kind;
   RegOr<type::Type const*> type;
   Reg result;
 };
 
-struct MakeBlockInstruction : base::Clone<MakeBlockInstruction, Instruction> {
+struct MakeBlockInstruction {
   static constexpr cmd_index_t kIndex = internal::kMakeBlockInstructionNumber;
 
   MakeBlockInstruction(BlockDef* block_def, std::vector<RegOr<Fn>> befores,
@@ -1263,12 +1238,12 @@ struct MakeBlockInstruction : base::Clone<MakeBlockInstruction, Instruction> {
       : block_def(block_def),
         befores(std::move(befores)),
         afters(std::move(afters)) {}
-  ~MakeBlockInstruction() override {}
+  ~MakeBlockInstruction() {}
 
   // TODO
-  std::string to_string() const override { return "make-block "; }
+  std::string to_string() const { return "make-block "; }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     writer->Write(kIndex);
     writer->Write(block_def);
     internal::WriteBits<uint16_t, RegOr<Fn>>(
@@ -1284,7 +1259,7 @@ struct MakeBlockInstruction : base::Clone<MakeBlockInstruction, Instruction> {
     writer->Write(result);
   }
 
-  void Inline(InstructionInliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) {
     inliner.Inline(befores);
     inliner.Inline(afters);
     inliner.Inline(result);
@@ -1296,7 +1271,7 @@ struct MakeBlockInstruction : base::Clone<MakeBlockInstruction, Instruction> {
   Reg result;
 };
 
-struct MakeScopeInstruction : base::Clone<MakeScopeInstruction, Instruction> {
+struct MakeScopeInstruction {
   static constexpr cmd_index_t kIndex = internal::kMakeScopeInstructionNumber;
 
   MakeScopeInstruction(ScopeDef* scope_def, std::vector<RegOr<Jump*>> inits,
@@ -1306,12 +1281,12 @@ struct MakeScopeInstruction : base::Clone<MakeScopeInstruction, Instruction> {
         inits(std::move(inits)),
         dones(std::move(dones)),
         blocks(std::move(blocks)) {}
-  ~MakeScopeInstruction() override {}
+  ~MakeScopeInstruction() {}
 
   // TODO
-  std::string to_string() const override { return "make-scope"; }
+  std::string to_string() const { return "make-scope"; }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     writer->Write(kIndex);
     writer->Write(scope_def);
 
@@ -1334,7 +1309,7 @@ struct MakeScopeInstruction : base::Clone<MakeScopeInstruction, Instruction> {
     writer->Write(result);
   }
 
-  void Inline(InstructionInliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) {
     inliner.Inline(inits);
     inliner.Inline(dones);
     inliner.Inline(result);
@@ -1347,17 +1322,16 @@ struct MakeScopeInstruction : base::Clone<MakeScopeInstruction, Instruction> {
   Reg result;
 };
 
-struct StructIndexInstruction
-    : base::Clone<StructIndexInstruction, Instruction> {
+struct StructIndexInstruction {
   static constexpr cmd_index_t kIndex = internal::kStructIndexInstructionNumber;
   using type                          = type::Struct const*;
 
   StructIndexInstruction(RegOr<Addr> const& addr, RegOr<int64_t> index,
                          ::type::Struct const* struct_type)
       : addr(addr), index(index), struct_type(struct_type) {}
-  ~StructIndexInstruction() override {}
+  ~StructIndexInstruction() {}
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat(stringify(result), " = index ", stringify(index),
                         " of ", stringify(addr), " (struct ",
@@ -1369,7 +1343,7 @@ struct StructIndexInstruction
     uint8_t reg_index : 1;
   };
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     writer->Write(kIndex);
     writer->Write(control_bits{
         .reg_addr  = addr.is_reg(),
@@ -1382,7 +1356,7 @@ struct StructIndexInstruction
     writer->Write(result);
   }
 
-  void Inline(InstructionInliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) {
     inliner.Inline(addr);
     inliner.Inline(index);
     inliner.Inline(result);
@@ -1394,16 +1368,16 @@ struct StructIndexInstruction
   Reg result;
 };
 
-struct TupleIndexInstruction : base::Clone<TupleIndexInstruction, Instruction> {
+struct TupleIndexInstruction {
   static constexpr cmd_index_t kIndex = internal::kTupleIndexInstructionNumber;
   using type                          = type::Tuple const*;
 
   TupleIndexInstruction(RegOr<Addr> const& addr, RegOr<int64_t> index,
                         ::type::Tuple const* tuple)
       : addr(addr), index(index), tuple(tuple) {}
-  ~TupleIndexInstruction() override {}
+  ~TupleIndexInstruction() {}
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat(stringify(result), " = index ", stringify(index),
                         " of ", stringify(addr), " (tuple ", tuple->to_string(),
@@ -1415,7 +1389,7 @@ struct TupleIndexInstruction : base::Clone<TupleIndexInstruction, Instruction> {
     uint8_t reg_index : 1;
   };
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     writer->Write(kIndex);
     writer->Write(control_bits{
         .reg_addr  = addr.is_reg(),
@@ -1428,7 +1402,7 @@ struct TupleIndexInstruction : base::Clone<TupleIndexInstruction, Instruction> {
     writer->Write(result);
   }
 
-  void Inline(InstructionInliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) {
     inliner.Inline(addr);
     inliner.Inline(index);
     inliner.Inline(result);
@@ -1440,16 +1414,16 @@ struct TupleIndexInstruction : base::Clone<TupleIndexInstruction, Instruction> {
   Reg result;
 };
 
-struct PtrIncrInstruction : base::Clone<PtrIncrInstruction, Instruction> {
+struct PtrIncrInstruction {
   static constexpr cmd_index_t kIndex = internal::kPtrIncrInstructionNumber;
   using type                          = type::Pointer const*;
 
   PtrIncrInstruction(RegOr<Addr> const& addr, RegOr<int64_t> index,
                      ::type::Pointer const* ptr)
       : addr(addr), index(index), ptr(ptr) {}
-  ~PtrIncrInstruction() override {}
+  ~PtrIncrInstruction() {}
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat(stringify(result), " = index ", stringify(index),
                         " of ", stringify(addr), " (ptr ", ptr->to_string(),
@@ -1461,7 +1435,7 @@ struct PtrIncrInstruction : base::Clone<PtrIncrInstruction, Instruction> {
     uint8_t reg_index : 1;
   };
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     writer->Write(kIndex);
     writer->Write(control_bits{
         .reg_addr  = addr.is_reg(),
@@ -1474,7 +1448,7 @@ struct PtrIncrInstruction : base::Clone<PtrIncrInstruction, Instruction> {
     writer->Write(result);
   }
 
-  void Inline(InstructionInliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) {
     inliner.Inline(addr);
     inliner.Inline(index);
     inliner.Inline(result);
@@ -1486,27 +1460,26 @@ struct PtrIncrInstruction : base::Clone<PtrIncrInstruction, Instruction> {
   Reg result;
 };
 
-struct ByteViewLengthInstruction
-    : base::Clone<ByteViewLengthInstruction, Instruction> {
+struct ByteViewLengthInstruction {
   static constexpr cmd_index_t kIndex =
       internal::kByteViewLengthInstructionNumber;
 
   explicit ByteViewLengthInstruction(Reg reg) : reg(reg) {}
-  ~ByteViewLengthInstruction() override {}
+  ~ByteViewLengthInstruction() {}
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat(stringify(result), " = byte-view length ",
                         stringify(reg));
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     writer->Write(kIndex);
     writer->Write(reg);
     writer->Write(result);
   }
 
-  void Inline(InstructionInliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) {
     inliner.Inline(reg);
     inliner.Inline(result);
   }
@@ -1515,27 +1488,26 @@ struct ByteViewLengthInstruction
   Reg result;
 };
 
-struct ByteViewDataInstruction
-    : base::Clone<ByteViewDataInstruction, Instruction> {
+struct ByteViewDataInstruction {
   static constexpr cmd_index_t kIndex =
       internal::kByteViewDataInstructionNumber;
 
   explicit ByteViewDataInstruction(Reg reg) : reg(reg) {}
-  ~ByteViewDataInstruction() override {}
+  ~ByteViewDataInstruction() {}
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat(stringify(result), " = byte-view data ",
                         stringify(reg));
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     writer->Write(kIndex);
     writer->Write(reg);
     writer->Write(result);
   }
 
-  void Inline(InstructionInliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) {
     inliner.Inline(reg);
     inliner.Inline(result);
   }
@@ -1544,21 +1516,20 @@ struct ByteViewDataInstruction
   Reg result;
 };
 
-struct VariantAccessInstruction
-    : base::Clone<VariantAccessInstruction, Instruction> {
+struct VariantAccessInstruction {
   static constexpr cmd_index_t kIndex =
       internal::kVariantAccessInstructionNumber;
   VariantAccessInstruction(RegOr<Addr> const& var, bool get_value)
       : var(var), get_value(get_value) {}
-  ~VariantAccessInstruction() override {}
+  ~VariantAccessInstruction() {}
 
-  std::string to_string() const override {
+  std::string to_string() const {
     using base::stringify;
     return absl::StrCat(stringify(result), " = variant-",
                         get_value ? "value " : "type ", stringify(var));
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const override {
+  void WriteByteCode(ByteCodeWriter* writer) const {
     writer->Write(kIndex);
     writer->Write(get_value);
     writer->Write(var.is_reg());
@@ -1566,7 +1537,7 @@ struct VariantAccessInstruction
     writer->Write(result);
   }
 
-  void Inline(InstructionInliner const& inliner) override {
+  void Inline(InstructionInliner const& inliner) {
     inliner.Inline(var);
     inliner.Inline(result);
   }

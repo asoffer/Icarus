@@ -46,12 +46,11 @@ struct BasicBlock {
 
   void erase_incoming(BasicBlock *b) { incoming_.erase(b); }
 
-  base::PtrSpan<Instruction const> instructions() const {
-    return instructions_;
-  }
+  absl::Span<Inst const> instructions() const { return instructions_; }
 
-  void AddInstruction(std::unique_ptr<Instruction> inst) {
-    instructions_.push_back(std::move(inst));
+  // TODO: We really don't need to be returning this reference.
+  Inst &Append(Inst &&inst) {
+    return instructions_.emplace_back(std::move(inst));
   }
 
   void set_jump(JumpCmd j) { jump_ = std::move(j); }
@@ -68,7 +67,7 @@ struct BasicBlock {
   void AddOutgoingJumps(JumpCmd const &jump);
   void ExchangeJumps(BasicBlock const *b);
 
-  std::vector<std::unique_ptr<Instruction>> instructions_;
+  std::vector<Inst> instructions_;
 
   LoadStoreCache cache_;
   absl::flat_hash_set<BasicBlock *> incoming_;

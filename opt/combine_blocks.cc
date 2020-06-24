@@ -152,8 +152,8 @@ void CombineBlocks(ir::CompiledFn* fn) {
 
 void RemoveTrivialFunctionCalls(ir::CompiledFn* fn) {
   for (auto& block : fn->mutable_blocks()) {
-    for (auto const* inst : block->instructions()) {
-      if (auto* call_inst = inst->if_as<ir::CallInstruction>()) {
+    for (auto const& inst : block->instructions()) {
+      if (auto* call_inst = inst.if_as<ir::CallInstruction>()) {
         if (call_inst->func().is_reg()) { continue; }
         if (call_inst->func().value().kind() != ir::Fn::Kind::Native) {
           continue;
@@ -166,7 +166,7 @@ void RemoveTrivialFunctionCalls(ir::CompiledFn* fn) {
           // What if it's null?
           if (not called_block->instructions().empty()) { goto next_inst; }
         }
-        inst = nullptr;
+        // inst = nullptr;
       }
     next_inst:;
     }

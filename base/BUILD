@@ -7,21 +7,6 @@ cc_library(
 )
 
 cc_library(
-    name = "clone",
-    hdrs = ["clone.h"],
-    deps = []
-)
-
-cc_test(
-    name = "clone_test",
-    srcs = ["clone_test.cc"],
-    deps = [
-        ":clone",
-        "@com_google_googletest//:gtest_main",
-    ]
-)
-
-cc_library(
     name = "debug",
     hdrs = ["debug.h"],
     deps = [":matchers", ":log"],
