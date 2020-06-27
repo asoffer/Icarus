@@ -92,33 +92,6 @@ struct InlineExtension {
 };
 
 template <typename NumType>
-struct UnaryInstruction {
-  using type = NumType;
-
-  explicit UnaryInstruction(RegOr<NumType> const& operand) : operand(operand) {}
-  ~UnaryInstruction() {}
-
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    UNREACHABLE("Should call a child class");
-  }
-
-  void WriteByteCodeUnary(cmd_index_t index, ByteCodeWriter* writer) const {
-    writer->Write(index);
-    writer->Write(operand.is_reg());
-    operand.apply([&](auto v) { writer->Write(v); });
-    writer->Write(result);
-  };
-
-  void Inline(InstructionInliner const& inliner) {
-    inliner.Inline(operand);
-    inliner.Inline(result);
-  }
-
-  RegOr<NumType> operand;
-  Reg result;
-};
-
-template <typename NumType>
 struct BinaryInstruction {
   using type = NumType;
 
@@ -526,13 +499,12 @@ struct PhiInstruction {
 // without worrying about rewriting register names immediately. This instruction
 // should never be visible in the final code.
 template <typename T>
-struct RegisterInstruction : UnaryInstruction<T> {
+struct RegisterInstruction
+    : base::Extend<RegisterInstruction<T>>::template With<
+          WriteByteCodeExtension, InlineExtension> {
+  using unary = T;
   static constexpr cmd_index_t kIndex =
       internal::kRegisterInstructionRange.start + internal::PrimitiveIndex<T>();
-
-  explicit RegisterInstruction(RegOr<T> const& operand)
-      : UnaryInstruction<T>(operand) {}
-  ~RegisterInstruction() {}
 
   std::string to_string() const {
     using base::stringify;
@@ -543,9 +515,8 @@ struct RegisterInstruction : UnaryInstruction<T> {
 
   static T Apply(T val) { return val; }
 
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    this->WriteByteCodeUnary(kIndex, writer);
-  }
+  RegOr<T> operand;
+  Reg result;
 };
 
 template <typename T>
@@ -592,13 +563,11 @@ struct CastInstruction : base::Extend<CastInstruction<FromType>>::template With<
 };
 
 template <typename NumType>
-struct NegInstruction : UnaryInstruction<NumType> {
+struct NegInstruction : base::Extend<NegInstruction<NumType>>::template With<
+                            WriteByteCodeExtension, InlineExtension> {
+  using unary = NumType;
   static constexpr cmd_index_t kIndex = internal::kNegInstructionRange.start +
                                         internal::PrimitiveIndex<NumType>();
-
-  explicit NegInstruction(RegOr<NumType> const& operand)
-      : UnaryInstruction<NumType>(operand) {}
-  ~NegInstruction() {}
 
   static NumType Apply(NumType operand) { return -operand; }
 
@@ -609,9 +578,8 @@ struct NegInstruction : UnaryInstruction<NumType> {
                         stringify(this->operand));
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    this->WriteByteCodeUnary(kIndex, writer);
-  }
+  RegOr<NumType> operand;
+  Reg result;
 };
 
 struct GetReturnInstruction
@@ -629,12 +597,11 @@ struct GetReturnInstruction
 };
 
 // TODO this should work for flags too.
-struct NotInstruction : UnaryInstruction<bool> {
+struct NotInstruction
+    : base::Extend<NotInstruction>::With<WriteByteCodeExtension,
+                                         InlineExtension> {
+  using unary = bool;
   static constexpr cmd_index_t kIndex = internal::kNotInstructionNumber;
-
-  explicit NotInstruction(RegOr<bool> const& operand)
-      : UnaryInstruction<bool>(operand) {}
-  ~NotInstruction() {}
 
   static bool Apply(bool operand) { return not operand; }
 
@@ -645,17 +612,13 @@ struct NotInstruction : UnaryInstruction<bool> {
                         stringify(this->operand));
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    this->WriteByteCodeUnary(kIndex, writer);
-  }
+  RegOr<bool> operand;
+  Reg result;
 };
 
-struct PtrInstruction : UnaryInstruction<::type::Type const*> {
+struct PtrInstruction : base::Extend<PtrInstruction>::With<WriteByteCodeExtension, InlineExtension> {
+  using unary = type::Type const*;
   static constexpr cmd_index_t kIndex = internal::kPtrInstructionNumber;
-
-  explicit PtrInstruction(RegOr<::type::Type const*> const& operand)
-      : UnaryInstruction<::type::Type const*>(operand) {}
-  ~PtrInstruction() {}
 
   std::string to_string() const {
     using base::stringify;
@@ -667,20 +630,16 @@ struct PtrInstruction : UnaryInstruction<::type::Type const*> {
     return ::type::Ptr(operand);
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    this->WriteByteCodeUnary(kIndex, writer);
-  }
+  RegOr<type::Type const*> operand;
+  Reg result;
 };
 
-struct BufPtrInstruction : UnaryInstruction<::type::Type const*> {
+struct BufPtrInstruction : base::Extend<BufPtrInstruction>::With<WriteByteCodeExtension, InlineExtension> {
+  using unary = type::Type const*;
   static constexpr cmd_index_t kIndex = internal::kBufPtrInstructionNumber;
 
-  explicit BufPtrInstruction(RegOr<::type::Type const*> const& operand)
-      : UnaryInstruction<::type::Type const*>(operand) {}
-  ~BufPtrInstruction() {}
-
-  static ::type::BufferPointer const* Apply(::type::Type const* operand) {
-    return ::type::BufPtr(operand);
+  static type::BufferPointer const* Apply(type::Type const* operand) {
+    return type::BufPtr(operand);
   }
 
   std::string to_string() const {
@@ -689,9 +648,8 @@ struct BufPtrInstruction : UnaryInstruction<::type::Type const*> {
                         stringify(this->operand));
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    this->WriteByteCodeUnary(kIndex, writer);
-  }
+  RegOr<type::Type const*> operand;
+  Reg result;
 };
 
 // TODO Morph this into interpretter break-point instructions.

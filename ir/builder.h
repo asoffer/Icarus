@@ -230,7 +230,7 @@ struct Builder {
   RegOr<T> Neg(RegOr<T> const& val) {
     using InstrT = NegInstruction<T>;
     if (not val.is_reg()) { return InstrT::Apply(val.value()); }
-    NegInstruction<reduced_type_t<T>> inst(val);
+    NegInstruction<reduced_type_t<T>> inst{.operand = val};
     auto result = inst.result = CurrentGroup()->Reserve();
     CurrentBlock()->Append(std::move(inst));
     return result;
@@ -242,7 +242,7 @@ struct Builder {
   RegOr<type::Type const*> BufPtr(RegOr<type::Type const*> const& val) {
     using InstrT = BufPtrInstruction;
     if (not val.is_reg()) { return InstrT::Apply(val.value()); }
-    InstrT inst(val);
+    InstrT inst{.operand = val};
     auto result = inst.result = CurrentGroup()->Reserve();
     CurrentBlock()->Append(std::move(inst));
     return result;
@@ -254,7 +254,7 @@ struct Builder {
   RegOr<type::Type const*> Ptr(RegOr<type::Type const*> const& val) {
     using InstrT = PtrInstruction;
     if (not val.is_reg()) { return InstrT::Apply(val.value()); }
-    InstrT inst(val);
+    InstrT inst{.operand = val};
     auto result = inst.result = CurrentGroup()->Reserve();
     CurrentBlock()->Append(std::move(inst));
     return result;
@@ -263,7 +263,7 @@ struct Builder {
   RegOr<bool> Not(RegOr<bool> const& val) {
     using InstrT = NotInstruction;
     if (not val.is_reg()) { return InstrT::Apply(val.value()); }
-    InstrT inst(val);
+    InstrT inst{.operand = val};
     auto result = inst.result = CurrentGroup()->Reserve();
     CurrentBlock()->Append(std::move(inst));
     return result;
@@ -693,7 +693,7 @@ template <typename T>
 Reg MakeReg(T t) {
   static_assert(not std::is_same_v<T, Reg>);
   if constexpr (IsRegOr<T>::value) {
-    RegisterInstruction<typename T::type> inst(t);
+    RegisterInstruction<typename T::type> inst{.operand = t};
     auto result = inst.result = GetBuilder().CurrentGroup()->Reserve();
     GetBuilder().CurrentBlock()->Append(std::move(inst));
     return result;

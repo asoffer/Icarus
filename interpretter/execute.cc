@@ -185,15 +185,13 @@ void ExecuteInstruction(base::untyped_buffer::const_iterator *iter,
   ctx->current_frame()->regs_.set(reg, result);
 }
 
-template <
-    typename UnInst,
-    typename std::enable_if_t<
-        std::is_base_of_v<ir::UnaryInstruction<typename UnInst::type>, UnInst>,
-        int> = 0>
-void ExecuteInstruction(base::untyped_buffer::const_iterator *iter,
-                        ExecutionContext *ctx,
-                        absl::Span<ir::Addr const> ret_slots) {
-  using type  = typename UnInst::type;
+template <typename UnInst>
+std::enable_if_t<
+    base::meta<std::void_t<typename UnInst::unary>> == base::meta<void>, void>
+ExecuteInstruction(base::untyped_buffer::const_iterator *iter,
+                   ExecutionContext *ctx,
+                   absl::Span<ir::Addr const> ret_slots) {
+  using type  = typename UnInst::unary;
   bool is_reg = iter->read<bool>();
   auto result = UnInst::Apply(ReadAndResolve<type>(is_reg, iter, ctx));
   ctx->current_frame()->regs_.set(iter->read<ir::Reg>(), result);
