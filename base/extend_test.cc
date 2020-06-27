@@ -26,6 +26,23 @@ TEST(NumInitializers, Works) {
   EXPECT_EQ((std::integral_constant<int, internal::NumInitializers<S3>()>::value), 3);
 }
 
+struct Base {
+  int v;
+  int w;
+};
+struct Derived : Base {
+  int x;
+  int y;
+  int z;
+};
+
+TEST(NumInitializers, WorksWithBaseClass) {
+  EXPECT_EQ(
+      (std::integral_constant<int,
+                              internal::NumInitializers<Derived>()>::value),
+      4);
+}
+
 TEST(GetFields, Mutable) {
   {
     S1 s1;

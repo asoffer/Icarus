@@ -438,7 +438,7 @@ struct Builder {
   }
 
   Reg GetRet(uint16_t n, type::Type const* t) {
-    GetReturnInstruction inst(n);
+    GetReturnInstruction inst{.index = n};
     auto result = inst.result = CurrentGroup()->Reserve();
     CurrentBlock()->Append(std::move(inst));
     return result;
@@ -587,7 +587,7 @@ struct Builder {
   template <typename T>
   void SetRet(uint16_t n, T val) {
     if constexpr (IsRegOr<T>::value) {
-      SetReturnInstruction<typename T::type> inst(n, val);
+      SetReturnInstruction<typename T::type> inst{.index = n, .value = val};
       CurrentBlock()->Append(std::move(inst));
     } else if constexpr (base::IsTaggedV<T>) {
       static_assert(std::is_same_v<typename T::base_type, Reg>);
@@ -619,7 +619,8 @@ struct Builder {
   template <typename ToType, typename FromType>
   RegOr<ToType> Cast(RegOr<FromType> r) {
     if (r.is_reg()) {
-      CastInstruction<FromType> inst(r, internal::PrimitiveIndex<ToType>());
+      CastInstruction<FromType> inst{
+          .value = r, .to_type_byte = internal::PrimitiveIndex<ToType>()};
       auto result = inst.result = CurrentGroup()->Reserve();
       CurrentBlock()->Append(std::move(inst));
       return result;

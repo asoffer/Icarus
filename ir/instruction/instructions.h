@@ -8,6 +8,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "ast/scope/scope.h"
+#include "base/extend.h"
 #include "base/meta.h"
 #include "ir/block_def.h"
 #include "ir/instruction/base.h"
@@ -56,6 +57,39 @@ void WriteBits(ByteCodeWriter* writer, absl::Span<T const> span,
 }
 
 }  // namespace internal
+
+template <typename T>
+struct WriteByteCodeExtension {
+  void WriteByteCode(ByteCodeWriter* writer) const {
+    writer->Write(T::kIndex);
+    auto write = [&](auto const& field) {
+      using field_type = std::decay_t<decltype(field)>;
+      if constexpr (IsRegOr<field_type>::value) {
+        writer->Write(field.is_reg());
+        field.apply([&](auto v) { writer->Write(v); });
+      } else {
+        writer->Write(field);
+      }
+    };
+    std::apply([&](auto const&... field) { (write(field), ...); },
+               static_cast<T const*>(this)->field_refs());
+  }
+};
+
+template <typename T>
+struct InlineExtension {
+  void Inline(InstructionInliner const& inliner) {
+    auto inline_register = [&](auto& field) {
+      using field_type = std::decay_t<decltype(field)>;
+      if constexpr (base::meta<field_type> == base::meta<Reg> or
+                    IsRegOr<field_type>::value) {
+        inliner.Inline(field);
+      }
+    };
+    std::apply([&](auto&... field) { (inline_register(field), ...); },
+               static_cast<T*>(this)->field_refs());
+  }
+};
 
 template <typename NumType>
 struct UnaryInstruction {
@@ -515,15 +549,13 @@ struct RegisterInstruction : UnaryInstruction<T> {
 };
 
 template <typename T>
-struct SetReturnInstruction {
+struct SetReturnInstruction
+    : base::Extend<SetReturnInstruction<T>>::template With<
+          WriteByteCodeExtension, InlineExtension> {
   static constexpr cmd_index_t kIndex =
       internal::kSetReturnInstructionRange.start +
       internal::PrimitiveIndex<T>();
   using type = T;
-
-  SetReturnInstruction(uint16_t index, RegOr<T> const& value)
-      : index(index), value(value) {}
-  ~SetReturnInstruction() {}
 
   std::string to_string() const {
     using base::stringify;
@@ -537,46 +569,21 @@ struct SetReturnInstruction {
     }
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(kIndex);
-    writer->Write(index);
-    writer->Write(value.is_reg());
-    value.apply([&](auto v) { writer->Write(v); });
-  }
-
-  void Inline(InstructionInliner const& inliner) { NOT_YET(); }
-
   uint16_t index;
   RegOr<T> value;
 };
 
 template <typename FromType>
-struct CastInstruction {
+struct CastInstruction : base::Extend<CastInstruction<FromType>>::template With<
+                             WriteByteCodeExtension, InlineExtension> {
   static constexpr cmd_index_t kIndex = internal::kCastInstructionRange.start +
                                         internal::PrimitiveIndex<FromType>();
   using from_type = FromType;
-
-  explicit CastInstruction(RegOr<FromType> const& value, uint8_t to_type_byte)
-      : value(value), to_type_byte(to_type_byte) {}
-  ~CastInstruction() {}
 
   std::string to_string() const {
     using base::stringify;
     return absl::StrCat(stringify(result), " = cast ", stringify(value),
                         " to type indexed by ", static_cast<int>(to_type_byte));
-  }
-
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(kIndex);
-    writer->Write(value.is_reg());
-    value.apply([&](auto v) { writer->Write(v); });
-    writer->Write(to_type_byte);
-    writer->Write(result);
-  }
-
-  void Inline(InstructionInliner const& inliner) {
-    inliner.Inline(value);
-    inliner.Inline(result);
   }
 
   RegOr<FromType> value;
@@ -607,24 +614,15 @@ struct NegInstruction : UnaryInstruction<NumType> {
   }
 };
 
-struct GetReturnInstruction {
+struct GetReturnInstruction
+    : base::Extend<GetReturnInstruction>::With<WriteByteCodeExtension,
+                                               InlineExtension> {
   static constexpr cmd_index_t kIndex = internal::kGetReturnInstructionIndex;
-
-  explicit GetReturnInstruction(uint16_t index) : index(index) {}
-  ~GetReturnInstruction() {}
 
   std::string to_string() const {
     using base::stringify;
     return absl::StrCat(stringify(result), " = get-ret ", index);
   }
-
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(kIndex);
-    writer->Write(index);
-    writer->Write(result);
-  }
-
-  void Inline(InstructionInliner const& inliner) { NOT_YET(); }
 
   uint16_t index;
   Reg result;
@@ -868,23 +866,15 @@ struct EnumerationInstruction {
   Reg result;
 };
 
-struct OpaqueTypeInstruction {
+struct OpaqueTypeInstruction
+    : base::Extend<OpaqueTypeInstruction>::With<WriteByteCodeExtension,
+                                                InlineExtension> {
   constexpr static cmd_index_t kIndex = internal::kOpaqueTypeInstructionNumber;
-  OpaqueTypeInstruction(module::BasicModule const* mod) : mod(mod) {}
-  ~OpaqueTypeInstruction() {}
-
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(kIndex);
-    writer->Write(mod);
-    writer->Write(result);
-  }
 
   std::string to_string() const {
     using base::stringify;
     return absl::StrCat(stringify(result), " = opaque ", stringify(mod));
   }
-
-  void Inline(InstructionInliner const& inliner) { inliner.Inline(result); }
 
   module::BasicModule const* mod;
   Reg result;
@@ -1079,24 +1069,14 @@ struct CallInstruction {
   OutParams outs_;
 };
 
-struct LoadSymbolInstruction {
+struct LoadSymbolInstruction
+    : base::Extend<LoadSymbolInstruction>::With<WriteByteCodeExtension,
+                                                InlineExtension> {
   static constexpr cmd_index_t kIndex = internal::kLoadSymbolInstructionNumber;
-  LoadSymbolInstruction(String name, type::Type const* type)
-      : name(name), type(type) {}
-  ~LoadSymbolInstruction() {}
 
   std::string to_string() const {
     return absl::StrCat("load-symbol ", name.get(), ": ", type->to_string());
   }
-
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(kIndex);
-    writer->Write(name);
-    writer->Write(type);
-    writer->Write(result);
-  }
-
-  void Inline(InstructionInliner const& inliner) { inliner.Inline(result); }
 
   String name;
   type::Type const* type;
@@ -1460,12 +1440,11 @@ struct PtrIncrInstruction {
   Reg result;
 };
 
-struct ByteViewLengthInstruction {
+struct ByteViewLengthInstruction
+    : base::Extend<ByteViewLengthInstruction>::With<WriteByteCodeExtension,
+                                                    InlineExtension> {
   static constexpr cmd_index_t kIndex =
       internal::kByteViewLengthInstructionNumber;
-
-  explicit ByteViewLengthInstruction(Reg reg) : reg(reg) {}
-  ~ByteViewLengthInstruction() {}
 
   std::string to_string() const {
     using base::stringify;
@@ -1473,27 +1452,15 @@ struct ByteViewLengthInstruction {
                         stringify(reg));
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(kIndex);
-    writer->Write(reg);
-    writer->Write(result);
-  }
-
-  void Inline(InstructionInliner const& inliner) {
-    inliner.Inline(reg);
-    inliner.Inline(result);
-  }
-
   Reg reg;
   Reg result;
 };
 
-struct ByteViewDataInstruction {
+struct ByteViewDataInstruction
+    : base::Extend<ByteViewDataInstruction>::With<WriteByteCodeExtension,
+                                                  InlineExtension> {
   static constexpr cmd_index_t kIndex =
       internal::kByteViewDataInstructionNumber;
-
-  explicit ByteViewDataInstruction(Reg reg) : reg(reg) {}
-  ~ByteViewDataInstruction() {}
 
   std::string to_string() const {
     using base::stringify;
@@ -1501,45 +1468,20 @@ struct ByteViewDataInstruction {
                         stringify(reg));
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(kIndex);
-    writer->Write(reg);
-    writer->Write(result);
-  }
-
-  void Inline(InstructionInliner const& inliner) {
-    inliner.Inline(reg);
-    inliner.Inline(result);
-  }
-
   Reg reg;
   Reg result;
 };
 
-struct VariantAccessInstruction {
+struct VariantAccessInstruction
+    : base::Extend<VariantAccessInstruction>::With<WriteByteCodeExtension,
+                                                   InlineExtension> {
   static constexpr cmd_index_t kIndex =
       internal::kVariantAccessInstructionNumber;
-  VariantAccessInstruction(RegOr<Addr> const& var, bool get_value)
-      : var(var), get_value(get_value) {}
-  ~VariantAccessInstruction() {}
 
   std::string to_string() const {
     using base::stringify;
     return absl::StrCat(stringify(result), " = variant-",
                         get_value ? "value " : "type ", stringify(var));
-  }
-
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(kIndex);
-    writer->Write(get_value);
-    writer->Write(var.is_reg());
-    var.apply([&](auto v) { writer->Write(v); });
-    writer->Write(result);
-  }
-
-  void Inline(InstructionInliner const& inliner) {
-    inliner.Inline(var);
-    inliner.Inline(result);
   }
 
   RegOr<Addr> var;

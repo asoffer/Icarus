@@ -131,7 +131,7 @@ void Builder::Copy(type::Type const *t, Reg from, RegOr<Addr> to) {
 }
 
 type::Typed<Reg> Builder::LoadSymbol(String name, type::Type const *type) {
-  LoadSymbolInstruction inst(name, type);
+  LoadSymbolInstruction inst{.name = name, .type = type};
   auto result = inst.result = CurrentGroup()->Reserve();
   CurrentBlock()->Append(std::move(inst));
   return type::Typed<Reg>(result, type);
@@ -161,7 +161,7 @@ Reg Builder::PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
 
 RegOr<int64_t> Builder::ByteViewLength(RegOr<ir::String> val) {
   if (not val.is_reg()) { return val.value().get().size(); }
-  ByteViewLengthInstruction inst(val.reg());
+  ByteViewLengthInstruction inst{.reg = val.reg()};
   auto result = inst.result = CurrentGroup()->Reserve();
   CurrentBlock()->Append(std::move(inst));
   return result;
@@ -169,7 +169,7 @@ RegOr<int64_t> Builder::ByteViewLength(RegOr<ir::String> val) {
 
 RegOr<Addr> Builder::ByteViewData(RegOr<ir::String> val) {
   if (not val.is_reg()) { return val.value().addr(); }
-  ByteViewDataInstruction inst(val.reg());
+  ByteViewDataInstruction inst{.reg = val.reg()};
   auto result = inst.result = CurrentGroup()->Reserve();
   CurrentBlock()->Append(std::move(inst));
   return result;
@@ -192,14 +192,14 @@ type::Typed<Reg> Builder::Field(RegOr<Addr> r, type::Struct const *t,
 }
 
 Reg Builder::VariantType(RegOr<Addr> const &r) {
-  VariantAccessInstruction inst(r, false);
+  VariantAccessInstruction inst{.var = r, .get_value = false};
   auto result = inst.result = CurrentGroup()->Reserve();
   CurrentBlock()->Append(std::move(inst));
   return result;
 }
 
 Reg Builder::VariantValue(type::Variant const *v, RegOr<Addr> const &r) {
-  VariantAccessInstruction inst(r, true);
+  VariantAccessInstruction inst{.var = r, .get_value = true};
   auto result = inst.result = CurrentGroup()->Reserve();
   CurrentBlock()->Append(std::move(inst));
   return result;
@@ -279,8 +279,8 @@ RegOr<type::Type const *> Builder::Arrow(
 }
 
 Reg Builder::OpaqueType(module::BasicModule const *mod) {
-  OpaqueTypeInstruction inst(mod);
-  auto result = inst.result = CurrentGroup()->Reserve();
+  OpaqueTypeInstruction inst{.mod = mod, .result = CurrentGroup()->Reserve()};
+  auto result = inst.result;
   CurrentBlock()->Append(std::move(inst));
   return result;
 }

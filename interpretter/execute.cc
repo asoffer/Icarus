@@ -726,11 +726,12 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     ir::Reg result = iter->read<ir::Reg>();
     ctx->current_frame()->regs_.set(result, data_addr);
   } else if constexpr (std::is_same_v<Inst, ir::VariantAccessInstruction>) {
-    bool get_val = iter->read<bool>();
     bool is_reg  = iter->read<bool>();
 
     ir::Addr addr = ReadAndResolve<ir::Addr>(is_reg, iter, ctx);
     DEBUG_LOG("variant")(addr);
+
+    bool get_val = iter->read<bool>();
     if (get_val) { addr += type::Type_->bytes(kArchitecture); }
 
     ir::Reg reg = iter->read<ir::Reg>();

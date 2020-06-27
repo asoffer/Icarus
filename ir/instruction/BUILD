@@ -77,6 +77,7 @@ cc_library(
         ":inliner",
         ":op_codes",
         "//ast/scope",
+        "//base:extend",
         "//ir:block_def",
         "//ir:out_params",
         "//ir:scope_def",

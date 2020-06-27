@@ -1185,7 +1185,6 @@ void Compiler::CompleteStruct(ast::StructLiteral const *node) {
   DEBUG_LOG("struct")
   ("Completing struct-literal emission: ", node,
    " must-complete = ", state_.must_complete);
-  VerifyBody
 
   type::Struct *s = data().get_struct(node);
   if (s->complete_) {
