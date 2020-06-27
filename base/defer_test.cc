@@ -3,6 +3,7 @@
 #include "gtest/gtest.h"
 
 namespace base {
+namespace {
 
 TEST(Defer, Works) {
   int n = 0;
@@ -15,4 +16,5 @@ TEST(Defer, Works) {
   EXPECT_EQ(n, 2);
 }
 
+}  // namespace
 }  // namespace base

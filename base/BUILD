@@ -34,6 +34,23 @@ cc_library(
 )
 
 cc_library(
+    name = "extend",
+    hdrs = ["extend.h"],
+    deps = [
+        ":meta",
+    ],
+)
+
+cc_test(
+    name = "extend_test",
+    srcs = ["extend_test.cc"],
+    deps = [
+        ":extend",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "flyweight_map",
     hdrs =["flyweight_map.h"],
     deps = [
