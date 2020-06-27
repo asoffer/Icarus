@@ -1,3 +1,6 @@
+#ifndef ICARUS_IR_INSTRUCTION_OP_CODES_H
+#define ICARUS_IR_INSTRUCTION_OP_CODES_H
+
 #include <cstddef>
 
 namespace ir {
@@ -115,3 +118,5 @@ inline constexpr cmd_index_t kDebugIrInstructionNumber      = kAdHocStart + 26;
 
 }  // namespace internal
 }  // namespace ir
+
+#endif  // ICARUS_IR_INSTRUCTION_OP_CODES_H

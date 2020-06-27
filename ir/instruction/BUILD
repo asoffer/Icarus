@@ -9,6 +9,25 @@ cc_library(
     ]
 )
 
+cc_library(
+    name = "debug",
+    hdrs = ["debug.h"],
+    deps = [
+        "//base:extend",
+        "//base:stringify",
+        "@com_google_absl//absl/strings:str_format",
+    ],
+)
+
+cc_library(
+    name = "byte_view",
+    hdrs = ["byte_view.h"],
+    deps = [
+        ":op_codes",
+        "//base:extend",
+    ],
+)
+
 cc_test(
     name = "base_test",
     srcs = ["base_test.cc"],
@@ -74,6 +93,8 @@ cc_library(
     hdrs = ["instructions.h", "util.h"],
     deps = [
         ":base",
+        ":byte_view",
+        ":debug",
         ":inliner",
         ":op_codes",
         "//ast/scope",

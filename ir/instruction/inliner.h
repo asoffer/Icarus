@@ -72,6 +72,22 @@ struct InstructionInliner {
   // unconditionally jumped to.
   ir::BasicBlock *landing_block_;
 };
+
+template <typename T>
+struct InlineExtension {
+  void Inline(InstructionInliner const &inliner) {
+    auto inline_register = [&](auto &field) {
+      using field_type = std::decay_t<decltype(field)>;
+      if constexpr (base::meta<field_type> == base::meta<Reg> or
+                    IsRegOr<field_type>::value) {
+        inliner.Inline(field);
+      }
+    };
+    std::apply([&](auto &... field) { (inline_register(field), ...); },
+               static_cast<T *>(this)->field_refs());
+  }
+};
+
 }  // namespace ir
 
 #endif  // ICARUS_IR_INSTRUCTION_INLINER_H

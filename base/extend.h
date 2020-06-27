@@ -68,7 +68,9 @@ constexpr int NumInitializers(Args... args) {
 template <typename T, int NumBases>
 auto GetFields(T &t) {
   constexpr int kNumFields = NumInitializers<T>() - NumBases;
-  if constexpr (kNumFields == 1) {
+  if constexpr (kNumFields == 0) {
+    return std::tie();
+  } else if constexpr (kNumFields == 1) {
     auto &[field0] = t;
     return std::tie(field0);
   } else if constexpr (kNumFields == 2) {
@@ -77,13 +79,18 @@ auto GetFields(T &t) {
   } else if constexpr (kNumFields == 3) {
     auto &[field0, field1, field2] = t;
     return std::tie(field0, field1, field2);
+  } else if constexpr (kNumFields == 4) {
+    auto &[field0, field1, field2, field3] = t;
+    return std::tie(field0, field1, field2, field3);
   }
 }
 
 template <typename T, int NumBases>
 auto GetFields(T const &t) {
   constexpr int kNumFields = NumInitializers<T>() - NumBases;
-  if constexpr (kNumFields == 1) {
+  if constexpr (kNumFields == 0) {
+    return std::tie();
+  } else if constexpr (kNumFields == 1) {
     auto &[field0] = t;
     return std::tie(field0);
   } else if constexpr (kNumFields == 2) {
@@ -92,6 +99,9 @@ auto GetFields(T const &t) {
   } else if constexpr (kNumFields == 3) {
     auto &[field0, field1, field2] = t;
     return std::tie(field0, field1, field2);
+  } else if constexpr (kNumFields == 4) {
+    auto &[field0, field1, field2, field3] = t;
+    return std::tie(field0, field1, field2, field3);
   }
 }
 

@@ -12,6 +12,8 @@
 #include "base/meta.h"
 #include "ir/block_def.h"
 #include "ir/instruction/base.h"
+#include "ir/instruction/byte_view.h"
+#include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
 #include "ir/instruction/op_codes.h"
 #include "ir/instruction/util.h"
@@ -57,39 +59,6 @@ void WriteBits(ByteCodeWriter* writer, absl::Span<T const> span,
 }
 
 }  // namespace internal
-
-template <typename T>
-struct WriteByteCodeExtension {
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(T::kIndex);
-    auto write = [&](auto const& field) {
-      using field_type = std::decay_t<decltype(field)>;
-      if constexpr (IsRegOr<field_type>::value) {
-        writer->Write(field.is_reg());
-        field.apply([&](auto v) { writer->Write(v); });
-      } else {
-        writer->Write(field);
-      }
-    };
-    std::apply([&](auto const&... field) { (write(field), ...); },
-               static_cast<T const*>(this)->field_refs());
-  }
-};
-
-template <typename T>
-struct InlineExtension {
-  void Inline(InstructionInliner const& inliner) {
-    auto inline_register = [&](auto& field) {
-      using field_type = std::decay_t<decltype(field)>;
-      if constexpr (base::meta<field_type> == base::meta<Reg> or
-                    IsRegOr<field_type>::value) {
-        inliner.Inline(field);
-      }
-    };
-    std::apply([&](auto&... field) { (inline_register(field), ...); },
-               static_cast<T*>(this)->field_refs());
-  }
-};
 
 template <typename NumType>
 struct BinaryInstruction {
@@ -367,30 +336,11 @@ struct LeInstruction : BinaryInstruction<NumType> {
   }
 };
 
-struct LoadInstruction {
+struct LoadInstruction
+    : base::Extend<LoadInstruction>::With<
+          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr cmd_index_t kIndex = internal::kLoadInstructionNumber;
-
-  explicit LoadInstruction(RegOr<Addr> addr, uint16_t num_bytes)
-      : num_bytes(num_bytes), addr(addr) {}
-  ~LoadInstruction() {}
-
-  std::string to_string() const {
-    using base::stringify;
-    return absl::StrCat(stringify(result), " = load ", stringify(addr));
-  }
-
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(kIndex);
-    writer->Write(num_bytes);
-    writer->Write(addr.is_reg());
-    addr.apply([&](auto v) { writer->Write(v); });
-    writer->Write(result);
-  }
-
-  void Inline(InstructionInliner const& inliner) {
-    inliner.Inline(addr);
-    inliner.Inline(result);
-  }
+  static constexpr std::string_view kDebugFormat = "%2$s = load %1$s";
 
   uint16_t num_bytes;
   RegOr<Addr> addr;
@@ -501,17 +451,11 @@ struct PhiInstruction {
 template <typename T>
 struct RegisterInstruction
     : base::Extend<RegisterInstruction<T>>::template With<
-          WriteByteCodeExtension, InlineExtension> {
+          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
   using unary = T;
   static constexpr cmd_index_t kIndex =
       internal::kRegisterInstructionRange.start + internal::PrimitiveIndex<T>();
-
-  std::string to_string() const {
-    using base::stringify;
-    return absl::StrCat(internal::TypeToString<T>(), " ",
-                        stringify(this->result), " = ",
-                        stringify(this->operand));
-  }
+  static constexpr std::string_view kDebugFormat = "%2$s = %1$s";
 
   static T Apply(T val) { return val; }
 
@@ -522,23 +466,12 @@ struct RegisterInstruction
 template <typename T>
 struct SetReturnInstruction
     : base::Extend<SetReturnInstruction<T>>::template With<
-          WriteByteCodeExtension, InlineExtension> {
+          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
+  using type = T;
   static constexpr cmd_index_t kIndex =
       internal::kSetReturnInstructionRange.start +
       internal::PrimitiveIndex<T>();
-  using type = T;
-
-  std::string to_string() const {
-    using base::stringify;
-    if constexpr (std::is_same_v<T, ::type::Type const*>) {
-      return absl::StrCat(
-          "set-ret ", index, " = ", internal::TypeToString<T>(), " ",
-          value.is_reg() ? stringify(value) : value.value()->to_string());
-    } else {
-      return absl::StrCat("set-ret ", index, " = ", internal::TypeToString<T>(),
-                          " ", stringify(value));
-    }
-  }
+  static constexpr std::string_view kDebugFormat = "set-ret %1$s = %2$s";
 
   uint16_t index;
   RegOr<T> value;
@@ -546,16 +479,12 @@ struct SetReturnInstruction
 
 template <typename FromType>
 struct CastInstruction : base::Extend<CastInstruction<FromType>>::template With<
-                             WriteByteCodeExtension, InlineExtension> {
+                             WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
+  using from_type = FromType;
   static constexpr cmd_index_t kIndex = internal::kCastInstructionRange.start +
                                         internal::PrimitiveIndex<FromType>();
-  using from_type = FromType;
-
-  std::string to_string() const {
-    using base::stringify;
-    return absl::StrCat(stringify(result), " = cast ", stringify(value),
-                        " to type indexed by ", static_cast<int>(to_type_byte));
-  }
+  static constexpr std::string_view kDebugFormat =
+      "%3$s = cast %1$s to type indexed by %2$s";
 
   RegOr<FromType> value;
   uint8_t to_type_byte;
@@ -563,34 +492,25 @@ struct CastInstruction : base::Extend<CastInstruction<FromType>>::template With<
 };
 
 template <typename NumType>
-struct NegInstruction : base::Extend<NegInstruction<NumType>>::template With<
-                            WriteByteCodeExtension, InlineExtension> {
+struct NegInstruction
+    : base::Extend<NegInstruction<NumType>>::template With<
+          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
   using unary = NumType;
   static constexpr cmd_index_t kIndex = internal::kNegInstructionRange.start +
                                         internal::PrimitiveIndex<NumType>();
+  static constexpr std::string_view kDebugFormat = "%2$s = neg %1$s";
 
   static NumType Apply(NumType operand) { return -operand; }
-
-  std::string to_string() const {
-    using base::stringify;
-    return absl::StrCat(internal::TypeToString<NumType>(), " ",
-                        stringify(this->result), " = neg ",
-                        stringify(this->operand));
-  }
 
   RegOr<NumType> operand;
   Reg result;
 };
 
 struct GetReturnInstruction
-    : base::Extend<GetReturnInstruction>::With<WriteByteCodeExtension,
-                                               InlineExtension> {
+    : base::Extend<GetReturnInstruction>::With<
+          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr cmd_index_t kIndex = internal::kGetReturnInstructionIndex;
-
-  std::string to_string() const {
-    using base::stringify;
-    return absl::StrCat(stringify(result), " = get-ret ", index);
-  }
+  static constexpr std::string_view kDebugFormat = "%2$s = get-ret %1$s";
 
   uint16_t index;
   Reg result;
@@ -598,54 +518,42 @@ struct GetReturnInstruction
 
 // TODO this should work for flags too.
 struct NotInstruction
-    : base::Extend<NotInstruction>::With<WriteByteCodeExtension,
-                                         InlineExtension> {
+    : base::Extend<NotInstruction>::With<
+          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
   using unary = bool;
   static constexpr cmd_index_t kIndex = internal::kNotInstructionNumber;
+  static constexpr std::string_view kDebugFormat = "%2$s = not %1$s";
 
   static bool Apply(bool operand) { return not operand; }
-
-  std::string to_string() const {
-    using base::stringify;
-    return absl::StrCat(internal::TypeToString<bool>(), " ",
-                        stringify(this->result), " = not ",
-                        stringify(this->operand));
-  }
 
   RegOr<bool> operand;
   Reg result;
 };
 
-struct PtrInstruction : base::Extend<PtrInstruction>::With<WriteByteCodeExtension, InlineExtension> {
+struct PtrInstruction
+    : base::Extend<PtrInstruction>::With<
+          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
   using unary = type::Type const*;
   static constexpr cmd_index_t kIndex = internal::kPtrInstructionNumber;
+  static constexpr std::string_view kDebugFormat = "%2$s = ptr %1$s";
 
-  std::string to_string() const {
-    using base::stringify;
-    return absl::StrCat("type ", stringify(this->result), " = ptr ",
-                        stringify(this->operand));
-  }
-
-  static ::type::Pointer const* Apply(::type::Type const* operand) {
-    return ::type::Ptr(operand);
+  static type::Pointer const* Apply(type::Type const* operand) {
+    return type::Ptr(operand);
   }
 
   RegOr<type::Type const*> operand;
   Reg result;
 };
 
-struct BufPtrInstruction : base::Extend<BufPtrInstruction>::With<WriteByteCodeExtension, InlineExtension> {
+struct BufPtrInstruction
+    : base::Extend<BufPtrInstruction>::With<
+          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
   using unary = type::Type const*;
   static constexpr cmd_index_t kIndex = internal::kBufPtrInstructionNumber;
+  static constexpr std::string_view kDebugFormat = "%2$s = buf-ptr %1$s";
 
   static type::BufferPointer const* Apply(type::Type const* operand) {
     return type::BufPtr(operand);
-  }
-
-  std::string to_string() const {
-    using base::stringify;
-    return absl::StrCat("type ", stringify(this->result), " = buf-ptr ",
-                        stringify(this->operand));
   }
 
   RegOr<type::Type const*> operand;
@@ -653,19 +561,11 @@ struct BufPtrInstruction : base::Extend<BufPtrInstruction>::With<WriteByteCodeEx
 };
 
 // TODO Morph this into interpretter break-point instructions.
-struct DebugIrInstruction {
+struct DebugIrInstruction
+    : base::Extend<DebugIrInstruction>::With<
+          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr cmd_index_t kIndex = internal::kDebugIrInstructionNumber;
-
-  DebugIrInstruction() = default;
-  ~DebugIrInstruction() {}
-
-  std::string to_string() const { return "debug-ir"; }
-
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(internal::kDebugIrInstructionNumber);
-  }
-
-  void Inline(InstructionInliner const& inliner) {}
+  static constexpr std::string_view kDebugFormat = "debug-ir";
 };
 
 struct XorFlagsInstruction : BinaryInstruction<FlagsVal> {
@@ -825,14 +725,10 @@ struct EnumerationInstruction {
 };
 
 struct OpaqueTypeInstruction
-    : base::Extend<OpaqueTypeInstruction>::With<WriteByteCodeExtension,
-                                                InlineExtension> {
+    : base::Extend<OpaqueTypeInstruction>::With<
+          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
   constexpr static cmd_index_t kIndex = internal::kOpaqueTypeInstructionNumber;
-
-  std::string to_string() const {
-    using base::stringify;
-    return absl::StrCat(stringify(result), " = opaque ", stringify(mod));
-  }
+  static constexpr std::string_view kDebugFormat = "%2$s = opaque %1$s";
 
   module::BasicModule const* mod;
   Reg result;
@@ -1028,13 +924,10 @@ struct CallInstruction {
 };
 
 struct LoadSymbolInstruction
-    : base::Extend<LoadSymbolInstruction>::With<WriteByteCodeExtension,
-                                                InlineExtension> {
+    : base::Extend<LoadSymbolInstruction>::With<
+          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr cmd_index_t kIndex = internal::kLoadSymbolInstructionNumber;
-
-  std::string to_string() const {
-    return absl::StrCat("load-symbol ", name.get(), ": ", type->to_string());
-  }
+  static constexpr std::string_view kDebugFormat = "%3$s = load-symbol %1$s: %2$s";
 
   String name;
   type::Type const* type;
@@ -1260,21 +1153,13 @@ struct MakeScopeInstruction {
   Reg result;
 };
 
-struct StructIndexInstruction {
-  static constexpr cmd_index_t kIndex = internal::kStructIndexInstructionNumber;
+struct StructIndexInstruction
+    : base::Extend<StructIndexInstruction>::With<InlineExtension,
+                                                 DebugFormatExtension> {
   using type                          = type::Struct const*;
-
-  StructIndexInstruction(RegOr<Addr> const& addr, RegOr<int64_t> index,
-                         ::type::Struct const* struct_type)
-      : addr(addr), index(index), struct_type(struct_type) {}
-  ~StructIndexInstruction() {}
-
-  std::string to_string() const {
-    using base::stringify;
-    return absl::StrCat(stringify(result), " = index ", stringify(index),
-                        " of ", stringify(addr), " (struct ",
-                        struct_type->to_string(), ")");
-  }
+  static constexpr cmd_index_t kIndex = internal::kStructIndexInstructionNumber;
+  static constexpr std::string_view kDebugFormat =
+      "%4$s = index %2$s of %1$s (struct %3$s)";
 
   struct control_bits {
     uint8_t reg_addr : 1;
@@ -1294,33 +1179,19 @@ struct StructIndexInstruction {
     writer->Write(result);
   }
 
-  void Inline(InstructionInliner const& inliner) {
-    inliner.Inline(addr);
-    inliner.Inline(index);
-    inliner.Inline(result);
-  }
-
   RegOr<Addr> addr;
   RegOr<int64_t> index;
   ::type::Struct const* struct_type;
   Reg result;
 };
 
-struct TupleIndexInstruction {
-  static constexpr cmd_index_t kIndex = internal::kTupleIndexInstructionNumber;
+struct TupleIndexInstruction
+    : base::Extend<TupleIndexInstruction>::With<InlineExtension,
+                                                DebugFormatExtension> {
   using type                          = type::Tuple const*;
-
-  TupleIndexInstruction(RegOr<Addr> const& addr, RegOr<int64_t> index,
-                        ::type::Tuple const* tuple)
-      : addr(addr), index(index), tuple(tuple) {}
-  ~TupleIndexInstruction() {}
-
-  std::string to_string() const {
-    using base::stringify;
-    return absl::StrCat(stringify(result), " = index ", stringify(index),
-                        " of ", stringify(addr), " (tuple ", tuple->to_string(),
-                        ")");
-  }
+  static constexpr cmd_index_t kIndex = internal::kTupleIndexInstructionNumber;
+  static constexpr std::string_view kDebugFormat =
+      "%4$s = index %2$s of %1$s (tuple %3$s)";
 
   struct control_bits {
     uint8_t reg_addr : 1;
@@ -1340,33 +1211,19 @@ struct TupleIndexInstruction {
     writer->Write(result);
   }
 
-  void Inline(InstructionInliner const& inliner) {
-    inliner.Inline(addr);
-    inliner.Inline(index);
-    inliner.Inline(result);
-  }
-
   RegOr<Addr> addr;
   RegOr<int64_t> index;
   ::type::Tuple const* tuple;
   Reg result;
 };
 
-struct PtrIncrInstruction {
-  static constexpr cmd_index_t kIndex = internal::kPtrIncrInstructionNumber;
+struct PtrIncrInstruction
+    : base::Extend<PtrIncrInstruction>::With<InlineExtension,
+                                             DebugFormatExtension> {
   using type                          = type::Pointer const*;
-
-  PtrIncrInstruction(RegOr<Addr> const& addr, RegOr<int64_t> index,
-                     ::type::Pointer const* ptr)
-      : addr(addr), index(index), ptr(ptr) {}
-  ~PtrIncrInstruction() {}
-
-  std::string to_string() const {
-    using base::stringify;
-    return absl::StrCat(stringify(result), " = index ", stringify(index),
-                        " of ", stringify(addr), " (ptr ", ptr->to_string(),
-                        ")");
-  }
+  static constexpr cmd_index_t kIndex = internal::kPtrIncrInstructionNumber;
+  static constexpr std::string_view kDebugFormat =
+      "%4$s = index %2$s of %1$s (pointer %3$s)";
 
   struct control_bits {
     uint8_t reg_addr : 1;
@@ -1386,61 +1243,18 @@ struct PtrIncrInstruction {
     writer->Write(result);
   }
 
-  void Inline(InstructionInliner const& inliner) {
-    inliner.Inline(addr);
-    inliner.Inline(index);
-    inliner.Inline(result);
-  }
-
   RegOr<Addr> addr;
   RegOr<int64_t> index;
   ::type::Pointer const* ptr;
   Reg result;
 };
 
-struct ByteViewLengthInstruction
-    : base::Extend<ByteViewLengthInstruction>::With<WriteByteCodeExtension,
-                                                    InlineExtension> {
-  static constexpr cmd_index_t kIndex =
-      internal::kByteViewLengthInstructionNumber;
-
-  std::string to_string() const {
-    using base::stringify;
-    return absl::StrCat(stringify(result), " = byte-view length ",
-                        stringify(reg));
-  }
-
-  Reg reg;
-  Reg result;
-};
-
-struct ByteViewDataInstruction
-    : base::Extend<ByteViewDataInstruction>::With<WriteByteCodeExtension,
-                                                  InlineExtension> {
-  static constexpr cmd_index_t kIndex =
-      internal::kByteViewDataInstructionNumber;
-
-  std::string to_string() const {
-    using base::stringify;
-    return absl::StrCat(stringify(result), " = byte-view data ",
-                        stringify(reg));
-  }
-
-  Reg reg;
-  Reg result;
-};
-
 struct VariantAccessInstruction
-    : base::Extend<VariantAccessInstruction>::With<WriteByteCodeExtension,
-                                                   InlineExtension> {
+    : base::Extend<VariantAccessInstruction>::With<
+          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr cmd_index_t kIndex =
       internal::kVariantAccessInstructionNumber;
-
-  std::string to_string() const {
-    using base::stringify;
-    return absl::StrCat(stringify(result), " = variant-",
-                        get_value ? "value " : "type ", stringify(var));
-  }
+  static constexpr std::string_view kDebugFormat = "%3$s = variant(%2$s) %1$s";
 
   RegOr<Addr> var;
   bool get_value;

@@ -403,7 +403,8 @@ struct Builder {
       return cache_results.get<RegOr<T>>();
     }
 
-    LoadInstruction inst(addr, core::Bytes::Get<T>().value());
+    LoadInstruction inst{.num_bytes = core::Bytes::Get<T>().value(),
+                         .addr      = addr};
     auto result = inst.result = CurrentGroup()->Reserve();
 
     cache_results = Value(result);
@@ -553,7 +554,7 @@ struct Builder {
                 std::vector<RegOr<Fn>> dones,
                 absl::flat_hash_map<std::string_view, BlockDef*> blocks);
 
-  void DebugIr() { CurrentBlock()->Append(DebugIrInstruction()); }
+  void DebugIr() { CurrentBlock()->Append(DebugIrInstruction{}); }
 
   LocalBlockInterpretation MakeLocalBlockInterpretation(
       ast::ScopeNode const*, BasicBlock* starting_block,

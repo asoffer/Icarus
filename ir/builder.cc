@@ -153,7 +153,7 @@ Reg Builder::Bytes(RegOr<type::Type const *> r) {
 
 Reg Builder::PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc,
                      type::Pointer const *t) {
-  PtrIncrInstruction inst(ptr, inc, t);
+  PtrIncrInstruction inst{.addr = ptr, .index = inc, .ptr = t};
   auto result = inst.result = CurrentGroup()->Reserve();
   CurrentBlock()->Append(std::move(inst));
   return result;
@@ -177,7 +177,7 @@ RegOr<Addr> Builder::ByteViewData(RegOr<ir::String> val) {
 
 type::Typed<Reg> Builder::Field(RegOr<Addr> r, type::Tuple const *t,
                                 int64_t n) {
-  TupleIndexInstruction inst(r, n, t);
+  TupleIndexInstruction inst{.addr = r, .index = n, .tuple = t};
   auto result = inst.result = CurrentGroup()->Reserve();
   CurrentBlock()->Append(std::move(inst));
   return type::Typed<Reg>(result, type::Ptr(t->entries_.at(n)));
@@ -185,7 +185,7 @@ type::Typed<Reg> Builder::Field(RegOr<Addr> r, type::Tuple const *t,
 
 type::Typed<Reg> Builder::Field(RegOr<Addr> r, type::Struct const *t,
                                 int64_t n) {
-  StructIndexInstruction inst(r, n, t);
+  StructIndexInstruction inst{.addr = r, .index = n, .struct_type = t};
   auto result = inst.result = CurrentGroup()->Reserve();
   CurrentBlock()->Append(std::move(inst));
   return type::Typed<Reg>(result, type::Ptr(t->fields()[n].type));

@@ -44,6 +44,24 @@ struct ByteCodeWriter {
   absl::flat_hash_map<BasicBlock const*, std::vector<size_t>> replacements_;
 };
 
+template <typename T>
+struct WriteByteCodeExtension {
+  void WriteByteCode(ByteCodeWriter* writer) const {
+    writer->Write(T::kIndex);
+    auto write = [&](auto const& field) {
+      using field_type = std::decay_t<decltype(field)>;
+      if constexpr (IsRegOr<field_type>::value) {
+        writer->Write(field.is_reg());
+        field.apply([&](auto v) { writer->Write(v); });
+      } else {
+        writer->Write(field);
+      }
+    };
+    std::apply([&](auto const&... field) { (write(field), ...); },
+               static_cast<T const*>(this)->field_refs());
+  }
+};
+
 }  // namespace ir
 
 #endif  // ICARUS_IR_BYTE_CODE_WRITER_H
