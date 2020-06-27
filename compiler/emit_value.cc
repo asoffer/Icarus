@@ -1185,6 +1185,7 @@ void Compiler::CompleteStruct(ast::StructLiteral const *node) {
   DEBUG_LOG("struct")
   ("Completing struct-literal emission: ", node,
    " must-complete = ", state_.must_complete);
+  VerifyBody
 
   type::Struct *s = data().get_struct(node);
   if (s->complete_) {
@@ -1266,7 +1267,7 @@ ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
   //
   // The process, as you can see above is to
   // 1. Check if it has already been allocated. Return if it has been.
-  // 2. Allocated ourselves.
+  // 2. Allocate ourselves.
   // 3. Start body verification.
   // 4. Schedule completion.
   //
@@ -1278,13 +1279,12 @@ ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
   if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
 
   if (state_.must_complete) {
-
-  DEBUG_LOG("compile-work-queue")
-  ("Request work: ",
-   static_cast<int>(TransientFunctionState::WorkType::CompleteStruct), ": ",
-   node);
-  state_.work_queue.emplace(node,
-                            TransientFunctionState::WorkType::CompleteStruct);
+    DEBUG_LOG("compile-work-queue")
+    ("Request work: ",
+     static_cast<int>(TransientFunctionState::WorkType::CompleteStruct), ": ",
+     node);
+    state_.work_queue.emplace(node,
+                              TransientFunctionState::WorkType::CompleteStruct);
   }
   return ir::Value(static_cast<type::Type const *>(s));
 }

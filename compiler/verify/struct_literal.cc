@@ -6,7 +6,7 @@
 namespace compiler {
 
 bool Compiler::VerifyBody(ast::StructLiteral const *node) {
-  DEBUG_LOG("struct")("Struct-literal body verification: ", node);
+  DEBUG_LOG("struct")("Struct-literal body verification: ", node, node->DebugString());
   bool error = false;
   for (auto const &field : node->fields()) {
     auto field_qt = VerifyType(&field);
@@ -18,7 +18,7 @@ bool Compiler::VerifyBody(ast::StructLiteral const *node) {
 }
 
 type::QualType Compiler::VerifyType(ast::StructLiteral const *node) {
-  DEBUG_LOG("struct")("Starting struct-literal verification: ", node);
+  DEBUG_LOG("struct")("Verify type ", node, node->DebugString());
   DEBUG_LOG("compile-work-queue")
   ("Request work: ",
    static_cast<int>(TransientFunctionState::WorkType::VerifyBody), ": ", node);

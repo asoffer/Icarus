@@ -24,7 +24,7 @@ struct InvalidCast {
   static constexpr std::string_view kName     = "invalid-cast";
 
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("No viable cast form `%s` to `%s`.",
+    return DiagnosticMessage(Text("No viable cast from `%s` to `%s`.",
                                   from->to_string(), to->to_string()),
                              SourceQuote(src).Highlighted(range, Style{}));
   }

@@ -73,10 +73,10 @@ type::QualType Compiler::VerifyType(ast::Assignment const *node) {
     // TODO: deal with immovable and uncopyable types.
     type::Type const *lhs_type = (*lhs_iter).type();
     type::Type const *rhs_type = (*rhs_iter).type();
-    if (not type::CanCast(lhs_type, rhs_type)) {
+    if (not type::CanCast(rhs_type, lhs_type)) {
       diag().Consume(diagnostic::InvalidCast{
-          .from = lhs_type,
-          .to   = rhs_type,
+          .from = rhs_type,
+          .to   = lhs_type,
           // TODO: set the range to point more directly to the things we care
           // about.
           .range = node->range(),
