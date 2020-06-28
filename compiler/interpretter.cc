@@ -18,8 +18,8 @@
 #include "frontend/source/file_name.h"
 #include "frontend/source/shared.h"
 #include "init/cli.h"
-#include "ir/interpretter/execute.h"
 #include "ir/compiled_fn.h"
+#include "ir/interpretter/evaluate.h"
 #include "module/module.h"
 #include "opt/opt.h"
 
@@ -54,10 +54,8 @@ int Compile(frontend::FileName const &file_name) {
   // TODO All the functions? In all the modules?
   opt::RunAllOptimizations(&main_fn);
   main_fn.WriteByteCode();
-  interpretter::ExecutionContext exec_ctx;
-  interpretter::Execute(&main_fn,
-                        base::untyped_buffer::MakeFull(main_fn.num_regs() * 16),
-                        {}, &exec_ctx);
+  interpretter::Execute(
+      &main_fn, base::untyped_buffer::MakeFull(main_fn.num_regs() * 16), {});
 
   return 0;
 }

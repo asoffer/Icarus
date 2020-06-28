@@ -12,6 +12,9 @@
 
 namespace interpretter {
 
+void Execute(ir::Fn fn, base::untyped_buffer arguments,
+             absl::Span<ir::Addr const> ret_slots);
+
 base::expected<ir::Value, EvaluationFailure> Evaluate(ir::CompiledFn &&fn);
 
 // TODO wrap output in expected.

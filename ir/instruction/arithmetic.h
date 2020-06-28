@@ -15,7 +15,7 @@ namespace ir {
 template <typename NumType>
 struct AddInstruction
     : base::Extend<AddInstruction<NumType>>::template With<
-          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   using binary                        = NumType;
   static constexpr cmd_index_t kIndex = internal::kAddInstructionRange.start +
                                         internal::PrimitiveIndex<NumType>();
@@ -31,7 +31,7 @@ struct AddInstruction
 template <typename NumType>
 struct SubInstruction
     : base::Extend<SubInstruction<NumType>>::template With<
-          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   using binary                        = NumType;
   static constexpr cmd_index_t kIndex = internal::kSubInstructionRange.start +
                                         internal::PrimitiveIndex<NumType>();
@@ -47,7 +47,7 @@ struct SubInstruction
 template <typename NumType>
 struct MulInstruction
     : base::Extend<MulInstruction<NumType>>::template With<
-          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   using binary                        = NumType;
   static constexpr cmd_index_t kIndex = internal::kMulInstructionRange.start +
                                         internal::PrimitiveIndex<NumType>();
@@ -63,7 +63,7 @@ struct MulInstruction
 template <typename NumType>
 struct DivInstruction
     : base::Extend<DivInstruction<NumType>>::template With<
-          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   using binary                        = NumType;
   static constexpr cmd_index_t kIndex = internal::kDivInstructionRange.start +
                                         internal::PrimitiveIndex<NumType>();
@@ -79,7 +79,7 @@ struct DivInstruction
 template <typename NumType>
 struct ModInstruction
     : base::Extend<ModInstruction<NumType>>::template With<
-          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   using binary                        = NumType;
   static constexpr cmd_index_t kIndex = internal::kModInstructionRange.start +
                                         internal::PrimitiveIndex<NumType>();

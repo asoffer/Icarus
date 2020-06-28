@@ -167,18 +167,14 @@ void Execute(ir::Fn fn, base::untyped_buffer arguments,
 }
 
 template <typename BinInst>
-std::enable_if_t<not std::is_void_v<typename BinInst::binary>, void> ExecuteInstruction(
-    base::untyped_buffer::const_iterator *iter, ExecutionContext *ctx,
-    absl::Span<ir::Addr const> ret_slots) {
-  using type      = typename BinInst::binary;
-  bool lhs_is_reg = iter->read<bool>();
-  type lhs        = ReadAndResolve<type>(lhs_is_reg, iter, ctx);
-  bool rhs_is_reg = iter->read<bool>();
-  type rhs        = ReadAndResolve<type>(rhs_is_reg, iter, ctx);
-  auto result     = BinInst::Apply(lhs, rhs);
-  auto reg        = iter->read<ir::Reg>();
-  DEBUG_LOG("binary-instruction")(lhs, " ", lhs, " -> ", result, " into ", reg);
-  ctx->current_frame()->regs_.set(reg, result);
+std::enable_if_t<not std::is_void_v<typename BinInst::binary>, void>
+ExecuteInstruction(base::untyped_buffer::const_iterator *iter,
+                   ExecutionContext *ctx,
+                   absl::Span<ir::Addr const> ret_slots) {
+  auto inst = BinInst::ReadFromByteCode(iter);
+  ctx->current_frame()->regs_.set(
+      inst.result,
+      BinInst::Apply(ctx->resolve(inst.lhs), ctx->resolve(inst.rhs)));
 }
 
 template <typename UnInst>

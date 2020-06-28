@@ -21,11 +21,9 @@ struct ConvertibleToAnything {
 template <typename T>
 struct ConvertibleToAnythingBut {
   ConvertibleToAnythingBut();
-  template <typename U,
-            std::enable_if_t<base::meta<T> != base::meta<U>, int> = 0>
+  template <typename U, std::enable_if_t<meta<T> != meta<U>, int> = 0>
   operator U &() const;
-  template <typename U,
-            std::enable_if_t<base::meta<T> != base::meta<U>, int> = 0>
+  template <typename U, std::enable_if_t<meta<T> != meta<U>, int> = 0>
   operator U &&() const;
 };
 
@@ -105,13 +103,45 @@ auto GetFields(T const &t) {
   }
 }
 
+template <typename T>
+auto GetDependencies(T *) -> typename T::dependencies;
+auto GetDependencies(void *) -> type_list<>;
+
+template <typename... Processed>
+auto DependenciesImpl(type_list<>, type_list<Processed...>) {
+  return type_list<Processed...>{};
+}
+
+template <typename T, typename... Ts, typename... Processed>
+auto DependenciesImpl(type_list<T, Ts...>, type_list<Processed...>) {
+  if constexpr (((meta<T> == meta<Processed>) || ...)) {
+    return DependenciesImpl(type_list<Ts...>{}, type_list<Processed...>{});
+  } else {
+    using deps = decltype(GetDependencies(static_cast<T *>(nullptr)));
+    if constexpr (meta<deps> == meta<type_list<>>) {
+      return DependenciesImpl(type_list<Ts...>{}, type_list<T, Processed...>{});
+    } else {
+      return DependenciesImpl(type_list_cat<deps, type_list<Ts...>>{},
+                              type_list<T, Processed...>{});
+    }
+  }
+}
+
+template <typename ExtensionsTypeList>
+struct ExtensionSet;
+template <typename... Extensions>
+struct ExtensionSet<type_list<Extensions...>> : Extensions... {};
 
 }  // namespace internal
+
+template <typename... Deps>
+using AllDependencies =
+    decltype(internal::DependenciesImpl(type_list<Deps...>{}, type_list<>{}));
 
 template <typename T>
 struct Extend final {
   template <template <typename> typename... Extensions>
-  struct With : Extensions<T>... {
+  struct With : internal::ExtensionSet<AllDependencies<Extensions<T>...>> {
     auto field_refs() & {
       return internal::GetFields<T, 1>(static_cast<T &>(*this));
     }

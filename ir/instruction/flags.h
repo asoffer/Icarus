@@ -14,7 +14,7 @@ namespace ir {
 
 struct XorFlagsInstruction
     : base::Extend<XorFlagsInstruction>::With<
-          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   using binary                        = FlagsVal;
   static constexpr cmd_index_t kIndex = internal::kXorFlagsInstructionNumber;
   static constexpr std::string_view kDebugFormat = "%3$s = xor-flags %1$s %2$s";
@@ -28,7 +28,7 @@ struct XorFlagsInstruction
 
 struct AndFlagsInstruction
     : base::Extend<AndFlagsInstruction>::With<
-          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   using binary                        = FlagsVal;
   static constexpr cmd_index_t kIndex = internal::kAndFlagsInstructionNumber;
   static constexpr std::string_view kDebugFormat = "%3$s = and-flags %1$s %2$s";
@@ -41,8 +41,8 @@ struct AndFlagsInstruction
 };
 
 struct OrFlagsInstruction
-    : base::Extend<OrFlagsInstruction>::With<
-          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
+    : base::Extend<OrFlagsInstruction>::With<ByteCodeExtension, InlineExtension,
+                                             DebugFormatExtension> {
   using binary                        = FlagsVal;
   static constexpr cmd_index_t kIndex = internal::kOrFlagsInstructionNumber;
   static constexpr std::string_view kDebugFormat = "%3$s = or-flags %1$s %2$s";

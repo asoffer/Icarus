@@ -13,8 +13,8 @@
 
 namespace interpretter {
 
+// An ExecutionContext holds all the required state needed during the execution of a `Fn`.
 struct ExecutionContext {
-  ExecutionContext(std::ostream &os = std::cout) : os_(os) {}
   void ExecuteBlocks(absl::Span<ir::Addr const> ret_slots);
 
   StackFrame const *current_frame() const { return current_frame_; }
@@ -35,7 +35,6 @@ struct ExecutionContext {
     return val.resolve([&](ir::Reg r) { return resolve<T>(r); });
   }
 
-  std::ostream &os_;
   StackFrame *current_frame_ = nullptr;
   base::untyped_buffer stack_;
 };

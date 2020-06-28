@@ -15,7 +15,7 @@ namespace ir {
 template <typename NumType>
 struct EqInstruction
     : base::Extend<EqInstruction<NumType>>::template With<
-          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   using binary = NumType;
   static constexpr cmd_index_t kIndex =
       internal::kEqInstructionRange.start + internal::PrimitiveIndex<NumType>();
@@ -31,7 +31,7 @@ struct EqInstruction
 template <typename NumType>
 struct NeInstruction
     : base::Extend<NeInstruction<NumType>>::template With<
-          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   using binary = NumType;
   static constexpr cmd_index_t kIndex =
       internal::kNeInstructionRange.start + internal::PrimitiveIndex<NumType>();
@@ -47,7 +47,7 @@ struct NeInstruction
 template <typename NumType>
 struct LtInstruction
     : base::Extend<LtInstruction<NumType>>::template With<
-          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   using binary = NumType;
   static constexpr cmd_index_t kIndex =
       internal::kLtInstructionRange.start + internal::PrimitiveIndex<NumType>();
@@ -63,7 +63,7 @@ struct LtInstruction
 template <typename NumType>
 struct LeInstruction
     : base::Extend<LeInstruction<NumType>>::template With<
-          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
+          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   using binary = NumType;
   static constexpr cmd_index_t kIndex =
       internal::kLeInstructionRange.start + internal::PrimitiveIndex<NumType>();
@@ -78,4 +78,4 @@ struct LeInstruction
 
 }  // namespace ir
 
-#endif // ICARUS_IR_INSTRUCTION_COMPARE_H
+#endif  // ICARUS_IR_INSTRUCTION_COMPARE_H

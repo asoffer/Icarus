@@ -9,6 +9,21 @@
 namespace ir {
 struct BasicBlock;
 
+namespace internal {
+template <typename T>
+void ReadInto(T& ref, base::untyped_buffer::const_iterator* iter) {
+  if constexpr (IsRegOr<T>::value) {
+    if (iter->read<bool>()) {
+      ref = iter->read<Reg>().get();
+    } else {
+      ref = iter->read<typename T::type>().get();
+    }
+  } else {
+    ref = iter->read<T>();
+  }
+}
+}  // namespace internal
+
 struct ByteCodeWriter {
   explicit ByteCodeWriter(base::untyped_buffer* buf) : buf_(buf) {}
   ~ByteCodeWriter() { ASSERT(replacements_.size() == 0u); }
@@ -60,6 +75,22 @@ struct WriteByteCodeExtension {
     std::apply([&](auto const&... field) { (write(field), ...); },
                static_cast<T const*>(this)->field_refs());
   }
+};
+
+template <typename T>
+struct ReadFromByteCodeExtension {
+  static T ReadFromByteCode(base::untyped_buffer::const_iterator* iter) {
+    T result{};
+    std::apply([&](auto&... refs) { (internal::ReadInto(refs, iter), ...); },
+               result.field_refs());
+    return result;
+  }
+};
+
+template <typename T>
+struct ByteCodeExtension {
+  using dependencies =
+      base::type_list<ReadFromByteCodeExtension<T>, WriteByteCodeExtension<T>>;
 };
 
 }  // namespace ir

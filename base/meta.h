@@ -34,7 +34,7 @@ template <typename T>
 using identity_t = typename identity<T>::type;
 
 template <typename... Ts>
-using type_list = void(Ts...);
+using type_list = void (*)(Ts...);
 
 namespace internal {
 
@@ -144,6 +144,22 @@ template <typename T>
 constexpr bool operator!=(MetaValue lhs, Meta<T> rhs) {
   return not(lhs == rhs);
 }
+
+template <typename... Ts, typename T>
+constexpr bool ContainsImpl(type_list<Ts...>, T*) {
+  return ((meta<Ts> == meta<T>) || ...);
+}
+
+template <typename TL, typename T>
+constexpr bool Contains() {
+  return ContainsImpl(TL{}, static_cast<T*>(nullptr));
+}
+
+template <typename... Ts>
+constexpr size_t Length(type_list<Ts...>) {
+  return sizeof...(Ts);
+}
+constexpr void Length(void*) {}
 
 }  // namespace base
 

@@ -96,5 +96,29 @@ TEST(Extend, FieldRefs) {
   EXPECT_EQ(&s.y, &std::get<1>(s.field_refs()));
 }
 
+struct E {};
+struct D {
+  using dependencies = type_list<>;
+};
+struct C {
+  using dependencies = type_list<D>;
+};
+struct B {
+  using dependencies = type_list<D, E>;
+};
+struct A {
+  using dependencies = type_list<B, C>;
+};
+
+TEST(Extend, Dependencies) {
+  using deps = AllDependencies<A>;
+  EXPECT_TRUE((Contains<deps, A>));
+  EXPECT_TRUE((Contains<deps, B>));
+  EXPECT_TRUE((Contains<deps, C>));
+  EXPECT_TRUE((Contains<deps, D>));
+  EXPECT_TRUE((Contains<deps, E>));
+  EXPECT_EQ(Length(deps{}), 5);
+}
+
 }  // namespace
 }  // namespace base

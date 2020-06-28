@@ -46,8 +46,7 @@ void ReplEval(ast::Expression const *expr, Compiler *compiler) {
     compiler->builder().ReturnJump();
   }
 
-  interpretter::ExecutionContext ctx;
-  interpretter::Execute(&fn, base::untyped_buffer(0), {}, &ctx);
+  interpretter::Execute(&fn, base::untyped_buffer(0), {});
 }
 
 struct ReplModule : public CompiledModule {

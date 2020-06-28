@@ -65,7 +65,6 @@ cc_library(
     name = "execute",
     hdrs = ["execute.h"],
     srcs = ["execute.cc"],
-    visibility = ["//visibility:public"],
     deps = [
         ":architecture",
         ":foreign",

@@ -14,6 +14,12 @@
 namespace interpretter {
 constexpr int kMaxSize = 8;
 
+void Execute(ir::Fn fn, base::untyped_buffer arguments,
+             absl::Span<ir::Addr const> ret_slots) {
+  ExecutionContext exec_ctx;
+  Execute(fn, std::move(arguments), ret_slots, &exec_ctx);
+}
+
 // TODO: Return potential errors.
 void Execute(ir::CompiledFn &&fn) {
   ASSERT(fn.type()->output().size() == 0u);

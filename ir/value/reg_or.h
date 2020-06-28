@@ -18,6 +18,7 @@ struct RegOr {
   static_assert(not std::is_same_v<Reg, type>);
   static_assert(std::is_trivially_copyable_v<type>);
 
+  constexpr RegOr() : val_{}, is_reg_(false) {}
   constexpr RegOr(Reg reg) : reg_(reg), is_reg_(true) {}
   constexpr RegOr(type val) : val_(val), is_reg_(false) {}
 
