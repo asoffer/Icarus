@@ -1,3 +1,6 @@
+#ifndef ICARUS_IR_INSTRUCTION_UTIL_H
+#define ICARUS_IR_INSTRUCTION_UTIL_H
+
 #include "ir/block_def.h"
 #include "ir/scope_def.h"
 #include "ir/value/addr.h"
@@ -12,6 +15,7 @@ namespace ir::internal {
 
 constexpr size_t Log2(size_t n) { return n == 1 ? 0 : 1 + Log2(n / 2); }
 
+// TODO: This could be moved into //ir/value.
 template <typename T>
 constexpr uint8_t PrimitiveIndex() {
   if constexpr (std::is_integral_v<T> and not std::is_same_v<T, bool>) {
@@ -116,4 +120,23 @@ std::string_view TypeToString() {
   }
 }
 
+template <typename SizeType, typename T, typename Fn>
+void WriteBits(ByteCodeWriter *writer, absl::Span<T const> span,
+               Fn &&predicate) {
+  ASSERT(span.size() < std::numeric_limits<SizeType>::max());
+  writer->Write<SizeType>(span.size());
+
+  uint8_t reg_mask = 0;
+  for (size_t i = 0; i < span.size(); ++i) {
+    if (predicate(span[i])) { reg_mask |= (1 << (7 - (i % 8))); }
+    if (i % 8 == 7) {
+      writer->Write(reg_mask);
+      reg_mask = 0;
+    }
+  }
+  if (span.size() % 8 != 0) { writer->Write(reg_mask); }
+}
+
 }  // namespace ir::internal
+
+#endif  // ICARUS_IR_INSTRUCTION_UTIL_H

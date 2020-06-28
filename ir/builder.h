@@ -59,7 +59,7 @@ struct Builder {
 
   template <typename Lhs, typename Rhs>
   RegOr<reduced_type_t<Lhs>> Add(Lhs const& lhs, Rhs const& rhs) {
-    AddInstruction<reduced_type_t<Lhs>> inst(lhs, rhs);
+    AddInstruction<reduced_type_t<Lhs>> inst{.lhs = lhs, .rhs = rhs};
     auto result = inst.result = CurrentGroup()->Reserve();
     CurrentBlock()->Append(std::move(inst));
     return result;
@@ -67,7 +67,7 @@ struct Builder {
 
   template <typename Lhs, typename Rhs>
   RegOr<reduced_type_t<Lhs>> Sub(Lhs const& lhs, Rhs const& rhs) {
-    SubInstruction<reduced_type_t<Lhs>> inst(lhs, rhs);
+    SubInstruction<reduced_type_t<Lhs>> inst{.lhs = lhs, .rhs = rhs};
     auto result = inst.result = CurrentGroup()->Reserve();
     CurrentBlock()->Append(std::move(inst));
     return result;
@@ -75,7 +75,7 @@ struct Builder {
 
   template <typename Lhs, typename Rhs>
   RegOr<reduced_type_t<Lhs>> Mul(Lhs const& lhs, Rhs const& rhs) {
-    MulInstruction<reduced_type_t<Lhs>> inst(lhs, rhs);
+    MulInstruction<reduced_type_t<Lhs>> inst{.lhs = lhs, .rhs = rhs};
     auto result = inst.result = CurrentGroup()->Reserve();
     CurrentBlock()->Append(std::move(inst));
     return result;
@@ -83,7 +83,7 @@ struct Builder {
 
   template <typename Lhs, typename Rhs>
   RegOr<reduced_type_t<Lhs>> Div(Lhs const& lhs, Rhs const& rhs) {
-    DivInstruction<reduced_type_t<Lhs>> inst(lhs, rhs);
+    DivInstruction<reduced_type_t<Lhs>> inst{.lhs = lhs, .rhs = rhs};
     auto result = inst.result = CurrentGroup()->Reserve();
     CurrentBlock()->Append(std::move(inst));
     return result;
@@ -91,7 +91,7 @@ struct Builder {
 
   template <typename Lhs, typename Rhs>
   RegOr<reduced_type_t<Lhs>> Mod(Lhs const& lhs, Rhs const& rhs) {
-    ModInstruction<reduced_type_t<Lhs>> inst(lhs, rhs);
+    ModInstruction<reduced_type_t<Lhs>> inst{.lhs = lhs, .rhs = rhs};
     auto result = inst.result = CurrentGroup()->Reserve();
     CurrentBlock()->Append(std::move(inst));
     return result;
@@ -105,7 +105,7 @@ struct Builder {
         return LtInstruction<type>::Apply(lhs.value(), rhs.value());
       }
 
-      LtInstruction<reduced_type_t<Lhs>> inst(lhs, rhs);
+      LtInstruction<reduced_type_t<Lhs>> inst{.lhs = lhs, .rhs = rhs};
       auto result = inst.result = CurrentGroup()->Reserve();
       CurrentBlock()->Append(std::move(inst));
       return result;
@@ -127,7 +127,7 @@ struct Builder {
         return LeInstruction<type>::Apply(lhs.value(), rhs.value());
       }
 
-      LeInstruction<type> inst(lhs, rhs);
+      LeInstruction<type> inst{.lhs = lhs, .rhs = rhs};
       auto result = inst.result = CurrentGroup()->Reserve();
       CurrentBlock()->Append(std::move(inst));
       return result;
@@ -148,7 +148,7 @@ struct Builder {
     if (not lhs.is_reg() and not rhs.is_reg()) {
       return InstrT::Apply(lhs.value(), rhs.value());
     }
-    InstrT inst(lhs, rhs);
+    InstrT inst{.lhs = lhs, .rhs = rhs};
     auto result = inst.result = CurrentGroup()->Reserve();
     CurrentBlock()->Append(std::move(inst));
     return result;
@@ -160,7 +160,7 @@ struct Builder {
     if (not lhs.is_reg() and not rhs.is_reg()) {
       return InstrT::Apply(lhs.value(), rhs.value());
     }
-    InstrT inst(lhs, rhs);
+    InstrT inst{.lhs = lhs, .rhs = rhs};
     auto result = inst.result = CurrentGroup()->Reserve();
     CurrentBlock()->Append(std::move(inst));
     return result;
@@ -172,7 +172,7 @@ struct Builder {
     if (not lhs.is_reg() and not rhs.is_reg()) {
       return InstrT::Apply(lhs.value(), rhs.value());
     }
-    InstrT inst(lhs, rhs);
+    InstrT inst{.lhs = lhs, .rhs = rhs};
     auto result = inst.result = CurrentGroup()->Reserve();
     CurrentBlock()->Append(std::move(inst));
     return result;
@@ -188,7 +188,7 @@ struct Builder {
       if (not lhs.is_reg() and not rhs.is_reg()) {
         return EqInstruction<type>::Apply(lhs.value(), rhs.value());
       }
-      EqInstruction<type> inst(lhs, rhs);
+      EqInstruction<type> inst{.lhs = lhs, .rhs = rhs};
       auto result = inst.result = CurrentGroup()->Reserve();
       CurrentBlock()->Append(std::move(inst));
       return result;
@@ -217,7 +217,7 @@ struct Builder {
       if (not lhs.is_reg() and not rhs.is_reg()) {
         return NeInstruction<type>::Apply(lhs.value(), rhs.value());
       }
-      NeInstruction<type> inst(lhs, rhs);
+      NeInstruction<type> inst{.lhs = lhs, .rhs = rhs};
       auto result = inst.result = CurrentGroup()->Reserve();
       CurrentBlock()->Append(std::move(inst));
       return result;
@@ -271,14 +271,14 @@ struct Builder {
 
   RegOr<type::Type const*> Var(std::vector<RegOr<type::Type const*>> types) {
     // TODO constant-folding
-    VariantInstruction inst(std::move(types));
+    VariantInstruction inst{.values = std::move(types)};
     auto result = inst.result = CurrentGroup()->Reserve();
     CurrentBlock()->Append(std::move(inst));
     return result;
   }
   RegOr<type::Type const*> Tup(std::vector<RegOr<type::Type const*>> types) {
     // TODO constant-folding
-    TupleInstruction inst(std::move(types));
+    TupleInstruction inst{.values = std::move(types)};
     auto result = inst.result = CurrentGroup()->Reserve();
     CurrentBlock()->Append(std::move(inst));
     return result;
@@ -633,7 +633,7 @@ struct Builder {
   RegOr<bool> EqBool(RegOr<bool> const& lhs, RegOr<bool> const& rhs) {
     if (not lhs.is_reg()) { return lhs.value() ? rhs : Not(rhs); }
     if (not rhs.is_reg()) { return rhs.value() ? lhs : Not(lhs); }
-    EqInstruction<bool> inst(lhs, rhs);
+    EqInstruction<bool> inst{.lhs = lhs, .rhs = rhs};
     auto result = inst.result = CurrentGroup()->Reserve();
     CurrentBlock()->Append(std::move(inst));
     return result;
@@ -642,7 +642,7 @@ struct Builder {
   RegOr<bool> NeBool(RegOr<bool> const& lhs, RegOr<bool> const& rhs) {
     if (not lhs.is_reg()) { return lhs.value() ? Not(rhs) : rhs; }
     if (not rhs.is_reg()) { return rhs.value() ? Not(lhs) : lhs; }
-    NeInstruction<bool> inst(lhs, rhs);
+    NeInstruction<bool> inst{.lhs = lhs, .rhs = rhs};
     auto result = inst.result = CurrentGroup()->Reserve();
     CurrentBlock()->Append(std::move(inst));
     return result;

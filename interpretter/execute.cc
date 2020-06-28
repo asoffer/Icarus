@@ -166,28 +166,23 @@ void Execute(ir::Fn fn, base::untyped_buffer arguments,
   }
 }
 
-template <typename BinInst,
-          typename std::enable_if_t<
-              std::is_base_of_v<ir::BinaryInstruction<typename BinInst::type>,
-                                BinInst>,
-              int> = 0>
-void ExecuteInstruction(base::untyped_buffer::const_iterator *iter,
-                        ExecutionContext *ctx,
-                        absl::Span<ir::Addr const> ret_slots) {
-  using ctrl_t = typename BinInst::control_bits;
-  using type   = typename BinInst::type;
-  ctrl_t ctrl  = iter->read<ctrl_t>();
-  type lhs     = ReadAndResolve<type>(ctrl.lhs_is_reg, iter, ctx);
-  type rhs     = ReadAndResolve<type>(ctrl.rhs_is_reg, iter, ctx);
-  auto result  = BinInst::Apply(lhs, rhs);
-  auto reg     = iter->read<ir::Reg>();
+template <typename BinInst>
+std::enable_if_t<not std::is_void_v<typename BinInst::binary>, void> ExecuteInstruction(
+    base::untyped_buffer::const_iterator *iter, ExecutionContext *ctx,
+    absl::Span<ir::Addr const> ret_slots) {
+  using type      = typename BinInst::binary;
+  bool lhs_is_reg = iter->read<bool>();
+  type lhs        = ReadAndResolve<type>(lhs_is_reg, iter, ctx);
+  bool rhs_is_reg = iter->read<bool>();
+  type rhs        = ReadAndResolve<type>(rhs_is_reg, iter, ctx);
+  auto result     = BinInst::Apply(lhs, rhs);
+  auto reg        = iter->read<ir::Reg>();
   DEBUG_LOG("binary-instruction")(lhs, " ", lhs, " -> ", result, " into ", reg);
   ctx->current_frame()->regs_.set(reg, result);
 }
 
 template <typename UnInst>
-std::enable_if_t<
-    base::meta<std::void_t<typename UnInst::unary>> == base::meta<void>, void>
+std::enable_if_t<not std::is_void_v<typename UnInst::unary>, void>
 ExecuteInstruction(base::untyped_buffer::const_iterator *iter,
                    ExecutionContext *ctx,
                    absl::Span<ir::Addr const> ret_slots) {
@@ -197,15 +192,12 @@ ExecuteInstruction(base::untyped_buffer::const_iterator *iter,
   ctx->current_frame()->regs_.set(iter->read<ir::Reg>(), result);
 }
 
-template <typename VarInst,
-          typename std::enable_if_t<
-              std::is_base_of_v<ir::VariadicInstruction<typename VarInst::type>,
-                                VarInst>,
-              int> = 0>
-void ExecuteInstruction(base::untyped_buffer::const_iterator *iter,
-                        ExecutionContext *ctx,
-                        absl::Span<ir::Addr const> ret_slots) {
-  using type = typename VarInst::type;
+template <typename VarInst>
+std::enable_if_t<not std::is_void_v<typename VarInst::variadic>, void>
+ExecuteInstruction(base::untyped_buffer::const_iterator *iter,
+                   ExecutionContext *ctx,
+                   absl::Span<ir::Addr const> ret_slots) {
+  using type = typename VarInst::variadic;
 
   auto vals = Deserialize<uint16_t, type>(
       iter, [ctx](ir::Reg reg) { return ctx->resolve<type>(reg); });
