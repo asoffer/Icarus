@@ -3,7 +3,7 @@ cc_test(
     srcs = ["function_calls_test.cc"],
     deps = [
         "//compiler",
-        "//interpretter:evaluate",
+        "//ir/interpretter:evaluate",
         "//test:module",
         "@com_google_googletest//:gtest_main",
     ],

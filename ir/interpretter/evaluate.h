@@ -1,12 +1,12 @@
-#ifndef ICARUS_INTERPRETTER_EVALUATE_H
-#define ICARUS_INTERPRETTER_EVALUATE_H
+#ifndef ICARUS_IR_INTERPRETTER_EVALUATE_H
+#define ICARUS_IR_INTERPRETTER_EVALUATE_H
 
 #include <type_traits>
 
 #include "base/debug.h"
 #include "base/expected.h"
 #include "base/untyped_buffer.h"
-#include "interpretter/evaluation_failure.h"
+#include "ir/interpretter/evaluation_failure.h"
 #include "ir/compiled_fn.h"
 #include "ir/value/value.h"
 
@@ -31,4 +31,4 @@ T EvaluateAs(ir::CompiledFn &&fn) {
 
 }  // namespace interpretter
 
-#endif  // ICARUS_INTERPRETTER_EVALUATE_H
+#endif  // ICARUS_IR_INTERPRETTER_EVALUATE_H

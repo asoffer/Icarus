@@ -1,7 +1,7 @@
 #include "compiler/executable_module.h"
 #include "frontend/source/string.h"
 #include "gtest/gtest.h"
-#include "interpretter/execute.h"
+#include "ir/interpretter/execute.h"
 #include "test/failing_diagnostic_consumer.h"
 
 std::string RunProgram(std::string str) {

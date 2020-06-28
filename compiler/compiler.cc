@@ -6,7 +6,7 @@
 #include "compiler/module.h"
 #include "diagnostic/consumer/consumer.h"
 #include "frontend/parse.h"
-#include "interpretter/evaluate.h"
+#include "ir/interpretter/evaluate.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
 #include "ir/jump.h"

@@ -1,4 +1,4 @@
-#include "interpretter/execute.h"
+#include "ir/interpretter/execute.h"
 
 #include <string_view>
 #include <vector>
@@ -6,8 +6,8 @@
 #include "absl/random/random.h"
 #include "absl/strings/str_format.h"
 #include "base/meta.h"
-#include "interpretter/architecture.h"
-#include "interpretter/foreign.h"
+#include "ir/interpretter/architecture.h"
+#include "ir/interpretter/foreign.h"
 #include "ir/block_def.h"
 #include "ir/instruction/instructions.h"
 #include "ir/jump.h"

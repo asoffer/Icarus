@@ -13,7 +13,7 @@
 #include "frontend/source/file_name.h"
 #include "frontend/source/range.h"
 #include "frontend/source/source.h"
-#include "interpretter/evaluation_failure.h"
+#include "ir/interpretter/evaluation_failure.h"
 #include "type/qual_type.h"
 #include "type/tuple.h"
 

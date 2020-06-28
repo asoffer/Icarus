@@ -8,7 +8,7 @@ cc_library(
         "//frontend/lex:numbers",
         "//frontend/source",
         "//frontend/source:range",
-        "//interpretter:evaluation_failure",
+        "//ir/interpretter:evaluation_failure",
         "//type:qual_type",
         "//type:tuple",
     ],

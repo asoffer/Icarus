@@ -1,8 +1,8 @@
-#ifndef ICARUS_INTERPRETTER_STACK_FRAME_H
-#define ICARUS_INTERPRETTER_STACK_FRAME_H
+#ifndef ICARUS_IR_INTERPRETTER_STACK_FRAME_H
+#define ICARUS_IR_INTERPRETTER_STACK_FRAME_H
 
 #include "base/untyped_buffer_view.h"
-#include "interpretter/register_array.h"
+#include "ir/interpretter/register_array.h"
 #include "ir/blocks/basic.h"
 #include "ir/value/native_fn.h"
 
@@ -36,4 +36,4 @@ struct StackFrame {
 
 }  // namespace interpretter
 
-#endif  // ICARUS_INTERPRETTER_STACK_FRAME_H
+#endif  // ICARUS_IR_INTERPRETTER_STACK_FRAME_H

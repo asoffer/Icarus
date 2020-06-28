@@ -123,7 +123,7 @@ cc_library(
         ":overload",
         "//ast:ast",
         "//compiler:compiler_header",
-        "//interpretter:evaluate",
+        "//ir/interpretter:evaluate",
         "//type:cast",
         "//type:type",
         "//type:function",

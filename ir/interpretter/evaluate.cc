@@ -1,8 +1,8 @@
-#include "interpretter/evaluate.h"
+#include "ir/interpretter/evaluate.h"
 
 #include "ast/expression.h"
-#include "interpretter/architecture.h"
-#include "interpretter/execute.h"
+#include "ir/interpretter/architecture.h"
+#include "ir/interpretter/execute.h"
 #include "ir/compiled_fn.h"
 #include "ir/jump.h"
 #include "ir/value/generic_fn.h"

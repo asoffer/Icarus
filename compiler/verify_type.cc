@@ -13,7 +13,7 @@
 #include "core/call.h"
 #include "diagnostic/errors.h"
 #include "frontend/lex/operators.h"
-#include "interpretter/evaluate.h"
+#include "ir/interpretter/evaluate.h"
 #include "ir/compiled_fn.h"
 #include "ir/value/generic_fn.h"
 #include "type/cast.h"

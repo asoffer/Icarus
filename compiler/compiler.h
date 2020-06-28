@@ -16,7 +16,7 @@
 #include "compiler/module.h"
 #include "diagnostic/consumer/consumer.h"
 #include "frontend/source/source.h"
-#include "interpretter/evaluate.h"
+#include "ir/interpretter/evaluate.h"
 #include "ir/builder.h"
 #include "ir/value/addr.h"
 #include "ir/value/native_fn.h"

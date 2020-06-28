@@ -1,5 +1,5 @@
-#ifndef ICARUS_INTERPRETTER_REGISTER_ARRAY_H
-#define ICARUS_INTERPRETTER_REGISTER_ARRAY_H
+#ifndef ICARUS_IR_INTERPRETTER_REGISTER_ARRAY_H
+#define ICARUS_IR_INTERPRETTER_REGISTER_ARRAY_H
 
 #include "base/untyped_buffer.h"
 #include "base/untyped_buffer_view.h"
@@ -67,4 +67,4 @@ struct RegisterArray {
 
 }  // namespace interpretter
 
-#endif  // ICARUS_INTERPRETTER_REGISTER_ARRAY_H
+#endif  // ICARUS_IR_INTERPRETTER_REGISTER_ARRAY_H

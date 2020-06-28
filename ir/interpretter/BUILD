@@ -1,4 +1,4 @@
-package(default_visibility = ["//visibility:public"])
+package(default_visibility = ["//visibility:private"])
 
 cc_library(
     name = "architecture",
@@ -24,6 +24,7 @@ cc_library(
     name = "evaluate",
     hdrs = ["evaluate.h"],
     srcs = ["evaluate.cc"],
+    visibility = ["//visibility:public"],
     deps = [
         ":architecture",
         ":execute",
@@ -41,6 +42,7 @@ cc_library(
 cc_library(
     name = "evaluation_failure",
     hdrs = ["evaluation_failure.h"],
+    visibility = ["//visibility:public"],
     deps = [],
 )
 
@@ -63,6 +65,7 @@ cc_library(
     name = "execute",
     hdrs = ["execute.h"],
     srcs = ["execute.cc"],
+    visibility = ["//visibility:public"],
     deps = [
         ":architecture",
         ":foreign",

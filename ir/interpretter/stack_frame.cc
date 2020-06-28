@@ -1,6 +1,6 @@
-#include "interpretter/stack_frame.h"
+#include "ir/interpretter/stack_frame.h"
 
-#include "interpretter/architecture.h"
+#include "ir/interpretter/architecture.h"
 #include "type/function.h"
 #include "type/type.h"
 

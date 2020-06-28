@@ -1,6 +1,6 @@
 #include "compiler/compiler.h"
 #include "gtest/gtest.h"
-#include "interpretter/evaluate.h"
+#include "ir/interpretter/evaluate.h"
 #include "test/module.h"
 
 // TODO handle evaluation failures.

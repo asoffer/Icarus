@@ -1,5 +1,5 @@
-#ifndef ICARUS_INTERPRETTER_FOREIGN_H
-#define ICARUS_INTERPRETTER_FOREIGN_H
+#ifndef ICARUS_IR_INTERPRETTER_FOREIGN_H
+#define ICARUS_IR_INTERPRETTER_FOREIGN_H
 
 #include <string_view>
 
@@ -21,4 +21,4 @@ void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
 
 }  // namespace interpretter
 
-#endif  // ICARUS_INTERPRETTER_FOREIGN_H
+#endif  // ICARUS_IR_INTERPRETTER_FOREIGN_H

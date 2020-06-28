@@ -2,7 +2,7 @@
 
 #include "ast/ast.h"
 #include "base/debug.h"
-#include "interpretter/evaluate.h"
+#include "ir/interpretter/evaluate.h"
 #include "ir/value/fn.h"
 #include "type/function.h"
 #include "type/generic_function.h"

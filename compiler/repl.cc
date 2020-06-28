@@ -17,7 +17,7 @@
 #include "frontend/source/repl.h"
 #include "frontend/source/shared.h"
 #include "init/cli.h"
-#include "interpretter/execute.h"
+#include "ir/interpretter/execute.h"
 #include "ir/compiled_fn.h"
 #include "module/module.h"
 #include "opt/opt.h"

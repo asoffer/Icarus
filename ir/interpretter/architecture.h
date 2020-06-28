@@ -1,5 +1,5 @@
-#ifndef ICARUS_INTERPRETTER_ARCHITECTURE_H
-#define ICARUS_INTERPRETTER_ARCHITECTURE_H
+#ifndef ICARUS_IR_INTERPRETTER_ARCHITECTURE_H
+#define ICARUS_IR_INTERPRETTER_ARCHITECTURE_H
 
 #include "core/arch.h"
 #include "ir/value/addr.h"
@@ -14,4 +14,4 @@ inline constexpr auto kArchitecture = core::Arch::Get<ir::Addr, ir::Fn>();
 
 }  // namespace interpretter
 
-#endif  // ICARUS_INTERPRETTER_ARCHITECTURE_H
+#endif  // ICARUS_IR_INTERPRETTER_ARCHITECTURE_H

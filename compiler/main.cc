@@ -21,7 +21,7 @@
 #include "frontend/source/file_name.h"
 #include "frontend/source/shared.h"
 #include "init/cli.h"
-#include "interpretter/execute.h"
+#include "ir/interpretter/execute.h"
 #include "ir/compiled_fn.h"
 #include "llvm/ADT/Optional.h"
 #include "llvm/IR/DerivedTypes.h"

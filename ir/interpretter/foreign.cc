@@ -1,4 +1,4 @@
-#include "interpretter/foreign.h"
+#include "ir/interpretter/foreign.h"
 
 #include <dlfcn.h>
 #include <ffi.h>
