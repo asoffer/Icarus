@@ -38,7 +38,7 @@ struct IrToLlvmMapping {
                         static_cast<uint64_t>(val.value()),
                         std::is_signed_v<T>));
       } else {
-        NOT_YET();
+        NOT_YET(typeid(T).name());
       }
     }
   }
@@ -471,8 +471,13 @@ void TryEmitLlvmBasicBlock(ir::BasicBlock const *block,
                       GatherBinaryInstructionOperands(*inst, to_llvm));
       to_llvm.insert(inst->result, to_llvm.builder.CreateFCmpULE(
                                        operands.first, operands.second));
+    } else if (auto const *inst = instruction.if_as<ir::PtrIncrInstruction>()) {
+      to_llvm.builder.CreateGEP(
+          ToLlvmType(inst->ptr, to_llvm.builder.getContext()),
+          to_llvm.Lookup(inst->addr, to_llvm.builder),
+          to_llvm.Lookup(inst->index, to_llvm.builder));
     } else {
-      NOT_YET();
+      NOT_YET(instruction.to_string());
     }
 
     instructions.remove_prefix(1);
