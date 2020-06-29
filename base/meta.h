@@ -156,7 +156,7 @@ constexpr bool Contains() {
 }
 
 template <typename... Ts>
-constexpr size_t Length(type_list<Ts...>) {
+constexpr auto Length(type_list<Ts...>) {
   return sizeof...(Ts);
 }
 constexpr void Length(void*) {}

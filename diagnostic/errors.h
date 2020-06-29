@@ -62,39 +62,6 @@ struct UncopyableType {
   frontend::SourceRange range;
 };
 
-struct MismatchedAssignmentCount {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "mismatched-assignment-count";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Assigning multiple values but left-hand and right-hand side have "
-             "different numbers of elements (`%d` vs. `%d`).",
-             to, from),
-        SourceQuote(src).Highlighted(range, Style{}));
-  }
-
-  size_t to;
-  size_t from;
-  frontend::SourceRange range;
-};
-
-struct MismatchedInitializationCount {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName = "mismatched-initialization-count";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Initializing multiple values but left-hand and right-hand side "
-             "have different numbers of elements (`%d` vs. `%d`).",
-             to, from),
-        SourceQuote(src).Highlighted(range, Style{}));
-  }
-
-  size_t to;
-  size_t from;
-  frontend::SourceRange range;
-};
 
 struct AssigningToConstant {
   // TODO I'm not sure this shouldn't be in the type-error category.
@@ -113,17 +80,6 @@ struct AssigningToConstant {
   frontend::SourceRange range;
 };
 
-struct EmptySource {
-  static constexpr std::string_view kCategory = "parse-error";
-  static constexpr std::string_view kName     = "empty-source";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Source file is empty or contains only whitespace."));
-  }
-  // TODO source file identifier?
-};
-
 struct NoReturnTypes {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "no-return-type";
@@ -131,32 +87,6 @@ struct NoReturnTypes {
   DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return DiagnosticMessage(
         Text("Attempting to return a value when function returns nothing."),
-        SourceQuote(src).Highlighted(range, Style{}));
-  }
-
-  frontend::SourceRange range;
-};
-
-struct OrEqNeedsBoolOrFlags {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "or-needs-bool-or-flags";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Operator '|=' must take boolean or flags arguments."),
-        SourceQuote(src).Highlighted(range, Style{}));
-  }
-
-  frontend::SourceRange range;
-};
-
-struct AndEqNeedsBoolOrFlags {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "and-needs-bool-or-flags";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Operator '&=' must take boolean or flags arguments."),
         SourceQuote(src).Highlighted(range, Style{}));
   }
 
@@ -306,54 +236,6 @@ struct MissingModule {
 
   frontend::CanonicalFileName source;
   std::string requestor;
-};
-
-struct SwitchConditionNeedsBool {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "switch-condition-needs-bool";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Expressionless switch conditions must evaluate to a `bool`, but "
-             "you provided a `%s`.",
-             type->to_string()),
-        SourceQuote(src).Highlighted(range, Style{}));
-  }
-
-  type::Type const *type;
-  frontend::SourceRange range;
-};
-
-struct PreconditionNeedsBool {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "pre-condition-needs-bool";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Function precondition must be of type bool, but you provided an "
-             "expression of type %s.",
-             type->to_string()),
-        SourceQuote(src).Highlighted(range, Style{}));
-  }
-
-  type::Type const *type;
-  frontend::SourceRange range;
-};
-
-struct PostconditionNeedsBool {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "postcondition-needs-bool";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Function postcondition must be of type bool, but you provided an "
-             "expression of type %s.",
-             type->to_string()),
-        SourceQuote(src).Highlighted(range, Style{}));
-  }
-
-  type::Type const *type;
-  frontend::SourceRange range;
 };
 
 struct ParametersDoNotCoverArguments {
