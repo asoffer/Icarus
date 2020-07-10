@@ -6,6 +6,7 @@ cc_library(
     deps = [
         "//base:debug",
         "//ir/value:overload_set",
+        "//type:jump",
     ],
 )
 

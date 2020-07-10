@@ -3,27 +3,40 @@
 
 #include <iostream>
 
+#include "absl/container/flat_hash_set.h"
 #include "base/debug.h"
 #include "ir/value/overload_set.h"
-
-namespace type {
-struct Jump;
-}  // namespace type
+#include "type/jump.h"
 
 namespace ir {
 struct Jump;
 
+inline CompiledFn &TrivialFunction() {
+  static base::NoDestructor<CompiledFn> f = [] {
+    CompiledFn f(type::Func({}, {}),
+                 core::Params<type::Typed<ast::Declaration const *>>{});
+    f.entry()->set_jump(JumpCmd::Return());
+    f.WriteByteCode();
+    return f;
+  }();
+  return *f;
+}
+
 struct BlockDef {
+  BlockDef() = default;
+  explicit BlockDef(absl::flat_hash_set<Jump const *> after)
+      : before_({Fn(&TrivialFunction())}), after_(std::move(after)) {}
   inline friend std::ostream &operator<<(std::ostream &os, BlockDef const &b) {
     return os << "blockdef";
   }
 
   type::Jump const *type() const { return type_; }
+  absl::flat_hash_set<Jump const *> const &after() const { return after_; }
 
   ir::OverloadSet before_;
-  std::vector<Jump *> after_;
-
  private:
+  absl::flat_hash_set<Jump const *> after_;
+
   type::Jump const *type_ = nullptr;
 };
 

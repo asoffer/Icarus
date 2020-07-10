@@ -126,7 +126,7 @@ void internal::OneTable::VerifyBlocks(Compiler *compiler,
       ASSIGN_OR(continue,  //
                 auto jump_table,
                 JumpDispatchTable::Verify(scope_def_->state_type_,
-                                          block_def->after_, {}));
+                                          block_def->after(), {}));
       bool success = blocks.emplace(&block, std::move(jump_table)).second;
       static_cast<void>(success);
       ASSERT(success == true);
@@ -137,7 +137,7 @@ void internal::OneTable::VerifyBlocks(Compiler *compiler,
         ASSIGN_OR(continue,  //
                   auto jump_table,
                   JumpDispatchTable::Verify(scope_def_->state_type_,
-                                            block_def->after_, fn_args));
+                                            block_def->after(), fn_args));
         bool success = blocks.emplace(&block, std::move(jump_table)).second;
         static_cast<void>(success);
         ASSERT(success == true);
@@ -207,13 +207,13 @@ void internal::OneTable::VerifyJumps() {
 
 base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
     Compiler *compiler, ast::ScopeNode const *node,
-    absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> inits,
+    absl::flat_hash_map<ir::Jump const *, ir::ScopeDef const *> inits,
     core::FnArgs<type::Typed<ir::Value>> const &args) {
   auto args_qt = args.Transform(
       [](auto const &t) { return type::QualType::NonConstant(t.type()); });
 
   absl::flat_hash_map<ir::ScopeDef const *,
-                      absl::flat_hash_map<ir::Jump *, FailedMatch>>
+                      absl::flat_hash_map<ir::Jump const *, FailedMatch>>
       failures;
   ScopeDispatchTable table;
   table.scope_node_ = node;
@@ -234,7 +234,7 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
   }
 
   if (not ParamsCoverArgs(args_qt, table.init_map_,
-                          [](ir::Jump *jump, auto const &) {
+                          [](ir::Jump const *jump, auto const &) {
                             return jump->params().Transform([](auto const &p) {
                               return type::QualType::NonConstant(p.type());
                             });

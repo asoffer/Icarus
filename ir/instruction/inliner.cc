@@ -5,9 +5,9 @@
 
 namespace ir {
 
-InstructionInliner::InstructionInliner(internal::BlockGroupBase* to_be_inlined,
-                                       internal::BlockGroupBase* into,
-                                       LocalBlockInterpretation block_interp)
+InstructionInliner::InstructionInliner(
+    internal::BlockGroupBase const* to_be_inlined,
+    internal::BlockGroupBase* into, LocalBlockInterpretation block_interp)
     : to_be_inlined_(to_be_inlined),
       into_(into),
       register_offset_(into->num_regs()),

@@ -17,7 +17,7 @@ struct Jump : BlockGroup<type::Jump> {
 
   absl::flat_hash_map<std::string_view,
                       std::vector<core::FnArgs<type::QualType>>>
-  ExtractExitPaths() {
+  ExtractExitPaths() const {
     absl::flat_hash_map<std::string_view,
                         std::vector<core::FnArgs<type::QualType>>>
         result;

@@ -78,7 +78,8 @@ struct BlockGroupBase {
   constexpr size_t num_regs() const { return alloc_.num_regs(); }
   constexpr size_t num_args() const { return alloc_.num_args(); }
 
-  base::move_func<void()> *work_item = nullptr;
+  // TODO: Remove mutability. Track work items non-intrusively.
+  mutable base::move_func<void()> *work_item = nullptr;
 
   friend std::ostream &operator<<(std::ostream &os, BlockGroupBase const &b);
 

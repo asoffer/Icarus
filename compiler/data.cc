@@ -2,12 +2,9 @@
 
 namespace compiler {
 
-DependentComputedData::DependentComputedData(CompiledModule *mod) : mod_(mod) {}
-
-DependentComputedData::~DependentComputedData() {
-  // TODO figure out what's being dropped?
-  // ASSERT(deferred_work_.lock()->empty() == true);
-}
+DependentComputedData::DependentComputedData(CompiledModule *mod)
+    : mod_(*ASSERT_NOT_NULL(mod)) {}
+DependentComputedData::~DependentComputedData() {}
 
 struct DependentComputedData::DependentDataChild::DataImpl {
   core::Params<std::pair<ir::Value, type::QualType>> params;
@@ -28,7 +25,7 @@ DependentComputedData::InsertDependent(
         new DependentDataChild::DataImpl{
             .params = params,
             .rets   = {},
-            .data   = DependentComputedData(mod_),
+            .data   = DependentComputedData(&mod_),
         });
 
     size_t i = 0;
@@ -74,22 +71,22 @@ ir::Jump *DependentComputedData::jump(ast::Jump const *expr) {
 
 type::QualType const *DependentComputedData::qual_type(
     ast::Expression const *expr) const {
-  auto iter = type_verification_results_.find(expr);
-  if (iter != type_verification_results_.end()) { return &iter->second; }
+  if (auto iter = qual_types_.find(expr); iter != qual_types_.end()) {
+    return &iter->second;
+  }
   if (parent_) { return parent_->qual_type(expr); }
   return nullptr;
 }
 
 type::QualType DependentComputedData::set_qual_type(ast::Expression const *expr,
                                                     type::QualType r) {
-  type_verification_results_.emplace(expr, r);
+  qual_types_.emplace(expr, r);
   return r;
 }
 
 void DependentComputedData::CompleteType(ast::Expression const *expr,
                                          bool success) {
-  if (auto iter = type_verification_results_.find(expr);
-      iter != type_verification_results_.end()) {
+  if (auto iter = qual_types_.find(expr); iter != qual_types_.end()) {
     if (not success) { iter->second.MarkError(); }
     return;
   }

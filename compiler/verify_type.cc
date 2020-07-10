@@ -600,7 +600,7 @@ type::QualType Compiler::VerifyType(ast::FunctionLiteral const *node) {
                  core::FnArgs<type::Typed<ir::Value>> const &args) mutable
       -> type::Function const * {
     auto [params, rets, data, inserted] =
-        MakeConcrete(node, compiler_data->module(), ordered_nodes, args,
+        MakeConcrete(node, &compiler_data->module(), ordered_nodes, args,
                      *compiler_data, *diag_consumer);
     if (inserted) {
       Compiler c({
@@ -653,7 +653,7 @@ type::QualType Compiler::VerifyType(ast::ShortFunctionLiteral const *node) {
       -> type::Function const * {
     // TODO handle compilation failures.
     auto [params, rets, data, inserted] =
-        MakeConcrete(node, compiler_data->module(), ordered_nodes, args,
+        MakeConcrete(node, &compiler_data->module(), ordered_nodes, args,
                      *compiler_data, *diag_consumer);
 
     auto body_qt = Compiler({.builder             = ir::GetBuilder(),
@@ -800,7 +800,7 @@ type::QualType Compiler::VerifyType(
     // TODO: Need a version of MakeConcrete that doesn't generate return types
     // because those only make sense for functions.
     auto [params, rets, data, inserted] =
-        MakeConcrete(node, compiler_data->module(), ordered_nodes, args,
+        MakeConcrete(node, &compiler_data->module(), ordered_nodes, args,
                      *compiler_data, *diag_consumer);
     if (inserted) {
       Compiler c({
@@ -810,7 +810,7 @@ type::QualType Compiler::VerifyType(
       });
 
       type::Struct *s = new type::Struct(
-          c.data().module(),
+          &c.data().module(),
           {.is_copyable = not node->contains_hashtag(
                ast::Hashtag(ast::Hashtag::Builtin::Uncopyable)),
            .is_movable = not node->contains_hashtag(
@@ -844,7 +844,7 @@ type::QualType Compiler::VerifyType(
                 c.EmitValue(field.type_expr()).get<type::Type const *>());
           }
         }
-        c.builder().Struct(c.data().module(), s, std::move(fields),
+        c.builder().Struct(&c.data().module(), s, std::move(fields),
                            std::nullopt);
         c.builder().ReturnJump();
       }

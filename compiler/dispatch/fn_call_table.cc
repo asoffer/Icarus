@@ -88,7 +88,7 @@ ir::Value EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
 
       auto *parameterized_expr = &fn->as<ast::ParameterizedExpression>();
 
-      DependentComputedData temp_data(compiler->data().module());
+      DependentComputedData temp_data(&compiler->data().module());
       Compiler c({
           .builder             = compiler->builder(),
           .data                = temp_data,

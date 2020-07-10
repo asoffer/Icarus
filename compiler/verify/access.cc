@@ -199,7 +199,7 @@ type::QualType AccessStructMember(Compiler *c, ast::Access const *node,
   type::QualType qt(member->type, quals | type::Quals::Ref());
 
   // Struct field members need to be exported in addition to the struct itself.
-  if (c->data().module() != s->defining_module() and
+  if (&c->data().module() != s->defining_module() and
       not member->contains_hashtag(
           ast::Hashtag(ast::Hashtag::Builtin::Export))) {
     c->diag().Consume(NonExportedMember{
@@ -242,7 +242,7 @@ type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
   // There is no way to refer to the current module, but a bug here could cause
   // a deadlock as this module waits for the notification that it's declarations
   // can be exported, so we would prefer to abort.
-  ASSERT(mod != c->data().module());
+  ASSERT(mod != &c->data().module());
 
   auto decls = mod->ExportedDeclarations(node->member_name());
   switch (decls.size()) {

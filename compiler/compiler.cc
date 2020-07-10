@@ -32,7 +32,7 @@ std::optional<type::QualType> Compiler::qual_type_of(
     // really shouldn't need to pay for the check here.
     if (auto const *mod =
             &ASSERT_NOT_NULL(decl->module())->as<CompiledModule>()) {
-      if (mod != data().module()) {
+      if (mod != &data().module()) {
         auto *qt = mod->data().qual_type(decl);
         return qt ? std::optional(*qt) : std::nullopt;
       }

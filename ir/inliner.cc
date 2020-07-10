@@ -14,7 +14,7 @@ namespace ir {
 absl::flat_hash_map<
     std::string_view,
     std::pair<BasicBlock *, core::FnArgs<type::Typed<ir::Value>>>>
-Inline(Builder &bldr, Jump *to_be_inlined,
+Inline(Builder &bldr, Jump const *to_be_inlined,
        absl::Span<ir::Value const> arguments,
        LocalBlockInterpretation const &block_interp) {
   DEBUG_LOG("inliner")(*to_be_inlined);

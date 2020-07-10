@@ -52,7 +52,7 @@ void EmitRuntimeDispatch(
     if constexpr (std::is_same_v<Key, ast::Expression const *>) {
       params = val.params().Transform(
           [](auto const &p) { return type::QualType::NonConstant(p.type()); });
-    } else if constexpr (std::is_same_v<Key, ir::Jump *>) {
+    } else if constexpr (std::is_same_v<Key, ir::Jump const *>) {
       params = key->params().Transform(
           [](auto const &p) { return type::QualType::NonConstant(p.type()); });
     } else {

@@ -18,7 +18,7 @@ namespace ir {
 struct BasicBlock;
 
 struct InstructionInliner {
-  explicit InstructionInliner(internal::BlockGroupBase *to_be_inlined,
+  explicit InstructionInliner(internal::BlockGroupBase const *to_be_inlined,
                               internal::BlockGroupBase *into,
                               LocalBlockInterpretation block_interp);
 
@@ -57,7 +57,7 @@ struct InstructionInliner {
     return blocks_.find(block)->second;
   }
 
-  internal::BlockGroupBase *to_be_inlined_;
+  internal::BlockGroupBase const *to_be_inlined_;
   internal::BlockGroupBase *into_;
   int register_offset_;
   absl::flat_hash_map<BasicBlock const *, BasicBlock *> blocks_;

@@ -10,16 +10,17 @@
 namespace compiler {
 
 base::expected<JumpDispatchTable> JumpDispatchTable::Verify(
-    type::Type const *state_type, absl::Span<ir::Jump *const> jumps,
+    type::Type const *state_type,
+    absl::flat_hash_set<ir::Jump const *> const &jumps,
     core::FnArgs<type::QualType> const &args) {
   DEBUG_LOG("dispatch-verify")
   ("Verifying overload set with ", jumps.size(), " members.");
 
   // Keep a collection of failed matches around so we can give better
   // diagnostics.
-  absl::flat_hash_map<ir::Jump *, FailedMatch> failures;
+  absl::flat_hash_map<ir::Jump const *, FailedMatch> failures;
   JumpDispatchTable table;
-  for (ir::Jump *jump : jumps) {
+  for (ir::Jump const *jump : jumps) {
     // TODO the type of the specific overload could *correctly* be null and
     // we need to handle that case.
     DEBUG_LOG("dispatch-verify")("Verifying ", jump);
@@ -51,7 +52,7 @@ absl::flat_hash_map<
     std::string_view,
     std::pair<ir::BasicBlock *, core::FnArgs<type::Typed<ir::Value>>>>
 JumpDispatchTable::EmitCallOneOverload(
-    std::optional<ir::Reg> state_reg, ir::Jump *jump, Compiler *compiler,
+    std::optional<ir::Reg> state_reg, ir::Jump const *jump, Compiler *compiler,
     core::FnArgs<type::Typed<ir::Value>> args,
     ir::LocalBlockInterpretation const &block_interp) {
   // TODO actually choose correctly.

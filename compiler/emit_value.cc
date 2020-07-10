@@ -35,9 +35,9 @@ type::QualType VerifyBody(Compiler *compiler, ast::FunctionLiteral const *node,
 
 namespace {
 
-absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> MakeJumpInits(
+absl::flat_hash_map<ir::Jump const *, ir::ScopeDef const *> MakeJumpInits(
     Compiler *c, ast::OverloadSet const &os) {
-  absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> inits;
+  absl::flat_hash_map<ir::Jump const *, ir::ScopeDef const *> inits;
   DEBUG_LOG("ScopeNode")
   ("Overload set for inits has size ", os.members().size());
   for (ast::Expression const *member : os.members()) {
@@ -51,7 +51,7 @@ absl::flat_hash_map<ir::Jump *, ir::ScopeDef const *> MakeJumpInits(
       (std::move(*def->work_item))();
       def->work_item = nullptr;
     }
-    for (auto *init : def->start_->after_) {
+    for (auto const *init : def->start_->after()) {
       bool success = inits.emplace(init, def).second;
       static_cast<void>(success);
       ASSERT(success == true);
@@ -162,7 +162,7 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
     if (not maybe_mod) { NOT_YET(); }
     auto const *mod = &(*maybe_mod)->as<CompiledModule>();
 
-    ASSERT(mod != data().module());
+    ASSERT(mod != &data().module());
     auto decls = mod->ExportedDeclarations(node->member_name());
     switch (decls.size()) {
       case 0: NOT_YET();
@@ -590,7 +590,7 @@ ir::Value EmitBuiltinCall(Compiler *c, ast::BuiltinFn const *callee,
     } break;
 
     case ir::BuiltinFn::Which::Opaque:
-      return ir::Value(c->builder().OpaqueType(c->data().module()));
+      return ir::Value(c->builder().OpaqueType(&c->data().module()));
     case ir::BuiltinFn::Which::Bytes: {
       auto const &fn_type = *ir::BuiltinFn::Bytes().type();
       ir::OutParams outs  = c->builder().OutParams(fn_type.output());
@@ -698,7 +698,7 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
   // and needs a cleanup.
   DEBUG_LOG("EmitValueDeclaration")(node->id());
   if (node->flags() & ast::Declaration::f_IsConst) {
-    if (node->module() != data().module()) {
+    if (node->module() != &data().module()) {
       // Constant declarations from other modules should already be stored on
       // that module. They must be at the root of the binding tree map,
       // otherwise they would be local to some function/jump/etc. and not be
@@ -828,10 +828,10 @@ ir::Value Compiler::EmitValue(ast::EnumLiteral const *node) {
   switch (node->kind()) {
     case ast::EnumLiteral::Kind::Enum:
       return ir::Value(
-          builder().Enum(data().module(), names, specified_values));
+          builder().Enum(&data().module(), names, specified_values));
     case ast::EnumLiteral::Kind::Flags:
       return ir::Value(
-          builder().Flags(data().module(), names, specified_values));
+          builder().Flags(&data().module(), names, specified_values));
     default: UNREACHABLE();
   }
 }
@@ -847,7 +847,7 @@ ir::NativeFn MakeConcreteFromGeneric(
 
   // TODO: Rather than recompute this we colud store the `Call` node in the
   // dependent context.
-  DependentComputedData temp_data(compiler->data().module());
+  DependentComputedData temp_data(&compiler->data().module());
   Compiler c({
       .builder             = compiler->builder(),
       .data                = temp_data,
@@ -1150,7 +1150,7 @@ ir::Value Compiler::EmitValue(ast::ScopeLiteral const *node) {
   }
 
   return ir::Value(builder().MakeScope(
-      data().add_scope(data().module(), state_type), std::move(inits),
+      data().add_scope(&data().module(), state_type), std::move(inits),
       std::move(dones), std::move(blocks)));
 }
 
@@ -1228,7 +1228,7 @@ void Compiler::CompleteStruct(ast::StructLiteral const *node) {
         }
       }
     }
-    builder().Struct(data().module(), s, std::move(fields), dtor);
+    builder().Struct(&data().module(), s, std::move(fields), dtor);
     builder().ReturnJump();
   }
 
@@ -1250,12 +1250,13 @@ ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
   }
 
   type::Struct *s = type::Allocate<type::Struct>(
-      data().module(), type::Struct::Options{
-                           .is_copyable = not node->contains_hashtag(
-                               ast::Hashtag(ast::Hashtag::Builtin::Uncopyable)),
-                           .is_movable = not node->contains_hashtag(
-                               ast::Hashtag(ast::Hashtag::Builtin::Immovable)),
-                       });
+      &data().module(),
+      type::Struct::Options{
+          .is_copyable = not node->contains_hashtag(
+              ast::Hashtag(ast::Hashtag::Builtin::Uncopyable)),
+          .is_movable = not node->contains_hashtag(
+              ast::Hashtag(ast::Hashtag::Builtin::Immovable)),
+      });
 
   DEBUG_LOG("struct")("Allocating a new struct ", s, " for ", node);
   data().set_struct(node, s);
