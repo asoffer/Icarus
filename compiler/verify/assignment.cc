@@ -37,14 +37,15 @@ type::QualType Compiler::VerifyType(ast::Assignment const *node) {
     auto qt = VerifyType(l);
     if (not qt.ok()) {
       if (first_lhs_error_index == -1) { first_lhs_error_index = i; }
+    } else {
+      if (qt.quals() >= type::Quals::Const()) {
+        diag().Consume(diagnostic::AssigningToConstant{.to    = qt.type(),
+                                                       .range = l->range()});
+      } else if (not(qt.quals() >= type::Quals::Ref())) {
+        diag().Consume(AssigningToNonReference{.lhs = l->range()});
+      }
     }
     lhs_qts.push_back(qt);
-    if (qt.quals() >= type::Quals::Const()) {
-      diag().Consume(diagnostic::AssigningToConstant{.to    = qt.type(),
-                                                     .range = l->range()});
-    } else if (not(qt.quals() >= type::Quals::Ref())) {
-      diag().Consume(AssigningToNonReference{.lhs = l->range()});
-    }
   }
 
   int first_rhs_error_index = -1;
