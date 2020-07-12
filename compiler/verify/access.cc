@@ -202,6 +202,7 @@ type::QualType AccessTypeMember(Compiler *c, ast::Access const *node,
 type::QualType AccessStructMember(Compiler *c, ast::Access const *node,
                                   type::Struct const *s, type::Quals quals) {
   if (s->completeness() < type::Completeness::DataComplete) {
+  DEBUG_LOG()("Got to a problemo");
     c->diag().Consume(IncompleteTypeMemberAccess{
         .member_range = node->member_range(),
         .type         = s,

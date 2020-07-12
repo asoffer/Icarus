@@ -59,6 +59,7 @@ struct Struct : public Type {
   }
 
   Completeness completeness() const override { return completeness_; }
+  void complete() { completeness_ = Completeness::Complete; }
 
   // Return the type of a field, or a nullptr if it doesn't exist
   Field const *field(std::string_view name) const;

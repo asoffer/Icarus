@@ -173,8 +173,15 @@ bool Compiler::VerifyBody(ast::FunctionLiteral const *node) {
   ("function-literal body verification: ", node->DebugString(), " ", &data());
   auto const &fn_type =
       ASSERT_NOT_NULL(data().qual_type(node))->type()->as<type::Function>();
+  // TODO: For now, we're cheating and asking just if the pointee is complete.
+  // But really we want to check potentially further but need to be careful of
+  // cycles and whatnot.
   for (auto const &param : fn_type.params()) {
-    if (not true) {
+    auto completeness = param.value.type()->completeness();
+    if (auto const *p = param.value.type()->if_as<type::Pointer>()) {
+      completeness = std::min(completeness, p->pointee()->completeness());
+    }
+    if (completeness < type::Completeness::Complete) {
       DEBUG_LOG("function")("rescheduled");
       data().ClearVerifyBody(node);
 

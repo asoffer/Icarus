@@ -711,10 +711,22 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
       DEBUG_LOG("EmitValueDeclaration")(val);
       return val;
     } else {
-      auto *constant_value = data().Constant(node);
-      auto const *t        = type_of(node);
-      // TODO schedule completion for structs?
-      if (constant_value) { return constant_value->value; }
+      if (auto *constant_value = data().Constant(node)) {
+        // TODO: This feels quite hacky.
+        if (node->init_val()->is<ast::StructLiteral>()) {
+          if (not constant_value->complete and state_.must_complete) {
+            DEBUG_LOG("compile-work-queue")
+            ("Request work: ",
+             static_cast<int>(TransientFunctionState::WorkType::CompleteStruct),
+             ": ", node);
+            state_.work_queue.emplace(
+                node->init_val(),
+                TransientFunctionState::WorkType::CompleteStruct);
+          }
+        }
+        return constant_value->value;
+      }
+      auto const *t = type_of(node);
 
       if (node->IsCustomInitialized()) {
         DEBUG_LOG("EmitValueDeclaration")
@@ -1208,16 +1220,15 @@ void Compiler::CompleteStruct(ast::StructLiteral const *node) {
     for (auto const &field : node->fields()) {
       // TODO hashtags.
       if (field.id() == "destroy") {
+        DEBUG_LOG("struct")("got here");
         // TODO handle potential errors here.
-        ASSIGN_OR(
-            continue,  //
-            auto dtor_value,
-            Evaluate(type::Typed(
-                field.init_val(),
-                type::Func({core::AnonymousParam(
-                               type::QualType::NonConstant(type::Ptr(s)))},
-                           {}))));
-        ASSIGN_OR(continue, dtor, dtor_value.get_if<ir::Fn>());
+        DEBUG_LOG()(field.init_val()->DebugString());
+        auto dtor_value = EmitValue(field.init_val());
+        if (auto const *dtor_fn = dtor_value.get_if<ir::Fn>()) {
+          dtor = *dtor_fn;
+        } else {
+          NOT_YET("Log an error");
+        }
       } else {
         if (auto *init_val = field.init_val()) {
           // TODO init_val type may not be the same.
@@ -1231,12 +1242,15 @@ void Compiler::CompleteStruct(ast::StructLiteral const *node) {
       }
     }
     builder().Struct(&data().module(), s, std::move(fields), dtor);
+    DEBUG_LOG("struct")("got here");
     builder().ReturnJump();
   }
 
   // TODO: What if execution fails.
   fn.WriteByteCode();
+  DEBUG_LOG("struct")("got here");
   interpretter::Execute(std::move(fn));
+  s->complete();
   DEBUG_LOG("struct")
   ("Completed ", node->DebugString(), " which is a struct ", *s, " with ",
    s->fields().size(), " field(s).");
