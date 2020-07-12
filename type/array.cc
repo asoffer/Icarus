@@ -31,8 +31,4 @@ core::Alignment Array::alignment(core::Arch const &a) const {
   return data_type()->alignment(a);
 }
 
-bool Array::DeepCompleteImpl(absl::flat_hash_set<Type const *> &ts) const {
-  return data_type()->DeepCompleteImpl(ts);
-}
-
 }  // namespace type

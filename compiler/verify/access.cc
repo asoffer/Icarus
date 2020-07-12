@@ -15,6 +15,22 @@
 namespace compiler {
 namespace {
 
+
+struct IncompleteTypeMemberAccess {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "incomplete-type-member-access";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Cannot access a member of an incomplete type `%s`.",
+                         type->to_string()),
+        diagnostic::SourceQuote(src).Highlighted(
+            member_range, diagnostic::Style::ErrorText()));
+  }
+
+  frontend::SourceRange member_range;
+  type::Type const *type;
+};
 struct MissingMember {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "missing-member";
@@ -185,6 +201,14 @@ type::QualType AccessTypeMember(Compiler *c, ast::Access const *node,
 // different module.
 type::QualType AccessStructMember(Compiler *c, ast::Access const *node,
                                   type::Struct const *s, type::Quals quals) {
+  if (s->completeness() < type::Completeness::DataComplete) {
+    c->diag().Consume(IncompleteTypeMemberAccess{
+        .member_range = node->member_range(),
+        .type         = s,
+    });
+    return type::QualType::Error();
+  }
+
   auto const *member = s->field(node->member_name());
   if (member == nullptr) {
     c->diag().Consume(MissingMember{

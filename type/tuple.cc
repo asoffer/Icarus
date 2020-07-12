@@ -80,11 +80,4 @@ core::Alignment Tuple::alignment(core::Arch const &a) const {
   return align;
 }
 
-bool Tuple::DeepCompleteImpl(absl::flat_hash_set<Type const *> &ts) const {
-  for (auto const *t : entries_) {
-    if (not t->DeepCompleteImpl(ts)) { return false; }
-  }
-  return true;
-}
-
 }  // namespace type

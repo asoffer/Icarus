@@ -36,6 +36,8 @@ struct GenericFunction : Callable {
 
   core::Params<EmptyStruct> const &params() const { return params_; }
 
+  Completeness completeness() const override { return Completeness::Complete; }
+
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }

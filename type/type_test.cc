@@ -22,6 +22,10 @@ struct FakeType : type::Type {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
 
+  type::Completeness completeness() const override {
+    return type::Completeness::Complete;
+  }
+
   void WriteTo(std::string *out) const override { out->append("[[FakeType]]"); }
   core::Bytes bytes(core::Arch const &arch) const override {
     return core::Bytes{17};

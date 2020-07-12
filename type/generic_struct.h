@@ -25,6 +25,8 @@ struct GenericStruct : Type {
 
   bool is_big() const override { return false; }
 
+  Completeness completeness() const override { return Completeness::Incomplete; }
+
   Struct const *concrete(core::FnArgs<Typed<ir::Value>> const &) const;
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {

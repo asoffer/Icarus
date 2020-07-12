@@ -14,6 +14,24 @@
   core::Alignment alignment(core::Arch const &arch) const override
 
 namespace type {
+// `Completeness` is an enum that describes the status of a partially
+// cosntructed type. While this is primarily of interest for user-defined
+// structs, it is also relevant for compound types (e.g., arrays, tuples,
+// variants) of these types.
+enum class Completeness {
+  // Incomplete: We have not yet determined all of the fields of the struct.
+  // It is disallowed to do anything with this type other than using pointer
+  // to a values of this type.
+  Incomplete,
+  // DataComplete: All fields have been determined and any properties
+  // derivable from only fields can be used (e.g., byte-size and alignment).
+  // Fields may be accessed but objects of still may not be constructed.
+  DataComplete,
+  // Complete: All fields and all special member functions have been
+  // completed. The type is complete and objects of this type may be
+  // constructed.
+  Complete
+};
 
 // `Type` is the base class for all types in the Icarus type system. To
 // construct a new category of types, create a subclass of `Type`. Implementing
@@ -34,16 +52,6 @@ struct Type : base::Cast<Type> {
   bool IsMovable() const { return flags_.is_movable; }
   bool HasDestructor() const { return flags_.has_destructor; }
 
-  // TODO tests on all sub-classes
-  bool DeepComplete() const {
-    absl::flat_hash_set<Type const *> ts;
-    return DeepCompleteImpl(ts);
-  }
-
-  virtual bool DeepCompleteImpl(absl::flat_hash_set<Type const *> &ts) const {
-    return true;
-  }
-
   virtual void Accept(VisitorBase *visitor, void *ret,
                       void *arg_tuple) const = 0;
 
@@ -52,6 +60,8 @@ struct Type : base::Cast<Type> {
     WriteTo(&result);
     return result;
   }
+
+  virtual Completeness completeness() const = 0;
 
   // TODO length-0 arrays and length-1 arrays of small types should be
   // considered small too. Similarly with simple variants and tuples.

@@ -32,6 +32,8 @@ struct Enum : type::Type {
 
   bool is_big() const override { return false; }
 
+  Completeness completeness() const override { return Completeness::Complete; }
+
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }

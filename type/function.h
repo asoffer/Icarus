@@ -32,6 +32,8 @@ struct Function : public Callable {
 
   bool is_big() const override { return false; }
 
+  Completeness completeness() const override { return Completeness::Complete; }
+
   core::Params<QualType> const &params() const { return params_; }
   absl::Span<Type const *const> output() const { return output_; }
 

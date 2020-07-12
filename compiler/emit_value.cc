@@ -735,7 +735,9 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
         if (type::Type const **type_val =
                 maybe_val->get_if<type::Type const *>()) {
           if (auto const *struct_type = (*type_val)->if_as<type::Struct>()) {
-            if (not struct_type->complete_) { return *maybe_val; }
+            if (struct_type->completeness() != type::Completeness::Complete) {
+              return *maybe_val;
+            }
             data().CompleteConstant(node);
           }
         }
@@ -1187,7 +1189,7 @@ void Compiler::CompleteStruct(ast::StructLiteral const *node) {
    " must-complete = ", state_.must_complete);
 
   type::Struct *s = data().get_struct(node);
-  if (s->complete_) {
+  if (s->completeness() == type::Completeness::Complete) {
     DEBUG_LOG("struct")("Already complete, exiting: ", node);
     return;
   }

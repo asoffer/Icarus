@@ -24,6 +24,8 @@ struct OverloadSet : Callable {
     return callables_;
   }
 
+  Completeness completeness() const override { return Completeness::Complete; }
+
   std::vector<type::Type const *> return_types(
       core::FnArgs<type::Typed<ir::Value>> const &args) const override;
 

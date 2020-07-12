@@ -27,6 +27,8 @@ struct Jump : Type {
 
   bool is_big() const override { return false; }
 
+  Completeness completeness() const override { return Completeness::Complete; }
+
   // Returns the parameters with which a a value of this type can be called.
   core::Params<type::Type const *> const &params() const { return params_; }
 

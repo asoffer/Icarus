@@ -13,6 +13,9 @@ struct ParameterPack : public Type {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
 
+  // TODO: Does this make any sense?
+  Completeness completeness() const override { return Completeness::Complete; }
+
   Type const *elem;
 };
 

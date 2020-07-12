@@ -174,7 +174,7 @@ bool Compiler::VerifyBody(ast::FunctionLiteral const *node) {
   auto const &fn_type =
       ASSERT_NOT_NULL(data().qual_type(node))->type()->as<type::Function>();
   for (auto const &param : fn_type.params()) {
-    if (not param.value.type()->DeepComplete()) {
+    if (not true) {
       DEBUG_LOG("function")("rescheduled");
       data().ClearVerifyBody(node);
 

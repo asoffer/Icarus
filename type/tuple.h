@@ -11,8 +11,6 @@ struct Tuple : public Type {
   ~Tuple() {}
   Tuple(std::vector<Type const *> entries);
 
-  bool DeepCompleteImpl(absl::flat_hash_set<Type const *> &ts) const override;
-
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
@@ -24,6 +22,12 @@ struct Tuple : public Type {
 
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;
+
+  Completeness completeness() const override {
+    Completeness c = Completeness::Complete;
+    for (auto const *e : entries_) { c = std::min(c, e->completeness()); }
+    return c;
+  }
 
   std::vector<Type const *> entries_;
 

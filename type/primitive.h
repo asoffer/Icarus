@@ -35,6 +35,8 @@ struct Primitive : public Type {
               Type const * /* TODO: Other primitives */>(std::forward<Fn>(fn));
   }
 
+  Completeness completeness() const override { return Completeness::Complete; }
+
   bool is_big() const override { return false; }
   bool is_integral() const;
 

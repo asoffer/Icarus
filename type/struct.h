@@ -54,11 +54,11 @@ struct Struct : public Type {
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;
 
-  bool DeepCompleteImpl(absl::flat_hash_set<Type const *> &ts) const override;
-
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
+
+  Completeness completeness() const override { return completeness_; }
 
   // Return the type of a field, or a nullptr if it doesn't exist
   Field const *field(std::string_view name) const;
@@ -73,7 +73,7 @@ struct Struct : public Type {
   bool contains_hashtag(ast::Hashtag needle) const;
 
   module::BasicModule const *mod_ = nullptr;
-  bool complete_;
+  Completeness completeness_ = Completeness::Incomplete;
 
   base::lazy<ir::NativeFn> init_func_;
   base::lazy<ir::NativeFn> destroy_func_;

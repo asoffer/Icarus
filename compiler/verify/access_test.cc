@@ -127,6 +127,7 @@ TEST(Access, NoFieldInStruct) {
 // TODO: Valid scope set across module boundary
 // TODO: Valid mix of overloads and scopes across module boundary
 // TODO: Invalid overload set across module boundaries
+// TODO: Error on accessing incomplete member.
 
 }  // namespace
 }  // namespace compiler

@@ -26,6 +26,8 @@ struct FakeType : type::Type {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
 
+  Completeness completeness() const override { return Completeness::Complete; }
+
   void WriteTo(std::string *out) const override {
     absl::StrAppendFormat(out, "Fake(%u, %u)", b_.value(), a_.value());
   }

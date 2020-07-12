@@ -24,9 +24,7 @@ struct Pointer : Type {
 
   constexpr Type const *pointee() const { return pointee_; }
 
-  bool DeepCompleteImpl(absl::flat_hash_set<Type const *> &ts) const override {
-    return pointee()->DeepCompleteImpl(ts);
-  }
+  Completeness completeness() const override { return Completeness::Complete; }
 
  protected:
   Pointer(Type const *t)
@@ -51,6 +49,8 @@ struct BufferPointer : Pointer {
 
   bool is_big() const override { return false; }
   void WriteTo(std::string *result) const override;
+
+  Completeness completeness() const override { return Completeness::Complete; }
 
  private:
   BufferPointer() = delete;

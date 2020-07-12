@@ -14,11 +14,10 @@ Struct::Struct(module::BasicModule const *mod, Struct::Options options)
                        .is_copyable              = options.is_copyable,
                        .is_movable               = options.is_movable,
                        .has_destructor           = 0}),
-      mod_(mod),
-      complete_(false) {}
+      mod_(mod) {}
 
 void Struct::AppendFields(std::vector<Struct::Field> fields) {
-  complete_ = true;
+  completeness_ = Completeness::DataComplete;
   fields_   = std::move(fields);
   size_t i  = 0;
   for (auto const &field : fields_) {
@@ -76,7 +75,7 @@ bool Struct::contains_hashtag(ast::Hashtag needle) const {
 }
 
 core::Bytes Struct::bytes(core::Arch const &a) const {
-  ASSERT(complete_ == true);
+  ASSERT(completeness_ >= Completeness::DataComplete);
   auto num_bytes = core::Bytes{0};
   for (auto const &field : fields_) {
     num_bytes += ASSERT_NOT_NULL(field.type)->bytes(a);
@@ -89,24 +88,12 @@ core::Bytes Struct::bytes(core::Arch const &a) const {
 }
 
 core::Alignment Struct::alignment(core::Arch const &a) const {
-  ASSERT(complete_ == true);
+  ASSERT(completeness_ >= Completeness::DataComplete);
   auto align = core::Alignment{1};
   for (auto const &field : fields_) {
     align = std::max(align, field.type->alignment(a));
   }
   return align;
-}
-
-bool Struct::DeepCompleteImpl(absl::flat_hash_set<Type const *> &ts) const {
-  if (not complete_) { return false; }
-  if (ts.insert(this).second) { return true; }
-
-  // TODO this is problematic because you can have self-referentiality here.
-  for (auto const &field : fields_) {
-    if (not field.type->DeepCompleteImpl(ts)) { return false; }
-  }
-
-  return true;
 }
 
 }  // namespace type

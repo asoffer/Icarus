@@ -22,6 +22,8 @@ struct Opaque : public Type {
     result->append("<opaque>");
   }
 
+  Completeness completeness() const override { return Completeness::Incomplete; }
+
   core::Bytes bytes(core::Arch const &arch) const override {
     UNREACHABLE("Must not request the size of an opaque type");
   }

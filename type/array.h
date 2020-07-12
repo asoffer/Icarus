@@ -18,8 +18,6 @@ struct Array : Type {
 
   ~Array() override {}
 
-  bool DeepCompleteImpl(absl::flat_hash_set<Type const *> &ts) const override;
-
   void WriteTo(std::string *buf) const override;
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;
@@ -30,6 +28,10 @@ struct Array : Type {
 
   constexpr size_t length() const { return len_; }
   constexpr type::Type const *data_type() const { return data_type_; }
+
+  Completeness completeness() const override {
+    return data_type()->completeness();
+  }
 
   bool is_big() const override { return true; }
 
