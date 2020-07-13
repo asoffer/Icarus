@@ -1159,6 +1159,20 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
   return table.EmitCall(this, args);
 }
 
+struct IncompleteField {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "incomplete-field";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Struct field has incomplete type."),
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
+  }
+
+  frontend::SourceRange range;
+};
+
 void Compiler::CompleteStruct(ast::StructLiteral const *node) {
   DEBUG_LOG("struct")
   ("Completing struct-literal emission: ", node,
@@ -1169,6 +1183,16 @@ void Compiler::CompleteStruct(ast::StructLiteral const *node) {
     DEBUG_LOG("struct")("Already complete, exiting: ", node);
     return;
   }
+
+  bool field_error = false;
+  for (auto const &field : node->fields()) {
+    auto const *qt = data().qual_type(&field);
+    if (not qt or qt->type()->completeness() != type::Completeness::Complete) {
+      diag().Consume(IncompleteField{.range = field.range()});
+      field_error = true;
+    }
+  }
+  if (field_error) { return; }
 
   ir::CompiledFn fn(type::Func({}, {}),
                     core::Params<type::Typed<ast::Declaration const *>>{});
@@ -1206,13 +1230,11 @@ void Compiler::CompleteStruct(ast::StructLiteral const *node) {
       }
     }
     builder().Struct(&data().module(), s, std::move(fields), dtor);
-    DEBUG_LOG("struct")("got here");
     builder().ReturnJump();
   }
 
   // TODO: What if execution fails.
   fn.WriteByteCode();
-  DEBUG_LOG("struct")("got here");
   interpretter::Execute(std::move(fn));
   s->complete();
   DEBUG_LOG("struct")

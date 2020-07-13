@@ -68,6 +68,18 @@ TEST(StructLiteral, SelfReferential) {
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
+TEST(StructLiteral, SelfReferentialError) {
+  test::TestModule mod;
+  mod.AppendCode(R"(
+  list ::= struct {
+    data: int64
+    next: list
+  }
+  )");
+  EXPECT_THAT(mod.consumer.diagnostics(),
+              UnorderedElementsAre(Pair("type-error", "incomplete-field")));
+}
+
 TEST(StructLiteral, MutuallyReferential) {
   base::EnableLogging("compile-work-queue");
   test::TestModule mod;
@@ -92,6 +104,18 @@ TEST(StructLiteral, MutuallyReferential) {
   EXPECT_EQ(type::Ptr(a_struct), ba_field->type);
   EXPECT_EQ(type::Ptr(b_struct), ab_field->type);
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+}
+
+TEST(StructLiteral, MutuallyReferentialError) {
+  base::EnableLogging("compile-work-queue");
+  test::TestModule mod;
+  mod.AppendCode(R"(
+  A ::= struct { b: B }
+  B ::= struct { a: A }
+  )");
+  EXPECT_THAT(mod.consumer.diagnostics(),
+              UnorderedElementsAre(Pair("type-error", "incomplete-field"),
+                                   Pair("type-error", "incomplete-field")));
 }
 }  // namespace
 }  // namespace compiler

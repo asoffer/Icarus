@@ -10,7 +10,15 @@ bool Compiler::VerifyBody(ast::StructLiteral const *node) {
   bool error = false;
   for (auto const &field : node->fields()) {
     auto field_qt = VerifyType(&field);
-    if (not field_qt.ok()) { error = true; }
+    if (not field_qt.ok()) {
+      error = true;
+    } else if (field_qt.type()->completeness() ==
+               type::Completeness::Incomplete) {
+      DEBUG_LOG("struct")
+      ("Setting error due to incomplete field. Diagnostics should have already "
+       "been emit.");
+      error = true;
+    }
   }
 
   DEBUG_LOG("struct")("Struct-literal body verification complete: ", node);

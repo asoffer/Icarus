@@ -31,6 +31,7 @@ struct IncompleteTypeMemberAccess {
   frontend::SourceRange member_range;
   type::Type const *type;
 };
+
 struct MissingMember {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "missing-member";
