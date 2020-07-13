@@ -1,6 +1,25 @@
 package(default_visibility = ["//compiler:__subpackages__"])
 
 cc_library(
+    name = "access",
+    srcs = ["access.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+    ],
+)
+
+cc_test(
+    name = "access_test",
+    srcs = ["access_test.cc"],
+    deps = [
+        "//compiler",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "terminal",
     srcs = ["terminal.cc"],
     deps = [

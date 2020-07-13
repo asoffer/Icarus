@@ -154,42 +154,6 @@ base::move_func<void()> *DeferBody(Compiler::PersistentResources resources,
 
 }  // namespace
 
-ir::Value Compiler::EmitValue(ast::Access const *node) {
-  if (type_of(node->operand()) == type::Module) {
-    // TODO we already did this evaluation in type verification. Can't we just
-    // save and reuse it?
-    auto maybe_mod = EvaluateAs<module::BasicModule *>(node->operand());
-    if (not maybe_mod) { NOT_YET(); }
-    auto const *mod = &(*maybe_mod)->as<CompiledModule>();
-
-    ASSERT(mod != &data().module());
-    auto decls = mod->ExportedDeclarations(node->member_name());
-    switch (decls.size()) {
-      case 0: NOT_YET();
-      case 1: return mod->ExportedValue(decls[0]);
-      default: NOT_YET();
-    }
-  }
-
-  auto *this_type = type_of(node);
-  if (this_type->is<type::Enum>()) {
-    ir::EnumVal lit =
-        *this_type->as<type::Enum>().EmitLiteral(node->member_name());
-    return ir::Value(lit);
-  } else if (this_type->is<type::Flags>()) {
-    ir::FlagsVal lit =
-        *this_type->as<type::Flags>().EmitLiteral(node->member_name());
-    return ir::Value(lit);
-  } else if (type_of(node->operand()) == type::ByteView) {
-    ASSERT(node->member_name() == "length");
-    return ir::Value(builder().ByteViewLength(
-        EmitValue(node->operand()).get<ir::RegOr<ir::String>>()));
-  } else {
-    // TODO: Can this be an address?
-    return ir::Value(builder().PtrFix(EmitRef(node).reg(), this_type));
-  }
-}
-
 ir::Value Compiler::EmitValue(ast::ArgumentType const *node) {
   return ir::Value(ASSERT_NOT_NULL(data().arg_type(node->name())));
 }

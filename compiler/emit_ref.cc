@@ -11,24 +11,6 @@ namespace compiler {
 
 using ::matcher::InheritsFrom;
 
-ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Access const *node) {
-  auto reg = EmitRef(node->operand());
-  auto *t  = type_of(node->operand());
-
-  if (auto const *tp = t->if_as<type::Pointer>()) { t = tp->pointee(); }
-
-  while (auto *tp = t->if_as<type::Pointer>()) {
-    t   = tp->pointee();
-    reg = builder().Load<ir::Addr>(reg);
-  }
-
-  ASSERT(t, InheritsFrom<type::Struct>());
-  auto *struct_type = &t->as<type::Struct>();
-  return builder()
-      .Field(reg, struct_type, struct_type->index(node->member_name()))
-      .get();
-}
-
 ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Identifier const *node) {
   auto decl_span = data().decls(node);
   ASSERT(decl_span.size() == 1u);

@@ -202,7 +202,6 @@ type::QualType AccessTypeMember(Compiler *c, ast::Access const *node,
 type::QualType AccessStructMember(Compiler *c, ast::Access const *node,
                                   type::Struct const *s, type::Quals quals) {
   if (s->completeness() < type::Completeness::DataComplete) {
-  DEBUG_LOG()("Got to a problemo");
     c->diag().Consume(IncompleteTypeMemberAccess{
         .member_range = node->member_range(),
         .type         = s,
@@ -252,17 +251,8 @@ type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
     return type::QualType::Error();
   }
 
-  auto maybe_mod = c->EvaluateAs<module::BasicModule *>(node->operand());
-  if (not maybe_mod) {
-    c->diag().Consume(diagnostic::EvaluationFailure{
-        .failure = maybe_mod.error(),
-        .range   = node->range(),
-    });
-    return type::QualType::Error();
-  }
-  // TODO: Rather than evaluating as a BasicModule and then down-casting to
-  // CompiledModule, we should make this cast unnecessary.
-  auto const *mod = &(*maybe_mod)->as<CompiledModule>();
+  auto const *mod = c->EvaluateModuleWithCache(node->operand());
+  if (not mod) { return type::QualType::Error(); }
 
   // There is no way to refer to the current module, but a bug here could cause
   // a deadlock as this module waits for the notification that it's declarations
@@ -332,15 +322,15 @@ type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
 
 type::QualType Compiler::VerifyType(ast::Access const *node) {
   ASSIGN_OR(return type::QualType::Error(),  //
-                   auto operand_result, VerifyType(node->operand()));
+                   auto operand_qt, VerifyType(node->operand()));
 
-  auto [base_type, num_derefs] = DereferenceAll(operand_result.type());
+  auto [base_type, num_derefs] = DereferenceAll(operand_qt.type());
   if (base_type == type::Type_) {
-    return AccessTypeMember(this, node, operand_result);
+    return AccessTypeMember(this, node, operand_qt);
   } else if (base_type == type::Module) {
-    return AccessModuleMember(this, node, operand_result);
+    return AccessModuleMember(this, node, operand_qt);
   } else {
-    auto quals = operand_result.quals();
+    auto quals = operand_qt.quals();
     if (num_derefs > 0) { quals |= type::Quals::Ref(); }
 
     if (base_type == type::ByteView) {

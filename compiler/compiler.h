@@ -452,6 +452,20 @@ struct Compiler
     absl::flat_hash_map<type::Callable const *, ErrorReason> reasons;
   };
 
+  CompiledModule const *EvaluateModuleWithCache(ast::Expression const *expr) {
+    // TODO: Implement caching behavior.
+    auto maybe_mod = EvaluateAs<module::BasicModule *>(expr);
+    if (not maybe_mod) {
+      diag().Consume(diagnostic::EvaluationFailure{.failure = maybe_mod.error(),
+                                                   .range   = expr->range()});
+      return nullptr;
+    }
+
+    // TODO: Rather than evaluating as a BasicModule and then down-casting to
+    // CompiledModule, we should make this cast unnecessary.
+    return &(*maybe_mod)->as<CompiledModule>();
+  }
+
  private:
   void CompleteStruct(ast::StructLiteral const *node);
 

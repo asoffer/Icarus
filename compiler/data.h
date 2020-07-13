@@ -84,7 +84,7 @@ struct DependentComputedData {
     auto iter = addr_.find(decl);
     if (iter != addr_.end()) { return iter->second; }
     if (parent_) { return parent_->addr(decl); }
-    UNREACHABLE();
+    UNREACHABLE("Failed to find address for decl", decl->DebugString());
   }
 
   // Returns a pointer to the `ir::Jump` corresponding to the compilation of
