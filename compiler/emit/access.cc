@@ -33,17 +33,30 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
 }
 
 ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Access const *node) {
-  auto reg      = EmitRef(node->operand());
-  auto const *t = ASSERT_NOT_NULL(data().qual_type(node->operand()))->type();
-
-  while (auto const *tp = t->if_as<type::Pointer>()) {
-    t   = tp->pointee();
-    reg = builder().Load<ir::Addr>(reg);
+  auto op_qt         = *ASSERT_NOT_NULL(data().qual_type(node->operand()));
+  size_t deref_count = (op_qt.quals() >= type::Quals::Ref())
+                           ? size_t{0}
+                           : static_cast<size_t>(-1);
+  auto const *t  = op_qt.type();
+  auto const *tp = t->if_as<type::Pointer>();
+  while (tp) {
+    t = tp->pointee();
+    tp = t->if_as<type::Pointer>();
+    DEBUG_LOG()(deref_count);
+    ++deref_count;
   }
 
-  auto *struct_type = &t->as<type::Struct>();
+  ir::Value reg = (op_qt.quals() >= type::Quals::Ref())
+                      ? ir::Value(EmitRef(node->operand()))
+                      : EmitValue(node->operand());
+  for (size_t i = 0; i < deref_count; ++i) {
+    reg = ir::Value(builder().Load<ir::Addr>(reg.get<ir::RegOr<ir::Addr>>()));
+  }
+
+  auto const &struct_type = t->as<type::Struct>();
   return builder()
-      .Field(reg, struct_type, struct_type->index(node->member_name()))
+      .Field(reg.get<ir::RegOr<ir::Addr>>(), &struct_type,
+             struct_type.index(node->member_name()))
       .get();
 }
 

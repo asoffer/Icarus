@@ -1210,7 +1210,6 @@ void Compiler::CompleteStruct(ast::StructLiteral const *node) {
       if (field.id() == "destroy") {
         DEBUG_LOG("struct")("got here");
         // TODO handle potential errors here.
-        DEBUG_LOG()(field.init_val()->DebugString());
         auto dtor_value = EmitValue(field.init_val());
         if (auto const *dtor_fn = dtor_value.get_if<ir::Fn>()) {
           dtor = *dtor_fn;

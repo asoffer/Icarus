@@ -387,6 +387,7 @@ struct Builder {
   }
 
   Reg PtrFix(Reg r, type::Type const* desired_type) {
+    DEBUG_LOG()("Loading");
     // TODO must this be a register if it's loaded?
     return desired_type->is_big() ? r : Load(r, desired_type).get<Reg>();
   }

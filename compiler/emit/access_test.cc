@@ -65,7 +65,19 @@ INSTANTIATE_TEST_SUITE_P(All, AccessTest,
                              })()
                              )",
                                       .expected = ir::Value(int64_t{3})},
+                             TestCase{.expr     = R"((() -> int64 {
+                                s: S
+                                ptr := &s
+                                ptr.n = 3
+                                ptr.p = &ptr.n
+                                ptr.sp = &s
+                                return ptr.sp.n
+                             })()
+                             )",
+                                      .expected = ir::Value(int64_t{3})},
                          }));
+
+// TODO: Add a test that covers pointer parameters.
 
 }  // namespace
 }  // namespace compiler

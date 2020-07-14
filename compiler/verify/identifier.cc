@@ -125,7 +125,8 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
         }
       }
 
-      if (not qt.constant()) {
+      if (not qt.constant() and
+          not(potential_decls[0]->flags() & ast::Declaration::f_IsFnParam)) {
         // TODO: shouldn't need to reconstruct just to set the quals.
         qt = type::QualType(qt.type(), qt.quals() | type::Quals::Ref());
       }
