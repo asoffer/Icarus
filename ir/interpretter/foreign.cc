@@ -11,6 +11,7 @@
 #include "type/function.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
+#include "type/tuple.h"
 
 namespace interpretter {
 using void_fn_ptr = void (*)();
@@ -33,6 +34,7 @@ void ExtractReturnValue(ffi_arg *ret, ir::Addr ret_addr) {
 }
 
 ffi_type *ToFfiType(type::Type const *t) {
+  if (t == type::Void()) { return &ffi_type_void; }
   if (t == type::Int8) { return &ffi_type_sint8; }
   if (t == type::Int16) { return &ffi_type_sint16; }
   if (t == type::Int32) { return &ffi_type_sint32; }
@@ -99,8 +101,10 @@ void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
     }
   }
 
-  ASSERT(fn_type->output().size() == 1u);
-  auto *out_type = fn_type->output()[0];
+  ASSERT(fn_type->output().size() <= 1u);
+
+  auto *out_type =
+      fn_type->output().empty() ? type::Void() : fn_type->output()[0];
 
   ffi_cif cif;
   ffi_arg ret;
@@ -113,7 +117,9 @@ void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
   ffi_call(&cif, f.get(), &ret, arg_vals.data());
   DEBUG_LOG("foreign-errno")("after: ", errno);
 
-  if (out_type == type::Int8) {
+  if (out_type == type::Void()) {
+    goto done;
+  } else if (out_type == type::Int8) {
     ExtractReturnValue<int8_t>(&ret, return_slots[0]);
   } else if (out_type == type::Int16) {
     ExtractReturnValue<int16_t>(&ret, return_slots[0]);
@@ -152,6 +158,7 @@ void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
   } else {
     NOT_YET();
   }
+done:;
 }
 
 base::expected<void *> LoadDataSymbol(std::string_view name) {
