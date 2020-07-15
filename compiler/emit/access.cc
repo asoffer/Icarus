@@ -42,7 +42,6 @@ ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Access const *node) {
   while (tp) {
     t = tp->pointee();
     tp = t->if_as<type::Pointer>();
-    DEBUG_LOG()(deref_count);
     ++deref_count;
   }
 

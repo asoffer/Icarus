@@ -181,7 +181,7 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
     } break;
     case ast::UnaryOperator::Kind::At: {
       if (auto const *ptr_type = operand_type->if_as<type::Pointer>()) {
-        qt = type::QualType(ptr_type->pointee(), operand_qt.quals());
+        qt = type::QualType(ptr_type->pointee(), type::Quals::Ref());
       } else {
         diag().Consume(DereferencingNonPointer{
             .type  = operand_type,
