@@ -851,8 +851,9 @@ type::QualType Compiler::VerifyType(
                 c.EmitValue(field.type_expr()).get<type::Type const *>());
           }
         }
+        // TODO destructors and assignment
         c.builder().Struct(&c.data().module(), s, std::move(fields),
-                           std::nullopt);
+                           std::nullopt, std::nullopt);
         c.builder().ReturnJump();
       }
 

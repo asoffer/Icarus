@@ -247,8 +247,13 @@ struct BufPtrInstruction
 struct StructInstruction {
   static constexpr cmd_index_t kIndex = internal::kStructInstructionNumber;
   StructInstruction(module::BasicModule const* mod, type::Struct* s,
-                    std::vector<StructField> fields, std::optional<ir::Fn> dtor)
-      : mod(mod), struct_(s), fields(std::move(fields)), dtor(dtor) {}
+                    std::vector<StructField> fields,
+                    std::optional<ir::Fn> move_assign, std::optional<ir::Fn> dtor)
+      : mod(mod),
+        struct_(s),
+        fields(std::move(fields)),
+        move_assign(move_assign),
+        dtor(dtor) {}
   ~StructInstruction() {}
 
   std::string to_string() const {
@@ -280,6 +285,9 @@ struct StructInstruction {
       }
     }
 
+    writer->Write(move_assign.has_value());
+    if (move_assign.has_value()) { writer->Write(*move_assign); }
+
     writer->Write(dtor.has_value());
     if (dtor.has_value()) { writer->Write(*dtor); }
 
@@ -298,6 +306,7 @@ struct StructInstruction {
   module::BasicModule const* mod;
   type::Struct* struct_;
   std::vector<StructField> fields;
+  std::optional<ir::Fn> move_assign;
   std::optional<ir::Fn> dtor;
   Reg result;
 };

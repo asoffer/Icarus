@@ -1204,15 +1204,22 @@ void Compiler::CompleteStruct(ast::StructLiteral const *node) {
     std::vector<ir::StructField> fields;
     fields.reserve(node->fields().size());
 
-    std::optional<ir::Fn> dtor;
+    std::optional<ir::Fn> dtor, move_assign;
     for (auto const &field : node->fields()) {
       // TODO hashtags.
       if (field.id() == "destroy") {
-        DEBUG_LOG("struct")("got here");
         // TODO handle potential errors here.
         auto dtor_value = EmitValue(field.init_val());
         if (auto const *dtor_fn = dtor_value.get_if<ir::Fn>()) {
           dtor = *dtor_fn;
+        } else {
+          NOT_YET("Log an error");
+        }
+      } else if (field.id() == "assign") {
+        // TODO handle potential errors here.
+        auto assign_value = EmitValue(field.init_val());
+        if (auto const *move_assign_fn = assign_value.get_if<ir::Fn>()) {
+          move_assign = *move_assign_fn;
         } else {
           NOT_YET("Log an error");
         }
@@ -1228,7 +1235,7 @@ void Compiler::CompleteStruct(ast::StructLiteral const *node) {
         }
       }
     }
-    builder().Struct(&data().module(), s, std::move(fields), dtor);
+    builder().Struct(&data().module(), s, std::move(fields), move_assign, dtor);
     builder().ReturnJump();
   }
 

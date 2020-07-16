@@ -43,6 +43,15 @@ ir::Fn Struct::Destructor() const {
   return *dtor_;
 }
 
+void Struct::SetMoveAssignment(ir::Fn move_assign) {
+  move_assign_ = move_assign;
+}
+
+ir::Fn Struct::MoveAssignment() const {
+  ASSERT(move_assign_.has_value() == true);
+  return *move_assign_;
+}
+
 core::Bytes Struct::offset(size_t field_num, core::Arch const &a) const {
   auto offset = core::Bytes{0};
   for (size_t i = 0; i < field_num; ++i) {

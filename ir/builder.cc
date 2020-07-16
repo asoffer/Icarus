@@ -246,8 +246,8 @@ Reg Builder::Flags(
 
 Reg Builder::Struct(module::BasicModule const *mod, type::Struct *s,
                     std::vector<StructField> fields,
-                    std::optional<ir::Fn> dtor) {
-  StructInstruction inst(mod, s, std::move(fields), dtor);
+                    std::optional<ir::Fn> assign, std::optional<ir::Fn> dtor) {
+  StructInstruction inst(mod, s, std::move(fields), assign, dtor);
   auto result = inst.result = CurrentGroup()->Reserve();
   CurrentBlock()->Append(std::move(inst));
   return result;

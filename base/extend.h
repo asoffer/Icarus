@@ -89,17 +89,23 @@ auto GetFields(T const &t) {
   if constexpr (kNumFields == 0) {
     return std::tie();
   } else if constexpr (kNumFields == 1) {
-    auto &[field0] = t;
-    return std::tie(field0);
+    auto &[f0] = t;
+    return std::tie(f0);
   } else if constexpr (kNumFields == 2) {
-    auto &[field0, field1] = t;
-    return std::tie(field0, field1);
+    auto &[f0, f1] = t;
+    return std::tie(f0, f1);
   } else if constexpr (kNumFields == 3) {
-    auto &[field0, field1, field2] = t;
-    return std::tie(field0, field1, field2);
+    auto &[f0, f1, f2] = t;
+    return std::tie(f0, f1, f2);
   } else if constexpr (kNumFields == 4) {
-    auto &[field0, field1, field2, field3] = t;
-    return std::tie(field0, field1, field2, field3);
+    auto &[f0, f1, f2, f3] = t;
+    return std::tie(f0, f1, f2, f3);
+  } else if constexpr (kNumFields == 5) {
+    auto &[f0, f1, f2, f3, f4] = t;
+    return std::tie(f0, f1, f2, f3, f4);
+  } else if constexpr (kNumFields == 4) {
+    auto &[f0, f1, f2, f3, f4, f5] = t;
+    return std::tie(f0, f1, f2, f3, f4, f5);
   }
 }
 

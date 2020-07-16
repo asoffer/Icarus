@@ -44,8 +44,12 @@ struct Struct : public Type {
   };
   Struct(module::BasicModule const *mod, Options options);
   void AppendFields(std::vector<Field> fields);
+
   void SetDestructor(ir::Fn dtor);
   ir::Fn Destructor() const;
+
+  void SetMoveAssignment(ir::Fn move_assign);
+  ir::Fn MoveAssignment() const;
 
   bool is_big() const override { return true; }
 
@@ -83,7 +87,7 @@ struct Struct : public Type {
 
   std::vector<ast::Hashtag> hashtags_;
   std::vector<Field> fields_;
-  std::optional<ir::Fn> dtor_;
+  std::optional<ir::Fn> dtor_, move_assign_;
   absl::flat_hash_map<std::string_view, size_t> field_indices_;
 };
 

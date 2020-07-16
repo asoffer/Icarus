@@ -391,7 +391,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
         auto to     = ReadAndResolve<ir::Addr>(is_reg, iter, ctx);
 
         if (auto *s = t->if_as<type::Struct>()) {
-          f = s->move_assign_func_.get();
+          f = s->MoveAssignment();
         } else if (auto *tup = t->if_as<type::Tuple>()) {
           f = tup->move_assign_func_.get();
         } else if (auto *a = t->if_as<type::Array>()) {
@@ -566,9 +566,15 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     }
 
     struct_type->AppendFields(std::move(fields));
+
+    if (iter->read<bool>()) {
+      struct_type->SetMoveAssignment(iter->read<ir::Fn>());
+    }
+
     if (iter->read<bool>()) {
       struct_type->SetDestructor(iter->read<ir::Fn>());
     }
+
     type::Struct const *const_struct_type = struct_type;
     ctx->current_frame()->regs_.set(iter->read<ir::Reg>(), const_struct_type);
 
