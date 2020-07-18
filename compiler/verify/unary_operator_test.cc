@@ -36,6 +36,30 @@ TEST(Copy, Success) {
   }
 }
 
+TEST(Init, Success) {
+  {
+    test::TestModule mod;
+    auto const *expr = mod.Append<ast::UnaryOperator>("init [1, 2, 3]");
+    auto const *qt   = mod.data().qual_type(expr);
+    ASSERT_NE(qt, nullptr);
+    EXPECT_EQ(*qt, type::QualType::Constant(type::Arr(3, type::Int64)));
+    EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  }
+
+  {
+    test::TestModule mod;
+    mod.AppendCode(R"(
+    a := [1, 2, 3]
+    )");
+    auto const *expr = mod.Append<ast::UnaryOperator>("init a");
+    auto const *qt   = mod.data().qual_type(expr);
+    ASSERT_NE(qt, nullptr);
+    EXPECT_EQ(*qt, type::QualType::NonConstant(type::Arr(3, type::Int64)));
+    EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
+  }
+}
+
+
 TEST(Copy, Uncopyable) {
   test::TestModule mod;
   mod.AppendCode(R"(

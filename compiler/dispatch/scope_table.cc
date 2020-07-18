@@ -57,7 +57,7 @@ std::pair<ir::BasicBlock const *, ir::OutParams> EmitCallOneOverload(
     // TODO only null because there's no start/exit block node. can we fake it
     // to make this work nicer?
 
-    if (next_block_name == "exit") {
+    if (next_block_name == "done") {
       exit_outs.first  = bldr.CurrentBlock();
       exit_outs.second = std::move(outs);
 
@@ -194,7 +194,7 @@ void internal::OneTable::VerifyJumps() {
     }
   }
 
-  if (auto iter = next_types.find("exit"); iter != next_types.end()) {
+  if (auto iter = next_types.find("done"); iter != next_types.end()) {
     // Note: If `exit` is not found in `next_types` it's because it is
     // impossible to jump to. This means we'll never exit a scope via a normal
     // call to `exit()` so it's safe to assume that the result type is void

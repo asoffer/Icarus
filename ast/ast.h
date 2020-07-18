@@ -1128,6 +1128,7 @@ struct Terminal : Expression {
 struct UnaryOperator : Expression {
   enum class Kind {
     Copy,
+    Init,
     Move,
     BufferPointer,
     TypeOf,

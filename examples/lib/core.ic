@@ -1,35 +1,35 @@
 #{export}
 if ::= scope {
-  init ::= jump(b: bool) { goto b, then(), else() | exit() }
+  enter ::= jump(b: bool) { goto b, then(), else() | done() }
 
   then ::= block {
     before ::= () -> () {}
-    after ::= jump() { goto exit() }
+    after ::= jump() { goto done() }
   }
 
   else ::= block {
     before ::= () -> () {}
-    after ::= jump() { goto exit() }
+    after ::= jump() { goto done() }
   }
 
-  done ::= () -> () {}
+  exit ::= () -> () {}
 }
 
 #{export}
 while ::= scope {
-  init ::= jump(b: bool) { goto b, do(), exit() }
+  enter ::= jump(b: bool) { goto b, do(), done() }
 
   do ::= block {
     before ::= () -> () {}
     after ::= jump() { goto start() }
   }
 
-  done ::= () -> () {}
+  exit ::= () -> () {}
 }
 
 #{export}
 repeat ::= scope (int64) {
-  init ::= jump [state: *int64] (n: int64) {
+  enter ::= jump [state: *int64] (n: int64) {
     @state = n
     goto do() 
   }
@@ -38,9 +38,9 @@ repeat ::= scope (int64) {
     before ::= () -> () {}
     after ::= jump [state: *int64] () { 
       @state -= 1
-      goto @state == 0, exit(), do()
+      goto @state == 0, done(), do()
     }
   }
 
-  done ::= () -> () {}
+  exit ::= () -> () {}
 }

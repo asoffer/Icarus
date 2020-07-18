@@ -150,7 +150,7 @@ static base::Global kKeywords =
         {"struct", {Syntax::Struct}}, {"return", {Operator::Return}},
         {"goto", {Operator::Goto}},   {"jump", {Syntax::Jump}},
         {"as", {Operator::As}},       {"copy", {Operator::Copy}},
-        {"move", {Operator::Move}}};
+        {"init", {Operator::Init}},   {"move", {Operator::Move}}};
 
 static bool BeginsWith(std::string_view prefix, std::string_view s) {
   if (s.size() < prefix.size()) { return false; }

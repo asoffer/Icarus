@@ -23,7 +23,7 @@ struct LocalBlockInterpretation {
     }
   }
   BasicBlock *operator[](std::string_view name) const {
-    if (name == "exit") { return exit_; }
+    if (name == "done") { return exit_; }
     if (name == "start") { return start_; }
     ASSIGN_OR(return nullptr, auto const &node, block_node(name));
     return operator[](&node);

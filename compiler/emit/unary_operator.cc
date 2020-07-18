@@ -16,6 +16,8 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
                    type::Typed<ir::Reg>(reg, type::Ptr(operand_type)));
       return ir::Value(builder().PtrFix(reg, operand_type));
     } break;
+    case ast::UnaryOperator::Kind::Init:
+      // TODO: Not entirely sure this is what the semantics ought to be.
     case ast::UnaryOperator::Kind::Move: {
       auto *operand_type =
           ASSERT_NOT_NULL(data().qual_type(node->operand()))->type();
@@ -23,7 +25,7 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
       EmitMoveInit(type::Typed(EmitValue(node->operand()), operand_type),
                    type::Typed<ir::Reg>(reg, type::Ptr(operand_type)));
       return ir::Value(builder().PtrFix(reg, operand_type));
-    } break;
+      } break;
     case ast::UnaryOperator::Kind::BufferPointer:
       return ir::Value(builder().BufPtr(
           EmitValue(node->operand()).get<ir::RegOr<type::Type const *>>()));

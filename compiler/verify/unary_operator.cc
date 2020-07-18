@@ -135,6 +135,11 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
       qt = type::QualType(operand_type,
                           operand_qt.quals() & ~type::Quals::Ref());
     } break;
+    case ast::UnaryOperator::Kind::Init: {
+      // TODO: Under what circumstances is `init` allowed?
+      qt = type::QualType(operand_type,
+                          operand_qt.quals() & ~type::Quals::Ref());
+    } break;
     case ast::UnaryOperator::Kind::Move: {
       if (not operand_type->IsMovable()) {
         diag().Consume(diagnostic::ImmovableType{

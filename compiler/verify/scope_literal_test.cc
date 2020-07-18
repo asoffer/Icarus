@@ -25,7 +25,7 @@ TEST(ScopeLiteral, SuccessStateless) {
 TEST(ScopeLiteral, StatelessNonConstantMember) {
   test::TestModule mod;
   auto const *s  = mod.Append<ast::ScopeLiteral>(R"(scope {
-    init := jump () {}
+    enter := jump () {}
   }
   )");
   auto const *qt = mod.data().qual_type(s);
@@ -40,8 +40,8 @@ TEST(ScopeLiteral, StatelessNonConstantMember) {
 TEST(ScopeLiteral, StatelessMemberTypes) {
   test::TestModule mod;
   auto const *s  = mod.Append<ast::ScopeLiteral>(R"(scope {
-    init ::= 3
-    done ::= 3
+    enter ::= 3
+    exit ::= 3
   }
   )");
   auto const *qt = mod.data().qual_type(s);
@@ -49,14 +49,14 @@ TEST(ScopeLiteral, StatelessMemberTypes) {
   EXPECT_EQ(qt->type(), type::Scope);
   EXPECT_TRUE(qt->constant());
   EXPECT_THAT(mod.consumer.diagnostics(),
-              UnorderedElementsAre(Pair("type-error", "non-jump-init"),
-                                   Pair("type-error", "non-callable-done")));
+              UnorderedElementsAre(Pair("type-error", "non-jump-enter"),
+                                   Pair("type-error", "non-callable-exit")));
 }
 
 TEST(ScopeLiteral, StatelessInitIsStateful) {
   test::TestModule mod;
   auto const *s  = mod.Append<ast::ScopeLiteral>(R"(scope {
-    init ::= jump [state: *int64] () {}
+    enter ::= jump [state: *int64] () {}
   }
   )");
   auto const *qt = mod.data().qual_type(s);
@@ -81,7 +81,7 @@ TEST(ScopeLiteral, SuccessStateful) {
 TEST(ScopeLiteral, StatefulNonConstantMember) {
   test::TestModule mod;
   auto const *s  = mod.Append<ast::ScopeLiteral>(R"(scope (int64) {
-    init := jump [state: *int64] () {}
+    enter := jump [state: *int64] () {}
   }
   )");
   auto const *qt = mod.data().qual_type(s);
@@ -96,8 +96,8 @@ TEST(ScopeLiteral, StatefulNonConstantMember) {
 TEST(ScopeLiteral, StatefulMemberTypes) {
   test::TestModule mod;
   auto const *s  = mod.Append<ast::ScopeLiteral>(R"(scope (int64) {
-    init ::= 3
-    done ::= 3
+    enter ::= 3
+    exit ::= 3
   }
   )");
   auto const *qt = mod.data().qual_type(s);
@@ -105,14 +105,14 @@ TEST(ScopeLiteral, StatefulMemberTypes) {
   EXPECT_EQ(qt->type(), type::Scope);
   EXPECT_TRUE(qt->constant());
   EXPECT_THAT(mod.consumer.diagnostics(),
-              UnorderedElementsAre(Pair("type-error", "non-jump-init"),
-                                   Pair("type-error", "non-callable-done")));
+              UnorderedElementsAre(Pair("type-error", "non-jump-enter"),
+                                   Pair("type-error", "non-callable-exit")));
 }
 
 TEST(ScopeLiteral, StatefulInitIsStateless) {
   test::TestModule mod;
   auto const *s  = mod.Append<ast::ScopeLiteral>(R"(scope (int64) {
-    init ::= jump () {}
+    enter ::= jump () {}
   }
   )");
   auto const *qt = mod.data().qual_type(s);

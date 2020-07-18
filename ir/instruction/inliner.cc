@@ -67,7 +67,7 @@ void InstructionInliner::InlineJump(BasicBlock* block) {
       size_t i                   = 0;
       for (std::string_view name : j.names()) {
         DEBUG_LOG("InlineJump")(name);
-        if (name == "start" or name == "exit" or
+        if (name == "start" or name == "done" or
             block_interp_.block_node(name)) {
           next_name = name;
           break;

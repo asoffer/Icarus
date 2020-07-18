@@ -1117,9 +1117,9 @@ ir::Value Compiler::EmitValue(ast::ScopeLiteral const *node) {
   std::vector<ir::RegOr<ir::Jump *>> inits;
   std::vector<ir::RegOr<ir::Fn>> dones;
   for (auto const &decl : node->decls()) {
-    if (decl.id() == "init") {
+    if (decl.id() == "enter") {
       inits.push_back(EmitValue(&decl).get<ir::RegOr<ir::Jump *>>());
-    } else if (decl.id() == "done") {
+    } else if (decl.id() == "exit") {
       dones.push_back(EmitValue(&decl).get<ir::RegOr<ir::Fn>>());
     } else {
       blocks.emplace(decl.id(),

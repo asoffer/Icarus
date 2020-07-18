@@ -482,6 +482,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
   static base::Global kUnaryOperatorMap =
       absl::flat_hash_map<std::string_view, ast::UnaryOperator::Kind>{
           {"copy", ast::UnaryOperator::Kind::Copy},
+          {"init", ast::UnaryOperator::Kind::Init},
           {"move", ast::UnaryOperator::Kind::Move},
           {"[*]", ast::UnaryOperator::Kind::BufferPointer},
           {":?", ast::UnaryOperator::Kind::TypeOf},

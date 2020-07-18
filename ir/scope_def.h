@@ -27,7 +27,7 @@ struct ScopeDef {
         start_(std::make_unique<BlockDef>()),
         exit_(std::make_unique<BlockDef>()) {
     blocks_.emplace("start", start_.get());
-    blocks_.emplace("exit", exit_.get());
+    blocks_.emplace("done", exit_.get());
     start_->before_ = OverloadSet({Fn(&TrivialFunction())});
   }
 

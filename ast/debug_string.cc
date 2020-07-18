@@ -8,8 +8,9 @@ namespace ast {
 namespace {
 char const *OpStr(UnaryOperator::Kind op) {
   switch (op) {
-    case UnaryOperator::Kind::Move: return "copy ";
-    case UnaryOperator::Kind::Copy: return "move ";
+    case UnaryOperator::Kind::Copy: return "copy ";
+    case UnaryOperator::Kind::Init: return "init ";
+    case UnaryOperator::Kind::Move: return "move ";
     case UnaryOperator::Kind::Pointer: return "*";
     case UnaryOperator::Kind::BufferPointer: return "[*]";
     case UnaryOperator::Kind::Which: return "which ";
@@ -58,6 +59,7 @@ char const *OpStr(frontend::Operator op) {
     case frontend::Operator::VariadicPack: return "..";
     case frontend::Operator::BufPtr: return "[*]";
     case frontend::Operator::Copy: return "copy ";
+    case frontend::Operator::Init: return "init ";
     case frontend::Operator::Move: return "move ";
     default: UNREACHABLE();
   }

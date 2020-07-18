@@ -46,11 +46,11 @@ struct StateTypeMismatch {
 
 struct NonJumpInit {
   static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "non-jump-init";
+  static constexpr std::string_view kName     = "non-jump-enter";
 
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Scope `init` must have a `jump` type, but here it "
+        diagnostic::Text("Scope `enter` must have a `jump` type, but here it "
                          "was defined to have type `%s`.",
                          type->to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
@@ -62,11 +62,11 @@ struct NonJumpInit {
 
 struct NonCallableDone {
   static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "non-callable-done";
+  static constexpr std::string_view kName     = "non-callable-exit";
 
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Scope `done` must have a callable type but here it "
+        diagnostic::Text("Scope `exit` must have a callable type but here it "
                          "was defined to have type `%s`.",
                          type->to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
@@ -116,8 +116,6 @@ struct NonConstantScopeStateType {
 
   frontend::SourceRange range;
 };
-
-// TODO: Rename "init" and "done"
 
 bool VerifyInit(diagnostic::DiagnosticConsumer &diag,
                 ast::Declaration const *decl, type::Type const *decl_type,
@@ -199,14 +197,14 @@ type::QualType Compiler::VerifyType(ast::ScopeLiteral const *node) {
       qt.MarkError();
     }
 
-    if (decl.id() == "init") {
+    if (decl.id() == "enter") {
       if (not VerifyInit(diag(), &decl, qual_type.type(), state_type_ptr)) {
         qt.MarkError();
       }
-    } else if (decl.id() == "done") {
+    } else if (decl.id() == "exit") {
       if (not VerifyDone(diag(), &decl, qual_type.type())) { qt.MarkError(); }
     } else {
-      // TODO: Quick-Done
+      // TODO: Quick-exit
       // TODO: Anything else must be a block.
     }
   }
