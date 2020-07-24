@@ -731,7 +731,8 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
     auto *t = type_of(node);
     auto a  = data().addr(node);
     if (node->IsCustomInitialized()) {
-      EmitMoveInit(node->init_val(), type::Typed(a, type::Ptr(t)));
+      auto to = type::Typed<ir::RegOr<ir::Addr>>(a, type::Ptr(t));
+      EmitInit(node->init_val(), absl::MakeConstSpan(&to, 1));
     } else {
       if (not(node->flags() & ast::Declaration::f_IsFnParam)) {
         Visit(t, a, EmitDefaultInitTag{});
