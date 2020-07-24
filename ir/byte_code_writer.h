@@ -9,6 +9,26 @@
 namespace ir {
 struct BasicBlock;
 
+namespace internal_byte_code_writer {
+
+constexpr size_t Log2(size_t n) { return n == 1 ? 0 : 1 + Log2(n / 2); }
+
+// TODO partially copied from instruction/util.h due to dependency issues. Fix this.
+template <typename T>
+constexpr uint8_t PrimitiveIndex() {
+  if constexpr (std::is_integral_v<T> and not std::is_same_v<T, bool>) {
+    return Log2(sizeof(T)) * 2 + std::is_signed_v<T>;
+  } else if constexpr (std::is_same_v<T, float>) {
+    return 0x08;
+  } else if constexpr (std::is_same_v<T, double>) {
+    return 0x09;
+  } else {
+    UNREACHABLE(typeid(T).name());
+  }
+}
+
+}  // namespace internal_byte_code_writer
+
 namespace internal {
 template <typename T>
 void ReadInto(T& ref, base::untyped_buffer::const_iterator* iter) {
@@ -28,12 +48,47 @@ struct ByteCodeWriter {
   explicit ByteCodeWriter(base::untyped_buffer* buf) : buf_(buf) {}
   ~ByteCodeWriter() { ASSERT(replacements_.size() == 0u); }
 
-  template <typename T,
-            std::enable_if_t<base::meta<T> != base::meta<BasicBlock*> and
-                                 base::meta<T> != base::meta<BasicBlock const*>,
-                             int> = 0>
+  template <
+      typename T,
+      std::enable_if_t<base::meta<T> != base::meta<BasicBlock*> and
+                           base::meta<T> != base::meta<BasicBlock const*> and
+                           base::meta<T> != base::meta<ir::Value>,
+                       int> = 0>
   void Write(T val) {
     buf_->append(val);
+  }
+
+  void Write(ir::Value const& value) {
+    if (auto const* b = value.get_if<bool>()) {
+      Write(internal_byte_code_writer::PrimitiveIndex<bool>());
+      Write(*b);
+    } else if (auto const* n = value.get_if<uint8_t>()) {
+      Write(internal_byte_code_writer::PrimitiveIndex<uint8_t>());
+      Write(*n);
+    } else if (auto const* n = value.get_if<uint16_t>()) {
+      Write(internal_byte_code_writer::PrimitiveIndex<uint16_t>());
+      Write(*n);
+    } else if (auto const* n = value.get_if<uint32_t>()) {
+      Write(internal_byte_code_writer::PrimitiveIndex<uint32_t>());
+      Write(*n);
+    } else if (auto const* n = value.get_if<uint64_t>()) {
+      Write(internal_byte_code_writer::PrimitiveIndex<uint64_t>());
+      Write(*n);
+    } else if (auto const* n = value.get_if<int8_t>()) {
+      Write(internal_byte_code_writer::PrimitiveIndex<int8_t>());
+      Write(*n);
+    } else if (auto const* n = value.get_if<int16_t>()) {
+      Write(internal_byte_code_writer::PrimitiveIndex<int16_t>());
+      Write(*n);
+    } else if (auto const* n = value.get_if<int32_t>()) {
+      Write(internal_byte_code_writer::PrimitiveIndex<int32_t>());
+      Write(*n);
+    } else if (auto const* n = value.get_if<int64_t>()) {
+      Write(internal_byte_code_writer::PrimitiveIndex<int64_t>());
+      Write(*n);
+    } else {
+      NOT_YET();
+    }
   }
 
   void Write(BasicBlock const* block) {

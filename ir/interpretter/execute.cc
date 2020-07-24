@@ -546,8 +546,46 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
       std::string_view name = iter->read<std::string_view>();
       if (iter->read<bool>()) {
         type::Type const *t = iter->read<type::Type const *>();
-        // TODO: initial values.
+
         ir::Value init_val;
+        uint8_t to_type_byte = iter->read<uint8_t>();
+        switch (to_type_byte) {
+          case ir::internal::PrimitiveIndex<bool>(): {
+            init_val = ir::Value(iter->read<bool>().get());
+          } break;
+          case ir::internal::PrimitiveIndex<int8_t>(): {
+            init_val = ir::Value(iter->read<int8_t>().get());
+          } break;
+          case ir::internal::PrimitiveIndex<uint8_t>(): {
+            init_val = ir::Value(iter->read<uint8_t>().get());
+          } break;
+          case ir::internal::PrimitiveIndex<int16_t>(): {
+            init_val = ir::Value(iter->read<int16_t>().get());
+          } break;
+          case ir::internal::PrimitiveIndex<uint16_t>(): {
+            init_val = ir::Value(iter->read<uint16_t>().get());
+          } break;
+          case ir::internal::PrimitiveIndex<int32_t>(): {
+            init_val = ir::Value(iter->read<int32_t>().get());
+          } break;
+          case ir::internal::PrimitiveIndex<uint32_t>(): {
+            init_val = ir::Value(iter->read<uint32_t>().get());
+          } break;
+          case ir::internal::PrimitiveIndex<int64_t>(): {
+            init_val = ir::Value(iter->read<int64_t>().get());
+          } break;
+          case ir::internal::PrimitiveIndex<uint64_t>(): {
+            init_val = ir::Value(iter->read<uint64_t>().get());
+          } break;
+          case ir::internal::PrimitiveIndex<float>(): {
+            init_val = ir::Value(iter->read<float>().get());
+          } break;
+          case ir::internal::PrimitiveIndex<double>(): {
+            init_val = ir::Value(iter->read<bool>().get());
+          } break;
+          default: NOT_YET();
+        }
+
         fields.push_back(type::Struct::Field{
             .name          = std::string(name),
             .type          = t,

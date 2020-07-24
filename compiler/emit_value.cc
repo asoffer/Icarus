@@ -771,8 +771,15 @@ void Compiler::EmitInit(ast::DesignatedInitializer const *node,
       }
     }
 
-    Visit(field.type, builder().Field(to[0]->reg(), &struct_type, i).get(),
-          EmitDefaultInitTag{});
+    {
+      auto reg = builder().Field(to[0]->reg(), &struct_type, i).get();
+      if (field.initial_value.empty()) {
+        Visit(field.type, reg, EmitDefaultInitTag{});
+      } else {
+        Visit(field.type, reg, type::Typed{field.initial_value, field.type},
+              EmitCopyAssignTag{});
+      }
+    }
   next_field:;
   }
 
@@ -783,10 +790,9 @@ void Compiler::EmitInit(ast::DesignatedInitializer const *node,
     auto const &id     = assignment->lhs()[0]->as<ast::Identifier>();
     auto const *f      = struct_type.field(id.token());
     size_t field_index = struct_type.index(f->name);
-    EmitMoveInit(
-        type::Typed<ir::Value>(EmitValue(assignment->rhs()[0]),
-                               data().qual_type(assignment->rhs()[0])->type()),
-        builder().Field(to[0]->reg(), &struct_type, field_index));
+    auto typed_reg = builder().Field(to[0]->reg(), &struct_type, field_index);
+    type::Typed<ir::RegOr<ir::Addr>> lhs(*typed_reg, typed_reg.type());
+    EmitInit(assignment->rhs()[0], absl::MakeConstSpan(&lhs, 1));
   }
 }
 
