@@ -158,21 +158,32 @@ ir::Value Compiler::EmitValue(ast::ArgumentType const *node) {
   return ir::Value(ASSERT_NOT_NULL(data().arg_type(node->name())));
 }
 
+
 ir::Value Compiler::EmitValue(ast::ArrayLiteral const *node) {
-  // TODO If this is a constant we can just store it somewhere.
-  auto *this_type = type_of(node);
-  auto alloc      = builder().TmpAlloca(this_type);
+  auto *t    = type_of(node);
+  auto alloc = builder().TmpAlloca(t);
+  auto typed_alloc = type::Typed<ir::RegOr<ir::Addr>>(
+      ir::RegOr<ir::Addr>(alloc), type::Ptr(t));
+  EmitInit(node, {typed_alloc});
+  return ir::Value(alloc);
+}
+
+void Compiler::EmitInit(ast::ArrayLiteral const *node,
+                        absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  ASSERT(to.size() == 1u);
+  // TODO actual initialization with these field members.
+  auto *t            = type_of(node);
   if (not node->empty()) {
-    auto *data_type = this_type->as<type::Array>().data_type();
+    auto *this_type       = type_of(node);
+    auto const &data_type = *this_type->as<type::Array>().data_type();
     for (size_t i = 0; i < node->size(); ++i) {
-      EmitMoveInit(
-          type::Typed(EmitValue(node->elem(i)), data_type),
-          type::Typed<ir::Reg>(builder().Index(type::Ptr(this_type), alloc,
-                                               static_cast<int32_t>(i)),
-                               type::Ptr(data_type)));
+      type::Typed<ir::RegOr<ir::Addr>> addr(
+          builder().Index(type::Ptr(this_type), to[0]->reg(),
+                          static_cast<int32_t>(i)),
+          type::Ptr(&data_type));
+      EmitInit(node->elem(i), absl::MakeConstSpan(&addr, 1));
     }
   }
-  return ir::Value(alloc);
 }
 
 ir::Value Compiler::EmitValue(ast::ArrayType const *node) {
@@ -744,7 +755,6 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
 }
 
 ir::Value Compiler::EmitValue(ast::DesignatedInitializer const *node) {
-  // TODO actual initialization with these field members.
   auto *t    = type_of(node);
   auto alloc = builder().TmpAlloca(t);
   auto typed_alloc = type::Typed<ir::RegOr<ir::Addr>>(
