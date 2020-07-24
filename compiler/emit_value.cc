@@ -200,23 +200,22 @@ ir::Value Compiler::EmitValue(ast::Assignment const *node) {
 
   auto ref_iter = lhs_refs.begin();
   for (auto const *r : node->rhs()) {
-    auto rhs_qt  = *ASSERT_NOT_NULL(data().qual_type(r));
-    auto rhs_val = EmitValue(r);
-    if (rhs_qt.expansion_size() == 1) {
-      type::Typed<ir::RegOr<ir::Addr>> ref = *ref_iter++;
-      Visit(ref.type(), *ref, type::Typed{rhs_val, rhs_qt.type()},
-            EmitMoveAssignTag{});
-    } else {
-      auto val_iter = rhs_val.get<ir::MultiValue>().span().begin();
-      for (auto *t : rhs_qt.expanded()) {
-        type::Typed<ir::RegOr<ir::Addr>> ref = *ref_iter++;
-        Visit(ref.type(), *ref, type::Typed{*val_iter++, t},
-              EmitMoveAssignTag{});
-      }
-    }
+    auto from_qt          = *ASSERT_NOT_NULL(data().qual_type(r));
+    size_t expansion_size = from_qt.expansion_size();
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> ref_span(&*ref_iter,
+                                                                expansion_size);
+    EmitAssign(r, ref_span);
+    ref_iter += expansion_size;
   }
-
   return ir::Value();
+}
+
+void Compiler::EmitAssign(
+    ast::BinaryOperator const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  ASSERT(to.size() == 1u);
+  auto t = data().qual_type(node)->type();
+  Visit(t, *to[0], type::Typed{EmitValue(node), t}, EmitCopyAssignTag{});
 }
 
 ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
@@ -747,7 +746,17 @@ ir::Value Compiler::EmitValue(ast::DesignatedInitializer const *node) {
   // TODO actual initialization with these field members.
   auto *t    = type_of(node);
   auto alloc = builder().TmpAlloca(t);
+  auto typed_alloc = type::Typed<ir::RegOr<ir::Addr>>(
+      ir::RegOr<ir::Addr>(alloc), type::Ptr(t));
+  EmitInit(node, {typed_alloc});
+  return ir::Value(alloc);
+}
 
+void Compiler::EmitInit(ast::DesignatedInitializer const *node,
+                        absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  ASSERT(to.size() == 1u);
+  // TODO actual initialization with these field members.
+  auto *t            = type_of(node);
   auto &struct_type  = t->as<type::Struct>();
   auto const &fields = struct_type.fields();
   for (size_t i = 0; i < fields.size(); ++i) {
@@ -762,7 +771,7 @@ ir::Value Compiler::EmitValue(ast::DesignatedInitializer const *node) {
       }
     }
 
-    Visit(field.type, builder().Field(alloc, &struct_type, i).get(),
+    Visit(field.type, builder().Field(to[0]->reg(), &struct_type, i).get(),
           EmitDefaultInitTag{});
   next_field:;
   }
@@ -771,15 +780,14 @@ ir::Value Compiler::EmitValue(ast::DesignatedInitializer const *node) {
     if (assignment->lhs().size() != 1) { NOT_YET(assignment->lhs().size()); }
     if (assignment->rhs().size() != 1) { NOT_YET(assignment->rhs().size()); }
 
-    auto const &id = assignment->lhs()[0]->as<ast::Identifier>();
-    auto const *f  = struct_type.field(id.token());
+    auto const &id     = assignment->lhs()[0]->as<ast::Identifier>();
+    auto const *f      = struct_type.field(id.token());
     size_t field_index = struct_type.index(f->name);
     EmitMoveInit(
         type::Typed<ir::Value>(EmitValue(assignment->rhs()[0]),
                                data().qual_type(assignment->rhs()[0])->type()),
-        builder().Field(alloc, &struct_type, field_index));
+        builder().Field(to[0]->reg(), &struct_type, field_index));
   }
-  return ir::Value(alloc);
 }
 
 ir::Value Compiler::EmitValue(ast::EnumLiteral const *node) {
@@ -936,6 +944,14 @@ ir::Value Compiler::EmitValue(ast::Identifier const *node) {
     if (not lval.is_reg()) { NOT_YET(); }
     return ir::Value(builder().PtrFix(lval.reg(), t));
   }
+}
+
+void Compiler::EmitAssign(
+    ast::Identifier const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  ASSERT(to.size() == 1u);
+  auto t = data().qual_type(node)->type();
+  Visit(t, *to[0], type::Typed{EmitValue(node), t}, EmitCopyAssignTag{});
 }
 
 ir::Value Compiler::EmitValue(ast::Import const *node) {

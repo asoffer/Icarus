@@ -125,4 +125,40 @@ ir::RegOr<ir::Addr> Compiler::EmitRef(ast::UnaryOperator const *node) {
   return EmitValue(node->operand()).get<ir::Reg>();
 }
 
+// TODO: Unit tests
+void Compiler::EmitAssign(
+    ast::UnaryOperator const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  switch (node->kind()) {
+    case ast::UnaryOperator::Kind::Init: {
+      EmitInit(node->operand(), to);
+    } break;
+    case ast::UnaryOperator::Kind::Copy: {
+      auto operand_qt = *ASSERT_NOT_NULL(data().qual_type(node->operand()));
+      std::vector<type::Typed<ir::RegOr<ir::Addr>>> tmps;
+      operand_qt.ForEach([&](type::Type const *t) {
+        tmps.emplace_back(ir::RegOr<ir::Addr>(builder().TmpAlloca(t)), t);
+      });
+      NOT_YET();
+    } break;
+    case ast::UnaryOperator::Kind::Move: EmitAssign(node->operand(), to); break;
+    default: {
+      auto from_val = EmitValue(node);
+      auto from_qt  = *data().qual_type(node);
+      if (to.size() == 1) {
+        Visit(to[0].type(), *to[0], type::Typed{from_val, from_qt.type()},
+              EmitMoveAssignTag{});
+      } else {
+        auto val_iter = from_val.get<ir::MultiValue>().span().begin();
+        auto ref_iter = to.begin();
+        for (auto *t : from_qt.expanded()) {
+          type::Typed<ir::RegOr<ir::Addr>> ref = *ref_iter++;
+          Visit(ref.type(), *ref, type::Typed{*val_iter++, t},
+                EmitMoveAssignTag{});
+        }
+      }
+    } break;
+  }
+}
+
 }  // namespace compiler

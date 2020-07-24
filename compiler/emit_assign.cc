@@ -350,4 +350,32 @@ void Compiler::Visit(type::Struct const *t, ir::RegOr<ir::Addr> to,
   builder().Move(t, from->get<ir::Reg>(), to);
 }
 
+// void Compiler::EmitAssign(
+//     ast::Expression const *node,
+//     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+//   DEBUG_LOG()(node->DebugString());
+//   auto from_qt = *data().qual_type(node);
+//   auto from_val = EmitValue(node);
+//   if (to.size() == 1) {
+//     Visit(to[0].type(), *to[0], type::Typed{from_val, from_qt.type()},
+//           EmitMoveAssignTag{});
+//   } else {
+//     auto val_iter = from_val.get<ir::MultiValue>().span().begin();
+//     auto to_iter = to.begin();
+//     for (auto *t : from_qt.expanded()) {
+//       type::Typed<ir::RegOr<ir::Addr>> ref = *to_iter++;
+//       Visit(ref.type(), *ref, type::Typed{*val_iter++, t}, EmitMoveAssignTag{});
+//     }
+//   }
+// }
+
+// TODO: Put this somewhere else
+// void Compiler::EmitInit(ast::Expression const *node,
+//                         type::Typed<ir::RegOr<ir::Addr>> to) {
+//   // TODO: Not always a reg in the future. for globals, I think.
+//   Visit(to.type(), to->reg(),
+//         type::Typed{EmitValue(node), data().qual_type(node)->type()},
+//         EmitMoveAssignTag{});
+// }
+
 }  // namespace compiler

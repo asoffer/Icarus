@@ -34,11 +34,13 @@ struct BlockDef;
 
 namespace compiler {
 struct EmitRefTag {};
+struct EmitInitTag {};
 struct EmitCopyInitTag {};
 struct EmitMoveInitTag {};
 struct EmitValueTag {};
 struct VerifyTypeTag {};
 struct VerifyBodyTag {};
+struct EmitAssignTag {};
 struct EmitDestroyTag {};
 struct EmitDefaultInitTag {};
 struct EmitCopyAssignTag {};
@@ -68,7 +70,11 @@ OrderedDependencyNodes(ast::ParameterizedExpression const *node,
 
 struct Compiler
     : ast::Visitor<EmitMoveInitTag, void(type::Typed<ir::Reg>)>,
+      ast::Visitor<EmitInitTag,
+                   void(absl::Span<type::Typed<ir::RegOr<ir::Addr>> const>)>,
       ast::Visitor<EmitCopyInitTag, void(type::Typed<ir::Reg>)>,
+      ast::Visitor<EmitAssignTag,
+                   void(absl::Span<type::Typed<ir::RegOr<ir::Addr>> const>)>,
       ast::Visitor<EmitRefTag, ir::RegOr<ir::Addr>()>,
       ast::Visitor<EmitValueTag, ir::Value()>,
       ast::Visitor<VerifyTypeTag, type::QualType()>,
@@ -186,6 +192,22 @@ struct Compiler
 
   ir::Value EmitValue(ast::Node const *node) {
     return ast::Visitor<EmitValueTag, ir::Value()>::Visit(node);
+  }
+
+  void EmitAssign(ast::Node const *node,
+                  absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) {
+    ast::Visitor<
+        EmitAssignTag,
+        void(absl::Span<type::Typed<ir::RegOr<ir::Addr>> const>)>::Visit(node,
+                                                                         regs);
+  }
+
+  void EmitInit(ast::Node const *node,
+                absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) {
+    ast::Visitor<
+        EmitInitTag,
+        void(absl::Span<type::Typed<ir::RegOr<ir::Addr>> const>)>::Visit(node,
+                                                                         regs);
   }
 
   void EmitCopyInit(ast::Node const *node, type::Typed<ir::Reg> reg) {
@@ -392,6 +414,42 @@ struct Compiler
 
   void EmitMoveInit(type::Typed<ir::Value> from_val,
                     type::Typed<ir::Reg> to_var);
+
+  void EmitAssign(ast::BinaryOperator const *node,
+                  absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
+  void Visit(EmitAssignTag, ast::BinaryOperator const *node,
+             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
+    return EmitAssign(node, regs);
+  }
+
+  void EmitAssign(ast::Identifier const *node,
+                  absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
+  void Visit(EmitAssignTag, ast::Identifier const *node,
+             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
+    return EmitAssign(node, regs);
+  }
+
+  void EmitAssign(ast::Terminal const *node,
+                  absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
+  void Visit(EmitAssignTag, ast::Terminal const *node,
+             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
+    return EmitAssign(node, regs);
+  }
+
+  void EmitAssign(ast::UnaryOperator const *node,
+                  absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
+  void Visit(EmitAssignTag, ast::UnaryOperator const *node,
+             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
+    return EmitAssign(node, regs);
+  }
+
+  void EmitInit(ast::DesignatedInitializer const *node,
+                absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
+  void Visit(EmitInitTag, ast::DesignatedInitializer const *node,
+             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
+    return EmitInit(node, regs);
+  }
+
 
   void EmitCopyInit(ast::Expression const *node, type::Typed<ir::Reg> reg);
   void Visit(EmitCopyInitTag, ast::Expression const *node,
