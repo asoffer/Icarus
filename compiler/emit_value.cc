@@ -221,6 +221,14 @@ ir::Value Compiler::EmitValue(ast::Assignment const *node) {
   return ir::Value();
 }
 
+void Compiler::EmitInit(
+    ast::BinaryOperator const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  ASSERT(to.size() == 1u);
+  auto t = data().qual_type(node)->type();
+  Visit(t, *to[0], type::Typed{EmitValue(node), t}, EmitCopyAssignTag{});
+}
+
 void Compiler::EmitAssign(
     ast::BinaryOperator const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
@@ -712,6 +720,14 @@ ir::Value Compiler::EmitValue(ast::Call const *node) {
   // TODO node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
 }
 
+void Compiler::EmitInit(
+    ast::Cast const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  ASSERT(to.size() == 1u);
+  auto t = data().qual_type(node)->type();
+  Visit(t, *to[0], type::Typed{EmitValue(node), t}, EmitCopyAssignTag{});
+}
+
 ir::Value Compiler::EmitValue(ast::Cast const *node) {
   // TODO user-defined-types
 
@@ -825,7 +841,7 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
     auto *t = type_of(node);
     auto a  = data().addr(node);
     if (node->IsCustomInitialized()) {
-      auto to = type::Typed<ir::RegOr<ir::Addr>>(a, type::Ptr(t));
+      auto to = type::Typed<ir::RegOr<ir::Addr>>(a, t);
       EmitInit(node->init_val(), absl::MakeConstSpan(&to, 1));
     } else {
       if (not(node->flags() & ast::Declaration::f_IsFnParam)) {
@@ -1069,6 +1085,22 @@ ir::Value Compiler::EmitValue(ast::Import const *node) {
   // TODO compiler doesn't know about inheritence here.
   return ir::Value(reinterpret_cast<module::BasicModule *>(
       ASSERT_NOT_NULL(data().imported_module(node))));
+}
+
+void Compiler::EmitInit(
+    ast::Index const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  ASSERT(to.size() == 1u);
+  auto t = data().qual_type(node)->type();
+  Visit(t, *to[0], type::Typed{EmitValue(node), t}, EmitCopyAssignTag{});
+}
+
+void Compiler::EmitAssign(
+    ast::Index const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  ASSERT(to.size() == 1u);
+  auto t = data().qual_type(node)->type();
+  Visit(t, *to[0], type::Typed{EmitValue(node), t}, EmitCopyAssignTag{});
 }
 
 ir::Value Compiler::EmitValue(ast::Index const *node) {

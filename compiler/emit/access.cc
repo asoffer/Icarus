@@ -59,4 +59,108 @@ ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Access const *node) {
       .get();
 }
 
+// TODO: Unit tests
+void Compiler::EmitInit(ast::Access const *node,
+                        absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  type::QualType qt = *ASSERT_NOT_NULL(data().qual_type(node->operand()));
+  ASSERT(qt.ok() == true);
+  if (qt.type() == type::Module) {
+    auto const &mod =
+        *ASSERT_NOT_NULL(EvaluateModuleWithCache(node->operand()));
+    auto decls = mod.ExportedDeclarations(node->member_name());
+    switch (decls.size()) {
+      case 0: NOT_YET();
+      case 1:
+        // TODO: should actually be an initialization, not assignment.
+        Visit(qt.type(), *to[0],
+              type::Typed(mod.ExportedValue(decls[0]), qt.type()),
+              EmitMoveAssignTag{});
+        return;
+      default: NOT_YET();
+    }
+  }
+
+  auto const &this_type = *ASSERT_NOT_NULL(data().qual_type(node))->type();
+  if (auto const *enum_type = this_type.if_as<type::Enum>()) {
+    // TODO: should actually be an initialization, not assignment.
+    Visit(enum_type, *to[0],
+          type::Typed(ir::Value(*enum_type->EmitLiteral(node->member_name())),
+                      enum_type),
+          EmitMoveAssignTag{});
+  } else if (auto const *flags_type = this_type.if_as<type::Flags>()) {
+    // TODO: should actually be an initialization, not assignment.
+    Visit(flags_type, *to[0],
+          type::Typed(ir::Value(*flags_type->EmitLiteral(node->member_name())),
+                      flags_type),
+          EmitMoveAssignTag{});
+  } else if (&this_type == type::ByteView) {
+    // TODO: should actually be an initialization, not assignment.
+    ASSERT(node->member_name() == "length");
+    Visit(type::ByteView, *to[0],
+          type::Typed(
+              ir::Value(builder().ByteViewLength(
+                  EmitValue(node->operand()).get<ir::RegOr<ir::String>>())),
+              type::ByteView),
+          EmitMoveAssignTag{});
+  } else {
+    // TODO: should actually be an initialization, not assignment.
+    Visit(to[0].type(), *to[0],
+          type::Typed(
+              ir::Value(builder().PtrFix(EmitRef(node).reg(), &this_type)),
+              &this_type),
+          EmitMoveAssignTag{});
+  }
+}
+
+// TODO: Unit tests
+void Compiler::EmitAssign(
+    ast::Access const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  type::QualType qt = *ASSERT_NOT_NULL(data().qual_type(node->operand()));
+  ASSERT(qt.ok() == true);
+  if (qt.type() == type::Module) {
+    auto const &mod =
+        *ASSERT_NOT_NULL(EvaluateModuleWithCache(node->operand()));
+    auto decls = mod.ExportedDeclarations(node->member_name());
+    switch (decls.size()) {
+      case 0: NOT_YET();
+      case 1:
+        // TODO: should actually be an initialization, not assignment.
+        Visit(qt.type(), *to[0],
+              type::Typed(mod.ExportedValue(decls[0]), qt.type()),
+              EmitMoveAssignTag{});
+        return;
+      default: NOT_YET();
+    }
+  }
+
+  auto const &this_type = *ASSERT_NOT_NULL(data().qual_type(node))->type();
+  if (auto const *enum_type = this_type.if_as<type::Enum>()) {
+    Visit(enum_type, *to[0],
+          type::Typed(ir::Value(*enum_type->EmitLiteral(node->member_name())),
+                      enum_type),
+          EmitMoveAssignTag{});
+  } else if (auto const *flags_type = this_type.if_as<type::Flags>()) {
+    Visit(flags_type, *to[0],
+          type::Typed(ir::Value(*flags_type->EmitLiteral(node->member_name())),
+                      flags_type),
+          EmitMoveAssignTag{});
+  } else if (&this_type == type::ByteView) {
+    ASSERT(node->member_name() == "length");
+    Visit(type::ByteView, *to[0],
+          type::Typed(
+              ir::Value(builder().ByteViewLength(
+                  EmitValue(node->operand()).get<ir::RegOr<ir::String>>())),
+              type::ByteView),
+          EmitMoveAssignTag{});
+  } else {
+    // TODO: should actually be an initialization, not assignment.
+    Visit(to[0].type(), *to[0],
+          type::Typed(
+              ir::Value(builder().PtrFix(EmitRef(node).reg(), &this_type)),
+              &this_type),
+          EmitMoveAssignTag{});
+  }
+}
+
 }  // namespace compiler

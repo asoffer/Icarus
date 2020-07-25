@@ -415,6 +415,13 @@ struct Compiler
   void EmitMoveInit(type::Typed<ir::Value> from_val,
                     type::Typed<ir::Reg> to_var);
 
+  void EmitAssign(ast::Access const *node,
+                  absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
+  void Visit(EmitAssignTag, ast::Access const *node,
+             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
+    return EmitAssign(node, regs);
+  }
+
   void EmitAssign(ast::BinaryOperator const *node,
                   absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
   void Visit(EmitAssignTag, ast::BinaryOperator const *node,
@@ -436,6 +443,13 @@ struct Compiler
     return EmitAssign(node, regs);
   }
 
+  void EmitAssign(ast::Index const *node,
+                  absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
+  void Visit(EmitAssignTag, ast::Index const *node,
+             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
+    return EmitAssign(node, regs);
+  }
+
   void EmitAssign(ast::Terminal const *node,
                   absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
   void Visit(EmitAssignTag, ast::Terminal const *node,
@@ -450,9 +464,30 @@ struct Compiler
     return EmitAssign(node, regs);
   }
 
+  void EmitInit(ast::Access const *node,
+                absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
+  void Visit(EmitInitTag, ast::Access const *node,
+             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
+    return EmitInit(node, regs);
+  }
+
   void EmitInit(ast::ArrayLiteral const *node,
                 absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
   void Visit(EmitInitTag, ast::ArrayLiteral const *node,
+             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
+    return EmitInit(node, regs);
+  }
+
+  void EmitInit(ast::BinaryOperator const *node,
+                absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
+  void Visit(EmitInitTag, ast::BinaryOperator const *node,
+             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
+    return EmitInit(node, regs);
+  }
+
+  void EmitInit(ast::Cast const *node,
+                absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
+  void Visit(EmitInitTag, ast::Cast const *node,
              absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
     return EmitInit(node, regs);
   }
@@ -474,6 +509,13 @@ struct Compiler
   void EmitInit(ast::Identifier const *node,
                 absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
   void Visit(EmitInitTag, ast::Identifier const *node,
+             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
+    return EmitInit(node, regs);
+  }
+
+  void EmitInit(ast::Index const *node,
+                absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
+  void Visit(EmitInitTag, ast::Index const *node,
              absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
     return EmitInit(node, regs);
   }
