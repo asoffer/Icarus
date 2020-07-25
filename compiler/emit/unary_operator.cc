@@ -126,6 +126,39 @@ ir::RegOr<ir::Addr> Compiler::EmitRef(ast::UnaryOperator const *node) {
 }
 
 // TODO: Unit tests
+void Compiler::EmitInit(ast::UnaryOperator const *node,
+                        absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  switch (node->kind()) {
+    case ast::UnaryOperator::Kind::Init: {
+      EmitInit(node->operand(), to);
+    } break;
+    case ast::UnaryOperator::Kind::Copy: {
+      EmitCopyInit(node->operand(), type::Typed(to[0]->reg(), to[0].type()));
+    } break;
+    case ast::UnaryOperator::Kind::Move: {
+      EmitMoveInit(node->operand(), type::Typed(to[0]->reg(), to[0].type()));
+    } break;
+    default: {
+      // TODO should be initialization not assigment.
+      auto from_val = EmitValue(node);
+      auto from_qt  = *data().qual_type(node);
+      if (to.size() == 1) {
+        Visit(to[0].type(), *to[0], type::Typed{from_val, from_qt.type()},
+              EmitMoveAssignTag{});
+      } else {
+        auto val_iter = from_val.get<ir::MultiValue>().span().begin();
+        auto ref_iter = to.begin();
+        for (auto *t : from_qt.expanded()) {
+          type::Typed<ir::RegOr<ir::Addr>> ref = *ref_iter++;
+          Visit(ref.type(), *ref, type::Typed{*val_iter++, t},
+                EmitMoveAssignTag{});
+        }
+      }
+    } break;
+  }
+}
+
+// TODO: Unit tests
 void Compiler::EmitAssign(
     ast::UnaryOperator const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
