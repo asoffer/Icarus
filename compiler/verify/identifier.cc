@@ -49,7 +49,7 @@ struct UndeclaredIdentifier {
 
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Found an undeclared identifier:"),
+        diagnostic::Text("Found an undeclared identifier '%s':", id),
         diagnostic::SourceQuote(src).Highlighted(
             range, diagnostic::Style::ErrorText()));
   }

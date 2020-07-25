@@ -638,7 +638,7 @@ void Compiler::EmitInit(ast::Call const *node,
 
   // TODO this shouldn't be able to fail.
   ASSIGN_OR(return, auto os, MakeOverloadSet(this, node->callee(), args));
-  return FnCallDispatchTable::EmitInit(this, os, args, to);
+  FnCallDispatchTable::EmitInit(this, os, args, to);
   // TODO node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
 }
 

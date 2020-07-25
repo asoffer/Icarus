@@ -39,7 +39,7 @@ struct Visitor<Tag, Ret(Args...)> : VisitorBase {
   }                                                                            \
                                                                                \
   virtual Ret Visit(Tag, node_type const *node, Args... args) {                \
-    UNREACHABLE(#node_type);                                                   \
+    UNREACHABLE(#node_type, typeid(Tag).name());                               \
   }
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X

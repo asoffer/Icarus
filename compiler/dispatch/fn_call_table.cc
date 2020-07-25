@@ -196,9 +196,17 @@ void EmitCallOneOverloadInit(
     }
   }
 
+  auto out_params = SetReturnsInit(c.builder(), data.type(), to);
   c.builder().Call(callee, fn_type,
                    PrepareCallArguments(&c, nullptr, data.params(), args),
-                   SetReturnsInit(c.builder(), data.type(), to));
+                   out_params);
+  int i = -1;
+  for (auto const *t : fn_type->output()) {
+    ++i;
+    if (t->is_big()) continue;
+    c.Visit(t, *to[i], type::Typed{ir::Value(out_params[i]), t},
+            EmitCopyAssignTag{});
+  }
 }
 
 void EmitCallOneOverloadAssign(
@@ -231,9 +239,17 @@ void EmitCallOneOverloadAssign(
     }
   }
 
+  auto out_params = SetReturnsAssign(c.builder(), data.type(), to);
   c.builder().Call(callee, fn_type,
                    PrepareCallArguments(&c, nullptr, data.params(), args),
-                   SetReturnsAssign(c.builder(), data.type(), to));
+                   out_params);
+  int i = -1;
+  for (auto const *t : fn_type->output()) {
+    ++i;
+    if (t->is_big()) continue;
+    c.Visit(t, *to[i], type::Typed{ir::Value(out_params[i]), t},
+            EmitCopyAssignTag{});
+  }
 }
 
 ir::Value EmitCall(Compiler *compiler,
