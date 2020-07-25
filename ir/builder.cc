@@ -44,9 +44,6 @@ Reg Builder::TmpAlloca(type::Type const *t) {
 Reg Reserve() { return current.CurrentGroup()->Reserve(); }
 
 ir::OutParams Builder::OutParams(absl::Span<type::Type const *const> types) {
-  // TODO It'd be nice to have copy/move-elision in the C++ sense. A function
-  // used to initialize a variable should do so directly rather than
-  // initializing a temporary allocation and then moving it.
   std::vector<Reg> regs;
   regs.reserve(types.size());
   for (type::Type const *type : types) {
@@ -54,6 +51,32 @@ ir::OutParams Builder::OutParams(absl::Span<type::Type const *const> types) {
                                   : CurrentGroup()->Reserve());
   }
   return ir::OutParams(std::move(regs));
+}
+
+ir::OutParams Builder::OutParamsInit(
+    absl::Span<type::Type const *const> types,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  std::vector<Reg> regs;
+  regs.reserve(types.size());
+  for (size_t i = 0; i < types.size(); ++i) {
+    regs.push_back(types[i]->is_big() ? to[i]->reg()
+                                      : CurrentGroup()->Reserve());
+  }
+  return ir::OutParams(std::move(regs));
+
+}
+
+ir::OutParams Builder::OutParamsAssign(
+    absl::Span<type::Type const *const> types,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  std::vector<Reg> regs;
+  regs.reserve(types.size());
+  for (size_t i = 0; i < types.size(); ++i) {
+    regs.push_back(types[i]->is_big() ? to[i]->reg()
+                                      : CurrentGroup()->Reserve());
+  }
+  return ir::OutParams(std::move(regs));
+
 }
 
 void Builder::Call(RegOr<Fn> const &fn, type::Function const *f,

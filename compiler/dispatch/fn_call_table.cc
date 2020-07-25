@@ -40,6 +40,30 @@ std::pair<ir::Value, ir::OutParams> SetReturns(
   }
 }
 
+ir::OutParams SetReturnsInit(
+    ir::Builder &bldr, type::Type const *type,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  if (auto *fn_type = type->if_as<type::Function>()) {
+    return bldr.OutParamsInit(fn_type->output(), to);
+  } else if (type->is<type::GenericFunction>()) {
+    NOT_YET(type->to_string());
+  } else {
+    NOT_YET(type->to_string());
+  }
+}
+
+ir::OutParams SetReturnsAssign(
+    ir::Builder &bldr, type::Type const *type,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  if (auto *fn_type = type->if_as<type::Function>()) {
+    return bldr.OutParamsAssign(fn_type->output(), to);
+  } else if (type->is<type::GenericFunction>()) {
+    NOT_YET(type->to_string());
+  } else {
+    NOT_YET(type->to_string());
+  }
+}
+
 ir::RegOr<ir::Fn> ComputeConcreteFn(Compiler *compiler,
                                     ast::Expression const *fn,
                                     type::Function const *f_type,
@@ -63,56 +87,58 @@ ir::RegOr<ir::Fn> ComputeConcreteFn(Compiler *compiler,
   }
 }
 
+std::tuple<ir::RegOr<ir::Fn>, type::Function const *, DependentComputedData *>
+EmitCallee(Compiler &compiler, ast::Expression const *fn, type::QualType qt,
+           internal::ExprData const &data,
+           const core::FnArgs<type::Typed<ir::Value>> &args) {
+  if (auto const *gf_type = qt.type()->if_as<type::GenericFunction>()) {
+    ir::GenericFn gen_fn =
+        compiler.EmitValue(fn).get<ir::RegOr<ir::GenericFn>>().value();
+
+    // TODO declarations aren't callable so we shouldn't have to check this
+    // here.
+
+    if (auto const *decl = fn->if_as<ast::Declaration>()) {
+      // TODO make this more robust.
+      fn = decl->init_val();
+    }
+
+    auto *parameterized_expr = &fn->as<ast::ParameterizedExpression>();
+
+    DependentComputedData temp_data(&compiler.data().module());
+    Compiler c({
+        .builder             = compiler.builder(),
+        .data                = temp_data,
+        .diagnostic_consumer = compiler.diag(),
+    });
+    temp_data.parent_ = &compiler.data();
+
+    auto params = c.ComputeParamsFromArgs(
+        parameterized_expr, OrderedDependencyNodes(parameterized_expr), args);
+
+    auto find_dependent_result = compiler.data().FindDependent(
+        &fn->as<ast::ParameterizedExpression>(), params);
+    return std::make_tuple(ir::Fn(gen_fn.concrete(args)),
+                           find_dependent_result.fn_type,
+                           &find_dependent_result.data);
+  } else if (auto const *f_type =
+                 qt.type()->if_as<type::Function>()) {
+    return std::make_tuple(ComputeConcreteFn(&compiler, fn, f_type, qt.quals()),
+                           f_type, nullptr);
+  } else {
+    UNREACHABLE();
+  }
+}
+
+
 ir::Value EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
                               internal::ExprData const &data,
                               core::FnArgs<type::Typed<ir::Value>> args) {
   auto callee_qual_type = compiler->qual_type_of(fn);
   ASSERT(callee_qual_type.has_value() == true);
 
-  DependentComputedData *dependent_data = nullptr;
-  type::Function const *fn_type         = nullptr;
-  ir::RegOr<ir::Fn> callee              = [&]() -> ir::RegOr<ir::Fn> {
-    if (auto const *gf_type =
-            callee_qual_type->type()->if_as<type::GenericFunction>()) {
-      fn_type = &data.type()->as<type::Function>();
-      ir::GenericFn gen_fn =
-          compiler->EmitValue(fn).get<ir::RegOr<ir::GenericFn>>().value();
-
-      // TODO declarations aren't callable so we shouldn't have to check this
-      // here.
-
-      if (auto const *decl = fn->if_as<ast::Declaration>()) {
-        // TODO make this more robust.
-        fn = decl->init_val();
-      }
-
-      auto *parameterized_expr = &fn->as<ast::ParameterizedExpression>();
-
-      DependentComputedData temp_data(&compiler->data().module());
-      Compiler c({
-          .builder             = compiler->builder(),
-          .data                = temp_data,
-          .diagnostic_consumer = compiler->diag(),
-      });
-      temp_data.parent_ = &compiler->data();
-
-      auto params = c.ComputeParamsFromArgs(
-          parameterized_expr, OrderedDependencyNodes(parameterized_expr), args);
-
-      auto find_dependent_result = compiler->data().FindDependent(
-          &fn->as<ast::ParameterizedExpression>(), params);
-      fn_type        = find_dependent_result.fn_type;
-      dependent_data = &find_dependent_result.data;
-      return ir::Fn(gen_fn.concrete(args));
-    } else if (auto const *f_type =
-                   callee_qual_type->type()->if_as<type::Function>()) {
-      fn_type = f_type;
-      return ComputeConcreteFn(compiler, fn, f_type, callee_qual_type->quals());
-    } else {
-      UNREACHABLE();
-    }
-  }();
-
+  auto [callee, fn_type, dependent_data] =
+      EmitCallee(*compiler, fn, *callee_qual_type, data, args);
   Compiler c({
       .builder = ir::GetBuilder(),
       .data    = dependent_data ? *dependent_data : compiler->data(),
@@ -138,6 +164,76 @@ ir::Value EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
                    PrepareCallArguments(&c, nullptr, data.params(), args),
                    out_params);
   return std::move(outs);
+}
+
+void EmitCallOneOverloadInit(
+    Compiler *compiler, ast::Expression const *fn,
+    internal::ExprData const &data, core::FnArgs<type::Typed<ir::Value>> args,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  auto callee_qual_type = compiler->qual_type_of(fn);
+  ASSERT(callee_qual_type.has_value() == true);
+
+  auto [callee, fn_type, dependent_data] =
+      EmitCallee(*compiler, fn, *callee_qual_type, data, args);
+
+  Compiler c({
+      .builder = ir::GetBuilder(),
+      .data    = dependent_data ? *dependent_data : compiler->data(),
+      .diagnostic_consumer = compiler->diag(),
+  });
+
+  if (not callee.is_reg()) {
+    switch (callee.value().kind()) {
+      case ir::Fn::Kind::Native: {
+        core::FillMissingArgs(
+            core::ParamsRef(callee.value().native()->params()), &args,
+            [&c](auto const &p) {
+              return type::Typed(
+                  c.EmitValue(ASSERT_NOT_NULL(p.get()->init_val())), p.type());
+            });
+      } break;
+      default: break;
+    }
+  }
+
+  c.builder().Call(callee, fn_type,
+                   PrepareCallArguments(&c, nullptr, data.params(), args),
+                   SetReturnsInit(c.builder(), data.type(), to));
+}
+
+void EmitCallOneOverloadAssign(
+    Compiler *compiler, ast::Expression const *fn,
+    internal::ExprData const &data, core::FnArgs<type::Typed<ir::Value>> args,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  auto callee_qual_type = compiler->qual_type_of(fn);
+  ASSERT(callee_qual_type.has_value() == true);
+
+  auto [callee, fn_type, dependent_data] =
+      EmitCallee(*compiler, fn, *callee_qual_type, data, args);
+
+  Compiler c({
+      .builder = ir::GetBuilder(),
+      .data    = dependent_data ? *dependent_data : compiler->data(),
+      .diagnostic_consumer = compiler->diag(),
+  });
+
+  if (not callee.is_reg()) {
+    switch (callee.value().kind()) {
+      case ir::Fn::Kind::Native: {
+        core::FillMissingArgs(
+            core::ParamsRef(callee.value().native()->params()), &args,
+            [&c](auto const &p) {
+              return type::Typed(
+                  c.EmitValue(ASSERT_NOT_NULL(p.get()->init_val())), p.type());
+            });
+      } break;
+      default: break;
+    }
+  }
+
+  c.builder().Call(callee, fn_type,
+                   PrepareCallArguments(&c, nullptr, data.params(), args),
+                   SetReturnsAssign(c.builder(), data.type(), to));
 }
 
 ir::Value EmitCall(Compiler *compiler,
@@ -170,6 +266,72 @@ ir::Value EmitCall(Compiler *compiler,
     }
     bldr.CurrentBlock() = land_block;
     return ir::Value();
+  }
+}
+
+void EmitCallInit(Compiler *compiler,
+                  absl::flat_hash_map<ast::Expression const *,
+                                      internal::ExprData> const &table,
+                  core::FnArgs<type::Typed<ir::Value>> const &args,
+                  absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  DEBUG_LOG("FnCallDispatchTable")
+  ("Emitting a table with ", table.size(), " entries.");
+
+  if (table.size() == 1) {
+    // If there's just one entry in the table we can avoid doing all the work to
+    // generate runtime dispatch code. It will amount to only a few
+    // unconditional jumps between blocks which will be optimized out, but
+    // there's no sense in generating them in the first place..
+    auto const &[overload, expr_data] = *table.begin();
+    EmitCallOneOverloadInit(compiler, overload, expr_data, args, to);
+  } else {
+    auto &bldr           = compiler->builder();
+    auto *land_block     = bldr.AddBlock();
+    auto callee_to_block = bldr.AddBlocks(table);
+
+    EmitRuntimeDispatch(bldr, table, callee_to_block, args);
+
+    for (auto const &[overload, expr_data] : table) {
+      bldr.CurrentBlock() = callee_to_block[overload];
+      // Argument preparation is done inside EmitCallOneOverload
+      EmitCallOneOverloadInit(compiler, overload, expr_data, args, to);
+      // TODO phi-node to coalesce return values.
+      bldr.UncondJump(land_block);
+    }
+    bldr.CurrentBlock() = land_block;
+  }
+}
+
+void EmitCallAssign(Compiler *compiler,
+                    absl::flat_hash_map<ast::Expression const *,
+                                        internal::ExprData> const &table,
+                    core::FnArgs<type::Typed<ir::Value>> const &args,
+                    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  DEBUG_LOG("FnCallDispatchTable")
+  ("Emitting a table with ", table.size(), " entries.");
+
+  if (table.size() == 1) {
+    // If there's just one entry in the table we can avoid doing all the work to
+    // generate runtime dispatch code. It will amount to only a few
+    // unconditional jumps between blocks which will be optimized out, but
+    // there's no sense in generating them in the first place..
+    auto const &[overload, expr_data] = *table.begin();
+    EmitCallOneOverloadAssign(compiler, overload, expr_data, args, to);
+  } else {
+    auto &bldr           = compiler->builder();
+    auto *land_block     = bldr.AddBlock();
+    auto callee_to_block = bldr.AddBlocks(table);
+
+    EmitRuntimeDispatch(bldr, table, callee_to_block, args);
+
+    for (auto const &[overload, expr_data] : table) {
+      bldr.CurrentBlock() = callee_to_block[overload];
+      // Argument preparation is done inside EmitCallOneOverload
+      EmitCallOneOverloadAssign(compiler, overload, expr_data, args, to);
+      // TODO phi-node to coalesce return values.
+      bldr.UncondJump(land_block);
+    }
+    bldr.CurrentBlock() = land_block;
   }
 }
 
@@ -231,6 +393,26 @@ ir::Value FnCallDispatchTable::Emit(
   ASSIGN_OR(return ir::Value(),  //
                    auto table, Verify(c, os, args));
   return EmitCall(c, table, args);
+}
+
+void FnCallDispatchTable::EmitInit(
+    Compiler *c, ast::OverloadSet const &os,
+    core::FnArgs<type::Typed<ir::Value>> const &args,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  // TODO: How do we know if there was an error? Can one actually happen?
+  // Shouldn't we have verified earlier.
+  ASSIGN_OR(return, auto table, Verify(c, os, args));
+  return EmitCallInit(c, table, args, to);
+}
+
+void FnCallDispatchTable::EmitAssign(
+    Compiler *c, ast::OverloadSet const &os,
+    core::FnArgs<type::Typed<ir::Value>> const &args,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  // TODO: How do we know if there was an error? Can one actually happen?
+  // Shouldn't we have verified earlier.
+  ASSIGN_OR(return, auto table, Verify(c, os, args));
+  return EmitCallAssign(c, table, args, to);
 }
 
 type::QualType FnCallDispatchTable::ComputeResultQualType(

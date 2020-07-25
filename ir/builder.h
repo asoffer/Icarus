@@ -27,6 +27,12 @@ struct Builder {
   BasicBlock* AddBlock(BasicBlock const& to_copy);
 
   ir::OutParams OutParams(absl::Span<type::Type const* const> types);
+  ir::OutParams OutParamsInit(
+      absl::Span<type::Type const* const> types,
+      absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to);
+  ir::OutParams OutParamsAssign(
+      absl::Span<type::Type const* const> types,
+      absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to);
 
   template <typename KeyType, typename ValueType>
   absl::flat_hash_map<KeyType, ir::BasicBlock*> AddBlocks(

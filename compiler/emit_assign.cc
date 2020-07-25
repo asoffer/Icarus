@@ -177,7 +177,7 @@ void Compiler::Visit(type::Pointer const *t, ir::RegOr<ir::Addr> to,
   } else if (from.type() == type::NullPtr) {
     builder().Store(ir::Addr::Null(), to);
   } else {
-    UNREACHABLE();
+    UNREACHABLE(*t, " - ", *from.type());
   }
 }
 

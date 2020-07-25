@@ -164,7 +164,7 @@ ir::Value Compiler::EmitValue(ast::ArrayLiteral const *node) {
   auto alloc = builder().TmpAlloca(t);
   auto typed_alloc = type::Typed<ir::RegOr<ir::Addr>>(
       ir::RegOr<ir::Addr>(alloc), type::Ptr(t));
-  EmitInit(node, {typed_alloc});
+  EmitInit(node, absl::MakeConstSpan(&typed_alloc, 1));
   return ir::Value(alloc);
 }
 
@@ -550,6 +550,13 @@ ir::Value Compiler::EmitValue(ast::BuiltinFn const *node) {
   return ir::Value(node->value());
 }
 
+// TODO: Checking if an AST node is a builtin is problematic because something as simple as
+// ```
+// f ::= bytes
+// f(int)
+// ```
+// breaks.
+//
 ir::Value EmitBuiltinCall(Compiler *c, ast::BuiltinFn const *callee,
                           core::FnArgs<ast::Expression const *> const &args) {
   switch (callee->value().which()) {
@@ -596,6 +603,82 @@ ir::Value EmitBuiltinCall(Compiler *c, ast::BuiltinFn const *callee,
       return ir::Value();
   }
   UNREACHABLE();
+}
+
+void Compiler::EmitInit(ast::Call const *node,
+                        absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
+    auto result = EmitBuiltinCall(this, b, node->args());
+    if (result.empty()) return;
+    Visit(to[0].type()->as<type::Pointer>().pointee(), *to[0],
+          type::Typed{result, data().qual_type(node)->type()},
+          EmitCopyAssignTag{});
+  }
+
+  // Look at all the possible calls and generate the dispatching code
+  // TODO implement this with a lookup table instead of this branching insanity.
+
+  // TODO an opmitimazion we can do is merging all the allocas for results
+  // into a single variant buffer, because we know we need something that big
+  // anyway, and their use cannot overlap.
+  auto args = node->args().Transform([this](ast::Expression const *expr) {
+    return type::Typed(EmitValue(expr), type_of(expr));
+  });
+
+  // TODO: This is a pretty terrible hack.
+  if (auto const *gen_struct_type =
+          ASSERT_NOT_NULL(data().qual_type(node->callee()))
+              ->type()
+              ->if_as<type::GenericStruct>()) {
+    type::Type const *s = gen_struct_type->concrete(args);
+    Visit(type::Type_, *to[0],
+          type::Typed<ir::Value>(ir::Value(s), type::Type_), EmitCopyAssignTag{});
+    return;
+  }
+
+  // TODO this shouldn't be able to fail.
+  ASSIGN_OR(return, auto os, MakeOverloadSet(this, node->callee(), args));
+  return FnCallDispatchTable::EmitInit(this, os, args, to);
+  // TODO node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
+}
+
+void Compiler::EmitAssign(
+    ast::Call const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
+    auto result = EmitBuiltinCall(this, b, node->args());
+    if (result.empty()) return;
+    Visit(to[0].type()->as<type::Pointer>().pointee(), *to[0],
+          type::Typed{result, data().qual_type(node)->type()},
+          EmitCopyAssignTag{});
+  }
+
+  // Look at all the possible calls and generate the dispatching code
+  // TODO implement this with a lookup table instead of this branching insanity.
+
+  // TODO an opmitimazion we can do is merging all the allocas for results
+  // into a single variant buffer, because we know we need something that big
+  // anyway, and their use cannot overlap.
+  auto args = node->args().Transform([this](ast::Expression const *expr) {
+    return type::Typed(EmitValue(expr), type_of(expr));
+  });
+
+  // TODO: This is a pretty terrible hack.
+  if (auto const *gen_struct_type =
+          ASSERT_NOT_NULL(data().qual_type(node->callee()))
+              ->type()
+              ->if_as<type::GenericStruct>()) {
+    type::Type const *s = gen_struct_type->concrete(args);
+    Visit(type::Type_, *to[0],
+          type::Typed<ir::Value>(ir::Value(s), type::Type_),
+          EmitCopyAssignTag{});
+    return;
+  }
+
+  // TODO this shouldn't be able to fail.
+  ASSIGN_OR(return, auto os, MakeOverloadSet(this, node->callee(), args));
+  return FnCallDispatchTable::EmitAssign(this, os, args, to);
+  // TODO node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
 }
 
 ir::Value Compiler::EmitValue(ast::Call const *node) {
@@ -942,6 +1025,13 @@ ir::Value Compiler::EmitValue(ast::FunctionType const *node) {
   return ir::Value(builder().Arrow(std::move(param_vals), std::move(out_vals)));
 }
 
+void Compiler::EmitInit(ast::Identifier const *node,
+                        absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  EmitMoveInit(
+      type::Typed<ir::Value>(EmitValue(node), data().qual_type(node)->type()),
+      type::Typed<ir::Reg>(to[0]->reg(), to[0].type()));
+}
+
 ir::Value Compiler::EmitValue(ast::Identifier const *node) {
   auto decl_span = data().decls(node);
   ASSERT(decl_span.size() != 0u);
@@ -1075,23 +1165,28 @@ EmitValueWithExpand(Compiler *c, base::PtrSpan<ast::Expression const> exprs) {
 }
 
 ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
-  auto arg_vals  = EmitValueWithExpand(this, node->exprs());
-  auto *fn_scope = ASSERT_NOT_NULL(node->scope()->Containing<ast::FnScope>());
-  auto *fn_lit   = ASSERT_NOT_NULL(fn_scope->fn_lit_);
+  auto const &fn_scope =
+      *ASSERT_NOT_NULL(node->scope()->Containing<ast::FnScope>());
+  auto const &fn_lit = *ASSERT_NOT_NULL(fn_scope.fn_lit_);
+  auto const &fn_type =
+      ASSERT_NOT_NULL(type_of(&fn_lit))->as<type::Function>();
 
-  auto *fn_type = &ASSERT_NOT_NULL(type_of(fn_lit))->as<type::Function>();
-  for (size_t i = 0; i < arg_vals.size(); ++i) {
-    // TODO return type maybe not the same as type actually returned?
-    auto *ret_type = fn_type->output()[i];
-    if (ret_type->is_big()) {
-      // TODO must `r` be holding a register?
-      // TODO guaranteed move-elision
-      EmitMoveInit(type::Typed(arg_vals[i].second, ret_type),
-                   type::Typed<ir::Reg>(builder().GetRet(i, ret_type),
-                                        type::Ptr(ret_type)));
-
+  // TODO: It's tricky... on a single expression that gets expanded, we could
+  // have both small and big types and we would need to handle both setting
+  // registers for small types and writing through them for big ones.
+  ASSERT(
+      node->exprs().size() ==
+      fn_type.output().size());  // TODO: For now, assume no actual expansion.
+  for (size_t i = 0; i < node->exprs().size(); ++i) {
+    auto const *expr     = node->exprs()[i];
+    auto const &ret_type = *ASSERT_NOT_NULL(fn_type.output()[i]);
+    if (ret_type.is_big()) {
+      type::Typed<ir::RegOr<ir::Addr>> typed_alloc(
+          ir::RegOr<ir::Addr>(builder().GetRet(i, &ret_type)),
+          type::Ptr(&ret_type));
+      EmitInit(expr, absl::MakeConstSpan(&typed_alloc, 1));
     } else {
-      builder().SetRet(i, type::Typed{arg_vals[i].second, ret_type});
+      builder().SetRet(i, type::Typed{EmitValue(expr), &ret_type});
     }
   }
 
