@@ -61,6 +61,8 @@ struct LoadStoreCache {
     }
   }
 
+  void clear(base::MetaValue m) { storage_.erase(m); }
+
  private:
   absl::flat_hash_map<base::MetaValue, absl::flat_hash_map<RegOr<Addr>, Value>>
       storage_;

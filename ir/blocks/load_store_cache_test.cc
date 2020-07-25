@@ -1,8 +1,8 @@
 #include "ir/blocks/load_store_cache.h"
-#include "ir/value/reg.h"
-#include "ir/value/reg_or.h"
 
 #include "gtest/gtest.h"
+#include "ir/value/reg.h"
+#include "ir/value/reg_or.h"
 
 namespace {
 

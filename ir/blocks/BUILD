@@ -6,6 +6,7 @@ cc_library(
     srcs = ["basic.cc"],
     deps = [
         ":load_store_cache",
+        ":offset_cache",
         "//ir/value:addr",
         "//ir/value:reg_or",
         "//ir:byte_code_writer",
@@ -14,6 +15,25 @@ cc_library(
         "//ir/instruction:jump",
         "//base:ptr_span",
         "//base:untyped_buffer",
+    ],
+)
+
+cc_library(
+    name = "offset_cache",
+    hdrs = ["offset_cache.h"],
+    deps = [
+        "//ir/value:addr",
+        "//ir/value:reg_or",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
+
+cc_test(
+    name = "offset_cache_test",
+    srcs = ["offset_cache_test.cc"],
+    deps = [
+        ":offset_cache",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 

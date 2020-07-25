@@ -28,6 +28,12 @@ struct Primitive : public Type {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
 
+  base::MetaValue meta() const {
+    base::MetaValue result = base::meta<void>;
+    Apply([&](auto m) { result = m; });
+    return result;
+  }
+
   template <typename Fn>
   void Apply(Fn &&fn) const {
     ApplyImpl<uint8_t, uint16_t, uint32_t, uint64_t, int8_t, int16_t, int32_t,
