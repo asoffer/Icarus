@@ -90,13 +90,24 @@ void CompleteBody(Compiler *compiler, ast::ShortFunctionLiteral const *node,
     }
 
     MakeAllStackAllocations(compiler, node->body_scope());
-    auto vals = compiler->EmitValue(node->body());
+
+    auto const &ret_type = *ASSERT_NOT_NULL(t->output()[0]);
+    if (ret_type.is_big()) {
+      type::Typed<ir::RegOr<ir::Addr>> typed_alloc(
+          ir::RegOr<ir::Addr>(compiler->builder().GetRet(0, &ret_type)),
+          type::Ptr(&ret_type));
+      compiler->EmitInit(node->body(), absl::MakeConstSpan(&typed_alloc, 1));
+    } else {
+      compiler->builder().SetRet(
+          0, type::Typed{compiler->EmitValue(node->body()), &ret_type});
+    }
+
     bldr.FinishTemporariesWith([compiler](type::Typed<ir::Reg> r) {
       if (r.type()->HasDestructor()) {
         compiler->Visit(r.type(), r.get(), EmitDestroyTag{});
       }
     });
-    bldr.SetRet(0, type::Typed<ir::Value>(std::move(vals), t->output()[0]));
+
     MakeAllDestructions(compiler, node->body_scope());
     bldr.ReturnJump();
   }
