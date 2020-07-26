@@ -48,47 +48,12 @@ struct ByteCodeWriter {
   explicit ByteCodeWriter(base::untyped_buffer* buf) : buf_(buf) {}
   ~ByteCodeWriter() { ASSERT(replacements_.size() == 0u); }
 
-  template <
-      typename T,
-      std::enable_if_t<base::meta<T> != base::meta<BasicBlock*> and
-                           base::meta<T> != base::meta<BasicBlock const*> and
-                           base::meta<T> != base::meta<ir::Value>,
-                       int> = 0>
-  void Write(T val) {
+  template <typename T,
+            std::enable_if_t<base::meta<T> != base::meta<BasicBlock*> and
+                                 base::meta<T> != base::meta<BasicBlock const*>,
+                             int> = 0>
+  void Write(T const& val) {
     buf_->append(val);
-  }
-
-  void Write(ir::Value const& value) {
-    if (auto const* b = value.get_if<bool>()) {
-      Write(internal_byte_code_writer::PrimitiveIndex<bool>());
-      Write(*b);
-    } else if (auto const* n = value.get_if<uint8_t>()) {
-      Write(internal_byte_code_writer::PrimitiveIndex<uint8_t>());
-      Write(*n);
-    } else if (auto const* n = value.get_if<uint16_t>()) {
-      Write(internal_byte_code_writer::PrimitiveIndex<uint16_t>());
-      Write(*n);
-    } else if (auto const* n = value.get_if<uint32_t>()) {
-      Write(internal_byte_code_writer::PrimitiveIndex<uint32_t>());
-      Write(*n);
-    } else if (auto const* n = value.get_if<uint64_t>()) {
-      Write(internal_byte_code_writer::PrimitiveIndex<uint64_t>());
-      Write(*n);
-    } else if (auto const* n = value.get_if<int8_t>()) {
-      Write(internal_byte_code_writer::PrimitiveIndex<int8_t>());
-      Write(*n);
-    } else if (auto const* n = value.get_if<int16_t>()) {
-      Write(internal_byte_code_writer::PrimitiveIndex<int16_t>());
-      Write(*n);
-    } else if (auto const* n = value.get_if<int32_t>()) {
-      Write(internal_byte_code_writer::PrimitiveIndex<int32_t>());
-      Write(*n);
-    } else if (auto const* n = value.get_if<int64_t>()) {
-      Write(internal_byte_code_writer::PrimitiveIndex<int64_t>());
-      Write(*n);
-    } else {
-      NOT_YET();
-    }
   }
 
   void Write(BasicBlock const* block) {

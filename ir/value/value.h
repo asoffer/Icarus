@@ -59,16 +59,6 @@ struct Value {
 
   bool empty() const { return get_if<Empty>(); }
 
-  Value(Value const& v) : type_(v.type_) {
-    std::memcpy(buf_, v.buf_, sizeof(buf_));
-  }
-
-  Value& operator=(Value const& v) {
-    std::memcpy(buf_, v.buf_, sizeof(buf_));
-    type_ = v.type_;
-    return *this;
-  }
-
   constexpr base::MetaValue type() const { return type_; }
 
   // Returns the stored value. Behavior is undefined if the stored type is not
