@@ -18,7 +18,14 @@ void Compiler::EmitAssign(
 }
 
 // TODO: Unit tests
-void Compiler::EmitInit(
+void Compiler::EmitCopyInit(
+    ast::Terminal const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  EmitAssign(node, to);
+}
+
+// TODO: Unit tests
+void Compiler::EmitMoveInit(
     ast::Terminal const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   EmitAssign(node, to);

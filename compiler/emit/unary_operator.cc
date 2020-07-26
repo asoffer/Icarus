@@ -94,52 +94,52 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
   }
 }
 
-void Compiler::EmitCopyInit(ast::UnaryOperator const *node,
-                            type::Typed<ir::Reg> reg) {
+void Compiler::EmitCopyInit(
+    ast::UnaryOperator const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   switch (node->kind()) {
-    case ast::UnaryOperator::Kind::Move: EmitMoveInit(node->operand(), reg); break;
-    case ast::UnaryOperator::Kind::Copy: EmitCopyInit(node->operand(), reg); break;
-    default:
-      EmitCopyInit(type::Typed(EmitValue(node),
-                               ASSERT_NOT_NULL(data().qual_type(node))->type()),
-                   reg);
+    case ast::UnaryOperator::Kind::Init:
+      EmitCopyInit(node->operand(), to);
       break;
+    case ast::UnaryOperator::Kind::Move:
+      EmitMoveInit(node->operand(), to);
+      break;
+    case ast::UnaryOperator::Kind::Copy:
+      EmitCopyInit(node->operand(), to);
+      break;
+    default:{
+      auto from_val = EmitValue(node);
+      auto from_qt  = *data().qual_type(node);
+      if (to.size() == 1) {
+        Visit(to[0].type(), *to[0], type::Typed{from_val, from_qt.type()},
+              EmitCopyAssignTag{});
+      } else {
+        auto val_iter = from_val.get<ir::MultiValue>().span().begin();
+        auto ref_iter = to.begin();
+        for (auto *t : from_qt.expanded()) {
+          type::Typed<ir::RegOr<ir::Addr>> ref = *ref_iter++;
+          Visit(ref.type(), *ref, type::Typed{*val_iter++, t},
+                EmitCopyAssignTag{});
+        }
+      }
+    } break;
   }
 }
 
-void Compiler::EmitMoveInit(ast::UnaryOperator const *node,
-                            type::Typed<ir::Reg> reg) {
+void Compiler::EmitMoveInit(
+    ast::UnaryOperator const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   switch (node->kind()) {
-    case ast::UnaryOperator::Kind::Move: EmitMoveInit(node->operand(), reg); break;
-    case ast::UnaryOperator::Kind::Copy: EmitCopyInit(node->operand(), reg); break;
-    default:
-      EmitMoveInit(type::Typed(EmitValue(node),
-                               ASSERT_NOT_NULL(data().qual_type(node))->type()),
-                   reg);
+    case ast::UnaryOperator::Kind::Init:
+      EmitMoveInit(node->operand(), to);
       break;
-  }
-}
-
-ir::RegOr<ir::Addr> Compiler::EmitRef(ast::UnaryOperator const *node) {
-  ASSERT(node->kind() == ast::UnaryOperator::Kind::At);
-  return EmitValue(node->operand()).get<ir::Reg>();
-}
-
-// TODO: Unit tests
-void Compiler::EmitInit(ast::UnaryOperator const *node,
-                        absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  switch (node->kind()) {
-    case ast::UnaryOperator::Kind::Init: {
-      EmitInit(node->operand(), to);
-    } break;
-    case ast::UnaryOperator::Kind::Copy: {
-      EmitCopyInit(node->operand(), type::Typed(to[0]->reg(), to[0].type()));
-    } break;
-    case ast::UnaryOperator::Kind::Move: {
-      EmitMoveInit(node->operand(), type::Typed(to[0]->reg(), to[0].type()));
-    } break;
+    case ast::UnaryOperator::Kind::Move:
+      EmitMoveInit(node->operand(), to);
+      break;
+    case ast::UnaryOperator::Kind::Copy:
+      EmitCopyInit(node->operand(), to);
+      break;
     default: {
-      // TODO should be initialization not assigment.
       auto from_val = EmitValue(node);
       auto from_qt  = *data().qual_type(node);
       if (to.size() == 1) {
@@ -158,13 +158,18 @@ void Compiler::EmitInit(ast::UnaryOperator const *node,
   }
 }
 
+ir::RegOr<ir::Addr> Compiler::EmitRef(ast::UnaryOperator const *node) {
+  ASSERT(node->kind() == ast::UnaryOperator::Kind::At);
+  return EmitValue(node->operand()).get<ir::Reg>();
+}
+
 // TODO: Unit tests
 void Compiler::EmitAssign(
     ast::UnaryOperator const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   switch (node->kind()) {
     case ast::UnaryOperator::Kind::Init: {
-      EmitInit(node->operand(), to);
+      EmitMoveInit(node->operand(), to);
     } break;
     case ast::UnaryOperator::Kind::Copy: {
       auto operand_qt = *ASSERT_NOT_NULL(data().qual_type(node->operand()));

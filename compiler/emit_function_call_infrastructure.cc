@@ -96,7 +96,8 @@ void CompleteBody(Compiler *compiler, ast::ShortFunctionLiteral const *node,
       type::Typed<ir::RegOr<ir::Addr>> typed_alloc(
           ir::RegOr<ir::Addr>(compiler->builder().GetRet(0, &ret_type)),
           type::Ptr(&ret_type));
-      compiler->EmitInit(node->body(), absl::MakeConstSpan(&typed_alloc, 1));
+      compiler->EmitMoveInit(node->body(),
+                             absl::MakeConstSpan(&typed_alloc, 1));
     } else {
       compiler->builder().SetRet(
           0, type::Typed{compiler->EmitValue(node->body()), &ret_type});

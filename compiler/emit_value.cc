@@ -164,26 +164,8 @@ ir::Value Compiler::EmitValue(ast::ArrayLiteral const *node) {
   auto alloc = builder().TmpAlloca(t);
   auto typed_alloc = type::Typed<ir::RegOr<ir::Addr>>(
       ir::RegOr<ir::Addr>(alloc), type::Ptr(t));
-  EmitInit(node, absl::MakeConstSpan(&typed_alloc, 1));
+  EmitCopyInit(node, absl::MakeConstSpan(&typed_alloc, 1));
   return ir::Value(alloc);
-}
-
-void Compiler::EmitInit(ast::ArrayLiteral const *node,
-                        absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  ASSERT(to.size() == 1u);
-  // TODO actual initialization with these field members.
-  auto *t            = type_of(node);
-  if (not node->empty()) {
-    auto *this_type       = type_of(node);
-    auto const &data_type = *this_type->as<type::Array>().data_type();
-    for (size_t i = 0; i < node->size(); ++i) {
-      type::Typed<ir::RegOr<ir::Addr>> addr(
-          builder().Index(type::Ptr(this_type), to[0]->reg(),
-                          static_cast<int32_t>(i)),
-          type::Ptr(&data_type));
-      EmitInit(node->elem(i), absl::MakeConstSpan(&addr, 1));
-    }
-  }
 }
 
 ir::Value Compiler::EmitValue(ast::ArrayType const *node) {
@@ -221,12 +203,20 @@ ir::Value Compiler::EmitValue(ast::Assignment const *node) {
   return ir::Value();
 }
 
-void Compiler::EmitInit(
+void Compiler::EmitCopyInit(
     ast::BinaryOperator const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = data().qual_type(node)->type();
   Visit(t, *to[0], type::Typed{EmitValue(node), t}, EmitCopyAssignTag{});
+}
+
+void Compiler::EmitMoveInit(
+    ast::BinaryOperator const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  ASSERT(to.size() == 1u);
+  auto t = data().qual_type(node)->type();
+  Visit(t, *to[0], type::Typed{EmitValue(node), t}, EmitMoveAssignTag{});
 }
 
 void Compiler::EmitAssign(
@@ -613,7 +603,45 @@ ir::Value EmitBuiltinCall(Compiler *c, ast::BuiltinFn const *callee,
   UNREACHABLE();
 }
 
-void Compiler::EmitInit(ast::Call const *node,
+void Compiler::EmitMoveInit(
+    ast::Call const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
+    auto result = EmitBuiltinCall(this, b, node->args());
+    if (result.empty()) return;
+    Visit(to[0].type()->as<type::Pointer>().pointee(), *to[0],
+          type::Typed{result, data().qual_type(node)->type()},
+          EmitCopyAssignTag{});
+  }
+
+  // Look at all the possible calls and generate the dispatching code
+  // TODO implement this with a lookup table instead of this branching insanity.
+
+  // TODO an opmitimazion we can do is merging all the allocas for results
+  // into a single variant buffer, because we know we need something that big
+  // anyway, and their use cannot overlap.
+  auto args = node->args().Transform([this](ast::Expression const *expr) {
+    return type::Typed(EmitValue(expr), type_of(expr));
+  });
+
+  // TODO: This is a pretty terrible hack.
+  if (auto const *gen_struct_type =
+          ASSERT_NOT_NULL(data().qual_type(node->callee()))
+              ->type()
+              ->if_as<type::GenericStruct>()) {
+    type::Type const *s = gen_struct_type->concrete(args);
+    Visit(type::Type_, *to[0],
+          type::Typed<ir::Value>(ir::Value(s), type::Type_), EmitCopyAssignTag{});
+    return;
+  }
+
+  // TODO this shouldn't be able to fail.
+  ASSIGN_OR(return, auto os, MakeOverloadSet(this, node->callee(), args));
+  FnCallDispatchTable::EmitMoveInit(this, os, args, to);
+  // TODO node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
+}
+
+void Compiler::EmitCopyInit(ast::Call const *node,
                         absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
     auto result = EmitBuiltinCall(this, b, node->args());
@@ -646,7 +674,7 @@ void Compiler::EmitInit(ast::Call const *node,
 
   // TODO this shouldn't be able to fail.
   ASSIGN_OR(return, auto os, MakeOverloadSet(this, node->callee(), args));
-  FnCallDispatchTable::EmitInit(this, os, args, to);
+  FnCallDispatchTable::EmitCopyInit(this, os, args, to);
   // TODO node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
 }
 
@@ -720,12 +748,22 @@ ir::Value Compiler::EmitValue(ast::Call const *node) {
   // TODO node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
 }
 
-void Compiler::EmitInit(
+void Compiler::EmitCopyInit(
     ast::Cast const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  // TODO user-defined-types
   ASSERT(to.size() == 1u);
   auto t = data().qual_type(node)->type();
   Visit(t, *to[0], type::Typed{EmitValue(node), t}, EmitCopyAssignTag{});
+}
+
+void Compiler::EmitMoveInit(
+    ast::Cast const *node,
+   absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  // TODO user-defined-types
+  ASSERT(to.size() == 1u);
+  auto t = data().qual_type(node)->type();
+  Visit(t, *to[0], type::Typed{EmitValue(node), t}, EmitMoveAssignTag{});
 }
 
 ir::Value Compiler::EmitValue(ast::Cast const *node) {
@@ -841,8 +879,8 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
     auto *t = type_of(node);
     auto a  = data().addr(node);
     if (node->IsCustomInitialized()) {
-      auto to = type::Typed<ir::RegOr<ir::Addr>>(a, t);
-      EmitInit(node->init_val(), absl::MakeConstSpan(&to, 1));
+      auto to = type::Typed<ir::RegOr<ir::Addr>>(a, type::Ptr(t));
+      EmitMoveInit(node->init_val(), absl::MakeConstSpan(&to, 1));
     } else {
       if (not(node->flags() & ast::Declaration::f_IsFnParam)) {
         Visit(t, a, EmitDefaultInitTag{});
@@ -858,12 +896,13 @@ ir::Value Compiler::EmitValue(ast::DesignatedInitializer const *node) {
   auto alloc = builder().TmpAlloca(t);
   auto typed_alloc = type::Typed<ir::RegOr<ir::Addr>>(
       ir::RegOr<ir::Addr>(alloc), type::Ptr(t));
-  EmitInit(node, {typed_alloc});
+  EmitMoveInit(node, {typed_alloc});
   return ir::Value(alloc);
 }
 
-void Compiler::EmitInit(ast::DesignatedInitializer const *node,
-                        absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+void Compiler::EmitMoveInit(
+    ast::DesignatedInitializer const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
   // TODO actual initialization with these field members.
   auto *t            = type_of(node);
@@ -902,7 +941,52 @@ void Compiler::EmitInit(ast::DesignatedInitializer const *node,
     size_t field_index = struct_type.index(f->name);
     auto typed_reg = builder().Field(to[0]->reg(), &struct_type, field_index);
     type::Typed<ir::RegOr<ir::Addr>> lhs(*typed_reg, typed_reg.type());
-    EmitInit(assignment->rhs()[0], absl::MakeConstSpan(&lhs, 1));
+    EmitMoveInit(assignment->rhs()[0], absl::MakeConstSpan(&lhs, 1));
+  }
+}
+
+void Compiler::EmitCopyInit(
+    ast::DesignatedInitializer const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  ASSERT(to.size() == 1u);
+  // TODO actual initialization with these field members.
+  auto *t            = type_of(node);
+  auto &struct_type  = t->as<type::Struct>();
+  auto const &fields = struct_type.fields();
+  for (size_t i = 0; i < fields.size(); ++i) {
+    auto const &field = fields[i];
+
+    for (auto const *assignment : node->assignments()) {
+      for (auto const *expr : assignment->lhs()) {
+        std::string_view field_name = expr->as<ast::Identifier>().token();
+        // Skip default initialization if we're going to use the designated
+        // initializer.
+        if (field_name == field.name) { goto next_field; }
+      }
+    }
+
+    {
+      auto reg = builder().Field(to[0]->reg(), &struct_type, i).get();
+      if (field.initial_value.empty()) {
+        Visit(field.type, reg, EmitDefaultInitTag{});
+      } else {
+        Visit(field.type, reg, type::Typed{field.initial_value, field.type},
+              EmitCopyAssignTag{});
+      }
+    }
+  next_field:;
+  }
+
+  for (auto const *assignment : node->assignments()) {
+    if (assignment->lhs().size() != 1) { NOT_YET(assignment->lhs().size()); }
+    if (assignment->rhs().size() != 1) { NOT_YET(assignment->rhs().size()); }
+
+    auto const &id     = assignment->lhs()[0]->as<ast::Identifier>();
+    auto const *f      = struct_type.field(id.token());
+    size_t field_index = struct_type.index(f->name);
+    auto typed_reg = builder().Field(to[0]->reg(), &struct_type, field_index);
+    type::Typed<ir::RegOr<ir::Addr>> lhs(*typed_reg, typed_reg.type());
+    EmitCopyInit(assignment->rhs()[0], absl::MakeConstSpan(&lhs, 1));
   }
 }
 
@@ -1041,8 +1125,17 @@ ir::Value Compiler::EmitValue(ast::FunctionType const *node) {
   return ir::Value(builder().Arrow(std::move(param_vals), std::move(out_vals)));
 }
 
-void Compiler::EmitInit(ast::Identifier const *node,
-                        absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+void Compiler::EmitMoveInit(
+    ast::Identifier const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  EmitCopyInit(
+      type::Typed<ir::Value>(EmitValue(node), data().qual_type(node)->type()),
+      type::Typed<ir::Reg>(to[0]->reg(), to[0].type()));
+}
+
+void Compiler::EmitCopyInit(
+    ast::Identifier const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   EmitMoveInit(
       type::Typed<ir::Value>(EmitValue(node), data().qual_type(node)->type()),
       type::Typed<ir::Reg>(to[0]->reg(), to[0].type()));
@@ -1087,7 +1180,15 @@ ir::Value Compiler::EmitValue(ast::Import const *node) {
       ASSERT_NOT_NULL(data().imported_module(node))));
 }
 
-void Compiler::EmitInit(
+void Compiler::EmitMoveInit(
+    ast::Index const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  ASSERT(to.size() == 1u);
+  auto t = data().qual_type(node)->type();
+  Visit(t, *to[0], type::Typed{EmitValue(node), t}, EmitMoveAssignTag{});
+}
+
+void Compiler::EmitCopyInit(
     ast::Index const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
@@ -1216,7 +1317,7 @@ ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
       type::Typed<ir::RegOr<ir::Addr>> typed_alloc(
           ir::RegOr<ir::Addr>(builder().GetRet(i, &ret_type)),
           type::Ptr(&ret_type));
-      EmitInit(expr, absl::MakeConstSpan(&typed_alloc, 1));
+      EmitMoveInit(expr, absl::MakeConstSpan(&typed_alloc, 1));
     } else {
       builder().SetRet(i, type::Typed{EmitValue(expr), &ret_type});
     }

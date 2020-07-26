@@ -27,7 +27,10 @@ struct Builder {
   BasicBlock* AddBlock(BasicBlock const& to_copy);
 
   ir::OutParams OutParams(absl::Span<type::Type const* const> types);
-  ir::OutParams OutParamsInit(
+  ir::OutParams OutParamsCopyInit(
+      absl::Span<type::Type const* const> types,
+      absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to);
+  ir::OutParams OutParamsMoveInit(
       absl::Span<type::Type const* const> types,
       absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to);
   ir::OutParams OutParamsAssign(

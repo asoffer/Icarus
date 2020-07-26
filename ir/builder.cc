@@ -53,7 +53,20 @@ ir::OutParams Builder::OutParams(absl::Span<type::Type const *const> types) {
   return ir::OutParams(std::move(regs));
 }
 
-ir::OutParams Builder::OutParamsInit(
+ir::OutParams Builder::OutParamsMoveInit(
+    absl::Span<type::Type const *const> types,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  std::vector<Reg> regs;
+  regs.reserve(types.size());
+  for (size_t i = 0; i < types.size(); ++i) {
+    regs.push_back(types[i]->is_big() ? to[i]->reg()
+                                      : CurrentGroup()->Reserve());
+  }
+  return ir::OutParams(std::move(regs));
+
+}
+
+ir::OutParams Builder::OutParamsCopyInit(
     absl::Span<type::Type const *const> types,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   std::vector<Reg> regs;

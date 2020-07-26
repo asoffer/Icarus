@@ -16,8 +16,8 @@
 #include "compiler/module.h"
 #include "diagnostic/consumer/consumer.h"
 #include "frontend/source/source.h"
-#include "ir/interpretter/evaluate.h"
 #include "ir/builder.h"
+#include "ir/interpretter/evaluate.h"
 #include "ir/value/addr.h"
 #include "ir/value/native_fn.h"
 #include "ir/value/reg.h"
@@ -34,7 +34,6 @@ struct BlockDef;
 
 namespace compiler {
 struct EmitRefTag {};
-struct EmitInitTag {};
 struct EmitCopyInitTag {};
 struct EmitMoveInitTag {};
 struct EmitValueTag {};
@@ -69,10 +68,10 @@ OrderedDependencyNodes(ast::ParameterizedExpression const *node,
                        bool all = false);
 
 struct Compiler
-    : ast::Visitor<EmitMoveInitTag, void(type::Typed<ir::Reg>)>,
-      ast::Visitor<EmitInitTag,
+    : ast::Visitor<EmitMoveInitTag,
                    void(absl::Span<type::Typed<ir::RegOr<ir::Addr>> const>)>,
-      ast::Visitor<EmitCopyInitTag, void(type::Typed<ir::Reg>)>,
+      ast::Visitor<EmitCopyInitTag,
+                   void(absl::Span<type::Typed<ir::RegOr<ir::Addr>> const>)>,
       ast::Visitor<EmitAssignTag,
                    void(absl::Span<type::Typed<ir::RegOr<ir::Addr>> const>)>,
       ast::Visitor<EmitRefTag, ir::RegOr<ir::Addr>()>,
@@ -159,7 +158,8 @@ struct Compiler
     while (not state_.work_queue.empty()) {
       size_t previous_queue_size = state_.work_queue.size();
       auto [node, work_type]     = state_.work_queue.front();
-      DEBUG_LOG("compile-work-queue")("Process: ", static_cast<int>(work_type), ": ", node);
+      DEBUG_LOG("compile-work-queue")
+      ("Process: ", static_cast<int>(work_type), ": ", node);
       state_.work_queue.pop();
       // TODO: you also need to pass around some known contexts becuase you may
       // enter into some generic context push work, and then exit. When you get
@@ -202,22 +202,20 @@ struct Compiler
                                                                          regs);
   }
 
-  void EmitInit(ast::Node const *node,
-                absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) {
+  void EmitCopyInit(ast::Node const *node,
+                    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) {
     ast::Visitor<
-        EmitInitTag,
+        EmitCopyInitTag,
         void(absl::Span<type::Typed<ir::RegOr<ir::Addr>> const>)>::Visit(node,
                                                                          regs);
   }
 
-  void EmitCopyInit(ast::Node const *node, type::Typed<ir::Reg> reg) {
-    ast::Visitor<EmitCopyInitTag, void(type::Typed<ir::Reg> reg)>::Visit(node,
-                                                                         reg);
-  }
-
-  void EmitMoveInit(ast::Node const *node, type::Typed<ir::Reg> reg) {
-    ast::Visitor<EmitMoveInitTag, void(type::Typed<ir::Reg> reg)>::Visit(node,
-                                                                         reg);
+  void EmitMoveInit(ast::Node const *node,
+                    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) {
+    ast::Visitor<
+        EmitMoveInitTag,
+        void(absl::Span<type::Typed<ir::RegOr<ir::Addr>> const>)>::Visit(node,
+                                                                         regs);
   }
 
   ir::RegOr<ir::Addr> EmitRef(ast::Node const *node) {
@@ -396,25 +394,6 @@ struct Compiler
   void Visit(type::Struct const *t, ir::Reg reg, EmitDefaultInitTag) override;
   void Visit(type::Tuple const *t, ir::Reg reg, EmitDefaultInitTag) override;
 
-  void EmitMoveInit(ast::Expression const *node, type::Typed<ir::Reg> reg);
-  void Visit(EmitMoveInitTag, ast::Expression const *node,
-             type::Typed<ir::Reg> reg) {
-    return EmitMoveInit(node, reg);
-  }
-  void EmitMoveInit(ast::ArrayLiteral const *node, type::Typed<ir::Reg> reg);
-  void Visit(EmitMoveInitTag, ast::ArrayLiteral const *node,
-             type::Typed<ir::Reg> reg) override {
-    return EmitMoveInit(node, reg);
-  }
-  void EmitMoveInit(ast::UnaryOperator const *node, type::Typed<ir::Reg> reg);
-  void Visit(EmitMoveInitTag, ast::UnaryOperator const *node,
-             type::Typed<ir::Reg> reg) override {
-    return EmitMoveInit(node, reg);
-  }
-
-  void EmitMoveInit(type::Typed<ir::Value> from_val,
-                    type::Typed<ir::Reg> to_var);
-
   void EmitAssign(ast::Access const *node,
                   absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
   void Visit(EmitAssignTag, ast::Access const *node,
@@ -464,91 +443,48 @@ struct Compiler
     return EmitAssign(node, regs);
   }
 
-  void EmitInit(ast::Access const *node,
-                absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
-  void Visit(EmitInitTag, ast::Access const *node,
-             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
-    return EmitInit(node, regs);
+  void EmitMoveInit(ast::Expression const *node,
+                    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
+  void Visit(EmitMoveInitTag, ast::Expression const *node,
+             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) {
+    return EmitMoveInit(node, regs);
   }
+  void EmitMoveInit(type::Typed<ir::Value> from_val,
+                    type::Typed<ir::Reg> to_var);
 
-  void EmitInit(ast::ArrayLiteral const *node,
-                absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
-  void Visit(EmitInitTag, ast::ArrayLiteral const *node,
-             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
-    return EmitInit(node, regs);
-  }
 
-  void EmitInit(ast::BinaryOperator const *node,
-                absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
-  void Visit(EmitInitTag, ast::BinaryOperator const *node,
-             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
-    return EmitInit(node, regs);
-  }
-
-  void EmitInit(ast::Cast const *node,
-                absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
-  void Visit(EmitInitTag, ast::Cast const *node,
-             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
-    return EmitInit(node, regs);
-  }
-
-  void EmitInit(ast::Call const *node,
-                absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
-  void Visit(EmitInitTag, ast::Call const *node,
-             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
-    return EmitInit(node, regs);
-  }
-
-  void EmitInit(ast::DesignatedInitializer const *node,
-                absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
-  void Visit(EmitInitTag, ast::DesignatedInitializer const *node,
-             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
-    return EmitInit(node, regs);
-  }
-
-  void EmitInit(ast::Identifier const *node,
-                absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
-  void Visit(EmitInitTag, ast::Identifier const *node,
-             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
-    return EmitInit(node, regs);
-  }
-
-  void EmitInit(ast::Index const *node,
-                absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
-  void Visit(EmitInitTag, ast::Index const *node,
-             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
-    return EmitInit(node, regs);
-  }
-
-  void EmitInit(ast::Terminal const *node,
-                absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
-  void Visit(EmitInitTag, ast::Terminal const *node,
-             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
-    return EmitInit(node, regs);
-  }
-
-  void EmitInit(ast::UnaryOperator const *node,
-                absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
-  void Visit(EmitInitTag, ast::UnaryOperator const *node,
-             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
-    return EmitInit(node, regs);
-  }
-
-  void EmitCopyInit(ast::Expression const *node, type::Typed<ir::Reg> reg);
+  void EmitCopyInit(ast::Expression const *node,
+                    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
   void Visit(EmitCopyInitTag, ast::Expression const *node,
-             type::Typed<ir::Reg> reg) {
-    return EmitCopyInit(node, reg);
+             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) {
+    return EmitCopyInit(node, regs);
   }
-  void EmitCopyInit(ast::ArrayLiteral const *node, type::Typed<ir::Reg> reg);
-  void Visit(EmitCopyInitTag, ast::ArrayLiteral const *node,
-             type::Typed<ir::Reg> reg) override {
-    return EmitCopyInit(node, reg);
+#define DEFINE_EMIT_INIT(node_type)                                            \
+  void EmitCopyInit(node_type const *node,                                     \
+                    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);  \
+  void Visit(EmitCopyInitTag, node_type const *node,                           \
+             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs)          \
+      override {                                                               \
+    return EmitCopyInit(node, regs);                                           \
+  }                                                                            \
+  void EmitMoveInit(node_type const *node,                                     \
+                    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);  \
+  void Visit(EmitMoveInitTag, node_type const *node,                           \
+             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs)          \
+      override {                                                               \
+    return EmitMoveInit(node, regs);                                           \
   }
-  void EmitCopyInit(ast::UnaryOperator const *node, type::Typed<ir::Reg> reg);
-  void Visit(EmitCopyInitTag, ast::UnaryOperator const *node,
-             type::Typed<ir::Reg> reg) override {
-    return EmitCopyInit(node, reg);
-  }
+  DEFINE_EMIT_INIT(ast::Access)
+  DEFINE_EMIT_INIT(ast::ArrayLiteral)
+  DEFINE_EMIT_INIT(ast::BinaryOperator)
+  DEFINE_EMIT_INIT(ast::Call)
+  DEFINE_EMIT_INIT(ast::Cast)
+  DEFINE_EMIT_INIT(ast::DesignatedInitializer)
+  DEFINE_EMIT_INIT(ast::Identifier)
+  DEFINE_EMIT_INIT(ast::Index)
+  DEFINE_EMIT_INIT(ast::Terminal)
+  DEFINE_EMIT_INIT(ast::UnaryOperator)
+#undef DEFINE_EMIT_INIT
 
   void EmitCopyInit(type::Typed<ir::Value> from_val,
                     type::Typed<ir::Reg> to_var);

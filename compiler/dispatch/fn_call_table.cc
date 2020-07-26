@@ -40,11 +40,23 @@ std::pair<ir::Value, ir::OutParams> SetReturns(
   }
 }
 
-ir::OutParams SetReturnsInit(
+ir::OutParams SetReturnsCopyInit(
     ir::Builder &bldr, type::Type const *type,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   if (auto *fn_type = type->if_as<type::Function>()) {
-    return bldr.OutParamsInit(fn_type->output(), to);
+    return bldr.OutParamsCopyInit(fn_type->output(), to);
+  } else if (type->is<type::GenericFunction>()) {
+    NOT_YET(type->to_string());
+  } else {
+    NOT_YET(type->to_string());
+  }
+}
+
+ir::OutParams SetReturnsMoveInit(
+    ir::Builder &bldr, type::Type const *type,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  if (auto *fn_type = type->if_as<type::Function>()) {
+    return bldr.OutParamsMoveInit(fn_type->output(), to);
   } else if (type->is<type::GenericFunction>()) {
     NOT_YET(type->to_string());
   } else {
@@ -166,7 +178,7 @@ ir::Value EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
   return std::move(outs);
 }
 
-void EmitCallOneOverloadInit(
+void EmitCallOneOverloadCopyInit(
     Compiler *compiler, ast::Expression const *fn,
     internal::ExprData const &data, core::FnArgs<type::Typed<ir::Value>> args,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
@@ -196,7 +208,50 @@ void EmitCallOneOverloadInit(
     }
   }
 
-  auto out_params = SetReturnsInit(c.builder(), data.type(), to);
+  auto out_params = SetReturnsCopyInit(c.builder(), data.type(), to);
+  c.builder().Call(callee, fn_type,
+                   PrepareCallArguments(&c, nullptr, data.params(), args),
+                   out_params);
+  int i = -1;
+  for (auto const *t : fn_type->output()) {
+    ++i;
+    if (t->is_big()) continue;
+    c.Visit(t, *to[i], type::Typed{ir::Value(out_params[i]), t},
+            EmitCopyAssignTag{});
+  }
+}
+
+void EmitCallOneOverloadMoveInit(
+    Compiler *compiler, ast::Expression const *fn,
+    internal::ExprData const &data, core::FnArgs<type::Typed<ir::Value>> args,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  auto callee_qual_type = compiler->qual_type_of(fn);
+  ASSERT(callee_qual_type.has_value() == true);
+
+  auto [callee, fn_type, dependent_data] =
+      EmitCallee(*compiler, fn, *callee_qual_type, data, args);
+
+  Compiler c({
+      .builder = ir::GetBuilder(),
+      .data    = dependent_data ? *dependent_data : compiler->data(),
+      .diagnostic_consumer = compiler->diag(),
+  });
+
+  if (not callee.is_reg()) {
+    switch (callee.value().kind()) {
+      case ir::Fn::Kind::Native: {
+        core::FillMissingArgs(
+            core::ParamsRef(callee.value().native()->params()), &args,
+            [&c](auto const &p) {
+              return type::Typed(
+                  c.EmitValue(ASSERT_NOT_NULL(p.get()->init_val())), p.type());
+            });
+      } break;
+      default: break;
+    }
+  }
+
+  auto out_params = SetReturnsMoveInit(c.builder(), data.type(), to);
   c.builder().Call(callee, fn_type,
                    PrepareCallArguments(&c, nullptr, data.params(), args),
                    out_params);
@@ -285,11 +340,11 @@ ir::Value EmitCall(Compiler *compiler,
   }
 }
 
-void EmitCallInit(Compiler *compiler,
-                  absl::flat_hash_map<ast::Expression const *,
-                                      internal::ExprData> const &table,
-                  core::FnArgs<type::Typed<ir::Value>> const &args,
-                  absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+void EmitCallCopyInit(Compiler *compiler,
+                      absl::flat_hash_map<ast::Expression const *,
+                                          internal::ExprData> const &table,
+                      core::FnArgs<type::Typed<ir::Value>> const &args,
+                      absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   DEBUG_LOG("FnCallDispatchTable")
   ("Emitting a table with ", table.size(), " entries.");
 
@@ -299,7 +354,7 @@ void EmitCallInit(Compiler *compiler,
     // unconditional jumps between blocks which will be optimized out, but
     // there's no sense in generating them in the first place..
     auto const &[overload, expr_data] = *table.begin();
-    EmitCallOneOverloadInit(compiler, overload, expr_data, args, to);
+    EmitCallOneOverloadCopyInit(compiler, overload, expr_data, args, to);
   } else {
     auto &bldr           = compiler->builder();
     auto *land_block     = bldr.AddBlock();
@@ -310,7 +365,40 @@ void EmitCallInit(Compiler *compiler,
     for (auto const &[overload, expr_data] : table) {
       bldr.CurrentBlock() = callee_to_block[overload];
       // Argument preparation is done inside EmitCallOneOverload
-      EmitCallOneOverloadInit(compiler, overload, expr_data, args, to);
+      EmitCallOneOverloadCopyInit(compiler, overload, expr_data, args, to);
+      // TODO phi-node to coalesce return values.
+      bldr.UncondJump(land_block);
+    }
+    bldr.CurrentBlock() = land_block;
+  }
+}
+
+void EmitCallMoveInit(Compiler *compiler,
+                      absl::flat_hash_map<ast::Expression const *,
+                                          internal::ExprData> const &table,
+                      core::FnArgs<type::Typed<ir::Value>> const &args,
+                      absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  DEBUG_LOG("FnCallDispatchTable")
+  ("Emitting a table with ", table.size(), " entries.");
+
+  if (table.size() == 1) {
+    // If there's just one entry in the table we can avoid doing all the work to
+    // generate runtime dispatch code. It will amount to only a few
+    // unconditional jumps between blocks which will be optimized out, but
+    // there's no sense in generating them in the first place..
+    auto const &[overload, expr_data] = *table.begin();
+    EmitCallOneOverloadMoveInit(compiler, overload, expr_data, args, to);
+  } else {
+    auto &bldr           = compiler->builder();
+    auto *land_block     = bldr.AddBlock();
+    auto callee_to_block = bldr.AddBlocks(table);
+
+    EmitRuntimeDispatch(bldr, table, callee_to_block, args);
+
+    for (auto const &[overload, expr_data] : table) {
+      bldr.CurrentBlock() = callee_to_block[overload];
+      // Argument preparation is done inside EmitCallOneOverload
+      EmitCallOneOverloadMoveInit(compiler, overload, expr_data, args, to);
       // TODO phi-node to coalesce return values.
       bldr.UncondJump(land_block);
     }
@@ -411,14 +499,24 @@ ir::Value FnCallDispatchTable::Emit(
   return EmitCall(c, table, args);
 }
 
-void FnCallDispatchTable::EmitInit(
+void FnCallDispatchTable::EmitCopyInit(
     Compiler *c, ast::OverloadSet const &os,
     core::FnArgs<type::Typed<ir::Value>> const &args,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   // TODO: How do we know if there was an error? Can one actually happen?
   // Shouldn't we have verified earlier.
   ASSIGN_OR(return, auto table, Verify(c, os, args));
-  return EmitCallInit(c, table, args, to);
+  return EmitCallCopyInit(c, table, args, to);
+}
+
+void FnCallDispatchTable::EmitMoveInit(
+    Compiler *c, ast::OverloadSet const &os,
+    core::FnArgs<type::Typed<ir::Value>> const &args,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  // TODO: How do we know if there was an error? Can one actually happen?
+  // Shouldn't we have verified earlier.
+  ASSIGN_OR(return, auto table, Verify(c, os, args));
+  return EmitCallMoveInit(c, table, args, to);
 }
 
 void FnCallDispatchTable::EmitAssign(
