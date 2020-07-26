@@ -99,7 +99,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
   type::QualType qt;
 
   auto potential_decls =
-      module::AllDeclsTowardsRoot(node->scope(), node->token());
+      module::AllVisibleDeclsTowardsRoot(node->scope(), node->token());
   DEBUG_LOG("Identifier")
   (node->DebugString(), ": ", node, " ", potential_decls);
   switch (potential_decls.size()) {

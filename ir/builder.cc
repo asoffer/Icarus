@@ -86,10 +86,8 @@ void Builder::Call(RegOr<Fn> const &fn, type::Function const *f,
   for (auto const &p : f->params()) {
     if (auto const ptr = p.value.type()->if_as<type::Pointer>()) {
       if (auto const *prim = ptr->pointee()->if_as<type::Primitive>()) {
-        DEBUG_LOG()(*prim);
         CurrentBlock()->load_store_cache().clear(prim->meta());
       } else {
-        DEBUG_LOG()(p);
         CurrentBlock()->load_store_cache().clear();
         break;
       }

@@ -57,6 +57,7 @@ absl::Span<ast::Declaration const *const> BasicModule::ExportedDeclarations(
   return iter->second;
 }
 
+
 std::vector<ast::Declaration const *> AllDeclsTowardsRoot(
     ast::Scope const *starting_scope, std::string_view id) {
   std::vector<ast::Declaration const *> decls;
@@ -67,10 +68,38 @@ std::vector<ast::Declaration const *> AllDeclsTowardsRoot(
   return decls;
 }
 
+std::vector<ast::Declaration const *> AllVisibleDeclsTowardsRoot(
+    ast::Scope const *starting_scope, std::string_view id) {
+  std::vector<ast::Declaration const *> decls;
+  bool only_constants = false;
+  for (auto scope_ptr = starting_scope; scope_ptr != nullptr;
+       scope_ptr      = scope_ptr->parent) {
+    if (auto iter = scope_ptr->decls_.find(id);
+        iter != scope_ptr->decls_.end()) {
+      for (auto *decl : iter->second) {
+        if (not only_constants or
+            (decl->flags() & ast::Declaration::f_IsConst)) {
+          decls.push_back(decl);
+        }
+      }
+      if (scope_ptr->is<ast::FnScope>()) { only_constants = true; }
+    }
+
+    for (auto const *mod : scope_ptr->embedded_modules_) {
+      for (auto *decl : mod->ExportedDeclarations(id)) {
+        if (only_constants or (decl->flags() & ast::Declaration::f_IsConst)) {
+          decls.push_back(decl);
+        }
+      }
+    }
+  }
+  return decls;
+}
+
 std::vector<ast::Declaration const *> AllAccessibleDecls(
     ast::Scope const *starting_scope, std::string_view id) {
   std::vector<ast::Declaration const *> decls =
-      module::AllDeclsTowardsRoot(starting_scope, id);
+      module::AllVisibleDeclsTowardsRoot(starting_scope, id);
   auto child_decls = starting_scope->children_with_id(id);
   decls.insert(decls.end(), child_decls.begin(), child_decls.end());
   return decls;

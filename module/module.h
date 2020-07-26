@@ -88,6 +88,12 @@ struct BasicModule : base::Cast<BasicModule> {
 std::vector<ast::Declaration const *> AllDeclsTowardsRoot(
     ast::Scope const *starting_scope, std::string_view id);
 
+// Returns a container of all visible declarations in this scope  with the given
+// identifier. This means any declarations in the path to the ancestor
+// function/jump, and any constant declarations above that.
+std::vector<ast::Declaration const *> AllVisibleDeclsTowardsRoot(
+    ast::Scope const *starting_scope, std::string_view id);
+
 // Calls `fn` on each declaration in this scope and in parent scopes with the
 // given identifier.
 template <typename Fn>
