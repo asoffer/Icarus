@@ -108,19 +108,14 @@ void Compiler::EmitCopyInit(
       EmitCopyInit(node->operand(), to);
       break;
     default: {
+      DEBUG_LOG()(node->DebugString());
       auto from_val = EmitValue(node);
       auto from_qt  = *data().qual_type(node);
       if (to.size() == 1) {
         Visit(to[0].type()->as<type::Pointer>().pointee(), *to[0],
               type::Typed{from_val, from_qt.type()}, EmitCopyAssignTag{});
       } else {
-        auto val_iter = from_val.get<ir::MultiValue>().span().begin();
-        auto ref_iter = to.begin();
-        for (auto *t : from_qt.expanded()) {
-          type::Typed<ir::RegOr<ir::Addr>> ref = *ref_iter++;
-          Visit(ref.type()->as<type::Pointer>().pointee(), *ref,
-                type::Typed{*val_iter++, t}, EmitCopyAssignTag{});
-        }
+        NOT_YET();
       }
     } break;
   }
@@ -146,13 +141,7 @@ void Compiler::EmitMoveInit(
         Visit(to[0].type()->as<type::Pointer>().pointee(), *to[0],
               type::Typed{from_val, from_qt.type()}, EmitMoveAssignTag{});
       } else {
-        auto val_iter = from_val.get<ir::MultiValue>().span().begin();
-        auto ref_iter = to.begin();
-        for (auto *t : from_qt.expanded()) {
-          type::Typed<ir::RegOr<ir::Addr>> ref = *ref_iter++;
-          Visit(ref.type()->as<type::Pointer>().pointee(), *ref,
-                type::Typed{*val_iter++, t}, EmitMoveAssignTag{});
-        }
+        NOT_YET();
       }
     } break;
   }
@@ -187,13 +176,7 @@ void Compiler::EmitAssign(
         Visit(to[0].type()->as<type::Pointer>().pointee(), *to[0],
               type::Typed{from_val, from_qt.type()}, EmitMoveAssignTag{});
       } else {
-        auto val_iter = from_val.get<ir::MultiValue>().span().begin();
-        auto ref_iter = to.begin();
-        for (auto *t : from_qt.expanded()) {
-          type::Typed<ir::RegOr<ir::Addr>> ref = *ref_iter++;
-          Visit(ref.type(), *ref, type::Typed{*val_iter++, t},
-                EmitMoveAssignTag{});
-        }
+        NOT_YET();
       }
     } break;
   }

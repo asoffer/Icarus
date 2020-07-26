@@ -20,8 +20,6 @@ struct Compiler;  // TODO move into it's own header.
 // and jump in terms of the interface. Should probably inline TableImpl and
 // separate out these headers.
 struct FnCallDispatchTable {
-  static ir::Value Emit(Compiler *c, ast::OverloadSet const &os,
-                        core::FnArgs<type::Typed<ir::Value>> const &args);
   static void EmitMoveInit(
       Compiler *c, ast::OverloadSet const &os,
       core::FnArgs<type::Typed<ir::Value>> const &args,

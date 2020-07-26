@@ -10,6 +10,8 @@
 
 namespace compiler {
 
+void Compiler::Visit(type::Primitive const *, ir::Reg, EmitDestroyTag) {}
+
 void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDestroyTag) {
   if (not t->HasDestructor()) { return; }
   // TODO: Call fields dtors.

@@ -744,7 +744,22 @@ ir::Value Compiler::EmitValue(ast::Call const *node) {
   // TODO this shouldn't be able to fail.
   ASSIGN_OR(return ir::Value(),  //
                    auto os, MakeOverloadSet(this, node->callee(), args));
-  return FnCallDispatchTable::Emit(this, os, args);
+  auto qt = *ASSERT_NOT_NULL(data().qual_type(node));
+
+  switch (qt.expansion_size()) {
+    case 0:
+      FnCallDispatchTable::EmitMoveInit(this, os, args, {});
+      return ir::Value();
+    case 1: {
+      // TODO: It'd be nice to not stack-allocate register-sized values.
+      type::Typed<ir::RegOr<ir::Addr>> out(builder().TmpAlloca(qt.type()),
+                                           qt.type());
+      FnCallDispatchTable::EmitMoveInit(this, os, args,
+                                        absl::MakeConstSpan(&out, 1));
+      return ir::Value(builder().PtrFix(out->reg(), qt.type()));
+    }
+    default: NOT_YET();
+  }
   // TODO node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
 }
 
@@ -772,16 +787,7 @@ ir::Value Compiler::EmitValue(ast::Cast const *node) {
   auto *to_type = ASSERT_NOT_NULL(type_of(node));
   auto results  = EmitValue(node->expr());
   if (to_type == type::Type_) {
-    std::vector<type::Type const *> entries;
-    if (auto const *m = results.get_if<ir::MultiValue>()) {
-      entries.reserve(m->size());
-      for (auto const &v : m->span()) {
-        entries.push_back(v.get<type::Type const *>());
-      }
-    } else {
-      entries.push_back(results.get<type::Type const *>());
-    }
-    return ir::Value(type::Tup(entries));
+    return ir::Value(results.get<type::Type const *>());
   }
   auto *from_type = type_of(node->expr());
   if (type::IsNumeric(from_type)) {

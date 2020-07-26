@@ -76,7 +76,7 @@ base::expected<ir::Value, EvaluationFailure> Evaluate(ir::CompiledFn &&fn) {
   switch (values.size()) {
     case 0: return ir::Value();
     case 1: return values[0];
-    default: return ir::Value(ir::MultiValue(std::move(values)));
+    default: NOT_YET();
   }
 }
 

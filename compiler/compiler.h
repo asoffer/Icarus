@@ -347,6 +347,7 @@ struct Compiler
   void Visit(type::Variant const *t, ir::Reg reg, EmitDestroyTag) override;
   void Visit(type::Tuple const *t, ir::Reg reg, EmitDestroyTag) override;
   void Visit(type::Array const *t, ir::Reg reg, EmitDestroyTag) override;
+  void Visit(type::Primitive const *t, ir::Reg reg, EmitDestroyTag) override;
 
   void Visit(type::Array const *t, ir::RegOr<ir::Addr> to,
              type::Typed<ir::Value> const &from, EmitCopyAssignTag) override;

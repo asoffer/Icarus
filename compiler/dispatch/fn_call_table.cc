@@ -17,29 +17,6 @@
 namespace compiler {
 namespace {
 
-std::pair<ir::Value, ir::OutParams> SetReturns(
-    ir::Builder &bldr, internal::ExprData const &expr_data) {
-  if (auto *fn_type = expr_data.type()->if_as<type::Function>()) {
-    auto ret_types = fn_type->output();
-    std::vector<ir::Value> outs;
-    ir::OutParams out_params = bldr.OutParams(ret_types);
-    // TODO find a better way to extract these. Figure out why you even need to.
-    for (size_t i = 0; i < ret_types.size(); ++i) {
-      outs.emplace_back(out_params[i]);
-    }
-    return std::pair<ir::Value, ir::OutParams>(
-        outs.empty()
-            ? ir::Value()
-            : outs.size() == 1 ? outs[0]
-                               : ir::Value(ir::MultiValue(std::move(outs))),
-        std::move(out_params));
-  } else if (expr_data.type()->is<type::GenericFunction>()) {
-    NOT_YET();
-  } else {
-    NOT_YET(expr_data.type()->to_string());
-  }
-}
-
 ir::OutParams SetReturnsCopyInit(
     ir::Builder &bldr, type::Type const *type,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
@@ -140,42 +117,6 @@ EmitCallee(Compiler &compiler, ast::Expression const *fn, type::QualType qt,
   } else {
     UNREACHABLE();
   }
-}
-
-
-ir::Value EmitCallOneOverload(Compiler *compiler, ast::Expression const *fn,
-                              internal::ExprData const &data,
-                              core::FnArgs<type::Typed<ir::Value>> args) {
-  auto callee_qual_type = compiler->qual_type_of(fn);
-  ASSERT(callee_qual_type.has_value() == true);
-
-  auto [callee, fn_type, dependent_data] =
-      EmitCallee(*compiler, fn, *callee_qual_type, data, args);
-  Compiler c({
-      .builder = ir::GetBuilder(),
-      .data    = dependent_data ? *dependent_data : compiler->data(),
-      .diagnostic_consumer = compiler->diag(),
-  });
-
-  if (not callee.is_reg()) {
-    switch (callee.value().kind()) {
-      case ir::Fn::Kind::Native: {
-        core::FillMissingArgs(
-            core::ParamsRef(callee.value().native()->params()), &args,
-            [&c](auto const &p) {
-              return type::Typed(
-                  c.EmitValue(ASSERT_NOT_NULL(p.get()->init_val())), p.type());
-            });
-      } break;
-      default: break;
-    }
-  }
-
-  auto [outs, out_params] = SetReturns(c.builder(), data);
-  c.builder().Call(callee, fn_type,
-                   PrepareCallArguments(&c, nullptr, data.params(), args),
-                   out_params);
-  return std::move(outs);
 }
 
 void EmitCallOneOverloadCopyInit(
@@ -304,39 +245,6 @@ void EmitCallOneOverloadAssign(
     if (t->is_big()) continue;
     c.Visit(t, *to[i], type::Typed{ir::Value(out_params[i]), t},
             EmitCopyAssignTag{});
-  }
-}
-
-ir::Value EmitCall(Compiler *compiler,
-                   absl::flat_hash_map<ast::Expression const *,
-                                       internal::ExprData> const &table,
-                   core::FnArgs<type::Typed<ir::Value>> const &args) {
-  DEBUG_LOG("FnCallDispatchTable")
-  ("Emitting a table with ", table.size(), " entries.");
-
-  if (table.size() == 1) {
-    // If there's just one entry in the table we can avoid doing all the work to
-    // generate runtime dispatch code. It will amount to only a few
-    // unconditional jumps between blocks which will be optimized out, but
-    // there's no sense in generating them in the first place..
-    auto const &[overload, expr_data] = *table.begin();
-    return EmitCallOneOverload(compiler, overload, expr_data, args);
-  } else {
-    auto &bldr           = compiler->builder();
-    auto *land_block     = bldr.AddBlock();
-    auto callee_to_block = bldr.AddBlocks(table);
-
-    EmitRuntimeDispatch(bldr, table, callee_to_block, args);
-
-    for (auto const &[overload, expr_data] : table) {
-      bldr.CurrentBlock() = callee_to_block[overload];
-      // Argument preparation is done inside EmitCallOneOverload
-      EmitCallOneOverload(compiler, overload, expr_data, args);
-      // TODO phi-node to coalesce return values.
-      bldr.UncondJump(land_block);
-    }
-    bldr.CurrentBlock() = land_block;
-    return ir::Value();
   }
 }
 
@@ -490,14 +398,6 @@ Verify(Compiler *compiler, ast::OverloadSet const &os,
 }
 
 }  // namespace
-
-ir::Value FnCallDispatchTable::Emit(
-    Compiler *c, ast::OverloadSet const &os,
-    core::FnArgs<type::Typed<ir::Value>> const &args) {
-  ASSIGN_OR(return ir::Value(),  //
-                   auto table, Verify(c, os, args));
-  return EmitCall(c, table, args);
-}
 
 void FnCallDispatchTable::EmitCopyInit(
     Compiler *c, ast::OverloadSet const &os,

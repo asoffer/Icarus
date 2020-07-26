@@ -17,36 +17,6 @@
 namespace ir {
 struct GenericFn;
 struct Fn;
-struct Value;
-
-// A `MultiValue` represents a sequence of `Value`s (defined below) packed in
-// such a way that they can be stored inside a single `Value`.
-struct MultiValue {
-  MultiValue(absl::Span<Value const> values);
-  MultiValue(MultiValue const&);
-  MultiValue(MultiValue&&) = default;
-
-  MultiValue& operator=(MultiValue const&);
-  MultiValue& operator=(MultiValue&&) = default;
-
-  ~MultiValue();
-
-  Value const& operator[](size_t n) const;
-  Value& operator[](size_t n);
-
-  size_t size() const;
-
-  absl::Span<Value const> span() const;
-  absl::Span<Value> span();
-
-  friend bool operator==(MultiValue const& lhs, MultiValue const& rhs);
-  friend bool operator!=(MultiValue const& lhs, MultiValue const& rhs) {
-    return not(lhs == rhs);
-  }
-
- private:
-  std::unique_ptr<char[]> data_;
-};
 
 // A `Value` represents any register or value constant usable in the
 // intermediate representation.
@@ -90,62 +60,13 @@ struct Value {
   bool empty() const { return get_if<Empty>(); }
 
   Value(Value const& v) : type_(v.type_) {
-    if (v.type_ == base::meta<MultiValue>) {
-      new (&get_ref<MultiValue>()) MultiValue(v.get_ref<MultiValue>());
-    } else {
-      std::memcpy(buf_, v.buf_, sizeof(buf_));
-    }
-  }
-
-  Value(Value&& v) : type_(v.type_) {
-    if (v.type_ == base::meta<MultiValue>) {
-      new (&get_ref<MultiValue>()) MultiValue(v.get<MultiValue>());
-    } else {
-      std::memcpy(buf_, v.buf_, sizeof(buf_));
-    }
+    std::memcpy(buf_, v.buf_, sizeof(buf_));
   }
 
   Value& operator=(Value const& v) {
-    if (v.type_ == base::meta<MultiValue>) {
-      if (type_ == base::meta<MultiValue>) {
-        get_ref<MultiValue>() = v.get<MultiValue>();
-      } else {
-        type_ = base::meta<MultiValue>;
-        new (&get_ref<MultiValue>()) MultiValue(v.get<MultiValue>());
-      }
-    } else {
-      if (type_ == base::meta<MultiValue>) {
-        get_ref<MultiValue>().~MultiValue();
-      }
-      std::memcpy(buf_, v.buf_, sizeof(buf_));
-    }
+    std::memcpy(buf_, v.buf_, sizeof(buf_));
     type_ = v.type_;
     return *this;
-  }
-
-  Value& operator=(Value&& v) {
-    if (type_ == base::meta<MultiValue>) {
-      if (type_ == base::meta<MultiValue>) {
-        get_ref<MultiValue>() = std::move(v.get_ref<MultiValue>());
-      } else {
-        type_ = v.type_;
-        new (&get_ref<MultiValue>())
-            MultiValue(std::move(v.get_ref<MultiValue>()));
-      }
-    } else {
-      if (type_ == base::meta<MultiValue>) {
-        get_ref<MultiValue>().~MultiValue();
-      }
-      std::memcpy(buf_, v.buf_, sizeof(buf_));
-    }
-    type_ = v.type_;
-    return *this;
-  }
-
-  ~Value() {
-    if (type_ == base::meta<MultiValue>) {
-      get_ref<MultiValue>().~MultiValue();
-    }
   }
 
   constexpr base::MetaValue type() const { return type_; }
@@ -222,10 +143,10 @@ struct Value {
     bool eq;
     lhs.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                    uint32_t, uint64_t, float, double, type::Type const*, Reg,
-                   Addr, String, EnumVal, FlagsVal, ModuleId, MultiValue,
-                   Empty>([&rhs, &eq](auto x) {
-      eq = (x == rhs.get<std::decay_t<decltype(x)>>());
-    });
+                   Addr, String, EnumVal, FlagsVal, ModuleId, Empty>(
+        [&rhs, &eq](auto x) {
+          eq = (x == rhs.get<std::decay_t<decltype(x)>>());
+        });
     return eq;
   }
 

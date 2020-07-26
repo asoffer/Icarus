@@ -91,33 +91,21 @@ static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
     if (type != type::Void()) { ASSERT(val.empty() == false); }
     // TODO is_big()?
 
-    size_t i           = 0;
-    auto handle_result = [&](type::Type const *t, ir::Value const &v) {
-      DEBUG_LOG("MakeThunk")(*t, t->is_big());
-      if (t->is_big()) {
-        // TODO must `r` be holding a register?
-        // TODO guaranteed move-elision
+    type::Type const *t = extracted_types[0];
+    DEBUG_LOG("MakeThunk")(*t, t->is_big());
+    if (t->is_big()) {
+      // TODO must `r` be holding a register?
+      // TODO guaranteed move-elision
 
-        c.EmitMoveInit(
-            type::Typed<ir::Value>(v, t),
-            type::Typed<ir::Reg>(c.builder().GetRet(i, t), type::Ptr(t)));
+      c.EmitMoveInit(
+          type::Typed<ir::Value>(val, t),
+          type::Typed<ir::Reg>(c.builder().GetRet(0, t), type::Ptr(t)));
 
-      } else if (auto const *gs = t->if_as<type::GenericStruct>()) {
-        c.builder().SetRet(i, gs);
-      } else {
-        c.builder().SetRet(i, type::Typed<ir::Value>(v, t));
-      }
-    };
-
-    if (auto const *m = val.get_if<ir::MultiValue>()) {
-      for (auto const &v : m->span()) {
-        handle_result(extracted_types[i], v);
-        i++;
-      }
+    } else if (auto const *gs = t->if_as<type::GenericStruct>()) {
+      c.builder().SetRet(0, gs);
     } else {
-      handle_result(extracted_types[0], val);
+      c.builder().SetRet(0, type::Typed<ir::Value>(val, t));
     }
-
     c.builder().ReturnJump();
   }
 
