@@ -188,7 +188,7 @@ ir::Value Compiler::EmitValue(ast::Assignment const *node) {
   // them. Must references be computed first?
   for (auto const *l : node->lhs()) {
     lhs_refs.push_back(type::Typed<ir::RegOr<ir::Addr>>(
-        EmitRef(l), ASSERT_NOT_NULL(data().qual_type(l))->type()));
+        EmitRef(l), type::Ptr(ASSERT_NOT_NULL(data().qual_type(l))->type())));
   }
 
   auto ref_iter = lhs_refs.begin();
@@ -759,7 +759,7 @@ void Compiler::EmitCopyInit(
 
 void Compiler::EmitMoveInit(
     ast::Cast const *node,
-   absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   // TODO user-defined-types
   ASSERT(to.size() == 1u);
   auto t = data().qual_type(node)->type();
@@ -1128,7 +1128,7 @@ ir::Value Compiler::EmitValue(ast::FunctionType const *node) {
 void Compiler::EmitMoveInit(
     ast::Identifier const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  EmitCopyInit(
+  EmitMoveInit(
       type::Typed<ir::Value>(EmitValue(node), data().qual_type(node)->type()),
       type::Typed<ir::Reg>(to[0]->reg(), to[0].type()));
 }
@@ -1136,7 +1136,7 @@ void Compiler::EmitMoveInit(
 void Compiler::EmitCopyInit(
     ast::Identifier const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  EmitMoveInit(
+  EmitCopyInit(
       type::Typed<ir::Value>(EmitValue(node), data().qual_type(node)->type()),
       type::Typed<ir::Reg>(to[0]->reg(), to[0].type()));
 }

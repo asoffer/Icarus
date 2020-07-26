@@ -19,13 +19,6 @@ void Compiler::EmitMoveInit(type::Typed<ir::Value> from_val,
 }
 
 void Compiler::EmitMoveInit(
-    ast::Expression const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to_vars) {
-  EmitMoveInit(type::Typed(EmitValue(node), type_of(node)),
-               type::Typed(to_vars[0]->reg(), to_vars[0].type()));
-}
-
-void Compiler::EmitMoveInit(
     ast::ArrayLiteral const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to_vars) {
   ASSERT(to_vars.size() == 1u);

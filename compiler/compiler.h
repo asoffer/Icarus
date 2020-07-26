@@ -443,22 +443,6 @@ struct Compiler
     return EmitAssign(node, regs);
   }
 
-  void EmitMoveInit(ast::Expression const *node,
-                    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
-  void Visit(EmitMoveInitTag, ast::Expression const *node,
-             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) {
-    return EmitMoveInit(node, regs);
-  }
-  void EmitMoveInit(type::Typed<ir::Value> from_val,
-                    type::Typed<ir::Reg> to_var);
-
-
-  void EmitCopyInit(ast::Expression const *node,
-                    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
-  void Visit(EmitCopyInitTag, ast::Expression const *node,
-             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) {
-    return EmitCopyInit(node, regs);
-  }
 #define DEFINE_EMIT_INIT(node_type)                                            \
   void EmitCopyInit(node_type const *node,                                     \
                     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);  \
@@ -485,6 +469,9 @@ struct Compiler
   DEFINE_EMIT_INIT(ast::Terminal)
   DEFINE_EMIT_INIT(ast::UnaryOperator)
 #undef DEFINE_EMIT_INIT
+
+  void EmitMoveInit(type::Typed<ir::Value> from_val,
+                    type::Typed<ir::Reg> to_var);
 
   void EmitCopyInit(type::Typed<ir::Value> from_val,
                     type::Typed<ir::Reg> to_var);

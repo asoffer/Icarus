@@ -107,19 +107,19 @@ void Compiler::EmitCopyInit(
     case ast::UnaryOperator::Kind::Copy:
       EmitCopyInit(node->operand(), to);
       break;
-    default:{
+    default: {
       auto from_val = EmitValue(node);
       auto from_qt  = *data().qual_type(node);
       if (to.size() == 1) {
-        Visit(to[0].type(), *to[0], type::Typed{from_val, from_qt.type()},
-              EmitCopyAssignTag{});
+        Visit(to[0].type()->as<type::Pointer>().pointee(), *to[0],
+              type::Typed{from_val, from_qt.type()}, EmitCopyAssignTag{});
       } else {
         auto val_iter = from_val.get<ir::MultiValue>().span().begin();
         auto ref_iter = to.begin();
         for (auto *t : from_qt.expanded()) {
           type::Typed<ir::RegOr<ir::Addr>> ref = *ref_iter++;
-          Visit(ref.type(), *ref, type::Typed{*val_iter++, t},
-                EmitCopyAssignTag{});
+          Visit(ref.type()->as<type::Pointer>().pointee(), *ref,
+                type::Typed{*val_iter++, t}, EmitCopyAssignTag{});
         }
       }
     } break;
@@ -143,15 +143,15 @@ void Compiler::EmitMoveInit(
       auto from_val = EmitValue(node);
       auto from_qt  = *data().qual_type(node);
       if (to.size() == 1) {
-        Visit(to[0].type(), *to[0], type::Typed{from_val, from_qt.type()},
-              EmitMoveAssignTag{});
+        Visit(to[0].type()->as<type::Pointer>().pointee(), *to[0],
+              type::Typed{from_val, from_qt.type()}, EmitMoveAssignTag{});
       } else {
         auto val_iter = from_val.get<ir::MultiValue>().span().begin();
         auto ref_iter = to.begin();
         for (auto *t : from_qt.expanded()) {
           type::Typed<ir::RegOr<ir::Addr>> ref = *ref_iter++;
-          Visit(ref.type(), *ref, type::Typed{*val_iter++, t},
-                EmitMoveAssignTag{});
+          Visit(ref.type()->as<type::Pointer>().pointee(), *ref,
+                type::Typed{*val_iter++, t}, EmitMoveAssignTag{});
         }
       }
     } break;
@@ -184,8 +184,8 @@ void Compiler::EmitAssign(
       auto from_val = EmitValue(node);
       auto from_qt  = *data().qual_type(node);
       if (to.size() == 1) {
-        Visit(to[0].type(), *to[0], type::Typed{from_val, from_qt.type()},
-              EmitMoveAssignTag{});
+        Visit(to[0].type()->as<type::Pointer>().pointee(), *to[0],
+              type::Typed{from_val, from_qt.type()}, EmitMoveAssignTag{});
       } else {
         auto val_iter = from_val.get<ir::MultiValue>().span().begin();
         auto ref_iter = to.begin();

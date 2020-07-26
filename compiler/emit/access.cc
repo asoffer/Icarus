@@ -105,10 +105,10 @@ void Compiler::EmitMoveInit(
           EmitMoveAssignTag{});
   } else {
     // TODO: should actually be an initialization, not assignment.
-    Visit(to[0].type(), *to[0],
+    Visit(to[0].type()->as<type::Pointer>().pointee(), *to[0],
           type::Typed(
               ir::Value(builder().PtrFix(EmitRef(node).reg(), &this_type)),
-              &this_type),
+              type::Ptr(&this_type)),
           EmitMoveAssignTag{});
   }
 }

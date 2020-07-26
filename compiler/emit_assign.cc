@@ -346,6 +346,7 @@ void Compiler::Visit(type::Struct const *t, ir::RegOr<ir::Addr> to,
 
 void Compiler::Visit(type::Struct const *t, ir::RegOr<ir::Addr> to,
                      type::Typed<ir::Value> const &from, EmitMoveAssignTag) {
+  NOT_YET();
   t->move_assign_func_.init([=]() { return CreateAssign<Move>(this, t); });
   builder().Move(t, from->get<ir::Reg>(), to);
 }

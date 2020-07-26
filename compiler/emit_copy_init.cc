@@ -17,13 +17,6 @@ void Compiler::EmitCopyInit(type::Typed<ir::Value> from_val,
 }
 
 void Compiler::EmitCopyInit(
-    ast::Expression const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to_vars) {
-  EmitCopyInit(type::Typed(EmitValue(node), type_of(node)),
-               type::Typed(to_vars[0]->reg(), to_vars[0].type()));
-}
-
-void Compiler::EmitCopyInit(
     ast::ArrayLiteral const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to_vars) {
   ASSERT(to_vars.size() == 1u);
