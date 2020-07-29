@@ -3,9 +3,11 @@
 
 #include <memory>
 #include <optional>
+#include <queue>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/types/span.h"
+#include "ast/ast.h"
 #include "ast/ast_fwd.h"
 #include "ast/overload_set.h"
 #include "ast/visitor.h"
@@ -45,6 +47,46 @@ struct EmitDefaultInitTag {};
 struct EmitCopyAssignTag {};
 struct EmitMoveAssignTag {};
 
+struct Compiler;
+
+struct WorkItem {
+  enum class Result { Success, Failure, Deferred };
+  enum class Kind {
+    VerifyBlockBody,
+    VerifyEnumBody,
+    VerifyFunctionBody,
+    VerifyJumpBody,
+    VerifyScopeBody,
+    VerifyStructBody,
+    CompleteStructMembers,
+  };
+
+  Result Process() const;
+
+  Kind kind;
+  ast::Node const* node;
+  // TODO: Should we just store PersistentResources directly?
+  DependentComputedData &context;
+  diagnostic::DiagnosticConsumer& consumer;
+};
+
+struct WorkQueue {
+  bool empty() const { return items_.empty(); }
+
+  void Enqueue(WorkItem item) { items_.push(std::move(item)); }
+
+  void ProcessOneItem();
+
+ private:
+  bool Process(WorkItem const& item);
+
+  std::queue<WorkItem> items_;
+
+#if defined(ICARUS_DEBUG)
+    size_t cycle_breaker_count_ = 0;
+#endif
+};
+
 // These are the steps in a traditional compiler of verifying types and emitting
 // code. They're tied together because they don't necessarily happen in a
 // particular order. Certainly for any given AST node we need to verify its type
@@ -77,7 +119,7 @@ struct Compiler
       ast::Visitor<EmitRefTag, ir::RegOr<ir::Addr>()>,
       ast::Visitor<EmitValueTag, ir::Value()>,
       ast::Visitor<VerifyTypeTag, type::QualType()>,
-      ast::Visitor<VerifyBodyTag, bool()>,
+      ast::Visitor<VerifyBodyTag, WorkItem::Result()>,
       type::Visitor<void(ir::Reg, EmitDestroyTag),
                     void(ir::Reg, EmitDefaultInitTag),
                     void(ir::RegOr<ir::Addr>, type::Typed<ir::Value> const &,
@@ -134,8 +176,7 @@ struct Compiler
       std::vector<ast::Identifier const *> dependencies_;
     } dependency_chain;
 
-    enum class WorkType { VerifyBody, CompleteStruct };
-    std::queue<std::pair<ast::Node const *, WorkType>> work_queue;
+    WorkQueue work_queue;
 
     struct YieldedArguments {
       core::FnArgs<std::pair<ir::Value, type::QualType>> vals;
@@ -151,34 +192,8 @@ struct Compiler
     CompleteWorkQueue();
   }
   void CompleteWorkQueue() {
-#ifdef ICARUS_DEBUG
-    size_t cycle_breaker_count = 0;
-#endif  // ICARUS_DEBUG
-
     while (not state_.work_queue.empty()) {
-      size_t previous_queue_size = state_.work_queue.size();
-      auto [node, work_type]     = state_.work_queue.front();
-      DEBUG_LOG("compile-work-queue")
-      ("Process: ", static_cast<int>(work_type), ": ", node);
-      state_.work_queue.pop();
-      // TODO: you also need to pass around some known contexts becuase you may
-      // enter into some generic context push work, and then exit. When you get
-      // to it again, you need to be sure to reenter that same context.
-      switch (work_type) {
-        case TransientFunctionState::WorkType::VerifyBody: {
-          if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
-        } break;
-        case TransientFunctionState::WorkType::CompleteStruct: {
-          CompleteStruct(&node->as<ast::StructLiteral>());
-        } break;
-      }
-
-#ifdef ICARUS_DEBUG
-      cycle_breaker_count = (state_.work_queue.size() == previous_queue_size)
-                                ? cycle_breaker_count + 1
-                                : 0;
-      ASSERT(cycle_breaker_count <= previous_queue_size);
-#endif  // ICARUS_DEBUG
+      state_.work_queue.ProcessOneItem();
     }
   }
 
@@ -186,8 +201,8 @@ struct Compiler
     return ast::Visitor<VerifyTypeTag, type::QualType()>::Visit(node);
   }
 
-  bool VerifyBody(ast::Node const *node) {
-    return ast::Visitor<VerifyBodyTag, bool()>::Visit(node);
+  WorkItem::Result VerifyBody(ast::Node const *node) {
+    return ast::Visitor<VerifyBodyTag, WorkItem::Result()>::Visit(node);
   }
 
   ir::Value EmitValue(ast::Node const *node) {
@@ -298,7 +313,7 @@ struct Compiler
     return VerifyType(node);                                                   \
   }                                                                            \
                                                                                \
-  bool Visit(VerifyBodyTag, ast::name const *node) override {                  \
+  WorkItem::Result Visit(VerifyBodyTag, ast::name const *node) override {      \
     return VerifyBody(node);                                                   \
   }                                                                            \
                                                                                \
@@ -315,13 +330,15 @@ struct Compiler
   // The reason to separate out type/body verification is if the body might
   // transitively have identifiers referring to a declaration that is assigned
   // directly to this node.
-  bool VerifyBody(ast::Expression const *node) { return true; /* TODO */ }
-  bool VerifyBody(ast::BlockLiteral const *node);
-  bool VerifyBody(ast::EnumLiteral const *node);
-  bool VerifyBody(ast::FunctionLiteral const *node);
-  bool VerifyBody(ast::Jump const *node);
-  bool VerifyBody(ast::ParameterizedStructLiteral const *node);
-  bool VerifyBody(ast::StructLiteral const *node);
+  WorkItem::Result VerifyBody(ast::Expression const *node) {
+    return WorkItem::Result::Success;
+  }
+  WorkItem::Result VerifyBody(ast::BlockLiteral const *node);
+  WorkItem::Result VerifyBody(ast::EnumLiteral const *node);
+  WorkItem::Result VerifyBody(ast::FunctionLiteral const *node);
+  WorkItem::Result VerifyBody(ast::Jump const *node);
+  WorkItem::Result VerifyBody(ast::ParameterizedStructLiteral const *node);
+  WorkItem::Result VerifyBody(ast::StructLiteral const *node);
 
   type::QualType VerifyConcreteFnLit(ast::FunctionLiteral const *node);
 
@@ -533,7 +550,9 @@ struct Compiler
   }
 
  private:
-  void CompleteStruct(ast::StructLiteral const *node);
+  friend struct WorkItem;
+
+  WorkItem::Result CompleteStruct(ast::StructLiteral const *node);
 
   std::optional<core::FnArgs<type::Typed<ir::Value>>> VerifyFnArgs(
       core::FnArgs<ast::Expression const *> const &args);
@@ -555,6 +574,44 @@ struct Compiler
   PersistentResources resources_;
   TransientFunctionState state_;
 };
+
+inline WorkItem::Result WorkItem::Process() const {
+  Compiler c({
+      .builder             = ir::GetBuilder(),
+      .data                = context,
+      .diagnostic_consumer = consumer,
+  });
+  switch (kind) {
+    case Kind::VerifyBlockBody:
+      return c.VerifyBody(&node->as<ast::BlockLiteral>());
+    case Kind::VerifyEnumBody:
+      return c.VerifyBody(&node->as<ast::EnumLiteral>());
+    case Kind::VerifyFunctionBody:
+      return c.VerifyBody(&node->as<ast::FunctionLiteral>());
+    case Kind::VerifyJumpBody: return c.VerifyBody(&node->as<ast::Jump>());
+    case Kind::VerifyScopeBody: NOT_YET();
+    case Kind::VerifyStructBody:
+      return c.VerifyBody(&node->as<ast::StructLiteral>());
+    case Kind::CompleteStructMembers:
+      return c.CompleteStruct(&node->as<ast::StructLiteral>());
+  }
+}
+
+inline void WorkQueue::ProcessOneItem() {
+  ASSERT(items_.empty() == false);
+  WorkItem item = std::move(items_.front());
+  items_.pop();
+  WorkItem::Result result = item.Process();
+  bool deferred = (result == WorkItem::Result::Deferred);
+  if (deferred) { items_.push(std::move(item)); }
+#if defined(ICARUS_DEBUG)
+  if (deferred) {
+    DEBUG_LOG()("Deferring ", item.node->DebugString());
+    cycle_breaker_count_ = deferred ? cycle_breaker_count_ + 1 : 0;
+  }
+  ASSERT(cycle_breaker_count_ <= items_.size());
+#endif
+}
 
 }  // namespace compiler
 

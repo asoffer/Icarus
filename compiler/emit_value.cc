@@ -833,12 +833,13 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
         if (node->init_val()->is<ast::StructLiteral>()) {
           if (not constant_value->complete and state_.must_complete) {
             DEBUG_LOG("compile-work-queue")
-            ("Request work: ",
-             static_cast<int>(TransientFunctionState::WorkType::CompleteStruct),
-             ": ", node);
-            state_.work_queue.emplace(
-                node->init_val(),
-                TransientFunctionState::WorkType::CompleteStruct);
+            ("Request work complete-struct: ", node);
+            state_.work_queue.Enqueue({
+                .kind     = WorkItem::Kind::CompleteStructMembers,
+                .node     = node->init_val(),
+                .context  = data(),
+                .consumer = diag(),
+            });
           }
         }
         return constant_value->value;
@@ -1440,7 +1441,7 @@ struct IncompleteField {
   frontend::SourceRange range;
 };
 
-void Compiler::CompleteStruct(ast::StructLiteral const *node) {
+WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
   DEBUG_LOG("struct")
   ("Completing struct-literal emission: ", node,
    " must-complete = ", state_.must_complete);
@@ -1448,7 +1449,7 @@ void Compiler::CompleteStruct(ast::StructLiteral const *node) {
   type::Struct *s = data().get_struct(node);
   if (s->completeness() == type::Completeness::Complete) {
     DEBUG_LOG("struct")("Already complete, exiting: ", node);
-    return;
+    return WorkItem::Result::Success;
   }
 
   bool field_error = false;
@@ -1459,7 +1460,7 @@ void Compiler::CompleteStruct(ast::StructLiteral const *node) {
       field_error = true;
     }
   }
-  if (field_error) { return; }
+  if (field_error) { return WorkItem::Result::Failure; }
 
   ir::CompiledFn fn(type::Func({}, {}),
                     core::Params<type::Typed<ast::Declaration const *>>{});
@@ -1513,6 +1514,7 @@ void Compiler::CompleteStruct(ast::StructLiteral const *node) {
   DEBUG_LOG("struct")
   ("Completed ", node->DebugString(), " which is a struct ", *s, " with ",
    s->fields().size(), " field(s).");
+  return WorkItem::Result::Success;
 }
 
 ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
@@ -1554,12 +1556,13 @@ ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
   if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
 
   if (state_.must_complete) {
-    DEBUG_LOG("compile-work-queue")
-    ("Request work: ",
-     static_cast<int>(TransientFunctionState::WorkType::CompleteStruct), ": ",
-     node);
-    state_.work_queue.emplace(node,
-                              TransientFunctionState::WorkType::CompleteStruct);
+    DEBUG_LOG("compile-work-queue")("Request work complete struct: ", node);
+    state_.work_queue.Enqueue({
+        .kind     = WorkItem::Kind::CompleteStructMembers,
+        .node     = node,
+        .context  = data(),
+        .consumer = diag(),
+    });
   }
   return ir::Value(static_cast<type::Type const *>(s));
 }

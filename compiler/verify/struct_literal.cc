@@ -5,7 +5,7 @@
 
 namespace compiler {
 
-bool Compiler::VerifyBody(ast::StructLiteral const *node) {
+WorkItem::Result Compiler::VerifyBody(ast::StructLiteral const *node) {
   DEBUG_LOG("struct")("Struct-literal body verification: ", node, node->DebugString());
   bool error = false;
   for (auto const &field : node->fields()) {
@@ -22,15 +22,17 @@ bool Compiler::VerifyBody(ast::StructLiteral const *node) {
   }
 
   DEBUG_LOG("struct")("Struct-literal body verification complete: ", node);
-  return not error;
+  return error ? WorkItem::Result::Failure : WorkItem::Result::Success;
 }
 
 type::QualType Compiler::VerifyType(ast::StructLiteral const *node) {
   DEBUG_LOG("struct")("Verify type ", node, node->DebugString());
-  DEBUG_LOG("compile-work-queue")
-  ("Request work: ",
-   static_cast<int>(TransientFunctionState::WorkType::VerifyBody), ": ", node);
-  state_.work_queue.emplace(node, TransientFunctionState::WorkType::VerifyBody);
+  state_.work_queue.Enqueue({
+      .kind     = WorkItem::Kind::VerifyStructBody,
+      .node     = node,
+      .context  = data(),
+      .consumer = diag(),
+  });
   return data().set_qual_type(node, type::QualType::Constant(type::Type_));
 }
 

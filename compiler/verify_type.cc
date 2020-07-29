@@ -168,7 +168,7 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node,
   }
 }
 
-bool Compiler::VerifyBody(ast::FunctionLiteral const *node) {
+WorkItem::Result Compiler::VerifyBody(ast::FunctionLiteral const *node) {
   DEBUG_LOG("function")
   ("function-literal body verification: ", node->DebugString(), " ", &data());
   auto const &fn_type =
@@ -185,18 +185,20 @@ bool Compiler::VerifyBody(ast::FunctionLiteral const *node) {
       DEBUG_LOG("function")("rescheduled");
       data().ClearVerifyBody(node);
 
-      DEBUG_LOG("compile-work-queue")
-      ("Request work: ",
-       static_cast<int>(TransientFunctionState::WorkType::VerifyBody), ": ",
-       node);
-      state_.work_queue.emplace(node,
-                                TransientFunctionState::WorkType::VerifyBody);
-      return true;
+      DEBUG_LOG("compile-work-queue")("Request work fn-lit: ", node);
+      state_.work_queue.Enqueue({
+          .kind     = WorkItem::Kind::VerifyFunctionBody,
+          .node     = node,
+          .context  = data(),
+          .consumer = diag(),
+      });
+      return WorkItem::Result ::Success;
     }
   }
 
-  return ::compiler::VerifyBody(this, node, data().qual_type(node)->type())
-      .ok();
+  return ::compiler::VerifyBody(this, node, data().qual_type(node)->type()).ok()
+             ? WorkItem::Result::Success
+             : WorkItem::Result::Failure;
 }
 
 std::optional<core::Params<type::QualType>> VerifyParams(
@@ -277,12 +279,13 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
       }
     }
 
-    DEBUG_LOG("compile-work-queue")
-    ("Request work: ",
-     static_cast<int>(TransientFunctionState::WorkType::VerifyBody), ": ",
-     node);
-    state_.work_queue.emplace(node,
-                              TransientFunctionState::WorkType::VerifyBody);
+    DEBUG_LOG("compile-work-queue")("Request work fn-lit: ", node);
+    state_.work_queue.Enqueue({
+        .kind     = WorkItem::Kind::VerifyFunctionBody,
+        .node     = node,
+        .context  = data(),
+        .consumer = diag(),
+    });
     auto qt = type::QualType::Constant(
         type::Func(std::move(params), std::move(output_type_vec)));
     DEBUG_LOG("function")
@@ -312,21 +315,24 @@ type::QualType Compiler::VerifyType(ast::ArgumentType const *node) {
   return data().set_qual_type(node, type::QualType::Constant(type::Type_));
 }
 
-bool Compiler::VerifyBody(ast::BlockLiteral const *node) {
+WorkItem::Result Compiler::VerifyBody(ast::BlockLiteral const *node) {
   bool success = true;
   // TODO consider not verifying the types of the bodies. They almost certainly
   // contain circular references in the jump statements, and if the functions
   // require verifying the body upfront, things can maybe go wrong?
   for (auto *b : node->before()) { success &= VerifyType(b).ok(); }
   for (auto *a : node->after()) { success &= VerifyType(a).ok(); }
-  return success;
+  return WorkItem::Result::Success;
 }
 
 type::QualType Compiler::VerifyType(ast::BlockLiteral const *node) {
-  DEBUG_LOG("compile-work-queue")
-  ("Request work: ",
-   static_cast<int>(TransientFunctionState::WorkType::VerifyBody), ": ", node);
-  state_.work_queue.emplace(node, TransientFunctionState::WorkType::VerifyBody);
+  DEBUG_LOG("compile-work-queue")("Request work block: ", node);
+  state_.work_queue.Enqueue({
+      .kind     = WorkItem::Kind::VerifyBlockBody,
+      .node     = node,
+      .context  = data(),
+      .consumer = diag(),
+  });
   return data().set_qual_type(node, type::QualType::Constant(type::Block));
 }
 
@@ -384,7 +390,7 @@ type::QualType Compiler::VerifyType(ast::Cast const *node) {
   }
 }
 
-bool Compiler::VerifyBody(ast::EnumLiteral const *node) {
+WorkItem::Result Compiler::VerifyBody(ast::EnumLiteral const *node) {
   bool success = true;
   for (auto const &elem : node->elems()) {
     if (auto *decl = elem->if_as<ast::Declaration>()) {
@@ -394,14 +400,17 @@ bool Compiler::VerifyBody(ast::EnumLiteral const *node) {
       // TODO determine what is allowed here and how to generate errors.
     }
   }
-  return success;
+  return success ? WorkItem::Result::Success : WorkItem::Result::Failure;
 }
 
 type::QualType Compiler::VerifyType(ast::EnumLiteral const *node) {
-  DEBUG_LOG("compile-work-queue")
-  ("Request work: ",
-   static_cast<int>(TransientFunctionState::WorkType::VerifyBody), ": ", node);
-  state_.work_queue.emplace(node, TransientFunctionState::WorkType::VerifyBody);
+  DEBUG_LOG("compile-work-queue")("Request work enum: ",node);
+  state_.work_queue.Enqueue({
+      .kind     = WorkItem::Kind::VerifyEnumBody,
+      .node     = node,
+      .context  = data(),
+      .consumer = diag(),
+  });
   return data().set_qual_type(node, type::QualType::Constant(type::Type_));
 }
 
@@ -736,10 +745,10 @@ type::QualType Compiler::VerifyType(ast::Label const *node) {
   return data().set_qual_type(node, type::QualType::Constant(type::Label));
 }
 
-bool Compiler::VerifyBody(ast::Jump const *node) {
+WorkItem::Result Compiler::VerifyBody(ast::Jump const *node) {
   bool success = true;
   for (auto const *stmt : node->stmts()) { success &= VerifyType(stmt).ok(); }
-  return success;
+  return WorkItem::Result::Success;
 }
 
 type::QualType Compiler::VerifyType(ast::Jump const *node) {
@@ -761,10 +770,13 @@ type::QualType Compiler::VerifyType(ast::Jump const *node) {
         return v.type();
       });
 
-  DEBUG_LOG("compile-work-queue")
-  ("Request work: ",
-   static_cast<int>(TransientFunctionState::WorkType::VerifyBody), ": ", node);
-  state_.work_queue.emplace(node, TransientFunctionState::WorkType::VerifyBody);
+  DEBUG_LOG("compile-work-queue")("Request work jump: ",node);
+  state_.work_queue.Enqueue({
+      .kind     = WorkItem::Kind::VerifyJumpBody,
+      .node     = node,
+      .context  = data(),
+      .consumer = diag(),
+  });
   return data().set_qual_type(
       node, err ? type::QualType::Error()
                 : type::QualType::Constant(type::Jmp(state, param_types)));
@@ -791,9 +803,9 @@ type::QualType Compiler::VerifyType(ast::ScopeNode const *node) {
   return data().set_qual_type(node, type::QualType::NonConstant(type::Void()));
 }
 
-bool Compiler::VerifyBody(ast::ParameterizedStructLiteral const *node) {
+WorkItem::Result Compiler::VerifyBody(ast::ParameterizedStructLiteral const *node) {
   // NOT_YET();
-  return false;
+  return WorkItem::Result::Success;
 }
 
 type::QualType Compiler::VerifyType(
