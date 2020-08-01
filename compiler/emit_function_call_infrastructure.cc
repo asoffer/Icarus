@@ -6,6 +6,25 @@
 #include "ir/builder.h"
 
 namespace compiler {
+namespace {
+
+template <typename T>
+struct PushVec : public base::UseWithScope {
+  template <typename... Args>
+  PushVec(std::vector<T> *vec, Args &&... args) : vec_(vec) {
+    vec_->emplace_back(std::forward<Args>(args)...);
+  }
+
+  ~PushVec() { vec_->pop_back(); }
+
+ private:
+  std::vector<T> *vec_;
+};
+
+template <typename T, typename... Args>
+PushVec(std::vector<T> *, Args &&...)->PushVec<T>;
+
+}  // namespace
 
 void MakeAllStackAllocations(Compiler *compiler, ast::FnScope const *fn_scope) {
   for (auto *scope : fn_scope->descendants()) {
@@ -218,4 +237,13 @@ void ProcessExecutableBody(Compiler *c, base::PtrSpan<ast::Node const> nodes,
   c->CompleteDeferredBodies();
   // main_fn->WriteByteCode();
 }
+
+TransientState::YieldedArguments Compiler::EmitBlockNode(
+    ast::BlockNode const *node) {
+  ICARUS_SCOPE(PushVec(&state_.yields)) {
+    EmitIrForStatements(this, node->stmts());
+    return state_.yields.back();
+  }
+}
+
 }  // namespace compiler

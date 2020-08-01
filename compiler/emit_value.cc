@@ -517,29 +517,6 @@ ir::Value Compiler::EmitValue(ast::BlockLiteral const *node) {
                                        std::move(afters)));
 }
 
-template <typename T>
-struct PushVec : public base::UseWithScope {
-  template <typename... Args>
-  PushVec(std::vector<T> *vec, Args &&... args) : vec_(vec) {
-    vec_->emplace_back(std::forward<Args>(args)...);
-  }
-
-  ~PushVec() { vec_->pop_back(); }
-
- private:
-  std::vector<T> *vec_;
-};
-template <typename T, typename... Args>
-PushVec(std::vector<T> *, Args &&...)->PushVec<T>;
-
-Compiler::TransientFunctionState::YieldedArguments Compiler::EmitBlockNode(
-    ast::BlockNode const *node) {
-  ICARUS_SCOPE(PushVec(&state_.yields)) {
-    EmitIrForStatements(this, node->stmts());
-    return state_.yields.back();
-  }
-}
-
 ir::Value Compiler::EmitValue(ast::BlockNode const *node) {
   UNREACHABLE("Should be called via Compiler::EmitBlockNode");
 }

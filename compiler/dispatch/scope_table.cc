@@ -382,13 +382,12 @@ ir::Value ScopeDispatchTable::EmitCall(
     land_phi            = bldr.PhiInst<int64_t>();
     bldr.CurrentBlock() = starting_block;
   }
-  compiler->add_scope_landing(
-      Compiler::TransientFunctionState::ScopeLandingState{
-          .label = scope_node_->label() ? scope_node_->label()->value()
-                                        : ir::Label(),
-          .block = landing_block,
-          .phi   = land_phi,
-      });
+  compiler->add_scope_landing(TransientState::ScopeLandingState{
+      .label =
+          scope_node_->label() ? scope_node_->label()->value() : ir::Label(),
+      .block = landing_block,
+      .phi   = land_phi,
+  });
   base::defer d = [&] { compiler->pop_scope_landing(); };
 
   // Add basic blocks for each block node in the scope (for each scope

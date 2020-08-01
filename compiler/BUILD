@@ -2,6 +2,31 @@ package(default_visibility = ["//visibility:public"])
 load("//:common.bzl", "LLVM_LINKOPTS")
 
 cc_library(
+    name = "cyclic_dependency_tracker",
+    hdrs = ["cyclic_dependency_tracker.h"],
+    deps = [
+        ":data",
+        "//ast",
+        "//diagnostic/consumer",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_test(
+    name = "cyclic_dependency_tracker_test",
+    srcs = ["cyclic_dependency_tracker_test.cc"],
+    deps = [
+        ":cyclic_dependency_tracker",
+        ":data",
+        ":module",
+        "//ast",
+        "//base:ptr_span",
+        "//diagnostic/consumer:tracking",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "emit_function_call_infrastructure",
     hdrs = ["emit_function_call_infrastructure.h"],
     srcs = ["emit_function_call_infrastructure.cc"],
@@ -14,6 +39,17 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "transient_state",
+    hdrs = ["transient_state.h"],
+    deps = [
+        "//ast",
+        "//ir/blocks:basic",
+        "//ir/instruction:phi",
+        "//ir/value:label",
+        "@com_google_absl//absl/types:span",
+    ],
+)
 
 # TODO split this up and rename the parts.
 cc_library(
@@ -93,8 +129,10 @@ cc_library(
     name = "compiler_header",
     hdrs = ["compiler.h"],
     deps = [
+        ":cyclic_dependency_tracker",
         ":data",
         ":module",
+        ":transient_state",
         "//ast:ast_fwd",
         "//ast:overload_set",
         "//ast:visitor",

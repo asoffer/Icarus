@@ -463,7 +463,6 @@ Compiler::ComputeParamsFromArgs(
     absl::Span<std::pair<int, core::DependencyNode<ast::Declaration>> const>
         ordered_nodes,
     core::FnArgs<type::Typed<ir::Value>> const &args) {
-  ConstantBinding constants;
   DEBUG_LOG("generic-fn")
   ("Creating a concrete implementation with ",
    args.Transform([](auto const &a) { return a.type()->to_string(); }));

@@ -17,7 +17,7 @@ cc_library(
         "//ast:overload_set",
         "//base:ptr_span",
         "//compiler",
-        "//diagnostic/consumer:trivial",
+        "//diagnostic/consumer:tracking",
         "//frontend/source:range",
         "//module:module",
         "@com_google_absl//absl/types:span",

@@ -20,6 +20,16 @@ cc_library(
 )
 
 cc_library(
+    name = "tracking",
+    hdrs = ["tracking.h"],
+    deps = [
+        ":consumer",
+        "//diagnostic:message"
+    ],
+    testonly = True,
+)
+
+cc_library(
     name = "trivial",
     hdrs = ["trivial.h"],
     deps = [

@@ -267,6 +267,7 @@ cc_library(
         "//ast",
         "//base:defer",
         "//compiler:compiler_header",
+        "//compiler:cyclic_dependency_tracker",
         "//type:overload_set",
         "//type:qual_type",
         "//type:typed_value",

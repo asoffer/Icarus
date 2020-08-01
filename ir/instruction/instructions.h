@@ -19,6 +19,7 @@
 #include "ir/instruction/flags.h"
 #include "ir/instruction/inliner.h"
 #include "ir/instruction/op_codes.h"
+#include "ir/instruction/phi.h"
 #include "ir/instruction/type.h"
 #include "ir/instruction/util.h"
 #include "ir/out_params.h"
@@ -83,59 +84,6 @@ struct StoreInstruction {
   RegOr<Addr> location;
 };
 
-// TODO consider changing these to something like 'basic block arguments'
-template <typename T>
-struct PhiInstruction {
-  constexpr static cmd_index_t kIndex =
-      internal::kPhiInstructionRange.start + internal::PrimitiveIndex<T>();
-  using type = T;
-
-  PhiInstruction() = default;
-  PhiInstruction(std::vector<BasicBlock const*> blocks,
-                 std::vector<RegOr<T>> values)
-      : blocks(std::move(blocks)), values(std::move(values)) {}
-  ~PhiInstruction() {}
-
-  void add(BasicBlock const* block, RegOr<T> value) {
-    blocks.push_back(block);
-    values.push_back(value);
-  }
-
-  std::string to_string() const {
-    using base::stringify;
-    std::string s =
-        absl::StrCat(stringify(result), " = phi ", internal::TypeToString<T>());
-    for (size_t i = 0; i < blocks.size(); ++i) {
-      absl::StrAppend(&s, "\n      ", stringify(blocks[i]), ": ",
-                      stringify(values[i]));
-    }
-    return s;
-  }
-
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(kIndex);
-    writer->Write<uint16_t>(values.size());
-    for (auto block : blocks) { writer->Write(block); }
-    internal::WriteBits<uint16_t, RegOr<T>>(
-        writer, values, [](RegOr<T> const& r) { return r.is_reg(); });
-
-    absl::c_for_each(values, [&](RegOr<T> const& x) {
-      x.apply([&](auto v) { writer->Write(v); });
-    });
-
-    writer->Write(result);
-  }
-
-  void Inline(InstructionInliner const& inliner) {
-    inliner.Inline(values);
-    inliner.Inline(result);
-  }
-
-  std::vector<BasicBlock const*> blocks;
-  std::vector<RegOr<T>> values;
-  Reg result;
-};
-
 // This instruction is a bit strange sets a register to either another registor,
 // or an immediate value. By the very nature of Single-Static-Assignment, every
 // use of this instruction is an optimization opportunity. If a register is
@@ -176,9 +124,10 @@ struct SetReturnInstruction
 };
 
 template <typename FromType>
-struct CastInstruction : base::Extend<CastInstruction<FromType>>::template With<
-                             WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
-  using from_type = FromType;
+struct CastInstruction
+    : base::Extend<CastInstruction<FromType>>::template With<
+          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
+  using from_type                     = FromType;
   static constexpr cmd_index_t kIndex = internal::kCastInstructionRange.start +
                                         internal::PrimitiveIndex<FromType>();
   static constexpr std::string_view kDebugFormat =
@@ -193,7 +142,7 @@ template <typename NumType>
 struct NegInstruction
     : base::Extend<NegInstruction<NumType>>::template With<
           WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
-  using unary = NumType;
+  using unary                         = NumType;
   static constexpr cmd_index_t kIndex = internal::kNegInstructionRange.start +
                                         internal::PrimitiveIndex<NumType>();
   static constexpr std::string_view kDebugFormat = "%2$s = neg %1$s";
@@ -218,7 +167,7 @@ struct GetReturnInstruction
 struct NotInstruction
     : base::Extend<NotInstruction>::With<
           WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
-  using unary = bool;
+  using unary                         = bool;
   static constexpr cmd_index_t kIndex = internal::kNotInstructionNumber;
   static constexpr std::string_view kDebugFormat = "%2$s = not %1$s";
 
@@ -362,7 +311,8 @@ struct LoadSymbolInstruction
     : base::Extend<LoadSymbolInstruction>::With<
           WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr cmd_index_t kIndex = internal::kLoadSymbolInstructionNumber;
-  static constexpr std::string_view kDebugFormat = "%3$s = load-symbol %1$s: %2$s";
+  static constexpr std::string_view kDebugFormat =
+      "%3$s = load-symbol %1$s: %2$s";
 
   String name;
   type::Type const* type;

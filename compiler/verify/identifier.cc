@@ -1,6 +1,7 @@
 #include "ast/ast.h"
 #include "base/defer.h"
 #include "compiler/compiler.h"
+#include "compiler/cyclic_dependency_tracker.h"
 #include "type/overload_set.h"
 #include "type/qual_type.h"
 #include "type/typed_value.h"
@@ -8,23 +9,6 @@
 namespace compiler {
 
 namespace {
-
-struct CyclicDependency {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "cyclic-dependency";
-
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    diagnostic::SourceQuote quote(src);
-    for (auto const *id : cycle) {
-      quote = quote.Highlighted(id->range(), diagnostic::Style::ErrorText());
-    }
-
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Found a cyclic dependency:"), std::move(quote));
-  }
-
-  std::vector<ast::Identifier const *> cycle;
-};
 
 struct DeclOutOfOrder {
   static constexpr std::string_view kCategory = "type-error";
@@ -84,17 +68,9 @@ struct NonCallableInOverloadSet {
 type::QualType Compiler::VerifyType(ast::Identifier const *node) {
   if (data().cyclic_error(node)) { return type::QualType::Error(); }
 
-  auto cyclic_dep_span = state_.dependency_chain.PushDependency(node);
-  base::defer d([&] { state_.dependency_chain.PopDependency(); });
-
-  if (not cyclic_dep_span.empty()) {
-    for (auto const *i : cyclic_dep_span) { data().set_cyclic_error(i); }
-    diag().Consume(CyclicDependency{
-        .cycle = std::vector(cyclic_dep_span.begin(), cyclic_dep_span.end()),
-    });
-
-    return type::QualType::Error();
-  }
+  // Dependency pushed until `token` is destroyed.
+  auto token = cylcic_dependency_tracker_.PushDependency(node, data(), diag());
+  if (not token) { return type::QualType::Error(); }
 
   type::QualType qt;
 

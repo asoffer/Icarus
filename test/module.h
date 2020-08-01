@@ -11,31 +11,12 @@
 #include "ast/expression.h"
 #include "ast/overload_set.h"
 #include "base/ptr_span.h"
-#include "diagnostic/consumer/trivial.h"
+#include "diagnostic/consumer/tracking.h"
 #include "frontend/source/range.h"
 #include "module/module.h"
 #include "test/util.h"
 
 namespace test {
-struct TrackingConsumer : diagnostic::DiagnosticConsumer {
-  explicit TrackingConsumer() : diagnostic::DiagnosticConsumer(nullptr) {}
-  ~TrackingConsumer() override {}
-
-  void ConsumeImpl(std::string_view category, std::string_view name,
-                   diagnostic::DiagnosticMessage&&) override {
-    diagnostics_.emplace_back(category, name);
-  }
-
-  absl::Span<std::pair<std::string, std::string> const> diagnostics() const {
-    return diagnostics_;
-  }
-
- private:
-  // TODO: These could be string_view, but currently GoogleTest doesn't support
-  // pretty-printing std::string_view, so we're using strings to make the test
-  // error output readable.
-  std::vector<std::pair<std::string, std::string>> diagnostics_;
-};
 
 struct TestModule : compiler::CompiledModule {
   TestModule()
@@ -62,7 +43,7 @@ struct TestModule : compiler::CompiledModule {
     return ptr;
   }
 
-  TrackingConsumer consumer;
+  diagnostic::TrackingConsumer consumer;
   compiler::Compiler compiler;
 
  protected:

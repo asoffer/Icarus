@@ -13,9 +13,10 @@
 #include "ast/visitor.h"
 #include "base/debug.h"
 #include "base/move_func.h"
-#include "compiler/constant/binding.h"
+#include "compiler/cyclic_dependency_tracker.h"
 #include "compiler/data.h"
 #include "compiler/module.h"
+#include "compiler/transient_state.h"
 #include "diagnostic/consumer/consumer.h"
 #include "frontend/source/source.h"
 #include "ir/builder.h"
@@ -46,46 +47,6 @@ struct EmitDestroyTag {};
 struct EmitDefaultInitTag {};
 struct EmitCopyAssignTag {};
 struct EmitMoveAssignTag {};
-
-struct Compiler;
-
-struct WorkItem {
-  enum class Result { Success, Failure, Deferred };
-  enum class Kind {
-    VerifyBlockBody,
-    VerifyEnumBody,
-    VerifyFunctionBody,
-    VerifyJumpBody,
-    VerifyScopeBody,
-    VerifyStructBody,
-    CompleteStructMembers,
-  };
-
-  Result Process() const;
-
-  Kind kind;
-  ast::Node const* node;
-  // TODO: Should we just store PersistentResources directly?
-  DependentComputedData &context;
-  diagnostic::DiagnosticConsumer& consumer;
-};
-
-struct WorkQueue {
-  bool empty() const { return items_.empty(); }
-
-  void Enqueue(WorkItem item) { items_.push(std::move(item)); }
-
-  void ProcessOneItem();
-
- private:
-  bool Process(WorkItem const& item);
-
-  std::queue<WorkItem> items_;
-
-#if defined(ICARUS_DEBUG)
-    size_t cycle_breaker_count_ = 0;
-#endif
-};
 
 // These are the steps in a traditional compiler of verifying types and emitting
 // code. They're tied together because they don't necessarily happen in a
@@ -132,59 +93,6 @@ struct Compiler
     ir::Builder &builder;
     DependentComputedData &data;
     diagnostic::DiagnosticConsumer &diagnostic_consumer;
-  };
-
-  // Compiler state that needs to be tracked during the compilation of a single
-  // function or jump, but otherwise does not need to be saved.
-  struct TransientFunctionState {
-    // TODO: With a work queue we want to make sure the *right* transient state
-    // passes from one work item to the next.
-
-    struct ScopeLandingState {
-      ir::Label label;
-      ir::BasicBlock *block;
-      ir::PhiInstruction<int64_t> *phi;
-    };
-    std::vector<ScopeLandingState> scope_landings;
-
-    // During type-verification, when a dependency on an identifier is
-    // encountered, we write it down here. If the same dependency is encountered
-    // more than once, That way, we can bubble up from the dependency until we
-    // see it again, at each step adding the nodes to the diagnostic.
-    //
-    // // TODO not function state
-    struct DependencyChain {
-     public:
-      absl::Span<ast::Identifier const *const> PushDependency(
-          ast::Identifier const *id) {
-        dependencies_.push_back(id);
-        auto iter = dependencies_.begin();
-        for (; iter != dependencies_.end(); ++iter) {
-          if (*iter == id) { break; }
-        }
-
-        return absl::Span<ast::Identifier const *const>(
-            &*iter, std::distance(iter, std::prev(dependencies_.end())));
-      }
-
-      void PopDependency() {
-        ASSERT(dependencies_.size() != 0u);
-        dependencies_.pop_back();
-      }
-
-     private:
-      std::vector<ast::Identifier const *> dependencies_;
-    } dependency_chain;
-
-    WorkQueue work_queue;
-
-    struct YieldedArguments {
-      core::FnArgs<std::pair<ir::Value, type::QualType>> vals;
-      ir::Label label;
-    };
-    std::vector<YieldedArguments> yields;
-
-    bool must_complete = true;
   };
 
   void VerifyAll(base::PtrSpan<ast::Node const> nodes) {
@@ -292,11 +200,11 @@ struct Compiler
   std::optional<type::QualType> qual_type_of(ast::Expression const *expr) const;
   type::Type const *type_of(ast::Expression const *expr) const;
 
-  absl::Span<TransientFunctionState::ScopeLandingState const> scope_landings()
+  absl::Span<TransientState::ScopeLandingState const> scope_landings()
       const {
     return state_.scope_landings;
   }
-  void add_scope_landing(TransientFunctionState::ScopeLandingState state) {
+  void add_scope_landing(TransientState::ScopeLandingState state) {
     state_.scope_landings.push_back(std::move(state));
   }
   void pop_scope_landing() { state_.scope_landings.pop_back(); }
@@ -324,8 +232,7 @@ struct Compiler
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
 
-  TransientFunctionState::YieldedArguments EmitBlockNode(
-      ast::BlockNode const *node);
+  TransientState::YieldedArguments EmitBlockNode(ast::BlockNode const *node);
 
   // The reason to separate out type/body verification is if the body might
   // transitively have identifiers referring to a declaration that is assigned
@@ -572,7 +479,11 @@ struct Compiler
                core::FnArgs<type::Typed<ir::Value>> const &args);
 
   PersistentResources resources_;
-  TransientFunctionState state_;
+  TransientState state_;
+
+  // TODO: Should be persistent, but also needs on some local context
+  // (DependentComputedData).
+  CyclicDependencyTracker cylcic_dependency_tracker_;
 };
 
 inline WorkItem::Result WorkItem::Process() const {

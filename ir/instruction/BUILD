@@ -1,6 +1,17 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
+    name = "arithmetic",
+    hdrs = ["arithmetic.h"],
+    deps = [
+        ":inliner",
+        ":op_codes",
+        ":util",
+        "//base:extend",
+    ],
+)
+
+cc_library(
     name = "base",
     hdrs = ["base.h"],
     deps = [
@@ -9,24 +20,12 @@ cc_library(
     ]
 )
 
-cc_library(
-    name = "debug",
-    hdrs = ["debug.h"],
+cc_test(
+    name = "base_test",
+    srcs = ["base_test.cc"],
     deps = [
-        "//base:extend",
-        "//base:stringify",
-        "@com_google_absl//absl/strings:str_format",
-    ],
-)
-
-cc_library(
-    name = "arithmetic",
-    hdrs = ["arithmetic.h"],
-    deps = [
-        ":inliner",
-        ":op_codes",
-        ":util",
-        "//base:extend",
+        ":base",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -52,6 +51,16 @@ cc_library(
 )
 
 cc_library(
+    name = "debug",
+    hdrs = ["debug.h"],
+    deps = [
+        "//base:extend",
+        "//base:stringify",
+        "@com_google_absl//absl/strings:str_format",
+    ],
+)
+
+cc_library(
     name = "flags",
     hdrs = ["flags.h"],
     deps = [
@@ -60,54 +69,6 @@ cc_library(
         ":util",
         "//base:extend",
     ],
-)
-
-cc_library(
-    name = "type",
-    hdrs = ["type.h"],
-    deps = [
-        ":inliner",
-        ":op_codes",
-        ":util",
-        "//base:extend",
-        "//ir:struct_field",
-        "//type",
-        "//type:array",
-        "//type:enum",
-        "//type:flags",
-        "//type:generic_function",
-        "//type:pointer",
-        "//type:struct",
-        "//type:tuple",
-        "//type:variant",
-    ],
-)
-
-cc_test(
-    name = "base_test",
-    srcs = ["base_test.cc"],
-    deps = [
-        ":base",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_library(
-    name = "jump",
-    hdrs = ["jump.h"],
-    deps = [
-        "//base:meta",
-        "//base:stringify",
-        "//core:fn_args",
-        "//ir/value",
-        "//ir/value:reg",
-        "//type:typed_value",
-    ],
-)
-
-cc_library(
-    name = "op_codes",
-    hdrs = ["op_codes.h"],
 )
 
 cc_library(
@@ -143,6 +104,87 @@ cc_test(
     ],
 )
 
+cc_library(
+    name = "instruction",
+    hdrs = ["instructions.h"],
+    deps = [
+        ":arithmetic",
+        ":base",
+        ":compare",
+        ":byte_view",
+        ":debug",
+        ":flags",
+        ":inliner",
+        ":op_codes",
+        ":phi",
+        ":util",
+        ":type",
+        "//ast/scope",
+        "//base:extend",
+        "//ir:block_def",
+        "//ir:out_params",
+        "//ir:scope_def",
+        "//ir/value:fn",
+        "//ir/value:generic_fn",
+        "//ir/value:reg_or",
+        "//ir/value:string",
+        "//module",
+        "//type:util",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "jump",
+    hdrs = ["jump.h"],
+    deps = [
+        "//base:meta",
+        "//base:stringify",
+        "//core:fn_args",
+        "//ir/value",
+        "//ir/value:reg",
+        "//type:typed_value",
+    ],
+)
+
+cc_library(
+    name = "op_codes",
+    hdrs = ["op_codes.h"],
+)
+
+cc_library(
+    name = "phi",
+    hdrs = ["phi.h"],
+    deps = [
+        ":op_codes",
+        "//base:extend",
+        "//ir/blocks:basic",
+        "//ir/value:reg_or",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "type",
+    hdrs = ["type.h"],
+    deps = [
+        ":inliner",
+        ":op_codes",
+        ":util",
+        "//base:extend",
+        "//ir:struct_field",
+        "//type",
+        "//type:array",
+        "//type:enum",
+        "//type:flags",
+        "//type:generic_function",
+        "//type:pointer",
+        "//type:struct",
+        "//type:tuple",
+        "//type:variant",
+    ],
+)
+
 # TODO: Remove this target.
 cc_library(
     name = "util",
@@ -157,35 +199,6 @@ cc_library(
         "//ir/value:string",
         "//module",
         "//type",
-        "@com_google_absl//absl/strings",
-    ],
-)
-
-cc_library(
-    name = "instruction",
-    hdrs = ["instructions.h"],
-    deps = [
-        ":arithmetic",
-        ":base",
-        ":compare",
-        ":byte_view",
-        ":debug",
-        ":flags",
-        ":inliner",
-        ":op_codes",
-        ":type",
-        ":util",
-        "//ast/scope",
-        "//base:extend",
-        "//ir:block_def",
-        "//ir:out_params",
-        "//ir:scope_def",
-        "//ir/value:fn",
-        "//ir/value:generic_fn",
-        "//ir/value:reg_or",
-        "//ir/value:string",
-        "//module",
-        "//type:util",
         "@com_google_absl//absl/strings",
     ],
 )
