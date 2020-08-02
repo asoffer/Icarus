@@ -39,6 +39,7 @@ cc_library(
     deps = [
         ":local_block_interpretation",
         ":struct_field",
+        "//ast:overload_set",
         "//base:debug",
         "//base:scope",
         "//base:tag",

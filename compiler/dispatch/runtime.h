@@ -3,6 +3,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "base/meta.h"
+#include "compiler/data.h"
 #include "core/fn_args.h"
 #include "core/params.h"
 #include "ir/blocks/basic.h"
@@ -21,6 +22,15 @@ namespace compiler {
 // (usually due to a cast such as `int64` casting to `int64 | bool`).
 ir::RegOr<bool> EmitRuntimeDispatchOneComparison(
     ir::Builder &bldr, core::Params<type::QualType> const &params,
+    core::FnArgs<type::Typed<ir::Value>> const &args);
+
+// Emits code which jumps to the appropriate argument-prep-and-function-call
+// after testing variants for the right type.
+void EmitRuntimeDispatch(
+    DependentComputedData const &data, ir::Builder &bldr,
+    ast::OverloadSet const &os,
+    absl::flat_hash_map<ast::Expression const *, ir::BasicBlock *> const
+        &callee_to_block,
     core::FnArgs<type::Typed<ir::Value>> const &args);
 
 // Emits code which jumps to the appropriate argument-prep-and-function-call

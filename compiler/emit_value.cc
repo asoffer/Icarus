@@ -618,6 +618,7 @@ void Compiler::EmitMoveInit(
   // TODO node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
 }
 
+
 void Compiler::EmitCopyInit(ast::Call const *node,
                         absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {

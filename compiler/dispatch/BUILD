@@ -178,6 +178,7 @@ cc_library(
     srcs = ["runtime.cc"],
     deps = [
         "//base:meta",
+        "//compiler:data",
         "//core:fn_args",
         "//core:params",
         "//ir:builder",

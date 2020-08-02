@@ -272,7 +272,7 @@ void ScopeDispatchTable::EmitSplittingDispatch(
     core::FnArgs<type::Typed<ir::Value>> const &args) const {
   auto &bldr           = compiler->builder();
   auto callee_to_block = bldr.AddBlocks(init_map_);
-  EmitRuntimeDispatch(bldr, init_map_, callee_to_block, args);
+  EmitRuntimeDispatch(compiler->builder(), init_map_, callee_to_block, args);
 
   for (auto const &[jump, scope_def] : init_map_) {
     auto const &block_interp = block_interps.find(scope_def)->second;
@@ -345,7 +345,7 @@ void internal::OneTable::EmitCall(
     }
 
     auto callee_to_block = bldr.AddBlocks(table.table_);
-    EmitRuntimeDispatch(bldr, table.table_, callee_to_block,
+    EmitRuntimeDispatch(compiler->builder(), table.table_, callee_to_block,
                         yield_typed_values);
 
     for (auto const &[jump, expr_data] : table.table_) {

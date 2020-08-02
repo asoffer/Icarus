@@ -1,6 +1,14 @@
 #ifndef ICARUS_DIAGNOSTIC_CONSUMER_TRACKING_H
 #define ICARUS_DIAGNOSTIC_CONSUMER_TRACKING_H
 
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
+
+#include "absl/types/span.h"
+#include "diagnostic/consumer/consumer.h"
+
 namespace diagnostic {
 
 // A DiagnosticConsumer which tracks the category and name of all diagnostics it

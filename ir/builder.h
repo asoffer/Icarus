@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "absl/types/span.h"
+#include "ast/overload_set.h"
 #include "base/debug.h"
 #include "base/scope.h"
 #include "base/tag.h"
@@ -42,6 +43,15 @@ struct Builder {
       absl::flat_hash_map<KeyType, ValueType> const& table) {
     absl::flat_hash_map<KeyType, ir::BasicBlock*> result;
     for (auto const& [key, val] : table) { result.emplace(key, AddBlock()); }
+    return result;
+  }
+
+  absl::flat_hash_map<ast::Expression const*, ir::BasicBlock*> AddBlocks(
+      ast::OverloadSet const& os) {
+    absl::flat_hash_map<ast::Expression const*, ir::BasicBlock*> result;
+    for (auto const* overload : os.members()) {
+      result.emplace(overload, AddBlock());
+    }
     return result;
   }
 
