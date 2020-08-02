@@ -33,12 +33,6 @@ struct FnCallDispatchTable {
                          absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to);
 
  private:
-  static type::QualType ComputeResultQualType(
-      absl::flat_hash_map<ast::Expression const *, internal::ExprData> const
-          &table);
-  static type::QualType ComputeResultQualType(
-      absl::Span<type::Function const *const> &fn_types);
-
   absl::flat_hash_map<ast::Expression const *, internal::ExprData> table_;
   type::QualType result_type_;
 };
