@@ -5,6 +5,9 @@ fast to compile, fast to run, and easy to migrate.
 
 ## Building Icarus from Source
 
+![CI badge](https://github.com/asoffer/Icarus/workflows/CI/badge.svg)
+
+
 Compiling from source requires one of the following compilers:
 
 * g++ version >= 8.3.0
