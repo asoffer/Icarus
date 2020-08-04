@@ -13,7 +13,6 @@
 #include "ast/ast_fwd.h"
 #include "base/guarded.h"
 #include "base/lazy_convert.h"
-#include "compiler/constant/binding.h"
 #include "ir/block_def.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
