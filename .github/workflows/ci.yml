@@ -15,4 +15,4 @@ jobs:
       - name: Build
         run: "bazel build //compiler:interpret"
       - name: Test
-        run: "bazel test //..."
+        run: "bazel test -- ir/... frontend/... ast/... base/... compiler/verify/... compiler/emit/..."
