@@ -5,8 +5,7 @@ fast to compile, fast to run, and easy to migrate.
 
 ## Building Icarus from Source
 
-![CI badge](https://github.com/asoffer/Icarus/workflows/CI/badge.svg)
-
+[![CI badge](https://github.com/asoffer/Icarus/workflows/CI/badge.svg)](https://github.com/asoffer/Icarus/actions?query=workflow%3ACI)
 
 Compiling from source requires one of the following compilers:
 
