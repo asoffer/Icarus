@@ -104,17 +104,15 @@ inline constexpr cmd_index_t kMakeScopeInstructionNumber     = kAdHocStart + 14;
 inline constexpr cmd_index_t kStructIndexInstructionNumber   = kAdHocStart + 15;
 inline constexpr cmd_index_t kTupleIndexInstructionNumber    = kAdHocStart + 16;
 inline constexpr cmd_index_t kPtrIncrInstructionNumber       = kAdHocStart + 17;
-inline constexpr cmd_index_t kVariantAccessInstructionNumber = kAdHocStart + 18;
-inline constexpr cmd_index_t kTupleInstructionNumber         = kAdHocStart + 19;
-inline constexpr cmd_index_t kVariantInstructionNumber       = kAdHocStart + 20;
-inline constexpr cmd_index_t kEnumerationInstructionNumber   = kAdHocStart + 21;
-inline constexpr cmd_index_t kTypeInfoInstructionNumber      = kAdHocStart + 22;
+inline constexpr cmd_index_t kTupleInstructionNumber         = kAdHocStart + 18;
+inline constexpr cmd_index_t kEnumerationInstructionNumber   = kAdHocStart + 19;
+inline constexpr cmd_index_t kTypeInfoInstructionNumber      = kAdHocStart + 20;
 inline constexpr cmd_index_t kTypeManipulationInstructionNumber =
-    kAdHocStart + 23;
+    kAdHocStart + 21;
 inline constexpr cmd_index_t kByteViewLengthInstructionNumber =
-    kAdHocStart + 24;
-inline constexpr cmd_index_t kByteViewDataInstructionNumber = kAdHocStart + 25;
-inline constexpr cmd_index_t kDebugIrInstructionNumber      = kAdHocStart + 26;
+    kAdHocStart + 22;
+inline constexpr cmd_index_t kByteViewDataInstructionNumber = kAdHocStart + 23;
+inline constexpr cmd_index_t kDebugIrInstructionNumber      = kAdHocStart + 24;
 
 }  // namespace internal
 }  // namespace ir

@@ -54,7 +54,6 @@ cc_library(
         ":jump_table",
         ":parameters_and_arguments",
         ":scope_table_header",
-        ":runtime",
         "//base:debug",
         "//base:defer",
         "//compiler:compiler_header",
@@ -62,7 +61,6 @@ cc_library(
         "//type",
         "//type:cast",
         "//type:qual_type",
-        "//type:variant",
     ],
 )
 
@@ -92,7 +90,6 @@ cc_library(
         ":fn_call_table_header",
         ":match",
         ":parameters_and_arguments",
-        ":runtime",
         "//base:debug",
         "//compiler:compiler_header",
         "//ir:builder",
@@ -100,7 +97,6 @@ cc_library(
         "//type:cast",
         "//type:qual_type",
         "//type:typed_value",
-        "//type:variant",
     ],
 )
 
@@ -166,25 +162,7 @@ cc_test(
         ":parameters_and_arguments",
         "//compiler:compiler",
         "//test:module",
-        "//type:variant",
         "//type:function",
         "@com_google_googletest//:gtest_main",
     ],
 )
-
-cc_library(
-    name = "runtime",
-    hdrs = ["runtime.h"],
-    srcs = ["runtime.cc"],
-    deps = [
-        "//base:meta",
-        "//compiler:data",
-        "//core:fn_args",
-        "//core:params",
-        "//ir:builder",
-        "//ir/blocks:basic",
-        "//ir/value:reg_or",
-        "//type:typed_value",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-)  

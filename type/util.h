@@ -19,7 +19,6 @@
 #include "type/tuple.h"
 #include "type/type.h"
 #include "type/typed_value.h"
-#include "type/variant.h"
 
 namespace module {
 struct BasicModule;

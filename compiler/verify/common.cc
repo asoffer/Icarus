@@ -11,7 +11,6 @@
 #include "type/callable.h"
 #include "type/overload_set.h"
 #include "type/typed_value.h"
-#include "type/variant.h"
 
 namespace compiler {
 namespace {
@@ -158,10 +157,11 @@ std::optional<Compiler::CallError::ErrorReason> MatchArgumentsToParameters(
 }
 
 void ExtractParams(
+    ast::Expression const *callee,
     type::Callable const *callable,
     core::FnArgs<type::Typed<ir::Value>> const &args,
-    std::vector<std::pair<type::Callable const *, core::Params<type::QualType>>>
-        &overload_params,
+    std::vector<std::tuple<ast::Expression const *, type::Callable const *,
+                           core::Params<type::QualType>>> &overload_params,
     Compiler::CallError &errors) {
   Compiler::CallError error;
   if (auto const *f = callable->if_as<type::Function>()) {
@@ -169,11 +169,12 @@ void ExtractParams(
       errors.reasons.emplace(f, *std::move(error_reason));
       return;
     } else {
-      overload_params.emplace_back(f, f->params());
+      overload_params.emplace_back(callee, f, f->params());
     }
   } else if (auto const *os = callable->if_as<type::OverloadSet>()) {
     for (auto const *overload : os->members()) {
-      ExtractParams(overload, args, overload_params, errors);
+      // TODO: Callee provenance is wrong here.
+      ExtractParams(callee, overload, args, overload_params, errors);
     }
     if (overload_params.empty()) { return; }
   } else if (auto const *gf = callable->if_as<type::GenericFunction>()) {
@@ -184,7 +185,7 @@ void ExtractParams(
       // TODO: But this could fail and when it fails we want to capture failure
       // reasons.
       auto const *f = gf->concrete(args);
-      overload_params.emplace_back(f, f->params());
+      overload_params.emplace_back(callee, f, f->params());
     }
   } else {
     UNREACHABLE();
@@ -209,15 +210,17 @@ Compiler::VerifyCallee(ast::Expression const *callee,
 }
 
 base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
+    ast::Call const *call_expr,
     absl::flat_hash_map<ast::Expression const *, type::Callable const *> const
         &overload_map,
     core::FnArgs<type::Typed<ir::Value>> const &args) {
   CallError errors;
-  std::vector<std::pair<type::Callable const *, core::Params<type::QualType>>>
+  std::vector<std::tuple<ast::Expression const *, type::Callable const *,
+                         core::Params<type::QualType>>>
       overload_params;
 
   for (auto const &[callee, callable_type] : overload_map) {
-    ExtractParams(callable_type, args, overload_params, errors);
+    ExtractParams(callee, callable_type, args, overload_params, errors);
   }
 
   // TODO: Expansion is relevant too.
@@ -229,8 +232,10 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
                ? type::QualType::NonConstant(typed_value.type())
                : type::QualType::Constant(typed_value.type());
   });
+
+  ast::OverloadSet os;
   for (auto const &expansion : ExpandedFnArgs(args_qt)) {
-    for (auto const &[callable_type, params] : overload_params) {
+    for (auto const &[callee, callable_type, params] : overload_params) {
       // TODO: Assuming this is unambiguously callable is a bit of a stretch.
 
       // TODO: `core::IsCallable` already does this but doesn't give us access
@@ -270,6 +275,8 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
         }
       }
 
+      os.insert(callee);
+      
       return_types.push_back(callable_type->return_types(args));
       goto next_expansion;
     next_overload:;
@@ -279,8 +286,10 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
   next_expansion:;
   }
 
-  return type::QualType(type::MultiVar(return_types),
-                        type::Quals::Unqualified());
+  data().SetViableOverloads(call_expr->callee(), std::move(os));
+
+  ASSERT(return_types.size() == 1u) << "TODO: Support dynamic dispatch.";
+  return type::QualType(return_types.front(), type::Quals::Unqualified());
 }
 
 }  // namespace compiler

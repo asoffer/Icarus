@@ -727,19 +727,6 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     auto data_addr = ctx->resolve<ir::String>(reg).addr();
     ir::Reg result = iter->read<ir::Reg>();
     ctx->current_frame()->regs_.set(result, data_addr);
-  } else if constexpr (std::is_same_v<Inst, ir::VariantAccessInstruction>) {
-    bool is_reg  = iter->read<bool>();
-
-    ir::Addr addr = ReadAndResolve<ir::Addr>(is_reg, iter, ctx);
-    DEBUG_LOG("variant")(addr);
-
-    bool get_val = iter->read<bool>();
-    if (get_val) { addr += type::Type_->bytes(kArchitecture); }
-
-    ir::Reg reg = iter->read<ir::Reg>();
-    DEBUG_LOG("variant")(reg);
-    ctx->current_frame()->regs_.set(reg, addr);
-
   } else if constexpr (std::is_same_v<Inst, ir::DebugIrInstruction>) {
     std::cerr << *ctx->current_frame()->fn_.get();
   } else {
@@ -983,9 +970,7 @@ constexpr auto kInstructions = std::array{
     ExecuteAdHocInstruction<ir::StructIndexInstruction>,
     ExecuteAdHocInstruction<ir::TupleIndexInstruction>,
     ExecuteAdHocInstruction<ir::PtrIncrInstruction>,
-    ExecuteAdHocInstruction<ir::VariantAccessInstruction>,
     ExecuteInstruction<ir::TupleInstruction>,
-    ExecuteInstruction<ir::VariantInstruction>,
     ExecuteAdHocInstruction<ir::EnumerationInstruction>,
     ExecuteAdHocInstruction<ir::TypeInfoInstruction>,
     ExecuteAdHocInstruction<ir::TypeManipulationInstruction>,

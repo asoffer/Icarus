@@ -408,17 +408,6 @@ INSTANTIATE_TEST_SUITE_P(
             .expr               = "f()",
             .expected_qual_type = type::QualType::NonConstant(type::Bool),
         },
-        TestCase{
-            .context            = "f ::= (x: int64 | bool) => true",
-            .expr               = "f(true)",
-            .expected_qual_type = type::QualType::NonConstant(type::Bool),
-        },
-        TestCase{
-            .context              = "f ::= (x: int64 | bool) => true",
-            .expr                 = "f(0.0)",
-            .expected_diagnostics = UnorderedElementsAre(
-                Pair("type-error", "uncallable-with-arguments")),
-        },
         // Overload sets
         TestCase{
             .context            = R"(
@@ -435,16 +424,6 @@ INSTANTIATE_TEST_SUITE_P(
             )",
             .expr               = "f()",
             .expected_qual_type = type::QualType::NonConstant(type::Bool),
-        },
-        TestCase{
-            .context            = R"(
-            x: bool | int64 = 0
-            f ::= (b: bool) => true
-            f ::= (n: int64) => n
-            )",
-            .expr               = "f(x)",
-            .expected_qual_type = type::QualType::NonConstant(
-                type::Var({type::Bool, type::Int64})),
         },
         TestCase{
             .context            = R"(

@@ -13,58 +13,27 @@ namespace {
 template <typename IndexT>
 void AddType(IndexT &&index, type::Type const *t,
              std::vector<core::FnArgs<type::Type const *>> *args) {
-  if (auto *vt = t->if_as<type::Variant>()) {
-    std::vector<core::FnArgs<type::Type const *>> new_args;
-    for (auto *v : vt->variants_) {
-      for (auto fnargs : *args) {
-        if constexpr (std::is_same_v<std::decay_t<IndexT>, size_t>) {
-          fnargs.pos_emplace(v);
-        } else {
-          fnargs.named_emplace(index, v);
-        }
-        new_args.push_back(std::move(fnargs));
-      }
-    }
-    *args = std::move(new_args);
-  } else {
-    std::for_each(
-        args->begin(), args->end(),
-        [&](core::FnArgs<type::Type const *> &fnargs) {
-          if constexpr (std::is_same_v<std::decay_t<IndexT>, size_t>) {
-            fnargs.pos_emplace(t);
-          } else {
-            fnargs.named_emplace(index, t);
-          }
-        });
-  }
+  std::for_each(args->begin(), args->end(),
+                [&](core::FnArgs<type::Type const *> &fnargs) {
+                  if constexpr (std::is_same_v<std::decay_t<IndexT>, size_t>) {
+                    fnargs.pos_emplace(t);
+                  } else {
+                    fnargs.named_emplace(index, t);
+                  }
+                });
 }
 
 ir::Value PrepareOneArg(Compiler *c, type::Typed<ir::Value> const &arg,
                         type::Type const *param_type) {
-  auto &bldr      = c->builder();
-  auto *arg_var   = arg.type()->if_as<type::Variant>();
-  auto *param_var = param_type->if_as<type::Variant>();
-  if (arg_var and param_var) {
-    NOT_YET();
-  } else if (arg_var) {
-    return ir::Value(bldr.PtrFix(
-        bldr.VariantValue(nullptr, arg->get<ir::Addr>()), param_type));
-  } else if (param_var) {
-    auto tmp = bldr.TmpAlloca(param_var);
-    static_cast<void>(tmp);
-    // TODO type::ApplyTypes<>
-    // builder().Store(arg_var , tmp);
-    NOT_YET(tmp);
+  auto &bldr = c->builder();
+  // TODO other implicit conversions?
+  auto *t = arg.type();
+  if (t->is_big()) {
+    auto r = bldr.TmpAlloca(t);
+    c->EmitMoveInit(arg, type::Typed(r, type::Ptr(t)));
+    return ir::Value(r);
   } else {
-    // TODO other implicit conversions?
-    auto *t = arg.type();
-    if (t->is_big()) {
-      auto r = bldr.TmpAlloca(t);
-      c->EmitMoveInit(arg, type::Typed(r, type::Ptr(t)));
-      return ir::Value(r);
-    } else {
-      return arg.get();
-    }
+    return arg.get();
   }
 }
 

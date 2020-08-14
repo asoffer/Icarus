@@ -314,7 +314,7 @@ type::QualType Compiler::VerifyType(ast::Call const *node) {
   if (auto const *c = callee_qt.type()->if_as<type::Callable>()) {
     DEBUG_LOG("Call.VerifyType")
     ("Callee's (", node->callee()->DebugString(), ") qual-type: ", callee_qt);
-    auto result = VerifyCall(overload_map, arg_vals);
+    auto result = VerifyCall(node, overload_map, arg_vals);
     if (not result) {
       diag().Consume(UncallableWithArguments{
           .error = std::move(result).error(),

@@ -253,20 +253,6 @@ type::Typed<Reg> Builder::Field(RegOr<Addr> r, type::Struct const *t,
   return type::Typed<Reg>(result, type::Ptr(t->fields()[n].type));
 }
 
-Reg Builder::VariantType(RegOr<Addr> const &r) {
-  VariantAccessInstruction inst{.var = r, .get_value = false};
-  auto result = inst.result = CurrentGroup()->Reserve();
-  CurrentBlock()->Append(std::move(inst));
-  return result;
-}
-
-Reg Builder::VariantValue(type::Variant const *v, RegOr<Addr> const &r) {
-  VariantAccessInstruction inst{.var = r, .get_value = true};
-  auto result = inst.result = CurrentGroup()->Reserve();
-  CurrentBlock()->Append(std::move(inst));
-  return result;
-}
-
 Reg Builder::MakeBlock(BlockDef *block_def, std::vector<RegOr<Fn>> befores,
                        std::vector<RegOr<Jump *>> afters) {
   MakeBlockInstruction inst(block_def, std::move(befores), std::move(afters));

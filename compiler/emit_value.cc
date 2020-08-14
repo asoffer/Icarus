@@ -241,10 +241,6 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
         return ir::Value(
             builder().OrFlags(lhs_ir.get<ir::RegOr<ir::FlagsVal>>(),
                               rhs_ir.get<ir::RegOr<ir::FlagsVal>>()));
-      } else if (lhs_type == type::Type_) {
-        return ir::Value(
-            builder().Var({lhs_ir.get<ir::RegOr<type::Type const *>>(),
-                           rhs_ir.get<ir::RegOr<type::Type const *>>()}));
       } else {
         // `|` is not overloadable, and blocks piped together must be done
         // syntactically in a `goto` node and are handled by the parser.
@@ -612,9 +608,9 @@ void Compiler::EmitMoveInit(
     return;
   }
 
-  // TODO this shouldn't be able to fail.
-  ASSIGN_OR(return, auto os, MakeOverloadSet(this, node->callee(), args));
-  FnCallDispatchTable::EmitMoveInit(this, os, args, to);
+  auto const &os = data().ViableOverloads(node->callee());
+  ASSERT(os.members().size() == 1u) << "TODO: Support dynamic dispatch.";
+  FnCallDispatchTable::EmitMoveInit(this, os.members().front(), args, to);
   // TODO node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
 }
 
@@ -650,9 +646,9 @@ void Compiler::EmitCopyInit(ast::Call const *node,
     return;
   }
 
-  // TODO this shouldn't be able to fail.
-  ASSIGN_OR(return, auto os, MakeOverloadSet(this, node->callee(), args));
-  FnCallDispatchTable::EmitCopyInit(this, os, args, to);
+  auto const &os = data().ViableOverloads(node->callee());
+  ASSERT(os.members().size() == 1u) << "TODO: Support dynamic dispatch.";
+  FnCallDispatchTable::EmitCopyInit(this, os.members().front(), args, to);
   // TODO node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
 }
 
@@ -689,9 +685,9 @@ void Compiler::EmitAssign(
     return;
   }
 
-  // TODO this shouldn't be able to fail.
-  ASSIGN_OR(return, auto os, MakeOverloadSet(this, node->callee(), args));
-  return FnCallDispatchTable::EmitAssign(this, os, args, to);
+  auto const &os = data().ViableOverloads(node->callee());
+  ASSERT(os.members().size() == 1u) << "TODO: Support dynamic dispatch.";
+  return FnCallDispatchTable::EmitAssign(this, os.members().front(), args, to);
   // TODO node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
 }
 
@@ -719,20 +715,19 @@ ir::Value Compiler::EmitValue(ast::Call const *node) {
     return ir::Value(s);
   }
 
-  // TODO this shouldn't be able to fail.
-  ASSIGN_OR(return ir::Value(),  //
-                   auto os, MakeOverloadSet(this, node->callee(), args));
   auto qt = *ASSERT_NOT_NULL(data().qual_type(node));
 
+  auto const &os = data().ViableOverloads(node->callee());
+  ASSERT(os.members().size() == 1u) << "TODO: Support dynamic dispatch.";
   switch (qt.expansion_size()) {
     case 0:
-      FnCallDispatchTable::EmitMoveInit(this, os, args, {});
+      FnCallDispatchTable::EmitMoveInit(this, os.members().front(), args, {});
       return ir::Value();
     case 1: {
       // TODO: It'd be nice to not stack-allocate register-sized values.
       type::Typed<ir::RegOr<ir::Addr>> out(builder().TmpAlloca(qt.type()),
                                            qt.type());
-      FnCallDispatchTable::EmitMoveInit(this, os, args,
+      FnCallDispatchTable::EmitMoveInit(this, os.members().front(), args,
                                         absl::MakeConstSpan(&out, 1));
       return ir::Value(builder().PtrFix(out->reg(), qt.type()));
     }

@@ -4,7 +4,6 @@
 
 #include "base/debug.h"
 #include "base/guarded.h"
-#include "type/variant.h"
 
 namespace type {
 namespace {
@@ -27,12 +26,8 @@ core::Alignment OverloadSet::alignment(core::Arch const &arch) const {
 
 std::vector<type::Type const *> OverloadSet::return_types(
     core::FnArgs<type::Typed<ir::Value>> const &args) const {
-  std::vector<std::vector<type::Type const *>> results;
-  results.reserve(callables_.size());
-  for (auto const *callable : callables_) {
-    results.push_back(callable->return_types(args));
-  }
-  return type::MultiVar(results);
+  ASSERT(callables_.size() == 1u) << "TODO: Support dynamic disptach";
+  return (*callables_.begin())->return_types(args);
 }
 
 Callable const *MakeOverloadSet(

@@ -78,33 +78,7 @@ TEST(Declaration, DefaultInitNonConstantType) {
   }
 }
 
-TEST(Declaration, DefaultInitNonDefaultable) {
-  {
-    test::TestModule mod;
-    mod.AppendCode(R"(
-    n: int64 | bool
-    )");
-    auto const *qt = mod.data().qual_type(mod.Append<ast::Identifier>("n"));
-    ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType(type::Var({type::Int64, type::Bool}),
-                                  type::Quals::Ref()));
-    EXPECT_THAT(mod.consumer.diagnostics(),
-                UnorderedElementsAre(Pair("type-error", "no-default-value")));
-  }
-
-  {
-    test::TestModule mod;
-    mod.AppendCode(R"(
-    n :: int64 | bool
-    )");
-    auto const *qt = mod.data().qual_type(mod.Append<ast::Identifier>("n"));
-    ASSERT_NE(qt, nullptr);
-    EXPECT_EQ(*qt, type::QualType(type::Var({type::Int64, type::Bool}),
-                                  type::Quals::Const()));
-    EXPECT_THAT(mod.consumer.diagnostics(),
-                UnorderedElementsAre(Pair("type-error", "no-default-value")));
-  }
-}
+// TODO Default initialization of non-default-initializable type (both const and non-const).
 
 TEST(Declaration, InferredSuccess) {
   {

@@ -268,7 +268,6 @@ struct Compiler
   }
 
   void Visit(type::Struct const *t, ir::Reg reg, EmitDestroyTag) override;
-  void Visit(type::Variant const *t, ir::Reg reg, EmitDestroyTag) override;
   void Visit(type::Tuple const *t, ir::Reg reg, EmitDestroyTag) override;
   void Visit(type::Array const *t, ir::Reg reg, EmitDestroyTag) override;
   void Visit(type::Primitive const *t, ir::Reg reg, EmitDestroyTag) override;
@@ -290,8 +289,6 @@ struct Compiler
              type::Typed<ir::Value> const &from, EmitCopyAssignTag) override;
   void Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
              type::Typed<ir::Value> const &from, EmitCopyAssignTag) override;
-  void Visit(type::Variant const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Value> const &from, EmitCopyAssignTag) override;
 
   void Visit(type::Array const *t, ir::RegOr<ir::Addr> to,
              type::Typed<ir::Value> const &from, EmitMoveAssignTag) override;
@@ -308,8 +305,6 @@ struct Compiler
   void Visit(type::Struct const *t, ir::RegOr<ir::Addr> to,
              type::Typed<ir::Value> const &from, EmitMoveAssignTag) override;
   void Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Value> const &from, EmitMoveAssignTag) override;
-  void Visit(type::Variant const *t, ir::RegOr<ir::Addr> to,
              type::Typed<ir::Value> const &from, EmitMoveAssignTag) override;
 
   void Visit(type::Array const *t, ir::Reg reg, EmitDefaultInitTag) override;
@@ -469,6 +464,7 @@ struct Compiler
                                      type::Typed<ir::Value> const &operand);
 
   base::expected<type::QualType, CallError> VerifyCall(
+      ast::Call const *call_expr,
       absl::flat_hash_map<ast::Expression const *, type::Callable const *> const
           &overload_map,
       core::FnArgs<type::Typed<ir::Value>> const &args);

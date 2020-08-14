@@ -4,7 +4,6 @@
 #include "compiler/compiler.h"
 #include "compiler/dispatch/match.h"
 #include "compiler/dispatch/parameters_and_arguments.h"
-#include "compiler/dispatch/runtime.h"
 #include "core/params_ref.h"
 #include "diagnostic/errors.h"
 #include "ir/out_params.h"
@@ -103,20 +102,22 @@ EmitCallee(Compiler &compiler, ast::Expression const *fn, type::QualType qt,
     return std::make_tuple(ComputeConcreteFn(&compiler, fn, f_type, qt.quals()),
                            f_type, nullptr);
   } else {
-    UNREACHABLE();
+    UNREACHABLE(qt.type()->to_string());
   }
 }
 
 template <typename Tag>
-void EmitCallOneOverload(
-    Tag, Compiler *compiler, ast::Expression const *fn,
-    core::FnArgs<type::Typed<ir::Value>> args,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  auto callee_qual_type = compiler->qual_type_of(fn);
+void EmitCall(Tag, Compiler *compiler, ast::Expression const *callee,
+              core::FnArgs<type::Typed<ir::Value>> args,
+              absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  auto const &os = compiler->data().ViableOverloads(callee);
+  ASSERT(os.members().size() == 1u) << "TODO: Support dynamic dispatch.";
+
+  auto callee_qual_type = compiler->qual_type_of(os.members().front());
   ASSERT(callee_qual_type.has_value() == true);
 
-  auto [callee, fn_type, dependent_data] =
-      EmitCallee(*compiler, fn, *callee_qual_type, args);
+  auto [callee_fn, overload_type, dependent_data] =
+      EmitCallee(*compiler, callee, *callee_qual_type, args);
 
   Compiler c({
       .builder = ir::GetBuilder(),
@@ -124,11 +125,11 @@ void EmitCallOneOverload(
       .diagnostic_consumer = compiler->diag(),
   });
 
-  if (not callee.is_reg()) {
-    switch (callee.value().kind()) {
+  if (not callee_fn.is_reg()) {
+    switch (callee_fn.value().kind()) {
       case ir::Fn::Kind::Native: {
         core::FillMissingArgs(
-            core::ParamsRef(callee.value().native()->params()), &args,
+            core::ParamsRef(callee_fn.value().native()->params()), &args,
             [&c](auto const &p) {
               return type::Typed(
                   c.EmitValue(ASSERT_NOT_NULL(p.get()->init_val())), p.type());
@@ -138,12 +139,13 @@ void EmitCallOneOverload(
     }
   }
 
-  auto out_params = SetReturns(Tag{}, c.builder(), fn_type, to);
-  c.builder().Call(callee, fn_type,
-                   PrepareCallArguments(&c, nullptr, fn_type->params(), args),
-                   out_params);
+  auto out_params = SetReturns(Tag{}, c.builder(), overload_type, to);
+  c.builder().Call(
+      callee_fn, overload_type,
+      PrepareCallArguments(&c, nullptr, overload_type->params(), args),
+      out_params);
   int i = -1;
-  for (auto const *t : fn_type->output()) {
+  for (auto const *t : overload_type->output()) {
     ++i;
     if (t->is_big()) continue;
     c.Visit(t, *to[i], type::Typed{ir::Value(out_params[i]), t},
@@ -151,60 +153,27 @@ void EmitCallOneOverload(
   }
 }
 
-template <typename Tag>
-void EmitCall(Tag, Compiler *compiler, ast::OverloadSet const &os,
-              core::FnArgs<type::Typed<ir::Value>> const &args,
-              absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  DEBUG_LOG("FnCallDispatchTable")
-  ("Emitting a table with ", os.members().size(), " entries.");
-
-  if (os.members().size() == 1) {
-    // If there's just one entry in the table we can avoid doing all the work to
-    // generate runtime dispatch code. It will amount to only a few
-    // unconditional jumps between blocks which will be optimized out, but
-    // there's no sense in generating them in the first place..
-    auto const *overload = *os.members().begin();
-    EmitCallOneOverload(CopyInitTag{}, compiler, overload, args, to);
-  } else {
-    auto &bldr           = compiler->builder();
-    auto *land_block     = bldr.AddBlock();
-    auto callee_to_block = bldr.AddBlocks(os);
-
-    EmitRuntimeDispatch(compiler->data(), compiler->builder(), os,
-                        callee_to_block, args);
-
-    for (auto const *overload : os.members()) {
-      bldr.CurrentBlock() = callee_to_block[overload];
-      // Argument preparation is done inside EmitCallOneOverload
-      EmitCallOneOverload(CopyInitTag{}, compiler, overload, args, to);
-      // TODO phi-node to coalesce return values.
-      bldr.UncondJump(land_block);
-    }
-    bldr.CurrentBlock() = land_block;
-  }
-}
-
 }  // namespace
 
 void FnCallDispatchTable::EmitCopyInit(
-    Compiler *c, ast::OverloadSet const &os,
+    Compiler *c, ast::Expression const *callee,
     core::FnArgs<type::Typed<ir::Value>> const &args,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  return EmitCall(CopyInitTag{}, c, os, args, to);
+  return EmitCall(CopyInitTag{}, c, callee, args, to);
 }
 
 void FnCallDispatchTable::EmitMoveInit(
-    Compiler *c, ast::OverloadSet const &os,
+    Compiler *c, ast::Expression const *callee,
     core::FnArgs<type::Typed<ir::Value>> const &args,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  return EmitCall(MoveInitTag{}, c, os, args, to);
+  return EmitCall(MoveInitTag{}, c, callee, args, to);
 }
 
 void FnCallDispatchTable::EmitAssign(
-    Compiler *c, ast::OverloadSet const &os,
+    Compiler *c, ast::Expression const *callee,
     core::FnArgs<type::Typed<ir::Value>> const &args,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  return EmitCall(AssignTag{}, c, os, args, to);
+  return EmitCall(AssignTag{}, c, callee, args, to);
 }
 
 }  // namespace compiler

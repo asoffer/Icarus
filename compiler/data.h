@@ -242,6 +242,24 @@ struct DependentComputedData {
                    bool complete = false);
   ConstantValue const *Constant(ast::Declaration const *decl) const;
 
+  void SetViableOverloads(ast::Expression const *callee, ast::OverloadSet os) {
+    [[maybe_unused]] auto [iter, inserted] =
+        viable_overloads_.emplace(callee, std::move(os));
+    ASSERT(inserted == true);
+  }
+
+  ast::OverloadSet const &ViableOverloads(ast::Expression const *callee) const {
+    auto iter = viable_overloads_.find(callee);
+    if (iter == viable_overloads_.end()) {
+      if (parent_ == nullptr) {
+        UNREACHABLE("Failed to find any overloads for ", callee->DebugString());
+      }
+      return parent_->ViableOverloads(callee);
+    } else {
+      return iter->second;
+    }
+  }
+
  private:
   CompiledModule &mod_;
 
@@ -283,6 +301,11 @@ struct DependentComputedData {
                         std::unique_ptr<DataImpl>>
         map;
   };
+
+  // Overloads for any callable expression. This could be an `ast::Call` but
+  // could equally well be an overloaded operator.
+  absl::flat_hash_map<ast::Expression const *, ast::OverloadSet>
+      viable_overloads_;
 
   // The parent node containing the generic that is instantiated to produce this
   // `DependentComputedData`.

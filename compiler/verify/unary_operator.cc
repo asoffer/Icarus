@@ -57,22 +57,6 @@ struct NegatingUnsignedInteger {
   frontend::SourceRange range;
 };
 
-struct WhichNonVariant {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "which-non-variant";
-
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Attempting to call `which` an object of type `%s` "
-                         "which is not a variant.",
-                         type->to_string()),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
-  }
-
-  type::Type const *type;
-  frontend::SourceRange range;
-};
-
 struct NonConstantEvaluation {
   static constexpr std::string_view kCategory = "evaluation-error";
   static constexpr std::string_view kName     = "non-constant-evaluation";
@@ -170,16 +154,6 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
       if (not operand_qt.constant()) {
         diag().Consume(NonConstantEvaluation{
             .range = node->operand()->range(),
-        });
-        qt.MarkError();
-      }
-    } break;
-    case ast::UnaryOperator::Kind::Which: {
-      qt = type::QualType::NonConstant(type::Type_);
-      if (not operand_type->is<type::Variant>()) {
-        diag().Consume(WhichNonVariant{
-            .type  = operand_type,
-            .range = node->range(),
         });
         qt.MarkError();
       }

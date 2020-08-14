@@ -12,7 +12,6 @@
 #include "type/primitive.h"
 #include "type/tuple.h"
 #include "type/type.h"
-#include "type/variant.h"
 
 namespace backend {
 namespace {
@@ -241,7 +240,7 @@ TEST(ToLlvm, FunctionMultipleReturns) {
           false));
 }
 
-// TODO: tuples, variants, structs
+// TODO: tuples, structs
 
 }  // namespace
 }  // namespace backend

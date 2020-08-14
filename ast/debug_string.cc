@@ -13,7 +13,6 @@ char const *OpStr(UnaryOperator::Kind op) {
     case UnaryOperator::Kind::Move: return "move ";
     case UnaryOperator::Kind::Pointer: return "*";
     case UnaryOperator::Kind::BufferPointer: return "[*]";
-    case UnaryOperator::Kind::Which: return "which ";
     case UnaryOperator::Kind::Not: return "!";
     case UnaryOperator::Kind::Negate: return "-";
     case UnaryOperator::Kind::At: return "@";
@@ -50,7 +49,6 @@ char const *OpStr(frontend::Operator op) {
     case frontend::Operator::Goto: return "goto ";
     case frontend::Operator::Return: return "return ";
     case frontend::Operator::Yield: return "<< ";
-    case frontend::Operator::Which: return "which ";
     case frontend::Operator::Not: return "!";
     case frontend::Operator::At: return "@";
     case frontend::Operator::Eval: return "$";

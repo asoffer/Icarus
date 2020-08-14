@@ -14,7 +14,6 @@
 #include "type/pointer.h"
 #include "type/qual_type.h"
 #include "type/type.h"
-#include "type/variant.h"
 
 namespace ir {
 
@@ -31,42 +30,6 @@ struct TupleInstruction
     using base::stringify;
     return absl::StrCat(
         "type ", stringify(this->result), " = tup ",
-        absl::StrJoin(this->values, " ",
-                      [](std::string* out, RegOr<type::Type const*> const& r) {
-                        out->append(stringify(r));
-                      }));
-  }
-
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(kIndex);
-    internal::WriteBits<uint16_t, RegOr<type::Type const*>>(
-        writer, values,
-        [](RegOr<type::Type const*> const& r) { return r.is_reg(); });
-
-    for (auto const& x : values) {
-      x.apply([&](auto v) { writer->Write(v); });
-    }
-
-    writer->Write(result);
-  }
-
-  std::vector<RegOr<type::Type const*>> values;
-  Reg result;
-};
-
-struct VariantInstruction
-    : base::Extend<TupleInstruction>::With<InlineExtension> {
-  using variadic                      = type::Type const*;
-  static constexpr cmd_index_t kIndex = internal::kVariantInstructionNumber;
-
-  static type::Type const* Apply(std::vector<type::Type const*> entries) {
-    return type::Var(std::move(entries));
-  }
-
-  std::string to_string() const {
-    using base::stringify;
-    return absl::StrCat(
-        "type ", stringify(this->result), " = var ",
         absl::StrJoin(this->values, " ",
                       [](std::string* out, RegOr<type::Type const*> const& r) {
                         out->append(stringify(r));

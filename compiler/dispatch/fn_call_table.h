@@ -21,14 +21,14 @@ struct Compiler;  // TODO move into it's own header.
 // separate out these headers.
 struct FnCallDispatchTable {
   static void EmitMoveInit(
-      Compiler *c, ast::OverloadSet const &os,
+      Compiler *c, ast::Expression const *callee,
       core::FnArgs<type::Typed<ir::Value>> const &args,
       absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to);
   static void EmitCopyInit(
-      Compiler *c, ast::OverloadSet const &os,
+      Compiler *c, ast::Expression const *callee,
       core::FnArgs<type::Typed<ir::Value>> const &args,
       absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to);
-  static void EmitAssign(Compiler *c, ast::OverloadSet const &os,
+  static void EmitAssign(Compiler *c, ast::Expression const *callee,
                          core::FnArgs<type::Typed<ir::Value>> const &args,
                          absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to);
 

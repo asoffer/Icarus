@@ -31,7 +31,6 @@ cc_library(
         "//type:struct",
         "//type:tuple",
         "//type:type",
-        "//type:variant",
         "//type:visitor",
     ],
 )
@@ -51,7 +50,6 @@ cc_test(
         "//type:struct",
         "//type:tuple",
         "//type:type",
-        "//type:variant",
         "//type:visitor",
         "@com_google_googletest//:gtest_main",
     ],

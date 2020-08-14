@@ -12,7 +12,6 @@
 #include "type/primitive.h"
 #include "type/struct.h"
 #include "type/tuple.h"
-#include "type/variant.h"
 
 namespace type {
 
@@ -46,24 +45,6 @@ bool CanCast(Type const *from, Type const *to) {
 
   // TODO other integer types.
   if (from == Int32 and (to->is<Enum>() or to->is<Flags>())) { return true; }
-
-  if (auto *from_var = from->if_as<Variant>()) {
-    if (auto *to_var = to->if_as<Variant>()) {
-      return absl::c_all_of(from_var->variants_, [to_var](Type const *from_v) {
-        return absl::c_count_if(to_var->variants_, [from_v](Type const *to_v) {
-                 return CanCast(from_v, to_v);
-               }) == 1;
-      });
-    } else {
-      return absl::c_all_of(from_var->variants_, [to](Type const *from_v) {
-        return CanCast(from_v, to);
-      });
-    }
-  } else if (auto *to_var = to->if_as<Variant>()) {
-    return absl::c_count_if(to_var->variants_, [from](Type const *to_v) {
-             return CanCast(from, to_v);
-           }) == 1;
-  }
 
   if (auto *from_tup = from->if_as<Tuple>()) {
     if (auto *to_tup = to->if_as<Tuple>()) {
@@ -166,30 +147,6 @@ Type const *Meet(Type const *lhs, Type const *rhs) {
     auto *result =
         Meet(lhs->as<Array>().data_type(), rhs->as<Array>().data_type());
     return result ? Arr(lhs->as<Array>().length(), result) : result;
-  } else if (lhs->is<Variant>()) {
-    // TODO this feels very fishy, cf. ([3; int] | [4; int]) with [--; int]
-    std::vector<Type const *> results;
-    if (rhs->is<Variant>()) {
-      for (Type const *l_type : lhs->as<Variant>().variants_) {
-        for (Type const *r_type : rhs->as<Variant>().variants_) {
-          Type const *result = Meet(l_type, r_type);
-          if (result != nullptr) { results.push_back(result); }
-        }
-      }
-    } else {
-      for (Type const *t : lhs->as<Variant>().variants_) {
-        if (Type const *result = Meet(t, rhs)) { results.push_back(result); }
-      }
-    }
-    return results.empty() ? nullptr : Var(std::move(results));
-  } else if (rhs->is<Variant>()) {  // lhs is not a variant
-    // TODO faster lookups? maybe not represented as a vector. at least give a
-    // better interface.
-    std::vector<Type const *> results;
-    for (Type const *t : rhs->as<Variant>().variants_) {
-      if (Type const *result = Meet(t, lhs)) { results.push_back(result); }
-    }
-    return results.empty() ? nullptr : Var(std::move(results));
   }
 
   return nullptr;

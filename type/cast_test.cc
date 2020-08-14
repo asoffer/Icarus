@@ -6,7 +6,6 @@
 #include "type/pointer.h"
 #include "type/primitive.h"
 #include "type/tuple.h"
-#include "type/variant.h"
 
 namespace type {
 namespace {
@@ -175,36 +174,6 @@ TEST(CanCast, ArrayDataType) {
   EXPECT_FALSE(CanCast(Arr(5, Ptr(Bool)), Arr(5, BufPtr(Bool))));
 
   EXPECT_FALSE(CanCast(Arr(5, Int32), Arr(5, Int64)));
-}
-
-TEST(CanCast, Variant) {
-  EXPECT_TRUE(CanCast(Int32, Var({Bool, Int32})));
-
-  // It would be ambiguous which integral type we should cast to so it's
-  // disallowed.
-  EXPECT_FALSE(CanCast(Int16, Var({Int32, Int64})));
-
-  // Even though there is a best match here, we disallow the cast because it
-  // could be ambiguous. We want to avoid picking the best and falling back
-  // because it leads to weird action-at-a-distance where the type changes
-  // and the cast still works but does something different.
-  EXPECT_FALSE(CanCast(Int16, Var({Int16, Int64})));
-
-  // TODO there's a weird situation here where you can't really create a
-  // one-element variant, but if you could it's casting behavior would be
-  // different from that element. I.e., you could cast int8 to int16, but
-  // not int8 to Var(int16). You need to rectify this. I kind of don't want
-  // adding a member to a variant to ever break well-behaved code.
-
-  EXPECT_TRUE(CanCast(BufPtr(Bool), Var({Int32, Ptr(Bool)})));
-  EXPECT_FALSE(CanCast(BufPtr(Bool), Var({BufPtr(Bool), Ptr(Bool)})));
-
-  EXPECT_TRUE(CanCast(Var({Int16, Int64}), Var({Int16, Int64})));
-  EXPECT_FALSE(CanCast(Var({Int16, Int64}), Var({Bool, Int16, Int64})));
-
-  EXPECT_TRUE(CanCast(Var({Int32, BufPtr(Bool)}), Var({Int64, Ptr(Bool)})));
-  EXPECT_FALSE(CanCast(Var({Int32, BufPtr(Bool)}),
-                       Var({Int32, BufPtr(Bool), Ptr(Bool)})));
 }
 
 TEST(CanCast, Tuple) {

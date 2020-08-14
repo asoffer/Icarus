@@ -10,7 +10,6 @@
 #include "type/primitive.h"
 #include "type/struct.h"
 #include "type/type.h"
-#include "type/variant.h"
 #include "type/visitor.h"
 
 namespace backend {
@@ -82,7 +81,6 @@ struct LlvmTypeVisitor : type::Visitor<llvm::Type *()> {
 
   llvm::Type *Visit(type::Struct const *t) override { NOT_YET(); }
   llvm::Type *Visit(type::Tuple const *t) override { NOT_YET(); }
-  llvm::Type *Visit(type::Variant const *t) override { NOT_YET(); }
 
  private:
   llvm::LLVMContext &context_;

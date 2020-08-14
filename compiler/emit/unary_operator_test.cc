@@ -94,15 +94,6 @@ INSTANTIATE_TEST_SUITE_P(
             .context  = "f ::= () => true",
             .expr     = "f():?",
             .expected = ir::Value(static_cast<type::Type const *>(type::Bool))},
-        TestCase{
-            .context  = R"(
-               f ::= () -> (int64 | bool) {
-                 x: int64 | bool = true
-                 return x
-               }
-               )",
-            .expr     = "which f()",
-            .expected = ir::Value(static_cast<type::Type const *>(type::Bool))},
         TestCase{.expr     = "*int32",
                  .expected = ir::Value(
                      static_cast<type::Type const *>(type::Ptr(type::Int32)))},

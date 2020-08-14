@@ -537,18 +537,6 @@ struct PtrIncrInstruction
   Reg result;
 };
 
-struct VariantAccessInstruction
-    : base::Extend<VariantAccessInstruction>::With<
-          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
-  static constexpr cmd_index_t kIndex =
-      internal::kVariantAccessInstructionNumber;
-  static constexpr std::string_view kDebugFormat = "%3$s = variant(%2$s) %1$s";
-
-  RegOr<Addr> var;
-  bool get_value;
-  Reg result;
-};
-
 }  // namespace ir
 
 #endif  // ICARUS_IR_INSTRUCTION_INSTRUCTIONS_H

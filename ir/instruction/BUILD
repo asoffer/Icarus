@@ -181,7 +181,6 @@ cc_library(
         "//type:pointer",
         "//type:struct",
         "//type:tuple",
-        "//type:variant",
     ],
 )
 

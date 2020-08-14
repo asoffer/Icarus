@@ -288,13 +288,6 @@ struct Builder {
     return result;
   }
 
-  RegOr<type::Type const*> Var(std::vector<RegOr<type::Type const*>> types) {
-    // TODO constant-folding
-    VariantInstruction inst{.values = std::move(types)};
-    auto result = inst.result = CurrentGroup()->Reserve();
-    CurrentBlock()->Append(std::move(inst));
-    return result;
-  }
   RegOr<type::Type const*> Tup(std::vector<RegOr<type::Type const*>> types) {
     // TODO constant-folding
     TupleInstruction inst{.values = std::move(types)};
@@ -527,8 +520,6 @@ struct Builder {
   // by which you can overlay types.
   type::Typed<Reg> Field(RegOr<Addr> r, type::Struct const* t, int64_t n);
   type::Typed<Reg> Field(RegOr<Addr> r, type::Tuple const* t, int64_t n);
-  Reg VariantType(RegOr<Addr> const& r);
-  Reg VariantValue(type::Variant const* v, RegOr<Addr> const& r);
 
   Reg PtrIncr(RegOr<Addr> ptr, RegOr<int64_t> inc, type::Pointer const* t);
   // TODO should this be unsigned?

@@ -6,7 +6,6 @@
 #include "test/module.h"
 #include "test/util.h"
 #include "type/function.h"
-#include "type/variant.h"
 
 namespace compiler {
 namespace {
@@ -171,100 +170,6 @@ TEST(Match, TwoParamsOneDefaulted) {
   {  // Call named with incorrect name
     auto args = core::FnArgs<type::QualType>(
         {}, {{"N", type::QualType::Constant(type::Int32)}});
-    auto matched_params = MatchArgsToParams(params, args);
-    EXPECT_FALSE(MatchArgsToParams(params, args));
-  }
-}
-
-TEST(Match, OneVariantParam) {
-  test::TestModule mod;
-  auto params = mod.compiler
-                    .type_of(Make<ast::FunctionLiteral>(
-                        &mod, "(x: int32 | bool) -> () {}"))
-                    ->as<type::Function>()
-                    .params();
-
-  {  // Call without args
-    auto args           = core::FnArgs<type::QualType>({}, {});
-    auto matched_params = MatchArgsToParams(params, args);
-    EXPECT_FALSE(MatchArgsToParams(params, args));
-  }
-
-  {  // Call positionally with matching type
-    auto args = core::FnArgs<type::QualType>(
-        {type::QualType::Constant(type::Int32)}, {});
-    ASSIGN_OR(FAIL(),  //
-              auto matched_params, MatchArgsToParams(params, args));
-    EXPECT_EQ(matched_params.size(), 1);
-    EXPECT_EQ(matched_params[0].name, "x");
-    EXPECT_EQ(matched_params[0].value,
-              type::QualType::NonConstant(type::Int32));
-  }
-
-  {  // Call positionally with matching type
-    auto args = core::FnArgs<type::QualType>(
-        {type::QualType::Constant(type::Bool)}, {});
-    ASSIGN_OR(FAIL(),  //
-              auto matched_params, MatchArgsToParams(params, args));
-    EXPECT_EQ(matched_params.size(), 1);
-    EXPECT_EQ(matched_params[0].name, "x");
-    EXPECT_EQ(matched_params[0].value, type::QualType::NonConstant(type::Bool));
-  }
-
-  {  // Call positionally with overlapping type
-    auto args = core::FnArgs<type::QualType>(
-        {type::QualType::Constant(type::Var({type::Bool, type::Float32}))}, {});
-    ASSIGN_OR(FAIL(),  //
-              auto matched_params, MatchArgsToParams(params, args));
-    EXPECT_EQ(matched_params.size(), 1);
-    EXPECT_EQ(matched_params[0].name, "x");
-    EXPECT_EQ(matched_params[0].value, type::QualType::NonConstant(type::Bool));
-  }
-
-  {  // Call positionally with non-overlapping type
-    auto args = core::FnArgs<type::QualType>(
-        {type::QualType::Constant(type::Var({type::Int16, type::Float32}))},
-        {});
-    auto matched_params = MatchArgsToParams(params, args);
-    EXPECT_FALSE(MatchArgsToParams(params, args));
-  }
-
-  {  // Call named with matching type
-    auto args = core::FnArgs<type::QualType>(
-        {}, {{"x", type::QualType::Constant(type::Int32)}});
-    ASSIGN_OR(FAIL(),  //
-              auto matched_params, MatchArgsToParams(params, args));
-    EXPECT_EQ(matched_params.size(), 1);
-    EXPECT_EQ(matched_params[0].name, "x");
-    EXPECT_EQ(matched_params[0].value,
-              type::QualType::NonConstant(type::Int32));
-  }
-
-  {  // Call named with matching type
-    auto args = core::FnArgs<type::QualType>(
-        {}, {{"x", type::QualType::Constant(type::Bool)}});
-    ASSIGN_OR(FAIL(),  //
-              auto matched_params, MatchArgsToParams(params, args));
-    EXPECT_EQ(matched_params.size(), 1);
-    EXPECT_EQ(matched_params[0].name, "x");
-    EXPECT_EQ(matched_params[0].value, type::QualType::NonConstant(type::Bool));
-  }
-
-  {  // Call named with overlapping type
-    auto args = core::FnArgs<type::QualType>(
-        {}, {{"x", type::QualType::Constant(
-                       type::Var({type::Bool, type::Float32}))}});
-    ASSIGN_OR(FAIL(),  //
-              auto matched_params, MatchArgsToParams(params, args));
-    EXPECT_EQ(matched_params.size(), 1);
-    EXPECT_EQ(matched_params[0].name, "x");
-    EXPECT_EQ(matched_params[0].value, type::QualType::NonConstant(type::Bool));
-  }
-
-  {  // Call named with non-overlapping type
-    auto args = core::FnArgs<type::QualType>(
-        {}, {{"x", type::QualType::Constant(
-                       type::Var({type::Int16, type::Float32}))}});
     auto matched_params = MatchArgsToParams(params, args);
     EXPECT_FALSE(MatchArgsToParams(params, args));
   }

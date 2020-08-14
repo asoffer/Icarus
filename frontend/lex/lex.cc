@@ -144,13 +144,13 @@ SourceCursor NextSimpleWord(SourceCursor *cursor) {
 
 static base::Global kKeywords =
     absl::flat_hash_map<std::string_view, std::variant<Operator, Syntax>>{
-        {"which", {Operator::Which}}, {"ensure", {Operator::Ensure}},
-        {"needs", {Operator::Needs}}, {"import", {Operator::Import}},
-        {"flags", {Syntax::Flags}},   {"enum", {Syntax::Enum}},
-        {"struct", {Syntax::Struct}}, {"return", {Operator::Return}},
-        {"goto", {Operator::Goto}},   {"jump", {Syntax::Jump}},
-        {"as", {Operator::As}},       {"copy", {Operator::Copy}},
-        {"init", {Operator::Init}},   {"move", {Operator::Move}}};
+        {"ensure", {Operator::Ensure}}, {"needs", {Operator::Needs}},
+        {"import", {Operator::Import}}, {"flags", {Syntax::Flags}},
+        {"enum", {Syntax::Enum}},       {"struct", {Syntax::Struct}},
+        {"return", {Operator::Return}}, {"goto", {Operator::Goto}},
+        {"jump", {Syntax::Jump}},       {"as", {Operator::As}},
+        {"copy", {Operator::Copy}},     {"init", {Operator::Init}},
+        {"move", {Operator::Move}}};
 
 static bool BeginsWith(std::string_view prefix, std::string_view s) {
   if (s.size() < prefix.size()) { return false; }

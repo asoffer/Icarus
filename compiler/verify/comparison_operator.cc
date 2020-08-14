@@ -89,9 +89,6 @@ ComparisonKind Comparator(type::Type const *t) {
   if (auto const *p = t->if_as<type::Pointer>()) {
     return ComparisonKind::Equality;
   }
-  if (auto const *v = t->if_as<type::Variant>()) {
-    return MinComparisonKind(v->variants_);
-  }
   if (auto const *tup = t->if_as<type::Tuple>()) {
     return MinComparisonKind(tup->entries_);
   }

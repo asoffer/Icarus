@@ -126,14 +126,7 @@ UninferrableType::Reason Inferrable(type::Type const *t) {
   if (t == type::EmptyArray) { return UninferrableType::Reason::kEmptyArray; }
   if (auto *a = t->if_as<type::Array>()) { return Inferrable(a->data_type()); }
   if (auto *p = t->if_as<type::Pointer>()) { return Inferrable(p->pointee()); }
-  if (auto *v = t->if_as<type::Variant>()) {
-    // TODO: only returning the first failure here and not even giving a good
-    // explanation of precisely what the problem is. Fix here and below.
-    for (auto const *var : v->variants_) {
-      auto reason = Inferrable(var);
-      if (reason != UninferrableType::Reason::kInferrable) { return reason; }
-    }
-  } else if (auto *tup = t->if_as<type::Tuple>()) {
+  if (auto *tup = t->if_as<type::Tuple>()) {
     for (auto const *entry : tup->entries_) {
       auto reason = Inferrable(entry);
       if (reason != UninferrableType::Reason::kInferrable) { return reason; }

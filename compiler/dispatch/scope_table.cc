@@ -5,13 +5,11 @@
 #include "base/defer.h"
 #include "compiler/compiler.h"
 #include "compiler/dispatch/parameters_and_arguments.h"
-#include "compiler/dispatch/runtime.h"
 #include "core/params.h"
 #include "diagnostic/errors.h"
 #include "ir/builder.h"
 #include "type/cast.h"
 #include "type/type.h"
-#include "type/variant.h"
 
 namespace compiler {
 namespace {
@@ -199,7 +197,9 @@ void internal::OneTable::VerifyJumps() {
     // impossible to jump to. This means we'll never exit a scope via a normal
     // call to `exit()` so it's safe to assume that the result type is void
     // (which is correctly default constructed so there's nothing to do).
-    result_types_ = type::MultiVar(iter->second);
+    ASSERT(iter->second.size() == 1u) << "TODO: Support dynamic dispatch.";
+    result_types_ = std::vector<type::Type const *>(
+        iter->second.front().begin(), iter->second.front().end());
   }
 
   // TODO assign types for all the other blocks? Check that they're correct?
@@ -259,8 +259,11 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
   for (auto const &[_, one_table] : table.tables_) {
     result_types.push_back(one_table.result_types());
   }
+
+  ASSERT(result_types.size() == 1u) << "TODO: Support dynamic dispatch.";
   table.qual_type_ =
-      type::QualType::NonConstant(type::Tup(type::MultiVar(result_types)));
+      type::QualType::NonConstant(type::Tup(std::vector<type::Type const *>(
+          result_types.front().begin(), result_types.front().end())));
   return table;
 }
 
@@ -270,30 +273,30 @@ void ScopeDispatchTable::EmitSplittingDispatch(
     absl::flat_hash_map<ir::ScopeDef const *,
                         ir::LocalBlockInterpretation> const &block_interps,
     core::FnArgs<type::Typed<ir::Value>> const &args) const {
-  auto &bldr           = compiler->builder();
-  auto callee_to_block = bldr.AddBlocks(init_map_);
-  EmitRuntimeDispatch(compiler->builder(), init_map_, callee_to_block, args);
+  auto &bldr = compiler->builder();
+  ASSERT(init_map_.size() == 1u) << "TODO: Support dynamic dispatch.";
+  auto const &[jump, scope_def] = *init_map_.begin();
 
-  for (auto const &[jump, scope_def] : init_map_) {
-    auto const &block_interp = block_interps.find(scope_def)->second;
-    bldr.CurrentBlock()      = callee_to_block[jump];
-    // Argument preparation is done inside EmitCallOneOverload
+  ir::BasicBlock *init_block = bldr.AddBlock();
 
-    std::optional<ir::Reg> state_reg;
-    if (auto iter = state_regs.find(scope_def); iter != state_regs.end()) {
-      state_reg = iter->second;
-    }
-    auto name_to_block = JumpDispatchTable::EmitCallOneOverload(
-        state_reg, jump, compiler, args, block_interp);
-    auto [block, outs] =
-        EmitCallOneOverload(name_to_block, scope_def, compiler, block_interp);
-    if (not outs.empty()) {
-      // TODO I think we need a phi-node per scope and then to combine them.
-      // exit_blocks.push_back(block);
-      // exit_outs.push_back(std::move(outs));
-      // ASSERT_NOT_NULL(land_phi)->add(block, 1);
-      NOT_YET();
-    }
+  auto const &block_interp = block_interps.find(scope_def)->second;
+  bldr.CurrentBlock()      = init_block;
+  // Argument preparation is done inside EmitCallOneOverload
+
+  std::optional<ir::Reg> state_reg;
+  if (auto iter = state_regs.find(scope_def); iter != state_regs.end()) {
+    state_reg = iter->second;
+  }
+  auto name_to_block = JumpDispatchTable::EmitCallOneOverload(
+      state_reg, jump, compiler, args, block_interp);
+  auto [block, outs] =
+      EmitCallOneOverload(name_to_block, scope_def, compiler, block_interp);
+  if (not outs.empty()) {
+    // TODO I think we need a phi-node per scope and then to combine them.
+    // exit_blocks.push_back(block);
+    // exit_outs.push_back(std::move(outs));
+    // ASSERT_NOT_NULL(land_phi)->add(block, 1);
+    NOT_YET();
   }
 
   bldr.CurrentBlock() = compiler->scope_landings().back().block;
@@ -344,24 +347,20 @@ void internal::OneTable::EmitCall(
       }
     }
 
-    auto callee_to_block = bldr.AddBlocks(table.table_);
-    EmitRuntimeDispatch(compiler->builder(), table.table_, callee_to_block,
-                        yield_typed_values);
-
-    for (auto const &[jump, expr_data] : table.table_) {
-      bldr.CurrentBlock() = callee_to_block[jump];
-
-      auto name_to_block = JumpDispatchTable::EmitCallOneOverload(
-          state_reg, jump, compiler, yield_typed_values, block_interp);
-      auto [block, outs] =
-          EmitCallOneOverload(name_to_block, scope_def, compiler, block_interp);
-      if (not outs.empty()) {
-        // TODO
-        // exit_blocks.push_back(block);
-        // exit_outs.push_back(std::move(outs));
-        // ASSERT_NOT_NULL(land_phi)->add(block, 1);
-        NOT_YET();
-      }
+    ASSERT(table.table_.size() == 1u) << "TODO: Support dynamic dispatch.";
+    auto const &[jump, expr_data] = *table.table_.begin();
+    auto init_block = bldr.AddBlock();
+    bldr.CurrentBlock() = init_block;
+    auto name_to_block = JumpDispatchTable::EmitCallOneOverload(
+        state_reg, jump, compiler, yield_typed_values, block_interp);
+    auto [block, outs] =
+        EmitCallOneOverload(name_to_block, scope_def, compiler, block_interp);
+    if (not outs.empty()) {
+      // TODO
+      // exit_blocks.push_back(block);
+      // exit_outs.push_back(std::move(outs));
+      // ASSERT_NOT_NULL(land_phi)->add(block, 1);
+      NOT_YET();
     }
   }
 }

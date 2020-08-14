@@ -183,31 +183,6 @@ TEST(Eval, NonConstant) {
                   Pair("evaluation-error", "non-constant-evaluation")));
 }
 
-TEST(Which, NonVariant) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
-  n := 3
-  )");
-  auto const *expr = mod.Append<ast::UnaryOperator>("which n");
-  auto const *qt   = mod.data().qual_type(expr);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::NonConstant(type::Type_));
-  EXPECT_THAT(mod.consumer.diagnostics(),
-              UnorderedElementsAre(Pair("type-error", "which-non-variant")));
-}
-
-TEST(Which, Success) {
-  test::TestModule mod;
-  mod.AppendCode(R"(
-  v: (int64 | bool) = 3
-  )");
-  auto const *expr = mod.Append<ast::UnaryOperator>("which v");
-  auto const *qt   = mod.data().qual_type(expr);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::NonConstant(type::Type_));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
-}
-
 TEST(At, Pointer) {
   test::TestModule mod;
   mod.AppendCode(R"(

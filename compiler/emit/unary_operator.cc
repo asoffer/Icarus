@@ -52,9 +52,6 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
     case ast::UnaryOperator::Kind::TypeOf:
       return ir::Value(
           ASSERT_NOT_NULL(data().qual_type(node->operand()))->type());
-    case ast::UnaryOperator::Kind::Which:
-      return ir::Value(builder().Load<type::Type const *>(
-          builder().VariantType(EmitValue(node->operand()).get<ir::Reg>())));
     case ast::UnaryOperator::Kind::Address: return ir::Value(EmitRef(node->operand()));
     case ast::UnaryOperator::Kind::Evaluate: {
       // TODO: There's a chance this was already computed, in which case we

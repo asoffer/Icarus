@@ -59,7 +59,6 @@ CONCRETE_TYPES = [
     ":struct",
     ":tuple",
     ":type",
-    ":variant",
 ]
 
 cc_library(
@@ -92,7 +91,6 @@ cc_test(
         ":pointer",
         ":primitive",
         ":tuple",
-        ":variant",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -208,7 +206,6 @@ cc_library(
     deps = [
         ":callable",
         ":type",
-        ":variant",
     ],
 )
 
@@ -352,28 +349,6 @@ cc_library(
     hdrs = ["util.h"],
     deps = CONCRETE_TYPES + [
         "//base:tag",
-    ],
-)
-
-cc_library(
-    name = "variant",
-    hdrs = ["variant.h"],
-    srcs = ["variant.cc"],
-    deps = [
-        ":primitive",
-        ":type",
-        ":tuple",
-        "//base:global",
-        "@com_google_absl//absl/algorithm:container",
-    ],
-)
-
-cc_test(
-    name = "variant_test",
-    srcs = ["variant_test.cc"],
-    deps = [
-        ":variant",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 

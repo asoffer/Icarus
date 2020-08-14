@@ -487,7 +487,6 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
           {"[*]", ast::UnaryOperator::Kind::BufferPointer},
           {":?", ast::UnaryOperator::Kind::TypeOf},
           {"`", ast::UnaryOperator::Kind::Evaluate},
-          {"which", ast::UnaryOperator::Kind::Which},
           {"&", ast::UnaryOperator::Kind::Address},
           {"@", ast::UnaryOperator::Kind::At},
           {"*", ast::UnaryOperator::Kind::Pointer},

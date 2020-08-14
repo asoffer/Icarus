@@ -373,43 +373,6 @@ INSTANTIATE_TEST_SUITE_P(All, OperatorOverload,
                          testing::ValuesIn({"+", "-", "*", "/", "%", "^", "&",
                                             "|"}));
 
-TEST(TypeVariant, ConstantSuccess) {
-  test::TestModule mod;
-  auto const *expr = mod.Append<ast::BinaryOperator>("int32 | bool | nat8");
-  auto const *qt   = mod.data().qual_type(expr);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::Constant(type::Type_));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
-}
-
-TEST(TypeVariant, NonConstantSuccess) {
-  test::TestModule mod;
-  mod.AppendCode(
-      R"(lhs := int32
-         rhs := bool
-      )");
-  auto const *expr = mod.Append<ast::BinaryOperator>("lhs | rhs");
-  auto const *qt   = mod.data().qual_type(expr);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::NonConstant(type::Type_));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
-}
-
-TEST(TypeVariant, Error) {
-  test::TestModule mod;
-  mod.AppendCode(
-      R"(lhs := int32
-         rhs := 3
-      )");
-  auto const *expr = mod.Append<ast::BinaryOperator>("lhs | rhs");
-  auto const *qt   = mod.data().qual_type(expr);
-  ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType::NonConstant(type::Type_));
-  EXPECT_THAT(
-      mod.consumer.diagnostics(),
-      UnorderedElementsAre(Pair("type-error", "no-matching-binary-operator")));
-}
-
 // TODO: Assignment operator overloading tests.
 
 }  // namespace
