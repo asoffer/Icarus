@@ -275,6 +275,7 @@ type::QualType VerifyAlignmentCall(
   return qt;
 }
 
+
 }  // namespace
 
 type::QualType Compiler::VerifyType(ast::Call const *node) {

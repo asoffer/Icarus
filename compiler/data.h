@@ -242,6 +242,24 @@ struct DependentComputedData {
                    bool complete = false);
   ConstantValue const *Constant(ast::Declaration const *decl) const;
 
+  void SetAllOverloads(ast::Expression const *callee, ast::OverloadSet os) {
+    [[maybe_unused]] auto [iter, inserted] =
+        all_overloads_.emplace(callee, std::move(os));
+    ASSERT(inserted == true);
+  }
+
+  ast::OverloadSet const &AllOverloads(ast::Expression const *callee) const {
+    auto iter = all_overloads_.find(callee);
+    if (iter == all_overloads_.end()) {
+      if (parent_ == nullptr) {
+        UNREACHABLE("Failed to find any overloads for ", callee->DebugString());
+      }
+      return parent_->AllOverloads(callee);
+    } else {
+      return iter->second;
+    }
+  }
+
   void SetViableOverloads(ast::Expression const *callee, ast::OverloadSet os) {
     [[maybe_unused]] auto [iter, inserted] =
         viable_overloads_.emplace(callee, std::move(os));
@@ -302,8 +320,12 @@ struct DependentComputedData {
         map;
   };
 
-  // Overloads for any callable expression. This could be an `ast::Call` but
-  // could equally well be an overloaded operator.
+  // Overloads for a callable expression, including overloads that are not
+  // callable based on the call-site arguments.
+  absl::flat_hash_map<ast::Expression const *, ast::OverloadSet> all_overloads_;
+
+  // Overloads for a callable expression, keeping only the ones that are viable
+  // based on the call-site arguments.
   absl::flat_hash_map<ast::Expression const *, ast::OverloadSet>
       viable_overloads_;
 

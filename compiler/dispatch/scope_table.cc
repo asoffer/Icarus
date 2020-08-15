@@ -148,7 +148,7 @@ void internal::OneTable::VerifyBlocks(Compiler *compiler,
 void internal::OneTable::VerifyJumps() {
   // The types that get passed out of a `before` function into the next block.
   absl::flat_hash_map<std::string_view,
-                      std::vector<absl::Span<type::Type const *const>>>
+                      absl::flat_hash_set<std::vector<type::Type const *>>>
       next_types;
   for (auto const &[node, table] : blocks) {
     for (auto const &[jump, expr_data] : table.table_) {
@@ -168,7 +168,8 @@ void internal::OneTable::VerifyJumps() {
                   arg_types);
 
               if (result) {
-                next_types[block_name].push_back(fn.native()->type()->output());
+                auto outputs = fn.native()->type()->output();
+                next_types[block_name].emplace(outputs.begin(), outputs.end());
               } else {
                 DEBUG_LOG("VerifyJumps")(result.error());
                 // This is entirely reasonable. It just means this particular
@@ -197,9 +198,10 @@ void internal::OneTable::VerifyJumps() {
     // impossible to jump to. This means we'll never exit a scope via a normal
     // call to `exit()` so it's safe to assume that the result type is void
     // (which is correctly default constructed so there's nothing to do).
+
     ASSERT(iter->second.size() == 1u) << "TODO: Support dynamic dispatch.";
     result_types_ = std::vector<type::Type const *>(
-        iter->second.front().begin(), iter->second.front().end());
+        iter->second.begin()->begin(), iter->second.begin()->end());
   }
 
   // TODO assign types for all the other blocks? Check that they're correct?

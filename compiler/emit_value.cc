@@ -137,11 +137,9 @@ base::move_func<void()> *DeferBody(Compiler::PersistentResources resources,
   auto [iter, success] = resources.data.deferred_work_.lock()->emplace(
       node, [c = Compiler(resources), node, t]() mutable {
         if constexpr (base::meta<NodeType> ==
-                      base::meta<ast::FunctionLiteral>) {
-          VerifyBody(&c, node, t);
-          CompleteBody(&c, node, &t->as<type::Function>());
-        } else if constexpr (base::meta<NodeType> ==
-                             base::meta<ast::ShortFunctionLiteral>) {
+                          base::meta<ast::FunctionLiteral> or
+                      base::meta<NodeType> ==
+                          base::meta<ast::ShortFunctionLiteral>) {
           CompleteBody(&c, node, &t->as<type::Function>());
         } else {
           static_cast<void>(t);

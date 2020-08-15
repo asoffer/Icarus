@@ -102,7 +102,7 @@ EmitCallee(Compiler &compiler, ast::Expression const *fn, type::QualType qt,
     return std::make_tuple(ComputeConcreteFn(&compiler, fn, f_type, qt.quals()),
                            f_type, nullptr);
   } else {
-    UNREACHABLE(qt.type()->to_string());
+    UNREACHABLE(fn->DebugString(), "\n", qt.type()->to_string());
   }
 }
 
@@ -110,10 +110,7 @@ template <typename Tag>
 void EmitCall(Tag, Compiler *compiler, ast::Expression const *callee,
               core::FnArgs<type::Typed<ir::Value>> args,
               absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  auto const &os = compiler->data().ViableOverloads(callee);
-  ASSERT(os.members().size() == 1u) << "TODO: Support dynamic dispatch.";
-
-  auto callee_qual_type = compiler->qual_type_of(os.members().front());
+  auto callee_qual_type = compiler->qual_type_of(callee);
   ASSERT(callee_qual_type.has_value() == true);
 
   auto [callee_fn, overload_type, dependent_data] =

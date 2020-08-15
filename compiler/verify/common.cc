@@ -206,7 +206,14 @@ Compiler::VerifyCallee(ast::Expression const *callee,
 
   ASSIGN_OR(return return_type(qt, {}),  //
                    auto const &callable, qt.type()->if_as<type::Callable>());
-  return return_type(qt, {{callee, &callable}});
+
+  absl::flat_hash_map<ast::Expression const *, type::Callable const *>
+      overload_map;
+  for (auto const *overload : data().AllOverloads(callee).members()) {
+    overload_map.emplace(
+        overload, &qual_type_of(overload).value().type()->as<type::Callable>());
+  }
+  return return_type(qt, std::move(overload_map));
 }
 
 base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
@@ -219,8 +226,16 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
                          core::Params<type::QualType>>>
       overload_params;
 
-  for (auto const &[callee, callable_type] : overload_map) {
-    ExtractParams(callee, callable_type, args, overload_params, errors);
+  // TODO: Is it possible that the returned references in `AllOverloads` is
+  // invalidated during some computation of `ExtractParams`? Maybe if something
+  // else is inserted into the map.
+  for (auto const *callee :
+       data().AllOverloads(call_expr->callee()).members()) {
+    ExtractParams(callee,
+                  &ASSERT_NOT_NULL(data().qual_type(callee))
+                       ->type()
+                       ->as<type::Callable>(),
+                  args, overload_params, errors);
   }
 
   // TODO: Expansion is relevant too.

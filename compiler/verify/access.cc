@@ -280,9 +280,9 @@ type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
          node->DebugString());
         return type::QualType::Error();
       } else {
+        c->data().SetAllOverloads(node, ast::OverloadSet(decls));
         return c->data().set_qual_type(node, *qt);
       }
-
     } break;
     default: {
       // TODO: these may also be an overload set of scopes
@@ -311,6 +311,7 @@ type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
         }
       }
 
+      c->data().SetAllOverloads(node, ast::OverloadSet(decls));
       return c->data().set_qual_type(
           node, type::QualType(type::MakeOverloadSet(std::move(member_types)),
                                quals));

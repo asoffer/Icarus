@@ -72,6 +72,9 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
   auto token = cylcic_dependency_tracker_.PushDependency(node, data(), diag());
   if (not token) { return type::QualType::Error(); }
 
+  // TODO: In what circumstances could this have been seen more than once?
+  if (auto const *qt = data().qual_type(node)) { return *qt; }
+
   type::QualType qt;
 
   auto potential_decls =
@@ -87,6 +90,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
           ASSIGN_OR(return type::QualType::Error(),  //
                            qt, VerifyType(potential_decls[0]));
         }
+
       } else {
         if (node->range().begin() < potential_decls[0]->range().begin()) {
           diag().Consume(DeclOutOfOrder{
@@ -99,13 +103,18 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
         } else {
           qt = *ASSERT_NOT_NULL(data().qual_type(potential_decls[0]));
         }
+
+        if (not qt.constant()) {
+          // TODO: shouldn't need to reconstruct just to set the quals.
+          qt = type::QualType(qt.type(), qt.quals() | type::Quals::Ref());
+        }
+
       }
 
-      if (not qt.constant() and
-          not(potential_decls[0]->flags() & ast::Declaration::f_IsFnParam)) {
-        // TODO: shouldn't need to reconstruct just to set the quals.
-        qt = type::QualType(qt.type(), qt.quals() | type::Quals::Ref());
+      if (qt.type()->is<type::Callable>()) {
+        data().SetAllOverloads(node, ast::OverloadSet(potential_decls));
       }
+
       data().set_decls(node, std::move(potential_decls));
     } break;
     case 0: {
@@ -119,8 +128,9 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
       type::Quals quals = type::Quals::Const();
       absl::flat_hash_set<type::Callable const *> member_types;
       bool error = false;
+
       for (auto const *decl : potential_decls) {
-        qt = *ASSERT_NOT_NULL(data().qual_type(decl));
+        qt = qual_type_of(decl).value();
         if (not qt.ok()) { return type::QualType::Error(); }
 
         if (auto *c = qt.type()->if_as<type::Callable>()) {
@@ -137,6 +147,8 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
       }
 
       if (error) { return type::QualType::Error(); }
+
+      data().SetAllOverloads(node, ast::OverloadSet(potential_decls));
       qt =
           type::QualType(type::MakeOverloadSet(std::move(member_types)), quals);
       data().set_decls(node, std::move(potential_decls));

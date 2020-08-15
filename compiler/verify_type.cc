@@ -169,6 +169,9 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node,
 }
 
 WorkItem::Result Compiler::VerifyBody(ast::FunctionLiteral const *node) {
+  // TODO: Move this check out to the ProcessOneItem code?
+  if (not data().ShouldVerifyBody(node)) { return WorkItem::Result::Success; }
+
   DEBUG_LOG("function")
   ("function-literal body verification: ", node->DebugString(), " ", &data());
   auto const &fn_type =
@@ -192,7 +195,7 @@ WorkItem::Result Compiler::VerifyBody(ast::FunctionLiteral const *node) {
           .context  = data(),
           .consumer = diag(),
       });
-      return WorkItem::Result ::Success;
+      return WorkItem::Result::Success;
     }
   }
 
@@ -208,7 +211,6 @@ std::optional<core::Params<type::QualType>> VerifyParams(
   // safe to verify each of them separately (to generate more errors that are
   // likely correct).
 
-  DEBUG_LOG("function")("got here");
   core::Params<type::QualType> type_params;
   type_params.reserve(params.size());
   bool err = false;
@@ -220,7 +222,6 @@ std::optional<core::Params<type::QualType>> VerifyParams(
       err = true;
     }
   }
-  DEBUG_LOG("function")("got here", err);
   if (err) { return std::nullopt; }
   return type_params;
 }
@@ -605,6 +606,10 @@ DependentComputedData::InsertDependentResult MakeConcrete(
 }
 
 type::QualType Compiler::VerifyType(ast::FunctionLiteral const *node) {
+  ast::OverloadSet os;
+  os.insert(node);
+  data().SetAllOverloads(node, std::move(os));
+
   if (not node->is_generic()) { return VerifyConcreteFnLit(node); }
 
   auto ordered_nodes = OrderedDependencyNodes(node);
@@ -650,6 +655,10 @@ type::QualType Compiler::VerifyType(ast::FunctionLiteral const *node) {
 }
 
 type::QualType Compiler::VerifyType(ast::ShortFunctionLiteral const *node) {
+  ast::OverloadSet os;
+  os.insert(node);
+  data().SetAllOverloads(node, std::move(os));
+
   if (not node->is_generic()) {
     ASSIGN_OR(return type::QualType::Error(),  //
                      auto params, VerifyParams(this, node->params()));

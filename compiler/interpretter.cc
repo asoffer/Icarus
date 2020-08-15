@@ -32,7 +32,7 @@ extern bool optimize_ir;
 namespace compiler {
 namespace {
 
-int Compile(frontend::FileName const &file_name) {
+int Interpret(frontend::FileName const &file_name) {
   diagnostic::StreamingConsumer diag(stderr, frontend::SharedSource());
   auto canonical_file_name = frontend::CanonicalFileName::Make(file_name);
   auto maybe_file_src      = frontend::FileSource::Make(canonical_file_name);
@@ -65,7 +65,7 @@ int Compile(frontend::FileName const &file_name) {
 
 void cli::Usage() {
   static base::NoDestructor<frontend::FileName> file;
-  execute = [] { return compiler::Compile(*file); };
+  execute = [] { return compiler::Interpret(*file); };
 
   Flag("help") << "Show usage information."
                << []() { execute = cli::ShowUsage; };
