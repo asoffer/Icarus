@@ -96,7 +96,21 @@ struct Compiler
   };
 
   void VerifyAll(base::PtrSpan<ast::Node const> nodes) {
-    for (ast::Node const *node : nodes) { VerifyType(node); }
+    for (ast::Node const *node : nodes) {
+      if (auto const *decl = node->if_as<ast::Declaration>()) {
+        if (decl->flags() & ast::Declaration::f_IsConst) { VerifyType(node); }
+      }
+
+    }
+
+    for (ast::Node const *node : nodes) {
+      if (auto const *decl = node->if_as<ast::Declaration>()) {
+        if (decl->flags() & ast::Declaration::f_IsConst) { continue; }
+      }
+
+      VerifyType(node);
+    }
+
     CompleteWorkQueue();
   }
   void CompleteWorkQueue() {

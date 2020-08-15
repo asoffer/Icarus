@@ -18,8 +18,8 @@ ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Identifier const *node) {
 }
 
 ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Index const *node) {
-  auto *lhs_type = type_of(node->lhs());
-  auto *rhs_type = type_of(node->rhs());
+  auto *lhs_type = ASSERT_NOT_NULL(type_of(node->lhs()));
+  auto *rhs_type = ASSERT_NOT_NULL(type_of(node->rhs()));
 
   if (lhs_type->is<type::Array>()) {
     auto index = builder().CastTo<int64_t>(
@@ -53,7 +53,7 @@ ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Index const *node) {
         builder().CastTo<int64_t>(type::Typed(*maybe_val, rhs_type)).value();
     return builder().Field(EmitRef(node->lhs()), tup, index).get();
   }
-  UNREACHABLE(*this);
+  UNREACHABLE(*this, lhs_type->to_string());
 }
 
 }  // namespace compiler

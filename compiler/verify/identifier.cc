@@ -79,6 +79,18 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
 
   auto potential_decls =
       module::AllVisibleDeclsTowardsRoot(node->scope(), node->token());
+
+  // Ensure the types of all potential declarations hav ealready been verified.
+  // TODO: Eventually we may want to relax this for functions where we don't
+  // need the entire decl we just need to know if it's callable.
+  bool error = false;
+  for (auto const *decl : potential_decls) {
+    if (data().qual_type(decl)) { continue; }
+    auto qt = VerifyType(decl);
+    if (not qt.ok()) { error = true; }
+  }
+  if (error) { return type::QualType::Error(); }
+
   DEBUG_LOG("Identifier")
   (node->DebugString(), ": ", node, " ", potential_decls);
   switch (potential_decls.size()) {

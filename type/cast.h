@@ -4,6 +4,7 @@
 namespace type {
 struct Type;
 
+bool CanCastImplicitly(Type const *from, Type const *to);
 bool CanCast(Type const *from, Type const *to);
 
 // The 'meet' of two types is the maximal type that converts implicitly to both

@@ -228,7 +228,9 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
 
   // TODO: Is it possible that the returned references in `AllOverloads` is
   // invalidated during some computation of `ExtractParams`? Maybe if something
-  // else is inserted into the map.
+  // else is inserted into the map. I believe not even if something is inserted
+  // the iterator into members is still valid because there's an extra layer of
+  // indirection in the overload set. Do we really want to rely on this?!
   for (auto const *callee :
        data().AllOverloads(call_expr->callee()).members()) {
     ExtractParams(callee,
@@ -257,7 +259,7 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
       // to writing errors. Rewriting it here and then we'll look at how to
       // combine it later.
       for (size_t i = 0; i < expansion.pos().size(); ++i) {
-        if (not type::CanCast(expansion[i], params[i].value.type())) {
+        if (not type::CanCastImplicitly(expansion[i], params[i].value.type())) {
           // TODO: Currently as soon as we find an error with a call we move on.
           // It'd be nice to extract all the error information for each.
           errors.reasons.emplace(callable_type,
@@ -278,7 +280,7 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
         // missing means this must be defaultable.
         if (not arg) { continue; }
 
-        if (not type::CanCast(*arg, param.value.type())) {
+        if (not type::CanCastImplicitly(*arg, param.value.type())) {
           // TODO: Currently as soon as we find an error with a call we move on.
           // It'd be nice to extract all the error information for each.
           errors.reasons.emplace(callable_type,

@@ -35,7 +35,18 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node,
                           type::Type const *t = nullptr) {
   if (not t) { t = ASSERT_NOT_NULL(c->type_of(node)); }
   auto const &fn_type = t->as<type::Function>();
-  for (auto const *stmt : node->stmts()) { c->VerifyType(stmt); }
+  for (auto const *stmt : node->stmts()) {
+    if (auto const *decl = stmt->if_as<ast::Declaration>()) {
+      if (decl->flags() & ast::Declaration::f_IsConst) {
+        c->VerifyType(decl); }
+    }
+  }
+  for (auto const *stmt : node->stmts()) {
+    if (auto const *decl = stmt->if_as<ast::Declaration>()) {
+      if (decl->flags() & ast::Declaration::f_IsConst) { continue; }
+    }
+    c->VerifyType(stmt);
+  }
 
   // TODO we can have yields and returns, or yields and jumps, but not jumps
   // and returns. Check this.

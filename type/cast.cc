@@ -28,6 +28,13 @@ static bool CanCastPointer(Pointer const *from, Pointer const *to) {
   return from->pointee() == to->pointee();
 }
 
+bool CanCastImplicitly(Type const *from, Type const *to) {
+  if (to == from) { return true; }
+  auto const *buf_ptr = from->if_as<BufferPointer>();
+  if (buf_ptr and to == Ptr(buf_ptr->pointee())) { return true; }
+  return false;
+}
+
 // TODO much of this should be moved to virtual methods.
 bool CanCast(Type const *from, Type const *to) {
   if (to == from) { return true; }
