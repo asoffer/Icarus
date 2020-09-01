@@ -28,7 +28,6 @@
 // up dividing by zero. It's *possible* you that you can cover this stuff with
 // property checking, but that's way off in the future.
 namespace compiler {
-using ::matcher::InheritsFrom;
 
 type::QualType VerifyBody(Compiler *compiler, ast::FunctionLiteral const *node,
                           type::Type const *fn_type = nullptr);

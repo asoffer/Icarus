@@ -23,7 +23,25 @@ bool parser = false;
 
 namespace frontend {
 namespace {
-using ::matcher::InheritsFrom;
+
+template <typename T>
+struct InheritsFrom : public matcher::UntypedMatcher<InheritsFrom<T>> {
+  template <typename Expr>
+  struct Matcher : public ::matcher::Matcher<Expr> {
+    Matcher(InheritsFrom const& m) {}
+    bool match(Expr const& input) const override {
+      if constexpr (matcher::is_pointery<Expr>::value) {
+        return dynamic_cast<T const *>(
+                   matcher::is_pointery<Expr>{}.get(input)) != nullptr;
+      }
+    }
+    std::string describe(bool positive) const override {
+      return (positive ? "inherits from " : "does not inherit from ") +
+             std::string(typeid(T).name());
+    }
+  };
+};
+
 
 struct AccessRhsNotIdentifier {
   static constexpr std::string_view kCategory = "parse-error";
@@ -1234,8 +1252,7 @@ std::unique_ptr<ast::Node> BuildStatefulJump(
   if (nodes.size() == 6) {
     if (nodes[2]->is<CommaList>()) {
       for (auto &expr : nodes[3]->as<CommaList>().exprs_) {
-        ASSERT(expr,
-               InheritsFrom<ast::Declaration>());  // TODO: handle failure
+        ASSERT(expr, InheritsFrom<ast::Declaration>());  // TODO: handle failure
         auto decl = move_as<ast::Declaration>(expr);
         decl->flags() |= ast::Declaration::f_IsFnParam;
         params.push_back(std::move(decl));

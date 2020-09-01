@@ -53,7 +53,6 @@ struct UntypedMatcher {
   }
 };
 
-namespace internal {
 template <typename T>
 struct is_pointery : public std::false_type {};
 
@@ -65,25 +64,6 @@ struct is_pointery<T*> : public std::true_type {
 template <typename T>
 struct is_pointery<std::unique_ptr<T>> : public std::true_type {
   T const* get(std::unique_ptr<T> const& ptr) { return ptr.get(); }
-};
-}  // namespace internal
-
-template <typename T>
-struct InheritsFrom : public UntypedMatcher<InheritsFrom<T>> {
-  template <typename Expr>
-  struct Matcher : public ::matcher::Matcher<Expr> {
-    Matcher(InheritsFrom const& m) {}
-    bool match(Expr const& input) const override {
-      if constexpr (internal::is_pointery<Expr>::value) {
-        return dynamic_cast<T const*>(
-                   internal::is_pointery<Expr>{}.get(input)) != nullptr;
-      }
-    }
-    std::string describe(bool positive) const override {
-      return (positive ? "inherits from " : "does not inherit from ") +
-             std::string(typeid(T).name());
-    }
-  };
 };
 
 template <typename L, typename R>

@@ -9,8 +9,6 @@
 
 namespace compiler {
 
-using ::matcher::InheritsFrom;
-
 ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Identifier const *node) {
   auto decl_span = data().decls(node);
   ASSERT(decl_span.size() == 1u);
