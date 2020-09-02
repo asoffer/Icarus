@@ -1181,18 +1181,6 @@ void Compiler::EmitAssign(
   Visit(t, *to[0], type::Typed{EmitValue(node), t}, EmitCopyAssignTag{});
 }
 
-ir::Value Compiler::EmitValue(ast::Index const *node) {
-  if (type_of(node->lhs()) == type::ByteView) {
-    auto data = builder().ByteViewData(
-        EmitValue(node->lhs()).get<ir::RegOr<ir::String>>());
-    auto addr = builder().PtrIncr(
-        data, EmitValue(node->rhs()).get<ir::RegOr<int64_t>>(),
-        type::Ptr(type::Nat8));
-    return builder().Load(addr, type::Nat8);
-  }
-  return ir::Value(builder().PtrFix(EmitRef(node).reg(), type_of(node)));
-}
-
 void EmitJump(Compiler *c, absl::Span<ast::JumpOption const> options) {
   std::vector<std::string_view> names;
   names.reserve(options.size());

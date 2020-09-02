@@ -86,6 +86,7 @@ cc_library(
         "//compiler/dispatch:fn_call_table",
         "//compiler/dispatch:scope_table",
         "//compiler/emit:access",
+        "//compiler/emit:index",
         "//compiler/emit:terminal",
         "//compiler/emit:unary_operator",
         "//core:call",

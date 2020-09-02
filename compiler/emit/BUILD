@@ -20,6 +20,25 @@ cc_test(
 )
 
 cc_library(
+    name = "index",
+    srcs = ["index.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+    ],
+)
+
+cc_test(
+    name = "index_test",
+    srcs = ["index_test.cc"],
+    deps = [
+        "//compiler",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "terminal",
     srcs = ["terminal.cc"],
     deps = [
