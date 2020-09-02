@@ -203,7 +203,7 @@ TEST(At, BufferPointer) {
   auto const *expr = mod.Append<ast::UnaryOperator>("@p");
   auto const *qt   = mod.data().qual_type(expr);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Ref()));
+  EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Buf()));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 

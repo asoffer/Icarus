@@ -223,7 +223,7 @@ TEST(Declaration, CustomInitAllowsConversions) {
     auto const *qt = mod.data().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
     EXPECT_EQ(*qt,
-              type::QualType(type::Arr(0, type::Int64), type::Quals::Ref()));
+              type::QualType(type::Arr(0, type::Int64), type::Quals::Buf()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 

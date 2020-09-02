@@ -177,7 +177,7 @@ std::optional<uint64_t> IntegralToUint64(ir::Value const &value) {
 
 type::QualType VerifyByteViewIndex(Compiler *c, ast::Index const *node,
                                    type::Quals quals, type::QualType index_qt) {
-  quals = (quals & index_qt.quals()) | type::Quals::Ref();
+  quals = (quals & index_qt.quals()) | type::Quals::Buf();
   type::QualType qt(type::Nat8, quals);
   if (not ValidIndexType(c, node, type::ByteView, index_qt)) {
     qt.MarkError();
@@ -231,7 +231,9 @@ type::QualType VerifyByteViewIndex(Compiler *c, ast::Index const *node,
 type::QualType VerifyArrayIndex(Compiler *c, ast::Index const *node,
                                 type::Array const *array_type,
                                 type::Quals quals, type::QualType index_qt) {
-  quals                       = (quals & index_qt.quals()) | type::Quals::Ref();
+  if (index_qt.quals() <= ~type::Quals::Const()) {
+    quals &= ~type::Quals::Const();
+  }
   type::Type const *data_type = array_type->data_type();
   type::QualType qt(data_type, quals);
 
@@ -274,7 +276,7 @@ type::QualType VerifyBufferPointerIndex(Compiler *c, ast::Index const *node,
                                         type::BufferPointer const *buf_ptr_type,
                                         type::Quals quals,
                                         type::QualType index_qt) {
-  quals = (quals & index_qt.quals()) | type::Quals::Ref();
+  quals = (quals & index_qt.quals()) | type::Quals::Buf();
   type::QualType qt(buf_ptr_type->pointee(), quals);
   if (not ValidIndexType(c, node, buf_ptr_type, index_qt)) { qt.MarkError(); }
   return c->data().set_qual_type(node, qt);

@@ -16,7 +16,7 @@ TEST(Index, ByteViewConstantIndex) {
   auto const *qt   = mod.data().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType(type::Nat8,
-                                type::Quals::Const() | type::Quals::Ref()));
+                                type::Quals::Const() | type::Quals::Buf()));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -26,7 +26,7 @@ TEST(Index, ByteViewNonConstantIndex) {
   auto const *expr = mod.Append<ast::Expression>(R"("abc"[n])");
   auto const *qt   = mod.data().qual_type(expr);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType(type::Nat8, type::Quals::Ref()));
+  EXPECT_EQ(*qt, type::QualType(type::Nat8, type::Quals::Buf()));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -36,7 +36,7 @@ TEST(Index, NonConstantByteViewConstantIndex) {
   auto const *expr = mod.Append<ast::Expression>(R"(s[0])");
   auto const *qt   = mod.data().qual_type(expr);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType(type::Nat8, type::Quals::Ref()));
+  EXPECT_EQ(*qt, type::QualType(type::Nat8, type::Quals::Buf()));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -49,7 +49,7 @@ TEST(Index, NonConstantByteViewNonConstantIndex) {
   auto const *expr = mod.Append<ast::Expression>(R"(s[n])");
   auto const *qt   = mod.data().qual_type(expr);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType(type::Nat8, type::Quals::Ref()));
+  EXPECT_EQ(*qt, type::QualType(type::Nat8, type::Quals::Buf()));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -59,7 +59,7 @@ TEST(Index, ByteViewInvalidIndexType) {
   auto const *qt   = mod.data().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType(type::Nat8,
-                                type::Quals::Const() | type::Quals::Ref()));
+                                type::Quals::Const() | type::Quals::Buf()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "invalid-index-type")));
 }
@@ -70,7 +70,7 @@ TEST(Index, ByteViewOutOfBoundsNegative) {
   auto const *qt   = mod.data().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType(type::Nat8,
-                                type::Quals::Const() | type::Quals::Ref()));
+                                type::Quals::Const() | type::Quals::Buf()));
   EXPECT_THAT(
       mod.consumer.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "negative-string-index")));
@@ -82,7 +82,7 @@ TEST(Index, ByteViewOutOfBoundsLarge) {
   auto const *qt   = mod.data().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType(type::Nat8,
-                                type::Quals::Const() | type::Quals::Ref()));
+                                type::Quals::Const() | type::Quals::Buf()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(
                   Pair("type-error", "indexing-string-out-of-bounds")));
@@ -93,8 +93,7 @@ TEST(Index, ArrayConstantIndex) {
   auto const *expr = mod.Append<ast::Expression>(R"([1, 2, 3][0])");
   auto const *qt   = mod.data().qual_type(expr);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType(type::Int64,
-                                type::Quals::Const() | type::Quals::Ref()));
+  EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Const()));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -104,7 +103,7 @@ TEST(Index, ArrayNonConstantIndex) {
   auto const *expr = mod.Append<ast::Expression>(R"([1, 2, 3][n])");
   auto const *qt   = mod.data().qual_type(expr);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Ref()));
+  EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Unqualified()));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -114,7 +113,7 @@ TEST(Index, NonConstantArrayConstantIndex) {
   auto const *expr = mod.Append<ast::Expression>(R"(s[0])");
   auto const *qt   = mod.data().qual_type(expr);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Ref()));
+  EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Buf()));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -127,7 +126,7 @@ TEST(Index, NonConstantArrayNonConstantIndex) {
   auto const *expr = mod.Append<ast::Expression>(R"(s[n])");
   auto const *qt   = mod.data().qual_type(expr);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Ref()));
+  EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Buf()));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -136,8 +135,7 @@ TEST(Index, ArrayInvalidIndexType) {
   auto const *expr = mod.Append<ast::Expression>(R"([1, 2, 3]["def"])");
   auto const *qt   = mod.data().qual_type(expr);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType(type::Int64,
-                                type::Quals::Const() | type::Quals::Ref()));
+  EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Const()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "invalid-index-type")));
 }
@@ -147,8 +145,7 @@ TEST(Index, ArrayOutOfBoundsNegative) {
   auto const *expr = mod.Append<ast::Expression>(R"([1, 2, 3][-1])");
   auto const *qt   = mod.data().qual_type(expr);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType(type::Int64,
-                                type::Quals::Const() | type::Quals::Ref()));
+  EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Const()));
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "negative-array-index")));
 }
@@ -158,15 +155,13 @@ TEST(Index, ArrayOutOfBoundsLarge) {
   auto const *expr = mod.Append<ast::Expression>(R"([1, 2, 3][3])");
   auto const *qt   = mod.data().qual_type(expr);
   ASSERT_NE(qt, nullptr);
-  EXPECT_EQ(*qt, type::QualType(type::Int64,
-                                type::Quals::Const() | type::Quals::Ref()));
+  EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Const()));
   EXPECT_THAT(
       mod.consumer.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "indexing-array-out-of-bounds")));
 }
 
 // TODO: BufferPtr tests
-// TODO: Tuple tests
 
 }  // namespace
 }  // namespace compiler

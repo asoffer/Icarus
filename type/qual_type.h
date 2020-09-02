@@ -20,7 +20,8 @@ namespace type {
 //   compile-time
 // * Expansion-size: The number of identifiers that can be bound to this
 //   expression.
-// * Value category: Whether this expression can have it's address taken.
+// * Value category: Whether this expression can have it's address taken, and
+//   whether this element is one in a contiguous collection.
 //
 // `QualType` also has a builtin error value (the default constructed value).
 //
@@ -62,7 +63,8 @@ struct Quals {
   static constexpr Quals Unqualified() { return Quals(0); }
   static constexpr Quals Const() { return Quals(1); }
   static constexpr Quals Ref() { return Quals(2); }
-  static constexpr Quals All() { return Quals(3); }
+  static constexpr Quals Buf() { return Quals(6); }
+  static constexpr Quals All() { return Quals(7); }
 
   friend constexpr Quals operator|(Quals lhs, Quals rhs) {
     return Quals(lhs.val_ | rhs.val_);
@@ -96,7 +98,7 @@ struct Quals {
   friend bool operator<=(Quals lhs, Quals rhs) { return (lhs | rhs) == rhs; }
   friend bool operator>=(Quals lhs, Quals rhs) { return rhs <= lhs; }
 
- private:
+ // private:
   friend struct QualType;
   constexpr explicit Quals(uint8_t val) : val_(val) {}
   uint8_t val_;
@@ -104,11 +106,13 @@ struct Quals {
 
 inline std::ostream &operator<<(std::ostream &os, Quals quals) {
   static constexpr std::array kPrintData{std::pair{Quals::Const(), "const"},
+                                         std::pair{Quals::Buf(), "buf"},
                                          std::pair{Quals::Ref(), "ref"}};
   char const *sep = "";
   os << "[";
   for (auto [q, s] : kPrintData) {
-    if ((quals & q) == q) {
+    if (quals >= q) {
+      quals = (quals & ~q);
       os << sep << s;
       sep = ",";
     }
@@ -180,11 +184,11 @@ struct QualType {
   constexpr void MarkError() {}                          // TODO: Implement me
   constexpr bool HasErrorMark() const { return false; }  // TODO: Implement me
 
-  constexpr Quals quals() const { return Quals(data_ & 0x3); }
+  constexpr Quals quals() const { return Quals(data_ & 0x7); }
 
   constexpr void remove_constant() {
-    auto low_bits = data_ & 0x3;
-    data_ &= ~uintptr_t{0x3};
+    auto low_bits = data_ & 0x7;
+    data_ &= ~uintptr_t{0x7};
     data_ |= (low_bits & (~Quals::Const()).val_);
   }
   constexpr bool constant() const { return (quals() & Quals::Const()).val_; }

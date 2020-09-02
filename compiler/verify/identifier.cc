@@ -117,6 +117,10 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
         }
 
         if (not qt.constant()) {
+          if (qt.type()->is<type::Array>() or qt.type() == type::ByteView) {
+            qt = type::QualType(qt.type(), qt.quals() | type::Quals::Buf());
+          }
+
           // TODO: shouldn't need to reconstruct just to set the quals.
           qt = type::QualType(qt.type(), qt.quals() | type::Quals::Ref());
         }

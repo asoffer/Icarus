@@ -96,7 +96,9 @@ TEST(Access, AccessStructField) {
   ASSERT_NE(non_constant_qt, nullptr);
   EXPECT_EQ(*non_constant_qt, type::QualType(type::Int64, type::Quals::Ref()));
   ASSERT_NE(constant_qt, nullptr);
-  EXPECT_EQ(*constant_qt, type::QualType(type::Int64, type::Quals::All()));
+  EXPECT_EQ(
+      *constant_qt,
+      type::QualType(type::Int64, type::Quals::Ref() | type::Quals::Const()));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 

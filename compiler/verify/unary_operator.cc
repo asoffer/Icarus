@@ -117,12 +117,12 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
         });
       }
       qt = type::QualType(operand_type,
-                          operand_qt.quals() & ~type::Quals::Ref());
+                          operand_qt.quals() & ~type::Quals::Buf());
     } break;
     case ast::UnaryOperator::Kind::Init: {
       // TODO: Under what circumstances is `init` allowed?
       qt = type::QualType(operand_type,
-                          operand_qt.quals() & ~type::Quals::Ref());
+                          operand_qt.quals() & ~type::Quals::Buf());
     } break;
     case ast::UnaryOperator::Kind::Move: {
       if (not operand_type->IsMovable()) {
@@ -132,12 +132,12 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
         });
       }
       qt = type::QualType(operand_type,
-                          operand_qt.quals() & ~type::Quals::Ref());
+                          operand_qt.quals() & ~type::Quals::Buf());
     } break;
     case ast::UnaryOperator::Kind::BufferPointer: {
       if (operand_type == type::Type_) {
         qt = type::QualType(operand_type,
-                            operand_qt.quals() & ~type::Quals::Ref());
+                            operand_qt.quals() & ~type::Quals::Buf());
       } else {
         diag().Consume(diagnostic::NotAType{
             .range = node->operand()->range(),
@@ -159,7 +159,9 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
       }
     } break;
     case ast::UnaryOperator::Kind::At: {
-      if (auto const *ptr_type = operand_type->if_as<type::Pointer>()) {
+      if (auto const *ptr_type = operand_type->if_as<type::BufferPointer>()) {
+        qt = type::QualType(ptr_type->pointee(), type::Quals::Buf());
+      } else if (auto const *ptr_type = operand_type->if_as<type::Pointer>()) {
         qt = type::QualType(ptr_type->pointee(), type::Quals::Ref());
       } else {
         diag().Consume(DereferencingNonPointer{
@@ -170,7 +172,10 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
       }
     } break;
     case ast::UnaryOperator::Kind::Address: {
-      if (operand_qt.quals() >= type::Quals::Ref()) {
+      if (operand_qt.quals() >= type::Quals::Buf()) {
+        qt =
+            type::QualType(type::BufPtr(operand_type), type::Quals::Unqualified());
+      } else if (operand_qt.quals() >= type::Quals::Ref()) {
         qt =
             type::QualType(type::Ptr(operand_type), type::Quals::Unqualified());
       } else {
@@ -181,7 +186,7 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
     case ast::UnaryOperator::Kind::Pointer: {
       if (operand_type == type::Type_) {
         qt = type::QualType(operand_type,
-                            operand_qt.quals() & ~type::Quals::Ref());
+                            operand_qt.quals() & ~type::Quals::Buf());
       } else {
         diag().Consume(diagnostic::NotAType{
             .range = node->operand()->range(),
