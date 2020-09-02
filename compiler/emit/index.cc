@@ -72,4 +72,29 @@ ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Index const *node) {
   UNREACHABLE(*this, lhs_type.to_string());
 }
 
+// TODO: Unit tests
+void Compiler::EmitMoveInit(
+    ast::Index const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  ASSERT(to.size() == 1u);
+  auto t = data().qual_type(node)->type();
+  Visit(t, *to[0], type::Typed{EmitValue(node), t}, EmitMoveAssignTag{});
+}
+
+void Compiler::EmitCopyInit(
+    ast::Index const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  ASSERT(to.size() == 1u);
+  auto t = data().qual_type(node)->type();
+  Visit(t, *to[0], type::Typed{EmitValue(node), t}, EmitCopyAssignTag{});
+}
+
+void Compiler::EmitAssign(
+    ast::Index const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  ASSERT(to.size() == 1u);
+  auto t = data().qual_type(node)->type();
+  Visit(t, *to[0], type::Typed{EmitValue(node), t}, EmitCopyAssignTag{});
+}
+
 }  // namespace compiler

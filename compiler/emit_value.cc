@@ -1157,30 +1157,6 @@ ir::Value Compiler::EmitValue(ast::Import const *node) {
       ASSERT_NOT_NULL(data().imported_module(node))));
 }
 
-void Compiler::EmitMoveInit(
-    ast::Index const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  ASSERT(to.size() == 1u);
-  auto t = data().qual_type(node)->type();
-  Visit(t, *to[0], type::Typed{EmitValue(node), t}, EmitMoveAssignTag{});
-}
-
-void Compiler::EmitCopyInit(
-    ast::Index const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  ASSERT(to.size() == 1u);
-  auto t = data().qual_type(node)->type();
-  Visit(t, *to[0], type::Typed{EmitValue(node), t}, EmitCopyAssignTag{});
-}
-
-void Compiler::EmitAssign(
-    ast::Index const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  ASSERT(to.size() == 1u);
-  auto t = data().qual_type(node)->type();
-  Visit(t, *to[0], type::Typed{EmitValue(node), t}, EmitCopyAssignTag{});
-}
-
 void EmitJump(Compiler *c, absl::Span<ast::JumpOption const> options) {
   std::vector<std::string_view> names;
   names.reserve(options.size());
@@ -1532,6 +1508,12 @@ ir::Value Compiler::EmitValue(ast::ParameterizedStructLiteral const *node) {
   // TODO: At least right now with the hacky version we don't look at this.
 
   return ir::Value(data().qual_type(node)->type());
+}
+
+ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Identifier const *node) {
+  auto decl_span = data().decls(node);
+  ASSERT(decl_span.size() == 1u);
+  return data().addr(decl_span[0]);
 }
 
 }  // namespace compiler
