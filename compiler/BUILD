@@ -140,6 +140,7 @@ cc_library(
         "//base:move_func",
         "//diagnostic/consumer",
         "//frontend/source",
+        "//ir/instruction:set",
         "//ir/value:addr",
         "//ir:builder",
         "//ir/value:reg",

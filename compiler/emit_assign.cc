@@ -75,7 +75,7 @@ static ir::NativeFn CreateAssign(Compiler *compiler, type::Array const *a) {
     bldr.ReturnJump();
   }
 
-  fn->WriteByteCode();
+  fn->WriteByteCode<interpretter::instruction_set_t>();
   return fn;
 }
 
@@ -119,7 +119,7 @@ static ir::NativeFn CreateAssign(Compiler *compiler, type::Struct const *s) {
 
     bldr.ReturnJump();
   }
-  fn->WriteByteCode();
+  fn->WriteByteCode<interpretter::instruction_set_t>();
   return fn;
 }
 

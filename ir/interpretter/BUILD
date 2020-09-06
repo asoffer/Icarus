@@ -3,6 +3,7 @@ package(default_visibility = ["//visibility:private"])
 cc_library(
     name = "architecture",
     hdrs = ["architecture.h"],
+    visibility = ["//visibility:public"],
     deps = [
         "//core:arch",
         "//ir/value:addr",
@@ -50,6 +51,7 @@ cc_library(
     name = "stack_frame",
     hdrs = ["stack_frame.h"],
     srcs = ["stack_frame.cc"],
+    visibility = ["//visibility:public"],
     deps = [
         ":architecture",
         ":register_array",
@@ -64,42 +66,14 @@ cc_library(
 cc_library(
     name = "execute_header",
     hdrs = ["execute.h"],
-    deps = [
-        ":stack_frame",
-        "//base:untyped_buffer",
-        "//ir/value:addr",
-        "//ir/value:fn",
-        "//ir/value:reg",
-        "//ir/value:reg_or",
-        "@com_google_absl//absl/types:span",
-    ],
-)
-
-cc_library(
-    name = "instructions",
-    hdrs = ["instructions.h"],
     visibility = ["//visibility:public"],
     deps = [
-        ":architecture",
-        ":execute_header",
-        ":foreign",
         ":stack_frame",
-        "//base:meta",
         "//base:untyped_buffer",
-        "//ir:block_def",
-        "//ir:jump",
-        "//ir:read_only_data",
-        "//ir:scope_def",
-        "//ir/instruction",
         "//ir/value:addr",
-        "//ir/value:foreign_fn",
         "//ir/value:fn",
-        "//ir/value:native_fn",
         "//ir/value:reg",
         "//ir/value:reg_or",
-        "//type:opaque",
-        "@com_google_absl//absl/random",
-        "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/types:span",
     ],
 )
@@ -109,7 +83,6 @@ cc_library(
     srcs = ["execute.cc"],
     deps = [
         ":execute_header",
-        ":instructions",
         "//ir/instruction:set",
     ],
 )
@@ -118,6 +91,7 @@ cc_library(
     name = "foreign",
     hdrs = ["foreign.h"],
     srcs = ["foreign.cc"],
+    visibility = ["//visibility:public"],
     deps = [
         "//base:debug",
         "//base:expected",

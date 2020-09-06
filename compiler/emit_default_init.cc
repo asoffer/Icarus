@@ -28,7 +28,7 @@ void Compiler::Visit(type::Array const *t, ir::Reg reg, EmitDefaultInitTag) {
           });
           builder().ReturnJump();
         }
-        fn->WriteByteCode();
+        fn->WriteByteCode<interpretter::instruction_set_t>();
         return fn;
       }});
 
@@ -84,7 +84,7 @@ void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDefaultInitTag) {
 
       builder().ReturnJump();
     }
-    fn->WriteByteCode();
+    fn->WriteByteCode<interpretter::instruction_set_t>();
     return fn;
   });
 

@@ -110,7 +110,7 @@ static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
   }
 
   ASSERT(fn.work_item == nullptr);
-  fn.WriteByteCode();
+  fn.WriteByteCode<interpretter::instruction_set_t>();
 
   return fn;
 }

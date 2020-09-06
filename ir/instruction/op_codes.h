@@ -16,10 +16,14 @@ struct CmdRange {
   uint16_t start, length;
 };
 
-inline constexpr cmd_index_t kReturnInstruction     = 0;
-inline constexpr cmd_index_t kUncondJumpInstruction = 1;
-inline constexpr cmd_index_t kCondJumpInstruction   = 2;
-inline constexpr cmd_index_t kLoadInstructionNumber = 3;
+inline constexpr cmd_index_t kReturnInstruction =
+    std::numeric_limits<cmd_index_t>::max();
+inline constexpr cmd_index_t kUncondJumpInstruction =
+    std::numeric_limits<cmd_index_t>::max() - 1;
+inline constexpr cmd_index_t kCondJumpInstruction =
+    std::numeric_limits<cmd_index_t>::max() - 2;
+inline constexpr cmd_index_t kLoadInstructionNumber =
+    std::numeric_limits<cmd_index_t>::max() - 3;
 
 inline constexpr auto kAddInstructionRange = CmdRange{
     .start  = 4,

@@ -1442,7 +1442,7 @@ WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
   }
 
   // TODO: What if execution fails.
-  fn.WriteByteCode();
+  fn.WriteByteCode<interpretter::instruction_set_t>();
   interpretter::Execute(std::move(fn));
   s->complete();
   DEBUG_LOG("struct")

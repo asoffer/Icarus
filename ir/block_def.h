@@ -11,12 +11,19 @@
 namespace ir {
 struct Jump;
 
+// TODO remove this. We don't need the instruction set at all here because the
+// only content is the return.
+struct Inst;
+struct SuperGrossHack {
+  static cmd_index_t Index(Inst const &inst) { return 0; }
+};
+
 inline CompiledFn &TrivialFunction() {
   static base::NoDestructor<CompiledFn> f = [] {
     CompiledFn f(type::Func({}, {}),
                  core::Params<type::Typed<ast::Declaration const *>>{});
     f.entry()->set_jump(JumpCmd::Return());
-    f.WriteByteCode();
+    f.WriteByteCode<SuperGrossHack>();
     return f;
   }();
   return *f;

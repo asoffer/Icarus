@@ -133,7 +133,7 @@ void CompleteBody(Compiler *compiler, ast::ShortFunctionLiteral const *node,
   }
 
   ir_func->work_item = nullptr;
-  ir_func->WriteByteCode();
+  ir_func->WriteByteCode<interpretter::instruction_set_t>();
 }
 
 void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
@@ -186,7 +186,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
   }
 
   ir_func->work_item = nullptr;
-  ir_func->WriteByteCode();
+  ir_func->WriteByteCode<interpretter::instruction_set_t>();
 }
 
 void CompleteBody(Compiler *compiler,
@@ -218,7 +218,7 @@ void CompleteBody(Compiler *compiler, ast::Jump const *node) {
     // it'll never be executed.
     MakeAllDestructions(compiler, node->body_scope());
   }
-  jmp->WriteByteCode();
+  jmp->WriteByteCode<interpretter::instruction_set_t>();
   jmp->work_item = nullptr;
 }
 
@@ -235,7 +235,7 @@ void ProcessExecutableBody(Compiler *c, base::PtrSpan<ast::Node const> nodes,
     c->builder().ReturnJump();
   }
   c->CompleteDeferredBodies();
-  // main_fn->WriteByteCode();
+  // main_fn->WriteByteCode<interpretter::instruction_set_t>();
 }
 
 TransientState::YieldedArguments Compiler::EmitBlockNode(

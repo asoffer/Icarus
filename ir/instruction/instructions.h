@@ -68,7 +68,6 @@ struct StoreInstruction {
   };
 
   void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(kIndex);
     writer->Write(control_bits{.value_is_reg    = value.is_reg(),
                                .location_is_reg = location.is_reg()});
     value.apply([&](auto v) { writer->Write(v); });
@@ -215,7 +214,6 @@ struct TypeManipulationInstruction {
   }
 
   void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(kIndex);
     writer->Write(kind);
     writer->Write(type);
     writer->Write(r);
@@ -265,7 +263,6 @@ struct CallInstruction {
   }
 
   void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(kIndex);
     writer->Write(fn_.is_reg());
     fn_.apply([&](auto v) { writer->Write(v); });
     size_t bytes_written_slot = writer->buf_->reserve<core::Bytes>();
@@ -335,7 +332,6 @@ struct TypeInfoInstruction {
   }
 
   void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(kIndex);
     writer->Write<uint8_t>(static_cast<uint8_t>(kind) |
                            static_cast<uint8_t>(type.is_reg()));
     type.apply([&](auto v) { writer->Write(v); });
@@ -363,7 +359,6 @@ struct MakeBlockInstruction {
   std::string to_string() const { return "make-block "; }
 
   void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(kIndex);
     writer->Write(block_def);
     internal::WriteBits<uint16_t, RegOr<Fn>>(
         writer, befores, [](RegOr<Fn> const& r) { return r.is_reg(); });
@@ -406,7 +401,6 @@ struct MakeScopeInstruction {
   std::string to_string() const { return "make-scope"; }
 
   void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(kIndex);
     writer->Write(scope_def);
 
     internal::WriteBits<uint16_t, RegOr<Jump*>>(
@@ -455,7 +449,6 @@ struct StructIndexInstruction
   };
 
   void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(kIndex);
     writer->Write(control_bits{
         .reg_addr  = addr.is_reg(),
         .reg_index = index.is_reg(),
@@ -487,7 +480,6 @@ struct TupleIndexInstruction
   };
 
   void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(kIndex);
     writer->Write(control_bits{
         .reg_addr  = addr.is_reg(),
         .reg_index = index.is_reg(),
@@ -519,7 +511,6 @@ struct PtrIncrInstruction
   };
 
   void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(kIndex);
     writer->Write(control_bits{
         .reg_addr  = addr.is_reg(),
         .reg_index = index.is_reg(),

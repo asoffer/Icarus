@@ -82,7 +82,6 @@ struct ByteCodeWriter {
 template <typename T>
 struct WriteByteCodeExtension {
   void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(T::kIndex);
     auto write = [&](auto const& field) {
       using field_type = std::decay_t<decltype(field)>;
       if constexpr (IsRegOr<field_type>::value) {

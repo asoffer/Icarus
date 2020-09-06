@@ -16,6 +16,7 @@ cc_library(
     hdrs = ["base.h"],
     deps = [
         "//base:cast",
+        "//base:meta",
         "//base:untyped_buffer",
     ]
 )
@@ -207,6 +208,25 @@ cc_library(
     hdrs = ["set.h"],
     deps = [
         "//base:meta",
-        "//ir/interpretter:instructions",
+        "//base:untyped_buffer",
+        "//ir:block_def",
+        "//ir/interpretter:architecture",
+        "//ir/interpretter:execute_header",
+        "//ir/interpretter:foreign",
+        "//ir/interpretter:stack_frame",
+        "//ir:jump",
+        "//ir:read_only_data",
+        "//ir:scope_def",
+        "//ir/instruction",
+        "//ir/value:addr",
+        "//ir/value:foreign_fn",
+        "//ir/value:fn",
+        "//ir/value:native_fn",
+        "//ir/value:reg",
+        "//ir/value:reg_or",
+        "//type:opaque",
+        "@com_google_absl//absl/random",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/types:span",
     ],
 )

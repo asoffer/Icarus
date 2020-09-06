@@ -37,7 +37,6 @@ struct TupleInstruction
   }
 
   void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(kIndex);
     internal::WriteBits<uint16_t, RegOr<type::Type const*>>(
         writer, values,
         [](RegOr<type::Type const*> const& r) { return r.is_reg(); });
@@ -67,7 +66,6 @@ struct EnumerationInstruction {
   ~EnumerationInstruction() {}
 
   void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(kIndex);
     writer->Write(kind_ == Kind::Enum);
     writer->Write<uint16_t>(names_.size());
     writer->Write<uint16_t>(specified_values_.size());
@@ -148,8 +146,6 @@ struct ArrowInstruction {
   }
 
   void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(kIndex);
-
     internal::WriteBits<uint16_t, RegOr<type::Type const*>>(
         writer, lhs,
         [](RegOr<type::Type const*> const& r) { return r.is_reg(); });
@@ -230,7 +226,6 @@ struct StructInstruction {
   };
 
   void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(kIndex);
     writer->Write<uint16_t>(fields.size());
     writer->Write(mod);
     writer->Write(struct_);
@@ -293,7 +288,6 @@ struct ArrayInstruction {
   };
 
   void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(kIndex);
     writer->Write(control_bits{.length_is_reg = length.is_reg(),
                                .type_is_reg   = data_type.is_reg()});
 

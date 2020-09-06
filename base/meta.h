@@ -64,6 +64,8 @@ constexpr bool always_false() {
 }
 
 struct MetaValue {
+  explicit constexpr MetaValue() = default;
+
   template <typename H>
   friend H AbslHashValue(H h, MetaValue m) {
     return H::combine(std::move(h), m.value_);
@@ -89,7 +91,7 @@ struct MetaValue {
 
  private:
   explicit constexpr MetaValue(uintptr_t val) : value_(val) {}
-  uintptr_t value_;
+  uintptr_t value_ = 0;
 };
 
 template <typename T>

@@ -4,6 +4,7 @@
 #include <string>
 
 #include "base/cast.h"
+#include "base/meta.h"
 #include "base/untyped_buffer.h"
 
 // TODO rename this file so that when you forget that for dependency reasons you
@@ -35,8 +36,10 @@ struct InstructionVTable {
       [](void*, InstructionInliner const&) {
         UNREACHABLE("Inline is unimplemented");
       };
+
+  base::MetaValue rtti;
 };
-inline InstructionVTable DefaultInstructionVTable;
+inline constexpr InstructionVTable DefaultInstructionVTable;
 
 template <typename T>
 InstructionVTable InstructionVTableFor{
@@ -70,6 +73,7 @@ InstructionVTable InstructionVTableFor{
         [](void* self, InstructionInliner const& inliner) {
           return reinterpret_cast<T*>(self)->Inline(inliner);
         },
+    .rtti = base::meta<T>,
 };
 
 struct Inst {
@@ -149,6 +153,8 @@ struct Inst {
     vtable_->Inline(data_, inliner);
   }
 
+  base::MetaValue rtti() const { return vtable_->rtti; }
+
   Inst* operator->() { return this; }
   Inst const* operator->() const { return this; }
 
@@ -157,7 +163,7 @@ struct Inst {
 
  private:
   void* data_;
-  InstructionVTable* vtable_;
+  InstructionVTable const* vtable_;
 };
 
 }  // namespace ir

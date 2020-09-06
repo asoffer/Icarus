@@ -53,7 +53,7 @@ int Interpret(frontend::FileName const &file_name) {
 
   // TODO All the functions? In all the modules?
   opt::RunAllOptimizations(&main_fn);
-  main_fn.WriteByteCode();
+  main_fn.WriteByteCode<interpretter::instruction_set_t>();
   interpretter::Execute(
       &main_fn, base::untyped_buffer::MakeFull(main_fn.num_regs() * 16), {});
 

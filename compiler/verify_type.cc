@@ -889,7 +889,7 @@ type::QualType Compiler::VerifyType(
       }
 
       // TODO: What if execution fails.
-      fn.WriteByteCode();
+      fn.WriteByteCode<interpretter::instruction_set_t>();
       interpretter::Execute(std::move(fn));
       DEBUG_LOG("struct")
       ("Completed ", node->DebugString(), " which is a (parameterized) struct ",

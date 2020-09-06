@@ -13,7 +13,8 @@
 
 namespace interpretter {
 
-// An ExecutionContext holds all the required state needed during the execution of a `Fn`.
+// An ExecutionContext holds all the required state needed during the execution
+// of a `Fn`.
 struct ExecutionContext {
   void ExecuteBlocks(absl::Span<ir::Addr const> ret_slots);
 
@@ -33,6 +34,17 @@ struct ExecutionContext {
   template <typename T>
   T resolve(ir::RegOr<T> val) const {
     return val.resolve([&](ir::Reg r) { return resolve<T>(r); });
+  }
+
+  template <typename T>
+  inline T ReadAndResolve(bool is_reg,
+                          base::untyped_buffer::const_iterator *iter) {
+    if (is_reg) {
+      ir::Reg r = iter->read<ir::Reg>();
+      return this->resolve<T>(r);
+    } else {
+      return iter->read<T>();
+    }
   }
 
   StackFrame *current_frame_ = nullptr;

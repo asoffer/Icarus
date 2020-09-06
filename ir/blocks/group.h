@@ -60,10 +60,13 @@ struct BlockGroupBase {
     return byte_code_;
   }
 
+  template <typename InstructionSet>
   void WriteByteCode() {
     ByteCodeWriter writer(&byte_code_);
     ASSERT(byte_code_.size() == 0u);
-    for (auto &block : blocks_) { block->WriteByteCode(&writer); }
+    for (auto &block : blocks_) {
+      block->WriteByteCode<InstructionSet>(&writer);
+    }
     writer.MakeReplacements();
   }
 
