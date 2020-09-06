@@ -50,10 +50,11 @@ using exec_t = void (*)(base::untyped_buffer::const_iterator *,
                         absl::Span<ir::Addr const>);
 
 template <typename... Insts>
-constexpr std::array<exec_t, sizeof...(Insts)> MakeExecuteFunctions(
+absl::flat_hash_map<int, exec_t> MakeExecuteFunctions(
     base::type_list<Insts...>) {
-  return {interpretter::kInstructions[Insts::kIndex]...};
+  return {{Insts::kIndex, interpretter::kInstructions[Insts::kIndex]}...};
 }
+
 }  // namespace internal_instructions
 
 struct RequiredCapabilities;
@@ -64,12 +65,18 @@ struct InstructionSet;
 template <typename... Capabilities, typename... InstructionsOrSets>
 struct InstructionSet<RequiredCapabilities(Capabilities...),
                       InstructionsOrSets...> {
-  using instructions_t = decltype(
-      internal_instructions::ExpandedInstructions<InstructionsOrSets...>());
-  static constexpr std::array Execute =
-      internal_instructions::MakeExecuteFunctions(
-          static_cast<instructions_t>(nullptr));
+  using instructions_t = decltype(internal_instructions::ExpandedInstructions(
+      static_cast<base::type_list<InstructionsOrSets...>>(nullptr),
+      static_cast<base::type_list<>>(nullptr)));
+  static absl::flat_hash_map<int, internal_instructions::exec_t> Execute;
+
 };
+
+template <typename... Capabilities, typename... InstructionsOrSets>
+absl::flat_hash_map<int, internal_instructions::exec_t> InstructionSet<
+    RequiredCapabilities(Capabilities...), InstructionsOrSets...>::Execute =
+    internal_instructions::MakeExecuteFunctions(
+        static_cast<instructions_t>(nullptr));
 
 }  // namespace ir
 
