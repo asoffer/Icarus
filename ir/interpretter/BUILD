@@ -62,11 +62,26 @@ cc_library(
 )
 
 cc_library(
-    name = "execute",
+    name = "execute_header",
     hdrs = ["execute.h"],
-    srcs = ["execute.cc"],
+    deps = [
+        ":stack_frame",
+        "//base:untyped_buffer",
+        "//ir/value:addr",
+        "//ir/value:fn",
+        "//ir/value:reg",
+        "//ir/value:reg_or",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
+    name = "instructions",
+    hdrs = ["instructions.h"],
+    visibility = ["//visibility:public"],
     deps = [
         ":architecture",
+        ":execute_header",
         ":foreign",
         ":stack_frame",
         "//base:meta",
@@ -86,6 +101,16 @@ cc_library(
         "@com_google_absl//absl/random",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
+    name = "execute",
+    srcs = ["execute.cc"],
+    deps = [
+        ":execute_header",
+        ":instructions",
+        "//ir/instruction:set",
     ],
 )
 

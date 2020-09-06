@@ -201,3 +201,12 @@ cc_library(
         "@com_google_absl//absl/strings",
     ],
 )
+
+cc_library(
+    name = "set",
+    hdrs = ["set.h"],
+    deps = [
+        "//base:meta",
+        "//ir/interpretter:instructions",
+    ],
+)
