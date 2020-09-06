@@ -34,9 +34,13 @@ cc_library(
         "//base:untyped_buffer",
         "//core:arch",
         "//ir:compiled_fn",
+        "//ir/instruction:set",
+        "//ir:jump",
         "//ir/value",
+        "//ir/value:generic_fn",
         "//type:function",
         "//type:generic_struct",
+        "//type:generic_function",
     ],
 )
 
@@ -68,6 +72,7 @@ cc_library(
     hdrs = ["execute.h"],
     visibility = ["//visibility:public"],
     deps = [
+        ":foreign",
         ":stack_frame",
         "//base:untyped_buffer",
         "//ir/value:addr",
@@ -83,7 +88,6 @@ cc_library(
     srcs = ["execute.cc"],
     deps = [
         ":execute_header",
-        "//ir/instruction:set",
     ],
 )
 

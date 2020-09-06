@@ -26,29 +26,65 @@
 
 namespace interpretter {
 
-inline void CallFn(ir::BuiltinFn fn, base::untyped_buffer_view arguments,
-                   absl::Span<ir::Addr const> ret_slots, ExecutionContext *) {
-  switch (fn.which()) {
-    case ir::BuiltinFn::Which::Alignment: {
-      type::Type const *type = arguments.get<type::Type const *>(0);
-      *static_cast<uint64_t *>(ASSERT_NOT_NULL(ret_slots[0].heap())) =
-          type->alignment(kArchitecture).value();
-    } break;
-    case ir::BuiltinFn::Which::Bytes: {
-      type::Type const *type = arguments.get<type::Type const *>(0);
-      *static_cast<uint64_t *>(ASSERT_NOT_NULL(ret_slots[0].heap())) =
-          type->bytes(kArchitecture).value();
-    } break;
-    default: NOT_YET();
-  }
+template <typename InstSet>
+void Execute(ir::Fn fn, base::untyped_buffer arguments,
+             absl::Span<ir::Addr const> ret_slots, ExecutionContext *ctx);
 
-  // size_t i = 0;
-  // for (auto const &result : fn.Call(arguments)) {
-  //   ASSERT(ret_slot.kind() == ir::Addr::Kind::Heap);
-  //   *ASSERT_NOT_NULL(static_cast<type *>(ret_slot.heap())) = val;
-  // }
+template <typename InstSet>
+void ExecuteBlocks(ExecutionContext &ctx,
+                   absl::Span<ir::Addr const> ret_slots) {
+  auto &buffer = ctx.current_frame()->fn_->byte_code();
+
+  auto iter = buffer.begin();
+  while (true) {
+    ASSERT(iter < buffer.end());
+    ir::cmd_index_t cmd_index = iter.read<ir::cmd_index_t>();
+    switch (cmd_index) {
+      case ir::internal::kReturnInstruction: return;
+      case ir::internal::kUncondJumpInstruction: {
+        uintptr_t offset = iter.read<uintptr_t>();
+        ctx.current_frame()->MoveTo(offset);
+        iter = ctx.current_frame()->fn_->byte_code().begin();
+        iter.skip(offset);
+      } break;
+      case ir::internal::kCondJumpInstruction: {
+        ir::Reg r             = iter.read<ir::Reg>();
+        uintptr_t true_block  = iter.read<uintptr_t>();
+        uintptr_t false_block = iter.read<uintptr_t>();
+        uintptr_t offset      = ctx.resolve<bool>(r) ? true_block : false_block;
+        ctx.current_frame()->MoveTo(offset);
+        iter = ctx.current_frame()->fn_->byte_code().begin();
+        iter.skip(offset);
+      } break;
+      case ir::LoadInstruction::kIndex: {
+        uint16_t num_bytes = iter.read<uint16_t>();
+        bool is_reg        = iter.read<bool>();
+        ir::Addr addr      = ctx.ReadAndResolve<ir::Addr>(is_reg, &iter);
+        auto result_reg    = iter.read<ir::Reg>().get();
+        DEBUG_LOG("load-instruction")(num_bytes, " ", addr, " ", result_reg);
+        switch (addr.kind()) {
+          case ir::Addr::Kind::Stack: {
+            ctx.current_frame()->regs_.set_raw(
+                result_reg, ctx.stack_.raw(addr.stack()), num_bytes);
+          } break;
+          case ir::Addr::Kind::ReadOnly: {
+            auto handle = ir::ReadOnlyData.lock();
+            ctx.current_frame()->regs_.set_raw(
+                result_reg, handle->raw(addr.rodata()), num_bytes);
+          } break;
+          case ir::Addr::Kind::Heap: {
+            ctx.current_frame()->regs_.set_raw(result_reg, addr.heap(),
+                                               num_bytes);
+          } break;
+        }
+      } break;
+
+      default: InstSet::Execute[cmd_index](&iter, &ctx, ret_slots);
+    }
+  }
 }
 
+template <typename InstSet>
 inline void CallFn(ir::NativeFn fn, StackFrame *frame,
                    absl::Span<ir::Addr const> ret_slots,
                    interpretter::ExecutionContext *ctx) {
@@ -66,7 +102,7 @@ inline void CallFn(ir::NativeFn fn, StackFrame *frame,
 
   auto *old_frame     = ctx->current_frame();
   ctx->current_frame_ = ASSERT_NOT_NULL(frame);
-  ctx->ExecuteBlocks(ret_slots);
+  ExecuteBlocks<InstSet>(*ctx, ret_slots);
   ctx->current_frame_ = old_frame;
 }
 
@@ -185,7 +221,7 @@ ExecuteInstruction(base::untyped_buffer::const_iterator *iter,
 // Maximum size of any primitive type we may write
 inline constexpr size_t kMaxSize = 8;
 
-template <typename Inst>
+template <typename Inst, typename InstSet>
 void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
                              interpretter::ExecutionContext *ctx,
                              absl::Span<ir::Addr const> ret_slots) {
@@ -411,7 +447,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
 
     // TODO This could be foreign I guess?
     ASSERT(f->kind() == ir::Fn::Kind::Native);
-    interpretter::CallFn(f->native(), &*frame, {}, ctx);
+    interpretter::CallFn<InstSet>(f->native(), &*frame, {}, ctx);
 
   } else if constexpr (ir::internal::kSetReturnInstructionRange.contains(
                            Inst::kIndex)) {
@@ -647,7 +683,7 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
       return_slots.push_back(addr);
     }
 
-    Execute(f, std::move(call_buf), return_slots, ctx);
+    interpretter::Execute<InstSet>(f, std::move(call_buf), return_slots, ctx);
 
   } else if constexpr (std::is_same_v<Inst, ir::LoadSymbolInstruction>) {
     std::string name       = iter->read<ir::String>().get().get();
@@ -729,7 +765,8 @@ using exec_t = void (*)(base::untyped_buffer::const_iterator *,
 
 inline constexpr auto kNullInstruction = static_cast<exec_t>(nullptr);
 
-inline constexpr auto kInstructions = std::array{
+template <typename InstSet>
+inline constexpr auto kInstructions = std::array<exec_t, 226>{
     kNullInstruction,  // Return instructions must be handled outside this
                        // array.
     kNullInstruction,  // UncondJumpInstruction
@@ -864,77 +901,80 @@ inline constexpr auto kInstructions = std::array{
     ExecuteInstruction<ir::RegisterInstruction<ir::EnumVal>>,
     ExecuteInstruction<ir::RegisterInstruction<ir::FlagsVal>>,
     ExecuteInstruction<ir::RegisterInstruction<bool>>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<uint8_t>>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<int8_t>>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<uint16_t>>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<int16_t>>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<uint32_t>>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<int32_t>>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<uint64_t>>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<int64_t>>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<float>>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<double>>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<type::Type const *>>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<ir::Addr>>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<ir::EnumVal>>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<ir::FlagsVal>>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<bool>>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<ir::String>>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<ir::Fn>>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<uint8_t>>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<int8_t>>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<uint16_t>>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<int16_t>>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<uint32_t>>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<int32_t>>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<uint64_t>>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<int64_t>>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<float>>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<double>>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<type::Type const *>>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<ir::Addr>>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<ir::EnumVal>>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<ir::FlagsVal>>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<bool>>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<ir::String>>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<uint8_t>>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<int8_t>>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<uint16_t>>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<int16_t>>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<uint32_t>>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<int32_t>>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<uint64_t>>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<int64_t>>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<float>>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<double>>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<type::Type const *>>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::Addr>>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::EnumVal>>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::FlagsVal>>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<bool>>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::String>>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::Fn>>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<core::Bytes>>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<core::Alignment>>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::BlockDef const *>>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::ScopeDef const *>>,
+    ExecuteAdHocInstruction<ir::StoreInstruction<uint8_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::StoreInstruction<int8_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::StoreInstruction<uint16_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::StoreInstruction<int16_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::StoreInstruction<uint32_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::StoreInstruction<int32_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::StoreInstruction<uint64_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::StoreInstruction<int64_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::StoreInstruction<float>, InstSet>,
+    ExecuteAdHocInstruction<ir::StoreInstruction<double>, InstSet>,
+    ExecuteAdHocInstruction<ir::StoreInstruction<type::Type const *>, InstSet>,
+    ExecuteAdHocInstruction<ir::StoreInstruction<ir::Addr>, InstSet>,
+    ExecuteAdHocInstruction<ir::StoreInstruction<ir::EnumVal>, InstSet>,
+    ExecuteAdHocInstruction<ir::StoreInstruction<ir::FlagsVal>, InstSet>,
+    ExecuteAdHocInstruction<ir::StoreInstruction<bool>, InstSet>,
+    ExecuteAdHocInstruction<ir::StoreInstruction<ir::String>, InstSet>,
+    ExecuteAdHocInstruction<ir::StoreInstruction<ir::Fn>, InstSet>,
+    ExecuteAdHocInstruction<ir::PhiInstruction<uint8_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::PhiInstruction<int8_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::PhiInstruction<uint16_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::PhiInstruction<int16_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::PhiInstruction<uint32_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::PhiInstruction<int32_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::PhiInstruction<uint64_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::PhiInstruction<int64_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::PhiInstruction<float>, InstSet>,
+    ExecuteAdHocInstruction<ir::PhiInstruction<double>, InstSet>,
+    ExecuteAdHocInstruction<ir::PhiInstruction<type::Type const *>, InstSet>,
+    ExecuteAdHocInstruction<ir::PhiInstruction<ir::Addr>, InstSet>,
+    ExecuteAdHocInstruction<ir::PhiInstruction<ir::EnumVal>, InstSet>,
+    ExecuteAdHocInstruction<ir::PhiInstruction<ir::FlagsVal>, InstSet>,
+    ExecuteAdHocInstruction<ir::PhiInstruction<bool>, InstSet>,
+    ExecuteAdHocInstruction<ir::PhiInstruction<ir::String>, InstSet>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<uint8_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<int8_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<uint16_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<int16_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<uint32_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<int32_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<uint64_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<int64_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<float>, InstSet>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<double>, InstSet>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<type::Type const *>,
+                            InstSet>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::Addr>, InstSet>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::EnumVal>, InstSet>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::FlagsVal>, InstSet>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<bool>, InstSet>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::String>, InstSet>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::Fn>, InstSet>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<core::Bytes>, InstSet>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<core::Alignment>, InstSet>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::BlockDef const *>,
+                            InstSet>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::ScopeDef const *>,
+                            InstSet>,
     ExecuteAdHocInstruction<
-        ir::SetReturnInstruction<module::BasicModule const *>>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::GenericFn>>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::Jump *>>,
+        ir::SetReturnInstruction<module::BasicModule const *>, InstSet>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::GenericFn>, InstSet>,
+    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::Jump *>, InstSet>,
     ExecuteAdHocInstruction<
-        ir::SetReturnInstruction<type::GenericStruct const *>>,
+        ir::SetReturnInstruction<type::GenericStruct const *>, InstSet>,
 
-    ExecuteAdHocInstruction<ir::CastInstruction<uint8_t>>,
-    ExecuteAdHocInstruction<ir::CastInstruction<int8_t>>,
-    ExecuteAdHocInstruction<ir::CastInstruction<uint16_t>>,
-    ExecuteAdHocInstruction<ir::CastInstruction<int16_t>>,
-    ExecuteAdHocInstruction<ir::CastInstruction<uint32_t>>,
-    ExecuteAdHocInstruction<ir::CastInstruction<int32_t>>,
-    ExecuteAdHocInstruction<ir::CastInstruction<uint64_t>>,
-    ExecuteAdHocInstruction<ir::CastInstruction<int64_t>>,
-    ExecuteAdHocInstruction<ir::CastInstruction<float>>,
-    ExecuteAdHocInstruction<ir::CastInstruction<double>>,
+    ExecuteAdHocInstruction<ir::CastInstruction<uint8_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::CastInstruction<int8_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::CastInstruction<uint16_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::CastInstruction<int16_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::CastInstruction<uint32_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::CastInstruction<int32_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::CastInstruction<uint64_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::CastInstruction<int64_t>, InstSet>,
+    ExecuteAdHocInstruction<ir::CastInstruction<float>, InstSet>,
+    ExecuteAdHocInstruction<ir::CastInstruction<double>, InstSet>,
 
     ExecuteInstruction<ir::NotInstruction>,
     ExecuteInstruction<ir::XorFlagsInstruction>,
@@ -942,25 +982,25 @@ inline constexpr auto kInstructions = std::array{
     ExecuteInstruction<ir::OrFlagsInstruction>,
     ExecuteInstruction<ir::PtrInstruction>,
     ExecuteInstruction<ir::BufPtrInstruction>,
-    ExecuteAdHocInstruction<ir::GetReturnInstruction>,
-    ExecuteAdHocInstruction<ir::OpaqueTypeInstruction>,
-    ExecuteAdHocInstruction<ir::ArrowInstruction>,
-    ExecuteAdHocInstruction<ir::CallInstruction>,
-    ExecuteAdHocInstruction<ir::LoadSymbolInstruction>,
-    ExecuteAdHocInstruction<ir::ArrayInstruction>,
-    ExecuteAdHocInstruction<ir::StructInstruction>,
-    ExecuteAdHocInstruction<ir::MakeBlockInstruction>,
-    ExecuteAdHocInstruction<ir::MakeScopeInstruction>,
-    ExecuteAdHocInstruction<ir::StructIndexInstruction>,
-    ExecuteAdHocInstruction<ir::TupleIndexInstruction>,
-    ExecuteAdHocInstruction<ir::PtrIncrInstruction>,
+    ExecuteAdHocInstruction<ir::GetReturnInstruction, InstSet>,
+    ExecuteAdHocInstruction<ir::OpaqueTypeInstruction, InstSet>,
+    ExecuteAdHocInstruction<ir::ArrowInstruction, InstSet>,
+    ExecuteAdHocInstruction<ir::CallInstruction, InstSet>,
+    ExecuteAdHocInstruction<ir::LoadSymbolInstruction, InstSet>,
+    ExecuteAdHocInstruction<ir::ArrayInstruction, InstSet>,
+    ExecuteAdHocInstruction<ir::StructInstruction, InstSet>,
+    ExecuteAdHocInstruction<ir::MakeBlockInstruction, InstSet>,
+    ExecuteAdHocInstruction<ir::MakeScopeInstruction, InstSet>,
+    ExecuteAdHocInstruction<ir::StructIndexInstruction, InstSet>,
+    ExecuteAdHocInstruction<ir::TupleIndexInstruction, InstSet>,
+    ExecuteAdHocInstruction<ir::PtrIncrInstruction, InstSet>,
     ExecuteInstruction<ir::TupleInstruction>,
-    ExecuteAdHocInstruction<ir::EnumerationInstruction>,
-    ExecuteAdHocInstruction<ir::TypeInfoInstruction>,
-    ExecuteAdHocInstruction<ir::TypeManipulationInstruction>,
-    ExecuteAdHocInstruction<ir::ByteViewLengthInstruction>,
-    ExecuteAdHocInstruction<ir::ByteViewDataInstruction>,
-    ExecuteAdHocInstruction<ir::DebugIrInstruction>,
+    ExecuteAdHocInstruction<ir::EnumerationInstruction, InstSet>,
+    ExecuteAdHocInstruction<ir::TypeInfoInstruction, InstSet>,
+    ExecuteAdHocInstruction<ir::TypeManipulationInstruction, InstSet>,
+    ExecuteAdHocInstruction<ir::ByteViewLengthInstruction, InstSet>,
+    ExecuteAdHocInstruction<ir::ByteViewDataInstruction, InstSet>,
+    ExecuteAdHocInstruction<ir::DebugIrInstruction, InstSet>,
 };
 
 template <typename>
@@ -994,10 +1034,10 @@ auto ExpandedInstructions(base::type_list<T, Ts...>,
   }
 }
 
-template <typename... Insts>
+template <typename InstSet, typename... Insts>
 constexpr std::array<exec_t, sizeof...(Insts)> MakeExecuteFunctions(
     base::type_list<Insts...>) {
-  return {kInstructions[Insts::kIndex]...};
+  return {kInstructions<InstSet>[Insts::kIndex]...};
 }
 
 template <typename... Insts>
@@ -1050,7 +1090,8 @@ struct InstructionSet<RequiredCapabilities(Capabilities...),
       static_cast<base::type_list<InstructionsOrSets...>>(nullptr),
       static_cast<base::type_list<>>(nullptr)));
   static constexpr std::array Execute =
-      internal_instructions::MakeExecuteFunctions(
+      internal_instructions::MakeExecuteFunctions<InstructionSet<
+          RequiredCapabilities(Capabilities...), InstructionsOrSets...>>(
           static_cast<instructions_t>(nullptr));
 
   static void Debug() {
