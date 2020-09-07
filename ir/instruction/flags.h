@@ -15,10 +15,12 @@ namespace ir {
 struct XorFlagsInstruction
     : base::Extend<XorFlagsInstruction>::With<
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
-  using binary                        = FlagsVal;
-  static constexpr cmd_index_t kIndex = internal::kXorFlagsInstructionNumber;
   static constexpr std::string_view kDebugFormat = "%3$s = xor-flags %1$s %2$s";
 
+  void Apply(interpretter::ExecutionContext& ctx) const {
+    ctx.current_frame()->regs_.set(result,
+                                   Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
+  }
   static FlagsVal Apply(FlagsVal lhs, FlagsVal rhs) { return lhs ^ rhs; }
 
   RegOr<FlagsVal> lhs;
@@ -29,10 +31,12 @@ struct XorFlagsInstruction
 struct AndFlagsInstruction
     : base::Extend<AndFlagsInstruction>::With<
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
-  using binary                        = FlagsVal;
-  static constexpr cmd_index_t kIndex = internal::kAndFlagsInstructionNumber;
   static constexpr std::string_view kDebugFormat = "%3$s = and-flags %1$s %2$s";
 
+  void Apply(interpretter::ExecutionContext& ctx) const {
+    ctx.current_frame()->regs_.set(result,
+                                   Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
+  }
   static FlagsVal Apply(FlagsVal lhs, FlagsVal rhs) { return lhs & rhs; }
 
   RegOr<FlagsVal> lhs;
@@ -43,10 +47,12 @@ struct AndFlagsInstruction
 struct OrFlagsInstruction
     : base::Extend<OrFlagsInstruction>::With<ByteCodeExtension, InlineExtension,
                                              DebugFormatExtension> {
-  using binary                        = FlagsVal;
-  static constexpr cmd_index_t kIndex = internal::kOrFlagsInstructionNumber;
   static constexpr std::string_view kDebugFormat = "%3$s = or-flags %1$s %2$s";
 
+  void Apply(interpretter::ExecutionContext& ctx) const {
+    ctx.current_frame()->regs_.set(result,
+                                   Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
+  }
   static FlagsVal Apply(FlagsVal lhs, FlagsVal rhs) { return lhs | rhs; }
 
   RegOr<FlagsVal> lhs;

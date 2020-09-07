@@ -47,36 +47,25 @@ struct LoadInstruction
 };
 
 template <typename T>
-struct StoreInstruction {
-  static constexpr cmd_index_t kIndex =
-      internal::kStoreInstructionRange.start + internal::PrimitiveIndex<T>();
+struct StoreInstruction
+    : base::Extend<StoreInstruction<T>>::template With<
+          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat = "store %1$s -> [%2$s]";
   using type = T;
-  StoreInstruction(RegOr<T> const& value, RegOr<Addr> const& location)
-      : value(value), location(location) {}
-  ~StoreInstruction() {}
 
-  std::string to_string() const {
-    using base::stringify;
-    return absl::StrCat(internal::TypeToString<T>(), " store ",
-                        stringify(this->value), " -> [", stringify(location),
-                        "]");
-  }
-
-  struct control_bits {
-    uint8_t value_is_reg : 1;
-    uint8_t location_is_reg : 1;
-  };
-
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(control_bits{.value_is_reg    = value.is_reg(),
-                               .location_is_reg = location.is_reg()});
-    value.apply([&](auto v) { writer->Write(v); });
-    location.apply([&](auto v) { writer->Write(v); });
-  }
-
-  void Inline(InstructionInliner const& inliner) {
-    inliner.Inline(value);
-    inliner.Inline(location);
+  void Apply(interpretter::ExecutionContext& ctx) {
+    ir::Addr addr = ctx.resolve(location);
+    type val      = ctx.resolve(value);
+    switch (addr.kind()) {
+      case ir::Addr::Kind::Stack: ctx.stack_.set(addr.stack(), val); break;
+      case ir::Addr::Kind::ReadOnly:
+        NOT_YET(
+            "Storing into read-only data seems suspect. Is it just for "
+            "initialization?");
+        break;
+      case ir::Addr::Kind::Heap:
+        *ASSERT_NOT_NULL(static_cast<type*>(addr.heap())) = val;
+    }
   }
 
   RegOr<T> value;
@@ -96,12 +85,12 @@ struct StoreInstruction {
 template <typename T>
 struct RegisterInstruction
     : base::Extend<RegisterInstruction<T>>::template With<
-          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
-  using unary = T;
-  static constexpr cmd_index_t kIndex =
-      internal::kRegisterInstructionRange.start + internal::PrimitiveIndex<T>();
+          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = %1$s";
 
+  void Apply(interpretter::ExecutionContext& ctx) const {
+    ctx.current_frame()->regs_.set(result, Apply(ctx.resolve(operand)));
+  }
   static T Apply(T val) { return val; }
 
   RegOr<T> operand;
@@ -134,21 +123,6 @@ struct CastInstruction
 
   RegOr<FromType> value;
   uint8_t to_type_byte;
-  Reg result;
-};
-
-template <typename NumType>
-struct NegInstruction
-    : base::Extend<NegInstruction<NumType>>::template With<
-          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
-  using unary                         = NumType;
-  static constexpr cmd_index_t kIndex = internal::kNegInstructionRange.start +
-                                        internal::PrimitiveIndex<NumType>();
-  static constexpr std::string_view kDebugFormat = "%2$s = neg %1$s";
-
-  static NumType Apply(NumType operand) { return -operand; }
-
-  RegOr<NumType> operand;
   Reg result;
 };
 

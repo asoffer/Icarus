@@ -26,8 +26,9 @@ struct Fn {
  public:
   enum class Kind { Native, Builtin, Foreign };
 
-  // TODO remove this constructor.
-  Fn(CompiledFn *f) : Fn(NativeFn(f)) {}
+  // TODO: remove this constructor.
+  // TODO: Using default construction to avoid some work needed in byte-code reader.
+  Fn(CompiledFn *f = nullptr) : Fn(NativeFn(f)) {}
 
   Fn(NativeFn f) {
     std::memcpy(&data_, &f, sizeof(data_));

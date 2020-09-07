@@ -16,10 +16,12 @@ template <typename NumType>
 struct EqInstruction
     : base::Extend<EqInstruction<NumType>>::template With<
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
-  using binary = NumType;
-  static constexpr cmd_index_t kIndex =
-      internal::kEqInstructionRange.start + internal::PrimitiveIndex<NumType>();
   static constexpr std::string_view kDebugFormat = "%3$s = eq %1$s %2$s";
+
+  void Apply(interpretter::ExecutionContext& ctx) const {
+    ctx.current_frame()->regs_.set(result,
+                                   Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
+  }
 
   static bool Apply(NumType lhs, NumType rhs) { return lhs == rhs; }
 
@@ -32,10 +34,12 @@ template <typename NumType>
 struct NeInstruction
     : base::Extend<NeInstruction<NumType>>::template With<
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
-  using binary = NumType;
-  static constexpr cmd_index_t kIndex =
-      internal::kNeInstructionRange.start + internal::PrimitiveIndex<NumType>();
   static constexpr std::string_view kDebugFormat = "%3$s = ne %1$s %2$s";
+
+  void Apply(interpretter::ExecutionContext& ctx) const {
+    ctx.current_frame()->regs_.set(result,
+                                   Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
+  }
 
   static bool Apply(NumType lhs, NumType rhs) { return lhs != rhs; }
 
@@ -48,10 +52,12 @@ template <typename NumType>
 struct LtInstruction
     : base::Extend<LtInstruction<NumType>>::template With<
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
-  using binary = NumType;
-  static constexpr cmd_index_t kIndex =
-      internal::kLtInstructionRange.start + internal::PrimitiveIndex<NumType>();
   static constexpr std::string_view kDebugFormat = "%3$s = lt %1$s %2$s";
+
+  void Apply(interpretter::ExecutionContext& ctx) const {
+    ctx.current_frame()->regs_.set(result,
+                                   Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
+  }
 
   static bool Apply(NumType lhs, NumType rhs) { return lhs < rhs; }
 
@@ -64,10 +70,12 @@ template <typename NumType>
 struct LeInstruction
     : base::Extend<LeInstruction<NumType>>::template With<
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
-  using binary = NumType;
-  static constexpr cmd_index_t kIndex =
-      internal::kLeInstructionRange.start + internal::PrimitiveIndex<NumType>();
   static constexpr std::string_view kDebugFormat = "%3$s = le %1$s %2$s";
+
+  void Apply(interpretter::ExecutionContext& ctx) const {
+    ctx.current_frame()->regs_.set(result,
+                                   Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
+  }
 
   static bool Apply(NumType lhs, NumType rhs) { return lhs <= rhs; }
 

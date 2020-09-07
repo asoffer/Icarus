@@ -443,8 +443,8 @@ struct Builder {
     if constexpr (IsRegOr<T>::value) {
       auto& blk = *CurrentBlock();
       blk.load_store_cache().clear<typename T::type>();
-      StoreInstruction<typename T::type> inst(r, addr);
-      blk.Append(std::move(inst));
+      blk.Append(
+          StoreInstruction<typename T::type>{.value = r, .location = addr});
     } else {
       Store(RegOr<T>(r), addr);
     }

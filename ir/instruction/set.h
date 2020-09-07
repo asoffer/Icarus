@@ -330,24 +330,6 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     ctx->current_frame()->regs_.set(
         iter->read<ir::Reg>(),
         type::Func(std::move(in_params), std::move(outs)));
-  } else if constexpr (ir::internal::kStoreInstructionRange.contains(
-                           Inst::kIndex)) {
-    using type    = typename Inst::type;
-    auto ctrl     = iter->read<typename Inst::control_bits>().get();
-    type val      = ctx->ReadAndResolve<type>(ctrl.value_is_reg, iter);
-    ir::Addr addr = ctx->ReadAndResolve<ir::Addr>(ctrl.location_is_reg, iter);
-    DEBUG_LOG()(addr);
-
-    switch (addr.kind()) {
-      case ir::Addr::Kind::Stack: ctx->stack_.set(addr.stack(), val); break;
-      case ir::Addr::Kind::ReadOnly:
-        NOT_YET(
-            "Storing into read-only data seems suspect. Is it just for "
-            "initialization?");
-        break;
-      case ir::Addr::Kind::Heap:
-        *ASSERT_NOT_NULL(static_cast<type *>(addr.heap())) = val;
-    }
   } else if constexpr (ir::internal::kPhiInstructionRange.contains(
                            Inst::kIndex)) {
     uint16_t num   = iter->read<uint16_t>();
@@ -766,158 +748,7 @@ using exec_t = void (*)(base::untyped_buffer::const_iterator *,
 inline constexpr auto kNullInstruction = static_cast<exec_t>(nullptr);
 
 template <typename InstSet>
-inline constexpr auto kInstructions = std::array<exec_t, 226>{
-    kNullInstruction,  // Return instructions must be handled outside this
-                       // array.
-    kNullInstruction,  // UncondJumpInstruction
-    kNullInstruction,  // CondJumpInstruction
-    kNullInstruction,  // LoadInstruction is inlined.
-    ExecuteInstruction<ir::AddInstruction<uint8_t>>,
-    ExecuteInstruction<ir::AddInstruction<int8_t>>,
-    ExecuteInstruction<ir::AddInstruction<uint16_t>>,
-    ExecuteInstruction<ir::AddInstruction<int16_t>>,
-    ExecuteInstruction<ir::AddInstruction<uint32_t>>,
-    ExecuteInstruction<ir::AddInstruction<int32_t>>,
-    ExecuteInstruction<ir::AddInstruction<uint64_t>>,
-    ExecuteInstruction<ir::AddInstruction<int64_t>>,
-    ExecuteInstruction<ir::AddInstruction<float>>,
-    ExecuteInstruction<ir::AddInstruction<double>>,
-    ExecuteInstruction<ir::SubInstruction<uint8_t>>,
-    ExecuteInstruction<ir::SubInstruction<int8_t>>,
-    ExecuteInstruction<ir::SubInstruction<uint16_t>>,
-    ExecuteInstruction<ir::SubInstruction<int16_t>>,
-    ExecuteInstruction<ir::SubInstruction<uint32_t>>,
-    ExecuteInstruction<ir::SubInstruction<int32_t>>,
-    ExecuteInstruction<ir::SubInstruction<uint64_t>>,
-    ExecuteInstruction<ir::SubInstruction<int64_t>>,
-    ExecuteInstruction<ir::SubInstruction<float>>,
-    ExecuteInstruction<ir::SubInstruction<double>>,
-    ExecuteInstruction<ir::MulInstruction<uint8_t>>,
-    ExecuteInstruction<ir::MulInstruction<int8_t>>,
-    ExecuteInstruction<ir::MulInstruction<uint16_t>>,
-    ExecuteInstruction<ir::MulInstruction<int16_t>>,
-    ExecuteInstruction<ir::MulInstruction<uint32_t>>,
-    ExecuteInstruction<ir::MulInstruction<int32_t>>,
-    ExecuteInstruction<ir::MulInstruction<uint64_t>>,
-    ExecuteInstruction<ir::MulInstruction<int64_t>>,
-    ExecuteInstruction<ir::MulInstruction<float>>,
-    ExecuteInstruction<ir::MulInstruction<double>>,
-    ExecuteInstruction<ir::DivInstruction<uint8_t>>,
-    ExecuteInstruction<ir::DivInstruction<int8_t>>,
-    ExecuteInstruction<ir::DivInstruction<uint16_t>>,
-    ExecuteInstruction<ir::DivInstruction<int16_t>>,
-    ExecuteInstruction<ir::DivInstruction<uint32_t>>,
-    ExecuteInstruction<ir::DivInstruction<int32_t>>,
-    ExecuteInstruction<ir::DivInstruction<uint64_t>>,
-    ExecuteInstruction<ir::DivInstruction<int64_t>>,
-    ExecuteInstruction<ir::DivInstruction<float>>,
-    ExecuteInstruction<ir::DivInstruction<double>>,
-    ExecuteInstruction<ir::ModInstruction<uint8_t>>,
-    ExecuteInstruction<ir::ModInstruction<int8_t>>,
-    ExecuteInstruction<ir::ModInstruction<uint16_t>>,
-    ExecuteInstruction<ir::ModInstruction<int16_t>>,
-    ExecuteInstruction<ir::ModInstruction<uint32_t>>,
-    ExecuteInstruction<ir::ModInstruction<int32_t>>,
-    ExecuteInstruction<ir::ModInstruction<uint64_t>>,
-    ExecuteInstruction<ir::ModInstruction<int64_t>>,
-    ExecuteInstruction<ir::LtInstruction<uint8_t>>,
-    ExecuteInstruction<ir::LtInstruction<int8_t>>,
-    ExecuteInstruction<ir::LtInstruction<uint16_t>>,
-    ExecuteInstruction<ir::LtInstruction<int16_t>>,
-    ExecuteInstruction<ir::LtInstruction<uint32_t>>,
-    ExecuteInstruction<ir::LtInstruction<int32_t>>,
-    ExecuteInstruction<ir::LtInstruction<uint64_t>>,
-    ExecuteInstruction<ir::LtInstruction<int64_t>>,
-    ExecuteInstruction<ir::LtInstruction<float>>,
-    ExecuteInstruction<ir::LtInstruction<double>>,
-    kNullInstruction,
-    kNullInstruction,
-    kNullInstruction,
-    ExecuteInstruction<ir::LtInstruction<ir::FlagsVal>>,
-    ExecuteInstruction<ir::LeInstruction<uint8_t>>,
-    ExecuteInstruction<ir::LeInstruction<int8_t>>,
-    ExecuteInstruction<ir::LeInstruction<uint16_t>>,
-    ExecuteInstruction<ir::LeInstruction<int16_t>>,
-    ExecuteInstruction<ir::LeInstruction<uint32_t>>,
-    ExecuteInstruction<ir::LeInstruction<int32_t>>,
-    ExecuteInstruction<ir::LeInstruction<uint64_t>>,
-    ExecuteInstruction<ir::LeInstruction<int64_t>>,
-    ExecuteInstruction<ir::LeInstruction<float>>,
-    ExecuteInstruction<ir::LeInstruction<double>>,
-    kNullInstruction,
-    kNullInstruction,
-    kNullInstruction,
-    ExecuteInstruction<ir::LeInstruction<ir::FlagsVal>>,
-    ExecuteInstruction<ir::EqInstruction<uint8_t>>,
-    ExecuteInstruction<ir::EqInstruction<int8_t>>,
-    ExecuteInstruction<ir::EqInstruction<uint16_t>>,
-    ExecuteInstruction<ir::EqInstruction<int16_t>>,
-    ExecuteInstruction<ir::EqInstruction<uint32_t>>,
-    ExecuteInstruction<ir::EqInstruction<int32_t>>,
-    ExecuteInstruction<ir::EqInstruction<uint64_t>>,
-    ExecuteInstruction<ir::EqInstruction<int64_t>>,
-    ExecuteInstruction<ir::EqInstruction<float>>,
-    ExecuteInstruction<ir::EqInstruction<double>>,
-    ExecuteInstruction<ir::EqInstruction<type::Type const *>>,
-    ExecuteInstruction<ir::EqInstruction<ir::Addr>>,
-    ExecuteInstruction<ir::EqInstruction<ir::EnumVal>>,
-    ExecuteInstruction<ir::EqInstruction<ir::FlagsVal>>,
-    ExecuteInstruction<ir::NeInstruction<uint8_t>>,
-    ExecuteInstruction<ir::NeInstruction<int8_t>>,
-    ExecuteInstruction<ir::NeInstruction<uint16_t>>,
-    ExecuteInstruction<ir::NeInstruction<int16_t>>,
-    ExecuteInstruction<ir::NeInstruction<uint32_t>>,
-    ExecuteInstruction<ir::NeInstruction<int32_t>>,
-    ExecuteInstruction<ir::NeInstruction<uint64_t>>,
-    ExecuteInstruction<ir::NeInstruction<int64_t>>,
-    ExecuteInstruction<ir::NeInstruction<float>>,
-    ExecuteInstruction<ir::NeInstruction<double>>,
-    ExecuteInstruction<ir::NeInstruction<type::Type const *>>,
-    ExecuteInstruction<ir::NeInstruction<ir::Addr>>,
-    ExecuteInstruction<ir::NeInstruction<ir::EnumVal>>,
-    ExecuteInstruction<ir::NeInstruction<ir::FlagsVal>>,
-    ExecuteInstruction<ir::NeInstruction<bool>>,
-    ExecuteInstruction<ir::NegInstruction<int8_t>>,
-    kNullInstruction,
-    ExecuteInstruction<ir::NegInstruction<int16_t>>,
-    kNullInstruction,
-    ExecuteInstruction<ir::NegInstruction<int32_t>>,
-    kNullInstruction,
-    ExecuteInstruction<ir::NegInstruction<int64_t>>,
-    ExecuteInstruction<ir::NegInstruction<float>>,
-    ExecuteInstruction<ir::NegInstruction<double>>,
-    ExecuteInstruction<ir::RegisterInstruction<uint8_t>>,
-    ExecuteInstruction<ir::RegisterInstruction<int8_t>>,
-    ExecuteInstruction<ir::RegisterInstruction<uint16_t>>,
-    ExecuteInstruction<ir::RegisterInstruction<int16_t>>,
-    ExecuteInstruction<ir::RegisterInstruction<uint32_t>>,
-    ExecuteInstruction<ir::RegisterInstruction<int32_t>>,
-    ExecuteInstruction<ir::RegisterInstruction<uint64_t>>,
-    ExecuteInstruction<ir::RegisterInstruction<int64_t>>,
-    ExecuteInstruction<ir::RegisterInstruction<float>>,
-    ExecuteInstruction<ir::RegisterInstruction<double>>,
-    ExecuteInstruction<ir::RegisterInstruction<type::Type const *>>,
-    ExecuteInstruction<ir::RegisterInstruction<ir::Addr>>,
-    ExecuteInstruction<ir::RegisterInstruction<ir::EnumVal>>,
-    ExecuteInstruction<ir::RegisterInstruction<ir::FlagsVal>>,
-    ExecuteInstruction<ir::RegisterInstruction<bool>>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<uint8_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<int8_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<uint16_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<int16_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<uint32_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<int32_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<uint64_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<int64_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<float>, InstSet>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<double>, InstSet>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<type::Type const *>, InstSet>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<ir::Addr>, InstSet>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<ir::EnumVal>, InstSet>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<ir::FlagsVal>, InstSet>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<bool>, InstSet>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<ir::String>, InstSet>,
-    ExecuteAdHocInstruction<ir::StoreInstruction<ir::Fn>, InstSet>,
+inline constexpr auto kInstructions = std::array{
     ExecuteAdHocInstruction<ir::PhiInstruction<uint8_t>, InstSet>,
     ExecuteAdHocInstruction<ir::PhiInstruction<int8_t>, InstSet>,
     ExecuteAdHocInstruction<ir::PhiInstruction<uint16_t>, InstSet>,
@@ -977,9 +808,6 @@ inline constexpr auto kInstructions = std::array<exec_t, 226>{
     ExecuteAdHocInstruction<ir::CastInstruction<double>, InstSet>,
 
     ExecuteInstruction<ir::NotInstruction>,
-    ExecuteInstruction<ir::XorFlagsInstruction>,
-    ExecuteInstruction<ir::AndFlagsInstruction>,
-    ExecuteInstruction<ir::OrFlagsInstruction>,
     ExecuteInstruction<ir::PtrInstruction>,
     ExecuteInstruction<ir::BufPtrInstruction>,
     ExecuteAdHocInstruction<ir::GetReturnInstruction, InstSet>,
@@ -1034,10 +862,28 @@ auto ExpandedInstructions(base::type_list<T, Ts...>,
   }
 }
 
+template <typename Inst, typename = void>
+struct HaskIndex : std::false_type {};
+template <typename Inst>
+struct HaskIndex<Inst, std::void_t<decltype(Inst::kIndex)>> : std::true_type {};
+
+template <typename InstSet, typename Inst>
+constexpr exec_t GetInstruction() {
+  if constexpr (HaskIndex<Inst>::value) {
+    static_assert(Inst::kIndex < kInstructions<InstSet>.size());
+    return kInstructions<InstSet>[Inst::kIndex];
+  } else {
+    return [](base::untyped_buffer::const_iterator *iter,
+              interpretter::ExecutionContext *ctx,
+              absl::Span<ir::Addr const> ret_slots) {
+      Inst::ReadFromByteCode(iter).Apply(*ctx);
+    };
+  }
+}
 template <typename InstSet, typename... Insts>
 constexpr std::array<exec_t, sizeof...(Insts)> MakeExecuteFunctions(
     base::type_list<Insts...>) {
-  return {kInstructions<InstSet>[Insts::kIndex]...};
+  return {GetInstruction<InstSet, Insts>()...};
 }
 
 template <typename... Insts>

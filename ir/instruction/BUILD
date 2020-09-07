@@ -8,6 +8,7 @@ cc_library(
         ":op_codes",
         ":util",
         "//base:extend",
+        "//ir/interpretter:execute_header",
     ],
 )
 
