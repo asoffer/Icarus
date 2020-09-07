@@ -8,7 +8,7 @@ cc_library(
         ":op_codes",
         ":util",
         "//base:extend",
-        "//ir/interpretter:execute_header",
+        "//ir/interpretter:execute",
     ],
 )
 
@@ -212,7 +212,7 @@ cc_library(
         "//base:untyped_buffer",
         "//ir:block_def",
         "//ir/interpretter:architecture",
-        "//ir/interpretter:execute_header",
+        "//ir/interpretter:execute",
         "//ir/interpretter:foreign",
         "//ir/interpretter:stack_frame",
         "//ir:jump",

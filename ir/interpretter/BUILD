@@ -68,8 +68,9 @@ cc_library(
 )
 
 cc_library(
-    name = "execute_header",
+    name = "execute",
     hdrs = ["execute.h"],
+    srcs = ["execute.cc"],
     visibility = ["//visibility:public"],
     deps = [
         ":foreign",
@@ -80,14 +81,6 @@ cc_library(
         "//ir/value:reg",
         "//ir/value:reg_or",
         "@com_google_absl//absl/types:span",
-    ],
-)
-
-cc_library(
-    name = "execute",
-    srcs = ["execute.cc"],
-    deps = [
-        ":execute_header",
     ],
 )
 
