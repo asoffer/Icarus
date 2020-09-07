@@ -18,8 +18,6 @@ namespace ir {
 // TODO consider changing these to something like 'basic block arguments'
 template <typename T>
 struct PhiInstruction {
-  constexpr static cmd_index_t kIndex =
-      internal::kPhiInstructionRange.start + internal::PrimitiveIndex<T>();
   using type = T;
 
   PhiInstruction() = default;
@@ -45,7 +43,6 @@ struct PhiInstruction {
   }
 
   void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(kIndex);
     writer->Write<uint16_t>(values.size());
     for (auto block : blocks) { writer->Write(block); }
     internal::WriteBits<uint16_t, RegOr<T>>(

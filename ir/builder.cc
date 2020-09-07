@@ -157,23 +157,21 @@ void Builder::ChooseJump(std::vector<std::string_view> names,
 }
 
 void Builder::Init(type::Type const *t, Reg r) {
-  CurrentBlock()->Append(TypeManipulationInstruction(
-      TypeManipulationInstruction::Kind::Init, t, r));
+  CurrentBlock()->Append(InitInstruction{.type = t, .reg = r});
 }
 
 void Builder::Destroy(type::Type const *t, Reg r) {
-  CurrentBlock()->Append(TypeManipulationInstruction(
-      TypeManipulationInstruction::Kind::Destroy, t, r));
+  CurrentBlock()->Append(DestroyInstruction{.type = t, .reg = r});
 }
 
 void Builder::Move(type::Type const *t, Reg from, RegOr<Addr> to) {
-  CurrentBlock()->Append(TypeManipulationInstruction(
-      TypeManipulationInstruction::Kind::Move, t, from, to));
+  CurrentBlock()->Append(
+      ir::MoveInstruction{.type = t, .from = from, .to = to});
 }
 
 void Builder::Copy(type::Type const *t, Reg from, RegOr<Addr> to) {
-  CurrentBlock()->Append(TypeManipulationInstruction(
-      TypeManipulationInstruction::Kind::Copy, t, from, to));
+  CurrentBlock()->Append(
+      ir::CopyInstruction{.type = t, .from = from, .to = to});
 }
 
 type::Typed<Reg> Builder::LoadSymbol(String name, type::Type const *type) {
@@ -184,14 +182,15 @@ type::Typed<Reg> Builder::LoadSymbol(String name, type::Type const *type) {
 }
 
 Reg Builder::Align(RegOr<type::Type const *> r) {
-  TypeInfoInstruction inst(TypeInfoInstruction::Kind::Alignment, r);
+  TypeInfoInstruction inst{.kind = TypeInfoInstruction::Kind::Alignment,
+                           .type = r};
   auto result = inst.result = CurrentGroup()->Reserve();
   CurrentBlock()->Append(std::move(inst));
   return result;
 }
 
 Reg Builder::Bytes(RegOr<type::Type const *> r) {
-  TypeInfoInstruction inst(TypeInfoInstruction::Kind::Bytes, r);
+  TypeInfoInstruction inst{.kind = TypeInfoInstruction::Kind::Bytes, .type = r};
   auto result = inst.result = CurrentGroup()->Reserve();
   CurrentBlock()->Append(std::move(inst));
   return result;

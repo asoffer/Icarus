@@ -24,6 +24,7 @@
 #include "ir/instruction/util.h"
 #include "ir/interpretter/execute.h"
 #include "ir/interpretter/foreign.h"
+#include "ir/interpretter/stack_frame.h"
 #include "ir/out_params.h"
 #include "ir/value/enum_and_flags.h"
 #include "ir/value/fn.h"
@@ -104,9 +105,6 @@ struct SetReturnInstruction
     : base::Extend<SetReturnInstruction<T>>::template With<
           WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
   using type = T;
-  static constexpr cmd_index_t kIndex =
-      internal::kSetReturnInstructionRange.start +
-      internal::PrimitiveIndex<T>();
   static constexpr std::string_view kDebugFormat = "set-ret %1$s = %2$s";
 
   uint16_t index;
@@ -133,7 +131,6 @@ struct CastInstruction
 struct GetReturnInstruction
     : base::Extend<GetReturnInstruction>::With<
           WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
-  static constexpr cmd_index_t kIndex = internal::kGetReturnInstructionIndex;
   static constexpr std::string_view kDebugFormat = "%2$s = get-ret %1$s";
 
   uint16_t index;
@@ -166,59 +163,106 @@ struct DebugIrInstruction
   }
 };
 
-// Oddly named to be sure, this instruction is used to do initializations,
-// copies, moves, or destructions of the given type.
-struct TypeManipulationInstruction {
-  constexpr static cmd_index_t kIndex =
-      internal::kTypeManipulationInstructionNumber;
 
-  enum class Kind : uint8_t { Init, Destroy, Move, Copy };
-  TypeManipulationInstruction(Kind k, type::Type const* type, Reg from,
-                              RegOr<Addr> to = RegOr<Addr>(Reg(0)))
-      : kind(k), type(type), r(from), to(to) {}
-  ~TypeManipulationInstruction() {}
+struct InitInstruction
+    : base::Extend<InitInstruction>::With<ByteCodeExtension, InlineExtension,
+                                          DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat = "init %2$s";
 
-  std::string to_string() const {
-    char const* name;
-    switch (kind) {
-      case Kind::Init:
-        return absl::StrCat("init ", type->to_string(), " ", stringify(r));
-      case Kind::Destroy:
-        return absl::StrCat("destroy ", type->to_string(), " ", stringify(r));
-      case Kind::Copy:
-        return absl::StrCat("copy ", type->to_string(), " ", stringify(r), " ",
-                            stringify(to));
-      case Kind::Move:
-        return absl::StrCat("move ", type->to_string(), " ", stringify(r), " ",
-                            stringify(to));
-      default: UNREACHABLE();
+  std::pair<ir::Fn, interpretter::StackFrame> Apply(
+      interpretter::ExecutionContext& ctx) const {
+    if (auto* s = type->if_as<type::Struct>()) {
+      ir::Fn f = s->init_func_.get();
+      std::pair<ir::Fn, interpretter::StackFrame> result(
+          f, interpretter::StackFrame(f.native(), &ctx.stack_));
+      std::get<1>(result).regs_.set(ir::Reg::Arg(0),
+                                    ctx.resolve<ir::Addr>(reg));
+      return result;
+
+    } else if (auto* tup = type->if_as<type::Tuple>()) {
+      ir::Fn f = tup->init_func_.get();
+      std::pair<ir::Fn, interpretter::StackFrame> result(
+          f, interpretter::StackFrame(f.native(), &ctx.stack_));
+      std::get<1>(result).regs_.set(ir::Reg::Arg(0),
+                                    ctx.resolve<ir::Addr>(reg));
+      return result;
+
+    } else if (auto* a = type->if_as<type::Array>()) {
+      NOT_YET();  // f = a->init_func_.get();
+    } else {
+      NOT_YET();
     }
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(kind);
-    writer->Write(type);
-    writer->Write(r);
-    if (kind == Kind::Copy or kind == Kind::Move) {
-      writer->Write(to.is_reg());
-      to.apply([&](auto v) { writer->Write(v); });
-    }
-  }
-
-  void Inline(InstructionInliner const& inliner) {
-    inliner.Inline(r);
-    if (kind == Kind::Copy or kind == Kind::Move) { inliner.Inline(to); }
-  }
-
-  Kind kind;
   type::Type const* type;
-  Reg r;
-  RegOr<Addr> to;  // Only meaningful for copy and move
+  Reg reg;
+};
+
+struct DestroyInstruction
+    : base::Extend<DestroyInstruction>::With<ByteCodeExtension, InlineExtension,
+                                             DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat = "destroy %2$s";
+
+  std::pair<ir::Fn, interpretter::StackFrame> Apply(
+      interpretter::ExecutionContext& ctx) const {
+    if (auto* s = type->if_as<type::Struct>()) {
+      ir::Fn f = s->destroy_func_.get();
+      std::pair<ir::Fn, interpretter::StackFrame> result(
+          f, interpretter::StackFrame(f.native(), &ctx.stack_));
+      std::get<1>(result).regs_.set(ir::Reg::Arg(0),
+                                    ctx.resolve<ir::Addr>(reg));
+      return result;
+
+    } else if (auto* tup = type->if_as<type::Tuple>()) {
+      ir::Fn f = tup->destroy_func_.get();
+      std::pair<ir::Fn, interpretter::StackFrame> result(
+          f, interpretter::StackFrame(f.native(), &ctx.stack_));
+      std::get<1>(result).regs_.set(ir::Reg::Arg(0),
+                                    ctx.resolve<ir::Addr>(reg));
+      return result;
+
+    } else if (auto* a = type->if_as<type::Array>()) {
+      NOT_YET();  // f = a->destroy_func_.get();
+    } else {
+      NOT_YET();
+    }
+  }
+
+  type::Type const* type;
+  Reg reg;
+};
+
+struct CopyInstruction
+    : base::Extend<CopyInstruction>::With<ByteCodeExtension, InlineExtension,
+                                          DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat = "copy %2$s -> %3$s";
+
+  std::pair<ir::Fn, interpretter::StackFrame> Apply(
+      interpretter::ExecutionContext& ctx) const {
+    NOT_YET();
+  }
+
+  type::Type const* type;
+  ir::RegOr<ir::Addr> from;
+  ir::RegOr<ir::Addr> to;
+};
+
+struct MoveInstruction
+    : base::Extend<MoveInstruction>::With<ByteCodeExtension, InlineExtension,
+                                          DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat = "move %2$s -> %3$s";
+
+  std::pair<ir::Fn, interpretter::StackFrame> Apply(
+      interpretter::ExecutionContext& ctx) const {
+    NOT_YET();
+  }
+
+  type::Type const* type;
+  ir::RegOr<ir::Addr> from;
+  ir::RegOr<ir::Addr> to;
 };
 
 struct CallInstruction {
-  static constexpr cmd_index_t kIndex = internal::kCallInstructionNumber;
-
   CallInstruction(type::Function const* fn_type, RegOr<Fn> const& fn,
                   std::vector<Value> args, OutParams outs)
       : fn_type_(fn_type),
@@ -327,12 +371,10 @@ struct LoadSymbolInstruction
   Reg result;
 };
 
-struct TypeInfoInstruction {
-  static constexpr cmd_index_t kIndex = internal::kTypeInfoInstructionNumber;
+struct TypeInfoInstruction
+    : base::Extend<TypeInfoInstruction>::With<ByteCodeExtension,
+                                              InlineExtension> {
   enum class Kind : uint8_t { Alignment = 0, Bytes = 2 };
-  TypeInfoInstruction(Kind kind, RegOr<type::Type const*> type)
-      : kind(kind), type(type) {}
-  ~TypeInfoInstruction() {}
 
   std::string to_string() const {
     using base::stringify;
@@ -342,14 +384,18 @@ struct TypeInfoInstruction {
         type.is_reg() ? stringify(type.reg()) : type.value()->to_string());
   }
 
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write<uint8_t>(static_cast<uint8_t>(kind) |
-                           static_cast<uint8_t>(type.is_reg()));
-    type.apply([&](auto v) { writer->Write(v); });
-    writer->Write(result);
+  void Apply(interpretter::ExecutionContext& ctx) {
+    switch (kind) {
+      case Kind::Alignment:
+        ctx.current_frame()->regs_.set(
+            result, ctx.resolve(type)->alignment(interpretter::kArchitecture));
+        break;
+      case Kind::Bytes:
+        ctx.current_frame()->regs_.set(
+            result, ctx.resolve(type)->bytes(interpretter::kArchitecture));
+        break;
+    }
   }
-
-  void Inline(InstructionInliner const& inliner) { inliner.Inline(type); }
 
   Kind kind;
   RegOr<type::Type const*> type;
@@ -357,8 +403,6 @@ struct TypeInfoInstruction {
 };
 
 struct MakeBlockInstruction {
-  static constexpr cmd_index_t kIndex = internal::kMakeBlockInstructionNumber;
-
   MakeBlockInstruction(BlockDef* block_def, std::vector<RegOr<Fn>> befores,
                        std::vector<RegOr<Jump*>> afters)
       : block_def(block_def),
@@ -397,8 +441,6 @@ struct MakeBlockInstruction {
 };
 
 struct MakeScopeInstruction {
-  static constexpr cmd_index_t kIndex = internal::kMakeScopeInstructionNumber;
-
   MakeScopeInstruction(ScopeDef* scope_def, std::vector<RegOr<Jump*>> inits,
                        std::vector<RegOr<Fn>> dones,
                        absl::flat_hash_map<std::string_view, BlockDef*> blocks)

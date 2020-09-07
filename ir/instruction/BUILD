@@ -5,7 +5,6 @@ cc_library(
     hdrs = ["arithmetic.h"],
     deps = [
         ":inliner",
-        ":op_codes",
         ":util",
         "//base:extend",
         "//ir/interpretter:execute",
@@ -36,7 +35,6 @@ cc_library(
     hdrs = ["byte_view.h"],
     deps = [
         ":inliner",
-        ":op_codes",
         "//base:extend",
     ],
 )
@@ -46,7 +44,6 @@ cc_library(
     hdrs = ["compare.h"],
     deps = [
         ":inliner",
-        ":op_codes",
         ":util",
         "//base:extend",
     ],
@@ -67,7 +64,6 @@ cc_library(
     hdrs = ["flags.h"],
     deps = [
         ":inliner",
-        ":op_codes",
         ":util",
         "//base:extend",
     ],
@@ -158,7 +154,6 @@ cc_library(
     name = "phi",
     hdrs = ["phi.h"],
     deps = [
-        ":op_codes",
         "//base:extend",
         "//ir/blocks:basic",
         "//ir/interpretter:execute",
@@ -172,7 +167,6 @@ cc_library(
     hdrs = ["type.h"],
     deps = [
         ":inliner",
-        ":op_codes",
         ":util",
         "//base:extend",
         "//ir:struct_field",

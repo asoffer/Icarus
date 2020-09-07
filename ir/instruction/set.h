@@ -172,443 +172,11 @@ inline auto Deserialize(Iter *iter, Fn &&fn) {
 // Maximum size of any primitive type we may write
 inline constexpr size_t kMaxSize = 8;
 
-template <typename Inst, typename InstSet>
-void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
-                             interpretter::ExecutionContext *ctx,
-                             absl::Span<ir::Addr const> ret_slots) {
-  static_cast<void>(ret_slots);
-  if constexpr (std::is_same_v<Inst, ir::EnumerationInstruction>) {
-    using enum_t             = uint64_t;
-    bool is_enum_not_flags   = iter->read<bool>();
-    uint16_t num_enumerators = iter->read<uint16_t>();
-    uint16_t num_specified   = iter->read<uint16_t>();
-    module::BasicModule *mod = iter->read<module::BasicModule *>();
-    std::vector<std::pair<std::string_view, std::optional<enum_t>>> enumerators;
-    enumerators.reserve(num_enumerators);
-    for (uint16_t i = 0; i < num_enumerators; ++i) {
-      enumerators.emplace_back(iter->read<std::string_view>(), std::nullopt);
-    }
-
-    absl::flat_hash_set<enum_t> vals;
-
-    for (uint16_t i = 0; i < num_specified; ++i) {
-      uint64_t index            = iter->read<uint64_t>();
-      auto b                    = iter->read<bool>();
-      enum_t val                = ctx->ReadAndResolve<enum_t>(b, iter);
-      enumerators[index].second = val;
-      vals.insert(val);
-    }
-
-    type::Type *result = nullptr;
-    absl::BitGen gen;
-
-    if (is_enum_not_flags) {
-      for (auto &[name, maybe_val] : enumerators) {
-        DEBUG_LOG("enum")(name, " => ", maybe_val);
-
-        if (not maybe_val.has_value()) {
-          bool success;
-          enum_t x;
-          do {
-            x       = absl::Uniform<enum_t>(gen);
-            success = vals.insert(x).second;
-            DEBUG_LOG("enum")("Adding value ", x, " for ", name);
-            maybe_val = x;
-          } while (not success);
-        }
-      }
-      absl::flat_hash_map<std::string, ir::EnumVal> mapping;
-
-      for (auto [name, maybe_val] : enumerators) {
-        ASSERT(maybe_val.has_value() == true);
-        mapping.emplace(std::string(name), ir::EnumVal{maybe_val.value()});
-      }
-      DEBUG_LOG("enum")(vals, ", ", mapping);
-      result = type::Allocate<type::Enum>(mod, std::move(mapping));
-    } else {
-      for (auto &[name, maybe_val] : enumerators) {
-        DEBUG_LOG("flags")(name, " => ", maybe_val);
-
-        if (not maybe_val.has_value()) {
-          bool success;
-          enum_t x;
-          do {
-            x       = absl::Uniform<enum_t>(absl::IntervalClosedOpen, gen, 0,
-                                      std::numeric_limits<enum_t>::digits);
-            success = vals.insert(x).second;
-            DEBUG_LOG("enum")("Adding value ", x, " for ", name);
-            maybe_val = x;
-          } while (not success);
-        }
-      }
-
-      absl::flat_hash_map<std::string, ir::FlagsVal> mapping;
-
-      for (auto [name, maybe_val] : enumerators) {
-        ASSERT(maybe_val.has_value() == true);
-        mapping.emplace(std::string(name),
-                        ir::FlagsVal{enum_t{1} << maybe_val.value()});
-      }
-
-      DEBUG_LOG("flags")(vals, ", ", mapping);
-      result = type::Allocate<type::Flags>(mod, std::move(mapping));
-    }
-
-    ctx->current_frame()->regs_.set(iter->read<ir::Reg>(), result);
-
-  } else if constexpr (ir::internal::kPhiInstructionRange.contains(
-                           Inst::kIndex)) {
-    uint16_t num   = iter->read<uint16_t>();
-    uint64_t index = std::numeric_limits<uint64_t>::max();
-    for (uint16_t i = 0; i < num; ++i) {
-      if (ctx->current_frame()->prev_index_ == iter->read<uintptr_t>()) {
-        index = i;
-      }
-    }
-    ASSERT(index != std::numeric_limits<uint64_t>::max());
-
-    using type                = typename Inst::type;
-    std::vector<type> results = Deserialize<uint16_t, type>(
-        iter, [ctx](ir::Reg reg) { return ctx->resolve<type>(reg); });
-    ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
-                                    type{results[index]});
-    DEBUG_LOG("phi-instruction")(results[index]);
-  } else if constexpr (std::is_same_v<Inst, ir::TypeManipulationInstruction>) {
-    // TODO optional just for delayed construction.
-    std::optional<ir::Fn> f;
-    base::untyped_buffer call_buf(sizeof(ir::Addr));
-    auto kind = iter->read<ir::TypeManipulationInstruction::Kind>();
-    type::Type const *t =
-        ASSERT_NOT_NULL(iter->read<type::Type const *>().get());
-    // TODO it's not actually optional, we just need deferred construction.
-    std::optional<interpretter::StackFrame> frame;
-    switch (kind) {
-      case ir::TypeManipulationInstruction::Kind::Init: {
-        if (auto *s = t->if_as<type::Struct>()) {
-          f = s->init_func_.get();
-        } else if (auto *tup = t->if_as<type::Tuple>()) {
-          f = tup->init_func_.get();
-        } else if (auto *a = t->if_as<type::Array>()) {
-          NOT_YET();  // f = a->init_func_.get();
-        } else {
-          NOT_YET();
-        }
-
-        frame.emplace(f->native(), &ctx->stack_);
-        frame->regs_.set(ir::Reg::Arg(0),
-                         ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get()));
-
-      } break;
-      case ir::TypeManipulationInstruction::Kind::Destroy: {
-        if (auto *s = t->if_as<type::Struct>()) {
-          f = s->Destructor();
-        } else if (auto *tup = t->if_as<type::Tuple>()) {
-          f = tup->destroy_func_.get();
-        } else if (auto *a = t->if_as<type::Array>()) {
-          NOT_YET();  // f = a->destroy_func_.get();
-        } else {
-          NOT_YET();
-        }
-
-        frame.emplace(f->native(), &ctx->stack_);
-        frame->regs_.set(ir::Reg::Arg(0),
-                         ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get()));
-      } break;
-      case ir::TypeManipulationInstruction::Kind::Move: {
-        auto from   = ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get());
-        bool is_reg = iter->read<bool>();
-        auto to     = ctx->ReadAndResolve<ir::Addr>(is_reg, iter);
-
-        if (auto *s = t->if_as<type::Struct>()) {
-          f = s->MoveAssignment();
-        } else if (auto *tup = t->if_as<type::Tuple>()) {
-          f = tup->move_assign_func_.get();
-        } else if (auto *a = t->if_as<type::Array>()) {
-          NOT_YET();  // f = a->move_assign_func_.get();
-        } else {
-          NOT_YET();
-        }
-
-        frame.emplace(f->native(), &ctx->stack_);
-        frame->regs_.set(ir::Reg::Arg(0), from);
-        frame->regs_.set(ir::Reg::Arg(1), to);
-      } break;
-      case ir::TypeManipulationInstruction::Kind::Copy: {
-        auto from   = ctx->resolve<ir::Addr>(iter->read<ir::Reg>().get());
-        bool is_reg = iter->read<bool>();
-        auto to     = ctx->ReadAndResolve<ir::Addr>(is_reg, iter);
-        if (auto *s = t->if_as<type::Struct>()) {
-          f = s->copy_assign_func_.get();
-        } else if (auto *tup = t->if_as<type::Tuple>()) {
-          f = tup->copy_assign_func_.get();
-        } else if (auto *a = t->if_as<type::Array>()) {
-          NOT_YET();  // f = a->copy_assign_func_.get();
-        } else {
-          NOT_YET();
-        }
-
-        frame.emplace(f->native(), &ctx->stack_);
-        frame->regs_.set(ir::Reg::Arg(0), from);
-        frame->regs_.set(ir::Reg::Arg(1), to);
-      } break;
-    }
-
-    // TODO This could be foreign I guess?
-    ASSERT(f->kind() == ir::Fn::Kind::Native);
-    interpretter::CallFn<InstSet>(f->native(), &*frame, {}, ctx);
-
-  } else if constexpr (ir::internal::kSetReturnInstructionRange.contains(
-                           Inst::kIndex)) {
-    using type = typename Inst::type;
-    uint16_t n = iter->read<uint16_t>();
-    ASSERT(ret_slots.size() > n);
-    ir::Addr ret_slot = ret_slots[n];
-    bool is_reg       = iter->read<bool>();
-    type val          = ctx->ReadAndResolve<type>(is_reg, iter);
-    ASSERT(ret_slot.kind() == ir::Addr::Kind::Heap);
-    *ASSERT_NOT_NULL(static_cast<type *>(ret_slot.heap())) = val;
-
-  } else if constexpr (std::is_same_v<Inst, ir::GetReturnInstruction>) {
-    uint16_t index = iter->read<uint16_t>();
-    ctx->current_frame()->regs_.set(iter->read<ir::Reg>(), ret_slots[index]);
-
-  } else if constexpr (std::is_same_v<Inst, ir::MakeScopeInstruction>) {
-    ir::ScopeDef *scope_def = iter->read<ir::ScopeDef *>();
-
-    auto after = Deserialize<uint16_t, ir::Jump const *>(
-        iter,
-        [ctx](ir::Reg reg) { return ctx->resolve<ir::Jump const *>(reg); });
-    *scope_def->start_ = ir::BlockDef(
-        absl::flat_hash_set<ir::Jump const *>(after.begin(), after.end()));
-
-    scope_def->exit_->before_ = ir::OverloadSet(Deserialize<uint16_t, ir::Fn>(
-        iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::Fn>(reg); }));
-
-    uint16_t num_blocks = iter->read<uint16_t>();
-    for (uint16_t i = 0; i < num_blocks; ++i) {
-      std::string_view name = iter->read<std::string_view>();
-      ir::BlockDef *block   = iter->read<ir::BlockDef *>();
-      scope_def->blocks_.emplace(name, block);
-    }
-
-    ctx->current_frame()->regs_.set(iter->read<ir::Reg>(), scope_def);
-
-  } else if constexpr (std::is_same_v<Inst, ir::MakeBlockInstruction>) {
-    ir::BlockDef *block_def = iter->read<ir::BlockDef *>();
-    auto before             = ir::OverloadSet(Deserialize<uint16_t, ir::Fn>(
-        iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::Fn>(reg); }));
-    auto after              = Deserialize<uint16_t, ir::Jump const *>(
-        iter,
-        [ctx](ir::Reg reg) { return ctx->resolve<ir::Jump const *>(reg); });
-    *block_def = ir::BlockDef(
-        absl::flat_hash_set<ir::Jump const *>(after.begin(), after.end()));
-    block_def->before_ = std::move(before);
-
-    ctx->current_frame()->regs_.set(iter->read<ir::Reg>(), block_def);
-
-  } else if constexpr (std::is_same_v<Inst, ir::StructInstruction>) {
-    uint16_t num                   = iter->read<uint16_t>();
-    module::BasicModule const *mod = iter->read<module::BasicModule const *>();
-    type::Struct *struct_type      = iter->read<type::Struct *>();
-
-    std::vector<type::Struct::Field> fields;
-    fields.reserve(num);
-    for (uint16_t i = 0; i < num; ++i) {
-      std::string_view name = iter->read<std::string_view>();
-      if (iter->read<bool>()) {
-        type::Type const *t = iter->read<type::Type const *>();
-
-        ir::Value init_val = iter->read<ir::Value>();
-
-        fields.push_back(type::Struct::Field{
-            .name          = std::string(name),
-            .type          = t,
-            .initial_value = init_val,
-            .hashtags_     = {},
-        });
-      } else {
-        fields.push_back(type::Struct::Field{
-            .name = std::string(name),
-            .type =
-                ctx->resolve(iter->read<ir::RegOr<type::Type const *>>().get()),
-            .initial_value = ir::Value(),
-            .hashtags_     = {},
-        });
-      }
-    }
-
-    struct_type->AppendFields(std::move(fields));
-
-    if (iter->read<bool>()) {
-      struct_type->SetMoveAssignment(iter->read<ir::Fn>());
-    }
-
-    if (iter->read<bool>()) {
-      struct_type->SetDestructor(iter->read<ir::Fn>());
-    }
-
-    type::Struct const *const_struct_type = struct_type;
-    ctx->current_frame()->regs_.set(iter->read<ir::Reg>(), const_struct_type);
-
-  } else if constexpr (std::is_same_v<Inst, ir::CallInstruction>) {
-    bool fn_is_reg = iter->read<bool>();
-    ir::Fn f       = ctx->ReadAndResolve<ir::Fn>(fn_is_reg, iter);
-    iter->read<core::Bytes>().get();
-
-    type::Function const *fn_type = f.type();
-    DEBUG_LOG("call")(f, ": ", fn_type->to_string());
-
-    // TODO you probably want interpretter::Arguments or something.
-    size_t num_inputs = fn_type->params().size();
-    size_t num_regs   = 0;
-    if (f.kind() == ir::Fn::Kind::Native) {
-      if (f.native()->work_item and *f.native()->work_item) {
-        (std::move(*f.native()->work_item))();
-      }
-      num_regs = f.native()->num_regs();
-    }
-    size_t num_entries = num_inputs + num_regs;
-    auto call_buf      = base::untyped_buffer::MakeFull(num_entries * kMaxSize);
-
-    // TODO not actually optional once we handle foreign functions, we just need
-    // deferred construction?
-    std::optional<interpretter::StackFrame> frame;
-    if (f.kind() == ir::Fn::Kind::Native) {
-      frame.emplace(f.native(), &ctx->stack_);
-    }
-
-    for (size_t i = 0; i < num_inputs; ++i) {
-      if (iter->read<bool>()) {
-        ir::Reg reg = iter->read<ir::Reg>();
-        DEBUG_LOG("call")(reg);
-
-        if (frame) {
-          frame->regs_.set_raw(ir::Reg::Arg(i),
-                               ctx->current_frame()->regs_.raw(reg), kMaxSize);
-        }
-        ctx->MemCpyRegisterBytes(
-            /*    dst = */ call_buf.raw((num_regs + i) * kMaxSize),
-            /*    src = */ reg,
-            /* length = */ kMaxSize);
-
-      } else {
-        type::Type const *t = fn_type->params()[i].value.type();
-        if (t->is_big()) {
-          NOT_YET();
-        } else {
-          if (frame) {
-            frame->regs_.set_raw(ir::Reg::Arg(i), iter->raw(), kMaxSize);
-          }
-          std::memcpy(call_buf.raw((num_regs + i) * kMaxSize), iter->raw(),
-                      kMaxSize);
-          iter->skip(t->bytes(interpretter::kArchitecture).value());
-        }
-      }
-    }
-
-    uint16_t num_rets = iter->read<uint16_t>();
-
-    std::vector<ir::Addr> return_slots;
-    return_slots.reserve(num_rets);
-    ASSERT(fn_type->output().size() == num_rets);
-    for (uint16_t i = 0; i < num_rets; ++i) {
-      ir::Reg reg = iter->read<ir::Reg>();
-      // NOTE: This is a hack using heap address slots to represent registers
-      // since they are both void* and are used identically in the interpretter.
-      ir::Addr addr =
-          (fn_type->output()[i]->is_big())
-              ? ctx->resolve<ir::Addr>(reg)
-              : ir::Addr::Heap(ctx->current_frame()->regs_.raw(reg));
-
-      DEBUG_LOG("call")("Ret addr = ", addr);
-      return_slots.push_back(addr);
-    }
-
-    interpretter::Execute<InstSet>(f, std::move(call_buf), return_slots, ctx);
-
-  } else if constexpr (std::is_same_v<Inst, ir::TypeInfoInstruction>) {
-    uint8_t ctrl_bits = iter->read<uint8_t>();
-    auto type = ctx->ReadAndResolve<type::Type const *>(ctrl_bits & 0x01, iter);
-    ir::Reg reg = iter->read<ir::Reg>();
-
-    if (ctrl_bits & 0x02) {
-      ctx->current_frame()->regs_.set(
-          reg, type->alignment(interpretter::kArchitecture));
-
-    } else {
-      ctx->current_frame()->regs_.set(reg,
-                                      type->bytes(interpretter::kArchitecture));
-    }
-  } else {
-    static_assert(base::always_false<Inst>());
-  }
-}
 
 // Note: The ordering here is very important
 using exec_t = void (*)(base::untyped_buffer::const_iterator *,
                         interpretter::ExecutionContext *,
                         absl::Span<ir::Addr const>);
-
-inline constexpr auto kNullInstruction = static_cast<exec_t>(nullptr);
-
-template <typename InstSet>
-inline constexpr auto kInstructions = std::array{
-    ExecuteAdHocInstruction<ir::PhiInstruction<uint8_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<int8_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<uint16_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<int16_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<uint32_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<int32_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<uint64_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<int64_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<float>, InstSet>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<double>, InstSet>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<type::Type const *>, InstSet>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<ir::Addr>, InstSet>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<ir::EnumVal>, InstSet>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<ir::FlagsVal>, InstSet>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<bool>, InstSet>,
-    ExecuteAdHocInstruction<ir::PhiInstruction<ir::String>, InstSet>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<uint8_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<int8_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<uint16_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<int16_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<uint32_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<int32_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<uint64_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<int64_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<float>, InstSet>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<double>, InstSet>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<type::Type const *>,
-                            InstSet>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::Addr>, InstSet>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::EnumVal>, InstSet>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::FlagsVal>, InstSet>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<bool>, InstSet>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::String>, InstSet>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::Fn>, InstSet>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<core::Bytes>, InstSet>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<core::Alignment>, InstSet>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::BlockDef const *>,
-                            InstSet>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::ScopeDef const *>,
-                            InstSet>,
-    ExecuteAdHocInstruction<
-        ir::SetReturnInstruction<module::BasicModule const *>, InstSet>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::GenericFn>, InstSet>,
-    ExecuteAdHocInstruction<ir::SetReturnInstruction<ir::Jump *>, InstSet>,
-    ExecuteAdHocInstruction<
-        ir::SetReturnInstruction<type::GenericStruct const *>, InstSet>,
-
-    ExecuteAdHocInstruction<ir::GetReturnInstruction, InstSet>,
-    ExecuteAdHocInstruction<ir::CallInstruction, InstSet>,
-    ExecuteAdHocInstruction<ir::StructInstruction, InstSet>,
-    ExecuteAdHocInstruction<ir::MakeBlockInstruction, InstSet>,
-    ExecuteAdHocInstruction<ir::MakeScopeInstruction, InstSet>,
-    ExecuteAdHocInstruction<ir::EnumerationInstruction, InstSet>,
-    ExecuteAdHocInstruction<ir::TypeInfoInstruction, InstSet>,
-    ExecuteAdHocInstruction<ir::TypeManipulationInstruction, InstSet>,
-};
 
 template <typename>
 struct IsInstructionSet : std::false_type {};
@@ -641,24 +209,291 @@ auto ExpandedInstructions(base::type_list<T, Ts...>,
   }
 }
 
-template <typename Inst, typename = void>
-struct HaskIndex : std::false_type {};
-template <typename Inst>
-struct HaskIndex<Inst, std::void_t<decltype(Inst::kIndex)>> : std::true_type {};
-
 template <typename InstSet, typename Inst>
 constexpr exec_t GetInstruction() {
-  if constexpr (HaskIndex<Inst>::value) {
-    static_assert(Inst::kIndex < kInstructions<InstSet>.size());
-    return kInstructions<InstSet>[Inst::kIndex];
-  } else {
-    return [](base::untyped_buffer::const_iterator *iter,
-              interpretter::ExecutionContext *ctx,
-              absl::Span<ir::Addr const> ret_slots) {
+  return [](base::untyped_buffer::const_iterator *iter,
+            interpretter::ExecutionContext *ctx,
+            absl::Span<ir::Addr const> ret_slots) {
+    if constexpr (base::meta<Inst> == base::meta<ir::CallInstruction>) {
+      bool fn_is_reg = iter->read<bool>();
+      ir::Fn f       = ctx->ReadAndResolve<ir::Fn>(fn_is_reg, iter);
+      iter->read<core::Bytes>().get();
+
+      type::Function const *fn_type = f.type();
+      DEBUG_LOG("call")(f, ": ", fn_type->to_string());
+
+      // TODO you probably want interpretter::Arguments or something.
+      size_t num_inputs = fn_type->params().size();
+      size_t num_regs   = 0;
+      if (f.kind() == ir::Fn::Kind::Native) {
+        if (f.native()->work_item and *f.native()->work_item) {
+          (std::move(*f.native()->work_item))();
+        }
+        num_regs = f.native()->num_regs();
+      }
+      size_t num_entries = num_inputs + num_regs;
+      auto call_buf = base::untyped_buffer::MakeFull(num_entries * kMaxSize);
+
+      // TODO not actually optional once we handle foreign functions, we just
+      // need deferred construction?
+      std::optional<interpretter::StackFrame> frame;
+      if (f.kind() == ir::Fn::Kind::Native) {
+        frame.emplace(f.native(), &ctx->stack_);
+      }
+
+      for (size_t i = 0; i < num_inputs; ++i) {
+        if (iter->read<bool>()) {
+          ir::Reg reg = iter->read<ir::Reg>();
+          DEBUG_LOG("call")(reg);
+
+          if (frame) {
+            frame->regs_.set_raw(ir::Reg::Arg(i),
+                                 ctx->current_frame()->regs_.raw(reg),
+                                 kMaxSize);
+          }
+          ctx->MemCpyRegisterBytes(
+              /*    dst = */ call_buf.raw((num_regs + i) * kMaxSize),
+              /*    src = */ reg,
+              /* length = */ kMaxSize);
+
+        } else {
+          type::Type const *t = fn_type->params()[i].value.type();
+          if (t->is_big()) {
+            NOT_YET();
+          } else {
+            if (frame) {
+              frame->regs_.set_raw(ir::Reg::Arg(i), iter->raw(), kMaxSize);
+            }
+            std::memcpy(call_buf.raw((num_regs + i) * kMaxSize), iter->raw(),
+                        kMaxSize);
+            iter->skip(t->bytes(interpretter::kArchitecture).value());
+          }
+        }
+      }
+
+      uint16_t num_rets = iter->read<uint16_t>();
+
+      std::vector<ir::Addr> return_slots;
+      return_slots.reserve(num_rets);
+      ASSERT(fn_type->output().size() == num_rets);
+      for (uint16_t i = 0; i < num_rets; ++i) {
+        ir::Reg reg = iter->read<ir::Reg>();
+        // NOTE: This is a hack using heap address slots to represent
+        // registers since they are both void* and are used identically in the
+        // interpretter.
+        ir::Addr addr =
+            (fn_type->output()[i]->is_big())
+                ? ctx->resolve<ir::Addr>(reg)
+                : ir::Addr::Heap(ctx->current_frame()->regs_.raw(reg));
+
+        DEBUG_LOG("call")("Ret addr = ", addr);
+        return_slots.push_back(addr);
+      }
+
+      interpretter::Execute<InstSet>(f, std::move(call_buf), return_slots, ctx);
+    } else if constexpr (base::meta<Inst> ==
+                         base::meta<ir::EnumerationInstruction>) {
+      using enum_t             = uint64_t;
+      bool is_enum_not_flags   = iter->read<bool>();
+      uint16_t num_enumerators = iter->read<uint16_t>();
+      uint16_t num_specified   = iter->read<uint16_t>();
+      module::BasicModule *mod = iter->read<module::BasicModule *>();
+      std::vector<std::pair<std::string_view, std::optional<enum_t>>>
+          enumerators;
+      enumerators.reserve(num_enumerators);
+      for (uint16_t i = 0; i < num_enumerators; ++i) {
+        enumerators.emplace_back(iter->read<std::string_view>(), std::nullopt);
+      }
+
+      absl::flat_hash_set<enum_t> vals;
+
+      for (uint16_t i = 0; i < num_specified; ++i) {
+        uint64_t index            = iter->read<uint64_t>();
+        auto b                    = iter->read<bool>();
+        enum_t val                = ctx->ReadAndResolve<enum_t>(b, iter);
+        enumerators[index].second = val;
+        vals.insert(val);
+      }
+
+      type::Type *result = nullptr;
+      absl::BitGen gen;
+
+      if (is_enum_not_flags) {
+        for (auto &[name, maybe_val] : enumerators) {
+          DEBUG_LOG("enum")(name, " => ", maybe_val);
+
+          if (not maybe_val.has_value()) {
+            bool success;
+            enum_t x;
+            do {
+              x       = absl::Uniform<enum_t>(gen);
+              success = vals.insert(x).second;
+              DEBUG_LOG("enum")("Adding value ", x, " for ", name);
+              maybe_val = x;
+            } while (not success);
+          }
+        }
+        absl::flat_hash_map<std::string, ir::EnumVal> mapping;
+
+        for (auto [name, maybe_val] : enumerators) {
+          ASSERT(maybe_val.has_value() == true);
+          mapping.emplace(std::string(name), ir::EnumVal{maybe_val.value()});
+        }
+        DEBUG_LOG("enum")(vals, ", ", mapping);
+        result = type::Allocate<type::Enum>(mod, std::move(mapping));
+      } else {
+        for (auto &[name, maybe_val] : enumerators) {
+          DEBUG_LOG("flags")(name, " => ", maybe_val);
+
+          if (not maybe_val.has_value()) {
+            bool success;
+            enum_t x;
+            do {
+              x       = absl::Uniform<enum_t>(absl::IntervalClosedOpen, gen, 0,
+                                        std::numeric_limits<enum_t>::digits);
+              success = vals.insert(x).second;
+              DEBUG_LOG("enum")("Adding value ", x, " for ", name);
+              maybe_val = x;
+            } while (not success);
+          }
+        }
+
+        absl::flat_hash_map<std::string, ir::FlagsVal> mapping;
+
+        for (auto [name, maybe_val] : enumerators) {
+          ASSERT(maybe_val.has_value() == true);
+          mapping.emplace(std::string(name),
+                          ir::FlagsVal{enum_t{1} << maybe_val.value()});
+        }
+
+        DEBUG_LOG("flags")(vals, ", ", mapping);
+        result = type::Allocate<type::Flags>(mod, std::move(mapping));
+      }
+
+      ctx->current_frame()->regs_.set(iter->read<ir::Reg>(), result);
+    } else if constexpr (base::meta<Inst> ==
+                         base::meta<ir::MakeScopeInstruction>) {
+      ir::ScopeDef *scope_def = iter->read<ir::ScopeDef *>();
+
+      auto after = Deserialize<uint16_t, ir::Jump const *>(
+          iter,
+          [ctx](ir::Reg reg) { return ctx->resolve<ir::Jump const *>(reg); });
+      *scope_def->start_ = ir::BlockDef(
+          absl::flat_hash_set<ir::Jump const *>(after.begin(), after.end()));
+
+      scope_def->exit_->before_ = ir::OverloadSet(Deserialize<uint16_t, ir::Fn>(
+          iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::Fn>(reg); }));
+
+      uint16_t num_blocks = iter->read<uint16_t>();
+      for (uint16_t i = 0; i < num_blocks; ++i) {
+        std::string_view name = iter->read<std::string_view>();
+        ir::BlockDef *block   = iter->read<ir::BlockDef *>();
+        scope_def->blocks_.emplace(name, block);
+      }
+
+      ctx->current_frame()->regs_.set(iter->read<ir::Reg>(), scope_def);
+
+    } else if constexpr (base::meta<Inst> ==
+                         base::meta<ir::MakeBlockInstruction>) {
+      ir::BlockDef *block_def = iter->read<ir::BlockDef *>();
+      auto before             = ir::OverloadSet(Deserialize<uint16_t, ir::Fn>(
+          iter, [ctx](ir::Reg reg) { return ctx->resolve<ir::Fn>(reg); }));
+      auto after              = Deserialize<uint16_t, ir::Jump const *>(
+          iter,
+          [ctx](ir::Reg reg) { return ctx->resolve<ir::Jump const *>(reg); });
+      *block_def = ir::BlockDef(
+          absl::flat_hash_set<ir::Jump const *>(after.begin(), after.end()));
+      block_def->before_ = std::move(before);
+
+      ctx->current_frame()->regs_.set(iter->read<ir::Reg>(), block_def);
+
+    } else if constexpr (base::meta<Inst> ==
+                         base::meta<ir::StructInstruction>) {
+      uint16_t num = iter->read<uint16_t>();
+      module::BasicModule const *mod =
+          iter->read<module::BasicModule const *>();
+      type::Struct *struct_type = iter->read<type::Struct *>();
+
+      std::vector<type::Struct::Field> fields;
+      fields.reserve(num);
+      for (uint16_t i = 0; i < num; ++i) {
+        std::string_view name = iter->read<std::string_view>();
+        if (iter->read<bool>()) {
+          type::Type const *t = iter->read<type::Type const *>();
+
+          ir::Value init_val = iter->read<ir::Value>();
+
+          fields.push_back(type::Struct::Field{
+              .name          = std::string(name),
+              .type          = t,
+              .initial_value = init_val,
+              .hashtags_     = {},
+          });
+        } else {
+          fields.push_back(type::Struct::Field{
+              .name = std::string(name),
+              .type = ctx->resolve(
+                  iter->read<ir::RegOr<type::Type const *>>().get()),
+              .initial_value = ir::Value(),
+              .hashtags_     = {},
+          });
+        }
+      }
+
+      struct_type->AppendFields(std::move(fields));
+
+      if (iter->read<bool>()) {
+        struct_type->SetMoveAssignment(iter->read<ir::Fn>());
+      }
+
+      if (iter->read<bool>()) {
+        struct_type->SetDestructor(iter->read<ir::Fn>());
+      }
+
+      type::Struct const *const_struct_type = struct_type;
+      ctx->current_frame()->regs_.set(iter->read<ir::Reg>(), const_struct_type);
+    } else if constexpr (base::meta<Inst> ==
+                         base::meta<ir::GetReturnInstruction>) {
+      uint16_t index = iter->read<uint16_t>();
+      ctx->current_frame()->regs_.set(iter->read<ir::Reg>(), ret_slots[index]);
+    } else if constexpr (base::meta<Inst>.template is_a<ir::PhiInstruction>()) {
+      uint16_t num   = iter->read<uint16_t>();
+      uint64_t index = std::numeric_limits<uint64_t>::max();
+      for (uint16_t i = 0; i < num; ++i) {
+        if (ctx->current_frame()->prev_index_ == iter->read<uintptr_t>()) {
+          index = i;
+        }
+      }
+      ASSERT(index != std::numeric_limits<uint64_t>::max());
+
+      using type                = typename Inst::type;
+      std::vector<type> results = Deserialize<uint16_t, type>(
+          iter, [ctx](ir::Reg reg) { return ctx->resolve<type>(reg); });
+      ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
+                                      type{results[index]});
+    } else if constexpr (
+        base::meta<Inst>.template is_a<ir::SetReturnInstruction>()) {
+      using type = typename Inst::type;
+      uint16_t n = iter->read<uint16_t>();
+      ASSERT(ret_slots.size() > n);
+      ir::Addr ret_slot = ret_slots[n];
+      bool is_reg       = iter->read<bool>();
+      type val          = ctx->ReadAndResolve<type>(is_reg, iter);
+      ASSERT(ret_slot.kind() == ir::Addr::Kind::Heap);
+      *ASSERT_NOT_NULL(static_cast<type *>(ret_slot.heap())) = val;
+
+    } else if constexpr (base::meta<decltype(std::declval<Inst>().Apply(
+                             *ctx))> == base::meta<void>) {
       Inst::ReadFromByteCode(iter).Apply(*ctx);
-    };
-  }
+    } else {
+      // TODO: If a stack-frame knew what function was being called, this
+      // could be simplified. We could return just a stack frame and call it.
+      auto [fn, frame] = Inst::ReadFromByteCode(iter).Apply(*ctx);
+      interpretter::CallFn<InstSet>(fn.native(), &frame, {}, ctx);
+    }
+  };
 }
+
 template <typename InstSet, typename... Insts>
 constexpr std::array<exec_t, sizeof...(Insts)> MakeExecuteFunctions(
     base::type_list<Insts...>) {

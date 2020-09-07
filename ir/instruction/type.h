@@ -44,8 +44,6 @@ struct TupleInstruction
 };
 
 struct EnumerationInstruction {
-  static constexpr cmd_index_t kIndex = internal::kEnumerationInstructionNumber;
-
   enum class Kind { Enum, Flags };
   EnumerationInstruction(
       Kind k, module::BasicModule* mod, std::vector<std::string_view> names,
@@ -174,7 +172,6 @@ struct BufPtrInstruction
 };
 
 struct StructInstruction {
-  static constexpr cmd_index_t kIndex = internal::kStructInstructionNumber;
   StructInstruction(module::BasicModule const* mod, type::Struct* s,
                     std::vector<StructField> fields,
                     std::optional<ir::Fn> move_assign, std::optional<ir::Fn> dtor)
