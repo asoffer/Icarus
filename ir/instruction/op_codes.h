@@ -62,10 +62,6 @@ inline constexpr cmd_index_t kEnumerationInstructionNumber   = kAdHocStart + 16;
 inline constexpr cmd_index_t kTypeInfoInstructionNumber      = kAdHocStart + 17;
 inline constexpr cmd_index_t kTypeManipulationInstructionNumber =
     kAdHocStart + 18;
-inline constexpr cmd_index_t kByteViewLengthInstructionNumber =
-    kAdHocStart + 19;
-inline constexpr cmd_index_t kByteViewDataInstructionNumber = kAdHocStart + 20;
-inline constexpr cmd_index_t kDebugIrInstructionNumber      = kAdHocStart + 21;
 
 }  // namespace internal
 }  // namespace ir

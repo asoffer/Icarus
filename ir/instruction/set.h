@@ -723,18 +723,6 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
       ctx->current_frame()->regs_.set(
           reg, addr + type->offset(index, interpretter::kArchitecture));
     }
-  } else if constexpr (std::is_same_v<Inst, ir::ByteViewLengthInstruction>) {
-    int64_t length =
-        ctx->resolve<ir::String>(iter->read<ir::Reg>().get()).get().size();
-    ir::Reg result = iter->read<ir::Reg>();
-    ctx->current_frame()->regs_.set(result, length);
-  } else if constexpr (std::is_same_v<Inst, ir::ByteViewDataInstruction>) {
-    ir::Reg reg    = iter->read<ir::Reg>();
-    auto data_addr = ctx->resolve<ir::String>(reg).addr();
-    ir::Reg result = iter->read<ir::Reg>();
-    ctx->current_frame()->regs_.set(result, data_addr);
-  } else if constexpr (std::is_same_v<Inst, ir::DebugIrInstruction>) {
-    std::cerr << *ctx->current_frame()->fn_.get();
   } else {
     static_assert(base::always_false<Inst>());
   }
@@ -826,9 +814,6 @@ inline constexpr auto kInstructions = std::array{
     ExecuteAdHocInstruction<ir::EnumerationInstruction, InstSet>,
     ExecuteAdHocInstruction<ir::TypeInfoInstruction, InstSet>,
     ExecuteAdHocInstruction<ir::TypeManipulationInstruction, InstSet>,
-    ExecuteAdHocInstruction<ir::ByteViewLengthInstruction, InstSet>,
-    ExecuteAdHocInstruction<ir::ByteViewDataInstruction, InstSet>,
-    ExecuteAdHocInstruction<ir::DebugIrInstruction, InstSet>,
 };
 
 template <typename>

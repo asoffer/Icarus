@@ -22,6 +22,7 @@
 #include "ir/instruction/phi.h"
 #include "ir/instruction/type.h"
 #include "ir/instruction/util.h"
+#include "ir/interpretter/execute.h"
 #include "ir/out_params.h"
 #include "ir/value/enum_and_flags.h"
 #include "ir/value/fn.h"
@@ -152,10 +153,13 @@ struct NotInstruction
 
 // TODO Morph this into interpretter break-point instructions.
 struct DebugIrInstruction
-    : base::Extend<DebugIrInstruction>::With<
-          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
-  static constexpr cmd_index_t kIndex = internal::kDebugIrInstructionNumber;
+    : base::Extend<DebugIrInstruction>::With<ByteCodeExtension, InlineExtension,
+                                             DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "debug-ir";
+
+  void Apply(interpretter::ExecutionContext& ctx) const {
+    std::cerr << *ctx.current_frame()->fn_.get();
+  }
 };
 
 // Oddly named to be sure, this instruction is used to do initializations,

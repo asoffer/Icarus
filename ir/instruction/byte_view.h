@@ -8,16 +8,20 @@
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
 #include "ir/instruction/op_codes.h"
+#include "ir/interpretter/execute.h"
 
 namespace ir {
 
 struct ByteViewLengthInstruction
     : base::Extend<ByteViewLengthInstruction>::With<
-          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
-  static constexpr cmd_index_t kIndex =
-      internal::kByteViewLengthInstructionNumber;
+          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat =
       "%2$s = byte-view length %1$s";
+
+  void Apply(interpretter::ExecutionContext& ctx) {
+    ctx.current_frame()->regs_.set(result,
+                                   ctx.resolve<ir::String>(reg).get().size());
+  }
 
   Reg reg;
   Reg result;
@@ -25,10 +29,12 @@ struct ByteViewLengthInstruction
 
 struct ByteViewDataInstruction
     : base::Extend<ByteViewDataInstruction>::With<
-          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
-  static constexpr cmd_index_t kIndex =
-      internal::kByteViewDataInstructionNumber;
+          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = byte-view data %1$s";
+
+  void Apply(interpretter::ExecutionContext& ctx) {
+    ctx.current_frame()->regs_.set(result, ctx.resolve<ir::String>(reg).addr());
+  }
 
   Reg reg;
   Reg result;
