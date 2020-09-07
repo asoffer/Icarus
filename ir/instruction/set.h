@@ -21,7 +21,6 @@
 #include "ir/value/fn.h"
 #include "ir/value/foreign_fn.h"
 #include "ir/value/native_fn.h"
-#include "type/opaque.h"
 #include "type/primitive.h"
 
 namespace interpretter {
@@ -115,19 +114,6 @@ struct InstructionSet;
 
 namespace internal_instructions {
 
-[[noreturn]] inline void FatalInterpretterError(std::string_view err_msg) {
-  // TODO: Add a diagnostic explaining the failure.
-  absl::FPrintF(stderr,
-                R"(
-  ----------------------------------------
-  Fatal interpretter failure:
-    %s
-  ----------------------------------------)"
-                "\n",
-                err_msg);
-  std::terminate();
-}
-
 inline constexpr uint8_t ReverseByte(uint8_t byte) {
   byte = ((byte & 0b11110000) >> 4) | ((byte & 0b00001111) << 4);
   byte = ((byte & 0b11001100) >> 2) | ((byte & 0b00110011) << 2);
@@ -181,41 +167,6 @@ inline auto Deserialize(Iter *iter, Fn &&fn) {
     }
     return vals;
   }
-}
-
-template <typename BinInst>
-std::enable_if_t<not std::is_void_v<typename BinInst::binary>, void>
-ExecuteInstruction(base::untyped_buffer::const_iterator *iter,
-                   interpretter::ExecutionContext *ctx,
-                   absl::Span<ir::Addr const> ret_slots) {
-  auto inst = BinInst::ReadFromByteCode(iter);
-  ctx->current_frame()->regs_.set(
-      inst.result,
-      BinInst::Apply(ctx->resolve(inst.lhs), ctx->resolve(inst.rhs)));
-}
-
-template <typename UnInst>
-std::enable_if_t<not std::is_void_v<typename UnInst::unary>, void>
-ExecuteInstruction(base::untyped_buffer::const_iterator *iter,
-                   interpretter::ExecutionContext *ctx,
-                   absl::Span<ir::Addr const> ret_slots) {
-  using type  = typename UnInst::unary;
-  bool is_reg = iter->read<bool>();
-  auto result = UnInst::Apply(ctx->ReadAndResolve<type>(is_reg, iter));
-  ctx->current_frame()->regs_.set(iter->read<ir::Reg>(), result);
-}
-
-template <typename VarInst>
-std::enable_if_t<not std::is_void_v<typename VarInst::variadic>, void>
-ExecuteInstruction(base::untyped_buffer::const_iterator *iter,
-                   interpretter::ExecutionContext *ctx,
-                   absl::Span<ir::Addr const> ret_slots) {
-  using type = typename VarInst::variadic;
-
-  auto vals = Deserialize<uint16_t, type>(
-      iter, [ctx](ir::Reg reg) { return ctx->resolve<type>(reg); });
-  ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
-                                  VarInst::Apply(std::move(vals)));
 }
 
 // Maximum size of any primitive type we may write
@@ -305,31 +256,6 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
 
     ctx->current_frame()->regs_.set(iter->read<ir::Reg>(), result);
 
-  } else if constexpr (std::is_same_v<Inst, ir::OpaqueTypeInstruction>) {
-    module::BasicModule const *mod = iter->read<module::BasicModule const *>();
-    ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
-                                    type::Allocate<type::Opaque>(mod));
-
-  } else if constexpr (std::is_same_v<Inst, ir::ArrowInstruction>) {
-    std::vector<type::Type const *> ins =
-        Deserialize<uint16_t, type::Type const *>(iter, [ctx](ir::Reg reg) {
-          return ctx->resolve<type::Type const *>(reg);
-        });
-    std::vector<type::Type const *> outs =
-        Deserialize<uint16_t, type::Type const *>(iter, [ctx](ir::Reg reg) {
-          return ctx->resolve<type::Type const *>(reg);
-        });
-
-    core::Params<type::QualType> in_params;
-    in_params.reserve(ins.size());
-    for (auto *t : ins) {
-      // Write qualifiers as well.
-      in_params.append(core::AnonymousParam(type::QualType::NonConstant(t)));
-    }
-
-    ctx->current_frame()->regs_.set(
-        iter->read<ir::Reg>(),
-        type::Func(std::move(in_params), std::move(outs)));
   } else if constexpr (ir::internal::kPhiInstructionRange.contains(
                            Inst::kIndex)) {
     uint16_t num   = iter->read<uint16_t>();
@@ -442,64 +368,6 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     ASSERT(ret_slot.kind() == ir::Addr::Kind::Heap);
     *ASSERT_NOT_NULL(static_cast<type *>(ret_slot.heap())) = val;
 
-  } else if constexpr (ir::internal::kCastInstructionRange.contains(
-                           Inst::kIndex)) {
-    using type           = typename Inst::from_type;
-    bool is_reg          = iter->read<bool>();
-    type val             = ctx->ReadAndResolve<type>(is_reg, iter);
-    uint8_t to_type_byte = iter->read<uint8_t>();
-
-    switch (to_type_byte) {
-      case ir::internal::PrimitiveIndex<int8_t>(): {
-        ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
-                                        static_cast<int8_t>(val));
-      } break;
-      case ir::internal::PrimitiveIndex<uint8_t>(): {
-        ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
-                                        static_cast<uint8_t>(val));
-      } break;
-      case ir::internal::PrimitiveIndex<int16_t>(): {
-        ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
-                                        static_cast<int16_t>(val));
-      } break;
-      case ir::internal::PrimitiveIndex<uint16_t>(): {
-        ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
-                                        static_cast<uint16_t>(val));
-      } break;
-      case ir::internal::PrimitiveIndex<int32_t>(): {
-        ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
-                                        static_cast<int32_t>(val));
-      } break;
-      case ir::internal::PrimitiveIndex<uint32_t>(): {
-        ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
-                                        static_cast<uint32_t>(val));
-      } break;
-      case ir::internal::PrimitiveIndex<int64_t>(): {
-        ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
-                                        static_cast<int64_t>(val));
-      } break;
-      case ir::internal::PrimitiveIndex<uint64_t>(): {
-        ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
-                                        static_cast<uint64_t>(val));
-      } break;
-      case ir::internal::PrimitiveIndex<float>(): {
-        ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
-                                        static_cast<float>(val));
-      } break;
-      case ir::internal::PrimitiveIndex<double>(): {
-        ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
-                                        static_cast<double>(val));
-      } break;
-      case ir::internal::PrimitiveIndex<ir::EnumVal>(): {
-        ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
-                                        ir::EnumVal(val));
-      } break;
-      case ir::internal::PrimitiveIndex<ir::FlagsVal>(): {
-        ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
-                                        ir::FlagsVal(val));
-      } break;
-    }
-
   } else if constexpr (std::is_same_v<Inst, ir::GetReturnInstruction>) {
     uint16_t index = iter->read<uint16_t>();
     ctx->current_frame()->regs_.set(iter->read<ir::Reg>(), ret_slots[index]);
@@ -582,15 +450,6 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     type::Struct const *const_struct_type = struct_type;
     ctx->current_frame()->regs_.set(iter->read<ir::Reg>(), const_struct_type);
 
-  } else if constexpr (std::is_same_v<Inst, ir::ArrayInstruction>) {
-    using length_t = ir::ArrayInstruction::length_t;
-    auto ctrl_bits = iter->read<ir::ArrayInstruction::control_bits>().get();
-    auto len = ctx->ReadAndResolve<length_t>(ctrl_bits.length_is_reg, iter);
-    auto data_type =
-        ctx->ReadAndResolve<type::Type const *>(ctrl_bits.type_is_reg, iter);
-
-    ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
-                                    type::Arr(len, data_type));
   } else if constexpr (std::is_same_v<Inst, ir::CallInstruction>) {
     bool fn_is_reg = iter->read<bool>();
     ir::Fn f       = ctx->ReadAndResolve<ir::Fn>(fn_is_reg, iter);
@@ -667,23 +526,6 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
 
     interpretter::Execute<InstSet>(f, std::move(call_buf), return_slots, ctx);
 
-  } else if constexpr (std::is_same_v<Inst, ir::LoadSymbolInstruction>) {
-    std::string name       = iter->read<ir::String>().get().get();
-    type::Type const *type = iter->read<type::Type const *>();
-    ir::Reg reg            = iter->read<ir::Reg>();
-
-    if (auto *fn_type = type->if_as<type::Function>()) {
-      ASSIGN_OR(FatalInterpretterError(_.error().to_string()),  //
-                void (*sym)(), interpretter::LoadFunctionSymbol(name));
-      ctx->current_frame()->regs_.set(reg, ir::Fn(ir::ForeignFn(sym, fn_type)));
-    } else if (type->is<type::Pointer>()) {
-      ASSIGN_OR(FatalInterpretterError(_.error().to_string()),  //
-                void *sym, interpretter::LoadDataSymbol(name));
-      ctx->current_frame()->regs_.set(reg, ir::Addr::Heap(sym));
-    } else {
-      UNREACHABLE(type->to_string());
-    }
-
   } else if constexpr (std::is_same_v<Inst, ir::TypeInfoInstruction>) {
     uint8_t ctrl_bits = iter->read<uint8_t>();
     auto type = ctx->ReadAndResolve<type::Type const *>(ctrl_bits & 0x01, iter);
@@ -696,32 +538,6 @@ void ExecuteAdHocInstruction(base::untyped_buffer::const_iterator *iter,
     } else {
       ctx->current_frame()->regs_.set(reg,
                                       type->bytes(interpretter::kArchitecture));
-    }
-
-  } else if constexpr (std::is_same_v<Inst, ir::StructIndexInstruction> or
-                       std::is_same_v<Inst, ir::TupleIndexInstruction> or
-                       std::is_same_v<Inst, ir::PtrIncrInstruction>) {
-    using ctrl_bits_t = typename Inst::control_bits;
-    auto ctrl_bits    = iter->read<ctrl_bits_t>().get();
-    auto const *type  = iter->read<typename Inst::type>().get();
-
-    ir::Addr addr = ctx->ReadAndResolve<ir::Addr>(ctrl_bits.reg_addr, iter);
-    int64_t index = ctx->ReadAndResolve<int64_t>(ctrl_bits.reg_index, iter);
-    ir::Reg reg   = iter->read<ir::Reg>();
-
-    if constexpr (std::is_same_v<Inst, ir::PtrIncrInstruction>) {
-      core::Bytes offset =
-          core::FwdAlign(
-              type->pointee()->bytes(interpretter::kArchitecture),
-              type->pointee()->alignment(interpretter::kArchitecture)) *
-          index;
-      ctx->current_frame()->regs_.set(reg, addr + offset);
-    } else {
-      DEBUG_LOG("struct-index-instruction")
-      ("Reg = ", reg, " addr = ", addr,
-       " offset = ", type->offset(index, interpretter::kArchitecture));
-      ctx->current_frame()->regs_.set(
-          reg, addr + type->offset(index, interpretter::kArchitecture));
     }
   } else {
     static_assert(base::always_false<Inst>());
@@ -784,33 +600,11 @@ inline constexpr auto kInstructions = std::array{
     ExecuteAdHocInstruction<
         ir::SetReturnInstruction<type::GenericStruct const *>, InstSet>,
 
-    ExecuteAdHocInstruction<ir::CastInstruction<uint8_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::CastInstruction<int8_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::CastInstruction<uint16_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::CastInstruction<int16_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::CastInstruction<uint32_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::CastInstruction<int32_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::CastInstruction<uint64_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::CastInstruction<int64_t>, InstSet>,
-    ExecuteAdHocInstruction<ir::CastInstruction<float>, InstSet>,
-    ExecuteAdHocInstruction<ir::CastInstruction<double>, InstSet>,
-
-    ExecuteInstruction<ir::NotInstruction>,
-    ExecuteInstruction<ir::PtrInstruction>,
-    ExecuteInstruction<ir::BufPtrInstruction>,
     ExecuteAdHocInstruction<ir::GetReturnInstruction, InstSet>,
-    ExecuteAdHocInstruction<ir::OpaqueTypeInstruction, InstSet>,
-    ExecuteAdHocInstruction<ir::ArrowInstruction, InstSet>,
     ExecuteAdHocInstruction<ir::CallInstruction, InstSet>,
-    ExecuteAdHocInstruction<ir::LoadSymbolInstruction, InstSet>,
-    ExecuteAdHocInstruction<ir::ArrayInstruction, InstSet>,
     ExecuteAdHocInstruction<ir::StructInstruction, InstSet>,
     ExecuteAdHocInstruction<ir::MakeBlockInstruction, InstSet>,
     ExecuteAdHocInstruction<ir::MakeScopeInstruction, InstSet>,
-    ExecuteAdHocInstruction<ir::StructIndexInstruction, InstSet>,
-    ExecuteAdHocInstruction<ir::TupleIndexInstruction, InstSet>,
-    ExecuteAdHocInstruction<ir::PtrIncrInstruction, InstSet>,
-    ExecuteInstruction<ir::TupleInstruction>,
     ExecuteAdHocInstruction<ir::EnumerationInstruction, InstSet>,
     ExecuteAdHocInstruction<ir::TypeInfoInstruction, InstSet>,
     ExecuteAdHocInstruction<ir::TypeManipulationInstruction, InstSet>,

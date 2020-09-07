@@ -320,7 +320,7 @@ RegOr<type::Type const *> Builder::Arrow(
     for (auto out : outs) { out_vec.push_back(out.value()); }
     return type::Func(std::move(in_params), std::move(out_vec));
   }
-  ArrowInstruction inst(std::move(ins), std::move(outs));
+  ArrowInstruction inst{.lhs = std::move(ins), .rhs = std::move(outs)};
   auto result = inst.result = CurrentGroup()->Reserve();
   CurrentBlock()->Append(std::move(inst));
   return result;
@@ -339,7 +339,7 @@ RegOr<type::Type const *> Builder::Array(RegOr<ArrayInstruction::length_t> len,
     return type::Arr(len.value(), data_type.value());
   }
 
-  ArrayInstruction inst(len, data_type);
+  ArrayInstruction inst{.length = len, .data_type = data_type};
   auto result = inst.result = CurrentGroup()->Reserve();
   CurrentBlock()->Append(std::move(inst));
   return result;

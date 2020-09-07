@@ -304,25 +304,25 @@ struct Builder {
     }
 
     if (v.type() == type::Int8) {
-      return Cast<ToType, int8_t>(v->get<RegOr<int8_t>>());
+      return Cast<int8_t, ToType>(v->get<RegOr<int8_t>>());
     } else if (v.type() == type::Nat8) {
-      return Cast<ToType, uint8_t>(v->get<RegOr<uint8_t>>());
+      return Cast<uint8_t, ToType>(v->get<RegOr<uint8_t>>());
     } else if (v.type() == type::Int16) {
-      return Cast<ToType, int16_t>(v->get<RegOr<int16_t>>());
+      return Cast<int16_t, ToType>(v->get<RegOr<int16_t>>());
     } else if (v.type() == type::Nat16) {
-      return Cast<ToType, uint16_t>(v->get<RegOr<uint16_t>>());
+      return Cast<uint16_t, ToType>(v->get<RegOr<uint16_t>>());
     } else if (v.type() == type::Int32) {
-      return Cast<ToType, int32_t>(v->get<RegOr<int32_t>>());
+      return Cast<int32_t, ToType>(v->get<RegOr<int32_t>>());
     } else if (v.type() == type::Nat32) {
-      return Cast<ToType, uint32_t>(v->get<RegOr<uint32_t>>());
+      return Cast<uint32_t, ToType>(v->get<RegOr<uint32_t>>());
     } else if (v.type() == type::Int64) {
-      return Cast<ToType, int64_t>(v->get<RegOr<int64_t>>());
+      return Cast<int64_t, ToType>(v->get<RegOr<int64_t>>());
     } else if (v.type() == type::Nat64) {
-      return Cast<ToType, uint64_t>(v->get<RegOr<uint64_t>>());
+      return Cast<uint64_t, ToType>(v->get<RegOr<uint64_t>>());
     } else if (v.type() == type::Float32) {
-      return Cast<ToType, float>(v->get<RegOr<float>>());
+      return Cast<float, ToType>(v->get<RegOr<float>>());
     } else if (v.type() == type::Float64) {
-      return Cast<ToType, double>(v->get<RegOr<double>>());
+      return Cast<double, ToType>(v->get<RegOr<double>>());
     } else {
       UNREACHABLE();
     }
@@ -628,11 +628,10 @@ struct Builder {
   }
 
  private:
-  template <typename ToType, typename FromType>
+  template <typename FromType, typename ToType>
   RegOr<ToType> Cast(RegOr<FromType> r) {
     if (r.is_reg()) {
-      CastInstruction<FromType> inst{
-          .value = r, .to_type_byte = internal::PrimitiveIndex<ToType>()};
+      CastInstruction<ToType, FromType> inst{.value = r.reg()};
       auto result = inst.result = CurrentGroup()->Reserve();
       CurrentBlock()->Append(std::move(inst));
       return result;

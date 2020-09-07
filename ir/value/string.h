@@ -9,7 +9,9 @@
 namespace ir {
 
 struct String {
-  explicit String(std::string_view str = "");
+  // TODO: Should we allow this at all? Seems not exactly right.
+  String() : String("") {}
+  explicit String(std::string_view str);
   explicit String(char const* str);
   explicit String(std::string const& str);
 

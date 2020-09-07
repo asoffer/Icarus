@@ -94,6 +94,13 @@ struct MetaValue {
   uintptr_t value_ = 0;
 };
 
+namespace internal_meta {
+template <typename, template <typename...> typename>
+struct IsAImpl : std::false_type {};
+template <typename T, template <typename...> typename P>
+struct IsAImpl<P<T>, P> : std::true_type {};
+}  // namespace internal_meta
+
 template <typename T>
 struct Meta {
   using type = T;
@@ -106,6 +113,11 @@ struct Meta {
   char const* name() const { return name_; }
 
   friend char const* stringify(Meta<T>) { return name_; }
+
+  template <template <typename...> typename P>
+  constexpr bool is_a() const {
+    return internal_meta::IsAImpl<T, P>::value;
+  }
 
  private:
   static char const* const name_;

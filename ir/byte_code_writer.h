@@ -30,6 +30,7 @@ constexpr uint8_t PrimitiveIndex() {
 }  // namespace internal_byte_code_writer
 
 namespace internal {
+
 template <typename T>
 void ReadInto(T& ref, base::untyped_buffer::const_iterator* iter) {
   if constexpr (IsRegOr<T>::value) {
@@ -37,6 +38,13 @@ void ReadInto(T& ref, base::untyped_buffer::const_iterator* iter) {
       ref = iter->read<Reg>().get();
     } else {
       ref = iter->read<typename T::type>().get();
+    }
+  } else if constexpr (base::meta<T>.template is_a<std::vector>()) {
+    ASSERT(ref.size() == 0u);
+    uint16_t num_entries = iter->read<uint16_t>();
+    ref.reserve(num_entries);
+    for (uint16_t i = 0; i < num_entries; ++i) {
+      ReadInto(ref.emplace_back(), iter);
     }
   } else {
     ref = iter->read<T>();
@@ -53,7 +61,12 @@ struct ByteCodeWriter {
                                  base::meta<T> != base::meta<BasicBlock const*>,
                              int> = 0>
   void Write(T const& val) {
-    buf_->append(val);
+    if constexpr (base::meta<T>.template is_a<std::vector>()) {
+      buf_->append<uint16_t>(val.size());
+      for (auto const& element : val) { Write(element); }
+    } else {
+      buf_->append(val);
+    }
   }
 
   void Write(BasicBlock const* block) {

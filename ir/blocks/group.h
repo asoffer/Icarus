@@ -92,6 +92,7 @@ struct BlockGroupBase {
   core::Params<type::Typed<ast::Declaration const *>> params_;
   std::vector<std::unique_ptr<BasicBlock>> blocks_;
   RegisterAllocator alloc_;
+
   base::untyped_buffer byte_code_;
 };
 

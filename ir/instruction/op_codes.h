@@ -33,35 +33,19 @@ inline constexpr auto kSetReturnInstructionRange = CmdRange{
     .start  = kPhiInstructionRange.end(),
     .length = 25,
 };
-inline constexpr auto kCastInstructionRange = CmdRange{
-    .start  = kSetReturnInstructionRange.end(),
-    .length = 10,
-};
-
 inline constexpr cmd_index_t kEndRangedInstructions =
-    kCastInstructionRange.end();
+    kSetReturnInstructionRange.end();
 inline constexpr uint16_t kAdHocStart = kEndRangedInstructions;
 
-inline constexpr cmd_index_t kNotInstructionNumber           = kAdHocStart + 0;
-inline constexpr cmd_index_t kPtrInstructionNumber           = kAdHocStart + 1;
-inline constexpr cmd_index_t kBufPtrInstructionNumber        = kAdHocStart + 2;
-inline constexpr cmd_index_t kGetReturnInstructionIndex      = kAdHocStart + 3;
-inline constexpr cmd_index_t kOpaqueTypeInstructionNumber    = kAdHocStart + 4;
-inline constexpr cmd_index_t kArrowInstructionNumber         = kAdHocStart + 5;
-inline constexpr cmd_index_t kCallInstructionNumber          = kAdHocStart + 6;
-inline constexpr cmd_index_t kLoadSymbolInstructionNumber    = kAdHocStart + 7;
-inline constexpr cmd_index_t kArrayInstructionNumber         = kAdHocStart + 8;
-inline constexpr cmd_index_t kStructInstructionNumber        = kAdHocStart + 9;
-inline constexpr cmd_index_t kMakeBlockInstructionNumber     = kAdHocStart + 10;
-inline constexpr cmd_index_t kMakeScopeInstructionNumber     = kAdHocStart + 11;
-inline constexpr cmd_index_t kStructIndexInstructionNumber   = kAdHocStart + 12;
-inline constexpr cmd_index_t kTupleIndexInstructionNumber    = kAdHocStart + 13;
-inline constexpr cmd_index_t kPtrIncrInstructionNumber       = kAdHocStart + 14;
-inline constexpr cmd_index_t kTupleInstructionNumber         = kAdHocStart + 15;
-inline constexpr cmd_index_t kEnumerationInstructionNumber   = kAdHocStart + 16;
-inline constexpr cmd_index_t kTypeInfoInstructionNumber      = kAdHocStart + 17;
+inline constexpr cmd_index_t kGetReturnInstructionIndex      = kAdHocStart + 0;
+inline constexpr cmd_index_t kCallInstructionNumber          = kAdHocStart + 1;
+inline constexpr cmd_index_t kStructInstructionNumber        = kAdHocStart + 2;
+inline constexpr cmd_index_t kMakeBlockInstructionNumber     = kAdHocStart + 3;
+inline constexpr cmd_index_t kMakeScopeInstructionNumber     = kAdHocStart + 4;
+inline constexpr cmd_index_t kEnumerationInstructionNumber   = kAdHocStart + 5;
+inline constexpr cmd_index_t kTypeInfoInstructionNumber      = kAdHocStart + 6;
 inline constexpr cmd_index_t kTypeManipulationInstructionNumber =
-    kAdHocStart + 18;
+    kAdHocStart + 7;
 
 }  // namespace internal
 }  // namespace ir

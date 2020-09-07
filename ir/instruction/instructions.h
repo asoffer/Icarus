@@ -23,6 +23,7 @@
 #include "ir/instruction/type.h"
 #include "ir/instruction/util.h"
 #include "ir/interpretter/execute.h"
+#include "ir/interpretter/foreign.h"
 #include "ir/out_params.h"
 #include "ir/value/enum_and_flags.h"
 #include "ir/value/fn.h"
@@ -112,18 +113,20 @@ struct SetReturnInstruction
   RegOr<T> value;
 };
 
-template <typename FromType>
+template <typename FromType, typename ToType>
 struct CastInstruction
-    : base::Extend<CastInstruction<FromType>>::template With<
-          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
-  using from_type                     = FromType;
-  static constexpr cmd_index_t kIndex = internal::kCastInstructionRange.start +
-                                        internal::PrimitiveIndex<FromType>();
-  static constexpr std::string_view kDebugFormat =
-      "%3$s = cast %1$s to type indexed by %2$s";
+    : base::Extend<CastInstruction<FromType, ToType>>::template With<
+          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+  using from_type                                = FromType;
+  using to_type                                  = ToType;
+  static constexpr std::string_view kDebugFormat = "%2$s = cast %1$s";
+
+  void Apply(interpretter::ExecutionContext& ctx) const {
+    ctx.current_frame()->regs_.set(result,
+                                   static_cast<ToType>(ctx.resolve(value)));
+  }
 
   RegOr<FromType> value;
-  uint8_t to_type_byte;
   Reg result;
 };
 
@@ -137,14 +140,15 @@ struct GetReturnInstruction
   Reg result;
 };
 
-// TODO this should work for flags too.
 struct NotInstruction
-    : base::Extend<NotInstruction>::With<
-          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
-  using unary                         = bool;
-  static constexpr cmd_index_t kIndex = internal::kNotInstructionNumber;
+    : base::Extend<NotInstruction>::With<ByteCodeExtension, InlineExtension,
+                                         DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = not %1$s";
 
+
+  void Apply(interpretter::ExecutionContext& ctx) const {
+    ctx.current_frame()->regs_.set(result, not ctx.resolve(operand));
+  }
   static bool Apply(bool operand) { return not operand; }
 
   RegOr<bool> operand;
@@ -282,12 +286,41 @@ struct CallInstruction {
   OutParams outs_;
 };
 
+[[noreturn]] inline void FatalInterpretterError(std::string_view err_msg) {
+  // TODO: Add a diagnostic explaining the failure.
+  absl::FPrintF(stderr,
+                R"(
+  ----------------------------------------
+  Fatal interpretter failure:
+    %s
+  ----------------------------------------)"
+                "\n",
+                err_msg);
+  std::terminate();
+}
+
 struct LoadSymbolInstruction
     : base::Extend<LoadSymbolInstruction>::With<
-          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
-  static constexpr cmd_index_t kIndex = internal::kLoadSymbolInstructionNumber;
+          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat =
       "%3$s = load-symbol %1$s: %2$s";
+
+  void Apply(interpretter::ExecutionContext& ctx) const {
+    // TODO: We could probably extract this into two separate instructions (one
+    // for functions and one for pointers) so that we can surface errors during
+    // code-gen without the UNREACHABLE.
+    if (auto* fn_type = type->if_as<type::Function>()) {
+      ASSIGN_OR(FatalInterpretterError(_.error().to_string()),  //
+                void (*sym)(), interpretter::LoadFunctionSymbol(name.get()));
+      ctx.current_frame()->regs_.set(result, ir::Fn(ir::ForeignFn(sym, fn_type)));
+    } else if (type->is<type::Pointer>()) {
+      ASSIGN_OR(FatalInterpretterError(_.error().to_string()),  //
+                void* sym, interpretter::LoadDataSymbol(name.get()));
+      ctx.current_frame()->regs_.set(result, ir::Addr::Heap(sym));
+    } else {
+      UNREACHABLE(type->to_string());
+    }
+  }
 
   String name;
   type::Type const* type;
@@ -414,28 +447,16 @@ struct MakeScopeInstruction {
 };
 
 struct StructIndexInstruction
-    : base::Extend<StructIndexInstruction>::With<InlineExtension,
-                                                 DebugFormatExtension> {
-  using type                          = type::Struct const*;
-  static constexpr cmd_index_t kIndex = internal::kStructIndexInstructionNumber;
+    : base::Extend<StructIndexInstruction>::With<
+          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat =
       "%4$s = index %2$s of %1$s (struct %3$s)";
 
-  struct control_bits {
-    uint8_t reg_addr : 1;
-    uint8_t reg_index : 1;
-  };
-
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(control_bits{
-        .reg_addr  = addr.is_reg(),
-        .reg_index = index.is_reg(),
-    });
-
-    writer->Write(struct_type);
-    addr.apply([&](auto v) { writer->Write(v); });
-    index.apply([&](auto v) { writer->Write(v); });
-    writer->Write(result);
+  void Apply(interpretter::ExecutionContext& ctx) {
+    ctx.current_frame()->regs_.set(
+        result,
+        ctx.resolve(addr) + struct_type->offset(ctx.resolve(index),
+                                                interpretter::kArchitecture));
   }
 
   RegOr<Addr> addr;
@@ -445,28 +466,15 @@ struct StructIndexInstruction
 };
 
 struct TupleIndexInstruction
-    : base::Extend<TupleIndexInstruction>::With<InlineExtension,
-                                                DebugFormatExtension> {
-  using type                          = type::Tuple const*;
-  static constexpr cmd_index_t kIndex = internal::kTupleIndexInstructionNumber;
+    : base::Extend<TupleIndexInstruction>::With<
+          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat =
       "%4$s = index %2$s of %1$s (tuple %3$s)";
 
-  struct control_bits {
-    uint8_t reg_addr : 1;
-    uint8_t reg_index : 1;
-  };
-
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(control_bits{
-        .reg_addr  = addr.is_reg(),
-        .reg_index = index.is_reg(),
-    });
-
-    writer->Write(tuple);
-    addr.apply([&](auto v) { writer->Write(v); });
-    index.apply([&](auto v) { writer->Write(v); });
-    writer->Write(result);
+  void Apply(interpretter::ExecutionContext& ctx) {
+    ctx.current_frame()->regs_.set(
+        result, ctx.resolve(addr) + tuple->offset(ctx.resolve(index),
+                                                  interpretter::kArchitecture));
   }
 
   RegOr<Addr> addr;
@@ -476,28 +484,19 @@ struct TupleIndexInstruction
 };
 
 struct PtrIncrInstruction
-    : base::Extend<PtrIncrInstruction>::With<InlineExtension,
+    : base::Extend<PtrIncrInstruction>::With<ByteCodeExtension, InlineExtension,
                                              DebugFormatExtension> {
-  using type                          = type::Pointer const*;
-  static constexpr cmd_index_t kIndex = internal::kPtrIncrInstructionNumber;
   static constexpr std::string_view kDebugFormat =
       "%4$s = index %2$s of %1$s (pointer %3$s)";
 
-  struct control_bits {
-    uint8_t reg_addr : 1;
-    uint8_t reg_index : 1;
-  };
-
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(control_bits{
-        .reg_addr  = addr.is_reg(),
-        .reg_index = index.is_reg(),
-    });
-
-    writer->Write(ptr);
-    addr.apply([&](auto v) { writer->Write(v); });
-    index.apply([&](auto v) { writer->Write(v); });
-    writer->Write(result);
+  void Apply(interpretter::ExecutionContext& ctx) {
+    ctx.current_frame()->regs_.set(
+        result,
+        ctx.resolve(addr) +
+            core::FwdAlign(
+                ptr->pointee()->bytes(interpretter::kArchitecture),
+                ptr->pointee()->alignment(interpretter::kArchitecture)) *
+                ctx.resolve(index));
   }
 
   RegOr<Addr> addr;
