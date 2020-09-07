@@ -114,7 +114,6 @@ cc_library(
         ":flags",
         ":inliner",
         ":op_codes",
-        ":phi",
         ":util",
         ":type",
         "//ast/scope",
@@ -151,8 +150,8 @@ cc_library(
 )
 
 cc_library(
-    name = "phi",
-    hdrs = ["phi.h"],
+    name = "core",
+    hdrs = ["core.h"],
     deps = [
         "//base:extend",
         "//ir/blocks:basic",
@@ -204,6 +203,7 @@ cc_library(
     name = "set",
     hdrs = ["set.h"],
     deps = [
+        ":core",
         "//base:meta",
         "//base:untyped_buffer",
         "//ir:block_def",

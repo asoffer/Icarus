@@ -254,7 +254,9 @@ type::Typed<Reg> Builder::Field(RegOr<Addr> r, type::Struct const *t,
 
 Reg Builder::MakeBlock(BlockDef *block_def, std::vector<RegOr<Fn>> befores,
                        std::vector<RegOr<Jump *>> afters) {
-  MakeBlockInstruction inst(block_def, std::move(befores), std::move(afters));
+  MakeBlockInstruction inst{.block_def = block_def,
+                            .befores   = std::move(befores),
+                            .afters    = std::move(afters)};
   auto result = inst.result = CurrentGroup()->Reserve();
   CurrentBlock()->Append(std::move(inst));
   return result;
@@ -264,8 +266,10 @@ Reg Builder::MakeScope(
     ScopeDef *scope_def, std::vector<RegOr<Jump *>> inits,
     std::vector<RegOr<Fn>> dones,
     absl::flat_hash_map<std::string_view, BlockDef *> blocks) {
-  MakeScopeInstruction inst(scope_def, std::move(inits), std::move(dones),
-                            std::move(blocks));
+  MakeScopeInstruction inst{.scope_def = scope_def,
+                            .inits     = std::move(inits),
+                            .dones     = std::move(dones),
+                            .blocks    = std::move(blocks)};
   auto result = inst.result = CurrentGroup()->Reserve();
   CurrentBlock()->Append(std::move(inst));
   return result;
@@ -274,8 +278,10 @@ Reg Builder::MakeScope(
 Reg Builder::Enum(
     module::BasicModule *mod, std::vector<std::string_view> names,
     absl::flat_hash_map<uint64_t, RegOr<uint64_t>> specified_values) {
-  EnumerationInstruction inst(EnumerationInstruction::Kind::Enum, mod,
-                              std::move(names), std::move(specified_values));
+  EnumerationInstruction inst{.kind_  = EnumerationInstruction::Kind::Enum,
+                              .mod_   = mod,
+                              .names_ = std::move(names),
+                              .specified_values_ = std::move(specified_values)};
   auto result = inst.result = CurrentGroup()->Reserve();
   CurrentBlock()->Append(std::move(inst));
   return result;
@@ -284,8 +290,10 @@ Reg Builder::Enum(
 Reg Builder::Flags(
     module::BasicModule *mod, std::vector<std::string_view> names,
     absl::flat_hash_map<uint64_t, RegOr<uint64_t>> specified_values) {
-  EnumerationInstruction inst(EnumerationInstruction::Kind::Flags, mod,
-                              std::move(names), std::move(specified_values));
+  EnumerationInstruction inst{.kind_  = EnumerationInstruction::Kind::Flags,
+                              .mod_   = mod,
+                              .names_ = std::move(names),
+                              .specified_values_ = std::move(specified_values)};
   auto result = inst.result = CurrentGroup()->Reserve();
   CurrentBlock()->Append(std::move(inst));
   return result;
@@ -294,7 +302,11 @@ Reg Builder::Flags(
 Reg Builder::Struct(module::BasicModule const *mod, type::Struct *s,
                     std::vector<StructField> fields,
                     std::optional<ir::Fn> assign, std::optional<ir::Fn> dtor) {
-  StructInstruction inst(mod, s, std::move(fields), assign, dtor);
+  StructInstruction inst{.mod         = mod,
+                         .struct_     = s,
+                         .fields      = std::move(fields),
+                         .move_assign = assign,
+                         .dtor        = dtor};
   auto result = inst.result = CurrentGroup()->Reserve();
   CurrentBlock()->Append(std::move(inst));
   return result;

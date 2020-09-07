@@ -43,33 +43,86 @@ struct TupleInstruction
   Reg result;
 };
 
-struct EnumerationInstruction {
+struct EnumerationInstruction
+    : base::Extend<EnumerationInstruction>::With<ByteCodeExtension,
+                                                 InlineExtension> {
   enum class Kind { Enum, Flags };
-  EnumerationInstruction(
-      Kind k, module::BasicModule* mod, std::vector<std::string_view> names,
-      absl::flat_hash_map<uint64_t, RegOr<uint64_t>> specified_values)
-      : kind_(k),
-        mod_(mod),
-        names_(std::move(names)),
-        specified_values_(std::move(specified_values)) {}
-  ~EnumerationInstruction() {}
 
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(kind_ == Kind::Enum);
-    writer->Write<uint16_t>(names_.size());
-    writer->Write<uint16_t>(specified_values_.size());
-    writer->Write(mod_);
-    for (auto name : names_) { writer->Write(name); }
+  void Apply(interpretter::ExecutionContext& ctx) const {
+    NOT_YET();
+    // using enum_t = uint64_t;
 
-    for (auto const& [index, val] : specified_values_) {
-      // TODO these could be packed much more efficiently.
-      writer->Write(index);
-      writer->Write<bool>(val.is_reg());
-      val.apply([&](auto v) { writer->Write(v); });
-    }
+    // std::vector<std::pair<std::string_view, std::optional<enum_t>>> enumerators;
+    // enumerators.reserve(num_enumerators);
+    // for (uint16_t i = 0; i < num_enumerators; ++i) {
+    //   enumerators.emplace_back(iter->read<std::string_view>(), std::nullopt);
+    // }
 
-    writer->Write(result);
-  };
+    // absl::flat_hash_set<enum_t> vals;
+
+    // specified_values_
+    // for (uint16_t i = 0; i < num_specified; ++i) {
+    //   uint64_t index            = iter->read<uint64_t>();
+    //   auto b                    = iter->read<bool>();
+    //   enum_t val                = ctx->ReadAndResolve<enum_t>(b, iter);
+    //   enumerators[index].second = val;
+    //   vals.insert(val);
+    // }
+
+    // absl::BitGen gen;
+
+    // switch (kind_) {
+    //   case Kind::Enum: {
+    //     for (auto& [name, maybe_val] : enumerators) {
+    //       if (not maybe_val.has_value()) {
+    //         bool success;
+    //         enum_t x;
+    //         do {
+    //           x         = absl::Uniform<enum_t>(gen);
+    //           success   = vals.insert(x).second;
+    //           maybe_val = x;
+    //         } while (not success);
+    //       }
+    //     }
+    //     absl::flat_hash_map<std::string, ir::EnumVal> mapping;
+
+    //     for (auto [name, maybe_val] : enumerators) {
+    //       ASSERT(maybe_val.has_value() == true);
+    //       mapping.emplace(std::string(name), ir::EnumVal{maybe_val.value()});
+    //     }
+
+    //     ctx->current_frame()->regs_.set(
+    //         iter->read<ir::Reg>(),
+    //         type::Allocate<type::Enum>(mod, std::move(mapping)));
+    //   } break;
+    //   case Kind::Flags: {
+    //     for (auto& [name, maybe_val] : enumerators) {
+    //       if (not maybe_val.has_value()) {
+    //         bool success;
+    //         enum_t x;
+    //         do {
+    //           x       = absl::Uniform<enum_t>(absl::IntervalClosedOpen, gen, 0,
+    //                                     std::numeric_limits<enum_t>::digits);
+    //           success = vals.insert(x).second;
+    //           maybe_val = x;
+    //         } while (not success);
+    //       }
+    //     }
+
+    //     absl::flat_hash_map<std::string, ir::FlagsVal> mapping;
+
+    //     for (auto [name, maybe_val] : enumerators) {
+    //       ASSERT(maybe_val.has_value() == true);
+    //       mapping.emplace(std::string(name),
+    //                       ir::FlagsVal{enum_t{1} << maybe_val.value()});
+    //     }
+
+    //     ctx->current_frame()->regs_.set(
+    //         iter->read<ir::Reg>(),
+    //         type::Allocate<type::Flags>(mod, std::move(mapping)));
+    //   } break;
+    // }
+  }
 
   std::string to_string() const {
     using base::stringify;
@@ -77,8 +130,6 @@ struct EnumerationInstruction {
                         kind_ == Kind::Enum ? " = enum (" : " = flags (",
                         absl::StrJoin(names_, ", "), ")");
   }
-
-  void Inline(InstructionInliner const& inliner) { inliner.Inline(result); }
 
   Kind kind_;
   module::BasicModule* mod_;
@@ -171,61 +222,61 @@ struct BufPtrInstruction
   Reg result;
 };
 
-struct StructInstruction {
-  StructInstruction(module::BasicModule const* mod, type::Struct* s,
-                    std::vector<StructField> fields,
-                    std::optional<ir::Fn> move_assign, std::optional<ir::Fn> dtor)
-      : mod(mod),
-        struct_(s),
-        fields(std::move(fields)),
-        move_assign(move_assign),
-        dtor(dtor) {}
-  ~StructInstruction() {}
+struct StructInstruction
+    : base::Extend<StructInstruction>::With<ByteCodeExtension,
+                                            InlineExtension> {
+  void Apply(interpretter::ExecutionContext& ctx) const {
+    NOT_YET();
+    //       uint16_t num = iter->read<uint16_t>();
+    //       module::BasicModule const *mod =
+    //           iter->read<module::BasicModule const *>();
+    //       type::Struct *struct_type = iter->read<type::Struct *>();
+    //
+    //       std::vector<type::Struct::Field> fields;
+    //       fields.reserve(num);
+    //       for (uint16_t i = 0; i < num; ++i) {
+    //         std::string_view name = iter->read<std::string_view>();
+    //         if (iter->read<bool>()) {
+    //           type::Type const *t = iter->read<type::Type const *>();
+    //
+    //           ir::Value init_val = iter->read<ir::Value>();
+    //
+    //           fields.push_back(type::Struct::Field{
+    //               .name          = std::string(name),
+    //               .type          = t,
+    //               .initial_value = init_val,
+    //               .hashtags_     = {},
+    //           });
+    //         } else {
+    //           fields.push_back(type::Struct::Field{
+    //               .name = std::string(name),
+    //               .type = ctx->resolve(
+    //                   iter->read<ir::RegOr<type::Type const *>>().get()),
+    //               .initial_value = ir::Value(),
+    //               .hashtags_     = {},
+    //           });
+    //         }
+    //       }
+    //
+    //       struct_type->AppendFields(std::move(fields));
+    //
+    //       if (iter->read<bool>()) {
+    //         struct_type->SetMoveAssignment(iter->read<ir::Fn>());
+    //       }
+    //
+    //       if (iter->read<bool>()) {
+    //         struct_type->SetDestructor(iter->read<ir::Fn>());
+    //       }
+    //
+    //       type::Struct const *const_struct_type = struct_type;
+    //       ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
+    //       const_struct_type);
+    //
+  }
 
   std::string to_string() const {
     // TODO
     return absl::StrCat(stringify(result), " = struct TODO");
-  }
-
-  struct control_bits {
-    uint8_t length_is_reg : 1;
-    uint8_t type_is_reg : 1;
-  };
-
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write<uint16_t>(fields.size());
-    writer->Write(mod);
-    writer->Write(struct_);
-
-    // TODO shuffling fields order?
-    for (auto const& field : fields) {
-      writer->Write(field.name());
-      if (auto* v = field.initial_value()) {
-        writer->Write(true);
-        writer->Write(field.type().value());
-        writer->Write(*v);
-      } else {
-        writer->Write(false);
-        writer->Write(field.type());
-      }
-    }
-
-    writer->Write(move_assign.has_value());
-    if (move_assign.has_value()) { writer->Write(*move_assign); }
-
-    writer->Write(dtor.has_value());
-    if (dtor.has_value()) { writer->Write(*dtor); }
-
-    writer->Write(result);
-  }
-
-  void Inline(InstructionInliner const& inliner) {
-    for (auto& field : fields) {
-      if (auto* r = field.type_reg()) { inliner.Inline(*r); }
-      if (auto* v = field.initial_value()) {
-        if (auto* r = v->get_if<Reg>()) { inliner.Inline(*r); }
-      }
-    }
   }
 
   module::BasicModule const* mod;

@@ -19,7 +19,6 @@
 #include "ir/instruction/flags.h"
 #include "ir/instruction/inliner.h"
 #include "ir/instruction/op_codes.h"
-#include "ir/instruction/phi.h"
 #include "ir/instruction/type.h"
 #include "ir/instruction/util.h"
 #include "ir/interpretter/execute.h"
@@ -38,79 +37,6 @@
 // the common instructions available in the core IR.
 namespace ir {
 
-struct LoadInstruction
-    : base::Extend<LoadInstruction>::With<
-          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
-  static constexpr cmd_index_t kIndex = internal::kLoadInstructionNumber;
-  static constexpr std::string_view kDebugFormat = "%3$s = load %2$s";
-
-  uint16_t num_bytes;
-  RegOr<Addr> addr;
-  Reg result;
-};
-
-template <typename T>
-struct StoreInstruction
-    : base::Extend<StoreInstruction<T>>::template With<
-          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
-  static constexpr std::string_view kDebugFormat = "store %1$s -> [%2$s]";
-  using type = T;
-
-  void Apply(interpretter::ExecutionContext& ctx) {
-    ir::Addr addr = ctx.resolve(location);
-    type val      = ctx.resolve(value);
-    switch (addr.kind()) {
-      case ir::Addr::Kind::Stack: ctx.stack_.set(addr.stack(), val); break;
-      case ir::Addr::Kind::ReadOnly:
-        NOT_YET(
-            "Storing into read-only data seems suspect. Is it just for "
-            "initialization?");
-        break;
-      case ir::Addr::Kind::Heap:
-        *ASSERT_NOT_NULL(static_cast<type*>(addr.heap())) = val;
-    }
-  }
-
-  RegOr<T> value;
-  RegOr<Addr> location;
-};
-
-// This instruction is a bit strange sets a register to either another registor,
-// or an immediate value. By the very nature of Single-Static-Assignment, every
-// use of this instruction is an optimization opportunity. If a register is
-// initialized with an immediate value, we can do constant propagation. If it is
-// initialized with another register, the two registers can be folded into a
-// single register.
-//
-// The benefit of such an instruction is that it enables us to inline code
-// without worrying about rewriting register names immediately. This instruction
-// should never be visible in the final code.
-template <typename T>
-struct RegisterInstruction
-    : base::Extend<RegisterInstruction<T>>::template With<
-          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
-  static constexpr std::string_view kDebugFormat = "%2$s = %1$s";
-
-  void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame()->regs_.set(result, Apply(ctx.resolve(operand)));
-  }
-  static T Apply(T val) { return val; }
-
-  RegOr<T> operand;
-  Reg result;
-};
-
-template <typename T>
-struct SetReturnInstruction
-    : base::Extend<SetReturnInstruction<T>>::template With<
-          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
-  using type = T;
-  static constexpr std::string_view kDebugFormat = "set-ret %1$s = %2$s";
-
-  uint16_t index;
-  RegOr<T> value;
-};
-
 template <typename FromType, typename ToType>
 struct CastInstruction
     : base::Extend<CastInstruction<FromType, ToType>>::template With<
@@ -125,15 +51,6 @@ struct CastInstruction
   }
 
   RegOr<FromType> value;
-  Reg result;
-};
-
-struct GetReturnInstruction
-    : base::Extend<GetReturnInstruction>::With<
-          WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
-  static constexpr std::string_view kDebugFormat = "%2$s = get-ret %1$s";
-
-  uint16_t index;
   Reg result;
 };
 
@@ -262,74 +179,6 @@ struct MoveInstruction
   ir::RegOr<ir::Addr> to;
 };
 
-struct CallInstruction {
-  CallInstruction(type::Function const* fn_type, RegOr<Fn> const& fn,
-                  std::vector<Value> args, OutParams outs)
-      : fn_type_(fn_type),
-        fn_(fn),
-        args_(std::move(args)),
-        outs_(std::move(outs)) {
-    ASSERT(this->outs_.size() == fn_type_->output().size());
-    ASSERT(args_.size() == fn_type_->params().size());
-  }
-
-  ~CallInstruction() {}
-
-  std::string to_string() const {
-    using base::stringify;
-    std::string result = absl::StrCat("call ", stringify(fn_));
-    for (auto const& arg : args_) {
-      absl::StrAppend(&result, "\n      -> ", stringify(arg));
-    }
-    for (size_t i = 0; i < fn_type_->output().size(); ++i) {
-      absl::StrAppend(&result, "\n      <- ", stringify(outs_[i]));
-    }
-
-    return result;
-  }
-
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(fn_.is_reg());
-    fn_.apply([&](auto v) { writer->Write(v); });
-    size_t bytes_written_slot = writer->buf_->reserve<core::Bytes>();
-
-    size_t arg_index = 0;
-    for (Value const& arg : args_) {
-      Reg const* r = arg.get_if<Reg>();
-      writer->Write(static_cast<bool>(r));
-      if (r) {
-        writer->Write(*r);
-      } else {
-        type::Apply(fn_type_->params()[arg_index].value.type(), [&](auto tag) {
-          using T = typename decltype(tag)::type;
-          writer->Write(arg.get<T>());
-        });
-      }
-      ++arg_index;
-    }
-
-    outs_.WriteByteCode(writer);
-
-    writer->buf_->set(bytes_written_slot,
-                      core::Bytes{writer->buf_->size() - bytes_written_slot -
-                                  sizeof(core::Bytes)});
-  }
-
-  RegOr<Fn> func() const { return fn_; }
-
-  void Inline(InstructionInliner const& inliner) {
-    inliner.Inline(fn_);
-    for (auto& arg : args_) { inliner.Inline(arg); }
-    for (auto& reg : outs_.regs()) { inliner.Inline(reg); }
-  }
-
- private:
-  type::Function const* fn_type_;
-  RegOr<Fn> fn_;
-  std::vector<Value> args_;
-  OutParams outs_;
-};
-
 [[noreturn]] inline void FatalInterpretterError(std::string_view err_msg) {
   // TODO: Add a diagnostic explaining the failure.
   absl::FPrintF(stderr,
@@ -384,7 +233,7 @@ struct TypeInfoInstruction
         type.is_reg() ? stringify(type.reg()) : type.value()->to_string());
   }
 
-  void Apply(interpretter::ExecutionContext& ctx) {
+  void Apply(interpretter::ExecutionContext& ctx) const {
     switch (kind) {
       case Kind::Alignment:
         ctx.current_frame()->regs_.set(
@@ -402,36 +251,28 @@ struct TypeInfoInstruction
   Reg result;
 };
 
-struct MakeBlockInstruction {
-  MakeBlockInstruction(BlockDef* block_def, std::vector<RegOr<Fn>> befores,
-                       std::vector<RegOr<Jump*>> afters)
-      : block_def(block_def),
-        befores(std::move(befores)),
-        afters(std::move(afters)) {}
-  ~MakeBlockInstruction() {}
+struct MakeBlockInstruction
+    : base::Extend<MakeBlockInstruction>::With<ByteCodeExtension,
+                                               InlineExtension> {
+  std::string to_string() const { return "make-scope"; }  // TODO
 
-  // TODO
-  std::string to_string() const { return "make-block "; }
+  void Apply(interpretter::ExecutionContext& ctx) const {
+    std::vector<ir::Fn> resolved_befores;
+    resolved_befores.reserve(befores.size());
+    for (auto const& fn : befores) {
+      resolved_befores.push_back(ctx.resolve(fn));
+    }
 
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(block_def);
-    internal::WriteBits<uint16_t, RegOr<Fn>>(
-        writer, befores, [](RegOr<Fn> const& r) { return r.is_reg(); });
-    absl::c_for_each(befores, [&](RegOr<Fn> x) {
-      x.apply([&](auto v) { writer->Write(v); });
-    });
-    internal::WriteBits<uint16_t, RegOr<Jump*>>(
-        writer, afters, [](RegOr<Jump*> const& r) { return r.is_reg(); });
-    absl::c_for_each(afters, [&](RegOr<Jump*> x) {
-      x.apply([&](auto v) { writer->Write(v); });
-    });
-    writer->Write(result);
-  }
+    absl::flat_hash_set<ir::Jump const*> resolved_afters;
+    resolved_afters.reserve(afters.size());
+    for (auto const& fn : afters) {
+      resolved_afters.insert(ctx.resolve(fn));
+    }
 
-  void Inline(InstructionInliner const& inliner) {
-    inliner.Inline(befores);
-    inliner.Inline(afters);
-    inliner.Inline(result);
+    *block_def         = ir::BlockDef(std::move(resolved_afters));
+    block_def->before_ = ir::OverloadSet(std::move(resolved_befores));
+
+    ctx.current_frame()->regs_.set(result, block_def);
   }
 
   BlockDef* block_def;
@@ -440,45 +281,29 @@ struct MakeBlockInstruction {
   Reg result;
 };
 
-struct MakeScopeInstruction {
-  MakeScopeInstruction(ScopeDef* scope_def, std::vector<RegOr<Jump*>> inits,
-                       std::vector<RegOr<Fn>> dones,
-                       absl::flat_hash_map<std::string_view, BlockDef*> blocks)
-      : scope_def(scope_def),
-        inits(std::move(inits)),
-        dones(std::move(dones)),
-        blocks(std::move(blocks)) {}
-  ~MakeScopeInstruction() {}
+struct MakeScopeInstruction
+    : base::Extend<MakeScopeInstruction>::With<
+          ByteCodeExtension, InlineExtension> {
+  std::string to_string() const { return "make-scope"; }  // TODO
 
-  // TODO
-  std::string to_string() const { return "make-scope"; }
-
-  void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(scope_def);
-
-    internal::WriteBits<uint16_t, RegOr<Jump*>>(
-        writer, inits, [](RegOr<Jump*> const& r) { return r.is_reg(); });
-    absl::c_for_each(inits, [&](RegOr<Jump*> x) {
-      x.apply([&](auto v) { writer->Write(v); });
-    });
-    internal::WriteBits<uint16_t, RegOr<Fn>>(
-        writer, dones, [](RegOr<Fn> const& r) { return r.is_reg(); });
-    absl::c_for_each(dones, [&](RegOr<Fn> x) {
-      x.apply([&](auto v) { writer->Write(v); });
-    });
-
-    writer->Write<uint16_t>(blocks.size());
-    for (auto [name, block] : blocks) {
-      writer->Write(name);
-      writer->Write(block);
+  void Apply(interpretter::ExecutionContext& ctx) const {
+    absl::flat_hash_set<ir::Jump const*> resolved_inits;
+    resolved_inits.reserve(inits.size());
+    for (auto const& init : inits) {
+      resolved_inits.insert(ctx.resolve(init));
     }
-    writer->Write(result);
-  }
+    *scope_def->start_ = ir::BlockDef(std::move(resolved_inits));
 
-  void Inline(InstructionInliner const& inliner) {
-    inliner.Inline(inits);
-    inliner.Inline(dones);
-    inliner.Inline(result);
+    std::vector<ir::Fn> resolved_dones;
+    resolved_dones.reserve(dones.size());
+    for (auto const& fn : dones) { resolved_dones.push_back(ctx.resolve(fn)); }
+    scope_def->exit_->before_ = ir::OverloadSet(std::move(resolved_dones));
+
+    for (auto [name, block]: blocks) {
+      scope_def->blocks_.emplace(name, block);
+    }
+
+    ctx.current_frame()->regs_.set(result, scope_def);
   }
 
   ScopeDef* scope_def;
@@ -494,7 +319,7 @@ struct StructIndexInstruction
   static constexpr std::string_view kDebugFormat =
       "%4$s = index %2$s of %1$s (struct %3$s)";
 
-  void Apply(interpretter::ExecutionContext& ctx) {
+  void Apply(interpretter::ExecutionContext& ctx) const {
     ctx.current_frame()->regs_.set(
         result,
         ctx.resolve(addr) + struct_type->offset(ctx.resolve(index),
@@ -513,7 +338,7 @@ struct TupleIndexInstruction
   static constexpr std::string_view kDebugFormat =
       "%4$s = index %2$s of %1$s (tuple %3$s)";
 
-  void Apply(interpretter::ExecutionContext& ctx) {
+  void Apply(interpretter::ExecutionContext& ctx) const {
     ctx.current_frame()->regs_.set(
         result, ctx.resolve(addr) + tuple->offset(ctx.resolve(index),
                                                   interpretter::kArchitecture));
@@ -531,7 +356,7 @@ struct PtrIncrInstruction
   static constexpr std::string_view kDebugFormat =
       "%4$s = index %2$s of %1$s (pointer %3$s)";
 
-  void Apply(interpretter::ExecutionContext& ctx) {
+  void Apply(interpretter::ExecutionContext& ctx) const {
     ctx.current_frame()->regs_.set(
         result,
         ctx.resolve(addr) +

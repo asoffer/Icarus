@@ -7,6 +7,7 @@
 #include "base/untyped_buffer.h"
 
 namespace ir {
+struct StructField;
 struct BasicBlock;
 
 namespace internal_byte_code_writer {
@@ -39,13 +40,25 @@ void ReadInto(T& ref, base::untyped_buffer::const_iterator* iter) {
     } else {
       ref = iter->read<typename T::type>().get();
     }
+  } else if constexpr (base::meta<T>.template is_a<absl::flat_hash_map>()) {
+    ASSERT(ref.size() == 0u);
+    uint16_t num_entries = iter->read<uint16_t>();
+    ref.reserve(num_entries);
+    for (uint16_t i = 0; i < num_entries; ++i) {
+      std::pair<typename T::key_type, typename T::mapped_type> entry;
+      ReadInto(entry.first, iter);
+      ReadInto(entry.second, iter);
+      ref.insert(std::move(entry));
+    }
   } else if constexpr (base::meta<T>.template is_a<std::vector>()) {
     ASSERT(ref.size() == 0u);
     uint16_t num_entries = iter->read<uint16_t>();
     ref.reserve(num_entries);
     for (uint16_t i = 0; i < num_entries; ++i) {
       ReadInto(ref.emplace_back(), iter);
-    }
+   }
+  } else if constexpr (base::meta<T> == base::meta<ir::StructField>) {
+    // TOOD: Hack to get it to compile.
   } else {
     ref = iter->read<T>();
   }
@@ -64,6 +77,15 @@ struct ByteCodeWriter {
     if constexpr (base::meta<T>.template is_a<std::vector>()) {
       buf_->append<uint16_t>(val.size());
       for (auto const& element : val) { Write(element); }
+    } else if constexpr (base::meta<T>.template is_a<absl::flat_hash_map>()) {
+      buf_->append<uint16_t>(val.size());
+      for (auto const& [k, v] : val) {
+        Write(k);
+        Write(v);
+      }
+    } else if constexpr (base::meta<T> == base::meta<ir::StructField>) {
+      // TOOD: Hack to get it to compile.
+
     } else {
       buf_->append(val);
     }

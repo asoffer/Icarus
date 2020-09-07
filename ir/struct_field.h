@@ -21,6 +21,10 @@ namespace ir {
 // the data pertaining to a specific field that needs to be passed to the
 // struct-creating command.
 struct StructField {
+  // TODO: Remove this once ByteCodeWriter supports non-default-constructible types.
+  explicit StructField()
+      : name_(""), data_(ir::RegOr<type::Type const *>(nullptr)) {}
+
   explicit StructField(std::string_view name, RegOr<type::Type const *> type)
       : name_(name), data_(type) {}
 

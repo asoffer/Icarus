@@ -11,6 +11,7 @@
 #include "base/untyped_buffer.h"
 #include "ir/blocks/basic.h"
 #include "ir/blocks/group.h"
+#include "ir/instruction/core.h"
 #include "ir/instruction/instructions.h"
 #include "ir/local_block_interpretation.h"
 #include "ir/out_params.h"

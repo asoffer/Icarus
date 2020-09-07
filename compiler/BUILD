@@ -45,7 +45,7 @@ cc_library(
     deps = [
         "//ast",
         "//ir/blocks:basic",
-        "//ir/instruction:phi",
+        "//ir/instruction:core",
         "//ir/value:label",
         "@com_google_absl//absl/types:span",
     ],

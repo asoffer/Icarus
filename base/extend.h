@@ -80,6 +80,18 @@ auto GetFields(T &t) {
   } else if constexpr (kNumFields == 4) {
     auto &[field0, field1, field2, field3] = t;
     return std::tie(field0, field1, field2, field3);
+  } else if constexpr (kNumFields == 5) {
+    auto &[f0, f1, f2, f3, f4] = t;
+    return std::tie(f0, f1, f2, f3, f4);
+  } else if constexpr (kNumFields == 6) {
+    auto &[f0, f1, f2, f3, f4, f5] = t;
+    return std::tie(f0, f1, f2, f3, f4, f5);
+  } else if constexpr (kNumFields == 7) {
+    auto &[f0, f1, f2, f3, f4, f5, f6] = t;
+    return std::tie(f0, f1, f2, f3, f4, f5, f6);
+  } else if constexpr (kNumFields == 8) {
+    auto &[f0, f1, f2, f3, f4, f5, f6, f7] = t;
+    return std::tie(f0, f1, f2, f3, f4, f5, f6, f7);
   }
 }
 
@@ -103,9 +115,15 @@ auto GetFields(T const &t) {
   } else if constexpr (kNumFields == 5) {
     auto &[f0, f1, f2, f3, f4] = t;
     return std::tie(f0, f1, f2, f3, f4);
-  } else if constexpr (kNumFields == 4) {
+  } else if constexpr (kNumFields == 6) {
     auto &[f0, f1, f2, f3, f4, f5] = t;
     return std::tie(f0, f1, f2, f3, f4, f5);
+  } else if constexpr (kNumFields == 7) {
+    auto &[f0, f1, f2, f3, f4, f5, f6] = t;
+    return std::tie(f0, f1, f2, f3, f4, f5, f6);
+  } else if constexpr (kNumFields == 8) {
+    auto &[f0, f1, f2, f3, f4, f5, f6, f7] = t;
+    return std::tie(f0, f1, f2, f3, f4, f5, f6, f7);
   }
 }
 

@@ -7,6 +7,7 @@
 #include "base/expected.h"
 #include "base/untyped_buffer.h"
 #include "ir/compiled_fn.h"
+#include "ir/instruction/instructions.h"
 #include "ir/instruction/set.h"
 #include "ir/interpretter/evaluation_failure.h"
 #include "ir/value/value.h"

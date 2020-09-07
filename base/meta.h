@@ -97,8 +97,8 @@ struct MetaValue {
 namespace internal_meta {
 template <typename, template <typename...> typename>
 struct IsAImpl : std::false_type {};
-template <typename T, template <typename...> typename P>
-struct IsAImpl<P<T>, P> : std::true_type {};
+template <typename... TemplateArgs, template <typename...> typename P>
+struct IsAImpl<P<TemplateArgs...>, P> : std::true_type {};
 }  // namespace internal_meta
 
 template <typename T>

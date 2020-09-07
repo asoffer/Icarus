@@ -8,7 +8,7 @@
 #include "absl/types/span.h"
 #include "ast/ast.h"
 #include "ir/blocks/basic.h"
-#include "ir/instruction/phi.h"
+#include "ir/instruction/core.h"
 #include "ir/value/label.h"
 
 namespace compiler {

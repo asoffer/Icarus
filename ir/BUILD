@@ -46,6 +46,7 @@ cc_library(
         "//ir/blocks:basic",
         "//ir/blocks:group",
         "//ir/instruction",
+        "//ir/instruction:core",
         "//ir/value:addr",
         "//ir/value:reg",
         "//type:typed_value",
