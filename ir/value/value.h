@@ -44,13 +44,13 @@ struct Value {
   // subclasses.
   template <typename T>
   explicit Value(T val) : type_(base::meta<T>) {
-    if constexpr (IsRegOr<T>::value) {
+    if constexpr (base::meta<T>.template is_a<ir::RegOr>()) {
       if (val.is_reg()) {
         type_          = base::meta<Reg>;
         get_ref<Reg>() = val.reg();
       } else {
-        type_ = base::meta<typename IsRegOr<T>::type>;
-        get_ref<typename IsRegOr<T>::type>() = std::move(val).value();
+        type_                       = base::meta<typename T::type>;
+        get_ref<typename T::type>() = std::move(val).value();
       }
     } else {
       new (&get_ref<T>()) T(std::move(val));
@@ -65,9 +65,9 @@ struct Value {
   // the same as the template parameter.
   template <typename T>
   T get() const {
-    if constexpr (IsRegOr<T>::value) {
+    if constexpr (base::meta<T>.template is_a<ir::RegOr>()) {
       if (auto const* r = get_if<Reg>()) { return *r; }
-      return get<typename IsRegOr<T>::type>();
+      return get<typename T::type>();
     } else {
       return get_ref<T>();
     }

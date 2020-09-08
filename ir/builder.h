@@ -6,6 +6,7 @@
 #include "absl/types/span.h"
 #include "ast/overload_set.h"
 #include "base/debug.h"
+#include "base/meta.h"
 #include "base/scope.h"
 #include "base/tag.h"
 #include "base/untyped_buffer.h"
@@ -120,7 +121,8 @@ struct Builder {
   template <typename Lhs, typename Rhs>
   RegOr<bool> Lt(Lhs const& lhs, Rhs const& rhs) {
     using type = reduced_type_t<Lhs>;
-    if constexpr (IsRegOr<Lhs>::value and IsRegOr<Rhs>::value) {
+    if constexpr (base::meta<Lhs>.template is_a<ir::RegOr>() and
+                  base::meta<Rhs>.template is_a<ir::RegOr>()) {
       if (not lhs.is_reg() and not rhs.is_reg()) {
         return LtInstruction<type>::Apply(lhs.value(), rhs.value());
       }
@@ -142,7 +144,8 @@ struct Builder {
   template <typename Lhs, typename Rhs>
   RegOr<bool> Le(Lhs const& lhs, Rhs const& rhs) {
     using type = reduced_type_t<Lhs>;
-    if constexpr (IsRegOr<Lhs>::value and IsRegOr<Rhs>::value) {
+    if constexpr (base::meta<Lhs>.template is_a<ir::RegOr>() and
+                  base::meta<Rhs>.template is_a<ir::RegOr>()) {
       if (not lhs.is_reg() and not rhs.is_reg()) {
         return LeInstruction<type>::Apply(lhs.value(), rhs.value());
       }
@@ -204,7 +207,8 @@ struct Builder {
     using type = reduced_type_t<Lhs>;
     if constexpr (base::meta<type> == base::meta<bool>) {
       return EqBool(lhs, rhs);
-    } else if constexpr (IsRegOr<Lhs>::value and IsRegOr<Rhs>::value) {
+    } else if constexpr (base::meta<Lhs>.template is_a<ir::RegOr>() and
+                         base::meta<Rhs>.template is_a<ir::RegOr>()) {
       if (not lhs.is_reg() and not rhs.is_reg()) {
         return EqInstruction<type>::Apply(lhs.value(), rhs.value());
       }
@@ -233,7 +237,8 @@ struct Builder {
     using type = reduced_type_t<Lhs>;
     if constexpr (std::is_same_v<type, bool>) {
       return NeBool(lhs, rhs);
-    } else if constexpr (IsRegOr<Lhs>::value and IsRegOr<Rhs>::value) {
+    } else if constexpr (base::meta<Lhs>.template is_a<ir::RegOr>() and
+                         base::meta<Rhs>.template is_a<ir::RegOr>()) {
       if (not lhs.is_reg() and not rhs.is_reg()) {
         return NeInstruction<type>::Apply(lhs.value(), rhs.value());
       }
@@ -441,7 +446,7 @@ struct Builder {
 
   template <typename T>
   void Store(T r, RegOr<Addr> addr) {
-    if constexpr (IsRegOr<T>::value) {
+    if constexpr (base::meta<T>.template is_a<ir::RegOr>()) {
       auto& blk = *CurrentBlock();
       blk.load_store_cache().clear<typename T::type>();
       blk.Append(
@@ -599,7 +604,7 @@ struct Builder {
 
   template <typename T>
   void SetRet(uint16_t n, T val) {
-    if constexpr (IsRegOr<T>::value) {
+    if constexpr (base::meta<T>.template is_a<ir::RegOr>()) {
       SetReturnInstruction<typename T::type> inst{.index = n, .value = val};
       CurrentBlock()->Append(std::move(inst));
     } else if constexpr (base::IsTaggedV<T>) {
@@ -704,7 +709,7 @@ struct SetTemporaries : public base::UseWithScope {
 template <typename T>
 Reg MakeReg(T t) {
   static_assert(not std::is_same_v<T, Reg>);
-  if constexpr (IsRegOr<T>::value) {
+  if constexpr (base::meta<T>.template is_a<ir::RegOr>()) {
     RegisterInstruction<typename T::type> inst{.operand = t};
     auto result = inst.result = GetBuilder().CurrentGroup()->Reserve();
     GetBuilder().CurrentBlock()->Append(std::move(inst));

@@ -25,8 +25,9 @@ struct LoadStoreCache {
   // from.
   template <typename T>
   Value &slot(RegOr<Addr> r) {
-    static_assert(not ir::IsRegOr<T>::value);
-    return storage_[base::meta<T>][r];
+    constexpr auto type = base::meta<T>;
+    static_assert(not type.template is_a<ir::RegOr>());
+    return storage_[type][r];
   }
 
   // If the template parameter is `void`, clears the entirety of the cache (for
@@ -53,8 +54,9 @@ struct LoadStoreCache {
   // undefined-behavior as an optimization mechanism.
   template <typename T = void>
   void clear() {
-    static_assert(not ir::IsRegOr<T>::value);
-    if constexpr (base::meta<T> == base::meta<void>) {
+    constexpr auto type = base::meta<T>;
+    static_assert(not type.template is_a<ir::RegOr>());
+    if constexpr (type == base::meta<void>) {
       storage_.clear();
     } else {
       storage_.erase(base::meta<T>);

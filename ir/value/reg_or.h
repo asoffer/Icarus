@@ -81,17 +81,6 @@ bool operator!=(RegOr<T> const &lhs, RegOr<T> const &rhs) {
   return not(lhs == rhs);
 }
 
-// A type trait for checking if the input type is a `RegOr<T>` for some `T` and
-// if it is, extracting the type `T`.
-template <typename T>
-struct IsRegOr : public std::false_type {};
-template <typename T>
-struct IsRegOr<RegOr<T>> : public std::true_type {
-  using type = T;
-};
-template <typename T>
-constexpr bool IsRegOrV = IsRegOr<T>::value;
-
 }  // namespace ir
 
 #endif  // ICARUS_IR_VALUE_REG_OR_H

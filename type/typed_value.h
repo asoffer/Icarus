@@ -77,9 +77,5 @@ bool operator!=(Typed<V, T> const& lhs, Typed<V, T> const& rhs) {
   return not(lhs == rhs);
 }
 
-template <typename T>
-struct IsTyped : public std::false_type {};
-template <typename T, typename V>
-struct IsTyped<Typed<T, V>> : public std::true_type {};
 }  // namespace type
 #endif  // ICARUS_TYPE_TYPED_VALUE_H

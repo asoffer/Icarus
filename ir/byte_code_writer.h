@@ -34,7 +34,7 @@ namespace internal {
 
 template <typename T>
 void ReadInto(T& ref, base::untyped_buffer::const_iterator* iter) {
-  if constexpr (IsRegOr<T>::value) {
+  if constexpr (base::meta<T>.template is_a<ir::RegOr>()) {
     if (iter->read<bool>()) {
       ref = iter->read<Reg>().get();
     } else {
@@ -119,7 +119,7 @@ struct WriteByteCodeExtension {
   void WriteByteCode(ByteCodeWriter* writer) const {
     auto write = [&](auto const& field) {
       using field_type = std::decay_t<decltype(field)>;
-      if constexpr (IsRegOr<field_type>::value) {
+      if constexpr (base::meta<field_type>.template is_a<ir::RegOr>()) {
         writer->Write(field.is_reg());
         field.apply([&](auto v) { writer->Write(v); });
       } else {

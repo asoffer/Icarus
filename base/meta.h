@@ -108,7 +108,7 @@ struct Meta {
   static MetaValue value() {
     return MetaValue{reinterpret_cast<uintptr_t>(&name_)};
   }
-  /* implicit */ operator MetaValue() { return value(); }
+  /* implicit */ operator MetaValue() const { return value(); }
 
   char const* name() const { return name_; }
 
