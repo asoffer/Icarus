@@ -3,6 +3,9 @@
 
 #include <string_view>
 
+#include "absl/container/flat_hash_set.h"
+#include "absl/random/distributions.h"
+#include "absl/random/random.h"
 #include "base/extend.h"
 #include "ir/byte_code_writer.h"
 #include "ir/instruction/debug.h"
@@ -14,6 +17,7 @@
 #include "type/function.h"
 #include "type/pointer.h"
 #include "type/qual_type.h"
+#include "type/struct.h"
 #include "type/type.h"
 
 namespace ir {
@@ -49,8 +53,7 @@ struct EnumerationInstruction
   enum class Kind { Enum, Flags };
 
   void Apply(interpretter::ExecutionContext& ctx) const {
-    NOT_YET();
-    // using enum_t = uint64_t;
+    using enum_t = uint64_t;
 
     // std::vector<std::pair<std::string_view, std::optional<enum_t>>> enumerators;
     // enumerators.reserve(num_enumerators);
@@ -58,70 +61,62 @@ struct EnumerationInstruction
     //   enumerators.emplace_back(iter->read<std::string_view>(), std::nullopt);
     // }
 
-    // absl::flat_hash_set<enum_t> vals;
+    absl::flat_hash_set<enum_t> used_vals;
 
-    // specified_values_
-    // for (uint16_t i = 0; i < num_specified; ++i) {
-    //   uint64_t index            = iter->read<uint64_t>();
-    //   auto b                    = iter->read<bool>();
-    //   enum_t val                = ctx->ReadAndResolve<enum_t>(b, iter);
-    //   enumerators[index].second = val;
-    //   vals.insert(val);
-    // }
+    for (auto const& [index, reg_or_value] : specified_values_) {
+      used_vals.insert(ctx.resolve(reg_or_value));
+    }
 
-    // absl::BitGen gen;
+    absl::BitGen gen;
 
-    // switch (kind_) {
-    //   case Kind::Enum: {
-    //     for (auto& [name, maybe_val] : enumerators) {
-    //       if (not maybe_val.has_value()) {
-    //         bool success;
-    //         enum_t x;
-    //         do {
-    //           x         = absl::Uniform<enum_t>(gen);
-    //           success   = vals.insert(x).second;
-    //           maybe_val = x;
-    //         } while (not success);
-    //       }
-    //     }
-    //     absl::flat_hash_map<std::string, ir::EnumVal> mapping;
+    switch (kind_) {
+      case Kind::Enum: {
+        absl::flat_hash_map<std::string, ir::EnumVal> mapping;
 
-    //     for (auto [name, maybe_val] : enumerators) {
-    //       ASSERT(maybe_val.has_value() == true);
-    //       mapping.emplace(std::string(name), ir::EnumVal{maybe_val.value()});
-    //     }
+        for (size_t i = 0; i < names_.size(); ++i) {
+          auto iter = specified_values_.find(i);
+          if (iter != specified_values_.end()) {
+            mapping.emplace(names_[i], ctx.resolve(iter->second));
+            continue;
+          }
 
-    //     ctx->current_frame()->regs_.set(
-    //         iter->read<ir::Reg>(),
-    //         type::Allocate<type::Enum>(mod, std::move(mapping)));
-    //   } break;
-    //   case Kind::Flags: {
-    //     for (auto& [name, maybe_val] : enumerators) {
-    //       if (not maybe_val.has_value()) {
-    //         bool success;
-    //         enum_t x;
-    //         do {
-    //           x       = absl::Uniform<enum_t>(absl::IntervalClosedOpen, gen, 0,
-    //                                     std::numeric_limits<enum_t>::digits);
-    //           success = vals.insert(x).second;
-    //           maybe_val = x;
-    //         } while (not success);
-    //       }
-    //     }
+          bool success;
+          enum_t proposed_value;
+          do {
+            proposed_value = absl::Uniform<enum_t>(gen);
+            success        = used_vals.insert(proposed_value).second;
+          } while (not success);
+          mapping.try_emplace(std::string(names_[i]), proposed_value);
+        }
 
-    //     absl::flat_hash_map<std::string, ir::FlagsVal> mapping;
+        ctx.current_frame()->regs_.set(
+            result, type::Allocate<type::Enum>(mod_, std::move(mapping)));
+      } break;
+      case Kind::Flags: {
+        absl::flat_hash_map<std::string, ir::FlagsVal> mapping;
 
-    //     for (auto [name, maybe_val] : enumerators) {
-    //       ASSERT(maybe_val.has_value() == true);
-    //       mapping.emplace(std::string(name),
-    //                       ir::FlagsVal{enum_t{1} << maybe_val.value()});
-    //     }
+        for (size_t i = 0; i < names_.size(); ++i) {
+          auto iter = specified_values_.find(i);
+          if (iter != specified_values_.end()) {
+            mapping.emplace(names_[i], ctx.resolve(iter->second));
+            continue;
+          }
 
-    //     ctx->current_frame()->regs_.set(
-    //         iter->read<ir::Reg>(),
-    //         type::Allocate<type::Flags>(mod, std::move(mapping)));
-    //   } break;
-    // }
+          bool success;
+          enum_t proposed_value;
+          do {
+            proposed_value = enum_t{1} << absl::Uniform<enum_t>(
+                                 absl::IntervalClosedOpen, gen, 0,
+                                 std::numeric_limits<enum_t>::digits);
+            success = used_vals.insert(proposed_value).second;
+          } while (not success);
+          mapping.try_emplace(std::string(names_[i]), proposed_value);
+        }
+
+        ctx.current_frame()->regs_.set(
+            result, type::Allocate<type::Flags>(mod_, std::move(mapping)));
+      } break;
+    }
   }
 
   std::string to_string() const {
@@ -225,53 +220,33 @@ struct BufPtrInstruction
 struct StructInstruction
     : base::Extend<StructInstruction>::With<ByteCodeExtension,
                                             InlineExtension> {
+  // TODO field.type() can be null. If the field type is inferred from the initial value.
   void Apply(interpretter::ExecutionContext& ctx) const {
-    NOT_YET();
-    //       uint16_t num = iter->read<uint16_t>();
-    //       module::BasicModule const *mod =
-    //           iter->read<module::BasicModule const *>();
-    //       type::Struct *struct_type = iter->read<type::Struct *>();
-    //
-    //       std::vector<type::Struct::Field> fields;
-    //       fields.reserve(num);
-    //       for (uint16_t i = 0; i < num; ++i) {
-    //         std::string_view name = iter->read<std::string_view>();
-    //         if (iter->read<bool>()) {
-    //           type::Type const *t = iter->read<type::Type const *>();
-    //
-    //           ir::Value init_val = iter->read<ir::Value>();
-    //
-    //           fields.push_back(type::Struct::Field{
-    //               .name          = std::string(name),
-    //               .type          = t,
-    //               .initial_value = init_val,
-    //               .hashtags_     = {},
-    //           });
-    //         } else {
-    //           fields.push_back(type::Struct::Field{
-    //               .name = std::string(name),
-    //               .type = ctx->resolve(
-    //                   iter->read<ir::RegOr<type::Type const *>>().get()),
-    //               .initial_value = ir::Value(),
-    //               .hashtags_     = {},
-    //           });
-    //         }
-    //       }
-    //
-    //       struct_type->AppendFields(std::move(fields));
-    //
-    //       if (iter->read<bool>()) {
-    //         struct_type->SetMoveAssignment(iter->read<ir::Fn>());
-    //       }
-    //
-    //       if (iter->read<bool>()) {
-    //         struct_type->SetDestructor(iter->read<ir::Fn>());
-    //       }
-    //
-    //       type::Struct const *const_struct_type = struct_type;
-    //       ctx->current_frame()->regs_.set(iter->read<ir::Reg>(),
-    //       const_struct_type);
-    //
+    std::vector<type::Struct::Field> struct_fields;
+    struct_fields.reserve(fields.size());
+    for (auto const& field : fields) {
+      if (ir::Value const* init_val = field.initial_value()) {
+        type::Type const *t = ctx.resolve(field.type());
+        struct_fields.push_back(type::Struct::Field{
+            .name          = std::string(field.name()),
+            .type          = ASSERT_NOT_NULL(t),
+            .initial_value = *init_val,
+            .hashtags_     = {},
+        });
+      } else {
+        struct_fields.push_back(type::Struct::Field{
+            .name          = std::string(field.name()),
+            .type          = ASSERT_NOT_NULL(ctx.resolve(field.type())),
+            .initial_value = ir::Value(),
+            .hashtags_     = {},
+        });
+      }
+    }
+
+    struct_->AppendFields(std::move(struct_fields));
+    if (move_assign) { struct_->SetMoveAssignment(*move_assign); }
+    if (dtor) { struct_->SetDestructor(*dtor); }
+    ctx.current_frame()->regs_.set(result, struct_);
   }
 
   std::string to_string() const {
@@ -279,7 +254,6 @@ struct StructInstruction
     return absl::StrCat(stringify(result), " = struct TODO");
   }
 
-  module::BasicModule const* mod;
   type::Struct* struct_;
   std::vector<StructField> fields;
   std::optional<ir::Fn> move_assign;

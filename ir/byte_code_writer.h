@@ -7,7 +7,6 @@
 #include "base/untyped_buffer.h"
 
 namespace ir {
-struct StructField;
 struct BasicBlock;
 
 namespace internal_byte_code_writer {
@@ -57,8 +56,6 @@ void ReadInto(T& ref, base::untyped_buffer::const_iterator* iter) {
     for (uint16_t i = 0; i < num_entries; ++i) {
       ReadInto(ref.emplace_back(), iter);
    }
-  } else if constexpr (base::meta<T> == base::meta<ir::StructField>) {
-    // TOOD: Hack to get it to compile.
   } else {
     ref = iter->read<T>();
   }
@@ -83,9 +80,6 @@ struct ByteCodeWriter {
         Write(k);
         Write(v);
       }
-    } else if constexpr (base::meta<T> == base::meta<ir::StructField>) {
-      // TOOD: Hack to get it to compile.
-
     } else {
       buf_->append(val);
     }

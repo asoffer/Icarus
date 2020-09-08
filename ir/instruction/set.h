@@ -339,9 +339,6 @@ struct InstructionSet<RequiredCapabilities(Capabilities...),
   }
 
   static cmd_index_t Index(Inst const &inst) {
-    DEBUG_LOG()
-    (typeid(Inst).name(), ": ", inst.rtti().get(), " ", inst.rtti().name());
-    DEBUG_LOG()(typeid(Inst).name(), " => ", index_mapping_.at(inst.rtti()));
     return index_mapping_.at(inst.rtti());
   }
 

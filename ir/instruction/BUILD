@@ -178,6 +178,8 @@ cc_library(
         "//type:pointer",
         "//type:struct",
         "//type:tuple",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/random",
     ],
 )
 
@@ -221,7 +223,6 @@ cc_library(
         "//ir/value:native_fn",
         "//ir/value:reg",
         "//ir/value:reg_or",
-        "@com_google_absl//absl/random",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/types:span",
     ],

@@ -149,13 +149,13 @@ template <typename... Ts, typename Fn>
 auto ApplyTypes(Type const *t, Fn &&fn) {
   // TODO base::NoDestroy would be nice here.
   using return_type =
-      decltype(std::forward<Fn>(fn)(base::Tag<base::first_t<Ts...>>{}));
+      decltype(std::forward<Fn>(fn)(base::meta<base::first_t<Ts...>>));
 
   // Create a static array of funtions that may be called depending on which
   // type matches.
   static auto const *kFnToCall =
       new std::array<return_type (*)(Fn &&), sizeof...(Ts)>{
-          [](Fn &&f) { return std::forward<Fn>(f)(base::Tag<Ts>{}); }...};
+          [](Fn &&f) { return std::forward<Fn>(f)(base::meta<Ts>); }...};
 
   // Using fold expressions, take the disjunction of `type::Compare<T>(t)` over
   // all T. This will compute this boolean value until it returns true. However,

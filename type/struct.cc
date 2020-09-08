@@ -21,6 +21,7 @@ void Struct::AppendFields(std::vector<Struct::Field> fields) {
   fields_   = std::move(fields);
   size_t i  = 0;
   for (auto const &field : fields_) {
+    ASSERT(field.type != nullptr);
     field_indices_.emplace(field.name, i++);
     flags_.is_default_initializable &=
         field.type->IsDefaultInitializable() or not field.initial_value.empty();

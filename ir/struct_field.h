@@ -5,6 +5,7 @@
 #include <string_view>
 #include <variant>
 
+#include "ir/byte_code_writer.h"
 #include "ir/value/reg_or.h"
 #include "ir/value/value.h"
 #include "type/type.h"
@@ -80,8 +81,6 @@ struct StructField {
     Value val_;
   };
 
-  // TODO we're  creating the variant but only ever using one part of it. We
-  // need to start potentially populating initial values and using them.
   std::variant<WithInitialValue, RegOr<type::Type const *>> data_;
 
   // TODO hashtags.
