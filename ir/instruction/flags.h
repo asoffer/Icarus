@@ -18,8 +18,8 @@ struct XorFlagsInstruction
   static constexpr std::string_view kDebugFormat = "%3$s = xor-flags %1$s %2$s";
 
   void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame()->regs_.set(result,
-                                   Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
+    ctx.current_frame().regs_.set(result,
+                                  Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
   }
   static FlagsVal Apply(FlagsVal lhs, FlagsVal rhs) { return lhs ^ rhs; }
 
@@ -34,8 +34,8 @@ struct AndFlagsInstruction
   static constexpr std::string_view kDebugFormat = "%3$s = and-flags %1$s %2$s";
 
   void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame()->regs_.set(result,
-                                   Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
+    ctx.current_frame().regs_.set(result,
+                                  Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
   }
   static FlagsVal Apply(FlagsVal lhs, FlagsVal rhs) { return lhs & rhs; }
 
@@ -50,8 +50,8 @@ struct OrFlagsInstruction
   static constexpr std::string_view kDebugFormat = "%3$s = or-flags %1$s %2$s";
 
   void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame()->regs_.set(result,
-                                   Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
+    ctx.current_frame().regs_.set(result,
+                                  Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
   }
   static FlagsVal Apply(FlagsVal lhs, FlagsVal rhs) { return lhs | rhs; }
 

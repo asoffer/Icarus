@@ -1,6 +1,7 @@
 #ifndef ICARUS_IR_INTERPRETTER_EXECUTE_H
 #define ICARUS_IR_INTERPRETTER_EXECUTE_H
 
+#include <cstdlib>
 #include <vector>
 
 #include "absl/types/span.h"
@@ -16,29 +17,37 @@
 namespace interpretter {
 
 // An ExecutionContext holds all the required state needed during the execution
-// of a `Fn`.
+// of an `ir::Fn`. This includes references to stack frames, the state of all
+// registers, etc.
 struct ExecutionContext {
-  StackFrame const *current_frame() const { return current_frame_; }
-  StackFrame *current_frame() { return current_frame_; }
+  StackFrame const &current_frame() const {
+    return *ASSERT_NOT_NULL(current_frame_);
+  }
+  StackFrame &current_frame() { return *ASSERT_NOT_NULL(current_frame_); }
 
   // Copies `length` bytes stored in `reg` to `dst`.
-  void MemCpyRegisterBytes(void *dst, ir::Reg reg, size_t length);
-
-  template <typename T>
-  T resolve(ir::Reg r) const {
-    return current_frame()->regs_.get<T>(r);
+  void MemCpyRegisterBytes(void *dst, ir::Reg reg, size_t length) {
+    std::memcpy(dst, current_frame().regs_.raw(reg), length);
   }
 
-  // TODO determine if this is actually used and if not, remove the #include
-  // "ir/value/reg_or.h".
+  // Reads the value stored in `r` assuming it has type `T`. Behavior is
+  // undefined if the value stored in the register is of another type.
+  template <typename T>
+  T resolve(ir::Reg r) const {
+    return current_frame().regs_.get<T>(r);
+  }
+
+  // If `val` is already holding a `T`, returns that value. Otherwise, loads the
+  // value stored in the register `val.reg()` assuming it has type `T`. Behavior
+  // is undefined if the value stored in the register is of another type.
   template <typename T>
   T resolve(ir::RegOr<T> val) const {
     return val.resolve([&](ir::Reg r) { return resolve<T>(r); });
   }
 
+  // TODO: Replace with something simpler.
   template <typename T>
-  inline T ReadAndResolve(bool is_reg,
-                          base::untyped_buffer::const_iterator *iter) {
+  T ReadAndResolve(bool is_reg, base::untyped_buffer::const_iterator *iter) {
     if (is_reg) {
       ir::Reg r = iter->read<ir::Reg>();
       return this->resolve<T>(r);
@@ -47,59 +56,27 @@ struct ExecutionContext {
     }
   }
 
-  StackFrame *current_frame_ = nullptr;
+  // `RestoreFrameToken` is returned by calls to `push()` so that previous stack
+  // frame can be restored when the frame token is destroyed.
+  struct RestoreFrameToken {
+    RestoreFrameToken(ExecutionContext *ctx, StackFrame *old_frame)
+        : ctx_(ctx), old_frame_(old_frame) {}
+    ~RestoreFrameToken() { ctx_->current_frame_ = old_frame_; }
+
+   private:
+    ExecutionContext *ctx_;
+    StackFrame *old_frame_;
+  };
+  RestoreFrameToken PushFrame(StackFrame *frame) {
+    return RestoreFrameToken(this, std::exchange(current_frame_, frame));
+  }
+
+  // TODO: Make these private.
   base::untyped_buffer stack_;
+
+ private:
+  StackFrame *current_frame_ = nullptr;
 };
-
-// TODO: fix dependency/layering here.
-template <typename InstSet>
-void CallFn(ir::NativeFn fn, StackFrame *frame,
-            absl::Span<ir::Addr const> ret_slots,
-            interpretter::ExecutionContext *ctx);
-
-inline void CallFn(ir::BuiltinFn fn, base::untyped_buffer_view arguments,
-                   absl::Span<ir::Addr const> ret_slots, ExecutionContext *) {
-  switch (fn.which()) {
-    case ir::BuiltinFn::Which::Alignment: {
-      type::Type const *type = arguments.get<type::Type const *>(0);
-      *static_cast<uint64_t *>(ASSERT_NOT_NULL(ret_slots[0].heap())) =
-          type->alignment(kArchitecture).value();
-    } break;
-    case ir::BuiltinFn::Which::Bytes: {
-      type::Type const *type = arguments.get<type::Type const *>(0);
-      *static_cast<uint64_t *>(ASSERT_NOT_NULL(ret_slots[0].heap())) =
-          type->bytes(kArchitecture).value();
-    } break;
-    default: NOT_YET();
-  }
-
-  // size_t i = 0;
-  // for (auto const &result : fn.Call(arguments)) {
-  //   ASSERT(ret_slot.kind() == ir::Addr::Kind::Heap);
-  //   *ASSERT_NOT_NULL(static_cast<type *>(ret_slot.heap())) = val;
-  // }
-}
-
-
-
-// TODO rename the `arguments` parameter. It actually should be arguments and
-// space for registers.
-template <typename InstSet>
-void Execute(ir::Fn fn, base::untyped_buffer arguments,
-             absl::Span<ir::Addr const> ret_slots, ExecutionContext *ctx) {
-  switch (fn.kind()) {
-    case ir::Fn::Kind::Native: {
-      StackFrame frame(fn.native(), std::move(arguments), &ctx->stack_);
-      CallFn<InstSet>(fn.native(), &frame, ret_slots, ctx);
-    } break;
-    case ir::Fn::Kind::Builtin: {
-      CallFn(fn.builtin(), arguments, ret_slots, ctx);
-    } break;
-    case ir::Fn::Kind::Foreign: {
-      CallFn(fn.foreign(), arguments, ret_slots, &ctx->stack_);
-    } break;
-  }
-}
 
 }  // namespace interpretter
 

@@ -46,8 +46,8 @@ struct CastInstruction
   static constexpr std::string_view kDebugFormat = "%2$s = cast %1$s";
 
   void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame()->regs_.set(result,
-                                   static_cast<ToType>(ctx.resolve(value)));
+    ctx.current_frame().regs_.set(result,
+                                  static_cast<ToType>(ctx.resolve(value)));
   }
 
   RegOr<FromType> value;
@@ -59,9 +59,8 @@ struct NotInstruction
                                          DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "%2$s = not %1$s";
 
-
   void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame()->regs_.set(result, not ctx.resolve(operand));
+    ctx.current_frame().regs_.set(result, not ctx.resolve(operand));
   }
   static bool Apply(bool operand) { return not operand; }
 
@@ -76,10 +75,9 @@ struct DebugIrInstruction
   static constexpr std::string_view kDebugFormat = "debug-ir";
 
   void Apply(interpretter::ExecutionContext& ctx) const {
-    std::cerr << *ctx.current_frame()->fn_.get();
+    std::cerr << *ctx.current_frame().fn_.get();
   }
 };
-
 
 struct InitInstruction
     : base::Extend<InitInstruction>::With<ByteCodeExtension, InlineExtension,
@@ -205,11 +203,12 @@ struct LoadSymbolInstruction
     if (auto* fn_type = type->if_as<type::Function>()) {
       ASSIGN_OR(FatalInterpretterError(_.error().to_string()),  //
                 void (*sym)(), interpretter::LoadFunctionSymbol(name.get()));
-      ctx.current_frame()->regs_.set(result, ir::Fn(ir::ForeignFn(sym, fn_type)));
+      ctx.current_frame().regs_.set(result,
+                                    ir::Fn(ir::ForeignFn(sym, fn_type)));
     } else if (type->is<type::Pointer>()) {
       ASSIGN_OR(FatalInterpretterError(_.error().to_string()),  //
                 void* sym, interpretter::LoadDataSymbol(name.get()));
-      ctx.current_frame()->regs_.set(result, ir::Addr::Heap(sym));
+      ctx.current_frame().regs_.set(result, ir::Addr::Heap(sym));
     } else {
       UNREACHABLE(type->to_string());
     }
@@ -236,11 +235,11 @@ struct TypeInfoInstruction
   void Apply(interpretter::ExecutionContext& ctx) const {
     switch (kind) {
       case Kind::Alignment:
-        ctx.current_frame()->regs_.set(
+        ctx.current_frame().regs_.set(
             result, ctx.resolve(type)->alignment(interpretter::kArchitecture));
         break;
       case Kind::Bytes:
-        ctx.current_frame()->regs_.set(
+        ctx.current_frame().regs_.set(
             result, ctx.resolve(type)->bytes(interpretter::kArchitecture));
         break;
     }
@@ -265,14 +264,12 @@ struct MakeBlockInstruction
 
     absl::flat_hash_set<ir::Jump const*> resolved_afters;
     resolved_afters.reserve(afters.size());
-    for (auto const& fn : afters) {
-      resolved_afters.insert(ctx.resolve(fn));
-    }
+    for (auto const& fn : afters) { resolved_afters.insert(ctx.resolve(fn)); }
 
     *block_def         = ir::BlockDef(std::move(resolved_afters));
     block_def->before_ = ir::OverloadSet(std::move(resolved_befores));
 
-    ctx.current_frame()->regs_.set(result, block_def);
+    ctx.current_frame().regs_.set(result, block_def);
   }
 
   BlockDef* block_def;
@@ -282,16 +279,14 @@ struct MakeBlockInstruction
 };
 
 struct MakeScopeInstruction
-    : base::Extend<MakeScopeInstruction>::With<
-          ByteCodeExtension, InlineExtension> {
+    : base::Extend<MakeScopeInstruction>::With<ByteCodeExtension,
+                                               InlineExtension> {
   std::string to_string() const { return "make-scope"; }  // TODO
 
   void Apply(interpretter::ExecutionContext& ctx) const {
     absl::flat_hash_set<ir::Jump const*> resolved_inits;
     resolved_inits.reserve(inits.size());
-    for (auto const& init : inits) {
-      resolved_inits.insert(ctx.resolve(init));
-    }
+    for (auto const& init : inits) { resolved_inits.insert(ctx.resolve(init)); }
     *scope_def->start_ = ir::BlockDef(std::move(resolved_inits));
 
     std::vector<ir::Fn> resolved_dones;
@@ -299,11 +294,11 @@ struct MakeScopeInstruction
     for (auto const& fn : dones) { resolved_dones.push_back(ctx.resolve(fn)); }
     scope_def->exit_->before_ = ir::OverloadSet(std::move(resolved_dones));
 
-    for (auto [name, block]: blocks) {
+    for (auto [name, block] : blocks) {
       scope_def->blocks_.emplace(name, block);
     }
 
-    ctx.current_frame()->regs_.set(result, scope_def);
+    ctx.current_frame().regs_.set(result, scope_def);
   }
 
   ScopeDef* scope_def;
@@ -320,7 +315,7 @@ struct StructIndexInstruction
       "%4$s = index %2$s of %1$s (struct %3$s)";
 
   void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame()->regs_.set(
+    ctx.current_frame().regs_.set(
         result,
         ctx.resolve(addr) + struct_type->offset(ctx.resolve(index),
                                                 interpretter::kArchitecture));
@@ -339,7 +334,7 @@ struct TupleIndexInstruction
       "%4$s = index %2$s of %1$s (tuple %3$s)";
 
   void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame()->regs_.set(
+    ctx.current_frame().regs_.set(
         result, ctx.resolve(addr) + tuple->offset(ctx.resolve(index),
                                                   interpretter::kArchitecture));
   }
@@ -357,7 +352,7 @@ struct PtrIncrInstruction
       "%4$s = index %2$s of %1$s (pointer %3$s)";
 
   void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame()->regs_.set(
+    ctx.current_frame().regs_.set(
         result,
         ctx.resolve(addr) +
             core::FwdAlign(

@@ -111,7 +111,7 @@ struct RegisterInstruction
   static constexpr std::string_view kDebugFormat = "%2$s = %1$s";
 
   void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame()->regs_.set(result, Apply(ctx.resolve(operand)));
+    ctx.current_frame().regs_.set(result, Apply(ctx.resolve(operand)));
   }
   static T Apply(T val) { return val; }
 

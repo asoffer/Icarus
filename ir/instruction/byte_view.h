@@ -19,8 +19,8 @@ struct ByteViewLengthInstruction
       "%2$s = byte-view length %1$s";
 
   void Apply(interpretter::ExecutionContext& ctx) {
-    ctx.current_frame()->regs_.set(result,
-                                   ctx.resolve<ir::String>(reg).get().size());
+    ctx.current_frame().regs_.set(result,
+                                  ctx.resolve<ir::String>(reg).get().size());
   }
 
   Reg reg;
@@ -33,7 +33,7 @@ struct ByteViewDataInstruction
   static constexpr std::string_view kDebugFormat = "%2$s = byte-view data %1$s";
 
   void Apply(interpretter::ExecutionContext& ctx) {
-    ctx.current_frame()->regs_.set(result, ctx.resolve<ir::String>(reg).addr());
+    ctx.current_frame().regs_.set(result, ctx.resolve<ir::String>(reg).addr());
   }
 
   Reg reg;

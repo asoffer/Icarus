@@ -19,8 +19,8 @@ struct EqInstruction
   static constexpr std::string_view kDebugFormat = "%3$s = eq %1$s %2$s";
 
   void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame()->regs_.set(result,
-                                   Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
+    ctx.current_frame().regs_.set(result,
+                                  Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
   }
 
   static bool Apply(NumType lhs, NumType rhs) { return lhs == rhs; }
@@ -37,8 +37,8 @@ struct NeInstruction
   static constexpr std::string_view kDebugFormat = "%3$s = ne %1$s %2$s";
 
   void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame()->regs_.set(result,
-                                   Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
+    ctx.current_frame().regs_.set(result,
+                                  Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
   }
 
   static bool Apply(NumType lhs, NumType rhs) { return lhs != rhs; }
@@ -55,8 +55,8 @@ struct LtInstruction
   static constexpr std::string_view kDebugFormat = "%3$s = lt %1$s %2$s";
 
   void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame()->regs_.set(result,
-                                   Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
+    ctx.current_frame().regs_.set(result,
+                                  Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
   }
 
   static bool Apply(NumType lhs, NumType rhs) { return lhs < rhs; }
@@ -73,8 +73,8 @@ struct LeInstruction
   static constexpr std::string_view kDebugFormat = "%3$s = le %1$s %2$s";
 
   void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame()->regs_.set(result,
-                                   Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
+    ctx.current_frame().regs_.set(result,
+                                  Apply(ctx.resolve(lhs), ctx.resolve(rhs)));
   }
 
   static bool Apply(NumType lhs, NumType rhs) { return lhs <= rhs; }

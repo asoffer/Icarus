@@ -20,7 +20,7 @@ struct AddInstruction
   static constexpr std::string_view kDebugFormat = "%3$s = add %1$s %2$s";
 
   void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame()->regs_.set(
+    ctx.current_frame().regs_.set(
         result, static_cast<NumType>(ctx.resolve(lhs) + ctx.resolve(rhs)));
   }
 
@@ -36,7 +36,7 @@ struct SubInstruction
   static constexpr std::string_view kDebugFormat = "%3$s = sub %1$s %2$s";
 
   void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame()->regs_.set(
+    ctx.current_frame().regs_.set(
         result, static_cast<NumType>(ctx.resolve(lhs) - ctx.resolve(rhs)));
   }
 
@@ -52,7 +52,7 @@ struct MulInstruction
   static constexpr std::string_view kDebugFormat = "%3$s = mul %1$s %2$s";
 
   void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame()->regs_.set(
+    ctx.current_frame().regs_.set(
         result, static_cast<NumType>(ctx.resolve(lhs) * ctx.resolve(rhs)));
   }
 
@@ -68,7 +68,7 @@ struct DivInstruction
   static constexpr std::string_view kDebugFormat = "%3$s = div %1$s %2$s";
 
   void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame()->regs_.set(
+    ctx.current_frame().regs_.set(
         result, static_cast<NumType>(ctx.resolve(lhs) / ctx.resolve(rhs)));
   }
 
@@ -84,7 +84,7 @@ struct ModInstruction
   static constexpr std::string_view kDebugFormat = "%3$s = mod %1$s %2$s";
 
   void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame()->regs_.set(
+    ctx.current_frame().regs_.set(
         result, static_cast<NumType>(ctx.resolve(lhs) % ctx.resolve(rhs)));
   }
 
@@ -100,7 +100,7 @@ struct NegInstruction
   static constexpr std::string_view kDebugFormat = "%2$s = neg %1$s";
 
   void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame()->regs_.set(result, Apply(ctx.resolve(operand)));
+    ctx.current_frame().regs_.set(result, Apply(ctx.resolve(operand)));
   }
   static NumType Apply(NumType operand) { return -operand; }
 

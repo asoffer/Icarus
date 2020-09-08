@@ -7,7 +7,6 @@
 #include "ir/value/native_fn.h"
 
 namespace interpretter {
-struct ExecutionContext;
 
 struct StackFrame {
   StackFrame() = delete;

@@ -40,7 +40,7 @@ struct TupleInstruction
     std::vector<type::Type const*> types;
     types.reserve(values.size());
     for (auto const& value : values) { types.push_back(ctx.resolve(value)); }
-    ctx.current_frame()->regs_.set(result, type::Tup(std::move(types)));
+    ctx.current_frame().regs_.set(result, type::Tup(std::move(types)));
   }
 
   std::vector<RegOr<type::Type const*>> values;
@@ -55,9 +55,9 @@ struct EnumerationInstruction
   void Apply(interpretter::ExecutionContext& ctx) const {
     using enum_t = uint64_t;
 
-    // std::vector<std::pair<std::string_view, std::optional<enum_t>>> enumerators;
-    // enumerators.reserve(num_enumerators);
-    // for (uint16_t i = 0; i < num_enumerators; ++i) {
+    // std::vector<std::pair<std::string_view, std::optional<enum_t>>>
+    // enumerators; enumerators.reserve(num_enumerators); for (uint16_t i = 0; i
+    // < num_enumerators; ++i) {
     //   enumerators.emplace_back(iter->read<std::string_view>(), std::nullopt);
     // }
 
@@ -89,7 +89,7 @@ struct EnumerationInstruction
           mapping.try_emplace(std::string(names_[i]), proposed_value);
         }
 
-        ctx.current_frame()->regs_.set(
+        ctx.current_frame().regs_.set(
             result, type::Allocate<type::Enum>(mod_, std::move(mapping)));
       } break;
       case Kind::Flags: {
@@ -113,7 +113,7 @@ struct EnumerationInstruction
           mapping.try_emplace(std::string(names_[i]), proposed_value);
         }
 
-        ctx.current_frame()->regs_.set(
+        ctx.current_frame().regs_.set(
             result, type::Allocate<type::Flags>(mod_, std::move(mapping)));
       } break;
     }
@@ -139,7 +139,7 @@ struct OpaqueTypeInstruction
   static constexpr std::string_view kDebugFormat = "%2$s = opaque %1$s";
 
   void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame()->regs_.set(result, type::Allocate<type::Opaque>(mod));
+    ctx.current_frame().regs_.set(result, type::Allocate<type::Opaque>(mod));
   }
 
   module::BasicModule const* mod;
@@ -161,7 +161,7 @@ struct ArrowInstruction
     rhs_types.reserve(rhs.size());
     for (auto const& t : rhs) { rhs_types.push_back(ctx.resolve(t)); }
 
-    ctx.current_frame()->regs_.set(
+    ctx.current_frame().regs_.set(
         result, type::Func(std::move(params), std::move(rhs_types)));
   }
 
@@ -191,7 +191,7 @@ struct PtrInstruction
   static constexpr std::string_view kDebugFormat = "%2$s = ptr %1$s";
 
   void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame()->regs_.set(result, Apply(ctx.resolve(operand)));
+    ctx.current_frame().regs_.set(result, Apply(ctx.resolve(operand)));
   }
   static type::Pointer const* Apply(type::Type const* operand) {
     return type::Ptr(operand);
@@ -207,7 +207,7 @@ struct BufPtrInstruction
   static constexpr std::string_view kDebugFormat = "%2$s = buf-ptr %1$s";
 
   void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame()->regs_.set(result, Apply(ctx.resolve(operand)));
+    ctx.current_frame().regs_.set(result, Apply(ctx.resolve(operand)));
   }
   static type::BufferPointer const* Apply(type::Type const* operand) {
     return type::BufPtr(operand);
@@ -220,13 +220,14 @@ struct BufPtrInstruction
 struct StructInstruction
     : base::Extend<StructInstruction>::With<ByteCodeExtension,
                                             InlineExtension> {
-  // TODO field.type() can be null. If the field type is inferred from the initial value.
+  // TODO field.type() can be null. If the field type is inferred from the
+  // initial value.
   void Apply(interpretter::ExecutionContext& ctx) const {
     std::vector<type::Struct::Field> struct_fields;
     struct_fields.reserve(fields.size());
     for (auto const& field : fields) {
       if (ir::Value const* init_val = field.initial_value()) {
-        type::Type const *t = ctx.resolve(field.type());
+        type::Type const* t = ctx.resolve(field.type());
         struct_fields.push_back(type::Struct::Field{
             .name          = std::string(field.name()),
             .type          = ASSERT_NOT_NULL(t),
@@ -246,7 +247,7 @@ struct StructInstruction
     struct_->AppendFields(std::move(struct_fields));
     if (move_assign) { struct_->SetMoveAssignment(*move_assign); }
     if (dtor) { struct_->SetDestructor(*dtor); }
-    ctx.current_frame()->regs_.set(result, struct_);
+    ctx.current_frame().regs_.set(result, struct_);
   }
 
   std::string to_string() const {
@@ -271,7 +272,7 @@ struct ArrayInstruction
   }
 
   void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame()->regs_.set(
+    ctx.current_frame().regs_.set(
         result, type::Arr(ctx.resolve(length), ctx.resolve(data_type)));
   }
 
