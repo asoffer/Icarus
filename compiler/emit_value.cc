@@ -155,16 +155,6 @@ ir::Value Compiler::EmitValue(ast::ArgumentType const *node) {
   return ir::Value(ASSERT_NOT_NULL(data().arg_type(node->name())));
 }
 
-
-ir::Value Compiler::EmitValue(ast::ArrayLiteral const *node) {
-  auto *t    = type_of(node);
-  auto alloc = builder().TmpAlloca(t);
-  auto typed_alloc = type::Typed<ir::RegOr<ir::Addr>>(
-      ir::RegOr<ir::Addr>(alloc), type::Ptr(t));
-  EmitCopyInit(node, absl::MakeConstSpan(&typed_alloc, 1));
-  return ir::Value(alloc);
-}
-
 ir::Value Compiler::EmitValue(ast::ArrayType const *node) {
   auto result =
       EmitValue(node->data_type()).get<ir::RegOr<type::Type const *>>();

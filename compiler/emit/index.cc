@@ -6,7 +6,8 @@ namespace compiler {
 ir::Value Compiler::EmitValue(ast::Index const *node) {
   auto const *qt = data().qual_type(node->lhs());
   if (qt->quals() >= type::Quals::Ref()) {
-    return ir::Value(builder().PtrFix(EmitRef(node).reg(), qt->type()));
+    return ir::Value(builder().PtrFix(
+        EmitRef(node).reg(), ASSERT_NOT_NULL(data().qual_type(node))->type()));
   }
 
   if (qt->type() == type::ByteView) {
@@ -23,7 +24,7 @@ ir::Value Compiler::EmitValue(ast::Index const *node) {
     return ir::Value(builder().PtrFix(
         builder().Index(type::Ptr(type_of(node->lhs())),
                         EmitValue(node->lhs()).get<ir::Reg>(), index),
-        qt->type()));
+        array_type->data_type()));
   } else {
     UNREACHABLE(*this, *qt);
   }

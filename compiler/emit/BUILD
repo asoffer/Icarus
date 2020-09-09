@@ -20,6 +20,25 @@ cc_test(
 )
 
 cc_library(
+    name = "array_literal",
+    srcs = ["array_literal.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+    ],
+)
+
+cc_test(
+    name = "array_literal_test",
+    srcs = ["array_literal_test.cc"],
+    deps = [
+        "//compiler",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "index",
     srcs = ["index.cc"],
     deps = [

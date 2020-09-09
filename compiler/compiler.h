@@ -407,10 +407,26 @@ struct Compiler
 #undef DEFINE_EMIT_INIT
 
   void EmitMoveInit(type::Typed<ir::Value> from_val,
-                    type::Typed<ir::Reg> to_var);
+                    type::Typed<ir::Reg> to_var) {
+    auto *to_type = to_var.type()->as<type::Pointer>().pointee();
+    // TODO Optimize once you understand the semantics better.
+    if (to_type->IsDefaultInitializable()) {
+      Visit(to_type, to_var.get(), EmitDefaultInitTag{});
+    }
+
+    Visit(to_type, to_var.get(), from_val, EmitMoveAssignTag{});
+  }
 
   void EmitCopyInit(type::Typed<ir::Value> from_val,
-                    type::Typed<ir::Reg> to_var);
+                    type::Typed<ir::Reg> to_var) {
+    auto *to_type = to_var.type()->as<type::Pointer>().pointee();
+    // TODO Optimize once you understand the semantics better.
+    if (to_type->IsDefaultInitializable()) {
+      Visit(to_type, to_var.get(), EmitDefaultInitTag{});
+    }
+
+    Visit(to_type, to_var.get(), from_val, EmitCopyAssignTag{});
+  }
 
   type::QualType VerifyBinaryOverload(std::string_view symbol,
                                       ast::Expression const *node,

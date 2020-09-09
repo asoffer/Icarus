@@ -57,10 +57,8 @@ cc_library(
     hdrs = [],
     srcs = [
         "emit_assign.cc",
-        "emit_copy_init.cc",
         "emit_default_init.cc",
         "emit_destroy.cc",
-        "emit_move_init.cc",
         "emit_value.cc",
         "emit_chainop.cc",
     ],
@@ -85,6 +83,7 @@ cc_library(
         "//compiler/dispatch:fn_call_table",
         "//compiler/dispatch:scope_table",
         "//compiler/emit:access",
+        "//compiler/emit:array_literal",
         "//compiler/emit:index",
         "//compiler/emit:terminal",
         "//compiler/emit:unary_operator",
