@@ -39,6 +39,25 @@ cc_test(
 )
 
 cc_library(
+    name = "array_type",
+    srcs = ["array_type.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+    ],
+)
+
+cc_test(
+    name = "array_type_test",
+    srcs = ["array_type_test.cc"],
+    deps = [
+        "//compiler",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "index",
     srcs = ["index.cc"],
     deps = [

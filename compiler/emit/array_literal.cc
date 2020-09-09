@@ -12,6 +12,8 @@ ir::Value Compiler::EmitValue(ast::ArrayLiteral const *node) {
   return ir::Value(alloc);
 }
 
+// TODO: EmitAssign
+
 void Compiler::EmitCopyInit(
     ast::ArrayLiteral const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to_vars) {

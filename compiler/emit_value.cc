@@ -155,18 +155,6 @@ ir::Value Compiler::EmitValue(ast::ArgumentType const *node) {
   return ir::Value(ASSERT_NOT_NULL(data().arg_type(node->name())));
 }
 
-ir::Value Compiler::EmitValue(ast::ArrayType const *node) {
-  auto result =
-      EmitValue(node->data_type()).get<ir::RegOr<type::Type const *>>();
-  // Size must be at least 1 by construction, so `.size() - 1` will not
-  // overflow.
-  for (int i = node->lengths().size() - 1; i >= 0; --i) {
-    result = builder().Array(
-        EmitValue(node->length(i)).get<ir::RegOr<int64_t>>(), result);
-  }
-  return ir::Value(result);
-}
-
 ir::Value Compiler::EmitValue(ast::Assignment const *node) {
   std::vector<type::Typed<ir::RegOr<ir::Addr>>> lhs_refs;
   lhs_refs.reserve(node->lhs().size());

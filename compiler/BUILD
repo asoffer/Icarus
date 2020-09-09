@@ -84,6 +84,7 @@ cc_library(
         "//compiler/dispatch:scope_table",
         "//compiler/emit:access",
         "//compiler/emit:array_literal",
+        "//compiler/emit:array_type",
         "//compiler/emit:index",
         "//compiler/emit:terminal",
         "//compiler/emit:unary_operator",

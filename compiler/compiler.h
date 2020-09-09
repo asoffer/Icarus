@@ -337,6 +337,13 @@ struct Compiler
     return EmitAssign(node, regs);
   }
 
+  void EmitAssign(ast::ArrayType const *node,
+                  absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
+  void Visit(EmitAssignTag, ast::ArrayType const *node,
+             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
+    return EmitAssign(node, regs);
+  }
+
   void EmitAssign(ast::BinaryOperator const *node,
                   absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
   void Visit(EmitAssignTag, ast::BinaryOperator const *node,
@@ -396,6 +403,7 @@ struct Compiler
   }
   DEFINE_EMIT_INIT(ast::Access)
   DEFINE_EMIT_INIT(ast::ArrayLiteral)
+  DEFINE_EMIT_INIT(ast::ArrayType)
   DEFINE_EMIT_INIT(ast::BinaryOperator)
   DEFINE_EMIT_INIT(ast::Call)
   DEFINE_EMIT_INIT(ast::Cast)

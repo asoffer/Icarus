@@ -346,7 +346,7 @@ Reg Builder::OpaqueType(module::BasicModule const *mod) {
 
 RegOr<type::Type const *> Builder::Array(RegOr<ArrayInstruction::length_t> len,
                                          RegOr<type::Type const *> data_type) {
-  if (not len.is_reg() and data_type.is_reg()) {
+  if (not len.is_reg() and not data_type.is_reg()) {
     return type::Arr(len.value(), data_type.value());
   }
 
