@@ -54,7 +54,7 @@ ffi_type *ToFfiType(type::Type const *t) {
 // stack-allocated buffer for this.
 void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
             absl::Span<ir::Addr const> return_slots,
-            base::untyped_buffer *stack) {
+            base::untyped_buffer_view stack) {
   type::Function const *fn_type = f.type();
 
   std::vector<ffi_type *> arg_types;
@@ -68,7 +68,7 @@ void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
   // (e.g., when they are pointers and tehrefore stored as ir::Addr rather than
   // void *). So we extract those values appropriately and store them here so
   // that we can take a pointer into `pointer_values`.
-  std::vector<void *> pointer_values;
+  std::vector<void const *> pointer_values;
 
   size_t i = 0;
   for (auto const &in : fn_type->params()) {
@@ -88,7 +88,7 @@ void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
           pointer_values.push_back(addr.heap());
         } break;
         case ir::Addr::Kind::Stack: {
-          pointer_values.push_back(stack->raw(addr.stack()));
+          pointer_values.push_back(stack.raw(addr.stack()));
         } break;
         case ir::Addr::Kind::ReadOnly: {
           void *ptr = ir::ReadOnlyData.lock()->raw(addr.rodata());
@@ -144,9 +144,9 @@ void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
     std::memcpy(&ptr, &ret, sizeof(ptr));
     ir::Addr addr;
     uintptr_t ptr_int    = reinterpret_cast<uintptr_t>(ptr);
-    uintptr_t stack_head = reinterpret_cast<uintptr_t>(stack->raw(0));
+    uintptr_t stack_head = reinterpret_cast<uintptr_t>(stack.raw(0));
     uintptr_t stack_end =
-        reinterpret_cast<uintptr_t>(stack->raw(0)) + stack->size();
+        reinterpret_cast<uintptr_t>(stack.raw(0)) + stack.size();
     if (stack_head <= ptr_int and ptr_int < stack_end) {
       addr = ir::Addr::Stack(ptr_int - stack_head);
     } else {

@@ -9,7 +9,7 @@
 #include "ir/instruction/inliner.h"
 #include "ir/instruction/op_codes.h"
 #include "ir/instruction/util.h"
-#include "ir/interpretter/execute.h"
+#include "ir/interpretter/execution_context.h"
 
 namespace ir {
 

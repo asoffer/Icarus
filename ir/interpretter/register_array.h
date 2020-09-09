@@ -19,6 +19,14 @@ struct RegisterArray {
     ASSERT(num_regs_ * kMaxSize <= data_.size());
   }
 
+  auto raw(ir::Reg r) const {
+    if (r.is_arg()) {
+      return data_.raw((r.arg_value() + num_regs_) * kMaxSize);
+    }
+    if (r.is_out()) NOT_YET();
+    return data_.raw(r.value() * kMaxSize);
+  }
+
   auto raw(ir::Reg r) {
     if (r.is_arg()) {
       return data_.raw((r.arg_value() + num_regs_) * kMaxSize);

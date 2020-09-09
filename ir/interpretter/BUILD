@@ -28,7 +28,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":architecture",
-        ":execute",
+        ":execution_context",
         "//base:debug",
         "//base:expected",
         "//base:untyped_buffer",
@@ -68,18 +68,19 @@ cc_library(
 )
 
 cc_library(
-    name = "execute",
-    hdrs = ["execute.h"],
+    name = "execution_context",
+    hdrs = ["execution_context.h"],
     visibility = ["//visibility:public"],
     deps = [
         ":foreign",
         ":stack_frame",
         "//base:untyped_buffer",
+        "//ir:read_only_data",
+        "//ir/value",
         "//ir/value:addr",
         "//ir/value:fn",
         "//ir/value:reg",
         "//ir/value:reg_or",
-        "@com_google_absl//absl/types:span",
     ],
 )
 
@@ -92,6 +93,7 @@ cc_library(
         "//base:debug",
         "//base:expected",
         "//base:untyped_buffer",
+        "//base:untyped_buffer_view",
         "//ir:read_only_data",
         "//ir/value:addr",
         "//ir/value:foreign_fn",

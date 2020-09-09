@@ -1,18 +1,17 @@
-#ifndef ICARUS_IR_INTERPRETTER_EXECUTE_H
-#define ICARUS_IR_INTERPRETTER_EXECUTE_H
+#ifndef ICARUS_IR_INTERPRETTER_EXECUTION_CONETXT_H
+#define ICARUS_IR_INTERPRETTER_EXECUTION_CONETXT_H
 
 #include <cstdlib>
 #include <vector>
 
-#include "absl/types/span.h"
 #include "base/untyped_buffer.h"
-#include "ir/interpretter/architecture.h"
-#include "ir/interpretter/foreign.h"
+#include "base/untyped_buffer_view.h"
 #include "ir/interpretter/stack_frame.h"
+#include "ir/read_only_data.h"
 #include "ir/value/addr.h"
-#include "ir/value/fn.h"
 #include "ir/value/reg.h"
 #include "ir/value/reg_or.h"
+#include "ir/value/value.h"
 
 namespace interpretter {
 
@@ -25,6 +24,42 @@ struct ExecutionContext {
   }
   StackFrame &current_frame() { return *ASSERT_NOT_NULL(current_frame_); }
 
+  // Stores the given `value` into the given location expressed by `addr`. The
+  // value must be register-sized.
+  template <typename T>
+  void Store(ir::Addr addr, T const &value) {
+    switch (addr.kind()) {
+      case ir::Addr::Kind::Stack: stack_.set(addr.stack(), value); break;
+      case ir::Addr::Kind::ReadOnly:
+        NOT_YET(
+            "Storing into read-only data seems suspect. Is it just for "
+            "initialization?");
+        break;
+      case ir::Addr::Kind::Heap:
+        *ASSERT_NOT_NULL(static_cast<T *>(addr.heap())) = value;
+    }
+  }
+
+  // Loads `num_bytes` bytes starting at `addr` and stores the result into
+  // `result`.
+  void Load(ir::Reg result, ir::Addr addr, core::Bytes num_bytes) {
+    switch (addr.kind()) {
+      case ir::Addr::Kind::Stack: {
+        current_frame().regs_.set_raw(result, stack_.raw(addr.stack()),
+                                      num_bytes.value());
+      } break;
+      case ir::Addr::Kind::ReadOnly: {
+        auto handle = ir::ReadOnlyData.lock();
+        current_frame().regs_.set_raw(result, handle->raw(addr.rodata()),
+                                      num_bytes.value());
+      } break;
+      case ir::Addr::Kind::Heap: {
+        current_frame().regs_.set_raw(result, addr.heap(), num_bytes.value());
+      } break;
+    }
+  }
+
+  // TODO: Deprecate. This doesn't feel particularly great API.
   // Copies `length` bytes stored in `reg` to `dst`.
   void MemCpyRegisterBytes(void *dst, ir::Reg reg, size_t length) {
     std::memcpy(dst, current_frame().regs_.raw(reg), length);
@@ -45,15 +80,9 @@ struct ExecutionContext {
     return val.resolve([&](ir::Reg r) { return resolve<T>(r); });
   }
 
-  // TODO: Replace with something simpler.
-  template <typename T>
-  T ReadAndResolve(bool is_reg, base::untyped_buffer::const_iterator *iter) {
-    if (is_reg) {
-      ir::Reg r = iter->read<ir::Reg>();
-      return this->resolve<T>(r);
-    } else {
-      return iter->read<T>();
-    }
+  template <typename... Args>
+  StackFrame MakeStackFrame(ir::NativeFn fn, Args &&... args) {
+    return StackFrame(fn, std::forward<Args>(args)..., &stack_);
   }
 
   // `RestoreFrameToken` is returned by calls to `push()` so that previous stack
@@ -71,13 +100,13 @@ struct ExecutionContext {
     return RestoreFrameToken(this, std::exchange(current_frame_, frame));
   }
 
-  // TODO: Make these private.
-  base::untyped_buffer stack_;
+  base::untyped_buffer_view stack() const { return stack_; }
 
  private:
+  base::untyped_buffer stack_;
   StackFrame *current_frame_ = nullptr;
 };
 
 }  // namespace interpretter
 
-#endif  // ICARUS_IR_INTERPRETTER_EXECUTE_H
+#endif  // ICARUS_IR_INTERPRETTER_EXECUTION_CONETXT_H

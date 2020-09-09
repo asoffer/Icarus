@@ -21,7 +21,8 @@
 #include "ir/instruction/op_codes.h"
 #include "ir/instruction/type.h"
 #include "ir/instruction/util.h"
-#include "ir/interpretter/execute.h"
+#include "ir/interpretter/architecture.h"
+#include "ir/interpretter/execution_context.h"
 #include "ir/interpretter/foreign.h"
 #include "ir/interpretter/stack_frame.h"
 #include "ir/out_params.h"
@@ -84,23 +85,18 @@ struct InitInstruction
                                           DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "init %2$s";
 
-  std::pair<ir::Fn, interpretter::StackFrame> Apply(
-      interpretter::ExecutionContext& ctx) const {
+  interpretter::StackFrame Apply(interpretter::ExecutionContext& ctx) const {
     if (auto* s = type->if_as<type::Struct>()) {
       ir::Fn f = s->init_func_.get();
-      std::pair<ir::Fn, interpretter::StackFrame> result(
-          f, interpretter::StackFrame(f.native(), &ctx.stack_));
-      std::get<1>(result).regs_.set(ir::Reg::Arg(0),
-                                    ctx.resolve<ir::Addr>(reg));
-      return result;
+      auto frame = ctx.MakeStackFrame(f.native());
+      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
+      return frame;
 
     } else if (auto* tup = type->if_as<type::Tuple>()) {
       ir::Fn f = tup->init_func_.get();
-      std::pair<ir::Fn, interpretter::StackFrame> result(
-          f, interpretter::StackFrame(f.native(), &ctx.stack_));
-      std::get<1>(result).regs_.set(ir::Reg::Arg(0),
-                                    ctx.resolve<ir::Addr>(reg));
-      return result;
+      auto frame = ctx.MakeStackFrame(f.native());
+      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
+      return frame;
 
     } else if (auto* a = type->if_as<type::Array>()) {
       NOT_YET();  // f = a->init_func_.get();
@@ -118,23 +114,18 @@ struct DestroyInstruction
                                              DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "destroy %2$s";
 
-  std::pair<ir::Fn, interpretter::StackFrame> Apply(
-      interpretter::ExecutionContext& ctx) const {
+  interpretter::StackFrame Apply(interpretter::ExecutionContext& ctx) const {
     if (auto* s = type->if_as<type::Struct>()) {
       ir::Fn f = s->destroy_func_.get();
-      std::pair<ir::Fn, interpretter::StackFrame> result(
-          f, interpretter::StackFrame(f.native(), &ctx.stack_));
-      std::get<1>(result).regs_.set(ir::Reg::Arg(0),
-                                    ctx.resolve<ir::Addr>(reg));
-      return result;
+      auto frame = ctx.MakeStackFrame(f.native());
+      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
+      return frame;
 
     } else if (auto* tup = type->if_as<type::Tuple>()) {
       ir::Fn f = tup->destroy_func_.get();
-      std::pair<ir::Fn, interpretter::StackFrame> result(
-          f, interpretter::StackFrame(f.native(), &ctx.stack_));
-      std::get<1>(result).regs_.set(ir::Reg::Arg(0),
-                                    ctx.resolve<ir::Addr>(reg));
-      return result;
+      auto frame = ctx.MakeStackFrame(f.native());
+      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
+      return frame;
 
     } else if (auto* a = type->if_as<type::Array>()) {
       NOT_YET();  // f = a->destroy_func_.get();
@@ -152,8 +143,7 @@ struct CopyInstruction
                                           DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "copy %2$s -> %3$s";
 
-  std::pair<ir::Fn, interpretter::StackFrame> Apply(
-      interpretter::ExecutionContext& ctx) const {
+  interpretter::StackFrame Apply(interpretter::ExecutionContext& ctx) const {
     NOT_YET();
   }
 
@@ -167,8 +157,7 @@ struct MoveInstruction
                                           DebugFormatExtension> {
   static constexpr std::string_view kDebugFormat = "move %2$s -> %3$s";
 
-  std::pair<ir::Fn, interpretter::StackFrame> Apply(
-      interpretter::ExecutionContext& ctx) const {
+  interpretter::StackFrame Apply(interpretter::ExecutionContext& ctx) const {
     NOT_YET();
   }
 

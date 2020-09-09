@@ -3,7 +3,7 @@
 #include "ast/expression.h"
 #include "ir/compiled_fn.h"
 #include "ir/interpretter/architecture.h"
-#include "ir/interpretter/execute.h"
+#include "ir/interpretter/execution_context.h"
 #include "ir/interpretter/foreign.h"
 #include "ir/jump.h"
 #include "ir/value/generic_fn.h"
@@ -115,8 +115,7 @@ constexpr exec_t GetInstruction() {
             interpretter::ExecutionContext &ctx,
             absl::Span<ir::Addr const> ret_slots) {
     if constexpr (base::meta<Inst> == base::meta<ir::CallInstruction>) {
-      bool fn_is_reg = iter->read<bool>();
-      ir::Fn f       = ctx.ReadAndResolve<ir::Fn>(fn_is_reg, iter);
+      ir::Fn f = ctx.resolve(iter->read<ir::RegOr<ir::Fn>>().get());
       iter->read<core::Bytes>().get();
 
       type::Function const *fn_type = f.type();
@@ -138,7 +137,7 @@ constexpr exec_t GetInstruction() {
       // need deferred construction?
       std::optional<interpretter::StackFrame> frame;
       if (f.kind() == ir::Fn::Kind::Native) {
-        frame.emplace(f.native(), &ctx.stack_);
+        frame = ctx.MakeStackFrame(f.native());
       }
 
       for (size_t i = 0; i < num_inputs; ++i) {
@@ -215,8 +214,7 @@ constexpr exec_t GetInstruction() {
       uint16_t n = iter->read<uint16_t>();
       ASSERT(ret_slots.size() > n);
       ir::Addr ret_slot = ret_slots[n];
-      bool is_reg       = iter->read<bool>();
-      type val          = ctx.ReadAndResolve<type>(is_reg, iter);
+      type val          = ctx.resolve(iter->read<ir::RegOr<type>>().get());
       ASSERT(ret_slot.kind() == ir::Addr::Kind::Heap);
       *ASSERT_NOT_NULL(static_cast<type *>(ret_slot.heap())) = val;
 
@@ -224,10 +222,8 @@ constexpr exec_t GetInstruction() {
                              ctx))> == base::meta<void>) {
       Inst::ReadFromByteCode(iter).Apply(ctx);
     } else {
-      // TODO: If a stack-frame knew what function was being called, this
-      // could be simplified. We could return just a stack frame and call it.
-      auto [fn, frame] = Inst::ReadFromByteCode(iter).Apply(ctx);
-      CallFn<InstSet>(fn.native(), &frame, {}, ctx);
+      auto frame = Inst::ReadFromByteCode(iter).Apply(ctx);
+      CallFn<InstSet>(frame.fn_, &frame, {}, ctx);
     }
   };
 }
@@ -245,14 +241,14 @@ void Execute(ExecutionContext &ctx, ir::Fn fn, base::untyped_buffer arguments,
              absl::Span<ir::Addr const> ret_slots) {
   switch (fn.kind()) {
     case ir::Fn::Kind::Native: {
-      StackFrame frame(fn.native(), std::move(arguments), &ctx.stack_);
+      auto frame = ctx.MakeStackFrame(fn.native(), std::move(arguments));
       CallFn<InstSet>(fn.native(), &frame, ret_slots, ctx);
     } break;
     case ir::Fn::Kind::Builtin: {
       CallFn(fn.builtin(), arguments, ret_slots, ctx);
     } break;
     case ir::Fn::Kind::Foreign: {
-      CallFn(fn.foreign(), arguments, ret_slots, &ctx.stack_);
+      CallFn(fn.foreign(), arguments, ret_slots, ctx.stack());
     } break;
   }
 }
@@ -289,25 +285,10 @@ void ExecuteBlocks(ExecutionContext &ctx,
       } break;
       case ir::LoadInstruction::kIndex: {
         uint16_t num_bytes = iter.read<uint16_t>();
-        bool is_reg        = iter.read<bool>();
-        ir::Addr addr      = ctx.ReadAndResolve<ir::Addr>(is_reg, &iter);
-        auto result_reg    = iter.read<ir::Reg>().get();
+        ir::Addr addr   = ctx.resolve(iter.read<ir::RegOr<ir::Addr>>().get());
+        auto result_reg = iter.read<ir::Reg>().get();
         DEBUG_LOG("load-instruction")(num_bytes, " ", addr, " ", result_reg);
-        switch (addr.kind()) {
-          case ir::Addr::Kind::Stack: {
-            ctx.current_frame().regs_.set_raw(
-                result_reg, ctx.stack_.raw(addr.stack()), num_bytes);
-          } break;
-          case ir::Addr::Kind::ReadOnly: {
-            auto handle = ir::ReadOnlyData.lock();
-            ctx.current_frame().regs_.set_raw(
-                result_reg, handle->raw(addr.rodata()), num_bytes);
-          } break;
-          case ir::Addr::Kind::Heap: {
-            ctx.current_frame().regs_.set_raw(result_reg, addr.heap(),
-                                              num_bytes);
-          } break;
-        }
+        ctx.Load(result_reg, addr, core::Bytes(num_bytes));
       } break;
 
       default: ExecutionArray<InstSet>[cmd_index](&iter, ctx, ret_slots);

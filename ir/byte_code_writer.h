@@ -33,13 +33,7 @@ namespace internal {
 
 template <typename T>
 void ReadInto(T& ref, base::untyped_buffer::const_iterator* iter) {
-  if constexpr (base::meta<T>.template is_a<ir::RegOr>()) {
-    if (iter->read<bool>()) {
-      ref = iter->read<Reg>().get();
-    } else {
-      ref = iter->read<typename T::type>().get();
-    }
-  } else if constexpr (base::meta<T>.template is_a<absl::flat_hash_map>()) {
+  if constexpr (base::meta<T>.template is_a<absl::flat_hash_map>()) {
     ASSERT(ref.size() == 0u);
     uint16_t num_entries = iter->read<uint16_t>();
     ref.reserve(num_entries);
@@ -111,16 +105,7 @@ struct ByteCodeWriter {
 template <typename T>
 struct WriteByteCodeExtension {
   void WriteByteCode(ByteCodeWriter* writer) const {
-    auto write = [&](auto const& field) {
-      using field_type = std::decay_t<decltype(field)>;
-      if constexpr (base::meta<field_type>.template is_a<ir::RegOr>()) {
-        writer->Write(field.is_reg());
-        field.apply([&](auto v) { writer->Write(v); });
-      } else {
-        writer->Write(field);
-      }
-    };
-    std::apply([&](auto const&... field) { (write(field), ...); },
+    std::apply([&](auto const&... field) { (writer->Write(field), ...); },
                static_cast<T const*>(this)->field_refs());
   }
 };

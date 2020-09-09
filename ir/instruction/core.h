@@ -13,7 +13,7 @@
 #include "ir/instruction/inliner.h"
 #include "ir/instruction/op_codes.h"
 #include "ir/instruction/util.h"
-#include "ir/interpretter/execute.h"
+#include "ir/interpretter/execution_context.h"
 #include "ir/out_params.h"
 #include "ir/value/reg_or.h"
 #include "type/util.h"
@@ -138,18 +138,7 @@ struct StoreInstruction
   using type                                     = T;
 
   void Apply(interpretter::ExecutionContext& ctx) {
-    ir::Addr addr = ctx.resolve(location);
-    type val      = ctx.resolve(value);
-    switch (addr.kind()) {
-      case ir::Addr::Kind::Stack: ctx.stack_.set(addr.stack(), val); break;
-      case ir::Addr::Kind::ReadOnly:
-        NOT_YET(
-            "Storing into read-only data seems suspect. Is it just for "
-            "initialization?");
-        break;
-      case ir::Addr::Kind::Heap:
-        *ASSERT_NOT_NULL(static_cast<type*>(addr.heap())) = val;
-    }
+    ctx.Store(ctx.resolve(location), ctx.resolve(value));
   }
 
   RegOr<T> value;
@@ -183,8 +172,7 @@ struct CallInstruction {
   }
 
   void WriteByteCode(ByteCodeWriter* writer) const {
-    writer->Write(fn_.is_reg());
-    fn_.apply([&](auto v) { writer->Write(v); });
+    writer->Write(fn_);
     size_t bytes_written_slot = writer->buf_->reserve<core::Bytes>();
 
     size_t arg_index = 0;

@@ -7,7 +7,7 @@ cc_library(
         ":inliner",
         ":util",
         "//base:extend",
-        "//ir/interpretter:execute",
+        "//ir/interpretter:execution_context",
     ],
 )
 
@@ -36,6 +36,7 @@ cc_library(
     deps = [
         ":inliner",
         "//base:extend",
+        "//ir/interpretter:execution_context",
     ],
 )
 
@@ -155,7 +156,7 @@ cc_library(
     deps = [
         "//base:extend",
         "//ir/blocks:basic",
-        "//ir/interpretter:execute",
+        "//ir/interpretter:execution_context",
         "//ir/value:reg_or",
         "@com_google_absl//absl/strings",
     ],
@@ -210,7 +211,6 @@ cc_library(
         "//base:untyped_buffer",
         "//ir:block_def",
         "//ir/interpretter:architecture",
-        "//ir/interpretter:execute",
         "//ir/interpretter:foreign",
         "//ir/interpretter:stack_frame",
         "//ir:jump",
