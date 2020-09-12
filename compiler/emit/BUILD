@@ -58,6 +58,25 @@ cc_test(
 )
 
 cc_library(
+    name = "binary_operator",
+    srcs = ["binary_operator.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+    ],
+)
+
+cc_test(
+    name = "binary_operator_test",
+    srcs = ["binary_operator_test.cc"],
+    deps = [
+        "//compiler",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "index",
     srcs = ["index.cc"],
     deps = [

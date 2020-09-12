@@ -140,7 +140,7 @@ void Compiler::Visit(type::Array const *t, ir::RegOr<ir::Addr> to,
 void Compiler::Visit(type::Enum const *t, ir::RegOr<ir::Addr> to,
                      type::Typed<ir::Value> const &from, EmitCopyAssignTag) {
   ASSERT(t == from.type());
-  builder().Store(from->get<ir::EnumVal>(), to);
+  builder().Store(from->get<ir::RegOr<ir::EnumVal>>(), to);
 }
 
 void Compiler::Visit(type::Enum const *t, ir::RegOr<ir::Addr> to,
@@ -151,7 +151,7 @@ void Compiler::Visit(type::Enum const *t, ir::RegOr<ir::Addr> to,
 void Compiler::Visit(type::Flags const *t, ir::RegOr<ir::Addr> to,
                      type::Typed<ir::Value> const &from, EmitCopyAssignTag) {
   ASSERT(t == from.type());
-  builder().Store(from->get<ir::FlagsVal>(), to);
+  builder().Store(from->get<ir::RegOr<ir::FlagsVal>>(), to);
 }
 
 void Compiler::Visit(type::Flags const *t, ir::RegOr<ir::Addr> to,
@@ -162,7 +162,7 @@ void Compiler::Visit(type::Flags const *t, ir::RegOr<ir::Addr> to,
 void Compiler::Visit(type::Function const *t, ir::RegOr<ir::Addr> to,
                      type::Typed<ir::Value> const &from, EmitCopyAssignTag) {
   ASSERT(t == from.type());
-  builder().Store(from->get<ir::Fn>(), to);
+  builder().Store(from->get<ir::RegOr<ir::Fn>>(), to);
 }
 
 void Compiler::Visit(type::Function const *t, ir::RegOr<ir::Addr> to,

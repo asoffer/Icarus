@@ -100,8 +100,22 @@ type::QualType VerifyLogicalOperator(Compiler *c, std::string_view op,
                                      type::Type const *return_type) {
   auto quals =
       (lhs_qual_type.quals() & rhs_qual_type.quals() & ~type::Quals::Ref());
-  if (lhs_qual_type.type() != type::Bool or
-      rhs_qual_type.type() != type::Bool) {
+  if (lhs_qual_type.type() == type::Bool and
+      rhs_qual_type.type() == type::Bool) {
+    return c->data().set_qual_type(node, type::QualType(return_type, quals));
+  } else if (lhs_qual_type.type()->is<type::Flags>() and
+             rhs_qual_type.type()->is<type::Flags>()) {
+    if (lhs_qual_type.type() == rhs_qual_type.type()) {
+      return c->data().set_qual_type(node, type::QualType(return_type, quals));
+    } else {
+      c->diag().Consume(BinaryOperatorTypeMismatch{
+          .lhs_type = lhs_qual_type.type(),
+          .rhs_type = rhs_qual_type.type(),
+          .range    = node->range(),
+      });
+      return type::QualType::Error();
+    }
+  } else {
     // TODO: Calling with constants?
     auto qt = c->VerifyBinaryOverload(
         op, node, type::Typed(ir::Value(), lhs_qual_type.type()),
@@ -113,17 +127,6 @@ type::QualType VerifyLogicalOperator(Compiler *c, std::string_view op,
       });
     }
     return qt;
-  } else {
-    if (lhs_qual_type.type() == rhs_qual_type.type()) {
-      return c->data().set_qual_type(node, type::QualType(return_type, quals));
-    } else {
-      c->diag().Consume(BinaryOperatorTypeMismatch{
-          .lhs_type = lhs_qual_type.type(),
-          .rhs_type = rhs_qual_type.type(),
-          .range    = node->range(),
-      });
-      return type::QualType::Error();
-    }
   }
 }
 
@@ -189,6 +192,7 @@ type::QualType VerifyArithmeticAssignmentOperator(
 type::QualType Compiler::VerifyType(ast::BinaryOperator const *node) {
   auto lhs_qual_type = VerifyType(node->lhs());
   auto rhs_qual_type = VerifyType(node->rhs());
+
   if (not lhs_qual_type.ok() or not rhs_qual_type.ok()) {
     return type::QualType::Error();
   }

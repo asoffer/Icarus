@@ -13,6 +13,7 @@
 #include "ir/instruction/op_codes.h"
 #include "ir/instruction/util.h"
 #include "ir/struct_field.h"
+#include "ir/value/enum_and_flags.h"
 #include "type/array.h"
 #include "type/function.h"
 #include "type/pointer.h"
@@ -53,7 +54,7 @@ struct EnumerationInstruction
   enum class Kind { Enum, Flags };
 
   void Apply(interpretter::ExecutionContext& ctx) const {
-    using enum_t = uint64_t;
+    using enum_t = ir::EnumVal::underlying_type;
 
     // std::vector<std::pair<std::string_view, std::optional<enum_t>>>
     // enumerators; enumerators.reserve(num_enumerators); for (uint16_t i = 0; i

@@ -406,9 +406,10 @@ WorkItem::Result Compiler::VerifyBody(ast::EnumLiteral const *node) {
   bool success = true;
   for (auto const &elem : node->elems()) {
     if (auto *decl = elem->if_as<ast::Declaration>()) {
-      auto *t = VerifyType(decl->init_val()).type();
-      ASSERT(type::IsIntegral(t) == true);
-      success = type::IsIntegral(t);
+      auto const &t = *ASSERT_NOT_NULL(
+          VerifyType(ASSERT_NOT_NULL(decl->init_val())).type());
+      ASSERT(type::IsIntegral(&t) == true) << t;
+      success = type::IsIntegral(&t);
       // TODO determine what is allowed here and how to generate errors.
     }
   }

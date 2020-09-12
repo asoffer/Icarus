@@ -304,24 +304,26 @@ TEST_P(BinaryOperator, Success) {
   auto [type, op] = GetParam();
   {
     test::TestModule mod;
+    mod.AppendCode("FlagType ::= flags {}");
     mod.AppendCode(absl::StrCat(R"(x: )", type));
     auto const *expr =
         mod.Append<ast::BinaryOperator>(absl::StrFormat("x %s x", op));
     auto const *qt = mod.data().qual_type(expr);
     ASSERT_NE(qt, nullptr);
     EXPECT_EQ(qt->quals(), type::Quals::Unqualified());
-    EXPECT_EQ(qt->type()->to_string(), type);
+    EXPECT_EQ(qt->type(), mod.data().qual_type(expr->lhs())->type());
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
   {
     test::TestModule mod;
+    mod.AppendCode("FlagType ::= flags {}");
     mod.AppendCode(absl::StrCat(R"(x :: )", type));
     auto const *expr =
         mod.Append<ast::BinaryOperator>(absl::StrFormat("x %s x", op));
     auto const *qt = mod.data().qual_type(expr);
     ASSERT_NE(qt, nullptr);
     EXPECT_EQ(qt->quals(), type::Quals::Const());
-    EXPECT_EQ(qt->type()->to_string(), type);
+    EXPECT_EQ(qt->type(), mod.data().qual_type(expr->lhs())->type());
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 }
@@ -335,8 +337,9 @@ INSTANTIATE_TEST_SUITE_P(
     FloatingPoint, BinaryOperator,
     testing::Combine(testing::ValuesIn({"float32", "float64"}),
                      testing::ValuesIn({"+", "-", "*", "/"})));
-INSTANTIATE_TEST_SUITE_P(Bool, BinaryOperator,
-                         testing::Combine(testing::ValuesIn({"bool"}),
+INSTANTIATE_TEST_SUITE_P(LogicalOperator, BinaryOperator,
+                         testing::Combine(testing::ValuesIn({"bool",
+                                                             "FlagType"}),
                                           testing::ValuesIn({"^", "&", "|"})));
 
 using OperatorOverload = testing::TestWithParam<char const *>;
