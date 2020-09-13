@@ -86,6 +86,18 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
         UNREACHABLE();
       }
     } break;
+    case frontend::Operator::Add: {
+      auto lhs_ir = EmitValue(node->lhs());
+      auto rhs_ir = EmitValue(node->rhs());
+      return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
+                              uint16_t, uint32_t, uint64_t, float, double>(
+          ASSERT_NOT_NULL(data().qual_type(node->lhs()))->type(),
+          [&](auto tag) {
+            using T = typename decltype(tag)::type;
+            return ir::Value(builder().Add(lhs_ir.get<ir::RegOr<T>>(),
+                                           rhs_ir.get<ir::RegOr<T>>()));
+          });
+    } break;
     default: break;
   }
 
@@ -97,17 +109,6 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
   auto *rhs_type = ASSERT_NOT_NULL(lhs_qt)->type();
 
   switch (node->op()) {
-    case frontend::Operator::Add: {
-      auto lhs_ir = EmitValue(node->lhs());
-      auto rhs_ir = EmitValue(node->rhs());
-      return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
-                              uint16_t, uint32_t, uint64_t, float, double>(
-          rhs_type, [&](auto tag) {
-            using T = typename decltype(tag)::type;
-            return ir::Value(builder().Add(lhs_ir.get<ir::RegOr<T>>(),
-                                           rhs_ir.get<ir::RegOr<T>>()));
-          });
-    } break;
     case frontend::Operator::Sub: {
       auto lhs_ir = EmitValue(node->lhs());
       auto rhs_ir = EmitValue(node->rhs());
