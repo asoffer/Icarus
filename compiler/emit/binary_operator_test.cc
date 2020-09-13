@@ -48,7 +48,7 @@ TEST_P(BinaryOperatorTest, Constants) {
 }
 
 TEST_P(BinaryOperatorTest, NonConstants) {
-  auto const &[ test_case, test_data] = GetParam();
+  auto const &[test_case, test_data] = GetParam();
   test::TestModule mod;
   // TODO: We can't use `s` as the field member because the compiler thinks
   // there's an ambiguity (there isn't).
@@ -71,7 +71,6 @@ TEST_P(BinaryOperatorTest, NonConstants) {
   ASSERT_TRUE(result);
   EXPECT_EQ(*result, test_data.expected);
 }
-
 
 // Note: We test both with literals and with a unary-operator applied directly
 // to a function call. The former helps cover the constant-folding mechanisms
@@ -135,6 +134,162 @@ INSTANTIATE_TEST_SUITE_P(
                          .lhs      = "Color.RED | Color.GREEN",
                          .rhs      = "Color.BLUE | Color.GREEN",
                          .expected = ir::Value(ir::FlagsVal(5))}})));
+
+template <char Op, typename T>
+TestData MakeTestData(T lhs, T rhs) {
+  if constexpr (Op == '+') {
+    return {
+        .lhs      = absl::StrCat(lhs, " as ", type::Get<T>()->to_string()),
+        .rhs      = absl::StrCat(rhs, " as ", type::Get<T>()->to_string()),
+        .expected = ir::Value(static_cast<T>(lhs + rhs)),
+    };
+  } else if constexpr (Op == '-') {
+    return {
+        .lhs      = absl::StrCat(lhs, " as ", type::Get<T>()->to_string()),
+        .rhs      = absl::StrCat(rhs, " as ", type::Get<T>()->to_string()),
+        .expected = ir::Value(static_cast<T>(lhs - rhs)),
+    };
+  }
+}
+
+template <typename T>
+std::vector<TestData> MakeAddTestDataSet() {
+  if constexpr (std::is_signed_v<T>) {
+    return {
+        MakeTestData<'+'>(T{0}, T{0}),
+        MakeTestData<'+'>(T{0}, T{1}),
+        MakeTestData<'+'>(T{1}, T{0}),
+        MakeTestData<'+'>(T{0}, T{-1}),
+        MakeTestData<'+'>(T{-1}, T{0}),
+        // TODO: This one fails due to a parsing bug with 64-bit integers. In
+        // general the negative max value cannot be treated as unary negation of
+        // a positive value because that value doesn't have a repreesntation in
+        // the same type.
+        //
+        // MakeTestData<'+'>(std::numeric_limits<T>::min(), T{0}),
+        // MakeTestData<'+'>(T{0}, std::numeric_limits<T>::min()),
+        MakeTestData<'+'>(std::numeric_limits<T>::max(), T{0}),
+        MakeTestData<'+'>(T{0}, std::numeric_limits<T>::max()),
+        // MakeTestData<'+'>(std::numeric_limits<T>::max(),
+        //                   std::numeric_limits<T>::min()),
+        // MakeTestData<'+'>(std::numeric_limits<T>::min(),
+        //                   std::numeric_limits<T>::max()),
+    };
+  } else {
+    return {
+        MakeTestData<'+'>(T{0}, T{0}),
+        MakeTestData<'+'>(T{0}, T{1}),
+        MakeTestData<'+'>(T{1}, T{0}),
+        // TODO: Similar parsing bug as above.
+        // MakeTestData<'+'>(std::numeric_limits<T>::max(), T{0}),
+        // MakeTestData<'+'>(T{0}, std::numeric_limits<T>::max()),
+        MakeTestData<'+', T>(std::numeric_limits<T>::max() / T{2},
+                             std::numeric_limits<T>::min() / T{2}),
+        MakeTestData<'+', T>(std::numeric_limits<T>::min() / T{2},
+                             std::numeric_limits<T>::max() / T{2}),
+    };
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    Int8Add, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "+", .type = "int8"}}),
+                     testing::ValuesIn(MakeAddTestDataSet<int8_t>())));
+INSTANTIATE_TEST_SUITE_P(
+    Int16Add, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "+", .type = "int16"}}),
+                     testing::ValuesIn(MakeAddTestDataSet<int16_t>())));
+INSTANTIATE_TEST_SUITE_P(
+    Int32Add, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "+", .type = "int32"}}),
+                     testing::ValuesIn(MakeAddTestDataSet<int32_t>())));
+INSTANTIATE_TEST_SUITE_P(
+    Int64Add, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "+", .type = "int64"}}),
+                     testing::ValuesIn(MakeAddTestDataSet<int64_t>())));
+
+INSTANTIATE_TEST_SUITE_P(
+    Nat8Add, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "+", .type = "nat8"}}),
+                     testing::ValuesIn(MakeAddTestDataSet<uint8_t>())));
+INSTANTIATE_TEST_SUITE_P(
+    Nat16Add, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "+", .type = "nat16"}}),
+                     testing::ValuesIn(MakeAddTestDataSet<uint16_t>())));
+INSTANTIATE_TEST_SUITE_P(
+    Nat32Add, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "+", .type = "nat32"}}),
+                     testing::ValuesIn(MakeAddTestDataSet<uint32_t>())));
+INSTANTIATE_TEST_SUITE_P(
+    Nat64Add, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "+", .type = "nat64"}}),
+                     testing::ValuesIn(MakeAddTestDataSet<uint64_t>())));
+
+// TODO: Floating point tests.
+
+template <typename T>
+std::vector<TestData> MakeSubTestDataSet() {
+  if constexpr (std::is_signed_v<T>) {
+    return {
+        MakeTestData<'-'>(T{0}, T{0}),
+        MakeTestData<'-'>(T{0}, T{1}),
+        MakeTestData<'-'>(T{1}, T{0}),
+        MakeTestData<'-'>(T{0}, T{-1}),
+        MakeTestData<'-'>(T{-1}, T{0}),
+        // TODO: Similar parsing bug as above.
+        // MakeTestData<'-'>(std::numeric_limits<T>::min(), T{0}),
+        // MakeTestData<'-'>(std::numeric_limits<T>::max(), T{0}),
+        // MakeTestData<'-'>(T{0}, std::numeric_limits<T>::max()),
+        // MakeTestData<'-'>(std::numeric_limits<T>::max(),
+        //                   std::numeric_limits<T>::max()),
+        // MakeTestData<'-'>(std::numeric_limits<T>::min(),
+        //                   std::numeric_limits<T>::min()),
+    };
+  } else {
+    return {
+        MakeTestData<'-'>(T{0}, T{0}),
+        MakeTestData<'-'>(T{1}, T{0}),
+        // TODO: Similar parsing bug as above.
+        // MakeTestData<'-'>(std::numeric_limits<T>::max(), T{0}),
+        // MakeTestData<'-'>(std::numeric_limits<T>::max(), T{1}),
+    };
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    Int8Sub, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "-", .type = "int8"}}),
+                     testing::ValuesIn(MakeSubTestDataSet<int8_t>())));
+INSTANTIATE_TEST_SUITE_P(
+    Int16Sub, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "-", .type = "int16"}}),
+                     testing::ValuesIn(MakeSubTestDataSet<int16_t>())));
+INSTANTIATE_TEST_SUITE_P(
+    Int32Sub, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "-", .type = "int32"}}),
+                     testing::ValuesIn(MakeSubTestDataSet<int32_t>())));
+INSTANTIATE_TEST_SUITE_P(
+    Int64Sub, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "-", .type = "int64"}}),
+                     testing::ValuesIn(MakeSubTestDataSet<int64_t>())));
+
+INSTANTIATE_TEST_SUITE_P(
+    Nat8Sub, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "-", .type = "nat8"}}),
+                     testing::ValuesIn(MakeSubTestDataSet<uint8_t>())));
+INSTANTIATE_TEST_SUITE_P(
+    Nat16Sub, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "-", .type = "nat16"}}),
+                     testing::ValuesIn(MakeSubTestDataSet<uint16_t>())));
+INSTANTIATE_TEST_SUITE_P(
+    Nat32Sub, BinaryOperatorTest,
+    testing::Combine(testing::ValuesIn({TestCase{.op = "-", .type = "nat32"}}),
+                     testing::ValuesIn(MakeSubTestDataSet<uint32_t>())));
+INSTANTIATE_TEST_SUITE_P(
+    Nat64Sub, BinaryOperatorTest,
+    testing::Combine(
+        testing::ValuesIn({TestCase{.op = "-", .type = "nat64"}}),
+        testing::ValuesIn(MakeSubTestDataSet<uint64_t>())));
 
 }  // namespace
 }  // namespace compiler
