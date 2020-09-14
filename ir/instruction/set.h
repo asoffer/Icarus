@@ -64,7 +64,13 @@ struct InstructionSet {
       base::type_list<InstructionsOrSets...>{}, base::type_list<>{}));
 
   static cmd_index_t Index(Inst const &inst) {
-    return index_mapping_.at(inst.rtti());
+    auto iter = index_mapping_.find(inst.rtti());
+#if defined(ICARUS_DEBUG)
+    if (iter == index_mapping_.end()) {
+      DEBUG_LOG()("Failed to find instruction ", inst.rtti().name());
+    }
+#endif
+    return iter->second;
   }
 
  private:
@@ -83,8 +89,7 @@ using CoreInstructionsImpl = InstructionSet<
     SetReturnInstruction<Ts>..., GetReturnInstruction, CallInstruction,
     SetReturnInstruction<core::Bytes>, SetReturnInstruction<core::Alignment>,
     SetReturnInstruction<BlockDef const *>,
-    SetReturnInstruction<ScopeDef const *>,
-    SetReturnInstruction<module::BasicModule const *>,
+    SetReturnInstruction<ScopeDef const *>, SetReturnInstruction<ir::ModuleId>,
     SetReturnInstruction<GenericFn>, SetReturnInstruction<Jump *>,
     SetReturnInstruction<type::GenericStruct const *>>;
 using CoreInstructions =

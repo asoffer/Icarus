@@ -608,7 +608,7 @@ struct Builder {
       SetReturnInstruction<typename T::type> inst{.index = n, .value = val};
       CurrentBlock()->Append(std::move(inst));
     } else if constexpr (base::IsTaggedV<T>) {
-      static_assert(std::is_same_v<typename T::base_type, Reg>);
+      static_assert(base::meta<typename T::base_type> == base::meta<Reg>);
       SetRet(n, RegOr<typename T::tag_type>(val));
     } else {
       SetRet(n, RegOr<T>(val));

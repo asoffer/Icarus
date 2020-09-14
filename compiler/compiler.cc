@@ -125,4 +125,18 @@ base::expected<ir::Value, interpretter::EvaluationFailure> Compiler::Evaluate(
   return result;
 }
 
+ir::ModuleId Compiler::EvaluateModuleWithCache(ast::Expression const *expr) {
+  // TODO: Implement caching behavior.
+  auto maybe_mod = EvaluateAs<ir::ModuleId>(expr);
+  if (not maybe_mod) {
+    diag().Consume(diagnostic::EvaluationFailure{.failure = maybe_mod.error(),
+                                                 .range   = expr->range()});
+    return ir::ModuleId::Invalid();
+  }
+
+  // TODO: Rather than evaluating as a BasicModule and then down-casting to
+  // CompiledModule, we should make this cast unnecessary.
+  return *maybe_mod;
+}
+
 }  // namespace compiler

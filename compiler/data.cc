@@ -95,16 +95,16 @@ void DependentComputedData::CompleteType(ast::Expression const *expr,
   if (parent_) { parent_->CompleteType(expr, success); }
 }
 
-LibraryModule *DependentComputedData::imported_module(ast::Import const *node) {
+ir::ModuleId DependentComputedData::imported_module(ast::Import const *node) {
   auto iter = imported_modules_.find(node);
   if (iter != imported_modules_.end()) { return iter->second; }
   if (parent_) { return parent_->imported_module(node); }
-  return nullptr;
+  return ir::ModuleId::Invalid();
 }
 
 void DependentComputedData::set_imported_module(ast::Import const *node,
-                                                LibraryModule *module) {
-  imported_modules_.emplace(node, module);
+                                                ir::ModuleId module_id) {
+  imported_modules_.emplace(node, module_id);
 }
 
 absl::Span<ast::Declaration const *const> DependentComputedData::decls(
@@ -181,4 +181,23 @@ DependentComputedData::ConstantValue const *DependentComputedData::Constant(
   return iter != constants_.end() ? &iter->second : nullptr;
 }
 
+void DependentComputedData::SetAllOverloads(ast::Expression const *callee,
+                                            ast::OverloadSet os) {
+  [[maybe_unused]] auto [iter, inserted] =
+      all_overloads_.emplace(callee, std::move(os));
+  ASSERT(inserted == true);
+}
+
+ast::OverloadSet const &DependentComputedData::AllOverloads(
+    ast::Expression const *callee) const {
+  auto iter = all_overloads_.find(callee);
+  if (iter == all_overloads_.end()) {
+    if (parent_ == nullptr) {
+      UNREACHABLE("Failed to find any overloads for ", callee->DebugString());
+    }
+    return parent_->AllOverloads(callee);
+  } else {
+    return iter->second;
+  }
+}
 }  // namespace compiler

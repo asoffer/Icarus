@@ -7,6 +7,7 @@
 #include "compiler/extract_jumps.h"
 #include "compiler/module.h"
 #include "diagnostic/consumer/consumer.h"
+#include "ir/value/module_id.h"
 
 namespace compiler {
 struct LibraryModule : CompiledModule {
@@ -37,55 +38,40 @@ struct LibraryModule : CompiledModule {
   }
 };
 
-namespace internal_compiler {
-
-inline base::NoDestructor<base::guarded<
-    absl::flat_hash_map<ir::ModuleId, std::unique_ptr<LibraryModule>>>>
-    all_library_modules;
-
-}  // namespace internal_compiler
-
 // Returns a pointer to a module of type given by the template parameter, by
 // loading the module from the filesystem denoted by the file named `file_name`.
 // When the module is returned it may not be ready for consumption yet as the
 // processing is started in a separate thread. Each module implementation has
 // its own criteria for which parts are available when and how to access them.
 // BasicModule provides no such guarantees.
-LibraryModule *ImportLibraryModule(
+inline ir::ModuleId ImportLibraryModule(
     frontend::CanonicalFileName const &file_name) {
-  auto id = ir::ModuleId::FromFile(file_name);
-
-  auto handle = internal_compiler::all_library_modules->lock();
+  auto [id, mod, inserted] = ir::ModuleId::FromFile<LibraryModule>(file_name);
 
   // TODO Need to add dependencies even if the node was already scheduled
   // (hence the "already scheduled" check is done after this).
   //
   // TODO detect dependency cycles.
 
-  auto [iter, inserted] = handle->try_emplace(id);
-  auto &mod             = iter->second;
+  if (not inserted) { return id; }
 
-  if (not inserted) { return mod.get(); }
-
-  if (auto maybe_file_src = frontend::FileSource::Make(id.filename())) {
-    mod = std::make_unique<LibraryModule>();
-
-    std::thread t(
-        [mod = mod.get(), file_src = std::move(*maybe_file_src)]() mutable {
-          diagnostic::StreamingConsumer diag(stderr, &file_src);
-          mod->ProcessFromSource(&file_src, diag);
-          // TODO annoying we have to do these together. ProcessFromSource needs
-          // to be split.
-        });
+  if (auto maybe_file_src =
+          frontend::FileSource::Make(id.filename<LibraryModule>())) {
+    std::thread t([mod = mod, file_src = std::move(*maybe_file_src)]() mutable {
+      diagnostic::StreamingConsumer diag(stderr, &file_src);
+      mod->ProcessFromSource(&file_src, diag);
+      // TODO annoying we have to do these together. ProcessFromSource needs
+      // to be split.
+    });
     t.detach();
-    return mod.get();
+    return id;
   } else {
     diagnostic::StreamingConsumer diag(stderr, frontend::SharedSource());
     diag.Consume(diagnostic::MissingModule{
-        .source    = id.filename(),
+        .source    = id.filename<LibraryModule>(),
         .requestor = "",
     });
-    return nullptr;
+    return ir::ModuleId::Invalid();
   }
 }
 

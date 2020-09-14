@@ -6,7 +6,9 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
+        "//compiler:library_module",
         "//diagnostic:errors",
+        "//ir/value:module_id",
         "//type:enum",
         "//type:flags",
         "//type:overload_set",

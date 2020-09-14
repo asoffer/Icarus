@@ -1,5 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/library_module.h"
 
 namespace compiler {
 
@@ -7,8 +8,8 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
   type::QualType qt = *ASSERT_NOT_NULL(data().qual_type(node->operand()));
   ASSERT(qt.ok() == true);
   if (qt.type() == type::Module) {
-    auto const &mod =
-        *ASSERT_NOT_NULL(EvaluateModuleWithCache(node->operand()));
+    auto const &mod = *ASSERT_NOT_NULL(
+        EvaluateModuleWithCache(node->operand()).get<LibraryModule>());
     auto decls = mod.ExportedDeclarations(node->member_name());
     switch (decls.size()) {
       case 0: NOT_YET();
@@ -66,8 +67,8 @@ void Compiler::EmitMoveInit(
   type::QualType qt = *ASSERT_NOT_NULL(data().qual_type(node->operand()));
   ASSERT(qt.ok() == true);
   if (qt.type() == type::Module) {
-    auto const &mod =
-        *ASSERT_NOT_NULL(EvaluateModuleWithCache(node->operand()));
+    auto const &mod = *ASSERT_NOT_NULL(
+        EvaluateModuleWithCache(node->operand()).get<LibraryModule>());
     auto decls = mod.ExportedDeclarations(node->member_name());
     switch (decls.size()) {
       case 0: NOT_YET();
@@ -120,8 +121,8 @@ void Compiler::EmitCopyInit(
   type::QualType qt = *ASSERT_NOT_NULL(data().qual_type(node->operand()));
   ASSERT(qt.ok() == true);
   if (qt.type() == type::Module) {
-    auto const &mod =
-        *ASSERT_NOT_NULL(EvaluateModuleWithCache(node->operand()));
+    auto const &mod = *ASSERT_NOT_NULL(
+        EvaluateModuleWithCache(node->operand()).get<LibraryModule>());
     auto decls = mod.ExportedDeclarations(node->member_name());
     switch (decls.size()) {
       case 0: NOT_YET();
@@ -174,8 +175,8 @@ void Compiler::EmitAssign(
   type::QualType qt = *ASSERT_NOT_NULL(data().qual_type(node->operand()));
   ASSERT(qt.ok() == true);
   if (qt.type() == type::Module) {
-    auto const &mod =
-        *ASSERT_NOT_NULL(EvaluateModuleWithCache(node->operand()));
+    auto const &mod = *ASSERT_NOT_NULL(
+        EvaluateModuleWithCache(node->operand()).get<LibraryModule>());
     auto decls = mod.ExportedDeclarations(node->member_name());
     switch (decls.size()) {
       case 0: NOT_YET();

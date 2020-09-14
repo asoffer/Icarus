@@ -111,7 +111,7 @@ using instruction_set_t = ir::InstructionSet<
     ir::CastInstruction<double, uint16_t>, ir::CastInstruction<double, int16_t>,
     ir::CastInstruction<double, uint32_t>, ir::CastInstruction<double, int32_t>,
     ir::CastInstruction<double, uint64_t>, ir::CastInstruction<double, int64_t>,
-    ir::CastInstruction<double, double>, ir::NotInstruction,
+    ir::CastInstruction<double, float>, ir::NotInstruction,
     ir::XorFlagsInstruction, ir::AndFlagsInstruction, ir::OrFlagsInstruction,
     ir::PtrInstruction, ir::BufPtrInstruction, ir::OpaqueTypeInstruction,
     ir::ArrowInstruction, ir::LoadSymbolInstruction, ir::ArrayInstruction,

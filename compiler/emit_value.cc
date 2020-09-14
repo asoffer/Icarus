@@ -111,9 +111,9 @@ std::optional<ast::OverloadSet> MakeOverloadSet(
     ASSIGN_OR(return std::nullopt,  //
                      auto result, c->VerifyType(acc->operand()));
     if (result.type() == type::Module) {
-      auto maybe_mod = c->EvaluateAs<module::BasicModule *>(acc->operand());
+      auto maybe_mod = c->EvaluateAs<ir::ModuleId>(acc->operand());
       if (not maybe_mod) { NOT_YET(); }
-      auto const *mod         = &(*maybe_mod)->as<CompiledModule>();
+      auto const *mod         = maybe_mod->get<CompiledModule>();
       std::string_view member = acc->member_name();
       ast::OverloadSet os(mod->ExportedDeclarations(member));
       for (type::Typed<ir::Value> const &arg : args) {
@@ -846,8 +846,9 @@ ir::Value Compiler::EmitValue(ast::Import const *node) {
   // into an ir::Value, it will be tagged correctly.
   //
   // TODO compiler doesn't know about inheritence here.
-  return ir::Value(reinterpret_cast<module::BasicModule *>(
-      ASSERT_NOT_NULL(data().imported_module(node))));
+  auto module_id = data().imported_module(node);
+  ASSERT(module_id != ir::ModuleId::Invalid());
+  return ir::Value(module_id);
 }
 
 void EmitJump(Compiler *c, absl::Span<ast::JumpOption const> options) {

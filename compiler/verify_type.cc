@@ -735,8 +735,9 @@ type::QualType Compiler::VerifyType(ast::Import const *node) {
 
   auto canonical_file_name =
       frontend::CanonicalFileName::Make(frontend::FileName(maybe_src->get()));
-  if (auto *mod = ImportLibraryModule(canonical_file_name)) {
-    data().set_imported_module(node, mod);
+  ir::ModuleId mod_id = ImportLibraryModule(canonical_file_name);
+  if (mod_id != ir::ModuleId::Invalid()) {
+    data().set_imported_module(node, mod_id);
     return data().set_qual_type(node, type::QualType::Constant(type::Module));
   } else {
     return type::QualType::Error();

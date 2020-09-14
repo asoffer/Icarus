@@ -233,11 +233,9 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
   // indirection in the overload set. Do we really want to rely on this?!
   for (auto const *callee :
        data().AllOverloads(call_expr->callee()).members()) {
-    ExtractParams(callee,
-                  &ASSERT_NOT_NULL(data().qual_type(callee))
-                       ->type()
-                       ->as<type::Callable>(),
-                  args, overload_params, errors);
+    auto maybe_qt = qual_type_of(callee);
+    ExtractParams(callee, &maybe_qt.value().type()->as<type::Callable>(), args,
+                  overload_params, errors);
   }
 
   // TODO: Expansion is relevant too.

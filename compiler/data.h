@@ -129,8 +129,8 @@ struct DependentComputedData {
   absl::flat_hash_map<type::Type const *, ir::NativeFn> init_, copy_assign_,
       move_assign_, destroy_;
 
-  LibraryModule *imported_module(ast::Import const *node);
-  void set_imported_module(ast::Import const *node, LibraryModule *module);
+  ir::ModuleId imported_module(ast::Import const *node);
+  void set_imported_module(ast::Import const *node, ir::ModuleId module_id);
 
   // InsertDependent:
   //
@@ -242,23 +242,8 @@ struct DependentComputedData {
                    bool complete = false);
   ConstantValue const *Constant(ast::Declaration const *decl) const;
 
-  void SetAllOverloads(ast::Expression const *callee, ast::OverloadSet os) {
-    [[maybe_unused]] auto [iter, inserted] =
-        all_overloads_.emplace(callee, std::move(os));
-    ASSERT(inserted == true);
-  }
-
-  ast::OverloadSet const &AllOverloads(ast::Expression const *callee) const {
-    auto iter = all_overloads_.find(callee);
-    if (iter == all_overloads_.end()) {
-      if (parent_ == nullptr) {
-        UNREACHABLE("Failed to find any overloads for ", callee->DebugString());
-      }
-      return parent_->AllOverloads(callee);
-    } else {
-      return iter->second;
-    }
-  }
+  void SetAllOverloads(ast::Expression const *callee, ast::OverloadSet os);
+  ast::OverloadSet const &AllOverloads(ast::Expression const *callee) const;
 
   void SetViableOverloads(ast::Expression const *callee, ast::OverloadSet os) {
     [[maybe_unused]] auto [iter, inserted] =
@@ -308,7 +293,7 @@ struct DependentComputedData {
       param_structs_;
 
   // Colleciton of modules imported by this one.
-  absl::flat_hash_map<ast::Import const *, LibraryModule *> imported_modules_;
+  absl::flat_hash_map<ast::Import const *, ir::ModuleId> imported_modules_;
 
   absl::flat_hash_set<ast::Node const *> body_verification_complete_;
 

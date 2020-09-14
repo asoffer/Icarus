@@ -130,11 +130,9 @@ cc_library(
 cc_library(
     name = "module_id",
     hdrs = ["module_id.h"],
-    srcs = ["module_id.cc"],
     deps = [
         "//base:flyweight_map",
-        "//base:guarded",
-        "//base:no_destructor",
+        "//base:global",
         "//frontend/source:file_name",
     ],
 )

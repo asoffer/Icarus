@@ -5,6 +5,7 @@
 #include "base/tag.h"
 #include "ir/value/addr.h"
 #include "ir/value/enum_and_flags.h"
+#include "ir/value/module_id.h"
 #include "ir/value/reg.h"
 #include "ir/value/string.h"
 #include "ir/value/value.h"
@@ -19,14 +20,6 @@
 #include "type/tuple.h"
 #include "type/type.h"
 #include "type/typed_value.h"
-
-namespace module {
-struct BasicModule;
-}  // namespace module
-
-namespace ast {
-struct FunctionLiteral;
-}  // namespace ast
 
 namespace ir {
 struct BlockDef;
@@ -71,14 +64,10 @@ constexpr type::Type const *Get() {
     return type::Type_;
   } else if constexpr (base::meta<T> == base::meta<ir::ScopeDef *>) {
     return type::Scope;
+  } else if constexpr (base::meta<T> == base::meta<ir::ModuleId>) {
+    return type::Module;
   } else if constexpr (std::is_pointer_v<T>) {
-    if constexpr (std::is_base_of_v<
-                      module::BasicModule,
-                      std::decay_t<decltype(*std::declval<T>())>>) {
-      return type::Module;
-    } else {
-      return Ptr(Get<std::decay_t<decltype(*std::declval<T>())>>());
-    }
+    return Ptr(Get<std::decay_t<decltype(*std::declval<T>())>>());
   } else {
     UNREACHABLE(typeid(T).name());
   }
@@ -131,9 +120,7 @@ bool Compare(::type::Type const *t) {
     return t->is<::type::Jump>();
   } else if constexpr (base::meta<T> == base::meta<ir::GenericFn>) {
     return t->is<::type::GenericFunction>();
-  } else if constexpr (base::meta<T> == base::meta<module::BasicModule *> or
-                       base::meta<T> ==
-                           base::meta<module::BasicModule const *>) {
+  } else if constexpr (base::meta<T> == base::meta<ir::ModuleId>) {
     return t == ::type::Module;
   } else if constexpr (base::meta<T> == base::meta<ir::BlockDef const *> or
                        base::meta<T> == base::meta<ir::BlockDef *>) {
@@ -176,9 +163,8 @@ auto Apply(Type const *t, Fn &&fn) {
   return ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                     uint32_t, uint64_t, float, double, type::Type const *,
                     ir::EnumVal, ir::FlagsVal, ir::Addr, ir::String,
-                    module::BasicModule *, ir::ScopeDef *, ir::Fn,
-                    ir::BlockDef const *, ir::GenericFn>(t,
-                                                         std::forward<Fn>(fn));
+                    ir::ModuleId, ir::ScopeDef *, ir::Fn, ir::BlockDef const *,
+                    ir::GenericFn>(t, std::forward<Fn>(fn));
 }
 
 }  // namespace type

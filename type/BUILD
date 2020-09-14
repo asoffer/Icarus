@@ -349,6 +349,7 @@ cc_library(
     hdrs = ["util.h"],
     deps = CONCRETE_TYPES + [
         "//base:tag",
+        "//ir/value:module_id",
     ],
 )
 

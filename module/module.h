@@ -23,7 +23,6 @@
 #include "frontend/source/file_name.h"
 #include "frontend/source/shared.h"
 #include "frontend/source/source.h"
-#include "ir/value/module_id.h"
 #include "module/module.h"
 
 namespace module {

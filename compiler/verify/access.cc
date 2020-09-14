@@ -1,7 +1,9 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/library_module.h"
 #include "diagnostic/errors.h"
 #include "diagnostic/message.h"
+#include "ir/value/module_id.h"
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/overload_set.h"
@@ -252,12 +254,13 @@ type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
     return type::QualType::Error();
   }
 
-  auto const *mod = c->EvaluateModuleWithCache(node->operand());
-  if (not mod) { return type::QualType::Error(); }
+  ir::ModuleId mod_id = c->EvaluateModuleWithCache(node->operand());
+  if (mod_id == ir::ModuleId::Invalid()) { return type::QualType::Error(); }
 
   // There is no way to refer to the current module, but a bug here could cause
   // a deadlock as this module waits for the notification that it's declarations
   // can be exported, so we would prefer to abort.
+  auto const *mod = mod_id.get<LibraryModule>();
   ASSERT(mod != &c->data().module());
 
   auto decls = mod->ExportedDeclarations(node->member_name());
