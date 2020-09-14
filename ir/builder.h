@@ -19,6 +19,7 @@
 #include "ir/struct_field.h"
 #include "ir/value/addr.h"
 #include "ir/value/reg.h"
+#include "type/enum.h"
 #include "type/jump.h"
 #include "type/typed_value.h"
 #include "type/util.h"
@@ -549,10 +550,9 @@ struct Builder {
   Reg Struct(type::Struct* s, std::vector<StructField> fields,
              std::optional<ir::Fn> assign, std::optional<ir::Fn> dtor);
 
-  // TODO use scopes instead of modules.
-  Reg Enum(module::BasicModule* mod, std::vector<std::string_view> names,
+  Reg Enum(type::Enum* e, std::vector<std::string_view> names,
            absl::flat_hash_map<uint64_t, RegOr<uint64_t>> specified_values);
-  Reg Flags(module::BasicModule* mod, std::vector<std::string_view> names,
+  Reg Flags(type::Flags* f, std::vector<std::string_view> names,
             absl::flat_hash_map<uint64_t, RegOr<uint64_t>> specified_values);
 
   type::Typed<Reg> LoadSymbol(String name, type::Type const* type);

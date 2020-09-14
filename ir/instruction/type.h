@@ -14,6 +14,8 @@
 #include "ir/struct_field.h"
 #include "ir/value/enum_and_flags.h"
 #include "type/array.h"
+#include "type/enum.h"
+#include "type/flags.h"
 #include "type/function.h"
 #include "type/pointer.h"
 #include "type/qual_type.h"
@@ -48,19 +50,10 @@ struct TupleInstruction
   Reg result;
 };
 
-struct EnumerationInstruction
-    : base::Extend<EnumerationInstruction>::With<ByteCodeExtension,
-                                                 InlineExtension> {
-  enum class Kind { Enum, Flags };
-
+struct EnumInstruction
+    : base::Extend<EnumInstruction>::With<ByteCodeExtension, InlineExtension> {
   void Apply(interpretter::ExecutionContext& ctx) const {
     using enum_t = ir::EnumVal::underlying_type;
-
-    // std::vector<std::pair<std::string_view, std::optional<enum_t>>>
-    // enumerators; enumerators.reserve(num_enumerators); for (uint16_t i = 0; i
-    // < num_enumerators; ++i) {
-    //   enumerators.emplace_back(iter->read<std::string_view>(), std::nullopt);
-    // }
 
     absl::flat_hash_set<enum_t> used_vals;
 
@@ -70,65 +63,86 @@ struct EnumerationInstruction
 
     absl::BitGen gen;
 
-    switch (kind_) {
-      case Kind::Enum: {
-        absl::flat_hash_map<std::string, ir::EnumVal> mapping;
+    absl::flat_hash_map<std::string, ir::EnumVal> mapping;
 
-        for (size_t i = 0; i < names_.size(); ++i) {
-          auto iter = specified_values_.find(i);
-          if (iter != specified_values_.end()) {
-            mapping.emplace(names_[i], ctx.resolve(iter->second));
-            continue;
-          }
+    for (size_t i = 0; i < names_.size(); ++i) {
+      auto iter = specified_values_.find(i);
+      if (iter != specified_values_.end()) {
+        mapping.emplace(names_[i], ctx.resolve(iter->second));
+        continue;
+      }
 
-          bool success;
-          enum_t proposed_value;
-          do {
-            proposed_value = absl::Uniform<enum_t>(gen);
-            success        = used_vals.insert(proposed_value).second;
-          } while (not success);
-          mapping.try_emplace(std::string(names_[i]), proposed_value);
-        }
-
-        ctx.current_frame().regs_.set(
-            result, type::Allocate<type::Enum>(mod_, std::move(mapping)));
-      } break;
-      case Kind::Flags: {
-        absl::flat_hash_map<std::string, ir::FlagsVal> mapping;
-
-        for (size_t i = 0; i < names_.size(); ++i) {
-          auto iter = specified_values_.find(i);
-          if (iter != specified_values_.end()) {
-            mapping.emplace(names_[i], ctx.resolve(iter->second));
-            continue;
-          }
-
-          bool success;
-          enum_t proposed_value;
-          do {
-            proposed_value = enum_t{1} << absl::Uniform<enum_t>(
-                                 absl::IntervalClosedOpen, gen, 0,
-                                 std::numeric_limits<enum_t>::digits);
-            success = used_vals.insert(proposed_value).second;
-          } while (not success);
-          mapping.try_emplace(std::string(names_[i]), proposed_value);
-        }
-
-        ctx.current_frame().regs_.set(
-            result, type::Allocate<type::Flags>(mod_, std::move(mapping)));
-      } break;
+      bool success;
+      enum_t proposed_value;
+      do {
+        proposed_value = absl::Uniform<enum_t>(gen);
+        success        = used_vals.insert(proposed_value).second;
+      } while (not success);
+      mapping.try_emplace(std::string(names_[i]), proposed_value);
     }
+
+    type->SetMembers(std::move(mapping));
+    type->complete();
+    ctx.current_frame().regs_.set(result, type);
   }
 
   std::string to_string() const {
     using base::stringify;
-    return absl::StrCat(stringify(result),
-                        kind_ == Kind::Enum ? " = enum (" : " = flags (",
+    return absl::StrCat(stringify(result), " = enum (",
                         absl::StrJoin(names_, ", "), ")");
   }
 
-  Kind kind_;
-  module::BasicModule* mod_;
+  type::Enum* type;
+  std::vector<std::string_view> names_;
+  absl::flat_hash_map<uint64_t, RegOr<uint64_t>> specified_values_;
+  Reg result;
+};
+
+struct FlagsInstruction
+    : base::Extend<FlagsInstruction>::With<ByteCodeExtension, InlineExtension> {
+  void Apply(interpretter::ExecutionContext& ctx) const {
+    using flags_t = ir::FlagsVal::underlying_type;
+
+    absl::flat_hash_set<flags_t> used_vals;
+
+    for (auto const& [index, reg_or_value] : specified_values_) {
+      used_vals.insert(ctx.resolve(reg_or_value));
+    }
+
+    absl::BitGen gen;
+
+    absl::flat_hash_map<std::string, ir::FlagsVal> mapping;
+
+    for (size_t i = 0; i < names_.size(); ++i) {
+      auto iter = specified_values_.find(i);
+      if (iter != specified_values_.end()) {
+        mapping.emplace(names_[i], ctx.resolve(iter->second));
+        continue;
+      }
+
+      bool success;
+      flags_t proposed_value;
+      do {
+        proposed_value = flags_t{1} << absl::Uniform<flags_t>(
+                             absl::IntervalClosedOpen, gen, 0,
+                             std::numeric_limits<flags_t>::digits);
+        success = used_vals.insert(proposed_value).second;
+      } while (not success);
+      mapping.try_emplace(std::string(names_[i]), proposed_value);
+    }
+
+    type->SetMembers(std::move(mapping));
+    type->complete();
+    ctx.current_frame().regs_.set(result, type);
+  }
+
+  std::string to_string() const {
+    using base::stringify;
+    return absl::StrCat(stringify(result), " = flags (",
+                        absl::StrJoin(names_, ", "), ")");
+  }
+
+  type::Flags* type;
   std::vector<std::string_view> names_;
   absl::flat_hash_map<uint64_t, RegOr<uint64_t>> specified_values_;
   Reg result;

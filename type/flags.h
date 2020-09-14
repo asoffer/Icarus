@@ -16,25 +16,25 @@ namespace type {
 struct Flags : public type::Type {
   TYPE_FNS(Flags);
 
-  Flags(module::BasicModule const *mod,
-        absl::flat_hash_map<std::string, ir::FlagsVal> vals)
+  Flags(module::BasicModule const *mod)
       : Type(Type::Flags{.is_default_initializable = 1,
                          .is_copyable              = 1,
                          .is_movable               = 1,
                          .has_destructor           = 0}),
-        mod_(mod),
-        vals_(std::move(vals)) {
+        mod_(mod) {}
+
+  void SetMembers(absl::flat_hash_map<std::string, ir::FlagsVal> vals) {
+    vals_ = std::move(vals);
     for (auto &[name, val] : vals_) {
       All |= val.value;
       members_.emplace(val, name);
     }
-    DEBUG_LOG("flags")(vals_);
-    DEBUG_LOG("flags")(members_);
   }
 
   bool is_big() const override { return false; }
 
-  Completeness completeness() const override { return Completeness::Complete; }
+  Completeness completeness() const override { return completeness_; }
+  void complete() { completeness_ = Completeness::Complete; }
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
@@ -52,8 +52,9 @@ struct Flags : public type::Type {
 
   bool IsDefaultInitializable() const { return false; }
 
-  size_t All = 0;
+  uint64_t All = 0;
 
+  Completeness completeness_;
   module::BasicModule const *mod_;
 
   ICARUS_PRIVATE

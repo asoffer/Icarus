@@ -58,13 +58,13 @@ TEST(ToLlvm, Pointer) {
 
 TEST(ToLlvm, Enum) {
   llvm::LLVMContext context;
-  type::Enum e(nullptr, {});
+  type::Enum e(nullptr);
   EXPECT_EQ(ToLlvmType(&e, context), llvm::Type::getInt64Ty(context));
 }
 
 TEST(ToLlvm, Flags) {
   llvm::LLVMContext context;
-  type::Flags f(nullptr, {});
+  type::Flags f(nullptr);
   EXPECT_EQ(ToLlvmType(&f, context), llvm::Type::getInt64Ty(context));
 }
 

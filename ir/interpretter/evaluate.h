@@ -117,10 +117,11 @@ using instruction_set_t = ir::InstructionSet<
     ir::ArrowInstruction, ir::LoadSymbolInstruction, ir::ArrayInstruction,
     ir::StructInstruction, ir::MakeBlockInstruction, ir::MakeScopeInstruction,
     ir::StructIndexInstruction, ir::TupleIndexInstruction,
-    ir::PtrIncrInstruction, ir::TupleInstruction, ir::EnumerationInstruction,
-    ir::TypeInfoInstruction, ir::InitInstruction, ir::DestroyInstruction,
-    ir::MoveInstruction, ir::CopyInstruction, ir::ByteViewLengthInstruction,
-    ir::ByteViewDataInstruction, ir::DebugIrInstruction>;
+    ir::PtrIncrInstruction, ir::TupleInstruction, ir::EnumInstruction,
+    ir::FlagsInstruction, ir::TypeInfoInstruction, ir::InitInstruction,
+    ir::DestroyInstruction, ir::MoveInstruction, ir::CopyInstruction,
+    ir::ByteViewLengthInstruction, ir::ByteViewDataInstruction,
+    ir::DebugIrInstruction>;
 
 void Execute(ir::Fn fn, base::untyped_buffer arguments,
              absl::Span<ir::Addr const> ret_slots);

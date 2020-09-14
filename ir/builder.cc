@@ -276,24 +276,22 @@ Reg Builder::MakeScope(
 }
 
 Reg Builder::Enum(
-    module::BasicModule *mod, std::vector<std::string_view> names,
+    type::Enum *e, std::vector<std::string_view> names,
     absl::flat_hash_map<uint64_t, RegOr<uint64_t>> specified_values) {
-  EnumerationInstruction inst{.kind_  = EnumerationInstruction::Kind::Enum,
-                              .mod_   = mod,
-                              .names_ = std::move(names),
-                              .specified_values_ = std::move(specified_values)};
+  EnumInstruction inst{.type              = e,
+                       .names_            = std::move(names),
+                       .specified_values_ = std::move(specified_values)};
   auto result = inst.result = CurrentGroup()->Reserve();
   CurrentBlock()->Append(std::move(inst));
   return result;
 }
 
 Reg Builder::Flags(
-    module::BasicModule *mod, std::vector<std::string_view> names,
+    type::Flags *f, std::vector<std::string_view> names,
     absl::flat_hash_map<uint64_t, RegOr<uint64_t>> specified_values) {
-  EnumerationInstruction inst{.kind_  = EnumerationInstruction::Kind::Flags,
-                              .mod_   = mod,
-                              .names_ = std::move(names),
-                              .specified_values_ = std::move(specified_values)};
+  FlagsInstruction inst{.type              = f,
+                        .names_            = std::move(names),
+                        .specified_values_ = std::move(specified_values)};
   auto result = inst.result = CurrentGroup()->Reserve();
   CurrentBlock()->Append(std::move(inst));
   return result;

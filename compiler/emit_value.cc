@@ -681,13 +681,16 @@ ir::Value Compiler::EmitValue(ast::EnumLiteral const *node) {
     }
   }
 
+  // TODO: allocate the type upfront so it can be used in incomplete contexts.
   switch (node->kind()) {
-    case ast::EnumLiteral::Kind::Enum:
-      return ir::Value(
-          builder().Enum(&data().module(), names, specified_values));
-    case ast::EnumLiteral::Kind::Flags:
-      return ir::Value(
-          builder().Flags(&data().module(), names, specified_values));
+    case ast::EnumLiteral::Kind::Enum: {
+      auto *e = type::Allocate<type::Enum>(&data().module());
+      return ir::Value(builder().Enum(e, names, specified_values));
+    } break;
+    case ast::EnumLiteral::Kind::Flags: {
+      auto *f = type::Allocate<type::Flags>(&data().module());
+      return ir::Value(builder().Flags(f, names, specified_values));
+    } break;
     default: UNREACHABLE();
   }
 }
