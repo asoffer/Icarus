@@ -1131,7 +1131,7 @@ WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
         }
       }
     }
-    builder().Struct(&data().module(), s, std::move(fields), move_assign, dtor);
+    builder().Struct(s, std::move(fields), move_assign, dtor);
     builder().ReturnJump();
   }
 

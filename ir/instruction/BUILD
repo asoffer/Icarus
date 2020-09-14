@@ -5,7 +5,6 @@ cc_library(
     hdrs = ["arithmetic.h"],
     deps = [
         ":inliner",
-        ":util",
         "//base:extend",
         "//ir/interpretter:execution_context",
     ],
@@ -45,7 +44,6 @@ cc_library(
     hdrs = ["compare.h"],
     deps = [
         ":inliner",
-        ":util",
         "//base:extend",
     ],
 )
@@ -65,7 +63,6 @@ cc_library(
     hdrs = ["flags.h"],
     deps = [
         ":inliner",
-        ":util",
         "//base:extend",
     ],
 )
@@ -115,7 +112,6 @@ cc_library(
         ":flags",
         ":inliner",
         ":op_codes",
-        ":util",
         ":type",
         "//ast/scope",
         "//base:extend",
@@ -167,7 +163,6 @@ cc_library(
     hdrs = ["type.h"],
     deps = [
         ":inliner",
-        ":util",
         "//base:extend",
         "//ir:struct_field",
         "//type",
@@ -181,24 +176,6 @@ cc_library(
         "//type:tuple",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/random",
-    ],
-)
-
-# TODO: Remove this target.
-cc_library(
-    name = "util",
-    hdrs = ["util.h"],
-    deps = [
-        "//ir:block_def",
-        "//ir:out_params",
-        "//ir:scope_def",
-        "//ir/value:fn",
-        "//ir/value:generic_fn",
-        "//ir/value:reg_or",
-        "//ir/value:string",
-        "//module",
-        "//type",
-        "@com_google_absl//absl/strings",
     ],
 )
 

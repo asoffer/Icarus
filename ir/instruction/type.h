@@ -11,7 +11,6 @@
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
 #include "ir/instruction/op_codes.h"
-#include "ir/instruction/util.h"
 #include "ir/struct_field.h"
 #include "ir/value/enum_and_flags.h"
 #include "type/array.h"
@@ -19,6 +18,7 @@
 #include "type/pointer.h"
 #include "type/qual_type.h"
 #include "type/struct.h"
+#include "type/tuple.h"
 #include "type/type.h"
 
 namespace ir {

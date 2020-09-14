@@ -8,7 +8,6 @@
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
 #include "ir/instruction/op_codes.h"
-#include "ir/instruction/util.h"
 
 namespace ir {
 

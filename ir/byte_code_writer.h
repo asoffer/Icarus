@@ -9,26 +9,6 @@
 namespace ir {
 struct BasicBlock;
 
-namespace internal_byte_code_writer {
-
-constexpr size_t Log2(size_t n) { return n == 1 ? 0 : 1 + Log2(n / 2); }
-
-// TODO partially copied from instruction/util.h due to dependency issues. Fix this.
-template <typename T>
-constexpr uint8_t PrimitiveIndex() {
-  if constexpr (std::is_integral_v<T> and not std::is_same_v<T, bool>) {
-    return Log2(sizeof(T)) * 2 + std::is_signed_v<T>;
-  } else if constexpr (std::is_same_v<T, float>) {
-    return 0x08;
-  } else if constexpr (std::is_same_v<T, double>) {
-    return 0x09;
-  } else {
-    UNREACHABLE(typeid(T).name());
-  }
-}
-
-}  // namespace internal_byte_code_writer
-
 namespace internal {
 
 template <typename T>

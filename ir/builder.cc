@@ -299,9 +299,7 @@ Reg Builder::Flags(
   return result;
 }
 
-// TODO: Module field is not needed anymore.
-Reg Builder::Struct(module::BasicModule const *, type::Struct *s,
-                    std::vector<StructField> fields,
+Reg Builder::Struct(type::Struct *s, std::vector<StructField> fields,
                     std::optional<ir::Fn> assign, std::optional<ir::Fn> dtor) {
   StructInstruction inst{.struct_     = s,
                          .fields      = std::move(fields),

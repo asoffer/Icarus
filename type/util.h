@@ -25,7 +25,7 @@ namespace ir {
 struct BlockDef;
 struct FlagsVal;
 struct Fn;
-struct GenericFn;
+struct Jump;
 struct ScopeDef;
 }  // namespace ir
 

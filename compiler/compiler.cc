@@ -133,9 +133,6 @@ ir::ModuleId Compiler::EvaluateModuleWithCache(ast::Expression const *expr) {
                                                  .range   = expr->range()});
     return ir::ModuleId::Invalid();
   }
-
-  // TODO: Rather than evaluating as a BasicModule and then down-casting to
-  // CompiledModule, we should make this cast unnecessary.
   return *maybe_mod;
 }
 

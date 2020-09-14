@@ -885,8 +885,7 @@ type::QualType Compiler::VerifyType(
           }
         }
         // TODO destructors and assignment
-        c.builder().Struct(&c.data().module(), s, std::move(fields),
-                           std::nullopt, std::nullopt);
+        c.builder().Struct(s, std::move(fields), std::nullopt, std::nullopt);
         c.builder().ReturnJump();
       }
 

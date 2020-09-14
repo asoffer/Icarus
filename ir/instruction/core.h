@@ -12,9 +12,9 @@
 #include "ir/instruction/debug.h"
 #include "ir/instruction/inliner.h"
 #include "ir/instruction/op_codes.h"
-#include "ir/instruction/util.h"
 #include "ir/interpretter/execution_context.h"
 #include "ir/out_params.h"
+#include "ir/value/generic_fn.h"
 #include "ir/value/reg_or.h"
 #include "type/util.h"
 
@@ -44,6 +44,25 @@ struct LoadInstruction
   Reg result;
 };
 
+namespace internal_core {
+template <typename SizeType, typename T, typename Fn>
+void WriteBits(ByteCodeWriter* writer, absl::Span<T const> span,
+               Fn&& predicate) {
+  ASSERT(span.size() < std::numeric_limits<SizeType>::max());
+  writer->Write<SizeType>(span.size());
+
+  uint8_t reg_mask = 0;
+  for (size_t i = 0; i < span.size(); ++i) {
+    if (predicate(span[i])) { reg_mask |= (1 << (7 - (i % 8))); }
+    if (i % 8 == 7) {
+      writer->Write(reg_mask);
+      reg_mask = 0;
+    }
+  }
+  if (span.size() % 8 != 0) { writer->Write(reg_mask); }
+}
+}  // namespace internal_core
+
 // TODO consider changing these to something like 'basic block arguments'
 template <typename T>
 struct PhiInstruction {
@@ -53,7 +72,6 @@ struct PhiInstruction {
   PhiInstruction(std::vector<BasicBlock const*> blocks,
                  std::vector<RegOr<T>> values)
       : blocks(std::move(blocks)), values(std::move(values)) {}
-  ~PhiInstruction() {}
 
   void add(BasicBlock const* block, RegOr<T> value) {
     blocks.push_back(block);
@@ -62,8 +80,7 @@ struct PhiInstruction {
 
   std::string to_string() const {
     using base::stringify;
-    std::string s =
-        absl::StrCat(stringify(result), " = phi ", internal::TypeToString<T>());
+    std::string s = absl::StrCat(stringify(result), " = phi ");
     for (size_t i = 0; i < blocks.size(); ++i) {
       absl::StrAppend(&s, "\n      ", stringify(blocks[i]), ": ",
                       stringify(values[i]));
@@ -74,7 +91,7 @@ struct PhiInstruction {
   void WriteByteCode(ByteCodeWriter* writer) const {
     writer->Write<uint16_t>(values.size());
     for (auto block : blocks) { writer->Write(block); }
-    internal::WriteBits<uint16_t, RegOr<T>>(
+    internal_core::WriteBits<uint16_t, RegOr<T>>(
         writer, values, [](RegOr<T> const& r) { return r.is_reg(); });
 
     absl::c_for_each(values, [&](RegOr<T> const& x) {
@@ -155,8 +172,6 @@ struct CallInstruction {
     ASSERT(this->outs_.size() == fn_type_->output().size());
     ASSERT(args_.size() == fn_type_->params().size());
   }
-
-  ~CallInstruction() {}
 
   std::string to_string() const {
     using base::stringify;
