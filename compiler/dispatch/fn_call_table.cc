@@ -87,6 +87,7 @@ EmitCallee(Compiler &compiler, ast::Expression const *fn, type::QualType qt,
         .builder             = compiler.builder(),
         .data                = temp_data,
         .diagnostic_consumer = compiler.diag(),
+        .importer            = compiler.importer(),
     });
     temp_data.parent_ = &compiler.data();
 
@@ -120,6 +121,7 @@ void EmitCall(Tag, Compiler *compiler, ast::Expression const *callee,
       .builder = ir::GetBuilder(),
       .data    = dependent_data ? *dependent_data : compiler->data(),
       .diagnostic_consumer = compiler->diag(),
+      .importer            = compiler->importer(),
   });
 
   if (not callee_fn.is_reg()) {

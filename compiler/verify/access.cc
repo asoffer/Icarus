@@ -17,7 +17,6 @@
 namespace compiler {
 namespace {
 
-
 struct IncompleteTypeMemberAccess {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "incomplete-type-member-access";

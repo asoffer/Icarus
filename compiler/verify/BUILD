@@ -287,6 +287,28 @@ cc_test(
 )
 
 cc_library(
+    name = "import",
+    srcs = ["import.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+        "//compiler:library_module",
+        "//diagnostic:errors",
+        "//ir/value:module_id",
+    ],
+)
+
+cc_test(
+    name = "import_test",
+    srcs = ["import_test.cc"],
+    deps = [
+        "//compiler",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "index",
     srcs = ["index.cc"],
     deps = [

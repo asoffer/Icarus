@@ -4,9 +4,11 @@
 #include "compiler/compiler.h"
 #include "compiler/emit_function_call_infrastructure.h"
 #include "compiler/extract_jumps.h"
+#include "compiler/library_module.h"
 #include "compiler/module.h"
 #include "diagnostic/consumer/consumer.h"
 #include "ir/compiled_fn.h"
+#include "module/importer.h"
 
 namespace compiler {
 
@@ -20,9 +22,13 @@ struct ExecutableModule : CompiledModule {
  protected:
   void ProcessNodes(base::PtrSpan<ast::Node const> nodes,
                     diagnostic::DiagnosticConsumer &diag) override {
-    Compiler c({.builder             = ir::GetBuilder(),
-                .data                = data(),
-                .diagnostic_consumer = diag});
+    module::FileImporter<LibraryModule> importer;
+    Compiler c({
+        .builder             = ir::GetBuilder(),
+        .data                = data(),
+        .diagnostic_consumer = diag,
+        .importer            = importer,
+    });
 
     for (ast::Node const *node : nodes) {
       ExtractJumps(&c.data().extraction_map_, node);

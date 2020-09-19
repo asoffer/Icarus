@@ -69,7 +69,7 @@ void AddAdl(ast::OverloadSet *overload_set, std::string_view id,
     // TODO accessing module from another thread is bad news!
     auto &data = mod->data();
     diagnostic::TrivialConsumer consumer;
-
+    module::FileImporter<LibraryModule> importer;
     for (auto *d : decls) {
       // TODO Wow this is a terrible way to access the type.
       ASSIGN_OR(continue, auto &t,
@@ -77,6 +77,7 @@ void AddAdl(ast::OverloadSet *overload_set, std::string_view id,
                              .builder             = ir::GetBuilder(),
                              .data                = data,
                              .diagnostic_consumer = consumer,
+                             .importer            = importer,
                          })
                     .type_of(d));
       // TODO handle this case. I think it's safe to just discard it.
@@ -711,6 +712,7 @@ ir::NativeFn MakeConcreteFromGeneric(
       .builder             = compiler->builder(),
       .data                = temp_data,
       .diagnostic_consumer = compiler->diag(),
+      .importer            = compiler->importer(),
   });
   temp_data.parent_ = &compiler->data();
   auto params =
@@ -728,7 +730,8 @@ ir::NativeFn MakeConcreteFromGeneric(
         }));
     f->work_item = DeferBody({.builder             = compiler->builder(),
                               .data                = data,
-                              .diagnostic_consumer = compiler->diag()},
+                              .diagnostic_consumer = compiler->diag(),
+                              .importer            = compiler->importer()},
                              node, fn_type);
     return f;
   });
@@ -844,11 +847,6 @@ void Compiler::EmitAssign(
 }
 
 ir::Value Compiler::EmitValue(ast::Import const *node) {
-  // Note: Even though this must return a more specific type (LibraryModule
-  // instead of BasicModule), we use Type to ensure that if this gets routed
-  // into an ir::Value, it will be tagged correctly.
-  //
-  // TODO compiler doesn't know about inheritence here.
   auto module_id = data().imported_module(node);
   ASSERT(module_id != ir::ModuleId::Invalid());
   return ir::Value(module_id);

@@ -605,11 +605,13 @@ DependentComputedData::InsertDependentResult MakeConcrete(
     core::FnArgs<type::Typed<ir::Value>> const &args,
     DependentComputedData &compiler_data,
     diagnostic::DiagnosticConsumer &diag) {
+  module::FileImporter<LibraryModule> importer;
   DependentComputedData temp_data(mod);
   Compiler c({
       .builder             = ir::GetBuilder(),
       .data                = temp_data,
       .diagnostic_consumer = diag,
+      .importer            = importer,
   });
   temp_data.parent_ = &compiler_data;
 
@@ -634,11 +636,13 @@ type::QualType Compiler::VerifyType(ast::FunctionLiteral const *node) {
     auto [params, rets, data, inserted] =
         MakeConcrete(node, &compiler_data->module(), ordered_nodes, args,
                      *compiler_data, *diag_consumer);
+    module::FileImporter<LibraryModule> importer;
     if (inserted) {
       Compiler c({
           .builder             = ir::GetBuilder(),
           .data                = data,
           .diagnostic_consumer = *diag_consumer,
+          .importer            = importer,
       });
 
       if (auto outputs = node->outputs(); outputs and not outputs->empty()) {
@@ -692,9 +696,11 @@ type::QualType Compiler::VerifyType(ast::ShortFunctionLiteral const *node) {
         MakeConcrete(node, &compiler_data->module(), ordered_nodes, args,
                      *compiler_data, *diag_consumer);
 
+    module::FileImporter<LibraryModule> importer;
     auto body_qt = Compiler({.builder             = ir::GetBuilder(),
                              .data                = data,
-                             .diagnostic_consumer = *diag_consumer})
+                             .diagnostic_consumer = *diag_consumer,
+                             .importer            = importer})
                        .VerifyType(node->body());
     rets = {body_qt.type()};
     return type::Func(params.Transform([](auto const &p) { return p.second; }),
@@ -707,41 +713,6 @@ type::QualType Compiler::VerifyType(ast::ShortFunctionLiteral const *node) {
                   return type::GenericFunction::EmptyStruct{};
                 }),
                 std::move(gen))));
-}
-
-type::QualType Compiler::VerifyType(ast::Import const *node) {
-  DEBUG_LOG("Import")(node->DebugString());
-  ASSIGN_OR(return _, auto result, VerifyType(node->operand()));
-  bool err = false;
-  if (result.type() != type::ByteView) {
-    // TODO allow (import) overload
-    diag().Consume(diagnostic::InvalidImport{
-        .range = node->operand()->range(),
-    });
-    err = true;
-  }
-
-  if (not result.constant()) {
-    diag().Consume(diagnostic::NonConstantImport{
-        .range = node->operand()->range(),
-    });
-    err = true;
-  }
-
-  if (err) { return type::QualType::Error(); }
-
-  auto maybe_src = EvaluateAs<ir::String>(node->operand());
-  if (not maybe_src) { NOT_YET(); }
-
-  auto canonical_file_name =
-      frontend::CanonicalFileName::Make(frontend::FileName(maybe_src->get()));
-  ir::ModuleId mod_id = ImportLibraryModule(canonical_file_name);
-  if (mod_id != ir::ModuleId::Invalid()) {
-    data().set_imported_module(node, mod_id);
-    return data().set_qual_type(node, type::QualType::Constant(type::Module));
-  } else {
-    return type::QualType::Error();
-  }
 }
 
 type::QualType Compiler::VerifyType(ast::ConditionalGoto const *node) {
@@ -842,11 +813,13 @@ type::QualType Compiler::VerifyType(
     auto [params, rets, data, inserted] =
         MakeConcrete(node, &compiler_data->module(), ordered_nodes, args,
                      *compiler_data, *diag_consumer);
+    module::FileImporter<LibraryModule> importer;
     if (inserted) {
       Compiler c({
           .builder             = ir::GetBuilder(),
           .data                = data,
           .diagnostic_consumer = *diag_consumer,
+          .importer            = importer,
       });
 
       type::Struct *s = new type::Struct(

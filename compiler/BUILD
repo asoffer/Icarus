@@ -134,7 +134,7 @@ cc_library(
         ":data",
         ":module",
         ":transient_state",
-        "//ast:ast_fwd",
+        "//ast",
         "//ast:overload_set",
         "//ast:visitor",
         "//base:debug",
@@ -147,6 +147,7 @@ cc_library(
         "//ir/value:module_id",
         "//ir/value:reg",
         "//module",
+        "//module:importer",
         "//type:type_fwd",
         "//type:qual_type",
         "//type:visitor",
@@ -235,6 +236,7 @@ cc_library(
         ":extract_jumps",
         ":module",
         "//diagnostic/consumer",
+        "//module:importer",
     ],
 )
 
@@ -245,9 +247,11 @@ cc_library(
         ":compiler_header",
         ":emit_function_call_infrastructure",
         ":extract_jumps",
+        ":library_module",
         ":module",
         "//diagnostic/consumer",
         "//ir:compiled_fn",
+        "//module:importer",
     ],
 )
 
@@ -378,6 +382,7 @@ cc_library(
         "//compiler/verify:designated_initializer",
         "//compiler/verify:function_type",
         "//compiler/verify:identifier",
+        "//compiler/verify:import",
         "//compiler/verify:index",
         "//compiler/verify:struct_literal",
         "//compiler/verify:scope_literal",

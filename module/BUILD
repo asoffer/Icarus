@@ -27,3 +27,25 @@ cc_library(
         "@com_google_absl//absl/synchronization",
     ],
 )
+
+cc_library(
+    name = "importer",
+    hdrs = ["importer.h"],
+    deps = [
+        ":module",
+        "//frontend/source:file_name",
+        "//ir/value:module_id",
+    ],
+)
+
+cc_library(
+    name = "mock_importer",
+    hdrs = ["mock_importer.h"],
+    deps = [
+        ":importer",
+        "//frontend/source:file_name",
+        "//ir/value:module_id",
+        "@com_google_googletest//:gtest",
+    ],
+    testonly = True,
+)

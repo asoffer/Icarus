@@ -13,6 +13,7 @@
 #include "base/ptr_span.h"
 #include "diagnostic/consumer/tracking.h"
 #include "frontend/source/range.h"
+#include "module/mock_importer.h"
 #include "module/module.h"
 #include "test/util.h"
 
@@ -24,6 +25,7 @@ struct TestModule : compiler::CompiledModule {
             .builder             = ir::GetBuilder(),
             .data                = data(),
             .diagnostic_consumer = consumer,
+            .importer            = importer,
         }) {}
   ~TestModule() { compiler.CompleteDeferredBodies(); }
 
@@ -43,6 +45,7 @@ struct TestModule : compiler::CompiledModule {
     return ptr;
   }
 
+  module::MockImporter importer;
   diagnostic::TrackingConsumer consumer;
   compiler::Compiler compiler;
 

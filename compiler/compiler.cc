@@ -16,6 +16,30 @@
 
 namespace compiler {
 
+WorkItem::Result WorkItem::Process() const {
+  module::FileImporter<LibraryModule> importer;
+  Compiler c({
+      .builder             = ir::GetBuilder(),
+      .data                = context,
+      .diagnostic_consumer = consumer,
+      .importer            = importer,
+  });
+  switch (kind) {
+    case Kind::VerifyBlockBody:
+      return c.VerifyBody(&node->as<ast::BlockLiteral>());
+    case Kind::VerifyEnumBody:
+      return c.VerifyBody(&node->as<ast::EnumLiteral>());
+    case Kind::VerifyFunctionBody:
+      return c.VerifyBody(&node->as<ast::FunctionLiteral>());
+    case Kind::VerifyJumpBody: return c.VerifyBody(&node->as<ast::Jump>());
+    case Kind::VerifyScopeBody: NOT_YET();
+    case Kind::VerifyStructBody:
+      return c.VerifyBody(&node->as<ast::StructLiteral>());
+    case Kind::CompleteStructMembers:
+      return c.CompleteStruct(&node->as<ast::StructLiteral>());
+  }
+}
+
 Compiler::Compiler(PersistentResources const &resources)
     : resources_(resources) {}
 Compiler Compiler::WithPersistent() const { return Compiler(resources_); }

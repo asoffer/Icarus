@@ -58,6 +58,7 @@ struct ReplModule : public CompiledModule {
         .builder             = ir::GetBuilder(),
         .data                = data(),
         .diagnostic_consumer = diag,
+        .importer            = importer,
     });
     for (ast::Node const *node : nodes) {
       if (node->is<ast::Declaration>()) {
@@ -79,6 +80,8 @@ struct ReplModule : public CompiledModule {
       }
     }
   }
+
+  module::FileImporter<LibraryModule> importer;
 };
 
 int Repl() {

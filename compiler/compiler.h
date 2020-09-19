@@ -27,15 +27,11 @@
 #include "ir/value/native_fn.h"
 #include "ir/value/reg.h"
 #include "ir/value/value.h"
+#include "module/importer.h"
 #include "module/module.h"
 #include "type/qual_type.h"
 #include "type/type_fwd.h"
 #include "type/visitor.h"
-
-namespace ir {
-struct ScopeDef;
-struct BlockDef;
-}  // namespace ir
 
 namespace compiler {
 struct EmitRefTag {};
@@ -95,6 +91,7 @@ struct Compiler
     ir::Builder &builder;
     DependentComputedData &data;
     diagnostic::DiagnosticConsumer &diagnostic_consumer;
+    module::Importer& importer;
   };
 
   void VerifyAll(base::PtrSpan<ast::Node const> nodes) {
@@ -196,6 +193,7 @@ struct Compiler
   diagnostic::DiagnosticConsumer &diag() const {
     return resources_.diagnostic_consumer;
   }
+  module::Importer &importer() const { return resources_.importer; }
 
   template <typename T>
   base::expected<T, interpretter::EvaluationFailure> EvaluateAs(
@@ -509,28 +507,6 @@ struct Compiler
   // (DependentComputedData).
   CyclicDependencyTracker cylcic_dependency_tracker_;
 };
-
-inline WorkItem::Result WorkItem::Process() const {
-  Compiler c({
-      .builder             = ir::GetBuilder(),
-      .data                = context,
-      .diagnostic_consumer = consumer,
-  });
-  switch (kind) {
-    case Kind::VerifyBlockBody:
-      return c.VerifyBody(&node->as<ast::BlockLiteral>());
-    case Kind::VerifyEnumBody:
-      return c.VerifyBody(&node->as<ast::EnumLiteral>());
-    case Kind::VerifyFunctionBody:
-      return c.VerifyBody(&node->as<ast::FunctionLiteral>());
-    case Kind::VerifyJumpBody: return c.VerifyBody(&node->as<ast::Jump>());
-    case Kind::VerifyScopeBody: NOT_YET();
-    case Kind::VerifyStructBody:
-      return c.VerifyBody(&node->as<ast::StructLiteral>());
-    case Kind::CompleteStructMembers:
-      return c.CompleteStruct(&node->as<ast::StructLiteral>());
-  }
-}
 
 inline void WorkQueue::ProcessOneItem() {
   ASSERT(items_.empty() == false);

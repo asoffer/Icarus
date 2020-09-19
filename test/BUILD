@@ -20,6 +20,7 @@ cc_library(
         "//diagnostic/consumer:tracking",
         "//frontend/source:range",
         "//module:module",
+        "//module:mock_importer",
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/container:flat_hash_map",
     ],

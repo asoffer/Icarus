@@ -199,30 +199,6 @@ struct UnspecifiedOverload {
   frontend::SourceRange range;
 };
 
-struct InvalidImport {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "invalid-import";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("Cannot import a non-constant module."),
-                             SourceQuote(src).Highlighted(range, Style{}));
-  }
-
-  frontend::SourceRange range;
-};
-
-struct NonConstantImport {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "non-constant-import";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("Scope names must be constant."),
-                             SourceQuote(src).Highlighted(range, Style{}));
-  }
-
-  frontend::SourceRange range;
-};
-
 struct MissingModule {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "missing-module";
