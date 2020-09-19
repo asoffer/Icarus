@@ -275,7 +275,7 @@ type::QualType VerifyUninitialized(Compiler *compiler,
 }  // namespace
 
 type::QualType Compiler::VerifyType(ast::Declaration const *node) {
-  DEBUG_LOG("Declaration")("Verifying ", node->id());
+  LOG("Declaration", "Verifying %s", node->id());
 
   type::QualType node_qual_type;
   switch (node->kind()) {

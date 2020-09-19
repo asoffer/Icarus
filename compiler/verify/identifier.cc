@@ -91,8 +91,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
   }
   if (error) { return type::QualType::Error(); }
 
-  DEBUG_LOG("Identifier")
-  (node->DebugString(), ": ", node, " ", potential_decls);
+  LOG("Identifier", "%s: %p %s", node->DebugString(), node, potential_decls);
   switch (potential_decls.size()) {
     case 1: {
       if (potential_decls[0]->flags() & ast::Declaration::f_IsConst) {

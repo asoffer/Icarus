@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "absl/types/span.h"
+#include "base/log.h"
 #include "core/dependency_node.h"
 #include "core/fn_args.h"
 #include "core/params.h"
@@ -130,8 +131,7 @@ void FillMissingArgs(ParamsRef<P> params, FnArgs<A>* args, Fn fn,
     ASSERT(i + offset < params.size());
     auto const& p = params[i + offset];
     if (p.name.empty()) { continue; }
-    DEBUG_LOG("fill-missing-args")
-    ("For named-parameter ", p.name, "inserting.");
+    LOG("fill-missing-args", "For named-parameter %s inserting.", p.name);
     args->named_emplace(p.name,
                         base::lazy_convert{[&]() { return fn(p.value); }});
   }
@@ -142,16 +142,16 @@ void FillMissingArgs(ParamsRef<P> params, FnArgs<A>* args, Fn fn,
 template <typename T, typename U, typename ConvertibleFn>
 bool IsCallable(ParamsRef<T> params, FnArgs<U> const& args, ConvertibleFn fn) {
   if (params.size() < args.size()) {
-    DEBUG_LOG("core::IsCallable")
-    ("IsCallable = false due to size mismatch (", params.size(), " vs ",
-     args.size());
+    LOG("core::IsCallable",
+        "IsCallable = false due to size mismatch (%u vs %u)", params.size(),
+        args.size());
     return false;
   }
 
   for (size_t i = 0; i < args.pos().size(); ++i) {
     if (not fn(args.pos()[i], params[i].value)) {
-      DEBUG_LOG("core::IsCallable")
-      ("IsCallable = false due to convertible failure at ", i);
+      LOG("core::IsCallable",
+          "IsCallable = false due to convertible failure at %u", i);
       return false;
     }
   }
@@ -159,14 +159,13 @@ bool IsCallable(ParamsRef<T> params, FnArgs<U> const& args, ConvertibleFn fn) {
   for (auto const& [name, type] : args.named()) {
     int index = params.index(name);
     if (index < 0) {
-      DEBUG_LOG("core::IsCallable")
-      ("No such parameter named \"", name, "\"");
+      LOG("core::IsCallable", "No such parameter named \"%s\"", name);
       return false;
     }
 
     if (not fn(type, params[index].value)) {
-      DEBUG_LOG("core::IsCallable")
-      ("IsCallable = false due to convertible failure on \"", name, "\"");
+      LOG("core::IsCallable",
+          "IsCallable = false due to convertible failure on \"%s\"", name);
       return false;
     }
   }
@@ -175,13 +174,13 @@ bool IsCallable(ParamsRef<T> params, FnArgs<U> const& args, ConvertibleFn fn) {
     auto const& param = params[i];
     if (param.flags & HAS_DEFAULT) { continue; }
     if (args.at_or_null(param.name) == nullptr) {
-      DEBUG_LOG("core::IsCallable")
-      ("No argument for non-default parameter named \"", param.name, "\"");
+      LOG("core::IsCallable",
+          "No argument for non-default parameter named \"%s\"", param.name);
       return false;
     }
   }
 
-  DEBUG_LOG("core::IsCallable")("Yes, it's callable");
+  LOG("core::IsCallable","Yes, it's callable");
   return true;
 }
 

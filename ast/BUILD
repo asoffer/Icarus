@@ -88,6 +88,7 @@ cc_library(
     deps = [
         "//ast:ast",
         "//ast/scope:scope",
+        "//base:log",
         "//module:module",
         "@com_google_absl//absl/types:span",
     ],

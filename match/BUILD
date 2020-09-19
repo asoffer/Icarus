@@ -9,6 +9,7 @@ cc_library(
         "//ast:ast",
         "//ast:ast_fwd",
         "//ast:visitor",
+        "//base:log",
     ],
 )
 

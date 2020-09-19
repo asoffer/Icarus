@@ -313,8 +313,8 @@ type::QualType Compiler::VerifyType(ast::Call const *node) {
   if (not callee_qt.ok()) { return type::QualType::Error(); }
 
   if (auto const *c = callee_qt.type()->if_as<type::Callable>()) {
-    DEBUG_LOG("Call.VerifyType")
-    ("Callee's (", node->callee()->DebugString(), ") qual-type: ", callee_qt);
+    LOG("Call.VerifyType", "Callee's (%s) qual-type: %s",
+        node->callee()->DebugString(), callee_qt);
     auto result = VerifyCall(node, overload_map, arg_vals);
     if (not result) {
       diag().Consume(UncallableWithArguments{

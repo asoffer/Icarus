@@ -163,6 +163,7 @@ cc_library(
         ":verify_type",
         ":visitors",
         "//base:defer",
+        "//base:log",
         "//diagnostic/consumer",
     ],
     alwayslink = True, # TODO: Figure out a good way to remove this.

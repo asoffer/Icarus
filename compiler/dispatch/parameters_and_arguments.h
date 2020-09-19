@@ -19,31 +19,32 @@ std::vector<core::FnArgs<type::Type const *>> ExpandedFnArgs(
 template <typename TableType, typename ParamAccessor>
 bool ParamsCoverArgs(core::FnArgs<type::QualType> const &args,
                      TableType const &table, ParamAccessor &&get_params) {
-  DEBUG_LOG("ParamsCoverArgs")("Unexpanded args: ", args.to_string());
+  LOG("ParamsCoverArgs","Unexpanded args: %s", args.to_string());
 
   auto expanded_fnargs = ExpandedFnArgs(args);
   for (auto const &expanded_arg : expanded_fnargs) {
-    DEBUG_LOG("ParamsCoverArgs")("Expansion: ", expanded_arg.to_string());
-    DEBUG_LOG("ParamsCoverArgs")("table.size(): ", table.size());
+    LOG("ParamsCoverArgs", "Expansion: %s", expanded_arg.to_string());
+    LOG("ParamsCoverArgs", "table.size(): %u", table.size());
     for (auto const &[k, v] : table) {
       static_assert(std::is_same_v<std::decay_t<decltype(get_params(k, v))>,
                                    core::Params<type::QualType>>);
       auto params = get_params(k, v);
       std::stringstream ss;
       ss << params;
-      DEBUG_LOG("ParamsCoverArgs")("Params: ", ss.str());
+      LOG("ParamsCoverArgs", "Params: %s", ss.str());
 
       // TODO take constness into account for callability.
       bool callable =
           core::IsCallable(core::ParamsRef(params), expanded_arg,
                            [](type::Type const *arg, type::QualType param) {
                              bool result = type::CanCast(arg, param.type());
-                             DEBUG_LOG("ParamsCoverArgs")
-                             ("    ... CanCast(", arg->to_string(), ", ",
-                              param.type()->to_string(), ") = ", result);
+                             LOG("ParamsCoverArgs",
+                                 "    ... CanCast(%s, %s) = %s",
+                                 arg->to_string(), param.type()->to_string(),
+                                 result ? "true" : "false");
                              return result;
                            });
-      DEBUG_LOG("ParamsCoverArgs")(" Callable: ", callable);
+      LOG("ParamsCoverArgs", " Callable: %s", callable ? "true" : "false");
       if (callable) { goto next_expanded_arg; }
     }
     return false;

@@ -2,6 +2,7 @@
 #include <string>
 #include <string_view>
 
+#include "base/log.h"
 #include "diagnostic/consumer/trivial.h"
 #include "frontend/parse.h"
 #include "frontend/source/string.h"
@@ -66,8 +67,12 @@ extern "C" int LLVMFuzzerTestOneInput(uint8_t const* data, size_t length) {
     string_source.append(" ");
   }
 
-  std::cerr << "=============== SOURCE ===============\n"
-            << string_source << "\n======================================\n";
+  LOG("", R"(
+=============== SOURCE ===============
+%s
+======================================
+)",
+      string_source);
 
   frontend::StringSource src(std::move(string_source));
   diagnostic::TrivialConsumer diag;

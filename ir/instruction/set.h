@@ -67,7 +67,7 @@ struct InstructionSet {
     auto iter = index_mapping_.find(inst.rtti());
 #if defined(ICARUS_DEBUG)
     if (iter == index_mapping_.end()) {
-      DEBUG_LOG()("Failed to find instruction ", inst.rtti().name());
+      LOG("", "Failed to find instruction %s", inst.rtti().name());
     }
 #endif
     return iter->second;

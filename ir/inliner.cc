@@ -1,5 +1,6 @@
 #include "ir/inliner.h"
 
+#include "base/log.h"
 #include "base/macros.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
@@ -17,7 +18,7 @@ absl::flat_hash_map<
 Inline(Builder &bldr, Jump const *to_be_inlined,
        absl::Span<ir::Value const> arguments,
        LocalBlockInterpretation const &block_interp) {
-  DEBUG_LOG("inliner")(*to_be_inlined);
+  LOG("inliner", "%s", *to_be_inlined);
   if (to_be_inlined->work_item) {
     auto f = std::move(*to_be_inlined->work_item);
     if (f) { std::move(f)(); }

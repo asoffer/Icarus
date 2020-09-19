@@ -2,115 +2,90 @@
 #define ICARUS_BASE_LOG_H
 
 #include <experimental/source_location>
-#include <iostream>
-#include <mutex>
-#include <thread>
+#include <string_view>
 
+#include "absl/base/attributes.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/strings/str_cat.h"
-#include "base/guarded.h"
+#include "absl/strings/str_format.h"
+#include "absl/synchronization/mutex.h"
+#include "base/global.h"
 #include "base/stringify.h"
 
 namespace base {
-namespace internal {
-extern base::guarded<
-    absl::flat_hash_map<std::string_view, std::vector<std::atomic<bool> *>>>
-    log_switches;
-extern base::guarded<absl::flat_hash_set<std::string_view>> on_logs;
 
-inline std::recursive_mutex logger_mtx_;
-}  // namespace internal
+namespace internal_logging {
 
-void EnableLogging(std::string_view key);
-
-struct Logger {
-  Logger(std::string (*fmt)(std::experimental::source_location const &src),
-         void (*fn)() = nullptr,
-         std::experimental::source_location src_loc =
-             std::experimental::source_location::current())
-      : fn_(fn) {
-    internal::logger_mtx_.lock();
-    std::cerr << fmt(src_loc);
-  }
-
-  operator bool() const { return true; }
-
-  // Loggers are not shared betweer threads, so this doesn't need to be
-  // synchronized in any way.
-  mutable bool locked_ = false;
-
-  ~Logger() {
-    internal::logger_mtx_.unlock();
-    std::cerr << "\n";
-    if (fn_) { fn_(); }
-  }
-  void (*fn_)() = nullptr;
-  bool do_log_  = false;
-};
+uintptr_t CurrentThreadId();
 
 template <typename T>
-Logger const &operator<<(Logger const &l, T const &t) {
-  std::cerr << stringify(t);
-  return l;
+auto maybe_stringify(const T &arg) {
+  if constexpr (std::is_arithmetic_v<T>) {
+    return arg;
+  } else if constexpr (std::is_pointer_v<T>) {
+    return arg;
+  } else {
+    using ::base::stringify;
+    return stringify(arg);
+  }
 }
 
-inline std::string LogFormatterWithoutFunction(
-    std::experimental::source_location const &src_loc) {
-  std::stringstream ss;
-  ss << std::this_thread::get_id();
-  return absl::StrCat("\033[0;1;34m[", src_loc.file_name(), " ", ss.str(), ": ",
-                      src_loc.line(), "] \033[0m");
+inline base::Global<
+    absl::flat_hash_map<std::string_view, std::vector<std::atomic<bool> *>>>
+    log_switches;
+inline base::Global<absl::flat_hash_set<std::string_view>> on_logs;
+
+ABSL_CONST_INIT inline absl::Mutex logger_mtx_(absl::kConstInit);
+
+inline constexpr std::string_view kDefaultLogFormat =
+    "\033[0;1;34m[%1$u %2$s:%3$u %4$s] \033[0m";
+inline constexpr std::string_view kLogWithoutFunctionNameFormat =
+    "\033[0;1;34m[%1$u %2$s:%3$u] \033[0m";
+
+template <typename... Args>
+void Log(absl::FormatSpec<uintptr_t, std::string_view, size_t,
+                          std::string_view> const &log_line_fmt,
+         std::experimental::source_location loc, std::string_view fn_name,
+         absl::FormatSpec<Args...> const &fmt, Args const &... args) {
+  absl::MutexLock lock(&base::internal_logging::logger_mtx_);
+  absl::FPrintF(stderr, log_line_fmt, CurrentThreadId(),
+                std::string_view(loc.file_name()),
+                static_cast<size_t>(loc.line()), fn_name);
+  absl::FPrintF(stderr, fmt, args...);
 }
 
-inline std::string DefaultLogFormatter(
-    std::experimental::source_location const &src_loc) {
-  std::stringstream ss;
-  ss << std::this_thread::get_id();
-  return absl::StrCat("\033[0;1;34m[", src_loc.file_name(), " ", ss.str(), ": ",
-                      src_loc.line(), " ", src_loc.function_name(),
-                      "] \033[0m");
-}
+}  // namespace internal_logging
 
-template <typename... Ts>
-void LogForMacro(Logger const &log, Ts &&... ts) {
-  (log << ... << std::forward<Ts>(ts));
-}
+void EnableLogging(std::string_view key);
+void DisableLogging(std::string_view key);
+
+#define LOG(key, fmt, ...)                                                     \
+  do { BASE_INTERNAL_LOG_IMPL(key, fmt, __VA_ARGS__); } while (false)
 
 #if defined(ICARUS_DEBUG)
-#define DEBUG_LOG(...)                                                         \
-  if ([]() -> bool {                                                           \
-        static std::atomic<bool> log_switch(false);                            \
-        static int registration =                                              \
-            [](std::initializer_list<std::string_view> keys) {                 \
-              if (keys.size() == 0) {                                          \
-                log_switch = true;                                             \
-                return 0;                                                      \
-              }                                                                \
-              for (std::string_view key : keys) {                              \
-                auto handle = ::base::internal::log_switches.lock();           \
-                if (::base::internal::on_logs.lock()->contains(key)) {         \
-                  log_switch = true;                                           \
-                };                                                             \
-                (*handle)[key].push_back(&log_switch);                         \
-              }                                                                \
-              return 0;                                                        \
-            }({__VA_ARGS__});                                                  \
-        return log_switch;                                                     \
-      }()) {                                                                   \
-  DEBUG_LOG_IMPL
 
-#define DEBUG_LOG_IMPL(...)                                                    \
-  LogForMacro(base::Logger{base::DefaultLogFormatter, nullptr,                 \
-                           std::experimental::source_location::current()},     \
-              __VA_ARGS__);                                                    \
-  }                                                                            \
-  do {                                                                         \
-  } while (false)
-
+#define BASE_INTERNAL_LOG_IMPL(k, fmt, ...)                                    \
+  if ([](std::string_view key) -> bool {                                       \
+        static std::atomic<bool> is_on([key] {                                 \
+          if (std::string_view(key).empty()) { return true; }                  \
+          auto handle = ::base::internal_logging::log_switches.lock();         \
+          bool log_on =                                                        \
+              ::base::internal_logging::on_logs.lock()->contains(key);         \
+          (*handle)[key].push_back(&is_on);                                    \
+          return log_on;                                                       \
+        }());                                                                  \
+        return is_on.load(std::memory_order_relaxed);                          \
+      }(k)) {                                                                  \
+    [](auto const &... args) {                                                 \
+      ::base::internal_logging::Log(                                           \
+          ::base::internal_logging::kDefaultLogFormat,                         \
+          ::std::experimental::source_location::current(), __func__, fmt "\n", \
+          ::base::internal_logging::maybe_stringify(args)...);                 \
+    }(__VA_ARGS__);                                                            \
+  }
 #else  // defined(ICARUS_DEBUG)
-#define DEBUG_LOG(...) DEBUG_LOG_IMPL
-#define DEBUG_LOG_IMPL(...)
+#define BASE_INTERNAL_LOG_IMPL(k, fmt, ...)
 #endif  // defined(ICARUS_DEBUG)
 
 }  // namespace base

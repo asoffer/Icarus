@@ -19,8 +19,7 @@ type::Typed<ir::Value> EvaluateIfConstant(Compiler &c,
                                           ast::Expression const *expr,
                                           type::QualType qt) {
   if (qt.constant()) {
-    DEBUG_LOG("EvaluateIfConstant")
-    ("Evaluating constant: ", expr->DebugString());
+    LOG("EvaluateIfConstant", "Evaluating constant: %s", expr->DebugString());
     auto maybe_val = c.Evaluate(type::Typed(expr, qt.type()));
     if (maybe_val) { return type::Typed<ir::Value>(*maybe_val, qt.type()); }
     c.diag().Consume(diagnostic::EvaluationFailure{
@@ -40,10 +39,10 @@ std::optional<core::FnArgs<type::Typed<ir::Value>>> Compiler::VerifyFnArgs(
     auto expr_qual_type = VerifyType(expr);
     err |= not expr_qual_type.ok();
     if (err) {
-      DEBUG_LOG("VerifyFnArgs")("Error with: ", expr->DebugString());
+      LOG("VerifyFnArgs", "Error with: %s", expr->DebugString());
       return type::Typed<ir::Value>(ir::Value(), nullptr);
     }
-    DEBUG_LOG("VerifyFnArgs")("constant: ", expr->DebugString());
+    LOG("VerifyFnArgs", "constant: %s", expr->DebugString());
     return EvaluateIfConstant(*this, expr, expr_qual_type);
   });
 
@@ -124,8 +123,7 @@ std::optional<Compiler::CallError::ErrorReason> MatchArgumentsToParameters(
 
   for (size_t i = args.pos().size(); i < params.size(); ++i) {
     auto const &param = params[i];
-    DEBUG_LOG("match")
-    ("Matching param in position ", i, "(name = ", param.name, ")");
+    LOG("match", "Matching param in position %u (name = %s)", i, param.name);
     if (args.at_or_null(param.name)) { continue; }
 
     // No argument provided by that name? This could be because we have
@@ -303,7 +301,7 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
 
   data().SetViableOverloads(call_expr->callee(), std::move(os));
 
-  ASSERT(return_types.size() == 1u) << "TODO: Support dynamic dispatch.";
+  ASSERT(return_types.size() == 1u);
   return type::QualType(return_types.front(), type::Quals::Unqualified());
 }
 

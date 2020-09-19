@@ -37,15 +37,14 @@ namespace {
 absl::flat_hash_map<ir::Jump const *, ir::ScopeDef const *> MakeJumpInits(
     Compiler *c, ast::OverloadSet const &os) {
   absl::flat_hash_map<ir::Jump const *, ir::ScopeDef const *> inits;
-  DEBUG_LOG("ScopeNode")
-  ("Overload set for inits has size ", os.members().size());
+  LOG("ScopeNode", "Overload set for inits has size %u", os.members().size());
   for (ast::Expression const *member : os.members()) {
-    DEBUG_LOG("ScopeNode")(member->DebugString());
+    LOG("ScopeNode", "%s", member->DebugString());
 
     auto maybe_def = c->EvaluateAs<ir::ScopeDef *>(member);
     if (not maybe_def) { NOT_YET(); }
     auto *def = *maybe_def;
-    DEBUG_LOG("ScopeNode")(def);
+    LOG("ScopeNode", "%p", def);
     if (def->work_item and *def->work_item) {
       (std::move(*def->work_item))();
       def->work_item = nullptr;
@@ -98,8 +97,8 @@ ast::OverloadSet FindOverloads(
   for (type::Typed<ir::Value> const &arg : args) {
     AddAdl(&os, token, arg.type());
   };
-  DEBUG_LOG("FindOverloads")
-  ("Found ", os.members().size(), " overloads for '", token, "'");
+  LOG("FindOverloads", "Found %u overloads for '%s'", os.members().size(),
+      token);
   return os;
 }
 
@@ -133,7 +132,7 @@ std::optional<ast::OverloadSet> MakeOverloadSet(
 template <typename NodeType>
 base::move_func<void()> *DeferBody(Compiler::PersistentResources resources,
                                    NodeType const *node, type::Type const *t) {
-  DEBUG_LOG("DeferBody")(node->DebugString());
+  LOG("DeferBody", "%s", node->DebugString());
   auto [iter, success] = resources.data.deferred_work_.lock()->emplace(
       node, [c = Compiler(resources), node, t]() mutable {
         if constexpr (base::meta<NodeType> ==
@@ -296,7 +295,7 @@ void Compiler::EmitMoveInit(
   }
 
   auto const &os = data().ViableOverloads(node->callee());
-  ASSERT(os.members().size() == 1u) << "TODO: Support dynamic dispatch.";
+  ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
   FnCallDispatchTable::EmitMoveInit(this, os.members().front(), args, to);
   // TODO node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
 }
@@ -334,7 +333,7 @@ void Compiler::EmitCopyInit(ast::Call const *node,
   }
 
   auto const &os = data().ViableOverloads(node->callee());
-  ASSERT(os.members().size() == 1u) << "TODO: Support dynamic dispatch.";
+  ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
   FnCallDispatchTable::EmitCopyInit(this, os.members().front(), args, to);
   // TODO node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
 }
@@ -373,7 +372,7 @@ void Compiler::EmitAssign(
   }
 
   auto const &os = data().ViableOverloads(node->callee());
-  ASSERT(os.members().size() == 1u) << "TODO: Support dynamic dispatch.";
+  ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
   return FnCallDispatchTable::EmitAssign(this, os.members().front(), args, to);
   // TODO node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
 }
@@ -405,7 +404,7 @@ ir::Value Compiler::EmitValue(ast::Call const *node) {
   auto qt = *ASSERT_NOT_NULL(data().qual_type(node));
 
   auto const &os = data().ViableOverloads(node->callee());
-  ASSERT(os.members().size() == 1u) << "TODO: Support dynamic dispatch.";
+  ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
   switch (qt.expansion_size()) {
     case 0:
       FnCallDispatchTable::EmitMoveInit(this, os.members().front(), args, {});
@@ -473,7 +472,7 @@ ir::Value Compiler::EmitValue(ast::Cast const *node) {
 ir::Value Compiler::EmitValue(ast::Declaration const *node) {
   // TODO: The entirety of constant-caching mechanism here is weird and broken
   // and needs a cleanup.
-  DEBUG_LOG("EmitValueDeclaration")(node->id());
+  LOG("EmitValueDeclaration", "%s", node->id());
   if (node->flags() & ast::Declaration::f_IsConst) {
     if (node->module() != &data().module()) {
       // Constant declarations from other modules should already be stored on
@@ -485,15 +484,14 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
 
     if (node->flags() & ast::Declaration::f_IsFnParam) {
       auto val = data().LoadConstantParam(node);
-      DEBUG_LOG("EmitValueDeclaration")(val);
+      LOG("EmitValueDeclaration", "%s", val);
       return val;
     } else {
       if (auto *constant_value = data().Constant(node)) {
         // TODO: This feels quite hacky.
         if (node->init_val()->is<ast::StructLiteral>()) {
           if (not constant_value->complete and state_.must_complete) {
-            DEBUG_LOG("compile-work-queue")
-            ("Request work complete-struct: ", node);
+            LOG("compile-work-queue", "Request work complete-struct: %p", node);
             state_.work_queue.Enqueue({
                 .kind     = WorkItem::Kind::CompleteStructMembers,
                 .node     = node->init_val(),
@@ -507,8 +505,8 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
       auto const *t = type_of(node);
 
       if (node->IsCustomInitialized()) {
-        DEBUG_LOG("EmitValueDeclaration")
-        ("Computing slot with ", node->init_val()->DebugString());
+        LOG("EmitValueDeclaration", "Computing slot with %s",
+            node->init_val()->DebugString());
         auto maybe_val =
             Evaluate(type::Typed(node->init_val(), t), state_.must_complete);
         if (not maybe_val) {
@@ -518,7 +516,7 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
           return ir::Value();
         }
 
-        DEBUG_LOG("EmitValueDeclaration")("Setting slot = ", *maybe_val);
+        LOG("EmitValueDeclaration", "Setting slot = %s", *maybe_val);
         data().SetConstant(node, *maybe_val);
 
         // TODO: This is a struct-speficic hack.
@@ -918,7 +916,7 @@ ir::Value Compiler::EmitValue(ast::Jump const *node) {
           decl.get(), jmp_type->params()[i++].value);
     });
 
-    DEBUG_LOG("Jump")("Jump type = ", jmp_type->to_string());
+    LOG("Jump", "Jump type = %s", jmp_type->to_string());
     ir::Jump jmp(jmp_type, std::move(params));
     if (work_item_ptr) { jmp.work_item = work_item_ptr; }
     return jmp;
@@ -1002,7 +1000,7 @@ ir::Value Compiler::EmitValue(ast::YieldStmt const *node) {
 }
 
 ir::Value Compiler::EmitValue(ast::ScopeLiteral const *node) {
-  DEBUG_LOG("ScopeLiteral")(node->state_type());
+  LOG("ScopeLiteral", "%p", node->state_type());
   type::Type const *state_type = nullptr;
   if (node->state_type()) {
     auto maybe_type = EvaluateAs<type::Type const *>(node->state_type());
@@ -1030,7 +1028,7 @@ ir::Value Compiler::EmitValue(ast::ScopeLiteral const *node) {
 }
 
 ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
-  DEBUG_LOG("ScopeNode")("Emitting IR for ScopeNode");
+  LOG("ScopeNode","Emitting IR for ScopeNode");
 
   // Jump to a new block in case some scope ends up with `goto start()` in order
   // to re-evealuate arguments.
@@ -1046,7 +1044,7 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
                    auto os, MakeOverloadSet(this, node->name(), args));
 
   auto inits = MakeJumpInits(this, os);
-  DEBUG_LOG("ScopeNode")(inits);
+  LOG("ScopeNode","%s", inits);
 
   ASSIGN_OR(
       return ir::Value(),  //
@@ -1071,13 +1069,12 @@ struct IncompleteField {
 };
 
 WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
-  DEBUG_LOG("struct")
-  ("Completing struct-literal emission: ", node,
-   " must-complete = ", state_.must_complete);
+  LOG("struct", "Completing struct-literal emission: %p must-complete = %s",
+      node, state_.must_complete ? "true" : "false");
 
   type::Struct *s = data().get_struct(node);
   if (s->completeness() == type::Completeness::Complete) {
-    DEBUG_LOG("struct")("Already complete, exiting: ", node);
+    LOG("struct", "Already complete, exiting: %p", node);
     return WorkItem::Result::Success;
   }
 
@@ -1140,16 +1137,14 @@ WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
   fn.WriteByteCode<interpretter::instruction_set_t>();
   interpretter::Execute(std::move(fn));
   s->complete();
-  DEBUG_LOG("struct")
-  ("Completed ", node->DebugString(), " which is a struct ", *s, " with ",
-   s->fields().size(), " field(s).");
+  LOG("struct", "Completed %s which is a struct %s with %u field(s).",
+      node->DebugString(), *s, s->fields().size());
   return WorkItem::Result::Success;
 }
 
 ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
-  DEBUG_LOG("struct")
-  ("Starting struct-literal emission: ", node,
-   state_.must_complete ? " (must complete)" : " (need not complete)");
+  LOG("struct", "Starting struct-literal emission: %p%s", node,
+      state_.must_complete ? " (must complete)" : " (need not complete)");
 
   if (type::Struct *s = data().get_struct(node)) {
     return ir::Value(static_cast<type::Type const *>(s));
@@ -1164,7 +1159,7 @@ ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
               ast::Hashtag(ast::Hashtag::Builtin::Immovable)),
       });
 
-  DEBUG_LOG("struct")("Allocating a new struct ", s, " for ", node);
+  LOG("struct", "Allocating a new struct %p for %p", s, node);
   data().set_struct(node, s);
 
   // Note: VerifyBody may end up triggering EmitValue calls for member types
@@ -1185,7 +1180,7 @@ ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
   if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
 
   if (state_.must_complete) {
-    DEBUG_LOG("compile-work-queue")("Request work complete struct: ", node);
+    LOG("compile-work-queue", "Request work complete struct: %p", node);
     state_.work_queue.Enqueue({
         .kind     = WorkItem::Kind::CompleteStructMembers,
         .node     = node,

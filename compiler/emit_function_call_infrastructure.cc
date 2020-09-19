@@ -30,17 +30,16 @@ void MakeAllStackAllocations(Compiler *compiler, ast::FnScope const *fn_scope) {
   for (auto *scope : fn_scope->descendants()) {
     if (scope != fn_scope and scope->is<ast::FnScope>()) { continue; }
     for (const auto &[key, val] : scope->decls_) {
-      DEBUG_LOG("MakeAllStackAllocations")(key);
+      LOG("MakeAllStackAllocations", "%s", key);
       for (auto *decl : val) {
         if (decl->flags() &
             (ast::Declaration::f_IsConst | ast::Declaration::f_IsFnParam)) {
-          DEBUG_LOG("MakeAllStackAllocations")
-          ("skipping constant/param decl ", decl->id());
+          LOG("MakeAllStackAllocations", "skipping constant/param decl %s",
+              decl->id());
           continue;
         }
 
-        DEBUG_LOG("MakeAllStackAllocations")
-        ("allocating ", decl->id());
+        LOG("MakeAllStackAllocations", "allocating %s", decl->id());
 
         compiler->data().set_addr(
             decl, compiler->builder().Alloca(compiler->type_of(decl)));
@@ -53,9 +52,9 @@ void MakeAllDestructions(Compiler *compiler, ast::ExecScope const *exec_scope) {
   // TODO store these in the appropriate order so we don't have to compute this?
   // Will this be faster?
   std::vector<ast::Declaration *> ordered_decls;
-  DEBUG_LOG("MakeAllDestructions")("decls in this scope:");
+  LOG("MakeAllDestructions", "decls in this scope:");
   for (auto &[name, decls] : exec_scope->decls_) {
-    DEBUG_LOG("MakeAllDestructions")("... ", name);
+    LOG("MakeAllDestructions", "... %s", name);
     ordered_decls.insert(ordered_decls.end(), decls.begin(), decls.end());
   }
 
@@ -77,7 +76,7 @@ void EmitIrForStatements(Compiler *compiler,
                          base::PtrSpan<ast::Node const> span) {
   ICARUS_SCOPE(ir::SetTemporaries(compiler->builder())) {
     for (auto *stmt : span) {
-      DEBUG_LOG("EmitIrForStatements")(stmt->DebugString());
+      LOG("EmitIrForStatements", "%s", stmt->DebugString());
       compiler->EmitValue(stmt);
       compiler->builder().FinishTemporariesWith(
           [compiler](type::Typed<ir::Reg> r) {
@@ -138,7 +137,7 @@ void CompleteBody(Compiler *compiler, ast::ShortFunctionLiteral const *node,
 
 void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
                   type::Function const *t) {
-  DEBUG_LOG("CompleteBody")(node->DebugString());
+  LOG("CompleteBody", "%s", node->DebugString());
   // TODO have validate return a bool distinguishing if there are errors and
   // whether or not we can proceed.
 

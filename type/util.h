@@ -153,7 +153,7 @@ auto ApplyTypes(Type const *t, Fn &&fn) {
   // function we want to call.
   size_t index = 0;
   bool found   = ((++index, type::Compare<Ts>(t)) or ...);
-  ASSERT(found == true) << *t;
+  ASSERT(found == true);
 
   return (*kFnToCall)[index - 1](std::forward<Fn>(fn));
 }

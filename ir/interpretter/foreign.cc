@@ -82,7 +82,7 @@ void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
     pointer_values.reserve(fn_type->params().size());
     if (ffi_type == &ffi_type_pointer) {
       ir::Addr addr = arguments.get<ir::Addr>(kMaxSize * i++);
-      DEBUG_LOG("CallFn")("Pushing pointer addr = ", addr);
+      LOG("CallFn","Pushing pointer addr = %s", addr);
       switch (addr.kind()) {
         case ir::Addr::Kind::Heap: {
           pointer_values.push_back(addr.heap());
@@ -112,10 +112,10 @@ void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
   // TODO this might fail and we need to figure out how to catch that.
   auto prep_result = ffi_prep_cif(&cif, FFI_DEFAULT_ABI, arg_types.size(),
                                   ToFfiType(out_type), arg_types.data());
-  DEBUG_LOG("foreign-errno")("before: ", errno);
+  LOG("foreign-errno", "before: %d", errno);
   ASSERT(prep_result == FFI_OK);
   ffi_call(&cif, f.get(), &ret, arg_vals.data());
-  DEBUG_LOG("foreign-errno")("after: ", errno);
+  LOG("foreign-errno", "after: %d", errno);
 
   if (out_type == type::Void()) {
     goto done;

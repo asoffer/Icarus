@@ -105,7 +105,7 @@ void Compiler::EmitCopyInit(
       EmitCopyInit(node->operand(), to);
       break;
     default: {
-      DEBUG_LOG()(node->DebugString());
+      LOG("", "%s", node->DebugString());
       auto from_val = EmitValue(node);
       auto from_qt  = *data().qual_type(node);
       if (to.size() == 1) {

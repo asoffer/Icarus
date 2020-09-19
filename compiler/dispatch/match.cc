@@ -27,8 +27,7 @@ std::optional<FailedMatch> MatchNamedArgsToParams(
     core::Params<type::QualType> *matched_params) {
   for (size_t i = args.pos().size(); i < params.size(); ++i) {
     auto const &param = params[i];
-    DEBUG_LOG("match")
-    ("Matching param in position ", i, "(name = ", param.name, ")");
+    LOG("match", "Matching param in position %u (name = %s)", i, param.name);
     if (auto *result = args.at_or_null(param.name)) {
       // TODO constant parameters
       type::Type const *meet = type::Meet(result->type(), param.value.type());

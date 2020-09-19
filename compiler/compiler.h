@@ -12,6 +12,7 @@
 #include "ast/overload_set.h"
 #include "ast/visitor.h"
 #include "base/debug.h"
+#include "base/log.h"
 #include "base/move_func.h"
 #include "compiler/cyclic_dependency_tracker.h"
 #include "compiler/data.h"
@@ -517,7 +518,7 @@ inline void WorkQueue::ProcessOneItem() {
   if (deferred) { items_.push(std::move(item)); }
 #if defined(ICARUS_DEBUG)
   if (deferred) {
-    DEBUG_LOG()("Deferring ", item.node->DebugString());
+    LOG("", "Deferring %s", item.node->DebugString());
     cycle_breaker_count_ = deferred ? cycle_breaker_count_ + 1 : 0;
   }
   ASSERT(cycle_breaker_count_ <= items_.size());

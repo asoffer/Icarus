@@ -13,8 +13,8 @@ base::expected<JumpDispatchTable> JumpDispatchTable::Verify(
     type::Type const *state_type,
     absl::flat_hash_set<ir::Jump const *> const &jumps,
     core::FnArgs<type::QualType> const &args) {
-  DEBUG_LOG("dispatch-verify")
-  ("Verifying overload set with ", jumps.size(), " members.");
+  LOG("dispatch-verify", "Verifying overload set with %u members.",
+      jumps.size());
 
   // Keep a collection of failed matches around so we can give better
   // diagnostics.
@@ -23,7 +23,7 @@ base::expected<JumpDispatchTable> JumpDispatchTable::Verify(
   for (ir::Jump const *jump : jumps) {
     // TODO the type of the specific overload could *correctly* be null and
     // we need to handle that case.
-    DEBUG_LOG("dispatch-verify")("Verifying ", jump);
+    LOG("dispatch-verify", "Verifying %p", jump);
 
     auto result = MatchArgsToParams(jump->params().Transform([](auto const &p) {
       return type::QualType::NonConstant(p.type());
@@ -42,7 +42,7 @@ base::expected<JumpDispatchTable> JumpDispatchTable::Verify(
                           [](auto const &, internal::ExprData const &data) {
                             return data.params();
                           })) {
-    DEBUG_LOG()(args.to_string());
+    LOG("", "%s", args.to_string());
     NOT_YET("log an error");
   }
   return table;

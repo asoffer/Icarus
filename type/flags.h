@@ -44,7 +44,7 @@ struct Flags : public type::Type {
   Typed<ir::FlagsVal, Flags> EmitLiteral(std::string_view member_name) const;
 
   std::optional<std::string_view> name(ir::FlagsVal v) const {
-    DEBUG_LOG("flags")(v);
+    LOG("flags", "%s", v);
     auto it = members_.find(v);
     if (it == members_.end()) return std::nullopt;
     return it->second;

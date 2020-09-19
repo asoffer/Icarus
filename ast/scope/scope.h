@@ -9,6 +9,7 @@
 #include "ast/ast_fwd.h"
 #include "base/cast.h"
 #include "base/debug.h"
+#include "base/log.h"
 
 namespace module {
 struct BasicModule;
@@ -31,9 +32,9 @@ struct Scope : public base::Cast<Scope> {
   template <typename Sc>
   Sc const *Containing() const {
     Scope const *scope = this;
-    DEBUG_LOG("scope")("Looking for ancestor of type ", typeid(Sc).name());
+    LOG("scope", "Looking for ancestor of type %s", typeid(Sc).name());
     while (scope and not scope->is<Sc>()) {
-      DEBUG_LOG("scope")(scope, " => ", scope->parent);
+      LOG("scope", "%p => %p", scope, scope->parent);
       scope = scope->parent;
     }
     return static_cast<Sc const *>(scope);

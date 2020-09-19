@@ -12,8 +12,8 @@ InstructionInliner::InstructionInliner(
       into_(into),
       register_offset_(into->num_regs()),
       block_interp_(std::move(block_interp)) {
-  DEBUG_LOG("InstructionInliner")("Inlining: ", *to_be_inlined);
-  DEBUG_LOG("InstructionInliner")("Into: ", *into);
+  LOG("InstructionInliner", "Inlining: %s", *to_be_inlined);
+  LOG("InstructionInliner", "Into: %s", *into);
 
   for (auto* block_to_copy : to_be_inlined->blocks()) {
     // Copy the block and then scan it for references to things that need to
@@ -66,7 +66,7 @@ void InstructionInliner::InlineJump(BasicBlock* block) {
       std::string_view next_name = "";
       size_t i                   = 0;
       for (std::string_view name : j.names()) {
-        DEBUG_LOG("InlineJump")(name);
+        LOG("InlineJump", "%s", name);
         if (name == "start" or name == "done" or
             block_interp_.block_node(name)) {
           next_name = name;
@@ -108,12 +108,12 @@ void InstructionInliner::InlineAllBlocks() {
   });
 
   for (auto [ignored, block] : blocks_) {
-    DEBUG_LOG("inliner-before")(*block);
+    LOG("inliner-before", "%s", *block);
 
     for (auto& inst : block->instructions_) { inst->Inline(*this); }
     InlineJump(block);
 
-    DEBUG_LOG("inliner-after")(*block);
+    LOG("inliner-after", "%s", *block);
   }
 }
 

@@ -119,7 +119,7 @@ constexpr exec_t GetInstruction() {
       iter->read<core::Bytes>().get();
 
       type::Function const *fn_type = f.type();
-      DEBUG_LOG("call")(f, ": ", fn_type->to_string());
+      LOG("call", "%s: %s", f, fn_type->to_string());
 
       // TODO you probably want interpretter::Arguments or something.
       size_t num_inputs = fn_type->params().size();
@@ -143,7 +143,7 @@ constexpr exec_t GetInstruction() {
       for (size_t i = 0; i < num_inputs; ++i) {
         if (iter->read<bool>()) {
           ir::Reg reg = iter->read<ir::Reg>();
-          DEBUG_LOG("call")(reg);
+          LOG("call", "%s", reg);
 
           if (frame) {
             frame->regs_.set_raw(ir::Reg::Arg(i),
@@ -184,7 +184,7 @@ constexpr exec_t GetInstruction() {
                 ? ctx.resolve<ir::Addr>(reg)
                 : ir::Addr::Heap(ctx.current_frame().regs_.raw(reg));
 
-        DEBUG_LOG("call")("Ret addr = ", addr);
+        LOG("call", "Ret addr = %s", addr);
         return_slots.push_back(addr);
       }
 
@@ -287,7 +287,7 @@ void ExecuteBlocks(ExecutionContext &ctx,
         uint16_t num_bytes = iter.read<uint16_t>();
         ir::Addr addr   = ctx.resolve(iter.read<ir::RegOr<ir::Addr>>().get());
         auto result_reg = iter.read<ir::Reg>().get();
-        DEBUG_LOG("load-instruction")(num_bytes, " ", addr, " ", result_reg);
+        LOG("load-instruction", "%u %s %s", num_bytes, addr, result_reg);
         ctx.Load(result_reg, addr, core::Bytes(num_bytes));
       } break;
 
@@ -308,7 +308,7 @@ void Execute(ir::Fn fn, base::untyped_buffer arguments,
 void Execute(ir::CompiledFn &&fn) {
   ASSERT(fn.type()->output().size() == 0u);
   // TODO actually just have a good way to construct the buffer
-  DEBUG_LOG("Execute")(fn);
+  LOG("Execute", "%s", fn);
   ExecutionContext ctx;
   Execute<instruction_set_t>(
       ctx, &fn,
@@ -325,7 +325,7 @@ base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
 
   ret_slots.push_back(ir::Addr::Heap(ret_buf.raw(0)));
   // TODO actually just have a good way to construct the buffer
-  DEBUG_LOG("EvaluateToBuffer")(fn);
+  LOG("EvaluateToBuffer", "%s", fn);
   ExecutionContext ctx;
   Execute<instruction_set_t>(
       ctx, &fn,

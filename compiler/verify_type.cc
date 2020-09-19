@@ -183,8 +183,8 @@ WorkItem::Result Compiler::VerifyBody(ast::FunctionLiteral const *node) {
   // TODO: Move this check out to the ProcessOneItem code?
   if (not data().ShouldVerifyBody(node)) { return WorkItem::Result::Success; }
 
-  DEBUG_LOG("function")
-  ("function-literal body verification: ", node->DebugString(), " ", &data());
+  LOG("function", "function-literal body verification: %s %p",
+      node->DebugString(), &data());
   auto const &fn_type =
       ASSERT_NOT_NULL(data().qual_type(node))->type()->as<type::Function>();
   // TODO: For now, we're cheating and asking just if the pointee is complete.
@@ -196,10 +196,10 @@ WorkItem::Result Compiler::VerifyBody(ast::FunctionLiteral const *node) {
       completeness = std::min(completeness, p->pointee()->completeness());
     }
     if (completeness < type::Completeness::Complete) {
-      DEBUG_LOG("function")("rescheduled");
+      LOG("function", "rescheduled");
       data().ClearVerifyBody(node);
 
-      DEBUG_LOG("compile-work-queue")("Request work fn-lit: ", node);
+      LOG("compile-work-queue", "Request work fn-lit: %p", node);
       state_.work_queue.Enqueue({
           .kind     = WorkItem::Kind::VerifyFunctionBody,
           .node     = node,
@@ -238,11 +238,11 @@ std::optional<core::Params<type::QualType>> VerifyParams(
 }
 
 type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
-  DEBUG_LOG("function")("Starting function-literal verification: ", node);
+  LOG("function", "Starting function-literal verification: %p", node);
 
   ASSIGN_OR(
       {
-        DEBUG_LOG("function")("Bailing due to errors");
+        LOG("function", "Bailing due to errors");
         return type::QualType::Error();
       },  //
       auto params, VerifyParams(this, node->params()));
@@ -267,7 +267,7 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
   if (error or absl::c_any_of(output_type_vec, [](type::Type const *t) {
         return t == nullptr;
       })) {
-    DEBUG_LOG("function")("Bailing due to errors");
+    LOG("function", "Bailing due to errors");
     return type::QualType::Error();
   }
 
@@ -275,7 +275,7 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
   // particular section of compilation. Right now we just have the grad total
   // count.
   if (diag().num_consumed() > 0) {
-    DEBUG_LOG("function")("Bailing due to errors");
+    LOG("function", "Bailing due to errors");
     return type::QualType::Error();
   }
 
@@ -291,7 +291,7 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
       }
     }
 
-    DEBUG_LOG("compile-work-queue")("Request work fn-lit: ", node);
+    LOG("compile-work-queue", "Request work fn-lit: %p", node);
     state_.work_queue.Enqueue({
         .kind     = WorkItem::Kind::VerifyFunctionBody,
         .node     = node,
@@ -300,12 +300,11 @@ type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
     });
     auto qt = type::QualType::Constant(
         type::Func(std::move(params), std::move(output_type_vec)));
-    DEBUG_LOG("function")
-    ("Setting function-literal type: ", node->DebugString(), " ", qt, " ",
-     &data());
+    LOG("function", "Setting function-literal type: %s %s %p",
+        node->DebugString(), qt, &data());
     return data().set_qual_type(node, qt);
   } else {
-    DEBUG_LOG("function")("Setting function-literal type");
+    LOG("function", "Setting function-literal type");
     return data().set_qual_type(node, ::compiler::VerifyBody(this, node));
   }
 }
@@ -338,7 +337,7 @@ WorkItem::Result Compiler::VerifyBody(ast::BlockLiteral const *node) {
 }
 
 type::QualType Compiler::VerifyType(ast::BlockLiteral const *node) {
-  DEBUG_LOG("compile-work-queue")("Request work block: ", node);
+  LOG("compile-work-queue", "Request work block: %p", node);
   state_.work_queue.Enqueue({
       .kind     = WorkItem::Kind::VerifyBlockBody,
       .node     = node,
@@ -408,7 +407,7 @@ WorkItem::Result Compiler::VerifyBody(ast::EnumLiteral const *node) {
     if (auto *decl = elem->if_as<ast::Declaration>()) {
       auto const &t = *ASSERT_NOT_NULL(
           VerifyType(ASSERT_NOT_NULL(decl->init_val())).type());
-      ASSERT(type::IsIntegral(&t) == true) << t;
+      ASSERT(type::IsIntegral(&t) == true);
       success = type::IsIntegral(&t);
       // TODO determine what is allowed here and how to generate errors.
     }
@@ -417,7 +416,7 @@ WorkItem::Result Compiler::VerifyBody(ast::EnumLiteral const *node) {
 }
 
 type::QualType Compiler::VerifyType(ast::EnumLiteral const *node) {
-  DEBUG_LOG("compile-work-queue")("Request work enum: ",node);
+  LOG("compile-work-queue", "Request work enum: %p", node);
   state_.work_queue.Enqueue({
       .kind     = WorkItem::Kind::VerifyEnumBody,
       .node     = node,
@@ -447,8 +446,8 @@ OrderedDependencyNodes(ast::ParameterizedExpression const *node, bool all) {
       ordered_nodes;
   node->parameter_dependency_graph().topologically([&](auto dep_node) {
     if (not deps.contains(dep_node)) { return; }
-    DEBUG_LOG("generic-fn")
-    ("adding ", ToString(dep_node.kind()), "`", dep_node.node()->id(), "`");
+    LOG("generic-fn", "adding %s`%s`", ToString(dep_node.kind()),
+        dep_node.node()->id());
     ordered_nodes.emplace_back(0, dep_node);
   });
 
@@ -476,9 +475,8 @@ Compiler::ComputeParamsFromArgs(
     absl::Span<std::pair<int, core::DependencyNode<ast::Declaration>> const>
         ordered_nodes,
     core::FnArgs<type::Typed<ir::Value>> const &args) {
-  DEBUG_LOG("generic-fn")
-  ("Creating a concrete implementation with ",
-   args.Transform([](auto const &a) { return a.type()->to_string(); }));
+  LOG("generic-fn", "Creating a concrete implementation with %s",
+      args.Transform([](auto const &a) { return a.type()->to_string(); }));
 
   core::Params<std::pair<ir::Value, type::QualType>> parameters(
       node->params().size());
@@ -495,9 +493,8 @@ Compiler::ComputeParamsFromArgs(
 
   // TODO use the proper ordering.
   for (auto [index, dep_node] : ordered_nodes) {
-    DEBUG_LOG("generic-fn")
-    ("Handling dep-node ", ToString(dep_node.kind()), "`",
-     dep_node.node()->id(), "`");
+    LOG("generic-fn", "Handling dep-node %s`%s`", ToString(dep_node.kind()),
+        dep_node.node()->id());
     switch (dep_node.kind()) {
       case core::DependencyNodeKind::ArgValue: {
         ir::Value val;
@@ -517,7 +514,7 @@ Compiler::ComputeParamsFromArgs(
         // Erase values not known at compile-time.
         if (val.get_if<ir::Reg>()) { val = ir::Value(); }
 
-        DEBUG_LOG("generic-fn")("... ", tostr(val));
+        LOG("generic-fn", "... %s", tostr(val));
         data().set_arg_value(dep_node.node()->id(), val);
       } break;
       case core::DependencyNodeKind::ArgType: {
@@ -531,7 +528,7 @@ Compiler::ComputeParamsFromArgs(
           auto *init_val = ASSERT_NOT_NULL(dep_node.node()->init_val());
           arg_type       = VerifyType(init_val).type();
         }
-        DEBUG_LOG("generic-fn")("... ", *arg_type);
+        LOG("generic-fn", "... %s", arg_type->to_string());
         data().set_arg_type(dep_node.node()->id(), arg_type);
       } break;
       case core::DependencyNodeKind::ParamType: {
@@ -557,7 +554,7 @@ Compiler::ComputeParamsFromArgs(
         // TODO: Once a parameter type has been computed, we know it's
         // argument type has already been computed so we can verify that the
         // implicit casts are allowed.
-        DEBUG_LOG("generic-fn")("... ", qt);
+        LOG("generic-fn", "... %s", qt.to_string());
         size_t i =
             *ASSERT_NOT_NULL(node->params().at_or_null(dep_node.node()->id()));
         parameters.set(
@@ -572,7 +569,7 @@ Compiler::ComputeParamsFromArgs(
         type::Typed<ir::Value> arg;
         if (index < args.pos().size()) {
           arg = args[index];
-          DEBUG_LOG("generic-fn")(tostr(*arg), " ", *arg.type());
+          LOG("generic-fn", "%s %s", tostr(*arg), arg.type()->to_string());
         } else if (auto const *a = args.at_or_null(dep_node.node()->id())) {
           arg = *a;
         } else {
@@ -581,7 +578,7 @@ Compiler::ComputeParamsFromArgs(
               type::Typed(ASSERT_NOT_NULL(dep_node.node()->init_val()), t));
           if (not maybe_val) { NOT_YET(); }
           arg = type::Typed<ir::Value>(*maybe_val, t);
-          DEBUG_LOG("generic-fn")(dep_node.node()->DebugString());
+          LOG("generic-fn", "%s", dep_node.node()->DebugString());
         }
 
         if (not data().Constant(dep_node.node())) {
@@ -744,7 +741,7 @@ WorkItem::Result Compiler::VerifyBody(ast::Jump const *node) {
 }
 
 type::QualType Compiler::VerifyType(ast::Jump const *node) {
-  DEBUG_LOG("Jump")(node->DebugString());
+  LOG("Jump", "%s", node->DebugString());
 
   bool err                = false;
   type::Type const *state = nullptr;
@@ -762,7 +759,7 @@ type::QualType Compiler::VerifyType(ast::Jump const *node) {
         return v.type();
       });
 
-  DEBUG_LOG("compile-work-queue")("Request work jump: ",node);
+  LOG("compile-work-queue", "Request work jump: %p", node);
   state_.work_queue.Enqueue({
       .kind     = WorkItem::Kind::VerifyJumpBody,
       .node     = node,
@@ -787,7 +784,7 @@ type::QualType Compiler::VerifyType(ast::YieldStmt const *node) {
 }
 
 type::QualType Compiler::VerifyType(ast::ScopeNode const *node) {
-  DEBUG_LOG("ScopeNode")(node->DebugString());
+  LOG("ScopeNode", "%s", node->DebugString());
   ASSIGN_OR(return type::QualType::Error(),  //
                    std::ignore, VerifyFnArgs(node->args()));
   for (auto const &block : node->blocks()) { VerifyType(&block); }
@@ -829,8 +826,8 @@ type::QualType Compiler::VerifyType(
            .is_movable = not node->contains_hashtag(
                ast::Hashtag(ast::Hashtag::Builtin::Immovable))});
 
-      DEBUG_LOG("struct")
-      ("Allocating a new (parameterized) struct ", s, " for ", node);
+      LOG("struct", "Allocating a new (parameterized) struct %p for %p", s,
+          node);
       c.data().set_struct(node, s);
       for (auto const &field : node->fields()) { c.VerifyType(&field); }
 
@@ -865,9 +862,9 @@ type::QualType Compiler::VerifyType(
       // TODO: What if execution fails.
       fn.WriteByteCode<interpretter::instruction_set_t>();
       interpretter::Execute(std::move(fn));
-      DEBUG_LOG("struct")
-      ("Completed ", node->DebugString(), " which is a (parameterized) struct ",
-       *s, " with ", s->fields().size(), " field(s).");
+      LOG("struct",
+          "Completed %s which is a (parameterized) struct %s with %u field(s).",
+          node->DebugString(), *s, s->fields().size());
       return s;
     } else {
       return data.get_struct(node);

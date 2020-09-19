@@ -188,7 +188,7 @@ void Compiler::Visit(type::Pointer const *t, ir::RegOr<ir::Addr> to,
 
 void Compiler::Visit(type::Primitive const *t, ir::RegOr<ir::Addr> to,
                      type::Typed<ir::Value> const &from, EmitCopyAssignTag) {
-  ASSERT(t == from.type()) << t->to_string() << " vs " << from.type()->to_string();
+  ASSERT(t == from.type());
   t->Apply([&](auto tag) {
     using T = typename decltype(tag)::type;
     builder().Store(from->template get<ir::RegOr<T>>(), to);

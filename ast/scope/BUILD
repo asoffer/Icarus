@@ -8,6 +8,7 @@ cc_library(
         "//ast:ast_fwd",
         "//base:cast",
         "//base:debug",
+        "//base:log",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/types:span"

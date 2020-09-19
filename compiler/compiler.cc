@@ -1,14 +1,15 @@
 #include "compiler/compiler.h"
 
 #include "ast/ast.h"
+#include "base/log.h"
 #include "compiler/compiler.h"
 #include "compiler/executable_module.h"
 #include "compiler/module.h"
 #include "diagnostic/consumer/consumer.h"
 #include "frontend/parse.h"
-#include "ir/interpretter/evaluate.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
+#include "ir/interpretter/evaluate.h"
 #include "ir/jump.h"
 #include "ir/value/value.h"
 #include "type/generic_struct.h"
@@ -81,7 +82,7 @@ void Compiler::CompleteDeferredBodies() {
       auto handle = data().deferred_work_.lock();
       if (handle->empty()) { return; }
       auto nh = handle->extract(handle->begin());
-      DEBUG_LOG("CompleteDeferredBodies")(nh.key()->DebugString());
+      LOG("CompleteDeferredBodies", "%s", nh.key()->DebugString());
       f = std::move(nh.mapped());
     }
     if (f) { std::move(f)(); }
@@ -116,7 +117,7 @@ static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
     // TODO is_big()?
 
     type::Type const *t = extracted_types[0];
-    DEBUG_LOG("MakeThunk")(*t, t->is_big());
+    LOG("MakeThunk", "%s %s", *t, t->is_big() ? "true" : "false");
     if (t->is_big()) {
       // TODO must `r` be holding a register?
       // TODO guaranteed move-elision

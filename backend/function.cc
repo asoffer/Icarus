@@ -2,6 +2,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "backend/type.h"
+#include "base/log.h"
 #include "base/meta.h"
 #include "ir/instruction/instructions.h"
 #include "llvm/IR/Function.h"
@@ -63,7 +64,7 @@ void TryEmitLlvmBasicBlock(ir::BasicBlock const *block,
                            IrToLlvmMapping &to_llvm) {
   to_llvm.builder.SetInsertPoint(to_llvm.blocks.at(block));
   for (auto const &instruction : block->instructions()) {
-    DEBUG_LOG("llvm-inst")(instruction.to_string());
+    LOG("llvm-inst", "%s", instruction.to_string());
     if (auto const *inst = instruction.if_as<ir::AddInstruction<int8_t>>()) {
       ASSIGN_OR(return, auto operands,
                       GatherBinaryInstructionOperands(*inst, to_llvm));

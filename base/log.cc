@@ -1,24 +1,32 @@
 #include "base/log.h"
 
 namespace base {
-namespace internal {
-base::guarded<
-    absl::flat_hash_map<std::string_view, std::vector<std::atomic<bool> *>>>
-    log_switches;
-base::guarded<absl::flat_hash_set<std::string_view>> on_logs;
-}  // namespace internal
+namespace {
 
-void EnableLogging(std::string_view key) {
-  auto handle = internal::log_switches.lock();
-  internal::on_logs.lock()->insert(key);
+thread_local void const *const thread_id = &thread_id;
+
+template <bool B>
+void SetLogging(std::string_view key) {
+  auto handle = ::base::internal_logging::log_switches.lock();
+  if constexpr (B) {
+    ::base::internal_logging::on_logs.lock()->insert(key);
+  } else {
+    ::base::internal_logging::on_logs.lock()->erase(key);
+  }
   if (auto iter = handle->find(key); iter != handle->end()) {
-    for (auto *ptr : iter->second) {
-      // TODO determine the minimum correct memory ordering constraint.
-      // TODO currently there is no mechanism for disabling logs so relocking
-      // `on_logs` each time is overkill.
-      *ptr = true;
-    }
+    for (auto *ptr : iter->second) { ptr->store(B, std::memory_order_relaxed); }
   }
 }
+
+}  // namespace
+
+void EnableLogging(std::string_view key) { SetLogging<true>(key); }
+void DisableLogging(std::string_view key) { SetLogging<false>(key); }
+
+namespace internal_logging {
+
+uintptr_t CurrentThreadId() { return reinterpret_cast<uintptr_t>(thread_id); }
+
+}  // namespace internal_logging
 
 }  // namespace base

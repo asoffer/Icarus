@@ -76,7 +76,7 @@ std::pair<ir::BasicBlock const *, ir::OutParams> EmitCallOneOverload(
     bldr.UncondJump(block_interp[next_block_name]);
   }
 
-  DEBUG_LOG("EmitCallOneOverload")(*bldr.CurrentGroup());
+  LOG("EmitCallOneOverload", "%s", *bldr.CurrentGroup());
   return exit_outs;
 }
 
@@ -85,8 +85,7 @@ std::pair<ir::BasicBlock const *, ir::OutParams> EmitCallOneOverload(
 void internal::OneTable::VerifyBlocks(Compiler *compiler,
                                       ast::ScopeNode const *node) {
   for (auto const &block : node->blocks()) {
-    DEBUG_LOG("VerifyBlocks")
-    ("Verifying dispatch for block `", block.name(), "`");
+    LOG("VerifyBlocks", "Verifying dispatch for block `%s`", block.name());
     auto const *block_def = scope_def_->block(block.name());
     if (not block_def) { NOT_YET("log an error"); }
 
@@ -116,10 +115,10 @@ void internal::OneTable::VerifyBlocks(Compiler *compiler,
       }
     }
 
-    DEBUG_LOG("VerifyBlocks")("    ", block_results);
+    LOG("VerifyBlocks", "    %s", block_results);
     if (block_results.empty()) {
       // There are no relevant yield statements
-      DEBUG_LOG("VerifyBlocks")("    ... empty block results");
+      LOG("VerifyBlocks", "    ... empty block results");
 
       ASSIGN_OR(continue,  //
                 auto jump_table,
@@ -131,7 +130,7 @@ void internal::OneTable::VerifyBlocks(Compiler *compiler,
     } else {
       // Find an `after` that matches
       for (auto const &fn_args : block_results) {
-        DEBUG_LOG("VerifyBlocks")("    ... result = ", fn_args);
+        LOG("VerifyBlocks", "    ... result = %s", fn_args);
         ASSIGN_OR(continue,  //
                   auto jump_table,
                   JumpDispatchTable::Verify(scope_def_->state_type_,
@@ -141,7 +140,7 @@ void internal::OneTable::VerifyBlocks(Compiler *compiler,
         ASSERT(success == true);
       }
     }
-    DEBUG_LOG("VerifyBlocks")("    ... done.");
+    LOG("VerifyBlocks", "    ... done.");
   }
 }
 
@@ -171,7 +170,7 @@ void internal::OneTable::VerifyJumps() {
                 auto outputs = fn.native()->type()->output();
                 next_types[block_name].emplace(outputs.begin(), outputs.end());
               } else {
-                DEBUG_LOG("VerifyJumps")(result.error());
+                LOG("VerifyJumps", "%s", result.error());
                 // This is entirely reasonable. It just means this particular
                 // path into a block can't be used but others are possible.
                 NOT_YET();
@@ -199,7 +198,7 @@ void internal::OneTable::VerifyJumps() {
     // call to `exit()` so it's safe to assume that the result type is void
     // (which is correctly default constructed so there's nothing to do).
 
-    ASSERT(iter->second.size() == 1u) << "TODO: Support dynamic dispatch.";
+    ASSERT(iter->second.size() == 1u);  // TODO: Support dynamic dispatch.
     result_types_ = std::vector<type::Type const *>(
         iter->second.begin()->begin(), iter->second.begin()->end());
   }
@@ -249,7 +248,7 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
   // If there are any scopes in this overload set that do not have blocks of the
   // corresponding names, we should exit.
 
-  DEBUG_LOG("ScopeNode")("Num tables = ", table.tables_.size());
+  LOG("ScopeNode", "Num tables = %u", table.tables_.size());
 
   for (auto &[_, one_table] : table.tables_) {
     one_table.VerifyBlocks(compiler, node);
@@ -262,7 +261,7 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
     result_types.push_back(one_table.result_types());
   }
 
-  ASSERT(result_types.size() == 1u) << "TODO: Support dynamic dispatch.";
+  ASSERT(result_types.size() == 1u);  // TODO: Support dynamic dispatch.
   table.qual_type_ =
       type::QualType::NonConstant(type::Tup(std::vector<type::Type const *>(
           result_types.front().begin(), result_types.front().end())));
@@ -276,7 +275,7 @@ void ScopeDispatchTable::EmitSplittingDispatch(
                         ir::LocalBlockInterpretation> const &block_interps,
     core::FnArgs<type::Typed<ir::Value>> const &args) const {
   auto &bldr = compiler->builder();
-  ASSERT(init_map_.size() == 1u) << "TODO: Support dynamic dispatch.";
+  ASSERT(init_map_.size() == 1u);  // TODO: Support dynamic dispatch.
   auto const &[jump, scope_def] = *init_map_.begin();
 
   ir::BasicBlock *init_block = bldr.AddBlock();
@@ -310,7 +309,7 @@ void internal::OneTable::EmitCall(
     ir::LocalBlockInterpretation const &block_interp) const {
   auto &bldr = compiler->builder();
   for (auto const &[node, table] : blocks) {
-    DEBUG_LOG("EmitCall")(node->DebugString());
+    LOG("EmitCall", "%s", node->DebugString());
 
     bldr.CurrentBlock() = block_interp[node];
     bldr.block_termination_state() =
@@ -349,7 +348,7 @@ void internal::OneTable::EmitCall(
       }
     }
 
-    ASSERT(table.table_.size() == 1u) << "TODO: Support dynamic dispatch.";
+    ASSERT(table.table_.size() == 1u);  // TODO: Support dynamic dispatch.
     auto const &[jump, expr_data] = *table.table_.begin();
     auto init_block = bldr.AddBlock();
     bldr.CurrentBlock() = init_block;
@@ -370,8 +369,8 @@ void internal::OneTable::EmitCall(
 ir::Value ScopeDispatchTable::EmitCall(
     Compiler *compiler,
     core::FnArgs<type::Typed<ir::Value>> const &args) const {
-  DEBUG_LOG("ScopeDispatchTable")
-  ("Emitting a table with ", init_map_.size(), " entries.");
+  LOG("ScopeDispatchTable", "Emitting a table with %u entries.",
+      init_map_.size());
   auto &bldr = compiler->builder();
 
   auto *landing_block  = bldr.AddBlock();
@@ -424,7 +423,7 @@ ir::Value ScopeDispatchTable::EmitCall(
 
   bldr.block_termination_state() = state;
   bldr.CurrentBlock()            = landing_block;
-  DEBUG_LOG("EmitCall")(*bldr.CurrentGroup());
+  LOG("EmitCall", "%s", *bldr.CurrentGroup());
   if (land_phi) {
     return ir::Value(land_phi->result);
   } else {

@@ -235,6 +235,12 @@ struct QualType {
 
   friend std::ostream &operator<<(std::ostream &os, QualType q);
 
+  std::string to_string() const {
+    std::stringstream ss;
+    ss << *this;
+    return ss.str();
+  }
+
  private:
   uintptr_t data_ = 0;
   uintptr_t num_  = 1;

@@ -434,7 +434,7 @@ struct Builder {
 
   Value Load(RegOr<Addr> r, type::Type const* t) {
     using base::stringify;
-    DEBUG_LOG("Load")("Calling Load(", stringify(r), ", ", t->to_string(), ")");
+    LOG("Load", "Calling Load(%s, %s)", r, t->to_string());
     if (t->is<type::Function>()) { return Value(Load<Fn>(r)); }
     return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
                             uint16_t, uint32_t, uint64_t, float, double,
@@ -624,7 +624,7 @@ struct Builder {
       // order issues (type/type.h can't depend on type/jump.h).
       SetRet(n, r->get<RegOr<Jump*>>());
     } else {
-      ASSERT(r.type()->is_big() == false) << r.type()->to_string();
+      ASSERT(r.type()->is_big() == false);
       type::Apply(r.type(), [&](auto tag) {
         using T = typename decltype(tag)::type;
         SetRet(n, r->get<RegOr<T>>());

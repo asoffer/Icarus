@@ -8,6 +8,7 @@ cc_library(
     linkopts = LLVM_LINKOPTS,
     deps = [
         ":type",
+        "//base:log",
         "//compiler:module",
         "//ir:compiled_fn",
         "//ir/instruction",

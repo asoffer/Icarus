@@ -73,6 +73,7 @@ cc_library(
         ":compiled_fn",
         ":jump",
         ":local_block_interpretation",
+        "//base:log",
         "//base:macros",
         "//ir/instruction:inliner",
         "//ir/blocks:basic",

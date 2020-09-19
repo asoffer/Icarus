@@ -38,6 +38,7 @@ cc_library(
         ":fn_args",
         ":params",
         ":params_ref",
+        "//base:log",
         "@com_google_absl//absl/types:span",
     ],
 )

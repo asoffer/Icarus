@@ -30,8 +30,7 @@ static void DeleteBlocks(absl::flat_hash_set<ir::BasicBlock*> const& to_delete,
     --tail;
   }
 
-  DEBUG_LOG("opt")
-  ("Num blocks reduced from ", fn->blocks().size(), " to ", tail + 1);
+  LOG("opt", "Num blocks reduced from %u to %u", fn->blocks().size(), tail + 1);
   fn->mutable_blocks().resize(tail + 1);
 }
 
@@ -73,7 +72,7 @@ void CombineBlocksStartingAt(ir::BasicBlock* block) {
                  return nullptr;
                }
              })) {
-    DEBUG_LOG("opt")("Combining ", next_block, " into ", block);
+    LOG("opt", "Combining %p into %p", next_block, block);
     if (next_block->incoming().size() != 1) { break; }
     block->Append(std::move(*next_block));
 
