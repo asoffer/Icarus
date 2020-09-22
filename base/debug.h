@@ -62,7 +62,7 @@ struct Asserter {
   ([](auto &&ptr,                                                              \
       std::experimental::source_location src_loc) -> decltype(auto) {          \
     if (ptr == nullptr) {                                                      \
-      LOG("%s is unexpectedly null.", #expr);                                  \
+      LOG("", "%s is unexpectedly null.", #expr);                              \
       ::std::abort();                                                          \
     }                                                                          \
     return static_cast<std::remove_reference_t<decltype(ptr)> &&>(ptr);        \

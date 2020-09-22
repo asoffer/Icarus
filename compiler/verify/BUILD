@@ -213,6 +213,7 @@ cc_test(
     deps = [
         "//compiler",
         "//test:module",
+
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -234,6 +235,28 @@ cc_library(
 cc_test(
     name = "designated_initializer_test",
     srcs = ["designated_initializer_test.cc"],
+    deps = [
+        "//compiler",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "function_literal",
+    srcs = ["function_literal.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+        "//compiler:extract_jumps",
+        "//type:cast",
+        "//type:qual_type",
+    ],
+)
+
+cc_test(
+    name = "function_literal_test",
+    srcs = ["function_literal_test.cc"],
     deps = [
         "//compiler",
         "//test:module",

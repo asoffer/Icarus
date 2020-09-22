@@ -119,6 +119,10 @@ struct Compiler
     }
   }
 
+  void Enqueue(WorkItem work_item) {
+    state_.work_queue.Enqueue(std::move(work_item));
+  }
+
   type::QualType VerifyType(ast::Node const *node) {
     return ast::Visitor<VerifyTypeTag, type::QualType()>::Visit(node);
   }
@@ -262,7 +266,7 @@ struct Compiler
   WorkItem::Result VerifyBody(ast::ParameterizedStructLiteral const *node);
   WorkItem::Result VerifyBody(ast::StructLiteral const *node);
 
-  type::QualType VerifyConcreteFnLit(ast::FunctionLiteral const *node);
+  type::QualType VerifyGenericFnLit(ast::FunctionLiteral const *node);
 
   ir::RegOr<ir::Addr> EmitRef(ast::Access const *node);
   ir::RegOr<ir::Addr> Visit(EmitRefTag, ast::Access const *node) override {
@@ -477,6 +481,9 @@ struct Compiler
   };
 
   ir::ModuleId EvaluateModuleWithCache(ast::Expression const *expr);
+
+  std::optional<core::Params<type::QualType>> VerifyParams(
+      core::Params<std::unique_ptr<ast::Declaration>> const &params);
 
  private:
   friend struct WorkItem;

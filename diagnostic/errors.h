@@ -80,53 +80,6 @@ struct AssigningToConstant {
   frontend::SourceRange range;
 };
 
-struct NoReturnTypes {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "no-return-type";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Attempting to return a value when function returns nothing."),
-        SourceQuote(src).Highlighted(range, Style{}));
-  }
-
-  frontend::SourceRange range;
-};
-
-struct ReturnTypeMismatch {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "return-type-mismatch";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Returning an expression of type `%s` from a function which "
-             "returns `%s`.",
-             actual->to_string(), expected->to_string()),
-        SourceQuote(src).Highlighted(range, Style{}));
-  }
-
-  type::Type const *actual;
-  type::Type const *expected;
-  frontend::SourceRange range;
-};
-
-struct ReturningWrongNumber {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "returning-wrong-number";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Attempting to return %u values from a function which has %u "
-             "return values.",
-             actual, expected),
-        SourceQuote(src).Highlighted(range, Style{}));
-  }
-
-  size_t actual;
-  size_t expected;
-  frontend::SourceRange range;
-};
-
 struct IndexedReturnTypeMismatch {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "indexed-return-type-mismatch";

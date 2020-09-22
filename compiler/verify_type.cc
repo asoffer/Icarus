@@ -28,6 +28,57 @@
 #include "type/util.h"
 
 namespace compiler {
+namespace {
+struct ReturningWrongNumber {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "returning-wrong-number";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text(
+            "Attempting to return %u values from a function which has %u "
+            "return values.",
+            actual, expected),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  }
+
+  size_t actual;
+  size_t expected;
+  frontend::SourceRange range;
+};
+
+struct ReturnTypeMismatch {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "return-type-mismatch";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text(
+            "Returning an expression of type `%s` from a function which "
+            "returns `%s`.",
+            actual->to_string(), expected->to_string()),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  }
+
+  type::Type const *actual;
+  type::Type const *expected;
+  frontend::SourceRange range;
+};
+
+struct NoReturnTypes {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "no-return-type";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text(
+            "Attempting to return a value when function returns nothing."),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  }
+
+  frontend::SourceRange range;
+};
+}  // namespace
 
 // TODO there's not that much shared between the inferred and uninferred
 // cases, so probably break them out.
@@ -92,7 +143,7 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node,
         for (auto *n : c->data().extraction_map_[node]) {
           if (auto *ret_node = n->if_as<ast::ReturnStmt>()) {
             if (not ret_node->exprs().empty()) {
-              c->diag().Consume(diagnostic::NoReturnTypes{
+              c->diag().Consume(NoReturnTypes{
                   .range = ret_node->range(),
               });
               err = true;
@@ -110,7 +161,7 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node,
           if (auto *ret_node = n->if_as<ast::ReturnStmt>()) {
             auto *t = ASSERT_NOT_NULL(saved_ret_types[ret_node]);
             if (t == outs[0]) { continue; }
-            c->diag().Consume(diagnostic::ReturnTypeMismatch{
+            c->diag().Consume(ReturnTypeMismatch{
                 .actual   = t,
                 .expected = outs[0],
                 .range    = ret_node->range(),
@@ -130,7 +181,7 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node,
             if (expr_type->is<type::Tuple>()) {
               auto const &tup_entries = expr_type->as<type::Tuple>().entries_;
               if (tup_entries.size() != outs.size()) {
-                c->diag().Consume(diagnostic::ReturningWrongNumber{
+                c->diag().Consume(ReturningWrongNumber{
                     .actual   = (expr_type->is<type::Tuple>()
                                    ? expr_type->as<type::Tuple>().size()
                                    : 1),
@@ -160,7 +211,7 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node,
                 if (err) { return type::QualType::Error(); }
               }
             } else {
-              c->diag().Consume(diagnostic::ReturningWrongNumber{
+              c->diag().Consume(ReturningWrongNumber{
                   .actual   = (expr_type->is<type::Tuple>()
                                  ? expr_type->as<type::Tuple>().size()
                                  : 1),
@@ -176,136 +227,6 @@ type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node,
         return type::QualType::Constant(node_type);
       } break;
     }
-  }
-}
-
-WorkItem::Result Compiler::VerifyBody(ast::FunctionLiteral const *node) {
-  // TODO: Move this check out to the ProcessOneItem code?
-  if (not data().ShouldVerifyBody(node)) { return WorkItem::Result::Success; }
-
-  LOG("function", "function-literal body verification: %s %p",
-      node->DebugString(), &data());
-  auto const &fn_type =
-      ASSERT_NOT_NULL(data().qual_type(node))->type()->as<type::Function>();
-  // TODO: For now, we're cheating and asking just if the pointee is complete.
-  // But really we want to check potentially further but need to be careful of
-  // cycles and whatnot.
-  for (auto const &param : fn_type.params()) {
-    auto completeness = param.value.type()->completeness();
-    if (auto const *p = param.value.type()->if_as<type::Pointer>()) {
-      completeness = std::min(completeness, p->pointee()->completeness());
-    }
-    if (completeness < type::Completeness::Complete) {
-      LOG("function", "rescheduled");
-      data().ClearVerifyBody(node);
-
-      LOG("compile-work-queue", "Request work fn-lit: %p", node);
-      state_.work_queue.Enqueue({
-          .kind     = WorkItem::Kind::VerifyFunctionBody,
-          .node     = node,
-          .context  = data(),
-          .consumer = diag(),
-      });
-      return WorkItem::Result::Success;
-    }
-  }
-
-  return ::compiler::VerifyBody(this, node, data().qual_type(node)->type()).ok()
-             ? WorkItem::Result::Success
-             : WorkItem::Result::Failure;
-}
-
-std::optional<core::Params<type::QualType>> VerifyParams(
-    Compiler *c,
-    core::Params<std::unique_ptr<ast::Declaration>> const &params) {
-  // Parameter types cannot be dependent in concrete implementations so it is
-  // safe to verify each of them separately (to generate more errors that are
-  // likely correct).
-
-  core::Params<type::QualType> type_params;
-  type_params.reserve(params.size());
-  bool err = false;
-  for (auto &d : params) {
-    auto qt = c->VerifyType(d.value.get());
-    if (qt.ok()) {
-      type_params.append(d.name, qt, d.flags);
-    } else {
-      err = true;
-    }
-  }
-  if (err) { return std::nullopt; }
-  return type_params;
-}
-
-type::QualType Compiler::VerifyConcreteFnLit(ast::FunctionLiteral const *node) {
-  LOG("function", "Starting function-literal verification: %p", node);
-
-  ASSIGN_OR(
-      {
-        LOG("function", "Bailing due to errors");
-        return type::QualType::Error();
-      },  //
-      auto params, VerifyParams(this, node->params()));
-
-  std::vector<type::Type const *> output_type_vec;
-  bool error   = false;
-  auto outputs = node->outputs();
-  if (outputs) {
-    output_type_vec.reserve(outputs->size());
-    for (auto *output : *outputs) {
-      auto result = VerifyType(output);
-      output_type_vec.push_back(result.type());
-      if (result.type() != nullptr and not result.constant()) {
-        // TODO this feels wrong because output could be a decl. And that decl
-        // being a const decl isn't what I care about.
-        NOT_YET("log an error");
-        error = true;
-      }
-    }
-  }
-
-  if (error or absl::c_any_of(output_type_vec, [](type::Type const *t) {
-        return t == nullptr;
-      })) {
-    LOG("function", "Bailing due to errors");
-    return type::QualType::Error();
-  }
-
-  // TODO need a better way to say if there was an error recorded in a
-  // particular section of compilation. Right now we just have the grad total
-  // count.
-  if (diag().num_consumed() > 0) {
-    LOG("function", "Bailing due to errors");
-    return type::QualType::Error();
-  }
-
-  if (outputs) {
-    for (size_t i = 0; i < output_type_vec.size(); ++i) {
-      if (auto *decl = (*outputs)[i]->if_as<ast::Declaration>()) {
-        output_type_vec[i] = type_of(decl);
-      } else {
-        ASSERT(output_type_vec[i] == type::Type_);
-        auto maybe_type = EvaluateAs<type::Type const *>((*outputs)[i]);
-        if (not maybe_type) { NOT_YET(); }
-        output_type_vec[i] = *maybe_type;
-      }
-    }
-
-    LOG("compile-work-queue", "Request work fn-lit: %p", node);
-    state_.work_queue.Enqueue({
-        .kind     = WorkItem::Kind::VerifyFunctionBody,
-        .node     = node,
-        .context  = data(),
-        .consumer = diag(),
-    });
-    auto qt = type::QualType::Constant(
-        type::Func(std::move(params), std::move(output_type_vec)));
-    LOG("function", "Setting function-literal type: %s %s %p",
-        node->DebugString(), qt, &data());
-    return data().set_qual_type(node, qt);
-  } else {
-    LOG("function", "Setting function-literal type");
-    return data().set_qual_type(node, ::compiler::VerifyBody(this, node));
   }
 }
 
@@ -616,30 +537,23 @@ DependentComputedData::InsertDependentResult MakeConcrete(
   return compiler_data.InsertDependent(node, parameters);
 }
 
-type::QualType Compiler::VerifyType(ast::FunctionLiteral const *node) {
-  ast::OverloadSet os;
-  os.insert(node);
-  data().SetAllOverloads(node, std::move(os));
-
-  if (not node->is_generic()) { return VerifyConcreteFnLit(node); }
-
+type::QualType Compiler::VerifyGenericFnLit(ast::FunctionLiteral const *node) {
   auto ordered_nodes = OrderedDependencyNodes(node);
 
   auto *diag_consumer = &diag();
-  auto gen            = [node, compiler_data = &data(), diag_consumer,
-              ordered_nodes(std::move(ordered_nodes))](
+  auto gen            = [node, importer = &importer(), compiler_data = &data(),
+              diag_consumer, ordered_nodes(std::move(ordered_nodes))](
                  core::FnArgs<type::Typed<ir::Value>> const &args) mutable
       -> type::Function const * {
     auto [params, rets, data, inserted] =
         MakeConcrete(node, &compiler_data->module(), ordered_nodes, args,
                      *compiler_data, *diag_consumer);
-    module::FileImporter<LibraryModule> importer;
     if (inserted) {
       Compiler c({
           .builder             = ir::GetBuilder(),
           .data                = data,
           .diagnostic_consumer = *diag_consumer,
-          .importer            = importer,
+          .importer            = *importer,
       });
 
       if (auto outputs = node->outputs(); outputs and not outputs->empty()) {
@@ -659,12 +573,10 @@ type::QualType Compiler::VerifyType(ast::FunctionLiteral const *node) {
     return ft;
   };
 
-  return data().set_qual_type(
-      node, type::QualType::Constant(new type::GenericFunction(
-                node->params().Transform([](auto const &p) {
-                  return type::GenericFunction::EmptyStruct{};
-                }),
-                std::move(gen))));
+  return type::QualType::Constant(type::Allocate<type::GenericFunction>(
+      node->params().Transform(
+          [](auto const &p) { return type::GenericFunction::EmptyStruct{}; }),
+      std::move(gen)));
 }
 
 type::QualType Compiler::VerifyType(ast::ShortFunctionLiteral const *node) {
@@ -674,7 +586,7 @@ type::QualType Compiler::VerifyType(ast::ShortFunctionLiteral const *node) {
 
   if (not node->is_generic()) {
     ASSIGN_OR(return type::QualType::Error(),  //
-                     auto params, VerifyParams(this, node->params()));
+                     auto params, VerifyParams(node->params()));
     ASSIGN_OR(return _, auto body_qt, VerifyType(node->body()));
     return data().set_qual_type(
         node, type::QualType::Constant(

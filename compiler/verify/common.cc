@@ -32,6 +32,27 @@ type::Typed<ir::Value> EvaluateIfConstant(Compiler &c,
 
 }  // namespace
 
+std::optional<core::Params<type::QualType>> Compiler::VerifyParams(
+    core::Params<std::unique_ptr<ast::Declaration>> const &params) {
+  // Parameter types cannot be dependent in concrete implementations so it is
+  // safe to verify each of them separately (to generate more errors that are
+  // likely correct).
+
+  core::Params<type::QualType> type_params;
+  type_params.reserve(params.size());
+  bool err = false;
+  for (auto &d : params) {
+    auto qt = VerifyType(d.value.get());
+    if (qt.ok()) {
+      type_params.append(d.name, qt, d.flags);
+    } else {
+      err = true;
+    }
+  }
+  if (err) { return std::nullopt; }
+  return type_params;
+}
+
 std::optional<core::FnArgs<type::Typed<ir::Value>>> Compiler::VerifyFnArgs(
     core::FnArgs<ast::Expression const *> const &args) {
   bool err      = false;

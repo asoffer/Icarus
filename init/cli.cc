@@ -1,7 +1,6 @@
 #include "init/cli.h"
 
-#include <iostream>
-
+#include "absl/strings/str_format.h"
 #include "base/debug.h"
 
 namespace cli {
@@ -30,28 +29,32 @@ int ParseAndRun(int argc, char *argv[]) {
 
         if (auto iter = ::cli::internal::all_handlers.find(arg + 2);
             iter == ::cli::internal::all_handlers.end()) {
-          std::cerr << "Invalid argument \"" << argv[arg_num]
-                    << "\" encountered (failed to find matching name).\n";
+          absl::FPrintF(stderr,
+                        "Invalid argument \"%s\" encountered (failed to find "
+                        "matching name).\n",
+                        argv[arg_num]);
           errors = true;
         } else {
           switch (ASSERT_NOT_NULL(iter->second->parse_and_apply_)(ptr)) {
             case ::cli::internal::Result::Ok: break;
             case ::cli::internal::Result::ParseError:
               if (was_eq) { *old_ptr = '='; }
-              std::cerr << "Failed to parse argument \"" << arg << "\".\n";
+              absl::FPrintF(stderr, "Failed to parse argument \"%s\".\n", arg);
               errors = true;
               break;
             case ::cli::internal::Result::AlreadyCalled:
-              std::cerr << "Flag \"" << arg
-                        << "\" was called more than once.\n";
+              absl::FPrintF(stderr, "Flag \"%s\" was called more than once.\n",
+                            arg);
               errors = true;
               break;
           }
         }
         if (was_eq) { *old_ptr = '='; }
       } else {
-        std::cerr << "Invalid argument \"" << argv[arg_num]
-                  << "\" encountered (starts with exactly one dash).\n";
+        absl::FPrintF(stderr,
+                      "Invalid argument \"%s\" encountered (starts with "
+                      "exactly one dash).\n",
+                      argv[arg_num]);
       }
     } else {
       HandleOther(arg);
@@ -66,7 +69,7 @@ int ParseAndRun(int argc, char *argv[]) {
 
   if (errors) { return -1; }
   if (execute == nullptr) {
-    std::cerr << "No function chosen to execute.\n";
+    absl::FPrintF(stderr, "No function chosen to execute.\n");
     return -1;
   }
   return execute();
