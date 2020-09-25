@@ -8,6 +8,7 @@
 #include "compiler/dispatch/scope_table.h"
 #include "compiler/emit_function_call_infrastructure.h"
 #include "compiler/executable_module.h"
+#include "compiler/verify/common.h"
 #include "diagnostic/consumer/trivial.h"
 #include "frontend/parse.h"
 #include "ir/builder.h"
@@ -713,6 +714,8 @@ ir::NativeFn MakeConcreteFromGeneric(
       .importer            = compiler->importer(),
   });
   temp_data.parent_ = &compiler->data();
+  // TODO: Audit this. Probably shouldn't be needed because we should have
+  // already computed it during verification.
   auto params =
       c.ComputeParamsFromArgs(node, OrderedDependencyNodes(node), args);
   auto find_dependent_result = compiler->data().FindDependent(node, params);

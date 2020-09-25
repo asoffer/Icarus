@@ -64,11 +64,6 @@ struct EmitMoveAssignTag {};
 // rather than separating all stages. In time we will see if this belief holds
 // water.
 
-// TODO: Document.
-std::vector<std::pair<int, core::DependencyNode<ast::Declaration>>>
-OrderedDependencyNodes(ast::ParameterizedExpression const *node,
-                       bool all = false);
-
 struct Compiler
     : ast::Visitor<EmitMoveInitTag,
                    void(absl::Span<type::Typed<ir::RegOr<ir::Addr>> const>)>,
@@ -265,8 +260,6 @@ struct Compiler
   WorkItem::Result VerifyBody(ast::Jump const *node);
   WorkItem::Result VerifyBody(ast::ParameterizedStructLiteral const *node);
   WorkItem::Result VerifyBody(ast::StructLiteral const *node);
-
-  type::QualType VerifyGenericFnLit(ast::FunctionLiteral const *node);
 
   ir::RegOr<ir::Addr> EmitRef(ast::Access const *node);
   ir::RegOr<ir::Addr> Visit(EmitRefTag, ast::Access const *node) override {

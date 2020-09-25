@@ -4,6 +4,7 @@
 #include "compiler/compiler.h"
 #include "compiler/dispatch/match.h"
 #include "compiler/dispatch/parameters_and_arguments.h"
+#include "compiler/library_module.h"
 #include "core/call.h"
 #include "core/fn_args.h"
 #include "diagnostic/errors.h"
@@ -30,7 +31,219 @@ type::Typed<ir::Value> EvaluateIfConstant(Compiler &c,
   return type::Typed<ir::Value>(ir::Value(), qt.type());
 }
 
+// Determines which arguments are passed to which parameters. No type-checking
+// is done in this phase. Matching arguments to parameters can be done, even on
+// generics without any type-checking.
+template <typename Ignored>
+std::optional<Compiler::CallError::ErrorReason> MatchArgumentsToParameters(
+    core::Params<Ignored> const &params,
+    core::FnArgs<type::Typed<ir::Value>> const &args) {
+  if (args.size() > params.size()) {
+    return Compiler::CallError::TooManyArguments{
+        .num_provided     = args.size(),
+        .max_num_accepted = params.size(),
+    };
+  }
+
+  absl::flat_hash_set<std::string> missing_non_defaultable;
+
+  for (size_t i = args.pos().size(); i < params.size(); ++i) {
+    auto const &param = params[i];
+    LOG("match", "Matching param in position %u (name = %s)", i, param.name);
+    if (args.at_or_null(param.name)) { continue; }
+
+    // No argument provided by that name? This could be because we have
+    // default parameters or an empty variadic pack.
+    // TODO: Handle variadic packs.
+    if (not(param.flags & core::HAS_DEFAULT)) {
+      missing_non_defaultable.insert(param.name);
+    }
+  }
+
+  // TODO: Instead of early exit get all relevant errors.
+  if (not missing_non_defaultable.empty()) {
+    return Compiler::CallError::MissingNonDefaultableArguments{
+        .names = std::move(missing_non_defaultable),
+    };
+  }
+
+  for (auto const &[name, val] : args.named()) {
+    auto const *index = params.at_or_null(name);
+    if (not index) {
+      return Compiler::CallError::NoParameterNamed{.name = name};
+    } else if (*index < args.pos().size()) {
+      return Compiler::CallError::PositionalArgumentNamed{.index = *index,
+                                                          .name  = name};
+    }
+  }
+
+  return std::nullopt;
+}
+
+void ExtractParams(
+    ast::Expression const *callee, type::Callable const *callable,
+    core::FnArgs<type::Typed<ir::Value>> const &args,
+    std::vector<std::tuple<ast::Expression const *, type::Callable const *,
+                           core::Params<type::QualType>>> &overload_params,
+    Compiler::CallError &errors) {
+  Compiler::CallError error;
+  if (auto const *f = callable->if_as<type::Function>()) {
+    if (auto error_reason = MatchArgumentsToParameters(f->params(), args)) {
+      errors.reasons.emplace(f, *std::move(error_reason));
+      return;
+    } else {
+      overload_params.emplace_back(callee, f, f->params());
+    }
+  } else if (auto const *os = callable->if_as<type::OverloadSet>()) {
+    for (auto const *overload : os->members()) {
+      // TODO: Callee provenance is wrong here.
+      ExtractParams(callee, overload, args, overload_params, errors);
+    }
+    if (overload_params.empty()) { return; }
+  } else if (auto const *gf = callable->if_as<type::GenericFunction>()) {
+    if (auto error_reason = MatchArgumentsToParameters(gf->params(), args)) {
+      errors.reasons.emplace(gf, *std::move(error_reason));
+      return;
+    } else {
+      // TODO: But this could fail and when it fails we want to capture failure
+      // reasons.
+      auto const *f = gf->concrete(args);
+      overload_params.emplace_back(callee, f, f->params());
+    }
+  } else {
+    UNREACHABLE();
+  }
+}
+
 }  // namespace
+
+// TODO: There's something strange about this: We want to work on a temporary
+// data/compiler, but using `this` makes it feel more permanent.
+core::Params<std::pair<ir::Value, type::QualType>>
+Compiler::ComputeParamsFromArgs(
+    ast::ParameterizedExpression const *node,
+    absl::Span<std::pair<int, core::DependencyNode<ast::Declaration>> const>
+        ordered_nodes,
+    core::FnArgs<type::Typed<ir::Value>> const &args) {
+  LOG("generic-fn", "Creating a concrete implementation with %s",
+      args.Transform([](auto const &a) { return a.type()->to_string(); }));
+
+  core::Params<std::pair<ir::Value, type::QualType>> parameters(
+      node->params().size());
+
+  auto tostr = [](ir::Value v) {
+    if (auto **t = v.get_if<type::Type const *>()) {
+      return (*t)->to_string();
+    } else {
+      std::stringstream ss;
+      ss << v;
+      return ss.str();
+    }
+  };
+
+  // TODO use the proper ordering.
+  for (auto [index, dep_node] : ordered_nodes) {
+    LOG("generic-fn", "Handling dep-node %s`%s`", ToString(dep_node.kind()),
+        dep_node.node()->id());
+    switch (dep_node.kind()) {
+      case core::DependencyNodeKind::ArgValue: {
+        ir::Value val;
+        if (index < args.pos().size()) {
+          val = *args[index];
+        } else if (auto const *a = args.at_or_null(dep_node.node()->id())) {
+          val = **a;
+        } else {
+          auto const *init_val = ASSERT_NOT_NULL(dep_node.node()->init_val());
+          type::Type const *t =
+              ASSERT_NOT_NULL(data().arg_type(dep_node.node()->id()));
+          auto maybe_val = Evaluate(type::Typed(init_val, t));
+          if (not maybe_val) { NOT_YET(); }
+          val = *maybe_val;
+        }
+
+        // Erase values not known at compile-time.
+        if (val.get_if<ir::Reg>()) { val = ir::Value(); }
+
+        LOG("generic-fn", "... %s", tostr(val));
+        data().set_arg_value(dep_node.node()->id(), val);
+      } break;
+      case core::DependencyNodeKind::ArgType: {
+        type::Type const *arg_type = nullptr;
+        if (index < args.pos().size()) {
+          arg_type = args[index].type();
+        } else if (auto const *a = args.at_or_null(dep_node.node()->id())) {
+          arg_type = a->type();
+        } else {
+          // TODO: What if this is a bug and you don't have an initial value?
+          auto *init_val = ASSERT_NOT_NULL(dep_node.node()->init_val());
+          arg_type       = VerifyType(init_val).type();
+        }
+        LOG("generic-fn", "... %s", arg_type->to_string());
+        data().set_arg_type(dep_node.node()->id(), arg_type);
+      } break;
+      case core::DependencyNodeKind::ParamType: {
+        type::Type const *t = nullptr;
+        if (auto const *type_expr = dep_node.node()->type_expr()) {
+          auto type_expr_type = VerifyType(type_expr).type();
+          if (type_expr_type != type::Type_) {
+            NOT_YET("log an error: ", type_expr->DebugString(), ": ",
+                    type_expr_type);
+          }
+
+          auto maybe_type = EvaluateAs<type::Type const *>(type_expr);
+          if (not maybe_type) { NOT_YET(); }
+          t = ASSERT_NOT_NULL(*maybe_type);
+        } else {
+          t = VerifyType(dep_node.node()->init_val()).type();
+        }
+
+        auto qt = (dep_node.node()->flags() & ast::Declaration::f_IsConst)
+                      ? type::QualType::Constant(t)
+                      : type::QualType::NonConstant(t);
+
+        // TODO: Once a parameter type has been computed, we know it's
+        // argument type has already been computed so we can verify that the
+        // implicit casts are allowed.
+        LOG("generic-fn", "... %s", qt.to_string());
+        size_t i =
+            *ASSERT_NOT_NULL(node->params().at_or_null(dep_node.node()->id()));
+        parameters.set(
+            i, core::Param<std::pair<ir::Value, type::QualType>>(
+                   dep_node.node()->id(), std::make_pair(ir::Value(), qt),
+                   node->params()[i].flags));
+      } break;
+      case core::DependencyNodeKind::ParamValue: {
+        // Find the argument associated with this parameter.
+        // TODO, if the type is wrong but there is an implicit cast, deal with
+        // that.
+        type::Typed<ir::Value> arg;
+        if (index < args.pos().size()) {
+          arg = args[index];
+          LOG("generic-fn", "%s %s", tostr(*arg), arg.type()->to_string());
+        } else if (auto const *a = args.at_or_null(dep_node.node()->id())) {
+          arg = *a;
+        } else {
+          auto const *t  = ASSERT_NOT_NULL(type_of(dep_node.node()));
+          auto maybe_val = Evaluate(
+              type::Typed(ASSERT_NOT_NULL(dep_node.node()->init_val()), t));
+          if (not maybe_val) { NOT_YET(); }
+          arg = type::Typed<ir::Value>(*maybe_val, t);
+          LOG("generic-fn", "%s", dep_node.node()->DebugString());
+        }
+
+        if (not data().Constant(dep_node.node())) {
+          // TODO complete?
+          data().SetConstant(dep_node.node(), *arg);
+        }
+
+        size_t i =
+            *ASSERT_NOT_NULL(node->params().at_or_null(dep_node.node()->id()));
+        parameters[i].value.first = *arg;
+      } break;
+    }
+  }
+  return parameters;
+}
 
 std::optional<core::Params<type::QualType>> Compiler::VerifyParams(
     core::Params<std::unique_ptr<ast::Declaration>> const &params) {
@@ -124,95 +337,6 @@ type::QualType Compiler::VerifyBinaryOverload(
                      type::Quals::Unqualified()));
 }
 
-namespace {
-
-// Determines which arguments are passed to which parameters. No type-checking
-// is done in this phase. Matching arguments to parameters can be done, even on
-// generics without any type-checking.
-template <typename Ignored>
-std::optional<Compiler::CallError::ErrorReason> MatchArgumentsToParameters(
-    core::Params<Ignored> const &params,
-    core::FnArgs<type::Typed<ir::Value>> const &args) {
-  if (args.size() > params.size()) {
-    return Compiler::CallError::TooManyArguments{
-        .num_provided     = args.size(),
-        .max_num_accepted = params.size(),
-    };
-  }
-
-  absl::flat_hash_set<std::string> missing_non_defaultable;
-
-  for (size_t i = args.pos().size(); i < params.size(); ++i) {
-    auto const &param = params[i];
-    LOG("match", "Matching param in position %u (name = %s)", i, param.name);
-    if (args.at_or_null(param.name)) { continue; }
-
-    // No argument provided by that name? This could be because we have
-    // default parameters or an empty variadic pack.
-    // TODO: Handle variadic packs.
-    if (not(param.flags & core::HAS_DEFAULT)) {
-      missing_non_defaultable.insert(param.name);
-    }
-  }
-
-  // TODO: Instead of early exit get all relevant errors.
-  if (not missing_non_defaultable.empty()) {
-    return Compiler::CallError::MissingNonDefaultableArguments{
-        .names = std::move(missing_non_defaultable),
-    };
-  }
-
-  for (auto const &[name, val] : args.named()) {
-    auto const *index = params.at_or_null(name);
-    if (not index) {
-      return Compiler::CallError::NoParameterNamed{.name = name};
-    } else if (*index < args.pos().size()) {
-      return Compiler::CallError::PositionalArgumentNamed{.index = *index,
-                                                          .name  = name};
-    }
-  }
-
-  return std::nullopt;
-}
-
-void ExtractParams(
-    ast::Expression const *callee,
-    type::Callable const *callable,
-    core::FnArgs<type::Typed<ir::Value>> const &args,
-    std::vector<std::tuple<ast::Expression const *, type::Callable const *,
-                           core::Params<type::QualType>>> &overload_params,
-    Compiler::CallError &errors) {
-  Compiler::CallError error;
-  if (auto const *f = callable->if_as<type::Function>()) {
-    if (auto error_reason = MatchArgumentsToParameters(f->params(), args)) {
-      errors.reasons.emplace(f, *std::move(error_reason));
-      return;
-    } else {
-      overload_params.emplace_back(callee, f, f->params());
-    }
-  } else if (auto const *os = callable->if_as<type::OverloadSet>()) {
-    for (auto const *overload : os->members()) {
-      // TODO: Callee provenance is wrong here.
-      ExtractParams(callee, overload, args, overload_params, errors);
-    }
-    if (overload_params.empty()) { return; }
-  } else if (auto const *gf = callable->if_as<type::GenericFunction>()) {
-    if (auto error_reason = MatchArgumentsToParameters(gf->params(), args)) {
-      errors.reasons.emplace(gf, *std::move(error_reason));
-      return;
-    } else {
-      // TODO: But this could fail and when it fails we want to capture failure
-      // reasons.
-      auto const *f = gf->concrete(args);
-      overload_params.emplace_back(callee, f, f->params());
-    }
-  } else {
-    UNREACHABLE();
-  }
-}
-
-}  // namespace
-
 std::pair<type::QualType,
           absl::flat_hash_map<ast::Expression const *, type::Callable const *>>
 Compiler::VerifyCallee(ast::Expression const *callee,
@@ -291,7 +415,7 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
       // Note: Missing/defaultable has already been handled.
       for (size_t i = expansion.pos().size(); i < params.size(); ++i) {
         auto const &param = params[i];
-        auto const *arg = expansion.at_or_null(param.name);
+        auto const *arg   = expansion.at_or_null(param.name);
         // It's okay if this argument is missing. We've already checked that all
         // required arguments (non-defaultable) are present, so this argument
         // missing means this must be defaultable.
@@ -310,7 +434,7 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
       }
 
       os.insert(callee);
-      
+
       return_types.push_back(callable_type->return_types(args));
       goto next_expansion;
     next_overload:;
@@ -324,6 +448,69 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
 
   ASSERT(return_types.size() == 1u);
   return type::QualType(return_types.front(), type::Quals::Unqualified());
+}
+
+DependentComputedData::InsertDependentResult MakeConcrete(
+    ast::ParameterizedExpression const *node, CompiledModule *mod,
+    absl::Span<std::pair<int, core::DependencyNode<ast::Declaration>> const>
+        ordered_nodes,
+    core::FnArgs<type::Typed<ir::Value>> const &args,
+    DependentComputedData &compiler_data,
+    diagnostic::DiagnosticConsumer &diag) {
+  module::FileImporter<LibraryModule> importer;
+  DependentComputedData temp_data(mod);
+  Compiler c({
+      .builder             = ir::GetBuilder(),
+      .data                = temp_data,
+      .diagnostic_consumer = diag,
+      .importer            = importer,
+  });
+  temp_data.parent_ = &compiler_data;
+
+  auto parameters = c.ComputeParamsFromArgs(node, ordered_nodes, args);
+  return compiler_data.InsertDependent(node, parameters);
+}
+
+std::vector<std::pair<int, core::DependencyNode<ast::Declaration>>>
+OrderedDependencyNodes(ast::ParameterizedExpression const *node) {
+  absl::flat_hash_set<core::DependencyNode<ast::Declaration>> deps;
+  for (auto const &p : node->params()) {
+    deps.insert(
+        core::DependencyNode<ast::Declaration>::MakeArgType(p.value.get()));
+    deps.insert(
+        core::DependencyNode<ast::Declaration>::MakeType(p.value.get()));
+    if (p.value->flags() & ast::Declaration::f_IsConst) {
+      deps.insert(
+          core::DependencyNode<ast::Declaration>::MakeValue(p.value.get()));
+      deps.insert(
+          core::DependencyNode<ast::Declaration>::MakeArgValue(p.value.get()));
+    }
+  }
+
+  std::vector<std::pair<int, core::DependencyNode<ast::Declaration>>>
+      ordered_nodes;
+  ordered_nodes.reserve(4 * deps.size());
+  node->parameter_dependency_graph().topologically([&](auto dep_node) {
+    if (not deps.contains(dep_node)) { return; }
+    LOG("OrderedDependencyNodes", "adding %s`%s`", ToString(dep_node.kind()),
+        dep_node.node()->id());
+    ordered_nodes.emplace_back(0, dep_node);
+  });
+
+  // Compute and set the index or `ordered_nodes` so that each node knows the
+  // ordering in source code. This allows us to match parameters to arguments
+  // efficiently.
+  absl::flat_hash_map<ast::Declaration const *, int> param_index;
+  int index = 0;
+  for (auto const &param : node->params()) {
+    param_index.emplace(param.value.get(), index++);
+  }
+
+  for (auto &[index, node] : ordered_nodes) {
+    index = param_index.find(node.node())->second;
+  }
+
+  return ordered_nodes;
 }
 
 }  // namespace compiler

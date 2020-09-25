@@ -10,11 +10,12 @@
 #include "compiler/dispatch/parameters_and_arguments.h"
 #include "compiler/extract_jumps.h"
 #include "compiler/library_module.h"
+#include "compiler/verify/common.h"
 #include "core/call.h"
 #include "diagnostic/errors.h"
 #include "frontend/lex/operators.h"
-#include "ir/interpretter/evaluate.h"
 #include "ir/compiled_fn.h"
+#include "ir/interpretter/evaluate.h"
 #include "ir/value/generic_fn.h"
 #include "type/cast.h"
 #include "type/generic_function.h"
@@ -347,238 +348,6 @@ type::QualType Compiler::VerifyType(ast::EnumLiteral const *node) {
   return data().set_qual_type(node, type::QualType::Constant(type::Type_));
 }
 
-std::vector<std::pair<int, core::DependencyNode<ast::Declaration>>>
-OrderedDependencyNodes(ast::ParameterizedExpression const *node, bool all) {
-  absl::flat_hash_set<core::DependencyNode<ast::Declaration>> deps;
-  for (auto const &p : node->params()) {
-    deps.insert(
-        core::DependencyNode<ast::Declaration>::MakeArgType(p.value.get()));
-    deps.insert(
-        core::DependencyNode<ast::Declaration>::MakeType(p.value.get()));
-    if (all or (p.value->flags() & ast::Declaration::f_IsConst)) {
-      deps.insert(
-          core::DependencyNode<ast::Declaration>::MakeValue(p.value.get()));
-      deps.insert(
-          core::DependencyNode<ast::Declaration>::MakeArgValue(p.value.get()));
-    }
-  }
-
-  std::vector<std::pair<int, core::DependencyNode<ast::Declaration>>>
-      ordered_nodes;
-  node->parameter_dependency_graph().topologically([&](auto dep_node) {
-    if (not deps.contains(dep_node)) { return; }
-    LOG("generic-fn", "adding %s`%s`", ToString(dep_node.kind()),
-        dep_node.node()->id());
-    ordered_nodes.emplace_back(0, dep_node);
-  });
-
-  // Compute and set the index or `ordered_nodes` so that each node knows the
-  // ordering in source code. This allows us to match parameters to arguments
-  // efficiently.
-  absl::flat_hash_map<ast::Declaration const *, int> param_index;
-  int index = 0;
-  for (auto const &param : node->params()) {
-    param_index.emplace(param.value.get(), index++);
-  }
-
-  for (auto &[index, node] : ordered_nodes) {
-    index = param_index.find(node.node())->second;
-  }
-
-  return ordered_nodes;
-}
-
-// TODO: There's something strange about this: We want to work on a temporary
-// data/compiler, but using `this` makes it feel more permanent.
-core::Params<std::pair<ir::Value, type::QualType>>
-Compiler::ComputeParamsFromArgs(
-    ast::ParameterizedExpression const *node,
-    absl::Span<std::pair<int, core::DependencyNode<ast::Declaration>> const>
-        ordered_nodes,
-    core::FnArgs<type::Typed<ir::Value>> const &args) {
-  LOG("generic-fn", "Creating a concrete implementation with %s",
-      args.Transform([](auto const &a) { return a.type()->to_string(); }));
-
-  core::Params<std::pair<ir::Value, type::QualType>> parameters(
-      node->params().size());
-
-  auto tostr = [](ir::Value v) {
-    if (auto **t = v.get_if<type::Type const *>()) {
-      return (*t)->to_string();
-    } else {
-      std::stringstream ss;
-      ss << v;
-      return ss.str();
-    }
-  };
-
-  // TODO use the proper ordering.
-  for (auto [index, dep_node] : ordered_nodes) {
-    LOG("generic-fn", "Handling dep-node %s`%s`", ToString(dep_node.kind()),
-        dep_node.node()->id());
-    switch (dep_node.kind()) {
-      case core::DependencyNodeKind::ArgValue: {
-        ir::Value val;
-        if (index < args.pos().size()) {
-          val = *args[index];
-        } else if (auto const *a = args.at_or_null(dep_node.node()->id())) {
-          val = **a;
-        } else {
-          auto const *init_val = ASSERT_NOT_NULL(dep_node.node()->init_val());
-          type::Type const *t =
-              ASSERT_NOT_NULL(data().arg_type(dep_node.node()->id()));
-          auto maybe_val = Evaluate(type::Typed(init_val, t));
-          if (not maybe_val) { NOT_YET(); }
-          val = *maybe_val;
-        }
-
-        // Erase values not known at compile-time.
-        if (val.get_if<ir::Reg>()) { val = ir::Value(); }
-
-        LOG("generic-fn", "... %s", tostr(val));
-        data().set_arg_value(dep_node.node()->id(), val);
-      } break;
-      case core::DependencyNodeKind::ArgType: {
-        type::Type const *arg_type = nullptr;
-        if (index < args.pos().size()) {
-          arg_type = args[index].type();
-        } else if (auto const *a = args.at_or_null(dep_node.node()->id())) {
-          arg_type = a->type();
-        } else {
-          // TODO: What if this is a bug and you don't have an initial value?
-          auto *init_val = ASSERT_NOT_NULL(dep_node.node()->init_val());
-          arg_type       = VerifyType(init_val).type();
-        }
-        LOG("generic-fn", "... %s", arg_type->to_string());
-        data().set_arg_type(dep_node.node()->id(), arg_type);
-      } break;
-      case core::DependencyNodeKind::ParamType: {
-        type::Type const *t = nullptr;
-        if (auto const *type_expr = dep_node.node()->type_expr()) {
-          auto type_expr_type = VerifyType(type_expr).type();
-          if (type_expr_type != type::Type_) {
-            NOT_YET("log an error: ", type_expr->DebugString(), ": ",
-                    type_expr_type);
-          }
-
-          auto maybe_type = EvaluateAs<type::Type const *>(type_expr);
-          if (not maybe_type) { NOT_YET(); }
-          t = ASSERT_NOT_NULL(*maybe_type);
-        } else {
-          t = VerifyType(dep_node.node()->init_val()).type();
-        }
-
-        auto qt = (dep_node.node()->flags() & ast::Declaration::f_IsConst)
-                      ? type::QualType::Constant(t)
-                      : type::QualType::NonConstant(t);
-
-        // TODO: Once a parameter type has been computed, we know it's
-        // argument type has already been computed so we can verify that the
-        // implicit casts are allowed.
-        LOG("generic-fn", "... %s", qt.to_string());
-        size_t i =
-            *ASSERT_NOT_NULL(node->params().at_or_null(dep_node.node()->id()));
-        parameters.set(
-            i, core::Param<std::pair<ir::Value, type::QualType>>(
-                   dep_node.node()->id(), std::make_pair(ir::Value(), qt),
-                   node->params()[i].flags));
-      } break;
-      case core::DependencyNodeKind::ParamValue: {
-        // Find the argument associated with this parameter.
-        // TODO, if the type is wrong but there is an implicit cast, deal with
-        // that.
-        type::Typed<ir::Value> arg;
-        if (index < args.pos().size()) {
-          arg = args[index];
-          LOG("generic-fn", "%s %s", tostr(*arg), arg.type()->to_string());
-        } else if (auto const *a = args.at_or_null(dep_node.node()->id())) {
-          arg = *a;
-        } else {
-          auto const *t  = ASSERT_NOT_NULL(type_of(dep_node.node()));
-          auto maybe_val = Evaluate(
-              type::Typed(ASSERT_NOT_NULL(dep_node.node()->init_val()), t));
-          if (not maybe_val) { NOT_YET(); }
-          arg = type::Typed<ir::Value>(*maybe_val, t);
-          LOG("generic-fn", "%s", dep_node.node()->DebugString());
-        }
-
-        if (not data().Constant(dep_node.node())) {
-          // TODO complete?
-          data().SetConstant(dep_node.node(), *arg);
-        }
-
-        size_t i =
-            *ASSERT_NOT_NULL(node->params().at_or_null(dep_node.node()->id()));
-        parameters[i].value.first = *arg;
-      } break;
-    }
-  }
-  return parameters;
-}
-
-DependentComputedData::InsertDependentResult MakeConcrete(
-    ast::ParameterizedExpression const *node, CompiledModule *mod,
-    absl::Span<std::pair<int, core::DependencyNode<ast::Declaration>> const>
-        ordered_nodes,
-    core::FnArgs<type::Typed<ir::Value>> const &args,
-    DependentComputedData &compiler_data,
-    diagnostic::DiagnosticConsumer &diag) {
-  module::FileImporter<LibraryModule> importer;
-  DependentComputedData temp_data(mod);
-  Compiler c({
-      .builder             = ir::GetBuilder(),
-      .data                = temp_data,
-      .diagnostic_consumer = diag,
-      .importer            = importer,
-  });
-  temp_data.parent_ = &compiler_data;
-
-  auto parameters = c.ComputeParamsFromArgs(node, ordered_nodes, args);
-  return compiler_data.InsertDependent(node, parameters);
-}
-
-type::QualType Compiler::VerifyGenericFnLit(ast::FunctionLiteral const *node) {
-  auto ordered_nodes = OrderedDependencyNodes(node);
-
-  auto *diag_consumer = &diag();
-  auto gen            = [node, importer = &importer(), compiler_data = &data(),
-              diag_consumer, ordered_nodes(std::move(ordered_nodes))](
-                 core::FnArgs<type::Typed<ir::Value>> const &args) mutable
-      -> type::Function const * {
-    auto [params, rets, data, inserted] =
-        MakeConcrete(node, &compiler_data->module(), ordered_nodes, args,
-                     *compiler_data, *diag_consumer);
-    if (inserted) {
-      Compiler c({
-          .builder             = ir::GetBuilder(),
-          .data                = data,
-          .diagnostic_consumer = *diag_consumer,
-          .importer            = *importer,
-      });
-
-      if (auto outputs = node->outputs(); outputs and not outputs->empty()) {
-        for (auto const *o : *outputs) {
-          auto qt = c.VerifyType(o);
-          ASSERT(qt == type::QualType::Constant(type::Type_));
-          auto maybe_type = c.EvaluateAs<type::Type const *>(o);
-          if (not maybe_type) { NOT_YET(); }
-          rets.push_back(ASSERT_NOT_NULL(*maybe_type));
-        }
-      }
-    }
-
-    type::Function const *ft = type::Func(
-        params.Transform([](auto const &p) { return p.second; }), rets);
-    data.set_qual_type(node, type::QualType::Constant(ft));
-    return ft;
-  };
-
-  return type::QualType::Constant(type::Allocate<type::GenericFunction>(
-      node->params().Transform(
-          [](auto const &p) { return type::GenericFunction::EmptyStruct{}; }),
-      std::move(gen)));
-}
-
 type::QualType Compiler::VerifyType(ast::ShortFunctionLiteral const *node) {
   ast::OverloadSet os;
   os.insert(node);
@@ -597,7 +366,7 @@ type::QualType Compiler::VerifyType(ast::ShortFunctionLiteral const *node) {
 
   auto *diag_consumer = &diag();
   auto gen            = [node, compiler_data = &data(), diag_consumer,
-              ordered_nodes(std::move(ordered_nodes))](
+              ordered_nodes = std::move(ordered_nodes)](
                  core::FnArgs<type::Typed<ir::Value>> const &args) mutable
       -> type::Function const * {
     // TODO handle compilation failures.
@@ -711,7 +480,7 @@ WorkItem::Result Compiler::VerifyBody(ast::ParameterizedStructLiteral const *nod
 
 type::QualType Compiler::VerifyType(
     ast::ParameterizedStructLiteral const *node) {
-  auto ordered_nodes  = OrderedDependencyNodes(node, true);
+  auto ordered_nodes  = OrderedDependencyNodes(node);
   auto *diag_consumer = &diag();
   auto gen            = [node, compiler_data = &data(), diag_consumer,
               ordered_nodes(std::move(ordered_nodes))](

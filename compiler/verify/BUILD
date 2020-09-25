@@ -151,12 +151,15 @@ cc_test(
 
 cc_library(
     name = "common",
+    hdrs = ["common.h"],
     srcs = ["common.cc"],
     deps = [
         "//ast",
         "//compiler:compiler_header",
+        "//compiler:library_module",
         "//compiler/dispatch:match",
         "//compiler/dispatch:parameters_and_arguments",
+        "//core:dependency_node",
         "//core:fn_args",
         "//diagnostic:errors",
         "//ir/value",
@@ -249,6 +252,7 @@ cc_library(
         "//ast",
         "//compiler:compiler_header",
         "//compiler:extract_jumps",
+        "//compiler/verify:common",
         "//type:cast",
         "//type:qual_type",
     ],

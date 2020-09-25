@@ -4,6 +4,7 @@
 #include "compiler/compiler.h"
 #include "compiler/dispatch/match.h"
 #include "compiler/dispatch/parameters_and_arguments.h"
+#include "compiler/verify/common.h"
 #include "core/params_ref.h"
 #include "diagnostic/errors.h"
 #include "ir/out_params.h"

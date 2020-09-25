@@ -92,6 +92,7 @@ cc_library(
         ":parameters_and_arguments",
         "//base:debug",
         "//compiler:compiler_header",
+        "//compiler/verify:common",
         "//ir:builder",
         "//type",
         "//type:cast",

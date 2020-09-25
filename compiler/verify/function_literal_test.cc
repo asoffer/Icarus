@@ -199,6 +199,16 @@ TEST(FunctionLiteral, MultipleParametersOneReturnTypeInferred) {
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
+TEST(FunctionLiteral, ConstantParameter) {
+  test::TestModule mod;
+  auto const *qt =
+      mod.data().qual_type(mod.Append<ast::Expression>(R"((n :: int64) -> () {})"));
+  ASSERT_NE(qt, nullptr);
+  EXPECT_GE(qt->quals(), type::Quals::Const());
+  EXPECT_TRUE(qt->type()->is<type::GenericFunction>());
+}
+
+
 // TODO: Add tests that verify multiple return values get joined correctly.
 
 }  // namespace

@@ -2,6 +2,7 @@
 #include "compiler/compiler.h"
 #include "compiler/extract_jumps.h"
 #include "compiler/transient_state.h"
+#include "compiler/verify/common.h"
 #include "diagnostic/errors.h"
 #include "type/cast.h"
 #include "type/function.h"
@@ -218,13 +219,56 @@ type::QualType VerifyConcreteFnLit(Compiler &c,
   }
 }
 
+type::QualType VerifyGenericFnLit(Compiler &c,
+                                  ast::FunctionLiteral const *node) {
+  auto ordered_nodes = OrderedDependencyNodes(node);
+
+  auto gen = [node, importer = &c.importer(), compiler_data = &c.data(),
+              diag_consumer = &c.diag(),
+              ordered_nodes = std::move(ordered_nodes)](
+                 core::FnArgs<type::Typed<ir::Value>> const &args) mutable
+      -> type::Function const * {
+    auto [params, rets, data, inserted] =
+        MakeConcrete(node, &compiler_data->module(), ordered_nodes, args,
+                     *compiler_data, *diag_consumer);
+    if (inserted) {
+      Compiler c({
+          .builder             = ir::GetBuilder(),
+          .data                = data,
+          .diagnostic_consumer = *diag_consumer,
+          .importer            = *importer,
+      });
+
+      if (auto outputs = node->outputs(); outputs and not outputs->empty()) {
+        for (auto const *o : *outputs) {
+          auto qt = c.VerifyType(o);
+          ASSERT(qt == type::QualType::Constant(type::Type_));
+          auto maybe_type = c.EvaluateAs<type::Type const *>(o);
+          if (not maybe_type) { NOT_YET(); }
+          rets.push_back(ASSERT_NOT_NULL(*maybe_type));
+        }
+      }
+    }
+
+    type::Function const *ft = type::Func(
+        params.Transform([](auto const &p) { return p.second; }), rets);
+    data.set_qual_type(node, type::QualType::Constant(ft));
+    return ft;
+  };
+
+  return type::QualType::Constant(type::Allocate<type::GenericFunction>(
+      node->params().Transform(
+          [](auto const &p) { return type::GenericFunction::EmptyStruct{}; }),
+      std::move(gen)));
+}
+
 type::QualType Compiler::VerifyType(ast::FunctionLiteral const *node) {
   ast::OverloadSet os;
   os.insert(node);
   data().SetAllOverloads(node, std::move(os));
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto qt,
-                   node->is_generic() ? VerifyGenericFnLit(node)
+                   node->is_generic() ? VerifyGenericFnLit(*this, node)
                                       : VerifyConcreteFnLit(*this, node));
   return data().set_qual_type(node, qt);
 }
