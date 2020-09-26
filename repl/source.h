@@ -39,7 +39,10 @@ struct Source : frontend::Source {
     auto result = view_.substr(0, pos);
     view_.remove_prefix(pos + 1);
 
-    return {result, not view_.empty()};
+    return frontend::SourceChunk{
+        .view         = result,
+        .more_to_read = false,
+    };
   }
 
   std::vector<std::string> LoadLines() const override { return lines_; }

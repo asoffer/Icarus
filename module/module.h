@@ -58,9 +58,6 @@ struct BasicModule : base::Cast<BasicModule> {
 
   constexpr ast::ModuleScope const *scope() const { return &scope_; }
 
-  void ProcessFromSource(frontend::Source *src,
-                         diagnostic::DiagnosticConsumer &diag);
-
  protected:
   virtual void ProcessNodes(base::PtrSpan<ast::Node const>,
                             diagnostic::DiagnosticConsumer &) = 0;

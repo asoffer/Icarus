@@ -334,31 +334,6 @@ cc_binary(
     ],
 )
 
-cc_binary(
-    name = "repl",
-    srcs = ["repl.cc"],
-    deps = [
-        "//ast:ast",
-        "//ast:expression",
-        "//base:untyped_buffer",
-        "//compiler:compiler",
-        "//core:params",
-        "//diagnostic/consumer:streaming",
-        "//frontend/source:repl",
-        "//frontend/source:shared",
-        "//frontend:parse",
-        "//init:cli",
-        "//ir/interpretter:evaluate",
-        "//ir:compiled_fn",
-        "//module",
-        "//opt",
-        "//type:function",
-        "//type:tuple",
-        "@com_google_absl//absl/debugging:failure_signal_handler",
-        "@com_google_absl//absl/debugging:symbolize",
-        "@com_google_absl//absl/strings",
-    ],
-)
 cc_library(
     name = "verify_type",
     srcs = ["verify_type.cc"],

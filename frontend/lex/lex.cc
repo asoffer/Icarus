@@ -438,6 +438,14 @@ Lexeme NextNumber(SourceCursor *cursor, Source *src,
 }
 }  // namespace
 
+std::vector<Lexeme> Lex(Source &src, diagnostic::DiagnosticConsumer &diag,
+                        LineNum initial_line_num) {
+  std::vector<Lexeme> result;
+  LexState state(&src, diag, initial_line_num);
+  do { result.push_back(NextToken(&state)); } while (not result.back().eof());
+  return result;
+}
+
 Lexeme NextToken(LexState *state) {
 restart:
   // Delegate based on the next character in the file stream

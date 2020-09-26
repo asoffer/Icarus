@@ -93,13 +93,13 @@ TEST(Access, AccessStructField) {
   auto const *non_constant_qt = mod.data().qual_type(non_constant);
   auto const *constant        = mod.Append<ast::Expression>(R"(constant.n)");
   auto const *constant_qt     = mod.data().qual_type(constant);
+  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   ASSERT_NE(non_constant_qt, nullptr);
   EXPECT_EQ(*non_constant_qt, type::QualType(type::Int64, type::Quals::Ref()));
   ASSERT_NE(constant_qt, nullptr);
   EXPECT_EQ(
       *constant_qt,
       type::QualType(type::Int64, type::Quals::Ref() | type::Quals::Const()));
-  EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
 TEST(Access, NoFieldInStruct) {
@@ -113,7 +113,7 @@ TEST(Access, NoFieldInStruct) {
   )");
   auto const *expr = mod.Append<ast::Expression>(R"(s.x)");
   auto const *qt   = mod.data().qual_type(expr);
-  ASSERT_EQ(qt, nullptr);
+  EXPECT_EQ(qt, nullptr);
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "missing-member")));
 }

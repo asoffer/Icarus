@@ -11,7 +11,7 @@
 namespace frontend {
 
 std::vector<std::unique_ptr<ast::Node>> Parse(
-    Source* src, diagnostic::DiagnosticConsumer& diag,
+    Source& src, diagnostic::DiagnosticConsumer& diag,
     LineNum initial_line_num = LineNum(1));
 }  // namespace frontend
 

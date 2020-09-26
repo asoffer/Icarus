@@ -76,7 +76,7 @@ extern "C" int LLVMFuzzerTestOneInput(uint8_t const* data, size_t length) {
 
   frontend::StringSource src(std::move(string_source));
   diagnostic::TrivialConsumer diag;
-  frontend::Parse(&src, diag);
+  frontend::Parse(src, diag);
 
   return 0;
 }

@@ -32,6 +32,11 @@ struct Lexeme {
     return std::move(value_);
   }
 
+  constexpr bool eof() const {
+    auto const* syntax = std::get_if<Syntax>(&value_);
+    return syntax and *syntax == Syntax::EndOfFile;
+  }
+
   constexpr Tag tag() const {
     return std::visit(
         [](auto&& x) {

@@ -4,6 +4,7 @@
 #include <thread>
 
 #include "diagnostic/consumer/streaming.h"
+#include "frontend/parse.h"
 #include "frontend/source/file_name.h"
 #include "ir/value/module_id.h"
 #include "module/module.h"
@@ -27,9 +28,7 @@ struct FileImporter : Importer {
       std::thread t(
           [mod = mod, file_src = std::move(*maybe_file_src)]() mutable {
             diagnostic::StreamingConsumer diag(stderr, &file_src);
-            mod->ProcessFromSource(&file_src, diag);
-            // TODO: annoying we have to do these together. ProcessFromSource
-            // needs to be split.
+            mod->AppendNodes(frontend::Parse(file_src, diag), diag);
           });
       t.detach();
       return id;

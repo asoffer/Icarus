@@ -49,7 +49,7 @@ int DumpControlFlowGraph(frontend::FileName const &file_name) {
   auto *src = &*maybe_file_src;
   diag = diagnostic::StreamingConsumer(stderr, src);
   compiler::ExecutableModule exec_mod;
-  exec_mod.ProcessFromSource(src, diag);
+  exec_mod.AppendNodes(frontend::Parse(*src, diag), diag);
   if (diag.num_consumed() != 0) { return 1; }
   auto &main_fn = exec_mod.main();
 

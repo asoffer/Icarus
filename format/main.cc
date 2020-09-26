@@ -13,7 +13,7 @@ namespace format {
 int FormatFile(frontend::FileName const &file) {
   frontend::StringSource src("3 + abc");
   diagnostic::StreamingConsumer diag(stderr, &src);
-  auto stmts = frontend::Parse(&src, diag);
+  auto stmts = frontend::Parse(src, diag);
   TokenExtractor visitor;
   for (auto const &stmt : stmts) { visitor.Visit(stmt.get()); }
   return 0;

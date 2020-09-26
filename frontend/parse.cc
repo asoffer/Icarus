@@ -1575,12 +1575,12 @@ static base::Global kRules = std::array{
     ParseRule(stmts, {stmts, eof}, drop_all_but<0>),
 };
 
-enum class ShiftState : char { NeedMore, EndOfExpr, MustReduce };
+enum class ShiftState { NeedMore, EndOfExpr, MustReduce };
 struct ParseState {
   // TODO: storing the `diag` reference twice is unnecessary.
-  explicit ParseState(Source *src, diagnostic::DiagnosticConsumer &diag,
-                      LineNum initial_line_num = LineNum(1))
-      : lex_state_(src, diag, initial_line_num), diag_(diag) {}
+  explicit ParseState(std::vector<Lexeme> tokens,
+                      diagnostic::DiagnosticConsumer &diag)
+      : tokens_(std::move(tokens)), diag_(diag) {}
 
   template <size_t N>
   inline Tag get_type() const {
@@ -1691,7 +1691,13 @@ struct ParseState {
     return ShiftState::MustReduce;
   }
 
-  void LookAhead() { lookahead_ = NextToken(&lex_state_); }
+  void LookAhead() { 
+    if (token_index_ < tokens_.size()) {
+      lookahead_ = std::move(tokens_[token_index_++]);
+    } else {
+      lookahead_ = std::nullopt;
+    }
+  }
 
   const TaggedNode &Next() {
     if (not lookahead_) { LookAhead(); }
@@ -1701,7 +1707,8 @@ struct ParseState {
   std::vector<Tag> tag_stack_;
   std::vector<std::unique_ptr<ast::Node>> node_stack_;
   std::optional<TaggedNode> lookahead_;
-  LexState lex_state_;
+  std::vector<Lexeme> tokens_;
+  int token_index_ = 0;
 
   // We actually don't care about mathing braces because we are only using this
   // to determine for the REPL if we should prompt for further input. If it's
@@ -1726,11 +1733,12 @@ void Debug(ParseState *ps) {
 
 void Shift(ParseState *ps) {
   if (not ps->lookahead_) { ps->LookAhead(); }
-  auto ahead     = *std::move(ps->lookahead_);
-  ps->lookahead_ = std::nullopt;
+  auto ahead = *std::exchange(ps->lookahead_, std::nullopt);
   ps->tag_stack_.push_back(ahead.tag_);
   ps->node_stack_.push_back(std::move(ahead.node_));
 
+  LOG("parse", "shifting %s onto the stack.",
+      ps->node_stack_.back()->DebugString());
   auto tag_ahead = ps->Next().tag_;
   if (tag_ahead & (l_paren | l_bracket | l_brace)) {
     ++ps->brace_count;
@@ -1740,6 +1748,7 @@ void Shift(ParseState *ps) {
 }
 
 bool Reduce(ParseState *ps) {
+  LOG("parse", "reducing");
   const ParseRule *matched_rule_ptr = nullptr;
   for (ParseRule const &rule : *kRules) {
     if (rule.Match(ps->tag_stack_)) {
@@ -1793,16 +1802,21 @@ void CleanUpReduction(ParseState *state) {
 }  // namespace
 
 std::vector<std::unique_ptr<ast::Node>> Parse(
-    Source *src, diagnostic::DiagnosticConsumer &diag,
+    Source &src, diagnostic::DiagnosticConsumer &diag,
     LineNum initial_line_num) {
-  ParseState state(src, diag, initial_line_num);
-  Shift(&state);
+  auto nodes = Lex(src, diag, initial_line_num);
+  // TODO: Shouldn't need this protection.
+  if (nodes.size() == 1) { return {}; }
+  ParseState state(std::move(nodes), diag);
 
   while (state.Next().tag_ != eof) {
     ASSERT(state.tag_stack_.size() == state.node_stack_.size());
     // Shift if you are supposed to, or if you are unable to reduce.
     if (state.shift_state() == ShiftState::NeedMore or not Reduce(&state)) {
+      LOG("parse", "Need to shift");
       Shift(&state);
+      LOG("parse", "shift_state == %d",
+          static_cast<std::underlying_type_t<ShiftState>>(state.shift_state()));
     }
 
     if (debug::parser) { Debug(&state); }

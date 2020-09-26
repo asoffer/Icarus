@@ -48,6 +48,8 @@ struct StringLiteralError {
   int offset;
 };
 
+std::vector<Lexeme> Lex(Source &src, diagnostic::DiagnosticConsumer &diag,
+                        LineNum initial_line_num = LineNum(1));
 Lexeme NextToken(LexState *state);
 
 }  // namespace frontend

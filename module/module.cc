@@ -40,13 +40,6 @@ void BasicModule::AppendNodes(std::vector<std::unique_ptr<ast::Node>> nodes,
                 std::make_move_iterator(nodes.end()));
 }
 
-void BasicModule::ProcessFromSource(frontend::Source *src,
-                                    diagnostic::DiagnosticConsumer &diag) {
-  auto nodes = frontend::Parse(src, diag);
-  if (diag.num_consumed() > 0) { return; }
-  AppendNodes(std::move(nodes), diag);
-}
-
 absl::Span<ast::Declaration const *const> BasicModule::ExportedDeclarations(
     std::string_view name) const {
   exports_complete_.WaitForNotification();

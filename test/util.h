@@ -21,7 +21,7 @@ std::unique_ptr<T> ParseAs(
     std::string s, frontend::LineNum initial_line_num = frontend::LineNum(1)) {
   frontend::StringSource source(std::move(s));
   diagnostic::AbortingConsumer diag(&source);
-  auto stmts     = frontend::Parse(&source, diag, initial_line_num);
+  auto stmts     = frontend::Parse(source, diag, initial_line_num);
   auto* cast_ptr = stmts[0]->template if_as<T>();
   if (not cast_ptr) { return nullptr; }
   stmts[0].release();

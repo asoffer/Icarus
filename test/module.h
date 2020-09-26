@@ -10,6 +10,7 @@
 #include "ast/ast.h"
 #include "ast/expression.h"
 #include "ast/overload_set.h"
+#include "base/log.h"
 #include "base/ptr_span.h"
 #include "diagnostic/consumer/tracking.h"
 #include "frontend/source/range.h"
@@ -32,7 +33,7 @@ struct TestModule : compiler::CompiledModule {
   void AppendCode(std::string code) {
     code.push_back('\n');
     frontend::StringSource source(std::move(code));
-    AppendNodes(frontend::Parse(&source, consumer, next_line_num), consumer);
+    AppendNodes(frontend::Parse(source, consumer, next_line_num), consumer);
     next_line_num += 100;
   }
 

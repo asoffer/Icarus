@@ -16,10 +16,10 @@ void cli::Usage() {
     std::puts("Icarus REPL");
     repl::Source source(&std::cin, &std::cout);
     diagnostic::StreamingConsumer diag(stderr, &source);
+
     repl::Module mod;
     // TODO: Handle parse failures
-    LOG("", "got here");
-    while (true) { mod.ProcessFromSource(&source, diag); }
+    while (true) { mod.AppendNodes(frontend::Parse(source, diag), diag); }
     return 0;
   };
 

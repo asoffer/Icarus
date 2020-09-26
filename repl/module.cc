@@ -33,7 +33,6 @@ void ReplEval(ast::Expression const *expr, compiler::Compiler *compiler) {
 
 void Module::ProcessNodes(base::PtrSpan<ast::Node const> nodes,
                           diagnostic::DiagnosticConsumer &diag) {
-    LOG("", "got here");
   compiler::Compiler c({
       .builder             = ir::GetBuilder(),
       .data                = data(),
@@ -41,7 +40,7 @@ void Module::ProcessNodes(base::PtrSpan<ast::Node const> nodes,
       .importer            = importer,
   });
   for (ast::Node const *node : nodes) {
-    LOG("", "%s", node->DebugString());
+    LOG("repl", "%s", node->DebugString());
     if (node->is<ast::Declaration>()) {
       auto *decl = &node->as<ast::Declaration>();
 

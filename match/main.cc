@@ -20,7 +20,7 @@ int MatchParse(frontend::FileName const &expr_file,
                    frontend::FileSource expr_src,
                    frontend::FileSource::Make(canonical_expr_file));
   diagnostic::StreamingConsumer diag(stderr, &expr_src);
-  auto expr_stmts = frontend::Parse(&expr_src, diag);
+  auto expr_stmts = frontend::Parse(expr_src, diag);
   if (expr_stmts.size() != 1) { return 2; }
   auto *expr = expr_stmts[0]->if_as<ast::Expression>();
   if (not expr) { return 2; }
@@ -29,7 +29,7 @@ int MatchParse(frontend::FileName const &expr_file,
   ASSIGN_OR(return 1,  //
                    frontend::FileSource src,
                    frontend::FileSource::Make(canonical_file));
-  auto stmts = frontend::Parse(&src, diag);
+  auto stmts = frontend::Parse(src, diag);
 
   match::Match visitor;
   // TODO How do you want to match multiple lines?
