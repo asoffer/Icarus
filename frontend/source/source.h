@@ -16,7 +16,7 @@ struct SourceChunk {
 };
 
 struct Source : base::Cast<Source> {
-  virtual ~Source(){};
+  virtual ~Source() {}
 
   // Reads data from the source until the delimeter is found, dropping the
   // delimeter Sources may have a maximum number of characters they will read.

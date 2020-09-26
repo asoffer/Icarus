@@ -77,12 +77,6 @@ cc_library(
 )
 
 cc_library(
-    name = "repl",
-    hdrs = ["repl.h"],
-    deps = [":source"],
-)
-
-cc_library(
     name = "shared",
     hdrs = ["shared.h"],
     srcs = ["shared.cc"],
