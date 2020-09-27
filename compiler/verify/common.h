@@ -8,6 +8,22 @@
 
 namespace compiler {
 
+struct NotAType {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "not-a-type";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Expression was expected to be a type, but instead "
+                         "was of type `%s`.",
+                         type->to_string()),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  }
+
+  frontend::SourceRange range;
+  type::Type const *type;
+};
+
 struct InvalidCast {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "invalid-cast";

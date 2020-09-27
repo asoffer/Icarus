@@ -45,9 +45,8 @@ TEST(Cast, InvalidType) {
   // Continues assuming the type is correct
   ASSERT_EQ(qt, nullptr);
   EXPECT_THAT(mod.consumer.diagnostics(),
-              UnorderedElementsAre(Pair("type-error", "cast-to-non-type")));
+              UnorderedElementsAre(Pair("type-error", "not-a-type")));
 }
-
 
 }  // namespace
 }  // namespace compiler

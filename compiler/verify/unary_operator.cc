@@ -155,7 +155,7 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
         qt = type::QualType(operand_type,
                             operand_qt.quals() & ~type::Quals::Buf());
       } else {
-        diag().Consume(diagnostic::NotAType{
+        diag().Consume(NotAType{
             .range = node->operand()->range(),
             .type  = operand_type,
         });
@@ -204,7 +204,7 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
         qt = type::QualType(operand_type,
                             operand_qt.quals() & ~type::Quals::Buf());
       } else {
-        diag().Consume(diagnostic::NotAType{
+        diag().Consume(NotAType{
             .range = node->operand()->range(),
             .type  = operand_type,
         });

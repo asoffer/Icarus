@@ -19,34 +19,6 @@
 
 namespace diagnostic {
 
-struct NotAType {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "not-a-type";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(Text("Expression was expected to be a type, but "
-                                  "instead was of type `%s`.",
-                                  type->to_string()),
-                             SourceQuote(src).Highlighted(range, Style{}));
-  }
-
-  frontend::SourceRange range;
-  type::Type const *type;
-};
-
-struct UnspecifiedOverload {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "unspecified-overload";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Attempting to access an overloaded function by name."),
-        SourceQuote(src).Highlighted(range, Style{}));
-  }
-
-  frontend::SourceRange range;
-};
-
 struct MissingModule {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "missing-module";
@@ -60,18 +32,6 @@ struct MissingModule {
 
   frontend::CanonicalFileName source;
   std::string requestor;
-};
-
-struct ParametersDoNotCoverArguments {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName = "parameters-do-not-cover-arguments";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    // TODO
-    return DiagnosticMessage(Text("Parameters do not cover arguments."));
-  }
-
-  core::FnArgs<type::QualType> const &args;
 };
 
 struct EvaluationFailure {

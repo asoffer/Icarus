@@ -1,5 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/verify/common.h"
 #include "compiler/verify/internal/assignment_and_initialization.h"
 #include "type/qual_type.h"
 #include "type/typed_value.h"
@@ -176,7 +177,7 @@ type::QualType VerifyDeclarationType(Compiler *compiler,
                    auto type_expr_qt, compiler->VerifyType(node->type_expr()));
 
   if (type_expr_qt.type() != type::Type_) {
-    compiler->diag().Consume(diagnostic::NotAType{
+    compiler->diag().Consume(NotAType{
         .range = node->type_expr()->range(),
         .type  = type_expr_qt.type(),
     });

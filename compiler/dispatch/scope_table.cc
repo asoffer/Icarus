@@ -14,6 +14,19 @@
 namespace compiler {
 namespace {
 
+struct ParametersDoNotCoverArguments {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName = "parameters-do-not-cover-arguments";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    // TODO
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Parameters do not cover arguments."));
+  }
+
+  core::FnArgs<type::QualType> const &args;
+};
+
 // Returns ir::OutParams that get passed on to `exit`
 std::pair<ir::BasicBlock const *, ir::OutParams> EmitCallOneOverload(
     absl::flat_hash_map<
@@ -240,9 +253,7 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
                               return type::QualType::NonConstant(p.type());
                             });
                           })) {
-    compiler->diag().Consume(diagnostic::ParametersDoNotCoverArguments{
-        .args = args_qt,
-    });
+    compiler->diag().Consume(ParametersDoNotCoverArguments{.args = args_qt});
   }
 
   // If there are any scopes in this overload set that do not have blocks of the

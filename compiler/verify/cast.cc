@@ -6,19 +6,6 @@
 namespace compiler {
 namespace {
 
-struct CastToNonType {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "cast-to-non-type";
-
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Cannot cast to a non-type."),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
-  }
-
-  frontend::SourceRange range;
-};
-
 struct CastToNonConstantType {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "cast-to-non-constant-type";
@@ -41,7 +28,7 @@ type::QualType Compiler::VerifyType(ast::Cast const *node) {
   if (not expr_qt.ok() or not type_qt.ok()) { return type::QualType::Error(); }
 
   if (type_qt.type() != type::Type_) {
-    diag().Consume(CastToNonType{.range = node->range()});
+    diag().Consume(NotAType{.range = node->range(), .type = type_qt.type()});
     return type::QualType::Error();
   }
   if (not type_qt.constant()) {
