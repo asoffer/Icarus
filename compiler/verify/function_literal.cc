@@ -161,8 +161,7 @@ std::optional<std::vector<type::Type const *>> VerifyBodyOnly(
 
 }  // namespace
 
-type::QualType VerifyConcreteFnLit(Compiler &c,
-                                   ast::FunctionLiteral const *node) {
+type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto params, c.VerifyParams(node->params()));
 
@@ -219,8 +218,7 @@ type::QualType VerifyConcreteFnLit(Compiler &c,
   }
 }
 
-type::QualType VerifyGenericFnLit(Compiler &c,
-                                  ast::FunctionLiteral const *node) {
+type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
   auto ordered_nodes = OrderedDependencyNodes(node);
 
   auto gen = [node, importer = &c.importer(), compiler_data = &c.data(),
@@ -268,8 +266,8 @@ type::QualType Compiler::VerifyType(ast::FunctionLiteral const *node) {
   data().SetAllOverloads(node, std::move(os));
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto qt,
-                   node->is_generic() ? VerifyGenericFnLit(*this, node)
-                                      : VerifyConcreteFnLit(*this, node));
+                   node->is_generic() ? VerifyGeneric(*this, node)
+                                      : VerifyConcrete(*this, node));
   return data().set_qual_type(node, qt);
 }
 

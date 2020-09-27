@@ -84,7 +84,7 @@ void TokenExtractor::Visit(ast::Declaration const *node) {
 }
 
 void TokenExtractor::Visit(ast::EnumLiteral const *node) {
-  Join(this, node->elems(), "\n");
+  // TODO
 }
 
 void TokenExtractor::Visit(ast::FunctionLiteral const *node) {

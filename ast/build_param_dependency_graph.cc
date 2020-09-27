@@ -116,7 +116,9 @@ struct ParamDependencyGraphBuilder
   }
 
   void Visit(EnumLiteral const *node, core::DependencyNode<Declaration> d) {
-    for (auto const *elem : node->elems()) { Visit(elem, d); }
+    for (auto const &[enumerator, value] : node->specified_values()) {
+      Visit(value.get(), d);
+    }
   }
 
   void Visit(FunctionLiteral const *node, core::DependencyNode<Declaration> d) {

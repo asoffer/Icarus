@@ -1165,19 +1165,32 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
 
 std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
     absl::Span<std::unique_ptr<ast::Node>> nodes, ast::EnumLiteral::Kind kind,
-    diagnostic::DiagnosticConsumer &) {
+    diagnostic::DiagnosticConsumer &diag) {
   SourceRange range(nodes[0]->range().begin(), nodes[1]->range().end());
-  std::vector<std::unique_ptr<ast::Expression>> elems;
+  std::vector<std::string> enumerators;
+  absl::flat_hash_map<std::string, std::unique_ptr<ast::Expression>> values;
   if (auto *stmts = nodes[1]->if_as<Statements>()) {
     // TODO: if you want these values to depend on compile-time parameters,
     // you'll need to actually build the AST nodes.
     for (auto &stmt : stmts->content_) {
-      ASSERT(stmt, InheritsFrom<ast::Expression>());
-      elems.push_back(move_as<ast::Expression>(stmt));
+      if (auto *id = stmt->if_as<ast::Identifier>()) {
+        enumerators.push_back(std::move(*id).extract());
+      } else if (auto *decl = stmt->if_as<ast::Declaration>()) {
+        if (not(decl->flags() & ast::Declaration::f_IsConst)) {
+          diag.Consume(diagnostic::Todo{});
+        }
+        auto [id, type_expr, init_val] = std::move(*decl).extract();
+        // TODO: Use the type expression?
+        auto &name = enumerators.emplace_back(std::move(id));
+        values.emplace(name, std::move(init_val));
+      } else {
+        LOG("", "%s", stmt->DebugString());
+        diag.Consume(diagnostic::Todo{});
+      }
     }
   }
 
-  return std::make_unique<ast::EnumLiteral>(range, std::move(elems), kind);
+  return std::make_unique<ast::EnumLiteral>(range, std::move(enumerators), std::move(values), kind);
 }
 
 std::unique_ptr<ast::Node> BuildScopeLiteral(

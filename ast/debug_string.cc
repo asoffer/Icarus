@@ -263,12 +263,16 @@ void EnumLiteral::DebugStrAppend(std::string *out, size_t indent) const {
     case EnumLiteral::Kind::Enum: absl::StrAppend(out, "enum {\n"); break;
     case EnumLiteral::Kind::Flags: absl::StrAppend(out, "flags {\n"); break;
   }
-  for (auto const *elem : elems()) {
-    absl::StrAppend(out, indentation(indent));
-    elem->DebugStrAppend(out, indent + 1);
+  for (std::string_view enumerator : enumerators()) {
+    absl::StrAppendFormat(out, "%*s%s", 2 * indent, "", enumerator);
+    if (auto iter = specified_values().find(enumerator);
+        iter != specified_values().end()) {
+      absl::StrAppend(out, " ::= ");
+      iter->second->DebugStrAppend(out, indent + 1);
+    }
     absl::StrAppend(out, "\n");
   }
-  absl::StrAppend(out, indentation(indent), "}");
+  absl::StrAppend(out, "%*s}", 2 * indent);
 }
 
 void FunctionLiteral::DebugStrAppend(std::string *out, size_t indent) const {

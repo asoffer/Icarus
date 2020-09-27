@@ -661,23 +661,16 @@ ir::Value Compiler::EmitValue(ast::EnumLiteral const *node) {
   if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
 
   using enum_t = ir::EnumVal::underlying_type;
-  std::vector<std::string_view> names;
+  std::vector<std::string_view> names(node->enumerators().begin(),
+                                      node->enumerators().end());
   absl::flat_hash_map<uint64_t, ir::RegOr<enum_t>> specified_values;
 
-  for (auto const *elem : node->elems()) {
-    if (auto *id = elem->if_as<ast::Identifier>()) {
-      names.push_back(id->token());
-    } else if (auto *decl = elem->if_as<ast::Declaration>()) {
-      names.push_back(decl->id());
-      if (decl->IsCustomInitialized()) {
-        specified_values.emplace(
-            names.size() - 1,
-            EmitValue(decl->init_val()).get<ir::RegOr<enum_t>>());
-      }
-    } else {
-      // TODO: This should be a parse-time failure.
-      UNREACHABLE("Require identifier or constant declaration: ",
-                  elem->DebugString());
+  uint64_t i = 0;
+  for (uint64_t i = 0; i < names.size(); ++i) {
+    if (auto iter = node->specified_values().find(names[i]);
+        iter != node->specified_values().end()) {
+      specified_values.emplace(
+          i, EmitValue(iter->second.get()).get<ir::RegOr<enum_t>>());
     }
   }
 

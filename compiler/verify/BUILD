@@ -18,6 +18,19 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "block_literal",
+    srcs = ["block_literal.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+        "//type:primitive",
+        "//type:qual_type",
+    ],
+)
+
+# TODO: block_literal_test
+
 cc_test(
     name = "access_test",
     srcs = ["access_test.cc"],
@@ -270,6 +283,28 @@ cc_test(
 )
 
 cc_library(
+    name = "enum_literal",
+    srcs = ["enum_literal.cc"],
+    deps = [
+        "//ast",
+        "//base:defer",
+        "//compiler:compiler_header",
+        "//type:primitive",
+        "//type:qual_type",
+    ],
+)
+
+cc_test(
+    name = "enum_literal_test",
+    srcs = ["enum_literal_test.cc"],
+    deps = [
+        "//compiler",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "function_literal",
     srcs = ["function_literal.cc"],
     deps = [
@@ -403,6 +438,59 @@ cc_test(
 )
 
 cc_library(
+    name = "jump",
+    srcs = ["jump.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+        "//type:pointer",
+        "//type:qual_type",
+        "//type:typed_value",
+    ],
+)
+
+cc_test(
+    name = "jump_test",
+    srcs = ["jump_test.cc"],
+    deps = [
+        "//compiler",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "miscellaneous",
+    srcs = ["miscellaneous.cc"],
+    deps = [
+        "//ast",
+        "//base:defer",
+        "//compiler:compiler_header",
+        "//type:primitive",
+        "//type:qual_type",
+    ],
+)
+
+# TODO: miscellaneous_test
+
+
+cc_library(
+    name = "parameterized_struct_literal",
+    srcs = ["parameterized_struct_literal.cc"],
+    deps = [
+        ":common",
+        "//ast",
+        "//compiler:compiler_header",
+        "//compiler:library_module",
+        "//diagnostic:errors",
+        "//type:qual_type",
+        "//type:typed_value",
+    ],
+)
+
+# TODO: parameterized_struct_literal
+
+cc_library(
     name = "scope_literal",
     srcs = ["scope_literal.cc"],
     deps = [
@@ -423,6 +511,27 @@ cc_test(
         "//test:module",
         "//type:primitive",
         "//type:jump",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "short_function_literal",
+    srcs = ["short_function_literal.cc"],
+    deps = [
+        ":common",
+        "//ast",
+        "//compiler:compiler_header",
+        "//type:qual_type",
+    ],
+)
+
+cc_test(
+    name = "short_function_literal_test",
+    srcs = ["short_function_literal_test.cc"],
+    deps = [
+        "//compiler",
+        "//test:module",
         "@com_google_googletest//:gtest_main",
     ],
 )

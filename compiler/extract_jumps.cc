@@ -85,7 +85,9 @@ struct Extractor : ast::Visitor<void()> {
   }
 
   void Visit(ast::EnumLiteral const *node) final {
-    for (auto const *elem : node->elems()) { Visit(elem); }
+    for (auto const &[name, value] : node->specified_values()) {
+      Visit(value.get());
+    }
   }
 
   void Visit(ast::FunctionLiteral const *node) final {

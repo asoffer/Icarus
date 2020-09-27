@@ -93,7 +93,7 @@ void DesignatedInitializer::Initialize(Scope *scope) {
 void EnumLiteral::Initialize(Scope *scope) {
   scope_ = scope;
   set_body_with_parent(scope);
-  SetAllScopes(&elems_, body_scope());
+  for (auto &[id, value] : values_) { value->Initialize(scope); }
 }
 
 void FunctionLiteral::Initialize(Scope *scope) {

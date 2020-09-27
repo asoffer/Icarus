@@ -317,6 +317,13 @@ struct Declaration : Expression {
   Expression const *type_expr() const { return type_expr_.get(); }
   Expression const *init_val() const { return init_val_.get(); }
 
+  std::tuple<std::string, std::unique_ptr<Expression>,
+             std::unique_ptr<Expression>>
+  extract() && {
+    return std::make_tuple(std::move(id_), std::move(type_expr_),
+                           std::move(init_val_));
+  }
+
   module::BasicModule const *module() const {
     return scope_->Containing<ModuleScope>()->module();
   }
@@ -671,19 +678,29 @@ struct ComparisonOperator : Expression {
 struct EnumLiteral : Expression, WithScope<DeclScope> {
   enum Kind : char { Enum, Flags };
 
-  EnumLiteral(frontend::SourceRange const &range,
-              std::vector<std::unique_ptr<Expression>> elems, Kind kind)
-      : Expression(range), elems_(std::move(elems)), kind_(kind) {}
+  EnumLiteral(
+      frontend::SourceRange const &range, std::vector<std::string> enumerators,
+      absl::flat_hash_map<std::string, std::unique_ptr<Expression>> values,
+      Kind kind)
+      : Expression(range),
+        enumerators_(std::move(enumerators)),
+        values_(std::move(values)),
+        kind_(kind) {}
 
   ~EnumLiteral() override {}
 
-  base::PtrSpan<Expression const> elems() const { return elems_; }
+  absl::Span<std::string const> enumerators() const { return enumerators_; }
+  absl::flat_hash_map<std::string, std::unique_ptr<Expression>> const &
+  specified_values() const {
+    return values_;
+  }
   Kind kind() const { return kind_; }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
-  std::vector<std::unique_ptr<Expression>> elems_;
+  std::vector<std::string> enumerators_;
+  absl::flat_hash_map<std::string, std::unique_ptr<Expression>> values_;
   Kind kind_;
 };
 
