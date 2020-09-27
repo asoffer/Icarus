@@ -2,6 +2,7 @@
 
 #include <type_traits>
 
+#include "compiler/verify/common.h"
 #include "diagnostic/errors.h"
 #include "type/cast.h"
 
@@ -52,11 +53,7 @@ bool VerifyImpl(diagnostic::DiagnosticConsumer &diag,
     // `to` cannot be a constant if we're assigning, but for initializations
     // it's okay (we could be initializing a constant).
     if (to.constant()) {
-      diag.Consume(diagnostic::AssigningToConstant{
-          .to    = to.type(),
-          .range = range,
-      });
-
+      diag.Consume(AssigningToConstant{.to = to.type(), .range = range});
       return false;
     }
   }
@@ -84,21 +81,14 @@ bool VerifyImpl(diagnostic::DiagnosticConsumer &diag,
   if constexpr (not IsInit) {
     // Initializations do not care about movability.
     if (not from_type->IsMovable()) {
-      diag.Consume(diagnostic::ImmovableType{
-          .from  = from_type,
-          .range = range,
-      });
+      diag.Consume(ImmovableType{.from = from_type, .range = range});
       return false;
     }
   }
 
   if (not type::CanCast(from_type, to_type)) {
     // TODO Really CanCast should be able to log errors.
-    diag.Consume(diagnostic::InvalidCast{
-        .from  = from_type,
-        .to    = to_type,
-        .range = range,
-    });
+    diag.Consume(InvalidCast{.from = from_type, .to = to_type, .range = range});
     return false;
   } else {
     return true;

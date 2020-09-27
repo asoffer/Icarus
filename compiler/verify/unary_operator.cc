@@ -1,6 +1,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/verify/common.h"
 #include "compiler/verify/internal/qual_type_iterator.h"
 #include "diagnostic/errors.h"
 #include "type/pointer.h"
@@ -9,6 +10,21 @@
 
 namespace compiler {
 namespace {
+
+struct UncopyableType {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "uncopyable-type";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("Attempting to copy an uncopyable type `%s`.",
+                         from->to_string()),
+        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
+  }
+
+  type::Type const *from;
+  frontend::SourceRange range;
+};
 
 struct InvalidUnaryOperatorOverload {
   static constexpr std::string_view kCategory = "type-error";
@@ -111,7 +127,7 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
   switch (node->kind()) {
     case ast::UnaryOperator::Kind::Copy: {
       if (not operand_type->IsCopyable()) {
-        diag().Consume(diagnostic::UncopyableType{
+        diag().Consume(UncopyableType{
             .from  = operand_type,
             .range = node->range(),
         });
@@ -126,7 +142,7 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
     } break;
     case ast::UnaryOperator::Kind::Move: {
       if (not operand_type->IsMovable()) {
-        diag().Consume(diagnostic::ImmovableType{
+        diag().Consume(ImmovableType{
             .from  = operand_type,
             .range = node->range(),
         });

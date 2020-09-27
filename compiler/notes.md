@@ -13,3 +13,6 @@
     return y = true, x = 3
   }
   ```
+* For most casts, reference qualifiers are stripped, but for casts to the same
+  type we could keep them. Would this be a good idea? Currently we're stripping
+  them unconditionally

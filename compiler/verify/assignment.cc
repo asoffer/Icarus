@@ -1,6 +1,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/verify/common.h"
 #include "compiler/verify/internal/qual_type_iterator.h"
 #include "diagnostic/errors.h"
 #include "type/primitive.h"
@@ -8,6 +9,24 @@
 
 namespace compiler {
 namespace {
+
+struct TypeMismatch {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "assignment-type-mismatch";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text(
+            "Cannot assign a value of type `%s` to a reference of type `%s`:",
+            lhs_type->to_string(), rhs_type->to_string()),
+        diagnostic::SourceQuote(src).Highlighted(
+            range, diagnostic::Style::ErrorText()));
+  }
+
+  type::Type const *lhs_type;
+  type::Type const *rhs_type;
+  frontend::SourceRange range;
+};
 
 struct AssigningToNonReference {
   static constexpr std::string_view kCategory = "value-category-error";
@@ -39,8 +58,8 @@ type::QualType Compiler::VerifyType(ast::Assignment const *node) {
       if (first_lhs_error_index == -1) { first_lhs_error_index = i; }
     } else {
       if (qt.quals() >= type::Quals::Const()) {
-        diag().Consume(diagnostic::AssigningToConstant{.to    = qt.type(),
-                                                       .range = l->range()});
+        diag().Consume(
+            AssigningToConstant{.to = qt.type(), .range = l->range()});
       } else if (not(qt.quals() >= type::Quals::Ref())) {
         diag().Consume(AssigningToNonReference{.lhs = l->range()});
       }
@@ -74,10 +93,10 @@ type::QualType Compiler::VerifyType(ast::Assignment const *node) {
     // TODO: deal with immovable and uncopyable types.
     type::Type const *lhs_type = (*lhs_iter).type();
     type::Type const *rhs_type = (*rhs_iter).type();
-    if (not type::CanCast(rhs_type, lhs_type)) {
-      diag().Consume(diagnostic::InvalidCast{
-          .from = rhs_type,
-          .to   = lhs_type,
+    if (lhs_type != rhs_type) {
+      diag().Consume(TypeMismatch{
+          .lhs_type= lhs_type,
+          .rhs_type   = rhs_type,
           // TODO: set the range to point more directly to the things we care
           // about.
           .range = node->range(),

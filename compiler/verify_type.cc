@@ -30,208 +30,8 @@
 
 namespace compiler {
 namespace {
-struct ReturningWrongNumber {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "returning-wrong-number";
 
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text(
-            "Attempting to return %u values from a function which has %u "
-            "return values.",
-            actual, expected),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
-  }
-
-  size_t actual;
-  size_t expected;
-  frontend::SourceRange range;
-};
-
-struct ReturnTypeMismatch {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "return-type-mismatch";
-
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text(
-            "Returning an expression of type `%s` from a function which "
-            "returns `%s`.",
-            actual->to_string(), expected->to_string()),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
-  }
-
-  type::Type const *actual;
-  type::Type const *expected;
-  frontend::SourceRange range;
-};
-
-struct NoReturnTypes {
-  static constexpr std::string_view kCategory = "type-error";
-  static constexpr std::string_view kName     = "no-return-type";
-
-  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return diagnostic::DiagnosticMessage(
-        diagnostic::Text(
-            "Attempting to return a value when function returns nothing."),
-        diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
-  }
-
-  frontend::SourceRange range;
-};
-}  // namespace
-
-// TODO there's not that much shared between the inferred and uninferred
-// cases, so probably break them out.
-type::QualType VerifyBody(Compiler *c, ast::FunctionLiteral const *node,
-                          type::Type const *t = nullptr) {
-  if (not t) { t = ASSERT_NOT_NULL(c->type_of(node)); }
-  auto const &fn_type = t->as<type::Function>();
-  for (auto const *stmt : node->stmts()) {
-    if (auto const *decl = stmt->if_as<ast::Declaration>()) {
-      if (decl->flags() & ast::Declaration::f_IsConst) {
-        c->VerifyType(decl); }
-    }
-  }
-  for (auto const *stmt : node->stmts()) {
-    if (auto const *decl = stmt->if_as<ast::Declaration>()) {
-      if (decl->flags() & ast::Declaration::f_IsConst) { continue; }
-    }
-    c->VerifyType(stmt);
-  }
-
-  // TODO we can have yields and returns, or yields and jumps, but not jumps
-  // and returns. Check this.
-  absl::flat_hash_set<type::Type const *> types;
-  absl::flat_hash_map<ast::ReturnStmt const *, type::Type const *>
-      saved_ret_types;
-  for (auto const *n : c->data().extraction_map_[node]) {
-    if (auto const *ret_node = n->if_as<ast::ReturnStmt>()) {
-      std::vector<type::Type const *> ret_types;
-      for (auto const *expr : ret_node->exprs()) {
-        ret_types.push_back(ASSERT_NOT_NULL(c->type_of(expr)));
-      }
-      auto *t = type::Tup(std::move(ret_types));
-      types.emplace(t);
-
-      saved_ret_types.emplace(ret_node, t);
-    } else {
-      UNREACHABLE();  // TODO
-    }
-  }
-
-  auto type_params = node->params().Transform([&](auto const &param) {
-    auto maybe_qt = c->qual_type_of(param.get());
-    ASSERT(maybe_qt != std::nullopt);
-    return *maybe_qt;
-  });
-
-  if (not node->outputs()) {
-    std::vector<type::Type const *> output_type_vec(
-        std::make_move_iterator(types.begin()),
-        std::make_move_iterator(types.end()));
-
-    if (types.size() > 1) { NOT_YET("log an error"); }
-    auto f = type::Func(std::move(type_params), std::move(output_type_vec));
-    return c->data().set_qual_type(node, type::QualType::Constant(f));
-
-  } else {
-    auto *node_type = t;
-    auto outs       = ASSERT_NOT_NULL(node_type)->as<type::Function>().output();
-    switch (outs.size()) {
-      case 0: {
-        bool err = false;
-        for (auto *n : c->data().extraction_map_[node]) {
-          if (auto *ret_node = n->if_as<ast::ReturnStmt>()) {
-            if (not ret_node->exprs().empty()) {
-              c->diag().Consume(NoReturnTypes{
-                  .range = ret_node->range(),
-              });
-              err = true;
-            }
-          } else {
-            UNREACHABLE();  // TODO
-          }
-        }
-        return err ? type::QualType::Error()
-                   : type::QualType::Constant(node_type);
-      } break;
-      case 1: {
-        bool err = false;
-        for (auto *n : c->data().extraction_map_[node]) {
-          if (auto *ret_node = n->if_as<ast::ReturnStmt>()) {
-            auto *t = ASSERT_NOT_NULL(saved_ret_types[ret_node]);
-            if (t == outs[0]) { continue; }
-            c->diag().Consume(ReturnTypeMismatch{
-                .actual   = t,
-                .expected = outs[0],
-                .range    = ret_node->range(),
-            });
-            err = true;
-          } else {
-            UNREACHABLE();  // TODO
-          }
-        }
-        return err ? type::QualType::Error()
-                   : type::QualType::Constant(node_type);
-      } break;
-      default: {
-        for (auto *n : c->data().extraction_map_[node]) {
-          if (auto *ret_node = n->if_as<ast::ReturnStmt>()) {
-            auto *expr_type = ASSERT_NOT_NULL(saved_ret_types[ret_node]);
-            if (expr_type->is<type::Tuple>()) {
-              auto const &tup_entries = expr_type->as<type::Tuple>().entries_;
-              if (tup_entries.size() != outs.size()) {
-                c->diag().Consume(ReturningWrongNumber{
-                    .actual   = (expr_type->is<type::Tuple>()
-                                   ? expr_type->as<type::Tuple>().size()
-                                   : 1),
-                    .expected = outs.size(),
-                    .range    = ret_node->range(),
-                });
-                return type::QualType::Error();
-              } else {
-                bool err = false;
-                for (size_t i = 0; i < tup_entries.size(); ++i) {
-                  if (tup_entries[i] != outs[i]) {
-                    // TODO if this is a commalist we can point to it more
-                    // carefully but if we're just passing on multiple return
-                    // values it's harder.
-                    //
-                    // TODO point the span to the correct entry which may be
-                    // hard if it's splatted.
-                    c->diag().Consume(diagnostic::IndexedReturnTypeMismatch{
-                        .index    = i,
-                        .actual   = outs[i],
-                        .expected = tup_entries[i],
-                        .range    = ret_node->range(),
-                    });
-                    err = true;
-                  }
-                }
-                if (err) { return type::QualType::Error(); }
-              }
-            } else {
-              c->diag().Consume(ReturningWrongNumber{
-                  .actual   = (expr_type->is<type::Tuple>()
-                                 ? expr_type->as<type::Tuple>().size()
-                                 : 1),
-                  .expected = outs.size(),
-                  .range    = ret_node->range(),
-              });
-              return type::QualType::Error();
-            }
-          } else {
-            UNREACHABLE();  // TODO
-          }
-        }
-        return type::QualType::Constant(node_type);
-      } break;
-    }
-  }
-}
-
-static std::optional<type::Quals> VerifyAndGetQuals(
+std::optional<type::Quals> VerifyAndGetQuals(
     Compiler *v, base::PtrSpan<ast::Expression const> exprs) {
   bool err          = false;
   type::Quals quals = type::Quals::All();
@@ -243,6 +43,8 @@ static std::optional<type::Quals> VerifyAndGetQuals(
   if (err) { return std::nullopt; }
   return quals;
 }
+
+}  // namespace
 
 type::QualType Compiler::VerifyType(ast::ArgumentType const *node) {
   return data().set_qual_type(node, type::QualType::Constant(type::Type_));
@@ -278,49 +80,6 @@ type::QualType Compiler::VerifyType(ast::BlockNode const *node) {
 type::QualType Compiler::VerifyType(ast::BuiltinFn const *node) {
   return data().set_qual_type(node,
                               type::QualType::Constant(node->value().type()));
-}
-
-type::QualType Compiler::VerifyType(ast::Cast const *node) {
-  auto expr_qual_type = VerifyType(node->expr());
-  auto type_result    = VerifyType(node->type());
-  if (not expr_qual_type.ok() or not type_result.ok()) {
-    return type::QualType::Error();
-  }
-
-  if (type_result.type() != type::Type_) {
-    diag().Consume(diagnostic::CastToNonType{
-        .range = node->range(),
-    });
-    return type::QualType::Error();
-  }
-  if (not type_result.constant()) {
-    diag().Consume(diagnostic::CastToNonConstantType{
-        .range = node->range(),
-    });
-    return type::QualType::Error();
-  }
-
-  auto maybe_type = EvaluateAs<type::Type const *>(node->type());
-  if (not maybe_type) { NOT_YET(); }
-  auto const *t = *maybe_type;
-  if (t->is<type::Struct>()) {
-    // TODO: do you ever want to support overlaods that accepts constants?
-    return data().set_qual_type(
-        node, VerifyUnaryOverload(
-                  "as", node, type::Typed(ir::Value(), expr_qual_type.type())));
-  } else {
-    if (not type::CanCast(expr_qual_type.type(), t)) {
-      diag().Consume(diagnostic::InvalidCast{
-          .from  = expr_qual_type.type(),
-          .to    = t,
-          .range = node->range(),
-      });
-      NOT_YET("log an error", expr_qual_type.type(), t);
-    }
-
-    return data().set_qual_type(node,
-                                type::QualType(t, expr_qual_type.quals()));
-  }
 }
 
 WorkItem::Result Compiler::VerifyBody(ast::EnumLiteral const *node) {
@@ -391,24 +150,6 @@ type::QualType Compiler::VerifyType(ast::ShortFunctionLiteral const *node) {
                   return type::GenericFunction::EmptyStruct{};
                 }),
                 std::move(gen))));
-}
-
-type::QualType Compiler::VerifyType(ast::ConditionalGoto const *node) {
-  VerifyType(node->condition());
-  for (auto const &option : node->true_options()) {
-    for (auto const &expr : option.args()) { VerifyType(expr.get()); }
-  }
-  for (auto const &option : node->false_options()) {
-    for (auto const &expr : option.args()) { VerifyType(expr.get()); }
-  }
-  return type::QualType::Constant(type::Void());
-}
-
-type::QualType Compiler::VerifyType(ast::UnconditionalGoto const *node) {
-  for (auto const &option : node->options()) {
-    for (auto const &expr : option.args()) { VerifyType(expr.get()); }
-  }
-  return type::QualType::Constant(type::Void());
 }
 
 type::QualType Compiler::VerifyType(ast::Label const *node) {

@@ -47,8 +47,9 @@ TEST(Assignment, TypeMismatch) {
   n := 3
   n = "hello"
   )");
-  EXPECT_THAT(mod.consumer.diagnostics(),
-              UnorderedElementsAre(Pair("type-error", "invalid-cast")));
+  EXPECT_THAT(
+      mod.consumer.diagnostics(),
+      UnorderedElementsAre(Pair("type-error", "assignment-type-mismatch")));
 }
 
 // TODO: Significantly more tests covering value category and expression

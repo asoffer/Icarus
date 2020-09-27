@@ -78,6 +78,7 @@ cc_library(
     name = "assignment",
     srcs = ["assignment.cc"],
     deps = [
+        ":common",
         "//ast",
         "//compiler:compiler_header",
         "//compiler/verify/internal:qual_type_iterator",
@@ -150,12 +151,35 @@ cc_test(
 )
 
 cc_library(
+    name = "cast",
+    srcs = ["cast.cc"],
+    deps = [
+        ":common",
+        "//ast",
+        "//compiler:compiler_header",
+        "//diagnostic:errors",
+        "//type:qual_type",
+    ],
+)
+
+cc_test(
+    name = "cast_test",
+    srcs = ["cast_test.cc"],
+    deps = [
+        "//compiler",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "common",
     hdrs = ["common.h"],
     srcs = ["common.cc"],
     deps = [
         "//ast",
         "//compiler:compiler_header",
+        "//compiler:data",
         "//compiler:library_module",
         "//compiler/dispatch:match",
         "//compiler/dispatch:parameters_and_arguments",
@@ -282,6 +306,26 @@ cc_library(
 cc_test(
     name = "function_type_test",
     srcs = ["function_type_test.cc"],
+    deps = [
+        "//compiler",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "goto",
+    srcs = ["goto.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+        "//type:primitive",
+    ],
+)
+
+cc_test(
+    name = "goto_test",
+    srcs = ["goto_test.cc"],
     deps = [
         "//compiler",
         "//test:module",
@@ -432,6 +476,7 @@ cc_library(
     name = "unary_operator",
     srcs = ["unary_operator.cc"],
     deps = [
+        ":common",
         "//ast",
         "//compiler:compiler_header",
         "//compiler/verify/internal:qual_type_iterator",
