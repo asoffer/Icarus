@@ -156,8 +156,8 @@ type::QualType Compiler::VerifyType(ast::ComparisonOperator const *node) {
       }
       // TODO: Calling with constants?
       auto result = VerifyBinaryOverload(
-          token, node, type::Typed(ir::Value(), lhs_qual_type.type()),
-          type::Typed(ir::Value(), rhs_qual_type.type()));
+          token, node, type::Typed<ir::Value>(ir::Value(), lhs_qual_type.type()),
+          type::Typed<ir::Value>(ir::Value(), rhs_qual_type.type()));
       qt.remove_constant();
 
       if (not result.ok()) {

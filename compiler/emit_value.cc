@@ -269,9 +269,10 @@ void Compiler::EmitMoveInit(
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
     auto result = EmitBuiltinCall(this, b, node->args());
     if (result.empty()) return;
-    Visit(to[0].type()->as<type::Pointer>().pointee(), *to[0],
-          type::Typed{result, data().qual_type(node)->type()},
-          EmitCopyAssignTag{});
+    EmitCopyAssign(
+        type::Typed<ir::RegOr<ir::Addr>>(
+            *to[0], to[0].type()->as<type::Pointer>().pointee()),
+        type::Typed<ir::Value>(result, data().qual_type(node)->type()));
   }
 
   // Look at all the possible calls and generate the dispatching code
@@ -281,7 +282,7 @@ void Compiler::EmitMoveInit(
   // into a single variant buffer, because we know we need something that big
   // anyway, and their use cannot overlap.
   auto args = node->args().Transform([this](ast::Expression const *expr) {
-    return type::Typed(EmitValue(expr), type_of(expr));
+    return type::Typed<ir::Value>(EmitValue(expr), type_of(expr));
   });
 
   // TODO: This is a pretty terrible hack.
@@ -290,8 +291,8 @@ void Compiler::EmitMoveInit(
               ->type()
               ->if_as<type::GenericStruct>()) {
     type::Type const *s = gen_struct_type->concrete(args);
-    Visit(type::Type_, *to[0],
-          type::Typed<ir::Value>(ir::Value(s), type::Type_), EmitCopyAssignTag{});
+    EmitCopyAssign(type::Typed<ir::RegOr<ir::Addr>>(*to[0], type::Type_),
+                   type::Typed<ir::Value>(ir::Value(s), type::Type_));
     return;
   }
 
@@ -307,9 +308,10 @@ void Compiler::EmitCopyInit(ast::Call const *node,
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
     auto result = EmitBuiltinCall(this, b, node->args());
     if (result.empty()) return;
-    Visit(to[0].type()->as<type::Pointer>().pointee(), *to[0],
-          type::Typed{result, data().qual_type(node)->type()},
-          EmitCopyAssignTag{});
+    EmitCopyAssign(
+        type::Typed<ir::RegOr<ir::Addr>>(
+            *to[0], to[0].type()->as<type::Pointer>().pointee()),
+        type::Typed<ir::Value>(result, data().qual_type(node)->type()));
   }
 
   // Look at all the possible calls and generate the dispatching code
@@ -319,7 +321,7 @@ void Compiler::EmitCopyInit(ast::Call const *node,
   // into a single variant buffer, because we know we need something that big
   // anyway, and their use cannot overlap.
   auto args = node->args().Transform([this](ast::Expression const *expr) {
-    return type::Typed(EmitValue(expr), type_of(expr));
+    return type::Typed<ir::Value>(EmitValue(expr), type_of(expr));
   });
 
   // TODO: This is a pretty terrible hack.
@@ -328,8 +330,8 @@ void Compiler::EmitCopyInit(ast::Call const *node,
               ->type()
               ->if_as<type::GenericStruct>()) {
     type::Type const *s = gen_struct_type->concrete(args);
-    Visit(type::Type_, *to[0],
-          type::Typed<ir::Value>(ir::Value(s), type::Type_), EmitCopyAssignTag{});
+    EmitCopyAssign(type::Typed<ir::RegOr<ir::Addr>>(*to[0], type::Type_),
+                   type::Typed<ir::Value>(ir::Value(s), type::Type_));
     return;
   }
 
@@ -345,9 +347,10 @@ void Compiler::EmitAssign(
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
     auto result = EmitBuiltinCall(this, b, node->args());
     if (result.empty()) return;
-    Visit(to[0].type()->as<type::Pointer>().pointee(), *to[0],
-          type::Typed{result, data().qual_type(node)->type()},
-          EmitCopyAssignTag{});
+    EmitCopyAssign(
+        type::Typed<ir::RegOr<ir::Addr>>(
+            *to[0], to[0].type()->as<type::Pointer>().pointee()),
+        type::Typed<ir::Value>(result, data().qual_type(node)->type()));
   }
 
   // Look at all the possible calls and generate the dispatching code
@@ -357,7 +360,7 @@ void Compiler::EmitAssign(
   // into a single variant buffer, because we know we need something that big
   // anyway, and their use cannot overlap.
   auto args = node->args().Transform([this](ast::Expression const *expr) {
-    return type::Typed(EmitValue(expr), type_of(expr));
+    return type::Typed<ir::Value>(EmitValue(expr), type_of(expr));
   });
 
   // TODO: This is a pretty terrible hack.
@@ -366,9 +369,7 @@ void Compiler::EmitAssign(
               ->type()
               ->if_as<type::GenericStruct>()) {
     type::Type const *s = gen_struct_type->concrete(args);
-    Visit(type::Type_, *to[0],
-          type::Typed<ir::Value>(ir::Value(s), type::Type_),
-          EmitCopyAssignTag{});
+    EmitCopyAssign(to[0], type::Typed<ir::Value>(ir::Value(s), type::Type_));
     return;
   }
 
@@ -390,7 +391,7 @@ ir::Value Compiler::EmitValue(ast::Call const *node) {
   // into a single variant buffer, because we know we need something that big
   // anyway, and their use cannot overlap.
   auto args = node->args().Transform([this](ast::Expression const *expr) {
-    return type::Typed(EmitValue(expr), type_of(expr));
+    return type::Typed<ir::Value>(EmitValue(expr), type_of(expr));
   });
 
   // TODO: This is a pretty terrible hack.
@@ -429,7 +430,7 @@ void Compiler::EmitCopyInit(
   // TODO user-defined-types
   ASSERT(to.size() == 1u);
   auto t = data().qual_type(node)->type();
-  Visit(t, *to[0], type::Typed{EmitValue(node), t}, EmitCopyAssignTag{});
+  EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
 }
 
 void Compiler::EmitMoveInit(
@@ -438,7 +439,8 @@ void Compiler::EmitMoveInit(
   // TODO user-defined-types
   ASSERT(to.size() == 1u);
   auto t = data().qual_type(node)->type();
-  Visit(t, *to[0], type::Typed{EmitValue(node), t}, EmitMoveAssignTag{});
+  EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>>(*to[0], t),
+                 type::Typed<ir::Value>(EmitValue(node), t));
 }
 
 ir::Value Compiler::EmitValue(ast::Cast const *node) {
@@ -457,12 +459,12 @@ ir::Value Compiler::EmitValue(ast::Cast const *node) {
                               ir::EnumVal, ir::FlagsVal>(
           to_type, [&](auto tag) {
             return ir::Value(builder().CastTo<typename decltype(tag)::type>(
-                type::Typed(results, from_type)));
+                type::Typed<ir::Value>(results, from_type)));
           });
     } else {
       return type::ApplyTypes<float, double>(to_type, [&](auto tag) {
         return ir::Value(builder().CastTo<typename decltype(tag)::type>(
-            type::Typed(results, from_type)));
+            type::Typed<ir::Value>(results, from_type)));
       });
     }
   } else {
@@ -509,7 +511,8 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
         LOG("EmitValueDeclaration", "Computing slot with %s",
             node->init_val()->DebugString());
         auto maybe_val =
-            Evaluate(type::Typed(node->init_val(), t), state_.must_complete);
+            Evaluate(type::Typed<ast::Expression const *>(node->init_val(), t),
+                     state_.must_complete);
         if (not maybe_val) {
           // TODO we reserved a slot and haven't cleaned it up. Do we care?
           NOT_YET("Found errors but haven't handled them.",
@@ -549,7 +552,7 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
       EmitMoveInit(node->init_val(), absl::MakeConstSpan(&to, 1));
     } else {
       if (not(node->flags() & ast::Declaration::f_IsFnParam)) {
-        Visit(t, a, EmitDefaultInitTag{});
+        EmitDefaultInit(type::Typed<ir::Reg>(a, t));
       }
     }
     return ir::Value(a);
@@ -589,10 +592,10 @@ void Compiler::EmitMoveInit(
     {
       auto reg = builder().Field(to[0]->reg(), &struct_type, i).get();
       if (field.initial_value.empty()) {
-        Visit(field.type, reg, EmitDefaultInitTag{});
+        EmitDefaultInit(type::Typed<ir::Reg>(reg, field.type));
       } else {
-        Visit(field.type, reg, type::Typed{field.initial_value, field.type},
-              EmitCopyAssignTag{});
+        EmitCopyAssign(type::Typed<ir::RegOr<ir::Addr>>(reg, field.type),
+                       type::Typed<ir::Value>(field.initial_value, field.type));
       }
     }
   next_field:;
@@ -634,10 +637,10 @@ void Compiler::EmitCopyInit(
     {
       auto reg = builder().Field(to[0]->reg(), &struct_type, i).get();
       if (field.initial_value.empty()) {
-        Visit(field.type, reg, EmitDefaultInitTag{});
+        EmitDefaultInit(type::Typed<ir::Reg>(reg, field.type));
       } else {
-        Visit(field.type, reg, type::Typed{field.initial_value, field.type},
-              EmitCopyAssignTag{});
+        EmitCopyAssign(type::Typed<ir::RegOr<ir::Addr>>(reg, field.type),
+                       type::Typed<ir::Value>(field.initial_value, field.type));
       }
     }
   next_field:;
@@ -837,7 +840,7 @@ void Compiler::EmitAssign(
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = data().qual_type(node)->type();
-  Visit(t, *to[0], type::Typed{EmitValue(node), t}, EmitCopyAssignTag{});
+  EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
 }
 
 ir::Value Compiler::EmitValue(ast::Import const *node) {
@@ -866,7 +869,8 @@ void EmitJump(Compiler *c, absl::Span<ast::JumpOption const> options) {
     c->builder().CurrentBlock() = block;
 
     args.push_back(opt.args().Transform([c](auto const &expr) {
-      return type::Typed(c->EmitValue(expr.get()), c->type_of(expr.get()));
+      return type::Typed<ir::Value>(c->EmitValue(expr.get()),
+                                    c->type_of(expr.get()));
     }));
   }
 
@@ -949,7 +953,7 @@ ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
           type::Ptr(&ret_type));
       EmitMoveInit(expr, absl::MakeConstSpan(&typed_alloc, 1));
     } else {
-      builder().SetRet(i, type::Typed{EmitValue(expr), &ret_type});
+      builder().SetRet(i, type::Typed<ir::Value>(EmitValue(expr), &ret_type));
     }
   }
 
@@ -1033,7 +1037,7 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
   builder().CurrentBlock() = args_block;
 
   auto args = node->args().Transform([this](ast::Expression const *expr) {
-    return type::Typed(EmitValue(expr), type_of(expr));
+    return type::Typed<ir::Value>(EmitValue(expr), type_of(expr));
   });
 
   ASSIGN_OR(return ir::Value(),  //

@@ -21,7 +21,7 @@ type::Typed<ir::Value> EvaluateIfConstant(Compiler &c,
                                           type::QualType qt) {
   if (qt.constant()) {
     LOG("EvaluateIfConstant", "Evaluating constant: %s", expr->DebugString());
-    auto maybe_val = c.Evaluate(type::Typed(expr, qt.type()));
+    auto maybe_val = c.Evaluate(type::Typed<ast::Expression const *>(expr, qt.type()));
     if (maybe_val) { return type::Typed<ir::Value>(*maybe_val, qt.type()); }
     c.diag().Consume(diagnostic::EvaluationFailure{
         .failure = maybe_val.error(),
@@ -156,7 +156,8 @@ Compiler::ComputeParamsFromArgs(
           auto const *init_val = ASSERT_NOT_NULL(dep_node.node()->init_val());
           type::Type const *t =
               ASSERT_NOT_NULL(data().arg_type(dep_node.node()->id()));
-          auto maybe_val = Evaluate(type::Typed(init_val, t));
+          auto maybe_val =
+              Evaluate(type::Typed<ast::Expression const *>(init_val, t));
           if (not maybe_val) { NOT_YET(); }
           val = *maybe_val;
         }
@@ -224,8 +225,8 @@ Compiler::ComputeParamsFromArgs(
           arg = *a;
         } else {
           auto const *t  = ASSERT_NOT_NULL(type_of(dep_node.node()));
-          auto maybe_val = Evaluate(
-              type::Typed(ASSERT_NOT_NULL(dep_node.node()->init_val()), t));
+          auto maybe_val = Evaluate(type::Typed<ast::Expression const *>(
+              ASSERT_NOT_NULL(dep_node.node()->init_val()), t));
           if (not maybe_val) { NOT_YET(); }
           arg = type::Typed<ir::Value>(*maybe_val, t);
           LOG("generic-fn", "%s", dep_node.node()->DebugString());

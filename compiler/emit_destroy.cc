@@ -10,22 +10,23 @@
 
 namespace compiler {
 
-void Compiler::Visit(type::Primitive const *, ir::Reg, EmitDestroyTag) {}
-void Compiler::Visit(type::Pointer const *, ir::Reg, EmitDestroyTag) {}
+void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Primitive> reg) {}
+void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Pointer> reg) {}
+void Compiler::EmitDestroy(type::Typed<ir::Reg, type::BufferPointer> reg) {}
 
-void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDestroyTag) {
-  if (not t->HasDestructor()) { return; }
+void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Struct> reg) {
+  if (not reg.type()->HasDestructor()) { return; }
   // TODO: Call fields dtors.
-  builder().Destroy(t, reg);
+  builder().Destroy(reg.type(), *reg);
 }
 
-void Compiler::Visit(type::Tuple const *t, ir::Reg reg, EmitDestroyTag) {
-  if (not t->HasDestructor()) { return; }
-  t->destroy_func_.init([=]() {
-    auto const *fn_type = type::Func(
-        core::Params<type::QualType>{
-            core::AnonymousParam(type::QualType::NonConstant(type::Ptr(t)))},
-        {});
+void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Tuple> reg) {
+  if (not reg.type()->HasDestructor()) { return; }
+  reg.type()->destroy_func_.init([=]() {
+    auto const *fn_type =
+        type::Func(core::Params<type::QualType>{core::AnonymousParam(
+                       type::QualType::NonConstant(type::Ptr(reg.type())))},
+                   {});
     ir::NativeFn fn =
         AddFunc(fn_type, fn_type->params().Transform([](type::QualType q) {
           return type::Typed<ast::Declaration const *>(nullptr, q.type());
@@ -35,9 +36,10 @@ void Compiler::Visit(type::Tuple const *t, ir::Reg reg, EmitDestroyTag) {
       auto var                 = ir::Reg::Arg(0);
 
       for (size_t i :
-           base::make_random_permutation(absl::BitGen{}, t->entries_.size())) {
-        Visit(t->entries_.at(i), builder().Field(var, t, i).get(),
-              EmitDestroyTag{});
+           base::make_random_permutation(absl::BitGen{}, reg.type()->entries_.size())) {
+        EmitDestroy(
+            type::Typed<ir::Reg>(builder().Field(var, reg.type(), i).get(),
+                                 reg.type()->entries_.at(i)));
       }
 
       builder().ReturnJump();
@@ -45,16 +47,16 @@ void Compiler::Visit(type::Tuple const *t, ir::Reg reg, EmitDestroyTag) {
     return fn;
   });
 
-  builder().Destroy(t, reg);
+  builder().Destroy(reg.type(), *reg);
 }
 
-void Compiler::Visit(type::Array const *t, ir::Reg reg, EmitDestroyTag) {
-  if (not t->HasDestructor()) { return; }
+void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Array> reg) {
+  if (not reg.type()->HasDestructor()) { return; }
   data().destroy_.emplace(
-      t, base::lazy_convert{[&] {
+      reg.type(), base::lazy_convert{[&] {
         auto const *fn_type =
             type::Func(core::Params<type::QualType>{core::AnonymousParam(
-                           type::QualType::NonConstant(type::Ptr(t)))},
+                           type::QualType::NonConstant(type::Ptr(reg.type())))},
                        {});
         ir::NativeFn fn =
             AddFunc(fn_type, fn_type->params().Transform([](type::QualType q) {
@@ -62,14 +64,15 @@ void Compiler::Visit(type::Array const *t, ir::Reg reg, EmitDestroyTag) {
             }));
         ICARUS_SCOPE(ir::SetCurrent(fn)) {
           builder().CurrentBlock() = fn->entry();
-          builder().OnEachArrayElement(t, ir::Reg::Arg(0), [=](ir::Reg r) {
-            Visit(t->data_type(), r, EmitDestroyTag{});
-          });
+          builder().OnEachArrayElement(
+              reg.type(), ir::Reg::Arg(0), [=](ir::Reg r) {
+                EmitDestroy(type::Typed<ir::Reg>(r, reg.type()->data_type()));
+              });
           builder().ReturnJump();
         }
         return fn;
       }});
-  builder().Destroy(t, reg);
+  builder().Destroy(reg.type(), *reg);
 }
 
 }  // namespace compiler

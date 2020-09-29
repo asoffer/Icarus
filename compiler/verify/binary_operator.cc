@@ -118,8 +118,8 @@ type::QualType VerifyLogicalOperator(Compiler *c, std::string_view op,
   } else {
     // TODO: Calling with constants?
     auto qt = c->VerifyBinaryOverload(
-        op, node, type::Typed(ir::Value(), lhs_qual_type.type()),
-        type::Typed(ir::Value(), rhs_qual_type.type()));
+        op, node, type::Typed<ir::Value>(ir::Value(), lhs_qual_type.type()),
+        type::Typed<ir::Value>(ir::Value(), rhs_qual_type.type()));
     if (not qt.ok()) {
       c->diag().Consume(InvalidBinaryOperatorOverload{
           .op    = std::string(op),
@@ -142,8 +142,8 @@ type::QualType VerifyArithmeticOperator(Compiler *c, std::string_view op,
   if (check_user_overload) {
     // TODO: Calling with constants?
     auto qt = c->VerifyBinaryOverload(
-        op, node, type::Typed(ir::Value(), lhs_qual_type.type()),
-        type::Typed(ir::Value(), rhs_qual_type.type()));
+        op, node, type::Typed<ir::Value>(ir::Value(), lhs_qual_type.type()),
+        type::Typed<ir::Value>(ir::Value(), rhs_qual_type.type()));
     if (not qt.ok()) {
       c->diag().Consume(InvalidBinaryOperatorOverload{
           .op    = std::string(op),

@@ -509,6 +509,8 @@ struct Builder {
 
   // Special members function instructions. Calling these typically calls
   // builtin functions (or, in the case of primitive types, do nothing).
+  //
+  // TODO: Use Typed<Reg>
   void Init(type::Type const* t, Reg r);
   void Destroy(type::Type const* t, Reg r);
   void Move(type::Type const* t, Reg from, RegOr<Addr> to);

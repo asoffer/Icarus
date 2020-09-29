@@ -185,8 +185,8 @@ type::QualType VerifyByteViewIndex(Compiler *c, ast::Index const *node,
   }
 
   if (index_qt.constant()) {
-    auto maybe_index_value =
-        c->Evaluate(type::Typed(node->rhs(), index_qt.type()));
+    auto maybe_index_value = c->Evaluate(
+        type::Typed<ast::Expression const *>(node->rhs(), index_qt.type()));
     if (not maybe_index_value) {
       c->diag().Consume(diagnostic::EvaluationFailure{
           .failure = maybe_index_value.error(),
@@ -243,8 +243,8 @@ type::QualType VerifyArrayIndex(Compiler *c, ast::Index const *node,
   }
 
   if (index_qt.constant()) {
-    auto maybe_index_value =
-        c->Evaluate(type::Typed(node->rhs(), index_qt.type()));
+    auto maybe_index_value = c->Evaluate(
+        type::Typed<ast::Expression const *>(node->rhs(), index_qt.type()));
     if (not maybe_index_value) {
       c->diag().Consume(diagnostic::EvaluationFailure{
           .failure = maybe_index_value.error(),
@@ -296,7 +296,8 @@ type::QualType VerifyTupleIndex(Compiler *c, ast::Index const *node,
     return type::QualType::Error();
   }
 
-  auto maybe_value = c->Evaluate(type::Typed(node->rhs(), index_qt.type()));
+  auto maybe_value = c->Evaluate(
+      type::Typed<ast::Expression const *>(node->rhs(), index_qt.type()));
   if (not maybe_value) {
     c->diag().Consume(diagnostic::EvaluationFailure{
         .failure = maybe_value.error(),

@@ -74,9 +74,10 @@ void Compiler::EmitMoveInit(
       case 0: NOT_YET();
       case 1:
         // TODO: should actually be an initialization, not assignment.
-        Visit(qt.type(), *to[0],
-              type::Typed(mod.ExportedValue(decls[0]), qt.type()),
-              EmitMoveAssignTag{});
+        EmitMoveAssign(
+            type::Typed<ir::RegOr<ir::Addr>>(*to[0], qt.type()),
+            type::Typed<ir::Value>(mod.ExportedValue(decls[0]), qt.type()));
+
         return;
       default: NOT_YET();
     }
@@ -85,32 +86,31 @@ void Compiler::EmitMoveInit(
   auto const &this_type = *ASSERT_NOT_NULL(data().qual_type(node))->type();
   if (auto const *enum_type = this_type.if_as<type::Enum>()) {
     // TODO: should actually be an initialization, not assignment.
-    Visit(enum_type, *to[0],
-          type::Typed(ir::Value(*enum_type->EmitLiteral(node->member_name())),
-                      enum_type),
-          EmitMoveAssignTag{});
+    EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>>(*to[0], enum_type),
+                   type::Typed<ir::Value>(
+                       ir::Value(*enum_type->EmitLiteral(node->member_name())),
+                       enum_type));
   } else if (auto const *flags_type = this_type.if_as<type::Flags>()) {
     // TODO: should actually be an initialization, not assignment.
-    Visit(flags_type, *to[0],
-          type::Typed(ir::Value(*flags_type->EmitLiteral(node->member_name())),
-                      flags_type),
-          EmitMoveAssignTag{});
+    EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>>(*to[0], flags_type),
+                   type::Typed<ir::Value>(
+                       ir::Value(*flags_type->EmitLiteral(node->member_name())),
+                       flags_type));
   } else if (&this_type == type::ByteView) {
     // TODO: should actually be an initialization, not assignment.
     ASSERT(node->member_name() == "length");
-    Visit(type::ByteView, *to[0],
-          type::Typed(
-              ir::Value(builder().ByteViewLength(
-                  EmitValue(node->operand()).get<ir::RegOr<ir::String>>())),
-              type::ByteView),
-          EmitMoveAssignTag{});
+    EmitMoveAssign(
+        to[0],
+        type::Typed<ir::Value>(
+            ir::Value(builder().ByteViewLength(
+                EmitValue(node->operand()).get<ir::RegOr<ir::String>>())),
+            type::ByteView));
   } else {
     // TODO: should actually be an initialization, not assignment.
-    Visit(to[0].type(), *to[0],
-          type::Typed(
-              ir::Value(builder().PtrFix(EmitRef(node).reg(), &this_type)),
-              type::Ptr(&this_type)),
-          EmitMoveAssignTag{});
+    EmitMoveAssign(
+        to[0], type::Typed<ir::Value>(
+                   ir::Value(builder().PtrFix(EmitRef(node).reg(), &this_type)),
+                   type::Ptr(&this_type)));
   }
 }
 
@@ -128,9 +128,8 @@ void Compiler::EmitCopyInit(
       case 0: NOT_YET();
       case 1:
         // TODO: should actually be an initialization, not assignment.
-        Visit(qt.type(), *to[0],
-              type::Typed(mod.ExportedValue(decls[0]), qt.type()),
-              EmitMoveAssignTag{});
+        EmitMoveAssign(to[0], type::Typed<ir::Value>(
+                                  mod.ExportedValue(decls[0]), qt.type()));
         return;
       default: NOT_YET();
     }
@@ -139,32 +138,31 @@ void Compiler::EmitCopyInit(
   auto const &this_type = *ASSERT_NOT_NULL(data().qual_type(node))->type();
   if (auto const *enum_type = this_type.if_as<type::Enum>()) {
     // TODO: should actually be an initialization, not assignment.
-    Visit(enum_type, *to[0],
-          type::Typed(ir::Value(*enum_type->EmitLiteral(node->member_name())),
-                      enum_type),
-          EmitMoveAssignTag{});
+    EmitMoveAssign(to[0],
+                   type::Typed<ir::Value>(
+                       ir::Value(*enum_type->EmitLiteral(node->member_name())),
+                       enum_type));
   } else if (auto const *flags_type = this_type.if_as<type::Flags>()) {
     // TODO: should actually be an initialization, not assignment.
-    Visit(flags_type, *to[0],
-          type::Typed(ir::Value(*flags_type->EmitLiteral(node->member_name())),
-                      flags_type),
-          EmitMoveAssignTag{});
+    EmitMoveAssign(to[0],
+                   type::Typed<ir::Value>(
+                       ir::Value(*flags_type->EmitLiteral(node->member_name())),
+                       flags_type));
   } else if (&this_type == type::ByteView) {
     // TODO: should actually be an initialization, not assignment.
     ASSERT(node->member_name() == "length");
-    Visit(type::ByteView, *to[0],
-          type::Typed(
-              ir::Value(builder().ByteViewLength(
-                  EmitValue(node->operand()).get<ir::RegOr<ir::String>>())),
-              type::ByteView),
-          EmitMoveAssignTag{});
+    EmitMoveAssign(
+        to[0],
+        type::Typed<ir::Value>(
+            ir::Value(builder().ByteViewLength(
+                EmitValue(node->operand()).get<ir::RegOr<ir::String>>())),
+            type::ByteView));
   } else {
     // TODO: should actually be an initialization, not assignment.
-    Visit(to[0].type(), *to[0],
-          type::Typed(
-              ir::Value(builder().PtrFix(EmitRef(node).reg(), &this_type)),
-              &this_type),
-          EmitMoveAssignTag{});
+    EmitMoveAssign(
+        to[0], type::Typed<ir::Value>(
+                   ir::Value(builder().PtrFix(EmitRef(node).reg(), &this_type)),
+                   &this_type));
   }
 }
 
@@ -182,9 +180,8 @@ void Compiler::EmitAssign(
       case 0: NOT_YET();
       case 1:
         // TODO: should actually be an initialization, not assignment.
-        Visit(qt.type(), *to[0],
-              type::Typed(mod.ExportedValue(decls[0]), qt.type()),
-              EmitMoveAssignTag{});
+        EmitMoveAssign(to[0], type::Typed<ir::Value>(
+                                  mod.ExportedValue(decls[0]), qt.type()));
         return;
       default: NOT_YET();
     }
@@ -192,30 +189,29 @@ void Compiler::EmitAssign(
 
   auto const &this_type = *ASSERT_NOT_NULL(data().qual_type(node))->type();
   if (auto const *enum_type = this_type.if_as<type::Enum>()) {
-    Visit(enum_type, *to[0],
-          type::Typed(ir::Value(*enum_type->EmitLiteral(node->member_name())),
-                      enum_type),
-          EmitMoveAssignTag{});
+    EmitMoveAssign(to[0],
+                   type::Typed<ir::Value>(
+                       ir::Value(*enum_type->EmitLiteral(node->member_name())),
+                       enum_type));
   } else if (auto const *flags_type = this_type.if_as<type::Flags>()) {
-    Visit(flags_type, *to[0],
-          type::Typed(ir::Value(*flags_type->EmitLiteral(node->member_name())),
-                      flags_type),
-          EmitMoveAssignTag{});
+    EmitMoveAssign(to[0],
+                   type::Typed<ir::Value>(
+                       ir::Value(*flags_type->EmitLiteral(node->member_name())),
+                       flags_type));
   } else if (&this_type == type::ByteView) {
     ASSERT(node->member_name() == "length");
-    Visit(type::ByteView, *to[0],
-          type::Typed(
-              ir::Value(builder().ByteViewLength(
-                  EmitValue(node->operand()).get<ir::RegOr<ir::String>>())),
-              type::ByteView),
-          EmitMoveAssignTag{});
+    EmitMoveAssign(
+        to[0],
+        type::Typed<ir::Value>(
+            ir::Value(builder().ByteViewLength(
+                EmitValue(node->operand()).get<ir::RegOr<ir::String>>())),
+            type::ByteView));
   } else {
     // TODO: should actually be an initialization, not assignment.
-    Visit(to[0].type(), *to[0],
-          type::Typed(
-              ir::Value(builder().PtrFix(EmitRef(node).reg(), &this_type)),
-              &this_type),
-          EmitMoveAssignTag{});
+    EmitMoveAssign(
+        to[0], type::Typed<ir::Value>(
+                   ir::Value(builder().PtrFix(EmitRef(node).reg(), &this_type)),
+                   &this_type));
   }
 }
 

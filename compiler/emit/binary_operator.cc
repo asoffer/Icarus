@@ -305,7 +305,8 @@ void Compiler::EmitCopyInit(
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = data().qual_type(node)->type();
-  Visit(t, *to[0], type::Typed{EmitValue(node), t}, EmitCopyAssignTag{});
+  EmitCopyAssign(type::Typed<ir::RegOr<ir::Addr>>(*to[0], t),
+                 type::Typed<ir::Value>(EmitValue(node), t));
 }
 
 void Compiler::EmitMoveInit(
@@ -313,7 +314,8 @@ void Compiler::EmitMoveInit(
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = data().qual_type(node)->type();
-  Visit(t, *to[0], type::Typed{EmitValue(node), t}, EmitMoveAssignTag{});
+  EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>>(*to[0], t),
+                 type::Typed<ir::Value>(EmitValue(node), t));
 }
 
 void Compiler::EmitAssign(
@@ -321,7 +323,8 @@ void Compiler::EmitAssign(
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = data().qual_type(node)->type();
-  Visit(t, *to[0], type::Typed{EmitValue(node), t}, EmitCopyAssignTag{});
+  EmitCopyAssign(type::Typed<ir::RegOr<ir::Addr>>(*to[0], t),
+                 type::Typed<ir::Value>(EmitValue(node), t));
 }
 
 }  // namespace compiler

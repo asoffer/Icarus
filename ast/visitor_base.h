@@ -3,7 +3,6 @@
 
 #include "ast/ast_fwd.h"
 #include "base/debug.h"
-#include "base/meta.h"
 
 namespace ast {
 

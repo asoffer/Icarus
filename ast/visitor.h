@@ -31,7 +31,8 @@ struct Visitor<Tag, Ret(Args...)> : VisitorBase {
       if constexpr (sizeof...(Args) == 0) {                                    \
         new (static_cast<Ret *>(erased_ret)) Ret(this->Visit(Tag{}, node));    \
       } else if constexpr (sizeof...(Args) == 1) {                             \
-        this->Visit(Tag{}, node, std::forward<Args...>(erased_args));          \
+        new (static_cast<Ret *>(erased_ret))                                   \
+            Ret(this->Visit(Tag{}, node, std::forward<Args...>(erased_args))); \
       } else {                                                                 \
         static_assert(base::always_false<Tag>(), "Currently unsupported");     \
       }                                                                        \

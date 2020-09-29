@@ -14,23 +14,33 @@
 
 namespace backend {
 namespace {
+
+struct LlvmTypeTag {};
+
 // TODO: Const visitor?
-struct LlvmTypeVisitor : type::Visitor<llvm::Type *()> {
+struct LlvmTypeVisitor : type::Visitor<LlvmTypeTag, llvm::Type *()> {
   explicit LlvmTypeVisitor(llvm::LLVMContext &context) : context_(context) {}
 
-  llvm::Type *Visit(type::Type const *t) {
-    return type::SingleVisitor<llvm::Type *()>::Visit(t);
+  llvm::Type *get(type::Type const *t) {
+    return type::Visitor<LlvmTypeTag, llvm::Type *()>::Visit(t);
   }
 
-  llvm::Type *Visit(type::Array const *t) override {
-    return llvm::ArrayType::get(Visit(t->data_type()), t->length());
+#define ICARUS_TYPE_TYPE_X(name)                                               \
+  llvm::Type *Visit(LlvmTypeTag, type::name const *t) override {               \
+    return get(t);                                                             \
+  }
+#include "type/type.xmacro.h"
+#undef ICARUS_TYPE_TYPE_X
+
+  llvm::Type *get(type::Array const *t) {
+    return llvm::ArrayType::get(get(t->data_type()), t->length());
   }
 
-  llvm::Type *Visit(type::Enum const *t) override {
+  llvm::Type *get(type::Enum const *t) {
     return llvm::Type::getInt64Ty(context_);
   }
 
-  llvm::Type *Visit(type::Flags const *t) override {
+  llvm::Type *get(type::Flags const *t) {
     return llvm::Type::getInt64Ty(context_);
   }
 
@@ -40,11 +50,11 @@ struct LlvmTypeVisitor : type::Visitor<llvm::Type *()> {
   // LLVM. In other words, there is a type-level distinction in LLVM that is a
   // qualifier-level distinction in Icarus. We don't actually take this into
   // account yet.
-  llvm::Type *Visit(type::Function const *t) override {
+  llvm::Type *get(type::Function const *t) {
     std::vector<llvm::Type *> param_types;
     for (auto const &p : t->params()) {
       if (p.value.constant()) { continue; }
-      param_types.push_back(Visit(p.value.type()));
+      param_types.push_back(get(p.value.type()));
     }
 
     //  If an Icarus function has exactly one return value and it fits in a
@@ -57,21 +67,21 @@ struct LlvmTypeVisitor : type::Visitor<llvm::Type *()> {
     auto const output_span = t->output();
     if (output_span.size() != 1 or output_span[0]->is_big()) {
       for (auto const *out_type : output_span) {
-        param_types.push_back(Visit(out_type)->getPointerTo());
+        param_types.push_back(get(out_type)->getPointerTo());
       }
       return llvm::FunctionType::get(llvm::Type::getVoidTy(context_),
                                      param_types, false);
     } else {
-      return llvm::FunctionType::get(Visit(output_span[0]), param_types, false);
+      return llvm::FunctionType::get(get(output_span[0]), param_types, false);
     }
   }
 
-  llvm::Type *Visit(type::Pointer const *t) override {
+  llvm::Type *get(type::Pointer const *t) {
     // Works for both pointers and buffer-pointers.
-    return Visit(t->pointee())->getPointerTo();
+    return get(t->pointee())->getPointerTo();
   }
 
-  llvm::Type *Visit(type::Primitive const *t) override {
+  llvm::Type *get(type::Primitive const *t) {
     llvm::Type *result;
     t->Apply([&result, this](auto metatype) {
       result = LlvmType<typename decltype(metatype)::type>(context_);
@@ -79,8 +89,10 @@ struct LlvmTypeVisitor : type::Visitor<llvm::Type *()> {
     return result;
   }
 
-  llvm::Type *Visit(type::Struct const *t) override { NOT_YET(); }
-  llvm::Type *Visit(type::Tuple const *t) override { NOT_YET(); }
+  template <typename T>
+  llvm::Type *get(T const *t) {
+    NOT_YET();
+  }
 
  private:
   llvm::LLVMContext &context_;
@@ -89,7 +101,7 @@ struct LlvmTypeVisitor : type::Visitor<llvm::Type *()> {
 }  // namespace
 
 llvm::Type *ToLlvmType(type::Type const *t, llvm::LLVMContext &context) {
-  return LlvmTypeVisitor(context).Visit(t);
+  return LlvmTypeVisitor(context).get(t);
 }
 
 }  // namespace backend

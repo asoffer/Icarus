@@ -131,7 +131,7 @@ void EmitCall(Tag, Compiler *compiler, ast::Expression const *callee,
         core::FillMissingArgs(
             core::ParamsRef(callee_fn.value().native()->params()), &args,
             [&c](auto const &p) {
-              return type::Typed(
+              return type::Typed<ir::Value>(
                   c.EmitValue(ASSERT_NOT_NULL(p.get()->init_val())), p.type());
             });
       } break;
@@ -148,8 +148,8 @@ void EmitCall(Tag, Compiler *compiler, ast::Expression const *callee,
   for (auto const *t : overload_type->output()) {
     ++i;
     if (t->is_big()) continue;
-    c.Visit(t, *to[i], type::Typed{ir::Value(out_params[i]), t},
-            EmitCopyAssignTag{});
+    c.EmitCopyAssign(to[i],
+                     type::Typed<ir::Value>(ir::Value(out_params[i]), t));
   }
 }
 

@@ -66,7 +66,7 @@ void MakeAllDestructions(Compiler *compiler, ast::ExecScope const *exec_scope) {
   for (auto *decl : ordered_decls) {
     auto *t = ASSERT_NOT_NULL(compiler->type_of(decl));
     if (not t->HasDestructor()) { continue; }
-    compiler->Visit(t, compiler->data().addr(decl), EmitDestroyTag{});
+    compiler->EmitDestroy(type::Typed<ir::Reg>(compiler->data().addr(decl), t));
   }
 }
 
@@ -79,9 +79,7 @@ void EmitIrForStatements(Compiler *compiler,
       LOG("EmitIrForStatements", "%s", stmt->DebugString());
       compiler->EmitValue(stmt);
       compiler->builder().FinishTemporariesWith(
-          [compiler](type::Typed<ir::Reg> r) {
-            compiler->Visit(r.type(), r.get(), EmitDestroyTag{});
-          });
+          [compiler](type::Typed<ir::Reg> r) { compiler->EmitDestroy(r); });
       if (compiler->builder().block_termination_state() !=
           ir::Builder::BlockTerminationState::kMoreStatements) {
         break;
@@ -118,13 +116,12 @@ void CompleteBody(Compiler *compiler, ast::ShortFunctionLiteral const *node,
                              absl::MakeConstSpan(&typed_alloc, 1));
     } else {
       compiler->builder().SetRet(
-          0, type::Typed{compiler->EmitValue(node->body()), &ret_type});
+          0,
+          type::Typed<ir::Value>(compiler->EmitValue(node->body()), &ret_type));
     }
 
     bldr.FinishTemporariesWith([compiler](type::Typed<ir::Reg> r) {
-      if (r.type()->HasDestructor()) {
-        compiler->Visit(r.type(), r.get(), EmitDestroyTag{});
-      }
+      if (r.type()->HasDestructor()) { compiler->EmitDestroy(r); }
     });
 
     MakeAllDestructions(compiler, node->body_scope());
@@ -164,12 +161,12 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
 
         compiler->data().set_addr(out_decl, alloc);
         if (out_decl->IsDefaultInitialized()) {
-          compiler->Visit(out_decl_type, alloc, EmitDefaultInitTag{});
+          compiler->EmitDefaultInit(type::Typed<ir::Reg>(alloc, out_decl_type));
         } else {
-          compiler->Visit(out_decl_type, alloc,
-                          type::Typed{compiler->EmitValue(out_decl->init_val()),
-                                      out_decl_type},
-                          EmitCopyAssignTag{});
+          compiler->EmitCopyAssign(
+              type::Typed<ir::RegOr<ir::Addr>>(alloc, out_decl_type),
+              type::Typed<ir::Value>(compiler->EmitValue(out_decl->init_val()),
+                                     out_decl_type));
         }
       }
     }

@@ -30,7 +30,7 @@ ir::Value PrepareOneArg(Compiler *c, type::Typed<ir::Value> const &arg,
   auto *t = arg.type();
   if (t->is_big()) {
     auto r = bldr.TmpAlloca(t);
-    c->EmitMoveInit(arg, type::Typed(r, type::Ptr(t)));
+    c->EmitMoveInit(arg, type::Typed<ir::Reg>(r, type::Ptr(t)));
     return ir::Value(r);
   } else {
     return arg.get();

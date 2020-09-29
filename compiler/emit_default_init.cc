@@ -10,12 +10,12 @@
 
 namespace compiler {
 
-void Compiler::Visit(type::Array const *t, ir::Reg reg, EmitDefaultInitTag) {
+void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Array> const &r) {
   data().init_.emplace(
-      t, base::lazy_convert{[&] {
+      r.type(), base::lazy_convert{[&] {
         auto const *fn_type =
             type::Func(core::Params<type::QualType>{core::AnonymousParam(
-                           type::QualType::NonConstant(type::Ptr(t)))},
+                           type::QualType::NonConstant(type::Ptr(r.type())))},
                        {});
         ir::NativeFn fn =
             AddFunc(fn_type, fn_type->params().Transform([](type::QualType q) {
@@ -23,37 +23,38 @@ void Compiler::Visit(type::Array const *t, ir::Reg reg, EmitDefaultInitTag) {
             }));
         ICARUS_SCOPE(ir::SetCurrent(fn)) {
           builder().CurrentBlock() = fn->entry();
-          builder().OnEachArrayElement(t, ir::Reg::Arg(0), [=](ir::Reg r) {
-            Visit(t->data_type(), r, EmitDefaultInitTag{});
-          });
+          builder().OnEachArrayElement(
+              r.type(), ir::Reg::Arg(0), [=](ir::Reg reg) {
+                EmitDefaultInit(
+                    type::Typed<ir::Reg>(reg, r.type()->data_type()));
+              });
           builder().ReturnJump();
         }
         fn->WriteByteCode<interpretter::instruction_set_t>();
         return fn;
       }});
 
-  builder().Init(t, reg);
+  builder().Init(r.type(), *r);
 }
 
-void Compiler::Visit(type::Flags const *t, ir::Reg reg, EmitDefaultInitTag) {
-  builder().Store(ir::FlagsVal{0}, reg);
+void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Flags> const &r) {
+  builder().Store(ir::FlagsVal{0}, *r);
 }
 
-void Compiler::Visit(type::Pointer const *t, ir::Reg reg, EmitDefaultInitTag) {
-  builder().Store(ir::Addr::Null(), reg);
+void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Pointer> const &r) {
+  builder().Store(ir::Addr::Null(), *r);
 }
 
-void Compiler::Visit(type::Primitive const *t, ir::Reg reg,
-                     EmitDefaultInitTag) {
-  t->Apply([&](auto tag) {
+void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Primitive> const &r) {
+  r.type()->Apply([&](auto tag) {
     using T = typename decltype(tag)::type;
-    builder().Store(T{}, reg);
+    builder().Store(T{}, *r);
   });
 }
 
-void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDefaultInitTag) {
-  t->init_func_.init([=]() {
-    type::Pointer const *pt = type::Ptr(t);
+void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Struct> const &r) {
+  r.type()->init_func_.init([=]() {
+    type::Pointer const *pt = type::Ptr(r.type());
     auto const *fn_type     = type::Func(
         core::Params<type::QualType>{
             core::AnonymousParam(type::QualType::NonConstant(pt))},
@@ -67,18 +68,19 @@ void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDefaultInitTag) {
       builder().CurrentBlock() = builder().CurrentGroup()->entry();
       auto var                 = ir::Reg::Arg(0);
 
-      for (size_t i = 0; i < t->fields_.size(); ++i) {
-        auto &field = t->fields_[i];
+      for (size_t i = 0; i < r.type()->fields_.size(); ++i) {
+        auto &field = r.type()->fields_[i];
         if (not field.initial_value.empty()) {
           if (field.type == type::Int64) {
-            EmitCopyInit(type::Typed(field.initial_value, field.type),
-                         builder().Field(var, t, i));
+            EmitCopyInit(
+                type::Typed<ir::Value>(field.initial_value, field.type),
+                builder().Field(var, r.type(), i));
           } else {
             NOT_YET();
           }
         } else {
-          Visit(field.type, builder().Field(var, t, i).get(),
-                EmitDefaultInitTag{});
+          EmitDefaultInit(type::Typed<ir::Reg>(
+              builder().Field(var, r.type(), i).get(), field.type));
         }
       }
 
@@ -88,15 +90,15 @@ void Compiler::Visit(type::Struct const *t, ir::Reg reg, EmitDefaultInitTag) {
     return fn;
   });
 
-  builder().Init(t, reg);
+  builder().Init(r.type(), *r);
 }
 
-void Compiler::Visit(type::Tuple const *t, ir::Reg reg, EmitDefaultInitTag) {
-  t->init_func_.init([=]() {
-    auto const *fn_type = type::Func(
-        core::Params<type::QualType>{
-            core::AnonymousParam(type::QualType::NonConstant(type::Ptr(t)))},
-        {});
+void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Tuple> const &r) {
+  r.type()->init_func_.init([=]() {
+    auto const *fn_type =
+        type::Func(core::Params<type::QualType>{core::AnonymousParam(
+                       type::QualType::NonConstant(type::Ptr(r.type())))},
+                   {});
 
     ir::NativeFn fn =
         AddFunc(fn_type, fn_type->params().Transform([](type::QualType q) {
@@ -107,17 +109,17 @@ void Compiler::Visit(type::Tuple const *t, ir::Reg reg, EmitDefaultInitTag) {
       builder().CurrentBlock() = builder().CurrentGroup()->entry();
       auto var                 = ir::Reg::Arg(0);
 
-      for (size_t i :
-           base::make_random_permutation(absl::BitGen{}, t->entries_.size())) {
-        Visit(t->entries_.at(i), builder().Field(var, t, i).get(),
-              EmitDefaultInitTag{});
+      for (size_t i : base::make_random_permutation(
+               absl::BitGen{}, r.type()->entries_.size())) {
+        EmitDefaultInit(type::Typed<ir::Reg>(
+            builder().Field(var, r.type(), i).get(), r.type()->entries_.at(i)));
       }
 
       builder().ReturnJump();
     }
     return fn;
   });
-  builder().Init(t, reg);
+  builder().Init(r.type(), *r);
 }
 
 }  // namespace compiler

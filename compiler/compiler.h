@@ -8,7 +8,6 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/types/span.h"
 #include "ast/ast.h"
-#include "ast/ast_fwd.h"
 #include "ast/overload_set.h"
 #include "ast/visitor.h"
 #include "base/debug.h"
@@ -30,8 +29,21 @@
 #include "ir/value/value.h"
 #include "module/importer.h"
 #include "module/module.h"
+#include "type/array.h"
+#include "type/enum.h"
+#include "type/flags.h"
+#include "type/function.h"
+#include "type/generic_function.h"
+#include "type/generic_struct.h"
+#include "type/jump.h"
+#include "type/opaque.h"
+#include "type/parameter_pack.h"
+#include "type/pointer.h"
+#include "type/primitive.h"
 #include "type/qual_type.h"
-#include "type/type_fwd.h"
+#include "type/struct.h"
+#include "type/tuple.h"
+#include "type/type.h"
 #include "type/visitor.h"
 
 namespace compiler {
@@ -75,12 +87,12 @@ struct Compiler
       ast::Visitor<EmitValueTag, ir::Value()>,
       ast::Visitor<VerifyTypeTag, type::QualType()>,
       ast::Visitor<VerifyBodyTag, WorkItem::Result()>,
-      type::Visitor<void(ir::Reg, EmitDestroyTag),
-                    void(ir::Reg, EmitDefaultInitTag),
-                    void(ir::RegOr<ir::Addr>, type::Typed<ir::Value> const &,
-                         EmitMoveAssignTag),
-                    void(ir::RegOr<ir::Addr>, type::Typed<ir::Value> const &,
-                         EmitCopyAssignTag)> {
+      type::Visitor<EmitDestroyTag, void(ir::Reg)>,
+      type::Visitor<EmitDefaultInitTag, void(ir::Reg)>,
+      type::Visitor<EmitMoveAssignTag,
+                    void(ir::RegOr<ir::Addr>, type::Typed<ir::Value> const &)>,
+      type::Visitor<EmitCopyAssignTag,
+                    void(ir::RegOr<ir::Addr>, type::Typed<ir::Value> const &)> {
   // Resources and pointers/references to data that are guaranteed to outlive
   // any Compiler construction.
   struct PersistentResources {
@@ -158,28 +170,28 @@ struct Compiler
     return ast::Visitor<EmitRefTag, ir::RegOr<ir::Addr>()>::Visit(node);
   }
 
-  void Visit(type::Type const *t, ir::Reg r, EmitDestroyTag) {
-    type::SingleVisitor<void(ir::Reg, EmitDestroyTag)>::Visit(t, r,
-                                                              EmitDestroyTag{});
+  void EmitDestroy(type::Typed<ir::Reg> r) {
+    type::Visitor<EmitDestroyTag, void(ir::Reg)>::Visit(r.type(), r.get());
   }
 
-  void Visit(type::Type const *t, ir::Reg r, EmitDefaultInitTag) {
-    type::SingleVisitor<void(ir::Reg, EmitDefaultInitTag)>::Visit(
-        t, r, EmitDefaultInitTag{});
+  void EmitDefaultInit(type::Typed<ir::Reg> r) {
+    type::Visitor<EmitDefaultInitTag, void(ir::Reg)>::Visit(r.type(), r.get());
   }
 
-  void Visit(type::Type const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Value> const &from, EmitMoveAssignTag) {
-    type::SingleVisitor<void(
-        ir::RegOr<ir::Addr>, type::Typed<ir::Value> const &,
-        EmitMoveAssignTag)>::Visit(t, to, from, EmitMoveAssignTag{});
+  void EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>> const &to,
+                      type::Typed<ir::Value> const &from) {
+    type::Visitor<EmitMoveAssignTag,
+                  void(ir::RegOr<ir::Addr>,
+                       type::Typed<ir::Value> const &)>::Visit(to.type(),
+                                                               to.get(), from);
   }
 
-  void Visit(type::Type const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Value> const &from, EmitCopyAssignTag) {
-    type::SingleVisitor<void(
-        ir::RegOr<ir::Addr>, type::Typed<ir::Value> const &,
-        EmitCopyAssignTag)>::Visit(t, to, from, EmitCopyAssignTag{});
+  void EmitCopyAssign(type::Typed<ir::RegOr<ir::Addr>> const &to,
+                      type::Typed<ir::Value> const &from) {
+    type::Visitor<EmitCopyAssignTag,
+                  void(ir::RegOr<ir::Addr>,
+                       type::Typed<ir::Value> const &)>::Visit(to.type(),
+                                                               to.get(), from);
   }
 
   explicit Compiler(PersistentResources const &resources);
@@ -199,7 +211,8 @@ struct Compiler
   base::expected<T, interpretter::EvaluationFailure> EvaluateAs(
       ast::Expression const *expr) {
     ASSIGN_OR(return _.error(), auto val,
-                     Evaluate(type::Typed(expr, type::Get<T>())));
+                     Evaluate(type::Typed<ast::Expression const *>(
+                         expr, type::Get<T>())));
     return val.template get<T>();
   }
   base::expected<ir::Value, interpretter::EvaluationFailure> Evaluate(
@@ -246,7 +259,16 @@ struct Compiler
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
 
-  TransientState::YieldedArguments EmitBlockNode(ast::BlockNode const *node);
+#define ICARUS_TYPE_TYPE_X(name)                                               \
+  void Visit(EmitDestroyTag, type::name const *t, ir::Reg reg) override {      \
+    EmitDestroy(type::Typed<ir::Reg, type::name>(reg, t));                     \
+  }                                                                            \
+
+#include "type/type.xmacro.h"
+#undef ICARUS_TYPE_TYPE_X
+
+TransientState::YieldedArguments
+EmitBlockNode(ast::BlockNode const *node);
 
   // The reason to separate out type/body verification is if the body might
   // transitively have identifiers referring to a declaration that is assigned
@@ -279,53 +301,54 @@ struct Compiler
     return EmitRef(node);
   }
 
-  void Visit(type::Struct const *t, ir::Reg reg, EmitDestroyTag) override;
-  void Visit(type::Tuple const *t, ir::Reg reg, EmitDestroyTag) override;
-  void Visit(type::Array const *t, ir::Reg reg, EmitDestroyTag) override;
-  void Visit(type::Primitive const *t, ir::Reg reg, EmitDestroyTag) override;
-  void Visit(type::Pointer const *t, ir::Reg reg, EmitDestroyTag) override;
+  void EmitDestroy(type::Typed<ir::Reg, type::Struct> reg);
+  void EmitDestroy(type::Typed<ir::Reg, type::Tuple> reg);
+  void EmitDestroy(type::Typed<ir::Reg, type::Array> reg);
+  void EmitDestroy(type::Typed<ir::Reg, type::Primitive> reg);
+  void EmitDestroy(type::Typed<ir::Reg, type::Pointer> reg);
+  void EmitDestroy(type::Typed<ir::Reg, type::BufferPointer> reg);
 
-  void Visit(type::Array const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Value> const &from, EmitCopyAssignTag) override;
-  void Visit(type::Enum const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Value> const &from, EmitCopyAssignTag) override;
-  void Visit(type::Flags const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Value> const &from, EmitCopyAssignTag) override;
-  void Visit(type::Function const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Value> const &from, EmitCopyAssignTag) override;
-  void Visit(type::Pointer const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Value> const &from, EmitCopyAssignTag) override;
-  void Visit(type::Primitive const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Value> const &from, EmitCopyAssignTag) override;
-  void Visit(type::Struct const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Value> const &from, EmitCopyAssignTag) override;
-  void Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Value> const &from, EmitCopyAssignTag) override;
+#define DEFINE_EMIT_ASSIGN(T)                                                  \
+  void Visit(EmitCopyAssignTag, T const *ty, ir::RegOr<ir::Addr> r,            \
+             type::Typed<ir::Value> const &tv) override {                      \
+    EmitCopyAssign(type::Typed<ir::RegOr<ir::Addr>, T>(r, ty), tv);            \
+  }                                                                            \
+  void EmitCopyAssign(type::Typed<ir::RegOr<ir::Addr>, T> const &,             \
+                      type::Typed<ir::Value> const &);                         \
+                                                                               \
+  void Visit(EmitMoveAssignTag, T const *ty, ir::RegOr<ir::Addr> r,            \
+             type::Typed<ir::Value> const &tv) override {                      \
+    EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>, T>(r, ty), tv);            \
+  }                                                                            \
+  void EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>, T> const &r,            \
+                      type::Typed<ir::Value> const &);
 
-  void Visit(type::Array const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Value> const &from, EmitMoveAssignTag) override;
-  void Visit(type::Enum const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Value> const &from, EmitMoveAssignTag) override;
-  void Visit(type::Flags const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Value> const &from, EmitMoveAssignTag) override;
-  void Visit(type::Function const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Value> const &from, EmitMoveAssignTag) override;
-  void Visit(type::Pointer const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Value> const &from, EmitMoveAssignTag) override;
-  void Visit(type::Primitive const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Value> const &from, EmitMoveAssignTag) override;
-  void Visit(type::Struct const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Value> const &from, EmitMoveAssignTag) override;
-  void Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
-             type::Typed<ir::Value> const &from, EmitMoveAssignTag) override;
+  DEFINE_EMIT_ASSIGN(type::Array);
+  DEFINE_EMIT_ASSIGN(type::Enum);
+  DEFINE_EMIT_ASSIGN(type::Flags);
+  DEFINE_EMIT_ASSIGN(type::Function);
+  DEFINE_EMIT_ASSIGN(type::Pointer);
+  DEFINE_EMIT_ASSIGN(type::BufferPointer);
+  DEFINE_EMIT_ASSIGN(type::Primitive);
+  DEFINE_EMIT_ASSIGN(type::Struct);
+  DEFINE_EMIT_ASSIGN(type::Tuple);
 
-  void Visit(type::Array const *t, ir::Reg reg, EmitDefaultInitTag) override;
-  void Visit(type::Flags const *t, ir::Reg reg, EmitDefaultInitTag) override;
-  void Visit(type::Pointer const *t, ir::Reg reg, EmitDefaultInitTag) override;
-  void Visit(type::Primitive const *t, ir::Reg reg,
-             EmitDefaultInitTag) override;
-  void Visit(type::Struct const *t, ir::Reg reg, EmitDefaultInitTag) override;
-  void Visit(type::Tuple const *t, ir::Reg reg, EmitDefaultInitTag) override;
+#undef DEFINE_EMIT_ASSIGN
+
+#define DEFINE_EMIT_DEFAULT_INIT(T)                                            \
+  void Visit(EmitDefaultInitTag, T const *ty, ir::Reg r) override {            \
+    EmitDefaultInit(type::Typed<ir::Reg, T>(r, ty));                           \
+  }                                                                            \
+  void EmitDefaultInit(type::Typed<ir::Reg, T> const &r);
+
+  DEFINE_EMIT_DEFAULT_INIT(type::Array);
+  DEFINE_EMIT_DEFAULT_INIT(type::Flags);
+  DEFINE_EMIT_DEFAULT_INIT(type::Pointer);
+  DEFINE_EMIT_DEFAULT_INIT(type::Primitive);
+  DEFINE_EMIT_DEFAULT_INIT(type::Struct);
+  DEFINE_EMIT_DEFAULT_INIT(type::Tuple);
+
+#undef DEFINE_EMIT_DEFAULT_INIT
 
   void EmitAssign(ast::Access const *node,
                   absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
@@ -415,22 +438,20 @@ struct Compiler
                     type::Typed<ir::Reg> to_var) {
     auto *to_type = to_var.type()->as<type::Pointer>().pointee();
     // TODO Optimize once you understand the semantics better.
-    if (to_type->IsDefaultInitializable()) {
-      Visit(to_type, to_var.get(), EmitDefaultInitTag{});
-    }
+    if (to_type->IsDefaultInitializable()) { EmitDefaultInit(to_var); }
 
-    Visit(to_type, to_var.get(), from_val, EmitMoveAssignTag{});
+    EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>>(to_var.get(), to_type),
+                   from_val);
   }
 
   void EmitCopyInit(type::Typed<ir::Value> from_val,
                     type::Typed<ir::Reg> to_var) {
     auto *to_type = to_var.type()->as<type::Pointer>().pointee();
     // TODO Optimize once you understand the semantics better.
-    if (to_type->IsDefaultInitializable()) {
-      Visit(to_type, to_var.get(), EmitDefaultInitTag{});
-    }
+    if (to_type->IsDefaultInitializable()) { EmitDefaultInit(to_var); }
 
-    Visit(to_type, to_var.get(), from_val, EmitCopyAssignTag{});
+    EmitCopyAssign(type::Typed<ir::RegOr<ir::Addr>>(to_var.get(), to_type),
+                   from_val);
   }
 
   type::QualType VerifyBinaryOverload(std::string_view symbol,

@@ -58,7 +58,8 @@ ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Index const *node) {
                                type::Ptr(type::Nat8));
     }
   } else if (auto *tup = lhs_type.if_as<type::Tuple>()) {
-    auto maybe_val = Evaluate(type::Typed(node->rhs(), &rhs_type));
+    auto maybe_val =
+        Evaluate(type::Typed<ast::Expression const *>(node->rhs(), &rhs_type));
     if (not maybe_val) {
       diag().Consume(diagnostic::EvaluationFailure{
           .failure = maybe_val.error(),
@@ -67,7 +68,9 @@ ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Index const *node) {
       return ir::Addr::Null();
     }
     auto index =
-        builder().CastTo<int64_t>(type::Typed(*maybe_val, &rhs_type)).value();
+        builder()
+            .CastTo<int64_t>(type::Typed<ir::Value>(*maybe_val, &rhs_type))
+            .value();
     return builder().Field(EmitRef(node->lhs()), tup, index).get();
   }
   UNREACHABLE(*this, lhs_type.to_string());
@@ -79,7 +82,7 @@ void Compiler::EmitMoveInit(
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = data().qual_type(node)->type();
-  Visit(t, *to[0], type::Typed{EmitValue(node), t}, EmitMoveAssignTag{});
+  EmitMoveAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
 }
 
 void Compiler::EmitCopyInit(
@@ -87,7 +90,7 @@ void Compiler::EmitCopyInit(
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = data().qual_type(node)->type();
-  Visit(t, *to[0], type::Typed{EmitValue(node), t}, EmitCopyAssignTag{});
+  EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
 }
 
 void Compiler::EmitAssign(
@@ -95,7 +98,7 @@ void Compiler::EmitAssign(
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = data().qual_type(node)->type();
-  Visit(t, *to[0], type::Typed{EmitValue(node), t}, EmitCopyAssignTag{});
+  EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
 }
 
 }  // namespace compiler

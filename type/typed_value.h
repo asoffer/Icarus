@@ -3,7 +3,9 @@
 
 #include <type_traits>
 #include <utility>
+
 #include "absl/strings/str_cat.h"
+#include "base/meta.h"
 #include "base/stringify.h"
 
 namespace type {
@@ -15,6 +17,10 @@ struct Typed {
             std::enable_if_t<B, int> = 0>
   Typed() {}
   Typed(V value, T const* t) : value_(std::move(value)), type_(t) {}
+
+  template <typename U, std::enable_if_t<
+                            base::meta<U>.template inherits_from<T>(), int> = 0>
+  Typed(V value, U const* t) : value_(std::move(value)), type_(t) {}
 
   V& get() & { return value_; }
   V const& get() const& { return value_; }
@@ -37,8 +43,9 @@ struct Typed {
 
   template <typename W, typename U,
             typename = std::enable_if_t<
-                std::is_convertible_v<V, W> and std::is_base_of_v<U, T> and
-                not std::is_same_v<Typed<W, U>, Typed<V, T>>>>
+                base::meta<V>.template converts_to<W>() and
+                base::meta<T>.template inherits_from<U>() and
+                base::meta<Typed<W, U>> != base::meta<Typed<V, T>>>>
   operator Typed<W, U>() const {
     return Typed<W, U>(value_, type_);
   }
@@ -48,16 +55,19 @@ struct Typed {
     return Typed<V, U>(value_, &type_->template as<U>());
   }
 
+  friend std::string stringify(Typed const& t) {
+    using base::stringify;
+    ASSERT(t.type() != nullptr);
+    return absl::StrCat(stringify(t.get()), ": ", t.type()->to_string());
+  }
+
  private:
   V value_{};
   T const* type_ = nullptr;
 };
 
-template <typename V>
-std::string stringify(Typed<V> const& t) {
-  ASSERT(t.type() != nullptr);
-  return absl::StrCat(stringify(t.get()), ": ", t.type()->to_string());
-}
+template <typename V, typename T>
+Typed(V, T)->Typed<V, T>;
 
 template <
     typename V, typename T,

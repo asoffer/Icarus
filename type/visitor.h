@@ -10,57 +10,61 @@
 
 namespace type {
 
-template <typename>
-struct SingleVisitor;
+template <typename...>
+struct Visitor;
 
-template <typename Ret, typename... Args>
-struct SingleVisitor<Ret(Args...)> : VisitorBase {
-  ~SingleVisitor() override {}
-
-#define ICARUS_TYPE_TYPE_X(subtype)                                            \
-  void ErasedVisit(subtype const *type, void *erased_ret,                      \
-                   void *erased_arg_tuple) final {                             \
-    static_cast<void>(erased_ret);                                             \
-    auto *tup_ptr = static_cast<std::tuple<Args...> *>(erased_arg_tuple);      \
-    if constexpr (std::is_void_v<Ret>) {                                       \
+template <typename Tag, typename Ret, typename... Args>
+struct Visitor<Tag, Ret(Args...)> : VisitorBase {
+#define ICARUS_TYPE_TYPE_X(ty)                                                 \
+  void ErasedVisit(ty const *t, void *erased_ret, void *erased_args) final {   \
+    auto args_ptr =                                                            \
+        static_cast<std::tuple<std::decay_t<Args>...> *>(erased_args);         \
+                                                                               \
+    if constexpr (base::meta<Ret> == base::meta<void>) {                       \
+      static_cast<void>(erased_ret);                                           \
       std::apply(                                                              \
-          [this, type](auto &&... call_args) {                                 \
-            this->Visit(type,                                                  \
-                        std::forward<decltype(call_args)>(call_args)...);      \
-          },                                                                   \
-          std::move(*tup_ptr));                                                \
+          [&](auto &... args) { this->Visit(Tag{}, t, std::move(args)...); },  \
+          *args_ptr);                                                          \
     } else {                                                                   \
-      auto *ret_ptr = static_cast<Ret *>(erased_ret);                          \
-      *ret_ptr      = std::apply(                                              \
-          [this, type](auto &&... call_args) {                            \
-            return this->Visit(                                           \
-                type, std::forward<decltype(call_args)>(call_args)...);   \
-          },                                                              \
-          std::move(*tup_ptr));                                           \
+      new (static_cast<Ret *>(erased_ret)) Ret(std::apply(                     \
+          [&](auto &... args) {                                                \
+            return this->Visit(Tag{}, t, std::move(args)...);                  \
+          },                                                                   \
+          *args_ptr));                                                         \
     }                                                                          \
   }                                                                            \
                                                                                \
-  virtual Ret Visit(subtype const *type, Args... args) {                       \
-    UNREACHABLE(#subtype);                                                     \
+  virtual Ret Visit(Tag, ty const *t, Args... args) {                          \
+    UNREACHABLE(#ty, typeid(Tag).name());                                      \
   }
 #include "type/type.xmacro.h"
 #undef ICARUS_TYPE_TYPE_X
 
-  Ret Visit(Type const *type, Args... args) {
-    if constexpr (std::is_void_v<Ret>) {
-      std::tuple<Args...> arg_tup(std::forward<Args>(args)...);
-      type->Accept(this, nullptr, &arg_tup);
+  Ret Visit(Type const *t, Args... args) {
+    if constexpr (base::meta<Ret> == base::meta<void>) {
+      if constexpr (sizeof...(Args) == 0) {
+        t->Accept(this, nullptr, nullptr);
+      } else if constexpr (sizeof...(Args) == 1) {
+        t->Accept(this, nullptr, &args...);
+      } else {
+        auto arg_tuple = std::make_tuple(std::move(args)...);
+        t->Accept(this, nullptr, &arg_tuple);
+      }
     } else {
-      Ret r;
-      std::tuple<Args...> arg_tup(std::forward<Args>(args)...);
-      type->Accept(this, &r, &arg_tup);
-      return r;
+      alignas(alignof(Ret)) char r[sizeof(Ret)];
+      if constexpr (sizeof...(Args) == 0) {
+        t->Accept(this, r, nullptr);
+      } else if constexpr (sizeof...(Args) == 1) {
+        t->Accept(this, r, &args...);
+      } else {
+        auto arg_tuple = std::make_tuple(std::move(args)...);
+        t->Accept(this, r, &arg_tuple);
+      }
+
+      return *reinterpret_cast<Ret *>(r);
     }
   }
 };
-
-template <typename... Signatures>
-struct Visitor : SingleVisitor<Signatures>... {};
 
 }  // namespace type
 

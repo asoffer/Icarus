@@ -47,17 +47,17 @@ static ir::NativeFn CreateAssign(Compiler *compiler, type::Array const *a) {
 
     bldr.CurrentBlock() = loop_body;
     if constexpr (Cat == Copy) {
-      compiler->Visit(a->data_type(), to_phi->result,
-                      type::Typed{ir::Value(compiler->builder().PtrFix(
-                                      from_phi->result, a->data_type())),
-                                  a->data_type()},
-                      EmitCopyAssignTag{});
+      compiler->EmitCopyAssign(
+          type::Typed<ir::RegOr<ir::Addr>>(to_phi->result, a->data_type()),
+          type::Typed<ir::Value>(ir::Value(compiler->builder().PtrFix(
+                                     from_phi->result, a->data_type())),
+                                 a->data_type()));
     } else if constexpr (Cat == Move) {
-      compiler->Visit(a->data_type(), to_phi->result,
-                      type::Typed{ir::Value(compiler->builder().PtrFix(
-                                      from_phi->result, a->data_type())),
-                                  a->data_type()},
-                      EmitMoveAssignTag{});
+      compiler->EmitMoveAssign(
+          type::Typed<ir::RegOr<ir::Addr>>(to_phi->result, a->data_type()),
+          type::Typed<ir::Value>(ir::Value(compiler->builder().PtrFix(
+                                     from_phi->result, a->data_type())),
+                                 a->data_type()));
     } else {
       UNREACHABLE();
     }
@@ -107,11 +107,13 @@ static ir::NativeFn CreateAssign(Compiler *compiler, type::Struct const *s) {
 
       // TODO use the tag in place of `Cat`.
       if constexpr (Cat == Copy) {
-        compiler->Visit(field_type, to, type::Typed{from, field_type},
-                        EmitCopyAssignTag{});
+        compiler->EmitCopyAssign(
+            type::Typed<ir::RegOr<ir::Addr>>(to, field_type),
+            type::Typed<ir::Value>(from, field_type));
       } else if constexpr (Cat == Move) {
-        compiler->Visit(field_type, to, type::Typed{from, field_type},
-                        EmitMoveAssignTag{});
+        compiler->EmitMoveAssign(
+            type::Typed<ir::RegOr<ir::Addr>>(to, field_type),
+            type::Typed<ir::Value>(from, field_type));
       } else {
         UNREACHABLE();
       }
@@ -123,87 +125,116 @@ static ir::NativeFn CreateAssign(Compiler *compiler, type::Struct const *s) {
   return fn;
 }
 
-void Compiler::Visit(type::Array const *t, ir::RegOr<ir::Addr> to,
-                     type::Typed<ir::Value> const &from, EmitCopyAssignTag) {
-  data().copy_assign_.emplace(
-      t, base::lazy_convert{[&] { return CreateAssign<Copy>(this, t); }});
-  builder().Copy(t, from->get<ir::Reg>(), to);
+void Compiler::EmitCopyAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Array> const &to,
+    type::Typed<ir::Value> const &from) {
+  data().copy_assign_.emplace(to.type(), base::lazy_convert{[&] {
+                                return CreateAssign<Copy>(this, to.type());
+                              }});
+  builder().Copy(to.type(), from->get<ir::Reg>(), *to);
 }
 
-void Compiler::Visit(type::Array const *t, ir::RegOr<ir::Addr> to,
-                     type::Typed<ir::Value> const &from, EmitMoveAssignTag) {
-  data().move_assign_.emplace(
-      t, base::lazy_convert{[&] { return CreateAssign<Move>(this, t); }});
-  builder().Move(t, from->get<ir::Reg>(), to);
+void Compiler::EmitMoveAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Array> const &to,
+    type::Typed<ir::Value> const &from) {
+  data().move_assign_.emplace(to.type(), base::lazy_convert{[&] {
+                                return CreateAssign<Move>(this, to.type());
+                              }});
+  builder().Move(to.type(), from->get<ir::Reg>(), *to);
 }
 
-void Compiler::Visit(type::Enum const *t, ir::RegOr<ir::Addr> to,
-                     type::Typed<ir::Value> const &from, EmitCopyAssignTag) {
-  ASSERT(t == from.type());
-  builder().Store(from->get<ir::RegOr<ir::EnumVal>>(), to);
+void Compiler::EmitCopyAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Enum> const &to,
+    type::Typed<ir::Value> const &from) {
+  ASSERT(to.type() == from.type());
+  builder().Store(from->get<ir::RegOr<ir::EnumVal>>(), *to);
 }
 
-void Compiler::Visit(type::Enum const *t, ir::RegOr<ir::Addr> to,
-                     type::Typed<ir::Value> const &from, EmitMoveAssignTag) {
-  Visit(t, to, from, EmitCopyAssignTag{});
+void Compiler::EmitMoveAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Enum> const &to,
+    type::Typed<ir::Value> const &from) {
+  EmitCopyAssign(to, from);
 }
 
-void Compiler::Visit(type::Flags const *t, ir::RegOr<ir::Addr> to,
-                     type::Typed<ir::Value> const &from, EmitCopyAssignTag) {
-  ASSERT(t == from.type());
-  builder().Store(from->get<ir::RegOr<ir::FlagsVal>>(), to);
+void Compiler::EmitCopyAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Flags> const &to,
+    type::Typed<ir::Value> const &from) {
+  ASSERT(to.type() == from.type());
+  builder().Store(from->get<ir::RegOr<ir::FlagsVal>>(), *to);
 }
 
-void Compiler::Visit(type::Flags const *t, ir::RegOr<ir::Addr> to,
-                     type::Typed<ir::Value> const &from, EmitMoveAssignTag) {
-  Visit(t, to, from, EmitCopyAssignTag{});
+void Compiler::EmitMoveAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Flags> const &to,
+    type::Typed<ir::Value> const &from) {
+  EmitCopyAssign(to, from);
 }
 
-void Compiler::Visit(type::Function const *t, ir::RegOr<ir::Addr> to,
-                     type::Typed<ir::Value> const &from, EmitCopyAssignTag) {
-  ASSERT(t == from.type());
-  builder().Store(from->get<ir::RegOr<ir::Fn>>(), to);
+void Compiler::EmitCopyAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Function> const &to,
+    type::Typed<ir::Value> const &from) {
+  ASSERT(to.type() == from.type());
+  builder().Store(from->get<ir::RegOr<ir::Fn>>(), *to);
 }
 
-void Compiler::Visit(type::Function const *t, ir::RegOr<ir::Addr> to,
-                     type::Typed<ir::Value> const &from, EmitMoveAssignTag) {
-  Visit(t, to, from, EmitCopyAssignTag{});
+void Compiler::EmitMoveAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Function> const &to,
+    type::Typed<ir::Value> const &from) {
+  EmitCopyAssign(to, from);
 }
 
-void Compiler::Visit(type::Pointer const *t, ir::RegOr<ir::Addr> to,
-                     type::Typed<ir::Value> const &from, EmitCopyAssignTag) {
-  if (t == from.type()) {
-    builder().Store(from->get<ir::RegOr<ir::Addr>>(), to);
+void Compiler::EmitCopyAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Pointer> const &to,
+    type::Typed<ir::Value> const &from) {
+  if (to.type() == from.type()) {
+    builder().Store(from->get<ir::RegOr<ir::Addr>>(), *to);
   } else if (from.type() == type::NullPtr) {
-    builder().Store(ir::Addr::Null(), to);
+    builder().Store(ir::Addr::Null(), *to);
   } else {
-    UNREACHABLE(*t, " - ", *from.type());
+    UNREACHABLE(*to, ": ", *to.type(), " - ", *from.type());
   }
 }
 
-void Compiler::Visit(type::Pointer const *t, ir::RegOr<ir::Addr> to,
-                     type::Typed<ir::Value> const &from, EmitMoveAssignTag) {
-  Visit(t, to, from, EmitCopyAssignTag{});
+void Compiler::EmitMoveAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Pointer> const &to,
+    type::Typed<ir::Value> const &from) {
+  EmitCopyAssign(to, from);
 }
 
-void Compiler::Visit(type::Primitive const *t, ir::RegOr<ir::Addr> to,
-                     type::Typed<ir::Value> const &from, EmitCopyAssignTag) {
-  ASSERT(t == from.type());
-  t->Apply([&](auto tag) {
+void Compiler::EmitCopyAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::BufferPointer> const &to,
+    type::Typed<ir::Value> const &from) {
+  EmitCopyAssign(
+      static_cast<type::Typed<ir::RegOr<ir::Addr>, type::Pointer>>(to), from);
+}
+
+void Compiler::EmitMoveAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::BufferPointer> const &to,
+    type::Typed<ir::Value> const &from) {
+  EmitMoveAssign(
+      static_cast<type::Typed<ir::RegOr<ir::Addr>, type::Pointer>>(to), from);
+}
+
+void Compiler::EmitCopyAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Primitive> const &to,
+    type::Typed<ir::Value> const &from) {
+  ASSERT(to.type() == from.type());
+  to.type()->Apply([&](auto tag) {
     using T = typename decltype(tag)::type;
-    builder().Store(from->template get<ir::RegOr<T>>(), to);
+    builder().Store(from->template get<ir::RegOr<T>>(), *to);
   });
 }
 
-void Compiler::Visit(type::Primitive const *t, ir::RegOr<ir::Addr> to,
-                     type::Typed<ir::Value> const &from, EmitMoveAssignTag) {
-  Visit(t, to, from, EmitCopyAssignTag{});
+void Compiler::EmitMoveAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Primitive> const &to,
+    type::Typed<ir::Value> const &from) {
+  EmitCopyAssign(to, from);
 }
 
-void Compiler::Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
-                     type::Typed<ir::Value> const &from, EmitCopyAssignTag) {
-  t->copy_assign_func_.init([=]() {
-    type::QualType q = type::QualType::NonConstant(type::Ptr(t));
+void Compiler::EmitCopyAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Tuple> const &to,
+    type::Typed<ir::Value> const &from) {
+  to.type()->copy_assign_func_.init([=]() {
+    type::QualType q = type::QualType::NonConstant(type::Ptr(to.type()));
     auto fn_type =
         type::Func(core::Params<type::QualType>{core::AnonymousParam(q),
                                                 core::AnonymousParam(q)},
@@ -217,14 +248,16 @@ void Compiler::Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
       auto val                 = ir::Reg::Arg(0);
       auto var                 = ir::Reg::Arg(1);
 
-      for (size_t i :
-           base::make_random_permutation(absl::BitGen{}, t->entries_.size())) {
-        auto *entry = t->entries_.at(i);
-        Visit(entry, builder().Field(var, t, i).get(),
-              type::Typed{ir::Value(builder().PtrFix(
-                              builder().Field(val, t, i).get(), entry)),
-                          entry},
-              EmitCopyAssignTag{});
+      for (size_t i : base::make_random_permutation(
+               absl::BitGen{}, to.type()->entries_.size())) {
+        auto const *entry = to.type()->entries_.at(i);
+        EmitCopyAssign(
+            type::Typed<ir::RegOr<ir::Addr>>(
+                builder().Field(var, to.type(), i).get(), entry),
+            type::Typed<ir::Value>(
+                ir::Value(builder().PtrFix(
+                    builder().Field(val, to.type(), i).get(), entry)),
+                entry));
       }
 
       builder().ReturnJump();
@@ -232,13 +265,13 @@ void Compiler::Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
     return fn;
   });
 
-  builder().Copy(t, from->get<ir::Reg>(), to);
+  builder().Copy(to.type(), from->get<ir::Reg>(), *to);
 }
 
-void Compiler::Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
-                     type::Typed<ir::Value> const &from, EmitMoveAssignTag) {
-  t->move_assign_func_.init([=]() {
-    type::QualType q = type::QualType::NonConstant(type::Ptr(t));
+void Compiler::EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>, type::Tuple> const &to,
+                        type::Typed<ir::Value> const &from) {
+  to.type()->move_assign_func_.init([=]() {
+    type::QualType q = type::QualType::NonConstant(type::Ptr(to.type()));
     auto fn_type =
         type::Func(core::Params<type::QualType>{core::AnonymousParam(q),
                                                 core::AnonymousParam(q)},
@@ -252,14 +285,16 @@ void Compiler::Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
       auto val                 = ir::Reg::Arg(0);
       auto var                 = ir::Reg::Arg(1);
 
-      for (size_t i :
-           base::make_random_permutation(absl::BitGen{}, t->entries_.size())) {
-        auto *entry = t->entries_.at(i);
-        Visit(entry, builder().Field(var, t, i).get(),
-              type::Typed{ir::Value(builder().PtrFix(
-                              builder().Field(val, t, i).get(), entry)),
-                          entry},
-              EmitMoveAssignTag{});
+      for (size_t i : base::make_random_permutation(
+               absl::BitGen{}, to.type()->entries_.size())) {
+        auto const *entry = to.type()->entries_.at(i);
+        EmitMoveAssign(
+            type::Typed<ir::RegOr<ir::Addr>>(
+                builder().Field(var, to.type(), i).get(), entry),
+            type::Typed<ir::Value>(
+                ir::Value(builder().PtrFix(
+                    builder().Field(val, to.type(), i).get(), entry)),
+                entry));
       }
 
       builder().ReturnJump();
@@ -267,20 +302,24 @@ void Compiler::Visit(type::Tuple const *t, ir::RegOr<ir::Addr> to,
     return fn;
   });
 
-  builder().Move(t, from->get<ir::Reg>(), to);
+  builder().Move(to.type(), from->get<ir::Reg>(), *to);
 }
 
-void Compiler::Visit(type::Struct const *t, ir::RegOr<ir::Addr> to,
-                     type::Typed<ir::Value> const &from, EmitCopyAssignTag) {
-  t->copy_assign_func_.init([=]() { return CreateAssign<Copy>(this, t); });
-  builder().Copy(t, from->get<ir::Reg>(), to);
+void Compiler::EmitCopyAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Struct> const &to,
+    type::Typed<ir::Value> const &from) {
+  to.type()->copy_assign_func_.init(
+      [=]() { return CreateAssign<Copy>(this, to.type()); });
+  builder().Copy(to.type(), from->get<ir::Reg>(), *to);
 }
 
-void Compiler::Visit(type::Struct const *t, ir::RegOr<ir::Addr> to,
-                     type::Typed<ir::Value> const &from, EmitMoveAssignTag) {
-  NOT_YET();
-  t->move_assign_func_.init([=]() { return CreateAssign<Move>(this, t); });
-  builder().Move(t, from->get<ir::Reg>(), to);
+void Compiler::EmitMoveAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Struct> const &to,
+    type::Typed<ir::Value> const &from) {
+  to.type()->move_assign_func_.init(
+      [=]() { return CreateAssign<Move>(this, to.type()); });
+  builder().Move(to.type(), from->get<ir::Reg>(), *to);
 }
+
 
 }  // namespace compiler

@@ -119,6 +119,16 @@ struct Meta {
     return internal_meta::IsAImpl<T, P>::value;
   }
 
+  template <typename U>
+  constexpr bool converts_to() const {
+    return std::is_convertible_v<T, U>;
+  }
+
+  template <typename U>
+  constexpr bool inherits_from() const {
+    return std::is_base_of_v<U, T>;
+  }
+
  private:
   static char const* const name_;
 };
