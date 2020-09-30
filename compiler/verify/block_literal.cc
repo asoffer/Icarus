@@ -5,6 +5,12 @@
 namespace compiler {
 
 WorkItem::Result Compiler::VerifyBody(ast::BlockLiteral const *node) {
+  LOG("BlockLiteral", "Verifying body of %p: %s", node, node->DebugString());
+
+  // TODO: We shouldn't have to ask this question. It should be handled
+  // externally.
+  if (not data().ShouldVerifyBody(node)) { return WorkItem::Result::Success; }
+
   bool success = true;
   // TODO consider not verifying the types of the bodies. They almost certainly
   // contain circular references in the jump statements, and if the functions

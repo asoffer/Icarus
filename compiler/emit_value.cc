@@ -180,6 +180,7 @@ ir::Value Compiler::EmitValue(ast::Assignment const *node) {
 }
 
 ir::Value Compiler::EmitValue(ast::BlockLiteral const *node) {
+  LOG("BlockLiteral", "Emitting value for %p: %s", node, node->DebugString());
   // TODO: Check the result of body verification.
   if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
 
@@ -515,8 +516,10 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
                      state_.must_complete);
         if (not maybe_val) {
           // TODO we reserved a slot and haven't cleaned it up. Do we care?
-          NOT_YET("Found errors but haven't handled them.",
-                  diag().num_consumed());
+          diag().Consume(diagnostic::EvaluationFailure{
+              .failure = maybe_val.error(),
+              .range   = node->init_val()->range(),
+          });
           return ir::Value();
         }
 
@@ -999,11 +1002,17 @@ ir::Value Compiler::EmitValue(ast::YieldStmt const *node) {
 }
 
 ir::Value Compiler::EmitValue(ast::ScopeLiteral const *node) {
-  LOG("ScopeLiteral", "%p", node->state_type());
+  LOG("ScopeLiteral", "State type = %p", node->state_type());
   type::Type const *state_type = nullptr;
   if (node->state_type()) {
     auto maybe_type = EvaluateAs<type::Type const *>(node->state_type());
-    if (not maybe_type) { NOT_YET(); }
+    if (not maybe_type) {
+      diag().Consume(diagnostic::EvaluationFailure{
+          .failure = maybe_type.error(),
+          .range   = node->state_type()->range(),
+      });
+      return ir::Value();
+    }
     state_type = *maybe_type;
   }
 

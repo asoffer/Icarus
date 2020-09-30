@@ -248,6 +248,7 @@ type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
 }
 
 type::QualType Compiler::VerifyType(ast::FunctionLiteral const *node) {
+  LOG("FunctionLiteral", "Verifying %p: %s", node, node->DebugString());
   ast::OverloadSet os;
   os.insert(node);
   data().SetAllOverloads(node, std::move(os));
