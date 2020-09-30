@@ -219,24 +219,11 @@ type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
 }
 
 type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
-  auto ordered_nodes = OrderedDependencyNodes(node);
-
-  auto gen = [node, importer = &c.importer(), compiler_data = &c.data(),
-              diag_consumer = &c.diag(),
-              ordered_nodes = std::move(ordered_nodes)](
+  auto gen = [node, c = Compiler(c.resources())](
                  core::FnArgs<type::Typed<ir::Value>> const &args) mutable
       -> type::Function const * {
-    auto [params, rets, data, inserted] =
-        MakeConcrete(node, &compiler_data->module(), ordered_nodes, args,
-                     *compiler_data, *diag_consumer);
+    auto [params, rets, data, inserted] = MakeConcrete(c, node, args);
     if (inserted) {
-      Compiler c({
-          .builder             = ir::GetBuilder(),
-          .data                = data,
-          .diagnostic_consumer = *diag_consumer,
-          .importer            = *importer,
-      });
-
       if (auto outputs = node->outputs(); outputs and not outputs->empty()) {
         for (auto const *o : *outputs) {
           auto qt = c.VerifyType(o);

@@ -1,3 +1,5 @@
+#include "compiler/verify/common.h"
+
 #include <optional>
 #include <string_view>
 
@@ -21,7 +23,8 @@ type::Typed<ir::Value> EvaluateIfConstant(Compiler &c,
                                           type::QualType qt) {
   if (qt.constant()) {
     LOG("EvaluateIfConstant", "Evaluating constant: %s", expr->DebugString());
-    auto maybe_val = c.Evaluate(type::Typed<ast::Expression const *>(expr, qt.type()));
+    auto maybe_val =
+        c.Evaluate(type::Typed<ast::Expression const *>(expr, qt.type()));
     if (maybe_val) { return type::Typed<ir::Value>(*maybe_val, qt.type()); }
     c.diag().Consume(diagnostic::EvaluationFailure{
         .failure = maybe_val.error(),
@@ -122,8 +125,6 @@ void ExtractParams(
 core::Params<std::pair<ir::Value, type::QualType>>
 Compiler::ComputeParamsFromArgs(
     ast::ParameterizedExpression const *node,
-    absl::Span<std::pair<int, core::DependencyNode<ast::Declaration>> const>
-        ordered_nodes,
     core::FnArgs<type::Typed<ir::Value>> const &args) {
   LOG("generic-fn", "Creating a concrete implementation with %s",
       args.Transform([](auto const &a) { return a.type()->to_string(); }));
@@ -131,18 +132,7 @@ Compiler::ComputeParamsFromArgs(
   core::Params<std::pair<ir::Value, type::QualType>> parameters(
       node->params().size());
 
-  auto tostr = [](ir::Value v) {
-    if (auto **t = v.get_if<type::Type const *>()) {
-      return (*t)->to_string();
-    } else {
-      std::stringstream ss;
-      ss << v;
-      return ss.str();
-    }
-  };
-
-  // TODO use the proper ordering.
-  for (auto [index, dep_node] : ordered_nodes) {
+  for (auto [index, dep_node] : node->ordered_dependency_nodes()) {
     LOG("generic-fn", "Handling dep-node %s`%s`", ToString(dep_node.kind()),
         dep_node.node()->id());
     switch (dep_node.kind()) {
@@ -165,7 +155,7 @@ Compiler::ComputeParamsFromArgs(
         // Erase values not known at compile-time.
         if (val.get_if<ir::Reg>()) { val = ir::Value(); }
 
-        LOG("generic-fn", "... %s", tostr(val));
+        LOG("generic-fn", "... %s", val);
         data().set_arg_value(dep_node.node()->id(), val);
       } break;
       case core::DependencyNodeKind::ArgType: {
@@ -220,14 +210,19 @@ Compiler::ComputeParamsFromArgs(
         type::Typed<ir::Value> arg;
         if (index < args.pos().size()) {
           arg = args[index];
-          LOG("generic-fn", "%s %s", tostr(*arg), arg.type()->to_string());
+          LOG("generic-fn", "%s %s", *arg, arg.type()->to_string());
         } else if (auto const *a = args.at_or_null(dep_node.node()->id())) {
           arg = *a;
         } else {
           auto const *t  = ASSERT_NOT_NULL(type_of(dep_node.node()));
           auto maybe_val = Evaluate(type::Typed<ast::Expression const *>(
               ASSERT_NOT_NULL(dep_node.node()->init_val()), t));
-          if (not maybe_val) { NOT_YET(); }
+          if (not maybe_val) {
+            diag().Consume(diagnostic::EvaluationFailure{
+                .failure = maybe_val.error(),
+                .range   = dep_node.node()->init_val()->range(),
+            });
+          }
           arg = type::Typed<ir::Value>(*maybe_val, t);
           LOG("generic-fn", "%s", dep_node.node()->DebugString());
         }
@@ -452,66 +447,12 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
 }
 
 DependentComputedData::InsertDependentResult MakeConcrete(
-    ast::ParameterizedExpression const *node, CompiledModule *mod,
-    absl::Span<std::pair<int, core::DependencyNode<ast::Declaration>> const>
-        ordered_nodes,
-    core::FnArgs<type::Typed<ir::Value>> const &args,
-    DependentComputedData &compiler_data,
-    diagnostic::DiagnosticConsumer &diag) {
-  module::FileImporter<LibraryModule> importer;
-  DependentComputedData temp_data(mod);
-  Compiler c({
-      .builder             = ir::GetBuilder(),
-      .data                = temp_data,
-      .diagnostic_consumer = diag,
-      .importer            = importer,
-  });
-  temp_data.parent_ = &compiler_data;
-
-  auto parameters = c.ComputeParamsFromArgs(node, ordered_nodes, args);
-  return compiler_data.InsertDependent(node, parameters);
-}
-
-std::vector<std::pair<int, core::DependencyNode<ast::Declaration>>>
-OrderedDependencyNodes(ast::ParameterizedExpression const *node) {
-  absl::flat_hash_set<core::DependencyNode<ast::Declaration>> deps;
-  for (auto const &p : node->params()) {
-    deps.insert(
-        core::DependencyNode<ast::Declaration>::MakeArgType(p.value.get()));
-    deps.insert(
-        core::DependencyNode<ast::Declaration>::MakeType(p.value.get()));
-    if (p.value->flags() & ast::Declaration::f_IsConst) {
-      deps.insert(
-          core::DependencyNode<ast::Declaration>::MakeValue(p.value.get()));
-      deps.insert(
-          core::DependencyNode<ast::Declaration>::MakeArgValue(p.value.get()));
-    }
-  }
-
-  std::vector<std::pair<int, core::DependencyNode<ast::Declaration>>>
-      ordered_nodes;
-  ordered_nodes.reserve(4 * deps.size());
-  node->parameter_dependency_graph().topologically([&](auto dep_node) {
-    if (not deps.contains(dep_node)) { return; }
-    LOG("OrderedDependencyNodes", "adding %s`%s`", ToString(dep_node.kind()),
-        dep_node.node()->id());
-    ordered_nodes.emplace_back(0, dep_node);
-  });
-
-  // Compute and set the index or `ordered_nodes` so that each node knows the
-  // ordering in source code. This allows us to match parameters to arguments
-  // efficiently.
-  absl::flat_hash_map<ast::Declaration const *, int> param_index;
-  int index = 0;
-  for (auto const &param : node->params()) {
-    param_index.emplace(param.value.get(), index++);
-  }
-
-  for (auto &[index, node] : ordered_nodes) {
-    index = param_index.find(node.node())->second;
-  }
-
-  return ordered_nodes;
+    Compiler &c, ast::ParameterizedExpression const *node,
+    core::FnArgs<type::Typed<ir::Value>> const &args) {
+  DependentComputedData temp_data(&c.data().module());
+  temp_data.parent_ = &c.data();
+  auto parameters = c.ComputeParamsFromArgs(node, args);
+  return c.data().InsertDependent(node, parameters);
 }
 
 }  // namespace compiler

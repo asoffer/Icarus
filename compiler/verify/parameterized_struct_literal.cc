@@ -16,26 +16,13 @@ WorkItem::Result Compiler::VerifyBody(ast::ParameterizedStructLiteral const *nod
 
 type::QualType Compiler::VerifyType(
     ast::ParameterizedStructLiteral const *node) {
-  auto ordered_nodes  = OrderedDependencyNodes(node);
-  auto *diag_consumer = &diag();
-  auto gen            = [node, compiler_data = &data(), diag_consumer,
-              ordered_nodes(std::move(ordered_nodes))](
+  auto gen = [node, c = Compiler(resources())](
                  core::FnArgs<type::Typed<ir::Value>> const &args) mutable
       -> type::Struct const * {
     // TODO: Need a version of MakeConcrete that doesn't generate return types
     // because those only make sense for functions.
-    auto [params, rets, data, inserted] =
-        MakeConcrete(node, &compiler_data->module(), ordered_nodes, args,
-                     *compiler_data, *diag_consumer);
-    module::FileImporter<LibraryModule> importer;
+    auto [params, rets, data, inserted] = MakeConcrete(c, node, args);
     if (inserted) {
-      Compiler c({
-          .builder             = ir::GetBuilder(),
-          .data                = data,
-          .diagnostic_consumer = *diag_consumer,
-          .importer            = importer,
-      });
-
       type::Struct *s = new type::Struct(
           &c.data().module(),
           {.is_copyable = not node->contains_hashtag(

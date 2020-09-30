@@ -19,7 +19,6 @@
 #include "ast/scope/scope.h"
 #include "ast/scope/scope_lit.h"
 #include "ast/visitor_base.h"
-#include "base/graph.h"
 #include "base/ptr_span.h"
 #include "core/fn_args.h"
 #include "core/ordered_fn_args.h"
@@ -368,14 +367,16 @@ struct ParameterizedExpression : Expression {
   using params_type = core::Params<std::unique_ptr<Declaration>>;
   params_type const &params() const { return params_; }
 
+  // Returns a sequence of (parameter-index, dependency-node) pairs ordered in
+  // such a way that each has no dependencies on any that come after it.
+  absl::Span<std::pair<int, core::DependencyNode<ast::Declaration>> const>
+  ordered_dependency_nodes() const {
+    return ordered_dependency_nodes_;
+  }
+
   // Returns true if the expression accepts a generic parameter (i.e., a
   // constant parameter or a parameter with a deduced type).
   constexpr bool is_generic() const { return is_generic_; }
-
-  base::Graph<core::DependencyNode<Declaration>> const &
-  parameter_dependency_graph() const {
-    return dep_graph_;
-  }
 
  protected:
   void InitializeParams() {
@@ -392,7 +393,8 @@ struct ParameterizedExpression : Expression {
   }
 
   core::Params<std::unique_ptr<ast::Declaration>> params_;
-  base::Graph<core::DependencyNode<Declaration>> dep_graph_;
+  std::vector<std::pair<int, core::DependencyNode<ast::Declaration>>>
+      ordered_dependency_nodes_;
   bool is_generic_ = false;
 };
 

@@ -16,3 +16,10 @@
 * For most casts, reference qualifiers are stripped, but for casts to the same
   type we could keep them. Would this be a good idea? Currently we're stripping
   them unconditionally
+* Figure out if we want to allow something like
+  ```
+  (x: $x = 0) => x
+  ```
+  The problem here is the initialization from `0` when `x` isn't constrained.
+  I think once we have interfaces We can require that `$x` is constrained to be
+  initializable from `0`.

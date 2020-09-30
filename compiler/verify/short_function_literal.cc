@@ -1,6 +1,5 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
-#include "compiler/library_module.h"
 #include "compiler/verify/common.h"
 
 namespace compiler {
@@ -17,25 +16,14 @@ type::QualType VerifyConcrete(Compiler &c,
 
 type::QualType VerifyGeneric(Compiler &c,
                              ast::ShortFunctionLiteral const *node) {
-  auto ordered_nodes = OrderedDependencyNodes(node);
-
   auto *diag_consumer = &c.diag();
-  auto gen            = [node, compiler_data = &c.data(), diag_consumer,
-              ordered_nodes = std::move(ordered_nodes)](
+  auto gen            = [node, c = Compiler(c.resources())](
                  core::FnArgs<type::Typed<ir::Value>> const &args) mutable
       -> type::Function const * {
     // TODO handle compilation failures.
-    auto [params, rets, data, inserted] =
-        MakeConcrete(node, &compiler_data->module(), ordered_nodes, args,
-                     *compiler_data, *diag_consumer);
-
-    module::FileImporter<LibraryModule> importer;
-    auto body_qt = Compiler({.builder             = ir::GetBuilder(),
-                             .data                = data,
-                             .diagnostic_consumer = *diag_consumer,
-                             .importer            = importer})
-                       .VerifyType(node->body());
-    rets = {body_qt.type()};
+    auto [params, rets, data, inserted] = MakeConcrete(c, node, args);
+    auto body_qt                        = c.VerifyType(node->body());
+    rets                                = {body_qt.type()};
     return type::Func(params.Transform([](auto const &p) { return p.second; }),
                       rets);
   };

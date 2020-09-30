@@ -92,8 +92,7 @@ EmitCallee(Compiler &compiler, ast::Expression const *fn, type::QualType qt,
     });
     temp_data.parent_ = &compiler.data();
 
-    auto params = c.ComputeParamsFromArgs(
-        parameterized_expr, OrderedDependencyNodes(parameterized_expr), args);
+    auto params = c.ComputeParamsFromArgs(parameterized_expr, args);
 
     auto find_dependent_result = compiler.data().FindDependent(
         &fn->as<ast::ParameterizedExpression>(), params);

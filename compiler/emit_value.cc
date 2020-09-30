@@ -712,8 +712,7 @@ ir::NativeFn MakeConcreteFromGeneric(
   temp_data.parent_ = &compiler->data();
   // TODO: Audit this. Probably shouldn't be needed because we should have
   // already computed it during verification.
-  auto params =
-      c.ComputeParamsFromArgs(node, OrderedDependencyNodes(node), args);
+  auto params                = c.ComputeParamsFromArgs(node, args);
   auto find_dependent_result = compiler->data().FindDependent(node, params);
   auto const *fn_type        = find_dependent_result.fn_type;
   auto &data                 = find_dependent_result.data;

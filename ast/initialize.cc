@@ -3,6 +3,59 @@
 #include "ast/scope/decl.h"
 
 namespace ast {
+namespace {
+
+// Given a parameterized expression returns a vector consisting of dependency
+// nodes for each parameter declaration, and the index of that declaration.
+// There are four types of dependency (representing all combinations of the type
+// or value of the parameter and of the argument bound to a given parameter).
+//
+// TODO: OrderedDependencyNodes does not need any information not already
+// available on the AST. We should compute this for all parameterized
+// expressions, or at least those with generics and stash it.
+std::vector<std::pair<int, core::DependencyNode<ast::Declaration>>>
+OrderedDependencyNodes(ast::ParameterizedExpression const *node) {
+  absl::flat_hash_set<core::DependencyNode<ast::Declaration>> deps;
+  for (auto const &p : node->params()) {
+    deps.insert(
+        core::DependencyNode<ast::Declaration>::MakeArgType(p.value.get()));
+    deps.insert(
+        core::DependencyNode<ast::Declaration>::MakeType(p.value.get()));
+    if (p.value->flags() & ast::Declaration::f_IsConst) {
+      deps.insert(
+          core::DependencyNode<ast::Declaration>::MakeValue(p.value.get()));
+      deps.insert(
+          core::DependencyNode<ast::Declaration>::MakeArgValue(p.value.get()));
+    }
+  }
+
+  std::vector<std::pair<int, core::DependencyNode<ast::Declaration>>>
+      ordered_nodes;
+  ordered_nodes.reserve(4 * deps.size());
+  BuildParamDependencyGraph(node->params()).topologically([&](auto dep_node) {
+    if (not deps.contains(dep_node)) { return; }
+    LOG("OrderedDependencyNodes", "adding %s`%s`", ToString(dep_node.kind()),
+        dep_node.node()->id());
+    ordered_nodes.emplace_back(0, dep_node);
+  });
+
+  // Compute and set the index or `ordered_nodes` so that each node knows the
+  // ordering in source code. This allows us to match parameters to arguments
+  // efficiently.
+  absl::flat_hash_map<ast::Declaration const *, int> param_index;
+  int index = 0;
+  for (auto const &param : node->params()) {
+    param_index.emplace(param.value.get(), index++);
+  }
+
+  for (auto &[index, node] : ordered_nodes) {
+    index = param_index.find(node.node())->second;
+  }
+
+  return ordered_nodes;
+}
+
+}  // namespace
 
 template <typename T>
 static void SetAllScopes(std::vector<std::unique_ptr<T>> *nodes, Scope *scope) {
@@ -105,8 +158,7 @@ void FunctionLiteral::Initialize(Scope *scope) {
     for (auto &out : *outputs_) { out->Initialize(body_scope()); }
   }
   SetAllScopes(&stmts_, body_scope());
-
-  dep_graph_ = BuildParamDependencyGraph(params_);
+  ordered_dependency_nodes_ = OrderedDependencyNodes(this);
 }
 
 void FunctionType::Initialize(Scope *scope) {
@@ -186,7 +238,7 @@ void ShortFunctionLiteral::Initialize(Scope *scope) {
   set_body_with_parent(scope);
   for (auto &param : params_) { param.value->Initialize(body_scope()); }
   body_->Initialize(body_scope());
-  dep_graph_ = BuildParamDependencyGraph(params_);
+  ordered_dependency_nodes_ = OrderedDependencyNodes(this);
 }
 
 void StructLiteral::Initialize(Scope *scope) {
@@ -200,7 +252,7 @@ void ParameterizedStructLiteral::Initialize(Scope *scope) {
   set_body_with_parent(scope);
   for (auto &param : params_) { param.value->Initialize(body_scope()); }
   for (auto &field : fields_) { field.Initialize(body_scope()); }
-  dep_graph_ = BuildParamDependencyGraph(params_);
+  ordered_dependency_nodes_ = OrderedDependencyNodes(this);
 }
 
 void Terminal::Initialize(Scope *scope) { scope_ = scope; }

@@ -101,6 +101,7 @@ struct Compiler
     diagnostic::DiagnosticConsumer &diagnostic_consumer;
     module::Importer& importer;
   };
+  PersistentResources resources() { return resources_; }
 
   void VerifyAll(base::PtrSpan<ast::Node const> nodes) {
     for (ast::Node const *node : nodes) {
@@ -220,8 +221,6 @@ struct Compiler
 
   core::Params<std::pair<ir::Value, type::QualType>> ComputeParamsFromArgs(
       ast::ParameterizedExpression const *node,
-      absl::Span<std::pair<int, core::DependencyNode<ast::Declaration>> const>
-          ordered_nodes,
       core::FnArgs<type::Typed<ir::Value>> const &args);
 
   std::optional<type::QualType> qual_type_of(ast::Expression const *expr) const;
