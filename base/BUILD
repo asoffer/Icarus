@@ -136,7 +136,6 @@ cc_library(
 cc_library(
     name = "matchers",
     hdrs = ["matchers.h"],
-    deps = [":tuple"],
 )
 
 cc_library(
@@ -221,10 +220,7 @@ cc_test(
 cc_library(
     name = "stringify",
     hdrs = ["stringify.h"],
-    deps = [
-        ":tuple",
-        ":unaligned_ref",
-    ],
+    deps = [":unaligned_ref"],
 )
 
 cc_test(
@@ -251,21 +247,6 @@ cc_library(
     name = "tag",
     hdrs = ["tag.h"],
     deps = [],
-)
-
-cc_library(
-    name = "tuple",
-    hdrs = ["tuple.h"],
-    deps = [],
-)
-
-cc_test(
-    name = "tuple_test",
-    srcs = ["tuple_test.cc"],
-    deps = [
-        ":tuple",
-        "@com_google_googletest//:gtest_main",
-    ],
 )
 
 cc_library(

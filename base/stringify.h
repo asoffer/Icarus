@@ -9,7 +9,6 @@
 #include <type_traits>
 #include <variant>
 
-#include "base/tuple.h"
 #include "base/unaligned_ref.h"
 
 namespace base {
@@ -87,20 +86,16 @@ std::string stringify_dispatch(dispatch_rank<2>, std::pair<A, B> const &pair) {
 
 template <typename... Ts>
 std::string stringify_dispatch(dispatch_rank<2>, std::tuple<Ts...> const &tup) {
-  if constexpr (sizeof...(Ts) == 0) {
-    return "()";
-  } else if constexpr (sizeof...(Ts) == 1) {
-    return "(" + stringify(std::get<0>(tup)) + ")";
-  } else {
-    std::array<std::string, sizeof...(Ts)> results;
-    size_t index = 0;
-    tuple::for_each([&](auto const &arg) { results[index++] = stringify(arg); },
-                    tup);
-
-    std::string result = "(" + results[0];
-    for (size_t i = 1; i < sizeof...(Ts); ++i) { result += ", " + results[i]; }
-    return result + ")";
-  }
+  std::string result         = "(";
+  std::string_view separator = "";
+  std::apply(
+      [&](auto const &... entries) {
+        (result.append(std::string(std::exchange(separator, ", ")) +
+                       stringify(entries)),
+         ...);
+      },
+      tup);
+  return result + ")";
 }
 
 template <typename... Ts>
