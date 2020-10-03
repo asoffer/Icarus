@@ -23,19 +23,19 @@ base::expected<JumpDispatchTable> JumpDispatchTable::Verify(
   for (ir::Jump jump : jumps) {
     // TODO the type of the specific overload could *correctly* be null and
     // we need to handle that case.
-    LOG("dispatch-verify", "Verifying %p", jump.get());
+    LOG("dispatch-verify", "Verifying %s", jump);
 
-    auto result =
-        MatchArgsToParams(jump.get()->params().Transform([](auto const &p) {
+    auto result = MatchArgsToParams(
+        ir::CompiledJump::From(jump)->params().Transform([](auto const &p) {
           return type::QualType::NonConstant(p.type());
         }),
-                          args);
+        args);
     if (not result) {
       failures.emplace(jump, result.error());
     } else {
-      table.table_.emplace(std::piecewise_construct,
-                           std::forward_as_tuple(jump),
-                           std::forward_as_tuple(jump.get()->type(), *result));
+      table.table_.emplace(
+          std::piecewise_construct, std::forward_as_tuple(jump),
+          std::forward_as_tuple(ir::CompiledJump::From(jump)->type(), *result));
     }
   }
 
@@ -60,12 +60,13 @@ JumpDispatchTable::EmitCallOneOverload(
   if (state_reg) {
     auto pos   = std::move(args).pos();
     auto named = std::move(args).named();
-    pos.insert(pos.begin(),
-               type::Typed<ir::Value>(ir::Value(*state_reg),
-                                      jump.get()->type()->state()));
+    pos.insert(pos.begin(), type::Typed<ir::Value>(
+                                ir::Value(*state_reg),
+                                ir::CompiledJump::From(jump)->type()->state()));
     args = core::FnArgs(std::move(pos), std::move(named));
   }
-  core::FillMissingArgs(core::ParamsRef(jump.get()->params()), &args,
+  core::FillMissingArgs(core::ParamsRef(ir::CompiledJump::From(jump)->params()),
+                        &args,
                         [](auto const &p) -> type::Typed<ir::Value> {
                           NOT_YET();
                           // return type::Typed(
@@ -76,13 +77,12 @@ JumpDispatchTable::EmitCallOneOverload(
                         state_reg ? 1 : 0);
 
   // TODO qualtype? non constant?
-  auto arg_values =
-      PrepareCallArguments(compiler, jump.get()->type()->state(),
-                           jump.get()->params().Transform([](auto const &p) {
-                             return type::QualType::NonConstant(p.type());
-                           }),
-                           args);
-  return ir::Inline(compiler->builder(), jump.get(), arg_values, block_interp);
+  auto arg_values = PrepareCallArguments(
+      compiler, ir::CompiledJump::From(jump)->type()->state(),
+      ir::CompiledJump::From(jump)->params().Transform(
+          [](auto const &p) { return type::QualType::NonConstant(p.type()); }),
+      args);
+  return ir::Inline(compiler->builder(), jump, arg_values, block_interp);
 }
 
 }  // namespace compiler

@@ -27,6 +27,7 @@ cc_library(
         "//ast:ast",
         "//core:params",
         "//ir/blocks:group",
+        "//ir/value:jump",
         "//type:jump",
         "//type:qual_type",
     ],

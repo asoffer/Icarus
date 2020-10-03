@@ -124,7 +124,6 @@ cc_test(
 cc_library(
     name = "jump",
     hdrs = ["jump.h"],
-    deps = ["//ir:compiled_jump"],
 )
 
 cc_library(
@@ -255,6 +254,7 @@ cc_library(
     deps = [
         ":addr",
         ":enum_and_flags",
+        ":jump",
         ":label",
         ":module_id",
         ":string",

@@ -164,7 +164,7 @@ void internal::OneTable::VerifyJumps() {
       next_types;
   for (auto const &[node, table] : blocks) {
     for (auto const &[jump, expr_data] : table.table_) {
-      auto jump_exit_paths = jump.get()->ExtractExitPaths();
+      auto jump_exit_paths = ir::CompiledJump::From(jump)->ExtractExitPaths();
       for (auto const &[block_name, arg_type_calls] : jump_exit_paths) {
         auto &block_def = *ASSERT_NOT_NULL(scope_def_->block(block_name));
         for (auto const &arg_types : arg_type_calls) {
@@ -233,12 +233,12 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
   table.scope_node_ = node;
   table.init_map_   = std::move(inits);
   for (auto [jump, scope] : table.init_map_) {
-    if (auto result =
-            MatchArgsToParams(jump.get()->params().Transform([](auto const &p) {
+    if (auto result = MatchArgsToParams(
+            ir::CompiledJump::From(jump)->params().Transform([](auto const &p) {
               // TODO This should be constant sometimes.
               return type::QualType::NonConstant(p.type());
             }),
-                              args_qt)) {
+            args_qt)) {
       auto &one_table = table.tables_[scope];
       one_table.inits.emplace(jump, *result);
       one_table.scope_def_ = scope;
@@ -249,9 +249,10 @@ base::expected<ScopeDispatchTable> ScopeDispatchTable::Verify(
 
   if (not ParamsCoverArgs(
           args_qt, table.init_map_, [](ir::Jump jump, auto const &) {
-            return jump.get()->params().Transform([](auto const &p) {
-              return type::QualType::NonConstant(p.type());
-            });
+            return ir::CompiledJump::From(jump)->params().Transform(
+                [](auto const &p) {
+                  return type::QualType::NonConstant(p.type());
+                });
           })) {
     compiler->diag().Consume(ParametersDoNotCoverArguments{.args = args_qt});
   }

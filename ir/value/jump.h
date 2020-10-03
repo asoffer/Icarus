@@ -3,14 +3,11 @@
 
 #include <iostream>
 
-#include "ir/compiled_jump.h"
-
 namespace ir {
+struct CompiledJump;
 
 struct Jump {
-  explicit Jump(CompiledJump const *jump = nullptr) : jump_(jump) {}
-
-  CompiledJump const *get() const { return jump_; }
+  explicit constexpr Jump(CompiledJump const *jump = nullptr) : jump_(jump) {}
 
   friend bool operator==(Jump lhs, Jump rhs) { return lhs.jump_ == rhs.jump_; }
   friend bool operator!=(Jump lhs, Jump rhs) { return not(lhs == rhs); }
@@ -25,6 +22,7 @@ struct Jump {
   }
 
  private:
+  friend CompiledJump;
   CompiledJump const *jump_;
 };
 

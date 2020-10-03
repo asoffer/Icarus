@@ -8,6 +8,7 @@
 #include "base/meta.h"
 #include "ir/value/addr.h"
 #include "ir/value/enum_and_flags.h"
+#include "ir/value/jump.h"
 #include "ir/value/label.h"
 #include "ir/value/module_id.h"
 #include "ir/value/reg_or.h"
@@ -18,7 +19,6 @@ namespace ir {
 // TODO: Invert the dependencies here.
 struct Fn;
 struct GenericFn;
-struct Jump;
 
 // A `Value` represents any register or value constant usable in the
 // intermediate representation.
@@ -105,7 +105,7 @@ struct Value {
   friend H AbslHashValue(H h, Value const& v) {
     v.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                  uint32_t, uint64_t, float, double, type::Type const*, Addr,
-                 /*String, */ EnumVal, FlagsVal, /* Fn, GenericFn, */ Reg,
+                 /*String, */ EnumVal, FlagsVal, /* Fn, GenericFn, */ Jump, Reg,
                  ModuleId, Empty>(
         [&](auto x) { h = H::combine(std::move(h), v.type_.get(), x); });
     return h;
@@ -149,7 +149,7 @@ struct Value {
   friend std::ostream& operator<<(std::ostream& os, Value value) {
     value.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                      uint32_t, uint64_t, float, double, type::Type const*, Reg,
-                     Addr, String, FlagsVal, EnumVal, ModuleId, Empty>(
+                     Addr, String, FlagsVal, EnumVal, ModuleId, Jump, Empty>(
         [&os](auto x) { os << x; });
     return os;
   }
