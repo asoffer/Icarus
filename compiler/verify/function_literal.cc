@@ -189,15 +189,9 @@ type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
     for (size_t i = 0; i < output_type_vec.size(); ++i) {
       if (auto *decl = (*outputs)[i]->if_as<ast::Declaration>()) {
         output_type_vec[i] = ASSERT_NOT_NULL(c.data().qual_type(decl))->type();
-      } else {
-        if (auto maybe_type = c.EvaluateAs<type::Type const *>((*outputs)[i])) {
-          output_type_vec[i] = *maybe_type;
-        } else {
-          c.diag().Consume(diagnostic::EvaluationFailure{
-              .failure = maybe_type.error(),
-              .range   = (*outputs)[i]->range(),
-          });
-        }
+      } else if (auto maybe_type = c.EvaluateOrDiagnoseAs<type::Type const *>(
+                     (*outputs)[i])) {
+        output_type_vec[i] = *maybe_type;
       }
     }
 

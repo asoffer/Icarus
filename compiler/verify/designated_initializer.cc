@@ -128,19 +128,13 @@ type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
 
   // Evaluate the type next so that the default ordering of error messages makes
   // sense (roughly top-to-bottom).
-  auto maybe_type = EvaluateAs<type::Type const *>(node->type());
-  if (not maybe_type) {
-    diag().Consume(diagnostic::EvaluationFailure{
-        .failure = maybe_type.error(),
-        .range   = node->type()->range(),
-    });
-    return type::QualType::Error();
-  }
+  ASSIGN_OR(return type::QualType::Error(), type::Type const *t,
+                   EvaluateOrDiagnoseAs<type::Type const *>(node->type()));
 
-  auto *struct_type = ASSERT_NOT_NULL(*maybe_type)->if_as<type::Struct>();
+  auto *struct_type = ASSERT_NOT_NULL(t)->if_as<type::Struct>();
   if (not struct_type) {
     diag().Consume(NonStructDesignatedInitializer{
-        .type  = *maybe_type,
+        .type  = t,
         .range = node->type()->range(),
     });
     return type::QualType::Error();

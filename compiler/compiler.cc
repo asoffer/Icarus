@@ -152,13 +152,11 @@ base::expected<ir::Value, interpretter::EvaluationFailure> Compiler::Evaluate(
 
 ir::ModuleId Compiler::EvaluateModuleWithCache(ast::Expression const *expr) {
   // TODO: Implement caching behavior.
-  auto maybe_mod = EvaluateAs<ir::ModuleId>(expr);
-  if (not maybe_mod) {
-    diag().Consume(diagnostic::EvaluationFailure{.failure = maybe_mod.error(),
-                                                 .range   = expr->range()});
+  if (auto maybe_mod = EvaluateOrDiagnoseAs<ir::ModuleId>(expr)) {
+    return *maybe_mod;
+  } else {
     return ir::ModuleId::Invalid();
   }
-  return *maybe_mod;
 }
 
 }  // namespace compiler

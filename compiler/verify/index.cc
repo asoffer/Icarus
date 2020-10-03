@@ -185,30 +185,16 @@ type::QualType VerifyByteViewIndex(Compiler *c, ast::Index const *node,
   }
 
   if (index_qt.constant()) {
-    auto maybe_index_value = c->Evaluate(
+    ir::Value maybe_index_value = c->EvaluateOrDiagnose(
         type::Typed<ast::Expression const *>(node->rhs(), index_qt.type()));
-    if (not maybe_index_value) {
-      c->diag().Consume(diagnostic::EvaluationFailure{
-          .failure = maybe_index_value.error(),
-          .range   = node->rhs()->range(),
-      });
-    }
 
     if (quals >= type::Quals::Const()) {
-      auto maybe_str = c->EvaluateAs<ir::String>(node->lhs());
-      if (not maybe_str) {
-        c->diag().Consume(diagnostic::EvaluationFailure{
-            .failure = maybe_str.error(),
-            .range   = node->lhs()->range(),
-        });
-      }
-
-      if (not maybe_index_value or not maybe_str) {
+      auto maybe_str = c->EvaluateOrDiagnoseAs<ir::String>(node->lhs());
+      if (maybe_index_value.empty() or not maybe_str) {
         return type::QualType::Error();
       }
 
-      std::optional<uint64_t> maybe_index =
-          IntegralToUint64(*maybe_index_value);
+      std::optional<uint64_t> maybe_index = IntegralToUint64(maybe_index_value);
       if (not maybe_index.has_value()) {
         c->diag().Consume(NegativeStringIndex{
             .range = node->range(),
@@ -243,18 +229,11 @@ type::QualType VerifyArrayIndex(Compiler *c, ast::Index const *node,
   }
 
   if (index_qt.constant()) {
-    auto maybe_index_value = c->Evaluate(
+    ir::Value maybe_index_value = c->EvaluateOrDiagnose(
         type::Typed<ast::Expression const *>(node->rhs(), index_qt.type()));
-    if (not maybe_index_value) {
-      c->diag().Consume(diagnostic::EvaluationFailure{
-          .failure = maybe_index_value.error(),
-          .range   = node->rhs()->range(),
-      });
-    }
+    if (maybe_index_value.empty()) { return type::QualType::Error(); }
 
-    if (not maybe_index_value) { return type::QualType::Error(); }
-
-    std::optional<uint64_t> maybe_index = IntegralToUint64(*maybe_index_value);
+    std::optional<uint64_t> maybe_index = IntegralToUint64(maybe_index_value);
     if (not maybe_index.has_value()) {
       c->diag().Consume(NegativeArrayIndex{
           .range = node->range(),
@@ -296,17 +275,11 @@ type::QualType VerifyTupleIndex(Compiler *c, ast::Index const *node,
     return type::QualType::Error();
   }
 
-  auto maybe_value = c->Evaluate(
+  ir::Value maybe_value = c->EvaluateOrDiagnose(
       type::Typed<ast::Expression const *>(node->rhs(), index_qt.type()));
-  if (not maybe_value) {
-    c->diag().Consume(diagnostic::EvaluationFailure{
-        .failure = maybe_value.error(),
-        .range   = node->range(),
-    });
-    return type::QualType::Error();
-  }
+  if (maybe_value.empty()) { return type::QualType::Error(); }
 
-  std::optional<uint64_t> maybe_index = IntegralToUint64(*maybe_value);
+  std::optional<uint64_t> maybe_index = IntegralToUint64(maybe_value);
   if (not maybe_index.has_value() or *maybe_index >= tuple_type->size()) {
     c->diag().Consume(IndexingTupleOutOfBounds{
         .range = node->range(),

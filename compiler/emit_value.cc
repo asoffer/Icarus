@@ -516,10 +516,7 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
                      state_.must_complete);
         if (not maybe_val) {
           // TODO we reserved a slot and haven't cleaned it up. Do we care?
-          diag().Consume(diagnostic::EvaluationFailure{
-              .failure = maybe_val.error(),
-              .range   = node->init_val()->range(),
-          });
+          diag().Consume(maybe_val.error());
           return ir::Value();
         }
 
@@ -1005,15 +1002,10 @@ ir::Value Compiler::EmitValue(ast::ScopeLiteral const *node) {
   LOG("ScopeLiteral", "State type = %p", node->state_type());
   type::Type const *state_type = nullptr;
   if (node->state_type()) {
-    auto maybe_type = EvaluateAs<type::Type const *>(node->state_type());
-    if (not maybe_type) {
-      diag().Consume(diagnostic::EvaluationFailure{
-          .failure = maybe_type.error(),
-          .range   = node->state_type()->range(),
-      });
-      return ir::Value();
-    }
-    state_type = *maybe_type;
+    ASSIGN_OR(
+        return ir::Value(),  //
+               type::Type const *state_type,
+               EvaluateOrDiagnoseAs<type::Type const *>(node->state_type()));
   }
 
   absl::flat_hash_map<std::string_view, ir::BlockDef *> blocks;

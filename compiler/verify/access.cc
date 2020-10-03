@@ -145,18 +145,11 @@ type::QualType AccessTypeMember(Compiler *c, ast::Access const *node,
     });
     return type::QualType::Error();
   }
-
-  auto maybe_type = c->EvaluateAs<type::Type const *>(node->operand());
-  if (not maybe_type) {
-    c->diag().Consume(diagnostic::EvaluationFailure{
-        .failure = maybe_type.error(),
-        .range   = node->range(),
-    });
-    return type::QualType::Error();
-  }
-
-  auto *evaled_type = *maybe_type;
-  auto qt           = type::QualType::Constant(evaled_type);
+  ASSIGN_OR(
+      return type::QualType::Error(),  //
+             auto const *evaled_type,
+             c->EvaluateOrDiagnoseAs<type::Type const *>(node->operand()));
+  auto qt = type::QualType::Constant(evaled_type);
 
   // For enums and flags, regardless of whether we can get the value, it's
   // clear that node is supposed to be a member so we should emit an error but

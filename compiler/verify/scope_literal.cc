@@ -179,15 +179,9 @@ type::QualType Compiler::VerifyType(ast::ScopeLiteral const *node) {
       qt.MarkError();
     }
 
-    auto maybe_type = EvaluateAs<type::Type const *>(node->state_type());
-    if (not maybe_type) {
-      diag().Consume(diagnostic::EvaluationFailure{
-          .failure = maybe_type.error(),
-          .range   = node->range(),
-      });
-      return type::QualType::Error();
-    }
-    state_type = *maybe_type;
+    ASSIGN_OR(return type::QualType::Error(),  //
+                     state_type,
+                     EvaluateAs<type::Type const *>(node->state_type()));
   }
 
   auto const *state_type_ptr = state_type ? type::Ptr(state_type) : nullptr;

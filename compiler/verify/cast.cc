@@ -36,15 +36,9 @@ type::QualType Compiler::VerifyType(ast::Cast const *node) {
     return type::QualType::Error();
   }
 
-  auto maybe_type = EvaluateAs<type::Type const *>(node->type());
-  if (not maybe_type) {
-    diag().Consume(diagnostic::EvaluationFailure{
-        .failure = maybe_type.error(),
-        .range   = node->range(),
-    });
-    return type::QualType::Error();
-  }
-  auto const *t = *maybe_type;
+  ASSIGN_OR(return type::QualType::Error(),  //
+                   auto const *t,
+                   EvaluateOrDiagnoseAs<type::Type const *>(node->type()));
   if (not type::CanCast(expr_qt.type(), t)) {
     diag().Consume(InvalidCast{
         .from  = expr_qt.type(),

@@ -63,10 +63,7 @@ type::QualType Compiler::VerifyType(ast::Import const *node) {
 
   auto maybe_src = EvaluateAs<ir::String>(node->operand());
   if (not maybe_src) {
-    diag().Consume(diagnostic::EvaluationFailure{
-        .failure = maybe_src.error(),
-        .range   = node->range(),
-    });
+    diag().Consume(maybe_src.error());
     qt.MarkError();
     return data().set_qual_type(node, qt);
   }

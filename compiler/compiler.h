@@ -208,6 +208,7 @@ struct Compiler
   }
   module::Importer &importer() const { return resources_.importer; }
 
+
   template <typename T>
   base::expected<T, interpretter::EvaluationFailure> EvaluateAs(
       ast::Expression const *expr) {
@@ -216,6 +217,31 @@ struct Compiler
                          expr, type::Get<T>())));
     return val.template get<T>();
   }
+
+  // Evaluates `expr` in the current context as a value of type `T`. If
+  // evaluation succeeds, returns the vaule, otherwise adds a diagnostic for the
+  // failure and returns `nullopt`. If the expresison is no tof type `T`, the
+  // behavior is undefined.
+  template <typename T>
+  std::optional<T> EvaluateOrDiagnoseAs(ast::Expression const *expr) {
+    auto maybe_value =
+        Evaluate(type::Typed<ast::Expression const *>(expr, type::Get<T>()));
+    if (not maybe_value) {
+      diag().Consume(maybe_value.error());
+      return std::nullopt;
+    }
+    return maybe_value->template get<T>();
+  }
+
+  ir::Value EvaluateOrDiagnose(type::Typed<ast::Expression const *> expr) {
+    if (auto maybe_value = Evaluate(expr)) {
+      return *maybe_value;
+    } else {
+      diag().Consume(maybe_value.error());
+      return ir::Value();
+    }
+  }
+
   base::expected<ir::Value, interpretter::EvaluationFailure> Evaluate(
       type::Typed<ast::Expression const *> expr, bool must_complete = true);
 

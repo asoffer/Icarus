@@ -171,13 +171,13 @@ bool Shadow(type::Typed<ast::Declaration const *> decl1,
 
 // Verifies and evaluates the type expression, returning its value if it can be
 // computed or an error.
-type::QualType VerifyDeclarationType(Compiler *compiler,
+type::QualType VerifyDeclarationType(Compiler &compiler,
                                      ast::Declaration const *node) {
   ASSIGN_OR(return type::QualType::Error(),  //
-                   auto type_expr_qt, compiler->VerifyType(node->type_expr()));
+                   auto type_expr_qt, compiler.VerifyType(node->type_expr()));
 
   if (type_expr_qt.type() != type::Type_) {
-    compiler->diag().Consume(NotAType{
+    compiler.diag().Consume(NotAType{
         .range = node->type_expr()->range(),
         .type  = type_expr_qt.type(),
     });
@@ -185,36 +185,32 @@ type::QualType VerifyDeclarationType(Compiler *compiler,
   }
 
   if (not type_expr_qt.constant()) {
-    compiler->diag().Consume(NonConstantTypeInDeclaration{
+    compiler.diag().Consume(NonConstantTypeInDeclaration{
         .range = node->type_expr()->range(),
     });
     return type::QualType::Error();
   }
 
-  auto maybe_type = compiler->EvaluateAs<type::Type const *>(node->type_expr());
-  if (not maybe_type) {
-    compiler->diag().Consume(diagnostic::EvaluationFailure{
-        .failure = maybe_type.error(),
-        .range   = node->range(),
-    });
-    return type::QualType::Error();
-  }
+  ASSIGN_OR(return type::QualType::Error(),  //
+                   auto const *t,
+                   compiler.EvaluateOrDiagnoseAs<type::Type const *>(
+                       node->type_expr()));
 
-  return type::QualType(ASSERT_NOT_NULL(*maybe_type),
+  return type::QualType(ASSERT_NOT_NULL(t),
                         (node->flags() & ast::Declaration::f_IsConst)
                             ? type::Quals::Const()
                             : type::Quals::Unqualified());
 }
 
 // Verifies the type of a declaration of the form `x: t`.
-type::QualType VerifyDefaultInitialization(Compiler *compiler,
+type::QualType VerifyDefaultInitialization(Compiler &compiler,
                                            ast::Declaration const *node) {
   ASSIGN_OR(return type::QualType::Error(), auto qt,
                    VerifyDeclarationType(compiler, node));
 
   if (not(node->flags() & ast::Declaration::f_IsFnParam) and
       not qt.type()->IsDefaultInitializable()) {
-    compiler->diag().Consume(NoDefaultValue{
+    compiler.diag().Consume(NoDefaultValue{
         .type  = qt.type(),
         .range = node->range(),
     });
@@ -223,21 +219,21 @@ type::QualType VerifyDefaultInitialization(Compiler *compiler,
 }
 
 // Verifies the type of a declaration of the form `x := y`.
-type::QualType VerifyInferred(Compiler *compiler,
+type::QualType VerifyInferred(Compiler &compiler,
                               ast::Declaration const *node) {
   ASSIGN_OR(return type::QualType::Error(),  //
-                   auto init_val_qt, compiler->VerifyType(node->init_val()));
+                   auto init_val_qt, compiler.VerifyType(node->init_val()));
 
   auto reason = Inferrable(init_val_qt.type());
   if (reason != UninferrableType::Reason::kInferrable) {
-    compiler->diag().Consume(UninferrableType{
+    compiler.diag().Consume(UninferrableType{
         .reason = reason,
         .range  = node->init_val()->range(),
     });
     return type::QualType::Error();
   }
 
-  if (not internal::VerifyInitialization(compiler->diag(), node->range(),
+  if (not internal::VerifyInitialization(compiler.diag(), node->range(),
                                          init_val_qt, init_val_qt)) {
     return type::QualType::Error();
   }
@@ -249,14 +245,14 @@ type::QualType VerifyInferred(Compiler *compiler,
 }
 
 // Verifies the type of a declaration of the form `x: T = y`.
-type::QualType VerifyCustom(Compiler *compiler, ast::Declaration const *node) {
-  auto init_val_qt = compiler->VerifyType(node->init_val());
+type::QualType VerifyCustom(Compiler &compiler, ast::Declaration const *node) {
+  auto init_val_qt = compiler.VerifyType(node->init_val());
 
   ASSIGN_OR(return type::QualType::Error(), auto qt,
                    VerifyDeclarationType(compiler, node));
 
   if (not init_val_qt.ok() or
-      not internal::VerifyInitialization(compiler->diag(), node->range(), qt,
+      not internal::VerifyInitialization(compiler.diag(), node->range(), qt,
                                          init_val_qt)) {
     qt.MarkError();
   }
@@ -264,10 +260,10 @@ type::QualType VerifyCustom(Compiler *compiler, ast::Declaration const *node) {
   return qt;
 }
 
-type::QualType VerifyUninitialized(Compiler *compiler,
+type::QualType VerifyUninitialized(Compiler &compiler,
                                    ast::Declaration const *node) {
   if (node->flags() & ast::Declaration::f_IsConst) {
-    compiler->diag().Consume(UninitializedConstant{.range = node->range()});
+    compiler.diag().Consume(UninitializedConstant{.range = node->range()});
   }
 
   return VerifyDeclarationType(compiler, node);
@@ -282,11 +278,12 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
   switch (node->kind()) {
     case ast::Declaration::kDefaultInit: {
       ASSIGN_OR(return type::QualType::Error(),  //
-                       node_qual_type, VerifyDefaultInitialization(this, node));
+                       node_qual_type,
+                       VerifyDefaultInitialization(*this, node));
     } break;
     case ast::Declaration::kInferred: {
       ASSIGN_OR(return type::QualType::Error(),  //
-                       node_qual_type, VerifyInferred(this, node));
+                       node_qual_type, VerifyInferred(*this, node));
     } break;
     case ast::Declaration::kInferredAndUninitialized: {
       diag().Consume(UninferrableType{
@@ -300,11 +297,11 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
     } break;
     case ast::Declaration::kCustomInit: {
       ASSIGN_OR(return type::QualType::Error(),  //
-                       node_qual_type, VerifyCustom(this, node));
+                       node_qual_type, VerifyCustom(*this, node));
     } break;
     case ast::Declaration::kUninitialized: {
       ASSIGN_OR(return type::QualType::Error(),  //
-                       node_qual_type, VerifyUninitialized(this, node));
+                       node_qual_type, VerifyUninitialized(*this, node));
     } break;
     default: UNREACHABLE(node->DebugString());
   }
@@ -316,12 +313,10 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
       // TODO: check if it's constant?
       // TODO: check shadowing against other modules?
       // TODO: what if no init val is provded? what if not constant?
+
       auto maybe_mod = EvaluateAs<module::BasicModule *>(node->init_val());
       if (not maybe_mod) {
-        diag().Consume(diagnostic::EvaluationFailure{
-            .failure = maybe_mod.error(),
-            .range   = node->init_val()->range(),
-        });
+        diag().Consume(maybe_mod.error());
         node_qual_type.MarkError();
       } else {
         // TODO: In generic contexts it doesn't make sense to place this on the

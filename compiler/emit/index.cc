@@ -58,18 +58,12 @@ ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Index const *node) {
                                type::Ptr(type::Nat8));
     }
   } else if (auto *tup = lhs_type.if_as<type::Tuple>()) {
-    auto maybe_val =
-        Evaluate(type::Typed<ast::Expression const *>(node->rhs(), &rhs_type));
-    if (not maybe_val) {
-      diag().Consume(diagnostic::EvaluationFailure{
-          .failure = maybe_val.error(),
-          .range   = node->rhs()->range(),
-      });
-      return ir::Addr::Null();
-    }
+    auto maybe_val = EvaluateOrDiagnose(
+        type::Typed<ast::Expression const *>(node->rhs(), &rhs_type));
+    if (maybe_val.empty()) { return ir::Addr::Null(); }
     auto index =
         builder()
-            .CastTo<int64_t>(type::Typed<ir::Value>(*maybe_val, &rhs_type))
+            .CastTo<int64_t>(type::Typed<ir::Value>(maybe_val, &rhs_type))
             .value();
     return builder().Field(EmitRef(node->lhs()), tup, index).get();
   }

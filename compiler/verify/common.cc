@@ -26,10 +26,7 @@ type::Typed<ir::Value> EvaluateIfConstant(Compiler &c,
     auto maybe_val =
         c.Evaluate(type::Typed<ast::Expression const *>(expr, qt.type()));
     if (maybe_val) { return type::Typed<ir::Value>(*maybe_val, qt.type()); }
-    c.diag().Consume(diagnostic::EvaluationFailure{
-        .failure = maybe_val.error(),
-        .range   = expr->range(),
-    });
+    c.diag().Consume(maybe_val.error());
   }
   return type::Typed<ir::Value>(ir::Value(), qt.type());
 }
@@ -181,9 +178,9 @@ Compiler::ComputeParamsFromArgs(
                     type_expr_type);
           }
 
-          auto maybe_type = EvaluateAs<type::Type const *>(type_expr);
-          if (not maybe_type) { NOT_YET(); }
-          t = ASSERT_NOT_NULL(*maybe_type);
+          ASSIGN_OR(NOT_YET(),  //
+                    type::Type const *t,
+                    EvaluateOrDiagnoseAs<type::Type const *>(type_expr));
         } else {
           t = VerifyType(dep_node.node()->init_val()).type();
         }
@@ -217,12 +214,7 @@ Compiler::ComputeParamsFromArgs(
           auto const *t  = ASSERT_NOT_NULL(type_of(dep_node.node()));
           auto maybe_val = Evaluate(type::Typed<ast::Expression const *>(
               ASSERT_NOT_NULL(dep_node.node()->init_val()), t));
-          if (not maybe_val) {
-            diag().Consume(diagnostic::EvaluationFailure{
-                .failure = maybe_val.error(),
-                .range   = dep_node.node()->init_val()->range(),
-            });
-          }
+          if (not maybe_val) { diag().Consume(maybe_val.error()); }
           arg = type::Typed<ir::Value>(*maybe_val, t);
           LOG("generic-fn", "%s", dep_node.node()->DebugString());
         }

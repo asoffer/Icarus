@@ -34,20 +34,6 @@ struct MissingModule {
   std::string requestor;
 };
 
-struct EvaluationFailure {
-  static constexpr std::string_view kCategory = "interpretter";
-  static constexpr std::string_view kName     = "evaluation-failure";
-
-  DiagnosticMessage ToMessage(frontend::Source const *src) const {
-    return DiagnosticMessage(
-        Text("Compile-time interpretter failed to evaluate expression."),
-        SourceQuote(src).Highlighted(range, Style::ErrorText()));
-  }
-
-  interpretter::EvaluationFailure failure;
-  frontend::SourceRange range;
-};
-
 struct Todo {
   static constexpr std::string_view kCategory = "todo";
   static constexpr std::string_view kName     = "todo";

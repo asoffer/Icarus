@@ -62,17 +62,9 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
       // ```
       // n: `int64
       // ```
-      auto maybe_val = Evaluate(type::Typed<ast::Expression const *>(
+      return EvaluateOrDiagnose(type::Typed<ast::Expression const *>(
           node->operand(),
           ASSERT_NOT_NULL(data().qual_type(node->operand()))->type()));
-      if (not maybe_val) {
-        diag().Consume(diagnostic::EvaluationFailure{
-            .failure = maybe_val.error(),
-            .range   = node->operand()->range(),
-        });
-        return ir::Value();
-      }
-      return *maybe_val;
     }
     case ast::UnaryOperator::Kind::Pointer: {
       state_.must_complete = false;
