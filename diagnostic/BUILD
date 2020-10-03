@@ -1,20 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "errors",
-    hdrs = ["errors.h"],
-    deps = [
-        ":message",
-        "//frontend/lex:numbers",
-        "//frontend/source",
-        "//frontend/source:range",
-        "//ir/interpretter:evaluation_failure",
-        "//type:qual_type",
-        "//type:tuple",
-    ],
-)
-
-cc_library(
     name = "message",
     hdrs = ["message.h"],
     deps = [

@@ -7,7 +7,6 @@ cc_library(
         "//ast",
         "//compiler:compiler_header",
         "//compiler:library_module",
-        "//diagnostic:errors",
         "//ir/value:module_id",
         "//type:enum",
         "//type:flags",
@@ -47,7 +46,6 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
-        "//diagnostic:errors",
         "//type:array",
         "//type:primitive",
         "//type:qual_type",
@@ -70,7 +68,6 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
-        "//diagnostic:errors",
         "//type:array",
         "//type:primitive",
         "//type:qual_type",
@@ -95,7 +92,6 @@ cc_library(
         "//ast",
         "//compiler:compiler_header",
         "//compiler/verify/internal:qual_type_iterator",
-        "//diagnostic:errors",
         "//type:primitive",
         "//type:qual_type",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -118,7 +114,6 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
-        "//diagnostic:errors",
         "//type:pointer",
         "//type:primitive",
         "//type:qual_type",
@@ -143,7 +138,6 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
-        "//diagnostic:errors",
         "//type:callable",
         "//type:generic_struct",
         "//type:qual_type",
@@ -170,7 +164,6 @@ cc_library(
         ":common",
         "//ast",
         "//compiler:compiler_header",
-        "//diagnostic:errors",
         "//type:qual_type",
     ],
 )
@@ -198,7 +191,6 @@ cc_library(
         "//compiler/dispatch:parameters_and_arguments",
         "//core:dependency_node",
         "//core:fn_args",
-        "//diagnostic:errors",
         "//ir/value",
         "//type:callable",
         "//type:overload_set",
@@ -214,7 +206,6 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
-        "//diagnostic:errors",
         "//type:array",
         "//type:pointer",
         "//type:primitive",
@@ -399,7 +390,6 @@ cc_library(
         "//ast",
         "//compiler:compiler_header",
         "//compiler:library_module",
-        "//diagnostic:errors",
         "//ir/value:module_id",
     ],
 )
@@ -420,7 +410,6 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
-        "//diagnostic:errors",
         "//type:array",
         "//type:primitive",
         "//type:qual_type",
@@ -482,7 +471,6 @@ cc_library(
         "//ast",
         "//compiler:compiler_header",
         "//compiler:library_module",
-        "//diagnostic:errors",
         "//type:qual_type",
         "//type:typed_value",
     ],
@@ -542,7 +530,6 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
-        "//diagnostic:errors",
         "//type:qual_type",
         "//type:typed_value",
     ],

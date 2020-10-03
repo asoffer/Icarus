@@ -4,7 +4,6 @@
 #include "absl/container/flat_hash_map.h"
 #include "ast/ast.h"
 #include "base/meta.h"
-#include "diagnostic/errors.h"
 #include "frontend/lex/lex.h"
 #include "frontend/lex/numbers.h"
 #include "frontend/lex/operators.h"

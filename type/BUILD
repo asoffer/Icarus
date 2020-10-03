@@ -159,9 +159,10 @@ cc_library(
     deps = [
         ":struct",
         ":type",
-        "//module:module",
         "//ast/scope",
         "//ast/scope:module",
+        "//core:fn_args",
+        "//module",
     ],
 )
 

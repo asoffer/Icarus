@@ -3,7 +3,6 @@
 #include <type_traits>
 
 #include "compiler/verify/common.h"
-#include "diagnostic/errors.h"
 #include "type/cast.h"
 
 namespace compiler::internal {

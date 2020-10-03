@@ -1,5 +1,4 @@
 #include "compiler/compiler.h"
-#include "diagnostic/errors.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
 #include "type/qual_type.h"

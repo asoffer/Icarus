@@ -28,6 +28,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":architecture",
+        ":evaluation_failure",
         ":execution_context",
         "//base:debug",
         "//base:expected",

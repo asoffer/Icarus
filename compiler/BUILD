@@ -119,7 +119,6 @@ cc_library(
         "//compiler/emit:terminal",
         "//compiler/emit:unary_operator",
         "//core:call",
-        "//diagnostic:errors",
         "//diagnostic/consumer",
         "//diagnostic/consumer:trivial",
         "//frontend:parse",

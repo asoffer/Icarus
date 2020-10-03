@@ -16,7 +16,6 @@
 #include "compiler/executable_module.h"
 #include "compiler/module.h"
 #include "diagnostic/consumer/streaming.h"
-#include "diagnostic/errors.h"
 #include "frontend/parse.h"
 #include "frontend/source/file_name.h"
 #include "frontend/source/shared.h"
@@ -39,7 +38,7 @@ int DumpControlFlowGraph(frontend::FileName const &file_name) {
   auto canonical_file_name = frontend::CanonicalFileName::Make(file_name);
   auto maybe_file_src      = frontend::FileSource::Make(canonical_file_name);
   if (not maybe_file_src) {
-    diag.Consume(diagnostic::MissingModule{
+    diag.Consume(frontend::MissingModule{
         .source    = canonical_file_name,
         .requestor = "",
     });

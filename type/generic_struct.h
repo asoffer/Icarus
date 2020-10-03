@@ -5,7 +5,9 @@
 
 #include "ast/scope/module.h"
 #include "ast/scope/scope.h"
+#include "core/fn_args.h"
 #include "module/module.h"
+#include "type/struct.h"
 #include "type/type.h"
 
 namespace type {

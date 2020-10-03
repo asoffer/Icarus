@@ -4,12 +4,30 @@
 #include <cstdio>
 #include <utility>
 
+#include "absl/strings/str_cat.h"
 #include "base/expected.h"
 #include "base/strong_types.h"
+#include "diagnostic/message.h"
 #include "frontend/source/file_name.h"
 #include "frontend/source/source.h"
 
 namespace frontend {
+
+struct MissingModule {
+  static constexpr std::string_view kCategory = "type-error";
+  static constexpr std::string_view kName     = "missing-module";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(diagnostic::Text(
+        "Could not find module named \"%s\" requested from %s", source.name(),
+        requestor.empty() ? "command line"
+                          : absl::StrCat("\"", requestor, "\".")));
+  }
+
+  CanonicalFileName source;
+  std::string requestor;
+};
+
 
 struct FileSource : public Source {
   static base::expected<FileSource> Make(CanonicalFileName file_name);

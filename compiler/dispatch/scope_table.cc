@@ -6,7 +6,6 @@
 #include "compiler/compiler.h"
 #include "compiler/dispatch/parameters_and_arguments.h"
 #include "core/params.h"
-#include "diagnostic/errors.h"
 #include "ir/builder.h"
 #include "type/cast.h"
 #include "type/type.h"

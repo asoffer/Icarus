@@ -8,7 +8,6 @@
 #include "base/debug.h"
 #include "base/global.h"
 #include "diagnostic/consumer/consumer.h"
-#include "diagnostic/errors.h"
 #include "diagnostic/message.h"
 #include "frontend/lex/lex.h"
 #include "frontend/lex/operators.h"
@@ -23,6 +22,20 @@ bool parser = false;
 
 namespace frontend {
 namespace {
+
+struct TodoDiagnostic {
+  static constexpr std::string_view kCategory = "todo";
+  static constexpr std::string_view kName     = "todo";
+
+  diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
+    return diagnostic::DiagnosticMessage(
+        diagnostic::Text("TODO: Diagnostic emit from %s, line %u.",
+                         loc.file_name(), loc.line()));
+  }
+
+  std::experimental::source_location loc =
+      std::experimental::source_location::current();
+};
 
 template <typename T>
 struct InheritsFrom : public matcher::UntypedMatcher<InheritsFrom<T>> {
@@ -492,7 +505,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
       return std::make_unique<ast::ArgumentType>(range,
                                                  std::move(*id).extract());
     } else {
-      diag.Consume(diagnostic::Todo{});
+      diag.Consume(TodoDiagnostic{});
       return std::make_unique<ast::ArgumentType>(range, "");
     }
   }
@@ -522,7 +535,7 @@ std::unique_ptr<ast::Node> BuildLeftUnop(
         range, op, MakeInvalidNode(nodes[1]->range()));
 
   } else if (not operand->is<ast::Expression>()) {
-    diag.Consume(diagnostic::Todo{});
+    diag.Consume(TodoDiagnostic{});
     return std::make_unique<ast::UnaryOperator>(
         range, op, MakeInvalidNode(nodes[1]->range()));
 
@@ -749,7 +762,7 @@ std::vector<std::unique_ptr<ast::Declaration>> ExtractInputs(
     if (expr->is<ast::Declaration>()) {
       inputs.push_back(move_as<ast::Declaration>(expr));
     } else {
-      diag.Consume(diagnostic::Todo{});
+      diag.Consume(TodoDiagnostic{});
     }
   }
   return inputs;
@@ -800,7 +813,7 @@ std::unique_ptr<ast::Node> BuildDesignatedInitializer(
   auto *tok = nodes[1]->if_as<Token>();
   SourceRange range(nodes[0]->range().begin(), nodes.back()->range().end());
   if (not tok) {
-    diag.Consume(diagnostic::Todo{});
+    diag.Consume(TodoDiagnostic{});
     return MakeInvalidNode(range);
   }
 
@@ -813,7 +826,7 @@ std::unique_ptr<ast::Node> BuildDesignatedInitializer(
   }
 
   if (tok->token != ".") {
-    diag.Consume(diagnostic::Todo{});
+    diag.Consume(TodoDiagnostic{});
     return MakeInvalidNode(range);
   }
 
@@ -826,11 +839,11 @@ std::unique_ptr<ast::Node> BuildDesignatedInitializer(
         initializers.push_back(move_as<ast::Assignment>(stmt));
         for (auto const *expr : assignment->lhs()) {
           if (not expr->is<ast::Identifier>()) {
-            diag.Consume(diagnostic::Todo{});
+            diag.Consume(TodoDiagnostic{});
           }
         }
       } else {
-        diag.Consume(diagnostic::Todo{});
+        diag.Consume(TodoDiagnostic{});
         continue;
       }
     }
@@ -926,7 +939,7 @@ std::vector<std::unique_ptr<ast::Call>> BuildJumpOptions(
     if (expr->is<ast::Call>()) {
       call_exprs.push_back(move_as<ast::Call>(expr));
     } else {
-      diag.Consume(diagnostic::Todo{});
+      diag.Consume(TodoDiagnostic{});
     }
   }
 
@@ -959,7 +972,7 @@ std::unique_ptr<ast::Node> BuildStatementLeftUnop(
             range, move_as<ast::Expression>(exprs[0]), std::move(true_jumps),
             std::move(false_jumps)));
       } break;
-      default: diag.Consume(diagnostic::Todo{}); return MakeInvalidNode(range);
+      default: diag.Consume(TodoDiagnostic{}); return MakeInvalidNode(range);
     }
   } else if (tk == "return") {
     auto range = SourceRange(nodes.front()->range().begin(),
@@ -1049,7 +1062,7 @@ std::unique_ptr<ast::Node> BuildBlockNode(
         std::move(params), std::move(nodes.back()->as<Statements>()).extract());
 
   } else {
-    diag.Consume(diagnostic::Todo{});
+    diag.Consume(TodoDiagnostic{});
     return nullptr;
   }
 }
@@ -1115,7 +1128,7 @@ std::unique_ptr<ast::Node> BuildBinaryOperator(
       if (nodes[0]->as<ast::Declaration>().IsInferred()) {
         // NOTE: It might be that this was supposed to be a bool ==? How can we
         // give a good error message if that's what is intended?
-        diag.Consume(diagnostic::Todo{});
+        diag.Consume(TodoDiagnostic{});
         return move_as<ast::Declaration>(nodes[0]);
       }
 
@@ -1177,7 +1190,7 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
         enumerators.push_back(std::move(*id).extract());
       } else if (auto *decl = stmt->if_as<ast::Declaration>()) {
         if (not(decl->flags() & ast::Declaration::f_IsConst)) {
-          diag.Consume(diagnostic::Todo{});
+          diag.Consume(TodoDiagnostic{});
         }
         auto [id, type_expr, init_val] = std::move(*decl).extract();
         // TODO: Use the type expression?
@@ -1185,7 +1198,7 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
         values.emplace(name, std::move(init_val));
       } else {
         LOG("", "%s", stmt->DebugString());
-        diag.Consume(diagnostic::Todo{});
+        diag.Consume(TodoDiagnostic{});
       }
     }
   }
@@ -1202,7 +1215,7 @@ std::unique_ptr<ast::Node> BuildScopeLiteral(
     if (auto *decl = stmt->if_as<ast::Declaration>()) {
       decls.push_back(std::move(*decl));
     } else {
-      diag.Consume(diagnostic::Todo{});
+      diag.Consume(TodoDiagnostic{});
     }
   }
   return std::make_unique<ast::ScopeLiteral>(range, std::move(state_type),
@@ -1222,10 +1235,10 @@ std::unique_ptr<ast::Node> BuildBlock(std::unique_ptr<Statements> stmts,
       } else if (decl->id() == "after") {
         after.push_back(move_as<ast::Declaration>(stmt));
       } else {
-        diag.Consume(diagnostic::Todo{});
+        diag.Consume(TodoDiagnostic{});
       }
     } else {
-      diag.Consume(diagnostic::Todo{});
+      diag.Consume(TodoDiagnostic{});
     }
   }
   return std::make_unique<ast::BlockLiteral>(range, std::move(before),
@@ -1255,7 +1268,7 @@ std::unique_ptr<ast::Node> BuildStatefulJump(
     diagnostic::DiagnosticConsumer &diag) {
   auto const &tk = nodes[0]->as<Token>().token;
   if (tk != "jump") {
-    diag.Consume(diagnostic::Todo{});
+    diag.Consume(TodoDiagnostic{});
     return nullptr;
   }
 
@@ -1280,18 +1293,18 @@ std::unique_ptr<ast::Node> BuildStatefulJump(
   auto &state_node = nodes[1];
   auto *array_expr = state_node->if_as<ast::ArrayLiteral>();
   if (not array_expr) {
-    diag.Consume(diagnostic::Todo{});
+    diag.Consume(TodoDiagnostic{});
     return nullptr;
   }
   if (array_expr->size() != 1) {
-    diag.Consume(diagnostic::Todo{});
+    diag.Consume(TodoDiagnostic{});
     return nullptr;
   }
 
   std::unique_ptr<ast::Expression> state_expr =
       std::move(std::move(*array_expr).extract()[0]);
   if (not state_expr->is<ast::Declaration>()) {
-    diag.Consume(diagnostic::Todo{});
+    diag.Consume(TodoDiagnostic{});
     return nullptr;
   }
 
@@ -1344,7 +1357,7 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
       if (auto *decl = stmt->if_as<ast::Declaration>()) {
         fields.push_back(std::move(*decl));
       } else {
-        diag.Consume(diagnostic::Todo{});
+        diag.Consume(TodoDiagnostic{});
       }
     }
     auto inputs = ExtractInputs(move_as<ast::Expression>(nodes[2]), diag);
@@ -1353,7 +1366,7 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
       if (expr->is<ast::Declaration>()) {
         params.push_back(move_as<ast::Declaration>(expr));
       } else {
-        diag.Consume(diagnostic::Todo{});
+        diag.Consume(TodoDiagnostic{});
       }
     }
 

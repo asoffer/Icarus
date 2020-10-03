@@ -6,7 +6,6 @@
 #include "absl/strings/str_join.h"
 #include "ast/ast.h"
 #include "compiler/compiler.h"
-#include "diagnostic/errors.h"
 #include "type/callable.h"
 #include "type/generic_struct.h"
 #include "type/qual_type.h"

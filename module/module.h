@@ -18,7 +18,6 @@
 #include "base/ptr_span.h"
 #include "diagnostic/consumer/consumer.h"
 #include "diagnostic/consumer/streaming.h"
-#include "diagnostic/errors.h"
 #include "frontend/source/file.h"
 #include "frontend/source/file_name.h"
 #include "frontend/source/shared.h"
@@ -35,7 +34,7 @@ struct ExtendedModule;
 // explicit.
 struct BasicModule : base::Cast<BasicModule> {
   BasicModule();
-  virtual ~BasicModule() {}
+  virtual ~BasicModule();
 
   // Pointers to modules are passed around, so moving a module is not safe.
   BasicModule(BasicModule &&) noexcept = delete;

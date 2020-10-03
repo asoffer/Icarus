@@ -34,7 +34,7 @@ struct FileImporter : Importer {
       return id;
     } else {
       diagnostic::StreamingConsumer diag(stderr, frontend::SharedSource());
-      diag.Consume(diagnostic::MissingModule{
+      diag.Consume(frontend::MissingModule{
           .source    = id.template filename<ModuleType>(),
           .requestor = "",
       });

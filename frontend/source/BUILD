@@ -27,6 +27,8 @@ cc_library(
         ":source",
         "//base:expected",
         "//base:strong_types",
+        "//diagnostic:message",
+        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
     ],
 )

@@ -6,7 +6,6 @@
 #include "compiler/dispatch/parameters_and_arguments.h"
 #include "compiler/verify/common.h"
 #include "core/params_ref.h"
-#include "diagnostic/errors.h"
 #include "ir/out_params.h"
 #include "ir/value/generic_fn.h"
 #include "ir/value/value.h"

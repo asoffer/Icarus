@@ -9,7 +9,6 @@
 #include "compiler/library_module.h"
 #include "core/call.h"
 #include "core/fn_args.h"
-#include "diagnostic/errors.h"
 #include "ir/value/value.h"
 #include "type/callable.h"
 #include "type/overload_set.h"
@@ -179,8 +178,7 @@ Compiler::ComputeParamsFromArgs(
           }
 
           ASSIGN_OR(NOT_YET(),  //
-                    type::Type const *t,
-                    EvaluateOrDiagnoseAs<type::Type const *>(type_expr));
+                    t, EvaluateOrDiagnoseAs<type::Type const *>(type_expr));
         } else {
           t = VerifyType(dep_node.node()->init_val()).type();
         }

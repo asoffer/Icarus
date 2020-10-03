@@ -3,7 +3,6 @@
 #include "compiler/extract_jumps.h"
 #include "compiler/transient_state.h"
 #include "compiler/verify/common.h"
-#include "diagnostic/errors.h"
 #include "type/cast.h"
 #include "type/function.h"
 

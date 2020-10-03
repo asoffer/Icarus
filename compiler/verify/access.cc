@@ -1,7 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 #include "compiler/library_module.h"
-#include "diagnostic/errors.h"
 #include "diagnostic/message.h"
 #include "ir/value/module_id.h"
 #include "type/enum.h"

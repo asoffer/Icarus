@@ -8,6 +8,7 @@ namespace module {
 // Can't declare this in header because unique_ptr's destructor needs to know
 // the size of ir::CompiledFn which we want to forward declare.
 BasicModule::BasicModule() : scope_(this) {}
+BasicModule::~BasicModule() {}
 
 void BasicModule::InitializeNodes(base::PtrSpan<ast::Node> nodes) {
   ast::InitializeNodes(nodes, &scope_);

@@ -12,7 +12,6 @@ cc_library(
         "//ast:hashtag",
         "//base:global",
         "//diagnostic/consumer",
-        "//diagnostic:errors",
         "//frontend/source:cursor",
         "//ir/value:builtin_fn",
         "//ir/value:string",
