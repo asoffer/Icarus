@@ -15,8 +15,10 @@
 #include "type/type_fwd.h"
 
 namespace ir {
-struct GenericFn;
+// TODO: Invert the dependencies here.
 struct Fn;
+struct GenericFn;
+struct Jump;
 
 // A `Value` represents any register or value constant usable in the
 // intermediate representation.

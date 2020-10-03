@@ -64,7 +64,7 @@ DependentComputedData::FindDependentResult DependentComputedData::FindDependent(
   };
 }
 
-ir::Jump *DependentComputedData::jump(ast::Jump const *expr) {
+ir::CompiledJump *DependentComputedData::jump(ast::Jump const *expr) {
   auto iter = jumps_.find(expr);
   return iter == jumps_.end() ? nullptr : &iter->second;
 }

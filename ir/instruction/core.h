@@ -15,6 +15,7 @@
 #include "ir/interpretter/execution_context.h"
 #include "ir/out_params.h"
 #include "ir/value/generic_fn.h"
+#include "ir/value/jump.h"
 #include "ir/value/reg_or.h"
 #include "type/util.h"
 
@@ -140,7 +141,7 @@ template <typename T>
 struct SetReturnInstruction
     : base::Extend<SetReturnInstruction<T>>::template With<
           WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
-  using type = T;
+  using type                                     = T;
   static constexpr std::string_view kDebugFormat = "set-ret %1$s = %2$s";
 
   uint16_t index;

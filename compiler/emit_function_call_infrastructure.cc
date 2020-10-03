@@ -191,7 +191,7 @@ void CompleteBody(Compiler *compiler,
 }
 
 void CompleteBody(Compiler *compiler, ast::Jump const *node) {
-  ir::Jump *jmp = ASSERT_NOT_NULL(compiler->data().jump(node));
+  ir::CompiledJump *jmp = ASSERT_NOT_NULL(compiler->data().jump(node));
 
   ICARUS_SCOPE(ir::SetCurrent(jmp, &compiler->builder())) {
     ASSERT(compiler != nullptr);

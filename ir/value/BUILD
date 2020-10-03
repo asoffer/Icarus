@@ -122,6 +122,12 @@ cc_test(
 )
 
 cc_library(
+    name = "jump",
+    hdrs = ["jump.h"],
+    deps = ["//ir:compiled_jump"],
+)
+
+cc_library(
     name = "label",
     hdrs = ["label.h"],
     deps = ["//base:strong_types"],

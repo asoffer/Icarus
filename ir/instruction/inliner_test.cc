@@ -7,7 +7,7 @@
 #include "ir/blocks/basic.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
-#include "ir/jump.h"
+#include "ir/compiled_jump.h"
 #include "type/function.h"
 #include "type/jump.h"
 #include "type/type.h"
@@ -15,7 +15,7 @@
 namespace {
 using ::testing::ElementsAre;
 
-void InitBlockGroupsForTest(ir::CompiledFn *f, ir::Jump *j) {
+void InitBlockGroupsForTest(ir::CompiledFn *f, ir::CompiledJump *j) {
   ir::Builder bldr;
   bldr.CurrentGroup() = f;
   bldr.CurrentBlock() = f->entry();
@@ -27,7 +27,7 @@ void InitBlockGroupsForTest(ir::CompiledFn *f, ir::Jump *j) {
 
 TEST(InstructionInliner, Reg) {
   ir::CompiledFn f(type::Func({}, {}), {});
-  ir::Jump j(type::Jmp(nullptr, {}), {});
+  ir::CompiledJump j(type::Jmp(nullptr, {}), {});
   InitBlockGroupsForTest(&f, &j);
 
   ir::InstructionInliner i(&j, &f,
@@ -42,7 +42,7 @@ TEST(InstructionInliner, Reg) {
 
 TEST(InstructionInliner, RegOr) {
   ir::CompiledFn f(type::Func({}, {}), {});
-  ir::Jump j(type::Jmp(nullptr, {}), {});
+  ir::CompiledJump j(type::Jmp(nullptr, {}), {});
   InitBlockGroupsForTest(&f, &j);
 
   ir::InstructionInliner i(&j, &f,
@@ -68,7 +68,7 @@ TEST(InstructionInliner, Container) {
   };
 
   ir::CompiledFn f(type::Func({}, {}), {});
-  ir::Jump j(type::Jmp(nullptr, {}), {});
+  ir::CompiledJump j(type::Jmp(nullptr, {}), {});
   InitBlockGroupsForTest(&f, &j);
 
   ir::InstructionInliner i(&j, &f,

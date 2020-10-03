@@ -10,7 +10,7 @@
 #include "base/no_destructor.h"
 #include "compiler/data.h"
 #include "ir/compiled_fn.h"
-#include "ir/jump.h"
+#include "ir/compiled_jump.h"
 #include "module/module.h"
 #include "type/type_fwd.h"
 

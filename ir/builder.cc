@@ -253,7 +253,7 @@ type::Typed<Reg> Builder::Field(RegOr<Addr> r, type::Struct const *t,
 }
 
 Reg Builder::MakeBlock(BlockDef *block_def, std::vector<RegOr<Fn>> befores,
-                       std::vector<RegOr<Jump *>> afters) {
+                       std::vector<RegOr<Jump>> afters) {
   MakeBlockInstruction inst{.block_def = block_def,
                             .befores   = std::move(befores),
                             .afters    = std::move(afters)};
@@ -263,7 +263,7 @@ Reg Builder::MakeBlock(BlockDef *block_def, std::vector<RegOr<Fn>> befores,
 }
 
 Reg Builder::MakeScope(
-    ScopeDef *scope_def, std::vector<RegOr<Jump *>> inits,
+    ScopeDef *scope_def, std::vector<RegOr<Jump>> inits,
     std::vector<RegOr<Fn>> dones,
     absl::flat_hash_map<std::string_view, BlockDef *> blocks) {
   MakeScopeInstruction inst{.scope_def = scope_def,

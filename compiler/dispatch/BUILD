@@ -8,7 +8,7 @@ cc_library(
         "//ast:ast",
         "//base:expected",
         "//core:fn_args",
-        "//ir:jump",
+        "//ir:compiled_jump",
         "//type:qual_type",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/types:span",
@@ -25,6 +25,7 @@ cc_library(
         "//base:debug",
         "//compiler:compiler_header",
         "//ir:inliner",
+        "//ir/value:jump",
     ],
 )
 

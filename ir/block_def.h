@@ -5,6 +5,7 @@
 
 #include "absl/container/flat_hash_set.h"
 #include "base/debug.h"
+#include "ir/value/jump.h"
 #include "ir/value/overload_set.h"
 #include "type/jump.h"
 
@@ -31,18 +32,18 @@ inline CompiledFn &TrivialFunction() {
 
 struct BlockDef {
   BlockDef() = default;
-  explicit BlockDef(absl::flat_hash_set<Jump const *> after)
+  explicit BlockDef(absl::flat_hash_set<Jump> after)
       : before_({Fn(&TrivialFunction())}), after_(std::move(after)) {}
   inline friend std::ostream &operator<<(std::ostream &os, BlockDef const &b) {
     return os << "blockdef";
   }
 
   type::Jump const *type() const { return type_; }
-  absl::flat_hash_set<Jump const *> const &after() const { return after_; }
+  absl::flat_hash_set<Jump> const &after() const { return after_; }
 
   ir::OverloadSet before_;
  private:
-  absl::flat_hash_set<Jump const *> after_;
+  absl::flat_hash_set<Jump> after_;
 
   type::Jump const *type_ = nullptr;
 };

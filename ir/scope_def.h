@@ -15,7 +15,6 @@
 #include "type/type.h"
 
 namespace ir {
-struct Jump;
 
 // TODO Calls to EvaluateAs should probably take this as const, so we can be
 // sure no one modifies blocks_ and invalidates pointers.

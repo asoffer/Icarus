@@ -21,8 +21,8 @@ cc_library(
 )
 
 cc_library(
-    name = "jump",
-    hdrs = ["jump.h"],
+    name = "compiled_jump",
+    hdrs = ["compiled_jump.h"],
     deps = [
         "//ast:ast",
         "//core:params",
@@ -71,10 +71,10 @@ cc_library(
     deps = [
         ":builder",
         ":compiled_fn",
-        ":jump",
         ":local_block_interpretation",
         "//base:log",
         "//base:macros",
+        "//ir:compiled_jump",
         "//ir/instruction:inliner",
         "//ir/blocks:basic",
         "//ir/value:reg",

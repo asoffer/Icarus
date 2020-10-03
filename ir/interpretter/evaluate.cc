@@ -2,10 +2,10 @@
 
 #include "ast/expression.h"
 #include "ir/compiled_fn.h"
+#include "ir/compiled_jump.h"
 #include "ir/interpretter/architecture.h"
 #include "ir/interpretter/execution_context.h"
 #include "ir/interpretter/foreign.h"
-#include "ir/jump.h"
 #include "ir/value/generic_fn.h"
 #include "type/function.h"
 #include "type/generic_function.h"
@@ -319,8 +319,8 @@ void Execute(ir::CompiledFn &&fn) {
 
 base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
   ASSERT(fn.type()->output().size() != 0u);
-  size_t bytes_needed = fn.type()->output()[0]->bytes(kArchitecture).value();
-  auto ret_buf        = base::untyped_buffer::MakeFull(bytes_needed);
+  core::Bytes required = fn.type()->output()[0]->bytes(kArchitecture);
+  auto ret_buf         = base::untyped_buffer::MakeFull(required.value());
   std::vector<ir::Addr> ret_slots;
 
   ret_slots.push_back(ir::Addr::Heap(ret_buf.raw(0)));
@@ -350,7 +350,7 @@ base::expected<ir::Value, EvaluationFailure> Evaluate(ir::CompiledFn &&fn) {
                        uint16_t, uint32_t, uint64_t, float, double,
                        type::Type const *, ir::EnumVal, ir::FlagsVal, ir::Addr,
                        ir::String, ir::ModuleId, ir::ScopeDef *, ir::Fn,
-                       ir::Jump *, ir::BlockDef *, ir::GenericFn>(
+                       ir::CompiledJump *, ir::BlockDef *, ir::GenericFn>(
           t, [&](auto tag) {
             using T = typename decltype(tag)::type;
             T val   = iter.read<T>();

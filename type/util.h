@@ -24,8 +24,8 @@
 namespace ir {
 struct BlockDef;
 struct FlagsVal;
-struct Fn;
 struct Jump;
+struct Fn;
 struct ScopeDef;
 }  // namespace ir
 
@@ -125,7 +125,7 @@ bool Compare(::type::Type const *t) {
   } else if constexpr (base::meta<T> == base::meta<ir::BlockDef const *> or
                        base::meta<T> == base::meta<ir::BlockDef *>) {
     return t == ::type::Block;
-  } else if constexpr (base::meta<T> == base::meta<ir::Jump *>) {
+  } else if constexpr (base::meta<T> == base::meta<ir::Jump>) {
     return t->is<type::Jump>();
   } else {
     UNREACHABLE(t->to_string(), " vs ", typeid(T).name());
@@ -163,8 +163,9 @@ auto Apply(Type const *t, Fn &&fn) {
   return ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                     uint32_t, uint64_t, float, double, type::Type const *,
                     ir::EnumVal, ir::FlagsVal, ir::Addr, ir::String,
-                    ir::ModuleId, ir::ScopeDef *, ir::Fn, ir::BlockDef const *,
-                    ir::GenericFn>(t, std::forward<Fn>(fn));
+                    ir::ModuleId, ir::ScopeDef *, ir::Fn, ir::Jump,
+                    ir::BlockDef const *, ir::GenericFn>(t,
+                                                         std::forward<Fn>(fn));
 }
 
 }  // namespace type

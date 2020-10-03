@@ -14,7 +14,7 @@
 #include "ir/builder.h"
 #include "ir/interpretter/evaluate.h"
 #include "ir/interpretter/execution_context.h"
-#include "ir/jump.h"
+#include "ir/compiled_jump.h"
 #include "ir/struct_field.h"
 #include "ir/value/builtin_fn.h"
 #include "ir/value/generic_fn.h"
@@ -35,9 +35,9 @@ type::QualType VerifyBody(Compiler *compiler, ast::FunctionLiteral const *node,
 
 namespace {
 
-absl::flat_hash_map<ir::Jump const *, ir::ScopeDef const *> MakeJumpInits(
+absl::flat_hash_map<ir::Jump, ir::ScopeDef const *> MakeJumpInits(
     Compiler *c, ast::OverloadSet const &os) {
-  absl::flat_hash_map<ir::Jump const *, ir::ScopeDef const *> inits;
+  absl::flat_hash_map<ir::Jump, ir::ScopeDef const *> inits;
   LOG("ScopeNode", "Overload set for inits has size %u", os.members().size());
   for (ast::Expression const *member : os.members()) {
     LOG("ScopeNode", "%s", member->DebugString());
@@ -50,7 +50,7 @@ absl::flat_hash_map<ir::Jump const *, ir::ScopeDef const *> MakeJumpInits(
       (std::move(*def->work_item))();
       def->work_item = nullptr;
     }
-    for (auto const *init : def->start_->after()) {
+    for (auto init : def->start_->after()) {
       bool success = inits.emplace(init, def).second;
       static_cast<void>(success);
       ASSERT(success == true);
@@ -185,7 +185,7 @@ ir::Value Compiler::EmitValue(ast::BlockLiteral const *node) {
   if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
 
   std::vector<ir::RegOr<ir::Fn>> befores;
-  std::vector<ir::RegOr<ir::Jump *>> afters;
+  std::vector<ir::RegOr<ir::Jump>> afters;
   befores.reserve(node->before().size());
   for (auto const &decl : node->before()) {
     ASSERT((decl->flags() & ast::Declaration::f_IsConst) != 0);
@@ -194,7 +194,7 @@ ir::Value Compiler::EmitValue(ast::BlockLiteral const *node) {
 
   for (auto const &decl : node->after()) {
     ASSERT((decl->flags() & ast::Declaration::f_IsConst) != 0);
-    afters.push_back(EmitValue(decl).get<ir::RegOr<ir::Jump *>>());
+    afters.push_back(EmitValue(decl).get<ir::RegOr<ir::Jump>>());
   }
 
   return ir::Value(builder().MakeBlock(data().add_block(), std::move(befores),
@@ -919,7 +919,7 @@ ir::Value Compiler::EmitValue(ast::Jump const *node) {
     });
 
     LOG("Jump", "Jump type = %s", jmp_type->to_string());
-    ir::Jump jmp(jmp_type, std::move(params));
+    ir::CompiledJump jmp(jmp_type, std::move(params));
     if (work_item_ptr) { jmp.work_item = work_item_ptr; }
     return jmp;
   }));
@@ -1017,11 +1017,11 @@ ir::Value Compiler::EmitValue(ast::ScopeLiteral const *node) {
   }
 
   absl::flat_hash_map<std::string_view, ir::BlockDef *> blocks;
-  std::vector<ir::RegOr<ir::Jump *>> inits;
+  std::vector<ir::RegOr<ir::Jump>> inits;
   std::vector<ir::RegOr<ir::Fn>> dones;
   for (auto const &decl : node->decls()) {
     if (decl.id() == "enter") {
-      inits.push_back(EmitValue(&decl).get<ir::RegOr<ir::Jump *>>());
+      inits.push_back(EmitValue(&decl).get<ir::RegOr<ir::Jump>>());
     } else if (decl.id() == "exit") {
       dones.push_back(EmitValue(&decl).get<ir::RegOr<ir::Fn>>());
     } else {

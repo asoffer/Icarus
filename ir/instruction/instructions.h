@@ -251,9 +251,9 @@ struct MakeBlockInstruction
       resolved_befores.push_back(ctx.resolve(fn));
     }
 
-    absl::flat_hash_set<ir::Jump const*> resolved_afters;
+    absl::flat_hash_set<ir::Jump> resolved_afters;
     resolved_afters.reserve(afters.size());
-    for (auto const& fn : afters) { resolved_afters.insert(ctx.resolve(fn)); }
+    for (auto const& jmp : afters) { resolved_afters.insert(ctx.resolve(jmp)); }
 
     *block_def         = ir::BlockDef(std::move(resolved_afters));
     block_def->before_ = ir::OverloadSet(std::move(resolved_befores));
@@ -263,7 +263,7 @@ struct MakeBlockInstruction
 
   BlockDef* block_def;
   std::vector<RegOr<Fn>> befores;
-  std::vector<RegOr<Jump*>> afters;
+  std::vector<RegOr<Jump>> afters;
   Reg result;
 };
 
@@ -273,7 +273,7 @@ struct MakeScopeInstruction
   std::string to_string() const { return "make-scope"; }  // TODO
 
   void Apply(interpretter::ExecutionContext& ctx) const {
-    absl::flat_hash_set<ir::Jump const*> resolved_inits;
+    absl::flat_hash_set<ir::Jump> resolved_inits;
     resolved_inits.reserve(inits.size());
     for (auto const& init : inits) { resolved_inits.insert(ctx.resolve(init)); }
     *scope_def->start_ = ir::BlockDef(std::move(resolved_inits));
@@ -291,7 +291,7 @@ struct MakeScopeInstruction
   }
 
   ScopeDef* scope_def;
-  std::vector<RegOr<Jump*>> inits;
+  std::vector<RegOr<Jump>> inits;
   std::vector<RegOr<Fn>> dones;
   absl::flat_hash_map<std::string_view, BlockDef*> blocks;
   Reg result;

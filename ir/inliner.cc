@@ -5,7 +5,7 @@
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
 #include "ir/instruction/inliner.h"
-#include "ir/jump.h"
+#include "ir/compiled_jump.h"
 #include "ir/value/reg.h"
 #include "type/function.h"
 #include "type/type.h"
@@ -15,7 +15,7 @@ namespace ir {
 absl::flat_hash_map<
     std::string_view,
     std::pair<BasicBlock *, core::FnArgs<type::Typed<ir::Value>>>>
-Inline(Builder &bldr, Jump const *to_be_inlined,
+Inline(Builder &bldr, CompiledJump const *to_be_inlined,
        absl::Span<ir::Value const> arguments,
        LocalBlockInterpretation const &block_interp) {
   LOG("inliner", "%s", *to_be_inlined);

@@ -7,8 +7,8 @@
 #include "base/expected.h"
 #include "compiler/dispatch/overload.h"
 #include "core/fn_args.h"
-#include "ir/jump.h"
 #include "ir/local_block_interpretation.h"
+#include "ir/value/jump.h"
 #include "ir/value/value.h"
 #include "type/qual_type.h"
 
@@ -18,14 +18,14 @@ struct Compiler;  // TODO move into it's own header.
 struct JumpDispatchTable {
   static base::expected<JumpDispatchTable> Verify(
       type::Type const *state_type,
-      absl::flat_hash_set<ir::Jump const *> const &jumps,
+      absl::flat_hash_set<ir::Jump> const &jumps,
       core::FnArgs<type::QualType> const &args);
 
   // TODO long-term the `jump` parameter should read from `table_`.
   static absl::flat_hash_map<
       std::string_view,
       std::pair<ir::BasicBlock *, core::FnArgs<type::Typed<ir::Value>>>>
-  EmitCallOneOverload(std::optional<ir::Reg> state_reg, ir::Jump const *jump,
+  EmitCallOneOverload(std::optional<ir::Reg> state_reg, ir::Jump jump,
                       Compiler *compiler,
                       core::FnArgs<type::Typed<ir::Value>> args,
                       ir::LocalBlockInterpretation const &block_interp);
@@ -34,7 +34,7 @@ struct JumpDispatchTable {
                 ir::LocalBlockInterpretation const &block_interp);
 
   // private:
-  absl::flat_hash_map<ir::Jump const *, internal::ExprData> table_;
+  absl::flat_hash_map<ir::Jump, internal::ExprData> table_;
 };
 
 }  // namespace compiler

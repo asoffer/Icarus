@@ -4,7 +4,7 @@
 #include "ir/blocks/basic.h"
 #include "ir/blocks/group.h"
 #include "ir/builder.h"
-#include "ir/jump.h"
+#include "ir/compiled_jump.h"
 #include "ir/local_block_interpretation.h"
 #include "ir/value/value.h"
 
@@ -16,7 +16,7 @@ namespace ir {
 absl::flat_hash_map<
     std::string_view,
     std::pair<BasicBlock *, core::FnArgs<type::Typed<ir::Value>>>>
-Inline(Builder &bldr, Jump const *to_be_inlined,
+Inline(Builder &bldr, CompiledJump const *to_be_inlined,
        absl::Span<ir::Value const> arguments, LocalBlockInterpretation const &);
 
 }  // namespace ir

@@ -1,5 +1,5 @@
-#ifndef ICARUS_IR_JUMP_H
-#define ICARUS_IR_JUMP_H
+#ifndef ICARUS_IR_COMPILED_JUMP_H
+#define ICARUS_IR_COMPILED_JUMP_H
 
 #include "ast/ast.h"
 #include "core/params.h"
@@ -10,9 +10,9 @@
 
 namespace ir {
 
-struct Jump : BlockGroup<type::Jump> {
-  explicit Jump(type::Jump const *jump_type,
-                core::Params<type::Typed<ast::Declaration const *>> p)
+struct CompiledJump : BlockGroup<type::Jump> {
+  explicit CompiledJump(type::Jump const *jump_type,
+                        core::Params<type::Typed<ast::Declaration const *>> p)
       : BlockGroup(jump_type, std::move(p), jump_type->state() ? 1 : 0) {}
 
   absl::flat_hash_map<std::string_view,
@@ -42,4 +42,4 @@ struct Jump : BlockGroup<type::Jump> {
 
 }  // namespace ir
 
-#endif  // ICARUS_IR_JUMP_H
+#endif  // ICARUS_IR_COMPILED_JUMP_H

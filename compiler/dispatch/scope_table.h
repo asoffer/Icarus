@@ -11,8 +11,8 @@
 #include "compiler/dispatch/overload.h"
 #include "core/fn_args.h"
 #include "core/params.h"
-#include "ir/jump.h"
 #include "ir/scope_def.h"
+#include "ir/value/jump.h"
 #include "type/qual_type.h"
 
 namespace compiler {
@@ -32,7 +32,7 @@ struct OneTable {
                 std::optional<ir::Reg> state_reg,
                 ir::LocalBlockInterpretation const &block_interp) const;
 
-  absl::flat_hash_map<ir::Jump const *, core::Params<type::QualType>> inits;
+  absl::flat_hash_map<ir::Jump, core::Params<type::QualType>> inits;
   absl::flat_hash_map<ast::BlockNode const *, JumpDispatchTable> blocks;
   ir::ScopeDef const *scope_def_;
   std::vector<type::Type const *> result_types_;
@@ -43,7 +43,7 @@ struct OneTable {
 struct ScopeDispatchTable {
   static base::expected<ScopeDispatchTable> Verify(
       Compiler *compiler, ast::ScopeNode const *node,
-      absl::flat_hash_map<ir::Jump const *, ir::ScopeDef const *> inits,
+      absl::flat_hash_map<ir::Jump, ir::ScopeDef const *> inits,
       core::FnArgs<type::Typed<ir::Value>> const &args);
 
   type::QualType qual_type() const { return qual_type_; }
@@ -67,7 +67,7 @@ struct ScopeDispatchTable {
       core::FnArgs<type::Typed<ir::Value>> const &args) const;
 
   ast::ScopeNode const *scope_node_;
-  absl::flat_hash_map<ir::Jump const *, ir::ScopeDef const *> init_map_;
+  absl::flat_hash_map<ir::Jump, ir::ScopeDef const *> init_map_;
   // TODO this is really more of a hash_set. We only use the lookup
   // functionality once when we create it.
   absl::flat_hash_map<ir::ScopeDef const *, internal::OneTable> tables_;
