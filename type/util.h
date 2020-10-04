@@ -13,6 +13,7 @@
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"
+#include "type/jump.h"
 #include "type/opaque.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
@@ -116,7 +117,7 @@ bool Compare(::type::Type const *t) {
     return t->is<::type::Struct>();
   } else if constexpr (base::meta<T> == base::meta<ir::Fn>) {
     return t->is<::type::Function>();
-  } else if constexpr (base::meta<T> == base::meta<::type::Jump>) {
+  } else if constexpr (base::meta<T> == base::meta<ir::Jump>) {
     return t->is<::type::Jump>();
   } else if constexpr (base::meta<T> == base::meta<ir::GenericFn>) {
     return t->is<::type::GenericFunction>();
@@ -125,8 +126,6 @@ bool Compare(::type::Type const *t) {
   } else if constexpr (base::meta<T> == base::meta<ir::BlockDef const *> or
                        base::meta<T> == base::meta<ir::BlockDef *>) {
     return t == ::type::Block;
-  } else if constexpr (base::meta<T> == base::meta<ir::Jump>) {
-    return t->is<type::Jump>();
   } else {
     UNREACHABLE(t->to_string(), " vs ", typeid(T).name());
   }

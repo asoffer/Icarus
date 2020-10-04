@@ -88,9 +88,10 @@ using CoreInstructionsImpl = InstructionSet<
     RegisterInstruction<Ts>..., StoreInstruction<Ts>..., PhiInstruction<Ts>...,
     SetReturnInstruction<Ts>..., GetReturnInstruction, CallInstruction,
     SetReturnInstruction<core::Bytes>, SetReturnInstruction<core::Alignment>,
-    SetReturnInstruction<BlockDef const *>,
-    SetReturnInstruction<ScopeDef const *>, SetReturnInstruction<ir::ModuleId>,
-    SetReturnInstruction<GenericFn>, SetReturnInstruction<Jump *>,
+    SetReturnInstruction<BlockDef *>, SetReturnInstruction<BlockDef const *>,
+    SetReturnInstruction<ScopeDef *>, SetReturnInstruction<ScopeDef const *>,
+    SetReturnInstruction<ModuleId>, SetReturnInstruction<GenericFn>,
+    SetReturnInstruction<Jump>,
     SetReturnInstruction<type::GenericStruct const *>>;
 using CoreInstructions =
     CoreInstructionsImpl<bool, uint8_t, int8_t, uint16_t, int16_t, uint32_t,

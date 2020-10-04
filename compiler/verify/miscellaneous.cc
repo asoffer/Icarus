@@ -48,9 +48,17 @@ type::QualType Compiler::VerifyType(ast::BlockNode const *node) {
 }
 
 type::QualType Compiler::VerifyType(ast::ScopeNode const *node) {
-  LOG("ScopeNode", "%s", node->DebugString());
+  LOG("ScopeNode", "Verifying ScopeNode named `%s` at %d:%d",
+      node->name()->DebugString(), node->name()->range().begin().line_num.value,
+      node->name()->range().begin().offset.value);
+  // TODO: The type of the arguments and the scope name are independent and
+  // should not have early-exists.
+
   ASSIGN_OR(return type::QualType::Error(),  //
                    std::ignore, VerifyFnArgs(node->args()));
+
+  ASSIGN_OR(return type::QualType::Error(),  //
+                   std::ignore, VerifyType(node->name()));
   for (auto const &block : node->blocks()) { VerifyType(&block); }
   // TODO hack. Set this for real.
   return data().set_qual_type(node, type::QualType::NonConstant(type::Void()));
@@ -58,12 +66,6 @@ type::QualType Compiler::VerifyType(ast::ScopeNode const *node) {
 
 type::QualType Compiler::VerifyType(ast::Label const *node) {
   return data().set_qual_type(node, type::QualType::Constant(type::Label));
-}
-
-WorkItem::Result Compiler::VerifyBody(ast::Jump const *node) {
-  bool success = true;
-  for (auto const *stmt : node->stmts()) { success &= VerifyType(stmt).ok(); }
-  return WorkItem::Result::Success;
 }
 
 }  // namespace compiler

@@ -139,4 +139,14 @@ type::QualType Compiler::VerifyType(ast::Jump const *node) {
                 : type::QualType::Constant(type::Jmp(state, param_types)));
 }
 
+WorkItem::Result Compiler::VerifyBody(ast::Jump const *node) {
+  // TODO: Move this check out to the ProcessOneItem code?
+  if (not data().ShouldVerifyBody(node)) { return WorkItem::Result::Success; }
+
+  bool success = true;
+  LOG("Jump", "%s", node->DebugString());
+  for (auto const *stmt : node->stmts()) { success &= VerifyType(stmt).ok(); }
+  return WorkItem::Result::Success;
+}
+
 }  // namespace compiler

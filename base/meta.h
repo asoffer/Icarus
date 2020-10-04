@@ -134,7 +134,7 @@ struct Meta {
 };
 
 template <typename T>
-char const* const Meta<T>::name_ = typeid(T).name();
+char const* const Meta<T>::name_ = typeid(Meta<T>).name();
 
 template <typename T>
 Meta<T> meta;

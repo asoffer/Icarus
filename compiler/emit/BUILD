@@ -98,6 +98,18 @@ cc_test(
 )
 
 cc_library(
+    name = "scope_node",
+    srcs = ["scope_node.cc"],
+    deps = [
+        "//ast",
+        "//base:defer",
+        "//compiler:compiler_header",
+    ],
+)
+
+# TODO: scope_node_test
+
+cc_library(
     name = "terminal",
     srcs = ["terminal.cc"],
     deps = [

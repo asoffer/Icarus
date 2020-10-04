@@ -242,7 +242,7 @@ struct TypeInfoInstruction
 struct MakeBlockInstruction
     : base::Extend<MakeBlockInstruction>::With<ByteCodeExtension,
                                                InlineExtension> {
-  std::string to_string() const { return "make-scope"; }  // TODO
+  std::string to_string() const { return "make-block"; }  // TODO
 
   void Apply(interpretter::ExecutionContext& ctx) const {
     std::vector<ir::Fn> resolved_befores;

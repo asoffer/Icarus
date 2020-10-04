@@ -94,11 +94,11 @@ struct DependentComputedData {
   // already exists, returns a pointer to that object. Otherwise, constructs a
   // new one by calling `fn`.
   template <typename Fn>
-  ir::CompiledJump *add_jump(ast::Jump const *expr, Fn &&fn) {
+  ir::Jump add_jump(ast::Jump const *expr, Fn &&fn) {
     auto [iter, success] =
         jumps_.emplace(expr, base::lazy_convert{std::forward<Fn>(fn)});
     ASSERT(success == true);
-    return &iter->second;
+    return ir::Jump(&iter->second);
   }
 
   void CompleteType(ast::Expression const *expr, bool success);

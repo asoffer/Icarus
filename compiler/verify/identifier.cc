@@ -73,7 +73,10 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
   if (not token) { return type::QualType::Error(); }
 
   // TODO: In what circumstances could this have been seen more than once?
-  if (auto const *qt = data().qual_type(node)) { return *qt; }
+  if (auto const *qt = data().qual_type(node)) {
+    LOG("Identifier", "Already saw `%s` so returning %s.", node->token(), *qt);
+    return *qt;
+  }
 
   type::QualType qt;
 

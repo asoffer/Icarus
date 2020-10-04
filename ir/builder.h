@@ -617,21 +617,11 @@ struct Builder {
   }
 
   void SetRet(uint16_t n, type::Typed<Value> const& r) {
-    // if (r.type()->is<type::GenericStruct>()) {
-    //   SetRet(n, r->get<Fn>(0));
-    // }
-    if (r.type()->is<type::Jump>()) {
-      // TODO currently this has to be implemented outside type::Apply because
-      // that's in type.h which is wrong because it forces weird instantiation
-      // order issues (type/type.h can't depend on type/jump.h).
-      SetRet(n, r->get<RegOr<Jump*>>());
-    } else {
-      ASSERT(r.type()->is_big() == false);
-      type::Apply(r.type(), [&](auto tag) {
-        using T = typename decltype(tag)::type;
-        SetRet(n, r->get<RegOr<T>>());
-      });
-    }
+    ASSERT(r.type()->is_big() == false);
+    type::Apply(r.type(), [&](auto tag) {
+      using T = typename decltype(tag)::type;
+      SetRet(n, r->get<RegOr<T>>());
+    });
   }
 
  private:

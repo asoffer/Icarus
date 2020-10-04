@@ -337,6 +337,7 @@ base::untyped_buffer EvaluateToBuffer(ir::CompiledFn &&fn) {
 
 // TODO why an r-value reference?
 base::expected<ir::Value, EvaluationFailure> Evaluate(ir::CompiledFn &&fn) {
+  LOG("Evaluate", "%s", fn);
   auto buf = EvaluateToBuffer(std::move(fn));
   std::vector<ir::Value> values;
   values.reserve(fn.type()->output().size());
@@ -350,7 +351,7 @@ base::expected<ir::Value, EvaluationFailure> Evaluate(ir::CompiledFn &&fn) {
                        uint16_t, uint32_t, uint64_t, float, double,
                        type::Type const *, ir::EnumVal, ir::FlagsVal, ir::Addr,
                        ir::String, ir::ModuleId, ir::ScopeDef *, ir::Fn,
-                       ir::CompiledJump *, ir::BlockDef *, ir::GenericFn>(
+                       ir::Jump, ir::BlockDef *, ir::GenericFn>(
           t, [&](auto tag) {
             using T = typename decltype(tag)::type;
             T val   = iter.read<T>();

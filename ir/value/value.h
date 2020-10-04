@@ -19,6 +19,8 @@ namespace ir {
 // TODO: Invert the dependencies here.
 struct Fn;
 struct GenericFn;
+struct ScopeDef;
+struct BlockDef;
 
 // A `Value` represents any register or value constant usable in the
 // intermediate representation.
@@ -38,6 +40,14 @@ struct Value {
 
   explicit Value() : Value(Empty{}) {}
 
+  using supported_types =
+      base::type_list<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                      uint16_t, uint32_t, uint64_t, float, double,
+                      type::Type const*, Reg, Addr, String, FlagsVal, EnumVal,
+                      ModuleId, Fn, GenericFn, Jump, Empty,
+                      // TODO:
+                      ScopeDef*, BlockDef*>;
+
   // Constructs a `Value` from the passed in type. The parameter may be of any
   // type supported by `Value` or an `ir::RegOr<T>` where `T` is an type
   // supported by `Value`.
@@ -47,6 +57,7 @@ struct Value {
   template <typename T>
   explicit Value(T val) : type_(base::meta<T>) {
     if constexpr (base::meta<T>.template is_a<ir::RegOr>()) {
+      static_assert(base::Contains<supported_types, typename T::type>());
       if (val.is_reg()) {
         type_          = base::meta<Reg>;
         get_ref<Reg>() = val.reg();
@@ -55,6 +66,7 @@ struct Value {
         get_ref<typename T::type>() = std::move(val).value();
       }
     } else {
+      static_assert(base::Contains<supported_types, T>());
       new (&get_ref<T>()) T(std::move(val));
     }
   }
@@ -147,10 +159,12 @@ struct Value {
   }
 
   friend std::ostream& operator<<(std::ostream& os, Value value) {
+    // TODO: Hack until we invert the Fn dependency.
+    if (value.type_ == base::meta<Fn>) { return os << "fn"; }
     value.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                      uint32_t, uint64_t, float, double, type::Type const*, Reg,
-                     Addr, String, FlagsVal, EnumVal, ModuleId, Jump, Empty>(
-        [&os](auto x) { os << x; });
+                     Addr, String, FlagsVal, EnumVal, ModuleId, Jump, BlockDef*,
+                     ScopeDef*, Empty>([&os](auto x) { os << x; });
     return os;
   }
 

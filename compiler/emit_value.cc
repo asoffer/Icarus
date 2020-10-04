@@ -5,7 +5,6 @@
 #include "base/defer.h"
 #include "base/guarded.h"
 #include "compiler/dispatch/fn_call_table.h"
-#include "compiler/dispatch/scope_table.h"
 #include "compiler/emit_function_call_infrastructure.h"
 #include "compiler/executable_module.h"
 #include "compiler/verify/common.h"
@@ -34,101 +33,6 @@ type::QualType VerifyBody(Compiler *compiler, ast::FunctionLiteral const *node,
                           type::Type const *fn_type = nullptr);
 
 namespace {
-
-absl::flat_hash_map<ir::Jump, ir::ScopeDef const *> MakeJumpInits(
-    Compiler *c, ast::OverloadSet const &os) {
-  absl::flat_hash_map<ir::Jump, ir::ScopeDef const *> inits;
-  LOG("ScopeNode", "Overload set for inits has size %u", os.members().size());
-  for (ast::Expression const *member : os.members()) {
-    LOG("ScopeNode", "%s", member->DebugString());
-
-    auto maybe_def = c->EvaluateAs<ir::ScopeDef *>(member);
-    if (not maybe_def) { NOT_YET(); }
-    auto *def = *maybe_def;
-    LOG("ScopeNode", "%p", def);
-    if (def->work_item and *def->work_item) {
-      (std::move(*def->work_item))();
-      def->work_item = nullptr;
-    }
-    for (auto init : def->start_->after()) {
-      bool success = inits.emplace(init, def).second;
-      static_cast<void>(success);
-      ASSERT(success == true);
-    }
-  }
-  return inits;
-}
-
-void AddAdl(ast::OverloadSet *overload_set, std::string_view id,
-            type::Type const *t) {
-  absl::flat_hash_set<CompiledModule *> modules;
-  // TODO t->ExtractDefiningModules(&modules);
-
-  for (auto *mod : modules) {
-    auto decls = mod->ExportedDeclarations(id);
-    // TODO accessing module from another thread is bad news!
-    auto &data = mod->data();
-    diagnostic::TrivialConsumer consumer;
-    module::FileImporter<LibraryModule> importer;
-    for (auto *d : decls) {
-      // TODO Wow this is a terrible way to access the type.
-      ASSIGN_OR(continue, auto &t,
-                Compiler({
-                             .builder             = ir::GetBuilder(),
-                             .data                = data,
-                             .diagnostic_consumer = consumer,
-                             .importer            = importer,
-                         })
-                    .type_of(d));
-      // TODO handle this case. I think it's safe to just discard it.
-      for (auto const *expr : overload_set->members()) {
-        if (d == expr) { return; }
-      }
-
-      // TODO const
-      overload_set->insert(d);
-    }
-  }
-}
-
-ast::OverloadSet FindOverloads(
-    ast::Scope const *scope, std::string_view token,
-    core::FnArgs<type::Typed<ir::Value>> const &args) {
-  ast::OverloadSet os(scope, token);
-  for (type::Typed<ir::Value> const &arg : args) {
-    AddAdl(&os, token, arg.type());
-  };
-  LOG("FindOverloads", "Found %u overloads for '%s'", os.members().size(),
-      token);
-  return os;
-}
-
-std::optional<ast::OverloadSet> MakeOverloadSet(
-    Compiler *c, ast::Expression const *expr,
-    core::FnArgs<type::Typed<ir::Value>> const &args) {
-  if (auto *id = expr->if_as<ast::Identifier>()) {
-    return FindOverloads(expr->scope(), id->token(), args);
-  } else if (auto *acc = expr->if_as<ast::Access>()) {
-    ASSIGN_OR(return std::nullopt,  //
-                     auto result, c->VerifyType(acc->operand()));
-    if (result.type() == type::Module) {
-      auto maybe_mod = c->EvaluateAs<ir::ModuleId>(acc->operand());
-      if (not maybe_mod) { NOT_YET(); }
-      auto const *mod         = maybe_mod->get<CompiledModule>();
-      std::string_view member = acc->member_name();
-      ast::OverloadSet os(mod->ExportedDeclarations(member));
-      for (type::Typed<ir::Value> const &arg : args) {
-        AddAdl(&os, member, arg.type());
-      };
-      return os;
-    }
-  }
-
-  ast::OverloadSet os;
-  os.insert(expr);
-  // TODO ADL for node?
-  return os;
-}
 
 template <typename NodeType>
 base::move_func<void()> *DeferBody(Compiler::PersistentResources resources,
@@ -206,7 +110,7 @@ ir::Value Compiler::EmitValue(ast::BlockNode const *node) {
 }
 
 ir::Value Compiler::EmitValue(ast::BuiltinFn const *node) {
-  return ir::Value(node->value());
+  return ir::Value(ir::Fn(node->value()));
 }
 
 // TODO: Checking if an AST node is a builtin is problematic because something as simple as
@@ -814,6 +718,7 @@ void Compiler::EmitCopyInit(
 }
 
 ir::Value Compiler::EmitValue(ast::Identifier const *node) {
+  LOG("Identifier", "%s", node->token());
   auto decl_span = data().decls(node);
   ASSERT(decl_span.size() != 0u);
   if (decl_span[0]->flags() & ast::Declaration::f_IsConst) {
@@ -1025,33 +930,6 @@ ir::Value Compiler::EmitValue(ast::ScopeLiteral const *node) {
   return ir::Value(builder().MakeScope(
       data().add_scope(&data().module(), state_type), std::move(inits),
       std::move(dones), std::move(blocks)));
-}
-
-ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
-  LOG("ScopeNode","Emitting IR for ScopeNode");
-
-  // Jump to a new block in case some scope ends up with `goto start()` in order
-  // to re-evealuate arguments.
-  auto *args_block = builder().AddBlock();
-  builder().UncondJump(args_block);
-  builder().CurrentBlock() = args_block;
-
-  auto args = node->args().Transform([this](ast::Expression const *expr) {
-    return type::Typed<ir::Value>(EmitValue(expr), type_of(expr));
-  });
-
-  ASSIGN_OR(return ir::Value(),  //
-                   auto os, MakeOverloadSet(this, node->name(), args));
-
-  auto inits = MakeJumpInits(this, os);
-  LOG("ScopeNode","%s", inits);
-
-  ASSIGN_OR(
-      return ir::Value(),  //
-             auto table,
-             ScopeDispatchTable::Verify(this, node, std::move(inits), args));
-
-  return table.EmitCall(this, args);
 }
 
 struct IncompleteField {

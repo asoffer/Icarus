@@ -41,6 +41,8 @@ struct ScopeDef {
     return nullptr;
   }
 
+  type::Type const *state_type() const { return state_type_; }
+
   module::BasicModule const *mod_ = nullptr;
   type::Type const *state_type_;
   absl::flat_hash_map<std::string_view, BlockDef *> blocks_;

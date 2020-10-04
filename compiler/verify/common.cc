@@ -350,6 +350,7 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
     absl::flat_hash_map<ast::Expression const *, type::Callable const *> const
         &overload_map,
     core::FnArgs<type::Typed<ir::Value>> const &args) {
+  LOG("VerifyCall", "%s", call_expr->DebugString());
   CallError errors;
   std::vector<std::tuple<ast::Expression const *, type::Callable const *,
                          core::Params<type::QualType>>>
