@@ -252,24 +252,23 @@ type::Typed<Reg> Builder::Field(RegOr<Addr> r, type::Struct const *t,
   return type::Typed<Reg>(result, type::Ptr(t->fields()[n].type));
 }
 
-Reg Builder::MakeBlock(BlockDef *block_def, std::vector<RegOr<Fn>> befores,
+Reg Builder::MakeBlock(Block block, std::vector<RegOr<Fn>> befores,
                        std::vector<RegOr<Jump>> afters) {
-  MakeBlockInstruction inst{.block_def = block_def,
-                            .befores   = std::move(befores),
-                            .afters    = std::move(afters)};
+  MakeBlockInstruction inst{.block   = block,
+                            .befores = std::move(befores),
+                            .afters  = std::move(afters)};
   auto result = inst.result = CurrentGroup()->Reserve();
   CurrentBlock()->Append(std::move(inst));
   return result;
 }
 
-Reg Builder::MakeScope(
-    ScopeDef *scope_def, std::vector<RegOr<Jump>> inits,
-    std::vector<RegOr<Fn>> dones,
-    absl::flat_hash_map<std::string_view, BlockDef *> blocks) {
-  MakeScopeInstruction inst{.scope_def = scope_def,
-                            .inits     = std::move(inits),
-                            .dones     = std::move(dones),
-                            .blocks    = std::move(blocks)};
+Reg Builder::MakeScope(Scope scope, std::vector<RegOr<Jump>> inits,
+                       std::vector<RegOr<Fn>> dones,
+                       absl::flat_hash_map<std::string_view, Block> blocks) {
+  MakeScopeInstruction inst{.scope  = scope,
+                            .inits  = std::move(inits),
+                            .dones  = std::move(dones),
+                            .blocks = std::move(blocks)};
   auto result = inst.result = CurrentGroup()->Reserve();
   CurrentBlock()->Append(std::move(inst));
   return result;

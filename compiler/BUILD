@@ -211,7 +211,7 @@ cc_library(
     ],
 )
 
-# TODO rename
+# TODO: rename
 cc_library(
     name = "data",
     hdrs = ["data.h"],
@@ -220,11 +220,11 @@ cc_library(
         "//ast:ast",
         "//base:guarded",
         "//base:lazy_convert",
-        "//ir:block_def",
         "//ir:builder",
+        "//ir:compiled_block",
         "//ir:compiled_fn",
         "//ir:compiled_jump",
-        "//ir:scope_def",
+        "//ir:compiled_scope",
         "//module:module",
         "//type:qual_type",
     ],

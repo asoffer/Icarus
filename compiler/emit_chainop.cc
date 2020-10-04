@@ -144,8 +144,8 @@ static ir::RegOr<bool> EmitChainOpPair(Compiler *compiler,
         });
       case frontend::Operator::Eq:
         if (lhs_type == type::Block) {
-          auto val1 = lhs_ir.get<ir::RegOr<ir::BlockDef *>>();
-          auto val2 = rhs_ir.get<ir::RegOr<ir::BlockDef *>>();
+          auto val1 = lhs_ir.get<ir::RegOr<ir::Block>>();
+          auto val2 = rhs_ir.get<ir::RegOr<ir::Block>>();
           if (not val1.is_reg() and not val2.is_reg()) {
             return val1.value() == val2.value();
           }
@@ -161,8 +161,8 @@ static ir::RegOr<bool> EmitChainOpPair(Compiler *compiler,
             });
       case frontend::Operator::Ne:
         if (lhs_type == type::Block) {
-          auto val1 = lhs_ir.get<ir::RegOr<ir::BlockDef *>>();
-          auto val2 = rhs_ir.get<ir::RegOr<ir::BlockDef *>>();
+          auto val1 = lhs_ir.get<ir::RegOr<ir::Block>>();
+          auto val2 = rhs_ir.get<ir::RegOr<ir::Block>>();
           if (not val1.is_reg() and not val2.is_reg()) {
             return val1.value() == val2.value();
           }

@@ -36,6 +36,7 @@ cc_library(
         "//core:arch",
         "//ir:compiled_fn",
         "//ir:compiled_jump",
+        "//ir/instruction",
         "//ir/instruction:set",
         "//ir/value",
         "//ir/value:generic_fn",

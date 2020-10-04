@@ -913,7 +913,7 @@ ir::Value Compiler::EmitValue(ast::ScopeLiteral const *node) {
                EvaluateOrDiagnoseAs<type::Type const *>(node->state_type()));
   }
 
-  absl::flat_hash_map<std::string_view, ir::BlockDef *> blocks;
+  absl::flat_hash_map<std::string_view, ir::Block> blocks;
   std::vector<ir::RegOr<ir::Jump>> inits;
   std::vector<ir::RegOr<ir::Fn>> dones;
   for (auto const &decl : node->decls()) {
@@ -923,13 +923,13 @@ ir::Value Compiler::EmitValue(ast::ScopeLiteral const *node) {
       dones.push_back(EmitValue(&decl).get<ir::RegOr<ir::Fn>>());
     } else {
       blocks.emplace(decl.id(),
-                     EmitValue(&decl).get<ir::RegOr<ir::BlockDef *>>().value());
+                     EmitValue(&decl).get<ir::RegOr<ir::Block>>().value());
     }
   }
 
-  return ir::Value(builder().MakeScope(
-      data().add_scope(&data().module(), state_type), std::move(inits),
-      std::move(dones), std::move(blocks)));
+  return ir::Value(builder().MakeScope(data().add_scope(state_type),
+                                       std::move(inits), std::move(dones),
+                                       std::move(blocks)));
 }
 
 struct IncompleteField {

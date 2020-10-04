@@ -24,6 +24,7 @@ inline base::Global<ModuleData<ModuleType>> all_modules;
 
 // A value-type representing a module (unit of compilation).
 struct ModuleId {
+  constexpr ModuleId() : id_(std::numeric_limits<size_t>::max()) {}
   constexpr explicit ModuleId(size_t n) : id_(n) {}
 
   static constexpr ModuleId Invalid() {

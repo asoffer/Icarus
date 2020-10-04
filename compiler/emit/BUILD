@@ -103,6 +103,8 @@ cc_library(
     deps = [
         "//ast",
         "//base:defer",
+        "//ir:compiled_scope",
+        "//ir/value:scope",
         "//compiler:compiler_header",
     ],
 )

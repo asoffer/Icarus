@@ -1,35 +1,12 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "block_def",
-    hdrs = ["block_def.h"],
-    deps = [
-        "//base:debug",
-        "//ir/value:overload_set",
-        "//type:jump",
-    ],
-)
-
-cc_library(
     name = "byte_code_writer",
     hdrs = ["byte_code_writer.h"],
     deps = [
         "//base:debug",
         "//base:untyped_buffer",
         "@com_google_absl//absl/container:flat_hash_map",
-    ],
-)
-
-cc_library(
-    name = "compiled_jump",
-    hdrs = ["compiled_jump.h"],
-    deps = [
-        "//ast:ast",
-        "//core:params",
-        "//ir/blocks:group",
-        "//ir/value:jump",
-        "//type:jump",
-        "//type:qual_type",
     ],
 )
 
@@ -57,11 +34,51 @@ cc_library(
 )
 
 cc_library(
+    name = "compiled_block",
+    hdrs = ["compiled_block.h"],
+    deps = [
+        "//ast",
+        "//ir/instruction:set",
+        "//ir/value:overload_set",
+        "//ir/value:jump",
+        "//type:jump",
+        "//type:typed_value",
+        "@com_google_absl//absl/container:flat_hash_set",
+    ],
+)
+
+cc_library(
     name = "compiled_fn",
     hdrs = ["compiled_fn.h"],
     deps = [
         "//ir/blocks:group",
         "//type:function",
+    ],
+)
+
+cc_library(
+    name = "compiled_jump",
+    hdrs = ["compiled_jump.h"],
+    deps = [
+        "//ast:ast",
+        "//core:params",
+        "//ir/blocks:group",
+        "//ir/value:jump",
+        "//type:jump",
+        "//type:qual_type",
+    ],
+)
+
+cc_library(
+    name = "compiled_scope",
+    hdrs = ["compiled_scope.h"],
+    deps = [
+        "//ir/value:block",
+        "//ir/value:jump",
+        "//ir/value:overload_set",
+        "//type",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
     ],
 )
 
@@ -113,17 +130,6 @@ cc_library(
     deps = [
         "//base:global",
         "//base:untyped_buffer",
-    ],
-)
-
-cc_library(
-    name = "scope_def",
-    hdrs = ["scope_def.h"],
-    deps = [
-        "//base:move_func",
-        "//base:no_destructor",
-        "//ir/value:overload_set",
-        "//type",
     ],
 )
 

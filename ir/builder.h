@@ -19,6 +19,7 @@
 #include "ir/struct_field.h"
 #include "ir/value/addr.h"
 #include "ir/value/reg.h"
+#include "ir/value/scope.h"
 #include "type/enum.h"
 #include "type/jump.h"
 #include "type/typed_value.h"
@@ -566,11 +567,11 @@ struct Builder {
   Reg Alloca(type::Type const* t);
   Reg TmpAlloca(type::Type const* t);
 
-  Reg MakeBlock(ir::BlockDef* block_def, std::vector<RegOr<Fn>> befores,
+  Reg MakeBlock(Block block, std::vector<RegOr<Fn>> befores,
                 std::vector<RegOr<Jump>> afters);
-  Reg MakeScope(ir::ScopeDef* scope_def, std::vector<RegOr<Jump>> inits,
+  Reg MakeScope(ir::Scope scope, std::vector<RegOr<Jump>> inits,
                 std::vector<RegOr<Fn>> dones,
-                absl::flat_hash_map<std::string_view, BlockDef*> blocks);
+                absl::flat_hash_map<std::string_view, Block> blocks);
 
   void DebugIr() { CurrentBlock()->Append(DebugIrInstruction{}); }
 

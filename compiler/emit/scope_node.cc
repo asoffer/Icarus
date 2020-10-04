@@ -4,7 +4,9 @@
 #include "ast/ast.h"
 #include "base/defer.h"
 #include "compiler/compiler.h"
+#include "ir/compiled_scope.h"
 #include "ir/value/reg.h"
+#include "ir/value/scope.h"
 #include "ir/value/value.h"
 
 namespace compiler {
@@ -13,16 +15,11 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
   LOG("ScopeNode", "Emitting IR for ScopeNode");
 
   ASSIGN_OR(return ir::Value(),  //
-                   auto *scope_def,
-                   EvaluateOrDiagnoseAs<ir::ScopeDef *>(node->name()));
-  if (scope_def->work_item and *scope_def->work_item) {
-    (std::move(*scope_def->work_item))();
-    scope_def->work_item = nullptr;
-  }
+                   auto scope, EvaluateOrDiagnoseAs<ir::Scope>(node->name()));
 
   // Stateful scopes need to have their state initialized.
   std::optional<ir::Reg> state_ptr;
-  if (auto const *state_type = scope_def->state_type()) {
+  if (auto const *state_type = ir::CompiledScope::From(scope)->state_type()) {
     state_ptr = builder().Alloca(state_type);
   }
 

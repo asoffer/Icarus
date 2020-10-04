@@ -20,6 +20,14 @@ cc_test(
 )
 
 cc_library(
+    name = "block",
+    hdrs = ["block.h"],
+    deps = [],
+)
+
+#TODO: block_test
+
+cc_library(
     name = "builtin_fn",
     hdrs = ["builtin_fn.h"],
     deps = [
@@ -228,6 +236,14 @@ cc_test(
 )
 
 cc_library(
+    name = "scope",
+    hdrs = ["scope.h"],
+    deps = [],
+)
+
+#TODO: scope_test
+
+cc_library(
     name = "string",
     hdrs = ["string.h"],
     srcs = ["string.cc"],
@@ -253,10 +269,12 @@ cc_library(
     hdrs = ["value.h"],
     deps = [
         ":addr",
+        ":block",
         ":enum_and_flags",
         ":jump",
         ":label",
         ":module_id",
+        ":scope",
         ":string",
         ":reg_or",
         "//base:guarded",

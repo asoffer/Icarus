@@ -10,7 +10,8 @@
 #include "ast/scope/scope.h"
 #include "base/extend.h"
 #include "base/meta.h"
-#include "ir/block_def.h"
+#include "ir/compiled_block.h"
+#include "ir/compiled_scope.h"
 #include "ir/instruction/arithmetic.h"
 #include "ir/instruction/base.h"
 #include "ir/instruction/byte_view.h"
@@ -25,11 +26,12 @@
 #include "ir/interpretter/foreign.h"
 #include "ir/interpretter/stack_frame.h"
 #include "ir/out_params.h"
-#include "ir/scope_def.h"
+#include "ir/value/block.h"
 #include "ir/value/enum_and_flags.h"
 #include "ir/value/fn.h"
 #include "ir/value/generic_fn.h"
 #include "ir/value/reg_or.h"
+#include "ir/value/scope.h"
 #include "ir/value/string.h"
 #include "type/generic_function.h"
 #include "type/util.h"
@@ -255,13 +257,13 @@ struct MakeBlockInstruction
     resolved_afters.reserve(afters.size());
     for (auto const& jmp : afters) { resolved_afters.insert(ctx.resolve(jmp)); }
 
-    *block_def         = ir::BlockDef(std::move(resolved_afters));
-    block_def->before_ = ir::OverloadSet(std::move(resolved_befores));
+    *CompiledBlock::From(block) = CompiledBlock(
+        OverloadSet(std::move(resolved_befores)), std::move(resolved_afters));
 
-    ctx.current_frame().regs_.set(result, block_def);
+    ctx.current_frame().regs_.set(result, block);
   }
 
-  BlockDef* block_def;
+  Block block;
   std::vector<RegOr<Fn>> befores;
   std::vector<RegOr<Jump>> afters;
   Reg result;
@@ -276,24 +278,21 @@ struct MakeScopeInstruction
     absl::flat_hash_set<ir::Jump> resolved_inits;
     resolved_inits.reserve(inits.size());
     for (auto const& init : inits) { resolved_inits.insert(ctx.resolve(init)); }
-    *scope_def->start_ = ir::BlockDef(std::move(resolved_inits));
 
     std::vector<ir::Fn> resolved_dones;
     resolved_dones.reserve(dones.size());
     for (auto const& fn : dones) { resolved_dones.push_back(ctx.resolve(fn)); }
-    scope_def->exit_->before_ = ir::OverloadSet(std::move(resolved_dones));
 
-    for (auto [name, block] : blocks) {
-      scope_def->blocks_.emplace(name, block);
-    }
-
-    ctx.current_frame().regs_.set(result, scope_def);
+    CompiledScope::From(scope)->Initialize(
+        std::move(resolved_inits), OverloadSet(std::move(resolved_dones)),
+        blocks);
+    ctx.current_frame().regs_.set(result, scope);
   }
 
-  ScopeDef* scope_def;
+  Scope scope;
   std::vector<RegOr<Jump>> inits;
   std::vector<RegOr<Fn>> dones;
-  absl::flat_hash_map<std::string_view, BlockDef*> blocks;
+  absl::flat_hash_map<std::string_view, Block> blocks;
   Reg result;
 };
 

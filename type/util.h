@@ -4,9 +4,11 @@
 
 #include "base/tag.h"
 #include "ir/value/addr.h"
+#include "ir/value/block.h"
 #include "ir/value/enum_and_flags.h"
 #include "ir/value/module_id.h"
 #include "ir/value/reg.h"
+#include "ir/value/scope.h"
 #include "ir/value/string.h"
 #include "ir/value/value.h"
 #include "type/array.h"
@@ -23,11 +25,9 @@
 #include "type/typed_value.h"
 
 namespace ir {
-struct BlockDef;
 struct FlagsVal;
 struct Jump;
 struct Fn;
-struct ScopeDef;
 }  // namespace ir
 
 namespace type {
@@ -59,11 +59,11 @@ constexpr type::Type const *Get() {
   } else if constexpr (base::meta<T> == base::meta<std::string_view> or
                        base::meta<T> == base::meta<ir::String>) {
     return type::ByteView;
-  } else if constexpr (base::meta<T> == base::meta<ir::BlockDef const *>) {
-    return type::Block;  // Maybe opt-block?
+  } else if constexpr (base::meta<T> == base::meta<ir::Block>) {
+    return type::Block;
   } else if constexpr (base::meta<T> == base::meta<type::Type const *>) {
     return type::Type_;
-  } else if constexpr (base::meta<T> == base::meta<ir::ScopeDef *>) {
+  } else if constexpr (base::meta<T> == base::meta<ir::Scope>) {
     return type::Scope;
   } else if constexpr (base::meta<T> == base::meta<ir::ModuleId>) {
     return type::Module;
@@ -111,7 +111,7 @@ bool Compare(::type::Type const *t) {
     return t->is<::type::Flags>();
   } else if constexpr (base::meta<T> == base::meta<ir::Addr>) {
     return t->is<::type::Pointer>() or t == type::NullPtr;
-  } else if constexpr (base::meta<T> == base::meta<ir::ScopeDef *>) {
+  } else if constexpr (base::meta<T> == base::meta<ir::Scope>) {
     return t == ::type::Scope;
   } else if constexpr (base::meta<T> == base::meta<::type::Struct const *>) {
     return t->is<::type::Struct>();
@@ -123,8 +123,7 @@ bool Compare(::type::Type const *t) {
     return t->is<::type::GenericFunction>();
   } else if constexpr (base::meta<T> == base::meta<ir::ModuleId>) {
     return t == ::type::Module;
-  } else if constexpr (base::meta<T> == base::meta<ir::BlockDef const *> or
-                       base::meta<T> == base::meta<ir::BlockDef *>) {
+  } else if constexpr (base::meta<T> == base::meta<ir::Block>) {
     return t == ::type::Block;
   } else {
     UNREACHABLE(t->to_string(), " vs ", typeid(T).name());
@@ -162,9 +161,8 @@ auto Apply(Type const *t, Fn &&fn) {
   return ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                     uint32_t, uint64_t, float, double, type::Type const *,
                     ir::EnumVal, ir::FlagsVal, ir::Addr, ir::String,
-                    ir::ModuleId, ir::ScopeDef *, ir::Fn, ir::Jump,
-                    ir::BlockDef const *, ir::GenericFn>(t,
-                                                         std::forward<Fn>(fn));
+                    ir::ModuleId, ir::Scope, ir::Fn, ir::Jump, ir::Block,
+                    ir::GenericFn>(t, std::forward<Fn>(fn));
 }
 
 }  // namespace type

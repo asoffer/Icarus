@@ -7,11 +7,13 @@
 #include "base/debug.h"
 #include "base/meta.h"
 #include "ir/value/addr.h"
+#include "ir/value/block.h"
 #include "ir/value/enum_and_flags.h"
 #include "ir/value/jump.h"
 #include "ir/value/label.h"
 #include "ir/value/module_id.h"
 #include "ir/value/reg_or.h"
+#include "ir/value/scope.h"
 #include "ir/value/string.h"
 #include "type/type_fwd.h"
 
@@ -19,8 +21,6 @@ namespace ir {
 // TODO: Invert the dependencies here.
 struct Fn;
 struct GenericFn;
-struct ScopeDef;
-struct BlockDef;
 
 // A `Value` represents any register or value constant usable in the
 // intermediate representation.
@@ -44,9 +44,7 @@ struct Value {
       base::type_list<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
                       uint16_t, uint32_t, uint64_t, float, double,
                       type::Type const*, Reg, Addr, String, FlagsVal, EnumVal,
-                      ModuleId, Fn, GenericFn, Jump, Empty,
-                      // TODO:
-                      ScopeDef*, BlockDef*>;
+                      ModuleId, Fn, GenericFn, Jump, Block, Scope, Empty>;
 
   // Constructs a `Value` from the passed in type. The parameter may be of any
   // type supported by `Value` or an `ir::RegOr<T>` where `T` is an type
@@ -163,8 +161,8 @@ struct Value {
     if (value.type_ == base::meta<Fn>) { return os << "fn"; }
     value.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                      uint32_t, uint64_t, float, double, type::Type const*, Reg,
-                     Addr, String, FlagsVal, EnumVal, ModuleId, Jump, BlockDef*,
-                     ScopeDef*, Empty>([&os](auto x) { os << x; });
+                     Addr, String, FlagsVal, EnumVal, ModuleId, Jump, Block,
+                     Scope, Empty>([&os](auto x) { os << x; });
     return os;
   }
 
