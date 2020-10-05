@@ -53,9 +53,10 @@ void InstructionInliner::Inline(Reg& r) const {
 void InstructionInliner::InlineJump(BasicBlock* block) {
   block->jump_.Visit([&](auto& j) {
     using type = std::decay_t<decltype(j)>;
-    if constexpr (std::is_same_v<type, JumpCmd::RetJump>) {
+    if constexpr (std::is_same_v<type, JumpCmd::UnreachableJump>) {
+      // UNREACHABLE(*block);
+    } else if constexpr (std::is_same_v<type, JumpCmd::RetJump>) {
       landing_block_->insert_incoming(block);
-
     } else if constexpr (std::is_same_v<type, JumpCmd::UncondJump>) {
       Inline(j.block, block);
     } else if constexpr (std::is_same_v<type, JumpCmd::CondJump>) {

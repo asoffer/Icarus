@@ -80,6 +80,9 @@ void EmitIrForStatements(Compiler *compiler,
       compiler->EmitValue(stmt);
       compiler->builder().FinishTemporariesWith(
           [compiler](type::Typed<ir::Reg> r) { compiler->EmitDestroy(r); });
+      LOG("EmitIrForStatements", "%p %s", compiler->builder().CurrentBlock(),
+          *compiler->builder().CurrentGroup());
+
       if (compiler->builder().block_termination_state() !=
           ir::Builder::BlockTerminationState::kMoreStatements) {
         break;
@@ -173,12 +176,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
 
     EmitIrForStatements(compiler, node->stmts());
     MakeAllDestructions(compiler, node->body_scope());
-
-    if (t->output().empty()) {
-      // TODO even this is wrong. Figure out the right jumping strategy
-      // between here and where you call SetReturn
-      bldr.ReturnJump();
-    }
+    bldr.ReturnJump();
   }
 
   ir_func->work_item = nullptr;
@@ -191,11 +189,12 @@ void CompleteBody(Compiler *compiler,
 }
 
 void CompleteBody(Compiler *compiler, ast::Jump const *node) {
-  ir::CompiledJump *jmp = ASSERT_NOT_NULL(compiler->data().jump(node));
+  LOG("CompleteBody", "Jump %s", node->DebugString());
+  ir::CompiledJump &jmp = *ASSERT_NOT_NULL(compiler->data().jump(node));
 
-  ICARUS_SCOPE(ir::SetCurrent(jmp, &compiler->builder())) {
+  ICARUS_SCOPE(ir::SetCurrent(&jmp, &compiler->builder())) {
     ASSERT(compiler != nullptr);
-    compiler->builder().CurrentBlock() = jmp->entry();
+    compiler->builder().CurrentBlock() = jmp.entry();
     // TODO arguments should be renumbered to not waste space on const
     // values
     int32_t i = 0;
@@ -210,12 +209,12 @@ void CompleteBody(Compiler *compiler, ast::Jump const *node) {
 
     EmitIrForStatements(compiler, node->stmts());
 
-    // TODO it seems like this will be appended after ChooseJump, which means
+    // TODO: it seems like this will be appended after ChooseJump, which means
     // it'll never be executed.
     MakeAllDestructions(compiler, node->body_scope());
   }
-  jmp->WriteByteCode<interpretter::instruction_set_t>();
-  jmp->work_item = nullptr;
+  jmp.WriteByteCode<interpretter::instruction_set_t>();
+  jmp.work_item = nullptr;
 }
 
 void ProcessExecutableBody(Compiler *c, base::PtrSpan<ast::Node const> nodes,

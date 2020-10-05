@@ -4,7 +4,9 @@
 #include "ast/ast.h"
 #include "base/defer.h"
 #include "compiler/compiler.h"
+#include "compiler/dispatch/parameters_and_arguments.h"
 #include "ir/compiled_scope.h"
+#include "ir/inliner.h"
 #include "ir/value/reg.h"
 #include "ir/value/scope.h"
 #include "ir/value/value.h"
@@ -16,10 +18,10 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
 
   ASSIGN_OR(return ir::Value(),  //
                    auto scope, EvaluateOrDiagnoseAs<ir::Scope>(node->name()));
-
+  auto const *compiled_scope = ir::CompiledScope::From(scope);
   // Stateful scopes need to have their state initialized.
   std::optional<ir::Reg> state_ptr;
-  if (auto const *state_type = ir::CompiledScope::From(scope)->state_type()) {
+  if (auto const *state_type = compiled_scope->state_type()) {
     state_ptr = builder().Alloca(state_type);
   }
 
@@ -42,16 +44,24 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
   // Evaluate the arguments on the initial `args_block`.
   builder().UncondJump(args_block);
   builder().CurrentBlock() = args_block;
+
+  // TODO: Support dynamic dispatch.
+  auto const &inits = compiled_scope->inits();
+  ASSERT(inits.size() == 1u);
+  auto &init = *inits.begin();
+
   auto args = node->args().Transform([this](ast::Expression const *expr) {
     return type::Typed<ir::Value>(EmitValue(expr), type_of(expr));
   });
 
-  // TODO: Implement me.
-  // auto const &inits = scope_def->start_->after();
-  // if (inits.size() != 1u) { NOT_YET("Suuport overload sets here."); }
-  // auto const &init = *inits.begin();
+  auto arg_values = PrepareCallArguments(
+      this, ir::CompiledJump::From(init)->type()->state(),
+      ir::CompiledJump::From(init)->params().Transform(
+          [](auto const &p) { return type::QualType::NonConstant(p.type()); }),
+      args);
 
-  builder().UncondJump(landing_block);
+  ir::Inline(builder(), init, arg_values, local_interp);
+
   builder().CurrentBlock() = landing_block;
   return ir::Value();
 }

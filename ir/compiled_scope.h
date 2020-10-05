@@ -4,8 +4,8 @@
 #include <string_view>
 #include <utility>
 
-#include "absl/container/flat_hash_set.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "ir/value/block.h"
 #include "ir/value/jump.h"
 #include "ir/value/overload_set.h"
@@ -19,14 +19,16 @@ struct CompiledScope {
   explicit CompiledScope(type::Type const *state = nullptr) : state_(state) {}
 
   // TODO: I'm not sure we need two-step initialization here.
-  void Initialize(absl::flat_hash_set<Jump> enter, OverloadSet exit,
+  void Initialize(absl::flat_hash_set<Jump> init, OverloadSet exit,
                   absl::flat_hash_map<std::string_view, Block> blocks) {
-    enter_  = std::move(enter);
+    init_   = std::move(init);
     exit_   = std::move(exit);
     blocks_ = std::move(blocks);
   }
 
   type::Type const *state_type() const { return state_; }
+
+  absl::flat_hash_set<Jump> const &inits() const { return init_; }
 
  private:
   type::Type const *state_ = nullptr;
@@ -35,7 +37,7 @@ struct CompiledScope {
   // declaration, we can reuse the declaration's `id()` field which provides a
   // stable string_view on which to key the block values.
   absl::flat_hash_map<std::string_view, Block> blocks_;
-  absl::flat_hash_set<Jump> enter_;
+  absl::flat_hash_set<Jump> init_;
   OverloadSet exit_;
 };
 

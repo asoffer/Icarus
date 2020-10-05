@@ -37,7 +37,7 @@ namespace {
 template <typename NodeType>
 base::move_func<void()> *DeferBody(Compiler::PersistentResources resources,
                                    NodeType const *node, type::Type const *t) {
-  LOG("DeferBody", "%s", node->DebugString());
+  LOG("DeferBody", "Deferring body of %s", node->DebugString());
   auto [iter, success] = resources.data.deferred_work_.lock()->emplace(
       node, [c = Compiler(resources), node, t]() mutable {
         if constexpr (base::meta<NodeType> ==
@@ -124,10 +124,10 @@ ir::Value EmitBuiltinCall(Compiler *c, ast::BuiltinFn const *callee,
                           core::FnArgs<ast::Expression const *> const &args) {
   switch (callee->value().which()) {
     case ir::BuiltinFn::Which::Foreign: {
-      auto maybe_name         = c->EvaluateAs<ir::String>(args[0]);
-      auto maybe_foreign_type = c->EvaluateAs<type::Type const *>(args[1]);
-      if (not maybe_name) { NOT_YET(); }
-      if (not maybe_foreign_type) { NOT_YET(); }
+      auto maybe_name = c->EvaluateOrDiagnoseAs<ir::String>(args[0]);
+      auto maybe_foreign_type =
+          c->EvaluateOrDiagnoseAs<type::Type const *>(args[1]);
+      if (not maybe_name or not maybe_foreign_type) { return ir::Value(); }
 
       return ir::Value(
           c->builder().LoadSymbol(*maybe_name, *maybe_foreign_type).get());
@@ -798,6 +798,11 @@ ir::Value Compiler::EmitValue(ast::ConditionalGoto const *node) {
 }
 
 ir::Value Compiler::EmitValue(ast::UnconditionalGoto const *node) {
+  LOG("Goto", "Emit %s", node->DebugString());
+  auto *block = builder().AddBlock();
+  builder().UncondJump(block);
+
+  builder().CurrentBlock() = block;
   EmitJump(this, node->options());
   return ir::Value();
 }
@@ -807,6 +812,7 @@ ir::Value Compiler::EmitValue(ast::Label const *node) {
 }
 
 ir::Value Compiler::EmitValue(ast::Jump const *node) {
+  LOG("Jump", "Emit %s", node->DebugString());
   // TODO: Check the result of body verification.
   if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
 

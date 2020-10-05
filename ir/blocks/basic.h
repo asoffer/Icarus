@@ -97,7 +97,7 @@ struct BasicBlock {
   OffsetCache offset_cache_;
   absl::flat_hash_set<BasicBlock *> incoming_;
 
-  JumpCmd jump_ = JumpCmd::Return();
+  JumpCmd jump_ = JumpCmd::Unreachable();
 };
 
 }  // namespace ir

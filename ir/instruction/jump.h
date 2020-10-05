@@ -21,6 +21,7 @@ namespace ir {
 struct BasicBlock;
 
 struct JumpCmd {
+  static JumpCmd Unreachable() { return JumpCmd(UnreachableJump{}); }
   static JumpCmd Return() { return JumpCmd(RetJump{}); }
   static JumpCmd Uncond(BasicBlock* block) {
     return JumpCmd(UncondJump{block});
@@ -41,6 +42,7 @@ struct JumpCmd {
   JumpCmd& operator=(JumpCmd const&) = default;
   JumpCmd& operator=(JumpCmd&&) noexcept = default;
 
+  struct UnreachableJump {};
   struct RetJump {};
   struct UncondJump {
     BasicBlock* block;
@@ -71,17 +73,18 @@ struct JumpCmd {
     std::vector<core::FnArgs<type::Typed<Value>>> args_;
   };
 
-  enum class Kind { Return, Uncond, Cond, Choose };
+  enum class Kind { Unreachable, Return, Uncond, Cond, Choose };
   Kind kind() const { return static_cast<Kind>(jump_.index()); }
 
   template <typename Fn>
   auto Visit(Fn&& fn) const {
     auto k = kind();
     switch (k) {
-      case Kind::Return: return fn(std::get<0>(jump_));
-      case Kind::Uncond: return fn(std::get<1>(jump_));
-      case Kind::Cond: return fn(std::get<2>(jump_));
-      case Kind::Choose: return fn(std::get<3>(jump_));
+      case Kind::Unreachable: return fn(std::get<0>(jump_));
+      case Kind::Return: return fn(std::get<1>(jump_));
+      case Kind::Uncond: return fn(std::get<2>(jump_));
+      case Kind::Cond: return fn(std::get<3>(jump_));
+      case Kind::Choose: return fn(std::get<4>(jump_));
     }
     UNREACHABLE();
   }
@@ -90,10 +93,11 @@ struct JumpCmd {
   auto Visit(Fn&& fn) {
     auto k = kind();
     switch (k) {
-      case Kind::Return: return fn(std::get<0>(jump_));
-      case Kind::Uncond: return fn(std::get<1>(jump_));
-      case Kind::Cond: return fn(std::get<2>(jump_));
-      case Kind::Choose: return fn(std::get<3>(jump_));
+      case Kind::Unreachable: return fn(std::get<0>(jump_));
+      case Kind::Return: return fn(std::get<1>(jump_));
+      case Kind::Uncond: return fn(std::get<2>(jump_));
+      case Kind::Cond: return fn(std::get<3>(jump_));
+      case Kind::Choose: return fn(std::get<4>(jump_));
     }
     UNREACHABLE();
   }
@@ -123,7 +127,9 @@ struct JumpCmd {
     return Visit([](auto const& j) -> std::string {
       using type = std::decay_t<decltype(j)>;
       using base::stringify;
-      if constexpr (std::is_same_v<type, RetJump>) {
+      if constexpr (std::is_same_v<type, UnreachableJump>) {
+        return "unreachable";
+      } else if constexpr (std::is_same_v<type, RetJump>) {
         return "return";
       } else if constexpr (std::is_same_v<type, UncondJump>) {
         return absl::StrCat("uncond ", stringify(j.block));
@@ -148,7 +154,7 @@ struct JumpCmd {
   template <typename T>
   explicit JumpCmd(T&& val) : jump_(std::forward<T>(val)) {}
 
-  std::variant<RetJump, UncondJump, CondJump, ChooseJump> jump_;
+  std::variant<UnreachableJump, RetJump, UncondJump, CondJump, ChooseJump> jump_;
 };
 
 }  // namespace ir
