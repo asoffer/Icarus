@@ -228,6 +228,21 @@ struct CallInstruction {
   OutParams outs_;
 };
 
+struct CommentInstruction
+    : base::Extend<CommentInstruction>::With<InlineExtension,
+                                             DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat = "comment: %1$s";
+
+  static CommentInstruction ReadFromByteCode(
+      base::untyped_buffer::const_iterator*) {
+    return {};
+  }
+  void WriteByteCode(ByteCodeWriter*) const {}
+  void Apply(interpretter::ExecutionContext& ctx) const {}
+
+  std::string comment;
+};
+
 }  // namespace ir
 
 #endif  // ICARUS_IR_INSTRUCTION_CORE_H

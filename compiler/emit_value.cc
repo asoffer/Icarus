@@ -800,6 +800,7 @@ ir::Value Compiler::EmitValue(ast::ConditionalGoto const *node) {
 ir::Value Compiler::EmitValue(ast::UnconditionalGoto const *node) {
   LOG("Goto", "Emit %s", node->DebugString());
   auto *block = builder().AddBlock();
+  builder().Comment("Uncoditional goto");
   builder().UncondJump(block);
 
   builder().CurrentBlock() = block;

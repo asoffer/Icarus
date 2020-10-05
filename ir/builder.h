@@ -406,6 +406,10 @@ struct Builder {
     CurrentBlock() = land_block;
   }
 
+  void Comment(std::string s) {
+    CurrentBlock()->Append(CommentInstruction{.comment = std::move(s)});
+  }
+
   Reg PtrFix(Reg r, type::Type const* desired_type) {
     // TODO must this be a register if it's loaded?
     return desired_type->is_big() ? r : Load(r, desired_type).get<Reg>();
