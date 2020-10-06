@@ -16,11 +16,8 @@ namespace compiler {
 struct WorkItem {
   enum class Result { Success, Failure, Deferred };
   enum class Kind {
-    VerifyBlockBody,
     VerifyEnumBody,
     VerifyFunctionBody,
-    VerifyJumpBody,
-    VerifyScopeBody,
     VerifyStructBody,
     CompleteStructMembers,
   };

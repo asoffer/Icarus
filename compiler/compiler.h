@@ -301,10 +301,8 @@ EmitBlockNode(ast::BlockNode const *node);
   WorkItem::Result VerifyBody(ast::Expression const *node) {
     return WorkItem::Result::Success;
   }
-  WorkItem::Result VerifyBody(ast::BlockLiteral const *node);
   WorkItem::Result VerifyBody(ast::EnumLiteral const *node);
   WorkItem::Result VerifyBody(ast::FunctionLiteral const *node);
-  WorkItem::Result VerifyBody(ast::Jump const *node);
   WorkItem::Result VerifyBody(ast::ParameterizedStructLiteral const *node);
   WorkItem::Result VerifyBody(ast::StructLiteral const *node);
 

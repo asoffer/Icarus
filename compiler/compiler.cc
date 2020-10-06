@@ -26,14 +26,10 @@ WorkItem::Result WorkItem::Process() const {
       .importer            = importer,
   });
   switch (kind) {
-    case Kind::VerifyBlockBody:
-      return c.VerifyBody(&node->as<ast::BlockLiteral>());
     case Kind::VerifyEnumBody:
       return c.VerifyBody(&node->as<ast::EnumLiteral>());
     case Kind::VerifyFunctionBody:
       return c.VerifyBody(&node->as<ast::FunctionLiteral>());
-    case Kind::VerifyJumpBody: return c.VerifyBody(&node->as<ast::Jump>());
-    case Kind::VerifyScopeBody: NOT_YET();
     case Kind::VerifyStructBody:
       return c.VerifyBody(&node->as<ast::StructLiteral>());
     case Kind::CompleteStructMembers:

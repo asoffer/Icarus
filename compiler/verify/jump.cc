@@ -127,26 +127,10 @@ type::QualType Compiler::VerifyType(ast::Jump const *node) {
 
   if (err) { return type::QualType::Error(); }
 
-  LOG("compile-work-queue", "Request work jump: %p", node);
-  state_.work_queue.Enqueue({
-      .kind     = WorkItem::Kind::VerifyJumpBody,
-      .node     = node,
-      .context  = data(),
-      .consumer = diag(),
-  });
+  for (auto const *stmt : node->stmts()) { err &= not VerifyType(stmt).ok(); }
+
   return data().set_qual_type(
-      node, err ? type::QualType::Error()
-                : type::QualType::Constant(type::Jmp(state, param_types)));
-}
-
-WorkItem::Result Compiler::VerifyBody(ast::Jump const *node) {
-  // TODO: Move this check out to the ProcessOneItem code?
-  if (not data().ShouldVerifyBody(node)) { return WorkItem::Result::Success; }
-
-  bool success = true;
-  LOG("Jump", "%s", node->DebugString());
-  for (auto const *stmt : node->stmts()) { success &= VerifyType(stmt).ok(); }
-  return WorkItem::Result::Success;
+      node, type::QualType::Constant(type::Jmp(state, param_types)));
 }
 
 }  // namespace compiler
