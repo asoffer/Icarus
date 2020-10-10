@@ -51,6 +51,11 @@ int DumpControlFlowGraph(frontend::FileName const &file_name,
 
   if (optimize_ir) { opt::RunAllOptimizations(&main_fn); }
 
+  absl::flat_hash_map<uintptr_t, std::vector<ir::BasicBlock const *>> clusters;
+  for (auto const *block : main_fn.blocks()) {
+    clusters[block->cluster_index()].push_back(block);
+  }
+
   constexpr auto style_for_jump = [](ir::JumpCmd::Kind k) -> char const * {
     switch (k) {
       case ir::JumpCmd::Kind::Unreachable:
@@ -62,22 +67,30 @@ int DumpControlFlowGraph(frontend::FileName const &file_name,
 
   output << "digraph {\n"
             "  node [shape=record];\n";
-  for (auto const *block : main_fn.blocks()) {
-    absl::Format(&output, "  \"%016p\" [%s fontname=monospace label=\"", block,
-                 style_for_jump(block->jump().kind()));
-    for (auto const &inst : block->instructions()) {
-      output << absl::CEscape(inst.to_string()) << "\\l";
+  for (auto const &[index, cluster] : clusters) {
+    if (index != 0) {
+      output << "subgraph cluster_" << index << " {\n"
+             << "style=filled;\ncolor=lightgray;\n";
     }
-    block->jump().Visit([&](auto j) {
-      constexpr auto type = base::meta<std::decay_t<decltype(j)>>;
-      if constexpr (type == base::meta<ir::JumpCmd::CondJump>) {
-        output << "cond-jump: " << j.reg;
-      } else if constexpr (type == base::meta<ir::JumpCmd::ChooseJump>) {
-        output << "choose";
-      }
-    });
 
-    output << "\"]\n";
+    for (auto const *block : cluster) {
+      absl::Format(&output, "  \"%016p\" [%s fontname=monospace label=\"",
+                   block, style_for_jump(block->jump().kind()));
+      for (auto const &inst : block->instructions()) {
+        output << absl::CEscape(inst.to_string()) << "\\l";
+      }
+      block->jump().Visit([&](auto j) {
+        constexpr auto type = base::meta<std::decay_t<decltype(j)>>;
+        if constexpr (type == base::meta<ir::JumpCmd::CondJump>) {
+          output << "cond-jump: " << j.reg;
+        } else if constexpr (type == base::meta<ir::JumpCmd::ChooseJump>) {
+          output << "choose";
+        }
+      });
+
+      output << "\"]\n";
+    }
+    if (index != 0) { output << "}\n\n"; }
   }
 
   for (auto const *block : main_fn.blocks()) {

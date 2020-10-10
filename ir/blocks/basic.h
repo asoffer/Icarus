@@ -27,6 +27,9 @@ namespace ir {
 struct BasicBlock {
   BasicBlock() = default;
   BasicBlock(BasicBlock const &b) noexcept;
+  BasicBlock(BasicBlock const &b, uint64_t index) noexcept : BasicBlock(b) {
+    cluster_index_ = index;
+  }
   BasicBlock(BasicBlock &&) noexcept;
   BasicBlock &operator=(BasicBlock const &) noexcept;
   BasicBlock &operator=(BasicBlock &&) noexcept;
@@ -37,6 +40,8 @@ struct BasicBlock {
   // All `BasicBlocks` which can jump to this one. Some may jump unconditionally
   // whereas others may jump only conditionally.
   auto const &incoming() const { return incoming_; }
+
+  constexpr uint64_t cluster_index() const { return cluster_index_; }
 
   void insert_incoming(BasicBlock *b) {
     incoming_.insert(b);
@@ -99,6 +104,12 @@ struct BasicBlock {
   absl::flat_hash_set<BasicBlock *> incoming_;
 
   JumpCmd jump_ = JumpCmd::Unreachable();
+
+  // Debugging information. This is often zero but will be set if this block was
+  // added because it came from a `jump() { ... }` that got inlined. Two blocks
+  // with non-zero values in this field hold the same value if and only if they
+  // were produced by the same inlining.
+  uint64_t cluster_index_ = 0;
 };
 
 }  // namespace ir

@@ -47,8 +47,9 @@ struct BlockGroupBase {
     return blocks_.emplace_back(std::make_unique<BasicBlock>()).get();
   }
 
-  BasicBlock *AppendBlock(BasicBlock const &to_copy) {
-    return blocks_.emplace_back(std::make_unique<BasicBlock>(to_copy)).get();
+  BasicBlock *AppendBlock(BasicBlock const &to_copy, uint64_t index = 0) {
+    return blocks_.emplace_back(std::make_unique<BasicBlock>(to_copy, index))
+        .get();
   }
 
   core::Params<type::Typed<ast::Declaration const *>> const &params() const {

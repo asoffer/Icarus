@@ -1,6 +1,12 @@
+#include <atomic>
+#include <queue>
+#include <string_view>
+#include <type_traits>
+#include <utility>
+
 #include "ir/instruction/inliner.h"
 
-#include "absl/strings/str_format.h"
+#include "absl/container/flat_hash_set.h"
 #include "base/meta.h"
 #include "ir/instruction/core.h"
 #include "type/typed_value.h"
@@ -40,6 +46,10 @@ InstructionInliner::InstructionInliner(
     });
   }
 
+  static std::atomic<uint64_t> cluster_index_generator(1);
+  uint64_t index =
+      cluster_index_generator.fetch_add(1, std::memory_order_relaxed);
+
   for (auto* block_to_copy : to_inline) {
     // Copy the block and then scan it for references to things that need to
     // be changed with inlining (e.g., basic blocks or registers).
@@ -48,10 +58,7 @@ InstructionInliner::InstructionInliner(
     // because we may request a jump downwards (i.e., to a block which we have
     // not yet seen). In other words, we have to make sure that any jump which
     // needs to be updated, the block mapping is already present.
-    auto* block = into->AppendBlock(*block_to_copy);
-    block->Append(CommentInstruction{
-        .comment = absl::StrFormat("Copied from %p", block_to_copy)});
-    blocks_.emplace(block_to_copy, block);
+    blocks_.emplace(block_to_copy, into->AppendBlock(*block_to_copy, index));
   }
 }
 
