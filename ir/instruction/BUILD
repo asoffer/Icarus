@@ -73,6 +73,7 @@ cc_library(
     srcs = ["inliner.cc"],
     deps = [
         ":base",
+        ":core",
         "//base:debug",
         "//ir:compiled_jump",
         "//ir:local_block_interpretation",
@@ -82,6 +83,7 @@ cc_library(
         "//ir/value:reg_or",
         "//type:typed_value",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/strings:str_format",
     ]
 )
 
@@ -151,11 +153,15 @@ cc_library(
     name = "core",
     hdrs = ["core.h"],
     deps = [
+        ":debug",
         "//base:extend",
         "//ir/blocks:basic",
         "//ir/interpretter:execution_context",
+        "//ir:out_params",
+        "//ir/value:generic_fn",
         "//ir/value:jump",
         "//ir/value:reg_or",
+        "//type:util",
         "@com_google_absl//absl/strings",
     ],
 )

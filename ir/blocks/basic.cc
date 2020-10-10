@@ -26,7 +26,6 @@ BasicBlock::BasicBlock(BasicBlock &&b) noexcept
 BasicBlock &BasicBlock::operator=(BasicBlock const &b) noexcept {
   RemoveOutgoingJumps();
   AddOutgoingJumps(b.jump_);
-
   instructions_ = b.instructions_;
   jump_         = b.jump_;
   return *this;
@@ -34,13 +33,13 @@ BasicBlock &BasicBlock::operator=(BasicBlock const &b) noexcept {
 
 void BasicBlock::AddOutgoingJumps(JumpCmd const &jump) {
   jump.Visit([&](auto const &j) {
-    using type = std::decay_t<decltype(j)>;
-    if constexpr (std::is_same_v<type, JumpCmd::UncondJump>) {
+    constexpr auto type = base::meta<std::decay_t<decltype(j)>>;
+    if constexpr (type == base::meta<JumpCmd::UncondJump>) {
       LOG("AddOutgoingJumps", "Inserting %p into uncond-jump(%p)", this,
           j.block);
 
       j.block->incoming_.insert(this);
-    } else if constexpr (std::is_same_v<type, JumpCmd::CondJump>) {
+    } else if constexpr (type == base::meta<JumpCmd::CondJump>) {
       LOG("AddOutgoingJumps", "Inserting %p into cond-jump(%p, %p)", this,
           j.true_block, j.false_block);
       j.true_block->incoming_.insert(this);
@@ -51,12 +50,12 @@ void BasicBlock::AddOutgoingJumps(JumpCmd const &jump) {
 
 void BasicBlock::RemoveOutgoingJumps() {
   jump_.Visit([&](auto const &j) {
-    using type = std::decay_t<decltype(j)>;
-    if constexpr (std::is_same_v<type, JumpCmd::UncondJump>) {
+    constexpr auto type = base::meta<std::decay_t<decltype(j)>>;
+    if constexpr (type == base::meta<JumpCmd::UncondJump>) {
       LOG("RemoveOutgoingJumps", "Removing %p from uncond-jump(%p)", this,
           j.block);
       j.block->incoming_.erase(this);
-    } else if constexpr (std::is_same_v<type, JumpCmd::CondJump>) {
+    } else if constexpr (type == base::meta<JumpCmd::CondJump>) {
       LOG("RemoveOutgoingJumps", "Removing %p from cond-jump(%p, %p)", this,
           j.true_block, j.false_block);
       j.true_block->incoming_.erase(this);
@@ -67,13 +66,13 @@ void BasicBlock::RemoveOutgoingJumps() {
 
 void BasicBlock::ExchangeJumps(BasicBlock const *b) {
   b->jump_.Visit([&](auto const &j) {
-    using type = std::decay_t<decltype(j)>;
-    if constexpr (std::is_same_v<type, JumpCmd::UncondJump>) {
+    constexpr auto type = base::meta<std::decay_t<decltype(j)>>;
+    if constexpr (type == base::meta<JumpCmd::UncondJump>) {
       LOG("ExchangeJumps", "Inserting %p from uncond-jump", this);
       LOG("ExchangeJumps", "Removing %p from uncond-jump", b);
       j.block->incoming_.insert(this);
       j.block->incoming_.erase(b);
-    } else if constexpr (std::is_same_v<type, JumpCmd::CondJump>) {
+    } else if constexpr (type == base::meta<JumpCmd::CondJump>) {
       LOG("ExchangeJumps", "Inserting %p from cond-jump", this);
       LOG("ExchangeJumps", "Removing %p from cond-jump", b);
       j.true_block->incoming_.insert(this);

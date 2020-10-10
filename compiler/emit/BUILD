@@ -108,6 +108,7 @@ cc_library(
         "//ir:compiled_scope",
         "//ir:inliner",
         "//ir/value:scope",
+        "@com_google_absl//absl/strings:str_format",
     ],
 )
 

@@ -1,6 +1,8 @@
 #include "ir/instruction/inliner.h"
 
+#include "absl/strings/str_format.h"
 #include "base/meta.h"
+#include "ir/instruction/core.h"
 #include "type/typed_value.h"
 
 namespace ir {
@@ -15,7 +17,30 @@ InstructionInliner::InstructionInliner(
   LOG("InstructionInliner", "Inlining: %s", *to_be_inlined);
   LOG("InstructionInliner", "Into: %s", *into);
 
-  for (auto* block_to_copy : to_be_inlined->blocks()) {
+  absl::flat_hash_set<BasicBlock const*> to_inline;
+  std::queue<BasicBlock const*> to_visit;
+  to_visit.push(to_be_inlined->entry());
+  while (not to_visit.empty()) {
+    auto const* block = to_visit.front();
+    to_visit.pop();
+    auto [iter, inserted] = to_inline.insert(block);
+    if (not inserted) { continue; }
+    block->jump_.Visit([&](auto& j) {
+      constexpr auto type = base::meta<std::decay_t<decltype(j)>>;
+      if constexpr (type == base::meta<JumpCmd::UncondJump>) {
+        to_visit.push(j.block);
+      } else if constexpr (type == base::meta<JumpCmd::CondJump>) {
+        to_visit.push(j.true_block);
+        to_visit.push(j.false_block);
+      } else if constexpr (type == base::meta<JumpCmd::ChooseJump>) {
+        return;
+      } else {
+        UNREACHABLE(*block);
+      }
+    });
+  }
+
+  for (auto* block_to_copy : to_inline) {
     // Copy the block and then scan it for references to things that need to
     // be changed with inlining (e.g., basic blocks or registers).
     //
@@ -24,10 +49,10 @@ InstructionInliner::InstructionInliner(
     // not yet seen). In other words, we have to make sure that any jump which
     // needs to be updated, the block mapping is already present.
     auto* block = into->AppendBlock(*block_to_copy);
+    block->Append(CommentInstruction{
+        .comment = absl::StrFormat("Copied from %p", block_to_copy)});
     blocks_.emplace(block_to_copy, block);
   }
-
-  landing_block_ = into->AppendBlock();
 }
 
 void InstructionInliner::Inline(Value& v) const {
@@ -52,18 +77,18 @@ void InstructionInliner::Inline(Reg& r) const {
 
 void InstructionInliner::InlineJump(BasicBlock* block) {
   block->jump_.Visit([&](auto& j) {
-    using type = std::decay_t<decltype(j)>;
-    if constexpr (std::is_same_v<type, JumpCmd::UnreachableJump>) {
-      // UNREACHABLE(*block);
-    } else if constexpr (std::is_same_v<type, JumpCmd::RetJump>) {
-      landing_block_->insert_incoming(block);
-    } else if constexpr (std::is_same_v<type, JumpCmd::UncondJump>) {
+    constexpr auto type = base::meta<std::decay_t<decltype(j)>>;
+    if constexpr (type == base::meta<JumpCmd::UnreachableJump>) {
+      // Nothing to do
+    } else if constexpr (type == base::meta<JumpCmd::RetJump>) {
+      UNREACHABLE(*block);
+    } else if constexpr (type == base::meta<JumpCmd::UncondJump>) {
       Inline(j.block, block);
-    } else if constexpr (std::is_same_v<type, JumpCmd::CondJump>) {
+    } else if constexpr (type == base::meta<JumpCmd::CondJump>) {
       Inline(j.reg);
       Inline(j.true_block, block);
       Inline(j.false_block, block);
-    } else if constexpr (std::is_same_v<type, JumpCmd::ChooseJump>) {
+    } else if constexpr (type == base::meta<JumpCmd::ChooseJump>) {
       std::string_view next_name = "";
       size_t i                   = 0;
       for (std::string_view name : j.names()) {
@@ -77,29 +102,28 @@ void InstructionInliner::InlineJump(BasicBlock* block) {
       }
       ASSERT(next_name != "");
 
-      auto& entry = named_blocks_[next_name];
-      if (entry.first == nullptr) {
-        entry.first = into_->AppendBlock();
+      auto& [next_block, args] = named_blocks_[next_name];
+      if (next_block == nullptr) {
+        LOG("InlineJump", "%s -> %p", next_name, next_block);
+        next_block = into_->AppendBlock();
+        *next_block = *j.blocks()[i];
+        for (auto& inst : next_block->instructions_) { inst->Inline(*this); }
 
-        *entry.first = *j.blocks()[i];
-        for (auto& inst : entry.first->instructions_) { inst->Inline(*this); }
-
-        entry.second =
-            j.args()[i].Transform([&](::type::Typed<Value> const& r) {
-              auto copy = r;
-              Inline(copy.get());
-              return copy;
-            });
+        args = j.args()[i].Transform([&](::type::Typed<Value> const& r) {
+          auto copy = r;
+          Inline(copy.get());
+          return copy;
+        });
       }
 
-      entry.first->insert_incoming(block);
+      next_block->insert_incoming(block);
     } else {
       static_assert(base::always_false<type>());
     }
   });
 }
 
-void InstructionInliner::InlineAllBlocks() {
+BasicBlock* InstructionInliner::InlineAllBlocks() {
   // Update the register count. This must be done after we've added the
   // register-forwarding instructions which use this count to choose a register
   // number.
@@ -109,13 +133,11 @@ void InstructionInliner::InlineAllBlocks() {
   });
 
   for (auto [ignored, block] : blocks_) {
-    LOG("inliner-before", "%s", *block);
-
     for (auto& inst : block->instructions_) { inst->Inline(*this); }
     InlineJump(block);
-
-    LOG("inliner-after", "%s", *block);
   }
+
+  return blocks_.at(to_be_inlined_->entry());
 }
 
 }  // namespace ir

@@ -15,6 +15,7 @@
 #include "type/enum.h"
 #include "type/flags.h"
 #include "type/function.h"
+#include "type/generic_function.h"
 #include "type/jump.h"
 #include "type/opaque.h"
 #include "type/pointer.h"

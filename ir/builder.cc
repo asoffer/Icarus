@@ -2,6 +2,7 @@
 
 #include <memory>
 
+#include "absl/strings/str_cat.h"
 #include "ir/blocks/group.h"
 
 namespace ir {
@@ -11,6 +12,11 @@ thread_local Builder current;
 Builder &GetBuilder() { return current; }
 
 BasicBlock *Builder::AddBlock() { return CurrentGroup()->AppendBlock(); }
+BasicBlock *Builder::AddBlock(std::string comment) {
+  auto *b = CurrentGroup()->AppendBlock();
+  b->Append(CommentInstruction{.comment = std::move(comment)});
+  return b;
+}
 
 BasicBlock *Builder::AddBlock(BasicBlock const &to_copy) {
   return CurrentGroup()->AppendBlock(to_copy);
@@ -356,7 +362,8 @@ LocalBlockInterpretation Builder::MakeLocalBlockInterpretation(
     BasicBlock *landing_block) {
   absl::flat_hash_map<ast::BlockNode const *, BasicBlock *> interp_map;
   for (auto const &block : node->blocks()) {
-    interp_map.emplace(&block, AddBlock());
+    interp_map.emplace(
+        &block, AddBlock(absl::StrCat("Start of block `", block.name(), "`.")));
   }
 
   return LocalBlockInterpretation(std::move(interp_map), starting_block,

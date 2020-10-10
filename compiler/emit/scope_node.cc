@@ -1,6 +1,7 @@
 #include <optional>
 #include <utility>
 
+#include "absl/strings/str_format.h"
 #include "ast/ast.h"
 #include "base/defer.h"
 #include "compiler/compiler.h"
@@ -27,8 +28,10 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
 
   // Arguments to the scope's start must be re-evaluated on each call to `goto
   // start()`, so weneed  a block to which we can jump for this purpose.
-  auto *args_block    = builder().AddBlock();
-  auto *landing_block = builder().AddBlock();
+  auto *args_block =
+      builder().AddBlock(absl::StrFormat("args block for scope %p", node));
+  auto *landing_block =
+      builder().AddBlock(absl::StrFormat("landing block for scope %p", node));
 
   // TODO: Support blocks evaluating to values.
   add_scope_landing(TransientState::ScopeLandingState{
@@ -60,7 +63,42 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
           [](auto const &p) { return type::QualType::NonConstant(p.type()); }),
       args);
 
-  ir::Inline(builder(), init, arg_values, local_interp);
+  auto block_map = ir::Inline(builder(), init, arg_values, local_interp);
+
+  for (auto const &block_node : node->blocks()) {
+    auto const &[block, args] = block_map.at(block_node.name());
+    builder().CurrentBlock()  = block;
+
+    auto *start = local_interp[block_node.name()];
+    builder().UncondJump(start);
+
+    builder().CurrentBlock()  = start;
+    auto *b                   = builder().AddBlock(
+        absl::StrFormat("body block for `%s`.", block_node.name()));
+    builder().UncondJump(b);
+
+    builder().CurrentBlock() = b;
+    EmitValue(&block_node);
+
+    // TODO: Get yielded arguments.
+    auto const *scope_block =
+        ir::CompiledBlock::From(compiled_scope->block(block_node.name()));
+
+    auto const &afters = scope_block->after();
+    // TODO: Choose the right jump.
+    ASSERT(afters.size() == 1u);
+    auto &after = *afters.begin();
+    ir::Inline(builder(), after, {}, local_interp);
+    // TODO: This is a hack/wrong
+    auto const &[next_block, next_args] = block_map.at(block_node.name());
+    builder().CurrentBlock()            = next_block;
+    builder().CurrentBlock()            = landing_block;
+  }
+
+  // TODO: Support arguments to `done()`. Need to bind these to local variables.
+  auto const &[done_block, done_args] = block_map.at("done");
+  builder().CurrentBlock()            = done_block;
+  builder().UncondJump(landing_block);
 
   builder().CurrentBlock() = landing_block;
   return ir::Value();

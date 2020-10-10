@@ -351,6 +351,7 @@ cc_library(
     deps = CONCRETE_TYPES + [
         "//base:tag",
         "//ir/value:module_id",
+        "//type:generic_function",
     ],
 )
 

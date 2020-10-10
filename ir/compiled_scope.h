@@ -1,6 +1,7 @@
 #ifndef ICARUS_IR_COMPILED_SCOPE_H
 #define ICARUS_IR_COMPILED_SCOPE_H
 
+#include <optional>
 #include <string_view>
 #include <utility>
 
@@ -25,6 +26,8 @@ struct CompiledScope {
     exit_   = std::move(exit);
     blocks_ = std::move(blocks);
   }
+
+  Block block(std::string_view name) const { return blocks_.at(name); }
 
   type::Type const *state_type() const { return state_; }
 

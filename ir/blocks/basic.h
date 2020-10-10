@@ -55,7 +55,8 @@ struct BasicBlock {
     return instructions_.emplace_back(std::move(inst));
   }
 
-  void set_jump(JumpCmd j) { jump_ = std::move(j); }
+  void set_jump(JumpCmd j) {
+    jump_ = std::move(j); }
   JumpCmd const &jump() const { return jump_; }
 
   template <typename InstructionSet>

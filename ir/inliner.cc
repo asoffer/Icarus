@@ -47,10 +47,10 @@ Inline(Builder &bldr, Jump to_be_inlined, absl::Span<ir::Value const> arguments,
     // TODO Handle types not covered by Apply (structs, etc).
   }
 
-  inl.InlineAllBlocks();
+  auto * entry = inl.InlineAllBlocks();
 
   bldr.CurrentBlock() = start_block;
-  bldr.UncondJump(bldr.CurrentGroup()->blocks()[inlined_start_index]);
+  bldr.UncondJump(entry);
 
   return inl.ExtractNamedBlockMapping();
 }

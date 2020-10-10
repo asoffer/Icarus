@@ -26,7 +26,7 @@ PushVec(std::vector<T> *, Args &&...)->PushVec<T>;
 
 }  // namespace
 
-void MakeAllStackAllocations(Compiler *compiler, ast::FnScope const *fn_scope) {
+void MakeAllStackAllocations(Compiler &compiler, ast::FnScope const *fn_scope) {
   for (auto *scope : fn_scope->descendants()) {
     if (scope != fn_scope and scope->is<ast::FnScope>()) { continue; }
     for (const auto &[key, val] : scope->decls_) {
@@ -41,14 +41,14 @@ void MakeAllStackAllocations(Compiler *compiler, ast::FnScope const *fn_scope) {
 
         LOG("MakeAllStackAllocations", "allocating %s", decl->id());
 
-        compiler->data().set_addr(
-            decl, compiler->builder().Alloca(compiler->type_of(decl)));
+        compiler.data().set_addr(
+            decl, compiler.builder().Alloca(compiler.type_of(decl)));
       }
     }
   }
 }
 
-void MakeAllDestructions(Compiler *compiler, ast::ExecScope const *exec_scope) {
+void MakeAllDestructions(Compiler &compiler, ast::ExecScope const *exec_scope) {
   // TODO store these in the appropriate order so we don't have to compute this?
   // Will this be faster?
   std::vector<ast::Declaration *> ordered_decls;
@@ -64,26 +64,26 @@ void MakeAllDestructions(Compiler *compiler, ast::ExecScope const *exec_scope) {
   });
 
   for (auto *decl : ordered_decls) {
-    auto *t = ASSERT_NOT_NULL(compiler->type_of(decl));
+    auto *t = ASSERT_NOT_NULL(compiler.type_of(decl));
     if (not t->HasDestructor()) { continue; }
-    compiler->EmitDestroy(type::Typed<ir::Reg>(compiler->data().addr(decl), t));
+    compiler.EmitDestroy(type::Typed<ir::Reg>(compiler.data().addr(decl), t));
   }
 }
 
 // TODO One problem with this setup is that we don't end up calling destructors
 // if we exit early, so those need to be handled externally.
-void EmitIrForStatements(Compiler *compiler,
+void EmitIrForStatements(Compiler &compiler,
                          base::PtrSpan<ast::Node const> span) {
-  ICARUS_SCOPE(ir::SetTemporaries(compiler->builder())) {
+  ICARUS_SCOPE(ir::SetTemporaries(compiler.builder())) {
     for (auto *stmt : span) {
       LOG("EmitIrForStatements", "%s", stmt->DebugString());
-      compiler->EmitValue(stmt);
-      compiler->builder().FinishTemporariesWith(
-          [compiler](type::Typed<ir::Reg> r) { compiler->EmitDestroy(r); });
-      LOG("EmitIrForStatements", "%p %s", compiler->builder().CurrentBlock(),
-          *compiler->builder().CurrentGroup());
+      compiler.EmitValue(stmt);
+      compiler.builder().FinishTemporariesWith(
+          [&compiler](type::Typed<ir::Reg> r) { compiler.EmitDestroy(r); });
+      LOG("EmitIrForStatements", "%p %s", compiler.builder().CurrentBlock(),
+          *compiler.builder().CurrentGroup());
 
-      if (compiler->builder().block_termination_state() !=
+      if (compiler.builder().block_termination_state() !=
           ir::Builder::BlockTerminationState::kMoreStatements) {
         break;
       }
@@ -108,7 +108,7 @@ void CompleteBody(Compiler *compiler, ast::ShortFunctionLiteral const *node,
       compiler->data().set_addr(param.value.get(), ir::Reg::Arg(i++));
     }
 
-    MakeAllStackAllocations(compiler, node->body_scope());
+    MakeAllStackAllocations(*compiler, node->body_scope());
 
     auto const &ret_type = *ASSERT_NOT_NULL(t->output()[0]);
     if (ret_type.is_big()) {
@@ -127,7 +127,7 @@ void CompleteBody(Compiler *compiler, ast::ShortFunctionLiteral const *node,
       if (r.type()->HasDestructor()) { compiler->EmitDestroy(r); }
     });
 
-    MakeAllDestructions(compiler, node->body_scope());
+    MakeAllDestructions(*compiler, node->body_scope());
     bldr.ReturnJump();
   }
 
@@ -153,7 +153,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
       compiler->data().set_addr(param.value.get(), ir::Reg::Arg(i++));
     }
 
-    MakeAllStackAllocations(compiler, node->body_scope());
+    MakeAllStackAllocations(*compiler, node->body_scope());
     if (auto outputs = node->outputs()) {
       for (size_t i = 0; i < outputs->size(); ++i) {
         auto *out_decl = (*outputs)[i]->if_as<ast::Declaration>();
@@ -174,8 +174,8 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
       }
     }
 
-    EmitIrForStatements(compiler, node->stmts());
-    MakeAllDestructions(compiler, node->body_scope());
+    EmitIrForStatements(*compiler, node->stmts());
+    MakeAllDestructions(*compiler, node->body_scope());
     bldr.ReturnJump();
   }
 
@@ -205,13 +205,13 @@ void CompleteBody(Compiler *compiler, ast::Jump const *node) {
       compiler->data().set_addr(param.value.get(), ir::Reg::Arg(i++));
     }
 
-    MakeAllStackAllocations(compiler, node->body_scope());
+    MakeAllStackAllocations(*compiler, node->body_scope());
 
-    EmitIrForStatements(compiler, node->stmts());
+    EmitIrForStatements(*compiler, node->stmts());
 
     // TODO: it seems like this will be appended after ChooseJump, which means
     // it'll never be executed.
-    MakeAllDestructions(compiler, node->body_scope());
+    MakeAllDestructions(*compiler, node->body_scope());
   }
   jmp.WriteByteCode<interpretter::instruction_set_t>();
   jmp.work_item = nullptr;
@@ -222,9 +222,9 @@ void ProcessExecutableBody(Compiler *c, base::PtrSpan<ast::Node const> nodes,
   ASSERT(nodes.size() > 0);
   ast::ModuleScope *mod_scope = &nodes.front()->scope()->as<ast::ModuleScope>();
   ICARUS_SCOPE(ir::SetCurrent(main_fn, &c->builder())) {
-    MakeAllStackAllocations(c, mod_scope);
-    EmitIrForStatements(c, nodes);
-    MakeAllDestructions(c, mod_scope);
+    MakeAllStackAllocations(*c, mod_scope);
+    EmitIrForStatements(*c, nodes);
+    MakeAllDestructions(*c, mod_scope);
     // TODO determine under which scenarios destructors can be skipped.
 
     c->builder().ReturnJump();
@@ -236,9 +236,16 @@ void ProcessExecutableBody(Compiler *c, base::PtrSpan<ast::Node const> nodes,
 TransientState::YieldedArguments Compiler::EmitBlockNode(
     ast::BlockNode const *node) {
   ICARUS_SCOPE(PushVec(&state_.yields)) {
-    EmitIrForStatements(this, node->stmts());
+    EmitIrForStatements(*this, node->stmts());
     return state_.yields.back();
   }
+}
+
+ir::Value Compiler::EmitValue(ast::BlockNode const *node) {
+  ICARUS_SCOPE(PushVec(&state_.yields)) {
+    EmitIrForStatements(*this, node->stmts());
+  }
+  return ir::Value();
 }
 
 }  // namespace compiler

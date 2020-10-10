@@ -152,7 +152,7 @@ template <typename T>
 struct StoreInstruction
     : base::Extend<StoreInstruction<T>>::template With<
           ByteCodeExtension, InlineExtension, DebugFormatExtension> {
-  static constexpr std::string_view kDebugFormat = "store %1$s -> [%2$s]";
+  static constexpr std::string_view kDebugFormat = "store %1$s into [%2$s]";
   using type                                     = T;
 
   void Apply(interpretter::ExecutionContext& ctx) {
@@ -178,10 +178,10 @@ struct CallInstruction {
     using base::stringify;
     std::string result = absl::StrCat("call ", stringify(fn_));
     for (auto const& arg : args_) {
-      absl::StrAppend(&result, "\n      -> ", stringify(arg));
+      absl::StrAppend(&result, "\n      I ", stringify(arg));
     }
     for (size_t i = 0; i < fn_type_->output().size(); ++i) {
-      absl::StrAppend(&result, "\n      <- ", stringify(outs_[i]));
+      absl::StrAppend(&result, "\n      O ", stringify(outs_[i]));
     }
 
     return result;

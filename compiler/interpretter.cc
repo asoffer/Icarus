@@ -25,11 +25,11 @@
 namespace debug {
 extern bool parser;
 extern bool validation;
-extern bool optimize_ir;
 }  // namespace debug
 
 namespace compiler {
 namespace {
+bool optimize_ir = false;
 
 int Interpret(frontend::FileName const &file_name) {
   diagnostic::StreamingConsumer diag(stderr, frontend::SharedSource());
@@ -49,7 +49,7 @@ int Interpret(frontend::FileName const &file_name) {
   auto &main_fn = exec_mod.main();
 
   // TODO All the functions? In all the modules?
-  opt::RunAllOptimizations(&main_fn);
+  if (optimize_ir) { opt::RunAllOptimizations(&main_fn); }
   main_fn.WriteByteCode<interpretter::instruction_set_t>();
   interpretter::Execute(
       &main_fn, base::untyped_buffer::MakeFull(main_fn.num_regs() * 16), {});
@@ -72,14 +72,14 @@ void cli::Usage() {
                        << [](bool b = false) { debug::parser = b; };
 
   Flag("opt-ir") << "Opmitize intermediate representation"
-                 << [](bool b = false) { debug::optimize_ir = b; };
+                 << [](bool b = false) { compiler::optimize_ir = b; };
+#endif  // defined(ICARUS_DEBUG)
 
   Flag("log") << "Comma-separated list of log keys" << [](char const *keys) {
     for (std::string_view key : absl::StrSplit(keys, ',')) {
       base::EnableLogging(key);
     }
   };
-#endif  // defined(ICARUS_DEBUG)
 
   Flag("link") << "Library to be dynamically loaded by the compiler to be used "
                   "at compile-time. Libraries will not be unloaded."

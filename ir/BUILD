@@ -29,6 +29,7 @@ cc_library(
         "//ir/value:reg",
         "//type:typed_value",
         "//type:util",
+        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
     ],
 )

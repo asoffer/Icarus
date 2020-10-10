@@ -41,6 +41,8 @@ struct LocalBlockInterpretation {
     return name_iter->second;
   }
 
+  BasicBlock *landing_block() const { return exit_; }
+
  private:
   absl::flat_hash_map<ast::BlockNode const *, BasicBlock *> data_;
   absl::flat_hash_map<std::string_view, ast::BlockNode const *> name_to_node_;

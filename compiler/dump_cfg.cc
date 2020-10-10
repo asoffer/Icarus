@@ -5,6 +5,7 @@
 
 #include "absl/debugging/failure_signal_handler.h"
 #include "absl/debugging/symbolize.h"
+#include "absl/strings/escaping.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_split.h"
@@ -20,18 +21,13 @@
 #include "frontend/source/file_name.h"
 #include "frontend/source/shared.h"
 #include "init/cli.h"
-#include "ir/interpretter/execution_context.h"
 #include "ir/compiled_fn.h"
+#include "ir/interpretter/execution_context.h"
 #include "module/module.h"
 #include "opt/opt.h"
 
-namespace debug {
-extern bool parser;
-extern bool validation;
-extern bool optimize_ir;
-}  // namespace debug
-
 namespace {
+bool optimize_ir = false;
 
 int DumpControlFlowGraph(frontend::FileName const &file_name) {
   diagnostic::StreamingConsumer diag(stderr, frontend::SharedSource());
@@ -52,27 +48,37 @@ int DumpControlFlowGraph(frontend::FileName const &file_name) {
   if (diag.num_consumed() != 0) { return 1; }
   auto &main_fn = exec_mod.main();
 
-  opt::RunAllOptimizations(&main_fn);
+  if (optimize_ir) { opt::RunAllOptimizations(&main_fn); }
 
   std::string output =
       "digraph {\n"
       "  node [shape=record];\n";
   for (auto const *block : main_fn.blocks()) {
+    absl::StrAppendFormat(&output, "  \"%p\" [label=\"", block);
+    for (auto const& inst : block->instructions()) {
+      absl::StrAppendFormat(&output, "%s\\n",
+                            absl::CEscape(inst.to_string()));
+    }
+    absl::StrAppend(&output, "\"]\n");
+  }
+
+  for (auto const *block : main_fn.blocks()) {
     block->jump().Visit([&](auto j) {
-      using type = std::decay_t<decltype(j)>;
-      if constexpr (base::meta<type> == base::meta<ir::JumpCmd::RetJump>) {
+      constexpr auto type = base::meta<std::decay_t<decltype(j)>>;
+      if constexpr (type == base::meta<ir::JumpCmd::RetJump>) {
         if (block->incoming().empty()) { return; }
         absl::StrAppendFormat(&output, "  \"%p\" -> return;\n", block);
       } else {
-        if constexpr (base::meta<type> == base::meta<ir::JumpCmd::UncondJump>) {
+        if constexpr (type == base::meta<ir::JumpCmd::UncondJump>) {
           absl::StrAppendFormat(&output, "  \"%p\" -> \"%p\";\n", block,
                                 j.block);
-        } else if constexpr (base::meta<type> ==
-                             base::meta<ir::JumpCmd::CondJump>) {
+        } else if constexpr (type == base::meta<ir::JumpCmd::CondJump>) {
           absl::StrAppendFormat(&output,
                                 "  \"%p\" -> \"%p\";\n"
                                 "  \"%p\" -> \"%p\";\n",
                                 block, j.true_block, block, j.false_block);
+        } else if constexpr (type == base::meta<ir::JumpCmd::UnreachableJump>) {
+          absl::StrAppendFormat(&output, "  \"%p\" -> unreachable;\n", block);
         } else {
           absl::StrAppendFormat(&output, "  \"%p\" -> choose;\n", block);
         }
@@ -95,7 +101,7 @@ void cli::Usage() {
 
 #if defined(ICARUS_DEBUG)
   Flag("opt-ir") << "Opmitize intermediate representation"
-                 << [](bool b = false) { debug::optimize_ir = b; };
+                 << [](bool b = false) { optimize_ir = b; };
 
   Flag("log") << "Comma-separated list of log keys" << [](char const *keys) {
     for (std::string_view key : absl::StrSplit(keys, ',')) {

@@ -36,7 +36,7 @@ struct InstructionInliner {
     }
   }
 
-  void InlineAllBlocks();
+  BasicBlock *InlineAllBlocks();
 
   absl::flat_hash_map<
       std::string_view,
@@ -44,8 +44,6 @@ struct InstructionInliner {
   ExtractNamedBlockMapping() {
     return std::move(named_blocks_);
   }
-
-  ir::BasicBlock *landing_block() const { return landing_block_; }
 
   template <typename T>
   void Inline(std::vector<RegOr<T>> &rs) const {
@@ -67,10 +65,6 @@ struct InstructionInliner {
       std::pair<BasicBlock *, core::FnArgs<type::Typed<ir::Value>>>>
       named_blocks_;
   LocalBlockInterpretation block_interp_;
-
-  // When inlining a return jump, this is the block that should be
-  // unconditionally jumped to.
-  ir::BasicBlock *landing_block_;
 };
 
 template <typename T>
