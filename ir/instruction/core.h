@@ -176,15 +176,20 @@ struct CallInstruction {
 
   std::string to_string() const {
     using base::stringify;
-    std::string result = absl::StrCat("call ", stringify(fn_));
-    for (auto const& arg : args_) {
-      absl::StrAppend(&result, "\n      I ", stringify(arg));
-    }
-    for (size_t i = 0; i < fn_type_->output().size(); ++i) {
-      absl::StrAppend(&result, "\n      O ", stringify(outs_[i]));
-    }
-
-    return result;
+    return absl::StrFormat(
+        "%scall %s: %s",
+        fn_type_->output().empty()
+            ? ""
+            : absl::StrCat("(",
+                           absl::StrJoin(outs_.regs(), ", ",
+                                         [](std::string* s, auto const& out) {
+                                           absl::StrAppend(s, stringify(out));
+                                         }),
+                           ") = "),
+        stringify(fn_),
+        absl::StrJoin(args_, ", ", [](std::string* s, auto const& arg) {
+          absl::StrAppend(s, stringify(arg));
+        }));
   }
 
   void WriteByteCode(ByteCodeWriter* writer) const {

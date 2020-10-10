@@ -29,7 +29,8 @@
 namespace {
 bool optimize_ir = false;
 
-int DumpControlFlowGraph(frontend::FileName const &file_name) {
+int DumpControlFlowGraph(frontend::FileName const &file_name,
+                         std::ostream &output) {
   diagnostic::StreamingConsumer diag(stderr, frontend::SharedSource());
   auto canonical_file_name = frontend::CanonicalFileName::Make(file_name);
   auto maybe_file_src      = frontend::FileSource::Make(canonical_file_name);
@@ -50,42 +51,49 @@ int DumpControlFlowGraph(frontend::FileName const &file_name) {
 
   if (optimize_ir) { opt::RunAllOptimizations(&main_fn); }
 
-  std::string output =
-      "digraph {\n"
-      "  node [shape=record];\n";
-  for (auto const *block : main_fn.blocks()) {
-    absl::StrAppendFormat(&output, "  \"%p\" [label=\"", block);
-    for (auto const& inst : block->instructions()) {
-      absl::StrAppendFormat(&output, "%s\\n",
-                            absl::CEscape(inst.to_string()));
+  constexpr auto style_for_jump = [](ir::JumpCmd::Kind k) -> char const * {
+    switch (k) {
+      case ir::JumpCmd::Kind::Unreachable:
+        return "style=filled fillcolor=tomato";
+      case ir::JumpCmd::Kind::Return: return "style=filled fillcolor=gray";
+      default: return "";
     }
-    absl::StrAppend(&output, "\"]\n");
+  };
+
+  output << "digraph {\n"
+            "  node [shape=record];\n";
+  for (auto const *block : main_fn.blocks()) {
+    absl::Format(&output, "  \"%016p\" [%s fontname=monospace label=\"", block,
+                 style_for_jump(block->jump().kind()));
+    for (auto const &inst : block->instructions()) {
+      output << absl::CEscape(inst.to_string()) << "\\l";
+    }
+    block->jump().Visit([&](auto j) {
+      constexpr auto type = base::meta<std::decay_t<decltype(j)>>;
+      if constexpr (type == base::meta<ir::JumpCmd::CondJump>) {
+        output << "cond-jump: " << j.reg;
+      } else if constexpr (type == base::meta<ir::JumpCmd::ChooseJump>) {
+        output << "choose";
+      }
+    });
+
+    output << "\"]\n";
   }
 
   for (auto const *block : main_fn.blocks()) {
     block->jump().Visit([&](auto j) {
       constexpr auto type = base::meta<std::decay_t<decltype(j)>>;
-      if constexpr (type == base::meta<ir::JumpCmd::RetJump>) {
-        if (block->incoming().empty()) { return; }
-        absl::StrAppendFormat(&output, "  \"%p\" -> return;\n", block);
-      } else {
-        if constexpr (type == base::meta<ir::JumpCmd::UncondJump>) {
-          absl::StrAppendFormat(&output, "  \"%p\" -> \"%p\";\n", block,
-                                j.block);
-        } else if constexpr (type == base::meta<ir::JumpCmd::CondJump>) {
-          absl::StrAppendFormat(&output,
-                                "  \"%p\" -> \"%p\";\n"
-                                "  \"%p\" -> \"%p\";\n",
-                                block, j.true_block, block, j.false_block);
-        } else if constexpr (type == base::meta<ir::JumpCmd::UnreachableJump>) {
-          absl::StrAppendFormat(&output, "  \"%p\" -> unreachable;\n", block);
-        } else {
-          absl::StrAppendFormat(&output, "  \"%p\" -> choose;\n", block);
-        }
+      if constexpr (type == base::meta<ir::JumpCmd::UncondJump>) {
+        absl::Format(&output, "  \"%016p\" -> \"%016p\";\n", block, j.block);
+      } else if constexpr (type == base::meta<ir::JumpCmd::CondJump>) {
+        absl::Format(&output,
+                     "  \"%016p\" -> \"%016p\" [label=true];\n"
+                     "  \"%016p\" -> \"%016p\" [label=false];\n",
+                     block, j.true_block, block, j.false_block);
       }
     });
   }
-  std::cout << output << "}";
+  output << "}";
 
   return 0;
 }
@@ -94,15 +102,15 @@ int DumpControlFlowGraph(frontend::FileName const &file_name) {
 
 void cli::Usage() {
   static base::NoDestructor<frontend::FileName> file;
-  execute = [] { return DumpControlFlowGraph(*file); };
+  execute = [] { return DumpControlFlowGraph(*file, std::cout); };
 
   Flag("help") << "Show usage information."
                << []() { execute = cli::ShowUsage; };
 
-#if defined(ICARUS_DEBUG)
   Flag("opt-ir") << "Opmitize intermediate representation"
                  << [](bool b = false) { optimize_ir = b; };
 
+#if defined(ICARUS_DEBUG)
   Flag("log") << "Comma-separated list of log keys" << [](char const *keys) {
     for (std::string_view key : absl::StrSplit(keys, ',')) {
       base::EnableLogging(key);
