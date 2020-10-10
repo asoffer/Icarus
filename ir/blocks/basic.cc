@@ -13,25 +13,24 @@ std::ostream &operator<<(std::ostream &os, BasicBlock const &b) {
 }
 
 BasicBlock::BasicBlock(BasicBlock const &b) noexcept
-    : instructions_(b.instructions_), jump_(b.jump_), cluster_index_(b.cluster_index_) {
+    : instructions_(b.instructions_), jump_(b.jump_), debug_(b.debug_) {
   AddOutgoingJumps(jump_);
 }
 
 BasicBlock::BasicBlock(BasicBlock &&b) noexcept
     : instructions_(std::move(b.instructions_)),
       jump_(std::move(b.jump_)),
-      cluster_index_(b.cluster_index_) {
+      debug_(b.debug_) {
   ExchangeJumps(&b);
-  cluster_index_ = b.cluster_index_;
-  b.jump_        = JumpCmd::Return();
+  b.jump_ = JumpCmd::Return();
 }
 
 BasicBlock &BasicBlock::operator=(BasicBlock const &b) noexcept {
   RemoveOutgoingJumps();
   AddOutgoingJumps(b.jump_);
   instructions_ = b.instructions_;
-  jump_          = b.jump_;
-  cluster_index_ = b.cluster_index_;
+  jump_         = b.jump_;
+  debug_        = b.debug_;
   return *this;
 }
 

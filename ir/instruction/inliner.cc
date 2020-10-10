@@ -58,7 +58,10 @@ InstructionInliner::InstructionInliner(
     // because we may request a jump downwards (i.e., to a block which we have
     // not yet seen). In other words, we have to make sure that any jump which
     // needs to be updated, the block mapping is already present.
-    blocks_.emplace(block_to_copy, into->AppendBlock(*block_to_copy, index));
+    blocks_.emplace(
+        block_to_copy,
+        into->AppendBlock(*block_to_copy,
+                          BasicBlock::DebugInfo{.cluster_index = index}));
   }
 }
 

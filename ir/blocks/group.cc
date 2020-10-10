@@ -25,7 +25,7 @@ BlockGroupBase::BlockGroupBase(
       alloc_(NumNonConstants(params_) + num_state_args) {
   // Ensure the existence of an entry block. The entry block marks itself as
   // incoming so it is never accidentally cleaned up.
-  auto *b = AppendBlock();
+  auto *b = AppendBlock(BasicBlock::DebugInfo{.header = "Entry"});
   b->insert_incoming(b);
 }
 

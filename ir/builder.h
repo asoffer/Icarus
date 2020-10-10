@@ -29,7 +29,7 @@ namespace ir {
 
 struct Builder {
   BasicBlock* AddBlock();
-  BasicBlock* AddBlock(std::string comment);
+  BasicBlock* AddBlock(std::string header);
   BasicBlock* AddBlock(BasicBlock const& to_copy);
 
   ir::OutParams OutParams(absl::Span<type::Type const* const> types);

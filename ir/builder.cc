@@ -12,10 +12,10 @@ thread_local Builder current;
 Builder &GetBuilder() { return current; }
 
 BasicBlock *Builder::AddBlock() { return CurrentGroup()->AppendBlock(); }
-BasicBlock *Builder::AddBlock(std::string comment) {
-  auto *b = CurrentGroup()->AppendBlock();
-  b->Append(CommentInstruction{.comment = std::move(comment)});
-  return b;
+BasicBlock *Builder::AddBlock(std::string header) {
+  return CurrentGroup()->AppendBlock(BasicBlock::DebugInfo{
+      .header = std::move(header),
+  });
 }
 
 BasicBlock *Builder::AddBlock(BasicBlock const &to_copy) {

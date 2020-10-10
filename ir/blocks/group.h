@@ -43,12 +43,10 @@ struct BlockGroupBase {
   BasicBlock const *entry() const { return blocks()[0]; }
   BasicBlock *entry() { return blocks()[0]; }
 
-  BasicBlock *AppendBlock() {
-    return blocks_.emplace_back(std::make_unique<BasicBlock>()).get();
-  }
-
-  BasicBlock *AppendBlock(BasicBlock const &to_copy, uint64_t index = 0) {
-    return blocks_.emplace_back(std::make_unique<BasicBlock>(to_copy, index))
+  template <typename... Args>
+  BasicBlock *AppendBlock(Args&&... args) {
+    return blocks_
+        .emplace_back(std::make_unique<BasicBlock>(std::forward<Args>(args)...))
         .get();
   }
 

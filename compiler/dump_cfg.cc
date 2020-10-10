@@ -53,7 +53,7 @@ int DumpControlFlowGraph(frontend::FileName const &file_name,
 
   absl::flat_hash_map<uintptr_t, std::vector<ir::BasicBlock const *>> clusters;
   for (auto const *block : main_fn.blocks()) {
-    clusters[block->cluster_index()].push_back(block);
+    clusters[block->debug().cluster_index].push_back(block);
   }
 
   constexpr auto style_for_jump = [](ir::JumpCmd::Kind k) -> char const * {
@@ -74,8 +74,11 @@ int DumpControlFlowGraph(frontend::FileName const &file_name,
     }
 
     for (auto const *block : cluster) {
-      absl::Format(&output, "  \"%016p\" [%s fontname=monospace label=\"",
-                   block, style_for_jump(block->jump().kind()));
+      std::string header = block->debug().header.empty()
+                               ? ""
+                               : absl::StrCat(block->debug().header, "|");
+      absl::Format(&output, "  \"%016p\" [%s fontname=monospace label=\"{%s",
+                   block, style_for_jump(block->jump().kind()), header);
       for (auto const &inst : block->instructions()) {
         output << absl::CEscape(inst.to_string()) << "\\l";
       }
@@ -88,7 +91,7 @@ int DumpControlFlowGraph(frontend::FileName const &file_name,
         }
       });
 
-      output << "\"]\n";
+      output << "}\"]\n";
     }
     if (index != 0) { output << "}\n\n"; }
   }

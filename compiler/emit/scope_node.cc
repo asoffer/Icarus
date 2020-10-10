@@ -88,11 +88,12 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
     // TODO: Choose the right jump.
     ASSERT(afters.size() == 1u);
     auto &after = *afters.begin();
-    ir::Inline(builder(), after, {}, local_interp);
+    auto landing_block_map = ir::Inline(builder(), after, {}, local_interp);
     // TODO: This is a hack/wrong
-    auto const &[next_block, next_args] = block_map.at(block_node.name());
-    builder().CurrentBlock()            = next_block;
-    builder().CurrentBlock()            = landing_block;
+    for (const auto &[name, block_and_args] : landing_block_map) {
+      builder().CurrentBlock() = block_and_args.first;
+      builder().UncondJump(local_interp[name]);
+    }
   }
 
   // TODO: Support arguments to `done()`. Need to bind these to local variables.

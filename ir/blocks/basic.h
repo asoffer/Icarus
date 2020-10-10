@@ -25,10 +25,22 @@ namespace ir {
 // executed, each instruction will execute in order. `BasicBlock`s also have a
 // jump describing which basic block to execute next.
 struct BasicBlock {
+  struct DebugInfo {
+    // Description of the block.
+    std::string header;
+
+    // This is often zero but will be set if this block was added because it
+    // came from a `jump() { ... }` that got inlined. Two blocks with non-zero
+    // values in this field hold the same value if and only if they were
+    // produced by the same inlining.
+    uint64_t cluster_index = 0;
+  };
+
   BasicBlock() = default;
   BasicBlock(BasicBlock const &b) noexcept;
-  BasicBlock(BasicBlock const &b, uint64_t index) noexcept : BasicBlock(b) {
-    cluster_index_ = index;
+  BasicBlock(DebugInfo dbg) noexcept : debug_(std::move(dbg)) {}
+  BasicBlock(BasicBlock const &b, DebugInfo dbg) noexcept : BasicBlock(b) {
+    debug_ = std::move(dbg);
   }
   BasicBlock(BasicBlock &&) noexcept;
   BasicBlock &operator=(BasicBlock const &) noexcept;
@@ -41,7 +53,7 @@ struct BasicBlock {
   // whereas others may jump only conditionally.
   auto const &incoming() const { return incoming_; }
 
-  constexpr uint64_t cluster_index() const { return cluster_index_; }
+  constexpr DebugInfo const &debug() const { return debug_; }
 
   void insert_incoming(BasicBlock *b) {
     incoming_.insert(b);
@@ -105,11 +117,7 @@ struct BasicBlock {
 
   JumpCmd jump_ = JumpCmd::Unreachable();
 
-  // Debugging information. This is often zero but will be set if this block was
-  // added because it came from a `jump() { ... }` that got inlined. Two blocks
-  // with non-zero values in this field hold the same value if and only if they
-  // were produced by the same inlining.
-  uint64_t cluster_index_ = 0;
+  DebugInfo debug_;
 };
 
 }  // namespace ir
