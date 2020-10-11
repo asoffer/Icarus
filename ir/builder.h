@@ -580,10 +580,6 @@ struct Builder {
 
   void DebugIr() { CurrentBlock()->Append(DebugIrInstruction{}); }
 
-  LocalBlockInterpretation MakeLocalBlockInterpretation(
-      ast::ScopeNode const*, BasicBlock* starting_block,
-      BasicBlock* landing_block);
-
   // Apply the callable to each temporary in reverse order, and clear the list
   // of temporaries.
   template <typename Fn>

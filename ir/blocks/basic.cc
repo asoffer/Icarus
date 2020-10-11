@@ -3,7 +3,8 @@
 namespace ir {
 
 std::ostream &operator<<(std::ostream &os, BasicBlock const &b) {
-  os << " [with " << b.incoming().size() << " incoming]\n";
+  os << ' ' << b.debug().header << "\n [with " << b.incoming().size()
+     << " incoming]\n";
   for (auto const &inst : b.instructions_) {
     if (not inst) { continue; }
     os << "    " << inst.to_string() << '\n';

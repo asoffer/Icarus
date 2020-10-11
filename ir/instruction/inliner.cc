@@ -23,6 +23,10 @@ InstructionInliner::InstructionInliner(
   LOG("InstructionInliner", "Inlining: %s", *to_be_inlined);
   LOG("InstructionInliner", "Into: %s", *into);
 
+  static std::atomic<uint64_t> cluster_index_generator(1);
+  uint64_t index =
+      cluster_index_generator.fetch_add(1, std::memory_order_relaxed);
+
   absl::flat_hash_set<BasicBlock const*> to_inline;
   std::queue<BasicBlock const*> to_visit;
   to_visit.push(to_be_inlined->entry());
@@ -39,16 +43,29 @@ InstructionInliner::InstructionInliner(
         to_visit.push(j.true_block);
         to_visit.push(j.false_block);
       } else if constexpr (type == base::meta<JumpCmd::ChooseJump>) {
-        return;
+        std::string_view next_name = "";
+        size_t i                   = 0;
+        for (std::string_view name : j.names()) {
+          if (name == "start" or name == "done" or
+              block_interp_.block_node(name)) {
+            next_name = name;
+            break;
+          }
+          ++i;
+        }
+        ASSERT(next_name != "");
+
+        // TODO: Rather than create a new block here, make sure choose jumps are
+        // wired to their children so we can follow potentially many more such
+        // blocks.
+        auto& [next_block, args] = named_blocks_[next_name];
+        next_block =
+            into->AppendBlock(BasicBlock::DebugInfo{.cluster_index = index});
       } else {
         UNREACHABLE(*block);
       }
     });
   }
-
-  static std::atomic<uint64_t> cluster_index_generator(1);
-  uint64_t index =
-      cluster_index_generator.fetch_add(1, std::memory_order_relaxed);
 
   for (auto* block_to_copy : to_inline) {
     // Copy the block and then scan it for references to things that need to
@@ -111,21 +128,13 @@ void InstructionInliner::InlineJump(BasicBlock* block) {
         ++i;
       }
       ASSERT(next_name != "");
-
       auto& [next_block, args] = named_blocks_[next_name];
-      if (next_block == nullptr) {
-        LOG("InlineJump", "%s -> %p", next_name, next_block);
-        next_block = into_->AppendBlock();
-        *next_block = *j.blocks()[i];
-        for (auto& inst : next_block->instructions_) { inst->Inline(*this); }
-
-        args = j.args()[i].Transform([&](::type::Typed<Value> const& r) {
-          auto copy = r;
-          Inline(copy.get());
-          return copy;
-        });
-      }
-
+      ASSERT(next_block != nullptr);
+      args = j.args()[i].Transform([&](::type::Typed<Value> const& r) {
+        auto copy = r;
+        Inline(copy.get());
+        return copy;
+      });
       next_block->insert_incoming(block);
     } else {
       static_assert(base::always_false<type>());

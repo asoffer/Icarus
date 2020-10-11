@@ -106,13 +106,11 @@ cc_library(
         "//compiler:compiler_header",
         "//compiler/dispatch:parameters_and_arguments",
         "//ir:compiled_scope",
-        "//ir:inliner",
+        "//ir/instruction:inliner",
         "//ir/value:scope",
         "@com_google_absl//absl/strings:str_format",
     ],
 )
-
-# TODO: scope_node_test
 
 cc_library(
     name = "terminal",

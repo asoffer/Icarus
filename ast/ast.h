@@ -135,7 +135,7 @@ struct ArrayLiteral : Expression {
   size_t size() const { return elems_.size(); }
   Expression const *elem(size_t i) const { return elems_[i].get(); }
   base::PtrSpan<Expression const> elems() const { return elems_; }
-  auto &&extract() && { return std::move(elems_); }
+  auto extract() && { return std::move(elems_); }
 
   ICARUS_AST_VIRTUAL_METHODS;
 
@@ -638,7 +638,7 @@ struct ComparisonOperator : Expression {
                                  exprs_[i + 1]->range().end());
   }
 
-  auto &&extract() && { return std::move(exprs_); }
+  auto extract() && { return std::move(exprs_); }
 
   ICARUS_AST_VIRTUAL_METHODS;
 

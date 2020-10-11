@@ -84,26 +84,6 @@ cc_library(
 )
 
 cc_library(
-    name = "inliner",
-    hdrs = ["inliner.h"],
-    srcs = ["inliner.cc"],
-    deps = [
-        ":builder",
-        ":compiled_fn",
-        ":local_block_interpretation",
-        "//base:log",
-        "//base:macros",
-        "//ir:compiled_jump",
-        "//ir/instruction:inliner",
-        "//ir/blocks:basic",
-        "//ir/value:reg",
-        "//type:function",
-        "//type:type",
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
-)
-
-cc_library(
     name = "local_block_interpretation",
     hdrs = ["local_block_interpretation.h"],
     srcs = [],

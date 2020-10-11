@@ -7,12 +7,53 @@
 #include "compiler/compiler.h"
 #include "compiler/dispatch/parameters_and_arguments.h"
 #include "ir/compiled_scope.h"
-#include "ir/inliner.h"
+#include "ir/instruction/inliner.h"
 #include "ir/value/reg.h"
 #include "ir/value/scope.h"
 #include "ir/value/value.h"
 
 namespace compiler {
+namespace {
+
+absl::flat_hash_map<
+    std::string_view,
+    std::pair<ir::BasicBlock *, core::FnArgs<type::Typed<ir::Value>>>>
+InlineJumpIntoCurrent(ir::Builder &bldr, ir::Jump to_be_inlined,
+                      absl::Span<ir::Value const> arguments,
+                      ir::LocalBlockInterpretation const &block_interp) {
+  auto const *jump           = ir::CompiledJump::From(to_be_inlined);
+  auto *start_block          = bldr.CurrentBlock();
+  size_t inlined_start_index = bldr.CurrentGroup()->blocks().size();
+
+  auto *into = bldr.CurrentGroup();
+  ir::InstructionInliner inl(jump, into, block_interp);
+
+  bldr.CurrentBlock()   = start_block;
+  size_t i              = 0;
+  auto const *jump_type = jump->type();
+  if (auto *state_type = jump_type->state()) {
+    type::Apply(state_type, [&](auto tag) -> ir::Reg {
+      using T = typename decltype(tag)::type;
+      return ir::MakeReg<ir::RegOr<T>>(arguments[i++].get<ir::RegOr<T>>());
+    });
+  }
+  for (auto const &p : jump_type->params()) {
+    type::Apply(p.value, [&](auto tag) -> ir::Reg {
+      using T = typename decltype(tag)::type;
+      return ir::MakeReg<ir::RegOr<T>>(arguments[i++].get<ir::RegOr<T>>());
+    });
+    // TODO Handle types not covered by Apply (structs, etc).
+  }
+
+  auto *entry = inl.InlineAllBlocks();
+
+  bldr.CurrentBlock() = start_block;
+  bldr.UncondJump(entry);
+
+  return std::move(inl).ExtractNamedBlockMapping();
+}
+
+}  // namespace
 
 ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
   LOG("ScopeNode", "Emitting IR for ScopeNode");
@@ -41,8 +82,15 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
   });
   base::defer d = [&] { pop_scope_landing(); };
 
-  auto local_interp =
-      builder().MakeLocalBlockInterpretation(node, args_block, landing_block);
+  // Add new blocks
+  absl::flat_hash_map<ast::BlockNode const *, ir::BasicBlock *> interp_map;
+  for (auto const &block : node->blocks()) {
+    interp_map.emplace(&block, builder().AddBlock(absl::StrCat(
+                                   "Start of block `", block.name(), "`.")));
+  }
+
+  ir::LocalBlockInterpretation local_interp(std::move(interp_map), args_block,
+                                            landing_block);
 
   // Evaluate the arguments on the initial `args_block`.
   builder().UncondJump(args_block);
@@ -52,6 +100,11 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
   auto const &inits = compiled_scope->inits();
   ASSERT(inits.size() == 1u);
   auto &init = *inits.begin();
+  // TODO: I'd rather assert that this is true.
+  if (ir::CompiledJump::From(init)->work_item) {
+    auto f = std::move(*ir::CompiledJump::From(init)->work_item);
+    if (f) { std::move(f)(); }
+  }
 
   auto args = node->args().Transform([this](ast::Expression const *expr) {
     return type::Typed<ir::Value>(EmitValue(expr), type_of(expr));
@@ -63,10 +116,17 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
           [](auto const &p) { return type::QualType::NonConstant(p.type()); }),
       args);
 
-  auto block_map = ir::Inline(builder(), init, arg_values, local_interp);
+  auto block_map =
+      InlineJumpIntoCurrent(builder(), init, arg_values, local_interp);
 
   for (auto const &block_node : node->blocks()) {
-    auto const &[block, args] = block_map.at(block_node.name());
+    // It's possible that a block nodes is provably inaccessible. In such cases
+    // we do not emit basic blocks for it in `InlineJumpIntoCurrent` and do not
+    // need to wire anything up here either.
+    auto iter = block_map.find(block_node.name());
+    if (iter == block_map.end()) { continue; }
+
+    auto const &[block, args] = iter->second;
     builder().CurrentBlock()  = block;
 
     auto *start = local_interp[block_node.name()];
@@ -88,7 +148,14 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
     // TODO: Choose the right jump.
     ASSERT(afters.size() == 1u);
     auto &after = *afters.begin();
-    auto landing_block_map = ir::Inline(builder(), after, {}, local_interp);
+    // TODO: I'd rather assert that this is true.
+    if (ir::CompiledJump::From(after)->work_item) {
+      auto f = std::move(*ir::CompiledJump::From(after)->work_item);
+      if (f) { std::move(f)(); }
+    }
+
+    auto landing_block_map =
+        InlineJumpIntoCurrent(builder(), after, {}, local_interp);
     // TODO: This is a hack/wrong
     for (const auto &[name, block_and_args] : landing_block_map) {
       builder().CurrentBlock() = block_and_args.first;
