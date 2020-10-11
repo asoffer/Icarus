@@ -332,8 +332,28 @@ struct Builder {
       return Cast<float, ToType>(v->get<RegOr<float>>());
     } else if (v.type() == type::Float64) {
       return Cast<double, ToType>(v->get<RegOr<double>>());
+    } else if (v.type()->is<type::Enum>()) {
+      auto result = CurrentGroup()->Reserve();
+      CurrentBlock()->Append(UnwrapEnumInstruction{
+          .value = v->get<ir::RegOr<ir::EnumVal>>(), .result = result});
+      if constexpr (base::meta<ToType> ==
+                    base::meta<ir::EnumVal::underlying_type>) {
+        return result;
+      } else {
+        return Cast<ir::EnumVal::underlying_type, ToType>(result);
+      }
+    } else if (v.type()->is<type::Flags>()) {
+      auto result = CurrentGroup()->Reserve();
+      CurrentBlock()->Append(UnwrapFlagsInstruction{
+          .value = v->get<ir::RegOr<ir::FlagsVal>>(), .result = result});
+      if constexpr (base::meta<ToType> ==
+                    base::meta<ir::FlagsVal::underlying_type>) {
+        return result;
+      } else {
+        return Cast<ir::FlagsVal::underlying_type, ToType>(result);
+      }
     } else {
-      UNREACHABLE();
+      UNREACHABLE(base::meta<ToType>, ", ", *v.type());
     }
   }
 

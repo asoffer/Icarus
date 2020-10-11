@@ -3,42 +3,6 @@
 
 namespace compiler {
 
-ir::Value Compiler::EmitValue(ast::Identifier const *node) {
-  auto potential_decls = data().decls(node);
-  switch (potential_decls.size()) {
-    case 0:
-      UNREACHABLE(
-          "If this decl didn't exist type-checking for this identifier would "
-          "have already triggered.");
-    case 1: {
-      auto const *decl = potential_decls[0];
-      if (decl->flags() & ast::Declaration::f_IsConst) {
-        return EmitValue(decl);
-      } else if (decl->flags() & ast::Declaration::f_IsFnParam) {
-        auto const &qt = *ASSERT_NOT_NULL(data().qual_type(node));
-        ir::Reg reg    = data().addr(decl);
-        return (decl->flags() & ast::Declaration::f_IsOutput) and
-                       not qt.type()->is_big()
-                   ? builder().Load(reg, qt.type())
-                   : ir::Value(reg);
-      } else {
-        auto const &qt = *ASSERT_NOT_NULL(data().qual_type(node));
-        auto lval      = EmitRef(node);
-        if (not lval.is_reg()) { NOT_YET(); }
-        return ir::Value(builder().PtrFix(lval.reg(), qt.type()));
-      }
-    } break;
-    default: NOT_YET();
-  }
-}
-
-ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Identifier const *node) {
-  auto potential_decls = data().decls(node);
-  ASSERT(potential_decls.size() == 1u);
-  return data().addr(potential_decls[0]);
-}
-
-// TODO: Unit tests
 void Compiler::EmitMoveInit(
     ast::Identifier const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
@@ -55,12 +19,34 @@ void Compiler::EmitCopyInit(
       type::Typed<ir::Reg>(to[0]->reg(), to[0].type()));
 }
 
+ir::Value Compiler::EmitValue(ast::Identifier const *node) {
+  LOG("Identifier", "%s", node->token());
+  auto decl_span = data().decls(node);
+  ASSERT(decl_span.size() != 0u);
+  if (decl_span[0]->flags() & ast::Declaration::f_IsConst) {
+    return EmitValue(decl_span[0]);
+  }
+  if (decl_span[0]->flags() & ast::Declaration::f_IsFnParam) {
+    auto *t     = type_of(node);
+    ir::Reg reg = data().addr(decl_span[0]);
+    return (decl_span[0]->flags() & ast::Declaration::f_IsOutput) and
+                   not t->is_big()
+               ? builder().Load(reg, t)
+               : ir::Value(reg);
+  } else {
+    auto *t   = ASSERT_NOT_NULL(type_of(node));
+    auto lval = EmitRef(node);
+    if (not lval.is_reg()) { NOT_YET(); }
+    return ir::Value(builder().PtrFix(lval.reg(), t));
+  }
+}
+
 void Compiler::EmitAssign(
     ast::Identifier const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
   auto t = data().qual_type(node)->type();
-  Visit(t, *to[0], type::Typed{EmitValue(node), t}, EmitCopyAssignTag{});
+  EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
 }
 
 }  // namespace compiler

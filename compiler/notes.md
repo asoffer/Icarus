@@ -23,3 +23,4 @@
   The problem here is the initialization from `0` when `x` isn't constrained.
   I think once we have interfaces We can require that `$x` is constrained to be
   initializable from `0`.
+* For specified values on flags, should those be bit positions or the actual flag values?

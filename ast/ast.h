@@ -853,7 +853,7 @@ struct Label : Expression {
       : Expression(range), label_(std::move(label)) {}
   ~Label() override {}
 
-  ir::Label value() const { return ir::Label(label_); }
+  ir::Label value() const { return ir::Label(&label_); }
 
   ICARUS_AST_VIRTUAL_METHODS;
 

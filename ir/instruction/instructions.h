@@ -57,6 +57,39 @@ struct CastInstruction
   Reg result;
 };
 
+// TODO: Stop storing this separately in the IR so there's no need for this sort
+// of instruction. Essentially the only reason we have this is because we can't
+// read an EnumVal as an EnumVal::underlying_type.
+struct UnwrapEnumInstruction
+    : base::Extend<UnwrapEnumInstruction>::With<
+          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat = "%2$s = unwrap enum %1$s";
+
+  void Apply(interpretter::ExecutionContext& ctx) const {
+    ctx.current_frame().regs_.set(result, ctx.resolve(value).value);
+  }
+
+  RegOr<ir::EnumVal> value;
+  Reg result;
+};
+
+// TODO: Stop storing this separately in the IR so there's no need for this sort
+// of instruction. Essentially the only reason we have this is because we can't
+// read an FlagsVal as an FlagsVal::underlying_type.
+struct UnwrapFlagsInstruction
+    : base::Extend<UnwrapFlagsInstruction>::With<
+          ByteCodeExtension, InlineExtension, DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat = "%2$s = unwrap flags %1$s";
+
+  void Apply(interpretter::ExecutionContext& ctx) const {
+    ctx.current_frame().regs_.set(result, ctx.resolve(value).value);
+  }
+
+  RegOr<ir::FlagsVal> value;
+  Reg result;
+};
+
+
 struct NotInstruction
     : base::Extend<NotInstruction>::With<ByteCodeExtension, InlineExtension,
                                          DebugFormatExtension> {

@@ -40,11 +40,10 @@ struct Value {
 
   explicit Value() : Value(Empty{}) {}
 
-  using supported_types =
-      base::type_list<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                      uint16_t, uint32_t, uint64_t, float, double,
-                      type::Type const*, Reg, Addr, String, FlagsVal, EnumVal,
-                      ModuleId, Fn, GenericFn, Jump, Block, Scope, Empty>;
+  using supported_types = base::type_list<
+      bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t,
+      uint64_t, float, double, type::Type const*, Reg, Addr, String, FlagsVal,
+      EnumVal, ModuleId, Fn, GenericFn, Jump, Block, Scope, Label, Empty>;
 
   // Constructs a `Value` from the passed in type. The parameter may be of any
   // type supported by `Value` or an `ir::RegOr<T>` where `T` is an type

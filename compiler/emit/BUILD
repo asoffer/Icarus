@@ -79,6 +79,57 @@ cc_test(
 )
 
 cc_library(
+    name = "cast",
+    srcs = ["cast.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+    ],
+)
+
+cc_test(
+    name = "cast_test",
+    srcs = ["cast_test.cc"],
+    deps = [
+        "//compiler",
+        "//test:module",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "goto",
+    srcs = ["goto.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+    ],
+)
+
+# Note: There are no tests for ":goto" directly as these are well-covered by
+# ":scope_node_test".
+
+cc_library(
+    name = "identifier",
+    srcs = ["identifier.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+    ],
+)
+
+# cc_test(
+#     name = "identifier_test",
+#     srcs = ["identifier_test.cc"],
+#     deps = [
+#         "//compiler",
+#         "//test:module",
+#         "@com_google_googletest//:gtest_main",
+#     ],
+# )
+
+cc_library(
     name = "index",
     srcs = ["index.cc"],
     deps = [
@@ -96,6 +147,18 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_library(
+    name = "miscellaneous",
+    srcs = ["miscellaneous.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+        "//ir/value",
+    ],
+)
+
+# TODO: Miscellaneous test
 
 cc_library(
     name = "scope_node",

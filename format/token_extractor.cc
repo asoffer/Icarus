@@ -121,7 +121,7 @@ void TokenExtractor::Visit(ast::Jump const *node) {
 }
 
 void TokenExtractor::Visit(ast::Label const *node) {
-  line_builder_.write(node->value().value);
+  line_builder_.write(*node->value());
 }
 
 void TokenExtractor::Visit(ast::ReturnStmt const *node) {

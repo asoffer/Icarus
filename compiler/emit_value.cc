@@ -56,10 +56,6 @@ base::move_func<void()> *DeferBody(Compiler::PersistentResources resources,
 
 }  // namespace
 
-ir::Value Compiler::EmitValue(ast::ArgumentType const *node) {
-  return ir::Value(ASSERT_NOT_NULL(data().arg_type(node->name())));
-}
-
 ir::Value Compiler::EmitValue(ast::Assignment const *node) {
   std::vector<type::Typed<ir::RegOr<ir::Addr>>> lhs_refs;
   lhs_refs.reserve(node->lhs().size());
@@ -103,10 +99,6 @@ ir::Value Compiler::EmitValue(ast::BlockLiteral const *node) {
 
   return ir::Value(builder().MakeBlock(data().add_block(), std::move(befores),
                                        std::move(afters)));
-}
-
-ir::Value Compiler::EmitValue(ast::BuiltinFn const *node) {
-  return ir::Value(ir::Fn(node->value()));
 }
 
 // TODO: Checking if an AST node is a builtin is problematic because something as simple as
@@ -323,54 +315,6 @@ ir::Value Compiler::EmitValue(ast::Call const *node) {
     default: NOT_YET();
   }
   // TODO node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
-}
-
-void Compiler::EmitCopyInit(
-    ast::Cast const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  // TODO user-defined-types
-  ASSERT(to.size() == 1u);
-  auto t = data().qual_type(node)->type();
-  EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
-}
-
-void Compiler::EmitMoveInit(
-    ast::Cast const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  // TODO user-defined-types
-  ASSERT(to.size() == 1u);
-  auto t = data().qual_type(node)->type();
-  EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>>(*to[0], t),
-                 type::Typed<ir::Value>(EmitValue(node), t));
-}
-
-ir::Value Compiler::EmitValue(ast::Cast const *node) {
-  // TODO user-defined-types
-
-  auto *to_type = ASSERT_NOT_NULL(type_of(node));
-  auto results  = EmitValue(node->expr());
-  if (to_type == type::Type_) {
-    return ir::Value(results.get<type::Type const *>());
-  }
-  auto *from_type = type_of(node->expr());
-  if (type::IsNumeric(from_type)) {
-    if (type::IsIntegral(from_type)) {
-      return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
-                              uint16_t, uint32_t, uint64_t, float, double,
-                              ir::EnumVal, ir::FlagsVal>(
-          to_type, [&](auto tag) {
-            return ir::Value(builder().CastTo<typename decltype(tag)::type>(
-                type::Typed<ir::Value>(results, from_type)));
-          });
-    } else {
-      return type::ApplyTypes<float, double>(to_type, [&](auto tag) {
-        return ir::Value(builder().CastTo<typename decltype(tag)::type>(
-            type::Typed<ir::Value>(results, from_type)));
-      });
-    }
-  } else {
-    NOT_YET();
-  }
 }
 
 ir::Value Compiler::EmitValue(ast::Declaration const *node) {
@@ -695,121 +639,6 @@ ir::Value Compiler::EmitValue(ast::FunctionType const *node) {
   }
 
   return ir::Value(builder().Arrow(std::move(param_vals), std::move(out_vals)));
-}
-
-void Compiler::EmitMoveInit(
-    ast::Identifier const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  EmitMoveInit(
-      type::Typed<ir::Value>(EmitValue(node), data().qual_type(node)->type()),
-      type::Typed<ir::Reg>(to[0]->reg(), to[0].type()));
-}
-
-void Compiler::EmitCopyInit(
-    ast::Identifier const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  EmitCopyInit(
-      type::Typed<ir::Value>(EmitValue(node), data().qual_type(node)->type()),
-      type::Typed<ir::Reg>(to[0]->reg(), to[0].type()));
-}
-
-ir::Value Compiler::EmitValue(ast::Identifier const *node) {
-  LOG("Identifier", "%s", node->token());
-  auto decl_span = data().decls(node);
-  ASSERT(decl_span.size() != 0u);
-  if (decl_span[0]->flags() & ast::Declaration::f_IsConst) {
-    return EmitValue(decl_span[0]);
-  }
-  if (decl_span[0]->flags() & ast::Declaration::f_IsFnParam) {
-    auto *t     = type_of(node);
-    ir::Reg reg = data().addr(decl_span[0]);
-    return (decl_span[0]->flags() & ast::Declaration::f_IsOutput) and
-                   not t->is_big()
-               ? builder().Load(reg, t)
-               : ir::Value(reg);
-  } else {
-    auto *t   = ASSERT_NOT_NULL(type_of(node));
-    auto lval = EmitRef(node);
-    if (not lval.is_reg()) { NOT_YET(); }
-    return ir::Value(builder().PtrFix(lval.reg(), t));
-  }
-}
-
-void Compiler::EmitAssign(
-    ast::Identifier const *node,
-    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  ASSERT(to.size() == 1u);
-  auto t = data().qual_type(node)->type();
-  EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
-}
-
-ir::Value Compiler::EmitValue(ast::Import const *node) {
-  auto module_id = data().imported_module(node);
-  ASSERT(module_id != ir::ModuleId::Invalid());
-  return ir::Value(module_id);
-}
-
-void EmitJump(Compiler &c, absl::Span<ast::JumpOption const> options) {
-  std::vector<std::string_view> names;
-  names.reserve(options.size());
-
-  std::vector<ir::BasicBlock *> blocks;
-  blocks.reserve(options.size());
-
-  std::vector<core::FnArgs<type::Typed<ir::Value>>> args;
-  args.reserve(options.size());
-
-  auto current_block = c.builder().CurrentBlock();
-
-  LOG("EmitJump", "Emitting options...");
-  for (auto const &opt : options) {
-    ir::BasicBlock *block = c.builder().AddBlock(
-        absl::StrCat("Args computation for block `", opt.block(), "`."));
-
-    LOG("EmitJump", "... %s (%p)", opt.block(), block);
-
-    blocks.push_back(block);
-    names.push_back(opt.block());
-
-    c.builder().CurrentBlock() = block;
-
-    args.push_back(opt.args().Transform([&c](auto const &expr) {
-      return type::Typed<ir::Value>(c.EmitValue(expr.get()),
-                                    c.type_of(expr.get()));
-    }));
-  }
-
-  c.builder().CurrentBlock() = current_block;
-  c.builder().ChooseJump(std::move(names), std::move(blocks), std::move(args));
-}
-
-ir::Value Compiler::EmitValue(ast::ConditionalGoto const *node) {
-  auto condition    = EmitValue(node->condition());
-  auto *true_block  = builder().AddBlock("ConditionalGoto-true");
-  auto *false_block = builder().AddBlock("ConditionalGoto-false");
-  builder().CondJump(condition.get<ir::RegOr<bool>>(), true_block, false_block);
-
-  builder().CurrentBlock() = true_block;
-  EmitJump(*this, node->true_options());
-
-  builder().CurrentBlock() = false_block;
-  EmitJump(*this, node->false_options());
-
-  return ir::Value();
-}
-
-ir::Value Compiler::EmitValue(ast::UnconditionalGoto const *node) {
-  LOG("Goto", "Emit %s", node->DebugString());
-  auto *block = builder().AddBlock("UncoditionalGoto");
-  builder().UncondJump(block);
-
-  builder().CurrentBlock() = block;
-  EmitJump(*this, node->options());
-  return ir::Value();
-}
-
-ir::Value Compiler::EmitValue(ast::Label const *node) {
-  return ir::Value(/* TODO node->value() */);
 }
 
 ir::Value Compiler::EmitValue(ast::Jump const *node) {
