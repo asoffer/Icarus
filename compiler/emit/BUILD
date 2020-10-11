@@ -79,6 +79,26 @@ cc_test(
 )
 
 cc_library(
+    name = "block_literal",
+    srcs = ["block_literal.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+        "//ir/value",
+    ],
+)
+
+cc_test(
+    name = "block_literal_test",
+    srcs = ["block_literal_test.cc"],
+    deps = [
+        "//compiler",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "cast",
     srcs = ["cast.cc"],
     deps = [

@@ -79,28 +79,6 @@ ir::Value Compiler::EmitValue(ast::Assignment const *node) {
   return ir::Value();
 }
 
-ir::Value Compiler::EmitValue(ast::BlockLiteral const *node) {
-  LOG("BlockLiteral", "Emitting value for %p: %s", node, node->DebugString());
-  // TODO: Check the result of body verification.
-  if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
-
-  std::vector<ir::RegOr<ir::Fn>> befores;
-  std::vector<ir::RegOr<ir::Jump>> afters;
-  befores.reserve(node->before().size());
-  for (auto const &decl : node->before()) {
-    ASSERT((decl->flags() & ast::Declaration::f_IsConst) != 0);
-    befores.push_back(EmitValue(decl).get<ir::RegOr<ir::Fn>>());
-  }
-
-  for (auto const &decl : node->after()) {
-    ASSERT((decl->flags() & ast::Declaration::f_IsConst) != 0);
-    afters.push_back(EmitValue(decl).get<ir::RegOr<ir::Jump>>());
-  }
-
-  return ir::Value(builder().MakeBlock(data().add_block(), std::move(befores),
-                                       std::move(afters)));
-}
-
 // TODO: Checking if an AST node is a builtin is problematic because something as simple as
 // ```
 // f ::= bytes

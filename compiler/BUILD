@@ -114,6 +114,7 @@ cc_library(
         "//compiler/emit:array_literal",
         "//compiler/emit:array_type",
         "//compiler/emit:binary_operator",
+        "//compiler/emit:block_literal",
         "//compiler/emit:cast",
         "//compiler/emit:goto",
         "//compiler/emit:identifier",

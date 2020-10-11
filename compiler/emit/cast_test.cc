@@ -15,8 +15,6 @@ using CastTest = testing::TestWithParam<TestCase>;
 TEST_P(CastTest, Cast) {
   auto const &[ expr, expected] = GetParam();
   test::TestModule mod;
-  // TODO: We can't use `s` as the field member because the compiler thinks
-  // there's an ambiguity (there isn't).
   mod.AppendCode(R"(
   E ::= enum { A ::= 1 as nat64 \\ B ::= 2 as nat64 \\ C ::= 3 as nat64 }
   F ::= flags { A ::= 1 as nat64 \\ B ::= 2 as nat64 \\ C ::= 4 as nat64 }
@@ -32,10 +30,6 @@ TEST_P(CastTest, Cast) {
   EXPECT_EQ(*result, expected);
 }
 
-// Note: We test both with literals and with a unary-operator applied directly
-// to a function call. The former helps cover the constant-folding mechanisms
-// built in to the ir::Builder. The latter helps cover the common case for code
-// emission.
 INSTANTIATE_TEST_SUITE_P(
     All, CastTest,
     testing::ValuesIn(
