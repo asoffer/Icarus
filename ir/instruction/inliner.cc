@@ -59,8 +59,12 @@ InstructionInliner::InstructionInliner(
         // wired to their children so we can follow potentially many more such
         // blocks.
         auto& [next_block, args] = named_blocks_[next_name];
-        next_block =
-            into->AppendBlock(BasicBlock::DebugInfo{.cluster_index = index});
+        if (next_block == nullptr) {
+          next_block = into->AppendBlock(BasicBlock::DebugInfo{
+              .header        = absl::StrCat("Landing to start ", next_name),
+              .cluster_index = index});
+        }
+        LOG("", "%s", named_blocks_);
       } else {
         UNREACHABLE(*block);
       }
@@ -77,8 +81,11 @@ InstructionInliner::InstructionInliner(
     // needs to be updated, the block mapping is already present.
     blocks_.emplace(
         block_to_copy,
-        into->AppendBlock(*block_to_copy,
-                          BasicBlock::DebugInfo{.cluster_index = index}));
+        into->AppendBlock(
+            *block_to_copy,
+            BasicBlock::DebugInfo{
+                .header = absl::StrCat("Jump: ", block_to_copy->debug().header),
+                .cluster_index = index}));
   }
 }
 

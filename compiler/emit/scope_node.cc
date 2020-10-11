@@ -15,6 +15,7 @@
 namespace compiler {
 namespace {
 
+// TODO: I don't think we need to return the arguments anymore.
 absl::flat_hash_map<
     std::string_view,
     std::pair<ir::BasicBlock *, core::FnArgs<type::Typed<ir::Value>>>>
@@ -119,6 +120,12 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
   auto block_map =
       InlineJumpIntoCurrent(builder(), init, arg_values, local_interp);
 
+  absl::flat_hash_map<std::string_view, std::vector<ir::BasicBlock *>>
+      blocks_to_wire;
+  for (auto const &[name, block_and_args] : block_map) {
+    blocks_to_wire[name].push_back(block_and_args.first);
+  }
+
   for (auto const &block_node : node->blocks()) {
     // It's possible that a block nodes is provably inaccessible. In such cases
     // we do not emit basic blocks for it in `InlineJumpIntoCurrent` and do not
@@ -156,17 +163,19 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
 
     auto landing_block_map =
         InlineJumpIntoCurrent(builder(), after, {}, local_interp);
-    // TODO: This is a hack/wrong
-    for (const auto &[name, block_and_args] : landing_block_map) {
-      builder().CurrentBlock() = block_and_args.first;
-      builder().UncondJump(local_interp[name]);
+    for (auto const &[name, block_and_args] : landing_block_map) {
+      blocks_to_wire[name].push_back(block_and_args.first);
     }
   }
 
-  // TODO: Support arguments to `done()`. Need to bind these to local variables.
-  auto const &[done_block, done_args] = block_map.at("done");
-  builder().CurrentBlock()            = done_block;
-  builder().UncondJump(landing_block);
+  LOG("ScopeNode", "Blocks to wire up: %s", blocks_to_wire);
+  for (const auto &[name, blocks] : blocks_to_wire) {
+    auto *landing = local_interp[name];
+    for (auto *block : blocks) {
+      builder().CurrentBlock() = block;
+      builder().UncondJump(landing);
+    }
+  }
 
   builder().CurrentBlock() = landing_block;
   return ir::Value();

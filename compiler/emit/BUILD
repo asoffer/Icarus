@@ -112,6 +112,16 @@ cc_library(
     ],
 )
 
+cc_test(
+    name = "scope_node_test",
+    srcs = ["scope_node_test.cc"],
+    deps = [
+        "//compiler",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 cc_library(
     name = "terminal",
     srcs = ["terminal.cc"],
