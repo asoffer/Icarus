@@ -7,8 +7,8 @@ namespace type {
 
 // `Pointer` is a type representing the address of an object of the given
 // pointed-to type (the `pointee`).
-struct Pointer : Type {
-  friend Pointer const *Ptr(Type const *t);
+struct Pointer : LegacyType {
+  friend Pointer const *Ptr(LegacyType const *t);
 
   ~Pointer() override {}
 
@@ -22,20 +22,20 @@ struct Pointer : Type {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
 
-  constexpr Type const *pointee() const { return pointee_; }
+  constexpr LegacyType const *pointee() const { return pointee_; }
 
   Completeness completeness() const override { return Completeness::Complete; }
 
  protected:
-  Pointer(Type const *t)
-      : Type(Type::Flags{.is_default_initializable = 1,
-                         .is_copyable              = 1,
-                         .is_movable               = 1,
-                         .has_destructor           = 0}),
+  Pointer(LegacyType const *t)
+      : LegacyType(LegacyType::Flags{.is_default_initializable = 1,
+                                     .is_copyable              = 1,
+                                     .is_movable               = 1,
+                                     .has_destructor           = 0}),
         pointee_(t) {}
 
  private:
-  Type const *pointee_;
+  LegacyType const *pointee_;
 };
 
 // `BufferPointer` is a type representing the address of an object, inside an
@@ -43,7 +43,7 @@ struct Pointer : Type {
 // it also supports arithmetic. `BufferPointer`s are implicitly convertible to
 // `Pointer`s with the same `pointee` type.
 struct BufferPointer : Pointer {
-  friend BufferPointer const *BufPtr(Type const *t);
+  friend BufferPointer const *BufPtr(LegacyType const *t);
 
   ~BufferPointer() override {}
 
@@ -54,11 +54,11 @@ struct BufferPointer : Pointer {
 
  private:
   BufferPointer() = delete;
-  BufferPointer(Type const *t) : Pointer(t) {}
+  BufferPointer(LegacyType const *t) : Pointer(t) {}
 };
 
-Pointer const *Ptr(Type const *t);
-BufferPointer const *BufPtr(Type const *t);
+Pointer const *Ptr(LegacyType const *t);
+BufferPointer const *BufPtr(LegacyType const *t);
 
 }  // namespace type
 #endif  // ICARUS_TYPE_POINTER_H

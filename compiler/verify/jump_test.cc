@@ -17,7 +17,7 @@ TEST(Jump, StatelessSuccess) {
   test::TestModule mod;
   mod.AppendCode(R"(b ::= block {}
   )");
-  auto const *qt = mod.data().qual_type(mod.Append<ast::Expression>(R"(
+  auto const* qt = mod.data().qual_type(mod.Append<ast::Expression>(R"(
     jump() { goto b() }
   )"));
 

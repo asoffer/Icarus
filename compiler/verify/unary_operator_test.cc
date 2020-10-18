@@ -59,7 +59,6 @@ TEST(Init, Success) {
   }
 }
 
-
 TEST(Copy, Uncopyable) {
   test::TestModule mod;
   mod.AppendCode(R"(

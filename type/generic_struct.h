@@ -12,13 +12,13 @@
 
 namespace type {
 
-struct GenericStruct : Type {
+struct GenericStruct : LegacyType {
   explicit GenericStruct(
       std::function<Struct const *(core::FnArgs<Typed<ir::Value>> const &)> fn)
-      : Type(Type::Flags{.is_default_initializable = 0,
-                         .is_copyable              = 1,
-                         .is_movable               = 1,
-                         .has_destructor           = 0}),
+      : LegacyType(LegacyType::Flags{.is_default_initializable = 0,
+                                     .is_copyable              = 1,
+                                     .is_movable               = 1,
+                                     .has_destructor           = 0}),
         gen_(std::move(fn)) {}
   ~GenericStruct() override {}
   void WriteTo(std::string *result) const override {
@@ -27,7 +27,9 @@ struct GenericStruct : Type {
 
   bool is_big() const override { return false; }
 
-  Completeness completeness() const override { return Completeness::Incomplete; }
+  Completeness completeness() const override {
+    return Completeness::Incomplete;
+  }
 
   Struct const *concrete(core::FnArgs<Typed<ir::Value>> const &) const;
 
@@ -43,7 +45,8 @@ struct GenericStruct : Type {
   std::function<Struct const *(core::FnArgs<Typed<ir::Value>> const &)> gen_;
 };
 
-GenericStruct *GenStruct(ast::Scope const *scope, std::vector<Type const *> ts);
+GenericStruct *GenStruct(ast::Scope const *scope,
+                         std::vector<LegacyType const *> ts);
 
 }  // namespace type
 

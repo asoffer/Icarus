@@ -34,8 +34,8 @@ struct NonTypeFunctionOutput {
 };
 
 type::QualType Compiler::VerifyType(ast::FunctionType const *node) {
-  type::Type const *t = type::Type_;
-  type::Quals quals   = type::Quals::Const();
+  type::Type t      = type::Type_;
+  type::Quals quals = type::Quals::Const();
 
   for (auto const *p : node->params()) {
     auto qt = VerifyType(p);

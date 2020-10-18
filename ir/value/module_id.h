@@ -73,7 +73,7 @@ struct ModuleId {
     return os << "ModuleId(" << m.id_ << ")";
   }
 
-  private:
+ private:
   size_t id_;
 };
 

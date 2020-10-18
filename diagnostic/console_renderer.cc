@@ -108,7 +108,8 @@ void ConsoleRenderer::WriteSourceQuote(frontend::Source const *source,
       }
 
       frontend::Offset off{0};
-      while (next_highlight_change and next_highlight_change->line_num == line) {
+      while (next_highlight_change and
+             next_highlight_change->line_num == line) {
         absl::FPrintF(
             out_, "%s",
             line_str.substr(off.value,
@@ -124,7 +125,7 @@ void ConsoleRenderer::WriteSourceQuote(frontend::Source const *source,
             next_highlight_change = highlight_iter->range.begin();
           }
         } else {
-          inside_highlight      = true;
+          inside_highlight = true;
           if (highlight_iter == quote.highlights.end()) {
             next_highlight_change = std::nullopt;
           } else {

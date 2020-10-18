@@ -93,8 +93,8 @@ using CoreInstructionsImpl = InstructionSet<
 using CoreInstructions =
     CoreInstructionsImpl<bool, uint8_t, int8_t, uint16_t, int16_t, uint32_t,
                          int32_t, uint64_t, int64_t, float, double, FlagsVal,
-                         type::Type const *, Addr, EnumVal, String, Fn, Block,
-                         Scope, Jump, ModuleId>;
+                         type::Type, Addr, EnumVal, String, Fn, Block, Scope,
+                         Jump, ModuleId>;
 
 }  // namespace ir
 

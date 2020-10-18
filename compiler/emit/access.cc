@@ -18,7 +18,7 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
     }
   }
 
-  auto *this_type = ASSERT_NOT_NULL(data().qual_type(node))->type();
+  auto this_type = ASSERT_NOT_NULL(data().qual_type(node))->type();
   if (auto const *enum_type = this_type->if_as<type::Enum>()) {
     return ir::Value(*enum_type->EmitLiteral(node->member_name()));
   } else if (auto const *flags_type = this_type->if_as<type::Flags>()) {
@@ -38,10 +38,10 @@ ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Access const *node) {
   size_t deref_count = (op_qt.quals() >= type::Quals::Ref())
                            ? size_t{0}
                            : static_cast<size_t>(-1);
-  auto const *t  = op_qt.type();
+  auto t         = op_qt.type();
   auto const *tp = t->if_as<type::Pointer>();
   while (tp) {
-    t = tp->pointee();
+    t  = tp->pointee();
     tp = t->if_as<type::Pointer>();
     ++deref_count;
   }

@@ -98,7 +98,7 @@ struct Quals {
   friend bool operator<=(Quals lhs, Quals rhs) { return (lhs | rhs) == rhs; }
   friend bool operator>=(Quals lhs, Quals rhs) { return rhs <= lhs; }
 
- // private:
+  // private:
   friend struct QualType;
   constexpr explicit Quals(uint8_t val) : val_(val) {}
   uint8_t val_;
@@ -122,7 +122,7 @@ inline std::ostream &operator<<(std::ostream &os, Quals quals) {
 
 namespace internal_type {
 
-absl::Span<Type const *const> AddPack(absl::Span<Type const *const> types);
+absl::Span<Type const> AddPack(absl::Span<Type const> types);
 
 }  // namespace internal_type
 
@@ -132,15 +132,15 @@ struct QualType {
   // Use SFINAE  to disable braced-initialization for the type parameter. This
   // allows it to fallback to meaning the vector initializer.
   template <typename Arg,
-            std::enable_if_t<std::is_convertible_v<Arg, Type const *>, int> = 0>
+            std::enable_if_t<std::is_convertible_v<Arg, Type>, int> = 0>
   explicit constexpr QualType(Arg t, Quals quals)
-      : data_(reinterpret_cast<uintptr_t>(t) |
+      : data_(reinterpret_cast<uintptr_t>(static_cast<LegacyType const *>(t)) |
               static_cast<uintptr_t>(quals.val_)) {}
 
-  explicit QualType(absl::Span<Type const *const> ts, Quals quals) {
+  explicit QualType(absl::Span<Type const> ts, Quals quals) {
     num_ = ts.size();
     if (ts.size() == 1) {
-      data_ = reinterpret_cast<uintptr_t>(ts[0]) |
+      data_ = reinterpret_cast<uintptr_t>(ts[0].get()) |
               static_cast<uintptr_t>(quals.val_);
     } else {
       auto pack = internal_type::AddPack(ts);
@@ -152,17 +152,17 @@ struct QualType {
     return QualType(nullptr, Quals::Unqualified());
   }
 
-  static constexpr QualType Constant(Type const *t) {
+  static constexpr QualType Constant(Type t) {
     return QualType(t, Quals::Const());
   }
 
-  static constexpr QualType NonConstant(Type const *t) {
+  static constexpr QualType NonConstant(Type t) {
     return QualType(t, Quals::Unqualified());
   }
 
-  Type const *type() const {
+  Type type() const {
     ASSERT(num_ == 1u);
-    return reinterpret_cast<Type const *>(
+    return reinterpret_cast<LegacyType const *>(
         data_ & ~static_cast<uintptr_t>(Quals::All().val_));
   }
 
@@ -194,10 +194,10 @@ struct QualType {
   constexpr bool constant() const { return (quals() & Quals::Const()).val_; }
   constexpr size_t expansion_size() const { return num_; }
 
-  absl::Span<type::Type const *const> expanded() const {
+  absl::Span<type::Type const> expanded() const {
     ASSERT(expansion_size() != 1u);
     return absl::MakeConstSpan(
-        reinterpret_cast<Type const *const *>(
+        reinterpret_cast<Type const *>(
             data_ & ~static_cast<uintptr_t>(Quals::All().val_)),
         num_);
   }
@@ -207,7 +207,7 @@ struct QualType {
     if (expansion_size() == 1) {
       f(type());
     } else {
-      for (auto const *t : expanded()) { f(t); }
+      for (Type t : expanded()) { f(t); }
     }
   }
 

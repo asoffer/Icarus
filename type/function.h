@@ -13,11 +13,11 @@ namespace type {
 
 struct Function : public Callable {
   TYPE_FNS(Function);
-  Function(core::Params<QualType> in, std::vector<Type const *> out)
+  Function(core::Params<QualType> in, std::vector<Type> out)
       : params_(std::move(in)), output_(std::move(out)) {
 #if defined(ICARUS_DEBUG)
     for (auto const &p : params_) { ASSERT(p.value != QualType::Error()); }
-    for (auto *t : output_) { ASSERT(t != nullptr); }
+    for (Type t : output_) { ASSERT(t != nullptr); }
 #endif  // defined(ICARUS_DEBUG)
   }
 
@@ -25,7 +25,7 @@ struct Function : public Callable {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
 
-  std::vector<type::Type const *> return_types(
+  std::vector<type::Type> return_types(
       core::FnArgs<type::Typed<ir::Value>> const &args) const override {
     return output_;
   }
@@ -35,23 +35,23 @@ struct Function : public Callable {
   Completeness completeness() const override { return Completeness::Complete; }
 
   core::Params<QualType> const &params() const { return params_; }
-  absl::Span<Type const *const> output() const { return output_; }
+  absl::Span<Type const> output() const { return output_; }
 
  private:
-  // Each `Param<Type const*>` has a `std::string_view` member representing the
-  // parameter name. This is viewing an identifier owned by a declaration in the
-  // syntax tree which means it is valid for the lifetime of the syntax tree.
-  // However, this type is never destroyed, so it's lifetime is indeed longer
-  // than that of the syntax tree.
+  // Each `Param<LegacyType const*>` has a `std::string_view` member
+  // representing the parameter name. This is viewing an identifier owned by a
+  // declaration in the syntax tree which means it is valid for the lifetime of
+  // the syntax tree. However, this type is never destroyed, so it's lifetime is
+  // indeed longer than that of the syntax tree.
   //
   // TODO either fix this, or come up with a simple and robust rule we can
   // follow to ensure this is safe. Do we keep the syntax tree around for the
   // lifetime of the program? Any program?
   core::Params<QualType> params_;
-  std::vector<Type const *> output_;
+  std::vector<Type> output_;
 };
 
-Function const *Func(core::Params<QualType> in, std::vector<Type const *> out);
+Function const *Func(core::Params<QualType> in, std::vector<Type> out);
 
 }  // namespace type
 

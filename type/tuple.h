@@ -6,10 +6,10 @@
 #include "type/type.h"
 
 namespace type {
-struct Tuple : public Type {
+struct Tuple : public LegacyType {
   Tuple() = delete;
   ~Tuple() {}
-  Tuple(std::vector<Type const *> entries);
+  Tuple(std::vector<Type> entries);
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
@@ -25,11 +25,11 @@ struct Tuple : public Type {
 
   Completeness completeness() const override {
     Completeness c = Completeness::Complete;
-    for (auto const *e : entries_) { c = std::min(c, e->completeness()); }
+    for (Type e : entries_) { c = std::min(c, e->completeness()); }
     return c;
   }
 
-  std::vector<Type const *> entries_;
+  std::vector<Type> entries_;
 
   base::lazy<ir::NativeFn> destroy_func_;
   base::lazy<ir::NativeFn> init_func_;
@@ -37,9 +37,9 @@ struct Tuple : public Type {
   base::lazy<ir::NativeFn> move_assign_func_;
 };
 
-Type const *Tup(std::vector<Type const *> entries);
+Type Tup(std::vector<Type> entries);
 
-Type const *Void();
+Type Void();
 
 }  // namespace type
 

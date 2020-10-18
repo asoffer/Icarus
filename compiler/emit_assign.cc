@@ -13,8 +13,8 @@ namespace compiler {
 
 template <SpecialFunctionCategory Cat>
 static ir::NativeFn CreateAssign(Compiler *compiler, type::Array const *a) {
-  type::QualType q    = type::QualType::NonConstant(type::Ptr(a));
-  auto *data_ptr_type = type::Ptr(a->data_type());
+  type::QualType q   = type::QualType::NonConstant(type::Ptr(a));
+  auto data_ptr_type = type::Ptr(a->data_type());
   auto fn_type =
       type::Func(core::Params<type::QualType>{core::AnonymousParam(q),
                                               core::AnonymousParam(q)},
@@ -100,8 +100,8 @@ static ir::NativeFn CreateAssign(Compiler *compiler, type::Struct const *s) {
     auto var            = ir::Reg::Arg(1);
 
     for (size_t i = 0; i < s->fields_.size(); ++i) {
-      auto *field_type = s->fields_.at(i).type;
-      auto from        = ir::Value(
+      auto field_type = s->fields_.at(i).type;
+      auto from       = ir::Value(
           compiler->builder().PtrFix(bldr.Field(val, s, i).get(), field_type));
       auto to = bldr.Field(var, s, i).get();
 
@@ -250,7 +250,7 @@ void Compiler::EmitCopyAssign(
 
       for (size_t i : base::make_random_permutation(
                absl::BitGen{}, to.type()->entries_.size())) {
-        auto const *entry = to.type()->entries_.at(i);
+        auto entry = to.type()->entries_.at(i);
         EmitCopyAssign(
             type::Typed<ir::RegOr<ir::Addr>>(
                 builder().Field(var, to.type(), i).get(), entry),
@@ -268,8 +268,9 @@ void Compiler::EmitCopyAssign(
   builder().Copy(to.type(), from->get<ir::Reg>(), *to);
 }
 
-void Compiler::EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>, type::Tuple> const &to,
-                        type::Typed<ir::Value> const &from) {
+void Compiler::EmitMoveAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Tuple> const &to,
+    type::Typed<ir::Value> const &from) {
   to.type()->move_assign_func_.init([=]() {
     type::QualType q = type::QualType::NonConstant(type::Ptr(to.type()));
     auto fn_type =
@@ -287,7 +288,7 @@ void Compiler::EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>, type::Tuple> cons
 
       for (size_t i : base::make_random_permutation(
                absl::BitGen{}, to.type()->entries_.size())) {
-        auto const *entry = to.type()->entries_.at(i);
+        auto entry = to.type()->entries_.at(i);
         EmitMoveAssign(
             type::Typed<ir::RegOr<ir::Addr>>(
                 builder().Field(var, to.type(), i).get(), entry),
@@ -320,6 +321,5 @@ void Compiler::EmitMoveAssign(
       [=]() { return CreateAssign<Move>(this, to.type()); });
   builder().Move(to.type(), from->get<ir::Reg>(), *to);
 }
-
 
 }  // namespace compiler

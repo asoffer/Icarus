@@ -68,11 +68,11 @@ bool VerifyImpl(diagnostic::DiagnosticConsumer &diag,
     return false;
   }
 
-  type::Type const *to_type =
+  type::Type to_type =
       expansion_size == 1
           ? to.type()
           : type::Tup({to.expanded().begin(), to.expanded().end()});
-  type::Type const *from_type =
+  type::Type from_type =
       expansion_size == 1
           ? from.type()
           : type::Tup({from.expanded().begin(), from.expanded().end()});

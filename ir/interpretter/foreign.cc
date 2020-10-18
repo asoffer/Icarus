@@ -33,7 +33,7 @@ void ExtractReturnValue(ffi_arg *ret, ir::Addr ret_addr) {
   }
 }
 
-ffi_type *ToFfiType(type::Type const *t) {
+ffi_type *ToFfiType(type::Type t) {
   if (t == type::Void()) { return &ffi_type_void; }
   if (t == type::Int8) { return &ffi_type_sint8; }
   if (t == type::Int16) { return &ffi_type_sint16; }
@@ -82,7 +82,7 @@ void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
     pointer_values.reserve(fn_type->params().size());
     if (ffi_type == &ffi_type_pointer) {
       ir::Addr addr = arguments.get<ir::Addr>(kMaxSize * i++);
-      LOG("CallFn","Pushing pointer addr = %s", addr);
+      LOG("CallFn", "Pushing pointer addr = %s", addr);
       switch (addr.kind()) {
         case ir::Addr::Kind::Heap: {
           pointer_values.push_back(addr.heap());
@@ -103,7 +103,7 @@ void CallFn(ir::ForeignFn f, base::untyped_buffer const &arguments,
 
   ASSERT(fn_type->output().size() <= 1u);
 
-  auto *out_type =
+  auto out_type =
       fn_type->output().empty() ? type::Void() : fn_type->output()[0];
 
   ffi_cif cif;

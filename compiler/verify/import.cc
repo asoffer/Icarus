@@ -34,7 +34,7 @@ struct InvalidImport {
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  type::Type const *type;
+  type::Type type;
   frontend::SourceRange range;
 };
 

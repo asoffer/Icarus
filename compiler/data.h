@@ -71,8 +71,7 @@ struct DependentComputedData {
 
   type::QualType set_qual_type(ast::Expression const *expr, type::QualType qt);
 
-
-  ir::Scope add_scope(type::Type const *state_type) {
+  ir::Scope add_scope(type::Type state_type) {
     return ir::Scope(&scopes_.emplace_front(state_type));
   }
   ir::Block add_block() { return ir::Block(&blocks_.emplace_front()); }
@@ -119,7 +118,7 @@ struct DependentComputedData {
                       /* from = */ std::vector<ast::Node const *>>
       extraction_map_;
 
-  absl::flat_hash_map<type::Type const *, ir::NativeFn> init_, copy_assign_,
+  absl::flat_hash_map<type::Type, ir::NativeFn> init_, copy_assign_,
       move_assign_, destroy_;
 
   ir::ModuleId imported_module(ast::Import const *node);
@@ -135,7 +134,7 @@ struct DependentComputedData {
   // added.
   struct InsertDependentResult {
     core::Params<std::pair<ir::Value, type::QualType>> &params;
-    std::vector<type::Type const *> &rets;
+    std::vector<type::Type> &rets;
     DependentComputedData &data;
     bool inserted;
   };
@@ -189,12 +188,12 @@ struct DependentComputedData {
     return nullptr;
   }
 
-  type::Type const *arg_type(std::string_view name) const {
+  type::Type arg_type(std::string_view name) const {
     auto iter = arg_type_.find(name);
     return iter == arg_type_.end() ? nullptr : iter->second;
   }
 
-  void set_arg_type(std::string_view name, type::Type const *t) {
+  void set_arg_type(std::string_view name, type::Type t) {
     arg_type_.emplace(name, t);
   }
 
@@ -263,7 +262,7 @@ struct DependentComputedData {
   absl::flat_hash_map<ast::Expression const *, type::QualType> qual_types_;
 
   // Stores the types of argument bound to the parameter with the given name.
-  absl::flat_hash_map<std::string_view, type::Type const *> arg_type_;
+  absl::flat_hash_map<std::string_view, type::Type> arg_type_;
   absl::flat_hash_map<std::string_view, ir::Value> arg_val_;
 
   // A map from each identifier to all possible declarations that the identifier
@@ -313,7 +312,6 @@ struct DependentComputedData {
   DependentComputedData *parent_ = nullptr;
 
  private:
-
   absl::node_hash_map<ast::ParameterizedExpression const *, DependentDataChild>
       dependent_data_;
 

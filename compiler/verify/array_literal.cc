@@ -25,8 +25,7 @@ struct InconsistentArrayType {
 // cannot determine a reasonable guess.
 //
 // TODO: Improve implementation
-type::Type const *GuessIntendedArrayType(
-    absl::flat_hash_map<type::Type const *, int>) {
+type::Type GuessIntendedArrayType(absl::flat_hash_map<type::Type, int>) {
   return nullptr;
 }
 
@@ -48,23 +47,23 @@ type::QualType Compiler::VerifyType(ast::ArrayLiteral const *node) {
 
   if (error) { return type::QualType::Error(); }
 
-  absl::flat_hash_map<type::Type const *, int> elem_type_count;
+  absl::flat_hash_map<type::Type, int> elem_type_count;
 
   type::Quals quals   = type::Quals::All();
   size_t num_elements = 0;
   for (type::QualType qt : elem_qts) {
     num_elements += qt.expansion_size();
-    qt.ForEach([&](type::Type const *t) { ++elem_type_count[t]; });
+    qt.ForEach([&](type::Type t) { ++elem_type_count[t]; });
     quals &= qt.quals();
   }
 
   if (elem_type_count.size() == 1) {
-    type::Type const *t = elem_type_count.begin()->first;
-    auto qt             = type::QualType(type::Arr(num_elements, t), quals);
+    type::Type t = elem_type_count.begin()->first;
+    auto qt      = type::QualType(type::Arr(num_elements, t), quals);
     return data().set_qual_type(node, qt);
   } else {
     diag().Consume(InconsistentArrayType{.range = node->range()});
-    if (type::Type const *t = GuessIntendedArrayType(elem_type_count)) {
+    if (type::Type t = GuessIntendedArrayType(elem_type_count)) {
       auto qt = type::QualType(type::Arr(num_elements, t), quals);
       qt.MarkError();
       return data().set_qual_type(node, qt);

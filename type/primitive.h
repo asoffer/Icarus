@@ -8,7 +8,7 @@
 
 namespace type {
 
-struct Primitive : public Type {
+struct Primitive : public LegacyType {
  public:
   enum class BasicType : uint8_t {
 #define PRIMITIVE_MACRO(EnumName, name) EnumName,
@@ -18,10 +18,10 @@ struct Primitive : public Type {
 
   TYPE_FNS(Primitive);
   constexpr Primitive(BasicType pt)
-      : Type(Type::Flags{.is_default_initializable = 1,
-                         .is_copyable              = 1,
-                         .is_movable               = 1,
-                         .has_destructor           = 0}),
+      : LegacyType(LegacyType::Flags{.is_default_initializable = 1,
+                                     .is_copyable              = 1,
+                                     .is_movable               = 1,
+                                     .has_destructor           = 0}),
         type_(pt) {}
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
@@ -37,8 +37,8 @@ struct Primitive : public Type {
   template <typename Fn>
   void Apply(Fn &&fn) const {
     ApplyImpl<uint8_t, uint16_t, uint32_t, uint64_t, int8_t, int16_t, int32_t,
-              int64_t, float, double, bool,
-              Type const * /* TODO: Other primitives */>(std::forward<Fn>(fn));
+              int64_t, float, double, bool, Type /* TODO: Other primitives */>(
+        std::forward<Fn>(fn));
   }
 
   Completeness completeness() const override { return Completeness::Complete; }
@@ -89,36 +89,36 @@ void Primitive::ApplyImpl(Fn &&fn) const {
       [&] { std::forward<Fn>(fn)(base::meta<Ts>); })...}[index]();
 }
 
-inline Type const *Nat8       = &(*internal::kPrimitiveArray)[0];
-inline Type const *Nat16      = &(*internal::kPrimitiveArray)[1];
-inline Type const *Nat32      = &(*internal::kPrimitiveArray)[2];
-inline Type const *Nat64      = &(*internal::kPrimitiveArray)[3];
-inline Type const *Int8       = &(*internal::kPrimitiveArray)[4];
-inline Type const *Int16      = &(*internal::kPrimitiveArray)[5];
-inline Type const *Int32      = &(*internal::kPrimitiveArray)[6];
-inline Type const *Int64      = &(*internal::kPrimitiveArray)[7];
-inline Type const *Float32    = &(*internal::kPrimitiveArray)[8];
-inline Type const *Float64    = &(*internal::kPrimitiveArray)[9];
-inline Type const *Bool       = &(*internal::kPrimitiveArray)[10];
-inline Type const *Type_      = &(*internal::kPrimitiveArray)[11];
-inline Type const *NullPtr    = &(*internal::kPrimitiveArray)[12];
-inline Type const *EmptyArray = &(*internal::kPrimitiveArray)[13];
-inline Type const *Scope      = &(*internal::kPrimitiveArray)[14];
-inline Type const *Block      = &(*internal::kPrimitiveArray)[15];
-inline Type const *Module     = &(*internal::kPrimitiveArray)[16];
-inline Type const *ByteView   = &(*internal::kPrimitiveArray)[17];
-inline Type const *Label      = &(*internal::kPrimitiveArray)[18];
+inline Type Nat8       = &(*internal::kPrimitiveArray)[0];
+inline Type Nat16      = &(*internal::kPrimitiveArray)[1];
+inline Type Nat32      = &(*internal::kPrimitiveArray)[2];
+inline Type Nat64      = &(*internal::kPrimitiveArray)[3];
+inline Type Int8       = &(*internal::kPrimitiveArray)[4];
+inline Type Int16      = &(*internal::kPrimitiveArray)[5];
+inline Type Int32      = &(*internal::kPrimitiveArray)[6];
+inline Type Int64      = &(*internal::kPrimitiveArray)[7];
+inline Type Float32    = &(*internal::kPrimitiveArray)[8];
+inline Type Float64    = &(*internal::kPrimitiveArray)[9];
+inline Type Bool       = &(*internal::kPrimitiveArray)[10];
+inline Type Type_      = &(*internal::kPrimitiveArray)[11];
+inline Type NullPtr    = &(*internal::kPrimitiveArray)[12];
+inline Type EmptyArray = &(*internal::kPrimitiveArray)[13];
+inline Type Scope      = &(*internal::kPrimitiveArray)[14];
+inline Type Block      = &(*internal::kPrimitiveArray)[15];
+inline Type Module     = &(*internal::kPrimitiveArray)[16];
+inline Type ByteView   = &(*internal::kPrimitiveArray)[17];
+inline Type Label      = &(*internal::kPrimitiveArray)[18];
 
-inline bool IsNumeric(Type const *t) { return t >= Nat8 and t <= Float64; }
-inline bool IsIntegral(Type const *t) { return t >= Nat8 and t <= Int64; }
-inline bool IsUnsignedNumeric(Type const *t) {
-  return t >= Nat8 and t <= Nat64;
+inline bool IsNumeric(Type t) { return t.get() >= Nat8 and t.get() <= Float64; }
+inline bool IsIntegral(Type t) { return t.get() >= Nat8 and t.get() <= Int64; }
+inline bool IsUnsignedNumeric(Type t) {
+  return t.get() >= Nat8 and t.get() <= Nat64;
 }
-inline bool IsSignedNumeric(Type const *t) {
-  return t >= Int8 and t <= Float64;
+inline bool IsSignedNumeric(Type t) {
+  return t.get() >= Int8 and t.get() <= Float64;
 }
-inline bool IsFloatingPoint(Type const *t) {
-  return t >= Float32 and t <= Float64;
+inline bool IsFloatingPoint(Type t) {
+  return t.get() >= Float32.get() and t.get() <= Float64;
 }
 
 }  // namespace type

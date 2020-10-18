@@ -10,16 +10,16 @@
 namespace type {
 
 Struct::Struct(module::BasicModule const *mod, Struct::Options options)
-    : Type(Type::Flags{.is_default_initializable = 1,
-                       .is_copyable              = options.is_copyable,
-                       .is_movable               = options.is_movable,
-                       .has_destructor           = 0}),
+    : LegacyType(LegacyType::Flags{.is_default_initializable = 1,
+                                   .is_copyable    = options.is_copyable,
+                                   .is_movable     = options.is_movable,
+                                   .has_destructor = 0}),
       mod_(mod) {}
 
 void Struct::AppendFields(std::vector<Struct::Field> fields) {
   completeness_ = Completeness::DataComplete;
-  fields_   = std::move(fields);
-  size_t i  = 0;
+  fields_       = std::move(fields);
+  size_t i      = 0;
   for (auto const &field : fields_) {
     ASSERT(field.type != nullptr);
     field_indices_.emplace(field.name, i++);

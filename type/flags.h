@@ -13,14 +13,14 @@
 #include "type/typed_value.h"
 
 namespace type {
-struct Flags : public type::Type {
+struct Flags : public type::LegacyType {
   TYPE_FNS(Flags);
 
   Flags(module::BasicModule const *mod)
-      : Type(Type::Flags{.is_default_initializable = 1,
-                         .is_copyable              = 1,
-                         .is_movable               = 1,
-                         .has_destructor           = 0}),
+      : LegacyType(LegacyType::Flags{.is_default_initializable = 1,
+                                     .is_copyable              = 1,
+                                     .is_movable               = 1,
+                                     .has_destructor           = 0}),
         mod_(mod) {}
 
   void SetMembers(absl::flat_hash_map<std::string, ir::FlagsVal> vals) {

@@ -13,12 +13,12 @@
 #include "type/typed_value.h"
 
 namespace type {
-struct Enum : type::Type {
+struct Enum : type::LegacyType {
   explicit Enum(module::BasicModule const *mod)
-      : Type(Type::Flags{.is_default_initializable = 0,
-                         .is_copyable              = 1,
-                         .is_movable               = 1,
-                         .has_destructor           = 0}),
+      : LegacyType(LegacyType::Flags{.is_default_initializable = 0,
+                                     .is_copyable              = 1,
+                                     .is_movable               = 1,
+                                     .has_destructor           = 0}),
         mod_(mod) {}
 
   ~Enum() override {}

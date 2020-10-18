@@ -71,8 +71,8 @@ struct BinaryOperatorTypeMismatch {
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  type::Type const *lhs_type;
-  type::Type const *rhs_type;
+  type::Type lhs_type;
+  type::Type rhs_type;
   frontend::SourceRange range;
 };
 
@@ -87,8 +87,8 @@ struct NoMatchingBinaryOperator {
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  type::Type const *lhs_type;
-  type::Type const *rhs_type;
+  type::Type lhs_type;
+  type::Type rhs_type;
   frontend::SourceRange range;
 };
 
@@ -96,7 +96,7 @@ type::QualType VerifyLogicalOperator(Compiler *c, std::string_view op,
                                      ast::BinaryOperator const *node,
                                      type::QualType lhs_qual_type,
                                      type::QualType rhs_qual_type,
-                                     type::Type const *return_type) {
+                                     type::Type return_type) {
   auto quals =
       (lhs_qual_type.quals() & rhs_qual_type.quals() & ~type::Quals::Ref());
   if (lhs_qual_type.type() == type::Bool and
@@ -133,7 +133,7 @@ type::QualType VerifyArithmeticOperator(Compiler *c, std::string_view op,
                                         ast::BinaryOperator const *node,
                                         type::QualType lhs_qual_type,
                                         type::QualType rhs_qual_type,
-                                        type::Type const *return_type) {
+                                        type::Type return_type) {
   auto quals =
       (lhs_qual_type.quals() & rhs_qual_type.quals() & ~type::Quals::Ref());
   bool check_user_overload = not lhs_qual_type.type()->is<type::Primitive>() or
@@ -175,7 +175,7 @@ type::QualType VerifyArithmeticOperator(Compiler *c, std::string_view op,
 type::QualType VerifyArithmeticAssignmentOperator(
     Compiler *c, std::string_view op, ast::BinaryOperator const *node,
     type::QualType lhs_qual_type, type::QualType rhs_qual_type,
-    type::Type const *return_type) {
+    type::Type return_type) {
   if (lhs_qual_type.quals() >= type::Quals::Const() or
       not(lhs_qual_type.quals() >= type::Quals::Ref())) {
     c->diag().Consume(InvalidAssignmentOperatorLhsValueCategory{

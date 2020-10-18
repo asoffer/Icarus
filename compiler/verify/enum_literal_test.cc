@@ -21,7 +21,8 @@ TEST(Enum, Success) {
 
 TEST(Enum, NonIntegralEnumerator) {
   test::TestModule mod;
-  auto const *e  = mod.Append<ast::EnumLiteral>(R"(enum { A \\ B ::= "x" \\ C ::= 3.1 })");
+  auto const *e =
+      mod.Append<ast::EnumLiteral>(R"(enum { A \\ B ::= "x" \\ C ::= 3.1 })");
   auto const *qt = mod.data().qual_type(e);
   mod.compiler.CompleteWorkQueue();
   EXPECT_THAT(qt, Pointee(type::QualType::Constant(type::Type_)));
@@ -34,7 +35,7 @@ TEST(Enum, NonIntegralEnumerator) {
 TEST(Enum, NonConstantEnumerator) {
   test::TestModule mod;
   mod.AppendCode("n := 3");
-  auto const *e  = mod.Append<ast::EnumLiteral>(R"(enum { A \\ B \\ C ::= n })");
+  auto const *e = mod.Append<ast::EnumLiteral>(R"(enum { A \\ B \\ C ::= n })");
   auto const *qt = mod.data().qual_type(e);
   mod.compiler.CompleteWorkQueue();
   EXPECT_THAT(qt, Pointee(type::QualType::Constant(type::Type_)));
@@ -53,7 +54,8 @@ TEST(Flags, Success) {
 
 TEST(Flags, NonIntegralEnumerator) {
   test::TestModule mod;
-  auto const *e  = mod.Append<ast::EnumLiteral>(R"(flags { A \\ B ::= "x" \\ C ::= 3.1 })");
+  auto const *e =
+      mod.Append<ast::EnumLiteral>(R"(flags { A \\ B ::= "x" \\ C ::= 3.1 })");
   auto const *qt = mod.data().qual_type(e);
   mod.compiler.CompleteWorkQueue();
   EXPECT_THAT(qt, Pointee(type::QualType::Constant(type::Type_)));
@@ -66,7 +68,7 @@ TEST(Flags, NonIntegralEnumerator) {
 TEST(Flags, NonConstantEnumerator) {
   test::TestModule mod;
   mod.AppendCode("n := 3");
-  auto const *e  = mod.Append<ast::EnumLiteral>(R"(enum { A \\ B \\ C ::= n })");
+  auto const *e = mod.Append<ast::EnumLiteral>(R"(enum { A \\ B \\ C ::= n })");
   auto const *qt = mod.data().qual_type(e);
   mod.compiler.CompleteWorkQueue();
   EXPECT_THAT(qt, Pointee(type::QualType::Constant(type::Type_)));
@@ -74,7 +76,6 @@ TEST(Flags, NonConstantEnumerator) {
       mod.consumer.diagnostics(),
       UnorderedElementsAre(Pair("type-error", "non-constant-enumerator")));
 }
-
 
 // TODO: Handle situations where the type is specified in the declaration.
 

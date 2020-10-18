@@ -11,10 +11,10 @@ namespace type {
 
 // `Array` is a type representing a fixed number (the `length`) of contiguous
 // values of a given type (the `data_type`).
-struct Array : Type {
+struct Array : LegacyType {
   // Construct a new array from the given parameters, or if one already exists
   // in the cache, return that.
-  friend Array const *Arr(size_t len, Type const *t);
+  friend Array const *Arr(size_t len, LegacyType const *t);
 
   ~Array() override {}
 
@@ -27,7 +27,7 @@ struct Array : Type {
   }
 
   constexpr size_t length() const { return len_; }
-  constexpr type::Type const *data_type() const { return data_type_; }
+  constexpr type::Type data_type() const { return data_type_; }
 
   Completeness completeness() const override {
     return data_type()->completeness();
@@ -49,14 +49,14 @@ struct Array : Type {
   }
 
  private:
-  explicit Array(size_t l, Type const *t)
-      : Type(t->flags()), len_(l), data_type_(t) {}
+  explicit Array(size_t l, LegacyType const *t)
+      : LegacyType(t->flags()), len_(l), data_type_(t) {}
 
   size_t len_;
-  Type const *data_type_;
+  LegacyType const *data_type_;
 };
 
-Array const *Arr(size_t len, Type const *t);
+Array const *Arr(size_t len, LegacyType const *t);
 
 }  // namespace type
 #endif  // ICARUS_TYPE_ARRAY_H

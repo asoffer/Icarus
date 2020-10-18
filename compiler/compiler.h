@@ -99,7 +99,7 @@ struct Compiler
     ir::Builder &builder;
     DependentComputedData &data;
     diagnostic::DiagnosticConsumer &diagnostic_consumer;
-    module::Importer& importer;
+    module::Importer &importer;
   };
   PersistentResources resources() { return resources_; }
 
@@ -108,7 +108,6 @@ struct Compiler
       if (auto const *decl = node->if_as<ast::Declaration>()) {
         if (decl->flags() & ast::Declaration::f_IsConst) { VerifyType(node); }
       }
-
     }
 
     for (ast::Node const *node : nodes) {
@@ -208,7 +207,6 @@ struct Compiler
   }
   module::Importer &importer() const { return resources_.importer; }
 
-
   template <typename T>
   base::expected<T, interpretter::EvaluationFailure> EvaluateAs(
       ast::Expression const *expr) {
@@ -250,10 +248,9 @@ struct Compiler
       core::FnArgs<type::Typed<ir::Value>> const &args);
 
   std::optional<type::QualType> qual_type_of(ast::Expression const *expr) const;
-  type::Type const *type_of(ast::Expression const *expr) const;
+  type::Type type_of(ast::Expression const *expr) const;
 
-  absl::Span<TransientState::ScopeLandingState const> scope_landings()
-      const {
+  absl::Span<TransientState::ScopeLandingState const> scope_landings() const {
     return state_.scope_landings;
   }
   void add_scope_landing(TransientState::ScopeLandingState state) {
@@ -287,13 +284,12 @@ struct Compiler
 #define ICARUS_TYPE_TYPE_X(name)                                               \
   void Visit(EmitDestroyTag, type::name const *t, ir::Reg reg) override {      \
     EmitDestroy(type::Typed<ir::Reg, type::name>(reg, t));                     \
-  }                                                                            \
+  }
 
 #include "type/type.xmacro.h"
 #undef ICARUS_TYPE_TYPE_X
 
-TransientState::YieldedArguments
-EmitBlockNode(ast::BlockNode const *node);
+  TransientState::YieldedArguments EmitBlockNode(ast::BlockNode const *node);
 
   // The reason to separate out type/body verification is if the body might
   // transitively have identifiers referring to a declaration that is assigned
@@ -495,7 +491,7 @@ EmitBlockNode(ast::BlockNode const *node);
 
     struct TypeMismatch {
       std::variant<std::string, size_t> parameter;
-      type::Type const *argument_type;
+      type::Type argument_type;
     };
 
     struct NoParameterNamed {
@@ -558,7 +554,7 @@ inline void WorkQueue::ProcessOneItem() {
   WorkItem item = std::move(items_.front());
   items_.pop();
   WorkItem::Result result = item.Process();
-  bool deferred = (result == WorkItem::Result::Deferred);
+  bool deferred           = (result == WorkItem::Result::Deferred);
   if (deferred) { items_.push(std::move(item)); }
 #if defined(ICARUS_DEBUG)
   if (deferred) {

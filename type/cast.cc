@@ -28,7 +28,7 @@ static bool CanCastPointer(Pointer const *from, Pointer const *to) {
   return from->pointee() == to->pointee();
 }
 
-bool CanCastImplicitly(Type const *from, Type const *to) {
+bool CanCastImplicitly(LegacyType const *from, LegacyType const *to) {
   if (to == from) { return true; }
   auto const *buf_ptr = from->if_as<BufferPointer>();
   if (buf_ptr and to == Ptr(buf_ptr->pointee())) { return true; }
@@ -36,7 +36,7 @@ bool CanCastImplicitly(Type const *from, Type const *to) {
 }
 
 // TODO much of this should be moved to virtual methods.
-bool CanCast(Type const *from, Type const *to) {
+bool CanCast(LegacyType const *from, LegacyType const *to) {
   if (to == from) { return true; }
   // TODO handle reinterpretation
 
@@ -47,7 +47,7 @@ bool CanCast(Type const *from, Type const *to) {
     // TODO remove this hack for expressing the type of tuples
     auto const &entries = from->as<Tuple>().entries_;
     return std::all_of(entries.begin(), entries.end(),
-                       [](Type const *t) { return t == Type_; });
+                       [](LegacyType const *t) { return t == Type_; });
   }
 
   // TODO other integer types.
@@ -134,7 +134,7 @@ bool CanCast(Type const *from, Type const *to) {
 
 // TODO optimize (early exists. don't check lhs->is<> and rhs->is<>. If they
 // don't match you can early exit.
-Type const *Meet(Type const *lhs, Type const *rhs) {
+LegacyType const *Meet(LegacyType const *lhs, LegacyType const *rhs) {
   if (lhs == rhs) { return lhs; }
   if (lhs == nullptr or rhs == nullptr) { return nullptr; }
 

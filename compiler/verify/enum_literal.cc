@@ -3,8 +3,7 @@
 
 namespace compiler {
 
-
-struct NonConstantEnumerator  {
+struct NonConstantEnumerator {
   static constexpr std::string_view kCategory = "type-error";
   static constexpr std::string_view kName     = "non-constant-enumerator";
 
@@ -23,13 +22,14 @@ struct NonIntegralEnumerator {
 
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
-        diagnostic::Text("Values for enumerators must be integers, but we found an enumerator of type `%s`.",
+        diagnostic::Text("Values for enumerators must be integers, but we "
+                         "found an enumerator of type `%s`.",
                          type->to_string()),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
   frontend::SourceRange range;
-  type::Type const *type;
+  type::Type type;
 };
 
 WorkItem::Result Compiler::VerifyBody(ast::EnumLiteral const *node) {

@@ -6,13 +6,13 @@
 namespace type {
 
 static base::Global<absl::node_hash_set<Array>> cache;
-Array const *Arr(size_t len, Type const *t) {
+Array const *Arr(size_t len, LegacyType const *t) {
   return &*cache.lock()->insert(Array(len, t)).first;
 }
 
 void Array::WriteTo(std::string *result) const {
   absl::StrAppendFormat(result, "[%u", length());
-  Type const *t = data_type();
+  LegacyType const *t = data_type();
   while (auto *array_ptr = t->if_as<Array>()) {
     absl::StrAppendFormat(result, ", %d", array_ptr->length());
     t = array_ptr->data_type();

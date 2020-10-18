@@ -56,7 +56,6 @@ TEST(Inst, CopyConstructionAndAssignment) {
   EXPECT_EQ(inst.to_string(), "world!");
   ASSERT_NE(inst.if_as<MockInstruction<2>>(), nullptr);
   EXPECT_EQ(inst.if_as<MockInstruction<1>>(), nullptr);
-
 }
 
 }  // namespace

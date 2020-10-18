@@ -9,7 +9,9 @@ namespace type {
 struct VisitorBase {
   virtual ~VisitorBase() {}
 
-  virtual void ErasedVisit(Type const *, void *, void *) { UNREACHABLE(); }
+  virtual void ErasedVisit(LegacyType const *, void *, void *) {
+    UNREACHABLE();
+  }
 
 #define ICARUS_TYPE_TYPE_X(subtype)                                            \
   virtual void ErasedVisit(subtype const *, void *, void *) = 0;

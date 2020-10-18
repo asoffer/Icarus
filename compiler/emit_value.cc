@@ -11,9 +11,9 @@
 #include "diagnostic/consumer/trivial.h"
 #include "frontend/parse.h"
 #include "ir/builder.h"
+#include "ir/compiled_jump.h"
 #include "ir/interpretter/evaluate.h"
 #include "ir/interpretter/execution_context.h"
-#include "ir/compiled_jump.h"
 #include "ir/struct_field.h"
 #include "ir/value/builtin_fn.h"
 #include "ir/value/generic_fn.h"
@@ -30,13 +30,13 @@
 namespace compiler {
 
 type::QualType VerifyBody(Compiler *compiler, ast::FunctionLiteral const *node,
-                          type::Type const *fn_type = nullptr);
+                          type::Type fn_type = nullptr);
 
 namespace {
 
 template <typename NodeType>
 base::move_func<void()> *DeferBody(Compiler::PersistentResources resources,
-                                   NodeType const *node, type::Type const *t) {
+                                   NodeType const *node, type::Type t) {
   LOG("DeferBody", "Deferring body of %s", node->DebugString());
   auto [iter, success] = resources.data.deferred_work_.lock()->emplace(
       node, [c = Compiler(resources), node, t]() mutable {
@@ -79,7 +79,8 @@ ir::Value Compiler::EmitValue(ast::Assignment const *node) {
   return ir::Value();
 }
 
-// TODO: Checking if an AST node is a builtin is problematic because something as simple as
+// TODO: Checking if an AST node is a builtin is problematic because something
+// as simple as
 // ```
 // f ::= bytes
 // f(int)
@@ -90,9 +91,8 @@ ir::Value EmitBuiltinCall(Compiler *c, ast::BuiltinFn const *callee,
                           core::FnArgs<ast::Expression const *> const &args) {
   switch (callee->value().which()) {
     case ir::BuiltinFn::Which::Foreign: {
-      auto maybe_name = c->EvaluateOrDiagnoseAs<ir::String>(args[0]);
-      auto maybe_foreign_type =
-          c->EvaluateOrDiagnoseAs<type::Type const *>(args[1]);
+      auto maybe_name         = c->EvaluateOrDiagnoseAs<ir::String>(args[0]);
+      auto maybe_foreign_type = c->EvaluateOrDiagnoseAs<type::Type>(args[1]);
       if (not maybe_name or not maybe_foreign_type) { return ir::Value(); }
 
       return ir::Value(
@@ -107,8 +107,7 @@ ir::Value EmitBuiltinCall(Compiler *c, ast::BuiltinFn const *callee,
       ir::Reg reg         = outs[0];
       c->builder().Call(
           ir::Fn{ir::BuiltinFn::Bytes()}, &fn_type,
-          {ir::Value(
-              c->EmitValue(args[0]).get<ir::RegOr<type::Type const *>>())},
+          {ir::Value(c->EmitValue(args[0]).get<ir::RegOr<type::Type>>())},
           std::move(outs));
 
       return ir::Value(reg);
@@ -120,8 +119,7 @@ ir::Value EmitBuiltinCall(Compiler *c, ast::BuiltinFn const *callee,
       ir::Reg reg         = outs[0];
       c->builder().Call(
           ir::Fn{ir::BuiltinFn::Alignment()}, &fn_type,
-          {ir::Value(
-              c->EmitValue(args[0]).get<ir::RegOr<type::Type const *>>())},
+          {ir::Value(c->EmitValue(args[0]).get<ir::RegOr<type::Type>>())},
           std::move(outs));
 
       return ir::Value(reg);
@@ -161,7 +159,7 @@ void Compiler::EmitMoveInit(
           ASSERT_NOT_NULL(data().qual_type(node->callee()))
               ->type()
               ->if_as<type::GenericStruct>()) {
-    type::Type const *s = gen_struct_type->concrete(args);
+    type::Type s = gen_struct_type->concrete(args);
     EmitCopyAssign(type::Typed<ir::RegOr<ir::Addr>>(*to[0], type::Type_),
                    type::Typed<ir::Value>(ir::Value(s), type::Type_));
     return;
@@ -173,9 +171,9 @@ void Compiler::EmitMoveInit(
   // TODO node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
 }
 
-
-void Compiler::EmitCopyInit(ast::Call const *node,
-                        absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+void Compiler::EmitCopyInit(
+    ast::Call const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   if (auto *b = node->callee()->if_as<ast::BuiltinFn>()) {
     auto result = EmitBuiltinCall(this, b, node->args());
     if (result.empty()) return;
@@ -200,7 +198,7 @@ void Compiler::EmitCopyInit(ast::Call const *node,
           ASSERT_NOT_NULL(data().qual_type(node->callee()))
               ->type()
               ->if_as<type::GenericStruct>()) {
-    type::Type const *s = gen_struct_type->concrete(args);
+    type::Type s = gen_struct_type->concrete(args);
     EmitCopyAssign(type::Typed<ir::RegOr<ir::Addr>>(*to[0], type::Type_),
                    type::Typed<ir::Value>(ir::Value(s), type::Type_));
     return;
@@ -239,7 +237,7 @@ void Compiler::EmitAssign(
           ASSERT_NOT_NULL(data().qual_type(node->callee()))
               ->type()
               ->if_as<type::GenericStruct>()) {
-    type::Type const *s = gen_struct_type->concrete(args);
+    type::Type s = gen_struct_type->concrete(args);
     EmitCopyAssign(to[0], type::Typed<ir::Value>(ir::Value(s), type::Type_));
     return;
   }
@@ -270,7 +268,7 @@ ir::Value Compiler::EmitValue(ast::Call const *node) {
           ASSERT_NOT_NULL(data().qual_type(node->callee()))
               ->type()
               ->if_as<type::GenericStruct>()) {
-    type::Type const *s = gen_struct_type->concrete(args);
+    type::Type s = gen_struct_type->concrete(args);
     return ir::Value(s);
   }
 
@@ -328,7 +326,7 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
         }
         return constant_value->value;
       }
-      auto const *t = type_of(node);
+      auto t = type_of(node);
 
       if (node->IsCustomInitialized()) {
         LOG("EmitValueDeclaration", "Computing slot with %s",
@@ -346,8 +344,7 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
         data().SetConstant(node, *maybe_val);
 
         // TODO: This is a struct-speficic hack.
-        if (type::Type const **type_val =
-                maybe_val->get_if<type::Type const *>()) {
+        if (type::Type *type_val = maybe_val->get_if<type::Type>()) {
           if (auto const *struct_type = (*type_val)->if_as<type::Struct>()) {
             if (struct_type->completeness() != type::Completeness::Complete) {
               return *maybe_val;
@@ -367,8 +364,8 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
     }
   } else {
     if (node->IsUninitialized()) { return ir::Value(); }
-    auto *t = type_of(node);
-    auto a  = data().addr(node);
+    auto t = type_of(node);
+    auto a = data().addr(node);
     if (node->IsCustomInitialized()) {
       auto to = type::Typed<ir::RegOr<ir::Addr>>(a, type::Ptr(t));
       EmitMoveInit(node->init_val(), absl::MakeConstSpan(&to, 1));
@@ -383,8 +380,8 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
 }
 
 ir::Value Compiler::EmitValue(ast::DesignatedInitializer const *node) {
-  auto *t    = type_of(node);
-  auto alloc = builder().TmpAlloca(t);
+  auto t           = type_of(node);
+  auto alloc       = builder().TmpAlloca(t);
   auto typed_alloc = type::Typed<ir::RegOr<ir::Addr>>(
       ir::RegOr<ir::Addr>(alloc), type::Ptr(t));
   EmitMoveInit(node, {typed_alloc});
@@ -396,7 +393,7 @@ void Compiler::EmitMoveInit(
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
   // TODO actual initialization with these field members.
-  auto *t            = type_of(node);
+  auto t             = type_of(node);
   auto &struct_type  = t->as<type::Struct>();
   auto const &fields = struct_type.fields();
   for (size_t i = 0; i < fields.size(); ++i) {
@@ -441,7 +438,7 @@ void Compiler::EmitCopyInit(
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
   // TODO actual initialization with these field members.
-  auto *t            = type_of(node);
+  auto t             = type_of(node);
   auto &struct_type  = t->as<type::Struct>();
   auto const &fields = struct_type.fields();
   for (size_t i = 0; i < fields.size(); ++i) {
@@ -606,14 +603,14 @@ ir::Value Compiler::EmitValue(ast::FunctionLiteral const *node) {
 }
 
 ir::Value Compiler::EmitValue(ast::FunctionType const *node) {
-  std::vector<ir::RegOr<type::Type const *>> param_vals, out_vals;
+  std::vector<ir::RegOr<type::Type>> param_vals, out_vals;
   param_vals.reserve(node->params().size());
   out_vals.reserve(node->outputs().size());
   for (auto const *p : node->params()) {
-    param_vals.push_back(EmitValue(p).get<ir::RegOr<type::Type const *>>());
+    param_vals.push_back(EmitValue(p).get<ir::RegOr<type::Type>>());
   }
   for (auto const *o : node->outputs()) {
-    out_vals.push_back(EmitValue(o).get<ir::RegOr<type::Type const *>>());
+    out_vals.push_back(EmitValue(o).get<ir::RegOr<type::Type>>());
   }
 
   return ir::Value(builder().Arrow(std::move(param_vals), std::move(out_vals)));
@@ -652,9 +649,8 @@ EmitValueWithExpand(Compiler *c, base::PtrSpan<ast::Expression const> exprs) {
 ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
   auto const &fn_scope =
       *ASSERT_NOT_NULL(node->scope()->Containing<ast::FnScope>());
-  auto const &fn_lit = *ASSERT_NOT_NULL(fn_scope.fn_lit_);
-  auto const &fn_type =
-      ASSERT_NOT_NULL(type_of(&fn_lit))->as<type::Function>();
+  auto const &fn_lit  = *ASSERT_NOT_NULL(fn_scope.fn_lit_);
+  auto const &fn_type = ASSERT_NOT_NULL(type_of(&fn_lit))->as<type::Function>();
 
   // TODO: It's tricky... on a single expression that gets expanded, we could
   // have both small and big types and we would need to handle both setting
@@ -719,12 +715,11 @@ ir::Value Compiler::EmitValue(ast::YieldStmt const *node) {
 
 ir::Value Compiler::EmitValue(ast::ScopeLiteral const *node) {
   LOG("ScopeLiteral", "State type = %p", node->state_type());
-  type::Type const *state_type = nullptr;
+  type::Type state_type = nullptr;
   if (node->state_type()) {
-    ASSIGN_OR(
-        return ir::Value(),  //
-               type::Type const *state_type,
-               EvaluateOrDiagnoseAs<type::Type const *>(node->state_type()));
+    ASSIGN_OR(return ir::Value(),  //
+                     type::Type state_type,
+                     EvaluateOrDiagnoseAs<type::Type>(node->state_type()));
   }
 
   absl::flat_hash_map<std::string_view, ir::Block> blocks;
@@ -812,12 +807,11 @@ WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
       } else {
         if (auto *init_val = field.init_val()) {
           // TODO init_val type may not be the same.
-          auto *t = ASSERT_NOT_NULL(qual_type_of(init_val)->type());
+          auto t = qual_type_of(init_val)->type();
           fields.emplace_back(field.id(), t, EmitValue(init_val));
         } else {
-          fields.emplace_back(
-              field.id(),
-              EmitValue(field.type_expr()).get<type::Type const *>());
+          fields.emplace_back(field.id(),
+                              EmitValue(field.type_expr()).get<type::Type>());
         }
       }
     }
@@ -839,7 +833,7 @@ ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
       state_.must_complete ? " (must complete)" : " (need not complete)");
 
   if (type::Struct *s = data().get_struct(node)) {
-    return ir::Value(static_cast<type::Type const *>(s));
+    return ir::Value(static_cast<type::Type>(s));
   }
 
   type::Struct *s = type::Allocate<type::Struct>(
@@ -880,7 +874,7 @@ ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
         .consumer = diag(),
     });
   }
-  return ir::Value(static_cast<type::Type const *>(s));
+  return ir::Value(static_cast<type::Type>(s));
 }
 
 ir::Value Compiler::EmitValue(ast::ParameterizedStructLiteral const *node) {

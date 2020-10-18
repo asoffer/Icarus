@@ -31,7 +31,7 @@ struct GenericFunction : Callable {
 
   Function const *concrete(core::FnArgs<Typed<ir::Value>> const &) const;
 
-  std::vector<type::Type const *> return_types(
+  std::vector<type::Type> return_types(
       core::FnArgs<type::Typed<ir::Value>> const &args) const override;
 
   core::Params<EmptyStruct> const &params() const { return params_; }

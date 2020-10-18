@@ -18,7 +18,7 @@ TEST_P(IndexTest, Index) {
   auto const *e  = mod.Append<ast::Expression>(expr);
   auto const *qt = mod.data().qual_type(e);
   ASSERT_NE(qt, nullptr);
-  auto const *t = qt->type();
+  auto t = qt->type();
   ASSERT_NE(t, nullptr);
   auto result =
       mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));

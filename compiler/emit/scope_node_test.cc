@@ -13,14 +13,14 @@ struct TestCase {
 
 using ScopeNodeTest = testing::TestWithParam<TestCase>;
 TEST_P(ScopeNodeTest, ScopeNode) {
-  auto const &[ expr, expected] = GetParam();
+  auto const &[expr, expected] = GetParam();
   test::TestModule mod;
   // TODO: We can't use `s` as the field member because the compiler thinks
   // there's an ambiguity (there isn't).
   auto const *e  = mod.Append<ast::Expression>(expr);
   auto const *qt = mod.data().qual_type(e);
   ASSERT_NE(qt, nullptr);
-  auto const *t = qt->type();
+  auto t = qt->type();
   ASSERT_NE(t, nullptr);
   auto result =
       mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));

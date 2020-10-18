@@ -18,7 +18,7 @@ Function const *GenericFunction::concrete(
   return gen_fn_(args);
 }
 
-std::vector<type::Type const *> GenericFunction::return_types(
+std::vector<type::Type> GenericFunction::return_types(
     core::FnArgs<type::Typed<ir::Value>> const &args) const {
   return concrete(args)->return_types(args);
 }

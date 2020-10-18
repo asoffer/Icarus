@@ -8,7 +8,7 @@ DependentComputedData::~DependentComputedData() {}
 
 struct DependentComputedData::DependentDataChild::DataImpl {
   core::Params<std::pair<ir::Value, type::QualType>> params;
-  std::vector<type::Type const *> rets;
+  std::vector<type::Type> rets;
   DependentComputedData data;
 };
 

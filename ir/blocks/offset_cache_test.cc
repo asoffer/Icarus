@@ -10,10 +10,12 @@ namespace {
 
 TEST(OffsetCache, Caches) {
   ir::OffsetCache cache;
-  EXPECT_EQ(cache.get(ir::Reg{1}, 3, ir::OffsetCache::Kind::Into), std::nullopt);
+  EXPECT_EQ(cache.get(ir::Reg{1}, 3, ir::OffsetCache::Kind::Into),
+            std::nullopt);
   cache.set(ir::Reg{1}, 3, ir::OffsetCache::Kind::Into, ir::Reg{5});
   EXPECT_EQ(cache.get(ir::Reg{1}, 3, ir::OffsetCache::Kind::Into), ir::Reg{5});
-  EXPECT_EQ(cache.get(ir::Reg{1}, 3, ir::OffsetCache::Kind::Passed), std::nullopt);
+  EXPECT_EQ(cache.get(ir::Reg{1}, 3, ir::OffsetCache::Kind::Passed),
+            std::nullopt);
 }
 
 }  // namespace

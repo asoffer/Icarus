@@ -248,7 +248,8 @@ struct TestCase {
 // infrastructure.
 using CallTest = testing::TestWithParam<TestCase>;
 TEST_P(CallTest, Call) {
-  auto const &[context, expr, expected_qual_type, expected_diagnostics] = GetParam();
+  auto const &[context, expr, expected_qual_type, expected_diagnostics] =
+      GetParam();
   test::TestModule mod;
   mod.AppendCode(context);
   auto const *e  = mod.Append<ast::Expression>(expr);

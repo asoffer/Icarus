@@ -13,7 +13,7 @@ struct TestCase {
 
 using CastTest = testing::TestWithParam<TestCase>;
 TEST_P(CastTest, Cast) {
-  auto const &[ expr, expected] = GetParam();
+  auto const &[expr, expected] = GetParam();
   test::TestModule mod;
   mod.AppendCode(R"(
   E ::= enum { A ::= 1 as nat64 \\ B ::= 2 as nat64 \\ C ::= 3 as nat64 }
@@ -22,7 +22,7 @@ TEST_P(CastTest, Cast) {
   auto const *e  = mod.Append<ast::Expression>(expr);
   auto const *qt = mod.data().qual_type(e);
   ASSERT_NE(qt, nullptr);
-  auto const *t = qt->type();
+  auto t = qt->type();
   ASSERT_NE(t, nullptr);
   auto result =
       mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));

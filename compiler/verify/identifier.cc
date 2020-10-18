@@ -60,7 +60,7 @@ struct NonCallableInOverloadSet {
 
   frontend::SourceRange id;
   frontend::SourceRange decl;
-  type::Type const *decl_type;
+  type::Type decl_type;
 };
 
 }  // namespace
@@ -126,7 +126,6 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
           // TODO: shouldn't need to reconstruct just to set the quals.
           qt = type::QualType(qt.type(), qt.quals() | type::Quals::Ref());
         }
-
       }
 
       if (qt.type()->is<type::Callable>()) {

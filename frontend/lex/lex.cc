@@ -245,7 +245,7 @@ std::optional<std::pair<SourceRange, Operator>> NextSlashInitiatedToken(
 // to be `type::Type const*` rather than `type::Primitive const *` so that when
 // passed to an `ir::Value`, the write type tag is deduced.
 static base::Global kReservedTypes =
-    absl::flat_hash_map<std::string_view, type::Type const *>{
+    absl::flat_hash_map<std::string_view, type::Type>{
         {"bool", type::Bool},       {"int8", type::Int8},
         {"int16", type::Int16},     {"int32", type::Int32},
         {"int64", type::Int64},     {"nat8", type::Nat8},

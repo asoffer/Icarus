@@ -9,9 +9,9 @@
 
 namespace type {
 
-struct FakeType : type::Type {
+struct FakeType : type::LegacyType {
   explicit FakeType(core::Bytes b, core::Alignment a)
-      : type::Type(type::Type::Flags{
+      : type::LegacyType(type::LegacyType::Flags{
             .is_default_initializable = 0,
             .is_copyable              = 0,
             .is_movable               = 0,

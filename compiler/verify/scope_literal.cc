@@ -39,8 +39,8 @@ struct StateTypeMismatch {
     }
   }
 
-  type::Type const *actual_type;
-  type::Type const *expected_type;
+  type::Type actual_type;
+  type::Type expected_type;
   frontend::SourceRange range;
 };
 
@@ -56,7 +56,7 @@ struct NonJumpInit {
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  type::Type const *type;
+  type::Type type;
   frontend::SourceRange range;
 };
 
@@ -72,7 +72,7 @@ struct NonCallableDone {
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  type::Type const *type;
+  type::Type type;
   frontend::SourceRange range;
 };
 
@@ -87,7 +87,7 @@ struct NonTypeScopeState {
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  type::Type const *type;
+  type::Type type;
   frontend::SourceRange range;
 };
 
@@ -118,7 +118,7 @@ struct NonConstantScopeStateType {
 };
 
 bool VerifyInit(diagnostic::DiagnosticConsumer &diag,
-                ast::Declaration const *decl, type::Type const *decl_type,
+                ast::Declaration const *decl, type::Type decl_type,
                 type::Pointer const *state_type_ptr) {
   auto *jump_type = decl_type->if_as<type::Jump>();
   if (not jump_type) {
@@ -141,7 +141,7 @@ bool VerifyInit(diagnostic::DiagnosticConsumer &diag,
 }
 
 bool VerifyDone(diagnostic::DiagnosticConsumer &diag,
-                ast::Declaration const *decl, type::Type const *decl_type) {
+                ast::Declaration const *decl, type::Type decl_type) {
   auto const *callable = decl_type->if_as<type::Callable>();
   if (not callable) {
     diag.Consume(NonCallableDone{
@@ -161,7 +161,7 @@ type::QualType Compiler::VerifyType(ast::ScopeLiteral const *node) {
 
   auto qt = data().set_qual_type(node, type::QualType::Constant(type::Scope));
 
-  type::Type const *state_type = nullptr;
+  type::Type state_type = nullptr;
   if (node->state_type()) {
     type::QualType state_qual_type = VerifyType(node->state_type());
     if (state_qual_type.type() != type::Type_) {
@@ -180,8 +180,7 @@ type::QualType Compiler::VerifyType(ast::ScopeLiteral const *node) {
     }
 
     ASSIGN_OR(return type::QualType::Error(),  //
-                     state_type,
-                     EvaluateAs<type::Type const *>(node->state_type()));
+                     state_type, EvaluateAs<type::Type>(node->state_type()));
   }
 
   auto const *state_type_ptr = state_type ? type::Ptr(state_type) : nullptr;

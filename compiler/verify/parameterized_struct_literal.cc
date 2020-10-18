@@ -9,7 +9,8 @@
 
 namespace compiler {
 
-WorkItem::Result Compiler::VerifyBody(ast::ParameterizedStructLiteral const *node) {
+WorkItem::Result Compiler::VerifyBody(
+    ast::ParameterizedStructLiteral const *node) {
   // NOT_YET();
   return WorkItem::Result::Success;
 }
@@ -50,12 +51,11 @@ type::QualType Compiler::VerifyType(
           // TODO hashtags, special members.
           if (auto *init_val = field.init_val()) {
             // TODO init_val type may not be the same.
-            auto *t = ASSERT_NOT_NULL(c.qual_type_of(init_val)->type());
+            auto t = ASSERT_NOT_NULL(c.qual_type_of(init_val)->type());
             fields.emplace_back(field.id(), t, c.EmitValue(init_val));
           } else {
             fields.emplace_back(
-                field.id(),
-                c.EmitValue(field.type_expr()).get<type::Type const *>());
+                field.id(), c.EmitValue(field.type_expr()).get<type::Type>());
           }
         }
         // TODO destructors and assignment

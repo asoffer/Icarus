@@ -8,7 +8,7 @@
 namespace compiler {
 
 type::QualType Compiler::VerifyType(ast::Terminal const *node) {
-  type::Type const *t;
+  type::Type t;
   base::MetaValue mv = node->value().type();
   if (mv == base::meta<int8_t>) {
     t = type::Int8;
@@ -36,7 +36,7 @@ type::QualType Compiler::VerifyType(ast::Terminal const *node) {
     t = type::NullPtr;
   } else if (mv == base::meta<ir::String>) {
     t = type::ByteView;
-  } else if (mv == base::meta<type::Type const *>) {
+  } else if (mv == base::meta<type::Type>) {
     t = type::Type_;
   } else {
     UNREACHABLE(mv.name());

@@ -11,19 +11,22 @@ struct S1 {
 
 struct S2 {
   int x = 0;
-  S1 y = {};
+  S1 y  = {};
 };
 
 struct S3 {
-  int x = 0;
-  S1 y = {};
+  int x  = 0;
+  S1 y   = {};
   bool z = false;
 };
 
 TEST(NumInitializers, Works) {
-  EXPECT_EQ((std::integral_constant<int, internal::NumInitializers<S1>()>::value), 1);
-  EXPECT_EQ((std::integral_constant<int, internal::NumInitializers<S2>()>::value), 2);
-  EXPECT_EQ((std::integral_constant<int, internal::NumInitializers<S3>()>::value), 3);
+  EXPECT_EQ(
+      (std::integral_constant<int, internal::NumInitializers<S1>()>::value), 1);
+  EXPECT_EQ(
+      (std::integral_constant<int, internal::NumInitializers<S2>()>::value), 2);
+  EXPECT_EQ(
+      (std::integral_constant<int, internal::NumInitializers<S3>()>::value), 3);
 }
 
 struct Base {

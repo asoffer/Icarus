@@ -6,11 +6,11 @@
 #include "gtest/gtest.h"
 
 namespace {
-struct FakeType : type::Type {
+struct FakeType : type::LegacyType {
   ~FakeType() override {}
 
   explicit FakeType(uint8_t n)
-      : type::Type(type::Type::Flags{
+      : type::LegacyType(type::LegacyType::Flags{
             .is_default_initializable = (n & 1) != 0,
             .is_copyable              = (n & 2) != 0,
             .is_movable               = (n & 4) != 0,
@@ -35,7 +35,7 @@ struct FakeType : type::Type {
   }
 };
 
-TEST(Type, Flags) {
+TEST(LegacyType, Flags) {
   FakeType f1(0);
   EXPECT_FALSE(f1.IsDefaultInitializable());
   EXPECT_FALSE(f1.IsCopyable());
@@ -55,9 +55,11 @@ TEST(Type, Flags) {
   EXPECT_TRUE(f3.HasDestructor());
 }
 
-TEST(Type, WriteTo) { EXPECT_EQ(FakeType(0).to_string(), "[[FakeType]]"); }
+TEST(LegacyType, WriteTo) {
+  EXPECT_EQ(FakeType(0).to_string(), "[[FakeType]]");
+}
 
-TEST(Type, Layout) {
+TEST(LegacyType, Layout) {
   EXPECT_EQ(FakeType(0).bytes(core::Host), core::Bytes{17});
   EXPECT_EQ(FakeType(0).alignment(core::Host), core::Alignment{2});
 }

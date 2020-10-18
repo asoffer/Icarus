@@ -9,8 +9,7 @@ namespace type {
 
 static base::Global<absl::node_hash_set<Jump>> jmps;
 
-Jump const *Jmp(type::Type const *state,
-                core::Params<Type const *> const &params) {
+Jump const *Jmp(Type state, core::Params<Type> const &params) {
   return &*jmps.lock()->insert(Jump(state, params)).first;
 }
 

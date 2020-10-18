@@ -21,8 +21,8 @@ struct LlvmTypeTag {};
 struct LlvmTypeVisitor : type::Visitor<LlvmTypeTag, llvm::Type *()> {
   explicit LlvmTypeVisitor(llvm::LLVMContext &context) : context_(context) {}
 
-  llvm::Type *get(type::Type const *t) {
-    return type::Visitor<LlvmTypeTag, llvm::Type *()>::Visit(t);
+  llvm::Type *get(type::Type t) {
+    return type::Visitor<LlvmTypeTag, llvm::Type *()>::Visit(t.get());
   }
 
 #define ICARUS_TYPE_TYPE_X(name)                                               \
@@ -66,7 +66,7 @@ struct LlvmTypeVisitor : type::Visitor<LlvmTypeTag, llvm::Type *()> {
     //  return type that does fit in a rgeister and use that.
     auto const output_span = t->output();
     if (output_span.size() != 1 or output_span[0]->is_big()) {
-      for (auto const *out_type : output_span) {
+      for (auto out_type : output_span) {
         param_types.push_back(get(out_type)->getPointerTo());
       }
       return llvm::FunctionType::get(llvm::Type::getVoidTy(context_),
@@ -89,10 +89,13 @@ struct LlvmTypeVisitor : type::Visitor<LlvmTypeTag, llvm::Type *()> {
     return result;
   }
 
-  template <typename T>
-  llvm::Type *get(T const *t) {
-    NOT_YET();
-  }
+  llvm::Type *get(type::GenericFunction const *t) { NOT_YET(); }
+  llvm::Type *get(type::GenericStruct const *t) { NOT_YET(); }
+  llvm::Type *get(type::Jump const *t) { NOT_YET(); }
+  llvm::Type *get(type::Opaque const *t) { NOT_YET(); }
+  llvm::Type *get(type::ParameterPack const *t) { NOT_YET(); }
+  llvm::Type *get(type::Struct const *t) { NOT_YET(); }
+  llvm::Type *get(type::Tuple const *t) { NOT_YET(); }
 
  private:
   llvm::LLVMContext &context_;
@@ -100,7 +103,7 @@ struct LlvmTypeVisitor : type::Visitor<LlvmTypeTag, llvm::Type *()> {
 
 }  // namespace
 
-llvm::Type *ToLlvmType(type::Type const *t, llvm::LLVMContext &context) {
+llvm::Type *ToLlvmType(type::Type t, llvm::LLVMContext &context) {
   return LlvmTypeVisitor(context).get(t);
 }
 

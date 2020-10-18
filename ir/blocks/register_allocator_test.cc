@@ -31,7 +31,7 @@ TEST(RegisterAllocator, ForEachAlloc) {
   a.StackAllocate(type::Int32);
   a.StackAllocate(type::Int64);
 
-  MockFunction<void(type::Type const *, Reg)> mock_fn;
+  MockFunction<void(type::Type, Reg)> mock_fn;
   EXPECT_CALL(mock_fn, Call(type::Int32, _)).Times(1);
   EXPECT_CALL(mock_fn, Call(type::Int64, _)).Times(1);
   a.for_each_alloc(mock_fn.AsStdFunction());

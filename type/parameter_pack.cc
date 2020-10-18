@@ -4,10 +4,10 @@
 #include "base/global.h"
 
 namespace type {
-static base::Global<
-    absl::flat_hash_map<Type const *, std::unique_ptr<ParameterPack const>>>
+static base::Global<absl::flat_hash_map<LegacyType const *,
+                                        std::unique_ptr<ParameterPack const>>>
     packs_;
-ParameterPack const *Pack(Type const *t) {
+ParameterPack const *Pack(LegacyType const *t) {
   auto handle = packs_.lock();
   auto &p     = (*handle)[t];
   if (not p) { p = std::make_unique<ParameterPack>(t); }

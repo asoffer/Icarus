@@ -44,7 +44,7 @@ struct BlockGroupBase {
   BasicBlock *entry() { return blocks()[0]; }
 
   template <typename... Args>
-  BasicBlock *AppendBlock(Args&&... args) {
+  BasicBlock *AppendBlock(Args &&... args) {
     return blocks_
         .emplace_back(std::make_unique<BasicBlock>(std::forward<Args>(args)...))
         .get();
@@ -75,7 +75,7 @@ struct BlockGroupBase {
   }
 
   Reg Reserve() { return alloc_.Reserve(); }
-  Reg Alloca(type::Type const *t);
+  Reg Alloca(type::Type t);
 
   constexpr size_t num_regs() const { return alloc_.num_regs(); }
   constexpr size_t num_args() const { return alloc_.num_args(); }

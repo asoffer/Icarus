@@ -1,12 +1,12 @@
 #ifndef ICARUS_COMPILER_CYCLIC_DEPENDENCY_TRACKER_H
 #define ICARUS_COMPILER_CYCLIC_DEPENDENCY_TRACKER_H
 
-#include <vector>
 #include <iterator>
+#include <vector>
 
-#include "compiler/data.h"
 #include "absl/types/span.h"
 #include "ast/ast.h"
+#include "compiler/data.h"
 #include "diagnostic/consumer/consumer.h"
 
 namespace compiler {

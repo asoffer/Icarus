@@ -22,8 +22,8 @@ struct ComparingIncomparables {
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  type::Type const *lhs;
-  type::Type const *rhs;
+  type::Type lhs;
+  type::Type rhs;
   frontend::SourceRange range;
 };
 
@@ -54,8 +54,8 @@ struct NoMatchingComparisonOperator {
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  type::Type const *lhs;
-  type::Type const *rhs;
+  type::Type lhs;
+  type::Type rhs;
   frontend::SourceRange range;
 };
 
@@ -67,19 +67,19 @@ enum class ComparisonKind {
   None       // No comparison is allowed.
 };
 
-ComparisonKind Comparator(type::Type const *t);
+ComparisonKind Comparator(type::Type t);
 
 template <typename TypeContainer>
 ComparisonKind MinComparisonKind(TypeContainer const &c) {
   using cmp_t = std::underlying_type_t<ComparisonKind>;
   return static_cast<ComparisonKind>(absl::c_accumulate(
       c, static_cast<cmp_t>(ComparisonKind::Equality),
-      [](cmp_t val, type::Type const *t) {
+      [](cmp_t val, type::Type t) {
         return std::min(val, static_cast<cmp_t>(Comparator(t)));
       }));
 }
 
-ComparisonKind Comparator(type::Type const *t) {
+ComparisonKind Comparator(type::Type t) {
   using cmp_t = std::underlying_type_t<ComparisonKind>;
   if (auto const *p = t->if_as<type::BufferPointer>()) {
     return ComparisonKind::Order;
@@ -155,7 +155,8 @@ type::QualType Compiler::VerifyType(ast::ComparisonOperator const *node) {
       }
       // TODO: Calling with constants?
       auto result = VerifyBinaryOverload(
-          token, node, type::Typed<ir::Value>(ir::Value(), lhs_qual_type.type()),
+          token, node,
+          type::Typed<ir::Value>(ir::Value(), lhs_qual_type.type()),
           type::Typed<ir::Value>(ir::Value(), rhs_qual_type.type()));
       qt.remove_constant();
 
@@ -171,7 +172,7 @@ type::QualType Compiler::VerifyType(ast::ComparisonOperator const *node) {
         // if this is not the case.
         qt.MarkError();
       }
-    } else if (type::Type const *common_type =
+    } else if (type::Type common_type =
                    type::Meet(lhs_qual_type.type(), rhs_qual_type.type())) {
       auto cmp = Comparator(lhs_qual_type.type());
 

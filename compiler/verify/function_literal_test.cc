@@ -23,8 +23,8 @@ TEST(FunctionLiteral, Trivial) {
 
 TEST(FunctionLiteral, OneValidReturnType) {
   test::TestModule mod;
-  auto const *qt =
-      mod.data().qual_type(mod.Append<ast::Expression>(R"(() -> int64 { return 3 })"));
+  auto const *qt = mod.data().qual_type(
+      mod.Append<ast::Expression>(R"(() -> int64 { return 3 })"));
   EXPECT_THAT(qt,
               Pointee(type::QualType::Constant(type::Func({}, {type::Int64}))));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -137,8 +137,8 @@ TEST(FunctionLiteral, TrivialInferred) {
 
 TEST(FunctionLiteral, OneValidReturnTypeInferred) {
   test::TestModule mod;
-  auto const *qt =
-      mod.data().qual_type(mod.Append<ast::Expression>(R"(() -> { return 3 })"));
+  auto const *qt = mod.data().qual_type(
+      mod.Append<ast::Expression>(R"(() -> { return 3 })"));
   EXPECT_THAT(qt,
               Pointee(type::QualType::Constant(type::Func({}, {type::Int64}))));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -155,8 +155,8 @@ TEST(FunctionLiteral, MultipleValidReturnTypesInferred) {
 
 TEST(FunctionLiteral, OneParameterNoReturnInferred) {
   test::TestModule mod;
-  auto const *qt = mod.data().qual_type(
-      mod.Append<ast::Expression>(R"((b: bool) -> {})"));
+  auto const *qt =
+      mod.data().qual_type(mod.Append<ast::Expression>(R"((b: bool) -> {})"));
   EXPECT_THAT(
       qt,
       Pointee(type::QualType::Constant(type::Func(
@@ -201,13 +201,12 @@ TEST(FunctionLiteral, MultipleParametersOneReturnTypeInferred) {
 
 TEST(FunctionLiteral, ConstantParameter) {
   test::TestModule mod;
-  auto const *qt =
-      mod.data().qual_type(mod.Append<ast::Expression>(R"((n :: int64) -> () {})"));
+  auto const *qt = mod.data().qual_type(
+      mod.Append<ast::Expression>(R"((n :: int64) -> () {})"));
   ASSERT_NE(qt, nullptr);
   EXPECT_GE(qt->quals(), type::Quals::Const());
   EXPECT_TRUE(qt->type()->is<type::GenericFunction>());
 }
-
 
 // TODO: Add tests that verify multiple return values get joined correctly.
 

@@ -140,7 +140,7 @@ Compiler::ComputeParamsFromArgs(
           val = **a;
         } else {
           auto const *init_val = ASSERT_NOT_NULL(dep_node.node()->init_val());
-          type::Type const *t =
+          type::Type t =
               ASSERT_NOT_NULL(data().arg_type(dep_node.node()->id()));
           auto maybe_val =
               Evaluate(type::Typed<ast::Expression const *>(init_val, t));
@@ -155,7 +155,7 @@ Compiler::ComputeParamsFromArgs(
         data().set_arg_value(dep_node.node()->id(), val);
       } break;
       case core::DependencyNodeKind::ArgType: {
-        type::Type const *arg_type = nullptr;
+        type::Type arg_type = nullptr;
         if (index < args.pos().size()) {
           arg_type = args[index].type();
         } else if (auto const *a = args.at_or_null(dep_node.node()->id())) {
@@ -169,7 +169,7 @@ Compiler::ComputeParamsFromArgs(
         data().set_arg_type(dep_node.node()->id(), arg_type);
       } break;
       case core::DependencyNodeKind::ParamType: {
-        type::Type const *t = nullptr;
+        type::Type t = nullptr;
         if (auto const *type_expr = dep_node.node()->type_expr()) {
           auto type_expr_type = VerifyType(type_expr).type();
           if (type_expr_type != type::Type_) {
@@ -178,7 +178,7 @@ Compiler::ComputeParamsFromArgs(
           }
 
           ASSIGN_OR(NOT_YET(),  //
-                    t, EvaluateOrDiagnoseAs<type::Type const *>(type_expr));
+                    t, EvaluateOrDiagnoseAs<type::Type>(type_expr));
         } else {
           t = VerifyType(dep_node.node()->init_val()).type();
         }
@@ -209,7 +209,7 @@ Compiler::ComputeParamsFromArgs(
         } else if (auto const *a = args.at_or_null(dep_node.node()->id())) {
           arg = *a;
         } else {
-          auto const *t  = ASSERT_NOT_NULL(type_of(dep_node.node()));
+          auto t         = ASSERT_NOT_NULL(type_of(dep_node.node()));
           auto maybe_val = Evaluate(type::Typed<ast::Expression const *>(
               ASSERT_NOT_NULL(dep_node.node()->init_val()), t));
           if (not maybe_val) { diag().Consume(maybe_val.error()); }
@@ -369,7 +369,7 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
   }
 
   // TODO: Expansion is relevant too.
-  std::vector<std::vector<type::Type const *>> return_types;
+  std::vector<std::vector<type::Type>> return_types;
 
   // TODO: Take a type::Typed<ir::Value> instead.
   auto args_qt = args.Transform([](auto const &typed_value) {
@@ -442,7 +442,7 @@ DependentComputedData::InsertDependentResult MakeConcrete(
     core::FnArgs<type::Typed<ir::Value>> const &args) {
   DependentComputedData temp_data(&c.data().module());
   temp_data.parent_ = &c.data();
-  auto parameters = c.ComputeParamsFromArgs(node, args);
+  auto parameters   = c.ComputeParamsFromArgs(node, args);
   return c.data().InsertDependent(node, parameters);
 }
 

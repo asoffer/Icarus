@@ -43,7 +43,8 @@ type::QualType Compiler::VerifyType(ast::YieldStmt const *node) {
 type::QualType Compiler::VerifyType(ast::BlockNode const *node) {
   for (auto &param : node->params()) { VerifyType(param.value.get()); }
   for (auto *stmt : node->stmts()) { VerifyType(stmt); }
-  // TODO: Determine the type of the block (i.e., what type might be yielded out of it?
+  // TODO: Determine the type of the block (i.e., what type might be yielded out
+  // of it?
   return data().set_qual_type(node, type::QualType::Constant(type::Block));
 }
 

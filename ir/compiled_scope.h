@@ -17,7 +17,7 @@ namespace ir {
 struct CompiledScope {
   static constexpr CompiledScope *From(Scope s) { return s.scope_; }
 
-  explicit CompiledScope(type::Type const *state = nullptr) : state_(state) {}
+  explicit CompiledScope(type::Type state = nullptr) : state_(state) {}
 
   // TODO: I'm not sure we need two-step initialization here.
   void Initialize(absl::flat_hash_set<Jump> init, OverloadSet exit,
@@ -29,12 +29,12 @@ struct CompiledScope {
 
   Block block(std::string_view name) const { return blocks_.at(name); }
 
-  type::Type const *state_type() const { return state_; }
+  type::Type state_type() const { return state_; }
 
   absl::flat_hash_set<Jump> const &inits() const { return init_; }
 
  private:
-  type::Type const *state_ = nullptr;
+  type::Type state_ = nullptr;
   // Entries in this map are created from declarations in a `scope { ... }`
   // node. Because a block is only added here if it is associated with a
   // declaration, we can reuse the declaration's `id()` field which provides a

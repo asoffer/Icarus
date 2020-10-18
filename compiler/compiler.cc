@@ -9,8 +9,8 @@
 #include "frontend/parse.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
-#include "ir/interpretter/evaluate.h"
 #include "ir/compiled_jump.h"
+#include "ir/interpretter/evaluate.h"
 #include "ir/value/value.h"
 #include "type/generic_struct.h"
 #include "type/jump.h"
@@ -67,7 +67,7 @@ std::optional<type::QualType> Compiler::qual_type_of(
   return std::nullopt;
 }
 
-type::Type const *Compiler::type_of(ast::Expression const *expr) const {
+type::Type Compiler::type_of(ast::Expression const *expr) const {
   return qual_type_of(expr).value_or(type::QualType{}).type();
 }
 
@@ -92,7 +92,7 @@ ir::NativeFn Compiler::AddFunc(
 }
 
 static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
-                                type::Type const *type) {
+                                type::Type type) {
   ir::CompiledFn fn(type::Func({}, {ASSERT_NOT_NULL(type)}),
                     core::Params<type::Typed<ast::Declaration const *>>{});
   ICARUS_SCOPE(ir::SetCurrent(&fn, &c.builder())) {
@@ -102,7 +102,7 @@ static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
 
     auto val = c.EmitValue(expr);
     // TODO wrap this up into SetRet(vector)
-    std::vector<type::Type const *> extracted_types;
+    std::vector<type::Type> extracted_types;
     if (auto *tup = type->if_as<type::Tuple>()) {
       extracted_types = tup->entries_;
     } else {
@@ -112,7 +112,7 @@ static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
     if (type != type::Void()) { ASSERT(val.empty() == false); }
     // TODO is_big()?
 
-    type::Type const *t = extracted_types[0];
+    type::Type t = extracted_types[0];
     LOG("MakeThunk", "%s %s", *t, t->is_big() ? "true" : "false");
     if (t->is_big()) {
       // TODO must `r` be holding a register?

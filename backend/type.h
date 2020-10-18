@@ -9,7 +9,7 @@
 
 namespace backend {
 
-llvm::Type *ToLlvmType(type::Type const *, llvm::LLVMContext &);
+llvm::Type *ToLlvmType(type::Type, llvm::LLVMContext &);
 
 template <typename T>
 llvm::Type *LlvmType(llvm::LLVMContext &context) {
@@ -38,4 +38,4 @@ llvm::Type *LlvmType(llvm::LLVMContext &context) {
 
 }  // namespace backend
 
-#endif // ICARUS_BACKEND_TYPE_H
+#endif  // ICARUS_BACKEND_TYPE_H

@@ -97,7 +97,7 @@ int CompileToObjectFile(ExecutableModule const &module,
 
   llvm::IRBuilder<> builder(context);
   module.ForEachCompiledFn([&](ir::CompiledFn const *fn) {
-      backend::EmitLlvmFunction(builder, context, *fn, *llvm_fn_map.at(fn));
+    backend::EmitLlvmFunction(builder, context, *fn, *llvm_fn_map.at(fn));
   });
   backend::EmitLlvmFunction(builder, context, module.main(),
                             *llvm_fn_map.at(&module.main()));
@@ -108,48 +108,48 @@ int CompileToObjectFile(ExecutableModule const &module,
 
   // destination.flush();
   return 0;
+}
+
+int Compile(frontend::FileName const &file_name) {
+  llvm::InitializeAllTargetInfos();
+  llvm::InitializeAllTargets();
+  llvm::InitializeAllTargetMCs();
+  llvm::InitializeAllAsmParsers();
+  llvm::InitializeAllAsmPrinters();
+
+  diagnostic::StreamingConsumer diag(stderr, frontend::SharedSource());
+
+  auto target_triple = llvm::sys::getDefaultTargetTriple();
+  std::string error;
+  auto target = llvm::TargetRegistry::lookupTarget(target_triple, error);
+  if (not target) {
+    diag.Consume(InvalidTargetTriple{.message = std::move(error)});
+    return 1;
   }
 
-  int Compile(frontend::FileName const &file_name) {
-    llvm::InitializeAllTargetInfos();
-    llvm::InitializeAllTargets();
-    llvm::InitializeAllTargetMCs();
-    llvm::InitializeAllAsmParsers();
-    llvm::InitializeAllAsmPrinters();
-
-    diagnostic::StreamingConsumer diag(stderr, frontend::SharedSource());
-
-    auto target_triple = llvm::sys::getDefaultTargetTriple();
-    std::string error;
-    auto target = llvm::TargetRegistry::lookupTarget(target_triple, error);
-    if (not target) {
-      diag.Consume(InvalidTargetTriple{.message = std::move(error)});
-      return 1;
-    }
-
-    auto canonical_file_name = frontend::CanonicalFileName::Make(file_name);
-    auto maybe_file_src      = frontend::FileSource::Make(canonical_file_name);
-    if (not maybe_file_src) {
-      diag.Consume(frontend::MissingModule{.source    = canonical_file_name,
-                                           .requestor = ""});
-      return 1;
-    }
-
-    char const cpu[]      = "generic";
-    char const features[] = "";
-    llvm::TargetOptions target_options;
-    llvm::Optional<llvm::Reloc::Model> relocation_model;
-    llvm::TargetMachine *target_machine = target->createTargetMachine(
-        target_triple, cpu, features, target_options, relocation_model);
-
-    auto *src = &*maybe_file_src;
-    diag      = diagnostic::StreamingConsumer(stderr, src);
-    compiler::ExecutableModule exec_mod;
-    exec_mod.AppendNodes(frontend::Parse(*src, diag), diag);
-    if (diag.num_consumed() != 0) { return 1; }
-
-    return CompileToObjectFile(exec_mod, target_machine);
+  auto canonical_file_name = frontend::CanonicalFileName::Make(file_name);
+  auto maybe_file_src      = frontend::FileSource::Make(canonical_file_name);
+  if (not maybe_file_src) {
+    diag.Consume(frontend::MissingModule{.source    = canonical_file_name,
+                                         .requestor = ""});
+    return 1;
   }
+
+  char const cpu[]      = "generic";
+  char const features[] = "";
+  llvm::TargetOptions target_options;
+  llvm::Optional<llvm::Reloc::Model> relocation_model;
+  llvm::TargetMachine *target_machine = target->createTargetMachine(
+      target_triple, cpu, features, target_options, relocation_model);
+
+  auto *src = &*maybe_file_src;
+  diag      = diagnostic::StreamingConsumer(stderr, src);
+  compiler::ExecutableModule exec_mod;
+  exec_mod.AppendNodes(frontend::Parse(*src, diag), diag);
+  if (diag.num_consumed() != 0) { return 1; }
+
+  return CompileToObjectFile(exec_mod, target_machine);
+}
 
 }  // namespace
 }  // namespace compiler

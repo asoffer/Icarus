@@ -34,7 +34,7 @@ static ir::Value ArrayCompare(Compiler *compiler, type::Array const *lhs_type,
 
   auto [iter, success] = (*handle)[lhs_type].emplace(rhs_type, nullptr);
   if (success) {
-    auto const *fn_type = type::Func(
+    auto fn_type = type::Func(
         {core::AnonymousParam(type::QualType::NonConstant(type::Ptr(lhs_type))),
          core::AnonymousParam(
              type::QualType::NonConstant(type::Ptr(rhs_type)))},
@@ -111,10 +111,10 @@ static ir::RegOr<bool> EmitChainOpPair(Compiler *compiler,
                                        ast::ComparisonOperator const *chain_op,
                                        size_t index, ir::Value const &lhs_ir,
                                        ir::Value const &rhs_ir) {
-  auto &bldr     = compiler->builder();
-  auto *lhs_type = compiler->type_of(chain_op->exprs()[index]);
-  auto *rhs_type = compiler->type_of(chain_op->exprs()[index + 1]);
-  auto op        = chain_op->ops()[index];
+  auto &bldr    = compiler->builder();
+  auto lhs_type = compiler->type_of(chain_op->exprs()[index]);
+  auto rhs_type = compiler->type_of(chain_op->exprs()[index + 1]);
+  auto op       = chain_op->ops()[index];
 
   if (lhs_type->is<type::Array>() and rhs_type->is<type::Array>()) {
     return ArrayCompare(compiler, &lhs_type->as<type::Array>(), lhs_ir,
@@ -152,13 +152,12 @@ static ir::RegOr<bool> EmitChainOpPair(Compiler *compiler,
         }
         return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t,
                                 uint8_t, uint16_t, uint32_t, uint64_t, float,
-                                double, type::Type const *, ir::EnumVal,
-                                ir::FlagsVal, ir::Addr>(
-            lhs_type, [&](auto tag) {
-              using T = typename decltype(tag)::type;
-              return bldr.Eq(lhs_ir.get<ir::RegOr<T>>(),
-                             rhs_ir.get<ir::RegOr<T>>());
-            });
+                                double, type::Type, ir::EnumVal, ir::FlagsVal,
+                                ir::Addr>(lhs_type, [&](auto tag) {
+          using T = typename decltype(tag)::type;
+          return bldr.Eq(lhs_ir.get<ir::RegOr<T>>(),
+                         rhs_ir.get<ir::RegOr<T>>());
+        });
       case frontend::Operator::Ne:
         if (lhs_type == type::Block) {
           auto val1 = lhs_ir.get<ir::RegOr<ir::Block>>();
@@ -169,13 +168,12 @@ static ir::RegOr<bool> EmitChainOpPair(Compiler *compiler,
         }
         return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t,
                                 uint8_t, uint16_t, uint32_t, uint64_t, float,
-                                double, type::Type const *, ir::EnumVal,
-                                ir::FlagsVal, ir::Addr>(
-            lhs_type, [&](auto tag) {
-              using T = typename decltype(tag)::type;
-              return bldr.Ne(lhs_ir.get<ir::RegOr<T>>(),
-                             rhs_ir.get<ir::RegOr<T>>());
-            });
+                                double, type::Type, ir::EnumVal, ir::FlagsVal,
+                                ir::Addr>(lhs_type, [&](auto tag) {
+          using T = typename decltype(tag)::type;
+          return bldr.Ne(lhs_ir.get<ir::RegOr<T>>(),
+                         rhs_ir.get<ir::RegOr<T>>());
+        });
       case frontend::Operator::Ge:
         return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                                 uint16_t, uint32_t, uint64_t, float, double,
@@ -199,7 +197,7 @@ static ir::RegOr<bool> EmitChainOpPair(Compiler *compiler,
 }
 
 ir::Value Compiler::EmitValue(ast::ComparisonOperator const *node) {
-  auto *t = type_of(node);
+  auto t = type_of(node);
   if (node->ops().size() == 1) {
     auto lhs_ir = EmitValue(node->exprs()[0]);
     auto rhs_ir = EmitValue(node->exprs()[1]);

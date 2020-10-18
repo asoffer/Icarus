@@ -11,10 +11,10 @@ namespace compiler {
 namespace {
 
 template <typename IndexT>
-void AddType(IndexT &&index, type::Type const *t,
-             std::vector<core::FnArgs<type::Type const *>> *args) {
+void AddType(IndexT &&index, type::Type t,
+             std::vector<core::FnArgs<type::Type>> *args) {
   std::for_each(args->begin(), args->end(),
-                [&](core::FnArgs<type::Type const *> &fnargs) {
+                [&](core::FnArgs<type::Type> &fnargs) {
                   if constexpr (std::is_same_v<std::decay_t<IndexT>, size_t>) {
                     fnargs.pos_emplace(t);
                   } else {
@@ -24,7 +24,7 @@ void AddType(IndexT &&index, type::Type const *t,
 }
 
 ir::Value PrepareOneArg(Compiler *c, type::Typed<ir::Value> const &arg,
-                        type::Type const *param_type) {
+                        type::Type param_type) {
   auto &bldr = c->builder();
   // TODO other implicit conversions?
   auto *t = arg.type();
@@ -42,9 +42,9 @@ ir::Value PrepareOneArg(Compiler *c, type::Typed<ir::Value> const &arg,
 // TODO: Ideally we wouldn't create these all at once but rather iterate through
 // the possibilities. Doing this the right way involves having sum and product
 // iterators.
-std::vector<core::FnArgs<type::Type const *>> ExpandedFnArgs(
+std::vector<core::FnArgs<type::Type>> ExpandedFnArgs(
     core::FnArgs<type::QualType> const &fnargs) {
-  std::vector<core::FnArgs<type::Type const *>> all_expanded_options(1);
+  std::vector<core::FnArgs<type::Type>> all_expanded_options(1);
   fnargs.ApplyWithIndex([&](auto &&index, type::QualType r) {
     // TODO also maybe need the expression this came from to see if it needs
     // to be expanded.
@@ -55,7 +55,7 @@ std::vector<core::FnArgs<type::Type const *>> ExpandedFnArgs(
 }
 
 std::vector<ir::Value> PrepareCallArguments(
-    Compiler *compiler, type::Type const *state_ptr_type,
+    Compiler *compiler, type::Type state_ptr_type,
     core::Params<type::QualType> const &params,
     core::FnArgs<type::Typed<ir::Value>> const &args) {
   std::vector<ir::Value> arg_values;

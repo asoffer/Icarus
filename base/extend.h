@@ -46,7 +46,7 @@ struct TestInitializer {
 };
 
 template <typename T>
-std::true_type IsBraceInitializableWith(T*, TestInitializer<T>);
+std::true_type IsBraceInitializableWith(T *, TestInitializer<T>);
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-braces"

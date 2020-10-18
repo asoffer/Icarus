@@ -52,7 +52,7 @@ struct NonPointerJumpState {
   }
 
   frontend::SourceRange range;
-  type::Type const *type;
+  type::Type type;
 };
 
 struct BufferPointerJumpState {
@@ -75,8 +75,8 @@ struct BufferPointerJumpState {
 type::QualType Compiler::VerifyType(ast::Jump const *node) {
   LOG("Jump", "%s", node->DebugString());
 
-  bool err                = false;
-  type::Type const *state = nullptr;
+  bool err         = false;
+  type::Type state = nullptr;
 
   if (node->state()) {
     auto state_qual_type = VerifyType(node->state());
@@ -114,11 +114,10 @@ type::QualType Compiler::VerifyType(ast::Jump const *node) {
             .range = node->state()->init_val()->range(),
         });
       }
-
     }
   }
 
-  core::Params<type::Type const *> param_types =
+  core::Params<type::Type> param_types =
       node->params().Transform([&](auto const &param) {
         auto v = VerifyType(param.get());
         err |= not v.ok();

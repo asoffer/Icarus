@@ -9,9 +9,9 @@
 #include "base/stringify.h"
 
 namespace type {
-struct Type;
+struct LegacyType;
 
-template <typename V, typename T = Type>
+template <typename V, typename T = LegacyType>
 struct Typed {
   template <bool B                   = std::is_default_constructible_v<V>,
             std::enable_if_t<B, int> = 0>

@@ -6,9 +6,9 @@ namespace compiler {
 ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
   switch (node->op()) {
     case frontend::Operator::Or: {
-      auto lhs_ir   = EmitValue(node->lhs());
-      auto rhs_ir   = EmitValue(node->rhs());
-      auto const *t = ASSERT_NOT_NULL(data().qual_type(node))->type();
+      auto lhs_ir = EmitValue(node->lhs());
+      auto rhs_ir = EmitValue(node->rhs());
+      auto t      = ASSERT_NOT_NULL(data().qual_type(node))->type();
       if (t == type::Bool) {
         auto *land_block = builder().AddBlock();
 
@@ -39,9 +39,9 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
       }
     } break;
     case frontend::Operator::Xor: {
-      auto lhs_ir   = EmitValue(node->lhs());
-      auto rhs_ir   = EmitValue(node->rhs());
-      auto const *t = ASSERT_NOT_NULL(data().qual_type(node))->type();
+      auto lhs_ir = EmitValue(node->lhs());
+      auto rhs_ir = EmitValue(node->rhs());
+      auto t      = ASSERT_NOT_NULL(data().qual_type(node))->type();
       if (t == type::Bool) {
         return ir::Value(builder().Ne(lhs_ir.get<ir::RegOr<bool>>(),
                                       rhs_ir.get<ir::RegOr<bool>>()));
@@ -54,9 +54,9 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
       }
     } break;
     case frontend::Operator::And: {
-      auto lhs_ir   = EmitValue(node->lhs());
-      auto rhs_ir   = EmitValue(node->rhs());
-      auto const *t = ASSERT_NOT_NULL(data().qual_type(node))->type();
+      auto lhs_ir = EmitValue(node->lhs());
+      auto rhs_ir = EmitValue(node->rhs());
+      auto t      = ASSERT_NOT_NULL(data().qual_type(node))->type();
       if (t == type::Bool) {
         auto *land_block = builder().AddBlock();
 
@@ -147,8 +147,8 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
           });
     } break;
     case frontend::Operator::OrEq: {
-      auto const *this_type = ASSERT_NOT_NULL(data().qual_type(node))->type();
-      auto lhs_lval         = EmitRef(node->lhs());
+      auto this_type = ASSERT_NOT_NULL(data().qual_type(node))->type();
+      auto lhs_lval  = EmitRef(node->lhs());
       if (this_type == type::Bool) {
         auto *land_block = builder().AddBlock();
         auto *more_block = builder().AddBlock();
@@ -178,8 +178,8 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
       return ir::Value();
     } break;
     case frontend::Operator::AndEq: {
-      auto const *this_type = ASSERT_NOT_NULL(data().qual_type(node))->type();
-      auto lhs_lval         = EmitRef(node->lhs());
+      auto this_type = ASSERT_NOT_NULL(data().qual_type(node))->type();
+      auto lhs_lval  = EmitRef(node->lhs());
       if (this_type->is<type::Flags>()) {
         builder().Store(
             builder().AndFlags(
@@ -209,8 +209,8 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
       return ir::Value();
     } break;
     case frontend::Operator::XorEq: {
-      auto const *this_type = ASSERT_NOT_NULL(data().qual_type(node))->type();
-      auto lhs_lval         = EmitRef(node->lhs());
+      auto this_type = ASSERT_NOT_NULL(data().qual_type(node))->type();
+      auto lhs_lval  = EmitRef(node->lhs());
       if (this_type->is<type::Flags>()) {
         auto rhs_ir = EmitValue(node->rhs()).get<ir::RegOr<ir::FlagsVal>>();
         builder().Store(

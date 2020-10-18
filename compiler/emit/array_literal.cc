@@ -4,7 +4,7 @@
 namespace compiler {
 
 ir::Value Compiler::EmitValue(ast::ArrayLiteral const *node) {
-  auto *t          = ASSERT_NOT_NULL(data().qual_type(node))->type();
+  auto t           = ASSERT_NOT_NULL(data().qual_type(node))->type();
   auto alloc       = builder().TmpAlloca(t);
   auto typed_alloc = type::Typed<ir::RegOr<ir::Addr>>(
       ir::RegOr<ir::Addr>(alloc), type::Ptr(t));

@@ -33,14 +33,14 @@ enum class Completeness {
   Complete
 };
 
-// `Type` is the base class for all types in the Icarus type system. To
-// construct a new category of types, create a subclass of `Type`. Implementing
-// the required virtual methods, and passing the correct flags to the `Type`
-// constructor.
-struct Type : base::Cast<Type> {
+// `LegacyType` is the base class for all types in the Icarus type system. To
+// construct a new category of types, create a subclass of `LegacyType`.
+// Implementing the required virtual methods, and passing the correct flags to
+// the `LegacyType` constructor.
+struct LegacyType : base::Cast<LegacyType> {
  public:
-  Type() = delete;
-  virtual ~Type() {}
+  LegacyType() = delete;
+  virtual ~LegacyType() {}
   virtual void WriteTo(std::string *buf) const                    = 0;
   virtual core::Bytes bytes(core::Arch const &arch) const         = 0;
   virtual core::Alignment alignment(core::Arch const &arch) const = 0;
@@ -79,8 +79,46 @@ struct Type : base::Cast<Type> {
   constexpr Flags flags() const { return flags_; }
 
  protected:
-  explicit constexpr Type(Flags flags) : flags_(flags) {}
+  explicit constexpr LegacyType(Flags flags) : flags_(flags) {}
   Flags flags_;
+};
+
+struct Type {
+  constexpr Type(LegacyType const *t = nullptr) : t_(t) {}
+  constexpr operator LegacyType const *() const { return t_; }
+  constexpr LegacyType const *operator->() const { return t_; }
+  constexpr LegacyType const *get() const { return t_; }
+
+  template <typename H>
+  friend H AbslHashValue(H h, Type t) {
+    return H::combine(std::move(h), t.t_);
+  }
+
+  constexpr operator bool() const { return t_; }
+
+  friend bool operator==(Type lhs, Type rhs) { return lhs.t_ == rhs.t_; }
+  friend bool operator!=(Type lhs, Type rhs) { return not(lhs == rhs); }
+
+  friend bool operator==(LegacyType const *lhs, Type rhs) {
+    return lhs == rhs.t_;
+  }
+  friend bool operator==(Type lhs, LegacyType const *rhs) {
+    return lhs.t_ == rhs;
+  }
+
+  friend bool operator!=(LegacyType const *lhs, Type rhs) {
+    return lhs != rhs.t_;
+  }
+  friend bool operator!=(Type lhs, LegacyType const *rhs) {
+    return lhs.t_ != rhs;
+  }
+
+  friend std::ostream &operator<<(std::ostream &os, Type t) {
+    return os << t->to_string();
+  }
+
+ private:
+  LegacyType const *t_;
 };
 
 // Intentionally leak this type.

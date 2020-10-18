@@ -29,7 +29,7 @@ void ReadInto(T& ref, base::untyped_buffer::const_iterator* iter) {
     ref.reserve(num_entries);
     for (uint16_t i = 0; i < num_entries; ++i) {
       ReadInto(ref.emplace_back(), iter);
-   }
+    }
   } else {
     ref = iter->read<T>();
   }

@@ -29,7 +29,7 @@ struct IncompleteTypeMemberAccess {
   }
 
   frontend::SourceRange member_range;
-  type::Type const *type;
+  type::Type type;
 };
 
 struct MissingMember {
@@ -48,7 +48,7 @@ struct MissingMember {
   frontend::SourceRange expr_range;
   frontend::SourceRange member_range;
   std::string member;
-  type::Type const *type;
+  type::Type type;
 };
 
 struct NonConstantTypeMemberAccess {
@@ -90,7 +90,7 @@ struct NonExportedMember {
   }
 
   std::string member;
-  type::Type const *type;
+  type::Type type;
   frontend::SourceRange range;
 };
 
@@ -125,7 +125,7 @@ struct UndeclaredIdentifierInModule {
 // Returns a pair whose first element is the type obtained by dereferencing the
 // argument as many times as possible, and whose second element is the number of
 // dereferences requried.
-std::pair<type::Type const *, int> DereferenceAll(type::Type const *t) {
+std::pair<type::Type, int> DereferenceAll(type::Type t) {
   int num_derefs = 0;
   while (auto *p = t->if_as<type::Pointer>()) {
     t = p->pointee();
@@ -144,10 +144,9 @@ type::QualType AccessTypeMember(Compiler *c, ast::Access const *node,
     });
     return type::QualType::Error();
   }
-  ASSIGN_OR(
-      return type::QualType::Error(),  //
-             auto const *evaled_type,
-             c->EvaluateOrDiagnoseAs<type::Type const *>(node->operand()));
+  ASSIGN_OR(return type::QualType::Error(),  //
+                   auto evaled_type,
+                   c->EvaluateOrDiagnoseAs<type::Type>(node->operand()));
   auto qt = type::QualType::Constant(evaled_type);
 
   // For enums and flags, regardless of whether we can get the value, it's
@@ -266,7 +265,7 @@ type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
     case 1: {
       auto const *qt = mod->data().qual_type(decls[0]);
 
-      type::Type const *t = mod->data().qual_type(decls[0])->type();
+      type::Type t = mod->data().qual_type(decls[0])->type();
       if (qt == nullptr or not qt->ok()) {
         LOG("AccessModuleMember",
             "Found member in a different module that is missing a type. "

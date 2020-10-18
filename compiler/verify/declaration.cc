@@ -19,7 +19,7 @@ struct DeclaringHoleAsNonModule {
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  type::Type const *type;
+  type::Type type;
   frontend::SourceRange range;
 };
 
@@ -50,7 +50,7 @@ struct NoDefaultValue {
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  type::Type const *type;
+  type::Type type;
   frontend::SourceRange range;
 };
 
@@ -122,13 +122,13 @@ struct UninferrableType {
   frontend::SourceRange range;
 };
 
-UninferrableType::Reason Inferrable(type::Type const *t) {
+UninferrableType::Reason Inferrable(type::Type t) {
   if (t == type::NullPtr) { return UninferrableType::Reason::kNullPtr; }
   if (t == type::EmptyArray) { return UninferrableType::Reason::kEmptyArray; }
   if (auto *a = t->if_as<type::Array>()) { return Inferrable(a->data_type()); }
   if (auto *p = t->if_as<type::Pointer>()) { return Inferrable(p->pointee()); }
   if (auto *tup = t->if_as<type::Tuple>()) {
-    for (auto const *entry : tup->entries_) {
+    for (auto entry : tup->entries_) {
       auto reason = Inferrable(entry);
       if (reason != UninferrableType::Reason::kInferrable) { return reason; }
     }
@@ -137,7 +137,7 @@ UninferrableType::Reason Inferrable(type::Type const *t) {
       auto reason = Inferrable(param.value.type());
       if (reason != UninferrableType::Reason::kInferrable) { return reason; }
     }
-    for (auto const *t : f->output()) {
+    for (auto t : f->output()) {
       auto reason = Inferrable(t);
       if (reason != UninferrableType::Reason::kInferrable) { return reason; }
     }
@@ -151,8 +151,8 @@ UninferrableType::Reason Inferrable(type::Type const *t) {
 // Or when you import two modules verifying that symbols don't conflict.
 bool Shadow(type::Typed<ast::Declaration const *> decl1,
             type::Typed<ast::Declaration const *> decl2) {
-  type::Type const *callable1 = decl1.type()->if_as<type::Callable>();
-  type::Type const *callable2 = decl2.type()->if_as<type::Callable>();
+  type::Type callable1 = decl1.type()->if_as<type::Callable>();
+  type::Type callable2 = decl2.type()->if_as<type::Callable>();
   if (not callable1 or not callable2) { return true; }
 
   // TODO: Don't worry about generic shadowing? It'll be checked later?
@@ -191,10 +191,10 @@ type::QualType VerifyDeclarationType(Compiler &compiler,
     return type::QualType::Error();
   }
 
-  ASSIGN_OR(return type::QualType::Error(),  //
-                   auto const *t,
-                   compiler.EvaluateOrDiagnoseAs<type::Type const *>(
-                       node->type_expr()));
+  ASSIGN_OR(
+      return type::QualType::Error(),  //
+             auto t,
+             compiler.EvaluateOrDiagnoseAs<type::Type>(node->type_expr()));
 
   return type::QualType(ASSERT_NOT_NULL(t),
                         (node->flags() & ast::Declaration::f_IsConst)
@@ -377,8 +377,7 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
                                                         node_qual_type.type());
   // TODO: struct field decls shouldn't have issues with shadowing local
   // variables.
-  for (auto const *decl :
-       module::AllAccessibleDecls(node->scope(), node->id())) {
+  for (auto decl : module::AllAccessibleDecls(node->scope(), node->id())) {
     if (decl == node) { continue; }
     ASSIGN_OR(continue, type::QualType q, qual_type_of(decl));
     type::Typed<ast::Declaration const *> typed_decl(decl,

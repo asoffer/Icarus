@@ -32,15 +32,15 @@ struct Builder {
   BasicBlock* AddBlock(std::string header);
   BasicBlock* AddBlock(BasicBlock const& to_copy);
 
-  ir::OutParams OutParams(absl::Span<type::Type const* const> types);
+  ir::OutParams OutParams(absl::Span<type::Type const> types);
   ir::OutParams OutParamsCopyInit(
-      absl::Span<type::Type const* const> types,
+      absl::Span<type::Type const> types,
       absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to);
   ir::OutParams OutParamsMoveInit(
-      absl::Span<type::Type const* const> types,
+      absl::Span<type::Type const> types,
       absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to);
   ir::OutParams OutParamsAssign(
-      absl::Span<type::Type const* const> types,
+      absl::Span<type::Type const> types,
       absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to);
 
   template <typename KeyType, typename ValueType>
@@ -224,7 +224,7 @@ struct Builder {
     }
   }
 
-  RegOr<bool> Eq(type::Type const* common_type, ir::Value const& lhs_val,
+  RegOr<bool> Eq(type::Type common_type, ir::Value const& lhs_val,
                  ir::Value const& rhs_val) {
     return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
                             uint16_t, uint32_t, uint64_t, float, double,
@@ -267,9 +267,9 @@ struct Builder {
   // Note: Even though this must return a more specific type (BufferPointer
   // instead of Type), we use Type to ensure that if this gets routed into an
   // ir::Value, it will be tagged correctly.
-  RegOr<type::Type const*> BufPtr(RegOr<type::Type const*> const& val) {
+  RegOr<type::Type> BufPtr(RegOr<type::Type> const& val) {
     using InstrT = BufPtrInstruction;
-    if (not val.is_reg()) { return InstrT::Apply(val.value()); }
+    if (not val.is_reg()) { return type::Type(InstrT::Apply(val.value())); }
     InstrT inst{.operand = val};
     auto result = inst.result = CurrentGroup()->Reserve();
     CurrentBlock()->Append(std::move(inst));
@@ -279,9 +279,9 @@ struct Builder {
   // Note: Even though this must return a more specific type (Pointer instead of
   // Type), we use Type to ensure that if this gets routed into an ir::Value, it
   // will be tagged correctly.
-  RegOr<type::Type const*> Ptr(RegOr<type::Type const*> const& val) {
+  RegOr<type::Type> Ptr(RegOr<type::Type> const& val) {
     using InstrT = PtrInstruction;
-    if (not val.is_reg()) { return InstrT::Apply(val.value()); }
+    if (not val.is_reg()) { return type::Type(InstrT::Apply(val.value())); }
     InstrT inst{.operand = val};
     auto result = inst.result = CurrentGroup()->Reserve();
     CurrentBlock()->Append(std::move(inst));
@@ -297,7 +297,7 @@ struct Builder {
     return result;
   }
 
-  RegOr<type::Type const*> Tup(std::vector<RegOr<type::Type const*>> types) {
+  RegOr<type::Type> Tup(std::vector<RegOr<type::Type>> types) {
     // TODO constant-folding
     TupleInstruction inst{.values = std::move(types)};
     auto result = inst.result = CurrentGroup()->Reserve();
@@ -431,7 +431,7 @@ struct Builder {
     CurrentBlock()->Append(CommentInstruction{.comment = std::move(s)});
   }
 
-  Reg PtrFix(Reg r, type::Type const* desired_type) {
+  Reg PtrFix(Reg r, type::Type desired_type) {
     // TODO must this be a register if it's loaded?
     return desired_type->is_big() ? r : Load(r, desired_type).get<Reg>();
   }
@@ -458,17 +458,17 @@ struct Builder {
     return result;
   }
 
-  Value Load(RegOr<Addr> r, type::Type const* t) {
+  Value Load(RegOr<Addr> r, type::Type t) {
     using base::stringify;
     LOG("Load", "Calling Load(%s, %s)", r, t->to_string());
     if (t->is<type::Function>()) { return Value(Load<Fn>(r)); }
     return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
                             uint16_t, uint32_t, uint64_t, float, double,
-                            type::Type const*, EnumVal, FlagsVal, Addr, String,
-                            Fn>(t, [&](auto tag) {
-      using T = typename decltype(tag)::type;
-      return Value(Load<T>(r));
-    });
+                            type::Type, EnumVal, FlagsVal, Addr, String, Fn>(
+        t, [&](auto tag) {
+          using T = typename decltype(tag)::type;
+          return Value(Load<T>(r));
+        });
   }
 
   template <typename T>
@@ -483,7 +483,7 @@ struct Builder {
     }
   }
 
-  Reg GetRet(uint16_t n, type::Type const* t) {
+  Reg GetRet(uint16_t n, type::Type t) {
     GetReturnInstruction inst{.index = n};
     auto result = inst.result = CurrentGroup()->Reserve();
     CurrentBlock()->Append(std::move(inst));
@@ -537,10 +537,10 @@ struct Builder {
   // builtin functions (or, in the case of primitive types, do nothing).
   //
   // TODO: Use Typed<Reg>
-  void Init(type::Type const* t, Reg r);
-  void Destroy(type::Type const* t, Reg r);
-  void Move(type::Type const* t, Reg from, RegOr<Addr> to);
-  void Copy(type::Type const* t, Reg from, RegOr<Addr> to);
+  void Init(type::Type t, Reg r);
+  void Destroy(type::Type t, Reg r);
+  void Move(type::Type t, Reg from, RegOr<Addr> to);
+  void Copy(type::Type t, Reg from, RegOr<Addr> to);
 
   // Data structure access commands. For structs and tuples, `Fields` takes an
   // address of the data structure and returns the address of the particular
@@ -566,12 +566,11 @@ struct Builder {
   // Note: Even though this must return a more specific type (Function instead
   // of Type), we use Type to ensure that if this gets routed into an ir::Value,
   // it will be tagged correctly.
-  RegOr<type::Type const*> Arrow(
-      std::vector<RegOr<type::Type const*>> const& ins,
-      std::vector<RegOr<type::Type const*>> const& outs);
+  RegOr<type::Type> Arrow(std::vector<RegOr<type::Type>> const& ins,
+                          std::vector<RegOr<type::Type>> const& outs);
 
-  RegOr<type::Type const*> Array(RegOr<ArrayInstruction::length_t> len,
-                                 RegOr<type::Type const*> data_type);
+  RegOr<type::Type> Array(RegOr<ArrayInstruction::length_t> len,
+                          RegOr<type::Type> data_type);
 
   Reg OpaqueType(module::BasicModule const* mod);
 
@@ -583,14 +582,14 @@ struct Builder {
   Reg Flags(type::Flags* f, std::vector<std::string_view> names,
             absl::flat_hash_map<uint64_t, RegOr<uint64_t>> specified_values);
 
-  type::Typed<Reg> LoadSymbol(String name, type::Type const* type);
+  type::Typed<Reg> LoadSymbol(String name, type::Type type);
 
   // Low-level size/alignment commands
-  Reg Align(RegOr<type::Type const*> r);
-  Reg Bytes(RegOr<type::Type const*> r);
+  Reg Align(RegOr<type::Type> r);
+  Reg Bytes(RegOr<type::Type> r);
 
-  Reg Alloca(type::Type const* t);
-  Reg TmpAlloca(type::Type const* t);
+  Reg Alloca(type::Type t);
+  Reg TmpAlloca(type::Type t);
 
   Reg MakeBlock(Block block, std::vector<RegOr<Fn>> befores,
                 std::vector<RegOr<Jump>> afters);

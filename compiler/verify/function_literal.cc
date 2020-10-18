@@ -24,7 +24,7 @@ struct ReturningNonType {
   }
 
   frontend::SourceRange range;
-  type::Type const *type;
+  type::Type type;
 };
 
 struct NoReturnTypes {
@@ -54,8 +54,8 @@ struct ReturnTypeMismatch {
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  type::Type const *actual;
-  type::Type const *expected;
+  type::Type actual;
+  type::Type expected;
   frontend::SourceRange range;
 };
 
@@ -82,15 +82,14 @@ struct ReturningWrongNumber {
 // even provided) is entirely ignored. This way, this function can be used both
 // to verify that returns match any specified return type, or to infer the
 // return type of the function.
-absl::flat_hash_map<ast::ReturnStmt const *, std::vector<type::Type const *>>
+absl::flat_hash_map<ast::ReturnStmt const *, std::vector<type::Type>>
 InferReturnTypes(Compiler &c, ast::FunctionLiteral const *node) {
   // TODO: we can have yields and returns, or yields and jumps, but not jumps
   // and returns. Check this.
   //
   // TODO: In the event of compile-time scope execution, just looking at the
   // syntax tree will be insufficient here.
-  absl::flat_hash_map<ast::ReturnStmt const *, std::vector<type::Type const *>>
-      result;
+  absl::flat_hash_map<ast::ReturnStmt const *, std::vector<type::Type>> result;
 
   // TODO: You shouldn't need to call `ExtractJumps`. They should already have
   // been extracted. Likely the problem is you created some dependent context.
@@ -99,7 +98,7 @@ InferReturnTypes(Compiler &c, ast::FunctionLiteral const *node) {
   for (auto const *n : c.data().extraction_map_[node]) {
     auto const *ret_node = n->if_as<ast::ReturnStmt>();
     if (not ret_node) { continue; }
-    std::vector<type::Type const *> ret_types;
+    std::vector<type::Type> ret_types;
     for (auto const *expr : ret_node->exprs()) {
       ret_types.push_back(ASSERT_NOT_NULL(c.data().qual_type(expr))->type());
     }
@@ -109,16 +108,16 @@ InferReturnTypes(Compiler &c, ast::FunctionLiteral const *node) {
   return result;
 }
 
-std::optional<std::vector<type::Type const *>> JoinReturnTypes(
+std::optional<std::vector<type::Type>> JoinReturnTypes(
     diagnostic::DiagnosticConsumer &diag,
-    absl::flat_hash_map<ast::ReturnStmt const *,
-                        std::vector<type::Type const *>> const &ret_types) {
+    absl::flat_hash_map<ast::ReturnStmt const *, std::vector<type::Type>> const
+        &ret_types) {
   LOG("function-literal-join-return-types",
       "Joining types from %u return statements.", ret_types.size());
-  if (ret_types.empty()) { return std::vector<type::Type const *>{}; }
+  if (ret_types.empty()) { return std::vector<type::Type>{}; }
 
   size_t num_returns = ret_types.begin()->second.size();
-  bool error = false;
+  bool error         = false;
   for (auto const &[stmt, types] : ret_types) {
     // TODO: This error message is non-deterministic and also not even always
     // useful. Sometimes it might catch the one place the user left off a return
@@ -147,7 +146,7 @@ std::optional<std::vector<type::Type const *>> JoinReturnTypes(
 // * From Compiler::VerifyBody which also checks that the return statements
 //   match the return types (if specified).
 // * From Compiler::VerifyType if the return types are inferred.
-std::optional<std::vector<type::Type const *>> VerifyBodyOnly(
+std::optional<std::vector<type::Type>> VerifyBodyOnly(
     Compiler &c, ast::FunctionLiteral const *node) {
   bool found_error = false;
   for (auto *stmt : node->stmts()) {
@@ -165,7 +164,7 @@ type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
                    auto params, c.VerifyParams(node->params()));
 
   if (auto outputs = node->outputs()) {
-    std::vector<type::Type const *> output_type_vec(outputs->size());
+    std::vector<type::Type> output_type_vec(outputs->size());
     bool error = false;
 
     // TODO: Output types could depend on each other.
@@ -188,8 +187,8 @@ type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
     for (size_t i = 0; i < output_type_vec.size(); ++i) {
       if (auto *decl = (*outputs)[i]->if_as<ast::Declaration>()) {
         output_type_vec[i] = ASSERT_NOT_NULL(c.data().qual_type(decl))->type();
-      } else if (auto maybe_type = c.EvaluateOrDiagnoseAs<type::Type const *>(
-                     (*outputs)[i])) {
+      } else if (auto maybe_type =
+                     c.EvaluateOrDiagnoseAs<type::Type>((*outputs)[i])) {
         output_type_vec[i] = *maybe_type;
       }
     }
@@ -221,7 +220,7 @@ type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
         for (auto const *o : *outputs) {
           auto qt = c.VerifyType(o);
           ASSERT(qt == type::QualType::Constant(type::Type_));
-          auto maybe_type = c.EvaluateAs<type::Type const *>(o);
+          auto maybe_type = c.EvaluateAs<type::Type>(o);
           if (not maybe_type) { NOT_YET(); }
           rets.push_back(ASSERT_NOT_NULL(*maybe_type));
         }
@@ -279,7 +278,7 @@ WorkItem::Result Compiler::VerifyBody(ast::FunctionLiteral const *node) {
   bool error = false;
   for (size_t i = 0; i < maybe_return_types->size(); ++i) {
     if (not type::CanCastImplicitly((*maybe_return_types)[i],
-                                fn_type.output()[i])) {
+                                    fn_type.output()[i])) {
       error = true;
       diag().Consume(ReturnTypeMismatch{.actual   = (*maybe_return_types)[i],
                                         .expected = fn_type.output()[i]});

@@ -154,7 +154,8 @@ struct JumpCmd {
   template <typename T>
   explicit JumpCmd(T&& val) : jump_(std::forward<T>(val)) {}
 
-  std::variant<UnreachableJump, RetJump, UncondJump, CondJump, ChooseJump> jump_;
+  std::variant<UnreachableJump, RetJump, UncondJump, CondJump, ChooseJump>
+      jump_;
 };
 
 }  // namespace ir

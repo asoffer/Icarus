@@ -19,7 +19,7 @@ struct NonBooleanConditionalGoto {
   }
 
   frontend::SourceRange range;
-  type::Type const *type;
+  type::Type type;
 };
 
 }  // namespace

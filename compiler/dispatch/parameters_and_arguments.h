@@ -13,13 +13,13 @@
 
 namespace compiler {
 
-std::vector<core::FnArgs<type::Type const *>> ExpandedFnArgs(
+std::vector<core::FnArgs<type::Type>> ExpandedFnArgs(
     core::FnArgs<type::QualType> const &fnargs);
 
 template <typename TableType, typename ParamAccessor>
 bool ParamsCoverArgs(core::FnArgs<type::QualType> const &args,
                      TableType const &table, ParamAccessor &&get_params) {
-  LOG("ParamsCoverArgs","Unexpanded args: %s", args.to_string());
+  LOG("ParamsCoverArgs", "Unexpanded args: %s", args.to_string());
 
   auto expanded_fnargs = ExpandedFnArgs(args);
   for (auto const &expanded_arg : expanded_fnargs) {
@@ -34,16 +34,15 @@ bool ParamsCoverArgs(core::FnArgs<type::QualType> const &args,
       LOG("ParamsCoverArgs", "Params: %s", ss.str());
 
       // TODO take constness into account for callability.
-      bool callable =
-          core::IsCallable(core::ParamsRef(params), expanded_arg,
-                           [](type::Type const *arg, type::QualType param) {
-                             bool result = type::CanCast(arg, param.type());
-                             LOG("ParamsCoverArgs",
-                                 "    ... CanCast(%s, %s) = %s",
-                                 arg->to_string(), param.type()->to_string(),
-                                 result ? "true" : "false");
-                             return result;
-                           });
+      bool callable = core::IsCallable(
+          core::ParamsRef(params), expanded_arg,
+          [](type::Type arg, type::QualType param) {
+            bool result = type::CanCast(arg, param.type());
+            LOG("ParamsCoverArgs", "    ... CanCast(%s, %s) = %s",
+                arg->to_string(), param.type()->to_string(),
+                result ? "true" : "false");
+            return result;
+          });
       LOG("ParamsCoverArgs", " Callable: %s", callable ? "true" : "false");
       if (callable) { goto next_expanded_arg; }
     }
@@ -80,7 +79,7 @@ bool ParamsCoverArgs(core::FnArgs<type::QualType> const &args,
 // relying on any defaulted parameters). Any such parameter should be used to
 // fill the arguments before calling this function.
 std::vector<ir::Value> PrepareCallArguments(
-    Compiler *compiler, type::Type const *state_ptr_type,
+    Compiler *compiler, type::Type state_ptr_type,
     core::Params<type::QualType> const &params,
     core::FnArgs<type::Typed<ir::Value>> const &args);
 

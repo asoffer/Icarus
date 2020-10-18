@@ -22,8 +22,8 @@ struct TypeMismatch {
             range, diagnostic::Style::ErrorText()));
   }
 
-  type::Type const *lhs_type;
-  type::Type const *rhs_type;
+  type::Type lhs_type;
+  type::Type rhs_type;
   frontend::SourceRange range;
 };
 
@@ -90,12 +90,12 @@ type::QualType Compiler::VerifyType(ast::Assignment const *node) {
     if (lhs_iter == lhs_end or rhs_iter == rhs_end) { break; }
 
     // TODO: deal with immovable and uncopyable types.
-    type::Type const *lhs_type = (*lhs_iter).type();
-    type::Type const *rhs_type = (*rhs_iter).type();
+    type::Type lhs_type = (*lhs_iter).type();
+    type::Type rhs_type = (*rhs_iter).type();
     if (lhs_type != rhs_type) {
       diag().Consume(TypeMismatch{
-          .lhs_type= lhs_type,
-          .rhs_type   = rhs_type,
+          .lhs_type = lhs_type,
+          .rhs_type = rhs_type,
           // TODO: set the range to point more directly to the things we care
           // about.
           .range = node->range(),

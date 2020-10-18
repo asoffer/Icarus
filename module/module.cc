@@ -51,7 +51,6 @@ absl::Span<ast::Declaration const *const> BasicModule::ExportedDeclarations(
   return iter->second;
 }
 
-
 std::vector<ast::Declaration const *> AllDeclsTowardsRoot(
     ast::Scope const *starting_scope, std::string_view id) {
   std::vector<ast::Declaration const *> decls;

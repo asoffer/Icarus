@@ -2,8 +2,8 @@
 #define ICARUS_IR_INTERPRETTER_STACK_FRAME_H
 
 #include "base/untyped_buffer_view.h"
-#include "ir/interpretter/register_array.h"
 #include "ir/blocks/basic.h"
+#include "ir/interpretter/register_array.h"
 #include "ir/value/native_fn.h"
 
 namespace interpretter {

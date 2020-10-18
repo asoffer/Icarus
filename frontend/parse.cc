@@ -41,8 +41,8 @@ template <typename T>
 struct InheritsFrom : public matcher::UntypedMatcher<InheritsFrom<T>> {
   template <typename Expr>
   struct Matcher : public ::matcher::Matcher<Expr> {
-    Matcher(InheritsFrom const& m) {}
-    bool match(Expr const& input) const override {
+    Matcher(InheritsFrom const &m) {}
+    bool match(Expr const &input) const override {
       if constexpr (matcher::is_pointery<Expr>::value) {
         return dynamic_cast<T const *>(
                    matcher::is_pointery<Expr>{}.get(input)) != nullptr;
@@ -54,7 +54,6 @@ struct InheritsFrom : public matcher::UntypedMatcher<InheritsFrom<T>> {
     }
   };
 };
-
 
 struct AccessRhsNotIdentifier {
   static constexpr std::string_view kCategory = "parse-error";
@@ -275,8 +274,7 @@ struct Statements : public ast::Node {
 };
 
 struct CommaList : ast::Expression {
-  explicit CommaList(SourceRange const &range = {})
-      : ast::Expression(range) {}
+  explicit CommaList(SourceRange const &range = {}) : ast::Expression(range) {}
   ~CommaList() override {}
 
   CommaList(CommaList const &) noexcept = default;
@@ -406,7 +404,8 @@ std::unique_ptr<ast::Node> BuildRightUnop(
   if (tk == ":?") {
     SourceRange range(nodes[0]->range().begin(), nodes[1]->range().end());
     auto unop = std::make_unique<ast::UnaryOperator>(
-        range, ast::UnaryOperator::Kind::TypeOf, move_as<ast::Expression>(nodes[0]));
+        range, ast::UnaryOperator::Kind::TypeOf,
+        move_as<ast::Expression>(nodes[0]));
 
     if (unop->operand()->is<ast::Declaration>()) {
       diag.Consume(
@@ -910,8 +909,7 @@ std::unique_ptr<ast::Node> BuildOneElementCommaList(
   return comma_list;
 }
 
-void ExtractRightChainImpl(Operator op,
-                           std::unique_ptr<ast::Expression> node,
+void ExtractRightChainImpl(Operator op, std::unique_ptr<ast::Expression> node,
                            std::vector<std::unique_ptr<ast::Expression>> &out) {
   if (auto *b = node->if_as<ast::BinaryOperator>();
       b and b->op() == op and not b->parenthesized_) {
@@ -1203,7 +1201,8 @@ std::unique_ptr<ast::Node> BuildEnumOrFlagLiteral(
     }
   }
 
-  return std::make_unique<ast::EnumLiteral>(range, std::move(enumerators), std::move(values), kind);
+  return std::make_unique<ast::EnumLiteral>(range, std::move(enumerators),
+                                            std::move(values), kind);
 }
 
 std::unique_ptr<ast::Node> BuildScopeLiteral(
@@ -1372,7 +1371,7 @@ std::unique_ptr<ast::Node> BuildParameterizedKeywordScope(
 
     return std::make_unique<ast::ParameterizedStructLiteral>(
         SourceRange(nodes.front()->range().begin(),
-                              nodes.back()->range().end()),
+                    nodes.back()->range().end()),
         std::move(params), std::move(fields));
   } else {
     UNREACHABLE();
@@ -1717,7 +1716,7 @@ struct ParseState {
     return ShiftState::MustReduce;
   }
 
-  void LookAhead() { 
+  void LookAhead() {
     if (token_index_ < tokens_.size()) {
       lookahead_ = std::move(tokens_[token_index_++]);
     } else {

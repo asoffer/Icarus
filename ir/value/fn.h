@@ -27,7 +27,8 @@ struct Fn {
   enum class Kind { Native, Builtin, Foreign };
 
   // TODO: remove this constructor.
-  // TODO: Using default construction to avoid some work needed in byte-code reader.
+  // TODO: Using default construction to avoid some work needed in byte-code
+  // reader.
   Fn(CompiledFn *f = nullptr) : Fn(NativeFn(f)) {}
 
   Fn(NativeFn f) {

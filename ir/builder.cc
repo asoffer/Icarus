@@ -39,9 +39,9 @@ SetCurrent::~SetCurrent() {
   builder_->current_.block_termination_state_ = old_termination_state_;
 }
 
-Reg Builder::Alloca(type::Type const *t) { return CurrentGroup()->Alloca(t); }
+Reg Builder::Alloca(type::Type t) { return CurrentGroup()->Alloca(t); }
 
-Reg Builder::TmpAlloca(type::Type const *t) {
+Reg Builder::TmpAlloca(type::Type t) {
   auto reg = Alloca(t);
   current_.temporaries_to_destroy_.emplace_back(reg, t);
   return reg;
@@ -49,10 +49,10 @@ Reg Builder::TmpAlloca(type::Type const *t) {
 
 Reg Reserve() { return current.CurrentGroup()->Reserve(); }
 
-ir::OutParams Builder::OutParams(absl::Span<type::Type const *const> types) {
+ir::OutParams Builder::OutParams(absl::Span<type::Type const> types) {
   std::vector<Reg> regs;
   regs.reserve(types.size());
-  for (type::Type const *type : types) {
+  for (type::Type type : types) {
     regs.push_back(type->is_big() ? TmpAlloca(type)
                                   : CurrentGroup()->Reserve());
   }
@@ -60,7 +60,7 @@ ir::OutParams Builder::OutParams(absl::Span<type::Type const *const> types) {
 }
 
 ir::OutParams Builder::OutParamsMoveInit(
-    absl::Span<type::Type const *const> types,
+    absl::Span<type::Type const> types,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   std::vector<Reg> regs;
   regs.reserve(types.size());
@@ -69,11 +69,10 @@ ir::OutParams Builder::OutParamsMoveInit(
                                       : CurrentGroup()->Reserve());
   }
   return ir::OutParams(std::move(regs));
-
 }
 
 ir::OutParams Builder::OutParamsCopyInit(
-    absl::Span<type::Type const *const> types,
+    absl::Span<type::Type const> types,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   std::vector<Reg> regs;
   regs.reserve(types.size());
@@ -82,11 +81,10 @@ ir::OutParams Builder::OutParamsCopyInit(
                                       : CurrentGroup()->Reserve());
   }
   return ir::OutParams(std::move(regs));
-
 }
 
 ir::OutParams Builder::OutParamsAssign(
-    absl::Span<type::Type const *const> types,
+    absl::Span<type::Type const> types,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   std::vector<Reg> regs;
   regs.reserve(types.size());
@@ -95,7 +93,6 @@ ir::OutParams Builder::OutParamsAssign(
                                       : CurrentGroup()->Reserve());
   }
   return ir::OutParams(std::move(regs));
-
 }
 
 void Builder::Call(RegOr<Fn> const &fn, type::Function const *f,
@@ -162,32 +159,32 @@ void Builder::ChooseJump(std::vector<std::string_view> names,
       JumpCmd::Choose(std::move(names), std::move(blocks), std::move(args)));
 }
 
-void Builder::Init(type::Type const *t, Reg r) {
+void Builder::Init(type::Type t, Reg r) {
   CurrentBlock()->Append(InitInstruction{.type = t, .reg = r});
 }
 
-void Builder::Destroy(type::Type const *t, Reg r) {
+void Builder::Destroy(type::Type t, Reg r) {
   CurrentBlock()->Append(DestroyInstruction{.type = t, .reg = r});
 }
 
-void Builder::Move(type::Type const *t, Reg from, RegOr<Addr> to) {
+void Builder::Move(type::Type t, Reg from, RegOr<Addr> to) {
   CurrentBlock()->Append(
       ir::MoveInstruction{.type = t, .from = from, .to = to});
 }
 
-void Builder::Copy(type::Type const *t, Reg from, RegOr<Addr> to) {
+void Builder::Copy(type::Type t, Reg from, RegOr<Addr> to) {
   CurrentBlock()->Append(
       ir::CopyInstruction{.type = t, .from = from, .to = to});
 }
 
-type::Typed<Reg> Builder::LoadSymbol(String name, type::Type const *type) {
+type::Typed<Reg> Builder::LoadSymbol(String name, type::Type type) {
   LoadSymbolInstruction inst{.name = name, .type = type};
   auto result = inst.result = CurrentGroup()->Reserve();
   CurrentBlock()->Append(std::move(inst));
   return type::Typed<Reg>(result, type);
 }
 
-Reg Builder::Align(RegOr<type::Type const *> r) {
+Reg Builder::Align(RegOr<type::Type> r) {
   TypeInfoInstruction inst{.kind = TypeInfoInstruction::Kind::Alignment,
                            .type = r};
   auto result = inst.result = CurrentGroup()->Reserve();
@@ -195,7 +192,7 @@ Reg Builder::Align(RegOr<type::Type const *> r) {
   return result;
 }
 
-Reg Builder::Bytes(RegOr<type::Type const *> r) {
+Reg Builder::Bytes(RegOr<type::Type> r) {
   TypeInfoInstruction inst{.kind = TypeInfoInstruction::Kind::Bytes, .type = r};
   auto result = inst.result = CurrentGroup()->Reserve();
   CurrentBlock()->Append(std::move(inst));
@@ -313,15 +310,14 @@ Reg Builder::Struct(type::Struct *s, std::vector<StructField> fields,
   return result;
 }
 
-RegOr<type::Type const *> Builder::Arrow(
-    std::vector<RegOr<type::Type const *>> const &ins,
-    std::vector<RegOr<type::Type const *>> const &outs) {
-  if (absl::c_all_of(
-          ins, [](RegOr<type::Type const *> r) { return not r.is_reg(); }) and
-      absl::c_all_of(
-          outs, [](RegOr<type::Type const *> r) { return not r.is_reg(); })) {
+RegOr<type::Type> Builder::Arrow(std::vector<RegOr<type::Type>> const &ins,
+                                 std::vector<RegOr<type::Type>> const &outs) {
+  if (absl::c_all_of(ins,
+                     [](RegOr<type::Type> r) { return not r.is_reg(); }) and
+      absl::c_all_of(outs,
+                     [](RegOr<type::Type> r) { return not r.is_reg(); })) {
     core::Params<type::QualType> in_params;
-    std::vector<type::Type const *> out_vec;
+    std::vector<type::Type> out_vec;
     in_params.reserve(ins.size());
     for (auto in : ins) {
       // TODO push QualType into parameters
@@ -330,7 +326,7 @@ RegOr<type::Type const *> Builder::Arrow(
     }
     out_vec.reserve(outs.size());
     for (auto out : outs) { out_vec.push_back(out.value()); }
-    return type::Func(std::move(in_params), std::move(out_vec));
+    return type::Type(type::Func(std::move(in_params), std::move(out_vec)));
   }
   ArrowInstruction inst{.lhs = std::move(ins), .rhs = std::move(outs)};
   auto result = inst.result = CurrentGroup()->Reserve();
@@ -345,10 +341,10 @@ Reg Builder::OpaqueType(module::BasicModule const *mod) {
   return result;
 }
 
-RegOr<type::Type const *> Builder::Array(RegOr<ArrayInstruction::length_t> len,
-                                         RegOr<type::Type const *> data_type) {
+RegOr<type::Type> Builder::Array(RegOr<ArrayInstruction::length_t> len,
+                                 RegOr<type::Type> data_type) {
   if (not len.is_reg() and not data_type.is_reg()) {
-    return type::Arr(len.value(), data_type.value());
+    return type::Type(type::Arr(len.value(), data_type.value()));
   }
 
   ArrayInstruction inst{.length = len, .data_type = data_type};

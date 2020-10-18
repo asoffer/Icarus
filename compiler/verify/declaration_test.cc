@@ -78,7 +78,8 @@ TEST(Declaration, DefaultInitNonConstantType) {
   }
 }
 
-// TODO Default initialization of non-default-initializable type (both const and non-const).
+// TODO Default initialization of non-default-initializable type (both const and
+// non-const).
 
 TEST(Declaration, InferredSuccess) {
   {

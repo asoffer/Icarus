@@ -2,15 +2,15 @@
 #define ICARUS_TYPE_CAST_H
 
 namespace type {
-struct Type;
+struct LegacyType;
 
-bool CanCastImplicitly(Type const *from, Type const *to);
-bool CanCast(Type const *from, Type const *to);
+bool CanCastImplicitly(LegacyType const *from, LegacyType const *to);
+bool CanCast(LegacyType const *from, LegacyType const *to);
 
 // The 'meet' of two types is the maximal type that converts implicitly to both
 // of these types. This is not guaranteed to exist, and the function returns
 // nullptr if no meet exists.
-Type const *Meet(Type const *lhs, Type const *rhs);
+LegacyType const *Meet(LegacyType const *lhs, LegacyType const *rhs);
 
 }  // namespace type
 

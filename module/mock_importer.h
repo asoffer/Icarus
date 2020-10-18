@@ -13,6 +13,6 @@ struct MockImporter : Importer {
               (frontend::CanonicalFileName const& filename), (override));
 };
 
-}  // namespace
+}  // namespace module
 
-#endif // ICARUS_MODULE_MOCK_IMPORTER_H
+#endif  // ICARUS_MODULE_MOCK_IMPORTER_H

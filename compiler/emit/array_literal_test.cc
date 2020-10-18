@@ -13,12 +13,12 @@ struct TestCase {
 
 using ArrayLiteralTest = testing::TestWithParam<TestCase>;
 TEST_P(ArrayLiteralTest, ArrayLiteral) {
-  auto const &[ expr, expected] = GetParam();
+  auto const &[expr, expected] = GetParam();
   test::TestModule mod;
   auto const *e  = mod.Append<ast::Expression>(expr);
   auto const *qt = mod.data().qual_type(e);
   ASSERT_NE(qt, nullptr);
-  auto const *t = qt->type();
+  auto t = qt->type();
   ASSERT_NE(t, nullptr);
   auto result =
       mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));

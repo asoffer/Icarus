@@ -24,7 +24,7 @@ core::Alignment OverloadSet::alignment(core::Arch const &arch) const {
   return core::Alignment{1};
 }
 
-std::vector<type::Type const *> OverloadSet::return_types(
+std::vector<type::Type> OverloadSet::return_types(
     core::FnArgs<type::Typed<ir::Value>> const &args) const {
   ASSERT(callables_.size() == 1u);  // TODO: Support dynamic disptach
   return (*callables_.begin())->return_types(args);

@@ -35,8 +35,8 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Tuple> reg) {
       builder().CurrentBlock() = builder().CurrentGroup()->entry();
       auto var                 = ir::Reg::Arg(0);
 
-      for (size_t i :
-           base::make_random_permutation(absl::BitGen{}, reg.type()->entries_.size())) {
+      for (size_t i : base::make_random_permutation(
+               absl::BitGen{}, reg.type()->entries_.size())) {
         EmitDestroy(
             type::Typed<ir::Reg>(builder().Field(var, reg.type(), i).get(),
                                  reg.type()->entries_.at(i)));

@@ -40,7 +40,7 @@ struct Visitor<Tag, Ret(Args...)> : VisitorBase {
 #include "type/type.xmacro.h"
 #undef ICARUS_TYPE_TYPE_X
 
-  Ret Visit(Type const *t, Args... args) {
+  Ret Visit(LegacyType const *t, Args... args) {
     if constexpr (base::meta<Ret> == base::meta<void>) {
       if constexpr (sizeof...(Args) == 0) {
         t->Accept(this, nullptr, nullptr);

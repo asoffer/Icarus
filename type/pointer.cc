@@ -5,20 +5,21 @@
 
 namespace type {
 
-static base::Global<absl::flat_hash_map<Type const *, Pointer const *>>
+static base::Global<absl::flat_hash_map<LegacyType const *, Pointer const *>>
     pointer_cache;
 
-Pointer const *Ptr(Type const *t) {
+Pointer const *Ptr(LegacyType const *t) {
   auto handle = pointer_cache.lock();
   auto &p     = (*handle)[t];
   if (not p) { p = new Pointer(t); }
   return p;
 }
 
-static base::Global<absl::flat_hash_map<Type const *, BufferPointer const *>>
+static base::Global<
+    absl::flat_hash_map<LegacyType const *, BufferPointer const *>>
     buffer_pointer_cache;
 
-BufferPointer const *BufPtr(Type const *t) {
+BufferPointer const *BufPtr(LegacyType const *t) {
   auto handle = buffer_pointer_cache.lock();
   auto &p     = (*handle)[t];
   if (not p) { p = new BufferPointer(t); }

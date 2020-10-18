@@ -15,7 +15,7 @@
 #include "ir/value/reg_or.h"
 #include "ir/value/scope.h"
 #include "ir/value/string.h"
-#include "type/type_fwd.h"
+#include "type/type.h"
 
 namespace ir {
 // TODO: Invert the dependencies here.
@@ -40,10 +40,11 @@ struct Value {
 
   explicit Value() : Value(Empty{}) {}
 
-  using supported_types = base::type_list<
-      bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t,
-      uint64_t, float, double, type::Type const*, Reg, Addr, String, FlagsVal,
-      EnumVal, ModuleId, Fn, GenericFn, Jump, Block, Scope, Label, Empty>;
+  using supported_types =
+      base::type_list<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
+                      uint16_t, uint32_t, uint64_t, float, double, type::Type,
+                      Reg, Addr, String, FlagsVal, EnumVal, ModuleId, Fn,
+                      GenericFn, Jump, Block, Scope, Label, Empty>;
 
   // Constructs a `Value` from the passed in type. The parameter may be of any
   // type supported by `Value` or an `ir::RegOr<T>` where `T` is an type
@@ -105,15 +106,15 @@ struct Value {
   template <typename F>
   constexpr void apply(F&& f) const {
     apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-               uint32_t, uint64_t, float, double, type::Type const*, Addr,
-               String, EnumVal, FlagsVal, /*Fn, GenericFn,*/ Reg, ModuleId,
-               Empty>(std::forward<F>(f));
+               uint32_t, uint64_t, float, double, type::Type, Addr, String,
+               EnumVal, FlagsVal, /*Fn, GenericFn,*/ Reg, ModuleId, Empty>(
+        std::forward<F>(f));
   }
 
   template <typename H>
   friend H AbslHashValue(H h, Value const& v) {
     v.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                 uint32_t, uint64_t, float, double, type::Type const*, Addr,
+                 uint32_t, uint64_t, float, double, type::Type, Addr,
                  /*String, */ EnumVal, FlagsVal, /* Fn, GenericFn, */ Jump, Reg,
                  ModuleId, Empty>(
         [&](auto x) { h = H::combine(std::move(h), v.type_.get(), x); });
@@ -143,8 +144,8 @@ struct Value {
     if (lhs.type_ != rhs.type_) { return false; }
     bool eq;
     lhs.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                   uint32_t, uint64_t, float, double, type::Type const*, Reg,
-                   Addr, String, EnumVal, FlagsVal, ModuleId, Empty>(
+                   uint32_t, uint64_t, float, double, type::Type, Reg, Addr,
+                   String, EnumVal, FlagsVal, ModuleId, Empty>(
         [&rhs, &eq](auto x) {
           eq = (x == rhs.get<std::decay_t<decltype(x)>>());
         });
@@ -159,9 +160,9 @@ struct Value {
     // TODO: Hack until we invert the Fn dependency.
     if (value.type_ == base::meta<Fn>) { return os << "fn"; }
     value.apply_impl<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                     uint32_t, uint64_t, float, double, type::Type const*, Reg,
-                     Addr, String, FlagsVal, EnumVal, ModuleId, Jump, Block,
-                     Scope, Empty>([&os](auto x) { os << x; });
+                     uint32_t, uint64_t, float, double, type::Type, Reg, Addr,
+                     String, FlagsVal, EnumVal, ModuleId, Jump, Block, Scope,
+                     Empty>([&os](auto x) { os << x; });
     return os;
   }
 

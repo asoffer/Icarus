@@ -29,10 +29,10 @@ InlineJumpIntoCurrent(ir::Builder &bldr, ir::Jump to_be_inlined,
   auto *into = bldr.CurrentGroup();
   ir::InstructionInliner inl(jump, into, block_interp);
 
-  bldr.CurrentBlock()   = start_block;
-  size_t i              = 0;
-  auto const *jump_type = jump->type();
-  if (auto *state_type = jump_type->state()) {
+  bldr.CurrentBlock() = start_block;
+  size_t i            = 0;
+  auto jump_type      = jump->type();
+  if (auto state_type = jump_type->state()) {
     type::Apply(state_type, [&](auto tag) -> ir::Reg {
       using T = typename decltype(tag)::type;
       return ir::MakeReg<ir::RegOr<T>>(arguments[i++].get<ir::RegOr<T>>());
@@ -64,7 +64,7 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
   auto const *compiled_scope = ir::CompiledScope::From(scope);
   // Stateful scopes need to have their state initialized.
   std::optional<ir::Reg> state_ptr;
-  if (auto const *state_type = compiled_scope->state_type()) {
+  if (auto state_type = compiled_scope->state_type()) {
     state_ptr = builder().Alloca(state_type);
   }
 
@@ -139,8 +139,8 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
     auto *start = local_interp[block_node.name()];
     builder().UncondJump(start);
 
-    builder().CurrentBlock()  = start;
-    auto *b                   = builder().AddBlock(
+    builder().CurrentBlock() = start;
+    auto *b                  = builder().AddBlock(
         absl::StrFormat("body block for `%s`.", block_node.name()));
     builder().UncondJump(b);
 

@@ -538,7 +538,7 @@ void EmitLlvmFunction(llvm::IRBuilder<> &builder, llvm::LLVMContext &context,
   }
 
   auto front_iter = to_process.begin();
-  auto back_iter = to_process.end();
+  auto back_iter  = to_process.end();
   while (front_iter != back_iter) {
     while (front_iter != back_iter) {
       auto &[block, instructions] = *front_iter;

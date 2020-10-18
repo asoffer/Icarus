@@ -64,7 +64,7 @@ void MakeAllDestructions(Compiler &compiler, ast::ExecScope const *exec_scope) {
   });
 
   for (auto *decl : ordered_decls) {
-    auto *t = ASSERT_NOT_NULL(compiler.type_of(decl));
+    auto t = ASSERT_NOT_NULL(compiler.type_of(decl));
     if (not t->HasDestructor()) { continue; }
     compiler.EmitDestroy(type::Typed<ir::Reg>(compiler.data().addr(decl), t));
   }
@@ -158,7 +158,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
       for (size_t i = 0; i < outputs->size(); ++i) {
         auto *out_decl = (*outputs)[i]->if_as<ast::Declaration>();
         if (not out_decl) { continue; }
-        auto *out_decl_type = ASSERT_NOT_NULL(compiler->type_of(out_decl));
+        auto out_decl_type = ASSERT_NOT_NULL(compiler->type_of(out_decl));
         auto alloc = out_decl_type->is_big() ? bldr.GetRet(i, out_decl_type)
                                              : bldr.Alloca(out_decl_type);
 

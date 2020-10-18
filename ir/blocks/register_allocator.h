@@ -34,7 +34,7 @@ struct RegisterAllocator {
 
   // Adds a new stack allocation of type `t` and returns the `Reg` representing
   // the register to which it was assigned.
-  Reg StackAllocate(type::Type const* t) {
+  Reg StackAllocate(type::Type t) {
     auto r = Reserve();
     allocs_.emplace_back(t, r);
     return r;
@@ -79,7 +79,7 @@ struct RegisterAllocator {
  private:
   size_t num_regs_;
   size_t num_args_;
-  std::vector<std::pair<type::Type const*, Reg>> allocs_;
+  std::vector<std::pair<type::Type, Reg>> allocs_;
 };
 
 }  // namespace ir

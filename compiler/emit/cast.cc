@@ -21,14 +21,12 @@ void Compiler::EmitMoveInit(
 }
 
 ir::Value Compiler::EmitValue(ast::Cast const *node) {
-  type::Type const *to_type = ASSERT_NOT_NULL(data().qual_type(node))->type();
-  auto values               = EmitValue(node->expr());
+  type::Type to_type = ASSERT_NOT_NULL(data().qual_type(node))->type();
+  auto values        = EmitValue(node->expr());
 
-  if (to_type == type::Type_) {
-    return ir::Value(values.get<type::Type const *>());
-  }
+  if (to_type == type::Type_) { return ir::Value(values.get<type::Type>()); }
 
-  auto *from_type = ASSERT_NOT_NULL(data().qual_type(node->expr()))->type();
+  auto from_type = ASSERT_NOT_NULL(data().qual_type(node->expr()))->type();
   if (type::IsNumeric(from_type)) {
     if (type::IsIntegral(from_type)) {
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,

@@ -21,7 +21,7 @@ struct UncopyableType {
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  type::Type const *from;
+  type::Type from;
   frontend::SourceRange range;
 };
 
@@ -52,7 +52,7 @@ struct InvalidUnaryOperatorCall {
   }
 
   char const *op;
-  type::Type const *type;
+  type::Type type;
   frontend::SourceRange range;
 };
 
@@ -68,7 +68,7 @@ struct NegatingUnsignedInteger {
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  type::Type const *type;
+  type::Type type;
   frontend::SourceRange range;
 };
 
@@ -110,7 +110,7 @@ struct DereferencingNonPointer {
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  type::Type const *type;
+  type::Type type;
   frontend::SourceRange range;
 };
 
@@ -119,7 +119,7 @@ struct DereferencingNonPointer {
 type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto operand_qt, VerifyType(node->operand()));
-  auto *operand_type = operand_qt.type();
+  auto operand_type = operand_qt.type();
 
   type::QualType qt;
 
@@ -188,8 +188,8 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
     } break;
     case ast::UnaryOperator::Kind::Address: {
       if (operand_qt.quals() >= type::Quals::Buf()) {
-        qt =
-            type::QualType(type::BufPtr(operand_type), type::Quals::Unqualified());
+        qt = type::QualType(type::BufPtr(operand_type),
+                            type::Quals::Unqualified());
       } else if (operand_qt.quals() >= type::Quals::Ref()) {
         qt =
             type::QualType(type::Ptr(operand_type), type::Quals::Unqualified());
@@ -222,8 +222,8 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
         return type::QualType::Error();
       } else if (operand_type->is<type::Struct>()) {
         // TODO: support calling with constant arguments.
-        qt = VerifyUnaryOverload("-", node,
-                                 type::Typed<ir::Value>(ir::Value(), operand_qt.type()));
+        qt = VerifyUnaryOverload(
+            "-", node, type::Typed<ir::Value>(ir::Value(), operand_qt.type()));
         if (not qt.ok()) {
           diag().Consume(InvalidUnaryOperatorOverload{
               .op    = "-",

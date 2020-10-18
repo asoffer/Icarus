@@ -21,7 +21,7 @@ struct StructLiteral;
 
 namespace type {
 
-struct Struct : public Type {
+struct Struct : public LegacyType {
   struct Field {
     // TODO make a string_view but deal with trickiness of moving
 
@@ -33,7 +33,7 @@ struct Struct : public Type {
     }
 
     std::string name;
-    Type const *type = nullptr;
+    Type type = nullptr;
     ir::Value initial_value;
     std::vector<ast::Hashtag> hashtags_;
   };
@@ -78,7 +78,7 @@ struct Struct : public Type {
   bool contains_hashtag(ast::Hashtag needle) const;
 
   module::BasicModule const *mod_ = nullptr;
-  Completeness completeness_ = Completeness::Incomplete;
+  Completeness completeness_      = Completeness::Incomplete;
 
   base::lazy<ir::NativeFn> init_func_;
   base::lazy<ir::NativeFn> destroy_func_;

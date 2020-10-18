@@ -22,12 +22,12 @@ static void CallFn(ir::BuiltinFn fn, base::untyped_buffer_view arguments,
                    absl::Span<ir::Addr const> ret_slots, ExecutionContext &) {
   switch (fn.which()) {
     case ir::BuiltinFn::Which::Alignment: {
-      type::Type const *type = arguments.get<type::Type const *>(0);
+      type::Type type = arguments.get<type::Type>(0);
       *static_cast<uint64_t *>(ASSERT_NOT_NULL(ret_slots[0].heap())) =
           type->alignment(kArchitecture).value();
     } break;
     case ir::BuiltinFn::Which::Bytes: {
-      type::Type const *type = arguments.get<type::Type const *>(0);
+      type::Type type = arguments.get<type::Type>(0);
       *static_cast<uint64_t *>(ASSERT_NOT_NULL(ret_slots[0].heap())) =
           type->bytes(kArchitecture).value();
     } break;
@@ -155,7 +155,7 @@ constexpr exec_t GetInstruction() {
               /* length = */ kMaxSize);
 
         } else {
-          type::Type const *t = fn_type->params()[i].value.type();
+          type::Type t = fn_type->params()[i].value.type();
           if (t->is_big()) {
             NOT_YET();
           } else {
@@ -343,15 +343,15 @@ base::expected<ir::Value, EvaluationFailure> Evaluate(ir::CompiledFn &&fn) {
   values.reserve(fn.type()->output().size());
 
   auto iter = buf.begin();
-  for (auto *t : fn.type()->output()) {
+  for (type::Type t : fn.type()->output()) {
     if (t->is<type::GenericStruct>()) {
       values.push_back(ir::Value(t));
     } else {
       type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                       uint16_t, uint32_t, uint64_t, float, double,
-                       type::Type const *, ir::EnumVal, ir::FlagsVal, ir::Addr,
-                       ir::String, ir::ModuleId, ir::Scope, ir::Fn, ir::Jump,
-                       ir::Block, ir::GenericFn>(t, [&](auto tag) {
+                       uint16_t, uint32_t, uint64_t, float, double, type::Type,
+                       ir::EnumVal, ir::FlagsVal, ir::Addr, ir::String,
+                       ir::ModuleId, ir::Scope, ir::Fn, ir::Jump, ir::Block,
+                       ir::GenericFn>(t, [&](auto tag) {
         using T = typename decltype(tag)::type;
         T val   = iter.read<T>();
         values.push_back(ir::Value(val));

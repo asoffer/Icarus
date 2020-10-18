@@ -22,7 +22,7 @@ struct NotAType {
   }
 
   frontend::SourceRange range;
-  type::Type const *type;
+  type::Type type;
 };
 
 struct InvalidCast {
@@ -36,8 +36,8 @@ struct InvalidCast {
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  type::Type const *from;
-  type::Type const *to;
+  type::Type from;
+  type::Type to;
   frontend::SourceRange range;
 };
 
@@ -55,7 +55,7 @@ struct AssigningToConstant {
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  type::Type const *to;
+  type::Type to;
   frontend::SourceRange range;
 };
 
@@ -70,7 +70,7 @@ struct ImmovableType {
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  type::Type const *from;
+  type::Type from;
   frontend::SourceRange range;
 };
 

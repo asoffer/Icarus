@@ -12,8 +12,8 @@ std::optional<FailedMatch> MatchPositionalArgsToParams(
     core::Params<type::QualType> *matched_params) {
   if (args.size() > params.size()) { return FailedMatch{}; }
   for (size_t i = 0; i < args.pos().size(); ++i) {
-    auto const &param      = params[i];
-    type::Type const *meet = type::Meet(args[i].type(), param.value.type());
+    auto const &param = params[i];
+    type::Type meet   = type::Meet(args[i].type(), param.value.type());
     if (not meet) { return FailedMatch{}; }
     matched_params->append(
         param.name, type::QualType(meet, param.value.quals()), param.flags);
@@ -30,7 +30,7 @@ std::optional<FailedMatch> MatchNamedArgsToParams(
     LOG("match", "Matching param in position %u (name = %s)", i, param.name);
     if (auto *result = args.at_or_null(param.name)) {
       // TODO constant parameters
-      type::Type const *meet = type::Meet(result->type(), param.value.type());
+      type::Type meet = type::Meet(result->type(), param.value.type());
       if (not meet) { return FailedMatch{}; }
       matched_params->append(
           param.name, type::QualType(meet, param.value.quals()), param.flags);

@@ -30,39 +30,38 @@ TEST_P(IdentifierTest, Identifier) {
 // to a function call. The former helps cover the constant-folding mechanisms
 // built in to the ir::Builder. The latter helps cover the common case for code
 // emission.
-INSTANTIATE_TEST_SUITE_P(All, IdentifierTest,
-                         testing::ValuesIn({
-                             TestCase{.expr     = R"((() -> int64 {
+INSTANTIATE_TEST_SUITE_P(
+    All, IdentifierTest,
+    testing::ValuesIn({TestCase{.expr     = R"((() -> int64 {
                                                        a ::= 1
                                                        return a
                                                      })()
                                                      )",
-                                      .expected = ir::Value(int64_t{1})},
-                             TestCase{.expr     = R"(((n :: int64) -> int64 {
+                                .expected = ir::Value(int64_t{1})},
+                       TestCase{.expr     = R"(((n :: int64) -> int64 {
                                                        return n
                                                      })(2)
                                                      )",
-                                      .expected = ir::Value(int64_t{2})},
-                             TestCase{.expr     = R"((() -> int64 {
+                                .expected = ir::Value(int64_t{2})},
+                       TestCase{.expr     = R"((() -> int64 {
                                                        a := 3
                                                        return a
                                                      })()
                                                      )",
-                                      .expected = ir::Value(int64_t{3})},
-                             TestCase{.expr     = R"(((n: int64) -> int64 {
+                                .expected = ir::Value(int64_t{3})},
+                       TestCase{.expr     = R"(((n: int64) -> int64 {
                                                        return n
                                                      })(4)
                                                      )",
-                                      .expected = ir::Value(int64_t{4})},
-                             TestCase{.expr     = R"((() -> int64 {
+                                .expected = ir::Value(int64_t{4})},
+                       TestCase{.expr     = R"((() -> int64 {
                                                        f ::= () -> () {}
                                                        f ::= (n: int64) -> () {}
                                                        f ::= (b: bool) -> () {}
                                                        return f
                                                      })()
                                                      )",
-                                      .expected = ir::Value(int64_t{4})}
-                         }));
+                                .expected = ir::Value(int64_t{4})}}));
 
 // TODO: Add a test that covers pointer parameters.
 

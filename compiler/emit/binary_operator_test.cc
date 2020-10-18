@@ -39,7 +39,7 @@ TEST_P(BinaryOperatorTest, Constants) {
       R"((%s) %s (%s))", test_data.lhs, test_case.op, test_data.rhs));
   auto const *qt = mod.data().qual_type(e);
   ASSERT_NE(qt, nullptr) << "No QualType for " << e->DebugString();
-  auto const *t = qt->type();
+  auto t = qt->type();
   ASSERT_NE(t, nullptr);
   auto result =
       mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));
@@ -64,7 +64,7 @@ TEST_P(BinaryOperatorTest, NonConstants) {
       test_case.type, test_data.lhs, test_data.rhs, test_case.op));
   auto const *qt = mod.data().qual_type(e);
   ASSERT_NE(qt, nullptr) << "No QualType for " << e->DebugString();
-  auto const *t = qt->type();
+  auto t = qt->type();
   ASSERT_NE(t, nullptr);
   auto result =
       mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));
@@ -77,7 +77,8 @@ TEST_P(BinaryOperatorTest, Assignment) {
   test::TestModule mod;
   // TODO: We can't use `s` as the field member because the compiler thinks
   // there's an ambiguity (there isn't).
-  mod.AppendCode(kCommonDefinitions);std::string s;
+  mod.AppendCode(kCommonDefinitions);
+  std::string s;
   auto const *e  = mod.Append<ast::Expression>(absl::StrFormat(
       R"(
       (() -> %s {
@@ -89,14 +90,13 @@ TEST_P(BinaryOperatorTest, Assignment) {
       test_case.type, test_data.lhs, test_case.op, test_data.rhs));
   auto const *qt = mod.data().qual_type(e);
   ASSERT_NE(qt, nullptr) << "No QualType for " << e->DebugString();
-  auto const *t = qt->type();
+  auto t = qt->type();
   ASSERT_NE(t, nullptr);
   auto result =
       mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));
   ASSERT_TRUE(result);
   EXPECT_EQ(*result, test_data.expected);
 }
-
 
 // Note: We test both with literals and with a unary-operator applied directly
 // to a function call. The former helps cover the constant-folding mechanisms
@@ -200,10 +200,8 @@ template <typename T>
 std::vector<TestData> MakeAddTestDataSet() {
   if constexpr (std::is_signed_v<T>) {
     return {
-        MakeTestData<'+'>(T{0}, T{0}),
-        MakeTestData<'+'>(T{0}, T{1}),
-        MakeTestData<'+'>(T{1}, T{0}),
-        MakeTestData<'+'>(T{0}, T{-1}),
+        MakeTestData<'+'>(T{0}, T{0}), MakeTestData<'+'>(T{0}, T{1}),
+        MakeTestData<'+'>(T{1}, T{0}), MakeTestData<'+'>(T{0}, T{-1}),
         MakeTestData<'+'>(T{-1}, T{0}),
         // TODO: This one fails due to a parsing bug with 64-bit integers. In
         // general the negative max value cannot be treated as unary negation of
@@ -273,10 +271,8 @@ template <typename T>
 std::vector<TestData> MakeSubTestDataSet() {
   if constexpr (std::is_signed_v<T>) {
     return {
-        MakeTestData<'-'>(T{0}, T{0}),
-        MakeTestData<'-'>(T{0}, T{1}),
-        MakeTestData<'-'>(T{1}, T{0}),
-        MakeTestData<'-'>(T{0}, T{-1}),
+        MakeTestData<'-'>(T{0}, T{0}),  MakeTestData<'-'>(T{0}, T{1}),
+        MakeTestData<'-'>(T{1}, T{0}),  MakeTestData<'-'>(T{0}, T{-1}),
         MakeTestData<'-'>(T{-1}, T{0}),
         // TODO: Similar parsing bug as above.
         // MakeTestData<'-'>(std::numeric_limits<T>::min(), T{0}),
@@ -289,8 +285,7 @@ std::vector<TestData> MakeSubTestDataSet() {
     };
   } else {
     return {
-        MakeTestData<'-'>(T{0}, T{0}),
-        MakeTestData<'-'>(T{1}, T{0}),
+        MakeTestData<'-'>(T{0}, T{0}), MakeTestData<'-'>(T{1}, T{0}),
         // TODO: Similar parsing bug as above.
         // MakeTestData<'-'>(std::numeric_limits<T>::max(), T{0}),
         // MakeTestData<'-'>(std::numeric_limits<T>::max(), T{1}),
@@ -329,9 +324,8 @@ INSTANTIATE_TEST_SUITE_P(
                      testing::ValuesIn(MakeSubTestDataSet<uint32_t>())));
 INSTANTIATE_TEST_SUITE_P(
     Nat64Sub, BinaryOperatorTest,
-    testing::Combine(
-        testing::ValuesIn({TestCase{.op = "-", .type = "nat64"}}),
-        testing::ValuesIn(MakeSubTestDataSet<uint64_t>())));
+    testing::Combine(testing::ValuesIn({TestCase{.op = "-", .type = "nat64"}}),
+                     testing::ValuesIn(MakeSubTestDataSet<uint64_t>())));
 
 template <typename T>
 std::vector<TestData> MakeMulTestDataSet() {
@@ -367,10 +361,8 @@ std::vector<TestData> MakeMulTestDataSet() {
     };
   } else {
     return {
-        MakeTestData<'*'>(T{0}, T{0}),
-        MakeTestData<'*'>(T{1}, T{0}),
-        MakeTestData<'*'>(T{0}, T{1}),
-        MakeTestData<'*'>(T{1}, T{1}),
+        MakeTestData<'*'>(T{0}, T{0}), MakeTestData<'*'>(T{1}, T{0}),
+        MakeTestData<'*'>(T{0}, T{1}), MakeTestData<'*'>(T{1}, T{1}),
         // TODO: Similar parsing bug as above.
         // MakeTestData<'*'>(T{0}, std::numeric_limits<T>::max()),
         // MakeTestData<'*'>(std::numeric_limits<T>::max()}, T{0}),
@@ -455,10 +447,8 @@ std::vector<TestData> MakeDivTestDataSet() {
     };
   } else {
     return {
-        MakeTestData<'/'>(T{0}, T{1}),
-        MakeTestData<'/'>(T{1}, T{1}),
-        MakeTestData<'/'>(T{5}, T{3}),
-        MakeTestData<'/'>(T{3}, T{5}),
+        MakeTestData<'/'>(T{0}, T{1}), MakeTestData<'/'>(T{1}, T{1}),
+        MakeTestData<'/'>(T{5}, T{3}), MakeTestData<'/'>(T{3}, T{5}),
         // TODO: Similar parsing bug as above.
         // MakeTestData<'/'>(T{0}, std::numeric_limits<T>::max()),
         // MakeTestData<'/'>(T{1}, std::numeric_limits<T>::max()),
@@ -538,10 +528,8 @@ std::vector<TestData> MakeModTestDataSet() {
     };
   } else {
     return {
-        MakeTestData<'%'>(T{0}, T{1}),
-        MakeTestData<'%'>(T{1}, T{1}),
-        MakeTestData<'%'>(T{5}, T{3}),
-        MakeTestData<'%'>(T{3}, T{5}),
+        MakeTestData<'%'>(T{0}, T{1}), MakeTestData<'%'>(T{1}, T{1}),
+        MakeTestData<'%'>(T{5}, T{3}), MakeTestData<'%'>(T{3}, T{5}),
         // TODO: Similar parsing bug as above.
         // MakeTestData<'/'>(T{0}, std::numeric_limits<T>::max()),
         // MakeTestData<'/'>(T{1}, std::numeric_limits<T>::max()),

@@ -32,7 +32,7 @@ struct TupleInstruction
     return absl::StrCat(
         "type ", stringify(this->result), " = tup ",
         absl::StrJoin(this->values, " ",
-                      [](std::string* out, RegOr<type::Type const*> const& r) {
+                      [](std::string* out, RegOr<type::Type> const& r) {
                         out->append(stringify(r));
                       }));
   }
@@ -40,13 +40,13 @@ struct TupleInstruction
   void Apply(interpretter::ExecutionContext& ctx) const {
     // TODO: It'd be better to deserialize and resolve simultaneously to avoid
     // this extra allocation.
-    std::vector<type::Type const*> types;
+    std::vector<type::Type> types;
     types.reserve(values.size());
     for (auto const& value : values) { types.push_back(ctx.resolve(value)); }
     ctx.current_frame().regs_.set(result, type::Tup(std::move(types)));
   }
 
-  std::vector<RegOr<type::Type const*>> values;
+  std::vector<RegOr<type::Type>> values;
   Reg result;
 };
 
@@ -172,7 +172,7 @@ struct ArrowInstruction
           core::AnonymousParam(type::QualType::NonConstant(ctx.resolve(t))));
     }
 
-    std::vector<type::Type const*> rhs_types;
+    std::vector<type::Type> rhs_types;
     rhs_types.reserve(rhs.size());
     for (auto const& t : rhs) { rhs_types.push_back(ctx.resolve(t)); }
 
@@ -185,18 +185,18 @@ struct ArrowInstruction
     return absl::StrCat(
         stringify(result), " = (",
         absl::StrJoin(lhs, ", ",
-                      [](std::string* out, RegOr<type::Type const*> const& r) {
+                      [](std::string* out, RegOr<type::Type> const& r) {
                         out->append(stringify(r));
                       }),
         ") -> (",
         absl::StrJoin(rhs, ", ",
-                      [](std::string* out, RegOr<type::Type const*> const& r) {
+                      [](std::string* out, RegOr<type::Type> const& r) {
                         out->append(stringify(r));
                       }),
         ")");
   }
 
-  std::vector<RegOr<type::Type const*>> lhs, rhs;
+  std::vector<RegOr<type::Type>> lhs, rhs;
   Reg result;
 };
 
@@ -208,11 +208,11 @@ struct PtrInstruction
   void Apply(interpretter::ExecutionContext& ctx) const {
     ctx.current_frame().regs_.set(result, Apply(ctx.resolve(operand)));
   }
-  static type::Pointer const* Apply(type::Type const* operand) {
+  static type::Pointer const* Apply(type::Type operand) {
     return type::Ptr(operand);
   }
 
-  RegOr<type::Type const*> operand;
+  RegOr<type::Type> operand;
   Reg result;
 };
 
@@ -224,11 +224,11 @@ struct BufPtrInstruction
   void Apply(interpretter::ExecutionContext& ctx) const {
     ctx.current_frame().regs_.set(result, Apply(ctx.resolve(operand)));
   }
-  static type::BufferPointer const* Apply(type::Type const* operand) {
+  static type::BufferPointer const* Apply(type::Type operand) {
     return type::BufPtr(operand);
   }
 
-  RegOr<type::Type const*> operand;
+  RegOr<type::Type> operand;
   Reg result;
 };
 
@@ -242,7 +242,7 @@ struct StructInstruction
     struct_fields.reserve(fields.size());
     for (auto const& field : fields) {
       if (ir::Value const* init_val = field.initial_value()) {
-        type::Type const* t = ctx.resolve(field.type());
+        type::Type t = ctx.resolve(field.type());
         struct_fields.push_back(type::Struct::Field{
             .name          = std::string(field.name()),
             .type          = ASSERT_NOT_NULL(t),
@@ -292,7 +292,7 @@ struct ArrayInstruction
   }
 
   RegOr<length_t> length;
-  RegOr<type::Type const*> data_type;
+  RegOr<type::Type> data_type;
   Reg result;
 };
 

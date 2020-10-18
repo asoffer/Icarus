@@ -28,7 +28,6 @@ struct MissingModule {
   std::string requestor;
 };
 
-
 struct FileSource : public Source {
   static base::expected<FileSource> Make(CanonicalFileName file_name);
 

@@ -4,8 +4,7 @@
 namespace compiler {
 
 ir::Value Compiler::EmitValue(ast::ArrayType const *node) {
-  auto result =
-      EmitValue(node->data_type()).get<ir::RegOr<type::Type const *>>();
+  auto result = EmitValue(node->data_type()).get<ir::RegOr<type::Type>>();
   // Size must be at least 1 by construction, so `.size() - 1` will not
   // overflow.
   for (int i = node->lengths().size() - 1; i >= 0; --i) {
@@ -19,7 +18,7 @@ void Compiler::EmitAssign(
     ast::ArrayType const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
-  builder().Store(EmitValue(node).get<ir::RegOr<type::Type const *>>(), *to[0]);
+  builder().Store(EmitValue(node).get<ir::RegOr<type::Type>>(), *to[0]);
 }
 
 void Compiler::EmitCopyInit(

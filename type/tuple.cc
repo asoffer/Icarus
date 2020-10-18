@@ -11,10 +11,10 @@
 // may not be a good design.
 
 namespace type {
-Type const *Void() { return Tup({}); }
+Type Void() { return Tup({}); }
 
-static base::Global<std::map<std::vector<Type const *>, Tuple const>> tups_;
-Type const *Tup(std::vector<Type const *> entries) {
+static base::Global<absl::node_hash_map<std::vector<Type>, Tuple const>> tups_;
+Type Tup(std::vector<Type> entries) {
   if (entries.size() == 1) { return entries[0]; }
   auto handle = tups_.lock();
   auto [iter, success] =
@@ -48,13 +48,13 @@ void Tuple::WriteTo(std::string *result) const {
   result->append(")");
 }
 
-Tuple::Tuple(std::vector<Type const *> entries)
-    : Type(Type::Flags{.is_default_initializable = 1,
-                       .is_copyable              = 1,
-                       .is_movable               = 1,
-                       .has_destructor           = 0}),
+Tuple::Tuple(std::vector<Type> entries)
+    : LegacyType(LegacyType::Flags{.is_default_initializable = 1,
+                                   .is_copyable              = 1,
+                                   .is_movable               = 1,
+                                   .has_destructor           = 0}),
       entries_(std::move(entries)) {
-  for (auto const *entry : entries_) {
+  for (Type entry : entries_) {
     flags_.is_default_initializable &= entry->IsDefaultInitializable();
     flags_.is_copyable &= entry->IsCopyable();
     flags_.is_movable &= entry->IsMovable();
@@ -64,7 +64,7 @@ Tuple::Tuple(std::vector<Type const *> entries)
 
 core::Bytes Tuple::bytes(core::Arch const &a) const {
   auto num_bytes = core::Bytes{0};
-  for (auto const *t : entries_) {
+  for (Type t : entries_) {
     num_bytes += t->bytes(a);
     // TODO it'd be in the (common, I think) case where you want both, it would
     // be faster to compute bytes and alignment simultaneously.
@@ -76,7 +76,7 @@ core::Bytes Tuple::bytes(core::Arch const &a) const {
 
 core::Alignment Tuple::alignment(core::Arch const &a) const {
   auto align = core::Alignment{1};
-  for (auto const *t : entries_) { align = std::max(align, t->alignment(a)); }
+  for (Type t : entries_) { align = std::max(align, t->alignment(a)); }
   return align;
 }
 

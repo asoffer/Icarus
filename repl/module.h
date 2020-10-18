@@ -11,7 +11,6 @@ namespace repl {
 struct Module : compiler::CompiledModule {
   ~Module() override {}
 
-
   void ProcessNodes(base::PtrSpan<ast::Node const> nodes,
                     diagnostic::DiagnosticConsumer &diag) override;
 

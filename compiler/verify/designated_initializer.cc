@@ -36,7 +36,7 @@ struct NonTypeDesignatedInitializerType {
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  type::Type const *type;
+  type::Type type;
   frontend::SourceRange range;
 };
 
@@ -54,7 +54,7 @@ struct NonStructDesignatedInitializer {
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  type::Type const *type;
+  type::Type type;
   frontend::SourceRange range;
 };
 
@@ -72,8 +72,8 @@ struct InvalidInitializerType {
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 
-  type::Type const *expected;
-  type::Type const *actual;
+  type::Type expected;
+  type::Type actual;
   frontend::SourceRange range;
 };
 
@@ -127,8 +127,8 @@ type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
 
   // Evaluate the type next so that the default ordering of error messages makes
   // sense (roughly top-to-bottom).
-  ASSIGN_OR(return type::QualType::Error(), type::Type const *t,
-                   EvaluateOrDiagnoseAs<type::Type const *>(node->type()));
+  ASSIGN_OR(return type::QualType::Error(), type::Type t,
+                   EvaluateOrDiagnoseAs<type::Type>(node->type()));
 
   auto *struct_type = ASSERT_NOT_NULL(t)->if_as<type::Struct>();
   if (not struct_type) {
@@ -186,8 +186,8 @@ type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
       auto iter = name_to_field.find(field_name);
       if (iter == name_to_field.end()) { continue; }
 
-      type::Type const *lhs_type = initializer_qt.type();
-      type::Type const *rhs_type = iter->second->type;
+      type::Type lhs_type = initializer_qt.type();
+      type::Type rhs_type = iter->second->type;
       if (not type::CanCast(lhs_type, rhs_type)) {
         diag().Consume(InvalidInitializerType{
             .expected = rhs_type,

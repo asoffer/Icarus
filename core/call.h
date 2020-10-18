@@ -180,7 +180,7 @@ bool IsCallable(ParamsRef<T> params, FnArgs<U> const& args, ConvertibleFn fn) {
     }
   }
 
-  LOG("core::IsCallable","Yes, it's callable");
+  LOG("core::IsCallable", "Yes, it's callable");
   return true;
 }
 

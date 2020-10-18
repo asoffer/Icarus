@@ -34,7 +34,7 @@ struct Fn;
 namespace type {
 
 template <typename T>
-constexpr type::Type const *Get() {
+constexpr type::Type Get() {
   if constexpr (base::meta<T> == base::meta<bool>) {
     return type::Bool;
   } else if constexpr (base::meta<T> == base::meta<int8_t>) {
@@ -62,7 +62,7 @@ constexpr type::Type const *Get() {
     return type::ByteView;
   } else if constexpr (base::meta<T> == base::meta<ir::Block>) {
     return type::Block;
-  } else if constexpr (base::meta<T> == base::meta<type::Type const *>) {
+  } else if constexpr (base::meta<T> == base::meta<type::Type>) {
     return type::Type_;
   } else if constexpr (base::meta<T> == base::meta<ir::Scope>) {
     return type::Scope;
@@ -76,7 +76,7 @@ constexpr type::Type const *Get() {
 }
 
 template <typename T>
-bool Compare(::type::Type const *t) {
+bool Compare(::type::Type t) {
   if constexpr (base::meta<T> == base::meta<bool>) {
     return t == ::type::Bool;
   } else if constexpr (base::meta<T> == base::meta<int8_t>) {
@@ -99,7 +99,7 @@ bool Compare(::type::Type const *t) {
     return t == ::type::Float32;
   } else if constexpr (base::meta<T> == base::meta<double>) {
     return t == ::type::Float64;
-  } else if constexpr (base::meta<T> == base::meta<::type::Type const *>) {
+  } else if constexpr (base::meta<T> == base::meta<::type::Type>) {
     return t == ::type::Type_;
   } else if constexpr (base::meta<T> == base::meta<::type::Struct const *>) {
     return t->is<::type::Struct>();
@@ -132,7 +132,7 @@ bool Compare(::type::Type const *t) {
 }
 
 template <typename... Ts, typename Fn>
-auto ApplyTypes(Type const *t, Fn &&fn) {
+auto ApplyTypes(Type t, Fn &&fn) {
   // TODO base::NoDestroy would be nice here.
   using return_type =
       decltype(std::forward<Fn>(fn)(base::meta<base::first_t<Ts...>>));
@@ -158,12 +158,12 @@ auto ApplyTypes(Type const *t, Fn &&fn) {
 }
 
 template <typename Fn>
-auto Apply(Type const *t, Fn &&fn) {
+auto Apply(Type t, Fn &&fn) {
   return ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
-                    uint32_t, uint64_t, float, double, type::Type const *,
-                    ir::EnumVal, ir::FlagsVal, ir::Addr, ir::String,
-                    ir::ModuleId, ir::Scope, ir::Fn, ir::Jump, ir::Block,
-                    ir::GenericFn>(t, std::forward<Fn>(fn));
+                    uint32_t, uint64_t, float, double, type::Type, ir::EnumVal,
+                    ir::FlagsVal, ir::Addr, ir::String, ir::ModuleId, ir::Scope,
+                    ir::Fn, ir::Jump, ir::Block, ir::GenericFn>(
+      t, std::forward<Fn>(fn));
 }
 
 }  // namespace type

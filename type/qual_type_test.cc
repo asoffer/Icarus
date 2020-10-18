@@ -99,13 +99,13 @@ TEST(QualType, ExpansionSize) {
 
 TEST(QualType, ForEach) {
   {
-    MockFunction<void(type::Type const *)> mock_fn;
+    MockFunction<void(type::Type)> mock_fn;
     EXPECT_CALL(mock_fn, Call(type::Bool)).Times(1);
     type::QualType::Constant(type::Bool).ForEach(mock_fn.AsStdFunction());
   }
 
   {
-    MockFunction<void(type::Type const *)> mock_fn;
+    MockFunction<void(type::Type)> mock_fn;
     EXPECT_CALL(mock_fn, Call(type::Bool)).Times(1);
     EXPECT_CALL(mock_fn, Call(type::Int64)).Times(1);
     type::QualType({type::Bool, type::Int64}, type::Quals::Const())
@@ -138,8 +138,7 @@ TEST(QualType, RemoveConstant) {
 }
 
 TEST(QualType, EmptyVector) {
-  type::QualType qt(std::vector<type::Type const *>{},
-                    type::Quals::Unqualified());
+  type::QualType qt(std::vector<type::Type>{}, type::Quals::Unqualified());
   EXPECT_TRUE(qt.ok());
 }
 

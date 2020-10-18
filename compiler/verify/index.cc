@@ -21,8 +21,8 @@ struct InvalidIndexType {
   }
 
   frontend::SourceRange range;
-  type::Type const *type;
-  type::Type const *index_type;
+  type::Type type;
+  type::Type index_type;
 };
 
 struct NonConstantTupleIndex {
@@ -132,11 +132,11 @@ struct InvalidIndexing {
   }
 
   frontend::SourceRange range;
-  type::Type const *type;
+  type::Type type;
 };
 
 // Validate the index type, possibly emitting diagnostics
-bool ValidIndexType(Compiler *c, ast::Index const *node, type::Type const *type,
+bool ValidIndexType(Compiler *c, ast::Index const *node, type::Type type,
                     type::QualType index_qt) {
   if (index_qt.ok()) {
     if (type::IsIntegral(index_qt.type())) { return true; }
@@ -219,7 +219,7 @@ type::QualType VerifyArrayIndex(Compiler *c, ast::Index const *node,
   if (index_qt.quals() <= ~type::Quals::Const()) {
     quals &= ~type::Quals::Const();
   }
-  type::Type const *data_type = array_type->data_type();
+  type::Type data_type = array_type->data_type();
   type::QualType qt(data_type, quals);
 
   if (not ValidIndexType(c, node, array_type, index_qt)) {

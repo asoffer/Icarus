@@ -29,7 +29,7 @@ BlockGroupBase::BlockGroupBase(
   b->insert_incoming(b);
 }
 
-Reg BlockGroupBase::Alloca(type::Type const *t) {
+Reg BlockGroupBase::Alloca(type::Type t) {
   return alloc_.StackAllocate(ASSERT_NOT_NULL(t));
 }
 

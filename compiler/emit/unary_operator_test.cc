@@ -20,7 +20,7 @@ TEST_P(UnaryOperatorTest, UnaryOperator) {
   auto const *e  = mod.Append<ast::Expression>(expr);
   auto const *qt = mod.data().qual_type(e);
   ASSERT_NE(qt, nullptr);
-  auto const *t = qt->type();
+  auto t = qt->type();
   ASSERT_NE(t, nullptr);
   auto result =
       mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));
@@ -45,12 +45,12 @@ INSTANTIATE_TEST_SUITE_P(
                  .expr     = "copy f()",
                  .expected = ir::Value(int64_t{3})},
         TestCase{.expr     = "[*]int32",
-                 .expected = ir::Value(static_cast<type::Type const *>(
-                     type::BufPtr(type::Int32)))},
+                 .expected = ir::Value(
+                     static_cast<type::Type>(type::BufPtr(type::Int32)))},
         TestCase{.context  = "f ::= () => bool",
                  .expr     = "[*]f()",
-                 .expected = ir::Value(static_cast<type::Type const *>(
-                     type::BufPtr(type::Bool)))},
+                 .expected = ir::Value(
+                     static_cast<type::Type>(type::BufPtr(type::Bool)))},
         TestCase{.expr = "!true", .expected = ir::Value(false)},
         TestCase{.context  = "f ::= () => false",
                  .expr     = "!f()",
@@ -87,20 +87,18 @@ INSTANTIATE_TEST_SUITE_P(
         TestCase{.context  = "f ::= () => 3 as float64",
                  .expr     = "-f()",
                  .expected = ir::Value(double{-3})},
-        TestCase{
-            .expr     = "true:?",
-            .expected = ir::Value(static_cast<type::Type const *>(type::Bool))},
-        TestCase{
-            .context  = "f ::= () => true",
-            .expr     = "f():?",
-            .expected = ir::Value(static_cast<type::Type const *>(type::Bool))},
+        TestCase{.expr     = "true:?",
+                 .expected = ir::Value(static_cast<type::Type>(type::Bool))},
+        TestCase{.context  = "f ::= () => true",
+                 .expr     = "f():?",
+                 .expected = ir::Value(static_cast<type::Type>(type::Bool))},
         TestCase{.expr     = "*int32",
                  .expected = ir::Value(
-                     static_cast<type::Type const *>(type::Ptr(type::Int32)))},
+                     static_cast<type::Type>(type::Ptr(type::Int32)))},
         TestCase{.context  = "f ::= () => int32",
                  .expr     = "*f()",
                  .expected = ir::Value(
-                     static_cast<type::Type const *>(type::Ptr(type::Int32)))},
+                     static_cast<type::Type>(type::Ptr(type::Int32)))},
         TestCase{.context  = R"(
                f ::= () -> int64 {
                  n: int64

@@ -89,7 +89,6 @@ struct UnwrapFlagsInstruction
   Reg result;
 };
 
-
 struct NotInstruction
     : base::Extend<NotInstruction>::With<ByteCodeExtension, InlineExtension,
                                          DebugFormatExtension> {
@@ -122,13 +121,13 @@ struct InitInstruction
 
   interpretter::StackFrame Apply(interpretter::ExecutionContext& ctx) const {
     if (auto* s = type->if_as<type::Struct>()) {
-      ir::Fn f = s->init_func_.get();
+      ir::Fn f   = s->init_func_.get();
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
       return frame;
 
     } else if (auto* tup = type->if_as<type::Tuple>()) {
-      ir::Fn f = tup->init_func_.get();
+      ir::Fn f   = tup->init_func_.get();
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
       return frame;
@@ -140,7 +139,7 @@ struct InitInstruction
     }
   }
 
-  type::Type const* type;
+  type::Type type;
   Reg reg;
 };
 
@@ -151,13 +150,13 @@ struct DestroyInstruction
 
   interpretter::StackFrame Apply(interpretter::ExecutionContext& ctx) const {
     if (auto* s = type->if_as<type::Struct>()) {
-      ir::Fn f = s->destroy_func_.get();
+      ir::Fn f   = s->destroy_func_.get();
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
       return frame;
 
     } else if (auto* tup = type->if_as<type::Tuple>()) {
-      ir::Fn f = tup->destroy_func_.get();
+      ir::Fn f   = tup->destroy_func_.get();
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
       return frame;
@@ -169,7 +168,7 @@ struct DestroyInstruction
     }
   }
 
-  type::Type const* type;
+  type::Type type;
   Reg reg;
 };
 
@@ -182,7 +181,7 @@ struct CopyInstruction
     NOT_YET();
   }
 
-  type::Type const* type;
+  type::Type type;
   ir::RegOr<ir::Addr> from;
   ir::RegOr<ir::Addr> to;
 };
@@ -196,7 +195,7 @@ struct MoveInstruction
     NOT_YET();
   }
 
-  type::Type const* type;
+  type::Type type;
   ir::RegOr<ir::Addr> from;
   ir::RegOr<ir::Addr> to;
 };
@@ -239,7 +238,7 @@ struct LoadSymbolInstruction
   }
 
   String name;
-  type::Type const* type;
+  type::Type type;
   Reg result;
 };
 
@@ -270,7 +269,7 @@ struct TypeInfoInstruction
   }
 
   Kind kind;
-  RegOr<type::Type const*> type;
+  RegOr<type::Type> type;
   Reg result;
 };
 

@@ -18,7 +18,7 @@ TEST_P(ArrayTypeTest, ArrayLiteral) {
   auto const *e  = mod.Append<ast::Expression>(expr);
   auto const *qt = mod.data().qual_type(e);
   ASSERT_NE(qt, nullptr);
-  auto const *t = qt->type();
+  auto t = qt->type();
   ASSERT_NE(t, nullptr);
   auto result =
       mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));
@@ -34,33 +34,33 @@ INSTANTIATE_TEST_SUITE_P(
     All, ArrayTypeTest,
     testing::ValuesIn({
         TestCase{.expr     = R"([3; int32])",
-                 .expected = ir::Value(static_cast<type::Type const *>(
-                     type::Arr(3, type::Int32)))},
+                 .expected = ir::Value(
+                     static_cast<type::Type>(type::Arr(3, type::Int32)))},
         TestCase{.expr     = R"([1; [2; [3; bool]]])",
-                 .expected = ir::Value(static_cast<type::Type const *>(
+                 .expected = ir::Value(static_cast<type::Type>(
                      type::Arr(1, type::Arr(2, type::Arr(3, type::Bool)))))},
         TestCase{.expr     = R"([1, 2, 3; int32])",
-                 .expected = ir::Value(static_cast<type::Type const *>(
+                 .expected = ir::Value(static_cast<type::Type>(
                      type::Arr(1, type::Arr(2, type::Arr(3, type::Int32)))))},
         TestCase{.expr     = R"(((n: int64, t: type) -> type {
           return [n, n * n; t]
         })(3, float32)
         )",
-                 .expected = ir::Value(static_cast<type::Type const *>(
+                 .expected = ir::Value(static_cast<type::Type>(
                      type::Arr(3, type::Arr(9, type::Float32))))},
         TestCase{.expr     = R"(((n: int64, t: type) -> type {
           T := copy [n, n * n; t]
           return T
         })(3, float32)
         )",
-                 .expected = ir::Value(static_cast<type::Type const *>(
+                 .expected = ir::Value(static_cast<type::Type>(
                      type::Arr(3, type::Arr(9, type::Float32))))},
         TestCase{.expr     = R"(((n: int64, t: type) -> type {
           T := move [n, n * n; t]
           return T
         })(3, float32)
         )",
-                 .expected = ir::Value(static_cast<type::Type const *>(
+                 .expected = ir::Value(static_cast<type::Type>(
                      type::Arr(3, type::Arr(9, type::Float32))))},
 
     }));

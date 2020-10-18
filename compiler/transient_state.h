@@ -25,12 +25,11 @@ struct WorkItem {
   Result Process() const;
 
   Kind kind;
-  ast::Node const* node;
+  ast::Node const *node;
   // TODO: Should we just store PersistentResources directly?
   DependentComputedData &context;
-  diagnostic::DiagnosticConsumer& consumer;
+  diagnostic::DiagnosticConsumer &consumer;
 };
-
 
 struct WorkQueue {
   bool empty() const { return items_.empty(); }

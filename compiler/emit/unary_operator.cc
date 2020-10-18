@@ -9,7 +9,7 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
   // TODO: user-defined-types
   switch (node->kind()) {
     case ast::UnaryOperator::Kind::Copy: {
-      auto *operand_type =
+      auto operand_type =
           ASSERT_NOT_NULL(data().qual_type(node->operand()))->type();
       auto reg = builder().TmpAlloca(operand_type);
       EmitCopyInit(
@@ -20,19 +20,19 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
     case ast::UnaryOperator::Kind::Init:
       // TODO: Not entirely sure this is what the semantics ought to be.
     case ast::UnaryOperator::Kind::Move: {
-      auto *operand_type =
+      auto operand_type =
           ASSERT_NOT_NULL(data().qual_type(node->operand()))->type();
       auto reg = builder().TmpAlloca(operand_type);
       EmitMoveInit(
           type::Typed<ir::Value>(EmitValue(node->operand()), operand_type),
           type::Typed<ir::Reg>(reg, type::Ptr(operand_type)));
       return ir::Value(builder().PtrFix(reg, operand_type));
-      } break;
+    } break;
     case ast::UnaryOperator::Kind::BufferPointer:
       return ir::Value(builder().BufPtr(
-          EmitValue(node->operand()).get<ir::RegOr<type::Type const *>>()));
+          EmitValue(node->operand()).get<ir::RegOr<type::Type>>()));
     case ast::UnaryOperator::Kind::Not: {
-      auto *t = ASSERT_NOT_NULL(data().qual_type(node->operand()))->type();
+      auto t = ASSERT_NOT_NULL(data().qual_type(node->operand()))->type();
       if (t == type::Bool) {
         return ir::Value(
             builder().Not(EmitValue(node->operand()).get<ir::RegOr<bool>>()));
@@ -54,7 +54,8 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
     case ast::UnaryOperator::Kind::TypeOf:
       return ir::Value(
           ASSERT_NOT_NULL(data().qual_type(node->operand()))->type());
-    case ast::UnaryOperator::Kind::Address: return ir::Value(EmitRef(node->operand()));
+    case ast::UnaryOperator::Kind::Address:
+      return ir::Value(EmitRef(node->operand()));
     case ast::UnaryOperator::Kind::Evaluate: {
       // TODO: There's a chance this was already computed, in which case we
       // should not execute it more than once. For example, if it was used in a
@@ -70,7 +71,7 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
       state_.must_complete = false;
 
       ir::Value value(builder().Ptr(
-          EmitValue(node->operand()).get<ir::RegOr<type::Type const *>>()));
+          EmitValue(node->operand()).get<ir::RegOr<type::Type>>()));
 
       state_.must_complete = true;
 
@@ -156,7 +157,7 @@ void Compiler::EmitAssign(
     case ast::UnaryOperator::Kind::Copy: {
       auto operand_qt = *ASSERT_NOT_NULL(data().qual_type(node->operand()));
       std::vector<type::Typed<ir::RegOr<ir::Addr>>> tmps;
-      operand_qt.ForEach([&](type::Type const *t) {
+      operand_qt.ForEach([&](type::Type t) {
         tmps.emplace_back(ir::RegOr<ir::Addr>(builder().TmpAlloca(t)), t);
       });
       NOT_YET();

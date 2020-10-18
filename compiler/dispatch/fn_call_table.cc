@@ -21,9 +21,9 @@ struct MoveInitTag {};
 struct CopyInitTag {};
 struct AssignTag {};
 
-template<typename Tag>
-ir::OutParams SetReturns(Tag,
-    ir::Builder &bldr, type::Type const *type,
+template <typename Tag>
+ir::OutParams SetReturns(
+    Tag, ir::Builder &bldr, type::Type type,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   if (auto *fn_type = type->if_as<type::Function>()) {
     if constexpr (base::meta<Tag> == base::meta<MoveInitTag>) {
@@ -143,7 +143,7 @@ void EmitCall(Tag, Compiler *compiler, ast::Expression const *callee,
       PrepareCallArguments(&c, nullptr, overload_type->params(), args),
       out_params);
   int i = -1;
-  for (auto const *t : overload_type->output()) {
+  for (auto t : overload_type->output()) {
     ++i;
     if (t->is_big()) continue;
     c.EmitCopyAssign(to[i],

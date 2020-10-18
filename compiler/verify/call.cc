@@ -49,7 +49,7 @@ struct UncallableWithArguments {
     for (auto const &type_and_reason : error.reasons) {
       std::visit(
           [&](auto const &err) {
-          using call_error = Compiler::CallError;
+            using call_error                    = Compiler::CallError;
             auto const &[callable_type, reason] = type_and_reason;
             static constexpr auto type =
                 base::meta<std::decay_t<decltype(err)>>;
@@ -83,7 +83,8 @@ struct UncallableWithArguments {
                   "%s -- Parameter %s cannot accept an argument of type `%s`",
                   callable_type->to_string(), param_str,
                   err.argument_type->to_string()));
-            } else if constexpr (type == base::meta<call_error::NoParameterNamed>) {
+            } else if constexpr (type ==
+                                 base::meta<call_error::NoParameterNamed>) {
               items.push_back(absl::StrFormat("%s -- No parameter named `%s`.",
                                               callable_type->to_string(),
                                               err.name));
@@ -96,7 +97,8 @@ struct UncallableWithArguments {
                   callable_type->to_string(), err.name, err.index));
             } else {
               // TODO: Determine how deeply to dig into this error message.
-              items.push_back(absl::StrCat(callable_type->to_string(), " -- ", "TODO"));
+              items.push_back(
+                  absl::StrCat(callable_type->to_string(), " -- ", "TODO"));
             }
           },
           type_and_reason.second);
@@ -175,7 +177,7 @@ type::QualType VerifyForeignCall(
 
   if (error) { return type::QualType::Error(); }
 
-  auto const *const *foreign_type = arg_vals[1]->get_if<type::Type const *>();
+  auto const *foreign_type = arg_vals[1]->get_if<type::Type>();
   if (not foreign_type or not((*foreign_type)->is<type::Function>() or
                               (*foreign_type)->is<type::Pointer>())) {
     c->diag().Consume(BuiltinError{
@@ -273,7 +275,6 @@ type::QualType VerifyAlignmentCall(
 
   return qt;
 }
-
 
 }  // namespace
 

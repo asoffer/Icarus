@@ -11,10 +11,10 @@
 namespace type {
 namespace internal_type {
 
-static base::Global<absl::flat_hash_set<std::vector<Type const *>>> packs;
+static base::Global<absl::flat_hash_set<std::vector<Type>>> packs;
 
 // Even on rehash the spans returned here are never moved.
-absl::Span<Type const *const> AddPack(absl::Span<Type const *const> types) {
+absl::Span<Type const> AddPack(absl::Span<Type const> types) {
   return *packs.lock()->emplace(types.begin(), types.end()).first;
 }
 
@@ -26,7 +26,7 @@ std::ostream &operator<<(std::ostream &os, QualType q) {
             << (q.expansion_size() == 1
                     ? q.type()->to_string()
                     : absl::StrJoin(q.expanded(), ", ",
-                                    [](std::string *out, type::Type const *t) {
+                                    [](std::string *out, type::Type t) {
                                       out->append(t->to_string());
                                     }))
             << ")";

@@ -11,9 +11,8 @@ namespace type {
 // function. However unlike a function, a jump does return to the calling
 // context. `Jump`s are one of the primary building-block types for user-defined
 // scopes.
-struct Jump : Type {
-  friend Jump const *Jmp(type::Type const *state,
-                         core::Params<Type const *> const &params);
+struct Jump : LegacyType {
+  friend Jump const *Jmp(type::Type state, core::Params<Type> const &params);
 
   ~Jump() override {}
 
@@ -30,11 +29,11 @@ struct Jump : Type {
   Completeness completeness() const override { return Completeness::Complete; }
 
   // Returns the parameters with which a a value of this type can be called.
-  core::Params<type::Type const *> const &params() const { return params_; }
+  core::Params<type::Type> const &params() const { return params_; }
 
   // Returns the state type, if this jump is stateful, or a null-pointer
   // otherwise.
-  type::Type const *state() const { return state_; }
+  type::Type state() const { return state_; }
 
   template <typename H>
   friend H AbslHashValue(H h, Jump const &j) {
@@ -50,22 +49,21 @@ struct Jump : Type {
   }
 
  private:
-  Jump(type::Type const *state, core::Params<Type const *> const &ts)
-      : Type(Type::Flags{.is_default_initializable = 0,
-                         .is_copyable              = 0,
-                         .is_movable               = 0,
-                         .has_destructor           = 0}),
+  Jump(type::Type state, core::Params<Type> const &ts)
+      : LegacyType(LegacyType::Flags{.is_default_initializable = 0,
+                                     .is_copyable              = 0,
+                                     .is_movable               = 0,
+                                     .has_destructor           = 0}),
         state_(state),
         params_(std::move(ts)) {}
 
-  type::Type const *state_;
-  core::Params<Type const *> params_;
+  type::Type state_;
+  core::Params<Type> params_;
 };
 
 // Constructs a jump type with the state and parameters, or retrieves an
 // equivalent one from the cachec if necessary.
-Jump const *Jmp(type::Type const *state,
-                core::Params<Type const *> const &params);
+Jump const *Jmp(type::Type state, core::Params<Type> const &params);
 
 }  // namespace type
 #endif  // ICARUS_TYPE_JUMP_H

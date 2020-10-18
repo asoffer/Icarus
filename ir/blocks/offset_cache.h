@@ -41,7 +41,8 @@ struct OffsetCache {
   }
 
  private:
-  absl::flat_hash_map<std::tuple<RegOr<Addr>, RegOr<int64_t>, Kind>, Reg> storage_;
+  absl::flat_hash_map<std::tuple<RegOr<Addr>, RegOr<int64_t>, Kind>, Reg>
+      storage_;
 };
 
 }  // namespace ir

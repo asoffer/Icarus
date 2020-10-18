@@ -10,15 +10,15 @@
 
 namespace type {
 
-struct Callable : Type {
+struct Callable : LegacyType {
   Callable()
-      : Type(Type::Flags{.is_default_initializable = 0,
-                         .is_copyable              = 1,
-                         .is_movable               = 1,
-                         .has_destructor           = 0}) {}
+      : LegacyType(LegacyType::Flags{.is_default_initializable = 0,
+                                     .is_copyable              = 1,
+                                     .is_movable               = 1,
+                                     .has_destructor           = 0}) {}
   ~Callable() override{};
 
-  virtual std::vector<type::Type const*> return_types(
+  virtual std::vector<type::Type> return_types(
       core::FnArgs<type::Typed<ir::Value>> const& args) const = 0;
 };
 
