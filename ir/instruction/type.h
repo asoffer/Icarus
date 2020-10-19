@@ -245,14 +245,14 @@ struct StructInstruction
         type::Type t = ctx.resolve(field.type());
         struct_fields.push_back(type::Struct::Field{
             .name          = std::string(field.name()),
-            .type          = ASSERT_NOT_NULL(t),
+            .type          = t,
             .initial_value = *init_val,
             .hashtags_     = {},
         });
       } else {
         struct_fields.push_back(type::Struct::Field{
             .name          = std::string(field.name()),
-            .type          = ASSERT_NOT_NULL(ctx.resolve(field.type())),
+            .type          = ctx.resolve(field.type()),
             .initial_value = ir::Value(),
             .hashtags_     = {},
         });

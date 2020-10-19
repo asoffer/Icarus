@@ -34,7 +34,7 @@ core::Bytes Primitive::bytes(core::Arch const &a) const {
   switch (type_) {
     // Types are stored as pointers on the host and integers on the target
     // machine that are as wide as host pointers.
-    case BasicType::Type_: return core::Host.pointer().bytes();
+    case BasicType::Type_: return core::Bytes::Get<Type>();
     case BasicType::NullPtr: return a.pointer().bytes();
     case BasicType::EmptyArray: return core::Bytes{0};
     case BasicType::Bool: return core::Bytes{1};
@@ -64,7 +64,7 @@ core::Alignment Primitive::alignment(core::Arch const &a) const {
   switch (type_) {
     // Types are stored as pointers on the host and integers on the target
     // machine that are as wide as host pointers.
-    case BasicType::Type_: return core::Host.pointer().alignment();
+    case BasicType::Type_: return core::Alignment::Get<Type>();
     case BasicType::NullPtr: return a.pointer().alignment();
     case BasicType::EmptyArray: return core::Alignment{1};
     case BasicType::Bool: return core::Alignment{1};

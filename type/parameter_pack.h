@@ -7,7 +7,7 @@ namespace type {
 
 struct ParameterPack : public LegacyType {
   TYPE_FNS(ParameterPack);
-  ParameterPack(LegacyType const *t) : LegacyType(t->flags()), elem(t) {}
+  ParameterPack(Type t) : LegacyType(t->flags()), elem(t) {}
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
@@ -16,10 +16,10 @@ struct ParameterPack : public LegacyType {
   // TODO: Does this make any sense?
   Completeness completeness() const override { return Completeness::Complete; }
 
-  LegacyType const *elem;
+  Type elem;
 };
 
-ParameterPack const *Pack(LegacyType const *t);
+ParameterPack const *Pack(Type t);
 
 }  // namespace type
 

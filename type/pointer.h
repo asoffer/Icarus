@@ -8,7 +8,7 @@ namespace type {
 // `Pointer` is a type representing the address of an object of the given
 // pointed-to type (the `pointee`).
 struct Pointer : LegacyType {
-  friend Pointer const *Ptr(LegacyType const *t);
+  friend Pointer const *Ptr(Type t);
 
   ~Pointer() override {}
 
@@ -22,12 +22,12 @@ struct Pointer : LegacyType {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
 
-  constexpr LegacyType const *pointee() const { return pointee_; }
+  Type pointee() const { return pointee_; }
 
   Completeness completeness() const override { return Completeness::Complete; }
 
  protected:
-  Pointer(LegacyType const *t)
+  Pointer(Type t)
       : LegacyType(LegacyType::Flags{.is_default_initializable = 1,
                                      .is_copyable              = 1,
                                      .is_movable               = 1,
@@ -35,7 +35,7 @@ struct Pointer : LegacyType {
         pointee_(t) {}
 
  private:
-  LegacyType const *pointee_;
+  Type pointee_;
 };
 
 // `BufferPointer` is a type representing the address of an object, inside an
@@ -43,7 +43,7 @@ struct Pointer : LegacyType {
 // it also supports arithmetic. `BufferPointer`s are implicitly convertible to
 // `Pointer`s with the same `pointee` type.
 struct BufferPointer : Pointer {
-  friend BufferPointer const *BufPtr(LegacyType const *t);
+  friend BufferPointer const *BufPtr(Type t);
 
   ~BufferPointer() override {}
 
@@ -54,11 +54,12 @@ struct BufferPointer : Pointer {
 
  private:
   BufferPointer() = delete;
-  BufferPointer(LegacyType const *t) : Pointer(t) {}
+  BufferPointer(Type t) : Pointer(t) {}
 };
 
-Pointer const *Ptr(LegacyType const *t);
-BufferPointer const *BufPtr(LegacyType const *t);
+Pointer const *Ptr(Type t);
+BufferPointer const *BufPtr(Type t);
 
 }  // namespace type
+
 #endif  // ICARUS_TYPE_POINTER_H

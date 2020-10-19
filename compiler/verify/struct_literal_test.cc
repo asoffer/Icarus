@@ -64,7 +64,7 @@ TEST(StructLiteral, SelfReferential) {
   ASSERT_NE(s, nullptr);
   type::Struct::Field const *field = s->field("next");
   ASSERT_NE(field, nullptr);
-  EXPECT_EQ(type::Ptr(s), field->type);
+  EXPECT_EQ(type::Type(type::Ptr(s)), field->type);
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -101,8 +101,8 @@ TEST(StructLiteral, MutuallyReferential) {
   type::Struct::Field const *ba_field = b_struct->field("a_ptr");
   ASSERT_NE(ab_field, nullptr);
   ASSERT_NE(ba_field, nullptr);
-  EXPECT_EQ(type::Ptr(a_struct), ba_field->type);
-  EXPECT_EQ(type::Ptr(b_struct), ab_field->type);
+  EXPECT_EQ(type::Type(type::Ptr(a_struct)), ba_field->type);
+  EXPECT_EQ(type::Type(type::Ptr(b_struct)), ab_field->type);
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 

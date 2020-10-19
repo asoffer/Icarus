@@ -222,7 +222,7 @@ type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
           ASSERT(qt == type::QualType::Constant(type::Type_));
           auto maybe_type = c.EvaluateAs<type::Type>(o);
           if (not maybe_type) { NOT_YET(); }
-          rets.push_back(ASSERT_NOT_NULL(*maybe_type));
+          rets.push_back(*maybe_type);
         }
       }
     }

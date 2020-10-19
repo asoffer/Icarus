@@ -28,15 +28,15 @@ static bool CanCastPointer(Pointer const *from, Pointer const *to) {
   return from->pointee() == to->pointee();
 }
 
-bool CanCastImplicitly(LegacyType const *from, LegacyType const *to) {
+bool CanCastImplicitly(Type from, Type to) {
   if (to == from) { return true; }
   auto const *buf_ptr = from->if_as<BufferPointer>();
-  if (buf_ptr and to == Ptr(buf_ptr->pointee())) { return true; }
+  if (buf_ptr and to == Type(Ptr(buf_ptr->pointee()))) { return true; }
   return false;
 }
 
 // TODO much of this should be moved to virtual methods.
-bool CanCast(LegacyType const *from, LegacyType const *to) {
+bool CanCast(Type from, Type to) {
   if (to == from) { return true; }
   // TODO handle reinterpretation
 
@@ -47,7 +47,7 @@ bool CanCast(LegacyType const *from, LegacyType const *to) {
     // TODO remove this hack for expressing the type of tuples
     auto const &entries = from->as<Tuple>().entries_;
     return std::all_of(entries.begin(), entries.end(),
-                       [](LegacyType const *t) { return t == Type_; });
+                       [](Type t) { return t == Type_; });
   }
 
   // TODO other integer types.
@@ -134,9 +134,9 @@ bool CanCast(LegacyType const *from, LegacyType const *to) {
 
 // TODO optimize (early exists. don't check lhs->is<> and rhs->is<>. If they
 // don't match you can early exit.
-LegacyType const *Meet(LegacyType const *lhs, LegacyType const *rhs) {
+Type Meet(Type lhs, Type rhs) {
   if (lhs == rhs) { return lhs; }
-  if (lhs == nullptr or rhs == nullptr) { return nullptr; }
+  if (not lhs or not rhs) { return nullptr; }
 
   if (lhs == NullPtr and rhs->is<Pointer>()) { return rhs; }
   if (rhs == NullPtr and lhs->is<Pointer>()) { return lhs; }
@@ -151,7 +151,7 @@ LegacyType const *Meet(LegacyType const *lhs, LegacyType const *rhs) {
       return nullptr;
     }
     if (lhs->as<Array>().length() == 0) { return type::EmptyArray; }
-    auto *result =
+    Type result =
         Meet(lhs->as<Array>().data_type(), rhs->as<Array>().data_type());
     return result ? Arr(lhs->as<Array>().length(), result) : result;
   }

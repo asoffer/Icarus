@@ -21,7 +21,7 @@ void Struct::AppendFields(std::vector<Struct::Field> fields) {
   fields_       = std::move(fields);
   size_t i      = 0;
   for (auto const &field : fields_) {
-    ASSERT(field.type != nullptr);
+    ASSERT(field.type.valid() == true);
     field_indices_.emplace(field.name, i++);
     flags_.is_default_initializable &=
         field.type->IsDefaultInitializable() or not field.initial_value.empty();
@@ -88,7 +88,7 @@ core::Bytes Struct::bytes(core::Arch const &a) const {
   ASSERT(completeness_ >= Completeness::DataComplete);
   auto num_bytes = core::Bytes{0};
   for (auto const &field : fields_) {
-    num_bytes += ASSERT_NOT_NULL(field.type)->bytes(a);
+    num_bytes += field.type->bytes(a);
     // TODO it'd be in the (common, I think) case where you want both, it would
     // be faster to compute bytes and alignment simultaneously.
     num_bytes = core::FwdAlign(num_bytes, field.type->alignment(a));

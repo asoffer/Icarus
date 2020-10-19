@@ -91,7 +91,9 @@ TEST(QualType, ExpansionSize) {
   EXPECT_EQ(
       type::QualType({type::Int32}, type::Quals::Const()).expansion_size(), 1);
 
-  EXPECT_EQ(type::QualType({}, type::Quals::Const()).expansion_size(), 0);
+  EXPECT_EQ(type::QualType(absl::Span<type::Type const>{}, type::Quals::Const())
+                .expansion_size(),
+            0);
   EXPECT_EQ(type::QualType({type::Int32, type::Bool}, type::Quals::Const())
                 .expansion_size(),
             2);

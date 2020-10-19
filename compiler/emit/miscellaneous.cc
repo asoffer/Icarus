@@ -6,7 +6,7 @@
 namespace compiler {
 
 ir::Value Compiler::EmitValue(ast::ArgumentType const *node) {
-  return ir::Value(ASSERT_NOT_NULL(data().arg_type(node->name())));
+  return ir::Value(data().arg_type(node->name()));
 }
 
 ir::Value Compiler::EmitValue(ast::BuiltinFn const *node) {

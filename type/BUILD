@@ -212,8 +212,6 @@ cc_library(
 
 cc_library(
     name = "pointer",
-    hdrs = ["pointer.h"],
-    srcs = ["pointer.cc"],
     deps = [
         ":type",
         "//base:global",
@@ -326,11 +324,12 @@ cc_library(
 
 cc_library(
     name = "type",
-    hdrs = ["type.h"],
-    textual_hdrs = ["primitive.xmacro.h"],
+    hdrs = ["type.h", "pointer.h"],
+    srcs = ["pointer.cc"],
     deps = [
         ":visitor_base",
         "//base:cast",
+        "//base:meta",
         "//core:arch",
         "//ir/value:reg",
     ],

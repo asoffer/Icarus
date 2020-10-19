@@ -64,7 +64,7 @@ void MakeAllDestructions(Compiler &compiler, ast::ExecScope const *exec_scope) {
   });
 
   for (auto *decl : ordered_decls) {
-    auto t = ASSERT_NOT_NULL(compiler.type_of(decl));
+    type::Type t = compiler.type_of(decl);
     if (not t->HasDestructor()) { continue; }
     compiler.EmitDestroy(type::Typed<ir::Reg>(compiler.data().addr(decl), t));
   }
@@ -110,17 +110,17 @@ void CompleteBody(Compiler *compiler, ast::ShortFunctionLiteral const *node,
 
     MakeAllStackAllocations(*compiler, node->body_scope());
 
-    auto const &ret_type = *ASSERT_NOT_NULL(t->output()[0]);
-    if (ret_type.is_big()) {
+    type::Type ret_type = t->output()[0];
+    if (ret_type->is_big()) {
       type::Typed<ir::RegOr<ir::Addr>> typed_alloc(
-          ir::RegOr<ir::Addr>(compiler->builder().GetRet(0, &ret_type)),
-          type::Ptr(&ret_type));
+          ir::RegOr<ir::Addr>(compiler->builder().GetRet(0, ret_type)),
+          type::Ptr(ret_type));
       compiler->EmitMoveInit(node->body(),
                              absl::MakeConstSpan(&typed_alloc, 1));
     } else {
       compiler->builder().SetRet(
           0,
-          type::Typed<ir::Value>(compiler->EmitValue(node->body()), &ret_type));
+          type::Typed<ir::Value>(compiler->EmitValue(node->body()), ret_type));
     }
 
     bldr.FinishTemporariesWith([compiler](type::Typed<ir::Reg> r) {
@@ -158,7 +158,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
       for (size_t i = 0; i < outputs->size(); ++i) {
         auto *out_decl = (*outputs)[i]->if_as<ast::Declaration>();
         if (not out_decl) { continue; }
-        auto out_decl_type = ASSERT_NOT_NULL(compiler->type_of(out_decl));
+        type::Type out_decl_type = compiler->type_of(out_decl);
         auto alloc = out_decl_type->is_big() ? bldr.GetRet(i, out_decl_type)
                                              : bldr.Alloca(out_decl_type);
 

@@ -232,6 +232,7 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
+        "//compiler:library_module",
         "//compiler/verify/internal:assignment_and_initialization",
         "//type:qual_type",
         "//type:typed_value",

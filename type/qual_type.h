@@ -127,14 +127,18 @@ absl::Span<Type const> AddPack(absl::Span<Type const> types);
 }  // namespace internal_type
 
 struct QualType {
-  explicit constexpr QualType() : QualType(nullptr, Quals::Unqualified()) {}
+  explicit QualType() : QualType(nullptr, Quals::Unqualified()) {}
+
+  explicit QualType(std::nullptr_t, Quals quals)
+      : data_(static_cast<uintptr_t>(quals.val_)) {}
 
   // Use SFINAE  to disable braced-initialization for the type parameter. This
   // allows it to fallback to meaning the vector initializer.
   template <typename Arg,
             std::enable_if_t<std::is_convertible_v<Arg, Type>, int> = 0>
-  explicit constexpr QualType(Arg t, Quals quals)
-      : data_(reinterpret_cast<uintptr_t>(static_cast<LegacyType const *>(t)) |
+  explicit QualType(Arg t, Quals quals)
+      : data_(reinterpret_cast<uintptr_t>(
+                  static_cast<LegacyType const *>(Type(t).get())) |
               static_cast<uintptr_t>(quals.val_)) {}
 
   explicit QualType(absl::Span<Type const> ts, Quals quals) {
@@ -148,15 +152,15 @@ struct QualType {
     }
   }
 
-  static constexpr QualType Error() {
+  static QualType Error() {
     return QualType(nullptr, Quals::Unqualified());
   }
 
-  static constexpr QualType Constant(Type t) {
+  static QualType Constant(Type t) {
     return QualType(t, Quals::Const());
   }
 
-  static constexpr QualType NonConstant(Type t) {
+  static QualType NonConstant(Type t) {
     return QualType(t, Quals::Unqualified());
   }
 
@@ -216,15 +220,13 @@ struct QualType {
 
   constexpr QualType const &operator*() const { return *this; }
 
-  friend constexpr bool operator==(QualType lhs, QualType rhs) {
+  friend bool operator==(QualType lhs, QualType rhs) {
     // Even when these are holding pointers to expanded data, it's okay to test
     // for equality because we deduplicate them on insertion.
     return lhs.data_ == rhs.data_;
   }
 
-  friend constexpr bool operator!=(QualType lhs, QualType rhs) {
-    return !(lhs == rhs);
-  }
+  friend bool operator!=(QualType lhs, QualType rhs) { return !(lhs == rhs); }
 
   template <typename H>
   friend H AbslHashValue(H h, QualType q) {

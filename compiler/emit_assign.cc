@@ -146,7 +146,7 @@ void Compiler::EmitMoveAssign(
 void Compiler::EmitCopyAssign(
     type::Typed<ir::RegOr<ir::Addr>, type::Enum> const &to,
     type::Typed<ir::Value> const &from) {
-  ASSERT(to.type() == from.type());
+  ASSERT(type::Type(to.type()) == from.type());
   builder().Store(from->get<ir::RegOr<ir::EnumVal>>(), *to);
 }
 
@@ -159,7 +159,7 @@ void Compiler::EmitMoveAssign(
 void Compiler::EmitCopyAssign(
     type::Typed<ir::RegOr<ir::Addr>, type::Flags> const &to,
     type::Typed<ir::Value> const &from) {
-  ASSERT(to.type() == from.type());
+  ASSERT(type::Type(to.type()) == from.type());
   builder().Store(from->get<ir::RegOr<ir::FlagsVal>>(), *to);
 }
 
@@ -172,7 +172,7 @@ void Compiler::EmitMoveAssign(
 void Compiler::EmitCopyAssign(
     type::Typed<ir::RegOr<ir::Addr>, type::Function> const &to,
     type::Typed<ir::Value> const &from) {
-  ASSERT(to.type() == from.type());
+  ASSERT(type::Type(to.type()) == from.type());
   builder().Store(from->get<ir::RegOr<ir::Fn>>(), *to);
 }
 
@@ -185,12 +185,12 @@ void Compiler::EmitMoveAssign(
 void Compiler::EmitCopyAssign(
     type::Typed<ir::RegOr<ir::Addr>, type::Pointer> const &to,
     type::Typed<ir::Value> const &from) {
-  if (to.type() == from.type()) {
+  if (type::Type(to.type()) == from.type()) {
     builder().Store(from->get<ir::RegOr<ir::Addr>>(), *to);
   } else if (from.type() == type::NullPtr) {
     builder().Store(ir::Addr::Null(), *to);
   } else {
-    UNREACHABLE(*to, ": ", *to.type(), " - ", *from.type());
+    UNREACHABLE(to, ": ", to.type(), " - ", from.type());
   }
 }
 
@@ -217,7 +217,7 @@ void Compiler::EmitMoveAssign(
 void Compiler::EmitCopyAssign(
     type::Typed<ir::RegOr<ir::Addr>, type::Primitive> const &to,
     type::Typed<ir::Value> const &from) {
-  ASSERT(to.type() == from.type());
+  ASSERT(type::Type(to.type()) == from.type());
   to.type()->Apply([&](auto tag) {
     using T = typename decltype(tag)::type;
     builder().Store(from->template get<ir::RegOr<T>>(), *to);

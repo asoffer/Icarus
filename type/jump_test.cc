@@ -18,8 +18,8 @@ TEST(Jump, Stateless) {
                                         core::Param("x", type::Fake<3, 4>())});
   EXPECT_EQ(j1, j2);
   EXPECT_NE(j1, j3);
-  EXPECT_EQ(j1->state(), nullptr);
-  EXPECT_EQ(j3->state(), nullptr);
+  EXPECT_FALSE(j1->state().valid());
+  EXPECT_FALSE(j3->state().valid());
 }
 
 TEST(Jump, Statefull) {
@@ -37,7 +37,7 @@ TEST(Jump, Statefull) {
                                          core::Param("x", type::Fake<3, 4>())});
   EXPECT_EQ(j1, j2);
   EXPECT_NE(j1, j3);
-  auto const *t = type::Fake<1, 1>();
+  auto t = type::Type(type::Fake<1, 1>());
   EXPECT_EQ(j1->state(), t);
   EXPECT_EQ(j3->state(), t);
 }

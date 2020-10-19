@@ -34,8 +34,8 @@ ir::Value Compiler::EmitValue(ast::Identifier const *node) {
                ? builder().Load(reg, t)
                : ir::Value(reg);
   } else {
-    auto t    = ASSERT_NOT_NULL(type_of(node));
-    auto lval = EmitRef(node);
+    type::Type t = type_of(node);
+    auto lval    = EmitRef(node);
     if (not lval.is_reg()) { NOT_YET(); }
     return ir::Value(builder().PtrFix(lval.reg(), t));
   }

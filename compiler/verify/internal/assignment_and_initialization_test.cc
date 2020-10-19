@@ -12,13 +12,16 @@ namespace {
 TEST(ExpansionSize, Matches) {
   diagnostic::TrivialConsumer diag;
 
-  EXPECT_TRUE(
-      VerifyInitialization(diag, frontend::SourceRange{},
-                           type::QualType({}, type::Quals::Unqualified()),
-                           type::QualType({}, type::Quals::Const())));
-  EXPECT_TRUE(VerifyAssignment(diag, frontend::SourceRange{},
-                               type::QualType({}, type::Quals::Unqualified()),
-                               type::QualType({}, type::Quals::Const())));
+  EXPECT_TRUE(VerifyInitialization(
+      diag, frontend::SourceRange{},
+      type::QualType(absl::Span<type::Type const>{},
+                     type::Quals::Unqualified()),
+      type::QualType(absl::Span<type::Type const>{}, type::Quals::Const())));
+  EXPECT_TRUE(VerifyAssignment(
+      diag, frontend::SourceRange{},
+      type::QualType(absl::Span<type::Type const>{},
+                     type::Quals::Unqualified()),
+      type::QualType(absl::Span<type::Type const>{}, type::Quals::Const())));
 
   EXPECT_TRUE(VerifyInitialization(diag, frontend::SourceRange{},
                                    type::QualType::NonConstant(type::Int64),

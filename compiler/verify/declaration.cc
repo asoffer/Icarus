@@ -1,5 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "compiler/library_module.h"
 #include "compiler/verify/common.h"
 #include "compiler/verify/internal/assignment_and_initialization.h"
 #include "type/qual_type.h"
@@ -196,10 +197,9 @@ type::QualType VerifyDeclarationType(Compiler &compiler,
              auto t,
              compiler.EvaluateOrDiagnoseAs<type::Type>(node->type_expr()));
 
-  return type::QualType(ASSERT_NOT_NULL(t),
-                        (node->flags() & ast::Declaration::f_IsConst)
-                            ? type::Quals::Const()
-                            : type::Quals::Unqualified());
+  return type::QualType(t, (node->flags() & ast::Declaration::f_IsConst)
+                               ? type::Quals::Const()
+                               : type::Quals::Unqualified());
 }
 
 // Verifies the type of a declaration of the form `x: t`.
@@ -314,14 +314,15 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
       // TODO: check shadowing against other modules?
       // TODO: what if no init val is provded? what if not constant?
 
-      auto maybe_mod = EvaluateAs<module::BasicModule *>(node->init_val());
+      auto maybe_mod = EvaluateAs<ir::ModuleId>(node->init_val());
       if (not maybe_mod) {
         diag().Consume(maybe_mod.error());
         node_qual_type.MarkError();
       } else {
         // TODO: In generic contexts it doesn't make sense to place this on the
         // AST.
-        node->scope()->embedded_modules_.insert(*maybe_mod);
+        node->scope()->embedded_modules_.insert(
+            maybe_mod->get<LibraryModule>());
       }
       return node_qual_type;
     } else {
@@ -380,12 +381,11 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
   for (auto decl : module::AllAccessibleDecls(node->scope(), node->id())) {
     if (decl == node) { continue; }
     ASSIGN_OR(continue, type::QualType q, qual_type_of(decl));
-    type::Typed<ast::Declaration const *> typed_decl(decl,
-                                                     ASSERT_NOT_NULL(q.type()));
-    if (Shadow(typed_node_decl, typed_decl)) {
+    if (Shadow(typed_node_decl,
+               type::Typed<ast::Declaration const *>(decl, q.type()))) {
       diag().Consume(ShadowingDeclaration{
           .range1 = node->range(),
-          .range2 = (*typed_decl)->range(),
+          .range2 = decl->range(),
       });
     }
   }

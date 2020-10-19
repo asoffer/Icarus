@@ -650,7 +650,7 @@ ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
   auto const &fn_scope =
       *ASSERT_NOT_NULL(node->scope()->Containing<ast::FnScope>());
   auto const &fn_lit  = *ASSERT_NOT_NULL(fn_scope.fn_lit_);
-  auto const &fn_type = ASSERT_NOT_NULL(type_of(&fn_lit))->as<type::Function>();
+  auto const &fn_type = type_of(&fn_lit)->as<type::Function>();
 
   // TODO: It's tricky... on a single expression that gets expanded, we could
   // have both small and big types and we would need to handle both setting
@@ -660,14 +660,14 @@ ir::Value Compiler::EmitValue(ast::ReturnStmt const *node) {
       fn_type.output().size());  // TODO: For now, assume no actual expansion.
   for (size_t i = 0; i < node->exprs().size(); ++i) {
     auto const *expr     = node->exprs()[i];
-    auto const &ret_type = *ASSERT_NOT_NULL(fn_type.output()[i]);
-    if (ret_type.is_big()) {
+    type::Type ret_type  = fn_type.output()[i];
+    if (ret_type->is_big()) {
       type::Typed<ir::RegOr<ir::Addr>> typed_alloc(
-          ir::RegOr<ir::Addr>(builder().GetRet(i, &ret_type)),
-          type::Ptr(&ret_type));
+          ir::RegOr<ir::Addr>(builder().GetRet(i, ret_type)),
+          type::Ptr(ret_type));
       EmitMoveInit(expr, absl::MakeConstSpan(&typed_alloc, 1));
     } else {
-      builder().SetRet(i, type::Typed<ir::Value>(EmitValue(expr), &ret_type));
+      builder().SetRet(i, type::Typed<ir::Value>(EmitValue(expr), ret_type));
     }
   }
 

@@ -127,7 +127,7 @@ bool VerifyInit(diagnostic::DiagnosticConsumer &diag,
         .range = decl->id_range(),
     });
     return false;
-  } else if (state_type_ptr != jump_type->state()) {
+  } else if (type::Type(state_type_ptr) != jump_type->state()) {
     // TODO: Generics where the state-type is generic?
     diag.Consume(StateTypeMismatch{
         .actual_type   = jump_type->state(),

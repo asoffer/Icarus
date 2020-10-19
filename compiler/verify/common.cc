@@ -140,8 +140,7 @@ Compiler::ComputeParamsFromArgs(
           val = **a;
         } else {
           auto const *init_val = ASSERT_NOT_NULL(dep_node.node()->init_val());
-          type::Type t =
-              ASSERT_NOT_NULL(data().arg_type(dep_node.node()->id()));
+          type::Type t         = data().arg_type(dep_node.node()->id());
           auto maybe_val =
               Evaluate(type::Typed<ast::Expression const *>(init_val, t));
           if (not maybe_val) { NOT_YET(); }
@@ -209,7 +208,7 @@ Compiler::ComputeParamsFromArgs(
         } else if (auto const *a = args.at_or_null(dep_node.node()->id())) {
           arg = *a;
         } else {
-          auto t         = ASSERT_NOT_NULL(type_of(dep_node.node()));
+          auto t         = type_of(dep_node.node());
           auto maybe_val = Evaluate(type::Typed<ast::Expression const *>(
               ASSERT_NOT_NULL(dep_node.node()->init_val()), t));
           if (not maybe_val) { diag().Consume(maybe_val.error()); }

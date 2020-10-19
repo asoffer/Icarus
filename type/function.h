@@ -17,7 +17,7 @@ struct Function : public Callable {
       : params_(std::move(in)), output_(std::move(out)) {
 #if defined(ICARUS_DEBUG)
     for (auto const &p : params_) { ASSERT(p.value != QualType::Error()); }
-    for (Type t : output_) { ASSERT(t != nullptr); }
+    for (Type t : output_) { ASSERT(t.valid() == true); }
 #endif  // defined(ICARUS_DEBUG)
   }
 

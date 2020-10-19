@@ -172,7 +172,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
     } break;
   }
 
-  ASSERT(qt.type() != nullptr);
+  ASSERT(qt.type().valid() == true);
   return data().set_qual_type(node, qt);
 }
 

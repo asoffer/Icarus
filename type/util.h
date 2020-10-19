@@ -34,7 +34,7 @@ struct Fn;
 namespace type {
 
 template <typename T>
-constexpr type::Type Get() {
+type::Type Get() {
   if constexpr (base::meta<T> == base::meta<bool>) {
     return type::Bool;
   } else if constexpr (base::meta<T> == base::meta<int8_t>) {

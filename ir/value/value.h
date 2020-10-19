@@ -46,6 +46,30 @@ struct Value {
                       Reg, Addr, String, FlagsVal, EnumVal, ModuleId, Fn,
                       GenericFn, Jump, Block, Scope, Label, Empty>;
 
+ private:
+  static constexpr size_t size_v = std::max(
+      {sizeof(bool),     sizeof(int8_t),   sizeof(int16_t),  sizeof(int32_t),
+       sizeof(int64_t),  sizeof(uint8_t),  sizeof(uint16_t), sizeof(uint32_t),
+       sizeof(uint64_t), sizeof(float),    sizeof(double),   sizeof(type::Type),
+       sizeof(Reg),      sizeof(Addr),     sizeof(String),   sizeof(FlagsVal),
+       sizeof(EnumVal),  sizeof(ModuleId), sizeof(Jump),     sizeof(Block),
+       sizeof(Scope),    sizeof(Label),    sizeof(Empty)});
+  // The above happen to cover the alignment of Fn, GenericFn, but we have
+  // layering issues here and those are incomplete when this line is processed.
+
+  static constexpr size_t alignment_v =
+      std::max({alignof(bool),     alignof(int8_t),   alignof(int16_t),
+                alignof(int32_t),  alignof(int64_t),  alignof(uint8_t),
+                alignof(uint16_t), alignof(uint32_t), alignof(uint64_t),
+                alignof(float),    alignof(double),   alignof(type::Type),
+                alignof(Reg),      alignof(Addr),     alignof(String),
+                alignof(FlagsVal), alignof(EnumVal),  alignof(ModuleId),
+                alignof(Jump),     alignof(Block),    alignof(Scope),
+                alignof(Label),    alignof(Empty)});
+  // The above happen to cover the alignment of Fn, GenericFn, but we have
+  // layering issues here and those are incomplete when this line is processed.
+
+ public:
   // Constructs a `Value` from the passed in type. The parameter may be of any
   // type supported by `Value` or an `ir::RegOr<T>` where `T` is an type
   // supported by `Value`.
@@ -57,11 +81,14 @@ struct Value {
     if constexpr (base::meta<T>.template is_a<ir::RegOr>()) {
       static_assert(base::Contains<supported_types, typename T::type>());
       if (val.is_reg()) {
-        type_          = base::meta<Reg>;
-        get_ref<Reg>() = val.reg();
+        type_ = base::meta<Reg>;
+        new (&get_ref<Reg>()) Reg(val.reg());
       } else {
-        type_                       = base::meta<typename T::type>;
-        get_ref<typename T::type>() = std::move(val).value();
+        using underlying_type      = typename T::type;
+        type_                      = base::meta<underlying_type>;
+        get_ref<underlying_type>() = std::move(val).value();
+        new (&get_ref<underlying_type>())
+            underlying_type(std::move(val).value());
       }
     } else {
       static_assert(base::Contains<supported_types, T>());
@@ -135,7 +162,7 @@ struct Value {
 
   template <typename T>
   T const& get_ref() const {
-    static_assert(sizeof(T) <= 8);
+    static_assert(base::Contains<supported_types, T>());
     ASSERT(type_ == base::meta<T>);
     return *reinterpret_cast<T const*>(buf_);
   }
@@ -172,7 +199,7 @@ struct Value {
   }
 
   base::MetaValue type_;
-  alignas(8) char buf_[8];
+  alignas(alignment_v) char buf_[size_v];
 };
 
 }  // namespace ir

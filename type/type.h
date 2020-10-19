@@ -4,6 +4,7 @@
 #include <string>
 
 #include "base/cast.h"
+#include "base/meta.h"
 #include "core/arch.h"
 #include "type/visitor_base.h"
 
@@ -84,33 +85,50 @@ struct LegacyType : base::Cast<LegacyType> {
 };
 
 struct Type {
-  constexpr Type(LegacyType const *t = nullptr) : t_(t) {}
-  constexpr operator LegacyType const *() const { return t_; }
-  constexpr LegacyType const *operator->() const { return t_; }
-  constexpr LegacyType const *get() const { return t_; }
+  Type(LegacyType const *t = nullptr) : data_(reinterpret_cast<uintptr_t>(t)) {}
+
+  LegacyType const *operator->() const { return ASSERT_NOT_NULL(get()); }
+  LegacyType const *get() const {
+    return reinterpret_cast<LegacyType const *>(data_);
+  }
 
   template <typename H>
   friend H AbslHashValue(H h, Type t) {
-    return H::combine(std::move(h), t.t_);
+    return H::combine(std::move(h), t.data_);
   }
 
-  constexpr operator bool() const { return t_; }
+  operator bool() const { return get(); }
+  bool valid() const { return get(); }
 
-  friend bool operator==(Type lhs, Type rhs) { return lhs.t_ == rhs.t_; }
+  // Template avoids implicit conversions.
+  template <typename T,
+            std::enable_if_t<base::meta<T> == base::meta<Type>, int> = 0>
+  friend bool operator==(T lhs, T rhs) {
+    return lhs.data_ == rhs.data_;
+  }
   friend bool operator!=(Type lhs, Type rhs) { return not(lhs == rhs); }
 
-  friend bool operator==(LegacyType const *lhs, Type rhs) {
-    return lhs == rhs.t_;
-  }
-  friend bool operator==(Type lhs, LegacyType const *rhs) {
-    return lhs.t_ == rhs;
-  }
+  std::string to_string() const { return get()->to_string(); }
 
-  friend bool operator!=(LegacyType const *lhs, Type rhs) {
-    return lhs != rhs.t_;
+  template <typename T>
+  auto *if_as() {
+    return get()->template if_as<T>();
   }
-  friend bool operator!=(Type lhs, LegacyType const *rhs) {
-    return lhs.t_ != rhs;
+  template <typename T>
+  auto const *if_as() const {
+    return get()->template if_as<T>();
+  }
+  template <typename T>
+  bool is() const {
+    return get()->template is<T>();
+  }
+  template <typename T>
+  T &as() {
+    return get()->template as<T>();
+  }
+  template <typename T>
+  T const &as() const {
+    return get()->template as<T>();
   }
 
   friend std::ostream &operator<<(std::ostream &os, Type t) {
@@ -118,7 +136,7 @@ struct Type {
   }
 
  private:
-  LegacyType const *t_;
+  uintptr_t data_;
 };
 
 // Intentionally leak this type.

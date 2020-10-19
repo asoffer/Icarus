@@ -1,16 +1,17 @@
 #ifndef ICARUS_TYPE_CAST_H
 #define ICARUS_TYPE_CAST_H
 
-namespace type {
-struct LegacyType;
+#include "type/type.h"
 
-bool CanCastImplicitly(LegacyType const *from, LegacyType const *to);
-bool CanCast(LegacyType const *from, LegacyType const *to);
+namespace type {
+
+bool CanCastImplicitly(Type from, Type to);
+bool CanCast(Type from, Type to);
 
 // The 'meet' of two types is the maximal type that converts implicitly to both
 // of these types. This is not guaranteed to exist, and the function returns
 // nullptr if no meet exists.
-LegacyType const *Meet(LegacyType const *lhs, LegacyType const *rhs);
+Type Meet(Type lhs, Type rhs);
 
 }  // namespace type
 

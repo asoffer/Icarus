@@ -27,7 +27,7 @@ ir::Value PrepareOneArg(Compiler *c, type::Typed<ir::Value> const &arg,
                         type::Type param_type) {
   auto &bldr = c->builder();
   // TODO other implicit conversions?
-  auto *t = arg.type();
+  auto t = arg.type();
   if (t->is_big()) {
     auto r = bldr.TmpAlloca(t);
     c->EmitMoveInit(arg, type::Typed<ir::Reg>(r, type::Ptr(t)));

@@ -59,7 +59,7 @@ ir::Value Compiler::EmitValue(ast::Cast const *node) {
               type::Typed<ir::Value>(values, from_type)));
         });
   } else {
-    NOT_YET(*from_type, " to ", *to_type);
+    NOT_YET(from_type, " to ", to_type);
   }
 }
 

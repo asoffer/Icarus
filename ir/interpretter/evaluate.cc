@@ -48,7 +48,7 @@ void Execute(ExecutionContext &ctx, ir::Fn fn, base::untyped_buffer arguments,
              absl::Span<ir::Addr const> ret_slots);
 
 // Maximum size of any primitive type we may write
-inline constexpr size_t kMaxSize = 8;
+inline constexpr size_t kMaxSize = 16;
 
 constexpr uint8_t ReverseByte(uint8_t byte) {
   byte = ((byte & 0b11110000) >> 4) | ((byte & 0b00001111) << 4);

@@ -14,7 +14,7 @@ namespace type {
 struct Array : LegacyType {
   // Construct a new array from the given parameters, or if one already exists
   // in the cache, return that.
-  friend Array const *Arr(size_t len, LegacyType const *t);
+  friend Array const *Arr(size_t len, Type t);
 
   ~Array() override {}
 
@@ -27,7 +27,7 @@ struct Array : LegacyType {
   }
 
   constexpr size_t length() const { return len_; }
-  constexpr type::Type data_type() const { return data_type_; }
+  Type data_type() const { return data_type_; }
 
   Completeness completeness() const override {
     return data_type()->completeness();
@@ -49,14 +49,14 @@ struct Array : LegacyType {
   }
 
  private:
-  explicit Array(size_t l, LegacyType const *t)
+  explicit Array(size_t l, Type t)
       : LegacyType(t->flags()), len_(l), data_type_(t) {}
 
   size_t len_;
-  LegacyType const *data_type_;
+  Type data_type_;
 };
 
-Array const *Arr(size_t len, LegacyType const *t);
+Array const *Arr(size_t len, Type t);
 
 }  // namespace type
 #endif  // ICARUS_TYPE_ARRAY_H

@@ -83,7 +83,7 @@ void Compiler::EmitMoveInit(
     }
   }
 
-  auto const &this_type = *ASSERT_NOT_NULL(data().qual_type(node))->type();
+  type::Type this_type = ASSERT_NOT_NULL(data().qual_type(node))->type();
   if (auto const *enum_type = this_type.if_as<type::Enum>()) {
     // TODO: should actually be an initialization, not assignment.
     EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>>(*to[0], enum_type),
@@ -96,7 +96,7 @@ void Compiler::EmitMoveInit(
                    type::Typed<ir::Value>(
                        ir::Value(*flags_type->EmitLiteral(node->member_name())),
                        flags_type));
-  } else if (&this_type == type::ByteView) {
+  } else if (this_type == type::ByteView) {
     // TODO: should actually be an initialization, not assignment.
     ASSERT(node->member_name() == "length");
     EmitMoveAssign(
@@ -109,8 +109,8 @@ void Compiler::EmitMoveInit(
     // TODO: should actually be an initialization, not assignment.
     EmitMoveAssign(
         to[0], type::Typed<ir::Value>(
-                   ir::Value(builder().PtrFix(EmitRef(node).reg(), &this_type)),
-                   type::Ptr(&this_type)));
+                   ir::Value(builder().PtrFix(EmitRef(node).reg(), this_type)),
+                   type::Ptr(this_type)));
   }
 }
 
@@ -135,7 +135,7 @@ void Compiler::EmitCopyInit(
     }
   }
 
-  auto const &this_type = *ASSERT_NOT_NULL(data().qual_type(node))->type();
+  type::Type this_type = ASSERT_NOT_NULL(data().qual_type(node))->type();
   if (auto const *enum_type = this_type.if_as<type::Enum>()) {
     // TODO: should actually be an initialization, not assignment.
     EmitMoveAssign(to[0],
@@ -148,7 +148,7 @@ void Compiler::EmitCopyInit(
                    type::Typed<ir::Value>(
                        ir::Value(*flags_type->EmitLiteral(node->member_name())),
                        flags_type));
-  } else if (&this_type == type::ByteView) {
+  } else if (this_type == type::ByteView) {
     // TODO: should actually be an initialization, not assignment.
     ASSERT(node->member_name() == "length");
     EmitMoveAssign(
@@ -161,8 +161,8 @@ void Compiler::EmitCopyInit(
     // TODO: should actually be an initialization, not assignment.
     EmitMoveAssign(
         to[0], type::Typed<ir::Value>(
-                   ir::Value(builder().PtrFix(EmitRef(node).reg(), &this_type)),
-                   &this_type));
+                   ir::Value(builder().PtrFix(EmitRef(node).reg(), this_type)),
+                   this_type));
   }
 }
 
@@ -187,7 +187,7 @@ void Compiler::EmitAssign(
     }
   }
 
-  auto const &this_type = *ASSERT_NOT_NULL(data().qual_type(node))->type();
+  type::Type this_type = ASSERT_NOT_NULL(data().qual_type(node))->type();
   if (auto const *enum_type = this_type.if_as<type::Enum>()) {
     EmitMoveAssign(to[0],
                    type::Typed<ir::Value>(
@@ -198,7 +198,7 @@ void Compiler::EmitAssign(
                    type::Typed<ir::Value>(
                        ir::Value(*flags_type->EmitLiteral(node->member_name())),
                        flags_type));
-  } else if (&this_type == type::ByteView) {
+  } else if (this_type == type::ByteView) {
     ASSERT(node->member_name() == "length");
     EmitMoveAssign(
         to[0],
@@ -210,8 +210,8 @@ void Compiler::EmitAssign(
     // TODO: should actually be an initialization, not assignment.
     EmitMoveAssign(
         to[0], type::Typed<ir::Value>(
-                   ir::Value(builder().PtrFix(EmitRef(node).reg(), &this_type)),
-                   &this_type));
+                   ir::Value(builder().PtrFix(EmitRef(node).reg(), this_type)),
+                   this_type));
   }
 }
 

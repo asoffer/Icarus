@@ -130,7 +130,7 @@ type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
   ASSIGN_OR(return type::QualType::Error(), type::Type t,
                    EvaluateOrDiagnoseAs<type::Type>(node->type()));
 
-  auto *struct_type = ASSERT_NOT_NULL(t)->if_as<type::Struct>();
+  auto *struct_type = t->if_as<type::Struct>();
   if (not struct_type) {
     diag().Consume(NonStructDesignatedInitializer{
         .type  = t,

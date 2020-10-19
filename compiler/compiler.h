@@ -171,18 +171,20 @@ struct Compiler
   }
 
   void EmitDestroy(type::Typed<ir::Reg> r) {
-    type::Visitor<EmitDestroyTag, void(ir::Reg)>::Visit(r.type(), r.get());
+    type::Visitor<EmitDestroyTag, void(ir::Reg)>::Visit(r.type().get(),
+                                                        r.get());
   }
 
   void EmitDefaultInit(type::Typed<ir::Reg> r) {
-    type::Visitor<EmitDefaultInitTag, void(ir::Reg)>::Visit(r.type(), r.get());
+    type::Visitor<EmitDefaultInitTag, void(ir::Reg)>::Visit(r.type().get(),
+                                                            r.get());
   }
 
   void EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>> const &to,
                       type::Typed<ir::Value> const &from) {
     type::Visitor<EmitMoveAssignTag,
                   void(ir::RegOr<ir::Addr>,
-                       type::Typed<ir::Value> const &)>::Visit(to.type(),
+                       type::Typed<ir::Value> const &)>::Visit(to.type().get(),
                                                                to.get(), from);
   }
 
@@ -190,7 +192,7 @@ struct Compiler
                       type::Typed<ir::Value> const &from) {
     type::Visitor<EmitCopyAssignTag,
                   void(ir::RegOr<ir::Addr>,
-                       type::Typed<ir::Value> const &)>::Visit(to.type(),
+                       type::Typed<ir::Value> const &)>::Visit(to.type().get(),
                                                                to.get(), from);
   }
 
@@ -455,7 +457,7 @@ struct Compiler
 
   void EmitMoveInit(type::Typed<ir::Value> from_val,
                     type::Typed<ir::Reg> to_var) {
-    auto *to_type = to_var.type()->as<type::Pointer>().pointee();
+    auto to_type = to_var.type()->as<type::Pointer>().pointee();
     // TODO Optimize once you understand the semantics better.
     if (to_type->IsDefaultInitializable()) { EmitDefaultInit(to_var); }
 
@@ -465,7 +467,7 @@ struct Compiler
 
   void EmitCopyInit(type::Typed<ir::Value> from_val,
                     type::Typed<ir::Reg> to_var) {
-    auto *to_type = to_var.type()->as<type::Pointer>().pointee();
+    auto to_type = to_var.type()->as<type::Pointer>().pointee();
     // TODO Optimize once you understand the semantics better.
     if (to_type->IsDefaultInitializable()) { EmitDefaultInit(to_var); }
 

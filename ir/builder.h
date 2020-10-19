@@ -353,7 +353,7 @@ struct Builder {
         return Cast<ir::FlagsVal::underlying_type, ToType>(result);
       }
     } else {
-      UNREACHABLE(base::meta<ToType>, ", ", *v.type());
+      UNREACHABLE(base::meta<ToType>, ", ", v.type());
     }
   }
 

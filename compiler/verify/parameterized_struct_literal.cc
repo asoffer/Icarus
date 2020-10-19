@@ -51,7 +51,7 @@ type::QualType Compiler::VerifyType(
           // TODO hashtags, special members.
           if (auto *init_val = field.init_val()) {
             // TODO init_val type may not be the same.
-            auto t = ASSERT_NOT_NULL(c.qual_type_of(init_val)->type());
+            type::Type t = c.qual_type_of(init_val)->type();
             fields.emplace_back(field.id(), t, c.EmitValue(init_val));
           } else {
             fields.emplace_back(

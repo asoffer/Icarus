@@ -24,7 +24,7 @@ TEST(Jump, StatelessSuccess) {
   ASSERT_NE(qt, nullptr);
   ASSERT_TRUE(qt->type()->is<type::Jump>());
   auto& j = qt->type()->as<type::Jump>();
-  EXPECT_EQ(j.state(), nullptr);
+  EXPECT_FALSE(j.state().valid());
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -39,7 +39,7 @@ TEST(Jump, StatefulSuccess) {
   ASSERT_NE(qt, nullptr);
   ASSERT_TRUE(qt->type()->is<type::Jump>());
   auto& j = qt->type()->as<type::Jump>();
-  EXPECT_EQ(j.state(), type::Ptr(type::Int64));
+  EXPECT_EQ(j.state(), type::Type(type::Ptr(type::Int64)));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -68,7 +68,7 @@ TEST(Jump, StateMustNotBeABufferPointer) {
   ASSERT_NE(qt, nullptr);
   ASSERT_TRUE(qt->type()->is<type::Jump>());
   auto& j = qt->type()->as<type::Jump>();
-  EXPECT_EQ(j.state(), type::Ptr(type::Int64));
+  EXPECT_EQ(j.state(), type::Type(type::Ptr(type::Int64)));
   EXPECT_THAT(j.params(), IsEmpty());
   EXPECT_THAT(
       mod.consumer.diagnostics(),
@@ -86,7 +86,7 @@ TEST(Jump, StateMustBeNonConstant) {
   ASSERT_NE(qt, nullptr);
   ASSERT_TRUE(qt->type()->is<type::Jump>());
   auto& j = qt->type()->as<type::Jump>();
-  EXPECT_EQ(j.state(), type::Ptr(type::Int64));
+  EXPECT_EQ(j.state(), type::Type(type::Ptr(type::Int64)));
   EXPECT_THAT(j.params(), IsEmpty());
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "constant-jump-state")));
@@ -103,7 +103,7 @@ TEST(Jump, InitialValue) {
   ASSERT_NE(qt, nullptr);
   ASSERT_TRUE(qt->type()->is<type::Jump>());
   auto& j = qt->type()->as<type::Jump>();
-  EXPECT_EQ(j.state(), type::Ptr(type::Bool));
+  EXPECT_EQ(j.state(), type::Type(type::Ptr(type::Bool)));
   EXPECT_THAT(j.params(), IsEmpty());
   EXPECT_THAT(
       mod.consumer.diagnostics(),
@@ -123,7 +123,7 @@ TEST(Jump, InitialValueInferred) {
   ASSERT_NE(qt, nullptr);
   ASSERT_TRUE(qt->type()->is<type::Jump>());
   auto& j = qt->type()->as<type::Jump>();
-  EXPECT_EQ(j.state(), type::Ptr(type::Int64));
+  EXPECT_EQ(j.state(), type::Type(type::Ptr(type::Int64)));
   EXPECT_THAT(j.params(), IsEmpty());
   EXPECT_THAT(
       mod.consumer.diagnostics(),

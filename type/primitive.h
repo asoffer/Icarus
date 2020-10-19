@@ -109,16 +109,20 @@ inline Type Module     = &(*internal::kPrimitiveArray)[16];
 inline Type ByteView   = &(*internal::kPrimitiveArray)[17];
 inline Type Label      = &(*internal::kPrimitiveArray)[18];
 
-inline bool IsNumeric(Type t) { return t.get() >= Nat8 and t.get() <= Float64; }
-inline bool IsIntegral(Type t) { return t.get() >= Nat8 and t.get() <= Int64; }
+inline bool IsNumeric(Type t) {
+  return t.get() >= Nat8.get() and t.get() <= Float64.get();
+}
+inline bool IsIntegral(Type t) {
+  return t.get() >= Nat8.get() and t.get() <= Int64.get();
+}
 inline bool IsUnsignedNumeric(Type t) {
-  return t.get() >= Nat8 and t.get() <= Nat64;
+  return t.get() >= Nat8.get() and t.get() <= Nat64.get();
 }
 inline bool IsSignedNumeric(Type t) {
-  return t.get() >= Int8 and t.get() <= Float64;
+  return t.get() >= Int8.get() and t.get() <= Float64.get();
 }
 inline bool IsFloatingPoint(Type t) {
-  return t.get() >= Float32.get() and t.get() <= Float64;
+  return t.get() >= Float32.get() and t.get() <= Float64.get();
 }
 
 }  // namespace type

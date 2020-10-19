@@ -93,7 +93,7 @@ ir::NativeFn Compiler::AddFunc(
 
 static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
                                 type::Type type) {
-  ir::CompiledFn fn(type::Func({}, {ASSERT_NOT_NULL(type)}),
+  ir::CompiledFn fn(type::Func({}, {type}),
                     core::Params<type::Typed<ast::Declaration const *>>{});
   ICARUS_SCOPE(ir::SetCurrent(&fn, &c.builder())) {
     // TODO this is essentially a copy of the body of FunctionLiteral::EmitValue
@@ -113,7 +113,7 @@ static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
     // TODO is_big()?
 
     type::Type t = extracted_types[0];
-    LOG("MakeThunk", "%s %s", *t, t->is_big() ? "true" : "false");
+    LOG("MakeThunk", "%s %s", t, t->is_big() ? "true" : "false");
     if (t->is_big()) {
       // TODO must `r` be holding a register?
       // TODO guaranteed move-elision

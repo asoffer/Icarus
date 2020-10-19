@@ -40,7 +40,7 @@ TEST_P(BinaryOperatorTest, Constants) {
   auto const *qt = mod.data().qual_type(e);
   ASSERT_NE(qt, nullptr) << "No QualType for " << e->DebugString();
   auto t = qt->type();
-  ASSERT_NE(t, nullptr);
+  ASSERT_TRUE(t.valid());
   auto result =
       mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));
   ASSERT_TRUE(result);
@@ -65,7 +65,7 @@ TEST_P(BinaryOperatorTest, NonConstants) {
   auto const *qt = mod.data().qual_type(e);
   ASSERT_NE(qt, nullptr) << "No QualType for " << e->DebugString();
   auto t = qt->type();
-  ASSERT_NE(t, nullptr);
+  ASSERT_TRUE(t.valid());
   auto result =
       mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));
   ASSERT_TRUE(result);
@@ -91,7 +91,7 @@ TEST_P(BinaryOperatorTest, Assignment) {
   auto const *qt = mod.data().qual_type(e);
   ASSERT_NE(qt, nullptr) << "No QualType for " << e->DebugString();
   auto t = qt->type();
-  ASSERT_NE(t, nullptr);
+  ASSERT_TRUE(t.valid());
   auto result =
       mod.compiler.Evaluate(type::Typed<ast::Expression const *>(e, t));
   ASSERT_TRUE(result);
