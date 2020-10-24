@@ -21,8 +21,6 @@ struct Enum : type::LegacyType {
                                      .has_destructor           = 0}),
         mod_(mod) {}
 
-  ~Enum() override {}
-
   void SetMembers(absl::flat_hash_map<std::string, ir::EnumVal> vals) {
     vals_ = std::move(vals);
     for (auto &[name, val] : vals_) { members_.emplace(val, name); }

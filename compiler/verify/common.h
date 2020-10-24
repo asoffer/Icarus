@@ -3,7 +3,7 @@
 
 #include "ast/ast.h"
 #include "compiler/compiler.h"
-#include "compiler/data.h"
+#include "compiler/context.h"
 #include "core/dependency_node.h"
 #include "diagnostic/message.h"
 
@@ -74,8 +74,7 @@ struct ImmovableType {
   frontend::SourceRange range;
 };
 
-// TODO: For a ParameterizedExpression node,
-DependentComputedData::InsertDependentResult MakeConcrete(
+Context::InsertSubcontextResult MakeConcrete(
     Compiler &c, ast::ParameterizedExpression const *node,
     core::FnArgs<type::Typed<ir::Value>> const &args);
 

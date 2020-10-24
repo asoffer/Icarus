@@ -185,7 +185,7 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
-        "//compiler:data",
+        "//compiler:context",
         "//compiler:library_module",
         "//compiler/dispatch:match",
         "//compiler/dispatch:parameters_and_arguments",

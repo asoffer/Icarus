@@ -521,30 +521,30 @@ ir::NativeFn MakeConcreteFromGeneric(
 
   // TODO: Rather than recompute this we colud store the `Call` node in the
   // dependent context.
-  DependentComputedData temp_data(&compiler->data().module());
+  Context ctx(&compiler->data().module());
   Compiler c({
       .builder             = compiler->builder(),
-      .data                = temp_data,
+      .data                = ctx,
       .diagnostic_consumer = compiler->diag(),
       .importer            = compiler->importer(),
   });
-  temp_data.parent_ = &compiler->data();
+  ctx.parent_ = &compiler->data();
   // TODO: Audit this. Probably shouldn't be needed because we should have
   // already computed it during verification.
-  auto params                = c.ComputeParamsFromArgs(node, args);
-  auto find_dependent_result = compiler->data().FindDependent(node, params);
-  auto const *fn_type        = find_dependent_result.fn_type;
-  auto &data                 = find_dependent_result.data;
+  auto params                 = c.ComputeParamsFromArgs(node, args);
+  auto find_subcontext_result = compiler->data().FindSubcontext(node, params);
+  auto const *fn_type         = find_subcontext_result.fn_type;
+  auto &context               = find_subcontext_result.context;
 
-  return data.EmplaceNativeFn(node, [&]() {
+  return context.EmplaceNativeFn(node, [&]() {
     ir::NativeFn f(
-        &data.fns_, fn_type,
+        &context.fns_, fn_type,
         node->params().Transform([fn_type, i = 0](auto const &d) mutable {
           return type::Typed<ast::Declaration const *>(
               d.get(), fn_type->params()[i++].value.type());
         }));
     f->work_item = DeferBody({.builder             = compiler->builder(),
-                              .data                = data,
+                              .data                = context,
                               .diagnostic_consumer = compiler->diag(),
                               .importer            = compiler->importer()},
                              node, fn_type);

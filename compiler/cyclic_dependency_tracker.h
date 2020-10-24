@@ -6,7 +6,7 @@
 
 #include "absl/types/span.h"
 #include "ast/ast.h"
-#include "compiler/data.h"
+#include "compiler/context.h"
 #include "diagnostic/consumer/consumer.h"
 
 namespace compiler {
@@ -59,8 +59,7 @@ struct CyclicDependencyTracker {
     CyclicDependencyTracker *ptr_ = nullptr;
   };
 
-  DependencyToken PushDependency(ast::Identifier const *id,
-                                 DependentComputedData &data,
+  DependencyToken PushDependency(ast::Identifier const *id, Context &context,
                                  diagnostic::DiagnosticConsumer &diag) {
     dependencies_.push_back(id);
     auto iter = dependencies_.begin();
@@ -76,7 +75,7 @@ struct CyclicDependencyTracker {
         .cycle = {iter, dependencies_.end()},
     });
     for (; iter != dependencies_.end(); ++iter) {
-      data.set_cyclic_error(*iter);
+      context.set_cyclic_error(*iter);
     }
 
     return DependencyToken();

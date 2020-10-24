@@ -29,14 +29,13 @@ namespace compiler {
 struct LibraryModule;
 struct CompiledModule;
 
-// DependentComputedData holds all data that the compiler computes about the
+// Context holds all data that the compiler computes about the
 // program by traversing the syntax tree. This includes type information,
 // compiled functions and jumps, etc. Note that this data may be dependent on
 // constant parameters to a function, jump, or struct. To account for such
-// dependencies, DependentComputedData is intrusively a tree. Each
-// DependentComputedData has a pointer to it's parent (except the root whose
-// parent-pointer is null), as well as a map keyed on arguments whose values
-// hold child DependentComputedData.
+// dependencies, Context is intrusively a tree. Each Context has a pointer to
+// it's parent (except the root whose parent-pointer is null), as well as a map
+// keyed on arguments whose values hold child Context.
 //
 // For instance, the program
 // ```
@@ -50,7 +49,7 @@ struct CompiledModule;
 // f(2)
 // ```
 //
-// would have three DependentComputedData nodes. The root node, which has the
+// would have three Context nodes. The root node, which has the
 // other two nodes as children. These nodes are keyed on the arguments to `f`,
 // one where `n` is 1 and one where `n` is 2. Note that the type of `array` is
 // not available at the root node as it's type is dependent on `n`. Rather, on
@@ -58,11 +57,76 @@ struct CompiledModule;
 // Moreover, even the type of `size` (despite always being `int64` is not
 // available on the root node. Instead, it is available on all child nodes with
 // the same value of `int64`.
-struct DependentComputedData {
-  explicit DependentComputedData(CompiledModule *mod);
-  ~DependentComputedData();
+//
+// Though there is nothing special about recursive instantiations, it's worth
+// describing an example as well:
+//
+// ```
+// pow2 ::= (n :: int64) -> int64 {
+//   if (n == 0) then {
+//     return 1
+//   } else {
+//     return pow2(n - 1) * 2
+//   }
+// }
+//
+// pow2(3)
+// ```
+//
+// In this example, the expression `pow2(3)` instantiates a subcontext of the
+// root binding, 3 to `n`. In doing so, it requires instantiating `pow2(2)`
+// which becomes another subcontext of the root. This continues on so that the
+// end result is that the root context has 4 subcontexts, one binding `n` to
+// each of 0, 1, 2, and 3.
+//
+// The important thing to note here is that the subcontexts are all of the root,
+// rather than in a chain. This is because we instantiate subcontexts in the
+// context of the callee, not the call-site. In this case, despite there being
+// two different call-sites, there is exactly one callee (namely, `pow2`) and it
+// lives in the root context.
+struct Context {
+  explicit Context(CompiledModule *mod);
+  // Even though this destructor is defaulted, it needs to be defined externally
+  // because otherwise we would generate a destructor for the incomplete type
+  // `Subcontext` below.
+  ~Context();
 
   CompiledModule &module() const { return mod_; }
+
+  // InsertSubcontext:
+  //
+  // Returns an `InsertSubcontext`. The `inserted` bool member indicates whether
+  // a dependency was inserted. In either case (inserted or already present) the
+  // reference members `params` and `data` refer to the correspondingly computed
+  // parameter types and `Context` into which new computed data dependent on
+  // this set of generic context can be added.
+  struct InsertSubcontextResult {
+    core::Params<std::pair<ir::Value, type::QualType>> const &params;
+    std::vector<type::Type> &rets;
+    Context &context;
+    bool inserted;
+  };
+
+  InsertSubcontextResult InsertSubcontext(
+      ast::ParameterizedExpression const *node,
+      core::Params<std::pair<ir::Value, type::QualType>> const &params);
+
+  // FindSubcontext:
+  //
+  // Returns a `FindSubcontextResult`. The `context` reference member refers to
+  // subcontext (child subcontext, not descendant) associated with the given set
+  // of parameters. This subcontext will not be created if it does not already
+  // exist. It must already exist under penalty of undefined behavior.
+  struct FindSubcontextResult {
+    type::Function const *fn_type;
+    Context &context;
+  };
+
+  FindSubcontextResult FindSubcontext(
+      ast::ParameterizedExpression const *node,
+      core::Params<std::pair<ir::Value, type::QualType>> const &params);
+
+
 
   // Returned pointer is null if the expression does not have a type in this
   // context. If the pointer is not null, it is only valid until the next
@@ -106,7 +170,7 @@ struct DependentComputedData {
   }
 
   // TODO this is transient compiler state and therefore shouldn't be stored in
-  // `DependentComputedData`.
+  // `Context`.
   base::guarded<absl::node_hash_map<ast::Node const *, base::move_func<void()>>>
       deferred_work_;
 
@@ -123,41 +187,6 @@ struct DependentComputedData {
 
   ir::ModuleId imported_module(ast::Import const *node);
   void set_imported_module(ast::Import const *node, ir::ModuleId module_id);
-
-  // InsertDependent:
-  //
-  // Returns an `InsertDependentResult`. The `inserted` bool member  indicates
-  // whether a dependency was inserted. In either case (inserted or already
-  // present) the reference members `params` and `data` refer to the
-  // correspondingly computed parameter types and `DependentComputedData` into
-  // which new computed data dependent on this set of generic context can be
-  // added.
-  struct InsertDependentResult {
-    core::Params<std::pair<ir::Value, type::QualType>> &params;
-    std::vector<type::Type> &rets;
-    DependentComputedData &data;
-    bool inserted;
-  };
-
-  InsertDependentResult InsertDependent(
-      ast::ParameterizedExpression const *node,
-      core::Params<std::pair<ir::Value, type::QualType>> const &params);
-
-  // FindDependent:
-  //
-  // Returns a `FindDependentResult`. The reference members `params` and `data`
-  // refer to the correspondingly computed parameter types and
-  // `DependentComputedData` into which new computed data dependent on this set
-  // of generic context can be added. Such a `DependentComputedData` must
-  // already be present as a child.
-  struct FindDependentResult {
-    type::Function const *fn_type;
-    DependentComputedData &data;
-  };
-
-  FindDependentResult FindDependent(
-      ast::ParameterizedExpression const *node,
-      core::Params<std::pair<ir::Value, type::QualType>> const &params);
 
   template <
       typename Ctor,
@@ -289,14 +318,6 @@ struct DependentComputedData {
 
   absl::flat_hash_set<ast::Node const *> body_verification_complete_;
 
-  struct DependentDataChild {
-    DependentComputedData *parent = nullptr;
-    struct DataImpl;
-    absl::flat_hash_map<core::Params<std::pair<ir::Value, type::QualType>>,
-                        std::unique_ptr<DataImpl>>
-        map;
-  };
-
   // Overloads for a callable expression, including overloads that are not
   // callable based on the call-site arguments.
   absl::flat_hash_map<ast::Expression const *, ast::OverloadSet> all_overloads_;
@@ -307,13 +328,17 @@ struct DependentComputedData {
       viable_overloads_;
 
   // The parent node containing the generic that is instantiated to produce this
-  // `DependentComputedData`.
+  // `Context`.
  public:
-  DependentComputedData *parent_ = nullptr;
+  Context *parent_ = nullptr;
 
  private:
-  absl::node_hash_map<ast::ParameterizedExpression const *, DependentDataChild>
-      dependent_data_;
+  struct Subcontext;
+  absl::flat_hash_map<
+      ast::ParameterizedExpression const *,
+      absl::node_hash_map<core::Params<std::pair<ir::Value, type::QualType>>,
+                          std::unique_ptr<Subcontext>>>
+      subcontexts_;
 
   // All functions, whether they're directly compiled or generated by a generic.
   absl::node_hash_map<ast::ParameterizedExpression const *, ir::NativeFn>

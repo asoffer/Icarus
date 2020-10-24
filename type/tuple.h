@@ -8,7 +8,6 @@
 namespace type {
 struct Tuple : public LegacyType {
   Tuple() = delete;
-  ~Tuple() {}
   Tuple(std::vector<Type> entries);
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {

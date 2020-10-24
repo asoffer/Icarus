@@ -12,7 +12,6 @@ struct Opaque : public LegacyType {
                                      .is_copyable              = 0,
                                      .is_movable               = 0,
                                      .has_destructor           = 0}) {}
-  ~Opaque() override {}
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);

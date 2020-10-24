@@ -10,8 +10,6 @@ namespace type {
 struct Pointer : LegacyType {
   friend Pointer const *Ptr(Type t);
 
-  ~Pointer() override {}
-
   void WriteTo(std::string *buf) const override;
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;
@@ -44,8 +42,6 @@ struct Pointer : LegacyType {
 // `Pointer`s with the same `pointee` type.
 struct BufferPointer : Pointer {
   friend BufferPointer const *BufPtr(Type t);
-
-  ~BufferPointer() override {}
 
   bool is_big() const override { return false; }
   void WriteTo(std::string *result) const override;

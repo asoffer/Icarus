@@ -64,7 +64,6 @@ InstructionInliner::InstructionInliner(
               .header        = absl::StrCat("Landing to start ", next_name),
               .cluster_index = index});
         }
-        LOG("", "%s", named_blocks_);
       } else {
         UNREACHABLE(*block);
       }

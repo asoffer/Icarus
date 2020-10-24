@@ -22,7 +22,7 @@ struct GenericFunction : Callable {
       std::function<Function const *(core::FnArgs<Typed<ir::Value>> const &)>
           fn)
       : gen_fn_(std::move(fn)), params_(std::move(params)) {}
-  ~GenericFunction() override {}
+
   void WriteTo(std::string *result) const override {
     result->append("generic");
   }

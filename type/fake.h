@@ -19,7 +19,6 @@ struct FakeType : type::LegacyType {
         }),
         b_(b),
         a_(a) {}
-  ~FakeType() override {}
 
   void Accept(type::VisitorBase *visitor, void *ret,
               void *arg_tuple) const override {

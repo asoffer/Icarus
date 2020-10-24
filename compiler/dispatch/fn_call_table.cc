@@ -65,9 +65,9 @@ ir::RegOr<ir::Fn> ComputeConcreteFn(Compiler *compiler,
   }
 }
 
-std::tuple<ir::RegOr<ir::Fn>, type::Function const *, DependentComputedData *>
-EmitCallee(Compiler &compiler, ast::Expression const *fn, type::QualType qt,
-           const core::FnArgs<type::Typed<ir::Value>> &args) {
+std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCallee(
+    Compiler &compiler, ast::Expression const *fn, type::QualType qt,
+    const core::FnArgs<type::Typed<ir::Value>> &args) {
   if (auto const *gf_type = qt.type()->if_as<type::GenericFunction>()) {
     ir::GenericFn gen_fn =
         compiler.EmitValue(fn).get<ir::RegOr<ir::GenericFn>>().value();
@@ -82,7 +82,7 @@ EmitCallee(Compiler &compiler, ast::Expression const *fn, type::QualType qt,
 
     auto *parameterized_expr = &fn->as<ast::ParameterizedExpression>();
 
-    DependentComputedData temp_data(&compiler.data().module());
+    Context temp_data(&compiler.data().module());
     Compiler c({
         .builder             = compiler.builder(),
         .data                = temp_data,
@@ -93,11 +93,11 @@ EmitCallee(Compiler &compiler, ast::Expression const *fn, type::QualType qt,
 
     auto params = c.ComputeParamsFromArgs(parameterized_expr, args);
 
-    auto find_dependent_result = compiler.data().FindDependent(
+    auto find_subcontext_result = compiler.data().FindSubcontext(
         &fn->as<ast::ParameterizedExpression>(), params);
     return std::make_tuple(ir::Fn(gen_fn.concrete(args)),
-                           find_dependent_result.fn_type,
-                           &find_dependent_result.data);
+                           find_subcontext_result.fn_type,
+                           &find_subcontext_result.context);
   } else if (auto const *f_type = qt.type()->if_as<type::Function>()) {
     return std::make_tuple(ComputeConcreteFn(&compiler, fn, f_type, qt.quals()),
                            f_type, nullptr);

@@ -9,7 +9,6 @@
 #include "type/visitor_base.h"
 
 #define TYPE_FNS(name)                                                         \
-  ~name() {}                                                                   \
   void WriteTo(std::string *buf) const override;                               \
   core::Bytes bytes(core::Arch const &arch) const override;                    \
   core::Alignment alignment(core::Arch const &arch) const override

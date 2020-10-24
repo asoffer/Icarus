@@ -53,7 +53,6 @@ struct Struct : public LegacyType {
 
   bool is_big() const override { return true; }
 
-  ~Struct() override {}
   void WriteTo(std::string *buf) const override;
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;

@@ -5,7 +5,7 @@ cc_library(
     name = "cyclic_dependency_tracker",
     hdrs = ["cyclic_dependency_tracker.h"],
     deps = [
-        ":data",
+        ":context",
         "//ast",
         "//diagnostic/consumer",
         "@com_google_absl//absl/types:span",
@@ -16,8 +16,8 @@ cc_test(
     name = "cyclic_dependency_tracker_test",
     srcs = ["cyclic_dependency_tracker_test.cc"],
     deps = [
+        ":context",
         ":cyclic_dependency_tracker",
-        ":data",
         ":module",
         "//ast",
         "//base:ptr_span",
@@ -94,7 +94,7 @@ cc_library(
     ],
     deps = [
         ":compiler_header",
-        ":data",
+        ":context",
         ":emit_function_call_infrastructure",
         ":executable_module",
         ":library_module",
@@ -163,8 +163,8 @@ cc_library(
     name = "compiler_header",
     hdrs = ["compiler.h"],
     deps = [
+        ":context",
         ":cyclic_dependency_tracker",
-        ":data",
         ":module",
         ":transient_state",
         "//ast",
@@ -216,11 +216,10 @@ cc_library(
     ],
 )
 
-# TODO: rename
 cc_library(
-    name = "data",
-    hdrs = ["data.h"],
-    srcs = ["data.cc"],
+    name = "context",
+    hdrs = ["context.h"],
+    srcs = ["context.cc"],
     deps = [
         "//ast:ast",
         "//base:guarded",
@@ -250,7 +249,7 @@ cc_library(
     name = "module",
     hdrs = ["module.h"],
     deps = [
-        ":data",
+        ":context",
         "//ast:ast",
         "//ast:ast_fwd",
         "//base:ptr_span",

@@ -436,13 +436,13 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
   return type::QualType(return_types.front(), type::Quals::Unqualified());
 }
 
-DependentComputedData::InsertDependentResult MakeConcrete(
+Context::InsertSubcontextResult MakeConcrete(
     Compiler &c, ast::ParameterizedExpression const *node,
     core::FnArgs<type::Typed<ir::Value>> const &args) {
-  DependentComputedData temp_data(&c.data().module());
-  temp_data.parent_ = &c.data();
+  Context temp_ctx(&c.data().module());
+  temp_ctx.parent_ = &c.data();
   auto parameters   = c.ComputeParamsFromArgs(node, args);
-  return c.data().InsertDependent(node, parameters);
+  return c.data().InsertSubcontext(node, parameters);
 }
 
 }  // namespace compiler

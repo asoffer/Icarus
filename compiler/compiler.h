@@ -13,8 +13,8 @@
 #include "base/debug.h"
 #include "base/log.h"
 #include "base/move_func.h"
+#include "compiler/context.h"
 #include "compiler/cyclic_dependency_tracker.h"
-#include "compiler/data.h"
 #include "compiler/module.h"
 #include "compiler/transient_state.h"
 #include "diagnostic/consumer/consumer.h"
@@ -97,7 +97,7 @@ struct Compiler
   // any Compiler construction.
   struct PersistentResources {
     ir::Builder &builder;
-    DependentComputedData &data;
+    Context &data;
     diagnostic::DiagnosticConsumer &diagnostic_consumer;
     module::Importer &importer;
   };
@@ -202,7 +202,9 @@ struct Compiler
   // resources.
   Compiler WithPersistent() const;
 
-  DependentComputedData &data() const { return resources_.data; }
+  Context &context() const { return resources_.data; }
+  // TODO: Deprecated. Use `context()`.
+  Context &data() const { return resources_.data; }
   ir::Builder &builder() { return resources_.builder; };
   diagnostic::DiagnosticConsumer &diag() const {
     return resources_.diagnostic_consumer;
@@ -547,7 +549,7 @@ struct Compiler
   TransientState state_;
 
   // TODO: Should be persistent, but also needs on some local context
-  // (DependentComputedData).
+  // (Context).
   CyclicDependencyTracker cylcic_dependency_tracker_;
 };
 

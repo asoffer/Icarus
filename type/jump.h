@@ -14,8 +14,6 @@ namespace type {
 struct Jump : LegacyType {
   friend Jump const *Jmp(type::Type state, core::Params<Type> const &params);
 
-  ~Jump() override {}
-
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }

@@ -8,7 +8,7 @@
 #include "ast/ast_fwd.h"
 #include "base/guarded.h"
 #include "base/no_destructor.h"
-#include "compiler/data.h"
+#include "compiler/context.h"
 #include "ir/compiled_fn.h"
 #include "ir/compiled_jump.h"
 #include "module/module.h"
@@ -26,11 +26,11 @@ struct CompiledModule : module::BasicModule {
 
   // TODO We probably don't need these. There are likely better ways to expose
   // the requisite information.
-  DependentComputedData const &data() const {
+  Context const &data() const {
     notification_.WaitForNotification();
     return data_;
   }
-  DependentComputedData &data() { return data_; }
+  Context &data() { return data_; }
 
   template <typename Fn>
   void ForEachCompiledFn(Fn &&f) const {
@@ -46,7 +46,7 @@ struct CompiledModule : module::BasicModule {
   void CompilationComplete() { notification_.Notify(); }
 
  private:
-  DependentComputedData data_;
+  Context data_;
   absl::Notification notification_;
 };
 

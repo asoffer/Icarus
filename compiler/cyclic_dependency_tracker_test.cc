@@ -2,7 +2,6 @@
 
 #include "ast/ast.h"
 #include "base/ptr_span.h"
-#include "compiler/data.h"
 #include "compiler/module.h"
 #include "diagnostic/consumer/tracking.h"
 #include "gmock/gmock.h"

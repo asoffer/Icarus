@@ -1,75 +1,69 @@
-#include "compiler/data.h"
+#include "compiler/context.h"
 
 namespace compiler {
 
-DependentComputedData::DependentComputedData(CompiledModule *mod)
-    : mod_(*ASSERT_NOT_NULL(mod)) {}
-DependentComputedData::~DependentComputedData() {}
+Context::Context(CompiledModule *mod) : mod_(*ASSERT_NOT_NULL(mod)) {}
+Context::~Context() = default;
 
-struct DependentComputedData::DependentDataChild::DataImpl {
-  core::Params<std::pair<ir::Value, type::QualType>> params;
+struct Context::Subcontext {
   std::vector<type::Type> rets;
-  DependentComputedData data;
+  Context context;
 };
 
-DependentComputedData::InsertDependentResult
-DependentComputedData::InsertDependent(
+Context::InsertSubcontextResult Context::InsertSubcontext(
     ast::ParameterizedExpression const *node,
     core::Params<std::pair<ir::Value, type::QualType>> const &params) {
-  auto &[parent, map]   = dependent_data_[node];
-  parent                = this;
+  auto &map             = subcontexts_[node];
   auto [iter, inserted] = map.try_emplace(params);
 
   if (inserted) {
-    iter->second = std::unique_ptr<DependentDataChild::DataImpl>(
-        new DependentDataChild::DataImpl{
-            .params = params,
-            .rets   = {},
-            .data   = DependentComputedData(&mod_),
-        });
+    iter->second = std::unique_ptr<Subcontext>(new Subcontext{
+        .rets    = {},
+        .context = Context(&mod_),
+    });
 
     size_t i = 0;
     for (auto const &p : params) {
       if (p.value.first.empty()) { continue; }
-      iter->second->data.SetConstant(node->params()[i++].value.get(),
-                                     p.value.first);
+      iter->second->context.SetConstant(node->params()[i++].value.get(),
+                                        p.value.first);
     }
 
-    iter->second->data.parent_ = this;
+    iter->second->context.parent_ = this;
     for (size_t i = 0; i < node->params().size(); ++i) {
       auto const *decl = node->params()[i].value.get();
-      iter->second->data.set_qual_type(decl, params[i].value.second);
+      iter->second->context.set_qual_type(decl, params[i].value.second);
     }
   }
-  auto &[parameters, rets, data] = *iter->second;
-  return InsertDependentResult{
-      .params   = parameters,
+  auto &[rets, context] = *iter->second;
+  return InsertSubcontextResult{
+      .params   = iter->first,
       .rets     = rets,
-      .data     = data,
+      .context  = context,
       .inserted = inserted,
   };
 }
 
-DependentComputedData::FindDependentResult DependentComputedData::FindDependent(
+Context::FindSubcontextResult Context::FindSubcontext(
     ast::ParameterizedExpression const *node,
     core::Params<std::pair<ir::Value, type::QualType>> const &params) {
-  auto &map = dependent_data_.find(node)->second.map;
+  auto &map = subcontexts_.find(node)->second;
   auto iter = map.find(params);
   ASSERT(iter != map.end());
-  auto &[parameters, rets, data] = *iter->second;
-  return FindDependentResult{
+  auto &[rets, context] = *iter->second;
+  return FindSubcontextResult{
       .fn_type = type::Func(
-          parameters.Transform([](auto const &p) { return p.second; }), rets),
-      .data = data,
+          params.Transform([](auto const &p) { return p.second; }), rets),
+      .context = context,
   };
 }
 
-ir::CompiledJump *DependentComputedData::jump(ast::Jump const *expr) {
+ir::CompiledJump *Context::jump(ast::Jump const *expr) {
   auto iter = jumps_.find(expr);
   return iter == jumps_.end() ? nullptr : &iter->second;
 }
 
-type::QualType const *DependentComputedData::qual_type(
+type::QualType const *Context::qual_type(
     ast::Expression const *expr) const {
   if (auto iter = qual_types_.find(expr); iter != qual_types_.end()) {
     return &iter->second;
@@ -78,13 +72,13 @@ type::QualType const *DependentComputedData::qual_type(
   return nullptr;
 }
 
-type::QualType DependentComputedData::set_qual_type(ast::Expression const *expr,
+type::QualType Context::set_qual_type(ast::Expression const *expr,
                                                     type::QualType r) {
   qual_types_.emplace(expr, r);
   return r;
 }
 
-void DependentComputedData::CompleteType(ast::Expression const *expr,
+void Context::CompleteType(ast::Expression const *expr,
                                          bool success) {
   if (auto iter = qual_types_.find(expr); iter != qual_types_.end()) {
     if (not success) { iter->second.MarkError(); }
@@ -95,42 +89,42 @@ void DependentComputedData::CompleteType(ast::Expression const *expr,
   if (parent_) { parent_->CompleteType(expr, success); }
 }
 
-ir::ModuleId DependentComputedData::imported_module(ast::Import const *node) {
+ir::ModuleId Context::imported_module(ast::Import const *node) {
   auto iter = imported_modules_.find(node);
   if (iter != imported_modules_.end()) { return iter->second; }
   if (parent_) { return parent_->imported_module(node); }
   return ir::ModuleId::Invalid();
 }
 
-void DependentComputedData::set_imported_module(ast::Import const *node,
+void Context::set_imported_module(ast::Import const *node,
                                                 ir::ModuleId module_id) {
   imported_modules_.emplace(node, module_id);
 }
 
-absl::Span<ast::Declaration const *const> DependentComputedData::decls(
+absl::Span<ast::Declaration const *const> Context::decls(
     ast::Identifier const *id) const {
   auto iter = decls_.find(id);
   if (iter == decls_.end()) { return ASSERT_NOT_NULL(parent_)->decls(id); }
   return iter->second;
 }
 
-void DependentComputedData::set_decls(
+void Context::set_decls(
     ast::Identifier const *id, std::vector<ast::Declaration const *> decls) {
   decls_.emplace(id, std::move(decls));
 }
 
-bool DependentComputedData::cyclic_error(ast::Identifier const *id) const {
+bool Context::cyclic_error(ast::Identifier const *id) const {
   auto iter = cyclic_error_ids_.find(id);
   if (iter != cyclic_error_ids_.end()) { return true; }
   if (not parent_) { return false; }
   return parent_->cyclic_error(id);
 }
 
-void DependentComputedData::set_cyclic_error(ast::Identifier const *id) {
+void Context::set_cyclic_error(ast::Identifier const *id) {
   cyclic_error_ids_.insert(id);
 }
 
-type::Struct *DependentComputedData::get_struct(
+type::Struct *Context::get_struct(
     ast::StructLiteral const *s) const {
   auto iter = structs_.find(s);
   if (iter != structs_.end()) { return iter->second; }
@@ -138,12 +132,12 @@ type::Struct *DependentComputedData::get_struct(
   return parent_->get_struct(s);
 }
 
-void DependentComputedData::set_struct(ast::StructLiteral const *sl,
+void Context::set_struct(ast::StructLiteral const *sl,
                                        type::Struct *s) {
   structs_.emplace(sl, s);
 }
 
-type::Struct *DependentComputedData::get_struct(
+type::Struct *Context::get_struct(
     ast::ParameterizedStructLiteral const *s) const {
   auto iter = param_structs_.find(s);
   if (iter != param_structs_.end()) { return iter->second; }
@@ -151,44 +145,44 @@ type::Struct *DependentComputedData::get_struct(
   return parent_->get_struct(s);
 }
 
-void DependentComputedData::set_struct(
+void Context::set_struct(
     ast::ParameterizedStructLiteral const *sl, type::Struct *s) {
   param_structs_.emplace(sl, s);
 }
 
-bool DependentComputedData::ShouldVerifyBody(ast::Node const *node) {
+bool Context::ShouldVerifyBody(ast::Node const *node) {
   return body_verification_complete_.insert(node).second;
 }
 
-void DependentComputedData::ClearVerifyBody(ast::Node const *node) {
+void Context::ClearVerifyBody(ast::Node const *node) {
   body_verification_complete_.erase(node);
 }
 
-void DependentComputedData::CompleteConstant(ast::Declaration const *decl) {
+void Context::CompleteConstant(ast::Declaration const *decl) {
   auto iter = constants_.find(decl);
   ASSERT(iter != constants_.end());
   iter->second.complete = true;
 }
 
-void DependentComputedData::SetConstant(ast::Declaration const *decl,
+void Context::SetConstant(ast::Declaration const *decl,
                                         ir::Value const &value, bool complete) {
   constants_.emplace(decl, ConstantValue{.value = value, .complete = complete});
 }
 
-DependentComputedData::ConstantValue const *DependentComputedData::Constant(
+Context::ConstantValue const *Context::Constant(
     ast::Declaration const *decl) const {
   auto iter = constants_.find(decl);
   return iter != constants_.end() ? &iter->second : nullptr;
 }
 
-void DependentComputedData::SetAllOverloads(ast::Expression const *callee,
+void Context::SetAllOverloads(ast::Expression const *callee,
                                             ast::OverloadSet os) {
   [[maybe_unused]] auto [iter, inserted] =
       all_overloads_.emplace(callee, std::move(os));
   ASSERT(inserted == true);
 }
 
-ast::OverloadSet const &DependentComputedData::AllOverloads(
+ast::OverloadSet const &Context::AllOverloads(
     ast::Expression const *callee) const {
   auto iter = all_overloads_.find(callee);
   if (iter == all_overloads_.end()) {

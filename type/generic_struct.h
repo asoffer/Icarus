@@ -20,7 +20,6 @@ struct GenericStruct : LegacyType {
                                      .is_movable               = 1,
                                      .has_destructor           = 0}),
         gen_(std::move(fn)) {}
-  ~GenericStruct() override {}
   void WriteTo(std::string *result) const override {
     result->append("generic-struct");
   }

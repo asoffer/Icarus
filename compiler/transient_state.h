@@ -27,7 +27,7 @@ struct WorkItem {
   Kind kind;
   ast::Node const *node;
   // TODO: Should we just store PersistentResources directly?
-  DependentComputedData &context;
+  Context &context;
   diagnostic::DiagnosticConsumer &consumer;
 };
 

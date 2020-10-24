@@ -282,7 +282,6 @@ struct ArrayInstruction
   using length_t = int64_t;
 
   void Apply(interpretter::ExecutionContext& ctx) const {
-    LOG("", "Array: %d, %s", ctx.resolve(length), ctx.resolve(data_type));
     ctx.current_frame().regs_.set(
         result,
         type::Type(type::Arr(ctx.resolve(length), ctx.resolve(data_type))));
