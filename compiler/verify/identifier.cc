@@ -74,14 +74,14 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
 
   // TODO: In what circumstances could this have been seen more than once?
   if (auto const *qt = data().qual_type(node)) {
-    LOG("Identifier", "Already saw `%s` so returning %s.", node->token(), *qt);
+    LOG("Identifier", "Already saw `%s` so returning %s.", node->name(), *qt);
     return *qt;
   }
 
   type::QualType qt;
 
   auto potential_decls =
-      module::AllVisibleDeclsTowardsRoot(node->scope(), node->token());
+      module::AllVisibleDeclsTowardsRoot(node->scope(), node->name());
 
   // Ensure the types of all potential declarations hav ealready been verified.
   // TODO: Eventually we may want to relax this for functions where we don't
@@ -108,7 +108,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
       } else {
         if (node->range().begin() < potential_decls[0]->range().begin()) {
           diag().Consume(DeclOutOfOrder{
-              .id        = node->token(),
+              .id        = node->name(),
               .id_range  = potential_decls[0]->id_range(),
               .use_range = node->range(),
           });
@@ -132,11 +132,12 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
         data().SetAllOverloads(node, ast::OverloadSet(potential_decls));
       }
 
+      LOG("Identifier", "setting %s", node->name());
       data().set_decls(node, std::move(potential_decls));
     } break;
     case 0: {
       diag().Consume(UndeclaredIdentifier{
-          .id    = node->token(),
+          .id    = node->name(),
           .range = node->range(),
       });
       return type::QualType::Error();
@@ -168,6 +169,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
       data().SetAllOverloads(node, ast::OverloadSet(potential_decls));
       qt =
           type::QualType(type::MakeOverloadSet(std::move(member_types)), quals);
+      LOG("Identifier", "setting %s", node->name());
       data().set_decls(node, std::move(potential_decls));
     } break;
   }

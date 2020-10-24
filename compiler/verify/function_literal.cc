@@ -93,14 +93,14 @@ InferReturnTypes(Compiler &c, ast::FunctionLiteral const *node) {
 
   // TODO: You shouldn't need to call `ExtractJumps`. They should already have
   // been extracted. Likely the problem is you created some dependent context.
-  ExtractJumps(&c.data().extraction_map_, node);
+  ExtractJumps(&c.context().extraction_map_, node);
 
-  for (auto const *n : c.data().extraction_map_[node]) {
+  for (auto const *n : c.context().extraction_map_[node]) {
     auto const *ret_node = n->if_as<ast::ReturnStmt>();
     if (not ret_node) { continue; }
     std::vector<type::Type> ret_types;
     for (auto const *expr : ret_node->exprs()) {
-      ret_types.push_back(ASSERT_NOT_NULL(c.data().qual_type(expr))->type());
+      ret_types.push_back(ASSERT_NOT_NULL(c.context().qual_type(expr))->type());
     }
 
     result.emplace(ret_node, std::move(ret_types));
@@ -160,6 +160,7 @@ std::optional<std::vector<type::Type>> VerifyBodyOnly(
 }  // namespace
 
 type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
+  LOG("FunctionLiteral", "VerifyConcrete %s", node->DebugString());
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto params, c.VerifyParams(node->params()));
 
@@ -186,7 +187,7 @@ type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
 
     for (size_t i = 0; i < output_type_vec.size(); ++i) {
       if (auto *decl = (*outputs)[i]->if_as<ast::Declaration>()) {
-        output_type_vec[i] = ASSERT_NOT_NULL(c.data().qual_type(decl))->type();
+        output_type_vec[i] = ASSERT_NOT_NULL(c.context().qual_type(decl))->type();
       } else if (auto maybe_type =
                      c.EvaluateOrDiagnoseAs<type::Type>((*outputs)[i])) {
         output_type_vec[i] = *maybe_type;
@@ -196,7 +197,7 @@ type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
     LOG("compile-work-queue", "Request work fn-lit: %p", node);
     c.Enqueue({.kind     = WorkItem::Kind::VerifyFunctionBody,
                .node     = node,
-               .context  = c.data(),
+               .context  = c.context(),
                .consumer = c.diag()});
     return type::QualType::Constant(
         type::Func(std::move(params), std::move(output_type_vec)));
@@ -211,25 +212,33 @@ type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
 }
 
 type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
-  auto gen = [node, c = Compiler(c.resources())](
+  auto gen = [node, resources = c.resources()](
                  core::FnArgs<type::Typed<ir::Value>> const &args) mutable
       -> type::Function const * {
-    auto [params, rets, data, inserted] = MakeConcrete(c, node, args);
+    Compiler instantiation_compiler(resources);
+    auto [params, rets, context, inserted] =
+        instantiation_compiler.Instantiate(node, args);
     if (inserted) {
-      if (auto outputs = node->outputs(); outputs and not outputs->empty()) {
-        for (auto const *o : *outputs) {
-          auto qt = c.VerifyType(o);
-          ASSERT(qt == type::QualType::Constant(type::Type_));
-          auto maybe_type = c.EvaluateAs<type::Type>(o);
-          if (not maybe_type) { NOT_YET(); }
-          rets.push_back(*maybe_type);
-        }
-      }
+      LOG("FunctionLiteral", "inserted! %s", node->DebugString());
+      Compiler c({
+          .builder             = instantiation_compiler.builder(),
+          .data                = context,
+          .diagnostic_consumer = instantiation_compiler.diag(),
+          .importer            = instantiation_compiler.importer(),
+      });
+      auto qt = VerifyConcrete(c, node);
+      // TODO: Provide a mechanism by which this can fail.
+      ASSERT(qt.ok() == true);
+      context.set_qual_type(node, qt);
+      // TODO: We shouldn't have a queue per compiler. We may not be able to
+      // verify these yet.
+      c.CompleteWorkQueue();
+      return &qt.type()->as<type::Function>();
     }
 
     type::Function const *ft = type::Func(
         params.Transform([](auto const &p) { return p.second; }), rets);
-    data.set_qual_type(node, type::QualType::Constant(ft));
+    context.set_qual_type(node, type::QualType::Constant(ft));
     return ft;
   };
 
@@ -243,24 +252,24 @@ type::QualType Compiler::VerifyType(ast::FunctionLiteral const *node) {
   LOG("FunctionLiteral", "Verifying %p: %s", node, node->DebugString());
   ast::OverloadSet os;
   os.insert(node);
-  data().SetAllOverloads(node, std::move(os));
+  context().SetAllOverloads(node, std::move(os));
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto qt,
                    node->is_generic() ? VerifyGeneric(*this, node)
                                       : VerifyConcrete(*this, node));
-  return data().set_qual_type(node, qt);
+  return context().set_qual_type(node, qt);
 }
 
 // TODO: Nothing about this has been comprehensively tested. Especially the
 // generic bits.
 WorkItem::Result Compiler::VerifyBody(ast::FunctionLiteral const *node) {
   // TODO: Move this check out to the ProcessOneItem code?
-  if (not data().ShouldVerifyBody(node)) { return WorkItem::Result::Success; }
+  if (not context().ShouldVerifyBody(node)) { return WorkItem::Result::Success; }
 
   LOG("function", "function-literal body verification: %s %p",
-      node->DebugString(), &data());
+      node->DebugString(), &context());
   auto const &fn_type =
-      ASSERT_NOT_NULL(data().qual_type(node))->type()->as<type::Function>();
+      ASSERT_NOT_NULL(context().qual_type(node))->type()->as<type::Function>();
   // TODO: Get the params and check them for completeness, deferring if they're
   // not yet complete.
 

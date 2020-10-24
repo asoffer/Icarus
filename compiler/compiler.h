@@ -251,6 +251,12 @@ struct Compiler
       ast::ParameterizedExpression const *node,
       core::FnArgs<type::Typed<ir::Value>> const &args);
 
+  Context::InsertSubcontextResult Instantiate(
+      ast::ParameterizedExpression const *node,
+      core::FnArgs<type::Typed<ir::Value>> const &args) {
+    return context().InsertSubcontext(node, ComputeParamsFromArgs(node, args));
+  }
+
   std::optional<type::QualType> qual_type_of(ast::Expression const *expr) const;
   type::Type type_of(ast::Expression const *expr) const;
 

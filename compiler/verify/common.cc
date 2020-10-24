@@ -140,7 +140,7 @@ Compiler::ComputeParamsFromArgs(
           val = **a;
         } else {
           auto const *init_val = ASSERT_NOT_NULL(dep_node.node()->init_val());
-          type::Type t         = data().arg_type(dep_node.node()->id());
+          type::Type t         = context().arg_type(dep_node.node()->id());
           auto maybe_val =
               Evaluate(type::Typed<ast::Expression const *>(init_val, t));
           if (not maybe_val) { NOT_YET(); }
@@ -151,7 +151,7 @@ Compiler::ComputeParamsFromArgs(
         if (val.get_if<ir::Reg>()) { val = ir::Value(); }
 
         LOG("generic-fn", "... %s", val);
-        data().set_arg_value(dep_node.node()->id(), val);
+        context().set_arg_value(dep_node.node()->id(), val);
       } break;
       case core::DependencyNodeKind::ArgType: {
         type::Type arg_type = nullptr;
@@ -165,7 +165,7 @@ Compiler::ComputeParamsFromArgs(
           arg_type       = VerifyType(init_val).type();
         }
         LOG("generic-fn", "... %s", arg_type->to_string());
-        data().set_arg_type(dep_node.node()->id(), arg_type);
+        context().set_arg_type(dep_node.node()->id(), arg_type);
       } break;
       case core::DependencyNodeKind::ParamType: {
         type::Type t = nullptr;
@@ -216,9 +216,9 @@ Compiler::ComputeParamsFromArgs(
           LOG("generic-fn", "%s", dep_node.node()->DebugString());
         }
 
-        if (not data().Constant(dep_node.node())) {
+        if (not context().Constant(dep_node.node())) {
           // TODO complete?
-          data().SetConstant(dep_node.node(), *arg);
+          context().SetConstant(dep_node.node(), *arg);
         }
 
         size_t i =
@@ -314,7 +314,7 @@ type::QualType Compiler::VerifyBinaryOverload(
   std::vector<type::Typed<ir::Value>> pos_args;
   pos_args.emplace_back(lhs);
   pos_args.emplace_back(rhs);
-  return data().set_qual_type(
+  return context().set_qual_type(
       node,
       type::QualType(type::MakeOverloadSet(std::move(member_types))
                          ->return_types(core::FnArgs<type::Typed<ir::Value>>(
@@ -337,7 +337,7 @@ Compiler::VerifyCallee(ast::Expression const *callee,
 
   absl::flat_hash_map<ast::Expression const *, type::Callable const *>
       overload_map;
-  for (auto const *overload : data().AllOverloads(callee).members()) {
+  for (auto const *overload : context().AllOverloads(callee).members()) {
     overload_map.emplace(
         overload, &qual_type_of(overload).value().type()->as<type::Callable>());
   }
@@ -361,7 +361,7 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
   // the iterator into members is still valid because there's an extra layer of
   // indirection in the overload set. Do we really want to rely on this?!
   for (auto const *callee :
-       data().AllOverloads(call_expr->callee()).members()) {
+       context().AllOverloads(call_expr->callee()).members()) {
     auto maybe_qt = qual_type_of(callee);
     ExtractParams(callee, &maybe_qt.value().type()->as<type::Callable>(), args,
                   overload_params, errors);
@@ -430,19 +430,10 @@ base::expected<type::QualType, Compiler::CallError> Compiler::VerifyCall(
   next_expansion:;
   }
 
-  data().SetViableOverloads(call_expr->callee(), std::move(os));
+  context().SetViableOverloads(call_expr->callee(), std::move(os));
 
   ASSERT(return_types.size() == 1u);
   return type::QualType(return_types.front(), type::Quals::Unqualified());
-}
-
-Context::InsertSubcontextResult MakeConcrete(
-    Compiler &c, ast::ParameterizedExpression const *node,
-    core::FnArgs<type::Typed<ir::Value>> const &args) {
-  Context temp_ctx(&c.data().module());
-  temp_ctx.parent_ = &c.data();
-  auto parameters   = c.ComputeParamsFromArgs(node, args);
-  return c.data().InsertSubcontext(node, parameters);
 }
 
 }  // namespace compiler

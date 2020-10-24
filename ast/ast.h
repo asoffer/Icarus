@@ -69,8 +69,6 @@ struct Access : Expression {
       : Expression(range),
         operand_(std::move(operand)),
         member_name_(std::move(member_name)) {}
-  ~Access() override {}
-
   constexpr std::string_view member_name() const { return member_name_; }
   constexpr frontend::SourceRange member_range() const {
     return frontend::SourceRange(operand_->range().end(), range().end());
@@ -101,8 +99,6 @@ struct Access : Expression {
 struct ArgumentType : Expression {
   explicit ArgumentType(frontend::SourceRange const &range, std::string name)
       : Expression(range), name_(std::move(name)) {}
-  ~ArgumentType() override {}
-
   std::string_view name() const { return name_; }
 
   ICARUS_AST_VIRTUAL_METHODS;
@@ -129,8 +125,6 @@ struct ArrayLiteral : Expression {
   ArrayLiteral(frontend::SourceRange const &range,
                std::vector<std::unique_ptr<Expression>> elems)
       : Expression(range), elems_(std::move(elems)) {}
-  ~ArrayLiteral() override {}
-
   bool empty() const { return elems_.empty(); }
   size_t size() const { return elems_.size(); }
   Expression const *elem(size_t i) const { return elems_[i].get(); }
@@ -159,8 +153,6 @@ struct Assignment : Expression {
                       std::vector<std::unique_ptr<Expression>> lhs,
                       std::vector<std::unique_ptr<Expression>> rhs)
       : Expression(range), lhs_(std::move(lhs)), rhs_(std::move(rhs)) {}
-  ~Assignment() override {}
-
   base::PtrSpan<Expression const> lhs() const { return lhs_; }
   base::PtrSpan<Expression const> rhs() const { return rhs_; }
 
@@ -201,8 +193,6 @@ struct ArrayType : Expression {
       : Expression(range),
         lengths_(std::move(lengths)),
         data_type_(std::move(data_type)) {}
-  ~ArrayType() override {}
-
   base::PtrSpan<Expression const> lengths() const { return lengths_; }
   Expression const *length(size_t i) const { return lengths_[i].get(); }
   Expression const *data_type() const { return data_type_.get(); }
@@ -234,8 +224,6 @@ struct BinaryOperator : Expression {
         op_(op),
         lhs_(std::move(lhs)),
         rhs_(std::move(rhs)) {}
-  ~BinaryOperator() override {}
-
   Expression const *lhs() const { return lhs_.get(); }
   Expression const *rhs() const { return rhs_.get(); }
   frontend::Operator op() const { return op_; }
@@ -285,7 +273,6 @@ struct Declaration : Expression {
         flags_(flags) {}
   Declaration(Declaration &&) noexcept = default;
   Declaration &operator=(Declaration &&) noexcept = default;
-  ~Declaration() override {}
 
   // TODO: These functions are confusingly named. They look correct in normal
   // declarations, but in function arguments, IsDefaultInitialized() is true iff
@@ -433,8 +420,6 @@ struct DesignatedInitializer : Expression {
     }
   }
 
-  ~DesignatedInitializer() override {}
-
   Expression const *type() const { return type_.get(); }
   base::PtrSpan<Assignment const> assignments() const { return assignments_; }
 
@@ -467,8 +452,6 @@ struct BlockLiteral : Expression, WithScope<DeclScope> {
       : Expression(range),
         before_(std::move(before)),
         after_(std::move(after)) {}
-  ~BlockLiteral() override {}
-
   base::PtrSpan<Declaration const> before() const { return before_; }
   base::PtrSpan<Declaration const> after() const { return after_; }
 
@@ -519,8 +502,6 @@ struct BlockNode : ParameterizedExpression, WithScope<ExecScope> {
       : ParameterizedExpression(range, std::move(params)),
         name_(std::move(name)),
         stmts_(std::move(stmts)) {}
-
-  ~BlockNode() override {}
   BlockNode(BlockNode &&) noexcept = default;
   BlockNode &operator=(BlockNode &&) noexcept = default;
 
@@ -541,8 +522,6 @@ struct BlockNode : ParameterizedExpression, WithScope<ExecScope> {
 struct BuiltinFn : Expression {
   explicit BuiltinFn(frontend::SourceRange const &range, ir::BuiltinFn b)
       : Expression(range), val_(b) {}
-  ~BuiltinFn() override {}
-
   ir::BuiltinFn value() const { return val_; }
 
   ICARUS_AST_VIRTUAL_METHODS;
@@ -562,9 +541,6 @@ struct Call : Expression {
                 std::unique_ptr<Expression> callee,
                 core::OrderedFnArgs<Expression> args)
       : Expression(range), callee_(std::move(callee)), args_(std::move(args)) {}
-
-  ~Call() override {}
-
   Expression const *callee() const { return callee_.get(); }
   core::FnArgs<Expression const *> const &args() const { return args_.args(); }
 
@@ -593,8 +569,6 @@ struct Cast : Expression {
       : Expression(range),
         expr_(std::move(expr)),
         type_(std::move(type_expr)) {}
-  ~Cast() override {}
-
   Expression const *expr() const { return expr_.get(); }
   Expression const *type() const { return type_.get(); }
 
@@ -621,7 +595,6 @@ struct ComparisonOperator : Expression {
       : Expression(range) {
     exprs_.push_back(std::move(expr));
   }
-  ~ComparisonOperator() override {}
 
   void append(frontend::Operator op, std::unique_ptr<Expression> expr) {
     ops_.push_back(op);
@@ -688,9 +661,6 @@ struct EnumLiteral : Expression, WithScope<DeclScope> {
         enumerators_(std::move(enumerators)),
         values_(std::move(values)),
         kind_(kind) {}
-
-  ~EnumLiteral() override {}
-
   absl::Span<std::string const> enumerators() const { return enumerators_; }
   absl::flat_hash_map<std::string, std::unique_ptr<Expression>> const &
   specified_values() const {
@@ -728,9 +698,6 @@ struct FunctionLiteral : ParameterizedExpression, WithScope<FnScope> {
       : ParameterizedExpression(range, std::move(in_params)),
         outputs_(std::move(out_params)),
         stmts_(std::move(stmts)) {}
-
-  ~FunctionLiteral() override {}
-
   base::PtrSpan<Node const> stmts() const { return stmts_; }
 
   std::optional<base::PtrSpan<Expression const>> outputs() const {
@@ -765,8 +732,6 @@ struct FunctionType : Expression {
       : Expression(range),
         params_(std::move(params)),
         output_(std::move(output)) {}
-  ~FunctionType() override {}
-
   base::PtrSpan<Expression const> params() const { return params_; }
   base::PtrSpan<Expression const> outputs() const { return output_; }
 
@@ -784,18 +749,19 @@ struct FunctionType : Expression {
 // Identifier:
 // Represents any user-defined identifier.
 struct Identifier : Expression {
-  Identifier(frontend::SourceRange const &range, std::string token)
-      : Expression(range), token_(std::move(token)) {}
-  ~Identifier() override {}
+  Identifier(frontend::SourceRange const &range, std::string name)
+      : Expression(range), name_(std::move(name)) {}
 
   ICARUS_AST_VIRTUAL_METHODS;
 
-  std::string_view token() const { return token_; }
+  // TODO: Deprecated. Use `name()`
+  std::string_view token() const { return name_; }
+  std::string_view name() const { return name_; }
 
-  std::string extract() && { return std::move(token_); }
+  std::string extract() && { return std::move(name_); }
 
  private:
-  std::string token_;
+  std::string name_;
 };
 
 // Import:
@@ -808,7 +774,6 @@ struct Import : Expression {
   explicit Import(frontend::SourceRange const &range,
                   std::unique_ptr<Expression> expr)
       : Expression(range), operand_(std::move(expr)) {}
-  ~Import() override {}
 
   Expression const *operand() const { return operand_.get(); }
 
@@ -830,7 +795,6 @@ struct Index : Expression {
                  std::unique_ptr<Expression> lhs,
                  std::unique_ptr<Expression> rhs)
       : Expression(range), lhs_(std::move(lhs)), rhs_(std::move(rhs)) {}
-  ~Index() override {}
 
   Expression const *lhs() const { return lhs_.get(); }
   Expression const *rhs() const { return rhs_.get(); }
@@ -851,7 +815,6 @@ struct Index : Expression {
 struct Label : Expression {
   explicit Label(frontend::SourceRange const &range, std::string label)
       : Expression(range), label_(std::move(label)) {}
-  ~Label() override {}
 
   ir::Label value() const { return ir::Label(&label_); }
 
@@ -919,7 +882,6 @@ struct ParameterizedStructLiteral : ParameterizedExpression,
       : ParameterizedExpression(range, std::move(params)),
         fields_(std::move(fields)) {}
 
-  ~ParameterizedStructLiteral() override {}
 
   absl::Span<Declaration const> fields() const { return fields_; }
 
@@ -944,7 +906,6 @@ struct ReturnStmt : Node {
   explicit ReturnStmt(frontend::SourceRange const &range,
                       std::vector<std::unique_ptr<Expression>> exprs = {})
       : Node(range), exprs_(std::move(exprs)) {}
-  ~ReturnStmt() override {}
 
   base::PtrSpan<Expression const> exprs() const { return exprs_; }
 
@@ -982,7 +943,6 @@ struct ScopeLiteral : Expression, WithScope<ScopeLitScope> {
       : Expression(range),
         state_type_(std::move(state_type)),
         decls_(std::move(decls)) {}
-  ~ScopeLiteral() override {}
 
   absl::Span<Declaration const> decls() const { return decls_; }
   Expression const *state_type() const { return state_type_.get(); }
@@ -1021,8 +981,6 @@ struct ScopeNode : Expression {
         name_(std::move(name)),
         args_(std::move(args)),
         blocks_(std::move(blocks)) {}
-
-  ~ScopeNode() override {}
 
   Expression const *name() const { return name_.get(); }
   core::FnArgs<Expression const *> const &args() const { return args_.args(); }
@@ -1076,9 +1034,6 @@ struct ShortFunctionLiteral : ParameterizedExpression, WithScope<FnScope> {
       std::unique_ptr<Expression> body)
       : ParameterizedExpression(range, std::move(params)),
         body_(std::move(body)) {}
-
-  ~ShortFunctionLiteral() override {}
-
   Expression const *body() const { return body_.get(); }
 
   ICARUS_AST_VIRTUAL_METHODS;
@@ -1106,8 +1061,6 @@ struct StructLiteral : Expression, WithScope<DeclScope> {
                          std::vector<Declaration> fields)
       : Expression(range), fields_(std::move(fields)) {}
 
-  ~StructLiteral() override {}
-
   absl::Span<Declaration const> fields() const { return fields_; }
 
   StructLiteral &operator=(StructLiteral &&) noexcept = default;
@@ -1125,8 +1078,6 @@ struct StructLiteral : Expression, WithScope<DeclScope> {
 struct Terminal : Expression {
   explicit Terminal(frontend::SourceRange const &range, ir::Value value)
       : Expression(range), value_(std::move(value)) {}
-  ~Terminal() override {}
-
   ir::Value const &value() const { return value_; }
 
   ICARUS_AST_VIRTUAL_METHODS;
@@ -1162,8 +1113,6 @@ struct UnaryOperator : Expression {
   explicit UnaryOperator(frontend::SourceRange const &range, Kind kind,
                          std::unique_ptr<Expression> operand)
       : Expression(range), operand_(std::move(operand)), kind_(kind) {}
-  ~UnaryOperator() override {}
-
   ICARUS_AST_VIRTUAL_METHODS;
 
   Kind kind() const { return kind_; }
@@ -1290,8 +1239,6 @@ struct YieldStmt : Node {
                      std::vector<std::unique_ptr<Expression>> exprs,
                      std::unique_ptr<ast::Label> label = nullptr)
       : Node(range), exprs_(std::move(exprs)), label_(std::move(label)) {}
-  ~YieldStmt() override {}
-
   base::PtrSpan<Expression const> exprs() const { return exprs_; }
 
   ast::Label const *label() const { return label_.get(); }

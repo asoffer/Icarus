@@ -223,7 +223,6 @@ type::QualType VerifyInferred(Compiler &compiler,
                               ast::Declaration const *node) {
   ASSIGN_OR(return type::QualType::Error(),  //
                    auto init_val_qt, compiler.VerifyType(node->init_val()));
-
   auto reason = Inferrable(init_val_qt.type());
   if (reason != UninferrableType::Reason::kInferrable) {
     compiler.diag().Consume(UninferrableType{
@@ -378,7 +377,8 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
                                                         node_qual_type.type());
   // TODO: struct field decls shouldn't have issues with shadowing local
   // variables.
-  for (auto decl : module::AllAccessibleDecls(node->scope(), node->id())) {
+  for (auto const *decl :
+       module::AllAccessibleDecls(node->scope(), node->id())) {
     if (decl == node) { continue; }
     ASSIGN_OR(continue, type::QualType q, qual_type_of(decl));
     if (Shadow(typed_node_decl,

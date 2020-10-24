@@ -74,8 +74,4 @@ struct ImmovableType {
   frontend::SourceRange range;
 };
 
-Context::InsertSubcontextResult MakeConcrete(
-    Compiler &c, ast::ParameterizedExpression const *node,
-    core::FnArgs<type::Typed<ir::Value>> const &args);
-
 }  // namespace compiler

@@ -22,7 +22,7 @@ type::QualType Compiler::VerifyType(
       -> type::Struct const * {
     // TODO: Need a version of MakeConcrete that doesn't generate return types
     // because those only make sense for functions.
-    auto [params, rets, data, inserted] = MakeConcrete(c, node, args);
+    auto [params, rets, data, inserted] = c.Instantiate(node, args);
     if (inserted) {
       type::Struct *s = new type::Struct(
           &c.data().module(),
