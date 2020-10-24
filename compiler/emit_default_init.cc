@@ -11,7 +11,7 @@
 namespace compiler {
 
 void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Array> const &r) {
-  data().init_.emplace(
+  context().init_.emplace(
       r.type(), base::lazy_convert{[&] {
         auto const *fn_type =
             type::Func(core::Params<type::QualType>{core::AnonymousParam(

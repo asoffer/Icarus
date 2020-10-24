@@ -8,7 +8,7 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
     case frontend::Operator::Or: {
       auto lhs_ir = EmitValue(node->lhs());
       auto rhs_ir = EmitValue(node->rhs());
-      auto t      = ASSERT_NOT_NULL(data().qual_type(node))->type();
+      auto t      = ASSERT_NOT_NULL(context().qual_type(node))->type();
       if (t == type::Bool) {
         auto *land_block = builder().AddBlock();
 
@@ -41,7 +41,7 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
     case frontend::Operator::Xor: {
       auto lhs_ir = EmitValue(node->lhs());
       auto rhs_ir = EmitValue(node->rhs());
-      auto t      = ASSERT_NOT_NULL(data().qual_type(node))->type();
+      auto t      = ASSERT_NOT_NULL(context().qual_type(node))->type();
       if (t == type::Bool) {
         return ir::Value(builder().Ne(lhs_ir.get<ir::RegOr<bool>>(),
                                       rhs_ir.get<ir::RegOr<bool>>()));
@@ -56,7 +56,7 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
     case frontend::Operator::And: {
       auto lhs_ir = EmitValue(node->lhs());
       auto rhs_ir = EmitValue(node->rhs());
-      auto t      = ASSERT_NOT_NULL(data().qual_type(node))->type();
+      auto t      = ASSERT_NOT_NULL(context().qual_type(node))->type();
       if (t == type::Bool) {
         auto *land_block = builder().AddBlock();
 
@@ -91,7 +91,7 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
       auto rhs_ir = EmitValue(node->rhs());
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                               uint16_t, uint32_t, uint64_t, float, double>(
-          ASSERT_NOT_NULL(data().qual_type(node->lhs()))->type(),
+          ASSERT_NOT_NULL(context().qual_type(node->lhs()))->type(),
           [&](auto tag) {
             using T = typename decltype(tag)::type;
             return ir::Value(builder().Add(lhs_ir.get<ir::RegOr<T>>(),
@@ -103,7 +103,7 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
       auto rhs_ir = EmitValue(node->rhs());
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                               uint16_t, uint32_t, uint64_t, float, double>(
-          ASSERT_NOT_NULL(data().qual_type(node->lhs()))->type(),
+          ASSERT_NOT_NULL(context().qual_type(node->lhs()))->type(),
           [&](auto tag) {
             using T = typename decltype(tag)::type;
             return ir::Value(builder().Sub(lhs_ir.get<ir::RegOr<T>>(),
@@ -115,7 +115,7 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
       auto rhs_ir = EmitValue(node->rhs());
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                               uint16_t, uint32_t, uint64_t, float, double>(
-          ASSERT_NOT_NULL(data().qual_type(node->lhs()))->type(),
+          ASSERT_NOT_NULL(context().qual_type(node->lhs()))->type(),
           [&](auto tag) {
             using T = typename decltype(tag)::type;
             return ir::Value(builder().Mul(lhs_ir.get<ir::RegOr<T>>(),
@@ -127,7 +127,7 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
       auto rhs_ir = EmitValue(node->rhs());
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                               uint16_t, uint32_t, uint64_t, float, double>(
-          ASSERT_NOT_NULL(data().qual_type(node->lhs()))->type(),
+          ASSERT_NOT_NULL(context().qual_type(node->lhs()))->type(),
           [&](auto tag) {
             using T = typename decltype(tag)::type;
             return ir::Value(builder().Div(lhs_ir.get<ir::RegOr<T>>(),
@@ -139,7 +139,7 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
       auto rhs_ir = EmitValue(node->rhs());
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
                               uint16_t, uint32_t, uint64_t>(
-          ASSERT_NOT_NULL(data().qual_type(node->lhs()))->type(),
+          ASSERT_NOT_NULL(context().qual_type(node->lhs()))->type(),
           [&](auto tag) {
             using T = typename decltype(tag)::type;
             return ir::Value(builder().Mod(lhs_ir.get<ir::RegOr<T>>(),
@@ -147,7 +147,7 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
           });
     } break;
     case frontend::Operator::OrEq: {
-      auto this_type = ASSERT_NOT_NULL(data().qual_type(node))->type();
+      auto this_type = ASSERT_NOT_NULL(context().qual_type(node))->type();
       auto lhs_lval  = EmitRef(node->lhs());
       if (this_type == type::Bool) {
         auto *land_block = builder().AddBlock();
@@ -178,7 +178,7 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
       return ir::Value();
     } break;
     case frontend::Operator::AndEq: {
-      auto this_type = ASSERT_NOT_NULL(data().qual_type(node))->type();
+      auto this_type = ASSERT_NOT_NULL(context().qual_type(node))->type();
       auto lhs_lval  = EmitRef(node->lhs());
       if (this_type->is<type::Flags>()) {
         builder().Store(
@@ -209,7 +209,7 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
       return ir::Value();
     } break;
     case frontend::Operator::XorEq: {
-      auto this_type = ASSERT_NOT_NULL(data().qual_type(node))->type();
+      auto this_type = ASSERT_NOT_NULL(context().qual_type(node))->type();
       auto lhs_lval  = EmitRef(node->lhs());
       if (this_type->is<type::Flags>()) {
         auto rhs_ir = EmitValue(node->rhs()).get<ir::RegOr<ir::FlagsVal>>();
@@ -230,7 +230,7 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
       auto rhs_ir   = EmitValue(node->rhs());
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t, float, double>(
-          ASSERT_NOT_NULL(data().qual_type(node->lhs()))->type(),
+          ASSERT_NOT_NULL(context().qual_type(node->lhs()))->type(),
           [&](auto tag) {
             using T = typename decltype(tag)::type;
             builder().Store(builder().Add(builder().Load<T>(lhs_lval),
@@ -244,7 +244,7 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
       auto rhs_ir   = EmitValue(node->rhs());
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t, float, double>(
-          ASSERT_NOT_NULL(data().qual_type(node->lhs()))->type(),
+          ASSERT_NOT_NULL(context().qual_type(node->lhs()))->type(),
           [&](auto tag) {
             using T = typename decltype(tag)::type;
             builder().Store(builder().Sub(builder().Load<T>(lhs_lval),
@@ -258,7 +258,7 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
       auto rhs_ir   = EmitValue(node->rhs());
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t, float, double>(
-          ASSERT_NOT_NULL(data().qual_type(node->lhs()))->type(),
+          ASSERT_NOT_NULL(context().qual_type(node->lhs()))->type(),
           [&](auto tag) {
             using T = typename decltype(tag)::type;
             builder().Store(builder().Mul(builder().Load<T>(lhs_lval),
@@ -272,7 +272,7 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
       auto rhs_ir   = EmitValue(node->rhs());
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t, float, double>(
-          ASSERT_NOT_NULL(data().qual_type(node->lhs()))->type(),
+          ASSERT_NOT_NULL(context().qual_type(node->lhs()))->type(),
           [&](auto tag) {
             using T = typename decltype(tag)::type;
             builder().Store(builder().Div(builder().Load<T>(lhs_lval),
@@ -286,7 +286,7 @@ ir::Value Compiler::EmitValue(ast::BinaryOperator const *node) {
       auto rhs_ir   = EmitValue(node->rhs());
       type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t,
                        uint32_t, uint64_t>(
-          ASSERT_NOT_NULL(data().qual_type(node->lhs()))->type(),
+          ASSERT_NOT_NULL(context().qual_type(node->lhs()))->type(),
           [&](auto tag) {
             using T = typename decltype(tag)::type;
             builder().Store(builder().Mod(builder().Load<T>(lhs_lval),
@@ -304,7 +304,7 @@ void Compiler::EmitCopyInit(
     ast::BinaryOperator const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
-  auto t = data().qual_type(node)->type();
+  auto t = context().qual_type(node)->type();
   EmitCopyAssign(type::Typed<ir::RegOr<ir::Addr>>(*to[0], t),
                  type::Typed<ir::Value>(EmitValue(node), t));
 }
@@ -313,7 +313,7 @@ void Compiler::EmitMoveInit(
     ast::BinaryOperator const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
-  auto t = data().qual_type(node)->type();
+  auto t = context().qual_type(node)->type();
   EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>>(*to[0], t),
                  type::Typed<ir::Value>(EmitValue(node), t));
 }
@@ -322,7 +322,7 @@ void Compiler::EmitAssign(
     ast::BinaryOperator const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
-  auto t = data().qual_type(node)->type();
+  auto t = context().qual_type(node)->type();
   EmitCopyAssign(type::Typed<ir::RegOr<ir::Addr>>(*to[0], t),
                  type::Typed<ir::Value>(EmitValue(node), t));
 }

@@ -128,7 +128,7 @@ static ir::NativeFn CreateAssign(Compiler *compiler, type::Struct const *s) {
 void Compiler::EmitCopyAssign(
     type::Typed<ir::RegOr<ir::Addr>, type::Array> const &to,
     type::Typed<ir::Value> const &from) {
-  data().copy_assign_.emplace(to.type(), base::lazy_convert{[&] {
+  context().copy_assign_.emplace(to.type(), base::lazy_convert{[&] {
                                 return CreateAssign<Copy>(this, to.type());
                               }});
   builder().Copy(to.type(), from->get<ir::Reg>(), *to);
@@ -137,7 +137,7 @@ void Compiler::EmitCopyAssign(
 void Compiler::EmitMoveAssign(
     type::Typed<ir::RegOr<ir::Addr>, type::Array> const &to,
     type::Typed<ir::Value> const &from) {
-  data().move_assign_.emplace(to.type(), base::lazy_convert{[&] {
+  context().move_assign_.emplace(to.type(), base::lazy_convert{[&] {
                                 return CreateAssign<Move>(this, to.type());
                               }});
   builder().Move(to.type(), from->get<ir::Reg>(), *to);

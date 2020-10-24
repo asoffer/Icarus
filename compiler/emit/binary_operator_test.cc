@@ -37,7 +37,7 @@ TEST_P(BinaryOperatorTest, Constants) {
   mod.AppendCode(kCommonDefinitions);
   auto const *e  = mod.Append<ast::Expression>(absl::StrFormat(
       R"((%s) %s (%s))", test_data.lhs, test_case.op, test_data.rhs));
-  auto const *qt = mod.data().qual_type(e);
+  auto const *qt = mod.context().qual_type(e);
   ASSERT_NE(qt, nullptr) << "No QualType for " << e->DebugString();
   auto t = qt->type();
   ASSERT_TRUE(t.valid());
@@ -62,7 +62,7 @@ TEST_P(BinaryOperatorTest, NonConstants) {
       })()
       )",
       test_case.type, test_data.lhs, test_data.rhs, test_case.op));
-  auto const *qt = mod.data().qual_type(e);
+  auto const *qt = mod.context().qual_type(e);
   ASSERT_NE(qt, nullptr) << "No QualType for " << e->DebugString();
   auto t = qt->type();
   ASSERT_TRUE(t.valid());
@@ -88,7 +88,7 @@ TEST_P(BinaryOperatorTest, Assignment) {
       })()
       )",
       test_case.type, test_data.lhs, test_case.op, test_data.rhs));
-  auto const *qt = mod.data().qual_type(e);
+  auto const *qt = mod.context().qual_type(e);
   ASSERT_NE(qt, nullptr) << "No QualType for " << e->DebugString();
   auto t = qt->type();
   ASSERT_TRUE(t.valid());

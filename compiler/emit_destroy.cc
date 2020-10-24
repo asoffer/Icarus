@@ -52,7 +52,7 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Tuple> reg) {
 
 void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Array> reg) {
   if (not reg.type()->HasDestructor()) { return; }
-  data().destroy_.emplace(
+  context().destroy_.emplace(
       reg.type(), base::lazy_convert{[&] {
         auto const *fn_type =
             type::Func(core::Params<type::QualType>{core::AnonymousParam(

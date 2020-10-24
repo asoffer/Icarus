@@ -14,7 +14,7 @@ TEST(Access, EnumSuccess) {
   test::TestModule mod;
   mod.Append<ast::Node>(R"(E ::= enum { A \\ B \\ C })");
   auto const *enumerator = mod.Append<ast::Expression>(R"(E.A)");
-  auto const *qt         = mod.data().qual_type(enumerator);
+  auto const *qt         = mod.context().qual_type(enumerator);
   ASSERT_NE(qt, nullptr);
   EXPECT_TRUE(qt->type()->is<type::Enum>());
   EXPECT_EQ(qt->quals(), type::Quals::Const());
@@ -25,7 +25,7 @@ TEST(Access, EnumMisnamed) {
   test::TestModule mod;
   mod.Append<ast::Node>(R"(E ::= enum { A \\ B \\ C })");
   auto const *enumerator = mod.Append<ast::Expression>(R"(E.D)");
-  auto const *qt         = mod.data().qual_type(enumerator);
+  auto const *qt         = mod.context().qual_type(enumerator);
   ASSERT_NE(qt, nullptr);
   EXPECT_TRUE(qt->type()->is<type::Enum>());
   EXPECT_EQ(qt->quals(), type::Quals::Const());
@@ -37,7 +37,7 @@ TEST(Access, FlagsSuccess) {
   test::TestModule mod;
   mod.Append<ast::Node>(R"(F ::= flags { A \\ B \\ C })");
   auto const *flag = mod.Append<ast::Expression>(R"(F.A)");
-  auto const *qt   = mod.data().qual_type(flag);
+  auto const *qt   = mod.context().qual_type(flag);
   ASSERT_NE(qt, nullptr);
   EXPECT_TRUE(qt->type()->is<type::Flags>());
   EXPECT_EQ(qt->quals(), type::Quals::Const());
@@ -48,7 +48,7 @@ TEST(Access, FlagsMisnamed) {
   test::TestModule mod;
   mod.Append<ast::Node>(R"(F ::= flags { A \\ B \\ C })");
   auto const *flag = mod.Append<ast::Expression>(R"(F.D)");
-  auto const *qt   = mod.data().qual_type(flag);
+  auto const *qt   = mod.context().qual_type(flag);
   ASSERT_NE(qt, nullptr);
   EXPECT_TRUE(qt->type()->is<type::Flags>());
   EXPECT_EQ(qt->quals(), type::Quals::Const());
@@ -60,7 +60,7 @@ TEST(Access, NonConstantType) {
   test::TestModule mod;
   mod.Append<ast::Node>(R"(T := int64)");
   auto const *expr = mod.Append<ast::Expression>(R"(T.something)");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   EXPECT_EQ(qt, nullptr);
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(
@@ -73,7 +73,7 @@ TEST(Access, TypeHasNoMembers) {
   test::TestModule mod;
   mod.Append<ast::Node>(R"(T ::= int64)");
   auto const *expr = mod.Append<ast::Expression>(R"(T.something)");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   EXPECT_EQ(qt, nullptr);
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "type-has-no-members")));
@@ -90,9 +90,9 @@ TEST(Access, AccessStructField) {
   constant :: S
   )");
   auto const *non_constant = mod.Append<ast::Expression>(R"(non_constant.n)");
-  auto const *non_constant_qt = mod.data().qual_type(non_constant);
+  auto const *non_constant_qt = mod.context().qual_type(non_constant);
   auto const *constant        = mod.Append<ast::Expression>(R"(constant.n)");
-  auto const *constant_qt     = mod.data().qual_type(constant);
+  auto const *constant_qt     = mod.context().qual_type(constant);
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   ASSERT_NE(non_constant_qt, nullptr);
   EXPECT_EQ(*non_constant_qt, type::QualType(type::Int64, type::Quals::Ref()));
@@ -112,7 +112,7 @@ TEST(Access, NoFieldInStruct) {
   s: S
   )");
   auto const *expr = mod.Append<ast::Expression>(R"(s.x)");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   EXPECT_EQ(qt, nullptr);
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "missing-member")));

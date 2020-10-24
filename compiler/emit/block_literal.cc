@@ -8,7 +8,7 @@ ir::Value Compiler::EmitValue(ast::BlockLiteral const *node) {
   LOG("BlockLiteral", "Emitting value for %p: %s", node, node->DebugString());
   // TODO: The guarantee that body verification has already happened should be
   // handled by the work queue.
-  if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
+  if (context().ShouldVerifyBody(node)) { VerifyBody(node); }
 
   std::vector<ir::RegOr<ir::Fn>> befores;
   std::vector<ir::RegOr<ir::Jump>> afters;
@@ -23,7 +23,7 @@ ir::Value Compiler::EmitValue(ast::BlockLiteral const *node) {
     afters.push_back(EmitValue(decl).get<ir::RegOr<ir::Jump>>());
   }
 
-  return ir::Value(builder().MakeBlock(data().add_block(), std::move(befores),
+  return ir::Value(builder().MakeBlock(context().add_block(), std::move(befores),
                                        std::move(afters)));
 }
 

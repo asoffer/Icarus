@@ -58,13 +58,13 @@ type::QualType Compiler::VerifyType(ast::Import const *node) {
     err = true;
   }
 
-  if (err) { return data().set_qual_type(node, qt); }
+  if (err) { return context().set_qual_type(node, qt); }
 
   auto maybe_src = EvaluateAs<ir::String>(node->operand());
   if (not maybe_src) {
     diag().Consume(maybe_src.error());
     qt.MarkError();
-    return data().set_qual_type(node, qt);
+    return context().set_qual_type(node, qt);
   }
 
   auto canonical_file_name =
@@ -72,9 +72,9 @@ type::QualType Compiler::VerifyType(ast::Import const *node) {
   ir::ModuleId mod_id = importer().Import(canonical_file_name);
   if (mod_id != ir::ModuleId::Invalid()) {
     qt.MarkError();
-    data().set_imported_module(node, mod_id);
+    context().set_imported_module(node, mod_id);
   }
-  return data().set_qual_type(node, qt);
+  return context().set_qual_type(node, qt);
 }
 
 }  // namespace compiler

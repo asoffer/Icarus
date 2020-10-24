@@ -25,7 +25,7 @@ type::QualType Compiler::VerifyType(
     auto [params, rets, data, inserted] = c.Instantiate(node, args);
     if (inserted) {
       type::Struct *s = new type::Struct(
-          &c.data().module(),
+          &c.context().module(),
           {.is_copyable = not node->contains_hashtag(
                ast::Hashtag(ast::Hashtag::Builtin::Uncopyable)),
            .is_movable = not node->contains_hashtag(
@@ -33,7 +33,7 @@ type::QualType Compiler::VerifyType(
 
       LOG("struct", "Allocating a new (parameterized) struct %p for %p", s,
           node);
-      c.data().set_struct(node, s);
+      c.context().set_struct(node, s);
       for (auto const &field : node->fields()) { c.VerifyType(&field); }
 
       // TODO: This should actually be behind a must_complete work queue item.
@@ -75,7 +75,7 @@ type::QualType Compiler::VerifyType(
     }
   };
 
-  return data().set_qual_type(
+  return context().set_qual_type(
       node, type::QualType::Constant(new type::GenericStruct(std::move(gen))));
 }
 

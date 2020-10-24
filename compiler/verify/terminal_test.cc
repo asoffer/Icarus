@@ -17,7 +17,7 @@ TEST_P(TerminalTest, Terminal) {
   auto const &[terminal, expected] = GetParam();
   test::TestModule mod;
   auto const *term = mod.Append<ast::Terminal>(terminal);
-  auto const *qt   = mod.data().qual_type(term);
+  auto const *qt   = mod.context().qual_type(term);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, expected);
 }

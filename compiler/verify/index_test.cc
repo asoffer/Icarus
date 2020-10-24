@@ -13,7 +13,7 @@ using ::testing::UnorderedElementsAre;
 TEST(Index, ByteViewConstantIndex) {
   test::TestModule mod;
   auto const *expr = mod.Append<ast::Expression>(R"("abc"[0])");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType(type::Nat8,
                                 type::Quals::Const() | type::Quals::Buf()));
@@ -24,7 +24,7 @@ TEST(Index, ByteViewNonConstantIndex) {
   test::TestModule mod;
   mod.AppendCode(R"(n: int64)");
   auto const *expr = mod.Append<ast::Expression>(R"("abc"[n])");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType(type::Nat8, type::Quals::Buf()));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -34,7 +34,7 @@ TEST(Index, NonConstantByteViewConstantIndex) {
   test::TestModule mod;
   mod.AppendCode(R"(s := "abc")");
   auto const *expr = mod.Append<ast::Expression>(R"(s[0])");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType(type::Nat8, type::Quals::Buf()));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -47,7 +47,7 @@ TEST(Index, NonConstantByteViewNonConstantIndex) {
   n := 0
   )");
   auto const *expr = mod.Append<ast::Expression>(R"(s[n])");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType(type::Nat8, type::Quals::Buf()));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -56,7 +56,7 @@ TEST(Index, NonConstantByteViewNonConstantIndex) {
 TEST(Index, ByteViewInvalidIndexType) {
   test::TestModule mod;
   auto const *expr = mod.Append<ast::Expression>(R"("abc"["def"])");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType(type::Nat8,
                                 type::Quals::Const() | type::Quals::Buf()));
@@ -67,7 +67,7 @@ TEST(Index, ByteViewInvalidIndexType) {
 TEST(Index, ByteViewOutOfBoundsNegative) {
   test::TestModule mod;
   auto const *expr = mod.Append<ast::Expression>(R"("abc"[-1])");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType(type::Nat8,
                                 type::Quals::Const() | type::Quals::Buf()));
@@ -79,7 +79,7 @@ TEST(Index, ByteViewOutOfBoundsNegative) {
 TEST(Index, ByteViewOutOfBoundsLarge) {
   test::TestModule mod;
   auto const *expr = mod.Append<ast::Expression>(R"("abc"[3])");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType(type::Nat8,
                                 type::Quals::Const() | type::Quals::Buf()));
@@ -91,7 +91,7 @@ TEST(Index, ByteViewOutOfBoundsLarge) {
 TEST(Index, ArrayConstantIndex) {
   test::TestModule mod;
   auto const *expr = mod.Append<ast::Expression>(R"([1, 2, 3][0])");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Const()));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -101,7 +101,7 @@ TEST(Index, ArrayNonConstantIndex) {
   test::TestModule mod;
   mod.AppendCode(R"(n: int64)");
   auto const *expr = mod.Append<ast::Expression>(R"([1, 2, 3][n])");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Unqualified()));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -111,7 +111,7 @@ TEST(Index, NonConstantArrayConstantIndex) {
   test::TestModule mod;
   mod.AppendCode(R"(s := [1, 2, 3])");
   auto const *expr = mod.Append<ast::Expression>(R"(s[0])");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Buf()));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -124,7 +124,7 @@ TEST(Index, NonConstantArrayNonConstantIndex) {
   n := 0
   )");
   auto const *expr = mod.Append<ast::Expression>(R"(s[n])");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Buf()));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -133,7 +133,7 @@ TEST(Index, NonConstantArrayNonConstantIndex) {
 TEST(Index, ArrayInvalidIndexType) {
   test::TestModule mod;
   auto const *expr = mod.Append<ast::Expression>(R"([1, 2, 3]["def"])");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Const()));
   EXPECT_THAT(mod.consumer.diagnostics(),
@@ -143,7 +143,7 @@ TEST(Index, ArrayInvalidIndexType) {
 TEST(Index, ArrayOutOfBoundsNegative) {
   test::TestModule mod;
   auto const *expr = mod.Append<ast::Expression>(R"([1, 2, 3][-1])");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Const()));
   EXPECT_THAT(mod.consumer.diagnostics(),
@@ -153,7 +153,7 @@ TEST(Index, ArrayOutOfBoundsNegative) {
 TEST(Index, ArrayOutOfBoundsLarge) {
   test::TestModule mod;
   auto const *expr = mod.Append<ast::Expression>(R"([1, 2, 3][3])");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Const()));
   EXPECT_THAT(

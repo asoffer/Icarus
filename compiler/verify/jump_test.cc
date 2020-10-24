@@ -17,7 +17,7 @@ TEST(Jump, StatelessSuccess) {
   test::TestModule mod;
   mod.AppendCode(R"(b ::= block {}
   )");
-  auto const* qt = mod.data().qual_type(mod.Append<ast::Expression>(R"(
+  auto const* qt = mod.context().qual_type(mod.Append<ast::Expression>(R"(
     jump() { goto b() }
   )"));
 
@@ -32,7 +32,7 @@ TEST(Jump, StatefulSuccess) {
   test::TestModule mod;
   mod.AppendCode(R"(b ::= block {}
   )");
-  auto const* qt = mod.data().qual_type(mod.Append<ast::Expression>(R"(
+  auto const* qt = mod.context().qual_type(mod.Append<ast::Expression>(R"(
     jump [n: *int64] () { goto b() }
   )"));
 
@@ -47,7 +47,7 @@ TEST(Jump, StateMustBeAPointer) {
   test::TestModule mod;
   mod.AppendCode(R"(b ::= block {}
   )");
-  auto const* qt = mod.data().qual_type(mod.Append<ast::Expression>(R"(
+  auto const* qt = mod.context().qual_type(mod.Append<ast::Expression>(R"(
     jump [n: int64] () { goto b() }
   )"));
 
@@ -61,7 +61,7 @@ TEST(Jump, StateMustNotBeABufferPointer) {
   test::TestModule mod;
   mod.AppendCode(R"(b ::= block {}
   )");
-  auto const* qt = mod.data().qual_type(mod.Append<ast::Expression>(R"(
+  auto const* qt = mod.context().qual_type(mod.Append<ast::Expression>(R"(
     jump [n: [*]int64] () { goto b() }
   )"));
 
@@ -79,7 +79,7 @@ TEST(Jump, StateMustBeNonConstant) {
   test::TestModule mod;
   mod.AppendCode(R"(b ::= block {}
   )");
-  auto const* qt = mod.data().qual_type(mod.Append<ast::Expression>(R"(
+  auto const* qt = mod.context().qual_type(mod.Append<ast::Expression>(R"(
     jump [n :: *int64] () { goto b() }
   )"));
 
@@ -96,7 +96,7 @@ TEST(Jump, InitialValue) {
   test::TestModule mod;
   mod.AppendCode(R"(b ::= block {}
   )");
-  auto const* qt = mod.data().qual_type(mod.Append<ast::Expression>(R"(
+  auto const* qt = mod.context().qual_type(mod.Append<ast::Expression>(R"(
     jump [p: *bool = null] () { goto b() }
   )"));
 
@@ -116,7 +116,7 @@ TEST(Jump, InitialValueInferred) {
     b ::= block {}
     n := 3
   )");
-  auto const* qt = mod.data().qual_type(mod.Append<ast::Expression>(R"(
+  auto const* qt = mod.context().qual_type(mod.Append<ast::Expression>(R"(
     jump [p := &n] () { goto b() }
   )"));
 
@@ -134,7 +134,7 @@ TEST(Jump, MultipleStateProblemsAllDiagnosed) {
   test::TestModule mod;
   mod.AppendCode(R"(b ::= block {}
   )");
-  auto const* qt = mod.data().qual_type(mod.Append<ast::Expression>(R"(
+  auto const* qt = mod.context().qual_type(mod.Append<ast::Expression>(R"(
     jump [n ::= 3] () { goto b() }
   )"));
 

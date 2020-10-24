@@ -4,10 +4,10 @@
 namespace compiler {
 
 ir::Value Compiler::EmitValue(ast::Index const *node) {
-  auto const *qt = data().qual_type(node->lhs());
+  auto const *qt = context().qual_type(node->lhs());
   if (qt->quals() >= type::Quals::Ref()) {
     return ir::Value(builder().PtrFix(
-        EmitRef(node).reg(), ASSERT_NOT_NULL(data().qual_type(node))->type()));
+        EmitRef(node).reg(), ASSERT_NOT_NULL(context().qual_type(node))->type()));
   }
 
   if (qt->type() == type::ByteView) {
@@ -19,7 +19,7 @@ ir::Value Compiler::EmitValue(ast::Index const *node) {
     return builder().Load(addr, type::Nat8);
   } else if (auto const *array_type = qt->type()->if_as<type::Array>()) {
     auto index = builder().CastTo<int64_t>(type::Typed<ir::Value>(
-        EmitValue(node->rhs()), data().qual_type(node->rhs())->type()));
+        EmitValue(node->rhs()), context().qual_type(node->rhs())->type()));
 
     return ir::Value(builder().PtrFix(
         builder().Index(type::Ptr(type_of(node->lhs())),
@@ -75,7 +75,7 @@ void Compiler::EmitMoveInit(
     ast::Index const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
-  auto t = data().qual_type(node)->type();
+  auto t = context().qual_type(node)->type();
   EmitMoveAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
 }
 
@@ -83,7 +83,7 @@ void Compiler::EmitCopyInit(
     ast::Index const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
-  auto t = data().qual_type(node)->type();
+  auto t = context().qual_type(node)->type();
   EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
 }
 
@@ -91,7 +91,7 @@ void Compiler::EmitAssign(
     ast::Index const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
   ASSERT(to.size() == 1u);
-  auto t = data().qual_type(node)->type();
+  auto t = context().qual_type(node)->type();
   EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
 }
 

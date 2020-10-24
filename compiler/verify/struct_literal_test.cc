@@ -16,7 +16,7 @@ TEST(StructLiteral, SuccessEmpty) {
   test::TestModule mod;
   auto const *s  = mod.Append<ast::StructLiteral>(R"(struct {}
   )");
-  auto const *qt = mod.data().qual_type(s);
+  auto const *qt = mod.context().qual_type(s);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType::Constant(type::Type_));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -29,7 +29,7 @@ TEST(StructLiteral, SuccessNonEmpty) {
     b := true
   }
   )");
-  auto const *qt = mod.data().qual_type(s);
+  auto const *qt = mod.context().qual_type(s);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType::Constant(type::Type_));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -42,7 +42,7 @@ TEST(StructLiteral, FieldError) {
     b := true
   }
   )");
-  auto const *qt = mod.data().qual_type(s);
+  auto const *qt = mod.context().qual_type(s);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType::Constant(type::Type_));
   EXPECT_THAT(mod.consumer.diagnostics(),
@@ -58,7 +58,7 @@ TEST(StructLiteral, SelfReferential) {
   }
   l: list
   )");
-  auto const *qt = mod.data().qual_type(mod.Append<ast::Identifier>("l"));
+  auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("l"));
   ASSERT_NE(qt, nullptr);
   type::Struct const *s = qt->type()->if_as<type::Struct>();
   ASSERT_NE(s, nullptr);
@@ -89,8 +89,8 @@ TEST(StructLiteral, MutuallyReferential) {
   a: A
   b: B
   )");
-  auto const *a_qt = mod.data().qual_type(mod.Append<ast::Identifier>("a"));
-  auto const *b_qt = mod.data().qual_type(mod.Append<ast::Identifier>("b"));
+  auto const *a_qt = mod.context().qual_type(mod.Append<ast::Identifier>("a"));
+  auto const *b_qt = mod.context().qual_type(mod.Append<ast::Identifier>("b"));
   ASSERT_NE(a_qt, nullptr);
   ASSERT_NE(b_qt, nullptr);
   type::Struct const *a_struct = a_qt->type()->if_as<type::Struct>();

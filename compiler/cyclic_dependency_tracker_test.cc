@@ -30,19 +30,19 @@ TEST(CyclicDependencyTracker, NoErrors) {
   ast::Identifier id2(frontend::SourceRange(), "b");
   ast::Identifier id3(frontend::SourceRange(), "a");
 
-  auto token1 = dep_tracker.PushDependency(&id1, mod.data(), diag);
+  auto token1 = dep_tracker.PushDependency(&id1, mod.context(), diag);
   ASSERT_TRUE(static_cast<bool>(token1));
 
-  auto token2 = dep_tracker.PushDependency(&id2, mod.data(), diag);
+  auto token2 = dep_tracker.PushDependency(&id2, mod.context(), diag);
   ASSERT_TRUE(static_cast<bool>(token2));
 
   {  // Tracking for `id3` goes out of scope when `token3` does.
-    auto token3 = dep_tracker.PushDependency(&id3, mod.data(), diag);
+    auto token3 = dep_tracker.PushDependency(&id3, mod.context(), diag);
     ASSERT_TRUE(static_cast<bool>(token3));
   }
 
   {
-    auto token3 = dep_tracker.PushDependency(&id3, mod.data(), diag);
+    auto token3 = dep_tracker.PushDependency(&id3, mod.context(), diag);
     ASSERT_TRUE(static_cast<bool>(token3));
   }
 
@@ -58,10 +58,10 @@ TEST(CyclicDependencyTracker, Errors) {
   ast::Identifier id1(frontend::SourceRange(), "a");
   ast::Identifier id2(frontend::SourceRange(), "b");
 
-  auto token1 = dep_tracker.PushDependency(&id1, mod.data(), diag);
-  auto token2 = dep_tracker.PushDependency(&id2, mod.data(), diag);
+  auto token1 = dep_tracker.PushDependency(&id1, mod.context(), diag);
+  auto token2 = dep_tracker.PushDependency(&id2, mod.context(), diag);
 
-  auto token3 = dep_tracker.PushDependency(&id1, mod.data(), diag);
+  auto token3 = dep_tracker.PushDependency(&id1, mod.context(), diag);
   EXPECT_FALSE(static_cast<bool>(token3));
   EXPECT_THAT(diag.diagnostics(),
               ElementsAre(Pair("type-error", "cyclic-dependency")));

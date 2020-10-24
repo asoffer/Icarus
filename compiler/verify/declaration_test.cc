@@ -16,7 +16,7 @@ TEST(Declaration, DefaultInitSuccess) {
     mod.AppendCode(R"(
     n: int64
     )");
-    auto const *qt = mod.data().qual_type(mod.Append<ast::Identifier>("n"));
+    auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
     EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Ref()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -27,7 +27,7 @@ TEST(Declaration, DefaultInitSuccess) {
     mod.AppendCode(R"(
     n :: int64
     )");
-    auto const *qt = mod.data().qual_type(mod.Append<ast::Identifier>("n"));
+    auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
     EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Const()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -87,7 +87,7 @@ TEST(Declaration, InferredSuccess) {
     mod.AppendCode(R"(
     n := 3
     )");
-    auto const *qt = mod.data().qual_type(mod.Append<ast::Identifier>("n"));
+    auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
     EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Ref()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -98,7 +98,7 @@ TEST(Declaration, InferredSuccess) {
     mod.AppendCode(R"(
     n ::= 3
     )");
-    auto const *qt = mod.data().qual_type(mod.Append<ast::Identifier>("n"));
+    auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
     EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Const()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -153,7 +153,7 @@ TEST(Declaration, CustomInitSuccess) {
     mod.AppendCode(R"(
     n: int64 = 3
     )");
-    auto const *qt = mod.data().qual_type(mod.Append<ast::Identifier>("n"));
+    auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
     EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Ref()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -164,7 +164,7 @@ TEST(Declaration, CustomInitSuccess) {
     mod.AppendCode(R"(
     n :: int64 = 3
     )");
-    auto const *qt = mod.data().qual_type(mod.Append<ast::Identifier>("n"));
+    auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
     EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Const()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -221,7 +221,7 @@ TEST(Declaration, CustomInitAllowsConversions) {
     mod.AppendCode(R"(
     n: [0; int64] = []
     )");
-    auto const *qt = mod.data().qual_type(mod.Append<ast::Identifier>("n"));
+    auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
     EXPECT_EQ(*qt,
               type::QualType(type::Arr(0, type::Int64), type::Quals::Buf()));
@@ -233,7 +233,7 @@ TEST(Declaration, CustomInitAllowsConversions) {
     mod.AppendCode(R"(
     n :: [0; int64] = []
     )");
-    auto const *qt = mod.data().qual_type(mod.Append<ast::Identifier>("n"));
+    auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
     EXPECT_EQ(*qt,
               type::QualType(type::Arr(0, type::Int64), type::Quals::Const()));
@@ -247,7 +247,7 @@ TEST(Declaration, UninitializedSuccess) {
     mod.AppendCode(R"(
     n: int64 = --
     )");
-    auto const *qt = mod.data().qual_type(mod.Append<ast::Identifier>("n"));
+    auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
     EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Ref()));
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -258,7 +258,7 @@ TEST(Declaration, UninitializedSuccess) {
     mod.AppendCode(R"(
     n :: int64 = --
     )");
-    auto const *qt = mod.data().qual_type(mod.Append<ast::Identifier>("n"));
+    auto const *qt = mod.context().qual_type(mod.Append<ast::Identifier>("n"));
     ASSERT_NE(qt, nullptr);
     EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Const()));
     EXPECT_THAT(

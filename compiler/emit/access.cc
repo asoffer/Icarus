@@ -5,7 +5,7 @@
 namespace compiler {
 
 ir::Value Compiler::EmitValue(ast::Access const *node) {
-  type::QualType qt = *ASSERT_NOT_NULL(data().qual_type(node->operand()));
+  type::QualType qt = *ASSERT_NOT_NULL(context().qual_type(node->operand()));
   ASSERT(qt.ok() == true);
   if (qt.type() == type::Module) {
     auto const &mod = *ASSERT_NOT_NULL(
@@ -18,7 +18,7 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
     }
   }
 
-  auto this_type = ASSERT_NOT_NULL(data().qual_type(node))->type();
+  auto this_type = ASSERT_NOT_NULL(context().qual_type(node))->type();
   if (auto const *enum_type = this_type->if_as<type::Enum>()) {
     return ir::Value(*enum_type->EmitLiteral(node->member_name()));
   } else if (auto const *flags_type = this_type->if_as<type::Flags>()) {
@@ -34,7 +34,7 @@ ir::Value Compiler::EmitValue(ast::Access const *node) {
 }
 
 ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Access const *node) {
-  auto op_qt         = *ASSERT_NOT_NULL(data().qual_type(node->operand()));
+  auto op_qt         = *ASSERT_NOT_NULL(context().qual_type(node->operand()));
   size_t deref_count = (op_qt.quals() >= type::Quals::Ref())
                            ? size_t{0}
                            : static_cast<size_t>(-1);
@@ -64,7 +64,7 @@ ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Access const *node) {
 void Compiler::EmitMoveInit(
     ast::Access const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  type::QualType qt = *ASSERT_NOT_NULL(data().qual_type(node->operand()));
+  type::QualType qt = *ASSERT_NOT_NULL(context().qual_type(node->operand()));
   ASSERT(qt.ok() == true);
   if (qt.type() == type::Module) {
     auto const &mod = *ASSERT_NOT_NULL(
@@ -83,7 +83,7 @@ void Compiler::EmitMoveInit(
     }
   }
 
-  type::Type this_type = ASSERT_NOT_NULL(data().qual_type(node))->type();
+  type::Type this_type = ASSERT_NOT_NULL(context().qual_type(node))->type();
   if (auto const *enum_type = this_type.if_as<type::Enum>()) {
     // TODO: should actually be an initialization, not assignment.
     EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>>(*to[0], enum_type),
@@ -118,7 +118,7 @@ void Compiler::EmitMoveInit(
 void Compiler::EmitCopyInit(
     ast::Access const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  type::QualType qt = *ASSERT_NOT_NULL(data().qual_type(node->operand()));
+  type::QualType qt = *ASSERT_NOT_NULL(context().qual_type(node->operand()));
   ASSERT(qt.ok() == true);
   if (qt.type() == type::Module) {
     auto const &mod = *ASSERT_NOT_NULL(
@@ -135,7 +135,7 @@ void Compiler::EmitCopyInit(
     }
   }
 
-  type::Type this_type = ASSERT_NOT_NULL(data().qual_type(node))->type();
+  type::Type this_type = ASSERT_NOT_NULL(context().qual_type(node))->type();
   if (auto const *enum_type = this_type.if_as<type::Enum>()) {
     // TODO: should actually be an initialization, not assignment.
     EmitMoveAssign(to[0],
@@ -170,7 +170,7 @@ void Compiler::EmitCopyInit(
 void Compiler::EmitAssign(
     ast::Access const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  type::QualType qt = *ASSERT_NOT_NULL(data().qual_type(node->operand()));
+  type::QualType qt = *ASSERT_NOT_NULL(context().qual_type(node->operand()));
   ASSERT(qt.ok() == true);
   if (qt.type() == type::Module) {
     auto const &mod = *ASSERT_NOT_NULL(
@@ -187,7 +187,7 @@ void Compiler::EmitAssign(
     }
   }
 
-  type::Type this_type = ASSERT_NOT_NULL(data().qual_type(node))->type();
+  type::Type this_type = ASSERT_NOT_NULL(context().qual_type(node))->type();
   if (auto const *enum_type = this_type.if_as<type::Enum>()) {
     EmitMoveAssign(to[0],
                    type::Typed<ir::Value>(

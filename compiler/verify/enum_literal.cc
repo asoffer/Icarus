@@ -56,10 +56,10 @@ type::QualType Compiler::VerifyType(ast::EnumLiteral const *node) {
   state_.work_queue.Enqueue({
       .kind     = WorkItem::Kind::VerifyEnumBody,
       .node     = node,
-      .context  = data(),
+      .context  = context(),
       .consumer = diag(),
   });
-  return data().set_qual_type(node, type::QualType::Constant(type::Type_));
+  return context().set_qual_type(node, type::QualType::Constant(type::Type_));
 }
 
 }  // namespace compiler

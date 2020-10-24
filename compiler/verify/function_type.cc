@@ -66,7 +66,7 @@ type::QualType Compiler::VerifyType(ast::FunctionType const *node) {
 
   type::QualType qt(type::Type_, quals);
   if (not t.valid()) { qt.MarkError(); }
-  return data().set_qual_type(node, qt);
+  return context().set_qual_type(node, qt);
 }
 
 }  // namespace compiler

@@ -139,7 +139,7 @@ struct ParamDependencyGraphBuilder
   }
 
   void Visit(Identifier const *node, core::DependencyNode<Declaration> d) {
-    if (auto iter = relevant_decls_.find(node->token());
+    if (auto iter = relevant_decls_.find(node->name());
         iter != relevant_decls_.end()) {
       graph_.add_edge(
           d, core::DependencyNode<Declaration>::MakeValue(iter->second));

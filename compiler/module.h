@@ -21,16 +21,16 @@ struct CompiledModule : module::BasicModule {
   ~CompiledModule() override {}
 
   ir::Value ExportedValue(ast::Declaration const *decl) const {
-    return data().LoadConstant(decl);
+    return context().LoadConstant(decl);
   }
 
   // TODO We probably don't need these. There are likely better ways to expose
   // the requisite information.
-  Context const &data() const {
+  Context const &context() const {
     notification_.WaitForNotification();
     return data_;
   }
-  Context &data() { return data_; }
+  Context &context() { return data_; }
 
   template <typename Fn>
   void ForEachCompiledFn(Fn &&f) const {

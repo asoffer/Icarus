@@ -18,9 +18,9 @@ TEST(Identifier, Success) {
   n: int64
   )");
   auto const *id = mod.Append<ast::Identifier>("n");
-  auto const *qt = mod.data().qual_type(id);
+  auto const *qt = mod.context().qual_type(id);
   ASSERT_NE(qt, nullptr);
-  EXPECT_THAT(mod.data().decls(id), SizeIs(1));
+  EXPECT_THAT(mod.context().decls(id), SizeIs(1));
   EXPECT_EQ(*qt, type::QualType(type::Int64, type::Quals::Ref()));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
@@ -28,7 +28,7 @@ TEST(Identifier, Success) {
 TEST(Identifier, Undeclared) {
   test::TestModule mod;
   auto const *id = mod.Append<ast::Identifier>("n");
-  auto const *qt = mod.data().qual_type(id);
+  auto const *qt = mod.context().qual_type(id);
   ASSERT_EQ(qt, nullptr);
   EXPECT_THAT(
       mod.consumer.diagnostics(),
@@ -42,10 +42,10 @@ TEST(Identifier, OverloadSetSuccess) {
   f ::= (b: bool) => 4
   )");
   auto const *id = mod.Append<ast::Identifier>("f");
-  auto const *qt = mod.data().qual_type(id);
+  auto const *qt = mod.context().qual_type(id);
   ASSERT_NE(qt, nullptr);
   EXPECT_TRUE(qt->type()->is<type::OverloadSet>());
-  EXPECT_THAT(mod.data().decls(id), SizeIs(2));
+  EXPECT_THAT(mod.context().decls(id), SizeIs(2));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
 }
 
@@ -57,7 +57,7 @@ TEST(Identifier, NonCallableOverloads) {
   f := true
   )");
   auto const *id = mod.Append<ast::Identifier>("f");
-  auto const *qt = mod.data().qual_type(id);
+  auto const *qt = mod.context().qual_type(id);
   ASSERT_EQ(qt, nullptr);
   EXPECT_THAT(
       mod.consumer.diagnostics(),
@@ -75,9 +75,9 @@ TEST(Identifier, CyclicDependency) {
   y ::= z + 1
   z ::= x + 1
   )");
-  ASSERT_EQ(mod.data().qual_type(mod.Append<ast::Identifier>("x")), nullptr);
-  ASSERT_EQ(mod.data().qual_type(mod.Append<ast::Identifier>("y")), nullptr);
-  ASSERT_EQ(mod.data().qual_type(mod.Append<ast::Identifier>("z")), nullptr);
+  ASSERT_EQ(mod.context().qual_type(mod.Append<ast::Identifier>("x")), nullptr);
+  ASSERT_EQ(mod.context().qual_type(mod.Append<ast::Identifier>("y")), nullptr);
+  ASSERT_EQ(mod.context().qual_type(mod.Append<ast::Identifier>("z")), nullptr);
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair("type-error", "cyclic-dependency")));
 }

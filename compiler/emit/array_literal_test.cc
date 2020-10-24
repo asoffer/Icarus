@@ -16,7 +16,7 @@ TEST_P(ArrayLiteralTest, ArrayLiteral) {
   auto const &[expr, expected] = GetParam();
   test::TestModule mod;
   auto const *e  = mod.Append<ast::Expression>(expr);
-  auto const *qt = mod.data().qual_type(e);
+  auto const *qt = mod.context().qual_type(e);
   ASSERT_NE(qt, nullptr);
   auto t = qt->type();
   ASSERT_TRUE(t.valid());

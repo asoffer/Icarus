@@ -33,7 +33,7 @@ type::Type GuessIntendedArrayType(absl::flat_hash_map<type::Type, int>) {
 
 type::QualType Compiler::VerifyType(ast::ArrayLiteral const *node) {
   if (node->empty()) {
-    return data().set_qual_type(node,
+    return context().set_qual_type(node,
                                 type::QualType::Constant(type::EmptyArray));
   }
 
@@ -60,13 +60,13 @@ type::QualType Compiler::VerifyType(ast::ArrayLiteral const *node) {
   if (elem_type_count.size() == 1) {
     type::Type t = elem_type_count.begin()->first;
     auto qt      = type::QualType(type::Arr(num_elements, t), quals);
-    return data().set_qual_type(node, qt);
+    return context().set_qual_type(node, qt);
   } else {
     diag().Consume(InconsistentArrayType{.range = node->range()});
     if (type::Type t = GuessIntendedArrayType(elem_type_count)) {
       auto qt = type::QualType(type::Arr(num_elements, t), quals);
       qt.MarkError();
-      return data().set_qual_type(node, qt);
+      return context().set_qual_type(node, qt);
     } else {
       return type::QualType::Error();
     }

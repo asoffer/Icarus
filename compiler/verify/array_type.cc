@@ -64,7 +64,7 @@ type::QualType Compiler::VerifyType(ast::ArrayType const *node) {
     qt.MarkError();
   }
 
-  return data().set_qual_type(node, qt);
+  return context().set_qual_type(node, qt);
 }
 
 }  // namespace compiler

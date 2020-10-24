@@ -18,7 +18,7 @@ TEST(DesignatedInitializer, NonConstantType) {
   }
   )");
   auto const *expr = mod.Append<ast::Expression>(R"(S.{})");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   ASSERT_EQ(qt, nullptr);
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair(
@@ -31,7 +31,7 @@ TEST(DesignatedInitializer, NonType) {
   NotAType ::= 3
   )");
   auto const *expr = mod.Append<ast::Expression>(R"(NotAType.{})");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   ASSERT_EQ(qt, nullptr);
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(
@@ -44,7 +44,7 @@ TEST(DesignatedInitializer, NonConstantNonType) {
   NotAType: int64
   )");
   auto const *expr = mod.Append<ast::Expression>(R"(NotAType.{})");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   ASSERT_EQ(qt, nullptr);
   EXPECT_THAT(
       mod.consumer.diagnostics(),
@@ -61,7 +61,7 @@ TEST(DesignatedInitializer, NonStrucType) {
   NotAStruct ::= int64
   )");
   auto const *expr = mod.Append<ast::Expression>(R"(NotAStruct.{})");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   ASSERT_EQ(qt, nullptr);
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(Pair(
@@ -79,7 +79,7 @@ TEST(DesignatedInitializer, FieldErrorsAndStructErrors) {
     field = NotAStruct.{}
   }
   )");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   ASSERT_EQ(qt, nullptr);
   EXPECT_THAT(
       mod.consumer.diagnostics(),
@@ -101,7 +101,7 @@ TEST(DesignatedInitializer, NonMember) {
     not_a_field = 0
   }
   )");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_TRUE(qt->type()->is<type::Struct>());
   EXPECT_EQ(qt->quals(), type::Quals::Unqualified());
@@ -122,7 +122,7 @@ TEST(DesignatedInitializer, MemberInvalidConversion) {
     n = "abc"
   }
   )");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_TRUE(qt->type()->is<type::Struct>());
   EXPECT_EQ(qt->quals(), type::Quals::Unqualified());
@@ -144,7 +144,7 @@ TEST(DesignatedInitializer, Valid) {
     n = 0
   }
   )");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_TRUE(qt->type()->is<type::Struct>());
   EXPECT_EQ(qt->quals(), type::Quals::Const());
@@ -166,7 +166,7 @@ TEST(DesignatedInitializer, MultipleMemberAssignments) {
     (n, b) = f()
   }
   )");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_TRUE(qt->type()->is<type::Struct>());
   EXPECT_EQ(qt->quals(), type::Quals::Unqualified());
@@ -188,7 +188,7 @@ TEST(DesignatedInitializer, MultipleMemberInvalidAssignments) {
     (n, b) = f()
   }
   )");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_TRUE(qt->type()->is<type::Struct>());
   EXPECT_EQ(qt->quals(), type::Quals::Unqualified());
@@ -212,7 +212,7 @@ TEST(DesignatedInitializer, MemberValidConversion) {
     pointer = buffer_pointer
   }
   )");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_TRUE(qt->type()->is<type::Struct>());
   EXPECT_EQ(qt->quals(), type::Quals::Unqualified());
@@ -233,7 +233,7 @@ TEST(DesignatedInitializer, ErrorInInitializerAndField) {
     m = NotAType.{}  // Still generate missing-struct-field for `m`.
   }
   )");
-  auto const *qt   = mod.data().qual_type(expr);
+  auto const *qt   = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_TRUE(qt->type()->is<type::Struct>());
   EXPECT_EQ(qt->quals(), type::Quals::Unqualified());

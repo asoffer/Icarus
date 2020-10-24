@@ -305,7 +305,7 @@ type::QualType Compiler::VerifyType(ast::Call const *node) {
         qt = type::QualType::Constant(type::Void());
       }
     }
-    if (qt) { data().set_qual_type(node, qt); }
+    if (qt) { context().set_qual_type(node, qt); }
     return qt;
   }
 
@@ -325,12 +325,12 @@ type::QualType Compiler::VerifyType(ast::Call const *node) {
     }
     // TODO: under what circumstances can we prove that the implementation
     // doesn't need to be run at runtime?
-    return data().set_qual_type(node, *result);
+    return context().set_qual_type(node, *result);
   } else if (auto const *gen_struct =
                  callee_qt.type()->if_as<type::GenericStruct>()) {
     // TODO: Not always a constant
     // TODO: Isn't this also callable?
-    return data().set_qual_type(node, type::QualType::Constant(type::Type_));
+    return context().set_qual_type(node, type::QualType::Constant(type::Type_));
   } else {
     diag().Consume(UncallableExpression{.range = node->callee()->range()});
     return type::QualType::Error();

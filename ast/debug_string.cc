@@ -313,7 +313,7 @@ void FunctionType::DebugStrAppend(std::string *out, size_t indent) const {
 }
 
 void Identifier::DebugStrAppend(std::string *out, size_t indent) const {
-  absl::StrAppend(out, token());
+  absl::StrAppend(out, name());
 }
 
 void Import::DebugStrAppend(std::string *out, size_t indent) const {

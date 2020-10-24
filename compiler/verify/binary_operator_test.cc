@@ -308,10 +308,10 @@ TEST_P(BinaryOperator, Success) {
     mod.AppendCode(absl::StrCat(R"(x: )", type));
     auto const *expr =
         mod.Append<ast::BinaryOperator>(absl::StrFormat("x %s x", op));
-    auto const *qt = mod.data().qual_type(expr);
+    auto const *qt = mod.context().qual_type(expr);
     ASSERT_NE(qt, nullptr);
     EXPECT_EQ(qt->quals(), type::Quals::Unqualified());
-    EXPECT_EQ(qt->type(), mod.data().qual_type(expr->lhs())->type());
+    EXPECT_EQ(qt->type(), mod.context().qual_type(expr->lhs())->type());
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
   {
@@ -320,10 +320,10 @@ TEST_P(BinaryOperator, Success) {
     mod.AppendCode(absl::StrCat(R"(x :: )", type));
     auto const *expr =
         mod.Append<ast::BinaryOperator>(absl::StrFormat("x %s x", op));
-    auto const *qt = mod.data().qual_type(expr);
+    auto const *qt = mod.context().qual_type(expr);
     ASSERT_NE(qt, nullptr);
     EXPECT_EQ(qt->quals(), type::Quals::Const());
-    EXPECT_EQ(qt->type(), mod.data().qual_type(expr->lhs())->type());
+    EXPECT_EQ(qt->type(), mod.context().qual_type(expr->lhs())->type());
     EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
   }
 }
@@ -352,7 +352,7 @@ TEST_P(OperatorOverload, Overloads) {
       GetParam()));
   auto const *expr = mod.Append<ast::BinaryOperator>(
       absl::StrFormat("S.{} %s S.{}", GetParam()));
-  auto const *qt = mod.data().qual_type(expr);
+  auto const *qt = mod.context().qual_type(expr);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType::NonConstant(type::Int64));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -365,7 +365,7 @@ TEST_P(OperatorOverload, MissingOverloads) {
       )");
   auto const *expr = mod.Append<ast::BinaryOperator>(
       absl::StrFormat("S.{} %s S.{}", GetParam()));
-  auto const *qt = mod.data().qual_type(expr);
+  auto const *qt = mod.context().qual_type(expr);
   ASSERT_EQ(qt, nullptr);
   EXPECT_THAT(mod.consumer.diagnostics(),
               UnorderedElementsAre(

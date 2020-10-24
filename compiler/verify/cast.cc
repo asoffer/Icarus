@@ -46,7 +46,7 @@ type::QualType Compiler::VerifyType(ast::Cast const *node) {
     });
   }
 
-  return data().set_qual_type(
+  return context().set_qual_type(
       node, type::QualType(t, expr_qt.quals() & ~type::Quals::Buf()));
 }
 

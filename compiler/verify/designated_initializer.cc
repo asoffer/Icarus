@@ -152,7 +152,7 @@ type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
     absl::flat_hash_map<std::string_view, type::Struct::Field const *>
         name_to_field;
     for (auto const *field : assignment->lhs()) {
-      std::string_view field_name = field->as<ast::Identifier>().token();
+      std::string_view field_name = field->as<ast::Identifier>().name();
       if (auto *struct_field = struct_type->field(field_name)) {
         name_to_field.emplace(field_name, struct_field);
       } else {
@@ -170,7 +170,7 @@ type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
     internal::QualTypeIterator const qt_end(initializer_iter->end());
 
     for (auto const *field : assignment->lhs()) {
-      std::string_view field_name   = field->as<ast::Identifier>().token();
+      std::string_view field_name   = field->as<ast::Identifier>().name();
       type::QualType initializer_qt = *qt_iter;
       ++qt_iter;
 
@@ -206,7 +206,7 @@ type::QualType Compiler::VerifyType(ast::DesignatedInitializer const *node) {
 
   type::QualType qt(struct_type, quals);
   if (recovered_error) { qt.MarkError(); }
-  return data().set_qual_type(node, qt);
+  return context().set_qual_type(node, qt);
 }
 
 }  // namespace compiler

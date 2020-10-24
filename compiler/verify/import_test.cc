@@ -15,7 +15,7 @@ TEST(Import, InvalidTypeBeingImported) {
   test::TestModule mod;
   EXPECT_CALL(mod.importer, Import).Times(0);
   auto const *import = mod.Append<ast::Expression>(R"(import 3)");
-  auto const *qt     = mod.data().qual_type(import);
+  auto const *qt     = mod.context().qual_type(import);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType::Constant(type::Module));
   EXPECT_THAT(mod.consumer.diagnostics(),
@@ -27,7 +27,7 @@ TEST(Import, NonConstantImport) {
   EXPECT_CALL(mod.importer, Import).Times(0);
   mod.AppendCode(R"(str := "abc")");
   auto const *import = mod.Append<ast::Expression>(R"(import str)");
-  auto const *qt     = mod.data().qual_type(import);
+  auto const *qt     = mod.context().qual_type(import);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType::Constant(type::Module));
   EXPECT_THAT(mod.consumer.diagnostics(),
@@ -40,7 +40,7 @@ TEST(Import, NonConstantAndInvalidType) {
   EXPECT_CALL(mod.importer, Import).Times(0);
   mod.AppendCode(R"(x := 3)");
   auto const *import = mod.Append<ast::Expression>(R"(import x)");
-  auto const *qt     = mod.data().qual_type(import);
+  auto const *qt     = mod.context().qual_type(import);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType::Constant(type::Module));
   EXPECT_THAT(mod.consumer.diagnostics(),
@@ -55,7 +55,7 @@ TEST(Import, ByteViewLiteral) {
                                 frontend::FileName("some-module"))))
       .WillOnce(Return(ir::ModuleId(7)));
   auto const *import = mod.Append<ast::Expression>(R"(import "some-module")");
-  auto const *qt     = mod.data().qual_type(import);
+  auto const *qt     = mod.context().qual_type(import);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType::Constant(type::Module));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -68,7 +68,7 @@ TEST(Import, ConstantByteView) {
       .WillOnce(Return(ir::ModuleId(7)));
   mod.AppendCode(R"(str ::= "some-module")");
   auto const *import = mod.Append<ast::Expression>(R"(import str)");
-  auto const *qt     = mod.data().qual_type(import);
+  auto const *qt     = mod.context().qual_type(import);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(*qt, type::QualType::Constant(type::Module));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());

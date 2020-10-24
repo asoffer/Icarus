@@ -15,7 +15,7 @@ using ::testing::UnorderedElementsAre;
 
 TEST(ShortFunctionLiteral, OneValidReturnType) {
   test::TestModule mod;
-  auto const *qt = mod.data().qual_type(mod.Append<ast::Expression>("() => 3"));
+  auto const *qt = mod.context().qual_type(mod.Append<ast::Expression>("() => 3"));
   EXPECT_THAT(qt,
               Pointee(type::QualType::Constant(type::Func({}, {type::Int64}))));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -24,7 +24,7 @@ TEST(ShortFunctionLiteral, OneValidReturnType) {
 TEST(ShortFunctionLiteral, DISABLED_MultipleValidReturnTypes) {
   test::TestModule mod;
   auto const *qt =
-      mod.data().qual_type(mod.Append<ast::Expression>("() => (3, true)"));
+      mod.context().qual_type(mod.Append<ast::Expression>("() => (3, true)"));
   EXPECT_THAT(qt, Pointee(type::QualType::Constant(
                       type::Func({}, {type::Int64, type::Bool}))));
   EXPECT_THAT(mod.consumer.diagnostics(), IsEmpty());
@@ -33,7 +33,7 @@ TEST(ShortFunctionLiteral, DISABLED_MultipleValidReturnTypes) {
 TEST(ShortFunctionLiteral, OneParameterOneReturnType) {
   test::TestModule mod;
   auto const *qt =
-      mod.data().qual_type(mod.Append<ast::Expression>("(b: bool) => 3 "));
+      mod.context().qual_type(mod.Append<ast::Expression>("(b: bool) => 3 "));
   EXPECT_THAT(qt,
               Pointee(type::QualType::Constant(type::Func(
                   {core::Param("b", type::QualType::NonConstant(type::Bool))},
@@ -43,7 +43,7 @@ TEST(ShortFunctionLiteral, OneParameterOneReturnType) {
 
 TEST(ShortFunctionLiteral, MultipleParametersOneReturnType) {
   test::TestModule mod;
-  auto const *qt = mod.data().qual_type(mod.Append<ast::Expression>(
+  auto const *qt = mod.context().qual_type(mod.Append<ast::Expression>(
       R"((b: bool, n: int64) => 3 )"));
   EXPECT_THAT(qt,
               Pointee(type::QualType::Constant(type::Func(
@@ -55,7 +55,7 @@ TEST(ShortFunctionLiteral, MultipleParametersOneReturnType) {
 
 TEST(ShortFunctionLiteral, ConstantParameter) {
   test::TestModule mod;
-  auto const *qt = mod.data().qual_type(
+  auto const *qt = mod.context().qual_type(
       mod.Append<ast::Expression>(R"((n :: int64) -> () {})"));
   ASSERT_NE(qt, nullptr);
   EXPECT_GE(qt->quals(), type::Quals::Const());

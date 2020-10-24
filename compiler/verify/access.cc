@@ -165,7 +165,7 @@ type::QualType AccessTypeMember(Compiler *c, ast::Access const *node,
       // an enumerator, but we should not emit code for it.
       qt.MarkError();
     }
-    return c->data().set_qual_type(node, qt);
+    return c->context().set_qual_type(node, qt);
   }
 
   if (auto *f = evaled_type->if_as<type::Flags>()) {
@@ -181,7 +181,7 @@ type::QualType AccessTypeMember(Compiler *c, ast::Access const *node,
       // a flag, but we should not emit code for it.
       qt.MarkError();
     }
-    return c->data().set_qual_type(node, qt);
+    return c->context().set_qual_type(node, qt);
   }
 
   // TODO: Determine whether structs are allowed to have constant members
@@ -216,7 +216,7 @@ type::QualType AccessStructMember(Compiler *c, ast::Access const *node,
   type::QualType qt(member->type, quals | type::Quals::Ref());
 
   // Struct field members need to be exported in addition to the struct itself.
-  if (&c->data().module() != s->defining_module() and
+  if (&c->context().module() != s->defining_module() and
       not member->contains_hashtag(
           ast::Hashtag(ast::Hashtag::Builtin::Export))) {
     c->diag().Consume(NonExportedMember{
@@ -230,7 +230,7 @@ type::QualType AccessStructMember(Compiler *c, ast::Access const *node,
     qt.MarkError();
   }
 
-  return c->data().set_qual_type(node, qt);
+  return c->context().set_qual_type(node, qt);
 }
 
 // Verifies access to a symbol in a different module. If there are multiple
@@ -251,7 +251,7 @@ type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
   // a deadlock as this module waits for the notification that it's declarations
   // can be exported, so we would prefer to abort.
   auto const *mod = mod_id.get<LibraryModule>();
-  ASSERT(mod != &c->data().module());
+  ASSERT(mod != &c->context().module());
 
   auto decls = mod->ExportedDeclarations(node->member_name());
   switch (decls.size()) {
@@ -263,9 +263,9 @@ type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
       return type::QualType::Error();
     } break;
     case 1: {
-      auto const *qt = mod->data().qual_type(decls[0]);
+      auto const *qt = mod->context().qual_type(decls[0]);
 
-      type::Type t = mod->data().qual_type(decls[0])->type();
+      type::Type t = mod->context().qual_type(decls[0])->type();
       if (qt == nullptr or not qt->ok()) {
         LOG("AccessModuleMember",
             "Found member in a different module that is missing a type. "
@@ -273,15 +273,15 @@ type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
             node->DebugString());
         return type::QualType::Error();
       } else {
-        c->data().SetAllOverloads(node, ast::OverloadSet(decls));
-        return c->data().set_qual_type(node, *qt);
+        c->context().SetAllOverloads(node, ast::OverloadSet(decls));
+        return c->context().set_qual_type(node, *qt);
       }
     } break;
     default: {
       // TODO: these may also be an overload set of scopes
       type::Quals quals = type::Quals::Const();
       absl::flat_hash_set<type::Callable const *> member_types;
-      auto const &data = mod->data();
+      auto const &data = mod->context();
       for (auto const *decl : decls) {
         auto *qt = data.qual_type(decl);
         if (qt == nullptr or not qt->ok()) {
@@ -304,8 +304,8 @@ type::QualType AccessModuleMember(Compiler *c, ast::Access const *node,
         }
       }
 
-      c->data().SetAllOverloads(node, ast::OverloadSet(decls));
-      return c->data().set_qual_type(
+      c->context().SetAllOverloads(node, ast::OverloadSet(decls));
+      return c->context().set_qual_type(
           node, type::QualType(type::MakeOverloadSet(std::move(member_types)),
                                quals));
     } break;
@@ -330,7 +330,7 @@ type::QualType Compiler::VerifyType(ast::Access const *node) {
 
     if (base_type == type::ByteView) {
       if (node->member_name() == "length") {
-        return data().set_qual_type(
+        return context().set_qual_type(
             node, type::QualType(type::Int64, quals | type::Quals::Const()));
       } else {
         diag().Consume(MissingMember{

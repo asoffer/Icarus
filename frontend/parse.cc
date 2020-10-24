@@ -439,7 +439,7 @@ std::unique_ptr<ast::Node> BuildCallImpl(
         }
         // TODO: Error if there are multiple entries in this assignment.
         auto [lhs, rhs] = std::move(*a).extract();
-        args.emplace_back(std::string{lhs[0]->as<ast::Identifier>().token()},
+        args.emplace_back(std::string{lhs[0]->as<ast::Identifier>().name()},
                           std::move(rhs[0]));
       } else {
         if (last_named_range_before_error.has_value()) {
@@ -458,7 +458,7 @@ std::unique_ptr<ast::Node> BuildCallImpl(
     if (auto *a = args_expr->if_as<ast::Assignment>()) {
       auto [lhs, rhs] = std::move(*a).extract();
       // TODO: Error if there are multiple entries in this assignment.
-      args.emplace_back(std::string{lhs[0]->as<ast::Identifier>().token()},
+      args.emplace_back(std::string{lhs[0]->as<ast::Identifier>().name()},
                         std::move(rhs[0]));
     } else {
       args.emplace_back("", std::move(args_expr));
@@ -637,7 +637,7 @@ std::unique_ptr<ast::Node> BuildAccess(
 
   return std::make_unique<ast::Access>(
       range, std::move(operand),
-      std::string{nodes[2]->as<ast::Identifier>().token()});
+      std::string{nodes[2]->as<ast::Identifier>().name()});
 }
 
 std::unique_ptr<ast::Node> BuildIndexOperator(
@@ -718,7 +718,7 @@ std::unique_ptr<ast::Node> BuildDeclaration(
   SourceRange id_range;
   if (nodes[0]->is<ast::Identifier>()) {
     id_range = nodes[0]->range();
-    id       = std::string(nodes[0]->as<ast::Identifier>().token());
+    id       = std::string(nodes[0]->as<ast::Identifier>().name());
   }
 
   std::unique_ptr<ast::Expression> type_expr, init_val;
@@ -730,7 +730,7 @@ std::unique_ptr<ast::Node> BuildDeclaration(
 
   bool initial_value_is_hole = false;
   if (auto const *init_id = init_val->if_as<ast::Identifier>()) {
-    if (init_id->token() == "") { initial_value_is_hole = true; }
+    if (init_id->name() == "") { initial_value_is_hole = true; }
   }
 
   return std::make_unique<ast::Declaration>(
@@ -1041,7 +1041,7 @@ std::unique_ptr<ast::Node> BuildBlockNode(
       SourceRange(nodes.front()->range().begin(), nodes.back()->range().end());
   if (auto *id = nodes.front()->if_as<ast::Identifier>()) {
     return std::make_unique<ast::BlockNode>(
-        range, std::string{id->token()},
+        range, std::string{id->name()},
         std::move(nodes.back()->as<Statements>()).extract());
   } else if (auto *index = nodes.front()->if_as<ast::Index>()) {
     auto [lhs, rhs] = std::move(*index).extract();
@@ -1056,7 +1056,7 @@ std::unique_ptr<ast::Node> BuildBlockNode(
       params.push_back(move_as<ast::Declaration>(rhs));
     }
     return std::make_unique<ast::BlockNode>(
-        range, std::string{lhs->as<ast::Identifier>().token()},
+        range, std::string{lhs->as<ast::Identifier>().name()},
         std::move(params), std::move(nodes.back()->as<Statements>()).extract());
 
   } else {
@@ -1084,7 +1084,7 @@ std::unique_ptr<ast::Node> SugaredExtendScopeNode(
 
   nodes[0]->as<ast::ScopeNode>().append_block_syntactically(
       ast::BlockNode(range,
-                     std::string{nodes[1]->as<ast::Identifier>().token()},
+                     std::string{nodes[1]->as<ast::Identifier>().name()},
                      std::move(block_stmt_nodes)),
       updated_last_scope_node);
   return std::move(nodes[0]);

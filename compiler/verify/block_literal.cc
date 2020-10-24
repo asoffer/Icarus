@@ -10,7 +10,7 @@ type::QualType Compiler::VerifyType(ast::BlockLiteral const *node) {
   for (auto *a : node->after()) { success &= VerifyType(a).ok(); }
   auto qt = type::QualType::Constant(type::Block);
   if (not success) { qt.MarkError(); }
-  return data().set_qual_type(node, qt);
+  return context().set_qual_type(node, qt);
 }
 
 }  // namespace compiler

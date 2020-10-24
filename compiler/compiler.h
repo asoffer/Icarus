@@ -203,8 +203,6 @@ struct Compiler
   Compiler WithPersistent() const;
 
   Context &context() const { return resources_.data; }
-  // TODO: Deprecated. Use `context()`.
-  Context &data() const { return resources_.data; }
   ir::Builder &builder() { return resources_.builder; };
   diagnostic::DiagnosticConsumer &diag() const {
     return resources_.diagnostic_consumer;

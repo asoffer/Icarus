@@ -162,7 +162,7 @@ void TokenExtractor::Visit(ast::DesignatedInitializer const *node) {
 }
 
 void TokenExtractor::Visit(ast::Identifier const *node) {
-  line_builder_.write(node->token());
+  line_builder_.write(node->name());
 }
 void TokenExtractor::Visit(ast::Terminal const *node) {
   line_builder_.write("TERM");

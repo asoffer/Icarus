@@ -20,7 +20,7 @@ TEST_P(CastTest, Cast) {
   F ::= flags { A ::= 1 as nat64 \\ B ::= 2 as nat64 \\ C ::= 4 as nat64 }
   )");
   auto const *e  = mod.Append<ast::Expression>(expr);
-  auto const *qt = mod.data().qual_type(e);
+  auto const *qt = mod.context().qual_type(e);
   ASSERT_NE(qt, nullptr);
   auto t = qt->type();
   ASSERT_TRUE(t.valid());

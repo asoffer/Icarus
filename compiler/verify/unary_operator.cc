@@ -267,7 +267,7 @@ type::QualType Compiler::VerifyType(ast::UnaryOperator const *node) {
     default: UNREACHABLE(*node);
   }
 
-  return data().set_qual_type(node, qt);
+  return context().set_qual_type(node, qt);
 }
 
 }  // namespace compiler

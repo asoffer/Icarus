@@ -41,7 +41,7 @@ type::QualType Compiler::VerifyType(ast::Terminal const *node) {
   } else {
     UNREACHABLE(mv.name());
   }
-  return data().set_qual_type(node, type::QualType::Constant(t));
+  return context().set_qual_type(node, type::QualType::Constant(t));
 }
 
 }  // namespace compiler

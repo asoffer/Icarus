@@ -20,12 +20,12 @@ std::optional<type::Quals> VerifyAndGetQuals(
 }  // namespace
 
 type::QualType Compiler::VerifyType(ast::ArgumentType const *node) {
-  return data().set_qual_type(node, type::QualType::Constant(type::Type_));
+  return context().set_qual_type(node, type::QualType::Constant(type::Type_));
 }
 
 type::QualType Compiler::VerifyType(ast::BuiltinFn const *node) {
-  return data().set_qual_type(node,
-                              type::QualType::Constant(node->value().type()));
+  return context().set_qual_type(
+      node, type::QualType::Constant(node->value().type()));
 }
 
 type::QualType Compiler::VerifyType(ast::ReturnStmt const *node) {
@@ -45,7 +45,7 @@ type::QualType Compiler::VerifyType(ast::BlockNode const *node) {
   for (auto *stmt : node->stmts()) { VerifyType(stmt); }
   // TODO: Determine the type of the block (i.e., what type might be yielded out
   // of it?
-  return data().set_qual_type(node, type::QualType::Constant(type::Block));
+  return context().set_qual_type(node, type::QualType::Constant(type::Block));
 }
 
 type::QualType Compiler::VerifyType(ast::ScopeNode const *node) {
@@ -62,11 +62,12 @@ type::QualType Compiler::VerifyType(ast::ScopeNode const *node) {
                    std::ignore, VerifyType(node->name()));
   for (auto const &block : node->blocks()) { VerifyType(&block); }
   // TODO hack. Set this for real.
-  return data().set_qual_type(node, type::QualType::NonConstant(type::Void()));
+  return context().set_qual_type(node,
+                                 type::QualType::NonConstant(type::Void()));
 }
 
 type::QualType Compiler::VerifyType(ast::Label const *node) {
-  return data().set_qual_type(node, type::QualType::Constant(type::Label));
+  return context().set_qual_type(node, type::QualType::Constant(type::Label));
 }
 
 }  // namespace compiler

@@ -35,7 +35,7 @@ void Module::ProcessNodes(base::PtrSpan<ast::Node const> nodes,
                           diagnostic::DiagnosticConsumer &diag) {
   compiler::Compiler c({
       .builder             = ir::GetBuilder(),
-      .data                = data(),
+      .data                = context(),
       .diagnostic_consumer = diag,
       .importer            = importer,
   });

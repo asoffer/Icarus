@@ -6,7 +6,7 @@
 namespace compiler {
 
 ir::Value Compiler::EmitValue(ast::ArgumentType const *node) {
-  return ir::Value(data().arg_type(node->name()));
+  return ir::Value(context().arg_type(node->name()));
 }
 
 ir::Value Compiler::EmitValue(ast::BuiltinFn const *node) {
@@ -14,7 +14,7 @@ ir::Value Compiler::EmitValue(ast::BuiltinFn const *node) {
 }
 
 ir::Value Compiler::EmitValue(ast::Import const *node) {
-  auto module_id = data().imported_module(node);
+  auto module_id = context().imported_module(node);
   ASSERT(module_id != ir::ModuleId::Invalid());
   return ir::Value(module_id);
 }

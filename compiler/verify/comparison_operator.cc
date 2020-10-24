@@ -122,7 +122,7 @@ type::QualType Compiler::VerifyType(ast::ComparisonOperator const *node) {
   for (auto expr_qt : expr_qts) {
     if (not expr_qt.ok()) {
       qt.MarkError();
-      return data().set_qual_type(node, qt);
+      return context().set_qual_type(node, qt);
     }
   }
 
@@ -225,7 +225,7 @@ type::QualType Compiler::VerifyType(ast::ComparisonOperator const *node) {
     }
   }
 
-  return data().set_qual_type(node, qt);
+  return context().set_qual_type(node, qt);
 }
 
 }  // namespace compiler

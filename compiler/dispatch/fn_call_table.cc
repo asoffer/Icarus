@@ -57,7 +57,7 @@ ir::RegOr<ir::Fn> ComputeConcreteFn(Compiler *compiler,
     // initialization for the declaration. Instead, we need load the
     // address.
     if (auto *fn_decl = fn->if_as<ast::Declaration>()) {
-      return compiler->builder().Load<ir::Fn>(compiler->data().addr(fn_decl));
+      return compiler->builder().Load<ir::Fn>(compiler->context().addr(fn_decl));
     } else {
       return compiler->builder().Load<ir::Fn>(
           compiler->EmitValue(fn).get<ir::RegOr<ir::Addr>>());
@@ -82,18 +82,18 @@ std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCallee(
 
     auto *parameterized_expr = &fn->as<ast::ParameterizedExpression>();
 
-    Context temp_data(&compiler.data().module());
+    Context temp_data(&compiler.context().module());
     Compiler c({
         .builder             = compiler.builder(),
         .data                = temp_data,
         .diagnostic_consumer = compiler.diag(),
         .importer            = compiler.importer(),
     });
-    temp_data.parent_ = &compiler.data();
+    temp_data.parent_ = &compiler.context();
 
     auto params = c.ComputeParamsFromArgs(parameterized_expr, args);
 
-    auto find_subcontext_result = compiler.data().FindSubcontext(
+    auto find_subcontext_result = compiler.context().FindSubcontext(
         &fn->as<ast::ParameterizedExpression>(), params);
     return std::make_tuple(ir::Fn(gen_fn.concrete(args)),
                            find_subcontext_result.fn_type,
@@ -118,7 +118,7 @@ void EmitCall(Tag, Compiler *compiler, ast::Expression const *callee,
 
   Compiler c({
       .builder = ir::GetBuilder(),
-      .data    = dependent_data ? *dependent_data : compiler->data(),
+      .data    = dependent_data ? *dependent_data : compiler->context(),
       .diagnostic_consumer = compiler->diag(),
       .importer            = compiler->importer(),
   });

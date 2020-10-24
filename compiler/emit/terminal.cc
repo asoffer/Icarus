@@ -11,7 +11,7 @@ ir::Value Compiler::EmitValue(ast::Terminal const *node) {
 void Compiler::EmitAssign(
     ast::Terminal const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
-  auto t = data().qual_type(node)->type();
+  auto t = context().qual_type(node)->type();
   ASSERT(to.size() == 1u);
   EmitCopyAssign(type::Typed<ir::RegOr<ir::Addr>>(
                      *to[0], to[0].type()->as<type::Pointer>().pointee()),

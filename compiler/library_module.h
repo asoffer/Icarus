@@ -23,13 +23,13 @@ struct LibraryModule : CompiledModule {
     module::FileImporter<LibraryModule> importer;
     Compiler c({
         .builder             = ir::GetBuilder(),
-        .data                = data(),
+        .data                = context(),
         .diagnostic_consumer = diag,
         .importer            = importer,
     });
 
     for (ast::Node const *node : nodes) {
-      ExtractJumps(&c.data().extraction_map_, node);
+      ExtractJumps(&c.context().extraction_map_, node);
     }
     c.VerifyAll(nodes);
     if (c.diag().num_consumed() > 0) { return; }

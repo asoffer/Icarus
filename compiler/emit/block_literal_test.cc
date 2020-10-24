@@ -16,7 +16,7 @@ TEST(BlockLiteral, Basic) {
     after ::= jump() { goto done() }
   }
   )");
-  auto const *qt = mod.data().qual_type(e);
+  auto const *qt = mod.context().qual_type(e);
   ASSERT_NE(qt, nullptr);
   auto t = qt->type();
   ASSERT_TRUE(t.valid());

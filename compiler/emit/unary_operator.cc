@@ -10,7 +10,7 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
   switch (node->kind()) {
     case ast::UnaryOperator::Kind::Copy: {
       auto operand_type =
-          ASSERT_NOT_NULL(data().qual_type(node->operand()))->type();
+          ASSERT_NOT_NULL(context().qual_type(node->operand()))->type();
       auto reg = builder().TmpAlloca(operand_type);
       EmitCopyInit(
           type::Typed<ir::Value>(EmitValue(node->operand()), operand_type),
@@ -21,7 +21,7 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
       // TODO: Not entirely sure this is what the semantics ought to be.
     case ast::UnaryOperator::Kind::Move: {
       auto operand_type =
-          ASSERT_NOT_NULL(data().qual_type(node->operand()))->type();
+          ASSERT_NOT_NULL(context().qual_type(node->operand()))->type();
       auto reg = builder().TmpAlloca(operand_type);
       EmitMoveInit(
           type::Typed<ir::Value>(EmitValue(node->operand()), operand_type),
@@ -32,7 +32,7 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
       return ir::Value(builder().BufPtr(
           EmitValue(node->operand()).get<ir::RegOr<type::Type>>()));
     case ast::UnaryOperator::Kind::Not: {
-      auto t = ASSERT_NOT_NULL(data().qual_type(node->operand()))->type();
+      auto t = ASSERT_NOT_NULL(context().qual_type(node->operand()))->type();
       if (t == type::Bool) {
         return ir::Value(
             builder().Not(EmitValue(node->operand()).get<ir::RegOr<bool>>()));
@@ -45,7 +45,7 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
     case ast::UnaryOperator::Kind::Negate: {
       auto operand_ir = EmitValue(node->operand());
       return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, float, double>(
-          ASSERT_NOT_NULL(data().qual_type(node->operand()))->type(),
+          ASSERT_NOT_NULL(context().qual_type(node->operand()))->type(),
           [&](auto tag) {
             using T = typename decltype(tag)::type;
             return ir::Value(builder().Neg(operand_ir.get<ir::RegOr<T>>()));
@@ -53,7 +53,7 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
     } break;
     case ast::UnaryOperator::Kind::TypeOf:
       return ir::Value(
-          ASSERT_NOT_NULL(data().qual_type(node->operand()))->type());
+          ASSERT_NOT_NULL(context().qual_type(node->operand()))->type());
     case ast::UnaryOperator::Kind::Address:
       return ir::Value(EmitRef(node->operand()));
     case ast::UnaryOperator::Kind::Evaluate: {
@@ -65,7 +65,7 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
       // ```
       return EvaluateOrDiagnose(type::Typed<ast::Expression const *>(
           node->operand(),
-          ASSERT_NOT_NULL(data().qual_type(node->operand()))->type()));
+          ASSERT_NOT_NULL(context().qual_type(node->operand()))->type()));
     }
     case ast::UnaryOperator::Kind::Pointer: {
       state_.must_complete = false;
@@ -80,7 +80,7 @@ ir::Value Compiler::EmitValue(ast::UnaryOperator const *node) {
     case ast::UnaryOperator::Kind::At: {
       return builder().Load(
           EmitValue(node->operand()).get<ir::RegOr<ir::Addr>>(),
-          ASSERT_NOT_NULL(data().qual_type(node))->type());
+          ASSERT_NOT_NULL(context().qual_type(node))->type());
     }
     default: UNREACHABLE("Operator is ", static_cast<int>(node->kind()));
   }
@@ -102,7 +102,7 @@ void Compiler::EmitCopyInit(
     default: {
       LOG("", "%s", node->DebugString());
       auto from_val = EmitValue(node);
-      auto from_qt  = *data().qual_type(node);
+      auto from_qt  = *context().qual_type(node);
       if (to.size() == 1) {
         EmitCopyAssign(type::Typed<ir::RegOr<ir::Addr>>(
                            *to[0], to[0].type()->as<type::Pointer>().pointee()),
@@ -129,7 +129,7 @@ void Compiler::EmitMoveInit(
       break;
     default: {
       auto from_val = EmitValue(node);
-      auto from_qt  = *data().qual_type(node);
+      auto from_qt  = *context().qual_type(node);
       if (to.size() == 1) {
         EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>>(
                            *to[0], to[0].type()->as<type::Pointer>().pointee()),
@@ -155,7 +155,7 @@ void Compiler::EmitAssign(
       EmitMoveInit(node->operand(), to);
     } break;
     case ast::UnaryOperator::Kind::Copy: {
-      auto operand_qt = *ASSERT_NOT_NULL(data().qual_type(node->operand()));
+      auto operand_qt = *ASSERT_NOT_NULL(context().qual_type(node->operand()));
       std::vector<type::Typed<ir::RegOr<ir::Addr>>> tmps;
       operand_qt.ForEach([&](type::Type t) {
         tmps.emplace_back(ir::RegOr<ir::Addr>(builder().TmpAlloca(t)), t);
@@ -165,7 +165,7 @@ void Compiler::EmitAssign(
     case ast::UnaryOperator::Kind::Move: EmitAssign(node->operand(), to); break;
     default: {
       auto from_val = EmitValue(node);
-      auto from_qt  = *data().qual_type(node);
+      auto from_qt  = *context().qual_type(node);
       if (to.size() == 1) {
         EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>>(
                            *to[0], to[0].type()->as<type::Pointer>().pointee()),

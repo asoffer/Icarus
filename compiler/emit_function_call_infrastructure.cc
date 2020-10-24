@@ -41,7 +41,7 @@ void MakeAllStackAllocations(Compiler &compiler, ast::FnScope const *fn_scope) {
 
         LOG("MakeAllStackAllocations", "allocating %s", decl->id());
 
-        compiler.data().set_addr(
+        compiler.context().set_addr(
             decl, compiler.builder().Alloca(compiler.type_of(decl)));
       }
     }
@@ -66,7 +66,7 @@ void MakeAllDestructions(Compiler &compiler, ast::ExecScope const *exec_scope) {
   for (auto *decl : ordered_decls) {
     type::Type t = compiler.type_of(decl);
     if (not t->HasDestructor()) { continue; }
-    compiler.EmitDestroy(type::Typed<ir::Reg>(compiler.data().addr(decl), t));
+    compiler.EmitDestroy(type::Typed<ir::Reg>(compiler.context().addr(decl), t));
   }
 }
 
@@ -96,7 +96,7 @@ void CompleteBody(Compiler *compiler, ast::ShortFunctionLiteral const *node,
   // TODO have validate return a bool distinguishing if there are errors and
   // whether or not we can proceed.
 
-  ir::NativeFn ir_func = *ASSERT_NOT_NULL(compiler->data().FindNativeFn(node));
+  ir::NativeFn ir_func = *ASSERT_NOT_NULL(compiler->context().FindNativeFn(node));
 
   auto &bldr = compiler->builder();
   ICARUS_SCOPE(ir::SetCurrent(ir_func.get(), &bldr)) {
@@ -105,7 +105,7 @@ void CompleteBody(Compiler *compiler, ast::ShortFunctionLiteral const *node,
     // TODO arguments should be renumbered to not waste space on const values
     size_t i = 0;
     for (auto const &param : node->params()) {
-      compiler->data().set_addr(param.value.get(), ir::Reg::Arg(i++));
+      compiler->context().set_addr(param.value.get(), ir::Reg::Arg(i++));
     }
 
     MakeAllStackAllocations(*compiler, node->body_scope());
@@ -141,7 +141,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
   // TODO have validate return a bool distinguishing if there are errors and
   // whether or not we can proceed.
 
-  ir::NativeFn ir_func = *ASSERT_NOT_NULL(compiler->data().FindNativeFn(node));
+  ir::NativeFn ir_func = *ASSERT_NOT_NULL(compiler->context().FindNativeFn(node));
 
   auto &bldr = compiler->builder();
   ICARUS_SCOPE(ir::SetCurrent(ir_func.get(), &bldr)) {
@@ -150,7 +150,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
     // TODO arguments should be renumbered to not waste space on const values
     size_t i = 0;
     for (auto const &param : node->params()) {
-      compiler->data().set_addr(param.value.get(), ir::Reg::Arg(i++));
+      compiler->context().set_addr(param.value.get(), ir::Reg::Arg(i++));
     }
 
     MakeAllStackAllocations(*compiler, node->body_scope());
@@ -162,7 +162,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
         auto alloc = out_decl_type->is_big() ? bldr.GetRet(i, out_decl_type)
                                              : bldr.Alloca(out_decl_type);
 
-        compiler->data().set_addr(out_decl, alloc);
+        compiler->context().set_addr(out_decl, alloc);
         if (out_decl->IsDefaultInitialized()) {
           compiler->EmitDefaultInit(type::Typed<ir::Reg>(alloc, out_decl_type));
         } else {
@@ -190,7 +190,7 @@ void CompleteBody(Compiler *compiler,
 
 void CompleteBody(Compiler *compiler, ast::Jump const *node) {
   LOG("CompleteBody", "Jump %s", node->DebugString());
-  ir::CompiledJump &jmp = *ASSERT_NOT_NULL(compiler->data().jump(node));
+  ir::CompiledJump &jmp = *ASSERT_NOT_NULL(compiler->context().jump(node));
 
   ICARUS_SCOPE(ir::SetCurrent(&jmp, &compiler->builder())) {
     ASSERT(compiler != nullptr);
@@ -199,10 +199,10 @@ void CompleteBody(Compiler *compiler, ast::Jump const *node) {
     // values
     int32_t i = 0;
     if (node->state()) {
-      compiler->data().set_addr(node->state(), ir::Reg::Arg(i++));
+      compiler->context().set_addr(node->state(), ir::Reg::Arg(i++));
     }
     for (auto const &param : node->params()) {
-      compiler->data().set_addr(param.value.get(), ir::Reg::Arg(i++));
+      compiler->context().set_addr(param.value.get(), ir::Reg::Arg(i++));
     }
 
     MakeAllStackAllocations(*compiler, node->body_scope());

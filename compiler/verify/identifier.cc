@@ -66,14 +66,14 @@ struct NonCallableInOverloadSet {
 }  // namespace
 
 type::QualType Compiler::VerifyType(ast::Identifier const *node) {
-  if (data().cyclic_error(node)) { return type::QualType::Error(); }
+  if (context().cyclic_error(node)) { return type::QualType::Error(); }
 
   // Dependency pushed until `token` is destroyed.
-  auto token = cylcic_dependency_tracker_.PushDependency(node, data(), diag());
+  auto token = cylcic_dependency_tracker_.PushDependency(node, context(), diag());
   if (not token) { return type::QualType::Error(); }
 
   // TODO: In what circumstances could this have been seen more than once?
-  if (auto const *qt = data().qual_type(node)) {
+  if (auto const *qt = context().qual_type(node)) {
     LOG("Identifier", "Already saw `%s` so returning %s.", node->name(), *qt);
     return *qt;
   }
@@ -88,7 +88,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
   // need the entire decl we just need to know if it's callable.
   bool error = false;
   for (auto const *decl : potential_decls) {
-    if (data().qual_type(decl)) { continue; }
+    if (context().qual_type(decl)) { continue; }
     auto qt = VerifyType(decl);
     if (not qt.ok()) { error = true; }
   }
@@ -98,7 +98,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
   switch (potential_decls.size()) {
     case 1: {
       if (potential_decls[0]->flags() & ast::Declaration::f_IsConst) {
-        if (auto const *maybe_qt = data().qual_type(potential_decls[0])) {
+        if (auto const *maybe_qt = context().qual_type(potential_decls[0])) {
           qt = *maybe_qt;
         } else {
           ASSIGN_OR(return type::QualType::Error(),  //
@@ -115,7 +115,7 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
           // Haven't seen the declaration yet, so we can't proceed.
           return type::QualType::Error();
         } else {
-          qt = *ASSERT_NOT_NULL(data().qual_type(potential_decls[0]));
+          qt = *ASSERT_NOT_NULL(context().qual_type(potential_decls[0]));
         }
 
         if (not qt.constant()) {
@@ -129,11 +129,11 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
       }
 
       if (qt.type()->is<type::Callable>()) {
-        data().SetAllOverloads(node, ast::OverloadSet(potential_decls));
+        context().SetAllOverloads(node, ast::OverloadSet(potential_decls));
       }
 
       LOG("Identifier", "setting %s", node->name());
-      data().set_decls(node, std::move(potential_decls));
+      context().set_decls(node, std::move(potential_decls));
     } break;
     case 0: {
       diag().Consume(UndeclaredIdentifier{
@@ -166,16 +166,16 @@ type::QualType Compiler::VerifyType(ast::Identifier const *node) {
 
       if (error) { return type::QualType::Error(); }
 
-      data().SetAllOverloads(node, ast::OverloadSet(potential_decls));
+      context().SetAllOverloads(node, ast::OverloadSet(potential_decls));
       qt =
           type::QualType(type::MakeOverloadSet(std::move(member_types)), quals);
       LOG("Identifier", "setting %s", node->name());
-      data().set_decls(node, std::move(potential_decls));
+      context().set_decls(node, std::move(potential_decls));
     } break;
   }
 
   ASSERT(qt.type().valid() == true);
-  return data().set_qual_type(node, qt);
+  return context().set_qual_type(node, qt);
 }
 
 }  // namespace compiler

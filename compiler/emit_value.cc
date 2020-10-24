@@ -64,12 +64,12 @@ ir::Value Compiler::EmitValue(ast::Assignment const *node) {
   // them. Must references be computed first?
   for (auto const *l : node->lhs()) {
     lhs_refs.push_back(type::Typed<ir::RegOr<ir::Addr>>(
-        EmitRef(l), type::Ptr(ASSERT_NOT_NULL(data().qual_type(l))->type())));
+        EmitRef(l), type::Ptr(ASSERT_NOT_NULL(context().qual_type(l))->type())));
   }
 
   auto ref_iter = lhs_refs.begin();
   for (auto const *r : node->rhs()) {
-    auto from_qt          = *ASSERT_NOT_NULL(data().qual_type(r));
+    auto from_qt          = *ASSERT_NOT_NULL(context().qual_type(r));
     size_t expansion_size = from_qt.expansion_size();
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> ref_span(&*ref_iter,
                                                                 expansion_size);
@@ -100,7 +100,7 @@ ir::Value EmitBuiltinCall(Compiler *c, ast::BuiltinFn const *callee,
     } break;
 
     case ir::BuiltinFn::Which::Opaque:
-      return ir::Value(c->builder().OpaqueType(&c->data().module()));
+      return ir::Value(c->builder().OpaqueType(&c->context().module()));
     case ir::BuiltinFn::Which::Bytes: {
       auto const &fn_type = *ir::BuiltinFn::Bytes().type();
       ir::OutParams outs  = c->builder().OutParams(fn_type.output());
@@ -141,7 +141,7 @@ void Compiler::EmitMoveInit(
     EmitCopyAssign(
         type::Typed<ir::RegOr<ir::Addr>>(
             *to[0], to[0].type()->as<type::Pointer>().pointee()),
-        type::Typed<ir::Value>(result, data().qual_type(node)->type()));
+        type::Typed<ir::Value>(result, context().qual_type(node)->type()));
   }
 
   // Look at all the possible calls and generate the dispatching code
@@ -156,7 +156,7 @@ void Compiler::EmitMoveInit(
 
   // TODO: This is a pretty terrible hack.
   if (auto const *gen_struct_type =
-          ASSERT_NOT_NULL(data().qual_type(node->callee()))
+          ASSERT_NOT_NULL(context().qual_type(node->callee()))
               ->type()
               ->if_as<type::GenericStruct>()) {
     type::Type s = gen_struct_type->concrete(args);
@@ -165,7 +165,7 @@ void Compiler::EmitMoveInit(
     return;
   }
 
-  auto const &os = data().ViableOverloads(node->callee());
+  auto const &os = context().ViableOverloads(node->callee());
   ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
   FnCallDispatchTable::EmitMoveInit(this, os.members().front(), args, to);
   // TODO node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
@@ -180,7 +180,7 @@ void Compiler::EmitCopyInit(
     EmitCopyAssign(
         type::Typed<ir::RegOr<ir::Addr>>(
             *to[0], to[0].type()->as<type::Pointer>().pointee()),
-        type::Typed<ir::Value>(result, data().qual_type(node)->type()));
+        type::Typed<ir::Value>(result, context().qual_type(node)->type()));
   }
 
   // Look at all the possible calls and generate the dispatching code
@@ -195,7 +195,7 @@ void Compiler::EmitCopyInit(
 
   // TODO: This is a pretty terrible hack.
   if (auto const *gen_struct_type =
-          ASSERT_NOT_NULL(data().qual_type(node->callee()))
+          ASSERT_NOT_NULL(context().qual_type(node->callee()))
               ->type()
               ->if_as<type::GenericStruct>()) {
     type::Type s = gen_struct_type->concrete(args);
@@ -204,7 +204,7 @@ void Compiler::EmitCopyInit(
     return;
   }
 
-  auto const &os = data().ViableOverloads(node->callee());
+  auto const &os = context().ViableOverloads(node->callee());
   ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
   FnCallDispatchTable::EmitCopyInit(this, os.members().front(), args, to);
   // TODO node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
@@ -219,7 +219,7 @@ void Compiler::EmitAssign(
     EmitCopyAssign(
         type::Typed<ir::RegOr<ir::Addr>>(
             *to[0], to[0].type()->as<type::Pointer>().pointee()),
-        type::Typed<ir::Value>(result, data().qual_type(node)->type()));
+        type::Typed<ir::Value>(result, context().qual_type(node)->type()));
   }
 
   // Look at all the possible calls and generate the dispatching code
@@ -234,7 +234,7 @@ void Compiler::EmitAssign(
 
   // TODO: This is a pretty terrible hack.
   if (auto const *gen_struct_type =
-          ASSERT_NOT_NULL(data().qual_type(node->callee()))
+          ASSERT_NOT_NULL(context().qual_type(node->callee()))
               ->type()
               ->if_as<type::GenericStruct>()) {
     type::Type s = gen_struct_type->concrete(args);
@@ -242,7 +242,7 @@ void Compiler::EmitAssign(
     return;
   }
 
-  auto const &os = data().ViableOverloads(node->callee());
+  auto const &os = context().ViableOverloads(node->callee());
   ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
   return FnCallDispatchTable::EmitAssign(this, os.members().front(), args, to);
   // TODO node->contains_hashtag(ast::Hashtag(ast::Hashtag::Builtin::Inline)));
@@ -265,16 +265,16 @@ ir::Value Compiler::EmitValue(ast::Call const *node) {
 
   // TODO: This is a pretty terrible hack.
   if (auto const *gen_struct_type =
-          ASSERT_NOT_NULL(data().qual_type(node->callee()))
+          ASSERT_NOT_NULL(context().qual_type(node->callee()))
               ->type()
               ->if_as<type::GenericStruct>()) {
     type::Type s = gen_struct_type->concrete(args);
     return ir::Value(s);
   }
 
-  auto qt = *ASSERT_NOT_NULL(data().qual_type(node));
+  auto qt = *ASSERT_NOT_NULL(context().qual_type(node));
 
-  auto const &os = data().ViableOverloads(node->callee());
+  auto const &os = context().ViableOverloads(node->callee());
   ASSERT(os.members().size() == 1u);  // TODO: Support dynamic dispatch.
   switch (qt.expansion_size()) {
     case 0:
@@ -298,20 +298,20 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
   // and needs a cleanup.
   LOG("EmitValueDeclaration", "%s", node->id());
   if (node->flags() & ast::Declaration::f_IsConst) {
-    if (node->module() != &data().module()) {
+    if (node->module() != &context().module()) {
       // Constant declarations from other modules should already be stored on
       // that module. They must be at the root of the binding tree map,
       // otherwise they would be local to some function/jump/etc. and not be
       // exported.
-      return node->module()->as<CompiledModule>().data().Constant(node)->value;
+      return node->module()->as<CompiledModule>().context().Constant(node)->value;
     }
 
     if (node->flags() & ast::Declaration::f_IsFnParam) {
-      auto val = data().LoadConstantParam(node);
+      auto val = context().LoadConstantParam(node);
       LOG("EmitValueDeclaration", "%s", val);
       return val;
     } else {
-      if (auto *constant_value = data().Constant(node)) {
+      if (auto *constant_value = context().Constant(node)) {
         // TODO: This feels quite hacky.
         if (node->init_val()->is<ast::StructLiteral>()) {
           if (not constant_value->complete and state_.must_complete) {
@@ -319,7 +319,7 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
             state_.work_queue.Enqueue({
                 .kind     = WorkItem::Kind::CompleteStructMembers,
                 .node     = node->init_val(),
-                .context  = data(),
+                .context  = context(),
                 .consumer = diag(),
             });
           }
@@ -341,7 +341,7 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
         }
 
         LOG("EmitValueDeclaration", "Setting slot = %s", *maybe_val);
-        data().SetConstant(node, *maybe_val);
+        context().SetConstant(node, *maybe_val);
 
         // TODO: This is a struct-speficic hack.
         if (type::Type *type_val = maybe_val->get_if<type::Type>()) {
@@ -349,7 +349,7 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
             if (struct_type->completeness() != type::Completeness::Complete) {
               return *maybe_val;
             }
-            data().CompleteConstant(node);
+            context().CompleteConstant(node);
           }
         }
 
@@ -365,7 +365,7 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
   } else {
     if (node->IsUninitialized()) { return ir::Value(); }
     auto t = type_of(node);
-    auto a = data().addr(node);
+    auto a = context().addr(node);
     if (node->IsCustomInitialized()) {
       auto to = type::Typed<ir::RegOr<ir::Addr>>(a, type::Ptr(t));
       EmitMoveInit(node->init_val(), absl::MakeConstSpan(&to, 1));
@@ -401,7 +401,7 @@ void Compiler::EmitMoveInit(
 
     for (auto const *assignment : node->assignments()) {
       for (auto const *expr : assignment->lhs()) {
-        std::string_view field_name = expr->as<ast::Identifier>().token();
+        std::string_view field_name = expr->as<ast::Identifier>().name();
         // Skip default initialization if we're going to use the designated
         // initializer.
         if (field_name == field.name) { goto next_field; }
@@ -425,7 +425,7 @@ void Compiler::EmitMoveInit(
     if (assignment->rhs().size() != 1) { NOT_YET(assignment->rhs().size()); }
 
     auto const &id     = assignment->lhs()[0]->as<ast::Identifier>();
-    auto const *f      = struct_type.field(id.token());
+    auto const *f      = struct_type.field(id.name());
     size_t field_index = struct_type.index(f->name);
     auto typed_reg = builder().Field(to[0]->reg(), &struct_type, field_index);
     type::Typed<ir::RegOr<ir::Addr>> lhs(*typed_reg, typed_reg.type());
@@ -446,7 +446,7 @@ void Compiler::EmitCopyInit(
 
     for (auto const *assignment : node->assignments()) {
       for (auto const *expr : assignment->lhs()) {
-        std::string_view field_name = expr->as<ast::Identifier>().token();
+        std::string_view field_name = expr->as<ast::Identifier>().name();
         // Skip default initialization if we're going to use the designated
         // initializer.
         if (field_name == field.name) { goto next_field; }
@@ -470,7 +470,7 @@ void Compiler::EmitCopyInit(
     if (assignment->rhs().size() != 1) { NOT_YET(assignment->rhs().size()); }
 
     auto const &id     = assignment->lhs()[0]->as<ast::Identifier>();
-    auto const *f      = struct_type.field(id.token());
+    auto const *f      = struct_type.field(id.name());
     size_t field_index = struct_type.index(f->name);
     auto typed_reg = builder().Field(to[0]->reg(), &struct_type, field_index);
     type::Typed<ir::RegOr<ir::Addr>> lhs(*typed_reg, typed_reg.type());
@@ -480,7 +480,7 @@ void Compiler::EmitCopyInit(
 
 ir::Value Compiler::EmitValue(ast::EnumLiteral const *node) {
   // TODO: Check the result of body verification.
-  if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
+  if (context().ShouldVerifyBody(node)) { VerifyBody(node); }
 
   using enum_t = ir::EnumVal::underlying_type;
   std::vector<std::string_view> names(node->enumerators().begin(),
@@ -499,11 +499,11 @@ ir::Value Compiler::EmitValue(ast::EnumLiteral const *node) {
   // TODO: allocate the type upfront so it can be used in incomplete contexts.
   switch (node->kind()) {
     case ast::EnumLiteral::Kind::Enum: {
-      auto *e = type::Allocate<type::Enum>(&data().module());
+      auto *e = type::Allocate<type::Enum>(&context().module());
       return ir::Value(builder().Enum(e, names, specified_values));
     } break;
     case ast::EnumLiteral::Kind::Flags: {
-      auto *f = type::Allocate<type::Flags>(&data().module());
+      auto *f = type::Allocate<type::Flags>(&context().module());
       return ir::Value(builder().Flags(f, names, specified_values));
     } break;
     default: UNREACHABLE();
@@ -521,18 +521,18 @@ ir::NativeFn MakeConcreteFromGeneric(
 
   // TODO: Rather than recompute this we colud store the `Call` node in the
   // dependent context.
-  Context ctx(&compiler->data().module());
+  Context ctx(&compiler->context().module());
   Compiler c({
       .builder             = compiler->builder(),
       .data                = ctx,
       .diagnostic_consumer = compiler->diag(),
       .importer            = compiler->importer(),
   });
-  ctx.parent_ = &compiler->data();
+  ctx.parent_ = &compiler->context();
   // TODO: Audit this. Probably shouldn't be needed because we should have
   // already computed it during verification.
   auto params                 = c.ComputeParamsFromArgs(node, args);
-  auto find_subcontext_result = compiler->data().FindSubcontext(node, params);
+  auto find_subcontext_result = compiler->context().FindSubcontext(node, params);
   auto const *fn_type         = find_subcontext_result.fn_type;
   auto &context               = find_subcontext_result.context;
 
@@ -561,7 +561,7 @@ ir::Value Compiler::EmitValue(ast::ShortFunctionLiteral const *node) {
     return ir::Value(gen_fn);
   }
 
-  ir::NativeFn ir_func = data().EmplaceNativeFn(node, [&] {
+  ir::NativeFn ir_func = context().EmplaceNativeFn(node, [&] {
     auto *fn_type = &type_of(node)->as<type::Function>();
     auto f        = AddFunc(
         fn_type,
@@ -585,10 +585,10 @@ ir::Value Compiler::EmitValue(ast::FunctionLiteral const *node) {
   }
 
   // TODO: Check the result of body verification.
-  if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
+  if (context().ShouldVerifyBody(node)) { VerifyBody(node); }
 
   // TODO Use correct constants
-  ir::NativeFn ir_func = data().EmplaceNativeFn(node, [&] {
+  ir::NativeFn ir_func = context().EmplaceNativeFn(node, [&] {
     auto *fn_type = &type_of(node)->as<type::Function>();
     auto f        = AddFunc(
         fn_type,
@@ -619,9 +619,9 @@ ir::Value Compiler::EmitValue(ast::FunctionType const *node) {
 ir::Value Compiler::EmitValue(ast::Jump const *node) {
   LOG("Jump", "Emit %s", node->DebugString());
   // TODO: Check the result of body verification.
-  if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
+  if (context().ShouldVerifyBody(node)) { VerifyBody(node); }
 
-  return ir::Value(data().add_jump(node, [this, node] {
+  return ir::Value(context().add_jump(node, [this, node] {
     auto *jmp_type     = &type_of(node)->as<type::Jump>();
     auto work_item_ptr = DeferBody(resources_, node, jmp_type);
 
@@ -736,7 +736,7 @@ ir::Value Compiler::EmitValue(ast::ScopeLiteral const *node) {
     }
   }
 
-  return ir::Value(builder().MakeScope(data().add_scope(state_type),
+  return ir::Value(builder().MakeScope(context().add_scope(state_type),
                                        std::move(inits), std::move(dones),
                                        std::move(blocks)));
 }
@@ -759,7 +759,7 @@ WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
   LOG("struct", "Completing struct-literal emission: %p must-complete = %s",
       node, state_.must_complete ? "true" : "false");
 
-  type::Struct *s = data().get_struct(node);
+  type::Struct *s = context().get_struct(node);
   if (s->completeness() == type::Completeness::Complete) {
     LOG("struct", "Already complete, exiting: %p", node);
     return WorkItem::Result::Success;
@@ -767,7 +767,7 @@ WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
 
   bool field_error = false;
   for (auto const &field : node->fields()) {
-    auto const *qt = data().qual_type(&field);
+    auto const *qt = context().qual_type(&field);
     if (not qt or qt->type()->completeness() != type::Completeness::Complete) {
       diag().Consume(IncompleteField{.range = field.range()});
       field_error = true;
@@ -832,12 +832,12 @@ ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
   LOG("struct", "Starting struct-literal emission: %p%s", node,
       state_.must_complete ? " (must complete)" : " (need not complete)");
 
-  if (type::Struct *s = data().get_struct(node)) {
+  if (type::Struct *s = context().get_struct(node)) {
     return ir::Value(static_cast<type::Type>(s));
   }
 
   type::Struct *s = type::Allocate<type::Struct>(
-      &data().module(),
+      &context().module(),
       type::Struct::Options{
           .is_copyable = not node->contains_hashtag(
               ast::Hashtag(ast::Hashtag::Builtin::Uncopyable)),
@@ -846,7 +846,7 @@ ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
       });
 
   LOG("struct", "Allocating a new struct %p for %p", s, node);
-  data().set_struct(node, s);
+  context().set_struct(node, s);
 
   // Note: VerifyBody may end up triggering EmitValue calls for member types
   // that depend on this incomplete type. For this reason it is important that
@@ -863,14 +863,14 @@ ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
   // guards" (i.e., steps 1 and 2) before step 3 runs.
   //
   // TODO: Check the result of body verification.
-  if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
+  if (context().ShouldVerifyBody(node)) { VerifyBody(node); }
 
   if (state_.must_complete) {
     LOG("compile-work-queue", "Request work complete struct: %p", node);
     state_.work_queue.Enqueue({
         .kind     = WorkItem::Kind::CompleteStructMembers,
         .node     = node,
-        .context  = data(),
+        .context  = context(),
         .consumer = diag(),
     });
   }
@@ -879,17 +879,17 @@ ir::Value Compiler::EmitValue(ast::StructLiteral const *node) {
 
 ir::Value Compiler::EmitValue(ast::ParameterizedStructLiteral const *node) {
   // TODO: Check the result of body verification.
-  if (data().ShouldVerifyBody(node)) { VerifyBody(node); }
+  if (context().ShouldVerifyBody(node)) { VerifyBody(node); }
   // NOT_YET();
   // TODO: At least right now with the hacky version we don't look at this.
 
-  return ir::Value(data().qual_type(node)->type());
+  return ir::Value(context().qual_type(node)->type());
 }
 
 ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Identifier const *node) {
-  auto decl_span = data().decls(node);
+  auto decl_span = context().decls(node);
   ASSERT(decl_span.size() == 1u);
-  return data().addr(decl_span[0]);
+  return context().addr(decl_span[0]);
 }
 
 }  // namespace compiler

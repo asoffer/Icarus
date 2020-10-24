@@ -15,7 +15,7 @@ TEST(ScopeLiteral, SuccessStateless) {
   test::TestModule mod;
   auto const *s  = mod.Append<ast::ScopeLiteral>(R"(scope {}
   )");
-  auto const *qt = mod.data().qual_type(s);
+  auto const *qt = mod.context().qual_type(s);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(qt->type(), type::Scope);
   EXPECT_TRUE(qt->constant());
@@ -28,7 +28,7 @@ TEST(ScopeLiteral, StatelessNonConstantMember) {
     enter := jump () {}
   }
   )");
-  auto const *qt = mod.data().qual_type(s);
+  auto const *qt = mod.context().qual_type(s);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(qt->type(), type::Scope);
   EXPECT_TRUE(qt->constant());
@@ -44,7 +44,7 @@ TEST(ScopeLiteral, StatelessMemberTypes) {
     exit ::= 3
   }
   )");
-  auto const *qt = mod.data().qual_type(s);
+  auto const *qt = mod.context().qual_type(s);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(qt->type(), type::Scope);
   EXPECT_TRUE(qt->constant());
@@ -59,7 +59,7 @@ TEST(ScopeLiteral, StatelessInitIsStateful) {
     enter ::= jump [state: *int64] () {}
   }
   )");
-  auto const *qt = mod.data().qual_type(s);
+  auto const *qt = mod.context().qual_type(s);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(qt->type(), type::Scope);
   EXPECT_TRUE(qt->constant());
@@ -71,7 +71,7 @@ TEST(ScopeLiteral, SuccessStateful) {
   test::TestModule mod;
   auto const *s  = mod.Append<ast::ScopeLiteral>(R"(scope {}
   )");
-  auto const *qt = mod.data().qual_type(s);
+  auto const *qt = mod.context().qual_type(s);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(qt->type(), type::Scope);
   EXPECT_TRUE(qt->constant());
@@ -84,7 +84,7 @@ TEST(ScopeLiteral, StatefulNonConstantMember) {
     enter := jump [state: *int64] () {}
   }
   )");
-  auto const *qt = mod.data().qual_type(s);
+  auto const *qt = mod.context().qual_type(s);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(qt->type(), type::Scope);
   EXPECT_TRUE(qt->constant());
@@ -100,7 +100,7 @@ TEST(ScopeLiteral, StatefulMemberTypes) {
     exit ::= 3
   }
   )");
-  auto const *qt = mod.data().qual_type(s);
+  auto const *qt = mod.context().qual_type(s);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(qt->type(), type::Scope);
   EXPECT_TRUE(qt->constant());
@@ -115,7 +115,7 @@ TEST(ScopeLiteral, StatefulInitIsStateless) {
     enter ::= jump () {}
   }
   )");
-  auto const *qt = mod.data().qual_type(s);
+  auto const *qt = mod.context().qual_type(s);
   ASSERT_NE(qt, nullptr);
   EXPECT_EQ(qt->type(), type::Scope);
   EXPECT_TRUE(qt->constant());

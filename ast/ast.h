@@ -754,8 +754,6 @@ struct Identifier : Expression {
 
   ICARUS_AST_VIRTUAL_METHODS;
 
-  // TODO: Deprecated. Use `name()`
-  std::string_view token() const { return name_; }
   std::string_view name() const { return name_; }
 
   std::string extract() && { return std::move(name_); }
@@ -1151,7 +1149,7 @@ struct ConditionalGoto : Node {
     for (auto &call : true_calls) {
       auto [callee, ordered_args] = std::move(*call).extract();
       if (auto *id = callee->if_as<Identifier>()) {
-        true_options_.emplace_back(std::string{id->token()},
+        true_options_.emplace_back(std::string{id->name()},
                                    std::move(ordered_args).DropOrder());
       } else {
         UNREACHABLE();
@@ -1161,7 +1159,7 @@ struct ConditionalGoto : Node {
     for (auto &call : false_calls) {
       auto [callee, ordered_args] = std::move(*call).extract();
       if (auto *id = callee->if_as<Identifier>()) {
-        false_options_.emplace_back(std::string{id->token()},
+        false_options_.emplace_back(std::string{id->name()},
                                     std::move(ordered_args).DropOrder());
       } else {
         UNREACHABLE();
@@ -1208,7 +1206,7 @@ struct UnconditionalGoto : Node {
     for (auto &call : calls) {
       auto [callee, ordered_args] = std::move(*call).extract();
       if (auto *id = callee->if_as<Identifier>()) {
-        options_.emplace_back(std::string{id->token()},
+        options_.emplace_back(std::string{id->name()},
                               std::move(ordered_args).DropOrder());
       } else {
         UNREACHABLE();
@@ -1255,7 +1253,7 @@ struct YieldStmt : Node {
 inline void Declaration::set_initial_value(std::unique_ptr<Expression> expr) {
   ASSERT(init_val_ == nullptr);
   if (auto const *id = expr->if_as<Identifier>()) {
-    if (id->token().empty()) { flags_ |= f_InitIsHole; }
+    if (id->name().empty()) { flags_ |= f_InitIsHole; }
   }
   init_val_ = std::move(expr);
 }

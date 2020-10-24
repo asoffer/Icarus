@@ -53,15 +53,15 @@ std::optional<type::QualType> Compiler::qual_type_of(
     // really shouldn't need to pay for the check here.
     if (auto const *mod =
             &ASSERT_NOT_NULL(decl->module())->as<CompiledModule>()) {
-      if (mod != &data().module()) {
-        auto *qt = mod->data().qual_type(decl);
+      if (mod != &context().module()) {
+        auto *qt = mod->context().qual_type(decl);
         return qt ? std::optional(*qt) : std::nullopt;
       }
-      if (auto *qt = data().qual_type(decl)) { return *qt; }
+      if (auto *qt = context().qual_type(decl)) { return *qt; }
     }
   }
 
-  if (auto *qt = data().qual_type(expr)) { return *qt; }
+  if (auto *qt = context().qual_type(expr)) { return *qt; }
 
   // TODO embedded modules?
   return std::nullopt;
@@ -75,7 +75,7 @@ void Compiler::CompleteDeferredBodies() {
   base::move_func<void()> f;
   while (true) {
     {
-      auto handle = data().deferred_work_.lock();
+      auto handle = context().deferred_work_.lock();
       if (handle->empty()) { return; }
       auto nh = handle->extract(handle->begin());
       LOG("CompleteDeferredBodies", "%s", nh.key()->DebugString());
@@ -88,7 +88,7 @@ void Compiler::CompleteDeferredBodies() {
 ir::NativeFn Compiler::AddFunc(
     type::Function const *fn_type,
     core::Params<type::Typed<ast::Declaration const *>> params) {
-  return ir::NativeFn(&data().fns_, fn_type, std::move(params));
+  return ir::NativeFn(&context().fns_, fn_type, std::move(params));
 }
 
 static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,

@@ -101,11 +101,11 @@ type::QualType VerifyLogicalOperator(Compiler *c, std::string_view op,
       (lhs_qual_type.quals() & rhs_qual_type.quals() & ~type::Quals::Ref());
   if (lhs_qual_type.type() == type::Bool and
       rhs_qual_type.type() == type::Bool) {
-    return c->data().set_qual_type(node, type::QualType(return_type, quals));
+    return c->context().set_qual_type(node, type::QualType(return_type, quals));
   } else if (lhs_qual_type.type()->is<type::Flags>() and
              rhs_qual_type.type()->is<type::Flags>()) {
     if (lhs_qual_type.type() == rhs_qual_type.type()) {
-      return c->data().set_qual_type(node, type::QualType(return_type, quals));
+      return c->context().set_qual_type(node, type::QualType(return_type, quals));
     } else {
       c->diag().Consume(BinaryOperatorTypeMismatch{
           .lhs_type = lhs_qual_type.type(),
@@ -153,7 +153,7 @@ type::QualType VerifyArithmeticOperator(Compiler *c, std::string_view op,
   } else if (type::IsNumeric(lhs_qual_type.type()) and
              type::IsNumeric(rhs_qual_type.type())) {
     if (lhs_qual_type.type() == rhs_qual_type.type()) {
-      return c->data().set_qual_type(node, type::QualType(return_type, quals));
+      return c->context().set_qual_type(node, type::QualType(return_type, quals));
     } else {
       c->diag().Consume(BinaryOperatorTypeMismatch{
           .lhs_type = lhs_qual_type.type(),
@@ -210,7 +210,7 @@ type::QualType Compiler::VerifyType(ast::BinaryOperator const *node) {
       if (lhs_qual_type.type() == rhs_qual_type.type() and
           (lhs_qual_type.type() == type::Bool or
            lhs_qual_type.type()->is<type::Flags>())) {
-        return data().set_qual_type(node, lhs_qual_type);
+        return context().set_qual_type(node, lhs_qual_type);
       } else {
         diag().Consume(LogicalAssignmentNeedsBoolOrFlags{
             .op    = node->op(),

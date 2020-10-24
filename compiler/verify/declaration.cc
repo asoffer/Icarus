@@ -305,7 +305,7 @@ type::QualType Compiler::VerifyType(ast::Declaration const *node) {
     default: UNREACHABLE(node->DebugString());
   }
 
-  data().set_qual_type(node, node_qual_type);
+  context().set_qual_type(node, node_qual_type);
 
   if (node->id().empty()) {
     if (node_qual_type.type() == type::Module) {
