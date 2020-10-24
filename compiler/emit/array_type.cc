@@ -4,14 +4,14 @@
 namespace compiler {
 
 ir::Value Compiler::EmitValue(ast::ArrayType const *node) {
-  auto result = EmitValue(node->data_type()).get<ir::RegOr<type::Type>>();
+  auto value = EmitValue(node->data_type()).get<ir::RegOr<type::Type>>();
   // Size must be at least 1 by construction, so `.size() - 1` will not
   // overflow.
   for (int i = node->lengths().size() - 1; i >= 0; --i) {
-    result = builder().Array(
-        EmitValue(node->length(i)).get<ir::RegOr<int64_t>>(), result);
+    value = builder().Array(
+        EmitValue(node->length(i)).get<ir::RegOr<int64_t>>(), value);
   }
-  return ir::Value(result);
+  return ir::Value(value);
 }
 
 void Compiler::EmitAssign(

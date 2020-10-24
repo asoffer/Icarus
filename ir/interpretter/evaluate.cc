@@ -7,6 +7,7 @@
 #include "ir/interpretter/execution_context.h"
 #include "ir/interpretter/foreign.h"
 #include "ir/value/generic_fn.h"
+#include "ir/value/value.h"
 #include "type/function.h"
 #include "type/generic_function.h"
 #include "type/generic_struct.h"
@@ -48,7 +49,7 @@ void Execute(ExecutionContext &ctx, ir::Fn fn, base::untyped_buffer arguments,
              absl::Span<ir::Addr const> ret_slots);
 
 // Maximum size of any primitive type we may write
-inline constexpr size_t kMaxSize = 16;
+inline constexpr size_t kMaxSize = ir::Value::value_size_v;
 
 constexpr uint8_t ReverseByte(uint8_t byte) {
   byte = ((byte & 0b11110000) >> 4) | ((byte & 0b00001111) << 4);
@@ -287,7 +288,6 @@ void ExecuteBlocks(ExecutionContext &ctx,
         uint16_t num_bytes = iter.read<uint16_t>();
         ir::Addr addr   = ctx.resolve(iter.read<ir::RegOr<ir::Addr>>().get());
         auto result_reg = iter.read<ir::Reg>().get();
-        LOG("load-instruction", "%u %s %s", num_bytes, addr, result_reg);
         ctx.Load(result_reg, addr, core::Bytes(num_bytes));
       } break;
 

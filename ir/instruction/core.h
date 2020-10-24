@@ -38,7 +38,8 @@ struct LoadInstruction
     : base::Extend<LoadInstruction>::With<
           WriteByteCodeExtension, InlineExtension, DebugFormatExtension> {
   static constexpr cmd_index_t kIndex = internal::kLoadInstructionNumber;
-  static constexpr std::string_view kDebugFormat = "%3$s = load %2$s";
+  static constexpr std::string_view kDebugFormat =
+      "%3$s = load %2$s (%1$s bytes)";
 
   uint16_t num_bytes;
   RegOr<Addr> addr;

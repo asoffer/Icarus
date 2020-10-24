@@ -212,6 +212,8 @@ cc_library(
 
 cc_library(
     name = "pointer",
+    hdrs = ["pointer.h"],
+    srcs = ["pointer.cc"],
     deps = [
         ":type",
         "//base:global",
@@ -324,8 +326,7 @@ cc_library(
 
 cc_library(
     name = "type",
-    hdrs = ["type.h", "pointer.h"],
-    srcs = ["pointer.cc"],
+    hdrs = ["type.h"],
     deps = [
         ":visitor_base",
         "//base:cast",

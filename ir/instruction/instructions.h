@@ -111,6 +111,7 @@ struct DebugIrInstruction
 
   void Apply(interpretter::ExecutionContext& ctx) const {
     std::cerr << *ctx.current_frame().fn_.get();
+    std::cerr << ctx.current_frame().fn_->byte_code().to_string();
   }
 };
 
@@ -259,11 +260,13 @@ struct TypeInfoInstruction
     switch (kind) {
       case Kind::Alignment:
         ctx.current_frame().regs_.set(
-            result, ctx.resolve(type)->alignment(interpretter::kArchitecture));
+            result,
+            ctx.resolve(type)->alignment(interpretter::kArchitecture).value());
         break;
       case Kind::Bytes:
         ctx.current_frame().regs_.set(
-            result, ctx.resolve(type)->bytes(interpretter::kArchitecture));
+            result,
+            ctx.resolve(type)->bytes(interpretter::kArchitecture).value());
         break;
     }
   }

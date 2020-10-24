@@ -46,8 +46,7 @@ struct Value {
                       Reg, Addr, String, FlagsVal, EnumVal, ModuleId, Fn,
                       GenericFn, Jump, Block, Scope, Label, Empty>;
 
- private:
-  static constexpr size_t size_v = std::max(
+  static constexpr size_t value_size_v = std::max(
       {sizeof(bool),     sizeof(int8_t),   sizeof(int16_t),  sizeof(int32_t),
        sizeof(int64_t),  sizeof(uint8_t),  sizeof(uint16_t), sizeof(uint32_t),
        sizeof(uint64_t), sizeof(float),    sizeof(double),   sizeof(type::Type),
@@ -57,6 +56,7 @@ struct Value {
   // The above happen to cover the alignment of Fn, GenericFn, but we have
   // layering issues here and those are incomplete when this line is processed.
 
+ private:
   static constexpr size_t alignment_v =
       std::max({alignof(bool),     alignof(int8_t),   alignof(int16_t),
                 alignof(int32_t),  alignof(int64_t),  alignof(uint8_t),
@@ -199,7 +199,7 @@ struct Value {
   }
 
   base::MetaValue type_;
-  alignas(alignment_v) char buf_[size_v];
+  alignas(alignment_v) char buf_[value_size_v];
 };
 
 }  // namespace ir

@@ -9,7 +9,7 @@ namespace interpretter {
 
 // Represents a a collection of registers available within a given stack frame.
 struct RegisterArray {
-  static constexpr size_t kMaxSize = 16;
+  static constexpr size_t kMaxSize = ir::Value::value_size_v;
   explicit RegisterArray(size_t num_regs, size_t num_args)
       : num_regs_(num_regs),
         data_(
@@ -45,7 +45,9 @@ struct RegisterArray {
     return data_.get<T>(r.value() * kMaxSize);
   }
 
-  template <typename T>
+  template <typename T,
+            std::enable_if_t<base::Contains<ir::Value::supported_types, T>(),
+                             int> = 0>
   auto set(ir::Reg r, T const &val) {
     static_assert(sizeof(T) <= kMaxSize);
     if (r.is_arg()) {

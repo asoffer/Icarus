@@ -85,7 +85,8 @@ struct LegacyType : base::Cast<LegacyType> {
 };
 
 struct Type {
-  Type(LegacyType const *t = nullptr) : data_(reinterpret_cast<uintptr_t>(t)) {}
+  Type(LegacyType const *t = nullptr)
+      : kind_(Kind::Legacy), data_(reinterpret_cast<uintptr_t>(t)) {}
 
   LegacyType const *operator->() const { return ASSERT_NOT_NULL(get()); }
   LegacyType const *get() const {
@@ -136,6 +137,7 @@ struct Type {
   }
 
  private:
+  enum class Kind { Legacy, Opaque, NonLegacy } kind_;
   uintptr_t data_;
 };
 

@@ -83,7 +83,7 @@ struct EnumInstruction
 
     type->SetMembers(std::move(mapping));
     type->complete();
-    ctx.current_frame().regs_.set(result, type);
+    ctx.current_frame().regs_.set(result, type::Type(type));
   }
 
   std::string to_string() const {
@@ -133,7 +133,7 @@ struct FlagsInstruction
 
     type->SetMembers(std::move(mapping));
     type->complete();
-    ctx.current_frame().regs_.set(result, type);
+    ctx.current_frame().regs_.set(result, type::Type(type));
   }
 
   std::string to_string() const {
@@ -154,7 +154,8 @@ struct OpaqueTypeInstruction
   static constexpr std::string_view kDebugFormat = "%2$s = opaque %1$s";
 
   void Apply(interpretter::ExecutionContext& ctx) const {
-    ctx.current_frame().regs_.set(result, type::Allocate<type::Opaque>(mod));
+    ctx.current_frame().regs_.set(
+        result, type::Type(type::Allocate<type::Opaque>(mod)));
   }
 
   module::BasicModule const* mod;
@@ -177,7 +178,8 @@ struct ArrowInstruction
     for (auto const& t : rhs) { rhs_types.push_back(ctx.resolve(t)); }
 
     ctx.current_frame().regs_.set(
-        result, type::Func(std::move(params), std::move(rhs_types)));
+        result,
+        type::Type(type::Func(std::move(params), std::move(rhs_types))));
   }
 
   std::string to_string() const {
@@ -208,9 +210,7 @@ struct PtrInstruction
   void Apply(interpretter::ExecutionContext& ctx) const {
     ctx.current_frame().regs_.set(result, Apply(ctx.resolve(operand)));
   }
-  static type::Pointer const* Apply(type::Type operand) {
-    return type::Ptr(operand);
-  }
+  static type::Type Apply(type::Type operand) { return type::Ptr(operand); }
 
   RegOr<type::Type> operand;
   Reg result;
@@ -224,9 +224,7 @@ struct BufPtrInstruction
   void Apply(interpretter::ExecutionContext& ctx) const {
     ctx.current_frame().regs_.set(result, Apply(ctx.resolve(operand)));
   }
-  static type::BufferPointer const* Apply(type::Type operand) {
-    return type::BufPtr(operand);
-  }
+  static type::Type Apply(type::Type operand) { return type::BufPtr(operand); }
 
   RegOr<type::Type> operand;
   Reg result;
@@ -262,7 +260,7 @@ struct StructInstruction
     struct_->AppendFields(std::move(struct_fields));
     if (move_assign) { struct_->SetMoveAssignment(*move_assign); }
     if (dtor) { struct_->SetDestructor(*dtor); }
-    ctx.current_frame().regs_.set(result, struct_);
+    ctx.current_frame().regs_.set(result, type::Type(struct_));
   }
 
   std::string to_string() const {
@@ -278,17 +276,16 @@ struct StructInstruction
 };
 
 struct ArrayInstruction
-    : base::Extend<ArrayInstruction>::With<ByteCodeExtension, InlineExtension> {
+    : base::Extend<ArrayInstruction>::With<ByteCodeExtension, InlineExtension,
+                                           DebugFormatExtension> {
+  static constexpr std::string_view kDebugFormat = "%3$s = array %1$s %2$s";
   using length_t = int64_t;
 
-  std::string to_string() const {
-    return absl::StrCat(stringify(result), " = array ", stringify(length),
-                        stringify(data_type));
-  }
-
   void Apply(interpretter::ExecutionContext& ctx) const {
+    LOG("", "Array: %d, %s", ctx.resolve(length), ctx.resolve(data_type));
     ctx.current_frame().regs_.set(
-        result, type::Arr(ctx.resolve(length), ctx.resolve(data_type)));
+        result,
+        type::Type(type::Arr(ctx.resolve(length), ctx.resolve(data_type))));
   }
 
   RegOr<length_t> length;

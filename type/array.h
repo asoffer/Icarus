@@ -16,8 +16,6 @@ struct Array : LegacyType {
   // in the cache, return that.
   friend Array const *Arr(size_t len, Type t);
 
-  ~Array() override {}
-
   void WriteTo(std::string *buf) const override;
   core::Bytes bytes(core::Arch const &arch) const override;
   core::Alignment alignment(core::Arch const &arch) const override;

@@ -8,6 +8,7 @@
 
 #include "base/debug.h"
 #include "ir/read_only_data.h"
+#include "ir/value/value.h"
 #include "type/function.h"
 #include "type/pointer.h"
 #include "type/primitive.h"
@@ -16,7 +17,7 @@
 namespace interpretter {
 using void_fn_ptr = void (*)();
 
-constexpr int kMaxSize = 8;
+constexpr int kMaxSize = ir::Value::value_size_v;
 
 namespace {
 template <typename T>
