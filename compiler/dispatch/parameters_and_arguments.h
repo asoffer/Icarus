@@ -4,7 +4,6 @@
 #include "absl/container/flat_hash_map.h"
 #include "ast/ast.h"
 #include "compiler/compiler.h"
-#include "compiler/dispatch/overload.h"
 #include "core/params.h"
 #include "ir/value/value.h"
 #include "type/cast.h"

@@ -9,19 +9,41 @@
 
 namespace compiler {
 namespace {
+
+struct ExprData {
+  // TODO you only really have this for testing purposes (same with the
+  // non-const params() method.
+  explicit ExprData() = default;
+
+  explicit ExprData(type::Type t, core::Params<type::QualType> q,
+                    std::vector<type::Type> return_types = {})
+      : type_(t),
+        params_(std::move(q)),
+        return_types_(std::move(return_types)) {}
+
+  type::Type type() const { return type_; }
+
+  std::vector<type::Type> const &return_types() { return return_types_; }
+
+  core::Params<type::QualType> const &params() const & { return params_; }
+
+ private:
+  type::Type type_ = nullptr;
+  core::Params<type::QualType> params_;
+  std::vector<type::Type> return_types_;
+};
+
 using param_type = core::Param<type::QualType>;
 
 using ::testing::ElementsAre;
 
-decltype(auto) GetParams(int, internal::ExprData const &data) {
-  return data.params();
-};
+decltype(auto) GetParams(int, ExprData const &data) { return data.params(); };
 
 TEST(ParamsCoverArgs, EmptyArguments) {
   auto args = core::FnArgs<type::QualType>(/* pos = */ {}, /* named = */ {});
 
   {  // Empty overloads
-    absl::flat_hash_map<int, internal::ExprData> table;
+    absl::flat_hash_map<int, ExprData> table;
     // We need to have an entry in the table... but the default will be empty
     // parameters which should have the proper coverage.
     table[0];
@@ -31,8 +53,7 @@ TEST(ParamsCoverArgs, EmptyArguments) {
   {  // One overload
     core::Params params{
         param_type("param0", type::QualType::NonConstant(type::Bool))};
-    absl::flat_hash_map<int, internal::ExprData> table{
-        {0, internal::ExprData(nullptr, params)}};
+    absl::flat_hash_map<int, ExprData> table{{0, ExprData(nullptr, params)}};
     EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 
@@ -40,156 +61,10 @@ TEST(ParamsCoverArgs, EmptyArguments) {
     core::Params params{
         param_type("param0", type::QualType::NonConstant(type::Bool)),
         param_type("param1", type::QualType::NonConstant(type::Bool))};
-    absl::flat_hash_map<int, internal::ExprData> table{
-        {0, internal::ExprData(nullptr, params)}};
+    absl::flat_hash_map<int, ExprData> table{{0, ExprData(nullptr, params)}};
     EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
   }
 }
-
-// TODO: Determine what from this test makes sense in a world without varianst.
-// TEST(ParamsCoverArgs, OnePositionalArgument) {
-//   auto args = core::FnArgs<type::QualType>(
-//       /* pos = */ {type::QualType::NonConstant(
-//           type::Var({type::Int64, type::Bool}))},
-//       /* named = */ {});
-//
-//   {  // No overloads
-//     absl::flat_hash_map<int, internal::ExprData> table;
-//     // We need to have an entry in the table... but the default will be empty
-//     // parameters which should have the proper coverage.
-//     EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
-//   }
-//
-//   {  // One overload
-//     core::Params params{
-//         param_type("param0", type::QualType::NonConstant(type::Bool))};
-//     absl::flat_hash_map<int, internal::ExprData> table{
-//         {0, internal::ExprData(nullptr, params)}};
-//     EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
-//   }
-//
-//   {  // One parameter, matches
-//     core::Params params{param_type(
-//         "param0", type::QualType::NonConstant(
-//                       type::Var({type::Int64, type::Type_, type::Bool})))};
-//     absl::flat_hash_map<int, internal::ExprData> table{
-//         {0, internal::ExprData(nullptr, params)}};
-//     EXPECT_TRUE(ParamsCoverArgs(args, table, GetParams));
-//   }
-//
-//   {  // Multiple overloads
-//
-//     core::Params params0{
-//         param_type("param0", type::QualType::NonConstant(type::Type_))};
-//     core::Params params1{param_type(
-//         "param1",
-//         type::QualType::NonConstant(type::Var({type::Float64,
-//         type::Int64})))};
-//
-//     absl::flat_hash_map<int, internal::ExprData> table{
-//         {0, internal::ExprData(nullptr, params0)},
-//         {1, internal::ExprData(nullptr, params1)}};
-//     EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
-//   }
-//
-//   {  // Multiple overloads, matches
-//     core::Params params0{param_type(
-//         "param0",
-//         type::QualType::NonConstant(type::Var({type::Type_, type::Bool})))};
-//     core::Params params1{param_type(
-//         "param1", type::QualType::NonConstant(
-//                       type::Var({type::Ptr(type::Bool), type::Int64})))};
-//
-//     absl::flat_hash_map<int, internal::ExprData> table{
-//         {0, internal::ExprData(nullptr, params0)},
-//         {1, internal::ExprData(nullptr, params1)}};
-//     EXPECT_TRUE(ParamsCoverArgs(args, table, GetParams));
-//   }
-// }
-
-// TODO: Determine what from this test makes sense in a world without varianst.
-// TEST(ParamsCoverArgs, OneNamedArgument) {
-//   auto const *t = type::Var({type::Int64, type::Bool});
-//   auto args     = core::FnArgs<type::QualType>(
-//       /* pos = */ {},
-//       /* named = */ {{"x", type::QualType::NonConstant(t)}});
-//
-//   {  // Empty parameters
-//     absl::flat_hash_map<int, internal::ExprData> table;
-//     table[0];
-//     EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
-//   }
-//
-//   {  // One parameter, type mismatch
-//     core::Params params{
-//         param_type("x", type::QualType::NonConstant(type::Bool))};
-//     absl::flat_hash_map<int, internal::ExprData> table{
-//         {0, internal::ExprData(nullptr, std::move(params))}};
-//     EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
-//   }
-//
-//   {  // One parameter, name mismatch
-//     core::Params params{
-//         param_type("y", type::QualType::NonConstant(type::Bool))};
-//     absl::flat_hash_map<int, internal::ExprData> table{
-//         {0, internal::ExprData(nullptr, std::move(params))}};
-//     EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
-//   }
-//
-//   {  // One parameter, matches
-//     core::Params params{param_type(
-//         "x", type::QualType::NonConstant(
-//                  type::Var({type::Int64, type::Type_, type::Bool})))};
-//     absl::flat_hash_map<int, internal::ExprData> table{
-//         {0, internal::ExprData(nullptr, std::move(params))}};
-//     EXPECT_TRUE(ParamsCoverArgs(args, table, GetParams));
-//   }
-//
-//   {  // Multiple overload coverage, mismatch args
-//     core::Params params0{
-//         param_type("x", type::QualType::NonConstant(type::Type_))};
-//     core::Params params1{param_type("x",
-//     type::QualType::NonConstant(type::Var(
-//                                              {type::Int64,
-//                                              type::Float64})))};
-//     absl::flat_hash_map<int, internal::ExprData> table{
-//         {0, internal::ExprData(nullptr, std::move(params0))},
-//         {1, internal::ExprData(nullptr, std::move(params1))}};
-//
-//     EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
-//   }
-//
-//   {  // Multiple overload coverage, mismatched name
-//     core::Params params0{param_type("x",
-//     type::QualType::NonConstant(type::Var(
-//                                              {type::Type_, type::Bool})))};
-//     core::Params params1{
-//         param_type("y", type::QualType::NonConstant(
-//                             type::Var({type::Ptr(type::Bool),
-//                             type::Int64})))};
-//     absl::flat_hash_map<int, internal::ExprData> table{
-//         {0, internal::ExprData(nullptr, std::move(params0))},
-//         {1, internal::ExprData(nullptr, std::move(params1))}};
-//
-//     EXPECT_FALSE(ParamsCoverArgs(args, table, GetParams));
-//   }
-//
-//   {  // Multiple overload coverage, matches
-//     core::Params params0{param_type("x",
-//     type::QualType::NonConstant(type::Var(
-//                                              {type::Type_, type::Bool})))};
-//     core::Params params1{
-//         param_type("x", type::QualType::NonConstant(
-//                             type::Var({type::Ptr(type::Bool),
-//                             type::Int64})))};
-//
-//     absl::flat_hash_map<int, internal::ExprData> table{
-//         {0, internal::ExprData(nullptr, std::move(params0))},
-//         {1, internal::ExprData(nullptr, std::move(params1))}};
-//
-//     EXPECT_TRUE(ParamsCoverArgs(args, table, GetParams));
-//   }
-// }
 
 }  // namespace
 }  // namespace compiler

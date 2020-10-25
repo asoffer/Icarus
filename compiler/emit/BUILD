@@ -99,6 +99,27 @@ cc_test(
 )
 
 cc_library(
+    name = "call",
+    srcs = ["call.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+        "//compiler/dispatch:parameters_and_arguments",
+        "//ir/value",
+    ],
+)
+
+cc_test(
+    name = "call_test",
+    srcs = ["call_test.cc"],
+    deps = [
+        "//compiler",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "cast",
     srcs = ["cast.cc"],
     deps = [
