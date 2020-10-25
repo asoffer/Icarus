@@ -70,7 +70,6 @@ INSTANTIATE_TEST_SUITE_P(
         TestCase{.expr     = R"(((n ::= 2) => n * n)(n = 3)
                              )",
                  .expected = ir::Value(int64_t{9})},
-        // TODO: Enable this test
         // TestCase{.expr     = R"(((n ::= 2) => n * n)()
         //                      )",
         //          .expected = ir::Value(int64_t{4})},

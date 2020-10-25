@@ -175,15 +175,15 @@ cc_library(
     ],
 )
 
-# cc_test(
-#     name = "identifier_test",
-#     srcs = ["identifier_test.cc"],
-#     deps = [
-#         "//compiler",
-#         "//test:module",
-#         "@com_google_googletest//:gtest_main",
-#     ],
-# )
+cc_test(
+    name = "identifier_test",
+    srcs = ["identifier_test.cc"],
+    deps = [
+        "//compiler",
+        "//test:module",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
 
 cc_library(
     name = "index",

@@ -216,8 +216,9 @@ type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
                  core::FnArgs<type::Typed<ir::Value>> const &args) mutable
       -> type::Function const * {
     Compiler instantiation_compiler(resources);
-    auto [params, rets, context, inserted] =
+    auto [params, rets_ref, context, inserted] =
         instantiation_compiler.Instantiate(node, args);
+
     if (inserted) {
       LOG("FunctionLiteral", "inserted! %s", node->DebugString());
       Compiler c({
@@ -226,7 +227,10 @@ type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
           .diagnostic_consumer = instantiation_compiler.diag(),
           .importer            = instantiation_compiler.importer(),
       });
-      auto qt = VerifyConcrete(c, node);
+      auto qt   = VerifyConcrete(c, node);
+      auto outs = qt.type()->as<type::Function>().output();
+      rets_ref.assign(outs.begin(), outs.end());
+
       // TODO: Provide a mechanism by which this can fail.
       ASSERT(qt.ok() == true);
       context.set_qual_type(node, qt);
@@ -237,7 +241,7 @@ type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
     }
 
     type::Function const *ft = type::Func(
-        params.Transform([](auto const &p) { return p.second; }), rets);
+        params.Transform([](auto const &p) { return p.second; }), rets_ref);
     context.set_qual_type(node, type::QualType::Constant(ft));
     return ft;
   };

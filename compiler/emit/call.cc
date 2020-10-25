@@ -106,7 +106,7 @@ void EmitCall(Tag, Compiler &compiler, ast::Expression const *callee,
       EmitCallee(compiler, callee, *callee_qual_type, args);
 
   Compiler c({
-      .builder = ir::GetBuilder(),
+      .builder = compiler.builder(),
       .data    = dependent_data ? *dependent_data : compiler.context(),
       .diagnostic_consumer = compiler.diag(),
       .importer            = compiler.importer(),
