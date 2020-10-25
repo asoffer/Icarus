@@ -88,7 +88,7 @@ def _impl(ctx):
         tool_path(name = "strip",   path = "/bin/false"),
     ]
     features = [
-        std_lib_version("17"),
+        std_lib_version("2a"),
         compiler_warnings(ctx.attr.warnings),
         compiler_features([
             "diagnostics-color=always",
