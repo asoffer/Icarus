@@ -116,6 +116,7 @@ cc_library(
         "//compiler/emit:block_literal",
         "//compiler/emit:call",
         "//compiler/emit:cast",
+        "//compiler/emit:common",
         "//compiler/emit:goto",
         "//compiler/emit:identifier",
         "//compiler/emit:index",

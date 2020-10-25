@@ -249,6 +249,36 @@ struct Compiler
       ast::ParameterizedExpression const *node,
       core::FnArgs<type::Typed<ir::Value>> const &args);
 
+  // Given arguments `args` for a function-call with parameters `params`, emits
+  // the necessary code to prepare the arguments for being called (without
+  // actually calling). This means performing any necessary conversions,
+  // including handling variants. Note that the arguments passed in may not be
+  // of a type which the parameters can directly accept. This is because `args`
+  // are evaluated once for an entire overload set, but `PrepareCallArguments`
+  // is called for each particular overload. So for example,
+  //
+  // ```
+  // f ::= (n: int64) -> () {}
+  // f ::= (b: bool) -> () {}
+  //
+  // x := int64 | bool = true
+  // f(x)
+  // ```
+  //
+  // For each overload of `f`, the argument will be have type `int64 | bool`,
+  // even though for each overload (one with `int64`, and one with `bool`), the
+  // call cannot be made directly. In such cases it is assumed that the variant
+  // holds a value correctly bindable to the parameters. It is the
+  // responsibility of the caller of this function to ensure that code has
+  // already been emitted to guard for this situation.
+  //
+  // This function assumes that all arguments are present (i.e., we are not
+  // relying on any defaulted parameters). Any such parameter should be used to
+  // fill the arguments before calling this function.
+  std::vector<ir::Value> PrepareCallArguments(
+      type::Type state_ptr_type, core::Params<type::QualType> const &params,
+      core::FnArgs<type::Typed<ir::Value>> const &args);
+
   Context::InsertSubcontextResult Instantiate(
       ast::ParameterizedExpression const *node,
       core::FnArgs<type::Typed<ir::Value>> const &args) {

@@ -5,7 +5,6 @@
 #include "ast/ast.h"
 #include "base/defer.h"
 #include "compiler/compiler.h"
-#include "compiler/dispatch/parameters_and_arguments.h"
 #include "ir/compiled_scope.h"
 #include "ir/instruction/inliner.h"
 #include "ir/value/reg.h"
@@ -112,7 +111,7 @@ ir::Value Compiler::EmitValue(ast::ScopeNode const *node) {
   });
 
   auto arg_values = PrepareCallArguments(
-      this, ir::CompiledJump::From(init)->type()->state(),
+      ir::CompiledJump::From(init)->type()->state(),
       ir::CompiledJump::From(init)->params().Transform(
           [](auto const &p) { return type::QualType::NonConstant(p.type()); }),
       args);

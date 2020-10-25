@@ -4,8 +4,6 @@
 #include <string_view>
 
 #include "compiler/compiler.h"
-#include "compiler/dispatch/match.h"
-#include "compiler/dispatch/parameters_and_arguments.h"
 #include "compiler/library_module.h"
 #include "core/call.h"
 #include "core/fn_args.h"
@@ -112,6 +110,34 @@ void ExtractParams(
   } else {
     UNREACHABLE();
   }
+}
+
+template <typename IndexT>
+void AddType(IndexT &&index, type::Type t,
+             std::vector<core::FnArgs<type::Type>> *args) {
+  std::for_each(args->begin(), args->end(),
+                [&](core::FnArgs<type::Type> &fnargs) {
+                  if constexpr (std::is_same_v<std::decay_t<IndexT>, size_t>) {
+                    fnargs.pos_emplace(t);
+                  } else {
+                    fnargs.named_emplace(index, t);
+                  }
+                });
+}
+
+// TODO: Ideally we wouldn't create these all at once but rather iterate through
+// the possibilities. Doing this the right way involves having sum and product
+// iterators.
+std::vector<core::FnArgs<type::Type>> ExpandedFnArgs(
+    core::FnArgs<type::QualType> const &fn_args) {
+  std::vector<core::FnArgs<type::Type>> all_expanded_options(1);
+  fn_args.ApplyWithIndex([&](auto &&index, type::QualType r) {
+    // TODO: also maybe need the expression this came from to see if it needs
+    // to be expanded.
+    AddType(index, r.type(), &all_expanded_options);
+  });
+
+  return all_expanded_options;
 }
 
 }  // namespace

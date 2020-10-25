@@ -104,7 +104,7 @@ cc_library(
     deps = [
         "//ast",
         "//compiler:compiler_header",
-        "//compiler/dispatch:parameters_and_arguments",
+        "//compiler/emit:common",
         "//ir/value",
     ],
 )
@@ -136,6 +136,21 @@ cc_test(
         "//test:module",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "common",
+    srcs = ["common.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+        "//core:fn_args",
+        "//core:params",
+        "//ir/value",
+        "//type",
+        "//type:qual_type",
+        "//type:typed_value",
     ],
 )
 
@@ -208,7 +223,7 @@ cc_library(
         "//ast",
         "//base:defer",
         "//compiler:compiler_header",
-        "//compiler/dispatch:parameters_and_arguments",
+        "//compiler/emit:common",
         "//ir:compiled_scope",
         "//ir/instruction:inliner",
         "//ir/value:scope",

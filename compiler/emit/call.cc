@@ -1,7 +1,6 @@
 #include "ast/ast.h"
 #include "base/meta.h"
 #include "compiler/compiler.h"
-#include "compiler/dispatch/parameters_and_arguments.h"
 
 namespace compiler {
 namespace {
@@ -130,7 +129,7 @@ void EmitCall(Tag, Compiler &compiler, ast::Expression const *callee,
   auto out_params = SetReturns(Tag{}, c.builder(), overload_type, to);
   c.builder().Call(
       callee_fn, overload_type,
-      PrepareCallArguments(&c, nullptr, overload_type->params(), args),
+      c.PrepareCallArguments(nullptr, overload_type->params(), args),
       out_params);
   int i = -1;
   for (auto t : overload_type->output()) {

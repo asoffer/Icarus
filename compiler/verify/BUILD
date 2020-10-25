@@ -187,8 +187,6 @@ cc_library(
         "//compiler:compiler_header",
         "//compiler:context",
         "//compiler:library_module",
-        "//compiler/dispatch:match",
-        "//compiler/dispatch:parameters_and_arguments",
         "//core:dependency_node",
         "//core:fn_args",
         "//ir/value",
