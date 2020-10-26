@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "base/any_invocable.h"
 #include "core/arch.h"
 #include "core/fn_args.h"
 #include "ir/value/value.h"
@@ -17,10 +18,10 @@ namespace type {
 struct GenericFunction : Callable {
   struct EmptyStruct {};
 
-  explicit GenericFunction(
-      core::Params<EmptyStruct> params,
-      std::function<Function const *(core::FnArgs<Typed<ir::Value>> const &)>
-          fn)
+  explicit GenericFunction(core::Params<EmptyStruct> params,
+                           base::any_invocable<Function const *(
+                               core::FnArgs<Typed<ir::Value>> const &)>
+                               fn)
       : gen_fn_(std::move(fn)), params_(std::move(params)) {}
 
   void WriteTo(std::string *result) const override {
@@ -47,7 +48,7 @@ struct GenericFunction : Callable {
 
  private:
   // TODO: Eventually we will want a serializable version of this.
-  std::function<Function const *(core::FnArgs<Typed<ir::Value>> const &)>
+  base::any_invocable<Function const *(core::FnArgs<Typed<ir::Value>> const &)>
       gen_fn_;
 
   // TODO: Shouldn't use space for the empty struct.

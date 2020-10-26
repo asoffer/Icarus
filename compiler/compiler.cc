@@ -72,16 +72,11 @@ type::Type Compiler::type_of(ast::Expression const *expr) const {
 }
 
 void Compiler::CompleteDeferredBodies() {
-  base::move_func<void()> f;
   while (true) {
-    {
-      auto handle = context().deferred_work_.lock();
-      if (handle->empty()) { return; }
-      auto nh = handle->extract(handle->begin());
-      LOG("CompleteDeferredBodies", "%s", nh.key()->DebugString());
-      f = std::move(nh.mapped());
-    }
-    if (f) { std::move(f)(); }
+    if (state_.deferred_work.empty()) { return; }
+    auto nh = state_.deferred_work.extract(state_.deferred_work.begin());
+    LOG("CompleteDeferredBodies", "%s", nh.key()->DebugString());
+    if (auto f = std::move(nh.mapped())) { std::move(f)(); }
   }
 }
 
@@ -153,6 +148,20 @@ ir::ModuleId Compiler::EvaluateModuleWithCache(ast::Expression const *expr) {
   } else {
     return ir::ModuleId::Invalid();
   }
+}
+
+Context::InsertSubcontextResult Compiler::Instantiate(
+    ast::ParameterizedExpression const *node,
+    core::FnArgs<type::Typed<ir::Value>> const &args) {
+  Context scratchpad = context().ScratchpadSubcontext();
+  Compiler c({
+      .builder             = builder(),
+      .data                = scratchpad,
+      .diagnostic_consumer = diag(),
+      .importer            = importer(),
+  });
+  return context().InsertSubcontext(node, c.ComputeParamsFromArgs(node, args),
+                                    std::move(scratchpad));
 }
 
 }  // namespace compiler

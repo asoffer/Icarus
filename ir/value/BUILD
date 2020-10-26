@@ -111,6 +111,7 @@ cc_library(
     srcs = ["generic_fn.cc"],
     deps = [
         ":native_fn",
+        "//base:any_invocable",
         "//base:global",
         "//core:fn_args",
         "//type",

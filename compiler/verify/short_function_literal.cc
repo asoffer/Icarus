@@ -22,8 +22,15 @@ type::QualType VerifyGeneric(Compiler &c,
       -> type::Function const * {
     // TODO handle compilation failures.
     auto [params, rets, context, inserted] = c.Instantiate(node, args);
-    auto body_qt                           = c.VerifyType(node->body());
-    rets                                   = {body_qt.type()};
+    Compiler body_compiler({
+        .builder             = c.builder(),
+        .data                = context,
+        .diagnostic_consumer = c.diag(),
+        .importer            = c.importer(),
+    });
+    auto body_qt = body_compiler.VerifyType(node->body());
+    ASSERT(body_qt.ok() == true);
+    rets = {body_qt.type()};
     return type::Func(params.Transform([](auto const &p) { return p.second; }),
                       rets);
   };

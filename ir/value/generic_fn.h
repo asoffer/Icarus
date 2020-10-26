@@ -4,6 +4,7 @@
 #include <functional>
 #include <iostream>
 
+#include "base/any_invocable.h"
 #include "core/fn_args.h"
 #include "ir/value/native_fn.h"
 #include "type/typed_value.h"
@@ -23,7 +24,8 @@ struct Value;
 // not what approach we intend to take.
 struct GenericFn {
   explicit GenericFn(
-      std::function<NativeFn(core::FnArgs<type::Typed<Value>> const &)> gen);
+      base::any_invocable<NativeFn(core::FnArgs<type::Typed<Value>> const &)>
+          gen);
 
   NativeFn concrete(core::FnArgs<type::Typed<Value>> const &args) const;
 

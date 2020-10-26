@@ -170,6 +170,7 @@ cc_test(
 cc_library(
     name = "move_func",
     hdrs = ["move_func.h"],
+    deps = [":any_invocable"],
 )
 
 cc_test(

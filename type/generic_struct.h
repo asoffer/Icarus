@@ -5,6 +5,7 @@
 
 #include "ast/scope/module.h"
 #include "ast/scope/scope.h"
+#include "base/any_invocable.h"
 #include "core/fn_args.h"
 #include "module/module.h"
 #include "type/struct.h"
@@ -13,8 +14,9 @@
 namespace type {
 
 struct GenericStruct : LegacyType {
-  explicit GenericStruct(
-      std::function<Struct const *(core::FnArgs<Typed<ir::Value>> const &)> fn)
+  explicit GenericStruct(base::any_invocable<
+                         Struct const *(core::FnArgs<Typed<ir::Value>> const &)>
+                             fn)
       : LegacyType(LegacyType::Flags{.is_default_initializable = 0,
                                      .is_copyable              = 1,
                                      .is_movable               = 1,
@@ -41,7 +43,8 @@ struct GenericStruct : LegacyType {
 
  private:
   // TODO: Eventually we will want a serializable version of this.
-  std::function<Struct const *(core::FnArgs<Typed<ir::Value>> const &)> gen_;
+  base::any_invocable<Struct const *(core::FnArgs<Typed<ir::Value>> const &)>
+      gen_;
 };
 
 GenericStruct *GenStruct(ast::Scope const *scope,

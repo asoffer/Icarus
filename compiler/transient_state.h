@@ -51,6 +51,18 @@ struct WorkQueue {
 // Compiler state that needs to be tracked during the compilation of a single
 // function or jump, but otherwise does not need to be saved.
 struct TransientState {
+  TransientState()                  = default;
+  TransientState(TransientState &&) = default;
+  TransientState &operator=(TransientState &&) = default;
+  ~TransientState() {
+    while (not deferred_work.empty()) {
+      auto iter   = deferred_work.begin();
+      auto handle = deferred_work.extract(iter);
+      auto f      = std::move(handle.mapped());
+      if (f) { std::move(f)(); }
+    }
+  }
+
   struct ScopeLandingState {
     ir::Label label;
     ir::BasicBlock *block;
@@ -67,6 +79,8 @@ struct TransientState {
   std::vector<YieldedArguments> yields;
 
   bool must_complete = true;
+
+  absl::node_hash_map<ast::Node const *, base::move_func<void()>> deferred_work;
 };
 
 }  // namespace compiler

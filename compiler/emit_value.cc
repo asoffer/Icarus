@@ -34,10 +34,12 @@ namespace {
 
 template <typename NodeType>
 base::move_func<void()> *DeferBody(Compiler::PersistentResources resources,
-                                   NodeType const *node, type::Type t) {
+                                   TransientState &state, NodeType const *node,
+                                   type::Type t) {
   LOG("DeferBody", "Deferring body of %s", node->DebugString());
-  auto [iter, success] = resources.data.deferred_work_.lock()->emplace(
-      node, [c = Compiler(resources), node, t]() mutable {
+  auto [iter, success] = state.deferred_work.emplace(
+      node,
+      base::move_func<void()>([c = Compiler(resources), node, t]() mutable {
         if constexpr (base::meta<NodeType> ==
                           base::meta<ast::FunctionLiteral> or
                       base::meta<NodeType> ==
@@ -47,7 +49,7 @@ base::move_func<void()> *DeferBody(Compiler::PersistentResources resources,
           static_cast<void>(t);
           CompleteBody(&c, node);
         }
-      });
+      }));
   ASSERT(success == true);
   return &iter->second;
 }
@@ -331,7 +333,7 @@ ir::NativeFn MakeConcreteFromGeneric(
                               .data                = context,
                               .diagnostic_consumer = compiler->diag(),
                               .importer            = compiler->importer()},
-                             node, fn_type);
+                             compiler->state(), node, fn_type);
     return f;
   });
 }
@@ -353,7 +355,7 @@ ir::Value Compiler::EmitValue(ast::ShortFunctionLiteral const *node) {
           return type::Typed<ast::Declaration const *>(
               d.get(), fn_type->params()[i++].value.type());
         }));
-    f->work_item = DeferBody(resources_, node, fn_type);
+    f->work_item = DeferBody(resources_, state_, node, fn_type);
     return f;
   });
   return ir::Value(ir::Fn{ir_func});
@@ -380,7 +382,7 @@ ir::Value Compiler::EmitValue(ast::FunctionLiteral const *node) {
           return type::Typed<ast::Declaration const *>(
               d.get(), fn_type->params()[i++].value.type());
         }));
-    f->work_item = DeferBody(resources_, node, fn_type);
+    f->work_item = DeferBody(resources_, state_, node, fn_type);
     return f;
   });
   return ir::Value(ir::Fn{ir_func});
@@ -407,7 +409,7 @@ ir::Value Compiler::EmitValue(ast::Jump const *node) {
 
   return ir::Value(context().add_jump(node, [this, node] {
     auto *jmp_type     = &type_of(node)->as<type::Jump>();
-    auto work_item_ptr = DeferBody(resources_, node, jmp_type);
+    auto work_item_ptr = DeferBody(resources_, state(), node, jmp_type);
 
     size_t i    = 0;
     auto params = node->params().Transform([&](auto const &decl) {

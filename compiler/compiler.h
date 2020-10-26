@@ -197,6 +197,8 @@ struct Compiler
   }
 
   explicit Compiler(PersistentResources const &resources);
+  Compiler(Compiler const &) = delete;
+  Compiler(Compiler &&)      = default;
 
   // Returns a new `Compiler` instance which points to the same persistent
   // resources.
@@ -281,9 +283,7 @@ struct Compiler
 
   Context::InsertSubcontextResult Instantiate(
       ast::ParameterizedExpression const *node,
-      core::FnArgs<type::Typed<ir::Value>> const &args) {
-    return context().InsertSubcontext(node, ComputeParamsFromArgs(node, args));
-  }
+      core::FnArgs<type::Typed<ir::Value>> const &args);
 
   std::optional<type::QualType> qual_type_of(ast::Expression const *expr) const;
   type::Type type_of(ast::Expression const *expr) const;
@@ -295,6 +295,7 @@ struct Compiler
     state_.scope_landings.push_back(std::move(state));
   }
   void pop_scope_landing() { state_.scope_landings.pop_back(); }
+  TransientState &state() { return state_; }
 
   ir::NativeFn AddFunc(
       type::Function const *fn_type,

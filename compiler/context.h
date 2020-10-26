@@ -86,12 +86,25 @@ struct CompiledModule;
 // lives in the root context.
 struct Context {
   explicit Context(CompiledModule *mod);
-  // Even though this destructor is defaulted, it needs to be defined externally
-  // because otherwise we would generate a destructor for the incomplete type
-  // `Subcontext` below.
+  Context(Context const &) = delete;
+
+  // Even though these special members are defaulted, they need to be defined
+  // externally because otherwise we would generate the corresponding special
+  // members for the incomplete type `Subcontext` below.
+  Context(Context &&);
   ~Context();
 
   CompiledModule &module() const { return mod_; }
+
+  // Returns a Context object which has `this` as it's parent, but for which
+  // `this` is not aware of the returned subcontext. This allows us to use the
+  // return object as a scratchpad for computations before we know whether or
+  // not we want to keep such computations. The canonical example of this is
+  // when handling compile-time parameters to generic functions or structs. We
+  // need to compute all parameters and arguments, but may want to throw away
+  // that context if either (a) an instantiation already exists, or (b) there
+  // was a substitution failure.
+  Context ScratchpadSubcontext();
 
   // InsertSubcontext:
   //
@@ -109,7 +122,8 @@ struct Context {
 
   InsertSubcontextResult InsertSubcontext(
       ast::ParameterizedExpression const *node,
-      core::Params<std::pair<ir::Value, type::QualType>> const &params);
+      core::Params<std::pair<ir::Value, type::QualType>> const &params,
+      Context &&context);
 
   // FindSubcontext:
   //
@@ -168,11 +182,6 @@ struct Context {
   void set_addr(ast::Declaration const *decl, ir::Reg addr) {
     addr_.emplace(decl, addr);
   }
-
-  // TODO this is transient compiler state and therefore shouldn't be stored in
-  // `Context`.
-  base::guarded<absl::node_hash_map<ast::Node const *, base::move_func<void()>>>
-      deferred_work_;
 
   ir::NativeFnSet fns_;
 
@@ -285,6 +294,10 @@ struct Context {
   }
 
  private:
+  explicit Context(CompiledModule *mod, Context *parent) : Context(mod) {
+    parent_ = parent;
+  }
+
   CompiledModule &mod_;
 
   // Types of the expressions in this context.

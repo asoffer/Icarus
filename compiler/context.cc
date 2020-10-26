@@ -2,26 +2,27 @@
 
 namespace compiler {
 
-Context::Context(CompiledModule *mod) : mod_(*ASSERT_NOT_NULL(mod)) {}
-Context::~Context() = default;
-
 struct Context::Subcontext {
+  explicit Subcontext(Context &&context) : context(std::move(context)) {}
   std::vector<type::Type> rets;
   Context context;
 };
 
+Context::Context(CompiledModule *mod) : mod_(*ASSERT_NOT_NULL(mod)) {}
+Context::Context(Context &&) = default;
+Context::~Context()          = default;
+
+Context Context::ScratchpadSubcontext() { return Context(&mod_, this); }
+
 Context::InsertSubcontextResult Context::InsertSubcontext(
     ast::ParameterizedExpression const *node,
-    core::Params<std::pair<ir::Value, type::QualType>> const &params) {
+    core::Params<std::pair<ir::Value, type::QualType>> const &params,
+    Context &&context) {
   auto &map             = subcontexts_[node];
-  auto [iter, inserted] = map.try_emplace(params);
+  auto [iter, inserted] =
+      map.try_emplace(params, std::make_unique<Subcontext>(std::move(context)));
 
   if (inserted) {
-    iter->second = std::unique_ptr<Subcontext>(new Subcontext{
-        .rets    = {},
-        .context = Context(&mod_),
-    });
-
     size_t i = 0;
     for (auto const &p : params) {
       if (p.value.first.empty()) { continue; }
@@ -29,17 +30,18 @@ Context::InsertSubcontextResult Context::InsertSubcontext(
                                         p.value.first);
     }
 
-    iter->second->context.parent_ = this;
+    ASSERT(iter->second->context.parent_ == this);
     for (size_t i = 0; i < node->params().size(); ++i) {
       auto const *decl = node->params()[i].value.get();
       iter->second->context.set_qual_type(decl, params[i].value.second);
     }
   }
-  auto &[rets, context] = *iter->second;
+  auto &[rets, ctx] = *iter->second;
+
   return InsertSubcontextResult{
       .params   = iter->first,
       .rets     = rets,
-      .context  = context,
+      .context  = ctx,
       .inserted = inserted,
   };
 }

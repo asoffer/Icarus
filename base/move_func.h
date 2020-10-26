@@ -1,7 +1,9 @@
 #ifndef ICARUS_BASE_MOVE_FUNC_H
 #define ICARUS_BASE_MOVE_FUNC_H
 
-#include <functional>
+#include <utility>
+
+#include "base/any_invocable.h"
 
 namespace base {
 
@@ -29,27 +31,21 @@ struct move_func<R(Args...)> {
 
   explicit operator bool() const noexcept { return fn_ != nullptr; }
 
-  friend bool operator==(move_func const& lhs, move_func const& rhs) {
-    return lhs.fn_ == rhs.fn_;
-  }
   friend bool operator==(move_func const& f, std::nullptr_t) {
-    return not static_cast<bool>(f.fn_);
+    return f.fn_ == nullptr;
   }
   friend bool operator==(std::nullptr_t, move_func const& f) {
-    return not static_cast<bool>(f.fn_);
-  }
-  friend bool operator!=(move_func const& lhs, move_func const& rhs) {
-    return not(lhs == rhs);
+    return nullptr == f.fn_;
   }
   friend bool operator!=(move_func const& f, std::nullptr_t) {
-    return not(f == nullptr);
+    return f.fn_ != nullptr;
   }
   friend bool operator!=(std::nullptr_t, move_func const& f) {
-    return not(nullptr == f);
+    return nullptr != f.fn_;
   }
 
  private:
-  std::function<R(Args...)> fn_;
+  base::any_invocable<R(Args...)> fn_;
 };
 
 }  // namespace base

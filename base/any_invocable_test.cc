@@ -50,5 +50,10 @@ TEST(AnyInvocable, MoveAssignment) {
   EXPECT_EQ(Invoke(a), 10);
 }
 
+TEST(AnyInvocable, Lambda) {
+  EXPECT_EQ(Invoke(any_invocable<int()>([u = Uncopyable(10)] { return u(); })),
+            10);
+}
+
 }  // namespace
 }  // namespace base

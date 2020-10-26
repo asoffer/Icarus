@@ -46,6 +46,8 @@ struct any_invocable<R(Args...)> {
         vtable_(
             std::exchange(f.vtable_, &DefaultAnyInvocableVTable<R, Args...>)) {}
 
+  ~any_invocable() { vtable_->destroy(data_); }
+
   any_invocable& operator=(any_invocable&& f) noexcept {
     vtable_->destroy(data_);
     vtable_ = f.vtable_;
@@ -53,6 +55,13 @@ struct any_invocable<R(Args...)> {
     return *this;
   }
 
+
+  any_invocable& operator=(std::nullptr_t) noexcept {
+    vtable_->destroy(data_);
+    vtable_ = &DefaultAnyInvocableVTable<R, Args...>;
+    data_   = nullptr;
+    return *this;
+  }
   template <typename F>
   any_invocable& operator=(F&& f) noexcept {
     vtable_->destroy(data_);
