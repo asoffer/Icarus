@@ -37,9 +37,8 @@ base::move_func<void()> *DeferBody(Compiler::PersistentResources resources,
                                    TransientState &state, NodeType const *node,
                                    type::Type t) {
   LOG("DeferBody", "Deferring body of %s", node->DebugString());
-  auto [iter, success] = state.deferred_work.emplace(
-      node,
-      base::move_func<void()>([c = Compiler(resources), node, t]() mutable {
+  state.deferred_work.push_back(std::make_unique<base::move_func<void()>>(
+      [c = Compiler(resources), node, t]() mutable {
         if constexpr (base::meta<NodeType> ==
                           base::meta<ast::FunctionLiteral> or
                       base::meta<NodeType> ==
@@ -50,8 +49,7 @@ base::move_func<void()> *DeferBody(Compiler::PersistentResources resources,
           CompleteBody(&c, node);
         }
       }));
-  ASSERT(success == true);
-  return &iter->second;
+  return state.deferred_work.back().get();
 }
 
 }  // namespace

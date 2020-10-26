@@ -74,9 +74,7 @@ type::Type Compiler::type_of(ast::Expression const *expr) const {
 void Compiler::CompleteDeferredBodies() {
   while (true) {
     if (state_.deferred_work.empty()) { return; }
-    auto nh = state_.deferred_work.extract(state_.deferred_work.begin());
-    LOG("CompleteDeferredBodies", "%s", nh.key()->DebugString());
-    if (auto f = std::move(nh.mapped())) { std::move(f)(); }
+    for (auto &work : state_.deferred_work) { std::move(*work)(); }
   }
 }
 

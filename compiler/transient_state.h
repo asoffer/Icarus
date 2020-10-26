@@ -55,11 +55,8 @@ struct TransientState {
   TransientState(TransientState &&) = default;
   TransientState &operator=(TransientState &&) = default;
   ~TransientState() {
-    while (not deferred_work.empty()) {
-      auto iter   = deferred_work.begin();
-      auto handle = deferred_work.extract(iter);
-      auto f      = std::move(handle.mapped());
-      if (f) { std::move(f)(); }
+    for (auto &work : deferred_work) {
+      if (work and *work) { std::move (*work)(); }
     }
   }
 
@@ -80,7 +77,7 @@ struct TransientState {
 
   bool must_complete = true;
 
-  absl::node_hash_map<ast::Node const *, base::move_func<void()>> deferred_work;
+  std::vector<std::unique_ptr<base::move_func<void()>>> deferred_work;
 };
 
 }  // namespace compiler

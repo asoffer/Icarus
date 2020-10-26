@@ -7,14 +7,19 @@ namespace compiler {
 namespace {
 
 struct TestCase {
+  std::string description;
   std::string expr;
   ir::Value expected;
 };
 
 using CallTest = testing::TestWithParam<TestCase>;
 TEST_P(CallTest, Call) {
-  auto const &[expr, expected] = GetParam();
+  auto const &[description, expr, expected] = GetParam();
   test::TestModule mod;
+  mod.AppendCode(R"(
+  identity ::= (x: $x) => x
+  )");
+
   auto const *e  = mod.Append<ast::Expression>(expr);
   auto const *qt = mod.context().qual_type(e);
   ASSERT_NE(qt, nullptr);
@@ -105,6 +110,13 @@ INSTANTIATE_TEST_SUITE_P(
                  .expected = ir::Value(6.25)},
 
         // TODO: Calling overload sets.
+        // TODO: There's something wrong with casting. When that's fixed we can
+        // try this with non-zero values. For now this test is at least
+        // verifying that we can instantiate both versions without crashing.
+        TestCase{.description = "Instantiate the same generic more than once.",
+                 .expr        = R"((identity(0) as float64) + identity(0.0)
+                             )",
+                 .expected    = ir::Value(double{0})},
     }));
 
 }  // namespace
