@@ -32,14 +32,12 @@ InlineJumpIntoCurrent(ir::Builder &bldr, ir::Jump to_be_inlined,
   size_t i            = 0;
   auto jump_type      = jump->type();
   if (auto state_type = jump_type->state()) {
-    type::Apply(state_type, [&](auto tag) -> ir::Reg {
-      using T = typename decltype(tag)::type;
+    type::Apply(state_type, [&]<typename T>()->ir::Reg {
       return ir::MakeReg<ir::RegOr<T>>(arguments[i++].get<ir::RegOr<T>>());
     });
   }
   for (auto const &p : jump_type->params()) {
-    type::Apply(p.value, [&](auto tag) -> ir::Reg {
-      using T = typename decltype(tag)::type;
+    type::Apply(p.value, [&]<typename T>()->ir::Reg {
       return ir::MakeReg<ir::RegOr<T>>(arguments[i++].get<ir::RegOr<T>>());
     });
     // TODO Handle types not covered by Apply (structs, etc).

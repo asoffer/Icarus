@@ -218,8 +218,7 @@ void Compiler::EmitCopyAssign(
     type::Typed<ir::RegOr<ir::Addr>, type::Primitive> const &to,
     type::Typed<ir::Value> const &from) {
   ASSERT(type::Type(to.type()) == from.type());
-  to.type()->Apply([&](auto tag) {
-    using T = typename decltype(tag)::type;
+  to.type()->Apply([&]<typename T>() {
     builder().Store(from->template get<ir::RegOr<T>>(), *to);
   });
 }

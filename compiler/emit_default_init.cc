@@ -46,10 +46,7 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Pointer> const &r) {
 }
 
 void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Primitive> const &r) {
-  r.type()->Apply([&](auto tag) {
-    using T = typename decltype(tag)::type;
-    builder().Store(T{}, *r);
-  });
+  r.type()->Apply([&]<typename T>() { builder().Store(T{}, *r); });
 }
 
 void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Struct> const &r) {

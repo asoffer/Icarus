@@ -28,17 +28,15 @@ struct Primitive : public LegacyType {
     visitor->ErasedVisit(this, ret, arg_tuple);
   }
 
-  base::MetaValue meta() const {
-    base::MetaValue result = base::meta<void>;
-    Apply([&](auto m) { result = m; });
-    return result;
+  template <typename Fn>
+  auto Apply(Fn &&fn) const {
+    return ApplyImpl<uint8_t, uint16_t, uint32_t, uint64_t, int8_t, int16_t,
+                     int32_t, int64_t, float, double, bool,
+                     Type /* TODO: Other primitives */>(std::forward<Fn>(fn));
   }
 
-  template <typename Fn>
-  void Apply(Fn &&fn) const {
-    ApplyImpl<uint8_t, uint16_t, uint32_t, uint64_t, int8_t, int16_t, int32_t,
-              int64_t, float, double, bool, Type /* TODO: Other primitives */>(
-        std::forward<Fn>(fn));
+  base::MetaValue meta() const {
+    return Apply([&]<typename T>()->base::MetaValue { return base::meta<T>; });
   }
 
   Completeness completeness() const override { return Completeness::Complete; }
@@ -50,7 +48,8 @@ struct Primitive : public LegacyType {
 
  private:
   template <typename... Ts, typename Fn>
-  void ApplyImpl(Fn &&fn) const;
+  decltype(std::declval<Fn>().template operator()<base::first_t<Ts...>>())
+  ApplyImpl(Fn &&fn) const;
 };
 
 namespace internal {
@@ -80,13 +79,17 @@ inline base::Global kPrimitiveArray = std::array{
 }  // namespace internal
 
 template <typename... Ts, typename Fn>
-void Primitive::ApplyImpl(Fn &&fn) const {
+decltype(std::declval<Fn>().template operator()<base::first_t<Ts...>>())
+Primitive::ApplyImpl(Fn &&fn) const {
+  using return_type =
+      decltype(std::declval<Fn>().template operator()<base::first_t<Ts...>>());
   // Because primitive types are unique, we can compare the address to
   // `kPrimitiveArray->data()` and use the offset to index into a collection of
   // function of our own creation.
   int index = static_cast<int>(this - internal::kPrimitiveArray->data());
-  std::array{absl::FunctionRef<void()>(
-      [&] { std::forward<Fn>(fn)(base::meta<Ts>); })...}[index]();
+  return std::array{absl::FunctionRef<return_type()>([&] {
+    return std::forward<Fn>(fn).template operator()<Ts>();
+  })...}[index]();
 }
 
 inline Type Nat8       = &(*internal::kPrimitiveArray)[0];

@@ -227,10 +227,9 @@ struct Builder {
   RegOr<bool> Eq(type::Type common_type, ir::Value const& lhs_val,
                  ir::Value const& rhs_val) {
     return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                            uint16_t, uint32_t, uint64_t, float, double,
-                            ir::EnumVal, ir::FlagsVal>(
-        common_type, [&](auto tag) {
-          using T = typename decltype(tag)::type;
+                             uint16_t, uint32_t, uint64_t, float, double,
+                             ir::EnumVal, ir::FlagsVal>(
+        common_type, [&]<typename T>() {
           return Eq(lhs_val.get<RegOr<T>>(), rhs_val.get<RegOr<T>>());
         });
   }
@@ -463,12 +462,9 @@ struct Builder {
     LOG("Load", "Calling Load(%s, %s)", r, t->to_string());
     if (t->is<type::Function>()) { return Value(Load<Fn>(r)); }
     return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
-                            uint16_t, uint32_t, uint64_t, float, double,
-                            type::Type, EnumVal, FlagsVal, Addr, String, Fn>(
-        t, [&](auto tag) {
-          using T = typename decltype(tag)::type;
-          return Value(Load<T>(r));
-        });
+                             uint16_t, uint32_t, uint64_t, float, double,
+                             type::Type, EnumVal, FlagsVal, Addr, String, Fn>(
+        t, [&]<typename T>() { return Value(Load<T>(r)); });
   }
 
   template <typename T>
@@ -639,10 +635,7 @@ struct Builder {
 
   void SetRet(uint16_t n, type::Typed<Value> const& r) {
     ASSERT(r.type()->is_big() == false);
-    type::Apply(r.type(), [&](auto tag) {
-      using T = typename decltype(tag)::type;
-      SetRet(n, r->get<RegOr<T>>());
-    });
+    type::Apply(r.type(), [&]<typename T>() { SetRet(n, r->get<RegOr<T>>()); });
   }
 
  private:

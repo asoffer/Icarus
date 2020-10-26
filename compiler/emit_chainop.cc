@@ -128,17 +128,15 @@ static ir::RegOr<bool> EmitChainOpPair(Compiler *compiler,
     switch (op) {
       case frontend::Operator::Lt:
         return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
-                                uint16_t, uint32_t, uint64_t, float, double,
-                                ir::FlagsVal>(lhs_type, [&](auto tag) {
-          using T = typename decltype(tag)::type;
+                                 uint16_t, uint32_t, uint64_t, float, double,
+                                 ir::FlagsVal>(lhs_type, [&]<typename T>() {
           return bldr.Lt(lhs_ir.get<ir::RegOr<T>>(),
                          rhs_ir.get<ir::RegOr<T>>());
         });
       case frontend::Operator::Le:
         return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
-                                uint16_t, uint32_t, uint64_t, float, double,
-                                ir::FlagsVal>(lhs_type, [&](auto tag) {
-          using T = typename decltype(tag)::type;
+                                 uint16_t, uint32_t, uint64_t, float, double,
+                                 ir::FlagsVal>(lhs_type, [&]<typename T>() {
           return bldr.Le(lhs_ir.get<ir::RegOr<T>>(),
                          rhs_ir.get<ir::RegOr<T>>());
         });
@@ -151,10 +149,9 @@ static ir::RegOr<bool> EmitChainOpPair(Compiler *compiler,
           }
         }
         return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t,
-                                uint8_t, uint16_t, uint32_t, uint64_t, float,
-                                double, type::Type, ir::EnumVal, ir::FlagsVal,
-                                ir::Addr>(lhs_type, [&](auto tag) {
-          using T = typename decltype(tag)::type;
+                                 uint8_t, uint16_t, uint32_t, uint64_t, float,
+                                 double, type::Type, ir::EnumVal, ir::FlagsVal,
+                                 ir::Addr>(lhs_type, [&]<typename T>() {
           return bldr.Eq(lhs_ir.get<ir::RegOr<T>>(),
                          rhs_ir.get<ir::RegOr<T>>());
         });
@@ -167,26 +164,23 @@ static ir::RegOr<bool> EmitChainOpPair(Compiler *compiler,
           }
         }
         return type::ApplyTypes<bool, int8_t, int16_t, int32_t, int64_t,
-                                uint8_t, uint16_t, uint32_t, uint64_t, float,
-                                double, type::Type, ir::EnumVal, ir::FlagsVal,
-                                ir::Addr>(lhs_type, [&](auto tag) {
-          using T = typename decltype(tag)::type;
+                                 uint8_t, uint16_t, uint32_t, uint64_t, float,
+                                 double, type::Type, ir::EnumVal, ir::FlagsVal,
+                                 ir::Addr>(lhs_type, [&]<typename T>() {
           return bldr.Ne(lhs_ir.get<ir::RegOr<T>>(),
                          rhs_ir.get<ir::RegOr<T>>());
         });
       case frontend::Operator::Ge:
         return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
-                                uint16_t, uint32_t, uint64_t, float, double,
-                                ir::FlagsVal>(lhs_type, [&](auto tag) {
-          using T = typename decltype(tag)::type;
+                                 uint16_t, uint32_t, uint64_t, float, double,
+                                 ir::FlagsVal>(lhs_type, [&]<typename T>() {
           return bldr.Ge(lhs_ir.get<ir::RegOr<T>>(),
                          rhs_ir.get<ir::RegOr<T>>());
         });
       case frontend::Operator::Gt:
         return type::ApplyTypes<int8_t, int16_t, int32_t, int64_t, uint8_t,
-                                uint16_t, uint32_t, uint64_t, float, double,
-                                ir::FlagsVal>(lhs_type, [&](auto tag) {
-          using T = typename decltype(tag)::type;
+                                 uint16_t, uint32_t, uint64_t, float, double,
+                                 ir::FlagsVal>(lhs_type, [&]<typename T>() {
           return bldr.Gt(lhs_ir.get<ir::RegOr<T>>(),
                          rhs_ir.get<ir::RegOr<T>>());
         });

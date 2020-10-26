@@ -204,10 +204,8 @@ struct CallInstruction {
       if (r) {
         writer->Write(*r);
       } else {
-        type::Apply(fn_type_->params()[arg_index].value.type(), [&](auto tag) {
-          using T = typename decltype(tag)::type;
-          writer->Write(arg.get<T>());
-        });
+        type::Apply(fn_type_->params()[arg_index].value.type(),
+                    [&]<typename T>() { writer->Write(arg.get<T>()); });
       }
       ++arg_index;
     }

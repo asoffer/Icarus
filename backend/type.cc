@@ -82,11 +82,7 @@ struct LlvmTypeVisitor : type::Visitor<LlvmTypeTag, llvm::Type *()> {
   }
 
   llvm::Type *get(type::Primitive const *t) {
-    llvm::Type *result;
-    t->Apply([&result, this](auto metatype) {
-      result = LlvmType<typename decltype(metatype)::type>(context_);
-    });
-    return result;
+    return t->Apply([this]<typename T>() { return LlvmType<T>(context_); });
   }
 
   llvm::Type *get(type::GenericFunction const *t) { NOT_YET(); }
