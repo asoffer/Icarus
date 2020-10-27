@@ -281,7 +281,14 @@ struct Compiler
       type::Type state_ptr_type, core::Params<type::QualType> const &params,
       core::FnArgs<type::Typed<ir::Value>> const &args);
 
+  // Attemnts to instantiate `node` with `args`, possibly creating a new
+  // instantiation as a subcontext of `this->context()` if needed.
   Context::InsertSubcontextResult Instantiate(
+      ast::ParameterizedExpression const *node,
+      core::FnArgs<type::Typed<ir::Value>> const &args);
+  // Finds an already existing instantiation of `node` with `args` as a
+  // subcontext of `this->context()`. Behavior is undefined if none exists.
+  Context::FindSubcontextResult FindInstantiation(
       ast::ParameterizedExpression const *node,
       core::FnArgs<type::Typed<ir::Value>> const &args);
 

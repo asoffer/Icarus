@@ -302,21 +302,7 @@ ir::NativeFn MakeConcreteFromGeneric(
 
   // Note: Cannot use structured bindings because the bindings need to be
   // captured in the lambda.
-
-  // TODO: Rather than recompute this we colud store the `Call` node in the
-  // dependent context.
-  Context ctx(&compiler->context().module());
-  Compiler c({
-      .builder             = compiler->builder(),
-      .data                = ctx,
-      .diagnostic_consumer = compiler->diag(),
-      .importer            = compiler->importer(),
-  });
-  ctx.parent_ = &compiler->context();
-  // TODO: Audit this. Probably shouldn't be needed because we should have
-  // already computed it during verification.
-  auto params                 = c.ComputeParamsFromArgs(node, args);
-  auto find_subcontext_result = compiler->context().FindSubcontext(node, params);
+  auto find_subcontext_result = compiler->FindInstantiation(node, args);
   auto const *fn_type         = find_subcontext_result.fn_type;
   auto &context               = find_subcontext_result.context;
 

@@ -29,13 +29,13 @@ namespace compiler {
 struct LibraryModule;
 struct CompiledModule;
 
-// Context holds all data that the compiler computes about the
-// program by traversing the syntax tree. This includes type information,
-// compiled functions and jumps, etc. Note that this data may be dependent on
-// constant parameters to a function, jump, or struct. To account for such
-// dependencies, Context is intrusively a tree. Each Context has a pointer to
-// it's parent (except the root whose parent-pointer is null), as well as a map
-// keyed on arguments whose values hold child Context.
+// Context holds all data that the compiler computes about the program by
+// traversing the syntax tree. This includes type information, compiled
+// functions and jumps, etc. Note that this data may be dependent on constant
+// parameters to a function, jump, or struct. To account for such dependencies,
+// Context is intrusively a tree. Each Context has a pointer to it's parent
+// (except the root whose parent-pointer is null), as well as a map keyed on
+// arguments whose values hold child Context.
 //
 // For instance, the program
 // ```
@@ -49,14 +49,14 @@ struct CompiledModule;
 // f(2)
 // ```
 //
-// would have three Context nodes. The root node, which has the
-// other two nodes as children. These nodes are keyed on the arguments to `f`,
-// one where `n` is 1 and one where `n` is 2. Note that the type of `array` is
-// not available at the root node as it's type is dependent on `n`. Rather, on
-// the two child nodes it has type `[1; bool]` and `[4; bool]` respectively.
-// Moreover, even the type of `size` (despite always being `int64` is not
-// available on the root node. Instead, it is available on all child nodes with
-// the same value of `int64`.
+// would have three Context nodes. The root node, which has the other two nodes
+// as children. These nodes are keyed on the arguments to `f`, one where `n` is
+// 1 and one where `n` is 2. Note that the type of `array` is not available at
+// the root node as it's type is dependent on `n`. Rather, on the two child
+// nodes it has type `[1; bool]` and `[4; bool]` respectively.  Moreover, even
+// the type of `size` (despite always being `int64` is not available on the root
+// node. Instead, it is available on all child nodes with the same value of
+// `int64`.
 //
 // Though there is nothing special about recursive instantiations, it's worth
 // describing an example as well:
@@ -140,13 +140,16 @@ struct Context {
       ast::ParameterizedExpression const *node,
       core::Params<std::pair<ir::Value, type::QualType>> const &params);
 
-
-
   // Returned pointer is null if the expression does not have a type in this
   // context. If the pointer is not null, it is only valid until the next
   // mutation of `this`.
+  //
+  // TODO: Under what circumstances do we need to check for this being null?
+  // During type verification I believe this is not needed.
   type::QualType const *qual_type(ast::Expression const *expr) const;
 
+  // Stores the QualType in this context, associating it with the given
+  // expression.
   type::QualType set_qual_type(ast::Expression const *expr, type::QualType qt);
 
   ir::Scope add_scope(type::Type state_type) {
@@ -158,7 +161,7 @@ struct Context {
   ir::Reg addr(ast::Declaration const *decl) const {
     auto iter = addr_.find(decl);
     if (iter != addr_.end()) { return iter->second; }
-    if (parent_) { return parent_->addr(decl); }
+    if (parent()) { return parent()->addr(decl); }
     UNREACHABLE("Failed to find address for decl", decl->DebugString());
   }
 
@@ -211,7 +214,7 @@ struct Context {
       ir::Value val = iter->second.value;
       if (not val.empty()) { return val; }
     }
-    if (parent_) { return parent_->LoadConstant(decl); }
+    if (parent()) { return parent()->LoadConstant(decl); }
     return ir::Value();
   }
 
@@ -222,7 +225,7 @@ struct Context {
   ir::NativeFn *FindNativeFn(ast::ParameterizedExpression const *expr) {
     auto iter = ir_funcs_.find(expr);
     if (iter != ir_funcs_.end()) { return &iter->second; }
-    if (parent_) { return parent_->FindNativeFn(expr); }
+    if (parent()) { return parent()->FindNativeFn(expr); }
     return nullptr;
   }
 
@@ -249,6 +252,7 @@ struct Context {
   void set_decls(ast::Identifier const *id,
                  std::vector<ast::Declaration const *> decls);
 
+  // TODO: Move to compiler.
   bool cyclic_error(ast::Identifier const *id) const;
   void set_cyclic_error(ast::Identifier const *id);
 
@@ -284,21 +288,34 @@ struct Context {
   ast::OverloadSet const &ViableOverloads(ast::Expression const *callee) const {
     auto iter = viable_overloads_.find(callee);
     if (iter == viable_overloads_.end()) {
-      if (parent_ == nullptr) {
+      if (parent() == nullptr) {
         UNREACHABLE("Failed to find any overloads for ", callee->DebugString());
       }
-      return parent_->ViableOverloads(callee);
+      return parent()->ViableOverloads(callee);
     } else {
       return iter->second;
     }
   }
 
  private:
-  explicit Context(CompiledModule *mod, Context *parent) : Context(mod) {
-    parent_ = parent;
-  }
+  explicit Context(CompiledModule *mod, Context *parent) ;
 
   CompiledModule &mod_;
+
+  // Each Context is an intrusive node in a tree structure. Each Context has a
+  // pointer to it's parent (accessible via `this->parent()`, and each node owns
+  // it's children.
+  struct Subcontext;
+  struct ContextTree {
+    Context *parent = nullptr;
+    absl::flat_hash_map<
+        ast::ParameterizedExpression const *,
+        absl::node_hash_map<core::Params<std::pair<ir::Value, type::QualType>>,
+                            std::unique_ptr<Subcontext>>>
+        children;
+  } tree_;
+  constexpr Context *parent() { return tree_.parent; }
+  constexpr Context const *parent() const { return tree_.parent; }
 
   // Types of the expressions in this context.
   absl::flat_hash_map<ast::Expression const *, type::QualType> qual_types_;
@@ -339,19 +356,6 @@ struct Context {
   // based on the call-site arguments.
   absl::flat_hash_map<ast::Expression const *, ast::OverloadSet>
       viable_overloads_;
-
-  // The parent node containing the generic that is instantiated to produce this
-  // `Context`.
- public:
-  Context *parent_ = nullptr;
-
- private:
-  struct Subcontext;
-  absl::flat_hash_map<
-      ast::ParameterizedExpression const *,
-      absl::node_hash_map<core::Params<std::pair<ir::Value, type::QualType>>,
-                          std::unique_ptr<Subcontext>>>
-      subcontexts_;
 
   // All functions, whether they're directly compiled or generated by a generic.
   absl::node_hash_map<ast::ParameterizedExpression const *, ir::NativeFn>

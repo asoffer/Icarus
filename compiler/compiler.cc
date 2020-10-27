@@ -162,4 +162,17 @@ Context::InsertSubcontextResult Compiler::Instantiate(
                                     std::move(scratchpad));
 }
 
+Context::FindSubcontextResult Compiler::FindInstantiation(
+    ast::ParameterizedExpression const *node,
+    core::FnArgs<type::Typed<ir::Value>> const &args) {
+  Context scratchpad = context().ScratchpadSubcontext();
+  Compiler c({
+      .builder             = builder(),
+      .data                = scratchpad,
+      .diagnostic_consumer = diag(),
+      .importer            = importer(),
+  });
+  return context().FindSubcontext(node, c.ComputeParamsFromArgs(node, args));
+}
+
 }  // namespace compiler

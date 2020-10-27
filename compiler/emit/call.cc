@@ -61,29 +61,17 @@ std::tuple<ir::RegOr<ir::Fn>, type::Function const *, Context *> EmitCallee(
     ir::GenericFn gen_fn =
         compiler.EmitValue(fn).get<ir::RegOr<ir::GenericFn>>().value();
 
-    // TODO declarations aren't callable so we shouldn't have to check this
+    // TODO: declarations aren't callable so we shouldn't have to check this
     // here.
-
     if (auto const *decl = fn->if_as<ast::Declaration>()) {
-      // TODO make this more robust.
+      // TODO: make this more robust.
       fn = decl->init_val();
     }
 
     auto *parameterized_expr = &fn->as<ast::ParameterizedExpression>();
 
-    Context temp_data(&compiler.context().module());
-    Compiler c({
-        .builder             = compiler.builder(),
-        .data                = temp_data,
-        .diagnostic_consumer = compiler.diag(),
-        .importer            = compiler.importer(),
-    });
-    temp_data.parent_ = &compiler.context();
-
-    auto params = c.ComputeParamsFromArgs(parameterized_expr, args);
-
-    auto find_subcontext_result = compiler.context().FindSubcontext(
-        &fn->as<ast::ParameterizedExpression>(), params);
+    auto find_subcontext_result =
+        compiler.FindInstantiation(parameterized_expr, args);
     return std::make_tuple(ir::Fn(gen_fn.concrete(args)),
                            find_subcontext_result.fn_type,
                            &find_subcontext_result.context);
