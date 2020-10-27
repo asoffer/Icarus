@@ -98,7 +98,6 @@ cc_library(
         ":executable_module",
         ":library_module",
         ":module",
-        ":special_function",
         "//ast:ast",
         "//ast:overload_set",
         "//ast:visitor",
@@ -201,20 +200,6 @@ cc_library(
         "//diagnostic/consumer",
     ] + TYPE_VERIFICATION,
     alwayslink = True, # TODO: Figure out a good way to remove this.
-)
-
-cc_library(
-    name = "special_function",
-    hdrs = ["special_function.h"],
-    srcs = ["special_function.cc"],
-    deps = [
-        ":compiler_header",
-        "//ir/value:fn",
-        "//ast",
-        "//type:function",
-        "//type:pointer",
-        "//type:struct",
-    ],
 )
 
 cc_library(

@@ -2,7 +2,6 @@
 #include "ast/ast.h"
 #include "base/permutation.h"
 #include "compiler/compiler.h"
-#include "compiler/special_function.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
 #include "ir/value/fn.h"
@@ -10,6 +9,8 @@
 #include "type/primitive.h"
 
 namespace compiler {
+
+enum SpecialFunctionCategory { Copy, Move };
 
 template <SpecialFunctionCategory Cat>
 static ir::NativeFn CreateAssign(Compiler *compiler, type::Array const *a) {
@@ -81,9 +82,6 @@ static ir::NativeFn CreateAssign(Compiler *compiler, type::Array const *a) {
 
 template <SpecialFunctionCategory Cat>
 static ir::NativeFn CreateAssign(Compiler *compiler, type::Struct const *s) {
-  if (auto fn = SpecialFunction(compiler, s, Name<Cat>())) {
-    return fn->native();
-  }
   auto &bldr       = compiler->builder();
   type::QualType q = type::QualType::NonConstant(type::Ptr(s));
   auto fn_type =

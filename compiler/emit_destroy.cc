@@ -2,7 +2,6 @@
 #include "ast/ast.h"
 #include "base/permutation.h"
 #include "compiler/compiler.h"
-#include "compiler/special_function.h"
 #include "ir/builder.h"
 #include "ir/compiled_fn.h"
 #include "type/type.h"
