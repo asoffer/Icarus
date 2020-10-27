@@ -90,7 +90,6 @@ cc_library(
         "emit_default_init.cc",
         "emit_destroy.cc",
         "emit_value.cc",
-        "emit_chainop.cc",
     ],
     deps = [
         ":compiler_header",
@@ -116,6 +115,7 @@ cc_library(
         "//compiler/emit:block_literal",
         "//compiler/emit:call",
         "//compiler/emit:cast",
+        "//compiler/emit:comparison_operator",
         "//compiler/emit:common",
         "//compiler/emit:goto",
         "//compiler/emit:identifier",

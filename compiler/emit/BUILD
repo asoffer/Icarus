@@ -140,6 +140,26 @@ cc_test(
 )
 
 cc_library(
+    name = "comparison_operator",
+    srcs = ["comparison_operator.cc"],
+    deps = [
+        "//ast",
+        "//compiler:compiler_header",
+    ],
+)
+
+cc_test(
+    name = "comparison_operator_test",
+    srcs = ["comparison_operator_test.cc"],
+    deps = [
+        "//compiler",
+        "//test:module",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "common",
     srcs = ["common.cc"],
     deps = [
