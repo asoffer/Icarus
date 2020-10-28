@@ -990,8 +990,8 @@ struct ScopeNode : Expression {
 
   absl::Span<BlockNode const> blocks() const { return blocks_; }
 
-  ast::Label const *label() const { return label_.get(); }
-  void set_label(std::unique_ptr<Label> label) { label_ = std::move(label); }
+  ast::Label const *label() const { return label_ ? &*label_ : nullptr; }
+  void set_label(Label label) { label_ = std::move(label); }
 
   // Appends the given block not necessarily to this ScopeNode, but to the scope
   // that makes sense syntactically. For instance, in the first example above,
@@ -1006,8 +1006,7 @@ struct ScopeNode : Expression {
   ICARUS_AST_VIRTUAL_METHODS;
 
  private:
-  // TODO Don't need to store this indirectly.
-  std::unique_ptr<Label> label_;
+  std::optional<Label> label_;
   std::unique_ptr<Expression> name_;
   core::OrderedFnArgs<Expression> args_;
   std::vector<BlockNode> blocks_;

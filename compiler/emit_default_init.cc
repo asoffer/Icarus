@@ -34,7 +34,7 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Array> const &r) {
         return fn;
       }});
 
-  builder().Init(r.type(), *r);
+  builder().Init(r);
 }
 
 void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Flags> const &r) {
@@ -87,7 +87,7 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Struct> const &r) {
     return fn;
   });
 
-  builder().Init(r.type(), *r);
+  builder().Init(r);
 }
 
 void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Tuple> const &r) {
@@ -116,7 +116,7 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Tuple> const &r) {
     }
     return fn;
   });
-  builder().Init(r.type(), *r);
+  builder().Init(r);
 }
 
 }  // namespace compiler

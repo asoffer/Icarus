@@ -16,7 +16,7 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::BufferPointer> reg) {}
 void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Struct> reg) {
   if (not reg.type()->HasDestructor()) { return; }
   // TODO: Call fields dtors.
-  builder().Destroy(reg.type(), *reg);
+  builder().Destroy(reg);
 }
 
 void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Tuple> reg) {
@@ -46,7 +46,7 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Tuple> reg) {
     return fn;
   });
 
-  builder().Destroy(reg.type(), *reg);
+  builder().Destroy(reg);
 }
 
 void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Array> reg) {
@@ -71,7 +71,7 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Array> reg) {
         }
         return fn;
       }});
-  builder().Destroy(reg.type(), *reg);
+  builder().Destroy(reg);
 }
 
 }  // namespace compiler

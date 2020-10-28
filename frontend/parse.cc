@@ -816,6 +816,7 @@ std::unique_ptr<ast::Node> BuildDesignatedInitializer(
     return MakeInvalidNode(range);
   }
 
+  // TODO: This is either in the wrong place, or this function is poorly named.
   if (tok->token == "=>") {
     diag.Consume(BracedShortFunctionLiteral{
         .open_brace  = SourceRange(nodes.back()->range().begin(), 1),
@@ -1483,7 +1484,7 @@ std::unique_ptr<ast::Node> LabelScopeNode(
   } else {
     scope_node->range() =
         SourceRange(nodes[0]->range().begin(), scope_node->range().end());
-    scope_node->set_label(move_as<ast::Label>(nodes[0]));
+    scope_node->set_label(std::move(nodes[0]->as<ast::Label>()));
   }
   return scope_node;
 }

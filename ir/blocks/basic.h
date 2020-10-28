@@ -67,7 +67,6 @@ struct BasicBlock {
 
   absl::Span<Inst const> instructions() const { return instructions_; }
 
-  // TODO: We really don't need to be returning this reference.
   Inst &Append(Inst &&inst) {
     return instructions_.emplace_back(std::move(inst));
   }

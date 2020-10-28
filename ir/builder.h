@@ -531,10 +531,8 @@ struct Builder {
 
   // Special members function instructions. Calling these typically calls
   // builtin functions (or, in the case of primitive types, do nothing).
-  //
-  // TODO: Use Typed<Reg>
-  void Init(type::Type t, Reg r);
-  void Destroy(type::Type t, Reg r);
+  void Init(type::Typed<Reg> r);
+  void Destroy(type::Typed<Reg> r);
   void Move(type::Type t, Reg from, RegOr<Addr> to);
   void Copy(type::Type t, Reg from, RegOr<Addr> to);
 
@@ -543,12 +541,6 @@ struct Builder {
   // field requested. For variants, `VariantType` computes the location where
   // the type is stored and `VariantValue` accesses the location where the
   // value is stored.
-  //
-  // TODO: Long-term, variant will probably not be implemented this way.
-  // Ideally, something like `*int64 | *int32` will only use 8 bytes because
-  // we'll be able to see that the pointers are aligned and we have spare bits.
-  // This means variant isn't the lowest level API, but rather some mechanism
-  // by which you can overlay types.
   type::Typed<Reg> Field(RegOr<Addr> r, type::Struct const* t, int64_t n);
   type::Typed<Reg> Field(RegOr<Addr> r, type::Tuple const* t, int64_t n);
 

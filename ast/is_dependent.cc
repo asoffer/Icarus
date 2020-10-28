@@ -1,34 +1,39 @@
 #include "ast/ast.h"
 
 namespace ast {
+namespace {
+
+template <typename NodeType>
+bool AnyIsDependent(absl::Span<NodeType const> span) {
+  for (auto const &n : span) {
+    if (n.IsDependent()) { return true; }
+  }
+  return false;
+}
+
+template <typename NodeType>
+bool AnyIsDependent(base::PtrSpan<NodeType const> span) {
+  for (auto const *p : span) {
+    if (p->IsDependent()) { return true; }
+  }
+  return false;
+}
+
+}  // namespace
 
 bool Access::IsDependent() const { return operand()->IsDependent(); }
 
 bool ArgumentType::IsDependent() const { return true; }
 
-bool ArrayLiteral::IsDependent() const {
-  for (auto const *elem : elems()) {
-    if (elem->IsDependent()) { return true; }
-  }
-  return false;
-}
+bool ArrayLiteral::IsDependent() const { return AnyIsDependent(elems()); }
 
 bool ArrayType::IsDependent() const {
   if (data_type()->IsDependent()) { return true; }
-  for (auto const *length : lengths()) {
-    if (length->IsDependent()) { return true; }
-  }
-  return false;
+  return AnyIsDependent(lengths());
 }
 
 bool Assignment::IsDependent() const {
-  for (auto const *l : lhs()) {
-    if (l->IsDependent()) { return true; }
-  }
-  for (auto const *r : rhs()) {
-    if (r->IsDependent()) { return true; }
-  }
-  return false;
+  return AnyIsDependent(lhs()) or AnyIsDependent(rhs());
 }
 
 bool BinaryOperator::IsDependent() const {
@@ -36,25 +41,14 @@ bool BinaryOperator::IsDependent() const {
 }
 
 bool BlockLiteral::IsDependent() const {
-  for (auto const *b : before()) {
-    if (b->IsDependent()) { return true; }
-  }
-  for (auto const *a : after()) {
-    if (a->IsDependent()) { return true; }
-  }
-  return false;
+  return AnyIsDependent(before()) or AnyIsDependent(after());
 }
 
-bool BlockNode::IsDependent() const {
-  for (auto const *stmt : stmts()) {
-    if (stmt->IsDependent()) { return true; }
-  }
-  return false;
-}
+bool BlockNode::IsDependent() const { return AnyIsDependent(stmts()); }
 
 bool Jump::IsDependent() const {
-  // TODO
-  return false;
+  if (auto const *s = state(); s and s->IsDependent()) { return true; }
+  return AnyIsDependent(stmts());
 }
 
 bool BuiltinFn::IsDependent() const { return false; }
@@ -74,12 +68,7 @@ bool Cast::IsDependent() const {
   return expr()->IsDependent() or type()->IsDependent();
 }
 
-bool ComparisonOperator::IsDependent() const {
-  for (auto const *expr : exprs()) {
-    if (expr->IsDependent()) { return true; }
-  }
-  return false;
-}
+bool ComparisonOperator::IsDependent() const { return AnyIsDependent(exprs()); }
 
 bool Declaration::IsDependent() const {
   if (auto *t = type_expr(); t and t->IsDependent()) { return true; }
@@ -88,12 +77,13 @@ bool Declaration::IsDependent() const {
 }
 
 bool DesignatedInitializer::IsDependent() const {
-  // TODO
-  return type()->IsDependent();
+  return type()->IsDependent() or AnyIsDependent(assignments());
 }
 
 bool EnumLiteral::IsDependent() const {
-  // TODO
+  for (auto const &[name, value] : specified_values()) {
+    if (value->IsDependent()) { return true; }
+  }
   return false;
 }
 
@@ -107,10 +97,7 @@ bool FunctionType::IsDependent() const {
   return false;
 }
 
-bool Identifier::IsDependent() const {
-  // TODO
-  return false;
-}
+bool Identifier::IsDependent() const { return false; }
 
 bool Import::IsDependent() const { return operand()->IsDependent(); }
 
@@ -119,35 +106,30 @@ bool Index::IsDependent() const {
 }
 
 bool ConditionalGoto::IsDependent() const {
-  // TODO
-  return false;
+  // TODO: Jump options could also be dependent.
+  return condition()->IsDependent();
 }
 
 bool UnconditionalGoto::IsDependent() const {
-  // TODO
+  // TODO: Jump options could also be dependent.
   return false;
 }
 
 bool Label::IsDependent() const { return false; }
 
-bool ReturnStmt::IsDependent() const {
-  // TODO
-  return false;
-}
+bool ReturnStmt::IsDependent() const { return AnyIsDependent(exprs()); }
 
-bool YieldStmt::IsDependent() const {
-  // TODO
-  return false;
-}
+bool YieldStmt::IsDependent() const { return AnyIsDependent(exprs()); }
 
 bool ScopeLiteral::IsDependent() const {
-  // TODO
-  return false;
+  if (auto const *s = state_type(); s and s->IsDependent()) { return true; }
+  return AnyIsDependent(decls());
 }
 
 bool ScopeNode::IsDependent() const {
-  // TODO
-  return false;
+  // TODO: Scope node arguments
+  return name()->IsDependent() or label()->IsDependent() or
+         AnyIsDependent(blocks());
 }
 
 bool ShortFunctionLiteral::IsDependent() const {

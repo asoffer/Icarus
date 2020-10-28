@@ -97,7 +97,7 @@ ir::OutParams Builder::OutParamsAssign(
 
 void Builder::Call(RegOr<Fn> const &fn, type::Function const *f,
                    std::vector<Value> args, ir::OutParams outs) {
-  // TODO this call should return the constructed registers rather than forcing
+  // TODO: this call should return the constructed registers rather than forcing
   // the caller to do it.
   for (auto const &p : f->params()) {
     if (auto const ptr = p.value.type()->if_as<type::Pointer>()) {
@@ -159,12 +159,12 @@ void Builder::ChooseJump(std::vector<std::string_view> names,
       JumpCmd::Choose(std::move(names), std::move(blocks), std::move(args)));
 }
 
-void Builder::Init(type::Type t, Reg r) {
-  CurrentBlock()->Append(InitInstruction{.type = t, .reg = r});
+void Builder::Init(type::Typed<Reg> r) {
+  CurrentBlock()->Append(InitInstruction{.type = r.type(), .reg = *r});
 }
 
-void Builder::Destroy(type::Type t, Reg r) {
-  CurrentBlock()->Append(DestroyInstruction{.type = t, .reg = r});
+void Builder::Destroy(type::Typed<Reg> r) {
+  CurrentBlock()->Append(DestroyInstruction{.type = r.type(), .reg = *r});
 }
 
 void Builder::Move(type::Type t, Reg from, RegOr<Addr> to) {
@@ -310,6 +310,9 @@ Reg Builder::Struct(type::Struct *s, std::vector<StructField> fields,
   return result;
 }
 
+// TODO: Right now function types can be generic and have parameter names as
+// part of the signature, but we don't actually have any way to emit IR for
+// these.
 RegOr<type::Type> Builder::Arrow(std::vector<RegOr<type::Type>> const &ins,
                                  std::vector<RegOr<type::Type>> const &outs) {
   if (absl::c_all_of(ins,
@@ -320,7 +323,6 @@ RegOr<type::Type> Builder::Arrow(std::vector<RegOr<type::Type>> const &ins,
     std::vector<type::Type> out_vec;
     in_params.reserve(ins.size());
     for (auto in : ins) {
-      // TODO push QualType into parameters
       in_params.append(
           core::AnonymousParam(type::QualType::NonConstant(in.value())));
     }
