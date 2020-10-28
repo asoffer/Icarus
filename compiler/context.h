@@ -298,7 +298,7 @@ struct Context {
   }
 
  private:
-  explicit Context(CompiledModule *mod, Context *parent) ;
+  explicit Context(CompiledModule *mod, Context *parent);
 
   CompiledModule &mod_;
 

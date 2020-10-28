@@ -8,20 +8,18 @@
 #include "base/any_invocable.h"
 #include "core/fn_args.h"
 #include "module/module.h"
+#include "type/callable.h"
 #include "type/struct.h"
 #include "type/type.h"
 
 namespace type {
 
-struct GenericStruct : LegacyType {
-  explicit GenericStruct(base::any_invocable<
-                         Struct const *(core::FnArgs<Typed<ir::Value>> const &)>
-                             fn)
-      : LegacyType(LegacyType::Flags{.is_default_initializable = 0,
-                                     .is_copyable              = 1,
-                                     .is_movable               = 1,
-                                     .has_destructor           = 0}),
-        gen_(std::move(fn)) {}
+struct GenericStruct : Callable {
+  explicit GenericStruct(
+      base::any_invocable<std::pair<core::Params<QualType>, Struct const *>(
+          core::FnArgs<Typed<ir::Value>> const &)>
+          fn)
+      : gen_(std::move(fn)) {}
   void WriteTo(std::string *result) const override {
     result->append("generic-struct");
   }
@@ -32,7 +30,15 @@ struct GenericStruct : LegacyType {
     return Completeness::Incomplete;
   }
 
-  Struct const *concrete(core::FnArgs<Typed<ir::Value>> const &) const;
+  // TODO: Callable sholudn't necessarily mean we need to return something.
+  std::vector<type::Type> return_types(
+      core::FnArgs<type::Typed<ir::Value>> const &args) const override {
+    return {};
+  }
+
+  auto Instantiate(core::FnArgs<Typed<ir::Value>> const &args) const {
+    return gen_(args);
+  }
 
   void Accept(VisitorBase *visitor, void *ret, void *arg_tuple) const override {
     visitor->ErasedVisit(this, ret, arg_tuple);
@@ -43,12 +49,10 @@ struct GenericStruct : LegacyType {
 
  private:
   // TODO: Eventually we will want a serializable version of this.
-  base::any_invocable<Struct const *(core::FnArgs<Typed<ir::Value>> const &)>
+  base::any_invocable<std::pair<core::Params<QualType>, Struct const *>(
+      core::FnArgs<Typed<ir::Value>> const &)>
       gen_;
 };
-
-GenericStruct *GenStruct(ast::Scope const *scope,
-                         std::vector<LegacyType const *> ts);
 
 }  // namespace type
 

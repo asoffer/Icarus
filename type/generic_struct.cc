@@ -13,9 +13,4 @@ core::Alignment GenericStruct::alignment(core::Arch const &) const {
   return core::Host.pointer().alignment();
 }
 
-Struct const *GenericStruct::concrete(
-    core::FnArgs<Typed<ir::Value>> const &args) const {
-  return gen_(args);
-}
-
 }  // namespace type

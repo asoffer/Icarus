@@ -19,7 +19,7 @@ type::QualType Compiler::VerifyType(
     ast::ParameterizedStructLiteral const *node) {
   auto gen = [node, c = Compiler(resources())](
                  core::FnArgs<type::Typed<ir::Value>> const &args) mutable
-      -> type::Struct const * {
+      -> std::pair<core::Params<type::QualType>, type::Struct const *> {
     // TODO: Need a version of MakeConcrete that doesn't generate return types
     // because those only make sense for functions.
     auto [params, rets, data, inserted] = c.Instantiate(node, args);
@@ -69,14 +69,16 @@ type::QualType Compiler::VerifyType(
       LOG("struct",
           "Completed %s which is a (parameterized) struct %s with %u field(s).",
           node->DebugString(), *s, s->fields().size());
-      return s;
+      return std::make_pair(core::Params<type::QualType>{}, s);
     } else {
-      return data.get_struct(node);
+      return std::make_pair(core::Params<type::QualType>{},
+                            data.get_struct(node));
     }
   };
 
   return context().set_qual_type(
-      node, type::QualType::Constant(new type::GenericStruct(std::move(gen))));
+      node, type::QualType::Constant(
+                type::Allocate<type::GenericStruct>(std::move(gen))));
 }
 
 }  // namespace compiler

@@ -107,6 +107,11 @@ void ExtractParams(
       auto const *f = gf->concrete(args);
       overload_params.emplace_back(callee, f, f->params());
     }
+  } else if (auto const *gs = callable->if_as<type::GenericStruct>()) {
+    // TODO: But this could fail and when it fails we want to capture failure
+    // reasons.
+    auto [params, s] = gs->Instantiate(args);
+    overload_params.emplace_back(callee, gs, params);
   } else {
     UNREACHABLE();
   }
@@ -115,14 +120,14 @@ void ExtractParams(
 template <typename IndexT>
 void AddType(IndexT &&index, type::Type t,
              std::vector<core::FnArgs<type::Type>> *args) {
-  std::for_each(args->begin(), args->end(),
-                [&](core::FnArgs<type::Type> &fnargs) {
-                  if constexpr (std::is_same_v<std::decay_t<IndexT>, size_t>) {
-                    fnargs.pos_emplace(t);
-                  } else {
-                    fnargs.named_emplace(index, t);
-                  }
-                });
+  std::for_each(
+      args->begin(), args->end(), [&](core::FnArgs<type::Type> &fnargs) {
+        if constexpr (base::meta<std::decay_t<IndexT>> == base::meta<size_t>) {
+          fnargs.pos_emplace(t);
+        } else {
+          fnargs.named_emplace(index, t);
+        }
+      });
 }
 
 // TODO: Ideally we wouldn't create these all at once but rather iterate through
