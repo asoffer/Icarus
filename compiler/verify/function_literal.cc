@@ -66,9 +66,9 @@ struct ReturningWrongNumber {
   diagnostic::DiagnosticMessage ToMessage(frontend::Source const *src) const {
     return diagnostic::DiagnosticMessage(
         diagnostic::Text(
-            "Attempting to return %u values from a function which has %u "
-            "return values.",
-            actual, expected),
+            "Attempting to return %u value%s from a function which has %u "
+            "return value%s.",
+            actual, actual == 1 ? "" : "s", expected, expected == 1 ? "" : "s"),
         diagnostic::SourceQuote(src).Highlighted(range, diagnostic::Style{}));
   }
 

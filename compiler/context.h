@@ -96,6 +96,11 @@ struct Context {
 
   CompiledModule &module() const { return mod_; }
 
+  Context &root() & { return tree_.parent ? tree_.parent->root() : *this; }
+  Context const &root() const & {
+    return tree_.parent ? tree_.parent->root() : *this;
+  }
+
   // Returns a Context object which has `this` as it's parent, but for which
   // `this` is not aware of the returned subcontext. This allows us to use the
   // return object as a scratchpad for computations before we know whether or
@@ -194,8 +199,7 @@ struct Context {
                       /* from = */ std::vector<ast::Node const *>>
       extraction_map_;
 
-  absl::flat_hash_map<type::Type, ir::NativeFn> init_, copy_assign_,
-      move_assign_, destroy_;
+  absl::flat_hash_map<type::Type, ir::NativeFn> copy_assign_, move_assign_;
 
   ir::ModuleId imported_module(ast::Import const *node);
   void set_imported_module(ast::Import const *node, ir::ModuleId module_id);
@@ -297,6 +301,32 @@ struct Context {
     }
   }
 
+  std::pair<ir::NativeFn, bool> InsertInit(type::Type t) {
+    auto [iter, inserted] = init_.emplace(
+        t, ir::NativeFn(
+               &fns_,
+               type::Func(core::Params<type::QualType>{core::AnonymousParam(
+                              type::QualType::NonConstant(type::Ptr(t)))},
+                          {}),
+               core::Params<type::Typed<ast::Declaration const *>>{
+                   core::AnonymousParam(
+                       type::Typed<ast::Declaration const *>(nullptr, t))}));
+    return std::pair<ir::NativeFn, bool>(iter->second, inserted);
+  }
+
+  std::pair<ir::NativeFn, bool> InsertDestroy(type::Type t) {
+    auto [iter, inserted] = destroy_.emplace(
+        t, ir::NativeFn(
+               &fns_,
+               type::Func(core::Params<type::QualType>{core::AnonymousParam(
+                              type::QualType::NonConstant(type::Ptr(t)))},
+                          {}),
+               core::Params<type::Typed<ast::Declaration const *>>{
+                   core::AnonymousParam(
+                       type::Typed<ast::Declaration const *>(nullptr, t))}));
+    return std::pair<ir::NativeFn, bool>(iter->second, inserted);
+  }
+
  private:
   explicit Context(CompiledModule *mod, Context *parent);
 
@@ -367,6 +397,8 @@ struct Context {
   // stability.
   std::forward_list<ir::CompiledBlock> blocks_;
   std::forward_list<ir::CompiledScope> scopes_;
+
+  absl::flat_hash_map<type::Type, ir::NativeFn> init_, destroy_;
 };
 
 }  // namespace compiler

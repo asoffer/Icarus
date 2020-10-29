@@ -87,8 +87,6 @@ cc_library(
     hdrs = [],
     srcs = [
         "emit_assign.cc",
-        "emit_default_init.cc",
-        "emit_destroy.cc",
         "emit_value.cc",
     ],
     deps = [
@@ -121,6 +119,7 @@ cc_library(
         "//compiler/emit:index",
         "//compiler/emit:miscellaneous",
         "//compiler/emit:scope_node",
+        "//compiler/emit:special",
         "//compiler/emit:terminal",
         "//compiler/emit:unary_operator",
         "//core:call",

@@ -327,14 +327,6 @@ struct Compiler
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
 
-#define ICARUS_TYPE_TYPE_X(name)                                               \
-  void Visit(EmitDestroyTag, type::name const *t, ir::Reg reg) override {      \
-    EmitDestroy(type::Typed<ir::Reg, type::name>(reg, t));                     \
-  }
-
-#include "type/type.xmacro.h"
-#undef ICARUS_TYPE_TYPE_X
-
   TransientState::YieldedArguments EmitBlockNode(ast::BlockNode const *node);
 
   // The reason to separate out type/body verification is if the body might
@@ -365,13 +357,6 @@ struct Compiler
                             ast::UnaryOperator const *node) override {
     return EmitRef(node);
   }
-
-  void EmitDestroy(type::Typed<ir::Reg, type::Struct> reg);
-  void EmitDestroy(type::Typed<ir::Reg, type::Tuple> reg);
-  void EmitDestroy(type::Typed<ir::Reg, type::Array> reg);
-  void EmitDestroy(type::Typed<ir::Reg, type::Primitive> reg);
-  void EmitDestroy(type::Typed<ir::Reg, type::Pointer> reg);
-  void EmitDestroy(type::Typed<ir::Reg, type::BufferPointer> reg);
 
 #define DEFINE_EMIT_ASSIGN(T)                                                  \
   void Visit(EmitCopyAssignTag, T const *ty, ir::RegOr<ir::Addr> r,            \
@@ -414,6 +399,18 @@ struct Compiler
   DEFINE_EMIT_DEFAULT_INIT(type::Tuple);
 
 #undef DEFINE_EMIT_DEFAULT_INIT
+
+#define DEFINE_EMIT_DESTROY(T)                                                 \
+  void Visit(EmitDestroyTag, T const *ty, ir::Reg r) override {                \
+    EmitDestroy(type::Typed<ir::Reg, T>(r, ty));                               \
+  }                                                                            \
+  void EmitDestroy(type::Typed<ir::Reg, T> const &r);
+
+  DEFINE_EMIT_DESTROY(type::Array);
+  DEFINE_EMIT_DESTROY(type::Struct);
+  DEFINE_EMIT_DESTROY(type::Tuple);
+
+#undef DEFINE_EMIT_DESTROY
 
   void EmitAssign(ast::Access const *node,
                   absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);

@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/types/span.h"
 #include "ast/hashtag.h"
 #include "ast/scope/scope.h"
 #include "base/lazy.h"
@@ -71,7 +72,7 @@ struct Struct : public LegacyType {
 
   core::Bytes offset(size_t n, core::Arch const &arch) const;
 
-  std::vector<Field> const &fields() const { return fields_; }
+  absl::Span<Field const> fields() const { return fields_; }
   size_t index(std::string_view name) const;
 
   bool contains_hashtag(ast::Hashtag needle) const;
@@ -79,14 +80,12 @@ struct Struct : public LegacyType {
   module::BasicModule const *mod_ = nullptr;
   Completeness completeness_      = Completeness::Incomplete;
 
-  base::lazy<ir::NativeFn> init_func_;
-  base::lazy<ir::NativeFn> destroy_func_;
   base::lazy<ir::NativeFn> copy_assign_func_;
   base::lazy<ir::NativeFn> move_assign_func_;
 
   std::vector<ast::Hashtag> hashtags_;
   std::vector<Field> fields_;
-  std::optional<ir::Fn> dtor_, move_assign_;
+  std::optional<ir::Fn> init_, dtor_, move_assign_;
   absl::flat_hash_map<std::string_view, size_t> field_indices_;
 };
 

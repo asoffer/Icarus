@@ -1,6 +1,7 @@
 #ifndef ICARUS_TYPE_TUPLE_H
 #define ICARUS_TYPE_TUPLE_H
 
+#include "absl/types/span.h"
 #include "base/lazy.h"
 #include "ir/value/native_fn.h"
 #include "type/type.h"
@@ -17,6 +18,7 @@ struct Tuple : public LegacyType {
   void WriteTo(std::string *result) const override;
 
   core::Bytes offset(size_t n, core::Arch const &arch) const;
+  absl::Span<Type const> entries() const { return entries_; }
   size_t size() const { return entries_.size(); }
 
   core::Bytes bytes(core::Arch const &arch) const override;

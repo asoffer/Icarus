@@ -122,7 +122,7 @@ struct InitInstruction
 
   interpretter::StackFrame Apply(interpretter::ExecutionContext& ctx) const {
     if (auto* s = type->if_as<type::Struct>()) {
-      ir::Fn f   = s->init_func_.get();
+      ir::Fn f   = *s->init_;
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
       return frame;
@@ -134,7 +134,11 @@ struct InitInstruction
       return frame;
 
     } else if (auto* a = type->if_as<type::Array>()) {
-      NOT_YET();  // f = a->init_func_.get();
+      ir::Fn f   = *s->init_;
+      auto frame = ctx.MakeStackFrame(f.native());
+      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
+      return frame;
+
     } else {
       NOT_YET();
     }
@@ -151,7 +155,8 @@ struct DestroyInstruction
 
   interpretter::StackFrame Apply(interpretter::ExecutionContext& ctx) const {
     if (auto* s = type->if_as<type::Struct>()) {
-      ir::Fn f   = s->destroy_func_.get();
+      ASSERT(s->dtor_.has_value() == true);
+      ir::Fn f   = *s->dtor_;
       auto frame = ctx.MakeStackFrame(f.native());
       frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(reg));
       return frame;

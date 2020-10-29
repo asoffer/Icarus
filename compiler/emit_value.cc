@@ -148,7 +148,7 @@ ir::Value Compiler::EmitValue(ast::Declaration const *node) {
     }
   } else {
     if (node->IsUninitialized()) { return ir::Value(); }
-    auto t = type_of(node);
+    auto t = context().qual_type(node)->type();
     auto a = context().addr(node);
     if (node->IsCustomInitialized()) {
       auto to = type::Typed<ir::RegOr<ir::Addr>>(a, type::Ptr(t));
