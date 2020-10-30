@@ -394,6 +394,7 @@ struct Compiler
   DEFINE_EMIT_DEFAULT_INIT(type::Array);
   DEFINE_EMIT_DEFAULT_INIT(type::Flags);
   DEFINE_EMIT_DEFAULT_INIT(type::Pointer);
+  DEFINE_EMIT_DEFAULT_INIT(type::BufferPointer);
   DEFINE_EMIT_DEFAULT_INIT(type::Primitive);
   DEFINE_EMIT_DEFAULT_INIT(type::Struct);
   DEFINE_EMIT_DEFAULT_INIT(type::Tuple);

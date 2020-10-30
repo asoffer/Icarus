@@ -1,13 +1,76 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
 
-namespace compiler {
-
 // TODO: Currently inserting these always at the root. There are a couple of
 // reason why this is wrong. First, If this is generated due to a temporary
 // subcontext, we probably want to drop it, as we can't verify the constructed
 // type is valid in any way. Second, For types like arrays of primitives, we
 // only need to generate the code for them once, rather than per module.
+
+namespace compiler {
+namespace {
+enum AssignmentKind { Move, Copy };
+
+template <AssignmentKind K>
+void EmitArrayAssignment(Compiler &c, type::Array const *to,
+                         type::Array const *from) {
+  auto &bldr          = c.builder();
+  auto &fn            = *bldr.CurrentGroup();
+  bldr.CurrentBlock() = fn.entry();
+  auto val            = ir::Reg::Arg(0);
+  auto var            = ir::Reg::Arg(1);
+
+  auto to_data_ptr_type   = type::Ptr(to->data_type());
+  auto from_data_ptr_type = type::Ptr(from->data_type());
+
+  auto from_ptr = bldr.PtrIncr(val, 0, from_data_ptr_type);
+  auto from_end_ptr =
+      bldr.PtrIncr(from_ptr, from->length(), from_data_ptr_type);
+  auto to_ptr = bldr.PtrIncr(var, 0, to_data_ptr_type);
+
+  auto *loop_body  = bldr.AddBlock();
+  auto *land_block = bldr.AddBlock();
+  auto *cond_block = bldr.AddBlock();
+
+  bldr.UncondJump(cond_block);
+
+  bldr.CurrentBlock() = cond_block;
+  auto *from_phi      = bldr.PhiInst<ir::Addr>();
+  auto *to_phi        = bldr.PhiInst<ir::Addr>();
+  bldr.CondJump(bldr.Eq(ir::RegOr<ir::Addr>(from_phi->result), from_end_ptr),
+                land_block, loop_body);
+
+  bldr.CurrentBlock() = loop_body;
+  if constexpr (K == Copy) {
+    c.EmitCopyAssign(
+        type::Typed<ir::RegOr<ir::Addr>>(to_phi->result, to->data_type()),
+        type::Typed<ir::Value>(
+            ir::Value(c.builder().PtrFix(from_phi->result, from->data_type())),
+            from->data_type()));
+  } else if constexpr (K == Move) {
+    c.EmitMoveAssign(
+        type::Typed<ir::RegOr<ir::Addr>>(to_phi->result, to->data_type()),
+        type::Typed<ir::Value>(
+            ir::Value(c.builder().PtrFix(from_phi->result, from->data_type())),
+            from->data_type()));
+  } else {
+    UNREACHABLE();
+  }
+
+  ir::Reg next_to   = bldr.PtrIncr(to_phi->result, 1, to_data_ptr_type);
+  ir::Reg next_from = bldr.PtrIncr(from_phi->result, 1, from_data_ptr_type);
+  bldr.UncondJump(cond_block);
+
+  to_phi->add(fn.entry(), to_ptr);
+  to_phi->add(bldr.CurrentBlock(), next_to);
+  from_phi->add(fn.entry(), from_ptr);
+  from_phi->add(bldr.CurrentBlock(), next_from);
+
+  bldr.CurrentBlock() = land_block;
+  bldr.ReturnJump();
+}
+
+}  // namespace
 
 void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Array> const &r) {
   auto [fn, inserted] = context().root().InsertInit(r.type());
@@ -41,16 +104,126 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Array> const &r) {
   builder().Destroy(r);
 }
 
+void Compiler::EmitCopyAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Array> const &to,
+    type::Typed<ir::Value> const &from) {
+  auto [fn, inserted] = context().root().InsertCopyAssign(to.type(), from.type());
+  if (inserted) {
+    ICARUS_SCOPE(ir::SetCurrent(fn)) {
+      ASSERT(from.type().is<type::Array>() == true);
+      EmitArrayAssignment<Copy>(*this, to.type(),
+                                &from.type()->as<type::Array>());
+    }
+    fn->WriteByteCode<interpretter::instruction_set_t>();
+  }
+  builder().Copy(to, type::Typed<ir::Reg>(from->get<ir::Reg>(), from.type()));
+}
+
+void Compiler::EmitMoveAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Array> const &to,
+    type::Typed<ir::Value> const &from) {
+  auto [fn, inserted] = context().root().InsertMoveAssign(to.type(), from.type());
+  if (inserted) {
+    ICARUS_SCOPE(ir::SetCurrent(fn)) {
+      ASSERT(from.type().is<type::Array>() == true);
+      EmitArrayAssignment<Move>(*this, to.type(),
+                                &from.type()->as<type::Array>());
+    }
+    fn->WriteByteCode<interpretter::instruction_set_t>();
+  }
+  builder().Move(to, type::Typed<ir::Reg>(from->get<ir::Reg>(), from.type()));
+}
+
+void Compiler::EmitCopyAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Enum> const &to,
+    type::Typed<ir::Value> const &from) {
+  ASSERT(type::Type(to.type()) == from.type());
+  builder().Store(from->get<ir::RegOr<ir::EnumVal>>(), *to);
+}
+
+void Compiler::EmitMoveAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Enum> const &to,
+    type::Typed<ir::Value> const &from) {
+  EmitCopyAssign(to, from);
+}
+
 void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Flags> const &r) {
   builder().Store(ir::FlagsVal{0}, *r);
+}
+
+void Compiler::EmitCopyAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Flags> const &to,
+    type::Typed<ir::Value> const &from) {
+  ASSERT(type::Type(to.type()) == from.type());
+  builder().Store(from->get<ir::RegOr<ir::FlagsVal>>(), *to);
+}
+
+void Compiler::EmitMoveAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Flags> const &to,
+    type::Typed<ir::Value> const &from) {
+  EmitCopyAssign(to, from);
 }
 
 void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Pointer> const &r) {
   builder().Store(ir::Addr::Null(), *r);
 }
 
+void Compiler::EmitCopyAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Pointer> const &to,
+    type::Typed<ir::Value> const &from) {
+  if (type::Type(to.type()) == from.type()) {
+    builder().Store(from->get<ir::RegOr<ir::Addr>>(), *to);
+  } else if (from.type() == type::NullPtr) {
+    builder().Store(ir::Addr::Null(), *to);
+  } else {
+    UNREACHABLE(to, ": ", to.type(), " - ", from.type());
+  }
+}
+
+void Compiler::EmitMoveAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Pointer> const &to,
+    type::Typed<ir::Value> const &from) {
+  EmitCopyAssign(to, from);
+}
+
+void Compiler::EmitDefaultInit(
+    type::Typed<ir::Reg, type::BufferPointer> const &r) {
+  EmitDefaultInit(static_cast<type::Typed<ir::Reg, type::Pointer>>(r));
+}
+
+void Compiler::EmitCopyAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::BufferPointer> const &to,
+    type::Typed<ir::Value> const &from) {
+  EmitCopyAssign(
+      static_cast<type::Typed<ir::RegOr<ir::Addr>, type::Pointer>>(to), from);
+}
+
+void Compiler::EmitMoveAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::BufferPointer> const &to,
+    type::Typed<ir::Value> const &from) {
+  EmitMoveAssign(
+      static_cast<type::Typed<ir::RegOr<ir::Addr>, type::Pointer>>(to), from);
+}
+
 void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Primitive> const &r) {
   r.type()->Apply([&]<typename T>() { builder().Store(T{}, *r); });
+}
+
+// TODO: Determine if you want to treat mixed integer assignment as an implicit
+// cast or as an overload set.
+void Compiler::EmitCopyAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Primitive> const &to,
+    type::Typed<ir::Value> const &from) {
+  ASSERT(type::Type(to.type()) == from.type());
+  to.type()->Apply([&]<typename T>() {
+    builder().Store(from->template get<ir::RegOr<T>>(), *to);
+  });
+}
+
+void Compiler::EmitMoveAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Primitive> const &to,
+    type::Typed<ir::Value> const &from) {
+  EmitCopyAssign(to, from);
 }
 
 void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Struct> const &r) {
@@ -145,6 +318,141 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Tuple> const &r) {
     fn->WriteByteCode<interpretter::instruction_set_t>();
   }
   builder().Destroy(r);
+}
+
+void Compiler::EmitMoveAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Tuple> const &to,
+    type::Typed<ir::Value> const &from) {
+  auto [fn, inserted] =
+      context().root().InsertMoveAssign(to.type(), from.type());
+  if (inserted) {
+    ICARUS_SCOPE(ir::SetCurrent(fn)) {
+      builder().CurrentBlock() = fn->entry();
+      auto val                 = ir::Reg::Arg(0);
+      auto var                 = ir::Reg::Arg(1);
+
+      for (size_t i = 0; i < to.type()->size(); ++i) {
+        auto entry = to.type()->entries()[i];
+        EmitMoveAssign(
+            type::Typed<ir::RegOr<ir::Addr>>(
+                builder().Field(var, to.type(), i).get(), entry),
+            type::Typed<ir::Value>(
+                ir::Value(builder().PtrFix(
+                    builder().Field(val, to.type(), i).get(), entry)),
+                entry));
+      }
+
+      builder().ReturnJump();
+    }
+    fn->WriteByteCode<interpretter::instruction_set_t>();
+  }
+
+  builder().Move(to, type::Typed<ir::Reg>(from->get<ir::Reg>(), from.type()));
+}
+
+void Compiler::EmitCopyAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Tuple> const &to,
+    type::Typed<ir::Value> const &from) {
+  auto [fn, inserted] =
+      context().root().InsertCopyAssign(to.type(), from.type());
+  if (inserted) {
+    ICARUS_SCOPE(ir::SetCurrent(fn)) {
+      builder().CurrentBlock() = fn->entry();
+      auto val                 = ir::Reg::Arg(0);
+      auto var                 = ir::Reg::Arg(1);
+
+      for (size_t i = 0; i < to.type()->size(); ++i) {
+        auto entry = to.type()->entries()[i];
+        EmitCopyAssign(
+            type::Typed<ir::RegOr<ir::Addr>>(
+                builder().Field(var, to.type(), i).get(), entry),
+            type::Typed<ir::Value>(
+                ir::Value(builder().PtrFix(
+                    builder().Field(val, to.type(), i).get(), entry)),
+                entry));
+      }
+
+      builder().ReturnJump();
+    }
+    fn->WriteByteCode<interpretter::instruction_set_t>();
+  }
+
+  builder().Copy(to, type::Typed<ir::Reg>(from->get<ir::Reg>(), from.type()));
+}
+
+void Compiler::EmitCopyAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Function> const &to,
+    type::Typed<ir::Value> const &from) {
+  ASSERT(type::Type(to.type()) == from.type());
+  builder().Store(from->get<ir::RegOr<ir::Fn>>(), *to);
+}
+
+void Compiler::EmitMoveAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Function> const &to,
+    type::Typed<ir::Value> const &from) {
+  EmitCopyAssign(to, from);
+}
+
+void Compiler::EmitCopyAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Struct> const &to,
+    type::Typed<ir::Value> const &from) {
+  // TODO: Support mixed types and user-defined assignments.
+  ASSERT(type::Type(to.type()) == from.type());
+  auto [fn, inserted] =
+      context().root().InsertCopyAssign(to.type(), from.type());
+  if (inserted) {
+    type::Struct const *s = to.type();
+    ICARUS_SCOPE(ir::SetCurrent(fn)) {
+      builder().CurrentBlock() = fn->entry();
+      auto val                 = ir::Reg::Arg(0);
+      auto var                 = ir::Reg::Arg(1);
+
+      for (size_t i = 0; i < s->fields().size(); ++i) {
+        auto field_type = s->fields()[i].type;
+        auto from       = ir::Value(
+            builder().PtrFix(builder().Field(val, s, i).get(), field_type));
+        auto to = builder().Field(var, s, i).get();
+
+        EmitCopyAssign(type::Typed<ir::RegOr<ir::Addr>>(to, field_type),
+                       type::Typed<ir::Value>(from, field_type));
+      }
+
+      builder().ReturnJump();
+    }
+    fn->WriteByteCode<interpretter::instruction_set_t>();
+  }
+  builder().Copy(to, type::Typed<ir::Reg>(from->get<ir::Reg>(), from.type()));
+}
+
+void Compiler::EmitMoveAssign(
+    type::Typed<ir::RegOr<ir::Addr>, type::Struct> const &to,
+    type::Typed<ir::Value> const &from) {
+  // TODO: Support mixed types and user-defined assignments.
+  ASSERT(type::Type(to.type()) == from.type());
+  auto [fn, inserted] =
+      context().root().InsertMoveAssign(to.type(), from.type());
+  if (inserted) {
+    type::Struct const *s = to.type();
+    ICARUS_SCOPE(ir::SetCurrent(fn)) {
+      builder().CurrentBlock() = fn->entry();
+      auto val                 = ir::Reg::Arg(0);
+      auto var                 = ir::Reg::Arg(1);
+
+      for (size_t i = 0; i < s->fields().size(); ++i) {
+        auto field_type = s->fields()[i].type;
+        auto from       = ir::Value(
+            builder().PtrFix(builder().Field(val, s, i).get(), field_type));
+        auto to = builder().Field(var, s, i).get();
+
+        EmitMoveAssign(type::Typed<ir::RegOr<ir::Addr>>(to, field_type),
+                       type::Typed<ir::Value>(from, field_type));
+      }
+
+      builder().ReturnJump();
+    }
+    fn->WriteByteCode<interpretter::instruction_set_t>();
+  }
+  builder().Move(to, type::Typed<ir::Reg>(from->get<ir::Reg>(), from.type()));
 }
 
 }  // namespace compiler

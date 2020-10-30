@@ -167,14 +167,14 @@ void Builder::Destroy(type::Typed<Reg> r) {
   CurrentBlock()->Append(DestroyInstruction{.type = r.type(), .reg = *r});
 }
 
-void Builder::Move(type::Type t, Reg from, RegOr<Addr> to) {
+void Builder::Move(type::Typed<RegOr<Addr>> to, type::Typed<Reg> from) {
   CurrentBlock()->Append(
-      ir::MoveInstruction{.type = t, .from = from, .to = to});
+      ir::MoveInstruction{.type = to.type(), .from = *from, .to = *to});
 }
 
-void Builder::Copy(type::Type t, Reg from, RegOr<Addr> to) {
+void Builder::Copy(type::Typed<RegOr<Addr>> to, type::Typed<Reg> from) {
   CurrentBlock()->Append(
-      ir::CopyInstruction{.type = t, .from = from, .to = to});
+      ir::CopyInstruction{.type = to.type(), .from = *from, .to = *to});
 }
 
 type::Typed<Reg> Builder::LoadSymbol(String name, type::Type type) {

@@ -129,7 +129,8 @@ INSTANTIATE_TEST_SUITE_P(All, SpecialTest,
 
                              // TODO: Tests for tuples and arrays
                              // TODO: Tests for struct destructors, including
-                             // nested in arrays, tuples or other structs.
+                             //       nested in arrays, tuples or other structs.
+                             // TODO: Copy/move assignment tests
 
                          }));
 

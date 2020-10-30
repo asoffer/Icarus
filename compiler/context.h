@@ -199,8 +199,6 @@ struct Context {
                       /* from = */ std::vector<ast::Node const *>>
       extraction_map_;
 
-  absl::flat_hash_map<type::Type, ir::NativeFn> copy_assign_, move_assign_;
-
   ir::ModuleId imported_module(ast::Import const *node);
   void set_imported_module(ast::Import const *node, ir::ModuleId module_id);
 
@@ -326,6 +324,44 @@ struct Context {
                        type::Typed<ast::Declaration const *>(nullptr, t))}));
     return std::pair<ir::NativeFn, bool>(iter->second, inserted);
   }
+  std::pair<ir::NativeFn, bool> InsertCopyAssign(type::Type to, type::Type from) {
+    auto [iter, inserted] = copy_assign_.emplace(
+        std::make_pair(to, from),
+        ir::NativeFn(
+            &fns_,
+            type::Func(
+                core::Params<type::QualType>{
+                    core::AnonymousParam(
+                        type::QualType::NonConstant(type::Ptr(to))),
+                    core::AnonymousParam(
+                        type::QualType::NonConstant(type::Ptr(from)))},
+                {}),
+            core::Params<type::Typed<ast::Declaration const *>>{
+                core::AnonymousParam(
+                    type::Typed<ast::Declaration const *>(nullptr, to)),
+                core::AnonymousParam(
+                    type::Typed<ast::Declaration const *>(nullptr, from))}));
+    return std::pair<ir::NativeFn, bool>(iter->second, inserted);
+  }
+  std::pair<ir::NativeFn, bool> InsertMoveAssign(type::Type to, type::Type from) {
+    auto [iter, inserted] = move_assign_.emplace(
+        std::make_pair(to, from),
+        ir::NativeFn(
+            &fns_,
+            type::Func(
+                core::Params<type::QualType>{
+                    core::AnonymousParam(
+                        type::QualType::NonConstant(type::Ptr(to))),
+                    core::AnonymousParam(
+                        type::QualType::NonConstant(type::Ptr(from)))},
+                {}),
+            core::Params<type::Typed<ast::Declaration const *>>{
+                core::AnonymousParam(
+                    type::Typed<ast::Declaration const *>(nullptr, to)),
+                core::AnonymousParam(
+                    type::Typed<ast::Declaration const *>(nullptr, from))}));
+    return std::pair<ir::NativeFn, bool>(iter->second, inserted);
+  }
 
  private:
   explicit Context(CompiledModule *mod, Context *parent);
@@ -399,6 +435,8 @@ struct Context {
   std::forward_list<ir::CompiledScope> scopes_;
 
   absl::flat_hash_map<type::Type, ir::NativeFn> init_, destroy_;
+  absl::flat_hash_map<std::pair<type::Type, type::Type>, ir::NativeFn>
+      copy_assign_, move_assign_;
 };
 
 }  // namespace compiler

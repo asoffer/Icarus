@@ -533,8 +533,8 @@ struct Builder {
   // builtin functions (or, in the case of primitive types, do nothing).
   void Init(type::Typed<Reg> r);
   void Destroy(type::Typed<Reg> r);
-  void Move(type::Type t, Reg from, RegOr<Addr> to);
-  void Copy(type::Type t, Reg from, RegOr<Addr> to);
+  void Move(type::Typed<RegOr<Addr>> to, type::Typed<Reg> from);
+  void Copy(type::Typed<RegOr<Addr>> to, type::Typed<Reg> from);
 
   // Data structure access commands. For structs and tuples, `Fields` takes an
   // address of the data structure and returns the address of the particular

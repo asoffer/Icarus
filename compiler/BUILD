@@ -85,10 +85,7 @@ TYPE_VERIFICATION = [
 cc_library(
     name = "visitors",
     hdrs = [],
-    srcs = [
-        "emit_assign.cc",
-        "emit_value.cc",
-    ],
+    srcs = ["emit_value.cc"],
     deps = [
         ":compiler_header",
         ":context",
