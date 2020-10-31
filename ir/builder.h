@@ -531,8 +531,6 @@ struct Builder {
 
   // Special members function instructions. Calling these typically calls
   // builtin functions (or, in the case of primitive types, do nothing).
-  void Init(type::Typed<Reg> r);
-  void Destroy(type::Typed<Reg> r);
   void Move(type::Typed<RegOr<Addr>> to, type::Typed<Reg> from);
   void Copy(type::Typed<RegOr<Addr>> to, type::Typed<Reg> from);
 

@@ -209,6 +209,8 @@ struct Compiler
   diagnostic::DiagnosticConsumer &diag() const {
     return resources_.diagnostic_consumer;
   }
+  ir::BasicBlock *current_block() { return builder().CurrentBlock(); }
+
   module::Importer &importer() const { return resources_.importer; }
 
   template <typename T>
@@ -389,7 +391,7 @@ struct Compiler
   void Visit(EmitDefaultInitTag, T const *ty, ir::Reg r) override {            \
     EmitDefaultInit(type::Typed<ir::Reg, T>(r, ty));                           \
   }                                                                            \
-  void EmitDefaultInit(type::Typed<ir::Reg, T> const &r);
+  void EmitDefaultInit(type::Typed<ir::Reg, T> const &r)
 
   DEFINE_EMIT_DEFAULT_INIT(type::Array);
   DEFINE_EMIT_DEFAULT_INIT(type::Flags);
@@ -405,9 +407,13 @@ struct Compiler
   void Visit(EmitDestroyTag, T const *ty, ir::Reg r) override {                \
     EmitDestroy(type::Typed<ir::Reg, T>(r, ty));                               \
   }                                                                            \
-  void EmitDestroy(type::Typed<ir::Reg, T> const &r);
+  void EmitDestroy(type::Typed<ir::Reg, T> const &r)
 
   DEFINE_EMIT_DESTROY(type::Array);
+  DEFINE_EMIT_DESTROY(type::Flags) {}
+  DEFINE_EMIT_DESTROY(type::Pointer) {}
+  DEFINE_EMIT_DESTROY(type::BufferPointer) {}
+  DEFINE_EMIT_DESTROY(type::Primitive) {}
   DEFINE_EMIT_DESTROY(type::Struct);
   DEFINE_EMIT_DESTROY(type::Tuple);
 

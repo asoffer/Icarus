@@ -159,14 +159,6 @@ void Builder::ChooseJump(std::vector<std::string_view> names,
       JumpCmd::Choose(std::move(names), std::move(blocks), std::move(args)));
 }
 
-void Builder::Init(type::Typed<Reg> r) {
-  CurrentBlock()->Append(InitInstruction{.type = r.type(), .reg = *r});
-}
-
-void Builder::Destroy(type::Typed<Reg> r) {
-  CurrentBlock()->Append(DestroyInstruction{.type = r.type(), .reg = *r});
-}
-
 void Builder::Move(type::Typed<RegOr<Addr>> to, type::Typed<Reg> from) {
   CurrentBlock()->Append(
       ir::MoveInstruction{.type = to.type(), .from = *from, .to = *to});

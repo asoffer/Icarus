@@ -1,5 +1,6 @@
 #include "ast/ast.h"
 #include "compiler/compiler.h"
+#include "ir/instruction/instructions.h"
 
 // TODO: Currently inserting these always at the root. There are a couple of
 // reason why this is wrong. First, If this is generated due to a temporary
@@ -85,7 +86,7 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Array> const &r) {
     fn->WriteByteCode<interpretter::instruction_set_t>();
   }
 
-  builder().Init(r);
+  current_block()->Append(ir::InitInstruction{.type = r.type(), .reg = *r});
 }
 
 void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Array> const &r) {
@@ -101,7 +102,7 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Array> const &r) {
     }
     fn->WriteByteCode<interpretter::instruction_set_t>();
   }
-  builder().Destroy(r);
+  current_block()->Append(ir::DestroyInstruction{.type = r.type(), .reg = *r});
 }
 
 void Compiler::EmitCopyAssign(
@@ -255,7 +256,7 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Struct> const &r) {
     const_cast<type::Struct *>(r.type())->init_ = fn;
     fn->WriteByteCode<interpretter::instruction_set_t>();
   }
-  builder().Init(r);
+  current_block()->Append(ir::InitInstruction{.type = r.type(), .reg = *r});
 }
 
 void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Struct> const &r) {
@@ -278,7 +279,7 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Struct> const &r) {
   }
   // TODO: Remove this hack.
   const_cast<type::Struct *>(r.type())->SetDestructor(fn);
-  builder().Destroy(r);
+  current_block()->Append(ir::DestroyInstruction{.type = r.type(), .reg = *r});
 }
 
 void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Tuple> const &r) {
@@ -297,7 +298,7 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Tuple> const &r) {
     }
     fn->WriteByteCode<interpretter::instruction_set_t>();
   }
-  builder().Init(r);
+  current_block()->Append(ir::InitInstruction{.type = r.type(), .reg = *r});
 }
 
 void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Tuple> const &r) {
@@ -317,7 +318,7 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Tuple> const &r) {
     }
     fn->WriteByteCode<interpretter::instruction_set_t>();
   }
-  builder().Destroy(r);
+  current_block()->Append(ir::DestroyInstruction{.type = r.type(), .reg = *r});
 }
 
 void Compiler::EmitMoveAssign(

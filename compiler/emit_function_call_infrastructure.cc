@@ -24,8 +24,6 @@ struct PushVec : public base::UseWithScope {
 template <typename T, typename... Args>
 PushVec(std::vector<T> *, Args &&...)->PushVec<T>;
 
-}  // namespace
-
 void MakeAllStackAllocations(Compiler &compiler, ast::FnScope const *fn_scope) {
   for (auto *scope : fn_scope->descendants()) {
     if (scope != fn_scope and scope->is<ast::FnScope>()) { continue; }
@@ -47,6 +45,8 @@ void MakeAllStackAllocations(Compiler &compiler, ast::FnScope const *fn_scope) {
     }
   }
 }
+
+}  // namespace
 
 void MakeAllDestructions(Compiler &compiler, ast::ExecScope const *exec_scope) {
   // TODO store these in the appropriate order so we don't have to compute this?

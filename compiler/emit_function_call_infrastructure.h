@@ -9,7 +9,6 @@
 
 namespace compiler {
 
-void MakeAllStackAllocations(Compiler &compiler, ast::FnScope const *fn_scope);
 void MakeAllDestructions(Compiler &compiler, ast::ExecScope const *exec_scope);
 void EmitIrForStatements(Compiler &compiler,
                          base::PtrSpan<ast::Node const> span);

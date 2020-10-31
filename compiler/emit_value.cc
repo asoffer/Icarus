@@ -26,10 +26,6 @@
 // up dividing by zero. It's *possible* you that you can cover this stuff with
 // property checking, but that's way off in the future.
 namespace compiler {
-
-type::QualType VerifyBody(Compiler *compiler, ast::FunctionLiteral const *node,
-                          type::Type fn_type = nullptr);
-
 namespace {
 
 template <typename NodeType>
@@ -654,12 +650,6 @@ ir::Value Compiler::EmitValue(ast::ParameterizedStructLiteral const *node) {
   // TODO: At least right now with the hacky version we don't look at this.
 
   return ir::Value(context().qual_type(node)->type());
-}
-
-ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Identifier const *node) {
-  auto decl_span = context().decls(node);
-  ASSERT(decl_span.size() == 1u);
-  return context().addr(decl_span[0]);
 }
 
 }  // namespace compiler

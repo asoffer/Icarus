@@ -49,4 +49,10 @@ void Compiler::EmitAssign(
   EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
 }
 
+ir::RegOr<ir::Addr> Compiler::EmitRef(ast::Identifier const *node) {
+  auto decl_span = context().decls(node);
+  ASSERT(decl_span.size() == 1u);
+  return context().addr(decl_span[0]);
+}
+
 }  // namespace compiler
