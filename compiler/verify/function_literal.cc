@@ -212,7 +212,7 @@ type::QualType VerifyConcrete(Compiler &c, ast::FunctionLiteral const *node) {
 }
 
 type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
-  auto gen = [node, resources = c.resources()](
+  auto gen = [node, resources = c.resources(), cg = c.builder().CurrentGroup()](
                  core::FnArgs<type::Typed<ir::Value>> const &args) mutable
       -> type::Function const * {
     Compiler instantiation_compiler(resources);
@@ -221,13 +221,14 @@ type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
 
     if (inserted) {
       LOG("FunctionLiteral", "inserted! %s", node->DebugString());
-      Compiler c({
-          .builder             = instantiation_compiler.builder(),
-          .data                = context,
-          .diagnostic_consumer = instantiation_compiler.diag(),
-          .importer            = instantiation_compiler.importer(),
-      });
-      auto qt   = VerifyConcrete(c, node);
+      auto compiler =
+          instantiation_compiler.MakeChild(Compiler::PersistentResources{
+              .data                = context,
+              .diagnostic_consumer = instantiation_compiler.diag(),
+              .importer            = instantiation_compiler.importer(),
+          });
+      compiler.builder().CurrentGroup() = cg;
+      auto qt   = VerifyConcrete(compiler, node);
       auto outs = qt.type()->as<type::Function>().output();
       rets_ref.assign(outs.begin(), outs.end());
 
@@ -236,7 +237,7 @@ type::QualType VerifyGeneric(Compiler &c, ast::FunctionLiteral const *node) {
       context.set_qual_type(node, qt);
       // TODO: We shouldn't have a queue per compiler. We may not be able to
       // verify these yet.
-      c.CompleteWorkQueue();
+      compiler.CompleteWorkQueue();
       return &qt.type()->as<type::Function>();
     }
 

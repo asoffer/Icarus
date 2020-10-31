@@ -33,12 +33,18 @@ InlineJumpIntoCurrent(ir::Builder &bldr, ir::Jump to_be_inlined,
   auto jump_type      = jump->type();
   if (auto state_type = jump_type->state()) {
     type::Apply(state_type, [&]<typename T>()->ir::Reg {
-      return ir::MakeReg<ir::RegOr<T>>(arguments[i++].get<ir::RegOr<T>>());
+      return bldr.CurrentBlock()->Append(ir::RegisterInstruction<T>{
+          .operand = arguments[i++].get<ir::RegOr<T>>(),
+          .result  = bldr.CurrentGroup()->Reserve(),
+      });
     });
   }
   for (auto const &p : jump_type->params()) {
     type::Apply(p.value, [&]<typename T>()->ir::Reg {
-      return ir::MakeReg<ir::RegOr<T>>(arguments[i++].get<ir::RegOr<T>>());
+      return bldr.CurrentBlock()->Append(ir::RegisterInstruction<T>{
+          .operand = arguments[i++].get<ir::RegOr<T>>(),
+          .result  = bldr.CurrentGroup()->Reserve(),
+      });
     });
     // TODO Handle types not covered by Apply (structs, etc).
   }

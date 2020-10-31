@@ -96,12 +96,19 @@ struct Compiler
   // Resources and pointers/references to data that are guaranteed to outlive
   // any Compiler construction.
   struct PersistentResources {
-    ir::Builder &builder;
     Context &data;
     diagnostic::DiagnosticConsumer &diagnostic_consumer;
     module::Importer &importer;
   };
   PersistentResources resources() { return resources_; }
+
+  template <typename... Args>
+  Compiler MakeChild(Args &&... args) {
+    Compiler c(std::forward<Args>(args)...);
+    c.builder().CurrentGroup() = builder().CurrentGroup();
+    c.builder().CurrentBlock() = builder().CurrentBlock();
+    return c;
+  }
 
   void VerifyAll(base::PtrSpan<ast::Node const> nodes) {
     for (ast::Node const *node : nodes) {
@@ -205,7 +212,7 @@ struct Compiler
   Compiler WithPersistent() const;
 
   Context &context() const { return resources_.data; }
-  ir::Builder &builder() { return resources_.builder; };
+  ir::Builder &builder() { return builder_; };
   diagnostic::DiagnosticConsumer &diag() const {
     return resources_.diagnostic_consumer;
   }
@@ -593,6 +600,7 @@ struct Compiler
 
   PersistentResources resources_;
   TransientState state_;
+    ir::Builder builder_;
 
   // TODO: Should be persistent, but also needs on some local context
   // (Context).

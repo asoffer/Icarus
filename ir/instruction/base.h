@@ -1,11 +1,13 @@
 #ifndef ICARUS_IR_INSTRUCTION_BASE_H
 #define ICARUS_IR_INSTRUCTION_BASE_H
 
+#include <concepts>
 #include <string>
 
 #include "base/cast.h"
 #include "base/meta.h"
 #include "base/untyped_buffer.h"
+#include "ir/value/reg.h"
 
 // TODO rename this file so that when you forget that for dependency reasons you
 // should try to include this instead of instructions.h, you reach for this one
@@ -14,6 +16,26 @@ namespace ir {
 
 struct InstructionInliner;
 struct ByteCodeWriter;
+
+// clang-format off
+template <typename T>
+concept Instruction = std::copy_constructible<T> and 
+                      std::assignable_from<T&, T const&> and
+                      std::assignable_from<T&, T&&> and 
+                      std::destructible<T> and
+                      requires(T t) {
+  { t.WriteByteCode(std::declval<ByteCodeWriter*>()) } -> std::same_as<void>;
+  { t.Inline(std::declval<InstructionInliner const&>()) } -> std::same_as<void>;
+};
+
+template <typename T>
+concept ReturningInstruction = Instruction<T> and requires (T t) {
+  { t.result } -> std::same_as<Reg>;
+};
+
+template <typename T>
+concept VoidReturningInstruction = Instruction<T> and not ReturningInstruction<T>;
+// clang-format on
 
 struct InstructionVTable {
   void* (*copy_construct)(void const*) = [](void const*) -> void* {

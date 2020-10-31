@@ -93,9 +93,8 @@ void EmitCall(Tag, Compiler &compiler, ast::Expression const *callee,
   auto [callee_fn, overload_type, dependent_data] =
       EmitCallee(compiler, callee, *callee_qual_type, args);
 
-  Compiler c({
-      .builder = compiler.builder(),
-      .data    = dependent_data ? *dependent_data : compiler.context(),
+  Compiler c = compiler.MakeChild(Compiler::PersistentResources{
+      .data = dependent_data ? *dependent_data : compiler.context(),
       .diagnostic_consumer = compiler.diag(),
       .importer            = compiler.importer(),
   });

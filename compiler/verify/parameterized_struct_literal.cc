@@ -39,7 +39,7 @@ type::QualType Compiler::VerifyType(
       // TODO: This should actually be behind a must_complete work queue item.
       ir::CompiledFn fn(type::Func({}, {}),
                         core::Params<type::Typed<ast::Declaration const *>>{});
-      ICARUS_SCOPE(ir::SetCurrent(&fn, &c.builder())) {
+      ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
         // TODO: this is essentially a copy of the body of
         // FunctionLiteral::EmitValue Factor these out together.
         c.builder().CurrentBlock() = fn.entry();

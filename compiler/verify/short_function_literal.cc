@@ -23,7 +23,6 @@ type::QualType VerifyGeneric(Compiler &c,
     // TODO handle compilation failures.
     auto [params, rets, context, inserted] = c.Instantiate(node, args);
     Compiler body_compiler({
-        .builder             = c.builder(),
         .data                = context,
         .diagnostic_consumer = c.diag(),
         .importer            = c.importer(),

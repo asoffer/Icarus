@@ -23,7 +23,6 @@ namespace test {
 struct TestModule : compiler::CompiledModule {
   TestModule()
       : compiler({
-            .builder             = ir::GetBuilder(),
             .data                = context(),
             .diagnostic_consumer = consumer,
             .importer            = importer,

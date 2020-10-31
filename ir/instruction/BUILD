@@ -17,6 +17,7 @@ cc_library(
         "//base:cast",
         "//base:meta",
         "//base:untyped_buffer",
+        "//ir/value:reg",
     ]
 )
 

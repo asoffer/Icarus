@@ -309,8 +309,7 @@ ir::NativeFn MakeConcreteFromGeneric(
           return type::Typed<ast::Declaration const *>(
               d.get(), fn_type->params()[i++].value.type());
         }));
-    f->work_item = DeferBody({.builder             = compiler->builder(),
-                              .data                = context,
+    f->work_item = DeferBody({.data                = context,
                               .diagnostic_consumer = compiler->diag(),
                               .importer            = compiler->importer()},
                              compiler->state(), node, fn_type);
@@ -543,7 +542,7 @@ WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
 
   ir::CompiledFn fn(type::Func({}, {}),
                     core::Params<type::Typed<ast::Declaration const *>>{});
-  ICARUS_SCOPE(ir::SetCurrent(&fn, &builder())) {
+  ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
     // TODO this is essentially a copy of the body of FunctionLiteral::EmitValue
     // Factor these out together.
     builder().CurrentBlock() = fn.entry();

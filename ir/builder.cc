@@ -7,10 +7,6 @@
 
 namespace ir {
 
-thread_local Builder current;
-
-Builder &GetBuilder() { return current; }
-
 BasicBlock *Builder::AddBlock() { return CurrentGroup()->AppendBlock(); }
 BasicBlock *Builder::AddBlock(std::string header) {
   return CurrentGroup()->AppendBlock(BasicBlock::DebugInfo{
@@ -22,21 +18,21 @@ BasicBlock *Builder::AddBlock(BasicBlock const &to_copy) {
   return CurrentGroup()->AppendBlock(to_copy);
 }
 
-SetCurrent::SetCurrent(internal::BlockGroupBase *group, Builder *builder)
-    : builder_(builder ? builder : &GetBuilder()),
-      old_group_(builder_->CurrentGroup()),
-      old_block_(builder_->CurrentBlock()),
-      old_termination_state_(builder_->current_.block_termination_state_) {
-  builder_->CurrentGroup()  = ASSERT_NOT_NULL(group);
-  builder_->current_.block_ = group->entry();
-  builder_->current_.block_termination_state_ =
+SetCurrent::SetCurrent(internal::BlockGroupBase &group, Builder &builder)
+    : builder_(builder),
+      old_group_(builder_.CurrentGroup()),
+      old_block_(builder_.CurrentBlock()),
+      old_termination_state_(builder_.current_.block_termination_state_) {
+  builder_.CurrentGroup()  = &group;
+  builder_.current_.block_ = group.entry();
+  builder_.current_.block_termination_state_ =
       Builder::BlockTerminationState::kMoreStatements;
 }
 
 SetCurrent::~SetCurrent() {
-  builder_->CurrentGroup()                    = old_group_;
-  builder_->CurrentBlock()                    = old_block_;
-  builder_->current_.block_termination_state_ = old_termination_state_;
+  builder_.CurrentGroup()                    = old_group_;
+  builder_.CurrentBlock()                    = old_block_;
+  builder_.current_.block_termination_state_ = old_termination_state_;
 }
 
 Reg Builder::Alloca(type::Type t) { return CurrentGroup()->Alloca(t); }
@@ -46,8 +42,6 @@ Reg Builder::TmpAlloca(type::Type t) {
   current_.temporaries_to_destroy_.emplace_back(reg, t);
   return reg;
 }
-
-Reg Reserve() { return current.CurrentGroup()->Reserve(); }
 
 ir::OutParams Builder::OutParams(absl::Span<type::Type const> types) {
   std::vector<Reg> regs;
@@ -62,6 +56,7 @@ ir::OutParams Builder::OutParams(absl::Span<type::Type const> types) {
 ir::OutParams Builder::OutParamsMoveInit(
     absl::Span<type::Type const> types,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  LOG("", "%p", CurrentGroup());
   std::vector<Reg> regs;
   regs.reserve(types.size());
   for (size_t i = 0; i < types.size(); ++i) {

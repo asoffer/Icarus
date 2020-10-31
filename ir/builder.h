@@ -83,42 +83,32 @@ struct Builder {
 
   template <typename Lhs, typename Rhs>
   RegOr<reduced_type_t<Lhs>> Add(Lhs const& lhs, Rhs const& rhs) {
-    AddInstruction<reduced_type_t<Lhs>> inst{.lhs = lhs, .rhs = rhs};
-    auto result = inst.result = CurrentGroup()->Reserve();
-    CurrentBlock()->Append(std::move(inst));
-    return result;
+    return CurrentBlock()->Append(AddInstruction<reduced_type_t<Lhs>>{
+        .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
   }
 
   template <typename Lhs, typename Rhs>
   RegOr<reduced_type_t<Lhs>> Sub(Lhs const& lhs, Rhs const& rhs) {
-    SubInstruction<reduced_type_t<Lhs>> inst{.lhs = lhs, .rhs = rhs};
-    auto result = inst.result = CurrentGroup()->Reserve();
-    CurrentBlock()->Append(std::move(inst));
-    return result;
+    return CurrentBlock()->Append(SubInstruction<reduced_type_t<Lhs>>{
+        .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
   }
 
   template <typename Lhs, typename Rhs>
   RegOr<reduced_type_t<Lhs>> Mul(Lhs const& lhs, Rhs const& rhs) {
-    MulInstruction<reduced_type_t<Lhs>> inst{.lhs = lhs, .rhs = rhs};
-    auto result = inst.result = CurrentGroup()->Reserve();
-    CurrentBlock()->Append(std::move(inst));
-    return result;
+    return CurrentBlock()->Append(MulInstruction<reduced_type_t<Lhs>>{
+        .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
   }
 
   template <typename Lhs, typename Rhs>
   RegOr<reduced_type_t<Lhs>> Div(Lhs const& lhs, Rhs const& rhs) {
-    DivInstruction<reduced_type_t<Lhs>> inst{.lhs = lhs, .rhs = rhs};
-    auto result = inst.result = CurrentGroup()->Reserve();
-    CurrentBlock()->Append(std::move(inst));
-    return result;
+    return CurrentBlock()->Append(DivInstruction<reduced_type_t<Lhs>>{
+        .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
   }
 
   template <typename Lhs, typename Rhs>
   RegOr<reduced_type_t<Lhs>> Mod(Lhs const& lhs, Rhs const& rhs) {
-    ModInstruction<reduced_type_t<Lhs>> inst{.lhs = lhs, .rhs = rhs};
-    auto result = inst.result = CurrentGroup()->Reserve();
-    CurrentBlock()->Append(std::move(inst));
-    return result;
+    return CurrentBlock()->Append(ModInstruction<reduced_type_t<Lhs>>{
+        .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
   }
 
   template <typename Lhs, typename Rhs>
@@ -130,10 +120,8 @@ struct Builder {
         return LtInstruction<type>::Apply(lhs.value(), rhs.value());
       }
 
-      LtInstruction<reduced_type_t<Lhs>> inst{.lhs = lhs, .rhs = rhs};
-      auto result = inst.result = CurrentGroup()->Reserve();
-      CurrentBlock()->Append(std::move(inst));
-      return result;
+      return CurrentBlock()->Append(LtInstruction<reduced_type_t<Lhs>>{
+          .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
     } else {
       return Lt(RegOr<type>(lhs), RegOr<type>(rhs));
     }
@@ -153,10 +141,8 @@ struct Builder {
         return LeInstruction<type>::Apply(lhs.value(), rhs.value());
       }
 
-      LeInstruction<type> inst{.lhs = lhs, .rhs = rhs};
-      auto result = inst.result = CurrentGroup()->Reserve();
-      CurrentBlock()->Append(std::move(inst));
-      return result;
+      return CurrentBlock()->Append(LeInstruction<type>{
+          .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
     } else {
       return Le(RegOr<type>(lhs), RegOr<type>(rhs));
     }
@@ -170,38 +156,29 @@ struct Builder {
   // Flags operators
   RegOr<FlagsVal> XorFlags(RegOr<FlagsVal> const& lhs,
                            RegOr<FlagsVal> const& rhs) {
-    using InstrT = XorFlagsInstruction;
     if (not lhs.is_reg() and not rhs.is_reg()) {
-      return InstrT::Apply(lhs.value(), rhs.value());
+      return XorFlagsInstruction::Apply(lhs.value(), rhs.value());
     }
-    InstrT inst{.lhs = lhs, .rhs = rhs};
-    auto result = inst.result = CurrentGroup()->Reserve();
-    CurrentBlock()->Append(std::move(inst));
-    return result;
+    return CurrentBlock()->Append(XorFlagsInstruction{
+        .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
   }
 
   RegOr<FlagsVal> AndFlags(RegOr<FlagsVal> const& lhs,
                            RegOr<FlagsVal> const& rhs) {
-    using InstrT = AndFlagsInstruction;
     if (not lhs.is_reg() and not rhs.is_reg()) {
-      return InstrT::Apply(lhs.value(), rhs.value());
+      return AndFlagsInstruction::Apply(lhs.value(), rhs.value());
     }
-    InstrT inst{.lhs = lhs, .rhs = rhs};
-    auto result = inst.result = CurrentGroup()->Reserve();
-    CurrentBlock()->Append(std::move(inst));
-    return result;
+    return CurrentBlock()->Append(AndFlagsInstruction{
+        .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
   }
 
   RegOr<FlagsVal> OrFlags(RegOr<FlagsVal> const& lhs,
                           RegOr<FlagsVal> const& rhs) {
-    using InstrT = OrFlagsInstruction;
     if (not lhs.is_reg() and not rhs.is_reg()) {
-      return InstrT::Apply(lhs.value(), rhs.value());
+      return OrFlagsInstruction::Apply(lhs.value(), rhs.value());
     }
-    InstrT inst{.lhs = lhs, .rhs = rhs};
-    auto result = inst.result = CurrentGroup()->Reserve();
-    CurrentBlock()->Append(std::move(inst));
-    return result;
+    return CurrentBlock()->Append(OrFlagsInstruction{
+        .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
   }
 
   // Comparison
@@ -215,10 +192,8 @@ struct Builder {
       if (not lhs.is_reg() and not rhs.is_reg()) {
         return EqInstruction<type>::Apply(lhs.value(), rhs.value());
       }
-      EqInstruction<type> inst{.lhs = lhs, .rhs = rhs};
-      auto result = inst.result = CurrentGroup()->Reserve();
-      CurrentBlock()->Append(std::move(inst));
-      return result;
+      return CurrentBlock()->Append(EqInstruction<type>{
+          .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
     } else {
       return Eq(RegOr<type>(lhs), RegOr<type>(rhs));
     }
@@ -244,10 +219,8 @@ struct Builder {
       if (not lhs.is_reg() and not rhs.is_reg()) {
         return NeInstruction<type>::Apply(lhs.value(), rhs.value());
       }
-      NeInstruction<type> inst{.lhs = lhs, .rhs = rhs};
-      auto result = inst.result = CurrentGroup()->Reserve();
-      CurrentBlock()->Append(std::move(inst));
-      return result;
+      return CurrentBlock()->Append(NeInstruction<type>{
+          .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
     } else {
       return Ne(RegOr<type>(lhs), RegOr<type>(rhs));
     }
@@ -255,53 +228,39 @@ struct Builder {
 
   template <typename T>
   RegOr<T> Neg(RegOr<T> const& val) {
-    using InstrT = NegInstruction<T>;
-    if (not val.is_reg()) { return InstrT::Apply(val.value()); }
-    NegInstruction<reduced_type_t<T>> inst{.operand = val};
-    auto result = inst.result = CurrentGroup()->Reserve();
-    CurrentBlock()->Append(std::move(inst));
-    return result;
+    if (not val.is_reg()) { return NegInstruction<T>::Apply(val.value()); }
+    return CurrentBlock()->Append(NegInstruction<reduced_type_t<T>>{
+        .operand = val, .result = CurrentGroup()->Reserve()});
   }
 
   // Note: Even though this must return a more specific type (BufferPointer
   // instead of Type), we use Type to ensure that if this gets routed into an
   // ir::Value, it will be tagged correctly.
   RegOr<type::Type> BufPtr(RegOr<type::Type> const& val) {
-    using InstrT = BufPtrInstruction;
-    if (not val.is_reg()) { return type::Type(InstrT::Apply(val.value())); }
-    InstrT inst{.operand = val};
-    auto result = inst.result = CurrentGroup()->Reserve();
-    CurrentBlock()->Append(std::move(inst));
-    return result;
+    if (not val.is_reg()) { return type::Type(BufPtrInstruction::Apply(val.value())); }
+    return CurrentBlock()->Append(
+        BufPtrInstruction{.operand = val, .result = CurrentGroup()->Reserve()});
   }
 
   // Note: Even though this must return a more specific type (Pointer instead of
   // Type), we use Type to ensure that if this gets routed into an ir::Value, it
   // will be tagged correctly.
   RegOr<type::Type> Ptr(RegOr<type::Type> const& val) {
-    using InstrT = PtrInstruction;
-    if (not val.is_reg()) { return type::Type(InstrT::Apply(val.value())); }
-    InstrT inst{.operand = val};
-    auto result = inst.result = CurrentGroup()->Reserve();
-    CurrentBlock()->Append(std::move(inst));
-    return result;
+    if (not val.is_reg()) { return type::Type(PtrInstruction::Apply(val.value())); }
+    return CurrentBlock()->Append(
+        PtrInstruction{.operand = val, .result = CurrentGroup()->Reserve()});
   }
 
   RegOr<bool> Not(RegOr<bool> const& val) {
-    using InstrT = NotInstruction;
-    if (not val.is_reg()) { return InstrT::Apply(val.value()); }
-    InstrT inst{.operand = val};
-    auto result = inst.result = CurrentGroup()->Reserve();
-    CurrentBlock()->Append(std::move(inst));
-    return result;
+    if (not val.is_reg()) { return NotInstruction::Apply(val.value()); }
+    return CurrentBlock()->Append(
+        NotInstruction{.operand = val, .result = CurrentGroup()->Reserve()});
   }
 
   RegOr<type::Type> Tup(std::vector<RegOr<type::Type>> types) {
     // TODO constant-folding
-    TupleInstruction inst{.values = std::move(types)};
-    auto result = inst.result = CurrentGroup()->Reserve();
-    CurrentBlock()->Append(std::move(inst));
-    return result;
+    return CurrentBlock()->Append(TupleInstruction{
+        .values = std::move(types), .result = CurrentGroup()->Reserve()});
   }
 
   template <typename ToType>
@@ -391,8 +350,10 @@ struct Builder {
   PhiInstruction<T>* PhiInst() {
     PhiInstruction<T> inst;
     inst.result = CurrentGroup()->Reserve();
+    CurrentBlock()->Append(std::move(inst));
     return CurrentBlock()
-        ->Append(std::move(inst))
+        ->instructions()
+        .back()
         .template if_as<PhiInstruction<T>>();
   }
 
@@ -632,10 +593,8 @@ struct Builder {
   template <typename FromType, typename ToType>
   RegOr<ToType> Cast(RegOr<FromType> r) {
     if (r.is_reg()) {
-      CastInstruction<ToType, FromType> inst{.value = r.reg()};
-      auto result = inst.result = CurrentGroup()->Reserve();
-      CurrentBlock()->Append(std::move(inst));
-      return result;
+      return CurrentBlock()->Append(CastInstruction<ToType, FromType>{
+          .value = r.reg(), .result = CurrentGroup()->Reserve()});
     } else {
       return static_cast<ToType>(r.value());
     }
@@ -644,19 +603,15 @@ struct Builder {
   RegOr<bool> EqBool(RegOr<bool> const& lhs, RegOr<bool> const& rhs) {
     if (not lhs.is_reg()) { return lhs.value() ? rhs : Not(rhs); }
     if (not rhs.is_reg()) { return rhs.value() ? lhs : Not(lhs); }
-    EqInstruction<bool> inst{.lhs = lhs, .rhs = rhs};
-    auto result = inst.result = CurrentGroup()->Reserve();
-    CurrentBlock()->Append(std::move(inst));
-    return result;
+    return CurrentBlock()->Append(EqInstruction<bool>{
+        .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
   }
 
   RegOr<bool> NeBool(RegOr<bool> const& lhs, RegOr<bool> const& rhs) {
     if (not lhs.is_reg()) { return lhs.value() ? Not(rhs) : rhs; }
     if (not rhs.is_reg()) { return rhs.value() ? Not(lhs) : lhs; }
-    NeInstruction<bool> inst{.lhs = lhs, .rhs = rhs};
-    auto result = inst.result = CurrentGroup()->Reserve();
-    CurrentBlock()->Append(std::move(inst));
-    return result;
+    return CurrentBlock()->Append(NeInstruction<bool>{
+        .lhs = lhs, .rhs = rhs, .result = CurrentGroup()->Reserve()});
   }
 
   friend struct SetCurrent;
@@ -675,15 +630,14 @@ struct Builder {
   } current_;
 };
 
-Builder& GetBuilder();
-
 struct SetCurrent : public base::UseWithScope {
-  explicit SetCurrent(internal::BlockGroupBase* fn, Builder* builder = nullptr);
-  explicit SetCurrent(NativeFn fn) : SetCurrent(fn.get()) {}
+  explicit SetCurrent(internal::BlockGroupBase& fn, Builder& builder);
+  explicit SetCurrent(NativeFn fn, Builder& builder)
+      : SetCurrent(*fn.get(), builder) {}
   ~SetCurrent();
 
  private:
-  Builder* builder_;
+  Builder& builder_;
   internal::BlockGroupBase* old_group_;
   BasicBlock* old_block_;
   Builder::BlockTerminationState old_termination_state_;
@@ -700,19 +654,6 @@ struct SetTemporaries : public base::UseWithScope {
   std::vector<type::Typed<Reg>> old_temporaries_;
   Builder& bldr_;
 };
-
-template <typename T>
-Reg MakeReg(T t) {
-  static_assert(not std::is_same_v<T, Reg>);
-  if constexpr (base::meta<T>.template is_a<ir::RegOr>()) {
-    RegisterInstruction<typename T::type> inst{.operand = t};
-    auto result = inst.result = GetBuilder().CurrentGroup()->Reserve();
-    GetBuilder().CurrentBlock()->Append(std::move(inst));
-    return result;
-  } else {
-    return MakeReg(RegOr<T>{t});
-  }
-}
 
 }  // namespace ir
 

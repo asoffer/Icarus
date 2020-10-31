@@ -14,8 +14,8 @@ namespace {
 void ReplEval(ast::Expression const *expr, compiler::Compiler *compiler) {
   // TODO is nullptr for module okay here?
   ir::CompiledFn fn(type::Func({}, {}), {});
-  ICARUS_SCOPE(ir::SetCurrent(&fn)) {
-    ir::GetBuilder().CurrentBlock() = fn.entry();
+  ICARUS_SCOPE(ir::SetCurrent(fn, compiler->builder())) {
+    compiler->builder().CurrentBlock() = fn.entry();
 
     // TODO support multiple values computed simultaneously?
     auto expr_val = compiler->EmitValue(expr);
@@ -34,7 +34,6 @@ void ReplEval(ast::Expression const *expr, compiler::Compiler *compiler) {
 void Module::ProcessNodes(base::PtrSpan<ast::Node const> nodes,
                           diagnostic::DiagnosticConsumer &diag) {
   compiler::Compiler c({
-      .builder             = ir::GetBuilder(),
       .data                = context(),
       .diagnostic_consumer = diag,
       .importer            = importer,

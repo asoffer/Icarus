@@ -76,7 +76,7 @@ void EmitArrayAssignment(Compiler &c, type::Array const *to,
 void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Array> const &r) {
   auto [fn, inserted] = context().root().InsertInit(r.type());
   if (inserted) {
-    ICARUS_SCOPE(ir::SetCurrent(fn.get())) {
+    ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
       builder().CurrentBlock() = fn->entry();
       builder().OnEachArrayElement(r.type(), ir::Reg::Arg(0), [=](ir::Reg reg) {
         EmitDefaultInit(type::Typed<ir::Reg>(reg, r.type()->data_type()));
@@ -93,7 +93,7 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Array> const &r) {
   if (not r.type()->HasDestructor()) { return; }
   auto [fn, inserted] = context().root().InsertDestroy(r.type());
   if (inserted) {
-    ICARUS_SCOPE(ir::SetCurrent(fn)) {
+    ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
       builder().CurrentBlock() = fn->entry();
       builder().OnEachArrayElement(r.type(), ir::Reg::Arg(0), [=](ir::Reg reg) {
         EmitDestroy(type::Typed<ir::Reg>(reg, r.type()->data_type()));
@@ -110,7 +110,7 @@ void Compiler::EmitCopyAssign(
     type::Typed<ir::Value> const &from) {
   auto [fn, inserted] = context().root().InsertCopyAssign(to.type(), from.type());
   if (inserted) {
-    ICARUS_SCOPE(ir::SetCurrent(fn)) {
+    ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
       ASSERT(from.type().is<type::Array>() == true);
       EmitArrayAssignment<Copy>(*this, to.type(),
                                 &from.type()->as<type::Array>());
@@ -125,7 +125,7 @@ void Compiler::EmitMoveAssign(
     type::Typed<ir::Value> const &from) {
   auto [fn, inserted] = context().root().InsertMoveAssign(to.type(), from.type());
   if (inserted) {
-    ICARUS_SCOPE(ir::SetCurrent(fn)) {
+    ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
       ASSERT(from.type().is<type::Array>() == true);
       EmitArrayAssignment<Move>(*this, to.type(),
                                 &from.type()->as<type::Array>());
@@ -230,7 +230,7 @@ void Compiler::EmitMoveAssign(
 void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Struct> const &r) {
   auto [fn, inserted] = context().root().InsertInit(r.type());
   if (inserted) {
-    ICARUS_SCOPE(ir::SetCurrent(fn.get())) {
+    ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
       builder().CurrentBlock() = builder().CurrentGroup()->entry();
       auto var                 = ir::Reg::Arg(0);
 
@@ -263,7 +263,7 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Struct> const &r) {
   if (not r.type()->HasDestructor()) { return; }
   auto [fn, inserted] = context().root().InsertDestroy(r.type());
   if (inserted) {
-    ICARUS_SCOPE(ir::SetCurrent(fn.get())) {
+    ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
       builder().CurrentBlock() = builder().CurrentGroup()->entry();
       auto var                 = ir::Reg::Arg(0);
 
@@ -285,7 +285,7 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Struct> const &r) {
 void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Tuple> const &r) {
   auto [fn, inserted] = context().root().InsertInit(r.type());
   if (inserted) {
-    ICARUS_SCOPE(ir::SetCurrent(fn.get())) {
+    ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
       builder().CurrentBlock() = builder().CurrentGroup()->entry();
 
       for (size_t i = 0; i < r.type()->size(); ++i) {
@@ -305,7 +305,7 @@ void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Tuple> const &r) {
   if (not r.type()->HasDestructor()) { return; }
   auto [fn, inserted] = context().root().InsertDestroy(r.type());
   if (inserted) {
-    ICARUS_SCOPE(ir::SetCurrent(fn.get())) {
+    ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
       builder().CurrentBlock() = builder().CurrentGroup()->entry();
 
       for (size_t i = 0; i < r.type()->size(); ++i) {
@@ -327,7 +327,7 @@ void Compiler::EmitMoveAssign(
   auto [fn, inserted] =
       context().root().InsertMoveAssign(to.type(), from.type());
   if (inserted) {
-    ICARUS_SCOPE(ir::SetCurrent(fn)) {
+    ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
       builder().CurrentBlock() = fn->entry();
       auto val                 = ir::Reg::Arg(0);
       auto var                 = ir::Reg::Arg(1);
@@ -357,7 +357,7 @@ void Compiler::EmitCopyAssign(
   auto [fn, inserted] =
       context().root().InsertCopyAssign(to.type(), from.type());
   if (inserted) {
-    ICARUS_SCOPE(ir::SetCurrent(fn)) {
+    ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
       builder().CurrentBlock() = fn->entry();
       auto val                 = ir::Reg::Arg(0);
       auto var                 = ir::Reg::Arg(1);
@@ -403,7 +403,7 @@ void Compiler::EmitCopyAssign(
       context().root().InsertCopyAssign(to.type(), from.type());
   if (inserted) {
     type::Struct const *s = to.type();
-    ICARUS_SCOPE(ir::SetCurrent(fn)) {
+    ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
       builder().CurrentBlock() = fn->entry();
       auto val                 = ir::Reg::Arg(0);
       auto var                 = ir::Reg::Arg(1);
@@ -434,7 +434,7 @@ void Compiler::EmitMoveAssign(
       context().root().InsertMoveAssign(to.type(), from.type());
   if (inserted) {
     type::Struct const *s = to.type();
-    ICARUS_SCOPE(ir::SetCurrent(fn)) {
+    ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
       builder().CurrentBlock() = fn->entry();
       auto val                 = ir::Reg::Arg(0);
       auto var                 = ir::Reg::Arg(1);

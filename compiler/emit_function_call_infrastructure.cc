@@ -99,7 +99,7 @@ void CompleteBody(Compiler *compiler, ast::ShortFunctionLiteral const *node,
   ir::NativeFn ir_func = *ASSERT_NOT_NULL(compiler->context().FindNativeFn(node));
 
   auto &bldr = compiler->builder();
-  ICARUS_SCOPE(ir::SetCurrent(ir_func.get(), &bldr)) {
+  ICARUS_SCOPE(ir::SetCurrent(ir_func, bldr)) {
     bldr.CurrentBlock() = bldr.CurrentGroup()->entry();
 
     // TODO arguments should be renumbered to not waste space on const values
@@ -144,7 +144,7 @@ void CompleteBody(Compiler *compiler, ast::FunctionLiteral const *node,
   ir::NativeFn ir_func = *ASSERT_NOT_NULL(compiler->context().FindNativeFn(node));
 
   auto &bldr = compiler->builder();
-  ICARUS_SCOPE(ir::SetCurrent(ir_func.get(), &bldr)) {
+  ICARUS_SCOPE(ir::SetCurrent(ir_func, bldr)) {
     bldr.CurrentBlock() = bldr.CurrentGroup()->entry();
 
     // TODO arguments should be renumbered to not waste space on const values
@@ -192,7 +192,7 @@ void CompleteBody(Compiler *compiler, ast::Jump const *node) {
   LOG("CompleteBody", "Jump %s", node->DebugString());
   ir::CompiledJump &jmp = *ASSERT_NOT_NULL(compiler->context().jump(node));
 
-  ICARUS_SCOPE(ir::SetCurrent(&jmp, &compiler->builder())) {
+  ICARUS_SCOPE(ir::SetCurrent(jmp, compiler->builder())) {
     ASSERT(compiler != nullptr);
     compiler->builder().CurrentBlock() = jmp.entry();
     // TODO arguments should be renumbered to not waste space on const
@@ -221,7 +221,7 @@ void ProcessExecutableBody(Compiler *c, base::PtrSpan<ast::Node const> nodes,
                            ir::CompiledFn *main_fn) {
   ASSERT(nodes.size() > 0);
   ast::ModuleScope *mod_scope = &nodes.front()->scope()->as<ast::ModuleScope>();
-  ICARUS_SCOPE(ir::SetCurrent(main_fn, &c->builder())) {
+  ICARUS_SCOPE(ir::SetCurrent(*main_fn, c->builder())) {
     MakeAllStackAllocations(*c, mod_scope);
     EmitIrForStatements(*c, nodes);
     MakeAllDestructions(*c, mod_scope);

@@ -24,7 +24,6 @@ struct ExecutableModule : CompiledModule {
                     diagnostic::DiagnosticConsumer &diag) override {
     module::FileImporter<LibraryModule> importer;
     Compiler c({
-        .builder             = ir::GetBuilder(),
         .data                = context(),
         .diagnostic_consumer = diag,
         .importer            = importer,

@@ -20,7 +20,6 @@ namespace compiler {
 WorkItem::Result WorkItem::Process() const {
   module::FileImporter<LibraryModule> importer;
   Compiler c({
-      .builder             = ir::GetBuilder(),
       .data                = context,
       .diagnostic_consumer = consumer,
       .importer            = importer,
@@ -88,7 +87,7 @@ static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
                                 type::Type type) {
   ir::CompiledFn fn(type::Func({}, {type}),
                     core::Params<type::Typed<ast::Declaration const *>>{});
-  ICARUS_SCOPE(ir::SetCurrent(&fn, &c.builder())) {
+  ICARUS_SCOPE(ir::SetCurrent(fn, c.builder())) {
     // TODO this is essentially a copy of the body of FunctionLiteral::EmitValue
     // Factor these out together.
     c.builder().CurrentBlock() = fn.entry();
@@ -131,7 +130,7 @@ static ir::CompiledFn MakeThunk(Compiler &c, ast::Expression const *expr,
 
 base::expected<ir::Value, interpretter::EvaluationFailure> Compiler::Evaluate(
     type::Typed<ast::Expression const *> expr, bool must_complete) {
-  Compiler c(resources_);
+  Compiler c = MakeChild(resources_);
   c.state_.must_complete = must_complete;
   auto result = interpretter::Evaluate(MakeThunk(c, *expr, expr.type()));
   if (not result) { return result; }
@@ -153,7 +152,6 @@ Context::InsertSubcontextResult Compiler::Instantiate(
     core::FnArgs<type::Typed<ir::Value>> const &args) {
   Context scratchpad = context().ScratchpadSubcontext();
   Compiler c({
-      .builder             = builder(),
       .data                = scratchpad,
       .diagnostic_consumer = diag(),
       .importer            = importer(),
@@ -167,7 +165,6 @@ Context::FindSubcontextResult Compiler::FindInstantiation(
     core::FnArgs<type::Typed<ir::Value>> const &args) {
   Context scratchpad = context().ScratchpadSubcontext();
   Compiler c({
-      .builder             = builder(),
       .data                = scratchpad,
       .diagnostic_consumer = diag(),
       .importer            = importer(),

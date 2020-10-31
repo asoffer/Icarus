@@ -65,10 +65,17 @@ struct BasicBlock {
 
   void erase_incoming(BasicBlock *b) { incoming_.erase(b); }
 
+  absl::Span<Inst> instructions() { return absl::MakeSpan(instructions_); }
   absl::Span<Inst const> instructions() const { return instructions_; }
 
-  Inst &Append(Inst &&inst) {
-    return instructions_.emplace_back(std::move(inst));
+  void Append(VoidReturningInstruction auto inst) {
+    instructions_.push_back(Inst{std::move(inst)});
+  }
+
+  Reg Append(ReturningInstruction auto inst) {
+    Reg r = inst.result;
+    instructions_.push_back(Inst{std::move(inst)});
+    return r;
   }
 
   void set_jump(JumpCmd j) { jump_ = std::move(j); }
