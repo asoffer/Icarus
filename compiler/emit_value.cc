@@ -557,19 +557,14 @@ WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
     builder().CurrentBlock() = fn.entry();
 
     std::vector<ir::StructField> fields;
-    fields.reserve(node->fields().size());
 
-    std::optional<ir::Fn> dtor, move_assign;
+    bool has_field_needing_destruction = false;
+    std::optional<ir::Fn> user_dtor, move_assign;
     for (auto const &field : node->fields()) {
-      // TODO hashtags.
+      // TODO: hashtags.
       if (field.id() == "destroy") {
-        // TODO handle potential errors here.
-        auto dtor_value = EmitValue(field.init_val());
-        if (auto const *dtor_fn = dtor_value.get_if<ir::Fn>()) {
-          dtor = *dtor_fn;
-        } else {
-          NOT_YET("Log an error");
-        }
+        // TODO: handle potential errors here.
+        user_dtor = EmitValue(field.init_val()).get<ir::Fn>();
       } else if (field.id() == "assign") {
         // TODO handle potential errors here.
         auto assign_value = EmitValue(field.init_val());
@@ -579,16 +574,48 @@ WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
           NOT_YET("Log an error");
         }
       } else {
+        type::Type field_type;
         if (auto *init_val = field.init_val()) {
           // TODO init_val type may not be the same.
-          auto t = qual_type_of(init_val)->type();
-          fields.emplace_back(field.id(), t, EmitValue(init_val));
+          field_type = qual_type_of(init_val)->type();
+          fields.emplace_back(field.id(), field_type, EmitValue(init_val));
         } else {
-          fields.emplace_back(field.id(),
-                              EmitValue(field.type_expr()).get<type::Type>());
+          field_type = EmitValue(field.type_expr()).get<type::Type>();
+          fields.emplace_back(field.id(), field_type);
         }
+        has_field_needing_destruction =
+            has_field_needing_destruction or field_type->HasDestructor();
       }
     }
+
+    std::optional<ir::Fn> dtor;
+    if (has_field_needing_destruction) {
+      auto [full_dtor, inserted] = context().InsertDestroy(s);
+      if (inserted) {
+        ICARUS_SCOPE(ir::SetCurrent(full_dtor, builder())) {
+          builder().CurrentBlock() = builder().CurrentGroup()->entry();
+          auto var                 = ir::Reg::Arg(0);
+          if (user_dtor) {
+            // TODO: Should probably force-inline this.
+            builder().Call(*user_dtor, full_dtor.type(), {ir::Value(var)},
+                           ir::OutParams());
+          }
+          for (int i = fields.size() - 1; i >= 0; --i) {
+            // TODO: Avoid emitting IR if the type doesn't need to be
+            // destroyed.
+            EmitDestroy(type::Typed<ir::Reg>(builder().FieldRef(var, s, i)));
+          }
+
+          builder().ReturnJump();
+          full_dtor->WriteByteCode<interpretter::instruction_set_t>();
+
+          dtor = full_dtor;
+        }
+      }
+    } else {
+      if (user_dtor) { dtor = *user_dtor; }
+    }
+
     builder().Struct(s, std::move(fields), move_assign, dtor);
     builder().ReturnJump();
   }

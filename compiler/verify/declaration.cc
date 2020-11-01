@@ -271,7 +271,19 @@ type::QualType VerifyUninitialized(Compiler &compiler,
 }  // namespace
 
 type::QualType Compiler::VerifyType(ast::Declaration const *node) {
+  // Declarations can be seen out of order if they're constants and we happen to
+  // verify an identifier referencing the declaration before the declaration is
+  // processed in source-order.
+  //
+  // TODO: Consider first checking if it's a constant because we only need to do
+  // this lookup in that case. Not sure how much performance that might win.
+  if (auto const *qt = context().qual_type(node)) { return *qt; }
   LOG("Declaration", "Verifying %s", node->id());
+
+  // TODO: If we don't already have type-checked this but it's an error, we'll
+  // type-check this node again because we don't save errors. Maybe we should
+  // revisit that idea. It's likely the cause of the problem where we generate
+  // the same error message multiple times.
 
   type::QualType node_qual_type;
   switch (node->kind()) {

@@ -6,7 +6,7 @@
 namespace compiler {
 
 WorkItem::Result Compiler::VerifyBody(ast::StructLiteral const *node) {
-  LOG("struct", "Struct-literal body verification: %p %s", node,
+  LOG("StructLiteral", "Struct-literal body verification: %p %s", node,
       node->DebugString());
   bool error = false;
   for (auto const &field : node->fields()) {
@@ -15,7 +15,7 @@ WorkItem::Result Compiler::VerifyBody(ast::StructLiteral const *node) {
       error = true;
     } else if (field_qt.type()->completeness() ==
                type::Completeness::Incomplete) {
-      LOG("struct",
+      LOG("StructLiteral",
           "Setting error due to incomplete field. Diagnostics should have "
           "already been emit.");
       error = true;
@@ -27,7 +27,7 @@ WorkItem::Result Compiler::VerifyBody(ast::StructLiteral const *node) {
 }
 
 type::QualType Compiler::VerifyType(ast::StructLiteral const *node) {
-  LOG("struct", "Verify type %p %s", node, node->DebugString());
+  LOG("StructLiteral", "Verify type %p %s", node, node->DebugString());
   state_.work_queue.Enqueue({
       .kind     = WorkItem::Kind::VerifyStructBody,
       .node     = node,

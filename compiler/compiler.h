@@ -336,8 +336,6 @@ struct Compiler
 #include "ast/node.xmacro.h"
 #undef ICARUS_AST_NODE_X
 
-  TransientState::YieldedArguments EmitBlockNode(ast::BlockNode const *node);
-
   // The reason to separate out type/body verification is if the body might
   // transitively have identifiers referring to a declaration that is assigned
   // directly to this node.

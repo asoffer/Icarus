@@ -230,20 +230,13 @@ void ProcessExecutableBody(Compiler *c, base::PtrSpan<ast::Node const> nodes,
     c->builder().ReturnJump();
   }
   c->CompleteDeferredBodies();
-  // main_fn->WriteByteCode<interpretter::instruction_set_t>();
-}
-
-TransientState::YieldedArguments Compiler::EmitBlockNode(
-    ast::BlockNode const *node) {
-  ICARUS_SCOPE(PushVec(&state_.yields)) {
-    EmitIrForStatements(*this, node->stmts());
-    return state_.yields.back();
-  }
 }
 
 ir::Value Compiler::EmitValue(ast::BlockNode const *node) {
+  LOG("BlockNode", "EmitValue for block node named %s", node->name());
   ICARUS_SCOPE(PushVec(&state_.yields)) {
     EmitIrForStatements(*this, node->stmts());
+    MakeAllDestructions(*this, node->body_scope());
   }
   return ir::Value();
 }

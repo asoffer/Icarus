@@ -181,7 +181,7 @@ struct DestroyInstruction
 struct CopyInstruction
     : base::Extend<CopyInstruction>::With<ByteCodeExtension, InlineExtension,
                                           DebugFormatExtension> {
-  static constexpr std::string_view kDebugFormat = "copy %2$s -> %3$s";
+  static constexpr std::string_view kDebugFormat = "copy %2$s to %3$s";
 
   interpretter::StackFrame Apply(interpretter::ExecutionContext& ctx) const {
     if (auto* s = type->if_as<type::Struct>()) {
@@ -204,7 +204,7 @@ struct CopyInstruction
 struct MoveInstruction
     : base::Extend<MoveInstruction>::With<ByteCodeExtension, InlineExtension,
                                           DebugFormatExtension> {
-  static constexpr std::string_view kDebugFormat = "move %2$s -> %3$s";
+  static constexpr std::string_view kDebugFormat = "move %2$s to %3$s";
 
   interpretter::StackFrame Apply(interpretter::ExecutionContext& ctx) const {
     if (auto* s = type->if_as<type::Struct>()) {

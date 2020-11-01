@@ -262,22 +262,6 @@ void Compiler::EmitDefaultInit(type::Typed<ir::Reg, type::Struct> const &r) {
 
 void Compiler::EmitDestroy(type::Typed<ir::Reg, type::Struct> const &r) {
   if (not r.type()->HasDestructor()) { return; }
-  auto [fn, inserted] = context().root().InsertDestroy(r.type());
-  if (inserted) {
-    ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
-      builder().CurrentBlock() = builder().CurrentGroup()->entry();
-      auto var                 = ir::Reg::Arg(0);
-
-      for (size_t i = 0; i < r.type()->fields().size(); ++i) {
-        EmitDestroy(type::Typed<ir::Reg>(builder().FieldRef(var, r.type(), i)));
-      }
-
-      builder().ReturnJump();
-    }
-    fn->WriteByteCode<interpretter::instruction_set_t>();
-  }
-  // TODO: Remove this hack.
-  const_cast<type::Struct *>(r.type())->SetDestructor(fn);
   current_block()->Append(ir::DestroyInstruction{.type = r.type(), .reg = *r});
 }
 

@@ -86,7 +86,7 @@ struct Struct : public LegacyType {
 
   std::vector<ast::Hashtag> hashtags_;
   std::vector<Field> fields_;
-  std::optional<ir::Fn> init_, dtor_, copy_assign_, move_assign_;
+  std::optional<ir::Fn> init_, user_dtor_, dtor_, copy_assign_, move_assign_;
   absl::flat_hash_map<std::string_view, size_t> field_indices_;
 };
 
