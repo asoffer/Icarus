@@ -18,8 +18,8 @@ void EmitArrayAssignment(Compiler &c, type::Array const *to,
   auto &bldr          = c.builder();
   auto &fn            = *bldr.CurrentGroup();
   bldr.CurrentBlock() = fn.entry();
-  auto val            = ir::Reg::Arg(0);
-  auto var            = ir::Reg::Arg(1);
+  auto var            = ir::Reg::Arg(0);
+  auto val            = ir::Reg::Arg(1);
 
   auto to_data_ptr_type   = type::Ptr(to->data_type());
   auto from_data_ptr_type = type::Ptr(from->data_type());
@@ -326,9 +326,8 @@ void Compiler::EmitMoveAssign(
   if (inserted) {
     ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
       builder().CurrentBlock() = fn->entry();
-      auto val                 = ir::Reg::Arg(0);
-      auto var                 = ir::Reg::Arg(1);
-
+      auto var                 = ir::Reg::Arg(0);
+      auto val                 = ir::Reg::Arg(1);
       for (size_t i = 0; i < to.type()->size(); ++i) {
         EmitMoveAssign(builder().FieldRef(var, to.type(), i),
                        builder().FieldValue(val, to.type(), i));
@@ -350,9 +349,8 @@ void Compiler::EmitCopyAssign(
   if (inserted) {
     ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
       builder().CurrentBlock() = fn->entry();
-      auto val                 = ir::Reg::Arg(0);
-      auto var                 = ir::Reg::Arg(1);
-
+      auto var                 = ir::Reg::Arg(0);
+      auto val                 = ir::Reg::Arg(1);
       for (size_t i = 0; i < to.type()->size(); ++i) {
         EmitCopyAssign(builder().FieldRef(var, to.type(), i),
                        builder().FieldValue(val, to.type(), i));
@@ -390,8 +388,8 @@ void Compiler::EmitCopyAssign(
     type::Struct const *s = to.type();
     ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
       builder().CurrentBlock() = fn->entry();
-      auto val                 = ir::Reg::Arg(0);
-      auto var                 = ir::Reg::Arg(1);
+      auto var                 = ir::Reg::Arg(0);
+      auto val                 = ir::Reg::Arg(1);
 
       for (size_t i = 0; i < s->fields().size(); ++i) {
         EmitCopyAssign(builder().FieldRef(var, s, i),
@@ -401,6 +399,8 @@ void Compiler::EmitCopyAssign(
       builder().ReturnJump();
     }
     fn->WriteByteCode<interpretter::instruction_set_t>();
+    // TODO: Remove this hack.
+    const_cast<type::Struct *>(s)->SetCopyAssignment(fn);
   }
   builder().Copy(to, type::Typed<ir::Reg>(from->get<ir::Reg>(), from.type()));
 }
@@ -416,8 +416,8 @@ void Compiler::EmitMoveAssign(
     type::Struct const *s = to.type();
     ICARUS_SCOPE(ir::SetCurrent(fn, builder())) {
       builder().CurrentBlock() = fn->entry();
-      auto val                 = ir::Reg::Arg(0);
-      auto var                 = ir::Reg::Arg(1);
+      auto var                 = ir::Reg::Arg(0);
+      auto val                 = ir::Reg::Arg(1);
 
       for (size_t i = 0; i < s->fields().size(); ++i) {
         EmitMoveAssign(builder().FieldRef(var, s, i),
@@ -425,6 +425,8 @@ void Compiler::EmitMoveAssign(
       }
 
       builder().ReturnJump();
+      // TODO: Remove this hack.
+      const_cast<type::Struct *>(s)->SetMoveAssignment(fn);
     }
     fn->WriteByteCode<interpretter::instruction_set_t>();
   }

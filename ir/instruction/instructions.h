@@ -184,7 +184,16 @@ struct CopyInstruction
   static constexpr std::string_view kDebugFormat = "copy %2$s -> %3$s";
 
   interpretter::StackFrame Apply(interpretter::ExecutionContext& ctx) const {
-    NOT_YET();
+    if (auto* s = type->if_as<type::Struct>()) {
+      ASSERT(s->copy_assign_.has_value() == true);
+      ir::Fn f   = *s->copy_assign_;
+      auto frame = ctx.MakeStackFrame(f.native());
+      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(to));
+      frame.regs_.set(ir::Reg::Arg(1), ctx.resolve<ir::Addr>(from));
+      return frame;
+    } else {
+      NOT_YET();
+    }
   }
 
   type::Type type;
@@ -198,7 +207,17 @@ struct MoveInstruction
   static constexpr std::string_view kDebugFormat = "move %2$s -> %3$s";
 
   interpretter::StackFrame Apply(interpretter::ExecutionContext& ctx) const {
-    NOT_YET();
+    if (auto* s = type->if_as<type::Struct>()) {
+      ASSERT(s->move_assign_.has_value() == true);
+      ir::Fn f   = *s->move_assign_;
+      auto frame = ctx.MakeStackFrame(f.native());
+      frame.regs_.set(ir::Reg::Arg(0), ctx.resolve<ir::Addr>(to));
+      frame.regs_.set(ir::Reg::Arg(1), ctx.resolve<ir::Addr>(from));
+      return frame;
+    } else {
+      NOT_YET();
+    }
+
   }
 
   type::Type type;

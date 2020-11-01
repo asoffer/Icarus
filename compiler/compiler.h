@@ -426,63 +426,7 @@ struct Compiler
 
 #undef DEFINE_EMIT_DESTROY
 
-  void EmitAssign(ast::Access const *node,
-                  absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
-  void Visit(EmitAssignTag, ast::Access const *node,
-             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
-    return EmitAssign(node, regs);
-  }
-
-  void EmitAssign(ast::ArrayType const *node,
-                  absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
-  void Visit(EmitAssignTag, ast::ArrayType const *node,
-             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
-    return EmitAssign(node, regs);
-  }
-
-  void EmitAssign(ast::BinaryOperator const *node,
-                  absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
-  void Visit(EmitAssignTag, ast::BinaryOperator const *node,
-             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
-    return EmitAssign(node, regs);
-  }
-
-  void EmitAssign(ast::Call const *node,
-                  absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
-  void Visit(EmitAssignTag, ast::Call const *node,
-             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
-    return EmitAssign(node, regs);
-  }
-
-  void EmitAssign(ast::Identifier const *node,
-                  absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
-  void Visit(EmitAssignTag, ast::Identifier const *node,
-             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
-    return EmitAssign(node, regs);
-  }
-
-  void EmitAssign(ast::Index const *node,
-                  absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
-  void Visit(EmitAssignTag, ast::Index const *node,
-             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
-    return EmitAssign(node, regs);
-  }
-
-  void EmitAssign(ast::Terminal const *node,
-                  absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
-  void Visit(EmitAssignTag, ast::Terminal const *node,
-             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
-    return EmitAssign(node, regs);
-  }
-
-  void EmitAssign(ast::UnaryOperator const *node,
-                  absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);
-  void Visit(EmitAssignTag, ast::UnaryOperator const *node,
-             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs) override {
-    return EmitAssign(node, regs);
-  }
-
-#define DEFINE_EMIT_INIT(node_type)                                            \
+#define DEFINE_EMIT(node_type)                                                 \
   void EmitCopyInit(node_type const *node,                                     \
                     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);  \
   void Visit(EmitCopyInitTag, node_type const *node,                           \
@@ -496,19 +440,26 @@ struct Compiler
              absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs)          \
       override {                                                               \
     return EmitMoveInit(node, regs);                                           \
+  }                                                                            \
+  void EmitAssign(node_type const *node,                                       \
+                  absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs);    \
+  void Visit(EmitAssignTag, node_type const *node,                             \
+             absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> regs)          \
+      override {                                                               \
+    return EmitAssign(node, regs);                                             \
   }
-  DEFINE_EMIT_INIT(ast::Access)
-  DEFINE_EMIT_INIT(ast::ArrayLiteral)
-  DEFINE_EMIT_INIT(ast::ArrayType)
-  DEFINE_EMIT_INIT(ast::BinaryOperator)
-  DEFINE_EMIT_INIT(ast::Call)
-  DEFINE_EMIT_INIT(ast::Cast)
-  DEFINE_EMIT_INIT(ast::DesignatedInitializer)
-  DEFINE_EMIT_INIT(ast::Identifier)
-  DEFINE_EMIT_INIT(ast::Index)
-  DEFINE_EMIT_INIT(ast::Terminal)
-  DEFINE_EMIT_INIT(ast::UnaryOperator)
-#undef DEFINE_EMIT_INIT
+  DEFINE_EMIT(ast::Access)
+  DEFINE_EMIT(ast::ArrayLiteral)
+  DEFINE_EMIT(ast::ArrayType)
+  DEFINE_EMIT(ast::BinaryOperator)
+  DEFINE_EMIT(ast::Call)
+  DEFINE_EMIT(ast::Cast)
+  DEFINE_EMIT(ast::DesignatedInitializer)
+  DEFINE_EMIT(ast::Identifier)
+  DEFINE_EMIT(ast::Index)
+  DEFINE_EMIT(ast::Terminal)
+  DEFINE_EMIT(ast::UnaryOperator)
+#undef DEFINE_EMIT
 
   void EmitMoveInit(type::Typed<ir::Value> from_val,
                     type::Typed<ir::Reg> to_var) {

@@ -168,6 +168,15 @@ ir::Value Compiler::EmitValue(ast::DesignatedInitializer const *node) {
   return ir::Value(alloc);
 }
 
+void Compiler::EmitAssign(
+    ast::DesignatedInitializer const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  // TODO: Improve this to avoid the temporary allocation.
+  auto t = context().qual_type(node)->type();
+  ASSERT(to.size() == 1u);
+  EmitCopyAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
+}
+
 void Compiler::EmitMoveInit(
     ast::DesignatedInitializer const *node,
     absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {

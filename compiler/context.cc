@@ -179,6 +179,7 @@ Context::ConstantValue const *Context::Constant(
 
 void Context::SetAllOverloads(ast::Expression const *callee,
                               ast::OverloadSet os) {
+  LOG("SetAllOverloads", "%s", callee->DebugString());
   [[maybe_unused]] auto [iter, inserted] =
       all_overloads_.emplace(callee, std::move(os));
   ASSERT(inserted == true);

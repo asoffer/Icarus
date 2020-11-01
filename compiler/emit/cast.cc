@@ -63,4 +63,12 @@ ir::Value Compiler::EmitValue(ast::Cast const *node) {
   }
 }
 
+void Compiler::EmitAssign(
+    ast::Cast const *node,
+    absl::Span<type::Typed<ir::RegOr<ir::Addr>> const> to) {
+  ASSERT(to.size() == 1u);
+  auto t = context().qual_type(node)->type();
+  EmitMoveAssign(to[0], type::Typed<ir::Value>(EmitValue(node), t));
+}
+
 }  // namespace compiler
