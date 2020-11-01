@@ -561,7 +561,7 @@ WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
     bool has_field_needing_destruction = false;
     std::optional<ir::Fn> user_dtor, move_assign;
     for (auto const &field : node->fields()) {
-      // TODO: hashtags.
+      // TODO: Decide whether to support all hashtags. For now just covering export.
       if (field.id() == "destroy") {
         // TODO: handle potential errors here.
         user_dtor = EmitValue(field.init_val()).get<ir::Fn>();
@@ -578,10 +578,14 @@ WorkItem::Result Compiler::CompleteStruct(ast::StructLiteral const *node) {
         if (auto *init_val = field.init_val()) {
           // TODO init_val type may not be the same.
           field_type = qual_type_of(init_val)->type();
-          fields.emplace_back(field.id(), field_type, EmitValue(init_val));
+          fields.emplace_back(field.id(), field_type, EmitValue(init_val))
+              .set_export(field.contains_hashtag(
+                  ast::Hashtag(ast::Hashtag::Builtin::Export)));
         } else {
           field_type = EmitValue(field.type_expr()).get<type::Type>();
-          fields.emplace_back(field.id(), field_type);
+          fields.emplace_back(field.id(), field_type)
+              .set_export(field.contains_hashtag(
+                  ast::Hashtag(ast::Hashtag::Builtin::Export)));
         }
         has_field_needing_destruction =
             has_field_needing_destruction or field_type->HasDestructor();

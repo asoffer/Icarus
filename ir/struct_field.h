@@ -35,6 +35,9 @@ struct StructField {
   // Returns the name of the struct field.
   std::string_view name() const { return name_; }
 
+  void set_export(bool b) { export_ = b; }
+  constexpr bool exported() const { return export_; }
+
   // Returns a pointer to the register representing the type if it exists, and a
   // null pointer otherwise.
   Reg *type_reg() {
@@ -82,7 +85,7 @@ struct StructField {
 
   std::variant<WithInitialValue, RegOr<type::Type>> data_;
 
-  // TODO hashtags.
+  bool export_ = false;
 };
 
 }  // namespace ir

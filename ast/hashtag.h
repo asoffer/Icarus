@@ -7,7 +7,7 @@
 #include "base/debug.h"
 
 namespace ast {
-// TODO move out of ast?
+// TODO move out of ast into ir/value.
 struct Hashtag {
   enum class Builtin {
     Export,

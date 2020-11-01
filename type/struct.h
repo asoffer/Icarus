@@ -26,9 +26,9 @@ struct Struct : public LegacyType {
   struct Field {
     // TODO make a string_view but deal with trickiness of moving
 
-    bool contains_hashtag(ast::Hashtag needle) const {
-      for (auto const &h : hashtags_) {
-        if (h == needle) { return true; }
+    bool contains_hashtag(ast::Hashtag const &h) const {
+      for (auto const &tag : hashtags_) {
+        if (h == tag) { return true; }
       }
       return false;
     }

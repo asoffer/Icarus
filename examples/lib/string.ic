@@ -1,0 +1,44 @@
+// TODO: The precise types here are actually architecture dependent. We need to
+// provide some platform-querying capabilities so that we don't need to, for
+// example hard-code malloc's parameter to nat64 when in reality it is
+// `std::size_t` which may be 32-bits on some platforms.
+malloc ::= foreign("malloc", nat64 -> [*]nat8)
+free   ::= foreign("free", [*]nat8 -> ())
+memset ::= foreign("memset", ([*]nat8, int32, nat64) -> [*]nat8)
+memcpy ::= foreign("memcpy", ([*]nat8, [*]nat8, nat64) -> [*]nat8)
+
+// TODO: Improve implementation.
+#{export}
+string ::= struct {
+  // TODO: Remove export of _data.
+  #{export}
+  _data:     [*]nat8
+  _length:   nat64
+
+  destroy ::= (self: *string) -> () {
+    // TODO: Correctly order destruction code emission so it only runs after the
+    // data has been completed. Until then we're just leaking all the memory.
+    // free(self._data)
+  }
+}
+
+#{export}
+make_string ::= (fill: nat8, length: nat64) -> string {
+  buffer := malloc(length + 1 as nat64)
+  memset(buffer, fill as int32, length)
+  buffer[length] = 0 as nat8
+  return string.{
+    _data = buffer 
+    _length = length
+  }
+}
+
+#{export}
+make_string ::= (bv: byte_view) -> string {
+  buffer := malloc(bv.length + 1 as nat64)
+  memcpy(buffer, &bv[0], bv.length + 1 as nat64)
+  return string.{
+    _data = buffer 
+    _length = bv.length
+  }
+}

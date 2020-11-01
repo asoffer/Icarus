@@ -21,9 +21,9 @@ struct Expression : public Node {
   std::vector<Hashtag> hashtags_;
   bool parenthesized_ = false;
 
-  bool contains_hashtag(Hashtag needle) const {
+  bool contains_hashtag(Hashtag const &h) const {
     for (auto const &tag : hashtags_) {
-      if (tag == needle) { return true; }
+      if (tag == h) { return true; }
     }
     return false;
   }
