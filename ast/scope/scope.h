@@ -27,7 +27,28 @@ struct Scope : public base::Cast<Scope> {
     return std::make_unique<ScopeType>(this, std::forward<Args>(args)...);
   }
 
+  // TODO: The `id` needs to be the same as decl->id() but due to layering
+  // issues declarations are incomplete when scopes are being compiled.
   void InsertDecl(std::string_view id, Declaration *decl);
+
+  // Whether or not non-constant declarations are visible across this scope
+  // boundary. In this example,
+  //
+  // ```
+  // f ::= (n: int64) -> () {
+  //   m := 1
+  //   while (m != 10) do {
+  //     m := "hello"
+  //   }
+  // }
+  //
+  // n := 1
+  // ```
+  //
+  // The identifier `m` is visible across the while-scope boundary, so `m` would
+  // be an ambiguous redeclaration. However the identifier `n` is not visible
+  // because function scopes constitute a visibility boundary.
+  virtual bool is_visibility_boundary() const { return false; }
 
   template <typename Sc>
   Sc const *Containing() const {
@@ -48,10 +69,11 @@ struct Scope : public base::Cast<Scope> {
 
   absl::flat_hash_map<std::string_view, std::vector<Declaration *>> decls_;
 
-  absl::Span<Declaration *const> children_with_id(std::string_view id) const {
-    auto iter = child_decls_.find(id);
-    if (iter == child_decls_.end()) { return absl::Span<Declaration *const>(); }
-    return iter->second;
+  absl::Span<Declaration *const> VisibleChildren(std::string_view id) const {
+    if (auto iter = child_decls_.find(id); iter != child_decls_.end()) {
+      return iter->second;
+    }
+    return absl::Span<Declaration *const>();
   }
 
  private:

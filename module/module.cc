@@ -93,7 +93,7 @@ std::vector<ast::Declaration const *> AllAccessibleDecls(
     ast::Scope const *starting_scope, std::string_view id) {
   std::vector<ast::Declaration const *> decls =
       module::AllVisibleDeclsTowardsRoot(starting_scope, id);
-  auto child_decls = starting_scope->children_with_id(id);
+  auto child_decls = starting_scope->VisibleChildren(id);
   decls.insert(decls.end(), child_decls.begin(), child_decls.end());
   return decls;
 }

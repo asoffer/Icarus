@@ -18,7 +18,8 @@ struct FnScope : public ExecScope {
       : ExecScope(parent), fn_lit_(fn_lit) {
     descendants_.push_back(this);
   }
-  ~FnScope() override {}
+
+  bool is_visibility_boundary() const override { return true; }
 
   FunctionLiteral *fn_lit_ = nullptr;
   void insert_descendant(ExecScope *s) { descendants_.push_back(s); }
